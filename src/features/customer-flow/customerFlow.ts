@@ -90,7 +90,10 @@ export function createCustomerFlow(input: CreateCustomerFlowInput = {}): Custome
  * Reducers (each returns a NEW state)                                       *
  * ------------------------------------------------------------------------ */
 
-export function setProductType(state: CustomerFlowState, type: CustomerProductType): CustomerFlowState {
+export function setProductType(
+  state: CustomerFlowState,
+  type: CustomerProductType,
+): CustomerFlowState {
   return { ...state, explicitType: type };
 }
 
@@ -114,7 +117,9 @@ export function addFlavorChip(state: CustomerFlowState, tag: string): CustomerFl
     ...state,
     // Adding a tag cancels a prior removal of the same tag.
     removedFlavorTags: state.removedFlavorTags.filter((t) => t !== clean),
-    addedFlavorTags: alreadyActive ? state.addedFlavorTags : dedupe([...state.addedFlavorTags, clean]),
+    addedFlavorTags: alreadyActive
+      ? state.addedFlavorTags
+      : dedupe([...state.addedFlavorTags, clean]),
   };
   return next;
 }
@@ -125,7 +130,10 @@ export function addFlavorChip(state: CustomerFlowState, tag: string): CustomerFl
  * approved preset mass applies — so Ninja Gelato → Ninja Swirl re-derives 700 → 480.
  * For direct/fresh ↔ direct/fresh switches a hand-typed batch is kept.
  */
-export function selectServingMode(state: CustomerFlowState, mode: ServingModeId): CustomerFlowState {
+export function selectServingMode(
+  state: CustomerFlowState,
+  mode: ServingModeId,
+): CustomerFlowState {
   if (mode === state.mode) return state;
   const ninjaInvolved = isNinjaMode(mode) || isNinjaMode(state.mode);
   return { ...state, mode, ...(ninjaInvolved ? { explicitBatchGrams: null } : {}) };
@@ -199,7 +207,7 @@ export function isRecognizedFlavorTag(tag: string): boolean {
 export type ProductTypeStatus =
   | 'resolved' // we know the visible type + internal engine profile
   | 'unknown' // ask the Gelato/Sorbet/Vegan/Protein question
-  | 'unsupported'; // honest gap (e.g. protein has no engine profile)
+  | 'unsupported'; // reserved for genuinely unsupported future profiles
 
 export interface ProductTypeResolution {
   status: ProductTypeStatus;
@@ -211,46 +219,22 @@ export interface ProductTypeResolution {
   engineCategory: ProductCategory | null;
   /** True when chocolate was routed INTERNALLY (customer still sees Gelato). */
   chocolateRoutedInternally: boolean;
-  /** The unsupported intent code when status is 'unsupported' (e.g. 'protein'). */
+  /** The unsupported intent code when status is 'unsupported'. */
   unsupported: string | null;
   /** Structured note codes — never fabricated user text. */
   notes: string[];
-}
-
-/** Did the spine flag this input as unsupported for the given raw value? */
-function unsupportedInput(intent: NormalizedRecipeIntent, value: string): boolean {
-  return intent.warnings.some(
-    (w) => w.code === 'unsupported_product_profile' && w.context?.input === value,
-  );
 }
 
 /**
  * Resolve the visible product type and the internal engine profile.
  *
  * The customer NEVER chooses "Chocolate": a chocolate intent keeps the visible
- * type Gelato while the internal profile becomes `chocolate_gelato`. Protein has
- * no supported engine profile, so it resolves to an honest 'unsupported' gap
- * instead of silently becoming Standard Gelato.
+ * type Gelato while the internal profile becomes `chocolate_gelato`. Protein
+ * routes to its own dedicated `protein_gelato` profile.
  */
 export function resolveProductType(state: CustomerFlowState): ProductTypeResolution {
   const intent = spineIntent(state);
   const notes: string[] = [];
-
-  // Honest gap: explicit protein choice, or protein detected in the text.
-  const proteinUnsupported =
-    state.explicitType === 'protein' || unsupportedInput(intent, 'protein');
-  if (proteinUnsupported) {
-    notes.push('customer_flow.protein_unsupported');
-    return {
-      status: 'unsupported',
-      userFacingType: 'protein',
-      internalProfile: null,
-      engineCategory: null,
-      chocolateRoutedInternally: false,
-      unsupported: 'protein',
-      notes,
-    };
-  }
 
   const chocolateActive = activeFlavorChips(state).some((t) => CHOCOLATE_FLAVOR_TAGS.has(t));
 
@@ -269,6 +253,9 @@ export function resolveProductType(state: CustomerFlowState): ProductTypeResolut
   });
 
   // Explicit visible choice wins for the customer-facing type.
+  if (state.explicitType === 'protein') {
+    return resolved('protein_gelato', 'protein', false);
+  }
   if (state.explicitType === 'sorbet') {
     if (chocolateActive) notes.push('customer_flow.chocolate_sorbet_kept_as_sorbet');
     return resolved('sorbet', 'sorbet', false);
@@ -286,6 +273,9 @@ export function resolveProductType(state: CustomerFlowState): ProductTypeResolut
   // No explicit choice — derive from the spine parse of the text.
   // Vegan / sorbet come straight from the spine; chocolate is chip-gated so a
   // corrected chip is honored; a plain gelato with no product word stays unknown.
+  if (intent.productProfile === 'protein_gelato') {
+    return resolved('protein_gelato', 'protein', false);
+  }
   if (intent.productProfile === 'vegan_gelato') {
     return resolved('vegan_gelato', 'vegan', false);
   }
@@ -341,7 +331,13 @@ export function resolveBatch(state: CustomerFlowState): BatchResolution {
   const notes: string[] = [];
 
   if (state.explicitBatchGrams !== null) {
-    return { batchGrams: state.explicitBatchGrams, satisfied: true, source: 'user', askBatch: false, notes };
+    return {
+      batchGrams: state.explicitBatchGrams,
+      satisfied: true,
+      source: 'user',
+      askBatch: false,
+      notes,
+    };
   }
 
   const textBatch = parseBatchFromText(state.rawText);

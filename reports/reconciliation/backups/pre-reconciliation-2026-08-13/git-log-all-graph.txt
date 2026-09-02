@@ -1,0 +1,573 @@
+﻿* 5f79658 (HEAD -> codex/unified-product-intelligence, origin/staging, codex/pixel-perfect-desktop) fix(pro): lock desktop workbench to owner target
+* e816c51 (codex/desktop-structure-lock) feat(pro): lock desktop profile structure and picker
+* 6b188e5 (codex/final-pro-topping-system) chore(staging): force clean Vercel redeploy
+* f5241d9 docs(pro): record staging deployment and owner QA gate
+* 5d5ccbb docs(pro): record final owner implementation gates
+* 4fe5ac6 feat(pro): complete base and topping owner system
+* dd87e3a (codex/final-pro-owner-reconstruction) fix(pro): finish owner visual correction pass
+* 83c784b feat(pro): complete Apple owner workbench reconstruction
+* 3c45127 (codex/pro-apple2-completion) feat(pro): complete Apple 2.0 workbench
+* 88920e9 (codex/p0-process-guide-entry) fix(pro): restore process guide monitor entry
+* 0bebc92 (codex/final-integration-deploy-2026-08) fix: preserve template-controlled stabilizer contracts
+* 2378595 Keep owner review controls clear of Pro workbar
+* 89de706 Import canonical process metadata and close owner QA gate
+* 0af9f23 docs: record final staging owner QA evidence
+* ec69328 fix: keep direction undo available in workbar
+* 8652fa3 fix: make apply line contracts immutable
+* 73e243b fix: close final integration review blockers
+* 4e31006 docs: record final Aug 8-10 integration manifest
+* 0af5f34 feat: add plan-aware global navigation
+* d09d96b feat: complete Aug 8-10 functional promises
+* 2d575ad docs(audit): record final production owner handoff
+| * 9a7aeb0 (codex/global-menu-ia-final) feat: add plan-aware global navigation
+|/  
+* 4bd4f50 fix(production): keep physical vessel mass visible during rescue
+* 5651fbf docs: record final served staging audit
+* 5b931ff fix(review): enable owner QA only on staging
+* c6a0ab1 feat: integrate Mapper 2088 and final product cycle
+| * 4ec3f49 (codex/production-master-label-final) feat(pro): add physical production and master label workflow
+| * 30daf29 (codex/optimal-eco-customer-pricing-final) feat: add private customer pricing and eco strategy
+| * 47198dc (codex/protein-gelato-final) feat: add protein gelato product engine
+| * 37492b8 (codex/vegan-gelato-final) fix: close vegan review gaps
+| * de6253b feat: finalize vegan gelato profile
+| * 5ae99e6 (codex/recipe-direction-targets, codex/multi-main-recipe-identity) fix(formulation): preserve multi-main recipe identity
+|/  
+| * abc45e6 (codex/contextual-learning-process-guide) feat: add contextual learning and process guide
+| * 93df6eb (codex/pro-monitor-ux) feat(pro): redesign professional monitor
+| * 4a83fca (codex/pro-profile-preflight) feat(pro): add profile preflight and target axes
+| * 92e2d84 (codex/ingredient-table-ux) feat(pro): simplify recipe ingredient table UX
+|/  
+| * 34e2be8 (codex/lost-legendary-inspiration) feat(recipes): add curated mobile discovery
+| * c0333ea feat(recipes): first-100 flavor inspiration catalogue (domain + importer + manifest)
+|/  
+* 7d33ec7 (codex/final-pro-workbench) fix(pro): integrate final identity and apply review
+* 36c777e docs(pro): record canonical identity staging proof
+* 1157f26 fix(pro): unify canonical ingredient draft identity
+* 83ae19e docs(pro): finalize staging verification ledger
+* 0400ab8 fix(pro): stabilize mobile workbar and responsive proof
+* a1e9f54 feat(pro): finalize one-screen workbench design
+* 5f00436 (nightly/integration) docs(addendum): final integration ledger — items 1-7, consequences, owner checks
+* 94db2c0 fix(monitor): /pro/monitor opens the sheet below lg — deep-link honours its own name on phones (Agent D GAP-2)
+*   dd7223f (agent-a/canonical-families-honesty) merge(addendum): canonical families only (native-band routing), reference-derived quarantine + apply-door gate, honest solver terminology, rescale-vs-optimisation labels
+|\  
+| * de48ae5 (agent-a/canonical-families) feat(honesty): reference-derived Apply gate, honest solver terminology, truthful outcome labels
+| * 93756ba feat(canonical-families): runtime may only select NATIVE-banded categories; quarantine the reference-derived template
+* |   544ab28 merge(addendum): verified 100% Monitor parity + fix clipped owner diagnostics (truncate content loss)
+|\ \  
+| * | 8ec10ba (agentd/monitor-parity-verified) verify(monitor): 100 % historical parity re-derived and PROVEN — clipping gap closed
+| |/  
+* |   9df8998 merge(addendum): multi-remove no-refresh proof + persist exclusions and §17 constraints (live == refreshed formulation input)
+|\ \  
+| |/  
+|/|   
+| * 3f41e68 (agent-c/multi-remove-norefresh) fix(stores): multi-remove → immediate Przelicz z PI ≡ after-refresh (owner addendum item 6)
+|/  
+*   fb2924f merge(current-draft): Inulin P0 — batch reconciliation preview, all-unlocked candidate vector, one canonical score, machine-context provenance
+|\  
+| * 1413219 (fix/current-draft-optimization) fix(optimizer): CURRENT-DRAFT optimization — every unlocked line adjustable, batch equality, one canonical score, machine context
+|/  
+* 1c5ca26 docs(architecture): all-four-families + multi-stabilizer selection — proposal updated with stabilizer §7A + protein §7B, READY FOR OWNER APPROVAL
+*   6937cf2 docs(science): protein family literature review + product contract
+|\  
+| * 7d2a90a (worktree-agent-a25121477322515d3) docs(protein-family): primary literature review + product contract
+* |   cae38fd docs(science): stabilizer forensics + multi-stabilizer selector design
+|\ \  
+| * | 7eaf7c7 (stabilizer-science/selector-design) docs(stabilizer): forensic recovery + multi-stabilizer selector science
+| |/  
+* | bff5eb0 docs(final-closure): master ledger — addendum+R+M integrated, 5186 green, bundle BCQAOdui verified
+* |   623a2ce merge(final-closure): Agent M — one-screen workbench, live Monitor panel, full parity, hamburger nav
+|\ \  
+| * | 6d612eb (agentm/monitor-completeness) feat(pro): ONE-SCREEN workbench — zero page scroll, LIVE Monitor PI panel, full B1 parity (Agent M)
+| |/  
+* |   89b028b merge(final-closure): Agent R — removal is not exclusion, atomic edit transaction, canonical snapshot
+|\ \  
+| * | d828df2 (agentr/removal-recalc) fix(recipe): removal is not exclusion — atomic removal transaction + explicit unavailable action (owner FINAL CLOSURE, Agent R)
+| |/  
+* |   71d207e merge(final-closure): acceptance addendum — T9 gate, technicalFit 10/10, hard-residual door, MAX/RANGE fix
+|\ \  
+| |/  
+|/|   
+| * 1a11965 (fix/acceptance-addendum) fix(addendum): four acceptance closures — T9 cap gate, technical score split, hard-residual door, real MAX/RANGE freedom
+|/  
+* a55f5fc fix(integration): optional-chain mock.call indexing in backendGuard test (tsc strict)
+*   0af10d0 merge(authenticity): A2 engine authenticity suite + 20-test artifacts
+|\  
+| * 27a0c85 (worktree-agent-a2d044d5d9972c514) qa(nightly-p0): Agent 2 — engine authenticity audit + T1-T20 offline battery (drift detectors, artifacts, ledger)
+* |   dbdd85a merge(authenticity): A5 backendGuard + explicit fallbacks + migration-test EOL normalization
+|\ \  
+| * | ae237e7 (agent5/e2e-authenticity) fix(services): explicit unconfigured-backend reads — no silent fake-empty output (Agent 5 E2E authenticity)
+| |/  
+* |   5497291 merge(authenticity): A4 sweep + pink non-production markers
+|\ \  
+| * | 9142b9b (agent4/fixture-sweep) feat(fixture-sweep): Agent 4 — full non-production data sweep + PINK TESTOWE/NIEPRODUKCYJNE markers
+| |/  
+* |   ca22550 merge(authenticity): A3 solver contract — proof, scaling detector, capacity ordering, impossible-under-constraints
+|\ \  
+| * | c1946c9 (agent3/constraint-solver-authenticity) fix(agent3): formulation authenticity — projection is seed-only, proof-carrying previews, honest impossibility
+| |/  
+* |   bf0735d merge(authenticity): A1 runtime path forensics (docs)
+|\ \  
+| * | 2ed9a04 (worktree-agent-aca58b655636a9c94) docs(engine-authenticity): Agent 1 runtime formulation path forensics — owner table, scaling-site classification, Strawberry-900 exact call stack + defect statement for Agent 3
+| |/  
+* / 22cdc8d docs(engine-authenticity): Agent 2 artifacts — 20-test results JSON/CSV + ledger (early pull for owner)
+|/  
+* 6f8e680 chore(staging): redeliver webhook for live-repair integration
+*   66a9a5d merge(live-repair): /pro/recipe UX — token-level contrast fix, one primary path, always-visible red review marks
+|\  
+| * cdb7902 (ux-repair/pro-recipe) fix(pro-recipe): UX repair — dark-surface charcoal token, one primary path, red review marks, truthful states
+* |   c0a7158 merge(live-repair): state sync (canonical draft + draftRevision + fresh §17 context), iterate-to-fixed-point optimizer, tara identity/clamps
+|\ \  
+| * | 05a812e (nightly/live-state-opt-stabilizer) docs(nightly-p0): live-state/optimization/stabilizer completion ledger — stale byLineId root cause, iterated-solver audit, tara 5 g forensic verdict (BLOCKED_SCIENCE on dose optimization only)
+| * | 393105f fix(live-state): canonical draft selector + monotonic draftRevision + fresh §17 context on load; iterated verified optimizer (cap 12, trajectory, stop reasons); approved stabilizer dosage bounds + pure-gum/blend identity
+|/ /  
+* / bac7f44 fix(formulation): zero-gram selected-ingredient semantics — owner live repair
+|/  
+* 510659b docs(nightly-p0): master ledger + Wave-0 baseline — integration A>C>E>D>B>F-docs>G, gates 4931/4931
+* fcc9d14 fix(nightly-integration): logo lock hashes eol-normalized artwork content (checkout-independent)
+*   babb953 merge(nightly): Agent G — Masterpiece design (tokens, dark-pro theme scope, owner review mode, 404 shell)
+|\  
+| * 3690cb0 (worktree-agent-a813e3be6dc0d387f) docs(design): Phase 7 + completion ledger — live responsive/a11y verification record, gates, owner acceptance tests
+| * bf5fa8d feat(routes): Phase 6 — route consistency: 404 wears the canonical AppShell + PL-unified headline; RV-15 registered
+| * a05ac88 feat(pro): Phase 5 — dark professional identity for the canonical Pro workspace
+| * 3a113d6 feat(design-system): Phase 4 — graphite tokens + .theme-pro-dark scope + ONE design system doc
+| * 9bfc301 feat(design-review): Phase 3 — staging-only owner/QA 'DO PRZEGLĄDU' markers + registry + overlay + logo hash lock
+| * 9d018a2 docs(design): Phase 2 — wireframes (Demo/Pro mobile+desktop, menus, Monitor, Preview, contextual actions, states)
+| * 0ea8752 docs(design): Phase 1 — complete UI inventory (routes, nav systems, Pro anatomy, logo lock)
+* | be8e815 docs(nightly-p0): Agent F infra & data forensics ledger — staging/prod bundle evidence, Stripe test-mode proof, products-table forensic conclusion (no staging deletion; misconnected-connector reads)
+* |   0e8cb64 merge(nightly): Agent B — engine validation fixtures B1-B3 (drift detectors)
+|\ \  
+| * | 902fb07 (worktree-agent-a500fe17d6731ee3c) qa(engine-validation): Agent B exact immutable fixtures + engine-output drift detectors + comparison ledger
+| |/  
+* |   39ce03f merge(nightly): Agent D — /start entitlement seam + persona matrix
+|\ \  
+| * | 7557ea2 (worktree-agent-a7596694588d097ae) fix(start): entitlement-driven /start persona seam + full persona/entitlement test matrix (Agent D P0)
+| |/  
+* |   c295c35 merge(nightly): Agent E — transactional save RPC 0036, version contract, alias-aware costs
+|\ \  
+| * | b0698d3 (worktree-agent-a28db60091b8bfd9c) fix(pro): transactional first save (0036 RPC, applied to staging) + versions contract suite + alias-aware cost keying with three-state presentation
+| |/  
+* |   442e7f5 merge(nightly): Agent C — live search finalization (.range paging, aliases, census labels)
+|\ \  
+| * | 0b9f0f2 (worktree-agent-ad62b5b16ee66f53f) fix(search): AGENT C finalization — .range paging, SMP/proszku alias gaps, census-grounded Polish presentation
+| |/  
+* |   106bb82 merge(nightly): Agent A — formulation core (toolbox lifecycle, template-seeded fallback, band provenance)
+|\ \  
+| |/  
+|/|   
+| * 9b9f929 (worktree-agent-ad880ceca859efa7a) fix(formulation): NIGHTLY P0 Agent A — exclusion lifecycle, canonical toolbox identity, template-seeded fallback, best-safe result
+|/  
+| * 0950609 (worktree-agent-a4daa878a5536f698) docs(nightly-p0): Agent F infra & data forensics ledger — staging/prod bundle evidence, Stripe test-mode proof, products-table forensic conclusion (no staging deletion; misconnected-connector reads)
+|/  
+* 4dfb097 (origin/main, origin/HEAD, worktree-agent-af00d0d5ef5280e30, worktree-agent-ae9269b046f152abb, worktree-agent-ae30b31e19ebd761b, worktree-agent-ad02e8b78af7a2711, worktree-agent-ac9d81abfb5c29287, worktree-agent-ab629ad5f110362cf, worktree-agent-ab1a2783c4dbaf65c, worktree-agent-ab0b5bc9c429b41ab, worktree-agent-a876faa573c47cc52, worktree-agent-a72417fa73b8d7545, worktree-agent-a68edd8b3ce48753d, worktree-agent-a58a21a60468595da, worktree-agent-a49d5850b240ad4c1, worktree-agent-a42e483ba60a3161d, worktree-agent-a39253521363bb504, worktree-agent-a3417480bfff9c98d, worktree-agent-a1e802426801972bb, worktree-agent-a1c6af8049ffddbc2, worktree-agent-a0923162aec83b7ef, slice/nightly-c-search, slice/nightly-b-engine-validation, slice/nightly-a-formulation, main) docs(pro): constrained reformulation + Undo + score completion ledger
+* 3316f2b fix(pro): constrained reformulation + complete Undo + truthful score (owner fixtures A/B)
+* e20de43 fix(pro): Apply data-integrity guard — validated atomic write, independent batch recompute, rollback
+* 6a88b55 fix(pro): live formulation runtime — real toolbox auto-fill, workbar state truth, exclusions, proven rejections
+* d8cfd18 feat(pro): FULL FORMULATION + constrained reformulation — approved-template registry, roles, mode router
+* 3a1499f docs(engine): full-formulation recovery audit — conclusion D, approved seeds + bounds found
+* 9f11a27 fix(pro): reject rescale-as-balance — improvement gate at builder AND Apply door (owner FAIL 8x125g)
+* 97ed23a fix(pro): Przelicz z PI = REAL auto-balance — batch-first + iterative solver + proven failures
+* 869a65d fix(pro): form-group headings + correct Polish labels in the live picker (Świeże, never Świeży owoc)
+* 0473c3b feat(pro): LIVE server-side Mapper search — kill the 1,000-row snapshot; milk/fresh discoverable
+* 53e75cd fix(pro): recalc must UPDATE rows, never duplicate — canonical identity merge + batch invariant
+* 14be387 fix(pro): rank fresh/natural ingredients first + show form (pineapple/strawberry Fresh Fruit)
+* 381ea8a fix(pro): natural-Polish ingredient search over live Mapper (truskawka/wanilia/ananas)
+* 484ff1a feat(pro): canonical recipe workbench — visible product types, one quality tier, serving state, QA separation, owner diagnostic
+* 7f11b98 fix(pro): temperature routing agreement + proven lock-conflict diagnosis
+* 358c86b feat(p0): ONE canonical PINGÜINO Pro — routes, menu, workbar recalculation, PL shell
+* 093d20b feat(pro): S4 professional machine + serving-mode workflow (machine-first, no Engine change)
+* aa1ae23 feat(pro): sticky top workbar — recipe name + canonical save + Przelicz z PI + Monitor PI at top
+* b359bdf feat(shell): canonical app shell + one nav config — fix the 3 proven nav defects
+* 5245742 fix(s2-ux): remove duplicate version list from Moje receptury + Polish + per-recipe Wersje
+* 692544d docs(s2): S2 recipe-save repair ledger + owner-runnable orphan reconciliation SQL
+* da9cf9c fix(s2): ONE canonical recipe save + versioning — kill the alternating/dual-save defect
+* 9e14ff4 docs(pro-v1): S2/S3 = DEPLOYED, AWAITING OWNER AUTHENTICATED VERIFICATION (not CLOSED) + baseline + PI-INFRA-002→P0
+* 7440b83 docs(pro-v1): mark S3 complete (staging READY) in the completion ledger
+* b715222 feat(pro-v1): S3 — canonical /pro workspace shell + persona-gated 9-tab nav
+* cff6f65 docs(pro-v1): S2 completion ledger (per-repo report + 10 proofs + owner test) + PI-INFRA-002
+* 0f7816f feat(pro-v1): S2 — Supabase adapters for recipes/production/costs pro-core ports
+* 2a65849 (worktree-wf_4497dc37-75a-3, worktree-wf_4497dc37-75a-2, worktree-wf_4497dc37-75a-1) feat(pro-v1): S1 — canonical Pro capability model (12 new named flags, additive)
+* 2e9494f docs(pro-v1): Phase 0 reuse map + completion ledger + ordered slice plan
+* e96f869 docs(completion): open-issue ledger + PI-P0-001 (prod live catalogue unavailable)
+* ef8152b fix(isolation): clear previous account's private client state on logout/switch (P0)
+* e05e5f5 fix(subscription): tier-aware plan cards (current / included / upgrade)
+* 730697b feat(access): Pro entitlement unlocks legacy surfaces + "already have this plan" UX
+* 0ad49f8 fix(billing): add CORS preflight handling to browser-invoked edge functions
+* c025f90 fix(build): repair tsc -b errors that failed the Vercel staging deploy
+* 5895d18 feat(billing): wire /subscription CTAs to real Checkout (closes the pay→entitlement loop)
+* 577e9c8 feat(access): wire the real Home/Pro entitlement chain into persona (P0 product separation)
+* 57f377c fix(pricing): P0 — Home/Pro are PAID; show catalogue prices everywhere, never "Home free"
+* 1064958 docs(legacy-products): semantic 43-row audit + reviewed 0035 retire migration + fructose decision
+* 2c9e202 test(track-g): prove the −13 lactose residual resolves with VERIFIED Mapper dairy data
+*   0c5cfd3 merge(legacy-products): retire the bundled 66-sample; single-source Składniki PI picker; file-only 0034 deletion
+|\  
+| * 0323f65 feat(product-picker): retire the bundled 66-product sample; single-source picker
+| * 9426c28 docs(legacy-products): mapping report + file-only 0034 deletion migration
+* | e4f1ad6 feat(engine): connect approved −12/−13 ice anchors + temperature-aware base → Monitor recalculates (CONFIG 0.7.0)
+|/  
+*   042b3b2 merge(track-f): live Mapper search (Składniki PI) + compact two-source picker + demo-safe read model 0033
+|\  
+| * 55c50b4 feat(track-f): two-source picker — live Mapper search wired into the customer resolution sheet
+| * 12deaee feat(track-f): pure live-search view-models — two-source tabs, debounce, stale-guard, compact rows
+| * 5021fea feat(track-f): live Mapper search service — closed demo-safe contract + rich engine-values read
+| * c17c4ec chore(track-f): demo-safe Mapper search read model 0033 (file only, owner applies to staging)
+* | b0f358e fix(track-g): result status stops pointing at Monitor tuning where tuning is unavailable
+* | 584c3a2 feat(track-g): per-temperature Monitor tuning approval + full structured failure taxonomy
+|/  
+* 4a7f1b4 fix(track-g): honest structured Monitor recalc failure — no false "impossible"
+*   d7a119a (staging) merge(track-f): safe search read model migration 0032 (owner applies to staging)
+|\  
+| * 5db5e42 (chore/track-f-search-read-model) chore(track-f): safe search read model for the 2,083 Mapper ingredients (staging migration)
+|/  
+*   4d1ea93 merge(track-a): real ingredient resolution — 69 staging products in the customer picker
+|\  
+| * cef736c (fix/track-a-real-picker) feat(track-a): real ingredient resolution — wire the 69 staging products into the customer Product Picker
+|/  
+*   cf00718 merge(track-c): light-first /subscription + retire /classic
+|\  
+| * e271883 (fix/track-c-subscription-light) fix(track-c): light-first /subscription + retire /classic + nav cleanup
+|/  
+*   6b78130 merge(hotfix): compact Home recipe context + restore Zmień maszynę + paywall clearance
+|\  
+| * 0b970ce (fix/home-recipe-compact-ux) fix(hotfix): compact Home recipe context — restore Zmień maszynę, hide Tryb/Dane techniczne, paywall clearance, single status
+|/  
+*   88c671f merge(hotfix): profile default machine vs recipe-only machine override
+|\  
+| * 333ed1a (fix/machine-default-vs-recipe) fix(hotfix): split profile default machine from recipe-only machine override
+|/  
+* 81b8145 fix(hotfix): apply adversarial-review findings — machine-change proposal §5, honest save failure, no stale confirmation
+* 815bd64 docs(hotfix): production smoke evidence — landing hamburger, machine profile, Home with the mode step skipped
+*   e41c4bc merge(hotfix): production regressions — global nav, flavour Enter, machine-first Home for anonymous, machine settings page, Pro temps only
+|\  
+| * 4f217d8 (fix/machine-profile-settings) fix(hotfix): production regressions — nav, flavour flow, machine-first Home, machine settings
+|/  
+*   3130cc1 merge: UIUX master Phase 2 — light landing + machine-first Home + soft recommended batch + Monitors Home/Pro (1-10 + Golden Range) + serving temps -11/-12/-13 + lock/Preview/Apply with verifyConstraintsPreserved + real-Monitor landing demo
+|\  
+| * 14339ef (feat/uiux-master-v1) docs(uiux): final acceptance evidence — integrated landing/start/studio, desktop+mobile
+| * e512ae9 fix(a11y): html lang=pl — the customer product speaks Polish (screen-reader pronunciation)
+| *   ab4e35f merge(uiux): Slice E — UI locks (engine lock_type grams), Preview/Apply with mandatory verifyConstraintsPreserved, honest feasibility, history/Undo/Explain (spec 17-20)
+| |\  
+| | * 6a90952 (uiux/slice-e-lock-preview) feat(uiux-slice-e): §17–§20 lock/Preview/Apply — verify-gated pipeline, feasibility honesty, history/Undo/Explain
+| * | 18ff82a feat(uiux): Slice F — landing #monitor-demo mounts the REAL MonitorHomeReadout on a safe engine-driven demo payload (no imitation)
+| * |   40020ce merge(uiux): Slice D — Monitor Home (§13) + Monitor Pro UserMonitorLayout (§14) + public 1-10 score with Golden Range (§15), /100 retired
+| |\ \  
+| | * | 1c1f95f (uiux/slice-d-monitors-score) feat(uiux): Slice D — Monitor Home (§13) + Monitor Pro (§14 UserMonitorLayout) + 1-10 score adapter into UI (§15.1)
+| | |/  
+| * |   62f82ee merge(uiux): Slice C — Pro serving temps exactly -11/-12/-13, serving/production/storage concept split, picker dead-end fixes (audit #2/#5/#19)
+| |\ \  
+| | |/  
+| |/|   
+| | * fd38e54 (uiux/slice-c-p0-fixes) fix(uiux-slice-c): P0 serving temps + temperature-concept split + picker dead-end exits (audit #5/#19/#2)
+| * | 732fa23 feat(uiux): owner FINAL capacity decision — activate 4 Home machines, soft recommended batch
+| |/  
+| * adaf8ab feat(uiux): wire Slice B per INTEGRATION.md — machine-first Home gate, /profile/machine, context bar, derived batch + split notice
+| *   46e766e merge(uiux): Slice B — machine catalog batch rule (owner 0.95 correction) + Home machine onboarding + launch-gated preference (0030 NOT applied)
+| |\  
+| | * 8de5934 (uiux/slice-b-machine-onboarding) feat(machine-preference): launch-gated persistence — selector + backend adapter (file-first) + migration 0030 (NOT applied) + unrouted profile page
+| | * 8cb5f8a feat(machine-onboarding): one-time Home machine onboarding (SPEC §8) + §7.3 context bar + §8.6 profile section
+| | * 7029026 feat(machine-catalog): universal Home batch rule (owner correction 2026-07-17) + live-source conflict evidence
+| * | 185ff97 docs(uiux): Slice A acceptance evidence — landing + /start screenshots (desktop 1440, mobile 390)
+| * |   e27b72b merge(uiux): Slice A — light-first customer shell + public landing at / (spec §6, §21.1-21.2); flow moves to /start
+| |\ \  
+| | |/  
+| |/|   
+| | * 901e1d7 (uiux/slice-a-light-landing) feat(landing): real public landing at / — light premium, Polish (spec §6); flow moves to /start (Slice A)
+| | * abe2b69 feat(customer-shell): light-first shell — retire dark remap, readable states, status tokens (Slice A)
+| |/  
+| *   01de85a feat(recipe-constraints): integrate lock/range constraints + engine-verified feasibility (spec §17-18, §23.2)
+| |\  
+| | * 8f8bbf9 (uiux/constraint-solver) feat(recipe-constraints): lock/range constraints + engine-verified feasibility (UI/UX master spec 17/18/20.4/23.2)
+| |/  
+|/|   
+| *   a6c717f feat(recipe-score): integrate 1-10 match-score adapter + Golden Range contract (spec §15, §20.5)
+| |\  
+| | * ea89555 (uiux/score-adapter) feat(recipe-score): 1-10 score adapter + Golden Range contract + three-indicator separation (SPEC 15, 20.5)
+| |/  
+|/|   
+| *   80316a0 feat(machine-catalog): integrate Annex-A machine catalog domain (default-neutral, spec §8-10)
+| |\  
+| | * 1aa7312 (uiux/machine-catalog) feat(machine-catalog): versioned Home machine catalog + onboarding contracts (Annex A seed)
+| |/  
+|/|   
+| * 8d914ca docs(uiux-master-v1): §3 audit — 30 findings (6 P0) + gap summary vs target architecture
+| * d487990 docs(uiux-master-v1): version the owner's master UI/UX spec (source: PINGUINO_MASTER_PROMPT_COMPLETE_UI_UX_HOME_PRO_AI_SOLVER.docx, v1.0 2026-07-16)
+|/  
+*   9f6050c (worktree-agent-af019e59172ff5ba3, worktree-agent-a9d83f8147d6a121d, worktree-agent-a993209bc922d6d4d, worktree-agent-a8a3d0da83e0cd423, worktree-agent-a5e73d4a749ef0cf5, worktree-agent-a5a4f147e0c88fdc5, worktree-agent-a47f597ad6b79af76, worktree-agent-a44868c072499022e) feat(stripe-webhook): per-intent financial effect writers (reviewed)
+|\  
+| * b828c3b feat(stripe-webhook): per-intent effect writers + dispatch (salvaged, pending review)
+* | 9eeed1b fix(auth): make Google sign-in visibly usable — icon, redirecting state, a11y; force staging rebuild
+* |   6a774d9 feat(auth): Google OAuth sign-in via the existing auth service (allowlist-gated redirect)
+|\ \  
+| |/  
+|/|   
+| * aff72ef feat(auth): Google OAuth sign-in via the existing Supabase auth boundary
+|/  
+* cc3e3d3 (worktree-agent-aac9bc45e9bb5078c, worktree-agent-a8d8144ba3d52bf3e) feat(monitoring): Sentry via the errorReporter seam — DSN-gated, sanitized, staging-named
+| * 95c5441 (feat/ready-recipe-catalogue-first-100) feat(recipes): first-100 flavor inspiration catalogue (domain + importer + manifest)
+|/  
+*   57879eb (worktree-agent-a7f5f8918ce6a26b9) feat: integrate real Engine + Monitor PI on the public customer card (remove fixture)
+|\  
+| * 0581f6b copy(product-picker): owner-exact unavailable-catalogue message
+| * 13fca9b feat(product-picker): real Mapper-Basement + Products search adapters; remove public fixture catalogue
+| * 8dad47d feat(customer-shell): Monitor PI runs on the REAL current recipeInput
+| * b901784 feat(customer-shell): real Engine result on the public card (remove fixture structure)
+| * e898a66 feat(customer-flow): real Engine bridge — drive canonical calculateRecipe from the customer flow
+|/  
+* 28009bc feat(customer-flow): six-mode serving/machine routing on the public flow (routing + UI only)
+* da3ef44 fix(customer-shell): blank picker query browses the seeded category (not the Polish ingredient name)
+* cb3dacb feat(customer-shell): tappable ingredient resolution + product picker + Monitor PI on the public result screen
+* 0c2a99d feat(product-picker): canonical Products port + honest sample + backend adapter
+*   137fd05 feat(pi-monitor): integrate Agent B — customer-controlled PI recalculation
+|\  
+| * 26f93a2 (feat/pi-monitor) feat(pi-monitor): customer PI Recipe Monitor + customer-controlled recalculation
+* |   725d096 feat(ingredient-resolution): integrate Agent A — file-first product-selection gate
+|\ \  
+| |/  
+|/|   
+| * 8f81ff1 (feat/ingredient-resolution) feat(ingredient-resolution): file-first ingredient resolution + product selection gate
+|/  
+* fe9ec90 (worktree-agent-ad8e5fbe7d89b0573, worktree-agent-a57d9aee6bf390468) copy(customer-shell): canonical homepage headline "Jakie lody dziś robimy?"
+* 3918716 (feat/customer-dark-home) feat(customer-shell): dark premium homepage + global nav + vanilla fix + friendly dose UX
+* 55c9e50 (hotfix/ninja-verified-mass) feat(customer-flow): owner-approved verified Ninja recipe masses — auto-set, skip batch step
+* 9f5a357 (hotfix/customer-flow-ninja) fix(customer-flow): retain all flavors + real Ninja device path (no display temperature)
+* 6bc9371 (origin/release/customer-home-v1, release/customer-home-v1) chore(customer-shell): neutral honest Polish customer copy for the public homepage
+* 885ee56 feat(customer-shell): make the Customer UX (customer-v1) the public root "/"
+* 54d58b1 (origin/preview/customer-v1, preview/customer-v1) feat(customer-shell): customer-v1 preview — integrate UX audit + conversational flow + design system
+| * 3101504 (worktree-agent-af7c90f256c854518) feat(customer-flow): Agent B — pure conversational flow + ready-recipe matching + Demo redaction (file-first)
+|/  
+| * 9f9e303 (worktree-agent-a71e571261e1d3f79) feat(customer-shell): Agent C — mobile-first customer design system + gallery
+|/  
+| * f2aae23 (worktree-agent-abce36396e7c17a96) docs(customer-ux): Agent A — senior UX audit + wireframes + Polish copy
+|/  
+* 03178f5 (worktree-agent-a8a83e26028480d7e) feat(pro-core): orchestrator integration CP3 — recipe versions on the real My Recipes surface
+* 88f9556 feat(pro-core): orchestrator integration CP2 — repository ports + honest adapter selector
+* 996e80f feat(pro-core): orchestrator integration CP1 — Access→ProCorePersona bridge
+* 7809acf feat(pro-core): Track C — ingredient costs, immutable cost snapshots, gated exports (file-first)
+* 68f43fc feat(pro-core): Track B — exact scaling + Production Mode + history (file-first)
+* ed15e94 feat(pro-core): Track A — saved recipes + immutable versions (file-first)
+* 4427d9b docs(mapper-verification): PI Verified safe-pause checkpoint + staging-resume prompt
+* 42b261d feat(mapper-verification): DEV review workspace at /dev/product-verification
+* 4d3ed81 feat(mapper-verification): file-first PI Verified workflow — domain + migration 0026 + adapter
+* d15e168 docs(account-access): canonical layer — README, partner integration, safe-pause + resume
+* 44a133b feat(account-access): DEV acceptance harness at /dev/account-access
+* c325594 feat(account-access): billing→access bridge + in-memory service adapter
+* 5413cad feat(account-access): file-first foundation — migration 0025 + pure identity/access/session/device domain
+* b9c2b72 feat(ocr-intake): file-first persistence service layer for OCR intake (0022-0024)
+* 5253bbf feat(label): real Labels & Exports — EU nutrition declaration, ingredient statement, CSV/print
+* acb34d5 test(ocr-intake): real Italian OCR fixture — multilingual now 5/5 proven
+* 6f8186e feat(app): top-level error boundary + pluggable error reporter + deploy config
+* a100377 feat(ocr-intake): wire merged OCR modules into dev page + reconcile image cap
+*   bf29040 Merge branch 'slice/ocr-migrations-ui'
+|\  
+| * ad0a492 (slice/ocr-migrations-ui) feat(ocr-intake): intake persistence spine (0022-0024) + full session UI
+* |   8824532 Merge branch 'slice/ocr-session-dedup-batch'
+|\ \  
+| * | e1df580 (slice/ocr-session-dedup-batch) feat(ocr-intake): session state machine, duplicate handling, save flow, batch workflow
+| |/  
+* | 3f6369b (slice/ocr-provider-extraction) docs(ocr-intake): correct -Only usage note in fixture generator
+* | 069bb17 feat(ocr-intake): provider abstraction + evidence extractor + EN/ES/DE/PL/IT normalization
+|/  
+* 795ea64 feat(ocr-intake): shared intake contracts - evidence, provider seam, session, dedup, batch
+* b4db620 docs: billing SAFE PAUSE checkpoint + pin Stripe API version
+* 357bade docs: record Stripe Sandbox catalog (Phase 1 complete) + Phase 2 Supabase blocker
+* 979cff8 (tag: billing-partner-foundation-v1) fix: orchestrator integration sync - align Stripe function sources to 0021/0016 schema
+*   abc04f1 Merge branch 'slice/billing-stripe-surface'
+|\  
+| * 152c4e5 (slice/billing-stripe-surface) feat: Stripe-facing billing surface - price catalog, webhook matrix, conversion machine
+* |   9660d83 Merge branch 'slice/billing-domain-logic'
+|\ \  
+| * | 9e08753 (slice/billing-domain-logic) feat: billing domain logic - pure financial modules + exhaustive tests (Track E)
+| |/  
+* | ff90552 (slice/billing-schema-entitlements) refactor: keep Track D guard tests inside src/billing (src/features is off-limits)
+* | a9a15dd feat: billing/partner §14 domain model (0014-0021) + pure entitlement resolver
+|/  
+* 07a78ca docs: billing/partner platform Phase A - audit, architecture decisions, Nicolas handoff
+*   0a01827 Merge branch 'slice/ocr-label-intake-completion'
+|\  
+| * a3038d5 (slice/ocr-label-intake-completion) feat: real OCR label intake - tesseract.js engine + parser + review + draft handoff
+* |   a7e4adc Merge branch 'slice/assistant-local-apply'
+|\ \  
+| * | c660e70 (slice/assistant-local-apply) feat: Assistant submit fix + explicit starter capabilities + local Apply to Studio
+| |/  
+* / 951c3d1 (slice/spine-decision-completion) feat: Spine decision acceptance (Slice 25) - 12-cell matrix pins + dairy candidate gate fix
+|/  
+* 70c105a test: Mapper v1.0 critical regression checkpoint - capability pins + stale count fix
+* 8c79b75 feat: Mapper Basement v1.0 - canonical 2,083-row dataset replacement
+* da718fc feat: intent -> deterministic starter recipe draft (local preview only)
+* 18cfd6f feat: PL-first deterministic Conversational Assistant Shell (no LLM, no persistence)
+* 411fb02 feat: PL-first Studio User-Flow guidance layer (pure, no persistence)
+* 70fcbd7 feat: temperature-aware engine TARGET_BANDS (CONFIG 0.6.0)
+* d0caeec feat: Stripe subscription webhook writer source (2B.3, NOT deployed)
+* 32db995 feat: apply accepted-corrections tier-enforced INSERT policy (Option A, 0013)
+* 24a62bd feat: accepted-correction server-side tier enforcement (proposal-stage)
+* a26cfe8 docs: accepted-correction signed-in save proven end to end (Slice 24B)
+* fed7c9a feat: accepted-correction LIVE write path (Spine Slice 24)
+* 9643c62 feat: IF9 multi-lever add-only rescue expansion (Spine Slice 23)
+* c383f21 feat: IF10 verified-composition substitute contract (Spine Slice 22)
+* 700692a feat: production IF9/IF10 branch UI - paid-gated preview, no persistence (Spine Slice 21)
+* 7aaee14 feat: IF9 multi-step add-only rescue solver expansion (Spine Slice 20)
+* 594d473 feat: IF9/IF10 Integration Flow wiring + exact-recalculation preview (Spine Slice 19)
+* dc33a5b feat: Stock Shortage decision branch IF10, pure and unwired (Spine Slice 18)
+* 6461a97 feat: Actual Batch Rescue decision branch IF9, pure and unwired (Spine Slice 17)
+* 041e3b1 feat: accepted-correction persistence design + non-applied migration preview (Spine Slice 16)
+* 1c0e5fc feat: production Studio optimization preview, capability-gated, no persistence (Spine Slice 15)
+* c95e1b8 feat: solver target override for real regulator-shadow gram solve (Spine Slice 14)
+* 79fd676 feat: solver-injected regulator targets (preview only) (Spine Slice 13)
+* d000cb2 feat: add temperature-aware shadow target bands + golden comparison (Spine Slice 12)
+* 2408b71 feat: temperature-aware correction-target seam (Spine Slice 11)
+* 52c7427 feat: Studio optimization preview panel + redaction policy (Spine Slice 10)
+* be84463 feat: add DEV Optimization Preview wiring (Spine Slice 9)
+* 23c4709 feat: connect optimizer routing to the real solver + Base Engine rerun (Spine Slice 8)
+* e260428 feat: add Optimizer routing over the tradeoff branch (Spine Slice 7)
+* b1eca10 feat: add Integration Flow decision router (Spine Slice 6)
+* b3fb06e feat: add Temperature Regulator evaluation layer (Spine Slice 5)
+* 946a3cf test: prove PR-ING-000014 class-derived in Studio picker proof
+* 9bc9adb feat: live-wire class_derived PI Calculated for approved PR-ING-000014
+* a43a99f feat: add gated PI Calculated activation planner + preview
+* 6017dbd docs: add PI Calculated owner-review pack
+* 8ec4177 feat: add PINGUINO product intelligence preview + simulation
+* 65a94f6 feat: add PINGUINO Mapper product intelligence resolver
+* 50281bb feat: add PINGUINO Spine temperature regulator configs
+* 5603905 feat: add PINGUINO Spine recipe designer plan
+* b10dd00 feat: add PINGUINO Spine recipe intent normalizer
+* 44f8a0d feat: add PINGUINO Spine contracts and product profiles
+* 668a0f7 docs: complete PINGUINO Spine audit and roadmap
+* 4c7dea9 docs: flatten PINGUINO Spine docs and fix links
+* de33a81 docs: add PINGUINO Spine architecture map
+* 9bffb0c docs(mapper): sync insert candidates to 12 families, tracker audit note, 000029 consistency flag
+* 4c6a478 feat(hardening): service-level PI Verified guard, structural pac/pod strip, enrichment write-time guard
+* 2f45a86 docs(mapper): owner/team calibration handoff package
+* 66318e7 docs(mapper): tie re-check — parked milk-choc/pistachio ties are engine-consequential
+* 9fc03ef docs(mapper): human-pick outcome (zero safe confirms), 3 new gaps, OCR seam + pack status
+* eec4d38 feat(intake): label-image OCR queue + honest not_implemented OCR adapter seam
+* 07352ed feat(dev): plain-yogurt/kefir/cocoa-powder gaps + team calibration pack export
+* 7dfaf45 docs+data(mapper): milk fat-band outcome, skim/lactose-free milk proposals, 43-null grouping
+* 5c496f5 feat(dev): barcode intake routes with EAN prefill into the enrichment preview
+* 53396ed feat(dev): team-calibration LOCAL drafts on /dev/reference-proposals
+* e2904a2 feat(matcher): deterministic milk fat-band narrowing (entera/semidesnatada/desnatada)
+* 61dea9e docs(mapper): coffee resolution (4 confirms + false friend), greek insert candidate, staging pointer
+* f3f45eb feat(dev): reference-proposal required-fields checklist + always-blocked insert readiness
+* 574a061 feat(dev): intake-hub file picker feeding the classifier (name-only, file never read)
+* e5c1081 feat(dev): mapper-review shows ingredient_type shortlists + matcher audit notes
+* 3fcc432 feat(matcher): scoped coffee special-case pool (coffee_tea refs, name-gated both sides)
+* dc68066 docs(mapper): 000027 milk-choc confirmation, coffee category-mapping finding, intake classifier
+* fb7ba71 feat(dev): intake input classifier + interactive panel on /dev/intake-hub
+* 6eec184 feat(dev): full-fat greek yogurt proposal + reference-proposals filters/next-action
+* d8180d3 docs(mapper): white-chocolate confirmations, greek-yogurt fat-gap, reference-proposals staging
+* 048e800 Phase 7-9: proof My-Products count, enrichment no-op finding, legacy npac guard
+* d15d998 feat(matcher): expand tiebreaker concepts (mascarpone/condensed/mango/pineapple/lemon/coconut)
+* e5e6374 feat(dev): reference-proposal staging module + /dev/reference-proposals page
+* 801c82d feat(dev): mapper-review filter by unique-narrowed/ranked + becomes-status hint
+* 6910e6a docs(mapper): post-tiebreaker re-audit, 2 fruit confirmations, legacy archive-rename proposal
+* 9bff593 feat(dev): tiebreaker evidence + filter on /dev/mapper-review
+* b0540f9 feat(matcher): add greek/bitter/fondente tiebreaker concepts (from 55-product re-audit)
+* 3425182 feat(matcher): wire deterministic name tiebreaker into candidate ranking
+* 1375e2c fix(test): reword 'supabase' literal in proof-page comment (studio boundary guard)
+* f7faea8 docs(mapper): status tracker — Studio proof, attestation, tiebreaker, intake hub, queue analysis
+* 27bd30e docs+test(mapper): Drive catalog re-verification + legacy ingredients read-only-lock proposal
+* 70b534a feat(dev): unified product-intake hub (/dev/intake-hub)
+* 4a105a5 docs(mapper): 55-product queue grouping + per-reference required-fields checklist
+* c662e32 feat(matcher): deterministic ES/EN name-concept tiebreaker (prototype, pure)
+* c9c7aae test(studio): strengthen engine-handoff safety + provenance label coverage
+* 8bebb58 feat(status): reference-linked products require independent-provenance attestation for PI Verified
+* 312eb7a feat(dev): snapshot audit change_type summary + filter
+* 2c6d0d3 feat(enrichment): show exact write payload + snapshot preview; auto-select product by EAN
+* cadac1f feat(dev): deterministic Studio My-Products browser proof (/dev/studio-picker-proof)
+* d02a585 docs(mapper): enrichment-merge + snapshot-audit + PI-Verified explainer; researched reference proposals
+* b01d657 feat(dev): explicit PI Verified eligibility explainer on /dev/mapper-status
+* 54dd084 feat(dev): read-only product snapshot audit view (/dev/snapshot-audit)
+* 43c12c0 feat(enrichment): reviewed conflict-merge workflow on /dev/enrichment-preview
+* c613a90 docs(mapper): My Products is wired into the Studio picker (handoff integration done)
+* 2ba7f1c feat(dev): keyless OpenFoodFacts enrichment preview (/dev/enrichment-preview)
+* d31445c feat(dev): Studio-eligibility indicator + filter on /dev/mapper-status
+* 3e64854 fix(test): coerce nullable RecipeResult pac/pod points in recipe-safety test
+* 3ae54c4 feat(products): customer-safe status-label formatter + label in picker note
+* b4b866b test(products): recipe-calculation safety for My Products ingredients
+* a5c0ce0 feat(studio): My Products group in the ingredient picker (reference-linked)
+* f92d744 feat(products): listProductSnapshots read + status tracker update
+* f002a8c feat(products): keyless OpenFoodFacts enrichment parse adapter
+* 0b3e34a feat(dev): PI Verified + Manual Adjusted controls on /dev/mapper-status
+* a07abd0 feat(products): buildProductEngineLibrary (My Products engine group, pure)
+* 1440b9b docs(mapper): handoff integration point + reference sources + status update
+* 17d1a36 feat(dev): upgrade /dev/mapper-review into a filterable workstation
+* 17008e9 feat(products): internal red-flag annotations in import preview
+* 96b20ac feat(dev): DEV-only Mapper status control page (/dev/mapper-status)
+* d804f12 docs(mapper): insert-candidates + legacy cleanup plan + status update
+* 67e978e feat(products): pure enrichment source-ranking + conflict module
+* 61cb32a feat(products): snapshot history service + lifecycle-status write service
+* f4fd84e docs(mapper): update status tracker for status/confidence/handoff/snapshots slices
+* 0822844 feat(mapper): snapshots migration + reference-gap & catalog-import docs
+* baf5d6b feat(products): pure product->engine handoff adapter
+* 700aa6b feat(products): pure status-decision + confidence-scoring modules
+* 38f4c98 docs(mapper): implementation status tracker + handoff & enrichment plans
+* 1d8b930 feat(products): pure red-flag detector + engine-handoff resolver
+* 48efe9a feat(dev): multi-candidate Mapper review (DEV-only)
+* 02c58db feat(products): derive product_category from subcategory at import time
+* 47efccd feat(products): widen matcher composition to 5 measured fields
+* ab828da feat(dev): add Mapper review confirm/reject slice
+* eb161d8 feat(dev): add DEV-only six-product Mapper batch control
+* 1cf0e7c fix(products): coerce numeric DB strings in matcher numField
+* 3468a76 feat(products): map remaining Mercadona subcategories to engine categories
+* 3c8da23 feat(products): add deterministic subcategory category mapping
+* a7f4cbf test(dev): add one-product Mapper smoke page
+* 76e441f fix(db): grant authenticated USAGE on products_code_seq
+* 310600a fix(products): make Parse CSV button visible on dark shell
+* a43e403 feat(products): map Mercadona catalog headers
+* 661c61c feat(products): add CSV catalog upload UI
+* e4779c4 feat(products): add catalog import service
+* df36e89 feat(products): add pure CSV and product table intake parser
+* 7a41bcb feat(products): add identity-aware product creation and duplicate prevention
+* 893fcf9 feat(products): add product code and duplicate-prevention foundation
+* b03764e feat(products): add explicit single-product Mapper orchestrator
+* 03992d7 feat(products): add Mapper write-back
+* 687d0ea feat(supabase): add products Mapper result columns
+* c55d7fb feat(products): add deterministic product matcher
+* 0398502 feat(products): add products data layer and service
+* c49c64f feat(supabase): add products skeleton table
+* 662255e feat(ingredients): switch runtime to mapper_basement
+* 71815db feat(supabase): add mapper_basement schema and v0.95 seed
+* a6fe815 feat(ingredients): add mapper_basement source dataset and naming guards
+* b759104 docs(engine): add −11°C Engine contract and AI/API guardrails
+* fcae329 feat(corrections): add Auto Fix apply core and −11°C reference diagnostics
+* 2a21a47 fix(studio): use single glowing target zone on indicator bars
+* 1df40e7 feat(shell): add premium destination pages for top navigation
+* 729f5a3 feat(studio): add premium dark indicator bars and status chip polish
+* 2bf9fad feat(studio): lock Free Preview calculator and PI panels
+* 4f51aa4 feat(studio): dark Advanced Studio shell and panels
+* 819f7b9 fix(shell): make mega menu full-width and prevent nav label wrapping
+* 478b71c feat(shell): add black AI-first shell and Tesla-style mega menu
+* 5fe1550 fix(recipes): prevent stale saved recipe ids from breaking Save
+* bb9b6dd fix(ingredients): remove ingredient-level NPAC and use PAC as freezing source
+* 1803045 feat(ingredients): improve PI Base ingredient search
+* 4636755 feat(ingredients): connect PI Base library to Studio picker
+* dd0c87a feat(ingredients): map PI Base rows to engine ingredients
+* bc41464 feat(ingredients): add PI Base ingredients table and v0.94 seed dataset
+* fe0f98b chore(ingredients): validate and normalize PINGÜINO Base ingredients v0.94
+* da5abf2 docs(ingredients): add frozen PINGÜINO Base ingredient intake schema and template
+* d6b7ece feat(billing): add subscription capability model and read-own RLS gating
+* 77184a4 fix(db): grant table permissions for saved recipe RLS policies
+* da40763 feat(recipes): add saved recipes schema, RLS, My Recipes, and save/load flow
+* 5cc132b feat(auth): add Supabase client and email/password auth foundation
+* b842a17 feat(ui): add redacted directional engine hints to the AI-first demo
+* 82766cc feat(ui): add AI-first Home and guided intake on the −11°C Engine
+* d785ccd feat(engine): switch NPAC normalization to per_water_mass based on external reference calibration
+* 3da4633 test: add second external reference raspberry fixture confirming water-mass NPAC basis
+* c09edd5 test: add first active external reference milk-base fixture and calibration comparison report
+* 5fb50e1 feat: add investor-ready demo presets and curated /demo cold-open
+* 1094ef1 feat: polish Studio UX — premium goal cards, grouped PI panel, focal score and refined corrections
+* 7b51b25 feat: wire Studio to the deterministic engine — live PI panel, nutrition/cost/scores and redacted corrections
+* ddc4241 chore: add pinguino-studio-design project skill enforcing Design Lock and engine boundaries
+* 70639ad test: add engine QA layer — golden demo recipes, solver QA and external calibration protocol
+* 6b53732 feat: implement engine correction solver — exact gram suggestions with Golden Middle verification and demo redaction
+* 1fb1a90 feat: implement engine nutrition, cost and scoring stages with mode-weighted overall score
+* 4f7d251 feat: assemble calculateRecipe pipeline — full deterministic RecipeResult with versions, indicators and warnings
+* 92f2581 feat: implement engine status stage — target-band classification into PI indicator statuses
+* e187260 feat: implement engine ice fraction stage — category-aware anchor estimation from NPAC and target temperature
+* d393b8d feat: implement engine PAC/NPAC stage — freezing power with alcohol, salt and syrup DE handling
+* 66dc2a2 feat: implement engine POD stage — sugar-type sweetness with stored-value-first rule
+* 5f9c29e feat: implement engine composition stage — effective grams, component totals, percentages, sugar breakdown
+* 1218e6f feat: add engine types and config foundation per Recipe Engine Spec V1
+* 088b121 docs: add PINGÜINO Recipe Engine Spec V1 — locked mathematical source of truth
+* 029f9df docs: add PINGÜINO Commercial Ecosystem V1 and reference it from the masterplan
+* 3a3be01 feat: add PINGÜINO design system primitives and apply to landing + studio preview
+* 005986c feat: scaffold Vite + React + TS foundation with Design Lock landing shell
+* e0e352c docs: add PINGÜINO Masterplan V1 — canonical product and technical blueprint

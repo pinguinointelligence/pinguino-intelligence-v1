@@ -19,6 +19,7 @@
  */
 import { calculateRecipe } from '../calculateRecipe';
 import type { ProductMode, RecipeInput, RecipeItem, RecipeResult, TargetMetric } from '../types';
+import { materialDeviationFloorGrams, userLineBaselineGrams } from '../userIntent';
 import type {
   CorrectionAction,
   CorrectionCandidate,
@@ -31,9 +32,38 @@ export interface CorrectionConstraints {
   mode: ProductMode;
   allow_main_ingredient_reduction: boolean;
   machine_capacity_grams: number | null;
+  /**
+   * Target batch of the solve, used ONLY to scale the user-intent drift
+   * softening term. Absent ⇒ no soft-hold floor binds and behaviour is
+   * byte-identical to before.
+   */
+  target_batch_grams?: number;
 }
 
 const EPSILON = 1e-9;
+
+/**
+ * USER-INTENT REDUCTION FLOOR: the lowest amount this line may be reduced TO by
+ * an ordinary correction (owner USER INTENT / SOFT-HOLD).
+ *
+ * Derived from the line's OWN user baseline, so it binds on every engine path
+ * that can reduce — the correction solver, the draft ladder, ECO, Rescue —
+ * without any caller having to remember to pass it.
+ *
+ * Returns 0 (no floor) when the line carries no user intent, when the caller
+ * supplied no batch scale, or when the line is already at/below its floor —
+ * a floor can only forbid going LOWER, it can never force a line upward, and it
+ * can never make an already-legal state unreachable.
+ */
+export function reductionFloorGrams(line: RecipeItem, constraints: CorrectionConstraints): number {
+  const batch = constraints.target_batch_grams;
+  if (batch === undefined || !(batch > 0)) return 0;
+  const baseline = userLineBaselineGrams(line);
+  if (baseline === null) return 0;
+  const floor = materialDeviationFloorGrams(baseline, batch);
+  if (!Number.isFinite(floor) || floor <= 0) return 0;
+  return Math.min(floor, line.planned_grams);
+}
 
 /** May this line be reduced under the given constraints? */
 export function isReductionAllowed(line: RecipeItem, constraints: CorrectionConstraints): boolean {
@@ -89,6 +119,12 @@ export function applyCorrectionActions(
       if (!line) return null;
       if (!isReductionAllowed(line, constraints)) return null;
       if (action.grams > line.planned_grams + EPSILON) return null;
+      // STRUCTURAL floor (not merely un-proposed): a reduce action that would
+      // take a soft-held user line below its floor is refused here, so no
+      // caller — and no forged action — can reach the trace region by simply
+      // asking for a bigger reduction.
+      const floor = reductionFloorGrams(line, constraints);
+      if (line.planned_grams - action.grams < floor - EPSILON) return null;
       line.planned_grams = Math.max(0, line.planned_grams - action.grams);
     }
   }
@@ -147,7 +183,8 @@ export function verifyCorrectionProposal(args: VerifyArgs): VerifyOutcome {
   const beforeBadness = badnessByMetric(beforeViolations);
   const afterBadness = badnessByMetric(afterViolations);
   const metricRank = new Map<TargetMetric, number>();
-  for (const v of [...beforeViolations, ...afterViolations]) metricRank.set(v.metric, v.priority_rank);
+  for (const v of [...beforeViolations, ...afterViolations])
+    metricRank.set(v.metric, v.priority_rank);
 
   // every targeted violation must strictly improve
   for (const target of targets) {

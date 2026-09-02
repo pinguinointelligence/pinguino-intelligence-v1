@@ -1,12 +1,13 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { ErrorInfo, ReactNode } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
+import { AppErrorBoundary, ErrorFallback, GENERIC_ERROR_MESSAGE } from './AppErrorBoundary';
 import {
-  AppErrorBoundary,
-  ErrorFallback,
-  GENERIC_ERROR_MESSAGE,
-} from './AppErrorBoundary';
-import { reportError, resetErrorReporter, setErrorReporter, type ReportedError } from './errorReporter';
+  reportError,
+  resetErrorReporter,
+  setErrorReporter,
+  type ReportedError,
+} from './errorReporter';
 
 afterEach(() => resetErrorReporter());
 
@@ -17,8 +18,8 @@ describe('ErrorFallback', () => {
     );
     expect(html).toContain('role="alert"');
     expect(html).toContain('Boom happened');
-    expect(html).toContain('Something went wrong');
-    expect(html).toContain('Try again');
+    expect(html).toContain('Coś nam tu nie zagrało');
+    expect(html).toContain('Spróbuj ponownie');
   });
 });
 
@@ -30,7 +31,7 @@ describe('AppErrorBoundary', () => {
       </AppErrorBoundary>,
     );
     expect(html).toContain('healthy child');
-    expect(html).not.toContain('Something went wrong');
+    expect(html).not.toContain('Coś nam tu nie zagrało');
   });
 
   it('getDerivedStateFromError flips into the error state', () => {

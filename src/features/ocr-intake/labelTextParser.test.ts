@@ -31,7 +31,7 @@ describe('normalizeNumberToken', () => {
   it('refuses ambiguous numbers honestly (null + warning, never a guess)', () => {
     const mixed = normalizeNumberToken('1,234.5');
     expect(mixed.value).toBeNull();
-    expect(mixed.warning).toMatch(/ambiguous/);
+    expect(mixed.warning).toMatch(/Niejednoznaczna/);
     const grouping = normalizeNumberToken('1,234,5');
     expect(grouping.value).toBeNull();
   });
@@ -241,7 +241,7 @@ describe('normalizeEanCode — EAN-8/EAN-13 checksum validation', () => {
     const bad = normalizeEanCode('8480000610927'); // last digit off by one
     expect(bad.normalized).toBeNull();
     expect(bad.digits).toBe('8480000610927');
-    expect(bad.warning).toMatch(/checksum/);
+    expect(bad.warning).toMatch(/sumy kontrolnej/);
   });
 
   it('accepts a checksum-valid EAN-8', () => {
@@ -252,18 +252,18 @@ describe('normalizeEanCode — EAN-8/EAN-13 checksum validation', () => {
   it('rejects an EAN-8 with a wrong check digit', () => {
     const bad = normalizeEanCode('20260713');
     expect(bad.normalized).toBeNull();
-    expect(bad.warning).toMatch(/EAN-8 checksum/);
+    expect(bad.warning).toMatch(/sumy kontrolnej EAN-8/);
   });
 
   it('other digit lengths are kept raw but never "validated"', () => {
     const upc = normalizeEanCode('123456789012'); // 12 digits (UPC-A shape)
     expect(upc.normalized).toBeNull();
-    expect(upc.warning).toMatch(/not EAN-8\/EAN-13/);
+    expect(upc.warning).toMatch(/nie jest EAN-8 ani EAN-13/);
   });
 
   it('non-digit input is refused honestly', () => {
     expect(normalizeEanCode('84800LO610928').normalized).toBeNull();
-    expect(normalizeEanCode('84800LO610928').warning).toMatch(/not a digit sequence/);
+    expect(normalizeEanCode('84800LO610928').warning).toMatch(/nie jest ciągiem cyfr/);
   });
 });
 
@@ -603,7 +603,7 @@ describe('parseLabelText — EAN candidates + checksum in context', () => {
     const x = parseLabelText(linesFromText('Some Bar\n8 480000 610927')); // bad check digit
     expect(x.eanCode.value).toBeNull();
     expect(x.eanCode.needsReview).toBe(true);
-    expect(x.eanCode.warnings.join(' ')).toMatch(/checksum/);
+    expect(x.eanCode.warnings.join(' ')).toMatch(/sumy kontrolnej/);
     expect(x.eanCandidates).toHaveLength(1);
     expect(x.eanCandidates[0]?.raw).toBe('8480000610927');
     expect(x.eanCandidates[0]?.normalized).toBeNull();

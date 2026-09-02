@@ -1,5 +1,8 @@
 @import 'tailwindcss';
 @import './tokens.css';
+@import './theme-pro-dark.css';
+@import './theme-pro-light.css';
+@import './gellatti-v2-1.css';
 
 @layer base {
   html {
@@ -9,9 +12,210 @@
 
   body {
     @apply bg-paper font-sans text-ink;
+    letter-spacing: -0.01em;
   }
 
   ::selection {
     @apply bg-ivory text-ink;
   }
+}
+
+@layer components {
+  @media (min-width: 1536px) {
+    .intelligence-tabpanel-scroll {
+      scrollbar-width: none;
+    }
+
+    .intelligence-tabpanel-scroll::-webkit-scrollbar {
+      display: none;
+    }
+
+    .product-picker-results {
+      scrollbar-width: none;
+    }
+
+    .product-picker-results::-webkit-scrollbar {
+      display: none;
+    }
+
+    /* The 2xl override that inflated the recipe-table controls back to 40 px is
+       gone (owner density pass, 2026-08-24). The controls now carry ONE compact
+       geometry from `DirectNumberControl`'s `density="compact"`, so the widest
+       screens no longer re-take the space the ingredient name just won. */
+  }
+}
+
+/* Friendly Lab feedback has one calm, presentation-only motion grammar.
+   The small vertical offset makes the state change noticeable without
+   detaching it from the working surface or covering nearby controls. */
+.gellatti-friendly-message-motion {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+  transition:
+    opacity 220ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    transform 220ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  will-change: opacity, transform;
+}
+
+.gellatti-friendly-message-motion[data-motion-phase='entering'] {
+  opacity: 0;
+  transform: translate3d(0, 6px, 0) scale(0.995);
+}
+
+.gellatti-friendly-message-motion[data-motion-phase='leaving'] {
+  opacity: 0;
+  transform: translate3d(0, -4px, 0) scale(0.995);
+}
+
+/*
+ * PINGÜINO Pro Studio corner contract.
+ *
+ * Historical screens mixed 8–24 px radii, which made cards and controls look
+ * as if they belonged to different generations of the product. The workbench
+ * scope deliberately normalises every rectangular Tailwind radius to the
+ * single Pro token. `rounded-full` is excluded so locks, score rings, menu
+ * dots and other genuinely circular controls remain circles. Native checkbox
+ * geometry is also preserved as a compact form-control exception.
+ */
+.pro-studio-radius-system
+  :where(
+    .rounded:not(input[type='checkbox']),
+    .rounded-sm,
+    .rounded-md,
+    .rounded-lg,
+    .rounded-xl,
+    .rounded-2xl,
+    .rounded-3xl,
+    [class*='rounded-[']
+  ) {
+  border-radius: var(--radius-pro-studio) !important;
+}
+
+.pro-studio-radius-system
+  :where(.rounded-t, .rounded-t-xl, .rounded-t-2xl, [class*='rounded-t-[']) {
+  border-top-left-radius: var(--radius-pro-studio) !important;
+  border-top-right-radius: var(--radius-pro-studio) !important;
+}
+
+.pro-studio-radius-system
+  :where(.rounded-b, .rounded-b-xl, .rounded-b-2xl, [class*='rounded-b-[']) {
+  border-bottom-left-radius: var(--radius-pro-studio) !important;
+  border-bottom-right-radius: var(--radius-pro-studio) !important;
+}
+
+/* Missing product amount — a calm, presentation-only nudge around the existing
+   numeric housing. The class disappears on the first positive amount, so no
+   animation state can outlive the canonical recipe value. */
+@keyframes ingredient-missing-amount-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--color-status-error) 8%, transparent),
+      0 2px 7px color-mix(in srgb, var(--color-status-error) 7%, transparent);
+  }
+
+  50% {
+    box-shadow:
+      0 0 0 2px color-mix(in srgb, var(--color-status-error) 15%, transparent),
+      0 4px 12px color-mix(in srgb, var(--color-status-error) 10%, transparent);
+  }
+}
+
+/* One unresolved workflow action at a time. The glow reuses the existing
+   attention token and never changes control geometry. */
+@keyframes gellatti-next-action-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--color-attention) 18%, transparent),
+      0 2px 8px color-mix(in srgb, var(--color-attention) 10%, transparent);
+  }
+
+  50% {
+    box-shadow:
+      0 0 0 2px color-mix(in srgb, var(--color-attention) 34%, transparent),
+      0 4px 14px color-mix(in srgb, var(--color-attention) 18%, transparent);
+  }
+}
+
+.gellatti-next-action-attention {
+  animation: gellatti-next-action-pulse 4.2s ease-in-out infinite;
+}
+
+.production-line-active {
+  background-color: color-mix(in srgb, var(--color-attention) 5%, white);
+  box-shadow: inset 2px 0 0 var(--color-attention);
+}
+
+.production-line-active:focus-within {
+  background-color: color-mix(in srgb, var(--color-attention) 8%, white);
+}
+
+.ingredient-control-soft-danger {
+  border-color: color-mix(in srgb, var(--color-status-error) 38%, transparent);
+  background-color: color-mix(in srgb, var(--color-status-error) 4%, white);
+  animation: ingredient-missing-amount-pulse 4.2s ease-in-out infinite;
+}
+
+.ingredient-control-soft-danger:focus-within {
+  border-color: color-mix(in srgb, var(--color-status-error) 55%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gellatti-friendly-message-motion {
+    transform: none !important;
+    transition: none !important;
+  }
+
+  .ingredient-control-soft-danger,
+  .gellatti-next-action-attention {
+    animation: none;
+  }
+
+  .gellatti-next-action-attention {
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-attention) 28%, transparent);
+  }
+}
+
+/* Gellatti V2 Admin keeps the current-PRO control family while preserving every
+   existing Admin action and query. The rail is contextual to Admin; this scope
+   never reaches the frozen Recipe workbench. */
+.gellatti-admin :where(input, select, textarea) {
+  border-radius: var(--radius-pro-studio);
+  font-family: var(--font-sans);
+  letter-spacing: normal;
+}
+
+.gellatti-admin :where(input[type='number'], input[inputmode='numeric'], input.font-mono) {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 639px) {
+  .gellatti-admin :where(input:not([type='checkbox']):not([type='radio']), select) {
+    min-height: 44px;
+  }
+}
+
+/* ── Gellatti V2 approved destination shell ────────────────────────────────
+   The global pages use the 1280 px owner-preview canvas, an airy white header
+   and compact instrument surfaces. This scope is deliberately absent from the
+   Pro workbench, whose frozen navigation architecture remains independent.
+   Surfaces and corners live in `gellatti-v2-1.css`. */
+
+.gellatti-destination :where(section, article, li) {
+  scroll-margin-top: 96px;
+}
+
+.gellatti-destination :where(input, select, textarea) {
+  border-color: color-mix(in srgb, var(--color-ink) 14%, transparent);
+  background: white;
+}
+
+.gellatti-destination :where(button, a) {
+  text-underline-offset: 3px;
+}
+
+.gellatti-destination [role='tab'][aria-selected='true'] {
+  border-bottom-color: #ef8708 !important;
 }

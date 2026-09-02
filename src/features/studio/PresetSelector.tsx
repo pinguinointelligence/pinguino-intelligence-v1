@@ -37,7 +37,7 @@ export function PresetSelector() {
           );
         })}
       </div>
-      {activeBlurb ? <p className="mt-2.5 text-xs leading-relaxed text-ivory/50">{activeBlurb}</p> : null}
+      {activeBlurb ? <p className="mt-2.5 text-xs leading-relaxed text-ivory/65">{activeBlurb}</p> : null}
     </div>
   );
 }

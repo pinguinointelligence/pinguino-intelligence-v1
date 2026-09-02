@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 /**
  * Presentational pieces for the D5C4A upload page. Pure + side-effect-free: they take
  * data and render it on the black shell with the existing primitives (MetricValue for
@@ -10,21 +11,84 @@ import { SectionLabel } from '@/components/shared/SectionLabel';
 import { buttonClasses } from '@/components/ui/buttonStyles';
 import { copy } from '@/copy/en';
 import { cn } from '@/lib/cn';
-import type {
-  ProductIntakeResult,
-  ProductIntakeSource,
-} from '@/data/products/productTableParser';
+import type { ProductIntakeResult, ProductIntakeSource } from '@/data/products/productTableParser';
 import type { ImportRowResult, ProductImportSummary } from '@/services/productCatalogImport';
-import { importPreviewRedFlags, SOURCE_OPTIONS, type IntakeRedFlagRow } from './productImportController';
+import type { ProductImportPreflight } from '@/services/productImportRuns';
+import type { IntimportResult, IntimportRowState } from '@/data/products/intimport';
+import {
+  importPreviewRedFlags,
+  SOURCE_OPTIONS,
+  type IntakeRedFlagRow,
+} from './productImportController';
 
 const c = copy.productsImport;
 
 /** A single labelled count — mono, tabular, whole number (precision 0). */
+
+/**
+ * Diagnostics belong one fold down. The owner's question is „ile mam, ile jest
+ * gotowych" — counts about how the source file was written answer a different
+ * one, and printed side by side they read as competing verdicts.
+ */
+function Details({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <details className="group border-t border-ivory/10 pt-4">
+      <summary className="cursor-pointer list-none text-xs tracking-label text-ivory/50 uppercase transition-colors hover:text-ivory/80">
+        {label}
+      </summary>
+      <div className="mt-5 space-y-6">{children}</div>
+    </details>
+  );
+}
+
 export function CountStat({ label, value }: { label: string; value: number }) {
   return (
     <div className="flex flex-col gap-1">
       <span className="text-[0.6rem] tracking-label text-ivory/40 uppercase">{label}</span>
       <MetricValue value={value} precision={0} size="lg" />
+    </div>
+  );
+}
+
+export function CleanImportPreflightView({
+  preflight,
+  loading = false,
+  error = null,
+}: {
+  preflight: ProductImportPreflight | null;
+  loading?: boolean;
+  error?: string | null;
+}) {
+  const ready = preflight?.ready === true;
+  return (
+    <div
+      className={cn(
+        'space-y-4 rounded-md border px-5 py-4',
+        ready ? 'border-ivory/20 bg-ivory/[0.03]' : 'border-status-risky/35 bg-status-risky/[0.04]',
+      )}
+      data-testid="intimport-clean-preflight"
+    >
+      <SectionLabel tone="ivory">Stan katalogu przed importem</SectionLabel>
+      {loading ? <p className="text-sm text-ivory/60">Sprawdzanie katalogu…</p> : null}
+      {preflight ? (
+        <div className="flex flex-wrap gap-x-8 gap-y-2 font-mono text-sm text-ivory/80">
+          <span>Składniki: {preflight.pi}</span>
+          <span>Produkty: {preflight.pr}</span>
+        </div>
+      ) : null}
+      {ready ? (
+        <p className="text-sm text-status-ideal">Gotowe do importu</p>
+      ) : preflight ? (
+        <div className="space-y-1 text-sm text-status-risky">
+          <p>Import zablokowany</p>
+          <p className="text-ivory/60">
+            Katalog zawiera już produkty. Ten import wymaga pustego katalogu produktów.
+          </p>
+        </div>
+      ) : null}
+      {error ? (
+        <p className="text-sm text-status-risky">Nie można sprawdzić katalogu: {error}</p>
+      ) : null}
     </div>
   );
 }
@@ -89,16 +153,18 @@ function WarningList({ label, items, empty }: { label: string; items: string[]; 
 export function RedFlagPreview({ rows }: { rows: IntakeRedFlagRow[] }) {
   return (
     <div>
-      <SectionLabel tone="ivory">Red flags · internal review signals</SectionLabel>
+      <SectionLabel tone="ivory">Sygnały do wewnętrznego przeglądu</SectionLabel>
       {rows.length === 0 ? (
-        <p className="mt-3 text-sm text-ivory/40">No red flags — nothing blocks auto-verify.</p>
+        <p className="mt-3 text-sm text-ivory/40">Brak sygnałów wymagających przeglądu</p>
       ) : (
         <ul className="mt-3 divide-y divide-ivory/10">
           {rows.map((row) => (
             <li key={row.rowIndex} className="py-2 text-sm leading-relaxed text-ivory/70">
               <span className="font-mono text-ivory/40">#{row.rowIndex}</span>{' '}
               <span className="text-status-risky">{row.codes.join(', ')}</span>
-              {row.blocksAutoVerify ? <span className="text-ivory/40"> · will not auto-verify</span> : null}
+              {row.blocksAutoVerify ? (
+                <span className="text-ivory/40"> · wymaga ręcznej weryfikacji</span>
+              ) : null}
               <span className="block text-ivory/50">{row.reasons.join(' ')}</span>
             </li>
           ))}
@@ -145,34 +211,46 @@ function rowReason(row: ImportRowResult): string {
 
 /** Import summary — created/existing/in-batch/skipped/failed counts + warnings + rows. */
 export function ImportSummaryView({ summary }: { summary: ProductImportSummary }) {
+  const failedRows = summary.rowResults.filter((row) => row.outcome === 'failed');
   return (
-    <div className="space-y-10">
+    <div className="space-y-8">
       <div className="grid grid-cols-2 gap-6 sm:grid-cols-5">
-        <CountStat label={c.counts.created} value={summary.created} />
-        <CountStat label={c.counts.existing} value={summary.existingDuplicates} />
-        <CountStat label={c.counts.inBatch} value={summary.inBatchDuplicates} />
-        <CountStat label={c.counts.skipped} value={summary.skipped} />
-        <CountStat label={c.counts.failed} value={summary.failed} />
+        <CountStat label="Nowe produkty" value={summary.created} />
+        <CountStat label="Ponownie użyte" value={summary.existingDuplicates} />
+        <CountStat label="Duplikaty w pliku" value={summary.inBatchDuplicates} />
+        <CountStat label="Pominięte" value={summary.skipped} />
+        <CountStat label="Błędy" value={summary.failed} />
       </div>
       <p className="text-sm text-ivory/50">
-        {c.codesCreated}: <MetricValue value={summary.productCodes.length} precision={0} />
+        Nadane kody produktów: <MetricValue value={summary.productCodes.length} precision={0} />
       </p>
-      <WarningList label={c.warningsLabel} items={summary.warnings} empty={c.noWarnings} />
-      <div>
-        <SectionLabel tone="ivory">{c.rowResultsLabel}</SectionLabel>
-        <ul className="mt-3 divide-y divide-ivory/10">
+      <WarningList label="Ostrzeżenia" items={summary.warnings} empty="Brak ostrzeżeń." />
+      {failedRows.length > 0 ? (
+        <div data-testid="intimport-failed-rows">
+          <SectionLabel tone="ivory">Błędy — {failedRows.length}</SectionLabel>
+          <ul className="mt-3 divide-y divide-ivory/10">
+            {failedRows.map((row) => (
+              <li key={row.rowIndex} className="py-2 text-sm leading-relaxed text-ivory/70">
+                <span className="font-mono text-ivory/40">#{row.rowIndex}</span>{' '}
+                <span className="text-status-risky">{rowReason(row)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {/* Row-by-row is a reference, not the answer: a finished import is five
+          numbers, and 820 lines underneath them would bury the five. */}
+      <Details label="Wszystkie wiersze">
+        <ul className="divide-y divide-ivory/10">
           {summary.rowResults.map((row) => (
-            <li
-              key={row.rowIndex}
-              className="flex items-center justify-between gap-4 py-2 text-sm"
-            >
+            <li key={row.rowIndex} className="flex items-center justify-between gap-4 py-2 text-sm">
               <span className="font-mono text-ivory/40">#{row.rowIndex}</span>
               <span className="min-w-0 flex-1 truncate text-ivory/60">{rowReason(row)}</span>
               <span className="shrink-0 text-ivory/70">{c.outcomes[row.outcome]}</span>
             </li>
           ))}
         </ul>
-      </div>
+      </Details>
     </div>
   );
 }
@@ -219,5 +297,420 @@ export function ImportActionBar({
     >
       {c.import}
     </button>
+  );
+}
+
+/** Aggregate repeated messages into "message · ×N" so a big file cannot spam the preview. */
+function aggregate(lines: readonly string[]): string[] {
+  const counts = new Map<string, number>();
+  for (const line of lines) counts.set(line, (counts.get(line) ?? 0) + 1);
+  return [...counts.entries()]
+    .sort((left, right) => right[1] - left[1])
+    .map(([line, count]) => (count > 1 ? `${line} · ×${count}` : line));
+}
+
+/** Message with the row-specific parts generalized, so repeats actually collapse. */
+function messageShape(message: string): string {
+  return message.replace(/row \d+/g, 'another row').replace(/"[^"]*"/g, '"…"');
+}
+
+const ROW_STATE_LABEL: Record<IntimportRowState, string> = {
+  EXISTING: 'Już w katalogu',
+  READY: 'Komplet danych',
+  // „Need enrichment" read as a blocker. Online data is optional, and the file
+  // simply does not state everything.
+  ENRICHMENT_REQUIRED: 'Można wzbogacić online',
+  REVIEW_REQUIRED: 'Wymaga decyzji',
+  INVALID: 'Niepoprawny wiersz',
+  DUPLICATE: 'Duplikaty',
+};
+
+/**
+ * INTIMPORT parse preview — the compact, honest summary of one official 36-column file.
+ * Counts are exact; repeated messages are aggregated with a count rather than listed
+ * hundreds of times. Nothing here performs or implies a paid call.
+ */
+export function IntimportPreview({ result }: { result: IntimportResult }) {
+  const s = result.summary;
+  const headerProblems = [
+    ...result.missingColumns.map((column) => `missing official column "${column}"`),
+    ...result.unexpectedColumns.map((column) => `unknown column "${column}" ignored`),
+  ];
+  const warningLines = aggregate(
+    result.candidates.flatMap((candidate) => candidate.warnings.map(messageShape)),
+  );
+  const reasonLines = aggregate(
+    result.candidates
+      .filter((candidate) => candidate.state !== 'READY')
+      .flatMap((candidate) => candidate.reasons.map(messageShape)),
+  );
+  const attention = result.candidates.filter(
+    (candidate) => candidate.state === 'REVIEW_REQUIRED' || candidate.state === 'INVALID',
+  );
+
+  return (
+    <div className="space-y-10">
+      <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2 text-sm text-ivory/60">
+        <span className="tracking-label text-ivory uppercase">
+          {s.rows} {s.rows === 1 ? 'wiersz' : 'wierszy'}
+        </span>
+        <span className={result.headerOk ? 'text-ivory/60' : 'text-status-risky'}>
+          {result.headerOk
+            ? '36/36 kolumn rozpoznanych'
+            : 'Nagłówek nie odpowiada oficjalnemu kontacktowi kolumn'}
+        </span>
+        <span>Kraj: {s.countries.length > 0 ? s.countries.join(', ') : '—'}</span>
+      </div>
+
+      {attention.length > 0 ? (
+        <div data-testid="intimport-decisions">
+          <SectionLabel tone="ivory">Wymagają decyzji — {attention.length}</SectionLabel>
+          <ul className="mt-3 divide-y divide-ivory/10">
+            {attention.map((candidate) => (
+              <li key={candidate.rowIndex} className="py-2 text-sm leading-relaxed text-ivory/70">
+                <span className="text-ivory/80">{candidate.displayName ?? '—'}</span>
+                <span className="block text-ivory/50">{candidate.reasons.join(' · ')}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {headerProblems.length > 0 ? (
+        <WarningList label="Nagłówek" items={headerProblems} empty="" />
+      ) : null}
+
+      {/* Hundreds of identical "missing nutrition" lines describe the source
+          FILE, not a decision the owner has to make. They stay available and
+          stop shouting. */}
+      <Details label="Szczegóły danych źródłowych">
+        <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
+          <CountStat label="Unikalne produkty" value={s.uniqueProducts} />
+          <CountStat label={ROW_STATE_LABEL.EXISTING} value={s.existing} />
+          <CountStat label={ROW_STATE_LABEL.DUPLICATE} value={s.duplicates} />
+          <CountStat label="Komplet danych w pliku" value={s.ready} />
+          <CountStat label="Braki w pliku" value={s.enrichmentRequired} />
+          <CountStat label={ROW_STATE_LABEL.REVIEW_REQUIRED} value={s.reviewRequired} />
+          <CountStat label={ROW_STATE_LABEL.INVALID} value={s.invalid} />
+        </div>
+        <p className="text-sm leading-relaxed text-ivory/60">
+          Te liczby opisują kompletność pliku źródłowego, nie gotowość produktu do obliczeń.
+        </p>
+        <WarningList label="Braki w danych źródłowych" items={reasonLines} empty="Brak braków." />
+        <WarningList label="Ostrzeżenia" items={warningLines} empty="Brak ostrzeżeń." />
+      </Details>
+    </div>
+  );
+}
+
+/**
+ * INTIMPORT local-intelligence result (§15) — what Gellatti worked out from its
+ * own knowledge, BEFORE any external call. This is the screen the owner reads to
+ * decide whether to spend anything at all.
+ */
+export function IntimportLocalIntelligenceView({
+  summary,
+  readiness = null,
+  onEnrich,
+  onImport,
+  canImport = false,
+  importBusy = false,
+  busy = false,
+  progress,
+  runSummary = null,
+  error = null,
+}: {
+  summary: {
+    products: number;
+    existingExact: number;
+    readyLocalNoWeb: number;
+    webRecommended: number;
+    webRequired: number;
+    reviewRequired: number;
+    identityConflicts?: number;
+    familyMatches: number;
+    estimatedMaxExternalCalls: number;
+    /** Null when no Mapper was available, so the counts are simply absent. */
+    valueReadiness?: { READY: number; ESTIMATED_READY: number; REVIEW: number } | null;
+    mapperContributed?: number;
+    selfContradictory?: number;
+  };
+  readiness?: {
+    sourceAnalyzed: number;
+    workingProfileComplete: number;
+    productAccuracyPass: number;
+    criticalPhysicsResolved: number;
+    productProfileReady: number;
+    productBehaviorAuthorityPass: number;
+    engineReady: number;
+    review: number;
+    blocked: number;
+    other: number;
+  } | null;
+  onEnrich?: () => void;
+  /** Import everything the local analysis accounted for. No external call. */
+  onImport?: () => void;
+  canImport?: boolean;
+  importBusy?: boolean;
+  busy?: boolean;
+  progress?: { processed: number; total: number; callsUsed: number } | null;
+  runSummary?: {
+    webAttempted: number;
+    webSkippedHighConfidence: number;
+    cacheHits: number;
+    callsUsed: number;
+    capReached: boolean;
+    importEligible: number;
+    finalReviewRequired: number;
+  } | null;
+  error?: string | null;
+}) {
+  const needsWeb = summary.webRecommended + summary.webRequired;
+  const valueReadiness = summary.valueReadiness;
+  return (
+    <div className="space-y-8" data-testid="intimport-local-intelligence">
+      <SectionLabel tone="ivory">Analiza</SectionLabel>
+      {/* The owner's five questions, and nothing competing with them. */}
+      <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-6">
+        <CountStat label="Przeanalizowano" value={readiness?.sourceAnalyzed ?? summary.products} />
+        {readiness ? (
+          <CountStat
+            label="Kompletna kompozycja robocza"
+            value={readiness.workingProfileComplete}
+          />
+        ) : null}
+        {readiness ? <CountStat label="Gotowe do obliczeń" value={readiness.engineReady} /> : null}
+        {readiness ? <CountStat label="Do przeglądu" value={readiness.review} /> : null}
+        {readiness ? <CountStat label="Zablokowane" value={readiness.blocked} /> : null}
+        <CountStat
+          label="Konflikty / decyzje"
+          value={summary.identityConflicts ?? summary.reviewRequired}
+        />
+      </div>
+
+      {readiness ? (
+        <p
+          className="text-sm leading-relaxed text-ivory/60"
+          data-testid="intimport-value-readiness"
+        >
+          Kompletne dane mogą zawierać wartości oszacowane. Produkt jest gotowy do obliczeń
+          dopiero po potwierdzeniu dokładności, danych fizycznych i sposobu użycia.
+          Brak zatwierdzenia blokuje produkt.
+        </p>
+      ) : null}
+
+      {/* „Wymagają decyzji" counts rows the parser could not place. A product
+          whose own declared values contradict each other is a DIFFERENT fact:
+          folding it into that sentence made the screen say 0 and 2 at once. */}
+      {summary.selfContradictory ? (
+        <p className="text-sm text-ivory/60" data-testid="intimport-self-contradictory">
+          Sprzeczne wartości źródłowe: {summary.selfContradictory} — wymagają poprawki w pliku.
+        </p>
+      ) : null}
+
+      <Details label="Szczegóły analizy">
+        <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
+          <CountStat label="Zmierzone — kompletna kompozycja" value={valueReadiness?.READY ?? 0} />
+          <CountStat
+            label="Oszacowane — kompletna kompozycja"
+            value={valueReadiness?.ESTIMATED_READY ?? 0}
+          />
+          <CountStat label="Dokładność produktu ≥85%" value={readiness?.productAccuracyPass ?? 0} />
+          <CountStat
+            label="Krytyczna fizyka rozwiązana"
+            value={readiness?.criticalPhysicsResolved ?? 0}
+          />
+          <CountStat label="Profil produktu gotowy" value={readiness?.productProfileReady ?? 0} />
+          <CountStat
+            label="Sposób użycia zatwierdzony"
+            value={readiness?.productBehaviorAuthorityPass ?? 0}
+          />
+          <CountStat
+            label="Uzupełniono co najmniej 1 pole"
+            value={summary.mapperContributed ?? 0}
+          />
+          <CountStat label="Dopasowania rodziny produktu" value={summary.familyMatches} />
+          <CountStat label="Pewne bez internetu" value={summary.readyLocalNoWeb} />
+          <CountStat label="Można wzbogacić online" value={needsWeb} />
+          <CountStat label="Maks. zapytań zewnętrznych" value={summary.estimatedMaxExternalCalls} />
+        </div>
+        <p className="text-sm leading-relaxed text-ivory/60">
+          Wzbogacanie online jest opcjonalne i dotyczy wyłącznie brakujących pól. Nie warunkuje
+          zapisu do katalogu.
+        </p>
+      </Details>
+
+      {progress ? (
+        <p className="text-sm text-ivory/70" data-testid="intimport-enrichment-progress">
+          Wzbogacanie {progress.processed} / {progress.total} · zapytań: {progress.callsUsed}
+        </p>
+      ) : null}
+
+      {runSummary ? (
+        <div className="space-y-2" data-testid="intimport-enrichment-result">
+          <SectionLabel tone="ivory">Wynik wzbogacania</SectionLabel>
+          <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
+            <CountStat label="Sprawdzone online" value={runSummary.webAttempted} />
+            <CountStat label="Pominięte ≥90%" value={runSummary.webSkippedHighConfidence} />
+            <CountStat label="Z pamięci podręcznej" value={runSummary.cacheHits} />
+            <CountStat label="Zapytania zewnętrzne" value={runSummary.callsUsed} />
+            <CountStat label="Wystarczające źródła" value={runSummary.importEligible} />
+            <CountStat label="Do uzupełnienia" value={runSummary.finalReviewRequired} />
+          </div>
+          {runSummary.capReached ? (
+            <p className="text-sm text-status-risky">
+              Osiągnięto limit wywołań importu — pozostałe produkty czekają na decyzję.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {error ? (
+        <p
+          className="text-sm leading-relaxed text-status-risky"
+          data-testid="intimport-enrichment-error"
+        >
+          {error}
+        </p>
+      ) : null}
+
+      {/* Web evidence enriches a product; it never decides whether the catalogue
+          may hold it. Import is the primary action and waits on no external call. */}
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center gap-4">
+          {onImport ? (
+            <button
+              type="button"
+              disabled={!canImport || importBusy}
+              onClick={onImport}
+              data-testid="intimport-direct-import-action"
+              className={cn(
+                buttonClasses('ivory', 'md'),
+                (!canImport || importBusy) && 'opacity-50',
+              )}
+            >
+              {importBusy ? 'Importowanie…' : 'Importuj produkty'}
+            </button>
+          ) : null}
+          {onEnrich ? (
+            <button
+              type="button"
+              disabled={busy || needsWeb === 0}
+              onClick={onEnrich}
+              data-testid="intimport-enrich-action"
+              className={cn(buttonClasses('ghost', 'md'), (busy || needsWeb === 0) && 'opacity-50')}
+            >
+              {busy ? 'Wzbogacanie…' : 'Opcjonalnie wzbogać dane'}
+            </button>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * What the import is doing, while it does it.
+ *
+ * Sequential canonical ingest runs about a row per second, so a real catalogue
+ * takes many minutes. A single "Importowanie…" over that span is
+ * indistinguishable from a hang, and the owner has no way to tell progress from
+ * paralysis. This shows the counts moving, the row in flight, and how long ago
+ * the last one landed.
+ */
+export function ImportProgressView({
+  progress,
+  lastUpdateAt,
+  done = false,
+  stopped = null,
+  cancelled = false,
+  cancelling = false,
+  onCancel,
+}: {
+  progress: {
+    processed: number;
+    total: number;
+    created: number;
+    existing: number;
+    skipped: number;
+    failed: number;
+    currentName: string | null;
+  };
+  /** Wall-clock of the last completed row, or null before the first one lands. */
+  lastUpdateAt: string | null;
+  done?: boolean;
+  stopped?: { reason: string; remaining: number } | null;
+  cancelled?: boolean;
+  cancelling?: boolean;
+  onCancel?: () => void;
+}) {
+  const pct = progress.total > 0 ? Math.round((progress.processed / progress.total) * 100) : 0;
+  const heading = stopped
+    ? 'IMPORT ZATRZYMANY'
+    : cancelled
+      ? 'IMPORT PRZERWANY'
+      : cancelling
+        ? 'ZATRZYMYWANIE IMPORTU'
+        : done
+          ? 'IMPORT ZAKOŃCZONY'
+          : 'IMPORTOWANIE PRODUKTÓW';
+  return (
+    <div className="space-y-4" data-testid="intimport-progress">
+      <SectionLabel tone="ivory">{heading}</SectionLabel>
+      <p className="text-sm text-ivory/70">
+        Przetworzono {progress.processed} / {progress.total} — {pct}%
+      </p>
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-ivory/10">
+        <div
+          className={cn('h-full rounded-full', stopped ? 'bg-status-risky' : 'bg-ivory/70')}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-6 sm:grid-cols-5">
+        <CountStat label="Utworzono" value={progress.created} />
+        <CountStat label="Ponownie użyto" value={progress.existing} />
+        <CountStat label="Pominięto" value={progress.skipped} />
+        <CountStat label="Nieudane" value={progress.failed} />
+        <CountStat label="Pozostało" value={Math.max(0, progress.total - progress.processed)} />
+      </div>
+      {!done && !stopped && !cancelled ? (
+        <p className="text-sm text-ivory/60">
+          {progress.currentName ? `Bieżący produkt: ${progress.currentName}` : 'Przetwarzanie…'}
+        </p>
+      ) : null}
+      {!done && !stopped && !cancelled ? (
+        <p className="text-xs text-[#8a7f6d]" data-testid="intimport-progress-heartbeat">
+          {lastUpdateAt === null
+            ? 'Oczekiwanie na odpowiedź serwera…'
+            : `Ostatnia aktualizacja: ${lastUpdateAt}`}
+        </p>
+      ) : null}
+      {stopped ? (
+        <div className="space-y-1" data-testid="intimport-progress-stopped">
+          <p className="text-sm text-status-risky">Powód: {stopped.reason}</p>
+          <p className="text-xs text-[#8a7f6d]">
+            {stopped.remaining} wierszy nie zostało przetworzonych. Po usunięciu przyczyny można
+            bezpiecznie wznowić — produkty już zapisane nie zostaną utworzone ponownie.
+          </p>
+        </div>
+      ) : null}
+      {!done && !stopped && !cancelled && onCancel ? (
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={cancelling}
+          className={cn(buttonClasses('ghost', 'sm'), cancelling && 'opacity-50')}
+          data-testid="intimport-cancel-action"
+        >
+          {cancelling ? 'Zatrzymywanie…' : 'Przerwij import'}
+        </button>
+      ) : null}
+      {cancelled ? (
+        <p className="text-sm text-ivory/60">
+          Import zatrzymał się przed rozpoczęciem następnego produktu. Ostatni aktywny zapis
+          zakończył się atomowo.
+        </p>
+      ) : null}
+    </div>
   );
 }

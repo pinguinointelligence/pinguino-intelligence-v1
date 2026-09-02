@@ -1,0 +1,107 @@
+{
+  "note": "PREFLIGHT ONLY — nic nie zostało zapisane.",
+  "totalInput": 820,
+  "totalAccounted": 820,
+  "counts": {
+    "NEW_CANONICAL_PRODUCT": 817,
+    "EXISTING_CANONICAL_REUSE": 0,
+    "EXACT_DUPLICATE": 0,
+    "IDENTITY_COLLISION_RESOLVED_AS_DISTINCT": 3,
+    "POSSIBLE_DUPLICATE_REVIEW": 0,
+    "IDENTITY_CONFLICT": 0
+  },
+  "silentlyLostRows": 0,
+  "forceDistinctRows": 3,
+  "compritalCollisionRows": [
+    {
+      "sourceProductId": "PL-COM-P1237",
+      "found": true,
+      "classification": "NEW_CANONICAL_PRODUCT",
+      "reason": "nowy produkt kanoniczny",
+      "forceDistinct": false
+    },
+    {
+      "sourceProductId": "PL-COM-P307B",
+      "found": true,
+      "classification": "IDENTITY_COLLISION_RESOLVED_AS_DISTINCT",
+      "reason": "ta sama tożsamość zapasowa co wiersz 642, ale inny kod producenta — to inny produkt",
+      "forceDistinct": true
+    },
+    {
+      "sourceProductId": "PL-COM-P1244",
+      "found": true,
+      "classification": "NEW_CANONICAL_PRODUCT",
+      "reason": "nowy produkt kanoniczny",
+      "forceDistinct": false
+    },
+    {
+      "sourceProductId": "PL-COM-P338",
+      "found": true,
+      "classification": "IDENTITY_COLLISION_RESOLVED_AS_DISTINCT",
+      "reason": "ta sama tożsamość zapasowa co wiersz 693, ale inny kod producenta — to inny produkt",
+      "forceDistinct": true
+    },
+    {
+      "sourceProductId": "PL-COM-PC523P",
+      "found": true,
+      "classification": "NEW_CANONICAL_PRODUCT",
+      "reason": "nowy produkt kanoniczny",
+      "forceDistinct": false
+    },
+    {
+      "sourceProductId": "PL-COM-PC524P",
+      "found": true,
+      "classification": "IDENTITY_COLLISION_RESOLVED_AS_DISTINCT",
+      "reason": "ta sama tożsamość zapasowa co wiersz 803, ale inny kod producenta — to inny produkt",
+      "forceDistinct": true
+    }
+  ],
+  "collisionExamples": [
+    {
+      "rowIndex": 643,
+      "displayName": "LIMONE Cytrynowy",
+      "identity": {
+        "ean": null,
+        "manufacturerCode": "P307B",
+        "sourceProductId": "PL-COM-P307B",
+        "canonicalIdentity": "comprital|limone cytrynowy|other|1.25 kg"
+      },
+      "classification": "IDENTITY_COLLISION_RESOLVED_AS_DISTINCT",
+      "reason": "ta sama tożsamość zapasowa co wiersz 642, ale inny kod producenta — to inny produkt",
+      "relatedRowIndex": 642,
+      "forceDistinct": true
+    },
+    {
+      "rowIndex": 694,
+      "displayName": "NOCCIOLA Orzech laskowy",
+      "identity": {
+        "ean": null,
+        "manufacturerCode": "P338",
+        "sourceProductId": "PL-COM-P338",
+        "canonicalIdentity": "comprital|nocciola orzech laskowy|other|1.25 kg"
+      },
+      "classification": "IDENTITY_COLLISION_RESOLVED_AS_DISTINCT",
+      "reason": "ta sama tożsamość zapasowa co wiersz 693, ale inny kod producenta — to inny produkt",
+      "relatedRowIndex": 693,
+      "forceDistinct": true
+    },
+    {
+      "rowIndex": 804,
+      "displayName": "WHISKY",
+      "identity": {
+        "ean": null,
+        "manufacturerCode": "PC524P",
+        "sourceProductId": "PL-COM-PC524P",
+        "canonicalIdentity": "comprital|whisky|other|3 kg"
+      },
+      "classification": "IDENTITY_COLLISION_RESOLVED_AS_DISTINCT",
+      "reason": "ta sama tożsamość zapasowa co wiersz 803, ale inny kod producenta — to inny produkt",
+      "relatedRowIndex": 803,
+      "forceDistinct": true
+    }
+  ],
+  "possibleDuplicateExamples": [],
+  "conflictExamples": [],
+  "exactDuplicateExamples": [],
+  "exactDuplicates": 0
+}

@@ -80,7 +80,7 @@ export function detectRedFlags(input: RedFlagInput): RedFlag[] {
   if (strongClaim.length > 0 || noAddedClaim.length > 0) {
     flags.push({
       code: 'sugar_free_claim',
-      reason: 'Sugar-free / no-added-sugar claim — engine sugar spectrum cannot be trusted from the label alone.',
+      reason: 'Deklaracja „bez cukru” lub „bez dodatku cukru” nie wystarcza do wiarygodnego wyliczenia spektrum cukrów.',
       evidence: [...strongClaim, ...noAddedClaim].join(', '),
     });
   }
@@ -93,7 +93,7 @@ export function detectRedFlags(input: RedFlagInput): RedFlag[] {
     if (structuralPolyol) ev.push('polyol_percent>0');
     flags.push({
       code: 'sweetener_or_polyol',
-      reason: 'Polyol / high-intensity sweetener present — POD/PAC differ sharply from sugar and need a verified source.',
+      reason: 'Produkt zawiera poliol lub intensywny słodzik — POD/PAC mogą znacznie różnić się od cukru i wymagają zweryfikowanego źródła.',
       evidence: ev.join(', '),
     });
   }
@@ -102,7 +102,7 @@ export function detectRedFlags(input: RedFlagInput): RedFlag[] {
   if (protein.length > 0) {
     flags.push({
       code: 'protein_fortified',
-      reason: 'Protein-fortified product (e.g. protein dessert/drink) — a generic dairy/composition match is unreliable.',
+      reason: 'Produkt wzbogacony białkiem — ogólne dopasowanie nabiału lub składu może być niewiarygodne.',
       evidence: protein.join(', '),
     });
   }
@@ -111,7 +111,7 @@ export function detectRedFlags(input: RedFlagInput): RedFlag[] {
   if (proprietary.length > 0) {
     flags.push({
       code: 'proprietary_blend',
-      reason: 'Flavouring / proprietary preparation — the real formula is hidden behind an aroma/blend.',
+      reason: 'Aromat / mieszanka zastrzeżona — rzeczywisty skład jest ukryty w mieszance.',
       evidence: proprietary.join(', '),
     });
   }
@@ -122,7 +122,7 @@ export function detectRedFlags(input: RedFlagInput): RedFlag[] {
   if (truncation.length > 0 || (scanSource && blankText)) {
     flags.push({
       code: 'incomplete_text',
-      reason: 'Incomplete / truncated extracted text — the ingredient list could not be fully captured.',
+      reason: 'Tekst jest niepełny lub ucięty — nie udało się odczytać całej listy składników.',
       evidence: truncation.length > 0 ? `truncation marker ${truncation.join(' ')}` : `${input.source_type} with no detected_text`,
     });
   }
@@ -136,7 +136,7 @@ export function detectRedFlags(input: RedFlagInput): RedFlag[] {
   if (strongClaim.length > 0 && noAddedClaim.length === 0 && totalSugars !== null && totalSugars >= 5) {
     flags.push({
       code: 'claim_composition_conflict',
-      reason: `Strong sugar-free claim but total_sugars = ${totalSugars} g/100g — claim conflicts with composition.`,
+      reason: `Deklaracja „bez cukru” jest sprzeczna ze składem: cukry ${totalSugars} g/100 g.`,
       evidence: `${strongClaim.join(', ')} vs total_sugars ${totalSugars}`,
     });
   }

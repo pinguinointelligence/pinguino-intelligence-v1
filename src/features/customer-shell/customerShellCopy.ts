@@ -12,7 +12,7 @@
 export const customerShellCopy = {
   /* ------------------------------------------------------------------ Menu -- */
   menu: {
-    brand: 'PINGÜINO',
+    brand: 'GELLATTI',
     open: 'Otwórz menu',
     close: 'Zamknij menu',
     title: 'Menu',
@@ -58,9 +58,9 @@ export const customerShellCopy = {
      */
     leadMore: 'Chcesz dodać jeszcze jeden smak?',
     addLabel: 'Dodaj smak',
-    addPlaceholder: 'np. bazylia',
+    addPlaceholder: 'Np. bazylia',
     addButton: 'Dodaj',
-    empty: 'Nie wykryliśmy jeszcze żadnego smaku — możesz dodać go poniżej.',
+    empty: 'Jeszcze nie widzę smaku. Dodaj go poniżej i ruszamy dalej.',
   },
 
   /* ------------------------------------------------------------- Product type -- */
@@ -69,7 +69,7 @@ export const customerShellCopy = {
     // Owner hotfix §6: the customer picks a KIND OF ICE CREAM, not a "base" —
     // „Jaki to rodzaj?” / „Wybierz bazę” was engineer language.
     title: 'Jaki rodzaj lodów chcesz przygotować?',
-    lead: 'Wybierz rodzaj receptury.',
+    lead: 'Wybierz rodzaj receptury',
     /** Keyed by the copy KEYS emitted by productTypeQuestion(). */
     byKey: {
       'customer_flow.product_type.gelato': {
@@ -113,7 +113,7 @@ export const customerShellCopy = {
   proteinGap: {
     label: 'Jeszcze nie teraz',
     title: 'Proteinowe nie jest jeszcze wspierane',
-    body: 'Baza proteinowa nie ma jeszcze zweryfikowanego profilu, więc nie stworzymy z niej receptury. Nie podstawimy w zamian gelato po cichu — wybierz jedną z pozostałych baz poniżej.',
+    body: 'Profil Protein nie ma jeszcze zweryfikowanej bazy. Wybierz inną bazę — Gellatti nie zastąpi jej automatycznie Gelato.',
   },
 
   /* --------------------------------------------------------- Device / serving -- */
@@ -164,7 +164,7 @@ export const customerShellCopy = {
       firm13: { label: 'Twardsze', secondary: 'około −13°C' },
       deep18: { label: 'Zamrażarka', secondary: 'około −18°C' },
       displayFresh: { label: 'Witryna / świeże', secondary: 'podanie na bieżąco' },
-      custom: { label: 'Własne', secondary: 'ustawię samodzielnie' },
+      custom: { label: 'Własne', secondary: 'Ustawię samodzielnie' },
     },
   },
 
@@ -194,7 +194,7 @@ export const customerShellCopy = {
     lead: 'Podano tylko objętość w ml, a jej nie zamieniamy po cichu na gramy. Podaj wagę wsadu w gramach — zapytamy tylko raz.',
     officialCapacityLabel: 'Pojemność pojemnika',
     inputLabel: 'Waga wsadu (g)',
-    inputPlaceholder: 'np. 700',
+    inputPlaceholder: 'Np. 700',
     confirm: 'Zatwierdź',
     hint: 'Podaj wartość w gramach.',
   },
@@ -212,16 +212,16 @@ export const customerShellCopy = {
       custom: 'Własna',
     },
     customLabel: 'Własna ilość (g)',
-    customPlaceholder: 'np. 2500',
+    customPlaceholder: 'Np. 2500',
     customConfirm: 'Ustaw',
     resolvedLabel: 'Ustalona ilość',
     selectedLabel: 'Wybrana ilość',
     change: 'Zmień ilość',
     source: {
-      user: 'wybrana przez Ciebie',
-      text: 'rozpoznana z Twojego zdania',
-      mode_ninja: 'zatwierdzona masa trybu Ninja',
-      none: 'jeszcze nieustalona',
+      user: 'Wybrana przez Ciebie',
+      text: 'Rozpoznana z Twojego zdania',
+      mode_ninja: 'Zatwierdzona masa trybu Ninja',
+      none: 'Jeszcze nieustalona',
     },
   },
 
@@ -229,7 +229,7 @@ export const customerShellCopy = {
   path: {
     label: 'Dalej',
     title: 'Jak chcesz działać?',
-    lead: 'Obie drogi są równorzędne — wybierz, co wolisz.',
+    lead: 'Obie drogi są równorzędne — wybierz, co wolisz',
     newRecipe: 'Stwórz nową recepturę',
     readyRecipe: 'Pokaż pasujące gotowe receptury',
   },
@@ -239,7 +239,7 @@ export const customerShellCopy = {
     label: 'Gotowe receptury',
     title: 'Najbliższe pomysły',
     lead: 'To najbliższe propozycje z katalogu. Nie pokazujemy zmyślonych procentów dopasowania — tylko uczciwą etykietę.',
-    empty: 'Nie znaleźliśmy pasujących gotowych receptur. Spróbuj stworzyć nową.',
+    empty: 'Nie ma tu jeszcze pasującej receptury. Stwórzmy nową od początku.',
     view: 'Zobacz recepturę',
     useAsStart: 'Użyj jako punkt wyjścia',
     changeSelection: 'Zmień recepturę',
@@ -278,23 +278,24 @@ export const customerShellCopy = {
     label: 'Podgląd',
     title: 'Podgląd receptury',
     fixtureNotice:
-      'To podglądowa struktura składników, a nie wyliczona receptura. Nazwy są przykładowe, a dokładne ilości wyliczy silnik po odblokowaniu.',
-    draftNotice: 'Utworzono edytowalny szkic roboczy na podstawie gotowej receptury — katalog pozostaje bez zmian.',
+      'To podgląd struktury składników, nie gotowa receptura. Nazwy są przykładowe, a dokładne ilości pojawią się po uzupełnieniu danych i przeliczeniu.',
+    draftNotice:
+      'Utworzono edytowalny szkic roboczy na podstawie gotowej receptury — katalog pozostaje bez zmian.',
     typeLabel: 'Rodzaj',
     deviceLabel: 'Urządzenie',
     servingLabel: 'Podanie',
     modeLabel: 'Tryb',
-    modeNone: 'nie wybrano',
+    modeNone: 'Nie wybrano',
     batchLabel: 'Ilość',
     ingredientsTitle: 'Składniki',
-    deviceNone: 'nie wybrano',
-    servingNone: 'nie wybrano',
+    deviceNone: 'Nie wybrano',
+    servingNone: 'Nie wybrano',
     /** Compact locked stand-in label for Demo base lines (no gram number). */
     lockedInPlans: 'Ilość w Home i Pro',
     /** Honest right-side requirement labels for lines with no safe dose yet. */
     resolutionLabels: {
-      needs_ingredient: 'wymaga wyboru składnika',
-      needs_dose: 'wymaga potwierdzenia dawki',
+      needs_ingredient: 'Wymaga wyboru składnika',
+      needs_dose: 'Wymaga potwierdzenia dawki',
     } as Record<string, string>,
     /** Friendly, TAPPABLE call-to-action per unresolved line kind. */
     resolutionCta: {
@@ -304,9 +305,9 @@ export const customerShellCopy = {
     /** Friendly "almost ready" status — never claims a fully calculated recipe. */
     needsRefinementPrefix: 'Receptura jest prawie gotowa — doprecyzuj intensywność',
     needsRefinementNoun: {
-      one: 'składnika',
-      few: 'składników',
-      many: 'składników',
+      one: 'Składnika',
+      few: 'Składników',
+      many: 'Składników',
     },
     fullyResolvedNote: 'Wszystkie składniki są wstępnie rozpisane.',
     /** Readable Polish names for base recipe lines, keyed by engine + structure id. */
@@ -330,14 +331,15 @@ export const customerShellCopy = {
       'coconut-oil': 'Olej kokosowy',
     } as Record<string, string>,
     /** Result-state banners — honest about whether the engine calculated the card. */
-    stateCalculated: 'Receptura wyliczona przez silnik PINGÜINO.',
-    stateOutOfBand: 'Receptura wyliczona — część parametrów jest poza złotym zakresem. Dopasuj ją w Monitorze receptury poniżej.',
+    stateCalculated: 'Receptura została przeliczona.',
+    stateOutOfBand:
+      'Receptura wyliczona — część parametrów jest poza złotym zakresem. Dopasuj ją w Monitorze receptury poniżej.',
     // Track G: at a temperature where interactive tuning awaits approval, the
     // status must not point at tuning controls that honestly cannot run.
     stateOutOfBandNoTuning:
       'Receptura wyliczona — część parametrów jest poza złotym zakresem dla tej temperatury podawania.',
     stateStructureOnly:
-      'To podglądowa struktura składników, a nie wyliczona receptura. Dokładne ilości wyliczy silnik, gdy uzupełnisz wymagane dane.',
+      'To podgląd struktury składników, nie gotowa receptura. Uzupełnij wymagane dane, aby zobaczyć dokładne ilości.',
     /**
      * Owner UX correction §11 — ONE unambiguous recipe status, never the old
      * double message („prawie gotowa” + „wyliczona przez silnik” at once).
@@ -347,11 +349,46 @@ export const customerShellCopy = {
       readyRecalc: 'Gotowa do przeliczenia',
       needsProductsPrefix: 'Wymaga wyboru',
       /** Plural of „produkt” (1 / 2–4 / 5+). */
-      productNoun: { one: 'produktu', few: 'produktów', many: 'produktów' },
+      productNoun: { one: 'Produktu', few: 'Produktów', many: 'Produktów' },
       /** Required-products guidance: „Wybierz konkretne produkty dla N składników, aby …”. */
       needsProductsGuidancePrefix: 'Wybierz konkretne produkty dla',
       needsProductsGuidanceSuffix: ', aby dokładnie przeliczyć recepturę.',
     },
+  },
+
+  /* ------------------------------------------------------------ Save recipe -- */
+  /**
+   * Canonical saved-recipe rule (owner decision, `proCoreCapabilities`): Demo nie zapisuje,
+   * plan Home przechowuje JEDNĄ recepturę (kolejne zapisy tej samej receptury to nowe wersje,
+   * nie druga receptura), plan Pro — bez ograniczeń. Copy nazywa tę zasadę wprost i zawsze
+   * pokazuje działanie, które NAPRAWDĘ jest dostępne.
+   */
+  save: {
+    label: 'Zapis',
+    title: 'Zapisz recepturę',
+    lead: 'Zapisana receptura czeka w „Moich recepturach” — wrócisz do niej i zapiszesz kolejną wersję.',
+    nameLabel: 'Nazwa receptury',
+    namePlaceholder: 'Np. Gelato waniliowe',
+    nameRequired: 'Podaj nazwę receptury.',
+    noteLabel: 'Notatka do wersji (opcjonalnie)',
+    noteToggle: 'Dodaj notatkę',
+    create: 'Zapisz recepturę',
+    saving: 'Zapisuję…',
+    savedCreated: 'Receptura jest w „Moich recepturach”.',
+    savedVersion: 'Nowa wersja jest w „Moich recepturach”.',
+    openMyRecipes: 'Otwórz „Moje receptury”',
+    /** The Home aggregate limit — stated plainly, with the action that IS allowed. */
+    homeLimitTitle: (title: string) => `Plan Home przechowuje jedną recepturę: „${title}”`,
+    homeLimitLead:
+      'Kolejne wersje tej receptury zapiszesz bez ograniczeń. Osobne receptury bez limitu ma plan Pro.',
+    versionButton: (n: number) => `Zapisz jako wersję ${n}`,
+    signIn: 'Zaloguj się, aby zapisać recepturę.',
+    signInCta: 'Zaloguj się',
+    unavailable:
+      'Zapis receptur nie jest dostępny w tym środowisku. Receptura zostaje na ekranie — nic nie zostało zapisane.',
+    notCalculated: 'Recepturę zapiszesz po uzupełnieniu danych i dokładnym przeliczeniu.',
+    loading: 'Sprawdzamy Twoje zapisane receptury…',
+    localMode: 'Tryb lokalny (dev): zapis nie jest trwały i zniknie po odświeżeniu.',
   },
 
   /* -------------------------------------------------------- Flavor intensity -- */
@@ -367,9 +404,9 @@ export const customerShellCopy = {
     },
     advanced: 'Ustawienia zaawansowane',
     advancedNote:
-      'Twój wybór zapisujemy jako preferencję smaku — nie zamieniamy go po cichu na gramy. Dokładną ilość wyliczymy dopiero, gdy pojawi się zweryfikowana reguła dla tego smaku, albo gdy podasz ilość ręcznie w planie Home lub Pro.',
+      'Ten wybór zapisujemy jako preferencję smaku, nie jako gramaturę. Dokładną ilość wyliczymy po zweryfikowaniu reguły dla tego smaku albo po ręcznym wpisaniu ilości w Home lub Pro.',
     manualLabel: 'Ręczna ilość (g)',
-    manualPlaceholder: 'np. 20',
+    manualPlaceholder: 'Np. 20',
     manualConfirm: 'Ustaw ręcznie',
     manualSetPrefix: 'Ustawiono ręcznie',
     close: 'Gotowe',
@@ -386,7 +423,7 @@ export const customerShellCopy = {
     remove: 'Usuń',
     why: 'Po co jest ten składnik?',
     whyBody:
-      'Ten składnik należy do bazowej struktury tej receptury. Dokładne proporcje wylicza silnik po odblokowaniu — tutaj pokazujemy tylko, z czego składa się przepis.',
+      'Ten składnik buduje bazową strukturę receptury. Tutaj pokazujemy jego rolę; dokładne proporcje pojawią się po przeliczeniu.',
     close: 'Zamknij',
   },
 
@@ -416,18 +453,19 @@ export const customerShellCopy = {
     pickerTitle: 'Wybierz konkretny produkt',
     searchLabel: 'Szukaj produktu',
     searchPlaceholder: 'Nazwa, marka lub kod EAN…',
-    noResults: 'Brak pasujących produktów. Możesz dodać produkt ręcznie albo zeskanować etykietę.',
+    noResults:
+      'Nie znaleźliśmy pasującego produktu. Dodaj go ręcznie albo zeskanuj etykietę.',
     /**
      * Picker sources (owner 2026-07-18): the canonical shared catalogue „Składniki PI"
      * (live Mapper search) is always present; „Moje produkty" (private, user-owned) is an
      * OPTIONAL second tab shown only for a signed-in user with private products.
      */
     sources: {
-      pi_ingredients: 'Składniki PI',
+      pi_ingredients: 'Składniki Gellatti',
       my_products: 'Moje produkty',
     } as Record<string, string>,
     /** Honest source note for the live Mapper tab. */
-    ingredientsSourceNote: 'Katalog składników PI — wyszukiwanie na żywo w pełnej bibliotece.',
+    ingredientsSourceNote: 'Katalog składników Gellatti — wyniki pojawiają się podczas pisania.',
     /** „Moje produkty" (private products) pane — honest states (no shared sample). */
     myProductsSignInRequired:
       'Moje produkty to Twoje prywatne produkty. Zaloguj się, aby je zobaczyć — nie pokazujemy tu produktów innych osób.',
@@ -443,16 +481,17 @@ export const customerShellCopy = {
     liveError: 'Nie udało się przeszukać katalogu. Spróbuj ponownie.',
     liveRetry: 'Spróbuj ponownie',
     liveUnavailable:
-      'Katalog składników na żywo nie jest jeszcze dostępny w tym środowisku. To nie jest pusty wynik — spróbuj ponownie za chwilę.',
+      'Katalog składników na żywo nie jest jeszcze dostępny w tym środowisku. To nie jest pusty wynik — spróbuj ponownie za chwilę',
     /** Honest readiness on a Mapper row (the exact check runs po wyborze). */
-    ingredientEngineApproved: 'Zatwierdzony dla silników PI',
+    ingredientEngineApproved: 'Gotowy do obliczeń',
     ingredientNeedsVerification: 'Do weryfikacji po wyborze',
     /** Post-selection engine-values fetch states (rich data, logged-in only). */
-    pickChecking: 'Sprawdzam dane silnika…',
+    pickChecking: 'Sprawdzamy dane produktu…',
     pickLoginRequired:
-      'Dokładne wartości silnika wymagają zalogowania. Wyszukiwanie działa bez konta, ale dane do przeliczenia pobierzemy po zalogowaniu.',
-    pickUnavailable: 'Nie udało się pobrać danych silnika — środowisko na żywo nie jest jeszcze dostępne.',
-    pickError: 'Nie udało się pobrać danych silnika. Spróbuj ponownie.',
+      'Dokładne dane do przeliczenia są dostępne po zalogowaniu. Wyszukiwanie nadal działa bez konta.',
+    pickUnavailable:
+      'Nie udało się teraz pobrać danych produktu. Wybierz inny produkt albo spróbuj ponownie za chwilę.',
+    pickError: 'Nie udało się pobrać danych produktu. Spróbuj ponownie.',
     badgeReady: 'Gotowy do przeliczenia',
     badgeNeedsData: 'Wymaga danych',
     packagePrefix: 'Opakowanie',
@@ -467,10 +506,11 @@ export const customerShellCopy = {
     /** Substitution / not-having. */
     substituteTitle: 'Zastąp składnik',
     substituteLabel: 'Czym zastąpić?',
-    substitutePlaceholder: 'np. rum zamiast whisky',
+    substitutePlaceholder: 'Np. rum zamiast whisky',
     substituteConfirm: 'Zastąp',
-    substituteRecorded: 'Zapisaliśmy propozycję zamiany. Silnik uwzględni ją przy przeliczeniu.',
-    dontHaveRecorded: 'Zanotowaliśmy, że nie masz tego składnika — możesz go zastąpić albo pominąć.',
+    substituteRecorded: 'Uwzględnimy tę zamianę przy następnym przeliczeniu.',
+    dontHaveRecorded:
+      'Zanotowaliśmy, że nie masz tego składnika — możesz go zastąpić albo pominąć.',
     /** Scan / manual add delegation (no live persistence in this environment). */
     intakeScanTitle: 'Skanowanie etykiety',
     intakeManualTitle: 'Ręczne dodanie produktu',
@@ -479,7 +519,7 @@ export const customerShellCopy = {
     intakeDevLink: 'Otwórz dodawanie produktu (dev)',
     /** Explanation for "Po co jest ten składnik?". */
     whyBody:
-      'Ten składnik realizuje smak, o który poprosiłeś. Wybór konkretnego produktu pozwala silnikowi policzyć recepturę dokładnie — bez zgadywania składu.',
+      'Ten składnik buduje wskazany smak. Wybierz konkretny produkt, aby dokładnie przeliczyć recepturę bez zgadywania składu',
   },
 
   /* ------------------------------------------------------------- Monitor PI -- */
@@ -487,16 +527,16 @@ export const customerShellCopy = {
     /** §13.3 header — the customer-facing Monitor name (never an internal code). */
     label: 'Monitor receptury',
     title: 'Dostrój recepturę',
-    lead: 'Wskaż kierunek — PI dopasuje recepturę w bezpiecznym, złotym zakresie. Używamy gotowych, sprawdzonych kroków, nie zgadujemy wartości.',
-    recalc: 'Przelicz z PI',
+    lead: 'Wskaż kierunek, a Gellatti dopasuje recepturę w bezpiecznym zakresie. Korzystamy ze sprawdzonych kroków i nie zgadujemy wartości.',
+    recalc: 'Przelicz recepturę',
     /** Shown when recalculation is allowed (all products resolved). */
     readyNote:
-      'Kierunek zapisany. Dokładne przeliczenie z gramami uruchomisz w planie Home lub Pro — na recepturze wyliczonej przez silnik.',
+      'Kierunek zapisany. W planie Home lub Pro możesz teraz uruchomić dokładne przeliczenie z gramami.',
     /** Shown in the Demo preview (qualitative only, no grams). */
     demoNote: 'W podglądzie pokazujemy kierunek zmian jakościowo, bez gramów.',
     /** Shown when there is no calculated recipe yet (structure_only). */
     needsCalculatedNote:
-      'Monitor receptury dokładnie przeliczy recepturę, gdy karta będzie wyliczona przez silnik (uzupełnij wymagane dane).',
+      'Monitor potrzebuje jeszcze danych produktu. Uzupełnij je, aby dokładnie przeliczyć recepturę.',
     przed: 'Przed',
     po: 'Po zmianie',
     apply: 'Zastosuj zmiany',
@@ -518,7 +558,7 @@ export const customerShellCopy = {
     previewInternalRouting: 'Wewnętrzny profil produktu',
     userFacingType: 'Widoczny rodzaj',
     internalProfile: 'Profil wewnętrzny',
-    engineCategory: 'Kategoria silnika',
+    engineCategory: 'Typ receptury',
     chocolateRouting: 'Czekolada (wewnętrzny profil)',
     chocolateRoutingNote:
       'Wykryto czekoladę — widoczny rodzaj pozostaje Gelato, a profil prowadzimy wewnętrznie.',
@@ -549,14 +589,20 @@ export const customerShellCopy = {
     /** Structured note codes → friendly Polish (never fabricated user text). */
     notes: {
       'customer_flow.protein_unsupported': 'Baza proteinowa nie jest jeszcze wspierana.',
-      'customer_flow.chocolate_routed_internally': 'Czekolada prowadzona wewnętrznie (widoczne: Gelato).',
-      'customer_flow.chocolate_sorbet_kept_as_sorbet': 'Czekolada przy sorbecie — pozostaje sorbetem.',
+      'customer_flow.chocolate_routed_internally':
+        'Czekolada prowadzona wewnętrznie (widoczne: Gelato).',
+      'customer_flow.chocolate_sorbet_kept_as_sorbet':
+        'Czekolada przy sorbecie — pozostaje sorbetem.',
       'customer_flow.batch_recognized_from_text': 'Ilość rozpoznana z Twojego zdania.',
-      'customer_flow.batch_from_ninja_mode': 'Ilość ustawiona z zatwierdzonej masy receptury dla trybu Ninja (nie przeliczamy ml na gramy).',
-      'customer_flow.batch_volume_needs_density': 'Podano objętość — bez gęstości nie przeliczamy jej na gramy.',
-      'customer_flow.batch_from_verified_device': 'Ilość ustawiona z zatwierdzonej masy receptury dla wybranego urządzenia (nie przeliczamy ml na gramy).',
+      'customer_flow.batch_from_ninja_mode':
+        'Ilość ustawiona z zatwierdzonej masy receptury dla trybu Ninja (nie przeliczamy ml na gramy).',
+      'customer_flow.batch_volume_needs_density':
+        'Podano objętość — bez gęstości nie przeliczamy jej na gramy.',
+      'customer_flow.batch_from_verified_device':
+        'Ilość ustawiona z zatwierdzonej masy receptury dla wybranego urządzenia (nie przeliczamy ml na gramy).',
       'customer_flow.device_capacity_confirmed': 'Pojemność urządzenia potwierdzona przez Ciebie.',
-      'customer_flow.device_capacity_awaiting_confirmation': 'Pojemność urządzenia czeka na potwierdzenie.',
+      'customer_flow.device_capacity_awaiting_confirmation':
+        'Pojemność urządzenia czeka na potwierdzenie.',
       'customer_flow.ready_recipe_working_draft_created': 'Utworzono edytowalny szkic roboczy.',
     } as Record<string, string>,
   },
@@ -596,7 +642,7 @@ export const customerShellCopy = {
     water: 'Woda',
     sugar: 'Cukier',
     dextrose: 'Dekstroza',
-    stabilizer: 'PI Stabilizer',
+    stabilizer: 'Stabilizacja',
     flavorSuffix: '(smak)',
   },
 

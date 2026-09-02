@@ -291,6 +291,25 @@ describe('supabaseCostsRepository — snapshots are append-only & immutable', ()
     expect(snap.missingIngredientIds).toEqual(['sugar']);
   });
 
+  it('E3: buildSnapshot prices a canonical line through its product-id ALIAS (keying fix)', async () => {
+    const store = makeStore();
+    const repo = supabaseCostsRepository({ client: makeClient(store), now: () => FIXED_NOW });
+    // the user priced the PRODUCT they bought; the recipe line carries the canonical basement id
+    await repo.addEntry(baseEntry({ ingredientId: 'PR-ING-000010', ingredientName: 'Nata', price: 8 })); // 4/kg
+    const snap = await repo.buildSnapshot({
+      ownerUserId: AUTH_USER, recipeId: 'r', recipeVersionId: 'v1',
+      lines: [
+        { ingredientId: 'PI-ING-000180', ingredientName: 'Nata (canonical)', grams: 500, aliasIds: ['PR-ING-000010'] },
+        { ingredientId: 'PI-ING-000123', ingredientName: 'Inulina', grams: 100 }, // formulation-added, unpriced
+      ],
+      currency: 'EUR', basis: 'net', asOf: '2026-03-01', engineVersion: 'e1', configVersion: 'c1', by: AUTH_USER,
+    });
+    // alias resolved the canonical line; the unpriced PI-added line degrades to an explicit gap
+    expect(snap.lines[0]).toMatchObject({ ingredientId: 'PI-ING-000180', costPerKg: 4, state: 'known' });
+    expect(snap.complete).toBe(false);
+    expect(snap.missingIngredientIds).toEqual(['PI-ING-000123']);
+  });
+
   it('owner isolation on snapshots (getSnapshot + listSnapshots)', async () => {
     const store = makeStore();
     const repo = supabaseCostsRepository({ client: makeClient(store), now: () => FIXED_NOW });

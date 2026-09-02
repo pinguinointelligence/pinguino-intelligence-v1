@@ -1,7 +1,7 @@
 /**
  * PINGÜINO Product Picker — LIVE Mapper catalogue search (pure view-models).
  *
- * The „Składniki PI" side of the two-source picker: the 2,083-row Mapper
+ * The „Składniki PI" side of the two-source picker: the 2,089-row Mapper
  * Basement library searched SERVER-SIDE through the demo-safe read model (the
  * backend adapter in `@/services/productPicker/mapperSearch` owns the IO). This
  * module is PURE: the async lifecycle (debounce, stale-request cancellation,
@@ -105,8 +105,20 @@ export const INITIAL_LIVE_SEARCH: LiveSearchState = {
 };
 
 /** A fresh (page-0) search was issued. Prior hits clear — no stale rows linger. */
-export function liveSearchStarted(state: LiveSearchState, query: string, requestId: number): LiveSearchState {
-  return { ...state, phase: 'loading', query, hits: [], hasMore: false, requestId, unavailableReason: null };
+export function liveSearchStarted(
+  state: LiveSearchState,
+  query: string,
+  requestId: number,
+): LiveSearchState {
+  return {
+    ...state,
+    phase: 'loading',
+    query,
+    hits: [],
+    hasMore: false,
+    requestId,
+    unavailableReason: null,
+  };
 }
 
 /** An incremental page was issued. Existing hits stay visible while it loads. */
@@ -130,7 +142,13 @@ export function liveSearchSettled(
     case 'aborted':
       return state; // the superseding request will settle the state
     case 'unavailable':
-      return { ...state, phase: 'unavailable', hits: [], hasMore: false, unavailableReason: outcome.reason };
+      return {
+        ...state,
+        phase: 'unavailable',
+        hits: [],
+        hasMore: false,
+        unavailableReason: outcome.reason,
+      };
     case 'error':
       // keep already-loaded hits on a failed "load more" so the customer loses nothing
       return { ...state, phase: 'error' };
@@ -138,7 +156,10 @@ export function liveSearchSettled(
       const incoming = outcome.rows.map(safeRowToHit);
       const hits =
         mode === 'append'
-          ? [...state.hits, ...incoming.filter((h) => !state.hits.some((p) => p.ingredientId === h.ingredientId))]
+          ? [
+              ...state.hits,
+              ...incoming.filter((h) => !state.hits.some((p) => p.ingredientId === h.ingredientId)),
+            ]
           : incoming;
       return {
         ...state,
@@ -173,7 +194,10 @@ export const LIVE_SEARCH_DEBOUNCE_MS = 250;
 /** A single-slot debouncer. Timers are injectable so tests run without a clock. */
 export function createDebouncer(
   delayMs: number,
-  timers: DebounceTimers = { set: (run, ms) => setTimeout(run, ms), clear: (h) => clearTimeout(h as never) },
+  timers: DebounceTimers = {
+    set: (run, ms) => setTimeout(run, ms),
+    clear: (h) => clearTimeout(h as never),
+  },
 ): Debouncer {
   let pending: unknown = null;
   return {
@@ -251,7 +275,10 @@ export interface CompactIngredientRowVm {
 }
 
 /** Dense Mapper row: name / internal / category / PI-ING id / readiness. Pure. */
-export function compactIngredientRow(hit: SafeIngredientHit, labels: CompactRowLabels): CompactIngredientRowVm {
+export function compactIngredientRow(
+  hit: SafeIngredientHit,
+  labels: CompactRowLabels,
+): CompactIngredientRowVm {
   return {
     key: hit.ingredientId,
     title: hit.displayName,
@@ -276,9 +303,14 @@ export interface CompactProductRowVm {
 }
 
 /** Dense product row: name / brand+package / id-EAN / status / readiness. Pure. */
-export function compactProductRow(result: ProductPickResult, eanPrefix: string): CompactProductRowVm {
+export function compactProductRow(
+  result: ProductPickResult,
+  eanPrefix: string,
+): CompactProductRowVm {
   const e = result.entry;
-  const idBits = [e.productCode ?? e.productId, e.ean ? `${eanPrefix} ${e.ean}` : null].filter(Boolean);
+  const idBits = [e.productCode ?? e.productId, e.ean ? `${eanPrefix} ${e.ean}` : null].filter(
+    Boolean,
+  );
   return {
     key: e.productId,
     title: e.displayName,

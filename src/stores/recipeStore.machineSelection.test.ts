@@ -8,6 +8,7 @@
  */
 import { beforeEach, describe, expect, it } from 'vitest';
 import { useRecipeStore } from './recipeStore';
+import { findDemoIngredient } from '@/data/demoIngredients';
 
 const reset = () => useRecipeStore.getState().resetToDemo();
 
@@ -67,6 +68,34 @@ describe('recipeStore.setMachineSelection (S4)', () => {
     expect(s.target_batch_grams).toBe(450);
     expect(s.dirty).toBe(true);
   });
+
+  it.each(['percent', 'main'] as const)(
+    'machine-derived batch applies the durable percentage share for a %s line',
+    (lockType) => {
+      useRecipeStore.setState({ items: [], target_batch_grams: 1000 });
+      useRecipeStore.getState().addIngredient(findDemoIngredient('sucrose')!, 130);
+      useRecipeStore.getState().addIngredient(findDemoIngredient('milk_3_5')!, 870);
+      const line = useRecipeStore.getState().items[0]!;
+      if (lockType === 'main') useRecipeStore.getState().setLockType(line.id, 'main');
+      useRecipeStore.getState().setPercentLock(line.id, 13);
+
+      useRecipeStore.getState().setMachineSelection({
+        kind: 'home',
+        servingModeId: 'ninja_gelato',
+        machineId: 'ninja-creami-nc302eu-eu-es',
+        label: 'Ninja CREAMi',
+        temperatureC: -13,
+        batchGrams: 450,
+        capacityGrams: 450,
+      });
+
+      expect(useRecipeStore.getState().items[0]).toMatchObject({
+        lock_type: lockType,
+        planned_grams: 58.5,
+        percent_constraint: { percent: 13 },
+      });
+    },
+  );
 
   it('a home selection with a null auto-batch keeps the current batch (never invents one)', () => {
     useRecipeStore.getState().setBatchGrams(800);

@@ -19,7 +19,7 @@
 import { cn } from '@/lib/cn';
 import { color, focusRing, motion, radius, type } from '@/features/customer-shell/ui/tokens';
 import { machineOnboardingCopy as copy } from '../machineOnboardingCopy';
-import type { MachineContextView } from '../machineViews';
+import { formatGrams, type MachineContextView } from '../machineViews';
 
 /** Present only when the recipe uses a temporary override machine. */
 export interface MachineContextOverride {
@@ -58,7 +58,11 @@ export function MachineContextBar({ view, onChange, override = null, className }
         <p className={cn('min-w-0 flex-1 truncate', type.secondary, color.textSecondary)}>
           {override !== null ? copy.contextBar.overridePrefix : copy.contextBar.prefix}{' '}
           <span className={cn('font-medium', color.textPrimary)}>{view.name}</span>
-          {view.vesselMl !== null ? <span> · {copy.contextBar.vessel(view.vesselMl)}</span> : null}
+          {view.defaultBatchGrams !== null ? (
+            <span> · {formatGrams(view.defaultBatchGrams)} g</span>
+          ) : view.vesselMl !== null ? (
+            <span> · {copy.contextBar.vessel(view.vesselMl)}</span>
+          ) : null}
         </p>
         <button
           type="button"

@@ -1,0 +1,23 @@
+scenario,trigger,violations_before,hard_before,advice_candidate,hard_after,simulated_g,candidates_simulated,preview
+missing oat drink,none,6,0,,,,0,PREVIEW
+missing soy drink,operational,6,1,Dekstroza,0,140,4,PREVIEW
+missing sucrose,none,4,0,,,,0,PREVIEW
+missing dextrose,operational,3,3,Dekstroza,0,67,4,unsafe_proposal
+missing fat,none,3,0,,,,0,PREVIEW
+missing stabilizer,none,4,0,,,,0,PREVIEW
+missing nut paste,none,3,0,,,,0,PREVIEW
+missing cocoa,operational,1,1,Dekstroza,0,145,4,PREVIEW
+sugar excess,none,3,0,,,,0,PREVIEW
+sugar shortage,operational,4,1,Dekstroza,0,151,4,PREVIEW
+fat excess,none,3,0,,,,0,PREVIEW
+fat shortage,none,2,0,,,,0,PREVIEW
+fruit excess,none,4,0,,,,0,PREVIEW
+nut excess,none,4,0,,,,0,PREVIEW
+cocoa excess,operational,2,1,Dekstroza,0,142,4,PREVIEW
+insufficient solids,none,3,0,,,,0,PREVIEW
+water flood / dilution,none,4,0,,,,0,PREVIEW
+flavour accent (lemon) excess,none,3,0,,,,0,PREVIEW
+coffee accent excess,none,1,0,,,,0,PREVIEW
+caramel accent excess,none,1,0,,,,0,PREVIEW
+protein-bearing shortage,none,4,0,,,,0,PREVIEW
+almond base dilution,none,0,0,,,,0,PREVIEW

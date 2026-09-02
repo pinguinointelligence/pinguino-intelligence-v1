@@ -15,8 +15,8 @@ const render = () =>
 describe('LandingPage — public landing per spec §6 (Slice A)', () => {
   it('renders the §6.1 hero verbatim: headline, subline and both CTAs', () => {
     const html = render();
-    expect(html).toContain('Idealna receptura. Dopasowana do Twojej maszyny lub temperatury.');
-    expect(html).toContain('Wybierz smak, urządzenie lub temperaturę i ilość. PINGÜINO zajmie się resztą.');
+    expect(html).toContain(copy.hero.headline);
+    expect(html).toContain(copy.hero.subline);
     expect(html).toContain(copy.hero.ctaPrimary); // „Stwórz recepturę”
     expect(html).toContain(copy.hero.ctaSecondary); // „Zobacz, jak działa”
   });
@@ -32,10 +32,12 @@ describe('LandingPage — public landing per spec §6 (Slice A)', () => {
     const html = render();
     expect(html).toContain('id="monitor-demo"');
     expect(html).toContain(copy.monitor.exampleTag); // honestly tagged as an example
-    // The REAL engine-driven readout: an integer 1–10 score with the Polish
-    // aria pattern, and the §13 trait rows by their consumer names.
+    // The REAL engine-driven readout: the approved dynamic 1–10 ring with the
+    // Polish aria pattern, and the §13 trait rows by their consumer names.
     const text = html.replace(/<[^>]*>/g, ' ');
-    expect(/\b(10|[1-9])\/10\b/.test(text)).toBe(true);
+    expect(html).toContain('data-testid="monitor-home-score-ring"');
+    expect(html).toMatch(/data-score="(?:[1-9]|10)"/);
+    expect(/\b(10|[1-9])\/10\b/.test(text)).toBe(false);
     expect(html).toContain('na 10'); // ariaText „X na 10 — …"
     for (const trait of ['Słodycz', 'Kremowość', 'Stabilność']) {
       expect(html).toContain(trait);
@@ -60,8 +62,9 @@ describe('LandingPage — public landing per spec §6 (Slice A)', () => {
     const text = render().replace(/<[^>]*>/g, ' ');
     expect(/\d+\s?(zł|PLN|€|\$|EUR|USD)/i.test(text)).toBe(false);
     expect(/\d+\s?%/.test(text)).toBe(false);
-    // The only score shown is the REAL engine-driven integer /10 (Slice F).
-    expect(/\b(10|[1-9])\/10\b/.test(text)).toBe(true);
+    // The score is the REAL engine-driven bare integer in the approved ring.
+    expect(render()).toMatch(/data-testid="monitor-home-score-ring"[^>]*data-score="(?:[1-9]|10)"/);
+    expect(/\b(10|[1-9])\/10\b/.test(text)).toBe(false);
     expect(/\d+[.,]\d+\s*\/\s*10/.test(text)).toBe(false); // no decimal scores (§15.1)
   });
 
@@ -70,6 +73,8 @@ describe('LandingPage — public landing per spec §6 (Slice A)', () => {
     expect(html).toContain('bg-paper');
     expect(html).not.toContain('bg-shell');
     expect(html).not.toContain('#0c0d0f');
+    expect(html).toContain('font-semibold');
+    expect(html).not.toContain('text-[34px] font-light');
   });
 
   it('uses gold ONLY inside the Monitor readout (owner decision: optimum only)', () => {

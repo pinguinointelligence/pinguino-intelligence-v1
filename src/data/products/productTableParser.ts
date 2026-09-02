@@ -20,11 +20,15 @@
 import { parseCsv } from '@/lib/csv';
 import { mapDatasetCategory } from '@/data/ingredients/categoryMapping';
 import { mapProductSubcategory } from '@/data/products/productSubcategoryMapping';
-import type { ProductBooleanOrUnknown, ProductInsert, ProductSourceType } from '@/data/products/productRow';
+import type {
+  ProductBooleanOrUnknown,
+  ProductInsert,
+  ProductSourceType,
+} from '@/data/products/productRow';
 
 /** Which intake channel a table arrived through. Selects source_type (and, later,
  * vendor-specific header aliases). NOT a separate system — one parser, many sources. */
-export type ProductIntakeSource = 'generic' | 'mercadona' | 'colin';
+export type ProductIntakeSource = 'generic' | 'mercadona' | 'colin' | 'intimport';
 
 export type ProductIntakeStatus = 'valid' | 'warning' | 'skip';
 
@@ -35,6 +39,13 @@ export interface ProductIntakeCandidate {
   insert: ProductInsert;
   warnings: string[];
   skipReason: string | null;
+  /**
+   * Set by the identity preflight when a stronger key proved this row is a
+   * DIFFERENT product from one the catalogue's fallback fingerprint would have
+   * merged it into. The write must then create its own canonical product
+   * instead of letting the fingerprint decide.
+   */
+  forceDistinctIdentity?: boolean;
 }
 
 export interface ProductIntakeResult {
@@ -50,6 +61,9 @@ const SOURCE_TYPE_BY_PROFILE: Record<ProductIntakeSource, ProductSourceType> = {
   generic: 'catalog_import',
   mercadona: 'mercadona',
   colin: 'colin_catalog',
+  // INTIMPORT is an official Gellatti bulk format, not a separate product system: it
+  // lands in the same catalog intake channel and is identified by catalog_source.
+  intimport: 'catalog_import',
 };
 
 /** Only fields that exist on ProductInsert can be a mapping target — `keyof ProductInsert`
@@ -171,7 +185,11 @@ export const HEADER_ALIASES: Record<string, FieldSpec> = {
 
 /** trim -> lowercase -> collapse any run of non-alphanumerics to a single underscore. */
 export function normalizeHeader(raw: string): string {
-  return raw.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  return raw
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
 }
 
 function resolveHeader(raw: string): FieldSpec | null {
@@ -184,7 +202,10 @@ function resolveHeader(raw: string): FieldSpec | null {
  * an ambiguous value (mixed . and , , or comma-grouping like "1,234") or non-numeric
  * garbage -> null + warning. Never a fake 0.
  */
-export function parseNumeric(raw: string | null | undefined): { value: number | null; warning: string | null } {
+export function parseNumeric(raw: string | null | undefined): {
+  value: number | null;
+  warning: string | null;
+} {
   if (raw == null) return { value: null, warning: null };
   const s = raw.trim();
   if (s === '') return { value: null, warning: null };
@@ -192,33 +213,40 @@ export function parseNumeric(raw: string | null | undefined): { value: number | 
   const hasComma = s.includes(',');
   const hasDot = s.includes('.');
   if (hasComma && hasDot) {
-    return { value: null, warning: `ambiguous number "${raw}" (mixed "," and "." separators) ignored` };
+    return {
+      value: null,
+      warning: `Niejednoznaczna liczba „${raw}” (mieszane separatory „,” i „.”) — pominięto`,
+    };
   }
   let normalized = s;
   if (hasComma) {
     if (/^[+-]?\d+,\d{1,2}$/.test(s)) {
       normalized = s.replace(',', '.'); // unambiguous EU decimal comma
     } else {
-      return { value: null, warning: `ambiguous number "${raw}" (unclear thousands/decimal comma) ignored` };
+      return {
+        value: null,
+        warning: `Niejednoznaczna liczba „${raw}” (niejasny separator tysięcy/dziesiętny) — pominięto`,
+      };
     }
   }
   const n = Number(normalized);
-  if (!Number.isFinite(n)) return { value: null, warning: `non-numeric value "${raw}" ignored` };
+  if (!Number.isFinite(n)) return { value: null, warning: `Pominięto nienumeryczną wartość „${raw}”` };
   return { value: n, warning: null };
 }
 
 /** Parse a tri-state product boolean. Recognizes common variants; blank -> null;
  * unrecognized -> null + warning (never silently coerced). */
-export function parseProductBoolean(
-  raw: string | null | undefined,
-): { value: ProductBooleanOrUnknown | null; warning: string | null } {
+export function parseProductBoolean(raw: string | null | undefined): {
+  value: ProductBooleanOrUnknown | null;
+  warning: string | null;
+} {
   if (raw == null) return { value: null, warning: null };
   const s = raw.trim().toLowerCase();
   if (s === '') return { value: null, warning: null };
   if (['true', 'yes', 'y', '1'].includes(s)) return { value: 'true', warning: null };
   if (['false', 'no', 'n', '0'].includes(s)) return { value: 'false', warning: null };
   if (['unknown', '?', 'na', 'n/a'].includes(s)) return { value: 'unknown', warning: null };
-  return { value: null, warning: `unrecognized boolean value "${raw}" ignored` };
+  return { value: null, warning: `Pominięto nierozpoznaną wartość logiczną „${raw}”` };
 }
 
 /** Assign a mapped value to a (compile-time-valid) ProductInsert field. */
@@ -314,13 +342,16 @@ export function mapRowToProductInsert(
   if (typeof ean === 'string') {
     const digits = ean.replace(/\D+/g, '');
     if (digits.length === 0) warnings.push('ean_code: no digits found');
-    else if (digits.length < 8) warnings.push(`ean_code: only ${digits.length} digits (looks short)`);
+    else if (digits.length < 8)
+      warnings.push(`ean_code: only ${digits.length} digits (looks short)`);
   }
 
   // identity validation
   const brand = typeof insert.brand === 'string' ? insert.brand.trim() : '';
-  const nameDisplay = typeof insert.product_name_display === 'string' ? insert.product_name_display.trim() : '';
-  const nameInternal = typeof insert.product_name_internal === 'string' ? insert.product_name_internal.trim() : '';
+  const nameDisplay =
+    typeof insert.product_name_display === 'string' ? insert.product_name_display.trim() : '';
+  const nameInternal =
+    typeof insert.product_name_internal === 'string' ? insert.product_name_internal.trim() : '';
   const hasBrand = brand !== '';
   const hasName = nameDisplay !== '' || nameInternal !== '';
 
@@ -343,7 +374,10 @@ export function mapRowToProductInsert(
  * Pure: parses the text, maps every non-blank data row, and tallies valid/warning/skip.
  * Persistence + dedupe (created/existing) is the D5C2 import service, not here.
  */
-export function parseProductTable(text: string, source: ProductIntakeSource = 'generic'): ProductIntakeResult {
+export function parseProductTable(
+  text: string,
+  source: ProductIntakeSource = 'generic',
+): ProductIntakeResult {
   const grid = parseCsv(text);
   if (grid.length === 0) return { total: 0, valid: 0, warnings: 0, skipped: 0, candidates: [] };
 

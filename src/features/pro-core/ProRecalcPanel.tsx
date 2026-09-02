@@ -9,32 +9,59 @@
  * stays intact. Preview rows render through the same pure ConstraintPreviewCard; failures render
  * the same honest Polish messages; a verify-failed apply renders the same BlockedApplyNotice.
  */
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { copy } from '@/copy/en';
+import { calculateRecipe } from '@/engine';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { useRecipeStore } from '@/stores/recipeStore';
+import { FriendlyLabMessageMotion } from '@/components/shared/FriendlyLabMessageMotion';
+import { recipeFitForInput } from '@/features/protein-gelato/proteinAuthority';
 import {
   constraintStudioCopy,
   formatGramsPl,
 } from '@/features/constraint-studio/constraintStudioCopy';
 import {
+  applyPreviewWithServerAuthority,
+  cancelPiRecalculation,
+  createExplicitStandardRemovalPreviewWithServerAuthority,
+  createSuggestedFixPreviewWithServerAuthority,
   isUndoAvailable,
+  openDirectionFallbackPreviewWithServerAuthority,
+  openStarterPackRescuePreviewWithServerAuthority,
+  requestStarterPackRescueWithServerAuthority,
+  runPiRecalculationWithTerminal,
+  unlockConstraintAndRecalculate,
   useConstraintStudioStore,
   type PreviewIssue,
+  type RecalculationTerminalState,
 } from '@/features/constraint-studio/constraintStudioStore';
 import {
   diagnoseRecalcFailure,
   isAllLocked,
   type RecalcDiagnosis,
 } from '@/features/constraint-studio/recalcDiagnosis';
-import { previewIssueMessagePl } from '@/features/constraint-studio/previewIssueMessage';
+import {
+  customerOptimizerNoSolutionPl,
+  customerPreviewIssueMessagePl,
+  customerStopReasonPl,
+} from '@/features/constraint-studio/customerConstraintStudioPresentation';
 import { BlockedApplyNotice } from '@/features/constraint-studio/ui/BlockedApplyNotice';
 import { ConstraintPreviewCard } from '@/features/constraint-studio/ui/ConstraintPreviewCard';
 import type { RecipeInput } from '@/engine';
 import type { ConstraintSet } from '@/features/recipe-constraints';
+import type { RescueIngredientAdvice } from '@/features/constraint-studio/rescueIngredientAdvisor';
+import type { StarterPackDirectionRescueReport } from '@/features/constraint-studio/starterPackDirectionRescue';
+import type { DirectionFallbackReport } from '@/features/constraint-studio/directionFallback';
+import {
+  productBehaviorIssuesSupportWorkingCopyRefresh,
+  refreshCurrentRecipeBehaviorWorkingCopy,
+} from '@/features/product-intelligence/refreshRecipeBehaviorWorkingCopy';
+import { useProCoreAccessStore } from '@/features/pro-core/proCoreAccessStore';
 
 const r = copy.proWorkbar.recalcPanel;
 const d = constraintStudioCopy.diagnosis;
+const FOCUSABLE =
+  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /** The headline for a classified failure — proven by the lock report below it. */
 function diagnosisMessage(diagnosis: RecalcDiagnosis, issue: PreviewIssue): string {
@@ -65,15 +92,85 @@ function diagnosisMessage(diagnosis: RecalcDiagnosis, issue: PreviewIssue): stri
     case 'no_active_locks':
       return d.noActiveLocks;
     case 'optimizer_no_solution': {
+      if (issue.code === 'no_proposal' && issue.directionTargetUnreached === true) {
+        return customerPreviewIssueMessagePl(issue);
+      }
       // The PROVEN failure: solver invocation count + the exact violated metrics.
       const labels = (diagnosis.violatedMetrics ?? []).map(
         (metric) => d.metricLabels[metric] ?? metric,
       );
-      return d.optimizerNoSolution(labels, diagnosis.solverInvocations ?? 0);
+      return customerOptimizerNoSolutionPl(labels);
     }
     default:
-      return previewIssueMessagePl(issue);
+      return customerPreviewIssueMessagePl(issue);
   }
+}
+
+/** Owner P0 NIGHTLY Phase 7(b) — the best-safe fixed point, rendered as an
+ * EXPLANATORY result: honest score, soft (provisional-band) deviations, the
+ * exact stop reason and the calibration status. Never a failure banner. */
+function BestSafeResultView({
+  issue,
+  input,
+}: {
+  issue: Extract<PreviewIssue, { code: 'best_safe_result' }>;
+  input: RecipeInput;
+}) {
+  const b = constraintStudioCopy.bestSafe;
+  // ACCEPTANCE ADDENDUM (2): the readout is the TECHNICAL fit dimension.
+  const match = useMemo(() => recipeFitForInput(input, calculateRecipe(input)), [input]);
+  const softLabels = issue.softViolatedMetrics.map((metric) => d.metricLabels[metric] ?? metric);
+  return (
+    <div className="space-y-2" data-testid="pro-recalc-best-safe">
+      <p className="text-sm leading-relaxed text-ivory/90">
+        {constraintStudioCopy.previewIssue.bestSafeResult}
+      </p>
+      <p className="text-xs leading-relaxed text-ivory/70" data-testid="pro-recalc-best-safe-score">
+        {b.scoreLine(match.display, match.label)}
+      </p>
+      <p className="text-xs leading-relaxed text-ivory/70">
+        {softLabels.length > 0 ? b.softDeviations(softLabels) : b.noSoftDeviations}
+      </p>
+      <p className="text-xs leading-relaxed text-ivory/60">
+        {customerStopReasonPl(issue.stopReason)}
+      </p>
+      {/* Owner CURRENT-DRAFT P0 (Phase 4): the REAL evidence behind the stop —
+          what was searched, over which of the user's own ingredients, across
+          which gram range, and which metrics are still limiting. */}
+      <div className="space-y-1" data-testid="pro-recalc-best-safe-evidence">
+        {issue.evidence.testedCandidates.map((candidate) => (
+          <p
+            key={candidate.ingredientName}
+            className="text-xs leading-relaxed text-ivory/70"
+            data-testid="pro-recalc-tested-candidate"
+          >
+            {b.evidenceCandidate(
+              candidate.ingredientName,
+              formatGramsPl(candidate.currentGrams),
+              formatGramsPl(candidate.testedFromGrams),
+              formatGramsPl(candidate.testedToGrams),
+            )}
+          </p>
+        ))}
+        {issue.evidence.limitingMetrics.length > 0 ? (
+          <p className="text-xs leading-relaxed text-ivory/60">
+            {b.evidenceLimiting(
+              issue.evidence.limitingMetrics.map((metric) => d.metricLabels[metric] ?? metric),
+            )}
+          </p>
+        ) : null}
+        {issue.evidence.provisionalProfile ? (
+          <p className="text-xs leading-relaxed text-ivory/60">{b.evidenceProvisional}</p>
+        ) : null}
+      </div>
+      <p className="text-xs leading-relaxed text-ivory/60">{b.calibration[issue.bandSource]}</p>
+      {/* Template similarity is PROVENANCE ONLY — never the score, never the
+          reason (owner CURRENT-DRAFT P0 Phase 4/5). */}
+      <p className="text-xs leading-relaxed text-ivory/65">
+        {b.templateSimilarityLabel} — {b.templateLine(issue.templateId)}
+      </p>
+    </div>
+  );
 }
 
 /** Failed recalculation: the classified cause + the VERIFIED per-ingredient lock report. */
@@ -82,30 +179,279 @@ function RecalcDiagnosisView({
   input,
   constraints,
   servingModeId,
+  onReturnToRecipe,
+  onChooseOtherProduct,
+  onCompleteProductData,
+  onRefreshProductBehavior,
+  refreshingProductBehavior,
+  productBehaviorRefreshError,
+  onUnlockAndPreview,
+  onSetAdvisoryMaximum,
+  onRemoveStandardAndPreview,
+  terminal,
+  rescueAdvice = null,
+  starterPackRescueReport = null,
+  starterPackRescuePending = false,
+  onAddRescueIngredient,
+  onOpenStarterPackRescue,
 }: {
   issue: PreviewIssue;
   input: RecipeInput;
   constraints: ConstraintSet;
   servingModeId: string | null;
+  onReturnToRecipe: (lineId: string | null) => void;
+  onChooseOtherProduct: () => void;
+  onCompleteProductData: () => void;
+  onRefreshProductBehavior: () => void;
+  refreshingProductBehavior: boolean;
+  productBehaviorRefreshError: string | null;
+  onUnlockAndPreview: (lineId: string) => void;
+  onSetAdvisoryMaximum: (lineId: string, grams: number) => void;
+  onRemoveStandardAndPreview: (lineId: string) => void;
+  terminal: RecalculationTerminalState;
+  rescueAdvice?: RescueIngredientAdvice | null;
+  starterPackRescueReport?: StarterPackDirectionRescueReport | null;
+  starterPackRescuePending?: boolean;
+  onAddRescueIngredient?: () => void;
+  onOpenStarterPackRescue?: () => void;
 }) {
   // "Already in band" is not a failure — keep the friendly note, no diagnosis table.
   if (issue.code === 'already_clean') {
     return (
       <p className="text-sm leading-relaxed text-ivory/70" data-testid="pro-recalc-issue">
-        {previewIssueMessagePl(issue)}
+        {customerPreviewIssueMessagePl(issue)}
       </p>
     );
   }
 
+  // Owner P0 NIGHTLY Phase 7(b): the BEST-SAFE FIXED POINT is an explanatory
+  // result, NEVER rendered as a failure — score, soft deviations, stop reason
+  // and calibration status, with the recipe unchanged and honestly usable.
+  if (issue.code === 'best_safe_result') {
+    return <BestSafeResultView issue={issue} input={input} />;
+  }
+
+  if (issue.code === 'standard_presence_removal_required') {
+    const metricLabel =
+      constraintStudioCopy.diagnosis.metricLabels[issue.limitingMetric] ?? issue.limitingMetric;
+    return (
+      <div className="space-y-3" data-testid="pro-recalc-standard-removal-required">
+        <div className="space-y-1">
+          <p className="text-sm font-semibold text-ivory">
+            Ten składnik trzeba usunąć albo zmienić
+          </p>
+          <p className="text-sm leading-relaxed text-ivory/85">{issue.messagePl}</p>
+        </div>
+        <dl className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-1 text-xs text-ivory/70">
+          <dt>Aktualna ilość</dt>
+          <dd className="font-mono tabular-nums">{formatGramsPl(issue.currentGrams)}</dd>
+          <dt>Najlepsza próba bez usuwania</dt>
+          <dd className="font-mono tabular-nums">
+            {formatGramsPl(issue.bestAttemptedNonZeroGrams)}
+          </dd>
+          <dt>Ograniczający parametr</dt>
+          <dd>{metricLabel}</dd>
+          <dt>Akceptowany zakres</dt>
+          <dd className="font-mono tabular-nums">
+            {issue.acceptedMin === null || issue.acceptedMax === null
+              ? '—'
+              : `${issue.acceptedMin}–${issue.acceptedMax}`}
+          </dd>
+        </dl>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className="inline-flex min-h-11 items-center justify-center rounded-lg bg-ivory px-4 py-2 text-sm font-semibold text-shell transition-colors hover:bg-ivory/90"
+            data-testid="pro-recalc-remove-standard-preview"
+            onClick={() => onRemoveStandardAndPreview(issue.lineId)}
+          >
+            Usuń składnik i pokaż podgląd
+          </button>
+          <button
+            type="button"
+            className="inline-flex min-h-11 items-center justify-center rounded-lg border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
+            data-testid="pro-recalc-return-from-standard-removal"
+            onClick={() => onReturnToRecipe(issue.lineId)}
+          >
+            Wróć do receptury
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // Owner P0 (full formulation): honest structured states with their exact
-  // messages — no lock table (locks are not the cause).
-  if (issue.code === 'unsupported_profile' || issue.code === 'missing_required_role') {
+  // messages — no lock table (locks are not the cause). Owner Agent 3:
+  // `impossible_under_constraints` carries its complete message (conflicting
+  // constraint + engine-verified nearest feasible value) the same way.
+  const productBehaviorRefreshable =
+    issue.code === 'product_behavior_invalid' &&
+    productBehaviorIssuesSupportWorkingCopyRefresh(issue.productBehaviorIssues ?? []);
+  const productBehaviorNeedsProductActions =
+    issue.code === 'product_behavior_invalid' &&
+    !productBehaviorRefreshable &&
+    (terminal.state === 'PRODUCT_DATA_REQUIRED' || terminal.state === 'MAPPER_BINDING_REQUIRED');
+
+  if (
+    issue.code === 'unsupported_profile' ||
+    issue.code === 'practicalization_blocked' ||
+    issue.code === 'missing_prices' ||
+    issue.code === 'missing_required_role' ||
+    issue.code === 'vegan_ingredient_conflict' ||
+    issue.code === 'vegan_profile_constraint' ||
+    issue.code === 'impossible_under_constraints' ||
+    issue.code === 'product_behavior_invalid'
+  ) {
     return (
       <div className="space-y-2" data-testid="pro-recalc-diagnosis" data-code={issue.code}>
-        <p className="text-sm leading-relaxed text-ivory/85">{previewIssueMessagePl(issue)}</p>
+        {productBehaviorRefreshable && issue.code === 'product_behavior_invalid' ? (
+          <div className="space-y-1" data-testid="pro-recalc-product-behavior-refresh-copy">
+            <p className="text-sm leading-relaxed text-ivory/90">
+              Dane produktów w tej wersji są nieaktualne
+            </p>
+            <p className="text-xs leading-relaxed text-ivory/70">
+              Dotyczy:{' '}
+              {[...new Set(issue.productBehaviorIssues?.map((entry) => entry.lineName) ?? [])].join(
+                ', ',
+              )}
+              . Historyczna wersja pozostanie bez zmian.
+            </p>
+          </div>
+        ) : (
+          <p className="text-sm leading-relaxed text-ivory/85">
+            {customerPreviewIssueMessagePl(issue)}
+          </p>
+        )}
         <p className="text-xs text-ivory/60" data-testid="pro-recalc-unchanged">
           {d.unchanged}
         </p>
+        {issue.code === 'missing_required_role' && issue.role === 'product_dose' ? (
+          <button
+            type="button"
+            className="inline-flex min-h-11 items-center justify-center rounded-lg border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
+            data-testid="pro-recalc-return-to-product-dose"
+            onClick={() => onReturnToRecipe(issue.lineIds?.[0] ?? null)}
+          >
+            Wróć do receptury
+          </button>
+        ) : null}
+        {/* A user-supplied flavour role (a sorbet's fruit, a chocolate gelato's
+            chocolate) can only be resolved by choosing a product, so offer that
+            directly instead of leaving „Wróć do receptury" as the only way out. */}
+        {issue.code === 'missing_required_role' && issue.role !== 'product_dose' ? (
+          <button
+            type="button"
+            className="inline-flex min-h-11 items-center justify-center rounded-lg bg-ivory px-4 py-2 text-sm font-semibold text-shell transition-colors hover:bg-ivory/90"
+            data-testid="pro-recalc-choose-user-supplied-product"
+            onClick={onChooseOtherProduct}
+          >
+            Wybierz składnik
+          </button>
+        ) : null}
+        {issue.code === 'impossible_under_constraints' ? (
+          <div className="flex flex-wrap gap-2">
+            {issue.conflict && issue.nearestFeasibleGrams !== null ? (
+              <button
+                type="button"
+                className="inline-flex min-h-11 items-center justify-center rounded-lg bg-ivory px-4 py-2 text-sm font-semibold text-shell transition-colors hover:bg-ivory/90"
+                data-testid="pro-recalc-set-advisory-maximum"
+                onClick={() =>
+                  onSetAdvisoryMaximum(issue.conflict!.lineId, issue.nearestFeasibleGrams!)
+                }
+              >
+                {`Ustaw ${formatGramsPl(issue.nearestFeasibleGrams)}`}
+              </button>
+            ) : null}
+            {issue.conflict ? (
+              <button
+                type="button"
+                className="inline-flex min-h-11 items-center justify-center rounded-lg border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
+                data-testid="pro-recalc-unlock-and-preview"
+                onClick={() => onUnlockAndPreview(issue.conflict!.lineId)}
+              >
+                Odblokuj i pokaż podgląd
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="inline-flex min-h-11 items-center justify-center rounded-lg border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
+              data-testid="pro-recalc-return-to-locks"
+              onClick={() => onReturnToRecipe(issue.conflict?.lineId ?? null)}
+            >
+              Zostaw bez zmian
+            </button>
+          </div>
+        ) : null}
+        {productBehaviorRefreshable ? (
+          <div className="space-y-2" data-testid="pro-recalc-product-behavior-refresh">
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="inline-flex min-h-11 items-center justify-center rounded-lg bg-ivory px-4 py-2 text-sm font-semibold text-shell transition-colors hover:bg-ivory/90 disabled:cursor-wait disabled:opacity-60"
+                data-testid="pro-recalc-refresh-product-behavior"
+                disabled={refreshingProductBehavior}
+                onClick={onRefreshProductBehavior}
+              >
+                {refreshingProductBehavior
+                  ? 'Tworzę nową wersję roboczą…'
+                  : 'Utwórz nową wersję z aktualnymi danymi produktów'}
+              </button>
+              <button
+                type="button"
+                className="inline-flex min-h-11 items-center justify-center rounded-lg border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
+                disabled={refreshingProductBehavior}
+                onClick={() => onReturnToRecipe(null)}
+              >
+                Wróć do receptury
+              </button>
+            </div>
+            {productBehaviorRefreshError ? (
+              <p className="text-xs leading-relaxed text-status-risky" role="alert">
+                {productBehaviorRefreshError}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+        {productBehaviorNeedsProductActions ? (
+          <div className="flex flex-wrap gap-2" data-testid="pro-recalc-product-data-actions">
+            <button
+              type="button"
+              className="inline-flex min-h-11 items-center justify-center rounded-lg border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
+              onClick={onChooseOtherProduct}
+            >
+              Wybierz inny produkt
+            </button>
+            <button
+              type="button"
+              className="inline-flex min-h-11 items-center justify-center rounded-lg border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
+              onClick={onCompleteProductData}
+            >
+              Uzupełnij dane produktu
+            </button>
+            <button
+              type="button"
+              className="inline-flex min-h-11 items-center justify-center rounded-lg border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
+              onClick={() => onReturnToRecipe(issue.violations[0]?.lineIds[0] ?? null)}
+            >
+              Wróć do receptury
+            </button>
+          </div>
+        ) : null}
+        {!(
+          (issue.code === 'missing_required_role' && issue.role === 'product_dose') ||
+          issue.code === 'impossible_under_constraints' ||
+          productBehaviorRefreshable ||
+          productBehaviorNeedsProductActions
+        ) ? (
+          <button
+            type="button"
+            className="inline-flex min-h-11 items-center justify-center rounded-lg border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
+            data-testid="pro-recalc-return-to-recipe"
+            onClick={() => onReturnToRecipe(null)}
+          >
+            Wróć do receptury
+          </button>
+        ) : null}
       </div>
     );
   }
@@ -117,12 +463,14 @@ function RecalcDiagnosisView({
     <div className="space-y-3" data-testid="pro-recalc-diagnosis" data-code={diagnosis.code}>
       <p className="text-sm leading-relaxed text-ivory/85">{diagnosisMessage(diagnosis, issue)}</p>
       {diagnosis.pouredCount > 0 ? (
-        <p className="text-xs leading-relaxed text-amber-300/90">{d.pouredNote(diagnosis.pouredCount)}</p>
+        <p className="text-xs leading-relaxed text-amber-300/90">
+          {d.pouredNote(diagnosis.pouredCount)}
+        </p>
       ) : null}
 
       {lockedRows.length > 0 ? (
         <div className="rounded-md border border-ivory/15 px-3 py-3">
-          <p className="text-[0.65rem] font-medium tracking-label text-ivory/50 uppercase">
+          <p className="text-xs font-medium tracking-label text-ivory/75 uppercase">
             {d.lockTable.heading}
           </p>
           <div className="mt-2 divide-y divide-ivory/10">
@@ -138,10 +486,10 @@ function RecalcDiagnosisView({
                   <span className="font-mono text-ivory/70 tabular-nums">
                     {formatGramsPl(row.actualGrams ?? row.plannedGrams)}
                   </span>
-                  <span className={row.adjustable ? 'text-ivory/40' : 'text-status-risky'}>
+                  <span className={row.adjustable ? 'text-ivory/60' : 'text-status-risky'}>
                     {d.lockTable.state[row.lockState]}
                   </span>
-                  <span className="text-ivory/40">{d.lockTable.source[row.source]}</span>
+                  <span className="text-ivory/60">{d.lockTable.source[row.source]}</span>
                 </span>
               </div>
             ))}
@@ -149,19 +497,439 @@ function RecalcDiagnosisView({
         </div>
       ) : null}
 
+      <StarterPackRescueDecision
+        report={starterPackRescueReport}
+        pending={starterPackRescuePending}
+        onOpen={onOpenStarterPackRescue}
+      />
+      {!starterPackRescueReport && !starterPackRescuePending && rescueAdvice ? (
+        <RescueAdviceHint advice={rescueAdvice ?? null} onAddIngredient={onAddRescueIngredient} />
+      ) : null}
       <p className="text-xs text-ivory/60" data-testid="pro-recalc-unchanged">
         {d.unchanged}
       </p>
+      <button
+        type="button"
+        className="inline-flex min-h-11 items-center justify-center rounded-lg border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
+        data-testid="pro-recalc-return-to-recipe"
+        onClick={() => onReturnToRecipe(null)}
+      >
+        Wróć do receptury
+      </button>
     </div>
   );
 }
 
-export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function StarterPackRescueDecision({
+  report,
+  pending,
+  onOpen,
+}: {
+  report: StarterPackDirectionRescueReport | null;
+  pending: boolean;
+  onOpen?: () => void;
+}) {
+  if (pending) {
+    return (
+      <div
+        className="rounded-md border border-ivory/15 bg-ivory/[0.05] px-3 py-3"
+        data-testid="direction-alternative-working"
+      >
+        <p className="text-xs leading-relaxed text-ivory/75">Sprawdzam inną możliwość…</p>
+      </div>
+    );
+  }
+  if (!report) return null;
+  if (!report.best) {
+    return (
+      <div
+        className="rounded-md border border-ivory/15 bg-ivory/[0.05] px-3 py-3"
+        data-testid="direction-alternative-none"
+      >
+        <p className="text-xs leading-relaxed text-ivory/75">
+          Nie udało się znaleźć lepszego bezpiecznego wariantu.
+        </p>
+      </div>
+    );
+  }
+  return (
+    <div
+      className="rounded-md border border-ivory/15 bg-ivory/[0.05] px-3 py-3"
+      data-testid="direction-alternative-decision"
+    >
+      <p className="text-xs leading-relaxed text-ivory/75">Wymaga to zmiany receptury.</p>
+      {onOpen ? (
+        <button
+          type="button"
+          onClick={onOpen}
+          data-testid="direction-alternative-open-preview"
+          className="mt-2 min-h-11 rounded-lg bg-ivory px-4 py-2.5 text-sm font-medium text-shell"
+        >
+          Zobacz propozycję
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+const formatDirectionLevel = (level: number): string => (level > 0 ? `+${level}` : `${level}`);
+
+/** Final owner-approved compact decision surface. Internal ingredient-search
+ * concepts and ingredient names stay hidden until an exact Preview is opened. */
+export function DirectionFallbackDecision({
+  fallbackReport,
+  alternativeReport,
+  alternativePending,
+  onUseFallback,
+  onTryAlternative,
+  onOpenAlternative,
+  onBack,
+}: {
+  fallbackReport: DirectionFallbackReport;
+  alternativeReport: StarterPackDirectionRescueReport | null;
+  alternativePending: boolean;
+  onUseFallback: () => void;
+  onTryAlternative: () => void;
+  onOpenAlternative: () => void;
+  onBack: () => void;
+}) {
+  const requested = fallbackReport.requestedTargets;
+  const fallback = fallbackReport.best?.targets ?? null;
+  const axes = ['sweetness', 'softness', 'creaminess', 'flavor'] as const;
+  const changedAxis =
+    axes.find((axis) => fallback?.[axis] !== undefined && fallback[axis] !== requested[axis]) ??
+    axes.find((axis) => requested[axis] !== 0);
+  const requestedLevel = formatDirectionLevel(changedAxis ? requested[changedAxis] : 0);
+  const fallbackLevel =
+    changedAxis && fallback ? formatDirectionLevel(fallback[changedAxis]) : null;
+  const surface = 'space-y-3 rounded-md border border-nonprod/50 bg-nonprod/[0.06] px-4 py-4';
+  const primary = 'min-h-11 rounded-lg bg-ivory px-4 py-2.5 text-sm font-medium text-shell';
+  const secondary =
+    'min-h-11 rounded-lg border border-ivory/20 px-4 py-2.5 text-sm font-medium text-ivory';
+
+  if (alternativePending) {
+    return (
+      <div className={surface} data-testid="direction-fallback-decision">
+        <div>
+          <p className="text-sm font-medium text-ivory">Sprawdzam inną możliwość…</p>
+          <p className="mt-1 text-xs text-ivory/70">Receptura pozostaje bez zmian.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {fallbackLevel ? (
+            <button type="button" className={secondary} onClick={onUseFallback}>
+              Zostań przy {fallbackLevel}
+            </button>
+          ) : null}
+          <button type="button" className={secondary} onClick={onBack}>
+            Wróć
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (alternativeReport !== null) {
+    const alternative = alternativeReport.best;
+    if (!alternative) {
+      return (
+        <div className={surface} data-testid="direction-fallback-final">
+          <div>
+            <p className="text-sm font-medium text-ivory">
+              Poziomu {requestedLevel} nie da się osiągnąć dla tej receptury
+            </p>
+            <p className="mt-1 text-xs text-ivory/70">
+              {fallbackLevel
+                ? `Najbliższy bezpieczny poziom to ${fallbackLevel}.`
+                : 'Z obecną recepturą nie ma bezpiecznego wariantu.'}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {fallbackLevel ? (
+              <button type="button" className={primary} onClick={onUseFallback}>
+                Ustaw {fallbackLevel}
+              </button>
+            ) : null}
+            <button type="button" className={secondary} onClick={onBack}>
+              Wróć
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className={surface} data-testid="direction-fallback-alternative">
+        <div>
+          <p className="text-sm font-medium text-ivory">
+            {alternative.targetReached
+              ? `Można osiągnąć poziom ${requestedLevel}`
+              : `Można zbliżyć się bardziej do poziomu ${requestedLevel}`}
+          </p>
+          <p className="mt-1 text-xs text-ivory/70">Wymaga to zmiany receptury.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className={primary} onClick={onOpenAlternative}>
+            Zobacz propozycję
+          </button>
+          {fallbackLevel ? (
+            <button type="button" className={secondary} onClick={onUseFallback}>
+              Zostań przy {fallbackLevel}
+            </button>
+          ) : null}
+          <button type="button" className={secondary} onClick={onBack}>
+            Wróć
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={surface} data-testid="direction-fallback-decision">
+      <div>
+        <p className="text-sm font-medium text-ivory">
+          {fallbackLevel
+            ? `Nie da się osiągnąć poziomu ${requestedLevel}`
+            : 'Nie udało się osiągnąć wybranego poziomu'}
+        </p>
+        <p className="mt-1 text-xs text-ivory/70">
+          {fallbackLevel
+            ? `Najbliższy możliwy poziom to ${fallbackLevel}.`
+            : 'Z obecną recepturą nie ma bezpiecznego wariantu.'}
+        </p>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {fallbackLevel ? (
+          <button
+            type="button"
+            className={primary}
+            data-testid="direction-fallback-use"
+            onClick={onUseFallback}
+          >
+            Ustaw {fallbackLevel}
+          </button>
+        ) : null}
+        <button
+          type="button"
+          className={fallbackLevel ? secondary : primary}
+          data-testid="direction-fallback-try-alternative"
+          onClick={onTryAlternative}
+        >
+          Spróbuj inaczej
+        </button>
+        <button type="button" className={secondary} onClick={onBack}>
+          Wróć
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Owner 2026-08-22 — simulation-proven rescue ingredient hint. Rendered ONLY
+ * when the advisor proved that adding ONE approved ingredient materially
+ * improves the legal result. PI never adds it: the user adds it through the
+ * normal "Dodaj składnik" flow and runs a NEW Preview.
+ */
+export function RescueAdviceHint({
+  advice,
+  onAddIngredient,
+}: {
+  advice: RescueIngredientAdvice | null;
+  onAddIngredient?: () => void;
+}) {
+  if (!advice) return null;
+  return (
+    <div
+      className="rounded-md border border-ivory/15 bg-ivory/[0.05] px-3 py-3"
+      data-testid="direction-rescue-advice"
+      data-ingredient={advice.candidate.canonicalIngredientId}
+    >
+      <p className="text-xs font-medium text-ivory">
+        Możliwy kolejny krok: {advice.candidate.namePl}
+      </p>
+      <p className="mt-1 text-xs leading-relaxed text-ivory/70">{advice.reasonPl}</p>
+      <p className="mt-1 text-xs leading-relaxed text-ivory/70">
+        Gellatti nie doda tego składnika automatycznie. Wróć do Receptury, wybierz „Dodaj składnik”
+        i dodaj zweryfikowany produkt. Następnie przelicz ponownie — podgląd musi potwierdzić
+        twardość, zamrożenie, ciała stałe i wszystkie bezpieczne zakresy.
+      </p>
+      {onAddIngredient ? (
+        <button
+          type="button"
+          onClick={onAddIngredient}
+          data-testid="direction-rescue-add-ingredient"
+          className="mt-2 min-h-11 rounded-lg border border-ivory/20 px-4 py-2.5 text-sm font-medium text-ivory"
+        >
+          Wróć i dodaj składnik
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+export function DirectionBestDecision({
+  candidate,
+  onAccept,
+  onBack,
+  rescueAdvice = null,
+  starterPackRescueReport = null,
+  starterPackRescuePending = false,
+  onAddRescueIngredient,
+  onOpenStarterPackRescue,
+}: {
+  candidate: import('@/features/constraint-studio/applyPipeline').ConstraintPreview;
+  onAccept: () => void;
+  onBack: () => void;
+  rescueAdvice?: RescueIngredientAdvice | null;
+  starterPackRescueReport?: StarterPackDirectionRescueReport | null;
+  starterPackRescuePending?: boolean;
+  onAddRescueIngredient?: () => void;
+  onOpenStarterPackRescue?: () => void;
+}) {
+  const assessment = candidate.directionAssessment;
+  const labels: Record<string, string> = {
+    sweetness: 'Słodycz',
+    softness: 'Miękkość',
+    creaminess: 'Kremowość',
+    flavor: 'Intensywność smaku',
+  };
+  const missed = assessment?.residuals.filter((residual) => !residual.reached) ?? [];
+  return (
+    <div
+      className="space-y-3 rounded-md border border-nonprod/50 bg-nonprod/[0.06] px-4 py-4"
+      data-testid="direction-best-decision"
+    >
+      <div>
+        <p className="text-sm font-medium text-ivory">Nie mogę osiągnąć dokładnie wybranego celu</p>
+        <p className="mt-1 text-xs text-ivory/70">
+          Najbliższy poprawny wynik: {assessment?.score ?? 9}/10
+        </p>
+      </div>
+      {missed.length > 0 ? (
+        <div className="space-y-1" data-testid="direction-best-residuals">
+          {missed.map((residual) => (
+            <p key={residual.axis} className="text-xs text-nonprod">
+              {labels[residual.axis] ?? residual.axis}: cel nieosiągnięty
+            </p>
+          ))}
+        </div>
+      ) : null}
+      <p className="text-xs text-ivory/65">
+        Wszystkie natywne wymagania technologiczne pozostają ważne
+      </p>
+      <StarterPackRescueDecision
+        report={starterPackRescueReport}
+        pending={starterPackRescuePending}
+        onOpen={onOpenStarterPackRescue}
+      />
+      {!starterPackRescueReport && !starterPackRescuePending ? (
+        <RescueAdviceHint advice={rescueAdvice} onAddIngredient={onAddRescueIngredient} />
+      ) : null}
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={onAccept}
+          data-testid="direction-best-accept"
+          className={
+            starterPackRescueReport?.best
+              ? 'min-h-11 rounded-lg border border-ivory/20 px-4 py-2.5 text-sm font-medium text-ivory'
+              : 'min-h-11 rounded-lg bg-ivory px-4 py-2.5 text-sm font-medium text-shell'
+          }
+        >
+          Przelicz najlepiej możliwie
+        </button>
+        <button
+          type="button"
+          onClick={onBack}
+          data-testid="direction-best-back"
+          className="min-h-11 rounded-lg border border-ivory/20 px-4 py-2.5 text-sm font-medium text-ivory"
+        >
+          Wróć
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export function ProRecalcPanel({
+  open,
+  onClose,
+  retryRunner = runPiRecalculationWithTerminal,
+}: {
+  open: boolean;
+  onClose: () => void;
+  /** Test seam for the recovery button; production always uses the canonical
+   * request-generation + timeout wrapper. */
+  retryRunner?: () => Promise<void>;
+}) {
+  const panelRef = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
+  const [refreshingProductBehavior, setRefreshingProductBehavior] = useState(false);
+  const [productBehaviorRefreshError, setProductBehaviorRefreshError] = useState<string | null>(
+    null,
+  );
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    if (!open) return;
+    const body = document.body;
+    const previousOverflow = body.style.overflow;
+    const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    body.style.overflow = 'hidden';
+    const focusables = () =>
+      panelRef.current ? Array.from(panelRef.current.querySelectorAll<HTMLElement>(FOCUSABLE)) : [];
+    (focusables()[0] ?? panelRef.current)?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        if (useConstraintStudioStore.getState().recalculationTerminal?.state === 'WORKING') {
+          cancelPiRecalculation();
+        }
+        onCloseRef.current();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const list = focusables();
+      const first = list[0];
+      const last = list[list.length - 1];
+      if (!first || !last) {
+        event.preventDefault();
+        panelRef.current?.focus();
+        return;
+      }
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      body.style.overflow = previousOverflow;
+      trigger?.focus();
+    };
+  }, [open]);
+
   const preview = useConstraintStudioStore((s) => s.preview);
+  const applyPending = useConstraintStudioStore((s) => s.applyPending);
+  const directionBestCandidate = useConstraintStudioStore((s) => s.directionBestCandidate);
+  const directionFallbackReport = useConstraintStudioStore((s) => s.directionFallbackReport);
+  const rescueAdvice = useConstraintStudioStore((s) => s.rescueAdvice);
+  const starterPackRescueReport = useConstraintStudioStore((s) => s.starterPackRescueReport);
+  const starterPackRescuePending = useConstraintStudioStore((s) => s.starterPackRescuePending);
   const previewIssue = useConstraintStudioStore((s) => s.previewIssue);
   const blocked = useConstraintStudioStore((s) => s.blocked);
   const history = useConstraintStudioStore((s) => s.history);
+  const recalculationTerminal = useConstraintStudioStore((s) => s.recalculationTerminal);
   const constraints = useConstraintStudioStore((s) => s.constraints);
+  const canViewTechnicalDetails = useProCoreAccessStore(
+    (s) => s.effectiveAccess?.canAdmin === true,
+  );
   // Actions are stable references — reading them once via getState is safe.
   const store = useConstraintStudioStore.getState();
 
@@ -172,6 +940,8 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
   const machineCapacityGrams = useRecipeStore((s) => s.machine_capacity_grams);
   const flavorIntensity = useRecipeStore((s) => s.flavor_intensity);
   const costPriority = useRecipeStore((s) => s.cost_priority);
+  const directionTargets = useRecipeStore((s) => s.direction_targets);
+  const directionTargetsActive = useRecipeStore((s) => s.direction_targets_active);
   const items = useRecipeStore((s) => s.items);
   const servingModeId = useRecipeStore((s) => s.servingModeId);
 
@@ -186,69 +956,376 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
         flavor_intensity: flavorIntensity,
         cost_priority: costPriority,
         items,
+        direction_targets: directionTargets,
+        direction_targets_active: directionTargetsActive,
       }),
-    [mode, category, temperatureC, batchGrams, machineCapacityGrams, flavorIntensity, costPriority, items],
+    [
+      mode,
+      category,
+      temperatureC,
+      batchGrams,
+      machineCapacityGrams,
+      flavorIntensity,
+      costPriority,
+      directionTargets,
+      directionTargetsActive,
+      items,
+    ],
   );
 
   const undoAvailable = isUndoAvailable(history[history.length - 1], currentInput, constraints);
 
+  const returnToProductDose = (lineId: string | null) => {
+    onClose();
+    if (!lineId) return;
+    window.requestAnimationFrame(() => {
+      const control = Array.from(
+        document.querySelectorAll<HTMLElement>('[data-testid^="row-grams-control-"]'),
+      ).find((element) => element.dataset.testid === `row-grams-control-${lineId}`);
+      control?.querySelector<HTMLElement>('[role="spinbutton"]')?.focus();
+    });
+  };
+
+  const openBaseProductPicker = () => {
+    onClose();
+    window.requestAnimationFrame(() => {
+      document
+        .querySelector<HTMLButtonElement>(
+          '[data-picker-scope="BASE_FORMULATION"] button[aria-haspopup="dialog"]',
+        )
+        ?.click();
+    });
+  };
+
+  const goToProductData = () => {
+    window.location.assign('/products/scan');
+  };
+
+  const goToSettings = () => {
+    onClose();
+    window.requestAnimationFrame(() => {
+      window.dispatchEvent(new CustomEvent('pinguino:profile-settings-required'));
+    });
+  };
+
+  const unlockAndPreview = (lineId: string) => {
+    void unlockConstraintAndRecalculate(lineId);
+  };
+
+  /** CROWN-OFF LOCKED ANCHOR (owner, 2026-09-02). The advisory maximum is
+   * already computed by the canonical search (`nearestFeasibleGrams`); this is
+   * the customer's one-click acceptance of it. `constraintSetAfterSuggestedFix`
+   * writes `{ mode: 'locked', grams }`, so the gram lock stays CLOSED at the new
+   * value — an accepted maximum is still the customer's requirement, never a
+   * silent unlock. */
+  const setAdvisoryMaximum = (lineId: string, grams: number) => {
+    void createSuggestedFixPreviewWithServerAuthority({ type: 'set_max', lineId, grams });
+  };
+
+  const refreshProductBehavior = () => {
+    if (refreshingProductBehavior) return;
+    setRefreshingProductBehavior(true);
+    setProductBehaviorRefreshError(null);
+    void (async () => {
+      try {
+        const result = await refreshCurrentRecipeBehaviorWorkingCopy();
+        if (!result.ok) {
+          const names = [...new Set(result.issues.map((issue) => issue.lineName))];
+          const suffix = names.length > 0 ? ` Dotyczy: ${names.join(', ')}.` : '';
+          setProductBehaviorRefreshError(
+            result.code === 'current_authority_unresolved' ||
+              result.code === 'current_authority_invalid'
+              ? `Nie udało się potwierdzić aktualnych danych wszystkich produktów.${suffix}`
+              : result.code === 'recipe_changed'
+                ? 'Receptura zmieniła się podczas odświeżania. Uruchom tę operację ponownie.'
+                : result.code === 'authentication_required'
+                  ? 'Zaloguj się ponownie i uruchom tę operację jeszcze raz.'
+                  : result.code === 'saved_version_required'
+                    ? 'Ta operacja wymaga otwartej, zapisanej wersji receptury.'
+                    : 'Nie udało się utworzyć nowej wersji roboczej. Receptura pozostała bez zmian.',
+          );
+          return;
+        }
+        await runPiRecalculationWithTerminal();
+      } catch {
+        setProductBehaviorRefreshError(
+          'Nie udało się odświeżyć danych produktów. Receptura pozostała bez zmian.',
+        );
+      } finally {
+        setRefreshingProductBehavior(false);
+      }
+    })();
+  };
+
+  const closeOrCancel = () => {
+    if (recalculationTerminal?.state === 'WORKING') cancelPiRecalculation();
+    onClose();
+  };
+
+  const retryRecalculation = () => {
+    void retryRunner();
+  };
+
   if (!open) return null;
+  const customerPreviewOpen = preview !== null && recalculationTerminal?.state === 'PREVIEW_READY';
+  const dialogLabel = customerPreviewOpen ? 'Sprawdź proponowaną korektę.' : r.title;
+  const previewCard = preview ? (
+    <ConstraintPreviewCard
+      preview={preview}
+      applyPending={applyPending}
+      showCloseControl
+      showTechnicalDetails={canViewTechnicalDetails}
+      onApply={() => {
+        void (async () => {
+          await applyPreviewWithServerAuthority();
+          // Close only after the same terminal server validation used by
+          // Constraint Studio. A stale/blocked preview stays visible.
+          const after = useConstraintStudioStore.getState();
+          if (after.preview === null && after.blocked === null) onClose();
+        })();
+      }}
+      onCancel={() => {
+        store.cancelPreview();
+        onClose();
+      }}
+    />
+  ) : null;
 
+  // One-screen workbench (owner 2026-07-24): the recalculation is a COMPACT OVERLAY
+  // (520–720 px), never a giant page section. Zastosuj closes the overlay — the
+  // editor + LIVE Monitor update in place and the bottom action bar carries the
+  // applied confirmation + Cofnij. Same store pipeline, same testids.
   return (
-    <section
-      aria-label={r.title}
-      data-testid="pro-recalc-panel"
-      className="mt-3 rounded-lg bg-shell px-4 py-4 text-ivory [color-scheme:dark]"
-    >
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-medium tracking-label text-ivory/60 uppercase">{r.title}</p>
-        <button
-          type="button"
-          onClick={onClose}
-          data-testid="pro-recalc-close"
-          className="rounded-md border border-ivory/20 px-3 py-1.5 text-xs font-medium text-ivory transition-colors hover:border-ivory/40"
-        >
-          {r.close}
-        </button>
-      </div>
-
-      <div className="mt-3 space-y-3">
-        {blocked ? <BlockedApplyNotice blocked={blocked} onDismiss={store.dismissBlocked} /> : null}
-
-        {previewIssue ? (
-          <RecalcDiagnosisView
-            issue={previewIssue}
-            input={currentInput}
-            constraints={constraints}
-            servingModeId={servingModeId}
-          />
-        ) : null}
-
-        {preview ? (
-          <ConstraintPreviewCard
-            preview={preview}
-            onApply={store.applyPreview}
-            onCancel={() => {
-              store.cancelPreview();
-              onClose();
-            }}
-          />
-        ) : null}
-
-        {!preview && undoAvailable ? (
-          <div className="space-y-2" data-testid="pro-recalc-applied">
-            <p className="text-sm leading-relaxed text-ivory/80">{r.applied}</p>
+    // Above the mobile preview bar and the score/Przelicz strip (z-60): a
+    // BLOCKING dialog must never be overlapped by the controls it blocks. The
+    // bar was introduced after this overlay and silently outranked it.
+    <div className="fixed inset-0 z-[80]" data-testid="pro-recalc-overlay">
+      <button
+        type="button"
+        aria-label={recalculationTerminal?.state === 'WORKING' ? 'Anuluj przeliczenie' : r.close}
+        onClick={closeOrCancel}
+        className="absolute inset-0 h-full w-full bg-black/60 motion-safe:animate-[appFadeIn_150ms_ease-out]"
+      />
+      <section
+        ref={panelRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-label={dialogLabel}
+        data-testid="pro-recalc-panel"
+        data-terminal-state={recalculationTerminal?.state ?? 'IDLE'}
+        className={
+          customerPreviewOpen
+            ? 'absolute top-1/2 left-1/2 max-h-[92dvh] w-[min(680px,calc(100vw-1rem))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-[18px] border border-black/10 bg-white px-3 py-3 text-ivory shadow-pro-md [--color-charcoal:#191a1d] [--color-ivory:#202124] [--color-shell:#f5f3ee] [color-scheme:light] sm:max-h-[88vh] sm:w-[min(680px,calc(100vw-1.5rem))] sm:px-4 sm:py-4'
+            : 'absolute top-1/2 left-1/2 max-h-[88vh] w-[min(680px,calc(100vw-1.5rem))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-white/10 bg-shell px-4 py-4 text-ivory shadow-pro-md [--color-charcoal:#191a1d] [--color-ivory:#efe9dc] [--color-shell:#191a1d] [color-scheme:dark] sm:px-5 sm:py-5'
+        }
+      >
+        {!customerPreviewOpen ? (
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs font-medium tracking-label text-ivory/60 uppercase">
+              {dialogLabel}
+            </p>
             <button
               type="button"
-              onClick={store.undoLastApply}
-              data-testid="pro-recalc-undo"
-              className="inline-flex items-center justify-center rounded-md border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
+              onClick={closeOrCancel}
+              data-testid="pro-recalc-close"
+              className="min-h-11 rounded-lg border border-ivory/20 px-3 py-1.5 text-xs font-medium text-ivory transition-colors hover:border-ivory/40 disabled:cursor-wait disabled:opacity-50"
             >
-              {r.undo}
+              {recalculationTerminal?.state === 'WORKING' ? 'Anuluj' : r.close}
             </button>
           </div>
         ) : null}
-      </div>
-    </section>
+
+        <div className={customerPreviewOpen ? 'space-y-3' : 'mt-3 space-y-3'}>
+          {recalculationTerminal?.state === 'WORKING' ? (
+            <FriendlyLabMessageMotion
+              timing="progress"
+              className="text-sm leading-relaxed text-ivory/80"
+              testId="pro-recalc-working"
+            >
+              Liczymy balans receptury…
+            </FriendlyLabMessageMotion>
+          ) : null}
+
+          {recalculationTerminal?.state === 'SETTINGS_CONFIRMATION_REQUIRED' ? (
+            <div className="space-y-2" data-testid="pro-recalc-settings-required">
+              <p className="text-sm leading-relaxed text-ivory/85" role="alert">
+                Jeszcze jeden krok. Potwierdź ustawienia, a potem przeliczymy recepturę.
+              </p>
+              <button
+                type="button"
+                className="inline-flex min-h-11 items-center justify-center rounded-lg border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
+                onClick={goToSettings}
+              >
+                Otwórz ustawienia
+              </button>
+            </div>
+          ) : null}
+
+          {recalculationTerminal?.state === 'TIMEOUT' ||
+          recalculationTerminal?.state === 'ERROR' ? (
+            <div className="space-y-3" data-testid="pro-recalc-recoverable-error" role="alert">
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-ivory">
+                  {recalculationTerminal.state === 'TIMEOUT'
+                    ? 'Nie udało się zakończyć przeliczenia.'
+                    : 'Nie udało się przeliczyć receptury.'}
+                </p>
+                <p className="text-sm leading-relaxed text-ivory/80">
+                  {recalculationTerminal.messagePl}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={retryRecalculation}
+                  className="inline-flex min-h-11 items-center justify-center rounded-lg bg-ivory px-4 py-2 text-sm font-semibold text-shell"
+                  data-testid="pro-recalc-retry"
+                >
+                  Spróbuj ponownie
+                </button>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="inline-flex min-h-11 items-center justify-center rounded-lg border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory"
+                >
+                  Wróć do receptury
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          {recalculationTerminal?.state === 'BLOCKED_WITH_EXACT_ACTION' &&
+          recalculationTerminal.messagePl &&
+          !previewIssue ? (
+            <div className="space-y-2" data-testid="pro-recalc-exact-action-block">
+              <p className="text-sm leading-relaxed text-ivory/85" role="alert">
+                {recalculationTerminal.messagePl}
+              </p>
+              <button
+                type="button"
+                className="inline-flex min-h-11 items-center justify-center rounded-lg border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
+                onClick={
+                  recalculationTerminal.action === 'choose_product'
+                    ? openBaseProductPicker
+                    : onClose
+                }
+              >
+                {recalculationTerminal.action === 'choose_product'
+                  ? 'Wybierz produkt'
+                  : 'Wróć do receptury'}
+              </button>
+            </div>
+          ) : null}
+
+          {blocked ? (
+            <BlockedApplyNotice blocked={blocked} onDismiss={store.dismissBlocked} />
+          ) : null}
+
+          {directionFallbackReport && !preview ? (
+            <DirectionFallbackDecision
+              fallbackReport={directionFallbackReport}
+              alternativeReport={starterPackRescueReport}
+              alternativePending={starterPackRescuePending}
+              onUseFallback={() => {
+                void openDirectionFallbackPreviewWithServerAuthority();
+              }}
+              onTryAlternative={() => {
+                void requestStarterPackRescueWithServerAuthority();
+              }}
+              onOpenAlternative={() => {
+                void openStarterPackRescuePreviewWithServerAuthority();
+              }}
+              onBack={() => {
+                store.cancelPreview();
+                onClose();
+              }}
+            />
+          ) : null}
+
+          {!directionFallbackReport && previewIssue && recalculationTerminal ? (
+            <RecalcDiagnosisView
+              issue={previewIssue}
+              input={currentInput}
+              constraints={constraints}
+              servingModeId={servingModeId}
+              onReturnToRecipe={returnToProductDose}
+              onChooseOtherProduct={openBaseProductPicker}
+              onCompleteProductData={goToProductData}
+              onRefreshProductBehavior={refreshProductBehavior}
+              refreshingProductBehavior={refreshingProductBehavior}
+              productBehaviorRefreshError={productBehaviorRefreshError}
+              onUnlockAndPreview={unlockAndPreview}
+              onSetAdvisoryMaximum={setAdvisoryMaximum}
+              onRemoveStandardAndPreview={(lineId) => {
+                void createExplicitStandardRemovalPreviewWithServerAuthority(lineId);
+              }}
+              terminal={recalculationTerminal}
+              rescueAdvice={rescueAdvice}
+              starterPackRescueReport={starterPackRescueReport}
+              starterPackRescuePending={starterPackRescuePending}
+              onAddRescueIngredient={() => {
+                store.cancelPreview();
+                openBaseProductPicker();
+              }}
+              onOpenStarterPackRescue={() => {
+                void openStarterPackRescuePreviewWithServerAuthority();
+              }}
+            />
+          ) : null}
+
+          {!directionFallbackReport &&
+          directionBestCandidate &&
+          recalculationTerminal?.state === 'PREVIEW_READY' ? (
+            <DirectionBestDecision
+              candidate={directionBestCandidate}
+              onAccept={store.acceptBestDirectionCandidate}
+              onBack={() => {
+                store.cancelPreview();
+                onClose();
+              }}
+              rescueAdvice={rescueAdvice}
+              starterPackRescueReport={starterPackRescueReport}
+              starterPackRescuePending={starterPackRescuePending}
+              onAddRescueIngredient={() => {
+                store.cancelPreview();
+                openBaseProductPicker();
+              }}
+              onOpenStarterPackRescue={() => {
+                void openStarterPackRescuePreviewWithServerAuthority();
+              }}
+            />
+          ) : null}
+
+          {preview && previewCard && recalculationTerminal?.state === 'PREVIEW_READY' ? (
+            preview.directionFallback || preview.starterPackRescue ? (
+              previewCard
+            ) : (
+              <FriendlyLabMessageMotion
+                timing="persistent"
+                role={undefined}
+                testId="pro-recalc-preview-motion"
+              >
+                {previewCard}
+              </FriendlyLabMessageMotion>
+            )
+          ) : null}
+
+          {!preview && recalculationTerminal === null && undoAvailable ? (
+            <div className="space-y-2" data-testid="pro-recalc-applied">
+              <p className="text-sm leading-relaxed text-ivory/80">{r.applied}</p>
+              <button
+                type="button"
+                onClick={store.undoLastApply}
+                data-testid="pro-recalc-undo"
+                className="inline-flex min-h-11 items-center justify-center rounded-lg border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
+              >
+                {r.undo}
+              </button>
+            </div>
+          ) : null}
+        </div>
+      </section>
+    </div>
   );
 }

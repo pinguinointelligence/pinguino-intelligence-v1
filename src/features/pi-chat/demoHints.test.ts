@@ -110,7 +110,7 @@ describe('buildDemoHints (redacted demo, real solver)', () => {
     for (const product of ALL_PRODUCTS) {
       const view = buildDemoHints(intakeFor(product));
       expect(view.productProfileId).toBe(product);
-      expect(view.engineLabel).toBe('−11°C Engine');
+      expect(view.engineLabel).toBe('−11°C · obliczenia');
     }
     // calm pending note for the directions without a dedicated band yet
     expect(buildDemoHints(intakeFor('granita')).productPendingNote).not.toBeNull();

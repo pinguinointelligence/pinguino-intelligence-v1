@@ -12,20 +12,96 @@
  */
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { RecipeInput } from '@/engine';
+import { findDemoIngredient } from '@/data/demoIngredients';
 import {
   alcoholAndSugarHeavyJimBeam,
   overSweetStarter,
+  starterMilkBase,
   starterLine,
   withGrams,
 } from '@/features/recipe-constraints/constraintFixtures';
 import { useRecipeStore } from '@/stores/recipeStore';
-import { useConstraintStudioStore } from './constraintStudioStore';
+import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
+import { optimizePreviewRequiresApply, useConstraintStudioStore } from './constraintStudioStore';
+import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
+import { buildDirectionFallbackCandidatePreview, type ConstraintPreview } from './applyPipeline';
+import { ownerSameInputRecipe } from '@/features/formulation/__fixtures__/ownerSameInputFixture';
+import { useIngredientChangeStore } from '@/features/ingredient-builder/ingredientChangeStore';
 
 const SUCROSE = starterLine('sucrose');
 const DEXTROSE = starterLine('dextrose');
 const MILK = starterLine('milk_3_5');
 
-const loadRecipe = (input: RecipeInput) => useRecipeStore.getState().loadRecipeInput(input);
+const behaviorSnapshot = (
+  lineId: string,
+  mapperIngredientId: string,
+  category: RecipeInput['category'],
+): ProductBehaviorSnapshot => ({
+  schemaVersion: 1,
+  resolutionState: 'RESOLVED',
+  lineId,
+  productId: `mapper:${mapperIngredientId}`,
+  productVersionId: `mapper:${mapperIngredientId}:version:1`,
+  source: 'mapper',
+  factsFingerprint: `facts:${mapperIngredientId}`,
+  behaviorBindingId: `binding:${mapperIngredientId}`,
+  behaviorBindingVersion: '1',
+  taxonomyVersion: 'test-v1',
+  familyId: `family:${mapperIngredientId}`,
+  subfamilyId: null,
+  formId: 'test-form',
+  verificationState: 'verified',
+  technicalAuthority: 'mapper_exact',
+  mapperIngredientId,
+  mainClassification: 'MAIN_ALLOWED',
+  mainPolicyId: `policy:${mapperIngredientId}`,
+  mainPolicyVersion: '1',
+  ecoFloorPercent: 0,
+  optimalCeilingPercent: 100,
+  hardLimitPercent: 100,
+  mainEquivalentFactor: 1,
+  mainBasis: 'PERCENT_OF_BASE',
+  requiresLiquidDairyCarrier: false,
+  liquidDairyCarrierFloorPercent: null,
+  approvedLiquidDairyCarrier: true,
+  approvedMixedFamilyIds: [],
+  moduleEligibility: {
+    BASE_RECIPE: 'eligible',
+    MAIN: 'eligible',
+    OPTIMAL: 'eligible',
+    ECO: 'eligible',
+    SAVE: 'eligible',
+    PRODUCTION: 'eligible',
+  },
+  processScope: 'BASE_FORMULATION',
+  resolverVersion: 'test-v1',
+  sharedFacts: {
+    schemaVersion: 1,
+    technicalComposition: null,
+    nutritionPer100g: null,
+    allergens: null,
+    processEvidence: [],
+    profileEligibility: [category],
+    veganEligibility: 'unknown',
+    proteinBehavior: 'unknown',
+    referencePrice: null,
+  },
+  warnings: [],
+  blockReasons: [],
+});
+
+const loadRecipe = (input: RecipeInput) => {
+  useRecipeStore.getState().loadRecipeInput(input);
+  for (const item of useRecipeStore.getState().items) {
+    const mapperIngredientId = item.ingredient.canonical_ingredient_id ?? item.ingredient.id;
+    useRecipeStore
+      .getState()
+      .setProductBehaviorSnapshot(
+        item.id,
+        behaviorSnapshot(item.id, mapperIngredientId, input.category),
+      );
+  }
+};
 const recipeItems = () => useRecipeStore.getState().items;
 const lineGrams = (lineId: string): number => {
   const line = recipeItems().find((item) => item.id === lineId);
@@ -35,19 +111,327 @@ const lineGrams = (lineId: string): number => {
 const lineLockType = (lineId: string) =>
   recipeItems().find((item) => item.id === lineId)?.lock_type;
 
-/** The ADD-fixable scenario pinned by the feasibility tests. */
+/**
+ * The single-lock fixable scenario: dextrose locked at 40 g, sucrose free —
+ * the solver converges to ZERO violations, so the apply is hard-safe.
+ * ACCEPTANCE ADDENDUM (3), 2026-07-24: the former BOTH-sugars-locked scenario
+ * ends with residual violations on NATIVE bands and is now DIAGNOSTIC ONLY
+ * (Apply structurally blocked at the door — pinned in applyPipeline.test.ts
+ * and acceptanceAddendum.test.ts), so the apply-MECHANICS pins here use the
+ * hard-safe single-lock variant instead.
+ */
 const loadAddFixScenario = () => {
   loadRecipe(withGrams(overSweetStarter(160), DEXTROSE, 40));
-  useConstraintStudioStore.getState().toggleLock(SUCROSE);
   useConstraintStudioStore.getState().toggleLock(DEXTROSE);
+};
+
+const directionInput = (): RecipeInput => {
+  const input = starterMilkBase();
+  return {
+    ...input,
+    goals: {
+      ...input.goals,
+      // Owner P1-A (2026-08-23): this fixture exists to exercise the
+      // BEST-ACHIEVABLE consent flow, so it must sit on a target the engine
+      // genuinely cannot reach. Sweetness −1 alone no longer qualifies — the
+      // paired mass-neutral exchange now reaches every single-axis Sweetness
+      // band on this starter. The combined extreme −2 / −2 remains a real
+      // frontier (both bands cannot hold at once), so the consent contract
+      // below is unchanged and still meaningful.
+      direction_targets: {
+        sweetness: -2,
+        softness: -2,
+        creaminess: 0,
+        flavor: 0,
+      },
+      direction_targets_active: true,
+    },
+  };
 };
 
 beforeEach(() => {
   useRecipeStore.getState().resetToDemo();
   useConstraintStudioStore.getState().resetForTests();
+  useIngredientChangeStore.getState().clearRecalculation();
+});
+
+describe('Pro executable validation', () => {
+  it('classifies an all-unchanged optimize proposal as NO_CHANGE instead of Apply', () => {
+    const constraints = { byLineId: {} };
+    const input = starterMilkBase();
+    const preview = {
+      kind: 'optimize',
+      lines: [
+        {
+          lineId: 'milk',
+          name: 'Milk',
+          beforeGrams: 670,
+          afterGrams: 670,
+          kind: 'unchanged',
+          locked: false,
+        },
+      ],
+      proposedInput: input,
+      nextConstraints: constraints,
+      directionAssessment: { active: false, reached: true },
+    } as unknown as ConstraintPreview;
+
+    expect(optimizePreviewRequiresApply(preview, constraints, input)).toBe(false);
+    expect(
+      optimizePreviewRequiresApply(
+        {
+          ...preview,
+          lines: [{ ...preview.lines[0]!, kind: 'changed', afterGrams: 671 }],
+        },
+        constraints,
+        input,
+      ),
+    ).toBe(true);
+  });
+
+  it('returns one NO_CHANGE_NEEDED terminal when a clean recipe needs zero gram changes', () => {
+    loadRecipe(starterMilkBase());
+    const before = buildRecipeInput(useRecipeStore.getState());
+    useIngredientChangeStore.getState().captureRecalculation(['stale-apple', 'stale-tara']);
+
+    useConstraintStudioStore.getState().createOptimizePreview();
+    expect(useConstraintStudioStore.getState().preview).toBeNull();
+    expect(useConstraintStudioStore.getState().previewIssue).toEqual({
+      ok: false,
+      code: 'already_clean',
+    });
+    expect(useConstraintStudioStore.getState().recalculationTerminal).toEqual({
+      state: 'NO_CHANGE_NEEDED',
+    });
+    expect(useConstraintStudioStore.getState().history).toEqual([]);
+    expect(useConstraintStudioStore.getState().blocked).toBeNull();
+    expect(buildRecipeInput(useRecipeStore.getState())).toEqual(before);
+    expect([...useIngredientChangeStore.getState().changedByLastRecalculation]).toEqual([]);
+  });
+
+  it('has one blocked terminal state with exact missing-price evidence in ECO', () => {
+    const input = structuredClone(starterMilkBase());
+    input.goals = { ...input.goals, formulation_strategy: 'eco' };
+    input.items[0] = {
+      ...input.items[0]!,
+      ingredient: { ...input.items[0]!.ingredient, cost_per_kg: null, cost_currency: null },
+    };
+    loadRecipe(input);
+    useConstraintStudioStore.setState({ history: [{ id: 'old-run' } as never] });
+
+    useConstraintStudioStore.getState().createOptimizePreview();
+
+    expect(useConstraintStudioStore.getState().previewIssue).toMatchObject({
+      code: 'missing_prices',
+      ingredientNames: [input.items[0]!.ingredient.name],
+    });
+    expect(useConstraintStudioStore.getState().recalculationTerminal).toEqual({
+      state: 'BLOCKED_WITH_EXACT_ACTION',
+      code: 'missing_prices',
+    });
+    expect(useConstraintStudioStore.getState().history).toEqual([]);
+  });
+
+  it('requires session consent before removing a positive Standard line, then Apply and Undo are exact', () => {
+    const base = starterMilkBase();
+    const inulin = findDemoIngredient('inulin')!;
+    const input: RecipeInput = {
+      ...base,
+      items: [
+        ...base.items,
+        {
+          id: 'user-inulin',
+          ingredient: inulin,
+          planned_grams: 10,
+          actual_grams: null,
+          lock_type: 'unlocked',
+          user_intent_anchor_grams: 10,
+        },
+      ],
+    };
+    loadRecipe(input);
+    const before = structuredClone(buildRecipeInput(useRecipeStore.getState()));
+
+    useConstraintStudioStore.getState().createExplicitStandardRemovalPreview('user-inulin');
+    const staged = useConstraintStudioStore.getState().preview;
+    expect(staged?.explicitStandardRemoval).toMatchObject({
+      lineId: 'user-inulin',
+      beforeGrams: 10,
+    });
+    expect(staged?.proposedInput.items.some((item) => item.id === 'user-inulin')).toBe(false);
+
+    useConstraintStudioStore.setState({ explicitStandardRemovalConsent: null });
+    useConstraintStudioStore.getState().applyPreview();
+    expect(useConstraintStudioStore.getState().blocked?.code).toBe('stale_preview');
+    expect(buildRecipeInput(useRecipeStore.getState())).toEqual(before);
+    expect(useConstraintStudioStore.getState().history).toEqual([]);
+
+    useConstraintStudioStore.getState().createExplicitStandardRemovalPreview('user-inulin');
+    useConstraintStudioStore.getState().applyPreview();
+    expect(useConstraintStudioStore.getState().blocked).toBeNull();
+    expect(useRecipeStore.getState().items.some((item) => item.id === 'user-inulin')).toBe(false);
+    expect(useConstraintStudioStore.getState().history).toHaveLength(1);
+
+    useConstraintStudioStore.getState().undoLastApply();
+    expect(buildRecipeInput(useRecipeStore.getState())).toEqual(before);
+    expect(useConstraintStudioStore.getState().history).toEqual([]);
+  });
+
+  it('applies and undoes a consented Standard removal without losing the adjustable Main proof', () => {
+    const base = starterMilkBase();
+    const inulin = findDemoIngredient('inulin')!;
+    const input: RecipeInput = {
+      ...base,
+      items: [
+        ...base.items.map((item, index) =>
+          index === 0 ? { ...item, lock_type: 'main' as const } : item,
+        ),
+        {
+          id: 'user-inulin-with-main',
+          ingredient: inulin,
+          planned_grams: 10,
+          actual_grams: null,
+          lock_type: 'unlocked',
+          user_intent_anchor_grams: 10,
+        },
+      ],
+    };
+    loadRecipe(input);
+    const before = structuredClone(buildRecipeInput(useRecipeStore.getState()));
+
+    useConstraintStudioStore
+      .getState()
+      .createExplicitStandardRemovalPreview('user-inulin-with-main');
+    const preview = useConstraintStudioStore.getState().preview;
+    expect(preview?.explicitStandardRemoval?.lineId).toBe('user-inulin-with-main');
+    expect(preview?.mainObjective).toBeDefined();
+
+    useConstraintStudioStore.getState().applyPreview();
+    expect(useConstraintStudioStore.getState().blocked).toBeNull();
+    expect(
+      useRecipeStore.getState().items.some((item) => item.id === 'user-inulin-with-main'),
+    ).toBe(false);
+
+    useConstraintStudioStore.getState().undoLastApply();
+    expect(buildRecipeInput(useRecipeStore.getState())).toEqual(before);
+  });
 });
 
 describe('§17.1/§17.2 padlock', () => {
+  it('toggles a mutually-exclusive percentage lock and invalidates the draft revision', () => {
+    loadRecipe(overSweetStarter(130));
+    const beforeRevision = useRecipeStore.getState().draftRevision;
+    useConstraintStudioStore.getState().togglePercentLock(SUCROSE);
+    expect(useConstraintStudioStore.getState().constraints.byLineId[SUCROSE]).toEqual({
+      mode: 'percent',
+      percent: 13,
+    });
+    expect(lineLockType(SUCROSE)).toBe('percent');
+    expect(useRecipeStore.getState().draftRevision).toBe(beforeRevision + 1);
+
+    useConstraintStudioStore.getState().toggleLock(SUCROSE);
+    expect(useConstraintStudioStore.getState().constraints.byLineId[SUCROSE]).toEqual({
+      mode: 'locked',
+      grams: 130,
+    });
+    expect(lineLockType(SUCROSE)).toBe('grams');
+
+    useConstraintStudioStore.getState().togglePercentLock(SUCROSE);
+    expect(useConstraintStudioStore.getState().constraints.byLineId[SUCROSE]).toEqual({
+      mode: 'percent',
+      percent: 13,
+    });
+    expect(lineLockType(SUCROSE)).toBe('percent');
+  });
+
+  it('keeps the visible percentage share coherent when Profile resizes 1000 → 1200', () => {
+    loadRecipe(overSweetStarter(130));
+    useConstraintStudioStore.getState().togglePercentLock(SUCROSE);
+    useConstraintStudioStore.getState().toggleLock(DEXTROSE);
+
+    const dextroseBefore = lineGrams(DEXTROSE);
+    useRecipeStore.getState().setBatchGrams(1200);
+
+    expect(useRecipeStore.getState().target_batch_grams).toBe(1200);
+    expect(lineGrams(SUCROSE)).toBeCloseTo(156, 10);
+    expect(lineGrams(SUCROSE) / 1200).toBeCloseTo(0.13, 10);
+    expect(lineLockType(SUCROSE)).toBe('percent');
+    expect(lineGrams(DEXTROSE)).toBe(dextroseBefore);
+    expect(lineLockType(DEXTROSE)).toBe('grams');
+  });
+
+  it.each(['main', 'required', 'already_added'] as const)(
+    'keeps a canonical percentage on an engine-kept %s role during 1000 → 1200',
+    (role) => {
+      loadRecipe(overSweetStarter(130));
+      useRecipeStore.getState().setLockType(SUCROSE, role);
+      useConstraintStudioStore.getState().togglePercentLock(SUCROSE);
+
+      expect(lineLockType(SUCROSE)).toBe(role);
+      expect(useConstraintStudioStore.getState().constraints.byLineId[SUCROSE]).toEqual({
+        mode: 'percent',
+        percent: 13,
+      });
+
+      useConstraintStudioStore.getState().resizeBatchGrams(1200);
+
+      expect(lineGrams(SUCROSE)).toBeCloseTo(156, 10);
+      expect(lineGrams(SUCROSE) / 1200).toBeCloseTo(0.13, 10);
+      expect(lineLockType(SUCROSE)).toBe(role);
+    },
+  );
+
+  it('preserves the 1000 → 1200 percent contract while a proportional resize needs no Apply', () => {
+    loadRecipe(overSweetStarter(130));
+    useConstraintStudioStore.getState().togglePercentLock(SUCROSE);
+    useRecipeStore.getState().setBatchGrams(1200);
+    const resized = buildRecipeInput(useRecipeStore.getState());
+
+    expect(resized.items.find((item) => item.id === SUCROSE)?.planned_grams).toBeCloseTo(156, 8);
+    expect(resized.items.reduce((sum, item) => sum + item.planned_grams, 0)).toBeCloseTo(1200, 8);
+
+    useConstraintStudioStore.getState().createOptimizePreview();
+    expect(useConstraintStudioStore.getState().preview).toBeNull();
+    expect(useConstraintStudioStore.getState().previewIssue).toEqual({
+      ok: false,
+      code: 'already_clean',
+    });
+    expect(useConstraintStudioStore.getState().recalculationTerminal).toEqual({
+      state: 'NO_CHANGE_NEEDED',
+    });
+    expect(buildRecipeInput(useRecipeStore.getState())).toEqual(resized);
+  });
+
+  it('preserves Required plus an exact-grams lock through Preview, Apply and Undo', () => {
+    // Keep an actual correction available; the former clean 130 g fixture
+    // intentionally terminates as NO_CHANGE and therefore has nothing to Apply.
+    loadRecipe(overSweetStarter(160));
+    useRecipeStore.getState().setLockType(SUCROSE, 'required');
+    useConstraintStudioStore.getState().toggleLock(SUCROSE);
+    const beforePreview = buildRecipeInput(useRecipeStore.getState());
+
+    useConstraintStudioStore.getState().createOptimizePreview();
+    const preview = useConstraintStudioStore.getState().preview;
+    expect(preview).not.toBeNull();
+    expect(preview?.proposedInput.items.find((item) => item.id === SUCROSE)).toMatchObject({
+      lock_type: 'required',
+      planned_grams: 160,
+    });
+
+    useConstraintStudioStore.getState().applyPreview();
+    expect(useConstraintStudioStore.getState().blocked).toBeNull();
+    expect(
+      buildRecipeInput(useRecipeStore.getState()).items.find((item) => item.id === SUCROSE),
+    ).toMatchObject({
+      lock_type: 'required',
+      planned_grams: 160,
+      grams_constraint: { grams: 160 },
+    });
+
+    useConstraintStudioStore.getState().undoLastApply();
+    expect(buildRecipeInput(useRecipeStore.getState())).toEqual(beforePreview);
+  });
+
   it('locks the EXACT current grams and maps onto engine lock_type grams', () => {
     loadRecipe(overSweetStarter(220));
     useConstraintStudioStore.getState().toggleLock(SUCROSE);
@@ -86,6 +470,49 @@ describe('§17.1/§17.2 padlock', () => {
     expect((movedDiff?.afterGrams ?? Number.NaN) < 150).toBe(true);
   });
 
+  it('lock → unlock clears stale state and exposes the executable whole-gram Preview for Apply', () => {
+    const input = ownerSameInputRecipe();
+    input.target_temperature_c = -11;
+    input.target_batch_grams = 206;
+    input.items = input.items.map((item) =>
+      item.id === 'owner:smp' ? { ...item, planned_grams: 501 } : item,
+    );
+    loadRecipe(input);
+
+    useConstraintStudioStore.getState().toggleLock('owner:smp');
+    useConstraintStudioStore.getState().createOptimizePreview();
+    expect(useConstraintStudioStore.getState().preview).toBeNull();
+    expect(useConstraintStudioStore.getState().previewIssue).not.toBeNull();
+
+    useConstraintStudioStore.getState().toggleLock('owner:smp');
+    expect(lineLockType('owner:smp')).toBe('unlocked');
+    expect(useConstraintStudioStore.getState().preview).toBeNull();
+    expect(useConstraintStudioStore.getState().previewIssue).toBeNull();
+    expect(useConstraintStudioStore.getState().recalculationTerminal).toBeNull();
+
+    useConstraintStudioStore.getState().createOptimizePreview();
+    const preview = useConstraintStudioStore.getState().preview;
+    expect(preview).not.toBeNull();
+    expect(preview?.violationsAfter).toBe(0);
+    expect(preview?.hardResidualMetrics).toEqual([]);
+    expect(preview?.diagnosticOnly).toBe(false);
+    expect(preview?.proposedInput.items.every((item) => Number.isInteger(item.planned_grams))).toBe(
+      true,
+    );
+
+    useConstraintStudioStore.getState().applyPreview();
+    expect(useConstraintStudioStore.getState().blocked).toBeNull();
+    expect(useConstraintStudioStore.getState().history).toHaveLength(1);
+    expect(lineGrams('owner:smp')).not.toBe(501);
+    expect(Number.isInteger(lineGrams('owner:smp'))).toBe(true);
+    expect(
+      buildRecipeInput(useRecipeStore.getState()).items.reduce(
+        (sum, item) => sum + item.planned_grams,
+        0,
+      ),
+    ).toBe(206);
+  });
+
   it('padlock is inert on a line with actual grams (poured material, spec §15)', () => {
     loadRecipe(overSweetStarter(220));
     useRecipeStore.getState().setActualGrams(SUCROSE, 220);
@@ -110,18 +537,146 @@ describe('§17.1/§17.2 padlock', () => {
 });
 
 describe('§19 apply through the store', () => {
+  it('keeps fallback Direction untouched through Ustaw/Cancel, then changes it only with verified Apply and restores it on Undo', () => {
+    const base = starterMilkBase();
+    loadRecipe({
+      ...base,
+      goals: {
+        ...base.goals,
+        direction_targets_active: true,
+        direction_targets: { sweetness: 0, softness: -2, creaminess: 0, flavor: 0 },
+      },
+    });
+    const draft = buildRecipeInput(useRecipeStore.getState());
+    const snapshots = useRecipeStore.getState().productBehaviorSnapshots;
+    const fallbackTargets = { sweetness: 0, softness: -1, creaminess: 0, flavor: 0 } as const;
+    const built = buildDirectionFallbackCandidatePreview(
+      draft,
+      { byLineId: {} },
+      fallbackTargets,
+      0,
+      '2026-08-28T12:30:00.000Z',
+      {
+        directionFallbackPass: true,
+        skipRescueAssessment: true,
+        productBehaviorSnapshots: snapshots,
+      },
+    );
+    expect(built.ok).toBe(true);
+    if (!built.ok) return;
+    const beforeItems = structuredClone(useRecipeStore.getState().items);
+
+    useConstraintStudioStore.getState().stageDirectionFallbackPreview(built.preview, snapshots);
+    expect(useConstraintStudioStore.getState().preview).not.toBeNull();
+    expect(useRecipeStore.getState().direction_targets.softness).toBe(-2);
+    expect(useRecipeStore.getState().items).toEqual(beforeItems);
+
+    useConstraintStudioStore.getState().cancelPreview();
+    expect(useRecipeStore.getState().direction_targets.softness).toBe(-2);
+    expect(useRecipeStore.getState().items).toEqual(beforeItems);
+
+    useConstraintStudioStore.getState().stageDirectionFallbackPreview(built.preview, snapshots);
+    useConstraintStudioStore.getState().applyPreview();
+    expect(useConstraintStudioStore.getState().blocked).toBeNull();
+    expect(useRecipeStore.getState().direction_targets.softness).toBe(-1);
+    expect(useConstraintStudioStore.getState().history).toHaveLength(1);
+
+    useConstraintStudioStore.getState().undoLastApply();
+    expect(useRecipeStore.getState().direction_targets.softness).toBe(-2);
+    expect(useRecipeStore.getState().items).toEqual(beforeItems);
+  });
+
+  it('Cancel clears Preview markers; save keeps applied evidence; reopen clears the session', () => {
+    loadAddFixScenario();
+    useConstraintStudioStore.getState().createOptimizePreview();
+    expect(useIngredientChangeStore.getState().changedByLastRecalculation.length).toBeGreaterThan(
+      0,
+    );
+
+    useConstraintStudioStore.getState().cancelPreview();
+    expect([...useIngredientChangeStore.getState().changedByLastRecalculation]).toEqual([]);
+
+    useConstraintStudioStore.getState().createOptimizePreview();
+    useConstraintStudioStore.getState().applyPreview();
+    const applied = [...useIngredientChangeStore.getState().changedByLastRecalculation];
+    expect(applied.length).toBeGreaterThan(0);
+
+    // The save boundary changes dirty/version state, not the already accepted
+    // Recalculate before/after evidence displayed in this open session.
+    useRecipeStore.setState({ dirty: false });
+    expect([...useIngredientChangeStore.getState().changedByLastRecalculation]).toEqual(applied);
+
+    // Reopen starts a new draft context with no Recalculate result in-session.
+    loadRecipe(buildRecipeInput(useRecipeStore.getState()));
+    expect([...useIngredientChangeStore.getState().changedByLastRecalculation]).toEqual([]);
+  });
+
+  it('requires the explicit best-achievable decision before normal Preview, Apply and Undo', () => {
+    loadRecipe(directionInput());
+    const before = JSON.stringify(recipeItems().map((item) => [item.id, item.planned_grams]));
+
+    useConstraintStudioStore.getState().createOptimizePreview();
+    expect(useConstraintStudioStore.getState().preview).toBeNull();
+    expect(useConstraintStudioStore.getState().directionBestCandidate).not.toBeNull();
+    expect(useConstraintStudioStore.getState().directionConsent).toBeNull();
+
+    useConstraintStudioStore.getState().acceptBestDirectionCandidate();
+    expect(useConstraintStudioStore.getState().directionBestCandidate).toBeNull();
+    expect(useConstraintStudioStore.getState().preview).not.toBeNull();
+    expect(useConstraintStudioStore.getState().directionConsent).not.toBeNull();
+
+    useConstraintStudioStore.getState().applyPreview();
+    expect(useConstraintStudioStore.getState().blocked).toBeNull();
+    expect(useConstraintStudioStore.getState().history).toHaveLength(1);
+    expect(useConstraintStudioStore.getState().directionConsent).toBeNull();
+
+    useConstraintStudioStore.getState().undoLastApply();
+    expect(useConstraintStudioStore.getState().history).toHaveLength(0);
+    expect(JSON.stringify(recipeItems().map((item) => [item.id, item.planned_grams]))).toBe(before);
+  });
+
+  it('invalidates a pending best-achievable decision as soon as its target changes', () => {
+    loadRecipe(directionInput());
+    useConstraintStudioStore.getState().createOptimizePreview();
+    expect(useConstraintStudioStore.getState().directionBestCandidate).not.toBeNull();
+
+    useRecipeStore.getState().moveDirectionTarget('sweetness', 1);
+
+    expect(useConstraintStudioStore.getState().directionBestCandidate).toBeNull();
+    expect(useConstraintStudioStore.getState().directionConsent).toBeNull();
+    expect(useConstraintStudioStore.getState().preview).toBeNull();
+  });
+
   it('applies a verified optimize preview: recipe updated, locks byte-stable, history recorded', () => {
     loadAddFixScenario();
     useConstraintStudioStore.getState().createOptimizePreview();
-    expect(useConstraintStudioStore.getState().preview).not.toBeNull();
+    const preview = useConstraintStudioStore.getState().preview;
+    expect(preview).not.toBeNull();
+    const expectedChanged = preview!.lines
+      .filter(
+        (line) =>
+          line.beforeGrams !== null &&
+          line.afterGrams !== null &&
+          Math.abs(line.afterGrams - line.beforeGrams) > 1e-6,
+      )
+      .map((line) => line.lineId);
+    expect([...useIngredientChangeStore.getState().changedByLastRecalculation]).toEqual(
+      expectedChanged,
+    );
 
     useConstraintStudioStore.getState().applyPreview();
 
     expect(useConstraintStudioStore.getState().blocked).toBeNull();
     expect(useConstraintStudioStore.getState().preview).toBeNull();
     expect(useConstraintStudioStore.getState().history.length).toBe(1);
-    expect(Object.is(lineGrams(SUCROSE), 160)).toBe(true);
+    // Apply preserves the marker set from the exact accepted Preview.
+    expect([...useIngredientChangeStore.getState().changedByLastRecalculation]).toEqual(
+      expectedChanged,
+    );
+    // The LOCKED line is byte-stable through the apply…
     expect(Object.is(lineGrams(DEXTROSE), 40)).toBe(true);
+    // …while the free over-sweet sucrose was genuinely moved by the solver.
+    expect(lineGrams(SUCROSE)).toBeLessThan(160);
   });
 
   it('BLOCKS a forged preview: Polish message, recipe UNTOUCHED, no history entry', () => {
@@ -131,14 +686,14 @@ describe('§19 apply through the store', () => {
     expect(preview).not.toBeNull();
     if (!preview) return;
 
-    // Forge the staged proposal so it moves a locked line.
+    // Forge the staged proposal so it moves the LOCKED line (dextrose @ 40 g).
     useConstraintStudioStore.setState({
       preview: {
         ...preview,
         proposedInput: {
           ...preview.proposedInput,
           items: preview.proposedInput.items.map((item) =>
-            item.id === SUCROSE ? { ...item, planned_grams: 100 } : item,
+            item.id === DEXTROSE ? { ...item, planned_grams: 100 } : item,
           ),
         },
       },
@@ -150,35 +705,47 @@ describe('§19 apply through the store', () => {
     expect(JSON.stringify(recipeItems())).toBe(before); // recipe untouched
     const blocked = useConstraintStudioStore.getState().blocked;
     expect(blocked?.code).toBe('constraints_violated');
-    expect(blocked?.messagePl).toContain('Receptura nie została zmieniona');
+    expect(blocked?.messagePl).toContain('Receptura pozostała bez zmian');
     expect(useConstraintStudioStore.getState().history.length).toBe(0);
   });
 
   it('a preview goes stale when the recipe changes before Apply', () => {
     loadAddFixScenario();
     useConstraintStudioStore.getState().createOptimizePreview();
+    const staged = useConstraintStudioStore.getState().preview;
+    expect(staged).not.toBeNull();
     useRecipeStore.getState().setPlannedGrams(MILK, 555);
 
-    const before = JSON.stringify(recipeItems());
-    useConstraintStudioStore.getState().applyPreview();
+    // Owner P0 NIGHTLY (Phase 3): the MATERIAL EDIT ITSELF invalidates the
+    // staged preview — instantly, not only at the Apply attempt.
+    expect(useConstraintStudioStore.getState().preview).toBeNull();
+    expect([...useIngredientChangeStore.getState().changedByLastRecalculation]).toEqual([]);
 
+    const before = JSON.stringify(recipeItems());
+    useConstraintStudioStore.getState().applyPreview(); // no-op without a preview
+    expect(JSON.stringify(recipeItems())).toBe(before);
+
+    // And even a resurrected stale preview can never apply: the commit door
+    // rejects it (monotonic revision guard + fingerprint), recipe untouched.
+    useConstraintStudioStore.setState({ preview: staged });
+    useConstraintStudioStore.getState().applyPreview();
     expect(JSON.stringify(recipeItems())).toBe(before);
     expect(useConstraintStudioStore.getState().blocked?.code).toBe('stale_preview');
     expect(useConstraintStudioStore.getState().preview).toBeNull();
   });
 
   it('batch rescale through the store: locked grams preserved byte-for-byte (§17.4)', () => {
-    loadRecipe(overSweetStarter(160));
+    loadRecipe(starterMilkBase());
     useConstraintStudioStore.getState().toggleLock(SUCROSE);
 
-    useConstraintStudioStore.getState().createBatchRescalePreview(2000);
+    useConstraintStudioStore.getState().createBatchRescalePreview(1200);
     useConstraintStudioStore.getState().applyPreview();
 
     expect(useConstraintStudioStore.getState().blocked).toBeNull();
-    expect(Object.is(lineGrams(SUCROSE), 160)).toBe(true);
-    expect(useRecipeStore.getState().target_batch_grams).toBe(2000);
+    expect(Object.is(lineGrams(SUCROSE), 130)).toBe(true);
+    expect(useRecipeStore.getState().target_batch_grams).toBe(1200);
     const total = recipeItems().reduce((sum, item) => sum + item.planned_grams, 0);
-    expect(Math.abs(total - 2000)).toBeLessThanOrEqual(0.1);
+    expect(Math.abs(total - 1200)).toBeLessThanOrEqual(0.1);
   });
 });
 
@@ -208,6 +775,7 @@ describe('§20.3 Undo', () => {
       constraintsBefore,
     );
     expect(useConstraintStudioStore.getState().history.length).toBe(0);
+    expect([...useIngredientChangeStore.getState().changedByLastRecalculation]).toEqual([]);
   });
 
   it('refuses to undo after an unrelated manual edit (never destroys newer work)', () => {

@@ -103,8 +103,8 @@ describe('locked PL copy — coverage and honesty rules', () => {
   });
 
   it('save-vs-apply is explicit: an audit record, the recipe stays untouched', () => {
-    expect(PL.save.saveVsApply).toMatch(/NIE zmiana receptury/);
-    expect(PL.save.saveVsApply).toMatch(/nietknięta/);
+    expect(PL.save.saveVsApply).toMatch(/Zapis korekty nie zmienia receptury/);
+    expect(PL.save.saveVsApply).toMatch(/osobny wpis audytowy/);
     expect(PL.disclaimers.noRecipeMutation).toMatch(/nie jest modyfikowana/);
   });
 
@@ -232,7 +232,7 @@ describe('StudioFlowGuidePanel — render states (read-only, PL)', () => {
     expect(text).toContain('standard_gelato · -11°C');
     expect(text).toContain(PL.tier.proExactGrams);
     expect(text).toContain(PL.save.saveAvailable);
-    expect(text).toContain('NIE zmiana receptury');
+    expect(text).toContain('Zapis korekty nie zmienia receptury');
   });
 
   it('Demo (anon): redaction-safe tier note + sign-in save note, no exact-gram promise', () => {

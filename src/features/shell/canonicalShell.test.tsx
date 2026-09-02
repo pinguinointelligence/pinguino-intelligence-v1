@@ -2,9 +2,17 @@
  * Canonical shell contract (source-level) — one header, one right drawer, no legacy left menus.
  *
  * Proves the structural guarantees the owner requires without a DOM: every migrated page composes
- * the single AppShell (not the legacy left-drawer AppMenu); AppShell puts the brand LEFT and the
- * canonical hamburger RIGHT; the one drawer opens from the RIGHT and keeps its a11y (Escape + focus
- * trap + scroll lock); Studio's contextual action is „Zapisz recepturę" with the legacy links gone.
+ * the single AppShell (not the legacy left-drawer AppMenu); AppShell puts the canonical hamburger
+ * FIRST, immediately left of the brand, in the SAME place on every screen (owner „global UI
+ * unification", 2026-08-23 — previously the workbench had it left and every other page had it
+ * right, so the shell visibly jumped between sections); the one drawer still opens from the RIGHT
+ * and keeps its a11y (Escape + focus trap + scroll lock); Studio's contextual action is „Zapisz
+ * recepturę" with the legacy links gone.
+ *
+ * DRAWER SIDE (owner, 2026-08-24): the panel opens on the SAME side as the
+ * hamburger that opens it. The trigger is the first header element, so the
+ * drawer is now LEFT — a control that opens a panel away from itself reads as
+ * two unrelated things. This supersedes the earlier right-side contract.
  */
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -33,7 +41,7 @@ describe('canonical application shell', () => {
     }
   });
 
-  it('AppShell renders the brand LEFT and the canonical hamburger RIGHT (one drawer component)', () => {
+  it('AppShell renders the canonical hamburger FIRST, then the brand (one drawer component)', () => {
     const shell = read('features', 'shell', 'AppShell.tsx');
     expect(shell).toContain('AppNavDrawer');
     const html = renderToStaticMarkup(
@@ -43,20 +51,53 @@ describe('canonical application shell', () => {
         </AppShell>
       </MemoryRouter>,
     );
-    // brand link appears before the hamburger trigger in DOM order → hamburger is on the right
-    const brandIdx = html.indexOf('aria-label="PINGÜINO"');
+    // The hamburger precedes the brand link in DOM order → it is the leftmost
+    // element of the header, exactly as on the Pro workbench master.
+    const brandIdx = html.indexOf('aria-label="GELLATTI"');
     const triggerIdx = html.indexOf('data-testid="app-nav-trigger"');
-    expect(brandIdx).toBeGreaterThanOrEqual(0);
-    expect(triggerIdx).toBeGreaterThan(brandIdx);
+    expect(triggerIdx).toBeGreaterThanOrEqual(0);
+    expect(brandIdx).toBeGreaterThan(triggerIdx);
   });
 
-  it('the one drawer opens from the RIGHT and keeps Escape + focus trap + scroll lock', () => {
+  // OWNER OVERRIDE (Gellatti V2.1 §6): ONE side everywhere — the trigger is
+  // leading and the drawer enters from the LEFT on the workbench, on every
+  // global destination and on mobile. The mirrored right-side variant is gone.
+  it('the one drawer follows its trigger: LEFT on every shell', () => {
     const drawer = read('features', 'shell', 'AppNavDrawer.tsx');
-    expect(drawer).toContain('right-0');
-    expect(drawer.includes('left-0')).toBe(false);
-    expect(drawer).toContain("e.key === 'Escape'");
+    const destination = read('components', 'shared', 'DestinationSurface.tsx');
+    expect(drawer).toContain('left-0');
+    expect(drawer).toContain('border-r');
+    expect(drawer).toContain('translateX(-100%)');
+    expect(drawer.includes('right-0')).toBe(false);
+    expect(drawer.includes('border-l')).toBe(false);
+    expect(drawer.includes('translateX(100%)')).toBe(false);
+    expect(drawer.includes("side === 'left'")).toBe(false);
+    expect(destination).toContain('navigationPosition="trailing"');
+    expect(drawer).toContain("event.key === 'Escape'");
     expect(drawer).toContain("body.style.overflow = 'hidden'");
     expect(drawer).toContain('aria-modal="true"');
+  });
+
+  it('uses one mobile/desktop sitemap with comfortable targets and one drawer scroll surface', () => {
+    const drawer = read('features', 'shell', 'AppNavDrawer.tsx');
+    expect(drawer).toContain('w-[88vw] max-w-[360px]');
+    expect(drawer).toContain('min-h-12');
+    expect(drawer.match(/overflow-y-auto/g)).toHaveLength(1);
+    expect(drawer).toContain('data-testid="app-nav-account-block"');
+    expect(drawer).not.toMatch(/ReadinessBadge|W PRZYGOTOWANIU|CZĘŚCIOWO PODŁĄCZONE/);
+  });
+
+  it('keeps the signed-in account block for Admin-only users without a Home/Pro audience', () => {
+    const drawer = read('features', 'shell', 'AppNavDrawer.tsx');
+    expect(drawer).toContain("const memberAccount = authStatus === 'authed' || devMemberPreview;");
+    expect(drawer).not.toContain("const memberAccount = audience !== 'guest';");
+  });
+
+  it('routes the canonical logo to Guest, Home or Pro workspace instead of public Demo after login', () => {
+    const shell = read('features', 'shell', 'AppShell.tsx');
+    expect(shell).toContain("audience === 'pro' ? '/pro/recipe'");
+    expect(shell).toContain("audience === 'home' ? '/home' : '/'");
+    expect(shell).toContain('to={brandDestination}');
   });
 
   it('there is NO separate legacy Studio page — /studio is a redirect into PINGÜINO Pro', () => {

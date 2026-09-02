@@ -98,10 +98,16 @@ describe('normalizeRecipeIntent — saved defaults precedence', () => {
   });
 
   it('saved defaults never override explicit vegan/sorbet/chocolate intent', () => {
-    const vegan = normalizeRecipeIntent({ input: { flavorText: 'vegan chocolate' }, savedDefaults: SAVED });
+    const vegan = normalizeRecipeIntent({
+      input: { flavorText: 'vegan chocolate' },
+      savedDefaults: SAVED,
+    });
     expect(vegan.productProfile).toBe('vegan_gelato');
 
-    const chocolate = normalizeRecipeIntent({ input: { productProfile: 'chocolate' }, savedDefaults: SAVED });
+    const chocolate = normalizeRecipeIntent({
+      input: { productProfile: 'chocolate' },
+      savedDefaults: SAVED,
+    });
     expect(chocolate.productProfile).toBe('chocolate_gelato');
   });
 });
@@ -129,17 +135,17 @@ describe('normalizeRecipeIntent — product profile normalization', () => {
     expect(result.productProfile).toBe('standard_gelato'); // safe fallback VALUE, flagged above
   });
 
-  it('protein_gelato warns as unsupported and is not implemented as active', () => {
+  it('protein_gelato is an active canonical profile', () => {
     const result = normalizeRecipeIntent({ input: { productProfile: 'protein_gelato' } });
-    expect(codes(result)).toContain('unsupported_product_profile');
-    expect(result.productProfile).toBe('standard_gelato');
+    expect(codes(result)).not.toContain('unsupported_product_profile');
+    expect(result.productProfile).toBe('protein_gelato');
   });
 
-  it('protein wording in flavor text is recognized as unsupported intent only', () => {
+  it('protein wording in flavor text resolves to the Protein profile', () => {
     for (const text of ['proteinowe', 'high protein', 'białkowe', 'więcej proteiny']) {
       const result = normalizeRecipeIntent({ input: { flavorText: text } });
-      expect(codes(result), text).toContain('unsupported_product_profile');
-      expect(result.productProfile, text).toBe('standard_gelato');
+      expect(codes(result), text).not.toContain('unsupported_product_profile');
+      expect(result.productProfile, text).toBe('protein_gelato');
     }
   });
 
@@ -150,7 +156,9 @@ describe('normalizeRecipeIntent — product profile normalization', () => {
   });
 
   it('accepts the legacy productType/category fields as profile sources', () => {
-    expect(normalizeRecipeIntent({ input: { productType: 'sorbet' } }).productProfile).toBe('sorbet');
+    expect(normalizeRecipeIntent({ input: { productType: 'sorbet' } }).productProfile).toBe(
+      'sorbet',
+    );
     expect(normalizeRecipeIntent({ input: { category: 'milk_gelato' } }).productProfile).toBe(
       'standard_gelato',
     );
@@ -286,7 +294,9 @@ describe('normalizeRecipeIntent — preference aliases', () => {
     ['miękkie', 'soft'],
     ['creamy', 'soft'],
   ])('texture %s -> %s', (raw, expected) => {
-    expect(normalizeRecipeIntent({ input: { texturePreference: raw } }).texturePreference).toBe(expected);
+    expect(normalizeRecipeIntent({ input: { texturePreference: raw } }).texturePreference).toBe(
+      expected,
+    );
   });
 
   it.each([
@@ -313,7 +323,9 @@ describe('normalizeRecipeIntent — preference aliases', () => {
   });
 
   it('quality tier accepts the four locked tiers via qualityTier or legacy mode', () => {
-    expect(normalizeRecipeIntent({ input: { qualityTier: 'signature' } }).qualityTier).toBe('signature');
+    expect(normalizeRecipeIntent({ input: { qualityTier: 'signature' } }).qualityTier).toBe(
+      'signature',
+    );
     expect(normalizeRecipeIntent({ input: { mode: 'eco' } }).qualityTier).toBe('eco');
   });
 
@@ -364,7 +376,9 @@ describe('normalizeRecipeIntent — serving temperature', () => {
   });
 
   it('accepts the legacy targetTemperatureC field', () => {
-    expect(normalizeRecipeIntent({ input: { targetTemperatureC: -11 } }).servingTemperatureC).toBe(-11);
+    expect(normalizeRecipeIntent({ input: { targetTemperatureC: -11 } }).servingTemperatureC).toBe(
+      -11,
+    );
   });
 });
 

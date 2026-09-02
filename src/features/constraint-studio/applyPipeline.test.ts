@@ -12,10 +12,8 @@
  */
 import { describe, expect, it } from 'vitest';
 import { calculateRecipe, detectViolations, type RecipeInput } from '@/engine';
-import {
-  analyzeConstraintFeasibility,
-  type ConstraintSet,
-} from '@/features/recipe-constraints';
+import { findDemoIngredient } from '@/data/demoIngredients';
+import { analyzeConstraintFeasibility, type ConstraintSet } from '@/features/recipe-constraints';
 import {
   overSweetStarter,
   starterLine,
@@ -31,13 +29,30 @@ import {
   workingStateFingerprint,
   type ConstraintPreview,
 } from './applyPipeline';
+import { effectiveInputCostPerKg } from './ecoDraftCostSweep';
 import { constraintStudioCopy as copy } from './constraintStudioCopy';
+import { recipeDirectionViolations } from '@/features/recipe-direction/recipeDirectionTargets';
+import { ownerSameInputRecipe } from '@/features/formulation/__fixtures__/ownerSameInputFixture';
+import { classifyViolationBands } from '@/features/formulation/violationBands';
 
 const SUCROSE = starterLine('sucrose');
 const DEXTROSE = starterLine('dextrose');
 const MILK = starterLine('milk_3_5');
+const TARA = starterLine('tara_gum');
 
 const NO_CONSTRAINTS: ConstraintSet = { byLineId: {} };
+
+const unlockedWholeGramBoundaryRecipe = (): RecipeInput => {
+  const input = ownerSameInputRecipe();
+  return {
+    ...input,
+    target_temperature_c: -11,
+    target_batch_grams: 206,
+    items: input.items.map((item) =>
+      item.id === 'owner:smp' ? { ...item, planned_grams: 501 } : item,
+    ),
+  };
+};
 
 const lineGrams = (input: RecipeInput, lineId: string): number => {
   const line = input.items.find((item) => item.id === lineId);
@@ -86,6 +101,80 @@ describe('buildOptimizePreview (§12.4 → §19.1)', () => {
     expect(result).toMatchObject({ ok: false, code: 'already_clean' });
   });
 
+  it('reports exact missing ECO prices instead of a zero-run solver failure', () => {
+    const input = structuredClone(starterMilkBase());
+    input.goals = { ...input.goals, formulation_strategy: 'eco' };
+    input.items[0] = {
+      ...input.items[0]!,
+      ingredient: { ...input.items[0]!.ingredient, cost_per_kg: null, cost_currency: null },
+    };
+    const result = buildOptimizePreview(input, NO_CONSTRAINTS, 'now');
+    expect(result).toMatchObject({
+      ok: false,
+      code: 'missing_prices',
+      lineIds: [input.items[0]!.id],
+    });
+    if (!result.ok && result.code === 'missing_prices') {
+      expect(result.ingredientNames).toContain(input.items[0]!.ingredient.name);
+    }
+  });
+
+  it('returns NO_CHANGE for a technically clean ECO recipe when no cheaper safe move exists', () => {
+    const input = structuredClone(starterMilkBase());
+    input.goals = { ...input.goals, formulation_strategy: 'eco' };
+    input.items = input.items.map((item) => ({
+      ...item,
+      ingredient: {
+        ...item.ingredient,
+        cost_per_kg: 1,
+        cost_currency: 'EUR',
+      },
+    }));
+
+    expect(buildOptimizePreview(input, NO_CONSTRAINTS, 'now')).toMatchObject({
+      ok: false,
+      code: 'already_clean',
+    });
+  });
+
+  it('keeps a clean ECO recipe when only the secondary cost objective prefers another point', () => {
+    const input = structuredClone(starterMilkBase());
+    input.goals = { ...input.goals, formulation_strategy: 'eco' };
+    const beforeCost = effectiveInputCostPerKg(input);
+    const result = buildOptimizePreview(input, NO_CONSTRAINTS, 'now');
+
+    expect(beforeCost).not.toBeNull();
+    expect(result).toMatchObject({ ok: false, code: 'already_clean' });
+    expect(input.items.map((item) => item.planned_grams)).toEqual([670, 130, 35, 130, 30, 5]);
+  });
+
+  it('never turns a native-clean ECO draft with an unmet direction target into BLOCKED', () => {
+    const input = structuredClone(starterMilkBase());
+    input.goals = {
+      ...input.goals,
+      formulation_strategy: 'eco',
+      direction_targets_active: true,
+      direction_targets: { sweetness: 2, softness: 2, creaminess: 0, flavor: 0 },
+    };
+    const beforeDirection = recipeDirectionViolations(input);
+    expect(detectViolations(calculateRecipe(input))).toHaveLength(0);
+    expect(beforeDirection.length).toBeGreaterThan(0);
+
+    const result = buildOptimizePreview(input, NO_CONSTRAINTS, 'now');
+    if (!result.ok) {
+      expect(result.code).toBe('already_clean');
+      return;
+    }
+    const afterDirection = recipeDirectionViolations(result.preview.proposedInput);
+    expect(result.preview.violationsAfter).toBe(0);
+    expect(afterDirection.length).toBeLessThanOrEqual(beforeDirection.length);
+    expect(
+      afterDirection.reduce((sum, violation) => sum + violation.severity_points, 0),
+    ).toBeLessThanOrEqual(
+      beforeDirection.reduce((sum, violation) => sum + violation.severity_points, 0),
+    );
+  });
+
   it('never proposes ADDING a parallel line of a LOCKED ingredient (§17 intent)', () => {
     // Milk locked + over-sweet sucrose: the engine's top proposals add Milk
     // 3.5 % (dilution). Those violate the lock's intent and must be skipped —
@@ -110,21 +199,65 @@ describe('buildOptimizePreview (§12.4 → §19.1)', () => {
     );
     expect(addedMilk).toEqual([]);
   });
+
+  it('uses the continued whole-gram recipe as the single final violation and Apply authority', () => {
+    const input = unlockedWholeGramBoundaryRecipe();
+    const result = buildOptimizePreview(input, NO_CONSTRAINTS, 'now');
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.preview.practicalization?.status).toBe('ready');
+    if (result.preview.practicalization?.status !== 'ready') return;
+    const exactCandidate = result.preview.practicalization.audit.exactInput;
+
+    // The owner whole-gram authority now keeps both the exact and presented
+    // candidate inside the native boundaries.
+    expect(classifyViolationBands(exactCandidate).hardMetrics).toEqual([]);
+    expect(
+      result.preview.proposedInput.items.every((item) => Number.isInteger(item.planned_grams)),
+    ).toBe(true);
+    expect(
+      result.preview.proposedInput.items.reduce((sum, item) => sum + item.planned_grams, 0),
+    ).toBe(206);
+    expect(classifyViolationBands(result.preview.proposedInput).hardMetrics).toEqual([]);
+    expect(detectViolations(calculateRecipe(result.preview.proposedInput))).toEqual([]);
+
+    expect(result.preview.violationsAfter).toBe(0);
+    expect(result.preview.hardResidualMetrics).toEqual([]);
+    expect(result.preview.diagnosticOnly).toBe(false);
+    expect(result.preview.diagnosticReason).toBeUndefined();
+    expect(result.preview.formulation?.proof).toMatchObject({
+      verdict: 'all_bands_in_range',
+      bestEffort: false,
+      bestEffortReasons: [],
+    });
+
+    expect(
+      commitPreview(input, NO_CONSTRAINTS, result.preview, 'now', 'apply-whole-boundary').ok,
+    ).toBe(true);
+  });
 });
 
 describe('commitPreview — THE door (§17.2 hard guarantee)', () => {
   it('applies a verified preview; locked grams are byte-stable through the apply', () => {
-    const { input, set } = addFixScenario();
+    // ACCEPTANCE ADDENDUM (3), 2026-07-24: the BOTH-sugars-locked scenario now
+    // ends with hard-NATIVE residuals and is diagnostic-only (pinned below) —
+    // the apply-mechanics pin uses the hard-safe SINGLE-lock variant (dextrose
+    // locked, sucrose free → the solver converges to zero violations).
+    const input = withGrams(overSweetStarter(160), DEXTROSE, 40);
+    const set: ConstraintSet = { byLineId: { [DEXTROSE]: { mode: 'locked', grams: 40 } } };
     const built = buildOptimizePreview(input, set, 'now');
     expect(built.ok).toBe(true);
     if (!built.ok) return;
+    expect(built.preview.diagnosticOnly).toBe(false);
 
     const outcome = commitPreview(input, set, built.preview, '2026-07-17T12:00:00.000Z', 'apply-1');
     expect(outcome.ok).toBe(true);
     if (!outcome.ok) return;
 
-    expect(Object.is(lineGrams(outcome.verified.input, SUCROSE), 160)).toBe(true);
     expect(Object.is(lineGrams(outcome.verified.input, DEXTROSE), 40)).toBe(true);
+    // The free over-sweet sucrose was genuinely moved by the solver.
+    expect(lineGrams(outcome.verified.input, SUCROSE)).toBeLessThan(160);
     // §20.1 record: exact before snapshot + trace
     expect(outcome.verified.record.before.input.items.map((item) => item.planned_grams)).toEqual(
       input.items.map((item) => item.planned_grams),
@@ -132,11 +265,32 @@ describe('commitPreview — THE door (§17.2 hard guarantee)', () => {
     expect(outcome.verified.record.configVersion.length).toBeGreaterThan(0);
     // Owner P0 batch invariant: the applied recipe keeps the target batch
     // (locked grams byte-stable; unlocked lines carry the batch restoration).
-    const appliedSum = outcome.verified.input.items.reduce((sum, item) => sum + item.planned_grams, 0);
-    expect(Math.abs(appliedSum - outcome.verified.input.target_batch_grams)).toBeLessThanOrEqual(0.1);
+    const appliedSum = outcome.verified.input.items.reduce(
+      (sum, item) => sum + item.planned_grams,
+      0,
+    );
+    expect(Math.abs(appliedSum - outcome.verified.input.target_batch_grams)).toBeLessThanOrEqual(
+      0.1,
+    );
     // violations are REPORTED honestly (a heavily-locked recipe may trade band
     // precision for batch integrity — visible in the preview, never silent).
     expect(Number.isInteger(outcome.verified.record.violationsAfter)).toBe(true);
+  });
+
+  it('ADDENDUM (3): the both-locked scenario keeps hard-NATIVE residuals → diagnostic only, door-blocked', () => {
+    const { input, set } = addFixScenario();
+    const built = buildOptimizePreview(input, set, 'now');
+    expect(built.ok).toBe(true);
+    if (!built.ok) return;
+    // Honest diagnostic marking on the preview itself…
+    expect(built.preview.diagnosticOnly).toBe(true);
+    expect(built.preview.hardResidualMetrics!.length).toBeGreaterThan(0);
+    // …and the STRUCTURAL refusal at the door (recomputed, not flag-trusted).
+    const outcome = commitPreview(input, set, built.preview, 'now', 'apply-diag');
+    expect(outcome.ok).toBe(false);
+    if (outcome.ok) return;
+    expect(outcome.code).toBe('hard_residual_violations');
+    expect(outcome.messagePl).toContain('Receptura pozostała bez zmian.');
   });
 
   it('BLOCKS a forged proposal that moves a locked line — Polish message, no state produced', () => {
@@ -163,14 +317,16 @@ describe('commitPreview — THE door (§17.2 hard guarantee)', () => {
     if (outcome.code !== 'constraints_violated') return;
     expect(outcome.violations[0]?.code).toBe('locked_grams_changed');
     const sucroseName = input.items.find((item) => item.id === SUCROSE)?.ingredient.name ?? '';
-    expect(outcome.messagePl).toContain('Kontrola blokad zatrzymała');
+    expect(outcome.messagePl).toContain('Propozycja zmieniłaby zablokowane gramatury');
     expect(outcome.messagePl).toContain(sucroseName);
-    expect(outcome.messagePl).toContain('Receptura nie została zmieniona');
+    expect(outcome.messagePl).toContain('Receptura pozostała bez zmian');
   });
 
   it('BLOCKS even a 0.1 g drift on a locked line (§17.2 „nawet o 0,1 g”)', () => {
     const input = starterMilkBase();
-    const set: ConstraintSet = { byLineId: { [MILK]: { mode: 'locked', grams: lineGrams(input, MILK) } } };
+    const set: ConstraintSet = {
+      byLineId: { [MILK]: { mode: 'locked', grams: lineGrams(input, MILK) } },
+    };
     const rescale = buildBatchRescalePreview(input, set, 1500, 'now');
     expect(rescale.ok).toBe(true);
     if (!rescale.ok) return;
@@ -186,7 +342,9 @@ describe('commitPreview — THE door (§17.2 hard guarantee)', () => {
     const outcome = commitPreview(input, set, drifted, 'now', 'apply-y');
     expect(outcome.ok).toBe(false);
     if (outcome.ok) return;
-    expect(outcome.code).toBe('constraints_violated');
+    // The independent executable recheck may reject the forged vector before
+    // the legacy lock diagnostic; either way the 0.1 g drift never applies.
+    expect(['constraints_violated', 'practicalization_invalid']).toContain(outcome.code);
   });
 
   it('refuses a STALE preview (recipe changed since it was built)', () => {
@@ -213,10 +371,70 @@ describe('commitPreview — THE door (§17.2 hard guarantee)', () => {
     const outcome = commitPreview(input, unlockedSet, built.preview, 'now', 'apply-w');
     expect(outcome).toMatchObject({ ok: false, code: 'stale_preview' });
   });
+
+  it('rejects a forged Preview that removes authenticated constraints or moves the locked line', () => {
+    const input = withGrams(overSweetStarter(160), DEXTROSE, 40);
+    const set: ConstraintSet = { byLineId: { [DEXTROSE]: { mode: 'locked', grams: 40 } } };
+    const built = buildOptimizePreview(input, set, 'now');
+    expect(built.ok).toBe(true);
+    if (!built.ok) return;
+
+    const removed: ConstraintPreview = { ...built.preview, nextConstraints: { byLineId: {} } };
+    expect(commitPreview(input, set, removed, 'now', 'forged-constraints')).toMatchObject({
+      ok: false,
+      code: 'stale_preview',
+    });
+
+    const moved: ConstraintPreview = {
+      ...removed,
+      proposedInput: {
+        ...removed.proposedInput,
+        items: removed.proposedInput.items.map((item) =>
+          item.id === DEXTROSE ? { ...item, planned_grams: 41 } : item,
+        ),
+      },
+    };
+    expect(commitPreview(input, set, moved, 'now', 'forged-lock-and-constraints')).toMatchObject({
+      ok: false,
+      code: 'stale_preview',
+    });
+  });
+
+  it.each([
+    ['mode', (input: RecipeInput) => ({ ...input, mode: 'premium' as const })],
+    ['category', (input: RecipeInput) => ({ ...input, category: 'sorbet' as const })],
+    [
+      'temperature',
+      (input: RecipeInput) => ({
+        ...input,
+        target_temperature_c: input.target_temperature_c === -11 ? -12 : -11,
+      }),
+    ],
+    ['machine capacity', (input: RecipeInput) => ({ ...input, machine_capacity_grams: 1500 })],
+    [
+      'goals',
+      (input: RecipeInput) => ({ ...input, goals: { ...input.goals, sweetness: 'high' as const } }),
+    ],
+  ])('refuses a forged proposed %s context before Engine verification', (_field, forge) => {
+    const input = withGrams(overSweetStarter(160), DEXTROSE, 40);
+    const set: ConstraintSet = { byLineId: { [DEXTROSE]: { mode: 'locked', grams: 40 } } };
+    const built = buildOptimizePreview(input, set, 'now');
+    expect(built.ok).toBe(true);
+    if (!built.ok) return;
+    const forged: ConstraintPreview = {
+      ...built.preview,
+      proposedInput: forge(built.preview.proposedInput),
+    };
+
+    expect(commitPreview(input, set, forged, 'now', 'forged-context')).toMatchObject({
+      ok: false,
+      code: 'stale_preview',
+    });
+  });
 });
 
 describe('batch rescale preview (§17.4)', () => {
-  it('preserves an awkward locked float byte-for-byte while the rest scales', () => {
+  it('keeps an awkward locked float byte-exact in Preview and blocks non-executable Apply', () => {
     const awkward = 600.3000000000001; // deliberately awkward float (round-trips exactly)
     const input = withGrams(starterMilkBase(), MILK, awkward);
     const set: ConstraintSet = { byLineId: { [MILK]: { mode: 'locked', grams: awkward } } };
@@ -225,19 +443,23 @@ describe('batch rescale preview (§17.4)', () => {
     expect(built.ok).toBe(true);
     if (!built.ok) return;
 
+    expect(Object.is(lineGrams(built.preview.proposedInput, MILK), awkward)).toBe(true);
+    // The user-owned fractional exact lock wins; it is never rounded behind
+    // the padlock.  The whole-gram execution contract therefore blocks Apply.
     const outcome = commitPreview(input, set, built.preview, 'now', 'apply-b');
-    expect(outcome.ok).toBe(true);
-    if (!outcome.ok) return;
+    expect(outcome).toMatchObject({
+      ok: false,
+      code: 'practicalization_invalid',
+      reason: 'exact_gram_lock_not_whole_gram',
+    });
 
-    expect(Object.is(lineGrams(outcome.verified.input, MILK), awkward)).toBe(true);
-    const total = outcome.verified.input.items.reduce((sum, item) => sum + item.planned_grams, 0);
-    expect(Math.abs(total - 1500)).toBeLessThanOrEqual(0.1);
-    expect(outcome.verified.input.target_batch_grams).toBe(1500);
-    // every non-locked line actually moved
+    // every non-locked line was still considered by the exact rescale
     const milkDiff = built.preview.lines.find((line) => line.lineId === MILK);
     expect(milkDiff).toMatchObject({ kind: 'unchanged', locked: true });
     expect(
-      built.preview.lines.filter((line) => line.lineId !== MILK).every((line) => line.kind === 'changed'),
+      built.preview.lines
+        .filter((line) => line.lineId !== MILK)
+        .every((line) => line.kind === 'changed'),
     ).toBe(true);
   });
 
@@ -260,7 +482,34 @@ describe('batch rescale preview (§17.4)', () => {
       ),
     };
     const built = buildBatchRescalePreview(adjusted, set, 1000, 'now');
-    expect(built).toMatchObject({ ok: false, code: 'rescale_locked_sum', minimumBatchGrams: 1100 });
+    // Milk + sucrose are user-locked (1100 g) and the 5 g established Tara
+    // dose is internally template-controlled, so the real minimum is 1105 g.
+    expect(built).toMatchObject({ ok: false, code: 'rescale_locked_sum', minimumBatchGrams: 1105 });
+  });
+
+  it('blocks before Preview when scaling would erase a positive Standard anchor below 1 g', () => {
+    const base = starterMilkBase();
+    const input: RecipeInput = {
+      ...base,
+      items: [
+        ...base.items.map((item, index) =>
+          index === 0 ? { ...item, planned_grams: item.planned_grams - 10 } : item,
+        ),
+        {
+          id: 'positive-standard',
+          ingredient: findDemoIngredient('inulin')!,
+          planned_grams: 10,
+          actual_grams: null,
+          lock_type: 'unlocked',
+          user_intent_anchor_grams: 10,
+        },
+      ],
+    };
+
+    expect(buildBatchRescalePreview(input, NO_CONSTRAINTS, 50, 'now')).toMatchObject({
+      ok: false,
+      code: 'rescale_invalid',
+    });
   });
 });
 
@@ -292,13 +541,61 @@ describe('suggested fix (§18.2 „Ustaw X g i przelicz”)', () => {
       mode: 'locked',
       grams: action.grams,
     });
+    // Changing a sugar bound cannot silently rewrite the established,
+    // template-controlled stabilizer contract.
+    expect(Object.is(lineGrams(built.preview.proposedInput, TARA), lineGrams(input, TARA))).toBe(
+      true,
+    );
 
-    const outcome = commitPreview(input, set, built.preview, 'now', 'apply-s');
+    const authorization = {
+      baseFingerprint: built.preview.baseFingerprint,
+      type: action.type,
+      lineId: action.lineId,
+      grams: action.grams,
+    } as const;
+    const outcome = commitPreview(
+      input,
+      set,
+      built.preview,
+      'now',
+      'apply-s',
+      [],
+      undefined,
+      null,
+      null,
+      null,
+      authorization,
+    );
     expect(outcome.ok).toBe(true);
     if (!outcome.ok) return;
     expect(Object.is(lineGrams(outcome.verified.input, SUCROSE), action.grams)).toBe(true);
     // the bound was engine-verified clean → the applied state is clean
     expect(detectViolations(calculateRecipe(outcome.verified.input)).length).toBe(0);
+
+    const unrelatedConstraint: ConstraintPreview = {
+      ...built.preview,
+      nextConstraints: {
+        byLineId: {
+          ...built.preview.nextConstraints.byLineId,
+          [MILK]: { mode: 'locked', grams: lineGrams(input, MILK) },
+        },
+      },
+    };
+    expect(
+      commitPreview(
+        input,
+        set,
+        unrelatedConstraint,
+        'now',
+        'forged-suggested-fix',
+        [],
+        undefined,
+        null,
+        null,
+        null,
+        authorization,
+      ),
+    ).toMatchObject({ ok: false, code: 'stale_preview' });
   });
 });
 

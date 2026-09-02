@@ -1,0 +1,1203 @@
+import { describe, expect, it } from 'vitest';
+import { calculateRecipe, type RecipeInput } from '@/engine';
+import { DEFAULT_PRESET } from '@/data/demoPresets';
+import {
+  applyVerifiedRescueInput,
+  buildFinalActualInput,
+  buildProductionForecastInput,
+  completeProductionSession,
+  confirmProductionLine,
+  confirmProductionTopUpTask,
+  correctRecordedPhysicalGrams,
+  createProductionSession,
+  hydrateProductionSessionFromRun,
+  mergePendingProductionDrafts,
+  productionProgress,
+  pendingProductionTopUpTasks,
+  productionSourceFingerprint,
+  toppingProductionProgress,
+  productionStepForGrams,
+  productionTopUpGrams,
+  topUpProductionLine,
+  reopenProductionRecord,
+  setDraftActualGrams,
+  setProductionTopUpDraftGrams,
+} from './productionSession';
+import type { RecipeCompositionMetadata } from '@/features/recipe-composition/recipeCompositionPersistence';
+import type { CatalogLabelToppingIngredient } from '@/features/recipe-composition/labelTopping';
+import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
+import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
+import type { ProductionRun } from '@/features/pro-core/productionContracts';
+import { assessProductionRescue } from './productionRescue';
+import { browserProductionRescueDecision } from './useProductionWorkspace';
+
+function recipe(): RecipeInput {
+  const items = DEFAULT_PRESET.items.map((item, index) => ({
+    ...item,
+    actual_grams: null,
+    planned_grams:
+      item.ingredient.id === 'tara_gum'
+        ? 3
+        : index === 0
+          ? item.planned_grams + 2
+          : item.planned_grams,
+  }));
+  return {
+    items,
+    mode: 'classic',
+    category: DEFAULT_PRESET.category,
+    target_temperature_c: DEFAULT_PRESET.target_temperature_c,
+    target_batch_grams: DEFAULT_PRESET.target_batch_grams,
+    machine_capacity_grams: null,
+    goals: { flavor_intensity: 'balanced', cost_priority: 'balanced' },
+  };
+}
+
+function session() {
+  const plannedInput = recipe();
+  return createProductionSession({
+    sessionId: 'run-1',
+    ownerUserId: 'owner-1',
+    source: {
+      recipeId: 'recipe-1',
+      recipeVersionId: 'version-1',
+      recipeVersionNumber: 1,
+      recipeName: 'Milk base',
+    },
+    plannedInput,
+    plannedComposition: {
+      schemaVersion: 1,
+      baseScope: 'BASE_FORMULATION',
+      baseOrder: plannedInput.items.map((item) => item.id),
+      toppings: [],
+      behaviorSnapshots: productBehaviorTestSnapshots(plannedInput),
+      migrationAmbiguities: [],
+    },
+    startedAt: '2026-08-09T10:00:00.000Z',
+  });
+}
+
+describe('topping up a line the operator under-added (§12/§19/§20)', () => {
+  const shortSession = () => {
+    const base = session();
+    const line = base.lines[0]!;
+    return confirmProductionLine(
+      setDraftActualGrams(base, line.lineId, line.targetGrams - 5),
+      line.lineId,
+      '2026-08-24T10:00:00.000Z',
+    );
+  };
+
+  it('states exactly how much is still owed under the current plan', () => {
+    const shorted = shortSession();
+    expect(productionTopUpGrams(shorted.lines[0]!)).toBeCloseTo(5, 6);
+    // A line with nothing in the vessel is still to be ADDED, not topped up.
+    expect(productionTopUpGrams(shorted.lines[1]!)).toBe(0);
+  });
+
+  it('grows the committed physical mass and clears the shortfall', () => {
+    const shorted = shortSession();
+    const line = shorted.lines[0]!;
+    const topped = topUpProductionLine(
+      shorted,
+      line.lineId,
+      line.targetGrams,
+      '2026-08-24T10:05:00.000Z',
+    );
+    const after = topped.lines[0]!;
+    expect(after.physicalAddedGrams).toBeCloseTo(line.targetGrams, 6);
+    expect(after.confirmed).toBe(true);
+    expect(productionTopUpGrams(after)).toBe(0);
+    // The frozen plan is never rewritten by what physically happened.
+    expect(after.plannedGrams).toBe(line.plannedGrams);
+  });
+
+  it('refuses to take material back out of the vessel', () => {
+    const shorted = shortSession();
+    const line = shorted.lines[0]!;
+    expect(() =>
+      topUpProductionLine(
+        shorted,
+        line.lineId,
+        line.physicalAddedGrams - 1,
+        '2026-08-24T10:05:00.000Z',
+      ),
+    ).toThrow(/cannot remove physically added/i);
+  });
+
+  it('is not a substitute for the ordinary actual-grams control', () => {
+    const base = session();
+    expect(() =>
+      topUpProductionLine(base, base.lines[0]!.lineId, 100, '2026-08-24T10:05:00.000Z'),
+    ).toThrow(/confirmed line/i);
+  });
+
+  it('leaves the vessel mass and the remaining plan honest throughout', () => {
+    const shorted = shortSession();
+    const line = shorted.lines[0]!;
+    const before = productionProgress(shorted);
+    expect(before.confirmedMassG).toBeCloseTo(line.targetGrams - 5, 6);
+    const topped = topUpProductionLine(
+      shorted,
+      line.lineId,
+      line.targetGrams,
+      '2026-08-24T10:05:00.000Z',
+    );
+    const after = productionProgress(topped);
+    expect(after.confirmedMassG).toBeCloseTo(before.confirmedMassG + 5, 6);
+    expect(after.remainingMassG).toBeCloseTo(before.remainingMassG - 5, 6);
+    expect(after.targetChanged).toBe(false);
+  });
+});
+
+describe('production session physical-reality contract', () => {
+  it('rehydrates an authorized positive top-up as pending instead of opening an impossible second decision', () => {
+    const local = session();
+    const first = local.lines[0]!;
+    const rescueInput = buildProductionForecastInput(local);
+    rescueInput.items[0] = {
+      ...rescueInput.items[0]!,
+      planned_grams: first.plannedGrams + 3,
+      actual_grams: null,
+    };
+    rescueInput.target_batch_grams += 3;
+    const durable: ProductionRun = {
+      runId: local.sessionId,
+      ownerUserId: local.ownerUserId!,
+      recipeId: local.source.recipeId!,
+      recipeVersionId: local.source.recipeVersionId!,
+      recipeVersionNumber: local.source.recipeVersionNumber!,
+      status: 'in_progress',
+      plannedBatchG: local.plannedInput.target_batch_grams,
+      plannedItems: local.lines.map((line, index) => ({
+        id: line.lineId,
+        name: line.name,
+        canonicalIngredientId: line.canonicalIngredientId,
+        processScope: 'BASE_FORMULATION',
+        scopePosition: index,
+        plannedGrams: line.plannedGrams,
+        displayGrams: line.plannedGrams,
+      })),
+      productProfile: local.plannedInput.category,
+      temperatureC: local.plannedInput.target_temperature_c,
+      engineVersion: 'test',
+      configVersion: 'test',
+      mapperDatasetVersion: null,
+      plannedDate: null,
+      machine: null,
+      location: null,
+      batchReference: null,
+      notes: null,
+      createdBy: local.ownerUserId!,
+      createdAt: '2026-08-25T10:00:00.000Z',
+      updatedAt: '2026-08-25T10:02:00.000Z',
+      actual: {
+        items: local.lines.map((line) => ({
+          id: line.lineId,
+          name: line.name,
+          actualGrams: line.lineId === first.lineId ? first.plannedGrams : null,
+          confirmedAt: line.lineId === first.lineId ? '2026-08-25T10:01:00.000Z' : null,
+          confirmationOrder: line.lineId === first.lineId ? 1 : null,
+        })),
+        actualTotalMixG: first.plannedGrams,
+        actualYieldG: null,
+        wasteG: null,
+        substitutions: [],
+        operatorNotes: null,
+        deviationReason: null,
+        recordedBy: local.ownerUserId!,
+        recordedAt: '2026-08-25T10:01:00.000Z',
+        revision: 1,
+      },
+      rescue: {
+        recipeInput: rescueInput,
+        productComposition: local.plannedComposition,
+        acceptedBy: local.ownerUserId!,
+        acceptedAt: '2026-08-25T10:02:00.000Z',
+        revision: 1,
+      },
+      completedAt: null,
+      cancelledAt: null,
+      events: [],
+    };
+
+    const recovered = hydrateProductionSessionFromRun(
+      durable,
+      local.source,
+      local.plannedInput,
+      local.plannedComposition,
+    );
+    const recoveredFirst = recovered.lines[0]!;
+
+    expect(recoveredFirst).toMatchObject({
+      physicalAddedGrams: first.plannedGrams,
+      targetGrams: first.plannedGrams + 3,
+      confirmed: true,
+    });
+    expect(pendingProductionTopUpTasks(recovered)).toEqual([
+      expect.objectContaining({
+        sourceRecipeLineId: first.lineId,
+        authorizedDeltaG: 3,
+        revisionId: 1,
+      }),
+    ]);
+    expect(productionTopUpGrams(recoveredFirst)).toBe(3);
+    expect(browserProductionRescueDecision(recovered).state).toBe('not_needed');
+    expect(assessProductionRescue(recovered).state).toBe('not_needed');
+  });
+
+  it('rehydrates confirmed actuals from the exact durable run without inventing pending grams', () => {
+    const local = session();
+    const first = local.lines[0]!;
+    const durable: ProductionRun = {
+      runId: local.sessionId,
+      ownerUserId: 'owner-1',
+      recipeId: 'recipe-1',
+      recipeVersionId: 'version-1',
+      recipeVersionNumber: 1,
+      status: 'in_progress',
+      plannedBatchG: local.plannedInput.target_batch_grams,
+      plannedItems: local.lines.map((line, index) => ({
+        id: line.lineId,
+        name: line.name,
+        canonicalIngredientId: line.canonicalIngredientId,
+        processScope: 'BASE_FORMULATION',
+        scopePosition: index,
+        plannedGrams: line.plannedGrams,
+        displayGrams: line.plannedGrams,
+      })),
+      productProfile: local.plannedInput.category,
+      temperatureC: local.plannedInput.target_temperature_c,
+      engineVersion: 'test',
+      configVersion: 'test',
+      mapperDatasetVersion: null,
+      thermalMode: 'HEAT_CAPABLE',
+      processReadiness: 'READY_WITH_INFO',
+      processAdvisories: [
+        {
+          code: 'PROCESS_DATA_INSUFFICIENT',
+          lineId: local.lines[0]!.lineId,
+          productId: 'product-1',
+          mapperIngredientId: 'PI-ING-000236',
+          decision: 'UNKNOWN',
+          verificationStatus: 'unknown',
+        },
+      ],
+      plannedDate: null,
+      machine: null,
+      location: null,
+      batchReference: null,
+      notes: null,
+      createdBy: 'owner-1',
+      createdAt: '2026-08-19T00:00:00.000Z',
+      updatedAt: '2026-08-19T00:01:00.000Z',
+      actual: {
+        items: local.lines.map((line) => ({
+          id: line.lineId,
+          name: line.name,
+          actualGrams: line.lineId === first.lineId ? line.plannedGrams + 2 : null,
+          confirmedAt: line.lineId === first.lineId ? '2026-08-19T00:00:30.000Z' : null,
+          confirmationOrder: line.lineId === first.lineId ? 7 : null,
+        })),
+        actualTotalMixG: null,
+        actualYieldG: null,
+        wasteG: null,
+        substitutions: [],
+        operatorNotes: null,
+        deviationReason: null,
+        recordedBy: 'owner-1',
+        recordedAt: '2026-08-19T00:01:00.000Z',
+        revision: 1,
+      },
+      rescue: null,
+      completedAt: null,
+      cancelledAt: null,
+      events: [
+        {
+          eventId: 'started-1',
+          type: 'started',
+          at: '2026-08-19T00:00:00.000Z',
+          by: 'owner-1',
+          detail: null,
+          amendment: null,
+        },
+        {
+          eventId: 'decision-1',
+          type: 'deviation_decision_accepted',
+          at: '2026-08-19T00:02:00.000Z',
+          by: 'owner-1',
+          detail: 'Operator accepted the current safe result',
+          amendment: {
+            stableOptionId: 'leave_as_is',
+            sourceActualRevision: 1,
+            rescueRevision: 1,
+            finalMassG: 1002,
+            scoreDisplay: '8/10',
+          },
+        },
+      ],
+    };
+    const recovered = hydrateProductionSessionFromRun(
+      durable,
+      local.source,
+      local.plannedInput,
+      local.plannedComposition,
+    );
+    expect(recovered.lines[0]).toMatchObject({
+      confirmed: true,
+      physicalAddedGrams: first.plannedGrams + 2,
+      confirmedAt: '2026-08-19T00:00:30.000Z',
+      confirmationOrder: 7,
+    });
+    expect(recovered.lines.slice(1).every((line) => !line.confirmed)).toBe(true);
+    expect(recovered).toMatchObject({
+      thermalMode: 'HEAT_CAPABLE',
+      processReadiness: 'READY_WITH_INFO',
+      processAdvisories: [{ code: 'PROCESS_DATA_INSUFFICIENT' }],
+      lastDeviationDecision: {
+        strategy: 'leave_as_is',
+        acceptedAt: '2026-08-19T00:02:00.000Z',
+        sourceActualRevision: 1,
+        rescueRevision: 1,
+        finalMassG: 1002,
+        scoreDisplay: '8/10',
+      },
+    });
+  });
+
+  it('keeps durable run readiness when the current recipe authority changes later', () => {
+    const local = session();
+    const durable: ProductionRun = {
+      runId: local.sessionId,
+      ownerUserId: 'owner-1',
+      recipeId: 'recipe-1',
+      recipeVersionId: 'version-1',
+      recipeVersionNumber: 1,
+      status: 'in_progress',
+      plannedBatchG: local.plannedInput.target_batch_grams,
+      plannedItems: local.lines.map((line, index) => ({
+        id: line.lineId,
+        name: line.name,
+        canonicalIngredientId: line.canonicalIngredientId,
+        processScope: 'BASE_FORMULATION',
+        scopePosition: index,
+        plannedGrams: line.plannedGrams,
+        displayGrams: line.plannedGrams,
+      })),
+      productProfile: local.plannedInput.category,
+      temperatureC: local.plannedInput.target_temperature_c,
+      engineVersion: 'test',
+      configVersion: 'test',
+      mapperDatasetVersion: null,
+      thermalMode: 'COLD_ONLY',
+      processReadiness: 'READY_WITH_INFO',
+      processAdvisories: [
+        {
+          code: 'PROCESS_DATA_INSUFFICIENT',
+          lineId: local.lines[0]!.lineId,
+          productId: 'product-1',
+          mapperIngredientId: 'PI-ING-000236',
+          decision: 'UNKNOWN',
+          verificationStatus: 'unknown',
+        },
+      ],
+      plannedDate: null,
+      machine: null,
+      location: null,
+      batchReference: null,
+      notes: null,
+      createdBy: 'owner-1',
+      createdAt: '2026-08-19T00:00:00.000Z',
+      updatedAt: '2026-08-19T00:01:00.000Z',
+      actual: null,
+      rescue: null,
+      completedAt: null,
+      cancelledAt: null,
+      events: [],
+    };
+    const changedComposition = {
+      ...local.plannedComposition,
+      behaviorSnapshots: {},
+    };
+
+    const recovered = hydrateProductionSessionFromRun(
+      durable,
+      local.source,
+      local.plannedInput,
+      changedComposition,
+    );
+
+    expect(recovered.processReadiness).toBe('READY_WITH_INFO');
+    expect(recovered.processAdvisories).toEqual(durable.processAdvisories);
+  });
+
+  it('does not resurrect a stale Topping snapshot when hydrating a Base-only Rescue', () => {
+    const local = session();
+    const topping = {
+      id: 'topping-hazelnut',
+      ingredient: {
+        ...local.plannedInput.items[0]!.ingredient,
+        id: 'PI-ING-TOPPING-HAZELNUT',
+        canonical_ingredient_id: 'PI-ING-TOPPING-HAZELNUT',
+      },
+      planned_grams: 27,
+      actual_grams: null,
+      process_scope: 'POST_PROCESS_ADDON' as const,
+      addon_sort_order: 0,
+    };
+    const currentComposition: RecipeCompositionMetadata = {
+      ...local.plannedComposition,
+      toppings: [topping],
+      behaviorSnapshots: productBehaviorTestSnapshots(local.plannedInput, [topping]),
+    };
+    const toppingSnapshot = currentComposition.behaviorSnapshots![topping.id]!;
+    const rescueComposition: RecipeCompositionMetadata = {
+      ...currentComposition,
+      behaviorSnapshots: {
+        ...currentComposition.behaviorSnapshots,
+        [topping.id]: { ...toppingSnapshot, factsFingerprint: 'stale-topping-fingerprint' },
+      },
+    };
+    const durable: ProductionRun = {
+      runId: local.sessionId,
+      ownerUserId: local.ownerUserId!,
+      recipeId: local.source.recipeId!,
+      recipeVersionId: local.source.recipeVersionId!,
+      recipeVersionNumber: local.source.recipeVersionNumber!,
+      status: 'in_progress',
+      plannedBatchG: local.plannedInput.target_batch_grams,
+      plannedItems: [
+        ...local.lines.map((line, index) => ({
+          id: line.lineId,
+          name: line.name,
+          canonicalIngredientId: line.canonicalIngredientId,
+          processScope: 'BASE_FORMULATION' as const,
+          scopePosition: index,
+          plannedGrams: line.plannedGrams,
+          displayGrams: line.plannedGrams,
+        })),
+        {
+          id: topping.id,
+          name: topping.ingredient.name,
+          canonicalIngredientId: topping.ingredient.canonical_ingredient_id,
+          processScope: 'POST_PROCESS_ADDON',
+          scopePosition: 0,
+          plannedGrams: topping.planned_grams,
+          displayGrams: topping.planned_grams,
+        },
+      ],
+      productProfile: local.plannedInput.category,
+      temperatureC: local.plannedInput.target_temperature_c,
+      engineVersion: 'test',
+      configVersion: 'test',
+      mapperDatasetVersion: null,
+      plannedDate: null,
+      machine: null,
+      location: null,
+      batchReference: null,
+      notes: null,
+      createdBy: 'owner-1',
+      createdAt: '2026-08-25T00:00:00.000Z',
+      updatedAt: '2026-08-25T00:05:00.000Z',
+      actual: null,
+      rescue: {
+        recipeInput: local.plannedInput,
+        productComposition: rescueComposition,
+        acceptedBy: 'owner-1',
+        acceptedAt: '2026-08-25T00:04:00.000Z',
+        revision: 1,
+      },
+      completedAt: null,
+      cancelledAt: null,
+      events: [],
+    };
+
+    const recovered = hydrateProductionSessionFromRun(
+      durable,
+      local.source,
+      local.plannedInput,
+      currentComposition,
+    );
+
+    expect(recovered.plannedComposition.behaviorSnapshots?.[topping.id]).toEqual(toppingSnapshot);
+    expect(recovered.plannedComposition.behaviorSnapshots?.[local.lines[0]!.lineId]).toEqual(
+      rescueComposition.behaviorSnapshots?.[local.lines[0]!.lineId],
+    );
+  });
+
+  it('keeps server physical authority while preserving only compatible pending drafts', () => {
+    const local = session();
+    const [first, second] = local.lines;
+    const withDraft = setDraftActualGrams(local, second!.lineId, second!.plannedGrams + 3);
+    const durable: ProductionRun = {
+      runId: local.sessionId,
+      ownerUserId: 'owner-1',
+      recipeId: 'recipe-1',
+      recipeVersionId: 'version-1',
+      recipeVersionNumber: 1,
+      status: 'in_progress',
+      plannedBatchG: local.plannedInput.target_batch_grams,
+      plannedItems: local.lines.map((line, index) => ({
+        id: line.lineId,
+        name: line.name,
+        canonicalIngredientId: line.canonicalIngredientId,
+        processScope: 'BASE_FORMULATION',
+        scopePosition: index,
+        plannedGrams: line.plannedGrams,
+        displayGrams: line.plannedGrams,
+      })),
+      productProfile: local.plannedInput.category,
+      temperatureC: local.plannedInput.target_temperature_c,
+      engineVersion: 'test',
+      configVersion: 'test',
+      mapperDatasetVersion: null,
+      plannedDate: null,
+      machine: null,
+      location: null,
+      batchReference: null,
+      notes: null,
+      createdBy: 'owner-1',
+      createdAt: '2026-08-19T00:00:00.000Z',
+      updatedAt: '2026-08-19T00:02:00.000Z',
+      actual: {
+        items: local.lines.map((line) => ({
+          id: line.lineId,
+          name: line.name,
+          actualGrams: line.lineId === first!.lineId ? line.plannedGrams + 4 : null,
+          confirmedAt: line.lineId === first!.lineId ? '2026-08-19T00:01:00.000Z' : null,
+          confirmationOrder: line.lineId === first!.lineId ? 1 : null,
+        })),
+        actualTotalMixG: null,
+        actualYieldG: null,
+        wasteG: null,
+        substitutions: [],
+        operatorNotes: null,
+        deviationReason: null,
+        recordedBy: 'owner-1',
+        recordedAt: '2026-08-19T00:02:00.000Z',
+        revision: 9,
+      },
+      rescue: null,
+      completedAt: null,
+      cancelledAt: null,
+      events: [],
+    };
+    const hydrated = hydrateProductionSessionFromRun(
+      durable,
+      local.source,
+      local.plannedInput,
+      local.plannedComposition,
+    );
+    const merged = mergePendingProductionDrafts(hydrated, withDraft);
+
+    expect(merged.durableActualRevision).toBe(9);
+    expect(merged.lines[0]).toMatchObject({
+      confirmed: true,
+      physicalAddedGrams: first!.plannedGrams + 4,
+      draftActualGrams: first!.plannedGrams + 4,
+    });
+    expect(merged.lines[1]).toMatchObject({
+      confirmed: false,
+      physicalAddedGrams: 0,
+      draftActualGrams: second!.plannedGrams + 3,
+    });
+    expect(() =>
+      mergePendingProductionDrafts({ ...hydrated, sessionId: 'different-run' }, withDraft),
+    ).toThrow(/different Production run/);
+  });
+
+  it('binds the production source to immutable product behavior authority', () => {
+    const input = recipe();
+    const lineId = input.items[0]!.id;
+    const behavior = {
+      schemaVersion: 1,
+      resolutionState: 'RESOLVED',
+      lineId,
+      productId: 'product-1',
+      productVersionId: 'version-1',
+      source: 'mapper',
+      factsFingerprint: 'facts-1',
+      behaviorBindingId: 'binding-1',
+      behaviorBindingVersion: '1',
+      taxonomyVersion: 'taxonomy-1',
+      resolverVersion: 'resolver-1',
+    } as ProductBehaviorSnapshot;
+    const composition: RecipeCompositionMetadata = {
+      schemaVersion: 1,
+      baseScope: 'BASE_FORMULATION',
+      baseOrder: input.items.map((item) => item.id),
+      toppings: [],
+      behaviorSnapshots: { [lineId]: behavior },
+      migrationAmbiguities: [],
+    };
+    const first = productionSourceFingerprint(input, composition);
+    const second = productionSourceFingerprint(input, {
+      ...composition,
+      behaviorSnapshots: {
+        [lineId]: { ...behavior, behaviorBindingVersion: '2' },
+      },
+    });
+    expect(second).not.toBe(first);
+  });
+
+  it('rejects a rescue-added Mapper line without behavior authority', () => {
+    const run = session();
+    const candidate = buildProductionForecastInput(run);
+    candidate.items.push({
+      ...candidate.items[0]!,
+      id: 'rescue-mapper-line',
+      ingredient: {
+        ...candidate.items[0]!.ingredient,
+        id: 'PI-ING-rescue',
+        canonical_ingredient_id: 'PI-ING-rescue',
+        identity_provenance: 'mapper',
+      },
+      planned_grams: 1,
+      actual_grams: null,
+    });
+    expect(() => applyVerifiedRescueInput(run, candidate)).toThrow(
+      /Brak zatwierdzonego uprawnienia BATCH_RESCUE/,
+    );
+  });
+
+  it('accepts a Rescue candidate outside the frozen manufacturer dosage window', () => {
+    const run = session();
+    const tara = run.plannedInput.items.find((item) => item.ingredient.id === 'tara_gum')!;
+    const snapshots = structuredClone(run.plannedComposition.behaviorSnapshots!);
+    snapshots[tara.id] = {
+      ...snapshots[tara.id]!,
+      sharedFacts: {
+        ...snapshots[tara.id]!.sharedFacts!,
+        recommendedDose: {
+          minPercent: 0.2,
+          maxPercent: 0.3,
+          sourceVersion: 'mapper-v1.0:PI-ING-000492',
+        },
+      },
+    };
+    const authorized = {
+      ...run,
+      plannedComposition: { ...run.plannedComposition, behaviorSnapshots: snapshots },
+    };
+    const candidate = buildProductionForecastInput(authorized);
+    candidate.items = candidate.items.map((item) =>
+      item.id === tara.id ? { ...item, planned_grams: 4 } : item,
+    );
+    candidate.target_batch_grams += 1;
+
+    // 4 g is well outside the declared 0.2–0.3 % window. Mid-batch, the
+    // professional in front of the machine decides the amount; the dosage is
+    // information we show, not a rule we enforce.
+    const rescued = applyVerifiedRescueInput(authorized, candidate);
+    expect(rescued.lines.find((line) => line.lineId === tara.id)?.targetGrams).toBe(4);
+  });
+  it('uses persisted Base order for the operator without reordering Engine input', () => {
+    const input = recipe();
+    const reversed = input.items.map((item) => item.id).reverse();
+    const run = createProductionSession({
+      sessionId: 'ordered-run',
+      ownerUserId: 'owner-1',
+      source: {
+        recipeId: 'recipe-1',
+        recipeVersionId: 'version-1',
+        recipeVersionNumber: 1,
+        recipeName: 'Ordered base',
+      },
+      plannedInput: input,
+      plannedComposition: {
+        schemaVersion: 1,
+        baseScope: 'BASE_FORMULATION',
+        baseOrder: reversed,
+        toppings: [],
+        migrationAmbiguities: [],
+      },
+      startedAt: '2026-08-11T00:00:00.000Z',
+    });
+    expect(run.lines.map((line) => line.lineId)).toEqual(reversed);
+    expect(run.plannedInput.items.map((item) => item.id)).toEqual(
+      input.items.map((item) => item.id),
+    );
+  });
+
+  it('defaults every editable actual to plan without marking material as added', () => {
+    const run = session();
+    expect(run.lines.every((line) => line.draftActualGrams === line.plannedGrams)).toBe(true);
+    expect(run.lines.every((line) => line.physicalAddedGrams === 0 && !line.confirmed)).toBe(true);
+    expect(run.plannedInput.items.every((line) => line.actual_grams === null)).toBe(true);
+  });
+
+  it('does not score an unconfirmed edit, then forecasts from confirmed actual + pending plan', () => {
+    const run = session();
+    const line = run.lines[0]!;
+    const edited = setDraftActualGrams(run, line.lineId, line.plannedGrams + 2);
+    expect(buildProductionForecastInput(edited).items[0]!.planned_grams).toBe(line.plannedGrams);
+    expect(buildProductionForecastInput(edited).items[0]!.actual_grams).toBeNull();
+
+    const confirmed = confirmProductionLine(edited, line.lineId, '2026-08-09T10:01:00.000Z');
+    const forecast = buildProductionForecastInput(confirmed);
+    expect(forecast.items[0]!.actual_grams).toBe(line.plannedGrams + 2);
+    expect(forecast.items[1]!.actual_grams).toBeNull();
+    expect(calculateRecipe(forecast).total_batch_g).toBeCloseTo(1002, 8);
+  });
+
+  it('separates an edited unconfirmed amount from a physical confirmation', () => {
+    const run = session();
+    const line = run.lines[0]!;
+
+    expect(line.draftActualEdited).toBe(false);
+    const edited = setDraftActualGrams(run, line.lineId, line.plannedGrams + 2);
+    expect(edited.lines[0]).toMatchObject({
+      draftActualEdited: true,
+      physicalAddedGrams: 0,
+      confirmed: false,
+    });
+    const confirmed = confirmProductionLine(edited, line.lineId, '2026-08-25T10:01:00.000Z');
+    expect(confirmed.lines[0]).toMatchObject({
+      draftActualEdited: false,
+      physicalAddedGrams: line.plannedGrams + 2,
+      confirmed: true,
+    });
+  });
+
+  it('reports excess mass explicitly instead of collapsing it into zero remaining', () => {
+    let run = session();
+    for (const line of run.lines) {
+      run = setDraftActualGrams(
+        run,
+        line.lineId,
+        line.lineId === run.lines[0]!.lineId ? line.targetGrams + 12.5 : line.targetGrams,
+      );
+      run = confirmProductionLine(run, line.lineId, '2026-08-25T10:01:00.000Z');
+    }
+
+    expect(productionProgress(run)).toMatchObject({
+      remainingMassG: 0,
+      excessMassG: 12.5,
+      massBalanceState: 'above',
+    });
+  });
+
+  it('keeps the planned recipe immutable while exact, +2 g and -2 g actuals are recorded', () => {
+    const run = session();
+    const [a, b, c] = run.lines;
+    let next = confirmProductionLine(run, a!.lineId, '2026-08-09T10:01:00.000Z');
+    next = setDraftActualGrams(next, b!.lineId, b!.plannedGrams + 2);
+    next = confirmProductionLine(next, b!.lineId, '2026-08-09T10:02:00.000Z');
+    next = setDraftActualGrams(next, c!.lineId, c!.plannedGrams - 2);
+    next = confirmProductionLine(next, c!.lineId, '2026-08-09T10:03:00.000Z');
+
+    expect(next.plannedInput.items.map((item) => item.planned_grams)).toEqual(
+      run.plannedInput.items.map((item) => item.planned_grams),
+    );
+    expect(next.lines.slice(0, 3).map((line) => line.physicalAddedGrams)).toEqual([
+      a!.plannedGrams,
+      b!.plannedGrams + 2,
+      c!.plannedGrams - 2,
+    ]);
+  });
+
+  it('never lets an accepted rescue reduce already-confirmed material', () => {
+    const run = session();
+    const line = run.lines[0]!;
+    const confirmed = confirmProductionLine(
+      setDraftActualGrams(run, line.lineId, line.plannedGrams + 12),
+      line.lineId,
+      '2026-08-09T10:01:00.000Z',
+    );
+    const illegal = buildProductionForecastInput(confirmed);
+    illegal.items[0] = {
+      ...illegal.items[0]!,
+      actual_grams: null,
+      planned_grams: line.plannedGrams,
+    };
+    expect(() => applyVerifiedRescueInput(confirmed, illegal)).toThrow(/reduce physically added/);
+  });
+
+  it('keeps every prior Rescue addition in the Engine vector after a second Rescue', () => {
+    const initial = session();
+    const source = initial.plannedInput.items[0]!;
+    const rescueA = {
+      ...source,
+      id: 'rescue-a',
+      ingredient: { ...source.ingredient, id: 'rescue-ingredient-a' },
+      planned_grams: 5,
+      actual_grams: null,
+    };
+    const rescueB = {
+      ...source,
+      id: 'rescue-b',
+      ingredient: { ...source.ingredient, id: 'rescue-ingredient-b' },
+      planned_grams: 7,
+      actual_grams: null,
+    };
+    const secondCandidate: RecipeInput = {
+      ...initial.plannedInput,
+      target_batch_grams: initial.plannedInput.target_batch_grams + 12,
+      items: [...initial.plannedInput.items, rescueA, rescueB],
+    };
+    const authorized = {
+      ...initial,
+      plannedComposition: {
+        ...initial.plannedComposition,
+        behaviorSnapshots: productBehaviorTestSnapshots(secondCandidate),
+      },
+    };
+    const firstCandidate: RecipeInput = {
+      ...secondCandidate,
+      target_batch_grams: initial.plannedInput.target_batch_grams + 5,
+      items: [...initial.plannedInput.items, rescueA],
+    };
+    const once = applyVerifiedRescueInput(authorized, firstCandidate);
+    const twice = applyVerifiedRescueInput(once, secondCandidate);
+
+    expect(twice.rescueAddedItems.map((item) => item.id)).toEqual(['rescue-a', 'rescue-b']);
+    expect(twice.lines.filter((line) => line.lineId === 'rescue-a')).toHaveLength(1);
+    expect(twice.lines.filter((line) => line.lineId === 'rescue-b')).toHaveLength(1);
+    expect(buildProductionForecastInput(twice).items.map((item) => item.id)).toEqual(
+      expect.arrayContaining(['rescue-a', 'rescue-b']),
+    );
+  });
+
+  it('turns a verified top-up into a pending confirmation while retaining the physical floor', () => {
+    const run = session();
+    const line = run.lines[0]!;
+    const confirmed = confirmProductionLine(run, line.lineId, '2026-08-09T10:01:00.000Z');
+    const target = buildProductionForecastInput(confirmed);
+    target.items[0] = {
+      ...target.items[0]!,
+      actual_grams: null,
+      planned_grams: line.plannedGrams + 3,
+    };
+    const rescued = applyVerifiedRescueInput(confirmed, target);
+    expect(rescued.lines[0]).toMatchObject({
+      physicalAddedGrams: line.plannedGrams,
+      targetGrams: line.plannedGrams + 3,
+      draftActualGrams: line.plannedGrams,
+      confirmed: true,
+    });
+    const topUpTask = pendingProductionTopUpTasks(rescued)[0]!;
+    expect(topUpTask).toMatchObject({ authorizedDeltaG: 3, draftDeltaG: 3 });
+    expect(productionProgress(rescued)).toMatchObject({
+      confirmedCount: 1,
+      confirmedMassG: line.plannedGrams,
+      coherent: false,
+    });
+    expect(() => setProductionTopUpDraftGrams(rescued, topUpTask.taskId, -1)).toThrow(
+      /non-negative/,
+    );
+    const topped = confirmProductionTopUpTask(
+      rescued,
+      topUpTask.taskId,
+      '2026-08-09T10:02:00.000Z',
+    );
+    expect(topped.lines[0]!.physicalAddedGrams).toBe(line.plannedGrams + 3);
+  });
+
+  it('projects an authorized pending-plan reduction into the operator target and draft', () => {
+    const run = session();
+    const line = run.lines[0]!;
+    const target = buildProductionForecastInput(run);
+    target.items[0] = {
+      ...target.items[0]!,
+      actual_grams: null,
+      planned_grams: line.plannedGrams - 3,
+    };
+
+    const rescued = applyVerifiedRescueInput(run, target);
+
+    expect(rescued.lines[0]).toMatchObject({
+      plannedGrams: line.plannedGrams,
+      targetGrams: line.plannedGrams - 3,
+      draftActualGrams: line.plannedGrams - 3,
+      confirmed: false,
+    });
+  });
+
+  it('does not let an untouched pre-Rescue default overwrite a durable reduced target', () => {
+    const local = session();
+    const target = buildProductionForecastInput(local);
+    target.items[0] = {
+      ...target.items[0]!,
+      actual_grams: null,
+      planned_grams: local.lines[0]!.plannedGrams - 3,
+    };
+    const durable = applyVerifiedRescueInput(local, target);
+
+    const untouched = mergePendingProductionDrafts(durable, local);
+    expect(untouched.lines[0]!.draftActualGrams).toBe(durable.lines[0]!.targetGrams);
+
+    const edited = setDraftActualGrams(
+      local,
+      local.lines[0]!.lineId,
+      local.lines[0]!.plannedGrams - 1,
+    );
+    const preserved = mergePendingProductionDrafts(durable, edited);
+    expect(preserved.lines[0]!.draftActualGrams).toBe(local.lines[0]!.plannedGrams - 1);
+  });
+
+  it('does not revive correction mode when the durable line has no recorded material', () => {
+    const durable = session();
+    const local = session();
+    const line = local.lines[0]!;
+    const reopened = reopenProductionRecord(
+      confirmProductionLine(local, line.lineId, '2026-08-09T10:01:00.000Z'),
+      line.lineId,
+    );
+
+    const merged = mergePendingProductionDrafts(durable, reopened);
+
+    expect(merged.lines[0]).toMatchObject({
+      confirmed: false,
+      physicalAddedGrams: 0,
+      draftActualGrams: line.targetGrams,
+      recordCorrectionCount: 0,
+    });
+  });
+
+  it('requires an explicit record-correction path for a human entry mistake', () => {
+    const run = session();
+    const line = run.lines[0]!;
+    const confirmed = confirmProductionLine(run, line.lineId, '2026-08-09T10:01:00.000Z');
+    expect(() => setDraftActualGrams(confirmed, line.lineId, line.plannedGrams - 1)).toThrow(
+      /record correction/,
+    );
+    const reopened = reopenProductionRecord(confirmed, line.lineId);
+    const corrected = correctRecordedPhysicalGrams(reopened, line.lineId, line.plannedGrams - 1);
+    expect(corrected.lines[0]).toMatchObject({
+      physicalAddedGrams: line.plannedGrams - 1,
+      draftActualGrams: line.plannedGrams - 1,
+      recordCorrectionCount: 1,
+      confirmed: false,
+    });
+  });
+
+  it('freezes a final actual snapshot and never mutates the source plan', () => {
+    let run = session();
+    for (const [index, line] of run.lines.entries()) {
+      if (index === 0) run = setDraftActualGrams(run, line.lineId, line.plannedGrams + 2);
+      run = confirmProductionLine(run, line.lineId, `2026-08-09T10:0${index + 1}:00.000Z`);
+    }
+    const finalInput = buildFinalActualInput(run);
+    const finalResult = calculateRecipe(finalInput);
+    const completed = completeProductionSession(
+      run,
+      finalResult,
+      '2026-08-09T11:00:00.000Z',
+      'owner-1',
+    );
+    expect(completed.status).toBe('completed');
+    expect(completed.completionSnapshot?.actualFinalMassG).toBeCloseTo(1002, 8);
+    expect(completed.completionSnapshot?.plannedInput.target_batch_grams).toBe(1000);
+    expect(completed.completionSnapshot?.finalActualInput.target_batch_grams).toBeCloseTo(1002, 8);
+    expect(completed.completionSnapshot?.confirmedOrder).toHaveLength(run.lines.length);
+    expect(productionProgress(run).coherent).toBe(true);
+  });
+
+  it('uses precision-preserving context steps without rounding the stored value', () => {
+    expect(productionStepForGrams(4.25)).toBe(0.1);
+    expect(productionStepForGrams(42.125)).toBe(0.5);
+    expect(productionStepForGrams(420.125)).toBe(1);
+    const run = session();
+    const line = run.lines[0]!;
+    expect(setDraftActualGrams(run, line.lineId, 671.123_456).lines[0]!.draftActualGrams).toBe(
+      671.123_456,
+    );
+  });
+
+  it('runs Base first, then actual toppings, without changing Base score or Rescue input', () => {
+    const plannedInput = recipe();
+    const toppingIngredient = plannedInput.items[0]!.ingredient;
+    const composition: RecipeCompositionMetadata = {
+      schemaVersion: 1,
+      baseScope: 'BASE_FORMULATION',
+      baseOrder: plannedInput.items.map((item) => item.id),
+      toppings: [
+        {
+          id: 'topping-milk',
+          ingredient: {
+            ...toppingIngredient,
+            id: 'PI-ING-TOP-MILK',
+            canonical_ingredient_id: 'PI-ING-TOP-MILK',
+          },
+          planned_grams: 70,
+          actual_grams: null,
+          process_scope: 'POST_PROCESS_ADDON',
+          addon_sort_order: 0,
+        },
+        {
+          id: 'topping-sauce',
+          ingredient: {
+            ...toppingIngredient,
+            id: 'PI-ING-TOP-SAUCE',
+            canonical_ingredient_id: 'PI-ING-TOP-SAUCE',
+          },
+          planned_grams: 60,
+          actual_grams: null,
+          process_scope: 'POST_PROCESS_ADDON',
+          addon_sort_order: 1,
+        },
+      ],
+      behaviorSnapshots: productBehaviorTestSnapshots(plannedInput, [
+        {
+          id: 'topping-milk',
+          ingredient: toppingIngredient,
+          planned_grams: 60,
+          actual_grams: null,
+          process_scope: 'POST_PROCESS_ADDON',
+          addon_sort_order: 0,
+        },
+        {
+          id: 'topping-sauce',
+          ingredient: {
+            ...toppingIngredient,
+            id: 'PI-ING-TOP-SAUCE',
+            canonical_ingredient_id: 'PI-ING-TOP-SAUCE',
+          },
+          planned_grams: 60,
+          actual_grams: null,
+          process_scope: 'POST_PROCESS_ADDON',
+          addon_sort_order: 1,
+        },
+      ]),
+      migrationAmbiguities: [],
+    };
+    let run = createProductionSession({
+      sessionId: 'run-toppings',
+      ownerUserId: 'owner-1',
+      source: {
+        recipeId: 'recipe-1',
+        recipeVersionId: 'version-1',
+        recipeVersionNumber: 1,
+        recipeName: 'Base plus toppings',
+      },
+      plannedInput,
+      plannedComposition: composition,
+      startedAt: '2026-08-09T10:00:00.000Z',
+    });
+    const baseBefore = calculateRecipe(plannedInput);
+    expect(() => confirmProductionLine(run, 'topping-milk', '2026-08-09T10:00:30.000Z')).toThrow(
+      /after every Base ingredient/,
+    );
+
+    for (const [index, line] of run.lines.entries()) {
+      run = confirmProductionLine(run, line.lineId, `2026-08-09T10:${index + 1}:00.000Z`);
+    }
+    expect(run.stage).toBe('addons');
+    const baseForecast = buildProductionForecastInput(run);
+    expect(baseForecast.items.map((item) => item.actual_grams ?? item.planned_grams)).toEqual(
+      plannedInput.items.map((item) => item.planned_grams),
+    );
+    const baseAfterConfirmation = calculateRecipe(baseForecast);
+    const baseScientificResult = { ...baseBefore, items: [] };
+    const confirmedScientificResult = { ...baseAfterConfirmation, items: [] };
+    expect(confirmedScientificResult).toEqual(baseScientificResult);
+
+    run = setDraftActualGrams(run, 'topping-milk', 75);
+    run = confirmProductionLine(run, 'topping-milk', '2026-08-09T10:20:00.000Z');
+    run = confirmProductionLine(run, 'topping-sauce', '2026-08-09T10:21:00.000Z');
+    expect(toppingProductionProgress(run)).toMatchObject({
+      confirmedCount: 2,
+      totalCount: 2,
+      confirmedMassG: 135,
+      forecastMassG: 135,
+      coherent: true,
+    });
+
+    const finalInput = buildFinalActualInput(run);
+    const completed = completeProductionSession(
+      run,
+      calculateRecipe(finalInput),
+      '2026-08-09T11:00:00.000Z',
+      'owner-1',
+    );
+    expect(completed.completionSnapshot?.finalResult.scores).toEqual(baseBefore.scores);
+    expect(completed.completionSnapshot?.finalProduct.baseMassG).toBe(1000);
+    expect(completed.completionSnapshot?.finalProduct.toppingMassG).toBe(135);
+    expect(completed.completionSnapshot?.finalProduct.finalMassG).toBe(1135);
+    expect(completed.completionSnapshot?.finalProduct.items).toHaveLength(
+      plannedInput.items.length + 2,
+    );
+  });
+
+  it('freezes a label-only commercial Topping for final nutrition without entering Engine', () => {
+    const plannedInput = recipe();
+    const labelIngredient: CatalogLabelToppingIngredient = {
+      kind: 'catalog_label_topping',
+      id: 'catalog:fruit-sauce',
+      canonical_ingredient_id: 'catalog:fruit-sauce',
+      private_product_id: 'catalog:fruit-sauce:version:v1',
+      name: 'Fruit sauce',
+      catalog_product_id: 'fruit-sauce',
+      catalog_version_id: 'v1',
+      verification_status: 'manual_unverified',
+      label_nutrition_per_100g: {
+        basis: 'per_100g',
+        energyKcal: 210,
+        fat: 0.5,
+        saturatedFat: 0.1,
+        carbohydrate: 50,
+        sugars: 44,
+        protein: 0.7,
+        salt: 0.02,
+        fibre: 2,
+      },
+      ingredients_text: 'Fruit, sugar',
+      allergens_text: 'None declared',
+      cost_per_kg: null,
+      cost_currency: null,
+    };
+    let run = createProductionSession({
+      sessionId: 'run-label-only-topping',
+      ownerUserId: 'owner-1',
+      source: {
+        recipeId: 'recipe-1',
+        recipeVersionId: 'version-1',
+        recipeVersionNumber: 1,
+        recipeName: 'Base plus label topping',
+      },
+      plannedInput,
+      plannedComposition: (() => {
+        const toppings = [
+          {
+            id: 'label-topping-line',
+            ingredient: labelIngredient,
+            planned_grams: 80,
+            actual_grams: null,
+            process_scope: 'POST_PROCESS_ADDON' as const,
+            addon_sort_order: 0,
+          },
+        ];
+        return {
+          schemaVersion: 1,
+          baseScope: 'BASE_FORMULATION' as const,
+          baseOrder: plannedInput.items.map((item) => item.id),
+          toppings,
+          behaviorSnapshots: productBehaviorTestSnapshots(plannedInput, toppings),
+          migrationAmbiguities: [],
+        };
+      })(),
+      startedAt: '2026-08-12T10:00:00.000Z',
+    });
+    for (const [index, line] of run.lines.entries()) {
+      run = confirmProductionLine(run, line.lineId, `2026-08-12T10:0${index}:00.000Z`);
+    }
+    run = setDraftActualGrams(run, 'label-topping-line', 85);
+    run = confirmProductionLine(run, 'label-topping-line', '2026-08-12T10:20:00.000Z');
+    const finalInput = buildFinalActualInput(run);
+    const baseResult = calculateRecipe(finalInput);
+    const completed = completeProductionSession(
+      run,
+      baseResult,
+      '2026-08-12T11:00:00.000Z',
+      'owner-1',
+    );
+
+    expect(completed.completionSnapshot?.finalResult).toEqual(baseResult);
+    expect(completed.completionSnapshot?.finalProduct.toppingMassG).toBe(85);
+    expect(completed.completionSnapshot?.finalProduct.labelNutritionPer100g).not.toBeNull();
+    expect(completed.completionSnapshot?.finalProduct.nutritionPer100g).toBeNull();
+    expect(completed.completionSnapshot?.finalProduct.items.at(-1)?.ingredient).toEqual(
+      labelIngredient,
+    );
+  });
+});

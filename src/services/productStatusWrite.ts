@@ -1,18 +1,20 @@
 /**
- * Product lifecycle-status write service. The ONE narrow path that persists a product's
- * customer-facing lifecycle `status` (and optional review audit). It updates ONLY
+ * Product lifecycle decision adapter. It submits reviewed evidence to the
+ * admin-only canonical ingest branch. The browser does not patch
  * `products.status` + `reviewed_by` / `reviewed_at` / `review_notes` — never identity, EAN,
  * source, nutrition, composition, pac/pod, or the Mapper-result columns, and never the locked
- * `mapper_basement`. RLS-gated (own row); no privileged key; no npac_value.
+ * `mapper_basement`; the database rechecks administrator assignment and evidence.
  *
  * The STATUS itself is decided by the pure `productStatusDecision` (red flags block PI Verified;
  * reference-linked → at most PI Generated). This service only persists the chosen status.
  */
-import { supabase } from '@/lib/supabase/client';
+import { getProduct } from '@/services/products';
+import {
+  canonicalIngestFromLegacyProduct,
+  ingestProduct,
+  productIngestIdempotencyKey,
+} from '@/services/productIngest';
 import type { ProductRow, ProductStatus } from '@/data/products/productRow';
-
-const TABLE = 'products';
-const UNAVAILABLE = 'Products are not available in this build.';
 
 export interface StatusReview {
   reviewed_by?: string;
@@ -43,9 +45,9 @@ function assertVerifiedReview(review: StatusReview | undefined): void {
 }
 
 /**
- * Narrow update of ONLY `products.status` (+ optional review audit). Throws if the row is
- * missing / not owned. Never writes any other product field. Persisting `pi_verified`
- * additionally requires the full verified review (see assertVerifiedReview).
+ * Submit an audited lifecycle decision through the administrator-only canonical
+ * ingest branch. Persisting `pi_verified` additionally requires the complete
+ * verified review below; the database rechecks both assignment and evidence.
  */
 export async function setProductLifecycleStatus(
   productId: string,
@@ -53,16 +55,22 @@ export async function setProductLifecycleStatus(
   review?: StatusReview,
 ): Promise<ProductRow> {
   if (status === 'pi_verified') assertVerifiedReview(review);
-  if (!supabase) throw new Error(UNAVAILABLE);
-  const patch: { status: ProductStatus; reviewed_by?: string; reviewed_at?: string; review_notes?: string } = { status };
-  if (review?.reviewed_by !== undefined) {
-    patch.reviewed_by = review.reviewed_by;
-    patch.reviewed_at = new Date().toISOString();
-  }
-  if (review?.review_notes !== undefined) patch.review_notes = review.review_notes;
-
-  const { data, error } = await supabase.from(TABLE).update(patch).eq('id', productId).select().maybeSingle();
-  if (error) throw new Error(error.message);
-  if (!data) throw new Error('Product not found or not owned.');
-  return data as ProductRow;
+  const current = await getProduct(productId);
+  if (!current) throw new Error('Product not found or not owned.');
+  const request = canonicalIngestFromLegacyProduct(current);
+  request.source = 'admin';
+  request.input.productId = productId;
+  request.input.lifecycleDecision = status;
+  request.input.reviewEvidence = {
+    reviewedBy: review?.reviewed_by ?? null,
+    reviewNotes: review?.review_notes ?? null,
+    independentProvenance: review?.independent_provenance === true,
+    redFlagsClear: review?.red_flags_clear === true,
+  };
+  const idempotencyKey = await productIngestIdempotencyKey('admin', request.input, `lifecycle:${productId}:${status}`);
+  const result = await ingestProduct({ ...request, idempotencyKey, productId });
+  if (!result.productId) throw new Error('Product lifecycle decision did not return a canonical product.');
+  const updated = await getProduct(result.productId);
+  if (!updated) throw new Error('Canonical product is not visible after lifecycle decision.');
+  return updated as ProductRow;
 }

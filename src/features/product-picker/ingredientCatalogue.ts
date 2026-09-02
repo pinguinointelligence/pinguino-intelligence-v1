@@ -9,6 +9,7 @@
  */
 import { normalizeName, toFiniteNumber } from '@/data/products/productMatcher';
 import type { IngredientRow } from '@/data/ingredients/ingredientRow';
+import type { CarbonationStatus } from '@/data/products/carbonation';
 
 /** One Mapper Basement ingredient the picker can display + resolve. */
 export interface IngredientCatalogueEntry {
@@ -24,6 +25,7 @@ export interface IngredientCatalogueEntry {
   /** true only when BOTH pac and pod are present → usable for exact calculation. */
   engineReady: boolean;
   verificationStatus: string;
+  carbonationStatus: CarbonationStatus;
 }
 
 /** Map one canonical `mapper_basement` row to a picker ingredient entry. Pure. */
@@ -40,6 +42,7 @@ export function ingredientRowToCatalogueEntry(row: IngredientRow): IngredientCat
     pod,
     engineReady: pac !== null && pod !== null,
     verificationStatus: row.verification_status,
+    carbonationStatus: row.carbonation_status ?? 'UNKNOWN',
   };
 }
 

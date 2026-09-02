@@ -15,11 +15,7 @@
  * No external DB, no Mapper, no persistence, no mutation.
  */
 import { selectTargetBand, type ProductCategory, type TargetMetric } from '@/engine';
-import {
-  ACTIVE_PRODUCT_PROFILES,
-  type ProductProfile,
-  type ServingTemperatureC,
-} from '@/spine';
+import { ACTIVE_PRODUCT_PROFILES, type ProductProfile, type ServingTemperatureC } from '@/spine';
 import { temperatureRegulatorTarget } from './temperatureAwareCorrectionTargets';
 
 export const SHADOW_BAND_SOURCE = 'temperature_regulator_shadow' as const;
@@ -78,6 +74,7 @@ const PROFILE_TO_ENGINE_CATEGORY: Readonly<Record<ProductProfile, ProductCategor
   chocolate_gelato: 'chocolate_gelato',
   sorbet: 'sorbet',
   vegan_gelato: 'vegan_gelato',
+  protein_gelato: 'protein_gelato',
 };
 
 /** Regulator gate id → engine `TargetMetric` (names differ for two metrics). */
@@ -149,17 +146,29 @@ export function compareEngineVsShadowBands(
   }
   const shadow = shadowTargetBands(productProfile, servingTemperatureC);
   if (!shadow) {
-    return { ...base, status: 'unsupported_temperature', warnings: ['unsupported_serving_temperature'] };
+    return {
+      ...base,
+      status: 'unsupported_temperature',
+      warnings: ['unsupported_serving_temperature'],
+    };
   }
 
   const engineCategory = PROFILE_TO_ENGINE_CATEGORY[productProfile as ProductProfile];
   const selection = selectTargetBand(engineCategory, servingTemperatureC);
   if (!selection) {
-    return { ...base, engineCategory, status: 'missing_engine_band', warnings: ['missing_engine_band'] };
+    return {
+      ...base,
+      engineCategory,
+      status: 'missing_engine_band',
+      warnings: ['missing_engine_band'],
+    };
   }
 
   // Compare NPAC first, then every metric the shadow band defines.
-  const shadowBands: Record<string, readonly [number, number]> = { npac: shadow.npacBand, ...shadow.metricBands };
+  const shadowBands: Record<string, readonly [number, number]> = {
+    npac: shadow.npacBand,
+    ...shadow.metricBands,
+  };
   const comparisons: MetricBandComparison[] = [];
   for (const [gate, shadowBand] of Object.entries(shadowBands)) {
     const engineMetric = GATE_TO_ENGINE_METRIC[gate] ?? null;
@@ -200,7 +209,9 @@ export function compareEngineVsShadowBands(
     solverTargetsCorrectBand,
     // Target-only simulation (the solver is NOT connected to this): the regulator clean-center
     // the solver would aim at if the shadow band were live.
-    wouldTargetNpacCenter: shadow.npacCleanCenter ? center(shadow.npacCleanCenter) : center(shadow.npacBand),
+    wouldTargetNpacCenter: shadow.npacCleanCenter
+      ? center(shadow.npacCleanCenter)
+      : center(shadow.npacBand),
     warnings,
   };
 }

@@ -2,6 +2,12 @@
  * recipe-score — „Dopasowanie receptury" 1–10 adapter tests (SPEC §15.1–§15.2).
  * Monotonicity, boundary rounding, the null/no-data path, the exact label table,
  * no percentages, and adapter purity (engine output is never mutated).
+ *
+ * ACCEPTANCE ADDENDUM (2), owner 2026-07-24: this overall-blend adapter is NO
+ * LONGER the public headline — „Dopasowanie techniczne" (technicalFit.ts) is
+ * THE headline integer (all native bands in range ⇒ 10/10) and flavor/cost are
+ * separate labeled dimensions. `recipeMatchScore` remains a sanctioned pure
+ * map for QA recorders/diagnostics, so its behavioural pins stay unchanged.
  */
 import { describe, expect, it } from 'vitest';
 import type { RecipeScores } from '@/engine';
@@ -150,7 +156,7 @@ describe('recipeMatchScore — presentation hygiene', () => {
   it('tooltip contract: the scored tooltip states 10/10 is not a laboratory guarantee', () => {
     const result = recipeMatchScore(scores(100));
     expect(result.tooltipKey).toBe('recipe-score.match.tooltip');
-    expect(MATCH_SCORE_TOOLTIPS[result.tooltipKey]).toContain('nie jest gwarancją laboratoryjną');
+    expect(MATCH_SCORE_TOOLTIPS[result.tooltipKey]).toContain('nie gwarancję laboratoryjną');
   });
 
   it('aria text carries both the number and the verbal label (§21.5)', () => {

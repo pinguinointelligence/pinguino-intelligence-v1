@@ -1,0 +1,43 @@
+GELLATTI — served capture: partner application to active partner
+Applicant: test1@test1.com (PRO)  ·  Reviewer: admin@admin.com (super_admin)
+
+--- Customer -> /work-with-us ------------------------------------------------
+Page leads with "PARTNERZY I TWÓRCY / Rób lody, które ludzie chcą powtórzyć",
+then "JAK TO DZIAŁA" (01 Zgłoszenie, 02 Decyzja, 03 Kod i link, 04 Panel
+Partner), then "PRZYPISANIE", then the application form. Ingredient supply is
+NOT presented as a public cooperation route.
+
+Submitted application_data:
+  displayName  "Marysia Lody"
+  primaryLink  https://instagram.com/marysia.lody
+  otherLinks   https://tiktok.com/@marysia.lody
+  platforms    ["Instagram","TikTok"]
+  audience     "ok. 18 tys. obserwujących, treści deserowe"
+  country      "Polska"
+  note         "Cykl krótkich filmów: jedna receptura Gellatti tygodniowo…"
+Panel then shows: "Zgłoszenie wysłane / Odezwiemy się w aplikacji. Do tego
+czasu Twoje konto działa bez zmian."
+
+--- Admin -> /admin/partners -------------------------------------------------
+"ZGŁOSZENIA PARTNERSKIE" queue shows Marysia Lody / test1@test1.com /
+NOWE ZGŁOSZENIE with every submitted field and
+[Zatwierdź partnera] [Poproś o informacje] [Odrzuć].
+Admin notification received: "Nowe zgłoszenie partnerskie — Marysia Lody czeka
+na decyzję." -> /admin/partners
+
+--- After "Zatwierdź partnera" -----------------------------------------------
+Admin banner: "Partner aktywny. Kod: MARYSIALOD"
+Server state:
+  partners.status = active
+  partner_public_profiles.slug = marysia-lody, moderation_status = APPROVED
+  partner_codes = MARYSIALOD / marysia-lody / active
+  entitlements  = home, partner, pro     <-- PRO PRESERVED, additive
+  partner_applications.status = approved
+
+--- Customer -> /partner -----------------------------------------------------
+Workspace opens. "AKTYWNE KODY 1/3", "Moje kody" lists MARYSIALOD (active) with
+the full analytics row. In-app notification delivered: "Tryb Partner jest
+aktywny". Header still shows the PRO badge.
+
+ASSERTION  application -> queue -> one click -> active partner with a usable
+           code, PRO untouched, no manual database editing anywhere.

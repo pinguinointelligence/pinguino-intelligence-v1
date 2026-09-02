@@ -58,7 +58,7 @@ describe('TesseractOcrProvider — contract failures (no engine start)', () => {
     });
     expect(r.ok).toBe(false);
     if (!r.ok && r.failure.kind === 'engine_error') {
-      expect(r.failure.message).toMatch(/limit is 10 MB/);
+      expect(r.failure.message).toMatch(/maks\. 10 MB/);
     } else {
       throw new Error('expected engine_error');
     }
@@ -121,7 +121,7 @@ describe('TesseractOcrProvider — REAL OCR (offline deu/pol langdata)', () => {
       }
 
       // END-TO-END: real OCR → evidence extractor (normalized values + provenance)
-      const out = extractEvidence([{ imageId: 'img-de', role: 'nutrition_table', result }]);
+      const out = extractEvidence([{ imageId: 'img-de', role: 'front', result }]);
       expect(out.map((f) => f.fieldKey).sort()).toEqual([...ALL_INTAKE_FIELD_KEYS].sort());
       expect(field(out, 'product_name').candidates[0]?.normalized).toBe('Alpenmilch Schokolade');
       expect(field(out, 'brand').candidates[0]?.normalized).toBe('Gletscherhaus');
@@ -161,7 +161,7 @@ describe('TesseractOcrProvider — REAL OCR (offline deu/pol langdata)', () => {
       expect(r.result.fullText).toMatch(/Jab[łl]kowy/);
       expect(r.result.fullText).toMatch(/WARTO[ŚS][ĆC] OD[ŻZ]YWCZA/i);
 
-      const out = extractEvidence([{ imageId: 'img-pl', role: 'nutrition_table', result: r.result }]);
+      const out = extractEvidence([{ imageId: 'img-pl', role: 'front', result: r.result }]);
       expect(field(out, 'product_name').candidates[0]?.normalized).toBe('Sok Jabłkowy Klarowny');
       expect(field(out, 'package_size').candidates[0]?.normalized).toBe('330'); // multipack per-unit
       expect(field(out, 'package_unit').candidates[0]?.normalized).toBe('ml');

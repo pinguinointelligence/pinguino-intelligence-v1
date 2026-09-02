@@ -11,9 +11,9 @@ const REPO = resolve(import.meta.dirname, '..', '..', '..');
 const migration = (file: string) =>
   readFileSync(join(REPO, 'supabase', 'migrations', file), 'utf8');
 
-const SQL = migration('0001_auth_my_recipes.sql');
+const SQL = migration('20260716101413_0001_auth_my_recipes.sql');
 // whitespace-normalized, lowercased grants migration for tolerant matching
-const GRANTS = migration('0002_grant_profile_and_recipe_permissions.sql')
+const GRANTS = migration('20260716101425_0002_grant_profile_and_recipe_permissions.sql')
   .toLowerCase()
   .replace(/\s+/g, ' ');
 

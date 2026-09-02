@@ -21,14 +21,14 @@ export interface ErrorFallbackProps {
 export function ErrorFallback({ message, onReset }: ErrorFallbackProps) {
   return (
     <div role="alert" className="mx-auto max-w-md px-6 py-16 text-center">
-      <h1 className="text-lg font-semibold">Something went wrong</h1>
+      <h1 className="text-lg font-semibold">Coś nam tu nie zagrało</h1>
       <p className="mt-2 text-sm opacity-80">{message}</p>
       <button
         type="button"
         onClick={onReset}
         className="mt-6 rounded-md border px-4 py-2 text-sm font-medium"
       >
-        Try again
+        Spróbuj ponownie
       </button>
     </div>
   );
@@ -36,7 +36,7 @@ export function ErrorFallback({ message, onReset }: ErrorFallbackProps) {
 
 /** Copy shown to users; the real error is sent to the reporter, never rendered. */
 export const GENERIC_ERROR_MESSAGE =
-  'An unexpected error interrupted this view. You can try again — your recipe data is kept locally.';
+  'Nie udało się wyświetlić tej części aplikacji. Dane receptury pozostały bez zmian.';
 
 interface AppErrorBoundaryState {
   hasError: boolean;

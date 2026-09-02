@@ -4,6 +4,9 @@ import { buildRecipeVersion } from '@/features/pro-core/recipeVersioning';
 import type { RecipeVersion } from '@/features/pro-core/recipeContracts';
 import { productionCapabilitiesFor } from '@/features/pro-core/proCoreCapabilities';
 import { InMemoryProduction } from './inMemoryProduction';
+import { inMemoryProductionRepository } from './productionRepository';
+import { computeDeviation } from '@/features/pro-core/productionMode';
+import type { ProductionRun } from '@/features/pro-core/productionContracts';
 
 const TRACE = { engineVersion: 'e1', configVersion: 'c1' };
 const NOW = '2026-07-12T10:00:00.000Z';
@@ -11,22 +14,55 @@ const PRO = productionCapabilitiesFor('pro');
 const HOME = productionCapabilitiesFor('home');
 const DEMO = productionCapabilitiesFor('demo');
 
-const item = (id: string, name: string, grams: number) => ({ id, ingredient: { name }, planned_grams: grams });
+const item = (id: string, name: string, grams: number) => ({
+  id,
+  ingredient: { name },
+  planned_grams: grams,
+});
 const input = (batch: number, items: ReturnType<typeof item>[]): RecipeInput =>
-  ({ items, mode: 'classic', category: 'milk_gelato', target_temperature_c: -11, target_batch_grams: batch, machine_capacity_grams: null }) as unknown as RecipeInput;
+  ({
+    items,
+    mode: 'classic',
+    category: 'milk_gelato',
+    target_temperature_c: -11,
+    target_batch_grams: batch,
+    machine_capacity_grams: null,
+  }) as unknown as RecipeInput;
 const makeVersion = (versionId: string, versionNumber = 1, batch = 1000): RecipeVersion =>
   buildRecipeVersion(
-    { recipeId: 'r', ownerUserId: 'u1', versionNumber, recipeInput: input(batch, [item('milk', 'Milk', 600), item('sugar', 'Sugar', 400)]), trace: TRACE, source: 'manual', createdBy: 'u1', createdAt: NOW },
+    {
+      recipeId: 'r',
+      ownerUserId: 'u1',
+      versionNumber,
+      recipeInput: input(batch, [item('milk', 'Milk', 600), item('sugar', 'Sugar', 400)]),
+      trace: TRACE,
+      source: 'manual',
+      createdBy: 'u1',
+      createdAt: NOW,
+    },
     versionId,
   );
 
 describe('InMemoryProduction — capability gate (Pro-only)', () => {
   let svc: InMemoryProduction;
-  beforeEach(() => { let k = 0; svc = new InMemoryProduction(() => NOW, () => `id-${(k += 1)}`); });
+  beforeEach(() => {
+    let k = 0;
+    svc = new InMemoryProduction(
+      () => NOW,
+      () => `id-${(k += 1)}`,
+    );
+  });
 
   it('Demo and Home cannot use Production Mode; Pro can', () => {
     const v = makeVersion('ver-1');
-    const create = (caps: typeof PRO) => svc.createRun({ ownerUserId: 'u1', version: v, target: { kind: 'weight_g', grams: 5000 }, capabilities: caps, by: 'u1' });
+    const create = (caps: typeof PRO) =>
+      svc.createRun({
+        ownerUserId: 'u1',
+        version: v,
+        target: { kind: 'weight_g', grams: 5000 },
+        capabilities: caps,
+        by: 'u1',
+      });
     expect(() => create(DEMO)).toThrow(/does not include Production Mode/i);
     expect(() => create(HOME)).toThrow(/does not include Production Mode/i);
     expect(create(PRO).status).toBe('draft');
@@ -35,12 +71,24 @@ describe('InMemoryProduction — capability gate (Pro-only)', () => {
 
 describe('InMemoryProduction — plan from an EXACT immutable version', () => {
   let svc: InMemoryProduction;
-  beforeEach(() => { let k = 0; svc = new InMemoryProduction(() => NOW, () => `id-${(k += 1)}`); });
+  beforeEach(() => {
+    let k = 0;
+    svc = new InMemoryProduction(
+      () => NOW,
+      () => `id-${(k += 1)}`,
+    );
+  });
 
   it('binds the run to the exact version id, never the recipe latest', () => {
     const v1 = makeVersion('ver-1', 1);
     makeVersion('ver-2', 2); // a newer version exists, but we planned from v1
-    const run = svc.createRun({ ownerUserId: 'u1', version: v1, target: { kind: 'weight_g', grams: 5000 }, capabilities: PRO, by: 'u1' });
+    const run = svc.createRun({
+      ownerUserId: 'u1',
+      version: v1,
+      target: { kind: 'weight_g', grams: 5000 },
+      capabilities: PRO,
+      by: 'u1',
+    });
     expect(run.recipeVersionId).toBe('ver-1');
     expect(run.recipeVersionNumber).toBe(1);
     expect(run.plannedBatchG).toBe(5000);
@@ -52,16 +100,40 @@ describe('InMemoryProduction — plan from an EXACT immutable version', () => {
 
   it('refuses to plan a volume run without a density (honest needs_more_information)', () => {
     const v = makeVersion('ver-1');
-    expect(() => svc.createRun({ ownerUserId: 'u1', version: v, target: { kind: 'volume_ml', ml: 5000 }, capabilities: PRO, by: 'u1' })).toThrow(/density/i);
+    expect(() =>
+      svc.createRun({
+        ownerUserId: 'u1',
+        version: v,
+        target: { kind: 'volume_ml', ml: 5000 },
+        capabilities: PRO,
+        by: 'u1',
+      }),
+    ).toThrow(/gęstości/i);
     // the pure preview surfaces the same refusal without throwing
-    expect(svc.scale(v, { kind: 'volume_ml', ml: 5000 })).toMatchObject({ ok: false, reason: 'needs_more_information' });
+    expect(svc.scale(v, { kind: 'volume_ml', ml: 5000 })).toMatchObject({
+      ok: false,
+      reason: 'needs_more_information',
+    });
   });
 });
 
 describe('InMemoryProduction — lifecycle policy', () => {
   let svc: InMemoryProduction;
-  beforeEach(() => { let k = 0; svc = new InMemoryProduction(() => NOW, () => `id-${(k += 1)}`); });
-  const start = () => svc.createRun({ ownerUserId: 'u1', version: makeVersion('ver-1'), target: { kind: 'weight_g', grams: 1000 }, capabilities: PRO, by: 'u1' });
+  beforeEach(() => {
+    let k = 0;
+    svc = new InMemoryProduction(
+      () => NOW,
+      () => `id-${(k += 1)}`,
+    );
+  });
+  const start = () =>
+    svc.createRun({
+      ownerUserId: 'u1',
+      version: makeVersion('ver-1'),
+      target: { kind: 'weight_g', grams: 1000 },
+      capabilities: PRO,
+      by: 'u1',
+    });
 
   it('allows the legal path draft → planned → in_progress → completed', () => {
     const run = start();
@@ -75,7 +147,9 @@ describe('InMemoryProduction — lifecycle policy', () => {
 
   it('rejects illegal transitions deterministically', () => {
     const run = start();
-    expect(() => svc.transition(run.runId, 'completed', 'u1')).toThrow(/Illegal production transition/i);
+    expect(() => svc.transition(run.runId, 'completed', 'u1')).toThrow(
+      /Illegal production transition/i,
+    );
     svc.transition(run.runId, 'planned', 'u1');
     svc.transition(run.runId, 'in_progress', 'u1');
     expect(() => svc.transition(run.runId, 'draft', 'u1')).toThrow(/Illegal/i);
@@ -94,23 +168,46 @@ describe('InMemoryProduction — lifecycle policy', () => {
 
 describe('InMemoryProduction — actuals, deviation & immutable plan', () => {
   let svc: InMemoryProduction;
-  beforeEach(() => { let k = 0; svc = new InMemoryProduction(() => NOW, () => `id-${(k += 1)}`); });
+  beforeEach(() => {
+    let k = 0;
+    svc = new InMemoryProduction(
+      () => NOW,
+      () => `id-${(k += 1)}`,
+    );
+  });
 
   const startInProgress = () => {
-    const run = svc.createRun({ ownerUserId: 'u1', version: makeVersion('ver-1'), target: { kind: 'weight_g', grams: 5000 }, capabilities: PRO, by: 'u1' });
+    const run = svc.createRun({
+      ownerUserId: 'u1',
+      version: makeVersion('ver-1'),
+      target: { kind: 'weight_g', grams: 5000 },
+      capabilities: PRO,
+      by: 'u1',
+    });
     svc.transition(run.runId, 'planned', 'u1');
     return svc.transition(run.runId, 'in_progress', 'u1');
   };
 
   it('records actuals only while in progress and computes planned-vs-actual deviation', () => {
-    const run = svc.createRun({ ownerUserId: 'u1', version: makeVersion('ver-1'), target: { kind: 'weight_g', grams: 5000 }, capabilities: PRO, by: 'u1' });
-    expect(() => svc.recordActual(run.runId, { by: 'u1', items: [] })).toThrow(/only be recorded while the run is in progress/i);
+    const run = svc.createRun({
+      ownerUserId: 'u1',
+      version: makeVersion('ver-1'),
+      target: { kind: 'weight_g', grams: 5000 },
+      capabilities: PRO,
+      by: 'u1',
+    });
+    expect(() => svc.recordActual(run.runId, { by: 'u1', items: [] })).toThrow(
+      /only be recorded while the run is in progress/i,
+    );
 
     svc.transition(run.runId, 'planned', 'u1');
     svc.transition(run.runId, 'in_progress', 'u1');
     svc.recordActual(run.runId, {
       by: 'u1',
-      items: [{ id: 'milk', name: 'Milk', actualGrams: 3010 }, { id: 'sugar', name: 'Sugar', actualGrams: 1990 }],
+      items: [
+        { id: 'milk', name: 'Milk', actualGrams: 3010 },
+        { id: 'sugar', name: 'Sugar', actualGrams: 1990 },
+      ],
       actualTotalMixG: 5000,
       actualYieldG: 4800,
       wasteG: 200,
@@ -127,20 +224,86 @@ describe('InMemoryProduction — actuals, deviation & immutable plan', () => {
   it('recording actuals never replaces the frozen planned snapshot', () => {
     const run = startInProgress();
     const plannedBefore = JSON.stringify(run.plannedItems);
-    svc.recordActual(run.runId, { by: 'u1', items: [{ id: 'milk', name: 'Milk', actualGrams: 9999 }] });
+    svc.recordActual(run.runId, {
+      by: 'u1',
+      items: [{ id: 'milk', name: 'Milk', actualGrams: 9999 }],
+    });
     expect(JSON.stringify(svc.getRun(run.runId)!.plannedItems)).toBe(plannedBefore);
+  });
+
+  it('keeps Base vessel deviation independent from post-process topping mass', () => {
+    const base = startInProgress();
+    const run: ProductionRun = {
+      ...base,
+      plannedBatchG: 1000,
+      plannedItems: [
+        {
+          id: 'base',
+          name: 'Base',
+          canonicalIngredientId: 'BASE',
+          processScope: 'BASE_FORMULATION',
+          scopePosition: 0,
+          plannedGrams: 1000,
+          displayGrams: 1000,
+        },
+        {
+          id: 'topping',
+          name: 'Sauce',
+          canonicalIngredientId: 'SAUCE',
+          processScope: 'POST_PROCESS_ADDON',
+          scopePosition: 0,
+          plannedGrams: 130,
+          displayGrams: 130,
+        },
+      ],
+      actual: {
+        items: [
+          { id: 'base', name: 'Base', actualGrams: 1000 },
+          { id: 'topping', name: 'Sauce', actualGrams: 135 },
+        ],
+        actualTotalMixG: 1000,
+        actualYieldG: null,
+        wasteG: null,
+        substitutions: [],
+        operatorNotes: null,
+        deviationReason: null,
+        recordedBy: 'u1',
+        recordedAt: NOW,
+        revision: 1,
+      },
+    };
+    const deviation = computeDeviation(run);
+    expect(deviation.plannedTotalG).toBe(1000);
+    expect(deviation.actualTotalMixG).toBe(1000);
+    expect(deviation.totalDeltaG).toBe(0);
+    expect(deviation.lines.find((line) => line.id === 'topping')?.deltaGrams).toBe(5);
   });
 });
 
 describe('InMemoryProduction — post-completion amendments are append-only', () => {
   let svc: InMemoryProduction;
-  beforeEach(() => { let k = 0; svc = new InMemoryProduction(() => NOW, () => `id-${(k += 1)}`); });
+  beforeEach(() => {
+    let k = 0;
+    svc = new InMemoryProduction(
+      () => NOW,
+      () => `id-${(k += 1)}`,
+    );
+  });
 
   const complete = () => {
-    const run = svc.createRun({ ownerUserId: 'u1', version: makeVersion('ver-1'), target: { kind: 'weight_g', grams: 5000 }, capabilities: PRO, by: 'u1' });
+    const run = svc.createRun({
+      ownerUserId: 'u1',
+      version: makeVersion('ver-1'),
+      target: { kind: 'weight_g', grams: 5000 },
+      capabilities: PRO,
+      by: 'u1',
+    });
     svc.transition(run.runId, 'planned', 'u1');
     svc.transition(run.runId, 'in_progress', 'u1');
-    svc.recordActual(run.runId, { by: 'u1', items: [{ id: 'milk', name: 'Milk', actualGrams: 3000 }] });
+    svc.recordActual(run.runId, {
+      by: 'u1',
+      items: [{ id: 'milk', name: 'Milk', actualGrams: 3000 }],
+    });
     return svc.transition(run.runId, 'completed', 'u1');
   };
 
@@ -148,19 +311,73 @@ describe('InMemoryProduction — post-completion amendments are append-only', ()
     const done = complete();
     const plannedBefore = JSON.stringify(done.plannedItems);
     const actualBefore = JSON.stringify(done.actual);
-    const amended = svc.amend(done.runId, { by: 'u1', detail: 'Corrected batch label', amendment: { batch_reference: 'B-77' } });
+    const amended = svc.amend(done.runId, {
+      by: 'u1',
+      detail: 'Corrected batch label',
+      amendment: { batch_reference: 'B-77' },
+    });
     expect(JSON.stringify(amended.plannedItems)).toBe(plannedBefore);
     expect(JSON.stringify(amended.actual)).toBe(actualBefore);
-    expect(amended.events.at(-1)).toMatchObject({ type: 'amended', detail: 'Corrected batch label' });
+    expect(amended.events.at(-1)).toMatchObject({
+      type: 'amended',
+      detail: 'Corrected batch label',
+    });
     // amendment is append-only — history only grows
     expect(amended.events.length).toBe(done.events.length + 1);
   });
 
   it('refuses amendments before completion and actuals after completion', () => {
-    const run = svc.createRun({ ownerUserId: 'u1', version: makeVersion('ver-1'), target: { kind: 'weight_g', grams: 5000 }, capabilities: PRO, by: 'u1' });
-    expect(() => svc.amend(run.runId, { by: 'u1', detail: 'too early' })).toThrow(/only for completed runs/i);
+    const run = svc.createRun({
+      ownerUserId: 'u1',
+      version: makeVersion('ver-1'),
+      target: { kind: 'weight_g', grams: 5000 },
+      capabilities: PRO,
+      by: 'u1',
+    });
+    expect(() => svc.amend(run.runId, { by: 'u1', detail: 'too early' })).toThrow(
+      /only for completed runs/i,
+    );
     const done = complete();
     expect(() => svc.recordActual(done.runId, { by: 'u1', items: [] })).toThrow(/in progress/i);
+  });
+});
+
+describe('in-memory ProductionRepository — revision conformance', () => {
+  it('rejects a stale caller basis exactly like the durable adapter', async () => {
+    let k = 0;
+    const svc = new InMemoryProduction(
+      () => NOW,
+      () => `cas-${(k += 1)}`,
+    );
+    const repository = inMemoryProductionRepository(svc);
+    const draft = await repository.createRun({
+      ownerUserId: 'u1',
+      version: makeVersion('ver-cas'),
+      target: { kind: 'weight_g', grams: 1000 },
+      capabilities: PRO,
+      by: 'u1',
+    });
+    await repository.transition(draft.runId, 'planned', 'u1');
+    await repository.transition(draft.runId, 'in_progress', 'u1');
+    await repository.recordActual(draft.runId, {
+      by: 'u1',
+      expectedActualRevision: 0,
+      expectedRescueRevision: 0,
+      items: [{ id: 'milk', name: 'Milk', actualGrams: 600 }],
+    });
+
+    await expect(
+      repository.recordActual(draft.runId, {
+        by: 'u1',
+        expectedActualRevision: 0,
+        expectedRescueRevision: 0,
+        items: [{ id: 'sugar', name: 'Sugar', actualGrams: 400 }],
+      }),
+    ).rejects.toThrow(/revision conflict/);
+    expect((await repository.getRun(draft.runId))?.actual).toMatchObject({
+      revision: 1,
+      items: [{ id: 'milk', actualGrams: 600 }],
+    });
   });
 });
 
@@ -168,12 +385,22 @@ describe('InMemoryProduction — owner-scoped history', () => {
   let svc: InMemoryProduction;
   let t: number;
   beforeEach(() => {
-    let k = 0; t = 0;
-    svc = new InMemoryProduction(() => new Date(Date.UTC(2026, 6, 12, 12, 0, t++)).toISOString(), () => `id-${(k += 1)}`);
+    let k = 0;
+    t = 0;
+    svc = new InMemoryProduction(
+      () => new Date(Date.UTC(2026, 6, 12, 12, 0, t++)).toISOString(),
+      () => `id-${(k += 1)}`,
+    );
   });
 
   const plan = (owner: string, versionId: string, versionNumber: number) =>
-    svc.createRun({ ownerUserId: owner, version: makeVersion(versionId, versionNumber), target: { kind: 'weight_g', grams: 1000 }, capabilities: PRO, by: owner });
+    svc.createRun({
+      ownerUserId: owner,
+      version: makeVersion(versionId, versionNumber),
+      target: { kind: 'weight_g', grams: 1000 },
+      capabilities: PRO,
+      by: owner,
+    });
 
   it('filters by version, status, date range, sorts and paginates — owner-scoped', () => {
     const r1 = plan('u1', 'ver-1', 1); // t=0
@@ -190,7 +417,11 @@ describe('InMemoryProduction — owner-scoped history', () => {
     // newest-first (default)
     expect(svc.listRuns('u1').items.map((r) => r.runId)).toEqual([r3.runId, r2.runId, r1.runId]);
     // oldest-first
-    expect(svc.listRuns('u1', { sort: 'oldest' }).items.map((r) => r.runId)).toEqual([r1.runId, r2.runId, r3.runId]);
+    expect(svc.listRuns('u1', { sort: 'oldest' }).items.map((r) => r.runId)).toEqual([
+      r1.runId,
+      r2.runId,
+      r3.runId,
+    ]);
     // by version
     expect(svc.listRuns('u1', { recipeVersionId: 'ver-1' }).total).toBe(2);
     // by status
@@ -200,7 +431,10 @@ describe('InMemoryProduction — owner-scoped history', () => {
     expect(page.total).toBe(3);
     expect(page.items.map((r) => r.runId)).toEqual([r2.runId]);
     // date range (only the first two creation seconds)
-    const range = svc.listRuns('u1', { sort: 'oldest', to: new Date(Date.UTC(2026, 6, 12, 12, 0, 1)).toISOString() });
+    const range = svc.listRuns('u1', {
+      sort: 'oldest',
+      to: new Date(Date.UTC(2026, 6, 12, 12, 0, 1)).toISOString(),
+    });
     expect(range.items.map((r) => r.runId)).toEqual([r1.runId, r2.runId]);
   });
 });

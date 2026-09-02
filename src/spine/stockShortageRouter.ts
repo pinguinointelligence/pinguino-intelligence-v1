@@ -14,8 +14,8 @@
  *  - missing stock is never invented; the hero ingredient is never silently
  *    reduced; an ingredient is never silently replaced; the quality tier is
  *    never changed (echoed untouched);
- *  - replacement requires VERIFIED ingredient data (locked acceptance test 28)
- *    — the caller asserts verification; this router never reads any catalog or
+ *  - replacement requires complete technical ingredient data
+ *    — the caller asserts the technical validation result; this router never reads any catalog or
  *    Mapper data and never treats Mapper products as calibrated references;
  *  - allergen-carrying, alcohol-carrying and sweetener/polyol/HIS substitutes
  *    are NEVER silent: each requires its own explicit approval flag, and a
@@ -56,8 +56,8 @@ export const STOCK_SHORTAGE_VERSION: StockShortageVersion = '0.1.0';
 export interface StockShortageSubstitute {
   ingredientName: string;
   available: boolean;
-  /** Locked rule (§18 / acceptance 28): replacement requires verified data. */
-  hasVerifiedIngredientData: boolean;
+  /** Replacement requires complete, validated numerical data. Provenance is informational. */
+  hasCompleteTechnicalData: boolean;
   /** The substitute's correction family, when known — validated per profile. */
   correctionFamily?: CorrectionFamily | null;
   isDairy?: boolean;
@@ -221,9 +221,9 @@ function assessSubstitution(
   const allowed = new Set<string>(def.allowedCorrectionFamilies);
   const forbidden = new Set<string>(def.forbiddenCorrectionFamilies);
 
-  // Locked acceptance 28: replacement requires verified ingredient data. The
-  // router never verifies anything itself — the caller must assert it.
-  if (!substitute.hasVerifiedIngredientData) reasons.push('substitute_data_not_verified');
+  // The router never validates composition itself — the caller supplies the
+  // result of the complete technical/safety contract.
+  if (!substitute.hasCompleteTechnicalData) reasons.push('substitute_technical_data_incomplete');
 
   // Dairy into a dairy-forbidding profile (sorbet/vegan) — a HARD block that
   // no approval flag can override.

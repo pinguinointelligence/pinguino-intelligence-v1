@@ -11,18 +11,15 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import {
-  searchEngineApprovedIngredients,
-  type IngredientSearchRow,
-} from '@/services/ingredients';
+import type { IngredientSearchRow } from '@/services/ingredients';
+import { searchCanonicalProMapperIngredients } from '@/services/productPicker/mapperSearch';
 import {
   normalizeSearchText,
-  rankSearchHits,
   type IngredientSearchHit,
 } from './ingredientSearch';
 
 export const SEARCH_DEBOUNCE_MS = 250;
-/** First page must cover real concept candidate sets whole (largest verified
+/** First page must cover real concept candidate sets whole (largest active
  * family: „milk" = 95 rows) so client ranking sees every candidate — the page
  * is server-ordered alphabetically, and a natural-first hit (WHOLE MILK, W…)
  * must never fall off the page before ranking. Payload stays tiny (6 columns). */
@@ -42,6 +39,8 @@ export function useDebouncedValue<T>(value: T, delayMs: number): T {
 /** Search hit shaped for ranking + rendering (safe fields only). */
 export interface RankedSearchHit extends IngredientSearchHit {
   internal: string;
+  baseSelectable: boolean;
+  engineApproved: boolean;
 }
 
 export const toSearchHit = (row: IngredientSearchRow): RankedSearchHit => ({
@@ -55,6 +54,8 @@ export const toSearchHit = (row: IngredientSearchRow): RankedSearchHit => ({
   category: row.ingredient_category,
   form: row.ingredient_subcategory ?? '',
   internal: row.ingredient_name_internal,
+  baseSelectable: row.approved_for_base === true,
+  engineApproved: row.approved_for_engines === true,
 });
 
 export interface IngredientSearchState {
@@ -85,16 +86,37 @@ export function useIngredientSearch({
   const limit = pagination?.norm === norm ? pagination.limit : SEARCH_PAGE_SIZE;
 
   const result = useQuery({
-    queryKey: ['ingredient-search', norm, limit],
+    queryKey: ['product-search-v1', 'pi-base', norm, limit],
     enabled: enabled && norm !== '',
-    queryFn: ({ signal }) => searchEngineApprovedIngredients(debounced, { limit, signal }),
+    queryFn: async ({ signal }) => {
+      const outcome = await searchCanonicalProMapperIngredients({ text: debounced, limit, signal });
+      if (outcome.kind === 'results') {
+        return {
+          rows: outcome.rows.map((row): IngredientSearchRow => ({
+            ingredient_id: row.ingredient_id,
+            ingredient_name_display: row.ingredient_name_display,
+            ingredient_name_internal: row.ingredient_name_internal ?? row.ingredient_name_display,
+            ingredient_category: row.ingredient_category ?? '',
+            ingredient_subcategory: row.ingredient_subcategory,
+            approved_for_base: row.approved_for_base,
+            approved_for_engines: row.approved_for_engines,
+          })),
+          hasMore: outcome.hasMore,
+        };
+      }
+      if (outcome.kind === 'aborted') throw new DOMException('Aborted', 'AbortError');
+      if (outcome.kind === 'error') throw new Error(outcome.message);
+      throw new Error(`canonical_product_search_${outcome.reason}`);
+    },
     staleTime: SEARCH_STALE_TIME_MS,
     refetchOnMount: 'always',
   });
 
   const hits = useMemo(
-    () => rankSearchHits((result.data ?? []).map(toSearchHit), debounced),
-    [result.data, debounced],
+    // The RPC is the multilingual/typo relevance authority. Preserve its order;
+    // a second client rank would discard aliases not present in display text.
+    () => (result.data?.rows ?? []).map(toSearchHit),
+    [result.data],
   );
 
   return {
@@ -103,7 +125,7 @@ export function useIngredientSearch({
     isSettled: normalizeSearchText(query) === norm && !result.isFetching,
     isFetching: result.isFetching,
     isError: result.isError,
-    hasMore: (result.data?.length ?? 0) >= limit,
+    hasMore: result.data?.hasMore ?? false,
     loadMore: () => setPagination({ norm, limit: limit + SEARCH_PAGE_SIZE }),
   };
 }

@@ -2,25 +2,21 @@
  * Catalog import service (Mapper Slice D5C2) — the unified-intake WRITE step.
  *
  * importProductCatalog takes parsed intake candidates (D5C1 productTableParser) and
- * persists them via the D5B identity-aware createProductWithIdentity. ONE pipeline for
- * every source (customer / Colin / Mercadona) — candidates already carry their
- * source_type; this service only ORCHESTRATES (it builds nothing and writes nothing
- * itself).
+ * persists them through the canonical product-ingest adapter. ONE authority serves
+ * every source (customer / Colin / Mercadona): candidates carry evidence/provenance;
+ * identity, immutable versions, duplicate decisions and behavior remain server-owned.
  *
  * Boundaries:
- *   • writes products ONLY through createProductWithIdentity (own-row, RLS-gated; the DB
- *     assigns the product code) — it never reaches the database directly, never names the
- *     locked reference base, never generates a product code, never uses a privileged key;
- *   • matching is OPT-IN: matchAndSaveProduct runs only when options.runMatch === true,
- *     never automatically; a match failure is best-effort (a per-row warning), never a
- *     product failure, and short-circuits the rest of the batch;
+ *   • writes only through createProductWithIdentity → catalog-submit → ingest_product_v1;
+ *     it never reaches the database directly, names the locked reference base, invents a
+ *     product code, or carries a privileged key;
+ *   • runMatch is a compatibility request for server-side candidate evidence, never a
+ *     browser authorization of Mapper or Engine meaning;
  *   • deterministic + honest: rows are processed SEQUENTIALLY; a per-row failure is
  *     isolated and tallied (no silent failures); in-batch duplicates are detected by the
  *     pure identity key (the same one D5B dedupes on).
  */
-import { createProductWithIdentity, findExistingProductForIdentity } from '@/services/products';
-import { matchAndSaveProduct } from '@/services/productMapper';
-import { snapshotNewProduct, snapshotSourceChange } from '@/services/productSnapshots';
+import { createProductWithIdentityResult } from '@/services/products';
 import { productIdentityKey, productInsertToIdentityInput } from '@/data/products/productIdentity';
 import type { ProductIntakeCandidate } from '@/data/products/productTableParser';
 
@@ -30,9 +26,48 @@ export interface ImportProductCatalogOptions {
   /** Keep importing past a row failure (default true). When false, the first failing row is
    * recorded and then the error is rethrown immediately. */
   continueOnError?: boolean;
-  /** Record a product_snapshots history row on create, and on a CHANGED existing source
-   * (default true). Best-effort: a snapshot failure is a per-row warning, never a row failure. */
+  /** @deprecated Canonical ingest always creates/retains the authoritative immutable version. */
   snapshot?: boolean;
+  /**
+   * Called after every row, so a long import can show what it is doing instead
+   * of one spinner. Sequential ingest takes about a second per row: 800 rows is
+   * a quarter of an hour, and silence for that long is indistinguishable from a
+   * hang.
+   */
+  onProgress?: (progress: ImportProgress) => void;
+  /**
+   * Stop after this many CONSECUTIVE failures carrying the same message
+   * (default 5). A systemic refusal — an exhausted quota, a lost session —
+   * fails every remaining row the same way, and grinding through 800 of them
+   * helps nobody and buries the reason.
+   */
+  stopAfterRepeatedFailures?: number;
+  /** Durable server run identity plus cooperative stop/ledger hooks. */
+  importRun?: {
+    id: string;
+    shouldCancel: () => boolean;
+    recordOutcome: (input: {
+      rowIndex: number;
+      sourceRowId: string | null;
+      displayName: string | null;
+      outcome: 'SKIPPED' | 'FAILED';
+      error?: string | null;
+      result?: Record<string, unknown>;
+    }) => Promise<void>;
+  };
+}
+
+export interface ImportProgress {
+  processed: number;
+  total: number;
+  created: number;
+  existing: number;
+  inBatchDuplicates: number;
+  skipped: number;
+  failed: number;
+  /** The row just handled, for a live "current product" line. */
+  currentName: string | null;
+  currentRowIndex: number;
 }
 
 export type ImportRowOutcome = 'created' | 'existing' | 'in_batch_duplicate' | 'skipped' | 'failed';
@@ -66,6 +101,14 @@ export interface ProductImportSummary {
   /** BATCH-level (orchestration) warnings; per-row warnings live in rowResults[].warnings. */
   warnings: string[];
   rowResults: ImportRowResult[];
+  /**
+   * Set when the run stopped early on a repeated systemic failure. `remaining`
+   * rows were never attempted, so they are neither imported nor failed — and a
+   * resume can pick them up without recreating anything.
+   */
+  stopped?: { reason: string; afterRowIndex: number; remaining: number };
+  /** Cooperative cancellation stops before the next row; the in-flight row is atomic. */
+  cancelled?: { afterRowIndex: number | null; remaining: number };
 }
 
 function errorMessage(error: unknown): string {
@@ -75,9 +118,8 @@ function errorMessage(error: unknown): string {
 /**
  * Import parsed intake candidates into the products layer, deduped by identity. Returns an
  * honest summary (created / existing / in_batch_duplicate / skipped / failed). Sequential +
- * per-row isolated. NOTE: created counts are exact for a sequential import; under genuine
- * concurrency a race-existing row could be tallied as created (createProductWithIdentity
- * returns the same shape for both) — acceptable and documented.
+ * per-row isolated. Each row is its own all-or-nothing canonical transaction; this browser
+ * orchestrator deliberately does not pretend that the whole sheet is one DB transaction.
  */
 export async function importProductCatalog(
   candidates: ProductIntakeCandidate[],
@@ -85,7 +127,9 @@ export async function importProductCatalog(
 ): Promise<ProductImportSummary> {
   const runMatch = options.runMatch === true;
   const continueOnError = options.continueOnError !== false;
-  const snapshot = options.snapshot !== false;
+  const stopAfter = options.stopAfterRepeatedFailures ?? 5;
+  let lastFailure: string | null = null;
+  let repeatedFailures = 0;
 
   const summary: ProductImportSummary = {
     total: candidates.length,
@@ -101,9 +145,20 @@ export async function importProductCatalog(
   };
 
   const seenKeys = new Map<string, number>(); // identity key -> the first row's rowIndex
-  let matchingAvailable = runMatch; // flips off after the first match failure
+  if (runMatch) {
+    summary.warnings.push(
+      'Legacy client-side Mapper matching is ignored; canonical ingest owns classification.',
+    );
+  }
 
   for (const candidate of candidates) {
+    if (options.importRun?.shouldCancel()) {
+      summary.cancelled = {
+        afterRowIndex: summary.rowResults.at(-1)?.rowIndex ?? null,
+        remaining: candidates.length - summary.rowResults.length,
+      };
+      break;
+    }
     const row: ImportRowResult = {
       rowIndex: candidate.rowIndex,
       outcome: 'failed', // replaced below on every path
@@ -115,84 +170,147 @@ export async function importProductCatalog(
       row.outcome = 'skipped';
       if (candidate.skipReason) row.skipReason = candidate.skipReason;
       summary.skipped += 1;
+      await recordRunOutcome(candidate, 'SKIPPED', candidate.skipReason);
       summary.rowResults.push(row);
+      emitProgress(candidate);
       continue;
     }
 
     // 2-3. in-batch duplicate (identity key ONLY)
+    // A row the identity preflight already proved distinct by a STRONGER key is
+    // not an in-batch duplicate, however similar this weaker key makes it look.
     const key = productIdentityKey(productInsertToIdentityInput(candidate.insert));
-    const firstRowIndex = seenKeys.get(key);
+    const firstRowIndex = candidate.forceDistinctIdentity ? undefined : seenKeys.get(key);
     if (firstRowIndex !== undefined) {
       row.outcome = 'in_batch_duplicate';
       row.duplicateOfRowIndex = firstRowIndex;
       summary.inBatchDuplicates += 1;
+      await recordRunOutcome(candidate, 'SKIPPED', null, {
+        duplicateOfRowIndex: firstRowIndex,
+        kind: 'in_batch_duplicate',
+      });
       summary.rowResults.push(row);
+      emitProgress(candidate);
       continue;
     }
     seenKeys.set(key, candidate.rowIndex);
 
     try {
-      // 4-5. pre-check the DB for an already-owned product (accurate created vs existing)
-      const existing = await findExistingProductForIdentity(candidate.insert);
-      if (existing) {
-        row.outcome = 'existing';
-        row.productId = existing.id;
-        row.productCode = existing.product_code;
-        summary.existingDuplicates += 1;
-        summary.productIds.push(existing.id);
-        summary.productCodes.push(existing.product_code);
-        // best-effort: record a history snapshot only if the source data changed
-        if (snapshot) {
-          try {
-            await snapshotSourceChange(existing.id, candidate.insert);
-          } catch (snapError) {
-            row.warnings.push(`snapshot skipped: ${errorMessage(snapError)}`);
-          }
-        }
-        summary.rowResults.push(row);
-        continue;
-      }
-
-      // 6. create (the DB assigns the product code; identity hash computed inside)
-      const product = await createProductWithIdentity(candidate.insert);
-      row.outcome = 'created';
+      // Create or reuse. The DB owns product code, duplicate identity and the
+      // authoritative outcome; owner-scoped browser reads cannot classify a
+      // cross-account shared duplicate honestly.
+      const { product, ingest } = await createProductWithIdentityResult(candidate.insert, {
+        duplicateDecision: candidate.forceDistinctIdentity ? 'different' : null,
+        ...(options.importRun
+          ? {
+              importRun: {
+                id: options.importRun.id,
+                rowIndex: candidate.rowIndex,
+                sourceRowId: sourceRowId(candidate),
+                displayName: displayName(candidate),
+              },
+            }
+          : {}),
+      });
+      // `idempotent` means the server replayed an earlier ingest and returned
+      // its ORIGINAL snapshot, whose kind still reads `created`. Without this a
+      // second import of the same file reports fresh creations that never
+      // happened.
+      const existing = ingest.kind !== 'created' || ingest.idempotent === true;
+      row.outcome = existing ? 'existing' : 'created';
       row.productId = product.id;
       row.productCode = product.product_code;
-      summary.created += 1;
+      if (existing) summary.existingDuplicates += 1;
+      else summary.created += 1;
       summary.productIds.push(product.id);
       summary.productCodes.push(product.product_code);
 
-      // 6b. best-effort: record the first history snapshot for the new product
-      if (snapshot) {
-        try {
-          await snapshotNewProduct(product);
-        } catch (snapError) {
-          row.warnings.push(`snapshot skipped: ${errorMessage(snapError)}`);
-        }
-      }
-
-      // 7. optional, best-effort matching of the CREATED product only
-      if (matchingAvailable) {
-        try {
-          await matchAndSaveProduct(product.id);
-        } catch (matchError) {
-          const message = errorMessage(matchError);
-          row.warnings.push(`match skipped: ${message}`);
-          summary.warnings.push(`matching unavailable after row ${candidate.rowIndex}: ${message}`);
-          matchingAvailable = false; // stop trying for the remaining rows
-        }
-      }
-
       summary.rowResults.push(row);
+      lastFailure = null;
+      repeatedFailures = 0;
     } catch (error) {
+      if (
+        options.importRun?.shouldCancel() ||
+        errorMessage(error).includes('import_cancellation_requested')
+      ) {
+        summary.cancelled = {
+          afterRowIndex: summary.rowResults.at(-1)?.rowIndex ?? null,
+          remaining: candidates.length - summary.rowResults.length,
+        };
+        break;
+      }
       // 8. isolate a create/lookup failure
       row.outcome = 'failed';
       row.error = errorMessage(error);
       summary.failed += 1;
+      await recordRunOutcome(candidate, 'FAILED', row.error);
       summary.rowResults.push(row);
       if (!continueOnError) throw error;
+      repeatedFailures = row.error === lastFailure ? repeatedFailures + 1 : 1;
+      lastFailure = row.error;
+    }
+
+    emitProgress(candidate);
+
+    // The same refusal several times running is systemic, not bad luck. Stop and
+    // say why, instead of repeating it for every remaining row.
+    if (stopAfter > 0 && repeatedFailures >= stopAfter) {
+      const handled = summary.rowResults.length;
+      summary.stopped = {
+        reason: lastFailure ?? 'Powtarzający się błąd zapisu',
+        afterRowIndex: candidate.rowIndex,
+        remaining: candidates.length - handled,
+      };
+      break;
     }
   }
 
   return summary;
+
+  function emitProgress(candidate: ProductIntakeCandidate): void {
+    options.onProgress?.({
+      processed: summary.rowResults.length,
+      total: candidates.length,
+      created: summary.created,
+      existing: summary.existingDuplicates,
+      inBatchDuplicates: summary.inBatchDuplicates,
+      skipped: summary.skipped,
+      failed: summary.failed,
+      currentName:
+        candidate.insert.product_name_display ?? candidate.insert.product_name_internal ?? null,
+      currentRowIndex: candidate.rowIndex,
+    });
+  }
+
+  async function recordRunOutcome(
+    candidate: ProductIntakeCandidate,
+    outcome: 'SKIPPED' | 'FAILED',
+    error: string | null = null,
+    result: Record<string, unknown> = {},
+  ): Promise<void> {
+    if (!options.importRun) return;
+    await options.importRun.recordOutcome({
+      rowIndex: candidate.rowIndex,
+      sourceRowId: sourceRowId(candidate),
+      displayName: displayName(candidate),
+      outcome,
+      error,
+      result,
+    });
+  }
+}
+
+function displayName(candidate: ProductIntakeCandidate): string | null {
+  return candidate.insert.product_name_display ?? candidate.insert.product_name_internal ?? null;
+}
+
+function sourceRowId(candidate: ProductIntakeCandidate): string | null {
+  const extracted = candidate.insert.extracted_json;
+  if (!extracted || typeof extracted !== 'object') return null;
+  const intelligence = (extracted as Record<string, unknown>).productIntelligence;
+  if (!intelligence || typeof intelligence !== 'object') return null;
+  const proposal = (intelligence as Record<string, unknown>).intimportProductProfileProposal;
+  if (!proposal || typeof proposal !== 'object') return null;
+  const value = (proposal as Record<string, unknown>).sourceProductId;
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
 }

@@ -34,8 +34,8 @@ export function StudioSummary({
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
       {chips.map((chip, index) => (
         <span key={chip} className="flex items-center gap-2">
-          {index > 0 ? <span className="text-ivory/30">·</span> : null}
-          <span className="font-mono text-xs tracking-tight text-ivory/50 tabular-nums">
+          {index > 0 ? <span className="text-ivory/60">·</span> : null}
+          <span className="font-mono text-xs tracking-tight text-ivory/65 tabular-nums">
             {chip}
           </span>
         </span>

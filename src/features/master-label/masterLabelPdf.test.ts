@@ -1,0 +1,142 @@
+import { PDFDocument, PDFPage } from 'pdf-lib';
+import { describe, expect, it, vi } from 'vitest';
+import { createCompleteLabel } from './masterLabelTestFixture';
+import {
+  composeMasterLabelPdf,
+  masterLabelPdfFilename,
+  masterLabelPdfGeometry,
+} from './masterLabelPdf';
+import { WORLD_INFORMATIONAL_WARNING_LINES } from './worldUniversal';
+
+const label = createCompleteLabel('EU', {
+  masterLabelId: 'label-pdf',
+  sourceCompletionSessionId: 'run-pdf',
+  lotCode: 'LOT-20260825-PDF-01',
+  businessName: 'Gellatti Łódź',
+  copies: 2,
+  printer: {
+    ...createCompleteLabel('EU').printer,
+    widthMm: 104,
+    heightMm: 152,
+    copies: 2,
+  },
+});
+
+describe('Master Label direct vector PDF', () => {
+  it('uses deterministic immutable-snapshot naming and physical geometry', () => {
+    expect(masterLabelPdfFilename(label)).toBe(
+      'gellatti-label-lot-20260825-pdf-01-eu-104x152mm.pdf',
+    );
+    expect(masterLabelPdfFilename(label, true)).toContain('gellatti-draft-');
+    expect(masterLabelPdfGeometry(label)).toMatchObject({ rasterDpi: 300, copies: 2 });
+  });
+
+  it('creates deterministic exact-size pages with embedded vector text and frozen metadata', async () => {
+    const artifact = await composeMasterLabelPdf(label);
+    const repeated = await composeMasterLabelPdf(label);
+    const pdf = await PDFDocument.load(artifact.bytes);
+    expect(artifact).toMatchObject({
+      pageCount: 2,
+      widthMm: 104,
+      heightMm: 152,
+      rasterDpi: 300,
+      textMode: 'embedded_vector',
+    });
+    expect(pdf.getPages()).toHaveLength(2);
+    for (const page of pdf.getPages()) {
+      expect(page.getWidth()).toBeCloseTo((104 * 72) / 25.4, 5);
+      expect(page.getHeight()).toBeCloseTo((152 * 72) / 25.4, 5);
+    }
+    expect(pdf.getTitle()).toBe('LOT-20260825-PDF-01 - EU');
+    expect(pdf.getCreationDate()?.toISOString()).toBe('2026-08-25T10:00:00.000Z');
+    expect(new TextDecoder('latin1').decode(artifact.bytes)).toContain('/FontFile2');
+    // Full static TrueType embedding intentionally avoids the pdf-lib/fontkit
+    // subset mapping failure that can make a structurally valid PDF lose glyphs.
+    expect(artifact.bytes.byteLength).toBeGreaterThan(100_000);
+    expect(repeated.bytes).toEqual(artifact.bytes);
+  });
+
+  it('marks draft files and preserves exact physical page size', async () => {
+    const artifact = await composeMasterLabelPdf(label, null, { draft: true });
+    const pdf = await PDFDocument.load(artifact.bytes);
+    expect(artifact.filename).toMatch(/^gellatti-draft-/);
+    expect(pdf.getTitle()).toContain('DRAFT');
+    expect(pdf.getPageCount()).toBe(2);
+  });
+
+  it('draws both World informational warnings on every physical PDF page', async () => {
+    const worldBase = createCompleteLabel('WORLD');
+    const world = createCompleteLabel('WORLD', {
+      copies: 2,
+      printer: { ...worldBase.printer, copies: 2 },
+    });
+    const drawText = vi.spyOn(PDFPage.prototype, 'drawText');
+    try {
+      const artifact = await composeMasterLabelPdf(world);
+      expect(artifact.pageCount).toBe(2);
+      for (const warning of WORLD_INFORMATIONAL_WARNING_LINES) {
+        expect(drawText.mock.calls.filter(([text]) => text === warning)).toHaveLength(2);
+      }
+    } finally {
+      drawText.mockRestore();
+    }
+  });
+
+  it('creates the vector FDA dual-column and bilingual Canadian draft geometries', async () => {
+    const usBase = createCompleteLabel('US');
+    const us = createCompleteLabel('US', {
+      packageQuantity: {
+        value: 250,
+        unit: 'g',
+        netWeightG: 250,
+        netVolumeMl: null,
+        source: 'selected_fill',
+        confirmedAt: '2026-08-25T10:05:00.000Z',
+      },
+      netQuantityG: 250,
+      regulatoryNutrition: {
+        ...usBase.regulatoryNutrition,
+        servingsPerContainer: 2.5,
+        usFormatFamily: 'auto',
+      },
+      size: { widthMm: 104, heightMm: 220 },
+      printer: { ...usBase.printer, widthMm: 104, heightMm: 220 },
+    });
+    const usArtifact = await composeMasterLabelPdf(us);
+    expect(usArtifact).toMatchObject({ widthMm: 104, heightMm: 220, textMode: 'embedded_vector' });
+
+    const canadaArtifact = await composeMasterLabelPdf(createCompleteLabel('CA'), null, {
+      draft: true,
+    });
+    expect(canadaArtifact).toMatchObject({
+      widthMm: 104,
+      heightMm: 220,
+      textMode: 'embedded_vector',
+    });
+  });
+
+  it.each([
+    ['tabular', 200, 104, 152],
+    ['linear', 70, 104, 152],
+  ] as const)(
+    'creates an exact-size vector FDA %s small-package PDF',
+    async (usFormatFamily, availableDisplaySurfaceCm2, widthMm, heightMm) => {
+      const usBase = createCompleteLabel('US');
+      const compact = createCompleteLabel('US', {
+        availableDisplaySurfaceCm2,
+        size: { widthMm, heightMm },
+        printer: { ...usBase.printer, widthMm, heightMm },
+        regulatoryNutrition: {
+          ...usBase.regulatoryNutrition,
+          usFormatFamily,
+        },
+      });
+
+      const artifact = await composeMasterLabelPdf(compact);
+      const pdf = await PDFDocument.load(artifact.bytes);
+      expect(artifact).toMatchObject({ widthMm, heightMm, textMode: 'embedded_vector' });
+      expect(pdf.getPages()[0]?.getWidth()).toBeCloseTo((widthMm * 72) / 25.4, 5);
+      expect(pdf.getPages()[0]?.getHeight()).toBeCloseTo((heightMm * 72) / 25.4, 5);
+    },
+  );
+});

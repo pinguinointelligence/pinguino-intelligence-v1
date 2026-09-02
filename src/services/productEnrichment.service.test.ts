@@ -5,15 +5,12 @@ const h = vi.hoisted(() => ({
   getProduct: vi.fn(),
   updateProduct: vi.fn(),
   updateProductUnlessStatus: vi.fn(),
-  snapshotSourceChange: vi.fn(),
 }));
 vi.mock('@/services/products', () => ({
   getProduct: h.getProduct,
   updateProduct: h.updateProduct,
   updateProductUnlessStatus: h.updateProductUnlessStatus,
 }));
-vi.mock('@/services/productSnapshots', () => ({ snapshotSourceChange: h.snapshotSourceChange }));
-
 import { applyProductEnrichment } from './productEnrichment';
 
 const product = (over: Record<string, unknown> = {}) => ({ id: 'p1', product_code: 'PR-ING-000010', status: 'draft', ...over });
@@ -21,10 +18,9 @@ const product = (over: Record<string, unknown> = {}) => ({ id: 'p1', product_cod
 afterEach(() => vi.clearAllMocks());
 
 describe('applyProductEnrichment', () => {
-  it('writes only the selected nutrition fields via the GUARDED update and records a snapshot', async () => {
+  it('writes only the selected nutrition fields through the guarded canonical version transaction', async () => {
     h.getProduct.mockResolvedValue(product());
     h.updateProductUnlessStatus.mockImplementation((_id: string, patch: Record<string, unknown>) => Promise.resolve(product(patch)));
-    h.snapshotSourceChange.mockResolvedValue({ id: 's1', change_type: 'nutrition' });
 
     const res = await applyProductEnrichment('p1', { fat_percent: 30.9, protein_percent: 6.3 });
 
@@ -32,15 +28,13 @@ describe('applyProductEnrichment', () => {
     expect(h.updateProductUnlessStatus).toHaveBeenCalledWith('p1', { fat_percent: 30.9, protein_percent: 6.3 }, 'pi_verified');
     expect(h.updateProduct).not.toHaveBeenCalled();
     expect(res.appliedFields).toEqual(['fat_percent', 'protein_percent']);
-    expect(res.snapshot?.change_type).toBe('nutrition');
-    expect(h.snapshotSourceChange).toHaveBeenCalledOnce();
+    expect(res.versionRecorded).toBe(true);
   });
 
-  it('TOCTOU: if the row becomes PI Verified between read and write, the write refuses and NO snapshot is taken', async () => {
+  it('TOCTOU: if the row becomes PI Verified between read and write, the canonical write refuses', async () => {
     h.getProduct.mockResolvedValue(product({ status: 'draft' })); // read says draft…
     h.updateProductUnlessStatus.mockRejectedValue(new Error("Product not found, not owned, or its status is 'pi_verified' (write refused).")); // …write-time guard fires
     await expect(applyProductEnrichment('p1', { fat_percent: 30.9 })).rejects.toThrow(/write refused/);
-    expect(h.snapshotSourceChange).not.toHaveBeenCalled();
   });
 
   it('throws (no write) when nothing enrichable is selected', async () => {
@@ -53,13 +47,11 @@ describe('applyProductEnrichment', () => {
     h.getProduct.mockResolvedValue(product({ status: 'pi_verified' }));
     await expect(applyProductEnrichment('p1', { fat_percent: 30.9 })).rejects.toThrow(/PI Verified/);
     expect(h.updateProduct).not.toHaveBeenCalled();
-    expect(h.snapshotSourceChange).not.toHaveBeenCalled();
   });
 
   it('allows a PI Verified product only with an explicit override', async () => {
     h.getProduct.mockResolvedValue(product({ status: 'pi_verified' }));
     h.updateProduct.mockResolvedValue(product({ status: 'pi_verified', fat_percent: 30.9 }));
-    h.snapshotSourceChange.mockResolvedValue({ id: 's2', change_type: 'nutrition' });
     const res = await applyProductEnrichment('p1', { fat_percent: 30.9 }, { allowPiVerifiedOverride: true, reason: 'producer sheet' });
     expect(res.appliedFields).toEqual(['fat_percent']);
     expect(h.updateProduct).toHaveBeenCalledOnce(); // explicit override → the unguarded path, deliberately
@@ -69,7 +61,6 @@ describe('applyProductEnrichment', () => {
   it('strips any non-enrichable key — pac/pod/identity/status can never be written', async () => {
     h.getProduct.mockResolvedValue(product());
     h.updateProductUnlessStatus.mockResolvedValue(product({ fat_percent: 30.9 }));
-    h.snapshotSourceChange.mockResolvedValue(null);
     // a hostile patch carrying forbidden keys
     const hostile = { fat_percent: 30.9, pac_value: 9, pod_value: 9, status: 'pi_verified', ean_code: '000', product_code: 'X' } as unknown as EnrichmentPatch;
     await applyProductEnrichment('p1', hostile);

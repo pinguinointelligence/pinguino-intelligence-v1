@@ -2,6 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { calculateRecipe, CONFIG_VERSION, ENGINE_VERSION } from '@/engine';
 import { DEFAULT_PRESET } from '@/data/demoPresets';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
+import { ownerSameInputRecipe } from '@/features/formulation/__fixtures__/ownerSameInputFixture';
+import {
+  attachPracticalRecipeAudit,
+  practicalRecipeAuditMatchesInput,
+  practicalizeRecipeCandidate,
+  readPracticalRecipeAudit,
+} from '@/features/practical-recipe/practicalRecipe';
 import {
   buildSavePayload,
   deriveProductType,
@@ -99,6 +106,137 @@ describe('savedToRecipeInput (load validation)', () => {
     expect(result.npac_points).not.toBeNull();
   });
 
+  it('round-trips the Protein product and exact user target without falling back to Gelato', () => {
+    const base = sampleInput();
+    const input = {
+      ...base,
+      category: 'protein_gelato' as const,
+      goals: {
+        ...base.goals,
+        target_protein_percent: 22.4,
+      },
+    };
+    const payload = buildSavePayload({
+      name: 'Protein strawberry',
+      recipeInput: input,
+      intakeProductId: null,
+      intakeServingId: null,
+    });
+    expect(payload.product_type).toBe('protein');
+    const loaded = savedToRecipeInput(JSON.parse(JSON.stringify(payload.recipe_input)));
+    expect(loaded.category).toBe('protein_gelato');
+    expect(loaded.goals?.target_protein_percent).toBe(22.4);
+    expect(loaded.items).toEqual(input.items);
+  });
+  it('round-trips exact Recipe Direction targets without persisting any Apply consent', () => {
+    const base = sampleInput();
+    const input = {
+      ...base,
+      goals: {
+        ...base.goals,
+        direction_targets: {
+          sweetness: -1 as const,
+          softness: 1 as const,
+          creaminess: 0 as const,
+          flavor: 0 as const,
+        },
+        direction_targets_active: true,
+      },
+    };
+    const payload = buildSavePayload({
+      name: 'Directional gelato',
+      recipeInput: input,
+      intakeProductId: null,
+      intakeServingId: null,
+    });
+    const serialized = JSON.stringify(payload.recipe_input);
+    expect(serialized).not.toContain('substitutionConsent');
+    const loaded = savedToRecipeInput(JSON.parse(serialized));
+    expect(loaded.goals?.direction_targets).toEqual(input.goals.direction_targets);
+    expect(loaded.goals?.direction_targets_active).toBe(true);
+  });
+  it('round-trips persisted range and unavailable sidecars through a saved version', () => {
+    const base = sampleInput();
+    const [first] = base.items;
+    const input = {
+      ...base,
+      items: base.items.map((item) =>
+        item.id === first!.id
+          ? {
+              ...item,
+              lock_type: 'grams' as const,
+              range_constraint: { min_grams: 90, max_grams: 140 },
+            }
+          : item,
+      ),
+      goals: {
+        ...base.goals,
+        excluded_ingredient_ids: ['PI-ING-000494'],
+        unavailable_main_ingredient_ids: ['PI-ING-001553'],
+      },
+    };
+    const payload = buildSavePayload({
+      name: 'Range and availability',
+      recipeInput: input,
+      intakeProductId: null,
+      intakeServingId: null,
+    });
+    const loaded = savedToRecipeInput(JSON.parse(JSON.stringify(payload.recipe_input)));
+    expect(loaded.items[0]?.range_constraint).toEqual({ min_grams: 90, max_grams: 140 });
+    expect(loaded.goals?.excluded_ingredient_ids).toEqual(['PI-ING-000494']);
+    expect(loaded.goals?.unavailable_main_ingredient_ids).toEqual(['PI-ING-001553']);
+  });
+  it('round-trips a durable exact-grams sidecar without weakening Required', () => {
+    const base = sampleInput();
+    const [first] = base.items;
+    const input = {
+      ...base,
+      items: base.items.map((item) =>
+        item.id === first!.id
+          ? {
+              ...item,
+              lock_type: 'required' as const,
+              grams_constraint: { grams: item.planned_grams },
+            }
+          : item,
+      ),
+    };
+    const payload = buildSavePayload({
+      name: 'Required exact grams',
+      recipeInput: input,
+      intakeProductId: null,
+      intakeServingId: null,
+    });
+    const loaded = savedToRecipeInput(JSON.parse(JSON.stringify(payload.recipe_input)));
+    expect(loaded.items[0]).toMatchObject({
+      lock_type: 'required',
+      grams_constraint: { grams: first!.planned_grams },
+    });
+  });
+  it('round-trips the exact→executable practical audit with the saved canonical input', () => {
+    const practical = practicalizeRecipeCandidate(ownerSameInputRecipe(), { byLineId: {} });
+    expect(practical.ok).toBe(true);
+    if (!practical.ok) return;
+    const savedInput = attachPracticalRecipeAudit(
+      practical.audit.executableInput,
+      practical.audit.exactInput,
+      '2026-08-11T12:00:00.000Z',
+    );
+    const payload = buildSavePayload({
+      name: 'Owner practical G17',
+      recipeInput: savedInput,
+      intakeProductId: null,
+      intakeServingId: null,
+    });
+    const loaded = savedToRecipeInput(JSON.parse(JSON.stringify(payload.recipe_input)));
+    const audit = readPracticalRecipeAudit(loaded);
+    const taraLine = loaded.items.find((line) => line.id === 'owner:tara_gum');
+    expect(audit?.modelVersion).toBe(practical.audit.modelVersion);
+    expect(taraLine).toBeDefined();
+    expect(audit?.exactGramsByLineId[taraLine!.id]).toBe(1.9);
+    expect(taraLine?.planned_grams).toBe(2);
+    expect(practicalRecipeAuditMatchesInput(loaded, audit)).toBe(true);
+  });
   it('tolerates unknown/future fields (old saves keep loading)', () => {
     const stored = JSON.parse(JSON.stringify(sampleInput())) as {
       items: Array<{ ingredient: Record<string, unknown> }>;

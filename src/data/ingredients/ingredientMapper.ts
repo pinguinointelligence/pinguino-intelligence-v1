@@ -18,12 +18,14 @@
 import type { EngineIngredient, EngineIngredientFlags, IngredientComponentProfile } from '@/engine';
 import { mapDatasetCategory } from './categoryMapping';
 import type { IngredientRow } from './ingredientRow';
+import { assessMapperVeganEligibility } from './veganEligibility';
 
 /** Required-number coercion at the engine seam (unknown component → 0). */
 const num = (value: number | null | undefined): number => value ?? 0;
 
 export function ingredientRowToEngineIngredient(row: IngredientRow): EngineIngredient {
   const { category } = mapDatasetCategory(row.ingredient_category);
+  const isVerified = row.verification_status.startsWith('Verified');
 
   const composition: IngredientComponentProfile = {
     water_percent: num(row.water_percent),
@@ -50,13 +52,22 @@ export function ingredientRowToEngineIngredient(row: IngredientRow): EngineIngre
 
   // best-effort engine hints from the mapped category + dietary flag
   const flags: EngineIngredientFlags = {};
+  const vegan = assessMapperVeganEligibility(row);
   if (category === 'dairy') flags.is_dairy = true;
   if (category === 'stabilizer') flags.is_stabilizer = true;
   if (category === 'flavor') flags.is_flavor_booster = true;
   if (row.vegan === 'false') flags.is_animal_origin = true;
+  flags.vegan_eligibility = vegan.status;
+  flags.vegan_eligibility_reasons = vegan.reasons;
 
   return {
     id: row.ingredient_id,
+    canonical_ingredient_id: row.ingredient_id,
+    private_product_id: null,
+    identity_provenance: 'mapper',
+    // classification evidence only — never an Engine formula input
+    source_subcategory: row.ingredient_subcategory?.trim() || null,
+    carbonation_status: row.carbonation_status ?? 'UNKNOWN',
     name: row.ingredient_name_display.trim() || row.ingredient_name_internal,
     category,
     composition,
@@ -66,12 +77,13 @@ export function ingredientRowToEngineIngredient(row: IngredientRow): EngineIngre
     // recipe-level NPAC from pac_value; ingredient-level NPAC does not exist.
     de_value: row.de_value,
     cost_per_kg: row.cost_per_kg,
+    cost_currency: row.currency || null,
     confidence_score: row.data_confidence_percent ?? 0,
-    source_type: 'verified_db',
+    source_type: isVerified ? 'verified_db' : 'ai_estimated',
     // v1.0 vocabulary: every 'Verified*' status family counts as verified
     // ('Verified', 'Verified / Basis Check Needed', 'Verified / PI Calculated',
     // 'Verified / Public Label').
-    is_verified: row.verification_status.startsWith('Verified'),
+    is_verified: isVerified,
     ...(Object.keys(flags).length > 0 ? { flags } : {}),
   };
 }

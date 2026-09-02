@@ -1,0 +1,77 @@
+/**
+ * Tablets use the same modal cockpit as phones. The side-by-side workbench only
+ * starts once both the ingredient editor and the technical cockpit have enough
+ * room to remain independently readable.
+ */
+export const MOBILE_COCKPIT_QUERY = '(max-width: 1279px)';
+
+export function shouldActivateMobileCockpitModal(open: boolean, mobileViewport: boolean): boolean {
+  return open && mobileViewport;
+}
+
+export interface MobileCockpitState<Tab extends string = string> {
+  activeTab: Tab;
+  open: boolean;
+}
+
+/**
+ * What the bottom module bar does when a module is tapped.
+ *
+ * Open / collapse / switch, as one pure decision. It exists because deriving
+ * „open" from the active module silently broke Receptura: its route IS the
+ * default (`/pro/recipe`), so `open = activeTab !== 'profile'` could never be
+ * true for it and the recipe settings were unreachable on a phone, while
+ * Monitor, Produkcja and Etykieta all worked. Module identity and openness are
+ * two facts and are now decided as two.
+ */
+export function nextMobileCockpitState<Tab extends string>(
+  current: MobileCockpitState<Tab>,
+  tapped: Tab,
+): MobileCockpitState<Tab> {
+  if (current.open && tapped === current.activeTab) return { activeTab: tapped, open: false };
+  return { activeTab: tapped, open: true };
+}
+
+/**
+ * Collapsing a read-only cockpit normally returns to the recipe route. During
+ * an in-progress Production run, however, the ingredient workspace itself is
+ * the active route and must stay mounted so a narrow operator can weigh and
+ * confirm rows after closing the summary sheet.
+ */
+export function collapsedMobileCockpitRoute<Tab extends string>(
+  activeTab: Tab,
+  defaultTab: Tab,
+  keepActiveModule: boolean,
+): Tab {
+  return keepActiveModule ? activeTab : defaultTab;
+}
+
+/**
+ * A freshly created mobile Production run must reveal the existing operational
+ * weighing workspace. Existing/reloaded runs stay where the operator put them,
+ * and desktop never adopts mobile sheet state.
+ */
+export function shouldRevealProductionWeighingOnNarrowViewport({
+  previousSessionId,
+  currentSessionId,
+  currentStatus,
+  activeTab,
+  cockpitOpen,
+  mobileViewport,
+}: {
+  previousSessionId: string | null;
+  currentSessionId: string | null;
+  currentStatus: string | null;
+  activeTab: string;
+  cockpitOpen: boolean;
+  mobileViewport: boolean;
+}): boolean {
+  return (
+    mobileViewport &&
+    cockpitOpen &&
+    activeTab === 'production' &&
+    currentStatus === 'in_progress' &&
+    currentSessionId !== null &&
+    currentSessionId !== previousSessionId
+  );
+}

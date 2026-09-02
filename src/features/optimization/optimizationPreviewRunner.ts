@@ -73,7 +73,12 @@ export const makeRealRerunCorrection =
   (targetBandOverride?: Partial<Record<TargetMetric, TargetRange>>): RerunCorrectionFn =>
   (ctx) => {
     const draft = ctx.recipeDraft as RecipeInput;
-    const proposed = proposeAutoFix({ input: draft, context: 'planning', exactCorrectionGrams: true, targetBandOverride });
+    const proposed = proposeAutoFix({
+      input: draft,
+      context: 'planning',
+      exactCorrectionGrams: true,
+      targetBandOverride,
+    });
     if (proposed.redacted) return { applied: false, reason: 'redacted' };
     const proposal = proposed.proposals.find((p) => 'actions' in p && p.actions.length > 0);
     if (!proposal) return { applied: false, reason: 'no_correction_proposal' };
@@ -83,7 +88,11 @@ export const makeRealRerunCorrection =
       applied: true,
       correctedRecipe: applied.newInput,
       correctedResult: calculateRecipe(applied.newInput),
-      appliedAdjustments: applied.actions.map((a) => ({ type: a.type, ingredient: a.ingredient_name, grams: a.grams })),
+      appliedAdjustments: applied.actions.map((a) => ({
+        type: a.type,
+        ingredient: a.ingredient_name,
+        grams: a.grams,
+      })),
     };
   };
 
@@ -206,7 +215,10 @@ export function previewOptimization(args: OptimizationPreviewInput): Optimizatio
   // reports when the solver is still on the −11 seeded fallback rather than the regulator target).
   const targetGuidance = deriveTemperatureAwareTarget(intent, beforeResult);
   // Shadow (non-live) comparison of the engine's selected band vs the regulator band.
-  const bandComparison = compareEngineVsShadowBands(intent.productProfile, intent.servingTemperatureC);
+  const bandComparison = compareEngineVsShadowBands(
+    intent.productProfile,
+    intent.servingTemperatureC,
+  );
   // Preview-only: what the solver targets today (engine-seeded) vs under injected regulator bands.
   const solverTargetInjection = analyzeSolverTargetInjection({
     recipe,
@@ -230,7 +242,9 @@ export function previewOptimization(args: OptimizationPreviewInput): Optimizatio
     decision: p.decision,
     rerunState: p.rerunState,
     proposedAdjustments: p.proposedAdjustments,
-    afterMetrics: p.correctedBaseEngineResult ? adaptBaseEngineResult(p.correctedBaseEngineResult).metrics : null,
+    afterMetrics: p.correctedBaseEngineResult
+      ? adaptBaseEngineResult(p.correctedBaseEngineResult).metrics
+      : null,
     correctedRecipeSnapshot: p.hypotheticalCorrectedRecipe ?? null,
     rerun: p.rerun,
     warnings: p.warnings,
@@ -278,7 +292,7 @@ export function previewOptimization(args: OptimizationPreviewInput): Optimizatio
 
   return {
     id: args.id ?? 'live',
-    label: args.label ?? 'Live Studio recipe',
+    label: args.label ?? 'Bieżąca receptura Studio',
     intendedDecision: args.intendedDecision ?? 'live',
     productProfile: intent.productProfile,
     servingTemperatureC: intent.servingTemperatureC,
@@ -306,7 +320,9 @@ export function previewOptimization(args: OptimizationPreviewInput): Optimizatio
 }
 
 /** Run one DEV fixture (delegates to previewOptimization). */
-export function runOptimizationPreview(fixture: OptimizationPreviewFixture): OptimizationPreviewView {
+export function runOptimizationPreview(
+  fixture: OptimizationPreviewFixture,
+): OptimizationPreviewView {
   return previewOptimization({
     recipe: fixture.recipe,
     intent: fixture.intent,
@@ -329,6 +345,7 @@ const CATEGORY_TO_PROFILE: Readonly<Record<ProductCategory, ProductProfile>> = {
   alcohol_gelato: 'standard_gelato',
   sorbet: 'sorbet',
   vegan_gelato: 'vegan_gelato',
+  protein_gelato: 'protein_gelato',
   custom: 'standard_gelato',
 };
 

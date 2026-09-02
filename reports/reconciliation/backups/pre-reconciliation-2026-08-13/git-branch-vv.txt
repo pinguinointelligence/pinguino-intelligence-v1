@@ -1,0 +1,122 @@
+﻿+ agent-a/canonical-families               de48ae5 (C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agenta-canonical-families) feat(honesty): reference-derived Apply gate, honest solver terminology, truthful outcome labels
+  agent-a/canonical-families-honesty       dd7223f merge(addendum): canonical families only (native-band routing), reference-derived quarantine + apply-door gate, honest solver terminology, rescale-vs-optimisation labels
++ agent-c/multi-remove-norefresh           3f41e68 (C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-c) fix(stores): multi-remove → immediate Przelicz z PI ≡ after-refresh (owner addendum item 6)
++ agent3/constraint-solver-authenticity    c1946c9 (C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-ab629ad5f110362cf) fix(agent3): formulation authenticity — projection is seed-only, proof-carrying previews, honest impossibility
++ agent4/fixture-sweep                     9142b9b (C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-a49d5850b240ad4c1) feat(fixture-sweep): Agent 4 — full non-production data sweep + PINK TESTOWE/NIEPRODUKCYJNE markers
++ agent5/e2e-authenticity                  ae237e7 (C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-a58a21a60468595da) fix(services): explicit unconfigured-backend reads — no silent fake-empty output (Agent 5 E2E authenticity)
++ agentd/monitor-parity-verified           8ec10ba (C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agentd-monitor-parity) verify(monitor): 100 % historical parity re-derived and PROVEN — clipping gap closed
++ agentm/monitor-completeness              6d612eb (C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-ab0b5bc9c429b41ab) feat(pro): ONE-SCREEN workbench — zero page scroll, LIVE Monitor PI panel, full B1 parity (Agent M)
++ agentr/removal-recalc                    d828df2 (C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-ab1a2783c4dbaf65c) fix(recipe): removal is not exclusion — atomic removal transaction + explicit unavailable action (owner FINAL CLOSURE, Agent R)
+  chore/track-f-search-read-model          5db5e42 chore(track-f): safe search read model for the 2,083 Mapper ingredients (staging migration)
++ codex/contextual-learning-process-guide  abc45e6 (C:/Users/Absconsio/Desktop/pi-worktrees/contextual-learning-process-guide) feat: add contextual learning and process guide
+  codex/desktop-structure-lock             e816c51 feat(pro): lock desktop profile structure and picker
++ codex/final-integration-deploy-2026-08   0bebc92 (C:/Users/Absconsio/Desktop/pi-worktrees/final-integration-deploy-2026-08) [origin/staging: behind 10] fix: preserve template-controlled stabilizer contracts
++ codex/final-pro-owner-reconstruction     dd87e3a (C:/Users/Absconsio/Desktop/pi-worktrees/final-pro-owner-reconstruction) [origin/staging: behind 6] fix(pro): finish owner visual correction pass
+  codex/final-pro-topping-system           6b188e5 [origin/staging: behind 2] chore(staging): force clean Vercel redeploy
+  codex/final-pro-workbench                7d33ec7 fix(pro): integrate final identity and apply review
++ codex/global-menu-ia-final               9a7aeb0 (C:/Users/Absconsio/Desktop/pi-worktrees/global-menu-ia-final) [origin/staging: ahead 1, behind 21] feat: add plan-aware global navigation
++ codex/ingredient-table-ux                92e2d84 (C:/Users/Absconsio/Desktop/pi-worktrees/ingredient-table-ux) feat(pro): simplify recipe ingredient table UX
++ codex/lost-legendary-inspiration         34e2be8 (C:/Users/Absconsio/Desktop/pi-worktrees/lost-legendary-inspiration) feat(recipes): add curated mobile discovery
++ codex/multi-main-recipe-identity         5ae99e6 (C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/codex-multi-main) fix(formulation): preserve multi-main recipe identity
++ codex/optimal-eco-customer-pricing-final 30daf29 (C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/codex-optimal-eco-pricing) feat: add private customer pricing and eco strategy
++ codex/p0-process-guide-entry             88920e9 (C:/Users/Absconsio/Desktop/pi-worktrees/p0-process-guide-entry) [origin/staging: behind 9] fix(pro): restore process guide monitor entry
++ codex/pixel-perfect-desktop              5f79658 (C:/Users/Absconsio/Desktop/pi-worktrees/final-pro-topping-system) [origin/staging] fix(pro): lock desktop workbench to owner target
++ codex/pro-apple2-completion              3c45127 (C:/Users/Absconsio/Desktop/pi-worktrees/pro-apple2-completion) [origin/staging: behind 8] feat(pro): complete Apple 2.0 workbench
++ codex/pro-monitor-ux                     93df6eb (C:/Users/Absconsio/Desktop/pi-worktrees/pro-monitor-ux) feat(pro): redesign professional monitor
++ codex/pro-profile-preflight              4a83fca (C:/Users/Absconsio/Desktop/pi-worktrees/pro-profile-preflight) feat(pro): add profile preflight and target axes
++ codex/production-master-label-final      4ec3f49 (C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/codex-production-master-label) feat(pro): add physical production and master label workflow
++ codex/protein-gelato-final               47198dc (C:/Users/Absconsio/Desktop/pinguino-intelligence-v1) feat: add protein gelato product engine
++ codex/recipe-direction-targets           5ae99e6 (C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/codex-recipe-direction-targets) fix(formulation): preserve multi-main recipe identity
+* codex/unified-product-intelligence       5f79658 [origin/staging] fix(pro): lock desktop workbench to owner target
++ codex/vegan-gelato-final                 37492b8 (C:/Users/Absconsio/.codex/visualizations/2026/08/05/019fd104-2eaa-7be1-8054-52fd972f633e/vegan-engine-worktree) fix: close vegan review gaps
+  feat/customer-dark-home                  3918716 feat(customer-shell): dark premium homepage + global nav + vanilla fix + friendly dose UX
+  feat/ingredient-resolution               8f81ff1 feat(ingredient-resolution): file-first ingredient resolution + product selection gate
+  feat/pi-monitor                          26f93a2 feat(pi-monitor): customer PI Recipe Monitor + customer-controlled recalculation
+  feat/ready-recipe-catalogue-first-100    95c5441 feat(recipes): first-100 flavor inspiration catalogue (domain + importer + manifest)
+  feat/uiux-master-v1                      14339ef docs(uiux): final acceptance evidence — integrated landing/start/studio, desktop+mobile
++ fix/acceptance-addendum                  1a11965 (C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-ae9269b046f152abb) fix(addendum): four acceptance closures — T9 cap gate, technical score split, hard-residual door, real MAX/RANGE freedom
++ fix/current-draft-optimization           1413219 (C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-a68edd8b3ce48753d) fix(optimizer): CURRENT-DRAFT optimization — every unlocked line adjustable, batch equality, one canonical score, machine context
+  fix/home-recipe-compact-ux               0b970ce fix(hotfix): compact Home recipe context — restore Zmień maszynę, hide Tryb/Dane techniczne, paywall clearance, single status
+  fix/machine-default-vs-recipe            333ed1a fix(hotfix): split profile default machine from recipe-only machine override
+  fix/machine-profile-settings             4f217d8 fix(hotfix): production regressions — nav, flavour flow, machine-first Home, machine settings
+  fix/track-a-real-picker                  cef736c feat(track-a): real ingredient resolution — wire the 69 staging products into the customer Product Picker
+  fix/track-c-subscription-light           e271883 fix(track-c): light-first /subscription + retire /classic + nav cleanup
+  hotfix/customer-flow-ninja               9f5a357 fix(customer-flow): retain all flavors + real Ninja device path (no display temperature)
+  hotfix/ninja-verified-mass               55c9e50 feat(customer-flow): owner-approved verified Ninja recipe masses — auto-set, skip batch step
+  main                                     4dfb097 [origin/main] docs(pro): constrained reformulation + Undo + score completion ledger
+  nightly/integration                      5f00436 docs(addendum): final integration ledger — items 1-7, consequences, owner checks
++ nightly/live-state-opt-stabilizer        05a812e (C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-ae30b31e19ebd761b) docs(nightly-p0): live-state/optimization/stabilizer completion ledger — stale byLineId root cause, iterated-solver audit, tara 5 g forensic verdict (BLOCKED_SCIENCE on dose optimization only)
+  preview/customer-v1                      54d58b1 [origin/preview/customer-v1] feat(customer-shell): customer-v1 preview — integrate UX audit + conversational flow + design system
+  release/customer-home-v1                 6bc9371 [origin/release/customer-home-v1] chore(customer-shell): neutral honest Polish customer copy for the public homepage
++ slice/assistant-local-apply              c660e70 (C:/Users/Absconsio/Desktop/pi-worktrees/assistant-local-apply) feat: Assistant submit fix + explicit starter capabilities + local Apply to Studio
++ slice/billing-domain-logic               9e08753 (C:/Users/Absconsio/Desktop/pi-worktrees/billing-domain-logic) feat: billing domain logic - pure financial modules + exhaustive tests (Track E)
++ slice/billing-schema-entitlements        ff90552 (C:/Users/Absconsio/Desktop/pi-worktrees/billing-schema-entitlements) refactor: keep Track D guard tests inside src/billing (src/features is off-limits)
++ slice/billing-stripe-surface             152c4e5 (C:/Users/Absconsio/Desktop/pi-worktrees/billing-stripe-surface) feat: Stripe-facing billing surface - price catalog, webhook matrix, conversion machine
++ slice/nightly-a-formulation              4dfb097 (C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-a42e483ba60a3161d) docs(pro): constrained reformulation + Undo + score completion ledger
++ slice/nightly-b-engine-validation        4dfb097 (C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-af00d0d5ef5280e30) docs(pro): constrained reformulation + Undo + score completion ledger
++ slice/nightly-c-search                   4dfb097 (C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-a3417480bfff9c98d) docs(pro): constrained reformulation + Undo + score completion ledger
++ slice/ocr-label-intake-completion        a3038d5 (C:/Users/Absconsio/Desktop/pi-worktrees/ocr-label-intake-completion) feat: real OCR label intake - tesseract.js engine + parser + review + draft handoff
++ slice/ocr-migrations-ui                  ad0a492 (C:/Users/Absconsio/Desktop/pi-worktrees/ocr-migrations-ui) feat(ocr-intake): intake persistence spine (0022-0024) + full session UI
++ slice/ocr-provider-extraction            3f6369b (C:/Users/Absconsio/Desktop/pi-worktrees/ocr-provider-extraction) docs(ocr-intake): correct -Only usage note in fixture generator
++ slice/ocr-session-dedup-batch            e1df580 (C:/Users/Absconsio/Desktop/pi-worktrees/ocr-session-dedup-batch) feat(ocr-intake): session state machine, duplicate handling, save flow, batch workflow
++ slice/spine-decision-completion          951c3d1 (C:/Users/Absconsio/Desktop/pi-worktrees/spine-decision-completion) feat: Spine decision acceptance (Slice 25) - 12-cell matrix pins + dairy candidate gate fix
++ stabilizer-science/selector-design       7eaf7c7 (C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-ac9d81abfb5c29287) docs(stabilizer): forensic recovery + multi-stabilizer selector science
+  staging                                  d7a119a [origin/staging: behind 146] merge(track-f): safe search read model migration 0032 (owner applies to staging)
+  uiux/constraint-solver                   8f8bbf9 feat(recipe-constraints): lock/range constraints + engine-verified feasibility (UI/UX master spec 17/18/20.4/23.2)
+  uiux/machine-catalog                     1aa7312 feat(machine-catalog): versioned Home machine catalog + onboarding contracts (Annex A seed)
+  uiux/score-adapter                       ea89555 feat(recipe-score): 1-10 score adapter + Golden Range contract + three-indicator separation (SPEC 15, 20.5)
+  uiux/slice-a-light-landing               901e1d7 feat(landing): real public landing at / — light premium, Polish (spec §6); flow moves to /start (Slice A)
+  uiux/slice-b-machine-onboarding          8de5934 feat(machine-preference): launch-gated persistence — selector + backend adapter (file-first) + migration 0030 (NOT applied) + unrouted profile page
+  uiux/slice-c-p0-fixes                    fd38e54 fix(uiux-slice-c): P0 serving temps + temperature-concept split + picker dead-end exits (audit #5/#19/#2)
+  uiux/slice-d-monitors-score              1c1f95f feat(uiux): Slice D — Monitor Home (§13) + Monitor Pro (§14 UserMonitorLayout) + 1-10 score adapter into UI (§15.1)
+  uiux/slice-e-lock-preview                6a90952 feat(uiux-slice-e): §17–§20 lock/Preview/Apply — verify-gated pipeline, feasibility honesty, history/Undo/Explain
++ ux-repair/pro-recipe                     cdb7902 (C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-a72417fa73b8d7545) fix(pro-recipe): UX repair — dark-surface charcoal token, one primary path, red review marks, truthful states
++ worktree-agent-a0923162aec83b7ef         4dfb097 (C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-a0923162aec83b7ef) docs(pro): constrained reformulation + Undo + score completion ledger
++ worktree-agent-a1c6af8049ffddbc2         4dfb097 (C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-a1c6af8049ffddbc2) docs(pro): constrained reformulation + Undo + score completion ledger
++ worktree-agent-a1e802426801972bb         4dfb097 (C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-a1e802426801972bb) docs(pro): constrained reformulation + Undo + score completion ledger
++ worktree-agent-a25121477322515d3         7d2a90a (C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-a25121477322515d3) docs(protein-family): primary literature review + product contract
++ worktree-agent-a28db60091b8bfd9c         b0698d3 (C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-a28db60091b8bfd9c) fix(pro): transactional first save (0036 RPC, applied to staging) + versions contract suite + alias-aware cost keying with three-state presentation
++ worktree-agent-a2d044d5d9972c514         27a0c85 (C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-a2d044d5d9972c514) qa(nightly-p0): Agent 2 — engine authenticity audit + T1-T20 offline battery (drift detectors, artifacts, ledger)
+  worktree-agent-a3417480bfff9c98d         4dfb097 docs(pro): constrained reformulation + Undo + score completion ledger
++ worktree-agent-a39253521363bb504         4dfb097 (C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-a39253521363bb504) docs(pro): constrained reformulation + Undo + score completion ledger
+  worktree-agent-a42e483ba60a3161d         4dfb097 docs(pro): constrained reformulation + Undo + score completion ledger
+  worktree-agent-a44868c072499022e         9f6050c feat(stripe-webhook): per-intent financial effect writers (reviewed)
+  worktree-agent-a47f597ad6b79af76         9f6050c feat(stripe-webhook): per-intent financial effect writers (reviewed)
+  worktree-agent-a49d5850b240ad4c1         4dfb097 docs(pro): constrained reformulation + Undo + score completion ledger
++ worktree-agent-a4daa878a5536f698         0950609 (C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-a4daa878a5536f698) docs(nightly-p0): Agent F infra & data forensics ledger — staging/prod bundle evidence, Stripe test-mode proof, products-table forensic conclusion (no staging deletion; misconnected-connector reads)
++ worktree-agent-a500fe17d6731ee3c         902fb07 (C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-a500fe17d6731ee3c) qa(engine-validation): Agent B exact immutable fixtures + engine-output drift detectors + comparison ledger
+  worktree-agent-a57d9aee6bf390468         fe9ec90 copy(customer-shell): canonical homepage headline "Jakie lody dziś robimy?"
+  worktree-agent-a58a21a60468595da         4dfb097 docs(pro): constrained reformulation + Undo + score completion ledger
+  worktree-agent-a5a4f147e0c88fdc5         9f6050c feat(stripe-webhook): per-intent financial effect writers (reviewed)
+  worktree-agent-a5e73d4a749ef0cf5         9f6050c feat(stripe-webhook): per-intent financial effect writers (reviewed)
+  worktree-agent-a68edd8b3ce48753d         4dfb097 docs(pro): constrained reformulation + Undo + score completion ledger
+  worktree-agent-a71e571261e1d3f79         9f9e303 feat(customer-shell): Agent C — mobile-first customer design system + gallery
+  worktree-agent-a72417fa73b8d7545         4dfb097 docs(pro): constrained reformulation + Undo + score completion ledger
++ worktree-agent-a7596694588d097ae         7557ea2 (C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-a7596694588d097ae) fix(start): entitlement-driven /start persona seam + full persona/entitlement test matrix (Agent D P0)
+  worktree-agent-a7f5f8918ce6a26b9         57879eb feat: integrate real Engine + Monitor PI on the public customer card (remove fixture)
++ worktree-agent-a813e3be6dc0d387f         3690cb0 (C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-a813e3be6dc0d387f) docs(design): Phase 7 + completion ledger — live responsive/a11y verification record, gates, owner acceptance tests
++ worktree-agent-a876faa573c47cc52         4dfb097 (C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-a876faa573c47cc52) docs(pro): constrained reformulation + Undo + score completion ledger
+  worktree-agent-a8a3d0da83e0cd423         9f6050c feat(stripe-webhook): per-intent financial effect writers (reviewed)
+  worktree-agent-a8a83e26028480d7e         03178f5 feat(pro-core): orchestrator integration CP3 — recipe versions on the real My Recipes surface
+  worktree-agent-a8d8144ba3d52bf3e         cc3e3d3 feat(monitoring): Sentry via the errorReporter seam — DSN-gated, sanitized, staging-named
+  worktree-agent-a993209bc922d6d4d         9f6050c feat(stripe-webhook): per-intent financial effect writers (reviewed)
+  worktree-agent-a9d83f8147d6a121d         9f6050c feat(stripe-webhook): per-intent financial effect writers (reviewed)
+  worktree-agent-aac9bc45e9bb5078c         cc3e3d3 feat(monitoring): Sentry via the errorReporter seam — DSN-gated, sanitized, staging-named
+  worktree-agent-ab0b5bc9c429b41ab         4dfb097 docs(pro): constrained reformulation + Undo + score completion ledger
+  worktree-agent-ab1a2783c4dbaf65c         4dfb097 docs(pro): constrained reformulation + Undo + score completion ledger
+  worktree-agent-ab629ad5f110362cf         4dfb097 docs(pro): constrained reformulation + Undo + score completion ledger
+  worktree-agent-abce36396e7c17a96         f2aae23 docs(customer-ux): Agent A — senior UX audit + wireframes + Polish copy
+  worktree-agent-ac9d81abfb5c29287         4dfb097 docs(pro): constrained reformulation + Undo + score completion ledger
++ worktree-agent-aca58b655636a9c94         2ed9a04 (C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-aca58b655636a9c94) docs(engine-authenticity): Agent 1 runtime formulation path forensics — owner table, scaling-site classification, Strawberry-900 exact call stack + defect statement for Agent 3
++ worktree-agent-ad02e8b78af7a2711         4dfb097 (C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-ad02e8b78af7a2711) docs(pro): constrained reformulation + Undo + score completion ledger
++ worktree-agent-ad62b5b16ee66f53f         0b9f0f2 (C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-ad62b5b16ee66f53f) fix(search): AGENT C finalization — .range paging, SMP/proszku alias gaps, census-grounded Polish presentation
++ worktree-agent-ad880ceca859efa7a         9b9f929 (C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-ad880ceca859efa7a) fix(formulation): NIGHTLY P0 Agent A — exclusion lifecycle, canonical toolbox identity, template-seeded fallback, best-safe result
+  worktree-agent-ad8e5fbe7d89b0573         fe9ec90 copy(customer-shell): canonical homepage headline "Jakie lody dziś robimy?"
+  worktree-agent-ae30b31e19ebd761b         4dfb097 docs(pro): constrained reformulation + Undo + score completion ledger
+  worktree-agent-ae9269b046f152abb         4dfb097 docs(pro): constrained reformulation + Undo + score completion ledger
+  worktree-agent-af00d0d5ef5280e30         4dfb097 docs(pro): constrained reformulation + Undo + score completion ledger
+  worktree-agent-af019e59172ff5ba3         9f6050c feat(stripe-webhook): per-intent financial effect writers (reviewed)
+  worktree-agent-af7c90f256c854518         3101504 feat(customer-flow): Agent B — pure conversational flow + ready-recipe matching + Demo redaction (file-first)
+  worktree-wf_4497dc37-75a-1               2a65849 feat(pro-v1): S1 — canonical Pro capability model (12 new named flags, additive)
+  worktree-wf_4497dc37-75a-2               2a65849 feat(pro-v1): S1 — canonical Pro capability model (12 new named flags, additive)
+  worktree-wf_4497dc37-75a-3               2a65849 feat(pro-v1): S1 — canonical Pro capability model (12 new named flags, additive)

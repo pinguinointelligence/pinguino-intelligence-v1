@@ -27,13 +27,14 @@ export const PRODUCT_PROFILE_ALIASES: Readonly<Record<string, ProductProfile>> =
 
   chocolate: 'chocolate_gelato',
   chocolate_gelato: 'chocolate_gelato',
+
+  protein: 'protein_gelato',
+  protein_gelato: 'protein_gelato',
 };
 
 /** Known but outside v1.0 scope — must warn, never silently map. */
 export const UNSUPPORTED_PRODUCT_PROFILES_V1 = [
   'granita',
-  'protein',
-  'protein_gelato',
   'fresh',
   'storage_minus18',
   'frozen_drinks',

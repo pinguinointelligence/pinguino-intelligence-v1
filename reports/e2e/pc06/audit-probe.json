@@ -1,0 +1,74 @@
+[
+  {
+    "name": "QA Gelato Wanilia -11",
+    "version": 1,
+    "auditPresent": true,
+    "auditMatches": true,
+    "preFixLifecycle": "READY",
+    "postFixLifecycle": "READY",
+    "changedByPc06": false
+  },
+  {
+    "name": "QA Protein Kakao -12",
+    "version": 1,
+    "auditPresent": false,
+    "auditMatches": false,
+    "preFixLifecycle": "TECHNICALLY_STALE",
+    "postFixLifecycle": "READY",
+    "changedByPc06": true
+  },
+  {
+    "name": "QA Protein Kakao -12",
+    "version": 2,
+    "auditPresent": true,
+    "auditMatches": true,
+    "preFixLifecycle": "READY",
+    "postFixLifecycle": "READY",
+    "changedByPc06": false
+  },
+  {
+    "name": "QA Sorbet Truskawka -12",
+    "version": 1,
+    "auditPresent": false,
+    "auditMatches": false,
+    "preFixLifecycle": "TECHNICALLY_STALE",
+    "postFixLifecycle": "READY",
+    "changedByPc06": true
+  },
+  {
+    "name": "QA Sorbet Truskawka -12",
+    "version": 1,
+    "auditPresent": false,
+    "auditMatches": false,
+    "preFixLifecycle": "TECHNICALLY_STALE",
+    "postFixLifecycle": "READY",
+    "changedByPc06": true
+  },
+  {
+    "name": "QA Sorbet Truskawka -13",
+    "version": 1,
+    "auditPresent": false,
+    "auditMatches": false,
+    "preFixLifecycle": "TECHNICALLY_STALE",
+    "postFixLifecycle": "READY",
+    "changedByPc06": true
+  },
+  {
+    "name": "QA Vegan Kokos -12",
+    "version": 1,
+    "auditPresent": false,
+    "auditMatches": false,
+    "preFixLifecycle": "TECHNICALLY_STALE",
+    "postFixLifecycle": "READY",
+    "changedByPc06": true
+  },
+  {
+    "name": "QA Vegan Kokos -12",
+    "version": 2,
+    "auditPresent": true,
+    "auditMatches": true,
+    "preFixLifecycle": "READY",
+    "postFixLifecycle": "READY",
+    "changedByPc06": false
+  }
+]

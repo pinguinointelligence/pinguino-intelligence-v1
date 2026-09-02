@@ -14,10 +14,11 @@ import {
   NINJA_CREAMI_DELUXE_NC502EU,
   NINJA_CREAMI_NC302EU,
   NINJA_CREAMI_SCOOP_SWIRL_NC7,
+  SAGE_SMART_SCOOP_BCI600,
   buildCustomMachineProfile,
   deriveMachineSetup,
 } from '@/features/machine-catalog';
-import { machineOnboardingCopy as copy, pluralPojemniki } from './machineOnboardingCopy';
+import { machineOnboardingCopy as copy, pluralCykle, pluralPojemniki } from './machineOnboardingCopy';
 import {
   autoConfigLines,
   buildMachineContextView,
@@ -58,12 +59,12 @@ describe('§8.2 tile views — honesty', () => {
       'Ninja CREAMi Deluxe',
       'Ninja CREAMi Scoop & Swirl',
       'Moulinex Freezi',
-      'Sage / Breville Smart Scoop',
+      'Sage Smart Scoop',
       'Magimix Gelato Expert',
       'Cuisinart ICE-100',
       'KitchenAid Ice Cream Maker',
       'Cuisinart z misą chłodzoną',
-      'Nie widzę mojej maszyny',
+      'Własna maszyna',
     ]);
     expect(views[views.length - 1]?.selectable).toBe(true);
   });
@@ -80,10 +81,11 @@ describe('§8.2 tile views — honesty', () => {
     expect(NINJA_CREAMI_DELUXE_NC502EU.sourceConflicts ?? []).toEqual([]);
   });
 
-  it('Sage stays visible but DISABLED with the honest verification note', () => {
-    const sage = views.find((v) => v.label === 'Sage / Breville Smart Scoop');
-    expect(sage?.selectable).toBe(false);
-    expect(sage?.note).toBe(copy.tiles.unavailableNote);
+  it('Sage is active and selectable after exact official verification', () => {
+    const sage = views.find((v) => v.label === 'Sage Smart Scoop');
+    expect(sage?.selectable).toBe(true);
+    expect(sage?.note).toBeNull();
+    expect(sage?.selectableProfiles).toEqual([SAGE_SMART_SCOOP_BCI600]);
   });
 
   it('the offered tiles are exactly the activatable machines of the final decision', () => {
@@ -93,6 +95,7 @@ describe('§8.2 tile views — honesty', () => {
       'Ninja CREAMi Deluxe',
       'Ninja CREAMi Scoop & Swirl',
       'Moulinex Freezi',
+      'Sage Smart Scoop',
       'Magimix Gelato Expert',
       'Cuisinart ICE-100',
       'KitchenAid Ice Cream Maker',
@@ -122,7 +125,7 @@ describe('§8.2 search', () => {
 
   it('matches by label, brand and model code; keeps the escape tile visible', () => {
     const byModel = searchMachineTiles(views, 'nc302');
-    expect(byModel.map((v) => v.label)).toEqual(['Ninja CREAMi', 'Nie widzę mojej maszyny']);
+    expect(byModel.map((v) => v.label)).toEqual(['Ninja CREAMi', 'Własna maszyna']);
 
     const byBrand = searchMachineTiles(views, 'kitchen');
     expect(byBrand.map((v) => v.label)).toContain('KitchenAid Ice Cream Maker');
@@ -133,12 +136,14 @@ describe('§8.2 search', () => {
     expect(noDiacritics.map((v) => v.label)).toContain('Cuisinart z misą chłodzoną');
   });
 
-  it('empty query returns everything; a disabled family stays findable (honest note intact)', () => {
+  it('empty query returns everything; Sage aliases resolve to its one active profile', () => {
     expect(searchMachineTiles(views, '')).toEqual(views);
-    const sage = searchMachineTiles(views, 'bci600');
-    expect(sage.map((v) => v.label)).toContain('Sage / Breville Smart Scoop');
-    expect(sage.find((v) => v.label.startsWith('Sage'))?.selectable).toBe(false);
-    expect(sage.find((v) => v.label.startsWith('Sage'))?.note).toBe(copy.tiles.unavailableNote);
+    for (const query of ['bci600', 'sci600', 'Breville']) {
+      const sage = searchMachineTiles(views, query);
+      expect(sage.map((v) => v.label)).toContain('Sage Smart Scoop');
+      expect(sage.find((v) => v.label.startsWith('Sage'))?.selectable).toBe(true);
+      expect(sage.find((v) => v.label.startsWith('Sage'))?.note).toBeNull();
+    }
     // Owner final decision: the Deluxe is selectable — findable with NO note.
     const deluxe = searchMachineTiles(views, 'nc502');
     expect(deluxe.find((v) => v.label === 'Ninja CREAMi Deluxe')?.note).toBeNull();
@@ -165,7 +170,10 @@ describe('machine display names — customer-facing, never technology codes', ()
     if (named.outcome !== 'profile') throw new Error('expected profile');
     expect(machineDisplayName(named.profile)).toBe('Acme G-2000');
 
-    const anonymous = buildCustomMachineProfile({ behaviorAnswerId: 'machine_cools_itself', market: 'ES' });
+    const anonymous = buildCustomMachineProfile({
+      behaviorAnswerId: 'machine_cools_itself',
+      market: 'ES',
+    });
     if (anonymous.outcome !== 'profile') throw new Error('expected profile');
     expect(machineDisplayName(anonymous.profile)).toBe(copy.profile.customName);
   });
@@ -176,11 +184,11 @@ describe('machine display names — customer-facing, never technology codes', ()
 /* ------------------------------------------------------------------ */
 
 describe('batch presentation — owner framing, honest none', () => {
-  it('derived grams present as „Zalecany wsad PINGÜINO” — never as a capacity', () => {
+  it('derived grams present as „Zalecany wsad Gellatti” — never as a capacity', () => {
     const nc7 = presentBatchSuggestion(deriveMachineSetup(NINJA_CREAMI_SCOOP_SWIRL_NC7));
     expect(nc7).toEqual({
       kind: 'pinguino_grams',
-      label: 'Zalecany wsad PINGÜINO',
+      label: 'Zalecany wsad Gellatti',
       text: '460 g',
       note: null, // official source — not estimated
     });
@@ -188,7 +196,7 @@ describe('batch presentation — owner framing, honest none', () => {
     expect(kitchenAid).toMatchObject({ kind: 'pinguino_grams', text: '1330 g' });
   });
 
-  it('user-declared capacity carries the honest ESTIMATED note', () => {
+  it('user-declared capacity waits for the user cycle batch', () => {
     const custom = buildCustomMachineProfile({
       behaviorAnswerId: 'freeze_mixture_first',
       market: 'ES',
@@ -196,12 +204,7 @@ describe('batch presentation — owner framing, honest none', () => {
     });
     if (custom.outcome !== 'profile') throw new Error('expected profile');
     const presentation = presentBatchSuggestion(deriveMachineSetup(custom.profile));
-    expect(presentation).toEqual({
-      kind: 'pinguino_grams',
-      label: 'Zalecany wsad PINGÜINO',
-      text: '450 g',
-      note: copy.batch.estimatedNote,
-    });
+    expect(presentation).toEqual({ kind: 'user_choice', text: copy.batch.userChoiceNote });
   });
 
   it('a conflicted machine presents the honest verification note (probe; real records derive)', () => {
@@ -222,16 +225,18 @@ describe('batch presentation — owner framing, honest none', () => {
     expect(real).toMatchObject({ kind: 'pinguino_grams', label: copy.batch.recommendedLabel });
   });
 
-  it('a bowl-only machine presents the honest user-choice note', () => {
+  it('Magimix presents its canonical Gelato working batch', () => {
     const p = presentBatchSuggestion(deriveMachineSetup(MAGIMIX_GELATO_EXPERT));
-    expect(p).toEqual({ kind: 'user_choice', text: copy.batch.userChoiceNote });
+    expect(p).toMatchObject({ kind: 'pinguino_grams', text: '950 g' });
   });
 });
 
 describe('container split notice — owner verbatim copy', () => {
   it('900 g @ 450 g: exact owner message + detail', () => {
     const notice = containerSplitNotice(900, 450);
-    expect(notice?.message).toBe('Ta ilość wymaga 2 pojemników. PINGÜINO podzieli recepturę automatycznie.');
+    expect(notice?.message).toBe(
+      'Ta ilość wymaga 2 pojemników. Gellatti podzieli recepturę automatycznie.',
+    );
     expect(notice?.detail).toBe('2 pojemniki po 450 g');
     expect(notice?.plan.containers).toBe(2);
   });
@@ -240,7 +245,7 @@ describe('container split notice — owner verbatim copy', () => {
     const thousand = containerSplitNotice(1000, 450);
     expect(thousand?.plan.containers).toBe(3);
     expect(thousand?.message).toBe(
-      'Ta ilość wymaga 3 pojemników. PINGÜINO podzieli recepturę automatycznie.',
+      'Ta ilość wymaga 3 pojemników. Gellatti podzieli recepturę automatycznie.',
     );
     expect(thousand?.detail).toBe('3 pojemniki po 333,3 g');
     expect(containerSplitNotice(1350, 450)?.detail).toBe('3 pojemniki po 450 g');
@@ -262,6 +267,18 @@ describe('container split notice — owner verbatim copy', () => {
     expect(formatGrams(450)).toBe('450');
     expect(formatGrams(333.3)).toBe('333,3');
   });
+
+  it('Polish plural for the machine cycles readout', () => {
+    // The workbench renders „8 cykli · 625 g / cykl" for an over-capacity
+    // batch; „cykle" is the 2-4 form only.
+    expect(pluralCykle(1)).toBe('cykl');
+    expect(pluralCykle(2)).toBe('cykle');
+    expect(pluralCykle(4)).toBe('cykle');
+    expect(pluralCykle(5)).toBe('cykli');
+    expect(pluralCykle(8)).toBe('cykli');
+    expect(pluralCykle(12)).toBe('cykli');
+    expect(pluralCykle(22)).toBe('cykle');
+  });
 });
 
 /* ------------------------------------------------------------------ */
@@ -274,12 +291,17 @@ describe('§8.5 auto-config lines — honest amount variant', () => {
       'Rozpoznano urządzenie',
       'Ustawiono właściwą ilość',
       'Dopasowano sposób przygotowania',
-      'Przygotowano PINGÜINO Pro',
+      'Przygotowano Gellatti Pro',
     ]);
   });
 
-  it('no trustworthy amount → the honest user-choice line (never a fake claim)', () => {
-    const lines = autoConfigLines(deriveMachineSetup(MAGIMIX_GELATO_EXPERT));
+  it('a custom machine has no trustworthy amount until its user cycle batch is entered', () => {
+    const custom = buildCustomMachineProfile({
+      behaviorAnswerId: 'machine_cools_itself',
+      market: 'ES',
+    });
+    if (custom.outcome !== 'profile') throw new Error('expected profile');
+    const lines = autoConfigLines(deriveMachineSetup(custom.profile));
     expect(lines[1]).toBe(copy.autoConfig.amountUserChoice);
     expect(lines).not.toContain(copy.autoConfig.amountSet);
   });
@@ -296,6 +318,7 @@ describe('§7.3 context view — vessel from the catalog record OR the user’s 
       name: 'Ninja CREAMi Scoop & Swirl',
       vesselMl: 480,
       recommendedBatchGrams: 460,
+      defaultBatchGrams: 460,
     });
   });
 
@@ -309,6 +332,7 @@ describe('§7.3 context view — vessel from the catalog record OR the user’s 
     const view = buildMachineContextView(own);
     expect(view?.vesselMl).toBe(500); // the user's own container, not the 706 catalog figure
     expect(view?.recommendedBatchGrams).toBe(470);
+    expect(view?.defaultBatchGrams).toBe(470);
   });
 
   it('a machine without a vessel figure yields name-only (null vessel)', () => {
@@ -324,6 +348,7 @@ describe('§7.3 context view — vessel from the catalog record OR the user’s 
       name: 'Ninja CREAMi Deluxe',
       vesselMl: 706,
       recommendedBatchGrams: 670,
+      defaultBatchGrams: 670,
     });
   });
 

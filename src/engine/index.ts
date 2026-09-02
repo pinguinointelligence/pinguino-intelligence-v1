@@ -66,9 +66,37 @@ export {
 } from './pac';
 
 export type { IceAnchorRow } from './config/iceAnchors';
-export { ICE_ANCHOR_ROWS, ICE_TEMPERATURE_SLOPE_PER_C, hasSeededIceAnchorAtTemperature } from './config/iceAnchors';
+export {
+  ICE_ANCHOR_CATEGORY_FALLBACK,
+  ICE_ANCHOR_ROWS,
+  ICE_TEMPERATURE_SLOPE_PER_C,
+  hasDirectIceAuthorityAtTemperature,
+  hasSeededIceAnchorAtTemperature,
+} from './config/iceAnchors';
+export type {
+  IceAuthorityKind,
+  IceAuthorityLabel,
+  IceAuthorityProvenance,
+  VeganBandCalibration,
+  VeganTemperatureBandProvenance,
+} from './config/veganFreezingAuthority';
+export {
+  VEGAN_TEMPERATURE_BAND_PROVENANCE,
+  hasOwnPlantValidatedVeganIceAuthority,
+  resolveIceAuthorityProvenance,
+  veganTemperatureBandProvenance,
+} from './config/veganFreezingAuthority';
 export type { IceFractionInput, IceFractionOptions } from './iceFraction';
 export { estimateIceFraction } from './iceFraction';
+export type { SorbetDirectionProjectionTarget } from './sorbetDirectionProjection';
+export { projectSorbetDirectionCandidate } from './sorbetDirectionProjection';
+export type { SorbetFreezingUnavailableReason } from './sorbetFreezingPhysics';
+export {
+  SORBET_FREEZING_SUPPORTED_TEMPERATURE_C,
+  SORBET_FREEZING_WARNING_REASON_PREFIX,
+  isSorbetFreezingTemperatureSupported,
+  sorbetFreezingUnavailableReasonFromWarnings,
+} from './sorbetFreezingPhysics';
 
 export { IDEAL_ZONE_FRACTION } from './config/targets';
 export type {
@@ -87,11 +115,22 @@ export {
 } from './statuses';
 
 export { calculateRecipe } from './calculateRecipe';
+export type { TechnicalLinearIngredientFactors } from './technicalLinearFactors';
+export { technicalLinearIngredientFactors } from './technicalLinearFactors';
 
-export { ATWATER_KCAL_PER_G, computeNutritionPer100g, ingredientKcalContribution } from './nutrition';
+export {
+  ATWATER_KCAL_PER_G,
+  computeNutritionPer100g,
+  ingredientKcalContribution,
+} from './nutrition';
 export { computeRecipeCosts } from './cost';
 export type { ScoresInput } from './scoring';
-export { computeCostScore, computeFlavorScore, computeScores, computeTechnicalScore } from './scoring';
+export {
+  computeCostScore,
+  computeFlavorScore,
+  computeScores,
+  computeTechnicalScore,
+} from './scoring';
 export type { CostScoreAnchor } from './config/scoring';
 export {
   COST_PRIORITY_PENALTY,
@@ -109,6 +148,14 @@ export {
 export type * from './corrections/types';
 export { DEFAULT_CORRECTION_CANDIDATES, selectCandidates } from './corrections/candidates';
 export { detectViolations, proposeCorrections } from './corrections/solver';
+export {
+  MATERIAL_USER_INTENT_DRIFT,
+  USER_INTENT_DRIFT_SOFTENING_FRACTION,
+  isMaterialUserIntentDeviation,
+  materialDeviationFloorGrams,
+  normalizedLineDrift,
+  userLineBaselineGrams,
+} from './userIntent';
 export type { CorrectionConstraints, VerifyArgs, VerifyOutcome } from './corrections/verify';
 export {
   applyCorrectionActions,
@@ -118,6 +165,18 @@ export {
 export { redactProposal } from './corrections/redact';
 export type { ApplyAutoFixArgs, ApplyAutoFixResult, ProposeAutoFixArgs } from './corrections/apply';
 export { applyAutoFix, proposeAutoFix } from './corrections/apply';
+export type {
+  AdditiveRecoveryNeighborhoodEvaluation,
+  BatchRecoveryCandidate,
+  BatchRecoveryObjective,
+  BatchRecoveryRequest,
+  BatchRecoveryResult,
+  BatchRecoveryTrace,
+} from './corrections/recovery';
+export {
+  evaluateAdditiveRecoveryNeighborhood,
+  proposeBatchRecovery,
+} from './corrections/recovery';
 
 /** The assembled default configuration (spec §7–§11, §17) — pure data aggregation. */
 export const DEFAULT_ENGINE_CONFIG: EngineConfig = {

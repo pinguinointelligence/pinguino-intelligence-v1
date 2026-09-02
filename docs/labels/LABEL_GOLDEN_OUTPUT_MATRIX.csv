@@ -1,0 +1,23 @@
+case_id,profile,coverage,expected,automated_status
+eu-dairy,EU,Dairy baseline,EU declaration + inline allergen emphasis,PASS
+eu-nut,EU,Nut allergen,Nut authority displayed,PASS
+eu-multi-allergen,EU,Multiple allergens,All confirmed terms rendered,PASS
+eu-long-ingredients,EU,12 actual ingredient lines,Render or explicit geometry block; never clip,PASS
+uk-prepacked,UK,GB prepacked,UK renderer + GB address context,PASS
+uk-ppds,UK,PPDS,Food name + full ingredients + emphasis,PASS
+us-dairy,USA,FDA baseline,Nutrition Facts not EU table,PASS
+us-added-sugars,USA,Added sugars,Includes Added Sugars + DV,PASS
+us-sesame,USA,Big 9 sesame,Contains sesame,PASS
+us-long-business,USA,Long responsible business,Wrap or explicit geometry block,PASS
+us-dual-column,USA,250 percent RACC,Distinct per serving/per container columns,PASS
+ca-bilingual,Canada,EN/FR,Bilingual common name/ingredients/NFT,PASS_RENDERER_BLOCKED_ASSET
+ca-fop-triggering,Canada,High saturated fat/sugars,FOP required and no lookalike,PASS_RENDERER_BLOCKED_ASSET
+ca-non-fop,Canada,Below thresholds,NFT without FOP artwork,PASS_RENDERER_BLOCKED_ASSET
+ca-long-bilingual,Canada,12 bilingual ingredient lines,Render or explicit geometry block,PASS_RENDERER_BLOCKED_ASSET
+au-nz-standard,AU/NZ,NIP baseline,Per serving + per 100 g,PASS
+au-nz-peal,AU/NZ,PEAL,Bold inline and adjacent Contains,PASS
+au-nz-long-nip,AU/NZ,Long ingredients/NIP,Render or explicit geometry block,PASS
+world-thermal-minimal,WORLD,Neutral thermal,No country-specific panel,PASS
+world-long-content,WORLD,12 actual ingredient lines,Render or explicit geometry block,PASS
+world-qr-barcode,WORLD,Optional machine codes,QR and LOT barcode only with values,PASS
+world-actual-production-deviation,WORLD,Actual differs from plan,Completed actual Production source retained,PASS

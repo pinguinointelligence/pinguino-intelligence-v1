@@ -221,6 +221,7 @@ const PROFILE_TO_CATEGORY: Readonly<Record<ProductProfile, ProductCategory>> = {
   chocolate_gelato: 'chocolate_gelato',
   sorbet: 'sorbet',
   vegan_gelato: 'vegan_gelato',
+  protein_gelato: 'protein_gelato',
 };
 
 const SWEETNESS_TO_GOAL: Readonly<Record<string, NonNullable<RecipeGoals['sweetness']>>> = {
@@ -311,7 +312,9 @@ export function buildStarterRecipeFromIntent(
       status: 'needs_more_information',
       templateId: template.id,
       missingFields: ['batch_size'],
-      warnings: [{ code: 'batch_size_required', messageKey: 'assistant.starter.batch_size_required' }],
+      warnings: [
+        { code: 'batch_size_required', messageKey: 'assistant.starter.batch_size_required' },
+      ],
       trace: baseTrace(template.id, template.baseBatchG, null),
     };
   }
@@ -382,7 +385,8 @@ export function buildStarterRecipeFromIntent(
   const warnings: IntentRecipeDraftWarning[] = [];
   const flavorHandled =
     template.intrinsicFlavorGroup !== null && template.intrinsicFlavorGroup === flavorGroup;
-  const flavorIsSpecific = flavorText !== null && flavorGroup !== 'unknown' && flavorGroup !== 'neutral';
+  const flavorIsSpecific =
+    flavorText !== null && flavorGroup !== 'unknown' && flavorGroup !== 'neutral';
   if (flavorIsSpecific && !flavorHandled) {
     warnings.push({
       code: 'flavor_manual_mapping_required',
@@ -390,7 +394,10 @@ export function buildStarterRecipeFromIntent(
     });
   }
   if (enginePreview.optimizationRecommended) {
-    warnings.push({ code: 'optimization_recommended', messageKey: 'assistant.starter.optimization_recommended' });
+    warnings.push({
+      code: 'optimization_recommended',
+      messageKey: 'assistant.starter.optimization_recommended',
+    });
   }
 
   return {

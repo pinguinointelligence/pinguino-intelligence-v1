@@ -93,25 +93,25 @@ const RULES: Record<string, ProductSubcategoryMatch> = {
 
   // ── medium confidence (deterministic; resolved by owner category decisions) ──
   // flavor: aroma + coffee act as flavoring agents
-  'vanilla aroma': { category: 'flavor', confidence: 'medium', reason: 'aroma / flavoring -> flavor' },
-  'coffee beans natural': { category: 'flavor', confidence: 'medium', reason: 'coffee is a flavoring agent -> flavor' },
-  'coffee beans strong': { category: 'flavor', confidence: 'medium', reason: 'coffee is a flavoring agent -> flavor' },
-  'ground coffee natural': { category: 'flavor', confidence: 'medium', reason: 'coffee is a flavoring agent -> flavor' },
-  'ground coffee espresso': { category: 'flavor', confidence: 'medium', reason: 'coffee is a flavoring agent -> flavor' },
-  'ground coffee mix': { category: 'flavor', confidence: 'medium', reason: 'coffee is a flavoring agent -> flavor' },
+  'vanilla aroma': { category: 'flavor', confidence: 'medium', reason: 'Aromat / składnik smakowy → smak' },
+  'coffee beans natural': { category: 'flavor', confidence: 'medium', reason: 'Kawa jest składnikiem smakowym → smak' },
+  'coffee beans strong': { category: 'flavor', confidence: 'medium', reason: 'Kawa jest składnikiem smakowym → smak' },
+  'ground coffee natural': { category: 'flavor', confidence: 'medium', reason: 'Kawa jest składnikiem smakowym → smak' },
+  'ground coffee espresso': { category: 'flavor', confidence: 'medium', reason: 'Kawa jest składnikiem smakowym → smak' },
+  'ground coffee mix': { category: 'flavor', confidence: 'medium', reason: 'Kawa jest składnikiem smakowym → smak' },
   // fruit: fruit jam base
-  'sugar free jam': { category: 'fruit', confidence: 'medium', reason: 'fruit jam -> fruit (also pectin/sweetener)' },
+  'sugar free jam': { category: 'fruit', confidence: 'medium', reason: 'Fruit jam -> fruit (also pectin/sweetener)' },
   // dairy: protein-fortified dairy products
-  'protein pudding': { category: 'dairy', confidence: 'medium', reason: 'protein-fortified dairy dessert -> dairy' },
-  'protein yogurt w fruit': { category: 'dairy', confidence: 'medium', reason: 'protein-fortified dairy yogurt -> dairy' },
-  'protein drink': { category: 'dairy', confidence: 'medium', reason: 'protein-fortified milk drink -> dairy' },
-  'protein drink choco': { category: 'dairy', confidence: 'medium', reason: 'protein-fortified milk drink -> dairy' },
-  'protein drink mixed fruit': { category: 'dairy', confidence: 'medium', reason: 'protein-fortified milk drink -> dairy' },
+  'protein pudding': { category: 'dairy', confidence: 'medium', reason: 'Protein-fortified dairy dessert -> dairy' },
+  'protein yogurt w fruit': { category: 'dairy', confidence: 'medium', reason: 'Protein-fortified dairy yogurt -> dairy' },
+  'protein drink': { category: 'dairy', confidence: 'medium', reason: 'Protein-fortified milk drink -> dairy' },
+  'protein drink choco': { category: 'dairy', confidence: 'medium', reason: 'Protein-fortified milk drink -> dairy' },
+  'protein drink mixed fruit': { category: 'dairy', confidence: 'medium', reason: 'Protein-fortified milk drink -> dairy' },
   // nut_paste: hazelnut / peanut spreads & nut-derived protein powder
-  'hazelnut cream w milk': { category: 'nut_paste', confidence: 'medium', reason: 'hazelnut milk spread -> nut_paste' },
+  'hazelnut cream w milk': { category: 'nut_paste', confidence: 'medium', reason: 'Hazelnut milk spread -> nut_paste' },
   'peanut protein powder': { category: 'nut_paste', confidence: 'medium', reason: 'peanut-derived -> nut_paste' },
   // chocolate_cocoa: cocoa-forward hazelnut spread (Nutella-style)
-  'hazelnut cocoa cream': { category: 'chocolate_cocoa', confidence: 'medium', reason: 'cocoa-forward hazelnut spread -> chocolate_cocoa' },
+  'hazelnut cocoa cream': { category: 'chocolate_cocoa', confidence: 'medium', reason: 'Pasta orzechowa z dominującym kakao → chocolate_cocoa' },
 };
 
 /**
@@ -122,7 +122,7 @@ const RULES: Record<string, ProductSubcategoryMatch> = {
 export function mapProductSubcategory(subcategory: string | null | undefined): ProductSubcategoryMatch {
   const key = normalizeSubcategory(subcategory);
   if (key === '') {
-    return { category: null, confidence: 'manual', reason: 'blank or missing subcategory — manual review' };
+    return { category: null, confidence: 'manual', reason: 'Brak podkategorii — wymaga ręcznego sprawdzenia' };
   }
   const rule = RULES[key];
   if (rule) return { ...rule };

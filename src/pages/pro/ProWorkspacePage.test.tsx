@@ -22,8 +22,22 @@ vi.mock('@/features/pro-core/useProCorePersona', () => ({
 }));
 
 const { ProWorkspacePage } = await import('./ProWorkspacePage');
+const { cockpitTabFromRoute, routeForCockpitTab } = await import('./workbenchRoute');
 
 const w = copy.proWorkspace;
+
+describe('workbench URL authority', () => {
+  it('round-trips all four modules through stable routes', () => {
+    expect(cockpitTabFromRoute('recipe', null)).toBe('profile');
+    expect(cockpitTabFromRoute('monitor', null)).toBe('monitor');
+    expect(cockpitTabFromRoute('production', null)).toBe('production');
+    expect(cockpitTabFromRoute('recipe', 'summary')).toBe('summary');
+    expect(routeForCockpitTab('profile')).toBe('/pro/recipe');
+    expect(routeForCockpitTab('monitor')).toBe('/pro/monitor');
+    expect(routeForCockpitTab('production')).toBe('/pro/production');
+    expect(routeForCockpitTab('summary')).toBe('/pro/recipe?panel=summary');
+  });
+});
 
 const renderAt = (path: string, persona: ProCorePersona) => {
   mockPersona = persona;
@@ -53,12 +67,38 @@ describe('ProWorkspacePage (S3)', () => {
     }
   });
 
-  it('renders the full 9-tab nav for the Pro persona', () => {
+  it('keeps workbench sections reachable by deep link without promoting them globally', async () => {
+    const { APP_NAV_ITEMS } = await import('@/features/shell/appNav');
+    const globalRoutes = APP_NAV_ITEMS.map((item) => item.to);
+    for (const section of [
+      'recipe',
+      'monitor',
+      'versions',
+      'production',
+      'history',
+      'costs',
+      'exports',
+      'settings',
+      'machine',
+      'tools',
+    ]) {
+      const sectionHtml = renderAt(`/pro/${section}`, 'pro');
+      expect(sectionHtml, section).toContain('data-testid="pro-light-scope"');
+      expect(sectionHtml, section).not.toContain(w.gate.message);
+      if (section !== 'recipe' && section !== 'production') {
+        expect(globalRoutes, section).not.toContain(`/pro/${section}`);
+      }
+    }
+    // …and a titled section page renders for the Pro persona (no tab row, no gate).
     const html = renderAt('/pro/settings', 'pro');
     expect(html).toContain(w.title);
-    for (const label of Object.values(w.tabs)) {
-      expect(html).toContain(label);
-    }
+    expect(html).toContain(w.tabs.settings);
+    // The MODULE strip is what must not be promoted onto a titled section page.
+    // Since the global header parity work the canonical HOME | PRO switch is also a
+    // tablist and renders on every route by contract, so this asserts the strip by
+    // identity instead of banning the role outright.
+    expect(html).not.toContain('data-testid="pro-global-workbench-chrome"');
+    expect(html).toContain('data-testid="home-pro-switch"');
     // Gate copy must be absent for a Pro user.
     expect(html).not.toContain(w.gate.message);
   });
@@ -68,10 +108,17 @@ describe('ProWorkspacePage (S3)', () => {
     expect(html).toContain('data-testid="pro-core-versions"');
   });
 
-  it('shows an honest backend indicator + "arrives later" note on Produkcja/Koszty', () => {
+  it('keeps Profile, Monitor, Production and Summary in one right-side workspace', () => {
     const production = renderAt('/pro/production', 'pro');
-    expect(production).toContain(w.soon.production);
-    expect(production).toContain('data-testid="pro-slice-backend"');
+    expect(production).toContain('data-testid="pro-context-tabs"');
+    expect(production).toContain('data-testid="pro-context-production"');
+    expect(production).toContain('Wymaga receptury wykonawczej');
+    expect(production).not.toContain('Brak zatwierdzonego uprawnienia PRODUCTION dla:');
+    expect(production).not.toContain('new-recipe-0-');
+    expect(production).toContain('data-testid="pro-context-summary-tab"');
+
+    const history = renderAt('/pro/history', 'pro');
+    expect(history).toContain('data-testid="pro-panel-history"');
 
     const costs = renderAt('/pro/costs', 'pro');
     expect(costs).toContain(w.soon.costs);
@@ -83,6 +130,6 @@ describe('ProWorkspacePage (S3)', () => {
     expect(html).toContain('data-testid="pro-machine-selector"');
     expect(html).toContain('data-testid="pro-machine-professional"');
     expect(html).toContain(copy.proMachine.professional.title);
-    expect(html).toContain('href="/profile/machine"');
+    expect(html).toContain('href="/machine"');
   });
 });

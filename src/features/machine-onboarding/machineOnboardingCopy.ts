@@ -14,18 +14,22 @@ export const machineOnboardingCopy = {
   /* ------------------------------------------------------- §8.1 first screen -- */
   intro: {
     title: 'Jakiej maszyny używasz?',
-    lead: 'Wybierz urządzenie, a PINGÜINO automatycznie dopasuje sposób przygotowania i właściwą ilość.',
+    lead: 'Wybierz urządzenie, a Gellatti dopasuje sposób przygotowania i właściwą ilość.',
     searchLabel: 'Szukaj maszyny',
-    searchPlaceholder: 'np. Ninja, KitchenAid, NC302…',
-    searchNoResults: 'Brak maszyn pasujących do wyszukiwania. Wybierz „Nie widzę mojej maszyny”.',
+    searchPlaceholder: 'Np. Ninja, KitchenAid, NC302…',
+    searchNoResults: 'Brak maszyn pasujących do wyszukiwania. Wybierz „Nie widzę mojej maszyny”',
   },
 
   /* ----------------------------------------------------------- §8.2 tiles ----- */
   tiles: {
+    /** „Maszyna profesjonalna" as an explicit choice beside the Home families. */
+    professionalNote:
+      'Wybierz, jeśli pracujesz na maszynie profesjonalnej — Gellatti użyje wtedy swojej standardowej partii.',
     /** Honest short note on families that cannot be selected yet. */
-    unavailableNote: 'w trakcie weryfikacji pojemności',
+    unavailableNote: 'W trakcie weryfikacji pojemności',
     /** ARIA hint for a disabled tile. */
-    unavailableAria: 'Ta maszyna jest w trakcie weryfikacji pojemności i nie można jej jeszcze wybrać.',
+    unavailableAria:
+      'Ta maszyna jest w trakcie weryfikacji pojemności i nie można jej jeszcze wybrać',
     /** Model disambiguation sub-screen (§8.2: only when capacity/technology differs). */
     disambiguation: {
       title: 'Który model?',
@@ -45,18 +49,19 @@ export const machineOnboardingCopy = {
   unsupported: {
     title: 'Ta maszyna nie jest jeszcze wspierana w Home',
     body:
-      'Maszyny, które chłodzą płynną bazę i wydają miękkie lody z dozownika, to urządzenia o innym ' +
-      'trybie pracy niż profile domowe PINGÜINO. Nie podstawimy w zamian innego profilu po cichu — ' +
-      'wsparcie dla tych maszyn pojawi się osobno.',
+      'Maszyny dozujące miękkie lody pracują inaczej niż profile domowe Gellatti. Nie podstawimy innego profilu automatycznie ' +
+      '— wsparcie dla tych maszyn będzie dostępne ' +
+      'osobno.',
     back: 'Wybierz inną maszynę',
   },
 
   /* -------------------------------------------------- §8.4 custom machine ----- */
   custom: {
-    title: 'Opowiedz nam o swojej maszynie',
+    title: 'Własna maszyna',
     lead:
-      'Podaj to, co znasz — nic nie zgadujemy. Jeśli dane na to pozwolą, zaproponujemy ostrożny ' +
-      'wsad (95% potwierdzonej pojemności) jako wartość szacunkową, którą możesz zmienić.',
+      'Podaj tylko to, co wiesz. Dla własnej maszyny wpisz wsad samodzielnie — możesz go później zmienić.',
+    cycleBatchLabel: 'Mój wsad na cykl',
+    noCycleRecommendation: 'Zalecany wsad na cykl: —',
     brandLabel: 'Marka (opcjonalnie)',
     modelLabel: 'Model (opcjonalnie)',
     vesselLabel: 'Pojemność pojemnika lub misy',
@@ -76,12 +81,12 @@ export const machineOnboardingCopy = {
      * po stronie danych): a total bowl volume is never turned into a batch.
      */
     vesselOnlyBowlNote:
-      'Znasz tylko pojemność całkowitą misy, więc przyjmiemy ostrożne ustawienie i oznaczymy je ' +
-      'do edycji. Ilość wsadu ustalisz samodzielnie — z całkowitej pojemności misy nie wyliczamy wsadu.',
-    /** Re-spin tubs: the declared tub figure yields an ESTIMATED recommendation. */
+      'Znasz tylko całkowitą pojemność misy. Przyjmiemy ostrożne ustawienie do edycji, ale wsad ' +
+      'ustawisz samodzielnie — nie wyliczamy go z samej pojemności misy.',
+    /** A declared tub still does not invent a gram value for a custom machine. */
     vesselOnlyRespinNote:
-      'Znasz tylko pojemność pojemnika — zaproponujemy ostrożny wsad szacunkowy (95% tej ' +
-      'pojemności). Wartość pozostaje do edycji.',
+      'Znasz tylko pojemność pojemnika. Własny wsad na cykl wpiszesz samodzielnie — nie ' +
+      'przeliczamy zadeklarowanej objętości na gramy.',
     invalidVolume: 'Podaj dodatnią liczbę.',
   },
 
@@ -92,7 +97,7 @@ export const machineOnboardingCopy = {
     /** Honest variant when no trustworthy amount exists (batch stays user-set). */
     amountUserChoice: 'Przygotowano wybór ilości',
     methodMatched: 'Dopasowano sposób przygotowania',
-    studioReady: 'Przygotowano PINGÜINO Pro',
+    studioReady: 'Przygotowano Gellatti Pro',
     /** Screen-reader announcement label for the transition region. */
     ariaLabel: 'Automatyczna konfiguracja maszyny',
   },
@@ -103,7 +108,7 @@ export const machineOnboardingCopy = {
      * The ONLY allowed framing of the derived grams (owner correction): a
      * PINGÜINO recommendation — never the manufacturer's official figure.
      */
-    recommendedLabel: 'Zalecany wsad PINGÜINO',
+    recommendedLabel: 'Zalecany wsad Gellatti',
     recommendedUnit: 'g',
     /** Honest marker for user-declared capacity (rule 4). */
     estimatedNote: 'Wartość szacunkowa na podstawie zadeklarowanej pojemności — możesz ją zmienić.',
@@ -118,9 +123,9 @@ export const machineOnboardingCopy = {
     /** Subtle marker once the user diverges from the recommendation. */
     customInUse: 'Używasz własnej ilości',
     /** Restore action (full form, shown with the custom-in-use marker). */
-    restoreRecommended: 'Przywróć zalecany wsad PINGÜINO',
+    restoreRecommended: 'Przywróć zalecany wsad Gellatti',
     /** Warning shown when the amount exceeds the recommendation — never a block. */
-    aboveWarning: 'Ta ilość przekracza zalecany wsad PINGÜINO dla jednego pojemnika.',
+    aboveWarning: 'Ta ilość przekracza zalecany wsad Gellatti dla jednego pojemnika.',
     /** The three non-blocking actions under the warning (owner verbatim). */
     splitAction: 'Podziel na pojemniki',
     keepMine: 'Pozostaw moją ilość',
@@ -137,7 +142,7 @@ export const machineOnboardingCopy = {
      * „Ta ilość wymaga 2 pojemników. PINGÜINO podzieli recepturę automatycznie.”
      */
     message: (containers: number): string =>
-      `Ta ilość wymaga ${containers} pojemników. PINGÜINO podzieli recepturę automatycznie.`,
+      `Ta ilość wymaga ${containers} pojemników. Gellatti podzieli recepturę automatycznie.`,
     /** Secondary detail, e.g. „2 pojemniki po 450 g” / „3 pojemniki po 333,3 g”. */
     detail: (containers: number, gramsPerContainerText: string): string =>
       `${containers} ${pluralPojemniki(containers)} po ${gramsPerContainerText} g`,
@@ -157,7 +162,7 @@ export const machineOnboardingCopy = {
     overridePrefix: 'Maszyna dla tej receptury:',
     /** Small line under an override: „Domyślna maszyna: X”. */
     defaultPrefix: 'Domyślna maszyna:',
-    vessel: (ml: number): string => `pojemnik ${ml} ml`,
+    vessel: (ml: number): string => `Pojemnik ${ml} ml`,
     /** The recipe-scope change — never touches the profile. */
     changeForRecipe: 'Zmień dla tej receptury',
     changeForRecipeAria: 'Zmień maszynę tylko dla tej receptury',
@@ -197,7 +202,7 @@ export const machineOnboardingCopy = {
     change: 'Zmień maszynę',
     editCustom: 'Edytuj dane maszyny',
     savedAt: 'Zapisano',
-    customName: 'Twoja maszyna',
+    customName: 'Własna maszyna',
     /** The §8.4 vessel-only fallback stays visibly flagged and editable. */
     vesselOnlyFlag: 'Ustawienie ostrożne — znamy tylko pojemność całkowitą. Możesz je edytować.',
   },
@@ -211,7 +216,7 @@ export const machineOnboardingCopy = {
    */
   settings: {
     /** Manufacturer data — informational, read-only on the main screen (§8). */
-    manufacturerCapacityLabel: 'Pojemnik producenta',
+    manufacturerCapacityLabel: 'Pojemność producenta',
     /** The user's own container replaces the label once declared (§8). */
     customCapacityLabel: 'Twój pojemnik',
     unitMl: 'ml',
@@ -236,8 +241,8 @@ export const machineOnboardingCopy = {
     useCustomContainer: 'Używam innego pojemnika',
     customContainerTitle: 'Twój pojemnik',
     customContainerLead:
-      'Pojemność podana przez producenta dotyczy modelu, dlatego jej nie zmieniamy. Jeśli używasz ' +
-      'innego pojemnika, podaj jego dane — oznaczymy profil jako Twoją własną konfigurację.',
+      'Pojemność producenta pozostaje przypisana do modelu. Jeśli używasz innego pojemnika, podaj jego ' +
+      'dane — profil zostanie zapisany jako Twoja konfiguracja.',
     customCapacityFieldLabel: 'Pojemność Twojego pojemnika',
     customRecommendedFieldLabel: 'Zalecany wsad dla Twojego pojemnika',
     customRecommendedHint: 'Proponujemy 95% podanej pojemności — możesz zmienić.',
@@ -267,4 +272,17 @@ export function pluralPojemniki(n: number): string {
   const mod100 = n % 100;
   if (mod10 >= 2 && mod10 <= 4 && !(mod100 >= 12 && mod100 <= 14)) return 'pojemniki';
   return 'pojemników';
+}
+
+/**
+ * Polish plural for „cykl” in the machine cycles readout („2 cykle · 500 g /
+ * cykl”, „8 cykli · 625 g / cykl”). Same 2–4 rule as `pluralPojemniki`, plus
+ * the singular the readout needs for one cycle.
+ */
+export function pluralCykle(n: number): string {
+  if (n === 1) return 'cykl';
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 >= 2 && mod10 <= 4 && !(mod100 >= 12 && mod100 <= 14)) return 'cykle';
+  return 'cykli';
 }

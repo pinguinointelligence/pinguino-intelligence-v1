@@ -20,6 +20,7 @@
  * deliberately NO stored counter) — see `sessionStateToOutcome` / `loadBatch`.
  */
 import { supabase } from '@/lib/supabase/client';
+import { emptyUnconfiguredRead } from '@/services/backendGuard';
 import { getCurrentUser } from '@/services/auth';
 import type {
   AcceptedMime,
@@ -93,7 +94,7 @@ export async function createBatch(): Promise<OcrIntakeBatchRow> {
 
 /** Every batch owned by the current user, newest first (RLS scopes to the owner). */
 export async function listBatches(): Promise<OcrIntakeBatchRow[]> {
-  if (!supabase) return [];
+  if (!supabase) return emptyUnconfiguredRead('ocrIntakeSessions.listBatches', []);
   const { data, error } = await supabase
     .from(BATCHES_TABLE)
     .select('*')
@@ -131,7 +132,7 @@ export function sessionStateToOutcome(state: IntakeSessionState): BatchItemOutco
  * (ordered by creation). Returns null when the batch is absent / not owned.
  */
 export async function loadBatch(batchId: string): Promise<BatchIntake | null> {
-  if (!supabase) return null;
+  if (!supabase) return emptyUnconfiguredRead('ocrIntakeSessions.loadBatch', null);
   const { data: batch, error } = await supabase
     .from(BATCHES_TABLE)
     .select('*')
@@ -178,7 +179,7 @@ export async function createSession(input: CreateSessionInput = {}): Promise<Ocr
 
 /** A single owned session by id (RLS still applies), or null. */
 export async function loadSession(id: string): Promise<OcrIntakeSessionRow | null> {
-  if (!supabase) return null;
+  if (!supabase) return emptyUnconfiguredRead('ocrIntakeSessions.loadSession', null);
   const { data, error } = await supabase.from(SESSIONS_TABLE).select('*').eq('id', id).maybeSingle();
   if (error) throw new Error(error.message);
   return (data as OcrIntakeSessionRow | null) ?? null;
@@ -191,7 +192,7 @@ export interface ListSessionsFilter {
 
 /** Owned sessions, optionally filtered by batch and/or state, in queue order (oldest first). */
 export async function listSessions(filter: ListSessionsFilter = {}): Promise<OcrIntakeSessionRow[]> {
-  if (!supabase) return [];
+  if (!supabase) return emptyUnconfiguredRead('ocrIntakeSessions.listSessions', []);
   let query = supabase.from(SESSIONS_TABLE).select('*');
   if (filter.batchId !== undefined) query = query.eq('batch_id', filter.batchId);
   if (filter.state !== undefined) query = query.eq('state', filter.state);
@@ -303,7 +304,7 @@ export async function saveImageMetadata(
 
 /** Every image of a session, in display order. */
 export async function listSessionImages(sessionId: string): Promise<OcrIntakeImageRow[]> {
-  if (!supabase) return [];
+  if (!supabase) return emptyUnconfiguredRead('ocrIntakeSessions.listSessionImages', []);
   const { data, error } = await supabase
     .from(IMAGES_TABLE)
     .select('*')

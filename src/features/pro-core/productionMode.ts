@@ -20,16 +20,18 @@ import type {
   ProductionStatus,
   SubstitutionRecord,
 } from './productionContracts';
+import type { ProductionThermalMode } from '@/features/product-intelligence';
 
 /** The canonical transition policy. An empty list = terminal state. */
-export const PRODUCTION_TRANSITIONS: Readonly<Record<ProductionStatus, readonly ProductionStatus[]>> =
-  Object.freeze({
-    draft: ['planned', 'cancelled'],
-    planned: ['in_progress', 'cancelled'],
-    in_progress: ['completed', 'cancelled'],
-    completed: [],
-    cancelled: [],
-  });
+export const PRODUCTION_TRANSITIONS: Readonly<
+  Record<ProductionStatus, readonly ProductionStatus[]>
+> = Object.freeze({
+  draft: ['planned', 'cancelled'],
+  planned: ['in_progress', 'cancelled'],
+  in_progress: ['completed', 'cancelled'],
+  completed: [],
+  cancelled: [],
+});
 
 /** Metadata that may be edited before a run is completed/cancelled (never the planned snapshot). */
 export interface ProductionMeta {
@@ -38,6 +40,7 @@ export interface ProductionMeta {
   location: string | null;
   batchReference: string | null;
   notes: string | null;
+  thermalMode: ProductionThermalMode | null;
 }
 
 export interface BuildRunInput {
@@ -51,12 +54,31 @@ export interface BuildRunInput {
 }
 
 function plannedFromScale(scaled: ExactScaleResult): PlannedIngredient[] {
-  return scaled.lines.map((l) => ({
-    id: l.id,
-    name: l.name,
-    plannedGrams: l.grams,
-    displayGrams: l.displayGrams,
-  }));
+  const base = scaled.lines
+    .slice()
+    .sort((a, b) => a.scopePosition - b.scopePosition)
+    .map((l) => ({
+      id: l.id,
+      name: l.name,
+      canonicalIngredientId: l.canonicalIngredientId,
+      processScope: l.processScope,
+      scopePosition: l.scopePosition,
+      plannedGrams: l.grams,
+      displayGrams: l.displayGrams,
+    }));
+  const toppings = (scaled.productComposition?.toppings ?? [])
+    .slice()
+    .sort((a, b) => a.addon_sort_order - b.addon_sort_order)
+    .map((item, index) => ({
+      id: item.id,
+      name: item.ingredient.name,
+      canonicalIngredientId: item.ingredient.canonical_ingredient_id ?? item.ingredient.id ?? null,
+      processScope: 'POST_PROCESS_ADDON' as const,
+      scopePosition: index,
+      plannedGrams: Number((item.planned_grams * scaled.factor).toFixed(scaled.canonicalDecimals)),
+      displayGrams: Number((item.planned_grams * scaled.factor).toFixed(scaled.displayDecimals)),
+    }));
+  return [...base, ...toppings];
 }
 
 /** Build a fresh production run (status `draft`) from an exact recipe-version scale result. */
@@ -67,7 +89,7 @@ export function buildProductionRun(input: BuildRunInput): ProductionRun {
     type: 'created',
     at: input.createdAt,
     by: input.by,
-    detail: `Planned from recipe version ${scaled.recipeVersionNumber} at ${scaled.canonicalTotalG} g`,
+    detail: `Plan z wersji receptury ${scaled.recipeVersionNumber} · ${scaled.canonicalTotalG} g`,
     amendment: null,
   };
   return {
@@ -84,6 +106,13 @@ export function buildProductionRun(input: BuildRunInput): ProductionRun {
     engineVersion: scaled.engineVersion,
     configVersion: scaled.configVersion,
     mapperDatasetVersion: scaled.mapperDatasetVersion,
+    thermalMode: meta?.thermalMode ?? null,
+    processReadiness: null,
+    processAdvisories: [],
+    degassingRequired: false,
+    degassingAcknowledged: false,
+    degassingAcknowledgedAt: null,
+    carbonatedProductIds: [],
     plannedDate: meta?.plannedDate ?? null,
     machine: meta?.machine ?? null,
     location: meta?.location ?? null,
@@ -93,6 +122,7 @@ export function buildProductionRun(input: BuildRunInput): ProductionRun {
     createdAt: input.createdAt,
     updatedAt: input.createdAt,
     actual: null,
+    rescue: null,
     completedAt: null,
     cancelledAt: null,
     events: [created],
@@ -165,6 +195,35 @@ export function updateMeta(
   };
 }
 
+/**
+ * OWNER RULE §2 — record that the operator read this run's heat reminder.
+ * Idempotent: the first acknowledgement is the one that stands. It carries no
+ * permission, so it deliberately does not touch status, plan or actuals.
+ */
+export function acknowledgeHeatInformation(run: ProductionRun, at: string): ProductionRun {
+  if (run.status !== 'in_progress') {
+    throw new Error('Heat information can only be acknowledged on an active run.');
+  }
+  if (run.heatInformationAcknowledgedAt) return run;
+  return { ...run, heatInformationAcknowledgedAt: at, updatedAt: at };
+}
+
+/** Same durable acknowledgement pattern as heat information; no grams or
+ * lifecycle transitions are changed. */
+export function acknowledgeDegassing(run: ProductionRun, at: string): ProductionRun {
+  if (run.status !== 'in_progress') {
+    throw new Error('Degassing can only be acknowledged on an active run.');
+  }
+  if (!run.degassingRequired) return run;
+  if (run.degassingAcknowledgedAt) return run;
+  return {
+    ...run,
+    degassingAcknowledged: true,
+    degassingAcknowledgedAt: at,
+    updatedAt: at,
+  };
+}
+
 /* ── actuals (recorded, never replacing the plan) ─────────────────────────────── */
 
 export interface RecordActualInput {
@@ -199,13 +258,14 @@ export function recordActual(run: ProductionRun, input: RecordActualInput): Prod
     deviationReason: input.deviationReason ?? null,
     recordedBy: input.by,
     recordedAt: input.at,
+    revision: (run.actual?.revision ?? 0) + 1,
   };
   const event: ProductionEvent = {
     eventId: input.eventId,
     type: 'actual_recorded',
     at: input.at,
     by: input.by,
-    detail: 'Actual production values recorded',
+    detail: 'Zapisano rzeczywiste wartości produkcji',
     amendment: null,
   };
   return { ...run, actual, updatedAt: input.at, events: [...run.events, event] };
@@ -260,7 +320,12 @@ export function computeDeviation(run: ProductionRun): ProductionDeviation {
       deltaPercent,
     };
   });
-  const plannedTotalG = run.plannedItems.reduce((sum, p) => sum + p.plannedGrams, 0);
+  // `actualTotalMixG` is the Base vessel mass. Post-process toppings have
+  // independent actual lines and final-product totals; including them here
+  // would fabricate a Base deviation and could incorrectly trigger rescue.
+  const plannedTotalG = run.plannedItems
+    .filter((item) => item.processScope === 'BASE_FORMULATION')
+    .reduce((sum, p) => sum + p.plannedGrams, 0);
   const actualTotalMixG = run.actual?.actualTotalMixG ?? null;
   return {
     lines,
@@ -295,7 +360,16 @@ export function queryProductionRuns(
 
   const sort = query.sort ?? 'newest';
   filtered.sort((a, b) => {
-    const cmp = a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : a.runId < b.runId ? -1 : a.runId > b.runId ? 1 : 0;
+    const cmp =
+      a.createdAt < b.createdAt
+        ? -1
+        : a.createdAt > b.createdAt
+          ? 1
+          : a.runId < b.runId
+            ? -1
+            : a.runId > b.runId
+              ? 1
+              : 0;
     return sort === 'newest' ? -cmp : cmp;
   });
 

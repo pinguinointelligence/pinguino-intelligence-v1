@@ -35,6 +35,7 @@
  */
 import type { IngredientComponentProfile } from '../../types';
 import type { ActiveRecipeFixture } from '../schema';
+import { ENGINE_RESULT_ACCEPTANCE_TOLERANCE } from '../../config/acceptance';
 import {
   CREAM_30,
   DEXTROSE,
@@ -132,5 +133,5 @@ export const externalReferenceRaspberry428: ActiveRecipeFixture = {
     aerating_protein: 3.14,
     // protein_in_solids: not supplied by the reference for this recipe — omitted.
   },
-  tolerance: 0.5,
+  tolerance: ENGINE_RESULT_ACCEPTANCE_TOLERANCE,
 };

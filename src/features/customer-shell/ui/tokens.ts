@@ -16,11 +16,13 @@
  * the already-defined brand utilities (ink / paper / stone / status-* / gold)
  * into named, reusable class strings.
  *
- * Contrast policy (on white `paper` / near-white `stone-50` surfaces): primary
- * text is near-black `ink` (~17:1). Secondary text is `stone-600` (~7:1).
- * `stone-500` (~4.9:1) is the FLOOR for informative text (muted labels);
- * `stone-400` is reserved for placeholders / decorative glyphs only — never for
- * content the user must read. Status hues tint borders/backgrounds; the text on
+ * Contrast policy (on white `paper` / `--g-ivory` surfaces): primary text is
+ * near-black `--g-ink` (18.9:1). Secondary is `--g-text-secondary` (5.99:1).
+ * `--g-text-muted` (4.72:1) is the FLOOR for informative text (muted labels);
+ * `--g-drag` (2.45:1) is reserved for placeholders / decorative glyphs only —
+ * never for content the user must read. These replaced the stone tiers
+ * (7.63 / 4.80 / 2.52:1) so the customer shell draws from the same palette as
+ * the rest of the product; every informative tier stays above AA. Status hues tint borders/backgrounds; the text on
  * a tinted notice stays in the readable stone/ink tiers (spec §15.3 — every
  * state carries text, never colour alone).
  */
@@ -30,12 +32,12 @@
  * ------------------------------------------------------------------ */
 
 export const customerSpec = {
-  /** Comfortable primary body size on mobile. */
-  bodyPrimaryPx: 17,
-  /** Minimum height for primary interactive controls (buttons, inputs). */
-  controlMinHeightPx: 52,
-  /** Large / hero control height (sticky CTA, primary submit). */
-  controlLargeHeightPx: 56,
+  /** Current-PRO body density projected onto the customer surface. */
+  bodyPrimaryPx: 13,
+  /** Current-PRO mobile touch target; desktop compacts to 40 px. */
+  controlMinHeightPx: 44,
+  /** The accepted 44 px current-PRO medium action. */
+  controlLargeHeightPx: 44,
   /** Minimum square tap target for icon-only controls (WCAG 2.5.5-conscious). */
   tapTargetPx: 44,
   /** Content max-width on the widest breakpoint (reads as a product, not a dashboard). */
@@ -50,23 +52,23 @@ export const customerSpec = {
 
 export const type = {
   /** Page hero. */
-  display: 'text-[28px] leading-[1.15] font-light tracking-tight sm:text-[34px]',
+  display: 'text-[28px] leading-[1.08] font-semibold tracking-[-0.035em]',
   /** Section / card title. */
-  title: 'text-[22px] leading-[1.2] font-medium tracking-tight',
+  title: 'text-[16px] leading-tight font-semibold tracking-[-0.015em]',
   /** Sub-heading inside a card. */
-  heading: 'text-[19px] leading-snug font-medium',
-  /** Primary body — comfortable on mobile (>=17px). */
-  body: 'text-[17px] leading-relaxed',
+  heading: 'text-[14px] leading-snug font-semibold',
+  /** Compact readable body inherited from current PRO. */
+  body: 'text-[13px] leading-relaxed',
   /** Primary body, emphasised. */
-  bodyStrong: 'text-[17px] leading-relaxed font-medium',
+  bodyStrong: 'text-[13px] leading-relaxed font-semibold',
   /** Secondary supporting copy. */
-  secondary: 'text-[15px] leading-relaxed',
+  secondary: 'text-[12px] leading-relaxed',
   /** Caption / metadata. */
-  caption: 'text-[13px] leading-normal',
-  /** Uppercase eyebrow label (echoes the wordmark tracking). */
-  label: 'text-[12px] font-medium uppercase tracking-[0.14em]',
+  caption: 'text-[10px] leading-normal',
+  /** Human sentence-case label; uppercase is reserved for real codes. */
+  label: 'text-[11px] font-semibold',
   /** Tabular numeric readout (grams, temperature). */
-  numeric: 'font-mono text-[15px] tabular-nums',
+  numeric: 'font-mono text-[13px] tabular-nums',
 } as const;
 
 /* ------------------------------------------------------------------ *
@@ -75,18 +77,18 @@ export const type = {
 
 export const color = {
   textPrimary: 'text-ink',
-  textSecondary: 'text-stone-600',
-  textMuted: 'text-stone-500',
-  textPlaceholder: 'text-stone-400',
+  textSecondary: 'text-[var(--g-text-secondary)]',
+  textMuted: 'text-[var(--g-text-muted)]',
+  textPlaceholder: 'text-[var(--g-drag)]',
   textInverse: 'text-paper',
 
   surface: 'bg-paper',
-  surfaceSunken: 'bg-stone-50',
+  surfaceSunken: 'bg-[var(--g-ivory)]',
   /** Selected-card fill — clearly visible on white, never a 2% difference (§21.2). */
   surfaceTintSelected: 'bg-ink/[0.06]',
 
-  borderHairline: 'border-ink/10',
-  borderStrong: 'border-ink/20',
+  borderHairline: 'border-[var(--g-line)]',
+  borderStrong: 'border-[var(--g-line-strong)]',
   borderSelected: 'border-ink',
 
   /** Desaturated laboratory status tones (never candy). */
@@ -113,9 +115,9 @@ export const notice = {
   /** Real problem (status-error wash). */
   error: 'border border-status-error/40 bg-status-error/10',
   /** Neutral informational inset. */
-  neutral: 'border border-ink/10 bg-stone-50',
+  neutral: 'border border-[var(--g-line)] bg-[var(--g-ivory)]',
   /** Readable body-text tier for tinted notices. */
-  text: 'text-stone-700',
+  text: 'text-[var(--g-ink)]',
 } as const;
 
 /* ------------------------------------------------------------------ *
@@ -124,7 +126,7 @@ export const notice = {
 
 export const radius = {
   control: 'rounded-xl', // 12px — inputs, buttons
-  card: 'rounded-2xl', // 16px — cards
+  card: 'rounded-xl', // 12px — the current-PRO rectangular language
   sheet: 'rounded-t-3xl', // 24px — bottom sheet top corners
   pill: 'rounded-full', // chips, mic button
 } as const;
@@ -154,10 +156,10 @@ export const focusRing =
   'outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:ring-offset-paper';
 
 export const touch = {
-  /** Primary control minimum height (52px). */
-  control: 'min-h-[52px]',
-  /** Large control (56px). */
-  controlLarge: 'min-h-[56px]',
+  /** 44px at 390; the source current-PRO desktop action is 40px. */
+  control: 'min-h-11 sm:min-h-10',
+  /** Current-PRO medium action remains 44px; it is not a new global default. */
+  controlLarge: 'min-h-11',
   /** Square icon-only tap target (44px). */
   iconTarget: 'min-h-[44px] min-w-[44px]',
 } as const;
@@ -201,18 +203,18 @@ export type TouchButtonSize = 'md' | 'lg';
 export const touchButtonVariants: Record<TouchButtonVariant, string> = {
   // Ink on paper — the single high-emphasis action.
   primary:
-    'bg-ink text-paper hover:bg-ink-soft active:bg-ink-soft disabled:bg-stone-200 disabled:text-stone-600 disabled:hover:bg-stone-200',
+    'bg-ink text-paper hover:bg-ink-soft active:bg-ink-soft disabled:bg-[var(--g-line-quiet)] disabled:text-[var(--g-lock)] disabled:hover:bg-[var(--g-line-quiet)]',
   // Hairline outline — secondary action.
   secondary:
-    'bg-paper text-ink border border-ink/15 hover:border-ink/40 active:bg-ink/[0.03] disabled:border-ink/10 disabled:text-stone-500 disabled:hover:border-ink/10',
+    'bg-paper text-ink border border-[var(--g-line)] hover:border-[var(--g-ink)]/40 active:bg-ink/[0.03] disabled:border-[var(--g-line)] disabled:text-[var(--g-text-muted)] disabled:hover:border-[var(--g-line)]',
   // Text-only — tertiary / inline action.
   quiet:
-    'bg-transparent text-ink hover:bg-ink/[0.04] active:bg-ink/[0.06] disabled:text-stone-500 disabled:hover:bg-transparent',
+    'bg-transparent text-ink hover:bg-ink/[0.04] active:bg-ink/[0.06] disabled:text-[var(--g-text-muted)] disabled:hover:bg-transparent',
 };
 
 export const touchButtonSizes: Record<TouchButtonSize, string> = {
-  md: `${touch.control} px-6`,
-  lg: `${touch.controlLarge} px-7`,
+  md: `${touch.control} px-4`,
+  lg: `${touch.controlLarge} px-5`,
 };
 
 /**

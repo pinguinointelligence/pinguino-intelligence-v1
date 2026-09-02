@@ -17,9 +17,9 @@
  *  - poured actuals (§15 add-only rescue) are surfaced explicitly — they are the least obvious
  *    "lock" a recipe can inherit from a saved version.
  *
- * Adjustability mirrors the solver contract exactly: the engine solver never touches a line
- * whose `lock_type !== 'unlocked'`, never changes poured material (`actual_grams !== null`),
- * and the §17 padlock layer holds `locked`/`range` constraint entries at their grams.
+ * Adjustability mirrors the product solver contract exactly: Main identity and
+ * Multi-Main ratio remain protected while their absolute grams may move as a
+ * group. Poured material and real §17 quantity constraints remain immutable.
  */
 import type { RecipeInput, RecipeItem } from '@/engine';
 import type { ConstraintSet } from '@/features/recipe-constraints';
@@ -48,6 +48,7 @@ export type LockStateId =
 export type LockSourceId =
   | 'user_padlock'
   | 'saved_recipe'
+  | 'main_role'
   | 'engine_lock'
   | 'poured_actual'
   | 'none';
@@ -111,10 +112,13 @@ function rowFor(item: RecipeItem, constraints: ConstraintSet): LockReportRow {
     lockState = 'grams';
     source = 'saved_recipe';
     userSet = true; // it was user-set originally; the session just didn't set it now
-  } else if (item.lock_type === 'main' || item.lock_type === 'required' || item.lock_type === 'already_added') {
+  } else if (item.lock_type === 'main') {
+    lockState = 'main';
+    source = 'main_role';
+    userSet = true;
+  } else if (item.lock_type === 'required' || item.lock_type === 'already_added') {
     lockState = item.lock_type;
     source = 'engine_lock';
-    userSet = item.lock_type === 'main';
   } else {
     lockState = 'unlocked';
     source = 'none';
@@ -128,8 +132,8 @@ function rowFor(item: RecipeItem, constraints: ConstraintSet): LockReportRow {
     lockState,
     source,
     userSet,
-    // The solver contract: only a fully unlocked line may change.
-    adjustable: lockState === 'unlocked',
+    // Crown is a role/ratio authority, not a quantity lock.
+    adjustable: lockState === 'unlocked' || lockState === 'main',
   };
 }
 

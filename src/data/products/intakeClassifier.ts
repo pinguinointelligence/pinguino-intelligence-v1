@@ -48,12 +48,12 @@ export function classifyIntakeInput(input: { filename?: string | null; text?: st
   if (filename !== '') {
     const ext = extensionOf(filename);
     if (TABLE_EXT.includes(ext)) {
-      return { kind: 'table', route: '/products/import', available: true, label: 'spreadsheet / table', note: 'CSV/XLSX → the working table-import parser.' };
+      return { kind: 'table', route: '/products/import', available: true, label: 'Spreadsheet / table', note: 'CSV/XLSX → the working table-import parser.' };
     }
     if (IMAGE_EXT.includes(ext)) {
-      return { kind: 'image_label_ocr', route: '/dev/ocr-intake', available: true, label: 'image (label photo)', note: 'Keyless LOCAL OCR (in-browser engine — the image never leaves this machine). PNG/JPEG/WebP; the page rejects other formats honestly.' };
+      return { kind: 'image_label_ocr', route: '/dev/ocr-intake', available: true, label: 'Zdjęcie etykiety', note: 'Keyless LOCAL OCR (in-browser engine — the image never leaves this machine). PNG/JPEG/WebP; the page rejects other formats honestly.' };
     }
-    return { kind: 'unknown', route: null, available: false, label: 'unrecognised file', note: `No intake path for ".${ext || '?'}".` };
+    return { kind: 'unknown', route: null, available: false, label: 'Unrecognised file', note: `No intake path for ".${ext || '?'}".` };
   }
 
   if (text !== '' && looksLikeBarcode(text)) {
@@ -69,5 +69,5 @@ export function classifyIntakeInput(input: { filename?: string | null; text?: st
     };
   }
 
-  return { kind: 'unknown', route: null, available: false, label: 'unknown', note: 'Enter an EAN, or choose a CSV/XLSX or a label image.' };
+  return { kind: 'unknown', route: null, available: false, label: 'Unknown', note: 'Enter an EAN, or choose a CSV/XLSX or a label image.' };
 }

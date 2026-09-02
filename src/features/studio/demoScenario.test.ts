@@ -66,9 +66,11 @@ describe('demo scenario redaction (every preset)', () => {
 
   it('actual-batch rescue runs in actual_batch context (add-only rescue)', () => {
     const rescue = DEMO_PRESETS.find((preset) => preset.id === 'actual-batch-rescue')!;
-    const input = buildRecipeInput(rescue);
+    const input = buildRecipeInput(rescue, 'actual_batch');
     expect(recipeContext(input)).toBe('actual_batch');
-    const view = buildCorrectionView(proposeCorrections({ input, context: 'actual_batch', redact: false }));
+    const view = buildCorrectionView(
+      proposeCorrections({ input, context: 'actual_batch', redact: false }),
+    );
     if (view.mode !== 'pro') throw new Error('expected pro');
     for (const proposal of view.proposals) {
       // nothing physically added is reduced — every action is an "Add"

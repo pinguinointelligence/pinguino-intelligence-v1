@@ -29,7 +29,7 @@ describe('decideProductStatus — matched, reference-linked, no red flags', () =
     });
     expect(d.recommended_status).toBe('pi_generated');
     expect(d.customer_label).toBe('PI Generated');
-    expect(d.customer_warning_flags.join(' ')).toMatch(/not an independent measurement/i);
+    expect(d.customer_warning_flags.join(' ')).toMatch(/niezależnego pomiaru/i);
     expect(d.blockers.join(' ')).toMatch(/PI Verified needs independent/i);
   });
 });

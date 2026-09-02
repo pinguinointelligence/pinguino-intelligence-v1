@@ -27,8 +27,13 @@ const SRC: Record<string, string> = Object.fromEntries(FILES.map((f) => [f, read
 const ALL = Object.values(SRC).join('\n');
 
 describe('ProductImportPage — no banned formats / capture', () => {
-  it('pulls in no XLSX / spreadsheet / OCR package', () => {
-    expect(/(xlsx|papaparse|exceljs|sheetjs|tesseract)/i.test(ALL)).toBe(false);
+  it('reads a workbook only through the sanctioned adapter, never a parser of its own', () => {
+    // The owner may upload .xlsx directly, so a spreadsheet reader is no longer
+    // banned outright — but it stays behind ONE adapter that yields canonical
+    // INTIMPORT CSV. The page and controller must not grow their own parsing.
+    expect(/(papaparse|exceljs|sheetjs|tesseract)/i.test(ALL)).toBe(false);
+    expect(/from 'xlsx'|require\('xlsx'\)/.test(ALL)).toBe(false);
+    expect(/@\/data\/products\/intimportWorkbook/.test(ALL)).toBe(true);
   });
   it('has no OCR / camera / media-capture APIs', () => {
     expect(/ocr|camera|getUserMedia|mediaDevices/i.test(ALL)).toBe(false);
@@ -81,9 +86,15 @@ describe('ProductImportPage — CSV file reading is text-only', () => {
     expect(/\.text\(\)/.test(ALL)).toBe(true); // legitimate in-browser text read is allowed
     expect(/readAsArrayBuffer|FileReader/.test(ALL)).toBe(false);
   });
-  it('the file input is constrained to .csv (no no-accept upload control)', () => {
-    expect(/type="file"/.test(SRC['ProductImportPage.tsx']!)).toBe(true);
-    expect(/accept="\.csv,text\/csv"/.test(SRC['ProductImportPage.tsx']!)).toBe(true);
+  it('the file input is constrained to .csv / .xlsx (no no-accept upload control)', () => {
+    const page = SRC['ProductImportPage.tsx']!;
+    expect(/type="file"/.test(page)).toBe(true);
+    const accept = /accept="([^"]+)"/.exec(page)?.[1] ?? '';
+    expect(accept).not.toBe('');
+    expect(accept).toContain('.csv');
+    expect(accept).toContain('.xlsx');
+    // Still an explicit allow-list — never an open upload control.
+    expect(accept).not.toContain('*');
   });
 });
 

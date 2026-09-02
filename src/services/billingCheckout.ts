@@ -12,6 +12,11 @@
  * dead button and never a false "success".
  */
 import { supabase } from '@/lib/supabase/client';
+import {
+  checkoutReturnUrls,
+  type ContinuationTarget,
+} from '@/features/community/domain/shareContinuation';
+import { claimReferralEvidence } from '@/services/partner';
 
 export type BillingProductId = 'home' | 'pro';
 export type BillingCycle = 'monthly' | 'yearly';
@@ -39,18 +44,39 @@ export type StartCheckoutResult =
  * configured, and `failed` for anything else. On success the caller redirects
  * the browser to `url`.
  */
-export async function startCheckout(offerKey: string): Promise<StartCheckoutResult> {
+export async function startCheckout(
+  offerKey: string,
+  /**
+   * The share/Community journey to resume after payment (§19). When present,
+   * the redirect URLs carry it so the buyer returns to THE RECIPE they came
+   * from instead of a generic dashboard. The Edge Function still validates
+   * both URLs against `BILLING_REDIRECT_URL_ALLOWLIST`, so this can only ever
+   * choose a path on an already-allowed origin — never a new destination.
+   */
+  continuation?: ContinuationTarget | null,
+): Promise<StartCheckoutResult> {
   if (supabase === null) return { ok: false, reason: 'unavailable' };
 
   const { data: sessionData } = await supabase.auth.getSession();
   if (!sessionData.session) return { ok: false, reason: 'not_signed_in' };
 
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const redirects = continuation
+    ? checkoutReturnUrls(origin, continuation)
+    : {
+        successUrl: `${origin}/subscription?checkout=success`,
+        cancelUrl: `${origin}/subscription?checkout=cancelled`,
+      };
+  // The URL/cookie is only evidence. The authenticated claim Edge/RPC resolves
+  // it to an owned pending attribution before checkout; the checkout function
+  // revalidates that row again and never trusts an arbitrary client UUID.
+  const cookieAttributionId = await claimReferralEvidence();
   const { data, error } = await supabase.functions.invoke('create-checkout-session', {
     body: {
       offerKey,
-      successUrl: `${origin}/subscription?checkout=success`,
-      cancelUrl: `${origin}/subscription?checkout=cancelled`,
+      successUrl: redirects.successUrl,
+      cancelUrl: redirects.cancelUrl,
+      cookieAttributionId,
     },
   });
 

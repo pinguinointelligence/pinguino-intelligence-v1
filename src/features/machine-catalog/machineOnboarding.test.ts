@@ -6,7 +6,6 @@
  */
 import { describe, expect, it } from 'vitest';
 import { MACHINE_CATALOG } from './machineCatalogData';
-import { HOME_BATCH_RULE_VERSION } from './homeBatchRule';
 import {
   MACHINE_BEHAVIOR_ANSWERS,
   MACHINE_ONBOARDING_TILES,
@@ -27,18 +26,18 @@ import {
 /* ------------------------------------------------------------------ */
 
 describe('§8.2 starter tiles', () => {
-  it('shows the spec family list in order, ending with "Nie widzę mojej maszyny"', () => {
+  it('shows the spec family list in order, ending with "Własna maszyna"', () => {
     expect(MACHINE_ONBOARDING_TILES.map((t) => t.label)).toEqual([
       'Ninja CREAMi',
       'Ninja CREAMi Deluxe',
       'Ninja CREAMi Scoop & Swirl',
       'Moulinex Freezi',
-      'Sage / Breville Smart Scoop',
+      'Sage Smart Scoop',
       'Magimix Gelato Expert',
       'Cuisinart ICE-100',
       'KitchenAid Ice Cream Maker',
       'Cuisinart z misą chłodzoną',
-      'Nie widzę mojej maszyny',
+      'Własna maszyna',
     ]);
     const last = MACHINE_ONBOARDING_TILES[MACHINE_ONBOARDING_TILES.length - 1];
     expect(last?.kind).toBe('not_listed');
@@ -140,7 +139,7 @@ describe('§8.4 custom machine — ml-internal, user_declared, conservative fall
     expect(volumeInputToMl(null)).toBeNull();
   });
 
-  it('builds a valid, activatable user_declared profile from full data', () => {
+  it('builds a valid, activatable user_declared profile without inventing a cycle batch', () => {
     const result = buildCustomMachineProfile(base);
     if (result.outcome !== 'profile') throw new Error('expected a profile');
     const { profile } = result;
@@ -157,16 +156,9 @@ describe('§8.4 custom machine — ml-internal, user_declared, conservative fall
     expect(result.capacityFallback).toBeNull();
     expect(validateHomeMachineProfile(profile)).toEqual([]);
     expect(isMachineActivatable(profile)).toBe(true);
-    // The user-reported manual max mix (900 ml) drives the recommendation via
-    // the owner rule (× 0.95 → 860 g), marked ESTIMATED for user-declared data.
     expect(deriveMachineSetup(profile).batchSuggestion).toEqual({
-      kind: 'recommended_grams',
-      grams: 860,
-      source: 'maximum_liquid_mix_ml',
-      safetyFactorApplied: 0.95,
-      ruleVersion: HOME_BATCH_RULE_VERSION,
-      estimated: true,
-      servingModeId: 'fresh',
+      kind: 'none',
+      reason: 'custom_batch_required',
     });
   });
 
@@ -189,11 +181,11 @@ describe('§8.4 custom machine — ml-internal, user_declared, conservative fall
     // rule 3) — no invented batch, the user decides.
     expect(deriveMachineSetup(result.profile).batchSuggestion).toEqual({
       kind: 'none',
-      reason: 'no_confirmed_usable_capacity',
+      reason: 'custom_batch_required',
     });
   });
 
-  it('a custom re-spin machine derives an ESTIMATED batch from its declared tub (rule 4)', () => {
+  it('a custom re-spin machine also starts with an empty user-set cycle batch', () => {
     const result = buildCustomMachineProfile({
       behaviorAnswerId: 'freeze_mixture_first',
       market: 'ES',
@@ -202,17 +194,9 @@ describe('§8.4 custom machine — ml-internal, user_declared, conservative fall
     if (result.outcome !== 'profile') throw new Error('expected a profile');
     expect(result.profile.technology).toBe('respin');
     expect(result.profile.preFreezeTarget).toBe('mixture');
-    // Owner correction (2026-07-17): the device-type rule applies to the
-    // user-declared tub figure (473 × 0.95 → 450 g) and is marked ESTIMATED —
-    // never presented as a manufacturer figure; mode presets never borrowed.
     expect(deriveMachineSetup(result.profile).batchSuggestion).toEqual({
-      kind: 'recommended_grams',
-      grams: 450,
-      source: 'respin_vessel_ml',
-      safetyFactorApplied: 0.95,
-      ruleVersion: HOME_BATCH_RULE_VERSION,
-      estimated: true,
-      servingModeId: 'ninja_gelato',
+      kind: 'none',
+      reason: 'custom_batch_required',
     });
   });
 

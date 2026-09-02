@@ -18,7 +18,7 @@ describe('resolveProductEngineValues — confirmed match links the reference (no
     expect(r.pod_value).toBe(0.512);
     expect(r.basement_id).toBe('PI-ING-000180');
     expect(r.not_independently_measured).toBe(true);
-    expect(r.reason).toMatch(/NOT an independent measurement/i);
+    expect(r.reason).toMatch(/nie są niezależnym pomiarem/i);
   });
 
   it('coerces reference values that arrive as numeric strings (PostgREST)', () => {

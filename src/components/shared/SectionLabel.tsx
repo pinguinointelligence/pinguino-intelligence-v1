@@ -10,9 +10,9 @@ const TONES: Record<LabelTone, string> = {
   ivory: 'text-ivory-soft',
 };
 
-/** On the dark shell, the paper tones map to ivory equivalents. */
+/** On the dark shell, the paper tones map to ivory equivalents (≥ 4.5:1 on raised shell). */
 const TONES_SHELL: Record<LabelTone, string> = {
-  muted: 'text-ivory/50',
+  muted: 'text-ivory/65',
   ink: 'text-ivory',
   ivory: 'text-ivory-soft',
 };

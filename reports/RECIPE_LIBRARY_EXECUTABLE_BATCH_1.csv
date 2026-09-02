@@ -1,0 +1,7 @@
+recipe,template_id,owner_review_status,production_status,label_status,base_g,topping_g,final_g,technical_score,overall_score,cost_per_kg,known_allergens,final_allergens_complete,primary_blocker
+Śmietankowe na żółtkach,lost-pl-smietankowe-z-zoltkami-v1,BLOCKED_EXACT_PRODUCT_DATA,PRODUCTION_BLOCKED,LABEL_BLOCKED,,0,,,,,"milk|egg",false,Exact Starter Pack egg-yolk powder dose/equivalence/process missing; no fresh-yolk fallback
+Rocero,fantasy-rocero-v1,OWNER_REVIEW_EDITABLE,PRODUCTION_BLOCKED,LABEL_BLOCKED,1000,100,1100,89.1667,83.3022,,"milk|soy|hazelnut",false,Hazelnut Main/process and exact Topping forms missing
+Raphaello,fantasy-raphaello-v1,OWNER_REVIEW_EDITABLE,PRODUCTION_BLOCKED,LABEL_BLOCKED,1000,100,1100,89.1667,83.9556,,"milk|soy|almond",false,Coconut/almond Main/process and exact Topping forms missing
+Kidi Bueno,fantasy-kidi-bueno-v1,OWNER_REVIEW_EDITABLE,PRODUCTION_BLOCKED,LABEL_BLOCKED,1000,90,1090,89.1667,83.2980,3.6696,"milk|soy|hazelnut",false,Hazelnut Main/process and exact Topping forms missing
+Oreyo,fantasy-oreyo-v1,OWNER_REVIEW_EDITABLE,PRODUCTION_BLOCKED,LABEL_BLOCKED,1000,100,1100,97.5000,84.6667,,milk,false,Internal crumble/ripple and cocoa/vanilla authority missing
+Knickers,fantasy-knickers-v1,OWNER_REVIEW_EDITABLE,PRODUCTION_BLOCKED,LABEL_BLOCKED,1000,120,1120,88.3333,84.6990,3.5903,"milk|soy|peanut|gluten_wheat|egg",false,Peanut Main/process and exact Topping forms missing

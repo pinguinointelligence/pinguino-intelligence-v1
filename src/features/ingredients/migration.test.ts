@@ -9,7 +9,7 @@ import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const REPO = resolve(import.meta.dirname, '..', '..', '..');
-const SQL = readFileSync(join(REPO, 'supabase', 'migrations', '0004_ingredients.sql'), 'utf8');
+const SQL = readFileSync(join(REPO, 'supabase', 'migrations', '20260716101521_0004_ingredients.sql'), 'utf8');
 
 describe('Phase Ingredients 1 migration (0004)', () => {
   it('creates the ingredients table with a unique ingredient_id key', () => {

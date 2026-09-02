@@ -1,99 +1,138 @@
-/**
- * Canonical navigation config contract (owner P0, 2026-07-22 — one canonical PINGÜINO Pro).
- *
- * Pins: the exact NAWIGACJA order (8 items, „PINGÜINO Pro" third, visible to EVERYONE); the
- * 8 Pro-gated subitems on STABLE `/pro/<section>` paths; no separate „Studio" item anywhere;
- * active states for top-level + nested Pro routes (incl. the parent staying active on /pro/*);
- * no dead links, never `/dev/*`; Polish labels only.
- */
 import { describe, expect, it } from 'vitest';
 import {
   APP_NAV_ITEMS,
   activeNavId,
   isGroupActive,
+  navigationAudience,
   visibleNavItems,
+  type NavigationAudience,
 } from './appNav';
 
-// Every route the app actually serves (src/app/router.tsx), used to prove there are no dead links.
-const REAL_ROUTES = new Set([
-  '/', '/start', '/pro', '/studio', '/recipes', '/my-recipes', '/label', '/api',
-  '/work-with-us', '/subscription', '/create-ingredient', '/profile/machine', '/products/import',
-  '/pro/recipe', '/pro/monitor', '/pro/versions', '/pro/production', '/pro/history',
-  '/pro/costs', '/pro/exports', '/pro/settings',
-]);
-
 const loc = (pathname: string, search = '') => ({ pathname, search });
+const ids = (audience: NavigationAudience) => visibleNavItems(audience).map((item) => item.id);
 
-describe('canonical appNav config (one canonical PINGÜINO Pro)', () => {
-  it('NAWIGACJA carries the owner-fixed 8 items in order — „PINGÜINO Pro" third, for EVERYONE', () => {
-    const mainIdsPro = visibleNavItems(true).filter((i) => i.group === 'main').map((i) => i.id);
-    const mainIdsNon = visibleNavItems(false).filter((i) => i.group === 'main').map((i) => i.id);
-    const expected = ['home', 'start', 'proHome', 'recipes', 'myRecipes', 'machine', 'labels', 'subscription'];
-    expect(mainIdsPro).toEqual(expected);
-    expect(mainIdsNon).toEqual(expected); // Moja maszyna / Etykiety i produkty / Subskrypcja never disappear
+describe('plan-aware global navigation', () => {
+  it('derives Guest, Home and Pro only from authenticated capabilities', () => {
+    expect(
+      navigationAudience({
+        authenticated: false,
+        canSaveRecipes: true,
+        canUseProductionMode: true,
+      }),
+    ).toBe('guest');
+    expect(
+      navigationAudience({
+        authenticated: true,
+        canSaveRecipes: true,
+        canUseProductionMode: false,
+      }),
+    ).toBe('home');
+    expect(
+      navigationAudience({
+        authenticated: true,
+        canSaveRecipes: true,
+        canUseProductionMode: true,
+      }),
+    ).toBe('pro');
   });
 
-  it('Pro sees the full 8-item PINGÜINO Pro group on stable /pro/<section> paths', () => {
-    const pro = visibleNavItems(true).filter((i) => i.group === 'pro');
-    expect(pro.map((i) => i.id)).toEqual([
-      'proRecipe', 'proMonitor', 'proVersions', 'proProduction', 'proHistory', 'proCosts', 'proExports', 'proSettings',
+  it('returns the exact shallow Guest menu', () => {
+    expect(ids('guest')).toEqual([
+      'tryPinguino',
+      'howItWorks',
+      'guestShop',
+      'plans',
+      'community',
+      'workWithUs',
+      'franchise',
     ]);
-    expect(pro.map((i) => i.to)).toEqual([
-      '/pro/recipe', '/pro/monitor', '/pro/versions', '/pro/production', '/pro/history',
-      '/pro/costs', '/pro/exports', '/pro/settings',
+  });
+
+  it('returns the exact shallow Home menu', () => {
+    expect(ids('home')).toEqual([
+      'homeWorkspace',
+      'recipes',
+      'products',
+      'machine',
+      'community',
+      'memberShop',
+      'workWithUs',
+      'franchise',
     ]);
   });
 
-  it('non-Pro sees NONE of the Pro subroutes (but keeps the honest PINGÜINO Pro entry)', () => {
-    const ids = visibleNavItems(false).map((i) => i.id);
-    expect(ids).toContain('proHome');
-    for (const id of ['proRecipe', 'proMonitor', 'proProduction', 'proExports', 'proSettings']) {
-      expect(ids).not.toContain(id);
+  it('returns the exact shallow Pro menu with Production', () => {
+    expect(ids('pro')).toEqual([
+      'proWorkspace',
+      'recipes',
+      'production',
+      'products',
+      'machine',
+      'community',
+      'memberShop',
+      'workWithUs',
+      'franchise',
+    ]);
+    expect(ids('pro').filter((id) => !ids('home').includes(id))).toEqual([
+      'proWorkspace',
+      'production',
+    ]);
+  });
+
+  it('maps contextual and legacy deep links to their canonical destination', () => {
+    expect(activeNavId(loc('/my-recipes'), 'home')).toBe('recipes');
+    expect(activeNavId(loc('/create-ingredient'), 'home')).toBe('products');
+    expect(activeNavId(loc('/products/import'), 'pro')).toBe('products');
+    expect(activeNavId(loc('/profile/machine'), 'home')).toBe('machine');
+    expect(activeNavId(loc('/pro/machine'), 'pro')).toBe('machine');
+    expect(activeNavId(loc('/pro/production'), 'pro')).toBe('production');
+    expect(activeNavId(loc('/pro/history'), 'pro')).toBe('production');
+    expect(activeNavId(loc('/community'), 'pro')).toBe('community');
+    expect(activeNavId(loc('/top100'), 'pro')).toBe('community');
+    expect(activeNavId(loc('/pro/monitor'), 'pro')).toBe('proWorkspace');
+    expect(isGroupActive('product', loc('/pro/versions'), 'pro')).toBe(true);
+  });
+
+  /* OWNER AUTHORIZED (2026-08-29, full-application acceptance): the duplicate
+     `Ustawienia etykiety` NAVIGATION entry is removed. Label settings keep
+     working in the Production/Label experience and in the workbench Summary
+     panel — only the second door into them is gone. */
+  it('carries no duplicate label-settings navigation entry', () => {
+    expect(APP_NAV_ITEMS.find((item) => item.id === 'labels')).toBeUndefined();
+    for (const audience of ['guest', 'home', 'pro'] as const) {
+      expect(ids(audience)).not.toContain('labels');
     }
   });
 
-  it('never shows a separate „Studio" item', () => {
-    for (const item of APP_NAV_ITEMS) {
-      expect(item.label.toLowerCase().includes('studio'), item.id).toBe(false);
-      expect(item.to.includes('/studio'), item.id).toBe(false);
-    }
+  it('reaches Community and Top 100 from one Community destination', () => {
+    const community = APP_NAV_ITEMS.find((item) => item.id === 'community');
+    expect(community?.to).toBe('/community');
+    expect(community?.audiences).toEqual(['guest', 'home', 'pro']);
   });
 
-  it('computes active state for top-level + stable Pro section routes (deep-link + refresh)', () => {
-    expect(activeNavId(loc('/'), false)).toBe('home');
-    expect(activeNavId(loc('/start'), false)).toBe('start');
-    expect(activeNavId(loc('/my-recipes'), true)).toBe('myRecipes');
-    expect(activeNavId(loc('/profile/machine'), true)).toBe('machine');
-    expect(activeNavId(loc('/subscription'), true)).toBe('subscription');
-    expect(activeNavId(loc('/pro/monitor'), true)).toBe('proMonitor');
-    expect(activeNavId(loc('/pro/production'), true)).toBe('proProduction');
-    expect(activeNavId(loc('/pro/recipe'), true)).toBe('proRecipe');
-    expect(activeNavId(loc('/pro'), true)).toBe('proRecipe'); // the workspace root shows the editor
-    expect(activeNavId(loc('/pro'), false)).toBe('proHome'); // non-Pro: the honest gate entry
+  it('never promotes contextual actions, internals or a separate Studio destination', () => {
+    const forbidden = [
+      '/studio',
+      '/api',
+      '/create-ingredient',
+      '/products/import',
+      '/pro/monitor',
+      '/pro/versions',
+      '/pro/costs',
+      '/pro/exports',
+      '/pro/tools',
+    ];
+    expect(APP_NAV_ITEMS.every((item) => !forbidden.includes(item.to))).toBe(true);
+    expect(APP_NAV_ITEMS.every((item) => !item.to.startsWith('/dev/'))).toBe(true);
+    expect(APP_NAV_ITEMS.every((item) => !item.label.toLowerCase().includes('studio'))).toBe(true);
   });
 
-  it('keeps the parent „PINGÜINO Pro" visibly active on EVERY /pro/* route', () => {
-    const proHome = APP_NAV_ITEMS.find((i) => i.id === 'proHome')!;
-    for (const path of ['/pro', '/pro/recipe', '/pro/monitor', '/pro/versions', '/pro/costs', '/pro/settings']) {
-      expect(proHome.isActive(loc(path)), path).toBe(true);
-    }
-    expect(proHome.isActive(loc('/my-recipes'))).toBe(false);
-    expect(isGroupActive('pro', loc('/pro/costs'), true)).toBe(true);
-    expect(isGroupActive('pro', loc('/my-recipes'), true)).toBe(false);
-  });
-
-  it('never links a dead route and never exposes /dev/*', () => {
-    for (const item of APP_NAV_ITEMS) {
-      const path = item.to.split('?')[0]!;
-      expect(item.to.includes('/dev/'), item.id).toBe(false);
-      expect(REAL_ROUTES.has(path), `${item.id} → ${path}`).toBe(true);
-    }
-  });
-
-  it('has Polish labels (none of the banned English shell words)', () => {
-    const banned = ['Start', 'Recipes', 'My Recipes', 'Subscription', 'Save recipe', 'Sign out', 'Settings', 'Production', 'Costs', 'Exports', 'Back to landing', 'Studio'];
-    for (const item of APP_NAV_ITEMS) {
-      expect(banned, item.id).not.toContain(item.label);
+  it('has unique ids, one plan workspace title, and no duplicate label inside an audience', () => {
+    expect(new Set(APP_NAV_ITEMS.map((item) => item.id)).size).toBe(APP_NAV_ITEMS.length);
+    for (const audience of ['guest', 'home', 'pro'] as const) {
+      const items = visibleNavItems(audience);
+      expect(new Set(items.map((item) => item.label)).size).toBe(items.length);
+      expect(items.filter((item) => item.workspaceHome)).toHaveLength(audience === 'guest' ? 0 : 1);
     }
   });
 });

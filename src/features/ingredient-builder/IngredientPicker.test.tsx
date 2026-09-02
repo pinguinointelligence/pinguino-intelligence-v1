@@ -35,13 +35,12 @@ describe('IngredientPicker — My Products', () => {
         onAdd={() => {}}
       />,
     );
-    expect(html).toMatch(/My Products/);
+    expect(html).toMatch(/Moje produkty/);
     expect(text(html)).toContain('Nata para montar');
     expect(text(html)).toContain('PR-ING-000010');
-    expect(text(html)).toMatch(/PI Generated/);
-    expect(text(html)).toMatch(/Reference-linked profile/);
-    expect(text(html)).toMatch(/PAC\/POD from approved reference/);
-    expect(text(html)).toMatch(/not independently measured/);
+    expect(text(html)).toMatch(/Wygenerowane/);
+    expect(text(html)).toMatch(/Profil oparty na zatwierdzonym wzorcu/);
+    expect(text(html)).toMatch(/parametry technologiczne nie były mierzone niezależnie/);
     expect(html).not.toMatch(/%/); // no internal confidence percentage shown
     expect(html).not.toMatch(/Mapper/i); // never the internal "Mapper" word
   });
@@ -56,7 +55,7 @@ describe('IngredientPicker — My Products', () => {
         onAdd={() => {}}
       />,
     );
-    expect(text(html)).toMatch(/pending verification/i);
+    expect(text(html)).toMatch(/zawiera składniki wymagające weryfikacji/i);
   });
 
   it('basement ingredients still render in their category group; no products → no My Products group', () => {
@@ -65,7 +64,7 @@ describe('IngredientPicker — My Products', () => {
       <IngredientPicker library={lib({ ingredients: [milk], searchIndex: new Map([['PI-ING-1', 'whole milk']]) })} onAdd={() => {}} />,
     );
     expect(text(html)).toContain('Whole Milk');
-    expect(html).not.toMatch(/My Products/);
+    expect(html).not.toMatch(/Moje produkty/);
   });
 });
 
@@ -91,5 +90,30 @@ describe('IngredientPicker — no-results state is not a dead end', () => {
   it('the picker mounts the empty state when nothing matches (empty ready library)', () => {
     const html = renderToStaticMarkup(<IngredientPicker library={lib()} onAdd={() => {}} />);
     expect(text(html)).toContain(copy.studio.builder.noMatches);
+  });
+});
+
+/**
+ * Agent 4/5 fixture sweep: when the live PI library errors or is empty, the
+ * picker silently serves the bundled demo/reference catalog (`status:
+ * 'fallback'`). That state must be VISIBLY pink — never mistakable for the
+ * 'ready' live library.
+ */
+describe('IngredientPicker — fallback demo catalog is visibly non-production', () => {
+  it("status 'fallback' renders the pink TESTOWE / NIEPRODUKCYJNE badge with the fallback note", () => {
+    const html = renderToStaticMarkup(
+      <IngredientPicker library={lib({ status: 'fallback' })} onAdd={() => {}} />,
+    );
+    expect(html).toContain('data-testid="nonprod-marked-picker-fallback"');
+    expect(html).toContain('data-testid="nonprod-badge-pro-demo-library"');
+    expect(html).toContain('TESTOWE / NIEPRODUKCYJNE');
+    expect(text(html)).toContain(copy.studio.builder.fallbackNote);
+  });
+
+  it("status 'ready' (the live library) shows NO pink badge and no fallback note", () => {
+    const html = renderToStaticMarkup(<IngredientPicker library={lib()} onAdd={() => {}} />);
+    expect(html).not.toContain('nonprod-badge');
+    expect(html).not.toContain('TESTOWE / NIEPRODUKCYJNE');
+    expect(text(html)).not.toContain(copy.studio.builder.fallbackNote);
   });
 });

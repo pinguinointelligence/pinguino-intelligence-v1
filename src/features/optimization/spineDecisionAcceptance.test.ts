@@ -16,7 +16,12 @@
  * Pure fixtures + the real engine. No DB, no Mapper, no persistence.
  */
 import { describe, expect, it } from 'vitest';
-import { calculateRecipe, selectTargetBand, type ProductCategory, type RecipeInput } from '@/engine';
+import {
+  calculateRecipe,
+  selectTargetBand,
+  type ProductCategory,
+  type RecipeInput,
+} from '@/engine';
 import {
   ACTIVE_PRODUCT_PROFILES,
   adaptBaseEngineResult,
@@ -46,6 +51,7 @@ const PROFILE_TO_CATEGORY: Readonly<Record<ProductProfile, ProductCategory>> = {
   chocolate_gelato: 'chocolate_gelato',
   sorbet: 'sorbet',
   vegan_gelato: 'vegan_gelato',
+  protein_gelato: 'protein_gelato',
 };
 
 const scenario = <T>(id: string): T =>
@@ -53,7 +59,10 @@ const scenario = <T>(id: string): T =>
 
 const rescue = (id: string) => {
   const s = scenario<BatchRescueScenario>(id);
-  return previewBatchRescueRecalculation({ rescueIntent: s.rescueIntent, actualRecipe: s.actualRecipe });
+  return previewBatchRescueRecalculation({
+    rescueIntent: s.rescueIntent,
+    actualRecipe: s.actualRecipe,
+  });
 };
 
 /* ────────────────────────────────────────────────────────────────────────── *
@@ -111,7 +120,10 @@ describe('acceptance — the FULL 12-cell profile × temperature band grid (B2)'
         // In EVERY cell the two centers agree within the documented tolerance.
         const engineCenter = (engineBand.min + engineBand.max) / 2;
         const overrideCenter = (override.bands.npac!.min + override.bands.npac!.max) / 2;
-        expect(Math.abs(engineCenter - overrideCenter), `${profile} ${t} center`).toBeLessThanOrEqual(1);
+        expect(
+          Math.abs(engineCenter - overrideCenter),
+          `${profile} ${t} center`,
+        ).toBeLessThanOrEqual(1);
       }
     }
   });
@@ -160,7 +172,10 @@ describe('acceptance — every exact preview equals a DIRECT calculateRecipe re-
 
   it('IF10 scale-down: afterMetrics === engine metrics of the scaled snapshot', () => {
     const s = scenario<StockShortageScenario>('shortage-scale-down');
-    const r = previewStockShortageRecalculation({ shortageIntent: s.shortageIntent, plannedRecipe: s.plannedRecipe });
+    const r = previewStockShortageRecalculation({
+      shortageIntent: s.shortageIntent,
+      plannedRecipe: s.plannedRecipe,
+    });
     expect(r.exactStatus).toBe('calculated');
     const fresh = metricsOf(r.proposedRecipeSnapshot as RecipeInput);
     expect(r.afterMetrics).toEqual(fresh);
@@ -208,7 +223,10 @@ describe('acceptance — batch totals stay coherent through recipe-changing bran
 
   it('IF10 scale-down: EVERY line and the batch target scale by exactly the limiting ratio', () => {
     const s = scenario<StockShortageScenario>('shortage-scale-down');
-    const r = previewStockShortageRecalculation({ shortageIntent: s.shortageIntent, plannedRecipe: s.plannedRecipe });
+    const r = previewStockShortageRecalculation({
+      shortageIntent: s.shortageIntent,
+      plannedRecipe: s.plannedRecipe,
+    });
     const factor = r.scaleFactor!;
     const snapshot = r.proposedRecipeSnapshot as RecipeInput;
     expect(snapshot.target_batch_grams).toBeCloseTo(s.plannedRecipe.target_batch_grams * factor, 6);
@@ -268,7 +286,11 @@ describe('acceptance — the after-state is ALWAYS a fresh regulator evaluation 
     const s = scenario<BatchRescueScenario>('rescue-vegan-too-soft');
     const r = rescue('rescue-vegan-too-soft');
     expect(r.rerun!.before.hardGateFailures.length).toBeGreaterThan(0); // it WAS broken
-    const fresh = freshFailures(r, s.rescueIntent.productProfile, s.rescueIntent.intendedServingTemperatureC);
+    const fresh = freshFailures(
+      r,
+      s.rescueIntent.productProfile,
+      s.rescueIntent.intendedServingTemperatureC,
+    );
     expect(fresh).toEqual([]); // fully rescued — verified against the FULL resulting recipe
     expect(r.rerun!.after.hardGateFailures).toEqual(fresh);
   });

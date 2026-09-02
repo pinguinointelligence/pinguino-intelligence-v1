@@ -26,6 +26,7 @@
  * (decision I) — `draftToRow` maps a closed key set to a closed column set.
  */
 import { supabase } from '@/lib/supabase/client';
+import { emptyUnconfiguredRead } from '@/services/backendGuard';
 import { getCurrentUser, type AuthUser } from '@/services/auth';
 import {
   validateAcceptedCorrectionDraft,
@@ -128,14 +129,14 @@ export function guardDraftForInsert(
   draft: AcceptedCorrectionDraft,
 ): PersistGuardResult {
   if (!user || !user.id) {
-    return { ok: false, message: 'You must be signed in to save corrections.' };
+    return { ok: false, message: 'Aby zapisać korektę, zaloguj się.' };
   }
   if (user.id !== draft.ownerId) {
-    return { ok: false, message: 'This correction belongs to a different account.' };
+    return { ok: false, message: 'Ta korekta należy do innego konta.' };
   }
   const validation = validateAcceptedCorrectionDraft(draft);
   if (!validation.valid) {
-    return { ok: false, message: `Correction is not saveable: ${validation.errors.join(', ')}` };
+    return { ok: false, message: `Nie można zapisać korekty: ${validation.errors.join(', ')}` };
   }
   return { ok: true };
 }
@@ -159,7 +160,7 @@ export async function createAcceptedCorrection(
 
 /** All correction records owned by the current user (RLS enforces ownership). */
 export async function listMyAcceptedCorrections(): Promise<AcceptedCorrectionRecord[]> {
-  if (!supabase) return [];
+  if (!supabase) return emptyUnconfiguredRead('acceptedCorrections.listMyAcceptedCorrections', []);
   const { data, error } = await supabase
     .from(TABLE)
     .select('*')

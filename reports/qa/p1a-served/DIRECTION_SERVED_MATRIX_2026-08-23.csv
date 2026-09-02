@@ -1,0 +1,39 @@
+case_id,temp,mode,sweetness,hardness,preview_score,preview_verdict,out_of_range,removed_lines,preview_before_eq_baseline,applied,executable_eq_preview_after,monitor_score,POD,NPAC,sweet_label,hard_label,elapsed_ms
+gelato/-13/optimal/S-2/H0,-13,optimal,-2,0,10,"PI osiągnęło wybrany profil.","0 → 0","",true,true,true,10,12.91,51.51,"zdecydowanie mniej","zbalansowanie",6134
+gelato/-13/optimal/S-1/H0,-13,optimal,-1,0,10,"PI osiągnęło wybrany profil.","0 → 0","",true,true,true,10,13.96,51.64,"mniej","zbalansowanie",6008
+gelato/-13/optimal/S0/H0,-13,optimal,0,0,10,"PI osiągnęło wybrany profil.","0 → 0","",true,true,true,10,14.97,52.86,"zbalansowanie","zbalansowanie",5782
+gelato/-13/optimal/S1/H0,-13,optimal,1,0,10,"PI osiągnęło wybrany profil.","0 → 0","",true,true,true,10,15.94,51.56,"bardziej","zbalansowanie",6017
+gelato/-13/optimal/S2/H0,-13,optimal,2,0,10,"PI osiągnęło wybrany profil.","0 → 0","",true,true,true,10,16.37,53.19,"zdecydowanie bardziej","zbalansowanie",6012
+gelato/-13/eco/S-2/H0,-13,eco,-2,0,10,"PI osiągnęło wybrany profil.","0 → 0","",true,true,true,10,12.98,51.79,"zdecydowanie mniej","zbalansowanie",5642
+gelato/-13/eco/S-1/H0,-13,eco,-1,0,10,"PI osiągnęło wybrany profil.","0 → 0","",true,true,true,10,13.97,51.72,"mniej","zbalansowanie",5251
+gelato/-13/eco/S0/H0,-13,eco,0,0,10,"PI osiągnęło wybrany profil.","0 → 0","",true,true,true,10,14.91,52.5,"zbalansowanie","zbalansowanie",5010
+gelato/-13/eco/S1/H0,-13,eco,1,0,10,"PI osiągnęło wybrany profil.","0 → 0","",true,true,true,10,15.94,51.51,"bardziej","zbalansowanie",5230
+gelato/-13/eco/S2/H0,-13,eco,2,0,10,"PI osiągnęło wybrany profil.","0 → 0","",true,true,true,10,16.11,52.37,"zdecydowanie bardziej","zbalansowanie",5195
+gelato/-12/optimal/S-2/H-2,-12,optimal,-2,-2,10,"PI osiągnęło wybrany profil.","0 → 0","",true,true,true,10,12.94,48.39,"zdecydowanie mniej","zdecydowanie mniej",7640
+gelato/-12/optimal/S-2/H0,-12,optimal,-2,0,10,"PI osiągnęło wybrany profil.","0 → 0","",true,true,true,10,12.99,45.42,"zdecydowanie mniej","zbalansowanie",
+gelato/-12/optimal/S-2/H2,-12,optimal,-2,2,10,"PI osiągnęło wybrany profil.","0 → 0","",true,true,true,10,12.92,42.19,"zdecydowanie mniej","zdecydowanie bardziej",13662
+gelato/-12/optimal/S-1/H0,-12,optimal,-1,0,10,"PI osiągnęło wybrany profil.","0 → 0","",true,true,true,10,13.98,45.16,"mniej","zbalansowanie",6369
+gelato/-12/optimal/S0/H-2,-12,optimal,0,-2,10,"PI osiągnęło wybrany profil.","0 → 0","",true,true,true,10,14.95,48.38,"zbalansowanie","zdecydowanie mniej",7516
+gelato/-12/optimal/S0/H-1,-12,optimal,0,-1,10,"PI osiągnęło wybrany profil.","0 → 0","",true,true,true,10,14.79,47.47,"zbalansowanie","mniej",7599
+gelato/-12/optimal/S0/H0,-12,optimal,0,0,10,"PI osiągnęło wybrany profil.","0 → 0","",true,true,true,10,14.94,45.32,"zbalansowanie","zbalansowanie",6050
+gelato/-12/optimal/S0/H1,-12,optimal,0,1,10,"PI osiągnęło wybrany profil.","0 → 0","",true,true,true,10,14.85,44.19,"zbalansowanie","bardziej",6841
+gelato/-12/optimal/S0/H2,-12,optimal,0,2,10,"PI osiągnęło wybrany profil.","0 → 0","",true,true,true,10,14.5,42.24,"zbalansowanie","zdecydowanie bardziej",6817
+gelato/-12/optimal/S1/H0,-12,optimal,1,0,10,"PI osiągnęło wybrany profil.","0 → 0","",true,true,true,10,15.56,46.09,"bardziej","zbalansowanie",5994
+gelato/-12/optimal/S2/H-2,-12,optimal,2,-2,10,"PI osiągnęło wybrany profil.","0 → 0","",true,true,true,10,16.84,49.28,"zdecydowanie bardziej","zdecydowanie mniej",7577
+gelato/-12/optimal/S2/H0,-12,optimal,2,0,10,"PI osiągnęło wybrany profil.","0 → 0","",true,true,true,10,16.09,46.13,"zdecydowanie bardziej","zbalansowanie",6081
+gelato/-12/optimal/S2/H2,-12,optimal,2,2,10,"PI osiągnęło wybrany profil.","0 → 0","",true,true,true,10,16.07,43.39,"zdecydowanie bardziej","zdecydowanie bardziej",7600
+gelato/-12/eco/S-2/H0,-12,eco,-2,0,10,"PI osiągnęło wybrany profil.","0 → 0","",true,true,true,10,12.96,45.13,"zdecydowanie mniej","zbalansowanie",5575
+gelato/-12/eco/S-1/H0,-12,eco,-1,0,10,"PI osiągnęło wybrany profil.","0 → 0","",true,true,true,10,13.98,45.16,"mniej","zbalansowanie",5196
+gelato/-12/eco/S0/H0,-12,eco,0,0,10,"PI osiągnęło wybrany profil.","0 → 0","",true,true,true,10,14.94,45.32,"zbalansowanie","zbalansowanie",4667
+gelato/-12/eco/S1/H0,-12,eco,1,0,10,"PI osiągnęło wybrany profil.","0 → 0","",true,true,true,10,15.38,45.68,"bardziej","zbalansowanie",4833
+gelato/-12/eco/S2/H0,-12,eco,2,0,10,"PI osiągnęło wybrany profil.","0 → 0","INULIN · Specialty",true,true,true,10,16.16,45.63,"zdecydowanie bardziej","zbalansowanie",6574
+gelato/-11/optimal/S-2/H0,-11,optimal,-2,0,10,"PI osiągnęło wybrany profil.","0 → 0","",true,true,true,10,12.84,39.45,"zdecydowanie mniej","zbalansowanie",
+gelato/-11/optimal/S-1/H0,-11,optimal,-1,0,10,"PI osiągnęło wybrany profil.","0 → 0","",true,true,true,10,13.56,39.61,"mniej","zbalansowanie",
+gelato/-11/optimal/S0/H0,-11,optimal,0,0,10,"PI osiągnęło wybrany profil.","0 → 0","",true,true,true,10,14.98,39.39,"zbalansowanie","zbalansowanie",
+gelato/-11/optimal/S1/H0,-11,optimal,1,0,10,"PI osiągnęło wybrany profil.","0 → 0","",true,true,true,10,15.96,39.01,"bardziej","zbalansowanie",
+gelato/-11/optimal/S2/H0,-11,optimal,2,0,10,"PI osiągnęło wybrany profil.","0 → 0","",true,true,true,10,16.73,39.04,"zdecydowanie bardziej","zbalansowanie",
+gelato/-11/eco/S-2/H0,-11,eco,-2,0,10,"PI osiągnęło wybrany profil.","0 → 0","",true,true,true,10,12.79,39.33,"zdecydowanie mniej","zbalansowanie",
+gelato/-11/eco/S-1/H0,-11,eco,-1,0,10,"PI osiągnęło wybrany profil.","0 → 0","",true,true,true,10,14,39.11,"mniej","zbalansowanie",
+gelato/-11/eco/S0/H0,-11,eco,0,0,10,"PI osiągnęło wybrany profil.","0 → 0","",true,true,true,10,14.67,39.14,"zbalansowanie","zbalansowanie",
+gelato/-11/eco/S1/H0,-11,eco,1,0,10,"PI osiągnęło wybrany profil.","0 → 0","",true,true,true,10,15.92,39.04,"bardziej","zbalansowanie",
+gelato/-11/eco/S2/H0,-11,eco,2,0,10,"PI osiągnęło wybrany profil.","0 → 0","",true,true,true,10,16.99,39.55,"zdecydowanie bardziej","zbalansowanie",

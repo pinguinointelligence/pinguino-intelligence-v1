@@ -22,6 +22,7 @@ export type ProductCategory =
   | 'alcohol_gelato'
   | 'sorbet'
   | 'vegan_gelato'
+  | 'protein_gelato'
   | 'custom';
 
 /** Spec §13/§15 — the six lock types. `already_added` lines can never be reduced. */
@@ -108,10 +109,43 @@ export interface EngineIngredientFlags {
   is_animal_origin?: boolean;
   is_flavor_booster?: boolean;
   is_stabilizer?: boolean;
+  /** Dietary provenance only; never participates in Base Engine formulas. */
+  vegan_eligibility?: 'VEGAN_VERIFIED' | 'VEGAN_FALSE' | 'VEGAN_UNKNOWN' | 'VEGAN_CONFLICT';
+  vegan_eligibility_reasons?: string[];
 }
+
+/**
+ * Data-lineage only. These values never participate in Engine science; they
+ * keep one ingredient identity intact across Mapper, private Products,
+ * templates, saved recipes and formulation previews.
+ */
+export type IngredientIdentityProvenance =
+  | 'mapper'
+  | 'private_product'
+  | 'reference'
+  | 'demo'
+  | 'template';
 
 export interface EngineIngredient {
   id: string;
+  /** Stable Mapper identity used for merge/dedupe. `id` remains the source id
+   * for backwards compatibility with persisted recipes and Engine fixtures. */
+  canonical_ingredient_id?: string;
+  /** Optional private Product identity when a product borrows a Mapper row. */
+  private_product_id?: string | null;
+  /** Where this representation entered the recipe. Diagnostic only. */
+  identity_provenance?: IngredientIdentityProvenance;
+  /**
+   * Dataset subcategory (e.g. `water`, `cola_soft_drink`), carried for
+   * FUNCTIONAL-ROLE CLASSIFICATION EVIDENCE only. It never participates in any
+   * Engine formula. It exists because composition alone cannot separate some
+   * classes: plain water and a zero-sugar cola are both 100 % water with
+   * POD/PAC 0, and only the declared subcategory tells them apart.
+   */
+  source_subcategory?: string | null;
+  /** Product-process metadata carried with Recipe/Production. Engine math must
+   * never inspect this field. */
+  carbonation_status?: import('@/data/products/carbonation').CarbonationStatus;
   name: string;
   category: IngredientCategory;
   composition: IngredientComponentProfile;
@@ -132,6 +166,11 @@ export interface EngineIngredient {
   /** Cost per kg — null = UNKNOWN (creates the incomplete cost state);
    * 0 = explicitly free (e.g. water). Never silently treated as 0. */
   cost_per_kg: number | null;
+  /** ISO 4217 source currency for the reference cost. Missing means unpriceable without override. */
+  cost_currency?: string | null;
+  /** Product-layer provenance for a catalog SKU price. It is pricing-only and
+   * never participates in technical composition or Engine calculations. */
+  cost_source?: 'reference' | 'private' | null;
   /** 0–100 (masterplan §16). */
   confidence_score: number;
   source_type: SourceType;
@@ -148,6 +187,32 @@ export interface RecipeItem {
   /** Real production amount (Actual Batch Mode, spec §15). */
   actual_grams: number | null;
   lock_type: LockType;
+  /** Product-layer Main-group ratio authority. Missing means the approved
+   * default equal share; starting grams are never interpreted as a ratio.
+   * Base Engine formulas do not consume this field. */
+  main_ratio_weight?: number;
+  /** Product-layer persisted Pro range. Base Engine still sees the conservative
+   * grams/Main lock; orchestration rehydrates and verifies these bounds. */
+  range_constraint?: { min_grams: number; max_grams: number };
+  /** Product-layer persisted final-batch share. This sidecar lets a percentage
+   * constraint coexist with the stronger Main/Required/already-added identity
+   * contract. Base Engine formulas do not consume it; Pro orchestration
+   * rehydrates and verifies the percentage constraint. */
+  percent_constraint?: { percent: number };
+  /** Product-layer persisted exact mass. This sidecar lets an exact-grams
+   * constraint coexist with the stronger Main/Required/already-added identity
+   * contract. Base Engine formulas do not consume it; Pro orchestration
+   * rehydrates and verifies the exact constraint. */
+  grams_constraint?: { grams: number };
+  /** Product-layer user-intent anchor. A positive value means this visible
+   * Standard line must remain present (>= 1 g) unless the user explicitly
+   * zeroes/removes/excludes it. Engine formulas do not consume this field. */
+  user_intent_anchor_grams?: number;
+  /** Product-layer soft target from the latest direct gram edit. Unlike a
+   * grams constraint this is not a lock: orchestration preserves it when the
+   * complete recipe is feasible, otherwise it selects the nearest feasible
+   * whole-gram amount. Base Engine formulas do not consume this field. */
+  user_target_grams?: number;
   production_step?: number;
   notes?: string;
 }
@@ -167,8 +232,41 @@ export interface RecipeGoals {
   flavor_intensity?: 'light' | 'balanced' | 'strong' | 'maximum';
   creaminess?: 'light' | 'classic' | 'premium' | 'dense';
   cost_priority?: 'low' | 'balanced' | 'premium';
+  formulation_strategy?: 'optimal' | 'eco';
   main_priority?: 'normal' | 'high' | 'maximum';
   dietary?: DietaryFlag[];
+  /**
+   * @deprecated Protein Engine v2 (owner decision 2026-08-22): the user never
+   * selects a protein percentage. Protein % is an OUTPUT of the formulation.
+   * The field is retained so persisted recipes and legacy fixtures still
+   * type-check; NOTHING in the Engine or the product layer reads it.
+   */
+  target_protein_percent?: number;
+  /**
+   * Canonical customer direction intent. These are product-layer preferences,
+   * not Base Engine chemistry. The exact five-step value is preserved because
+   * the Pro control exposes five distinct targets. For sweetness, negative is
+   * lower and positive is higher. The historical `softness` field follows the
+   * visible Twardość control: negative is softer and positive is firmer.
+   * Unsupported sensory axes remain recorded so save and reopen never lose
+   * the owner's intent, but they are not fabricated into Engine targets.
+   */
+  direction_targets?: RecipeDirectionTargets;
+  /** True only after the user explicitly changes/accepts Direction. */
+  direction_targets_active?: boolean;
+  /** Draft-material availability sidecars. They are product orchestration
+   * state and never participate in Base Engine chemistry. */
+  excluded_ingredient_ids?: string[];
+  unavailable_main_ingredient_ids?: string[];
+}
+
+export type RecipeDirectionTarget = -2 | -1 | 0 | 1 | 2;
+
+export interface RecipeDirectionTargets {
+  sweetness: RecipeDirectionTarget;
+  softness: RecipeDirectionTarget;
+  creaminess: RecipeDirectionTarget;
+  flavor: RecipeDirectionTarget;
 }
 
 export interface RecipeInput {
@@ -347,6 +445,8 @@ export interface RecipeResult {
   pod_points: number | null;
   pac_points: number | null;
   npac_points: number | null;
+  /** Sorbet: equilibrium ice mass / initial total mix mass × 100. Other
+   * profiles retain their accepted category-anchor semantics. */
   ice_fraction_percent: number | null;
   indicators: Indicator[];
   scores: RecipeScores | null;

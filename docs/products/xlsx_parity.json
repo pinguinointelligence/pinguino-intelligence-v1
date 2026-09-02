@@ -1,0 +1,47 @@
+{
+  "sheet": "Products",
+  "candidates": [
+    "Products",
+    "Import View"
+  ],
+  "rows": {
+    "xlsx": 820,
+    "csv": 820
+  },
+  "readiness": {
+    "xlsx": {
+      "READY": 0,
+      "ESTIMATED_READY": 320,
+      "REVIEW": 500
+    },
+    "csv": {
+      "READY": 0,
+      "ESTIMATED_READY": 320,
+      "REVIEW": 500
+    }
+  },
+  "dedup": {
+    "xlsx": {
+      "NEW_CANONICAL_PRODUCT": 817,
+      "EXISTING_CANONICAL_REUSE": 0,
+      "EXACT_DUPLICATE": 0,
+      "IDENTITY_COLLISION_RESOLVED_AS_DISTINCT": 3,
+      "POSSIBLE_DUPLICATE_REVIEW": 0,
+      "IDENTITY_CONFLICT": 0
+    },
+    "csv": {
+      "NEW_CANONICAL_PRODUCT": 817,
+      "EXISTING_CANONICAL_REUSE": 0,
+      "EXACT_DUPLICATE": 0,
+      "IDENTITY_COLLISION_RESOLVED_AS_DISTINCT": 3,
+      "POSSIBLE_DUPLICATE_REVIEW": 0,
+      "IDENTITY_CONFLICT": 0
+    }
+  },
+  "identicalNames": true,
+  "htmlEntitiesOnlyInCsv": [
+    "PL-BIE-00370",
+    "PL-BIE-00373",
+    "PL-BIE-00366"
+  ]
+}

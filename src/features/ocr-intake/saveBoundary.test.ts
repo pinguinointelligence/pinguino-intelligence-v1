@@ -20,8 +20,10 @@ import {
 
 /* mocked test adapter — NO real service code runs anywhere in this file */
 vi.mock('@/services/products', () => ({
-  createProductWithIdentity: vi.fn(async () => ({ id: 'test-product-id', product_code: 'P-000123' })),
-  findExistingProductForIdentity: vi.fn(async () => null),
+  createProductWithIdentityResult: vi.fn(async () => ({
+    product: { id: 'test-product-id', product_code: 'P-000123' },
+    ingest: { kind: 'created', productId: 'test-product-id' },
+  })),
 }));
 vi.mock('@/services/productMapper', () => ({
   matchAndSaveProduct: vi.fn(async () => {
@@ -33,7 +35,7 @@ vi.mock('@/services/productSnapshots', () => ({
   snapshotSourceChange: vi.fn(async () => undefined),
 }));
 
-import { createProductWithIdentity, findExistingProductForIdentity } from '@/services/products';
+import { createProductWithIdentityResult } from '@/services/products';
 import { matchAndSaveProduct } from '@/services/productMapper';
 
 const RAW = [
@@ -58,16 +60,15 @@ beforeEach(() => {
 });
 
 describe('OCR draft → existing save boundary (mock adapter only)', () => {
-  it('the confirmed draft is accepted by importProductCatalog and reaches createProductWithIdentity', async () => {
+  it('the confirmed draft is accepted and preserves the canonical ingest outcome', async () => {
     const candidate = confirmedCandidate();
     const summary = await importProductCatalog([candidate], { runMatch: false, snapshot: false });
 
     expect(summary.created).toBe(1);
     expect(summary.failed).toBe(0);
-    expect(findExistingProductForIdentity).toHaveBeenCalledTimes(1);
-    expect(createProductWithIdentity).toHaveBeenCalledTimes(1);
+    expect(createProductWithIdentityResult).toHaveBeenCalledTimes(1);
 
-    const insert = vi.mocked(createProductWithIdentity).mock.calls[0]?.[0];
+    const insert = vi.mocked(createProductWithIdentityResult).mock.calls[0]?.[0];
     expect(insert?.source_type).toBe('label_scan');
     expect(insert?.product_name_display).toBe('Vanilla Dessert Base');
     expect(insert?.brand).toBe('Polar Foods');

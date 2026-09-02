@@ -24,14 +24,38 @@ export interface EngineProfile {
   note?: string;
 }
 
-const FUTURE_NOTE = 'Future engine — not connected yet.';
+const FUTURE_NOTE = 'W przygotowaniu — ten profil nie jest jeszcze dostępny.';
 
 export const ENGINES: readonly EngineProfile[] = [
   { id: 'engine-minus-11', label: '−11°C Engine', status: 'active', target_temperature_c: -11 },
-  { id: 'engine-minus-12', label: '−12°C Engine', status: 'future', target_temperature_c: -12, note: FUTURE_NOTE },
-  { id: 'engine-minus-13', label: '−13°C Engine', status: 'future', target_temperature_c: -13, note: FUTURE_NOTE },
-  { id: 'engine-fresh', label: 'Fresh Engine', status: 'future', target_temperature_c: null, note: 'Future / to be tested — not connected yet.' },
-  { id: 'engine-storage-18', label: 'Storage / Retail −18°C Engine', status: 'future', target_temperature_c: -18, note: 'Future / to be tested — not connected yet.' },
+  {
+    id: 'engine-minus-12',
+    label: '−12°C Engine',
+    status: 'future',
+    target_temperature_c: -12,
+    note: FUTURE_NOTE,
+  },
+  {
+    id: 'engine-minus-13',
+    label: '−13°C Engine',
+    status: 'future',
+    target_temperature_c: -13,
+    note: FUTURE_NOTE,
+  },
+  {
+    id: 'engine-fresh',
+    label: 'Fresh Engine',
+    status: 'future',
+    target_temperature_c: null,
+    note: FUTURE_NOTE,
+  },
+  {
+    id: 'engine-storage-18',
+    label: 'Storage / retail −18°C',
+    status: 'future',
+    target_temperature_c: -18,
+    note: FUTURE_NOTE,
+  },
 ];
 
 /** The only engine that runs calculations today. Every recipe is computed here. */
@@ -39,3 +63,16 @@ export const ACTIVE_ENGINE: EngineProfile = ENGINES.find((engine) => engine.stat
 
 export const findEngine = (id: string): EngineProfile | undefined =>
   ENGINES.find((engine) => engine.id === id);
+
+const ENGINE_DISPLAY_LABEL_PL: Readonly<Record<string, string>> = Object.freeze({
+  '−11°C Engine': '−11°C · obliczenia',
+  '−12°C Engine': '−12°C · obliczenia',
+  '−13°C Engine': '−13°C · obliczenia',
+  'Fresh Engine': 'Bieżące obliczenia',
+});
+
+/** Presentation-only Polish wording. The persisted/runtime engine label stays unchanged. */
+export const engineDisplayLabelPl = (engine: Pick<EngineProfile, 'label'> | string): string => {
+  const contractLabel = typeof engine === 'string' ? engine : engine.label;
+  return ENGINE_DISPLAY_LABEL_PL[contractLabel] ?? contractLabel;
+};

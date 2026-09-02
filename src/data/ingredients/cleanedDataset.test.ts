@@ -12,13 +12,7 @@ import { INGREDIENT_INTAKE_HEADERS } from './ingredientIntakeColumns';
 
 const REPO = resolve(import.meta.dirname, '..', '..', '..');
 const CSV = readFileSync(
-  join(
-    REPO,
-    'docs',
-    'ingredients',
-    'validation',
-    'mapper_basement.csv',
-  ),
+  join(REPO, 'docs', 'ingredients', 'validation', 'mapper_basement.csv'),
   'utf8',
 );
 
@@ -33,15 +27,28 @@ function parseCsv(text: string): string[][] {
     const c = text[i];
     if (inQuotes) {
       if (c === '"') {
-        if (text[i + 1] === '"') { field += '"'; i++; } else inQuotes = false;
+        if (text[i + 1] === '"') {
+          field += '"';
+          i++;
+        } else inQuotes = false;
       } else field += c;
     } else if (c === '"') inQuotes = true;
-    else if (c === ',') { row.push(field); field = ''; }
-    else if (c === '\r') { /* ignore */ }
-    else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
-    else field += c;
+    else if (c === ',') {
+      row.push(field);
+      field = '';
+    } else if (c === '\r') {
+      /* ignore */
+    } else if (c === '\n') {
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = '';
+    } else field += c;
   }
-  if (field.length > 0 || row.length > 0) { row.push(field); rows.push(row); }
+  if (field.length > 0 || row.length > 0) {
+    row.push(field);
+    rows.push(row);
+  }
   return rows;
 }
 
@@ -53,8 +60,8 @@ const dataRows = parsed
 const col = (name: string) => headers.indexOf(name);
 
 describe('Mapper Basement dataset (mapper_basement.csv)', () => {
-  it('has exactly 2083 rows and 62 columns', () => {
-    expect(dataRows.length).toBe(2083);
+  it('has exactly 2089 rows and 62 columns', () => {
+    expect(dataRows.length).toBe(2089);
     expect(headers.length).toBe(62);
     for (const row of dataRows) expect(row.length).toBe(62);
   });
@@ -98,13 +105,20 @@ describe('Mapper Basement dataset (mapper_basement.csv)', () => {
       'Superseded Duplicate',
       'Verified',
       'Verified / Basis Check Needed',
+      'Verified / Engine mapping review',
       'Verified / PI Calculated',
       'Verified / Public Label',
+      'Vegan verified / allergen label review required',
+      'Vegan verified / cross-contamination noted',
+      'Vegan/dairy-free verified / allergen label review required',
     ]);
     for (const row of dataRows) {
       expect(['true', 'false']).toContain((row[base] ?? '').toLowerCase());
       expect(['true', 'false']).toContain((row[eng] ?? '').toLowerCase());
-      expect(VOCAB.has(row[status] ?? ''), `status "${row[status]}" in ${row[col('ingredient_id')]}`).toBe(true);
+      expect(
+        VOCAB.has(row[status] ?? ''),
+        `status "${row[status]}" in ${row[col('ingredient_id')]}`,
+      ).toBe(true);
     }
   });
 });

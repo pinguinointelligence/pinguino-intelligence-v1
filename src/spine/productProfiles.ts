@@ -36,7 +36,8 @@ export type SpineGateId =
   | 'dairy_fat_logic'
   | 'aerating_dairy_protein'
   | 'dairy_protein_share_in_solids'
-  | 'msnf_required_gate';
+  | 'msnf_required_gate'
+  | 'protein_target';
 
 /** Correction-candidate families (Product_Profile.md §16 vocabulary). */
 export type CorrectionFamily =
@@ -57,6 +58,9 @@ export type CorrectionFamily =
   | 'coconut_milk_cream'
   | 'plant_fat'
   | 'plant_protein'
+  | 'whey_protein_concentrate'
+  | 'milk_protein_concentrate'
+  | 'high_protein_dairy'
   | 'dark_chocolate'
   | 'milk_chocolate'
   | 'cocoa_powder'
@@ -178,7 +182,14 @@ const sorbetProfile: ProductProfileDefinition = {
     'dairy_protein_share_in_solids',
     'msnf_required_gate',
   ],
-  allowedCorrectionFamilies: ['fruit', 'water', 'sucrose', 'dextrose', 'inulin_fiber', 'stabilizer'],
+  allowedCorrectionFamilies: [
+    'fruit',
+    'water',
+    'sucrose',
+    'dextrose',
+    'inulin_fiber',
+    'stabilizer',
+  ],
   forbiddenCorrectionFamilies: ['milk', 'cream', 'skimmed_milk_powder'],
   supportsServingTemperaturesC: SUPPORTED_SERVING_TEMPERATURES,
   defaultServingTemperatureC: DEFAULT_SERVING_TEMPERATURE,
@@ -192,7 +203,7 @@ const sorbetProfile: ProductProfileDefinition = {
 
 const veganGelatoProfile: ProductProfileDefinition = {
   id: 'vegan_gelato',
-  label: 'Vegan Gelato',
+  label: 'Wegańskiej Gelato',
   designer: 'vegan_designer',
   optimizer: 'vegan_optimizer',
   temperatureRegulator: 'vegan_gelato_temperature_regulator',
@@ -288,12 +299,57 @@ const chocolateGelatoProfile: ProductProfileDefinition = {
   ],
 };
 
+const proteinGelatoProfile: ProductProfileDefinition = {
+  id: 'protein_gelato',
+  label: 'Protein Gelato',
+  designer: 'protein_designer',
+  optimizer: 'protein_gelato_optimizer',
+  temperatureRegulator: 'protein_gelato_temperature_regulator',
+  activeGates: {
+    pod: 'hard',
+    npac: 'hard',
+    ice_fraction: 'hard',
+    water: 'hard',
+    total_solids: 'hard',
+    fat: 'hard',
+    stabilizer: 'hard',
+    alcohol: 'hard',
+    protein_target: 'hard',
+  },
+  disabledGates: ['lactose', 'lactose_sanding', 'aerating_protein', 'protein_share_in_solids'],
+  allowedCorrectionFamilies: [
+    'milk',
+    'cream',
+    'skimmed_milk_powder',
+    'high_protein_dairy',
+    'whey_protein_concentrate',
+    'milk_protein_concentrate',
+    'plant_protein',
+    'sucrose',
+    'dextrose',
+    'inulin_fiber',
+    'stabilizer',
+    'water',
+    'hero_flavor_ingredient',
+  ],
+  forbiddenCorrectionFamilies: [],
+  supportsServingTemperaturesC: SUPPORTED_SERVING_TEMPERATURES,
+  defaultServingTemperatureC: DEFAULT_SERVING_TEMPERATURE,
+  notes: [
+    'the Main ingredient defines flavor identity and is never replaced by a protein source',
+    'total recipe protein is evaluated against the per-recipe target; there is no universal maximum',
+    'dairy and verified plant protein routes are both permitted',
+    'the Standard Gelato physical envelope is reused by owner decision without changing Base Engine formulas',
+  ],
+};
+
 /** Exactly the four active v1.0 profiles — nothing else is supported. */
 export const ACTIVE_PRODUCT_PROFILES = [
   'standard_gelato',
   'sorbet',
   'vegan_gelato',
   'chocolate_gelato',
+  'protein_gelato',
 ] as const satisfies readonly ProductProfile[];
 
 export const PRODUCT_PROFILE_REGISTRY: Record<ProductProfile, ProductProfileDefinition> = {
@@ -301,6 +357,7 @@ export const PRODUCT_PROFILE_REGISTRY: Record<ProductProfile, ProductProfileDefi
   sorbet: sorbetProfile,
   vegan_gelato: veganGelatoProfile,
   chocolate_gelato: chocolateGelatoProfile,
+  protein_gelato: proteinGelatoProfile,
 };
 
 export const getProductProfileDefinition = (profile: ProductProfile): ProductProfileDefinition =>

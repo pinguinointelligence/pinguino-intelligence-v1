@@ -17,7 +17,11 @@ import {
   setProductType,
 } from './customerFlow';
 import { buildCustomerRecipeStructure } from './recipeStructure';
-import { buildCustomerRecipeView, gramVisibilityForPersona, type CustomerRecipeInput } from './recipeView';
+import {
+  buildCustomerRecipeView,
+  gramVisibilityForPersona,
+  type CustomerRecipeInput,
+} from './recipeView';
 import { parseBatchFromText } from './naturalLanguageBatch';
 import { CUSTOMER_PRODUCT_TYPE_CHOICES } from './types';
 
@@ -68,7 +72,9 @@ describe('(2) "Gelato czekoladowe z pomarańczą" — internal chocolate routing
   it('never asks the customer to choose Chocolate', () => {
     expect(pendingQuestions(state)).not.toContain('product_type');
     expect(nextQuestion(state)).not.toBe('product_type');
-    expect(productTypeQuestion().choices.some((c) => (c.value as string) === 'chocolate')).toBe(false);
+    expect(productTypeQuestion().choices.some((c) => (c.value as string) === 'chocolate')).toBe(
+      false,
+    );
   });
 });
 
@@ -127,28 +133,27 @@ describe('(5) "Zrób 5 kg wanilii" — batch recognized, never asked again', () 
 });
 
 /* Acceptance test (10) */
-describe('(10) Protein has no supported engine profile → honest gap, no silent fallback', () => {
-  it('explicit protein choice resolves to an unsupported gap, not Standard Gelato', () => {
+describe('(10) Protein owns a dedicated engine profile — no Standard Gelato fallback', () => {
+  it('explicit protein choice resolves to Protein Gelato', () => {
     const state = setProductType(createCustomerFlow(), 'protein');
     const r = resolveProductType(state);
-    expect(r.status).toBe('unsupported');
-    expect(r.unsupported).toBe('protein');
-    expect(r.internalProfile).toBeNull();
-    expect(r.engineCategory).toBeNull();
-    // Explicitly assert it did NOT silently become the milk/standard base.
+    expect(r.status).toBe('resolved');
+    expect(r.unsupported).toBeNull();
+    expect(r.internalProfile).toBe('protein_gelato');
+    expect(r.engineCategory).toBe('protein_gelato');
     expect(r.internalProfile).not.toBe('standard_gelato');
     expect(r.engineCategory).not.toBe('milk_gelato');
-    expect(flowStatus(state)).toBe('validation_required');
-    expect(nextQuestion(state)).toBeNull();
+    expect(flowStatus(state)).not.toBe('validation_required');
+    expect(nextQuestion(state)).toBe('serving_mode');
   });
 
-  it('protein detected in free text is captured as an unsupported gap', () => {
+  it('protein detected in free text resolves to the same profile', () => {
     const state = createCustomerFlow({ text: 'lody proteinowe waniliowe' });
     const r = resolveProductType(state);
-    expect(r.status).toBe('unsupported');
-    expect(r.unsupported).toBe('protein');
-    expect(r.internalProfile).toBeNull();
-    expect(flowStatus(state)).toBe('validation_required');
+    expect(r.status).toBe('resolved');
+    expect(r.unsupported).toBeNull();
+    expect(r.internalProfile).toBe('protein_gelato');
+    expect(r.engineCategory).toBe('protein_gelato');
   });
 });
 

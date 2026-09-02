@@ -21,6 +21,7 @@ export {
   type PreviewKind,
   type PreviewLineDiff,
   type SuggestedBoundFix,
+  type SuggestedFixSessionAuthorization,
 } from './applyPipeline';
 
 export {

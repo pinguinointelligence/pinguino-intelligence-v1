@@ -51,3 +51,57 @@ export {
   renderConstraintExplanationEn,
   type ConstraintExplanationEntry,
 } from './constraintExplain';
+
+export {
+  evaluateRecipeConstraintAuthority,
+  recipeCandidateIsHardValid,
+  type RecipeConstraintAuthorityInput,
+  type RecipeConstraintAuthorityIssue,
+  type RecipeConstraintAuthorityResult,
+} from './recipeConstraintAuthority';
+
+export {
+  evaluateFreezingStabilityStatus,
+  type FreezingStabilityAssessment,
+  type FreezingStabilityAssessmentInput,
+  type FreezingStabilityCalculationState,
+  type FreezingStabilityReason,
+  type FreezingStabilityStatus,
+} from './freezingStabilityStatus';
+
+export {
+  GELATO_STABILIZER_SYSTEM_POLICY,
+  assessGelatoStabilizerSystem,
+  clampGelatoStabilizerComponentGrams,
+  gelatoStabilizerSystemApplies,
+  gelatoStabilizerSystemItems,
+  gelatoStabilizerWholeGramBand,
+  type ClampGelatoStabilizerComponentResult,
+  type GelatoStabilizerSystemAssessment,
+  type GelatoStabilizerSystemIssue,
+  type GelatoStabilizerSystemIssueCode,
+  type GelatoStabilizerWholeGramBand,
+} from './gelatoStabilizerSystemAuthority';
+
+export {
+  SORBET_STABILIZER_SYSTEM_POLICY,
+  assessSorbetStabilizerSystem,
+  clampSorbetStabilizerComponentGrams,
+  projectSorbetStabilizerSystemToWholeGramPreferred,
+  sorbetStabilizerSystemApplies,
+  sorbetStabilizerSystemItems,
+  sorbetStabilizerWholeGramBand,
+  type SorbetStabilizerSystemAssessment,
+  type SorbetStabilizerSystemIssue,
+  type SorbetStabilizerSystemIssueCode,
+  type SorbetStabilizerWholeGramBand,
+} from './sorbetStabilizerSystemAuthority';
+
+export { planSorbetStabilizerSystemRescale } from './sorbetStabilizerRescaleProjection';
+
+export {
+  assessOwnerStabilizerSystem,
+  clampOwnerStabilizerComponentGrams,
+  ownerStabilizerSystemApplies,
+  ownerStabilizerSystemItems,
+} from './ownerStabilizerSystemAuthority';

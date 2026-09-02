@@ -11,17 +11,40 @@
  *  - vegan −13 `V02_fixed`: locked clean vegan reference (ibid.);
  *  - fruit gelato −11 `fruit_gelato_ref_v1`: the repo's raspberry-premium
  *    reference proportions (goldenRecipes QA fixture) — status
- *    `reference_derived`, STAGING-ONLY, explicitly NOT scientifically approved
- *    as a template (Phase 8 contract); included for owner review.
+ *    `reference_derived`, QUARANTINED (see below), never runtime-selectable.
  *  - protein: NO approved template or target contract exists (recovery audit
  *    conclusion D) → honest `unsupported`, never routed to gelato silently.
  *
  * Role targets are per the template's own base batch; the formulation pipeline
  * scales them to the recipe's target batch and maps them onto the USER-selected
  * stable ingredient identities (never substituting brands for selections).
+ *
+ * ───────────────────────────────────────────────────────────────────────────
+ * OWNER FINAL INTEGRATION ADDENDUM — item 2 (reference-derived quarantine,
+ * 2026-07-25).
+ *
+ * WHAT WAS TRUE BEFORE: `fruit_gelato_ref_v1` sat in the SAME array the runtime
+ * lookup scanned (`REGISTRY`), so a `fruit_gelato` recipe seeded its grams —
+ * transcribed verbatim from the goldenRecipes raspberry-premium QA FIXTURE —
+ * and the result could become an APPLICABLE production recipe as soon as the
+ * search stopped or the batch equalled the target.
+ *
+ * WHAT IS TRUE NOW: reference-derived formulas are QUARANTINED. Two lists:
+ *  - `RUNTIME_REGISTRY` — the ONLY list `selectFormulationTemplate` scans;
+ *    contains exclusively `status: 'approved'` templates (enforced by a
+ *    structural test, never by convention);
+ *  - `ALL_TEMPLATES` — approved + quarantined, reachable ONLY through
+ *    `findFormulationTemplateById` / `listQuarantinedTemplates`, so tests,
+ *    diagnostics and the trustless Apply-door provenance re-derivation can
+ *    still resolve the id.
+ * Combined with addendum item 1 (`fruit_gelato` is no longer a runtime category
+ * at all), `fruit_gelato_ref_v1` is unreachable at runtime by TWO independent
+ * structural facts.
+ * ───────────────────────────────────────────────────────────────────────────
  */
-import type { ProductCategory } from '@/engine';
-import type { FunctionalRole } from './ingredientRoles';
+import type { ProductCategory, RecipeInput } from '@/engine';
+import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
+import { resolveFunctionalRole, type FunctionalRole } from './ingredientRoles';
 
 export type TemplateStatus = 'approved' | 'reference_derived' | 'unsupported';
 
@@ -42,11 +65,22 @@ export interface FormulationTemplate {
   templateId: string;
   category: ProductCategory;
   temperatureC: number;
+  veganFlavorStrategy?: VeganFlavorStrategy;
+  proteinFlavorStrategy?: ProteinFlavorStrategy;
+  proteinRoute?: ProteinRoute;
   status: TemplateStatus;
   approvalSource: string;
   baseBatchG: number;
   roles: readonly TemplateRoleTarget[];
 }
+
+export type VeganFlavorStrategy =
+  | 'neutral'
+  | 'fruit'
+  | 'nut'
+  | 'cocoa'
+  | 'mixed_main'
+  | 'unsupported_mixed_main';
 
 const T = (
   role: FunctionalRole,
@@ -131,7 +165,15 @@ const CHOCOLATE_M11: FormulationTemplate = {
 };
 
 /** S01/S02/S03 — locked clean sorbet references (fruit is USER-supplied). */
-const sorbet = (id: string, temp: number, sucrose: number, dextrose: number, inulin: number, tara: number, water: number): FormulationTemplate => ({
+const sorbet = (
+  id: string,
+  temp: number,
+  sucrose: number,
+  dextrose: number,
+  inulin: number,
+  tara: number,
+  water: number,
+): FormulationTemplate => ({
   templateId: id,
   category: 'sorbet',
   temperatureC: temp,
@@ -151,37 +193,322 @@ const SORBET_M11 = sorbet('S01', -11, 103.8, 59, 55.4, 0.8, 181);
 const SORBET_M12 = sorbet('S02', -12, 90, 90, 55, 0.8, 164.2);
 const SORBET_M13 = sorbet('S03', -13, 78, 125, 50, 0.8, 146.2);
 
-/** V02_fixed — locked clean vegan reference (−13; plant roles USER-supplied). */
-const VEGAN_M13: FormulationTemplate = {
-  templateId: 'V02_fixed',
-  category: 'vegan_gelato',
-  temperatureC: -13,
-  status: 'approved',
-  approvalSource: 'temperatureRegulator.ts V02_fixed (locked clean vegan reference)',
-  baseBatchG: 1000,
-  roles: [
-    T('water', 200, 'water'),
-    T('plant_liquid', 250, null), // the user's plant drink — never invented
-    T('plant_fat', 250, null), // the user's coconut/plant fat — never invented
-    T('sweetener_sucrose', 95, 'sucrose'),
-    T('sugar_freezing_control', 150, 'dextrose'),
-    T('fiber_body', 53.1, 'inulin'),
-    T('stabilizer', 1.9, 'tara_gum', false),
-  ],
+interface VeganMinus13Seed {
+  strategy: VeganFlavorStrategy;
+  water: number;
+  plantLiquid: number;
+  plantFat: number;
+  sucrose: number;
+  dextrose: number;
+  inulin: number;
+  mainRole?: FunctionalRole;
+  mainGrams?: number;
+}
+
+const VEGAN_MINUS13_SEEDS: readonly VeganMinus13Seed[] = [
+  {
+    strategy: 'neutral',
+    water: 397.4,
+    plantLiquid: 250,
+    plantFat: 52.5,
+    sucrose: 95,
+    dextrose: 150,
+    inulin: 53.1,
+  },
+  {
+    strategy: 'fruit',
+    water: 152.2,
+    plantLiquid: 213.3,
+    plantFat: 33.6,
+    sucrose: 107,
+    dextrose: 107.7,
+    inulin: 59.9,
+    mainRole: 'fruit',
+    mainGrams: 324.3,
+  },
+  {
+    strategy: 'mixed_main',
+    water: 176.5,
+    plantLiquid: 213.3,
+    plantFat: 33.6,
+    sucrose: 107,
+    dextrose: 107.7,
+    inulin: 59.9,
+    mainRole: 'fruit',
+    mainGrams: 300,
+  },
+  {
+    strategy: 'nut',
+    water: 331.6,
+    plantLiquid: 261.6,
+    plantFat: 34.1,
+    sucrose: 77.4,
+    dextrose: 118.8,
+    inulin: 54.6,
+    mainRole: 'nut_paste',
+    mainGrams: 119.9,
+  },
+  {
+    strategy: 'cocoa',
+    water: 358.7,
+    plantLiquid: 250.9,
+    plantFat: 42.1,
+    sucrose: 120.4,
+    dextrose: 109.5,
+    inulin: 56.8,
+    mainRole: 'chocolate_cocoa',
+    mainGrams: 59.6,
+  },
+];
+
+const adaptVeganSugarsForTemperature = (
+  seed: VeganMinus13Seed,
+  temperatureC: -11 | -12 | -13,
+): { sucrose: number; dextrose: number } => {
+  // Owner reference proves a 50 g sucrose↔dextrose substitution changes NPAC
+  // without changing sugar mass. −12 uses that observed step. −11 continues
+  // the same physical direction with a bounded 90 g shift; the Engine still
+  // evaluates the exact recipe against its native temperature band.
+  const requestedShift = temperatureC === -13 ? 0 : temperatureC === -12 ? 50 : 90;
+  const shift = Math.min(requestedShift, seed.dextrose);
+  return { sucrose: seed.sucrose + shift, dextrose: seed.dextrose - shift };
 };
 
+const veganTemplate = (
+  seed: VeganMinus13Seed,
+  temperatureC: -11 | -12 | -13,
+): FormulationTemplate => {
+  const sugars = adaptVeganSugarsForTemperature(seed, temperatureC);
+  const neutralMinus13 = seed.strategy === 'neutral' && temperatureC === -13;
+  return {
+    templateId: neutralMinus13
+      ? 'V02_fixed'
+      : `vegan_${seed.strategy}_minus${Math.abs(temperatureC)}_final`,
+    category: 'vegan_gelato',
+    temperatureC,
+    veganFlavorStrategy: seed.strategy,
+    status: 'approved',
+    approvalSource:
+      'owner Vegan final task: MyGelato −13 reference + canonical GELLATTI temperature direction; Mapper v1.0 plant identities',
+    baseBatchG: 1000,
+    roles: [
+      ...(seed.mainRole && seed.mainGrams ? [T(seed.mainRole, seed.mainGrams, null)] : []),
+      T('water', seed.water, 'water'),
+      T('plant_liquid', seed.plantLiquid, 'PI-ING-001565'),
+      T('plant_fat', seed.plantFat, 'PI-ING-000163'),
+      T('sweetener_sucrose', sugars.sucrose, 'sucrose'),
+      T('sugar_freezing_control', sugars.dextrose, 'dextrose'),
+      T('fiber_body', seed.inulin, 'inulin'),
+      // Exact Mapper Tara minimum: 0.2% of a 1000 g mix. Never MyGelato 0 g.
+      T('stabilizer', 2, 'tara_gum', false),
+    ],
+  };
+};
+
+const VEGAN_TEMPLATES: readonly FormulationTemplate[] = VEGAN_MINUS13_SEEDS.flatMap((seed) =>
+  ([-11, -12, -13] as const).map((temperature) => veganTemplate(seed, temperature)),
+);
+
+export type ProteinFlavorStrategy = 'neutral' | 'fruit' | 'nut' | 'cocoa' | 'coffee' | 'mixed_main';
+export type ProteinRoute = 'dairy' | 'plant';
+
+interface ProteinTemplateSeed {
+  route: ProteinRoute;
+  temperatureC: -11 | -12 | -13;
+  /** Liquid base: milk (dairy) or oat drink (plant). */
+  liquid: number;
+  /** Fat carrier: cream (dairy) or refined coconut oil (plant). */
+  fat: number;
+  protein: number;
+  water: number;
+  sucrose: number;
+  dextrose: number;
+}
+
+const PROTEIN_STRATEGIES: readonly {
+  strategy: ProteinFlavorStrategy;
+  mainRole: FunctionalRole | null;
+}[] = [
+  { strategy: 'neutral', mainRole: null },
+  { strategy: 'fruit', mainRole: 'fruit' },
+  { strategy: 'nut', mainRole: 'nut_paste' },
+  { strategy: 'cocoa', mainRole: 'chocolate_cocoa' },
+  { strategy: 'coffee', mainRole: 'flavor_other' },
+  { strategy: 'mixed_main', mainRole: null },
+];
+
 /**
- * fruit_gelato_ref_v1 — REFERENCE-DERIVED (staging-only, NOT approved science):
- * the repo's raspberry-premium reference proportions (goldenRecipes QA fixture:
+ * PROTEIN STARTER v2 — ENGINE-DERIVED, not hand-set.
+ *
+ * The v1 seeds carried the retired 20 %-protein-BY-MASS target: 230-247 g of an
+ * 80 % whey concentrate in a 1 kg base. Under Protein Engine v2 those formulas
+ * score 3-6, two of the six opened with native band violations, and the very
+ * first Preview immediately pulled them down to roughly 8-10 % protein. A new
+ * Protein user must not start from a formula the Engine itself considers
+ * overloaded.
+ *
+ * These grams are the OUTPUT of the current v2 optimizer, not a chosen protein
+ * number. Each was produced by running `buildOptimizePreview` under normal
+ * Protein authority and taking the practicalized whole-gram candidate, then
+ * re-searched from an unbiased grid of starting compositions (protein 55-130 g,
+ * fat carrier 0-140 g, four sugar splits) to confirm the optimum is genuine
+ * rather than an artefact of the old seed's shape. Every route/temperature
+ * converged on the same answer.
+ *
+ * Protein % remains an OUTPUT. The resulting 7.97-10.03 % band is the region the
+ * Engine proves works — it is an observed result, never a target, and nothing
+ * in the runtime reads these percentages back as an objective.
+ *
+ * Each seed is verified in `proteinStarterV2.test.ts`: sums to the 1000 g base,
+ * zero native violations, earns the EU HIGH PROTEIN claim on the executable
+ * whole-gram recipe, and scores materially better than the v1 formula it
+ * replaces.
+ */
+const PROTEIN_SEEDS: readonly ProteinTemplateSeed[] = [
+  // DAIRY — calibrated against the compositions the SERVED starter actually
+  // resolves. The first cut was derived against the built-in toolbox payloads
+  // and landed −11 at NPAC 33.15, only 0.15 above the band floor; the canonical
+  // Mapper cream/sugar/stabiliser rows differ just enough to push the same
+  // grams to 32.72, i.e. out of band, and staging showed Score 6. These grams
+  // are the optimizer's output on the real products, selected for the largest
+  // distance to the nearest band edge so a small composition delta cannot tip
+  // them out again.
+  //
+  // −11: protein 9.53 %, 21.1 % of energy, NPAC 39.0 mid-band (33-42), Score 10.
+  // The −11 NPAC band is the lowest of the three, so the Engine drops milk —
+  // milk lactose raises freezing depression — and carries fat on cream instead.
+  {
+    route: 'dairy',
+    temperatureC: -11,
+    liquid: 0,
+    fat: 244,
+    protein: 112,
+    water: 474,
+    sucrose: 77,
+    dextrose: 91,
+  },
+  // −12: protein 8.47 %, 20.3 % of energy, NPAC 45.4 (42-50), Score 10.
+  {
+    route: 'dairy',
+    temperatureC: -12,
+    liquid: 522,
+    fat: 114,
+    protein: 81,
+    water: 104,
+    sucrose: 71,
+    dextrose: 106,
+  },
+  // −13: protein 9.9 %, 20.5 % of energy, NPAC 51.6 mid-band (48-55), Score 10.
+  //
+  // Deliberately chosen to be legal under BOTH composition sets. The repo's own
+  // starter path resolves the static toolbox payloads while the served app
+  // rehydrates canonical Mapper rows, and the two differ enough to move NPAC by
+  // roughly 1.3 points. An earlier −13 candidate sat at NPAC 48.27 on the
+  // toolbox set — inside the band there, but 46.94 served, i.e. OUT, which
+  // staging showed as a Score 7 starter. This seed was searched against both
+  // sets simultaneously and scores 10 on each (NPAC 51.59 served / 52.36 repo),
+  // with the largest available distance to the nearest band edge.
+  {
+    route: 'dairy',
+    temperatureC: -13,
+    liquid: 440,
+    fat: 195,
+    protein: 100,
+    water: 83,
+    sucrose: 50,
+    dextrose: 130,
+  },
+  // PLANT — these three resolve PI-ING-* rows whose composition is identical in
+  // every path, so they needed no re-derivation.
+  // −11: protein 9.52 %, 20.4 % of energy, Score 10.
+  {
+    route: 'plant',
+    temperatureC: -11,
+    liquid: 480,
+    fat: 67,
+    protein: 111,
+    water: 185,
+    sucrose: 114,
+    dextrose: 41,
+  },
+  // −12: protein 7.98 %, 20.3 % of energy, Score 10.
+  {
+    route: 'plant',
+    temperatureC: -12,
+    liquid: 403,
+    fat: 50,
+    protein: 93,
+    water: 298,
+    sucrose: 2,
+    dextrose: 152,
+  },
+  // −13: protein 8.47 %, 20.1 % of energy, Score 10.
+  {
+    route: 'plant',
+    temperatureC: -13,
+    liquid: 377,
+    fat: 46,
+    protein: 99,
+    water: 288,
+    sucrose: 46,
+    dextrose: 142,
+  },
+];
+
+const proteinTemplate = (
+  seed: ProteinTemplateSeed,
+  strategy: ProteinFlavorStrategy,
+  mainRole: FunctionalRole | null,
+): FormulationTemplate => ({
+  templateId: `protein_${seed.route}_${strategy}_minus${Math.abs(seed.temperatureC)}_v1`,
+  category: 'protein_gelato',
+  temperatureC: seed.temperatureC,
+  proteinFlavorStrategy: strategy,
+  proteinRoute: seed.route,
+  status: 'approved',
+  approvalSource:
+    'owner Protein Gelato closeout; Protein Engine v2 derived starter; exact verified Mapper protein identities; owner-approved Standard serving physics',
+  baseBatchG: 1000,
+  roles: [
+    ...(mainRole ? [T(mainRole, 0, null)] : []),
+    ...(seed.route === 'dairy'
+      ? [
+          T('primary_liquid', seed.liquid, 'milk_3_5'),
+          T('dairy_fat', seed.fat, 'cream_30'),
+          T('protein_source', seed.protein, 'PI-ING-000264'),
+          T('water', seed.water, 'water'),
+        ]
+      : [
+          T('plant_liquid', seed.liquid, 'PI-ING-001565'),
+          T('plant_fat', seed.fat, 'PI-ING-000163'),
+          T('protein_source', seed.protein, 'PI-ING-000452'),
+          T('water', seed.water, 'water'),
+        ]),
+    T('sweetener_sucrose', seed.sucrose, 'sucrose'),
+    T('sugar_freezing_control', seed.dextrose, 'dextrose'),
+    // Exact Mapper Tara minimum: 0.2% of a 1000 g mix. Never MyGelato 0 g.
+    T('stabilizer', 2, 'tara_gum', false),
+  ],
+});
+
+const PROTEIN_TEMPLATES: readonly FormulationTemplate[] = PROTEIN_SEEDS.flatMap((seed) =>
+  PROTEIN_STRATEGIES.map(({ strategy, mainRole }) => proteinTemplate(seed, strategy, mainRole)),
+);
+/**
+ * fruit_gelato_ref_v1 — REFERENCE-DERIVED, QUARANTINED (owner addendum item 2).
+ * The repo's raspberry-premium reference proportions (goldenRecipes QA fixture:
  * fruit 350 / milk 380 / cream 80 / smp 40 / sucrose 110 / dextrose 35 / tara 5).
- * Explicitly labelled per the Phase 8 contract; included for owner review.
+ * NOT approved science, deliberately kept OUT of `RUNTIME_REGISTRY`: it exists
+ * only so tests, diagnostics and the Apply door's trustless provenance
+ * re-derivation can still resolve the id. No runtime path can select it.
  */
 const FRUIT_GELATO_M11: FormulationTemplate = {
   templateId: 'fruit_gelato_ref_v1',
   category: 'fruit_gelato',
   temperatureC: -11,
   status: 'reference_derived',
-  approvalSource: 'goldenRecipes.ts raspberry-premium proportions (QA fixture — reference-derived, staging-only)',
+  approvalSource:
+    'goldenRecipes.ts raspberry-premium proportions (QA fixture — reference-derived, staging-only)',
   baseBatchG: 1000,
   roles: [
     T('fruit', 350, null),
@@ -194,36 +521,161 @@ const FRUIT_GELATO_M11: FormulationTemplate = {
   ],
 };
 
-const REGISTRY: readonly FormulationTemplate[] = [
-  GELATO_M11, GELATO_M12, GELATO_M13,
+/**
+ * THE RUNTIME REGISTRY (owner addendum item 2): the ONLY list a runtime lookup
+ * scans. Every entry is `status: 'approved'` — pinned structurally by
+ * `templateQuarantine.test.ts`, so a non-approved template cannot be added here
+ * by accident in the future.
+ */
+const RUNTIME_REGISTRY: readonly FormulationTemplate[] = [
+  GELATO_M11,
+  GELATO_M12,
+  GELATO_M13,
   CHOCOLATE_M11,
-  SORBET_M11, SORBET_M12, SORBET_M13,
-  VEGAN_M13,
-  FRUIT_GELATO_M11,
+  ...PROTEIN_TEMPLATES,
+  SORBET_M11,
+  SORBET_M12,
+  SORBET_M13,
+  ...VEGAN_TEMPLATES,
+];
+
+/** QUARANTINED templates: resolvable BY ID for tests / diagnostics / the Apply
+ * door's provenance re-derivation, NEVER selectable by a runtime lookup. */
+const QUARANTINED_TEMPLATES: readonly FormulationTemplate[] = [FRUIT_GELATO_M11];
+
+/** Approved + quarantined — the complete id space (id resolution only). */
+const ALL_TEMPLATES: readonly FormulationTemplate[] = [
+  ...RUNTIME_REGISTRY,
+  ...QUARANTINED_TEMPLATES,
 ];
 
 export interface TemplateLookup {
   template: FormulationTemplate | null;
   /** Honest reason when null. */
-  unsupportedReason:
-    | 'no_template_for_category'
-    | 'no_template_for_temperature'
-    | null;
+  unsupportedReason: 'no_template_for_category' | 'no_template_for_temperature' | null;
 }
 
-/** Resolve the formulation seed for a category × serving temperature. Protein
- * and any unknown category are honestly unsupported — never routed elsewhere. */
+/** Resolve the neutral formulation seed for a category × serving temperature.
+ * Protein is present in the approved registry; recipe-aware Protein route and
+ * flavour selection is refined by `selectFormulationTemplateForRecipe` below.
+ * Any unknown category is honestly unsupported — never routed elsewhere.
+ *
+ * Owner addendum item 2: scans `RUNTIME_REGISTRY` ONLY, so this function is
+ * structurally incapable of returning a non-approved template. */
 export function selectFormulationTemplate(
   category: ProductCategory,
   temperatureC: number,
 ): TemplateLookup {
-  const forCategory = REGISTRY.filter((t) => t.category === category);
-  if (forCategory.length === 0) return { template: null, unsupportedReason: 'no_template_for_category' };
-  const exact = forCategory.find((t) => t.temperatureC === temperatureC);
+  const forCategory = RUNTIME_REGISTRY.filter((t) => t.category === category);
+  if (forCategory.length === 0)
+    return { template: null, unsupportedReason: 'no_template_for_category' };
+  const exact = forCategory.find(
+    (t) =>
+      t.temperatureC === temperatureC &&
+      (category !== 'vegan_gelato' || t.veganFlavorStrategy === 'neutral'),
+  );
   if (exact) return { template: exact, unsupportedReason: null };
   return { template: null, unsupportedReason: 'no_template_for_temperature' };
 }
 
+export function veganFlavorStrategyForRecipe(input: RecipeInput): VeganFlavorStrategy {
+  if (input.category !== 'vegan_gelato') return 'neutral';
+  const mains = input.items.filter((item) => item.lock_type === 'main' && item.planned_grams > 0);
+  const mainRoles = mains.map((item) => resolveFunctionalRole(item.ingredient));
+  if (mains.length > 1) {
+    if (mainRoles.every((role) => role === 'fruit')) return 'mixed_main';
+    if (mainRoles.every((role) => role === 'nut_paste')) return 'nut';
+    if (mainRoles.every((role) => role === 'chocolate_cocoa')) return 'cocoa';
+    return 'unsupported_mixed_main';
+  }
+  const role = mainRoles[0] ?? null;
+  if (role === 'fruit') return 'fruit';
+  if (role === 'nut_paste') return 'nut';
+  if (role === 'chocolate_cocoa') return 'cocoa';
+  return 'neutral';
+}
+
+export function proteinFlavorStrategyForRecipe(input: RecipeInput): ProteinFlavorStrategy {
+  const mains = input.items.filter((item) => item.lock_type === 'main' && item.planned_grams > 0);
+  if (mains.length > 1) return 'mixed_main';
+  const main = mains[0];
+  if (!main) return 'neutral';
+  const role = resolveFunctionalRole(main.ingredient);
+  if (role === 'fruit') return 'fruit';
+  if (role === 'nut_paste') return 'nut';
+  if (role === 'chocolate_cocoa') return 'cocoa';
+  if (canonicalIngredientId(main.ingredient) === 'PI-ING-000166') return 'coffee';
+  return 'neutral';
+}
+
+export function proteinRouteForRecipe(input: RecipeInput): ProteinRoute {
+  if (input.goals?.dietary?.includes('vegan')) return 'plant';
+  const selectedPlantProtein = input.items.some(
+    (item) =>
+      resolveFunctionalRole(item.ingredient) === 'protein_source' &&
+      item.ingredient.flags?.vegan_eligibility === 'VEGAN_VERIFIED',
+  );
+  return selectedPlantProtein ? 'plant' : 'dairy';
+}
+
+export function selectFormulationTemplateForRecipe(input: RecipeInput): TemplateLookup {
+  if (input.category === 'protein_gelato') {
+    const strategy = proteinFlavorStrategyForRecipe(input);
+    const route = proteinRouteForRecipe(input);
+    const template = RUNTIME_REGISTRY.find(
+      (candidate) =>
+        candidate.category === 'protein_gelato' &&
+        candidate.temperatureC === input.target_temperature_c &&
+        candidate.proteinFlavorStrategy === strategy &&
+        candidate.proteinRoute === route,
+    );
+    return template
+      ? { template, unsupportedReason: null }
+      : { template: null, unsupportedReason: 'no_template_for_temperature' };
+  }
+  if (input.category !== 'vegan_gelato') {
+    return selectFormulationTemplate(input.category, input.target_temperature_c);
+  }
+  const strategy = veganFlavorStrategyForRecipe(input);
+  const template = RUNTIME_REGISTRY.find(
+    (candidate) =>
+      candidate.category === 'vegan_gelato' &&
+      candidate.temperatureC === input.target_temperature_c &&
+      candidate.veganFlavorStrategy === strategy,
+  );
+  return template
+    ? { template, unsupportedReason: null }
+    : { template: null, unsupportedReason: 'no_template_for_temperature' };
+}
+
+/** The runtime-selectable templates (approved only). */
 export function listFormulationTemplates(): readonly FormulationTemplate[] {
-  return REGISTRY;
+  return RUNTIME_REGISTRY;
+}
+
+/** The quarantined, NON-runtime templates (diagnostics / tests / ledger only). */
+export function listQuarantinedTemplates(): readonly FormulationTemplate[] {
+  return QUARANTINED_TEMPLATES;
+}
+
+/**
+ * Resolve a template BY ID across approved AND quarantined entries.
+ *
+ * Owner addendum item 2 — this is what makes the Apply door TRUSTLESS: the door
+ * never believes a preview's `templateStatus` field, it re-reads the status from
+ * this registry (the source of truth) using only the template id carried by the
+ * proposal. `null` = an id that exists in no registry at all, which the door
+ * must also treat as non-approved provenance.
+ */
+export function findFormulationTemplateById(templateId: string): FormulationTemplate | null {
+  return ALL_TEMPLATES.find((t) => t.templateId === templateId) ?? null;
+}
+
+/**
+ * TRUSTLESS provenance predicate for the Apply door (owner addendum item 2):
+ * TRUE only when `templateId` names a template that really carries
+ * `status: 'approved'` in this registry. An unknown id is NOT approved.
+ */
+export function isApprovedTemplateId(templateId: string): boolean {
+  return findFormulationTemplateById(templateId)?.status === 'approved';
 }

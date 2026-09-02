@@ -6,23 +6,72 @@
 @theme {
   /* Surfaces */
   --color-paper: #ffffff;
-  --color-ink: #101113;
-  --color-ink-soft: #1a1c20;
+  --color-ink: #191a1d;
+  --color-ink-soft: #25272b;
 
   /* Brand shell (Phase 6C) — global black AI-first surface + mega-menu layers */
   --color-shell: #1a1a1a;
   --color-shell-raised: #232323;
+
+  /* Dark professional workspace (Masterpiece Phase 4/5) — the canonical Pro identity.
+     Deep graphite BELOW the shell tone, so the engine lab (#1a1a1a) reads as a slightly
+     ELEVATED dark surface inside the workspace instead of a dark island on white. */
+  --color-graphite: #131417;
+  --color-graphite-raised: #1d1e22;
+
+  /* Charcoal SURFACE token (UX repair, owner P0 2026-07-24) — the fill of the deep
+     charcoal contrast panels (CharcoalPanel, Monitor Pro, dark status chips). On light
+     routes it equals ink (#101113) so nothing changes visually; inside `.theme-pro-dark`
+     it stays a DARK elevated surface (graphite-raised) while `--color-ink` flips to
+     ivory for text/actions. This is what prevents the ivory-on-ivory washout: surface
+     fills must NEVER ride the text token. */
+  --color-charcoal: #191a1d;
   /* Translucent ivory used for nav hover/active pills + hairlines on the shell */
   --color-shell-line: #efe9dc1f;
 
   /* Brand */
-  --color-ivory: #efe9dc;
-  --color-ivory-soft: #efe9dca3;
+  --color-ivory: #efe8dc;
+  --color-ivory-soft: #efe8dca3;
+  /* Educational diagrams stay pale ivory even inside the light Pro theme,
+     where the historical `ivory` text token is intentionally remapped to ink. */
+  --color-education-ivory: #efe8dc;
+
+  /* Pro Apple 2.0 — one calm material system. Warm surfaces organise the
+     intelligence pane; graphite is reserved for a small number of decisive
+     cards and actions, never used as generic decoration. */
+  --color-pro-warm: #f6f4ef;
+  --color-pro-warm-raised: #fbfaf7;
+  --color-pro-line: #dcd8cf;
+  --color-pro-graphite: #191a1d;
+  --color-pro-sage: #e8ece5;
+  --color-pro-amber: #f2eadc;
+  --color-pro-terracotta: #efe2dd;
+  --color-gellatti-orange: #f58a07;
 
   /* Status — desaturated, laboratory-grade (never bright) */
   --color-status-ideal: #6f7d63;
   --color-status-risky: #9c8a55;
   --color-status-error: #a06352;
+
+  /* Owner review marker (Masterpiece Phase 3) — the ONLY saturated red in the system.
+     Staging/owner-QA `DO PRZEGLĄDU` badges exclusively; never a customer-facing status. */
+  --color-review: #b3261e;
+
+  /* Non-production data marker (Agent 4 fixture sweep, 2026-07-24) — the ONLY pink
+     in the system. `TESTOWE / NIEPRODUKCYJNE` badges exclusively: surfaces serving
+     fixture/sample/demo/reference data until the real data source replaces them.
+     Deep magenta, AA (≥4.5:1) as text on white paper. */
+  --color-nonproduction-pink: #a8256b;
+  --color-nonprod: var(--color-nonproduction-pink);
+  /* The SAME marker for dark shell surfaces (for example /recipes) —
+     lightened for ≥4.5:1 on #1a1a1a; still marker-only, never decoration. */
+  --color-nonprod-soft: #f082b4;
+
+  /* Attention accent (Masterpiece Phase 4) — replaces ad-hoc amber-* leaks for
+     "pending / unsaved / requires attention" copy. Desaturated, AA on paper. */
+  --color-attention: #8a5a2a;
+  /* The same attention accent for dark surfaces (AA on shell). */
+  --color-attention-soft: #cf9a5c;
 
   /* Golden Range — the brand's signature OPTIMUM accent (UIUX spec §15.3, §21.1).
      Owner decision (Slice A): gold marks the golden range / optimum ONLY — never
@@ -34,11 +83,115 @@
   --color-gold-soft: #c2a05e;
 
   /* Typography */
-  --font-sans:
-    'Hanken Grotesk Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-sans: 'Manrope Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', 'Segoe UI Mono', monospace;
 
   /* Wide tracking for uppercase section labels (echoes the wordmark) */
-  --tracking-label: 0.18em;
+  --tracking-label: 0.08em;
   --tracking-wordmark: 0.32em;
+
+  /* Pro Studio geometry — every rectangular surface/control uses one calm,
+     contemporary corner. True circular controls keep `rounded-full`. */
+  --radius-pro-studio: 0.75rem;
+
+  /* Canonical Pro elevation system. E0–E3 are the only product-surface depths. */
+  --shadow-pro-e0: none;
+  --shadow-pro-e1: 0 1px 2px rgb(16 17 19 / 0.05), 0 8px 20px rgb(16 17 19 / 0.06);
+  --shadow-pro-e2: 0 2px 5px rgb(16 17 19 / 0.07), 0 20px 54px rgb(16 17 19 / 0.12);
+  --shadow-pro-e3: 0 8px 18px rgb(16 17 19 / 0.12), 0 28px 72px rgb(16 17 19 / 0.24);
+  /* Compatibility aliases for accepted components; both resolve to E1/E2. */
+  --shadow-pro-sm: var(--shadow-pro-e1);
+  --shadow-pro-md: var(--shadow-pro-e2);
+}
+
+/* ── ONE application geometry (global UI unification, owner 2026-08-23) ────────
+   The Pro workbench (/pro/production) is the visual master. Its geometry tokens
+   used to live inside `.theme-pro-light`, so every screen outside the workbench
+   silently invented its own page origin, gutters and header height. They are
+   promoted to :root here so the shell, the destinations, the recipe library and
+   the mobile surfaces all measure from the SAME numbers. Presentation only —
+   no engine, pricing or persistence value depends on them. */
+:root {
+  /* Horizontal breathing room between the viewport edge and the workspace. */
+  --pro-page-gutter: clamp(2rem, 4vw, 4rem);
+  /* Gap between the editor column and the intelligence column. */
+  --pro-workbench-gap: clamp(0.75rem, 1.4vw, 1.5rem);
+  /* Dialogs keep clear of notches/rounded corners. */
+  --pro-dialog-gutter: max(0.5rem, env(safe-area-inset-left));
+  /* The ONE authenticated workspace width (the Production master). */
+  --pro-app-max-width: 1776px;
+  /* The reading measure for text-first sections INSIDE the workspace. They stay
+     left-aligned to the workspace origin so the page never appears to shift. */
+  --pro-content-measure: 72rem;
+  /* Compact gutters below the workbench breakpoint (phones/tablets). */
+  --pro-mobile-gutter: 1rem;
+  /* One header height, identical on every authenticated screen. */
+  --pro-header-height: 82px;
+  /* The header's top padding carries the notch inset. The floor UNDER that
+     inset belongs to the short header only: below the workbench breakpoint the
+     header sizes to its content and needs the 8 px, which is why the inline
+     `max(env(safe-area-inset-top), …)` exists at all. At `xl` the header is a
+     fixed 82 px declared with `xl:py-0`, and an inline floor there silently
+     outranks that utility — an inline style beats every class — pushing the
+     whole header band 8 px down and past its own bottom edge. */
+  --app-header-top-floor: 0.5rem;
+  /* The workbench header is 90 px in the approved preview; destinations stay 82. */
+  --pro-workbench-header-height: 90px;
+  /* Mobile preview navigation bar (Receptura/Monitor/Produkcja/Etykieta). */
+  --pro-bottom-nav-height: 3.5rem;
+}
+
+/* The notch inset still applies at every width; only its floor is dropped where
+   the header's height is fixed. On a device with a real inset the value simply
+   wins the `max()` as before. */
+@media (min-width: 1280px) {
+  :root {
+    --app-header-top-floor: 0px;
+  }
+}
+
+/* ── Gellatti V2.1 approved visual authority ───────────────────────────────
+   Measured 1:1 from the owner-approved interactive preview
+   (`gellatti-global-page-preview-gate-20260828-v2-1`). Presentation only: no
+   engine, solver, pricing, persistence or gating value reads any of these.
+   The names mirror the preview's own vocabulary so a future comparison can be
+   made against the same source. */
+:root {
+  /* Palette — the exact preview values. */
+  --g-ink: #101113;
+  --g-graphite: #191a1d;
+  --g-line: #ded9d0;
+  --g-line-strong: #cfcac1;
+  --g-line-quiet: #e2ded7;
+  --g-text-muted: #77736c;
+  --g-text-secondary: #65635f;
+  --g-text-field-label: #6f6b64;
+  --g-text-price: #5e5a54;
+  --g-lock: #5f5b55;
+  --g-ivory: #fbfaf7;
+  --g-ivory-deep: #f6f4ef;
+  --g-stepper-face: #f7f5f0;
+  --g-orange: #f58a07;
+  --g-score-green: #3f9b58;
+  --g-rail-track: #d9d5ce;
+  --g-progress-track: #e5e1da;
+  --g-progress-fill: #5d735f;
+  --g-attention-surface: #fffaf3;
+  --g-attention-ink: #8a5300;
+  --g-preflight-surface: #fff9ed;
+  --g-drag: #aaa59d;
+  --g-menu-dots: #6f6b64;
+
+  /* Workbench geometry — the preview's own numbers at the 1440 px reference. */
+  --g-gutter: 12px;
+  --g-split-gap: 12px;
+  --g-side-width: clamp(370px, 36.111vw, 520px);
+  --g-workbench-header: 90px;
+  --g-card-radius: 10px;
+  --g-control-radius: 9px;
+  --g-row-height: 54px;
+  --g-row-height-attention: 64px;
+  --g-monitor-row-height: 64px;
+  --g-field-height: 46px;
+  --g-stepper-height: 32px;
 }

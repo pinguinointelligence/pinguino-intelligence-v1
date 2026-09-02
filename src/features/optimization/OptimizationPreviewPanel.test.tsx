@@ -6,7 +6,10 @@ import { describe, expect, it } from 'vitest';
 import { copy } from '@/copy/en';
 import { SurfaceToneContext } from '@/components/ui/surface';
 import { OptimizationPreviewPanel } from './OptimizationPreviewPanel';
-import { optimizationDisplayPolicy, type OptimizationDisplayPolicy } from './optimizationPreviewPolicy';
+import {
+  optimizationDisplayPolicy,
+  type OptimizationDisplayPolicy,
+} from './optimizationPreviewPolicy';
 import type { OptimizationPreviewView } from './optimizationPreviewRunner';
 import type { OptimizationDecision } from '@/spine';
 
@@ -24,13 +27,46 @@ const view = (over: Partial<OptimizationPreviewView> = {}): OptimizationPreviewV
   intendedDecision: 'live',
   productProfile: 'standard_gelato',
   servingTemperatureC: -12,
-  beforeMetrics: { npac: 40, pod: 15, iceFraction: 50, water: 63, solids: 37, fat: 6, lactose: 5, lactoseSanding: 8, aeratingProtein: 3.7, proteinShareInSolids: 10, stabilizerGrams: 5 },
-  afterMetrics: { npac: 46, pod: 15.5, iceFraction: 51, water: 62, solids: 38, fat: 6, lactose: 5, lactoseSanding: 8, aeratingProtein: 3.7, proteinShareInSolids: 10, stabilizerGrams: 5 },
+  beforeMetrics: {
+    npac: 40,
+    pod: 15,
+    iceFraction: 50,
+    water: 63,
+    solids: 37,
+    fat: 6,
+    lactose: 5,
+    lactoseSanding: 8,
+    aeratingProtein: 3.7,
+    proteinShareInSolids: 10,
+    stabilizerGrams: 5,
+  },
+  afterMetrics: {
+    npac: 46,
+    pod: 15.5,
+    iceFraction: 51,
+    water: 62,
+    solids: 38,
+    fat: 6,
+    lactose: 5,
+    lactoseSanding: 8,
+    aeratingProtein: 3.7,
+    proteinShareInSolids: 10,
+    stabilizerGrams: 5,
+  },
   flowDecision: 'tradeoff',
   correctionGoals: ['increase_npac', 'increase_solids'],
   optimizerDecision: 'tradeoff',
   proposedCorrections: [
-    { goal: 'increase_npac', targetMetric: 'npac', direction: 'increase', affectedIngredientClasses: ['dextrose', 'sucrose'], goldenMiddleRank: 2, feasibility: 'feasible', constraintReason: 'levers within allowed families', warnings: [] },
+    {
+      goal: 'increase_npac',
+      targetMetric: 'npac',
+      direction: 'increase',
+      affectedIngredientClasses: ['dextrose', 'sucrose'],
+      goldenMiddleRank: 2,
+      feasibility: 'feasible',
+      constraintReason: 'levers within allowed families',
+      warnings: [],
+    },
   ],
   rejectedCorrections: [],
   proposedAdjustments: [{ type: 'add', ingredient: 'Dextrose', grams: 88.7 }],
@@ -74,11 +110,22 @@ const view = (over: Partial<OptimizationPreviewView> = {}): OptimizationPreviewV
     engineTemperatureFallback: true,
     engineCategoryFallback: false,
     comparisons: [
-      { metric: 'npac', engineMetric: 'npac', engineBand: [33, 42], shadowBand: [42, 50], centerDelta: 8, aligned: false },
+      {
+        metric: 'npac',
+        engineMetric: 'npac',
+        engineBand: [33, 42],
+        shadowBand: [42, 50],
+        centerDelta: 8,
+        aligned: false,
+      },
     ],
     solverTargetsCorrectBand: false,
     wouldTargetNpacCenter: 45.6,
-    warnings: ['engine_uses_temperature_fallback_band', 'target_bands_divergent', 'solver_not_targeting_regulator_band'],
+    warnings: [
+      'engine_uses_temperature_fallback_band',
+      'target_bands_divergent',
+      'solver_not_targeting_regulator_band',
+    ],
   },
   solverTargetMode: 'engine_seeded',
   solverTargetInjection: {
@@ -95,13 +142,28 @@ const view = (over: Partial<OptimizationPreviewView> = {}): OptimizationPreviewV
       { metric: 'npac', direction: 'low', value: 40, band: [42, 50], targetCenter: 46 },
     ],
     comparisons: [
-      { metric: 'npac', value: 40, engineBand: [33, 42], regulatorBand: [42, 50], engineViolation: false, shadowViolation: true, engineTargetCenter: 37.5, shadowTargetCenter: 46, targetCenterDelta: 8.5, changed: true },
+      {
+        metric: 'npac',
+        value: 40,
+        engineBand: [33, 42],
+        regulatorBand: [42, 50],
+        engineViolation: false,
+        shadowViolation: true,
+        engineTargetCenter: 37.5,
+        shadowTargetCenter: 46,
+        targetCenterDelta: 8.5,
+        changed: true,
+      },
     ],
     newViolationsUnderRegulator: ['npac'],
     resolvedViolationsUnderRegulator: [],
     correctionChanged: true,
     warnings: ['regulator_shadow_target_changes_correction', 'regulator_reveals_new_violations'],
-    trace: { engineSeededCount: 0, regulatorShadowCount: 1, regulatorProfile: 'standard_gelato_temperature_regulator' },
+    trace: {
+      engineSeededCount: 0,
+      regulatorShadowCount: 1,
+      regulatorProfile: 'standard_gelato_temperature_regulator',
+    },
   },
   engineSeededSolve: {
     active: true,
@@ -111,7 +173,19 @@ const view = (over: Partial<OptimizationPreviewView> = {}): OptimizationPreviewV
     decision: 'tradeoff',
     rerunState: 'rerun_complete',
     proposedAdjustments: [{ type: 'add', ingredient: 'Dextrose', grams: 88.7 }],
-    afterMetrics: { npac: 46, pod: 15.5, iceFraction: 51, water: 62, solids: 38, fat: 6, lactose: 5, lactoseSanding: 8, aeratingProtein: 3.7, proteinShareInSolids: 10, stabilizerGrams: 5 },
+    afterMetrics: {
+      npac: 46,
+      pod: 15.5,
+      iceFraction: 51,
+      water: 62,
+      solids: 38,
+      fat: 6,
+      lactose: 5,
+      lactoseSanding: 8,
+      aeratingProtein: 3.7,
+      proteinShareInSolids: 10,
+      stabilizerGrams: 5,
+    },
     correctedRecipeSnapshot: { items: [] },
     rerun: null,
     warnings: [],
@@ -124,7 +198,19 @@ const view = (over: Partial<OptimizationPreviewView> = {}): OptimizationPreviewV
     decision: 'tradeoff',
     rerunState: 'rerun_complete',
     proposedAdjustments: [{ type: 'add', ingredient: 'Dextrose', grams: 142.3 }],
-    afterMetrics: { npac: 49, pod: 15.6, iceFraction: 52, water: 61, solids: 39, fat: 6, lactose: 5, lactoseSanding: 8, aeratingProtein: 3.7, proteinShareInSolids: 10, stabilizerGrams: 5 },
+    afterMetrics: {
+      npac: 49,
+      pod: 15.6,
+      iceFraction: 52,
+      water: 61,
+      solids: 39,
+      fat: 6,
+      lactose: 5,
+      lactoseSanding: 8,
+      aeratingProtein: 3.7,
+      proteinShareInSolids: 10,
+      stabilizerGrams: 5,
+    },
     correctedRecipeSnapshot: { items: [] },
     rerun: null,
     warnings: [],
@@ -142,7 +228,10 @@ const view = (over: Partial<OptimizationPreviewView> = {}): OptimizationPreviewV
 
 const demoPolicy = optimizationDisplayPolicy({ exactCorrectionGrams: false, technicalView: false });
 const proPolicy = optimizationDisplayPolicy({ exactCorrectionGrams: true, technicalView: true });
-const devPolicy = optimizationDisplayPolicy({ exactCorrectionGrams: false, technicalView: false }, { dev: true });
+const devPolicy = optimizationDisplayPolicy(
+  { exactCorrectionGrams: false, technicalView: false },
+  { dev: true },
+);
 
 describe('OptimizationPreviewPanel — redaction', () => {
   it('Free/Demo hides exact grams, lever ingredient classes and before/after numbers', () => {
@@ -152,9 +241,9 @@ describe('OptimizationPreviewPanel — redaction', () => {
     expect(/dextrose/i.test(html)).toBe(false); // no lever ingredient names
     expect(html).not.toContain('46.00'); // no numeric before/after
     // shows the safe, high-level view instead
-    expect(text).toMatch(/tradeoff/);
-    expect(text).toMatch(/increase npac/); // directional goal (no numbers, no ingredient)
-    expect(text).toMatch(/available on Pro/);
+    expect(text).toMatch(/Korekta z kompromisem/);
+    expect(text).toMatch(/zwiększ NPAC/); // directional goal (no numbers, no ingredient)
+    expect(text).toMatch(/dostępne w Gellatti Pro/);
   });
 
   it('Pro shows the exact correction grams, the correction plan and before/after metrics', () => {
@@ -163,7 +252,7 @@ describe('OptimizationPreviewPanel — redaction', () => {
     expect(/dextrose/i.test(html)).toBe(true); // lever ingredient classes
     expect(html).toContain('40.00'); // before metric
     expect(html).toContain('46.00'); // after metric
-    expect(html).not.toContain('available on Pro');
+    expect(html).not.toContain('dostępne w Gellatti Pro');
   });
 
   it('DEV shows the debug trace but still respects a demo viewer’s redaction', () => {
@@ -178,69 +267,75 @@ describe('OptimizationPreviewPanel — redaction', () => {
   it('shows the temperature-aware target source in every tier (instrumentation, not a correction secret)', () => {
     for (const policy of [demoPolicy, proPolicy, devPolicy]) {
       const t = visibleText(render(view(), policy));
-      expect(t).toMatch(/solver target:/);
-      expect(t).toMatch(/not connected/); // the base view is a −12 not-connected fallback
+      expect(t).toMatch(/Zakres docelowy/);
+      expect(t).toMatch(/wymaga weryfikacji dla tej temperatury/);
     }
   });
 
   it('shows the shadow engine-vs-regulator band comparison, labelled not-live', () => {
     const t = visibleText(render(view(), demoPolicy));
-    expect(t).toMatch(/shadow bands \(not live/);
-    expect(t).toMatch(/temperature_regulator_shadow/);
-    expect(t).toMatch(/engine npac 33–42 vs regulator 42–50/);
-    expect(t).toMatch(/divergent/);
+    expect(t).toMatch(/Porównanie zakresu NPAC/);
+    expect(t).not.toMatch(/temperature_regulator_shadow/);
+    expect(t).toMatch(/bieżący 33–42 \/ dodatkowy 42–50/);
+    expect(t).toMatch(/różnica środka/);
   });
 
   it('shows the injected regulator-shadow solver target in every tier with the comparison caveat', () => {
     for (const policy of [demoPolicy, proPolicy, devPolicy]) {
       const t = visibleText(render(view(), policy));
-      expect(t).toMatch(/regulator-shadow solver target/);
-      expect(t).toMatch(/would change the correction/);
+      expect(t).toMatch(/Dodatkowe porównanie zakresu/);
+      expect(t).toMatch(/zmieniłoby korektę/);
       // CONFIG 0.6.0: the old "global engine target bands unchanged" claim is
       // retired — the live bands ARE temperature-aware now.
-      expect(t).toMatch(/Comparison only — engine target bands are temperature-aware/);
+      expect(t).toMatch(/tylko informacyjnie/);
       expect(t).not.toMatch(/global engine target bands unchanged/);
     }
   });
 
   it('Pro shows the numeric engine→regulator solver-target comparison; Demo hides it', () => {
     const proText = visibleText(render(view(), proPolicy));
-    expect(proText).toMatch(/engine-seeded → regulator-shadow/);
+    expect(proText).toMatch(/Zakres bieżący → dodatkowy/);
     expect(proText).toMatch(/33–42/); // engine band
     expect(proText).toMatch(/42–50/); // regulator band
     // Demo: no numeric band comparison block (technical view gated)
     const demoText = visibleText(render(view(), demoPolicy));
-    expect(demoText).not.toMatch(/engine-seeded → regulator-shadow/);
+    expect(demoText).not.toMatch(/Zakres bieżący → dodatkowy/);
   });
 
   it('shows the regulator-shadow gram-solve summary in every tier (no grams in the summary)', () => {
     for (const policy of [demoPolicy, proPolicy, devPolicy]) {
       const t = visibleText(render(view(), policy));
-      expect(t).toMatch(/regulator-shadow gram solve: tradeoff/);
-      expect(t).toMatch(/differs from engine-seeded/);
+      expect(t).toMatch(/Dodatkowe przeliczenie: Korekta z kompromisem/);
+      expect(t).toMatch(/inna korekta/);
     }
   });
 
-  it('Demo hides both solves\' exact grams; Pro shows the engine-seeded + regulator-shadow gram comparison', () => {
+  it("Demo hides both solves' exact grams; Pro shows the engine-seeded + regulator-shadow gram comparison", () => {
     const demo = render(view(), demoPolicy);
     expect(demo).not.toContain('88.7'); // engine-seeded grams hidden
     expect(demo).not.toContain('142.3'); // regulator-shadow grams hidden
     expect(/dextrose/i.test(demo)).toBe(false);
     const pro = render(view(), proPolicy);
-    expect(pro).toContain('engine-seeded solver added');
+    expect(pro).toContain('Gellatti proponuje');
     expect(pro).toContain('88.7');
-    expect(pro).toContain('regulator-shadow solver added');
+    expect(pro).toContain('Dodatkowe porównanie proponuje');
     expect(pro).toContain('142.3');
   });
 });
 
 describe('OptimizationPreviewPanel — decision states', () => {
-  it.each(['optimized', 'tradeoff', 'impossible', 'blocked', 'no_action_needed'] as OptimizationDecision[])(
+  it.each([
+    ['optimized', 'Gotowa bezpieczna korekta'],
+    ['tradeoff', 'Korekta z kompromisem'],
+    ['impossible', 'Brak bezpiecznej korekty'],
+    ['blocked', 'Ocena zablokowana'],
+    ['no_action_needed', 'Korekta niepotrzebna'],
+  ] as const satisfies readonly (readonly [OptimizationDecision, string])[])(
     'renders the %s decision with its recommendation',
-    (decision) => {
+    (decision, label) => {
       const html = render(view({ finalDecision: decision }), demoPolicy);
       const text = visibleText(html);
-      expect(text).toMatch(new RegExp(decision.replace(/_/g, ' ')));
+      expect(text).toContain(label);
       expect(text.length).toBeGreaterThan(20);
     },
   );
@@ -259,7 +354,9 @@ describe('OptimizationPreviewPanel — boundary + Studio gating', () => {
       expect(/@\/engine|mapper_basement|@\/services\/|@\/data\/products/.test(src)).toBe(false);
       expect(/calculateRecipe\s*\(|proposeAutoFix|applyAutoFix/.test(src)).toBe(false); // no engine call
       expect(/saveRecipe|persistRecipe|\.save\(/i.test(src)).toBe(false);
-      expect(/pac_value\s*[:=]|pod_value\s*[:=]|setProductLifecycleStatus|pi_calculated/.test(src)).toBe(false);
+      expect(
+        /pac_value\s*[:=]|pod_value\s*[:=]|setProductLifecycleStatus|pi_calculated/.test(src),
+      ).toBe(false);
       for (const verb of ['.insert(', '.update(', '.upsert(', '.delete(', '.from(']) {
         expect(src.includes(verb), verb).toBe(false);
       }
@@ -284,7 +381,9 @@ describe('OptimizationPreviewPanel — boundary + Studio gating', () => {
   });
 
   it('is capability-gated by the display policy (demo/free redacted, Pro full)', () => {
-    expect(/optimizationDisplayPolicy\(\s*\{\s*exactCorrectionGrams,\s*technicalView\s*\}/.test(studio)).toBe(true);
+    expect(
+      /optimizationDisplayPolicy\(\s*\{\s*exactCorrectionGrams,\s*technicalView\s*\}/.test(studio),
+    ).toBe(true);
   });
 
   it('keeps the DEV debug trace gated to dev builds only (never forced on in production)', () => {
@@ -293,7 +392,7 @@ describe('OptimizationPreviewPanel — boundary + Studio gating', () => {
   });
 
   it('requires an explicit click and never auto-optimizes', () => {
-    expect(/onClick=\{[\s\S]*?setOptimizationView\(previewOptimization/.test(studio)).toBe(true);
+    expect(/onClick=\{[\s\S]*?setOptimizationView\(\s*previewOptimization/.test(studio)).toBe(true);
   });
 
   it('shows the production safety disclaimers (CONFIG 0.6.0 wording, Polish copy)', () => {
@@ -301,13 +400,13 @@ describe('OptimizationPreviewPanel — boundary + Studio gating', () => {
     // surface renders it and the COPY carries the safety claims verbatim.
     expect(studio.includes('studio.optimization.note')).toBe(true);
     const note = copy.studio.optimization.note;
-    expect(note).toContain('Tylko podgląd');
-    expect(note).toContain('korekty nie są stosowane automatycznie');
+    expect(note).toContain('To tylko podgląd');
+    expect(note).toContain('nic nie jest zapisywane ani stosowane automatycznie');
     // the live bands ARE temperature-aware now — the claim stays present, the old one gone
-    expect(note).toContain('Zakresy silnika uwzględniają temperaturę serwowania');
-    expect(note).toContain('porównanie z trybem regulatora pozostaje dostępne');
+    expect(note).toContain('Obliczenia uwzględniają temperaturę serwowania');
+    expect(note).toContain('dodatkowe porównanie pozostaje dostępne');
     expect(/global engine target bands unchanged/.test(studio)).toBe(false);
-    expect(copy.studio.optimization.proOnly).toContain('Dokładne gramatury dostępne');
+    expect(copy.studio.optimization.proOnly).toContain('Dokładne gramatury są dostępne');
   });
 
   it('never saves / persists / applies a correction from the Studio preview', () => {
@@ -318,7 +417,9 @@ describe('OptimizationPreviewPanel — boundary + Studio gating', () => {
 
   it('the Studio source touches no DB / Supabase / Mapper / pac-pod / product status', () => {
     expect(/supabase|service_role|mapper_basement/i.test(studio)).toBe(false);
-    expect(/pac_value\s*[:=]|pod_value\s*[:=]|setProductLifecycleStatus|pi_calculated/.test(studio)).toBe(false);
+    expect(
+      /pac_value\s*[:=]|pod_value\s*[:=]|setProductLifecycleStatus|pi_calculated/.test(studio),
+    ).toBe(false);
     for (const v of ['.insert(', '.update(', '.upsert(', '.delete(']) {
       expect(studio.includes(v), v).toBe(false);
     }

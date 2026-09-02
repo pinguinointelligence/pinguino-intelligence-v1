@@ -121,7 +121,7 @@ function ViolationChips({ analysis }: { analysis: ConstraintFeasibilityAnalysis 
   if (analysis.status === 'invalid_constraints') return null;
   if (analysis.violationsBefore.length === 0) return null;
   return (
-    <p className="mt-2 text-[0.7rem] tracking-[0.04em] text-ivory/40 uppercase">
+    <p className="mt-2 text-[0.7rem] tracking-[0.04em] text-ivory/60 uppercase">
       {copy.feasibility.violationsIntro} {analysis.violationsBefore.length}
     </p>
   );
@@ -217,7 +217,7 @@ export function FeasibilityNotice({
         <p className="mt-3 text-sm leading-relaxed text-status-error">{copy.feasibility.invalid}</p>
       ) : null}
 
-      <p className="mt-3 border-t border-ivory/10 pt-2 text-xs leading-relaxed text-ivory/40">
+      <p className="mt-3 border-t border-ivory/10 pt-2 text-xs leading-relaxed text-ivory/60">
         {copy.feasibility.keepAsIsNote}
       </p>
     </section>

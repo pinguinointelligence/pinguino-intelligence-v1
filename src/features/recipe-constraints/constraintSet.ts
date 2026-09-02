@@ -42,6 +42,8 @@ const ENGINE_PROTECTED_LOCKS: ReadonlySet<RecipeItem['lock_type']> = new Set([
 /** Spec §6 display precision — the same tolerance the engine's batch-mismatch
  * warning uses. Used ONLY for sum-vs-batch sanity, never for lock precision. */
 export const BATCH_SUM_TOLERANCE_G = 0.1;
+/** Numeric equality for a percentage share (percentage points). */
+export const PERCENT_LOCK_TOLERANCE = 1e-9;
 
 const isFiniteNonNegative = (g: number): boolean => Number.isFinite(g) && g >= 0;
 
@@ -70,6 +72,14 @@ export function validateConstraintSet(
         issues.push({ code: 'non_finite_grams', lineId, severity: 'error' });
       } else if (constraint.grams < 0) {
         issues.push({ code: 'negative_grams', lineId, severity: 'error' });
+      }
+    } else if (constraint.mode === 'percent') {
+      if (
+        !Number.isFinite(constraint.percent) ||
+        constraint.percent < 0 ||
+        constraint.percent > 100
+      ) {
+        issues.push({ code: 'invalid_percent', lineId, severity: 'error' });
       }
     } else if (constraint.mode === 'range') {
       if (!Number.isFinite(constraint.minGrams) || !Number.isFinite(constraint.maxGrams)) {
@@ -158,10 +168,9 @@ export function applyConstraintsToRecipe(
     }
 
     if (constraint.mode === 'locked') {
-      if (item.lock_type === 'main') {
-        // Keep 'main' so the flavor score (engine reads lock_type === 'main')
-        // is not silently changed by locking; the line is still never moved
-        // within this layer (allow_main_ingredient_reduction is never set).
+      if (ENGINE_PROTECTED_LOCKS.has(item.lock_type)) {
+        // Keep the stronger Engine role. A user constraint controls mass but
+        // must never weaken Main/Required/already-added identity semantics.
         applied.push({ lineId: item.id, note: 'locked_main_kept' });
         return { ...item, planned_grams: constraint.grams };
       }
@@ -169,10 +178,20 @@ export function applyConstraintsToRecipe(
       return { ...item, planned_grams: constraint.grams, lock_type: 'grams' };
     }
 
+    if (constraint.mode === 'percent') {
+      const grams = (input.target_batch_grams * constraint.percent) / 100;
+      if (ENGINE_PROTECTED_LOCKS.has(item.lock_type)) {
+        applied.push({ lineId: item.id, note: 'percent_main_kept' });
+        return { ...item, planned_grams: grams };
+      }
+      applied.push({ lineId: item.id, note: 'percent_exact' });
+      return { ...item, planned_grams: grams, lock_type: 'percent' };
+    }
+
     // range: hold at current grams for the solver (the engine has no bounded
     // moves — audit evidence in the module header); the feasibility layer
     // explores [minGrams, maxGrams] with real engine evaluations.
-    if (item.lock_type === 'main') {
+    if (ENGINE_PROTECTED_LOCKS.has(item.lock_type)) {
       applied.push({ lineId: item.id, note: 'range_main_kept' });
       return item;
     }
@@ -203,10 +222,23 @@ export type RescaleBatchResult =
 /** Is this line's mass preserved exactly under a batch change? */
 function isPreservedUnderBatchChange(item: RecipeItem, set: ConstraintSet): boolean {
   const constraint = set.byLineId[item.id];
-  if (constraint && constraint.mode !== 'ai') return true; // locked | range (§17.4)
+  if (constraint && constraint.mode !== 'ai' && constraint.mode !== 'percent') return true;
   if (!constraint && item.lock_type === 'grams') return true; // pre-existing direct gram lock
   return false;
 }
+
+const percentShareFor = (
+  item: RecipeItem,
+  set: ConstraintSet,
+  currentBatchGrams: number,
+): number | null => {
+  const constraint = set.byLineId[item.id];
+  if (constraint?.mode === 'percent') return constraint.percent;
+  if (constraint === undefined && item.lock_type === 'percent' && currentBatchGrams > 0) {
+    return (item.planned_grams / currentBatchGrams) * 100;
+  }
+  return null;
+};
 
 /**
  * Change the target batch WITHOUT rescaling locked grams (§17.4): locked and
@@ -236,28 +268,42 @@ export function rescaleBatchToTarget(
 
   let preservedSum = 0;
   let scalableSum = 0;
+  let percentTotal = 0;
   for (const item of input.items) {
-    if (isPreservedUnderBatchChange(item, set)) preservedSum += item.planned_grams;
+    const percent = percentShareFor(item, set, input.target_batch_grams);
+    if (percent !== null) percentTotal += percent;
+    else if (isPreservedUnderBatchChange(item, set)) preservedSum += item.planned_grams;
     else scalableSum += item.planned_grams;
   }
 
-  if (preservedSum > newBatchGrams + BATCH_SUM_TOLERANCE_G) {
+  const percentageMass = (newBatchGrams * percentTotal) / 100;
+
+  if (preservedSum + percentageMass > newBatchGrams + BATCH_SUM_TOLERANCE_G) {
     return {
       ok: false,
       reason: 'locked_sum_exceeds_batch',
-      minimumBatchGrams: preservedSum,
+      minimumBatchGrams:
+        percentTotal >= 100 ? Number.POSITIVE_INFINITY : preservedSum / (1 - percentTotal / 100),
     };
   }
-  if (scalableSum <= 0) {
+  if (
+    scalableSum <= 0 &&
+    Math.abs(preservedSum + percentageMass - newBatchGrams) > BATCH_SUM_TOLERANCE_G
+  ) {
     return { ok: false, reason: 'no_scalable_lines' };
   }
 
-  const scaleFactor = (newBatchGrams - preservedSum) / scalableSum;
-  const items = input.items.map((item) =>
-    isPreservedUnderBatchChange(item, set)
-      ? item // SAME object — planned_grams provably untouched
-      : { ...item, planned_grams: item.planned_grams * scaleFactor },
-  );
+  const scaleFactor =
+    scalableSum > 0 ? (newBatchGrams - preservedSum - percentageMass) / scalableSum : 1;
+  const items = input.items.map((item) => {
+    const percent = percentShareFor(item, set, input.target_batch_grams);
+    if (percent !== null) {
+      return { ...item, planned_grams: (newBatchGrams * percent) / 100 };
+    }
+    return isPreservedUnderBatchChange(item, set)
+      ? item
+      : { ...item, planned_grams: item.planned_grams * scaleFactor };
+  });
 
   return {
     ok: true,
@@ -291,6 +337,17 @@ export function verifyConstraintsPreserved(
     if (constraint.mode === 'locked') {
       if (!Object.is(line.planned_grams, constraint.grams)) {
         violations.push({ lineId, code: 'locked_grams_changed' });
+      }
+    } else if (constraint.mode === 'percent') {
+      const actualPercent =
+        after.target_batch_grams > 0
+          ? (line.planned_grams / after.target_batch_grams) * 100
+          : Number.NaN;
+      if (
+        !Number.isFinite(actualPercent) ||
+        Math.abs(actualPercent - constraint.percent) > PERCENT_LOCK_TOLERANCE
+      ) {
+        violations.push({ lineId, code: 'locked_percent_changed' });
       }
     } else if (
       line.planned_grams < constraint.minGrams ||

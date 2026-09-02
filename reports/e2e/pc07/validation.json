@@ -1,0 +1,74 @@
+[
+  {
+    "name": "QA Gelato Wanilia -11",
+    "version": 1,
+    "ready": true,
+    "staleLines": [],
+    "reasons": [],
+    "processReadiness": "READY_WITH_INFO"
+  },
+  {
+    "name": "QA Protein Kakao -12",
+    "version": 1,
+    "ready": false,
+    "staleLines": [
+      "PROTEIN GEL WPC · Sempre Dairy · SEMPRE230"
+    ],
+    "reasons": [
+      "PROTEIN GEL WPC · Sempre Dairy · SEMPRE230 :: behavior_snapshot_missing_or_unresolved:c3d7dd4c-0231-eea3-3753-3febe9ffcc1a:PI-ING-000264:b2077fb5-6da8-4d1c-955e-c5cf1934d950:PRODUCTION:refresh_product_data"
+    ],
+    "processReadiness": "READY"
+  },
+  {
+    "name": "QA Protein Kakao -12",
+    "version": 2,
+    "ready": true,
+    "staleLines": [],
+    "reasons": [],
+    "processReadiness": "READY_WITH_INFO"
+  },
+  {
+    "name": "QA Sorbet Truskawka -12",
+    "version": 1,
+    "ready": true,
+    "staleLines": [],
+    "reasons": [],
+    "processReadiness": "READY_WITH_INFO"
+  },
+  {
+    "name": "QA Sorbet Truskawka -12",
+    "version": 1,
+    "ready": true,
+    "staleLines": [],
+    "reasons": [],
+    "processReadiness": "READY_WITH_INFO"
+  },
+  {
+    "name": "QA Sorbet Truskawka -13",
+    "version": 1,
+    "ready": true,
+    "staleLines": [],
+    "reasons": [],
+    "processReadiness": "READY_WITH_INFO"
+  },
+  {
+    "name": "QA Vegan Kokos -12",
+    "version": 1,
+    "ready": false,
+    "staleLines": [
+      "REFINED COCONUT OIL · Elstar Fats Coconut · Dry"
+    ],
+    "reasons": [
+      "REFINED COCONUT OIL · Elstar Fats Coconut · Dry :: behavior_snapshot_missing_or_unresolved:56fd518a-e78a-a283-f1a5-7716e4e52f9c:PI-ING-000163:53d9c515-e891-4c9c-88f9-faf7dde9c523:PRODUCTION:refresh_product_data"
+    ],
+    "processReadiness": "READY"
+  },
+  {
+    "name": "QA Vegan Kokos -12",
+    "version": 2,
+    "ready": true,
+    "staleLines": [],
+    "reasons": [],
+    "processReadiness": "READY_WITH_INFO"
+  }
+]

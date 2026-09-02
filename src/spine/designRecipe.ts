@@ -216,6 +216,7 @@ const HERO_FAMILIES: Readonly<Record<ProductProfile, CorrectionFamily[]>> = {
     'cocoa_butter',
     'chocolate_paste',
   ],
+  protein_gelato: ['hero_flavor_ingredient'],
 };
 
 /* ------------------------------------------------------------------------ *
@@ -296,7 +297,9 @@ export function designRecipe(intent: NormalizedRecipeIntent): RecipeDesignPlan {
       heroFamilies: [...HERO_FAMILIES[intent.productProfile]],
       boosterPolicy: boostersPermitted ? 'available_if_verified' : 'forbidden',
       stabilizerRequired: true,
-      strategyNotes: ['stabilizer is technologically required — 0 g is never a final good strategy'],
+      strategyNotes: [
+        'stabilizer is technologically required — 0 g is never a final good strategy',
+      ],
     },
     textureTarget: TEXTURE_TARGETS[intent.texturePreference],
     sweetnessTarget: SWEETNESS_TARGETS[intent.sweetnessPreference],

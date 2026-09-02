@@ -24,7 +24,7 @@ export function LockedScorePreview() {
       </div>
 
       <div className="mt-3">
-        <span className="font-mono text-2xl font-medium text-ivory/40">—</span>
+        <span className="font-mono text-2xl font-medium text-ivory/60">—</span>
       </div>
 
       <div className="mt-5 flex items-start gap-3 rounded-md border border-ivory/15 bg-ivory/[0.06] p-4">

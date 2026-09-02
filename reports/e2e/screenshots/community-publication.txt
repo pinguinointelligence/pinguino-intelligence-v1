@@ -1,0 +1,39 @@
+GELLATTI — served capture: production, publication and ranking
+Account: test1@test1.com (PRO), creator @marysialody
+
+--- Production ---------------------------------------------------------------
+Recipe "QA Gelato Wanilia -11" v1, 1000 g, Maszyna profesjonalna, -11°C.
+Weighing: 6/6 ingredients confirmed, "W naczyniu 1000 g / Cel 1000 g / Do
+dodania 0 g". Completed:
+  Wynik końcowy   10  "Wyjątkowo dobrze dopasowana"
+  Nr partii       LOT-20260829-228836054F
+  Koszt partii    1,79 €
+  Obróbka na ciepło: TARA GUM · Stabilizer
+
+--- Publication --------------------------------------------------------------
+Creator profile created from the inline continuation inside the publish dialog
+(@marysialody). Publish dialog now carries a REQUIRED "ZDJĘCIE" field.
+Published row:
+  title      "QA Gelato Wanilia -11"
+  slug       qa-gelato-wanilia-11
+  image_url  /recipes/FL-000073_vanilla_bean_with_white_chocolate.webp
+  status     published   category  Gelato   creator  @marysialody
+
+--- /community ---------------------------------------------------------------
+Recipes library strip present: Moje · Udostępnione mi · Gellatti · Inspiracje ·
+Community · Top 100   <-- the customer is no longer ejected from Recipes
+Card: "QA Gelato Wanilia -11 / Autor Marysia Lody / Brak ocen"
+Rendered <img src="/recipes/FL-000073_vanilla_bean_with_white_chocolate.webp">
+
+--- /top100 ------------------------------------------------------------------
+Same library strip. "#1  QA Gelato Wanilia -11 / Autor Marysia Lody"
+
+ASSERTION  one eligible recipe still produces a truthful ranking rather than an
+           empty or hidden board, and the publication carries an image.
+
+--- Favourites ---------------------------------------------------------------
+Before the fix: 2 stars pressed -> 0 rows written (RLS 42501, silent).
+After the fix:  2 stars pressed -> 2 rows in global_catalog_favorites
+                (pi:PI-ING-000341, pi:PI-ING-000342), stars still filled after
+                a full reload, and the "Ulubione" filter returns exactly those
+                two with no duplicates.

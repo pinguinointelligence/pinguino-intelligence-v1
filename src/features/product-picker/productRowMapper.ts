@@ -29,6 +29,7 @@ export type PickerSourceRow = Pick<
   | 'package_size'
   | 'product_image_url'
   | 'status'
+  | 'carbonation_status'
   | 'pac_value'
   | 'pod_value'
   | 'mapper_status'
@@ -61,6 +62,7 @@ export function productRowToPickerEntry(
     packageSize: row.package_size,
     imageUrl: row.product_image_url,
     status: row.status,
+    carbonationStatus: row.carbonation_status ?? 'UNKNOWN',
     readiness: {
       pac_value: row.pac_value,
       pod_value: row.pod_value,

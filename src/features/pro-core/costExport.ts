@@ -8,7 +8,9 @@
  * only; nothing is ever converted.
  */
 import { buildRecipeCsv } from '@/data/label/recipeExport';
-import type { RecipeResult } from '@/engine';
+import type { RecipeInput, RecipeResult } from '@/engine';
+import type { RecipeCompositionMetadata } from '@/features/recipe-composition/recipeCompositionPersistence';
+import { recipeVersionBehaviorGate } from '@/features/product-intelligence';
 import type { ExportCapabilities, RecipeCostSnapshot } from './costContracts';
 
 const REDACTED = '—';
@@ -59,10 +61,19 @@ export function buildCostSnapshotCsv(snapshot: RecipeCostSnapshot, caps: ExportC
  * exact grams. Refused without `canExport`; refused for a non-exact plan (the canonical builder is
  * exact-grams by construction, so we never emit a half-redacted recipe body).
  */
-export function buildRecipeLabelCsv(result: RecipeResult, caps: ExportCapabilities): string {
+export function buildRecipeLabelCsv(
+  result: RecipeResult,
+  caps: ExportCapabilities,
+  input: RecipeInput,
+  composition: RecipeCompositionMetadata | null,
+): string {
   assertCanExport(caps);
   if (!caps.canViewExactGrams) {
     throw new Error('This plan cannot export exact-gram recipe sheets.');
+  }
+  const behaviorGate = recipeVersionBehaviorGate(input, composition, 'EXPORT');
+  if (!behaviorGate.ready) {
+    throw new Error(behaviorGate.reason ?? 'Product behavior does not permit this export.');
   }
   return buildRecipeCsv(result);
 }

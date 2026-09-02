@@ -11,7 +11,8 @@ describe('signInWithGoogle — unconfigured client degrades safely', () => {
   it('resolves to the standard unavailable result', async () => {
     expect(await signInWithGoogle()).toEqual({
       ok: false,
-      message: 'Sign-in is not available in this build.',
+      code: 'AUTH_UNAVAILABLE',
+      message: 'Spróbuj ponownie za chwilę.',
     });
   });
 });

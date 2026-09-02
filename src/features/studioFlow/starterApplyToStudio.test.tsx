@@ -333,7 +333,8 @@ describe('A3 — apply starter to the local Studio draft (real store, fully loca
   it('Standard Apply: exact lines, profile, temperature land in the canonical store', () => {
     const starter = readyStarter();
     const display = redactStarterDraftForDisplay(starter, PRO);
-    if (display.variant !== 'exact' || display.applyPayload === null) throw new Error('payload expected');
+    if (display.variant !== 'exact' || display.applyPayload === null)
+      throw new Error('payload expected');
 
     const prior = applyStarterRecipeInputToStudio(display.applyPayload);
     expect(isStudioDraftPristine(prior)).toBe(true); // the returned undo snapshot is the prior draft
@@ -356,7 +357,8 @@ describe('A3 — apply starter to the local Studio draft (real store, fully loca
   it('Chocolate Apply: the chocolate template lands with all 8 exact lines', () => {
     const starter = readyStarter({ product_type: 'chocolate_gelato', main_flavor: 'czekoladowe' });
     const display = redactStarterDraftForDisplay(starter, PRO);
-    if (display.variant !== 'exact' || display.applyPayload === null) throw new Error('payload expected');
+    if (display.variant !== 'exact' || display.applyPayload === null)
+      throw new Error('payload expected');
     applyStarterRecipeInputToStudio(display.applyPayload);
     const state = useRecipeStore.getState();
     expect(state.category).toBe('chocolate_gelato');
@@ -385,7 +387,8 @@ describe('A3 — apply starter to the local Studio draft (real store, fully loca
     const before = captureStudioDraftSnapshot(useRecipeStore.getState());
 
     const display = redactStarterDraftForDisplay(readyStarter(), PRO);
-    if (display.variant !== 'exact' || display.applyPayload === null) throw new Error('payload expected');
+    if (display.variant !== 'exact' || display.applyPayload === null)
+      throw new Error('payload expected');
     const snapshot = applyStarterRecipeInputToStudio(display.applyPayload);
     expect(useRecipeStore.getState().items).toHaveLength(6); // really replaced
     expect(useRecipeStore.getState().savedRecipeId).toBeNull();
@@ -469,7 +472,10 @@ describe('apply UI states — confirm, applied feedback, undo', () => {
   });
 
   it('applied: honest feedback + locked-template trace + undo affordance', () => {
-    const trace: StarterAppliedTrace = { source: 'locked_starter_template', templateId: 'milk_base_v1' };
+    const trace: StarterAppliedTrace = {
+      source: 'locked_starter_template',
+      templateId: 'milk_base_v1',
+    };
     const text = textOf(renderPreview(proDisplay(), 'applied', trace, true));
     expect(text).toContain(A.starter.apply.appliedNote);
     expect(text).toContain('locked_starter_template · milk_base_v1');
@@ -491,8 +497,15 @@ describe('apply UI states — confirm, applied feedback, undo', () => {
 describe('apply PL copy — honesty', () => {
   const AP = A.starter.apply;
   const all = [
-    AP.cta, AP.setsNote, AP.replaceWarningTitle, AP.replaceWarningBody,
-    AP.confirmCta, AP.cancelCta, AP.appliedNote, AP.appliedSourceLabel, AP.undoCta,
+    AP.cta,
+    AP.setsNote,
+    AP.replaceWarningTitle,
+    AP.replaceWarningBody,
+    AP.confirmCta,
+    AP.cancelCta,
+    AP.appliedNote,
+    AP.appliedSourceLabel,
+    AP.undoCta,
   ];
 
   it('never claims saved / auto-applied / optimized', () => {
@@ -500,7 +513,7 @@ describe('apply PL copy — honesty', () => {
       expect(/zapisano|zastosowano|nałożono|zoptymalizowano|optymalne/i.test(s), s).toBe(false);
     }
     expect(AP.appliedNote).toMatch(/nic nie zostało zapisane/);
-    expect(AP.replaceWarningBody).toMatch(/nic nie jest zapisywane/);
+    expect(AP.replaceWarningBody).toMatch(/nic nie zostanie zapisane/);
   });
 
   it('is really Polish and the undo is a real undo', () => {
@@ -540,7 +553,9 @@ describe('local-apply boundary — no DB / services / optimizer / save path', ()
     for (const src of sources) {
       expect(/markSaved|saveRecipe\(|persistRecipe|createRecipe/.test(src)).toBe(false);
       expect(/accepted_correction|acceptedCorrection|SaveCorrection/i.test(src)).toBe(false);
-      expect(/@\/features\/optimization|previewOptimization|proposeCorrections/.test(src)).toBe(false);
+      expect(/@\/features\/optimization|previewOptimization|proposeCorrections/.test(src)).toBe(
+        false,
+      );
     }
   });
 

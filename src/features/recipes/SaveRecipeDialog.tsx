@@ -11,10 +11,15 @@ import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
 import { resolveRecipesRepository } from '@/features/pro-core/proCoreRecipeRepo';
 import { useAuthStore } from '@/stores/authStore';
 import { useRecipeStore } from '@/stores/recipeStore';
+import { customerErrorMessage } from '@/copy/customerError';
 
 const r = copy.recipes;
 const d = copy.recipes.dialog;
-const TRACE = { engineVersion: ENGINE_VERSION, configVersion: CONFIG_VERSION, mapperDatasetVersion: null };
+const TRACE = {
+  engineVersion: ENGINE_VERSION,
+  configVersion: CONFIG_VERSION,
+  mapperDatasetVersion: null,
+};
 
 const fieldClass =
   'mt-1 w-full rounded-md border border-ink/15 bg-paper px-3 py-2 text-sm text-ink placeholder:text-stone-400 transition-colors focus:border-ink/40 focus:outline-none';
@@ -45,6 +50,7 @@ export function SaveRecipeDialog({ onClose }: { onClose: () => void }) {
   const savedRecipeId = useRecipeStore((s) => s.savedRecipeId);
   const savedRecipeName = useRecipeStore((s) => s.savedRecipeName);
   const currentVersionNumber = useRecipeStore((s) => s.currentVersionNumber);
+  const latestVersionNumber = useRecipeStore((s) => s.savedRecipeLatestVersionNumber);
   const markSaved = useRecipeStore((s) => s.markSaved);
 
   const linked = Boolean(savedRecipeId);
@@ -56,8 +62,22 @@ export function SaveRecipeDialog({ onClose }: { onClose: () => void }) {
   const [error, setError] = useState<string | null>(null);
 
   const needsName = asNew;
-  const nextVersion = (currentVersionNumber ?? 0) + 1;
-  const blocked = !authed ? d.signIn : unavailable || repository === null ? d.unavailable : !caps.canSaveRecipe ? d.demoCannotSave : null;
+  // The append is numbered from the recipe's NEWEST version, not from the one on screen. With a
+  // historical snapshot open (library „Wersja" selector, owner v1.4 §9) those differ: viewing v1 of
+  // a v3 recipe used to offer „Zapisz nową wersję (v2)" while the database correctly wrote v4.
+  // Saving here NEVER overwrites the open version — immutable means immutable — it appends.
+  const nextVersion = Math.max(latestVersionNumber ?? 0, currentVersionNumber ?? 0) + 1;
+  const viewingHistoricalVersion =
+    currentVersionNumber !== null &&
+    latestVersionNumber !== null &&
+    currentVersionNumber < latestVersionNumber;
+  const blocked = !authed
+    ? d.signIn
+    : unavailable || repository === null
+      ? d.unavailable
+      : !caps.canSaveRecipe
+        ? d.demoCannotSave
+        : null;
   const canSubmit = !busy && blocked === null && (!needsName || name.trim().length > 0);
 
   const persist = async () => {
@@ -77,12 +97,32 @@ export function SaveRecipeDialog({ onClose }: { onClose: () => void }) {
           by: ownerId,
           capabilities: caps,
         });
-        markSaved(recipe.recipeId, recipe.title, version.versionNumber);
+        markSaved(
+          recipe.recipeId,
+          recipe.title,
+          version.versionNumber,
+          version.createdAt,
+          undefined,
+          version.versionId,
+        );
       } else {
-        const version = await repository.saveNewVersion(savedRecipeId, recipeInput, TRACE, ownerId, {
-          note: note.trim() || undefined,
-        });
-        markSaved(savedRecipeId, savedRecipeName ?? name.trim(), version.versionNumber);
+        const version = await repository.saveNewVersion(
+          savedRecipeId,
+          recipeInput,
+          TRACE,
+          ownerId,
+          {
+            note: note.trim() || undefined,
+          },
+        );
+        markSaved(
+          savedRecipeId,
+          savedRecipeName ?? name.trim(),
+          version.versionNumber,
+          version.createdAt,
+          undefined,
+          version.versionId,
+        );
       }
       // Refresh the lists/history so the save appears WITHOUT a page reload (pro-core + legacy).
       const savedId = useRecipeStore.getState().savedRecipeId;
@@ -95,8 +135,8 @@ export function SaveRecipeDialog({ onClose }: { onClose: () => void }) {
       ]);
       onClose();
     } catch (caught) {
-      // HONEST failure — keep the modal open, surface the real cause, allow a first-try retry.
-      setError(caught instanceof Error ? caught.message : d.unavailable);
+      // Keep the modal open and retain the draft; provider diagnostics never become primary copy.
+      setError(customerErrorMessage(caught, 'recipes', 'RECIPE_SAVE_FAILED'));
     } finally {
       setBusy(false);
     }
@@ -122,7 +162,16 @@ export function SaveRecipeDialog({ onClose }: { onClose: () => void }) {
 
         {linked && !asNew ? (
           <p className="mt-3 text-xs leading-relaxed text-stone-500" data-testid="save-linked-line">
-            {d.linkedLine(savedRecipeName ?? '—', currentVersionNumber ?? 1)}
+            {d.linkedLine(savedRecipeName ?? '—', latestVersionNumber ?? currentVersionNumber ?? 1)}
+          </p>
+        ) : null}
+
+        {viewingHistoricalVersion && !asNew ? (
+          <p
+            className="mt-3 text-xs leading-relaxed text-stone-600"
+            data-testid="save-historical-note"
+          >
+            {d.historicalSaveNote(currentVersionNumber ?? 1, nextVersion)}
           </p>
         ) : null}
 
@@ -162,7 +211,11 @@ export function SaveRecipeDialog({ onClose }: { onClose: () => void }) {
 
           {blocked ? <p className="text-xs leading-relaxed text-stone-500">{blocked}</p> : null}
           {error ? (
-            <p role="alert" className="text-xs leading-relaxed text-status-risky" data-testid="save-error">
+            <p
+              role="alert"
+              className="text-xs leading-relaxed text-status-risky"
+              data-testid="save-error"
+            >
               {error}
             </p>
           ) : null}

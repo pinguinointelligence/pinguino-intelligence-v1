@@ -20,6 +20,7 @@
  */
 import * as backend from '@/lib/supabase/client';
 import type { ReferenceEngineValues } from '@/data/products/productEngineResolver';
+import { searchProducts } from '@/services/globalCatalog';
 
 /** The demo-safe view (0033) — searchable by anon AND authenticated. */
 export const DEMO_SEARCH_VIEW = 'mapper_basement_search_demo';
@@ -89,6 +90,96 @@ export interface MapperSearchQuery {
   signal?: AbortSignal;
 }
 
+/** Authenticated customer surfaces use the same canonical search RPC as the
+ * recipe picker and Products page. Demo remains on its deliberately public,
+ * reduced Mapper view. */
+async function searchCanonicalMapperIngredientsWithPolicy(
+  query: MapperSearchQuery,
+  preserveHomeBaseline: boolean,
+): Promise<MapperSearchOutcome> {
+  if (query.signal?.aborted) return { kind: 'aborted' };
+  try {
+    const limit = query.limit ?? MAPPER_SEARCH_DEFAULT_LIMIT;
+    const requestedOffset = query.offset ?? 0;
+    // Home retains its frozen Verified+Base+Engine projection. The RPC now
+    // returns a broader raw set, so Home offsets must be applied after that
+    // projection; applying them to raw rows would omit/duplicate page results.
+    const wanted = (preserveHomeBaseline ? requestedOffset : 0) + limit + 1;
+    const rows: SafeMapperSearchRow[] = [];
+    let cursor = preserveHomeBaseline ? 0 : requestedOffset;
+    let exhausted = false;
+    while (rows.length < wanted && !exhausted) {
+      const batchLimit = Math.min(500, Math.max(1, wanted - rows.length));
+      const hits = await searchProducts({
+        query: query.text,
+        context: 'BASE',
+        marketScope: 'global',
+        selectedMarkets: [],
+        entityKind: 'pi_base',
+        limit: batchLimit,
+        cursor,
+      });
+      cursor += hits.length;
+      exhausted = hits.length < batchLimit;
+      rows.push(
+        ...hits
+          .filter((hit) => {
+            if (hit.entityKind !== 'pi_base' || !hit.mappedIngredientId) return false;
+            if (!preserveHomeBaseline) return true;
+            const verificationStatus = hit.publicData.verificationStatus;
+            return (
+              hit.usableInBase &&
+              hit.publicData.approvedForEngines === true &&
+              typeof verificationStatus === 'string' &&
+              verificationStatus.toLocaleLowerCase('en').startsWith('verified')
+            );
+          })
+          .map((hit) => {
+            const approvedForEngines = hit.publicData.approvedForEngines;
+            return {
+              ingredient_id: hit.mappedIngredientId!,
+              ingredient_name_display: hit.displayName,
+              ingredient_name_internal: hit.originalName,
+              ingredient_category: hit.category,
+              ingredient_subcategory: hit.productForm ?? null,
+              vegan: null,
+              dairy_free: null,
+              gluten_free: null,
+              contains_alcohol: null,
+              approved_for_base: hit.usableInBase,
+              approved_for_engines: approvedForEngines === true,
+              dataset_version: null,
+            };
+          }),
+      );
+    }
+    if (query.signal?.aborted) return { kind: 'aborted' };
+    const sliceOffset = preserveHomeBaseline ? requestedOffset : 0;
+    return {
+      kind: 'results',
+      rows: rows.slice(sliceOffset, sliceOffset + limit),
+      hasMore: rows.length > sliceOffset + limit,
+    };
+  } catch (error) {
+    return { kind: 'error', message: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+/** Frozen Home search retains its previously accepted Verified + Base + Engine
+ * result set even though the shared RPC now exposes all 2,089 active rows. */
+export async function searchCanonicalMapperIngredients(
+  query: MapperSearchQuery,
+): Promise<MapperSearchOutcome> {
+  return searchCanonicalMapperIngredientsWithPolicy(query, true);
+}
+
+/** Pro search shows all active Mapper rows and preserves exact approval flags. */
+export async function searchCanonicalProMapperIngredients(
+  query: MapperSearchQuery,
+): Promise<MapperSearchOutcome> {
+  return searchCanonicalMapperIngredientsWithPolicy(query, false);
+}
+
 /* ------------------------------------------------------------------------ *
  * Pure helpers (exported for tests)                                         *
  * ------------------------------------------------------------------------ */
@@ -153,7 +244,9 @@ function isAborted(error: QueryError, signal?: AbortSignal): boolean {
  * limit/offset for incremental loading. Fetches limit+1 rows to report `hasMore`
  * honestly. Never throws for expected failures — returns a typed outcome.
  */
-export async function searchMapperIngredients(query: MapperSearchQuery): Promise<MapperSearchOutcome> {
+export async function searchMapperIngredients(
+  query: MapperSearchQuery,
+): Promise<MapperSearchOutcome> {
   const client = backend.supabase;
   if (!client) return { kind: 'unavailable', reason: 'not_configured' };
 
@@ -163,7 +256,9 @@ export async function searchMapperIngredients(query: MapperSearchQuery): Promise
 
   let builder = client.from(DEMO_SEARCH_VIEW).select(MAPPER_SEARCH_COLUMNS.join(','));
   if (text !== '') {
-    builder = builder.or(ilikeOrFilter(['ingredient_name_display', 'ingredient_name_internal'], text));
+    builder = builder.or(
+      ilikeOrFilter(['ingredient_name_display', 'ingredient_name_internal'], text),
+    );
   }
   if (query.category) {
     builder = builder.eq('ingredient_category', query.category);
@@ -178,7 +273,7 @@ export async function searchMapperIngredients(query: MapperSearchQuery): Promise
   if (error) {
     if (isAborted(error, query.signal)) return { kind: 'aborted' };
     if (isViewMissing(error)) return { kind: 'unavailable', reason: 'view_missing' };
-    return { kind: 'error', message: error.message ?? 'search failed' };
+    return { kind: 'error', message: error.message ?? 'Wyszukiwanie nie powiodło się' };
   }
 
   const raw = (data ?? []) as unknown as Record<string, unknown>[];
@@ -219,7 +314,12 @@ export async function fetchIngredientEngineValues(
   let builder = client
     .from(RICH_SEARCH_VIEW)
     .select('ingredient_id,ingredient_name_display,pac_value,pod_value')
-    .eq('ingredient_id', ingredientId);
+    .eq('ingredient_id', ingredientId)
+    .eq('approved_for_base', true)
+    .eq('approved_for_engines', true)
+    // Frozen Home exact-id hydration keeps the previously accepted
+    // Verified-only contract. Pro uses the canonical product resolver instead.
+    .ilike('verification_status', 'Verified%');
   if (signal) builder = builder.abortSignal(signal);
 
   const { data, error } = await builder.maybeSingle();
@@ -227,7 +327,7 @@ export async function fetchIngredientEngineValues(
     if (isAborted(error, signal)) return { kind: 'aborted' };
     if (isUnauthorized(error)) return { kind: 'unauthorized' };
     if (isViewMissing(error)) return { kind: 'unavailable', reason: 'view_missing' };
-    return { kind: 'error', message: error.message ?? 'engine values fetch failed' };
+    return { kind: 'error', message: error.message ?? 'Nie udało się pobrać wartości obliczeniowych.' };
   }
   if (!data) return { kind: 'not_found' };
 

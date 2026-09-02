@@ -12,7 +12,8 @@ export type ProductProfile =
   | 'standard_gelato'
   | 'sorbet'
   | 'vegan_gelato'
-  | 'chocolate_gelato';
+  | 'chocolate_gelato'
+  | 'protein_gelato';
 
 /** Business quality tiers — Designer/Optimizer policy, never chemistry. */
 export type QualityTier = 'eco' | 'classic' | 'premium' | 'signature';
@@ -54,7 +55,8 @@ export type DesignerProfileId =
   | 'gelato_designer'
   | 'sorbet_designer'
   | 'vegan_designer'
-  | 'chocolate_designer';
+  | 'chocolate_designer'
+  | 'protein_designer';
 
 export type DesignerWarningCode =
   | 'unsupported_product_profile'

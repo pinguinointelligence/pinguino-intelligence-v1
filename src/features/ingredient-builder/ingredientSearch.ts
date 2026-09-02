@@ -39,8 +39,20 @@ const STOPWORDS: ReadonlySet<string> = new Set([
 /** Inflectional suffixes stripped (longest-first) to reach a Polish search root. */
 const SUFFIXES = ['owych', 'owym', 'owej', 'owe', 'owy', 'owa', 'ami', 'ach', 'om', 'ow', 'ie', 'y', 'i', 'a', 'e'];
 
+/**
+ * Words that only LOOK inflected. „cocoa" is not „coco" + a Polish ending, and
+ * stemming it to „coco" makes it a prefix of „coconut" — which quietly turned
+ * every chocolate query into a coconut one.
+ *
+ * Kept deliberately tiny: „pasta" MUST still stem to „past" so it reaches
+ * „paste", so this list holds only words whose stem collides with a DIFFERENT
+ * concept, not every word that survives stemming intact.
+ */
+const PROTECTED_ROOTS: ReadonlySet<string> = new Set(['cocoa', 'kakao']);
+
 /** Reduce a (normalized) token to a search root; keeps a minimum length of 4 to avoid over-stemming. */
 export function stem(token: string): string {
+  if (PROTECTED_ROOTS.has(token)) return token;
   for (const suf of SUFFIXES) {
     if (token.length - suf.length >= 4 && token.endsWith(suf)) {
       return token.slice(0, -suf.length);
@@ -85,7 +97,13 @@ const ALIAS_FAMILIES: readonly AliasFamily[] = [
   { roots: ['czekolad', 'chocolat', 'cioccolat', 'cocoa', 'kakao'], categories: ['chocolate', 'cocoa'] },
   { roots: ['pistacj', 'pistach', 'pistacchio'], categories: ['nut'] },
   { roots: ['orzech', 'laskow', 'hazelnut', 'nocciol'], categories: ['nut'] },
-  { roots: ['mlek', 'milk', 'latte', 'leche'], categories: ['dairy'] }, // milk
+  // „mleczna" („milk" as an adjective) does not begin with the „mlek" root, so
+  // „czekolada mleczna" never reached MILK CHOCOLATE without stating it.
+  { roots: ['mlek', 'mleczn', 'milk', 'latte', 'leche'], categories: ['dairy'] }, // milk
+  // Coconut is deliberately WITHOUT the root „coco": „cocoa" starts with it, and
+  // a chocolate query must never resolve to coconut.
+  { roots: ['kokos', 'coconut', 'cocco'] }, // coconut (fat, milk, flakes — many categories)
+  { roots: ['olej', 'oliw', 'oil', 'olio', 'aceite'] }, // oil
   { roots: ['smietan', 'cream', 'crema', 'panna'], categories: ['dairy'] }, // cream
   { roots: ['bazyl', 'basil', 'basilic', 'albahac'], categories: ['botanical'] }, // basil
   { roots: ['miet', 'mint', 'menta'], categories: ['botanical'] }, // mint
@@ -97,6 +115,11 @@ const ALIAS_FAMILIES: readonly AliasFamily[] = [
   { roots: ['glukoz', 'glucos'], categories: ['sweetener'] }, // glucose
   { roots: ['lask', 'pod', 'bean', 'strak'] }, // vanilla-bean concept („laska wanilii")
   { roots: ['ekstrakt', 'extract', 'estratt'] }, // extract forms
+  // powder-form concept: „mleko w proszku" must reach *_powder rows (staging proof: 0 rows
+  // contain „proszk" in any searchable column — the Polish form word only exists via alias)
+  { roots: ['proszk', 'proszek', 'powder'] },
+  // SMP = skimmed milk powder (trade abbreviation; staging proof: 0 rows contain „smp")
+  { roots: ['smp', 'skimmed'], categories: ['dairy'] },
   // rose — the ONE coverage gap: „Róża" is non-ASCII in display + absent from internal
   { roots: ['roza', 'rozy', 'rose', 'rosa'], categories: ['botanical'] },
 ];

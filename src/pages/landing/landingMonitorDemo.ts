@@ -28,7 +28,7 @@ import { buildMonitorHomeView, type MonitorHomeView } from '@/features/pi-monito
 
 /** The safe demo view — real engine output for the §6.2 vanilla example. */
 export function buildLandingMonitorDemo(): MonitorHomeView {
-  let flow = createCustomerFlow({ text: 'wanilia' });
+  let flow = createCustomerFlow({ text: 'Wanilia' });
   flow = setProductType(flow, 'gelato');
   flow = selectServingMode(flow, 'temp_minus_11');
   flow = setBatchGrams(flow, 1000);

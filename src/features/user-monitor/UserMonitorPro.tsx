@@ -64,7 +64,7 @@ const READING_TONE: Record<GoldenRangeReading['state'], string> = {
   info: 'text-ivory/70',
   amber: 'text-status-risky',
   red: 'text-status-error',
-  neutral: 'text-ivory/40',
+  neutral: 'text-ivory/60',
 };
 
 /** Display-only rounding (engine precision untouched). */
@@ -87,18 +87,20 @@ function RowLine({
   onUnpin?: (metric: TargetMetric) => void;
   onMove?: (metric: TargetMetric, direction: 'up' | 'down') => void;
 }) {
+  const markerPosition = row.reading?.side === 'below' ? '10%' : row.reading?.side === 'above' ? '90%' : '50%';
   return (
-    <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-t border-ivory/10 py-2 first:border-t-0">
+    <div className="border-t border-ivory/10 py-2 first:border-t-0">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
       <span className="text-[13px] text-ivory/70" title={row.expertTerm ?? undefined}>
         {row.label}
       </span>
       <span className="flex items-center gap-2.5">
         {row.value === null ? (
-          <span className="font-mono text-[13px] text-ivory/40">—</span>
+          <span className="font-mono text-[13px] text-ivory/60">—</span>
         ) : (
           <span className="font-mono text-[13px] font-medium tabular-nums text-ivory">
             {formatValue(row.value)}
-            {row.unit ? <span className="ml-0.5 font-normal text-ivory/50">{row.unit}</span> : null}
+            {row.unit ? <span className="ml-0.5 font-normal text-ivory/65">{row.unit}</span> : null}
           </span>
         )}
         {row.reading ? (
@@ -143,6 +145,17 @@ function RowLine({
           </span>
         ) : null}
       </span>
+      </div>
+      {row.reading ? (
+        <div className="relative mt-1.5 flex h-1 overflow-visible" data-testid="monitor-protected-scale" aria-label={`Pozycja wskaźnika: ${row.reading.text}`}>
+          <span className="w-1/5 bg-status-error/75" />
+          <span className="w-1/5 bg-status-ideal/70" />
+          <span className="w-1/5 bg-gold/85" />
+          <span className="w-1/5 bg-status-ideal/70" />
+          <span className="w-1/5 bg-status-error/75" />
+          <span aria-hidden className="absolute top-1/2 h-3 w-0.5 -translate-x-1/2 -translate-y-1/2 bg-ink shadow-[0_0_0_1px_white]" style={{ left: markerPosition }} />
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -150,9 +163,18 @@ function RowLine({
 export function UserMonitorPro({
   result,
   servingTemperatureC,
+  forceAllModules = false,
+  stabilizationProvenanceNote,
 }: {
   result: RecipeResult;
   servingTemperatureC: number;
+  /** Monitor-completeness parity mode (owner B3): render EVERY §14.2 module regardless
+   * of the device layout's visibility toggles — modules may collapse, never disappear.
+   * The §14.3 pins/customize layer keeps working; only the visibility filter is bypassed. */
+  forceAllModules?: boolean;
+  /** B1 „Stabilizacja (+provenance sentence)" — an honest provenance line rendered under
+   * the Stabilizacja module rows (computed by the caller from approved-dosage science). */
+  stabilizationProvenanceNote?: string;
 }) {
   const [layout, setLayout] = useState<UserMonitorLayout>(() => loadUserMonitorLayout());
   const apply = (next: UserMonitorLayout) => {
@@ -202,7 +224,7 @@ export function UserMonitorPro({
     apply(movePinned(layout, metric, direction));
 
   return (
-    <CharcoalPanel padding="lg">
+    <CharcoalPanel padding="md" className="rounded-sm p-3">
       <div className="flex items-center justify-between gap-4">
         <SectionLabel tone="ivory">{USER_MONITOR_TITLE}</SectionLabel>
         {/* §14.1 status: gotowa / wymaga korekty / test rekomendowany. */}
@@ -213,7 +235,7 @@ export function UserMonitorPro({
 
       {/* Serving temperature (§14.1) — a label, never conflated with storage;
           the ONE temperature formatter (audit #27, typographic minus). */}
-      <p className="mt-3 text-[12px] text-ivory/50">
+      <p className="mt-3 text-[12px] text-ivory/65">
         Temperatura serwowania:{' '}
         <span className="font-mono tabular-nums text-ivory">
           {formatTemperatureC(servingTemperatureC)}
@@ -224,19 +246,19 @@ export function UserMonitorPro({
           in the score card above; here the TWO TEXT statuses (no numbers). */}
       <div className="mt-4 space-y-1.5 border-t border-ivory/10 pt-4">
         <p className="text-[12px] leading-relaxed text-ivory/70">
-          <span className="text-ivory/50">{confidence.name}:</span> {confidence.text}
+          <span className="text-ivory/65">{confidence.name}:</span> {confidence.text}
         </p>
         <p className="text-[12px] leading-relaxed text-ivory/70">
-          <span className="text-ivory/50">{readiness.name}:</span> {readiness.readiness.label} —{' '}
+          <span className="text-ivory/65">{readiness.name}:</span> {readiness.readiness.label} —{' '}
           {readiness.readiness.text}
         </p>
-        <p className="text-[11px] leading-relaxed text-ivory/40">{confidence.disclaimer}</p>
+        <p className="text-[11px] leading-relaxed text-ivory/60">{confidence.disclaimer}</p>
       </div>
 
       {/* Pinned overview (§14.3). */}
       {pinnedRows.length > 0 ? (
         <div className="mt-5 border-t border-ivory/10 pt-4">
-          <p className="text-[0.625rem] font-medium tracking-label text-ivory/50 uppercase">
+          <p className="text-[0.625rem] font-medium tracking-label text-ivory/65 uppercase">
             {PINNED_SECTION_LABEL}
           </p>
           <div className="mt-1">
@@ -273,12 +295,17 @@ export function UserMonitorPro({
         ))}
       </div>
 
-      {/* §14.2 — collapsible modules (visibility per UserMonitorLayout). */}
+      {/* §14.2 — collapsible modules (visibility per UserMonitorLayout; parity mode
+          renders EVERY module — collapse allowed, disappearance never — owner B3). */}
       <div className="mt-5 space-y-2 border-t border-ivory/10 pt-4">
         {modules
-          .filter((module) => layout.enabled[module.id])
+          .filter((module) => forceAllModules || layout.enabled[module.id])
           .map((module) => (
-            <details key={module.id} className="rounded-md border border-ivory/10 bg-black/20 px-3 py-2.5">
+            <details
+              key={module.id}
+              className="rounded-md border border-ivory/10 bg-black/20 px-3 py-2.5"
+              data-testid={`user-monitor-module-${module.id}`}
+            >
               <summary className="cursor-pointer list-none text-[13px] text-ivory">{module.title}</summary>
               <div className="mt-2">
                 {module.rows.map((row) => (
@@ -291,9 +318,14 @@ export function UserMonitorPro({
                     onMove={onMove}
                   />
                 ))}
+                {module.id === 'stabilizacja' && stabilizationProvenanceNote ? (
+                  <p className="mt-2 text-[11px] leading-relaxed text-ivory/60" data-testid="stabilization-provenance">
+                    {stabilizationProvenanceNote}
+                  </p>
+                ) : null}
                 {module.id === 'expert' ? (
-                  <p className="mt-2 text-[11px] text-ivory/40">
-                    Wersja silnika {result.engine_version} · konfiguracja {result.config_version}
+                  <p className="mt-2 text-[11px] text-ivory/60">
+                    Wersja obliczeń {result.engine_version} · zestaw reguł {result.config_version}
                   </p>
                 ) : null}
               </div>
@@ -325,7 +357,7 @@ export function UserMonitorPro({
           >
             {RESET_LAYOUT_LABEL}
           </button>
-          <p className="text-[11px] leading-relaxed text-ivory/40">
+          <p className="text-[11px] leading-relaxed text-ivory/60">
             Układ zapisuje się na tym urządzeniu.
           </p>
         </div>
@@ -351,7 +383,7 @@ export function UserMonitorPro({
                   ? 'text-status-error'
                   : warning.severity === 'warning'
                     ? 'text-status-risky'
-                    : 'text-ivory/50'
+                    : 'text-ivory/65'
               }`}
             >
               {warning.message}

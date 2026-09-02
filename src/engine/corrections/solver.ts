@@ -46,6 +46,7 @@ import type {
 import {
   applyCorrectionActions,
   isReductionAllowed,
+  reductionFloorGrams,
   verifyCorrectionProposal,
   type CorrectionConstraints,
 } from './verify';
@@ -210,17 +211,41 @@ function modelFor(result: RecipeResult, metric: TargetMetric): RatioModel | null
         : null;
     }
     case 'water':
-      return percentModel(totals.water_g, (i) => i.composition.water_percent / 100, bandOf(result, metric));
+      return percentModel(
+        totals.water_g,
+        (i) => i.composition.water_percent / 100,
+        bandOf(result, metric),
+      );
     case 'total_solids':
-      return percentModel(totals.solids_g, (i) => i.composition.solids_percent / 100, bandOf(result, metric));
+      return percentModel(
+        totals.solids_g,
+        (i) => i.composition.solids_percent / 100,
+        bandOf(result, metric),
+      );
     case 'fat':
-      return percentModel(totals.fat_g, (i) => i.composition.fat_percent / 100, bandOf(result, metric));
+      return percentModel(
+        totals.fat_g,
+        (i) => i.composition.fat_percent / 100,
+        bandOf(result, metric),
+      );
     case 'aerating_protein':
-      return percentModel(totals.protein_g, (i) => i.composition.protein_percent / 100, bandOf(result, metric));
+      return percentModel(
+        totals.protein_g,
+        (i) => i.composition.protein_percent / 100,
+        bandOf(result, metric),
+      );
     case 'lactose':
-      return percentModel(totals.lactose_g, (i) => i.composition.lactose_percent / 100, bandOf(result, metric));
+      return percentModel(
+        totals.lactose_g,
+        (i) => i.composition.lactose_percent / 100,
+        bandOf(result, metric),
+      );
     case 'alcohol':
-      return percentModel(totals.alcohol_g, (i) => i.composition.alcohol_percent / 100, bandOf(result, metric));
+      return percentModel(
+        totals.alcohol_g,
+        (i) => i.composition.alcohol_percent / 100,
+        bandOf(result, metric),
+      );
     case 'protein_in_solids': {
       const band = bandOf(result, metric);
       return band
@@ -301,6 +326,9 @@ export function proposeCorrections(request: CorrectionRequest): CorrectionResult
     mode: input.mode,
     allow_main_ingredient_reduction,
     machine_capacity_grams: input.machine_capacity_grams,
+    // Scale for the user-intent reduction floor (owner SOFT-HOLD). Without it
+    // the floor does not bind and behaviour is byte-identical to before.
+    target_batch_grams: input.target_batch_grams,
   };
 
   // Optional preview-only target override: solve/detect against injected bands (e.g. the
@@ -329,10 +357,7 @@ export function proposeCorrections(request: CorrectionRequest): CorrectionResult
   const improvementById = new Map<string, number>();
   const blocked: BlockTracker = { capacity: false };
 
-  const tryActions = (
-    targets: CorrectionViolation[],
-    actions: CorrectionAction[],
-  ): void => {
+  const tryActions = (targets: CorrectionViolation[], actions: CorrectionAction[]): void => {
     const hypothetical = applyCorrectionActions(input, actions, constraints, candidates);
     const outcome = verifyCorrectionProposal({
       beforeViolations: allViolations,
@@ -407,17 +432,26 @@ export function proposeCorrections(request: CorrectionRequest): CorrectionResult
     const m1 = modelFor(before, primary.metric);
     const m2 = modelFor(before, secondary.metric);
     if (m1 && m2) {
-      const c1s = selectCandidates(primary.metric, primary.direction, input.category, ranking, candidates).slice(0, CANDIDATES_PER_VIOLATION);
-      const c2s = selectCandidates(secondary.metric, secondary.direction, input.category, ranking, candidates).slice(0, CANDIDATES_PER_VIOLATION);
+      const c1s = selectCandidates(
+        primary.metric,
+        primary.direction,
+        input.category,
+        ranking,
+        candidates,
+      ).slice(0, CANDIDATES_PER_VIOLATION);
+      const c2s = selectCandidates(
+        secondary.metric,
+        secondary.direction,
+        input.category,
+        ranking,
+        candidates,
+      ).slice(0, CANDIDATES_PER_VIOLATION);
       outer: for (const c1 of c1s) {
         for (const c2 of c2s) {
           if (c1.id === c2.id) continue;
           const pair = solvePair(m1, m2, c1.ingredient, c2.ingredient);
           if (!pair) continue;
-          tryActions(
-            [primary, secondary],
-            [addAction(c1, pair[0]), addAction(c2, pair[1])],
-          );
+          tryActions([primary, secondary], [addAction(c1, pair[0]), addAction(c2, pair[1])]);
           if (proposals.length >= max_proposals + 2) break outer;
         }
       }
@@ -495,7 +529,11 @@ function buildReduceAction(
   if (denominator <= EPSILON) return { action: null, blocking: null };
   const ideal = (model.N - model.t * model.D) / denominator;
   if (!Number.isFinite(ideal) || ideal < MIN_ACTION_GRAMS) return { action: null, blocking: null };
-  const grams = Math.min(ideal, dominant.planned_grams);
+  // The reduce move may empty an unheld line, but it may NOT push a soft-held
+  // user line into the trace region (owner USER INTENT / SOFT-HOLD). The floor
+  // is supplied by the product layer; the engine only clamps to it.
+  const reducibleGrams = dominant.planned_grams - reductionFloorGrams(dominant, constraints);
+  const grams = Math.min(ideal, reducibleGrams);
   if (grams < MIN_ACTION_GRAMS) return { action: null, blocking: null };
 
   return {

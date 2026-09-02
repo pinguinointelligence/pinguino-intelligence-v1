@@ -21,6 +21,7 @@ export interface SavedRecipe {
   name: string;
   description: string | null;
   recipe_input: unknown;
+  product_composition?: unknown | null;
   product_type: string | null;
   serving_profile: string | null;
   active_engine_label: string;
@@ -29,6 +30,18 @@ export interface SavedRecipe {
   batch_grams: number;
   created_at: string;
   updated_at: string;
+  /** Newest immutable version number, joined by `recipes.listMine` (absent for legacy orphans). */
+  latest_version_number?: number;
+  /** When that newest version was written — the ONE date „Zaktualizowano" may show (v1.4). */
+  latest_version_at?: string;
+  /** The FULL immutable history, newest first — what the WERSJA selector lists. */
+  versions?: SavedRecipeVersionRef[];
+}
+
+/** One immutable version, as the library lists it. Numbers and dates only — never a UUID. */
+export interface SavedRecipeVersionRef {
+  versionNumber: number;
+  createdAt: string;
 }
 
 /** The insert/update payload — user_id is set by the service from the session. */
@@ -51,6 +64,7 @@ const PRODUCT_BY_CATEGORY: Partial<Record<ProductCategory, ProductProfileId>> = 
   milk_gelato: 'gelato',
   sorbet: 'sorbet',
   vegan_gelato: 'vegan',
+  protein_gelato: 'protein',
 };
 
 export function deriveProductType(
@@ -99,7 +113,7 @@ export function buildSavePayload(args: {
 
 const composition = z.record(z.string(), z.number()); // per-100g numeric fields only
 
-const ingredient = z.looseObject({
+export const savedEngineIngredientSchema = z.looseObject({
   id: z.string(),
   name: z.string(),
   category: z.string(),
@@ -118,10 +132,12 @@ const ingredient = z.looseObject({
 
 const item = z.looseObject({
   id: z.string(),
-  ingredient,
+  ingredient: savedEngineIngredientSchema,
   planned_grams: z.number(),
   actual_grams: z.number().nullable(),
   lock_type: z.string(),
+  percent_constraint: z.object({ percent: z.number() }).optional(),
+  grams_constraint: z.object({ grams: z.number() }).optional(),
 });
 
 export const recipeInputSchema = z.looseObject({

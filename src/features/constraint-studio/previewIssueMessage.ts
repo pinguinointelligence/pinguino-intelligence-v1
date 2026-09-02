@@ -10,13 +10,86 @@ export function previewIssueMessagePl(issue: PreviewIssue): string {
   switch (issue.code) {
     case 'already_clean':
       return copy.previewIssue.alreadyClean;
+    case 'standard_presence_removal_required':
+      return issue.messagePl;
+    case 'practicalization_blocked':
+      return issue.messagePl;
+    case 'missing_prices':
+      return copy.previewIssue.missingPrices(issue.ingredientNames);
     case 'no_proposal':
-      return copy.previewIssue.noProposal;
+      /* PC-01. `no_proposal` covers two situations that read very differently
+       * to a customer. The ordinary one really is „no correction was possible
+       * under the current locks". The other is a recipe that already sits
+       * inside every approved band, where the requested Direction cannot be
+       * improved without leaving one — a safe local optimum, not a failure.
+       * Handing that customer the lock-feasibility instruction points them at a
+       * control that cannot help, and on the recorded Sorbet −12 °C fixture
+       * there are no locks at all.
+       *
+       * `directionTargetUnreached` is the pipeline's own verdict for exactly
+       * that family: every site raising it on a `no_proposal` first proves the
+       * draft is native-safe. So the distinction is read from the result, never
+       * re-derived here, and the canonical Gellatti sentence for „no further
+       * safe improvement" is reused rather than duplicated. */
+      return issue.directionTargetUnreached === true
+        ? copy.previewIssue.bestSafeResult
+        : copy.previewIssue.noProposal;
     case 'unsafe_proposal':
       return copy.previewIssue.unsafeProposal;
+    case 'best_safe_result':
+      // Owner P0 NIGHTLY Phase 7(b): explanatory terminal state, not a failure.
+      // OWNER FINAL INTEGRATION ADDENDUM item 3 (2026-07-25): the honest
+      // sentence is never shown alone — the STOP REASON rides with it, so the
+      // reader always sees WHY the search ended rather than an unqualified
+      // superlative. (The Pro panel additionally renders the full evidence.)
+      return `${copy.previewIssue.bestSafeResult} ${copy.bestSafe.stopReason[issue.stopReason](
+        issue.solverInvocations,
+      )}`;
+    case 'impossible_under_constraints': {
+      // Owner Agent 3 (dominant-lock infeasibility) + ACCEPTANCE ADDENDUM (1):
+      // the exact conflicting constraint, the honest search account (full
+      // fixed-point search vs. exhausted deterministic budget), the
+      // engine-verified nearest feasible alternative and — when
+      // deterministically applicable — the product-type alternative.
+      const conflictPart = issue.conflict
+        ? `Przy ograniczeniu „${issue.conflict.ingredientName}" = ${formatGramsPl(issue.conflict.grams)} `
+        : 'Przy obecnych ograniczeniach ';
+      const searchPart = issue.capReached
+        ? `Sprawdziliśmy dostępne korekty (${issue.solverInvocations} prób) ` +
+          'bez osiągnięcia zatwierdzonych zakresów — taki wynik nie jest uznawany za gotową recepturę.'
+        : `Sprawdziliśmy wszystkie dozwolone korekty (${issue.solverInvocations} prób).`;
+      const nearestPart =
+        issue.nearestFeasibleGrams !== null && issue.conflict
+          ? ` Najbliższa wykonalna wartość dla „${issue.conflict.ingredientName}": ` +
+            `maksymalnie ${formatGramsPl(issue.nearestFeasibleGrams)} (sprawdzone ponownie) — ` +
+            'zmniejsz ten składnik do tej wartości.'
+          : ' Brak wykonalnej alternatywy możliwej do wyliczenia dla tej blokady.';
+      const alternativePart =
+        issue.alternativeProductType === 'sorbet'
+          ? ' Możesz też zmienić typ produktu na Sorbet.'
+          : '';
+      return (
+        conflictPart +
+        'nie istnieje receptura mieszcząca się w zatwierdzonych zakresach — ' +
+        searchPart +
+        nearestPart +
+        alternativePart +
+        ' Receptura nie została zmieniona.'
+      );
+    }
     case 'unsupported_profile':
       return copy.previewIssue.unsupportedProfile;
     case 'missing_required_role':
+      return issue.messagePl;
+    case 'main_ratio_conflict':
+      return issue.messagePl;
+    case 'product_behavior_invalid':
+      return issue.messagePl;
+    case 'main_ingredient_unavailable':
+      return issue.messagePl;
+    case 'vegan_ingredient_conflict':
+      return issue.messagePl;
+    case 'vegan_profile_constraint':
       return issue.messagePl;
     case 'apply_failed':
       return copy.previewIssue.applyFailed;
@@ -24,6 +97,8 @@ export function previewIssueMessagePl(issue: PreviewIssue): string {
       return copy.previewIssue.invalidConstraints;
     case 'line_missing':
       return copy.previewIssue.lineMissing;
+    case 'substitution_invalid':
+      return issue.messagePl;
     case 'rescale_invalid':
       return copy.previewIssue.rescaleInvalid;
     case 'rescale_actuals':

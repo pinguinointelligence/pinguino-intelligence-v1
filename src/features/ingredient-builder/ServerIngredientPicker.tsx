@@ -6,15 +6,16 @@
  * Stale-selection protection (Phase 10): a selection is remembered TOGETHER
  * with the normalized query it was made in — a query change invalidates it,
  * `Dodaj składnik` is disabled until the CURRENT response settles, and the
- * added ingredient is resolved fresh by exact stable id (`getIngredientById`),
+ * added ingredient is resolved fresh by the current Base-approved exact-id gate,
  * so an older response can never inject a stale candidate.
  */
 import { useState } from 'react';
 import { copy } from '@/copy/en';
 import type { EngineIngredient } from '@/engine';
 import { ingredientRowToEngineIngredient } from '@/data/ingredients/ingredientMapper';
-import { getIngredientById } from '@/services/ingredients';
+import { getEngineApprovedIngredientById } from '@/services/ingredients';
 import { groupHitsByForm, resultRowTextPl } from './ingredientPresentation';
+import { productProfileStatusLabelPl } from './productProfileStatusLabel';
 import { useIngredientSearch } from './useIngredientSearch';
 import { PickerEmptyState } from './IngredientPicker';
 import type { IngredientLibrary } from './ingredientLibrary';
@@ -25,11 +26,13 @@ export function ServerIngredientPicker({
   library,
   onAdd,
   initialQuery = '',
+  compact = false,
 }: {
   library: IngredientLibrary;
   onAdd: (ingredient: EngineIngredient) => void;
   /** Test seam: pre-settled query for static renders. */
   initialQuery?: string;
+  compact?: boolean;
 }) {
   const [query, setQuery] = useState(initialQuery);
   const [picked, setPicked] = useState<{ norm: string; id: string } | null>(null);
@@ -48,11 +51,17 @@ export function ServerIngredientPicker({
   const pickedId = picked && picked.norm === search.settledNorm ? picked.id : null;
   const effectiveId =
     pickedId !== null &&
-    (search.hits.some((hit) => hit.id === pickedId) || filteredProducts.some((p) => p.id === pickedId))
+    (search.hits.some((hit) => hit.id === pickedId) ||
+      filteredProducts.some((p) => p.id === pickedId))
       ? pickedId
-      : (search.hits[0]?.id ?? filteredProducts[0]?.id ?? '');
+      : (search.hits.find((hit) => hit.baseSelectable)?.id ?? filteredProducts[0]?.id ?? '');
   const count = search.hits.length + filteredProducts.length;
-  const canAdd = effectiveId !== '' && !adding && (!hasQuery || search.isSettled);
+  const selectedSearchHit = search.hits.find((hit) => hit.id === effectiveId);
+  const canAdd =
+    effectiveId !== '' &&
+    !adding &&
+    (!hasQuery || search.isSettled) &&
+    (selectedSearchHit?.baseSelectable ?? true);
   const selectedProvenance = library.productProvenance.get(effectiveId);
 
   const add = async () => {
@@ -62,15 +71,68 @@ export function ServerIngredientPicker({
       onAdd(product);
       return;
     }
-    // Resolve the FULL approved scientific row fresh, by exact stable id.
+    // Resolve the full active Base-approved row fresh, by exact stable id.
     setAdding(true);
     try {
-      const row = await getIngredientById(effectiveId);
+      const row = await getEngineApprovedIngredientById(effectiveId);
       if (row) onAdd(ingredientRowToEngineIngredient(row));
     } finally {
       setAdding(false);
     }
   };
+
+  if (compact) {
+    return (
+      <div
+        className="grid grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_auto] gap-2"
+        data-testid="compact-server-ingredient-picker"
+      >
+        <input
+          type="search"
+          aria-label={b.searchLabel}
+          placeholder={b.searchPlaceholder}
+          className="h-11 min-w-0 rounded-lg border border-ink/15 bg-white px-3 text-xs text-ink focus:border-ink/40 focus:outline-none lg:h-9"
+          value={query}
+          onChange={(event) => setQuery(event.currentTarget.value)}
+        />
+        <select
+          aria-label={b.addLabel}
+          className="h-11 min-w-0 rounded-lg border border-ink/15 bg-white px-2 text-xs text-ink focus:border-ink/40 focus:outline-none lg:h-9"
+          value={effectiveId}
+          onChange={(event) =>
+            setPicked({ norm: search.settledNorm, id: event.currentTarget.value })
+          }
+        >
+          {search.hits.map((hit) => (
+            <option key={hit.id} value={hit.id} disabled={!hit.baseSelectable}>
+              {resultRowTextPl(hit)}
+              {hit.baseSelectable ? '' : ' · approved_for_base=false'}
+            </option>
+          ))}
+          {filteredProducts.map((product) => (
+            <option key={product.id} value={product.id}>
+              {product.name}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          disabled={!canAdd}
+          className="h-11 rounded-lg bg-ink px-3 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40 lg:h-9"
+          onClick={() => void add()}
+          data-testid="picker-add"
+        >
+          ＋ {b.addLabel}
+        </button>
+        <span className="sr-only" aria-live="polite">
+          {count} {b.resultFoundSuffix}
+        </span>
+        {search.isError ? (
+          <span className="col-span-3 text-xs text-attention">{b.searchError}</span>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-2.5" data-testid="server-ingredient-picker">
@@ -79,7 +141,7 @@ export function ServerIngredientPicker({
         <svg
           aria-hidden
           viewBox="0 0 20 20"
-          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ivory/40"
+          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ivory/60"
           fill="none"
           stroke="currentColor"
           strokeWidth="1.6"
@@ -98,7 +160,7 @@ export function ServerIngredientPicker({
       </div>
 
       {!hasQuery ? (
-        <p className="text-xs leading-relaxed text-ivory/50" data-testid="picker-search-hint">
+        <p className="text-xs leading-relaxed text-ivory/65" data-testid="picker-search-hint">
           {b.liveSearchHint}
         </p>
       ) : search.isError ? (
@@ -106,12 +168,19 @@ export function ServerIngredientPicker({
           {b.searchError}
         </p>
       ) : search.isFetching ? (
-        <p className="text-xs text-ivory/50" role="status" aria-live="polite" data-testid="picker-searching">
+        <p
+          className="text-xs text-ivory/65"
+          role="status"
+          aria-live="polite"
+          data-testid="picker-searching"
+        >
           {b.searching}
         </p>
       ) : (
-        <p className="text-xs text-ivory/50" aria-live="polite">
-          <span className="font-mono tabular-nums text-ivory/70">{count.toLocaleString('en-US')}</span>{' '}
+        <p className="text-xs text-ivory/65" aria-live="polite">
+          <span className="font-mono tabular-nums text-ivory/70">
+            {count.toLocaleString('en-US')}
+          </span>{' '}
           {count === 1 ? b.resultUnitOne : b.resultUnitMany} {b.resultFoundSuffix}
         </p>
       )}
@@ -125,21 +194,24 @@ export function ServerIngredientPicker({
               aria-label={b.addLabel}
               className="flex-1 rounded-md border border-ivory/15 bg-shell px-3 py-2 text-sm transition-colors hover:border-ivory/30 focus:border-ivory/40 focus:outline-none"
               value={effectiveId}
-              onChange={(event) => setPicked({ norm: search.settledNorm, id: event.currentTarget.value })}
+              onChange={(event) =>
+                setPicked({ norm: search.settledNorm, id: event.currentTarget.value })
+              }
             >
               {/* Owner P0: results separated by FORM group (Świeże → Mrożone → … → Inne),
                   rank order preserved inside each group; row = NAZWA · Kategoria · Forma. */}
               {groupHitsByForm(search.hits).map((group) => (
                 <optgroup key={group.group} label={group.headingPl}>
                   {group.hits.map((hit) => (
-                    <option key={hit.id} value={hit.id}>
+                    <option key={hit.id} value={hit.id} disabled={!hit.baseSelectable}>
                       {resultRowTextPl(hit)}
+                      {hit.baseSelectable ? '' : ' · approved_for_base=false'}
                     </option>
                   ))}
                 </optgroup>
               ))}
               {filteredProducts.length > 0 ? (
-                <optgroup label="My Products">
+                <optgroup label="Moje produkty">
                   {filteredProducts.map((product) => (
                     <option key={product.id} value={product.id}>
                       {product.name} ({product.id})
@@ -151,7 +223,7 @@ export function ServerIngredientPicker({
             <button
               type="button"
               disabled={!canAdd}
-              className="inline-flex items-center justify-center rounded-md border border-ivory/20 px-5 py-2.5 text-sm font-medium text-ivory transition-colors hover:border-ivory/40 disabled:cursor-not-allowed disabled:opacity-40"
+              className="inline-flex min-h-11 items-center justify-center rounded-lg border border-ivory/20 px-5 py-2.5 text-sm font-medium text-ivory transition-colors hover:border-ivory/40 disabled:cursor-not-allowed disabled:opacity-40"
               onClick={() => void add()}
               data-testid="picker-add"
             >
@@ -165,7 +237,7 @@ export function ServerIngredientPicker({
           {search.hasMore ? (
             <button
               type="button"
-              className="self-start rounded-md border border-ivory/15 px-3 py-1.5 text-xs text-ivory/70 transition-colors hover:border-ivory/40"
+              className="min-h-11 self-start rounded-lg border border-ivory/15 px-3 py-2 text-xs text-ivory/70 transition-colors hover:border-ivory/40"
               onClick={search.loadMore}
               data-testid="picker-load-more"
             >
@@ -174,18 +246,21 @@ export function ServerIngredientPicker({
           ) : null}
 
           {selectedProvenance ? (
-            <p className="text-xs leading-relaxed text-ivory/50">
+            <p className="text-xs leading-relaxed text-ivory/65">
               {selectedProvenance.class_derived ? (
                 <span className="text-ivory/70">
-                  {selectedProvenance.provenance_note ?? 'PI Calculated · class-derived · not independently measured'}
+                  Profil obliczony na podstawie klasy produktu · parametry nie były mierzone
+                  niezależnie
                 </span>
               ) : (
                 <>
                   {selectedProvenance.status_label ? (
-                    <span className="text-ivory/70">{selectedProvenance.status_label} · </span>
+                    <span className="text-ivory/70">
+                      {productProfileStatusLabelPl(selectedProvenance.status_label)} ·{' '}
+                    </span>
                   ) : null}
-                  <span className="text-ivory/70">Reference-linked profile</span> · PAC/POD from approved
-                  reference · not independently measured
+                  <span className="text-ivory/70">Profil oparty na zatwierdzonym wzorcu</span> ·
+                  parametry technologiczne nie były mierzone niezależnie
                 </>
               )}
             </p>

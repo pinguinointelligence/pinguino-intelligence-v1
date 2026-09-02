@@ -108,6 +108,23 @@ describe('buildSessionCandidate — honest mapping through the EXISTING contract
     expect(insert.source_type).toBe('label_scan');
   });
 
+  it('records unbranded status only from an explicit user choice', () => {
+    const normal = buildSessionCandidate(readySession()).candidate.insert
+      .extracted_json as Record<string, unknown>;
+    const unbranded = buildSessionCandidate(readySession(), {
+      explicitlyUnbranded: true,
+    }).candidate.insert.extracted_json as Record<string, unknown>;
+    expect(normal.explicitlyUnbranded).toBe(false);
+    expect(unbranded.explicitlyUnbranded).toBe(false);
+    const withoutBrand = readySession(fullFields().map((field) =>
+      field.fieldKey === 'brand'
+        ? { ...field, reviewStatus: 'marked_unknown' as const, chosenCandidate: null }
+        : field,
+    ));
+    expect((buildSessionCandidate(withoutBrand, { explicitlyUnbranded: true }).candidate.insert
+      .extracted_json as Record<string, unknown>).explicitlyUnbranded).toBe(true);
+  });
+
   it('UNKNOWN stays null: marked_unknown and absent fields never invent a value', () => {
     const fields = fullFields().map((f) =>
       f.fieldKey === 'brand' ? { ...f, reviewStatus: 'marked_unknown' as const, chosenCandidate: null } : f,

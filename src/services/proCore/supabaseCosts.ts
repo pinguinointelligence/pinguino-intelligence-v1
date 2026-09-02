@@ -19,7 +19,12 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/client';
-import { buildRecipeCostSnapshot, resolveIngredientCosts, type ResolveOptions } from '@/features/pro-core/costing';
+import {
+  buildRecipeCostSnapshot,
+  resolveCostsForLines,
+  resolveIngredientCosts,
+  type ResolveOptions,
+} from '@/features/pro-core/costing';
 import type {
   CostBasis,
   CostEntry,
@@ -251,11 +256,15 @@ export function supabaseCostsRepository(deps: SupabaseCostsDeps): CostsRepositor
    */
   async function buildSnapshot(args: BuildSnapshotArgs): Promise<RecipeCostSnapshot> {
     const userId = await currentUserId();
-    const resolutions = await resolveCosts(
-      args.ownerUserId,
-      args.lines.map((l) => l.ingredientId),
-      { targetCurrency: args.currency, basis: args.basis, asOf: args.asOf },
-    );
+    // Identity-aware resolution (E3): each line is priced by its primary id first, then by its
+    // alias ids — so a cost recorded under a product identity still prices the same physical
+    // ingredient when the line carries the canonical basement/toolbox id, and vice versa.
+    const entries = await listEntries(args.ownerUserId);
+    const resolutions = resolveCostsForLines(entries, args.lines, {
+      targetCurrency: args.currency,
+      basis: args.basis,
+      asOf: args.asOf,
+    });
     // Reuse the pure domain to compute the frozen line/total math (id is DB-assigned, so pass a placeholder).
     const computed = buildRecipeCostSnapshot({
       snapshotId: 'pending',

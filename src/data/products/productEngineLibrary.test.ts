@@ -33,6 +33,9 @@ describe('buildProductEngineLibrary', () => {
     expect(lib.ingredients).toHaveLength(1);
     const ing = lib.ingredients[0]!;
     expect(ing.id).toBe('PR-ING-000010'); // product identity
+    expect(ing.canonical_ingredient_id).toBe('PI-ING-000180');
+    expect(ing.private_product_id).toBe('p1');
+    expect(ing.identity_provenance).toBe('private_product');
     expect(ing.pac_value).toBe(3.668); // reference-linked engine values
     expect(ing.is_verified).toBe(false);
     expect(lib.provenance.get('PR-ING-000010')?.reference_linked).toBe(true);
@@ -98,6 +101,9 @@ describe('buildProductEngineLibrary — class-derived PI Calculated (owner-appro
     expect(lib.ingredients).toHaveLength(1);
     const ing = lib.ingredients[0]!;
     expect(ing.id).toBe('PR-ING-000014');
+    expect(ing.canonical_ingredient_id).toBe('PR-ING-000014');
+    expect(ing.private_product_id).toBe('y1');
+    expect(ing.identity_provenance).toBe('private_product');
     expect(ing.pac_value).toBe(6.17); // resolver's class-derived value (from Yogurt 5% anchor)
     expect(ing.pod_value).toBe(0.8);
     expect(ing.is_verified).toBe(false);

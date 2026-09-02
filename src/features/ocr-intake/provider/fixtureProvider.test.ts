@@ -151,7 +151,7 @@ describe('FixtureOcrProvider → extractEvidence — full pipeline over ALL capt
     const r = await recognize(provider, imageId, bytes(imageId));
     expect(r.ok).toBe(true);
     if (!r.ok) throw new Error('fixture recognize failed');
-    return extractEvidence([{ imageId, role: 'other', result: r.result }]);
+    return extractEvidence([{ imageId, role: 'front', result: r.result }]);
   };
 
   it('label_clear_en: identity + per-100g nutrition', async () => {

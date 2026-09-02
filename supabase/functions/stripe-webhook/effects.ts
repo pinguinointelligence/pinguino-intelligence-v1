@@ -254,6 +254,75 @@ export function extractCheckoutMapping(session: Payload): CheckoutMappingRow | n
 
 // ── subscription state sync → customer_subscriptions (0015) ─────────────────
 
+/**
+ * SHOP ORDER SETTLEMENT — the facts a Gellatti shop order needs from a
+ * Checkout Session, extracted purely so the writer stays testable.
+ *
+ * A shop session is recognised by `metadata.pi_shop_order_id`, which
+ * `shop-checkout` stamps when it creates the order. A subscription/billing
+ * session carries no such id and yields null here, so the two flows can share
+ * one `checkout.session.completed` route without ever touching each other.
+ */
+export interface ShopOrderSettlement {
+  orderId: string;
+  sessionId: string | null;
+  mode: string | null;
+  paymentStatus: string | null;
+  sessionStatus: string | null;
+  paymentIntentId: string | null;
+  amountTotal: number | null;
+  currency: string | null;
+  shippingCents: number | null;
+  taxCents: number | null;
+  shipping: {
+    name: string | null;
+    line1: string | null;
+    line2: string | null;
+    postalCode: string | null;
+    city: string | null;
+    state: string | null;
+    country: string | null;
+    phone: string | null;
+  } | null;
+}
+
+export function extractShopOrderSettlement(session: Payload): ShopOrderSettlement | null {
+  const metadata = asObject(session.metadata);
+  const orderId = metadata ? asString(metadata.pi_shop_order_id) : null;
+  if (!orderId) return null;
+
+  const collected = asObject(session.collected_information);
+  const details = collected ? asObject(collected.shipping_details) : null;
+  const address = details ? asObject(details.address) : null;
+  const totals = asObject(session.total_details);
+  const customer = asObject(session.customer_details);
+
+  return {
+    orderId,
+    sessionId: asString(session.id),
+    mode: asString(session.mode),
+    paymentStatus: asString(session.payment_status),
+    sessionStatus: asString(session.status),
+    paymentIntentId: asId(session.payment_intent),
+    amountTotal: asNumber(session.amount_total),
+    currency: asString(session.currency),
+    shippingCents: totals ? asNumber(totals.amount_shipping) : null,
+    taxCents: totals ? asNumber(totals.amount_tax) : null,
+    shipping: address
+      ? {
+          name: details ? asString(details.name) : null,
+          line1: asString(address.line1),
+          line2: asString(address.line2),
+          postalCode: asString(address.postal_code),
+          city: asString(address.city),
+          state: asString(address.state),
+          country: asString(address.country),
+          phone: customer ? asString(customer.phone) : null,
+        }
+      : null,
+  };
+}
+
 export interface SubscriptionSnapshot {
   id: string;
   customerId: string | null;
@@ -542,6 +611,8 @@ export interface CommissionEntryRow {
   cadence: string;
   tier: string;
   rule_version: number;
+  /** Elite only: which partner_rate_profiles version produced amount_cents. */
+  rate_profile_version_id: string | null;
   amount_cents: number;
   currency: 'eur';
   status: 'held';
@@ -562,6 +633,9 @@ export const COMMISSION_ENTRY_ROW_KEYS: readonly (keyof CommissionEntryRow)[] = 
   'cadence',
   'tier',
   'rule_version',
+  // Elite provenance (owner override 2026-08-31 §11): which per-partner rate
+  // profile version produced amount_cents. Null for standard/gold.
+  'rate_profile_version_id',
   'amount_cents',
   'currency',
   'status',
@@ -589,6 +663,7 @@ export function buildCommissionEntryRow(input: {
   commissionCadence: string;
   tier: string;
   ruleVersion: number;
+  rateProfileVersionId?: string | null;
   amountCents: number;
   earnedAtUtcMs: number;
   livemode: boolean;
@@ -605,6 +680,7 @@ export function buildCommissionEntryRow(input: {
     cadence: input.commissionCadence,
     tier: input.tier,
     rule_version: input.ruleVersion,
+    rate_profile_version_id: input.rateProfileVersionId ?? null,
     amount_cents: input.amountCents,
     currency: 'eur',
     status: 'held',
@@ -773,8 +849,6 @@ export function extractConnectAccountSnapshot(account: Payload): ConnectAccountS
  *    'dispute_reinstatement' kind cannot be stored (flagged for review).
  */
 export const NO_CONTRACT_REASONS: Readonly<Record<string, string>> = {
-  'checkout.session.async_payment_succeeded': 'no_checkout_correlation_table',
-  'checkout.session.async_payment_failed': 'no_checkout_correlation_table',
   'subscription_schedule.created': 'no_schedule_linkage_column_on_partner_benefit_uses',
   'subscription_schedule.updated': 'no_schedule_linkage_column_on_partner_benefit_uses',
   'subscription_schedule.released': 'no_schedule_linkage_column_on_partner_benefit_uses',

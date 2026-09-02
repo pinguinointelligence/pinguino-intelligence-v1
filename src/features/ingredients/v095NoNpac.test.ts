@@ -1,8 +1,7 @@
 /// <reference types="node" />
 /**
- * v0.95 no-NPAC hotfix guards — the active ingredient table/seed/service must
- * carry NO ingredient-level `npac_value`, keep the PI Pro-only read model, and
- * the app must query the v0.95 table.
+ * Historical v0.95 no-NPAC rollback guards. Runtime uses Mapper 2088; this
+ * fixture remains under validation/history only as regression evidence.
  */
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -11,13 +10,14 @@ import { describe, expect, it } from 'vitest';
 const REPO = resolve(import.meta.dirname, '..', '..', '..');
 const read = (...p: string[]) => readFileSync(join(REPO, ...p), 'utf8');
 
-const MIGRATION = read('supabase', 'migrations', '0005_ingredients_final_v0_95_no_npac.sql');
+const MIGRATION = read('supabase', 'migrations', '20260716101552_0005_ingredients_final_v0_95_no_npac.sql');
 const SEED = read('supabase', 'seed', 'ingredients_final_v0_95_no_npac.sql');
 const SERVICE = read('src', 'services', 'ingredients.ts');
 const CSV = read(
   'docs',
   'ingredients',
   'validation',
+  'history',
   'pinguino_base_ingredients_cleaned_v0_95_no_npac.csv',
 );
 

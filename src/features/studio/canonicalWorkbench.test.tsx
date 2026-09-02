@@ -11,12 +11,14 @@ import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, beforeEach } from 'vitest';
-import { calculateRecipe, type RecipeInput, type RecipeItem } from '@/engine';
+import { calculateRecipe, TARGET_BANDS, type RecipeInput, type RecipeItem } from '@/engine';
 import { findDemoIngredient } from '@/data/demoIngredients';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import {
+  NATIVE_BAND_CATEGORIES,
   VISIBLE_PRODUCT_TYPES,
+  canonicalInternalCategory,
   detectClassifications,
   gelatoInternalCategory,
   internalCategoryFor,
@@ -47,39 +49,139 @@ describe('visible product types', () => {
       expect(html).toContain(`data-testid="product-type-${t}"`);
     }
     // No legacy primary category selector (Milk/Fruit/Nut/Chocolate/Alcohol/Custom).
-    for (const legacy of ['Milk gelato', 'Fruit gelato', 'Nut gelato', 'Chocolate gelato', 'Alcohol gelato', 'Custom']) {
+    for (const legacy of [
+      'Milk gelato',
+      'Fruit gelato',
+      'Nut gelato',
+      'Chocolate gelato',
+      'Alcohol gelato',
+      'Custom',
+    ]) {
       expect(html).not.toContain(legacy);
     }
     expect(html).not.toContain('data-testid="product-type-chocolate"');
   });
 
-  it('3. chocolate routes internally without becoming a visible type', () => {
+  // OWNER FINAL INTEGRATION ADDENDUM item 1 (2026-07-25) — SUPERSEDES the
+  // „alcohol > chocolate > nut > fruit" routing priority. `alcohol_gelato`,
+  // `nut_gelato` and `fruit_gelato` carry NO native seeded band cell, so every
+  // result routed there was scored on substituted milk_gelato bands wearing a
+  // `category_fallback` flag. Alcohol, nuts and fruit are FLAVOUR COMPONENTS of
+  // a canonical family, never families. The guarantee this test protects —
+  // internal routing happens silently, none of it ever becomes a VISIBLE type —
+  // is re-pinned below on the canonical (native-banded) categories.
+  it('3. chocolate/alcohol/nut route internally, silently, and only to NATIVE cells', () => {
     const items = [line('l-milk', 'milk_3_5', 700), line('l-choc', 'dark_chocolate_70', 100)];
     expect(gelatoInternalCategory(items)).toBe('chocolate_gelato');
     expect(visibleTypeOf('chocolate_gelato')).toBe('gelato');
     expect(detectClassifications(items).chocolate).toBe(true);
-    // Priority: alcohol > chocolate > nut > fruit.
+    // Alcohol + fruit are flavour components: chocolate still owns the routing,
+    // and the result is a NATIVE cell (never the unseeded alcohol_gelato).
     const withAll = [...items, line('l-whi', 'whiskey_40', 20), line('l-rasp', 'raspberry', 50)];
-    expect(gelatoInternalCategory(withAll)).toBe('alcohol_gelato');
+    expect(gelatoInternalCategory(withAll)).toBe('chocolate_gelato');
+    expect(detectClassifications(withAll).alcohol).toBe(true); // detected, just not a family
+    expect(visibleTypeOf(gelatoInternalCategory(withAll))).toBe('gelato');
+    // A whiskey gelato with no chocolate is a plain milk gelato (native bands).
+    expect(
+      gelatoInternalCategory([line('l-milk', 'milk_3_5', 700), line('l-whi', 'whiskey_40', 70)]),
+    ).toBe('milk_gelato');
+    // A pistachio gelato likewise — nuts are a flavour component.
+    expect(
+      gelatoInternalCategory([
+        line('l-milk', 'milk_3_5', 700),
+        line('l-pist', 'pistachio_paste', 150),
+      ]),
+    ).toBe('milk_gelato');
+  });
+
+  // OWNER ADDENDUM item 1 — THE STRUCTURAL GATE, driven off the engine's own
+  // seeded-cell list so seeding a new cell in targets.ts automatically unlocks
+  // it here with no test edit.
+  it('no runtime derivation path can return a category without NATIVE seeded bands', () => {
+    const seeded = new Set(
+      TARGET_BANDS.filter((band) => band.status === 'seeded').map((band) => band.category),
+    );
+    expect([...NATIVE_BAND_CATEGORIES].sort()).toEqual([...seeded].sort());
+
+    const catalogue = [
+      'milk_3_5',
+      'cream_30',
+      'smp',
+      'sucrose',
+      'dextrose',
+      'tara_gum',
+      'raspberry',
+      'dark_chocolate_70',
+      'pistachio_paste',
+      'whiskey_40',
+      'water',
+      'inulin',
+    ];
+    // Every non-empty subset of a representative catalogue, through every
+    // visible type and every previous category the store could be carrying.
+    const subsets: RecipeItem[][] = [[]];
+    for (const id of catalogue) {
+      const ing = findDemoIngredient(id);
+      if (!ing) continue;
+      for (const existing of [...subsets]) {
+        subsets.push([...existing, line(`l-${id}`, id, 100)]);
+      }
+    }
+    const ALL_CATEGORIES: RecipeInput['category'][] = [
+      'milk_gelato',
+      'fruit_gelato',
+      'nut_gelato',
+      'chocolate_gelato',
+      'alcohol_gelato',
+      'sorbet',
+      'vegan_gelato',
+      'custom',
+      'protein_gelato',
+    ];
+    for (const items of subsets) {
+      // (a) the live gelato derivation
+      expect(
+        seeded.has(gelatoInternalCategory(items)),
+        JSON.stringify(items.map((i) => i.id)),
+      ).toBe(true);
+      // (b) the visible-type derivation, for every supported visible type
+      for (const visible of VISIBLE_PRODUCT_TYPES) {
+        expect(seeded.has(internalCategoryFor(visible, items, 'milk_gelato'))).toBe(true);
+      }
+      // (c) the canonicalization of anything arriving from outside
+      for (const category of ALL_CATEGORIES) {
+        expect(seeded.has(canonicalInternalCategory(category, items)), category).toBe(true);
+      }
+    }
   });
 
   it('the store re-routes internal category live as GELATO ingredients change', () => {
-    useRecipeStore.getState().loadRecipeInput(
-      { items: [line('l-milk', 'milk_3_5', 700)], mode: 'classic', category: 'milk_gelato', target_temperature_c: -11, target_batch_grams: 1000, machine_capacity_grams: null, goals: { flavor_intensity: 'balanced', cost_priority: 'balanced' } },
-    );
+    useRecipeStore.getState().loadRecipeInput({
+      items: [line('l-milk', 'milk_3_5', 700)],
+      mode: 'classic',
+      category: 'milk_gelato',
+      target_temperature_c: -11,
+      target_batch_grams: 1000,
+      machine_capacity_grams: null,
+      goals: { flavor_intensity: 'balanced', cost_priority: 'balanced' },
+    });
     useRecipeStore.getState().setVisibleProductType('gelato');
     useRecipeStore.getState().addIngredient(findDemoIngredient('dark_chocolate_70')!, 100);
     expect(useRecipeStore.getState().category).toBe('chocolate_gelato');
     expect(useRecipeStore.getState().visibleProductType).toBe('gelato'); // visible stays Gelato
   });
 
-  it('Protein is honest-unsupported — never silently re-profiles the recipe', () => {
+  it('Protein uses its dedicated seeded category and exposes NO protein target control', () => {
     useRecipeStore.getState().setCategory('milk_gelato');
     useRecipeStore.getState().setVisibleProductType('protein');
     expect(useRecipeStore.getState().visibleProductType).toBe('protein');
-    expect(useRecipeStore.getState().category).toBe('milk_gelato'); // unchanged
-    expect(internalCategoryFor('protein', [], 'sorbet')).toBe('sorbet');
-    expect(renderToStaticMarkup(<GoalSetup />)).not.toContain('data-testid="protein-unsupported"');
+    expect(useRecipeStore.getState().category).toBe('protein_gelato');
+    expect(internalCategoryFor('protein', [], 'sorbet')).toBe('protein_gelato');
+    // Protein Engine v2 (owner decision 2026-08-22): protein % is an OUTPUT.
+    // The store must expose neither a persisted target nor a setter for one.
+    const store = useRecipeStore.getState() as unknown as Record<string, unknown>;
+    expect('target_protein_percent' in store).toBe(false);
+    expect('setTargetProteinPercent' in store).toBe(false);
   });
 });
 
@@ -107,7 +209,12 @@ describe('quality tier', () => {
 /* -------------------------------------------------- serving mode (proof 6) -- */
 describe('serving mode', () => {
   it('6. Świeże/−11/−12/−13 share ONE mode source (servingModeId + temperature move together)', () => {
-    const cases: [string, number][] = [['fresh', -11], ['temp_minus_11', -11], ['temp_minus_12', -12], ['temp_minus_13', -13]];
+    const cases: [string, number][] = [
+      ['fresh', -11],
+      ['temp_minus_11', -11],
+      ['temp_minus_12', -12],
+      ['temp_minus_13', -13],
+    ];
     for (const [id, temp] of cases) {
       useRecipeStore.getState().setServingMode(id, temp);
       const s = useRecipeStore.getState();
@@ -139,9 +246,10 @@ describe('one canonical state', () => {
 
 /* ---------------------------------------------- recalculation entry (proofs 9–10) -- */
 describe('recalculation entry', () => {
-  it('9. the top Przelicz z PI uses the canonical pipeline (createOptimizePreview)', () => {
+  it('9. the top Przelicz z PI uses the canonical visible-terminal pipeline', () => {
     const page = read('pages', 'pro', 'ProWorkspacePage.tsx');
-    expect(page).toContain('createOptimizePreview');
+    expect(page).toContain('beginPiRecalculation');
+    expect(page).toContain('runPiRecalculationWithTerminal');
     expect(page).toContain('ProRecalcPanel');
   });
 
@@ -152,9 +260,40 @@ describe('recalculation entry', () => {
   });
 });
 
+describe('new Pro profile layout', () => {
+  it('exposes four stable right-panel contexts and keeps actual batch in the profile', () => {
+    const profile = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
+    const tabs = read('features', 'pro-workbench', 'WorkbenchModuleTabs.tsx');
+    for (const label of ['Receptura', 'Monitor', 'Produkcja', 'Etykieta']) {
+      expect(tabs).toContain(label);
+    }
+    expect(tabs).toContain("export type WorkbenchModuleTab = 'profile' | 'monitor' | 'production' | 'summary'");
+    expect(profile).toContain('export type CockpitTab = WorkbenchModuleTab');
+    const settings = read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx');
+    expect(settings).toContain('profile-batch-combined');
+    expect(settings).toContain('actualBatchG.toLocaleString');
+  });
+
+  it('shows explicit gram and percent lock controls through the canonical lock_type action', () => {
+    const row = read('features', 'ingredient-builder', 'IngredientRow.tsx');
+    expect(row).toContain('row-lock-grams-');
+    expect(row).toContain('row-lock-percent-');
+    expect(row).toContain("gramsLocked ? 'unlocked' : 'grams'");
+    expect(row).toContain('onToggle: lock?.onTogglePercent');
+    expect(row).toContain('pressed: lock?.percentLocked ?? false');
+    expect(row).toContain('widthPreset="percent"');
+    expect(row).toContain('widthPreset="grams"');
+    expect(row).not.toContain('nie jest jeszcze podłączona do solvera');
+  });
+});
+
 /* ------------------------------------------ round-trip + engine equality (11–12) -- */
 describe('saved round-trip + engine equality', () => {
-  const base = (temp: number, category: RecipeInput['category'], extra: RecipeItem[] = []): RecipeInput => ({
+  const base = (
+    temp: number,
+    category: RecipeInput['category'],
+    extra: RecipeItem[] = [],
+  ): RecipeInput => ({
     items: [line('l-milk', 'milk_3_5', 700), line('l-suc', 'sucrose', 150), ...extra],
     mode: 'classic',
     category,
@@ -168,7 +307,10 @@ describe('saved round-trip + engine equality', () => {
     ['gelato −11', base(-11, 'milk_gelato')],
     ['gelato −12', base(-12, 'milk_gelato')],
     ['gelato −13', base(-13, 'milk_gelato')],
-    ['chocolate-routed gelato', base(-12, 'chocolate_gelato', [line('l-choc', 'dark_chocolate_70', 80)])],
+    [
+      'chocolate-routed gelato',
+      base(-12, 'chocolate_gelato', [line('l-choc', 'dark_chocolate_70', 80)]),
+    ],
     ['sorbet', base(-12, 'sorbet', [line('l-rasp', 'raspberry', 300)])],
     ['vegan', base(-12, 'vegan_gelato')],
   ];
@@ -182,14 +324,17 @@ describe('saved round-trip + engine equality', () => {
 
       // "Save" = the same RecipeInput persisted; "reopen" = load it back.
       useRecipeStore.getState().resetToDemo();
-      useRecipeStore.getState().loadRecipeInput(draftInput, { savedId: 'r', savedName: 'X', versionNumber: 1 });
+      useRecipeStore
+        .getState()
+        .loadRecipeInput(draftInput, { savedId: 'r', savedName: 'X', versionNumber: 1 });
       const reopenedInput = buildRecipeInput(useRecipeStore.getState());
       const reopenedResult = calculateRecipe(reopenedInput);
 
       // Identical canonical input (ingredients, grams, category, temperature, batch)…
-      expect(reopenedInput.items.map((i) => [i.id, i.planned_grams]), label).toEqual(
-        draftInput.items.map((i) => [i.id, i.planned_grams]),
-      );
+      expect(
+        reopenedInput.items.map((i) => [i.id, i.planned_grams]),
+        label,
+      ).toEqual(draftInput.items.map((i) => [i.id, i.planned_grams]));
       expect(reopenedInput.category, label).toBe(draftInput.category);
       expect(reopenedInput.target_temperature_c, label).toBe(draftInput.target_temperature_c);
       // …and identical Engine output (the workbench never presents a different number).
@@ -198,9 +343,13 @@ describe('saved round-trip + engine equality', () => {
   });
 
   it('the reopened visible type projects correctly from the saved internal category', () => {
-    useRecipeStore.getState().loadRecipeInput(base(-12, 'chocolate_gelato', [line('l-choc', 'dark_chocolate_70', 80)]));
+    useRecipeStore
+      .getState()
+      .loadRecipeInput(base(-12, 'chocolate_gelato', [line('l-choc', 'dark_chocolate_70', 80)]));
     expect(useRecipeStore.getState().visibleProductType).toBe('gelato');
-    useRecipeStore.getState().loadRecipeInput(base(-12, 'sorbet', [line('l-rasp', 'raspberry', 300)]));
+    useRecipeStore
+      .getState()
+      .loadRecipeInput(base(-12, 'sorbet', [line('l-rasp', 'raspberry', 300)]));
     expect(useRecipeStore.getState().visibleProductType).toBe('sorbet');
   });
 });
@@ -209,7 +358,14 @@ describe('saved round-trip + engine equality', () => {
 describe('language', () => {
   it('13. the core workbench GOAL card carries no legacy English labels', () => {
     const html = renderToStaticMarkup(<GoalSetup />);
-    for (const legacy of ['Product Mode', 'Machine capacity', 'Cost priority', 'Flavor intensity', 'Category', 'Mouthfeel']) {
+    for (const legacy of [
+      'Product Mode',
+      'Machine capacity',
+      'Cost priority',
+      'Flavor intensity',
+      'Category',
+      'Mouthfeel',
+    ]) {
       expect(html, legacy).not.toContain(legacy);
     }
     expect(html).toContain('Poziom jakości');

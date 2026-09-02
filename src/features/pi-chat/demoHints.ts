@@ -16,7 +16,7 @@ import {
   type RedactedCorrectionProposal,
   type RedactedDirection,
 } from '@/engine';
-import { ACTIVE_ENGINE } from '@/data/engines';
+import { ACTIVE_ENGINE, engineDisplayLabelPl } from '@/data/engines';
 import { findProductProfile, type ProductProfileId } from '@/data/productProfiles';
 import { findServingProfile, isServingProfileConnected } from '@/data/servingProfiles';
 import type { IntakeState } from './conversation';
@@ -121,7 +121,7 @@ export function buildDemoHints(state: IntakeState): DemoHintsView {
   const serving = state.servingProfileId !== null ? findServingProfile(state.servingProfileId) : null;
 
   const base: DemoHintsView = {
-    engineLabel: ACTIVE_ENGINE.label,
+    engineLabel: engineDisplayLabelPl(ACTIVE_ENGINE),
     productProfileId: state.productProfileId,
     productPendingNote: product?.pendingNote ?? null,
     servingConnected: serving !== null && isServingProfileConnected(serving),

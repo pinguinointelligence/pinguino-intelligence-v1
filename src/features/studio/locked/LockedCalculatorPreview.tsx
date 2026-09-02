@@ -10,7 +10,7 @@ export function LockedCalculatorPreview() {
           <SkeletonRow key={i} />
         ))}
       </div>
-      <p className="mt-5 text-xs leading-relaxed text-ivory/40">{copy.studio.locked.note}</p>
+      <p className="mt-5 text-xs leading-relaxed text-ivory/60">{copy.studio.locked.note}</p>
     </LockedPanel>
   );
 }

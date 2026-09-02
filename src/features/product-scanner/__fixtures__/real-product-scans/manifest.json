@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "fixtures": [
+    {
+      "id": "la-chocolatera",
+      "product": "La Chocolatera",
+      "files": ["Zrzut ekranu 2026-08-20 o 09.51.12.png", "Zrzut ekranu 2026-08-20 o 09.51.26.png"],
+      "status": "owner_local_verified_not_committed"
+    },
+    {
+      "id": "haribo-quaxi",
+      "product": "HARIBO Quaxi",
+      "files": ["Zrzut ekranu 2026-08-20 o 09.49.20.png"],
+      "status": "owner_local_verified_not_committed"
+    },
+    {
+      "id": "coca-cola-zero-live-330ml",
+      "product": "Coca-Cola Zero 330 ml can",
+      "files": ["front", "barcode", "nutrition", "ingredients"],
+      "status": "owner_device_frames_not_committed_structural_regression_committed",
+      "expected": {
+        "barcode": "5449000131805",
+        "netQuantity": "330 ml",
+        "manualShutterEvents": 0,
+        "repeatEvidenceRequests": 0
+      }
+    }
+  ],
+  "note": "Exact owner-provided images were visually reviewed from the owner's local Desktop and are intentionally not copied into the repository. Real-image E2E claims still require the staging runtime ledger and database evidence from an actual rerun."
+}

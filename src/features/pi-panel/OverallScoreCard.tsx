@@ -1,16 +1,19 @@
 /**
- * Rail focal — the deep-charcoal score card (Design Lock), now the §15.1 PUBLIC
- * score (UIUX Slice D, owner decision + audit #9):
+ * Rail focal — the deep-charcoal score card (Design Lock), ACCEPTANCE
+ * ADDENDUM (2) public contract (owner decision 2026-07-24, supersedes the
+ * §15.1 blended headline):
  *
- *  - „Dopasowanie receptury" as an INTEGER 1–10 with the exact §15.1 verdict —
- *    never „X / 100", never a percent, never decimals. The engine's 0–100
- *    float stays internal; rounding happens only in the recipe-score adapter.
- *  - The raw technical/flavor/cost sub-scores are REMOVED from the public
- *    card: §15.1 bans certificate-style precision and §22 keeps scoring
- *    internals out of the presentation (the §14.2/9 Expert module shows the
- *    original technical values — POD/PAC/NPAC/ice — instead).
+ *  - the headline INTEGER is „Dopasowanie techniczne" 1–10 — TECHNICAL
+ *    recipe-fit derived from the engine's band/technical dimension via the
+ *    `recipeTechnicalFit` adapter. When ALL native approved technological
+ *    bands are in range it shows EXACTLY 10/10; it degrades honestly with
+ *    violations; provisional profiles are capped below 10 and carry
+ *    „Ocena częściowa / prowizoryczna".
+ *  - cost and subjective flavor are SEPARATE labeled dimensions (small rows
+ *    below the headline) — never mixed into the technical integer, still
+ *    integer-only (no fake precision), honest „Brak danych kosztowych".
  *  - Screen readers get both the number and the verdict (§21.5); the tooltip
- *    says 10/10 is not a laboratory guarantee (§15.2).
+ *    says 10/10 = all native bands in range, not a laboratory guarantee.
  *
  * Reads the already-computed engine scores; never recomputes. Null-safe for
  * empty recipes (honest „Brak danych" path).
@@ -18,19 +21,27 @@
 import { SectionLabel } from '@/components/shared/SectionLabel';
 import { CharcoalPanel } from '@/components/ui/CharcoalPanel';
 import { copy } from '@/copy/en';
-import type { ProductMode, RecipeResult } from '@/engine';
-import { MATCH_SCORE_TOOLTIPS, recipeMatchScore } from '@/features/recipe-score';
+import type { ProductMode, RecipeInput, RecipeResult } from '@/engine';
+import {
+  TECHNICAL_FIT_TOOLTIPS,
+  commercialDimensions,
+  recipeTechnicalFit,
+} from '@/features/recipe-score';
 
+import { recipeFitForInput } from '@/features/protein-gelato/proteinAuthority';
 const o = copy.studio.overall;
 
 export function OverallScoreCard({
   result,
   mode,
+  input,
 }: {
   result: RecipeResult;
   mode: ProductMode;
+  input?: RecipeInput;
 }) {
-  const match = recipeMatchScore(result.scores);
+  const fit = input ? recipeFitForInput(input, result) : recipeTechnicalFit(result);
+  const dimensions = commercialDimensions(result.scores);
   const modeName = copy.studio.goal.modes[mode].name;
 
   // Owner P0 (score truthfulness): show ASSESSMENT COVERAGE honestly. An
@@ -53,29 +64,52 @@ export function OverallScoreCard({
         </span>
       </div>
 
-      {match.score === null ? (
-        <div className="mt-3" aria-label={match.ariaText}>
-          <span className="font-mono text-2xl font-medium text-ivory/40">{match.display}</span>
-          <p className="mt-2 text-sm leading-relaxed text-ivory-soft">{match.label}</p>
+      {fit.score === null ? (
+        <div className="mt-3" aria-label={fit.ariaText}>
+          <span className="font-mono text-2xl font-medium text-ivory/60">{fit.display}</span>
+          <p className="mt-2 text-sm leading-relaxed text-ivory-soft">{fit.label}</p>
         </div>
       ) : (
         <div
           className="mt-3 flex items-baseline gap-3"
-          aria-label={match.ariaText}
-          title={MATCH_SCORE_TOOLTIPS[match.tooltipKey]}
+          aria-label={fit.ariaText}
+          title={TECHNICAL_FIT_TOOLTIPS[fit.tooltipKey]}
         >
           <span className="font-mono text-[40px] font-medium leading-none tracking-tight tabular-nums text-ivory">
-            {match.display}
+            {fit.display}
           </span>
-          <span className="text-sm font-medium text-ivory">{match.label}</span>
+          <span className="text-sm font-medium text-ivory">{fit.label}</span>
         </div>
       )}
 
-      {match.score !== null && (partial || fallbackBands) ? (
+      {fit.score !== null && (partial || fallbackBands || fit.provisional) ? (
         <p className="mt-2 text-xs leading-relaxed text-ivory-soft" data-testid="score-coverage">
           {o.coverage(banded.length, total)}
-          {partial || fallbackBands ? ` ${o.partialNote}` : ''}
+          {partial || fallbackBands || fit.provisional ? ` ${o.partialNote}` : ''}
         </p>
+      ) : null}
+
+      {/* ACCEPTANCE ADDENDUM (2): flavor/cost as SEPARATE labeled dimensions —
+          clearly outside the technical headline, integer-only, honest no-data. */}
+      {fit.score !== null ? (
+        <div
+          className="mt-3 space-y-1 border-t border-ivory/10 pt-3"
+          data-testid="score-dimensions"
+        >
+          <p className="text-[0.625rem] tracking-label text-ivory-soft uppercase">
+            {o.dimensionsHeading}
+          </p>
+          <div className="flex items-baseline justify-between gap-3 text-xs text-ivory-soft">
+            <span>{o.flavorDimension}</span>
+            <span className="font-mono tabular-nums">{dimensions.flavor.display}</span>
+          </div>
+          <div className="flex items-baseline justify-between gap-3 text-xs text-ivory-soft">
+            <span>{o.costDimension}</span>
+            <span className="font-mono tabular-nums">
+              {dimensions.cost.score === null ? o.costNoData : dimensions.cost.display}
+            </span>
+          </div>
+        </div>
       ) : null}
     </CharcoalPanel>
   );

@@ -29,7 +29,7 @@ const fnDir = join(ROOT, 'supabase', 'functions', 'stripe-subscription-webhook')
 const indexSource = readFileSync(join(fnDir, 'index.ts'), 'utf8');
 const mappingSource = readFileSync(join(fnDir, 'mapping.ts'), 'utf8');
 const migration0003 = readFileSync(
-  join(ROOT, 'supabase', 'migrations', '0003_billing_subscriptions.sql'),
+  join(ROOT, 'supabase', 'migrations', '20260716101446_0003_billing_subscriptions.sql'),
   'utf8',
 );
 const webhookPlan = readFileSync(

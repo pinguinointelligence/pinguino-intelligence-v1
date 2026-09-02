@@ -1,0 +1,112 @@
+-- ============================================================================
+-- GELLATTI — restore the INTENDED grant surface on partner_rate_profiles
+-- ============================================================================
+-- PROPOSED — NOT APPLIED. Prepared for owner approval per the standing rule:
+-- unexpected live result -> stop -> diagnose -> propose -> report -> wait.
+--
+-- ── WHAT WAS FOUND ──────────────────────────────────────────────────────────
+-- Immediately after applying 20260831200500 (registered 20260831150753), the
+-- live privilege check returned:
+--
+--   authenticated[select=true, insert=true, update=true, delete=true]
+--   anon_select=true
+--
+-- That contradicts the migration's own stated contract, which says:
+--   "Intentionally NO insert/update/delete grants: a partner setting their own
+--    commission rate must be impossible at the DB layer, not merely in the UI."
+--
+-- ── ROOT CAUSE — NOT THIS MIGRATION ─────────────────────────────────────────
+-- The project carries ALTER DEFAULT PRIVILEGES on schema public, set by both
+-- `postgres` and `supabase_admin`, granting `arwdDxtm` (ALL) on every NEW table
+-- to anon, authenticated and service_role. It is the Supabase project default.
+--
+-- So `partner_rate_profiles` inherited full CRUD for anon and authenticated at
+-- CREATE TABLE time, before any line of this workstream ran. The migration's
+-- `grant select ... to authenticated` was a no-op on top of an already-total
+-- grant, and the absence of insert/update/delete grants achieved nothing.
+--
+-- Every pre-existing money table carries the same ACL, verified live:
+--   commission_entries, commission_rules, partners, partner_codes,
+--   partner_tier_snapshots  ->  all anon=arwdDxtm, authenticated=arwdDxtm
+--
+-- ── WHAT IS *NOT* TRUE: there is no live exposure ───────────────────────────
+-- RLS contains all of it. Proven live as the `authenticated` role carrying a
+-- real partner's JWT claims, every probe rolled back:
+--
+--   partner inserts a rate profile for THEMSELVES     -> BLOCKED 42501 (RLS)
+--   partner inserts a rate profile for ANOTHER partner-> BLOCKED 42501 (RLS)
+--   partner updates their own rate                    -> BLOCKED, 0 rows
+--   partner deletes their rate                        -> BLOCKED, 0 rows
+--   partner writes commission_rules                   -> BLOCKED 42501 (RLS)
+--   partner writes commission_entries                 -> BLOCKED 42501 (RLS)
+--   partner sets partners.tier = 'elite'              -> BLOCKED, 0 rows
+--   partner reads OWN rate profile                    -> 1 row (intended)
+--   anon reads any rate profile                       -> 0 rows
+--
+-- Two earlier probes reported CRITICAL and were WRONG — recorded so the false
+-- alarms are not mistaken for evidence later:
+--   * `insert ... select` from a source the caller cannot read inserts ZERO
+--     rows and succeeds trivially. It proves nothing. Re-run with explicit
+--     VALUES and `get diagnostics row_count`, it refuses with 42501.
+--   * a probe with a wrong column name fails 42703 (undefined_column), which is
+--     a bug in the probe, not a denial by the database.
+--
+-- ── WHY FIX IT ANYWAY ───────────────────────────────────────────────────────
+-- Defence in depth on a table that decides how much money a partner is paid.
+-- Today RLS is the ONLY thing standing between `authenticated` and a
+-- self-serve commission raise. One permissive policy added later, or one
+-- `disable row level security`, turns a documented-safe table into a live hole
+-- with no second barrier. The grant surface should match the stated contract so
+-- that RLS is the second line, not the only line.
+
+-- ── CONSUMER PROOF, done before choosing what to grant ──────────────────────
+-- Owner principle: ordinary anon/authenticated roles receive ONLY the
+-- privileges the runtime genuinely requires. So the question is not "what feels
+-- safe" but "who actually reads this table". Answered by searching the code:
+--
+--   supabase/functions/stripe-webhook/dispatch.ts:392
+--     deps.db.rpc('gellatti_partner_elite_rate_v1', ...)
+--
+-- That is the ONLY consumer. It runs on SUPABASE_SERVICE_ROLE_KEY, and it does
+-- not select the table at all — it calls the SECURITY DEFINER resolver, which
+-- executes as its owner and therefore needs no grant on the table.
+--
+-- `grep -rn partner_rate_profiles src` returns NOTHING outside tests. No browser
+-- code reads this table. The partner dashboard that would eventually show a rate
+-- history (§15 step 3, §16) IS NOT BUILT.
+--
+-- Therefore `authenticated` needs NO privilege today, and 20260831200500's
+-- `grant select ... to authenticated` was speculative — granted for a consumer
+-- that does not exist. Least privilege means it goes.
+
+revoke all on public.partner_rate_profiles from anon, authenticated;
+
+-- Deliberately NO grant. When the partner dashboard is built, the read gets the
+-- narrowest privilege it is then proven to need — and the preferred shape is a
+-- SECURITY DEFINER reader like every other path in this lane, which needs no
+-- table grant at all.
+--
+-- service_role and the table owner are untouched: the writer path is
+-- service-role only and must keep working, and the resolver is SECURITY DEFINER
+-- so it is unaffected by table grants either way.
+
+-- The RLS policy partner_rate_profiles_select_own is deliberately LEFT IN PLACE
+-- and is currently DORMANT: with no grant, no policy can admit anyone. It is the
+-- correct policy for the day a proven consumer appears, and an inert policy
+-- grants nothing. Removing and re-adding it later would only risk getting the
+-- predicate wrong the second time.
+
+-- ── SCOPE: this migration touches ONE table ─────────────────────────────────
+-- commission_entries, commission_rules, partners, partner_codes and
+-- partner_tier_snapshots carry the same over-broad ACL, and they are NOT
+-- changed here. Narrowing grants on tables that predate this workstream can
+-- break existing application paths that rely on them, and that is an owner
+-- decision with its own QA, not a side effect of a partner-rates migration.
+-- Recorded in GELLATTI_WORK_WITH_US_MIGRATION_INVENTORY.md as an open item.
+
+-- ============================================================================
+-- ROLLBACK:
+--   grant all on public.partner_rate_profiles to anon, authenticated;
+-- which restores the inherited default-privilege ACL. Only do so knowingly:
+-- it returns the table to a state where RLS is the sole barrier.
+-- ============================================================================

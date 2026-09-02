@@ -159,7 +159,7 @@ const SAFETY_BLOCK_REASONS: ReadonlySet<string> = new Set([
   'allergen_substitution_requires_explicit_approval',
   'alcohol_substitution_requires_explicit_approval',
   'sweetener_polyol_his_substitution_requires_supported_rule',
-  'substitute_data_not_verified',
+  'substitute_technical_data_incomplete',
 ]);
 
 const emptyTrace = () => ({ solverInvoked: false, targetOverrideActive: false, injectedMetrics: [] as string[] });

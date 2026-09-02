@@ -18,9 +18,11 @@ import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const REPO = resolve(import.meta.dirname, '..', '..', '..');
-const read = (...p: string[]) => readFileSync(join(REPO, ...p), 'utf8');
+// Normalize CRLF: a Windows autocrlf checkout must parse identically to an LF one
+// (the per-line `--.*$` comment strip cannot cross a stray `\r`).
+const read = (...p: string[]) => readFileSync(join(REPO, ...p), 'utf8').replace(/\r\n/g, '\n');
 
-const MIGRATION = read('supabase', 'migrations', '0008_products_mapper_results.sql');
+const MIGRATION = read('supabase', 'migrations', '20260716101741_0008_products_mapper_results.sql');
 const INGREDIENTS = read('src', 'services', 'ingredients.ts');
 const PRODUCTS_SERVICE = read('src', 'services', 'products.ts');
 const PRODUCT_ROW = read('src', 'data', 'products', 'productRow.ts');

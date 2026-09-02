@@ -29,18 +29,19 @@ import {
 } from './acceptedCorrectionDraft';
 import type { OptimizationPreviewView } from './optimizationPreviewRunner';
 import type { SolverTargetMode } from './solverTargetInjection';
+import { customerErrorMessage } from '@/copy/customerError';
 
 const REJECTION_TEXT: Record<AcceptedCorrectionRejection, string> = {
-  missing_owner: 'Sign in to save corrections.',
-  requires_pro: 'Saving corrections requires Pro (exact grams).',
-  requires_signed_in_save: 'Saving is not available in this session.',
-  solve_blocked: 'This solve is blocked — there is nothing verified to save.',
-  decision_not_saveable: 'No verified correction in this preview — nothing to save.',
-  rerun_not_verified: 'This correction was not rerun-verified — not saveable.',
-  no_correction_actions: 'The preview proposes no gram actions — nothing to save.',
-  missing_original_snapshot: 'The original recipe snapshot is missing — not saveable.',
-  missing_corrected_snapshot: 'The corrected recipe snapshot is missing — not saveable.',
-  missing_after_metrics: 'Verified after-metrics are missing — not saveable.',
+  missing_owner: 'Zaloguj się, aby zapisać korektę.',
+  requires_pro: 'Zapisywanie korekt wymaga Gellatti Pro.',
+  requires_signed_in_save: 'W tej sesji nie można zapisać korekty.',
+  solve_blocked: 'To przeliczenie jest zablokowane — nie ma potwierdzonej korekty do zapisania.',
+  decision_not_saveable: 'W tym podglądzie nie ma potwierdzonej korekty do zapisania.',
+  rerun_not_verified: 'Korekta nie została ponownie sprawdzona i nie może być zapisana.',
+  no_correction_actions: 'Podgląd nie proponuje zmian w gramach.',
+  missing_original_snapshot: 'Brakuje pierwotnej receptury potrzebnej do zapisu.',
+  missing_corrected_snapshot: 'Brakuje skorygowanej receptury potrzebnej do zapisu.',
+  missing_after_metrics: 'Brakuje wyników po korekcie potrzebnych do zapisu.',
 };
 
 type SaveStatus =
@@ -50,8 +51,8 @@ type SaveStatus =
   | { state: 'error'; message: string };
 
 const modeLabel: Record<SolverTargetMode, string> = {
-  engine_seeded: 'Engine-seeded solve',
-  regulator_shadow: 'Regulator-shadow solve',
+  engine_seeded: 'Główne przeliczenie',
+  regulator_shadow: 'Dodatkowe porównanie',
 };
 
 export function SaveCorrectionControl({
@@ -85,7 +86,9 @@ export function SaveCorrectionControl({
 
   // Unsigned (incl. demo sessions): a plain sign-in note, never a button.
   if (authStatus !== 'authed' || !user) {
-    return <p className="text-[11px] leading-relaxed text-ivory/30">Sign in to save corrections.</p>;
+    return (
+      <p className="text-[11px] leading-relaxed text-ivory/60">Zaloguj się, aby zapisać korektę.</p>
+    );
   }
   // Signed-in Free: no control at all (no dead button, no upsell here).
   if (!exactCorrectionGrams || !saveRecipes) return null;
@@ -111,8 +114,8 @@ export function SaveCorrectionControl({
   if (!builds.engine_seeded.ok && !builds.regulator_shadow.ok) {
     const reason = builds.engine_seeded.ok ? null : builds.engine_seeded.reason;
     return (
-      <p className="text-[11px] leading-relaxed text-ivory/30">
-        {reason ? REJECTION_TEXT[reason] : 'Nothing saveable in this preview.'}
+      <p className="text-[11px] leading-relaxed text-ivory/60">
+        {reason ? REJECTION_TEXT[reason] : 'W tym podglądzie nie ma korekty do zapisania.'}
       </p>
     );
   }
@@ -138,7 +141,10 @@ export function SaveCorrectionControl({
     } catch (error) {
       setSaveResult({
         ...key,
-        status: { state: 'error', message: error instanceof Error ? error.message : 'Save failed.' },
+        status: {
+          state: 'error',
+          message: customerErrorMessage(error, 'recipes', 'RECIPE_SAVE_FAILED'),
+        },
       });
     } finally {
       inFlight.current = false;
@@ -150,19 +156,19 @@ export function SaveCorrectionControl({
 
   return (
     <div className="space-y-2 rounded-lg border border-ivory/10 bg-black/20 p-3">
-      <p className="font-mono text-[10px] uppercase tracking-wide text-ivory/40">
-        Save accepted correction
+      <p className="font-mono text-[10px] uppercase tracking-wide text-ivory/60">
+        Zapisz zaakceptowaną korektę
       </p>
-      <p className="text-[11px] leading-relaxed text-ivory/30">
-        Writes one immutable correction record you own (original + corrected snapshots). The recipe
-        itself is never changed.
+      <p className="text-[11px] leading-relaxed text-ivory/60">
+        Zapisz pierwotną i skorygowaną recepturę jako jeden wpis należący do Ciebie. Bieżąca
+        receptura nie zostanie zmieniona.
       </p>
       <div className="flex flex-col gap-1.5">
         {(['engine_seeded', 'regulator_shadow'] as const).map((m) => (
           <label
             key={m}
             className={`flex items-center gap-2 font-mono text-[11px] ${
-              builds[m].ok ? 'text-ivory/60' : 'text-ivory/25'
+              builds[m].ok ? 'text-ivory/60' : 'text-ivory/60'
             }`}
           >
             <input
@@ -173,12 +179,14 @@ export function SaveCorrectionControl({
               onChange={() => setMode(m)}
             />
             {modeLabel[m]}
-            {!builds[m].ok ? ' — not saveable' : ''}
+            {!builds[m].ok ? ' — niedostępne' : ''}
           </label>
         ))}
       </div>
       {!selected.ok ? (
-        <p className="text-[11px] leading-relaxed text-ivory/30">{REJECTION_TEXT[selected.reason]}</p>
+        <p className="text-[11px] leading-relaxed text-ivory/60">
+          {REJECTION_TEXT[selected.reason]}
+        </p>
       ) : null}
       <button
         type="button"
@@ -186,11 +194,11 @@ export function SaveCorrectionControl({
         disabled={!selected.ok || busy || done}
         className="inline-flex w-full items-center justify-center rounded-md border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory transition-colors hover:border-ivory/40 disabled:cursor-not-allowed disabled:opacity-40"
       >
-        {busy ? 'Saving…' : done ? 'Saved' : 'Save correction'}
+        {busy ? 'Zapisywanie…' : done ? 'Zapisano' : 'Zapisz korektę'}
       </button>
       {status.state === 'saved' ? (
         <p className="font-mono text-[11px] leading-relaxed text-emerald-300/80">
-          Saved — record {status.id}
+          Korekta zapisana · {status.id}
         </p>
       ) : null}
       {status.state === 'error' ? (

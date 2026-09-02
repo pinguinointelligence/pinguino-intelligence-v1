@@ -1,95 +1,69 @@
-/**
- * PINGÜINO Pro — the sticky top WORKBAR (owner binding decision: primary actions always visible).
- *
- * One bar at the top of the Pro recipe workspace holds: the recipe name (an inline field for a NEW
- * recipe / the name + inline rename for a saved one), the canonical SAVE directly beside it
- * („Zapisz recepturę" → v1 / „Zapisz nową wersję" → v(n+1)), the compact recipe context, the
- * `DD.MM.YYYY · vN` version label, the save/dirty status, and the two top-priority actions
- * „Monitor PI" + „Przelicz z PI" (dark primary). No scrolling to the bottom to save/recalc; no
- * second save handler — it delegates to `useCanonicalRecipeSave`. Responsive: rows wrap on mobile.
- */
 import { useEffect, useRef, useState } from 'react';
-import { buttonClasses } from '@/components/ui/buttonStyles';
 import { copy } from '@/copy/en';
 import { cn } from '@/lib/cn';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { useCanonicalRecipeSave } from '@/features/recipes/useCanonicalRecipeSave';
+import { ReviewDecisionLabel } from '@/features/design-review/ReviewBadge';
+import {
+  hasUnsavedProRecipeChanges,
+  startNewProRecipe,
+} from '@/pages/destinations/startNewProRecipe';
+import { NewRecipeConfirmationDialog } from '@/features/recipes/NewRecipeConfirmationDialog';
+import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
+import { iconButtonClasses } from '@/components/ui/buttonStyles';
+import { announceFriendlyLabMoment } from '@/components/shared/friendlyLabMoment';
 
 const w = copy.proWorkbar;
 const pm = copy.proMachine;
 
-const TIER: Record<string, string> = { eco: 'Eco', classic: 'Classic', premium: 'Premium', signature: 'Signature' };
-
-/** Serving-mode display labels (reuse the machine copy so there is ONE source of truth). */
+const TIER = { optimal: 'OPTIMAL', eco: 'ECO' } as const;
 const SERVING_LABEL: Record<string, string> = {
   fresh: pm.serving.fresh,
   temp_minus_11: pm.serving.minus11,
   temp_minus_12: pm.serving.minus12,
   temp_minus_13: pm.serving.minus13,
-  ninja_gelato: pm.serving.minus13,
-  ninja_swirl: pm.serving.minus11,
+  ninja_gelato: 'Ninja Gelato',
+  ninja_swirl: 'Ninja Swirl',
 };
 
-/** Customer-facing version label: `DD.MM.YYYY · vN` from the stored ISO date (timezone-independent). */
-function versionLabel(versionNumber: number | null, iso: string | null): string | null {
-  if (versionNumber == null) return null;
-  if (!iso) return `v${versionNumber}`;
-  const [y, m, d] = iso.slice(0, 10).split('-');
-  return y && m && d ? `${d}.${m}.${y} · v${versionNumber}` : `v${versionNumber}`;
-}
-
-export function ProWorkbar({ onMonitor, onRecalc }: { onMonitor: () => void; onRecalc: () => void }) {
+/** One persistent recipe bar. It combines recipe identity, save, working context,
+ * preview/undo state and owner-review entry without introducing a second workflow. */
+export function ProWorkbar({
+  variant = 'bar',
+  onSaveAttentionChange,
+}: {
+  variant?: 'bar' | 'panel';
+  onSaveAttentionChange?: (required: boolean) => void;
+}) {
   const savedRecipeId = useRecipeStore((s) => s.savedRecipeId);
   const savedRecipeName = useRecipeStore((s) => s.savedRecipeName);
   const currentVersionNumber = useRecipeStore((s) => s.currentVersionNumber);
-  const currentVersionDate = useRecipeStore((s) => s.currentVersionDate);
   const dirty = useRecipeStore((s) => s.dirty);
-  // Owner P0 (state consistency): the workbar shows the VISIBLE product type —
-  // the SAME field the selector edits — never a privately-labelled internal
-  // category (the „Gelato selector / Sorbet owocowy header" mismatch).
   const visibleProductType = useRecipeStore((s) => s.visibleProductType);
-  const mode = useRecipeStore((s) => s.mode);
+  const mode = useRecipeStore((s) => s.formulation_strategy);
   const temperatureC = useRecipeStore((s) => s.target_temperature_c);
   const batchGrams = useRecipeStore((s) => s.target_batch_grams);
   const machineKind = useRecipeStore((s) => s.machineKind);
   const servingModeId = useRecipeStore((s) => s.servingModeId);
   const machineLabel = useRecipeStore((s) => s.machineLabel);
+  const appliedHistoryLength = useConstraintStudioStore((s) => s.history.length);
 
   const save = useCanonicalRecipeSave();
   const linked = Boolean(savedRecipeId);
-
-  const [name, setName] = useState(savedRecipeName ?? '');
-  const [note, setNote] = useState('');
-  const [showNote, setShowNote] = useState(false);
+  const [nameDraft, setNameDraft] = useState<string | null>(null);
   const [nameError, setNameError] = useState<string | null>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [renaming, setRenaming] = useState(false);
-  const [renameValue, setRenameValue] = useState('');
-  const [saveAsNew, setSaveAsNew] = useState(false);
-  const menuRef = useRef<HTMLDivElement | null>(null);
+  const [newRecipeConfirmOpen, setNewRecipeConfirmOpen] = useState(false);
+  const saveTransitionSequence = useRef(0);
+  const name = nameDraft ?? savedRecipeName ?? '';
 
-  useEffect(() => {
-    if (!menuOpen) return;
-    const onDoc = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
-    };
-    document.addEventListener('mousedown', onDoc);
-    return () => document.removeEventListener('mousedown', onDoc);
-  }, [menuOpen]);
-
-  // Machine-aware context (S4): a professional selection shows the visible serving temperature;
-  // a Home routing shows machine + batch ONLY (never a false professional temperature); with no
-  // machine chosen we keep the recipe's product · tier · temperature · batch.
-  let context: string;
-  if (machineKind === 'professional' && machineLabel) {
-    const serving = servingModeId ? (SERVING_LABEL[servingModeId] ?? '') : '';
-    context = `${machineLabel} · ${serving} · ${batchGrams} g`;
-  } else if (machineKind === 'home' && machineLabel) {
-    context = `${machineLabel} · ${batchGrams} g`;
-  } else {
-    context = `${copy.studio.goal.productTypes[visibleProductType]} · ${TIER[mode] ?? mode} · ${temperatureC} °C · ${batchGrams} g`;
-  }
-  const label = versionLabel(currentVersionNumber, currentVersionDate);
+  const product = copy.studio.goal.productTypes[visibleProductType];
+  const serving = servingModeId
+    ? (SERVING_LABEL[servingModeId] ?? `${temperatureC}°C`)
+    : `${temperatureC}°C`;
+  const context =
+    machineKind === 'home' && machineLabel
+      ? `${machineLabel} · ${batchGrams} g`
+      : `${product} · ${TIER[mode] ?? mode} · ${serving} · ${batchGrams} g`;
 
   const statusKey: keyof typeof w.status = save.error
     ? 'error'
@@ -97,226 +71,291 @@ export function ProWorkbar({ onMonitor, onRecalc }: { onMonitor: () => void; onR
       ? 'saving'
       : !linked
         ? 'newUnsaved'
-        : dirty
+        : dirty || name.trim() !== (savedRecipeName ?? '')
           ? 'dirty'
           : 'clean';
-  const statusTone =
-    statusKey === 'error' ? 'text-status-risky' : statusKey === 'dirty' ? 'text-amber-700' : 'text-stone-500';
 
-  const blockedMsg = save.blocked ? w.blocked[save.blocked] : null;
+  const announceSaveSuccess = () => {
+    saveTransitionSequence.current += 1;
+    announceFriendlyLabMoment(
+      'save-complete',
+      `save:${savedRecipeId ?? name.trim()}:${saveTransitionSequence.current}`,
+    );
+  };
 
-  const doCreate = async () => {
-    if (!name.trim()) {
+  const doSave = async () => {
+    const title = name.trim();
+    if (!title) {
       setNameError(w.emptyNameError);
       return;
     }
     setNameError(null);
-    const ok = await save.createNew(name.trim(), showNote ? note : undefined);
-    if (ok) {
-      setSaveAsNew(false);
-      setShowNote(false);
-      setNote('');
+    if (!linked) {
+      const created = await save.createNew(title);
+      if (created) {
+        setNameDraft(null);
+        announceSaveSuccess();
+      }
+      return;
     }
-  };
-  const doVersion = async () => {
-    const ok = await save.saveVersion(showNote ? note : undefined);
-    if (ok) {
-      setShowNote(false);
-      setNote('');
+    if (title !== (savedRecipeName ?? '')) {
+      const renamed = await save.rename(title);
+      if (!renamed) return;
     }
-  };
-  const doRename = async () => {
-    if (!renameValue.trim()) return;
-    const ok = await save.rename(renameValue.trim());
-    if (ok) setRenaming(false);
+    const saved = await save.saveVersion();
+    if (saved) {
+      setNameDraft(null);
+      announceSaveSuccess();
+    }
   };
 
-  // NEW recipe (or explicit „save as new") → inline name field + primary save.
-  const showNameField = !linked || saveAsNew;
+  const blockedMsg = save.blocked ? w.blocked[save.blocked] : null;
+  const saveAttention =
+    (statusKey === 'dirty' || statusKey === 'newUnsaved') &&
+    !save.busy &&
+    save.blocked === null &&
+    !save.practicalBlocked;
+
+  useEffect(() => {
+    onSaveAttentionChange?.(saveAttention);
+  }, [onSaveAttentionChange, saveAttention]);
+
+  const createNewDraft = () => {
+    startNewProRecipe(visibleProductType);
+    setNameDraft(null);
+    setNameError(null);
+    setNewRecipeConfirmOpen(false);
+  };
+
+  const requestNewDraft = () => {
+    const nameChanged = nameDraft !== null && nameDraft.trim() !== (savedRecipeName ?? '');
+    if (hasUnsavedProRecipeChanges(nameChanged)) {
+      setNewRecipeConfirmOpen(true);
+      return;
+    }
+    createNewDraft();
+  };
+
+  const statusNode = (
+    <span
+      className={cn(
+        'min-w-0 truncate text-xs',
+        variant === 'panel'
+          ? 'flex-none text-right'
+          : 'ml-auto min-w-[7rem] flex-1 text-right xl:max-w-48',
+        statusKey === 'error'
+          ? 'text-status-error'
+          : statusKey === 'dirty' || statusKey === 'newUnsaved'
+            ? 'text-status-risky'
+            : 'text-stone-500',
+      )}
+      data-testid="pro-workbar-status"
+      data-workbar-status-placement={variant === 'panel' ? 'band-status' : 'right-aligned'}
+    >
+      <span aria-hidden>● </span>
+      {w.status[statusKey]}
+    </span>
+  );
 
   return (
     <section
-      aria-label="PINGÜINO Pro — pasek narzędzi receptury"
+      aria-label="Gellatti Pro — nazwa i zapis receptury"
       data-testid="pro-workbar"
-      className="sticky top-0 z-30 border-b border-ink/10 bg-paper/95 px-4 py-3 backdrop-blur sm:px-6"
-      style={{ paddingTop: 'max(env(safe-area-inset-top), 0.75rem)' }}
+      data-workbar-variant={variant}
+      className={cn(
+        variant === 'panel'
+          ? /* OWNER FROZEN PRO VISUAL: inside the display column the recipe bar
+               is a BAND like everything else — a hairline and whitespace, not a
+               fifth white card stacked on the column ground. The docked
+               variant below is a real floating bar and keeps its surface. */
+            'border-t border-[var(--g-line)] pt-3'
+          : 'rounded-t-[22px] border border-ink/10 bg-white/97 px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-pro-e2 backdrop-blur-xl lg:rounded-none lg:border-0 lg:bg-transparent lg:px-0 lg:shadow-none lg:backdrop-blur-none 2xl:!border-0 2xl:py-0 2xl:pt-px 2xl:!shadow-none',
+      )}
     >
-      {/* Row 1 — name + save (beside the name) + more */}
-      <div className="flex flex-wrap items-center gap-2">
-        {showNameField ? (
-          <div className="flex min-w-0 flex-1 flex-col">
-            <label className="sr-only" htmlFor="pro-workbar-name">{w.nameLabel}</label>
+      {variant === 'panel' ? (
+        /* OWNER FROZEN PRO VISUAL: RECEPTURA is a band, so it opens with the
+           same eyebrow + hairline as Wynik, Ustawienia and Wiedza, and the
+           save status rides in that header instead of trailing the buttons. */
+        <div className="mb-[13px] flex items-center gap-2.5">
+          <h3
+            data-band-eyebrow
+            className="shrink-0 text-[10px] leading-[14px] font-semibold tracking-[0.16em] text-[var(--g-text-muted)] uppercase"
+          >
+            Receptura
+          </h3>
+          <span aria-hidden className="h-px flex-1 bg-[var(--g-line)]" />
+          {statusNode}
+        </div>
+      ) : null}
+      <div
+        className={cn(
+          'grid min-w-0 gap-2',
+          variant === 'panel'
+            ? 'grid-cols-1'
+            : 'xl:grid-cols-[minmax(0,1.62fr)_minmax(360px,1fr)] xl:items-center xl:gap-[var(--pro-workbench-gap)]',
+        )}
+      >
+        <div
+          className={cn(
+            'flex min-w-0 flex-wrap items-center px-0.5',
+            variant === 'panel'
+              ? 'order-2 justify-start gap-2.5 sm:flex-nowrap'
+              : 'justify-end gap-2 xl:flex-nowrap',
+          )}
+        >
+          <button
+            type="button"
+            onClick={requestNewDraft}
+            data-testid="pro-workbar-new-recipe"
+            data-workbar-action-size="primary"
+            data-workbar-action-width="content"
+            className={cn(
+              /* OWNER FROZEN PRO VISUAL: inside the display column the save row
+                 is a row of 44 px pills, and the PRIMARY leads it. DOM order
+                 stays New → Save → overflow for the docked bar; only the panel
+                 reorders visually, so one contract still describes both. */
+              'shrink-0 border border-ink/15 bg-white text-xs font-semibold text-ink transition-colors hover:border-ink/35 hover:bg-[var(--g-ivory)]',
+              variant === 'panel'
+                ? 'order-2 h-11 rounded-full px-5 shadow-none'
+                : 'h-11 rounded-[14px] px-3 shadow-pro-e0',
+            )}
+          >
+            + Nowa receptura
+          </button>
+          <button
+            type="button"
+            onClick={() => void doSave()}
+            disabled={save.busy || save.blocked !== null || save.practicalBlocked}
+            data-attention={saveAttention ? 'required' : undefined}
+            data-testid="pro-workbar-save"
+            data-workbar-action-size="primary"
+            data-workbar-action-width="content"
+            className={cn(
+              /* A disabled action still has to be readable. `disabled:opacity-45`
+                 washed the whole button to ink@45 % on white — a 2.88:1 label,
+                 below AA. The product already settled this pattern for the
+                 customer shell (§21.2, audit #17): a SOLID quiet fill with a
+                 legible label, measured here at 5.03:1. */
+              'shrink-0 bg-ink text-xs font-semibold text-white transition-all hover:-translate-y-px hover:bg-ink-soft disabled:cursor-not-allowed disabled:bg-[var(--g-line-quiet)] disabled:text-[var(--g-lock)] disabled:shadow-none disabled:hover:translate-y-0 disabled:hover:bg-[var(--g-line-quiet)]',
+              variant === 'panel'
+                ? 'order-1 h-11 rounded-full px-5 shadow-none'
+                : 'h-11 rounded-[14px] px-3 shadow-pro-sm',
+              saveAttention && 'gellatti-next-action-attention',
+            )}
+          >
+            {save.busy
+              ? w.status.saving
+              : variant === 'panel'
+                ? 'ZAPISZ'
+                : linked
+                  ? 'Zapisz nową wersję'
+                  : w.saveNew}
+          </button>
+          <details
+            className={cn('relative shrink-0', variant === 'panel' && 'order-3')}
+            data-testid="pro-workbar-menu"
+          >
+            <summary
+              className={cn(iconButtonClasses('xs'), 'cursor-pointer list-none')}
+              aria-label={w.more}
+              title={w.more}
+              data-workbar-action-size="compact"
+            >
+              •••
+            </summary>
+            <div className="absolute bottom-10 left-0 z-40 w-72 rounded-[22px] border border-ink/15 bg-white p-4 shadow-pro-e3">
+              <p className="text-xs font-semibold tracking-[0.04em] text-stone-600 uppercase">
+                Receptura
+              </p>
+              <p className="mt-2 text-xs text-ink">{context}</p>
+              <p className="mt-1 text-xs text-stone-600">
+                {currentVersionNumber ? `v${currentVersionNumber}` : 'wersja robocza'} ·{' '}
+                {w.status[statusKey]}
+              </p>
+              <a
+                href="/pro/versions"
+                className="mt-3 block border-t border-ink/10 pt-2 text-xs font-semibold text-stone-600"
+              >
+                Wersje
+                <ReviewDecisionLabel />
+              </a>
+            </div>
+          </details>
+          {variant === 'panel' ? null : statusNode}
+          <span className="sr-only" data-testid="pro-workbar-profile-summary">
+            {context}
+          </span>
+        </div>
+        <div className={cn('flex min-w-0 items-center gap-3', variant === 'panel' && 'order-1')}>
+          <label className="min-w-28 flex-1">
+            <span className="sr-only">{w.nameLabel}</span>
             <input
-              id="pro-workbar-name"
               value={name}
               placeholder={w.namePlaceholder}
-              onChange={(e) => {
-                setName(e.target.value);
+              onChange={(event) => {
+                setNameDraft(event.currentTarget.value);
                 if (nameError) setNameError(null);
               }}
               data-testid="pro-workbar-name"
-              className="min-w-0 flex-1 rounded-md border border-ink/15 bg-paper px-3 py-2 text-sm text-ink placeholder:text-stone-400 focus:border-ink/40 focus:outline-none"
+              className={cn(
+                'w-full min-w-0 rounded-[10px] border border-ink/15 bg-white px-3 text-sm font-semibold text-ink shadow-pro-e0 placeholder:text-stone-500 focus:border-ink/45 focus:outline-none',
+                variant === 'panel' ? 'h-10' : 'h-11',
+              )}
             />
-          </div>
-        ) : renaming ? (
-          <div className="flex min-w-0 flex-1 items-center gap-2">
-            <input
-              value={renameValue}
-              onChange={(e) => setRenameValue(e.target.value)}
-              data-testid="pro-workbar-rename-input"
-              className="min-w-0 flex-1 rounded-md border border-ink/15 bg-paper px-3 py-2 text-sm text-ink focus:border-ink/40 focus:outline-none"
-            />
-            <button type="button" className={buttonClasses('primary', 'sm')} onClick={() => void doRename()} disabled={save.busy}>
-              {w.confirm}
-            </button>
-            <button type="button" className={buttonClasses('ghost', 'sm')} onClick={() => setRenaming(false)}>
-              {w.cancel}
-            </button>
-          </div>
-        ) : (
-          <div className="flex min-w-0 flex-1 items-center gap-2">
-            <span className="truncate text-base font-medium text-ink" data-testid="pro-workbar-recipe-name">
-              {savedRecipeName ?? '—'}
-            </span>
-            <button
-              type="button"
-              aria-label={w.rename}
-              onClick={() => {
-                setRenameValue(savedRecipeName ?? '');
-                setRenaming(true);
-              }}
-              className="rounded p-1 text-stone-400 transition-colors hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} aria-hidden>
-                <path d="M4 20h4L18 10l-4-4L4 16v4zM14 6l4 4" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-          </div>
-        )}
-
-        {/* Primary save — directly beside the name */}
-        {showNameField ? (
-          <button
-            type="button"
-            onClick={() => void doCreate()}
-            disabled={save.busy || save.blocked !== null}
-            data-testid="pro-workbar-save"
-            className={cn(buttonClasses('primary', 'sm'), (save.busy || save.blocked !== null) && 'opacity-50')}
+          </label>
+          <span
+            className={cn(
+              'max-w-56 shrink-0 truncate text-xs text-stone-600',
+              variant === 'panel' ? 'sr-only' : 'hidden xl:block',
+            )}
+            data-testid="pro-workbar-context"
           >
-            {save.busy ? w.status.saving : saveAsNew ? w.saveAsNew : w.saveNew}
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => void doVersion()}
-            disabled={save.busy || save.blocked !== null}
-            data-testid="pro-workbar-save"
-            className={cn(buttonClasses('primary', 'sm'), (save.busy || save.blocked !== null) && 'opacity-50')}
-          >
-            {save.busy ? w.status.saving : w.saveVersion((currentVersionNumber ?? 0) + 1)}
-          </button>
-        )}
-
-        {/* Secondary menu (saved recipe only) */}
-        {linked && !saveAsNew && !renaming ? (
-          <div className="relative" ref={menuRef}>
-            <button
-              type="button"
-              aria-label={w.more}
-              aria-haspopup="menu"
-              aria-expanded={menuOpen}
-              onClick={() => setMenuOpen((v) => !v)}
-              data-testid="pro-workbar-more"
-              className="grid h-9 w-9 place-items-center rounded-md border border-ink/15 text-ink transition-colors hover:bg-ink/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                <circle cx="5" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="19" cy="12" r="1.6" />
-              </svg>
-            </button>
-            {menuOpen ? (
-              <div role="menu" className="absolute right-0 z-40 mt-1 w-56 rounded-lg border border-ink/10 bg-paper py-1 shadow-lg">
-                <button type="button" role="menuitem" className="block w-full px-4 py-2 text-left text-sm text-ink hover:bg-ink/5" onClick={() => { setMenuOpen(false); setSaveAsNew(true); setName(''); }}>
-                  {w.saveAsNew}
-                </button>
-                <button type="button" role="menuitem" className="block w-full px-4 py-2 text-left text-sm text-ink hover:bg-ink/5" onClick={() => { setMenuOpen(false); setRenameValue(savedRecipeName ?? ''); setRenaming(true); }}>
-                  {w.rename}
-                </button>
-                <button type="button" role="menuitem" className="block w-full px-4 py-2 text-left text-sm text-ink hover:bg-ink/5" onClick={() => { setMenuOpen(false); setShowNote((v) => !v); }}>
-                  {w.addNote}
-                </button>
-                <button type="button" role="menuitem" className="block w-full px-4 py-2 text-left text-sm text-status-risky hover:bg-ink/5" onClick={() => { setMenuOpen(false); if (window.confirm(w.archive + '?')) void save.archive(); }}>
-                  {w.archive}
-                </button>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-
-        {saveAsNew ? (
-          <button type="button" className={buttonClasses('ghost', 'sm')} onClick={() => { setSaveAsNew(false); setName(savedRecipeName ?? ''); }}>
-            {w.cancel}
-          </button>
-        ) : null}
-      </div>
-
-      {/* optional note field */}
-      {showNameField || showNote ? (
-        <div className="mt-2">
-          {!showNote ? (
-            <button type="button" className="text-xs text-stone-500 underline decoration-stone-300 underline-offset-2 hover:text-ink" onClick={() => setShowNote(true)}>
-              {w.addNote}
-            </button>
-          ) : (
-            <textarea
-              rows={2}
-              value={note}
-              placeholder={w.noteLabel}
-              onChange={(e) => setNote(e.target.value)}
-              data-testid="pro-workbar-note"
-              className="w-full resize-none rounded-md border border-ink/15 bg-paper px-3 py-2 text-sm text-ink placeholder:text-stone-400 focus:border-ink/40 focus:outline-none"
-            />
-          )}
+            {context}
+          </span>
         </div>
-      ) : null}
+      </div>
 
       {nameError ? (
-        <p role="alert" className="mt-1 text-xs text-status-risky" data-testid="pro-workbar-name-error">{nameError}</p>
+        <p
+          role="alert"
+          className="mt-1 text-xs text-status-error"
+          data-testid="pro-workbar-name-error"
+        >
+          {nameError}
+        </p>
+      ) : null}
+      {dirty && appliedHistoryLength > 0 ? (
+        <p
+          /* OWNER FROZEN PRO VISUAL: unsaved is a STATUS, not a warning. The
+             amber card claimed the weight of an error for a state the user
+             created on purpose and can undo by saving. It is now a quiet note
+             on a hairline — same words, same placement, no alarm. */
+          className="mt-2 border-t border-[var(--g-line)] pt-2 text-xs leading-relaxed text-[var(--g-text-secondary)]"
+          data-testid="pro-workbar-applied-unsaved"
+        >
+          {w.recalcPanel.applied}
+        </p>
       ) : null}
       {save.error ? (
-        <p role="alert" className="mt-1 text-xs text-status-risky" data-testid="pro-workbar-error">{save.error}</p>
+        <p role="alert" className="mt-1 text-xs text-status-error" data-testid="pro-workbar-error">
+          {save.error}
+        </p>
+      ) : save.practicalBlockMessage ? (
+        <p
+          className="mt-1 text-xs text-attention 2xl:sr-only"
+          data-testid="pro-workbar-practical-block"
+        >
+          {save.practicalBlockMessage}
+        </p>
+      ) : blockedMsg ? (
+        <p className="mt-1 text-xs text-stone-600">{blockedMsg}</p>
       ) : null}
-      {blockedMsg && !save.error ? <p className="mt-1 text-xs text-stone-500">{blockedMsg}</p> : null}
 
-      {/* Row 2 — context + version + status, and Row 3 — Monitor + Przelicz */}
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <div className="min-w-0 text-xs text-stone-500">
-          <p className="truncate" data-testid="pro-workbar-context">{context}</p>
-          <p className="mt-0.5 flex flex-wrap items-center gap-x-2">
-            {label ? <span className="text-ink" data-testid="pro-workbar-version">{label}</span> : null}
-            <span className={statusTone} data-testid="pro-workbar-status">{w.status[statusKey]}</span>
-            {linked && dirty ? <span className="text-amber-700">· {w.pendingRecalc}</span> : null}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={onMonitor}
-            data-testid="pro-workbar-monitor"
-            className={buttonClasses('ghost', 'sm')}
-          >
-            {w.monitor}
-          </button>
-          <button
-            type="button"
-            onClick={onRecalc}
-            data-testid="pro-workbar-recalc"
-            className="inline-flex items-center justify-center rounded-md bg-ink px-4 py-2 text-sm font-medium text-paper transition-colors hover:bg-ink-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
-          >
-            {w.recalc}
-          </button>
-        </div>
-      </div>
+      <NewRecipeConfirmationDialog
+        open={newRecipeConfirmOpen}
+        onCancel={() => setNewRecipeConfirmOpen(false)}
+        onConfirm={createNewDraft}
+      />
     </section>
   );
 }

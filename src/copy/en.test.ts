@@ -28,11 +28,16 @@ function collectStrings(
 
 describe('copy module', () => {
   it('lists all four product modes', () => {
-    expect(copy.landing.modes.map((m) => m.name)).toEqual(['ECO', 'CLASSIC', 'PREMIUM', 'SIGNATURE']);
+    expect(copy.landing.modes.map((m) => m.name)).toEqual([
+      'ECO',
+      'CLASSIC',
+      'PREMIUM',
+      'SIGNATURE',
+    ]);
   });
 
-  it('uses the Free Preview rebrand for the public CTA (no "Demo")', () => {
-    expect(copy.landing.ctaPrimary).toBe('Start Free Preview');
+  it('uses the Friendly Lab public CTA (no "Demo")', () => {
+    expect(copy.landing.ctaPrimary).toBe('Wypróbuj bezpłatnie');
   });
 
   it('has no customer-facing "Demo" wording anywhere (Phase 6C)', () => {
@@ -42,11 +47,12 @@ describe('copy module', () => {
     expect(offenders.map((o) => `${o.path}: "${o.value}"`)).toEqual([]);
   });
 
-  it('exposes the Free Preview / PI Preview / Unlock PI Pro vocabulary', () => {
+  it('exposes the canonical Gellatti preview and Pro vocabulary', () => {
     const all = JSON.stringify(copy);
-    expect(all).toContain('Free Preview');
-    expect(all).toContain('PI Preview');
-    expect(all).toContain('Unlock PI Pro');
+    expect(all).toContain('Bezpłatny podgląd');
+    expect(all).toContain('Podgląd receptury');
+    expect(all).toContain('Poznaj Gellatti Pro');
+    expect(all).not.toMatch(/PINGÜINO|PINGUINO/);
   });
 
   it('has NO hardcoded engine-label copy key — the header derives from the resolved route', () => {

@@ -18,3 +18,15 @@
   from = "/*"
   to = "/index.html"
   status = 200
+
+# Direct recipe shares are UNLISTED (§11/§46): a secure token is the only key,
+# so the page must never be indexed, archived, or stored in a shared cache, and
+# the token must never travel outward in a Referer header. The SPA also emits a
+# `noindex` meta tag, but a crawler that does not run JavaScript would never see
+# it — this header is the authority. Mirrored in vercel.json.
+[[headers]]
+  for = "/share/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow, noarchive"
+    Cache-Control = "private, no-store"
+    Referrer-Policy = "no-referrer"

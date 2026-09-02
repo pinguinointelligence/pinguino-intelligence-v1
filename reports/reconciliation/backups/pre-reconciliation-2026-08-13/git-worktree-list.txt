@@ -1,0 +1,240 @@
+﻿worktree C:/Users/Absconsio/Desktop/pinguino-intelligence-v1
+HEAD 47198dc594cd3df949fd7350f3097473cb56d96b
+branch refs/heads/codex/protein-gelato-final
+
+worktree C:/Users/Absconsio/.codex/visualizations/2026/08/05/019fd104-2eaa-7be1-8054-52fd972f633e/vegan-engine-worktree
+HEAD 37492b81cdfa6f14f7307a8691de359f2ad06812
+branch refs/heads/codex/vegan-gelato-final
+
+worktree C:/Users/Absconsio/Desktop/pi-worktrees/assistant-local-apply
+HEAD c660e70fd8b409a4fa00bae1942448ba8f68929f
+branch refs/heads/slice/assistant-local-apply
+
+worktree C:/Users/Absconsio/Desktop/pi-worktrees/billing-domain-logic
+HEAD 9e08753cf3d0d47514a4560a359b1a096b882c57
+branch refs/heads/slice/billing-domain-logic
+
+worktree C:/Users/Absconsio/Desktop/pi-worktrees/billing-schema-entitlements
+HEAD ff90552f548ca12af1072bdcc9a67198cf6cf3a1
+branch refs/heads/slice/billing-schema-entitlements
+
+worktree C:/Users/Absconsio/Desktop/pi-worktrees/billing-stripe-surface
+HEAD 152c4e5ce086857ebf9f16b0b7eda2bcd6c0c8fd
+branch refs/heads/slice/billing-stripe-surface
+
+worktree C:/Users/Absconsio/Desktop/pi-worktrees/contextual-learning-process-guide
+HEAD abc45e628bce17855e34b5472ed0373445012c55
+branch refs/heads/codex/contextual-learning-process-guide
+
+worktree C:/Users/Absconsio/Desktop/pi-worktrees/final-integration-deploy-2026-08
+HEAD 0bebc929b27c01f83860474b03aa9672ce426c38
+branch refs/heads/codex/final-integration-deploy-2026-08
+
+worktree C:/Users/Absconsio/Desktop/pi-worktrees/final-pro-owner-reconstruction
+HEAD dd87e3a34ae9f0b740648ae0450896942f9a5b2f
+branch refs/heads/codex/final-pro-owner-reconstruction
+
+worktree C:/Users/Absconsio/Desktop/pi-worktrees/final-pro-topping-system
+HEAD 5f796583955fb82f5ab08ce2e0236cb48cccdc16
+branch refs/heads/codex/pixel-perfect-desktop
+
+worktree C:/Users/Absconsio/Desktop/pi-worktrees/global-menu-ia-final
+HEAD 9a7aeb041b1bf972eddab9f63d98a74365cc4e8a
+branch refs/heads/codex/global-menu-ia-final
+
+worktree C:/Users/Absconsio/Desktop/pi-worktrees/ingredient-table-ux
+HEAD 92e2d84bdae5a8e509a276bbf7b4bfb00fe86d7f
+branch refs/heads/codex/ingredient-table-ux
+
+worktree C:/Users/Absconsio/Desktop/pi-worktrees/lost-legendary-inspiration
+HEAD 34e2be80e46a0bdb867d3446fe74926abbcddb29
+branch refs/heads/codex/lost-legendary-inspiration
+
+worktree C:/Users/Absconsio/Desktop/pi-worktrees/ocr-label-intake-completion
+HEAD a3038d54182fc61b1588278e2be9456ac03dc73d
+branch refs/heads/slice/ocr-label-intake-completion
+
+worktree C:/Users/Absconsio/Desktop/pi-worktrees/ocr-migrations-ui
+HEAD ad0a4927be7943dd0e196e8c1058142c8cf20150
+branch refs/heads/slice/ocr-migrations-ui
+
+worktree C:/Users/Absconsio/Desktop/pi-worktrees/ocr-provider-extraction
+HEAD 3f6369b4edbb93d8dedb832b663c6752f874bb5a
+branch refs/heads/slice/ocr-provider-extraction
+
+worktree C:/Users/Absconsio/Desktop/pi-worktrees/ocr-session-dedup-batch
+HEAD e1df5801f0b7aee553002d39ad51d5969642f72f
+branch refs/heads/slice/ocr-session-dedup-batch
+
+worktree C:/Users/Absconsio/Desktop/pi-worktrees/p0-base-audit
+HEAD 2378595c9d0ffcdef6b685d53b21362d1f24886c
+detached
+
+worktree C:/Users/Absconsio/Desktop/pi-worktrees/p0-process-guide-entry
+HEAD 88920e9eecb880ded4b4ee20d391db851c645114
+branch refs/heads/codex/p0-process-guide-entry
+
+worktree C:/Users/Absconsio/Desktop/pi-worktrees/pro-apple2-completion
+HEAD 3c451274cc9ede5658da20a6997eb3f68f5fafc3
+branch refs/heads/codex/pro-apple2-completion
+
+worktree C:/Users/Absconsio/Desktop/pi-worktrees/pro-monitor-ux
+HEAD 93df6eb4bda7083b34f9d0203c443d4f79424f6f
+branch refs/heads/codex/pro-monitor-ux
+
+worktree C:/Users/Absconsio/Desktop/pi-worktrees/pro-profile-preflight
+HEAD 4a83fca7aa68dcaad5fd39925f0291144579d588
+branch refs/heads/codex/pro-profile-preflight
+
+worktree C:/Users/Absconsio/Desktop/pi-worktrees/spine-decision-completion
+HEAD 951c3d16dc77b9d6929b1e58841d6e0f9d63da8f
+branch refs/heads/slice/spine-decision-completion
+
+worktree C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-a0923162aec83b7ef
+HEAD 4dfb097d14fe91c2cc7bd67e02265e6ac41123a2
+branch refs/heads/worktree-agent-a0923162aec83b7ef
+
+worktree C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-a1c6af8049ffddbc2
+HEAD 4dfb097d14fe91c2cc7bd67e02265e6ac41123a2
+branch refs/heads/worktree-agent-a1c6af8049ffddbc2
+
+worktree C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-a1e802426801972bb
+HEAD 4dfb097d14fe91c2cc7bd67e02265e6ac41123a2
+branch refs/heads/worktree-agent-a1e802426801972bb
+
+worktree C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-a25121477322515d3
+HEAD 7d2a90afc02687d0d6a4177ccb4fced4cc376bb3
+branch refs/heads/worktree-agent-a25121477322515d3
+
+worktree C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-a28db60091b8bfd9c
+HEAD b0698d338603d209d65b5865b9f956ec6fd41d17
+branch refs/heads/worktree-agent-a28db60091b8bfd9c
+
+worktree C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-a2d044d5d9972c514
+HEAD 27a0c85e8081cae8781945019af5d023b517e594
+branch refs/heads/worktree-agent-a2d044d5d9972c514
+
+worktree C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-a3417480bfff9c98d
+HEAD 4dfb097d14fe91c2cc7bd67e02265e6ac41123a2
+branch refs/heads/slice/nightly-c-search
+
+worktree C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-a39253521363bb504
+HEAD 4dfb097d14fe91c2cc7bd67e02265e6ac41123a2
+branch refs/heads/worktree-agent-a39253521363bb504
+
+worktree C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-a42e483ba60a3161d
+HEAD 4dfb097d14fe91c2cc7bd67e02265e6ac41123a2
+branch refs/heads/slice/nightly-a-formulation
+
+worktree C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-a49d5850b240ad4c1
+HEAD 9142b9b7bca43347e1c1a7778a0b25e3699599ea
+branch refs/heads/agent4/fixture-sweep
+
+worktree C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-a4daa878a5536f698
+HEAD 09506095d28c31899c8b4e966743b7f69b3337d7
+branch refs/heads/worktree-agent-a4daa878a5536f698
+
+worktree C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-a500fe17d6731ee3c
+HEAD 902fb079598ca6949e878a85e04c7c4a091afce4
+branch refs/heads/worktree-agent-a500fe17d6731ee3c
+
+worktree C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-a58a21a60468595da
+HEAD ae237e7f1eaa00e02d6a824b6985579a11f96174
+branch refs/heads/agent5/e2e-authenticity
+
+worktree C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-a68edd8b3ce48753d
+HEAD 1413219a837382558af5519ba054509f27f24424
+branch refs/heads/fix/current-draft-optimization
+
+worktree C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-a72417fa73b8d7545
+HEAD cdb7902ddbb16829ce5dfbed379d6f530155377c
+branch refs/heads/ux-repair/pro-recipe
+
+worktree C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-a7596694588d097ae
+HEAD 7557ea212dd1dece55217c66a14634b01b04e7b3
+branch refs/heads/worktree-agent-a7596694588d097ae
+
+worktree C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-a813e3be6dc0d387f
+HEAD 3690cb05090c2f9bfea6bddb01c2e837de960219
+branch refs/heads/worktree-agent-a813e3be6dc0d387f
+
+worktree C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-a876faa573c47cc52
+HEAD 4dfb097d14fe91c2cc7bd67e02265e6ac41123a2
+branch refs/heads/worktree-agent-a876faa573c47cc52
+
+worktree C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-ab0b5bc9c429b41ab
+HEAD 6d612eb8c3966dc39ba1a07e66c7152396cb9b13
+branch refs/heads/agentm/monitor-completeness
+
+worktree C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-ab1a2783c4dbaf65c
+HEAD d828df2d7436957b7689483a5c63c7fb493a955d
+branch refs/heads/agentr/removal-recalc
+
+worktree C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-ab629ad5f110362cf
+HEAD c1946c98413244f32b9f4cc68a00b4f29358f427
+branch refs/heads/agent3/constraint-solver-authenticity
+
+worktree C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-ac9d81abfb5c29287
+HEAD 7eaf7c7b0c93c8028d476c7abd226a1aeb4e7512
+branch refs/heads/stabilizer-science/selector-design
+
+worktree C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-aca58b655636a9c94
+HEAD 2ed9a0430f6dfbb96a0e71f0cf700362b9b8ba7b
+branch refs/heads/worktree-agent-aca58b655636a9c94
+
+worktree C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-ad02e8b78af7a2711
+HEAD 4dfb097d14fe91c2cc7bd67e02265e6ac41123a2
+branch refs/heads/worktree-agent-ad02e8b78af7a2711
+
+worktree C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-ad62b5b16ee66f53f
+HEAD 0b9f0f206e43a8940383beddd02431531ce653ce
+branch refs/heads/worktree-agent-ad62b5b16ee66f53f
+
+worktree C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-ad880ceca859efa7a
+HEAD 9b9f929afecddea8513a23b1700919c5dcb8a7ab
+branch refs/heads/worktree-agent-ad880ceca859efa7a
+
+worktree C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-ae30b31e19ebd761b
+HEAD 05a812ec9c29a6fc9e48ceb59d5a9d64824259e2
+branch refs/heads/nightly/live-state-opt-stabilizer
+
+worktree C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-ae9269b046f152abb
+HEAD 1a11965d9b7601fd94254b2da12cc4d61d1d5e82
+branch refs/heads/fix/acceptance-addendum
+
+worktree C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-af00d0d5ef5280e30
+HEAD 4dfb097d14fe91c2cc7bd67e02265e6ac41123a2
+branch refs/heads/slice/nightly-b-engine-validation
+
+worktree C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agent-c
+HEAD 3f41e689e0db27d1f8b233f0c4c1dd6723487c83
+branch refs/heads/agent-c/multi-remove-norefresh
+
+worktree C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agenta-canonical-families
+HEAD de48ae51df6505f9349a78612ee9e6a2ea5e1aaa
+branch refs/heads/agent-a/canonical-families
+
+worktree C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/agentd-monitor-parity
+HEAD 8ec10ba036d2c90c1947594e51df2c1a3995b9f2
+branch refs/heads/agentd/monitor-parity-verified
+
+worktree C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/codex-global-product-catalog
+HEAD 5f796583955fb82f5ab08ce2e0236cb48cccdc16
+branch refs/heads/codex/unified-product-intelligence
+
+worktree C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/codex-multi-main
+HEAD 5ae99e6935a85a4c8f5534b8604d6626e5b1f8a1
+branch refs/heads/codex/multi-main-recipe-identity
+
+worktree C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/codex-optimal-eco-pricing
+HEAD 30daf295465bff1b53f9531a0851b44f26af3ad5
+branch refs/heads/codex/optimal-eco-customer-pricing-final
+
+worktree C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/codex-production-master-label
+HEAD 4ec3f495f5da30e368a26b9eee8f184e5ae9c34d
+branch refs/heads/codex/production-master-label-final
+
+worktree C:/Users/Absconsio/Desktop/pinguino-intelligence-v1/.claude/worktrees/codex-recipe-direction-targets
+HEAD 5ae99e6935a85a4c8f5534b8604d6626e5b1f8a1
+branch refs/heads/codex/recipe-direction-targets
+

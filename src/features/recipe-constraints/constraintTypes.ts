@@ -23,6 +23,7 @@ import type { TargetMetric, TargetRange } from '@/engine';
 export type IngredientConstraint =
   | { mode: 'ai' }
   | { mode: 'locked'; grams: number }
+  | { mode: 'percent'; percent: number }
   | { mode: 'range'; minGrams: number; maxGrams: number };
 
 /** Per-recipe constraint set, keyed by recipe line id (`RecipeItem.id`). */
@@ -39,6 +40,8 @@ export type ConstraintValidationCode =
   | 'non_finite_grams'
   /** grams / minGrams / maxGrams is negative. */
   | 'negative_grams'
+  /** percent is outside the closed 0..100 interval. */
+  | 'invalid_percent'
   /** range with minGrams > maxGrams. */
   | 'range_min_above_max'
   /** range whose current planned grams lie outside [minGrams, maxGrams] —
@@ -69,18 +72,20 @@ export type AppliedConstraintNote =
   /** locked → engine `lock_type: 'grams'`, planned grams set to the exact
    * constraint value (same float64 — byte-stable). */
   | 'locked_exact'
-  /** locked on a `main` line → the engine-native 'main' lock is KEPT so the
-   * flavor score (engine scoring reads lock_type === 'main') is not silently
-   * changed by locking; within this layer the line is still never moved
-   * (`allow_main_ingredient_reduction` is never set). */
+  /** locked on an engine-protected Main/Required/already-added line → its
+   * stronger native role is kept while the exact mass constraint is applied. */
   | 'locked_main_kept'
+  /** percent → exact percentage of the current target batch. */
+  | 'percent_exact'
+  /** percent on an engine-protected role → identity kept while percentage stays exact. */
+  | 'percent_main_kept'
   /** range → line held at its current grams via `lock_type: 'grams'`. The
    * engine solver has NO bounded-move support (audit: `CorrectionRequest` /
    * `CorrectionAction` carry no per-line bounds), so the range is enforced
    * conservatively for the solver and explored ONLY by the feasibility layer
    * (real engine evaluations inside [minGrams, maxGrams]). */
   | 'range_held_at_current'
-  /** range on a `main` line → 'main' kept (same scoring reason as above). */
+  /** range on an engine-protected role → its native role is kept. */
   | 'range_main_kept'
   /** ai → `lock_type: 'unlocked'` (§17.2 steps 4–6: the solver may change it
    * again on the next run). */
@@ -231,6 +236,7 @@ export type ConstraintFeasibilityAnalysis =
 
 export type ConstraintPreservationCode =
   | 'locked_grams_changed'
+  | 'locked_percent_changed'
   | 'range_exceeded'
   | 'line_missing';
 

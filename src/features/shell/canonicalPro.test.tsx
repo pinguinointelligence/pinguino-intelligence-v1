@@ -23,6 +23,26 @@ vi.mock('@/features/pro-core/useProCorePersona', () => ({
   useProCorePersona: () => 'pro',
 }));
 
+// A Pro persona is presentation only; exact-formula entitlement is a separate,
+// canonical access boundary. This proof renders the paid Pro workbench.
+vi.mock('@/access/useAccess', () => ({
+  useAccess: () => ({
+    plan: 'pro',
+    tier: 'pro',
+    isSignedIn: true,
+    isPro: true,
+    exactCorrectionGrams: true,
+    fullFormula: true,
+    technicalView: true,
+    canViewExactGrams: true,
+    canApplyStarterToStudio: true,
+    saveRecipes: true,
+    myRecipes: true,
+    productionMode: true,
+    rescueMode: true,
+  }),
+}));
+
 const { ProWorkspacePage } = await import('@/pages/pro/ProWorkspacePage');
 
 const SRC = resolve(import.meta.dirname, '..', '..');
@@ -48,6 +68,7 @@ describe('canonical PINGÜINO Pro — routes (proofs 1–3)', () => {
     expect(studioRedirectTo('?recipe=abc&tab=recipes')).toEqual({
       pathname: '/pro/recipe',
       search: '?recipe=abc&tab=recipes',
+      hash: '',
     });
     const router = read('app', 'router.tsx');
     expect(router).toContain(`path="/studio" element={<LegacyStudioRedirect />}`);
@@ -68,47 +89,72 @@ describe('canonical PINGÜINO Pro — routes (proofs 1–3)', () => {
   });
 });
 
-describe('canonical PINGÜINO Pro — menu (proofs 4–6, 17–18)', () => {
-  it('4. customer-visible navigation says PINGÜINO Pro — never a separate Studio item', () => {
-    expect(APP_NAV_ITEMS.some((i) => i.label === 'PINGÜINO Pro')).toBe(true);
+describe('canonical Gellatti Pro — menu (proofs 4–6, 17–18)', () => {
+  it('4. customer-visible navigation says Gellatti Pro — never a separate Studio item', () => {
+    expect(APP_NAV_ITEMS.some((i) => i.label === 'Gellatti Pro')).toBe(true);
     for (const item of APP_NAV_ITEMS) {
       expect(item.label.toLowerCase().includes('studio'), item.id).toBe(false);
       expect(item.to.includes('/studio'), item.id).toBe(false);
     }
   });
 
-  it('5. the Pro menu contains Moja maszyna, Etykiety i produkty, Subskrypcja / Plan and all 8 Pro subitems', () => {
-    const items = visibleNavItems(true);
-    const labels = items.map((i) => i.label);
-    for (const required of ['Moja maszyna', 'Etykiety i produkty', 'Subskrypcja / Plan']) {
-      expect(labels).toContain(required);
-    }
-    expect(items.filter((i) => i.group === 'pro')).toHaveLength(8);
+  it('5. the Pro menu promotes destinations only; contextual tools stay inside them', () => {
+    const items = visibleNavItems('pro');
+    expect(items.map((item) => item.id)).toEqual([
+      'proWorkspace',
+      'recipes',
+      'production',
+      'products',
+      'machine',
+      // OWNER AUTHORIZED (2026-08-29): the duplicate `Ustawienia etykiety`
+      // entry is gone; Community becomes the one door to the public creator
+      // surfaces. Label settings keep working inside Production/Label.
+      'community',
+      'memberShop',
+      'workWithUs',
+      'franchise',
+    ]);
+    expect(items.some((item) => item.to === '/pro/monitor')).toBe(false);
+    expect(items.some((item) => item.to === '/products/import')).toBe(false);
   });
 
   it('6. the menu is identical across primary routes — every shell renders the ONE drawer/config', () => {
     // The config itself is location-independent (visibleNavItems takes only the capability)…
-    expect(visibleNavItems(true).map((i) => i.id)).toEqual(visibleNavItems(true).map((i) => i.id));
+    expect(visibleNavItems('pro').map((i) => i.id)).toEqual(
+      visibleNavItems('pro').map((i) => i.id),
+    );
     // …and every shell renders AppNavDrawer: the canonical AppShell, and the customer bar.
     expect(read('features', 'shell', 'AppShell.tsx')).toContain('AppNavDrawer');
     expect(read('features', 'customer-shell', 'ui', 'CustomerMenu.tsx')).toContain('AppNavDrawer');
-    // Landing, flow, machine profile and subscription mount the customer bar; my-recipes,
-    // pro and all destinations mount AppShell — one drawer everywhere.
+    // Landing, flow and subscription mount the customer bar; authenticated destinations
+    // compose the same AppShell through DestinationSurface — one drawer everywhere.
     expect(read('pages', 'landing', 'LandingPage.tsx')).toContain('CustomerMenu');
     expect(read('features', 'customer-shell', 'CustomerShellV1.tsx')).toContain('CustomerMenu');
-    expect(read('pages', 'profile', 'MachineProfilePage.tsx')).toContain('CustomerMenu');
+    // Maszyna moved onto the ONE authenticated shell (owner „global subpage
+    // style unification", 2026-08-24): it is reached from the same drawer as
+    // every other destination, so it must wear the same header — it previously
+    // rendered the customer menu and put its hamburger somewhere else entirely.
+    expect(read('pages', 'profile', 'MachineProfilePage.tsx')).toContain('DestinationSurface');
     expect(read('pages', 'destinations', 'SubscriptionPage.tsx')).toContain('CustomerMenu');
     expect(read('pages', 'recipes', 'MyRecipesPage.tsx')).toContain('AppShell');
     expect(read('pages', 'pro', 'ProWorkspacePage.tsx')).toContain('AppShell');
     expect(read('components', 'shared', 'DestinationSurface.tsx')).toContain('AppShell');
   });
 
-  it('17. no legacy left sidebar returns — the drawer is right-side; no routed page uses ShellLayout', () => {
+  // Every trigger is leading and every drawer opens LEFT (owner V2.1 §6).
+  // The historical rule this replaced was about the LEGACY left sidebar
+  // (AppMenu), which stays deleted — that is what the assertions below pin.
+  it('17. the legacy left sidebar stays deleted; no routed page uses ShellLayout', () => {
     const drawer = read('features', 'shell', 'AppNavDrawer.tsx');
-    expect(drawer).toContain('right-0');
-    expect(drawer.includes('left-0')).toBe(false);
+    expect(drawer).toContain('left-0');
+    expect(drawer.includes('right-0')).toBe(false);
+    expect(read('components', 'shared', 'DestinationSurface.tsx')).toContain(
+      'navigationPosition="trailing"',
+    );
     expect(read('app', 'router.tsx').includes('ShellLayout')).toBe(false);
-    expect(read('components', 'shared', 'DestinationSurface.tsx').includes('ShellLayout')).toBe(false);
+    expect(read('components', 'shared', 'DestinationSurface.tsx').includes('ShellLayout')).toBe(
+      false,
+    );
   });
 
   it('18. no /dev/* link appears in the canonical navigation', () => {
@@ -132,18 +178,19 @@ describe('canonical PINGÜINO Pro — workbar (proofs 7–15)', () => {
     const name = html.indexOf('data-testid="pro-workbar-name"');
     const save = html.indexOf('data-testid="pro-workbar-save"');
     expect(name).toBeGreaterThan(-1);
-    expect(save).toBeGreaterThan(name);
-    expect(html).toContain(copy.proWorkbar.saveNew); // Zapisz recepturę
+    expect(save).toBeLessThan(name);
+    expect(html).toContain('ZAPISZ');
   });
 
-  it('11. Monitor PI is visible at the top', () => {
-    expect(html).toContain('data-testid="pro-workbar-monitor"');
-    expect(html).toContain(copy.proWorkbar.monitor);
+  it('11. Monitor is visible in the top context tabs', () => {
+    expect(html).toContain('data-testid="pro-context-tabs"');
+    expect(html).toContain('data-testid="pro-context-monitor-tab"');
+    expect(html).toContain(copy.proWorkbench.profile.tabs.monitor);
   });
 
-  it('12. Przelicz z PI is visible at the top', () => {
+  it('12. Przelicz z PI is visible in the bottom editor action dock', () => {
     expect(html).toContain('data-testid="pro-workbar-recalc"');
-    expect(html).toContain(copy.proWorkbar.recalc);
+    expect(html).toContain('data-testid="workbench-recipe-action-dock"');
   });
 
   it('13. version/date and dirty state are visible (status line)', () => {
@@ -151,9 +198,10 @@ describe('canonical PINGÜINO Pro — workbar (proofs 7–15)', () => {
     expect(html).toContain(copy.proWorkbar.status.newUnsaved);
   });
 
-  it('14. the main recalculation is not bottom-only: the TOP button initiates the real preview pipeline', () => {
+  it('14. the dock action initiates the one real preview pipeline', () => {
     const page = read('pages', 'pro', 'ProWorkspacePage.tsx');
-    expect(page).toContain('createOptimizePreview'); // the ONE canonical pipeline
+    expect(page).toContain('beginPiRecalculation');
+    expect(page).toContain('runPiRecalculationWithTerminal'); // the ONE visible-terminal pipeline
     expect(page).toContain('ProRecalcPanel');
     const panel = read('features', 'pro-core', 'ProRecalcPanel.tsx');
     // Preview → Zastosuj/Anuluj → Cofnij all drive the constraint-studio store (no second optimizer).
@@ -170,7 +218,9 @@ describe('canonical PINGÜINO Pro — workbar (proofs 7–15)', () => {
     // …and the page mounts no second save dialog or legacy version-save control.
     const page = read('pages', 'pro', 'ProWorkspacePage.tsx');
     expect(page.includes('SaveRecipeDialog')).toBe(false);
-    expect(read('features', 'studio', 'StudioEngineSurface.tsx').includes('SaveVersionControl')).toBe(false);
+    expect(
+      read('features', 'studio', 'StudioEngineSurface.tsx').includes('SaveVersionControl'),
+    ).toBe(false);
   });
 });
 

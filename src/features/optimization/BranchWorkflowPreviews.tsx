@@ -34,21 +34,21 @@ import {
 import { studioIntentFromRecipe } from './optimizationPreviewRunner';
 
 const RESCUE_PROBLEMS: readonly { value: BatchRescueProblem; label: string }[] = [
-  { value: 'too_hard', label: 'Too hard' },
-  { value: 'too_soft', label: 'Too soft' },
-  { value: 'icy', label: 'Icy' },
-  { value: 'sandy', label: 'Sandy' },
-  { value: 'too_sweet', label: 'Too sweet' },
-  { value: 'too_fatty', label: 'Too fatty' },
-  { value: 'serving_temperature_mismatch', label: 'Serving temperature mismatch' },
+  { value: 'too_hard', label: 'Za twarde' },
+  { value: 'too_soft', label: 'Za miękkie' },
+  { value: 'icy', label: 'Lodowate' },
+  { value: 'sandy', label: 'Piaskowata' },
+  { value: 'too_sweet', label: 'Za słodkie' },
+  { value: 'too_fatty', label: 'Za tłuste' },
+  { value: 'serving_temperature_mismatch', label: 'Niezgodność temperatury serwowania' },
 ];
 
 /** '' → null (missing, routers block honestly); otherwise the parsed number. */
 const parseMeasured = (raw: string): number | null => (raw.trim() === '' ? null : Number(raw));
 
 const inputCls =
-  'w-full rounded border border-ivory/20 bg-black/30 px-2 py-1.5 font-mono text-[11px] text-ivory placeholder:text-ivory/25';
-const labelCls = 'font-mono text-[10px] uppercase tracking-wide text-ivory/40';
+  'w-full rounded border border-ivory/20 bg-black/30 px-2 py-1.5 font-mono text-[11px] text-ivory placeholder:text-ivory/60';
+const labelCls = 'font-mono text-[10px] uppercase tracking-wide text-ivory/60';
 const buttonCls =
   'inline-flex w-full items-center justify-center rounded-md border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory transition-colors hover:border-ivory/40';
 
@@ -148,23 +148,23 @@ export function BranchWorkflowPreviews({
   return (
     <div className="space-y-3 border-t border-ivory/10 pt-6">
       <div className="flex flex-col gap-1">
-        <SectionLabel>Batch rescue &amp; stock shortage</SectionLabel>
-        <p className="text-xs leading-relaxed text-ivory/40">
-          Preview only — nothing is applied. No inventory is changed. No recipe is saved. Decisions and any
-          verified numbers come from the real engine with regulator verification; missing measurements block
-          honestly instead of being guessed.
+        <SectionLabel>Korekta partii i brak składnika</SectionLabel>
+        <p className="text-xs leading-relaxed text-ivory/60">
+          To tylko podgląd — nic nie zostanie zastosowane, zapisane ani odjęte z zapasów. Decyzje i
+          zweryfikowane liczby pochodzą z prawdziwego silnika z weryfikacją regulatora; brakujące pomiary
+          uczciwie blokują wynik, zamiast być zgadywane.
         </p>
       </div>
 
       {!policy.canRunWorkflows ? (
-        <p className="text-[11px] leading-relaxed text-ivory/30">
-          Batch rescue and stock shortage previews are available on Pro.
+        <p className="text-[11px] leading-relaxed text-ivory/60">
+          Podgląd korekty partii i braków składników jest dostępny w Pro.
         </p>
       ) : (
         <>
           {/* IF9 — Actual Batch Rescue (measured inputs, local state only) */}
           <div className="space-y-2 rounded-lg border border-ivory/10 bg-black/20 p-3">
-            <p className={labelCls}>Actual batch rescue — what did you observe?</p>
+            <p className={labelCls}>Korekta rzeczywistej partii — co zaobserwowałeś?</p>
             <select className={inputCls} value={problem} onChange={(e) => setProblem(e.target.value as BatchRescueProblem)}>
               {RESCUE_PROBLEMS.map((p) => (
                 <option key={p.value} value={p.value}>
@@ -174,51 +174,51 @@ export function BranchWorkflowPreviews({
             </select>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <p className={labelCls}>measured batch (g)</p>
-                <input className={inputCls} inputMode="decimal" placeholder="weigh it" value={measuredBatchG} onChange={(e) => setMeasuredBatchG(e.target.value)} />
+                <p className={labelCls}>Zmierzona masa partii (g)</p>
+                <input className={inputCls} inputMode="decimal" placeholder="Zważ" value={measuredBatchG} onChange={(e) => setMeasuredBatchG(e.target.value)} />
               </div>
               <div>
-                <p className={labelCls}>observed serving °C</p>
-                <input className={inputCls} inputMode="decimal" placeholder="optional" value={observedTempC} onChange={(e) => setObservedTempC(e.target.value)} />
+                <p className={labelCls}>zaobserwowana temperatura serwowania °C</p>
+                <input className={inputCls} inputMode="decimal" placeholder="Opcjonalne" value={observedTempC} onChange={(e) => setObservedTempC(e.target.value)} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-1.5">
-              <Check label="already frozen" checked={frozen} onChange={setFrozen} />
-              <Check label="can reprocess" checked={canReprocess} onChange={setCanReprocess} />
-              <Check label="liquid addition ok" checked={liquidOk} onChange={setLiquidOk} />
-              <Check label="dry addition ok" checked={dryOk} onChange={setDryOk} />
+              <Check label="Już zamrożone" checked={frozen} onChange={setFrozen} />
+              <Check label="Można przetworzyć ponownie" checked={canReprocess} onChange={setCanReprocess} />
+              <Check label="Można dodać płynne" checked={liquidOk} onChange={setLiquidOk} />
+              <Check label="Można dodać suche" checked={dryOk} onChange={setDryOk} />
             </div>
-            <Check label="food-safety concern (contamination)" checked={foodSafety} onChange={setFoodSafety} />
+            <Check label="ryzyko bezpieczeństwa żywności (zanieczyszczenie)" checked={foodSafety} onChange={setFoodSafety} />
             <button type="button" onClick={runRescuePreview} className={buttonCls}>
-              Preview actual batch rescue
+              Podgląd korekty partii
             </button>
           </div>
 
           {/* IF10 — Stock Shortage (stock inputs, local state only; no substitutes declarable) */}
           <div className="space-y-2 rounded-lg border border-ivory/10 bg-black/20 p-3">
-            <p className={labelCls}>Stock shortage — which line is short?</p>
+            <p className={labelCls}>Brak składnika — którego produktu brakuje?</p>
             <select className={inputCls} value={shortLineId} onChange={(e) => setShortLineId(e.target.value)}>
               {recipe.items.map((i) => (
                 <option key={i.id} value={i.id}>
-                  {i.ingredient.name} · needs {i.planned_grams.toFixed(0)} g
+                  {i.ingredient.name} · potrzeba {i.planned_grams.toFixed(0)} g
                 </option>
               ))}
             </select>
             <div>
-              <p className={labelCls}>available in stock (g)</p>
-              <input className={inputCls} inputMode="decimal" placeholder="count it" value={availableG} onChange={(e) => setAvailableG(e.target.value)} />
+              <p className={labelCls}>dostępne w magazynie (g)</p>
+              <input className={inputCls} inputMode="decimal" placeholder="Policz" value={availableG} onChange={(e) => setAvailableG(e.target.value)} />
             </div>
             <div className="grid grid-cols-2 gap-1.5">
-              <Check label="may scale batch down" checked={canScaleDown} onChange={setCanScaleDown} />
-              <Check label="may reformulate" checked={canReformulate} onChange={setCanReformulate} />
-              <Check label="can buy / wait" checked={purchasePossible} onChange={setPurchasePossible} />
+              <Check label="Można zmniejszyć masę partii" checked={canScaleDown} onChange={setCanScaleDown} />
+              <Check label="Można przeformułować" checked={canReformulate} onChange={setCanReformulate} />
+              <Check label="Można dokupić / poczekać" checked={purchasePossible} onChange={setPurchasePossible} />
             </div>
-            <p className="text-[10px] leading-relaxed text-ivory/30">
-              Verified substitute preview requires a calibrated substitute from the reference catalog —
-              substitutes can never be typed in by hand.
+            <p className="text-[10px] leading-relaxed text-ivory/60">
+              Podgląd zweryfikowanego zamiennika wymaga skalibrowanego zamiennika z katalogu
+              referencyjnego — zamienników nie można wpisywać ręcznie.
             </p>
             <button type="button" onClick={runShortagePreview} className={buttonCls}>
-              Preview stock shortage
+              Podgląd braku składnika
             </button>
           </div>
 

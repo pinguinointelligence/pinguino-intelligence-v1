@@ -129,6 +129,9 @@ export function buildFallbackNotes(result: RecipeResult): string[] {
   if (result.indicators.some((indicator) => indicator.temperature_fallback)) {
     notes.push(pi.fallbackTemperature);
   }
+  if (result.indicators.some((indicator) => indicator.band_status === 'estimated')) {
+    notes.push(pi.fallbackEstimated);
+  }
   return notes;
 }
 

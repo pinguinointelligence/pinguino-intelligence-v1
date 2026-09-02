@@ -71,12 +71,12 @@ describe('AuthModal — post-OAuth-redirect notices', () => {
     expect(html).not.toContain('User denied access');
   });
 
-  it('shows the failure message with the provider detail for oauth-failed', () => {
+  it('shows safe failure copy without raw provider detail for oauth-failed', () => {
     h.auth.available = true;
     setNotice({ kind: 'oauth-failed', detail: 'Provider unavailable' });
     const html = render();
     expect(html).toContain(a.googleFailed);
-    expect(html).toContain('Provider unavailable');
+    expect(html).not.toContain('Provider unavailable');
   });
 
   it('renders no notice at all on a plain open', () => {
@@ -88,6 +88,13 @@ describe('AuthModal — post-OAuth-redirect notices', () => {
 });
 
 describe('AuthModal — Google button UX (icon, accessibility, idle state)', () => {
+  it('uses the shared modal contract with real dialog semantics', () => {
+    const html = render();
+    expect(html).toContain('role="dialog"');
+    expect(html).toContain('aria-modal="true"');
+    expect(html).toContain('data-testid="auth-modal"');
+  });
+
   it('carries the Google icon (inline svg) and an explicit accessible label', () => {
     h.auth.available = true;
     const html = render();

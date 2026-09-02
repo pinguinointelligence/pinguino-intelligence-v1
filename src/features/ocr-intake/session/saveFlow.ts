@@ -27,9 +27,17 @@
  * This is the ONE module in the feature allowed to import a service — and only
  * `importProductCatalog`. Tests mock it; nothing here writes anywhere else.
  */
-import { mapRowToProductInsert, type ProductIntakeCandidate } from '@/data/products/productTableParser';
+import {
+  mapRowToProductInsert,
+  type ProductIntakeCandidate,
+} from '@/data/products/productTableParser';
 import { importProductCatalog } from '@/services/productCatalogImport';
-import { detectRedFlags, blocksAutoVerify, type RedFlag, type RedFlagInput } from '@/data/products/productRedFlags';
+import {
+  detectRedFlags,
+  blocksAutoVerify,
+  type RedFlag,
+  type RedFlagInput,
+} from '@/data/products/productRedFlags';
 import { decideProductStatus, type StatusDecision } from '@/data/products/productStatusDecision';
 import { matchProduct, type ProductMatchResult } from '@/data/products/productMatcher';
 import { ENRICHABLE_FIELDS, type EnrichmentPatch } from '@/data/products/productEnrichment';
@@ -48,6 +56,7 @@ import {
   successfulRuns,
 } from './intakeSession';
 import { resolvedValueOf } from './reviewedFields';
+import { detectLabelLanguages, parseLabelText } from '../labelTextParser';
 
 /* ── typed errors ────────────────────────────────────────────────────────── */
 
@@ -74,7 +83,12 @@ export const OCR_INTAKE_EVIDENCE_SCHEMA = 'pinguino.ocr_intake_evidence.v2';
 
 export type SessionNutritionBasis = 'per_100g' | 'per_100ml' | 'serving_only' | 'unknown';
 
-const KNOWN_BASES: readonly SessionNutritionBasis[] = ['per_100g', 'per_100ml', 'serving_only', 'unknown'];
+const KNOWN_BASES: readonly SessionNutritionBasis[] = [
+  'per_100g',
+  'per_100ml',
+  'serving_only',
+  'unknown',
+];
 
 export type EanSource = 'manual' | 'ocr' | 'none';
 
@@ -88,7 +102,9 @@ export interface SessionCandidate {
 /** Resolved nutrition basis of the session (unrecognized → 'unknown', honestly). */
 export function sessionBasis(session: ProductIntakeSession): SessionNutritionBasis {
   const raw = resolvedValueOf(session.fields, 'nutrition_basis');
-  return (KNOWN_BASES as readonly string[]).includes(raw ?? '') ? (raw as SessionNutritionBasis) : 'unknown';
+  return (KNOWN_BASES as readonly string[]).includes(raw ?? '')
+    ? (raw as SessionNutritionBasis)
+    : 'unknown';
 }
 
 /** Concatenated raw OCR text of the session's successful runs, in image order. */
@@ -110,7 +126,10 @@ export function concatenatedOcrText(session: ProductIntakeSession): string | nul
  *   • detected_text = concatenated raw OCR; extracted_json = the full v2 audit.
  * Pure — builds a LOCAL candidate; persisting is `saveIntakeSession`'s single import call.
  */
-export function buildSessionCandidate(session: ProductIntakeSession): SessionCandidate {
+export function buildSessionCandidate(
+  session: ProductIntakeSession,
+  options: { explicitlyUnbranded?: boolean } = {},
+): SessionCandidate {
   const value = (key: Parameters<typeof resolvedValueOf>[1]): string | null =>
     resolvedValueOf(session.fields, key);
 
@@ -129,7 +148,8 @@ export function buildSessionCandidate(session: ProductIntakeSession): SessionCan
 
   // EAN: manual entry is explicit human input and wins; OCR evidence otherwise.
   const ocrEan = value('ean_code');
-  const eanSource: EanSource = session.manualEan !== null ? 'manual' : ocrEan !== null ? 'ocr' : 'none';
+  const eanSource: EanSource =
+    session.manualEan !== null ? 'manual' : ocrEan !== null ? 'ocr' : 'none';
   put('ean', session.manualEan ?? ocrEan);
 
   // package size (+ unit when the extractor split them)
@@ -162,6 +182,12 @@ export function buildSessionCandidate(session: ProductIntakeSession): SessionCan
   // evidence audit only; detected_text below carries the raw OCR verbatim.
 
   const candidate = mapRowToProductInsert(row, 'generic', 0);
+  const explicitlyUnbranded = options.explicitlyUnbranded === true && value('brand') === null;
+  const runs = successfulRuns(session);
+  const labelLanguages = [...new Set(runs.flatMap((run) => detectLabelLanguages(run.fullText)))];
+  const manufacturerEvidence = runs
+    .map((run) => parseLabelText(run.lines).manufacturerEvidence.value)
+    .filter((entry): entry is string => entry !== null);
 
   // label-scan specifics on top of the shared mapping (same pattern as reviewState v1)
   candidate.insert.source_type = 'label_scan';
@@ -171,6 +197,14 @@ export function buildSessionCandidate(session: ProductIntakeSession): SessionCan
     engine: OCR_ENGINE_INFO,
     sessionId: session.sessionId,
     basis,
+    nutritionBasis: basis,
+    explicitlyUnbranded,
+    originalLanguage: labelLanguages[0] ?? null,
+    labelLanguages,
+    ingredientsText: value('ingredients_text'),
+    allergensText: value('allergens_text'),
+    mayContainText: value('may_contain_text'),
+    manufacturerEvidence,
     manualEan: session.manualEan,
     eanSource,
     images: session.images.map((i) => ({
@@ -210,7 +244,9 @@ export function buildSessionCandidate(session: ProductIntakeSession): SessionCan
     if (candidate.status === 'valid') candidate.status = 'warning';
   }
   if (basis === 'per_100ml') {
-    candidate.warnings.push('values are per 100 ml — density NOT applied; verify against per-100 g expectations');
+    candidate.warnings.push(
+      'values are per 100 ml — density NOT applied; verify against per-100 g expectations',
+    );
     if (candidate.status === 'valid') candidate.status = 'warning';
   }
 
@@ -298,7 +334,8 @@ export function createSaveFlowState(sessionId: string): SaveFlowState {
 
 /* ── results ─────────────────────────────────────────────────────────────── */
 
-export type DuplicateResolutionAction = 'open_existing' | 'update_existing_with_review' | 'create_new';
+export type DuplicateResolutionAction =
+  'open_existing' | 'update_existing_with_review' | 'create_new';
 
 export interface PostSaveMatchInstruction {
   step: 'run_existing_matcher';
@@ -355,7 +392,17 @@ export async function saveIntakeSession(
   session: ProductIntakeSession,
   flow: SaveFlowState,
   existing: readonly ExistingProductForDedup[],
-  options: { resolution?: DuplicateResolutionAction } = {},
+  options: {
+    resolution?: DuplicateResolutionAction;
+    /** Exact candidate chosen by the customer when more than one duplicate is shown. */
+    duplicateProductId?: string | null;
+    explicitlyUnbranded?: boolean;
+    /** Server adapter used by persisted OCR so identity/version/behavior commit once. */
+    persistCandidate?: (candidate: ProductIntakeCandidate) => Promise<{
+      productId: string;
+      productCode: string | null;
+    }>;
+  } = {},
 ): Promise<SaveSessionOutcome> {
   if (flow.sessionId !== session.sessionId) {
     throw new SaveFlowError(
@@ -374,7 +421,7 @@ export async function saveIntakeSession(
         productId: flow.savedProductId,
         productCode: flow.savedProductCode,
         alreadySaved: true,
-        assessment: assessCandidate(buildSessionCandidate(session).candidate),
+        assessment: assessCandidate(buildSessionCandidate(session, options).candidate),
         postSave: postSaveInstruction(flow.savedProductId),
       },
     };
@@ -387,14 +434,21 @@ export async function saveIntakeSession(
     );
   }
 
-  const { candidate } = buildSessionCandidate(session);
+  const { candidate } = buildSessionCandidate(session, options);
   if (candidate.status === 'skip') {
     const failed = failSession(session, candidate.skipReason ?? 'no usable identity');
-    return { session: failed, flow, result: { kind: 'failed', error: candidate.skipReason ?? 'no usable identity' } };
+    return {
+      session: failed,
+      flow,
+      result: { kind: 'failed', error: candidate.skipReason ?? 'Nie udało się rozpoznać produktu.' },
+    };
   }
 
   // MANDATORY dedup before any save (spec §10)
-  const assessment = assessDuplicate({ insert: candidate.insert, manualEan: session.manualEan }, existing);
+  const assessment = assessDuplicate(
+    { insert: candidate.insert, manualEan: session.manualEan },
+    existing,
+  );
 
   if (assessment.verdict !== 'new_product') {
     const resolution = options.resolution;
@@ -411,24 +465,48 @@ export async function saveIntakeSession(
         `"${resolution}" is not allowed for a ${assessment.verdict} — allowed: [${assessment.allowedActions.join(', ')}]`,
       );
     }
-    const existingId = assessment.reasons[0]?.existingProductId ?? null;
+    const selectedExistingId = options.duplicateProductId ?? null;
+    if (
+      selectedExistingId !== null &&
+      !assessment.reasons.some((reason) => reason.existingProductId === selectedExistingId)
+    ) {
+      throw new SaveFlowError(
+        'resolution_without_duplicate',
+        'the selected duplicate is not part of the current duplicate assessment',
+      );
+    }
+    const existingId = selectedExistingId ?? assessment.reasons[0]?.existingProductId ?? null;
     if (resolution === 'open_existing') {
-      if (existingId === null) throw new SaveFlowError('resolution_without_duplicate', 'no existing product to open');
+      if (existingId === null)
+        throw new SaveFlowError('resolution_without_duplicate', 'no existing product to open');
       const withAssessment = { ...session, duplicate: assessment };
       const closed = cancelSession(withAssessment);
       return {
-        session: { ...closed, warnings: [...closed.warnings, `closed without saving — opened existing product ${existingId}`] },
+        session: {
+          ...closed,
+          warnings: [
+            ...closed.warnings,
+            `closed without saving — opened existing product ${existingId}`,
+          ],
+        },
         flow,
         result: { kind: 'open_existing', existingProductId: existingId },
       };
     }
     if (resolution === 'update_existing_with_review') {
-      if (existingId === null) throw new SaveFlowError('resolution_without_duplicate', 'no existing product to update');
+      if (existingId === null)
+        throw new SaveFlowError('resolution_without_duplicate', 'no existing product to update');
       const handoff = buildEnrichmentHandoff(candidate, existingId);
       const withAssessment = { ...session, duplicate: assessment };
       const closed = cancelSession(withAssessment);
       return {
-        session: { ...closed, warnings: [...closed.warnings, `handed off to the enrichment flow for product ${existingId} — nothing written here`] },
+        session: {
+          ...closed,
+          warnings: [
+            ...closed.warnings,
+            `handed off to the enrichment flow for product ${existingId} — nothing written here`,
+          ],
+        },
         flow,
         result: handoff,
       };
@@ -443,16 +521,21 @@ export async function saveIntakeSession(
 
   const nextFlow: SaveFlowState = { ...flow, importCalls: flow.importCalls + 1 };
   try {
-    const summary = await importProductCatalog([candidate], { runMatch: false });
-    const productId = summary.productIds[0] ?? null;
-    if (summary.failed > 0 || productId === null) {
-      const error = summary.rowResults[0]?.error ?? 'import did not produce a product';
-      return { session: failSession(current, error), flow: nextFlow, result: { kind: 'failed', error } };
-    }
+    const persisted = options.persistCandidate
+      ? await options.persistCandidate(candidate)
+      : await (async () => {
+          const summary = await importProductCatalog([candidate], { runMatch: false });
+          const productId = summary.productIds[0] ?? null;
+          if (summary.failed > 0 || productId === null) {
+            throw new Error(summary.rowResults[0]?.error ?? 'import did not produce a product');
+          }
+          return { productId, productCode: summary.productCodes[0] ?? null };
+        })();
+    const productId = persisted.productId;
     const savedFlow: SaveFlowState = {
       ...nextFlow,
       savedProductId: productId,
-      savedProductCode: summary.productCodes[0] ?? null,
+      savedProductCode: persisted.productCode,
     };
     return {
       session: markSaved(current),
@@ -468,7 +551,11 @@ export async function saveIntakeSession(
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    return { session: failSession(current, message), flow: nextFlow, result: { kind: 'failed', error: message } };
+    return {
+      session: failSession(current, message),
+      flow: nextFlow,
+      result: { kind: 'failed', error: message },
+    };
   }
 }
 

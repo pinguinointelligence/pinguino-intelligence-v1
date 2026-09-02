@@ -390,7 +390,7 @@ export function setManualEan(session: ProductIntakeSession, raw: string | null):
   }
   const warnings =
     normalized.length < 8
-      ? [...session.warnings, `manual EAN "${normalized}" has only ${normalized.length} digits (looks short)`]
+      ? [...session.warnings, `Manual EAN "${normalized}" has only ${normalized.length} digits (looks short)`]
       : session.warnings;
   return { ...session, manualEan: normalized, warnings };
 }
@@ -414,8 +414,8 @@ export function rerunExtraction(session: ProductIntakeSession): ProductIntakeSes
   const edits = session.fields.filter((f) => f.reviewStatus === 'edited').length;
   const confirmations = session.fields.filter((f) => f.reviewStatus === 'confirmed').length;
   const warning =
-    `re-running extraction replaced ${session.fields.length} reviewed field(s) and DISCARDED ` +
-    `${edits} manual edit(s) and ${confirmations} confirmation(s) from the previous review`;
+    `Ponowna analiza zastąpiła ${session.fields.length} sprawdzonych pól i usunęła ` +
+    `${edits} ręcznych zmian oraz ${confirmations} potwierdzeń z poprzedniego przeglądu.`;
   const next = transition(session, 'extracting', 'rerunExtraction');
   return { ...next, fields: [], duplicate: null, warnings: [...session.warnings, warning] };
 }
@@ -570,14 +570,24 @@ export function confirmFieldReview(session: ProductIntakeSession, key: IntakeFie
 
 /* ── gates + terminal transitions (spec §4, §9) ──────────────────────────── */
 
-/** review → ready_to_save. GATE: zero needs_confirmation / conflict_unresolved fields. */
+/** review → ready_to_save. GATE: zero needs_confirmation / conflict_unresolved fields.
+ * The simple customer review is also the approval step for readable image
+ * evidence. Promote every successfully analysed `needs_review` image to
+ * `ready` with the session transition so persistence and the server evidence
+ * gate observe the same reviewed state. Failed images remain failed. */
 export function markReadyToSave(session: ProductIntakeSession): ProductIntakeSession {
   requireState(session, ['review'], 'markReadyToSave');
   const blocking = blockingFieldKeys(session.fields);
   if (blocking.length > 0) {
     refuse('unresolved_fields', `cannot mark ready_to_save — unresolved field(s): ${blocking.join(', ')}`);
   }
-  return transition(session, 'ready_to_save', 'markReadyToSave');
+  const next = transition(session, 'ready_to_save', 'markReadyToSave');
+  return {
+    ...next,
+    images: next.images.map((image) =>
+      image.state === 'needs_review' ? { ...image, state: 'ready' } : image,
+    ),
+  };
 }
 
 /** ready_to_save → review (change your mind before saving; the gate re-runs later). */

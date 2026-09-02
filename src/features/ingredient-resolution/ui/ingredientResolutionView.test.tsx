@@ -52,7 +52,7 @@ describe('IngredientResolutionSheet', () => {
 
   it('shows the FIVE fresh/herb forms for a herb line before any product action', () => {
     const t = text(render(sheet('flavor:basil')));
-    for (const label of ['świeża', 'suszona', 'pasta', 'ekstrakt', 'napar']) {
+    for (const label of ['Świeża', 'Suszona', 'Pasta', 'Ekstrakt', 'Napar']) {
       expect(t).toContain(label);
     }
     // product actions are hidden during the form step

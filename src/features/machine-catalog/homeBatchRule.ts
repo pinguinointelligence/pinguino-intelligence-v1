@@ -17,22 +17,22 @@
  *  2. official working capacity or MAX FILL in ML → apply the 0.95 factor
  *     (this explicit, versioned rule is the ONLY permitted ml→g arithmetic
  *     in the entire product);
- *  2b. re-spin machines (Ninja-class tubs): the manufacturer's PER-TUB figure
- *     is the fill container the user loads, so an UNCONFLICTED vessel figure
- *     is the usable source (owner examples: 473, 480, 706 are tub figures).
- *     A figure under an open source conflict NEVER produces a number;
+ *  2b. confirmed operating vessels explicitly approved for the shared
+ *     Gellatti fill rule use the same factor (Ninja tubs and owner-approved
+ *     profiles such as Sage Smart Scoop). A figure under an open source
+ *     conflict NEVER produces a number;
  *  3. only the total PHYSICAL BOWL volume known (compressor / frozen bowl) →
  *     NO automatic 5% — a 2 l bowl says nothing about the allowed mix, so the
  *     batch honestly stays underivable (needs review);
  *  4. custom machine with user-declared capacity → the device-type rule above
  *     applies, marked `estimated: true`.
  *
- * The result is presented ONLY as „Zalecany wsad PINGÜINO” — never as the
+ * The result is presented ONLY as „Zalecany wsad Gellatti” — never as the
  * manufacturer's official figure. This module never imports the engine; a
  * factor change alters ONLY this recommendation, never engine math for a
  * recipe at the same final grams (default-neutrality pinning).
  */
-import type { HomeMachineProfile } from './types';
+import type { HomeMachineProfile, MachineBatchProductProfile } from './types';
 
 /** The configurable Home safety factor (owner value 0.95 = 5% margin). */
 export const HOME_CONTAINER_SAFETY_FACTOR = 0.95;
@@ -50,10 +50,12 @@ export type RecommendedBatchSource =
   | 'manufacturer_max_mix_grams' // rule 1 — grams used directly
   | 'maximum_liquid_mix_ml' // rule 2 — official max liquid mix / MAX FILL × factor
   | 'working_capacity_ml' // rule 2 — official working capacity × factor
-  | 'respin_vessel_ml'; // rule 2b — unconflicted re-spin tub figure × factor
+  | 'product_working_capacity_ml' // rule 2 — selected manufacturer program × factor
+  | 'respin_vessel_ml' // legacy-compatible rule 2b name for re-spin tubs
+  | 'confirmed_vessel_ml'; // rule 2b — explicitly approved operating vessel × factor
 
 export interface RecommendedBatch {
-  /** The „Zalecany wsad PINGÜINO” in grams — also the per-container limit. */
+  /** The „Zalecany wsad Gellatti” in grams — also the per-container limit. */
   readonly grams: number;
   readonly source: RecommendedBatchSource;
   /** The factor applied, or null when grams were used directly (rule 1). */
@@ -92,6 +94,7 @@ function positive(value: number | null | undefined): number | null {
 export function recommendMachineBatch(
   profile: HomeMachineProfile,
   config: HomeBatchRuleConfig = DEFAULT_HOME_BATCH_RULE,
+  productProfile: MachineBatchProductProfile = 'gelato',
 ): RecommendedBatch | null {
   const estimated = profile.specificationSource === 'user_declared';
   const factorGrams = (ml: number, source: RecommendedBatchSource): RecommendedBatch => ({
@@ -101,6 +104,11 @@ export function recommendMachineBatch(
     ruleVersion: config.ruleVersion,
     estimated,
   });
+
+  // Custom machines have no manufacturer-backed Gellatti default. Their
+  // user-scoped cycle batch starts EMPTY and is stored separately after the
+  // user enters a positive gram value.
+  if (profile.specificationSource === 'user_declared') return null;
 
   // Rule 1 — official max mix in grams: used directly, never converted.
   const maxMixGrams = positive(profile.capacity.manufacturerMaxMixGrams);
@@ -114,6 +122,16 @@ export function recommendMachineBatch(
     };
   }
 
+  // Rule 2 — an explicit manufacturer program capacity is the narrowest
+  // authority and therefore wins for the selected product profile.
+  const productWorkingMl = positive(
+    profile.productWorkingCapacities?.find((entry) => entry.productProfile === productProfile)
+      ?.workingCapacityMl,
+  );
+  if (productWorkingMl !== null) {
+    return factorGrams(productWorkingMl, 'product_working_capacity_ml');
+  }
+
   // Rule 2 — official max liquid mix / MAX FILL in ml.
   const maxFillMl = positive(profile.capacity.maximumLiquidMixMl);
   if (maxFillMl !== null) return factorGrams(maxFillMl, 'maximum_liquid_mix_ml');
@@ -122,13 +140,17 @@ export function recommendMachineBatch(
   const workingMl = positive(profile.capacity.workingCapacityMl);
   if (workingMl !== null) return factorGrams(workingMl, 'working_capacity_ml');
 
-  // Rule 2b — re-spin tubs only: the per-tub figure is the fill container.
-  // A CONFLICTED figure never produces a number (owner: keep the conflict in
-  // metadata; a catalog decision lands only after model/market confirmation).
-  if (profile.technology === 'respin' || profile.technology === 'respin_soft') {
+  // Rule 2b — the exact operating vessel is eligible only when the canonical
+  // record opts into the owner-approved shared policy. Existing re-spin
+  // records retain their established implicit eligibility.
+  const respin = profile.technology === 'respin' || profile.technology === 'respin_soft';
+  const vesselApproved = profile.recommendedBatchBasis === 'confirmed_vessel_capacity';
+  if (respin || vesselApproved) {
     if (!vesselFigureConflicted(profile)) {
       const vesselMl = positive(profile.capacity.vesselCapacityMl);
-      if (vesselMl !== null) return factorGrams(vesselMl, 'respin_vessel_ml');
+      if (vesselMl !== null) {
+        return factorGrams(vesselMl, respin ? 'respin_vessel_ml' : 'confirmed_vessel_ml');
+      }
     }
     return null;
   }

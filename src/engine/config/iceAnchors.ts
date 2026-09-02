@@ -7,6 +7,7 @@
  * spec §16–§17). Documented upgrade path: more per-category rows and/or a
  * freezing-curve model replace the internals later without an API change.
  */
+import { isSorbetFreezingTemperatureSupported } from '../sorbetFreezingPhysics.ts';
 import type { ProductCategory } from '../types';
 
 export interface IceAnchorRow {
@@ -49,7 +50,10 @@ export interface IceAnchorRow {
  * production-grade slope would need additional approved validation points spread
  * across the band. No such points exist in the approved records, so none are
  * invented. Unseeded categories still fall back to the milk_gelato rows at the
- * same temperature (a pre-existing, documented category-fallback approximation).
+ * same temperature (a pre-existing, documented category-fallback approximation) —
+ * EXCEPT Sorbet, whose ice authority is the composition-sensitive solver in
+ * `src/engine/sorbetFreezingPhysics.ts` and which therefore never reads these
+ * rows (see `estimateIceFraction` and `hasDirectIceAuthorityAtTemperature`).
  */
 export const ICE_ANCHOR_ROWS: readonly IceAnchorRow[] = [
   {
@@ -84,14 +88,72 @@ export const ICE_ANCHOR_ROWS: readonly IceAnchorRow[] = [
     status: 'seeded',
     source: 'golden_fixtures:G11,G18',
   },
+  {
+    category: 'protein_gelato',
+    temperature_c: -11,
+    npac_low: 33,
+    ice_at_npac_low: 54.5,
+    npac_high: 42,
+    ice_at_npac_high: 45,
+    status: 'seeded',
+    source: 'owner_approved_standard_physics:locked_spec_v1',
+  },
+  {
+    category: 'protein_gelato',
+    temperature_c: -12,
+    npac_low: 44.98,
+    ice_at_npac_low: 50.35,
+    npac_high: 46.18,
+    ice_at_npac_high: 50.34,
+    status: 'seeded',
+    source: 'owner_approved_standard_physics:G15,G17',
+  },
+  {
+    category: 'protein_gelato',
+    temperature_c: -13,
+    npac_low: 51.77,
+    ice_at_npac_low: 49.73,
+    npac_high: 53.15,
+    ice_at_npac_high: 49.69,
+    status: 'seeded',
+    source: 'owner_approved_standard_physics:G11,G18',
+  },
 ];
 
 /**
- * True when the ice model has a SEEDED anchor at exactly `temperatureC` for
- * `category` (its own, or the milk_gelato fallback at that temperature) — i.e. the
- * estimate needs NO cross-temperature extrapolation. Interactive Monitor tuning is
- * only offered where this holds, so PI never endorses gram changes computed from a
- * temperature-extrapolated ice curve.
+ * The dairy category every unseeded, non-Sorbet category currently borrows.
+ * Vegan is one of them — see `config/veganFreezingAuthority.ts`.
+ */
+export const ICE_ANCHOR_CATEGORY_FALLBACK: ProductCategory = 'milk_gelato';
+
+/**
+ * SINGLE SEAM for anchor-row selection, used by `estimateIceFraction`.
+ *
+ * Category-first; Sorbet never borrows (its authority is the composition
+ * solver); every other unseeded category falls back to the documented
+ * `milk_gelato` rows. Behaviour is byte-for-byte the historical inline rule.
+ *
+ * This is the ONE place the borrowed-dairy dependency is expressed, so a future
+ * Vegan freezing authority replaces it here and nowhere else.
+ */
+export function resolveIceAnchorRows(
+  anchors: readonly IceAnchorRow[],
+  category: ProductCategory,
+): readonly IceAnchorRow[] {
+  const own = anchors.filter((row) => row.category === category);
+  if (own.length > 0) return own;
+  if (category === 'sorbet') return [];
+  return anchors.filter((row) => row.category === ICE_ANCHOR_CATEGORY_FALLBACK);
+}
+
+/**
+ * True when the anchor-matrix ice model has a SEEDED anchor at exactly
+ * `temperatureC` for `category` (its own, or the milk_gelato fallback at that
+ * temperature) — i.e. the estimate needs NO cross-temperature extrapolation.
+ *
+ * Sorbet is deliberately excluded from the milk_gelato fallback: it has no
+ * anchor rows and never borrows milk truth (mirrors `estimateIceFraction`).
+ * Sorbet's direct authority is answered by `hasDirectIceAuthorityAtTemperature`.
  */
 export function hasSeededIceAnchorAtTemperature(
   category: ProductCategory,
@@ -101,7 +163,30 @@ export function hasSeededIceAnchorAtTemperature(
     ICE_ANCHOR_ROWS.some(
       (r) => r.category === cat && r.temperature_c === temperatureC && r.status === 'seeded',
     );
+  if (category === 'sorbet') return seededAt('sorbet');
   return seededAt(category) || seededAt('milk_gelato');
+}
+
+/**
+ * True when the Engine owns a DIRECT ice authority for `category` at exactly
+ * `temperatureC`, so interactive Monitor tuning (`isMonitorTuningApproved`)
+ * may rely on the ice result without cross-temperature extrapolation:
+ *  - Sorbet → the composition-sensitive solver (−13 … −11 °C), never milk rows;
+ *  - every other category → a same-temperature seeded anchor row (its own, or
+ *    the documented milk_gelato fallback), exactly as before.
+ * Gelato / Protein / Vegan behaviour is unchanged by the Sorbet branch.
+ *
+ * NOTE: the professional Monitor *status* row is stricter — see
+ * `src/features/recipe-constraints/freezingStabilityStatus.ts`: anchor-calibrated
+ * categories certify GOOD only from their OWN seeded row (the milk_gelato
+ * fallback is insufficient there), and Sorbet only from an available solver result.
+ */
+export function hasDirectIceAuthorityAtTemperature(
+  category: ProductCategory,
+  temperatureC: number,
+): boolean {
+  if (category === 'sorbet') return isSorbetFreezingTemperatureSupported(temperatureC);
+  return hasSeededIceAnchorAtTemperature(category, temperatureC);
 }
 
 /**

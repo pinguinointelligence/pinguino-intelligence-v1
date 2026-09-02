@@ -5,16 +5,13 @@
  * The IF10 spine router already refuses unverified / unsafe substitutes at the
  * flag level; this contract is the stricter features-level requirement for
  * NUMBERS: a substitute earns an exact preview only with a complete, engine-
- * ready composition AND allowlisted provenance AND every safety gate passing.
+ * ready composition and every safety gate passing. Provenance is retained as
+ * information and review priority, never as a numerical eligibility gate.
  *
- * Provenance hard rules (allowlist + explicit denials):
- *  - accepted sources: `internal_reference_catalog`, `owner_verified_entry`;
- *  - Mapper product rows are NEVER accepted as verified composition (they are
- *    match candidates, not calibrated references);
- *  - PI Calculated products are NEVER accepted as verified substitutes
- *    (calculated ≠ verified);
- *  - verification status must be one of `verified_reference` /
- *    `calibrated_reference` / `owner_approved_reference` — anything else blocks.
+ * Provenance presentation rules:
+ *  - source and verification labels remain visible in diagnostics;
+ *  - unreviewed/estimated sources produce a non-blocking warning;
+ *  - technical composition and explicit safety rules decide eligibility.
  *
  * Safety hard rules (mirror the spine router; NEVER silent):
  *  - dairy into a dairy-forbidding profile (sorbet/vegan) blocks — NO approval
@@ -45,7 +42,8 @@ export type SubstituteVerificationStatus =
   | 'calibrated_reference'
   | 'owner_approved_reference';
 
-/** Sources a verified substitute may come from — everything else blocks. */
+/** Sources already reviewed by the owner. Other sources remain usable when
+ * technical and safety checks pass, but receive a diagnostic warning. */
 export const ALLOWED_SUBSTITUTE_SOURCES = [
   'internal_reference_catalog',
   'owner_verified_entry',
@@ -142,14 +140,11 @@ export function validateVerifiedSubstitute(
   const blockedReasons: string[] = [];
   const warnings: string[] = [];
 
-  // Provenance: explicit denials first (clear reasons), then the allowlist.
+  // Provenance is information only. Preserve it as a diagnostic warning; the
+  // exact numerical and safety checks below remain authoritative.
   const source = (contract.provenance?.source ?? '').toLowerCase();
-  if (source.includes('mapper')) {
-    blockedReasons.push('mapper_products_never_calibrated_substitutes');
-  } else if (source.includes('pi_calculated')) {
-    blockedReasons.push('pi_calculated_never_verified_substitute');
-  } else if (!(ALLOWED_SUBSTITUTE_SOURCES as readonly string[]).includes(contract.provenance?.source)) {
-    blockedReasons.push('substitute_source_not_allowed');
+  if (!(ALLOWED_SUBSTITUTE_SOURCES as readonly string[]).includes(contract.provenance?.source)) {
+    warnings.push(source ? 'substitute_provenance_unreviewed' : 'substitute_provenance_missing');
   }
   const verification = contract.provenance?.verification as string;
   if (
@@ -157,7 +152,7 @@ export function validateVerifiedSubstitute(
     verification !== 'calibrated_reference' &&
     verification !== 'owner_approved_reference'
   ) {
-    blockedReasons.push('unverified_substitute');
+    warnings.push('substitute_verification_informational');
   }
 
   // Composition: complete, finite, sane — missing composition blocks.
@@ -232,7 +227,7 @@ export function validateVerifiedSubstitute(
 /**
  * Derive the flag-level spine substitute from a contract, POST-validation —
  * so the IF10 router and the exact preview judge the SAME facts. The
- * `hasVerifiedIngredientData` flag is the validation result, never asserted
+ * `hasCompleteTechnicalData` flag is the validation result, never asserted
  * independently.
  */
 export function substituteToShortageLine(
@@ -242,7 +237,7 @@ export function substituteToShortageLine(
   return {
     ingredientName: contract.substituteName,
     available: true,
-    hasVerifiedIngredientData: validation.valid,
+    hasCompleteTechnicalData: validation.valid,
     correctionFamily: contract.substituteFamily,
     isDairy: contract.isDairy,
     containsAllergens: contract.containsAllergens,

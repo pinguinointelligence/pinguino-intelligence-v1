@@ -1,0 +1,24 @@
+-- A multi-word query means ALL of its concepts.
+--
+-- Searching „mleko kokosowe" ranked MILK 2%, MILK 3.2%, WHIPPING CREAM and
+-- BUTTER above COCONUT MILK, because matching ANY term was enough: 81 of the
+-- catalogue's rows contain „milk", and one generic token answered a two-concept
+-- question.
+--
+-- search_products_v1 now takes p_token_groups — one group per meaningful word,
+-- each holding that word's equivalents across languages — and requires EVERY
+-- group to be present. milk AND coconut, never milk OR coconut. Among the rows
+-- that qualify, the one carrying MORE of the query's concepts in its own NAME
+-- ranks first, so COCONUT MILK leads COCONUT.
+--
+-- The expansion itself is NOT restated here: it comes from the single search
+-- dictionary the client already owns, so there is one place where „kokos" is
+-- known to mean „coconut".
+--
+-- Measured on the live catalogue: mleko 96, mleko kokosowe 3 (COCONUT MILK
+-- first), czekolada mleczna 22, czekolada pistacjowa 3, pasta pistacjowa 48,
+-- olej kokosowy 3.
+--
+-- Applied to staging by patching the live definition; this file records the
+-- change. The function keeps every other clause from
+-- 20260824110000_search_relevance_stem_and_rank.sql.

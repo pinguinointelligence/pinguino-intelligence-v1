@@ -1,63 +1,72 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { consumeOAuthRedirectError } from '@/services/authRedirect';
 import { syncEffectiveAccess } from '@/services/accountAccess/liveEffectiveAccess';
 import { useProCoreAccessStore } from '@/features/pro-core/proCoreAccessStore';
 import { useAuthStore } from '@/stores/authStore';
 import { useSubscriptionStore } from '@/stores/subscriptionStore';
-import { clearAccountScopedClientState, isAccountBoundaryChange } from './accountSessionReset';
+import {
+  clearAccountScopedClientState,
+  resolvedAccountBoundaryRequiresClear,
+  writePersistedAccountOwner,
+  type AccountOwnerStorage,
+} from './accountSessionReset';
+import { listUserRecipeDefaults } from '@/services/userRecipeDefaults';
+import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
+import { machineAccountDefaultSnapshot } from '@/features/pro-workbench/machineAccountDefault';
+import { professionalAccountDefaultSnapshot } from '@/features/pro-workbench/professionalAccountAuthority';
+import { readProfessionalChoice } from '@/features/machine-onboarding/professionalMachineChoice';
+import { localStorageMachinePreferenceStore } from '@/features/machine-onboarding/localStorageMachinePreferenceStore';
+import { userScopedMachineKey } from '@/features/machine-onboarding/localStorageMachinePreferenceStore';
+import { selectMachinePreferenceStore } from '@/services/machinePreference/machinePreferenceSelector';
 
 const queryClient = new QueryClient();
 
-// Captured synchronously at module evaluation — before any async URL processing
-// by the auth client can run — so an OAuth error redirect (cancelled/failed at
-// Google) is read and scrubbed from the address bar exactly once. `null` on
-// every ordinary page load; successful token redirects are untouched.
+// Captured before any async auth URL processing. Ordinary/successful loads are null.
 const bootOAuthError = consumeOAuthRedirectError();
 
-export function AppProviders({ children }: { children: ReactNode }) {
-  const initAuth = useAuthStore((state) => state.init);
-  const userId = useAuthStore((state) => state.user?.id ?? null);
-  const userEmail = useAuthStore((state) => state.user?.email ?? null);
+function browserOwnerStorage(): AccountOwnerStorage | null {
+  try {
+    return typeof window === 'undefined' ? null : window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+function ResolvedAccountProviders({
+  children,
+  identity,
+  userId,
+  userEmail,
+}: {
+  children: ReactNode;
+  identity: string;
+  userId: string | null;
+  userEmail: string | null;
+}) {
   const loadSubscription = useSubscriptionStore((state) => state.load);
   const clearSubscription = useSubscriptionStore((state) => state.clear);
   const setEffectiveAccess = useProCoreAccessStore((state) => state.setEffectiveAccess);
 
-  // Restore any persisted session once on mount (no-op when auth is unavailable).
-  useEffect(() => {
-    initAuth();
-    if (bootOAuthError) {
-      useAuthModalStore.getState().openWithNotice({
-        kind: bootOAuthError.kind === 'cancelled' ? 'oauth-cancelled' : 'oauth-failed',
-        detail: bootOAuthError.description,
-      });
+  // The component is keyed by resolved identity. Its initializer runs before
+  // any child is produced, so a persisted A -> B or A -> anonymous transition
+  // is cleared synchronously. StrictMode's repeated initializer is idempotent:
+  // the first pass writes the new owner marker and the second sees a match.
+  const [isolatedIdentity] = useState(() => {
+    const storage = browserOwnerStorage();
+    if (resolvedAccountBoundaryRequiresClear(storage, userId)) {
+      clearAccountScopedClientState(queryClient);
     }
-  }, [initAuth]);
+    writePersistedAccountOwner(storage, userId);
+    return identity;
+  });
 
-  // Load the user's subscription when they sign in; clear it on sign-out.
   useEffect(() => {
     if (userId) void loadSubscription();
     else clearSubscription();
   }, [userId, loadSubscription, clearSubscription]);
 
-  // Cross-account isolation (owner P0): when a REAL signed-in user logs out or is
-  // switched on the same browser, wipe the previous account's private client
-  // state (query cache = another user's saved recipes/products, recipe draft,
-  // intake) so it can never render for the next account. Narrow by design — never
-  // fires on first mount or anon→login, so an anonymous draft is preserved.
-  const prevUserIdRef = useRef<string | null | undefined>(undefined);
-  useEffect(() => {
-    const prev = prevUserIdRef.current;
-    prevUserIdRef.current = userId;
-    if (isAccountBoundaryChange(prev, userId)) clearAccountScopedClientState(queryClient);
-  }, [userId]);
-
-  // Resolve the REAL Home/Pro entitlement into the persona store on every auth
-  // change (owner P0 2026-07-18): this is what makes home@home.com and
-  // pro@pro.com two different products instead of both collapsing to demo. On
-  // sign-out — or any read failure / unconfigured backend — it clears to null,
-  // an honest 'demo'. A late resolve is ignored once the user changed again.
   useEffect(() => {
     let cancelled = false;
     void syncEffectiveAccess(userId, userEmail).then((access) => {
@@ -68,5 +77,109 @@ export function AppProviders({ children }: { children: ReactNode }) {
     };
   }, [userId, userEmail, setEffectiveAccess]);
 
+  /* The account's saved machine is the default for a NEW recipe. It lives in
+     its own store (`/machine` writes a MachinePreferenceRecord), so it is
+     resolved here once per signed-in account and handed to the profile store
+     as a LOWER-priority source than a deliberately configured per-product
+     default. Reopening a saved recipe is unaffected: `loadRecipeInput` reads no
+     defaults at all for a saved version. */
+  useEffect(() => {
+    if (!userId) {
+      useRecipeProfileStore.getState().setMachineAccountDefault(null, null);
+      return;
+    }
+    let cancelled = false;
+    const store = selectMachinePreferenceStore({
+      localDevice: () =>
+        localStorageMachinePreferenceStore(undefined, userScopedMachineKey(userId)),
+    }).store;
+    /* An explicit „Maszyna profesjonalna" is a saved choice like any other, and
+       it wins over a stale Home record because selecting it clears that record;
+       reading it first also keeps the answer stable if a clear ever half-fails. */
+    if (readProfessionalChoice(userId)) {
+      useRecipeProfileStore
+        .getState()
+        .setMachineAccountDefault(userId, professionalAccountDefaultSnapshot);
+      return () => {
+        cancelled = true;
+      };
+    }
+    void Promise.resolve(store.load())
+      .then((record) => {
+        if (cancelled) return;
+        useRecipeProfileStore
+          .getState()
+          .setMachineAccountDefault(
+            userId,
+            record === null
+              ? null
+              : (visibleProductType) => machineAccountDefaultSnapshot(record, visibleProductType),
+          );
+      })
+      .catch(() => {
+        // A machine preference that cannot be read must never fabricate one:
+        // the Professional fallback stays exactly as it is today.
+        if (!cancelled) {
+          useRecipeProfileStore.getState().setMachineAccountDefault(userId, null);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    void listUserRecipeDefaults(userId).then((rows) => {
+      if (cancelled) return;
+      useRecipeProfileStore.getState().replaceDefaultsForOwner(
+        userId,
+        rows.map((row) => ({
+          productContextKey: row.product_context_key,
+          settings: row.settings,
+        })),
+      );
+    }).catch(() => {
+      // Defaults are convenience state. A transient read failure must not
+      // block the recipe workspace or fabricate fallback settings.
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  if (isolatedIdentity !== identity) return null;
   return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+}
+
+export function AppProviders({ children }: { children: ReactNode }) {
+  const initAuth = useAuthStore((state) => state.init);
+  const authStatus = useAuthStore((state) => state.status);
+  const userId = useAuthStore((state) => state.user?.id ?? null);
+  const userEmail = useAuthStore((state) => state.user?.email ?? null);
+
+  useEffect(() => {
+    initAuth();
+    if (bootOAuthError) {
+      useAuthModalStore.getState().openWithNotice({
+        kind: bootOAuthError.kind === 'cancelled' ? 'oauth-cancelled' : 'oauth-failed',
+        detail: bootOAuthError.description,
+      });
+    }
+  }, [initAuth]);
+
+  if (authStatus === 'loading') return null;
+  const resolvedUserId = authStatus === 'authed' ? userId : null;
+  const identity = resolvedUserId ?? 'anonymous';
+  return (
+    <ResolvedAccountProviders
+      key={identity}
+      identity={identity}
+      userId={resolvedUserId}
+      userEmail={resolvedUserId ? userEmail : null}
+    >
+      {children}
+    </ResolvedAccountProviders>
+  );
 }

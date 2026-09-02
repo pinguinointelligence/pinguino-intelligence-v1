@@ -1,20 +1,24 @@
 /**
- * Products service (Mapper Slice D1) — the ONLY Supabase access for the GROWING
- * `public.products` layer (customer uploads, catalogs, scans, manual, API).
+ * Canonical product read service plus compatibility write adapters. Reads use
+ * authenticated RLS; every mutation routes through catalog-submit → ingest_product_v1.
  *
- * RLS scopes every row to the signed-in user (`auth.uid() = owner_user_id`); the
- * client sends the user's JWT (anon key only — never the privileged server key).
- *
- * Boundaries (Slice D1 is a pure data layer):
- *   • queries ONLY `public.products` — never reads or writes `mapper_basement`
+ * Boundaries:
+ *   • reads ONLY `public.products` — never reads or writes `mapper_basement`
  *     (the locked reference base is read-only and untouched by this layer);
  *   • no recipe-engine calls, no recipe-value calculation, no Mapper matching;
+ *   • clients never write product identity/version/verification/mapping directly;
  *   • unknown numeric values are passed through verbatim — NEVER coerced to 0
  *     (omit a field to leave it NULL); no `npac_value` anywhere.
  */
 import { supabase } from '@/lib/supabase/client';
-import { getCurrentUser } from '@/services/auth';
+import { emptyUnconfiguredRead } from '@/services/backendGuard';
 import { productMatchResultToPatch } from '@/data/products/productMatchResultToPatch';
+import {
+  canonicalIngestFromLegacyProduct,
+  ingestProduct,
+  productIngestIdempotencyKey,
+  type ProductIngestResult,
+} from '@/services/productIngest';
 import {
   normalizeEan,
   productIdentityKey,
@@ -32,9 +36,10 @@ import type {
 const TABLE = 'products';
 const UNAVAILABLE = 'Products are not available in this build.';
 
-/** All products owned by the current user (RLS enforces ownership). */
+/** Products owned/created by the current account. Shared discovery uses the
+ * catalog search RPC; this legacy list never exposes the mixed canonical root. */
 export async function listMyProducts(): Promise<ProductRow[]> {
-  if (!supabase) return [];
+  if (!supabase) return emptyUnconfiguredRead('products.listMyProducts', []);
   const { data, error } = await supabase
     .from(TABLE)
     .select('*')
@@ -43,26 +48,86 @@ export async function listMyProducts(): Promise<ProductRow[]> {
   return (data ?? []) as ProductRow[];
 }
 
-/** A single owned product by id (RLS still applies). */
+/** A single canonical product by id; canonical shared/private RLS still applies. */
 export async function getProduct(id: string): Promise<ProductRow | null> {
-  if (!supabase) return null;
-  const { data, error } = await supabase.from(TABLE).select('*').eq('id', id).maybeSingle();
+  if (!supabase) return emptyUnconfiguredRead('products.getProduct', null);
+  const { data, error } = await supabase.rpc('get_canonical_product_for_account_v1', {
+    p_product_id: id,
+  });
   if (error) throw new Error(error.message);
   return (data as ProductRow | null) ?? null;
 }
 
-/** Create a product owned by the current user. Unknown fields stay NULL (never 0). */
-export async function createProduct(payload: ProductInsert): Promise<ProductRow> {
+export interface ProductCreateResult {
+  product: ProductRow;
+  ingest: ProductIngestResult;
+}
+
+/** Create through the canonical ingest transaction and preserve the DB-owned
+ * outcome. Callers must not guess `created` vs `existing` from an owner-scoped
+ * browser precheck. */
+/**
+ * Say what the server actually refused.
+ *
+ * A submission with no product id is not a mystery: the ingest reports its
+ * `kind`, and a rate-limited one also reports WHICH quota and when it frees up.
+ * Reporting all of that as "did not return a canonical product" hid a daily
+ * quota behind a sentence that reads like a bug, and an owner watching an import
+ * stop at row 11 had no way to learn the real reason.
+ */
+export function productIngestRefusal(ingest: {
+  kind?: string | null;
+  rateReason?: string | null;
+  retryAt?: string | null;
+  missingFields?: string[] | null;
+  challengeRequired?: boolean | null;
+}): string {
+  const parts: string[] = [];
+  if (ingest.kind === 'rate_limited') {
+    parts.push(`Ingest odmówił: limit zapisów (${ingest.rateReason ?? 'nieznany'}).`);
+    if (ingest.retryAt) parts.push(`Można ponowić po ${ingest.retryAt}.`);
+    if (ingest.challengeRequired) parts.push('Wymagane potwierdzenie bezpieczeństwa.');
+  } else if (ingest.kind === 'blocked') {
+    parts.push('Ingest zablokował produkt.');
+    const missing = ingest.missingFields ?? [];
+    if (missing.length > 0) parts.push(`Brakujące pola: ${missing.join(', ')}.`);
+  } else if (ingest.kind === 'likely_duplicate') {
+    parts.push('Ingest uznał produkt za prawdopodobny duplikat i czeka na decyzję.');
+  } else {
+    parts.push(`Ingest nie zwrócił produktu kanonicznego (kind=${ingest.kind ?? 'brak'}).`);
+  }
+  return parts.join(' ');
+}
+
+export async function createProductWithResult(
+  payload: ProductInsert,
+  options: CreateProductIdentityOptions = {},
+): Promise<ProductCreateResult> {
   if (!supabase) throw new Error(UNAVAILABLE);
-  const user = await getCurrentUser();
-  if (!user) throw new Error('You must be signed in to add a product.');
-  const { data, error } = await supabase
-    .from(TABLE)
-    .insert({ ...payload, owner_user_id: user.id })
-    .select()
-    .single();
-  if (error) throw new Error(error.message);
-  return data as ProductRow;
+  const request = canonicalIngestFromLegacyProduct(payload);
+  // The decision travels INSIDE the canonical input, so it is part of both the
+  // idempotency key and the payload fingerprint: the same row with the same
+  // decision replays to the same product instead of creating a second one.
+  const input = options.duplicateDecision
+    ? { ...request.input, duplicateDecision: options.duplicateDecision }
+    : request.input;
+  const idempotencyKey = await productIngestIdempotencyKey(request.source, input);
+  const ingest = await ingestProduct({
+    ...request,
+    input,
+    idempotencyKey,
+    duplicateDecision: options.duplicateDecision ?? null,
+    importRun: options.importRun,
+  });
+  if (!ingest.productId) throw new Error(productIngestRefusal(ingest));
+  const product = await getProduct(ingest.productId);
+  if (!product) throw new Error('Canonical product is not visible after ingest.');
+  return { product, ingest };
+}
+
+/** Compatibility projection for callers that only need the hydrated product. */
+export async function createProduct(payload: ProductInsert): Promise<ProductRow> {
+  return (await createProductWithResult(payload)).product;
 }
 
 /** STRUCTURAL GUARD: product ENGINE values are never written through the generic update paths —
@@ -84,15 +149,21 @@ export type ProductUpdatePatch = Omit<ProductUpdate, (typeof STRIPPED_ENGINE_FIE
  * never write them. */
 export async function updateProduct(id: string, patch: ProductUpdatePatch): Promise<ProductRow> {
   if (!supabase) throw new Error(UNAVAILABLE);
-  const { data, error } = await supabase
-    .from(TABLE)
-    .update(stripEngineValues(patch))
-    .eq('id', id)
-    .select()
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  if (!data) throw new Error('Product not found or not owned.');
-  return data as ProductRow;
+  const current = await getProduct(id);
+  if (!current) throw new Error('Product not found or not owned.');
+  const request = canonicalIngestFromLegacyProduct({ ...current, ...stripEngineValues(patch) });
+  request.input.productId = id;
+  request.input.operation = 'upsert';
+  const idempotencyKey = await productIngestIdempotencyKey(
+    request.source,
+    request.input,
+    `update:${id}`,
+  );
+  const result = await ingestProduct({ ...request, idempotencyKey, productId: id });
+  if (!result.productId) throw new Error('Product update did not return a canonical product.');
+  const product = await getProduct(result.productId);
+  if (!product) throw new Error('Canonical product is not visible after update.');
+  return product;
 }
 
 /**
@@ -107,53 +178,131 @@ export async function updateProductUnlessStatus(
   unlessStatus: ProductStatus,
 ): Promise<ProductRow> {
   if (!supabase) throw new Error(UNAVAILABLE);
-  const { data, error } = await supabase
-    .from(TABLE)
-    .update(stripEngineValues(patch))
-    .eq('id', id)
-    .neq('status', unlessStatus)
-    .select()
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  if (!data) throw new Error(`Product not found, not owned, or its status is '${unlessStatus}' (write refused).`);
-  return data as ProductRow;
+  const current = await getProduct(id);
+  if (!current) throw new Error('Product not found or not owned.');
+  const request = canonicalIngestFromLegacyProduct({ ...current, ...stripEngineValues(patch) });
+  request.input.productId = id;
+  request.input.operation = 'upsert';
+  request.input.expectedStatusNot = unlessStatus;
+  const idempotencyKey = await productIngestIdempotencyKey(
+    request.source,
+    request.input,
+    `guarded-update:${id}`,
+  );
+  const result = await ingestProduct({ ...request, idempotencyKey, productId: id });
+  if (!result.productId) {
+    throw new Error(
+      `Product not found, not owned, or its status is '${unlessStatus}' (write refused).`,
+    );
+  }
+  const product = await getProduct(result.productId);
+  if (!product) throw new Error('Canonical product is not visible after update.');
+  return product;
 }
 
 /** Delete an owned product (RLS scopes the delete to the owner). */
 export async function removeProduct(id: string): Promise<void> {
   if (!supabase) throw new Error(UNAVAILABLE);
-  const { error } = await supabase.from(TABLE).delete().eq('id', id);
-  if (error) throw new Error(error.message);
+  const current = await getProduct(id);
+  if (!current) throw new Error('Product not found or not owned.');
+  const request = canonicalIngestFromLegacyProduct(current);
+  request.input.productId = id;
+  request.input.operation = 'retire';
+  const idempotencyKey = await productIngestIdempotencyKey(
+    request.source,
+    request.input,
+    `retire:${id}`,
+  );
+  await ingestProduct({ ...request, idempotencyKey, productId: id, operation: 'retire' });
 }
 
 /**
- * D3 Mapper write-back — persist one in-memory ProductMatchResult onto the owned
- * product row. Writes ONLY the 11 Mapper-result columns (via the narrow
- * ProductMapperResultUpdate patch) through the existing RLS-gated updateProduct; it
- * never touches products.status, never reads or writes the locked mapper_basement,
- * never calls the engine, and uses no privileged key. Call it EXPLICITLY (e.g. after
- * running the pure matcher) — there is no automatic matching here.
+ * Submit one deterministic Mapper match as review evidence through canonical
+ * ingest. It never authorizes a mapping, mutates mapper_basement, or calls Engine.
  */
 export async function saveProductMatchResult(
   productId: string,
   result: ProductMatchResult,
 ): Promise<ProductRow> {
-  return updateProduct(productId, productMatchResultToPatch(result));
+  const current = await getProduct(productId);
+  if (!current) throw new Error('Product not found or not owned.');
+  const request = canonicalIngestFromLegacyProduct(current);
+  request.source = 'manual';
+  request.input.productId = productId;
+  request.input.operation = 'upsert';
+  request.input.mapperCandidate = productMatchResultToPatch(result);
+  const idempotencyKey = await productIngestIdempotencyKey(
+    request.source,
+    request.input,
+    `mapper-candidate:${productId}`,
+  );
+  const ingested = await ingestProduct({ ...request, idempotencyKey, productId });
+  if (!ingested.productId) throw new Error('Mapper candidate intake did not return a product.');
+  const product = await getProduct(ingested.productId);
+  if (!product) throw new Error('Canonical product is not visible after Mapper candidate intake.');
+  return product;
+}
+
+export interface ProductMapperReviewAuthorization {
+  reviewedBy: string;
+  reviewNotes: string;
+  reviewSignoffId?: string | null;
+  independentProvenance?: boolean;
 }
 
 /**
- * Manual Mapper REVIEW write-back — persist a human confirm/reject decision onto an
- * owned product row. Like saveProductMatchResult it accepts ONLY the narrow
- * ProductMapperResultUpdate patch (the Mapper-result columns) and writes it through the
- * same RLS-gated updateProduct; the patch type makes it impossible to set products.status,
- * pac_value/pod_value, identity, or any non-Mapper column. It never reads or writes the
- * locked mapper_basement, never calls the engine, and uses no privileged key.
+ * Manual Mapper review adapter. Ordinary reviewers submit candidate evidence;
+ * only independently authorised administrators submit a version-bound decision.
+ * Neither path writes the canonical product root or Mapper dataset directly.
  */
 export async function saveProductMapperReview(
   productId: string,
   patch: ProductMapperResultUpdate,
+  authorization?: ProductMapperReviewAuthorization,
 ): Promise<ProductRow> {
-  return updateProduct(productId, patch);
+  const current = await getProduct(productId);
+  if (!current) throw new Error('Product not found or not owned.');
+  const request = canonicalIngestFromLegacyProduct(current);
+  request.input.productId = productId;
+  request.input.operation = 'upsert';
+
+  const mapperIngredientId = patch.matched_basement_id ?? current.matched_basement_id ?? null;
+  const rejecting = patch.mapper_status === 'rejected';
+  const canAuthorize = Boolean(
+    authorization?.reviewSignoffId || authorization?.independentProvenance === true,
+  );
+  request.source = canAuthorize ? 'admin' : 'manual';
+  if (canAuthorize) {
+    request.input.mapperDecision = {
+      mapperIngredientId: rejecting ? null : mapperIngredientId,
+    };
+    request.input.reviewEvidence = {
+      reviewedBy: authorization?.reviewedBy ?? 'authenticated-admin',
+      reviewNotes:
+        authorization?.reviewNotes ?? patch.mapper_notes ?? 'Manual Mapper review decision.',
+      reviewSignoffId: authorization?.reviewSignoffId ?? null,
+      independentProvenance: authorization?.independentProvenance === true,
+    };
+  } else {
+    // A visual reviewer choice without an independently verified sign-off is
+    // evidence for the review queue, never an Engine mapping authorization.
+    request.input.mapperCandidate = {
+      ...patch,
+      mapperIngredientId,
+      decisionRequested: patch.mapper_status,
+      reviewed: true,
+    };
+  }
+  const idempotencyKey = await productIngestIdempotencyKey(
+    request.source,
+    request.input,
+    `${canAuthorize ? 'mapper-decision' : 'mapper-review-candidate'}:${productId}`,
+  );
+  const ingested = await ingestProduct({ ...request, idempotencyKey, productId });
+  if (!ingested.productId) throw new Error('Mapper review intake did not return a product.');
+  const product = await getProduct(ingested.productId);
+  if (!product) throw new Error('Canonical product is not visible after Mapper review intake.');
+  return product;
 }
 
 /* ── D5B: identity-aware duplicate prevention ──────────────────────────────────
@@ -165,7 +314,7 @@ export async function saveProductMapperReview(
 /** A single owned row where `column` equals `value` (RLS scopes it to the caller).
  * `.limit(1)` guards the non-unique source_url / identity-hash lookups. */
 async function findOwnedProductBy(column: string, value: string): Promise<ProductRow | null> {
-  if (!supabase) return null;
+  if (!supabase) return emptyUnconfiguredRead('products.findOwnedProductBy', null);
   const { data, error } = await supabase
     .from(TABLE)
     .select('*')
@@ -192,7 +341,7 @@ function identityKeyIsMeaningful(key: string): boolean {
 export async function findExistingProductForIdentity(
   input: ProductInsert,
 ): Promise<ProductRow | null> {
-  if (!supabase) return null;
+  if (!supabase) return emptyUnconfiguredRead('products.findExistingProductForIdentity', null);
 
   const normEan = normalizeEan(input.ean_code);
   if (normEan !== '') {
@@ -220,23 +369,34 @@ export async function findExistingProductForIdentity(
   return null;
 }
 
-/**
- * Create a product, deduped by identity. Returns an existing owned product if one
- * already matches `input`; otherwise inserts a new row (the DB assigns the product
- * code + normalized columns) with the computed product_identity_hash. Race-safe: if the
- * insert fails (e.g. the per-owner unique index rejects a concurrent insert), it re-runs
- * the lookup and returns the now-existing row, else rethrows. Creates only in products.
- */
+/** Create or reuse one canonical identity through ingest_product_v1. Duplicate
+ * detection and concurrency locks remain inside that single transaction; a
+ * client-side precheck must never skip evidence, relation or ingest-event work. */
 export async function createProductWithIdentity(input: ProductInsert): Promise<ProductRow> {
-  const existing = await findExistingProductForIdentity(input);
-  if (existing) return existing;
-
   const product_identity_hash = productIdentityKey(productInsertToIdentityInput(input));
-  try {
-    return await createProduct({ ...input, product_identity_hash });
-  } catch (error) {
-    const raced = await findExistingProductForIdentity(input);
-    if (raced) return raced;
-    throw error;
-  }
+  return createProduct({ ...input, product_identity_hash });
+}
+
+export interface CreateProductIdentityOptions {
+  /**
+   * `different` tells the canonical ingest that this row is a CONFIRMED distinct
+   * product, so it must not be folded into whatever the weaker fallback
+   * fingerprint matches. Used only when a stronger identity key (EAN,
+   * manufacturer code, source Product ID) already proved the difference.
+   */
+  duplicateDecision?: 'same' | 'different' | null;
+  importRun?: {
+    id: string;
+    rowIndex: number;
+    sourceRowId: string | null;
+    displayName: string | null;
+  };
+}
+
+export async function createProductWithIdentityResult(
+  input: ProductInsert,
+  options: CreateProductIdentityOptions = {},
+): Promise<ProductCreateResult> {
+  const product_identity_hash = productIdentityKey(productInsertToIdentityInput(input));
+  return createProductWithResult({ ...input, product_identity_hash }, options);
 }

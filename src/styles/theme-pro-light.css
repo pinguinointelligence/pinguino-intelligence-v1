@@ -1,0 +1,317 @@
+/* PINGÜINO Pro — white precision workspace.
+ *
+ * The workbench historically used shell/ivory utilities directly. This scope keeps
+ * the exact component tree and behaviour, but remaps those presentation tokens to
+ * the same white/charcoal language used by the customer routes. Technical values,
+ * review markers and non-production markers retain their semantic colours.
+ */
+.theme-pro-light {
+  color-scheme: light;
+
+  --color-paper: #ffffff;
+  --color-ink: #191a1d;
+  --color-ink-soft: #25272b;
+  --color-shell: #ffffff;
+  --color-shell-raised: #f7f6f3;
+  --color-charcoal: #191a1d;
+  --color-ivory: #101113;
+  --color-ivory-soft: #686962;
+  --color-shell-line: #1011131f;
+  --color-status-ideal: #56624e;
+
+  /* Fluid geometry for the professional workbench now lives on :root
+     (styles/tokens.css) so EVERY authenticated screen measures from the same
+     numbers. This scope keeps colour remapping only. */
+}
+
+/* A deliberate dark intelligence card is part of the canonical Pro hierarchy.
+   It is used sparingly for decisive score/Preview surfaces. */
+.theme-pro-light .bg-charcoal {
+  background-color: var(--color-charcoal);
+  border: 1px solid rgb(239 233 220 / 0.12);
+}
+
+.theme-pro-light .bg-black\/20 {
+  background-color: #f7f7f5;
+}
+
+.theme-pro-light [data-testid='ingredient-rows-scroll'],
+.theme-pro-light [data-testid='pro-monitor-panel'] {
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.theme-pro-light [data-testid='workbench-editor-pane'] {
+  background: var(--color-paper);
+  min-inline-size: 0;
+}
+
+.theme-pro-light [data-testid='pro-monitor-panel'] {
+  background: transparent;
+  border-color: var(--color-pro-line);
+  min-inline-size: 0;
+}
+
+.right-pane {
+  container-name: right-pane;
+  container-type: inline-size;
+}
+
+/* GELLATTI V2.1 §16 — the approved Monitor row is ONE line:
+   icon | metric | badge | rail | fixed value | chevron.
+   The value and chevron tracks are fixed lengths, which is what puts all seven
+   values on a single right edge and all seven chevrons on a single axis. */
+.monitor-summary-grid {
+  grid-template-columns: 30px minmax(0, 1fr) 46px 114px 96px 14px;
+  column-gap: 8px;
+}
+
+/* Monitor values share one physical right-side column in summary and detail
+   rows. The fixed capacity is intentionally modest: enough for "-11 °C" and
+   "100,00 %", without opening a dashboard-sized void beside short values. */
+.monitor-value-column {
+  min-width: 96px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.monitor-detail-grid {
+  grid-template-columns: 30px minmax(0, 1fr) 46px 114px 96px 14px;
+  column-gap: 8px;
+}
+
+.monitor-module-row {
+  min-height: 4rem;
+}
+
+@media (min-width: 1280px) and (max-height: 900px) {
+  .monitor-module-row {
+    min-height: 4rem;
+  }
+
+  .monitor-module-row :where(.text-xl) {
+    font-size: 1.05rem;
+  }
+}
+
+.theme-pro-light [data-testid='pro-workbench'] {
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+
+.theme-pro-light [data-testid='app-nav-drawer'] {
+  background: var(--color-pro-warm-raised);
+  border-color: var(--color-pro-line);
+  box-shadow: var(--shadow-pro-md);
+}
+
+/* Owner/QA tooling must never obscure modal workflow actions (Preview Apply,
+   the mobile cockpit, production confirmation, or the canonical menu). */
+body:has([role='dialog'][aria-modal='true']) [data-testid='design-review-overlay'] {
+  display: none;
+}
+
+body:has(details[open] [data-testid^='row-menu-']) [data-testid='design-review-overlay'] {
+  display: none;
+}
+
+/* „I changed something here" (owner mobile UX §8, 2026-08-23).
+   The marker rides the existing ATTENTION accent — the system's own
+   „pending / unsaved / requires attention" token — never a new colour and never
+   a loud warning. An inset rail cannot shift the row by a pixel, so a changed
+   line keeps perfect numeric alignment with the untouched ones. */
+.ingredient-line-changed {
+  box-shadow: inset 2px 0 0 0 var(--color-attention);
+  background-color: color-mix(in srgb, var(--color-attention) 4%, transparent);
+}
+
+.ingredient-line-changed:hover {
+  background-color: color-mix(in srgb, var(--color-attention) 7%, transparent);
+}
+
+/* The changed line's own numerals adopt the same quiet accent on mobile, where
+   they are plain text rather than a stepper. */
+.ingredient-line-changed [data-testid^='row-mobile-percent-'],
+.ingredient-line-changed [data-testid^='row-mobile-grams-'] {
+  color: var(--color-attention);
+}
+
+.pro-module {
+  border: 1px solid var(--color-pro-line);
+  border-radius: 0.875rem;
+  background: var(--color-pro-warm-raised);
+  box-shadow: var(--shadow-pro-sm);
+}
+
+.pro-module-flat {
+  border: 1px solid var(--color-pro-line);
+  border-radius: 0.75rem;
+  background: rgb(255 255 255 / 0.72);
+}
+
+.shadow-pro-e0 {
+  box-shadow: var(--shadow-pro-e0);
+}
+
+.shadow-pro-e1 {
+  box-shadow: var(--shadow-pro-e1);
+}
+
+.shadow-pro-e2 {
+  box-shadow: var(--shadow-pro-e2);
+}
+
+.shadow-pro-e3 {
+  box-shadow: var(--shadow-pro-e3);
+}
+
+.pro-focus-ring:focus-visible {
+  outline: 2px solid var(--color-gellatti-orange);
+  outline-offset: 3px;
+}
+
+.theme-pro-light .bg-pro-graphite.pro-focus-ring:focus-visible,
+.theme-pro-light
+  [data-testid='pro-recalc-panel']
+  :where(button, a, input, select, summary):focus-visible {
+  outline-color: var(--color-gellatti-orange);
+}
+
+.pro-scroll-safe {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.theme-pro-light :where(button, a, input, select, summary):focus-visible {
+  outline: 2px solid var(--color-gellatti-orange);
+  outline-offset: 2px;
+}
+
+/* GELLATTI V2.1 §13 — Batch and Tryb are ordinary cells of the ONE Settings
+   grid, not a separate three-row sub-grid pinned to the first row. They are the
+   third row: same 46 px height and same 8 px gutter as the four cells above. */
+.profile-settings-final-card {
+  display: block;
+  grid-row: auto;
+  grid-template-rows: none;
+}
+
+@container right-pane (max-width: 399px) {
+  .profile-settings-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* The Base readout still sits directly under the batch field it reports on —
+     but that is now the DEFAULT order (batch 5, base 6, per the frozen
+     Settings reading order), so this width no longer needs an override to
+     lift it ahead of Tryb. One order, both widths. */
+}
+
+/* The two-row reflow is the MOBILE sheet's geometry (owner §19/§22): the
+   approved desktop display column is 520 px and must stay on one line, so the
+   threshold sits below it instead of at 540 px. */
+@container right-pane (max-width: 420px) {
+  .profile-nutrition-details {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .monitor-summary-grid {
+    grid-template-columns: 28px minmax(0, 1fr) 42px 76px 12px;
+    row-gap: 0.25rem;
+  }
+
+  .monitor-detail-grid {
+    grid-template-columns: 28px minmax(0, 1fr) 0 minmax(0, 1fr) 76px 12px;
+  }
+
+  .monitor-summary-grid > :nth-child(3) {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .monitor-summary-grid > :nth-child(4) {
+    grid-column: 3 / 5;
+    grid-row: 2;
+  }
+
+  .monitor-summary-grid > :nth-child(5) {
+    grid-column: 4;
+    grid-row: 1;
+  }
+
+  .monitor-summary-grid > :nth-child(6) {
+    grid-column: 5;
+    grid-row: 1;
+  }
+
+  .monitor-summary-grid > [data-monitor-badge=''] + [data-monitor-rail] {
+    grid-column: 2 / 5;
+  }
+
+  .monitor-module-row {
+    min-height: 4.75rem;
+  }
+
+  [data-testid='profile-nutrition-cost-summary'] > summary {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  [data-testid='profile-nutrition-cost-summary'] > summary > .h-9 {
+    display: none;
+  }
+}
+
+/* Pro owns explicit, accessible +/- controls. Browser-native number arrows are
+   suppressed so Chromium and Firefox cannot add a second competing stepper. */
+.theme-pro-light input[type='number'] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.theme-pro-light input[type='number']::-webkit-inner-spin-button,
+.theme-pro-light input[type='number']::-webkit-outer-spin-button {
+  margin: 0;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-pro-light *,
+  .theme-pro-light *::before,
+  .theme-pro-light *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+/* Information notation inspired by editorial measurement brackets: functional,
+   quiet, and reserved for provenance/context instead of becoming decoration. */
+.bracket-note {
+  position: relative;
+  margin-inline: 0.25rem;
+  padding-inline: 1rem;
+}
+
+.bracket-note::before,
+.bracket-note::after {
+  position: absolute;
+  inset-block: 0.2rem;
+  width: 0.5rem;
+  content: '';
+  pointer-events: none;
+}
+
+.bracket-note::before {
+  left: 0;
+  border-block: 1px solid currentColor;
+  border-left: 1px solid currentColor;
+}
+
+.bracket-note::after {
+  right: 0;
+  border-block: 1px solid currentColor;
+  border-right: 1px solid currentColor;
+}

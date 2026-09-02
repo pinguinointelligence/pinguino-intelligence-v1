@@ -55,6 +55,18 @@ describe('calibration honesty', () => {
     expect(buildFallbackNotes(calculateRecipe(milkBase))).toEqual([]);
   });
 
+  it('surfaces an estimated-band calibration note', () => {
+    const result = calculateRecipe(milkBase);
+    const [first, ...rest] = result.indicators;
+    expect(first).toBeDefined();
+    expect(
+      buildFallbackNotes({
+        ...result,
+        indicators: [{ ...first!, band_status: 'estimated' }, ...rest],
+      }),
+    ).toContain('Co najmniej jeden zakres jest oszacowany i wymaga potwierdzenia kalibracji.');
+  });
+
   it('surfaces engine warnings (alcohol above the safe range)', () => {
     const boozy = calculateRecipe({
       ...milkBase,

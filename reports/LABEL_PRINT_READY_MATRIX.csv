@@ -1,0 +1,6 @@
+jurisdiction,implementation status,authority verified,browser verified,PDF verified,system print verified,actual-run verified,retail print ready,blocker
+European Union,VERIFIED,YES,NO,NO,NOT TESTED,YES,NO,"Served 100x70 actual-run PDF exposed mandatory-content clipping; code now fails closed below 102x152, but that repaired geometry still requires served redeploy/retest."
+United Kingdom,VERIFIED,YES,NO,NO,NOT TESTED,YES,NO,"Actual 1001 g run reached the UK 102x152 preflight; final date-control/save/PDF/reopen sequence was not completed in served QA."
+Australia/New Zealand,VERIFIED,YES,NO,NO,NOT TESTED,NO,NO,"FSANZ renderer and goldens pass; complete served actual-run desktop/tablet/mobile/PDF/system-print matrix remains unexecuted."
+United States,DISABLED,NO,NO,NO,NOT TESTED,NO,NO,"FDA Nutrition Facts rounding, prescribed format-family selection, required nutrient display and serving-size goldens remain incomplete."
+Canada,DISABLED,NO,YES,NO,NOT TESTED,NO,NO,"Immediate unavailable UX verified; official Health Canada FOP asset/package and complete release clearance remain unavailable. Draft output only."

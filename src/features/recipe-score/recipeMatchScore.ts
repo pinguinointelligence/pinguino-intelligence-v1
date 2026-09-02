@@ -1,6 +1,11 @@
 /**
  * PINGÜINO UI/UX master — „Dopasowanie receptury" 1–10 adapter (SPEC §15.1–§15.2).
  *
+ * ACCEPTANCE ADDENDUM (2), owner 2026-07-24: NO LONGER the public headline.
+ * The public headline integer is „Dopasowanie techniczne" (technicalFit.ts) —
+ * derived from the technical/band dimension; flavor/cost are separate labeled
+ * dimensions. This overall-blend adapter remains for QA recorders/diagnostics.
+ *
  * PRESENTATION-ONLY normalization of the engine's already-computed scores onto the
  * public 1–10 integer scale with the exact §15.1 Polish labels. AUDITED input
  * semantics (do NOT assume 0–100 blindly — this was verified against the engine):
@@ -80,10 +85,10 @@ export const MATCH_SCORE_NO_DATA_LABEL = 'Brak wystarczających danych do oceny'
 /** Tooltip contract (§15.2): 10/10 is honest fit-to-goal, NOT a laboratory guarantee. */
 export const MATCH_SCORE_TOOLTIPS: Readonly<Record<MatchScoreTooltipKey, string>> = Object.freeze({
   'recipe-score.match.tooltip':
-    'Dopasowanie receptury ocenia, jak dobrze wynik odpowiada produktowi, trybowi i założeniom. ' +
-    '10/10 oznacza bardzo dobre dopasowanie do celu — nie jest gwarancją laboratoryjną.',
+    'Wynik receptury pokazuje, jak dobrze receptura pasuje do wybranego produktu, trybu ' +
+    'i ustawień. 10/10 oznacza bardzo dobre dopasowanie, nie gwarancję laboratoryjną',
   'recipe-score.match.tooltip.no-data':
-    'Za mało danych, aby ocenić dopasowanie receptury. Uzupełnij składniki i gramatury, aby otrzymać ocenę.',
+    'Za mało danych, aby ocenić dopasowanie receptury. Uzupełnij składniki i gramatury, aby otrzymać ocenę',
 });
 
 const clampToScale = (value: number): TenPointScore =>

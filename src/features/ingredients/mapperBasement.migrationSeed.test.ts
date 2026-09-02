@@ -5,7 +5,7 @@
  * Locks the locked reference table (`public.mapper_basement`, migration 0006)
  * and its v1.0 replacement seed: no ingredient-level `npac_value`, the renamed
  * approval columns (`approved_for_base` / `approved_for_engines`, never the
- * legacy names), PI Pro-only read RLS, and 2,083 rows replaced in one
+ * legacy names), PI Pro-only read RLS, and 2,089 active rows replaced in one
  * transaction. Detailed CSV row/column/value pins stay in
  * mapperBasementCsv.test.ts (not duplicated here).
  */
@@ -16,7 +16,7 @@ import { describe, expect, it } from 'vitest';
 const REPO = resolve(import.meta.dirname, '..', '..', '..');
 const read = (...p: string[]) => readFileSync(join(REPO, ...p), 'utf8');
 
-const MIGRATION = read('supabase', 'migrations', '0006_mapper_basement.sql');
+const MIGRATION = read('supabase', 'migrations', '20260716101631_0006_mapper_basement.sql');
 const SEED = read('supabase', 'seed', 'mapper_basement_v1_0.sql');
 const SERVICE = read('src', 'services', 'ingredients.ts');
 
@@ -57,18 +57,18 @@ describe('Mapper Basement migration (0006)', () => {
 describe('Mapper Basement seed (mapper_basement_v1_0.sql)', () => {
   const tuples = SEED.split('\n').filter((l) => l.startsWith('('));
 
-  it('replaces all rows with 2083 v1.0 tuples in one transaction, no npac_value', () => {
-    expect(tuples.length).toBe(2083);
+  it('upserts 2089 v1.0 tuples and soft-deactivates stale rows in one transaction', () => {
+    expect(tuples.length).toBe(2089);
     expect(/npac_value/i.test(SEED)).toBe(false);
-    // 2083 tuple values + the dataset_version column default
-    expect((SEED.match(/'v1\.0'/g) ?? []).length).toBe(2084);
     expect(SEED.includes('begin;')).toBe(true);
-    expect(SEED.includes('delete from public.mapper_basement;')).toBe(true);
+    expect(SEED.includes('delete from public.mapper_basement;')).toBe(false);
+    expect(SEED.includes('update public.mapper_basement set is_active = false')).toBe(true);
     expect(SEED.includes('insert into public.mapper_basement')).toBe(true);
     expect(SEED.includes("alter column dataset_version set default 'v1.0';")).toBe(true);
+    expect(SEED.includes('where is_active) <> 2089')).toBe(true);
     expect(SEED.includes('commit;')).toBe(true);
     const ids = tuples.map((t) => t.match(/^\('([^']+)'/)?.[1]);
-    expect(new Set(ids).size).toBe(2083);
+    expect(new Set(ids).size).toBe(2089);
   });
 
   it('uses the renamed approval columns and NO legacy approval names', () => {
@@ -76,6 +76,11 @@ describe('Mapper Basement seed (mapper_basement_v1_0.sql)', () => {
     expect(SEED.includes('approved_for_engines')).toBe(true);
     expect(/approved_for_pinguino_base/.test(SEED)).toBe(false);
     expect(/approved_for_minus_11_engine/.test(SEED)).toBe(false);
+  });
+
+  it('normalizes dietary tri-state text to the database check constraint values', () => {
+    expect(SEED).not.toMatch(/, '(?:TRUE|FALSE|UNKNOWN)'(?:,|\))/);
+    expect(tuples[0]).toContain("'false', 'false', 'true', 'true'");
   });
 
   it('provenance comment references mapper_basement.csv, not the legacy v0.94 CSV', () => {

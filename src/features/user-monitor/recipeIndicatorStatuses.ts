@@ -5,7 +5,9 @@
  * and Gotowość produkcyjna (TEXT) stay three separate indicators. This module
  * derives the recipe-level presentations by REUSING the recipe-score contracts:
  *
- *  - match score → `recipeMatchScore` (the §15.1 adapter, untouched);
+ *  - match score → `recipeTechnicalFit` (ACCEPTANCE ADDENDUM 2: the public
+ *    headline is TECHNICAL fit — all native bands in range ⇒ 10/10; flavor/
+ *    cost are separate dimensions and never blend into this integer);
  *  - data confidence → a recipe-level TEXT status derived ONLY from the
  *    engine's own honesty signals that already exist on `RecipeResult`:
  *    `low_confidence_ingredient` warnings (the engine's own §16 boundary — no
@@ -24,9 +26,9 @@ import {
   DATA_CONFIDENCE_LEVELS,
   RECIPE_INDICATOR_CONTRACTS,
   productionReadiness,
-  recipeMatchScore,
+  recipeTechnicalFit,
   type ProductionReadinessText,
-  type RecipeMatchScorePresentation,
+  type TechnicalFitPresentation,
   type TenPointScore,
 } from '@/features/recipe-score';
 
@@ -101,7 +103,9 @@ export interface RecipeReadinessView {
 }
 
 export function deriveRecipeReadiness(result: RecipeResult): RecipeReadinessView {
-  const match = recipeMatchScore(result.scores);
+  // ACCEPTANCE ADDENDUM (2): readiness reads the TECHNICAL fit (band truth),
+  // never the flavor/cost-blended overall.
+  const match = recipeTechnicalFit(result);
   const confidence = deriveRecipeDataConfidence(result);
   return {
     name: RECIPE_INDICATOR_CONTRACTS.production_readiness.name,
@@ -137,7 +141,8 @@ export const MONITOR_STATUS_LINE_TEXT: Readonly<Record<MonitorStatusLineId, stri
  * range (≤ 5) → „Wymaga korekty"; otherwise → „Test rekomendowany".
  */
 export function deriveMonitorStatusLine(result: RecipeResult): MonitorStatusLine {
-  const match: RecipeMatchScorePresentation = recipeMatchScore(result.scores);
+  // ACCEPTANCE ADDENDUM (2): the §14.1 status line reads the TECHNICAL fit.
+  const match: TechnicalFitPresentation = recipeTechnicalFit(result);
   if (match.score === null) {
     return { id: 'brak_danych', text: MONITOR_STATUS_LINE_TEXT.brak_danych };
   }

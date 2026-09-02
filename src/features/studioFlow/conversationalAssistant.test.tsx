@@ -72,7 +72,10 @@ describe('assistant flow — deterministic state machine', () => {
     expect(currentQuestion(atProduct)?.id).toBe('product_type');
     // required empty → rejected; invalid choice → rejected
     expect(answerCurrentQuestion(atProduct, '')).toEqual({ ok: false, reason: 'required' });
-    expect(answerCurrentQuestion(atProduct, 'nonsense')).toEqual({ ok: false, reason: 'invalid_choice' });
+    expect(answerCurrentQuestion(atProduct, 'nonsense')).toEqual({
+      ok: false,
+      reason: 'invalid_choice',
+    });
     // a valid choice advances
     const r = answerCurrentQuestion(atProduct, 'sorbet');
     expect(r.ok).toBe(true);
@@ -128,10 +131,14 @@ describe('assistant flow — deterministic state machine', () => {
   });
 
   it('12–14. goal maps to the Integration-Flow branch', () => {
-    expect(buildIntentDraft(fullRun({ goal: 'recipe_design' })).branchContext).toBe('recipe_design'); // 12
+    expect(buildIntentDraft(fullRun({ goal: 'recipe_design' })).branchContext).toBe(
+      'recipe_design',
+    ); // 12
     const rescue = buildIntentDraft(fullRun({ goal: 'actual_batch_rescue' }));
     expect(rescue.branchContext).toBe('actual_batch_rescue'); // 13
-    expect(buildIntentDraft(fullRun({ goal: 'stock_shortage' })).branchContext).toBe('stock_shortage'); // 14
+    expect(buildIntentDraft(fullRun({ goal: 'stock_shortage' })).branchContext).toBe(
+      'stock_shortage',
+    ); // 14
     // optimization stays a design-context request, flagged
     const opt = buildIntentDraft(fullRun({ goal: 'optimization' }));
     expect(opt.branchContext).toBe('recipe_design');
@@ -200,10 +207,13 @@ describe('assistant PL copy — honesty rules', () => {
 
   it('19. never makes a fake recipe-created claim — it says "szkic"', () => {
     for (const s of all) {
-      expect(/utworzono recepturę|receptura została utworzona|recepturę utworzono/i.test(s), s).toBe(false);
+      expect(
+        /utworzono recepturę|receptura została utworzona|recepturę utworzono/i.test(s),
+        s,
+      ).toBe(false);
     }
     expect(A.draftReadyTitle).toMatch(/szkic/i);
-    expect(A.draftReadyBody).toMatch(/nie tworzy i nie zmienia receptury/i);
+    expect(A.draftReadyBody).toMatch(/nie tworzy ani nie zmienia zapisanej receptury/i);
   });
 
   it('20. Demo/Free copy points exact grams to the PAID plans (Home i Pro) — never Pro-only', () => {
@@ -243,7 +253,9 @@ describe('assistant boundary — pure, no LLM / DB / Mapper / persistence', () =
 
   it('22–25. no Supabase / Mapper / LLM imports, no DB write path', () => {
     for (const src of sources) {
-      expect(/@\/services\/|@\/lib\/|@\/data\/products|mapper_basement|service_role|supabase/i.test(src)).toBe(false);
+      expect(
+        /@\/services\/|@\/lib\/|@\/data\/products|mapper_basement|service_role|supabase/i.test(src),
+      ).toBe(false);
       expect(/openai|anthropic|\bllm\b|gpt-|langchain/i.test(src)).toBe(false);
       for (const verb of ['.insert(', '.update(', '.upsert(', '.delete(', 'fetch(']) {
         expect(src.includes(verb), verb).toBe(false);

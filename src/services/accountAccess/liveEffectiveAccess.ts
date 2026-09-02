@@ -1,5 +1,5 @@
 /**
- * Live Account-Access sync (READ-ONLY) — the runtime bridge that turns a signed-in
+ * Live Account-Access sync — the runtime bridge that turns a signed-in
  * user's REAL entitlement rows into the `EffectiveAccess` the persona resolver consumes.
  *
  * This is the previously-missing link in the authorization chain (owner P0 2026-07-18:
@@ -28,7 +28,12 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/client';
 import type { EntitlementRow } from '@/billing/entitlements/entitlementResolver';
-import type { EffectiveAccess } from '@/access/accountAccess/contracts';
+import type {
+  AccountState,
+  AdminRole,
+  EffectiveAccess,
+  PartnerStatus,
+} from '@/access/accountAccess/contracts';
 import { resolveAccountAccess } from './billingEntitlementBridge';
 
 /** The columns the pure resolver reasons about (mirrors `EntitlementRow`). */
@@ -79,15 +84,56 @@ export function deriveEffectiveAccess(input: {
   email: string | null;
   entitlementRows: readonly EntitlementRow[];
   now: string;
+  accountState?: AccountState;
+  partnerStatus?: PartnerStatus;
+  adminRole?: AdminRole;
 }): EffectiveAccess {
   return resolveAccountAccess({
     identity: { userId: input.userId, email: input.email, emailVerified: true },
-    accountState: 'active',
+    accountState: input.accountState ?? 'active',
     entitlementRows: input.entitlementRows,
-    partnerStatus: 'none',
-    adminRole: 'none',
+    partnerStatus: input.partnerStatus ?? 'none',
+    adminRole: input.adminRole ?? 'none',
     now: input.now,
   });
+}
+
+const ACCOUNT_STATES = new Set<AccountState>([
+  'active','pending_verification','security_locked','suspended',
+  'deletion_requested','disabled','restored',
+]);
+const ADMIN_ROLES = new Set<AdminRole>([
+  'super_admin','catalog_admin','support_admin','partner_admin','finance_admin','content_moderator',
+]);
+
+export async function fetchAccountAuthorityContext(
+  client: Pick<SupabaseClient, 'from'>,
+  userId: string,
+): Promise<{ accountState: AccountState; partnerStatus: PartnerStatus; adminRole: AdminRole }> {
+  const [stateResult, partnerResult, adminResult] = await Promise.all([
+    client.from('account_states').select('state').eq('user_id', userId)
+      .order('changed_at', { ascending: false }).limit(1).maybeSingle(),
+    client.from('partners').select('status').eq('user_id', userId).maybeSingle(),
+    client.from('admin_users').select('role,revoked_at').eq('user_id', userId).maybeSingle(),
+  ]);
+  if (stateResult.error || partnerResult.error || adminResult.error) {
+    throw new Error('account_authority_context_unavailable');
+  }
+  const rawState = stateResult.data?.state;
+  const accountState = typeof rawState === 'string' && ACCOUNT_STATES.has(rawState as AccountState)
+    ? rawState as AccountState
+    : 'active';
+  const rawPartner = partnerResult.data?.status;
+  const partnerStatus: PartnerStatus = rawPartner === 'active'
+    ? 'approved'
+    : rawPartner === 'suspended' || rawPartner === 'terminated'
+      ? rawPartner
+      : 'none';
+  const rawRole = adminResult.data?.revoked_at ? null : adminResult.data?.role;
+  const adminRole = typeof rawRole === 'string' && ADMIN_ROLES.has(rawRole as AdminRole)
+    ? rawRole as AdminRole
+    : 'none';
+  return { accountState, partnerStatus, adminRole };
 }
 
 /**
@@ -124,12 +170,25 @@ export async function syncEffectiveAccess(
 ): Promise<EffectiveAccess | null> {
   if (userId === null || supabase === null) return null;
   try {
-    const rows = await fetchActiveEntitlementRows(supabase, userId);
+    // Invitation acceptance is email-bound, idempotent and server-authorized.
+    // A missing/expired invitation returns accepted:false; an older backend may
+    // reject the RPC and must not prevent the normal entitlement read.
+    try {
+      await supabase.rpc('gellatti_accept_my_partner_invitation_v1');
+    } catch {
+      // Invitation activation is additive; access resolution still fail-closes
+      // using the already persisted authorities when the optional call is offline.
+    }
+    const [rows, authority] = await Promise.all([
+      fetchActiveEntitlementRows(supabase, userId),
+      fetchAccountAuthorityContext(supabase, userId),
+    ]);
     return deriveEffectiveAccess({
       userId,
       email,
       entitlementRows: rows,
       now: new Date().toISOString(),
+      ...authority,
     });
   } catch {
     // Fail safe to demo — a read error must never accidentally grant Home/Pro.

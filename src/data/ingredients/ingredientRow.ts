@@ -10,6 +10,8 @@
  * never invented as 0). Date columns are ISO strings or null.
  */
 
+import type { CarbonationStatus } from '@/data/products/carbonation';
+
 export type VerificationStatus =
   | 'Blocked'
   | 'Estimated'
@@ -98,6 +100,8 @@ export interface IngredientRow {
   gluten_free: BooleanOrUnknown;
   contains_alcohol: BooleanOrUnknown;
   storage_type: StorageType;
+  /** Canonical process property. Existing Mapper rows default to UNKNOWN. */
+  carbonation_status?: CarbonationStatus;
   shelf_life_days: number | null;
   usage_notes: string;
   engine_notes: string;

@@ -1,0 +1,4032 @@
+# PRE-DESIGN WORKTREE STATE
+# Captured: 2026-08-06 Europe/Madrid
+# Starting branch: nightly/integration
+# Starting commit: 5f00436f14b79ae53ef464c0b0ff4cfd3ae0f948
+# This patch contains the complete tracked diff that existed before the final Pro design task.
+# Untracked files are recorded in FINAL_PRO_WORKBENCH_IMPLEMENTATION_LEDGER.md.
+diff --git a/src/components/shared/DestinationSurface.tsx b/src/components/shared/DestinationSurface.tsx
+index 21d85d7..a735938 100644
+--- a/src/components/shared/DestinationSurface.tsx
++++ b/src/components/shared/DestinationSurface.tsx
+@@ -9,8 +9,9 @@ import { AppShell } from '@/features/shell/AppShell';
+  * Reusable premium destination surface. Owner P0 (2026-07-22): destinations render under the
+  * ONE canonical AppShell (logo left, canonical hamburger right, the one right-side drawer with
+  * the identical menu) — the legacy black TopNav/mega-menu shell is gone from every routed page.
+- * The page BODY keeps its dark premium tone (design lock: dark panels are allowed) — a calm
+- * Tesla-style layout: eyebrow + large title + blurb + content, hairline dividers.
++ * Destination pages share the white editorial PINGÜINO language: strong headline,
++ * generous whitespace and hairline structure. Existing ivory utilities are remapped
++ * through the same light token scope used by Pro, so content and behavior stay intact.
+  */
+ export function DestinationSurface({
+   eyebrow,
+@@ -24,22 +25,24 @@ export function DestinationSurface({
+   children?: ReactNode;
+ }) {
+   return (
+-    <AppShell>
+-      <SurfaceToneContext.Provider value="shell">
+-        <div className="min-h-screen bg-shell text-ivory [color-scheme:dark]">
+-          <div className="mx-auto w-full max-w-6xl px-6 pt-14 pb-28">
+-            {eyebrow ? <SectionLabel tone="ivory">{eyebrow}</SectionLabel> : null}
+-            <h1 className="mt-4 max-w-3xl text-4xl font-light tracking-tight text-balance text-ivory md:text-5xl">
+-              {title}
+-            </h1>
+-            {blurb ? (
+-              <p className="mt-5 max-w-xl text-lg leading-relaxed text-ivory/60">{blurb}</p>
+-            ) : null}
+-            {children ? <div className="mt-16">{children}</div> : null}
++    <div className="theme-pro-light">
++      <AppShell>
++        <SurfaceToneContext.Provider value="paper">
++          <div className="min-h-screen bg-paper text-ink">
++            <div className="mx-auto w-full max-w-6xl px-6 pt-16 pb-32 sm:pt-20">
++              {eyebrow ? <SectionLabel tone="ivory">{eyebrow}</SectionLabel> : null}
++              <h1 className="mt-5 max-w-4xl text-4xl font-semibold leading-[0.99] tracking-[-0.04em] text-balance text-ivory md:text-6xl">
++                {title}
++              </h1>
++              {blurb ? (
++                <p className="mt-5 max-w-xl text-lg leading-relaxed text-ivory/60">{blurb}</p>
++              ) : null}
++              {children ? <div className="mt-20">{children}</div> : null}
++            </div>
+           </div>
+-        </div>
+-      </SurfaceToneContext.Provider>
+-    </AppShell>
++        </SurfaceToneContext.Provider>
++      </AppShell>
++    </div>
+   );
+ }
+ 
+diff --git a/src/copy/en.ts b/src/copy/en.ts
+index bc3e06e..80c98e4 100644
+--- a/src/copy/en.ts
++++ b/src/copy/en.ts
+@@ -185,7 +185,8 @@ export const copy = {
+       note: 'An EU nutrition declaration, ingredient statement and cost breakdown, generated from your recipe. Export the recipe as CSV or print the label — all in your browser.',
+       /** Standalone label page (Labels & Exports) — reads a fixed sample recipe. */
+       sampleHeading: 'Sample recipe',
+-      sampleNote: 'The values below come straight from the −11°C Engine for a balanced sample recipe. Build your own in the calculator to label it.',
++      sampleNote:
++        'The values below come straight from the −11°C Engine for a balanced sample recipe. Build your own in the calculator to label it.',
+       declarationTitle: 'Nutrition declaration',
+       statementNote: 'Ingredients in descending order of weight (EU QUID).',
+       notAvailable: 'Not available',
+@@ -217,13 +218,15 @@ export const copy = {
+         app: {
+           title: 'App only',
+           body: 'PINGÜINO Intelligence for your team — recipes, balance and corrections.',
+-          included: 'Recipe design, live PI Profile Indicators, AI guidance, cost and nutrition per recipe.',
++          included:
++            'Recipe design, live PI Profile Indicators, AI guidance, cost and nutrition per recipe.',
+           forWhom: 'Gelato shops and recipe developers who want the full workspace.',
+         },
+         machinesApp: {
+           title: 'Machines + App',
+           body: 'Production machines paired with the app for end-to-end control.',
+-          included: 'Everything in App only, plus connected production machines for end-to-end control.',
++          included:
++            'Everything in App only, plus connected production machines for end-to-end control.',
+           forWhom: 'Production-focused makers upgrading to connected hardware.',
+         },
+         machineMixtures: {
+@@ -306,7 +309,8 @@ export const copy = {
+     orDivider: 'or',
+     continueWithGoogle: 'Continue with Google',
+     googleRedirecting: 'Connecting to Google…',
+-    googleCancelled: 'Google sign-in was cancelled — nothing was changed. You can try again any time.',
++    googleCancelled:
++      'Google sign-in was cancelled — nothing was changed. You can try again any time.',
+     googleFailed: 'Google sign-in didn’t complete. Please try again.',
+   },
+   /** Saved recipes + My Recipes (Phase 2A.2). */
+@@ -405,7 +409,8 @@ export const copy = {
+     blurb:
+       'Historia wersji zapisuje się automatycznie przy każdym zapisie. Możesz przywrócić starszą wersję — powstaje wtedy nowa, najnowsza wersja (historia nie jest nadpisywana).',
+     devPersona: 'Persona (dev):',
+-    backendUnavailable: 'Historia wersji wymaga skonfigurowanego zaplecza. Niedostępna w tej wersji aplikacji.',
++    backendUnavailable:
++      'Historia wersji wymaga skonfigurowanego zaplecza. Niedostępna w tej wersji aplikacji.',
+     localMode:
+       'Tryb lokalny — wersje są trzymane tylko w pamięci i nie są trwałe (odświeżenie je czyści).',
+     /** Shown when no recipe is open — versions are per-recipe, never a global list (S2 UX). */
+@@ -462,8 +467,7 @@ export const copy = {
+       history: 'Historia produkcji pojawi się w kolejnym etapie, na tym samym trwałym zapleczu.',
+       costs:
+         'Koszty składników i niezmienne migawki kosztów pojawią się w kolejnym etapie. Zaplecze danych jest już podłączone.',
+-      exports:
+-        'Eksporty receptur i kosztów (zależne od uprawnień) pojawią się w kolejnym etapie.',
++      exports: 'Eksporty receptur i kosztów (zależne od uprawnień) pojawią się w kolejnym etapie.',
+     },
+     backend: {
+       label: 'Zaplecze danych',
+@@ -517,7 +521,7 @@ export const copy = {
+     recalcPanel: {
+       title: 'Przeliczenie z PI',
+       close: 'Zamknij',
+-      applied: 'Zastosowano zmiany do wersji roboczej. Zapisz nową wersję, aby je utrwalić.',
++      applied: 'Zastosowano zmiany do receptury roboczej. Zapisz recepturę, aby je utrwalić.',
+       undo: 'Cofnij',
+     },
+   },
+@@ -526,6 +530,27 @@ export const copy = {
+    * ingredient editor left, LIVE Monitor PI right, compact action bar, red review
+    * zone below the fold. PL copy. */
+   proWorkbench: {
++    profile: {
++      tabs: {
++        recipe: 'Profil',
++        monitor: 'Monitor',
++        production: 'Produkcja',
++        history: 'Historia',
++      },
++      title: 'Profil receptury',
++      axesTitle: 'Osie jakości',
++      axisControlPending: 'Sterowanie kierunkiem osi · DO PODŁĄCZENIA',
++      tutorialTitle: 'Jak poprawić dopasowanie',
++      settingsTitle: 'Ustawienia',
++      actualBatch: 'Aktualna partia',
++      nutritionTitle: 'Kalorie',
++      costTitle: 'Koszt',
++      per100g: 'na 100 g',
++      totalBatchCost: 'Koszt partii',
++      unavailable: 'Brak danych',
++      productionPending: 'DO PODŁĄCZENIA · widok produkcji czeka na przesłaną makietę.',
++      historyPending: 'DO PODŁĄCZENIA · historia pozostaje poza bieżącym zakresem.',
++    },
+     settings: {
+       machineLink: 'Maszyna',
+       advanced: 'Więcej ustawień',
+@@ -740,7 +765,11 @@ export const copy = {
+       rejectionCode: 'Kod odrzucenia',
+       notRun: 'nie uruchomiono',
+       optimizer: { hasProposals: 'są propozycje', noProposal: 'brak propozycji' },
+-      verify: { idle: 'brak zastosowania', previewStaged: 'podgląd przygotowany', blocked: 'zablokowano (verify)' },
++      verify: {
++        idle: 'brak zastosowania',
++        previewStaged: 'podgląd przygotowany',
++        blocked: 'zablokowano (verify)',
++      },
+       yes: 'tak',
+       no: 'nie',
+       none: '—',
+@@ -861,7 +890,12 @@ export const copy = {
+       title: 'Cel receptury',
+       /** Owner P0: exactly FOUR visible product types; internal categories route silently. */
+       productTypeLabel: 'Typ produktu',
+-      productTypes: { gelato: 'Gelato', sorbet: 'Sorbet', vegan: 'Wegańskie', protein: 'Proteinowe' },
++      productTypes: {
++        gelato: 'Gelato',
++        sorbet: 'Sorbet',
++        vegan: 'Wegańskie',
++        protein: 'Proteinowe',
++      },
+       proteinUnsupported:
+         'Profil proteinowy nie jest jeszcze naukowo kompletny. Receptura pozostaje w ostatnim ' +
+         'obsługiwanym profilu — nic nie zostało zmienione.',
+@@ -900,7 +934,12 @@ export const copy = {
+       machineNone: 'Bez limitu',
+       machineHelp: 'Opcjonalnie — ostrzeże, gdy partia się nie zmieści.',
+       flavorLabel: 'Intensywność smaku',
+-      flavorOptions: { light: 'Lekka', balanced: 'Zbalansowana', strong: 'Mocna', maximum: 'Maksymalna' },
++      flavorOptions: {
++        light: 'Lekka',
++        balanced: 'Zbalansowana',
++        strong: 'Mocna',
++        maximum: 'Maksymalna',
++      },
+       costLabel: 'Priorytet kosztowy',
+       /** 'premium' cost goal is labelled distinctly so it can never read as the PREMIUM tier. */
+       costOptions: { low: 'Niski koszt', balanced: 'Zrównoważony', premium: 'Bez kompromisów' },
+@@ -933,13 +972,15 @@ export const copy = {
+       searching: 'Szukam w katalogu PI…',
+       searchError: 'Nie udało się przeszukać katalogu PI. Sprawdź połączenie i spróbuj ponownie.',
+       moreResults: 'Pokaż więcej wyników',
+-      needsData: 'Składnik został wybrany, ale wymaga uzupełnienia danych przed dokładnym przeliczeniem.',
++      needsData:
++        'Składnik został wybrany, ale wymaga uzupełnienia danych przed dokładnym przeliczeniem.',
+       duplicateNotice: (count: number) =>
+         count === 1
+           ? 'Receptura zawiera 1 zduplikowany wiersz składnika (pozostałość po wcześniejszym przeliczeniu).'
+           : `Receptura zawiera ${count} zduplikowane wiersze składników (pozostałość po wcześniejszym przeliczeniu).`,
+       mergeDuplicates: 'Scal zduplikowane składniki',
+-      noMatches: 'Nie znaleziono składnika w katalogu PI. Spróbuj innej nazwy, formy lub kategorii.',
++      noMatches:
++        'Nie znaleziono składnika w katalogu PI. Spróbuj innej nazwy, formy lub kategorii.',
+       /** Honest empty-state exit (AUDIT #2 dead-end rule): a no-results search
+        * always offers a way back to the full list. */
+       clearSearch: 'Wyczyść wyszukiwanie',
+diff --git a/src/features/customer-shell/CustomerShellV1.tsx b/src/features/customer-shell/CustomerShellV1.tsx
+index 35d31b8..589981c 100644
+--- a/src/features/customer-shell/CustomerShellV1.tsx
++++ b/src/features/customer-shell/CustomerShellV1.tsx
+@@ -99,12 +99,17 @@ import { useProCoreAccessStore } from '@/features/pro-core/proCoreAccessStore';
+ import { fromPriceCompact } from '@/billing/catalog/offerDisplay';
+ import { resolveActiveOfferFlags } from '@/billing/catalog/offerFlags';
+ import { compactRecipeContext, resultStatus } from './resultPresentation';
+-import { customerShellAccessFor, demoPaywallVisible, resolveCustomerMachineGate } from './customerShellAccess';
++import {
++  customerShellAccessFor,
++  demoPaywallVisible,
++  resolveCustomerMachineGate,
++} from './customerShellAccess';
+ import { formatTemperatureC } from './temperature';
+ import { resolveBatchSectionView } from './batchPresentation';
+ import { useIngredientResolution, type ResolvableLine } from './useIngredientResolution';
+ import { ResolutionSheet } from './ResolutionSheet';
+ import { PiMonitorSection } from './PiMonitorSection';
++import { HomeSaveSection } from './HomeSaveSection';
+ 
+ /* ------------------------------------------------------------------ *
+  * Browser speech recognition (optional, never an external service)   *
+@@ -293,7 +298,8 @@ export function CustomerShellV1() {
+       selectMachinePreferenceStore({
+         // Device fallback keyed by the signed-in user, so switching accounts on the
+         // same browser loads the correct account's machine (never the previous one).
+-        localDevice: () => localStorageMachinePreferenceStore(undefined, userScopedMachineKey(authUserId)),
++        localDevice: () =>
++          localStorageMachinePreferenceStore(undefined, userScopedMachineKey(authUserId)),
+       }).store,
+     [authUserId],
+   );
+@@ -307,7 +313,9 @@ export function CustomerShellV1() {
+    *    written to the profile unless the user explicitly promotes it.
+    * The recipe surface uses the EFFECTIVE machine = override ?? profile default.
+    */
+-  const [recipeMachineRecord, setRecipeMachineRecord] = useState<MachinePreferenceRecord | null>(null);
++  const [recipeMachineRecord, setRecipeMachineRecord] = useState<MachinePreferenceRecord | null>(
++    null,
++  );
+   // One-time notice right after a recipe-scope machine change.
+   const [recipeMachineNotice, setRecipeMachineNotice] = useState(false);
+   // „Domyślna maszyna została zmieniona na …” confirmation (profile promotion).
+@@ -455,8 +463,15 @@ export function CustomerShellV1() {
+   const resolvableLines = useMemo<ResolvableLine[]>(() => {
+     if (flow === null) return [];
+     if (selectedDraft) {
+-      const struct = buildRecipeStructure({ productType: selectedDraft.productType, flavorTags: selectedDraft.flavorTags });
+-      return struct.lines.map((l) => ({ ingredientId: l.id, ingredientName: structureLineName(l), resolution: l.resolution }));
++      const struct = buildRecipeStructure({
++        productType: selectedDraft.productType,
++        flavorTags: selectedDraft.flavorTags,
++      });
++      return struct.lines.map((l) => ({
++        ingredientId: l.id,
++        ingredientName: structureLineName(l),
++        resolution: l.resolution,
++      }));
+     }
+     const result = engineResult ?? buildCustomerResult(flow);
+     return result.lines.map((l) => ({
+@@ -549,10 +564,12 @@ export function CustomerShellV1() {
+       rec.continuous = false;
+       rec.onresult = (event) => {
+         const transcript = event.results?.[0]?.[0]?.transcript ?? '';
+-        if (transcript) setDraftText((prev) => (prev ? `${prev} ${transcript}`.trim() : transcript));
++        if (transcript)
++          setDraftText((prev) => (prev ? `${prev} ${transcript}`.trim() : transcript));
+       };
+       rec.onerror = (event) => {
+-        if (event.error === 'not-allowed' || event.error === 'service-not-allowed') setMicDenied(true);
++        if (event.error === 'not-allowed' || event.error === 'service-not-allowed')
++          setMicDenied(true);
+         setListening(false);
+       };
+       rec.onend = () => setListening(false);
+@@ -576,7 +593,7 @@ export function CustomerShellV1() {
+           <div style={{ paddingTop: 'clamp(2rem, 14svh, 9rem)' }}>
+             <DevPersonaSelect persona={persona} onChange={switchPersona} />
+             <header className="pt-2">
+-              <h1 className="text-[28px] font-light leading-[1.15] tracking-tight text-ink sm:text-[34px]">
++              <h1 className="text-[30px] font-semibold leading-[1.04] tracking-[-0.035em] text-ink sm:text-[38px]">
+                 {copy.home.headline}
+               </h1>
+               <p className="mt-3 max-w-prose text-[15px] leading-relaxed text-stone-600">
+@@ -600,15 +617,30 @@ export function CustomerShellV1() {
+                   e.preventDefault();
+                   startFlowFromDraft();
+                 }}
+-                trailing={<MicrophoneButton state={micState} label={copy.mic[micLabelKey(micState)]} onClick={handleMic} />}
++                trailing={
++                  <MicrophoneButton
++                    state={micState}
++                    label={copy.mic[micLabelKey(micState)]}
++                    onClick={handleMic}
++                  />
++                }
+               />
+               <div className="mt-3">
+-                <TouchButton variant="quiet" size="md" onClick={() => setDraftText(copy.home.example)}>
++                <TouchButton
++                  variant="quiet"
++                  size="md"
++                  onClick={() => setDraftText(copy.home.example)}
++                >
+                   {copy.home.tryExample}
+                 </TouchButton>
+               </div>
+               <div className="mt-6">
+-                <TouchButton block size="lg" disabled={draftText.trim() === ''} onClick={startFlowFromDraft}>
++                <TouchButton
++                  block
++                  size="lg"
++                  disabled={draftText.trim() === ''}
++                  onClick={startFlowFromDraft}
++                >
+                   {copy.home.next}
+                 </TouchButton>
+               </div>
+@@ -637,7 +669,9 @@ export function CustomerShellV1() {
+   // starting proposal — the guidance below marks divergence, warns above the
+   // recommendation and offers the OPTIONAL even split; it never blocks.
+   const machineRecommendedGrams =
+-    machineGate === 'saved' && machineRecord !== null ? recommendedBatchGramsOf(machineRecord) : null;
++    machineGate === 'saved' && machineRecord !== null
++      ? recommendedBatchGramsOf(machineRecord)
++      : null;
+   /** The profile's effective default — what a NEW recipe starts from (§5). */
+   const machineProfileDefaultGrams =
+     machineGate === 'saved' && machineRecord !== null
+@@ -683,9 +717,14 @@ export function CustomerShellV1() {
+   // The result lines: REAL engine base + flavor requirements for a new recipe; the
+   // preserved structure for a ready-recipe draft. Grams (base) come from the real
+   // calculateRecipe; Demo redaction happens in buildCustomerRecipeView.
+-  const currentResult: CustomerResult | null = selectedDraft ? null : (engineResult ?? buildCustomerResult(flow));
++  const currentResult: CustomerResult | null = selectedDraft
++    ? null
++    : (engineResult ?? buildCustomerResult(flow));
+   const resultLineInputs: CustomerRecipeLineInput[] = selectedDraft
+-    ? buildRecipeStructure({ productType: selectedDraft.productType, flavorTags: selectedDraft.flavorTags }).lines.map((l) => ({
++    ? buildRecipeStructure({
++        productType: selectedDraft.productType,
++        flavorTags: selectedDraft.flavorTags,
++      }).lines.map((l) => ({
+         ingredientId: l.id,
+         ingredientName: structureLineName(l),
+         grams: l.grams,
+@@ -698,7 +737,12 @@ export function CustomerShellV1() {
+         resolution: l.resolution,
+       }));
+   const view = buildCustomerRecipeView(
+-    { recipeId: resultRecipeId, title: resultTitle, productType: resultType, lines: resultLineInputs },
++    {
++      recipeId: resultRecipeId,
++      title: resultTitle,
++      productType: resultType,
++      lines: resultLineInputs,
++    },
+     capability,
+   );
+   const showStickyUpgrade = demoPaywallVisible({ isResultPhase, gramsVisible: view.gramsVisible });
+@@ -855,17 +899,23 @@ export function CustomerShellV1() {
+ 
+   /* -------------------------------------------------- Technical details -- */
+   const modeReadable = selectedMode ? modeCopyFor(selectedMode.id).label : '—';
+-  const calcTempReadable = route.temperatureC !== null ? formatTemperatureC(route.temperatureC) : '—';
++  const calcTempReadable =
++    route.temperatureC !== null ? formatTemperatureC(route.temperatureC) : '—';
+   const technical = (
+     <TechnicalDetails summary={copy.tech.summary}>
+       <div className="pt-1">
+         {typeRes.userFacingType ? (
+-          <SummaryRow label={copy.tech.userFacingType} value={copy.productType.short[typeRes.userFacingType]} />
++          <SummaryRow
++            label={copy.tech.userFacingType}
++            value={copy.productType.short[typeRes.userFacingType]}
++          />
+         ) : null}
+         {typeRes.internalProfile ? (
+           <SummaryRow
+             label={copy.tech.internalProfile}
+-            value={copy.tech.internalProfileLabels[typeRes.internalProfile] ?? typeRes.internalProfile}
++            value={
++              copy.tech.internalProfileLabels[typeRes.internalProfile] ?? typeRes.internalProfile
++            }
+           />
+         ) : null}
+         {typeRes.chocolateRoutedInternally ? (
+@@ -892,7 +942,9 @@ export function CustomerShellV1() {
+           if (codes.length === 0) return null;
+           return (
+             <div className="mt-3 border-t border-ink/10 pt-3">
+-              <p className="text-[12px] uppercase tracking-[0.12em] text-stone-500">{copy.tech.notesTitle}</p>
++              <p className="text-[12px] uppercase tracking-[0.12em] text-stone-500">
++                {copy.tech.notesTitle}
++              </p>
+               <ul className="mt-2 space-y-1">
+                 {codes.map((code, i) => (
+                   <li key={`${code}-${i}`} className="text-[13px] leading-relaxed text-stone-600">
+@@ -907,7 +959,9 @@ export function CustomerShellV1() {
+         {/* Raw trace strings live ONLY in a dev-gated advanced sub-section. */}
+         {import.meta.env.DEV ? (
+           <div className="mt-3 border-t border-ink/10 pt-3">
+-            <p className="text-[12px] uppercase tracking-[0.12em] text-stone-500">{copy.tech.advancedTitle}</p>
++            <p className="text-[12px] uppercase tracking-[0.12em] text-stone-500">
++              {copy.tech.advancedTitle}
++            </p>
+             {typeRes.engineCategory ? (
+               <SummaryRow label={copy.tech.engineCategory} value={typeRes.engineCategory} />
+             ) : null}
+@@ -959,13 +1013,25 @@ export function CustomerShellV1() {
+           />
+         ) : null}
+         {/* One-time notice right after a recipe-scope machine change (§2). */}
+-        {recipeMachineNotice && usingRecipeOverride && machineView !== null && profileMachineView !== null ? (
+-          <div className={`mt-3 rounded-xl px-4 py-3 text-[13px] leading-relaxed ${notice.neutral} ${notice.text}`}>
++        {recipeMachineNotice &&
++        usingRecipeOverride &&
++        machineView !== null &&
++        profileMachineView !== null ? (
++          <div
++            className={`mt-3 rounded-xl px-4 py-3 text-[13px] leading-relaxed ${notice.neutral} ${notice.text}`}
++          >
+             <p className="text-ink">
+-              {machineOnboardingCopy.recipeMachine.onlyThisRecipe(machineView.name, profileMachineView.name)}
++              {machineOnboardingCopy.recipeMachine.onlyThisRecipe(
++                machineView.name,
++                profileMachineView.name,
++              )}
+             </p>
+             <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+-              <TouchButton variant="secondary" size="md" onClick={() => setRecipeMachineNotice(false)}>
++              <TouchButton
++                variant="secondary"
++                size="md"
++                onClick={() => setRecipeMachineNotice(false)}
++              >
+                 {machineOnboardingCopy.recipeMachine.continueForRecipe}
+               </TouchButton>
+               <TouchButton variant="quiet" size="md" onClick={promoteRecipeMachineToDefault}>
+@@ -979,13 +1045,19 @@ export function CustomerShellV1() {
+         ) : null}
+         {/* „Domyślna maszyna została zmieniona na …” confirmation (profile promoted). */}
+         {defaultChangedName !== null ? (
+-          <p role="status" className={`mt-3 rounded-xl px-4 py-3 text-[13px] ${notice.ideal} ${notice.text}`}>
++          <p
++            role="status"
++            className={`mt-3 rounded-xl px-4 py-3 text-[13px] ${notice.ideal} ${notice.text}`}
++          >
+             ✓ {machineOnboardingCopy.recipeMachine.defaultChanged(defaultChangedName)}
+           </p>
+         ) : null}
+         {/* Honest save-failure surface (owner §2/§3) — never a silent swallow. */}
+         {machineSaveFailed ? (
+-          <p role="alert" className={`mt-3 rounded-xl px-4 py-3 text-[13px] ${notice.error} ${notice.text}`}>
++          <p
++            role="alert"
++            className={`mt-3 rounded-xl px-4 py-3 text-[13px] ${notice.error} ${notice.text}`}
++          >
+             {machineOnboardingCopy.settings.saveFailed}
+           </p>
+         ) : null}
+@@ -1004,7 +1076,9 @@ export function CustomerShellV1() {
+           </div>
+         ) : null}
+         <div className="flex items-center justify-between pt-4">
+-          <h1 className="text-[22px] font-medium tracking-tight text-ink">{copy.home.headline}</h1>
++          <h1 className="text-[24px] font-semibold leading-[1.04] tracking-[-0.03em] text-ink">
++            {copy.home.headline}
++          </h1>
+           <TouchButton variant="quiet" size="md" onClick={resetAll}>
+             {copy.home.restart}
+           </TouchButton>
+@@ -1021,7 +1095,11 @@ export function CustomerShellV1() {
+           {chips.length > 0 ? (
+             <div className="flex flex-wrap gap-2">
+               {chips.map((tag) => (
+-                <FlavorChip key={tag} label={flavorLabel(tag)} onRemove={() => update((s) => removeFlavorChip(s, tag))} />
++                <FlavorChip
++                  key={tag}
++                  label={flavorLabel(tag)}
++                  onRemove={() => update((s) => removeFlavorChip(s, tag))}
++                />
+               ))}
+             </div>
+           ) : (
+@@ -1044,7 +1122,11 @@ export function CustomerShellV1() {
+                 commitChipDraft();
+               }}
+             />
+-            <TouchButton variant="secondary" disabled={chipDraft.trim() === ''} onClick={commitChipDraft}>
++            <TouchButton
++              variant="secondary"
++              disabled={chipDraft.trim() === ''}
++              onClick={commitChipDraft}
++            >
+               {copy.chips.addButton}
+             </TouchButton>
+           </div>
+@@ -1059,7 +1141,11 @@ export function CustomerShellV1() {
+ 
+         {/* Product type — four visible choices, never "Chocolate". */}
+         {typeRes.status === 'unknown' || typeRes.status === 'unsupported' ? (
+-          <CustomerSection label={copy.productType.label} title={copy.productType.title} lead={copy.productType.lead}>
++          <CustomerSection
++            label={copy.productType.label}
++            title={copy.productType.title}
++            lead={copy.productType.lead}
++          >
+             <div className="grid grid-cols-1 gap-3">
+               {productTypeQuestion().choices.map((choice) => {
+                 const meta = copy.productType.byKey[choice.labelKey];
+@@ -1102,7 +1188,11 @@ export function CustomerShellV1() {
+             {machineGate === 'off' ? (
+               /* Serving / machine mode — EXACTLY six customer-facing choices. Each is a
+                  customer-facing alias to an existing temperature-aware Engine cell. */
+-              <CustomerSection label={copy.modes.label} title={copy.modes.title} lead={copy.modes.lead}>
++              <CustomerSection
++                label={copy.modes.label}
++                title={copy.modes.title}
++                lead={copy.modes.lead}
++              >
+                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                   {proServingModes.map((m) => {
+                     const c = modeCopyFor(m.id);
+@@ -1124,7 +1214,11 @@ export function CustomerShellV1() {
+                 mass (resolved; override hidden behind "Zmień ilość"); Direct / Fresh
+                 modes ask only when the quantity is not already known. */}
+             {flow.mode !== null ? (
+-              <CustomerSection label={copy.batch.label} title={copy.batch.title} lead={copy.batch.lead}>
++              <CustomerSection
++                label={copy.batch.label}
++                title={copy.batch.title}
++                lead={copy.batch.lead}
++              >
+                 {batchSection.mode === 'choose' ? (
+                   renderBatchSelector()
+                 ) : (
+@@ -1155,7 +1249,8 @@ export function CustomerShellV1() {
+ 
+                     {/* OWNER FINAL DECISION — soft-proposal guidance (never a block). */}
+                     {batchGuidance.kind === 'custom' ||
+-                    (batchGuidance.kind === 'custom_above' && batchGuidance.choice !== 'undecided') ? (
++                    (batchGuidance.kind === 'custom_above' &&
++                      batchGuidance.choice !== 'undecided') ? (
+                       <div className="flex flex-wrap items-center gap-3">
+                         <span className="text-[13px] text-stone-600">
+                           {machineOnboardingCopy.batch.customInUse}
+@@ -1174,9 +1269,14 @@ export function CustomerShellV1() {
+                         </button>
+                       </div>
+                     ) : null}
+-                    {batchGuidance.kind === 'custom_above' && batchGuidance.choice === 'undecided' ? (
+-                      <div className={`rounded-2xl px-4 py-3 text-[13px] leading-relaxed ${notice.risky} ${notice.text}`}>
+-                        <p className="font-medium text-ink">{machineOnboardingCopy.batch.aboveWarning}</p>
++                    {batchGuidance.kind === 'custom_above' &&
++                    batchGuidance.choice === 'undecided' ? (
++                      <div
++                        className={`rounded-2xl px-4 py-3 text-[13px] leading-relaxed ${notice.risky} ${notice.text}`}
++                      >
++                        <p className="font-medium text-ink">
++                          {machineOnboardingCopy.batch.aboveWarning}
++                        </p>
+                         <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                           <TouchButton
+                             variant="secondary"
+@@ -1214,7 +1314,9 @@ export function CustomerShellV1() {
+                       </div>
+                     ) : null}
+                     {batchGuidance.kind === 'custom_above' && batchGuidance.split !== null ? (
+-                      <div className={`rounded-2xl px-4 py-3 text-[13px] leading-relaxed ${notice.neutral} ${notice.text}`}>
++                      <div
++                        className={`rounded-2xl px-4 py-3 text-[13px] leading-relaxed ${notice.neutral} ${notice.text}`}
++                      >
+                         <p className="font-medium text-ink">
+                           {machineOnboardingCopy.split.message(batchGuidance.split.containers)}
+                         </p>
+@@ -1237,7 +1339,9 @@ export function CustomerShellV1() {
+                         confirmation outlives the offer (once saved, the amount
+                         EQUALS the default, so the offer's own condition stops
+                         holding — the user must still see that it worked). */}
+-                    {machineGate === 'saved' && machineRecord !== null && currentBatchGrams !== null ? (
++                    {machineGate === 'saved' &&
++                    machineRecord !== null &&
++                    currentBatchGrams !== null ? (
+                       savedAsDefaultGrams === currentBatchGrams ? (
+                         <p role="status" className="text-[13px] text-status-ideal">
+                           ✓ {machineOnboardingCopy.recipeAmount.savedAsDefault}
+@@ -1259,12 +1363,18 @@ export function CustomerShellV1() {
+                             });
+                           }}
+                         >
+-                          {machineOnboardingCopy.recipeAmount.saveAsDefault(formatGrams(currentBatchGrams))}
++                          {machineOnboardingCopy.recipeAmount.saveAsDefault(
++                            formatGrams(currentBatchGrams),
++                          )}
+                         </button>
+                       ) : null
+                     ) : null}
+                     {batchSection.showChangeAction ? (
+-                      <TouchButton variant="quiet" size="md" onClick={() => setForceBatchEdit((v) => !v)}>
++                      <TouchButton
++                        variant="quiet"
++                        size="md"
++                        onClick={() => setForceBatchEdit((v) => !v)}
++                      >
+                         {copy.batch.change}
+                       </TouchButton>
+                     ) : null}
+@@ -1280,12 +1390,26 @@ export function CustomerShellV1() {
+ 
+             {/* Two equal paths — neither is a default. */}
+             {nq === 'recipe_path' ? (
+-              <CustomerSection label={copy.path.label} title={copy.path.title} lead={copy.path.lead}>
++              <CustomerSection
++                label={copy.path.label}
++                title={copy.path.title}
++                lead={copy.path.lead}
++              >
+                 <div className="grid grid-cols-1 gap-3">
+-                  <TouchButton block variant="secondary" size="lg" onClick={() => update((s) => chooseRecipePath(s, 'new_recipe'))}>
++                  <TouchButton
++                    block
++                    variant="secondary"
++                    size="lg"
++                    onClick={() => update((s) => chooseRecipePath(s, 'new_recipe'))}
++                  >
+                     {copy.path.newRecipe}
+                   </TouchButton>
+-                  <TouchButton block variant="secondary" size="lg" onClick={() => update((s) => chooseRecipePath(s, 'ready_recipe'))}>
++                  <TouchButton
++                    block
++                    variant="secondary"
++                    size="lg"
++                    onClick={() => update((s) => chooseRecipePath(s, 'ready_recipe'))}
++                  >
+                     {copy.path.readyRecipe}
+                   </TouchButton>
+                 </div>
+@@ -1306,7 +1430,9 @@ export function CustomerShellV1() {
+             >
+               <NonProductionBadge itemId="start-ready-catalogue" />
+               <span className="text-xs leading-relaxed text-stone-600">
+-                {'Karty gotowych receptur to dane testowe — prawdziwy katalog jeszcze nie jest podłączony.'}
++                {
++                  'Karty gotowych receptur to dane testowe — prawdziwy katalog jeszcze nie jest podłączony.'
++                }
+               </span>
+             </div>
+             {matches.length === 0 ? (
+@@ -1351,13 +1477,17 @@ export function CustomerShellV1() {
+                 the internal serving mode („Świeże”) is never shown to the customer.
+                 „Zmień ilość” re-opens the amount editor inline. */}
+             <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-2xl border border-ink/10 bg-stone-50 px-4 py-3">
+-              <span className="text-[15px] text-ink">{compactRecipeContext(resultType, batchRes.batchGrams)}</span>
++              <span className="text-[15px] text-ink">
++                {compactRecipeContext(resultType, batchRes.batchGrams)}
++              </span>
+               <TouchButton variant="quiet" size="md" onClick={() => setForceBatchEdit((v) => !v)}>
+                 {copy.batch.change}
+               </TouchButton>
+             </div>
+             {forceBatchEdit ? (
+-              <div className="mt-3">{isNinja ? renderCustomMassField() : renderBatchSelector()}</div>
++              <div className="mt-3">
++                {isNinja ? renderCustomMassField() : renderBatchSelector()}
++              </div>
+             ) : null}
+ 
+             {/* Owner UX correction §11: exactly ONE status, with optional one-line
+@@ -1365,10 +1495,14 @@ export function CustomerShellV1() {
+             <div className="mt-4">
+               <Notice>{statusView.label}</Notice>
+               {statusView.guidance ? (
+-                <p className="mt-2 text-[13px] leading-relaxed text-stone-600">{statusView.guidance}</p>
++                <p className="mt-2 text-[13px] leading-relaxed text-stone-600">
++                  {statusView.guidance}
++                </p>
+               ) : null}
+               {selectedDraft ? (
+-                <p className="mt-2 text-[13px] leading-relaxed text-stone-600">{copy.result.draftNotice}</p>
++                <p className="mt-2 text-[13px] leading-relaxed text-stone-600">
++                  {copy.result.draftNotice}
++                </p>
+               ) : null}
+               {/* Agent 4 fixture sweep: a ready-recipe draft is BUILT ON a test fixture
+                   card (structure only, no engine grams) — marked pink until the real
+@@ -1380,14 +1514,18 @@ export function CustomerShellV1() {
+                 >
+                   <NonProductionBadge itemId="start-ready-draft" />
+                   <span className="text-xs leading-relaxed text-stone-600">
+-                    {'Ten szkic powstał z karty testowej — struktura poglądowa bez wyliczonych ilości.'}
++                    {
++                      'Ten szkic powstał z karty testowej — struktura poglądowa bez wyliczonych ilości.'
++                    }
+                   </span>
+                 </div>
+               ) : null}
+             </div>
+ 
+             <div className="mt-5">
+-              <p className="text-[12px] uppercase tracking-[0.14em] text-stone-500">{copy.result.ingredientsTitle}</p>
++              <p className="text-[12px] uppercase tracking-[0.14em] text-stone-500">
++                {copy.result.ingredientsTitle}
++              </p>
+               <div className="mt-1 divide-y divide-ink/10">
+                 {view.lines.map((line) => {
+                   // A line that STARTED unresolved (generic requirement) is tappable — it
+@@ -1408,9 +1546,15 @@ export function CustomerShellV1() {
+                       name={res?.state === 'resolved' && picked ? picked : line.ingredientName}
+                       locked={!unresolved && line.grams === undefined}
+                       lockedLabel={copy.result.lockedInPlans}
+-                      amount={line.grams !== undefined ? `${line.grams} ${copy.device.unitGrams}` : undefined}
++                      amount={
++                        line.grams !== undefined
++                          ? `${line.grams} ${copy.device.unitGrams}`
++                          : undefined
++                      }
+                       intensity={
+-                        unresolved ? { label: chipLabel, onClick: () => resolution.open(line.ingredientId) } : undefined
++                        unresolved
++                          ? { label: chipLabel, onClick: () => resolution.open(line.ingredientId) }
++                          : undefined
+                       }
+                       onMore={unresolved ? () => resolution.open(line.ingredientId) : undefined}
+                       moreLabel={`${copy.rowActions.moreForPrefix}: ${line.ingredientName}`}
+@@ -1420,6 +1564,16 @@ export function CustomerShellV1() {
+               </div>
+             </div>
+ 
++            {/* SAVE (Home-save repair 2026-07-26): the canonical plan matrix grants Home ONE
++                saved recipe, but this surface offered no save at all and `/pro` gates a `home`
++                persona behind the Pro upgrade prompt — so a paying Home subscriber could never
++                save. The section is capability-gated (Demo renders nothing) and delegates to THE
++                canonical save handler; it saves the SAME engine payload the Monitor consumes. */}
++            <HomeSaveSection
++              recipeInput={currentResult?.recipeInput ?? null}
++              resultTitle={resultTitle}
++            />
++
+             <PiMonitorSection
+               summary={resolution.summary}
+               gramsVisible={view.gramsVisible}
+@@ -1439,7 +1593,10 @@ export function CustomerShellV1() {
+         ) : null}
+ 
+         {/* Technical details are also available during collection — Pro only. */}
+-        {showTechnical && status !== 'complete' && !isResultPhase && typeRes.status === 'resolved' ? (
++        {showTechnical &&
++        status !== 'complete' &&
++        !isResultPhase &&
++        typeRes.status === 'resolved' ? (
+           <div className="mt-2">{technical}</div>
+         ) : null}
+       </CustomerSurface>
+@@ -1505,7 +1662,10 @@ function DevPersonaSelect({
+   if (!import.meta.env.DEV) return null;
+   return (
+     <div className="flex items-center justify-end gap-2 pt-1">
+-      <label htmlFor="persona-select" className="text-[12px] uppercase tracking-[0.12em] text-stone-500">
++      <label
++        htmlFor="persona-select"
++        className="text-[12px] uppercase tracking-[0.12em] text-stone-500"
++      >
+         {copy.persona.label}
+       </label>
+       <select
+diff --git a/src/features/customer-shell/customerShellCopy.ts b/src/features/customer-shell/customerShellCopy.ts
+index 4126b22..570ba60 100644
+--- a/src/features/customer-shell/customerShellCopy.ts
++++ b/src/features/customer-shell/customerShellCopy.ts
+@@ -354,6 +354,41 @@ export const customerShellCopy = {
+     },
+   },
+ 
++  /* ------------------------------------------------------------ Save recipe -- */
++  /**
++   * Canonical saved-recipe rule (owner decision, `proCoreCapabilities`): Demo nie zapisuje,
++   * plan Home przechowuje JEDNĄ recepturę (kolejne zapisy tej samej receptury to nowe wersje,
++   * nie druga receptura), plan Pro — bez ograniczeń. Copy nazywa tę zasadę wprost i zawsze
++   * pokazuje działanie, które NAPRAWDĘ jest dostępne.
++   */
++  save: {
++    label: 'Zapis',
++    title: 'Zapisz recepturę',
++    lead: 'Zapisana receptura czeka w „Moich recepturach” — wrócisz do niej i zapiszesz kolejną wersję.',
++    nameLabel: 'Nazwa receptury',
++    namePlaceholder: 'np. Gelato waniliowe',
++    nameRequired: 'Podaj nazwę receptury.',
++    noteLabel: 'Notatka do wersji (opcjonalnie)',
++    noteToggle: 'Dodaj notatkę',
++    create: 'Zapisz recepturę',
++    saving: 'Zapisuję…',
++    savedCreated: 'Zapisano recepturę.',
++    savedVersion: 'Zapisano nową wersję tej receptury.',
++    openMyRecipes: 'Otwórz „Moje receptury”',
++    /** The Home aggregate limit — stated plainly, with the action that IS allowed. */
++    homeLimitTitle: (title: string) => `Plan Home przechowuje jedną recepturę: „${title}”.`,
++    homeLimitLead:
++      'Kolejne wersje tej receptury zapiszesz bez ograniczeń. Osobne receptury bez limitu ma plan Pro.',
++    versionButton: (n: number) => `Zapisz jako wersję ${n}`,
++    signIn: 'Zaloguj się, aby zapisać recepturę.',
++    signInCta: 'Zaloguj się',
++    unavailable:
++      'Zapis receptur nie jest dostępny w tym środowisku. Receptura zostaje na ekranie — nic nie zostało zapisane.',
++    notCalculated: 'Recepturę zapiszesz, gdy silnik wyliczy dokładne ilości.',
++    loading: 'Sprawdzam Twoje zapisane receptury…',
++    localMode: 'Tryb lokalny (dev): zapis nie jest trwały i zniknie po odświeżeniu.',
++  },
++
+   /* -------------------------------------------------------- Flavor intensity -- */
+   intensity: {
+     rowCta: 'Ustal intensywność smaku',
+diff --git a/src/features/customer-shell/ui/tokens.ts b/src/features/customer-shell/ui/tokens.ts
+index 398cbd3..7a902b8 100644
+--- a/src/features/customer-shell/ui/tokens.ts
++++ b/src/features/customer-shell/ui/tokens.ts
+@@ -50,9 +50,9 @@ export const customerSpec = {
+ 
+ export const type = {
+   /** Page hero. */
+-  display: 'text-[28px] leading-[1.15] font-light tracking-tight sm:text-[34px]',
++  display: 'text-[30px] leading-[1.04] font-semibold tracking-[-0.035em] sm:text-[38px]',
+   /** Section / card title. */
+-  title: 'text-[22px] leading-[1.2] font-medium tracking-tight',
++  title: 'text-[22px] leading-[1.08] font-semibold tracking-[-0.025em]',
+   /** Sub-heading inside a card. */
+   heading: 'text-[19px] leading-snug font-medium',
+   /** Primary body — comfortable on mobile (>=17px). */
+diff --git a/src/features/ingredient-builder/IngredientRow.tsx b/src/features/ingredient-builder/IngredientRow.tsx
+index bbeb177..0a05b4c 100644
+--- a/src/features/ingredient-builder/IngredientRow.tsx
++++ b/src/features/ingredient-builder/IngredientRow.tsx
+@@ -49,9 +49,19 @@ function PadlockIcon({ closed }: { closed: boolean }) {
+     <svg aria-hidden width="12" height="12" viewBox="0 0 12 12" fill="none">
+       <rect x="2" y="5.2" width="8" height="5.4" rx="1" fill="currentColor" />
+       {closed ? (
+-        <path d="M3.8 5V3.6a2.2 2.2 0 1 1 4.4 0V5" stroke="currentColor" strokeWidth="1.3" fill="none" />
++        <path
++          d="M3.8 5V3.6a2.2 2.2 0 1 1 4.4 0V5"
++          stroke="currentColor"
++          strokeWidth="1.3"
++          fill="none"
++        />
+       ) : (
+-        <path d="M3.8 5V3.6a2.2 2.2 0 0 1 4.3-.7" stroke="currentColor" strokeWidth="1.3" fill="none" />
++        <path
++          d="M3.8 5V3.6a2.2 2.2 0 0 1 4.3-.7"
++          stroke="currentColor"
++          strokeWidth="1.3"
++          fill="none"
++        />
+       )}
+     </svg>
+   );
+@@ -113,6 +123,8 @@ export function IngredientRow({
+ }) {
+   const share = totalBatchG > 0 ? (item.effective_grams / totalBatchG) * 100 : null;
+   const isMain = item.lock_type === 'main';
++  const isGramsLocked = item.lock_type === 'grams';
++  const isPercentLocked = item.lock_type === 'percent';
+   const isConstraintLocked = lock?.state === 'locked';
+ 
+   return (
+@@ -153,7 +165,9 @@ export function IngredientRow({
+           label={`${item.ingredient.name} ${b.actual}`}
+           value={item.actual_grams ?? ''}
+           emphasised={item.is_actual}
+-          onChange={(raw) => actions.setActualGrams(item.id, raw === '' ? null : Math.max(0, Number(raw)))}
++          onChange={(raw) =>
++            actions.setActualGrams(item.id, raw === '' ? null : Math.max(0, Number(raw)))
++          }
+         />
+ 
+         <div className="text-right">
+@@ -190,16 +204,55 @@ export function IngredientRow({
+                   : lock.state === 'range'
+                     ? 'border-status-risky/50 text-status-risky'
+                     : 'border-ivory/15 text-ivory/60 hover:border-ivory/40 hover:text-ivory/70',
+-                lock.toggleDisabled && 'cursor-not-allowed opacity-40 hover:border-ivory/15 hover:text-ivory/60',
++                lock.toggleDisabled &&
++                  'cursor-not-allowed opacity-40 hover:border-ivory/15 hover:text-ivory/60',
+               )}
+             >
+               <PadlockIcon closed={lock.state !== 'ai'} />
+             </button>
+           ) : null}
++          <button
++            type="button"
++            aria-pressed={isGramsLocked}
++            aria-label={`${item.ingredient.name} ${b.lockTypes.grams}`}
++            title={b.lockTypes.grams}
++            disabled={isMain}
++            data-testid={`row-lock-grams-${item.id}`}
++            onClick={() => actions.setLockType(item.id, isGramsLocked ? 'unlocked' : 'grams')}
++            className={cn(
++              'rounded border px-2 py-1 font-mono text-[0.65rem] font-semibold transition-colors',
++              isGramsLocked
++                ? 'border-ivory bg-ivory text-shell'
++                : 'border-ivory/15 text-ivory/60 hover:border-ivory/40 hover:text-ivory',
++              isMain && 'cursor-not-allowed opacity-40',
++            )}
++          >
++            g
++          </button>
++          <button
++            type="button"
++            aria-pressed={isPercentLocked}
++            aria-label={`${item.ingredient.name} ${b.lockTypes.percent}`}
++            title={b.lockTypes.percent}
++            disabled={isMain}
++            data-testid={`row-lock-percent-${item.id}`}
++            onClick={() => actions.setLockType(item.id, isPercentLocked ? 'unlocked' : 'percent')}
++            className={cn(
++              'rounded border px-2 py-1 font-mono text-[0.65rem] font-semibold transition-colors',
++              isPercentLocked
++                ? 'border-ivory bg-ivory text-shell'
++                : 'border-ivory/15 text-ivory/60 hover:border-ivory/40 hover:text-ivory',
++              isMain && 'cursor-not-allowed opacity-40',
++            )}
++          >
++            %
++          </button>
+           <button
+             type="button"
+             aria-pressed={isMain}
+-            onClick={() => (isMain ? actions.setLockType(item.id, 'unlocked') : actions.setMainIngredient(item.id))}
++            onClick={() =>
++              isMain ? actions.setLockType(item.id, 'unlocked') : actions.setMainIngredient(item.id)
++            }
+             title={b.mark_main}
+             className={cn(
+               'rounded border px-2 py-1 text-[0.6rem] font-medium tracking-[0.08em] uppercase transition-colors',
+@@ -215,7 +268,9 @@ export function IngredientRow({
+             disabled={isMain}
+             className="min-w-0 flex-1 rounded-md border border-ivory/15 bg-shell px-2 py-1.5 text-xs transition-colors hover:border-ivory/30 focus:border-ivory/40 focus:outline-none disabled:opacity-40"
+             value={item.lock_type}
+-            onChange={(event) => actions.setLockType(item.id, event.currentTarget.value as LockType)}
++            onChange={(event) =>
++              actions.setLockType(item.id, event.currentTarget.value as LockType)
++            }
+           >
+             {isMain ? (
+               <option value="main" disabled>
+diff --git a/src/features/optimization/OptimizationPreviewPanel.test.tsx b/src/features/optimization/OptimizationPreviewPanel.test.tsx
+index 2fb27c3..0e85c74 100644
+--- a/src/features/optimization/OptimizationPreviewPanel.test.tsx
++++ b/src/features/optimization/OptimizationPreviewPanel.test.tsx
+@@ -6,7 +6,10 @@ import { describe, expect, it } from 'vitest';
+ import { copy } from '@/copy/en';
+ import { SurfaceToneContext } from '@/components/ui/surface';
+ import { OptimizationPreviewPanel } from './OptimizationPreviewPanel';
+-import { optimizationDisplayPolicy, type OptimizationDisplayPolicy } from './optimizationPreviewPolicy';
++import {
++  optimizationDisplayPolicy,
++  type OptimizationDisplayPolicy,
++} from './optimizationPreviewPolicy';
+ import type { OptimizationPreviewView } from './optimizationPreviewRunner';
+ import type { OptimizationDecision } from '@/spine';
+ 
+@@ -24,13 +27,46 @@ const view = (over: Partial<OptimizationPreviewView> = {}): OptimizationPreviewV
+   intendedDecision: 'live',
+   productProfile: 'standard_gelato',
+   servingTemperatureC: -12,
+-  beforeMetrics: { npac: 40, pod: 15, iceFraction: 50, water: 63, solids: 37, fat: 6, lactose: 5, lactoseSanding: 8, aeratingProtein: 3.7, proteinShareInSolids: 10, stabilizerGrams: 5 },
+-  afterMetrics: { npac: 46, pod: 15.5, iceFraction: 51, water: 62, solids: 38, fat: 6, lactose: 5, lactoseSanding: 8, aeratingProtein: 3.7, proteinShareInSolids: 10, stabilizerGrams: 5 },
++  beforeMetrics: {
++    npac: 40,
++    pod: 15,
++    iceFraction: 50,
++    water: 63,
++    solids: 37,
++    fat: 6,
++    lactose: 5,
++    lactoseSanding: 8,
++    aeratingProtein: 3.7,
++    proteinShareInSolids: 10,
++    stabilizerGrams: 5,
++  },
++  afterMetrics: {
++    npac: 46,
++    pod: 15.5,
++    iceFraction: 51,
++    water: 62,
++    solids: 38,
++    fat: 6,
++    lactose: 5,
++    lactoseSanding: 8,
++    aeratingProtein: 3.7,
++    proteinShareInSolids: 10,
++    stabilizerGrams: 5,
++  },
+   flowDecision: 'tradeoff',
+   correctionGoals: ['increase_npac', 'increase_solids'],
+   optimizerDecision: 'tradeoff',
+   proposedCorrections: [
+-    { goal: 'increase_npac', targetMetric: 'npac', direction: 'increase', affectedIngredientClasses: ['dextrose', 'sucrose'], goldenMiddleRank: 2, feasibility: 'feasible', constraintReason: 'levers within allowed families', warnings: [] },
++    {
++      goal: 'increase_npac',
++      targetMetric: 'npac',
++      direction: 'increase',
++      affectedIngredientClasses: ['dextrose', 'sucrose'],
++      goldenMiddleRank: 2,
++      feasibility: 'feasible',
++      constraintReason: 'levers within allowed families',
++      warnings: [],
++    },
+   ],
+   rejectedCorrections: [],
+   proposedAdjustments: [{ type: 'add', ingredient: 'Dextrose', grams: 88.7 }],
+@@ -74,11 +110,22 @@ const view = (over: Partial<OptimizationPreviewView> = {}): OptimizationPreviewV
+     engineTemperatureFallback: true,
+     engineCategoryFallback: false,
+     comparisons: [
+-      { metric: 'npac', engineMetric: 'npac', engineBand: [33, 42], shadowBand: [42, 50], centerDelta: 8, aligned: false },
++      {
++        metric: 'npac',
++        engineMetric: 'npac',
++        engineBand: [33, 42],
++        shadowBand: [42, 50],
++        centerDelta: 8,
++        aligned: false,
++      },
+     ],
+     solverTargetsCorrectBand: false,
+     wouldTargetNpacCenter: 45.6,
+-    warnings: ['engine_uses_temperature_fallback_band', 'target_bands_divergent', 'solver_not_targeting_regulator_band'],
++    warnings: [
++      'engine_uses_temperature_fallback_band',
++      'target_bands_divergent',
++      'solver_not_targeting_regulator_band',
++    ],
+   },
+   solverTargetMode: 'engine_seeded',
+   solverTargetInjection: {
+@@ -95,13 +142,28 @@ const view = (over: Partial<OptimizationPreviewView> = {}): OptimizationPreviewV
+       { metric: 'npac', direction: 'low', value: 40, band: [42, 50], targetCenter: 46 },
+     ],
+     comparisons: [
+-      { metric: 'npac', value: 40, engineBand: [33, 42], regulatorBand: [42, 50], engineViolation: false, shadowViolation: true, engineTargetCenter: 37.5, shadowTargetCenter: 46, targetCenterDelta: 8.5, changed: true },
++      {
++        metric: 'npac',
++        value: 40,
++        engineBand: [33, 42],
++        regulatorBand: [42, 50],
++        engineViolation: false,
++        shadowViolation: true,
++        engineTargetCenter: 37.5,
++        shadowTargetCenter: 46,
++        targetCenterDelta: 8.5,
++        changed: true,
++      },
+     ],
+     newViolationsUnderRegulator: ['npac'],
+     resolvedViolationsUnderRegulator: [],
+     correctionChanged: true,
+     warnings: ['regulator_shadow_target_changes_correction', 'regulator_reveals_new_violations'],
+-    trace: { engineSeededCount: 0, regulatorShadowCount: 1, regulatorProfile: 'standard_gelato_temperature_regulator' },
++    trace: {
++      engineSeededCount: 0,
++      regulatorShadowCount: 1,
++      regulatorProfile: 'standard_gelato_temperature_regulator',
++    },
+   },
+   engineSeededSolve: {
+     active: true,
+@@ -111,7 +173,19 @@ const view = (over: Partial<OptimizationPreviewView> = {}): OptimizationPreviewV
+     decision: 'tradeoff',
+     rerunState: 'rerun_complete',
+     proposedAdjustments: [{ type: 'add', ingredient: 'Dextrose', grams: 88.7 }],
+-    afterMetrics: { npac: 46, pod: 15.5, iceFraction: 51, water: 62, solids: 38, fat: 6, lactose: 5, lactoseSanding: 8, aeratingProtein: 3.7, proteinShareInSolids: 10, stabilizerGrams: 5 },
++    afterMetrics: {
++      npac: 46,
++      pod: 15.5,
++      iceFraction: 51,
++      water: 62,
++      solids: 38,
++      fat: 6,
++      lactose: 5,
++      lactoseSanding: 8,
++      aeratingProtein: 3.7,
++      proteinShareInSolids: 10,
++      stabilizerGrams: 5,
++    },
+     correctedRecipeSnapshot: { items: [] },
+     rerun: null,
+     warnings: [],
+@@ -124,7 +198,19 @@ const view = (over: Partial<OptimizationPreviewView> = {}): OptimizationPreviewV
+     decision: 'tradeoff',
+     rerunState: 'rerun_complete',
+     proposedAdjustments: [{ type: 'add', ingredient: 'Dextrose', grams: 142.3 }],
+-    afterMetrics: { npac: 49, pod: 15.6, iceFraction: 52, water: 61, solids: 39, fat: 6, lactose: 5, lactoseSanding: 8, aeratingProtein: 3.7, proteinShareInSolids: 10, stabilizerGrams: 5 },
++    afterMetrics: {
++      npac: 49,
++      pod: 15.6,
++      iceFraction: 52,
++      water: 61,
++      solids: 39,
++      fat: 6,
++      lactose: 5,
++      lactoseSanding: 8,
++      aeratingProtein: 3.7,
++      proteinShareInSolids: 10,
++      stabilizerGrams: 5,
++    },
+     correctedRecipeSnapshot: { items: [] },
+     rerun: null,
+     warnings: [],
+@@ -142,7 +228,10 @@ const view = (over: Partial<OptimizationPreviewView> = {}): OptimizationPreviewV
+ 
+ const demoPolicy = optimizationDisplayPolicy({ exactCorrectionGrams: false, technicalView: false });
+ const proPolicy = optimizationDisplayPolicy({ exactCorrectionGrams: true, technicalView: true });
+-const devPolicy = optimizationDisplayPolicy({ exactCorrectionGrams: false, technicalView: false }, { dev: true });
++const devPolicy = optimizationDisplayPolicy(
++  { exactCorrectionGrams: false, technicalView: false },
++  { dev: true },
++);
+ 
+ describe('OptimizationPreviewPanel — redaction', () => {
+   it('Free/Demo hides exact grams, lever ingredient classes and before/after numbers', () => {
+@@ -221,7 +310,7 @@ describe('OptimizationPreviewPanel — redaction', () => {
+     }
+   });
+ 
+-  it('Demo hides both solves\' exact grams; Pro shows the engine-seeded + regulator-shadow gram comparison', () => {
++  it("Demo hides both solves' exact grams; Pro shows the engine-seeded + regulator-shadow gram comparison", () => {
+     const demo = render(view(), demoPolicy);
+     expect(demo).not.toContain('88.7'); // engine-seeded grams hidden
+     expect(demo).not.toContain('142.3'); // regulator-shadow grams hidden
+@@ -235,15 +324,18 @@ describe('OptimizationPreviewPanel — redaction', () => {
+ });
+ 
+ describe('OptimizationPreviewPanel — decision states', () => {
+-  it.each(['optimized', 'tradeoff', 'impossible', 'blocked', 'no_action_needed'] as OptimizationDecision[])(
+-    'renders the %s decision with its recommendation',
+-    (decision) => {
+-      const html = render(view({ finalDecision: decision }), demoPolicy);
+-      const text = visibleText(html);
+-      expect(text).toMatch(new RegExp(decision.replace(/_/g, ' ')));
+-      expect(text.length).toBeGreaterThan(20);
+-    },
+-  );
++  it.each([
++    'optimized',
++    'tradeoff',
++    'impossible',
++    'blocked',
++    'no_action_needed',
++  ] as OptimizationDecision[])('renders the %s decision with its recommendation', (decision) => {
++    const html = render(view({ finalDecision: decision }), demoPolicy);
++    const text = visibleText(html);
++    expect(text).toMatch(new RegExp(decision.replace(/_/g, ' ')));
++    expect(text.length).toBeGreaterThan(20);
++  });
+ });
+ 
+ describe('OptimizationPreviewPanel — boundary + Studio gating', () => {
+@@ -259,7 +351,9 @@ describe('OptimizationPreviewPanel — boundary + Studio gating', () => {
+       expect(/@\/engine|mapper_basement|@\/services\/|@\/data\/products/.test(src)).toBe(false);
+       expect(/calculateRecipe\s*\(|proposeAutoFix|applyAutoFix/.test(src)).toBe(false); // no engine call
+       expect(/saveRecipe|persistRecipe|\.save\(/i.test(src)).toBe(false);
+-      expect(/pac_value\s*[:=]|pod_value\s*[:=]|setProductLifecycleStatus|pi_calculated/.test(src)).toBe(false);
++      expect(
++        /pac_value\s*[:=]|pod_value\s*[:=]|setProductLifecycleStatus|pi_calculated/.test(src),
++      ).toBe(false);
+       for (const verb of ['.insert(', '.update(', '.upsert(', '.delete(', '.from(']) {
+         expect(src.includes(verb), verb).toBe(false);
+       }
+@@ -284,7 +378,9 @@ describe('OptimizationPreviewPanel — boundary + Studio gating', () => {
+   });
+ 
+   it('is capability-gated by the display policy (demo/free redacted, Pro full)', () => {
+-    expect(/optimizationDisplayPolicy\(\s*\{\s*exactCorrectionGrams,\s*technicalView\s*\}/.test(studio)).toBe(true);
++    expect(
++      /optimizationDisplayPolicy\(\s*\{\s*exactCorrectionGrams,\s*technicalView\s*\}/.test(studio),
++    ).toBe(true);
+   });
+ 
+   it('keeps the DEV debug trace gated to dev builds only (never forced on in production)', () => {
+@@ -293,7 +389,7 @@ describe('OptimizationPreviewPanel — boundary + Studio gating', () => {
+   });
+ 
+   it('requires an explicit click and never auto-optimizes', () => {
+-    expect(/onClick=\{[\s\S]*?setOptimizationView\(previewOptimization/.test(studio)).toBe(true);
++    expect(/onClick=\{[\s\S]*?setOptimizationView\(\s*previewOptimization/.test(studio)).toBe(true);
+   });
+ 
+   it('shows the production safety disclaimers (CONFIG 0.6.0 wording, Polish copy)', () => {
+@@ -318,7 +414,9 @@ describe('OptimizationPreviewPanel — boundary + Studio gating', () => {
+ 
+   it('the Studio source touches no DB / Supabase / Mapper / pac-pod / product status', () => {
+     expect(/supabase|service_role|mapper_basement/i.test(studio)).toBe(false);
+-    expect(/pac_value\s*[:=]|pod_value\s*[:=]|setProductLifecycleStatus|pi_calculated/.test(studio)).toBe(false);
++    expect(
++      /pac_value\s*[:=]|pod_value\s*[:=]|setProductLifecycleStatus|pi_calculated/.test(studio),
++    ).toBe(false);
+     for (const v of ['.insert(', '.update(', '.upsert(', '.delete(']) {
+       expect(studio.includes(v), v).toBe(false);
+     }
+diff --git a/src/features/pro-core/ProWorkbar.test.tsx b/src/features/pro-core/ProWorkbar.test.tsx
+index d5c1178..376497d 100644
+--- a/src/features/pro-core/ProWorkbar.test.tsx
++++ b/src/features/pro-core/ProWorkbar.test.tsx
+@@ -29,26 +29,44 @@ interface MockRecipeState {
+ }
+ 
+ let mockState: MockRecipeState = {
+-  savedRecipeId: null, savedRecipeName: null, currentVersionNumber: null, currentVersionDate: null,
+-  dirty: false, category: 'milk_gelato', visibleProductType: 'gelato', mode: 'premium', target_temperature_c: -12, target_batch_grams: 1000,
+-  machineKind: null, servingModeId: null, machineLabel: null,
++  savedRecipeId: null,
++  savedRecipeName: null,
++  currentVersionNumber: null,
++  currentVersionDate: null,
++  dirty: false,
++  category: 'milk_gelato',
++  visibleProductType: 'gelato',
++  mode: 'premium',
++  target_temperature_c: -12,
++  target_batch_grams: 1000,
++  machineKind: null,
++  servingModeId: null,
++  machineLabel: null,
+ };
+ const mockSave = {
+-  blocked: null, busy: false, error: null, clearError: () => {},
+-  createNew: async () => true, saveVersion: async () => true, rename: async () => true, archive: async () => true,
++  blocked: null,
++  busy: false,
++  error: null,
++  clearError: () => {},
++  createNew: async () => true,
++  saveVersion: async () => true,
++  rename: async () => true,
++  archive: async () => true,
+ };
+ 
+ vi.mock('@/stores/recipeStore', () => ({
+   useRecipeStore: (sel: (s: MockRecipeState) => unknown) => sel(mockState),
+ }));
+-vi.mock('@/features/recipes/useCanonicalRecipeSave', () => ({ useCanonicalRecipeSave: () => mockSave }));
++vi.mock('@/features/recipes/useCanonicalRecipeSave', () => ({
++  useCanonicalRecipeSave: () => mockSave,
++}));
+ 
+ const { ProWorkbar } = await import('./ProWorkbar');
+ const w = copy.proWorkbar;
+ 
+ const render = (state: Partial<MockRecipeState>) => {
+   mockState = { ...mockState, ...state };
+-  return renderToStaticMarkup(<ProWorkbar onMonitor={() => {}} onRecalc={() => {}} />);
++  return renderToStaticMarkup(<ProWorkbar />);
+ };
+ 
+ describe('ProWorkbar (sticky top workbar)', () => {
+@@ -60,32 +78,32 @@ describe('ProWorkbar (sticky top workbar)', () => {
+     expect(html).toContain(w.status.newUnsaved);
+   });
+ 
+-  it('SAVED recipe: name + `DD.MM.YYYY · vN` + „Zapisz nową wersję (vN+1)" + no name field', () => {
+-    const html = render({ savedRecipeId: 'r1', savedRecipeName: 'Pistacja Premium', currentVersionNumber: 3, currentVersionDate: '2026-07-22T10:00:00.000Z', dirty: false });
++  it('SAVED recipe: keeps the name editable and uses the same plain save action', () => {
++    const html = render({
++      savedRecipeId: 'r1',
++      savedRecipeName: 'Pistacja Premium',
++      currentVersionNumber: 3,
++      currentVersionDate: '2026-07-22T10:00:00.000Z',
++      dirty: false,
++    });
+     expect(html).toContain('Pistacja Premium');
+-    expect(html).toContain('22.07.2026 · v3');
+-    expect(html).toContain(w.saveVersion(4)); // Zapisz nową wersję (v4)
++    expect(html).toContain('data-testid="pro-workbar-name"');
++    expect(html).toContain(w.saveNew);
+     expect(html).toContain(w.status.clean); // Wszystkie zmiany zapisane
+-    expect(html).not.toContain('data-testid="pro-workbar-name"'); // no inline name field when saved
+-  });
+-
+-  it('dirty saved recipe shows „Niezapisane zmiany"', () => {
+-    const html = render({ savedRecipeId: 'r1', savedRecipeName: 'X', currentVersionNumber: 2, currentVersionDate: '2026-07-21T10:00:00.000Z', dirty: true });
+-    expect(html).toContain(w.status.dirty);
+-  });
+-
+-  it('ALWAYS renders „Przelicz z PI" (dark primary) + „Monitor PI" in the workbar', () => {
+-    for (const state of [{ savedRecipeId: null }, { savedRecipeId: 'r1', savedRecipeName: 'X', currentVersionNumber: 1, currentVersionDate: '2026-07-21T10:00:00.000Z' }]) {
+-      const html = render(state);
+-      expect(html).toContain('data-testid="pro-workbar-recalc"');
+-      expect(html).toContain(w.recalc); // Przelicz z PI
+-      expect(html).toContain('data-testid="pro-workbar-monitor"');
+-      expect(html).toContain(w.monitor); // Monitor PI
+-    }
++    expect(html).not.toMatch(/v3|wersj/i);
+   });
+ 
+   it('shows the compact recipe context (product · tier · serving · batch)', () => {
+-    const html = render({ savedRecipeId: 'r1', savedRecipeName: 'X', currentVersionNumber: 1, currentVersionDate: '2026-07-21T10:00:00.000Z', category: 'milk_gelato', mode: 'premium', target_temperature_c: -12, target_batch_grams: 1000 });
++    const html = render({
++      savedRecipeId: 'r1',
++      savedRecipeName: 'X',
++      currentVersionNumber: 1,
++      currentVersionDate: '2026-07-21T10:00:00.000Z',
++      category: 'milk_gelato',
++      mode: 'premium',
++      target_temperature_c: -12,
++      target_batch_grams: 1000,
++    });
+     expect(html).toContain('Gelato · Premium · -12 °C · 1000 g');
+   });
+ });
+@@ -97,7 +115,12 @@ describe('ProWorkbar machine-aware context (S4)', () => {
+ 
+   it('a professional selection shows the visible serving temperature', () => {
+     const ctx = contextOf(
+-      render({ machineKind: 'professional', servingModeId: 'fresh', machineLabel: pm.professionalLabel, target_batch_grams: 1000 }),
++      render({
++        machineKind: 'professional',
++        servingModeId: 'fresh',
++        machineLabel: pm.professionalLabel,
++        target_batch_grams: 1000,
++      }),
+     );
+     expect(ctx).toContain(pm.professionalLabel);
+     expect(ctx).toContain(pm.serving.fresh); // Świeże
+@@ -106,14 +129,25 @@ describe('ProWorkbar machine-aware context (S4)', () => {
+ 
+   it('a professional −12 selection shows −12°C', () => {
+     const ctx = contextOf(
+-      render({ machineKind: 'professional', servingModeId: 'temp_minus_12', machineLabel: pm.professionalLabel, target_batch_grams: 1000 }),
++      render({
++        machineKind: 'professional',
++        servingModeId: 'temp_minus_12',
++        machineLabel: pm.professionalLabel,
++        target_batch_grams: 1000,
++      }),
+     );
+     expect(ctx).toContain(pm.serving.minus12); // −12°C
+   });
+ 
+   it('a home routing shows machine + batch ONLY — no false professional temperature', () => {
+     const ctx = contextOf(
+-      render({ machineKind: 'home', servingModeId: 'ninja_gelato', machineLabel: 'Ninja CREAMi', target_temperature_c: -13, target_batch_grams: 450 }),
++      render({
++        machineKind: 'home',
++        servingModeId: 'ninja_gelato',
++        machineLabel: 'Ninja CREAMi',
++        target_temperature_c: -13,
++        target_batch_grams: 450,
++      }),
+     );
+     expect(ctx).toContain('Ninja CREAMi');
+     expect(ctx).toContain('450 g');
+@@ -126,10 +160,10 @@ describe('ProWorkbar wiring (no duplicate save; workbar mounted in /pro Receptur
+   const SRC = resolve(import.meta.dirname, '..', '..');
+   const read = (...p: string[]) => readFileSync(join(SRC, ...p), 'utf8');
+ 
+-  it('the /pro Receptura tab mounts the ProWorkbar (sticky) above the lab', () => {
++  it('the /pro recipe workbench mounts the ProWorkbar inside the editor area', () => {
+     const pro = read('pages', 'pro', 'ProWorkspacePage.tsx');
+     expect(pro).toContain('ProWorkbar');
+-    expect(pro).toContain('MonitorDrawer');
++    expect(pro).toContain('recipeBar={<ProWorkbar />');
+   });
+ 
+   it('the workbar delegates to the ONE canonical save handler (no second handler)', () => {
+diff --git a/src/features/pro-core/ProWorkbar.tsx b/src/features/pro-core/ProWorkbar.tsx
+index d5e8eb3..c0a91c6 100644
+--- a/src/features/pro-core/ProWorkbar.tsx
++++ b/src/features/pro-core/ProWorkbar.tsx
+@@ -1,14 +1,4 @@
+-/**
+- * PINGÜINO Pro — the sticky top WORKBAR (owner binding decision: primary actions always visible).
+- *
+- * One bar at the top of the Pro recipe workspace holds: the recipe name (an inline field for a NEW
+- * recipe / the name + inline rename for a saved one), the canonical SAVE directly beside it
+- * („Zapisz recepturę" → v1 / „Zapisz nową wersję" → v(n+1)), the compact recipe context, the
+- * `DD.MM.YYYY · vN` version label, the save/dirty status, and the two top-priority actions
+- * „Monitor PI" + „Przelicz z PI" (dark primary). No scrolling to the bottom to save/recalc; no
+- * second save handler — it delegates to `useCanonicalRecipeSave`. Responsive: rows wrap on mobile.
+- */
+-import { useEffect, useRef, useState } from 'react';
++import { useState } from 'react';
+ import { buttonClasses } from '@/components/ui/buttonStyles';
+ import { copy } from '@/copy/en';
+ import { cn } from '@/lib/cn';
+@@ -18,9 +8,13 @@ import { useCanonicalRecipeSave } from '@/features/recipes/useCanonicalRecipeSav
+ const w = copy.proWorkbar;
+ const pm = copy.proMachine;
+ 
+-const TIER: Record<string, string> = { eco: 'Eco', classic: 'Classic', premium: 'Premium', signature: 'Signature' };
++const TIER: Record<string, string> = {
++  eco: 'Eco',
++  classic: 'Classic',
++  premium: 'Premium',
++  signature: 'Signature',
++};
+ 
+-/** Serving-mode display labels (reuse the machine copy so there is ONE source of truth). */
+ const SERVING_LABEL: Record<string, string> = {
+   fresh: pm.serving.fresh,
+   temp_minus_11: pm.serving.minus11,
+@@ -30,23 +24,15 @@ const SERVING_LABEL: Record<string, string> = {
+   ninja_swirl: pm.serving.minus11,
+ };
+ 
+-/** Customer-facing version label: `DD.MM.YYYY · vN` from the stored ISO date (timezone-independent). */
+-function versionLabel(versionNumber: number | null, iso: string | null): string | null {
+-  if (versionNumber == null) return null;
+-  if (!iso) return `v${versionNumber}`;
+-  const [y, m, d] = iso.slice(0, 10).split('-');
+-  return y && m && d ? `${d}.${m}.${y} · v${versionNumber}` : `v${versionNumber}`;
+-}
+-
+-export function ProWorkbar({ onMonitor, onRecalc }: { onMonitor: () => void; onRecalc: () => void }) {
++/**
++ * The single recipe identity/save surface in Pro. The customer edits a title and saves the
++ * recipe; immutable persistence revisions remain an internal safety detail and are never
++ * presented as a second user workflow.
++ */
++export function ProWorkbar() {
+   const savedRecipeId = useRecipeStore((s) => s.savedRecipeId);
+   const savedRecipeName = useRecipeStore((s) => s.savedRecipeName);
+-  const currentVersionNumber = useRecipeStore((s) => s.currentVersionNumber);
+-  const currentVersionDate = useRecipeStore((s) => s.currentVersionDate);
+   const dirty = useRecipeStore((s) => s.dirty);
+-  // Owner P0 (state consistency): the workbar shows the VISIBLE product type —
+-  // the SAME field the selector edits — never a privately-labelled internal
+-  // category (the „Gelato selector / Sorbet owocowy header" mismatch).
+   const visibleProductType = useRecipeStore((s) => s.visibleProductType);
+   const mode = useRecipeStore((s) => s.mode);
+   const temperatureC = useRecipeStore((s) => s.target_temperature_c);
+@@ -57,29 +43,10 @@ export function ProWorkbar({ onMonitor, onRecalc }: { onMonitor: () => void; onR
+ 
+   const save = useCanonicalRecipeSave();
+   const linked = Boolean(savedRecipeId);
+-
+-  const [name, setName] = useState(savedRecipeName ?? '');
+-  const [note, setNote] = useState('');
+-  const [showNote, setShowNote] = useState(false);
++  const [nameDraft, setNameDraft] = useState<string | null>(null);
+   const [nameError, setNameError] = useState<string | null>(null);
+-  const [menuOpen, setMenuOpen] = useState(false);
+-  const [renaming, setRenaming] = useState(false);
+-  const [renameValue, setRenameValue] = useState('');
+-  const [saveAsNew, setSaveAsNew] = useState(false);
+-  const menuRef = useRef<HTMLDivElement | null>(null);
++  const name = nameDraft ?? savedRecipeName ?? '';
+ 
+-  useEffect(() => {
+-    if (!menuOpen) return;
+-    const onDoc = (e: MouseEvent) => {
+-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+-    };
+-    document.addEventListener('mousedown', onDoc);
+-    return () => document.removeEventListener('mousedown', onDoc);
+-  }, [menuOpen]);
+-
+-  // Machine-aware context (S4): a professional selection shows the visible serving temperature;
+-  // a Home routing shows machine + batch ONLY (never a false professional temperature); with no
+-  // machine chosen we keep the recipe's product · tier · temperature · batch.
+   let context: string;
+   if (machineKind === 'professional' && machineLabel) {
+     const serving = servingModeId ? (SERVING_LABEL[servingModeId] ?? '') : '';
+@@ -89,7 +56,6 @@ export function ProWorkbar({ onMonitor, onRecalc }: { onMonitor: () => void; onR
+   } else {
+     context = `${copy.studio.goal.productTypes[visibleProductType]} · ${TIER[mode] ?? mode} · ${temperatureC} °C · ${batchGrams} g`;
+   }
+-  const label = versionLabel(currentVersionNumber, currentVersionDate);
+ 
+   const statusKey: keyof typeof w.status = save.error
+     ? 'error'
+@@ -97,232 +63,103 @@ export function ProWorkbar({ onMonitor, onRecalc }: { onMonitor: () => void; onR
+       ? 'saving'
+       : !linked
+         ? 'newUnsaved'
+-        : dirty
++        : dirty || name.trim() !== (savedRecipeName ?? '')
+           ? 'dirty'
+           : 'clean';
+-  const statusTone =
+-    statusKey === 'error' ? 'text-status-risky' : statusKey === 'dirty' ? 'text-amber-700' : 'text-stone-500';
+-
+-  const blockedMsg = save.blocked ? w.blocked[save.blocked] : null;
+ 
+-  const doCreate = async () => {
+-    if (!name.trim()) {
++  const statusTone =
++    statusKey === 'error'
++      ? 'text-status-risky'
++      : statusKey === 'dirty'
++        ? 'text-amber-700'
++        : 'text-stone-500';
++
++  const doSave = async () => {
++    const title = name.trim();
++    if (!title) {
+       setNameError(w.emptyNameError);
+       return;
+     }
+     setNameError(null);
+-    const ok = await save.createNew(name.trim(), showNote ? note : undefined);
+-    if (ok) {
+-      setSaveAsNew(false);
+-      setShowNote(false);
+-      setNote('');
++
++    if (!linked) {
++      const created = await save.createNew(title);
++      if (created) setNameDraft(null);
++      return;
+     }
+-  };
+-  const doVersion = async () => {
+-    const ok = await save.saveVersion(showNote ? note : undefined);
+-    if (ok) {
+-      setShowNote(false);
+-      setNote('');
++
++    if (title !== (savedRecipeName ?? '')) {
++      const renamed = await save.rename(title);
++      if (!renamed) return;
+     }
+-  };
+-  const doRename = async () => {
+-    if (!renameValue.trim()) return;
+-    const ok = await save.rename(renameValue.trim());
+-    if (ok) setRenaming(false);
++    const saved = await save.saveVersion();
++    if (saved) setNameDraft(null);
+   };
+ 
+-  // NEW recipe (or explicit „save as new") → inline name field + primary save.
+-  const showNameField = !linked || saveAsNew;
++  const blockedMsg = save.blocked ? w.blocked[save.blocked] : null;
+ 
+   return (
+     <section
+-      aria-label="PINGÜINO Pro — pasek narzędzi receptury"
++      aria-label="PINGÜINO Pro — nazwa i zapis receptury"
+       data-testid="pro-workbar"
+-      // One-screen workbench (owner): ONE compact row ≤64 px on desktop — name + save +
+-      // context + version/status + Monitor + Przelicz inline; mobile keeps the wrapping rows.
+-      className="sticky top-0 z-30 border-b border-ink/10 bg-paper/95 px-4 py-3 backdrop-blur sm:px-6 lg:flex lg:flex-wrap lg:items-center lg:gap-x-4 lg:gap-y-1 lg:py-2"
+-      style={{ paddingTop: 'max(env(safe-area-inset-top), 0.75rem)' }}
++      className="border-t border-ivory/10 bg-shell px-4 py-3"
+     >
+-      {/* Row 1 — name + save (beside the name) + more */}
+-      <div className="flex flex-wrap items-center gap-2 lg:min-w-0 lg:flex-1 lg:basis-80 lg:flex-nowrap">
+-        {showNameField ? (
+-          <div className="flex min-w-0 flex-1 flex-col">
+-            <label className="sr-only" htmlFor="pro-workbar-name">{w.nameLabel}</label>
+-            <input
+-              id="pro-workbar-name"
+-              value={name}
+-              placeholder={w.namePlaceholder}
+-              onChange={(e) => {
+-                setName(e.target.value);
+-                if (nameError) setNameError(null);
+-              }}
+-              data-testid="pro-workbar-name"
+-              className="min-w-0 flex-1 rounded-md border border-ink/15 bg-paper px-3 py-2 text-sm text-ink placeholder:text-stone-400 focus:border-ink/40 focus:outline-none"
+-            />
+-          </div>
+-        ) : renaming ? (
+-          <div className="flex min-w-0 flex-1 items-center gap-2">
+-            <input
+-              value={renameValue}
+-              onChange={(e) => setRenameValue(e.target.value)}
+-              data-testid="pro-workbar-rename-input"
+-              className="min-w-0 flex-1 rounded-md border border-ink/15 bg-paper px-3 py-2 text-sm text-ink focus:border-ink/40 focus:outline-none"
+-            />
+-            <button type="button" className={buttonClasses('primary', 'sm')} onClick={() => void doRename()} disabled={save.busy}>
+-              {w.confirm}
+-            </button>
+-            <button type="button" className={buttonClasses('ghost', 'sm')} onClick={() => setRenaming(false)}>
+-              {w.cancel}
+-            </button>
+-          </div>
+-        ) : (
+-          <div className="flex min-w-0 flex-1 items-center gap-2">
+-            <span className="truncate text-base font-medium text-ink" data-testid="pro-workbar-recipe-name">
+-              {savedRecipeName ?? '—'}
+-            </span>
+-            <button
+-              type="button"
+-              aria-label={w.rename}
+-              onClick={() => {
+-                setRenameValue(savedRecipeName ?? '');
+-                setRenaming(true);
+-              }}
+-              className="rounded p-1 text-stone-400 transition-colors hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
+-            >
+-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} aria-hidden>
+-                <path d="M4 20h4L18 10l-4-4L4 16v4zM14 6l4 4" strokeLinecap="round" strokeLinejoin="round" />
+-              </svg>
+-            </button>
+-          </div>
+-        )}
+-
+-        {/* Primary save — directly beside the name */}
+-        {showNameField ? (
+-          <button
+-            type="button"
+-            onClick={() => void doCreate()}
+-            disabled={save.busy || save.blocked !== null}
+-            data-testid="pro-workbar-save"
+-            className={cn(buttonClasses('primary', 'sm'), (save.busy || save.blocked !== null) && 'opacity-50')}
+-          >
+-            {save.busy ? w.status.saving : saveAsNew ? w.saveAsNew : w.saveNew}
+-          </button>
+-        ) : (
+-          <button
+-            type="button"
+-            onClick={() => void doVersion()}
+-            disabled={save.busy || save.blocked !== null}
+-            data-testid="pro-workbar-save"
+-            className={cn(buttonClasses('primary', 'sm'), (save.busy || save.blocked !== null) && 'opacity-50')}
+-          >
+-            {save.busy ? w.status.saving : w.saveVersion((currentVersionNumber ?? 0) + 1)}
+-          </button>
+-        )}
+-
+-        {/* Secondary menu (saved recipe only) */}
+-        {linked && !saveAsNew && !renaming ? (
+-          <div className="relative" ref={menuRef}>
+-            <button
+-              type="button"
+-              aria-label={w.more}
+-              aria-haspopup="menu"
+-              aria-expanded={menuOpen}
+-              onClick={() => setMenuOpen((v) => !v)}
+-              data-testid="pro-workbar-more"
+-              className="grid h-9 w-9 place-items-center rounded-md border border-ink/15 text-ink transition-colors hover:bg-ink/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
+-            >
+-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+-                <circle cx="5" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="19" cy="12" r="1.6" />
+-              </svg>
+-            </button>
+-            {menuOpen ? (
+-              <div role="menu" className="absolute right-0 z-40 mt-1 w-56 rounded-lg border border-ink/10 bg-paper py-1 shadow-lg">
+-                <button type="button" role="menuitem" className="block w-full px-4 py-2 text-left text-sm text-ink hover:bg-ink/5" onClick={() => { setMenuOpen(false); setSaveAsNew(true); setName(''); }}>
+-                  {w.saveAsNew}
+-                </button>
+-                <button type="button" role="menuitem" className="block w-full px-4 py-2 text-left text-sm text-ink hover:bg-ink/5" onClick={() => { setMenuOpen(false); setRenameValue(savedRecipeName ?? ''); setRenaming(true); }}>
+-                  {w.rename}
+-                </button>
+-                <button type="button" role="menuitem" className="block w-full px-4 py-2 text-left text-sm text-ink hover:bg-ink/5" onClick={() => { setMenuOpen(false); setShowNote((v) => !v); }}>
+-                  {w.addNote}
+-                </button>
+-                <button type="button" role="menuitem" className="block w-full px-4 py-2 text-left text-sm text-status-risky hover:bg-ink/5" onClick={() => { setMenuOpen(false); if (window.confirm(w.archive + '?')) void save.archive(); }}>
+-                  {w.archive}
+-                </button>
+-              </div>
+-            ) : null}
+-          </div>
+-        ) : null}
+-
+-        {saveAsNew ? (
+-          <button type="button" className={buttonClasses('ghost', 'sm')} onClick={() => { setSaveAsNew(false); setName(savedRecipeName ?? ''); }}>
+-            {w.cancel}
+-          </button>
+-        ) : null}
++      <div className="flex flex-wrap items-end gap-3">
++        <label className="min-w-0 flex-1">
++          <span className="mb-1 block text-[0.62rem] font-medium tracking-label text-ivory/55 uppercase">
++            {w.nameLabel}
++          </span>
++          <input
++            value={name}
++            placeholder={w.namePlaceholder}
++            onChange={(event) => {
++              setNameDraft(event.currentTarget.value);
++              if (nameError) setNameError(null);
++            }}
++            data-testid="pro-workbar-name"
++            className="h-10 w-full min-w-0 rounded-md border border-ivory/15 bg-shell px-3 text-base font-medium text-ivory placeholder:text-ivory/35 focus:border-ivory/45 focus:outline-none"
++          />
++        </label>
++        <button
++          type="button"
++          onClick={() => void doSave()}
++          disabled={save.busy || save.blocked !== null}
++          data-testid="pro-workbar-save"
++          className={cn(
++            buttonClasses('primary', 'md'),
++            'h-10 shrink-0',
++            (save.busy || save.blocked !== null) && 'opacity-50',
++          )}
++        >
++          {save.busy ? w.status.saving : w.saveNew}
++        </button>
+       </div>
+ 
+-      {/* optional note field — the small toggle link stays INLINE in the one desktop row;
+-          only the OPEN textarea takes a (contextual) full-width second line. */}
+-      {showNameField || showNote ? (
+-        <div className={showNote ? 'mt-2 lg:order-last lg:w-full' : 'mt-2 lg:mt-0 lg:w-auto lg:shrink-0'}>
+-          {!showNote ? (
+-            <button type="button" className="text-xs text-stone-500 underline decoration-stone-300 underline-offset-2 hover:text-ink" onClick={() => setShowNote(true)}>
+-              {w.addNote}
+-            </button>
+-          ) : (
+-            <textarea
+-              rows={2}
+-              value={note}
+-              placeholder={w.noteLabel}
+-              onChange={(e) => setNote(e.target.value)}
+-              data-testid="pro-workbar-note"
+-              className="w-full resize-none rounded-md border border-ink/15 bg-paper px-3 py-2 text-sm text-ink placeholder:text-stone-400 focus:border-ink/40 focus:outline-none"
+-            />
+-          )}
+-        </div>
+-      ) : null}
++      <div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[11px]">
++        <span className="truncate text-ivory/55" data-testid="pro-workbar-context">
++          {context}
++        </span>
++        <span className={statusTone} data-testid="pro-workbar-status">
++          {w.status[statusKey]}
++        </span>
++      </div>
+ 
+       {nameError ? (
+-        <p role="alert" className="mt-1 text-xs text-status-risky lg:order-last lg:w-full" data-testid="pro-workbar-name-error">{nameError}</p>
++        <p
++          role="alert"
++          className="mt-1 text-xs text-status-risky"
++          data-testid="pro-workbar-name-error"
++        >
++          {nameError}
++        </p>
+       ) : null}
+       {save.error ? (
+-        <p role="alert" className="mt-1 text-xs text-status-risky lg:order-last lg:w-full" data-testid="pro-workbar-error">{save.error}</p>
+-      ) : null}
+-      {blockedMsg && !save.error ? (
+-        <p className="mt-1 text-xs text-stone-500 lg:mt-0 lg:w-auto lg:shrink-0 lg:whitespace-nowrap">{blockedMsg}</p>
++        <p role="alert" className="mt-1 text-xs text-status-risky" data-testid="pro-workbar-error">
++          {save.error}
++        </p>
++      ) : blockedMsg ? (
++        <p className="mt-1 text-xs text-ivory/55">{blockedMsg}</p>
+       ) : null}
+-
+-      {/* Row 2 — context + version + status, and Row 3 — Monitor + Przelicz
+-          (desktop: both inline in the ONE compact workbar row). */}
+-      <div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 lg:mt-0 lg:shrink-0 lg:flex-nowrap lg:justify-end lg:gap-x-3">
+-        <div className="min-w-0 text-xs text-stone-500 lg:flex lg:items-baseline lg:gap-x-2">
+-          <p className="truncate" data-testid="pro-workbar-context">{context}</p>
+-          <p className="mt-0.5 flex flex-wrap items-center gap-x-2 lg:mt-0 lg:flex-nowrap lg:whitespace-nowrap">
+-            {label ? <span className="text-ink" data-testid="pro-workbar-version">{label}</span> : null}
+-            <span className={statusTone} data-testid="pro-workbar-status">{w.status[statusKey]}</span>
+-            {linked && dirty ? <span className="text-amber-700">· {w.pendingRecalc}</span> : null}
+-          </p>
+-        </div>
+-
+-        <div className="flex items-center gap-2">
+-          <button
+-            type="button"
+-            onClick={onMonitor}
+-            data-testid="pro-workbar-monitor"
+-            className={buttonClasses('ghost', 'sm')}
+-          >
+-            {w.monitor}
+-          </button>
+-          <button
+-            type="button"
+-            onClick={onRecalc}
+-            data-testid="pro-workbar-recalc"
+-            className="inline-flex items-center justify-center rounded-md bg-ink px-4 py-2 text-sm font-medium text-paper transition-colors hover:bg-ink-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
+-          >
+-            {w.recalc}
+-          </button>
+-        </div>
+-      </div>
+     </section>
+   );
+ }
+diff --git a/src/features/pro-workbench/WorkbenchActionBar.tsx b/src/features/pro-workbench/WorkbenchActionBar.tsx
+index 194ec7f..15bc306 100644
+--- a/src/features/pro-workbench/WorkbenchActionBar.tsx
++++ b/src/features/pro-workbench/WorkbenchActionBar.tsx
+@@ -24,13 +24,7 @@ import {
+ const a = copy.proWorkbench.actionBar;
+ const r = copy.proWorkbar.recalcPanel;
+ 
+-export function WorkbenchActionBar({
+-  totalBatchG,
+-  onOpenPreview,
+-}: {
+-  totalBatchG: number;
+-  onOpenPreview: () => void;
+-}) {
++export function WorkbenchActionBar({ onOpenPreview }: { onOpenPreview: () => void }) {
+   const preview = useConstraintStudioStore((s) => s.preview);
+   const history = useConstraintStudioStore((s) => s.history);
+   const constraints = useConstraintStudioStore((s) => s.constraints);
+@@ -56,7 +50,16 @@ export function WorkbenchActionBar({
+         cost_priority: costPriority,
+         items,
+       }),
+-    [mode, category, temperatureC, batchGrams, machineCapacityGrams, flavorIntensity, costPriority, items],
++    [
++      mode,
++      category,
++      temperatureC,
++      batchGrams,
++      machineCapacityGrams,
++      flavorIntensity,
++      costPriority,
++      items,
++    ],
+   );
+ 
+   const undoAvailable = isUndoAvailable(history[history.length - 1], currentInput, constraints);
+@@ -66,11 +69,6 @@ export function WorkbenchActionBar({
+       className="flex min-h-11 flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-ivory/10 px-4 py-1.5"
+       data-testid="workbench-action-bar"
+     >
+-      <p className="font-mono text-[12px] tabular-nums text-ivory/70">
+-        {a.total}:{' '}
+-        <span className="text-ivory">{Math.round(totalBatchG).toLocaleString('pl-PL')} g</span>
+-      </p>
+-
+       {preview ? (
+         <span className="flex items-center gap-2" data-testid="workbench-action-preview">
+           <span className="text-[12px] text-ivory/80">{a.previewReady}</span>
+diff --git a/src/features/pro-workbench/WorkbenchSettingsLine.tsx b/src/features/pro-workbench/WorkbenchSettingsLine.tsx
+index af23a25..1987296 100644
+--- a/src/features/pro-workbench/WorkbenchSettingsLine.tsx
++++ b/src/features/pro-workbench/WorkbenchSettingsLine.tsx
+@@ -40,7 +40,7 @@ const SERVING_OPTIONS: readonly { id: string; label: string }[] = [
+ ];
+ 
+ const compactSelect =
+-  'h-8 rounded-md border border-ivory/15 bg-shell px-2 text-[12px] text-ivory transition-colors hover:border-ivory/30 focus:border-ivory/40 focus:outline-none';
++  'h-8 min-w-0 rounded-md border border-ivory/15 bg-shell px-2 text-[12px] text-ivory transition-colors hover:border-ivory/30 focus:border-ivory/40 focus:outline-none';
+ 
+ function LabeledSelect<T extends string>({
+   label,
+@@ -60,10 +60,15 @@ function LabeledSelect<T extends string>({
+   testid: string;
+ }) {
+   return (
+-    <label className="flex items-center gap-1.5" title={title ?? label}>
+-      <span className="text-[0.6rem] font-medium tracking-label text-ivory/60 uppercase">{label}</span>
++    <label
++      className="grid grid-cols-[7rem_minmax(0,1fr)] items-center gap-2"
++      title={title ?? label}
++    >
++      <span className="text-[0.6rem] font-medium tracking-label text-ivory/60 uppercase">
++        {label}
++      </span>
+       <select
+-        className={compactSelect}
++        className={`${compactSelect} w-full`}
+         value={value}
+         aria-label={label}
+         data-testid={testid}
+@@ -79,7 +84,7 @@ function LabeledSelect<T extends string>({
+   );
+ }
+ 
+-export function WorkbenchSettingsLine() {
++export function WorkbenchSettingsLine({ actualBatchG }: { actualBatchG: number }) {
+   const store = useRecipeStore();
+   const [unit, setUnit] = useState<BatchUnit>('g');
+   const batchDisplay = fromGrams(store.target_batch_grams, unit, store.category);
+@@ -99,145 +104,174 @@ export function WorkbenchSettingsLine() {
+   };
+ 
+   return (
+-    <div
+-      className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-ivory/10 px-4 py-2.5"
+-      data-testid="workbench-settings-line"
+-    >
+-      <LabeledSelect
+-        label={g.productTypeLabel}
+-        value={store.visibleProductType}
+-        options={VISIBLE_PRODUCT_TYPES}
+-        labelOf={(option) => g.productTypes[option]}
+-        onChange={(next: VisibleProductType) => store.setVisibleProductType(next)}
+-        testid="workbench-product-type"
+-      />
+-      <LabeledSelect
+-        label={g.modeLabel}
+-        title={MODES.map((mode) => `${g.modes[mode].name} — ${g.modeFocus[mode]}`).join(' · ')}
+-        value={store.mode}
+-        options={MODES}
+-        labelOf={(mode) => g.modes[mode].name}
+-        onChange={(mode) => store.setMode(mode)}
+-        testid="workbench-quality"
+-      />
+-      <LabeledSelect
+-        label={g.servingLabel}
+-        title={g.temperatureHelp}
+-        value={activeServing}
+-        options={SERVING_OPTIONS.map((option) => option.id)}
+-        labelOf={(id) => SERVING_OPTIONS.find((option) => option.id === id)?.label ?? id}
+-        onChange={pickServing}
+-        testid="workbench-serving"
+-      />
+-
+-      {/* Batch size + unit — the strongest numeric input of the line. */}
+-      <label className="flex items-center gap-1.5" title={g.batchLabel}>
+-        <span className="text-[0.6rem] font-medium tracking-label text-ivory/60 uppercase">
+-          {g.batchLabel}
++    <div className="border-t border-ivory/10 px-4 py-3" data-testid="workbench-settings-line">
++      <div className="flex items-center justify-between gap-3">
++        <h3 className="text-[0.66rem] font-semibold tracking-label text-ivory/60 uppercase">
++          {copy.proWorkbench.profile.settingsTitle}
++        </h3>
++        <span className="flex items-center gap-2">
++          <Link
++            to="/pro/machine"
++            className="text-[11px] text-ivory/60 underline decoration-ivory/25 underline-offset-4 transition-colors hover:text-ivory"
++            data-testid="workbench-machine-link"
++          >
++            {wb.machineLink}
++          </Link>
++          <details className="relative" data-testid="workbench-advanced">
++            <summary className="cursor-pointer list-none rounded border border-ivory/15 px-2 py-0.5 text-[11px] text-ivory/60 transition-colors hover:border-ivory/40 hover:text-ivory">
++              {wb.advanced}
++            </summary>
++            <div className="absolute right-0 z-40 mt-1 w-72 rounded-lg border border-ivory/15 bg-shell p-4 shadow-lg">
++              <p className="text-xs leading-relaxed text-ivory/60">{g.advancedNote}</p>
++              <div className="mt-3 space-y-3">
++                <label className="flex flex-col gap-1.5">
++                  <span className="text-[0.6rem] font-medium tracking-label text-ivory/60 uppercase">
++                    {g.machineLabel}
++                  </span>
++                  <input
++                    type="number"
++                    min={0}
++                    placeholder={g.machineNone}
++                    className={cn(compactSelect, 'w-full text-right font-mono tabular-nums')}
++                    value={store.machine_capacity_grams ?? ''}
++                    onChange={(event) => {
++                      const raw = event.currentTarget.value;
++                      store.setMachineCapacity(raw === '' ? null : Math.max(0, Number(raw)));
++                    }}
++                  />
++                </label>
++                <label className="flex items-center justify-between gap-2">
++                  <span className="text-[0.6rem] font-medium tracking-label text-ivory/60 uppercase">
++                    {g.flavorLabel}
++                  </span>
++                  <select
++                    className={compactSelect}
++                    value={store.flavor_intensity}
++                    aria-label={g.flavorLabel}
++                    onChange={(event) =>
++                      store.setFlavorIntensity(
++                        event.currentTarget.value as (typeof FLAVORS)[number],
++                      )
++                    }
++                  >
++                    {FLAVORS.map((option) => (
++                      <option key={option} value={option}>
++                        {g.flavorOptions[option]}
++                      </option>
++                    ))}
++                  </select>
++                </label>
++                <label className="flex items-center justify-between gap-2">
++                  <span className="text-[0.6rem] font-medium tracking-label text-ivory/60 uppercase">
++                    {g.costLabel}
++                  </span>
++                  <select
++                    className={compactSelect}
++                    value={store.cost_priority}
++                    aria-label={g.costLabel}
++                    onChange={(event) =>
++                      store.setCostPriority(event.currentTarget.value as (typeof COSTS)[number])
++                    }
++                  >
++                    {COSTS.map((option) => (
++                      <option key={option} value={option}>
++                        {g.costOptions[option]}
++                      </option>
++                    ))}
++                  </select>
++                </label>
++              </div>
++            </div>
++          </details>
+         </span>
+-        <input
+-          type="number"
+-          min={0}
+-          className={cn(compactSelect, 'w-24 text-right font-mono tabular-nums')}
+-          value={Number.isFinite(batchDisplay) ? Number(batchDisplay.toFixed(unit === 'g' ? 0 : 3)) : 0}
+-          data-testid="workbench-batch"
+-          onChange={(event) =>
+-            store.setBatchGrams(toGrams(event.currentTarget.valueAsNumber || 0, unit, store.category))
+-          }
++      </div>
++      <div className="mt-2 space-y-1.5">
++        <LabeledSelect
++          label={g.modeLabel}
++          title={MODES.map((mode) => `${g.modes[mode].name} — ${g.modeFocus[mode]}`).join(' · ')}
++          value={store.mode}
++          options={MODES}
++          labelOf={(mode) => g.modes[mode].name}
++          onChange={(mode) => store.setMode(mode)}
++          testid="workbench-quality"
++        />
++        <LabeledSelect
++          label={g.productTypeLabel}
++          value={store.visibleProductType}
++          options={VISIBLE_PRODUCT_TYPES}
++          labelOf={(option) => g.productTypes[option]}
++          onChange={(next: VisibleProductType) => store.setVisibleProductType(next)}
++          testid="workbench-product-type"
+         />
+-        <select
+-          className={compactSelect}
+-          value={unit}
+-          aria-label={g.batchLabel}
+-          onChange={(event) => setUnit(event.currentTarget.value as BatchUnit)}
+-        >
+-          {BATCH_UNITS.map((batchUnit) => (
+-            <option key={batchUnit} value={batchUnit}>
+-              {batchUnit}
+-            </option>
+-          ))}
+-        </select>
+-      </label>
+ 
+-      {/* Machine — the S4 section keeps its own page; the line links, never duplicates. */}
+-      <Link
+-        to="/pro/machine"
+-        className="text-[12px] text-ivory/70 underline decoration-ivory/25 underline-offset-4 transition-colors hover:text-ivory"
+-        data-testid="workbench-machine-link"
+-      >
+-        {wb.machineLink}
+-      </Link>
++        <label
++          className="grid grid-cols-[7rem_minmax(0,1fr)] items-center gap-2"
++          title={g.batchLabel}
++        >
++          <span className="text-[0.6rem] font-medium tracking-label text-ivory/60 uppercase">
++            {g.batchLabel}
++          </span>
++          <span className="flex min-w-0 items-center gap-1.5">
++            <input
++              type="number"
++              min={0}
++              className={cn(compactSelect, 'w-full text-right font-mono tabular-nums')}
++              value={
++                Number.isFinite(batchDisplay)
++                  ? Number(batchDisplay.toFixed(unit === 'g' ? 0 : 3))
++                  : 0
++              }
++              data-testid="workbench-batch"
++              onChange={(event) =>
++                store.setBatchGrams(
++                  toGrams(event.currentTarget.valueAsNumber || 0, unit, store.category),
++                )
++              }
++            />
++            <select
++              className={compactSelect}
++              value={unit}
++              aria-label={g.batchLabel}
++              onChange={(event) => setUnit(event.currentTarget.value as BatchUnit)}
++            >
++              {BATCH_UNITS.map((batchUnit) => (
++                <option key={batchUnit} value={batchUnit}>
++                  {batchUnit}
++                </option>
++              ))}
++            </select>
++          </span>
++        </label>
+ 
+-      {/* Advanced goal tuning — the FULL former „Ustawienia zaawansowane" controls in a
+-          compact popover (explicit, never a silent override of the tier). */}
+-      <details className="relative" data-testid="workbench-advanced">
+-        <summary className="cursor-pointer list-none rounded-md border border-ivory/15 px-2.5 py-1.5 text-[12px] text-ivory/70 transition-colors hover:border-ivory/40 hover:text-ivory">
+-          {wb.advanced}
+-        </summary>
+-        <div className="absolute right-0 z-40 mt-1 w-72 rounded-lg border border-ivory/15 bg-shell p-4 shadow-lg">
+-          <p className="text-xs leading-relaxed text-ivory/60">{g.advancedNote}</p>
+-          <div className="mt-3 space-y-3">
+-            <label className="flex flex-col gap-1.5">
+-              <span className="text-[0.6rem] font-medium tracking-label text-ivory/60 uppercase">
+-                {g.machineLabel}
+-              </span>
+-              <input
+-                type="number"
+-                min={0}
+-                placeholder={g.machineNone}
+-                className={cn(compactSelect, 'w-full text-right font-mono tabular-nums')}
+-                value={store.machine_capacity_grams ?? ''}
+-                onChange={(event) => {
+-                  const raw = event.currentTarget.value;
+-                  store.setMachineCapacity(raw === '' ? null : Math.max(0, Number(raw)));
+-                }}
+-              />
+-            </label>
+-            <label className="flex items-center justify-between gap-2">
+-              <span className="text-[0.6rem] font-medium tracking-label text-ivory/60 uppercase">
+-                {g.flavorLabel}
+-              </span>
+-              <select
+-                className={compactSelect}
+-                value={store.flavor_intensity}
+-                aria-label={g.flavorLabel}
+-                onChange={(event) =>
+-                  store.setFlavorIntensity(event.currentTarget.value as (typeof FLAVORS)[number])
+-                }
+-              >
+-                {FLAVORS.map((option) => (
+-                  <option key={option} value={option}>
+-                    {g.flavorOptions[option]}
+-                  </option>
+-                ))}
+-              </select>
+-            </label>
+-            <label className="flex items-center justify-between gap-2">
+-              <span className="text-[0.6rem] font-medium tracking-label text-ivory/60 uppercase">
+-                {g.costLabel}
+-              </span>
+-              <select
+-                className={compactSelect}
+-                value={store.cost_priority}
+-                aria-label={g.costLabel}
+-                onChange={(event) =>
+-                  store.setCostPriority(event.currentTarget.value as (typeof COSTS)[number])
+-                }
+-              >
+-                {COSTS.map((option) => (
+-                  <option key={option} value={option}>
+-                    {g.costOptions[option]}
+-                  </option>
+-                ))}
+-              </select>
+-            </label>
+-          </div>
++        <div
++          className="grid grid-cols-[7rem_minmax(0,1fr)] items-center gap-2 bg-ivory/[0.07] px-2 py-2"
++          data-testid="profile-actual-batch"
++        >
++          <span className="text-[0.6rem] font-medium tracking-label text-ivory/60 uppercase">
++            {copy.proWorkbench.profile.actualBatch}
++          </span>
++          <span className="text-right font-mono text-sm font-semibold tabular-nums text-ivory">
++            {actualBatchG.toLocaleString('pl-PL', { maximumFractionDigits: 1 })} g
++          </span>
+         </div>
+-      </details>
++
++        <LabeledSelect
++          label={g.servingLabel}
++          title={g.temperatureHelp}
++          value={activeServing}
++          options={SERVING_OPTIONS.map((option) => option.id)}
++          labelOf={(id) => SERVING_OPTIONS.find((option) => option.id === id)?.label ?? id}
++          onChange={pickServing}
++          testid="workbench-serving"
++        />
++      </div>
+ 
+       {/* Honest Proteinowe state — inline, compact, never hidden. */}
+       {!isSupportedVisibleType(store.visibleProductType) ? (
+-        <p className="w-full text-[11px] leading-snug text-amber-300/90" data-testid="protein-unsupported">
++        <p
++          className="w-full text-[11px] leading-snug text-amber-300/90"
++          data-testid="protein-unsupported"
++        >
+           {g.proteinUnsupported}
+         </p>
+       ) : null}
+diff --git a/src/features/pro-workbench/monitorParity.test.tsx b/src/features/pro-workbench/monitorParity.test.tsx
+index afe7513..1c38ae4 100644
+--- a/src/features/pro-workbench/monitorParity.test.tsx
++++ b/src/features/pro-workbench/monitorParity.test.tsx
+@@ -19,7 +19,12 @@ import { readFileSync } from 'node:fs';
+ import { join, resolve } from 'node:path';
+ import { renderToStaticMarkup } from 'react-dom/server';
+ import { describe, expect, it, vi } from 'vitest';
+-import { calculateRecipe, proposeCorrections, type ProductCategory, type RecipeInput } from '@/engine';
++import {
++  calculateRecipe,
++  proposeCorrections,
++  type ProductCategory,
++  type RecipeInput,
++} from '@/engine';
+ import { copy } from '@/copy/en';
+ import { recipeContext } from '@/features/studio/buildRecipeInput';
+ import {
+@@ -120,7 +125,15 @@ describe('B1 parity inventory — every pre-redesign element, data-connected', (
+       expect(text, module).toContain(module);
+     }
+     for (const id of [
+-      'temperatura', 'cukry', 'woda', 'tluszcze', 'bialka', 'ciala_stale', 'stabilizacja', 'specjalne', 'expert',
++      'temperatura',
++      'cukry',
++      'woda',
++      'tluszcze',
++      'bialka',
++      'ciala_stale',
++      'stabilizacja',
++      'specjalne',
++      'expert',
+     ]) {
+       expect(html).toContain(`data-testid="user-monitor-module-${id}"`);
+     }
+@@ -229,9 +242,9 @@ describe('B4 — advanced marked, summary sacrosanct', () => {
+ describe('nothing removed — one content component everywhere', () => {
+   it('MonitorDrawer and the desktop panel both mount MonitorPanelContent (single source)', () => {
+     const drawer = read('features', 'pro-core', 'MonitorDrawer.tsx');
+-    const surface = read('features', 'studio', 'StudioEngineSurface.tsx');
++    const profile = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
+     expect(drawer).toContain('<MonitorPanelContent');
+-    expect(surface).toContain('<MonitorPanelContent');
++    expect(profile).toContain('<MonitorPanelContent');
+     // The panel content mounts every historical module component.
+     const content = read('features', 'pro-workbench', 'MonitorPanelContent.tsx');
+     for (const module of [
+diff --git a/src/features/pro-workbench/monitorParityVerified.test.tsx b/src/features/pro-workbench/monitorParityVerified.test.tsx
+index 1441c34..6a5559f 100644
+--- a/src/features/pro-workbench/monitorParityVerified.test.tsx
++++ b/src/features/pro-workbench/monitorParityVerified.test.tsx
+@@ -73,7 +73,7 @@ const { MonitorDrawer } = await import('@/features/pro-core/MonitorDrawer');
+ /* ─────────────────────────── harness ─────────────────────────── */
+ 
+ /** The REAL product route — the Monitor the owner actually opens. */
+-function renderWorkbench(path = '/pro/recipe'): string {
++function renderWorkbench(path = '/pro/monitor'): string {
+   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+   return renderToStaticMarkup(
+     <QueryClientProvider client={client}>
+@@ -91,7 +91,10 @@ function renderWorkbench(path = '/pro/recipe'): string {
+  * sibling region) is the fallback bound. Neither belongs to the Monitor. */
+ function monitorPanelOf(pageHtml: string): string {
+   const start = pageHtml.indexOf('data-testid="pro-monitor-panel"');
+-  expect(start, 'the LIVE Monitor panel must be mounted by the real /pro workbench').toBeGreaterThan(-1);
++  expect(
++    start,
++    'the LIVE Monitor panel must be mounted by the real /pro workbench',
++  ).toBeGreaterThan(-1);
+   const bounds = ['data-testid="workbench-action-bar"', 'data-testid="pro-review-zone"']
+     .map((marker) => pageHtml.indexOf(marker, start))
+     .filter((index) => index > -1);
+@@ -101,7 +104,11 @@ function monitorPanelOf(pageHtml: string): string {
+ /** Markup attribute values arrive HTML-escaped (`&` → `&amp;`); Tailwind arbitrary
+  * variants contain `&`, so class assertions must compare unescaped text. */
+ const unescapeHtml = (html: string) =>
+-  html.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"');
++  html
++    .replace(/&amp;/g, '&')
++    .replace(/&lt;/g, '<')
++    .replace(/&gt;/g, '>')
++    .replace(/&quot;/g, '"');
+ 
+ const visibleText = (html: string) =>
+   html
+@@ -188,7 +195,12 @@ const MONITOR_PARITY_INVENTORY: readonly InventoryRow[] = [
+     id: 'P03',
+     element: 'Assessed coverage („Oceniono N z M obszarów")',
+     before: 'OverallScoreCard `score-coverage`',
+-    text: [copy.studio.overall.coverage(RESULT.indicators.filter((i) => i.band != null).length, RESULT.indicators.length)],
++    text: [
++      copy.studio.overall.coverage(
++        RESULT.indicators.filter((i) => i.band != null).length,
++        RESULT.indicators.length,
++      ),
++    ],
+   },
+   {
+     id: 'P04',
+@@ -336,7 +348,13 @@ const MONITOR_PARITY_INVENTORY: readonly InventoryRow[] = [
+     id: 'P25',
+     element: 'Band provenance + stabilizer dosage provenance',
+     before: 'OwnerDiagnosticPanel A9/Phase-9 rows',
+-    text: [d.bandSource, d.hardViolations, d.softViolations, d.stabilizerDosage, d.stabilizerDosageProvenance],
++    text: [
++      d.bandSource,
++      d.hardViolations,
++      d.softViolations,
++      d.stabilizerDosage,
++      d.stabilizerDosageProvenance,
++    ],
+   },
+ ];
+ 
+@@ -345,12 +363,16 @@ describe('MONITOR PARITY — the re-derived inventory, executable against the RE
+     '%s — %s',
+     (_id, _element, row) => {
+       for (const testId of row.testIds ?? []) {
+-        expect(PANEL, `${row.id}: missing DOM anchor data-testid="${testId}" (was: ${row.before})`).toContain(
+-          `data-testid="${testId}"`,
+-        );
++        expect(
++          PANEL,
++          `${row.id}: missing DOM anchor data-testid="${testId}" (was: ${row.before})`,
++        ).toContain(`data-testid="${testId}"`);
+       }
+       for (const text of row.text ?? []) {
+-        expect(PANEL_TEXT, `${row.id}: missing visible text "${text}" (was: ${row.before})`).toContain(text);
++        expect(
++          PANEL_TEXT,
++          `${row.id}: missing visible text "${text}" (was: ${row.before})`,
++        ).toContain(text);
+       }
+     },
+   );
+@@ -373,11 +395,16 @@ describe('the mounted Monitor receives the CURRENT draft engine result', () => {
+     // re-pins the guarantee the retired flat `PIPanel` used to carry (all 11 metrics).
+     expect(RESULT.indicators.length).toBeGreaterThanOrEqual(11);
+     for (const indicator of RESULT.indicators) {
+-      const presentation = FRIENDLY_METRIC_PRESENTATION[indicator.key as keyof typeof FRIENDLY_METRIC_PRESENTATION];
+-      expect(presentation, `engine indicator "${indicator.key}" has no Monitor presentation`).toBeDefined();
+-      expect(PANEL_TEXT, `engine indicator "${indicator.key}" is not rendered in the Monitor`).toContain(
+-        presentation.label,
+-      );
++      const presentation =
++        FRIENDLY_METRIC_PRESENTATION[indicator.key as keyof typeof FRIENDLY_METRIC_PRESENTATION];
++      expect(
++        presentation,
++        `engine indicator "${indicator.key}" has no Monitor presentation`,
++      ).toBeDefined();
++      expect(
++        PANEL_TEXT,
++        `engine indicator "${indicator.key}" is not rendered in the Monitor`,
++      ).toContain(presentation.label);
+     }
+   });
+ 
+@@ -394,7 +421,10 @@ describe('the mounted Monitor receives the CURRENT draft engine result', () => {
+       ['sugar.lactose_g', proNumber(RESULT.sugar.lactose_g)],
+     ];
+     for (const [field, formatted] of expectations) {
+-      expect(PANEL_TEXT, `${field} = ${formatted} is not rendered by the mounted Monitor`).toContain(formatted);
++      expect(
++        PANEL_TEXT,
++        `${field} = ${formatted} is not rendered by the mounted Monitor`,
++      ).toContain(formatted);
+     }
+   });
+ 
+@@ -411,7 +441,9 @@ describe('the mounted Monitor receives the CURRENT draft engine result', () => {
+     const costs = RESULT.costs;
+     if (costs !== null) {
+       if (costs.cost_per_kg !== null) {
+-        expect(PANEL_TEXT, 'koszt/kg must be the engine cost').toContain(costs.cost_per_kg.toFixed(2));
++        expect(PANEL_TEXT, 'koszt/kg must be the engine cost').toContain(
++          costs.cost_per_kg.toFixed(2),
++        );
+       }
+       if (costs.total_cost !== null) {
+         expect(PANEL_TEXT, 'KOSZT PARTII must be the engine total_cost').toContain(
+@@ -478,7 +510,15 @@ describe('no content is lost to layout', () => {
+   it('the mobile bottom sheet carries the SAME Monitor content as the desktop panel', () => {
+     const drawer = renderToStaticMarkup(<MonitorDrawer open onClose={() => {}} />);
+     const drawerIds = new Set(testIdsOf(drawer));
+-    const missing = testIdsOf(PANEL).filter((id) => id !== 'pro-monitor-panel' && !drawerIds.has(id));
++    const routeContainerIds = new Set([
++      'pro-monitor-panel',
++      'pro-profile-panel',
++      'pro-context-tabs',
++      'pro-context-monitor',
++    ]);
++    const missing = testIdsOf(PANEL).filter(
++      (id) => !routeContainerIds.has(id) && !drawerIds.has(id),
++    );
+     expect(missing, 'the bottom sheet must not be a reduced Monitor').toEqual([]);
+     // …and the sheet owns exactly ONE scroll surface.
+     expect(drawer).toContain('overflow-y-auto');
+@@ -530,7 +570,9 @@ describe('review marking — advanced marked, core never optional', () => {
+       PAGE.indexOf('data-testid="pro-monitor-panel"'),
+     );
+     for (const id of ['assistant', 'flow-guide', 'optimization', 'branch-previews']) {
+-      expect(PAGE, `review-zone module "${id}" was removed`).toContain(`data-testid="review-marked-${id}"`);
++      expect(PAGE, `review-zone module "${id}" was removed`).toContain(
++        `data-testid="review-marked-${id}"`,
++      );
+     }
+   });
+ });
+@@ -550,14 +592,19 @@ describe('the one-screen workbench survives the complete Monitor', () => {
+     expect(editor).toBeGreaterThan(region);
+     expect(monitor).toBeGreaterThan(editor);
+     // Primary actions sit inside the viewport region, BEFORE the below-fold review zone.
+-    expect(actionBar).toBeGreaterThan(monitor);
++    expect(actionBar).toBeGreaterThan(editor);
++    expect(actionBar).toBeLessThan(monitor);
+     expect(actionBar).toBeLessThan(zone);
+   });
+ 
+   it('the Monitor keeps its own scroll surface so its growth never scrolls the page', () => {
+-    const asideTag = PAGE.slice(PAGE.lastIndexOf('<aside', PAGE.indexOf('data-testid="pro-monitor-panel"')));
++    const asideTag = PAGE.slice(
++      PAGE.lastIndexOf('<aside', PAGE.indexOf('data-testid="pro-monitor-panel"')),
++    );
+     const openTag = asideTag.slice(0, asideTag.indexOf('>'));
+     expect(openTag, 'the Monitor column owns its scroll').toContain('lg:overflow-y-auto');
+-    expect(openTag, 'a flex child must be allowed to shrink or it pushes the page').toContain('min-h-0');
++    expect(openTag, 'a flex child must be allowed to shrink or it pushes the page').toContain(
++      'min-h-0',
++    );
+   });
+ });
+diff --git a/src/features/recipes/useCanonicalRecipeSave.ts b/src/features/recipes/useCanonicalRecipeSave.ts
+index 54932dc..1603164 100644
+--- a/src/features/recipes/useCanonicalRecipeSave.ts
++++ b/src/features/recipes/useCanonicalRecipeSave.ts
+@@ -1,15 +1,21 @@
+ /**
+  * THE ONE canonical recipe-save handler (S2/workbar). Every save entry point — the top workbar's
+- * inline name+save AND the SaveRecipeDialog — calls THIS hook, so there is a single persistence
+- * path (pro-core RecipesRepository: atomic create-with-v1 / DB-derived next-version / rename /
+- * archive) and a single dirty/version source (recipeStore). Never a second save handler.
++ * inline name+save, the SaveRecipeDialog AND the customer `/start` Home save — calls THIS hook, so
++ * there is a single persistence path (pro-core RecipesRepository: atomic create-with-v1 /
++ * DB-derived next-version / rename / archive). Never a second save handler.
++ *
++ * TWO PAYLOAD SOURCES, ONE HANDLER (Home-save repair): `/pro` saves the recipe-store draft and
++ * owns its dirty/version link (the default, unchanged). The customer `/start` shell owns its own
++ * engine result and NOT the Pro draft, so it passes an explicit `buildInput` + `target` and
++ * `linkStoreDraft: false` — a Home save can therefore never hijack an unrelated Pro draft's
++ * aggregate link, and there is still exactly one persistence path.
+  *
+  * HONEST failure: any backend error is surfaced (kept in `error`) and NEVER a false "saved" — the
+  * caller keeps the draft + name + note and can retry; the visible version is not incremented.
+  */
+ import { useMemo, useState } from 'react';
+ import { useQueryClient } from '@tanstack/react-query';
+-import { CONFIG_VERSION, ENGINE_VERSION } from '@/engine';
++import { CONFIG_VERSION, ENGINE_VERSION, type RecipeInput } from '@/engine';
+ import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
+ import { recipeCapabilitiesFor } from '@/features/pro-core/proCoreCapabilities';
+ import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
+@@ -17,10 +23,56 @@ import { resolveRecipesRepository } from '@/features/pro-core/proCoreRecipeRepo'
+ import { useAuthStore } from '@/stores/authStore';
+ import { useRecipeStore } from '@/stores/recipeStore';
+ 
+-const TRACE = { engineVersion: ENGINE_VERSION, configVersion: CONFIG_VERSION, mapperDatasetVersion: null };
++const TRACE = {
++  engineVersion: ENGINE_VERSION,
++  configVersion: CONFIG_VERSION,
++  mapperDatasetVersion: null,
++};
++
++/** The DEFAULT payload source: the Pro recipe-store draft (`/pro` behaviour, unchanged). */
++const buildRecipeInputFromStore = (): RecipeInput => buildRecipeInput(useRecipeStore.getState());
+ 
+ export type SaveBlockedReason = 'signin' | 'unavailable' | 'plan' | null;
+ 
++/** The aggregate a save appends versions to / renames / archives. */
++export interface CanonicalSaveTarget {
++  recipeId: string;
++  title: string;
++}
++
++export interface CanonicalRecipeSaveOptions {
++  /**
++   * Explicit payload builder — the calling surface's OWN recipe. Default: the Pro recipe-store
++   * draft through `buildRecipeInput` (the machine-context gate seam), i.e. today's `/pro`
++   * behaviour, unchanged.
++   */
++  buildInput?: () => RecipeInput;
++  /**
++   * Explicit linked aggregate. `undefined` (default) = the recipe store's link; `null` = this
++   * surface has no linked aggregate; an object = save versions into THAT recipe.
++   */
++  target?: CanonicalSaveTarget | null;
++  /**
++   * Write the successful save back onto the Pro recipe-store draft link (default true). A surface
++   * that does not own that draft passes false.
++   */
++  linkStoreDraft?: boolean;
++}
++
++/**
++ * Pure target resolution — pinned by tests so the `/pro` default (the store's linked aggregate)
++ * can never silently change when another surface passes its own target.
++ */
++export function resolveSaveTarget(
++  option: CanonicalSaveTarget | null | undefined,
++  store: { savedRecipeId: string | null; savedRecipeName: string | null },
++): CanonicalSaveTarget | null {
++  if (option !== undefined) return option;
++  return store.savedRecipeId
++    ? { recipeId: store.savedRecipeId, title: store.savedRecipeName ?? '' }
++    : null;
++}
++
+ export interface CanonicalRecipeSave {
+   /** Why a save cannot proceed right now (null = OK to save). */
+   blocked: SaveBlockedReason;
+@@ -37,7 +89,9 @@ export interface CanonicalRecipeSave {
+   archive: () => Promise<boolean>;
+ }
+ 
+-export function useCanonicalRecipeSave(): CanonicalRecipeSave {
++export function useCanonicalRecipeSave(
++  options: CanonicalRecipeSaveOptions = {},
++): CanonicalRecipeSave {
+   const persona = useProCorePersona();
+   const caps = recipeCapabilitiesFor(persona);
+   const queryClient = useQueryClient();
+@@ -48,10 +102,19 @@ export function useCanonicalRecipeSave(): CanonicalRecipeSave {
+   const authed = useAuthStore((s) => s.status) === 'authed';
+   const ownerId = authUserId ?? (isLocalDev ? 'local-dev-user' : '');
+ 
+-  const savedRecipeId = useRecipeStore((s) => s.savedRecipeId);
+-  const savedRecipeName = useRecipeStore((s) => s.savedRecipeName);
++  const storeSavedRecipeId = useRecipeStore((s) => s.savedRecipeId);
++  const storeSavedRecipeName = useRecipeStore((s) => s.savedRecipeName);
+   const markSaved = useRecipeStore((s) => s.markSaved);
+ 
++  const linkStoreDraft = options.linkStoreDraft ?? true;
++  const buildInput = options.buildInput ?? (() => buildRecipeInputFromStore());
++  const target = resolveSaveTarget(options.target, {
++    savedRecipeId: storeSavedRecipeId,
++    savedRecipeName: storeSavedRecipeName,
++  });
++  const savedRecipeId = target?.recipeId ?? null;
++  const savedRecipeName = target?.title ?? null;
++
+   const [busy, setBusy] = useState(false);
+   const [error, setError] = useState<string | null>(null);
+ 
+@@ -100,13 +163,15 @@ export function useCanonicalRecipeSave(): CanonicalRecipeSave {
+           ownerUserId: ownerId,
+           title: title.trim(),
+           notes: note?.trim() || null,
+-          recipeInput: buildRecipeInput(useRecipeStore.getState()),
++          recipeInput: buildInput(),
+           trace: TRACE,
+           source: 'manual',
+           by: ownerId,
+           capabilities: caps,
+         });
+-        markSaved(recipe.recipeId, recipe.title, version.versionNumber, version.createdAt);
++        if (linkStoreDraft) {
++          markSaved(recipe.recipeId, recipe.title, version.versionNumber, version.createdAt);
++        }
+         return recipe.recipeId;
+       }),
+     saveVersion: (note) =>
+@@ -114,12 +179,21 @@ export function useCanonicalRecipeSave(): CanonicalRecipeSave {
+         if (!savedRecipeId) throw new Error('Brak powiązanej receptury.');
+         const version = await repository!.saveNewVersion(
+           savedRecipeId,
+-          buildRecipeInput(useRecipeStore.getState()),
++          buildInput(),
+           TRACE,
+           ownerId,
+-          { note: note?.trim() || undefined },
++          {
++            note: note?.trim() || undefined,
++          },
+         );
+-        markSaved(savedRecipeId, savedRecipeName ?? '', version.versionNumber, version.createdAt);
++        if (linkStoreDraft) {
++          markSaved(
++            savedRecipeId,
++            useRecipeStore.getState().savedRecipeName ?? savedRecipeName ?? '',
++            version.versionNumber,
++            version.createdAt,
++          );
++        }
+         return savedRecipeId;
+       }),
+     rename: (title) =>
+@@ -128,7 +202,7 @@ export function useCanonicalRecipeSave(): CanonicalRecipeSave {
+         const recipe = await repository!.renameRecipe(savedRecipeId, title.trim());
+         // Rename is recipe-level metadata ONLY — update the name; never touch dirty/version
+         // (unsaved content changes must survive a rename, and a rename is not a content version).
+-        useRecipeStore.setState({ savedRecipeName: recipe.title });
++        if (linkStoreDraft) useRecipeStore.setState({ savedRecipeName: recipe.title });
+         return savedRecipeId;
+       }),
+     archive: () =>
+diff --git a/src/features/shell/canonicalPro.test.tsx b/src/features/shell/canonicalPro.test.tsx
+index 5adbccd..2f5f9ef 100644
+--- a/src/features/shell/canonicalPro.test.tsx
++++ b/src/features/shell/canonicalPro.test.tsx
+@@ -111,7 +111,9 @@ describe('canonical PINGÜINO Pro — menu (proofs 4–6, 17–18)', () => {
+     expect(drawer).toContain('right-0');
+     expect(drawer.includes('left-0')).toBe(false);
+     expect(read('app', 'router.tsx').includes('ShellLayout')).toBe(false);
+-    expect(read('components', 'shared', 'DestinationSurface.tsx').includes('ShellLayout')).toBe(false);
++    expect(read('components', 'shared', 'DestinationSurface.tsx').includes('ShellLayout')).toBe(
++      false,
++    );
+   });
+ 
+   it('18. no /dev/* link appears in the canonical navigation', () => {
+@@ -139,9 +141,10 @@ describe('canonical PINGÜINO Pro — workbar (proofs 7–15)', () => {
+     expect(html).toContain(copy.proWorkbar.saveNew); // Zapisz recepturę
+   });
+ 
+-  it('11. Monitor PI is visible at the top', () => {
+-    expect(html).toContain('data-testid="pro-workbar-monitor"');
+-    expect(html).toContain(copy.proWorkbar.monitor);
++  it('11. Monitor is visible in the top context tabs', () => {
++    expect(html).toContain('data-testid="pro-context-tabs"');
++    expect(html).toContain('href="/pro/monitor"');
++    expect(html).toContain(copy.proWorkbench.profile.tabs.monitor);
+   });
+ 
+   it('12. Przelicz z PI is visible at the top', () => {
+@@ -173,7 +176,9 @@ describe('canonical PINGÜINO Pro — workbar (proofs 7–15)', () => {
+     // …and the page mounts no second save dialog or legacy version-save control.
+     const page = read('pages', 'pro', 'ProWorkspacePage.tsx');
+     expect(page.includes('SaveRecipeDialog')).toBe(false);
+-    expect(read('features', 'studio', 'StudioEngineSurface.tsx').includes('SaveVersionControl')).toBe(false);
++    expect(
++      read('features', 'studio', 'StudioEngineSurface.tsx').includes('SaveVersionControl'),
++    ).toBe(false);
+   });
+ });
+ 
+diff --git a/src/features/studio/StudioEngineSurface.tsx b/src/features/studio/StudioEngineSurface.tsx
+index cac70f3..022d231 100644
+--- a/src/features/studio/StudioEngineSurface.tsx
++++ b/src/features/studio/StudioEngineSurface.tsx
+@@ -21,10 +21,12 @@ import { engineRouteLabel } from '@/features/studio/engineRouteLabel';
+ import { useStudioResult } from '@/features/studio/useStudioResult';
+ import { LockedCalculatorPreview } from '@/features/studio/locked/LockedCalculatorPreview';
+ import { ReviewMarkedModule } from '@/features/design-review/ReviewMarkedModule';
+-import { MonitorPanelContent } from '@/features/pro-workbench/MonitorPanelContent';
+ import { ProReviewZone, type ReviewInventoryRow } from '@/features/pro-workbench/ProReviewZone';
+ import { WorkbenchActionBar } from '@/features/pro-workbench/WorkbenchActionBar';
+-import { WorkbenchSettingsLine } from '@/features/pro-workbench/WorkbenchSettingsLine';
++import {
++  RecipeProfilePanel,
++  type ProContextTab,
++} from '@/features/pro-workbench/RecipeProfilePanel';
+ import { DEFAULT_PRESET } from '@/data/demoPresets';
+ 
+ const { studio } = copy;
+@@ -38,7 +40,8 @@ const REVIEW_INVENTORY: readonly ReviewInventoryRow[] = [
+     name: studio.secondary.reviewMarked.studioTools,
+     purpose: studio.secondary.reviewMarked.studioToolsNote,
+     route: '/pro/recipe → strefa przeglądu',
+-    recommendation: 'Scalić z edytorem (blokady są już w tabeli) lub zostawić jako narzędzie zaawansowane.',
++    recommendation:
++      'Scalić z edytorem (blokady są już w tabeli) lub zostawić jako narzędzie zaawansowane.',
+   },
+   {
+     id: 'assistant',
+@@ -104,15 +107,18 @@ export function StudioEngineSurface({
+   forceDemo = false,
+   onOpenRecalcPanel,
+   recalcSlot,
+-  focusMonitor = false,
++  activePanel = 'recipe',
++  recipeBar,
+ }: {
+   forceDemo?: boolean;
+   /** Re-open the recalculation overlay on an ALREADY-staged preview (no new solve). */
+   onOpenRecalcPanel?: () => void;
+   /** The Przelicz z PI overlay (Preview → Zastosuj/Anuluj → Cofnij), host-wired. */
+   recalcSlot?: ReactNode;
+-  /** /pro/monitor deep-link: visually focus the LIVE Monitor panel. */
+-  focusMonitor?: boolean;
++  /** Stable right-panel route: Profile / Monitor / Production / History. */
++  activePanel?: ProContextTab;
++  /** The one recipe name/save bar, mounted at the bottom-left of the editor. */
++  recipeBar?: ReactNode;
+ }) {
+   const setPlan = useSessionStore((state) => state.setPlan);
+   const loadPreset = useRecipeStore((state) => state.loadPreset);
+@@ -144,15 +150,20 @@ export function StudioEngineSurface({
+         className="flex min-h-0 flex-col lg:flex-1 lg:overflow-hidden"
+         data-testid="pro-workbench"
+       >
+-        {/* Row 2 — the compact settings line + the live Engine-route chip. */}
++        {/* The resolved Engine route stays visible without taking over the edit loop. */}
+         <div className="shrink-0">
+-          <WorkbenchSettingsLine />
+           <div className="flex flex-wrap items-center gap-x-3 border-b border-ivory/10 px-4 py-1">
+-            <span className="text-[10px] tracking-[0.06em] text-ivory/60 uppercase" data-testid="engine-route-chip">
++            <span
++              className="text-[10px] tracking-[0.06em] text-ivory/60 uppercase"
++              data-testid="engine-route-chip"
++            >
+               {studio.eyebrow} · {route.main}
+             </span>
+             {route.detail ? (
+-              <span className="text-[10px] leading-none text-ivory/60" data-testid="engine-route-detail">
++              <span
++                className="text-[10px] leading-none text-ivory/60"
++                data-testid="engine-route-detail"
++              >
+                 {route.detail}
+               </span>
+             ) : null}
+@@ -166,31 +177,36 @@ export function StudioEngineSurface({
+             data-testid="workbench-editor-pane"
+           >
+             {fullFormula ? (
+-              <IngredientBuilder
+-                items={result.items}
+-                totalBatchG={result.total_batch_g}
+-                targetBatchG={batchGrams}
+-                demo={forceDemo}
+-                layout="workbench"
+-              />
++              <div className="min-h-0 flex-1 lg:overflow-hidden">
++                <IngredientBuilder
++                  items={result.items}
++                  totalBatchG={result.total_batch_g}
++                  targetBatchG={batchGrams}
++                  demo={forceDemo}
++                  layout="workbench"
++                />
++              </div>
+             ) : (
+               <div className="px-4 py-3">
+                 <LockedCalculatorPreview />
+               </div>
+             )}
++            <div className="shrink-0">
++              <WorkbenchActionBar onOpenPreview={onOpenRecalcPanel ?? (() => {})} />
++              {recipeBar}
++            </div>
+           </div>
+ 
+           {/* The LIVE Monitor PI — always visible on desktop, recomputed on every draft
+               change (useStudioResult), ONE predictable internal scroll surface (B6).
+               Mobile reaches the SAME content through the Monitor bottom sheet. */}
+           <aside
+-            className={`hidden min-h-0 px-4 py-3 lg:block lg:w-[38%] lg:overflow-y-auto ${
+-              focusMonitor ? 'ring-2 ring-inset ring-ivory/40' : ''
+-            }`}
++            className="min-h-0 border-t border-ivory/10 lg:block lg:w-[38%] lg:overflow-y-auto lg:border-t-0"
+             data-testid="pro-monitor-panel"
+-            aria-label={copy.monitorPi.panelTitle}
++            aria-label={copy.proWorkbench.profile.title}
+           >
+-            <MonitorPanelContent
++            <RecipeProfilePanel
++              activeTab={activePanel}
+               result={result}
+               servingTemperatureC={temperatureC}
+               corrections={corrections}
+@@ -198,14 +214,6 @@ export function StudioEngineSurface({
+             />
+           </aside>
+         </div>
+-
+-        {/* Bottom action/result bar — thin, fixed inside the workbench. */}
+-        <div className="shrink-0">
+-          <WorkbenchActionBar
+-            totalBatchG={result.total_batch_g}
+-            onOpenPreview={onOpenRecalcPanel ?? (() => {})}
+-          />
+-        </div>
+       </section>
+ 
+       {/* Przelicz z PI — the compact OVERLAY (never a page section). */}
+@@ -229,91 +237,96 @@ export function StudioReviewZone() {
+ 
+   return (
+     <ProReviewZone inventory={REVIEW_INVENTORY}>
+-        {/* QA/demo scenarios are an internal tool (owner P0): never the default owner
++      {/* QA/demo scenarios are an internal tool (owner P0): never the default owner
+             workspace — dev builds only, dead-code-eliminated from production. */}
+-        {import.meta.env.DEV ? <PresetSelector /> : null}
++      {import.meta.env.DEV ? <PresetSelector /> : null}
+ 
+-        {/* UIUX Slice E (§17–§20): locks, Preview→verify-gated Apply, §18 feasibility
++      {/* UIUX Slice E (§17–§20): locks, Preview→verify-gated Apply, §18 feasibility
+             honesty, history/Undo/Explain — legacy Studio tools. Exact-gram surface —
+             mounted only with fullFormula (§22.1: Demo never receives full grams). */}
+-        {fullFormula ? (
+-          <ReviewMarkedModule
+-            id="studio-tools"
+-            title={studio.secondary.reviewMarked.studioTools}
+-            badge="DO PRZEGLĄDU"
+-            note={studio.secondary.reviewMarked.studioToolsNote}
+-          >
+-            <ConstraintStudioSection />
+-          </ReviewMarkedModule>
+-        ) : null}
+-
+-        {/* Conversational Assistant Shell (PL-first, deterministic): read-only intent draft. */}
++      {fullFormula ? (
+         <ReviewMarkedModule
+-          id="assistant"
+-          title={studio.secondary.reviewMarked.assistant}
+-          badge="OPCJONALNE"
++          id="studio-tools"
++          title={studio.secondary.reviewMarked.studioTools}
++          badge="DO PRZEGLĄDU"
++          note={studio.secondary.reviewMarked.studioToolsNote}
+         >
+-          <StudioAssistantShell />
++          <ConstraintStudioSection />
+         </ReviewMarkedModule>
++      ) : null}
+ 
+-        {/* User-Flow guidance layer (PL-first, read-only): explains the current situation. */}
+-        <ReviewMarkedModule
+-          id="flow-guide"
+-          title={studio.secondary.reviewMarked.flowGuide}
+-          badge="OPCJONALNE"
+-        >
+-          <StudioFlowGuidePanel view={optimizationView} />
+-        </ReviewMarkedModule>
++      {/* Conversational Assistant Shell (PL-first, deterministic): read-only intent draft. */}
++      <ReviewMarkedModule
++        id="assistant"
++        title={studio.secondary.reviewMarked.assistant}
++        badge="OPCJONALNE"
++      >
++        <StudioAssistantShell />
++      </ReviewMarkedModule>
++
++      {/* User-Flow guidance layer (PL-first, read-only): explains the current situation. */}
++      <ReviewMarkedModule
++        id="flow-guide"
++        title={studio.secondary.reviewMarked.flowGuide}
++        badge="OPCJONALNE"
++      >
++        <StudioFlowGuidePanel view={optimizationView} />
++      </ReviewMarkedModule>
+ 
+-        {/* Production optimization preview (Slice 15): real solver + Base Engine rerun on the
++      {/* Production optimization preview (Slice 15): real solver + Base Engine rerun on the
+             LIVE recipe on explicit click. Pure preview — never saves/applies/persists/mutates. */}
+-        <ReviewMarkedModule
+-          id="optimization"
+-          title={studio.secondary.reviewMarked.optimization}
+-          badge="OPCJONALNE"
+-          note={studio.secondary.reviewMarked.optimizationNote}
+-        >
+-          <div className="space-y-3">
+-            <p className="text-xs leading-relaxed text-ivory/60">
+-              {studio.optimization.note}
+-              {!exactCorrectionGrams ? ` ${studio.optimization.proOnly}` : ''}
+-            </p>
+-            <button
+-              type="button"
+-              onClick={() =>
+-                setOptimizationView(previewOptimization({ recipe: input, intent: studioIntentFromRecipe(input) }))
+-              }
+-              className="inline-flex w-full items-center justify-center rounded-md border border-ivory/20 px-4 py-2.5 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
+-            >
+-              {studio.optimization.run}
+-            </button>
+-            {optimizationView ? (
+-              <>
+-                <OptimizationPreviewPanel
+-                  view={optimizationView}
+-                  policy={optimizationDisplayPolicy({ exactCorrectionGrams, technicalView }, { dev: import.meta.env.DEV })}
+-                />
+-                {/* Slice 24 — the FIRST write control: signed-in Pro may persist an accepted
++      <ReviewMarkedModule
++        id="optimization"
++        title={studio.secondary.reviewMarked.optimization}
++        badge="OPCJONALNE"
++        note={studio.secondary.reviewMarked.optimizationNote}
++      >
++        <div className="space-y-3">
++          <p className="text-xs leading-relaxed text-ivory/60">
++            {studio.optimization.note}
++            {!exactCorrectionGrams ? ` ${studio.optimization.proOnly}` : ''}
++          </p>
++          <button
++            type="button"
++            onClick={() =>
++              setOptimizationView(
++                previewOptimization({ recipe: input, intent: studioIntentFromRecipe(input) }),
++              )
++            }
++            className="inline-flex w-full items-center justify-center rounded-md border border-ivory/20 px-4 py-2.5 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
++          >
++            {studio.optimization.run}
++          </button>
++          {optimizationView ? (
++            <>
++              <OptimizationPreviewPanel
++                view={optimizationView}
++                policy={optimizationDisplayPolicy(
++                  { exactCorrectionGrams, technicalView },
++                  { dev: import.meta.env.DEV },
++                )}
++              />
++              {/* Slice 24 — the FIRST write control: signed-in Pro may persist an accepted
+                     correction as ONE immutable audit record. Explicit click; recipe never changed. */}
+-                <SaveCorrectionControl view={optimizationView} recipe={input} />
+-              </>
+-            ) : null}
+-          </div>
+-        </ReviewMarkedModule>
++              <SaveCorrectionControl view={optimizationView} recipe={input} />
++            </>
++          ) : null}
++        </div>
++      </ReviewMarkedModule>
+ 
+-        {/* IF9/IF10 branch previews (Slice 21): Batch Rescue + Stock Shortage —
++      {/* IF9/IF10 branch previews (Slice 21): Batch Rescue + Stock Shortage —
+             paid-gated, explicit-click, non-persisted. */}
+-        <ReviewMarkedModule
+-          id="branch-previews"
+-          title={studio.secondary.reviewMarked.branchPreviews}
+-          badge="ADVANCED / REVIEW"
+-          note={studio.secondary.reviewMarked.branchPreviewsNote}
+-        >
+-          <BranchWorkflowPreviews
+-            recipe={input}
+-            capabilities={{ exactCorrectionGrams, technicalView }}
+-          />
+-        </ReviewMarkedModule>
++      <ReviewMarkedModule
++        id="branch-previews"
++        title={studio.secondary.reviewMarked.branchPreviews}
++        badge="ADVANCED / REVIEW"
++        note={studio.secondary.reviewMarked.branchPreviewsNote}
++      >
++        <BranchWorkflowPreviews
++          recipe={input}
++          capabilities={{ exactCorrectionGrams, technicalView }}
++        />
++      </ReviewMarkedModule>
+     </ProReviewZone>
+   );
+ }
+diff --git a/src/features/studio/canonicalWorkbench.test.tsx b/src/features/studio/canonicalWorkbench.test.tsx
+index 73eaf73..b762258 100644
+--- a/src/features/studio/canonicalWorkbench.test.tsx
++++ b/src/features/studio/canonicalWorkbench.test.tsx
+@@ -49,7 +49,14 @@ describe('visible product types', () => {
+       expect(html).toContain(`data-testid="product-type-${t}"`);
+     }
+     // No legacy primary category selector (Milk/Fruit/Nut/Chocolate/Alcohol/Custom).
+-    for (const legacy of ['Milk gelato', 'Fruit gelato', 'Nut gelato', 'Chocolate gelato', 'Alcohol gelato', 'Custom']) {
++    for (const legacy of [
++      'Milk gelato',
++      'Fruit gelato',
++      'Nut gelato',
++      'Chocolate gelato',
++      'Alcohol gelato',
++      'Custom',
++    ]) {
+       expect(html).not.toContain(legacy);
+     }
+     expect(html).not.toContain('data-testid="product-type-chocolate"');
+@@ -97,8 +104,18 @@ describe('visible product types', () => {
+     expect([...NATIVE_BAND_CATEGORIES].sort()).toEqual([...seeded].sort());
+ 
+     const catalogue = [
+-      'milk_3_5', 'cream_30', 'smp', 'sucrose', 'dextrose', 'tara_gum',
+-      'raspberry', 'dark_chocolate_70', 'pistachio_paste', 'whiskey_40', 'water', 'inulin',
++      'milk_3_5',
++      'cream_30',
++      'smp',
++      'sucrose',
++      'dextrose',
++      'tara_gum',
++      'raspberry',
++      'dark_chocolate_70',
++      'pistachio_paste',
++      'whiskey_40',
++      'water',
++      'inulin',
+     ];
+     // Every non-empty subset of a representative catalogue, through every
+     // visible type and every previous category the store could be carrying.
+@@ -111,12 +128,21 @@ describe('visible product types', () => {
+       }
+     }
+     const ALL_CATEGORIES: RecipeInput['category'][] = [
+-      'milk_gelato', 'fruit_gelato', 'nut_gelato', 'chocolate_gelato',
+-      'alcohol_gelato', 'sorbet', 'vegan_gelato', 'custom',
++      'milk_gelato',
++      'fruit_gelato',
++      'nut_gelato',
++      'chocolate_gelato',
++      'alcohol_gelato',
++      'sorbet',
++      'vegan_gelato',
++      'custom',
+     ];
+     for (const items of subsets) {
+       // (a) the live gelato derivation
+-      expect(seeded.has(gelatoInternalCategory(items)), JSON.stringify(items.map((i) => i.id))).toBe(true);
++      expect(
++        seeded.has(gelatoInternalCategory(items)),
++        JSON.stringify(items.map((i) => i.id)),
++      ).toBe(true);
+       // (b) the visible-type derivation, for every supported visible type
+       for (const visible of VISIBLE_PRODUCT_TYPES) {
+         if (visible === 'protein') continue; // honest-unsupported: keeps `previous`
+@@ -130,9 +156,15 @@ describe('visible product types', () => {
+   });
+ 
+   it('the store re-routes internal category live as GELATO ingredients change', () => {
+-    useRecipeStore.getState().loadRecipeInput(
+-      { items: [line('l-milk', 'milk_3_5', 700)], mode: 'classic', category: 'milk_gelato', target_temperature_c: -11, target_batch_grams: 1000, machine_capacity_grams: null, goals: { flavor_intensity: 'balanced', cost_priority: 'balanced' } },
+-    );
++    useRecipeStore.getState().loadRecipeInput({
++      items: [line('l-milk', 'milk_3_5', 700)],
++      mode: 'classic',
++      category: 'milk_gelato',
++      target_temperature_c: -11,
++      target_batch_grams: 1000,
++      machine_capacity_grams: null,
++      goals: { flavor_intensity: 'balanced', cost_priority: 'balanced' },
++    });
+     useRecipeStore.getState().setVisibleProductType('gelato');
+     useRecipeStore.getState().addIngredient(findDemoIngredient('dark_chocolate_70')!, 100);
+     expect(useRecipeStore.getState().category).toBe('chocolate_gelato');
+@@ -173,7 +205,12 @@ describe('quality tier', () => {
+ /* -------------------------------------------------- serving mode (proof 6) -- */
+ describe('serving mode', () => {
+   it('6. Świeże/−11/−12/−13 share ONE mode source (servingModeId + temperature move together)', () => {
+-    const cases: [string, number][] = [['fresh', -11], ['temp_minus_11', -11], ['temp_minus_12', -12], ['temp_minus_13', -13]];
++    const cases: [string, number][] = [
++      ['fresh', -11],
++      ['temp_minus_11', -11],
++      ['temp_minus_12', -12],
++      ['temp_minus_13', -13],
++    ];
+     for (const [id, temp] of cases) {
+       useRecipeStore.getState().setServingMode(id, temp);
+       const s = useRecipeStore.getState();
+@@ -218,9 +255,32 @@ describe('recalculation entry', () => {
+   });
+ });
+ 
++describe('new Pro profile layout', () => {
++  it('exposes four stable right-panel contexts and keeps actual batch in the profile', () => {
++    const profile = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
++    for (const route of ['/pro/recipe', '/pro/monitor', '/pro/production', '/pro/history']) {
++      expect(profile).toContain(route);
++    }
++    const settings = read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx');
++    expect(settings).toContain('profile-actual-batch');
++  });
++
++  it('shows explicit gram and percent lock controls through the canonical lock_type action', () => {
++    const row = read('features', 'ingredient-builder', 'IngredientRow.tsx');
++    expect(row).toContain('row-lock-grams-');
++    expect(row).toContain('row-lock-percent-');
++    expect(row).toContain("isGramsLocked ? 'unlocked' : 'grams'");
++    expect(row).toContain("isPercentLocked ? 'unlocked' : 'percent'");
++  });
++});
++
+ /* ------------------------------------------ round-trip + engine equality (11–12) -- */
+ describe('saved round-trip + engine equality', () => {
+-  const base = (temp: number, category: RecipeInput['category'], extra: RecipeItem[] = []): RecipeInput => ({
++  const base = (
++    temp: number,
++    category: RecipeInput['category'],
++    extra: RecipeItem[] = [],
++  ): RecipeInput => ({
+     items: [line('l-milk', 'milk_3_5', 700), line('l-suc', 'sucrose', 150), ...extra],
+     mode: 'classic',
+     category,
+@@ -234,7 +294,10 @@ describe('saved round-trip + engine equality', () => {
+     ['gelato −11', base(-11, 'milk_gelato')],
+     ['gelato −12', base(-12, 'milk_gelato')],
+     ['gelato −13', base(-13, 'milk_gelato')],
+-    ['chocolate-routed gelato', base(-12, 'chocolate_gelato', [line('l-choc', 'dark_chocolate_70', 80)])],
++    [
++      'chocolate-routed gelato',
++      base(-12, 'chocolate_gelato', [line('l-choc', 'dark_chocolate_70', 80)]),
++    ],
+     ['sorbet', base(-12, 'sorbet', [line('l-rasp', 'raspberry', 300)])],
+     ['vegan', base(-12, 'vegan_gelato')],
+   ];
+@@ -248,14 +311,17 @@ describe('saved round-trip + engine equality', () => {
+ 
+       // "Save" = the same RecipeInput persisted; "reopen" = load it back.
+       useRecipeStore.getState().resetToDemo();
+-      useRecipeStore.getState().loadRecipeInput(draftInput, { savedId: 'r', savedName: 'X', versionNumber: 1 });
++      useRecipeStore
++        .getState()
++        .loadRecipeInput(draftInput, { savedId: 'r', savedName: 'X', versionNumber: 1 });
+       const reopenedInput = buildRecipeInput(useRecipeStore.getState());
+       const reopenedResult = calculateRecipe(reopenedInput);
+ 
+       // Identical canonical input (ingredients, grams, category, temperature, batch)…
+-      expect(reopenedInput.items.map((i) => [i.id, i.planned_grams]), label).toEqual(
+-        draftInput.items.map((i) => [i.id, i.planned_grams]),
+-      );
++      expect(
++        reopenedInput.items.map((i) => [i.id, i.planned_grams]),
++        label,
++      ).toEqual(draftInput.items.map((i) => [i.id, i.planned_grams]));
+       expect(reopenedInput.category, label).toBe(draftInput.category);
+       expect(reopenedInput.target_temperature_c, label).toBe(draftInput.target_temperature_c);
+       // …and identical Engine output (the workbench never presents a different number).
+@@ -264,9 +330,13 @@ describe('saved round-trip + engine equality', () => {
+   });
+ 
+   it('the reopened visible type projects correctly from the saved internal category', () => {
+-    useRecipeStore.getState().loadRecipeInput(base(-12, 'chocolate_gelato', [line('l-choc', 'dark_chocolate_70', 80)]));
++    useRecipeStore
++      .getState()
++      .loadRecipeInput(base(-12, 'chocolate_gelato', [line('l-choc', 'dark_chocolate_70', 80)]));
+     expect(useRecipeStore.getState().visibleProductType).toBe('gelato');
+-    useRecipeStore.getState().loadRecipeInput(base(-12, 'sorbet', [line('l-rasp', 'raspberry', 300)]));
++    useRecipeStore
++      .getState()
++      .loadRecipeInput(base(-12, 'sorbet', [line('l-rasp', 'raspberry', 300)]));
+     expect(useRecipeStore.getState().visibleProductType).toBe('sorbet');
+   });
+ });
+@@ -275,7 +345,14 @@ describe('saved round-trip + engine equality', () => {
+ describe('language', () => {
+   it('13. the core workbench GOAL card carries no legacy English labels', () => {
+     const html = renderToStaticMarkup(<GoalSetup />);
+-    for (const legacy of ['Product Mode', 'Machine capacity', 'Cost priority', 'Flavor intensity', 'Category', 'Mouthfeel']) {
++    for (const legacy of [
++      'Product Mode',
++      'Machine capacity',
++      'Cost priority',
++      'Flavor intensity',
++      'Category',
++      'Mouthfeel',
++    ]) {
+       expect(html, legacy).not.toContain(legacy);
+     }
+     expect(html).toContain('Poziom jakości');
+diff --git a/src/pages/destinations/SubscriptionPage.tsx b/src/pages/destinations/SubscriptionPage.tsx
+index 64088d0..b2d9417 100644
+--- a/src/pages/destinations/SubscriptionPage.tsx
++++ b/src/pages/destinations/SubscriptionPage.tsx
+@@ -2,7 +2,14 @@ import { useState, type ReactNode } from 'react';
+ import { Link, useSearchParams } from 'react-router';
+ import { IvoryLogoMark } from '@/components/shared/IvoryLogoMark';
+ import { cn } from '@/lib/cn';
+-import { color, focusRing, motion, radius, touchButtonClasses, type } from '@/features/customer-shell/ui';
++import {
++  color,
++  focusRing,
++  motion,
++  radius,
++  touchButtonClasses,
++  type,
++} from '@/features/customer-shell/ui';
+ import { CustomerMenu } from '@/features/customer-shell/ui/CustomerMenu';
+ import { useAuthStore } from '@/stores/authStore';
+ import { useAuthModalStore } from '@/features/auth/authModalStore';
+@@ -33,8 +40,21 @@ const plans = landingCopy.plans;
+ 
+ function CheckGlyph() {
+   return (
+-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden className="mt-1 shrink-0 text-ink">
+-      <path d="M3 8.5l3.2 3.2L13 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
++    <svg
++      width="16"
++      height="16"
++      viewBox="0 0 16 16"
++      fill="none"
++      aria-hidden
++      className="mt-1 shrink-0 text-ink"
++    >
++      <path
++        d="M3 8.5l3.2 3.2L13 5"
++        stroke="currentColor"
++        strokeWidth="1.6"
++        strokeLinecap="round"
++        strokeLinejoin="round"
++      />
+     </svg>
+   );
+ }
+@@ -58,7 +78,12 @@ function PriceBlock({ product }: { product: 'home' | 'pro' }) {
+   return (
+     <div className="mt-4 flex items-baseline gap-2">
+       {monthly ? (
+-        <span className={cn('text-[24px] font-medium leading-none tracking-tight tabular-nums', color.textPrimary)}>
++        <span
++          className={cn(
++            'text-[24px] font-medium leading-none tracking-tight tabular-nums',
++            color.textPrimary,
++          )}
++        >
+           {monthly.label}
+         </span>
+       ) : null}
+@@ -89,12 +114,19 @@ function PlanCard({
+       className={cn(
+         'flex flex-col border bg-paper p-6 sm:p-7',
+         radius.card,
+-        emphasized ? 'border-ink/20 bg-stone-50 shadow-[0_10px_40px_rgba(16,17,19,0.07)]' : 'border-ink/10 shadow-[0_1px_2px_rgba(16,17,19,0.05)]',
++        emphasized
++          ? 'border-ink/20 bg-stone-50 shadow-[0_10px_40px_rgba(16,17,19,0.07)]'
++          : 'border-ink/10 shadow-[0_1px_2px_rgba(16,17,19,0.05)]',
+       )}
+     >
+       <div className="flex items-center justify-between gap-3">
+         <h2 className={cn(type.heading, color.textPrimary)}>{plan.name}</h2>
+-        <span className={cn('rounded-full border border-ink/10 bg-paper px-2.5 py-1 text-[11px] font-medium', color.textSecondary)}>
++        <span
++          className={cn(
++            'rounded-full border border-ink/10 bg-paper px-2.5 py-1 text-[11px] font-medium',
++            color.textSecondary,
++          )}
++        >
+           {badge}
+         </span>
+       </div>
+@@ -188,7 +220,11 @@ export function SubscriptionPage() {
+     </>
+   );
+ 
+-  const planButton = (product: BillingProductId, label: string, variant: 'primary' | 'secondary') => {
++  const planButton = (
++    product: BillingProductId,
++    label: string,
++    variant: 'primary' | 'secondary',
++  ) => {
+     const productRank = tierRank[product];
+     if (personaRank === productRank) return statusPill(true, c.owned, c.ownedNote);
+     if (personaRank > productRank) return statusPill(false, c.included, c.includedNote);
+@@ -198,7 +234,11 @@ export function SubscriptionPage() {
+           type="button"
+           onClick={() => void onBuy(product)}
+           disabled={!available || pending !== null}
+-          className={cn(touchButtonClasses(variant, 'lg'), 'w-full', pending !== null && 'opacity-70')}
++          className={cn(
++            touchButtonClasses(variant, 'lg'),
++            'w-full',
++            pending !== null && 'opacity-70',
++          )}
+         >
+           {pending === product ? c.pending : label}
+         </button>
+@@ -221,18 +261,32 @@ export function SubscriptionPage() {
+ 
+       <main className="mx-auto w-full max-w-5xl px-5 pb-24 pt-6 sm:px-8 sm:pt-10">
+         <p className={cn(type.label, color.textMuted)}>{s.eyebrow}</p>
+-        <h1 className="mt-3 max-w-2xl text-balance text-[30px] font-light leading-[1.14] tracking-tight text-ink sm:text-[38px]">
++        <h1 className="mt-4 max-w-3xl text-balance text-[38px] font-semibold leading-[0.99] tracking-[-0.04em] text-ink sm:text-[52px]">
+           {s.title}
+         </h1>
+-        <p className={cn('mt-4 max-w-prose text-[16px] leading-relaxed', color.textSecondary)}>{s.lead}</p>
++        <p className={cn('mt-4 max-w-prose text-[16px] leading-relaxed', color.textSecondary)}>
++          {s.lead}
++        </p>
+         <p className={cn('mt-3 max-w-prose', type.secondary, color.textMuted)}>{s.whatUnlocks}</p>
+ 
+         {checkoutParam === 'success' ? (
+-          <p className={cn('mt-6 rounded-xl border border-ink/10 bg-stone-50 px-4 py-3', type.secondary, color.textSecondary)}>
++          <p
++            className={cn(
++              'mt-6 rounded-xl border border-ink/10 bg-stone-50 px-4 py-3',
++              type.secondary,
++              color.textSecondary,
++            )}
++          >
+             {c.successNote}
+           </p>
+         ) : checkoutParam === 'cancelled' ? (
+-          <p className={cn('mt-6 rounded-xl border border-ink/10 bg-stone-50 px-4 py-3', type.secondary, color.textMuted)}>
++          <p
++            className={cn(
++              'mt-6 rounded-xl border border-ink/10 bg-stone-50 px-4 py-3',
++              type.secondary,
++              color.textMuted,
++            )}
++          >
+             {c.cancelNote}
+           </p>
+         ) : null}
+@@ -262,7 +316,11 @@ export function SubscriptionPage() {
+ 
+         {/* The only FREE customer experience is Demo — kept clearly separate from
+             the paid Home/Pro plans above (owner P0). */}
+-        <div className={cn('mt-8 flex flex-col gap-3 rounded-2xl border border-ink/10 bg-stone-50 p-5 sm:flex-row sm:items-center sm:justify-between')}>
++        <div
++          className={cn(
++            'mt-8 flex flex-col gap-3 rounded-2xl border border-ink/10 bg-stone-50 p-5 sm:flex-row sm:items-center sm:justify-between',
++          )}
++        >
+           <p className={cn('max-w-prose', type.secondary, color.textSecondary)}>{s.demoNote}</p>
+           <Link to="/start" className={cn(touchButtonClasses('secondary', 'md'), 'shrink-0')}>
+             {s.demoCta}
+@@ -273,10 +331,20 @@ export function SubscriptionPage() {
+           <p className={cn(type.label, color.textMuted)}>{s.futureLabel}</p>
+           <ul className="mt-3 divide-y divide-ink/10 border-y border-ink/10">
+             {s.future.map((item) => (
+-              <li key={item} className={cn('flex items-center justify-between gap-3 py-3', type.secondary, color.textSecondary)}>
++              <li
++                key={item}
++                className={cn(
++                  'flex items-center justify-between gap-3 py-3',
++                  type.secondary,
++                  color.textSecondary,
++                )}
++              >
+                 {item}
+                 <span
+-                  className={cn('shrink-0 rounded-full border border-ink/10 bg-stone-50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.1em]', color.textMuted)}
++                  className={cn(
++                    'shrink-0 rounded-full border border-ink/10 bg-stone-50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.1em]',
++                    color.textMuted,
++                  )}
+                 >
+                   {s.futureLabel}
+                 </span>
+@@ -288,7 +356,13 @@ export function SubscriptionPage() {
+         <div className="mt-14 border-t border-ink/10 pt-8">
+           <Link
+             to="/start"
+-            className={cn('inline-flex items-center gap-2 rounded underline-offset-4 hover:underline', type.secondary, color.textSecondary, focusRing, motion.base)}
++            className={cn(
++              'inline-flex items-center gap-2 rounded underline-offset-4 hover:underline',
++              type.secondary,
++              color.textSecondary,
++              focusRing,
++              motion.base,
++            )}
+           >
+             ← {landingCopy.nav.cta}
+           </Link>
+diff --git a/src/pages/destinations/destinationPages.test.tsx b/src/pages/destinations/destinationPages.test.tsx
+index 90278e0..4ad59f8 100644
+--- a/src/pages/destinations/destinationPages.test.tsx
++++ b/src/pages/destinations/destinationPages.test.tsx
+@@ -14,6 +14,22 @@ import { WorkWithUsPage } from './WorkWithUsPage';
+ const render = (el: ReactElement) => renderToStaticMarkup(<MemoryRouter>{el}</MemoryRouter>);
+ 
+ describe('Slice 3 destination pages', () => {
++  it('uses the same white editorial shell across destination pages', () => {
++    for (const el of [
++      <WorkWithUsPage key="w" />,
++      <CreateLabelPage key="l" />,
++      <APIPage key="a" />,
++      <CreateIngredientPage key="i" />,
++      <RecipesHubPage key="r" />,
++    ]) {
++      const html = render(el);
++      expect(html).toContain('theme-pro-light');
++      expect(html).toContain('bg-paper');
++      expect(html).toContain('font-semibold');
++      expect(html).not.toContain('[color-scheme:dark]');
++    }
++  });
++
+   it('Work With Us shows the four offers + a mailto CTA', () => {
+     const html = render(<WorkWithUsPage />);
+     expect(html).toContain(copy.nav.work.offers.app.title);
+diff --git a/src/pages/landing/LandingPage.test.tsx b/src/pages/landing/LandingPage.test.tsx
+index 1ad8a3c..c347a9e 100644
+--- a/src/pages/landing/LandingPage.test.tsx
++++ b/src/pages/landing/LandingPage.test.tsx
+@@ -16,7 +16,9 @@ describe('LandingPage — public landing per spec §6 (Slice A)', () => {
+   it('renders the §6.1 hero verbatim: headline, subline and both CTAs', () => {
+     const html = render();
+     expect(html).toContain('Idealna receptura. Dopasowana do Twojej maszyny lub temperatury.');
+-    expect(html).toContain('Wybierz smak, urządzenie lub temperaturę i ilość. PINGÜINO zajmie się resztą.');
++    expect(html).toContain(
++      'Wybierz smak, urządzenie lub temperaturę i ilość. PINGÜINO zajmie się resztą.',
++    );
+     expect(html).toContain(copy.hero.ctaPrimary); // „Stwórz recepturę”
+     expect(html).toContain(copy.hero.ctaSecondary); // „Zobacz, jak działa”
+   });
+@@ -70,6 +72,8 @@ describe('LandingPage — public landing per spec §6 (Slice A)', () => {
+     expect(html).toContain('bg-paper');
+     expect(html).not.toContain('bg-shell');
+     expect(html).not.toContain('#0c0d0f');
++    expect(html).toContain('font-semibold');
++    expect(html).not.toContain('text-[34px] font-light');
+   });
+ 
+   it('uses gold ONLY inside the Monitor readout (owner decision: optimum only)', () => {
+diff --git a/src/pages/landing/LandingPage.tsx b/src/pages/landing/LandingPage.tsx
+index 22faa71..7dd9de4 100644
+--- a/src/pages/landing/LandingPage.tsx
++++ b/src/pages/landing/LandingPage.tsx
+@@ -92,12 +92,20 @@ function LandingSection({
+       <div className="mx-auto w-full max-w-6xl px-5 py-16 sm:px-8 sm:py-20">
+         {eyebrow ? <Eyebrow>{eyebrow}</Eyebrow> : null}
+         {title ? (
+-          <h2 className={cn('mt-3 max-w-2xl text-[26px] font-light leading-[1.15] tracking-tight text-ink sm:text-[32px]')}>
++          <h2
++            className={cn(
++              'mt-3 max-w-2xl text-[28px] font-semibold leading-[1.04] tracking-[-0.035em] text-ink sm:text-[36px]',
++            )}
++          >
+             {title}
+           </h2>
+         ) : null}
+-        {lead ? <p className={cn('mt-3 max-w-prose', type.secondary, color.textSecondary)}>{lead}</p> : null}
+-        {children ? <div className={cn((eyebrow || title || lead) && 'mt-10')}>{children}</div> : null}
++        {lead ? (
++          <p className={cn('mt-3 max-w-prose', type.secondary, color.textSecondary)}>{lead}</p>
++        ) : null}
++        {children ? (
++          <div className={cn((eyebrow || title || lead) && 'mt-10')}>{children}</div>
++        ) : null}
+       </div>
+     </section>
+   );
+@@ -114,7 +122,13 @@ function CheckGlyph() {
+       aria-hidden
+       className="mt-1 shrink-0 text-ink"
+     >
+-      <path d="M3 8.5l3.2 3.2L13 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
++      <path
++        d="M3 8.5l3.2 3.2L13 5"
++        stroke="currentColor"
++        strokeWidth="1.6"
++        strokeLinecap="round"
++        strokeLinejoin="round"
++      />
+     </svg>
+   );
+ }
+@@ -148,14 +162,25 @@ const DEMO_MONITOR_VIEW = buildLandingMonitorDemo();
+ function LandingMonitorPreview() {
+   const m = copy.monitor;
+   return (
+-    <div className={cn('w-full max-w-[420px] border border-ink/10 bg-paper p-6', radius.card, 'shadow-[0_10px_40px_rgba(16,17,19,0.08)]')}>
++    <div
++      className={cn(
++        'w-full max-w-[420px] border border-ink/10 bg-paper p-6',
++        radius.card,
++        'shadow-[0_10px_40px_rgba(16,17,19,0.08)]',
++      )}
++    >
+       <div className="flex flex-wrap items-center justify-between gap-3">
+         <p className={cn(type.label, color.textMuted)}>{m.label}</p>
+         <span className="flex flex-wrap items-center gap-2">
+           {/* Agent 4 fixture sweep: real engine, FIXED vanilla demo payload — the pink
+               marker names the source next to the honest „Przykład” tag. */}
+           <NonProductionBadge itemId="landing-monitor-example" />
+-          <span className={cn('rounded-full border border-ink/10 bg-stone-50 px-2.5 py-1 text-[11px] font-medium', color.textSecondary)}>
++          <span
++            className={cn(
++              'rounded-full border border-ink/10 bg-stone-50 px-2.5 py-1 text-[11px] font-medium',
++              color.textSecondary,
++            )}
++          >
+             {m.exampleTag}
+           </span>
+         </span>
+@@ -163,7 +188,9 @@ function LandingMonitorPreview() {
+ 
+       <MonitorHomeReadout home={DEMO_MONITOR_VIEW} />
+ 
+-      <p className={cn('mt-6 border-t border-ink/10 pt-4', type.caption, color.textSecondary)}>{m.plansNote}</p>
++      <p className={cn('mt-6 border-t border-ink/10 pt-4', type.caption, color.textSecondary)}>
++        {m.plansNote}
++      </p>
+     </div>
+   );
+ }
+@@ -190,7 +217,7 @@ export function LandingPage() {
+         <div className="grid items-start gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)] lg:gap-16">
+           <div>
+             <Eyebrow>{copy.hero.eyebrow}</Eyebrow>
+-            <h1 className="mt-4 max-w-2xl text-balance text-[34px] font-light leading-[1.12] tracking-tight sm:text-[44px] lg:text-[52px]">
++            <h1 className="mt-5 max-w-3xl text-balance text-[40px] font-semibold leading-[0.98] tracking-[-0.045em] sm:text-[56px] lg:text-[68px]">
+               {copy.hero.headline}
+             </h1>
+             <p className={cn('mt-5 max-w-prose text-[17px] leading-relaxed', color.textSecondary)}>
+@@ -207,7 +234,11 @@ export function LandingPage() {
+           </div>
+ 
+           {/* SLICE F SEAM — the interactive Monitor demo mounts here later. */}
+-          <section id={MONITOR_DEMO_ID} aria-label={copy.monitor.label} className="justify-self-center lg:justify-self-end">
++          <section
++            id={MONITOR_DEMO_ID}
++            aria-label={copy.monitor.label}
++            className="justify-self-center lg:justify-self-end"
++          >
+             <LandingMonitorPreview />
+           </section>
+         </div>
+@@ -218,9 +249,13 @@ export function LandingPage() {
+         <ol className="grid gap-10 md:grid-cols-3 md:gap-8">
+           {copy.how.steps.map((step, i) => (
+             <li key={step.title}>
+-              <p className="font-mono text-[13px] tabular-nums text-stone-500">{String(i + 1).padStart(2, '0')}</p>
++              <p className="font-mono text-[13px] tabular-nums text-stone-500">
++                {String(i + 1).padStart(2, '0')}
++              </p>
+               <h3 className={cn('mt-3', type.heading, color.textPrimary)}>{step.title}</h3>
+-              <p className={cn('mt-2 max-w-prose', type.secondary, color.textSecondary)}>{step.body}</p>
++              <p className={cn('mt-2 max-w-prose', type.secondary, color.textSecondary)}>
++                {step.body}
++              </p>
+             </li>
+           ))}
+         </ol>
+@@ -231,16 +266,32 @@ export function LandingPage() {
+         <div className="grid gap-12 md:grid-cols-2 md:gap-8">
+           <div>
+             <Eyebrow>{copy.homeSection.label}</Eyebrow>
+-            <h2 className={cn('mt-3 text-[22px] font-medium tracking-tight text-ink')}>{copy.homeSection.title}</h2>
+-            <p className={cn('mt-2 max-w-prose', type.secondary, color.textSecondary)}>{copy.homeSection.body}</p>
++            <h2
++              className={cn(
++                'mt-3 text-[24px] font-semibold leading-[1.04] tracking-[-0.03em] text-ink',
++              )}
++            >
++              {copy.homeSection.title}
++            </h2>
++            <p className={cn('mt-2 max-w-prose', type.secondary, color.textSecondary)}>
++              {copy.homeSection.body}
++            </p>
+             <div className="mt-6">
+               <CheckList items={copy.homeSection.bullets} />
+             </div>
+           </div>
+           <div>
+             <Eyebrow>{copy.proSection.label}</Eyebrow>
+-            <h2 className={cn('mt-3 text-[22px] font-medium tracking-tight text-ink')}>{copy.proSection.title}</h2>
+-            <p className={cn('mt-2 max-w-prose', type.secondary, color.textSecondary)}>{copy.proSection.body}</p>
++            <h2
++              className={cn(
++                'mt-3 text-[24px] font-semibold leading-[1.04] tracking-[-0.03em] text-ink',
++              )}
++            >
++              {copy.proSection.title}
++            </h2>
++            <p className={cn('mt-2 max-w-prose', type.secondary, color.textSecondary)}>
++              {copy.proSection.body}
++            </p>
+             <div className="mt-6">
+               <CheckList items={copy.proSection.bullets} />
+             </div>
+@@ -249,7 +300,11 @@ export function LandingPage() {
+       </LandingSection>
+ 
+       {/* Bezpieczna przewaga (§6.3.4) — descriptive, no fake numbers. */}
+-      <LandingSection eyebrow={copy.advantage.label} title={copy.advantage.title} lead={copy.advantage.body}>
++      <LandingSection
++        eyebrow={copy.advantage.label}
++        title={copy.advantage.title}
++        lead={copy.advantage.body}
++      >
+         <div className="max-w-2xl">
+           <CheckList items={copy.advantage.bullets} />
+         </div>
+@@ -259,7 +314,14 @@ export function LandingPage() {
+       <LandingSection eyebrow={copy.plans.label} title={copy.plans.title} lead={copy.plans.lead}>
+         <div className="grid gap-6 md:grid-cols-2">
+           {[copy.plans.home, copy.plans.pro].map((plan) => (
+-            <div key={plan.name} className={cn('border border-ink/10 bg-paper p-6', radius.card, 'shadow-[0_1px_2px_rgba(16,17,19,0.05)]')}>
++            <div
++              key={plan.name}
++              className={cn(
++                'border border-ink/10 bg-paper p-6',
++                radius.card,
++                'shadow-[0_1px_2px_rgba(16,17,19,0.05)]',
++              )}
++            >
+               <h3 className={cn(type.heading, color.textPrimary)}>{plan.name}</h3>
+               <p className={cn('mt-1', type.secondary, color.textSecondary)}>{plan.tagline}</p>
+               <div className="mt-5">
+@@ -299,10 +361,17 @@ export function LandingPage() {
+                   aria-hidden
+                   className={cn('shrink-0 text-stone-500 group-open:rotate-45', motion.transform)}
+                 >
+-                  <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
++                  <path
++                    d="M8 3v10M3 8h10"
++                    stroke="currentColor"
++                    strokeWidth="1.6"
++                    strokeLinecap="round"
++                  />
+                 </svg>
+               </summary>
+-              <p className={cn('max-w-prose pb-5', type.secondary, color.textSecondary)}>{item.a}</p>
++              <p className={cn('max-w-prose pb-5', type.secondary, color.textSecondary)}>
++                {item.a}
++              </p>
+             </details>
+           ))}
+         </div>
+@@ -312,10 +381,12 @@ export function LandingPage() {
+       <LandingSection>
+         <div className="flex flex-col items-start gap-6">
+           <div>
+-            <h2 className="max-w-2xl text-[26px] font-light leading-[1.15] tracking-tight text-ink sm:text-[32px]">
++            <h2 className="max-w-2xl text-[28px] font-semibold leading-[1.04] tracking-[-0.035em] text-ink sm:text-[36px]">
+               {copy.finalCta.title}
+             </h2>
+-            <p className={cn('mt-3 max-w-prose', type.secondary, color.textSecondary)}>{copy.finalCta.body}</p>
++            <p className={cn('mt-3 max-w-prose', type.secondary, color.textSecondary)}>
++              {copy.finalCta.body}
++            </p>
+           </div>
+           <LinkCta to="/start" variant="primary" size="lg">
+             {copy.finalCta.cta}
+@@ -362,7 +433,9 @@ function Wordmark() {
+       <IvoryLogoMark size={26} tone="ink" />
+       <span className="leading-none">
+         <span className="block text-base font-light tracking-wordmark">{copy.brand.name}</span>
+-        <span className={cn('mt-1 block text-[0.55rem] font-light tracking-wordmark', color.textMuted)}>
++        <span
++          className={cn('mt-1 block text-[0.55rem] font-light tracking-wordmark', color.textMuted)}
++        >
+           {copy.brand.sub}
+         </span>
+       </span>
+diff --git a/src/pages/pro/ProWorkspacePage.test.tsx b/src/pages/pro/ProWorkspacePage.test.tsx
+index 5e633fb..2ced86d 100644
+--- a/src/pages/pro/ProWorkspacePage.test.tsx
++++ b/src/pages/pro/ProWorkspacePage.test.tsx
+@@ -85,10 +85,14 @@ describe('ProWorkspacePage (S3)', () => {
+     expect(html).toContain('data-testid="pro-core-versions"');
+   });
+ 
+-  it('shows an honest backend indicator + "arrives later" note on Produkcja/Koszty', () => {
++  it('keeps Profile, Monitor, Production and History in one right-side workspace', () => {
+     const production = renderAt('/pro/production', 'pro');
+-    expect(production).toContain(w.soon.production);
+-    expect(production).toContain('data-testid="pro-slice-backend"');
++    expect(production).toContain('data-testid="pro-context-tabs"');
++    expect(production).toContain('data-testid="pro-context-production"');
++    expect(production).toContain('DO PODŁĄCZENIA');
++
++    const history = renderAt('/pro/history', 'pro');
++    expect(history).toContain('data-testid="pro-context-history"');
+ 
+     const costs = renderAt('/pro/costs', 'pro');
+     expect(costs).toContain(w.soon.costs);
+diff --git a/src/pages/pro/ProWorkspacePage.tsx b/src/pages/pro/ProWorkspacePage.tsx
+index dbdb659..0aa0d1d 100644
+--- a/src/pages/pro/ProWorkspacePage.tsx
++++ b/src/pages/pro/ProWorkspacePage.tsx
+@@ -31,11 +31,11 @@ import { copy } from '@/copy/en';
+ import { AppShell } from '@/features/shell/AppShell';
+ import { useAuthModalStore } from '@/features/auth/authModalStore';
+ import { useAuthStore } from '@/stores/authStore';
++import { useRecipeStore } from '@/stores/recipeStore';
+ import { StudioEngineSurface, StudioReviewZone } from '@/features/studio/StudioEngineSurface';
+ import { ProWorkbar } from '@/features/pro-core/ProWorkbar';
+ import { ProRecalcPanel } from '@/features/pro-core/ProRecalcPanel';
+ import { ProMachineSelector } from '@/features/pro-core/ProMachineSelector';
+-import { MonitorDrawer } from '@/features/pro-core/MonitorDrawer';
+ import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
+ import { RecipeVersionsSection } from '@/features/pro-core/RecipeVersionsSection';
+ import { ProSliceBackendState } from '@/features/pro-core/ProSliceBackendState';
+@@ -46,6 +46,7 @@ import { resolveCostsRepository } from '@/features/pro-core/proCoreCostsRepo';
+ import { ReviewBadge } from '@/features/design-review/ReviewBadge';
+ import { NonProductionBadge } from '@/features/design-review/NonProductionMarker';
+ import type { ProCorePersona } from '@/features/pro-core/proCoreCapabilities';
++import type { ProContextTab } from '@/features/pro-workbench/RecipeProfilePanel';
+ 
+ const w = copy.proWorkspace;
+ 
+@@ -66,8 +67,9 @@ const TAB_ORDER: TabId[] = [
+ const isTabId = (value: string | null): value is TabId =>
+   value !== null && (TAB_ORDER as string[]).includes(value);
+ 
+-/** The two sections that render the ONE-SCREEN workbench (viewport-locked shell). */
+-const isWorkbenchSection = (tab: TabId): boolean => tab === 'recipe' || tab === 'monitor';
++/** The four contexts that share the same editor and right-side workspace. */
++const isWorkbenchSection = (tab: TabId): tab is ProContextTab =>
++  tab === 'recipe' || tab === 'monitor' || tab === 'production' || tab === 'history';
+ 
+ function PersonaChip({ persona }: { persona: ProCorePersona }) {
+   return (
+@@ -103,7 +105,7 @@ function DevPersonaSwitch({ persona }: { persona: ProCorePersona }) {
+ }
+ 
+ /** The ONE-SCREEN recipe workbench (also serves /pro/monitor with the panel focused). */
+-function RecipeWorkbench({ focusMonitor = false }: { focusMonitor?: boolean }) {
++function RecipeWorkbench({ activePanel }: { activePanel: ProContextTab }) {
+   // „Przelicz z PI" INITIATES the real canonical recalculation (owner P0): it stages an
+   // optimize preview in the ONE constraint-studio pipeline and opens the compact
+   // Preview → Zastosuj/Anuluj → Cofnij OVERLAY. „Monitor PI" opens the bottom-sheet
+@@ -112,8 +114,8 @@ function RecipeWorkbench({ focusMonitor = false }: { focusMonitor?: boolean }) {
+   // aside is `display:none`, so on /pro/monitor — the route whose whole purpose is
+   // the Monitor — a phone or tablet showed no Monitor at all until the user tapped
+   // the sheet open. Deep-linking to the Monitor opens the sheet it actually has.
+-  const [monitorOpen, setMonitorOpen] = useState(focusMonitor);
+   const [recalcOpen, setRecalcOpen] = useState(false);
++  const dirty = useRecipeStore((state) => state.dirty);
+   const startRecalc = () => {
+     useConstraintStudioStore.getState().createOptimizePreview();
+     setRecalcOpen(true);
+@@ -124,28 +126,50 @@ function RecipeWorkbench({ focusMonitor = false }: { focusMonitor?: boolean }) {
+       {/* ── The viewport-height region: workbar + demo-data marker + workbench. ── */}
+       <div className="lg:flex lg:h-full lg:min-h-0 lg:flex-col" data-testid="pro-viewport-region">
+         <div className="lg:shrink-0">
+-          {focusMonitor ? <ReviewBadge itemId="RV-12" /> : null}
+-          <ProWorkbar onMonitor={() => setMonitorOpen(true)} onRecalc={startRecalc} />
++          {activePanel === 'monitor' ? <ReviewBadge itemId="RV-12" /> : null}
++          <div
++            className="flex min-h-14 flex-wrap items-center justify-end gap-4 border-b border-ink/10 px-4 py-2 sm:px-6"
++            data-testid="pro-command-bar"
++          >
++            <span className="flex items-center gap-2 text-xs text-stone-600">
++              <span
++                className={`h-1.5 w-1.5 rounded-full ${dirty ? 'bg-amber-500' : 'bg-emerald-600'}`}
++              />
++              {dirty ? copy.proWorkbar.pendingRecalc : copy.proWorkbar.status.clean}
++            </span>
++            <button
++              type="button"
++              onClick={startRecalc}
++              data-testid="pro-workbar-recalc"
++              className={buttonClasses('primary', 'md')}
++            >
++              {copy.proWorkbar.recalc}
++            </button>
++          </div>
+           {/* Agent 4 fixture sweep: the starter recipe is the DEMO preset (milk-base) and the
+               ingredient picker serves the demo/reference library — marked pink until the
+               verified PI library replaces both paths. Compact single line (owner: the marker
+               stays visible, the workbench height budget stays intact). */}
+           <div
+-            className="flex flex-wrap items-center gap-2 border-b border-ink/10 border-l-2 border-l-nonprod bg-nonprod/[0.03] px-4 py-1"
++            className="bracket-note mx-4 my-1 flex flex-wrap items-center gap-2 py-1 text-stone-600"
+             data-testid="nonprod-marked-pro-demo-library"
+           >
+             <NonProductionBadge itemId="pro-demo-library" />
+             <span className="text-[11px] leading-snug text-stone-600">
+-              {'Receptura startowa i biblioteka składników to dane demo/referencyjne (wartości literaturowe, koszty szacunkowe).'}
++              {
++                'Receptura startowa i biblioteka składników to dane demo/referencyjne (wartości literaturowe, koszty szacunkowe).'
++              }
+             </span>
+           </div>
+         </div>
+ 
+-        {/* The engine workbench keeps its native dark tone (Masterpiece Phase 5). */}
+-        <SurfaceToneContext.Provider value="shell">
+-          <div className="bg-shell text-ivory [color-scheme:dark] lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
++        {/* The engine keeps one component tree; the Pro light scope remaps its historic
++            shell/ivory utilities to the white precision workspace. */}
++        <SurfaceToneContext.Provider value="paper">
++          <div className="bg-shell text-ivory lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
+             <StudioEngineSurface
+-              focusMonitor={focusMonitor}
++              activePanel={activePanel}
++              recipeBar={<ProWorkbar />}
+               onOpenRecalcPanel={() => setRecalcOpen(true)}
+               recalcSlot={<ProRecalcPanel open={recalcOpen} onClose={() => setRecalcOpen(false)} />}
+             />
+@@ -154,14 +178,11 @@ function RecipeWorkbench({ focusMonitor = false }: { focusMonitor?: boolean }) {
+       </div>
+ 
+       {/* ── BELOW the fold: the red review zone (intentional scroll only). ── */}
+-      <SurfaceToneContext.Provider value="shell">
+-        <div className="bg-shell text-ivory [color-scheme:dark]">
++      <SurfaceToneContext.Provider value="paper">
++        <div className="bg-shell text-ivory">
+           <StudioReviewZone />
+         </div>
+       </SurfaceToneContext.Provider>
+-
+-      {/* Mobile bottom sheet — the SAME complete Monitor content as the desktop panel. */}
+-      <MonitorDrawer open={monitorOpen} onClose={() => setMonitorOpen(false)} />
+     </>
+   );
+ }
+@@ -289,13 +310,16 @@ export function ProWorkspacePage() {
+   }
+ 
+   const activeTab: TabId = isTabId(section ?? null) ? (section as TabId) : 'recipe';
+-  const workbench = isPro && isWorkbenchSection(activeTab);
++  const workbenchTab = isWorkbenchSection(activeTab) ? activeTab : null;
++  const workbench = isPro && workbenchTab !== null;
+ 
+   return (
+-    // Masterpiece Phase 5 — the canonical Pro workspace wears the DARK PROFESSIONAL identity:
+-    // one token scope flips the whole chrome to deep graphite + brand-ivory actions.
+-    // Presentation only: same components, same tokens, same behavior; light routes untouched.
+-    <div className={workbench ? 'theme-pro-dark lg:h-dvh' : 'theme-pro-dark'} data-testid="pro-dark-scope">
++    // White precision workspace: presentation-only token remap. The same components,
++    // values, content, actions and below-fold review zone remain intact.
++    <div
++      className={workbench ? 'theme-pro-light lg:h-dvh' : 'theme-pro-light'}
++      data-testid="pro-light-scope"
++    >
+       <AppShell
+         viewportLock={workbench}
+         actions={
+@@ -309,7 +333,9 @@ export function ProWorkspacePage() {
+           <>
+             <div className="mx-auto max-w-6xl px-6">
+               <SectionLabel>{w.eyebrow}</SectionLabel>
+-              <h1 className="mt-1 text-2xl font-light tracking-tight text-ink">{w.title}</h1>
++              <h1 className="mt-2 text-3xl font-semibold leading-none tracking-[-0.035em] text-ink">
++                {w.title}
++              </h1>
+             </div>
+             <div className="mx-auto flex max-w-6xl justify-center px-6 py-16">
+               <UpgradePrompt
+@@ -325,14 +351,14 @@ export function ProWorkspacePage() {
+           // ONE-SCREEN workbench (recipe + monitor): no page heading, no tab row — the
+           // viewport belongs to the edit loop; every destination lives in the hamburger.
+           <div className="lg:h-full lg:min-h-0" data-testid={`pro-panel-${activeTab}`}>
+-            <RecipeWorkbench focusMonitor={activeTab === 'monitor'} />
++            <RecipeWorkbench activePanel={workbenchTab!} />
+           </div>
+         ) : (
+           // Plain titled sections (versions/production/history/costs/exports/settings/machine).
+           <>
+             <div className="mx-auto max-w-6xl px-6">
+               <SectionLabel>{w.eyebrow}</SectionLabel>
+-              <h1 className="mt-1 text-2xl font-light tracking-tight text-ink">
++              <h1 className="mt-2 text-3xl font-semibold leading-none tracking-[-0.035em] text-ink">
+                 {w.title} — {w.tabs[activeTab]}
+               </h1>
+             </div>
+diff --git a/src/pages/pro/proDarkScope.test.tsx b/src/pages/pro/proDarkScope.test.tsx
+index 5b48ab1..cee044c 100644
+--- a/src/pages/pro/proDarkScope.test.tsx
++++ b/src/pages/pro/proDarkScope.test.tsx
+@@ -1,7 +1,7 @@
+ /**
+- * Masterpiece Phase 5 — dark professional identity proofs (presentation only).
++ * White precision Pro identity proofs (presentation only).
+  *
+- * 1. The canonical Pro workspace wears the ONE `.theme-pro-dark` token scope (whole chrome:
++ * 1. The canonical Pro workspace wears the ONE `.theme-pro-light` token scope (whole chrome:
+  *    header + workbar + tabs + panels) — for the Pro persona AND the honest gate view, so the
+  *    Pro identity is consistent before and after entitlement.
+  * 2. The engine lab surface carries the elevation hairline inside the scope.
+@@ -37,32 +37,48 @@ const renderAt = (path: string, persona: ProCorePersona) => {
+   );
+ };
+ 
+-describe('Pro workspace — dark professional scope (Phase 5)', () => {
+-  it('wraps the WHOLE workspace chrome in the one theme-pro-dark token scope (Pro persona)', () => {
++describe('Pro workspace — white precision scope', () => {
++  it('wraps the WHOLE workspace chrome in the one theme-pro-light token scope (Pro persona)', () => {
+     const html = renderAt('/pro/recipe', 'pro');
+-    expect(html).toContain('theme-pro-dark');
+-    expect(html).toContain('data-testid="pro-dark-scope"');
++    expect(html).toContain('theme-pro-light');
++    expect(html).toContain('data-testid="pro-light-scope"');
+     // The scope wraps the canonical AppShell header (logo + drawer trigger) too.
+-    const scopeIndex = html.indexOf('theme-pro-dark');
++    const scopeIndex = html.indexOf('theme-pro-light');
+     const triggerIndex = html.indexOf('data-testid="app-nav-trigger"');
+     expect(triggerIndex).toBeGreaterThan(scopeIndex);
+   });
+ 
+-  it('keeps the SAME dark identity on the honest non-Pro gate (no light/dark flip-flop)', () => {
++  it('keeps the SAME white identity on the honest non-Pro gate', () => {
+     const html = renderAt('/pro', 'demo');
+-    expect(html).toContain('theme-pro-dark');
++    expect(html).toContain('theme-pro-light');
+   });
+ 
+-  it('sticky workbar with both primary actions renders INSIDE the scope', () => {
++  it('command bar, profile tabs and bottom-left save render INSIDE the scope', () => {
+     const html = renderAt('/pro/recipe', 'pro');
+-    for (const id of ['pro-workbar', 'pro-workbar-recalc', 'pro-workbar-monitor', 'pro-workbar-save']) {
++    for (const id of [
++      'pro-workbar',
++      'pro-workbar-recalc',
++      'pro-context-tabs',
++      'pro-workbar-save',
++    ]) {
+       expect(html).toContain(`data-testid="${id}"`);
+     }
+   });
+ 
+-  it('the engine lab carries the elevation hairline (border-shell-line) inside the dark scope', () => {
++  it('the engine lab carries the precision hairline inside the light scope', () => {
+     const html = renderAt('/pro/recipe', 'pro');
+-    expect(html).toContain('border-shell-line');
++    expect(html).toContain('border-ivory/10');
++    expect(html).toContain('data-testid="workbench-editor-pane"');
++    expect(html).toContain('data-testid="pro-monitor-panel"');
++    expect(html).toContain('lg:w-[62%]');
++    expect(html).toContain('lg:w-[38%]');
++  });
++
++  it('keeps the informational provenance and the below-fold review zone', () => {
++    const html = renderAt('/pro/recipe', 'pro');
++    expect(html).toContain('bracket-note');
++    expect(html).toContain('data-testid="nonprod-marked-pro-demo-library"');
++    expect(html).toContain('data-testid="pro-review-zone"');
+   });
+ 
+   it('owner review badges render on the Monitor and Maszyna panels for the owner/QA session', () => {
+diff --git a/src/pages/pro/proRecipeUxRepair.test.tsx b/src/pages/pro/proRecipeUxRepair.test.tsx
+index 900f437..b957666 100644
+--- a/src/pages/pro/proRecipeUxRepair.test.tsx
++++ b/src/pages/pro/proRecipeUxRepair.test.tsx
+@@ -193,7 +193,8 @@ describe('the 10-step no-scroll flow — every edit-loop control inside the view
+     inViewport('data-testid="ingredient-add-slot"');
+     inViewport('data-testid="pro-workbar-recalc"');
+     inViewport('data-testid="pro-monitor-panel"');
+-    inViewport('data-testid="monitor-live-summary"');
++    inViewport('data-testid="profile-fit-tutorial"');
++    inViewport('data-testid="pro-context-tabs"');
+     inViewport('data-testid="workbench-action-bar"');
+     inViewport('data-testid="app-nav-trigger"');
+   });
+@@ -234,10 +235,10 @@ describe('the 10-step no-scroll flow — every edit-loop control inside the view
+   });
+ 
+   it('the LIVE Monitor panel renders the real current result (score, axes, modules)', () => {
+-    const html = renderAt('/pro/recipe');
++    const html = renderAt('/pro/monitor');
+     const panel = html.slice(
+       html.indexOf('data-testid="pro-monitor-panel"'),
+-      html.indexOf('data-testid="workbench-action-bar"'),
++      html.indexOf('data-testid="pro-review-zone"'),
+     );
+     expect(panel).toContain('data-testid="monitor-summary-score"');
+     expect(panel).toMatch(/\d{1,2}\/10/);
+@@ -246,11 +247,12 @@ describe('the 10-step no-scroll flow — every edit-loop control inside the view
+     expect(panel).toContain('data-testid="review-marked-monitor-owner-diagnostic"');
+   });
+ 
+-  it('/pro/monitor renders the SAME workbench with the Monitor panel focused', () => {
++  it('/pro/monitor renders the SAME workbench with the Monitor context active', () => {
+     const html = renderAt('/pro/monitor');
+     expect(html).toContain('data-testid="pro-workbench"');
+     expect(html).toContain('data-testid="pro-monitor-panel"');
+-    expect(html).toContain('ring-2 ring-inset'); // the focus ring
++    expect(html).toContain('data-testid="pro-context-monitor"');
++    expect(html).toContain('aria-current="page"');
+   });
+ });
+ 
+@@ -296,7 +298,10 @@ describe('one hamburger — the tab row is gone, every destination keeps its rou
+       'settings',
+       'machine',
+     ]) {
+-      expect(APP_NAV_ITEMS.some((i) => i.to === `/pro/${section}`), section).toBe(true);
++      expect(
++        APP_NAV_ITEMS.some((i) => i.to === `/pro/${section}`),
++        section,
++      ).toBe(true);
+     }
+   });
+ });
+@@ -395,12 +400,14 @@ describe('no module removal across the split surface files', () => {
+       '<SaveCorrectionControl',
+       '<BranchWorkflowPreviews',
+       '<IngredientBuilder',
+-      '<MonitorPanelContent',
+-      '<WorkbenchSettingsLine',
++      '<RecipeProfilePanel',
+       '<WorkbenchActionBar',
+     ]) {
+       expect(surface, module).toContain(module);
+     }
++    const profile = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
++    expect(profile).toContain('<MonitorPanelContent');
++    expect(profile).toContain('<WorkbenchSettingsLine');
+     const panel = read('features', 'pro-workbench', 'MonitorPanelContent.tsx');
+     for (const module of [
+       '<UserMonitorPro',
+@@ -412,11 +419,9 @@ describe('no module removal across the split surface files', () => {
+       expect(panel, module).toContain(module);
+     }
+     expect(surface.includes('display: none')).toBe(false);
+-    // The ONLY responsive `hidden` utility is the desktop Monitor aside — its content is
+-    // served to mobile by the MonitorDrawer bottom sheet (same MonitorPanelContent).
++    // The new context panel remains mounted in the responsive flow; no module is hidden.
+     const hiddenUtility = surface.match(/(?<![\w-])hidden(?![\w-])/g) ?? [];
+-    expect(hiddenUtility).toHaveLength(1);
+-    expect(surface).toMatch(/hidden[^`"]*lg:block/);
++    expect(hiddenUtility).toHaveLength(0);
+   });
+ 
+   it('the pink demo-library marker stays visible in the viewport region', () => {
+@@ -475,8 +480,22 @@ describe('truthful states', () => {
+       proposedInput: starterMilkBase(),
+       nextConstraints: { byLineId: {} },
+       lines: [
+-        { lineId: 'l-zero', name: 'Dekstroza', beforeGrams: 0, afterGrams: 0, kind: 'unchanged', locked: false },
+-        { lineId: 'l-sucrose', name: 'Sacharoza', beforeGrams: 82, afterGrams: 74, kind: 'changed', locked: false },
++        {
++          lineId: 'l-zero',
++          name: 'Dekstroza',
++          beforeGrams: 0,
++          afterGrams: 0,
++          kind: 'unchanged',
++          locked: false,
++        },
++        {
++          lineId: 'l-sucrose',
++          name: 'Sacharoza',
++          beforeGrams: 82,
++          afterGrams: 74,
++          kind: 'changed',
++          locked: false,
++        },
+       ],
+       violationsBefore: 1,
+       violationsAfter: 0,
+diff --git a/src/styles/index.css b/src/styles/index.css
+index d9b7202..06a9ff0 100644
+--- a/src/styles/index.css
++++ b/src/styles/index.css
+@@ -1,6 +1,7 @@
+ @import 'tailwindcss';
+ @import './tokens.css';
+ @import './theme-pro-dark.css';
++@import './theme-pro-light.css';
+ 
+ @layer base {
+   html {
+@@ -10,6 +11,7 @@
+ 
+   body {
+     @apply bg-paper font-sans text-ink;
++    letter-spacing: -0.01em;
+   }
+ 
+   ::selection {
+

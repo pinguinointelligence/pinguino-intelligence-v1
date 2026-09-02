@@ -13,7 +13,9 @@ import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const REPO = resolve(import.meta.dirname, '..', '..', '..');
-const MIGRATION = readFileSync(join(REPO, 'supabase', 'migrations', '0011_product_snapshots.sql'), 'utf8');
+// Normalize CRLF: a Windows autocrlf checkout must parse identically to an LF one
+// (the per-line `--.*$` comment strip cannot cross a stray `\r`).
+const MIGRATION = readFileSync(join(REPO, 'supabase', 'migrations', '20260716101900_0011_product_snapshots.sql'), 'utf8').replace(/\r\n/g, '\n');
 const EXECUTABLE = MIGRATION.split('\n').map((l) => l.replace(/--.*$/, '')).join('\n');
 
 describe('product_snapshots migration (0011) — safe + additive', () => {

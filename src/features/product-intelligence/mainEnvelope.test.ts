@@ -1,0 +1,709 @@
+import { describe, expect, it } from 'vitest';
+import type { RecipeInput } from '@/engine';
+import { findDemoIngredient } from '@/data/demoIngredients';
+import type { ProductBehaviorSnapshot } from './contracts';
+import {
+  mainEnvelopeSearchCeilingGrams,
+  mainEnvelopeSearchFloorGrams,
+  verifyMainEnvelope,
+} from './mainEnvelope';
+import {
+  bindProductBehaviorToPreview,
+  buildBatchRescalePreview,
+  commitPreview,
+} from '@/features/constraint-studio/applyPipeline';
+
+const ingredient = (id: string) => {
+  const found = findDemoIngredient(id);
+  if (!found) throw new Error(`missing fixture ${id}`);
+  return found;
+};
+
+const snapshot = (
+  lineId: string,
+  overrides: Partial<ProductBehaviorSnapshot> = {},
+): ProductBehaviorSnapshot => ({
+  schemaVersion: 1,
+  resolutionState: 'RESOLVED',
+  lineId,
+  productId: `product-${lineId}`,
+  productVersionId: `version-${lineId}`,
+  source: 'mapper',
+  factsFingerprint: `facts-${lineId}`,
+  behaviorBindingId: `binding-${lineId}`,
+  behaviorBindingVersion: '1',
+  taxonomyVersion: 'taxonomy-v1',
+  familyId: 'fruit',
+  subfamilyId: 'berry',
+  formId: 'fresh',
+  verificationState: 'verified',
+  technicalAuthority: 'mapper_exact',
+  mapperIngredientId: lineId === 'berry' ? 'PI-ING-000394' : lineId,
+  mainClassification: 'MAIN_PROFILE_SPECIFIC',
+  mainPolicyId: 'berry-dairy-v1',
+  mainPolicyVersion: '1',
+  ecoFloorPercent: 25,
+  optimalCeilingPercent: 35,
+  hardLimitPercent: 45,
+  mainEquivalentFactor: 1,
+  mainBasis: 'FRUIT_EQUIVALENT',
+  requiresLiquidDairyCarrier: true,
+  liquidDairyCarrierFloorPercent: 30,
+  approvedLiquidDairyCarrier: false,
+  approvedMixedFamilyIds: [],
+  moduleEligibility: {
+    MAIN: 'eligible',
+    BASE_RECIPE: 'eligible',
+    OPTIMAL: 'eligible',
+    ECO: 'eligible',
+  },
+  processScope: 'BASE_FORMULATION',
+  resolverVersion: 'resolver-v1',
+  sharedFacts: {
+    schemaVersion: 1,
+    technicalComposition: null,
+    nutritionPer100g: null,
+    allergens: null,
+    processEvidence: [],
+    profileEligibility: ['fruit_gelato', 'protein_gelato'],
+    veganEligibility: 'unknown',
+    proteinBehavior: 'neutral',
+    referencePrice: null,
+    recommendedDose: null,
+  },
+  warnings: [],
+  blockReasons: [],
+  ...overrides,
+});
+
+const recipe = (mainGrams: number, carrierGrams: number): RecipeInput => ({
+  mode: 'classic',
+  category: 'fruit_gelato',
+  target_temperature_c: -12,
+  target_batch_grams: 1000,
+  machine_capacity_grams: null,
+  items: [
+    {
+      id: 'berry',
+      ingredient: ingredient('raspberry'),
+      planned_grams: mainGrams,
+      actual_grams: null,
+      lock_type: 'main',
+    },
+    {
+      id: 'milk',
+      ingredient: ingredient('milk_3_5'),
+      planned_grams: carrierGrams,
+      actual_grams: null,
+      lock_type: 'unlocked',
+    },
+    {
+      id: 'sugar',
+      ingredient: ingredient('sucrose'),
+      planned_grams: 997 - mainGrams - carrierGrams,
+      actual_grams: null,
+      lock_type: 'unlocked',
+    },
+    {
+      id: 'tara',
+      ingredient: ingredient('tara_gum'),
+      planned_grams: 3,
+      actual_grams: null,
+      lock_type: 'unlocked',
+    },
+  ],
+});
+
+const snapshots = (extra: Record<string, ProductBehaviorSnapshot> = {}) => ({
+  berry: snapshot('berry'),
+  milk: snapshot('milk', {
+    mapperIngredientId: 'PI-ING-000236',
+    familyId: null,
+    subfamilyId: null,
+    formId: null,
+    mainClassification: 'STANDARD_ONLY',
+    mainPolicyId: null,
+    mainPolicyVersion: null,
+    ecoFloorPercent: null,
+    optimalCeilingPercent: null,
+    hardLimitPercent: null,
+    mainEquivalentFactor: null,
+    mainBasis: null,
+    requiresLiquidDairyCarrier: false,
+    liquidDairyCarrierFloorPercent: null,
+    approvedLiquidDairyCarrier: true,
+    moduleEligibility: {
+      BASE_RECIPE: 'eligible',
+      MAIN: 'blocked',
+      OPTIMAL: 'eligible',
+      ECO: 'eligible',
+    },
+  }),
+  sugar: snapshot('sugar', {
+    mapperIngredientId: 'PI-ING-000514',
+    familyId: null,
+    subfamilyId: null,
+    formId: null,
+    mainClassification: 'STRUCTURAL_ONLY',
+    mainPolicyId: null,
+    mainPolicyVersion: null,
+    ecoFloorPercent: null,
+    optimalCeilingPercent: null,
+    hardLimitPercent: null,
+    mainEquivalentFactor: null,
+    mainBasis: null,
+    requiresLiquidDairyCarrier: false,
+    liquidDairyCarrierFloorPercent: null,
+    approvedLiquidDairyCarrier: false,
+    moduleEligibility: {
+      BASE_RECIPE: 'eligible',
+      MAIN: 'blocked',
+      OPTIMAL: 'eligible',
+      ECO: 'eligible',
+    },
+  }),
+  tara: snapshot('tara', {
+    mapperIngredientId: 'PI-ING-000492',
+    familyId: null,
+    subfamilyId: null,
+    formId: null,
+    mainClassification: 'STANDARD_ONLY',
+    mainPolicyId: null,
+    mainPolicyVersion: null,
+    ecoFloorPercent: null,
+    optimalCeilingPercent: null,
+    hardLimitPercent: null,
+    mainEquivalentFactor: null,
+    mainBasis: null,
+    requiresLiquidDairyCarrier: false,
+    liquidDairyCarrierFloorPercent: null,
+    approvedLiquidDairyCarrier: false,
+    moduleEligibility: {
+      BASE_RECIPE: 'eligible',
+      MAIN: 'blocked',
+      OPTIMAL: 'eligible',
+      ECO: 'eligible',
+    },
+  }),
+  ...extra,
+});
+
+describe('versioned Main envelope', () => {
+  it('blocks Preview when a substitute keeps the previous product snapshot', () => {
+    const input = recipe(300, 400);
+    input.items[0] = {
+      ...input.items[0]!,
+      ingredient: { ...ingredient('pistachio_paste'), identity_provenance: 'mapper' },
+    };
+    expect(
+      bindProductBehaviorToPreview(
+        buildBatchRescalePreview(input, { byLineId: {} }, 1100, '2026-08-12T00:00:00Z'),
+        snapshots(),
+      ),
+    ).toMatchObject({
+      ok: false,
+      code: 'product_behavior_invalid',
+      violations: [{ code: 'product_behavior_identity_mismatch', lineIds: ['berry'] }],
+    });
+  });
+
+  it('never grandfathers a Mapper/private/catalog Main line without a behavior snapshot', () => {
+    const input = recipe(350, 400);
+    input.items[0] = {
+      ...input.items[0]!,
+      ingredient: {
+        ...input.items[0]!.ingredient,
+        private_product_id: 'legacy-private-product',
+        identity_provenance: 'private_product',
+      },
+    };
+    expect(verifyMainEnvelope({ recipe: input, snapshots: {}, mode: 'optimal' })).toMatchObject({
+      ok: false,
+      violations: [{ code: 'main_behavior_missing', lineIds: ['berry'] }],
+    });
+  });
+
+  it('also blocks a legacy Mapper Main without a private product id', () => {
+    const input = recipe(350, 400);
+    input.items[0] = {
+      ...input.items[0]!,
+      ingredient: {
+        ...input.items[0]!.ingredient,
+        private_product_id: undefined,
+        identity_provenance: 'mapper',
+      },
+    };
+    expect(verifyMainEnvelope({ recipe: input, snapshots: {}, mode: 'optimal' })).toMatchObject({
+      ok: false,
+      violations: [{ code: 'main_behavior_missing', lineIds: ['berry'] }],
+    });
+  });
+
+  it('blocks Preview when any applicable Mapper line lacks a snapshot', () => {
+    const input = recipe(300, 400);
+    input.items[1] = {
+      ...input.items[1]!,
+      ingredient: { ...input.items[1]!.ingredient, identity_provenance: 'mapper' },
+    };
+    expect(
+      bindProductBehaviorToPreview(
+        buildBatchRescalePreview(input, { byLineId: {} }, 1100, '2026-08-12T00:00:00Z'),
+        { berry: snapshots().berry, sugar: snapshots().sugar, tara: snapshots().tara },
+      ),
+    ).toMatchObject({
+      ok: false,
+      code: 'product_behavior_invalid',
+      violations: [{ code: 'product_behavior_missing', lineIds: ['milk'] }],
+    });
+  });
+  it('applies the ordinary dairy carrier boundary at 299/300/301 g per kg', () => {
+    expect(
+      verifyMainEnvelope({ recipe: recipe(300, 299), snapshots: snapshots(), mode: 'optimal' }),
+    ).toMatchObject({
+      ok: false,
+      violations: expect.arrayContaining([
+        expect.objectContaining({ code: 'liquid_dairy_carrier_below_floor' }),
+      ]),
+    });
+    expect(
+      verifyMainEnvelope({ recipe: recipe(300, 300), snapshots: snapshots(), mode: 'optimal' }).ok,
+    ).toBe(true);
+    expect(
+      verifyMainEnvelope({ recipe: recipe(300, 301), snapshots: snapshots(), mode: 'optimal' }).ok,
+    ).toBe(true);
+  });
+
+  it('enforces the approved Main floor and hard limit, and treats the OPTIMAL ceiling as a preference', () => {
+    expect(
+      verifyMainEnvelope({ recipe: recipe(249, 400), snapshots: snapshots(), mode: 'eco' }),
+    ).toMatchObject({
+      ok: false,
+      violations: [expect.objectContaining({ code: 'main_below_floor' })],
+    });
+    // OWNER CROWN AUTHORITY: an active Crown is an explicit MAX request, so
+    // crossing the OPTIMAL *preference* target no longer invalidates it. The
+    // boundary is still available to any caller that opts in explicitly.
+    expect(
+      verifyMainEnvelope({ recipe: recipe(351, 400), snapshots: snapshots(), mode: 'optimal' }).ok,
+    ).toBe(true);
+    expect(
+      verifyMainEnvelope({
+        recipe: recipe(351, 400),
+        snapshots: snapshots(),
+        mode: 'optimal',
+        enforceOptimalPreferenceCeiling: true,
+      }),
+    ).toMatchObject({
+      ok: false,
+      violations: expect.arrayContaining([
+        expect.objectContaining({ code: 'main_above_optimal_ceiling' }),
+      ]),
+    });
+    expect(
+      verifyMainEnvelope({ recipe: recipe(451, 400), snapshots: snapshots(), mode: 'eco' }),
+    ).toMatchObject({
+      ok: false,
+      violations: expect.arrayContaining([
+        expect.objectContaining({ code: 'main_above_hard_limit' }),
+      ]),
+    });
+  });
+
+  it('feeds the approved Main HARD SAFETY limit into candidate search', () => {
+    // OWNER CROWN AUTHORITY: Crown is an explicit MAX objective, so its search
+    // frontier is the published hard limit (45% of 1000 g), not the OPTIMAL
+    // preference target (35%). The preference never caps a maximisation.
+    expect(
+      mainEnvelopeSearchCeilingGrams({ recipe: recipe(250, 400), snapshots: snapshots() }),
+    ).toBe(450);
+  });
+
+  it('feeds the approved Main floor into candidate search without creating a gram hold', () => {
+    expect(mainEnvelopeSearchFloorGrams({ recipe: recipe(250, 400), snapshots: snapshots() })).toBe(
+      250,
+    );
+  });
+
+  it('uses concentration-equivalent mass and refuses an unapproved mixed family', () => {
+    const compoundRecipe = recipe(500, 300);
+    expect(
+      verifyMainEnvelope({
+        recipe: compoundRecipe,
+        snapshots: snapshots({ berry: snapshot('berry', { mainEquivalentFactor: 0.3 }) }),
+        mode: 'optimal',
+      }),
+    ).toMatchObject({
+      ok: false,
+      violations: [expect.objectContaining({ code: 'main_below_floor' })],
+    });
+
+    const mixed: RecipeInput = {
+      ...recipe(200, 400),
+      items: [
+        ...recipe(200, 400).items,
+        {
+          id: 'nut',
+          ingredient: ingredient('pistachio_paste'),
+          planned_grams: 100,
+          actual_grams: null,
+          lock_type: 'main',
+        },
+      ],
+    };
+    expect(
+      verifyMainEnvelope({
+        recipe: mixed,
+        snapshots: snapshots({
+          nut: snapshot('nut', {
+            mapperIngredientId: 'pistachio_paste',
+            familyId: 'nut',
+            subfamilyId: null,
+          }),
+        }),
+        mode: 'optimal',
+      }),
+    ).toMatchObject({
+      ok: false,
+      violations: [expect.objectContaining({ code: 'multi_main_policy_unknown' })],
+    });
+  });
+
+  it.each([
+    [401, 401],
+    [550, 275],
+  ])(
+    'accepts the approved Vegan same-family Multi-Main total envelope',
+    (firstGrams, secondGrams) => {
+      const baseRecipe = recipe(firstGrams, 0);
+      const sameFamily: RecipeInput = {
+        ...baseRecipe,
+        category: 'vegan_gelato',
+        items: [
+          ...baseRecipe.items.map((item) =>
+            item.id === 'sugar'
+              ? { ...item, planned_grams: item.planned_grams - secondGrams }
+              : item,
+          ),
+          {
+            id: 'banana',
+            ingredient: ingredient('banana'),
+            planned_grams: secondGrams,
+            actual_grams: null,
+            lock_type: 'main',
+          },
+        ],
+      };
+      const groupSnapshot = (lineId: string, mapperIngredientId: string, subfamilyId: string) =>
+        snapshot(lineId, {
+          mapperIngredientId,
+          familyId: 'fruit',
+          subfamilyId,
+          mainPolicyId: 'main-vegan-fruit-combination-v2',
+          mainPolicyVersion: '2',
+          ecoFloorPercent: 30,
+          optimalCeilingPercent: 87.6,
+          hardLimitPercent: 87.6,
+          multiMainHardLimitPercent: 82.5,
+          requiresLiquidDairyCarrier: false,
+          liquidDairyCarrierFloorPercent: null,
+        });
+      const result = verifyMainEnvelope({
+        recipe: sameFamily,
+        snapshots: {
+          berry: groupSnapshot('berry', 'berry_puree', 'berry'),
+          banana: groupSnapshot('banana', 'banana_puree', 'banana'),
+        },
+        mode: 'optimal',
+      });
+      expect(result).toMatchObject({
+        ok: true,
+        policyId: 'main-vegan-fruit-combination-v2',
+      });
+      expect(result.ok && result.equivalentPercent).toBeCloseTo(
+        firstGrams + secondGrams === 802 ? 80.2 : 82.5,
+        8,
+      );
+    },
+  );
+
+  it.each([
+    [300, 300],
+    [400, 200],
+  ])('accepts exact-authority Sorbet Multi-Main at 60%% (%i + %i g)', (first, second) => {
+    const base = recipe(first, 0);
+    const sorbetRecipe: RecipeInput = {
+      ...base,
+      category: 'sorbet',
+      items: [
+        { ...base.items[0]!, planned_grams: first, main_ratio_weight: first / 200 },
+        {
+          id: 'lime',
+          ingredient: ingredient('raspberry'),
+          planned_grams: second,
+          actual_grams: null,
+          lock_type: 'main',
+          main_ratio_weight: second / 200,
+        },
+        { ...base.items[2]!, planned_grams: 1_000 - first - second },
+      ],
+    };
+    const exactSorbetSnapshot = (lineId: string, mapperIngredientId: string) =>
+      snapshot(lineId, {
+        mapperIngredientId,
+        familyId: 'fruit',
+        mainPolicyId: 'main-sorbet-exact-fruit-60-v1',
+        mainPolicyVersion: '1',
+        ecoFloorPercent: 60,
+        optimalCeilingPercent: 60,
+        hardLimitPercent: 60,
+        multiMainHardLimitPercent: 60,
+        mainEquivalentFactor: 1,
+        requiresLiquidDairyCarrier: false,
+        liquidDairyCarrierFloorPercent: null,
+      });
+    const result = verifyMainEnvelope({
+      recipe: sorbetRecipe,
+      snapshots: {
+        berry: exactSorbetSnapshot('berry', 'PI-ING-001553'),
+        lime: exactSorbetSnapshot('lime', 'PI-ING-000369'),
+      },
+      mode: 'optimal',
+    });
+    expect(result).toMatchObject({
+      ok: true,
+      equivalentPercent: 60,
+      targetPercent: 60,
+      hardLimitPercent: 60,
+      policyId: 'main-sorbet-exact-fruit-60-v1',
+    });
+  });
+
+  it('projects the exact Sorbet Multi-Main floor through the stored user ratio', () => {
+    const base = recipe(300, 0);
+    const sorbetRecipe: RecipeInput = {
+      ...base,
+      category: 'sorbet',
+      items: [
+        { ...base.items[0]!, planned_grams: 300, main_ratio_weight: 2 },
+        {
+          id: 'lime',
+          ingredient: ingredient('raspberry'),
+          planned_grams: 150,
+          actual_grams: null,
+          lock_type: 'main',
+          main_ratio_weight: 1,
+        },
+        { ...base.items[2]!, planned_grams: 550 },
+      ],
+    };
+    const exactSorbetSnapshot = (lineId: string, mapperIngredientId: string) =>
+      snapshot(lineId, {
+        mapperIngredientId,
+        familyId: 'fruit',
+        mainPolicyId: 'main-sorbet-exact-fruit-60-v1',
+        mainPolicyVersion: '1',
+        ecoFloorPercent: 60,
+        optimalCeilingPercent: 60,
+        hardLimitPercent: 60,
+        multiMainHardLimitPercent: 60,
+        mainEquivalentFactor: 1,
+        requiresLiquidDairyCarrier: false,
+        liquidDairyCarrierFloorPercent: null,
+      });
+
+    expect(
+      mainEnvelopeSearchFloorGrams({
+        recipe: sorbetRecipe,
+        snapshots: {
+          berry: exactSorbetSnapshot('berry', 'PI-ING-001553'),
+          lime: exactSorbetSnapshot('lime', 'PI-ING-000369'),
+        },
+      }),
+    ).toBe(600);
+  });
+
+  it('uses individual Sorbet envelopes when no shared combination cap exists', () => {
+    const base = recipe(300, 0);
+    const sorbetRecipe: RecipeInput = {
+      ...base,
+      category: 'sorbet',
+      items: [
+        base.items[0]!,
+        {
+          id: 'unknown',
+          ingredient: ingredient('raspberry'),
+          planned_grams: 300,
+          actual_grams: null,
+          lock_type: 'main',
+        },
+        { ...base.items[2]!, planned_grams: 400 },
+      ],
+    };
+    const approved = snapshot('berry', {
+      mainPolicyId: 'main-sorbet-exact-fruit-60-v1',
+      ecoFloorPercent: 60,
+      optimalCeilingPercent: 60,
+      hardLimitPercent: 60,
+      multiMainHardLimitPercent: 60,
+      requiresLiquidDairyCarrier: false,
+      liquidDairyCarrierFloorPercent: null,
+    });
+    const unknown = snapshot('unknown', {
+      mainPolicyId: 'unapproved-sorbet-main',
+      ecoFloorPercent: 60,
+      optimalCeilingPercent: 60,
+      hardLimitPercent: 60,
+      multiMainHardLimitPercent: null,
+      requiresLiquidDairyCarrier: false,
+      liquidDairyCarrierFloorPercent: null,
+    });
+    expect(
+      verifyMainEnvelope({
+        recipe: sorbetRecipe,
+        snapshots: { berry: approved, unknown },
+        mode: 'optimal',
+      }),
+    ).toMatchObject({
+      ok: true,
+      equivalentPercent: 60,
+      targetPercent: 60,
+      hardLimitPercent: 60,
+      policyId: null,
+    });
+  });
+
+  it('caps same-family Multi-Main search at the approved shared group limit', () => {
+    const baseRecipe = recipe(400, 0);
+    const multiRecipe: RecipeInput = {
+      ...baseRecipe,
+      category: 'vegan_gelato',
+      items: [
+        ...baseRecipe.items.map((item) =>
+          item.id === 'sugar' ? { ...item, planned_grams: 175 } : item,
+        ),
+        {
+          id: 'banana',
+          ingredient: ingredient('banana'),
+          planned_grams: 425,
+          actual_grams: null,
+          lock_type: 'main',
+        },
+      ],
+    };
+    const groupSnapshot = (lineId: string, ceiling: number) =>
+      snapshot(lineId, {
+        familyId: 'fruit',
+        mainPolicyId: 'main-vegan-fruit-combination-v2',
+        mainPolicyVersion: '2',
+        optimalCeilingPercent: ceiling,
+        hardLimitPercent: ceiling,
+        multiMainHardLimitPercent: 82.5,
+        requiresLiquidDairyCarrier: false,
+        liquidDairyCarrierFloorPercent: null,
+      });
+
+    expect(
+      mainEnvelopeSearchCeilingGrams({
+        recipe: multiRecipe,
+        snapshots: {
+          berry: groupSnapshot('berry', 74.7),
+          banana: groupSnapshot('banana', 86),
+        },
+      }),
+    ).toBe(825);
+  });
+
+  it('does not apply the ordinary dairy carrier gate to a profile policy that does not require it', () => {
+    const proteinSnapshot = snapshot('berry', {
+      requiresLiquidDairyCarrier: false,
+      liquidDairyCarrierFloorPercent: null,
+    });
+    expect(
+      verifyMainEnvelope({
+        recipe: { ...recipe(300, 0), category: 'protein_gelato' },
+        snapshots: { berry: proteinSnapshot },
+        mode: 'optimal',
+      }).ok,
+    ).toBe(true);
+  });
+
+  it('invalidates Preview when the product behavior binding changes before Apply', () => {
+    const input = recipe(300, 400);
+    const authority = snapshots();
+    const built = bindProductBehaviorToPreview(
+      buildBatchRescalePreview(input, { byLineId: {} }, 1100, '2026-08-12T00:00:00Z'),
+      authority,
+    );
+    expect(built.ok).toBe(true);
+    if (!built.ok) return;
+    const changedAuthority = {
+      ...authority,
+      berry: { ...authority.berry, behaviorBindingVersion: '2' },
+    };
+    expect(
+      commitPreview(
+        input,
+        { byLineId: {} },
+        built.preview,
+        '2026-08-12T00:01:00Z',
+        'apply-stale-product-policy',
+        [],
+        undefined,
+        null,
+        null,
+        null,
+        null,
+        changedAuthority,
+      ),
+    ).toMatchObject({ ok: false, code: 'stale_preview' });
+  });
+
+  it('keeps an Owner Review Main lock visible while Preview and Apply validate it as technical-only', () => {
+    const input = recipe(300, 400);
+    const authority = snapshots({
+      berry: snapshot('berry', {
+        mainClassification: 'MAIN_BLOCKED_POLICY',
+        mainPolicyId: null,
+        mainPolicyVersion: null,
+        ecoFloorPercent: null,
+        optimalCeilingPercent: null,
+        hardLimitPercent: null,
+        moduleEligibility: {
+          MAIN: 'blocked',
+          BASE_RECIPE: 'eligible',
+          OPTIMAL: 'eligible',
+          ECO: 'eligible',
+        },
+        blockReasons: ['profile_main_policy_missing'],
+      }),
+    });
+    const built = bindProductBehaviorToPreview(
+      buildBatchRescalePreview(input, { byLineId: {} }, 1100, '2026-08-12T00:00:00Z'),
+      authority,
+      authority,
+      ['berry'],
+    );
+    expect(built.ok).toBe(true);
+    if (!built.ok) return;
+    expect(built.preview.proposedInput.items.find((item) => item.id === 'berry')?.lock_type).toBe(
+      'main',
+    );
+    expect(
+      commitPreview(
+        input,
+        { byLineId: {} },
+        built.preview,
+        '2026-08-12T00:01:00Z',
+        'apply-owner-review-technical-main',
+        [],
+        undefined,
+        null,
+        null,
+        null,
+        null,
+        authority,
+        ['berry'],
+      ),
+    ).toMatchObject({ ok: true });
+  });
+});

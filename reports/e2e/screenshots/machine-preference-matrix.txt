@@ -1,0 +1,79 @@
+GELLATTI — served capture: machine preference -> Studio, FULL CANONICAL MATRIX
+Served on https://staging.pinguinoai.com as pro@pro.com (4ebc6ec7-…)
+Staging 1199e960 / cc3b6f3e · bundles index-yB-Mq4g7.js, index-Btdbojxz.js
+Captured 2026-08-30
+
+WHY pro@pro.com: it is the account that carries the stale
+`user_recipe_defaults` row (gelato / machineKind professional / 1000 g, written
+2026-08-14). test1@test1.com has no such row, which is exactly why my earlier
+proof passed while the bug was live. Every row below was taken on the account
+that could exhibit the bug.
+
+REGISTRY: read from MACHINE_CATALOG at runtime — 10 machines, all active.
+
+--- BEFORE (staging 91dc3ab9) ------------------------------------------------
+  Ustawienia maszyny -> Moulinex Freezi -> "Zapisz i przejdź do receptury"
+    localStorage …machine_preference.v1::4ebc6ec7… = moulinex-freezi-mj803af0-es
+  Przejdź do receptury  -> Maszyna profesjonalna 1000 / 1000 g
+  + Nowa receptura      -> Maszyna profesjonalna 1000 / 1000 g
+
+--- AFTER ---------------------------------------------------------------------
+Every NEW RECIPE reading below was taken after a REAL browser navigation to
+/pro/recipe (a full document load), so "NEW RECIPE" and "REFRESH + NEW" are the
+same measurement taken after a refresh — recorded once, not claimed twice.
+
+MACHINE                     CANON  SAVED  DIRECT(rule B)      NEW/REFRESH   RESULT
+Ninja CREAMi                 450   ok     previous draft      450 / 450     PASS
+Ninja CREAMi Deluxe          670   ok     previous draft      670 / 670     PASS
+Ninja CREAMi Scoop & Swirl   460   ok     previous draft      460 / 460     PASS
+Moulinex Freezi              950   ok     previous draft      950 / 950     PASS
+Sage Smart Scoop             950   ok     previous draft      950 / 950     PASS
+Magimix Gelato Expert        950   ok     previous draft      950 / 950     PASS
+  Magimix, Sorbet           1240   ok     —                  1240 / 1240    PASS
+Cuisinart ICE-100           1430   ok     previous draft     1430 / 1430    PASS
+KitchenAid Ice Cream Maker  1330   ok     previous draft     1330 / 1330    PASS
+Cuisinart ICE-21            1330   ok     previous draft     1330 / 1330    PASS
+Cuisinart ICE-30            1900   ok     previous draft     1900 / 1900    PASS
+Własna maszyna (typed)      1200   ok     previous draft     1200 / 1200    PASS
+Professional (no machine)   1000   n/a    previous draft     1000 / 1000    PASS
+
+DIRECT TO RECIPE is the previous draft by CONTRACT, not by accident: rule B
+says changing the account machine must NOT rewrite an already-open recipe.
+"Przejdź do receptury" navigates; it does not start a recipe. The saved machine
+takes effect on the next NEW recipe, which is what rule A asks for.
+
+STRAWBERRY RECALCULATE + PRODUCTION
+Run for three machines chosen to cover ALL THREE technologies in the registry.
+NOT run for the other seven — stated plainly rather than implied.
+
+  Cuisinart ICE-30 (frozen_bowl)
+    before solver : machineId cuisinart-ice30bce-eu, target 1900,
+                    base 1912 (7 lines incl. STRAWBERRIES · Fresh Fruit 12 g)
+    solver        : 10/10, 5 gram changes proposed
+    after Apply   : machine UNCHANGED, target 1900, base reconciled to 1900
+    Production    : READY, 1900 g, "INSTRUKCJA MASZYNY · Maszyna z mrożoną misą"
+  Moulinex Freezi (compressor)
+    before solver : machineId moulinex-freezi-mj803af0-es, target 950, base 960
+                    (STRAWBERRIES · Fresh Fruit 10 g)
+    after Apply   : machine UNCHANGED, target 950, base reconciled to 950
+    Production    : READY, 950 g, "INSTRUKCJA MASZYNY · Maszyna z kompresorem"
+  Ninja CREAMi Deluxe (respin)
+    Production    : READY, 670 g,
+                    "INSTRUKCJA MASZYNY · Procesor z mrożonym pojemnikiem"
+
+  The three guides are DIFFERENT, which is the point: Production is reading the
+  saved machine's technology, not a label.
+
+PRECEDENCE, all four observed on staging
+  A NEW RECIPE          -> saved machine wins, over a stale Professional row
+  B OPEN DRAFT          -> untouched by a machine change (every DIRECT column)
+  C SAVED RECIPE        -> QA Gelato Wanilia -11 reopens Maszyna profesjonalna
+                           1000 g with a home machine saved
+  D NO SAVED MACHINE    -> Professional 1000 g (preference key removed)
+
+TWO DEFECTS THIS MATRIX FOUND, BOTH FIXED
+  1. A stale per-product default outranked the saved machine (PR #21).
+  2. `effectiveDefaultBatchGrams` returns the batch FROZEN into the record, so
+     Magimix gave sorbet the gelato figure; and a CUSTOM machine, which derives
+     no recommendation at all, fell back to Professional despite a typed batch
+     (PR #21 and PR #22).

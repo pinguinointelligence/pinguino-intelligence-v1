@@ -124,16 +124,18 @@ describe('selectIngredientLibrary', () => {
     expect(lib.ingredients).toHaveLength(0);
   });
 
-  it('falls back to demo on fetch error', () => {
+  it('fails closed without demo products on a Pro fetch error', () => {
     const lib = selectIngredientLibrary({ demo: false, isPro: true, rows: undefined, isError: true });
     expect(lib.status).toBe('fallback');
-    expect(lib.ingredients).toBe(DEMO_INGREDIENTS);
+    expect(lib.source).toBe('pi_base');
+    expect(lib.ingredients).toEqual([]);
   });
 
-  it('falls back to demo when the library is empty (not seeded / RLS empty)', () => {
+  it('fails closed without demo products when Pro Mapper authority is unavailable', () => {
     const lib = selectIngredientLibrary({ demo: false, isPro: true, rows: [], isError: false });
     expect(lib.status).toBe('fallback');
-    expect(lib.ingredients).toBe(DEMO_INGREDIENTS);
+    expect(lib.source).toBe('pi_base');
+    expect(lib.ingredients).toEqual([]);
   });
 
   it('returns mapped PI Base ingredients for Pro when rows are present', () => {

@@ -13,7 +13,7 @@ The −12/−13 `TARGET_BANDS` and the Temperature Regulator existed and were co
    - −13: **G11** (NPAC 51.77 → 49.73 %) and **G18** (NPAC 53.15 → 49.69 %)
    Source metadata is carried on each row (`source: 'golden_fixtures:…'`).
 2. **Temperature-appropriate customer base** ([intentRecipeDraft.ts](../../src/features/studioFlow/intentRecipeDraft.ts)) — standard-gelato now starts from the approved reference for the serving temperature: milk base @ −11, **G17 @ −12**, **G18 @ −13** (both transcribed verbatim, inulin included as in the approved formula). A bounded correction solver cannot reformulate a −11 recipe into a −13 spec, so the base itself must be temperature-appropriate.
-3. **Tuning approval is now data-driven** ([monitorTuningApproval.ts](../../src/features/pi-monitor/monitorTuningApproval.ts)) — `isMonitorTuningApproved(category, temp)` delegates to `hasSeededIceAnchorAtTemperature`, so a cell becomes tunable exactly when a same-temperature seeded anchor exists (no hand-maintained list). All of −11/−12/−13 are now approved; refusals come only from a real solve.
+3. **Tuning approval is now data-driven** ([monitorTuningApproval.ts](../../src/features/pi-monitor/monitorTuningApproval.ts)) — `isMonitorTuningApproved(category, temp)` delegates to the engine's `hasDirectIceAuthorityAtTemperature`: anchor-calibrated categories become tunable exactly when a same-temperature seeded anchor exists (no hand-maintained list); **Sorbet** is approved at −11/−12/−13 by its composition-sensitive freezing solver (`sorbetFreezingPhysics.ts`) and never by milk_gelato anchor rows (no Sorbet anchor row exists or may be invented). All of −11/−12/−13 are now approved; refusals come only from a real solve.
 
 ## Verified outcome (real customer flow)
 

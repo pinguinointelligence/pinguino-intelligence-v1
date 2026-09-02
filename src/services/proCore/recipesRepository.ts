@@ -7,6 +7,7 @@
  * migration 0027) implements the same port for staging. Authorization is the internal user id.
  */
 import type { RecipeInput } from '@/engine';
+import type { RecipeCompositionMetadata } from '@/features/recipe-composition/recipeCompositionPersistence';
 import type { VersionTrace } from '@/features/pro-core/recipeVersioning';
 import type {
   RecipeCapabilities,
@@ -22,6 +23,7 @@ export interface CreateRecipeArgs {
   title: string;
   notes?: string | null;
   recipeInput: RecipeInput;
+  productComposition?: RecipeCompositionMetadata | null;
   trace: VersionTrace;
   source?: RecipeVersionSource;
   by: string;
@@ -35,7 +37,7 @@ export interface SaveVersionOpts {
 
 export interface RecipesRepository {
   createRecipe(args: CreateRecipeArgs): Promise<{ recipe: SavedRecipe; version: RecipeVersion }>;
-  saveNewVersion(recipeId: string, recipeInput: RecipeInput, trace: VersionTrace, by: string, opts?: SaveVersionOpts): Promise<RecipeVersion>;
+  saveNewVersion(recipeId: string, recipeInput: RecipeInput, trace: VersionTrace, by: string, opts?: SaveVersionOpts, productComposition?: RecipeCompositionMetadata | null): Promise<RecipeVersion>;
   renameRecipe(recipeId: string, title: string): Promise<SavedRecipe>;
   archiveRecipe(recipeId: string, archived: boolean): Promise<SavedRecipe>;
   restore(recipeId: string, targetVersionNumber: number, by: string, caps: RecipeCapabilities): Promise<RecipeVersion>;
@@ -50,7 +52,8 @@ export interface RecipesRepository {
 export function inMemoryRecipesRepository(svc: InMemoryRecipes): RecipesRepository {
   return {
     createRecipe: async (args) => svc.createRecipe(args),
-    saveNewVersion: async (recipeId, recipeInput, trace, by, opts) => svc.saveNewVersion(recipeId, recipeInput, trace, by, opts),
+    saveNewVersion: async (recipeId, recipeInput, trace, by, opts, productComposition) =>
+      svc.saveNewVersion(recipeId, recipeInput, trace, by, opts, productComposition),
     renameRecipe: async (recipeId, title) => svc.renameRecipe(recipeId, title),
     archiveRecipe: async (recipeId, archived) => svc.archiveRecipe(recipeId, archived),
     restore: async (recipeId, targetVersionNumber, by, caps) => svc.restore(recipeId, targetVersionNumber, by, caps),

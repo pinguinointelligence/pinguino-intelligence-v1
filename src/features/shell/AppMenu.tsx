@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import { IvoryLogoMark } from '@/components/shared/IvoryLogoMark';
 import { copy } from '@/copy/en';
-import { ACTIVE_ENGINE } from '@/data/engines';
+import { ACTIVE_ENGINE, engineDisplayLabelPl } from '@/data/engines';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { cn } from '@/lib/cn';
 import { useAuthStore } from '@/stores/authStore';
@@ -11,10 +11,9 @@ import { NAV_ITEMS } from './navConfig';
 
 const m = copy.menu;
 
-const itemClass =
-  'block rounded-md px-3 py-2 text-sm text-ink transition-colors hover:bg-ink/5';
+const itemClass = 'block rounded-md px-3 py-2 text-sm text-ink transition-colors hover:bg-ink/5';
 const soonChip =
-  'rounded border border-ink/10 px-1.5 py-0.5 text-[0.6rem] font-medium tracking-[0.08em] text-stone-400 uppercase';
+  'rounded border border-ink/10 px-1.5 py-0.5 text-[0.65rem] font-medium tracking-[0.08em] text-stone-600 uppercase';
 
 /**
  * Hamburger menu — New, Advanced Studio, and future subscriber items (Step 6A).
@@ -44,7 +43,15 @@ export function AppMenu({ onNew, tone = 'ink' }: { onNew?: () => void; tone?: 'i
           tone === 'ivory' ? 'text-ivory hover:bg-ivory/10' : 'text-ink hover:bg-ink/5',
         )}
       >
-        <svg viewBox="0 0 24 24" width={20} height={20} aria-hidden fill="none" stroke="currentColor" strokeWidth={1.5}>
+        <svg
+          viewBox="0 0 24 24"
+          width={20}
+          height={20}
+          aria-hidden
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+        >
           <path d="M4 7h16M4 12h16M4 17h16" strokeLinecap="round" />
         </svg>
       </button>
@@ -53,7 +60,7 @@ export function AppMenu({ onNew, tone = 'ink' }: { onNew?: () => void; tone?: 'i
         <div className="fixed inset-0 z-50">
           <button
             type="button"
-            aria-label="Close menu"
+            aria-label="Zamknij menu"
             className="absolute inset-0 h-full w-full bg-ink/20"
             onClick={() => setOpen(false)}
           />
@@ -85,7 +92,7 @@ export function AppMenu({ onNew, tone = 'ink' }: { onNew?: () => void; tone?: 'i
               {[m.items.production, m.items.saved].map((label) => (
                 <div
                   key={label}
-                  className="flex items-center justify-between rounded-md px-3 py-2 text-sm text-stone-400"
+                  className="flex items-center justify-between rounded-md px-3 py-2 text-sm text-stone-600"
                 >
                   <span>{label}</span>
                   <span className={soonChip}>{m.soon}</span>
@@ -95,11 +102,16 @@ export function AppMenu({ onNew, tone = 'ink' }: { onNew?: () => void; tone?: 'i
 
             <div className="mt-auto border-t border-ink/5 pt-3">
               {!authAvailable ? (
-                <p className="px-3 py-2 text-xs leading-relaxed text-stone-400">{m.authUnavailable}</p>
+                <p className="px-3 py-2 text-xs leading-relaxed text-stone-600">
+                  {m.authUnavailable}
+                </p>
               ) : authStatus === 'authed' && user ? (
                 <>
                   <div className="flex items-center justify-between gap-3 px-3 py-2">
-                    <span className="min-w-0 truncate text-sm text-ink" title={user.email ?? undefined}>
+                    <span
+                      className="min-w-0 truncate text-sm text-ink"
+                      title={user.email ?? undefined}
+                    >
                       {user.email ?? m.signedInAs}
                     </span>
                     <button
@@ -115,7 +127,7 @@ export function AppMenu({ onNew, tone = 'ink' }: { onNew?: () => void; tone?: 'i
                   {subscriptionPlan === 'pro' ? (
                     <p className="px-3 pb-1 text-xs text-stone-500">{copy.billing.proActive}</p>
                   ) : (
-                    <div className="flex items-center justify-between px-3 pb-1 text-sm text-stone-400">
+                    <div className="flex items-center justify-between px-3 pb-1 text-sm text-stone-600">
                       <span>{copy.billing.upgrade}</span>
                       <span className={soonChip}>{copy.billing.comingSoon}</span>
                     </div>
@@ -137,7 +149,9 @@ export function AppMenu({ onNew, tone = 'ink' }: { onNew?: () => void; tone?: 'i
 
             <div className="mt-3 flex items-center justify-between border-t border-ink/5 pt-3 text-xs text-stone-500">
               <span>{m.activeEngine}</span>
-              <span className={cn('font-mono text-ink')}>{ACTIVE_ENGINE.label}</span>
+              <span className={cn('font-mono text-ink')}>
+                {engineDisplayLabelPl(ACTIVE_ENGINE)}
+              </span>
             </div>
           </nav>
         </div>

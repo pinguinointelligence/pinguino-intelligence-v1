@@ -79,12 +79,12 @@ const TEXTURE_ALIASES: Readonly<Record<string, TexturePreference>> = {
   twarde: 'firm',
   hard: 'firm',
   firm: 'firm',
-  'średnie': 'medium',
+  średnie: 'medium',
   srednie: 'medium',
   normal: 'medium',
   medium: 'medium',
   balanced: 'medium',
-  'miękkie': 'soft',
+  miękkie: 'soft',
   miekkie: 'soft',
   soft: 'soft',
   creamy: 'soft',
@@ -95,7 +95,7 @@ const SWEETNESS_ALIASES: Readonly<Record<string, SweetnessPreference>> = {
   'malo slodkie': 'low',
   less_sweet: 'low',
   low: 'low',
-  'słodkie': 'balanced',
+  słodkie: 'balanced',
   slodkie: 'balanced',
   normal: 'balanced',
   medium: 'balanced',
@@ -133,21 +133,57 @@ interface FlavorRule {
  * dietary.alcohol even when another group wins the label.
  */
 const FLAVOR_RULES: readonly FlavorRule[] = [
-  { group: 'chocolate', tag: 'chocolate', keywords: ['czekoladowe', 'czekolada', 'chocolate', 'dark chocolate', 'milk chocolate', 'white chocolate', 'chocolate paste'] },
-  { group: 'chocolate', tag: 'cocoa', keywords: ['cocoa', 'cacao', 'kakao', 'cocoa powder', 'cocoa mass', 'cocoa butter'] },
+  {
+    group: 'chocolate',
+    tag: 'chocolate',
+    keywords: [
+      'czekoladowe',
+      'czekolada',
+      'chocolate',
+      'dark chocolate',
+      'milk chocolate',
+      'white chocolate',
+      'chocolate paste',
+    ],
+  },
+  {
+    group: 'chocolate',
+    tag: 'cocoa',
+    keywords: ['cocoa', 'cacao', 'kakao', 'cocoa powder', 'cocoa mass', 'cocoa butter'],
+  },
   { group: 'chocolate', tag: 'gianduja', keywords: ['gianduja'] },
-  { group: 'fruit', tag: 'strawberry', keywords: ['strawberry', 'truskawka', 'truskawkowe', 'truskawkowy'] },
+  {
+    group: 'fruit',
+    tag: 'strawberry',
+    keywords: ['strawberry', 'truskawka', 'truskawkowe', 'truskawkowy'],
+  },
   { group: 'fruit', tag: 'raspberry', keywords: ['raspberry', 'malina', 'malinowe', 'malinowy'] },
   { group: 'fruit', tag: 'mango', keywords: ['mango'] },
   { group: 'fruit', tag: 'lemon', keywords: ['lemon', 'cytryna', 'cytrynowe', 'cytrynowy'] },
-  { group: 'fruit', tag: 'orange', keywords: ['orange', 'pomarańcza', 'pomarancza', 'pomarańczowe', 'pomaranczowe'] },
+  {
+    group: 'fruit',
+    tag: 'orange',
+    keywords: ['orange', 'pomarańcza', 'pomarancza', 'pomarańczowe', 'pomaranczowe'],
+  },
   { group: 'fruit', tag: 'banana', keywords: ['banana', 'banan', 'bananowe', 'bananowy'] },
   { group: 'fruit', tag: 'blueberry', keywords: ['blueberry', 'borówka', 'borowka'] },
   { group: 'fruit', tag: 'passion_fruit', keywords: ['passion fruit', 'marakuja'] },
   { group: 'fruit', tag: 'fruit', keywords: ['fruit', 'owocowe', 'owocowy'] },
-  { group: 'nut', tag: 'pistachio', keywords: ['pistachio', 'pistacja', 'pistacjowe', 'pistacjowy'] },
-  { group: 'nut', tag: 'hazelnut', keywords: ['hazelnut', 'orzech laskowy', 'orzechowe', 'orzechowy'] },
-  { group: 'nut', tag: 'almond', keywords: ['almond', 'migdał', 'migdal', 'migdałowe', 'migdalowe'] },
+  {
+    group: 'nut',
+    tag: 'pistachio',
+    keywords: ['pistachio', 'pistacja', 'pistacjowe', 'pistacjowy'],
+  },
+  {
+    group: 'nut',
+    tag: 'hazelnut',
+    keywords: ['hazelnut', 'orzech laskowy', 'orzechowe', 'orzechowy'],
+  },
+  {
+    group: 'nut',
+    tag: 'almond',
+    keywords: ['almond', 'migdał', 'migdal', 'migdałowe', 'migdalowe'],
+  },
   { group: 'nut', tag: 'nut', keywords: ['nut'] },
   { group: 'coffee', tag: 'coffee', keywords: ['coffee', 'kawa', 'kawowe', 'kawowy'] },
   { group: 'coffee', tag: 'espresso', keywords: ['espresso'] },
@@ -182,7 +218,14 @@ const VEGAN_WORDS = [
   'no dairy',
   'dairy free',
 ] as const;
-const PROTEIN_WORDS = ['protein', 'proteinowe', 'proteinowy', 'proteiny', 'białkowe', 'bialkowe'] as const;
+const PROTEIN_WORDS = [
+  'protein',
+  'proteinowe',
+  'proteinowy',
+  'proteiny',
+  'białkowe',
+  'bialkowe',
+] as const;
 const GRANITA_WORDS = ['granita'] as const;
 const LACTOSE_FREE_WORDS = ['lactose free', 'bez laktozy'] as const;
 
@@ -196,8 +239,7 @@ const canonicalizeText = (raw: string): string =>
 const hasWord = (canonicalText: string, phrase: string): boolean =>
   canonicalText.includes(` ${phrase} `);
 
-const canonicalizeChoice = (raw: string): string =>
-  raw.toLowerCase().trim().replace(/\s+/g, ' ');
+const canonicalizeChoice = (raw: string): string => raw.toLowerCase().trim().replace(/\s+/g, ' ');
 
 interface ParsedFlavor {
   group: FlavorGroup;
@@ -248,7 +290,8 @@ const warning = (
   severity: DesignerWarning['severity'],
   messageKey: string,
   context?: DesignerWarning['context'],
-): DesignerWarning => (context === undefined ? { code, severity, messageKey } : { code, severity, messageKey, context });
+): DesignerWarning =>
+  context === undefined ? { code, severity, messageKey } : { code, severity, messageKey, context };
 
 const firstNonEmpty = (...values: (string | undefined)[]): string | undefined =>
   values.find((v) => v !== undefined && v.trim() !== '');
@@ -323,22 +366,19 @@ export function normalizeRecipeIntent(args: {
     // "bez mleka, na wodzie" is the locked sorbet phrasing).
     if (flavor.sorbetHint) {
       profile = 'sorbet';
+    } else if (flavor.proteinHint) {
+      profile = 'protein_gelato';
     } else if (flavor.veganHint) {
       profile = 'vegan_gelato';
     }
     if (flavor.granitaHint) {
       unsupportedProfileIntent = true;
       profileWarnings.push(
-        warning('granita_unsupported_v1', 'warning', 'spine.product_profile.granita_unsupported_v1'),
-      );
-    } else if (flavor.proteinHint) {
-      // Protein is recognized as INTENT only (User_Flow.md §4.4) — never
-      // silently calculated as a supported profile.
-      unsupportedProfileIntent = true;
-      profileWarnings.push(
-        warning('unsupported_product_profile', 'warning', 'spine.product_profile.protein_intent_v1', {
-          input: 'protein',
-        }),
+        warning(
+          'granita_unsupported_v1',
+          'warning',
+          'spine.product_profile.granita_unsupported_v1',
+        ),
       );
     }
   }
@@ -355,7 +395,7 @@ export function normalizeRecipeIntent(args: {
 
   // Explicit vegan intent forces/validates vegan_gelato — unless the user
   // explicitly chose sorbet, which is also non-dairy but a different product.
-  if (dietary.vegan && profile !== 'sorbet') {
+  if (dietary.vegan && profile !== 'sorbet' && profile !== 'protein_gelato') {
     profile = 'vegan_gelato';
   }
 
@@ -374,14 +414,23 @@ export function normalizeRecipeIntent(args: {
     if (profile === 'sorbet') {
       // Chocolate sorbet is special and not default v1.0 — keep sorbet, warn.
       routingWarnings.push(
-        warning('flavor_product_profile_conflict', 'warning', 'spine.recipe_intent.chocolate_sorbet_conflict'),
+        warning(
+          'flavor_product_profile_conflict',
+          'warning',
+          'spine.recipe_intent.chocolate_sorbet_conflict',
+        ),
       );
     } else if (profile === 'standard_gelato' && !unsupportedProfileIntent && !dietary.vegan) {
       profile = 'chocolate_gelato';
       routingWarnings.push(
-        warning('profile_forced_by_flavor', 'info', 'spine.recipe_intent.profile_forced_by_flavor', {
-          to: 'chocolate_gelato',
-        }),
+        warning(
+          'profile_forced_by_flavor',
+          'info',
+          'spine.recipe_intent.profile_forced_by_flavor',
+          {
+            to: 'chocolate_gelato',
+          },
+        ),
       );
     }
     // vegan_gelato + chocolate stays vegan; chocolate_gelato stays as-is.
@@ -406,7 +455,9 @@ export function normalizeRecipeIntent(args: {
         qualityTier = DEFAULT_RECIPE_INTENT.qualityTier;
       }
       fieldWarnings.push(
-        warning('invalid_quality_tier', 'warning', 'spine.recipe_intent.invalid_quality_tier', { input: rawTier }),
+        warning('invalid_quality_tier', 'warning', 'spine.recipe_intent.invalid_quality_tier', {
+          input: rawTier,
+        }),
       );
     }
   } else if (saved !== null) {
@@ -430,9 +481,14 @@ export function normalizeRecipeIntent(args: {
         servingTemperatureC = DEFAULT_RECIPE_INTENT.servingTemperatureC;
       }
       fieldWarnings.push(
-        warning('invalid_serving_temperature', 'warning', 'spine.recipe_intent.invalid_serving_temperature', {
-          input: rawTemperature,
-        }),
+        warning(
+          'invalid_serving_temperature',
+          'warning',
+          'spine.recipe_intent.invalid_serving_temperature',
+          {
+            input: rawTemperature,
+          },
+        ),
       );
     }
   } else if (saved !== null) {
@@ -443,7 +499,7 @@ export function normalizeRecipeIntent(args: {
   }
 
   /* -- texture / sweetness / cost ------------------------------------------ */
-  const resolveChoice = <T,>(
+  const resolveChoice = <T>(
     raw: string | undefined,
     aliases: Readonly<Record<string, T>>,
     savedValue: T | undefined,
@@ -509,10 +565,14 @@ export function normalizeRecipeIntent(args: {
   /* -- source + source warnings ------------------------------------------------ */
   const source = hasExplicitInput ? 'user_input' : saved !== null ? 'saved_defaults' : 'fallback';
   if (savedUsed || source === 'saved_defaults') {
-    sourceWarnings.push(warning('saved_default_used', 'info', 'spine.recipe_intent.saved_default_used'));
+    sourceWarnings.push(
+      warning('saved_default_used', 'info', 'spine.recipe_intent.saved_default_used'),
+    );
   }
   if (source === 'fallback') {
-    sourceWarnings.push(warning('fallback_default_used', 'info', 'spine.recipe_intent.fallback_default_used'));
+    sourceWarnings.push(
+      warning('fallback_default_used', 'info', 'spine.recipe_intent.fallback_default_used'),
+    );
   }
 
   return {

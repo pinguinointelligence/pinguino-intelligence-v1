@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 import type { CaseSource, QueueState, ReviewRole } from './contracts';
 
 const REPO = resolve(import.meta.dirname, '..', '..', '..');
-const SQL = readFileSync(join(REPO, 'supabase', 'migrations', '0026_product_verification.sql'), 'utf8');
+const SQL = readFileSync(join(REPO, 'supabase', 'migrations', '20260716102923_0026_product_verification.sql'), 'utf8');
 const CODE = SQL.replace(/--.*$/gm, '');
 
 const TABLES = [

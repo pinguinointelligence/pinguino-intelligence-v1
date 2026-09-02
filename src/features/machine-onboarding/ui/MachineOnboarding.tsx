@@ -30,10 +30,12 @@ import { SelectableCard } from '@/features/customer-shell/ui/SelectableCard';
 import { TouchButton } from '@/features/customer-shell/ui/TouchButton';
 import { color, type } from '@/features/customer-shell/ui/tokens';
 import { machineOnboardingCopy as copy } from '../machineOnboardingCopy';
+import { copy as appCopy } from '@/copy/en';
 import {
   autoConfigLines,
   buildMachineTileViews,
   machineDisplayName,
+  machineManufacturerCapacityMl,
   presentBatchSuggestion,
   searchMachineTiles,
   type MachineTileView,
@@ -75,6 +77,12 @@ interface MachineOnboardingProps {
   /** Market token recorded on CUSTOM machines (catalog records carry their own). */
   market?: string;
   onComplete: (completion: MachineOnboardingCompletion) => void;
+  /**
+   * „Maszyna profesjonalna" as an explicit choice. Optional: the Home
+   * onboarding flow is unchanged when it is absent, and Professional is NOT a
+   * machine record, so it never enters `onComplete`.
+   */
+  onSelectProfessional?: () => void;
   /** Injected clock (ISO datetime) — deterministic in tests. */
   now?: () => string;
   /** Optional §8.6 entry: edit an existing custom machine (prefilled form). */
@@ -86,6 +94,8 @@ interface MachineOnboardingProps {
    * keeps the neutral „Zapisz i przejdź dalej” (owner hotfix §3/§4).
    */
   submitLabel?: string;
+  /** Recipe selectors may enter directly through the existing custom-machine path. */
+  startWithCustom?: boolean;
 }
 
 /** Reverse of the §8.3 mapping — only for the three custom-supported technologies. */
@@ -113,10 +123,12 @@ function initialFormValues(profile: HomeMachineProfile): CustomMachineFormValues
 export function MachineOnboarding({
   market = 'ES',
   onComplete,
+  onSelectProfessional,
   now = () => new Date().toISOString(),
   editCustomProfile = null,
   catalog = MACHINE_CATALOG,
   submitLabel = copy.settings.saveAndContinue,
+  startWithCustom = false,
 }: MachineOnboardingProps) {
   const [screen, setScreen] = useState<Screen>(() => {
     if (editCustomProfile !== null) {
@@ -125,7 +137,7 @@ export function MachineOnboarding({
         return { kind: 'custom', answer, initialValues: initialFormValues(editCustomProfile) };
       }
     }
-    return { kind: 'tiles' };
+    return startWithCustom ? { kind: 'behavior' } : { kind: 'tiles' };
   });
   const [search, setSearch] = useState('');
 
@@ -221,10 +233,11 @@ export function MachineOnboarding({
     return (
       <MachineAdjustBatchStep
         machineName={machineDisplayName(screen.profile)}
-        containerMl={screen.profile.capacity.vesselCapacityMl}
+        containerMl={machineManufacturerCapacityMl(screen.profile)}
         recommendedGrams={recommendedBatchGramsOf(screen.record)}
         estimatedNote={batch.kind === 'pinguino_grams' ? batch.note : null}
         submitLabel={submitLabel}
+        customBatchRequired={screen.isCustom}
         onSubmit={(grams) => finishAdjust(screen.profile, screen.record, grams)}
       />
     );
@@ -310,8 +323,8 @@ export function MachineOnboarding({
             <SelectableCard
               key={profile.id}
               title={machineDisplayName(profile)}
-              {...(profile.capacity.vesselCapacityMl !== null
-                ? { description: copy.contextBar.vessel(profile.capacity.vesselCapacityMl) }
+              {...(machineManufacturerCapacityMl(profile) !== null
+                ? { description: copy.contextBar.vessel(machineManufacturerCapacityMl(profile)!) }
                 : {})}
               onSelect={() => startConfiguring(profile, false)}
             />
@@ -330,6 +343,20 @@ export function MachineOnboarding({
     <section>
       <h1 className={cn(type.display, color.textPrimary)}>{copy.intro.title}</h1>
       <p className={cn('mt-3 max-w-prose', type.secondary, color.textSecondary)}>{copy.intro.lead}</p>
+      {onSelectProfessional ? (
+        <div className="mt-6">
+          <TouchButton
+            variant="quiet"
+            onClick={onSelectProfessional}
+            data-testid="machine-tile-professional"
+          >
+            {appCopy.proMachine.professionalLabel}
+          </TouchButton>
+          <p className={cn('mt-2 max-w-prose', type.secondary, color.textSecondary)}>
+            {copy.tiles.professionalNote}
+          </p>
+        </div>
+      ) : null}
       <div className="mt-6">
         <MachineTileGrid
           views={visibleTiles}

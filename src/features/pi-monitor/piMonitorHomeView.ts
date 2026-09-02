@@ -22,9 +22,9 @@ import {
   GOLDEN_RANGE_SEVERITY,
   GOLDEN_RANGE_STATE_TEXT,
   bandPosition,
-  recipeMatchScore,
+  recipeTechnicalFit,
   type GoldenRangeReading,
-  type RecipeMatchScorePresentation,
+  type TechnicalFitPresentation,
 } from '@/features/recipe-score';
 import type { AxisIntentStep, PiAxisId } from './piMonitorContracts';
 
@@ -108,8 +108,12 @@ export interface MonitorHomeCheckRow {
 }
 
 export interface MonitorHomeView {
-  /** „Dopasowanie receptury" — 1–10 integer + §15.1 verdict (or honest no-data). */
-  score: RecipeMatchScorePresentation;
+  /** ACCEPTANCE ADDENDUM (2): the headline is „Dopasowanie techniczne" —
+   * 1–10 TECHNICAL fit (all native bands in range ⇒ 10/10) + verdict (or the
+   * honest no-data row). Flavor/cost never blend into this integer. The
+   * adapter's `violationCount` is STRIPPED here: §22 keeps every number except
+   * the sanctioned 1–10 score out of the public Monitor view. */
+  score: Omit<TechnicalFitPresentation, 'violationCount'>;
   traits: MonitorHomeTraitRow[];
   /** §13.1 „Stabilność jako status" — worst-of across stability indicators. */
   stability: { label: string; reading: GoldenRangeReading };
@@ -219,8 +223,19 @@ export function buildMonitorHomeView(
     reading: worstOf(STABILITY_METRICS.map((m) => readingFor(byKey.get(m)))),
   };
 
+  // ACCEPTANCE ADDENDUM (2): technical fit — never the flavor/cost blend.
+  // §22 numeric hygiene: only the sanctioned 1–10 integer crosses into the view.
+  const fit = recipeTechnicalFit(result);
   return {
-    score: recipeMatchScore(result?.scores ?? null),
+    score: {
+      score: fit.score,
+      label: fit.label,
+      display: fit.display,
+      ariaText: fit.ariaText,
+      tooltipKey: fit.tooltipKey,
+      validatedNative: fit.validatedNative,
+      provisional: fit.provisional,
+    },
     traits,
     stability,
     checks: buildChecks(machine, traits),

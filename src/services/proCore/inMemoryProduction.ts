@@ -9,6 +9,7 @@
  */
 import type { RecipeVersion } from '@/features/pro-core/recipeContracts';
 import {
+  scaleMessagePl,
   scaleRecipeVersion,
   type ScaleOptions,
   type ScaleResult,
@@ -16,6 +17,8 @@ import {
 } from '@/features/pro-core/recipeScaling';
 import type { ProductionCapabilities } from '@/features/pro-core/productionContracts';
 import {
+  acknowledgeHeatInformation,
+  acknowledgeDegassing,
   amendRun,
   buildProductionRun,
   computeDeviation,
@@ -35,6 +38,9 @@ import type {
   ProductionRun,
   ProductionStatus,
 } from '@/features/pro-core/productionContracts';
+import type { RecipeInput } from '@/engine';
+import type { RecipeCompositionMetadata } from '@/features/recipe-composition/recipeCompositionPersistence';
+import { carbonatedProductsForRecipe } from '@/features/production-workspace/productionDegassing';
 
 export interface CreateRunInput {
   ownerUserId: string;
@@ -73,8 +79,8 @@ export class InMemoryProduction {
       throw new Error('This plan does not include Production Mode.');
     }
     const scaled = scaleRecipeVersion(input.version, input.target, input.scaleOptions);
-    if (!scaled.ok) throw new Error(scaled.message);
-    const run = buildProductionRun({
+    if (!scaled.ok) throw new Error(scaleMessagePl(scaled.message));
+    const baseRun = buildProductionRun({
       ownerUserId: input.ownerUserId,
       scaled,
       meta: input.meta,
@@ -83,6 +89,17 @@ export class InMemoryProduction {
       runId: this.nextId(),
       eventId: this.nextId(),
     });
+    const carbonatedProducts = carbonatedProductsForRecipe(
+      input.version.recipeInput,
+      input.version.productComposition ?? { toppings: [] },
+    );
+    const run: ProductionRun = {
+      ...baseRun,
+      degassingRequired: carbonatedProducts.length > 0,
+      degassingAcknowledged: false,
+      degassingAcknowledgedAt: null,
+      carbonatedProductIds: carbonatedProducts.map((product) => product.productId),
+    };
     this.runs.set(run.runId, run);
     return run;
   }
@@ -99,14 +116,71 @@ export class InMemoryProduction {
     return next;
   }
 
+  acknowledgeHeatInformation(runId: string): ProductionRun {
+    const next = acknowledgeHeatInformation(this.require(runId), this.now());
+    this.runs.set(runId, next);
+    return next;
+  }
+
+  acknowledgeDegassing(runId: string): ProductionRun {
+    const next = acknowledgeDegassing(this.require(runId), this.now());
+    this.runs.set(runId, next);
+    return next;
+  }
+
   recordActual(runId: string, input: Omit<RecordActualInput, 'at' | 'eventId'>): ProductionRun {
-    const next = recordActual(this.require(runId), { ...input, at: this.now(), eventId: this.nextId() });
+    const next = recordActual(this.require(runId), {
+      ...input,
+      at: this.now(),
+      eventId: this.nextId(),
+    });
+    this.runs.set(runId, next);
+    return next;
+  }
+
+  applyRescue(
+    runId: string,
+    recipeInput: RecipeInput,
+    productComposition: RecipeCompositionMetadata,
+  ): ProductionRun {
+    const run = this.require(runId);
+    if (run.status !== 'in_progress') {
+      throw new Error('Production rescue requires an in-progress run.');
+    }
+    const at = this.now();
+    const revision = (run.rescue?.revision ?? 0) + 1;
+    const next: ProductionRun = {
+      ...run,
+      updatedAt: at,
+      rescue: {
+        recipeInput,
+        productComposition,
+        acceptedBy: run.ownerUserId,
+        acceptedAt: at,
+        revision,
+      },
+      events: [
+        ...run.events,
+        {
+          eventId: this.nextId(),
+          type: 'rescue_applied',
+          at,
+          by: run.ownerUserId,
+          detail: 'Zaakceptowano kandydat korekty partii w pamięci',
+          amendment: { recipeInput, productComposition, acceptedAt: at, revision },
+        },
+      ],
+    };
     this.runs.set(runId, next);
     return next;
   }
 
   amend(runId: string, input: Omit<AmendInput, 'at' | 'eventId'>): ProductionRun {
-    const next = amendRun(this.require(runId), { ...input, at: this.now(), eventId: this.nextId() });
+    const next = amendRun(this.require(runId), {
+      ...input,
+      at: this.now(),
+      eventId: this.nextId(),
+    });
     this.runs.set(runId, next);
     return next;
   }

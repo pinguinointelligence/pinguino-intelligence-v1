@@ -149,13 +149,13 @@ describe('draftToRow — explicit closed mapping', () => {
 describe('guardDraftForInsert — signed-in, owner-matched, validated', () => {
   it('rejects when not signed in', () => {
     const guard = guardDraftForInsert(null, validDraft());
-    expect(guard).toEqual({ ok: false, message: expect.stringContaining('signed in') });
+    expect(guard).toEqual({ ok: false, message: expect.stringContaining('zaloguj się') });
   });
 
   it('rejects when the signed-in user is not the draft owner', () => {
     const guard = guardDraftForInsert({ id: 'intruder' }, validDraft());
     expect(guard.ok).toBe(false);
-    if (!guard.ok) expect(guard.message).toContain('different account');
+    if (!guard.ok) expect(guard.message).toContain('innego konta');
   });
 
   it('rejects a tampered draft (source hash mismatch)', () => {
@@ -193,20 +193,20 @@ describe('createAcceptedCorrection', () => {
 
   it('refuses when signed out — nothing is sent', async () => {
     h.user = null;
-    await expect(createAcceptedCorrection(validDraft())).rejects.toThrow(/signed in/);
+    await expect(createAcceptedCorrection(validDraft())).rejects.toThrow(/zaloguj się/);
     expect(h.insertCalled).toBe(0);
   });
 
   it('refuses when the session user is not the draft owner — nothing is sent', async () => {
     h.user = { id: 'someone-else' };
-    await expect(createAcceptedCorrection(validDraft())).rejects.toThrow(/different account/);
+    await expect(createAcceptedCorrection(validDraft())).rejects.toThrow(/innego konta/);
     expect(h.insertCalled).toBe(0);
   });
 
   it('refuses an invalid draft — nothing is sent', async () => {
     await expect(
       createAcceptedCorrection(validDraft({ correctionActions: [] })),
-    ).rejects.toThrow(/not saveable/);
+    ).rejects.toThrow(/Nie można zapisać korekty/);
     expect(h.insertCalled).toBe(0);
   });
 

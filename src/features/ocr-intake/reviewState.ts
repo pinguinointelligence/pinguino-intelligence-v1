@@ -181,7 +181,7 @@ const fieldValue = (state: OcrReviewState, key: ReviewFieldKey): string => {
  */
 export function buildDraftCandidate(state: OcrReviewState): DraftBuildResult {
   if (!canConfirmReview(state)) {
-    return { ok: false, reason: 'confirm every flagged field before building the draft' };
+    return { ok: false, reason: 'Przed utworzeniem szkicu potwierdź każde oznaczone pole.' };
   }
 
   const basis = effectiveBasis(state);

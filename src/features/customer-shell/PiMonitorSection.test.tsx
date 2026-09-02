@@ -29,14 +29,21 @@ function realRecipeInput(): RecipeInput {
   return input;
 }
 
-const RESOLVED: IngredientResolutionSummary = { allResolved: true, unresolvedCount: 0, unresolvedNames: [] };
+const RESOLVED: IngredientResolutionSummary = {
+  allResolved: true,
+  unresolvedCount: 0,
+  unresolvedNames: [],
+};
 
 const visibleText = (html: string) => html.replace(/<[^>]*>/g, ' ').replace(/&[a-z#0-9]+;/g, ' ');
 
 function renderSection(opts: {
   persona: PiMonitorPersona;
   gramsVisible: boolean;
-  machine?: { name: string; batchFit: 'recommended_active' | 'custom' | 'custom_above' | 'none' } | null;
+  machine?: {
+    name: string;
+    batchFit: 'recommended_active' | 'custom' | 'custom_above' | 'none';
+  } | null;
   recipeInput?: RecipeInput | null;
 }) {
   return renderToStaticMarkup(
@@ -51,11 +58,13 @@ function renderSection(opts: {
 }
 
 describe('PiMonitorSection — §13 Monitor Home content', () => {
-  it('shows the Monitor name, a 1–10 score with the §15.1 verdict, traits and stability', () => {
+  it('shows the approved 1–10 score ring with the §15.1 verdict, traits and stability', () => {
     const html = renderSection({ persona: 'home', gramsVisible: true });
     const text = visibleText(html);
     expect(text).toContain('Monitor receptury');
-    expect(text).toMatch(/([1-9]|10)\/10/); // integer 1–10 display
+    expect(html).toContain('data-testid="monitor-home-score-ring"');
+    expect(html).toMatch(/data-score="(?:[1-9]|10)"/);
+    expect(text).not.toMatch(/(?:[1-9]|10)\/10/);
     expect(text).toMatch(/dopasowana|optimum|korekty|niezbalansowana|przebudowy/i); // a §15.1 verdict
     for (const label of ['Słodycz', 'Miękkość', 'Kremowość', 'Pełnia', 'Stabilność']) {
       expect(text).toContain(label);
@@ -94,7 +103,9 @@ describe('PiMonitorSection — §13 Monitor Home content', () => {
   it('Demo: no digits beyond the public 1–10 score (grams/bands never leak)', () => {
     const html = renderSection({ persona: 'demo', gramsVisible: false, machine: null });
     const text = visibleText(html);
-    const withoutScore = text.replace(/([1-9]|10)\/10/g, ' ');
+    const score = html.match(/data-testid="monitor-home-score-ring" data-score="([1-9]|10)"/)?.[1];
+    expect(score).toBeDefined();
+    const withoutScore = text.replace(new RegExp(`\\b${score}\\b`), ' ');
     expect(withoutScore).not.toMatch(/\d/);
   });
 
@@ -103,14 +114,20 @@ describe('PiMonitorSection — §13 Monitor Home content', () => {
       renderSection({ persona: 'home', gramsVisible: true, recipeInput: null }),
     );
     expect(text).toContain('Brak wystarczających danych do oceny');
-    expect(text).toContain('Monitor receptury dokładnie przeliczy recepturę');
+    expect(text).toContain('Monitor potrzebuje jeszcze danych produktu');
   });
 
   it('§16 stepped preference controls stay (three steps, never a numeric slider)', () => {
     const text = visibleText(renderSection({ persona: 'home', gramsVisible: true }));
-    for (const step of ['Mniej słodkie', 'Bez zmian', 'Bardziej słodkie', 'Bardziej kremowe', 'Pełniejsza']) {
+    for (const step of [
+      'Mniej słodkie',
+      'Bez zmian',
+      'Bardziej słodkie',
+      'Bardziej kremowe',
+      'Pełniejsza',
+    ]) {
       expect(text).toContain(step);
     }
-    expect(text).toContain('Przelicz z PI');
+    expect(text).toContain('Przelicz recepturę');
   });
 });

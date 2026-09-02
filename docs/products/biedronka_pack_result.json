@@ -1,0 +1,1442 @@
+{
+  "totalProducts": 820,
+  "cardsInDataset": 280,
+  "uniqueUrls": 280,
+  "successfullyFetched": 276,
+  "identityVerdicts": {
+    "EXACT_IDENTITY_MATCH": 253,
+    "AMBIGUOUS": 20,
+    "MISMATCH": 3
+  },
+  "exactEanMatches": 0,
+  "outcomes": {
+    "FETCHED_MATCHED": 62,
+    "FETCHED_NO_NUTRITION": 180,
+    "FETCHED_AMBIGUOUS": 20,
+    "PER_100_ML_ONLY": 11,
+    "FETCHED_IDENTITY_MISMATCH": 3,
+    "HTTP_NOT_AVAILABLE": 4
+  },
+  "cardsPer100g": 62,
+  "cardsPer100ml": 11,
+  "fieldsUpgradedToVerified": 270,
+  "productsMateriallyImproved": 43,
+  "verifiedEngineFieldsBefore": 625,
+  "verifiedEngineFieldsAfter": 831,
+  "missingEngineFieldsBefore": 1536,
+  "missingEngineFieldsAfter": 1493,
+  "productsWithEstimatedFieldBefore": 631,
+  "productsWithEstimatedFieldAfter": 623,
+  "readinessBefore": {
+    "READY": 0,
+    "ESTIMATED_READY": 450,
+    "REVIEW": 370
+  },
+  "readinessAfter": {
+    "READY": 0,
+    "ESTIMATED_READY": 424,
+    "REVIEW": 396
+  },
+  "finalClassification": {
+    "READY_VERIFIED": 0,
+    "READY_ESTIMATED": 424,
+    "REVIEW_REQUIRED": 396
+  },
+  "engineFieldTruthStateBefore": {
+    "VERIFIED": 625,
+    "ESTIMATED": 3579,
+    "UNKNOWN": 1536
+  },
+  "engineFieldTruthStateAfter": {
+    "VERIFIED": 831,
+    "ESTIMATED": 3416,
+    "UNKNOWN": 1493
+  },
+  "completeProfileBefore": 525,
+  "completeProfileAfter": 518,
+  "readyOnlyBecauseOfRetailerMacros": 0,
+  "remainingBlockers": {
+    "physical_inconsistency": 10,
+    "missing_sugar_split": 94,
+    "missing_water_solids": 214,
+    "missing_required_macro": 76,
+    "weak_field_confidence": 2
+  },
+  "gainedWaterSolidsAtOrAbove85": 523,
+  "derivedComplementsAdded": 51,
+  "indirectRetailerUnlock": 0,
+  "waterSolidsTransition": {
+    "still_no_water_solids": 211
+  },
+  "byAuthority": {
+    "OFFICIAL_PRIVATE_LABEL": {
+      "products": 13,
+      "fields": 35
+    },
+    "AUTHORITATIVE_RETAILER": {
+      "products": 49,
+      "fields": 235
+    }
+  },
+  "sampleUpgrades": [
+    {
+      "productId": "PL-BIE-00238",
+      "name": "Airwaves Cool Cassis Bezcukrowa guma do żucia (10 sztuk)",
+      "authority": "AUTHORITATIVE_RETAILER",
+      "upgraded": [
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent",
+        "kcal_per_100g"
+      ],
+      "readinessBefore": "ESTIMATED_READY",
+      "readinessAfter": "REVIEW"
+    },
+    {
+      "productId": "PL-BIE-00435",
+      "name": "Bakallino Masa krówkowa kajmak",
+      "authority": "AUTHORITATIVE_RETAILER",
+      "upgraded": [
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "fiber_percent",
+        "salt_percent",
+        "kcal_per_100g"
+      ],
+      "readinessBefore": "ESTIMATED_READY",
+      "readinessAfter": "REVIEW"
+    },
+    {
+      "productId": "PL-BIE-00203",
+      "name": "Bonitki wafle kokosowe, 200 g",
+      "authority": "OFFICIAL_PRIVATE_LABEL",
+      "upgraded": [],
+      "readinessBefore": "REVIEW",
+      "readinessAfter": "REVIEW"
+    },
+    {
+      "productId": "PL-BIE-00219",
+      "name": "Bonitki wafle orzechowe, 200 g",
+      "authority": "OFFICIAL_PRIVATE_LABEL",
+      "upgraded": [],
+      "readinessBefore": "REVIEW",
+      "readinessAfter": "REVIEW"
+    },
+    {
+      "productId": "PL-BIE-00422",
+      "name": "Dr. Oetker Drożdże instant",
+      "authority": "AUTHORITATIVE_RETAILER",
+      "upgraded": [
+        "fiber_percent"
+      ],
+      "readinessBefore": "REVIEW",
+      "readinessAfter": "REVIEW"
+    },
+    {
+      "productId": "PL-BIE-00240",
+      "name": "Góralki mleczne Wafelek w polewie kakaowej z nadzieniem",
+      "authority": "AUTHORITATIVE_RETAILER",
+      "upgraded": [
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "fiber_percent",
+        "salt_percent",
+        "kcal_per_100g"
+      ],
+      "readinessBefore": "REVIEW",
+      "readinessAfter": "REVIEW"
+    },
+    {
+      "productId": "PL-BIE-00281",
+      "name": "Hit Minis Markizy o smaku czekoladowym",
+      "authority": "AUTHORITATIVE_RETAILER",
+      "upgraded": [
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent",
+        "kcal_per_100g"
+      ],
+      "readinessBefore": "REVIEW",
+      "readinessAfter": "REVIEW"
+    },
+    {
+      "productId": "PL-BIE-00198",
+      "name": "Hit markizy o smaku czekoladowym 220 g",
+      "authority": "AUTHORITATIVE_RETAILER",
+      "upgraded": [],
+      "readinessBefore": "REVIEW",
+      "readinessAfter": "REVIEW"
+    },
+    {
+      "productId": "PL-BIE-00255",
+      "name": "Kinder Kinderini Biszkopty z mlecznymi i kakaowymi dekoracjami 4x2 szt.",
+      "authority": "AUTHORITATIVE_RETAILER",
+      "upgraded": [
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent",
+        "kcal_per_100g"
+      ],
+      "readinessBefore": "ESTIMATED_READY",
+      "readinessAfter": "REVIEW"
+    },
+    {
+      "productId": "PL-BIE-00204",
+      "name": "Wafelek Knoppers 125 g",
+      "authority": "AUTHORITATIVE_RETAILER",
+      "upgraded": [],
+      "readinessBefore": "REVIEW",
+      "readinessAfter": "REVIEW"
+    },
+    {
+      "productId": "PL-BIE-00301",
+      "name": "Leibniz Herbatniki Minis Choco",
+      "authority": "AUTHORITATIVE_RETAILER",
+      "upgraded": [
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "fiber_percent",
+        "salt_percent",
+        "kcal_per_100g"
+      ],
+      "readinessBefore": "ESTIMATED_READY",
+      "readinessAfter": "REVIEW"
+    },
+    {
+      "productId": "PL-BIE-00254",
+      "name": "Lubella Owsianka z bananami i kakao",
+      "authority": "AUTHORITATIVE_RETAILER",
+      "upgraded": [
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "fiber_percent",
+        "salt_percent",
+        "kcal_per_100g"
+      ],
+      "readinessBefore": "ESTIMATED_READY",
+      "readinessAfter": "REVIEW"
+    }
+  ],
+  "estimatedSamples": [
+    {
+      "product": "Baitz Baton choco cocos",
+      "category": "Bakery & sweets",
+      "brand": "Baitz",
+      "productType": "private_label",
+      "profileMatch": 87,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-000091",
+        "PI-ING-000092",
+        "PI-ING-000093",
+        "PI-ING-000094"
+      ],
+      "reasons": [
+        "5 zgodnych profili",
+        "brak makroskladnikow produktu do walidacji"
+      ],
+      "verifiedFields": [],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "water": 4.64,
+      "fat": 33.4,
+      "sugars": 40.7
+    },
+    {
+      "product": "Bakello Soda oczyszczona",
+      "category": "Bakery & sweets",
+      "brand": "Bakello",
+      "productType": "retail",
+      "profileMatch": 87,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-001833",
+        "PI-ING-001883",
+        "PI-ING-001884",
+        "PI-ING-001885"
+      ],
+      "reasons": [
+        "5 zgodnych profili",
+        "brak makroskladnikow produktu do walidacji"
+      ],
+      "verifiedFields": [],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "water": 99.99,
+      "fat": 0,
+      "sugars": 0
+    },
+    {
+      "product": "Bonitki Sezamki classic (3 x 27 g)",
+      "category": "Bakery & sweets",
+      "brand": "Bonitki",
+      "productType": "private_label",
+      "profileMatch": 87,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-000698",
+        "PI-ING-000858",
+        "PI-ING-001807"
+      ],
+      "reasons": [
+        "3 zgodnych profili",
+        "brak makroskladnikow produktu do walidacji"
+      ],
+      "verifiedFields": [],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "water": 5.8,
+      "fat": 36.7,
+      "sugars": 47
+    },
+    {
+      "product": "Chupa Chups Lizaki Strawberry Love o smaku truskawkowym, truskawkowo - śmietankowym i kwaśnej truskawki",
+      "category": "Bakery & sweets",
+      "brand": "Chupa Chups",
+      "productType": "retail",
+      "profileMatch": 87,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-000273",
+        "PI-ING-000322",
+        "PI-ING-000406",
+        "PI-ING-000723"
+      ],
+      "reasons": [
+        "5 zgodnych profili",
+        "brak makroskladnikow produktu do walidacji"
+      ],
+      "verifiedFields": [],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "water": 37.47,
+      "fat": 0.2,
+      "sugars": 53.3
+    },
+    {
+      "product": "Fritt Guma rozpuszczalna o smaku grejpfrutowym z witaminą C (6 x 11,7 g)",
+      "category": "Bakery & sweets",
+      "brand": "Fritt",
+      "productType": "retail",
+      "profileMatch": 85,
+      "basis": "brand_sibling",
+      "mapperReferences": [
+        "PI-ING-000749"
+      ],
+      "reasons": [
+        "1 zgodnych profili",
+        "brak makroskladnikow produktu do walidacji"
+      ],
+      "verifiedFields": [],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "water": 24.02,
+      "fat": 0.2,
+      "sugars": 48.8
+    },
+    {
+      "product": "Fritt Guma rozpuszczalna o smaku truskawkowym z witaminą C (6x11,7 g)",
+      "category": "Bakery & sweets",
+      "brand": "Fritt",
+      "productType": "retail",
+      "profileMatch": 85,
+      "basis": "brand_sibling",
+      "mapperReferences": [
+        "PI-ING-000749"
+      ],
+      "reasons": [
+        "1 zgodnych profili",
+        "brak makroskladnikow produktu do walidacji"
+      ],
+      "verifiedFields": [],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "water": 24.02,
+      "fat": 0.2,
+      "sugars": 48.8
+    },
+    {
+      "product": "Fritt Guma rozpuszczalna o smaku wiśniowym z witaminą C (6x11,7 g)",
+      "category": "Bakery & sweets",
+      "brand": "Fritt",
+      "productType": "retail",
+      "profileMatch": 85,
+      "basis": "brand_sibling",
+      "mapperReferences": [
+        "PI-ING-000749"
+      ],
+      "reasons": [
+        "1 zgodnych profili",
+        "brak makroskladnikow produktu do walidacji"
+      ],
+      "verifiedFields": [],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "water": 24.02,
+      "fat": 0.2,
+      "sugars": 48.8
+    },
+    {
+      "product": "Go On Energy Baton z orzeszkami arachidowymi i karmelem oblany mleczną czekoladą",
+      "category": "Bakery & sweets",
+      "brand": "Go On",
+      "productType": "retail",
+      "profileMatch": 87,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-001564",
+        "PI-ING-001785",
+        "PI-ING-001786",
+        "PI-ING-001787"
+      ],
+      "reasons": [
+        "5 zgodnych profili",
+        "brak makroskladnikow produktu do walidacji"
+      ],
+      "verifiedFields": [],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "water": 88.9,
+      "fat": 0,
+      "sugars": 11
+    },
+    {
+      "product": "Goplana Jeżyki Classic ciastka w czekoladzie mlecznej",
+      "category": "Bakery & sweets",
+      "brand": "Goplana",
+      "productType": "retail",
+      "profileMatch": 87,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-000698",
+        "PI-ING-000858",
+        "PI-ING-001807"
+      ],
+      "reasons": [
+        "3 zgodnych profili",
+        "brak makroskladnikow produktu do walidacji"
+      ],
+      "verifiedFields": [],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "water": 5.8,
+      "fat": 36.7,
+      "sugars": 47
+    },
+    {
+      "product": "Gusto Bello Deser Tiramisu 500 g",
+      "category": "Bakery & sweets",
+      "brand": "Gusto Bello",
+      "productType": "private_label",
+      "profileMatch": 87,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-000631",
+        "PI-ING-000650",
+        "PI-ING-000663",
+        "PI-ING-000759"
+      ],
+      "reasons": [
+        "5 zgodnych profili",
+        "brak makroskladnikow produktu do walidacji"
+      ],
+      "verifiedFields": [],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "water": 41.07,
+      "fat": 10.5,
+      "sugars": 41.3
+    },
+    {
+      "product": "Haribo Żelki Happy Cola",
+      "category": "Bakery & sweets",
+      "brand": "Haribo",
+      "productType": "retail",
+      "profileMatch": 85,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-000473",
+        "PI-ING-002007"
+      ],
+      "reasons": [
+        "2 zgodnych profili",
+        "brak makroskladnikow produktu do walidacji"
+      ],
+      "verifiedFields": [],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "water": 5.6,
+      "fat": 22,
+      "sugars": 19
+    },
+    {
+      "product": "Kinder Bueno White Wafel",
+      "category": "Bakery & sweets",
+      "brand": "Kinder",
+      "productType": "retail",
+      "profileMatch": 85,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-000594",
+        "PI-ING-002004"
+      ],
+      "reasons": [
+        "2 zgodnych profili",
+        "brak makroskladnikow produktu do walidacji"
+      ],
+      "verifiedFields": [],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "water": 3.2,
+      "fat": 41,
+      "sugars": 41
+    },
+    {
+      "product": "Kinder Bueno White Wafel pokryty białą czekoladą wypełniony nadzieniem (5 szt.)",
+      "category": "Bakery & sweets",
+      "brand": "Kinder",
+      "productType": "retail",
+      "profileMatch": 85,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-000594",
+        "PI-ING-002004"
+      ],
+      "reasons": [
+        "2 zgodnych profili",
+        "brak makroskladnikow produktu do walidacji"
+      ],
+      "verifiedFields": [],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "water": 3.2,
+      "fat": 41,
+      "sugars": 41
+    },
+    {
+      "product": "Kinder Pingui Choco Biszkopt z mlecznym nadzieniem",
+      "category": "Bakery & sweets",
+      "brand": "Kinder",
+      "productType": "retail",
+      "profileMatch": 87,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-000091",
+        "PI-ING-000092",
+        "PI-ING-000093",
+        "PI-ING-000094"
+      ],
+      "reasons": [
+        "5 zgodnych profili",
+        "brak makroskladnikow produktu do walidacji"
+      ],
+      "verifiedFields": [],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "water": 4.64,
+      "fat": 33.4,
+      "sugars": 40.7
+    },
+    {
+      "product": "Lindt Lindor Praliny Milk Cornet",
+      "category": "Bakery & sweets",
+      "brand": "Lindt",
+      "productType": "retail",
+      "profileMatch": 94,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-000171",
+        "PI-ING-000177",
+        "PI-ING-000200",
+        "PI-ING-000201"
+      ],
+      "reasons": [
+        "5 zgodnych profili",
+        "brak makroskladnikow produktu do walidacji"
+      ],
+      "verifiedFields": [],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "water": 75.82,
+      "fat": 7.5,
+      "sugars": 11
+    },
+    {
+      "product": "Lotus Biscoff Herbatniki karmelizowane 125 g",
+      "category": "Bakery & sweets",
+      "brand": "Lotus",
+      "productType": "retail",
+      "profileMatch": 85,
+      "basis": "brand_sibling",
+      "mapperReferences": [
+        "PI-ING-002012"
+      ],
+      "reasons": [
+        "1 zgodnych profili",
+        "brak makroskladnikow produktu do walidacji"
+      ],
+      "verifiedFields": [],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "water": 0,
+      "fat": 38.1,
+      "sugars": 36.8
+    },
+    {
+      "product": "Milka Oreo Sandwich ciastka kakaowe z nadzieniem waniliowym",
+      "category": "Bakery & sweets",
+      "brand": "Milka",
+      "productType": "retail",
+      "profileMatch": 85,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-002017",
+        "PI-ING-002019"
+      ],
+      "reasons": [
+        "2 zgodnych profili",
+        "brak makroskladnikow produktu do walidacji"
+      ],
+      "verifiedFields": [],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "water": 3.15,
+      "fat": 19,
+      "sugars": 40
+    },
+    {
+      "product": "Nestlé Fitness Chocolate Płatki śniadaniowe w formie batonika",
+      "category": "Bakery & sweets",
+      "brand": "Nestlé",
+      "productType": "retail",
+      "profileMatch": 94,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-000087",
+        "PI-ING-000088",
+        "PI-ING-000089",
+        "PI-ING-000090"
+      ],
+      "reasons": [
+        "5 zgodnych profili",
+        "brak makroskladnikow produktu do walidacji"
+      ],
+      "verifiedFields": [],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "water": 0,
+      "fat": 35,
+      "sugars": 44
+    },
+    {
+      "product": "Nestlé Fitness Red Berries Płatki śniadaniowe w formie batonika",
+      "category": "Bakery & sweets",
+      "brand": "Nestlé",
+      "productType": "retail",
+      "profileMatch": 85,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-001798",
+        "PI-ING-001799"
+      ],
+      "reasons": [
+        "2 zgodnych profili",
+        "brak makroskladnikow produktu do walidacji"
+      ],
+      "verifiedFields": [],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "water": 88.9,
+      "fat": 0,
+      "sugars": 11
+    },
+    {
+      "product": "Prince Polo Classic XXL",
+      "category": "Bakery & sweets",
+      "brand": "Prince Polo",
+      "productType": "retail",
+      "profileMatch": 87,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-000698",
+        "PI-ING-000858",
+        "PI-ING-001807"
+      ],
+      "reasons": [
+        "3 zgodnych profili",
+        "brak makroskladnikow produktu do walidacji"
+      ],
+      "verifiedFields": [],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "water": 5.8,
+      "fat": 36.7,
+      "sugars": 47
+    },
+    {
+      "product": "Tic Tac Drażetki orange",
+      "category": "Bakery & sweets",
+      "brand": "Tic Tac",
+      "productType": "retail",
+      "profileMatch": 87,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-000357",
+        "PI-ING-000358",
+        "PI-ING-000378",
+        "PI-ING-000429"
+      ],
+      "reasons": [
+        "5 zgodnych profili",
+        "brak makroskladnikow produktu do walidacji"
+      ],
+      "verifiedFields": [],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "water": 87.561,
+      "fat": 0.1,
+      "sugars": 10.75
+    },
+    {
+      "product": "Toffifee Orzech laskowy w karmelu kremie orzechowym i czekoladzie 24 szt. 200 g",
+      "category": "Bakery & sweets",
+      "brand": "Toffifee",
+      "productType": "retail",
+      "profileMatch": 85,
+      "basis": "brand_sibling",
+      "mapperReferences": [
+        "PI-ING-000903"
+      ],
+      "reasons": [
+        "1 zgodnych profili",
+        "brak makroskladnikow produktu do walidacji"
+      ],
+      "verifiedFields": [],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "water": 14.898,
+      "fat": 58.9,
+      "sugars": 12.2
+    },
+    {
+      "product": "Vitanella Baton Protein bez dodatku cukrów 27 % białka 49 g",
+      "category": "Bakery & sweets",
+      "brand": "Vitanella",
+      "productType": "private_label",
+      "profileMatch": 87,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-000237",
+        "PI-ING-000264",
+        "PI-ING-000294",
+        "PI-ING-000295"
+      ],
+      "reasons": [
+        "5 zgodnych profili",
+        "brak makroskladnikow produktu do walidacji"
+      ],
+      "verifiedFields": [],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "water": 14.1,
+      "fat": 0.6,
+      "sugars": 10
+    },
+    {
+      "product": "Wyborny Olej słonecznikowy",
+      "category": "Bakery & sweets",
+      "brand": "Wyborny",
+      "productType": "retail",
+      "profileMatch": 94,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-000299",
+        "PI-ING-000300",
+        "PI-ING-000302",
+        "PI-ING-000303"
+      ],
+      "reasons": [
+        "5 zgodnych profili",
+        "brak makroskladnikow produktu do walidacji"
+      ],
+      "verifiedFields": [],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "water": 0,
+      "fat": 100,
+      "sugars": 0
+    },
+    {
+      "product": "Bakello Kakao extra ciemne 10-12% cocoa butter",
+      "category": "Chocolate & cocoa",
+      "brand": "Bakello",
+      "productType": "retail",
+      "profileMatch": 94,
+      "basis": "brand_sibling",
+      "mapperReferences": [
+        "PI-ING-001670"
+      ],
+      "reasons": [
+        "1 zgodnych profili",
+        "podobienstwo makro 1"
+      ],
+      "verifiedFields": [
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent"
+      ],
+      "water": 0,
+      "fat": 11,
+      "sugars": 0.5
+    },
+    {
+      "product": "Bounty Czekolada mleczna z nadzieniem z miękkiego kokosa (2 x 28,5 g)",
+      "category": "Chocolate & cocoa",
+      "brand": "Bounty",
+      "productType": "retail",
+      "profileMatch": 94,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-000087",
+        "PI-ING-000088",
+        "PI-ING-000089",
+        "PI-ING-000090"
+      ],
+      "reasons": [
+        "5 zgodnych profili",
+        "brak makroskladnikow produktu do walidacji"
+      ],
+      "verifiedFields": [],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "water": 0,
+      "fat": 35,
+      "sugars": 44
+    },
+    {
+      "product": "E. Wedel Czekolada biała",
+      "category": "Chocolate & cocoa",
+      "brand": "E. Wedel",
+      "productType": "retail",
+      "profileMatch": 94,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-000087",
+        "PI-ING-000088",
+        "PI-ING-000089",
+        "PI-ING-000090"
+      ],
+      "reasons": [
+        "5 zgodnych profili",
+        "brak makroskladnikow produktu do walidacji"
+      ],
+      "verifiedFields": [],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "water": 0,
+      "fat": 35,
+      "sugars": 44
+    },
+    {
+      "product": "E. Wedel Czekolada klasyczna gorzka 64% 90 g",
+      "category": "Chocolate & cocoa",
+      "brand": "E. Wedel",
+      "productType": "retail",
+      "profileMatch": 94,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-000087",
+        "PI-ING-000088",
+        "PI-ING-000089",
+        "PI-ING-000090"
+      ],
+      "reasons": [
+        "5 zgodnych profili",
+        "brak makroskladnikow produktu do walidacji"
+      ],
+      "verifiedFields": [],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "water": 0,
+      "fat": 35,
+      "sugars": 44
+    },
+    {
+      "product": "E. Wedel Czekolada klasyczna mleczna",
+      "category": "Chocolate & cocoa",
+      "brand": "E. Wedel",
+      "productType": "retail",
+      "profileMatch": 94,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-000087",
+        "PI-ING-000088",
+        "PI-ING-000089",
+        "PI-ING-000090"
+      ],
+      "reasons": [
+        "5 zgodnych profili",
+        "brak makroskladnikow produktu do walidacji"
+      ],
+      "verifiedFields": [],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "water": 0,
+      "fat": 35,
+      "sugars": 44
+    },
+    {
+      "product": "E. Wedel Czekolada truskawkowa",
+      "category": "Chocolate & cocoa",
+      "brand": "E. Wedel",
+      "productType": "retail",
+      "profileMatch": 94,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-000087",
+        "PI-ING-000088",
+        "PI-ING-000089",
+        "PI-ING-000090"
+      ],
+      "reasons": [
+        "5 zgodnych profili",
+        "brak makroskladnikow produktu do walidacji"
+      ],
+      "verifiedFields": [],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "water": 0,
+      "fat": 35,
+      "sugars": 44
+    },
+    {
+      "product": "Kinder Chocolate Batonik z czekolady (8 szt.)",
+      "category": "Chocolate & cocoa",
+      "brand": "Kinder",
+      "productType": "retail",
+      "profileMatch": 94,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-000087",
+        "PI-ING-000088",
+        "PI-ING-000089",
+        "PI-ING-000090"
+      ],
+      "reasons": [
+        "5 zgodnych profili",
+        "brak makroskladnikow produktu do walidacji"
+      ],
+      "verifiedFields": [],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "water": 0,
+      "fat": 35,
+      "sugars": 44
+    },
+    {
+      "product": "Kinder Chocolate Batonik z mlecznej czekolady z nadzieniem mlecznym (4 szt.)",
+      "category": "Chocolate & cocoa",
+      "brand": "Kinder",
+      "productType": "retail",
+      "profileMatch": 94,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-002005",
+        "PI-ING-000662",
+        "PI-ING-002020",
+        "PI-ING-000988"
+      ],
+      "reasons": [
+        "4 zgodnych profili",
+        "podobienstwo makro 0.9973"
+      ],
+      "verifiedFields": [
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent"
+      ],
+      "water": 0.49,
+      "fat": 35,
+      "sugars": 53.3
+    },
+    {
+      "product": "Lindt Excellence Czekolada ciemna Orange Intense",
+      "category": "Chocolate & cocoa",
+      "brand": "Lindt",
+      "productType": "retail",
+      "profileMatch": 94,
+      "basis": "brand_sibling",
+      "mapperReferences": [
+        "PI-ING-000920"
+      ],
+      "reasons": [
+        "1 zgodnych profili",
+        "brak makroskladnikow produktu do walidacji"
+      ],
+      "verifiedFields": [],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "water": 15.4,
+      "fat": 42.7,
+      "sugars": 0.5
+    },
+    {
+      "product": "M&M's Chocolate Czekolada mleczna w kolorowych skorupkach 125 g",
+      "category": "Chocolate & cocoa",
+      "brand": "M&M's",
+      "productType": "retail",
+      "profileMatch": 94,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-001995",
+        "PI-ING-001996",
+        "PI-ING-002035",
+        "PI-ING-001990"
+      ],
+      "reasons": [
+        "4 zgodnych profili",
+        "podobienstwo makro 0.9427"
+      ],
+      "verifiedFields": [
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent"
+      ],
+      "water": 2,
+      "fat": 19,
+      "sugars": 66
+    },
+    {
+      "product": "Milka Mmmax Czekolada mleczna z całymi orzechami laskowymi",
+      "category": "Chocolate & cocoa",
+      "brand": "Milka",
+      "productType": "retail",
+      "profileMatch": 94,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-000087",
+        "PI-ING-000088",
+        "PI-ING-000089",
+        "PI-ING-000090"
+      ],
+      "reasons": [
+        "5 zgodnych profili",
+        "brak makroskladnikow produktu do walidacji"
+      ],
+      "verifiedFields": [],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "water": 0,
+      "fat": 35,
+      "sugars": 44
+    },
+    {
+      "product": "Milka Mmmax Czekolada mleczna z nadzieniem karmelowym i całymi orzechami laskowymi 300 g",
+      "category": "Chocolate & cocoa",
+      "brand": "Milka",
+      "productType": "retail",
+      "profileMatch": 94,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-000087",
+        "PI-ING-000088",
+        "PI-ING-000089",
+        "PI-ING-000090"
+      ],
+      "reasons": [
+        "5 zgodnych profili",
+        "brak makroskladnikow produktu do walidacji"
+      ],
+      "verifiedFields": [],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "water": 0,
+      "fat": 35,
+      "sugars": 44
+    },
+    {
+      "product": "Milka Sensations Cookies Ciastka z kawałkami czekolady i nadzieniem z czekoladą mleczną",
+      "category": "Chocolate & cocoa",
+      "brand": "Milka",
+      "productType": "retail",
+      "profileMatch": 94,
+      "basis": "brand_sibling",
+      "mapperReferences": [
+        "PI-ING-002044"
+      ],
+      "reasons": [
+        "1 zgodnych profili",
+        "brak makroskladnikow produktu do walidacji"
+      ],
+      "verifiedFields": [],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "water": 1.65,
+      "fat": 30,
+      "sugars": 54
+    },
+    {
+      "product": "Nussbeisser Czekolada mleczna z całymi migdałami",
+      "category": "Chocolate & cocoa",
+      "brand": "Nussbeisser",
+      "productType": "retail",
+      "profileMatch": 94,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-000087",
+        "PI-ING-000088",
+        "PI-ING-000089",
+        "PI-ING-000090"
+      ],
+      "reasons": [
+        "5 zgodnych profili",
+        "brak makroskladnikow produktu do walidacji"
+      ],
+      "verifiedFields": [],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "water": 0,
+      "fat": 35,
+      "sugars": 44
+    },
+    {
+      "product": "Nussbeisser Czekolada mleczna z całymi orzechami laskowymi 100 g",
+      "category": "Chocolate & cocoa",
+      "brand": "Nussbeisser",
+      "productType": "retail",
+      "profileMatch": 94,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-000087",
+        "PI-ING-000088",
+        "PI-ING-000089",
+        "PI-ING-000090"
+      ],
+      "reasons": [
+        "5 zgodnych profili",
+        "brak makroskladnikow produktu do walidacji"
+      ],
+      "verifiedFields": [],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "water": 0,
+      "fat": 35,
+      "sugars": 44
+    },
+    {
+      "product": "Quick Cao Napój kakaowy z witaminami",
+      "category": "Chocolate & cocoa",
+      "brand": "Quick Cao",
+      "productType": "retail",
+      "profileMatch": 94,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-000087",
+        "PI-ING-000088",
+        "PI-ING-000089",
+        "PI-ING-000090"
+      ],
+      "reasons": [
+        "5 zgodnych profili",
+        "brak makroskladnikow produktu do walidacji"
+      ],
+      "verifiedFields": [],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "water": 0,
+      "fat": 35,
+      "sugars": 44
+    }
+  ]
+}

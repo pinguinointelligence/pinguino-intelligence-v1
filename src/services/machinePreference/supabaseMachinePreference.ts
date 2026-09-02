@@ -2,7 +2,7 @@
  * PINGÜINO Machine Preference — backend (Supabase) adapter. FILE-FIRST.
  *
  * Implements the `MachinePreferenceStore` port against migrations
- * `0030_user_machine_preference.sql` + `0031_user_machine_preference_user_default.sql`
+ * `20260717111837_0030_user_machine_preference.sql` + `20260717134505_0031_user_machine_preference_user_default.sql`
  * (the owner hotfix's own default batch / own container columns). The adapter
  * must not be wired into the selector until BOTH are applied to the database
  * the bundle talks to: that unwired factory IS the launch gate, mirroring the

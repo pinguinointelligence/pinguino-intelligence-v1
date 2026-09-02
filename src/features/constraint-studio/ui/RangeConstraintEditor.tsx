@@ -37,7 +37,7 @@ function RangeRow({
     <div className="flex flex-wrap items-center gap-2 py-1.5">
       <span className="min-w-0 flex-1 truncate text-sm text-ivory">
         {item.ingredient.name}
-        <span className="ml-2 font-mono text-xs text-ivory/40 tabular-nums">
+        <span className="ml-2 font-mono text-xs text-ivory/60 tabular-nums">
           {formatGramsPl(item.planned_grams)}
         </span>
       </span>
@@ -49,7 +49,7 @@ function RangeRow({
         value={minText}
         onChange={(event) => setMinText(event.currentTarget.value)}
       />
-      <span aria-hidden className="text-xs text-ivory/40">
+      <span aria-hidden className="text-xs text-ivory/60">
         –
       </span>
       <input
@@ -71,7 +71,7 @@ function RangeRow({
         <button
           type="button"
           onClick={onClear}
-          className="rounded-md border border-ivory/10 px-2.5 py-1.5 text-xs text-ivory/50 transition-colors hover:border-ivory/30 hover:text-ivory"
+          className="rounded-md border border-ivory/10 px-2.5 py-1.5 text-xs text-ivory/65 transition-colors hover:border-ivory/30 hover:text-ivory"
         >
           {copy.range.clear}
         </button>
@@ -104,7 +104,7 @@ export function RangeConstraintEditor({
           {copy.feasibility.analysisBadge}
         </span>
       </div>
-      <p className="mt-1 text-xs leading-relaxed text-ivory/50">{copy.range.note}</p>
+      <p className="mt-1 text-xs leading-relaxed text-ivory/65">{copy.range.note}</p>
       <div className="mt-2 divide-y divide-ivory/10">
         {items
           .filter((item) => item.actual_grams === null)

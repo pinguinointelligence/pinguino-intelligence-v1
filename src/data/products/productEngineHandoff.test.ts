@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { IngredientRow } from '@/data/ingredients/ingredientRow';
+import { assessEngineIngredientVeganEligibility } from '@/data/ingredients/veganEligibility';
 import { prepareProductEngineIngredient } from './productEngineHandoff';
 
 /** Minimal reference row (only the fields the engine mapper reads). */
@@ -23,12 +24,15 @@ const refRow = (over: Partial<IngredientRow> = {}): IngredientRow =>
 describe('prepareProductEngineIngredient — confirmed match borrows the reference profile', () => {
   it('produces an EngineIngredient with the product identity + reference composition + reference pac/pod', () => {
     const h = prepareProductEngineIngredient(
-      { mapper_status: 'matched', matched_basement_id: 'PI-ING-000180', product_code: 'PR-ING-000010', product_name_display: 'Nata para montar' },
+      { id: 'private-cream-id', mapper_status: 'matched', matched_basement_id: 'PI-ING-000180', product_code: 'PR-ING-000010', product_name_display: 'Nata para montar' },
       refRow(),
     );
     expect(h.ready).toBe(true);
     expect(h.ingredient?.id).toBe('PR-ING-000010'); // product identity
     expect(h.ingredient?.name).toBe('Nata para montar');
+    expect(h.ingredient?.canonical_ingredient_id).toBe('PI-ING-000180');
+    expect(h.ingredient?.private_product_id).toBe('private-cream-id');
+    expect(h.ingredient?.identity_provenance).toBe('private_product');
     expect(h.ingredient?.pac_value).toBe(3.668); // reference-linked engine values
     expect(h.ingredient?.pod_value).toBe(0.512);
     expect(h.ingredient?.composition.water_percent).toBe(64.42); // reference's full composition
@@ -36,7 +40,7 @@ describe('prepareProductEngineIngredient — confirmed match borrows the referen
     expect(h.ingredient?.source_type).toBe('external_db');
     expect(h.provenance).toBe('reference_linked');
     expect(h.not_independently_measured).toBe(true);
-    expect(h.warnings.join(' ')).toMatch(/not an independent measurement/i);
+    expect(h.warnings.join(' ')).toMatch(/nie są niezależnym pomiarem/i);
   });
 
   it('emits no npac_value and no raw OCR/catalog text into the engine ingredient', () => {
@@ -75,6 +79,46 @@ describe('prepareProductEngineIngredient — gates + red flags', () => {
     expect(h.provenance).toBe('product_measured');
     expect(h.ingredient?.pac_value).toBe(9);
     expect(h.ingredient?.source_type).toBe('producer_label');
+  });
+
+  it('uses the private product Vegan declaration instead of inheriting the matched reference flag', () => {
+    const veganReference = refRow({
+      ingredient_id: 'PI-ING-001565',
+      ingredient_name_internal: 'oat_drink',
+      ingredient_name_display: 'Oat drink',
+      ingredient_category: 'beverage',
+      ingredient_subcategory: 'plant_drink_oat',
+      verification_status: 'Verified',
+      approved_for_engines: true,
+      vegan: 'true',
+      dairy_free: 'true',
+      milk_fat_percent: 0,
+      non_fat_milk_solids_percent: 0,
+      lactose_percent: 0,
+    });
+    const base = {
+      mapper_status: 'matched',
+      matched_basement_id: 'PI-ING-001565',
+      product_code: 'PR-VEGAN-DECLARATION',
+    } as const;
+
+    const explicitlyFalse = prepareProductEngineIngredient(
+      { ...base, vegan: 'false' },
+      veganReference,
+    ).ingredient!;
+    expect(assessEngineIngredientVeganEligibility(explicitlyFalse)).toMatchObject({
+      status: 'VEGAN_FALSE',
+      reasons: ['private_product_vegan_false'],
+    });
+
+    const unknown = prepareProductEngineIngredient(base, veganReference).ingredient!;
+    expect(assessEngineIngredientVeganEligibility(unknown).status).toBe('VEGAN_UNKNOWN');
+
+    const explicitlyTrue = prepareProductEngineIngredient(
+      { ...base, vegan: 'true' },
+      veganReference,
+    ).ingredient!;
+    expect(assessEngineIngredientVeganEligibility(explicitlyTrue).status).toBe('VEGAN_VERIFIED');
   });
 });
 

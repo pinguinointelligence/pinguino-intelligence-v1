@@ -199,7 +199,9 @@ Deno.serve(async (req) => {
       if (!failError && decideFailureFollowup(attempts) === 'retryable') {
         await admin
           .from('stripe_webhook_events')
-          .update({ state: 'retryable' })
+          // The durable schema models a retryable event as `received`; there
+          // is intentionally no unsupported `retryable` state value.
+          .update({ state: 'received' })
           .eq('event_id', event.id)
           .eq('state', 'failed');
       }

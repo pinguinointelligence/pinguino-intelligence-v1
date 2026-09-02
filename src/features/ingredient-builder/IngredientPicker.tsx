@@ -1,12 +1,14 @@
 import { useMemo, useState } from 'react';
 import { copy } from '@/copy/en';
 import type { EngineIngredient } from '@/engine';
+import { NonProductionBadge } from '@/features/design-review/NonProductionMarker';
 import {
   filterIngredients,
   groupIngredientsByCategory,
   type IngredientLibrary,
 } from './ingredientLibrary';
 import { formLabelPl, rankIngredients } from './ingredientSearch';
+import { productProfileStatusLabelPl } from './productProfileStatusLabel';
 
 const b = copy.studio.builder;
 
@@ -20,13 +22,13 @@ const b = copy.studio.builder;
 export function PickerEmptyState({ query, onClear }: { query: string; onClear: () => void }) {
   return (
     <div className="flex flex-col items-start gap-2">
-      <p className="text-sm text-ivory/50" role="status">
+      <p className="text-sm text-ivory/65" role="status">
         {b.noMatches}
       </p>
       {query.trim() !== '' ? (
         <button
           type="button"
-          className="rounded-md border border-ivory/20 px-3 py-1.5 text-sm text-ivory transition-colors hover:border-ivory/40"
+          className="min-h-11 rounded-lg border border-ivory/20 px-3 py-2 text-sm text-ivory transition-colors hover:border-ivory/40"
           onClick={onClear}
         >
           {b.clearSearch}
@@ -46,9 +48,11 @@ export function PickerEmptyState({ query, onClear }: { query: string; onClear: (
 export function IngredientPicker({
   library,
   onAdd,
+  compact = false,
 }: {
   library: IngredientLibrary;
   onAdd: (ingredient: EngineIngredient) => void;
+  compact?: boolean;
 }) {
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState('');
@@ -61,7 +65,11 @@ export function IngredientPicker({
   // With a query: RANK so natural/fresh + exact-name matches come first, SKU/beverage last
   // (owner P0). Empty query: browse, grouped by category.
   const ranked = useMemo(
-    () => rankIngredients(filtered, query, { nameIndex: library.nameIndex, formIndex: library.formIndex }),
+    () =>
+      rankIngredients(filtered, query, {
+        nameIndex: library.nameIndex,
+        formIndex: library.formIndex,
+      }),
     [filtered, query, library.nameIndex, library.formIndex],
   );
   const grouped = useMemo(() => groupIngredientsByCategory(filtered), [filtered]);
@@ -75,7 +83,7 @@ export function IngredientPicker({
 
   if (library.status === 'loading') {
     return (
-      <p className="text-sm text-ivory/50" role="status" aria-live="polite">
+      <p className="text-sm text-ivory/65" role="status" aria-live="polite">
         {b.loadingLibrary}
       </p>
     );
@@ -97,6 +105,55 @@ export function IngredientPicker({
     selectedIngredient.pac_value == null &&
     selectedIngredient.pod_value == null;
 
+  if (compact) {
+    return (
+      <div
+        className="grid grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_auto] gap-2"
+        data-testid="compact-ingredient-picker"
+      >
+        <input
+          type="search"
+          aria-label={b.searchLabel}
+          placeholder={b.searchPlaceholder}
+          className="h-11 min-w-0 rounded-lg border border-ink/15 bg-white px-3 text-xs text-ink focus:border-ink/40 focus:outline-none lg:h-9"
+          value={query}
+          onChange={(event) => setQuery(event.currentTarget.value)}
+        />
+        <select
+          aria-label={b.addLabel}
+          className="h-11 min-w-0 rounded-lg border border-ink/15 bg-white px-2 text-xs text-ink focus:border-ink/40 focus:outline-none lg:h-9"
+          value={effectiveId}
+          onChange={(event) => setSelectedId(event.currentTarget.value)}
+        >
+          {selectable.map((ingredient) => (
+            <option key={ingredient.id} value={ingredient.id}>
+              {ingredient.name}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          className="h-11 rounded-lg bg-ink px-3 text-xs font-semibold text-white disabled:opacity-40 lg:h-9"
+          disabled={effectiveId === ''}
+          onClick={() => {
+            const ingredient = [...library.ingredients, ...library.products].find(
+              (item) => item.id === effectiveId,
+            );
+            if (ingredient) onAdd(ingredient);
+          }}
+        >
+          ＋ {b.addLabel}
+        </button>
+        <span className="sr-only" aria-live="polite">
+          {count} {b.resultFoundSuffix}
+        </span>
+        {selectedNeedsData ? (
+          <span className="col-span-3 text-xs text-attention">{b.needsData}</span>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-2.5">
       {/* Premium search bar */}
@@ -104,7 +161,7 @@ export function IngredientPicker({
         <svg
           aria-hidden
           viewBox="0 0 20 20"
-          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ivory/40"
+          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ivory/60"
           fill="none"
           stroke="currentColor"
           strokeWidth="1.6"
@@ -123,8 +180,10 @@ export function IngredientPicker({
       </div>
 
       {/* Result count — always visible */}
-      <p className="text-xs text-ivory/50" aria-live="polite">
-        <span className="font-mono tabular-nums text-ivory/70">{count.toLocaleString('en-US')}</span>{' '}
+      <p className="text-xs text-ivory/65" aria-live="polite">
+        <span className="font-mono tabular-nums text-ivory/70">
+          {count.toLocaleString('en-US')}
+        </span>{' '}
         {count === 1 ? b.resultUnitOne : b.resultUnitMany} {b.resultFoundSuffix}
       </p>
 
@@ -165,7 +224,7 @@ export function IngredientPicker({
                 ))
               )}
               {filteredProducts.length > 0 ? (
-                <optgroup label="My Products">
+                <optgroup label="Moje produkty">
                   {filteredProducts.map((product) => (
                     <option key={product.id} value={product.id}>
                       {product.name} ({product.id})
@@ -176,9 +235,11 @@ export function IngredientPicker({
             </select>
             <button
               type="button"
-              className="inline-flex items-center justify-center rounded-md border border-ivory/20 px-5 py-2.5 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
+              className="inline-flex min-h-11 items-center justify-center rounded-lg border border-ivory/20 px-5 py-2.5 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
               onClick={() => {
-                const ingredient = [...library.ingredients, ...library.products].find((item) => item.id === effectiveId);
+                const ingredient = [...library.ingredients, ...library.products].find(
+                  (item) => item.id === effectiveId,
+                );
                 if (ingredient) onAdd(ingredient);
               }}
             >
@@ -190,27 +251,34 @@ export function IngredientPicker({
           </div>
 
           {selectedNeedsData ? (
-            <p className="text-xs leading-relaxed text-amber-300/90" data-testid="picker-needs-data">
+            <p
+              className="text-xs leading-relaxed text-amber-300/90"
+              data-testid="picker-needs-data"
+            >
               {b.needsData}
             </p>
           ) : null}
 
           {selectedProvenance ? (
-            <p className="text-xs leading-relaxed text-ivory/50">
+            <p className="text-xs leading-relaxed text-ivory/65">
               {selectedProvenance.class_derived ? (
                 <span className="text-ivory/70">
-                  {selectedProvenance.provenance_note ?? 'PI Calculated · class-derived · not independently measured'}
+                  Profil obliczony na podstawie klasy produktu · parametry nie były mierzone
+                  niezależnie
                 </span>
               ) : (
                 <>
                   {selectedProvenance.status_label ? (
-                    <span className="text-ivory/70">{selectedProvenance.status_label} · </span>
+                    <span className="text-ivory/70">
+                      {productProfileStatusLabelPl(selectedProvenance.status_label)} ·{' '}
+                    </span>
                   ) : null}
-                  <span className="text-ivory/70">Reference-linked profile</span> · PAC/POD from approved reference · not independently measured
+                  <span className="text-ivory/70">Profil oparty na zatwierdzonym wzorcu</span> ·
+                  parametry technologiczne nie były mierzone niezależnie
                 </>
               )}
               {selectedProvenance.blocked_by_red_flags ? (
-                <span className="text-amber-300"> · contains flagged ingredients — pending verification</span>
+                <span className="text-amber-300"> · zawiera składniki wymagające weryfikacji</span>
               ) : null}
             </p>
           ) : null}
@@ -218,7 +286,16 @@ export function IngredientPicker({
       )}
 
       {library.status === 'fallback' ? (
-        <p className="text-xs text-ivory/40">{b.fallbackNote}</p>
+        // Agent 4/5 fixture sweep: the FALLBACK is the bundled demo/reference catalog
+        // silently replacing the live PI library (error / empty read) — visibly pink,
+        // never mistakable for the 'ready' live library.
+        <p
+          className="flex flex-wrap items-center gap-2 text-xs text-ivory/60"
+          data-testid="nonprod-marked-picker-fallback"
+        >
+          <NonProductionBadge itemId="pro-demo-library" />
+          <span>{b.fallbackNote}</span>
+        </p>
       ) : null}
     </div>
   );

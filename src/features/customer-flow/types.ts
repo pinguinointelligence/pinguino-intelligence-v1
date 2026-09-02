@@ -52,13 +52,14 @@ export const RECIPE_PATH_OPTIONS: readonly RecipePathOption[] = [
  * chocolate engine profile off the editable flavor chips (so a corrected /
  * removed chocolate chip is honored deterministically).
  */
-export const CHOCOLATE_FLAVOR_TAGS: ReadonlySet<string> = new Set(['chocolate', 'cocoa', 'gianduja']);
+export const CHOCOLATE_FLAVOR_TAGS: ReadonlySet<string> = new Set([
+  'chocolate',
+  'cocoa',
+  'gianduja',
+]);
 
 /**
- * The customer→spine product-profile string for each visible choice. `protein`
- * maps to the spine's known-unsupported value ON PURPOSE — the spine returns an
- * honest `unsupported_product_profile` warning, which the customer flow surfaces
- * as a validation_required gap instead of a silent fallback.
+ * The customer→spine product-profile string for each visible choice.
  */
 export const CUSTOMER_TYPE_TO_SPINE_PROFILE_INPUT: Readonly<Record<CustomerProductType, string>> = {
   gelato: 'gelato',
@@ -77,20 +78,19 @@ export const SPINE_PROFILE_TO_ENGINE_CATEGORY: Readonly<Record<ProductProfile, P
   chocolate_gelato: 'chocolate_gelato',
   sorbet: 'sorbet',
   vegan_gelato: 'vegan_gelato',
+  protein_gelato: 'protein_gelato',
 };
 
 /** The customer-facing type a resolved internal profile maps back to. */
-export const SPINE_PROFILE_TO_CUSTOMER_TYPE: Readonly<Record<ProductProfile, CustomerProductType>> = {
-  // chocolate_gelato is still shown to the customer as Gelato (never "Chocolate").
-  standard_gelato: 'gelato',
-  chocolate_gelato: 'gelato',
-  sorbet: 'sorbet',
-  vegan_gelato: 'vegan',
-};
+export const SPINE_PROFILE_TO_CUSTOMER_TYPE: Readonly<Record<ProductProfile, CustomerProductType>> =
+  {
+    // chocolate_gelato is still shown to the customer as Gelato (never "Chocolate").
+    standard_gelato: 'gelato',
+    chocolate_gelato: 'gelato',
+    sorbet: 'sorbet',
+    vegan_gelato: 'vegan',
+    protein_gelato: 'protein',
+  };
 
 /** The questions the customer flow can ask (deterministic, ordered by priority). */
-export type CustomerFlowQuestionId =
-  | 'product_type'
-  | 'serving_mode'
-  | 'batch'
-  | 'recipe_path';
+export type CustomerFlowQuestionId = 'product_type' | 'serving_mode' | 'batch' | 'recipe_path';

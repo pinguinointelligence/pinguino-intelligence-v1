@@ -3,8 +3,9 @@
  * Every seed gram is a verbatim approved repo record; Engine science untouched.
  */
 import { describe, expect, it } from 'vitest';
-import { calculateRecipe, type EngineIngredient, type RecipeInput } from '@/engine';
+import { calculateRecipe, type RecipeInput } from '@/engine';
 import { findDemoIngredient } from '@/data/demoIngredients';
+import { findVerifiedVeganFormulationCandidate } from '@/data/ingredients/verifiedVeganToolbox';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import {
@@ -16,9 +17,20 @@ import {
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import { routeFormulationMode } from './formulate';
 import { resolveFunctionalRole } from './ingredientRoles';
-import { listFormulationTemplates, selectFormulationTemplate } from './templateRegistry';
+import {
+  findFormulationTemplateById,
+  isApprovedTemplateId,
+  listFormulationTemplates,
+  listQuarantinedTemplates,
+  selectFormulationTemplate,
+} from './templateRegistry';
 
-const line = (id: string, ing: string, grams: number, lock: 'unlocked' | 'grams' | 'main' = 'unlocked') => ({
+const line = (
+  id: string,
+  ing: string,
+  grams: number,
+  lock: 'unlocked' | 'grams' | 'main' = 'unlocked',
+) => ({
   id,
   ingredient: findDemoIngredient(ing)!,
   planned_grams: grams,
@@ -57,19 +69,47 @@ const NO_GRAM_GELATO = () => [
 describe('template registry (Phase 1)', () => {
   it('carries the approved seeds verbatim and honest unsupported states', () => {
     expect(selectFormulationTemplate('milk_gelato', -11).template?.templateId).toBe('milk_base_v1');
-    expect(selectFormulationTemplate('milk_gelato', -12).template?.templateId).toBe('milk_base_g17_minus12_v1');
-    expect(selectFormulationTemplate('milk_gelato', -13).template?.templateId).toBe('milk_base_g18_minus13_v1');
-    expect(selectFormulationTemplate('chocolate_gelato', -11).template?.templateId).toBe('chocolate_base_v1');
+    expect(selectFormulationTemplate('milk_gelato', -12).template?.templateId).toBe(
+      'milk_base_g17_minus12_v1',
+    );
+    expect(selectFormulationTemplate('milk_gelato', -13).template?.templateId).toBe(
+      'milk_base_g18_minus13_v1',
+    );
+    expect(selectFormulationTemplate('chocolate_gelato', -11).template?.templateId).toBe(
+      'chocolate_base_v1',
+    );
     expect(selectFormulationTemplate('chocolate_gelato', -12).template).toBeNull(); // honestly limited
     expect(selectFormulationTemplate('sorbet', -11).template?.templateId).toBe('S01');
     expect(selectFormulationTemplate('sorbet', -12).template?.templateId).toBe('S02');
     expect(selectFormulationTemplate('sorbet', -13).template?.templateId).toBe('S03');
     expect(selectFormulationTemplate('vegan_gelato', -13).template?.templateId).toBe('V02_fixed');
-    expect(selectFormulationTemplate('vegan_gelato', -11).template).toBeNull();
-    expect(selectFormulationTemplate('custom', -11).unsupportedReason).toBe('no_template_for_category');
-    // the fruit template is explicitly reference-derived, never claimed approved
-    const fruit = listFormulationTemplates().find((t) => t.templateId === 'fruit_gelato_ref_v1')!;
+    expect(selectFormulationTemplate('vegan_gelato', -12).template?.templateId).toBe(
+      'vegan_neutral_minus12_final',
+    );
+    expect(selectFormulationTemplate('vegan_gelato', -11).template?.templateId).toBe(
+      'vegan_neutral_minus11_final',
+    );
+    expect(selectFormulationTemplate('custom', -11).unsupportedReason).toBe(
+      'no_template_for_category',
+    );
+    // OWNER FINAL INTEGRATION ADDENDUM item 2 (2026-07-25) — SUPERSEDES „the
+    // fruit template is in the registry, explicitly reference-derived". It is
+    // now QUARANTINED: the runtime registry contains APPROVED templates only,
+    // and the reference-derived seed is reachable by id alone (tests,
+    // diagnostics, the Apply door's trustless provenance re-derivation). The
+    // guarantee — a reference-derived formula is never claimed approved — is
+    // re-pinned below and structurally strengthened.
+    expect(listFormulationTemplates().every((t) => t.status === 'approved')).toBe(true);
+    expect(listFormulationTemplates().some((t) => t.templateId === 'fruit_gelato_ref_v1')).toBe(
+      false,
+    );
+    expect(selectFormulationTemplate('fruit_gelato', -11).template).toBeNull();
+    const fruit = findFormulationTemplateById('fruit_gelato_ref_v1')!;
     expect(fruit.status).toBe('reference_derived');
+    expect(isApprovedTemplateId('fruit_gelato_ref_v1')).toBe(false);
+    expect(listQuarantinedTemplates().map((t) => t.templateId)).toContain('fruit_gelato_ref_v1');
+    // An id that exists in NO registry is not approved either (trustless door).
+    expect(isApprovedTemplateId('totally-made-up')).toBe(false);
   });
 });
 
@@ -104,14 +144,49 @@ describe('Phase 15 — no-gram new recipe (tests 1/13/18)', () => {
     expect(tara).toBeGreaterThan(0);
     expect(tara).toBeLessThanOrEqual(6);
     // user line ids preserved (stable identities)
-    for (const id of ['l-milk', 'l-cream', 'l-suc']) expect(gramsOf(p.proposedInput, id)).toBeGreaterThan(0);
+    for (const id of ['l-milk', 'l-cream', 'l-suc'])
+      expect(gramsOf(p.proposedInput, id)).toBeGreaterThan(0);
   });
 
-  it('zero-unlocked ingredient remains an available candidate (test 6)', () => {
+  it('optional zero Inulin remains absent and is recommended instead of auto-added', () => {
     const result = buildOptimizePreview(input(NO_GRAM_GELATO(), 'milk_gelato', -12), NO, 'now');
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(gramsOf(result.preview.proposedInput, 'l-inulin')).toBeGreaterThan(0); // G17 fiber role
+    // Owner zero-gram executable invariant: the unused optional Inulin is
+    // literally absent from the executable proposal (no explicit 0 g row).
+    expect(gramsOf(result.preview.proposedInput, 'l-inulin')).toBeUndefined();
+    expect(
+      result.preview.formulation?.recommendations.some(
+        (recommendation) =>
+          recommendation.role === 'fiber_body' &&
+          recommendation.messagePl.includes('Dodanie inuliny'),
+      ),
+    ).toBe(true);
+  });
+
+  it('seeds explicitly present Inulin at the owner-preferred 4% target', () => {
+    const selected = NO_GRAM_GELATO().map((item) =>
+      item.id === 'l-inulin' ? { ...item, planned_grams: 10 } : item,
+    );
+    const result = buildOptimizePreview(input(selected, 'milk_gelato', -12), NO, 'now');
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(gramsOf(result.preview.proposedInput, 'l-inulin')).toBe(40);
+    expect(result.preview.formulation?.added.some((line) => line.ingredientId === 'inulin')).toBe(
+      false,
+    );
+  });
+
+  it('moves valid unlocked Inulin toward 4% when the base template has no fibre row', () => {
+    const selected = NO_GRAM_GELATO().map((item) =>
+      item.id === 'l-inulin' ? { ...item, planned_grams: 20 } : item,
+    );
+    const result = buildOptimizePreview(input(selected, 'milk_gelato', -11), NO, 'now');
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const inulinGrams = gramsOf(result.preview.proposedInput, 'l-inulin');
+    expect(inulinGrams).toBeDefined();
+    expect(Math.abs(inulinGrams! - 40)).toBeLessThanOrEqual(1);
   });
 });
 
@@ -140,16 +215,24 @@ describe('Phase 14 — locked 500 g milk (tests 2/3/4)', () => {
     expect(Math.abs(plannedSum(result.preview.proposedInput) - 1000)).toBeLessThanOrEqual(0.1);
   });
 
-  it('fruit range 150–250 g is respected (fruit gelato, reference-derived)', () => {
+  // OWNER FINAL INTEGRATION ADDENDUM items 1+2 (2026-07-25) — SUPERSEDES the
+  // `fruit_gelato` / `reference_derived` expectations. The canonical family of
+  // a dairy fruit gelato is `milk_gelato` and its seed is the APPROVED
+  // `milk_base_v1`. The guarantee under test — a §17 RANGE on a flavour line is
+  // honored end to end — is unchanged; the honest-label half is now stronger:
+  // the applied template can only ever be approved.
+  it('fruit range 150–250 g is respected (dairy fruit gelato, approved template)', () => {
     const items = [...NO_GRAM_GELATO(), line('l-rasp', 'raspberry', 0)];
-    const set = { byLineId: { 'l-rasp': { mode: 'range' as const, minGrams: 150, maxGrams: 250 } } };
-    const result = buildOptimizePreview(input(items, 'fruit_gelato', -11), set, 'now');
+    const set = {
+      byLineId: { 'l-rasp': { mode: 'range' as const, minGrams: 150, maxGrams: 250 } },
+    };
+    const result = buildOptimizePreview(input(items, 'milk_gelato', -11), set, 'now');
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     const rasp = gramsOf(result.preview.proposedInput, 'l-rasp')!;
     expect(rasp).toBeGreaterThanOrEqual(150 - 0.001);
     expect(rasp).toBeLessThanOrEqual(250 + 0.001);
-    expect(result.preview.formulation?.templateStatus).toBe('reference_derived'); // honest label
+    expect(result.preview.formulation?.templateStatus).toBe('approved'); // honest label
   });
 });
 
@@ -205,8 +288,13 @@ describe('Phase 16 — the exact eight-ingredient all-1 g owner fixture (tests 1
 
   it('Apply → Undo restores the exact eight × 1 g draft (test 25)', () => {
     useRecipeStore.setState({
-      mode: 'classic', category: 'milk_gelato', target_temperature_c: -11, target_batch_grams: 1000,
-      machine_capacity_grams: null, flavor_intensity: 'balanced', cost_priority: 'balanced',
+      mode: 'classic',
+      category: 'milk_gelato',
+      target_temperature_c: -11,
+      target_batch_grams: 1000,
+      machine_capacity_grams: null,
+      flavor_intensity: 'balanced',
+      cost_priority: 'balanced',
       items: OWNER_EIGHT(),
     });
     useConstraintStudioStore.getState().resetForTests();
@@ -216,7 +304,9 @@ describe('Phase 16 — the exact eight-ingredient all-1 g owner fixture (tests 1
     useConstraintStudioStore.getState().applyPreview();
     expect(useConstraintStudioStore.getState().blocked).toBeNull();
     const items = useRecipeStore.getState().items;
-    expect(Math.abs(items.reduce((a, i) => a + i.planned_grams, 0) - 1000)).toBeLessThanOrEqual(0.1);
+    expect(Math.abs(items.reduce((a, i) => a + i.planned_grams, 0) - 1000)).toBeLessThanOrEqual(
+      0.1,
+    );
     useConstraintStudioStore.getState().undoLastApply();
     expect(JSON.stringify(buildRecipeInput(useRecipeStore.getState()).items)).toBe(before);
   });
@@ -225,9 +315,14 @@ describe('Phase 16 — the exact eight-ingredient all-1 g owner fixture (tests 1
 describe('Phase 17 — the original MyGelato fixture (tests 12/17)', () => {
   it('routes to LOCAL CORRECTION (near-batch draft) and classifies honestly', () => {
     const items = [
-      line('l-milk', 'milk_3_5', 592.3), line('l-cream', 'cream_30', 216.6), line('l-smp', 'smp', 22),
-      line('l-suc', 'sucrose', 32.5), line('l-dex', 'dextrose', 110), line('l-salt', 'salt', 0.8),
-      line('l-inulin', 'inulin', 23.7), line('l-tara', 'tara_gum', 2.01),
+      line('l-milk', 'milk_3_5', 592.3),
+      line('l-cream', 'cream_30', 216.6),
+      line('l-smp', 'smp', 22),
+      line('l-suc', 'sucrose', 32.5),
+      line('l-dex', 'dextrose', 110),
+      line('l-salt', 'salt', 0.8),
+      line('l-inulin', 'inulin', 23.7),
+      line('l-tara', 'tara_gum', 2.01),
     ];
     const rec = input(items, 'milk_gelato', -11);
     expect(routeFormulationMode(rec, NO).mode).toBe('local_correction');
@@ -244,8 +339,11 @@ describe('Phase 17 — the original MyGelato fixture (tests 12/17)', () => {
 describe('Phase 18 — sorbet + vegan (tests 22/23)', () => {
   it('sorbet −11 with a selected fruit: water auto-added WITH a reason; 1000 g', () => {
     const items = [
-      line('l-rasp', 'raspberry', 0), line('l-suc', 'sucrose', 0), line('l-dex', 'dextrose', 0),
-      line('l-inulin', 'inulin', 0), line('l-tara', 'tara_gum', 0),
+      line('l-rasp', 'raspberry', 0),
+      line('l-suc', 'sucrose', 0),
+      line('l-dex', 'dextrose', 0),
+      line('l-inulin', 'inulin', 0),
+      line('l-tara', 'tara_gum', 0),
     ];
     const result = buildOptimizePreview(input(items, 'sorbet', -11), NO, 'now');
     expect(result.ok).toBe(true);
@@ -259,32 +357,42 @@ describe('Phase 18 — sorbet + vegan (tests 22/23)', () => {
   });
 
   it('sorbet without ANY fruit → precise missing-role stop (never invented)', () => {
-    const items = [line('l-suc', 'sucrose', 0), line('l-dex', 'dextrose', 0), line('l-tara', 'tara_gum', 0)];
+    const items = [
+      line('l-suc', 'sucrose', 0),
+      line('l-dex', 'dextrose', 0),
+      line('l-tara', 'tara_gum', 0),
+    ];
     const result = buildOptimizePreview(input(items, 'sorbet', -12), NO, 'now');
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.code).toBe('missing_required_role');
     if (result.code !== 'missing_required_role') return;
     expect(result.role).toBe('fruit');
-    expect(result.messagePl).toContain('owoc');
+    expect(result.messagePl).toContain('Owoc');
   });
 
-  it('vegan −13 with user plant ingredients works; vegan −11 honestly unsupported (no dairy fallback)', () => {
-    const oat: EngineIngredient = {
-      ...findDemoIngredient('milk_3_5')!,
-      id: 'PI-ING-OAT-TEST', name: 'Oat drink', category: 'other',
-      flags: { is_animal_origin: false },
-    };
-    const coconut: EngineIngredient = {
-      ...findDemoIngredient('cream_30')!,
-      id: 'PI-ING-COCO-TEST', name: 'Coconut milk 22%', category: 'other',
-      flags: { is_animal_origin: false },
-    };
+  it('vegan −13 and −11 use verified Mapper plant ingredients with no dairy fallback', () => {
+    const oat = findVerifiedVeganFormulationCandidate('PI-ING-001565')!;
+    const coconut = findVerifiedVeganFormulationCandidate('PI-ING-000163')!;
     const items = [
-      { id: 'l-oat', ingredient: oat, planned_grams: 0, actual_grams: null, lock_type: 'unlocked' as const },
-      { id: 'l-coco', ingredient: coconut, planned_grams: 0, actual_grams: null, lock_type: 'unlocked' as const },
-      line('l-suc', 'sucrose', 0), line('l-dex', 'dextrose', 0),
-      line('l-inulin', 'inulin', 0), line('l-tara', 'tara_gum', 0),
+      {
+        id: 'l-oat',
+        ingredient: oat,
+        planned_grams: 0,
+        actual_grams: null,
+        lock_type: 'unlocked' as const,
+      },
+      {
+        id: 'l-coco',
+        ingredient: coconut,
+        planned_grams: 0,
+        actual_grams: null,
+        lock_type: 'unlocked' as const,
+      },
+      line('l-suc', 'sucrose', 0),
+      line('l-dex', 'dextrose', 0),
+      line('l-inulin', 'inulin', 0),
+      line('l-tara', 'tara_gum', 0),
     ];
     const ok = buildOptimizePreview(input(items, 'vegan_gelato', -13), NO, 'now');
     expect(ok.ok).toBe(true);
@@ -293,16 +401,27 @@ describe('Phase 18 — sorbet + vegan (tests 22/23)', () => {
       expect(Math.abs(plannedSum(ok.preview.proposedInput) - 1000)).toBeLessThanOrEqual(0.1);
       expect(gramsOf(ok.preview.proposedInput, 'l-oat')!).toBeGreaterThan(0);
     }
-    const unsupported = buildOptimizePreview(input(items, 'vegan_gelato', -11), NO, 'now');
-    expect(unsupported.ok).toBe(false);
-    if (!unsupported.ok) expect(unsupported.code).toBe('unsupported_profile');
+    const minus11 = buildOptimizePreview(input(items, 'vegan_gelato', -11), NO, 'now');
+    expect(minus11.ok).toBe(true);
+    if (minus11.ok) {
+      expect(minus11.preview.formulation?.templateId).toBe('vegan_neutral_minus11_final');
+      expect(Math.abs(plannedSum(minus11.preview.proposedInput) - 1000)).toBeLessThanOrEqual(0.1);
+      expect(
+        minus11.preview.proposedInput.items.some((item) => item.ingredient.flags?.is_dairy),
+      ).toBe(false);
+    }
   });
 
   it('chocolate −11 uses the chocolate template; unsupported profile (custom) is honest (test 21/24)', () => {
     const items = [
-      line('l-milk', 'milk_3_5', 0), line('l-cream', 'cream_30', 0), line('l-smp', 'smp', 0),
-      line('l-suc', 'sucrose', 0), line('l-dex', 'dextrose', 0),
-      line('l-choc', 'dark_chocolate_70', 0), line('l-cocoa', 'cocoa_2224', 0), line('l-tara', 'tara_gum', 0),
+      line('l-milk', 'milk_3_5', 0),
+      line('l-cream', 'cream_30', 0),
+      line('l-smp', 'smp', 0),
+      line('l-suc', 'sucrose', 0),
+      line('l-dex', 'dextrose', 0),
+      line('l-choc', 'dark_chocolate_70', 0),
+      line('l-cocoa', 'cocoa_2224', 0),
+      line('l-tara', 'tara_gum', 0),
     ];
     const result = buildOptimizePreview(input(items, 'chocolate_gelato', -11), NO, 'now');
     expect(result.ok).toBe(true);
@@ -320,8 +439,13 @@ describe('Phase 18 — sorbet + vegan (tests 22/23)', () => {
 describe('Phase 21 — 20-cycle stability (tests 13/14/15)', () => {
   it('20 successive recalculate→apply cycles: batch stays 1000 g, no duplicates, no runaway', () => {
     useRecipeStore.setState({
-      mode: 'classic', category: 'milk_gelato', target_temperature_c: -11, target_batch_grams: 1000,
-      machine_capacity_grams: null, flavor_intensity: 'balanced', cost_priority: 'balanced',
+      mode: 'classic',
+      category: 'milk_gelato',
+      target_temperature_c: -11,
+      target_batch_grams: 1000,
+      machine_capacity_grams: null,
+      flavor_intensity: 'balanced',
+      cost_priority: 'balanced',
       items: NO_GRAM_GELATO(),
     });
     useConstraintStudioStore.getState().resetForTests();
@@ -354,6 +478,19 @@ describe('Phase 21 — 20-cycle stability (tests 13/14/15)', () => {
     const preview = {
       kind: 'optimize' as const,
       titlePl: 'forged',
+      // Owner addendum item 4: hand-forged fixtures declare the outcome
+      // classification explicitly (the real builders compute it).
+      outcomeClassification: {
+        outcome: 'no_verified_change' as const,
+        batchReconciled: false,
+        compositionUnchanged: false,
+        engineImproved: false,
+        beforeGrams: 1000,
+        afterGrams: 1000,
+        targetBatchGrams: 1000,
+        violationsBefore: 0,
+        violationsAfter: 0,
+      },
       baseFingerprint: workingStateFingerprint(rec, NO),
       proposedInput: forged,
       nextConstraints: NO,
@@ -374,8 +511,13 @@ describe('Phase 21 — 20-cycle stability (tests 13/14/15)', () => {
 describe('Phase 22 — direct service / store equality + science freeze (tests 27/29)', () => {
   it('the store path and the direct pipeline produce the identical proposal', () => {
     useRecipeStore.setState({
-      mode: 'classic', category: 'milk_gelato', target_temperature_c: -12, target_batch_grams: 1000,
-      machine_capacity_grams: null, flavor_intensity: 'balanced', cost_priority: 'balanced',
+      mode: 'classic',
+      category: 'milk_gelato',
+      target_temperature_c: -12,
+      target_batch_grams: 1000,
+      machine_capacity_grams: null,
+      flavor_intensity: 'balanced',
+      cost_priority: 'balanced',
       items: NO_GRAM_GELATO(),
     });
     useConstraintStudioStore.getState().resetForTests();

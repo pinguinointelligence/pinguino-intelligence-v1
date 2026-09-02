@@ -13,7 +13,13 @@ import {
 } from './temperatureRegulator';
 import type { ProductProfile, ServingTemperatureC } from './types';
 
-const PROFILES: readonly ProductProfile[] = ['standard_gelato', 'sorbet', 'vegan_gelato', 'chocolate_gelato'];
+const PROFILES: readonly ProductProfile[] = [
+  'standard_gelato',
+  'sorbet',
+  'vegan_gelato',
+  'chocolate_gelato',
+  'protein_gelato',
+];
 const TEMPS: readonly ServingTemperatureC[] = [-11, -12, -13];
 
 const deepLeaves = (value: unknown): unknown[] =>
@@ -27,19 +33,23 @@ const deepKeys = (value: unknown): string[] =>
     : [];
 
 describe('Temperature Regulator config — registry shape', () => {
-  it('contains exactly 12 settings: 4 profiles × 3 temperatures, nothing else', () => {
+  it('contains exactly 15 settings: 5 profiles × 3 temperatures, nothing else', () => {
     const all = listTemperatureRegulatorSettings();
-    expect(all).toHaveLength(12);
+    expect(all).toHaveLength(15);
     for (const profile of PROFILES) {
-      const temps = all.filter((s) => s.productProfile === profile).map((s) => s.servingTemperatureC);
+      const temps = all
+        .filter((s) => s.productProfile === profile)
+        .map((s) => s.servingTemperatureC);
       expect([...temps].sort((a, b) => b - a)).toEqual([-11, -12, -13]);
     }
-    expect(new Set(all.map((s) => s.productProfile)).size).toBe(4);
+    expect(new Set(all.map((s) => s.productProfile)).size).toBe(5);
   });
 
-  it('contains no granita/protein/fresh/storage profile', () => {
-    const profiles = new Set<string>(listTemperatureRegulatorSettings().map((s) => s.productProfile));
-    for (const unsupported of ['granita', 'protein_gelato', 'protein', 'fresh', 'storage_minus18']) {
+  it('contains no alias-only protein, granita, fresh or storage profile', () => {
+    const profiles = new Set<string>(
+      listTemperatureRegulatorSettings().map((s) => s.productProfile),
+    );
+    for (const unsupported of ['granita', 'protein', 'fresh', 'storage_minus18']) {
       expect(profiles.has(unsupported)).toBe(false);
     }
   });
@@ -70,7 +80,7 @@ describe('Temperature Regulator config — lookup (no fallback, ever)', () => {
   });
 
   it('unsupported product returns null — never another product', () => {
-    for (const bad of ['granita', 'protein_gelato', 'fresh', 'storage_minus18', 'gelato', '']) {
+    for (const bad of ['granita', 'protein', 'fresh', 'storage_minus18', 'gelato', '']) {
       expect(getTemperatureRegulatorSettingsOrNull(bad, -12), bad).toBeNull();
     }
   });
@@ -288,15 +298,27 @@ describe('Temperature Regulator config — Vegan Gelato (locked doc values)', ()
   });
 
   it('−13 °C is the observed calibration anchor; −11/−12 are locked internal settings', () => {
-    expect(getTemperatureRegulatorSettings('vegan_gelato', -13).status).toBe('locked_pinguino_v0_1');
-    expect(getTemperatureRegulatorSettings('vegan_gelato', -13).notes.join(' ')).toMatch(/observed calibration anchor/);
-    expect(getTemperatureRegulatorSettings('vegan_gelato', -11).status).toBe('locked_pinguino_internal_v0_1');
-    expect(getTemperatureRegulatorSettings('vegan_gelato', -12).status).toBe('locked_pinguino_internal_v0_1');
+    expect(getTemperatureRegulatorSettings('vegan_gelato', -13).status).toBe(
+      'locked_pinguino_v0_1',
+    );
+    expect(getTemperatureRegulatorSettings('vegan_gelato', -13).notes.join(' ')).toMatch(
+      /observed calibration anchor/,
+    );
+    expect(getTemperatureRegulatorSettings('vegan_gelato', -11).status).toBe(
+      'locked_pinguino_internal_v0_1',
+    );
+    expect(getTemperatureRegulatorSettings('vegan_gelato', -12).status).toBe(
+      'locked_pinguino_internal_v0_1',
+    );
   });
 
   it('carries the locked vegan NPAC map', () => {
-    expect(getTemperatureRegulatorSettings('vegan_gelato', -11).npac?.cleanCenter).toEqual([40, 47]);
-    expect(getTemperatureRegulatorSettings('vegan_gelato', -12).npac?.cleanCenter).toEqual([48, 54]);
+    expect(getTemperatureRegulatorSettings('vegan_gelato', -11).npac?.cleanCenter).toEqual([
+      40, 47,
+    ]);
+    expect(getTemperatureRegulatorSettings('vegan_gelato', -12).npac?.cleanCenter).toEqual([
+      48, 54,
+    ]);
     const minus13 = getTemperatureRegulatorSettings('vegan_gelato', -13).npac;
     expect(minus13?.band).toEqual([50, 64]);
     expect(minus13?.lockedReference).toBe(59.47);
@@ -350,13 +372,19 @@ describe('Temperature Regulator config — Chocolate Gelato (locked doc values)'
   });
 
   it('carries the locked chocolate NPAC map and cocoa notes', () => {
-    expect(getTemperatureRegulatorSettings('chocolate_gelato', -11).npac?.cleanCenter).toEqual([40, 42]);
-    expect(getTemperatureRegulatorSettings('chocolate_gelato', -12).npac?.cleanCenter).toEqual([47, 49.5]);
+    expect(getTemperatureRegulatorSettings('chocolate_gelato', -11).npac?.cleanCenter).toEqual([
+      40, 42,
+    ]);
+    expect(getTemperatureRegulatorSettings('chocolate_gelato', -12).npac?.cleanCenter).toEqual([
+      47, 49.5,
+    ]);
     const minus13 = getTemperatureRegulatorSettings('chocolate_gelato', -13);
     expect(minus13.npac?.cleanCenter).toEqual([49.8, 54.1]);
     expect(minus13.npac?.fixedReference).toBe(54.08);
     expect(minus13.npac?.lowerEvidence).toBe(49.8);
-    const allNotes = TEMPS.map((t) => getTemperatureRegulatorSettings('chocolate_gelato', t).notes.join(' ')).join(' ');
+    const allNotes = TEMPS.map((t) =>
+      getTemperatureRegulatorSettings('chocolate_gelato', t).notes.join(' '),
+    ).join(' ');
     expect(allNotes).toMatch(/cocoa/);
     expect(allNotes).toMatch(/skimmed milk powder/);
   });
@@ -387,7 +415,9 @@ describe('Temperature Regulator config — Chocolate Gelato (locked doc values)'
     expect(c01opt?.expected.npac).toBe(49.8);
     expect(c01opt?.expected.lactoseSanding).toBe(9.37);
     expect(c01opt?.expected.proteinShareInSolids).toBe(8.42);
-    expect(c01opt?.formulaG.find((l) => l.ingredient === 'dark chocolate 70.5%')?.grams).toBe(130.8);
+    expect(c01opt?.formulaG.find((l) => l.ingredient === 'dark chocolate 70.5%')?.grams).toBe(
+      130.8,
+    );
   });
 });
 
@@ -398,7 +428,10 @@ describe('Temperature Regulator config — cross-profile safety', () => {
   });
 
   it('config is data only — no functions, no ingredient-level npac_value truth', () => {
-    for (const subject of [listTemperatureRegulatorSettings(), TEMPERATURE_REGULATOR_GOLDEN_FIXTURES]) {
+    for (const subject of [
+      listTemperatureRegulatorSettings(),
+      TEMPERATURE_REGULATOR_GOLDEN_FIXTURES,
+    ]) {
       expect(deepLeaves(subject).some((leaf) => typeof leaf === 'function')).toBe(false);
       expect(deepKeys(subject).some((key) => key === 'npac_value')).toBe(false);
     }

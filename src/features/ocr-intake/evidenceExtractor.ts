@@ -185,7 +185,8 @@ function candidatesFor(fieldKey: IntakeFieldKey, img: PerImage): FieldEvidence[]
 
   switch (fieldKey) {
     case 'product_name':
-      return single(x.productName);
+      // Legal/ingredients/back copy never nominates a commercial product name.
+      return img.role === 'front' ? single(x.productName) : [];
     case 'brand':
       return single(x.brand);
     case 'package_size':

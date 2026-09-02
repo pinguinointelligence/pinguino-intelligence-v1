@@ -1,6 +1,6 @@
 /// <reference types="node" />
 /**
- * Phase Ingredients 1 — the generated seed must faithfully mirror the cleaned
+ * Historical Phase Ingredients 1 rollback guard — the generated seed must faithfully mirror the cleaned
  * dataset: 542 idempotent upserts, blanks preserved as NULL (numeric/date) or
  * '' (text), verified zeros kept as 0, dataset_version stamped, ids unique.
  */
@@ -11,7 +11,14 @@ import { describe, expect, it } from 'vitest';
 const REPO = resolve(import.meta.dirname, '..', '..', '..');
 const SEED = readFileSync(join(REPO, 'supabase', 'seed', 'ingredients_v0_94.sql'), 'utf8');
 const CSV = readFileSync(
-  join(REPO, 'docs', 'ingredients', 'validation', 'pinguino_base_ingredients_cleaned_v0_94.csv'),
+  join(
+    REPO,
+    'docs',
+    'ingredients',
+    'validation',
+    'history',
+    'pinguino_base_ingredients_cleaned_v0_94.csv',
+  ),
   'utf8',
 );
 

@@ -108,9 +108,7 @@ describe('target ranges (spec §9)', () => {
   ];
 
   it('seeds milk gelato @ −11 °C with the exact LOCKED-spec bounds', () => {
-    const band = TARGET_BANDS.find(
-      (b) => b.category === 'milk_gelato' && b.temperature_c === -11,
-    );
+    const band = TARGET_BANDS.find((b) => b.category === 'milk_gelato' && b.temperature_c === -11);
     expect(band).toBeDefined();
     expect(band!.status).toBe('seeded');
     const m = band!.metrics;
@@ -132,11 +130,24 @@ describe('target ranges (spec §9)', () => {
       expect(band.status).toBe('seeded');
       for (const metric of ALL_METRICS) {
         const range = band.metrics[metric];
-        if (range) expect(range.min, `${band.category}@${band.temperature_c} ${metric}`).toBeLessThanOrEqual(range.max);
+        if (range)
+          expect(range.min, `${band.category}@${band.temperature_c} ${metric}`).toBeLessThanOrEqual(
+            range.max,
+          );
       }
       // the core structural metrics are present in every seeded cell
-      for (const metric of ['pod', 'npac', 'ice_fraction', 'total_solids', 'water', 'alcohol'] as const) {
-        expect(band.metrics[metric], `${band.category}@${band.temperature_c} ${metric}`).toBeDefined();
+      for (const metric of [
+        'pod',
+        'npac',
+        'ice_fraction',
+        'total_solids',
+        'water',
+        'alcohol',
+      ] as const) {
+        expect(
+          band.metrics[metric],
+          `${band.category}@${band.temperature_c} ${metric}`,
+        ).toBeDefined();
       }
     }
   });
@@ -148,6 +159,9 @@ describe('target ranges (spec §9)', () => {
         'milk_gelato@-11',
         'milk_gelato@-12',
         'milk_gelato@-13',
+        'protein_gelato@-11',
+        'protein_gelato@-12',
+        'protein_gelato@-13',
         'chocolate_gelato@-11',
         'chocolate_gelato@-12',
         'chocolate_gelato@-13',
@@ -162,16 +176,23 @@ describe('target ranges (spec §9)', () => {
   });
 
   it('milk/chocolate bands declare all 11 metrics; sorbet/vegan OMIT the regulator-DISABLED dairy gates', () => {
-    const DAIRY = ['lactose', 'lactose_sandiness_risk', 'aerating_protein', 'protein_in_solids'] as const;
+    const DAIRY = [
+      'lactose',
+      'lactose_sandiness_risk',
+      'aerating_protein',
+      'protein_in_solids',
+    ] as const;
     for (const band of TARGET_BANDS) {
       const name = `${band.category}@${band.temperature_c}`;
       if (band.category === 'milk_gelato' || band.category === 'chocolate_gelato') {
-        for (const metric of ALL_METRICS) expect(band.metrics[metric], `${name} ${metric}`).toBeDefined();
+        for (const metric of ALL_METRICS)
+          expect(band.metrics[metric], `${name} ${metric}`).toBeDefined();
       }
       if (band.category === 'sorbet') {
-        for (const gate of [...DAIRY, 'fat'] as const) expect(band.metrics[gate], `${name} ${gate}`).toBeUndefined();
+        for (const gate of [...DAIRY, 'fat'] as const)
+          expect(band.metrics[gate], `${name} ${gate}`).toBeUndefined();
       }
-      if (band.category === 'vegan_gelato') {
+      if (band.category === 'vegan_gelato' || band.category === 'protein_gelato') {
         for (const gate of DAIRY) expect(band.metrics[gate], `${name} ${gate}`).toBeUndefined();
         expect(band.metrics.fat, `${name} fat`).toBeDefined();
       }
@@ -190,7 +211,8 @@ describe('product modes (spec §11–§12)', () => {
 
   it('score weights sum to 1 for every mode', () => {
     for (const policy of Object.values(MODES)) {
-      const sum = policy.score_weights.cost + policy.score_weights.technical + policy.score_weights.flavor;
+      const sum =
+        policy.score_weights.cost + policy.score_weights.technical + policy.score_weights.flavor;
       expect(Math.abs(sum - 1)).toBeLessThan(1e-9);
     }
   });

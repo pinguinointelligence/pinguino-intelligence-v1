@@ -83,7 +83,7 @@ export function resolveProductEngineValues(
       provenance: 'product_measured',
       basement_id: null,
       not_independently_measured: false,
-      reason: 'Product carries its own measured pac/pod.',
+      reason: 'Produkt ma własne zmierzone wartości PAC/POD.',
     };
   }
 
@@ -113,6 +113,6 @@ export function resolveProductEngineValues(
     provenance: 'reference_linked',
     basement_id: product.matched_basement_id,
     not_independently_measured: true,
-    reason: `Engine values linked from reference ${product.matched_basement_id}${name}; NOT an independent measurement of this product.`,
+    reason: `Wartości techniczne pochodzą ze składnika referencyjnego ${product.matched_basement_id}${name}; nie są niezależnym pomiarem tego produktu.`,
   };
 }

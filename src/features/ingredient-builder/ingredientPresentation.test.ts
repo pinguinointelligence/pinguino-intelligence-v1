@@ -152,6 +152,62 @@ describe('grouped rendering contract (tests 6/7/13/14)', () => {
   });
 });
 
+describe('census finalization — the FULL live vocabulary maps honestly (verified on tunab, 2026-07-24)', () => {
+  it('every chilled dairy census form is „Świeże" — CREAM 18% must never read as „Inne"', () => {
+    for (const sub of [
+      'cream_18_percent', 'cream_33_percent_uht', 'clotted_cream', 'creme_fraiche',
+      'fresh_whipping_cream', 'unsalted_butter', 'cream_cheese', 'mascarpone_cream_cheese',
+      'cottage_cheese', 'fatty_cottage_cheese_8_percent', 'soft_cheese', 'blue_cheese_roquefort',
+      'brie_cheese', 'gorgonzola_cheese', 'mozzarella_cheese', 'parmesan_cheese', 'ricotta_cheese',
+      'greek_yogurt', 'natural_yogurt', 'skyr_yoghurt', 'yoghurt_9_percent',
+    ]) {
+      expect(formGroupOf(sub, 'dairy')).toBe('fresh');
+      expect(rowFormLabelPl(sub, 'dairy')).toBe('Świeże');
+    }
+    // real owner row: CREAM 18% · Piątnica Cream · Chilled · BIO
+    expect(resultRowTextPl({ name: 'CREAM 18% · Piątnica Cream · Chilled · BIO', category: 'dairy', form: 'cream_18_percent' }))
+      .toBe('CREAM 18% · Nabiał · Świeże');
+  });
+  it('generic fresh_* vocabulary is fresh (flower, whipping cream) — cheesecake pastes are NOT', () => {
+    expect(formGroupOf('fresh_flower', 'botanical')).toBe('fresh');
+    expect(formGroupOf('fresh_whipping_cream', 'dairy')).toBe('fresh');
+    expect(formGroupOf('cheesecake_paste', 'flavor_paste')).toBe('paste'); // 'cheese' substring never leaks
+    expect(formGroupOf('yogurt_flavored_ice_cream_paste', 'flavor_paste')).toBe('paste');
+    expect(formGroupOf('yogurt_powdered_ice_cream_mix', 'base_mix')).toBe('powder');
+  });
+  it('explicit liquid_* vocabulary is liquid — never „Proszki i suche" via mix/emulsifier keywords', () => {
+    expect(formGroupOf('liquid_emulsifier', 'emulsifier')).toBe('liquid');
+    expect(formGroupOf('liquid_stabilizer_emulsifier_mix', 'stabilizer')).toBe('liquid');
+    expect(formGroupOf('glucose_syrup_liquid', 'sweetener')).toBe('liquid');
+    expect(rowFormLabelPl('glucose_syrup_liquid', 'sweetener')).toBe('Syrop');
+  });
+  it('agar + pectin are stabilizer powders, not „Inne"', () => {
+    expect(formGroupOf('agar', 'stabilizer')).toBe('powder');
+    expect(formGroupOf('pectin', 'stabilizer')).toBe('powder');
+    expect(rowFormLabelPl('agar', 'stabilizer')).toBe('Proszek');
+  });
+  it('paste categories keep drink-named pastes in „Pasty" (real rows: whisky / prosecco / cream_liqueur under flavor_paste)', () => {
+    expect(formGroupOf('whisky', 'flavor_paste')).toBe('paste');
+    expect(formGroupOf('whisky_cream', 'flavor_paste')).toBe('paste');
+    expect(formGroupOf('prosecco', 'flavor_paste')).toBe('paste');
+    expect(formGroupOf('cream_liqueur', 'flavor_paste')).toBe('paste');
+    expect(formGroupOf('liquorice', 'flavor_paste')).toBe('paste');
+    // …while the REAL alcohol rows stay liquid
+    expect(formGroupOf('whisky_liqueur', 'alcohol')).toBe('liquid');
+    expect(formGroupOf('prosecco', 'alcohol')).toBe('liquid');
+  });
+  it('the two remaining live categories carry Polish labels (no raw enum beside Polish text)', () => {
+    expect(categoryLabelPl('seed')).toBe('Nasiona');
+    expect(categoryLabelPl('confectionery_spread')).toBe('Kremy do smarowania');
+  });
+  it('missing vocabularies still map honestly to Inne — never an invented form', () => {
+    expect(formGroupOf('kajmak', 'dairy')).toBe('other');
+    expect(formGroupOf('condensed_milk', 'dairy')).toBe('other');
+    expect(formGroupOf('couverture', 'chocolate')).toBe('other');
+    expect(rowFormLabelPl('kajmak', 'dairy')).toBe('Inne');
+  });
+});
+
 describe('row text (compact — no raw internal segments)', () => {
   it('keeps the first display segment and drops raw form/storage/SKU tails', () => {
     expect(compactDisplayName('MILK 3.5% · Milk · Chilled')).toBe('MILK 3.5%');

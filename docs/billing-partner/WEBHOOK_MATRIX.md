@@ -26,6 +26,7 @@ applying effects (out-of-order tolerance, `decideEventApplication`).
 | `checkout.session.completed` | checkout_completion | `obj:{session.id}` | billing_customers; checkout correlation (metadata → user/offer/attribution) | stripeWebhook.test.ts "routing table" | client_reference_id = internal user id; metadata is the closed correlation payload |
 | `checkout.session.async_payment_succeeded` | checkout_async_payment_succeeded | `obj:{session.id}` | checkout correlation status | stripeWebhook.test.ts "routing table" | SEPA path; money truth still arrives via `invoice.paid` |
 | `checkout.session.async_payment_failed` | checkout_async_payment_failed | `obj:{session.id}` | checkout correlation status | stripeWebhook.test.ts "routing table" | no ledger effect; subscription events carry entitlement truth |
+| `checkout.session.expired` | checkout_session_expired | `obj:{session.id}` | shop_orders (pending → cancelled) | stripeWebhookDispatch.test.ts "shop order settlement" | an abandoned Checkout Session expires ~24 h after creation; without this the shop order stayed `pending` for ever in the operator's unpaid queue |
 
 ## Subscriptions
 

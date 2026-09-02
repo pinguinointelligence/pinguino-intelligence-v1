@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { RecipeResult } from '@/engine';
+import type { RecipeInput, RecipeResult } from '@/engine';
 import type { ExportCapabilities, RecipeCostSnapshot } from './costContracts';
 import { buildCostSnapshotCsv, buildRecipeLabelCsv } from './costExport';
 
@@ -46,14 +46,15 @@ describe('buildRecipeLabelCsv — reuses the canonical recipe CSV, gated', () =>
     nutrition_per_100g: null,
     costs: null,
   } as unknown as RecipeResult;
+  const input = { items: [] } as unknown as RecipeInput;
 
   it('refuses Demo and any non-exact plan', () => {
-    expect(() => buildRecipeLabelCsv(result, DEMO)).toThrow(/cannot export/i);
-    expect(() => buildRecipeLabelCsv(result, REDACTED)).toThrow(/exact-gram/i);
+    expect(() => buildRecipeLabelCsv(result, DEMO, input, null)).toThrow(/cannot export/i);
+    expect(() => buildRecipeLabelCsv(result, REDACTED, input, null)).toThrow(/exact-gram/i);
   });
 
   it('delegates to buildRecipeCsv for an exact plan', () => {
-    const csv = buildRecipeLabelCsv(result, PRO);
+    const csv = buildRecipeLabelCsv(result, PRO, input, null);
     expect(csv).toContain('Ingredient,Grams,Percent');
     expect(csv).toContain('Milk');
   });

@@ -1,0 +1,263 @@
+/**
+ * Design-review mode (Masterpiece UX/UI Phase 3) — gating + registry + visibility proofs.
+ *
+ * The owner-binding rule under test: red `DO PRZEGLĄDU` markers are visible ONLY to owner/QA
+ * review sessions (dev build or the staging `VITE_DESIGN_REVIEW=1` deploy, AND the pro
+ * capability). Normal customers — demo/home personas, and ANY persona on an unflagged
+ * production build — never see a marker. Nothing is removed: the registry only flags items.
+ */
+import { readFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { MemoryRouter } from 'react-router';
+import { describe, expect, it, vi } from 'vitest';
+import type { ProCorePersona } from '@/features/pro-core/proCoreCapabilities';
+import { isReviewModeEnabled, ownerReviewStorageKey } from './reviewMode';
+import { REVIEW_ITEMS, reviewItemsForPath } from './reviewItems';
+
+let mockPersona: ProCorePersona = 'pro';
+vi.mock('@/features/pro-core/useProCorePersona', () => ({
+  useProCorePersona: () => mockPersona,
+}));
+
+const { ReviewBadge, ReviewDecisionLabel } = await import('./ReviewBadge');
+const { ReviewMarkedModule } = await import('./ReviewMarkedModule');
+const { DesignReviewOverlay, MobileDesignReviewEntry, ReviewOverlayPanel } =
+  await import('./ReviewOverlay');
+const SRC = resolve(import.meta.dirname, '..', '..');
+const read = (...parts: string[]) => readFileSync(join(SRC, ...parts), 'utf8');
+
+describe('isReviewModeEnabled (pure resolver)', () => {
+  it('scopes explicit owner-review opt-in to the authenticated account', () => {
+    expect(ownerReviewStorageKey('owner-a')).not.toBe(ownerReviewStorageKey('owner-b'));
+    expect(ownerReviewStorageKey(null)).not.toBe(ownerReviewStorageKey('owner-a'));
+  });
+
+  it('is OFF for every persona on a production build without the staging flag', () => {
+    for (const persona of ['demo', 'home', 'pro'] as const) {
+      expect(
+        isReviewModeEnabled({
+          isDev: false,
+          envFlag: undefined,
+          hostname: 'www.pinguinoai.com',
+          persona,
+        }),
+      ).toBe(false);
+    }
+  });
+
+  it('keeps both production hosts fail-closed even if the review flag is misconfigured', () => {
+    for (const hostname of ['pinguinoai.com', 'www.pinguinoai.com']) {
+      expect(
+        isReviewModeEnabled({
+          isDev: false,
+          envFlag: '1',
+          hostname,
+          persona: 'pro',
+        }),
+      ).toBe(false);
+    }
+  });
+
+  it('is OFF for demo/home customers even on staging (flag set) and in dev', () => {
+    for (const persona of ['demo', 'home'] as const) {
+      expect(isReviewModeEnabled({ isDev: false, envFlag: '1', persona })).toBe(false);
+      expect(isReviewModeEnabled({ isDev: true, envFlag: undefined, persona })).toBe(false);
+    }
+  });
+
+  it('is ON only for the owner/QA (pro) capability in dev or on the flagged staging deploy', () => {
+    expect(isReviewModeEnabled({ isDev: true, envFlag: undefined, persona: 'pro' })).toBe(true);
+    expect(
+      isReviewModeEnabled({
+        isDev: false,
+        envFlag: '1',
+        hostname: 'pinguino-staging-preview.vercel.app',
+        persona: 'pro',
+        ownerOptIn: true,
+      }),
+    ).toBe(true);
+    expect(
+      isReviewModeEnabled({
+        isDev: false,
+        envFlag: undefined,
+        hostname: 'staging.pinguinoai.com',
+        persona: 'pro',
+        ownerOptIn: true,
+      }),
+    ).toBe(true);
+  });
+
+  it('keeps a normal commercial Pro session clean on staging until owner review is explicit', () => {
+    expect(
+      isReviewModeEnabled({
+        isDev: false,
+        envFlag: '1',
+        hostname: 'staging.pinguinoai.com',
+        persona: 'pro',
+        ownerOptIn: false,
+      }),
+    ).toBe(false);
+  });
+
+  it('recognises only the exact canonical staging host and keeps customer personas hidden', () => {
+    expect(
+      isReviewModeEnabled({
+        isDev: false,
+        envFlag: undefined,
+        hostname: 'staging.pinguinoai.com.evil.example',
+        persona: 'pro',
+      }),
+    ).toBe(false);
+    for (const persona of ['demo', 'home'] as const) {
+      expect(
+        isReviewModeEnabled({
+          isDev: false,
+          envFlag: undefined,
+          hostname: 'staging.pinguinoai.com',
+          persona,
+        }),
+      ).toBe(false);
+    }
+  });
+
+  it('ignores unknown flag values (only the explicit "1" opts in)', () => {
+    expect(isReviewModeEnabled({ isDev: false, envFlag: 'true', persona: 'pro' })).toBe(false);
+    expect(isReviewModeEnabled({ isDev: false, envFlag: '', persona: 'pro' })).toBe(false);
+  });
+});
+
+describe('review registry (docs/design/PINGUINO_REVIEW_ITEMS.md mirror)', () => {
+  it('every item has a stable unique RV-id, a reason, a suggestion, and a PENDING owner decision', () => {
+    const ids = REVIEW_ITEMS.map((item) => item.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const item of REVIEW_ITEMS) {
+      expect(item.id).toMatch(/^RV-\d{2}$/);
+      expect(item.reason.length).toBeGreaterThan(10);
+      expect(item.ownerDecision).toBe('pending');
+    }
+  });
+
+  it('never suggests automatic removal — "remove-later" is an owner decision, not an action', () => {
+    // The registry has no executable removal semantics: suggestions are labels only.
+    const allowed = ['keep', 'rename', 'merge', 'relocate', 'hide-by-capability', 'remove-later'];
+    for (const item of REVIEW_ITEMS) expect(allowed).toContain(item.suggestion);
+  });
+
+  it('resolves current-route items by exact path', () => {
+    const ids = reviewItemsForPath('/pro/monitor').map((item) => item.id);
+    expect(ids).toContain('RV-12');
+    expect(reviewItemsForPath('/some/unknown')).toHaveLength(0);
+  });
+});
+
+describe('marker visibility (customers NEVER see red tags)', () => {
+  const renderBadge = (persona: ProCorePersona) => {
+    mockPersona = persona;
+    return renderToStaticMarkup(<ReviewBadge itemId="RV-12" />);
+  };
+  const renderOverlay = (persona: ProCorePersona, path = '/pro/monitor') => {
+    mockPersona = persona;
+    return renderToStaticMarkup(
+      <MemoryRouter initialEntries={[path]}>
+        <DesignReviewOverlay />
+      </MemoryRouter>,
+    );
+  };
+  const renderMobileEntry = (persona: ProCorePersona, path = '/pro/monitor') => {
+    mockPersona = persona;
+    return renderToStaticMarkup(
+      <MemoryRouter initialEntries={[path]}>
+        <MobileDesignReviewEntry />
+      </MemoryRouter>,
+    );
+  };
+
+  it('demo and home customer sessions render NO badge and NO overlay (empty output)', () => {
+    expect(renderBadge('demo')).toBe('');
+    expect(renderBadge('home')).toBe('');
+    expect(renderOverlay('demo')).toBe('');
+    expect(renderOverlay('home')).toBe('');
+    expect(renderMobileEntry('demo')).toBe('');
+    expect(renderMobileEntry('home')).toBe('');
+    for (const persona of ['demo', 'home'] as const) {
+      mockPersona = persona;
+      expect(
+        renderToStaticMarkup(
+          <ReviewMarkedModule id="customer-clean" title="Internal review">
+            hidden diagnostic
+          </ReviewMarkedModule>,
+        ),
+      ).toBe('');
+    }
+  });
+
+  it('retains review-marked historical modules for the owner/QA session only', () => {
+    mockPersona = 'pro';
+    const html = renderToStaticMarkup(
+      <ReviewMarkedModule id="owner-history" title="Historical module">
+        historical diagnostic
+      </ReviewMarkedModule>,
+    );
+    expect(html).toContain('review-marked-owner-history');
+    expect(html).toContain('historical diagnostic');
+  });
+
+  it('the owner/QA (pro) session in this dev test build sees the badge with reason + text meaning', () => {
+    const html = renderBadge('pro');
+    expect(html).toContain('DO PRZEGLĄDU');
+    expect(html).toContain('review-badge-RV-12');
+    expect(html).toContain('RV-12:'); // reason surfaced via title
+  });
+
+  it('the owner/QA session sees the collapsed overlay pill (never auto-expanded)', () => {
+    const html = renderOverlay('pro');
+    expect(html).toContain('design-review-overlay');
+    expect(html).toContain('design-review-toggle');
+    // Collapsed by default — the review list never obscures the page.
+    expect(html).not.toContain('review-overlay-item-');
+  });
+
+  it('keeps the owner-review toggle in normal flow instead of covering primary controls', () => {
+    const html = renderOverlay('pro', '/pro/recipe');
+    expect(html).toContain('relative');
+    expect(html).not.toContain('fixed');
+    expect(html).not.toContain('bottom-');
+
+    const shell = read('features', 'shell', 'AppShell.tsx');
+    expect(shell).toContain('<DesignReviewOverlay />');
+
+    const mobile = renderMobileEntry('pro');
+    expect(mobile).toContain('mobile-design-review-entry');
+    expect(mobile).toContain('Tryb przeglądu właściciela');
+    const drawer = read('features', 'shell', 'AppNavDrawer.tsx');
+    expect(drawer).toContain('<MobileDesignReviewEntry />');
+  });
+
+  it('keeps review labels contextual to workbar; global navigation stays customer-clean', () => {
+    const renderDecision = (persona: ProCorePersona) => {
+      mockPersona = persona;
+      return renderToStaticMarkup(<ReviewDecisionLabel />);
+    };
+
+    expect(renderDecision('demo')).toBe('');
+    expect(renderDecision('home')).toBe('');
+    const ownerHtml = renderDecision('pro');
+    expect(ownerHtml).toContain('DO PRZEGLĄDU');
+    expect(ownerHtml).toContain('aria-hidden="true"');
+
+    const drawer = read('features', 'shell', 'AppNavDrawer.tsx');
+    const workbar = read('features', 'pro-core', 'ProWorkbar.tsx');
+
+    expect(drawer).not.toContain('ReviewDecisionLabel');
+    expect(drawer).not.toContain('item.decision ?');
+    expect(workbar).toContain('ReviewDecisionLabel');
+  });
+
+  it('the expanded panel lists the current-route item and the FULL registry (nothing hidden)', () => {
+    const html = renderToStaticMarkup(<ReviewOverlayPanel pathname="/pro/monitor" />);
+    expect(html).toContain('review-overlay-item-RV-12');
+    for (const item of REVIEW_ITEMS) expect(html).toContain(`review-overlay-item-${item.id}`);
+    expect(html).toContain('Nic nie zostało');
+  });
+});

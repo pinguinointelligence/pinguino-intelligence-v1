@@ -25,6 +25,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/client';
 import type { RecipeVersion } from '@/features/pro-core/recipeContracts';
 import {
+  scaleMessagePl,
   scaleRecipeVersion,
   type ScaleOptions,
   type ScaleResult,
@@ -55,20 +56,40 @@ import type {
 } from '@/features/pro-core/productionContracts';
 import type {
   AmendArgs,
+  AuthorizeProductionRescueArgs,
+  ConsumeProductionRescueArgs,
   CreateRunArgs,
   ProductionRepository,
+  ProductionRescueAuthorization,
   RecordActualArgs,
 } from './productionRepository';
+import type { ProductionCompletionSnapshot } from '@/features/production-workspace/productionSession';
+import { PRODUCTION_RESCUE_BUNDLE_SHA256 } from '../../../supabase/functions/_shared/generated/productionRescueEngine.metadata.mjs';
+
+export const PRODUCTION_RESCUE_AUTHORITY_NAMESPACE = PRODUCTION_RESCUE_BUNDLE_SHA256.slice(0, 16);
 
 const RUNS = 'production_runs';
 const PLANNED = 'production_run_planned_items';
 const ACTUALS = 'production_run_actuals';
 const EVENTS = 'production_run_events';
+const CREATE_RUN_RPC = 'production_create_run_v1';
+const START_RUN_RPC = 'production_start_run_v2';
+const TRANSITION_RUN_RPC = 'production_transition_run_v1';
+const CANCEL_RUN_RPC = 'production_cancel_run_v1';
+const UPDATE_META_RPC = 'production_update_meta_v1';
+const RECORD_ACTUAL_RPC = 'production_record_actual_v2';
+const AUTHORIZE_RESCUE_FUNCTION = 'production-rescue-authorize';
+const CONSUME_RESCUE_RPC = 'production_consume_rescue_authorization_v1';
+const COMPLETE_RUN_RPC = 'production_complete_run_v2';
+const APPEND_AMENDMENT_RPC = 'production_append_amendment_v1';
+const ACKNOWLEDGE_HEAT_RPC = 'production_acknowledge_heat_information_v1';
+const ACKNOWLEDGE_DEGASSING_RPC = 'production_acknowledge_degassing_v1';
 
 /** Tunable seams (defaults are production-safe; tests inject deterministic ones). */
 export interface SupabaseProductionOptions {
   now?: () => string;
   newId?: () => string;
+  consumeTimeoutMs?: number;
 }
 
 /* ── raw row shapes (exactly the migration-0028 columns) ─────────────────────── */
@@ -86,6 +107,16 @@ interface RunRow {
   engine_version: string;
   config_version: string;
   mapper_dataset_version: string | null;
+  thermal_mode?: import('@/features/product-intelligence').ProductionThermalMode | null;
+  process_readiness?: 'READY' | 'READY_WITH_INFO' | null;
+  process_advisories?:
+    | import('@/features/product-intelligence').ProductProcessReadinessDetail[]
+    | null;
+  heat_information_acknowledged_at?: string | null;
+  degassing_required?: boolean;
+  degassing_acknowledged?: boolean;
+  degassing_acknowledged_at?: string | null;
+  carbonated_product_ids?: string[] | null;
   planned_date: string | null;
   machine: string | null;
   location: string | null;
@@ -96,6 +127,14 @@ interface RunRow {
   updated_at: string;
   completed_at: string | null;
   cancelled_at: string | null;
+  rescue_recipe_input: import('@/engine').RecipeInput | null;
+  rescue_product_composition:
+    | import('@/features/recipe-composition/recipeCompositionPersistence').RecipeCompositionMetadata
+    | null;
+  rescue_accepted_by: string | null;
+  rescue_accepted_at: string | null;
+  rescue_revision: number | string;
+  actual_revision: number | string;
 }
 
 interface PlannedRow {
@@ -105,6 +144,9 @@ interface PlannedRow {
   planned_grams: number | string;
   display_grams: number | string;
   position: number;
+  process_scope?: 'BASE_FORMULATION' | 'POST_PROCESS_ADDON';
+  canonical_ingredient_id?: string | null;
+  scope_position?: number;
 }
 
 interface ActualRow {
@@ -125,7 +167,7 @@ interface EventRow {
   run_id: string;
   event_type: string;
   detail: string | null;
-  amendment: Record<string, string | number | boolean | null> | null;
+  amendment: Record<string, unknown> | null;
   created_by: string;
   created_at: string;
 }
@@ -139,10 +181,19 @@ const numOrNull = (v: number | string | null): number | null => (v == null ? nul
 
 function mapPlanned(rows: PlannedRow[]): PlannedIngredient[] {
   return [...rows]
-    .sort((a, b) => a.position - b.position)
+    .sort((a, b) => {
+      const scopeA = a.process_scope ?? 'BASE_FORMULATION';
+      const scopeB = b.process_scope ?? 'BASE_FORMULATION';
+      if (scopeA !== scopeB) return scopeA === 'BASE_FORMULATION' ? -1 : 1;
+      const scoped = (a.scope_position ?? a.position) - (b.scope_position ?? b.position);
+      return scoped || a.position - b.position;
+    })
     .map((r) => ({
       id: r.line_id,
       name: r.name,
+      canonicalIngredientId: r.canonical_ingredient_id ?? null,
+      processScope: r.process_scope ?? 'BASE_FORMULATION',
+      scopePosition: r.scope_position ?? r.position,
       plannedGrams: num(r.planned_grams),
       displayGrams: num(r.display_grams),
     }));
@@ -160,6 +211,7 @@ function mapActual(row: ActualRow | null): ProductionActual | null {
     deviationReason: row.deviation_reason,
     recordedBy: row.recorded_by,
     recordedAt: row.recorded_at,
+    revision: 0,
   };
 }
 
@@ -176,7 +228,12 @@ function mapEvents(rows: EventRow[]): ProductionEvent[] {
     }));
 }
 
-function assembleRun(run: RunRow, planned: PlannedRow[], actual: ActualRow | null, events: EventRow[]): ProductionRun {
+function assembleRun(
+  run: RunRow,
+  planned: PlannedRow[],
+  actual: ActualRow | null,
+  events: EventRow[],
+): ProductionRun {
   return {
     runId: run.id,
     ownerUserId: run.owner_user_id,
@@ -191,6 +248,14 @@ function assembleRun(run: RunRow, planned: PlannedRow[], actual: ActualRow | nul
     engineVersion: run.engine_version,
     configVersion: run.config_version,
     mapperDatasetVersion: run.mapper_dataset_version,
+    thermalMode: run.thermal_mode ?? null,
+    processReadiness: run.process_readiness ?? null,
+    processAdvisories: structuredClone(run.process_advisories ?? []),
+    heatInformationAcknowledgedAt: run.heat_information_acknowledged_at ?? null,
+    degassingRequired: run.degassing_required === true,
+    degassingAcknowledged: run.degassing_acknowledged === true,
+    degassingAcknowledgedAt: run.degassing_acknowledged_at ?? null,
+    carbonatedProductIds: [...(run.carbonated_product_ids ?? [])],
     plannedDate: run.planned_date,
     machine: run.machine,
     location: run.location,
@@ -199,7 +264,20 @@ function assembleRun(run: RunRow, planned: PlannedRow[], actual: ActualRow | nul
     createdBy: run.created_by,
     createdAt: run.created_at,
     updatedAt: run.updated_at,
-    actual: mapActual(actual),
+    actual: actual ? { ...mapActual(actual)!, revision: num(run.actual_revision) } : null,
+    rescue:
+      run.rescue_recipe_input &&
+      run.rescue_product_composition &&
+      run.rescue_accepted_by &&
+      run.rescue_accepted_at
+        ? {
+            recipeInput: run.rescue_recipe_input,
+            productComposition: run.rescue_product_composition,
+            acceptedBy: run.rescue_accepted_by,
+            acceptedAt: run.rescue_accepted_at,
+            revision: num(run.rescue_revision),
+          }
+        : null,
     completedAt: run.completed_at,
     cancelledAt: run.cancelled_at,
     events: mapEvents(events),
@@ -212,6 +290,236 @@ export class ProductionPersistenceError extends Error {
     super(message);
     this.name = 'ProductionPersistenceError';
   }
+}
+
+export type ProductionRescueAuthorizationErrorCode =
+  | 'authorization_expired'
+  | 'authorization_consumed'
+  | 'authorization_basis_mismatch'
+  | 'actual_revision_conflict'
+  | 'rescue_revision_conflict';
+
+const RESCUE_REFRESH_CODES = new Set<ProductionRescueAuthorizationErrorCode>([
+  'authorization_expired',
+  'authorization_consumed',
+  'authorization_basis_mismatch',
+  'actual_revision_conflict',
+  'rescue_revision_conflict',
+]);
+
+export class ProductionRescueAuthorizationError extends ProductionPersistenceError {
+  constructor(
+    public readonly code: ProductionRescueAuthorizationErrorCode,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'ProductionRescueAuthorizationError';
+  }
+}
+
+export class ProductionRescueOptionUnavailableError extends ProductionPersistenceError {
+  constructor(
+    message: string,
+    public readonly reasonCode: string | null,
+    public readonly violationMetrics: string[],
+  ) {
+    super(message);
+    this.name = 'ProductionRescueOptionUnavailableError';
+  }
+}
+
+export const isProductionRescueAuthorizationRefreshError = (
+  error: unknown,
+): error is ProductionRescueAuthorizationError =>
+  error instanceof ProductionRescueAuthorizationError && RESCUE_REFRESH_CODES.has(error.code);
+
+const rescueErrorCode = (value: unknown): ProductionRescueAuthorizationErrorCode | null => {
+  if (typeof value !== 'string') return null;
+  const normalized = value.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+  for (const code of RESCUE_REFRESH_CODES) {
+    if (normalized.includes(code)) return code;
+  }
+  if (normalized.includes('authorization_was_already_consumed')) {
+    return 'authorization_consumed';
+  }
+  if (
+    normalized.includes('caller_basis_does_not_match') ||
+    normalized.includes('authorization_source_is_stale') ||
+    normalized.includes('authorization_source_fingerprint_is_stale') ||
+    normalized.includes('authorization_engine_config_is_stale') ||
+    normalized.includes('productbehavior_authority_is_stale') ||
+    normalized.includes('authorization_consumption_conflict') ||
+    normalized.includes('source_revision_conflict')
+  ) {
+    return 'authorization_basis_mismatch';
+  }
+  return null;
+};
+
+const persistenceError = (message: string): ProductionPersistenceError => {
+  const code = rescueErrorCode(message);
+  return code
+    ? new ProductionRescueAuthorizationError(code, message)
+    : new ProductionPersistenceError(message);
+};
+
+const edgeFunctionError = async (error: unknown): Promise<ProductionPersistenceError> => {
+  const candidate = error as {
+    message?: unknown;
+    context?: { clone?: () => { json?: () => Promise<unknown> }; json?: () => Promise<unknown> };
+  };
+  let payload: unknown;
+  try {
+    const context = candidate.context?.clone?.() ?? candidate.context;
+    payload = context?.json ? await context.json() : null;
+  } catch {
+    payload = null;
+  }
+  const record =
+    payload && typeof payload === 'object' ? (payload as Record<string, unknown>) : null;
+  const message = [record?.error, record?.code, record?.message, candidate.message]
+    .filter((value): value is string => typeof value === 'string')
+    .join(': ');
+  if (record?.error === 'stable_rescue_option_stale') {
+    return new ProductionRescueOptionUnavailableError(
+      message || 'Production Rescue option is unavailable.',
+      typeof record.reason === 'string' ? record.reason : null,
+      Array.isArray(record.violationMetrics)
+        ? record.violationMetrics.filter((metric): metric is string => typeof metric === 'string')
+        : [],
+    );
+  }
+  return persistenceError(message || 'Production Rescue authorization failed.');
+};
+
+/**
+ * OWNER RULE §16 — the trusted runtime refuses an option it can no longer prove.
+ * The operator deserves the specific reason ("the original batch is gone"), not a
+ * generic failure, so the code is recovered from the Edge payload.
+ */
+export const isProductionRescueOptionUnavailableError = (error: unknown): boolean =>
+  error instanceof ProductionRescueOptionUnavailableError ||
+  (error instanceof Error &&
+    error.message
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .includes('stable_rescue_option_stale'));
+
+/** Presentation-only mapping; authorization/error protocol strings remain unchanged. */
+export const productionRescueErrorMessagePl = (error: unknown): string => {
+  const message = error instanceof Error ? error.message : String(error);
+  if (message.includes('Production Rescue option is unavailable.')) {
+    return 'Korekta partii jest teraz niedostępna.';
+  }
+  if (message.includes('Production Rescue authorization failed.')) {
+    return 'Nie udało się potwierdzić dostępu do korekty partii.';
+  }
+  return 'Nie udało się potwierdzić dostępu do korekty partii.';
+};
+
+export const productionRescueOptionUnavailableDetails = (
+  error: unknown,
+): { reasonCode: string | null; violationMetrics: string[] } | null =>
+  error instanceof ProductionRescueOptionUnavailableError
+    ? { reasonCode: error.reasonCode, violationMetrics: error.violationMetrics }
+    : null;
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const isFiniteNumber = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value);
+
+const rescueOptionIds = new Set([
+  'keep_original_batch',
+  'enlarge_batch',
+  'restore_original_recipe',
+  'leave_as_is',
+]);
+
+function parseRescueAuthorization(
+  data: unknown,
+  request: AuthorizeProductionRescueArgs,
+): ProductionRescueAuthorization {
+  if (!isRecord(data) || !isRecord(data.preview) || !Array.isArray(data.preview.instructions)) {
+    throw new ProductionPersistenceError('Trusted Production Rescue Preview is malformed.');
+  }
+  const preview = data.preview;
+  const instructionValues = preview.instructions as unknown[];
+  const instructions = instructionValues.map((value: unknown) => {
+    if (
+      !isRecord(value) ||
+      !(value.lineId === null || typeof value.lineId === 'string') ||
+      typeof value.ingredientName !== 'string' ||
+      (value.kind !== 'add' && value.kind !== 'reduce_pending_plan') ||
+      !isFiniteNumber(value.grams) ||
+      value.grams < 0 ||
+      !isFiniteNumber(value.finalTargetGrams) ||
+      value.finalTargetGrams < 0
+    ) {
+      throw new ProductionPersistenceError('Trusted Production Rescue instruction is malformed.');
+    }
+    return {
+      lineId: value.lineId,
+      ingredientName: value.ingredientName,
+      kind: value.kind as 'add' | 'reduce_pending_plan',
+      grams: value.grams,
+      finalTargetGrams: value.finalTargetGrams,
+    };
+  });
+  if (
+    typeof data.authorizationId !== 'string' ||
+    data.authorizationId.trim().length === 0 ||
+    typeof data.candidateFingerprint !== 'string' ||
+    data.candidateFingerprint.trim().length === 0 ||
+    typeof data.runId !== 'string' ||
+    data.runId.trim().length === 0 ||
+    typeof data.stableOptionId !== 'string' ||
+    !rescueOptionIds.has(data.stableOptionId) ||
+    !Number.isInteger(data.expectedActualRevision) ||
+    !Number.isInteger(data.expectedRescueRevision) ||
+    typeof data.authorizedAt !== 'string' ||
+    !Number.isFinite(Date.parse(data.authorizedAt)) ||
+    typeof data.expiresAt !== 'string' ||
+    !Number.isFinite(Date.parse(data.expiresAt)) ||
+    typeof preview.title !== 'string' ||
+    typeof preview.explanation !== 'string' ||
+    !isFiniteNumber(preview.finalMassG) ||
+    typeof preview.scoreDisplay !== 'string'
+  ) {
+    throw new ProductionPersistenceError('Trusted Production Rescue Preview is malformed.');
+  }
+  if (Date.parse(data.expiresAt) <= Date.parse(data.authorizedAt)) {
+    throw new ProductionPersistenceError('Trusted Production Rescue Preview is already expired.');
+  }
+  if (
+    data.runId !== request.runId ||
+    data.stableOptionId !== request.stableOptionId ||
+    data.expectedActualRevision !== request.expectedActualRevision ||
+    data.expectedRescueRevision !== request.expectedRescueRevision
+  ) {
+    throw new ProductionRescueAuthorizationError(
+      'authorization_basis_mismatch',
+      'Trusted Production Rescue Preview does not match the requested run revision.',
+    );
+  }
+  return {
+    authorizationId: data.authorizationId,
+    candidateFingerprint: data.candidateFingerprint,
+    runId: data.runId,
+    stableOptionId: data.stableOptionId as ProductionRescueAuthorization['stableOptionId'],
+    expectedActualRevision: data.expectedActualRevision,
+    expectedRescueRevision: data.expectedRescueRevision,
+    authorizedAt: data.authorizedAt,
+    expiresAt: data.expiresAt,
+    preview: {
+      title: preview.title,
+      explanation: preview.explanation,
+      finalMassG: preview.finalMassG,
+      scoreDisplay: preview.scoreDisplay,
+      instructions,
+    },
+  };
 }
 
 /**
@@ -234,6 +542,7 @@ export function supabaseProductionRepository(
 ): ProductionRepository {
   const now = options.now ?? (() => new Date().toISOString());
   const newId = options.newId ?? (() => globalThis.crypto.randomUUID());
+  const consumeTimeoutMs = options.consumeTimeoutMs ?? 15_000;
 
   /** The signed-in auth user id — the RLS owner scope. Throws honestly when not signed in. */
   async function uid(): Promise<string> {
@@ -280,25 +589,56 @@ export function supabaseProductionRepository(
     return run;
   }
 
-  /** Append one lifecycle/amendment event (INSERT only — the history never rewrites). */
-  async function insertEvent(owner: string, runId: string, ev: ProductionEvent): Promise<void> {
-    const { error } = await client.from(EVENTS).insert({
-      id: ev.eventId,
-      run_id: runId,
-      owner_user_id: owner,
-      event_type: ev.type,
-      detail: ev.detail,
-      amendment: ev.amendment,
-      created_by: owner,
-      created_at: ev.at,
+  /** Execute one server-authoritative transactional mutation. */
+  async function mutate(
+    name: string,
+    args: Record<string, unknown>,
+    timeoutMs?: number,
+  ): Promise<unknown> {
+    const request = client.rpc(name, args);
+    if (timeoutMs === undefined) {
+      const { data, error } = await request;
+      if (error) throw persistenceError(error.message);
+      return data;
+    }
+
+    const controller = new AbortController();
+    const abortable = request as typeof request & {
+      abortSignal?: (signal: AbortSignal) => typeof request;
+    };
+    const rpcPromise = Promise.resolve(
+      typeof abortable.abortSignal === 'function'
+        ? abortable.abortSignal(controller.signal)
+        : request,
+    );
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        controller.abort();
+        reject(
+          new ProductionRescueAuthorizationError(
+            'authorization_expired',
+            'Production Rescue consumption timed out; request a fresh Preview.',
+          ),
+        );
+      }, timeoutMs);
     });
-    if (error) throw new ProductionPersistenceError(error.message);
+    try {
+      const { data, error } = await Promise.race([rpcPromise, timeout]);
+      if (error) throw persistenceError(error.message);
+      return data;
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
+    }
   }
 
   return {
     /* pure preview — no IO */
-    scale: async (version: RecipeVersion, target: ScaleTarget, opts?: ScaleOptions): Promise<ScaleResult> =>
-      scaleRecipeVersion(version, target, opts),
+    scale: async (
+      version: RecipeVersion,
+      target: ScaleTarget,
+      opts?: ScaleOptions,
+    ): Promise<ScaleResult> => scaleRecipeVersion(version, target, opts),
 
     async createRun(args: CreateRunArgs): Promise<ProductionRun> {
       // Pro-only gate — refuse BEFORE any write (mirrors the in-memory adapter).
@@ -307,7 +647,7 @@ export function supabaseProductionRepository(
       }
       const owner = await uid();
       const scaled = scaleRecipeVersion(args.version, args.target, args.scaleOptions);
-      if (!scaled.ok) throw new ProductionPersistenceError(scaled.message);
+      if (!scaled.ok) throw new ProductionPersistenceError(scaleMessagePl(scaled.message));
 
       // Build the domain run (status draft) from the EXACT immutable version, then persist it.
       const run = buildProductionRun({
@@ -320,48 +660,82 @@ export function supabaseProductionRepository(
         eventId: newId(),
       });
 
-      const runInsert = await client.from(RUNS).insert({
-        id: run.runId,
-        owner_user_id: owner,
-        recipe_id: run.recipeId,
-        recipe_version_id: run.recipeVersionId, // EXACT immutable version — never "latest"
-        recipe_version_number: run.recipeVersionNumber,
-        status: run.status,
-        planned_batch_g: run.plannedBatchG,
-        product_profile: run.productProfile,
-        temperature_c: run.temperatureC,
-        engine_version: run.engineVersion,
-        config_version: run.configVersion,
-        mapper_dataset_version: run.mapperDatasetVersion,
-        planned_date: run.plannedDate,
-        machine: run.machine,
-        location: run.location,
-        batch_reference: run.batchReference,
-        notes: run.notes,
-        created_by: owner,
-        created_at: run.createdAt,
-        updated_at: run.updatedAt,
+      await mutate(CREATE_RUN_RPC, {
+        p_run_id: run.runId,
+        p_recipe_version_id: run.recipeVersionId, // EXACT immutable version — never "latest"
+        p_planned_batch_g: run.plannedBatchG,
+        p_meta: {
+          planned_date: run.plannedDate,
+          machine: run.machine,
+          location: run.location,
+          batch_reference: run.batchReference,
+          notes: run.notes,
+        },
+        p_planned_items: run.plannedItems.map((p, i) => ({
+          line_id: p.id,
+          name: p.name,
+          planned_grams: p.plannedGrams,
+          display_grams: p.displayGrams,
+          position: i,
+          process_scope: p.processScope,
+          canonical_ingredient_id: p.canonicalIngredientId,
+          scope_position: p.scopePosition,
+        })),
+        p_event_id: run.events[0]!.eventId,
       });
-      if (runInsert.error) throw new ProductionPersistenceError(runInsert.error.message);
-
-      // Freeze the planned snapshot — write-once; these rows are never updated/deleted later.
-      if (run.plannedItems.length > 0) {
-        const plannedInsert = await client.from(PLANNED).insert(
-          run.plannedItems.map((p, i) => ({
-            run_id: run.runId,
-            owner_user_id: owner,
-            line_id: p.id,
-            name: p.name,
-            planned_grams: p.plannedGrams,
-            display_grams: p.displayGrams,
-            position: i,
-          })),
-        );
-        if (plannedInsert.error) throw new ProductionPersistenceError(plannedInsert.error.message);
-      }
-
-      await insertEvent(owner, run.runId, run.events[0]!);
       return requireRun(owner, run.runId);
+    },
+
+    async startRun(args: CreateRunArgs): Promise<ProductionRun> {
+      if (!args.capabilities.canUseProductionMode) {
+        throw new ProductionPersistenceError('This plan does not include Production Mode.');
+      }
+      const owner = await uid();
+      const scaled = scaleRecipeVersion(args.version, args.target, args.scaleOptions);
+      if (!scaled.ok) throw new ProductionPersistenceError(scaleMessagePl(scaled.message));
+      const run = buildProductionRun({
+        ownerUserId: owner,
+        scaled,
+        meta: args.meta,
+        by: owner,
+        createdAt: now(),
+        runId: newId(),
+        eventId: newId(),
+      });
+      const argsForRpc = {
+        p_run_id: run.runId,
+        p_recipe_version_id: run.recipeVersionId,
+        p_planned_batch_g: run.plannedBatchG,
+        p_meta: {
+          planned_date: run.plannedDate,
+          machine: run.machine,
+          location: run.location,
+          batch_reference: run.batchReference,
+          notes: run.notes,
+        },
+        p_planned_items: run.plannedItems.map((p, i) => ({
+          line_id: p.id,
+          name: p.name,
+          planned_grams: p.plannedGrams,
+          display_grams: p.displayGrams,
+          position: i,
+          process_scope: p.processScope,
+          canonical_ingredient_id: p.canonicalIngredientId,
+          scope_position: p.scopePosition,
+        })),
+        p_created_event_id: run.events[0]!.eventId,
+        p_planned_event_id: newId(),
+        p_started_event_id: newId(),
+        p_thermal_mode: run.thermalMode,
+      };
+      try {
+        const startedRunId = await mutate(START_RUN_RPC, argsForRpc);
+        return requireRun(owner, typeof startedRunId === 'string' ? startedRunId : run.runId);
+      } catch (error) {
+        const recovered = await loadRun(owner, run.runId).catch(() => null);
+        if (recovered?.status === 'in_progress') return recovered;
+        throw error;
+      }
     },
 
     async transition(runId: string, to: ProductionStatus, by: string): Promise<ProductionRun> {
@@ -369,19 +743,11 @@ export function supabaseProductionRepository(
       const current = await requireRun(owner, runId);
       const next = transitionRun(current, to, by, now(), newId()); // throws on illegal transition
 
-      const { error } = await client
-        .from(RUNS)
-        .update({
-          status: next.status,
-          completed_at: next.completedAt,
-          cancelled_at: next.cancelledAt,
-          updated_at: next.updatedAt,
-        })
-        .eq('owner_user_id', owner)
-        .eq('id', runId);
-      if (error) throw new ProductionPersistenceError(error.message);
-
-      await insertEvent(owner, runId, next.events[next.events.length - 1]!);
+      await mutate(to === 'cancelled' ? CANCEL_RUN_RPC : TRANSITION_RUN_RPC, {
+        p_run_id: runId,
+        ...(to === 'cancelled' ? {} : { p_to_status: next.status }),
+        p_event_id: next.events[next.events.length - 1]!.eventId,
+      });
       return requireRun(owner, runId);
     },
 
@@ -390,19 +756,14 @@ export function supabaseProductionRepository(
       const current = await requireRun(owner, runId);
       const next = updateMetaPure(current, patch, now()); // throws once terminal
 
-      const { error } = await client
-        .from(RUNS)
-        .update({
-          planned_date: next.plannedDate,
-          machine: next.machine,
-          location: next.location,
-          batch_reference: next.batchReference,
-          notes: next.notes,
-          updated_at: next.updatedAt,
-        })
-        .eq('owner_user_id', owner)
-        .eq('id', runId);
-      if (error) throw new ProductionPersistenceError(error.message);
+      await mutate(UPDATE_META_RPC, {
+        p_run_id: runId,
+        p_planned_date: next.plannedDate,
+        p_machine: next.machine,
+        p_location: next.location,
+        p_batch_reference: next.batchReference,
+        p_notes: next.notes,
+      });
 
       return requireRun(owner, runId);
     },
@@ -414,34 +775,129 @@ export function supabaseProductionRepository(
       const next = recordActualPure(current, { ...input, at, eventId: newId() }); // throws unless in_progress
       const actual = next.actual!;
 
-      // Upsert the working actual — separate table, keyed by run_id; the plan rows are untouched.
-      const upsert = await client.from(ACTUALS).upsert(
-        {
-          run_id: runId,
-          owner_user_id: owner,
-          actual_items: actual.items,
-          substitutions: actual.substitutions,
-          actual_total_mix_g: actual.actualTotalMixG,
-          actual_yield_g: actual.actualYieldG,
-          waste_g: actual.wasteG,
-          operator_notes: actual.operatorNotes,
-          deviation_reason: actual.deviationReason,
-          recorded_by: owner,
-          recorded_at: actual.recordedAt,
-        },
-        { onConflict: 'run_id' },
-      );
-      if (upsert.error) throw new ProductionPersistenceError(upsert.error.message);
-
-      const touch = await client
-        .from(RUNS)
-        .update({ updated_at: next.updatedAt })
-        .eq('owner_user_id', owner)
-        .eq('id', runId);
-      if (touch.error) throw new ProductionPersistenceError(touch.error.message);
-
-      await insertEvent(owner, runId, next.events[next.events.length - 1]!);
+      await mutate(RECORD_ACTUAL_RPC, {
+        p_run_id: runId,
+        p_expected_actual_revision: input.expectedActualRevision,
+        p_expected_rescue_revision: input.expectedRescueRevision,
+        p_actual_items: actual.items,
+        p_substitutions: actual.substitutions,
+        p_actual_total_mix_g: actual.actualTotalMixG,
+        p_actual_yield_g: actual.actualYieldG,
+        p_waste_g: actual.wasteG,
+        p_operator_notes: actual.operatorNotes,
+        p_deviation_reason: actual.deviationReason,
+        p_event_id: next.events[next.events.length - 1]!.eventId,
+        p_action: input.eventContext?.action ?? 'sync',
+        p_line_id: input.eventContext?.lineId ?? null,
+        p_previous_actual_g: input.eventContext?.previousActualG ?? null,
+      });
       return requireRun(owner, runId);
+    },
+
+    async authorizeRescue(
+      input: AuthorizeProductionRescueArgs,
+    ): Promise<ProductionRescueAuthorization> {
+      await uid();
+      const body = {
+        runId: input.runId,
+        stableOptionId: input.stableOptionId,
+        expectedActualRevision: input.expectedActualRevision,
+        expectedRescueRevision: input.expectedRescueRevision,
+        idempotencyKey: input.idempotencyKey,
+        expectedEngineBundleSha256: PRODUCTION_RESCUE_BUNDLE_SHA256,
+      };
+      const { data, error } = await client.functions.invoke(AUTHORIZE_RESCUE_FUNCTION, { body });
+      if (error) throw await edgeFunctionError(error);
+      return parseRescueAuthorization(data, input);
+    },
+
+    async consumeRescue(input: ConsumeProductionRescueArgs): Promise<ProductionRun> {
+      const owner = await uid();
+      const result = await mutate(
+        CONSUME_RESCUE_RPC,
+        {
+          p_authorization_id: input.authorizationId,
+          p_expected_actual_revision: input.expectedActualRevision,
+          p_expected_rescue_revision: input.expectedRescueRevision,
+          p_idempotency_key: input.idempotencyKey,
+        },
+        consumeTimeoutMs,
+      );
+      const runId =
+        typeof result === 'string'
+          ? result
+          : isRecord(result) && typeof result.runId === 'string'
+            ? result.runId
+            : null;
+      if (!runId) {
+        throw new ProductionPersistenceError(
+          'Trusted Production Rescue consumption did not return a run id.',
+        );
+      }
+      return requireRun(owner, runId);
+    },
+
+    async acknowledgeHeatInformation(runId: string): Promise<ProductionRun> {
+      const owner = await uid();
+      await mutate(ACKNOWLEDGE_HEAT_RPC, { p_run_id: runId });
+      return requireRun(owner, runId);
+    },
+
+    async acknowledgeDegassing(runId: string): Promise<ProductionRun> {
+      const owner = await uid();
+      await mutate(ACKNOWLEDGE_DEGASSING_RPC, { p_run_id: runId });
+      return requireRun(owner, runId);
+    },
+
+    async completeRun(
+      runId: string,
+      input: RecordActualArgs,
+      snapshot: ProductionCompletionSnapshot,
+    ): Promise<ProductionRun> {
+      const owner = await uid();
+      const current = await requireRun(owner, runId);
+      if (current.status === 'completed') {
+        // Already completed — a retry, a double submit, or a recovered error
+        // path. Still attempt the Community make: the RPC is idempotent per
+        // run id, so this can only ever fill in a make that was missed, never
+        // create a second one (§41).
+        await recordCommunityMake(client, runId);
+        return current;
+      }
+      const at = now();
+      const next = recordActualPure(current, { ...input, at, eventId: newId() });
+      const actual = next.actual!;
+      try {
+        await mutate(COMPLETE_RUN_RPC, {
+          p_run_id: runId,
+          p_expected_actual_revision: input.expectedActualRevision,
+          p_expected_rescue_revision: input.expectedRescueRevision,
+          p_actual_items: actual.items,
+          p_substitutions: actual.substitutions,
+          p_actual_total_mix_g: actual.actualTotalMixG,
+          p_actual_yield_g: actual.actualYieldG,
+          p_waste_g: actual.wasteG,
+          p_operator_notes: actual.operatorNotes,
+          p_deviation_reason: actual.deviationReason,
+          p_actual_event_id: next.events[next.events.length - 1]!.eventId,
+          p_completed_event_id: newId(),
+          p_snapshot: snapshot,
+        });
+      } catch (error) {
+        const recovered = await loadRun(owner, runId).catch(() => null);
+        if (recovered?.status === 'completed') {
+          await recordCommunityMake(client, runId);
+          return recovered;
+        }
+        throw error;
+      }
+      const completed = await requireRun(owner, runId);
+      // THE single authoritative „Zrobione w Gellatti" trigger (§41). It fires
+      // here and nowhere else: opening a recipe, previewing it, planning a run
+      // or starting one is not making it. Only a run that reached `completed`
+      // counts, and the server re-verifies that.
+      await recordCommunityMake(client, runId);
+      return completed;
     },
 
     async amend(runId: string, input: AmendArgs): Promise<ProductionRun> {
@@ -449,14 +905,13 @@ export function supabaseProductionRepository(
       const current = await requireRun(owner, runId);
       const next = amendRun(current, { ...input, at: now(), eventId: newId() }); // throws unless completed
 
-      // Amendment is APPEND-ONLY — only a new event, plus an updated_at touch. Plan/actual frozen.
-      await insertEvent(owner, runId, next.events[next.events.length - 1]!);
-      const touch = await client
-        .from(RUNS)
-        .update({ updated_at: next.updatedAt })
-        .eq('owner_user_id', owner)
-        .eq('id', runId);
-      if (touch.error) throw new ProductionPersistenceError(touch.error.message);
+      // Amendment is APPEND-ONLY — a terminal run row and its frozen plan/actual never mutate.
+      await mutate(APPEND_AMENDMENT_RPC, {
+        p_run_id: runId,
+        p_event_id: next.events[next.events.length - 1]!.eventId,
+        p_detail: next.events[next.events.length - 1]!.detail,
+        p_amendment: next.events[next.events.length - 1]!.amendment,
+      });
 
       return requireRun(owner, runId);
     },
@@ -467,10 +922,14 @@ export function supabaseProductionRepository(
       return loadRun(owner, runId);
     },
 
-    async listRuns(ownerUserId: string, query: ProductionHistoryQuery = {}): Promise<ProductionHistoryPage> {
+    async listRuns(
+      ownerUserId: string,
+      query: ProductionHistoryQuery = {},
+    ): Promise<ProductionHistoryPage> {
       const owner = await uid();
       // Owner isolation: only the signed-in user's own history is ever returned.
-      if (ownerUserId !== owner) return { total: 0, offset: query.offset ?? 0, limit: query.limit ?? null, items: [] };
+      if (ownerUserId !== owner)
+        return { total: 0, offset: query.offset ?? 0, limit: query.limit ?? null, items: [] };
 
       let q = client.from(RUNS).select('*').eq('owner_user_id', owner);
       if (query.recipeId) q = q.eq('recipe_id', query.recipeId);
@@ -500,7 +959,9 @@ export function supabaseProductionRepository(
 
       const plannedByRun = groupBy((plannedRes.data ?? []) as PlannedRow[], (r) => r.run_id);
       const eventsByRun = groupBy((eventRes.data ?? []) as EventRow[], (r) => r.run_id);
-      const actualByRun = new Map(((actualRes.data ?? []) as ActualRow[]).map((a) => [a.run_id, a]));
+      const actualByRun = new Map(
+        ((actualRes.data ?? []) as ActualRow[]).map((a) => [a.run_id, a]),
+      );
       const byId = new Map(runRows.map((r) => [r.id, r]));
 
       const items = page.items.map((shell) =>
@@ -535,4 +996,33 @@ function groupBy<T, K>(rows: T[], key: (r: T) => K): Map<K, T[]> {
     else out.set(k, [r]);
   }
   return out;
+}
+
+/**
+ * Record a confirmed Community make for a completed production run (§41).
+ *
+ * The client passes ONLY the run id: the RPC re-verifies that the run is the
+ * caller's own and completed, then resolves which publication the recipe was
+ * derived from. Nothing about attribution is asserted from here.
+ *
+ * NEVER THROWS. A production run is the user's work; failing to update a
+ * Community counter must not turn a successful completion into an error the
+ * user sees. The failure is logged and the run stands.
+ *
+ * Idempotent by `production_run_id`, so being called from all three completion
+ * paths (fresh success, already-completed, recovered-after-error) records at
+ * most one make. A genuine second making of the same recipe is a NEW run with
+ * a new id, and does count again.
+ */
+async function recordCommunityMake(client: SupabaseClient, runId: string): Promise<void> {
+  try {
+    const { error } = await client.rpc('gellatti_record_make_for_run_v1', {
+      p_production_run_id: runId,
+    });
+    if (error) {
+      console.warn('[GELLATTI] community make not recorded for run', runId, error.message);
+    }
+  } catch (cause) {
+    console.warn('[GELLATTI] community make not recorded for run', runId, cause);
+  }
 }

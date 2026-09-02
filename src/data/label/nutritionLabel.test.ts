@@ -6,6 +6,7 @@ import {
   type NutritionDeclaration,
   type NutritionRow,
   type NutritionRowKey,
+  type LabelNutritionPer100g,
 } from './nutritionLabel';
 
 const base: NutritionPer100g = {
@@ -26,7 +27,7 @@ function get(decl: NutritionDeclaration, key: NutritionRowKey): NutritionRow {
   return row;
 }
 
-function decl(input: NutritionPer100g): NutritionDeclaration {
+function decl(input: LabelNutritionPer100g): NutritionDeclaration {
   const result = buildNutritionDeclaration(input);
   if (!result) throw new Error('expected a declaration');
   return result;
@@ -75,6 +76,12 @@ describe('buildNutritionDeclaration', () => {
     expect(d.saturatedDeclared).toBe(true);
     expect(saturated.value).toBeCloseTo(4.4, 5);
     expect(saturated.valueDisplay).toBe('4.4 g');
+  });
+
+  it('keeps optional commercial-label sugars and fibre unknown instead of inventing zero', () => {
+    const d = decl({ ...base, sugars_g: null, fiber_g: null });
+    expect(get(d, 'sugars')).toMatchObject({ value: null, valueDisplay: null });
+    expect(get(d, 'fibre')).toMatchObject({ value: null, valueDisplay: null });
   });
 
   it('applies the regulatory precisions (salt 2 decimals; others 1)', () => {

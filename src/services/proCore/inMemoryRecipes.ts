@@ -8,6 +8,7 @@
  * canSaveRecipe capability) is refused at the gate — it never receives a save-capable payload.
  */
 import type { RecipeInput } from '@/engine';
+import type { RecipeCompositionMetadata } from '@/features/recipe-composition/recipeCompositionPersistence';
 import {
   buildRecipeVersion,
   canCreateNewRecipe,
@@ -24,12 +25,14 @@ import type {
   RecipeVersionSource,
   SavedRecipe,
 } from '@/features/pro-core/recipeContracts';
+import { recipeVersionBehaviorGate } from '@/features/product-intelligence';
 
 export interface CreateRecipeInput {
   ownerUserId: string;
   title: string;
   notes?: string | null;
   recipeInput: RecipeInput;
+  productComposition?: RecipeCompositionMetadata | null;
   trace: VersionTrace;
   source?: RecipeVersionSource;
   by: string;
@@ -64,11 +67,17 @@ export class InMemoryRecipes {
     const gate = canCreateNewRecipe(this.ownedActiveCount(input.ownerUserId), input.capabilities);
     if (!gate.allowed) throw new Error(gate.reason);
     if (!input.capabilities.canViewExactGrams) throw new Error('This plan cannot save exact-grams recipes.');
+    const behaviorGate = recipeVersionBehaviorGate(
+      input.recipeInput,
+      input.productComposition,
+      'RECIPE_VERSION',
+    );
+    if (!behaviorGate.ready) throw new Error(behaviorGate.reason ?? 'Product behavior is incomplete.');
     const now = this.now();
     const recipeId = this.nextId();
     const version = buildRecipeVersion({
       recipeId, ownerUserId: input.ownerUserId, versionNumber: 1,
-      recipeInput: input.recipeInput, trace: input.trace, source: input.source ?? 'manual',
+      recipeInput: input.recipeInput, productComposition: input.productComposition, trace: input.trace, source: input.source ?? 'manual',
       createdBy: input.by, createdAt: now,
     }, this.nextId());
     const recipe: SavedRecipe = {
@@ -83,12 +92,18 @@ export class InMemoryRecipes {
   }
 
   /** Explicit "Save new version" — editing produces a NEW immutable version. */
-  saveNewVersion(recipeId: string, recipeInput: RecipeInput, trace: VersionTrace, by: string, opts: { source?: RecipeVersionSource; note?: string } = {}): RecipeVersion {
+  saveNewVersion(recipeId: string, recipeInput: RecipeInput, trace: VersionTrace, by: string, opts: { source?: RecipeVersionSource; note?: string } = {}, productComposition?: RecipeCompositionMetadata | null): RecipeVersion {
     const recipe = this.require(recipeId);
     const list = this.versions.get(recipeId) ?? [];
+    const behaviorGate = recipeVersionBehaviorGate(
+      recipeInput,
+      productComposition,
+      'RECIPE_VERSION',
+    );
+    if (!behaviorGate.ready) throw new Error(behaviorGate.reason ?? 'Product behavior is incomplete.');
     const version = buildRecipeVersion({
       recipeId, ownerUserId: recipe.ownerUserId, versionNumber: nextVersionNumber(list),
-      recipeInput, trace, source: opts.source ?? 'manual', createdBy: by, createdAt: this.now(), note: opts.note ?? null,
+      recipeInput, productComposition, trace, source: opts.source ?? 'manual', createdBy: by, createdAt: this.now(), note: opts.note ?? null,
     }, this.nextId());
     list.push(version);
     this.versions.set(recipeId, list);
@@ -115,6 +130,18 @@ export class InMemoryRecipes {
     if (!caps.canRestoreRecipeVersion) throw new Error('This plan cannot restore recipe versions.');
     const recipe = this.require(recipeId);
     const list = this.versions.get(recipeId) ?? [];
+    const target = list.find((candidate) => candidate.versionNumber === targetVersionNumber);
+    if (!target) throw new Error(`version ${targetVersionNumber} does not exist`);
+    const behaviorGate = recipeVersionBehaviorGate(
+      target.recipeInput,
+      target.productComposition,
+      'RESTORE',
+    );
+    if (!behaviorGate.ready) {
+      throw new Error(
+        behaviorGate.reason ?? 'Recipe version requires product behavior revalidation before restore.',
+      );
+    }
     const version = restoreVersion(list, targetVersionNumber, by, this.now(), this.nextId());
     list.push(version);
     this.versions.set(recipeId, list);

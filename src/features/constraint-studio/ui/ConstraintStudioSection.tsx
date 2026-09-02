@@ -22,8 +22,14 @@ import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { constraintStudioCopy as copy, formatGramsPl } from '../constraintStudioCopy';
 import { constraintStudioFlags } from '../constraintStudioFlags';
-import { isUndoAvailable, useConstraintStudioStore } from '../constraintStudioStore';
-import { previewIssueMessagePl } from '../previewIssueMessage';
+import {
+  applyPreviewWithServerAuthority,
+  createBatchRescalePreviewWithServerAuthority,
+  createSuggestedFixPreviewWithServerAuthority,
+  isUndoAvailable,
+  useConstraintStudioStore,
+} from '../constraintStudioStore';
+import { customerPreviewIssueMessagePl } from '../customerConstraintStudioPresentation';
 import { BlockedApplyNotice } from './BlockedApplyNotice';
 import { ConstraintHistoryPanel } from './ConstraintHistoryPanel';
 import { ConstraintPreviewCard } from './ConstraintPreviewCard';
@@ -81,6 +87,7 @@ export function ConstraintStudioSection() {
 
   const constraints = useConstraintStudioStore((state) => state.constraints);
   const preview = useConstraintStudioStore((state) => state.preview);
+  const applyPending = useConstraintStudioStore((state) => state.applyPending);
   const previewIssue = useConstraintStudioStore((state) => state.previewIssue);
   const blocked = useConstraintStudioStore((state) => state.blocked);
   const feasibility = useConstraintStudioStore((state) => state.feasibility);
@@ -120,7 +127,7 @@ export function ConstraintStudioSection() {
   return (
     <Card padding="lg">
       <SectionLabel>{copy.section.title}</SectionLabel>
-      <p className="mt-2 text-xs leading-relaxed text-ivory/50">{copy.section.lead}</p>
+      <p className="mt-2 text-xs leading-relaxed text-ivory/65">{copy.section.lead}</p>
 
       <div className="mt-4 space-y-4">
         {lockedSumConflict ? (
@@ -158,13 +165,15 @@ export function ConstraintStudioSection() {
               disabled={!Number.isFinite(Number(batchText)) || Number(batchText) <= 0 || batchText.trim() === ''}
               onClick={() => {
                 const grams = Number(batchText);
-                if (Number.isFinite(grams) && grams > 0) store.createBatchRescalePreview(grams);
+                if (Number.isFinite(grams) && grams > 0) {
+                  void createBatchRescalePreviewWithServerAuthority(grams);
+                }
               }}
             >
               {copy.actions.rescale}
             </button>
           </div>
-          <p className="text-xs leading-relaxed text-ivory/40">{copy.actions.rescaleHint}</p>
+          <p className="text-xs leading-relaxed text-ivory/60">{copy.actions.rescaleHint}</p>
         </div>
 
         {/* §18 feasibility — explicit, analysis-only. */}
@@ -172,11 +181,11 @@ export function ConstraintStudioSection() {
           <button type="button" className={`${secondaryButton} w-full`} onClick={store.runFeasibility}>
             {copy.actions.feasibility}
           </button>
-          <p className="text-xs leading-relaxed text-ivory/40">{copy.actions.feasibilityHint}</p>
+          <p className="text-xs leading-relaxed text-ivory/60">{copy.actions.feasibilityHint}</p>
         </div>
 
         {previewIssue ? (
-          <p className="text-sm leading-relaxed text-ivory/70">{previewIssueMessagePl(previewIssue)}</p>
+          <p className="text-sm leading-relaxed text-ivory/70">{customerPreviewIssueMessagePl(previewIssue)}</p>
         ) : null}
 
         {blocked ? <BlockedApplyNotice blocked={blocked} onDismiss={store.dismissBlocked} /> : null}
@@ -184,7 +193,8 @@ export function ConstraintStudioSection() {
         {preview ? (
           <ConstraintPreviewCard
             preview={preview}
-            onApply={store.applyPreview}
+            applyPending={applyPending}
+            onApply={() => { void applyPreviewWithServerAuthority(); }}
             onCancel={store.cancelPreview}
           />
         ) : null}
@@ -194,10 +204,11 @@ export function ConstraintStudioSection() {
             input={currentInput}
             analysis={feasibility}
             handlers={{
-              onSuggestedFix: store.createSuggestedFixPreview,
+              onSuggestedFix: (fix) => { void createSuggestedFixPreviewWithServerAuthority(fix); },
               onUnlock: store.clearConstraint,
-              onChangeBatch: (minimumBatchGrams) =>
-                store.createBatchRescalePreview(Math.ceil(minimumBatchGrams)),
+              onChangeBatch: (minimumBatchGrams) => {
+                void createBatchRescalePreviewWithServerAuthority(Math.ceil(minimumBatchGrams));
+              },
               onKeepAsIs: store.clearFeasibility,
             }}
           />

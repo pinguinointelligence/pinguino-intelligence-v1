@@ -83,13 +83,19 @@ function AxisControlRow({ reading, step, onIntentChange }: AxisControlRowProps) 
           })}
         </div>
       ) : (
-        <p className="mt-2 text-[12px] text-ivory/40">Ten wskaźnik nie dotyczy tego produktu.</p>
+        <p className="mt-2 text-[12px] text-ivory/40">Ten wskaźnik nie dotyczy tego produktu</p>
       )}
     </div>
   );
 }
 
-function PrzedPoRow({ before, after }: { before: PiAxisReading; after: PiAxisReading | undefined }) {
+function PrzedPoRow({
+  before,
+  after,
+}: {
+  before: PiAxisReading;
+  after: PiAxisReading | undefined;
+}) {
   return (
     <div className="flex flex-wrap items-baseline justify-between gap-2 border-t border-ivory/10 py-2">
       <span className="text-[12px] text-ivory/60">{before.label}</span>
@@ -136,16 +142,19 @@ export function PiMonitorPanel({
   onUndo,
   onReadjust,
 }: PiMonitorPanelProps) {
-  const byId = (list: PiAxisReading[] | null | undefined, id: PiAxisId) => list?.find((r) => r.id === id);
+  const byId = (list: PiAxisReading[] | null | undefined, id: PiAxisId) =>
+    list?.find((r) => r.id === id);
 
   return (
     <section className="rounded-2xl border border-ivory/10 bg-[#1a1a1a] p-5 text-ivory">
       <header>
-        <p className="font-mono text-[11px] uppercase tracking-wide text-ivory/40">Monitor PI</p>
+        <p className="font-mono text-[11px] uppercase tracking-wide text-ivory/40">
+          Monitor receptury
+        </p>
         <h2 className="mt-1 text-lg font-light">Gdzie jest Twoja receptura względem zakresu</h2>
         <p className="mt-1 text-[12px] leading-relaxed text-ivory/50">
-          PI pokazuje kierunek receptury na czterech cechach. Wybierz, co chcesz zmienić, a potem naciśnij
-          „Przelicz z PI”. Podgląd jest lokalny — nic nie zostaje zapisane.
+          Gellatti pokazuje kierunek receptury na czterech cechach. Wybierz, co chcesz zmienić, a
+          potem naciśnij „Przelicz recepturę”. Podgląd niczego nie zapisuje.
         </p>
       </header>
 
@@ -181,7 +190,7 @@ export function PiMonitorPanel({
               : 'cursor-not-allowed bg-ivory/10 text-ivory/40'
           }`}
         >
-          Przelicz z PI
+          Przelicz recepturę
         </button>
       </div>
 
@@ -190,7 +199,9 @@ export function PiMonitorPanel({
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <p className="text-sm text-ivory">Podgląd zmiany</p>
             {result.outcome ? (
-              <span className={`rounded px-2 py-0.5 text-[12px] ${OUTCOME_TONE[result.outcome] ?? 'bg-ivory/10 text-ivory/70'}`}>
+              <span
+                className={`rounded px-2 py-0.5 text-[12px] ${OUTCOME_TONE[result.outcome] ?? 'bg-ivory/10 text-ivory/70'}`}
+              >
                 {result.outcomeLabel}
               </span>
             ) : null}
@@ -205,7 +216,9 @@ export function PiMonitorPanel({
             })}
           </div>
 
-          {result.gramsVisible && result.proposedAdjustments && result.proposedAdjustments.length ? (
+          {result.gramsVisible &&
+          result.proposedAdjustments &&
+          result.proposedAdjustments.length ? (
             <div className="mt-3 border-t border-ivory/10 pt-3 text-[12px] text-ivory/60">
               <p className="text-ivory/40">Zmiany dawek (dokładne gramy):</p>
               <ul className="mt-1 space-y-0.5">
@@ -230,7 +243,9 @@ export function PiMonitorPanel({
               onClick={onApply}
               disabled={!result.after}
               className={`rounded-full px-4 py-1.5 text-[13px] transition ${
-                result.after ? 'bg-emerald-400/90 text-[#1a1a1a] hover:bg-emerald-400' : 'cursor-not-allowed bg-ivory/10 text-ivory/40'
+                result.after
+                  ? 'bg-emerald-400/90 text-[#1a1a1a] hover:bg-emerald-400'
+                  : 'cursor-not-allowed bg-ivory/10 text-ivory/40'
               }`}
             >
               Zastosuj zmiany

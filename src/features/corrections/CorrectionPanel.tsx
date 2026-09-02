@@ -11,7 +11,7 @@ import { buildCorrectionView } from './correctionView';
 const c = copy.studio.corrections;
 
 const chip =
-  'rounded border border-ivory/15 bg-transparent px-2 py-0.5 text-[0.625rem] font-medium tracking-[0.08em] text-ivory/50 uppercase';
+  'rounded border border-ivory/15 bg-transparent px-2 py-0.5 text-[0.625rem] font-medium tracking-[0.08em] text-ivory/65 uppercase';
 
 function proposalTitle(kind: 'correction' | 'tradeoff' | 'impossible'): string | null {
   if (kind === 'tradeoff') return c.tradeoffTitle;
@@ -36,7 +36,7 @@ export function CorrectionPanel({
     return (
       <Card padding="lg">
         <SectionLabel>{c.title}</SectionLabel>
-        <p className="mt-4 text-sm leading-relaxed text-ivory/50">
+        <p className="mt-4 text-sm leading-relaxed text-ivory/65">
           {recipeIncomplete ? c.incompleteRecipe : c.none}
         </p>
       </Card>
@@ -49,14 +49,14 @@ export function CorrectionPanel({
 
       {view.mode === 'demo' ? (
         <div className="mt-5 space-y-3">
-          <p className="text-xs leading-relaxed text-ivory/40">{c.demoPreviewNote}</p>
+          <p className="text-xs leading-relaxed text-ivory/60">{c.demoPreviewNote}</p>
           {view.proposals.map((proposal) => (
             <div key={proposal.id} className="rounded-md border border-ivory/10 px-4 py-3">
               <div className="flex items-center justify-between gap-3">
                 <span className="text-sm text-ivory">{proposal.directionText}</span>
                 <span className={chip}>{proposal.confidenceLabel}</span>
               </div>
-              <p className="mt-1 text-xs text-ivory/50">
+              <p className="mt-1 text-xs text-ivory/65">
                 {c.demoArea}: {proposal.areaLabels.join(' · ')}
               </p>
             </div>
@@ -118,7 +118,7 @@ export function CorrectionPanel({
                     {proposal.predicted.map((prediction) => (
                       <div
                         key={prediction.label}
-                        className="flex items-center justify-between gap-3 text-xs text-ivory/50"
+                        className="flex items-center justify-between gap-3 text-xs text-ivory/65"
                       >
                         <span>{prediction.label}</span>
                         <span className="flex items-center gap-2 font-mono tabular-nums">
@@ -127,7 +127,7 @@ export function CorrectionPanel({
                             {prediction.before === null ? '—' : prediction.before.toFixed(1)}
                             {prediction.unit}
                           </span>
-                          <span aria-hidden className="text-ivory/40">
+                          <span aria-hidden className="text-ivory/60">
                             →
                           </span>
                           <span className="text-ivory">

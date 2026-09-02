@@ -100,6 +100,9 @@ export function applyAutoFix(args: ApplyAutoFixArgs): ApplyAutoFixResult {
     mode: input.mode,
     allow_main_ingredient_reduction: args.allowMainIngredientReduction ?? false,
     machine_capacity_grams: input.machine_capacity_grams,
+    // Symmetric with `proposeAutoFix`: apply honours the same user-intent floor
+    // the proposal was generated under, so the two can never disagree.
+    target_batch_grams: input.target_batch_grams,
   };
   const candidates = args.candidates ?? DEFAULT_CORRECTION_CANDIDATES;
 

@@ -1,0 +1,7 @@
+profile,renderer,language_rule,nutrition_basis,package_rule,business_rule,preflight_status,external_blocker
+EU,eu-label-v2,"Selected languages + destination Member State review",per 100 g,Confirmed package fill,"EU/EEA operator or EU/EEA importer",PASS,
+UK,uk-label-v2,English + GB/NI context,per 100 g,Confirmed package fill,"GB UK/CI/IoM address; NI NI/EU address",PASS,
+USA,fda-nutrition-facts-v2,English,"FDA serving/RACC; standard or dual",Confirmed weight or volume with US customary+metric,Manufacturer/packer/distributor address,PASS,
+Canada,canada-nft-v2,English + French,"Canadian RA serving; bilingual Figure 3.4(B)",Confirmed volume mL/L,Canadian dealer/importer,EXTERNAL_ASSET_BLOCKED,"Official Health Canada FOP asset package"
+AU/NZ,fsanz-nip-v2,English,Per serving + per 100 g,Confirmed package fill,AU/NZ supplier address,PASS,
+WORLD,world-neutral-v1,English default,Neutral per 100 g,Confirmed net weight,Optional configurable business,PRINT_READY_UNIVERSAL,

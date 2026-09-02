@@ -10,8 +10,10 @@
 import { useMemo, useState } from 'react';
 import { buttonClasses } from '@/components/ui/buttonStyles';
 import { copy } from '@/copy/en';
+import { customerErrorMessage } from '@/copy/customerError';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { useAuthStore } from '@/stores/authStore';
+import { formatSavedRecipeDate } from '@/features/recipes/savedRecipeDate';
 import { recipeCapabilitiesFor, type ProCorePersona } from './proCoreCapabilities';
 import { useProCoreAccessStore } from './proCoreAccessStore';
 import { useProCorePersona } from './useProCorePersona';
@@ -20,11 +22,15 @@ import { useProCoreVersions, useRestoreProCoreVersion } from './useProCoreRecipe
 
 const c = copy.proCore;
 
-/** Customer-facing version label: `DD.MM.YYYY` from the ISO date part (timezone-independent). */
-export function formatVersionDate(iso: string): string {
-  const [y, m, d] = iso.slice(0, 10).split('-');
-  return y && m && d ? `${d}.${m}.${y}` : iso.slice(0, 10);
-}
+/**
+ * Customer-facing version label: `DD.MM.YYYY`.
+ *
+ * Owner defect v1.4: this used to slice the UTC ISO date while „Moje receptury" formatted the same
+ * instant in the viewer's local calendar, so ONE save at 2026-08-22T23:29:59Z read as „22.08.2026 ·
+ * v1" here and „ZAKTUALIZOWANO 23.08.2026" there — a missing-version illusion. Both surfaces now
+ * share `formatSavedRecipeDate`; there is exactly one saved-recipe calendar.
+ */
+export const formatVersionDate = (iso: string): string => formatSavedRecipeDate(iso);
 
 export function RecipeVersionsSection() {
   const persona = useProCorePersona();
@@ -62,16 +68,22 @@ export function RecipeVersionsSection() {
           savedId: recipeId,
           savedName: recipeName,
           versionNumber: created.versionNumber,
+          versionId: created.versionId,
           versionDate: created.createdAt,
+          composition: created.productComposition,
         });
       } catch (error) {
-        setMsg((error as Error).message);
+        setMsg(customerErrorMessage(error, 'recipes', 'RECIPE_SAVE_FAILED'));
       }
     })();
   };
 
   return (
-    <section className="mt-12 border-t border-ink/10 pt-8" aria-label={c.title} data-testid="pro-core-versions">
+    <section
+      className="mt-12 border-t border-ink/10 pt-8"
+      aria-label={c.title}
+      data-testid="pro-core-versions"
+    >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-sm font-medium tracking-label text-ink uppercase">{c.title}</h2>
         {import.meta.env.DEV ? (
@@ -94,13 +106,19 @@ export function RecipeVersionsSection() {
       <p className="mt-2 max-w-2xl text-xs leading-relaxed text-stone-500">{c.blurb}</p>
 
       {unavailable ? (
-        <p className="mt-4 rounded border border-ink/10 bg-stone-50 px-3 py-2 text-sm text-stone-600" data-testid="pro-core-unavailable">
+        <p
+          className="mt-4 rounded border border-ink/10 bg-[var(--g-ivory)] px-3 py-2 text-sm text-stone-600"
+          data-testid="pro-core-unavailable"
+        >
           {c.backendUnavailable}
         </p>
       ) : !caps.canViewRecipeVersions ? null : (
         <>
           {isLocalDev ? (
-            <p className="mt-4 rounded border border-amber-400 bg-amber-50 px-3 py-2 text-xs text-amber-900" data-testid="pro-core-localmode">
+            <p
+              className="mt-4 rounded border border-amber-400 bg-amber-50 px-3 py-2 text-xs text-amber-900"
+              data-testid="pro-core-localmode"
+            >
               {c.localMode}
             </p>
           ) : null}
@@ -111,17 +129,28 @@ export function RecipeVersionsSection() {
             </p>
           ) : (
             <div className="mt-4">
-              <p className="text-xs tracking-label text-stone-400 uppercase">
-                {c.currentRecipe} <span className="text-sm normal-case text-ink">{recipeName ?? '—'}</span>
+              <p className="text-xs tracking-label text-stone-600 uppercase">
+                {c.currentRecipe}{' '}
+                <span className="text-sm normal-case text-ink">{recipeName ?? '—'}</span>
               </p>
 
               {msg ? (
-                <p role="alert" className="mt-3 rounded border border-amber-500 bg-amber-50 px-3 py-2 text-sm text-amber-900" data-testid="pro-core-msg">{msg}</p>
+                <p
+                  role="alert"
+                  className="mt-3 rounded border border-amber-500 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+                  data-testid="pro-core-msg"
+                >
+                  {msg}
+                </p>
               ) : null}
 
               <ul className="mt-3 space-y-1" data-testid="pro-core-versions-list">
                 {versions.map((v) => (
-                  <li key={v.versionNumber} className="flex items-center justify-between gap-2 text-sm text-stone-600" data-testid="pro-core-version-row">
+                  <li
+                    key={v.versionNumber}
+                    className="flex items-center justify-between gap-2 text-sm text-stone-600"
+                    data-testid="pro-core-version-row"
+                  >
                     <span>
                       {formatVersionDate(v.createdAt)} · v{v.versionNumber}
                       {v.restoredFromVersion ? ` (${c.fromVersion} v${v.restoredFromVersion})` : ''}

@@ -1,0 +1,94 @@
+GELLATTI — PC-01 evidence: a clean Direction local optimum speaks Gellatti
+Fixture run against the real pipeline at staging base e45923ca.
+
+FIXTURE (exactly as recorded in GELLATTI_PROTECTED_CORE_BUGS.md)
+  Sorbet · -12 °C · OPTIMAL · 1000 g · no locks · no toppings
+  SUCROSE  PI-ING-000514   46 g
+  DEXTROSE PI-ING-000494   93 g
+  INULIN   PI-ING-000456   20 g
+  TARA GUM PI-ING-000492    4 g
+  RASPBERRY PI-ING-000359 807 g  MAIN
+  APPLE    PI-ING-000342   30 g
+  baseline detectViolations = []   (inside every approved band)
+
+--- BEFORE THE FIX -----------------------------------------------------------
+  internal code : no_proposal   (directionTargetUnreached = true)
+  customer read : "Nie znaleziono korekty mozliwej przy obecnych BLOKADACH.
+                   Uzyj „Sprawdz wykonalnosc blokad", aby zobaczyc konkretna
+                   przyczyne."
+  The recipe has NO LOCKS. The customer was sent to a control that cannot help.
+
+--- AFTER THE FIX ------------------------------------------------------------
+  internal code : no_proposal   (UNCHANGED, directionTargetUnreached = true)
+  customer read : "Gellatti nie znalazlo dalszej bezpiecznej poprawy przy
+                   aktualnych skladnikach i ograniczeniach. Inne rozwiazanie
+                   moze nadal istniec poza sprawdzonym zakresem."
+                  = copy.previewIssue.bestSafeResult (existing canonical key)
+
+8/8 MATRIX — every single-axis request, real pipeline
+  axis        code          unreached  gramsUnchanged  canonicalBestSafe  locks
+  sw -2       no_proposal   true       true            true               no
+  sw -1       no_proposal   true       true            true               no
+  sw +1       no_proposal   true       true            true               no
+  sw +2       no_proposal   true       true            true               no
+  hd -2       no_proposal   true       true            true               no
+  hd -1       no_proposal   true       true            true               no
+  hd +1       no_proposal   true       true            true               no
+  hd +2       no_proposal   true       true            true               no
+
+  Nothing was applied. The draft the customer still holds is byte-identical:
+  sucrose:46 dextrose:93 inulin:20 tara:4 MAIN:807 apple:30 (sum 1000 g).
+  The candidate remains NON-PUBLISHABLE; `publishable = reached ||
+  materiallyDifferent` is untouched.
+
+NEIGHBOUR CONTROLS — unchanged
+  -12 ECO      ok  (directionTargetUnreached true)
+  -11 OPTIMAL  ok  (directionTargetUnreached true)
+  -13 OPTIMAL  ok  (directionTargetUnreached true)
+
+PC-03 CANNOT COLLIDE — proven at the type level, not assumed
+  PC-03 surfaces `unsafe_proposal`. That variant declares
+  `violatedMetrics? / solverInvocations? / batchOnly? / iteration?` and has NO
+  `directionTargetUnreached` field at all, so the predicate cannot reach it.
+  It keeps `copy.previewIssue.unsafeProposal` — an unsafe result is never
+  dressed up as a normal optimum. Pinned by contract test 6.
+
+PC-02 UNTOUCHED
+  PC-02 is a ProductBehavior stabilizer-ceiling rejection raised at the binding
+  boundary, with its own message. This change lives entirely in
+  previewIssueMessage.ts and cannot reach it.
+
+WHY THE PREDICATE IS NOT TOO BROAD
+  Every site in applyPipeline.ts that raises `directionTargetUnreached` on a
+  `no_proposal` first proves the draft is native-safe:
+    5766  guarded by `detectViolations(calculateRecipe(input)).length === 0`
+    6040  guarded by `detectViolations(calculateRecipe(input)).length === 0`
+    6471  only fires on an `ok`, on-batch candidate identical to the draft
+  So the flag already means "the recipe is safe and the requested Direction
+  cannot be improved". The presentation layer simply was not reading it.
+
+--- SERVED VERIFICATION -------------------------------------------------------
+Staging 1c9108f5 · deployment dpl_EJBcFdwTE3bkHfo9UaVR9ZE5ZzHu (target
+production, READY) · served bundle index-Ck_Z8sbF.js (7 254 923 bytes).
+
+The deployed artifact carries the branch verbatim:
+
+  case`no_proposal`:return e.directionTargetUnreached===!0
+      ?zP.previewIssue.bestSafeResult
+      :zP.previewIssue.noProposal;
+  case`unsafe_proposal`:return zP.previewIssue.unsafeProposal;
+
+Both sentences ship, which is the point — the reclassification is a fork, not a
+replacement:
+  "Gellatti nie znalazlo dalszej bezpiecznej poprawy..."  present : yes
+  "Nie znaleziono korekty mozliwej przy obecnych blokadach..." present : yes
+  PC-03's `unsafe_proposal` still returns its own sentence : yes
+
+WHY THE EXACT FIXTURE WAS NOT DRIVEN THROUGH THE UI
+  The recorded fixture needs an 807 g RASPBERRY Main. The recipe editor commits
+  gram values only through its 1 g steppers (typed values do not commit — the
+  same constraint recorded in the served-QA harness lessons), so reproducing
+  807 g by hand is not a practical served step. The pipeline-level 8/8 matrix
+  above was run against the real Engine and the real Mapper rows, and the
+  served bundle is verified to contain the exact mapping that turns that
+  terminal state into the canonical sentence.

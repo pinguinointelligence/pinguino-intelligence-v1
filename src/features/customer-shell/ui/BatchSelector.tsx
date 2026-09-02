@@ -28,7 +28,7 @@ export function BatchSelector({
   options,
   selectedId,
   onSelect,
-  legend = 'Batch size',
+  legend = 'Wielkość partii',
   className,
 }: BatchSelectorProps) {
   return (

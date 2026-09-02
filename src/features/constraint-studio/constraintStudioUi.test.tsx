@@ -21,6 +21,7 @@ import {
 } from '@/features/recipe-constraints/constraintFixtures';
 import type { ConstraintFeasibilityAnalysis } from '@/features/recipe-constraints';
 import { IngredientRow } from '@/features/ingredient-builder/IngredientRow';
+import { ScoreRing } from '@/features/pro-workbench/ScoreRing';
 import { useRecipeStore } from '@/stores/recipeStore';
 import type { AppliedChangeRecord, ConstraintPreview } from './applyPipeline';
 import { workingStateFingerprint } from './applyPipeline';
@@ -103,7 +104,7 @@ describe('renderConstraintExplanationPl', () => {
     const sentence = renderConstraintExplanationPl({ kind: 'no_reliable_bound' });
     expect(sentence).toBe(
       'Przy obecnych blokadach nie znaleziono rozwiązania w optymalnym zakresie. ' +
-        'Odblokuj jeden z zaznaczonych składników lub zmień batch.',
+        'Odblokuj zaznaczony składnik, zmień zakres albo zwiększ partię.',
     );
     expect(/\d/.test(sentence)).toBe(false);
   });
@@ -125,7 +126,7 @@ describe('IngredientRow padlock', () => {
     removeItem: noop,
   };
 
-  it('locked state: Polish aria, badge with the protected grams, disabled input', () => {
+  it('locked state: Polish aria, integrated lock segment and disabled input', () => {
     const html = render(
       <IngredientRow
         item={item}
@@ -143,8 +144,9 @@ describe('IngredientRow padlock', () => {
         }}
       />,
     );
-    expect(html).toContain('Odblokuj gramaturę: Sucrose');
-    expect(html).toContain('Zablokowana');
+    expect(html).toContain('Sucrose — Gramatura zablokowana. Odblokuj');
+    expect(html).toContain('Gramatura zablokowana: 130 g');
+    expect(html).toContain('data-control-locked="true"');
     expect(html).toContain('disabled');
     expect(html).toContain('aria-pressed="true"');
   });
@@ -167,7 +169,7 @@ describe('IngredientRow padlock', () => {
         }}
       />,
     );
-    expect(html).toContain('Zablokuj gramaturę: Sucrose');
+    expect(html).toContain('Sucrose — Zablokuj gramy');
     expect(html).toContain('aria-pressed="false"');
     expect(html).not.toContain('Zablokowana');
   });
@@ -180,8 +182,29 @@ const syntheticPreview = (): ConstraintPreview => {
   return {
     kind: 'optimize',
     titlePl: copy.preview.kindLabels.optimize,
+    // Owner addendum item 4: hand-forged fixtures declare the outcome
+    // classification explicitly (the real builders compute it).
+    outcomeClassification: {
+      outcome: 'no_verified_change',
+      batchReconciled: false,
+      compositionUnchanged: false,
+      engineImproved: false,
+      beforeGrams: 1000,
+      afterGrams: 1000,
+      targetBatchGrams: 1000,
+      violationsBefore: 0,
+      violationsAfter: 0,
+    },
     baseFingerprint: 'fp',
-    proposedInput: base,
+    // The payload itself misses the target; the card must never infer
+    // applicability from the display diff alone.
+    proposedInput: {
+      ...base,
+      items: base.items.map((item, index) => ({
+        ...item,
+        planned_grams: index === 0 ? 684 : 0,
+      })),
+    },
     nextConstraints: { byLineId: {} },
     lines: [
       {
@@ -219,27 +242,294 @@ const syntheticPreview = (): ConstraintPreview => {
 };
 
 describe('ConstraintPreviewCard (§19.1)', () => {
-  const html = render(
+  const customerHtml = render(
     <ConstraintPreviewCard preview={syntheticPreview()} onApply={noop} onCancel={noop} />,
   );
+  const adminHtml = render(
+    <ConstraintPreviewCard
+      preview={syntheticPreview()}
+      onApply={noop}
+      onCancel={noop}
+      showTechnicalDetails
+    />,
+  );
 
-  it('renders the proposal header and the explicit Apply/Cancel pair', () => {
-    expect(html).toContain('PINGÜINO proponuje:');
-    expect(html).toContain('Zastosuj zmiany');
-    expect(html).toContain('Anuluj');
-    expect(html).toContain(copy.preview.applyNote);
+  it('renders the compact customer header and disables Apply when the proposal misses its batch target', () => {
+    expect(customerHtml).toContain('Sprawdź proponowaną korektę');
+    expect(customerHtml).toContain('data-testid="preview-summary"');
+    expect(customerHtml).toContain('data-testid="preview-apply-disabled"');
+    expect(customerHtml).toContain(copy.preview.applyDisabledDiagnostic);
+    expect(customerHtml).toContain('Wróć');
+    expect(customerHtml).not.toContain('Suma przed:');
+    expect(customerHtml).not.toContain('Parametry poza optymalnym zakresem');
   });
 
-  it('shows old→new with the locked-unchanged note and the U+2212 delta', () => {
-    expect(html).toContain('bez zmian · zablokowane');
-    expect(html).toContain('82 g');
-    expect(html).toContain('74 g');
-    expect(html).toContain('−8 g');
-    expect(html).toContain('nowy składnik');
+  it.each([10, 9, 8] as const)(
+    'reuses the approved dynamic score ring for Preview score %i',
+    (score) => {
+      const preview = syntheticPreview();
+      preview.directionAssessment = {
+        active: true,
+        reached: score === 10,
+        supportedAxisCount: 1,
+        reachedAxisCount: score === 10 ? 1 : 0,
+        score,
+        residuals: [],
+        blockedAxes: [],
+      };
+
+      const rendered = render(
+        <ConstraintPreviewCard preview={preview} onApply={noop} onCancel={noop} />,
+      );
+
+      expect(rendered).toContain('data-testid="preview-score"');
+      expect(rendered).toContain(render(<ScoreRing score={score} testId="preview-score" />));
+      expect(rendered).toContain(`data-score="${score}"`);
+      expect(rendered).toContain(`data-score-progress="${(score / 10).toFixed(2)}"`);
+      expect(rendered).not.toContain('min-w-16');
+      expect(rendered).not.toMatch(new RegExp(`${score}(?:<!-- -->)? / 10`));
+      expect(rendered).toContain('2 zmiany');
+    },
+  );
+
+  it('shows changed old→new grams by default and keeps unchanged rows behind the toggle', () => {
+    expect(customerHtml).toContain('82 g');
+    expect(customerHtml).toContain('74 g');
+    expect(customerHtml).toContain('−8 g');
+    expect(customerHtml).toContain('Nowy składnik');
+    expect(customerHtml).toContain('Pokaż bez zmian');
+    expect(customerHtml).not.toContain('bez zmian · zablokowane');
+    expect(customerHtml).not.toContain('Mleko');
+    expect(customerHtml).toContain('data-testid="preview-from-grams"');
+    expect(customerHtml).not.toContain('line-through');
   });
 
-  it('reports the honest out-of-band delta without band values', () => {
-    expect(html).toContain('Parametry poza optymalnym zakresem: 2 → 0');
+  it('keeps the honest out-of-band delta in the admin-only technical accordion', () => {
+    expect(adminHtml).toContain('data-testid="preview-technical-details"');
+    expect(adminHtml).toContain('Szczegóły techniczne');
+    expect(adminHtml).toContain('Parametry poza optymalnym zakresem: 2 → 0');
+    expect(customerHtml).not.toContain('data-testid="preview-technical-details"');
+  });
+
+  it('names a verified identity swap and the selected human direction without exposing bands', () => {
+    const preview = syntheticPreview();
+    preview.substitution = {
+      lineId: 'l-milk',
+      fromCanonicalId: 'milk-original',
+      toCanonicalId: 'milk-substitute',
+      fromName: 'Mleko A',
+      toName: 'Mleko B',
+      changesMainIdentity: false,
+      candidateFingerprint: 'candidate-fingerprint',
+      mapperRowFingerprint: 'mapper-row-fingerprint',
+      allergensFingerprint: '',
+      veganEligibility: 'VEGAN_UNKNOWN',
+    };
+    preview.proposedInput = {
+      ...preview.proposedInput,
+      goals: {
+        ...preview.proposedInput.goals,
+        direction_targets_active: true,
+        direction_targets: { sweetness: -1, softness: 1, creaminess: 0, flavor: 0 },
+      },
+    };
+    const directedHtml = render(
+      <ConstraintPreviewCard
+        preview={preview}
+        onApply={noop}
+        onCancel={noop}
+        showTechnicalDetails
+      />,
+    );
+
+    expect(directedHtml).toContain('data-testid="preview-substitution"');
+    expect(directedHtml).toContain('Mleko A');
+    expect(directedHtml).toContain('Mleko B');
+    expect(directedHtml).toContain('data-testid="preview-direction-reason"');
+    expect(directedHtml).toContain('Mniej słodkie');
+    expect(directedHtml).toContain('Twardsze');
+    expect(directedHtml).not.toContain('targetBand');
+  });
+
+  it('discloses a stabilizer-system lock transition and says Apply is required', () => {
+    const preview = syntheticPreview();
+    preview.safetyLockConflict = {
+      lineId: 'tara',
+      ingredientName: 'Tara Gum',
+      beforeGrams: 55,
+      requiredGrams: 10,
+      boundary: 'maximum',
+      reason: 'product_dosage',
+    };
+    const rendered = render(
+      <ConstraintPreviewCard
+        preview={preview}
+        onApply={noop}
+        onCancel={noop}
+        showTechnicalDetails
+      />,
+    );
+    expect(rendered).toContain('data-testid="preview-safety-lock-conflict"');
+    expect(rendered).toContain('Blokada przekracza zatwierdzony zakres systemu stabilizatora');
+    expect(rendered).toContain('55 g');
+    expect(rendered).toContain('10 g');
+    expect(rendered).toContain('Nic nie zmieni się bez „Zastosuj zmiany”.');
+  });
+
+  it('discloses an Engine-verified hard-constraint lock transition without calling it dosage', () => {
+    const preview = syntheticPreview();
+    preview.safetyLockConflict = {
+      lineId: 'watermelon',
+      ingredientName: 'Watermelon',
+      beforeGrams: 600,
+      requiredGrams: 368,
+      boundary: 'maximum',
+      reason: 'constraint_feasibility',
+    };
+    const rendered = render(
+      <ConstraintPreviewCard
+        preview={preview}
+        onApply={noop}
+        onCancel={noop}
+        showTechnicalDetails
+      />,
+    );
+    expect(rendered).toContain('data-testid="preview-safety-lock-conflict"');
+    expect(rendered).toContain('Blokada wymusza twardo nieprawidłową recepturę');
+    expect(rendered).toContain('zatwierdzone reguły obliczeń');
+    expect(rendered).not.toContain('zakres systemu stabilizatora');
+    expect(rendered).toContain('Nic nie zmieni się bez „Zastosuj zmiany”.');
+  });
+
+  it.each([
+    [2, 0, 2],
+    [2, 1, 2],
+    [2, 2, 2],
+    [3, 1, 3],
+  ])(
+    'counts every Main row independently from locks (%i Main / %i locked)',
+    (mainRows, lockedRows, expected) => {
+      const preview = syntheticPreview();
+      const template = preview.proposedInput.items[0]!;
+      preview.proposedInput = {
+        ...preview.proposedInput,
+        items: Array.from({ length: mainRows }, (_, index) => ({
+          ...template,
+          id: `main-${index}`,
+          lock_type: 'main' as const,
+          planned_grams: 100,
+          ...(index < lockedRows ? { grams_constraint: { grams: 100 } } : {}),
+        })),
+      };
+      const rendered = render(
+        <ConstraintPreviewCard
+          preview={preview}
+          onApply={noop}
+          onCancel={noop}
+          showTechnicalDetails
+        />,
+      );
+      expect(rendered).toContain(
+        `Główne: <strong class="font-mono tabular-nums text-ivory">${expected}</strong>`,
+      );
+      expect(rendered).toContain(
+        `Blokady: <strong class="font-mono tabular-nums text-ivory">${lockedRows}</strong>`,
+      );
+    },
+  );
+
+  it('renders exact residual values, range, distance movement and Apply blocker', () => {
+    const preview = syntheticPreview();
+    preview.diagnosticOnly = true;
+    preview.diagnosticReason = 'hard_residual';
+    preview.hardResidualMetrics = ['ice_fraction'];
+    preview.violationsBefore = 1;
+    preview.violationsAfter = 1;
+    preview.outcomeClassification = {
+      ...preview.outcomeClassification,
+      outcome: 'engine_optimization',
+      engineImproved: true,
+      violationsBefore: 1,
+      violationsAfter: 1,
+    };
+    preview.residualMetricDiagnostics = [
+      {
+        metric: 'ice_fraction',
+        labelPl: 'Udział lodu',
+        valueUnit: '%',
+        distanceUnit: 'pp',
+        beforeValue: 43.2,
+        proposedValue: 44.4,
+        acceptedMin: 45,
+        acceptedMax: 58,
+        distanceBefore: 1.8,
+        distanceAfter: 0.6,
+        movement: 'improved',
+        status: 'hard_block',
+        bandStatus: 'seeded',
+        categoryFallback: false,
+        temperatureFallback: false,
+        applyDisabledReasonPl:
+          'Wynik nadal pozostaje poza zatwierdzonym zakresem. Zastosowanie jest wyłączone.',
+      },
+    ];
+    const rendered = render(
+      <ConstraintPreviewCard
+        preview={preview}
+        onApply={noop}
+        onCancel={noop}
+        showTechnicalDetails
+      />,
+    );
+    expect(rendered).toContain('Udział lodu');
+    expect(rendered).toContain('Przed: 43.2%');
+    expect(rendered).toContain('Po: 44.4%');
+    expect(rendered).toContain('Zakres: 45.0–58.0%');
+    expect(rendered).toContain('Dystans: 1.8 pp → 0.6 pp');
+    expect(rendered).toContain('Wynik jest bliżej zakresu');
+    expect(rendered).not.toContain('Engine potwierdził poprawę techniczną: 1 → 1');
+  });
+
+  it('never labels a diagnostic Protein candidate as an achieved applicable profile', () => {
+    const preview = syntheticPreview();
+    preview.proposedInput = {
+      ...preview.proposedInput,
+      category: 'protein_gelato',
+      goals: {
+        ...preview.proposedInput.goals,
+        direction_targets_active: true,
+        direction_targets: { sweetness: 0, softness: 0, creaminess: 0, flavor: 0 },
+      },
+    };
+    preview.directionAssessment = {
+      active: true,
+      reached: true,
+      supportedAxisCount: 1,
+      reachedAxisCount: 1,
+      score: 10,
+      residuals: [],
+      blockedAxes: [],
+    };
+    preview.diagnosticOnly = true;
+    preview.diagnosticReason = 'protein_claim_residual';
+
+    const rendered = render(
+      <ConstraintPreviewCard
+        preview={preview}
+        onApply={noop}
+        onCancel={noop}
+        showTechnicalDetails
+      />,
+    );
+    expect(rendered).toContain('data-testid="preview-score"');
+    expect(rendered).toContain(render(<ScoreRing score={10} testId="preview-score" />));
+    expect(rendered).toContain('data-score-progress="1.00"');
+    expect(rendered).not.toMatch(/10(?:<!-- -->)? \/ 10/);
+    expect(rendered).toContain(
+      'Kierunek osiągnięty tylko w podglądzie diagnostycznym. Receptura nadal nie jest gotowa do zastosowania.',
+    );
+    expect(rendered).not.toContain('Gellatti osiągnęło wybrany profil.');
+    expect(rendered).toContain('data-testid="preview-apply-disabled"');
   });
 });
 
@@ -259,9 +549,9 @@ describe('BlockedApplyNotice', () => {
     );
     expect(html).toContain('role="alert"');
     expect(html).toContain('Zmian nie zastosowano');
-    expect(html).toContain('Kontrola blokad zatrzymała tę operację');
+    expect(html).toContain('Propozycja zmieniłaby zablokowane gramatury');
     expect(html).toContain('Mleko');
-    expect(html).toContain('Receptura nie została zmieniona');
+    expect(html).toContain('Receptura pozostała bez zmian');
     expect(html).toContain('Rozumiem');
   });
 });
@@ -302,7 +592,9 @@ describe('FeasibilityNotice (§18)', () => {
       violationsBefore: [{ metric: 'pod', direction: 'high' }],
       evaluationsUsed: 12,
     };
-    const html = render(<FeasibilityNotice input={input} analysis={analysis} handlers={handlers} />);
+    const html = render(
+      <FeasibilityNotice input={input} analysis={analysis} handlers={handlers} />,
+    );
     expect(html).toContain('Nie można osiągnąć optymalnego balansu przy obecnych blokadach.');
     expect(html).toContain('Sucrose — zablokowane na 700 g.');
     expect(html).toContain('Aby wejść w optymalny zakres, ustaw maksymalnie 612 g.');
@@ -321,10 +613,12 @@ describe('FeasibilityNotice (§18)', () => {
       violationsBefore: [{ metric: 'alcohol', direction: 'high' }],
       evaluationsUsed: 20,
     };
-    const html = render(<FeasibilityNotice input={input} analysis={analysis} handlers={handlers} />);
+    const html = render(
+      <FeasibilityNotice input={input} analysis={analysis} handlers={handlers} />,
+    );
     expect(html).toContain(
       'Przy obecnych blokadach nie znaleziono rozwiązania w optymalnym zakresie. ' +
-        'Odblokuj jeden z zaznaczonych składników lub zmień batch.',
+        'Odblokuj zaznaczony składnik, zmień zakres albo zwiększ partię.',
     );
     expect(html).toContain('Zaznaczone składniki: Sucrose.');
     expect(html).not.toContain('i przelicz'); // no fabricated „ustaw X g”
@@ -350,10 +644,12 @@ describe('FeasibilityNotice (§18)', () => {
       violationsBefore: [{ metric: 'pod', direction: 'high' }],
       evaluationsUsed: 20,
     };
-    const html = render(<FeasibilityNotice input={input} analysis={analysis} handlers={handlers} />);
+    const html = render(
+      <FeasibilityNotice input={input} analysis={analysis} handlers={handlers} />,
+    );
     expect(html).toContain('wspólnie uniemożliwiają osiągnięcie optymalnego zakresu');
     expect(html).toContain('Sucrose i Dextrose');
-    expect(html).toContain('odblokuj jeden z nich, zmień zakres, zwiększ batch');
+    expect(html).toContain('odblokuj jeden z nich, zmień zakres, zwiększ partię');
     expect(html).toContain('zmniejsz Sucrose o 42,5 g');
   });
 });
@@ -398,7 +694,9 @@ describe('ConstraintHistoryPanel (§20)', () => {
   });
 
   it('renders the empty state in Polish', () => {
-    const html = render(<ConstraintHistoryPanel history={[]} undoAvailable={false} onUndo={noop} />);
+    const html = render(
+      <ConstraintHistoryPanel history={[]} undoAvailable={false} onUndo={noop} />,
+    );
     expect(html).toContain('Brak zastosowanych zmian w tej sesji.');
   });
 });

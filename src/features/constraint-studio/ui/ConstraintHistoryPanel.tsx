@@ -30,14 +30,14 @@ function HistoryEntry({
     <li className="rounded-md border border-ivory/10 px-3 py-3">
       <div className="flex items-center justify-between gap-3">
         <span className="text-sm font-medium text-ivory">{record.titlePl}</span>
-        <span className="font-mono text-[0.7rem] text-ivory/40 tabular-nums">
+        <span className="font-mono text-[0.7rem] text-ivory/60 tabular-nums">
           {record.at.slice(11, 16)}
         </span>
       </div>
-      <p className="mt-0.5 text-xs text-ivory/50">
+      <p className="mt-0.5 text-xs text-ivory/65">
         {copy.history.contextLine(formatTemperaturePl(record.temperatureC))}
       </p>
-      <p className="mt-0.5 text-xs text-ivory/50">
+      <p className="mt-0.5 text-xs text-ivory/65">
         {copy.history.outOfBand(record.violationsBefore, record.violationsAfter)}
       </p>
 
@@ -58,7 +58,7 @@ function HistoryEntry({
             disabled={!undoAvailable}
             title={undoAvailable ? undefined : copy.history.undoUnavailable}
             onClick={onUndo}
-            className="rounded-md border border-ivory/20 px-2.5 py-1 text-xs font-medium text-ivory transition-colors hover:border-ivory/40 disabled:cursor-not-allowed disabled:border-ivory/10 disabled:text-ivory/45"
+            className="rounded-md border border-ivory/20 px-2.5 py-1 text-xs font-medium text-ivory transition-colors hover:border-ivory/40 disabled:cursor-not-allowed disabled:border-ivory/10 disabled:text-ivory/60"
           >
             {copy.history.undo}
           </button>
@@ -87,11 +87,11 @@ export function ConstraintHistoryPanel({
 }) {
   return (
     <section aria-label={copy.history.title} className="border-t border-ivory/10 pt-4">
-      <p className="text-xs font-medium tracking-label text-ivory/50 uppercase">
+      <p className="text-xs font-medium tracking-label text-ivory/65 uppercase">
         {copy.history.title}
       </p>
       {history.length === 0 ? (
-        <p className="mt-2 text-xs leading-relaxed text-ivory/40">{copy.history.empty}</p>
+        <p className="mt-2 text-xs leading-relaxed text-ivory/60">{copy.history.empty}</p>
       ) : (
         <ul className="mt-3 space-y-2">
           {[...history].reverse().map((record, reversedIndex) => (

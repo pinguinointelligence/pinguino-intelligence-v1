@@ -12,8 +12,14 @@ import type { EngineIngredient, RecipeInput } from '@/engine';
 import { findDemoIngredient } from '@/data/demoIngredients';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
-import { useConstraintStudioStore } from './constraintStudioStore';
+import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
+import {
+  isUndoAvailable,
+  selectCanonicalDraft,
+  useConstraintStudioStore,
+} from './constraintStudioStore';
 import { constraintStudioCopy } from './constraintStudioCopy';
+import { commitPreview, workingStateFingerprint } from './applyPipeline';
 
 /** STRAWBERRIES · Fresh Fruit shaped like the live Mapper row. */
 const STRAWBERRIES: EngineIngredient = {
@@ -31,15 +37,30 @@ const seedOwnerDraft = () => {
     target_temperature_c: -11,
     target_batch_grams: 1000,
     machine_capacity_grams: null,
+    machine_capacity_source: null,
     flavor_intensity: 'balanced',
     cost_priority: 'balanced',
+    formulation_strategy: 'optimal',
+    direction_targets: { sweetness: 0, softness: 0, creaminess: 0, flavor: 0 },
+    direction_targets_active: false,
     items: [],
     excludedIngredientIds: [],
+    unavailableMainIngredientIds: [],
+    productBehaviorSnapshots: {},
   });
   useConstraintStudioStore.getState().resetForTests();
   useRecipeStore.getState().setVisibleProductType('gelato');
   useRecipeStore.getState().addIngredient(findDemoIngredient('milk_3_5')!, 0);
-  useRecipeStore.getState().addIngredient(STRAWBERRIES, 0);
+  // OWNER FINAL INTEGRATION ADDENDUM items 1+2 (2026-07-25): the fruit now
+  // carries a real amount. A dairy fruit gelato is canonical `milk_gelato`, and
+  // no APPROVED milk template has a `fruit` role now that the reference-derived
+  // `fruit_gelato_ref_v1` is quarantined — so a 0 g fruit is (correctly) an
+  // honest „give me the amount" stop rather than a preview (pinned in
+  // zeroGramSemantics.test.ts / liveRuntime.test.ts). This file's guarantees —
+  // byte-for-byte preview→store transfer, the guarded-write rejections, the
+  // batch invariant and one-shot apply — are about the APPLY path and are
+  // unchanged; the seed just has to be a recipe PI can actually formulate.
+  useRecipeStore.getState().addIngredient(STRAWBERRIES, 350);
 };
 
 const storeRows = () =>
@@ -90,16 +111,187 @@ describe('PHASE 10 — the exact owner fixture: Preview grams reach the store by
     expect(JSON.stringify(buildRecipeInput(useRecipeStore.getState()).items)).toBe(appliedSnapshot);
   });
 
-  it('stale Preview is blocked after an edit (test 17)', () => {
+  it('keeps canonical Undo available after a Direction Apply', () => {
+    useRecipeStore.getState().setDirectionTarget('sweetness', 2);
     useConstraintStudioStore.getState().createOptimizePreview();
     expect(useConstraintStudioStore.getState().preview).not.toBeNull();
+    useConstraintStudioStore.getState().applyPreview();
+    expect(useConstraintStudioStore.getState().blocked).toBeNull();
+
+    const studio = useConstraintStudioStore.getState();
+    const last = studio.history[studio.history.length - 1];
+    expect(isUndoAvailable(last, selectCanonicalDraft().input, studio.constraints)).toBe(true);
+  });
+
+  it('stale Preview is blocked after an edit (test 17)', () => {
+    useConstraintStudioStore.getState().createOptimizePreview();
+    const staged = useConstraintStudioStore.getState().preview;
+    expect(staged).not.toBeNull();
+    const editableInput = buildRecipeInput(useRecipeStore.getState());
+    useRecipeStore.setState({
+      productBehaviorSnapshots: productBehaviorTestSnapshots(editableInput),
+    });
     // the user edits AFTER preview → source revision no longer matches
     const first = useRecipeStore.getState().items[0]!;
+    const untouchedSum = useRecipeStore
+      .getState()
+      .items.slice(1)
+      .reduce((sum, item) => sum + item.planned_grams, 0);
     useRecipeStore.getState().setPlannedGrams(first.id, 5);
+    // Owner P0 NIGHTLY (Phase 3): the material edit invalidates the staged
+    // preview immediately — and a resurrected stale preview still cannot
+    // apply (monotonic revision + fingerprint at the commit door).
+    expect(useConstraintStudioStore.getState().preview).toBeNull();
+    useConstraintStudioStore.setState({ preview: staged });
     useConstraintStudioStore.getState().applyPreview();
     expect(useConstraintStudioStore.getState().blocked?.code).toBe('stale_preview');
-    expect(storeSum()).toBe(5); // recipe untouched apart from the user's own edit
+    expect(storeSum()).toBe(untouchedSum + 5); // untouched apart from the user's own edit
   });
+
+  it('trustless Apply rejects a forged change to an Engine-native Required line', () => {
+    const required = useRecipeStore
+      .getState()
+      .items.find((item) => item.ingredient.name.includes('STRAWBERRIES'))!;
+    useRecipeStore.getState().setLockType(required.id, 'required');
+    useConstraintStudioStore.getState().createOptimizePreview();
+    const preview = useConstraintStudioStore.getState().preview;
+    expect(preview).not.toBeNull();
+    if (!preview) return;
+
+    const forged = structuredClone(preview);
+    const forgedRequired = forged.proposedInput.items.find((item) => item.id === required.id)!;
+    forgedRequired.planned_grams += 1;
+    const balancing = forged.proposedInput.items.find((item) => item.id !== required.id)!;
+    balancing.planned_grams -= 1;
+    useConstraintStudioStore.setState({ preview: forged });
+
+    useConstraintStudioStore.getState().applyPreview();
+    // The forged executable vector no longer matches the independently
+    // re-derived practical candidate. Either guard is sufficient, but the
+    // practical proof is intentionally checked before the legacy constraint
+    // payload so a forged Preview never becomes rounding authority.
+    expect(useConstraintStudioStore.getState().blocked?.code).toBe('practicalization_invalid');
+    expect(
+      useRecipeStore.getState().items.find((item) => item.id === required.id)?.planned_grams,
+    ).toBe(required.planned_grams);
+  });
+
+  it('trustless Apply cannot forge physical actual grams or unlock an already-added line', () => {
+    useConstraintStudioStore.getState().createOptimizePreview();
+    const preview = useConstraintStudioStore.getState().preview;
+    expect(preview).not.toBeNull();
+    if (!preview) return;
+
+    const constraints = { byLineId: {} } as const;
+    const current = buildRecipeInput(useRecipeStore.getState());
+    const physical = current.items[0]!;
+    physical.actual_grams = 100;
+    physical.lock_type = 'already_added';
+
+    const forgedActual = structuredClone(preview);
+    forgedActual.baseDraftRevision = undefined;
+    forgedActual.baseFingerprint = workingStateFingerprint(current, constraints);
+    const forgedActualLine = forgedActual.proposedInput.items.find(
+      (item) => item.id === physical.id,
+    )!;
+    forgedActualLine.actual_grams = 999;
+    forgedActualLine.lock_type = 'already_added';
+
+    expect(
+      commitPreview(current, constraints, forgedActual, '2026-08-10T13:00:00Z', 'forged-actual'),
+    ).toMatchObject({
+      ok: false,
+      code: 'physical_actual_violated',
+      lineNames: [physical.ingredient.name],
+    });
+
+    const forgedActualRemoval = structuredClone(preview);
+    forgedActualRemoval.baseDraftRevision = undefined;
+    forgedActualRemoval.baseFingerprint = workingStateFingerprint(current, constraints);
+    const forgedActualRemovalLine = forgedActualRemoval.proposedInput.items.find(
+      (item) => item.id === physical.id,
+    )!;
+    forgedActualRemovalLine.actual_grams = null;
+    forgedActualRemovalLine.lock_type = 'already_added';
+
+    expect(
+      commitPreview(
+        current,
+        constraints,
+        forgedActualRemoval,
+        '2026-08-10T13:00:00Z',
+        'forged-actual-removal',
+      ),
+    ).toMatchObject({
+      ok: false,
+      code: 'physical_actual_violated',
+      lineNames: [physical.ingredient.name],
+    });
+
+    const forgedLock = structuredClone(preview);
+    forgedLock.baseDraftRevision = undefined;
+    forgedLock.baseFingerprint = workingStateFingerprint(current, constraints);
+    const forgedLockLine = forgedLock.proposedInput.items.find((item) => item.id === physical.id)!;
+    forgedLockLine.actual_grams = 100;
+    forgedLockLine.lock_type = 'unlocked';
+
+    expect(
+      commitPreview(current, constraints, forgedLock, '2026-08-10T13:00:01Z', 'forged-lock'),
+    ).toMatchObject({
+      ok: false,
+      code: 'physical_actual_violated',
+      lineNames: [physical.ingredient.name],
+    });
+
+    const forgedPlan = structuredClone(preview);
+    forgedPlan.baseDraftRevision = undefined;
+    forgedPlan.baseFingerprint = workingStateFingerprint(current, constraints);
+    const forgedPlanLine = forgedPlan.proposedInput.items.find((item) => item.id === physical.id)!;
+    forgedPlanLine.actual_grams = 100;
+    forgedPlanLine.lock_type = 'already_added';
+    forgedPlanLine.planned_grams = physical.planned_grams + 500;
+
+    expect(
+      commitPreview(current, constraints, forgedPlan, '2026-08-10T13:00:02Z', 'forged-plan'),
+    ).toMatchObject({
+      ok: false,
+      code: 'physical_actual_violated',
+      lineNames: [physical.ingredient.name],
+    });
+  });
+
+  it.each(['already_added', 'required', 'main'] as const)(
+    'trustless Apply cannot forge an unlocked line into %s',
+    (forgedLockType) => {
+      useConstraintStudioStore.getState().createOptimizePreview();
+      const preview = useConstraintStudioStore.getState().preview;
+      expect(preview).not.toBeNull();
+      if (!preview) return;
+
+      const constraints = { byLineId: {} } as const;
+      const current = buildRecipeInput(useRecipeStore.getState());
+      const unlocked = current.items.find((item) => item.lock_type === 'unlocked')!;
+      const forged = structuredClone(preview);
+      forged.baseDraftRevision = undefined;
+      forged.baseFingerprint = workingStateFingerprint(current, constraints);
+      const forgedLine = forged.proposedInput.items.find((item) => item.id === unlocked.id)!;
+      forgedLine.lock_type = forgedLockType;
+
+      expect(
+        commitPreview(
+          current,
+          constraints,
+          forged,
+          '2026-08-10T13:00:03Z',
+          `forged-${forgedLockType}`,
+        ),
+      ).toMatchObject({
+        ok: false,
+        code: 'physical_actual_violated',
+        lineNames: [unlocked.ingredient.name],
+      });
+    },
+  );
 });
 
 describe('PHASE 5/6/7 — the guarded store API rejects every corruption shape', () => {
@@ -110,7 +302,9 @@ describe('PHASE 5/6/7 — the guarded store API rejects every corruption shape',
     useConstraintStudioStore.getState().applyPreview();
     const before = JSON.stringify(storeRows()); // the applied, healthy draft
     const base = validInput();
-    const result = useRecipeStore.getState().applyVerifiedRecipeInput(mutate(structuredClone(base)));
+    const result = useRecipeStore
+      .getState()
+      .applyVerifiedRecipeInput(mutate(structuredClone(base)));
     return { result, before };
   };
 
@@ -151,10 +345,10 @@ describe('PHASE 5/6/7 — the guarded store API rejects every corruption shape',
       return input;
     });
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.code).toBe('batch_mismatch');
+    if (!result.ok) expect(result.code).toBe('invalid_line');
     expect(JSON.stringify(storeRows())).toBe(before); // draft untouched
     expect(constraintStudioCopy.applyGuard.batchMismatch(0, 1000)).toContain(
-      'Receptura nie została zmieniona.',
+      'Receptura pozostała bez zmian.',
     );
   });
 
@@ -166,27 +360,36 @@ describe('PHASE 5/6/7 — the guarded store API rejects every corruption shape',
     expect(result.ok).toBe(false);
   });
 
-  it('an intentional explicit zero on ONE line applies when the batch still balances (test 12)', () => {
-    // 7-row applied draft: zero one line, move its grams onto another → valid.
+  it('an explicit zero on ONE line is rejected even when the batch still balances (test 12)', () => {
+    // The global executable invariant rejects the row before any write.
     useConstraintStudioStore.getState().createOptimizePreview();
     useConstraintStudioStore.getState().applyPreview();
+    const before = JSON.stringify(storeRows());
     const input = structuredClone(validInput());
     const moved = input.items[2]!.planned_grams;
     input.items[2]!.planned_grams = 0;
     input.items[0]!.planned_grams += moved;
     const result = useRecipeStore.getState().applyVerifiedRecipeInput(input);
-    expect(result.ok).toBe(true);
-    const rows = storeRows();
-    expect(rows[2]![1]).toBe(0); // only its own line
-    expect(rows.filter(([, g]) => g === 0).length).toBe(1);
-    expect(Math.abs(storeSum() - 1000)).toBeLessThanOrEqual(0.1);
+    expect(result).toMatchObject({ ok: false, code: 'invalid_line' });
+    expect(JSON.stringify(storeRows())).toBe(before);
   });
 });
 
 describe('PHASE 11 — all apply result types still work through the guarded write', () => {
   it('constrained formulation with an exact lock (500 g milk) applies byte-exact', () => {
     const milkLine = useRecipeStore.getState().items.find((i) => i.ingredient.id === 'milk_3_5')!;
+    // Inulin is optional and no longer silently inserted. This lock-path test
+    // selects it explicitly so its former solids contribution remains present.
+    useRecipeStore.getState().addIngredient(findDemoIngredient('inulin')!, 20);
+    useRecipeStore.setState({
+      productBehaviorSnapshots: productBehaviorTestSnapshots(
+        buildRecipeInput(useRecipeStore.getState()),
+      ),
+    });
     useRecipeStore.getState().setPlannedGrams(milkLine.id, 500);
+    // The remaining test exercises the pure solver/Apply lock contract. Runtime
+    // proposal snapshots are supplied by the server-authority wrapper.
+    useRecipeStore.setState({ productBehaviorSnapshots: {} });
     useConstraintStudioStore.getState().toggleLock(milkLine.id);
     useConstraintStudioStore.getState().createOptimizePreview();
     useConstraintStudioStore.getState().applyPreview();

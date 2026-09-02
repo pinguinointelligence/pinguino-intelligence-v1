@@ -53,7 +53,7 @@ describe('constraint-studio boundary guard', () => {
         // batch recompute + read-back rollback); undo restores the exact
         // pipeline-captured snapshot via one direct setState.
         expect(writes.length, 'undo is the only direct recipe write').toBe(1);
-        expect(source).toContain('applyVerifiedRecipeInput(outcome.verified.input)');
+        expect(source).toContain('outcome.verified.productBehaviorSnapshots');
         expect(source).toContain('snapshot.items.map((item) => ({ ...item }))');
       } else {
         expect(writes.length, `unexpected recipe write in ${file}`).toBe(0);
@@ -91,6 +91,59 @@ describe('constraint-studio boundary guard', () => {
         false,
       );
     }
+  });
+
+  it('keeps Starter Pack at Preview until explicit Apply and independently rebuilds its exact proof', () => {
+    const pipeline = readSource(join(FEATURE_DIR, 'applyPipeline.ts'));
+    const store = readSource(join(FEATURE_DIR, 'constraintStudioStore.ts'));
+    const openBoundary = store.slice(
+      store.indexOf('export async function openStarterPackRescuePreviewWithServerAuthority'),
+      store.indexOf('/** Terminal Apply wrapper'),
+    );
+    expect(openBoundary).toContain(
+      '.stageStarterPackRescuePreview(candidate, validation.snapshots)',
+    );
+    expect(openBoundary).toContain('toppings: []');
+    expect(openBoundary).not.toContain('.applyPreview(');
+    expect(openBoundary).not.toContain('commitPreview(');
+
+    const applyBoundary = store.slice(
+      store.indexOf('export async function applyPreviewWithServerAuthority'),
+    );
+    expect(applyBoundary).toContain('buildStarterPackRescueSimulationInput(');
+    expect(applyBoundary).toContain('preview.starterPackRescue.seedGrams');
+    expect(applyBoundary).toContain(
+      'toppings: preview.starterPackRescue ? [] : recipeAtStart.toppings',
+    );
+    expect(applyBoundary).toContain('rescueSimulationLineIds: [preview.starterPackRescue.lineId]');
+
+    const commitBoundary = pipeline.slice(pipeline.indexOf('static commit('));
+    expect(commitBoundary).toContain(
+      'proof.paletteVersion === STARTER_PACK_RESCUE_PALETTE_VERSION',
+    );
+    expect(commitBoundary).toContain('isExactStarterPackRescueIngredient(proof.mapperId');
+    expect(commitBoundary).toContain('buildStarterPackRescueCandidatePreview(');
+    expect(commitBoundary).toContain('workingStateFingerprint(rebuilt.preview.proposedInput');
+  });
+
+  it('never launches Starter Pack during ordinary recalculation and keeps it behind an explicit action', () => {
+    const store = readSource(join(FEATURE_DIR, 'constraintStudioStore.ts'));
+    const recalculate = store.slice(
+      store.indexOf('export async function createOptimizePreviewWithServerAuthority'),
+      store.indexOf('/** Explicit Standard removal'),
+    );
+    expect(recalculate).not.toContain('computeStarterPackRescueWithServerAuthority(');
+    expect(store).toContain('export async function requestStarterPackRescueWithServerAuthority');
+    const explicit = store.slice(
+      store.indexOf('export async function requestStarterPackRescueWithServerAuthority'),
+      store.indexOf('/** Explicit “Sprawdź z …” boundary'),
+    );
+    expect(explicit).toContain('computeStarterPackRescueWithServerAuthority(');
+    expect(store).toContain('STARTER_PACK_RESCUE_RUNTIME_BUDGET_MS = 20_000');
+    expect(explicit).toContain('new AbortController()');
+    expect(explicit).toContain('controller.abort()');
+    expect(store).toContain('report.budgetExhausted = input.signal?.aborted === true');
+    expect(store).toContain('probes.map(async (probeGrams) => {');
   });
 
   it('the feature stays inside the sanctioned seams (engine barrel only, no supabase)', () => {

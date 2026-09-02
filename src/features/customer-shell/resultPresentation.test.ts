@@ -44,9 +44,9 @@ describe('formatBatchGrams', () => {
 
 describe('pluralProdukt (1 / 2–4 / 5+)', () => {
   it('declines correctly', () => {
-    expect(pluralProdukt(1)).toBe('produktu');
-    expect(pluralProdukt(3)).toBe('produktów');
-    expect(pluralProdukt(5)).toBe('produktów');
+    expect(pluralProdukt(1)).toBe('Produktu');
+    expect(pluralProdukt(3)).toBe('Produktów');
+    expect(pluralProdukt(5)).toBe('Produktów');
   });
 });
 
@@ -54,17 +54,17 @@ describe('resultStatus (§11 — exactly ONE status, never the double message)',
   it('open flavour lines → „Wymaga wyboru N produktów” + required-products guidance', () => {
     const s = resultStatus({ unresolvedCount: 3, gramsVisible: false, outOfBand: false, calculated: true });
     expect(s.kind).toBe('needs_products');
-    expect(s.label).toBe('Wymaga wyboru 3 produktów');
+    expect(s.label).toBe('Wymaga wyboru 3 Produktów');
     expect(s.guidance).toBe(
-      'Wybierz konkretne produkty dla 3 składników, aby dokładnie przeliczyć recepturę.',
+      'Wybierz konkretne produkty dla 3 Składników, aby dokładnie przeliczyć recepturę.',
     );
   });
 
   it('a single open line declines both nouns correctly', () => {
     const s = resultStatus({ unresolvedCount: 1, gramsVisible: false, outOfBand: false, calculated: true });
-    expect(s.label).toBe('Wymaga wyboru 1 produktu');
+    expect(s.label).toBe('Wymaga wyboru 1 Produktu');
     expect(s.guidance).toBe(
-      'Wybierz konkretne produkty dla 1 składnika, aby dokładnie przeliczyć recepturę.',
+      'Wybierz konkretne produkty dla 1 Składnika, aby dokładnie przeliczyć recepturę.',
     );
   });
 
@@ -89,7 +89,7 @@ describe('resultStatus (§11 — exactly ONE status, never the double message)',
     expect(s.label).toBe('Receptura gotowa do podglądu');
     expect(s.label).not.toBe('Gotowa do przeliczenia');
     // …and it honestly flags that nothing was engine-calculated yet.
-    expect(s.guidance).toContain('podglądowa struktura');
+    expect(s.guidance).toContain('podgląd struktury składników');
   });
 
   it('out-of-band + tuning unavailable → guidance does NOT point at Monitor tuning (Track G)', () => {

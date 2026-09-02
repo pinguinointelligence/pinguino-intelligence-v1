@@ -380,7 +380,7 @@ export function routeOptimizationFlow(input: OptimizationFlowInput): Optimizatio
       affectedIngredientClasses: levers,
       goldenMiddleRank: GOLDEN_MIDDLE_RANK[spec.gate] ?? STRUCTURAL_RANK,
       feasibility: spec.approximate ? 'approximate' : 'feasible',
-      constraintReason: 'levers within the profile allowed families; forbidden families excluded',
+      constraintReason: 'Dźwignie w dozwolonych rodzinach profilu; niedozwolone rodziny są wykluczone',
       warnings: planWarnings,
     });
   }

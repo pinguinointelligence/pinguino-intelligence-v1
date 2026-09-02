@@ -26,6 +26,7 @@ export type HandlerKind =
   | 'checkout_completion'
   | 'checkout_async_payment_succeeded'
   | 'checkout_async_payment_failed'
+  | 'checkout_session_expired'
   | 'subscription_state_sync'
   | 'schedule_state_sync'
   | 'invoice_finalized'
@@ -90,6 +91,17 @@ export const WEBHOOK_EVENT_INTENTS: Readonly<Record<string, HandlerIntent>> = {
     false,
     'none',
     ['checkout session correlation status'],
+  ),
+  /* An abandoned Checkout Session expires ~24 h after creation. Without this
+     route the event was acknowledged and dropped, so a shop order the customer
+     never paid stayed `pending` for ever and sat in the operator's unpaid queue
+     as if it were still live. */
+  'checkout.session.expired': intent(
+    'checkout_session_expired',
+    'object',
+    false,
+    'none',
+    ['shop_orders (pending → cancelled)'],
   ),
 
   // ── Subscriptions (cache truth) ───────────────────────────────────────────

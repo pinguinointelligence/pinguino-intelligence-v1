@@ -17,6 +17,8 @@ describe('normalizeProductProfile — locked alias map', () => {
     ['vegan', 'vegan_gelato'],
     ['vegan_gelato', 'vegan_gelato'],
     ['chocolate', 'chocolate_gelato'],
+    ['protein', 'protein_gelato'],
+    ['protein_gelato', 'protein_gelato'],
     ['chocolate_gelato', 'chocolate_gelato'],
   ] as const;
 
@@ -62,7 +64,7 @@ describe('normalizeProductProfile — unsupported v1.0 inputs never silently map
     });
   });
 
-  it.each(['protein', 'protein_gelato', 'fresh', 'storage_minus18', 'frozen_drinks', 'slush'])(
+  it.each(['fresh', 'storage_minus18', 'frozen_drinks', 'slush'])(
     '%s returns unsupported with a warning',
     (input) => {
       const result = normalizeProductProfile(input);

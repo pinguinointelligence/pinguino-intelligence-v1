@@ -1,0 +1,3977 @@
+diff --git a/package.json b/package.json
+index f670a74..f43e1a7 100644
+--- a/package.json
++++ b/package.json
+@@ -18,7 +18,8 @@
+     "format:check": "prettier --check .",
+     "recipes:import": "node scripts/importFlavorCatalogue.mjs",
+     "recipes:validate": "node scripts/importFlavorCatalogue.mjs --check",
+-    "process:validate": "node scripts/buildProcessMetadataSeed.mjs --check"
++    "process:validate": "node scripts/buildProcessMetadataSeed.mjs --check",
++    "products:audit": "node scripts/auditUnifiedProductIntelligence.mjs"
+   },
+   "dependencies": {
+     "@fontsource-variable/manrope": "^5.2.8",
+diff --git a/src/app/router.tsx b/src/app/router.tsx
+index 0c6b631..e017458 100644
+--- a/src/app/router.tsx
++++ b/src/app/router.tsx
+@@ -36,6 +36,7 @@ import {
+   FranchisePage,
+   HowItWorksPage,
+   ProductImportPage,
++  ProductScanPage,
+   ProductsHubPage,
+   ProductionHubPage,
+   RecipesHubPage,
+@@ -157,6 +158,7 @@ export function AppRoutes() {
+ 
+       {/* Product catalog intake — direct-URL / internal-first (no nav entry yet). */}
+       <Route path="/products/import" element={<ProductImportPage />} />
++      <Route path="/products/scan" element={<ProductScanPage />} />
+ 
+       {/* Legacy customer-shell preview path → the flow's new canonical /start. */}
+       <Route path="/customer-v1" element={<LegacyDestinationRedirect pathname="/start" />} />
+diff --git a/src/app/routes.test.tsx b/src/app/routes.test.tsx
+index ca5873d..6a0599b 100644
+--- a/src/app/routes.test.tsx
++++ b/src/app/routes.test.tsx
+@@ -130,6 +130,7 @@ describe('Slice A routing contract', () => {
+     expect(elementType('/machine')).toBe(MachineProfilePage);
+     for (const path of [
+       '/products',
++      '/products/scan',
+       '/production',
+       '/account',
+       '/how-it-works',
+diff --git a/src/data/label/nutritionLabel.test.ts b/src/data/label/nutritionLabel.test.ts
+index 4e299eb..b487faa 100644
+--- a/src/data/label/nutritionLabel.test.ts
++++ b/src/data/label/nutritionLabel.test.ts
+@@ -6,6 +6,7 @@ import {
+   type NutritionDeclaration,
+   type NutritionRow,
+   type NutritionRowKey,
++  type LabelNutritionPer100g,
+ } from './nutritionLabel';
+ 
+ const base: NutritionPer100g = {
+@@ -26,7 +27,7 @@ function get(decl: NutritionDeclaration, key: NutritionRowKey): NutritionRow {
+   return row;
+ }
+ 
+-function decl(input: NutritionPer100g): NutritionDeclaration {
++function decl(input: LabelNutritionPer100g): NutritionDeclaration {
+   const result = buildNutritionDeclaration(input);
+   if (!result) throw new Error('expected a declaration');
+   return result;
+@@ -77,6 +78,12 @@ describe('buildNutritionDeclaration', () => {
+     expect(saturated.valueDisplay).toBe('4.4 g');
+   });
+ 
++  it('keeps optional commercial-label sugars and fibre unknown instead of inventing zero', () => {
++    const d = decl({ ...base, sugars_g: null, fiber_g: null });
++    expect(get(d, 'sugars')).toMatchObject({ value: null, valueDisplay: null });
++    expect(get(d, 'fibre')).toMatchObject({ value: null, valueDisplay: null });
++  });
++
+   it('applies the regulatory precisions (salt 2 decimals; others 1)', () => {
+     const d = decl(base);
+     expect(get(d, 'fat').valueDisplay).toBe('7.1 g');
+diff --git a/src/data/label/nutritionLabel.ts b/src/data/label/nutritionLabel.ts
+index 348cc94..05432c8 100644
+--- a/src/data/label/nutritionLabel.ts
++++ b/src/data/label/nutritionLabel.ts
+@@ -8,6 +8,18 @@
+ import { copy } from '@/copy/en';
+ import type { NutritionPer100g } from '@/engine';
+ 
++/** Product-label projection. Alcohol is nullable when a commercial Topping label
++ * did not establish it; that omission must not erase otherwise declared facts. */
++export type LabelNutritionPer100g = Omit<
++  NutritionPer100g,
++  'saturated_fat_g' | 'sugars_g' | 'fiber_g' | 'alcohol_g'
++> & {
++  saturated_fat_g: number | null;
++  sugars_g: number | null;
++  fiber_g: number | null;
++  alcohol_g: number | null;
++};
++
+ /**
+  * kJ per kcal — a DISPLAY unit conversion for the energy row (1 kcal = 4.184 kJ).
+  * This is presentation only, NOT recipe math: the engine computes kcal, and the
+@@ -76,7 +88,7 @@ function gramRow(
+  * all-zero label.
+  */
+ export function buildNutritionDeclaration(
+-  nutrition: NutritionPer100g | null,
++  nutrition: LabelNutritionPer100g | null,
+ ): NutritionDeclaration | null {
+   if (nutrition === null) return null;
+ 
+@@ -106,15 +118,23 @@ export function buildNutritionDeclaration(
+   );
+ 
+   rows.push(gramRow('carbohydrate', m.carbs, nutrition.carbohydrate_g, 1, false));
+-  rows.push(gramRow('sugars', m.sugars, nutrition.sugars_g, 1, true));
++  rows.push(
++    nutrition.sugars_g === null
++      ? { key: 'sugars', label: m.sugars, value: null, valueDisplay: null, indented: true }
++      : gramRow('sugars', m.sugars, nutrition.sugars_g, 1, true),
++  );
+   rows.push(gramRow('protein', m.protein, nutrition.protein_g, 1, false));
+   rows.push(gramRow('salt', m.salt, nutrition.salt_g, 2, false));
+-  rows.push(gramRow('fibre', m.fiber, nutrition.fiber_g, 1, false));
++  rows.push(
++    nutrition.fiber_g === null
++      ? { key: 'fibre', label: m.fiber, value: null, valueDisplay: null, indented: false }
++      : gramRow('fibre', m.fiber, nutrition.fiber_g, 1, false),
++  );
+ 
+   // Alcohol row only when the mix actually carries alcohol.
+-  const alcoholDeclared = nutrition.alcohol_g > 0;
++  const alcoholDeclared = nutrition.alcohol_g !== null && nutrition.alcohol_g > 0;
+   if (alcoholDeclared) {
+-    rows.push(gramRow('alcohol', m.alcohol, nutrition.alcohol_g, 1, false));
++    rows.push(gramRow('alcohol', m.alcohol, nutrition.alcohol_g as number, 1, false));
+   }
+ 
+   return { rows, saturatedDeclared, alcoholDeclared };
+diff --git a/src/features/auth/authSecurity.test.ts b/src/features/auth/authSecurity.test.ts
+index 9dac2fb..f218c2b 100644
+--- a/src/features/auth/authSecurity.test.ts
++++ b/src/features/auth/authSecurity.test.ts
+@@ -37,6 +37,8 @@ const ALLOWED_ENV = new Set([
+   'VITE_OFFER_LAUNCH_ENABLED',
+   'VITE_OFFER_FOUNDING_ENABLED',
+   'VITE_DESIGN_REVIEW',
++  // Public Cloudflare widget site key. The secret remains Edge-only.
++  'VITE_TURNSTILE_SITE_KEY',
+ ]);
+ 
+ describe('Phase 2A security guards', () => {
+diff --git a/src/features/constraint-studio/applyPipeline.ts b/src/features/constraint-studio/applyPipeline.ts
+index c72d761..b079ff3 100644
+--- a/src/features/constraint-studio/applyPipeline.ts
++++ b/src/features/constraint-studio/applyPipeline.ts
+@@ -110,6 +110,13 @@ import {
+   verifyMainIngredientIdentity,
+   type MainIdentityViolation,
+ } from '@/features/formulation/mainIngredientContract';
++import {
++  mainEnvelopeSearchCeilingGrams,
++  productBehaviorSnapshotFingerprint,
++  verifyMainEnvelope,
++  type MainEnvelopeViolation,
++  type ProductBehaviorSnapshot,
++} from '@/features/product-intelligence';
+ import { recipeFitForInput } from '@/features/protein-gelato/proteinTarget';
+ import {
+   canonicalDuplicateIds,
+@@ -147,6 +154,9 @@ import {
+  * deliberately absent from RecipeInput, Preview payloads and saved versions. */
+ export interface OptimizePreviewOptions extends FormulationOptions {
+   effectivePriceOverrides?: CustomerPriceIndex;
++  /** Immutable per-line product/version/policy authority. Engine formulas do
++   * not read it; product orchestration and the Apply trust door do. */
++  productBehaviorSnapshots?: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>;
+   /** Pro workbench provenance gate: even a clean, already-integer recipe must
+    * pass through the canonical Preview → Apply door before Save/Production. */
+   requirePracticalPreview?: boolean;
+@@ -491,6 +501,8 @@ export interface ConstraintPreview {
+   };
+   /** Fingerprint of (input, constraints) the preview was built for. */
+   baseFingerprint: string;
++  /** Product/version/policy staleness guard, present for resolver-managed drafts. */
++  productBehaviorFingerprint?: string;
+   /**
+    * Owner P0 NIGHTLY (live FAILURE 1, Phase 3): the monotonic `draftRevision`
+    * this preview was built for (stamped by the store). `commitPreview` rejects
+@@ -1010,6 +1022,12 @@ export type BuildPreviewResult =
+       ingredientNames: string[];
+       messagePl: string;
+     }
++  | {
++      ok: false;
++      code: 'product_behavior_invalid';
++      violations: MainEnvelopeViolation[];
++      messagePl: string;
++    }
+   | {
+       ok: false;
+       code: 'main_ingredient_unavailable';
+@@ -2186,7 +2204,11 @@ function maximizeMainFromStart(
+   // A Main exact/percent/range sidecar may resolve every requested amount back
+   // to the current group mass. Detect that explicitly; it is a held contract,
+   // not a failed optimiser.
+-  const upper = probe(identityInput.target_batch_grams);
++  const behaviorCeiling = mainEnvelopeSearchCeilingGrams({
++    recipe: identityInput,
++    snapshots: options.productBehaviorSnapshots ?? {},
++  });
++  const upper = probe(behaviorCeiling ?? identityInput.target_batch_grams);
+   if (upper.ok && upper.mainGrams <= searchStartingMainGrams + MAIN_OBJECTIVE_EPSILON_G) {
+     return {
+       input: start,
+@@ -4252,6 +4274,11 @@ export type BlockedApply =
+       messagePl: string;
+       violations: MainIdentityViolation[];
+     }
++  | {
++      code: 'product_behavior_invalid';
++      messagePl: string;
++      violations: MainEnvelopeViolation[];
++    }
+   | {
+       code: 'eco_flavour_floor_violated';
+       messagePl: string;
+@@ -4295,6 +4322,35 @@ export type CommitPreviewResult =
+   | { ok: true; verified: VerifiedApply }
+   | ({ ok: false } & BlockedApply);
+ 
++/** Binds a successful Preview to immutable product/version/policy authority
++ * and rejects the rounded vector before it can be shown as applicable. */
++export function bindProductBehaviorToPreview(
++  result: BuildPreviewResult,
++  snapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>,
++): BuildPreviewResult {
++  if (!result.ok) return result;
++  const managed = Object.keys(snapshots).length > 0;
++  if (!managed) return result;
++  const verification = verifyMainEnvelope({
++    recipe: result.preview.proposedInput,
++    snapshots,
++    mode: normalizeFormulationStrategy(
++      result.preview.proposedInput.goals?.formulation_strategy ?? result.preview.proposedInput.mode,
++    ),
++  });
++  if (!verification.ok) {
++    return {
++      ok: false,
++      code: 'product_behavior_invalid',
++      violations: verification.violations,
++      messagePl: verification.violations[0]?.messagePl ??
++        'Nie udało się potwierdzić zachowania produktu w tej recepturze.',
++    };
++  }
++  result.preview.productBehaviorFingerprint = productBehaviorSnapshotFingerprint(snapshots);
++  return result;
++}
++
+ const violatedIngredientNames = (
+   preview: ConstraintPreview,
+   violations: readonly ConstraintPreservationViolation[],
+@@ -4435,6 +4491,9 @@ export class VerifiedApply {
+     substitutionAuthorization?: SubstitutionSessionAuthorization | null,
+     directionConsent?: DirectionBestAchievableConsent | null,
+     suggestedFixAuthorization?: SuggestedFixSessionAuthorization | null,
++    currentProductBehaviorSnapshots: Readonly<
++      Record<string, ProductBehaviorSnapshot | undefined>
++    > = {},
+   ): CommitPreviewResult {
+     // Phase 3 monotonic guard: a preview built for an earlier draft revision
+     // never applies, whatever the fingerprint says.
+@@ -4449,6 +4508,13 @@ export class VerifiedApply {
+     if (workingStateFingerprint(current, currentConstraints) !== preview.baseFingerprint) {
+       return { ok: false, code: 'stale_preview', messagePl: copy.blocked.stale };
+     }
++    if (
++      preview.productBehaviorFingerprint !== undefined &&
++      productBehaviorSnapshotFingerprint(currentProductBehaviorSnapshots) !==
++        preview.productBehaviorFingerprint
++    ) {
++      return { ok: false, code: 'stale_preview', messagePl: copy.blocked.stale };
++    }
+     if (!sameVerifiedRecipeContext(current, preview.proposedInput)) {
+       return { ok: false, code: 'stale_preview', messagePl: copy.blocked.stale };
+     }
+@@ -4966,6 +5032,22 @@ export class VerifiedApply {
+         violations: mainIdentity.violations,
+       };
+     }
++    const mainEnvelope = verifyMainEnvelope({
++      recipe: preview.proposedInput,
++      snapshots: currentProductBehaviorSnapshots,
++      mode: normalizeFormulationStrategy(
++        current.goals?.formulation_strategy ?? current.mode,
++      ),
++    });
++    if (!mainEnvelope.ok) {
++      return {
++        ok: false,
++        code: 'product_behavior_invalid',
++        violations: mainEnvelope.violations,
++        messagePl: mainEnvelope.violations[0]?.messagePl ??
++          'Apply zablokowany: zachowanie produktu nie jest zatwierdzone.',
++      };
++    }
+     const currentMainGrams = mainGroupTotal(mainIdentityBase, mainIdentityBase);
+     const exactMainGrams = mainGroupTotal(mainIdentityBase, exactCandidate);
+     const executableMainGrams = mainGroupTotal(mainIdentityBase, preview.proposedInput);
+diff --git a/src/features/constraint-studio/constraintStudioStore.ts b/src/features/constraint-studio/constraintStudioStore.ts
+index 0a2c404..1915c70 100644
+--- a/src/features/constraint-studio/constraintStudioStore.ts
++++ b/src/features/constraint-studio/constraintStudioStore.ts
+@@ -57,6 +57,7 @@ import { constraintStudioCopy } from './constraintStudioCopy';
+ const applyGuardCopy = constraintStudioCopy.applyGuard;
+ import {
+   buildBatchRescalePreview,
++  bindProductBehaviorToPreview,
+   buildOptimizePreview,
+   buildSubstitutionPreview,
+   buildSuggestedFixPreview,
+@@ -604,12 +605,14 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
+           });
+           return;
+         }
+-        const result = buildOptimizePreview(draft.input, draft.constraints, nowIso(), {
++        const snapshots = useRecipeStore.getState().productBehaviorSnapshots;
++        const result = bindProductBehaviorToPreview(buildOptimizePreview(draft.input, draft.constraints, nowIso(), {
+           excludedIngredientIds: draft.excludedIngredientIds,
+           unavailableMainIngredientIds: draft.unavailableMainIngredientIds,
+           effectivePriceOverrides: useCustomerPriceStore.getState().overridesByCanonicalId,
+           requirePracticalPreview: true,
+-        });
++          productBehaviorSnapshots: snapshots,
++        }), snapshots);
+         if (result.ok) {
+           result.preview.baseDraftRevision = draft.revision;
+           const direction = result.preview.directionAssessment;
+@@ -681,12 +684,13 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
+       createBatchRescalePreview: (newBatchGrams) => {
+         get().reconcile();
+         const draft = selectCanonicalDraft();
+-        const result = buildBatchRescalePreview(
++        const snapshots = useRecipeStore.getState().productBehaviorSnapshots;
++        const result = bindProductBehaviorToPreview(buildBatchRescalePreview(
+           draft.input,
+           draft.constraints,
+           newBatchGrams,
+           nowIso(),
+-        );
++        ), snapshots);
+         if (result.ok) {
+           result.preview.baseDraftRevision = draft.revision;
+           set({
+@@ -716,7 +720,11 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
+       createSuggestedFixPreview: (fix) => {
+         get().reconcile();
+         const draft = selectCanonicalDraft();
+-        const result = buildSuggestedFixPreview(draft.input, draft.constraints, fix, nowIso());
++        const snapshots = useRecipeStore.getState().productBehaviorSnapshots;
++        const result = bindProductBehaviorToPreview(
++          buildSuggestedFixPreview(draft.input, draft.constraints, fix, nowIso()),
++          snapshots,
++        );
+         if (result.ok) {
+           result.preview.baseDraftRevision = draft.revision;
+           set({
+@@ -770,7 +778,8 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
+           });
+           return;
+         }
+-        const result = buildSubstitutionPreview(
++        const snapshots = useRecipeStore.getState().productBehaviorSnapshots;
++        const result = bindProductBehaviorToPreview(buildSubstitutionPreview(
+           draft.input,
+           draft.constraints,
+           lineId,
+@@ -783,8 +792,9 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
+               (id) => id !== currentLine?.ingredient.canonical_ingredient_id,
+             ),
+             effectivePriceOverrides: useCustomerPriceStore.getState().overridesByCanonicalId,
++            productBehaviorSnapshots: snapshots,
+           },
+-        );
++        ), snapshots);
+         if (result.ok) {
+           result.preview.baseDraftRevision = draft.revision;
+           const proof = result.preview.substitution;
+@@ -866,6 +876,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
+           substitutionAuthorization,
+           directionConsent,
+           suggestedFixAuthorization,
++          useRecipeStore.getState().productBehaviorSnapshots,
+         );
+         if (!outcome.ok) {
+           // The owner-mandated block: recipe untouched, clear Polish message.
+diff --git a/src/features/constraint-studio/previewIssueMessage.ts b/src/features/constraint-studio/previewIssueMessage.ts
+index 3047b08..29fa8fb 100644
+--- a/src/features/constraint-studio/previewIssueMessage.ts
++++ b/src/features/constraint-studio/previewIssueMessage.ts
+@@ -61,6 +61,8 @@ export function previewIssueMessagePl(issue: PreviewIssue): string {
+       return issue.messagePl;
+     case 'main_ratio_conflict':
+       return issue.messagePl;
++    case 'product_behavior_invalid':
++      return issue.messagePl;
+     case 'main_ingredient_unavailable':
+       return issue.messagePl;
+     case 'vegan_ingredient_conflict':
+diff --git a/src/features/ingredient-builder/IngredientBuilder.tsx b/src/features/ingredient-builder/IngredientBuilder.tsx
+index 8410a03..94414f8 100644
+--- a/src/features/ingredient-builder/IngredientBuilder.tsx
++++ b/src/features/ingredient-builder/IngredientBuilder.tsx
+@@ -23,7 +23,12 @@ import {
+   canPersistCustomerPrice,
+   customerPriceCanonicalId,
+   effectiveCostForIngredient,
++  effectiveCostForToppingIngredient,
+ } from '@/features/pro-core/effectiveRecipePricing';
++import {
++  isCatalogLabelToppingIngredient,
++  toppingIngredientIdentity,
++} from '@/features/recipe-composition/labelTopping';
+ import { effectiveLineCost } from '@/features/pro-core/costing';
+ import {
+   IngredientRow,
+@@ -48,6 +53,14 @@ import { listEngineApprovedIngredients } from '@/services/ingredients';
+ import { verifiedRecipeSubstituteCandidates } from './recipeSubstitution';
+ import { buildDirectPercentEdit } from './directPercentEdit';
+ import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
++import {
++  resetPrivateCatalogProductPrice,
++  savePrivateCatalogProductPrice,
++} from '@/services/globalCatalog';
++import {
++  mainBehaviorBlockReason,
++  type ProductBehaviorSnapshot,
++} from '@/features/product-intelligence';
+ 
+ const b = copy.studio.builder;
+ const headCell = 'text-xs font-medium tracking-[0.04em] text-ivory/70 uppercase';
+@@ -97,6 +110,11 @@ export function IngredientBuilder({
+ 
+   const addIngredient = useRecipeStore((state) => state.addIngredient);
+   const addTopping = useRecipeStore((state) => state.addTopping);
++  const setProductBehaviorSnapshot = useRecipeStore((state) => state.setProductBehaviorSnapshot);
++  const behaviorProfile = useRecipeStore((state) => state.category);
++  const behaviorTemperatureC = useRecipeStore((state) => state.target_temperature_c);
++  const behaviorMode = useRecipeStore((state) => state.formulation_strategy);
++  const productBehaviorSnapshots = useRecipeStore((state) => state.productBehaviorSnapshots);
+   const toppings = useRecipeStore((state) => state.toppings);
+   const baseOrder = useRecipeStore((state) => state.baseOrder);
+   const removeTopping = useRecipeStore((state) => state.removeTopping);
+@@ -407,6 +425,7 @@ export function IngredientBuilder({
+           }
+           setReorderNotice(baseReorderNotice(source, 'przeniesiono'));
+         }}
++        mainUnavailableReason={mainBehaviorBlockReason(productBehaviorSnapshots[item.id])}
+       />
+     );
+   });
+@@ -430,12 +449,16 @@ export function IngredientBuilder({
+       </div>
+     ) : null;
+ 
+-  const addIngredientAndResolveRequiredRole = (ingredient: Parameters<typeof addIngredient>[0]) => {
+-    const canonicalId = canonicalIngredientId(ingredient);
++  const addIngredientAndResolveRequiredRole = (
++    ingredient: Parameters<typeof addIngredient>[0],
++    behavior?: ProductBehaviorSnapshot,
++  ) => {
++    const canonicalId = toppingIngredientIdentity(ingredient);
+     const existing = useRecipeStore
+       .getState()
+       .items.find((item) => canonicalIngredientId(item.ingredient) === canonicalId);
+     if (existing) {
++      if (behavior) setProductBehaviorSnapshot(existing.id, { ...behavior, lineId: existing.id });
+       setPickerNotice(
+         `${ingredient.name} już znajduje się w Bazie. Przeniesiono fokus do istniejącego wiersza.`,
+       );
+@@ -445,6 +468,7 @@ export function IngredientBuilder({
+     const added = useRecipeStore
+       .getState()
+       .items.find((item) => canonicalIngredientId(item.ingredient) === canonicalId);
++    if (added && behavior) setProductBehaviorSnapshot(added.id, { ...behavior, lineId: added.id });
+     setPickerNotice(null);
+     const normalizedName = ingredient.name.trim().toLocaleLowerCase('pl');
+     for (const unresolvedEntry of Object.values(unresolvedByLineId)) {
+@@ -455,15 +479,19 @@ export function IngredientBuilder({
+     return added ? { focusLineId: added.id } : undefined;
+   };
+ 
+-  const addOrFocusTopping = (ingredient: Parameters<typeof addTopping>[0]) => {
+-    const canonicalId = canonicalIngredientId(ingredient);
++  const addOrFocusTopping = (
++    ingredient: Parameters<typeof addTopping>[0],
++    behavior?: ProductBehaviorSnapshot,
++  ) => {
++    const canonicalId = toppingIngredientIdentity(ingredient);
+     const existing = useRecipeStore
+       .getState()
+-      .toppings.find((item) => canonicalIngredientId(item.ingredient) === canonicalId);
++      .toppings.find((item) => toppingIngredientIdentity(item.ingredient) === canonicalId);
+     addTopping(ingredient);
+     const selected = useRecipeStore
+       .getState()
+-      .toppings.find((item) => canonicalIngredientId(item.ingredient) === canonicalId);
++      .toppings.find((item) => toppingIngredientIdentity(item.ingredient) === canonicalId);
++    if (selected && behavior) setProductBehaviorSnapshot(selected.id, { ...behavior, lineId: selected.id });
+     setPickerNotice(
+       existing
+         ? `${ingredient.name} już jest toppingiem. Zachowano jeden wiersz i przeniesiono do niego fokus.`
+@@ -490,6 +518,12 @@ export function IngredientBuilder({
+     <ProductPickerPopover
+       library={library}
+       scope="BASE_FORMULATION"
++      behaviorContext={{
++        accountId: authUserId,
++        productProfile: behaviorProfile,
++        temperatureC: behaviorTemperatureC,
++        mode: behaviorMode,
++      }}
+       onAdd={addIngredientAndResolveRequiredRole}
+     />
+   );
+@@ -497,14 +531,37 @@ export function IngredientBuilder({
+   const toppingTotalG = toppings.reduce((sum, item) => sum + item.planned_grams, 0);
+   const finalTotalG = totalBatchG + toppingTotalG;
+   const toppingRows = toppings.map((item, index) => {
+-    const cost = effectiveCostForIngredient(item.ingredient, customerPrices);
+-    const canonicalId = customerPriceCanonicalId(item.ingredient);
++    const cost = effectiveCostForToppingIngredient(item.ingredient, customerPrices);
++    const labelTopping = isCatalogLabelToppingIngredient(item.ingredient)
++      ? item.ingredient
++      : null;
++    const engineTopping = isCatalogLabelToppingIngredient(item.ingredient)
++      ? null
++      : item.ingredient;
++    const canonicalId = engineTopping ? customerPriceCanonicalId(engineTopping) : null;
+     const priceView: IngredientPriceView = {
+       cost,
+       lineCost: effectiveLineCost(item.planned_grams, cost),
+-      canEdit: customerOwnerUserId !== null && canPersistCustomerPrice(item.ingredient),
++      resetLabel: labelTopping ? 'Usuń moją cenę' : undefined,
++      canEdit: customerOwnerUserId !== null && (
++        labelTopping !== null || (engineTopping !== null && canPersistCustomerPrice(engineTopping))
++      ),
+       onSave:
+-        customerOwnerUserId && canonicalId
++        customerOwnerUserId && labelTopping
++          ? async (pricePerKg) => {
++              await savePrivateCatalogProductPrice({
++                catalogProductId: labelTopping.catalog_product_id,
++                pricePerKg,
++                currency: CUSTOMER_COST_CURRENCY,
++              });
++              replaceToppingIngredient(item.id, {
++                ...labelTopping,
++                cost_per_kg: pricePerKg,
++                cost_currency: CUSTOMER_COST_CURRENCY,
++              });
++              await queryClient.invalidateQueries({ queryKey: ['global-catalog-search'] });
++            }
++          : customerOwnerUserId && canonicalId
+           ? async (pricePerKg) => {
+               await saveCustomerPrice({
+                 ownerUserId: customerOwnerUserId,
+@@ -515,7 +572,17 @@ export function IngredientBuilder({
+             }
+           : undefined,
+       onReset:
+-        customerOwnerUserId && canonicalId
++        customerOwnerUserId && labelTopping
++          ? async () => {
++              await resetPrivateCatalogProductPrice(labelTopping.catalog_product_id);
++              replaceToppingIngredient(item.id, {
++                ...labelTopping,
++                cost_per_kg: null,
++                cost_currency: null,
++              });
++              await queryClient.invalidateQueries({ queryKey: ['global-catalog-search'] });
++            }
++          : customerOwnerUserId && canonicalId
+           ? async () => resetCustomerPrice(customerOwnerUserId, canonicalId)
+           : undefined,
+     };
+@@ -525,11 +592,20 @@ export function IngredientBuilder({
+         item={item}
+         priceView={priceView}
+         library={library}
++        behaviorContext={{
++          accountId: authUserId,
++          productProfile: behaviorProfile,
++          temperatureC: behaviorTemperatureC,
++          mode: behaviorMode,
++        }}
+         canMoveUp={index > 0}
+         canMoveDown={index < toppings.length - 1}
+         onChange={(grams) => setToppingGrams(item.id, grams)}
+         onRemove={() => removeTopping(item.id)}
+-        onReplace={(ingredient) => replaceToppingIngredient(item.id, ingredient)}
++        onReplace={(ingredient, behavior) => {
++          replaceToppingIngredient(item.id, ingredient);
++          if (behavior) setProductBehaviorSnapshot(item.id, { ...behavior, lineId: item.id });
++        }}
+         onMove={(direction) => {
+           moveTopping(item.id, direction);
+           setReorderNotice(
+@@ -712,6 +788,12 @@ export function IngredientBuilder({
+                         <ProductPickerPopover
+                           library={library}
+                           scope="POST_PROCESS_ADDON"
++                          behaviorContext={{
++                            accountId: authUserId,
++                            productProfile: behaviorProfile,
++                            temperatureC: behaviorTemperatureC,
++                            mode: behaviorMode,
++                          }}
+                           onAdd={addOrFocusTopping}
+                         />
+                       </div>
+@@ -765,6 +847,12 @@ export function IngredientBuilder({
+           <ProductPickerPopover
+             library={library}
+             scope="POST_PROCESS_ADDON"
++            behaviorContext={{
++              accountId: authUserId,
++              productProfile: behaviorProfile,
++              temperatureC: behaviorTemperatureC,
++              mode: behaviorMode,
++            }}
+             onAdd={addOrFocusTopping}
+           />
+         </div>
+diff --git a/src/features/ingredient-builder/IngredientPriceControl.test.tsx b/src/features/ingredient-builder/IngredientPriceControl.test.tsx
+index 1856e7f..83c9762 100644
+--- a/src/features/ingredient-builder/IngredientPriceControl.test.tsx
++++ b/src/features/ingredient-builder/IngredientPriceControl.test.tsx
+@@ -73,4 +73,12 @@ describe('customer price input', () => {
+     expect(html).toContain('Zapisz');
+     expect(html).toContain('Przywróć cenę bazową');
+   });
++
++  it('names catalog-price reset as deletion when no shared base price exists', () => {
++    const html = renderToStaticMarkup(
++      <CustomerPriceEditor view={{ ...view(), resetLabel: 'Usuń moją cenę' }} />,
++    );
++    expect(html).toContain('Usuń moją cenę');
++    expect(html).not.toContain('Przywróć cenę bazową');
++  });
+ });
+diff --git a/src/features/ingredient-builder/IngredientPriceControl.tsx b/src/features/ingredient-builder/IngredientPriceControl.tsx
+index cf617f4..0ccd1d1 100644
+--- a/src/features/ingredient-builder/IngredientPriceControl.tsx
++++ b/src/features/ingredient-builder/IngredientPriceControl.tsx
+@@ -8,6 +8,7 @@ export interface IngredientPriceView {
+   canEdit: boolean;
+   onSave?: (pricePerKg: number) => Promise<void>;
+   onReset?: () => Promise<void>;
++  resetLabel?: string;
+ }
+ 
+ const money = (value: number): string =>
+@@ -108,7 +109,7 @@ export function CustomerPriceEditor({ view }: { view?: IngredientPriceView }) {
+           onClick={() => void reset()}
+           className="min-h-11 text-xs text-stone-600 underline decoration-stone-300 underline-offset-2 disabled:opacity-40"
+         >
+-          Przywróć cenę bazową
++          {view.resetLabel ?? 'Przywróć cenę bazową'}
+         </button>
+         <button
+           type="button"
+diff --git a/src/features/ingredient-builder/IngredientRow.tsx b/src/features/ingredient-builder/IngredientRow.tsx
+index 9ae2494..6b0b98e 100644
+--- a/src/features/ingredient-builder/IngredientRow.tsx
++++ b/src/features/ingredient-builder/IngredientRow.tsx
+@@ -432,6 +432,7 @@ function RecipeRow({
+   canMoveDown,
+   onDragStart,
+   onDrop,
++  mainUnavailableReason,
+ }: {
+   item: EffectiveRecipeItem;
+   totalBatchG: number;
+@@ -444,6 +445,7 @@ function RecipeRow({
+   canMoveDown: boolean;
+   onDragStart?: (lineId: string) => void;
+   onDrop?: (lineId: string) => void;
++  mainUnavailableReason?: string | null;
+ }) {
+   const unit = 'g' as const;
+   const [rowMenuOpen, setRowMenuOpen] = useState(false);
+@@ -740,7 +742,7 @@ function RecipeRow({
+                 <MenuHeading>{t.role.heading}</MenuHeading>
+                 <MenuButton
+                   selected={role === 'main'}
+-                  disabled={gramsLocked}
++                  disabled={gramsLocked || Boolean(mainUnavailableReason)}
+                   onClick={() => {
+                     setRole('main');
+                     setRowMenuOpen(false);
+@@ -748,6 +750,11 @@ function RecipeRow({
+                 >
+                   {t.role.main}
+                 </MenuButton>
++                {mainUnavailableReason ? (
++                  <p className="px-3 pb-2 text-xs leading-relaxed text-status-error" role="status">
++                    {mainUnavailableReason}
++                  </p>
++                ) : null}
+                 <MenuButton
+                   selected={role === 'standard'}
+                   onClick={() => {
+@@ -1032,6 +1039,7 @@ export function IngredientRow({
+   canMoveDown = false,
+   onDragStart,
+   onDrop,
++  mainUnavailableReason,
+ }: {
+   item: EffectiveRecipeItem;
+   totalBatchG: number;
+@@ -1048,6 +1056,7 @@ export function IngredientRow({
+   canMoveDown?: boolean;
+   onDragStart?: (lineId: string) => void;
+   onDrop?: (lineId: string) => void;
++  mainUnavailableReason?: string | null;
+ }) {
+   return (
+     <div
+@@ -1088,6 +1097,7 @@ export function IngredientRow({
+           canMoveDown={canMoveDown}
+           onDragStart={onDragStart}
+           onDrop={onDrop}
++          mainUnavailableReason={mainUnavailableReason}
+         />
+       )}
+     </div>
+diff --git a/src/features/ingredient-builder/ProductPickerPopover.tsx b/src/features/ingredient-builder/ProductPickerPopover.tsx
+index 48d1bb9..24b7a3b 100644
+--- a/src/features/ingredient-builder/ProductPickerPopover.tsx
++++ b/src/features/ingredient-builder/ProductPickerPopover.tsx
+@@ -1,5 +1,6 @@
+ import {
+   useEffect,
++  Fragment,
+   useId,
+   useLayoutEffect,
+   useMemo,
+@@ -8,13 +9,33 @@ import {
+   type CSSProperties,
+ } from 'react';
+ import { createPortal } from 'react-dom';
++import { Link } from 'react-router';
++import { useQuery } from '@tanstack/react-query';
+ import type { EngineIngredient } from '@/engine';
+ import { ingredientRowToEngineIngredient } from '@/data/ingredients/ingredientMapper';
+-import { getIngredientById } from '@/services/ingredients';
++import { getEngineApprovedIngredientById, listEngineApprovedIngredientsByIds } from '@/services/ingredients';
++import { markCatalogProductUsed } from '@/services/globalCatalog';
+ import { cn } from '@/lib/cn';
++import { mappedCatalogIngredient, labelOnlyCatalogToppingIngredient } from '@/features/global-catalog/catalogIngredient';
++import { rankCatalogHits } from '@/features/global-catalog/ranking';
++import { useGlobalCatalogPicker } from '@/features/global-catalog/useGlobalCatalogPicker';
++import type { CatalogProductSearchHit } from '@/features/global-catalog/contracts';
++import type { RecipeToppingIngredient } from '@/features/recipe-composition/labelTopping';
++import {
++  snapshotServerResolvedProductBehavior,
++  type ProductBehaviorContext,
++  type ProductBehaviorSnapshot,
++} from '@/features/product-intelligence';
++import {
++  productBehaviorBlockedMessage,
++  resolveProductBehaviorForSelection,
++} from '@/services/productIntelligence';
+ import { filterIngredients, type IngredientLibrary } from './ingredientLibrary';
+ import { useIngredientSearch } from './useIngredientSearch';
+-import { isProductPickerSelectionCurrent } from './productPickerModel';
++import {
++  isProductPickerSelectionCurrent,
++  productPickerUnavailableReason,
++} from './productPickerModel';
+ 
+ export type ProductPickerScope = 'BASE_FORMULATION' | 'POST_PROCESS_ADDON';
+ 
+@@ -28,11 +49,27 @@ interface PickerOption {
+   name: string;
+   detail: string;
+   local?: EngineIngredient;
++  entityKind: 'pi_base' | 'commercial_product';
++  status: 'pi_base' | 'verified' | 'manual_unverified' | 'blocked';
++  favorite: boolean;
++  market: string | null;
++  originalName: string | null;
++  catalog?: CatalogProductSearchHit;
++  group: 'favorites_recent' | 'pi_base' | 'verified_markets' | 'manual' | 'global' | 'blocked';
++  selectable: boolean;
+ }
+ 
+ const DESKTOP_PICKER_WIDTH = 499;
+ const DESKTOP_PICKER_HEIGHT = 480;
+ const DESKTOP_PICKER_GAP = 12;
++const GROUP_LABELS: Record<PickerOption['group'], string> = {
++  favorites_recent: 'Ulubione i ostatnio używane',
++  pi_base: 'PINGÜINO Base',
++  verified_markets: 'Zweryfikowane na Twoich rynkach',
++  manual: 'Dodane manualnie',
++  global: 'Pozostałe produkty światowe',
++  blocked: 'Wymagają uzupełnienia',
++};
+ 
+ interface PickerPosition {
+   desktop: boolean;
+@@ -42,23 +79,31 @@ interface PickerPosition {
+   height: number;
+ }
+ 
++type ProductPickerPopoverProps = {
++  library: IngredientLibrary;
++  triggerLabel?: string;
++  className?: string;
++  behaviorContext?: Omit<ProductBehaviorContext, 'processScope' | 'requestedRole' | 'module'>;
++} & (
++  | { scope: 'BASE_FORMULATION'; onAdd: (ingredient: EngineIngredient, behavior?: ProductBehaviorSnapshot) => ProductPickerSelectionResult | void }
++  | { scope: 'POST_PROCESS_ADDON'; onAdd: (ingredient: RecipeToppingIngredient, behavior?: ProductBehaviorSnapshot) => ProductPickerSelectionResult | void }
++);
++
+ export function ProductPickerPopover({
+   library,
+   scope,
+   onAdd,
+   triggerLabel,
+   className,
+-}: {
+-  library: IngredientLibrary;
+-  scope: ProductPickerScope;
+-  onAdd: (ingredient: EngineIngredient) => ProductPickerSelectionResult | void;
+-  triggerLabel?: string;
+-  className?: string;
+-}) {
++  behaviorContext,
++}: ProductPickerPopoverProps) {
+   const [open, setOpen] = useState(false);
+   const [query, setQuery] = useState('');
+   const [activeIndex, setActiveIndex] = useState(0);
+   const [adding, setAdding] = useState(false);
++  const [unavailableNotice, setUnavailableNotice] = useState<string | null>(null);
++  const [favoritesOnly, setFavoritesOnly] = useState(false);
++  const [marketFilter, setMarketFilter] = useState<string | null>(null);
+   const [scrollThumb, setScrollThumb] = useState({ top: 0, height: 50, visible: false });
+   const [position, setPosition] = useState<PickerPosition | null>(null);
+   const inputRef = useRef<HTMLInputElement>(null);
+@@ -67,6 +112,23 @@ export function ProductPickerPopover({
+   const dialogRef = useRef<HTMLDivElement>(null);
+   const pickerInstanceId = useId().replace(/:/g, '');
+   const server = useIngredientSearch({ enabled: open && library.serverSearch, query });
++  const globalCatalog = useGlobalCatalogPicker({
++    enabled: open && library.serverSearch,
++    query,
++    favoritesOnly,
++    selectedMarkets: marketFilter && marketFilter !== '__GLOBAL__' ? [marketFilter] : [],
++    forceGlobal: marketFilter === '__GLOBAL__',
++    limit: 500,
++  });
++  const pinnedBaseIds = [...new Set([...globalCatalog.favorites, ...globalCatalog.recent])]
++    .filter((key) => key.startsWith('pi_base:'))
++    .filter((key) => !favoritesOnly || globalCatalog.favorites.has(key))
++    .map((key) => key.slice('pi_base:'.length));
++  const pinnedBase = useQuery({
++    queryKey: ['product-picker-pinned-base', pinnedBaseIds.sort().join(',')],
++    queryFn: () => listEngineApprovedIngredientsByIds(pinnedBaseIds),
++    enabled: open && library.serverSearch && query.trim() === '' && pinnedBaseIds.length > 0,
++  });
+ 
+   useLayoutEffect(() => {
+     if (!open || typeof window === 'undefined') return;
+@@ -101,21 +163,82 @@ export function ProductPickerPopover({
+       // Never expose hits belonging to the previous debounced query. A quick
+       // type -> Enter must not add a stale canonical ingredient.
+       const hits = server.isSettled
+-        ? server.hits.map((hit) => ({ id: hit.id, name: hit.name, detail: hit.form }))
++        ? server.hits.map((hit) => ({
++            id: hit.id,
++            name: hit.name,
++            detail: hit.form,
++            entityKind: 'pi_base' as const,
++            status: 'pi_base' as const,
++            favorite: globalCatalog.favorites.has(`pi_base:${hit.id}`),
++            market: null,
++            originalName: null,
++            group: globalCatalog.favorites.has(`pi_base:${hit.id}`) || globalCatalog.recent.has(`pi_base:${hit.id}`)
++              ? 'favorites_recent' as const
++              : 'pi_base' as const,
++            selectable: true,
++          }))
+         : [];
+-      const q = query.trim().toLocaleLowerCase('pl');
+-      const products = library.products
+-        .filter((item) => !q || `${item.name} ${item.id}`.toLocaleLowerCase('pl').includes(q))
+-        .map((item) => ({ id: item.id, name: item.name, detail: 'Mój produkt', local: item }));
+-      return [...new Map([...hits, ...products].map((option) => [option.id, option])).values()];
++      const pinned = query.trim() === ''
++        ? (pinnedBase.data ?? []).map((row) => ({
++            id: row.ingredient_id,
++            name: row.ingredient_name_display,
++            detail: row.ingredient_subcategory ?? row.ingredient_category,
++            entityKind: 'pi_base' as const,
++            status: 'pi_base' as const,
++            favorite: globalCatalog.favorites.has(`pi_base:${row.ingredient_id}`),
++            market: null,
++            originalName: null,
++            group: 'favorites_recent' as const,
++            selectable: true,
++          }))
++        : [];
++      const catalog = rankCatalogHits({
++        hits: globalCatalog.hits,
++        query,
++        context: scope === 'BASE_FORMULATION' ? 'base' : 'topping',
++        preferences: globalCatalog.preferences,
++        favoritesOnly,
++        // `__GLOBAL__` is a UI sentinel, never a real market. Passing it into
++        // the ranker would filter every commercial result back out.
++        selectedMarkets: marketFilter && marketFilter !== '__GLOBAL__' ? [marketFilter] : [],
++      }).map((hit) => ({
++        id: `catalog:${hit.id}`,
++        name: hit.displayName,
++        detail: hit.brand ?? hit.canonicalFamily ?? 'Produkt',
++        entityKind: 'commercial_product' as const,
++        status: hit.status,
++        favorite: hit.favorite,
++        market: hit.markets[0] ?? null,
++        originalName: hit.originalName,
++        catalog: hit,
++        group: hit.group,
++        selectable: scope === 'BASE_FORMULATION'
++          ? hit.usableInBase
++          : labelOnlyCatalogToppingIngredient(hit) !== null,
++      }));
++      // `rankCatalogHits` is relevance-first. Do not sort by presentation group
++      // afterwards: an unrelated favourite soda must never jump above a true
++      // Strawberry Base hit. Group headings follow the ranked stream instead.
++      // Legacy owner-private `library.products` are deliberately absent here;
++      // they are neither shared-catalog UUIDs nor automatically VERIFIED.
++      const relevant = [...pinned, ...hits, ...catalog]
++        .filter((option) => !favoritesOnly || option.favorite);
++      return [...new Map(relevant.map((option) => [option.id, option])).values()];
+     }
+     return filterIngredients(library.ingredients, query, library.searchIndex).map((item) => ({
+       id: item.id,
+       name: item.name,
+       detail: library.formIndex.get(item.id) ?? '',
+       local: item,
++      entityKind: 'pi_base' as const,
++      status: 'pi_base' as const,
++      favorite: false,
++      market: null,
++      originalName: null,
++      group: 'pi_base' as const,
++      selectable: true,
+     }));
+-  }, [library, query, server.hits, server.isSettled]);
++  }, [favoritesOnly, globalCatalog.favorites, globalCatalog.hits, globalCatalog.preferences, globalCatalog.recent, library, marketFilter, pinnedBase.data, query, scope, server.hits, server.isSettled]);
+   const safeActiveIndex =
+     options.length === 0 ? 0 : Math.min(Math.max(activeIndex, 0), options.length - 1);
+ 
+@@ -137,6 +260,7 @@ export function ProductPickerPopover({
+ 
+   const close = (focusLineId?: string) => {
+     setOpen(false);
++    setUnavailableNotice(null);
+     queueMicrotask(() => {
+       if (focusLineId) {
+         const row = Array.from(document.querySelectorAll<HTMLElement>('[data-line-id]')).find(
+@@ -158,12 +282,22 @@ export function ProductPickerPopover({
+       return;
+     }
+     setActiveIndex(0);
++    setUnavailableNotice(null);
+     setOpen(true);
+     queueMicrotask(() => inputRef.current?.focus());
+   };
+ 
+   const choose = async (option: PickerOption | undefined) => {
+     if (!option || adding) return;
++    if (!option.selectable) {
++      setUnavailableNotice(
++        option.catalog
++          ? productPickerUnavailableReason(scope, option.catalog)
++          : 'Ten produkt nie jest dostępny w wybranym zakresie.',
++      );
++      return;
++    }
++    setUnavailableNotice(null);
+     if (
+       !isProductPickerSelectionCurrent({
+         serverSearch: library.serverSearch,
+@@ -174,12 +308,66 @@ export function ProductPickerPopover({
+       return;
+     setAdding(true);
+     try {
+-      const ingredient =
+-        option.local ??
+-        (await getIngredientById(option.id).then((row) =>
++      let ingredient: RecipeToppingIngredient | null = option.local ?? null;
++      if (!ingredient && option.catalog) {
++        if (scope === 'POST_PROCESS_ADDON') {
++          ingredient = labelOnlyCatalogToppingIngredient(option.catalog);
++        } else if (option.catalog.mappedIngredientId) {
++          ingredient = await getEngineApprovedIngredientById(option.catalog.mappedIngredientId).then((row) =>
++            row ? mappedCatalogIngredient(option.catalog!, row) : null,
++          );
++        }
++      } else if (!ingredient) {
++        ingredient = await getEngineApprovedIngredientById(option.id).then((row) =>
+           row ? ingredientRowToEngineIngredient(row) : null,
+-        ));
+-      const selection = ingredient ? onAdd(ingredient) : undefined;
++        );
++      }
++      let behavior: ProductBehaviorSnapshot | undefined;
++      if (ingredient && behaviorContext && library.serverSearch) {
++        const entity = option.catalog
++          ? option.catalog.currentVersionId
++            ? { entityKind: 'catalog_product_version' as const, entityId: option.catalog.currentVersionId }
++            : null
++          : { entityKind: 'mapper' as const, entityId: option.id };
++        if (entity === null) {
++          setUnavailableNotice('Produkt nie ma jeszcze niezmiennej wersji danych.');
++          return;
++        }
++        const resolved = await resolveProductBehaviorForSelection({
++          entity,
++          context: {
++            ...behaviorContext,
++            processScope: scope,
++            requestedRole: 'STANDARD',
++            module: scope === 'BASE_FORMULATION' ? 'BASE_RECIPE' : 'TOPPING',
++          },
++        }).catch(() => null);
++        if (!resolved) {
++          setUnavailableNotice(
++            'Nie udało się potwierdzić aktualnego zachowania produktu. Spróbuj ponownie.',
++          );
++          return;
++        }
++        if (resolved?.state === 'blocked') {
++          setUnavailableNotice(productBehaviorBlockedMessage(resolved));
++          return;
++        }
++        behavior = snapshotServerResolvedProductBehavior({
++          lineId: '',
++          processScope: scope,
++          resolved,
++        });
++      }
++      const selection = ingredient
++        ? scope === 'POST_PROCESS_ADDON'
++          ? onAdd(ingredient, behavior)
++          : onAdd(ingredient as EngineIngredient, behavior)
++        : undefined;
++      if (ingredient) {
++        // Recent-use telemetry is private ranking metadata; an unavailable
++        // backend must never turn a valid ingredient selection into an error.
++        void markCatalogProductUsed({ entityKind: option.entityKind, id: option.catalog?.id ?? option.id }).catch(() => undefined);
++      }
+       close(selection?.focusLineId);
+     } finally {
+       setAdding(false);
+@@ -200,7 +388,7 @@ export function ProductPickerPopover({
+     : undefined;
+   return (
+     <div className={cn('relative', className)} data-picker-scope={scope}>
+-      <button
++                         <button
+         ref={triggerRef}
+         type="button"
+         className={cn(
+@@ -292,19 +480,17 @@ export function ProductPickerPopover({
+                         ref={inputRef}
+                         type="text"
+                         role="combobox"
+-                        aria-controls={listId}
++                        aria-autocomplete="list"
+                         aria-expanded="true"
+-                        aria-activedescendant={
+-                          options[safeActiveIndex]
+-                            ? `${listId}-${options[safeActiveIndex]!.id}`
+-                            : undefined
+-                        }
++                        aria-controls={listId}
++                        aria-activedescendant={options.length > 0 ? `${listId}-${options[safeActiveIndex]?.id}` : undefined}
+                         aria-label={`Szukaj produktu — ${label}`}
+                         placeholder="Szukaj produktu, marki lub ID…"
+                         value={query}
+-                        onChange={(event) => {
+-                          setQuery(event.currentTarget.value);
+-                          setActiveIndex(0);
++                         onChange={(event) => {
++                           setQuery(event.currentTarget.value);
++                           setActiveIndex(0);
++                           setUnavailableNotice(null);
+                         }}
+                         className="h-11 w-full rounded-xl border border-ink/15 bg-stone-50 px-3 pr-11 text-sm text-ink outline-none focus:border-gold focus:ring-2 focus:ring-gold/18 2xl:h-[38px] 2xl:border-gold/55 2xl:ring-1 2xl:ring-gold/18"
+                       />
+@@ -313,9 +499,10 @@ export function ProductPickerPopover({
+                           type="button"
+                           aria-label="Wyczyść wyszukiwanie"
+                           data-testid="product-picker-clear"
+-                          onClick={() => {
+-                            setQuery('');
+-                            setActiveIndex(0);
++                           onClick={() => {
++                             setQuery('');
++                             setActiveIndex(0);
++                             setUnavailableNotice(null);
+                             inputRef.current?.focus();
+                           }}
+                           className="pro-focus-ring absolute right-1 top-1 grid size-9 place-items-center rounded-lg text-base font-semibold text-stone-600 hover:bg-stone-100 hover:text-ink"
+@@ -324,11 +511,72 @@ export function ProductPickerPopover({
+                         </button>
+                       ) : null}
+                     </div>
+-                    <p className="mt-2 text-xs text-stone-600" role="status" aria-live="polite">
+-                      {library.serverSearch && query.trim() && !server.isSettled
+-                        ? 'Szukam…'
+-                        : `${options.length} wyników`}
+-                    </p>
++                    <div className="mt-1 flex min-h-7 items-center gap-1.5 overflow-x-auto 2xl:h-[18px] 2xl:min-h-0" aria-label={library.serverSearch ? 'Filtry katalogu' : undefined}>
++                      <p className="mr-auto shrink-0 text-xs text-stone-600 2xl:text-[10px]" role="status" aria-live="polite">
++                        {library.serverSearch && query.trim() && (!server.isSettled || !globalCatalog.isSettled)
++                          ? 'Szukam…'
++                          : `${options.length} wyników`}
++                      </p>
++                      {library.serverSearch ? (
++                        <>
++                        <button
++                          type="button"
++                          aria-pressed={favoritesOnly}
++                          onClick={() => {
++                            setFavoritesOnly((value) => !value);
++                            setUnavailableNotice(null);
++                          }}
++                          className={cn(
++                            "pro-focus-ring min-h-11 shrink-0 rounded-full border px-2.5 text-[10px] font-semibold 2xl:relative 2xl:min-h-[18px] 2xl:px-2 2xl:text-[9px] 2xl:after:absolute 2xl:after:-inset-y-[3px] 2xl:after:inset-x-0 2xl:after:content-['']",
++                            favoritesOnly ? 'border-gold bg-gold/12 text-ink' : 'border-ink/12 text-stone-600',
++                          )}
++                        >
++                          <span aria-hidden>★</span> Ulubione
++                        </button>
++                        {[globalCatalog.preferences.primaryMarket, ...globalCatalog.preferences.additionalMarkets]
++                          .filter((value): value is string => Boolean(value))
++                          .slice(0, 2)
++                          .map((market) => (
++                            <button
++                              key={market}
++                              type="button"
++                              aria-pressed={marketFilter === market}
++                              onClick={() => {
++                                setMarketFilter((value) => value === market ? null : market);
++                                setUnavailableNotice(null);
++                              }}
++                              className={cn(
++                                "pro-focus-ring min-h-11 shrink-0 rounded-full border px-2.5 text-[10px] font-semibold 2xl:relative 2xl:min-h-[18px] 2xl:px-2 2xl:text-[9px] 2xl:after:absolute 2xl:after:-inset-y-[3px] 2xl:after:inset-x-0 2xl:after:content-['']",
++                                marketFilter === market ? 'border-gold bg-gold/12 text-ink' : 'border-ink/12 text-stone-600',
++                              )}
++                            >
++                              {market}
++                            </button>
++                          ))}
++                        <Link
++                          to="/account#product-markets-heading"
++                          className="pro-focus-ring min-h-11 shrink-0 rounded-full px-2 text-[10px] font-semibold text-stone-600 2xl:relative 2xl:min-h-[18px] 2xl:text-[9px] 2xl:after:absolute 2xl:after:-inset-y-[3px] 2xl:after:inset-x-0 2xl:after:content-['']"
++                          onClick={() => close()}
++                        >
++                          + Rynek
++                        </Link>
++                        <button
++                          type="button"
++                          aria-pressed={marketFilter === '__GLOBAL__'}
++                          onClick={() => {
++                            setMarketFilter((value) => value === '__GLOBAL__' ? null : '__GLOBAL__');
++                            setUnavailableNotice(null);
++                          }}
++                          className={cn(
++                            "pro-focus-ring min-h-11 shrink-0 rounded-full border px-2 text-[10px] font-semibold 2xl:relative 2xl:min-h-[18px] 2xl:text-[9px] 2xl:after:absolute 2xl:after:-inset-y-[3px] 2xl:after:inset-x-0 2xl:after:content-['']",
++                            marketFilter === '__GLOBAL__' ? 'border-gold bg-gold/12 text-ink' : 'border-ink/12 text-stone-600',
++                          )}
++                        >
++                          Cały świat
++                        </button>
++                        </>
++                      ) : null}
++                    </div>
+                   </div>
+                   <div className="relative min-h-0 flex-1">
+                     <div
+@@ -363,27 +611,100 @@ export function ProductPickerPopover({
+                       </p>
+                     ) : (
+                       options.map((option, index) => (
+-                        <button
+-                          id={`${listId}-${option.id}`}
+-                          key={option.id}
+-                          type="button"
+-                          role="option"
+-                          aria-selected={index === safeActiveIndex}
+-                          data-option-index={index}
++                        <Fragment key={option.id}>
++                        {index === 0 || options[index - 1]?.group !== option.group ? (
++                          <p role="presentation" className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-stone-500">
++                            {GROUP_LABELS[option.group]}
++                          </p>
++                        ) : null}
++                        <div
++                          role="presentation"
+                           className={cn(
+-                            'flex min-h-11 w-full items-center justify-between gap-4 rounded-xl px-3 py-2 text-left lg:min-h-[38px] lg:rounded-lg lg:py-1.5 2xl:pl-[11px] 2xl:pr-2',
++                            'flex min-h-11 w-full items-center rounded-xl lg:min-h-[38px] lg:rounded-lg',
+                             index === safeActiveIndex
+                               ? 'bg-education-ivory text-ink'
+                               : 'hover:bg-stone-50',
++                            !option.selectable ? 'cursor-not-allowed opacity-60' : '',
+                           )}
+                           onMouseEnter={() => setActiveIndex(index)}
+-                          onClick={() => void choose(option)}
+                         >
+-                          <span className="min-w-0 truncate text-sm font-semibold">
+-                            {option.name}
++                          <button
++                            id={`${listId}-${option.id}`}
++                            type="button"
++                            role="option"
++                            aria-selected={index === safeActiveIndex}
++                            aria-disabled={!option.selectable}
++                            aria-label={
++                              `${option.name}. ${
++                                option.status === 'pi_base'
++                                  ? 'PINGÜINO Base'
++                                  : option.status === 'verified'
++                                    ? 'GREEN, zweryfikowany'
++                                    : option.status === 'manual_unverified'
++                                      ? 'BLUE, manualny i niezweryfikowany'
++                                      : 'RED, wymaga uzupełnienia'
++                              }${!option.selectable && option.catalog
++                                ? `. Niedostępny. ${productPickerUnavailableReason(scope, option.catalog)}`
++                                : ''}`
++                            }
++                            data-option-index={index}
++                            title={
++                              !option.selectable && option.catalog
++                                ? productPickerUnavailableReason(scope, option.catalog)
++                              : option.status === 'pi_base'
++                                ? 'PINGÜINO Base'
++                                : option.status === 'verified'
++                                  ? 'Zweryfikowany — dane etykiety potwierdzone'
++                                  : option.status === 'manual_unverified'
++                                    ? 'Dodany manualnie · Niezweryfikowany'
++                                    : `Nie można zweryfikować${option.catalog && (option.catalog.missingFields.length + option.catalog.invalidFields.length) > 0 ? `: ${[...option.catalog.missingFields, ...option.catalog.invalidFields].join(', ')}` : ''}`
++                            }
++                            className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2 text-left lg:py-1.5 2xl:pl-[11px] 2xl:pr-1"
++                            onClick={() => void choose(option)}
++                          >
++                     <span
++                            aria-label={
++                              option.status === 'pi_base'
++                                ? 'PINGÜINO Base'
++                                : option.status === 'verified'
++                                  ? 'Zweryfikowany'
++                                  : option.status === 'manual_unverified'
++                                    ? 'Dodany manualnie, niezweryfikowany'
++                                    : 'Nie można zweryfikować'
++                            }
++                            className={cn(
++                              'grid size-5 shrink-0 place-items-center rounded-full text-[10px] font-bold',
++                              option.status === 'pi_base' ? 'bg-gold/16 text-gold' :
++                                option.status === 'verified' ? 'bg-status-ideal/12 text-status-ideal' :
++                                  option.status === 'manual_unverified' ? 'bg-slate-200 text-slate-700' :
++                                    'bg-red-100 text-red-700',
++                            )}
++                          >
++                            <span aria-hidden>{option.status === 'pi_base' ? 'PI' : option.status === 'verified' ? '✓' : option.status === 'manual_unverified' ? '✎' : '!'}</span>
+                           </span>
+-                          <span className="shrink-0 text-xs text-stone-600">{option.detail}</span>
+-                        </button>
++                          <span className="min-w-0 flex-1">
++                            <span className="block truncate text-sm font-semibold">{option.name}</span>
++                            {option.originalName && option.originalName !== option.name ? (
++                              <span className="block truncate text-[10px] text-stone-500">oryg. {option.originalName}</span>
++                            ) : null}
++                          </span>
++                          <span className="shrink-0 text-[10px] text-stone-600">{option.market ?? option.detail}</span>
++                          </button>
++                          {option.status !== 'blocked' ? <button
++                            type="button"
++                            aria-label={option.favorite ? `Usuń ${option.name} z Ulubionych` : `Dodaj ${option.name} do Ulubionych`}
++                            aria-pressed={option.favorite}
++                            className={cn('pro-focus-ring grid size-11 shrink-0 place-items-center rounded-lg text-base 2xl:size-8', option.favorite ? 'text-gold' : 'text-stone-500')}
++                            onClick={(event) => {
++                              event.preventDefault();
++                              event.stopPropagation();
++                              globalCatalog.toggleFavorite(option.entityKind, option.catalog?.id ?? option.id, !option.favorite);
++                            }}
++                          >
++                            <span aria-hidden>{option.favorite ? '★' : '☆'}</span>
++                          </button> : <span className="px-2 text-[9px] font-semibold text-red-700">Uzupełnij</span>}
++                        </div>
++                        </Fragment>
+                       ))
+                     )}
+                     {library.serverSearch && server.hasMore ? (
+@@ -400,6 +721,11 @@ export function ProductPickerPopover({
+                         Nie udało się pobrać wyników. Spróbuj ponownie.
+                       </p>
+                     ) : null}
++                    {library.serverSearch && globalCatalog.isError ? (
++                      <p className="px-3 py-3 text-xs text-status-error" role="alert">
++                        Katalog produktów jest chwilowo niedostępny. PINGÜINO Base nadal działa.
++                      </p>
++                    ) : null}
+                     </div>
+                     <span
+                       aria-hidden="true"
+@@ -412,8 +738,18 @@ export function ProductPickerPopover({
+                         height: scrollThumb.height,
+                         transform: `translateY(${scrollThumb.top}px)`,
+                       }}
+-                    />
+-                  </div>
++                     />
++                   </div>
++                  {unavailableNotice ? (
++                    <p
++                      className="shrink-0 border-t border-attention/25 bg-pro-amber/35 px-3 py-2 text-xs leading-relaxed text-stone-700"
++                      role="status"
++                      aria-live="polite"
++                      data-testid="product-picker-unavailable-reason"
++                    >
++                      {unavailableNotice}
++                    </p>
++                  ) : null}
+                   <button
+                     type="button"
+                     className="min-h-11 border-t border-ink/10 text-xs font-semibold text-stone-600 2xl:h-[39px] 2xl:min-h-0"
+diff --git a/src/features/ingredient-builder/ToppingRow.tsx b/src/features/ingredient-builder/ToppingRow.tsx
+index 73a6c76..2db7481 100644
+--- a/src/features/ingredient-builder/ToppingRow.tsx
++++ b/src/features/ingredient-builder/ToppingRow.tsx
+@@ -10,7 +10,11 @@ import {
+ import { DialogShell } from './IngredientRow';
+ import { ProductPickerPopover } from './ProductPickerPopover';
+ import type { IngredientLibrary } from './ingredientLibrary';
+-import type { EngineIngredient } from '@/engine';
++import {
++  isCatalogLabelToppingIngredient,
++  type RecipeToppingIngredient,
++} from '@/features/recipe-composition/labelTopping';
++import type { ProductBehaviorContext, ProductBehaviorSnapshot } from '@/features/product-intelligence';
+ 
+ export const TOPPING_ROW_GRID =
+   'grid grid-cols-1 items-center gap-x-3 gap-y-3 md:grid-cols-[minmax(190px,1.5fr)_minmax(200px,1fr)_96px_44px]';
+@@ -27,6 +31,7 @@ export function ToppingRow({
+   onMove,
+   onDragStart,
+   onDrop,
++  behaviorContext,
+ }: {
+   item: RecipeToppingItem;
+   priceView: IngredientPriceView;
+@@ -34,13 +39,17 @@ export function ToppingRow({
+   canMoveDown: boolean;
+   onChange: (grams: number) => void;
+   onRemove: () => void;
+-  onReplace: (ingredient: EngineIngredient) => void;
++  onReplace: (ingredient: RecipeToppingIngredient, behavior?: ProductBehaviorSnapshot) => void;
+   library: IngredientLibrary;
++  behaviorContext: Omit<ProductBehaviorContext, 'processScope' | 'requestedRole' | 'module'>;
+   onMove: (direction: -1 | 1) => void;
+   onDragStart: () => void;
+   onDrop: () => void;
+ }) {
+   const [menuOpen, setMenuOpen] = useState(false);
++  const catalogLabel = isCatalogLabelToppingIngredient(item.ingredient)
++    ? item.ingredient
++    : null;
+   return (
+     <div
+       className="border-b border-status-ideal/15 bg-pro-sage/28 px-3 py-3 hover:bg-pro-sage/45"
+@@ -74,6 +83,21 @@ export function ToppingRow({
+             </strong>
+           </span>
+           <span className="mt-1 block pl-6 text-xs text-stone-600">Dodatek po produkcji</span>
++          {catalogLabel ? (
++            <span
++              className={cn(
++                'mt-1 inline-flex rounded-md px-2 py-1 text-xs font-semibold',
++                catalogLabel.verification_status === 'verified'
++                  ? 'bg-status-ideal/12 text-status-ideal'
++                  : 'bg-sky-100 text-sky-800',
++              )}
++              data-testid="catalog-topping-verification"
++            >
++              {catalogLabel.verification_status === 'verified'
++                ? 'Zweryfikowany produkt katalogowy'
++                : 'Dodany manualnie · niezweryfikowany'}
++            </span>
++          ) : null}
+         </div>
+ 
+         <div>
+@@ -136,6 +160,18 @@ export function ToppingRow({
+                 <dt className="text-stone-600">Nazwa</dt>
+                 <dd className="text-right font-medium text-ink">{item.ingredient.name}</dd>
+               </div>
++              {catalogLabel ? (
++                <>
++                  <div className="flex items-start justify-between gap-3">
++                    <dt className="text-stone-600">Skład z etykiety</dt>
++                    <dd className="text-right font-medium text-ink">{catalogLabel.ingredients_text}</dd>
++                  </div>
++                  <div className="flex items-start justify-between gap-3">
++                    <dt className="text-stone-600">Alergeny z etykiety</dt>
++                    <dd className="text-right font-medium text-ink">{catalogLabel.allergens_text}</dd>
++                  </div>
++                </>
++              ) : null}
+               <div className="flex items-start justify-between gap-3">
+                 <dt className="text-stone-600">ID</dt>
+                 <dd className="break-all text-right font-mono text-ink">
+@@ -153,9 +189,10 @@ export function ToppingRow({
+             <ProductPickerPopover
+               library={library}
+               scope="POST_PROCESS_ADDON"
++              behaviorContext={behaviorContext}
+               triggerLabel="Zamień topping"
+-              onAdd={(ingredient) => {
+-                onReplace(ingredient);
++              onAdd={(ingredient, behavior) => {
++                onReplace(ingredient, behavior);
+                 setMenuOpen(false);
+               }}
+             />
+diff --git a/src/features/ingredient-builder/liveSearchContract.test.ts b/src/features/ingredient-builder/liveSearchContract.test.ts
+index 3d11998..2ee956d 100644
+--- a/src/features/ingredient-builder/liveSearchContract.test.ts
++++ b/src/features/ingredient-builder/liveSearchContract.test.ts
+@@ -63,7 +63,12 @@ describe('per-query server request (tests 3/4/5)', () => {
+     expect(captured.length).toBe(1);
+     const cap = captured[0]!;
+     expect(cap.table).toBe('mapper_basement');
+-    expect(cap.eq).toEqual([['is_active', true], ['approved_for_engines', true]]);
++    expect(cap.eq).toEqual([
++      ['is_active', true],
++      ['approved_for_base', true],
++      ['approved_for_engines', true],
++      ['verification_status', 'verified'],
++    ]);
+     expect(cap.or.length).toBe(1); // one significant token („świeże" is a stopword)
+     expect(cap.or[0]).toContain('ingredient_name_display.ilike.*truskaw*');
+     expect(cap.or[0]).toContain('ingredient_name_internal.ilike.*straw*');
+@@ -113,7 +118,12 @@ describe('per-query server request (tests 3/4/5)', () => {
+     await searchEngineApprovedIngredients('milk', { limit: 700 });
+     expect(captured.length).toBe(2);
+     for (const c of captured) {
+-      expect(c.eq).toEqual([['is_active', true], ['approved_for_engines', true]]);
++      expect(c.eq).toEqual([
++        ['is_active', true],
++        ['approved_for_base', true],
++        ['approved_for_engines', true],
++        ['verification_status', 'verified'],
++      ]);
+       expect(c.or).toEqual(captured[0]!.or);
+       expect(c.order.map(([col]) => col)).toEqual(['ingredient_name_display', 'ingredient_id']); // stable tiebreak
+     }
+@@ -175,7 +185,7 @@ describe('source pins — the architecture cannot silently regress (tests 1/2 +
+     expect(builder).toContain('<ProductPickerPopover');
+     expect(picker).toContain('library.serverSearch');
+     expect(picker).toContain('useIngredientSearch');
+-    expect(picker).toContain('getIngredientById(option.id)');
++    expect(picker).toContain('getEngineApprovedIngredientById(option.id)');
+   });
+ 
+   it('stale-add protection: the current picker rejects old server hits until the new query settles', () => {
+@@ -203,7 +213,7 @@ describe('source pins — the architecture cannot silently regress (tests 1/2 +
+     const src = read('features', 'ingredient-builder', 'ProductPickerPopover.tsx');
+     expect(src).toContain('server.isSettled');
+     expect(src).toContain('isProductPickerSelectionCurrent');
+-    expect(src).toContain('getIngredientById(option.id)');
++    expect(src).toContain('getEngineApprovedIngredientById(option.id)');
+   });
+ 
+   it('binds modal identity and the focus trap to the visible picker, never its backdrop', () => {
+diff --git a/src/features/ingredient-builder/productPickerModel.ts b/src/features/ingredient-builder/productPickerModel.ts
+index 3e190ba..3235271 100644
+--- a/src/features/ingredient-builder/productPickerModel.ts
++++ b/src/features/ingredient-builder/productPickerModel.ts
+@@ -1,5 +1,46 @@
++import type { CatalogProductSearchHit } from '@/features/global-catalog/contracts';
++
+ export const isProductPickerSelectionCurrent = (input: {
+   serverSearch: boolean;
+   serverSettled: boolean;
+   localOption: boolean;
+ }): boolean => !input.serverSearch || input.localOption || input.serverSettled;
++
++const DEFECT_LABELS: Record<string, string> = {
++  nutrition_basis_per_100ml_requires_density_for_gram_topping:
++    'wartości odżywcze na 100 ml bez zweryfikowanej gęstości',
++  ingredients_text: 'deklaracja składników',
++  allergens_text: 'deklaracja alergenów',
++  nutrition_energyKcal: 'wartość energetyczna',
++  nutrition_fat: 'tłuszcz',
++  nutrition_carbohydrate: 'węglowodany',
++  nutrition_protein: 'białko',
++  nutrition_salt: 'sól',
++  net_quantity_unit: 'ilość netto i jednostka',
++  market_of_sale: 'rynek sprzedaży',
++};
++
++const defectLabel = (value: string): string =>
++  DEFECT_LABELS[value] ?? 'nieopisane pole danych';
++
++export function productPickerUnavailableReason(
++  scope: 'BASE_FORMULATION' | 'POST_PROCESS_ADDON',
++  hit: CatalogProductSearchHit,
++): string {
++  if (hit.status === 'blocked') {
++    const defects = [...hit.missingFields, ...hit.invalidFields].map(defectLabel);
++    return defects.length > 0
++      ? `Produkt wymaga uzupełnienia: ${defects.join(', ')}.`
++      : 'Produkt wymaga uzupełnienia i ponownej weryfikacji.';
++  }
++  if (scope === 'BASE_FORMULATION') {
++    return 'Brak zatwierdzonego mapowania do PINGÜINO Base dla tego produktu.';
++  }
++  if (hit.invalidFields.includes('nutrition_basis_per_100ml_requires_density_for_gram_topping')) {
++    return 'Dane etykiety są podane na 100 ml. Dodaj zweryfikowaną gęstość, aby bezpiecznie przeliczyć topping na gramy.';
++  }
++  const defects = [...hit.missingFields, ...hit.invalidFields].map(defectLabel);
++  return defects.length > 0
++    ? `Topping wymaga pełnych danych etykiety: ${defects.join(', ')}.`
++    : 'Topping wymaga wartości odżywczych na 100 g oraz deklaracji składników i alergenów.';
++}
+diff --git a/src/features/master-label/masterLabel.test.ts b/src/features/master-label/masterLabel.test.ts
+index bae1bea..f2bced9 100644
+--- a/src/features/master-label/masterLabel.test.ts
++++ b/src/features/master-label/masterLabel.test.ts
+@@ -17,6 +17,7 @@ import {
+ } from './masterLabel';
+ import { buildMasterLabelPrintHtml } from './masterLabelPrint';
+ import { MARKET_PROFILES, marketProfile } from './marketProfiles';
++import type { CatalogLabelToppingIngredient } from '@/features/recipe-composition/labelTopping';
+ 
+ function completedSnapshot(delta = 0) {
+   const input: RecipeInput = {
+@@ -148,6 +149,72 @@ function completedSnapshotWithToppings(sameCanonicalAsBase = false) {
+   ).completionSnapshot!;
+ }
+ 
++function completedSnapshotWithLabelTopping() {
++  const input: RecipeInput = {
++    items: DEFAULT_PRESET.items.map((item) => ({ ...item, actual_grams: null })),
++    mode: 'classic',
++    category: DEFAULT_PRESET.category,
++    target_temperature_c: DEFAULT_PRESET.target_temperature_c,
++    target_batch_grams: DEFAULT_PRESET.target_batch_grams,
++    machine_capacity_grams: null,
++  };
++  const ingredient: CatalogLabelToppingIngredient = {
++    kind: 'catalog_label_topping',
++    id: 'catalog:fruit-sauce',
++    canonical_ingredient_id: 'catalog:fruit-sauce',
++    private_product_id: 'catalog:fruit-sauce:version:v1',
++    name: 'Fruit sauce',
++    catalog_product_id: 'fruit-sauce',
++    catalog_version_id: 'v1',
++    verification_status: 'verified',
++    label_nutrition_per_100g: {
++      basis: 'per_100g', energyKcal: 210, fat: 0.5, saturatedFat: 0.1,
++      carbohydrate: 50, sugars: 44, protein: 0.7, salt: 0.02, fibre: 2,
++    },
++    ingredients_text: 'Fruit, sugar',
++    allergens_text: 'None declared',
++    cost_per_kg: null,
++    cost_currency: null,
++  };
++  let session = createProductionSession({
++    sessionId: 'run-label-catalog-topping',
++    ownerUserId: 'owner',
++    source: {
++      recipeId: 'recipe', recipeVersionId: 'version', recipeVersionNumber: 1,
++      recipeName: 'Gelato z sosem',
++    },
++    plannedInput: input,
++    plannedComposition: {
++      schemaVersion: 1,
++      baseScope: 'BASE_FORMULATION',
++      baseOrder: input.items.map((item) => item.id),
++      toppings: [{
++        id: 'label-topping-line', ingredient, planned_grams: 80, actual_grams: null,
++        process_scope: 'POST_PROCESS_ADDON', addon_sort_order: 0,
++      }],
++      migrationAmbiguities: [],
++    },
++    startedAt: '2026-08-12T10:00:00.000Z',
++  });
++  for (const [index, line] of session.lines.entries()) {
++    session = confirmProductionLine(session, line.lineId, `2026-08-12T10:0${index}:00.000Z`);
++  }
++  session = confirmProductionLine(session, 'label-topping-line', '2026-08-12T10:20:00.000Z');
++  return completeProductionSession(
++    session,
++    calculateRecipe({
++      ...input,
++      items: input.items.map((item) => ({
++        ...item,
++        actual_grams: item.planned_grams,
++        lock_type: 'already_added' as const,
++      })),
++    }),
++    '2026-08-12T11:00:00.000Z',
++    'owner',
++  ).completionSnapshot!;
++}
++
+ const build = (delta = 0) => {
+   const snapshot = completedSnapshot(delta);
+   return buildMasterLabelData({
+@@ -239,6 +306,32 @@ describe('Master Label — one actual-batch source model', () => {
+     );
+   });
+ 
++  it('uses label-only commercial Topping nutrition in the final label without Engine science', () => {
++    const snapshot = completedSnapshotWithLabelTopping();
++    const data = buildMasterLabelData({
++      masterLabelId: 'label-catalog-topping',
++      snapshot,
++      market: 'EU',
++      uiLanguage: 'pl',
++      labelLanguages: ['pl'],
++      allergenEvidenceByCanonicalId: evidence(snapshot),
++    });
++
++    expect(snapshot.finalProduct.nutritionPer100g).toBeNull();
++    expect(snapshot.finalProduct.labelNutritionPer100g).not.toBeNull();
++    expect(data.nutritionSource).toEqual(snapshot.finalProduct.labelNutritionPer100g);
++    expect(data.nutritionSource?.alcohol_g).toBeNull();
++    expect(data.ingredients).toContainEqual(expect.objectContaining({
++      canonicalIngredientId: 'catalog:fruit-sauce',
++      actualGrams: 80,
++      sourceIngredientsText: 'Fruit, sugar',
++      sourceAllergensText: 'None declared',
++    }));
++    expect(data.ingredients.find((item) => item.canonicalIngredientId === 'catalog:fruit-sauce')
++      ?.names.pl).toContain('Fruit, sugar');
++    expect(data.allergens.labelStatements).toContain('None declared');
++  });
++
+   it('keeps UI language, market and label languages independent', () => {
+     const data = build();
+     expect(data.uiLanguage).toBe('pl');
+diff --git a/src/features/master-label/masterLabel.ts b/src/features/master-label/masterLabel.ts
+index 78161db..2b19089 100644
+--- a/src/features/master-label/masterLabel.ts
++++ b/src/features/master-label/masterLabel.ts
+@@ -1,6 +1,10 @@
+-import type { NutritionPer100g } from '@/engine';
+-import { buildNutritionDeclaration, type NutritionDeclaration } from '@/data/label/nutritionLabel';
++import {
++  buildNutritionDeclaration,
++  type LabelNutritionPer100g,
++  type NutritionDeclaration,
++} from '@/data/label/nutritionLabel';
+ import type { ProductionCompletionSnapshot } from '@/features/production-workspace/productionSession';
++import { isCatalogLabelToppingIngredient } from '@/features/recipe-composition/labelTopping';
+ import {
+   marketProfile,
+   type MarketProfileCode,
+@@ -38,6 +42,8 @@ export interface MasterLabelIngredient {
+   percent: number;
+   allergenEvidenceStatus: IngredientAllergenEvidence['status'];
+   allergenSourceRevision: string | null;
++  sourceIngredientsText: string | null;
++  sourceAllergensText: string | null;
+ }
+ 
+ export interface MasterLabelData {
+@@ -56,9 +62,10 @@ export interface MasterLabelData {
+     status: 'complete' | 'incomplete';
+     declared: string[];
+     mayContain: string[];
++    labelStatements: string[];
+     reviewedByUser: boolean;
+   };
+-  nutritionSource: NutritionPer100g | null;
++  nutritionSource: LabelNutritionPer100g | null;
+   nutritionDeclaration: NutritionDeclaration | null;
+   netQuantityG: number | null;
+   servingQuantityG: number | null;
+@@ -118,21 +125,38 @@ export function buildMasterLabelData(input: BuildMasterLabelInput): MasterLabelD
+   // in each scope, but it is one ingredient in the final product declaration.
+   const declarationLines = new Map<
+     string,
+-    { lineId: string; canonicalId: string | null; name: string; grams: number }
++    {
++      lineId: string;
++      canonicalId: string | null;
++      name: string;
++      grams: number;
++      sourceIngredientsText: string | null;
++      sourceAllergensText: string | null;
++      labelEvidenceVerified: boolean;
++    }
+   >();
+   for (const item of snapshot.finalProduct.items.filter((row) => row.effective_grams > 0)) {
+     const canonicalId = item.ingredient.canonical_ingredient_id ?? item.ingredient.id ?? null;
++    const labelIngredient = isCatalogLabelToppingIngredient(item.ingredient)
++      ? item.ingredient
++      : null;
+     const key = canonicalId ? `canonical:${canonicalId}` : `line:${item.id}`;
+     const existing = declarationLines.get(key);
+     if (existing) {
+       existing.grams += item.effective_grams;
+       existing.lineId = `${existing.lineId}+${item.id}`;
++      existing.sourceIngredientsText ??= labelIngredient?.ingredients_text ?? null;
++      existing.sourceAllergensText ??= labelIngredient?.allergens_text ?? null;
++      existing.labelEvidenceVerified ||= labelIngredient?.verification_status === 'verified';
+     } else {
+       declarationLines.set(key, {
+         lineId: item.id,
+         canonicalId,
+         name: item.ingredient.name,
+         grams: item.effective_grams,
++        sourceIngredientsText: labelIngredient?.ingredients_text ?? null,
++        sourceAllergensText: labelIngredient?.allergens_text ?? null,
++        labelEvidenceVerified: labelIngredient?.verification_status === 'verified',
+       });
+     }
+   }
+@@ -141,23 +165,41 @@ export function buildMasterLabelData(input: BuildMasterLabelInput): MasterLabelD
+     .map((item) => {
+       const canonicalId = item.canonicalId;
+       const allergenEvidence = canonicalId ? evidence[canonicalId] : undefined;
++      const embeddedEvidenceStatus: IngredientAllergenEvidence['status'] = item.labelEvidenceVerified
++        ? 'verified'
++        : 'missing';
++      const declarationName = item.sourceIngredientsText
++        ? `${item.name} (${item.sourceIngredientsText})`
++        : item.name;
+       return {
+         lineId: item.lineId,
+         canonicalIngredientId: canonicalId,
+-        names: translated(item.name, languages),
++        names: translated(declarationName, languages),
+         actualGrams: item.grams,
+         percent: total > 0 ? (item.grams / total) * 100 : 0,
+-        allergenEvidenceStatus: allergenEvidence?.status ?? 'missing',
+-        allergenSourceRevision: allergenEvidence?.sourceRevision ?? null,
++        allergenEvidenceStatus: allergenEvidence?.status ?? embeddedEvidenceStatus,
++        allergenSourceRevision: allergenEvidence?.sourceRevision
++          ?? (item.labelEvidenceVerified ? 'catalog-label-snapshot' : null),
++        sourceIngredientsText: item.sourceIngredientsText,
++        sourceAllergensText: item.sourceAllergensText,
+       };
+     });
+-  const allEvidence = ingredients.map((ingredient) =>
+-    ingredient.canonicalIngredientId ? evidence[ingredient.canonicalIngredientId] : undefined,
+-  );
+-  const allergenComplete =
+-    ingredients.length > 0 && allEvidence.every((item) => item?.status === 'verified');
++  const allEvidence = ingredients.map((ingredient) => {
++    const external = ingredient.canonicalIngredientId
++      ? evidence[ingredient.canonicalIngredientId]
++      : undefined;
++    if (external) return external;
++    return ingredient.allergenEvidenceStatus === 'verified'
++      ? { status: 'verified' as const, allergens: [], mayContain: [] }
++      : undefined;
++  });
++  const allergenComplete = ingredients.length > 0
++    && ingredients.every((item) => item.allergenEvidenceStatus === 'verified');
+   const declared = [...new Set(allEvidence.flatMap((item) => item?.allergens ?? []))].sort();
+   const mayContain = [...new Set(allEvidence.flatMap((item) => item?.mayContain ?? []))].sort();
++  const labelStatements = [...new Set(
++    ingredients.map((item) => item.sourceAllergensText?.trim()).filter((item): item is string => Boolean(item)),
++  )];
+   const facility = { ...emptyFacility(), ...input.facilityDefaults };
+   const completedDate = snapshot.productionCompletedAt.slice(0, 10);
+ 
+@@ -177,10 +219,14 @@ export function buildMasterLabelData(input: BuildMasterLabelInput): MasterLabelD
+       status: allergenComplete ? 'complete' : 'incomplete',
+       declared,
+       mayContain,
++      labelStatements,
+       reviewedByUser: false,
+     },
+-    nutritionSource: snapshot.finalProduct.nutritionPer100g,
+-    nutritionDeclaration: buildNutritionDeclaration(snapshot.finalProduct.nutritionPer100g),
++    nutritionSource:
++      snapshot.finalProduct.labelNutritionPer100g ?? snapshot.finalProduct.nutritionPer100g,
++    nutritionDeclaration: buildNutritionDeclaration(
++      snapshot.finalProduct.labelNutritionPer100g ?? snapshot.finalProduct.nutritionPer100g,
++    ),
+     // Batch mass is not package net quantity. Never fabricate this field.
+     netQuantityG: null,
+     servingQuantityG: null,
+diff --git a/src/features/master-label/masterLabelPrint.ts b/src/features/master-label/masterLabelPrint.ts
+index 7e05eee..66cc934 100644
+--- a/src/features/master-label/masterLabelPrint.ts
++++ b/src/features/master-label/masterLabelPrint.ts
+@@ -22,8 +22,9 @@ export function buildMasterLabelPrintHtml(data: MasterLabelData): string {
+   const ingredients = data.ingredients
+     .map((ingredient) => primaryText(ingredient.names, data.labelLanguages))
+     .join(', ');
+-  const allergens = data.allergens.declared.length > 0
+-    ? `<p><strong>Alergeny:</strong> ${escapeHtml(data.allergens.declared.join(', '))}</p>`
++  const allergenTexts = [...data.allergens.declared, ...data.allergens.labelStatements];
++  const allergens = allergenTexts.length > 0
++    ? `<p><strong>Alergeny:</strong> ${escapeHtml(allergenTexts.join('; '))}</p>`
+     : '<p><strong>Alergeny:</strong> dane składników zweryfikowane przez użytkownika</p>';
+   const nutrition = data.nutritionDeclaration?.rows
+     .map((row) => `<tr><th>${escapeHtml(row.label)}</th><td>${escapeHtml(row.valueDisplay ?? '—')}</td></tr>`)
+diff --git a/src/features/ocr-intake/ocrCopy.ts b/src/features/ocr-intake/ocrCopy.ts
+index 13c36ca..5340fe6 100644
+--- a/src/features/ocr-intake/ocrCopy.ts
++++ b/src/features/ocr-intake/ocrCopy.ts
+@@ -219,30 +219,38 @@ export const ocrCopy = {
+     } satisfies Record<IntakeFieldKey, string>,
+   },
+   duplicate: {
+-    title: 'Duplicate check',
++    title: 'Czy to ten sam produkt?',
+     verdicts: {
+-      exact_duplicate: 'Exact duplicate',
+-      likely_duplicate: 'Likely duplicate',
+-      new_product: 'New product',
++      exact_duplicate: 'Ten produkt już istnieje',
++      likely_duplicate: 'Prawdopodobnie ten sam produkt',
++      new_product: 'Nowy produkt',
+     } satisfies Record<DuplicateVerdict, string>,
+     verdictNotes: {
+-      exact_duplicate: 'This product already exists in the catalog — saving a copy is blocked.',
+-      likely_duplicate: 'A very similar product exists — review it before deciding.',
+-      new_product: 'No matching product was found — it can be created as new.',
++      exact_duplicate: 'Otworzymy istniejący wpis i dodamy go do Twoich Ulubionych. Nie tworzymy kopii.',
++      likely_duplicate: 'Porównaj markę, nazwę, opakowanie, rynek i kluczowe różnice.',
++      new_product: 'Nie znaleźliśmy odpowiednika. Produkt może wejść do wspólnego katalogu.',
+     } satisfies Record<DuplicateVerdict, string>,
+     reasons: {
+-      ean_match: 'EAN matches existing product',
+-      identity_hash_match: 'Identity hash matches existing product',
+-      normalized_identity_match: 'Normalized identity matches existing product',
++      ean_match: 'EAN odpowiada istniejącemu produktowi',
++      identity_hash_match: 'Identyfikator produktu jest zgodny',
++      normalized_identity_match: 'Nazwa, marka i wariant są bardzo podobne',
+     },
+-    score: 'score',
+-    existingProduct: 'existing product',
++    score: 'zgodność',
++    existingProduct: 'produkt',
+     actions: {
+-      open_existing: 'Open existing product',
+-      update_existing_with_review: 'Update existing (reviewed merge)',
+-      create_new: 'Create as new product',
++      open_existing: 'Tak, to ten produkt',
++      update_existing_with_review: 'Uzupełnij istniejący produkt',
++      create_new: 'Nie, to inny produkt',
+     },
+   },
++  catalog: {
++    automaticContribution: 'Po zapisaniu dane etykietowe automatycznie zasilą wspólny katalog PINGÜINO.',
++    reviewLimit: 'Osiągnięto limit zgłoszeń wymagających ręcznej weryfikacji.',
++    rateLimit: 'Zbyt wiele prób. Spróbuj ponownie później.',
++    riskChallenge: 'Potwierdź, że nie jesteś robotem, aby kontynuować.',
++    existingResolved: 'Istniejący produkt został dodany do Twoich Ulubionych.',
++    createdAndFavorited: 'Produkt dodano do katalogu i do Twoich Ulubionych.',
++  },
+   batch: {
+     title: 'Batch intake queue',
+     intro:
+diff --git a/src/features/ocr-intake/session/saveFlow.test.ts b/src/features/ocr-intake/session/saveFlow.test.ts
+index fa31724..3792e17 100644
+--- a/src/features/ocr-intake/session/saveFlow.test.ts
++++ b/src/features/ocr-intake/session/saveFlow.test.ts
+@@ -108,6 +108,23 @@ describe('buildSessionCandidate — honest mapping through the EXISTING contract
+     expect(insert.source_type).toBe('label_scan');
+   });
+ 
++  it('records unbranded status only from an explicit user choice', () => {
++    const normal = buildSessionCandidate(readySession()).candidate.insert
++      .extracted_json as Record<string, unknown>;
++    const unbranded = buildSessionCandidate(readySession(), {
++      explicitlyUnbranded: true,
++    }).candidate.insert.extracted_json as Record<string, unknown>;
++    expect(normal.explicitlyUnbranded).toBe(false);
++    expect(unbranded.explicitlyUnbranded).toBe(false);
++    const withoutBrand = readySession(fullFields().map((field) =>
++      field.fieldKey === 'brand'
++        ? { ...field, reviewStatus: 'marked_unknown' as const, chosenCandidate: null }
++        : field,
++    ));
++    expect((buildSessionCandidate(withoutBrand, { explicitlyUnbranded: true }).candidate.insert
++      .extracted_json as Record<string, unknown>).explicitlyUnbranded).toBe(true);
++  });
++
+   it('UNKNOWN stays null: marked_unknown and absent fields never invent a value', () => {
+     const fields = fullFields().map((f) =>
+       f.fieldKey === 'brand' ? { ...f, reviewStatus: 'marked_unknown' as const, chosenCandidate: null } : f,
+diff --git a/src/features/ocr-intake/session/saveFlow.ts b/src/features/ocr-intake/session/saveFlow.ts
+index 3d4880e..65ff5e2 100644
+--- a/src/features/ocr-intake/session/saveFlow.ts
++++ b/src/features/ocr-intake/session/saveFlow.ts
+@@ -110,7 +110,10 @@ export function concatenatedOcrText(session: ProductIntakeSession): string | nul
+  *   • detected_text = concatenated raw OCR; extracted_json = the full v2 audit.
+  * Pure — builds a LOCAL candidate; persisting is `saveIntakeSession`'s single import call.
+  */
+-export function buildSessionCandidate(session: ProductIntakeSession): SessionCandidate {
++export function buildSessionCandidate(
++  session: ProductIntakeSession,
++  options: { explicitlyUnbranded?: boolean } = {},
++): SessionCandidate {
+   const value = (key: Parameters<typeof resolvedValueOf>[1]): string | null =>
+     resolvedValueOf(session.fields, key);
+ 
+@@ -162,6 +165,7 @@ export function buildSessionCandidate(session: ProductIntakeSession): SessionCan
+   // evidence audit only; detected_text below carries the raw OCR verbatim.
+ 
+   const candidate = mapRowToProductInsert(row, 'generic', 0);
++  const explicitlyUnbranded = options.explicitlyUnbranded === true && value('brand') === null;
+ 
+   // label-scan specifics on top of the shared mapping (same pattern as reviewState v1)
+   candidate.insert.source_type = 'label_scan';
+@@ -171,6 +175,7 @@ export function buildSessionCandidate(session: ProductIntakeSession): SessionCan
+     engine: OCR_ENGINE_INFO,
+     sessionId: session.sessionId,
+     basis,
++    explicitlyUnbranded,
+     manualEan: session.manualEan,
+     eanSource,
+     images: session.images.map((i) => ({
+@@ -355,7 +360,7 @@ export async function saveIntakeSession(
+   session: ProductIntakeSession,
+   flow: SaveFlowState,
+   existing: readonly ExistingProductForDedup[],
+-  options: { resolution?: DuplicateResolutionAction } = {},
++  options: { resolution?: DuplicateResolutionAction; explicitlyUnbranded?: boolean } = {},
+ ): Promise<SaveSessionOutcome> {
+   if (flow.sessionId !== session.sessionId) {
+     throw new SaveFlowError(
+@@ -374,7 +379,7 @@ export async function saveIntakeSession(
+         productId: flow.savedProductId,
+         productCode: flow.savedProductCode,
+         alreadySaved: true,
+-        assessment: assessCandidate(buildSessionCandidate(session).candidate),
++        assessment: assessCandidate(buildSessionCandidate(session, options).candidate),
+         postSave: postSaveInstruction(flow.savedProductId),
+       },
+     };
+@@ -387,7 +392,7 @@ export async function saveIntakeSession(
+     );
+   }
+ 
+-  const { candidate } = buildSessionCandidate(session);
++  const { candidate } = buildSessionCandidate(session, options);
+   if (candidate.status === 'skip') {
+     const failed = failSession(session, candidate.skipReason ?? 'no usable identity');
+     return { session: failed, flow, result: { kind: 'failed', error: candidate.skipReason ?? 'no usable identity' } };
+diff --git a/src/features/pi-panel/NutritionCostScorePanel.tsx b/src/features/pi-panel/NutritionCostScorePanel.tsx
+index 24f9343..39cdc18 100644
+--- a/src/features/pi-panel/NutritionCostScorePanel.tsx
++++ b/src/features/pi-panel/NutritionCostScorePanel.tsx
+@@ -3,6 +3,7 @@ import { SectionLabel } from '@/components/shared/SectionLabel';
+ import { Card } from '@/components/ui/Card';
+ import { proWorkbenchCopy } from '@/copy/pro.pl';
+ import type { RecipeResult } from '@/engine';
++import type { LabelNutritionPer100g } from '@/data/label/nutritionLabel';
+ import { cn } from '@/lib/cn';
+ 
+ const m = proWorkbenchCopy.nutrition;
+@@ -37,11 +38,14 @@ function Row({
+ export function NutritionCostScorePanel({
+   result,
+   embedded = false,
++  nutritionOverride,
+ }: {
+   result: RecipeResult;
+   embedded?: boolean;
++  nutritionOverride?: LabelNutritionPer100g | null;
+ }) {
+-  const { nutrition_per_100g: nutrition, costs } = result;
++  const nutrition = nutritionOverride === undefined ? result.nutrition_per_100g : nutritionOverride;
++  const { costs } = result;
+ 
+   return (
+     <Card
+@@ -70,7 +74,7 @@ export function NutritionCostScorePanel({
+             <Row label={m.protein} value={nutrition.protein_g} unit="g" />
+             <Row label={m.salt} value={nutrition.salt_g} unit="g" precision={2} />
+             <Row label={m.fiber} value={nutrition.fiber_g} unit="g" />
+-            {nutrition.alcohol_g > 0 ? (
++            {nutrition.alcohol_g !== null && nutrition.alcohol_g > 0 ? (
+               <Row label={m.alcohol} value={nutrition.alcohol_g} unit="g" />
+             ) : null}
+           </div>
+diff --git a/src/features/pro-core/effectiveRecipePricing.test.ts b/src/features/pro-core/effectiveRecipePricing.test.ts
+index 83d7acc..b54c6f1 100644
+--- a/src/features/pro-core/effectiveRecipePricing.test.ts
++++ b/src/features/pro-core/effectiveRecipePricing.test.ts
+@@ -8,6 +8,7 @@ import {
+   canPersistCustomerPrice,
+   customerPriceCanonicalId,
+   effectiveCostForIngredient,
++  effectiveCostForToppingIngredient,
+   summarizeEffectiveRecipeCost,
+ } from './effectiveRecipePricing';
+ 
+@@ -149,4 +150,32 @@ describe('effective customer pricing', () => {
+       complete: true,
+     });
+   });
++
++  it('uses only the caller-private catalog price for a label-only Topping', () => {
++    const cost = effectiveCostForToppingIngredient({
++      kind: 'catalog_label_topping',
++      id: 'catalog:sauce',
++      canonical_ingredient_id: 'catalog:sauce',
++      private_product_id: 'catalog:sauce:version:v1',
++      name: 'Sauce',
++      catalog_product_id: 'sauce',
++      catalog_version_id: 'v1',
++      verification_status: 'verified',
++      label_nutrition_per_100g: {
++        basis: 'per_100g', energyKcal: 200, fat: 1, saturatedFat: null,
++        carbohydrate: 48, sugars: null, protein: 1, salt: 0.05, fibre: null,
++      },
++      ingredients_text: 'Fruit, sugar',
++      allergens_text: 'None declared',
++      cost_per_kg: 8.5,
++      cost_currency: 'EUR',
++    }, {});
++    expect(cost).toMatchObject({
++      canonicalIngredientId: 'catalog:sauce',
++      pricePerKg: 8.5,
++      source: 'customer_override',
++      mapperPricePerKg: null,
++      customerOverridePerKg: 8.5,
++    });
++  });
+ });
+diff --git a/src/features/pro-core/effectiveRecipePricing.ts b/src/features/pro-core/effectiveRecipePricing.ts
+index 66ec03d..79cc367 100644
+--- a/src/features/pro-core/effectiveRecipePricing.ts
++++ b/src/features/pro-core/effectiveRecipePricing.ts
+@@ -5,6 +5,11 @@ import type {
+   EffectiveIngredientCost,
+ } from '@/features/pro-core/costContracts';
+ import type { RecipeToppingItem } from '@/features/recipe-composition/recipeCompositionPersistence';
++import {
++  cloneToppingIngredient,
++  isCatalogLabelToppingIngredient,
++  type RecipeToppingIngredient,
++} from '@/features/recipe-composition/labelTopping';
+ import {
+   effectiveLineCost,
+   isCustomerPriceCanonicalIngredientId,
+@@ -41,6 +46,25 @@ export function effectiveCostForIngredient(
+   });
+ }
+ 
++export function effectiveCostForToppingIngredient(
++  ingredient: RecipeToppingIngredient,
++  overrides: CustomerPriceIndex,
++  currency = CUSTOMER_COST_CURRENCY,
++): EffectiveIngredientCost {
++  if (!isCatalogLabelToppingIngredient(ingredient)) {
++    return effectiveCostForIngredient(ingredient, overrides, currency);
++  }
++  return {
++    canonicalIngredientId: ingredient.canonical_ingredient_id,
++    pricePerKg: ingredient.cost_per_kg,
++    currency: ingredient.cost_currency ?? currency,
++    source: ingredient.cost_per_kg === null ? 'missing' : 'customer_override',
++    mapperPricePerKg: null,
++    customerOverridePerKg: ingredient.cost_per_kg,
++    overrideId: null,
++  };
++}
++
+ /**
+  * Immutable pricing projection. Composition, grams, roles and every scientific
+  * input stay byte-identical; only the per-run cost field is replaced.
+@@ -75,7 +99,17 @@ export function applyEffectiveCustomerPricesToToppings(
+   currency = CUSTOMER_COST_CURRENCY,
+ ): RecipeToppingItem[] {
+   return toppings.map((item) => {
+-    const effective = effectiveCostForIngredient(item.ingredient, overrides, currency);
++    const effective = effectiveCostForToppingIngredient(item.ingredient, overrides, currency);
++    if (isCatalogLabelToppingIngredient(item.ingredient)) {
++      return {
++        ...item,
++        ingredient: {
++          ...cloneToppingIngredient(item.ingredient),
++          cost_per_kg: effective.pricePerKg,
++          cost_currency: effective.pricePerKg === null ? null : effective.currency,
++        },
++      };
++    }
+     return {
+       ...item,
+       ingredient: {
+diff --git a/src/features/pro-workbench/MonitorPanelContent.tsx b/src/features/pro-workbench/MonitorPanelContent.tsx
+index c444bc3..8e9d5db 100644
+--- a/src/features/pro-workbench/MonitorPanelContent.tsx
++++ b/src/features/pro-workbench/MonitorPanelContent.tsx
+@@ -25,6 +25,8 @@ import { MonitorLiveSummary } from './MonitorLiveSummary';
+ import { useReviewMode } from '@/features/design-review/useReviewMode';
+ import type { ProductionWorkspaceView } from '@/features/production-workspace/useProductionWorkspace';
+ import type { RecipeToppingItem } from '@/features/recipe-composition/recipeCompositionPersistence';
++import { isCatalogLabelToppingIngredient } from '@/features/recipe-composition/labelTopping';
++import { CatalogVerificationBadge } from '@/features/global-catalog/CatalogVerificationBadge';
+ import { polishPositionNoun } from './polishPositionNoun';
+ 
+ export function MonitorToppingSummary({
+@@ -57,7 +59,15 @@ export function MonitorToppingSummary({
+       <div className="divide-y divide-white/8 border-t border-white/8 px-4 py-1">
+         {toppings.map((item) => (
+           <div key={item.id} className="flex items-center justify-between gap-3 py-2.5 text-xs">
+-            <span className="min-w-0 truncate text-white/75">{item.ingredient.name}</span>
++            <span className="flex min-w-0 items-center gap-2">
++              <span className="min-w-0 truncate text-white/75">{item.ingredient.name}</span>
++              {isCatalogLabelToppingIngredient(item.ingredient) ? (
++                <CatalogVerificationBadge
++                  status={item.ingredient.verification_status}
++                  tone="dark"
++                />
++              ) : null}
++            </span>
+             <span className="shrink-0 font-mono tabular-nums text-white">
+               {item.planned_grams.toLocaleString('pl-PL', { maximumFractionDigits: 1 })} g
+               {actualByLineId.has(item.id)
+diff --git a/src/features/pro-workbench/RecipeProfilePanel.tsx b/src/features/pro-workbench/RecipeProfilePanel.tsx
+index e62bb8c..9ec20a4 100644
+--- a/src/features/pro-workbench/RecipeProfilePanel.tsx
++++ b/src/features/pro-workbench/RecipeProfilePanel.tsx
+@@ -20,6 +20,8 @@ import { calculateFinalProduct } from '@/features/recipe-composition/finalProduc
+ import { useCustomerPriceStore } from '@/stores/customerPriceStore';
+ import { applyEffectiveCustomerPricesToToppings } from '@/features/pro-core/effectiveRecipePricing';
+ import { SummaryBaseRecipeList } from './SummaryBaseRecipeList';
++import { isCatalogLabelToppingIngredient } from '@/features/recipe-composition/labelTopping';
++import { CatalogVerificationBadge } from '@/features/global-catalog/CatalogVerificationBadge';
+ 
+ export type ProContextTab = 'recipe' | 'monitor' | 'production';
+ export type CockpitTab = 'profile' | 'monitor' | 'production' | 'summary';
+@@ -211,6 +213,7 @@ function SummaryPanel({
+     ? {
+         finalItems: completed.finalProduct.items,
+         finalNutritionPer100g: completed.finalProduct.nutritionPer100g,
++        finalLabelNutritionPer100g: completed.finalProduct.labelNutritionPer100g,
+         finalCosts: completed.finalProduct.costs,
+         baseMassG: completed.finalProduct.baseMassG,
+         toppingMassG: completed.finalProduct.toppingMassG,
+@@ -221,7 +224,9 @@ function SummaryPanel({
+   const summaryBaseResult = completed?.finalResult ?? executableResult;
+   const finalDisplayResult: RecipeResult = {
+     ...summaryBaseResult,
+-    items: finalProduct.finalItems,
++    // RecipeResult remains an Engine/Base result. Label-only POST_PROCESS_ADDON
++    // rows are presented through the product-layer mass/nutrition projection.
++    items: summaryBaseResult.items,
+     total_batch_g: finalProduct.finalMassG,
+     nutrition_per_100g: finalProduct.finalNutritionPer100g,
+     costs: finalProduct.finalCosts,
+@@ -285,7 +290,15 @@ function SummaryPanel({
+           <div className="mt-3 divide-y divide-white/8 border-t border-white/8">
+             {summaryToppings.map((item) => (
+               <div key={item.id} className="flex justify-between gap-3 py-2 text-xs text-white/72">
+-                <span className="truncate">Topping · {item.ingredient.name}</span>
++                <span className="flex min-w-0 items-center gap-2">
++                  <span className="truncate">Topping · {item.ingredient.name}</span>
++                  {isCatalogLabelToppingIngredient(item.ingredient) ? (
++                    <CatalogVerificationBadge
++                      status={item.ingredient.verification_status}
++                      tone="dark"
++                    />
++                  ) : null}
++                </span>
+                 <span className="font-mono tabular-nums text-white">
+                   {(completed
+                     ? (item.actual_grams ?? item.planned_grams)
+@@ -346,7 +359,10 @@ function SummaryPanel({
+         className="rounded-[22px] bg-[#f7f5f0] p-2 text-ink"
+         data-testid="summary-final-nutrition-cost"
+       >
+-        <NutritionCostScorePanel result={finalDisplayResult} />
++        <NutritionCostScorePanel
++          result={finalDisplayResult}
++          nutritionOverride={finalProduct.finalLabelNutritionPer100g}
++        />
+       </div>
+       <ReadinessFrame
+         state="W PRZYGOTOWANIU"
+diff --git a/src/features/pro-workbench/monitorParity.test.tsx b/src/features/pro-workbench/monitorParity.test.tsx
+index b7c63f2..d2be637 100644
+--- a/src/features/pro-workbench/monitorParity.test.tsx
++++ b/src/features/pro-workbench/monitorParity.test.tsx
+@@ -13,6 +13,7 @@ import { describe, expect, it, vi } from 'vitest';
+ import { calculateRecipe, proposeCorrections, type RecipeInput } from '@/engine';
+ import { recipeContext } from '@/features/studio/buildRecipeInput';
+ import { starterMilkBase } from '@/features/recipe-constraints/constraintFixtures';
++import type { CatalogLabelToppingIngredient } from '@/features/recipe-composition/labelTopping';
+ 
+ vi.mock('@/access/useAccess', () => ({
+   useAccess: () => ({
+@@ -159,7 +160,24 @@ describe('professional Monitor acceptance contract', () => {
+   it('keeps topping facts collapsed and informational without changing Base metrics', () => {
+     const input = starterMilkBase();
+     const before = calculateRecipe(input);
+-    const ingredient = input.items[0]!.ingredient;
++    const ingredient: CatalogLabelToppingIngredient = {
++      kind: 'catalog_label_topping',
++      id: 'catalog:sauce',
++      canonical_ingredient_id: 'catalog:sauce',
++      private_product_id: 'catalog:sauce:v1',
++      name: 'Sos owocowy',
++      catalog_product_id: 'sauce',
++      catalog_version_id: 'v1',
++      verification_status: 'manual_unverified',
++      label_nutrition_per_100g: {
++        basis: 'per_100g', energyKcal: 180, fat: 0.2, saturatedFat: null,
++        carbohydrate: 43, sugars: null, protein: 0.4, salt: 0.01, fibre: null,
++      },
++      ingredients_text: 'Owoce, cukier',
++      allergens_text: 'Brak deklaracji',
++      cost_per_kg: null,
++      cost_currency: null,
++    };
+     const html = renderToStaticMarkup(
+       <MonitorToppingSummary
+         toppings={[{
+@@ -173,6 +191,8 @@ describe('professional Monitor acceptance contract', () => {
+     expect(visibleText(html)).toContain('Toppingi po produkcji');
+     expect(visibleText(html)).toContain('Nie wpływają na bilans bazy.');
+     expect(visibleText(html)).toContain('faktycznie 75 g');
++    expect(html).toContain('data-catalog-verification="manual_unverified"');
++    expect(visibleText(html)).toContain('Dodany manualnie');
+     expect(html).not.toContain('open=""');
+     const after = calculateRecipe(input);
+     expect(after.pod_points).toBe(before.pod_points);
+diff --git a/src/features/production-workspace/ProductionCockpit.tsx b/src/features/production-workspace/ProductionCockpit.tsx
+index fb4da2e..0ddc234 100644
+--- a/src/features/production-workspace/ProductionCockpit.tsx
++++ b/src/features/production-workspace/ProductionCockpit.tsx
+@@ -3,6 +3,8 @@ import { MasterLabelEditor } from '@/features/master-label/MasterLabelEditor';
+ import type { ProductionWorkspaceView } from './useProductionWorkspace';
+ import { ProductionActualControl } from './ProductionActualControl';
+ import { productionStepForGrams } from './productionSession';
++import { isCatalogLabelToppingIngredient } from '@/features/recipe-composition/labelTopping';
++import { CatalogVerificationBadge } from '@/features/global-catalog/CatalogVerificationBadge';
+ 
+ const formatPhysicalMassG = (value: number): string =>
+   Number.isInteger(value) ? value.toFixed(0) : value.toFixed(3).replace(/\.?0+$/, '');
+@@ -47,6 +49,23 @@ export function ProductionCockpit({ production }: { production: ProductionWorksp
+               {formatPhysicalMassG(session.completionSnapshot.actualFinalMassG)} g
+             </span>
+           </div>
++          {session.completionSnapshot.productComposition.toppings.some((item) =>
++            isCatalogLabelToppingIngredient(item.ingredient),
++          ) ? (
++            <div className="mt-3 flex flex-wrap gap-2" data-testid="production-completed-catalog-provenance">
++              {session.completionSnapshot.productComposition.toppings.map((item) =>
++                isCatalogLabelToppingIngredient(item.ingredient) ? (
++                  <span key={item.id} className="flex items-center gap-2 text-xs text-white/72">
++                    <span className="max-w-44 truncate">{item.ingredient.name}</span>
++                    <CatalogVerificationBadge
++                      status={item.ingredient.verification_status}
++                      tone="dark"
++                    />
++                  </span>
++                ) : null,
++              )}
++            </div>
++          ) : null}
+           <button
+             type="button"
+             onClick={production.startNewSession}
+@@ -202,10 +221,25 @@ export function ProductionCockpit({ production }: { production: ProductionWorksp
+             {session.addonLines.map((line) => {
+               const value = line.confirmed ? line.physicalAddedGrams : line.draftActualGrams;
+               const difference = value - line.plannedGrams;
++              const plannedTopping = session.plannedComposition.toppings.find(
++                (item) => item.id === line.lineId,
++              );
++              const catalogIngredient = plannedTopping &&
++                isCatalogLabelToppingIngredient(plannedTopping.ingredient)
++                ? plannedTopping.ingredient
++                : null;
+               return (
+                 <div key={line.lineId} className="py-3" data-testid={`production-topping-${line.lineId}`}>
+                   <div className="mb-2 flex items-center justify-between gap-3">
+-                    <span className="min-w-0 truncate text-xs font-semibold text-white">{line.name}</span>
++                    <span className="flex min-w-0 items-center gap-2">
++                      <span className="min-w-0 truncate text-xs font-semibold text-white">{line.name}</span>
++                      {catalogIngredient ? (
++                        <CatalogVerificationBadge
++                          status={catalogIngredient.verification_status}
++                          tone="dark"
++                        />
++                      ) : null}
++                    </span>
+                     <span className="shrink-0 font-mono text-xs tabular-nums text-white/65">
+                       plan {formatPhysicalMassG(line.plannedGrams)} g ·{' '}
+                       <strong className={Math.abs(difference) <= 0.05 ? 'text-white/65' : 'text-attention-soft'}>
+diff --git a/src/features/production-workspace/productionSession.test.ts b/src/features/production-workspace/productionSession.test.ts
+index 23b95d3..c5e58ea 100644
+--- a/src/features/production-workspace/productionSession.test.ts
++++ b/src/features/production-workspace/productionSession.test.ts
+@@ -16,6 +16,7 @@ import {
+   setDraftActualGrams,
+ } from './productionSession';
+ import type { RecipeCompositionMetadata } from '@/features/recipe-composition/recipeCompositionPersistence';
++import type { CatalogLabelToppingIngredient } from '@/features/recipe-composition/labelTopping';
+ 
+ function recipe(): RecipeInput {
+   return {
+@@ -282,4 +283,71 @@ describe('production session physical-reality contract', () => {
+       plannedInput.items.length + 2,
+     );
+   });
++
++  it('freezes a label-only commercial Topping for final nutrition without entering Engine', () => {
++    const plannedInput = recipe();
++    const labelIngredient: CatalogLabelToppingIngredient = {
++      kind: 'catalog_label_topping',
++      id: 'catalog:fruit-sauce',
++      canonical_ingredient_id: 'catalog:fruit-sauce',
++      private_product_id: 'catalog:fruit-sauce:version:v1',
++      name: 'Fruit sauce',
++      catalog_product_id: 'fruit-sauce',
++      catalog_version_id: 'v1',
++      verification_status: 'manual_unverified',
++      label_nutrition_per_100g: {
++        basis: 'per_100g', energyKcal: 210, fat: 0.5, saturatedFat: 0.1,
++        carbohydrate: 50, sugars: 44, protein: 0.7, salt: 0.02, fibre: 2,
++      },
++      ingredients_text: 'Fruit, sugar',
++      allergens_text: 'None declared',
++      cost_per_kg: null,
++      cost_currency: null,
++    };
++    let run = createProductionSession({
++      sessionId: 'run-label-only-topping',
++      ownerUserId: 'owner-1',
++      source: {
++        recipeId: 'recipe-1', recipeVersionId: 'version-1', recipeVersionNumber: 1,
++        recipeName: 'Base plus label topping',
++      },
++      plannedInput,
++      plannedComposition: {
++        schemaVersion: 1,
++        baseScope: 'BASE_FORMULATION',
++        baseOrder: plannedInput.items.map((item) => item.id),
++        toppings: [{
++          id: 'label-topping-line',
++          ingredient: labelIngredient,
++          planned_grams: 80,
++          actual_grams: null,
++          process_scope: 'POST_PROCESS_ADDON',
++          addon_sort_order: 0,
++        }],
++        migrationAmbiguities: [],
++      },
++      startedAt: '2026-08-12T10:00:00.000Z',
++    });
++    for (const [index, line] of run.lines.entries()) {
++      run = confirmProductionLine(run, line.lineId, `2026-08-12T10:0${index}:00.000Z`);
++    }
++    run = setDraftActualGrams(run, 'label-topping-line', 85);
++    run = confirmProductionLine(run, 'label-topping-line', '2026-08-12T10:20:00.000Z');
++    const finalInput = buildFinalActualInput(run);
++    const baseResult = calculateRecipe(finalInput);
++    const completed = completeProductionSession(
++      run,
++      baseResult,
++      '2026-08-12T11:00:00.000Z',
++      'owner-1',
++    );
++
++    expect(completed.completionSnapshot?.finalResult).toEqual(baseResult);
++    expect(completed.completionSnapshot?.finalProduct.toppingMassG).toBe(85);
++    expect(completed.completionSnapshot?.finalProduct.labelNutritionPer100g).not.toBeNull();
++    expect(completed.completionSnapshot?.finalProduct.nutritionPer100g).toBeNull();
++    expect(completed.completionSnapshot?.finalProduct.items.at(-1)?.ingredient).toEqual(
++      labelIngredient,
++    );
++  });
+ });
+diff --git a/src/features/production-workspace/productionSession.ts b/src/features/production-workspace/productionSession.ts
+index a0ec294..608c07e 100644
+--- a/src/features/production-workspace/productionSession.ts
++++ b/src/features/production-workspace/productionSession.ts
+@@ -1,5 +1,4 @@
+ import type {
+-  EffectiveRecipeItem,
+   NutritionPer100g,
+   RecipeCosts,
+   RecipeInput,
+@@ -10,7 +9,11 @@ import {
+   recipeCompositionFromState,
+   type RecipeCompositionMetadata,
+ } from '@/features/recipe-composition/recipeCompositionPersistence';
+-import { calculateFinalProduct } from '@/features/recipe-composition/finalProduct';
++import {
++  calculateFinalProduct,
++  type FinalProductItem,
++  type ProductLabelNutritionPer100g,
++} from '@/features/recipe-composition/finalProduct';
+ 
+ export const PRODUCTION_GRAMS_EPSILON = 0.000_001;
+ 
+@@ -58,8 +61,9 @@ export interface ProductionCompletionSnapshot {
+   finalActualInput: RecipeInput;
+   finalResult: RecipeResult;
+   finalProduct: {
+-    items: EffectiveRecipeItem[];
++    items: FinalProductItem[];
+     nutritionPer100g: NutritionPer100g | null;
++    labelNutritionPer100g: ProductLabelNutritionPer100g | null;
+     costs: RecipeCosts | null;
+     baseMassG: number;
+     toppingMassG: number;
+@@ -500,6 +504,7 @@ export function completeProductionSession(
+     finalProduct: {
+       items: finalProduct.finalItems,
+       nutritionPer100g: finalProduct.finalNutritionPer100g,
++      labelNutritionPer100g: finalProduct.finalLabelNutritionPer100g,
+       costs: finalProduct.finalCosts,
+       baseMassG: finalProduct.baseMassG,
+       toppingMassG: finalProduct.toppingMassG,
+diff --git a/src/features/production-workspace/useProductionWorkspace.ts b/src/features/production-workspace/useProductionWorkspace.ts
+index b9e6425..1b147c8 100644
+--- a/src/features/production-workspace/useProductionWorkspace.ts
++++ b/src/features/production-workspace/useProductionWorkspace.ts
+@@ -22,6 +22,7 @@ import {
+   practicalizeRecipeCandidate,
+ } from '@/features/practical-recipe/practicalRecipe';
+ import { recipeCompositionFromState } from '@/features/recipe-composition/recipeCompositionPersistence';
++import { productBehaviorModuleGate } from '@/features/product-intelligence';
+ 
+ const newSessionId = (): string =>
+   typeof crypto !== 'undefined' && 'randomUUID' in crypto
+@@ -71,6 +72,18 @@ export function useProductionWorkspace(enabled: boolean) {
+   );
+ 
+   const practicalGate = useMemo(() => {
++    const behaviorGate = productBehaviorModuleGate(
++      recipe.productBehaviorSnapshots,
++      'PRODUCTION',
++    );
++    if (!behaviorGate.ready) {
++      return {
++        ready: false,
++        message:
++          behaviorGate.reason ??
++          'Receptura zawiera produkt bez zatwierdzonego uprawnienia do Produkcji.',
++      };
++    }
+     const currentWasApplied =
+       lastApplied?.practicalization !== undefined &&
+       JSON.stringify(lastApplied.after.input) === JSON.stringify(plannedInput);
+@@ -94,7 +107,7 @@ export function useProductionWorkspace(enabled: boolean) {
+           message:
+             'Zastosuj najpierw zweryfikowane Preview w pełnych gramach. Produkcja nie uruchomi ułamkowego szkicu.',
+         };
+-  }, [constraints, lastApplied, plannedInput, recipe.practicalRecipeAudit]);
++  }, [constraints, lastApplied, plannedInput, recipe.practicalRecipeAudit, recipe.productBehaviorSnapshots]);
+ 
+   const source = useMemo(() => productionSourceForRecipe(recipe), [recipe]);
+ 
+diff --git a/src/features/recipe-composition/finalProduct.test.ts b/src/features/recipe-composition/finalProduct.test.ts
+index 80f4312..ba45623 100644
+--- a/src/features/recipe-composition/finalProduct.test.ts
++++ b/src/features/recipe-composition/finalProduct.test.ts
+@@ -3,6 +3,7 @@ import { calculateRecipe } from '@/engine';
+ import { DEFAULT_PRESET } from '@/data/demoPresets';
+ import { calculateFinalProduct } from './finalProduct';
+ import type { RecipeToppingItem } from './recipeCompositionPersistence';
++import type { CatalogLabelToppingIngredient } from './labelTopping';
+ 
+ const base = {
+   items: DEFAULT_PRESET.items,
+@@ -22,6 +23,39 @@ const topping = (id: string, grams: number): RecipeToppingItem => ({
+   addon_sort_order: 0,
+ });
+ 
++const labelTopping = (grams: number): RecipeToppingItem => ({
++  id: 'catalog-label-topping',
++  ingredient: {
++    kind: 'catalog_label_topping',
++    id: 'catalog:strawberry-sauce',
++    canonical_ingredient_id: 'catalog:strawberry-sauce',
++    private_product_id: 'catalog:strawberry-sauce:version:v1',
++    name: 'Owner Brand · Strawberry sauce',
++    catalog_product_id: 'strawberry-sauce',
++    catalog_version_id: 'v1',
++    verification_status: 'manual_unverified',
++    label_nutrition_per_100g: {
++      basis: 'per_100g',
++      energyKcal: 220,
++      fat: 1,
++      saturatedFat: 0.2,
++      carbohydrate: 52,
++      sugars: 45,
++      protein: 0.8,
++      salt: 0.03,
++      fibre: 2,
++    },
++    ingredients_text: 'Truskawki, cukier',
++    allergens_text: 'Brak zadeklarowanych alergenów',
++    cost_per_kg: null,
++    cost_currency: null,
++  } satisfies CatalogLabelToppingIngredient,
++  planned_grams: grams,
++  actual_grams: null,
++  process_scope: 'POST_PROCESS_ADDON',
++  addon_sort_order: 0,
++});
++
+ describe('final product composition', () => {
+   it('keeps Base technical metrics byte-identical while adding final nutrition/cost mass', () => {
+     const before = calculateRecipe(base);
+@@ -42,4 +76,29 @@ describe('final product composition', () => {
+     expect(calculateFinalProduct(base, [item], 'planning').toppingMassG).toBe(60);
+     expect(calculateFinalProduct(base, [item], 'actual_batch').toppingMassG).toBe(65);
+   });
++
++  it('uses declared label nutrition without changing Base Engine science', () => {
++    const before = calculateRecipe(base);
++    const item = labelTopping(100);
++    const result = calculateFinalProduct(base, [item]);
++
++    expect(before.nutrition_per_100g).not.toBeNull();
++    expect(result.baseResult).toEqual(before);
++    expect(result.finalMassG).toBe(before.total_batch_g + 100);
++    expect(result.finalNutritionPer100g).toBeNull();
++    expect(result.finalLabelNutritionPer100g).not.toBeNull();
++    expect(result.finalLabelNutritionPer100g!.kcal).toBeCloseTo(
++      ((before.nutrition_per_100g!.kcal * before.total_batch_g) / 100 + 220) /
++        (result.finalMassG / 100),
++      8,
++    );
++    expect(result.finalLabelNutritionPer100g!.alcohol_g).toBeNull();
++    expect(result.finalLabelNutritionPer100g!.saturated_fat_g).toBeNull();
++    expect(result.finalItems.at(-1)?.ingredient).toMatchObject({
++      kind: 'catalog_label_topping',
++      catalog_product_id: 'strawberry-sauce',
++    });
++    expect(result.finalCosts?.complete).toBe(false);
++    expect(result.finalCosts?.missing_cost_ingredient_ids).toContain('catalog:strawberry-sauce');
++  });
+ });
+diff --git a/src/features/recipe-composition/finalProduct.ts b/src/features/recipe-composition/finalProduct.ts
+index 0f2762e..cf52b39 100644
+--- a/src/features/recipe-composition/finalProduct.ts
++++ b/src/features/recipe-composition/finalProduct.ts
+@@ -7,12 +7,48 @@ import {
+   type RecipeItem,
+   type RecipeResult,
+ } from '@/engine';
++import {
++  isCatalogLabelToppingIngredient,
++  type CatalogLabelToppingIngredient,
++} from './labelTopping';
+ import type { RecipeToppingItem } from './recipeCompositionPersistence';
+ 
++export interface ProductLabelNutritionPer100g {
++  kcal: number;
++  fat_g: number;
++  /** Null stays honest when any Base ingredient lacks declared saturated fat. */
++  saturated_fat_g: number | null;
++  carbohydrate_g: number;
++  sugars_g: number | null;
++  protein_g: number;
++  salt_g: number;
++  fiber_g: number | null;
++  /** Null means the commercial label did not establish the topping's alcohol. */
++  alcohol_g: number | null;
++}
++
++export interface EffectiveCatalogLabelToppingItem {
++  id: string;
++  ingredient: CatalogLabelToppingIngredient;
++  planned_grams: number;
++  actual_grams: number | null;
++  lock_type: 'unlocked' | 'already_added';
++  production_step?: number;
++  notes?: string;
++  effective_grams: number;
++  difference: number;
++  is_actual: boolean;
++}
++
++export type FinalProductItem = EffectiveRecipeItem | EffectiveCatalogLabelToppingItem;
++
+ export interface FinalProductCalculation {
+   baseResult: RecipeResult;
+-  finalItems: EffectiveRecipeItem[];
++  finalItems: FinalProductItem[];
++  /** Full Engine nutrition is unavailable once a label-only item is present. */
+   finalNutritionPer100g: NutritionPer100g | null;
++  /** Standard declared label facts remain usable without inventing Engine science. */
++  finalLabelNutritionPer100g: ProductLabelNutritionPer100g | null;
+   finalCosts: RecipeCosts | null;
+   baseMassG: number;
+   toppingMassG: number;
+@@ -27,25 +63,144 @@ export const toppingEffectiveGrams = (
+   context: ToppingMassContext,
+ ): number => (context === 'actual_batch' ? (item.actual_grams ?? item.planned_grams) : item.planned_grams);
+ 
++function scienceToppingItem(
++  item: RecipeToppingItem,
++  context: ToppingMassContext,
++): RecipeItem | null {
++  if (isCatalogLabelToppingIngredient(item.ingredient)) return null;
++  const grams = toppingEffectiveGrams(item, context);
++  return {
++    id: item.id,
++    ingredient: item.ingredient,
++    planned_grams: grams,
++    actual_grams: context === 'actual_batch' ? grams : null,
++    lock_type: context === 'actual_batch' ? 'already_added' : 'unlocked',
++    production_step: item.production_step,
++    notes: item.notes,
++  };
++}
++
++function labelToppingItem(
++  item: RecipeToppingItem,
++  context: ToppingMassContext,
++): EffectiveCatalogLabelToppingItem | null {
++  if (!isCatalogLabelToppingIngredient(item.ingredient)) return null;
++  const grams = toppingEffectiveGrams(item, context);
++  return {
++    id: item.id,
++    ingredient: item.ingredient,
++    planned_grams: grams,
++    actual_grams: context === 'actual_batch' ? grams : null,
++    lock_type: context === 'actual_batch' ? 'already_added' : 'unlocked',
++    production_step: item.production_step,
++    notes: item.notes,
++    effective_grams: grams,
++    difference: context === 'actual_batch' ? grams - item.planned_grams : 0,
++    is_actual: context === 'actual_batch',
++  };
++}
++
+ export function buildFinalProductItems(
+   baseInput: RecipeInput,
+   toppings: readonly RecipeToppingItem[],
+   context: ToppingMassContext = 'planning',
+-): RecipeItem[] {
+-  const toppingItems: RecipeItem[] = toppings.map((item) => {
+-    const grams = toppingEffectiveGrams(item, context);
+-    return {
+-      id: item.id,
+-      ingredient: item.ingredient,
+-      planned_grams: grams,
+-      actual_grams: context === 'actual_batch' ? grams : null,
+-      lock_type: context === 'actual_batch' ? 'already_added' : 'unlocked',
+-      production_step: item.production_step,
+-      notes: item.notes,
+-    };
++): FinalProductItem[] {
++  const scienceItems = toppings.flatMap((item) => {
++    const next = scienceToppingItem(item, context);
++    return next ? [next] : [];
++  });
++  const factual = calculateRecipe({
++    ...baseInput,
++    items: [...baseInput.items.map((item) => ({ ...item })), ...scienceItems],
++    target_batch_grams: [...baseInput.items, ...scienceItems].reduce(
++      (sum, item) => sum + (item.actual_grams ?? item.planned_grams),
++      0,
++    ),
+   });
+-  const baseItems = baseInput.items.map((item) => ({ ...item }));
+-  return [...baseItems, ...toppingItems];
++  const labelItems = toppings.flatMap((item) => {
++    const next = labelToppingItem(item, context);
++    return next ? [next] : [];
++  });
++  return [...factual.items, ...labelItems];
++}
++
++function combineLabelNutrition(
++  factual: NutritionPer100g | null,
++  factualMassG: number,
++  labelItems: readonly EffectiveCatalogLabelToppingItem[],
++  finalMassG: number,
++): ProductLabelNutritionPer100g | null {
++  if (!factual || finalMassG <= 0) return null;
++  const total: Omit<ProductLabelNutritionPer100g, 'alcohol_g'> = {
++    kcal: (factual.kcal * factualMassG) / 100,
++    fat_g: (factual.fat_g * factualMassG) / 100,
++    saturated_fat_g: factual.saturated_fat_g === null
++      ? null
++      : (factual.saturated_fat_g * factualMassG) / 100,
++    carbohydrate_g: (factual.carbohydrate_g * factualMassG) / 100,
++    sugars_g: (factual.sugars_g * factualMassG) / 100,
++    protein_g: (factual.protein_g * factualMassG) / 100,
++    salt_g: (factual.salt_g * factualMassG) / 100,
++    fiber_g: (factual.fiber_g * factualMassG) / 100,
++  };
++  for (const item of labelItems) {
++    const grams = item.effective_grams;
++    const label = item.ingredient.label_nutrition_per_100g;
++    total.kcal += (label.energyKcal * grams) / 100;
++    total.fat_g += (label.fat * grams) / 100;
++    if (label.saturatedFat === null) total.saturated_fat_g = null;
++    else if (total.saturated_fat_g !== null) {
++      total.saturated_fat_g += (label.saturatedFat * grams) / 100;
++    }
++    total.carbohydrate_g += (label.carbohydrate * grams) / 100;
++    if (label.sugars === null) total.sugars_g = null;
++    else if (total.sugars_g !== null) total.sugars_g += (label.sugars * grams) / 100;
++    total.protein_g += (label.protein * grams) / 100;
++    total.salt_g += (label.salt * grams) / 100;
++    if (label.fibre === null) total.fiber_g = null;
++    else if (total.fiber_g !== null) total.fiber_g += (label.fibre * grams) / 100;
++  }
++  const per100 = (value: number) => (value / finalMassG) * 100;
++  return {
++    kcal: per100(total.kcal),
++    fat_g: per100(total.fat_g),
++    saturated_fat_g: total.saturated_fat_g === null ? null : per100(total.saturated_fat_g),
++    carbohydrate_g: per100(total.carbohydrate_g),
++    sugars_g: total.sugars_g === null ? null : per100(total.sugars_g),
++    protein_g: per100(total.protein_g),
++    salt_g: per100(total.salt_g),
++    fiber_g: total.fiber_g === null ? null : per100(total.fiber_g),
++    alcohol_g: labelItems.length === 0 ? factual.alcohol_g : null,
++  };
++}
++
++function combineCosts(
++  factual: RecipeCosts | null,
++  labelItems: readonly EffectiveCatalogLabelToppingItem[],
++  finalMassG: number,
++): RecipeCosts | null {
++  if (!factual) return null;
++  const missing = [...factual.missing_cost_ingredient_ids];
++  let knownTotal = factual.total_cost ?? 0;
++  if (!factual.complete) knownTotal = 0;
++  for (const item of labelItems) {
++    const price = item.ingredient.cost_per_kg;
++    if (price === null) missing.push(item.ingredient.id);
++    else knownTotal += (item.effective_grams / 1000) * price;
++  }
++  const complete = factual.complete && missing.length === 0;
++  const totalCost = complete ? knownTotal : null;
++  const perKg = complete && finalMassG > 0 ? (knownTotal / finalMassG) * 1000 : null;
++  const serving = (grams: number) => perKg === null ? null : (perKg * grams) / 1000;
++  return {
++    total_cost: totalCost,
++    cost_per_kg: perKg,
++    cost_per_serving_60g: serving(60),
++    cost_per_serving_70g: serving(70),
++    cost_per_serving_80g: serving(80),
++    complete,
++    missing_cost_ingredient_ids: [...new Set(missing)],
++  };
+ }
+ 
+ export function calculateFinalProduct(
+@@ -54,28 +209,40 @@ export function calculateFinalProduct(
+   context: ToppingMassContext = 'planning',
+ ): FinalProductCalculation {
+   const baseResult = calculateRecipe(baseInput);
+-  const finalInputItems = buildFinalProductItems(baseInput, toppings, context);
+-  const finalMassG = finalInputItems.reduce(
++  const scienceItems = toppings.flatMap((item) => {
++    const next = scienceToppingItem(item, context);
++    return next ? [next] : [];
++  });
++  const scienceInputItems = [...baseInput.items.map((item) => ({ ...item })), ...scienceItems];
++  const factualMassG = scienceInputItems.reduce(
+     (sum, item) => sum + (item.actual_grams ?? item.planned_grams),
+     0,
+   );
+-  // Reuse the public Engine calculation boundary for factual composition,
+-  // nutrition and cost. Its technical output is deliberately discarded:
+-  // Base `baseResult` above remains the sole POD/PAC/NPAC/score authority.
+   const factualFinalResult = calculateRecipe({
+     ...baseInput,
+-    items: finalInputItems,
+-    target_batch_grams: finalMassG,
++    items: scienceInputItems,
++    target_batch_grams: factualMassG,
++  });
++  const labelItems = toppings.flatMap((item) => {
++    const next = labelToppingItem(item, context);
++    return next ? [next] : [];
+   });
+   const toppingMassG = toppings.reduce(
+     (sum, item) => sum + toppingEffectiveGrams(item, context),
+     0,
+   );
++  const finalMassG = factualMassG + labelItems.reduce((sum, item) => sum + item.effective_grams, 0);
+   return {
+     baseResult,
+-    finalItems: factualFinalResult.items,
+-    finalNutritionPer100g: factualFinalResult.nutrition_per_100g,
+-    finalCosts: factualFinalResult.costs,
++    finalItems: [...factualFinalResult.items, ...labelItems],
++    finalNutritionPer100g: labelItems.length === 0 ? factualFinalResult.nutrition_per_100g : null,
++    finalLabelNutritionPer100g: combineLabelNutrition(
++      factualFinalResult.nutrition_per_100g,
++      factualMassG,
++      labelItems,
++      finalMassG,
++    ),
++    finalCosts: combineCosts(factualFinalResult.costs, labelItems, finalMassG),
+     baseMassG: baseResult.total_batch_g,
+     toppingMassG,
+     finalMassG,
+diff --git a/src/features/recipe-composition/recipeCompositionPersistence.test.ts b/src/features/recipe-composition/recipeCompositionPersistence.test.ts
+index e9eb9c8..348111a 100644
+--- a/src/features/recipe-composition/recipeCompositionPersistence.test.ts
++++ b/src/features/recipe-composition/recipeCompositionPersistence.test.ts
+@@ -10,6 +10,8 @@ import {
+   recipeCompositionFromState,
+   type RecipeToppingItem,
+ } from './recipeCompositionPersistence';
++import { toppingIngredientIdentity } from './labelTopping';
++import type { CatalogLabelToppingIngredient } from './labelTopping';
+ 
+ const topping = (id: string, grams: number, canonicalId = id): RecipeToppingItem => ({
+   id,
+@@ -24,6 +26,25 @@ const topping = (id: string, grams: number, canonicalId = id): RecipeToppingItem
+   addon_sort_order: 0,
+ });
+ 
++const labelIngredient: CatalogLabelToppingIngredient = {
++  kind: 'catalog_label_topping',
++  id: 'catalog:label-sauce',
++  canonical_ingredient_id: 'catalog:label-sauce',
++  private_product_id: 'catalog:label-sauce:version:v1',
++  name: 'Label sauce',
++  catalog_product_id: 'label-sauce',
++  catalog_version_id: 'v1',
++  verification_status: 'verified',
++  label_nutrition_per_100g: {
++    basis: 'per_100g', energyKcal: 180, fat: 1, saturatedFat: 0.2,
++    carbohydrate: 42, sugars: 38, protein: 1, salt: 0.04, fibre: 2,
++  },
++  ingredients_text: 'Fruit, sugar',
++  allergens_text: 'None declared',
++  cost_per_kg: null,
++  cost_currency: null,
++};
++
+ describe('Base/Topping composition sidecar', () => {
+   beforeEach(() => {
+     useRecipeStore.getState().loadPreset(DEFAULT_PRESET);
+@@ -46,7 +67,7 @@ describe('Base/Topping composition sidecar', () => {
+       state.items.filter((item) => canonicalIngredientId(item.ingredient) === canonicalId),
+     ).toHaveLength(baseBefore);
+     expect(
+-      state.toppings.filter((item) => canonicalIngredientId(item.ingredient) === canonicalId),
++      state.toppings.filter((item) => toppingIngredientIdentity(item.ingredient) === canonicalId),
+     ).toHaveLength(1);
+     expect(state.toppings[0]!.planned_grams).toBe(70);
+     expect(calculateRecipe(buildRecipeInput(state))).toEqual(engineBefore);
+@@ -162,6 +183,27 @@ describe('Base/Topping composition sidecar', () => {
+     expect(metadata.toppings.reduce((sum, item) => sum + item.planned_grams, 0)).toBe(130);
+   });
+ 
++  it('round-trips a label-only catalog Topping without creating Engine composition', () => {
++    const item: RecipeToppingItem = {
++      id: 'label-topping-line',
++      ingredient: labelIngredient,
++      planned_grams: 80,
++      actual_grams: null,
++      process_scope: 'POST_PROCESS_ADDON',
++      addon_sort_order: 0,
++    };
++    const metadata = recipeCompositionFromState({
++      items: useRecipeStore.getState().items,
++      toppings: [item],
++    });
++    const parsed = readRecipeCompositionMetadata(metadata);
++
++    expect(parsed?.toppings).toHaveLength(1);
++    expect(parsed?.toppings[0]?.ingredient).toEqual(labelIngredient);
++    expect(parsed?.toppings[0]?.ingredient).not.toHaveProperty('composition');
++    expect(toppingIngredientIdentity(parsed!.toppings[0]!.ingredient)).toBe('catalog:label-sauce');
++  });
++
+   it('keeps topping substitution inside topping scope and merges a duplicate canonical target', () => {
+     const [milk, sugar] = useRecipeStore.getState().items.map((item) => item.ingredient);
+     useRecipeStore.getState().addTopping(milk!, 70);
+@@ -176,7 +218,7 @@ describe('Base/Topping composition sidecar', () => {
+       planned_grams: 130,
+       process_scope: 'POST_PROCESS_ADDON',
+     });
+-    expect(canonicalIngredientId(state.toppings[0]!.ingredient)).toBe(
++    expect(toppingIngredientIdentity(state.toppings[0]!.ingredient)).toBe(
+       canonicalIngredientId(sugar!),
+     );
+     expect(state.items).toHaveLength(DEFAULT_PRESET.items.length);
+diff --git a/src/features/recipe-composition/recipeCompositionPersistence.ts b/src/features/recipe-composition/recipeCompositionPersistence.ts
+index 1631d84..53ef129 100644
+--- a/src/features/recipe-composition/recipeCompositionPersistence.ts
++++ b/src/features/recipe-composition/recipeCompositionPersistence.ts
+@@ -1,10 +1,26 @@
+ import type { EngineIngredient } from '@/engine';
+ import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
+ import { savedEngineIngredientSchema } from '@/features/recipes/recipePayload';
++import {
++  cloneToppingIngredient,
++  toppingIngredientIdentity,
++  type CatalogLabelToppingIngredient,
++  type RecipeToppingIngredient,
++} from './labelTopping';
++import {
++  readProductBehaviorSnapshot,
++  type ProductBehaviorSnapshot,
++} from '@/features/product-intelligence';
++
++export type {
++  CatalogLabelNutritionPer100g,
++  CatalogLabelToppingIngredient,
++  RecipeToppingIngredient,
++} from './labelTopping';
+ 
+ export interface RecipeToppingItem {
+   id: string;
+-  ingredient: EngineIngredient;
++  ingredient: RecipeToppingIngredient;
+   planned_grams: number;
+   actual_grams: number | null;
+   process_scope: 'POST_PROCESS_ADDON';
+@@ -18,6 +34,9 @@ export interface RecipeCompositionMetadata {
+   baseScope: 'BASE_FORMULATION';
+   baseOrder: string[];
+   toppings: RecipeToppingItem[];
++  /** Immutable per-line product/version/policy authority consumed by every
++   * downstream module. Optional on legacy payloads; absent never grants Main. */
++  behaviorSnapshots?: Record<string, ProductBehaviorSnapshot>;
+   migrationAmbiguities: Array<{ lineId: string; reason: string }>;
+ }
+ 
+@@ -42,30 +61,68 @@ const REQUIRED_COMPOSITION_FIELDS = [
+   'kcal_per_100g',
+ ] as const;
+ 
++const LABEL_NUTRITION_REQUIRED_FIELDS = [
++  'energyKcal', 'fat', 'carbohydrate', 'protein', 'salt',
++] as const;
++const LABEL_NUTRITION_OPTIONAL_FIELDS = ['saturatedFat', 'sugars', 'fibre'] as const;
++
++const validLabelToppingIngredient = (value: unknown): value is CatalogLabelToppingIngredient => {
++  if (!value || typeof value !== 'object') return false;
++  const ingredient = value as Partial<CatalogLabelToppingIngredient>;
++  const nutrition = ingredient.label_nutrition_per_100g;
++  if (!nutrition || nutrition.basis !== 'per_100g') return false;
++  const values = LABEL_NUTRITION_REQUIRED_FIELDS.map((field) => nutrition[field]);
++  const optionalValues = LABEL_NUTRITION_OPTIONAL_FIELDS.map((field) => nutrition[field]);
++  return ingredient.kind === 'catalog_label_topping'
++    && typeof ingredient.id === 'string' && ingredient.id.startsWith('catalog:')
++    && typeof ingredient.canonical_ingredient_id === 'string'
++    && ingredient.canonical_ingredient_id === ingredient.id
++    && typeof ingredient.private_product_id === 'string' && ingredient.private_product_id.length > 0
++    && typeof ingredient.name === 'string' && ingredient.name.trim().length > 0
++    && typeof ingredient.catalog_product_id === 'string' && ingredient.catalog_product_id.length > 0
++    && (ingredient.catalog_version_id === null || typeof ingredient.catalog_version_id === 'string')
++    && (ingredient.verification_status === 'verified' || ingredient.verification_status === 'manual_unverified')
++    && values.every((entry) => typeof entry === 'number' && Number.isFinite(entry) && entry >= 0)
++    && optionalValues.every((entry) => entry === null
++      || (typeof entry === 'number' && Number.isFinite(entry) && entry >= 0))
++    && nutrition.energyKcal <= 1000
++    && [nutrition.fat, nutrition.saturatedFat, nutrition.carbohydrate, nutrition.sugars,
++      nutrition.protein, nutrition.salt, nutrition.fibre].every((entry) => entry === null || entry <= 100)
++    && (nutrition.saturatedFat === null || nutrition.saturatedFat <= nutrition.fat + 0.01)
++    && (nutrition.sugars === null || nutrition.sugars <= nutrition.carbohydrate + 0.01)
++    && typeof ingredient.ingredients_text === 'string' && ingredient.ingredients_text.trim().length > 0
++    && typeof ingredient.allergens_text === 'string' && ingredient.allergens_text.trim().length > 0
++    && (ingredient.cost_per_kg === null || (typeof ingredient.cost_per_kg === 'number' && Number.isFinite(ingredient.cost_per_kg) && ingredient.cost_per_kg >= 0))
++    && (ingredient.cost_currency === null || typeof ingredient.cost_currency === 'string');
++};
++
+ const validTopping = (value: unknown): value is RecipeToppingItem => {
+   if (!value || typeof value !== 'object') return false;
+   const item = value as Partial<RecipeToppingItem>;
+-  const parsedIngredient = savedEngineIngredientSchema.safeParse(item.ingredient);
++  const labelIngredient = validLabelToppingIngredient(item.ingredient) ? item.ingredient : null;
++  const parsedIngredient = labelIngredient ? null : savedEngineIngredientSchema.safeParse(item.ingredient);
+   const hasCompleteComposition =
+-    parsedIngredient.success &&
++    parsedIngredient?.success === true &&
+     REQUIRED_COMPOSITION_FIELDS.every(
+       (field) => Number.isFinite(parsedIngredient.data.composition[field]),
+     );
+   const explicitCanonicalId =
+-    parsedIngredient.success &&
++    parsedIngredient?.success === true &&
+     typeof parsedIngredient.data.canonical_ingredient_id === 'string'
+       ? parsedIngredient.data.canonical_ingredient_id.trim()
+       : '';
+-  const resolvedCanonicalId = parsedIngredient.success
++  const resolvedCanonicalId = parsedIngredient?.success === true
+     ? canonicalIngredientId(parsedIngredient.data as unknown as EngineIngredient).trim()
+     : '';
+   return (
+     typeof item.id === 'string' &&
+     item.id.trim().length > 0 &&
+-    parsedIngredient.success &&
+-    hasCompleteComposition &&
+-    explicitCanonicalId.length > 0 &&
+-    explicitCanonicalId === resolvedCanonicalId &&
++    ((labelIngredient !== null) || (
++      parsedIngredient?.success === true &&
++      hasCompleteComposition &&
++      explicitCanonicalId.length > 0 &&
++      explicitCanonicalId === resolvedCanonicalId
++    )) &&
+     typeof item.planned_grams === 'number' &&
+     Number.isFinite(item.planned_grams) &&
+     item.planned_grams >= 0 &&
+@@ -111,7 +168,7 @@ export function readRecipeCompositionMetadata(
+       migrationAmbiguities.push({ lineId, reason: 'INVALID_TOPPING_RECORD' });
+       continue;
+     }
+-    const canonicalId = canonicalIngredientId(candidate.ingredient).trim();
++    const canonicalId = toppingIngredientIdentity(candidate.ingredient);
+     if (!canonicalId) {
+       migrationAmbiguities.push({ lineId, reason: 'TOPPING_CANONICAL_ID_MISSING' });
+       continue;
+@@ -135,6 +192,28 @@ export function readRecipeCompositionMetadata(
+     }
+     toppings.push(candidate);
+   }
++  const toppingIds = new Set(toppings.map((item) => item.id));
++  const behaviorSnapshots: Record<string, ProductBehaviorSnapshot> = {};
++  const rawSnapshots = raw.behaviorSnapshots && typeof raw.behaviorSnapshots === 'object'
++    ? raw.behaviorSnapshots
++    : {};
++  for (const [lineId, candidate] of Object.entries(rawSnapshots)) {
++    const snapshot = readProductBehaviorSnapshot(candidate);
++    const expectedScope = baseIds.has(lineId)
++      ? 'BASE_FORMULATION'
++      : toppingIds.has(lineId)
++        ? 'POST_PROCESS_ADDON'
++        : null;
++    if (!snapshot || snapshot.lineId !== lineId || expectedScope === null) {
++      migrationAmbiguities.push({ lineId, reason: 'INVALID_PRODUCT_BEHAVIOR_SNAPSHOT' });
++      continue;
++    }
++    if (snapshot.processScope !== expectedScope) {
++      migrationAmbiguities.push({ lineId, reason: 'PRODUCT_BEHAVIOR_SCOPE_MISMATCH' });
++      continue;
++    }
++    behaviorSnapshots[lineId] = snapshot;
++  }
+   const baseOrder: string[] = [];
+   const seenBaseLineIds = new Set<string>();
+   for (const [index, candidate] of (Array.isArray(raw.baseOrder) ? raw.baseOrder : []).entries()) {
+@@ -157,6 +236,7 @@ export function readRecipeCompositionMetadata(
+     baseScope: 'BASE_FORMULATION',
+     baseOrder,
+     toppings: toppings.map((item, index) => ({ ...item, addon_sort_order: index })),
++    ...(Object.keys(behaviorSnapshots).length > 0 ? { behaviorSnapshots } : {}),
+     migrationAmbiguities,
+   };
+ }
+@@ -166,25 +246,28 @@ export function recipeCompositionFromState(state: {
+   baseOrder?: readonly string[];
+   toppings?: readonly RecipeToppingItem[];
+   compositionMigrationAmbiguities?: readonly { lineId: string; reason: string }[];
++  productBehaviorSnapshots?: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>;
+ }): RecipeCompositionMetadata {
+   const itemIds = new Set(state.items.map((item) => item.id));
+   const baseOrder = [
+     ...(state.baseOrder ?? []).filter((id) => itemIds.has(id)),
+     ...state.items.map((item) => item.id).filter((id) => !(state.baseOrder ?? []).includes(id)),
+   ];
++  const behaviorSnapshots = Object.fromEntries(
++    Object.entries(state.productBehaviorSnapshots ?? {})
++      .filter((entry): entry is [string, ProductBehaviorSnapshot] => entry[1] !== undefined)
++      .map(([lineId, snapshot]) => [lineId, structuredClone(snapshot)]),
++  );
+   return {
+     schemaVersion: 1,
+     baseScope: 'BASE_FORMULATION',
+     baseOrder,
+     toppings: (state.toppings ?? []).map((item, index) => ({
+       ...item,
+-      ingredient: {
+-        ...item.ingredient,
+-        composition: { ...item.ingredient.composition },
+-        flags: item.ingredient.flags ? { ...item.ingredient.flags } : undefined,
+-      },
++      ingredient: cloneToppingIngredient(item.ingredient),
+       addon_sort_order: index,
+     })),
++    ...(Object.keys(behaviorSnapshots).length > 0 ? { behaviorSnapshots } : {}),
+     migrationAmbiguities: (state.compositionMigrationAmbiguities ?? []).map((item) => ({ ...item })),
+   };
+ }
+diff --git a/src/features/recipe-composition/recipeCompositionUi.test.tsx b/src/features/recipe-composition/recipeCompositionUi.test.tsx
+index 7dab00c..68239b2 100644
+--- a/src/features/recipe-composition/recipeCompositionUi.test.tsx
++++ b/src/features/recipe-composition/recipeCompositionUi.test.tsx
+@@ -12,7 +12,9 @@ import {
+   IngredientBuilder,
+ } from '@/features/ingredient-builder/IngredientBuilder';
+ import { ProductPickerPopover } from '@/features/ingredient-builder/ProductPickerPopover';
++import { productPickerUnavailableReason } from '@/features/ingredient-builder/productPickerModel';
+ import type { IngredientLibrary } from '@/features/ingredient-builder/ingredientLibrary';
++import type { CatalogProductSearchHit } from '@/features/global-catalog/contracts';
+ 
+ const SRC = resolve(import.meta.dirname, '..', '..');
+ const read = (...parts: string[]) => readFileSync(join(SRC, ...parts), 'utf8');
+@@ -119,5 +121,33 @@ describe('Base/Topping owner entry points', () => {
+     expect(summary).not.toContain('Ilość netto produktu finalnego');
+     expect(summary).toContain('finalProduct.finalMassG.toFixed(0)');
+     expect(summary).toContain('summary-final-nutrition-cost');
++    expect(summary).toContain('<CatalogVerificationBadge');
++    const monitor = read('features', 'pro-workbench', 'MonitorPanelContent.tsx');
++    const production = read('features', 'production-workspace', 'ProductionCockpit.tsx');
++    expect(monitor).toContain('<CatalogVerificationBadge');
++    expect(production).toContain('production-completed-catalog-provenance');
++    expect(production).toContain('<CatalogVerificationBadge');
++  });
++
++  it('explains unavailable products for the selected scope and keeps the reason focusable', () => {
++    const hit: CatalogProductSearchHit = {
++      id: 'catalog-ml', entityKind: 'commercial_product', status: 'manual_unverified',
++      displayName: 'Sos', originalName: null, originalLanguage: null, brand: 'Marka',
++      canonicalFamily: null, category: null, mappedIngredientId: null,
++      markets: ['PL'], retailers: [], eans: [], aliases: [], favorite: false,
++      recentlyUsedAt: null, usableInBase: false, usableAsTopping: false,
++      missingFields: [],
++      invalidFields: ['nutrition_basis_per_100ml_requires_density_for_gram_topping'],
++      verificationMethod: 'manual_unverified', publicData: {},
++    };
++    expect(productPickerUnavailableReason('BASE_FORMULATION', hit)).toContain('PINGÜINO Base');
++    expect(productPickerUnavailableReason('POST_PROCESS_ADDON', hit)).toContain('100 ml');
++    expect(productPickerUnavailableReason('POST_PROCESS_ADDON', hit)).toContain('gęstość');
++    const picker = read('features', 'ingredient-builder', 'ProductPickerPopover.tsx');
++    expect(picker).toContain('aria-disabled={!option.selectable}');
++    expect(picker).not.toMatch(/data-option-index=\{index\}\s+disabled=/);
++    expect(picker).toContain('data-testid="product-picker-unavailable-reason"');
++    expect(picker).toContain("? 'GREEN, zweryfikowany'");
++    expect(picker).toContain("? 'BLUE, manualny i niezweryfikowany'");
+   });
+ });
+diff --git a/src/features/recipes/useCanonicalRecipeSave.ts b/src/features/recipes/useCanonicalRecipeSave.ts
+index 3e98d2d..cfcd7e0 100644
+--- a/src/features/recipes/useCanonicalRecipeSave.ts
++++ b/src/features/recipes/useCanonicalRecipeSave.ts
+@@ -37,6 +37,7 @@ import {
+   profileSnapshotFromState,
+ } from '@/features/pro-workbench/recipeProfilePersistence';
+ import { recipeCompositionFromState } from '@/features/recipe-composition/recipeCompositionPersistence';
++import { productBehaviorModuleGate } from '@/features/product-intelligence';
+ 
+ const TRACE = {
+   engineVersion: ENGINE_VERSION,
+@@ -176,6 +177,15 @@ export function useCanonicalRecipeSave(
+     if (options.buildInput !== undefined) return { blocked: false, message: null };
+     const input = buildRecipeInputFromStore();
+     const state = useRecipeStore.getState();
++    const behaviorGate = productBehaviorModuleGate(state.productBehaviorSnapshots, 'SAVE');
++    if (!behaviorGate.ready) {
++      return {
++        blocked: true,
++        message:
++          behaviorGate.reason ??
++          'Receptura zawiera produkt bez zatwierdzonego uprawnienia do zapisu.',
++      };
++    }
+     const last = useConstraintStudioStore.getState().history.at(-1);
+     const currentWasApplied =
+       last?.practicalization !== undefined &&
+diff --git a/src/pages/destinations/GlobalDestinationPages.test.tsx b/src/pages/destinations/GlobalDestinationPages.test.tsx
+index 5d9544c..7a3b669 100644
+--- a/src/pages/destinations/GlobalDestinationPages.test.tsx
++++ b/src/pages/destinations/GlobalDestinationPages.test.tsx
+@@ -1,6 +1,7 @@
+ import { renderToStaticMarkup } from 'react-dom/server';
+ import type { ReactNode } from 'react';
+ import { MemoryRouter } from 'react-router';
++import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+ import { beforeEach, describe, expect, it, vi } from 'vitest';
+ import type { ProCorePersona } from '@/features/pro-core/proCoreCapabilities';
+ 
+@@ -12,8 +13,14 @@ vi.mock('@/features/pro-core/useProCorePersona', () => ({
+ const { AccountSettingsPage, HowItWorksPage, ProductsHubPage, ProductionHubPage, FranchisePage } =
+   await import('./GlobalDestinationPages');
+ 
+-const render = (element: ReactNode, path = '/') =>
+-  renderToStaticMarkup(<MemoryRouter initialEntries={[path]}>{element}</MemoryRouter>);
++const render = (element: ReactNode, path = '/') => {
++  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
++  return renderToStaticMarkup(
++    <QueryClientProvider client={client}>
++      <MemoryRouter initialEntries={[path]}>{element}</MemoryRouter>
++    </QueryClientProvider>,
++  );
++};
+ 
+ describe('canonical global destination hubs', () => {
+   beforeEach(() => {
+@@ -37,10 +44,12 @@ describe('canonical global destination hubs', () => {
+   it('consolidates customer product intake under one Products destination', () => {
+     persona = 'home';
+     const html = render(<ProductsHubPage />, '/products');
+-    expect(html).toContain('Twoje produkty');
+-    expect(html).toContain('href="/create-ingredient"');
++    expect(html).toContain('Katalog produktów');
++    expect(html).toContain('href="/products/scan"');
+     expect(html).toContain('href="/products/import"');
+     expect(html).toContain('+ Dodaj produkt');
++    expect(html).toContain('Katalog PINGÜINO');
++    expect(html).toContain('★ Ulubione');
+   });
+ 
+   it('exposes one Pro Production hub with Current, History and Labels', () => {
+diff --git a/src/pages/destinations/GlobalDestinationPages.tsx b/src/pages/destinations/GlobalDestinationPages.tsx
+index 6cba198..b73ae00 100644
+--- a/src/pages/destinations/GlobalDestinationPages.tsx
++++ b/src/pages/destinations/GlobalDestinationPages.tsx
+@@ -8,6 +8,8 @@ import { proCoreCapabilitiesFor } from '@/features/pro-core/proCoreCapabilities'
+ import { useProductionSessionStore } from '@/features/production-workspace/productionSessionStore';
+ import { MasterLabelEditor } from '@/features/master-label/MasterLabelEditor';
+ import { AccountRecipeDefaults } from '@/features/pro-workbench/AccountRecipeDefaults';
++import { AccountProductMarkets } from '@/features/global-catalog/AccountProductMarkets';
++import { GlobalCatalogSearchPanel } from '@/features/global-catalog/GlobalCatalogSearchPanel';
+ 
+ const quietLink =
+   'flex min-h-14 items-center justify-between border-b border-ink/10 py-3 text-sm text-ink transition-opacity hover:opacity-55';
+@@ -88,7 +90,7 @@ export function ProductsHubPage() {
+   const capabilities = proCoreCapabilitiesFor(persona);
+   return (
+     <DestinationSurface
+-      eyebrow="Katalog klienta"
++      eyebrow="Katalog PINGÜINO"
+       title="Produkty"
+       blurb="Produkty, dopasowanie Mapper, dostępność i prywatna cena — w jednym kanonicznym miejscu."
+     >
+@@ -100,20 +102,20 @@ export function ProductsHubPage() {
+         <>
+           <div className="flex flex-wrap items-center justify-between gap-4 border-b border-ink/10 pb-6">
+             <div>
+-              <h2 className="text-xl font-semibold tracking-[-0.025em] text-ink">Twoje produkty</h2>
++              <h2 className="text-xl font-semibold tracking-[-0.025em] text-ink">Katalog produktów</h2>
+               <p className="mt-1 text-sm text-stone-500">
+                 Jedna biblioteka; wszystkie metody dodawania trafiają do tego samego procesu intake.
+               </p>
+             </div>
+             <Link
+-              to="/create-ingredient"
++              to="/products/scan"
+               className="min-h-11 px-2 py-3 text-xs font-medium tracking-label text-ink uppercase transition-opacity hover:opacity-55"
+             >
+               + Dodaj produkt
+             </Link>
+           </div>
+           <div className="mt-2">
+-            <Link to="/create-ingredient" className={quietLink}>
++            <Link to="/products/scan" className={quietLink}>
+               <span>
+                 <strong className="block font-medium">Ręcznie lub ze zdjęcia etykiety</strong>
+                 <span className="mt-1 block text-xs text-stone-500">
+@@ -132,6 +134,7 @@ export function ProductsHubPage() {
+               <span aria-hidden>→</span>
+             </Link>
+           </div>
++          <GlobalCatalogSearchPanel />
+           <p className="mt-8 max-w-xl text-xs leading-relaxed text-stone-500">
+             Prywatna cena klienta pozostaje własnością istniejącego modelu danych. Ten hub nie
+             tworzy drugiego magazynu cen.
+@@ -348,6 +351,7 @@ export function AccountSettingsPage() {
+             <span className="text-sm text-stone-500">Bezpieczeństwo</span>
+             <span className="text-sm text-stone-600">Ustawienia konta</span>
+           </div>
++          <AccountProductMarkets />
+           <AccountRecipeDefaults />
+         </div>
+       )}
+diff --git a/src/pages/destinations/index.ts b/src/pages/destinations/index.ts
+index 249c981..25f2423 100644
+--- a/src/pages/destinations/index.ts
++++ b/src/pages/destinations/index.ts
+@@ -2,6 +2,7 @@ export { APIPage } from './APIPage';
+ export { CreateIngredientPage } from './CreateIngredientPage';
+ export { CreateLabelPage } from './CreateLabelPage';
+ export { ProductImportPage } from './ProductImportPage';
++export { ProductScanPage } from '../products/ProductScanPage';
+ export { RecipesHubPage } from './RecipesHubPage';
+ export { SubscriptionPage } from './SubscriptionPage';
+ export { WorkWithUsPage } from './WorkWithUsPage';
+diff --git a/src/pages/dev/OcrIntakePage.test.tsx b/src/pages/dev/OcrIntakePage.test.tsx
+index b0a7d28..7784e19 100644
+--- a/src/pages/dev/OcrIntakePage.test.tsx
++++ b/src/pages/dev/OcrIntakePage.test.tsx
+@@ -70,10 +70,10 @@ describe('OcrIntakePage — full session surface (contract panels)', () => {
+ 
+   it('renders the duplicate panel with only its allowed actions', () => {
+     const html = render(<OcrIntakePage />);
+-    expect(text(html)).toMatch(/Likely duplicate/);
+-    expect(html).toContain('aria-label="Open existing product"');
+-    expect(html).toContain('aria-label="Update existing (reviewed merge)"');
+-    expect(html).toContain('aria-label="Create as new product"');
++    expect(text(html)).toMatch(/Czy to ten sam produkt\?/);
++    expect(html).toContain('aria-label="Tak, to ten produkt"');
++    expect(html).toContain('aria-label="Uzupełnij istniejący produkt"');
++    expect(html).toContain('aria-label="Nie, to inny produkt"');
+   });
+ 
+   it('keeps the duplicate re-check honestly disabled while unwired, and links the batch queue', () => {
+diff --git a/src/services/ingredients.ts b/src/services/ingredients.ts
+index f89aee1..bcd175d 100644
+--- a/src/services/ingredients.ts
++++ b/src/services/ingredients.ts
+@@ -103,7 +103,9 @@ export async function searchEngineApprovedIngredients(
+       .from(TABLE)
+       .select(SEARCH_RESULT_COLUMNS)
+       .eq('is_active', true)
+-      .eq('approved_for_engines', true);
++      .eq('approved_for_base', true)
++      .eq('approved_for_engines', true)
++      .eq('verification_status', 'verified');
+     // One AND-group per token; OR across (alias term × safe column) within it.
+     for (const terms of groups) {
+       query = query.or(
+@@ -138,6 +140,23 @@ export async function listIngredientsByIds(ids: readonly string[]): Promise<Ingr
+   return (data ?? []) as IngredientRow[];
+ }
+ 
++/** Exact-id list with the same current trust gate as Base selection. Used for
++ * private Favorites/Recent so a later Mapper revocation disappears immediately. */
++export async function listEngineApprovedIngredientsByIds(ids: readonly string[]): Promise<IngredientRow[]> {
++  if (ids.length === 0) return [];
++  if (!supabase) return emptyUnconfiguredRead('ingredients.listEngineApprovedIngredientsByIds', []);
++  const { data, error } = await supabase
++    .from(TABLE)
++    .select('*')
++    .in('ingredient_id', [...ids])
++    .eq('is_active', true)
++    .eq('approved_for_base', true)
++    .eq('approved_for_engines', true)
++    .eq('verification_status', 'verified');
++  if (error) throw new Error(error.message);
++  return (data ?? []) as IngredientRow[];
++}
++
+ /** A single ingredient by its stable id (RLS still applies). */
+ export async function getIngredientById(id: string): Promise<IngredientRow | null> {
+   if (!supabase) return emptyUnconfiguredRead('ingredients.getIngredientById', null);
+@@ -149,3 +168,20 @@ export async function getIngredientById(id: string): Promise<IngredientRow | nul
+   if (error) throw new Error(error.message);
+   return (data as IngredientRow | null) ?? null;
+ }
++
++/** Selection-time trust gate for catalog-to-Base mapping. Search results can
++ * become stale; this rechecks every current Mapper eligibility flag at click. */
++export async function getEngineApprovedIngredientById(id: string): Promise<IngredientRow | null> {
++  if (!supabase) return emptyUnconfiguredRead('ingredients.getEngineApprovedIngredientById', null);
++  const { data, error } = await supabase
++    .from(TABLE)
++    .select('*')
++    .eq('ingredient_id', id)
++    .eq('is_active', true)
++    .eq('approved_for_base', true)
++    .eq('approved_for_engines', true)
++    .eq('verification_status', 'verified')
++    .maybeSingle();
++  if (error) throw new Error(error.message);
++  return (data as IngredientRow | null) ?? null;
++}
+diff --git a/src/services/ocrIntakePersistence.test.ts b/src/services/ocrIntakePersistence.test.ts
+index 530c23e..aa83014 100644
+--- a/src/services/ocrIntakePersistence.test.ts
++++ b/src/services/ocrIntakePersistence.test.ts
+@@ -14,14 +14,27 @@ vi.mock('@/services/ocrIntakeEvidence', () => ({
+ }));
+ vi.mock('@/features/ocr-intake/session/saveFlow', () => ({
+   createSaveFlowState: vi.fn((sessionId: string) => ({ sessionId })),
++  buildSessionCandidate: vi.fn(() => ({ candidate: { status: 'valid', insert: { product_name_display: 'Completed product' } } })),
+   saveIntakeSession: vi.fn(),
+ }));
++vi.mock('@/services/products', () => ({ updateProduct: vi.fn(async () => undefined) }));
++vi.mock('@/services/globalCatalog', () => ({
++  getCatalogMarketPreferences: vi.fn(async () => ({
++    primaryMarket: 'ES', additionalMarkets: [], preferredRetailers: [], defaultScope: 'my_markets_and_global',
++  })),
++  submitOwnedOcrProductToGlobalCatalog: vi.fn(async () => ({
++    kind: 'created', productId: 'catalog-1', status: 'verified', autoFavorited: true,
++    duplicateCandidates: [], missingFields: [], reviewCaseKey: null, retryAt: null,
++  })),
++}));
+ 
+ import { createSession, saveImageMetadata, updateSessionState } from '@/services/ocrIntakeSessions';
+ import { uploadIntakeImage } from '@/services/ocrIntakeStorage';
+ import { recordOcrRun, saveEvidence } from '@/services/ocrIntakeEvidence';
+ import { saveIntakeSession } from '@/features/ocr-intake/session/saveFlow';
+-import { persistSessionAndSave } from './ocrIntakePersistence';
++import { submitOwnedOcrProductToGlobalCatalog } from '@/services/globalCatalog';
++import { updateProduct } from '@/services/products';
++import { completeSavedOcrProductAndRetryCatalog, persistSessionAndSave } from './ocrIntakePersistence';
+ 
+ const image: IntakeImage = {
+   imageId: 'i1',
+@@ -82,8 +95,14 @@ describe('persistSessionAndSave', () => {
+     expect(saveEvidence).toHaveBeenCalledWith('s1', []);
+     expect(saveIntakeSession).toHaveBeenCalledTimes(1);
+     expect(updateSessionState).toHaveBeenCalledWith('s1', 'saved', { savedAt: expect.any(String) });
+-    // honesty: a product was saved but the catalog link is a future server step
+-    expect(out.savedProductLinkPending).toBe(true);
++    // The service pipeline captured evidence and wrote the authoritative link.
++    expect(out.savedProductLinkPending).toBe(false);
++    expect(submitOwnedOcrProductToGlobalCatalog).toHaveBeenCalledWith(expect.objectContaining({
++      privateProductId: 'PR-1',
++      ocrSessionId: 's1',
++      idempotencyKey: 'ocr:s1',
++    }));
++    expect(out.globalCatalogContribution).toMatchObject({ productId: 'catalog-1', autoFavorited: true });
+   });
+ 
+   it('reflects a duplicate_blocked outcome and does NOT claim a saved link', async () => {
+@@ -91,6 +110,7 @@ describe('persistSessionAndSave', () => {
+     const out = await persistSessionAndSave(session, bytes(), []);
+     expect(updateSessionState).toHaveBeenCalledWith('s1', 'duplicate_blocked', {});
+     expect(out.savedProductLinkPending).toBe(false);
++    expect(out.globalCatalogContribution).toBeNull();
+   });
+ 
+   it('reflects a failed save', async () => {
+@@ -100,14 +120,34 @@ describe('persistSessionAndSave', () => {
+     expect(out.savedProductLinkPending).toBe(false);
+   });
+ 
+-  it('cancels the session on open_existing', async () => {
++  it('cancels the local intake on open_existing but still resolves the confirmed product through the shared catalog', async () => {
+     setSave({ kind: 'open_existing', existingProductId: 'PR-9' });
+     await persistSessionAndSave(session, bytes(), []);
+     expect(updateSessionState).toHaveBeenCalledWith('s1', 'cancelled', { cancelledAt: expect.any(String) });
++    expect(submitOwnedOcrProductToGlobalCatalog).toHaveBeenCalledWith(expect.objectContaining({
++      privateProductId: 'PR-9',
++      ocrSessionId: 's1',
++      idempotencyKey: 'ocr:s1',
++    }));
+   });
+ 
+   it('throws when an image has no provided bytes (never a silent partial persist)', async () => {
+     setSave({ kind: 'failed', error: 'unused' });
+     await expect(persistSessionAndSave(session, new Map(), [])).rejects.toThrow(/No bytes/);
+   });
++
++  it('appends reviewed evidence before RED → BLUE private-product completion and retry', async () => {
++    const result = {
++      session: { id: 's1' },
++      saveResult: { kind: 'saved', productId: 'PR-1' },
++      savedProductLinkPending: false,
++      globalCatalogContribution: null,
++      globalCatalogContributionError: null,
++    } as never;
++    await completeSavedOcrProductAndRetryCatalog(result, session, { market: 'ES' });
++    expect(saveEvidence).toHaveBeenCalledWith('s1', session.fields);
++    expect(updateProduct).toHaveBeenCalledWith('PR-1', expect.objectContaining({ product_name_display: 'Completed product' }));
++    expect(vi.mocked(saveEvidence).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(updateProduct).mock.invocationCallOrder[0]!);
++    expect(submitOwnedOcrProductToGlobalCatalog).toHaveBeenCalledWith(expect.objectContaining({ resumeBlocked: true }));
++  });
+ });
+diff --git a/src/services/ocrIntakePersistence.ts b/src/services/ocrIntakePersistence.ts
+index 17d1fca..de4fed5 100644
+--- a/src/services/ocrIntakePersistence.ts
++++ b/src/services/ocrIntakePersistence.ts
+@@ -10,12 +10,10 @@
+  *      directly and never names it;
+  *   5. updateSessionState to mirror the SaveFlowResult.
+  *
+- * HONESTY / KNOWN LIMITATION (documented, never hidden): the frontend CANNOT populate
+- * `ocr_intake_sessions.saved_product_id` — that column has NO client grant (0022; it is
+- * service role only and needs a future server/edge step). So on a successful save this
+- * orchestrator records state 'saved' + saved_at but does NOT attempt to write
+- * saved_product_id, and surfaces `savedProductLinkPending: true` on its result. It never
+- * silently pretends the catalog link was written.
++ * The frontend cannot populate `ocr_intake_sessions.saved_product_id`; the catalog
++ * Edge/RPC links it only after ownership, archived evidence and rate controls pass.
++ * Until that server step succeeds this orchestrator reports
++ * `savedProductLinkPending: true` and never pretends the link was written.
+  *
+  * This module reaches Supabase ONLY through the sibling intake services and the existing
+  * save flow — it imports no database client, issues no raw query, uses no service role.
+@@ -24,13 +22,20 @@ import { createSession, saveImageMetadata, updateSessionState } from '@/services
+ import type { OcrIntakeSessionRow, SessionStateTimestamps } from '@/services/ocrIntakeSessions';
+ import { uploadIntakeImage } from '@/services/ocrIntakeStorage';
+ import { recordOcrRun, saveEvidence } from '@/services/ocrIntakeEvidence';
+-import { createSaveFlowState, saveIntakeSession } from '@/features/ocr-intake/session/saveFlow';
++import { buildSessionCandidate, createSaveFlowState, saveIntakeSession } from '@/features/ocr-intake/session/saveFlow';
+ import type { DuplicateResolutionAction, SaveFlowResult } from '@/features/ocr-intake/session/saveFlow';
+ import type { ExistingProductForDedup } from '@/features/ocr-intake/session/duplicateCheck';
+ import type { IntakeSessionState, ProductIntakeSession } from '@/features/ocr-intake/intakeContracts';
++import { getCatalogMarketPreferences, submitOwnedOcrProductToGlobalCatalog } from '@/services/globalCatalog';
++import type { CatalogSubmissionResult } from '@/features/global-catalog/contracts';
++import { updateProduct } from '@/services/products';
+ 
+ export interface PersistSessionOptions {
+   resolution?: DuplicateResolutionAction;
++  explicitlyUnbranded?: boolean;
++  market?: string | null;
++  retailer?: string | null;
++  distinguishingEvidence?: Record<string, unknown>;
+ }
+ 
+ export interface PersistSessionResult {
+@@ -40,11 +45,73 @@ export interface PersistSessionResult {
+   saveResult: SaveFlowResult;
+   /**
+    * TRUE only when a product was actually saved: the catalog link into
+-   * `ocr_intake_sessions.saved_product_id` is still PENDING a future server/edge step
+-   * (the client has no grant to write it). Honest signal — never a claim that the link
+-   * exists.
++   * `ocr_intake_sessions.saved_product_id` is still pending the guarded server step
++   * (the client has no grant to write it).
+    */
+   savedProductLinkPending: boolean;
++  /** Automatic shared-catalog contribution. Present for a saved/resolved product. */
++  globalCatalogContribution: CatalogSubmissionResult | null;
++  /** A private save never disappears behind a transient shared-catalog failure. */
++  globalCatalogContributionError: string | null;
++}
++
++export async function retryGlobalCatalogContribution(
++  result: PersistSessionResult,
++  session: ProductIntakeSession,
++  options: {
++    duplicateDecision?: 'same' | 'different' | null;
++    distinguishingEvidence?: Record<string, unknown>;
++    riskChallengeToken?: string | null;
++    market?: string | null;
++    retailer?: string | null;
++    resumeBlocked?: boolean;
++  } = {},
++): Promise<CatalogSubmissionResult> {
++  if (result.saveResult.kind !== 'saved' && result.saveResult.kind !== 'open_existing') {
++    throw new Error('Only a saved or explicitly confirmed existing OCR product can be contributed.');
++  }
++  const preferences = await getCatalogMarketPreferences();
++  return submitOwnedOcrProductToGlobalCatalog({
++    privateProductId: result.saveResult.kind === 'saved'
++      ? result.saveResult.productId
++      : result.saveResult.existingProductId,
++    ocrSessionId: session.sessionId,
++    idempotencyKey: `ocr:${session.sessionId}`,
++    market: options.market ?? preferences.primaryMarket,
++    retailer: options.retailer ?? null,
++    packageLanguage: successfulLanguageHint(session),
++    duplicateDecision: options.duplicateDecision ?? null,
++    distinguishingEvidence: options.distinguishingEvidence ?? {},
++    riskChallengeToken: options.riskChallengeToken ?? null,
++    resumeBlocked: options.resumeBlocked === true,
++  });
++}
++
++export async function completeSavedOcrProductAndRetryCatalog(
++  result: PersistSessionResult,
++  session: ProductIntakeSession,
++  options: {
++    explicitlyUnbranded?: boolean;
++    market?: string | null;
++    retailer?: string | null;
++  } = {},
++): Promise<CatalogSubmissionResult> {
++  if (result.saveResult.kind !== 'saved' && result.saveResult.kind !== 'open_existing') {
++    throw new Error('Only a saved or explicitly confirmed existing OCR product can be completed.');
++  }
++  const { candidate } = buildSessionCandidate(session, options);
++  if (candidate.status === 'skip') throw new Error(candidate.skipReason ?? 'Product identity is incomplete.');
++  // This is an owner-scoped update of the private product. Engine fields remain
++  // stripped by updateProduct; the server can only publish it as BLUE afterward.
++  const productId = result.saveResult.kind === 'saved'
++    ? result.saveResult.productId
++    : result.saveResult.existingProductId;
++  // Evidence is append-only. Manual completion writes a new reviewed snapshot
++  // before updating the owner product, so RED → BLUE derives public facts from
++  // the edited evidence instead of merely changing status around stale data.
++  await saveEvidence(session.sessionId, session.fields);
++  await updateProduct(productId, candidate.insert);
++  return retryGlobalCatalogContribution(result, session, { ...options, resumeBlocked: true });
+ }
+ 
+ function assertNever(value: never): never {
+@@ -117,10 +184,54 @@ export async function persistSessionAndSave(
+ 
+   const row = await updateSessionState(session.sessionId, targetState, timestamps);
+ 
++  let globalCatalogContribution: CatalogSubmissionResult | null = null;
++  let globalCatalogContributionError: string | null = null;
++  const resolvedProductId =
++    saveResult.kind === 'saved'
++      ? saveResult.productId
++      : saveResult.kind === 'open_existing'
++        ? saveResult.existingProductId
++      : null;
++  if (resolvedProductId !== null) {
++    const packageLanguage = successfulLanguageHint(session);
++    try {
++      const marketPreferences = await getCatalogMarketPreferences();
++      globalCatalogContribution = await submitOwnedOcrProductToGlobalCatalog({
++        privateProductId: resolvedProductId,
++        ocrSessionId: session.sessionId,
++        idempotencyKey: `ocr:${session.sessionId}`,
++        // Country-of-origin remains separate; market comes from account preferences in
++        // the server pipeline when the intake does not carry an explicit sale market.
++        market: options.market ?? marketPreferences.primaryMarket,
++        retailer: options.retailer ?? null,
++        packageLanguage,
++        // A distinct-product decision carries recognized, non-scientific variant
++        // evidence. It never fabricates a composition difference.
++        distinguishingEvidence:
++          options.resolution === 'create_new'
++            ? options.distinguishingEvidence ?? {}
++            : {},
++        duplicateDecision: options.resolution === 'create_new' ? 'different' : null,
++      });
++    } catch (error) {
++      // The private save is already durable. Surface the automatic contribution as
++      // retryable instead of throwing and causing the UI to repeat uploads/inserts.
++      globalCatalogContributionError = error instanceof Error ? error.message : 'catalog_contribution_failed';
++    }
++  }
++
+   return {
+     session: row,
+     saveResult,
+     // a saved product exists but its saved_product_id link awaits a server/edge step
+-    savedProductLinkPending: saveResult.kind === 'saved',
++    // The service RPC writes saved_product_id only after evidence capture succeeds.
++    savedProductLinkPending: saveResult.kind === 'saved' && globalCatalogContribution === null,
++    globalCatalogContribution,
++    globalCatalogContributionError,
+   };
+ }
++
++function successfulLanguageHint(session: ProductIntakeSession): string | null {
++  const hints = Object.values(session.ocrRuns).flatMap((outcome) => outcome.ok ? outcome.result.languageHints : []);
++  return hints.find((hint) => hint.trim() !== '') ?? null;
++}
+diff --git a/src/services/proCore/supabaseRecipes.test.ts b/src/services/proCore/supabaseRecipes.test.ts
+index ae4c2ea..f61f87c 100644
+--- a/src/services/proCore/supabaseRecipes.test.ts
++++ b/src/services/proCore/supabaseRecipes.test.ts
+@@ -13,6 +13,7 @@ import { describe, expect, it } from 'vitest';
+ import type { EngineIngredient, RecipeInput } from '@/engine';
+ import type { RecipeCapabilities } from '@/features/pro-core/recipeContracts';
+ import type { RecipeCompositionMetadata } from '@/features/recipe-composition/recipeCompositionPersistence';
++import type { CatalogLabelToppingIngredient } from '@/features/recipe-composition/labelTopping';
+ import { supabaseRecipesRepository } from './supabaseRecipes';
+ import { FakeDB, makeClient, type Result } from './supabaseRecipesFake';
+ 
+@@ -66,6 +67,37 @@ const composition = (grams: number): RecipeCompositionMetadata => ({
+   }],
+   migrationAmbiguities: [],
+ });
++const labelComposition = (grams: number): RecipeCompositionMetadata => ({
++  schemaVersion: 1,
++  baseScope: 'BASE_FORMULATION',
++  baseOrder: ['a'],
++  toppings: [{
++    id: 'top-label-sauce',
++    ingredient: {
++      kind: 'catalog_label_topping',
++      id: 'catalog:label-sauce',
++      canonical_ingredient_id: 'catalog:label-sauce',
++      private_product_id: 'catalog:label-sauce:version:v1',
++      name: 'Label sauce',
++      catalog_product_id: 'label-sauce',
++      catalog_version_id: 'v1',
++      verification_status: 'verified',
++      label_nutrition_per_100g: {
++        basis: 'per_100g', energyKcal: 180, fat: 1, saturatedFat: 0.2,
++        carbohydrate: 42, sugars: 38, protein: 1, salt: 0.04, fibre: 2,
++      },
++      ingredients_text: 'Fruit, sugar',
++      allergens_text: 'None declared',
++      cost_per_kg: null,
++      cost_currency: null,
++    } satisfies CatalogLabelToppingIngredient,
++    planned_grams: grams,
++    actual_grams: null,
++    process_scope: 'POST_PROCESS_ADDON',
++    addon_sort_order: 0,
++  }],
++  migrationAmbiguities: [],
++});
+ 
+ /* ── tests (the in-memory fake SupabaseClient lives in ./supabaseRecipesFake) ── */
+ 
+@@ -171,6 +203,29 @@ describe('supabase RecipesRepository adapter (fake client)', () => {
+     expect(restored.productComposition).toEqual(composition(70));
+   });
+ 
++  it('round-trips and restores a label-only catalog Topping snapshot', async () => {
++    const { repo } = seed();
++    const { recipe, version: v1 } = await repo.createRecipe({
++      ownerUserId: 'user-1', title: 'Label sauce topping',
++      recipeInput: input(1000, [item('a', 'Milk', 1000)]),
++      productComposition: labelComposition(80),
++      trace: TRACE, by: 'user-1', capabilities: PRO,
++    });
++    expect(v1.productComposition).toEqual(labelComposition(80));
++    const v2 = await repo.saveNewVersion(
++      recipe.recipeId,
++      input(1000, [item('a', 'Milk', 1000)]),
++      TRACE,
++      'user-1',
++      undefined,
++      labelComposition(90),
++    );
++    expect(v2.productComposition).toEqual(labelComposition(90));
++    const restored = await repo.restore(recipe.recipeId, 1, 'user-1', PRO);
++    expect(restored.productComposition).toEqual(labelComposition(80));
++    expect(restored.productComposition?.toppings[0]?.ingredient).not.toHaveProperty('composition');
++  });
++
+   it('the store refuses any UPDATE on recipe_versions (append-only, matching the DB grants)', async () => {
+     const db = new FakeDB();
+     db.recipe_versions.push({ id: 'rv-x', recipe_id: 'r', version_number: 1 });
+diff --git a/src/stores/recipeStore.ts b/src/stores/recipeStore.ts
+index 940bc2e..b3d4e31 100644
+--- a/src/stores/recipeStore.ts
++++ b/src/stores/recipeStore.ts
+@@ -56,7 +56,17 @@ import {
+   readRecipeCompositionMetadata,
+   type RecipeCompositionMetadata,
+   type RecipeToppingItem,
++  type RecipeToppingIngredient,
+ } from '@/features/recipe-composition/recipeCompositionPersistence';
++import {
++  cloneToppingIngredient,
++  isCatalogLabelToppingIngredient,
++  toppingIngredientIdentity,
++} from '@/features/recipe-composition/labelTopping';
++import {
++  mainBehaviorBlockReason,
++  type ProductBehaviorSnapshot,
++} from '@/features/product-intelligence';
+ 
+ type FlavorIntensity = NonNullable<RecipeGoals['flavor_intensity']>;
+ type CostPriority = NonNullable<RecipeGoals['cost_priority']>;
+@@ -104,6 +114,8 @@ export interface RecipeState {
+   baseOrder: string[];
+   /** Post-process additions. They never enter Base Engine formulation. */
+   toppings: RecipeToppingItem[];
++  /** Immutable product/version/policy authority per Base/Topping line. */
++  productBehaviorSnapshots: Record<string, ProductBehaviorSnapshot>;
+   compositionMigrationAmbiguities: Array<{ lineId: string; reason: string }>;
+   /**
+    * Canonical ingredient ids the user EXPLICITLY marked unavailable/excluded —
+@@ -230,14 +242,18 @@ export interface RecipeState {
+     | { ok: false; code: 'batch_mismatch'; sum: number; target: number }
+     | { ok: false; code: 'write_verification_failed' };
+   addIngredient: (ingredient: EngineIngredient, grams?: number) => void;
+-  addTopping: (ingredient: EngineIngredient, grams?: number) => void;
++  addTopping: (ingredient: RecipeToppingIngredient, grams?: number) => void;
+   removeTopping: (lineId: string) => void;
+   setToppingGrams: (lineId: string, grams: number) => void;
+   setToppingActualGrams: (lineId: string, grams: number | null) => void;
+-  replaceToppingIngredient: (lineId: string, ingredient: EngineIngredient) => void;
++  replaceToppingIngredient: (lineId: string, ingredient: RecipeToppingIngredient) => void;
+   moveBaseItem: (lineId: string, direction: -1 | 1) => void;
+   moveTopping: (lineId: string, direction: -1 | 1) => void;
+   resolveCompositionAmbiguity: (lineId: string) => void;
++  setProductBehaviorSnapshot: (
++    lineId: string,
++    snapshot: ProductBehaviorSnapshot | null,
++  ) => void;
+   /**
+    * Owner FINAL CLOSURE C2/C3 — „Remove row": ONE atomic material-edit
+    * transaction that removes the line from the CURRENT recipe. It leaves NO
+@@ -416,6 +432,7 @@ const fromPreset = (preset: DemoPreset) => ({
+   })),
+   baseOrder: preset.items.map((item) => item.id),
+   toppings: [] as RecipeToppingItem[],
++  productBehaviorSnapshots: {} as Record<string, ProductBehaviorSnapshot>,
+   compositionMigrationAmbiguities: [] as Array<{ lineId: string; reason: string }>,
+   // Owner P0 NIGHTLY (exclusion lifecycle): exclusions are DRAFT-SCOPED — a
+   // fresh preset load / reset starts a fresh exclusion context. An ingredient
+@@ -496,6 +513,7 @@ export function recipePersistPartialize(state: RecipeState) {
+     items: state.items,
+     baseOrder: state.baseOrder,
+     toppings: state.toppings,
++    productBehaviorSnapshots: state.productBehaviorSnapshots,
+     compositionMigrationAmbiguities: state.compositionMigrationAmbiguities,
+     // Agent C (owner addendum): draft-material — see the field doc above.
+     excludedIngredientIds: state.excludedIngredientIds,
+@@ -521,6 +539,7 @@ export const useRecipeStore = create<RecipeState>()(
+       ...fromPreset(DEFAULT_PRESET),
+       excludedIngredientIds: [],
+       unavailableMainIngredientIds: [],
++      productBehaviorSnapshots: {},
+       draftRevision: 0,
+       draftContextSeq: 0,
+ 
+@@ -681,6 +700,7 @@ export const useRecipeStore = create<RecipeState>()(
+         const priorItems = prior.items;
+         const priorBaseOrder = prior.baseOrder;
+         const priorToppings = prior.toppings;
++        const priorProductBehaviorSnapshots = prior.productBehaviorSnapshots;
+         const priorMigrationAmbiguities = prior.compositionMigrationAmbiguities;
+         const priorBatch = prior.target_batch_grams;
+         const nextItems = sortedBaseItems(
+@@ -692,6 +712,17 @@ export const useRecipeStore = create<RecipeState>()(
+           items: nextItems,
+           baseOrder: nextBaseOrder,
+           toppings: nextToppings,
++          productBehaviorSnapshots: Object.fromEntries(
++            Object.entries(state.productBehaviorSnapshots).filter(([lineId]) => {
++              const priorBase = state.items.find((item) => item.id === lineId);
++              const nextBase = nextItems.find((item) => item.id === lineId);
++              if (priorBase && nextBase) {
++                return canonicalIngredientId(priorBase.ingredient) ===
++                  canonicalIngredientId(nextBase.ingredient);
++              }
++              return nextToppings.some((item) => item.id === lineId);
++            }),
++          ),
+           compositionMigrationAmbiguities: priorMigrationAmbiguities,
+           target_batch_grams: input.target_batch_grams,
+           dirty: true,
+@@ -713,6 +744,7 @@ export const useRecipeStore = create<RecipeState>()(
+             items: priorItems,
+             baseOrder: priorBaseOrder,
+             toppings: priorToppings,
++            productBehaviorSnapshots: priorProductBehaviorSnapshots,
+             compositionMigrationAmbiguities: priorMigrationAmbiguities,
+             target_batch_grams: priorBatch,
+             draftRevision: state.draftRevision + 1,
+@@ -773,10 +805,12 @@ export const useRecipeStore = create<RecipeState>()(
+ 
+       addTopping: (ingredient, grams = 0) =>
+         set((state) => {
+-          const canonicalId = canonicalIngredientId(ingredient);
+-          const normalized = normalizeIngredientIdentity(ingredient);
++          const canonicalId = toppingIngredientIdentity(ingredient);
++          const normalized = isCatalogLabelToppingIngredient(ingredient)
++            ? cloneToppingIngredient(ingredient)
++            : normalizeIngredientIdentity(ingredient);
+           const existingIndex = state.toppings.findIndex(
+-            (item) => canonicalIngredientId(item.ingredient) === canonicalId,
++            (item) => toppingIngredientIdentity(item.ingredient) === canonicalId,
+           );
+           const toppings =
+             existingIndex >= 0
+@@ -806,6 +840,9 @@ export const useRecipeStore = create<RecipeState>()(
+           if (toppings.length === state.toppings.length) return {};
+           return {
+             toppings: sortedToppings(toppings),
++            productBehaviorSnapshots: Object.fromEntries(
++              Object.entries(state.productBehaviorSnapshots).filter(([id]) => id !== lineId),
++            ),
+             dirty: true,
+             draftRevision: state.draftRevision + 1,
+           };
+@@ -832,10 +869,12 @@ export const useRecipeStore = create<RecipeState>()(
+         set((state) => {
+           const current = state.toppings.find((item) => item.id === lineId);
+           if (!current) return {};
+-          const canonicalId = canonicalIngredientId(ingredient);
+-          const normalized = normalizeIngredientIdentity(ingredient);
++          const canonicalId = toppingIngredientIdentity(ingredient);
++          const normalized = isCatalogLabelToppingIngredient(ingredient)
++            ? cloneToppingIngredient(ingredient)
++            : normalizeIngredientIdentity(ingredient);
+           const duplicate = state.toppings.find(
+-            (item) => item.id !== lineId && canonicalIngredientId(item.ingredient) === canonicalId,
++            (item) => item.id !== lineId && toppingIngredientIdentity(item.ingredient) === canonicalId,
+           );
+           const toppings = duplicate
+             ? state.toppings
+@@ -859,6 +898,11 @@ export const useRecipeStore = create<RecipeState>()(
+               );
+           return {
+             toppings: sortedToppings(toppings),
++            productBehaviorSnapshots: Object.fromEntries(
++              Object.entries(state.productBehaviorSnapshots).filter(
++                ([snapshotLineId]) => snapshotLineId !== lineId,
++              ),
++            ),
+             dirty: true,
+             draftRevision: state.draftRevision + 1,
+           };
+@@ -893,6 +937,26 @@ export const useRecipeStore = create<RecipeState>()(
+             draftRevision: state.draftRevision + 1,
+           };
+         }),
++      setProductBehaviorSnapshot: (lineId, snapshot) =>
++        set((state) => {
++          const isBase = state.items.some((item) => item.id === lineId);
++          const isTopping = state.toppings.some((item) => item.id === lineId);
++          if (!isBase && !isTopping) return {};
++          if (
++            snapshot &&
++            ((isBase && snapshot.processScope !== 'BASE_FORMULATION') ||
++              (isTopping && snapshot.processScope !== 'POST_PROCESS_ADDON') ||
++              snapshot.lineId !== lineId)
++          ) return {};
++          const next = { ...state.productBehaviorSnapshots };
++          if (snapshot) next[lineId] = structuredClone(snapshot);
++          else delete next[lineId];
++          return {
++            productBehaviorSnapshots: next,
++            dirty: true,
++            draftRevision: state.draftRevision + 1,
++          };
++        }),
+ 
+       removeItem: (lineId) =>
+         set((state) => {
+@@ -901,6 +965,9 @@ export const useRecipeStore = create<RecipeState>()(
+           return {
+             items,
+             baseOrder: state.baseOrder.filter((id) => items.some((item) => item.id === id)),
++            productBehaviorSnapshots: Object.fromEntries(
++              Object.entries(state.productBehaviorSnapshots).filter(([id]) => id !== lineId),
++            ),
+             ...(state.visibleProductType === 'gelato'
+               ? { category: gelatoInternalCategory(items) }
+               : {}),
+@@ -937,6 +1004,11 @@ export const useRecipeStore = create<RecipeState>()(
+           return {
+             items,
+             baseOrder: state.baseOrder.filter((id) => items.some((item) => item.id === id)),
++            productBehaviorSnapshots: Object.fromEntries(
++              Object.entries(state.productBehaviorSnapshots).filter(([id]) =>
++                items.some((item) => item.id === id),
++              ),
++            ),
+             ...(state.visibleProductType === 'gelato'
+               ? { category: gelatoInternalCategory(items) }
+               : {}),
+@@ -1196,13 +1268,16 @@ export const useRecipeStore = create<RecipeState>()(
+         })),
+ 
+       setMainIngredient: (lineId) =>
+-        set((state) => ({
+-          items: state.items.map((item) =>
+-            item.id === lineId ? { ...item, lock_type: 'main' } : item,
+-          ),
+-          dirty: true,
+-          draftRevision: state.draftRevision + 1,
+-        })),
++        set((state) => {
++          if (mainBehaviorBlockReason(state.productBehaviorSnapshots[lineId])) return {};
++          return {
++            items: state.items.map((item) =>
++              item.id === lineId ? { ...item, lock_type: 'main' } : item,
++            ),
++            dirty: true,
++            draftRevision: state.draftRevision + 1,
++          };
++        }),
+ 
+       // Owner P0 NIGHTLY (live FAILURE 1): a preset load / recipe load / reset
+       // starts a WHOLE NEW draft context — `draftContextSeq` bumps so the
+@@ -1310,6 +1385,7 @@ export const useRecipeStore = create<RecipeState>()(
+             compositionMetadata?.baseOrder ?? normalizedItems.map((item) => item.id),
+           ).map((item) => item.id),
+           toppings: sortedToppings(loadedToppings),
++          productBehaviorSnapshots: structuredClone(compositionMetadata?.behaviorSnapshots ?? {}),
+           compositionMigrationAmbiguities: migrationAmbiguities,
+           excludedIngredientIds: [...(input.goals?.excluded_ingredient_ids ?? [])],
+           unavailableMainIngredientIds: [...(input.goals?.unavailable_main_ingredient_ids ?? [])],

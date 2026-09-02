@@ -1,0 +1,1316 @@
+﻿5f79658 refs/heads/codex/unified-product-intelligence@{0}: Branch: renamed refs/heads/codex/global-product-catalog to refs/heads/codex/unified-product-intelligence
+5f79658 HEAD@{0}: Branch: renamed refs/heads/codex/global-product-catalog to refs/heads/codex/unified-product-intelligence
+5f79658 refs/heads/codex/unified-product-intelligence@{1}: merge origin/staging: Fast-forward
+5f79658 HEAD@{2}: merge origin/staging: Fast-forward
+5f79658 refs/remotes/origin/staging@{0}: update by push
+5f79658 refs/heads/codex/pixel-perfect-desktop@{0}: commit (amend): fix(pro): lock desktop workbench to owner target
+5f79658 worktrees/final-pro-topping-system/HEAD@{0}: commit (amend): fix(pro): lock desktop workbench to owner target
+bf1bc6a refs/heads/codex/pixel-perfect-desktop@{1}: commit: fix(pro): lock desktop workbench to owner target
+bf1bc6a worktrees/final-pro-topping-system/HEAD@{1}: commit: fix(pro): lock desktop workbench to owner target
+e816c51 HEAD@{3}: reset: moving to HEAD
+e816c51 HEAD@{4}: 
+e816c51 refs/heads/codex/unified-product-intelligence@{2}: branch: Created from origin/staging
+e816c51 refs/heads/codex/pixel-perfect-desktop@{2}: branch: Created from origin/staging
+e816c51 worktrees/final-pro-topping-system/HEAD@{2}: checkout: moving from codex/desktop-structure-lock to codex/pixel-perfect-desktop
+e816c51 refs/remotes/origin/staging@{1}: update by push
+e816c51 refs/heads/codex/desktop-structure-lock@{0}: commit: feat(pro): lock desktop profile structure and picker
+e816c51 worktrees/final-pro-topping-system/HEAD@{3}: commit: feat(pro): lock desktop profile structure and picker
+6b188e5 refs/heads/codex/desktop-structure-lock@{1}: branch: Created from HEAD
+6b188e5 worktrees/final-pro-topping-system/HEAD@{4}: checkout: moving from codex/final-pro-topping-system to codex/desktop-structure-lock
+6b188e5 refs/remotes/origin/staging@{2}: update by push
+6b188e5 refs/heads/codex/final-pro-topping-system@{0}: commit: chore(staging): force clean Vercel redeploy
+6b188e5 worktrees/final-pro-topping-system/HEAD@{5}: commit: chore(staging): force clean Vercel redeploy
+f5241d9 refs/remotes/origin/staging@{3}: update by push
+f5241d9 refs/heads/codex/final-pro-topping-system@{1}: commit: docs(pro): record staging deployment and owner QA gate
+f5241d9 worktrees/final-pro-topping-system/HEAD@{6}: commit: docs(pro): record staging deployment and owner QA gate
+5d5ccbb refs/remotes/origin/staging@{4}: update by push
+5d5ccbb refs/heads/codex/final-pro-topping-system@{2}: commit: docs(pro): record final owner implementation gates
+5d5ccbb worktrees/final-pro-topping-system/HEAD@{7}: commit: docs(pro): record final owner implementation gates
+4fe5ac6 refs/heads/codex/final-pro-topping-system@{3}: commit: feat(pro): complete base and topping owner system
+4fe5ac6 worktrees/final-pro-topping-system/HEAD@{8}: commit: feat(pro): complete base and topping owner system
+dd87e3a worktrees/final-pro-topping-system/HEAD@{9}: reset: moving to HEAD
+dd87e3a refs/heads/codex/final-pro-topping-system@{4}: branch: Created from origin/staging
+dd87e3a worktrees/final-pro-topping-system/HEAD@{10}: 
+dd87e3a refs/remotes/origin/staging@{5}: update by push
+dd87e3a refs/heads/codex/final-pro-owner-reconstruction@{0}: commit: fix(pro): finish owner visual correction pass
+dd87e3a worktrees/final-pro-owner-reconstruction/HEAD@{0}: commit: fix(pro): finish owner visual correction pass
+83c784b refs/remotes/origin/staging@{6}: update by push
+83c784b refs/heads/codex/final-pro-owner-reconstruction@{1}: commit: feat(pro): complete Apple owner workbench reconstruction
+83c784b worktrees/final-pro-owner-reconstruction/HEAD@{1}: commit: feat(pro): complete Apple owner workbench reconstruction
+3c45127 worktrees/final-pro-owner-reconstruction/HEAD@{2}: reset: moving to HEAD
+3c45127 refs/heads/codex/final-pro-owner-reconstruction@{2}: branch: Created from origin/staging
+3c45127 worktrees/final-pro-owner-reconstruction/HEAD@{3}: 
+3c45127 refs/remotes/origin/staging@{7}: update by push
+3c45127 refs/heads/codex/pro-apple2-completion@{0}: commit: feat(pro): complete Apple 2.0 workbench
+3c45127 worktrees/pro-apple2-completion/HEAD@{0}: commit: feat(pro): complete Apple 2.0 workbench
+88920e9 worktrees/pro-apple2-completion/HEAD@{1}: reset: moving to HEAD
+88920e9 refs/heads/codex/pro-apple2-completion@{1}: branch: Created from origin/staging
+88920e9 worktrees/pro-apple2-completion/HEAD@{2}: 
+88920e9 refs/remotes/origin/staging@{8}: update by push
+88920e9 refs/heads/codex/p0-process-guide-entry@{0}: commit: fix(pro): restore process guide monitor entry
+88920e9 worktrees/p0-process-guide-entry/HEAD@{0}: commit: fix(pro): restore process guide monitor entry
+0bebc92 worktrees/p0-process-guide-entry/HEAD@{1}: reset: moving to HEAD
+0bebc92 refs/heads/codex/p0-process-guide-entry@{1}: branch: Created from origin/staging
+0bebc92 worktrees/p0-process-guide-entry/HEAD@{2}: 
+0bebc92 refs/remotes/origin/staging@{9}: update by push
+0bebc92 refs/heads/codex/final-integration-deploy-2026-08@{0}: commit: fix: preserve template-controlled stabilizer contracts
+0bebc92 worktrees/final-integration-deploy-2026-08/HEAD@{0}: commit: fix: preserve template-controlled stabilizer contracts
+2378595 worktrees/p0-base-audit/HEAD@{0}: 
+2378595 refs/remotes/origin/staging@{10}: update by push
+2378595 refs/heads/codex/final-integration-deploy-2026-08@{1}: commit: Keep owner review controls clear of Pro workbar
+2378595 worktrees/final-integration-deploy-2026-08/HEAD@{1}: commit: Keep owner review controls clear of Pro workbar
+89de706 refs/remotes/origin/staging@{11}: update by push
+89de706 refs/heads/codex/final-integration-deploy-2026-08@{2}: commit: Import canonical process metadata and close owner QA gate
+89de706 worktrees/final-integration-deploy-2026-08/HEAD@{2}: commit: Import canonical process metadata and close owner QA gate
+0af9f23 refs/remotes/origin/staging@{12}: update by push
+0af9f23 refs/heads/codex/final-integration-deploy-2026-08@{3}: commit: docs: record final staging owner QA evidence
+0af9f23 worktrees/final-integration-deploy-2026-08/HEAD@{3}: commit: docs: record final staging owner QA evidence
+ec69328 refs/remotes/origin/staging@{13}: update by push
+ec69328 refs/heads/codex/final-integration-deploy-2026-08@{4}: commit: fix: keep direction undo available in workbar
+ec69328 worktrees/final-integration-deploy-2026-08/HEAD@{4}: commit: fix: keep direction undo available in workbar
+8652fa3 refs/remotes/origin/staging@{14}: update by push
+8652fa3 refs/heads/codex/final-integration-deploy-2026-08@{5}: commit: fix: make apply line contracts immutable
+8652fa3 worktrees/final-integration-deploy-2026-08/HEAD@{5}: commit: fix: make apply line contracts immutable
+73e243b refs/heads/codex/final-integration-deploy-2026-08@{6}: commit: fix: close final integration review blockers
+73e243b worktrees/final-integration-deploy-2026-08/HEAD@{6}: commit: fix: close final integration review blockers
+4e31006 refs/heads/codex/final-integration-deploy-2026-08@{7}: commit: docs: record final Aug 8-10 integration manifest
+4e31006 worktrees/final-integration-deploy-2026-08/HEAD@{7}: commit: docs: record final Aug 8-10 integration manifest
+0af5f34 refs/heads/codex/final-integration-deploy-2026-08@{8}: commit (cherry-pick): feat: add plan-aware global navigation
+0af5f34 worktrees/final-integration-deploy-2026-08/HEAD@{8}: commit (cherry-pick): feat: add plan-aware global navigation
+d09d96b refs/heads/codex/final-integration-deploy-2026-08@{9}: commit: feat: complete Aug 8-10 functional promises
+d09d96b worktrees/final-integration-deploy-2026-08/HEAD@{9}: commit: feat: complete Aug 8-10 functional promises
+9a7aeb0 refs/heads/codex/global-menu-ia-final@{0}: commit: feat: add plan-aware global navigation
+9a7aeb0 worktrees/global-menu-ia-final/HEAD@{0}: commit: feat: add plan-aware global navigation
+4bd4f50 worktrees/global-menu-ia-final/HEAD@{1}: reset: moving to HEAD
+4bd4f50 refs/heads/codex/global-menu-ia-final@{1}: branch: Created from origin/staging
+4bd4f50 worktrees/global-menu-ia-final/HEAD@{2}: 
+2d575ad refs/heads/codex/final-integration-deploy-2026-08@{10}: commit: docs(audit): record final production owner handoff
+2d575ad worktrees/final-integration-deploy-2026-08/HEAD@{10}: commit: docs(audit): record final production owner handoff
+4bd4f50 refs/remotes/origin/staging@{15}: update by push
+4bd4f50 refs/heads/codex/final-integration-deploy-2026-08@{11}: commit: fix(production): keep physical vessel mass visible during rescue
+4bd4f50 worktrees/final-integration-deploy-2026-08/HEAD@{11}: commit: fix(production): keep physical vessel mass visible during rescue
+5651fbf refs/heads/codex/final-integration-deploy-2026-08@{12}: commit: docs: record final served staging audit
+5651fbf worktrees/final-integration-deploy-2026-08/HEAD@{12}: commit: docs: record final served staging audit
+5b931ff refs/remotes/origin/staging@{16}: update by push
+5b931ff refs/heads/codex/final-integration-deploy-2026-08@{13}: commit: fix(review): enable owner QA only on staging
+5b931ff worktrees/final-integration-deploy-2026-08/HEAD@{13}: commit: fix(review): enable owner QA only on staging
+c6a0ab1 refs/remotes/origin/staging@{17}: update by push
+c6a0ab1 refs/heads/codex/final-integration-deploy-2026-08@{14}: commit: feat: integrate Mapper 2088 and final product cycle
+c6a0ab1 worktrees/final-integration-deploy-2026-08/HEAD@{14}: commit: feat: integrate Mapper 2088 and final product cycle
+7d33ec7 refs/heads/codex/final-integration-deploy-2026-08@{15}: reset: moving to origin/staging
+7d33ec7 worktrees/final-integration-deploy-2026-08/HEAD@{15}: reset: moving to origin/staging
+d6803df refs/heads/codex/final-integration-deploy-2026-08@{16}: commit (merge): chore: temporary discovery integration checkpoint
+d6803df worktrees/final-integration-deploy-2026-08/HEAD@{16}: commit (merge): chore: temporary discovery integration checkpoint
+5e8bdb8 refs/heads/codex/final-integration-deploy-2026-08@{17}: commit (merge): chore: temporary pro ux integration checkpoint
+5e8bdb8 worktrees/final-integration-deploy-2026-08/HEAD@{17}: commit (merge): chore: temporary pro ux integration checkpoint
+3a303af refs/heads/codex/final-integration-deploy-2026-08@{18}: commit (merge): chore: temporary production integration checkpoint
+3a303af worktrees/final-integration-deploy-2026-08/HEAD@{18}: commit (merge): chore: temporary production integration checkpoint
+7d33ec7 worktrees/final-integration-deploy-2026-08/HEAD@{19}: reset: moving to HEAD
+7d33ec7 refs/heads/codex/final-integration-deploy-2026-08@{19}: branch: Created from origin/staging
+7d33ec7 worktrees/final-integration-deploy-2026-08/HEAD@{20}: 
+4ec3f49 refs/heads/codex/production-master-label-final@{0}: commit (amend): feat(pro): add physical production and master label workflow
+4ec3f49 worktrees/codex-production-master-label/HEAD@{0}: commit (amend): feat(pro): add physical production and master label workflow
+85835cd refs/heads/codex/production-master-label-final@{1}: commit: feat(pro): add physical production and master label workflow
+85835cd worktrees/codex-production-master-label/HEAD@{1}: commit: feat(pro): add physical production and master label workflow
+30daf29 worktrees/codex-production-master-label/HEAD@{2}: reset: moving to HEAD
+30daf29 refs/heads/codex/production-master-label-final@{2}: branch: Created from 30daf295465bff1b53f9531a0851b44f26af3ad5
+30daf29 worktrees/codex-production-master-label/HEAD@{3}: 
+30daf29 refs/heads/codex/optimal-eco-customer-pricing-final@{0}: commit: feat: add private customer pricing and eco strategy
+30daf29 worktrees/codex-optimal-eco-pricing/HEAD@{0}: commit: feat: add private customer pricing and eco strategy
+47198dc worktrees/codex-optimal-eco-pricing/HEAD@{1}: reset: moving to HEAD
+47198dc refs/heads/codex/optimal-eco-customer-pricing-final@{1}: branch: Created from 47198dc594cd3df949fd7350f3097473cb56d96b
+47198dc worktrees/codex-optimal-eco-pricing/HEAD@{2}: 
+47198dc refs/heads/codex/protein-gelato-final@{0}: commit: feat: add protein gelato product engine
+47198dc main-worktree/HEAD@{0}: commit: feat: add protein gelato product engine
+37492b8 main-worktree/HEAD@{1}: checkout: moving from codex/final-pro-workbench to codex/protein-gelato-final
+37492b8 refs/heads/codex/protein-gelato-final@{1}: branch: Created from 37492b81cdfa6f14f7307a8691de359f2ad06812
+37492b8 refs/heads/codex/vegan-gelato-final@{0}: commit: fix: close vegan review gaps
+37492b8 worktrees/vegan-engine-worktree/HEAD@{0}: commit: fix: close vegan review gaps
+de6253b refs/heads/codex/vegan-gelato-final@{1}: commit: feat: finalize vegan gelato profile
+de6253b worktrees/vegan-engine-worktree/HEAD@{1}: commit: feat: finalize vegan gelato profile
+5ae99e6 worktrees/vegan-engine-worktree/HEAD@{2}: reset: moving to HEAD
+5ae99e6 worktrees/vegan-engine-worktree/HEAD@{3}: 
+7d33ec7 main-worktree/HEAD@{2}: checkout: moving from codex/vegan-gelato-final to codex/final-pro-workbench
+5ae99e6 main-worktree/HEAD@{3}: checkout: moving from codex/final-pro-workbench to codex/vegan-gelato-final
+5ae99e6 refs/heads/codex/vegan-gelato-final@{2}: branch: Created from 5ae99e6935a85a4c8f5534b8604d6626e5b1f8a1
+5ae99e6 worktrees/codex-recipe-direction-targets/HEAD@{0}: reset: moving to HEAD
+5ae99e6 refs/heads/codex/recipe-direction-targets@{0}: branch: Created from 5ae99e6935a85a4c8f5534b8604d6626e5b1f8a1
+5ae99e6 worktrees/codex-recipe-direction-targets/HEAD@{1}: 
+5ae99e6 refs/heads/codex/multi-main-recipe-identity@{0}: commit: fix(formulation): preserve multi-main recipe identity
+5ae99e6 worktrees/codex-multi-main/HEAD@{0}: commit: fix(formulation): preserve multi-main recipe identity
+7d33ec7 worktrees/codex-multi-main/HEAD@{1}: reset: moving to HEAD
+7d33ec7 refs/heads/codex/multi-main-recipe-identity@{1}: branch: Created from HEAD
+7d33ec7 worktrees/codex-multi-main/HEAD@{2}: 
+abc45e6 refs/heads/codex/contextual-learning-process-guide@{0}: commit: feat: add contextual learning and process guide
+abc45e6 worktrees/contextual-learning-process-guide/HEAD@{0}: commit: feat: add contextual learning and process guide
+93df6eb worktrees/contextual-learning-process-guide/HEAD@{1}: reset: moving to HEAD
+93df6eb refs/heads/codex/contextual-learning-process-guide@{1}: branch: Created from 93df6eb4bda7083b34f9d0203c443d4f79424f6f
+93df6eb worktrees/contextual-learning-process-guide/HEAD@{2}: 
+93df6eb refs/heads/codex/pro-monitor-ux@{0}: commit: feat(pro): redesign professional monitor
+93df6eb worktrees/pro-monitor-ux/HEAD@{0}: commit: feat(pro): redesign professional monitor
+4a83fca worktrees/pro-monitor-ux/HEAD@{1}: reset: moving to HEAD
+4a83fca worktrees/pro-monitor-ux/HEAD@{2}: 
+4a83fca refs/heads/codex/pro-monitor-ux@{1}: branch: Created from 4a83fca7aa68dcaad5fd39925f0291144579d588
+4a83fca refs/heads/codex/pro-profile-preflight@{0}: commit: feat(pro): add profile preflight and target axes
+4a83fca worktrees/pro-profile-preflight/HEAD@{0}: commit: feat(pro): add profile preflight and target axes
+92e2d84 worktrees/pro-profile-preflight/HEAD@{1}: reset: moving to HEAD
+92e2d84 refs/heads/codex/pro-profile-preflight@{1}: branch: Created from 92e2d84bdae5a8e509a276bbf7b4bfb00fe86d7f
+92e2d84 worktrees/pro-profile-preflight/HEAD@{2}: 
+92e2d84 refs/heads/codex/ingredient-table-ux@{0}: commit: feat(pro): simplify recipe ingredient table UX
+92e2d84 worktrees/ingredient-table-ux/HEAD@{0}: commit: feat(pro): simplify recipe ingredient table UX
+7d33ec7 worktrees/ingredient-table-ux/HEAD@{1}: reset: moving to HEAD
+7d33ec7 refs/heads/codex/ingredient-table-ux@{1}: branch: Created from 7d33ec7c2d56936f1b6cc2e22e2526d60ab9e10b
+7d33ec7 worktrees/ingredient-table-ux/HEAD@{2}: 
+34e2be8 refs/heads/codex/lost-legendary-inspiration@{0}: commit: feat(recipes): add curated mobile discovery
+34e2be8 worktrees/lost-legendary-inspiration/HEAD@{0}: commit: feat(recipes): add curated mobile discovery
+c0333ea refs/heads/codex/lost-legendary-inspiration@{1}: cherry-pick: feat(recipes): first-100 flavor inspiration catalogue (domain + importer + manifest)
+c0333ea worktrees/lost-legendary-inspiration/HEAD@{1}: cherry-pick: feat(recipes): first-100 flavor inspiration catalogue (domain + importer + manifest)
+7d33ec7 worktrees/lost-legendary-inspiration/HEAD@{2}: reset: moving to HEAD
+7d33ec7 refs/heads/codex/lost-legendary-inspiration@{2}: branch: Created from HEAD
+7d33ec7 worktrees/lost-legendary-inspiration/HEAD@{3}: 
+7d33ec7 refs/remotes/origin/staging@{18}: update by push
+7d33ec7 refs/heads/codex/final-pro-workbench@{0}: commit: fix(pro): integrate final identity and apply review
+7d33ec7 main-worktree/HEAD@{4}: commit: fix(pro): integrate final identity and apply review
+36c777e refs/remotes/origin/staging@{19}: update by push
+36c777e refs/heads/codex/final-pro-workbench@{1}: commit (amend): docs(pro): record canonical identity staging proof
+36c777e main-worktree/HEAD@{5}: commit (amend): docs(pro): record canonical identity staging proof
+92e67f3 refs/heads/codex/final-pro-workbench@{2}: commit: docs(pro): record canonical identity staging proof
+92e67f3 main-worktree/HEAD@{6}: commit: docs(pro): record canonical identity staging proof
+1157f26 refs/remotes/origin/staging@{20}: update by push
+1157f26 refs/heads/codex/final-pro-workbench@{3}: commit: fix(pro): unify canonical ingredient draft identity
+1157f26 main-worktree/HEAD@{7}: commit: fix(pro): unify canonical ingredient draft identity
+83ae19e refs/remotes/origin/staging@{21}: update by push
+83ae19e refs/heads/codex/final-pro-workbench@{4}: commit: docs(pro): finalize staging verification ledger
+83ae19e main-worktree/HEAD@{8}: commit: docs(pro): finalize staging verification ledger
+0400ab8 refs/remotes/origin/staging@{22}: update by push
+0400ab8 refs/heads/codex/final-pro-workbench@{5}: commit: fix(pro): stabilize mobile workbar and responsive proof
+0400ab8 main-worktree/HEAD@{9}: commit: fix(pro): stabilize mobile workbar and responsive proof
+a1e9f54 refs/remotes/origin/staging@{23}: update by push
+a1e9f54 refs/heads/codex/final-pro-workbench@{6}: commit: feat(pro): finalize one-screen workbench design
+a1e9f54 main-worktree/HEAD@{10}: commit: feat(pro): finalize one-screen workbench design
+5f00436 refs/heads/codex/final-pro-workbench@{7}: branch: Created from HEAD
+5f00436 main-worktree/HEAD@{11}: checkout: moving from nightly/integration to codex/final-pro-workbench
+5f00436 refs/remotes/origin/staging@{24}: update by push
+5f00436 refs/heads/nightly/integration@{0}: commit: docs(addendum): final integration ledger — items 1-7, consequences, owner checks
+5f00436 main-worktree/HEAD@{12}: commit: docs(addendum): final integration ledger — items 1-7, consequences, owner checks
+94db2c0 refs/remotes/origin/staging@{25}: update by push
+94db2c0 refs/heads/nightly/integration@{1}: commit: fix(monitor): /pro/monitor opens the sheet below lg — deep-link honours its own name on phones (Agent D GAP-2)
+94db2c0 main-worktree/HEAD@{13}: commit: fix(monitor): /pro/monitor opens the sheet below lg — deep-link honours its own name on phones (Agent D GAP-2)
+dd7223f refs/remotes/origin/staging@{26}: update by push
+dd7223f refs/heads/nightly/integration@{2}: branch: Reset to dd7223f
+dd7223f main-worktree/HEAD@{14}: checkout: moving from agent-a/canonical-families-honesty to nightly/integration
+dd7223f refs/heads/agent-a/canonical-families-honesty@{0}: merge agent-a/canonical-families: Merge made by the 'ort' strategy.
+dd7223f main-worktree/HEAD@{15}: merge agent-a/canonical-families: Merge made by the 'ort' strategy.
+544ab28 refs/heads/agent-a/canonical-families-honesty@{1}: merge agentd/monitor-parity-verified: Merge made by the 'ort' strategy.
+9df8998 refs/heads/agent-a/canonical-families-honesty@{2}: merge agent-c/multi-remove-norefresh: Merge made by the 'ort' strategy.
+544ab28 main-worktree/HEAD@{16}: merge agentd/monitor-parity-verified: Merge made by the 'ort' strategy.
+9df8998 main-worktree/HEAD@{17}: merge agent-c/multi-remove-norefresh: Merge made by the 'ort' strategy.
+de48ae5 refs/heads/agent-a/canonical-families@{0}: commit: feat(honesty): reference-derived Apply gate, honest solver terminology, truthful outcome labels
+de48ae5 worktrees/agenta-canonical-families/HEAD@{0}: commit: feat(honesty): reference-derived Apply gate, honest solver terminology, truthful outcome labels
+93756ba refs/heads/agent-a/canonical-families@{1}: commit: feat(canonical-families): runtime may only select NATIVE-banded categories; quarantine the reference-derived template
+93756ba worktrees/agenta-canonical-families/HEAD@{1}: commit: feat(canonical-families): runtime may only select NATIVE-banded categories; quarantine the reference-derived template
+8ec10ba refs/heads/agentd/monitor-parity-verified@{0}: commit: verify(monitor): 100 % historical parity re-derived and PROVEN — clipping gap closed
+8ec10ba worktrees/agentd-monitor-parity/HEAD@{0}: commit: verify(monitor): 100 % historical parity re-derived and PROVEN — clipping gap closed
+3f41e68 refs/heads/agent-c/multi-remove-norefresh@{0}: commit: fix(stores): multi-remove → immediate Przelicz z PI ≡ after-refresh (owner addendum item 6)
+3f41e68 worktrees/agent-c/HEAD@{0}: commit: fix(stores): multi-remove → immediate Przelicz z PI ≡ after-refresh (owner addendum item 6)
+fb2924f worktrees/agent-c/HEAD@{1}: reset: moving to HEAD
+fb2924f worktrees/agent-c/HEAD@{2}: reset: moving to HEAD
+fb2924f worktrees/agent-c/HEAD@{3}: 
+fb2924f worktrees/agenta-canonical-families/HEAD@{2}: reset: moving to HEAD
+fb2924f refs/heads/agent-a/canonical-families@{2}: branch: Created from nightly/integration
+fb2924f worktrees/agenta-canonical-families/HEAD@{3}: 
+fb2924f main-worktree/HEAD@{18}: reset: moving to HEAD
+fb2924f worktrees/agentd-monitor-parity/HEAD@{1}: reset: moving to HEAD
+fb2924f refs/heads/agentd/monitor-parity-verified@{1}: branch: Created from nightly/integration
+fb2924f worktrees/agentd-monitor-parity/HEAD@{2}: 
+fb2924f refs/heads/agent-a/canonical-families-honesty@{3}: branch: Created from HEAD
+fb2924f main-worktree/HEAD@{19}: checkout: moving from agent-c/multi-remove-norefresh to agent-a/canonical-families-honesty
+fb2924f refs/heads/agent-c/multi-remove-norefresh@{1}: branch: Created from HEAD
+fb2924f main-worktree/HEAD@{20}: checkout: moving from nightly/integration to agent-c/multi-remove-norefresh
+fb2924f refs/remotes/origin/staging@{27}: update by push
+fb2924f refs/heads/nightly/integration@{3}: merge fix/current-draft-optimization: Merge made by the 'ort' strategy.
+fb2924f main-worktree/HEAD@{21}: merge fix/current-draft-optimization: Merge made by the 'ort' strategy.
+1413219 refs/heads/fix/current-draft-optimization@{0}: commit: fix(optimizer): CURRENT-DRAFT optimization — every unlocked line adjustable, batch equality, one canonical score, machine context
+1413219 worktrees/agent-a68edd8b3ce48753d/HEAD@{0}: commit: fix(optimizer): CURRENT-DRAFT optimization — every unlocked line adjustable, batch equality, one canonical score, machine context
+1c5ca26 refs/heads/fix/current-draft-optimization@{1}: branch: Created from 1c5ca26
+1c5ca26 worktrees/agent-a68edd8b3ce48753d/HEAD@{1}: checkout: moving from worktree-agent-a68edd8b3ce48753d to fix/current-draft-optimization
+4dfb097 worktrees/agent-a68edd8b3ce48753d/HEAD@{2}: reset: moving to HEAD
+4dfb097 refs/heads/worktree-agent-a68edd8b3ce48753d@{0}: branch: Created from origin/main
+4dfb097 worktrees/agent-a68edd8b3ce48753d/HEAD@{3}: 
+1c5ca26 refs/remotes/origin/staging@{28}: update by push
+1c5ca26 refs/heads/nightly/integration@{4}: commit: docs(architecture): all-four-families + multi-stabilizer selection — proposal updated with stabilizer §7A + protein §7B, READY FOR OWNER APPROVAL
+1c5ca26 main-worktree/HEAD@{22}: commit: docs(architecture): all-four-families + multi-stabilizer selection — proposal updated with stabilizer §7A + protein §7B, READY FOR OWNER APPROVAL
+6937cf2 refs/heads/nightly/integration@{5}: merge worktree-agent-a25121477322515d3: Merge made by the 'ort' strategy.
+6937cf2 main-worktree/HEAD@{23}: merge worktree-agent-a25121477322515d3: Merge made by the 'ort' strategy.
+cae38fd refs/heads/nightly/integration@{6}: merge stabilizer-science/selector-design: Merge made by the 'ort' strategy.
+cae38fd main-worktree/HEAD@{24}: merge stabilizer-science/selector-design: Merge made by the 'ort' strategy.
+7d2a90a refs/heads/worktree-agent-a25121477322515d3@{0}: commit: docs(protein-family): primary literature review + product contract
+7d2a90a worktrees/agent-a25121477322515d3/HEAD@{0}: commit: docs(protein-family): primary literature review + product contract
+7eaf7c7 refs/heads/stabilizer-science/selector-design@{0}: commit: docs(stabilizer): forensic recovery + multi-stabilizer selector science
+7eaf7c7 worktrees/agent-ac9d81abfb5c29287/HEAD@{0}: commit: docs(stabilizer): forensic recovery + multi-stabilizer selector science
+bff5eb0 refs/heads/nightly/integration@{7}: commit: docs(final-closure): master ledger — addendum+R+M integrated, 5186 green, bundle BCQAOdui verified
+bff5eb0 main-worktree/HEAD@{25}: commit: docs(final-closure): master ledger — addendum+R+M integrated, 5186 green, bundle BCQAOdui verified
+623a2ce refs/remotes/origin/staging@{29}: update by push
+623a2ce refs/heads/nightly/integration@{8}: merge agentm/monitor-completeness: Merge made by the 'ort' strategy.
+623a2ce main-worktree/HEAD@{26}: merge agentm/monitor-completeness: Merge made by the 'ort' strategy.
+89b028b refs/heads/nightly/integration@{9}: merge agentr/removal-recalc: Merge made by the 'ort' strategy.
+89b028b main-worktree/HEAD@{27}: merge agentr/removal-recalc: Merge made by the 'ort' strategy.
+71d207e refs/heads/nightly/integration@{10}: merge fix/acceptance-addendum: Merge made by the 'ort' strategy.
+71d207e main-worktree/HEAD@{28}: merge fix/acceptance-addendum: Merge made by the 'ort' strategy.
+a55f5fc main-worktree/HEAD@{29}: reset: moving to HEAD
+6d612eb refs/heads/agentm/monitor-completeness@{0}: commit: feat(pro): ONE-SCREEN workbench — zero page scroll, LIVE Monitor PI panel, full B1 parity (Agent M)
+6d612eb worktrees/agent-ab0b5bc9c429b41ab/HEAD@{0}: commit: feat(pro): ONE-SCREEN workbench — zero page scroll, LIVE Monitor PI panel, full B1 parity (Agent M)
+a55f5fc refs/heads/agentm/monitor-completeness@{1}: reset: moving to a55f5fc
+a55f5fc worktrees/agent-ab0b5bc9c429b41ab/HEAD@{1}: reset: moving to a55f5fc
+a55f5fc refs/heads/worktree-agent-a25121477322515d3@{1}: reset: moving to a55f5fc
+a55f5fc worktrees/agent-a25121477322515d3/HEAD@{1}: reset: moving to a55f5fc
+a55f5fc refs/heads/stabilizer-science/selector-design@{1}: branch: Created from a55f5fcf7a43497b310ff3bdf67912fab91ab637
+a55f5fc worktrees/agent-ac9d81abfb5c29287/HEAD@{1}: checkout: moving from worktree-agent-ac9d81abfb5c29287 to stabilizer-science/selector-design
+4dfb097 worktrees/agent-a25121477322515d3/HEAD@{2}: reset: moving to HEAD
+4dfb097 refs/heads/worktree-agent-a25121477322515d3@{2}: branch: Created from origin/main
+4dfb097 worktrees/agent-a25121477322515d3/HEAD@{3}: 
+4dfb097 worktrees/agent-ac9d81abfb5c29287/HEAD@{2}: reset: moving to HEAD
+4dfb097 refs/heads/worktree-agent-ac9d81abfb5c29287@{0}: branch: Created from origin/main
+4dfb097 worktrees/agent-ac9d81abfb5c29287/HEAD@{3}: 
+7cd5215 refs/heads/agentm/monitor-completeness@{2}: commit: wip(one-screen): Agent M partial work preserved after spend-limit interruption — mid browser acceptance (8-row fixture)
+7cd5215 worktrees/agent-ab0b5bc9c429b41ab/HEAD@{2}: commit: wip(one-screen): Agent M partial work preserved after spend-limit interruption — mid browser acceptance (8-row fixture)
+1a11965 refs/heads/fix/acceptance-addendum@{0}: commit: fix(addendum): four acceptance closures — T9 cap gate, technical score split, hard-residual door, real MAX/RANGE freedom
+1a11965 worktrees/agent-ae9269b046f152abb/HEAD@{0}: commit: fix(addendum): four acceptance closures — T9 cap gate, technical score split, hard-residual door, real MAX/RANGE freedom
+d828df2 refs/heads/agentr/removal-recalc@{0}: commit: fix(recipe): removal is not exclusion — atomic removal transaction + explicit unavailable action (owner FINAL CLOSURE, Agent R)
+d828df2 worktrees/agent-ab1a2783c4dbaf65c/HEAD@{0}: commit: fix(recipe): removal is not exclusion — atomic removal transaction + explicit unavailable action (owner FINAL CLOSURE, Agent R)
+a55f5fc refs/heads/agentr/removal-recalc@{1}: branch: Created from a55f5fc
+a55f5fc worktrees/agent-ab1a2783c4dbaf65c/HEAD@{1}: checkout: moving from worktree-agent-ab1a2783c4dbaf65c to agentr/removal-recalc
+a55f5fc refs/heads/agentm/monitor-completeness@{3}: branch: Created from a55f5fc
+a55f5fc worktrees/agent-ab0b5bc9c429b41ab/HEAD@{3}: checkout: moving from worktree-agent-ab0b5bc9c429b41ab to agentm/monitor-completeness
+4dfb097 worktrees/agent-ab1a2783c4dbaf65c/HEAD@{2}: reset: moving to HEAD
+4dfb097 refs/heads/worktree-agent-ab1a2783c4dbaf65c@{0}: branch: Created from origin/main
+4dfb097 worktrees/agent-ab1a2783c4dbaf65c/HEAD@{3}: 
+4dfb097 worktrees/agent-ab0b5bc9c429b41ab/HEAD@{4}: reset: moving to HEAD
+4dfb097 refs/heads/worktree-agent-ab0b5bc9c429b41ab@{0}: branch: Created from origin/main
+4dfb097 worktrees/agent-ab0b5bc9c429b41ab/HEAD@{5}: 
+a55f5fc refs/heads/fix/acceptance-addendum@{1}: branch: Created from a55f5fc
+a55f5fc worktrees/agent-ae9269b046f152abb/HEAD@{1}: checkout: moving from worktree-agent-ae9269b046f152abb to fix/acceptance-addendum
+4dfb097 worktrees/agent-ae9269b046f152abb/HEAD@{2}: reset: moving to HEAD
+4dfb097 refs/heads/worktree-agent-ae9269b046f152abb@{0}: branch: Created from origin/main
+4dfb097 worktrees/agent-ae9269b046f152abb/HEAD@{3}: 
+a55f5fc refs/remotes/origin/staging@{30}: update by push
+a55f5fc refs/heads/nightly/integration@{11}: commit: fix(integration): optional-chain mock.call indexing in backendGuard test (tsc strict)
+a55f5fc main-worktree/HEAD@{30}: commit: fix(integration): optional-chain mock.call indexing in backendGuard test (tsc strict)
+0af10d0 refs/heads/nightly/integration@{12}: merge worktree-agent-a2d044d5d9972c514: Merge made by the 'ort' strategy.
+dbdd85a refs/heads/nightly/integration@{13}: merge agent5/e2e-authenticity: Merge made by the 'ort' strategy.
+0af10d0 main-worktree/HEAD@{31}: merge worktree-agent-a2d044d5d9972c514: Merge made by the 'ort' strategy.
+dbdd85a main-worktree/HEAD@{32}: merge agent5/e2e-authenticity: Merge made by the 'ort' strategy.
+5497291 refs/heads/nightly/integration@{14}: merge agent4/fixture-sweep: Merge made by the 'ort' strategy.
+ca22550 refs/heads/nightly/integration@{15}: merge agent3/constraint-solver-authenticity: Merge made by the 'ort' strategy.
+bf0735d refs/heads/nightly/integration@{16}: merge worktree-agent-aca58b655636a9c94: Merge made by the 'ort' strategy.
+5497291 main-worktree/HEAD@{33}: merge agent4/fixture-sweep: Merge made by the 'ort' strategy.
+ca22550 main-worktree/HEAD@{34}: merge agent3/constraint-solver-authenticity: Merge made by the 'ort' strategy.
+bf0735d main-worktree/HEAD@{35}: merge worktree-agent-aca58b655636a9c94: Merge made by the 'ort' strategy.
+c1946c9 refs/heads/agent3/constraint-solver-authenticity@{0}: commit: fix(agent3): formulation authenticity — projection is seed-only, proof-carrying previews, honest impossibility
+c1946c9 worktrees/agent-ab629ad5f110362cf/HEAD@{0}: commit: fix(agent3): formulation authenticity — projection is seed-only, proof-carrying previews, honest impossibility
+22cdc8d refs/heads/nightly/integration@{17}: commit: docs(engine-authenticity): Agent 2 artifacts — 20-test results JSON/CSV + ledger (early pull for owner)
+22cdc8d main-worktree/HEAD@{36}: commit: docs(engine-authenticity): Agent 2 artifacts — 20-test results JSON/CSV + ledger (early pull for owner)
+6f8e680 worktrees/agent-ab629ad5f110362cf/HEAD@{1}: reset: moving to HEAD
+9142b9b refs/heads/agent4/fixture-sweep@{0}: commit (amend): feat(fixture-sweep): Agent 4 — full non-production data sweep + PINK TESTOWE/NIEPRODUKCYJNE markers
+9142b9b worktrees/agent-a49d5850b240ad4c1/HEAD@{0}: commit (amend): feat(fixture-sweep): Agent 4 — full non-production data sweep + PINK TESTOWE/NIEPRODUKCYJNE markers
+1fcedd5 refs/heads/agent4/fixture-sweep@{1}: commit: feat(fixture-sweep): Agent 4 — full non-production data sweep + PINK TESTOWE/NIEPRODUKCYJNE markers
+1fcedd5 worktrees/agent-a49d5850b240ad4c1/HEAD@{1}: commit: feat(fixture-sweep): Agent 4 — full non-production data sweep + PINK TESTOWE/NIEPRODUKCYJNE markers
+27a0c85 refs/heads/worktree-agent-a2d044d5d9972c514@{0}: commit: qa(nightly-p0): Agent 2 — engine authenticity audit + T1-T20 offline battery (drift detectors, artifacts, ledger)
+27a0c85 worktrees/agent-a2d044d5d9972c514/HEAD@{0}: commit: qa(nightly-p0): Agent 2 — engine authenticity audit + T1-T20 offline battery (drift detectors, artifacts, ledger)
+6f8e680 worktrees/agent-a49d5850b240ad4c1/HEAD@{2}: reset: moving to HEAD
+ae237e7 refs/heads/agent5/e2e-authenticity@{0}: commit: fix(services): explicit unconfigured-backend reads — no silent fake-empty output (Agent 5 E2E authenticity)
+ae237e7 worktrees/agent-a58a21a60468595da/HEAD@{0}: commit: fix(services): explicit unconfigured-backend reads — no silent fake-empty output (Agent 5 E2E authenticity)
+6f8e680 worktrees/agent-a58a21a60468595da/HEAD@{1}: reset: moving to HEAD
+2ed9a04 refs/heads/worktree-agent-aca58b655636a9c94@{0}: commit: docs(engine-authenticity): Agent 1 runtime formulation path forensics — owner table, scaling-site classification, Strawberry-900 exact call stack + defect statement for Agent 3
+2ed9a04 worktrees/agent-aca58b655636a9c94/HEAD@{0}: commit: docs(engine-authenticity): Agent 1 runtime formulation path forensics — owner table, scaling-site classification, Strawberry-900 exact call stack + defect statement for Agent 3
+6f8e680 refs/heads/agent5/e2e-authenticity@{1}: branch: Created from 6f8e680
+6f8e680 worktrees/agent-a58a21a60468595da/HEAD@{2}: checkout: moving from worktree-agent-a58a21a60468595da to agent5/e2e-authenticity
+6f8e680 refs/heads/agent4/fixture-sweep@{2}: branch: Created from 6f8e680
+6f8e680 worktrees/agent-a49d5850b240ad4c1/HEAD@{3}: checkout: moving from worktree-agent-a49d5850b240ad4c1 to agent4/fixture-sweep
+6f8e680 refs/heads/agent3/constraint-solver-authenticity@{1}: branch: Created from 6f8e680
+6f8e680 worktrees/agent-ab629ad5f110362cf/HEAD@{2}: checkout: moving from worktree-agent-ab629ad5f110362cf to agent3/constraint-solver-authenticity
+4dfb097 worktrees/agent-a58a21a60468595da/HEAD@{3}: reset: moving to HEAD
+4dfb097 refs/heads/worktree-agent-a58a21a60468595da@{0}: branch: Created from origin/main
+4dfb097 worktrees/agent-a58a21a60468595da/HEAD@{4}: 
+4dfb097 worktrees/agent-a49d5850b240ad4c1/HEAD@{4}: reset: moving to HEAD
+6f8e680 refs/heads/worktree-agent-a2d044d5d9972c514@{1}: reset: moving to 6f8e680
+4dfb097 refs/heads/worktree-agent-a49d5850b240ad4c1@{0}: branch: Created from origin/main
+6f8e680 worktrees/agent-a2d044d5d9972c514/HEAD@{1}: reset: moving to 6f8e680
+4dfb097 worktrees/agent-a49d5850b240ad4c1/HEAD@{5}: 
+4dfb097 worktrees/agent-ab629ad5f110362cf/HEAD@{3}: reset: moving to HEAD
+4dfb097 refs/heads/worktree-agent-ab629ad5f110362cf@{0}: branch: Created from origin/main
+6f8e680 refs/heads/worktree-agent-aca58b655636a9c94@{1}: merge nightly/integration: Fast-forward
+4dfb097 worktrees/agent-ab629ad5f110362cf/HEAD@{4}: 
+6f8e680 worktrees/agent-aca58b655636a9c94/HEAD@{1}: merge nightly/integration: Fast-forward
+4dfb097 worktrees/agent-a2d044d5d9972c514/HEAD@{2}: reset: moving to HEAD
+4dfb097 refs/heads/worktree-agent-a2d044d5d9972c514@{2}: branch: Created from origin/main
+4dfb097 worktrees/agent-a2d044d5d9972c514/HEAD@{3}: 
+4dfb097 worktrees/agent-aca58b655636a9c94/HEAD@{2}: reset: moving to HEAD
+4dfb097 refs/heads/worktree-agent-aca58b655636a9c94@{2}: branch: Created from origin/main
+4dfb097 worktrees/agent-aca58b655636a9c94/HEAD@{3}: 
+6f8e680 refs/remotes/origin/staging@{31}: update by push
+6f8e680 refs/heads/nightly/integration@{18}: commit: chore(staging): redeliver webhook for live-repair integration
+6f8e680 main-worktree/HEAD@{37}: commit: chore(staging): redeliver webhook for live-repair integration
+66a9a5d refs/remotes/origin/staging@{32}: update by push
+66a9a5d refs/heads/nightly/integration@{19}: merge ux-repair/pro-recipe: Merge made by the 'ort' strategy.
+66a9a5d main-worktree/HEAD@{38}: merge ux-repair/pro-recipe: Merge made by the 'ort' strategy.
+c0a7158 refs/heads/nightly/integration@{20}: merge nightly/live-state-opt-stabilizer: Merge made by the 'ort' strategy.
+c0a7158 main-worktree/HEAD@{39}: merge nightly/live-state-opt-stabilizer: Merge made by the 'ort' strategy.
+05a812e refs/heads/nightly/live-state-opt-stabilizer@{0}: commit: docs(nightly-p0): live-state/optimization/stabilizer completion ledger — stale byLineId root cause, iterated-solver audit, tara 5 g forensic verdict (BLOCKED_SCIENCE on dose optimization only)
+05a812e worktrees/agent-ae30b31e19ebd761b/HEAD@{0}: commit: docs(nightly-p0): live-state/optimization/stabilizer completion ledger — stale byLineId root cause, iterated-solver audit, tara 5 g forensic verdict (BLOCKED_SCIENCE on dose optimization only)
+393105f refs/heads/nightly/live-state-opt-stabilizer@{1}: commit: fix(live-state): canonical draft selector + monotonic draftRevision + fresh §17 context on load; iterated verified optimizer (cap 12, trajectory, stop reasons); approved stabilizer dosage bounds + pure-gum/blend identity
+393105f worktrees/agent-ae30b31e19ebd761b/HEAD@{1}: commit: fix(live-state): canonical draft selector + monotonic draftRevision + fresh §17 context on load; iterated verified optimizer (cap 12, trajectory, stop reasons); approved stabilizer dosage bounds + pure-gum/blend identity
+cdb7902 refs/heads/ux-repair/pro-recipe@{0}: commit: fix(pro-recipe): UX repair — dark-surface charcoal token, one primary path, red review marks, truthful states
+cdb7902 worktrees/agent-a72417fa73b8d7545/HEAD@{0}: commit: fix(pro-recipe): UX repair — dark-surface charcoal token, one primary path, red review marks, truthful states
+bac7f44 refs/heads/nightly/live-state-opt-stabilizer@{2}: branch: Created from nightly/integration
+bac7f44 worktrees/agent-ae30b31e19ebd761b/HEAD@{2}: checkout: moving from worktree-agent-ae30b31e19ebd761b to nightly/live-state-opt-stabilizer
+4dfb097 worktrees/agent-ae30b31e19ebd761b/HEAD@{3}: reset: moving to HEAD
+4dfb097 refs/heads/worktree-agent-ae30b31e19ebd761b@{0}: branch: Created from origin/main
+4dfb097 worktrees/agent-ae30b31e19ebd761b/HEAD@{4}: 
+510659b worktrees/agent-a72417fa73b8d7545/HEAD@{1}: reset: moving to HEAD
+bac7f44 refs/heads/nightly/integration@{21}: commit: fix(formulation): zero-gram selected-ingredient semantics — owner live repair
+bac7f44 main-worktree/HEAD@{40}: commit: fix(formulation): zero-gram selected-ingredient semantics — owner live repair
+510659b refs/heads/ux-repair/pro-recipe@{1}: branch: Created from nightly/integration
+510659b worktrees/agent-a72417fa73b8d7545/HEAD@{2}: checkout: moving from worktree-agent-a72417fa73b8d7545 to ux-repair/pro-recipe
+4dfb097 worktrees/agent-a72417fa73b8d7545/HEAD@{3}: reset: moving to HEAD
+4dfb097 refs/heads/worktree-agent-a72417fa73b8d7545@{0}: branch: Created from origin/main
+4dfb097 worktrees/agent-a72417fa73b8d7545/HEAD@{4}: 
+510659b refs/remotes/origin/staging@{33}: update by push
+510659b refs/heads/nightly/integration@{22}: commit: docs(nightly-p0): master ledger + Wave-0 baseline — integration A>C>E>D>B>F-docs>G, gates 4931/4931
+510659b main-worktree/HEAD@{41}: commit: docs(nightly-p0): master ledger + Wave-0 baseline — integration A>C>E>D>B>F-docs>G, gates 4931/4931
+fcc9d14 refs/heads/nightly/integration@{23}: commit: fix(nightly-integration): logo lock hashes eol-normalized artwork content (checkout-independent)
+fcc9d14 main-worktree/HEAD@{42}: commit: fix(nightly-integration): logo lock hashes eol-normalized artwork content (checkout-independent)
+babb953 refs/heads/nightly/integration@{24}: merge worktree-agent-a813e3be6dc0d387f: Merge made by the 'ort' strategy.
+babb953 main-worktree/HEAD@{43}: merge worktree-agent-a813e3be6dc0d387f: Merge made by the 'ort' strategy.
+be8e815 refs/remotes/origin/staging@{34}: update by push
+be8e815 refs/heads/nightly/integration@{25}: cherry-pick: docs(nightly-p0): Agent F infra & data forensics ledger — staging/prod bundle evidence, Stripe test-mode proof, products-table forensic conclusion (no staging deletion; misconnected-connector reads)
+0e8cb64 refs/heads/nightly/integration@{26}: merge worktree-agent-a500fe17d6731ee3c: Merge made by the 'ort' strategy.
+39ce03f refs/heads/nightly/integration@{27}: merge worktree-agent-a7596694588d097ae: Merge made by the 'ort' strategy.
+be8e815 main-worktree/HEAD@{44}: cherry-pick: docs(nightly-p0): Agent F infra & data forensics ledger — staging/prod bundle evidence, Stripe test-mode proof, products-table forensic conclusion (no staging deletion; misconnected-connector reads)
+0e8cb64 main-worktree/HEAD@{45}: merge worktree-agent-a500fe17d6731ee3c: Merge made by the 'ort' strategy.
+39ce03f main-worktree/HEAD@{46}: merge worktree-agent-a7596694588d097ae: Merge made by the 'ort' strategy.
+c295c35 refs/heads/nightly/integration@{28}: merge worktree-agent-a28db60091b8bfd9c: Merge made by the 'ort' strategy.
+442e7f5 refs/heads/nightly/integration@{29}: merge worktree-agent-ad62b5b16ee66f53f: Merge made by the 'ort' strategy.
+106bb82 refs/heads/nightly/integration@{30}: merge worktree-agent-ad880ceca859efa7a: Merge made by the 'ort' strategy.
+c295c35 main-worktree/HEAD@{47}: merge worktree-agent-a28db60091b8bfd9c: Merge made by the 'ort' strategy.
+442e7f5 main-worktree/HEAD@{48}: merge worktree-agent-ad62b5b16ee66f53f: Merge made by the 'ort' strategy.
+106bb82 main-worktree/HEAD@{49}: merge worktree-agent-ad880ceca859efa7a: Merge made by the 'ort' strategy.
+4dfb097 refs/heads/nightly/integration@{31}: branch: Created from 4dfb097
+4dfb097 main-worktree/HEAD@{50}: checkout: moving from main to nightly/integration
+3690cb0 refs/heads/worktree-agent-a813e3be6dc0d387f@{0}: commit: docs(design): Phase 7 + completion ledger — live responsive/a11y verification record, gates, owner acceptance tests
+3690cb0 worktrees/agent-a813e3be6dc0d387f/HEAD@{0}: commit: docs(design): Phase 7 + completion ledger — live responsive/a11y verification record, gates, owner acceptance tests
+9b9f929 refs/heads/worktree-agent-ad880ceca859efa7a@{0}: commit: fix(formulation): NIGHTLY P0 Agent A — exclusion lifecycle, canonical toolbox identity, template-seeded fallback, best-safe result
+9b9f929 worktrees/agent-ad880ceca859efa7a/HEAD@{0}: commit: fix(formulation): NIGHTLY P0 Agent A — exclusion lifecycle, canonical toolbox identity, template-seeded fallback, best-safe result
+4dfb097 worktrees/agent-ad880ceca859efa7a/HEAD@{1}: reset: moving to HEAD
+0b9f0f2 refs/heads/worktree-agent-ad62b5b16ee66f53f@{0}: commit: fix(search): AGENT C finalization — .range paging, SMP/proszku alias gaps, census-grounded Polish presentation
+0b9f0f2 worktrees/agent-ad62b5b16ee66f53f/HEAD@{0}: commit: fix(search): AGENT C finalization — .range paging, SMP/proszku alias gaps, census-grounded Polish presentation
+bf5fa8d refs/heads/worktree-agent-a813e3be6dc0d387f@{1}: commit: feat(routes): Phase 6 — route consistency: 404 wears the canonical AppShell + PL-unified headline; RV-15 registered
+bf5fa8d worktrees/agent-a813e3be6dc0d387f/HEAD@{1}: commit: feat(routes): Phase 6 — route consistency: 404 wears the canonical AppShell + PL-unified headline; RV-15 registered
+a05ac88 refs/heads/worktree-agent-a813e3be6dc0d387f@{2}: commit: feat(pro): Phase 5 — dark professional identity for the canonical Pro workspace
+a05ac88 worktrees/agent-a813e3be6dc0d387f/HEAD@{2}: commit: feat(pro): Phase 5 — dark professional identity for the canonical Pro workspace
+7557ea2 refs/heads/worktree-agent-a7596694588d097ae@{0}: commit: fix(start): entitlement-driven /start persona seam + full persona/entitlement test matrix (Agent D P0)
+7557ea2 worktrees/agent-a7596694588d097ae/HEAD@{0}: commit: fix(start): entitlement-driven /start persona seam + full persona/entitlement test matrix (Agent D P0)
+4dfb097 worktrees/agent-ad62b5b16ee66f53f/HEAD@{1}: reset: moving to HEAD
+3a113d6 worktrees/agent-a813e3be6dc0d387f/HEAD@{3}: reset: moving to HEAD
+b0698d3 refs/heads/worktree-agent-a28db60091b8bfd9c@{0}: commit: fix(pro): transactional first save (0036 RPC, applied to staging) + versions contract suite + alias-aware cost keying with three-state presentation
+b0698d3 worktrees/agent-a28db60091b8bfd9c/HEAD@{0}: commit: fix(pro): transactional first save (0036 RPC, applied to staging) + versions contract suite + alias-aware cost keying with three-state presentation
+4dfb097 worktrees/agent-a7596694588d097ae/HEAD@{1}: reset: moving to HEAD
+4dfb097 worktrees/agent-a28db60091b8bfd9c/HEAD@{1}: reset: moving to HEAD
+4dfb097 worktrees/agent-a28db60091b8bfd9c/HEAD@{2}: reset: moving to HEAD
+3a113d6 refs/heads/worktree-agent-a813e3be6dc0d387f@{3}: commit: feat(design-system): Phase 4 — graphite tokens + .theme-pro-dark scope + ONE design system doc
+3a113d6 worktrees/agent-a813e3be6dc0d387f/HEAD@{4}: commit: feat(design-system): Phase 4 — graphite tokens + .theme-pro-dark scope + ONE design system doc
+9bfc301 refs/heads/worktree-agent-a813e3be6dc0d387f@{4}: commit: feat(design-review): Phase 3 — staging-only owner/QA 'DO PRZEGLĄDU' markers + registry + overlay + logo hash lock
+9bfc301 worktrees/agent-a813e3be6dc0d387f/HEAD@{5}: commit: feat(design-review): Phase 3 — staging-only owner/QA 'DO PRZEGLĄDU' markers + registry + overlay + logo hash lock
+902fb07 refs/heads/worktree-agent-a500fe17d6731ee3c@{0}: commit: qa(engine-validation): Agent B exact immutable fixtures + engine-output drift detectors + comparison ledger
+902fb07 worktrees/agent-a500fe17d6731ee3c/HEAD@{0}: commit: qa(engine-validation): Agent B exact immutable fixtures + engine-output drift detectors + comparison ledger
+4dfb097 worktrees/agent-a500fe17d6731ee3c/HEAD@{1}: reset: moving to HEAD
+0950609 refs/heads/worktree-agent-a4daa878a5536f698@{0}: commit: docs(nightly-p0): Agent F infra & data forensics ledger — staging/prod bundle evidence, Stripe test-mode proof, products-table forensic conclusion (no staging deletion; misconnected-connector reads)
+0950609 worktrees/agent-a4daa878a5536f698/HEAD@{0}: commit: docs(nightly-p0): Agent F infra & data forensics ledger — staging/prod bundle evidence, Stripe test-mode proof, products-table forensic conclusion (no staging deletion; misconnected-connector reads)
+9d018a2 refs/heads/worktree-agent-a813e3be6dc0d387f@{5}: commit: docs(design): Phase 2 — wireframes (Demo/Pro mobile+desktop, menus, Monitor, Preview, contextual actions, states)
+9d018a2 worktrees/agent-a813e3be6dc0d387f/HEAD@{6}: commit: docs(design): Phase 2 — wireframes (Demo/Pro mobile+desktop, menus, Monitor, Preview, contextual actions, states)
+0ea8752 refs/heads/worktree-agent-a813e3be6dc0d387f@{6}: commit: docs(design): Phase 1 — complete UI inventory (routes, nav systems, Pro anatomy, logo lock)
+0ea8752 worktrees/agent-a813e3be6dc0d387f/HEAD@{7}: commit: docs(design): Phase 1 — complete UI inventory (routes, nav systems, Pro anatomy, logo lock)
+4dfb097 worktrees/agent-a813e3be6dc0d387f/HEAD@{8}: reset: moving to HEAD
+4dfb097 refs/heads/worktree-agent-a813e3be6dc0d387f@{7}: branch: Created from origin/main
+4dfb097 worktrees/agent-a813e3be6dc0d387f/HEAD@{9}: 
+4dfb097 worktrees/agent-a4daa878a5536f698/HEAD@{1}: reset: moving to HEAD
+4dfb097 refs/heads/worktree-agent-a4daa878a5536f698@{1}: branch: Created from origin/main
+4dfb097 worktrees/agent-a4daa878a5536f698/HEAD@{2}: 
+4dfb097 worktrees/agent-a28db60091b8bfd9c/HEAD@{3}: reset: moving to HEAD
+4dfb097 refs/heads/worktree-agent-a28db60091b8bfd9c@{1}: branch: Created from origin/main
+4dfb097 worktrees/agent-a28db60091b8bfd9c/HEAD@{4}: 
+4dfb097 worktrees/agent-a7596694588d097ae/HEAD@{2}: reset: moving to HEAD
+4dfb097 refs/heads/worktree-agent-a7596694588d097ae@{1}: branch: Created from origin/main
+4dfb097 worktrees/agent-a7596694588d097ae/HEAD@{3}: 
+4dfb097 worktrees/agent-ad62b5b16ee66f53f/HEAD@{2}: reset: moving to HEAD
+4dfb097 refs/heads/worktree-agent-ad62b5b16ee66f53f@{1}: branch: Created from origin/main
+4dfb097 worktrees/agent-ad62b5b16ee66f53f/HEAD@{3}: 
+4dfb097 worktrees/agent-a500fe17d6731ee3c/HEAD@{2}: reset: moving to HEAD
+4dfb097 refs/heads/worktree-agent-a500fe17d6731ee3c@{1}: branch: Created from origin/main
+4dfb097 worktrees/agent-a500fe17d6731ee3c/HEAD@{3}: 
+4dfb097 worktrees/agent-ad880ceca859efa7a/HEAD@{2}: reset: moving to HEAD
+4dfb097 refs/heads/worktree-agent-ad880ceca859efa7a@{1}: branch: Created from origin/main
+4dfb097 worktrees/agent-ad880ceca859efa7a/HEAD@{3}: 
+4dfb097 worktrees/agent-a1e802426801972bb/HEAD@{0}: reset: moving to HEAD
+4dfb097 refs/heads/worktree-agent-a1e802426801972bb@{0}: branch: Created from origin/main
+4dfb097 worktrees/agent-a1e802426801972bb/HEAD@{1}: 
+4dfb097 worktrees/agent-ad02e8b78af7a2711/HEAD@{0}: reset: moving to HEAD
+4dfb097 refs/heads/worktree-agent-ad02e8b78af7a2711@{0}: branch: Created from origin/main
+4dfb097 worktrees/agent-ad02e8b78af7a2711/HEAD@{1}: 
+4dfb097 worktrees/agent-a39253521363bb504/HEAD@{0}: reset: moving to HEAD
+4dfb097 worktrees/agent-a39253521363bb504/HEAD@{1}: 
+4dfb097 refs/heads/worktree-agent-a39253521363bb504@{0}: branch: Created from origin/main
+4dfb097 worktrees/agent-a1c6af8049ffddbc2/HEAD@{0}: reset: moving to HEAD
+4dfb097 refs/heads/worktree-agent-a1c6af8049ffddbc2@{0}: branch: Created from origin/main
+4dfb097 worktrees/agent-a1c6af8049ffddbc2/HEAD@{1}: 
+4dfb097 worktrees/agent-a876faa573c47cc52/HEAD@{0}: reset: moving to HEAD
+4dfb097 refs/heads/worktree-agent-a876faa573c47cc52@{0}: branch: Created from origin/main
+4dfb097 worktrees/agent-a876faa573c47cc52/HEAD@{1}: 
+4dfb097 refs/heads/slice/nightly-c-search@{0}: branch: Created from 4dfb097
+4dfb097 worktrees/agent-a3417480bfff9c98d/HEAD@{0}: checkout: moving from worktree-agent-a3417480bfff9c98d to slice/nightly-c-search
+4dfb097 worktrees/agent-a0923162aec83b7ef/HEAD@{0}: reset: moving to HEAD
+4dfb097 refs/heads/worktree-agent-a0923162aec83b7ef@{0}: branch: Created from origin/main
+4dfb097 worktrees/agent-a0923162aec83b7ef/HEAD@{1}: 
+4dfb097 refs/heads/slice/nightly-b-engine-validation@{0}: branch: Created from 4dfb097
+4dfb097 worktrees/agent-af00d0d5ef5280e30/HEAD@{0}: checkout: moving from worktree-agent-af00d0d5ef5280e30 to slice/nightly-b-engine-validation
+4dfb097 worktrees/agent-a3417480bfff9c98d/HEAD@{1}: reset: moving to HEAD
+4dfb097 refs/heads/slice/nightly-a-formulation@{0}: branch: Created from HEAD
+4dfb097 worktrees/agent-a42e483ba60a3161d/HEAD@{0}: checkout: moving from worktree-agent-a42e483ba60a3161d to slice/nightly-a-formulation
+4dfb097 refs/heads/worktree-agent-a3417480bfff9c98d@{0}: branch: Created from origin/main
+4dfb097 worktrees/agent-a3417480bfff9c98d/HEAD@{2}: 
+4dfb097 worktrees/agent-af00d0d5ef5280e30/HEAD@{1}: reset: moving to HEAD
+4dfb097 refs/heads/worktree-agent-af00d0d5ef5280e30@{0}: branch: Created from origin/main
+4dfb097 worktrees/agent-af00d0d5ef5280e30/HEAD@{2}: 
+4dfb097 worktrees/agent-a42e483ba60a3161d/HEAD@{1}: reset: moving to HEAD
+4dfb097 refs/heads/worktree-agent-a42e483ba60a3161d@{0}: branch: Created from origin/main
+4dfb097 worktrees/agent-a42e483ba60a3161d/HEAD@{2}: 
+4dfb097 refs/remotes/origin/staging@{35}: update by push
+4dfb097 refs/remotes/origin/HEAD@{0}: update by push
+4dfb097 refs/remotes/origin/main@{0}: update by push
+4dfb097 refs/heads/main@{0}: commit: docs(pro): constrained reformulation + Undo + score completion ledger
+4dfb097 main-worktree/HEAD@{51}: commit: docs(pro): constrained reformulation + Undo + score completion ledger
+3316f2b refs/remotes/origin/staging@{36}: update by push
+3316f2b refs/remotes/origin/HEAD@{1}: update by push
+3316f2b refs/remotes/origin/main@{1}: update by push
+3316f2b refs/heads/main@{1}: commit: fix(pro): constrained reformulation + complete Undo + truthful score (owner fixtures A/B)
+3316f2b main-worktree/HEAD@{52}: commit: fix(pro): constrained reformulation + complete Undo + truthful score (owner fixtures A/B)
+e20de43 refs/remotes/origin/staging@{37}: update by push
+e20de43 refs/remotes/origin/HEAD@{2}: update by push
+e20de43 refs/remotes/origin/main@{2}: update by push
+e20de43 refs/heads/main@{2}: commit: fix(pro): Apply data-integrity guard — validated atomic write, independent batch recompute, rollback
+e20de43 main-worktree/HEAD@{53}: commit: fix(pro): Apply data-integrity guard — validated atomic write, independent batch recompute, rollback
+6a88b55 refs/remotes/origin/staging@{38}: update by push
+6a88b55 refs/remotes/origin/HEAD@{3}: update by push
+6a88b55 refs/remotes/origin/main@{3}: update by push
+6a88b55 refs/heads/main@{3}: commit: fix(pro): live formulation runtime — real toolbox auto-fill, workbar state truth, exclusions, proven rejections
+6a88b55 main-worktree/HEAD@{54}: commit: fix(pro): live formulation runtime — real toolbox auto-fill, workbar state truth, exclusions, proven rejections
+d8cfd18 refs/remotes/origin/staging@{39}: update by push
+d8cfd18 refs/remotes/origin/HEAD@{4}: update by push
+d8cfd18 refs/remotes/origin/main@{4}: update by push
+d8cfd18 refs/heads/main@{4}: commit: feat(pro): FULL FORMULATION + constrained reformulation — approved-template registry, roles, mode router
+d8cfd18 main-worktree/HEAD@{55}: commit: feat(pro): FULL FORMULATION + constrained reformulation — approved-template registry, roles, mode router
+3a1499f refs/remotes/origin/staging@{40}: update by push
+3a1499f refs/remotes/origin/HEAD@{5}: update by push
+3a1499f refs/remotes/origin/main@{5}: update by push
+3a1499f refs/heads/main@{5}: commit: docs(engine): full-formulation recovery audit — conclusion D, approved seeds + bounds found
+3a1499f main-worktree/HEAD@{56}: commit: docs(engine): full-formulation recovery audit — conclusion D, approved seeds + bounds found
+9f11a27 refs/remotes/origin/staging@{41}: update by push
+9f11a27 refs/remotes/origin/HEAD@{6}: update by push
+9f11a27 refs/remotes/origin/main@{6}: update by push
+9f11a27 refs/heads/main@{6}: commit: fix(pro): reject rescale-as-balance — improvement gate at builder AND Apply door (owner FAIL 8x125g)
+9f11a27 main-worktree/HEAD@{57}: commit: fix(pro): reject rescale-as-balance — improvement gate at builder AND Apply door (owner FAIL 8x125g)
+97ed23a refs/remotes/origin/staging@{42}: update by push
+97ed23a refs/remotes/origin/HEAD@{7}: update by push
+97ed23a refs/remotes/origin/main@{7}: update by push
+97ed23a refs/heads/main@{7}: commit: fix(pro): Przelicz z PI = REAL auto-balance — batch-first + iterative solver + proven failures
+97ed23a main-worktree/HEAD@{58}: commit: fix(pro): Przelicz z PI = REAL auto-balance — batch-first + iterative solver + proven failures
+869a65d refs/remotes/origin/staging@{43}: update by push
+869a65d refs/remotes/origin/HEAD@{8}: update by push
+869a65d refs/remotes/origin/main@{8}: update by push
+869a65d refs/heads/main@{8}: commit: fix(pro): form-group headings + correct Polish labels in the live picker (Świeże, never Świeży owoc)
+869a65d main-worktree/HEAD@{59}: commit: fix(pro): form-group headings + correct Polish labels in the live picker (Świeże, never Świeży owoc)
+0473c3b refs/remotes/origin/staging@{44}: update by push
+0473c3b refs/remotes/origin/HEAD@{9}: update by push
+0473c3b refs/remotes/origin/main@{9}: update by push
+0473c3b refs/heads/main@{9}: commit: feat(pro): LIVE server-side Mapper search — kill the 1,000-row snapshot; milk/fresh discoverable
+0473c3b main-worktree/HEAD@{60}: commit: feat(pro): LIVE server-side Mapper search — kill the 1,000-row snapshot; milk/fresh discoverable
+53e75cd refs/remotes/origin/staging@{45}: update by push
+53e75cd refs/remotes/origin/HEAD@{10}: update by push
+53e75cd refs/remotes/origin/main@{10}: update by push
+53e75cd refs/heads/main@{10}: commit: fix(pro): recalc must UPDATE rows, never duplicate — canonical identity merge + batch invariant
+53e75cd main-worktree/HEAD@{61}: commit: fix(pro): recalc must UPDATE rows, never duplicate — canonical identity merge + batch invariant
+14be387 refs/remotes/origin/staging@{46}: update by push
+14be387 refs/remotes/origin/HEAD@{11}: update by push
+14be387 refs/remotes/origin/main@{11}: update by push
+14be387 refs/heads/main@{11}: commit: fix(pro): rank fresh/natural ingredients first + show form (pineapple/strawberry Fresh Fruit)
+14be387 main-worktree/HEAD@{62}: commit: fix(pro): rank fresh/natural ingredients first + show form (pineapple/strawberry Fresh Fruit)
+381ea8a refs/remotes/origin/staging@{47}: update by push
+381ea8a refs/remotes/origin/HEAD@{12}: update by push
+381ea8a refs/remotes/origin/main@{12}: update by push
+381ea8a refs/heads/main@{12}: commit: fix(pro): natural-Polish ingredient search over live Mapper (truskawka/wanilia/ananas)
+381ea8a main-worktree/HEAD@{63}: commit: fix(pro): natural-Polish ingredient search over live Mapper (truskawka/wanilia/ananas)
+484ff1a refs/remotes/origin/staging@{48}: update by push
+484ff1a refs/remotes/origin/HEAD@{13}: update by push
+484ff1a refs/remotes/origin/main@{13}: update by push
+484ff1a refs/heads/main@{13}: commit: feat(pro): canonical recipe workbench — visible product types, one quality tier, serving state, QA separation, owner diagnostic
+484ff1a main-worktree/HEAD@{64}: commit: feat(pro): canonical recipe workbench — visible product types, one quality tier, serving state, QA separation, owner diagnostic
+7f11b98 refs/remotes/origin/staging@{49}: update by push
+7f11b98 refs/remotes/origin/HEAD@{14}: update by push
+7f11b98 refs/remotes/origin/main@{14}: update by push
+7f11b98 refs/heads/main@{14}: commit: fix(pro): temperature routing agreement + proven lock-conflict diagnosis
+7f11b98 main-worktree/HEAD@{65}: commit: fix(pro): temperature routing agreement + proven lock-conflict diagnosis
+358c86b refs/remotes/origin/staging@{50}: update by push
+358c86b refs/remotes/origin/HEAD@{15}: update by push
+358c86b refs/remotes/origin/main@{15}: update by push
+358c86b refs/heads/main@{15}: commit: feat(p0): ONE canonical PINGÜINO Pro — routes, menu, workbar recalculation, PL shell
+358c86b main-worktree/HEAD@{66}: commit: feat(p0): ONE canonical PINGÜINO Pro — routes, menu, workbar recalculation, PL shell
+093d20b refs/remotes/origin/staging@{51}: update by push
+093d20b refs/remotes/origin/HEAD@{16}: update by push
+093d20b refs/remotes/origin/main@{16}: update by push
+093d20b refs/heads/main@{16}: commit: feat(pro): S4 professional machine + serving-mode workflow (machine-first, no Engine change)
+093d20b main-worktree/HEAD@{67}: commit: feat(pro): S4 professional machine + serving-mode workflow (machine-first, no Engine change)
+aa1ae23 refs/remotes/origin/staging@{52}: update by push
+aa1ae23 refs/remotes/origin/HEAD@{17}: update by push
+aa1ae23 refs/remotes/origin/main@{17}: update by push
+aa1ae23 refs/heads/main@{17}: commit: feat(pro): sticky top workbar — recipe name + canonical save + Przelicz z PI + Monitor PI at top
+aa1ae23 main-worktree/HEAD@{68}: commit: feat(pro): sticky top workbar — recipe name + canonical save + Przelicz z PI + Monitor PI at top
+b359bdf refs/remotes/origin/staging@{53}: update by push
+b359bdf refs/remotes/origin/HEAD@{18}: update by push
+b359bdf refs/remotes/origin/main@{18}: update by push
+b359bdf refs/heads/main@{18}: commit: feat(shell): canonical app shell + one nav config — fix the 3 proven nav defects
+b359bdf main-worktree/HEAD@{69}: commit: feat(shell): canonical app shell + one nav config — fix the 3 proven nav defects
+5245742 refs/remotes/origin/staging@{54}: update by push
+5245742 refs/remotes/origin/HEAD@{19}: update by push
+5245742 refs/remotes/origin/main@{19}: update by push
+5245742 refs/heads/main@{19}: commit: fix(s2-ux): remove duplicate version list from Moje receptury + Polish + per-recipe Wersje
+5245742 main-worktree/HEAD@{70}: commit: fix(s2-ux): remove duplicate version list from Moje receptury + Polish + per-recipe Wersje
+692544d refs/remotes/origin/staging@{55}: update by push
+692544d refs/remotes/origin/HEAD@{20}: update by push
+692544d refs/remotes/origin/main@{20}: update by push
+692544d refs/heads/main@{20}: commit: docs(s2): S2 recipe-save repair ledger + owner-runnable orphan reconciliation SQL
+692544d main-worktree/HEAD@{71}: commit: docs(s2): S2 recipe-save repair ledger + owner-runnable orphan reconciliation SQL
+da9cf9c refs/remotes/origin/staging@{56}: update by push
+da9cf9c refs/remotes/origin/HEAD@{21}: update by push
+da9cf9c refs/remotes/origin/main@{21}: update by push
+da9cf9c refs/heads/main@{21}: commit: fix(s2): ONE canonical recipe save + versioning — kill the alternating/dual-save defect
+da9cf9c main-worktree/HEAD@{72}: commit: fix(s2): ONE canonical recipe save + versioning — kill the alternating/dual-save defect
+9e14ff4 refs/remotes/origin/staging@{57}: update by push
+9e14ff4 refs/remotes/origin/HEAD@{22}: update by push
+9e14ff4 refs/remotes/origin/main@{22}: update by push
+9e14ff4 refs/heads/main@{22}: commit: docs(pro-v1): S2/S3 = DEPLOYED, AWAITING OWNER AUTHENTICATED VERIFICATION (not CLOSED) + baseline + PI-INFRA-002→P0
+9e14ff4 main-worktree/HEAD@{73}: commit: docs(pro-v1): S2/S3 = DEPLOYED, AWAITING OWNER AUTHENTICATED VERIFICATION (not CLOSED) + baseline + PI-INFRA-002→P0
+7440b83 refs/remotes/origin/staging@{58}: update by push
+7440b83 refs/remotes/origin/HEAD@{23}: update by push
+7440b83 refs/remotes/origin/main@{23}: update by push
+7440b83 refs/heads/main@{23}: commit: docs(pro-v1): mark S3 complete (staging READY) in the completion ledger
+7440b83 main-worktree/HEAD@{74}: commit: docs(pro-v1): mark S3 complete (staging READY) in the completion ledger
+b715222 refs/remotes/origin/staging@{59}: update by push
+b715222 refs/remotes/origin/HEAD@{24}: update by push
+b715222 refs/remotes/origin/main@{24}: update by push
+b715222 refs/heads/main@{24}: commit: feat(pro-v1): S3 — canonical /pro workspace shell + persona-gated 9-tab nav
+b715222 main-worktree/HEAD@{75}: commit: feat(pro-v1): S3 — canonical /pro workspace shell + persona-gated 9-tab nav
+cff6f65 refs/remotes/origin/staging@{60}: update by push
+cff6f65 refs/remotes/origin/HEAD@{25}: update by push
+cff6f65 refs/remotes/origin/main@{25}: update by push
+cff6f65 refs/heads/main@{25}: commit: docs(pro-v1): S2 completion ledger (per-repo report + 10 proofs + owner test) + PI-INFRA-002
+cff6f65 main-worktree/HEAD@{76}: commit: docs(pro-v1): S2 completion ledger (per-repo report + 10 proofs + owner test) + PI-INFRA-002
+0f7816f refs/remotes/origin/staging@{61}: update by push
+0f7816f refs/remotes/origin/HEAD@{26}: update by push
+0f7816f refs/remotes/origin/main@{26}: update by push
+0f7816f refs/heads/main@{26}: commit: feat(pro-v1): S2 — Supabase adapters for recipes/production/costs pro-core ports
+0f7816f main-worktree/HEAD@{77}: commit: feat(pro-v1): S2 — Supabase adapters for recipes/production/costs pro-core ports
+2a65849 refs/heads/worktree-wf_4497dc37-75a-2@{0}: branch: Created from origin/main
+2a65849 refs/heads/worktree-wf_4497dc37-75a-3@{0}: branch: Created from origin/main
+2a65849 refs/heads/worktree-wf_4497dc37-75a-1@{0}: branch: Created from origin/main
+2a65849 refs/remotes/origin/staging@{62}: update by push
+2a65849 refs/remotes/origin/HEAD@{27}: update by push
+2a65849 refs/remotes/origin/main@{27}: update by push
+2a65849 refs/heads/main@{27}: commit: feat(pro-v1): S1 — canonical Pro capability model (12 new named flags, additive)
+2a65849 main-worktree/HEAD@{78}: commit: feat(pro-v1): S1 — canonical Pro capability model (12 new named flags, additive)
+2e9494f refs/remotes/origin/staging@{63}: update by push
+2e9494f refs/remotes/origin/HEAD@{28}: update by push
+2e9494f refs/remotes/origin/main@{28}: update by push
+2e9494f refs/heads/main@{28}: commit: docs(pro-v1): Phase 0 reuse map + completion ledger + ordered slice plan
+2e9494f main-worktree/HEAD@{79}: commit: docs(pro-v1): Phase 0 reuse map + completion ledger + ordered slice plan
+e96f869 refs/remotes/origin/staging@{64}: update by push
+e96f869 refs/remotes/origin/HEAD@{29}: update by push
+e96f869 refs/remotes/origin/main@{29}: update by push
+e96f869 refs/heads/main@{29}: commit: docs(completion): open-issue ledger + PI-P0-001 (prod live catalogue unavailable)
+e96f869 main-worktree/HEAD@{80}: commit: docs(completion): open-issue ledger + PI-P0-001 (prod live catalogue unavailable)
+ef8152b refs/remotes/origin/staging@{65}: update by push
+ef8152b refs/remotes/origin/HEAD@{30}: update by push
+ef8152b refs/remotes/origin/main@{30}: update by push
+ef8152b refs/heads/main@{30}: commit: fix(isolation): clear previous account's private client state on logout/switch (P0)
+ef8152b main-worktree/HEAD@{81}: commit: fix(isolation): clear previous account's private client state on logout/switch (P0)
+e05e5f5 refs/remotes/origin/staging@{66}: update by push
+e05e5f5 refs/remotes/origin/HEAD@{31}: update by push
+e05e5f5 refs/remotes/origin/main@{31}: update by push
+e05e5f5 refs/heads/main@{31}: commit: fix(subscription): tier-aware plan cards (current / included / upgrade)
+e05e5f5 main-worktree/HEAD@{82}: commit: fix(subscription): tier-aware plan cards (current / included / upgrade)
+730697b refs/remotes/origin/staging@{67}: update by push
+730697b refs/remotes/origin/HEAD@{32}: update by push
+730697b refs/remotes/origin/main@{32}: update by push
+730697b refs/heads/main@{32}: commit: feat(access): Pro entitlement unlocks legacy surfaces + "already have this plan" UX
+730697b main-worktree/HEAD@{83}: commit: feat(access): Pro entitlement unlocks legacy surfaces + "already have this plan" UX
+0ad49f8 refs/remotes/origin/staging@{68}: update by push
+0ad49f8 refs/remotes/origin/HEAD@{33}: update by push
+0ad49f8 refs/remotes/origin/main@{33}: update by push
+0ad49f8 refs/heads/main@{33}: commit: fix(billing): add CORS preflight handling to browser-invoked edge functions
+0ad49f8 main-worktree/HEAD@{84}: commit: fix(billing): add CORS preflight handling to browser-invoked edge functions
+c025f90 refs/remotes/origin/staging@{69}: update by push
+c025f90 refs/remotes/origin/HEAD@{34}: update by push
+c025f90 refs/remotes/origin/main@{34}: update by push
+c025f90 refs/heads/main@{34}: commit: fix(build): repair tsc -b errors that failed the Vercel staging deploy
+c025f90 main-worktree/HEAD@{85}: commit: fix(build): repair tsc -b errors that failed the Vercel staging deploy
+5895d18 refs/remotes/origin/staging@{70}: update by push
+5895d18 refs/remotes/origin/HEAD@{35}: update by push
+5895d18 refs/remotes/origin/main@{35}: update by push
+5895d18 refs/heads/main@{35}: commit: feat(billing): wire /subscription CTAs to real Checkout (closes the pay→entitlement loop)
+5895d18 main-worktree/HEAD@{86}: commit: feat(billing): wire /subscription CTAs to real Checkout (closes the pay→entitlement loop)
+577e9c8 refs/remotes/origin/HEAD@{36}: update by push
+577e9c8 refs/remotes/origin/main@{36}: update by push
+577e9c8 refs/heads/main@{36}: commit: feat(access): wire the real Home/Pro entitlement chain into persona (P0 product separation)
+577e9c8 main-worktree/HEAD@{87}: commit: feat(access): wire the real Home/Pro entitlement chain into persona (P0 product separation)
+57f377c refs/remotes/origin/HEAD@{37}: update by push
+57f377c refs/remotes/origin/main@{37}: update by push
+57f377c refs/remotes/origin/staging@{71}: update by push
+57f377c refs/heads/main@{37}: merge slice/retire-legacy-products-reviewed: Fast-forward
+57f377c main-worktree/HEAD@{88}: merge slice/retire-legacy-products-reviewed: Fast-forward
+2c9e202 main-worktree/HEAD@{89}: checkout: moving from slice/retire-legacy-products-reviewed to main
+57f377c main-worktree/HEAD@{90}: commit: fix(pricing): P0 — Home/Pro are PAID; show catalogue prices everywhere, never "Home free"
+1064958 main-worktree/HEAD@{91}: commit: docs(legacy-products): semantic 43-row audit + reviewed 0035 retire migration + fructose decision
+2c9e202 main-worktree/HEAD@{92}: checkout: moving from main to slice/retire-legacy-products-reviewed
+2c9e202 refs/remotes/origin/HEAD@{38}: update by push
+2c9e202 refs/remotes/origin/main@{38}: update by push
+2c9e202 refs/remotes/origin/staging@{72}: update by push
+2c9e202 refs/heads/main@{38}: commit: test(track-g): prove the −13 lactose residual resolves with VERIFIED Mapper dairy data
+2c9e202 main-worktree/HEAD@{93}: commit: test(track-g): prove the −13 lactose residual resolves with VERIFIED Mapper dairy data
+0c5cfd3 refs/remotes/origin/HEAD@{39}: update by push
+0c5cfd3 refs/remotes/origin/main@{39}: update by push
+0c5cfd3 refs/remotes/origin/staging@{73}: update by push
+0c5cfd3 refs/heads/main@{39}: merge worktree-agent-a210b0037dfb7e0f8: Merge made by the 'ort' strategy.
+0c5cfd3 main-worktree/HEAD@{94}: merge worktree-agent-a210b0037dfb7e0f8: Merge made by the 'ort' strategy.
+e4f1ad6 refs/heads/main@{40}: commit: feat(engine): connect approved −12/−13 ice anchors + temperature-aware base → Monitor recalculates (CONFIG 0.7.0)
+e4f1ad6 main-worktree/HEAD@{95}: commit: feat(engine): connect approved −12/−13 ice anchors + temperature-aware base → Monitor recalculates (CONFIG 0.7.0)
+042b3b2 refs/remotes/origin/HEAD@{40}: update by push
+042b3b2 refs/remotes/origin/main@{40}: update by push
+042b3b2 refs/remotes/origin/staging@{74}: update by push
+042b3b2 refs/heads/main@{41}: merge worktree-agent-adb2388d84144fc6a: Merge made by the 'ort' strategy.
+042b3b2 main-worktree/HEAD@{96}: merge worktree-agent-adb2388d84144fc6a: Merge made by the 'ort' strategy.
+b0f358e refs/remotes/origin/HEAD@{41}: update by push
+b0f358e refs/remotes/origin/main@{41}: update by push
+b0f358e refs/remotes/origin/staging@{75}: update by push
+b0f358e refs/heads/main@{42}: commit: fix(track-g): result status stops pointing at Monitor tuning where tuning is unavailable
+b0f358e main-worktree/HEAD@{97}: commit: fix(track-g): result status stops pointing at Monitor tuning where tuning is unavailable
+584c3a2 refs/remotes/origin/staging@{76}: update by push
+584c3a2 refs/remotes/origin/HEAD@{42}: update by push
+584c3a2 refs/remotes/origin/main@{42}: update by push
+584c3a2 refs/heads/main@{43}: commit: feat(track-g): per-temperature Monitor tuning approval + full structured failure taxonomy
+584c3a2 main-worktree/HEAD@{98}: commit: feat(track-g): per-temperature Monitor tuning approval + full structured failure taxonomy
+4a7f1b4 refs/remotes/origin/HEAD@{43}: update by push
+4a7f1b4 refs/remotes/origin/main@{43}: update by push
+4a7f1b4 refs/heads/main@{44}: commit: fix(track-g): honest structured Monitor recalc failure — no false "impossible"
+4a7f1b4 main-worktree/HEAD@{99}: commit: fix(track-g): honest structured Monitor recalc failure — no false "impossible"
+d7a119a refs/remotes/origin/staging@{77}: update by push
+d7a119a refs/heads/staging@{0}: merge main: Fast-forward
+d7a119a main-worktree/HEAD@{100}: checkout: moving from staging to main
+d7a119a main-worktree/HEAD@{101}: merge main: Fast-forward
+4d1ea93 main-worktree/HEAD@{102}: checkout: moving from main to staging
+d7a119a refs/remotes/origin/HEAD@{44}: update by push
+d7a119a refs/remotes/origin/main@{44}: update by push
+d7a119a refs/heads/main@{45}: merge chore/track-f-search-read-model: Merge made by the 'ort' strategy.
+d7a119a main-worktree/HEAD@{103}: merge chore/track-f-search-read-model: Merge made by the 'ort' strategy.
+4d1ea93 main-worktree/HEAD@{104}: checkout: moving from chore/track-f-search-read-model to main
+5db5e42 refs/heads/chore/track-f-search-read-model@{0}: commit: chore(track-f): safe search read model for the 2,083 Mapper ingredients (staging migration)
+4d1ea93 refs/heads/chore/track-f-search-read-model@{1}: branch: Created from HEAD
+5db5e42 main-worktree/HEAD@{105}: commit: chore(track-f): safe search read model for the 2,083 Mapper ingredients (staging migration)
+4d1ea93 main-worktree/HEAD@{106}: checkout: moving from main to chore/track-f-search-read-model
+4d1ea93 refs/remotes/origin/staging@{78}: update by push
+4d1ea93 refs/remotes/origin/HEAD@{45}: update by push
+4d1ea93 refs/remotes/origin/main@{45}: update by push
+4d1ea93 refs/heads/main@{46}: merge fix/track-a-real-picker: Merge made by the 'ort' strategy.
+4d1ea93 refs/heads/staging@{1}: merge main: Fast-forward
+4d1ea93 main-worktree/HEAD@{107}: checkout: moving from staging to main
+4d1ea93 main-worktree/HEAD@{108}: merge main: Fast-forward
+cf00718 main-worktree/HEAD@{109}: checkout: moving from main to staging
+4d1ea93 main-worktree/HEAD@{110}: merge fix/track-a-real-picker: Merge made by the 'ort' strategy.
+cf00718 main-worktree/HEAD@{111}: checkout: moving from fix/track-a-real-picker to main
+cef736c refs/heads/fix/track-a-real-picker@{0}: commit: feat(track-a): real ingredient resolution — wire the 69 staging products into the customer Product Picker
+cef736c main-worktree/HEAD@{112}: commit: feat(track-a): real ingredient resolution — wire the 69 staging products into the customer Product Picker
+cf00718 refs/heads/fix/track-a-real-picker@{1}: branch: Created from HEAD
+cf00718 main-worktree/HEAD@{113}: checkout: moving from main to fix/track-a-real-picker
+cf00718 refs/remotes/origin/staging@{79}: update by push
+cf00718 refs/remotes/origin/HEAD@{46}: update by push
+cf00718 refs/remotes/origin/main@{46}: update by push
+cf00718 refs/heads/staging@{2}: merge main: Fast-forward
+cf00718 main-worktree/HEAD@{114}: checkout: moving from staging to main
+cf00718 main-worktree/HEAD@{115}: merge main: Fast-forward
+6b78130 main-worktree/HEAD@{116}: checkout: moving from main to staging
+cf00718 refs/heads/main@{47}: merge fix/track-c-subscription-light: Merge made by the 'ort' strategy.
+cf00718 main-worktree/HEAD@{117}: merge fix/track-c-subscription-light: Merge made by the 'ort' strategy.
+6b78130 main-worktree/HEAD@{118}: checkout: moving from fix/track-c-subscription-light to main
+e271883 refs/heads/fix/track-c-subscription-light@{0}: commit: fix(track-c): light-first /subscription + retire /classic + nav cleanup
+e271883 main-worktree/HEAD@{119}: commit: fix(track-c): light-first /subscription + retire /classic + nav cleanup
+6b78130 refs/heads/fix/track-c-subscription-light@{1}: branch: Created from HEAD
+6b78130 main-worktree/HEAD@{120}: checkout: moving from main to fix/track-c-subscription-light
+6b78130 refs/remotes/origin/staging@{80}: update by push
+6b78130 refs/remotes/origin/HEAD@{47}: update by push
+6b78130 refs/remotes/origin/main@{47}: update by push
+6b78130 main-worktree/HEAD@{121}: checkout: moving from staging to main
+6b78130 refs/heads/main@{48}: merge fix/home-recipe-compact-ux: Merge made by the 'ort' strategy.
+6b78130 refs/heads/staging@{3}: merge main: Fast-forward
+6b78130 main-worktree/HEAD@{122}: merge main: Fast-forward
+88c671f main-worktree/HEAD@{123}: checkout: moving from main to staging
+6b78130 main-worktree/HEAD@{124}: merge fix/home-recipe-compact-ux: Merge made by the 'ort' strategy.
+88c671f main-worktree/HEAD@{125}: checkout: moving from fix/home-recipe-compact-ux to main
+0b970ce refs/heads/fix/home-recipe-compact-ux@{0}: commit: fix(hotfix): compact Home recipe context — restore Zmień maszynę, hide Tryb/Dane techniczne, paywall clearance, single status
+0b970ce main-worktree/HEAD@{126}: commit: fix(hotfix): compact Home recipe context — restore Zmień maszynę, hide Tryb/Dane techniczne, paywall clearance, single status
+88c671f refs/heads/fix/home-recipe-compact-ux@{1}: branch: Created from HEAD
+88c671f main-worktree/HEAD@{127}: checkout: moving from main to fix/home-recipe-compact-ux
+88c671f refs/remotes/origin/staging@{81}: update by push
+88c671f refs/remotes/origin/HEAD@{48}: update by push
+88c671f refs/remotes/origin/main@{48}: update by push
+88c671f main-worktree/HEAD@{128}: checkout: moving from staging to main
+88c671f refs/heads/staging@{4}: merge main: Fast-forward
+88c671f main-worktree/HEAD@{129}: merge main: Fast-forward
+81b8145 main-worktree/HEAD@{130}: checkout: moving from main to staging
+88c671f refs/heads/main@{49}: merge fix/machine-default-vs-recipe: Merge made by the 'ort' strategy.
+88c671f main-worktree/HEAD@{131}: merge fix/machine-default-vs-recipe: Merge made by the 'ort' strategy.
+81b8145 main-worktree/HEAD@{132}: checkout: moving from fix/machine-default-vs-recipe to main
+333ed1a refs/heads/fix/machine-default-vs-recipe@{0}: commit: fix(hotfix): split profile default machine from recipe-only machine override
+333ed1a main-worktree/HEAD@{133}: commit: fix(hotfix): split profile default machine from recipe-only machine override
+81b8145 refs/heads/fix/machine-default-vs-recipe@{1}: branch: Created from main
+81b8145 main-worktree/HEAD@{134}: checkout: moving from main to fix/machine-default-vs-recipe
+81b8145 refs/remotes/origin/staging@{82}: update by push
+81b8145 main-worktree/HEAD@{135}: checkout: moving from staging to main
+81b8145 refs/heads/staging@{5}: merge main: Fast-forward
+81b8145 main-worktree/HEAD@{136}: merge main: Fast-forward
+81b8145 refs/remotes/origin/HEAD@{49}: update by push
+81b8145 refs/remotes/origin/main@{49}: update by push
+815bd64 main-worktree/HEAD@{137}: checkout: moving from main to staging
+81b8145 refs/heads/main@{50}: commit: fix(hotfix): apply adversarial-review findings — machine-change proposal §5, honest save failure, no stale confirmation
+81b8145 main-worktree/HEAD@{138}: commit: fix(hotfix): apply adversarial-review findings — machine-change proposal §5, honest save failure, no stale confirmation
+815bd64 refs/remotes/origin/staging@{83}: update by push
+815bd64 main-worktree/HEAD@{139}: checkout: moving from staging to main
+815bd64 refs/heads/staging@{6}: merge main: Fast-forward
+815bd64 refs/remotes/origin/HEAD@{50}: update by push
+815bd64 refs/remotes/origin/main@{50}: update by push
+815bd64 main-worktree/HEAD@{140}: merge main: Fast-forward
+e41c4bc main-worktree/HEAD@{141}: checkout: moving from main to staging
+815bd64 refs/heads/main@{51}: commit: docs(hotfix): production smoke evidence — landing hamburger, machine profile, Home with the mode step skipped
+815bd64 main-worktree/HEAD@{142}: commit: docs(hotfix): production smoke evidence — landing hamburger, machine profile, Home with the mode step skipped
+e41c4bc main-worktree/HEAD@{143}: checkout: moving from fix/machine-profile-settings to main
+4f217d8 main-worktree/HEAD@{144}: checkout: moving from staging to fix/machine-profile-settings
+e41c4bc refs/remotes/origin/staging@{84}: update by push
+e41c4bc refs/heads/staging@{7}: merge main: Fast-forward
+e41c4bc main-worktree/HEAD@{145}: merge main: Fast-forward
+3130cc1 main-worktree/HEAD@{146}: checkout: moving from main to staging
+e41c4bc refs/remotes/origin/HEAD@{51}: update by push
+e41c4bc refs/remotes/origin/main@{51}: update by push
+e41c4bc refs/heads/main@{52}: merge fix/machine-profile-settings: Merge made by the 'ort' strategy.
+e41c4bc main-worktree/HEAD@{147}: merge fix/machine-profile-settings: Merge made by the 'ort' strategy.
+3130cc1 main-worktree/HEAD@{148}: checkout: moving from fix/machine-profile-settings to main
+4f217d8 refs/heads/fix/machine-profile-settings@{0}: commit: fix(hotfix): production regressions — nav, flavour flow, machine-first Home, machine settings
+4f217d8 main-worktree/HEAD@{149}: commit: fix(hotfix): production regressions — nav, flavour flow, machine-first Home, machine settings
+3130cc1 refs/heads/fix/machine-profile-settings@{1}: reset: moving to HEAD~1
+3130cc1 main-worktree/HEAD@{150}: reset: moving to HEAD~1
+5ccc7d5 refs/heads/fix/machine-profile-settings@{2}: commit: fix(hotfix): production regressions — nav, flavour flow, machine-first Home, machine settings
+5ccc7d5 main-worktree/HEAD@{151}: commit: fix(hotfix): production regressions — nav, flavour flow, machine-first Home, machine settings
+3130cc1 refs/heads/fix/machine-profile-settings@{3}: branch: Created from HEAD
+3130cc1 main-worktree/HEAD@{152}: checkout: moving from main to fix/machine-profile-settings
+3130cc1 main-worktree/HEAD@{153}: checkout: moving from feat/uiux-master-v1 to main
+3130cc1 refs/remotes/origin/staging@{85}: update by push
+14339ef main-worktree/HEAD@{154}: checkout: moving from staging to feat/uiux-master-v1
+3130cc1 refs/heads/staging@{8}: merge main: Fast-forward
+3130cc1 main-worktree/HEAD@{155}: merge main: Fast-forward
+03178f5 main-worktree/HEAD@{156}: checkout: moving from main to staging
+3130cc1 refs/remotes/origin/HEAD@{52}: update by push
+3130cc1 refs/remotes/origin/main@{52}: update by push
+3130cc1 refs/heads/main@{53}: merge feat/uiux-master-v1: Merge made by the 'ort' strategy.
+3130cc1 main-worktree/HEAD@{157}: merge feat/uiux-master-v1: Merge made by the 'ort' strategy.
+9f6050c main-worktree/HEAD@{158}: checkout: moving from feat/uiux-master-v1 to main
+14339ef refs/heads/feat/uiux-master-v1@{0}: commit: docs(uiux): final acceptance evidence — integrated landing/start/studio, desktop+mobile
+14339ef main-worktree/HEAD@{159}: commit: docs(uiux): final acceptance evidence — integrated landing/start/studio, desktop+mobile
+e512ae9 refs/heads/feat/uiux-master-v1@{1}: commit: fix(a11y): html lang=pl — the customer product speaks Polish (screen-reader pronunciation)
+e512ae9 main-worktree/HEAD@{160}: commit: fix(a11y): html lang=pl — the customer product speaks Polish (screen-reader pronunciation)
+ab4e35f refs/heads/feat/uiux-master-v1@{2}: merge uiux/slice-e-lock-preview: Merge made by the 'ort' strategy.
+ab4e35f main-worktree/HEAD@{161}: merge uiux/slice-e-lock-preview: Merge made by the 'ort' strategy.
+6a90952 refs/heads/uiux/slice-e-lock-preview@{0}: commit: feat(uiux-slice-e): §17–§20 lock/Preview/Apply — verify-gated pipeline, feasibility honesty, history/Undo/Explain
+18ff82a refs/heads/feat/uiux-master-v1@{3}: commit: feat(uiux): Slice F — landing #monitor-demo mounts the REAL MonitorHomeReadout on a safe engine-driven demo payload (no imitation)
+18ff82a main-worktree/HEAD@{162}: commit: feat(uiux): Slice F — landing #monitor-demo mounts the REAL MonitorHomeReadout on a safe engine-driven demo payload (no imitation)
+40020ce refs/heads/feat/uiux-master-v1@{4}: merge uiux/slice-d-monitors-score: Merge made by the 'ort' strategy.
+40020ce main-worktree/HEAD@{163}: merge uiux/slice-d-monitors-score: Merge made by the 'ort' strategy.
+1c1f95f refs/heads/uiux/slice-d-monitors-score@{0}: commit: feat(uiux): Slice D — Monitor Home (§13) + Monitor Pro (§14 UserMonitorLayout) + 1-10 score adapter into UI (§15.1)
+62f82ee refs/heads/feat/uiux-master-v1@{5}: merge uiux/slice-c-p0-fixes: Merge made by the 'ort' strategy.
+62f82ee main-worktree/HEAD@{164}: merge uiux/slice-c-p0-fixes: Merge made by the 'ort' strategy.
+fd38e54 refs/heads/uiux/slice-c-p0-fixes@{0}: commit: fix(uiux-slice-c): P0 serving temps + temperature-concept split + picker dead-end exits (audit #5/#19/#2)
+732fa23 refs/heads/uiux/slice-e-lock-preview@{1}: branch: Created from 732fa23
+732fa23 refs/heads/uiux/slice-d-monitors-score@{1}: branch: Created from 732fa23
+9f6050c refs/heads/worktree-agent-a44868c072499022e@{0}: branch: Created from origin/main
+9f6050c refs/heads/worktree-agent-a8a3d0da83e0cd423@{0}: branch: Created from origin/main
+732fa23 refs/heads/feat/uiux-master-v1@{6}: commit: feat(uiux): owner FINAL capacity decision — activate 4 Home machines, soft recommended batch
+732fa23 main-worktree/HEAD@{165}: commit: feat(uiux): owner FINAL capacity decision — activate 4 Home machines, soft recommended batch
+adaf8ab refs/heads/uiux/slice-c-p0-fixes@{1}: branch: Created from adaf8ab
+9f6050c refs/heads/worktree-agent-a47f597ad6b79af76@{0}: branch: Created from origin/main
+adaf8ab refs/heads/feat/uiux-master-v1@{7}: commit: feat(uiux): wire Slice B per INTEGRATION.md — machine-first Home gate, /profile/machine, context bar, derived batch + split notice
+adaf8ab main-worktree/HEAD@{166}: commit: feat(uiux): wire Slice B per INTEGRATION.md — machine-first Home gate, /profile/machine, context bar, derived batch + split notice
+46e766e refs/heads/feat/uiux-master-v1@{8}: merge uiux/slice-b-machine-onboarding: Merge made by the 'ort' strategy.
+46e766e main-worktree/HEAD@{167}: merge uiux/slice-b-machine-onboarding: Merge made by the 'ort' strategy.
+8de5934 refs/heads/uiux/slice-b-machine-onboarding@{0}: commit: feat(machine-preference): launch-gated persistence — selector + backend adapter (file-first) + migration 0030 (NOT applied) + unrouted profile page
+8cb5f8a refs/heads/uiux/slice-b-machine-onboarding@{1}: commit: feat(machine-onboarding): one-time Home machine onboarding (SPEC §8) + §7.3 context bar + §8.6 profile section
+7029026 refs/heads/uiux/slice-b-machine-onboarding@{2}: commit: feat(machine-catalog): universal Home batch rule (owner correction 2026-07-17) + live-source conflict evidence
+185ff97 refs/heads/feat/uiux-master-v1@{9}: commit: docs(uiux): Slice A acceptance evidence — landing + /start screenshots (desktop 1440, mobile 390)
+185ff97 main-worktree/HEAD@{168}: commit: docs(uiux): Slice A acceptance evidence — landing + /start screenshots (desktop 1440, mobile 390)
+e27b72b refs/heads/feat/uiux-master-v1@{10}: merge uiux/slice-a-light-landing: Merge made by the 'ort' strategy.
+e27b72b main-worktree/HEAD@{169}: merge uiux/slice-a-light-landing: Merge made by the 'ort' strategy.
+901e1d7 refs/heads/uiux/slice-a-light-landing@{0}: commit: feat(landing): real public landing at / — light premium, Polish (spec §6); flow moves to /start (Slice A)
+abe2b69 refs/heads/uiux/slice-a-light-landing@{1}: commit: feat(customer-shell): light-first shell — retire dark remap, readable states, status tokens (Slice A)
+01de85a refs/heads/uiux/slice-b-machine-onboarding@{3}: branch: Created from 01de85a
+01de85a refs/heads/uiux/slice-a-light-landing@{2}: branch: Created from 01de85a
+9f6050c refs/heads/worktree-agent-a5a4f147e0c88fdc5@{0}: branch: Created from origin/main
+9f6050c refs/heads/worktree-agent-a9d83f8147d6a121d@{0}: branch: Created from origin/main
+01de85a main-worktree/HEAD@{170}: checkout: moving from main to feat/uiux-master-v1
+9f6050c main-worktree/HEAD@{171}: checkout: moving from feat/uiux-master-v1 to main
+01de85a refs/heads/feat/uiux-master-v1@{11}: merge uiux/constraint-solver: Merge made by the 'ort' strategy.
+a6c717f refs/heads/feat/uiux-master-v1@{12}: merge uiux/score-adapter: Merge made by the 'ort' strategy.
+01de85a main-worktree/HEAD@{172}: merge uiux/constraint-solver: Merge made by the 'ort' strategy.
+a6c717f main-worktree/HEAD@{173}: merge uiux/score-adapter: Merge made by the 'ort' strategy.
+80316a0 refs/heads/feat/uiux-master-v1@{13}: merge uiux/machine-catalog: Merge made by the 'ort' strategy.
+80316a0 main-worktree/HEAD@{174}: merge uiux/machine-catalog: Merge made by the 'ort' strategy.
+8d914ca main-worktree/HEAD@{175}: checkout: moving from main to feat/uiux-master-v1
+8f8bbf9 refs/heads/uiux/constraint-solver@{0}: commit: feat(recipe-constraints): lock/range constraints + engine-verified feasibility (UI/UX master spec 17/18/20.4/23.2)
+1aa7312 refs/heads/uiux/machine-catalog@{0}: commit: feat(machine-catalog): versioned Home machine catalog + onboarding contracts (Annex A seed)
+8d914ca refs/heads/feat/uiux-master-v1@{14}: commit: docs(uiux-master-v1): §3 audit — 30 findings (6 P0) + gap summary vs target architecture
+9f6050c main-worktree/HEAD@{176}: checkout: moving from feat/uiux-master-v1 to main
+8d914ca main-worktree/HEAD@{177}: commit: docs(uiux-master-v1): §3 audit — 30 findings (6 P0) + gap summary vs target architecture
+ea89555 refs/heads/uiux/score-adapter@{0}: commit: feat(recipe-score): 1-10 score adapter + Golden Range contract + three-indicator separation (SPEC 15, 20.5)
+d487990 main-worktree/HEAD@{178}: checkout: moving from main to feat/uiux-master-v1
+9f6050c refs/heads/uiux/machine-catalog@{1}: branch: Created from HEAD
+9f6050c refs/heads/uiux/score-adapter@{1}: branch: Created from HEAD
+9f6050c refs/heads/uiux/constraint-solver@{1}: branch: Created from HEAD
+9f6050c refs/heads/worktree-agent-a5e73d4a749ef0cf5@{0}: branch: Created from origin/main
+9f6050c refs/heads/worktree-agent-a993209bc922d6d4d@{0}: branch: Created from origin/main
+9f6050c refs/heads/worktree-agent-af019e59172ff5ba3@{0}: branch: Created from origin/main
+d487990 refs/heads/feat/uiux-master-v1@{15}: commit: docs(uiux-master-v1): version the owner's master UI/UX spec (source: PINGUINO_MASTER_PROMPT_COMPLETE_UI_UX_HOME_PRO_AI_SOLVER.docx, v1.0 2026-07-16)
+9f6050c main-worktree/HEAD@{179}: checkout: moving from feat/uiux-master-v1 to main
+d487990 main-worktree/HEAD@{180}: commit: docs(uiux-master-v1): version the owner's master UI/UX spec (source: PINGUINO_MASTER_PROMPT_COMPLETE_UI_UX_HOME_PRO_AI_SOLVER.docx, v1.0 2026-07-16)
+9f6050c refs/heads/feat/uiux-master-v1@{16}: branch: Created from HEAD
+9f6050c main-worktree/HEAD@{181}: checkout: moving from main to feat/uiux-master-v1
+9f6050c main-worktree/HEAD@{182}: checkout: moving from main to main
+9f6050c refs/remotes/origin/staging@{86}: update by push
+9f6050c refs/remotes/origin/HEAD@{53}: update by push
+9f6050c refs/remotes/origin/main@{53}: update by push
+9f6050c refs/heads/main@{54}: merge feat/webhook-effect-writers: Merge made by the 'ort' strategy.
+9f6050c main-worktree/HEAD@{183}: merge feat/webhook-effect-writers: Merge made by the 'ort' strategy.
+9eeed1b main-worktree/HEAD@{184}: checkout: moving from feat/webhook-effect-writers to main
+b828c3b main-worktree/HEAD@{185}: checkout: moving from main to feat/webhook-effect-writers
+9eeed1b refs/remotes/origin/staging@{87}: update by push
+9eeed1b refs/remotes/origin/HEAD@{54}: update by push
+9eeed1b refs/remotes/origin/main@{54}: update by push
+9eeed1b refs/heads/main@{55}: commit: fix(auth): make Google sign-in visibly usable — icon, redirecting state, a11y; force staging rebuild
+9eeed1b main-worktree/HEAD@{186}: commit: fix(auth): make Google sign-in visibly usable — icon, redirecting state, a11y; force staging rebuild
+6a774d9 refs/remotes/origin/staging@{88}: update by push
+6a774d9 refs/remotes/origin/HEAD@{55}: update by push
+6a774d9 refs/remotes/origin/main@{55}: update by push
+6a774d9 refs/heads/main@{56}: merge feat/google-oauth: Merge made by the 'ort' strategy.
+6a774d9 main-worktree/HEAD@{187}: merge feat/google-oauth: Merge made by the 'ort' strategy.
+cc3e3d3 refs/heads/worktree-agent-a8d8144ba3d52bf3e@{0}: branch: Created from origin/main
+cc3e3d3 refs/heads/worktree-agent-aac9bc45e9bb5078c@{0}: branch: Created from origin/main
+cc3e3d3 refs/remotes/origin/staging@{89}: update by push
+cc3e3d3 refs/remotes/origin/HEAD@{56}: update by push
+cc3e3d3 refs/remotes/origin/main@{56}: update by push
+cc3e3d3 refs/heads/main@{57}: commit: feat(monitoring): Sentry via the errorReporter seam — DSN-gated, sanitized, staging-named
+cc3e3d3 main-worktree/HEAD@{188}: commit: feat(monitoring): Sentry via the errorReporter seam — DSN-gated, sanitized, staging-named
+57879eb refs/remotes/origin/staging@{90}: update by push
+95c5441 refs/heads/feat/ready-recipe-catalogue-first-100@{0}: commit (amend): feat(recipes): first-100 flavor inspiration catalogue (domain + importer + manifest)
+7c04247 refs/heads/feat/ready-recipe-catalogue-first-100@{1}: commit: feat(recipes): first-100 flavor inspiration catalogue (domain + importer + manifest)
+57879eb refs/heads/feat/ready-recipe-catalogue-first-100@{2}: branch: Created from HEAD
+57879eb refs/heads/worktree-agent-a7f5f8918ce6a26b9@{0}: branch: Created from origin/main
+57879eb refs/remotes/origin/HEAD@{57}: update by push
+57879eb refs/remotes/origin/main@{57}: update by push
+57879eb refs/heads/main@{58}: merge feat/customer-engine-connection: Merge made by the 'ort' strategy.
+57879eb main-worktree/HEAD@{189}: merge feat/customer-engine-connection: Merge made by the 'ort' strategy.
+28009bc main-worktree/HEAD@{190}: checkout: moving from feat/customer-engine-connection to main
+0581f6b main-worktree/HEAD@{191}: commit: copy(product-picker): owner-exact unavailable-catalogue message
+13fca9b main-worktree/HEAD@{192}: commit: feat(product-picker): real Mapper-Basement + Products search adapters; remove public fixture catalogue
+8dad47d main-worktree/HEAD@{193}: commit: feat(customer-shell): Monitor PI runs on the REAL current recipeInput
+b901784 main-worktree/HEAD@{194}: commit: feat(customer-shell): real Engine result on the public card (remove fixture structure)
+e898a66 main-worktree/HEAD@{195}: commit: feat(customer-flow): real Engine bridge — drive canonical calculateRecipe from the customer flow
+28009bc main-worktree/HEAD@{196}: checkout: moving from main to feat/customer-engine-connection
+28009bc refs/remotes/origin/HEAD@{58}: update by push
+28009bc refs/remotes/origin/main@{58}: update by push
+28009bc refs/heads/main@{59}: commit: feat(customer-flow): six-mode serving/machine routing on the public flow (routing + UI only)
+28009bc main-worktree/HEAD@{197}: commit: feat(customer-flow): six-mode serving/machine routing on the public flow (routing + UI only)
+da3ef44 refs/heads/main@{60}: reset: moving to da3ef44
+da3ef44 main-worktree/HEAD@{198}: reset: moving to da3ef44
+7f84004 refs/heads/main@{61}: merge feat/serving-mode-routing: Merge made by the 'ort' strategy.
+7f84004 main-worktree/HEAD@{199}: merge feat/serving-mode-routing: Merge made by the 'ort' strategy.
+da3ef44 main-worktree/HEAD@{200}: checkout: moving from feat/serving-mode-routing to main
+f26eeb5 main-worktree/HEAD@{201}: commit: feat(customer-flow): six-mode serving/machine matrix (routing-only, owner-approved)
+da3ef44 main-worktree/HEAD@{202}: checkout: moving from main to feat/serving-mode-routing
+da3ef44 refs/remotes/origin/HEAD@{59}: update by push
+da3ef44 refs/remotes/origin/main@{59}: update by push
+da3ef44 refs/heads/main@{62}: commit: fix(customer-shell): blank picker query browses the seeded category (not the Polish ingredient name)
+da3ef44 main-worktree/HEAD@{203}: commit: fix(customer-shell): blank picker query browses the seeded category (not the Polish ingredient name)
+cb3dacb refs/heads/main@{63}: commit: feat(customer-shell): tappable ingredient resolution + product picker + Monitor PI on the public result screen
+cb3dacb main-worktree/HEAD@{204}: commit: feat(customer-shell): tappable ingredient resolution + product picker + Monitor PI on the public result screen
+0c2a99d refs/heads/main@{64}: commit: feat(product-picker): canonical Products port + honest sample + backend adapter
+0c2a99d main-worktree/HEAD@{205}: commit: feat(product-picker): canonical Products port + honest sample + backend adapter
+137fd05 refs/remotes/origin/HEAD@{60}: update by push
+137fd05 refs/remotes/origin/main@{60}: update by push
+137fd05 refs/heads/main@{65}: merge feat/pi-monitor: Merge made by the 'ort' strategy.
+137fd05 main-worktree/HEAD@{206}: merge feat/pi-monitor: Merge made by the 'ort' strategy.
+725d096 refs/heads/main@{66}: merge feat/ingredient-resolution: Merge made by the 'ort' strategy.
+725d096 main-worktree/HEAD@{207}: merge feat/ingredient-resolution: Merge made by the 'ort' strategy.
+26f93a2 refs/heads/feat/pi-monitor@{0}: commit: feat(pi-monitor): customer PI Recipe Monitor + customer-controlled recalculation
+8f81ff1 refs/heads/feat/ingredient-resolution@{0}: commit: feat(ingredient-resolution): file-first ingredient resolution + product selection gate
+fe9ec90 refs/heads/feat/pi-monitor@{1}: branch: Created from HEAD
+fe9ec90 refs/heads/worktree-agent-ad8e5fbe7d89b0573@{0}: branch: Created from origin/main
+fe9ec90 refs/heads/feat/ingredient-resolution@{1}: branch: Created from HEAD
+fe9ec90 refs/heads/worktree-agent-a57d9aee6bf390468@{0}: branch: Created from origin/main
+fe9ec90 refs/remotes/origin/HEAD@{61}: update by push
+fe9ec90 refs/remotes/origin/main@{61}: update by push
+fe9ec90 refs/heads/main@{67}: commit: copy(customer-shell): canonical homepage headline "Jakie lody dziś robimy?"
+fe9ec90 main-worktree/HEAD@{208}: commit: copy(customer-shell): canonical homepage headline "Jakie lody dziś robimy?"
+3918716 refs/remotes/origin/HEAD@{62}: update by push
+3918716 refs/remotes/origin/main@{62}: update by push
+3918716 refs/heads/main@{68}: merge feat/customer-dark-home: Fast-forward
+3918716 main-worktree/HEAD@{209}: merge feat/customer-dark-home: Fast-forward
+55c9e50 main-worktree/HEAD@{210}: checkout: moving from feat/customer-dark-home to main
+3918716 refs/heads/feat/customer-dark-home@{0}: commit: feat(customer-shell): dark premium homepage + global nav + vanilla fix + friendly dose UX
+3918716 main-worktree/HEAD@{211}: commit: feat(customer-shell): dark premium homepage + global nav + vanilla fix + friendly dose UX
+55c9e50 refs/heads/feat/customer-dark-home@{1}: branch: Created from main
+55c9e50 main-worktree/HEAD@{212}: checkout: moving from main to feat/customer-dark-home
+55c9e50 refs/remotes/origin/HEAD@{63}: update by push
+55c9e50 refs/remotes/origin/main@{63}: update by push
+55c9e50 refs/heads/hotfix/ninja-verified-mass@{0}: commit: feat(customer-flow): owner-approved verified Ninja recipe masses — auto-set, skip batch step
+55c9e50 refs/heads/main@{69}: merge hotfix/ninja-verified-mass: Fast-forward
+55c9e50 main-worktree/HEAD@{213}: merge hotfix/ninja-verified-mass: Fast-forward
+9f5a357 main-worktree/HEAD@{214}: checkout: moving from hotfix/ninja-verified-mass to main
+55c9e50 main-worktree/HEAD@{215}: commit: feat(customer-flow): owner-approved verified Ninja recipe masses — auto-set, skip batch step
+9f5a357 refs/heads/hotfix/ninja-verified-mass@{1}: branch: Created from main
+9f5a357 main-worktree/HEAD@{216}: checkout: moving from main to hotfix/ninja-verified-mass
+9f5a357 refs/remotes/origin/HEAD@{64}: update by push
+9f5a357 refs/remotes/origin/main@{64}: update by push
+9f5a357 refs/heads/main@{70}: merge hotfix/customer-flow-ninja: Fast-forward
+9f5a357 main-worktree/HEAD@{217}: merge hotfix/customer-flow-ninja: Fast-forward
+9f5a357 refs/heads/hotfix/customer-flow-ninja@{0}: commit: fix(customer-flow): retain all flavors + real Ninja device path (no display temperature)
+6bc9371 main-worktree/HEAD@{218}: checkout: moving from hotfix/customer-flow-ninja to main
+9f5a357 main-worktree/HEAD@{219}: commit: fix(customer-flow): retain all flavors + real Ninja device path (no display temperature)
+6bc9371 refs/heads/hotfix/customer-flow-ninja@{1}: branch: Created from main
+6bc9371 main-worktree/HEAD@{220}: checkout: moving from main to hotfix/customer-flow-ninja
+6bc9371 refs/remotes/origin/release/customer-home-v1@{0}: update by push
+6bc9371 refs/remotes/origin/HEAD@{65}: update by push
+6bc9371 refs/remotes/origin/main@{65}: update by push
+6bc9371 refs/heads/main@{71}: merge release/customer-home-v1: Fast-forward
+6bc9371 main-worktree/HEAD@{221}: merge release/customer-home-v1: Fast-forward
+03178f5 main-worktree/HEAD@{222}: checkout: moving from release/customer-home-v1 to main
+6bc9371 refs/heads/release/customer-home-v1@{0}: commit: chore(customer-shell): neutral honest Polish customer copy for the public homepage
+6bc9371 main-worktree/HEAD@{223}: commit: chore(customer-shell): neutral honest Polish customer copy for the public homepage
+885ee56 refs/remotes/origin/release/customer-home-v1@{1}: update by push
+885ee56 refs/heads/release/customer-home-v1@{1}: commit: feat(customer-shell): make the Customer UX (customer-v1) the public root "/"
+885ee56 main-worktree/HEAD@{224}: commit: feat(customer-shell): make the Customer UX (customer-v1) the public root "/"
+54d58b1 refs/heads/release/customer-home-v1@{2}: branch: Created from preview/customer-v1
+54d58b1 main-worktree/HEAD@{225}: checkout: moving from main to release/customer-home-v1
+54d58b1 refs/remotes/origin/preview/customer-v1@{0}: update by push
+03178f5 main-worktree/HEAD@{226}: checkout: moving from preview/customer-v1 to main
+54d58b1 refs/heads/preview/customer-v1@{0}: commit: feat(customer-shell): customer-v1 preview — integrate UX audit + conversational flow + design system
+54d58b1 main-worktree/HEAD@{227}: commit: feat(customer-shell): customer-v1 preview — integrate UX audit + conversational flow + design system
+03178f5 refs/heads/preview/customer-v1@{1}: branch: Created from 03178f5
+03178f5 main-worktree/HEAD@{228}: checkout: moving from main to preview/customer-v1
+03178f5 refs/heads/worktree-agent-a8a83e26028480d7e@{0}: branch: Created from origin/main
+3101504 refs/heads/worktree-agent-af7c90f256c854518@{0}: commit: feat(customer-flow): Agent B — pure conversational flow + ready-recipe matching + Demo redaction (file-first)
+9f9e303 refs/heads/worktree-agent-a71e571261e1d3f79@{0}: commit: feat(customer-shell): Agent C — mobile-first customer design system + gallery
+f2aae23 refs/heads/worktree-agent-abce36396e7c17a96@{0}: commit: docs(customer-ux): Agent A — senior UX audit + wireframes + Polish copy
+03178f5 refs/remotes/origin/staging@{91}: update by push
+03178f5 refs/heads/staging@{9}: branch: Created from origin/main
+03178f5 refs/heads/worktree-agent-a71e571261e1d3f79@{1}: branch: Created from origin/main
+03178f5 refs/heads/worktree-agent-af7c90f256c854518@{1}: branch: Created from origin/main
+03178f5 refs/heads/worktree-agent-abce36396e7c17a96@{1}: branch: Created from origin/main
+03178f5 refs/remotes/origin/HEAD@{66}: update by push
+03178f5 refs/remotes/origin/main@{66}: update by push
+03178f5 refs/heads/main@{72}: commit: feat(pro-core): orchestrator integration CP3 — recipe versions on the real My Recipes surface
+03178f5 main-worktree/HEAD@{229}: commit: feat(pro-core): orchestrator integration CP3 — recipe versions on the real My Recipes surface
+88f9556 refs/remotes/origin/HEAD@{67}: update by push
+88f9556 refs/remotes/origin/main@{67}: update by push
+88f9556 refs/heads/main@{73}: commit: feat(pro-core): orchestrator integration CP2 — repository ports + honest adapter selector
+88f9556 main-worktree/HEAD@{230}: commit: feat(pro-core): orchestrator integration CP2 — repository ports + honest adapter selector
+996e80f refs/remotes/origin/HEAD@{68}: update by push
+996e80f refs/remotes/origin/main@{68}: update by push
+996e80f refs/heads/main@{74}: commit: feat(pro-core): orchestrator integration CP1 — Access→ProCorePersona bridge
+996e80f main-worktree/HEAD@{231}: commit: feat(pro-core): orchestrator integration CP1 — Access→ProCorePersona bridge
+7809acf refs/remotes/origin/HEAD@{69}: update by push
+7809acf refs/remotes/origin/main@{69}: update by push
+7809acf refs/heads/main@{75}: commit: feat(pro-core): Track C — ingredient costs, immutable cost snapshots, gated exports (file-first)
+7809acf main-worktree/HEAD@{232}: commit: feat(pro-core): Track C — ingredient costs, immutable cost snapshots, gated exports (file-first)
+68f43fc refs/remotes/origin/HEAD@{70}: update by push
+68f43fc refs/remotes/origin/main@{70}: update by push
+68f43fc refs/heads/main@{76}: commit: feat(pro-core): Track B — exact scaling + Production Mode + history (file-first)
+68f43fc main-worktree/HEAD@{233}: commit: feat(pro-core): Track B — exact scaling + Production Mode + history (file-first)
+ed15e94 refs/remotes/origin/HEAD@{71}: update by push
+ed15e94 refs/remotes/origin/main@{71}: update by push
+ed15e94 refs/heads/main@{77}: commit: feat(pro-core): Track A — saved recipes + immutable versions (file-first)
+ed15e94 main-worktree/HEAD@{234}: commit: feat(pro-core): Track A — saved recipes + immutable versions (file-first)
+4427d9b refs/remotes/origin/HEAD@{72}: update by push
+4427d9b refs/remotes/origin/main@{72}: update by push
+4427d9b refs/heads/main@{78}: commit: docs(mapper-verification): PI Verified safe-pause checkpoint + staging-resume prompt
+4427d9b main-worktree/HEAD@{235}: commit: docs(mapper-verification): PI Verified safe-pause checkpoint + staging-resume prompt
+42b261d refs/heads/main@{79}: commit: feat(mapper-verification): DEV review workspace at /dev/product-verification
+42b261d main-worktree/HEAD@{236}: commit: feat(mapper-verification): DEV review workspace at /dev/product-verification
+4d3ed81 refs/heads/main@{80}: commit: feat(mapper-verification): file-first PI Verified workflow — domain + migration 0026 + adapter
+4d3ed81 main-worktree/HEAD@{237}: commit: feat(mapper-verification): file-first PI Verified workflow — domain + migration 0026 + adapter
+d15e168 refs/remotes/origin/HEAD@{73}: update by push
+d15e168 refs/remotes/origin/main@{73}: update by push
+d15e168 refs/heads/main@{81}: commit: docs(account-access): canonical layer — README, partner integration, safe-pause + resume
+d15e168 main-worktree/HEAD@{238}: commit: docs(account-access): canonical layer — README, partner integration, safe-pause + resume
+44a133b refs/heads/main@{82}: commit: feat(account-access): DEV acceptance harness at /dev/account-access
+44a133b main-worktree/HEAD@{239}: commit: feat(account-access): DEV acceptance harness at /dev/account-access
+c325594 refs/heads/main@{83}: commit: feat(account-access): billing→access bridge + in-memory service adapter
+c325594 main-worktree/HEAD@{240}: commit: feat(account-access): billing→access bridge + in-memory service adapter
+5413cad refs/heads/main@{84}: commit: feat(account-access): file-first foundation — migration 0025 + pure identity/access/session/device domain
+5413cad main-worktree/HEAD@{241}: commit: feat(account-access): file-first foundation — migration 0025 + pure identity/access/session/device domain
+b9c2b72 refs/remotes/origin/HEAD@{74}: update by push
+b9c2b72 refs/remotes/origin/main@{74}: update by push
+b9c2b72 refs/heads/main@{85}: commit: feat(ocr-intake): file-first persistence service layer for OCR intake (0022-0024)
+b9c2b72 main-worktree/HEAD@{242}: commit: feat(ocr-intake): file-first persistence service layer for OCR intake (0022-0024)
+5253bbf refs/heads/main@{86}: commit: feat(label): real Labels & Exports — EU nutrition declaration, ingredient statement, CSV/print
+5253bbf main-worktree/HEAD@{243}: commit: feat(label): real Labels & Exports — EU nutrition declaration, ingredient statement, CSV/print
+acb34d5 refs/heads/main@{87}: commit: test(ocr-intake): real Italian OCR fixture — multilingual now 5/5 proven
+acb34d5 main-worktree/HEAD@{244}: commit: test(ocr-intake): real Italian OCR fixture — multilingual now 5/5 proven
+6f8186e refs/heads/main@{88}: commit: feat(app): top-level error boundary + pluggable error reporter + deploy config
+6f8186e main-worktree/HEAD@{245}: commit: feat(app): top-level error boundary + pluggable error reporter + deploy config
+a100377 refs/remotes/origin/HEAD@{75}: update by push
+a100377 refs/remotes/origin/main@{75}: update by push
+a100377 refs/heads/main@{89}: commit: feat(ocr-intake): wire merged OCR modules into dev page + reconcile image cap
+a100377 main-worktree/HEAD@{246}: commit: feat(ocr-intake): wire merged OCR modules into dev page + reconcile image cap
+bf29040 refs/heads/main@{90}: merge slice/ocr-migrations-ui: Merge made by the 'ort' strategy.
+bf29040 main-worktree/HEAD@{247}: merge slice/ocr-migrations-ui: Merge made by the 'ort' strategy.
+8824532 refs/heads/main@{91}: merge slice/ocr-session-dedup-batch: Merge made by the 'ort' strategy.
+3f6369b refs/heads/main@{92}: merge slice/ocr-provider-extraction: Fast-forward
+8824532 main-worktree/HEAD@{248}: merge slice/ocr-session-dedup-batch: Merge made by the 'ort' strategy.
+3f6369b main-worktree/HEAD@{249}: merge slice/ocr-provider-extraction: Fast-forward
+3f6369b refs/heads/slice/ocr-provider-extraction@{0}: commit: docs(ocr-intake): correct -Only usage note in fixture generator
+3f6369b worktrees/ocr-provider-extraction/HEAD@{0}: commit: docs(ocr-intake): correct -Only usage note in fixture generator
+069bb17 refs/heads/slice/ocr-provider-extraction@{1}: commit: feat(ocr-intake): provider abstraction + evidence extractor + EN/ES/DE/PL/IT normalization
+069bb17 worktrees/ocr-provider-extraction/HEAD@{1}: commit: feat(ocr-intake): provider abstraction + evidence extractor + EN/ES/DE/PL/IT normalization
+ad0a492 refs/heads/slice/ocr-migrations-ui@{0}: commit: feat(ocr-intake): intake persistence spine (0022-0024) + full session UI
+ad0a492 worktrees/ocr-migrations-ui/HEAD@{0}: commit: feat(ocr-intake): intake persistence spine (0022-0024) + full session UI
+e1df580 refs/heads/slice/ocr-session-dedup-batch@{0}: commit: feat(ocr-intake): session state machine, duplicate handling, save flow, batch workflow
+e1df580 worktrees/ocr-session-dedup-batch/HEAD@{0}: commit: feat(ocr-intake): session state machine, duplicate handling, save flow, batch workflow
+795ea64 worktrees/ocr-migrations-ui/HEAD@{1}: reset: moving to HEAD
+795ea64 refs/heads/slice/ocr-migrations-ui@{1}: branch: Created from HEAD
+795ea64 worktrees/ocr-migrations-ui/HEAD@{2}: 
+795ea64 worktrees/ocr-session-dedup-batch/HEAD@{1}: reset: moving to HEAD
+795ea64 refs/heads/slice/ocr-session-dedup-batch@{1}: branch: Created from HEAD
+795ea64 worktrees/ocr-provider-extraction/HEAD@{2}: reset: moving to HEAD
+795ea64 worktrees/ocr-session-dedup-batch/HEAD@{2}: 
+795ea64 refs/heads/main@{93}: commit: feat(ocr-intake): shared intake contracts - evidence, provider seam, session, dedup, batch
+795ea64 refs/heads/slice/ocr-provider-extraction@{2}: branch: Created from HEAD
+795ea64 main-worktree/HEAD@{250}: commit: feat(ocr-intake): shared intake contracts - evidence, provider seam, session, dedup, batch
+795ea64 worktrees/ocr-provider-extraction/HEAD@{3}: 
+b4db620 refs/remotes/origin/HEAD@{76}: update by push
+b4db620 refs/remotes/origin/main@{76}: update by push
+b4db620 refs/heads/main@{94}: commit: docs: billing SAFE PAUSE checkpoint + pin Stripe API version
+b4db620 main-worktree/HEAD@{251}: commit: docs: billing SAFE PAUSE checkpoint + pin Stripe API version
+357bade refs/remotes/origin/HEAD@{77}: update by push
+357bade refs/remotes/origin/main@{77}: update by push
+357bade refs/heads/main@{95}: commit: docs: record Stripe Sandbox catalog (Phase 1 complete) + Phase 2 Supabase blocker
+357bade main-worktree/HEAD@{252}: commit: docs: record Stripe Sandbox catalog (Phase 1 complete) + Phase 2 Supabase blocker
+979cff8 refs/remotes/origin/HEAD@{78}: update by push
+979cff8 refs/remotes/origin/main@{78}: update by push
+979cff8 refs/heads/main@{96}: commit: fix: orchestrator integration sync - align Stripe function sources to 0021/0016 schema
+979cff8 main-worktree/HEAD@{253}: commit: fix: orchestrator integration sync - align Stripe function sources to 0021/0016 schema
+abc04f1 refs/heads/main@{97}: merge slice/billing-stripe-surface: Merge made by the 'ort' strategy.
+9660d83 refs/heads/main@{98}: merge slice/billing-domain-logic: Merge made by the 'ort' strategy.
+ff90552 refs/heads/main@{99}: merge slice/billing-schema-entitlements: Fast-forward
+abc04f1 main-worktree/HEAD@{254}: merge slice/billing-stripe-surface: Merge made by the 'ort' strategy.
+9660d83 main-worktree/HEAD@{255}: merge slice/billing-domain-logic: Merge made by the 'ort' strategy.
+ff90552 main-worktree/HEAD@{256}: merge slice/billing-schema-entitlements: Fast-forward
+152c4e5 refs/heads/slice/billing-stripe-surface@{0}: commit: feat: Stripe-facing billing surface - price catalog, webhook matrix, conversion machine
+152c4e5 worktrees/billing-stripe-surface/HEAD@{0}: commit: feat: Stripe-facing billing surface - price catalog, webhook matrix, conversion machine
+9e08753 refs/heads/slice/billing-domain-logic@{0}: commit: feat: billing domain logic - pure financial modules + exhaustive tests (Track E)
+9e08753 worktrees/billing-domain-logic/HEAD@{0}: commit: feat: billing domain logic - pure financial modules + exhaustive tests (Track E)
+ff90552 refs/heads/slice/billing-schema-entitlements@{0}: commit: refactor: keep Track D guard tests inside src/billing (src/features is off-limits)
+ff90552 worktrees/billing-schema-entitlements/HEAD@{0}: commit: refactor: keep Track D guard tests inside src/billing (src/features is off-limits)
+a9a15dd refs/heads/slice/billing-schema-entitlements@{1}: commit: feat: billing/partner §14 domain model (0014-0021) + pure entitlement resolver
+a9a15dd worktrees/billing-schema-entitlements/HEAD@{1}: commit: feat: billing/partner §14 domain model (0014-0021) + pure entitlement resolver
+07a78ca worktrees/billing-stripe-surface/HEAD@{1}: reset: moving to HEAD
+07a78ca refs/heads/slice/billing-stripe-surface@{1}: branch: Created from HEAD
+07a78ca worktrees/billing-domain-logic/HEAD@{1}: reset: moving to HEAD
+07a78ca worktrees/billing-stripe-surface/HEAD@{2}: 
+07a78ca refs/heads/slice/billing-domain-logic@{1}: branch: Created from HEAD
+07a78ca worktrees/billing-domain-logic/HEAD@{2}: 
+07a78ca worktrees/billing-schema-entitlements/HEAD@{2}: reset: moving to HEAD
+07a78ca refs/heads/slice/billing-schema-entitlements@{2}: branch: Created from HEAD
+07a78ca worktrees/billing-schema-entitlements/HEAD@{3}: 
+07a78ca refs/heads/main@{100}: commit: docs: billing/partner platform Phase A - audit, architecture decisions, Nicolas handoff
+07a78ca main-worktree/HEAD@{257}: commit: docs: billing/partner platform Phase A - audit, architecture decisions, Nicolas handoff
+0a01827 refs/remotes/origin/HEAD@{79}: update by push
+0a01827 refs/remotes/origin/main@{79}: update by push
+0a01827 refs/heads/main@{101}: merge slice/ocr-label-intake-completion: Merge made by the 'ort' strategy.
+0a01827 main-worktree/HEAD@{258}: merge slice/ocr-label-intake-completion: Merge made by the 'ort' strategy.
+a7e4adc refs/heads/main@{102}: merge slice/assistant-local-apply: Merge made by the 'ort' strategy.
+a7e4adc main-worktree/HEAD@{259}: merge slice/assistant-local-apply: Merge made by the 'ort' strategy.
+951c3d1 refs/heads/main@{103}: merge slice/spine-decision-completion: Fast-forward
+951c3d1 main-worktree/HEAD@{260}: merge slice/spine-decision-completion: Fast-forward
+951c3d1 refs/heads/slice/spine-decision-completion@{0}: commit: feat: Spine decision acceptance (Slice 25) - 12-cell matrix pins + dairy candidate gate fix
+951c3d1 worktrees/spine-decision-completion/HEAD@{0}: commit: feat: Spine decision acceptance (Slice 25) - 12-cell matrix pins + dairy candidate gate fix
+a3038d5 refs/heads/slice/ocr-label-intake-completion@{0}: commit: feat: real OCR label intake - tesseract.js engine + parser + review + draft handoff
+a3038d5 worktrees/ocr-label-intake-completion/HEAD@{0}: commit: feat: real OCR label intake - tesseract.js engine + parser + review + draft handoff
+c660e70 refs/heads/slice/assistant-local-apply@{0}: commit: feat: Assistant submit fix + explicit starter capabilities + local Apply to Studio
+c660e70 worktrees/assistant-local-apply/HEAD@{0}: commit: feat: Assistant submit fix + explicit starter capabilities + local Apply to Studio
+70c105a worktrees/assistant-local-apply/HEAD@{1}: reset: moving to HEAD
+70c105a worktrees/ocr-label-intake-completion/HEAD@{1}: reset: moving to HEAD
+70c105a refs/heads/slice/ocr-label-intake-completion@{1}: branch: Created from 70c105a662e72b4a35c486a1ee298561999749d8
+70c105a worktrees/ocr-label-intake-completion/HEAD@{2}: 
+70c105a worktrees/spine-decision-completion/HEAD@{1}: reset: moving to HEAD
+70c105a refs/heads/slice/spine-decision-completion@{1}: branch: Created from 70c105a662e72b4a35c486a1ee298561999749d8
+70c105a worktrees/assistant-local-apply/HEAD@{2}: reset: moving to HEAD
+70c105a worktrees/spine-decision-completion/HEAD@{2}: 
+70c105a refs/heads/slice/assistant-local-apply@{1}: branch: Created from 70c105a662e72b4a35c486a1ee298561999749d8
+70c105a worktrees/assistant-local-apply/HEAD@{3}: 
+70c105a refs/remotes/origin/HEAD@{80}: update by push
+70c105a refs/remotes/origin/main@{80}: update by push
+70c105a refs/heads/main@{104}: commit: test: Mapper v1.0 critical regression checkpoint - capability pins + stale count fix
+70c105a main-worktree/HEAD@{261}: commit: test: Mapper v1.0 critical regression checkpoint - capability pins + stale count fix
+8c79b75 refs/remotes/origin/HEAD@{81}: update by push
+8c79b75 refs/remotes/origin/main@{81}: update by push
+8c79b75 refs/heads/main@{105}: commit: feat: Mapper Basement v1.0 - canonical 2,083-row dataset replacement
+8c79b75 main-worktree/HEAD@{262}: commit: feat: Mapper Basement v1.0 - canonical 2,083-row dataset replacement
+da718fc refs/remotes/origin/HEAD@{82}: update by push
+da718fc refs/remotes/origin/main@{82}: update by push
+da718fc refs/heads/main@{106}: commit: feat: intent -> deterministic starter recipe draft (local preview only)
+da718fc main-worktree/HEAD@{263}: commit: feat: intent -> deterministic starter recipe draft (local preview only)
+18cfd6f refs/remotes/origin/HEAD@{83}: update by push
+18cfd6f refs/remotes/origin/main@{83}: update by push
+18cfd6f refs/heads/main@{107}: commit: feat: PL-first deterministic Conversational Assistant Shell (no LLM, no persistence)
+18cfd6f main-worktree/HEAD@{264}: commit: feat: PL-first deterministic Conversational Assistant Shell (no LLM, no persistence)
+411fb02 refs/remotes/origin/HEAD@{84}: update by push
+411fb02 refs/remotes/origin/main@{84}: update by push
+411fb02 refs/heads/main@{108}: commit: feat: PL-first Studio User-Flow guidance layer (pure, no persistence)
+411fb02 main-worktree/HEAD@{265}: commit: feat: PL-first Studio User-Flow guidance layer (pure, no persistence)
+70fcbd7 refs/remotes/origin/HEAD@{85}: update by push
+70fcbd7 refs/remotes/origin/main@{85}: update by push
+70fcbd7 refs/heads/main@{109}: commit: feat: temperature-aware engine TARGET_BANDS (CONFIG 0.6.0)
+70fcbd7 main-worktree/HEAD@{266}: commit: feat: temperature-aware engine TARGET_BANDS (CONFIG 0.6.0)
+d0caeec refs/remotes/origin/HEAD@{86}: update by push
+d0caeec refs/remotes/origin/main@{86}: update by push
+d0caeec refs/heads/main@{110}: commit: feat: Stripe subscription webhook writer source (2B.3, NOT deployed)
+d0caeec main-worktree/HEAD@{267}: commit: feat: Stripe subscription webhook writer source (2B.3, NOT deployed)
+32db995 refs/remotes/origin/HEAD@{87}: update by push
+32db995 refs/remotes/origin/main@{87}: update by push
+32db995 refs/heads/main@{111}: commit: feat: apply accepted-corrections tier-enforced INSERT policy (Option A, 0013)
+32db995 main-worktree/HEAD@{268}: commit: feat: apply accepted-corrections tier-enforced INSERT policy (Option A, 0013)
+24a62bd refs/remotes/origin/HEAD@{88}: update by push
+24a62bd refs/remotes/origin/main@{88}: update by push
+24a62bd refs/heads/main@{112}: commit: feat: accepted-correction server-side tier enforcement (proposal-stage)
+24a62bd main-worktree/HEAD@{269}: commit: feat: accepted-correction server-side tier enforcement (proposal-stage)
+a26cfe8 refs/remotes/origin/HEAD@{89}: update by push
+a26cfe8 refs/remotes/origin/main@{89}: update by push
+a26cfe8 refs/heads/main@{113}: commit: docs: accepted-correction signed-in save proven end to end (Slice 24B)
+a26cfe8 main-worktree/HEAD@{270}: commit: docs: accepted-correction signed-in save proven end to end (Slice 24B)
+fed7c9a refs/remotes/origin/HEAD@{90}: update by push
+fed7c9a refs/remotes/origin/main@{90}: update by push
+fed7c9a refs/heads/main@{114}: commit: feat: accepted-correction LIVE write path (Spine Slice 24)
+fed7c9a main-worktree/HEAD@{271}: commit: feat: accepted-correction LIVE write path (Spine Slice 24)
+9643c62 main-worktree/HEAD@{272}: reset: moving to HEAD
+9643c62 refs/remotes/origin/HEAD@{91}: update by push
+9643c62 refs/remotes/origin/main@{91}: update by push
+9643c62 refs/heads/main@{115}: commit: feat: IF9 multi-lever add-only rescue expansion (Spine Slice 23)
+9643c62 main-worktree/HEAD@{273}: commit: feat: IF9 multi-lever add-only rescue expansion (Spine Slice 23)
+c383f21 refs/remotes/origin/HEAD@{92}: update by push
+c383f21 refs/remotes/origin/main@{92}: update by push
+c383f21 refs/heads/main@{116}: commit: feat: IF10 verified-composition substitute contract (Spine Slice 22)
+c383f21 main-worktree/HEAD@{274}: commit: feat: IF10 verified-composition substitute contract (Spine Slice 22)
+700692a refs/remotes/origin/HEAD@{93}: update by push
+700692a refs/remotes/origin/main@{93}: update by push
+700692a refs/heads/main@{117}: commit: feat: production IF9/IF10 branch UI - paid-gated preview, no persistence (Spine Slice 21)
+700692a main-worktree/HEAD@{275}: commit: feat: production IF9/IF10 branch UI - paid-gated preview, no persistence (Spine Slice 21)
+7aaee14 refs/remotes/origin/HEAD@{94}: update by push
+7aaee14 refs/remotes/origin/main@{94}: update by push
+7aaee14 refs/heads/main@{118}: commit: feat: IF9 multi-step add-only rescue solver expansion (Spine Slice 20)
+7aaee14 main-worktree/HEAD@{276}: commit: feat: IF9 multi-step add-only rescue solver expansion (Spine Slice 20)
+594d473 refs/remotes/origin/HEAD@{95}: update by push
+594d473 refs/remotes/origin/main@{95}: update by push
+594d473 refs/heads/main@{119}: commit: feat: IF9/IF10 Integration Flow wiring + exact-recalculation preview (Spine Slice 19)
+594d473 main-worktree/HEAD@{277}: commit: feat: IF9/IF10 Integration Flow wiring + exact-recalculation preview (Spine Slice 19)
+dc33a5b refs/remotes/origin/HEAD@{96}: update by push
+dc33a5b refs/remotes/origin/main@{96}: update by push
+dc33a5b refs/heads/main@{120}: commit: feat: Stock Shortage decision branch IF10, pure and unwired (Spine Slice 18)
+dc33a5b main-worktree/HEAD@{278}: commit: feat: Stock Shortage decision branch IF10, pure and unwired (Spine Slice 18)
+6461a97 refs/remotes/origin/HEAD@{97}: update by push
+6461a97 refs/remotes/origin/main@{97}: update by push
+6461a97 refs/heads/main@{121}: commit: feat: Actual Batch Rescue decision branch IF9, pure and unwired (Spine Slice 17)
+6461a97 main-worktree/HEAD@{279}: commit: feat: Actual Batch Rescue decision branch IF9, pure and unwired (Spine Slice 17)
+041e3b1 refs/remotes/origin/HEAD@{98}: update by push
+041e3b1 refs/remotes/origin/main@{98}: update by push
+041e3b1 refs/heads/main@{122}: commit: feat: accepted-correction persistence design + non-applied migration preview (Spine Slice 16)
+041e3b1 main-worktree/HEAD@{280}: commit: feat: accepted-correction persistence design + non-applied migration preview (Spine Slice 16)
+1c0e5fc refs/remotes/origin/HEAD@{99}: update by push
+1c0e5fc refs/remotes/origin/main@{99}: update by push
+1c0e5fc refs/heads/main@{123}: commit: feat: production Studio optimization preview, capability-gated, no persistence (Spine Slice 15)
+1c0e5fc main-worktree/HEAD@{281}: commit: feat: production Studio optimization preview, capability-gated, no persistence (Spine Slice 15)
+c95e1b8 refs/remotes/origin/HEAD@{100}: update by push
+c95e1b8 refs/remotes/origin/main@{100}: update by push
+c95e1b8 refs/heads/main@{124}: commit: feat: solver target override for real regulator-shadow gram solve (Spine Slice 14)
+c95e1b8 main-worktree/HEAD@{282}: commit: feat: solver target override for real regulator-shadow gram solve (Spine Slice 14)
+79fd676 refs/remotes/origin/HEAD@{101}: update by push
+79fd676 refs/remotes/origin/main@{101}: update by push
+79fd676 refs/heads/main@{125}: commit: feat: solver-injected regulator targets (preview only) (Spine Slice 13)
+79fd676 main-worktree/HEAD@{283}: commit: feat: solver-injected regulator targets (preview only) (Spine Slice 13)
+d000cb2 refs/remotes/origin/HEAD@{102}: update by push
+d000cb2 refs/remotes/origin/main@{102}: update by push
+d000cb2 refs/heads/main@{126}: commit: feat: add temperature-aware shadow target bands + golden comparison (Spine Slice 12)
+d000cb2 main-worktree/HEAD@{284}: commit: feat: add temperature-aware shadow target bands + golden comparison (Spine Slice 12)
+2408b71 refs/remotes/origin/HEAD@{103}: update by push
+2408b71 refs/remotes/origin/main@{103}: update by push
+2408b71 refs/heads/main@{127}: commit: feat: temperature-aware correction-target seam (Spine Slice 11)
+2408b71 main-worktree/HEAD@{285}: commit: feat: temperature-aware correction-target seam (Spine Slice 11)
+52c7427 refs/remotes/origin/HEAD@{104}: update by push
+52c7427 refs/remotes/origin/main@{104}: update by push
+52c7427 refs/heads/main@{128}: commit: feat: Studio optimization preview panel + redaction policy (Spine Slice 10)
+52c7427 main-worktree/HEAD@{286}: commit: feat: Studio optimization preview panel + redaction policy (Spine Slice 10)
+be84463 refs/remotes/origin/HEAD@{105}: update by push
+be84463 refs/remotes/origin/main@{105}: update by push
+be84463 refs/heads/main@{129}: commit: feat: add DEV Optimization Preview wiring (Spine Slice 9)
+be84463 main-worktree/HEAD@{287}: commit: feat: add DEV Optimization Preview wiring (Spine Slice 9)
+23c4709 refs/remotes/origin/HEAD@{106}: update by push
+23c4709 refs/remotes/origin/main@{106}: update by push
+23c4709 refs/heads/main@{130}: commit: feat: connect optimizer routing to the real solver + Base Engine rerun (Spine Slice 8)
+23c4709 main-worktree/HEAD@{288}: commit: feat: connect optimizer routing to the real solver + Base Engine rerun (Spine Slice 8)
+e260428 refs/remotes/origin/HEAD@{107}: update by push
+e260428 refs/remotes/origin/main@{107}: update by push
+e260428 refs/heads/main@{131}: commit: feat: add Optimizer routing over the tradeoff branch (Spine Slice 7)
+e260428 main-worktree/HEAD@{289}: commit: feat: add Optimizer routing over the tradeoff branch (Spine Slice 7)
+b1eca10 refs/remotes/origin/HEAD@{108}: update by push
+b1eca10 refs/remotes/origin/main@{108}: update by push
+b1eca10 refs/heads/main@{132}: commit: feat: add Integration Flow decision router (Spine Slice 6)
+b1eca10 main-worktree/HEAD@{290}: commit: feat: add Integration Flow decision router (Spine Slice 6)
+b3fb06e refs/remotes/origin/HEAD@{109}: update by push
+b3fb06e refs/remotes/origin/main@{109}: update by push
+b3fb06e refs/heads/main@{133}: commit: feat: add Temperature Regulator evaluation layer (Spine Slice 5)
+b3fb06e main-worktree/HEAD@{291}: commit: feat: add Temperature Regulator evaluation layer (Spine Slice 5)
+946a3cf refs/remotes/origin/HEAD@{110}: update by push
+946a3cf refs/remotes/origin/main@{110}: update by push
+946a3cf refs/heads/main@{134}: commit: test: prove PR-ING-000014 class-derived in Studio picker proof
+946a3cf main-worktree/HEAD@{292}: commit: test: prove PR-ING-000014 class-derived in Studio picker proof
+9bc9adb refs/remotes/origin/HEAD@{111}: update by push
+9bc9adb refs/remotes/origin/main@{111}: update by push
+9bc9adb refs/heads/main@{135}: commit: feat: live-wire class_derived PI Calculated for approved PR-ING-000014
+9bc9adb main-worktree/HEAD@{293}: commit: feat: live-wire class_derived PI Calculated for approved PR-ING-000014
+a43a99f refs/remotes/origin/HEAD@{112}: update by push
+a43a99f refs/remotes/origin/main@{112}: update by push
+a43a99f refs/heads/main@{136}: commit: feat: add gated PI Calculated activation planner + preview
+a43a99f main-worktree/HEAD@{294}: commit: feat: add gated PI Calculated activation planner + preview
+6017dbd refs/remotes/origin/HEAD@{113}: update by push
+6017dbd refs/remotes/origin/main@{113}: update by push
+6017dbd refs/heads/main@{137}: commit: docs: add PI Calculated owner-review pack
+6017dbd main-worktree/HEAD@{295}: commit: docs: add PI Calculated owner-review pack
+8ec4177 refs/remotes/origin/HEAD@{114}: update by push
+8ec4177 refs/remotes/origin/main@{114}: update by push
+8ec4177 refs/heads/main@{138}: commit: feat: add PINGUINO product intelligence preview + simulation
+8ec4177 main-worktree/HEAD@{296}: commit: feat: add PINGUINO product intelligence preview + simulation
+65a94f6 refs/remotes/origin/HEAD@{115}: update by push
+65a94f6 refs/remotes/origin/main@{115}: update by push
+65a94f6 refs/heads/main@{139}: commit: feat: add PINGUINO Mapper product intelligence resolver
+65a94f6 main-worktree/HEAD@{297}: commit: feat: add PINGUINO Mapper product intelligence resolver

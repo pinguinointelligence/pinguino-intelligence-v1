@@ -40,6 +40,10 @@ import { computeRecipeNpac, computeRecipePac } from './pac';
 import { computeRecipePod } from './pod';
 import { computeScores } from './scoring';
 import {
+  SORBET_FREEZING_WARNING_REASON_PREFIX,
+  solveSorbetFreezingPhysics,
+} from './sorbetFreezingPhysics';
+import {
   classifyRecipeIndicators,
   computeLactoseSandinessRisk,
   selectTargetBand,
@@ -123,13 +127,38 @@ export function calculateRecipe(input: RecipeInput): RecipeResult {
     ? computeRecipeNpac(items, total_batch_g, { water_g: totals.water_g })
     : null;
 
-  // 9: ice fraction (category- and temperature-aware)
+  // 9: ice fraction. Sorbet has its own composition-sensitive, published
+  // freeze-concentration path; it must never inherit milk-gelato anchors.
+  // The public percentage is ice mass / initial total mix mass.
+  const sorbetFreezing =
+    hasMass && input.category === 'sorbet'
+      ? solveSorbetFreezingPhysics({
+          totalMixtureGrams: total_batch_g,
+          initialWaterGrams: totals.water_g,
+          totalDrySolidsGrams: totals.solids_g,
+          sucroseGrams: totals.sucrose_g,
+          glucoseGrams: totals.glucose_g,
+          dextroseGrams: totals.dextrose_g,
+          fructoseGrams: totals.fructose_g,
+          unsupportedFreezeActiveSolidsGrams:
+            totals.lactose_g +
+            totals.polyol_g +
+            totals.salt_g +
+            totals.alcohol_g +
+            sugar.other_sugar_g,
+          temperatureCelsius: input.target_temperature_c,
+        })
+      : null;
   const ice_fraction_percent = hasMass
-    ? estimateIceFraction({
-        npac: npac_points,
-        temperature_c: input.target_temperature_c,
-        category: input.category,
-      })
+    ? input.category === 'sorbet'
+      ? sorbetFreezing?.status === 'available'
+        ? sorbetFreezing.iceMassFractionOfMix * 100
+        : null
+      : estimateIceFraction({
+          npac: npac_points,
+          temperature_c: input.target_temperature_c,
+          category: input.category,
+        })
     : null;
 
   // 10: lactose sandiness risk (calibration-pending working definition)
@@ -173,6 +202,13 @@ export function calculateRecipe(input: RecipeInput): RecipeResult {
     : null;
 
   const warnings = collectWarnings(input, total_batch_g, statusInputs.alcohol, items);
+  if (sorbetFreezing?.status === 'unavailable') {
+    warnings.push({
+      code: 'composition_invalid',
+      severity: 'warning',
+      context: { reason: `${SORBET_FREEZING_WARNING_REASON_PREFIX}${sorbetFreezing.reason}` },
+    });
+  }
   if (costs && !costs.complete) {
     warnings.push({
       code: 'cost_incomplete',

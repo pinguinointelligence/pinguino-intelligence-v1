@@ -16,6 +16,7 @@ import { useMemo, useState } from 'react';
 import { copy } from '@/copy/en';
 import { cn } from '@/lib/cn';
 import { useRecipeStore } from '@/stores/recipeStore';
+import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import { useAuthStore } from '@/stores/authStore';
 import { temperatureForMode } from '@/features/customer-flow/servingMode';
 import {
@@ -25,8 +26,13 @@ import {
   listActiveHomeMachines,
   type HomeMachineProfile,
 } from '@/features/machine-catalog';
-import { machineDisplayName } from '@/features/machine-onboarding/machineViews';
-import { buildMachinePreferenceRecord } from '@/features/machine-onboarding/preferenceContracts';
+import {
+  RecipeCustomMachineDialog,
+  buildMachinePreferenceRecord,
+  effectiveDefaultBatchGrams,
+  machineDisplayName,
+  type MachineOnboardingCompletion,
+} from '@/features/machine-onboarding';
 import {
   localStorageMachinePreferenceStore,
   userScopedMachineKey,
@@ -47,9 +53,11 @@ export function ProMachineSelector() {
   const machineKind = useRecipeStore((s) => s.machineKind);
   const servingModeId = useRecipeStore((s) => s.servingModeId);
   const machineId = useRecipeStore((s) => s.machineId);
+  const visibleProductType = useRecipeStore((s) => s.visibleProductType);
   const batchGrams = useRecipeStore((s) => s.target_batch_grams);
+  const batchResizeConflict = useRecipeStore((s) => s.batchResizeConflict);
   const setMachineSelection = useRecipeStore((s) => s.setMachineSelection);
-  const setBatchGrams = useRecipeStore((s) => s.setBatchGrams);
+  const resizeBatchGrams = useConstraintStudioStore((s) => s.resizeBatchGrams);
 
   const authUserId = useAuthStore((s) => s.user?.id ?? null);
   const prefStore = useMemo(
@@ -60,6 +68,7 @@ export function ProMachineSelector() {
 
   const [setAsDefault, setSetAsDefault] = useState(false);
   const [savedDefault, setSavedDefault] = useState(false);
+  const [customMachineOpen, setCustomMachineOpen] = useState(false);
 
   const activeHome = useMemo(() => listActiveHomeMachines(MACHINE_CATALOG), []);
   const otherDevices = useMemo(
@@ -83,7 +92,7 @@ export function ProMachineSelector() {
   };
 
   const selectHome = (profile: HomeMachineProfile) => {
-    const d = deriveMachineSetup(profile);
+    const d = deriveMachineSetup(profile, visibleProductType);
     if (d.resolvedVisibleMode == null) return;
     const temp = temperatureForMode(d.resolvedVisibleMode);
     if (temp == null) return;
@@ -93,8 +102,13 @@ export function ProMachineSelector() {
       servingModeId: d.resolvedVisibleMode,
       machineId: profile.id,
       label: machineDisplayName(profile),
+      machineTechnology: profile.technology,
       temperatureC: temp,
       batchGrams: d.recommendedBatchGrams,
+      // OWNER CURRENT-DRAFT P0 (Phase 8): the Home machine's own usable
+      // capacity is the ONLY machine-derived capacity that may limit a batch.
+      capacityGrams: d.recommendedBatchGrams,
+      batchSource: 'MACHINE_DEFAULT',
     });
     if (setAsDefault) {
       const record = buildMachinePreferenceRecord({
@@ -108,6 +122,30 @@ export function ProMachineSelector() {
         setSavedDefault(true);
       }
     }
+  };
+
+  const selectCustom = (completion: MachineOnboardingCompletion) => {
+    const batchGrams = effectiveDefaultBatchGrams(completion.record);
+    const servingModeId = completion.derivation.resolvedVisibleMode;
+    if (batchGrams === null || servingModeId === null) return;
+    const temperatureC = temperatureForMode(servingModeId);
+    if (temperatureC === null) return;
+    setMachineSelection({
+      kind: 'home',
+      servingModeId,
+      machineId: completion.profile.id,
+      label: machineDisplayName(completion.profile),
+      machineTechnology: completion.profile.technology,
+      temperatureC,
+      batchGrams,
+      capacityGrams: batchGrams,
+      batchSource: 'CUSTOM_MACHINE_BATCH',
+    });
+    if (setAsDefault) {
+      void preference.save(completion.record);
+      setSavedDefault(true);
+    }
+    setCustomMachineOpen(false);
   };
 
   const isPro = machineKind === 'professional';
@@ -130,7 +168,7 @@ export function ProMachineSelector() {
         <h3 className="text-lg font-medium">{m.professional.title}</h3>
         <p className="mt-1 max-w-xl text-sm text-paper/70">{m.professional.body}</p>
 
-        <p className="mt-4 text-[0.65rem] font-medium tracking-label text-paper/60 uppercase">
+        <p className="mt-4 text-xs font-medium tracking-label text-paper/70 uppercase">
           {m.professional.chooseServing}
         </p>
         <div className="mt-2 flex flex-wrap gap-2">
@@ -159,7 +197,9 @@ export function ProMachineSelector() {
 
       {/* 2 — Maszyny domowe (below, reuse the registry + approved auto-routing) */}
       <section>
-        <h3 className="text-xs font-medium tracking-label text-stone-400 uppercase">{m.home.heading}</h3>
+        <h3 className="text-xs font-medium tracking-label text-stone-600 uppercase">
+          {m.home.heading}
+        </h3>
         <label className="mt-2 flex items-center gap-2 text-xs text-stone-600">
           <input
             type="checkbox"
@@ -173,10 +213,12 @@ export function ProMachineSelector() {
 
         <ul className="mt-3 grid gap-2 sm:grid-cols-2">
           {activeHome.map((profile) => {
-            const d = deriveMachineSetup(profile);
+            const d = deriveMachineSetup(profile, visibleProductType);
             const active = machineKind === 'home' && machineId === profile.id;
             const batchNote =
-              d.recommendedBatchGrams != null ? m.home.recommended(d.recommendedBatchGrams) : m.home.userSetsBatch;
+              d.recommendedBatchGrams != null
+                ? m.home.recommended(d.recommendedBatchGrams)
+                : m.home.userSetsBatch;
             return (
               <li key={profile.id}>
                 <button
@@ -189,30 +231,53 @@ export function ProMachineSelector() {
                     active ? 'border-ink bg-ink/5' : 'border-ink/15 hover:border-ink/40',
                   )}
                 >
-                  <span className="text-sm font-medium text-ink">{machineDisplayName(profile)}</span>
+                  <span className="text-sm font-medium text-ink">
+                    {machineDisplayName(profile)}
+                  </span>
                   <span className="mt-0.5 text-xs text-stone-500">{batchNote}</span>
                 </button>
               </li>
             );
           })}
+          <li>
+            <button
+              type="button"
+              onClick={() => setCustomMachineOpen(true)}
+              aria-pressed={machineKind === 'home' && machineId?.startsWith('custom-')}
+              data-testid="pro-machine-home-custom"
+              className={cn(
+                'flex w-full flex-col items-start rounded-lg border px-4 py-3 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40',
+                machineKind === 'home' && machineId?.startsWith('custom-')
+                  ? 'border-ink bg-ink/5'
+                  : 'border-ink/15 hover:border-ink/40',
+              )}
+            >
+              <span className="text-sm font-medium text-ink">Własna maszyna</span>
+              <span className="mt-0.5 text-xs text-stone-500">Mój wsad na cykl</span>
+            </button>
+          </li>
         </ul>
         {savedDefault ? (
-          <p className="mt-2 text-xs text-emerald-700" data-testid="pro-machine-default-saved">{m.home.savedDefault}</p>
+          <p className="mt-2 text-xs text-emerald-700" data-testid="pro-machine-default-saved">
+            {m.home.savedDefault}
+          </p>
         ) : null}
       </section>
 
       {/* 3 — Inne urządzenia (real registry records only; honest verification note) */}
       {otherDevices.length > 0 ? (
         <section data-testid="pro-machine-other">
-          <h3 className="text-xs font-medium tracking-label text-stone-400 uppercase">{m.other.heading}</h3>
+          <h3 className="text-xs font-medium tracking-label text-stone-600 uppercase">
+            {m.other.heading}
+          </h3>
           <ul className="mt-3 space-y-2">
             {otherDevices.map((profile) => (
               <li
                 key={profile.id}
-                className="flex flex-col rounded-lg border border-ink/10 bg-stone-50 px-4 py-3"
+                className="flex flex-col rounded-lg border border-ink/10 bg-[var(--g-ivory)] px-4 py-3"
               >
                 <span className="text-sm text-stone-600">{machineDisplayName(profile)}</span>
-                <span className="mt-0.5 text-xs text-stone-400">{m.other.needsReview}</span>
+                <span className="mt-0.5 text-xs text-stone-600">{m.other.needsReview}</span>
               </li>
             ))}
           </ul>
@@ -231,7 +296,7 @@ export function ProMachineSelector() {
                 value={batchGrams}
                 onChange={(e) => {
                   const n = Number(e.target.value);
-                  if (Number.isFinite(n) && n > 0) setBatchGrams(Math.round(n));
+                  if (Number.isFinite(n) && n > 0) resizeBatchGrams(Math.round(n));
                 }}
                 data-testid="pro-machine-batch"
                 className="w-32 rounded-md border border-ink/15 bg-paper px-3 py-2 text-sm text-ink focus:border-ink/40 focus:outline-none"
@@ -239,8 +304,18 @@ export function ProMachineSelector() {
               <span className="text-sm text-stone-500">{m.batch.unit}</span>
             </div>
           </label>
+          {batchResizeConflict !== null ? (
+            <p role="alert" className="mt-2 text-xs text-red-700">
+              Nie można ustawić tej partii bez naruszenia blokad receptury.
+            </p>
+          ) : null}
         </section>
       ) : null}
+      <RecipeCustomMachineDialog
+        open={customMachineOpen}
+        onClose={() => setCustomMachineOpen(false)}
+        onComplete={selectCustom}
+      />
     </div>
   );
 }

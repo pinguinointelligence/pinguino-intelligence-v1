@@ -164,6 +164,6 @@ describe('live pane — honest states', () => {
   it('an anonymous pick shows the honest login-required note (readiness never faked)', () => {
     const html = render({ liveSearch: ready([hit()]), ingredientPick: 'login_required' });
     expect(html).toContain(R.pickLoginRequired);
-    expect(R.pickLoginRequired).toContain('zalogowania');
+    expect(R.pickLoginRequired).toContain('po zalogowaniu');
   });
 });

@@ -28,7 +28,7 @@ import type { ParsedOcrLine } from './labelTextParser';
 export const OCR_LANGS = ['eng', 'spa'] as const;
 
 /** Languages with a vendored @tesseract.js-data package (offline Node tests). */
-export const VENDORED_OCR_LANGS = ['eng', 'spa', 'deu', 'pol', 'ita'] as const;
+export const VENDORED_OCR_LANGS = ['eng', 'spa', 'deu', 'fra', 'pol', 'ita'] as const;
 
 // 10 MiB — aligned with the storage-enforced hard cap (migration 0022
 // ocr_intake_images.byte_size and the 0024 bucket file_size_limit). Never allow
@@ -96,14 +96,14 @@ export function validateLabelImage(meta: {
   sizeBytes: number | null;
 }): LabelImageValidation {
   if (!isAcceptedLabelImage(meta.mime, meta.filename)) {
-    return { ok: false, reason: `"${meta.filename}" is not a supported label image — use PNG, JPEG or WebP.` };
+    return { ok: false, reason: `„${meta.filename}” nie jest obsługiwanym obrazem etykiety. Użyj PNG, JPEG lub WebP.` };
   }
   if (meta.sizeBytes !== null && meta.sizeBytes > MAX_LABEL_IMAGE_BYTES) {
     const mb = (meta.sizeBytes / (1024 * 1024)).toFixed(1);
-    return { ok: false, reason: `image is ${mb} MB — the limit is ${MAX_LABEL_IMAGE_BYTES / (1024 * 1024)} MB.` };
+    return { ok: false, reason: `Obraz ma ${mb} MB. Limit to ${MAX_LABEL_IMAGE_BYTES / (1024 * 1024)} MB.` };
   }
   if (meta.sizeBytes !== null && meta.sizeBytes === 0) {
-    return { ok: false, reason: 'the file is empty (0 bytes).' };
+    return { ok: false, reason: 'Plik jest pusty (0 bajtów).' };
   }
   return { ok: true, reason: null };
 }
@@ -186,7 +186,7 @@ export function startLabelOcr(image: OcrImageInput, options: OcrEngineOptions = 
   // Mid-recognition cancellation: terminating the worker can leave the pending
   // recognize() promise unsettled, so `done` races it against this cancel promise.
   let signalCancelled: (() => void) | undefined;
-  const cancelledResult: OcrFailure = { status: 'failed', reason: 'cancelled', message: 'OCR cancelled.' };
+  const cancelledResult: OcrFailure = { status: 'failed', reason: 'cancelled', message: 'OCR anulowano.' };
   const cancelPromise = new Promise<OcrFailure>((resolve) => {
     signalCancelled = () => resolve(cancelledResult);
   });
@@ -209,7 +209,7 @@ export function startLabelOcr(image: OcrImageInput, options: OcrEngineOptions = 
     );
     activeWorker = worker;
     try {
-      if (cancelled) return { status: 'failed', reason: 'cancelled', message: 'OCR cancelled before recognition started.' };
+      if (cancelled) return { status: 'failed', reason: 'cancelled', message: 'OCR anulowano przed rozpoczęciem rozpoznawania.' };
       // Uint8Array is handled by both tesseract.js loadImage paths (copied verbatim)
       // but is missing from its ImageLike type — hence the cast.
       const recognizePromise = worker.recognize(image as Tesseract.ImageLike, {}, { text: true, blocks: true });
@@ -223,7 +223,7 @@ export function startLabelOcr(image: OcrImageInput, options: OcrEngineOptions = 
         return {
           status: 'failed',
           reason: 'unreadable_image',
-          message: 'No readable label text found in this image (too blurry, dark, or not a text label).',
+          message: 'Nie znaleziono czytelnego tekstu na etykiecie. Zrób wyraźniejsze zdjęcie w dobrym świetle.',
         };
       }
       const richLines = richLinesFromPage(data);
@@ -245,18 +245,18 @@ export function startLabelOcr(image: OcrImageInput, options: OcrEngineOptions = 
     const maxAttempts = 2;
     let lastError = '';
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-      if (cancelled) return { status: 'failed', reason: 'cancelled', message: 'OCR cancelled.' };
+      if (cancelled) return { status: 'failed', reason: 'cancelled', message: 'OCR anulowano.' };
       try {
         return await runOnce();
       } catch (error) {
-        if (cancelled) return { status: 'failed', reason: 'cancelled', message: 'OCR cancelled.' };
+        if (cancelled) return { status: 'failed', reason: 'cancelled', message: 'OCR anulowano.' };
         lastError = errorMessage(error);
       }
     }
     return {
       status: 'failed',
       reason: 'engine_error',
-      message: `The OCR engine failed after ${maxAttempts} attempts: ${lastError}`,
+      message: `OCR nie zakończył analizy po ${maxAttempts} próbach: ${lastError}`,
     };
   })();
 

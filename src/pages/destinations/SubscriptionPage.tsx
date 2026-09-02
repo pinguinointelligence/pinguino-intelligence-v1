@@ -1,8 +1,15 @@
-import { useState, type ReactNode } from 'react';
-import { Link, useSearchParams } from 'react-router';
-import { IvoryLogoMark } from '@/components/shared/IvoryLogoMark';
+import { useEffect, useState, type ReactNode } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router';
+import { OfficialProLogo } from '@/components/shared/OfficialProLogo';
 import { cn } from '@/lib/cn';
-import { color, focusRing, motion, radius, touchButtonClasses, type } from '@/features/customer-shell/ui';
+import {
+  color,
+  focusRing,
+  motion,
+  radius,
+  touchButtonClasses,
+  type,
+} from '@/features/customer-shell/ui';
 import { CustomerMenu } from '@/features/customer-shell/ui/CustomerMenu';
 import { useAuthStore } from '@/stores/authStore';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
@@ -16,6 +23,11 @@ import {
   type BillingProductId,
 } from '@/services/billingCheckout';
 import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
+import {
+  CONTINUATION_PARAM,
+  decodeContinuation,
+  postCheckoutDestination,
+} from '@/features/community/domain/shareContinuation';
 
 /**
  * `/subscription` — the plans / conversion page.
@@ -33,8 +45,21 @@ const plans = landingCopy.plans;
 
 function CheckGlyph() {
   return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden className="mt-1 shrink-0 text-ink">
-      <path d="M3 8.5l3.2 3.2L13 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden
+      className="mt-1 shrink-0 text-ink"
+    >
+      <path
+        d="M3 8.5l3.2 3.2L13 5"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
@@ -58,7 +83,12 @@ function PriceBlock({ product }: { product: 'home' | 'pro' }) {
   return (
     <div className="mt-4 flex items-baseline gap-2">
       {monthly ? (
-        <span className={cn('text-[24px] font-medium leading-none tracking-tight tabular-nums', color.textPrimary)}>
+        <span
+          className={cn(
+            'text-[24px] font-medium leading-none tracking-tight tabular-nums',
+            color.textPrimary,
+          )}
+        >
           {monthly.label}
         </span>
       ) : null}
@@ -89,12 +119,19 @@ function PlanCard({
       className={cn(
         'flex flex-col border bg-paper p-6 sm:p-7',
         radius.card,
-        emphasized ? 'border-ink/20 bg-stone-50 shadow-[0_10px_40px_rgba(16,17,19,0.07)]' : 'border-ink/10 shadow-[0_1px_2px_rgba(16,17,19,0.05)]',
+        emphasized
+          ? 'border-[var(--g-line-strong)] bg-[var(--g-ivory)] shadow-[0_10px_40px_rgba(16,17,19,0.07)]'
+          : 'border-[var(--g-line)] shadow-[0_1px_2px_rgba(16,17,19,0.05)]',
       )}
     >
       <div className="flex items-center justify-between gap-3">
         <h2 className={cn(type.heading, color.textPrimary)}>{plan.name}</h2>
-        <span className={cn('rounded-full border border-ink/10 bg-paper px-2.5 py-1 text-[11px] font-medium', color.textSecondary)}>
+        <span
+          className={cn(
+            'rounded-full border border-[var(--g-line)] bg-paper px-2.5 py-1 text-[11px] font-medium',
+            color.textSecondary,
+          )}
+        >
           {badge}
         </span>
       </div>
@@ -119,7 +156,19 @@ export function SubscriptionPage() {
   const [pending, setPending] = useState<BillingProductId | null>(null);
   const [error, setError] = useState<string | null>(null);
   const c = s.checkout;
+  const navigate = useNavigate();
   const checkoutParam = searchParams.get('checkout');
+  // §14/§19: a visitor who arrived from a shared recipe or a Community page
+  // carries that journey in the URL. It is preserved THROUGH checkout and
+  // consumed on the way back, so „zobaczyłam recepturę → kupiłam → mogę ją
+  // zrobić" never breaks at the redirect.
+  const continuation = decodeContinuation(searchParams.get(CONTINUATION_PARAM));
+
+  useEffect(() => {
+    if (checkoutParam !== 'success') return;
+    const destination = postCheckoutDestination(searchParams.toString(), 'success');
+    if (destination) navigate(destination, { replace: true });
+  }, [checkoutParam, searchParams, navigate]);
 
   // The paid CTA: a signed-out visitor is sent to sign in first (the checkout
   // function authenticates from the JWT); a signed-in visitor is redirected to
@@ -132,7 +181,7 @@ export function SubscriptionPage() {
       return;
     }
     setPending(product);
-    const result = await startCheckout(checkoutOfferKey(product, cycle));
+    const result = await startCheckout(checkoutOfferKey(product, cycle), continuation);
     if (result.ok) {
       window.location.assign(result.url);
       return;
@@ -176,7 +225,7 @@ export function SubscriptionPage() {
     <>
       <div
         className={cn(
-          'flex w-full items-center justify-center gap-2 border border-ink/15 bg-stone-50 px-4 py-3 text-[15px] font-medium',
+          'flex w-full items-center justify-center gap-2 border border-[var(--g-line)] bg-[var(--g-ivory)] px-4 py-3 text-[15px] font-medium',
           radius.card,
           color.textSecondary,
         )}
@@ -188,7 +237,11 @@ export function SubscriptionPage() {
     </>
   );
 
-  const planButton = (product: BillingProductId, label: string, variant: 'primary' | 'secondary') => {
+  const planButton = (
+    product: BillingProductId,
+    label: string,
+    variant: 'primary' | 'secondary',
+  ) => {
     const productRank = tierRank[product];
     if (personaRank === productRank) return statusPill(true, c.owned, c.ownedNote);
     if (personaRank > productRank) return statusPill(false, c.included, c.includedNote);
@@ -198,7 +251,11 @@ export function SubscriptionPage() {
           type="button"
           onClick={() => void onBuy(product)}
           disabled={!available || pending !== null}
-          className={cn(touchButtonClasses(variant, 'lg'), 'w-full', pending !== null && 'opacity-70')}
+          className={cn(
+            touchButtonClasses(variant, 'lg'),
+            'w-full',
+            pending !== null && 'opacity-70',
+          )}
         >
           {pending === product ? c.pending : label}
         </button>
@@ -210,36 +267,56 @@ export function SubscriptionPage() {
   };
 
   return (
-    <div className="min-h-[100dvh] w-full bg-paper text-ink">
+    <div className="gellatti-application pro-studio-radius-system theme-pro-light min-h-[100dvh] w-full bg-paper text-ink">
       <header className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-5 py-6 sm:px-8">
-        <Link to="/" className={cn('flex items-center gap-3 rounded', focusRing)}>
-          <IvoryLogoMark size={24} tone="ink" />
-          <span className="text-base font-light tracking-wordmark">{landingCopy.brand.name}</span>
-        </Link>
-        <CustomerMenu showBrand={false} />
+        {/* Owner override (V2.1 §6): hamburger LEFT, wordmark immediately after it. */}
+        <div className="flex min-w-0 items-center gap-3">
+          <CustomerMenu showBrand={false} />
+          <Link
+            to="/"
+            aria-label={landingCopy.brand.name}
+            className={cn('flex items-center rounded', focusRing)}
+          >
+            <OfficialProLogo />
+          </Link>
+        </div>
       </header>
 
       <main className="mx-auto w-full max-w-5xl px-5 pb-24 pt-6 sm:px-8 sm:pt-10">
         <p className={cn(type.label, color.textMuted)}>{s.eyebrow}</p>
-        <h1 className="mt-3 max-w-2xl text-balance text-[30px] font-light leading-[1.14] tracking-tight text-ink sm:text-[38px]">
+        <h1 className="mt-4 max-w-3xl text-balance text-[38px] font-semibold leading-[0.99] tracking-[-0.04em] text-ink sm:text-[52px]">
           {s.title}
         </h1>
-        <p className={cn('mt-4 max-w-prose text-[16px] leading-relaxed', color.textSecondary)}>{s.lead}</p>
+        <p className={cn('mt-4 max-w-prose text-[16px] leading-relaxed', color.textSecondary)}>
+          {s.lead}
+        </p>
         <p className={cn('mt-3 max-w-prose', type.secondary, color.textMuted)}>{s.whatUnlocks}</p>
 
         {checkoutParam === 'success' ? (
-          <p className={cn('mt-6 rounded-xl border border-ink/10 bg-stone-50 px-4 py-3', type.secondary, color.textSecondary)}>
+          <p
+            className={cn(
+              'mt-6 rounded-xl border border-[var(--g-line)] bg-[var(--g-ivory)] px-4 py-3',
+              type.secondary,
+              color.textSecondary,
+            )}
+          >
             {c.successNote}
           </p>
         ) : checkoutParam === 'cancelled' ? (
-          <p className={cn('mt-6 rounded-xl border border-ink/10 bg-stone-50 px-4 py-3', type.secondary, color.textMuted)}>
+          <p
+            className={cn(
+              'mt-6 rounded-xl border border-[var(--g-line)] bg-[var(--g-ivory)] px-4 py-3',
+              type.secondary,
+              color.textMuted,
+            )}
+          >
             {c.cancelNote}
           </p>
         ) : null}
 
         <div className="mt-8 flex items-center gap-2">
           <span className={cn(type.caption, color.textMuted)}>{c.cycleLabel}:</span>
-          <div className="inline-flex items-center gap-1 rounded-full border border-ink/10 bg-paper p-1">
+          <div className="inline-flex items-center gap-1 rounded-full border border-[var(--g-line)] bg-paper p-1">
             {cycleButton('monthly', c.monthly)}
             {cycleButton('yearly', c.yearly)}
           </div>
@@ -255,14 +332,18 @@ export function SubscriptionPage() {
         </div>
 
         {error ? (
-          <p role="alert" className={cn('mt-4 text-[#b4232a]', type.secondary)}>
+          <p role="alert" className={cn('mt-4 text-status-error', type.secondary)}>
             {error}
           </p>
         ) : null}
 
         {/* The only FREE customer experience is Demo — kept clearly separate from
             the paid Home/Pro plans above (owner P0). */}
-        <div className={cn('mt-8 flex flex-col gap-3 rounded-2xl border border-ink/10 bg-stone-50 p-5 sm:flex-row sm:items-center sm:justify-between')}>
+        <div
+          className={cn(
+            'mt-8 flex flex-col gap-3 rounded-2xl border border-[var(--g-line)] bg-[var(--g-ivory)] p-5 sm:flex-row sm:items-center sm:justify-between',
+          )}
+        >
           <p className={cn('max-w-prose', type.secondary, color.textSecondary)}>{s.demoNote}</p>
           <Link to="/start" className={cn(touchButtonClasses('secondary', 'md'), 'shrink-0')}>
             {s.demoCta}
@@ -271,12 +352,22 @@ export function SubscriptionPage() {
 
         <section className="mt-16 max-w-md">
           <p className={cn(type.label, color.textMuted)}>{s.futureLabel}</p>
-          <ul className="mt-3 divide-y divide-ink/10 border-y border-ink/10">
+          <ul className="mt-3 divide-y divide-[var(--g-line)] border-y border-[var(--g-line)]">
             {s.future.map((item) => (
-              <li key={item} className={cn('flex items-center justify-between gap-3 py-3', type.secondary, color.textSecondary)}>
+              <li
+                key={item}
+                className={cn(
+                  'flex items-center justify-between gap-3 py-3',
+                  type.secondary,
+                  color.textSecondary,
+                )}
+              >
                 {item}
                 <span
-                  className={cn('shrink-0 rounded-full border border-ink/10 bg-stone-50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.1em]', color.textMuted)}
+                  className={cn(
+                    'shrink-0 rounded-full border border-[var(--g-line)] bg-[var(--g-ivory)] px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.1em]',
+                    color.textMuted,
+                  )}
                 >
                   {s.futureLabel}
                 </span>
@@ -285,10 +376,16 @@ export function SubscriptionPage() {
           </ul>
         </section>
 
-        <div className="mt-14 border-t border-ink/10 pt-8">
+        <div className="mt-14 border-t border-[var(--g-line)] pt-8">
           <Link
             to="/start"
-            className={cn('inline-flex items-center gap-2 rounded underline-offset-4 hover:underline', type.secondary, color.textSecondary, focusRing, motion.base)}
+            className={cn(
+              'inline-flex items-center gap-2 rounded underline-offset-4 hover:underline',
+              type.secondary,
+              color.textSecondary,
+              focusRing,
+              motion.base,
+            )}
           >
             ← {landingCopy.nav.cta}
           </Link>
