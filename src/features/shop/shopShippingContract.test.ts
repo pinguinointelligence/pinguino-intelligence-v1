@@ -47,6 +47,18 @@ describe('shipping has exactly one authority', () => {
     expect(edgeSource).toContain('expected_total_cents: subtotal + shippingCents');
   });
 
+  it('the client sends a destination, and the server resolves its price', () => {
+    const service = readFileSync(join(process.cwd(), 'src', 'services', 'shop.ts'), 'utf8');
+    expect(service).toContain('countryIso2: input.countryIso2');
+    // No amount, rate or shipping figure may travel from the browser.
+    expect(strip(service)).not.toMatch(/shippingCents:\s*input/);
+    const catalog = readFileSync(
+      join(process.cwd(), 'src', 'features', 'shop', 'ShopCatalog.tsx'),
+      'utf8',
+    );
+    expect(catalog).toContain('countryIso2');
+  });
+
   it('the cart module cannot invent a rate', () => {
     const code = strip(clientSource);
     expect(code).not.toMatch(/\b990\b/);

@@ -13,6 +13,7 @@ import { ShopConfirmation } from './ShopConfirmation';
 import { ShopProductCard } from './ShopProductCard';
 import { ShopStarterContents } from './ShopStarterContents';
 import { useNavigate } from 'react-router';
+import { selectedShopCountry, useShopCountryStore } from './shopCountryStore';
 import { ShopStarterOffer } from './ShopStarterOffer';
 
 /** The Gellatti shop: a small, factual catalogue and one honest checkout. */
@@ -22,6 +23,7 @@ const label =
 
 export function ShopCatalog() {
   const navigate = useNavigate();
+  const checkoutCountry = useShopCountryStore(selectedShopCountry);
   const [params, setParams] = useSearchParams();
   const catalog = useQuery({ queryKey: ['shop-catalog'], queryFn: getShopCatalog });
   const cart = useShopCartStore();
@@ -52,6 +54,10 @@ export function ShopCatalog() {
         })),
         successUrl: `${window.location.origin}/shop`,
         cancelUrl: `${window.location.origin}/shop?checkout=cancelled`,
+        /* B: the destination is known BEFORE checkout opens, which is what
+           lets the function resolve one exact rate and write an immutable
+           `expected_total_cents`. No country, no physical offer. */
+        countryIso2: checkoutCountry?.iso2 ?? '',
       }),
     onSuccess: (result) => {
       cart.clear();
