@@ -481,7 +481,7 @@ export const affiliateCopyEn: AffiliateCopy = {
     body: 'Tell us where you recommend and who you speak to. We answer every application.',
     signedOutBody:
       'You apply from your Gellatti account — that way the code and the commission belong to you from the start.',
-    signInCta: 'Apply', 
+    signInCta: 'Apply',
   },
   panel: {
     tierLabel: 'Your level',
