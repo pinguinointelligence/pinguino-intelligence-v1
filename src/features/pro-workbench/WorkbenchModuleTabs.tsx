@@ -80,10 +80,20 @@ export function WorkbenchModuleTabs({
         tabs[nextIndex]?.focus();
       }}
       className={cn(
-        'grid grid-cols-4 bg-white',
+        'grid grid-cols-4',
         bottom
-          ? 'border-t border-ink/10 pb-[env(safe-area-inset-bottom)] shadow-[0_-1px_0_0_rgb(16_17_19_/_0.04)]'
-          : 'border-b border-ink/8',
+          ? 'bg-white border-t border-ink/10 pb-[env(safe-area-inset-bottom)] shadow-[0_-1px_0_0_rgb(16_17_19_/_0.04)]'
+          : /* The header strip must not paint a surface of its own. It sits ON
+               the header, and the header's hairline is the ONE line that runs
+               the full width of the app. A white background here covered that
+               hairline for the strip's 530 px, so the line stopped dead under
+               the modules and restarted nowhere — the active module's orange
+               rule was the only thing left in that stretch. Transparent lets
+               the single line run through, and the active tab's 2 px orange
+               border paints over its own segment: one line, highlighted where
+               you are. The docked mobile nav is a real floating bar and keeps
+               its surface. */
+            'bg-transparent border-b border-ink/8',
         className,
       )}
       data-testid={`${idPrefix}-tabs`}
@@ -119,7 +129,17 @@ export function WorkbenchModuleTabs({
               // filled or boxed active state, so the orange rule on the header
               // hairline is the single active marker (owner §7/§8).
               active
-                ? cn('border-[#f58a07] text-ink', bottom && 'bg-[var(--g-ivory)]/70')
+                ? /* The orange is scoped to the ONE edge that carries width.
+                     `border-[#f58a07]` set all four border colours; only the
+                     bottom (header) or top (mobile) edge has a width, so the
+                     other three were orange lines waiting for any engine or
+                     zoom level that rounds a hairline into existence — which is
+                     exactly the orange FRAME the owner saw around the active
+                     module. Naming the edge makes that frame impossible. */
+                  cn(
+                    bottom ? 'border-t-[#f58a07] bg-[var(--g-ivory)]/70' : 'border-b-[#f58a07]',
+                    'text-ink',
+                  )
                 : cn(
                     'border-transparent text-stone-600 hover:text-ink',
                     bottom && 'hover:bg-[var(--g-ivory)]',
