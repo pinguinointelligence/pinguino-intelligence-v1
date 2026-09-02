@@ -74,7 +74,7 @@ export function DestinationSurface({
            at one x on every route. A destination CONSUMES that slot (#77) and
            declares no geometry of its own. The default lives on the prop, so this
            stays a single unconditional hand-off. */
-        actions={headerActions}
+        globalSwitch={headerActions}
         navigationPosition="trailing"
         /* GLOBAL HEADER PARITY, FORWARD FIX (owner, 2026-09-01): the global row
            carries the hamburger, the official wordmark and HOME | PRO — nothing
