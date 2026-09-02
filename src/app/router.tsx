@@ -56,6 +56,7 @@ import {
   SubscriptionPage,
   TrailerPage,
   WorkWithUsPage,
+  AffiliatePage,
 } from '@/pages/destinations';
 
 /** The canonical PINGÜINO Pro recipe editor path — the ONE professional workspace (owner P0). */
@@ -116,6 +117,7 @@ export function AppRoutes() {
       <Route path="/home" element={<RoleAwareEntryRoute entry="home" />} />
       <Route path="/how-it-works" element={<HowItWorksPage />} />
       <Route path="/shop" element={<ShopPage />} />
+      <Route path="/affiliate" element={<AffiliatePage />} />
       <Route path="/franchise" element={<FranchisePage />} />
       {/* The three Work With Us lanes that had no route. The gateway links to
           all four, and §27 forbids a card that only looks functional. */}
