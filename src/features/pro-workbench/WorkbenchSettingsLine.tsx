@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useAuthStore } from '@/stores/authStore';
+import { upsertUserRecipeDefault } from '@/services/userRecipeDefaults';
+import { commitRecipeDefaultsAfterRemoteSave } from './accountRecipeDefaultsSave';
 import { copy } from '@/copy/en';
 import { cn } from '@/lib/cn';
 import {
@@ -164,6 +167,16 @@ export function WorkbenchSettingsLine({
   const openDraft = useRecipeProfileStore((state) => state.openDraft);
   const rebindDraftIdentity = useRecipeProfileStore((state) => state.rebindDraftIdentity);
   const confirmSettings = useRecipeProfileStore((state) => state.confirmSettings);
+  /* OWNER AUTHORITY 2026-09-02 (approved desktop PDF, §6): Settings are
+     COLLAPSED at rest. They are the recipe's context, not its work — the band
+     states what they are in one line and opens only when the user goes there. */
+  const [expanded, setExpanded] = useState(false);
+  const saveDefaultsLocal = useRecipeProfileStore((state) => state.saveDefaults);
+  const authenticatedOwner = useAuthStore((state) => state.user?.id ?? null);
+  const defaultsOwner = authenticatedOwner ?? (import.meta.env.DEV ? 'local-device' : null);
+  const [defaultsStatus, setDefaultsStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>(
+    'idle',
+  );
   const [unit, setUnit] = useState<BatchUnit>('g');
   const [pendingBaseProfile, setPendingBaseProfile] = useState<VisibleProductType | null>(null);
   const [customMachineOpen, setCustomMachineOpen] = useState(false);
@@ -211,6 +224,33 @@ export function WorkbenchSettingsLine({
 
   const snapshot = profileSnapshotFromState(store, directionTargets, directionIntents);
   const signature = profileSettingsSignature(snapshot);
+  /* OWNER AUTHORITY 2026-09-02 (§8): a NEW recipe that merely inherited the
+     account defaults starts CONFIRMED. `openDraft` mints a fresh draft identity
+     for every draft, so the confirmation never matched and the user was asked
+     to re-confirm settings they had not touched — a step with no decision in
+     it. Seeding runs only when the live signature is byte-identical to the
+     stored defaults for this product; the moment anything differs, the normal
+     dirty path takes over and „Potwierdź zmiany" comes back. */
+  useEffect(() => {
+    if (activeDraftIdentity === null) return;
+    if (confirmedDraftIdentity === activeDraftIdentity) return;
+    if (defaultsOwner === null) return;
+    const stored = useRecipeProfileStore
+      .getState()
+      .defaultsFor(`${defaultsOwner}:${store.visibleProductType}`);
+    if (!stored) return;
+    if (profileSettingsSignature(stored) !== signature) return;
+    confirmSettings(signature, activeDraftIdentity, store.draftContextSeq);
+  }, [
+    activeDraftIdentity,
+    confirmSettings,
+    confirmedDraftIdentity,
+    defaultsOwner,
+    signature,
+    store.draftContextSeq,
+    store.visibleProductType,
+  ]);
+
   const confirmed =
     activeDraftIdentity !== null &&
     confirmedDraftIdentity === activeDraftIdentity &&
@@ -355,6 +395,40 @@ export function WorkbenchSettingsLine({
     setAboveChoice(null);
     changeBatch(capacity);
   };
+
+  /* Collapsed summary — product type · calculation mode · machine, with the
+     serving temperature appended only where the machine authority actually has
+     one, so a Ninja line is not padded with a temperature it never uses. */
+  const collapsedSummary = [
+    g.productTypes[store.visibleProductType],
+    STRATEGY_COPY[store.formulation_strategy].label,
+    machineValue === 'professional'
+      ? professionalLabel
+      : (() => {
+          const profile = activeHomeMachines.find((candidate) => candidate.id === machineValue);
+          return profile ? machineDisplayName(profile) : store.machineLabel;
+        })(),
+    showsProfessionalServing(store.machineKind)
+      ? (SERVING_OPTIONS.find((option) => option.id === activeServing)?.label ?? null)
+      : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
+  const saveAsDefault = () => {
+    if (!defaultsOwner) return;
+    setDefaultsStatus('saving');
+    void commitRecipeDefaultsAfterRemoteSave(
+      () =>
+        authenticatedOwner
+          ? upsertUserRecipeDefault(authenticatedOwner, store.visibleProductType, snapshot)
+          : Promise.resolve(),
+      () => saveDefaultsLocal(`${defaultsOwner}:${store.visibleProductType}`, snapshot),
+    )
+      .then(() => setDefaultsStatus('saved'))
+      .catch(() => setDefaultsStatus('error'));
+  };
+
   return (
     <section
       /* OWNER FROZEN PRO VISUAL: Settings is a BAND in the display column, not
@@ -377,70 +451,98 @@ export function WorkbenchSettingsLine({
         hardConflict ? 'conflict' : confirmed ? 'confirmed' : 'needs-confirmation'
       }
     >
-      <div className="mb-2 flex min-h-6 items-center">
-        <div className="flex min-w-0 items-center gap-2">
-          <h3
-            data-band-eyebrow
-            className="text-[11px] leading-[16px] font-semibold tracking-[0.08em] text-[var(--g-text-secondary)] uppercase"
-          >
-            Ustawienia
-          </h3>
-        <span aria-hidden className="h-px flex-1 bg-[var(--g-line)]" />
-        {/* OWNER FROZEN PRO VISUAL: the confirmation is the BAND's action, not
-            a seventh tile in a 2x3 grid. It keeps its handler, its disabled
-            rule and both testids — only its home and its weight changed. */}
-        <span
-          className="flex shrink-0 items-center gap-1.5"
-          data-testid="settings-grid-status"
-          data-settings-cell="confirmation"
+      <div className="mb-[13px] flex items-center gap-2.5">
+        <h3
+          data-band-eyebrow
+          className="shrink-0 text-[10px] leading-[14px] font-semibold tracking-[0.16em] text-[var(--g-text-muted)] uppercase"
         >
-          {!confirmed || hardConflict ? (
-            <button
-              type="button"
-              disabled={hardConflict}
-              onClick={() => {
-                if (activeDraftIdentity !== null) {
-                  confirmSettings(signature, activeDraftIdentity, store.draftContextSeq);
-                }
-              }}
-              data-testid="profile-settings-confirm"
-              className="pro-focus-ring inline-flex h-7 items-center rounded-full border border-[var(--g-graphite)] bg-transparent px-3 text-[11.5px] font-semibold whitespace-nowrap text-[var(--g-graphite)] enabled:hover:bg-[var(--g-graphite)] enabled:hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
-            >
-              Potwierdź ustawienia
-            </button>
-          ) : (
-            <span
-              /* The settled step is the quietest thing in the band. */
-              className="text-[11.5px] font-semibold whitespace-nowrap text-[var(--g-text-secondary)]"
-              data-testid="profile-settings-confirmed"
-            >
-              ✓ Ustawienia potwierdzone
-            </span>
-          )}
-        </span>
-          <span
-            role="status"
-            aria-live="polite"
-            aria-atomic="true"
-            className={cn(
-              'sr-only text-xs font-semibold',
-              hardConflict
-                ? 'text-status-error'
-                : confirmed
-                  ? 'text-status-ideal'
-                  : 'text-attention',
-            )}
-            data-testid="profile-preflight-status"
-          >
-            {hardConflict
-              ? 'Konflikt ustawień'
-              : confirmed
-                ? '✓ Ustawienia potwierdzone'
-                : 'Zmiany niepotwierdzone'}
-          </span>
-        </div>
+          Ustawienia
+        </h3>
+        <span aria-hidden className="h-px flex-1 bg-[var(--g-line)]" />
       </div>
 
+      {/* The band's own row: what the settings ARE, and the way in. The summary
+          is the only thing allowed to shorten — the status and the chevron
+          carry the decision and must survive every translation. */}
+      <button
+        type="button"
+        onClick={() => setExpanded((open) => !open)}
+        aria-expanded={expanded}
+        data-testid="settings-grid-status"
+        data-settings-cell="confirmation"
+        className="pro-focus-ring flex w-full min-w-0 items-center gap-4 rounded-[14px] border border-[var(--g-line)] bg-transparent px-4 py-3 text-left transition-colors hover:border-ink/25"
+      >
+        <span className="grid size-11 shrink-0 place-items-center rounded-full border border-[var(--g-line)] text-[var(--g-ink)]">
+          <svg aria-hidden width="19" height="19" viewBox="0 0 24 24" fill="none">
+            <g stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round">
+              <path d="M10.34 2.79A9.6 9.6 0 0 1 13.66 2.79L13.88 4.86A7.35 7.35 0 0 1 15.73 5.63L17.4 4.27A9.6 9.6 0 0 1 19.73 6.6L18.37 8.27A7.35 7.35 0 0 1 19.14 10.12L21.21 10.34A9.6 9.6 0 0 1 21.21 13.66L19.14 13.88A7.35 7.35 0 0 1 18.37 15.73L19.73 17.4A9.6 9.6 0 0 1 17.4 19.73L15.73 18.37A7.35 7.35 0 0 1 13.88 19.14L13.66 21.21A9.6 9.6 0 0 1 10.34 21.21L10.12 19.14A7.35 7.35 0 0 1 8.27 18.37L6.6 19.73A9.6 9.6 0 0 1 4.27 17.4L5.63 15.73A7.35 7.35 0 0 1 4.86 13.88L2.79 13.66A9.6 9.6 0 0 1 2.79 10.34L4.86 10.12A7.35 7.35 0 0 1 5.63 8.27L4.27 6.6A9.6 9.6 0 0 1 6.6 4.27L8.27 5.63A7.35 7.35 0 0 1 10.12 4.86Z" />
+              <circle cx="12" cy="12" r="2.85" />
+            </g>
+          </svg>
+        </span>
+        <span className="min-w-0 flex-1 truncate text-[15px] leading-[21px] font-semibold tracking-[-0.02em] text-[var(--g-ink)]">
+          {collapsedSummary}
+        </span>
+        <span
+          className={cn(
+            'flex shrink-0 items-center gap-1.5 text-[12.5px] font-semibold whitespace-nowrap',
+            hardConflict
+              ? 'text-status-error'
+              : confirmed
+                ? 'text-[var(--g-score-green)]'
+                : 'text-[var(--g-attention-ink)]',
+          )}
+        >
+          {hardConflict ? (
+            'Konflikt ustawień'
+          ) : confirmed ? (
+            <>
+              <svg aria-hidden width="13" height="13" viewBox="0 0 24 24" fill="none" className="shrink-0">
+                <path d="M4 12.5l5.5 5.5L20 7" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Zatwierdzone
+            </>
+          ) : (
+            <>
+              <i aria-hidden className="size-2 shrink-0 rounded-full bg-[#f58a07]" />
+              Wymaga potwierdzenia
+            </>
+          )}
+        </span>
+        <svg
+          aria-hidden
+          width="15"
+          height="15"
+          viewBox="0 0 24 24"
+          fill="none"
+          className={cn('shrink-0 text-[var(--g-text-muted)] transition-transform', expanded && 'rotate-90')}
+        >
+          <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+
+      <span
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className="sr-only"
+        data-testid="profile-preflight-status"
+      >
+        {hardConflict
+          ? 'Konflikt ustawień'
+          : confirmed
+            ? '✓ Ustawienia potwierdzone'
+            : 'Zmiany niepotwierdzone'}
+      </span>
+
+      {/* The expanded surface stays MOUNTED and is hidden with `hidden` rather
+          than unmounted. Two reasons, both real: the batch/serving cells own
+          effects that reconcile the target against the machine authority, and
+          unmounting them would silently change when that reconciliation runs;
+          and `hidden` is the honest semantic — not relevant right now — so it
+          leaves the accessibility tree and the tab order without pretending the
+          settings do not exist. */}
+      <div hidden={!expanded} data-settings-surface={expanded ? 'expanded' : 'collapsed'}>
       <div
         className={cn(
           compact ? 'profile-settings-grid grid grid-cols-2 items-stretch gap-2' : 'space-y-3',
@@ -458,7 +560,7 @@ export function WorkbenchSettingsLine({
           />
         </div>
 
-        <div className={cn(compact && 'order-3')} data-settings-cell="machine">
+        <div className={cn(compact && 'order-4')} data-settings-cell="machine">
           <LabeledSelect
             label="Maszyna"
             value={machineValue}
@@ -484,7 +586,7 @@ export function WorkbenchSettingsLine({
         </div>
 
         <div
-          className={cn(compact ? 'order-2' : 'ml-[7.3rem]')}
+          className={cn(compact ? 'order-3' : 'ml-[7.3rem]')}
           data-testid="machine-conditional-settings"
           data-settings-cell="serving"
         >
@@ -603,7 +705,7 @@ export function WorkbenchSettingsLine({
             </div>
 
             <div
-              className="profile-settings-final-card relative order-4 min-w-0"
+              className="profile-settings-final-card relative order-2 min-w-0"
               data-settings-cell="strategy"
               data-settings-final-card="strategy"
               title={STRATEGY_COPY[store.formulation_strategy].description}
@@ -713,17 +815,13 @@ export function WorkbenchSettingsLine({
             make" — deliberately NOT a second input, and never editable. A grid
             child so it stays directly under the batch field it reports on: full
             width under the 2-column row, and re-ordered ahead of Tryb when the
-            grid collapses to one column (see `profile-settings-base-readout`). */}
-        <p
-          className="profile-settings-base-readout order-6 min-w-0 text-xs text-stone-600"
-          data-testid="workbench-recipe-base"
-          data-settings-readonly="base"
-        >
-          Baza receptury:{' '}
-          <span className="font-mono tabular-nums text-ink">
-            {actualBatchG.toLocaleString('pl-PL', { maximumFractionDigits: 1 })} g
-          </span>
-        </p>
+            grid collapses to one column. */}
+        {/* OWNER AUTHORITY 2026-09-02 (approved desktop PDF, §5): the
+            permanent `Baza receptury` readout is REMOVED from the right-hand
+            Settings surface. It duplicated a number the left column already
+            owns as `Baza lodowa`, and a settings field that cannot be set is
+            not a setting. The mass itself is unchanged and still lives on the
+            left; only the duplicate display is gone. */}
       </div>
 
       {/* Above the machine recommendation: warn + offer the three owner actions,
@@ -804,6 +902,59 @@ export function WorkbenchSettingsLine({
             : `Utwórz wersję ${g.productTypes[pendingBaseProfile]}`
         }
       />
+      {/* Both actions live INSIDE expanded Settings (§8). „Zapisz jako
+          domyślne" is permanent and holds the left edge, so it never moves;
+          „Potwierdź zmiany" arrives to its right only when something is
+          actually unconfirmed. `flex-wrap` is what keeps a long translation
+          („Mentés alapértelmezettként" beside „Változtatások megerősítése")
+          dropping to a second line instead of widening the card. */}
+      <div className="mt-5 flex flex-wrap items-center gap-3" data-settings-cell="actions">
+        <button
+          type="button"
+          onClick={saveAsDefault}
+          disabled={defaultsOwner === null || defaultsStatus === 'saving'}
+          data-testid="profile-settings-save-default"
+          className="pro-focus-ring inline-flex h-11 items-center rounded-full border border-[var(--g-line)] bg-white px-5 text-[13px] font-semibold whitespace-nowrap text-[var(--g-ink)] transition-colors hover:border-ink/35 disabled:cursor-not-allowed disabled:text-[var(--g-lock)]"
+        >
+          {defaultsStatus === 'saving' ? 'Zapisuję…' : 'Zapisz jako domyślne'}
+        </button>
+        {!confirmed || hardConflict ? (
+          <button
+            type="button"
+            disabled={hardConflict}
+            onClick={() => {
+              if (activeDraftIdentity !== null) {
+                confirmSettings(signature, activeDraftIdentity, store.draftContextSeq);
+              }
+            }}
+            data-testid="profile-settings-confirm"
+            className="pro-focus-ring inline-flex h-11 items-center rounded-full bg-[var(--g-graphite)] px-5 text-[13px] font-semibold whitespace-nowrap text-white transition-colors hover:bg-ink-soft disabled:cursor-not-allowed disabled:bg-[var(--g-line-quiet)] disabled:text-[var(--g-lock)]"
+          >
+            Potwierdź zmiany
+          </button>
+        ) : (
+          <span
+            className="text-[12.5px] font-semibold text-[var(--g-text-secondary)]"
+            data-testid="profile-settings-confirmed"
+          >
+            ✓ Ustawienia potwierdzone
+          </span>
+        )}
+        <span role="status" aria-live="polite" className="sr-only">
+          {defaultsStatus === 'saved'
+            ? 'Ustawienia zapisane jako domyślne.'
+            : defaultsStatus === 'error'
+              ? 'Nie udało się zapisać ustawień domyślnych.'
+              : ''}
+        </span>
+      </div>
+      {defaultsStatus === 'error' ? (
+        <p role="alert" className="mt-2 text-xs text-status-error">
+          Nie udało się zapisać ustawień domyślnych. Spróbuj ponownie.
+        </p>
+      ) : null}
+      </div>
+
       <RecipeCustomMachineDialog
         open={customMachineOpen}
         onClose={() => setCustomMachineOpen(false)}

@@ -60,16 +60,25 @@ describe('Recipe profile visual density contract', () => {
     expect(settings).toContain(
       "'order-5 lg:flex lg:h-[46px] lg:flex-col lg:justify-center lg:py-0'",
     );
-    expect(settings).toContain('order-6');
+    // SUPERSEDED, owner authority 2026-09-02 (approved desktop PDF §5): the
+    // sixth cell was the duplicated `Baza receptury` readout and is REMOVED.
+    // The grid is now the four approved fields plus the batch row; nothing may
+    // reintroduce a read-only sixth tile.
+    expect(settings).not.toContain('order-6');
+    expect(settings).not.toContain('profile-settings-base-readout');
     expect(settings).toContain('lg:h-[46px]');
     expect(settings.includes('profile-settings-final-row')).toBe(false);
     expect(theme.includes('grid-template-rows: subgrid')).toBe(false);
 
-    // The confirmation control is still GRAPHITE and still never orange (owner
-    // §13) — but OWNER FROZEN PRO VISUAL spends it as ink on an outline rather
-    // than as a filled black block, so Settings stops competing with Przelicz.
-    expect(settings).toContain('text-[var(--g-graphite)]');
-    expect(settings).toContain('border-[var(--g-graphite)] bg-transparent');
+    // The confirmation control is still GRAPHITE and still never orange.
+    // SUPERSEDED, owner authority 2026-09-02 (approved desktop PDF §8): it now
+    // lives INSIDE expanded Settings as „Potwierdź zmiany", to the right of the
+    // permanent „Zapisz jako domyślne", and it is a filled graphite pill again
+    // because in that footer it is the one primary — it no longer sits in the
+    // band header competing with Przelicz. What is still protected: graphite,
+    // never the accent.
+    expect(settings).toContain('bg-[var(--g-graphite)] px-5');
+    expect(settings).toContain('data-testid="profile-settings-save-default"');
     expect(settings.includes('bg-[#f58a07] px-3 text-xs font-semibold text-white')).toBe(false);
     // ...and the panel itself no longer carries the ivory card. Settings is a
     // band in the display column; only a real CONFLICT still takes a surface.

@@ -112,39 +112,58 @@ function NutritionCostProfileGrid({
         <span aria-hidden className="h-px flex-1 bg-[var(--g-line)]" />
       </div>
       <details className="group min-w-0" data-testid="profile-nutrition-cost-summary">
-        <summary className="pro-focus-ring grid cursor-pointer list-none grid-cols-2 overflow-hidden rounded-xl border border-[var(--g-line)] bg-[var(--g-ivory)] [&::-webkit-details-marker]:hidden">
-          <span className="min-w-0 px-4 py-[15px]">
-            <b className="block text-[22px] leading-[1.1] font-semibold tracking-[-0.04em] tabular-nums text-[var(--g-ink)]">
-              {nutrition ? `${nutrition.kcal.toFixed(0)}` : '—'}
-              <u className="text-[11px] font-medium tracking-normal text-[var(--g-text-muted)] no-underline">
-                {' kcal / 100 g'}
-              </u>
-            </b>
-            <span className="mt-1 flex items-center gap-1.5 text-[11px] leading-[16px] font-medium text-[var(--g-text-muted)]">
-              <NutritionSummaryIcon tone="current" className="size-3.5 shrink-0" />
-              <span className="truncate">Wartości odżywcze</span>
+        {/* OWNER AUTHORITY 2026-09-02 (approved desktop PDF, §4). The result was
+            a bordered two-cell box on ivory — a container competing with the
+            numbers inside it. It is now a READOUT on the column ground: a quiet
+            icon in a ring, the figure at 30 px as the largest thing in the
+            band, its unit underneath, and a single hairline separating the two
+            measures. Explicitly NOT another card. The breakdown stays exactly
+            as expandable as it was, and the expand line is the only chrome. */}
+        <summary
+          className="pro-focus-ring cursor-pointer list-none [&::-webkit-details-marker]:hidden"
+          data-result-presentation="readout"
+        >
+          {/* 7.5 px so the 44 px ring is CENTRED on the same vertical axis as
+              the 17 px chevron below it (21 + 17/2 = 29.5 = 7.5 + 44/2), which
+              is also the axis the band legends sit on. Aligning their left
+              edges instead pushed the ring 13.5 px right of the chevron. */}
+          <span className="flex min-w-0 items-center pl-[7.5px]">
+            <span className="flex min-w-0 shrink-0 items-center gap-[14px]">
+              <span className="grid size-11 shrink-0 place-items-center rounded-full border border-[var(--g-line)] text-[var(--g-ink)]">
+                <NutritionSummaryIcon tone="current" className="size-[18px] shrink-0" />
+              </span>
+              <span className="min-w-0">
+                <b className="block text-[30px] leading-none font-extrabold tracking-[-0.042em] tabular-nums text-[var(--g-ink)]">
+                  {nutrition ? nutrition.kcal.toFixed(0) : '—'}
+                </b>
+                <span className="mt-[7px] block text-[13px] leading-4 text-[var(--g-text-muted)]">
+                  kcal / 100 g
+                </span>
+              </span>
+            </span>
+            <span aria-hidden className="mx-[18px] w-px shrink-0 self-stretch bg-[var(--g-line)]" />
+            <span className="flex min-w-0 shrink-0 items-center gap-[14px]">
+              <span className="grid size-11 shrink-0 place-items-center rounded-full border border-[var(--g-line)] text-[var(--g-ink)]">
+                <CostSummaryIcon tone="current" className="size-[18px] shrink-0" />
+              </span>
+              <span className="min-w-0">
+                <b className="block text-[30px] leading-none font-extrabold tracking-[-0.042em] tabular-nums text-[var(--g-ink)]">
+                  {costs?.cost_per_kg == null ? '—' : `${costs.cost_per_kg.toFixed(2)} €`}
+                </b>
+                <span className="mt-[7px] block text-[13px] leading-4 text-[var(--g-text-muted)]">
+                  za kg
+                </span>
+              </span>
             </span>
           </span>
-          <span className="min-w-0 border-l border-[var(--g-line)] px-4 py-[15px]">
-            <b className="block text-[22px] leading-[1.1] font-semibold tracking-[-0.04em] tabular-nums text-[var(--g-ink)]">
-              {costs?.cost_per_kg == null ? '—' : `${costs.cost_per_kg.toFixed(2)}`}
-              <u className="text-[11px] font-medium tracking-normal text-[var(--g-text-muted)] no-underline">
-                {costs?.cost_per_kg == null ? ' / kg' : ' € / kg'}
-              </u>
-            </b>
-            <span className="mt-1 flex items-center gap-1.5 text-[11px] leading-[16px] font-medium text-[var(--g-text-muted)]">
-              <CostSummaryIcon tone="current" className="size-3.5 shrink-0" />
-              <span className="truncate">Koszt receptury</span>
-            </span>
-          </span>
-          <span className="col-span-2 flex items-center gap-2 border-t border-[var(--g-line)] px-4 py-2.5 text-[11.5px] leading-[16px] font-medium text-[var(--g-text-secondary)]">
+          <span className="mt-[26px] flex min-w-0 items-start gap-3 pl-[21px] text-[15.5px] leading-[22px] font-medium tracking-[-0.02em] text-[var(--g-text-secondary)]">
             <svg
               aria-hidden
-              width="13"
-              height="13"
+              width="17"
+              height="17"
               viewBox="0 0 24 24"
               fill="none"
-              className="shrink-0 transition-transform group-open:rotate-180"
+              className="mt-[3px] shrink-0 text-[var(--g-text-muted)] transition-transform group-open:rotate-180"
             >
               <path
                 d="M6 9l6 6 6-6"
@@ -154,7 +173,7 @@ function NutritionCostProfileGrid({
                 strokeLinejoin="round"
               />
             </svg>
-            Rozwiń pełny rozkład składników i kosztów
+            <span className="min-w-0">Rozwiń pełny rozkład składników i kosztów</span>
           </span>
         </summary>
         <div className="profile-nutrition-details grid gap-x-8 gap-y-5 pt-4 min-[520px]:grid-cols-2">
@@ -407,15 +426,19 @@ function ProfileContent({
           variant="neutral"
         />
       ) : null}
-      {/* OWNER FROZEN PRO VISUAL: the display column opens with WYNIK, then the
-          controls that move it, then settings, then the recipe. The cards are
-          gone, so the rhythm between bands — not a border — is what separates
-          them; the gap has to carry the work the boxes used to do. */}
+      {/* OWNER AUTHORITY 2026-09-02 (approved desktop PDF, §2). The display
+          column now opens with the recipe's IDENTITY, then the result it
+          produced, then the controls that move that result, then the settings
+          behind it. RECEPTURA used to sit fourth of five — the user read the
+          numbers before knowing whose numbers they were. The cards are gone, so
+          the rhythm between bands, not a border, is what separates them. */}
       <div
         className="grid min-w-0 items-start gap-5 xl:gap-[18px]"
         data-testid="profile-desktop-grid"
         data-profile-layout="stacked"
+        data-profile-band-order="recipe,result,direction,settings"
       >
+        {recipeBar ? <div className="min-w-0">{recipeBar}</div> : null}
         <NutritionCostProfileGrid
           result={frozenNutritionResult}
           nutritionReady={finalNutritionReady}
@@ -425,7 +448,6 @@ function ProfileContent({
         />
         <ProfileDirectionAxes result={frozenNutritionResult} className="min-w-0" />
         <WorkbenchSettingsLine actualBatchG={result.total_batch_g} className="min-w-0" compact />
-        {recipeBar ? <div className="min-w-0">{recipeBar}</div> : null}
       </div>
       {/* OWNER FROZEN PRO VISUAL: WIEDZA is a BAND like every other section —
           its own eyebrow closed by a hairline, then one quiet row. It used to

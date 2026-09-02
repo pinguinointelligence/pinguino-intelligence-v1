@@ -1,6 +1,4 @@
 // @vitest-environment jsdom
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -720,29 +718,23 @@ describe('WorkbenchSettingsLine — one editable batch field', () => {
     });
   }
 
-  it('reports the recipe Base as read-only information, never as a control', async () => {
+  it('does NOT duplicate the recipe base on the Settings surface', async () => {
+    // SUPERSEDED, owner authority 2026-09-02 (approved desktop PDF §5). Three
+    // tests here used to pin `Baza receptury` as a read-only cell of the
+    // Settings grid. The owner removed it: it repeated a number the LEFT column
+    // already owns as „Baza lodowa", and a settings field that cannot be set is
+    // not a setting. What is protected now is the absence — a duplicate must
+    // not creep back — while the batch target and the machine guidance stay
+    // exactly as they were.
     await render(470);
-    const base = baseLine();
-    expect(base).not.toBeNull();
-    expect(base!.textContent).toContain('Baza receptury:');
-    expect(base!.textContent).toContain('470');
-    // Read-only means read-only: no input, no select, no button, not focusable.
-    expect(base!.querySelectorAll('input, select, button, textarea, [contenteditable]')).toHaveLength(
-      0,
-    );
-    expect(base!.tagName).toBe('P');
-    expect(base!.hasAttribute('tabindex')).toBe(false);
-  });
-
-  it('shows the reconciled Base once the recipe matches the target', async () => {
-    await render(470);
-    expect(baseLine()!.textContent).toContain('470');
+    expect(baseLine()).toBeNull();
     await render(5_000);
-    expect(baseLine()!.textContent).toContain('5000');
-    expect(baseLine()!.textContent).toContain('Baza receptury:');
+    expect(baseLine()).toBeNull();
+    const panel = host.querySelector('[data-testid="workbench-settings-line"]')!;
+    expect(panel.textContent).not.toContain('Baza receptury');
   });
 
-  it('keeps target, Base and machine guidance as three separate readings', async () => {
+  it('keeps target and machine guidance as two separate readings', async () => {
     await act(async () => {
       useRecipeStore.getState().setMachineSelection({
         kind: 'home',
@@ -758,12 +750,10 @@ describe('WorkbenchSettingsLine — one editable batch field', () => {
     await render(470);
 
     // 1 — what I want to make (the one editable field).
-    expect(
-      (host.querySelector('[aria-label="Docelowa partia"]') as HTMLInputElement).value,
-    ).toBe('5000');
-    // 2 — what the recipe weighs right now (read-only).
-    expect(baseLine()!.textContent).toContain('470');
-    // 3 — the machine reading, kept separate from both.
+    expect((host.querySelector('[aria-label="Docelowa partia"]') as HTMLInputElement).value).toBe(
+      '5000',
+    );
+    // 2 — the machine reading, kept separate from the target.
     const capacity = host.querySelector('[data-testid="home-machine-capacity"]')!;
     expect(capacity.textContent).toContain('Zalecany wsad na cykl');
     expect(capacity.textContent).toContain('670');
@@ -781,33 +771,6 @@ describe('WorkbenchSettingsLine — one editable batch field', () => {
     expect(panel.querySelectorAll('[aria-label="Docelowa partia"]')).toHaveLength(1);
     expect(panel.querySelectorAll('[aria-label="Jednostka partii"]')).toHaveLength(1);
     expect(panel.querySelectorAll('[data-testid="profile-batch-combined"]')).toHaveLength(1);
-    expect(panel.querySelectorAll('[data-testid="workbench-recipe-base"]')).toHaveLength(1);
-  });
-
-  it('keeps the Base readout directly under the batch field at both widths', async () => {
-    await render(470);
-    const grid = host.querySelector('.profile-settings-grid')!;
-    const base = baseLine()!;
-    // A grid child, so it can be ordered relative to the batch/Tryb row rather
-    // than floating below the whole panel.
-    expect(base.parentElement).toBe(grid);
-    // OWNER FROZEN PRO VISUAL: Base is an ordinary cell of the 2x3 grid,
-    // sitting BESIDE Partia docelowa rather than spanning a fourth row under
-    // it. What the old contract protected — Base immediately follows the batch
-    // field it reports on — is now true by default order at every width, so
-    // the narrow-width override that used to lift it no longer exists.
-    expect(base.className).not.toContain('col-span-2');
-    expect(base.className).toContain('order-6');
-    expect(base.className).toContain('profile-settings-base-readout');
-    const batchCell = host.querySelector("[data-settings-cell='batch']") as HTMLElement;
-    expect(batchCell.className).toContain('order-5');
-    const theme = readFileSync(
-      resolve(import.meta.dirname, '..', '..', 'styles', 'theme-pro-light.css'),
-      'utf8',
-    );
-    const narrow = theme.slice(theme.indexOf('@container right-pane (max-width: 399px)'));
-    expect(narrow).not.toContain('.profile-settings-base-readout {');
-    expect(narrow).not.toContain("[data-settings-cell='strategy']");
   });
 
   it('still commits an edited batch through the one remaining field', async () => {

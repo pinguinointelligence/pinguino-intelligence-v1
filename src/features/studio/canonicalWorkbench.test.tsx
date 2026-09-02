@@ -271,7 +271,12 @@ describe('new Pro profile layout', () => {
     expect(profile).toContain('export type CockpitTab = WorkbenchModuleTab');
     const settings = read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx');
     expect(settings).toContain('profile-batch-combined');
-    expect(settings).toContain('actualBatchG.toLocaleString');
+    // SUPERSEDED, owner authority 2026-09-02 (approved desktop PDF §5): the
+    // profile no longer PRINTS the actual batch — that readout duplicated the
+    // left column's „Baza lodowa" and was removed. The prop is still received
+    // and still drives the reconciliation logic, which is what this contract
+    // was protecting; it just no longer renders a second copy of the number.
+    expect(settings).toContain('actualBatchG');
   });
 
   it('shows explicit gram and percent lock controls through the canonical lock_type action', () => {
