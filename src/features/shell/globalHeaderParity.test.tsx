@@ -57,7 +57,7 @@ describe('the header grid is GLOBAL, not a workbench detail', () => {
   });
 
   it('anchors non-workbench actions to the work column, never the viewport edge', () => {
-    expect(shell).toContain('ml-auto hidden xl:flex');
+    expect(shell).toContain('ml-auto flex items-center');
   });
 
   it('does NOT give non-workbench pages the workbench body lock', () => {

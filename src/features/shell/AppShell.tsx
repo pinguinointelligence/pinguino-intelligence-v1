@@ -146,7 +146,12 @@ export function AppShell({
               group it can no longer sit between the switch and the column edge —
               measured at 167 px of displacement when it rendered after it. */}
           <DesignReviewOverlay />
-          <div className="ml-auto hidden xl:flex xl:items-center xl:gap-3">
+          {/* ONE instance, every breakpoint. This used to be a responsive PAIR whose
+              copies were hidden with `hidden` / `xl:hidden`, but a CSS-hidden control
+              still occupies the accessibility tree: served measurement on 8dd11c9b
+              found a zero-width tablist, so a screen reader met two HOME and two PRO
+              tabs. Visual exclusivity is not exclusivity. */}
+          <div className="ml-auto flex items-center gap-2 sm:gap-3">
             {/* Page actions first, the switch LAST: HOME | PRO closes the work
                 column, so nothing may sit between it and the column edge. */}
             {!viewportLock ? actions : null}
@@ -154,23 +159,6 @@ export function AppShell({
           </div>
         </div>
         {viewportLock ? workbenchChrome : null}
-        {/* min-w-0 + wrap: page actions may shrink/wrap on narrow screens — the header must
-            never force horizontal page overflow (owner P0 responsive rule). */}
-        <div
-          className={cn(
-            'flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-3',
-            /* Above xl everything here lives in the work column, so this trailing
-               group must not render it a second time. */
-            'xl:hidden',
-          )}
-        >
-          {/* Same order below xl: the switch closes the row. */}
-          {!viewportLock ? actions : null}
-          {globalSwitch}
-          {/* The plan badge is GONE: the global header shows the real HomeProSwitch for
-              every audience (owner override 2026-09-01), and rendering both would be two
-              controls saying the same thing. */}
-        </div>
       </header>
       <main
         className={cn(contentClassName, viewportLock && 'xl:min-h-0 xl:flex-1 xl:overflow-hidden')}
