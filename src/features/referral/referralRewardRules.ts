@@ -14,7 +14,7 @@
  *   F1  monthly referred first purchase → +7 PRO bonus days
  *   F2  annual  referred first purchase → +30 PRO bonus days
  *   F3  first paid purchase only
- *   F4  Stripe billing is never modified
+ *   F4  the payment provider's billing cycle is never modified
  *   F5  a paid-PRO referrer banks the days
  *   F6  a referrer without paid PRO activates them immediately
  *   F7  failed / refunded purchases earn nothing

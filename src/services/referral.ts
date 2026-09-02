@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase/client';
  * Deliberately separate from `services/partner.ts`: this lane earns PRO DAYS,
  * that one earns MONEY, and they must not become one module with a flag. The
  * only three RPCs a signed-in user may call are here; everything that creates
- * value is service-role and lives in the Stripe webhook.
+ * value runs with elevated privileges inside the payment webhook, never here.
  */
 
 const unavailable = (): never => {

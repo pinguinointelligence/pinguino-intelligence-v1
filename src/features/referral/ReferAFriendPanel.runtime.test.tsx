@@ -77,12 +77,23 @@ const render = async () => {
       </QueryClientProvider>,
     );
   });
-  // let the two queries settle
-  await act(async () => {
-    await Promise.resolve();
-    await Promise.resolve();
-  });
+  // Condition-based, not a fixed number of micro-ticks: two queries have to
+  // resolve and re-render, and under full-suite load that takes more turns of
+  // the loop than it does when this file runs alone. Waiting for the fact we
+  // need is stable; counting ticks is a coin flip.
+  await settleUntil(() => (host.textContent ?? '').includes('GPQPBPM6'));
   return host.textContent ?? '';
+};
+
+/** Spin the event loop until `ready()` holds, or fail loudly rather than silently asserting on a half-rendered tree. */
+const settleUntil = async (ready: () => boolean, turns = 50) => {
+  for (let i = 0; i < turns; i += 1) {
+    if (ready()) return;
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+  }
+  if (!ready()) throw new Error(`panel never settled; last render was: ${host.textContent}`);
 };
 
 beforeEach(() => {
