@@ -44,12 +44,12 @@ const createdViews = (sql: string): string[] =>
     ...sql.matchAll(
       /create\s+(?:or\s+replace\s+)?(?:materialized\s+)?view\s+public\.([a-z0-9_]+)/gi,
     ),
-  ].map((m) => m[1].toLowerCase());
+  ].map((m) => (m[1] ?? '').toLowerCase());
 
 /** `create table [if not exists] public.x`. */
 const createdTables = (sql: string): string[] =>
   [...sql.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?public\.([a-z0-9_]+)/gi)].map((m) =>
-    m[1].toLowerCase(),
+    (m[1] ?? '').toLowerCase(),
   );
 
 /** Does the migration switch row-level security on for this table? */
@@ -67,10 +67,10 @@ const revokesWritesFrom = (sql: string, view: string): Set<string> => {
     'gi',
   );
   for (const m of sql.matchAll(pattern)) {
-    const privileges = m[1].toLowerCase();
+    const privileges = (m[1] ?? '').toLowerCase();
     const writes = /\ball\b/.test(privileges) || /insert|update|delete/.test(privileges);
     if (!writes) continue;
-    for (const role of m[2].split(',')) roles.add(role.trim().toLowerCase());
+    for (const role of (m[2] ?? '').split(',')) roles.add(role.trim().toLowerCase());
   }
   return roles;
 };
