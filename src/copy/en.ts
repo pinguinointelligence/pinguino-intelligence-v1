@@ -370,6 +370,7 @@ export const copy = {
       products: 'Produkty',
       machine: 'Maszyna',
       community: 'Community',
+      affiliate: 'Affiliate',
       workWithUs: 'Współpraca',
       franchise: 'Franchise',
     },

@@ -43,7 +43,7 @@ describe('plan-aware global navigation', () => {
       'guestShop',
       'plans',
       'community',
-      'workWithUs',
+      'affiliate',
       'franchise',
     ]);
   });
@@ -56,7 +56,7 @@ describe('plan-aware global navigation', () => {
       'machine',
       'community',
       'memberShop',
-      'workWithUs',
+      'affiliate',
       'franchise',
     ]);
   });
@@ -70,7 +70,7 @@ describe('plan-aware global navigation', () => {
       'machine',
       'community',
       'memberShop',
-      'workWithUs',
+      'affiliate',
       'franchise',
     ]);
     expect(ids('pro').filter((id) => !ids('home').includes(id))).toEqual([

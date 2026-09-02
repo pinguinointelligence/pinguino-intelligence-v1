@@ -1,3 +1,4 @@
+export { AffiliatePage } from './AffiliatePage';
 export { APIPage } from './APIPage';
 export { CreateIngredientPage } from './CreateIngredientPage';
 export { ProductImportPage } from './ProductImportPage';

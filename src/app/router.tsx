@@ -39,6 +39,7 @@ import { HomeSubscriberProRedirect } from '@/features/home-creator/HomeSubscribe
 import { SharedRecipePage } from '@/pages/community/SharedRecipePage';
 import { TopHundredPage } from '@/pages/community/TopHundredPage';
 import {
+  AffiliatePage,
   APIPage,
   AccountSettingsPage,
   FranchisePage,
@@ -117,6 +118,7 @@ export function AppRoutes() {
       <Route path="/how-it-works" element={<HowItWorksPage />} />
       <Route path="/shop" element={<ShopPage />} />
       <Route path="/franchise" element={<FranchisePage />} />
+      <Route path="/affiliate" element={<AffiliatePage />} />
       {/* The three Work With Us lanes that had no route. The gateway links to
           all four, and §27 forbids a card that only looks functional. */}
       <Route path="/machines" element={<MachinesPage />} />
