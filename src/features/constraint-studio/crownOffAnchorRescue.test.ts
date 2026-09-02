@@ -104,26 +104,35 @@ describe('Crown-OFF terminal refusal copy', () => {
  * search and was then terminal-refused with no way back into the descent.
  */
 describe('Crown-OFF unlocked anchor — search and gate share one authority', () => {
-  it('routes both through finalPreviewAuthorityBlocking', async () => {
+  it('asserts the Main envelope per candidate, cheaply, and shares the gate filter', async () => {
     const source = await import('node:fs').then((fs) =>
       fs.readFileSync('src/features/constraint-studio/applyPipeline.ts', 'utf8'),
     );
     // Declared once…
     expect(source.match(/function finalPreviewAuthorityBlocking\(/g)).toHaveLength(1);
-    // …and consumed by BOTH the rescue search and the final Preview gate.
-    expect(source.match(/finalPreviewAuthorityBlocking\(/g)?.length ?? 0).toBeGreaterThanOrEqual(3);
+    // …and consumed by the final Preview gate (declaration + call site).
+    expect(source.match(/finalPreviewAuthorityBlocking\(/g)?.length ?? 0).toBe(2);
     // The gate must no longer inline its own copy of the filter.
     expect(source).not.toMatch(
       /issue\.source === 'owner_policy' \|\|\s*\n\s*issue\.source === 'main' \|\|\s*\n\s*issue\.source === 'product_behavior' \|\|\s*\n\s*\(issue\.source === 'profile'[\s\S]{0,200}\);\n\s*if \(authorityBlocking/,
     );
-    // The rescue search calls the authority with the candidate it is assessing.
+    // The rescue search asserts the Main envelope — the blocking class for this
+    // scenario — on the candidate it is assessing. It calls `verifyMainEnvelope`
+    // DIRECTLY rather than through `evaluateRecipeConstraintAuthority`, which
+    // recomputes `calculateRecipe` per call: served QA measured 86 s and 91 s
+    // failures on a 400 g unlocked anchor with the wrapper in the descent.
     const assessBlock = source.slice(
       source.indexOf('const assess = (candidate: RecipeInput'),
       source.indexOf('const probe = (grams: number)'),
     );
-    expect(assessBlock).toContain('evaluateRecipeConstraintAuthority');
-    expect(assessBlock).toContain('finalPreviewAuthorityBlocking');
+    expect(assessBlock).toContain('verifyMainEnvelope');
+    // …and the gate's `owner_policy` class, which also moves with the support
+    // vector. Both stabilizer authorities are calculateRecipe-free.
+    expect(assessBlock).toContain('assessGelatoStabilizerSystem');
+    expect(assessBlock).toContain('assessSorbetStabilizerSystem');
+    // the wrapper may be NAMED in the rationale comment, but never CALLED here
+    expect(assessBlock).not.toMatch(/evaluateRecipeConstraintAuthority\(\{/);
     // …and rejects the CANDIDATE (returns null) rather than the whole request.
-    expect(assessBlock).toMatch(/finalPreviewAuthorityBlocking\([\s\S]{0,400}?\)\.length > 0\s*\)\s*\{\s*return null;/);
+    expect(assessBlock).toMatch(/!verifyMainEnvelope\([\s\S]{0,400}?\)\.ok\s*\)\s*\{\s*return null;/);
   });
 });
