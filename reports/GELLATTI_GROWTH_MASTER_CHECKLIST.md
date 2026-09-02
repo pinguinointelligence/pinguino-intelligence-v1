@@ -168,9 +168,10 @@ W03 ⚪ ENVIRONMENT - node_modules symlink defeats 4 test files
              None are mine; all pass in CI where node_modules is installed locally.
 
 W04 🟢 GIT PUSH - OWNER APPROVED, pushed. PR #106 opened against staging.
-    Merge deliberately HELD: the Affiliate visual was rejected after the PR
-    opened, so landing it would put a rejected page on staging. The referral
-    backend in the same PR is unaffected and can be landed on request.
+    PR #106 is now HELD and labelled as such; the backend was split out into
+    PR #108 (claude/referral-backend, cut fresh from origin/staging 2389e242).
+    #108 contains no .tsx, no React import and no reference to the Affiliate
+    page — verified, not asserted. Zero overlap with staging's Crown-OFF work.
 
 W05 🔴 AFFILIATE VISUAL - OWNER REJECTED (2026-09-02)
     Reason: every section carried equal weight - box, box, grid, grid, table.
@@ -182,7 +183,22 @@ W05 🔴 AFFILIATE VISUAL - OWNER REJECTED (2026-09-02)
     Rewizja 1 delivered as a 1440 visualization for review; implementation
     waits for owner approval of the visual.
 
-W06 ⏸ STRIPE CONNECTOR NOT VISIBLE TO THIS SESSION
+W06 🔴 STRIPE CONNECTOR STILL NOT VISIBLE AFTER RESTART (re-checked 2026-09-02)
+    Owner authenticated the connector and restarted. Re-checked every channel
+    in the new session and Stripe is STILL absent:
+      - ToolSearch "stripe ... checkout" -> only Vercel purchase tools
+      - list_connectors ["stripe"] -> []
+      - ~/.claude.json mcpServers -> []  (empty; the only "stripe" string in
+        that file is oauthAccount.billingType "stripe_subscription", which is
+        Anthropic's own billing metadata, NOT the Gellatti Stripe account)
+      - needs-auth cache entry unchanged (2026-08-19)
+      - no STRIPE_* env, no CLI, no ~/.config/stripe
+    So the connector is registered on the claude.ai account but is not being
+    injected into this Claude Code client at all. Next thing to try is enabling
+    it for Claude Code specifically (connector scope), not just the web app.
+    W01 stays blocked behind this.
+
+W06-OLD ⏸ (superseded) session restart pending
     The owner authenticated "claude.ai Stripe" (mcpsrv_01ARLfHsyWKYxK3xC48abgbS),
     but MCP servers are enumerated when a session STARTS. Re-checked after the
     owner's confirmation: ToolSearch "stripe" -> none; list_connectors -> [];
