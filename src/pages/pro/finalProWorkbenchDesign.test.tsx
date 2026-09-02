@@ -161,10 +161,12 @@ describe('one global menu and four local contexts', () => {
       'globalSwitch={<HomeProSwitch entitlement={proEntitlement} activeView="pro" />}',
     );
     expect(page).not.toContain('<HomeProSwitch entitlement={entitlement} activeView="pro" />');
-    // The trailing edge of column 1 is now owned by the shell, for every route.
-    expect(read('features', 'shell', 'AppShell.tsx')).toContain(
-      'className="ml-auto hidden xl:flex xl:items-center xl:gap-3"',
-    );
+    // The trailing edge of column 1 is owned by the shell, for every route. The class
+    // list lost its `hidden xl:flex` because the group is no longer a desktop-only copy
+    // of a responsive pair — a CSS-hidden duplicate still reached the accessibility tree
+    // (served 8dd11c9b). The guarantee this pins — the shell owning `ml-auto` at the
+    // column edge — is unchanged.
+    expect(read('features', 'shell', 'AppShell.tsx')).toContain('className="ml-auto flex');
     for (const source of [workbar, ingredient, topping]) {
       expect(source).toContain("iconButtonClasses('xs')");
       expect(source).toContain('•••');
