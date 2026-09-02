@@ -61,8 +61,11 @@ export function HomeProSwitch({
       return;
     }
     setView(segment);
-    // §15: returning to PRO restores the module the user left.
-    navigate(segment === 'pro' ? proModulePath(lastProModule) : '/');
+    // §15: returning to PRO restores the module the user left. HOME goes to `/home`
+    // rather than `/` because that says HOME explicitly: `/` is the ambiguous entry
+    // the account's default experience answers, so a PRO subscriber sent there was
+    // redirected straight back to PRO and never reached HOME.
+    navigate(segment === 'pro' ? proModulePath(lastProModule) : '/home');
   };
 
   return (
