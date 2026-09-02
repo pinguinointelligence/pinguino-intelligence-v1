@@ -49,8 +49,25 @@ interface ShippingRateRow {
   eta_max_days: number | null;
 }
 
+/**
+ * The query surface this function actually uses. Typed structurally instead of
+ * with `any`: it only ever chains `.select().eq().eq().eq().order()`, and naming
+ * that shape keeps the dependency honest — an `any` here would let any future
+ * call slip through unchecked on the path that decides what a customer pays.
+ */
+interface RateQuery {
+  select: (columns: string) => RateQuery;
+  eq: (column: string, value: unknown) => RateQuery;
+  order: (
+    column: string,
+    options: { ascending: boolean },
+  ) => Promise<{ data: unknown; error: { message: string } | null }>;
+}
+
 /** Every country with an enabled physical rate, cheapest-priority first. */
-const loadShippingRates = async (db: { from: (t: string) => any }): Promise<ShippingRateRow[]> => {
+const loadShippingRates = async (db: {
+  from: (table: string) => RateQuery;
+}): Promise<ShippingRateRow[]> => {
   const { data, error } = await db
     .from('shop_shipping_rates')
     .select(
