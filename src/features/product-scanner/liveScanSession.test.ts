@@ -7,7 +7,6 @@
 import { describe, expect, it } from 'vitest';
 import type { FrameQuality } from './frameQuality';
 import {
-  DUPLICATE_COOLDOWN_MS,
   EVIDENCE_WINDOW_MS,
   RECOGNITION_CONFIDENCE_FLOOR,
   RECOGNITION_EVIDENCE_REQUIRED,
@@ -192,9 +191,11 @@ describe('7 · the same product held in view produces exactly one result', () =>
     expect(state.accepted).toHaveLength(1);
   });
 
-  it('allows the same product again once the cooldown has expired', () => {
-    const { state } = run([barcodeFrame(0), barcodeFrame(DUPLICATE_COOLDOWN_MS + 1)]);
-    expect(state.accepted).toHaveLength(2);
+  it('still suppresses it much later in the same sweep', () => {
+    // A recipe cannot hold the same ingredient twice, so a second row would only be
+    // dropped again downstream. Passing the milk again is not a second milk.
+    const { state } = run([barcodeFrame(0), barcodeFrame(60_000)]);
+    expect(state.accepted).toHaveLength(1);
   });
 
   it('a removed product can be scanned again straight away', () => {

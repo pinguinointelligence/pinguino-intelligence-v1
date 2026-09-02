@@ -8,7 +8,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { ValidBarcode } from './barcode';
 import { LiveRecognizer, type CatalogHit, type RecognitionCapabilities } from './liveRecognition';
 import { LiveScanController, type GrabbedFrame, type LiveScanUpdate } from './liveScanController';
-import { DUPLICATE_COOLDOWN_MS, RECOGNITION_EVIDENCE_REQUIRED } from './liveScanSession';
+import { RECOGNITION_EVIDENCE_REQUIRED } from './liveScanSession';
 
 /** A synthetic frame that `scoreRgbaFrame` grades as usable (bars give real edges). */
 const usableFrame = (at: number, contrast = 130): GrabbedFrame => {
@@ -75,8 +75,6 @@ describe('a single uninterrupted sweep collects three products', () => {
     };
 
     // Fresh produce has no barcode, so it must earn its evidence over several frames.
-    // The sweep is kept inside DUPLICATE_COOLDOWN_MS on purpose: past it, a second banana
-    // is a legitimate second product, not a bug.
     for (let frame = 0; frame < RECOGNITION_EVIDENCE_REQUIRED; frame += 1) await tick(1_300);
     expect(controller.accepted.map((p) => p.label)).toEqual(['Banan']);
 
@@ -98,8 +96,8 @@ describe('a single uninterrupted sweep collects three products', () => {
     expect(new Set(controller.accepted.map((p) => p.identityKey)).size).toBe(3);
     for (const product of controller.accepted)
       expect(controller.captureFor(product.identityKey)).not.toBeNull();
-    // The whole sweep ran inside one cooldown, so nothing was re-collected by expiry.
-    expect(clock).toBeLessThan(DUPLICATE_COOLDOWN_MS);
+    // Suppression lasts the whole sweep, so elapsed time cannot re-collect anything.
+    expect(clock).toBeGreaterThan(0);
   });
 
   it('a removed product can be collected again in the same sweep', async () => {
@@ -151,7 +149,7 @@ describe('"Skanuj dalej" does not lose what was already collected', () => {
     resumed.start();
     expect(resumed.accepted.map((p) => p.label)).toEqual(['OREO Original 154 g']);
     expect(resumed.captureFor('prod-oreo')).not.toBeNull();
-    // And the cooldown came with it, so the same product is not collected twice.
+    // And the suppression came with it, so the same product is not collected twice.
     resumed.onFrame();
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(resumed.accepted).toHaveLength(1);

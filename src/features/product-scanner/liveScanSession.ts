@@ -113,8 +113,18 @@ export const RECOGNITION_CONFIDENCE_FLOOR = 0.7;
  * `liveRecognition.test.ts` pins this against the throttle so the two cannot drift apart.
  */
 export const EVIDENCE_WINDOW_MS = 4_000;
-/** How long an accepted product stays suppressed while it is still in view. */
-export const DUPLICATE_COOLDOWN_MS = 8_000;
+/**
+ * A product already in the basket is suppressed for the REST OF THE SWEEP, not for a
+ * few seconds.
+ *
+ * The reason is downstream: a recipe cannot hold the same ingredient twice —
+ * `recipeStore.addIngredient` rejects the second one as a duplicate. So a customer who
+ * passes the milk again while hunting for something else would have got a second review
+ * row that was then silently dropped on the way into the recipe. Removing a product from
+ * the review list is what makes it collectable again, and that is deliberate: it is the
+ * one moment the customer has actually said they did not want it.
+ */
+export const DUPLICATE_SUPPRESSION = 'for_the_whole_sweep' as const;
 
 const EMPTY_COUNTERS: Record<ScanRoute, number> = {
   LOCAL_BARCODE: 0,
@@ -161,9 +171,8 @@ export function observeFrame(
     return { state, event: { kind: 'searching' } };
   }
 
-  // Still in the basket and still in view: say nothing, add nothing.
-  const acceptedAt = state.acceptedAt[identityKey];
-  if (acceptedAt !== undefined && observation.at - acceptedAt < DUPLICATE_COOLDOWN_MS) {
+  // Already in the basket: say nothing, add nothing — however long ago it was collected.
+  if (state.acceptedAt[identityKey] !== undefined) {
     return { state, event: { kind: 'duplicate_suppressed', identityKey } };
   }
 
