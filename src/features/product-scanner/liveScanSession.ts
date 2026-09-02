@@ -100,8 +100,19 @@ export const BARCODE_EVIDENCE_REQUIRED = 1;
 export const RECOGNITION_EVIDENCE_REQUIRED = 3;
 /** Below this a recognition observation is not even counted as evidence. */
 export const RECOGNITION_CONFIDENCE_FLOOR = 0.7;
-/** Evidence older than this no longer supports acceptance — the phone has moved on. */
-export const EVIDENCE_WINDOW_MS = 2_500;
+/**
+ * Evidence older than this no longer supports acceptance — the phone has moved on.
+ *
+ * The window has to be wide enough to actually HOLD the evidence it demands. The paid
+ * recognition rung is rate-limited, so three agreeing observations are spread across
+ * roughly `2 x VISION_MIN_INTERVAL_MS`; at 2.5 s that fitted only if every single call
+ * landed on time, and one skipped frame meant a fresh product could never be confirmed at
+ * all. The slack is the point. Evidence is keyed per identity, so a wider window cannot
+ * blend two different products — it only tolerates an irregular camera.
+ *
+ * `liveRecognition.test.ts` pins this against the throttle so the two cannot drift apart.
+ */
+export const EVIDENCE_WINDOW_MS = 4_000;
 /** How long an accepted product stays suppressed while it is still in view. */
 export const DUPLICATE_COOLDOWN_MS = 8_000;
 
