@@ -447,7 +447,7 @@ function ProfileContent({
           costsOverride={finalCostProduct?.finalCosts}
         />
         <ProfileDirectionAxes result={frozenNutritionResult} className="min-w-0" />
-        <WorkbenchSettingsLine actualBatchG={result.total_batch_g} className="min-w-0" compact />
+        <WorkbenchSettingsLine className="min-w-0" compact />
       </div>
       {/* OWNER FROZEN PRO VISUAL: WIEDZA is a BAND like every other section —
           its own eyebrow closed by a hairline, then one quiet row. It used to

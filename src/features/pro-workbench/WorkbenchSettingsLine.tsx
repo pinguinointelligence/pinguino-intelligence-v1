@@ -9,7 +9,6 @@ import {
   useRecipeStore,
 } from '@/stores/recipeStore';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
-import { BATCH_UNITS, fromGrams, toGrams, type BatchUnit } from '@/lib/units';
 import { temperatureForMode } from '@/features/customer-flow/servingMode';
 import type { VisibleProductType } from '@/features/studio/productType';
 import {
@@ -42,7 +41,6 @@ import {
   FORMULATION_STRATEGIES,
   type FormulationStrategy,
 } from '@/features/formulation-strategy/strategy';
-import { DeferredNumberInput } from '@/components/forms/DeferredNumberInput';
 import {
   isNewRecipeServingModeId,
   starterServingModeForTemperature,
@@ -74,15 +72,12 @@ const SERVING_OPTIONS: readonly { id: string; label: string }[] = [
    the right edge. Mobile keeps a 44 px touch target. */
 const compactSelect =
   'h-11 min-w-0 appearance-none rounded-[9px] border border-[var(--g-line)] bg-white px-[11px] text-[13px] text-[var(--g-ink)] shadow-none transition-colors hover:border-ink/35 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#f58a07] lg:h-[46px] lg:text-[11px] lg:font-bold';
-const compactFinalSettingsCard =
-  'profile-settings-final-card relative min-w-0 rounded-[9px] border px-[11px] py-[6px]';
 const compactFinalSettingsLabel =
   'block text-[9px] leading-[10px] font-normal text-[var(--g-text-field-label)]';
 /* The two Settings helper lines are not part of the approved 46 px field, so
    they travel in the control's accessible description instead of taking a
    third row (owner §13). No information is removed. */
 const compactSettingsHelper = 'sr-only';
-const compactFinalSettingsControl = 'h-11 lg:h-[29px]';
 /* The three non-blocking actions under the above-recommendation warning. Quiet
    white cells in the Settings palette — an advisory, never a primary control. */
 const aboveActionClass =
@@ -146,12 +141,14 @@ function LabeledSelect<T extends string>({
   );
 }
 
+/* The actual-base-mass prop is gone with the fields it fed: the `Baza
+   receptury` readout and the target-vs-base mismatch marker. The live base mass
+   is the LEFT column's authority (`Baza lodowa`) and is no longer mirrored
+   here. */
 export function WorkbenchSettingsLine({
-  actualBatchG,
   className,
   compact = false,
 }: {
-  actualBatchG: number;
   className?: string;
   compact?: boolean;
 }) {
@@ -177,7 +174,6 @@ export function WorkbenchSettingsLine({
   const [defaultsStatus, setDefaultsStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>(
     'idle',
   );
-  const [unit, setUnit] = useState<BatchUnit>('g');
   const [pendingBaseProfile, setPendingBaseProfile] = useState<VisibleProductType | null>(null);
   const [customMachineOpen, setCustomMachineOpen] = useState(false);
   /* The user's answer to the above-recommendation warning, pinned to the exact
@@ -266,8 +262,6 @@ export function WorkbenchSettingsLine({
   const activeServing = snapshot.servingModeId;
   const customSelected = store.machineKind === 'home' && store.machineId?.startsWith('custom-');
   const machineValue = customSelected ? 'custom' : (selectedHome?.id ?? 'professional');
-  const batchDisplay = fromGrams(store.target_batch_grams, unit, store.category);
-  const batchMismatch = Math.abs(actualBatchG - store.target_batch_grams) > 0.1;
   const capacity = store.machineKind === 'home' ? store.machine_capacity_grams : null;
   const cyclePlan = capacity ? planContainerSplit(store.target_batch_grams, capacity) : null;
 
@@ -640,69 +634,16 @@ export function WorkbenchSettingsLine({
              three-row sub-grid (label / control / helper) is gone: it made the
              last row taller than the two above it. */
           <>
-            <div
-              className={cn(
-                compactFinalSettingsCard,
-                'order-5 lg:flex lg:h-[46px] lg:flex-col lg:justify-center lg:py-0',
-                batchMismatch
-                  ? 'border-gold/35 bg-education-ivory/55'
-                  : 'border-[var(--g-line)] bg-white',
-              )}
-              data-testid="profile-batch-combined"
-              data-settings-cell="batch"
-              data-settings-final-card="batch"
-              title="Baza lodowa bez toppingu"
-            >
-              <span className={compactFinalSettingsLabel} data-settings-label="batch">
-                Partia docelowa
-              </span>
-              {/* ONE editable batch field (owner UX correction). The recipe's
-                  current Base is read-only information and lives under the
-                  grid — never a second box that reads as an input. */}
-              <div
-                className={cn(
-                  compactFinalSettingsControl,
-                  'flex min-w-0 items-center justify-end gap-1.5',
-                )}
-                data-settings-control="batch"
-              >
-                <DeferredNumberInput
-                  className={cn(
-                    compactSelect,
-                    'h-7 w-20 rounded-[6px] border-transparent bg-transparent px-1 text-right font-mono font-bold tabular-nums lg:h-[29px] lg:text-[14px]',
-                  )}
-                  value={
-                    Number.isFinite(batchDisplay)
-                      ? Number(batchDisplay.toFixed(unit === 'g' ? 0 : 3))
-                      : 0
-                  }
-                  min={fromGrams(1, unit, store.category)}
-                  decimals={unit === 'g' ? 0 : 3}
-                  data-testid="workbench-batch"
-                  aria-label="Docelowa partia"
-                  title="Baza lodowa bez toppingu"
-                  onCommit={(next) => changeBatch(toGrams(next, unit, store.category))}
-                />
-                {/* The unit stays a real control (g / kg / l is genuine
-                    functionality) but wears the preview's plain unit mark. */}
-                <select
-                  className={cn(
-                    compactSelect,
-                    'h-7 w-auto border-transparent bg-transparent px-0 text-[var(--g-ink)] lg:h-[29px] lg:text-[11px]',
-                  )}
-                  value={unit}
-                  aria-label="Jednostka partii"
-                  onChange={(event) => setUnit(event.currentTarget.value as BatchUnit)}
-                >
-                  {BATCH_UNITS.map((batchUnit) => (
-                    <option key={batchUnit}>{batchUnit}</option>
-                  ))}
-                </select>
-              </div>
-              <p className={compactSettingsHelper} data-settings-helper="batch">
-                Baza lodowa bez toppingu
-              </p>
-            </div>
+            {/* OWNER AUTHORITY 2026-09-02 (final Settings contract). `Partia
+                docelowa` is REMOVED from the right Settings surface, and the
+                owner's instruction is explicit that it must NOT be recreated
+                anywhere else — the main recipe surface keeps only the
+                informational mass summary (Baza lodowa / Toppingi / Produkt
+                finalny). Recorded plainly because it is load-bearing: after
+                this there is NO user-facing control for the target batch. It
+                is still authored by the machine and product-type authorities
+                and by the feasibility remedy, and every store path is
+                untouched — only the field is gone. */}
 
             <div
               className="profile-settings-final-card relative order-2 min-w-0"
@@ -753,43 +694,6 @@ export function WorkbenchSettingsLine({
           </>
         ) : (
           <>
-            <div
-              className={cn(
-                'grid grid-cols-[6.8rem_minmax(0,1fr)] items-center gap-2 rounded-[12px] border px-3 py-2',
-                batchMismatch ? 'border-gold/35 bg-education-ivory/55' : 'border-ink/10 bg-white',
-              )}
-              data-testid="profile-batch-combined"
-              data-settings-cell="batch"
-            >
-              <span className="text-xs font-medium text-stone-600">Partia docelowa</span>
-              {/* ONE editable batch field — see the compact branch. */}
-              <div className="flex min-w-0 items-center justify-end gap-1.5">
-                <DeferredNumberInput
-                  className={cn(compactSelect, 'w-20 text-right font-mono tabular-nums')}
-                  value={
-                    Number.isFinite(batchDisplay)
-                      ? Number(batchDisplay.toFixed(unit === 'g' ? 0 : 3))
-                      : 0
-                  }
-                  min={fromGrams(1, unit, store.category)}
-                  decimals={unit === 'g' ? 0 : 3}
-                  data-testid="workbench-batch"
-                  aria-label="Docelowa partia"
-                  onCommit={(next) => changeBatch(toGrams(next, unit, store.category))}
-                />
-                <select
-                  className={cn(compactSelect, 'w-16')}
-                  value={unit}
-                  aria-label="Jednostka partii"
-                  onChange={(event) => setUnit(event.currentTarget.value as BatchUnit)}
-                >
-                  {BATCH_UNITS.map((batchUnit) => (
-                    <option key={batchUnit}>{batchUnit}</option>
-                  ))}
-                </select>
-              </div>
-              <p className="col-span-full text-xs text-stone-600">Baza lodowa bez toppingu</p>
-            </div>
 
             <div
               className="rounded-[12px] border border-ink/8 bg-[var(--g-ivory)]/70 p-1.5"

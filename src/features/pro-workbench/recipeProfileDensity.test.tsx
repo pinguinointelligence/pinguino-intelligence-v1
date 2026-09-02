@@ -54,12 +54,14 @@ describe('Recipe profile visual density contract', () => {
     // machine/serving, then batch/mode. Batch and Tryb are ordinary cells of
     // the same grid — never a separate three-row sub-grid pinned to row 1.
     expect(settings).toContain('profile-settings-grid grid grid-cols-2 items-stretch gap-2');
-    expect(settings.match(/data-settings-final-card=/g)).toHaveLength(2);
-    expect(settings.match(/data-settings-label=/g)).toHaveLength(2);
-    expect(settings.match(/data-settings-control=/g)).toHaveLength(2);
-    expect(settings).toContain(
-      "'order-5 lg:flex lg:h-[46px] lg:flex-col lg:justify-center lg:py-0'",
-    );
+    // Was 2 — batch card + strategy card. The batch card is removed with its
+    // field (owner authority 2026-09-02), so the mode card is the only one left.
+    expect(settings.match(/data-settings-final-card=/g)).toHaveLength(1);
+    expect(settings.match(/data-settings-label=/g)).toHaveLength(1);
+    expect(settings.match(/data-settings-control=/g)).toHaveLength(1);
+    // SUPERSEDED, owner authority 2026-09-02 (final Settings contract): the
+    // order-5 cell was the target-batch card and is removed with the field.
+    expect(settings).not.toContain('order-5');
     // SUPERSEDED, owner authority 2026-09-02 (approved desktop PDF §5): the
     // sixth cell was the duplicated `Baza receptury` readout and is REMOVED.
     // The grid is now the four approved fields plus the batch row; nothing may
