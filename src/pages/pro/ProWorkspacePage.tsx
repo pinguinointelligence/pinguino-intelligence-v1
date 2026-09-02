@@ -530,7 +530,16 @@ export function ProWorkspacePage() {
           // ONE-SCREEN workbench (recipe + monitor): no page heading, no tab row — the
           // viewport belongs to the edit loop; every destination lives in the hamburger.
           <div
-            className="xl:mx-auto xl:flex xl:h-full xl:min-h-0 xl:w-[calc(100%-var(--pro-page-gutter))] xl:max-w-[1776px] xl:flex-col"
+            /* OWNER 2026-09-02: the workbench stopped at the 1776 px page
+               WORKSPACE, but Shop's content sits inside `APP_PAGE_CANVAS`
+               (max-w-1280, mx-auto) nested within that same workspace — so on a
+               wide screen Shop had real margins and PRO ran nearly edge to edge.
+               PRO cannot take 1280: the ingredient row needs 814 px in the left
+               column, plus the 500 px display column and the 12 px split, so the
+               workbench floor is 1326 px. It is capped instead at 1440 — the
+               width the owner approved — which centres it on anything wider and
+               changes nothing at or below it. */
+            className="xl:mx-auto xl:flex xl:h-full xl:min-h-0 xl:w-[calc(100%-var(--pro-page-gutter))] xl:max-w-[1440px] xl:flex-col"
             data-testid={`pro-panel-${activeTab}`}
           >
             {activeLibraryHandoff.state === 'loading' ? (
