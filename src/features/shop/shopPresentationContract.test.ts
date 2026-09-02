@@ -190,8 +190,9 @@ describe('shop C3 · the Shop declares no header of its own', () => {
     // Shop names NO active view: Sklep is neither HOME nor PRO. The explicit
     // `activeView={null}` is the form `destinationNeutralView` pins.
     expect(page).toContain('headerActions={<HomeProSwitch');
+    // `destinationNeutralView` owns the neutrality rule and strips comments before
+    // matching; this only pins that the Shop reaches the shell through the slot.
     expect(page).toContain('activeView={null}');
-    expect(page).not.toMatch(/activeView=["']home["']/);
     // The basket is a Shop utility BELOW that row, never a header control.
     expect(page).toContain('shop-cart-link');
     const surface = read('components', 'shared', 'DestinationSurface.tsx');
