@@ -125,6 +125,18 @@ export interface WebhookEventFacts {
 }
 
 /** Thrown when the effect cannot be applied YET — the retry worker re-runs it. */
+/**
+ * A refusal that RETRYING CANNOT FIX. Two identities for one Stripe customer
+ * is a fact about the data, not a transient condition, so it must not be
+ * parked as retryable — it needs a human.
+ */
+export class EffectConflictError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'EffectConflictError';
+  }
+}
+
 export class RetryableEffectError extends Error {
   constructor(message: string) {
     super(message);
@@ -260,10 +272,99 @@ async function applyCheckoutCompletion(deps: DispatchDeps, event: WebhookEventFa
   return null;
 }
 
+/** A Stripe metadata value is only usable as a user id if it IS one. */
+const asUserId = (value: unknown): string | null =>
+  typeof value === 'string' &&
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value.trim())
+    ? value.trim().toLowerCase()
+    : null;
+
+/**
+ * WHO owns this subscription, without depending on event ORDER.
+ *
+ * `checkout.session.completed` and `customer.subscription.created` are
+ * delivered ~50 ms apart and processed concurrently, so this writer used to
+ * lose a coin flip: it needed the `billing_customers` mapping that checkout
+ * writes, and threw `customer_not_mapped_yet` when it ran first. That failure
+ * parked the event in `received` for a retry worker that DOES NOT EXIST, so a
+ * lost race stranded the payment for ever. GROW-010 caught it on PRO annual;
+ * nothing about it was PRO-annual specific.
+ *
+ * `create-checkout-session` already stamps the closed correlation payload onto
+ * `subscription_data.metadata`, so the answer is inside the object this writer
+ * ALREADY refetches from Stripe. The mapping stays canonical where it exists;
+ * the metadata is a strictly-validated fallback, never an override:
+ *
+ *  - the mapping wins whenever it exists;
+ *  - a mapping that disagrees with the metadata FAILS CLOSED — two identities
+ *    for one customer is never something to guess past;
+ *  - the value must be a real UUID, and it arrives on the Stripe-signed event;
+ *  - a missing or malformed id keeps the original retryable refusal, so an
+ *    unknown user is still never invented;
+ *  - the mapping is then written back conflict-safely, which is what makes the
+ *    NEXT event in the race healthy instead of merely this one.
+ *
+ * Correlation only. Plan authority stays the price → catalog lookup in the
+ * caller; `pi_offer_key` never decides what anybody is entitled to.
+ */
+async function resolveSubscriptionUserId(
+  deps: DispatchDeps,
+  snapshot: { customerId: string | null; metadataUserId: string | null },
+): Promise<string> {
+  const customerId = snapshot.customerId as string;
+  const { data: mappingRow, error: mappingError } = await deps.db
+    .from('billing_customers')
+    .select('user_id')
+    .eq('stripe_customer_id', customerId)
+    .maybeSingle();
+  throwOnDbError(mappingError, 'billing_customers lookup');
+  const mapped = mappingRow && typeof mappingRow.user_id === 'string' ? mappingRow.user_id : null;
+  const claimed = asUserId(snapshot.metadataUserId);
+
+  if (mapped) {
+    if (claimed && claimed !== mapped.toLowerCase()) {
+      throw new EffectConflictError(`customer_user_conflict:${customerId}`);
+    }
+    return mapped;
+  }
+  if (!claimed) throw new RetryableEffectError('customer_not_mapped_yet');
+
+  // Heal the mapping so every LATER event is healthy too. ignoreDuplicates
+  // keeps a mapping written concurrently by checkout completion authoritative:
+  // this write never clobbers, it only fills a gap.
+  const { error: healError } = await deps.db
+    .from('billing_customers')
+    .upsert(
+      { user_id: claimed, stripe_customer_id: customerId } as unknown as Row,
+      { onConflict: 'stripe_customer_id', ignoreDuplicates: true },
+    );
+  if (healError) {
+    // Losing this race is success, not failure — it means the mapping exists
+    // now. Re-read decides, so a genuine conflict is still caught.
+    const { data: recheck } = await deps.db
+      .from('billing_customers')
+      .select('user_id')
+      .eq('stripe_customer_id', customerId)
+      .maybeSingle();
+    const settled = recheck && typeof recheck.user_id === 'string' ? recheck.user_id : null;
+    if (!settled) throw new RetryableEffectError('customer_not_mapped_yet');
+    if (settled.toLowerCase() !== claimed) {
+      throw new EffectConflictError(`customer_user_conflict:${customerId}`);
+    }
+    return settled;
+  }
+  return claimed;
+}
+
 // ── subscription state sync → customer_subscriptions + entitlement mirror ────
 
-async function applySubscriptionSync(deps: DispatchDeps, event: WebhookEventFacts): Promise<string | null> {
-  const objectId = typeof event.object.id === 'string' ? event.object.id : null;
+async function applySubscriptionSync(
+  deps: DispatchDeps,
+  event: WebhookEventFacts,
+  overrideSubscriptionId?: string,
+): Promise<string | null> {
+  const objectId =
+    overrideSubscriptionId ?? (typeof event.object.id === 'string' ? event.object.id : null);
   if (!objectId) return 'skipped_no_subscription_id';
   // requiresRefetch intent: payload snapshots can arrive out of order — the
   // refetched object is always current (latest-wins by construction).
@@ -281,17 +382,8 @@ async function applySubscriptionSync(deps: DispatchDeps, event: WebhookEventFact
   if (!offerRow) return `skipped_unknown_price:${snapshot.priceId}`;
   const offer = offerRow as unknown as CatalogOffer;
 
-  // The user mapping is written by checkout completion; until it lands this
-  // event is retryable (the same self-healing race the v1 webhook documents).
   if (!snapshot.customerId) return 'skipped_no_customer_reference';
-  const { data: mappingRow, error: mappingError } = await deps.db
-    .from('billing_customers')
-    .select('user_id')
-    .eq('stripe_customer_id', snapshot.customerId)
-    .maybeSingle();
-  throwOnDbError(mappingError, 'billing_customers lookup');
-  const userId = mappingRow && typeof mappingRow.user_id === 'string' ? mappingRow.user_id : null;
-  if (!userId) throw new RetryableEffectError('customer_not_mapped_yet');
+  const userId = await resolveSubscriptionUserId(deps, snapshot);
 
   const row = buildCustomerSubscriptionRow({
     eventType: event.type,
@@ -396,15 +488,29 @@ async function applyCommissionablePayment(deps: DispatchDeps, event: WebhookEven
     .eq('stripe_subscription_id', invoice.subscriptionId)
     .maybeSingle();
   throwOnDbError(cacheError, 'customer_subscriptions lookup');
-  if (!cacheRow) {
-    // The subscription_state_sync writer has not landed yet (out-of-order
-    // delivery) — retry; NEVER invent an offer resolution here.
+  let cache = cacheRow;
+  if (!cache) {
+    // The subscription writer has not landed yet. Retrying here meant nothing:
+    // a retryable failure parks the event for a worker that does not exist, so
+    // the invoice stranded with the payment already taken. Still NEVER invent
+    // an offer resolution — run the SAME subscription-sync authority for this
+    // subscription id and re-read. One writer, one catalog lookup.
+    await applySubscriptionSync(deps, event, invoice.subscriptionId);
+    const { data: healedRow, error: healedError } = await deps.db
+      .from('customer_subscriptions')
+      .select('id, user_id, offer_key, product')
+      .eq('stripe_subscription_id', invoice.subscriptionId)
+      .maybeSingle();
+    throwOnDbError(healedError, 'customer_subscriptions re-read');
+    cache = healedRow;
+  }
+  if (!cache) {
     throw new RetryableEffectError('subscription_cache_missing_for_invoice');
   }
-  const cacheId = typeof cacheRow.id === 'string' ? cacheRow.id : null;
-  const customerUserId = typeof cacheRow.user_id === 'string' ? cacheRow.user_id : null;
-  const offerKey = typeof cacheRow.offer_key === 'string' ? cacheRow.offer_key : null;
-  const product = typeof cacheRow.product === 'string' ? cacheRow.product : null;
+  const cacheId = typeof cache.id === 'string' ? cache.id : null;
+  const customerUserId = typeof cache.user_id === 'string' ? cache.user_id : null;
+  const offerKey = typeof cache.offer_key === 'string' ? cache.offer_key : null;
+  const product = typeof cache.product === 'string' ? cache.product : null;
   if (!cacheId || !customerUserId || !offerKey || !product) {
     throw new RetryableEffectError('subscription_cache_incomplete');
   }
