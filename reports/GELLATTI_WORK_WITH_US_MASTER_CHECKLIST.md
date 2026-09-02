@@ -365,7 +365,7 @@ Copy authority: `src/copy/cooperation.ts` (PL + EN, `resolveCooperationCopy`). N
 | P-LEAD-01 | Leads | Canonical lead storage for machine / mobile / trailer / franchise | 🟢 | ✅ | ✅ | ⬜ | 🔓 | this run | `business_leads` covers all four paths. Existing franchise rows are imported idempotently; `franchise_inquiries` is left intact so the import is never the only copy | `20260831203500_business_leads.sql` NOT applied — pending in this lane |
 | P-LEAD-02 | Leads | Each lead preserves id, source, route, type, model/format, configurator answers, country/city, contact, timestamp, status, assignee, notes, history | 🟢 | ✅ | ✅ | ⬜ | 🔓 | this run | All 15 fields present. Sequence-backed reference (`MCH-2026-00142`); configurator answers kept verbatim as jsonb; history is an append-only event log | `20260831203500_business_leads.sql` NOT applied — pending in this lane |
 | P-LEAD-03 | Leads | Statuses NEW / CONTACTED / QUALIFIED / QUOTED / WON / LOST | 🟢 | ✅ | ✅ | ⬜ | 🔓 | this run | All six, asserted identical in SQL and TS. A legacy `closed` row maps to `qualified` rather than `lost`, because `lost` would assert an outcome nobody recorded | `20260831203500_business_leads.sql` NOT applied — pending in this lane |
-| P-LEAD-04 | Leads | Admin: see all, filter by type/status, open details, see configuration, add notes, update status, audit history | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | this run | `AdminBusinessLeadsSection` — filter by path, humanised configurator answers, inline notes, status moves, expandable history. A settled lead offers no forward move, so reopening is deliberate | Served QA after migration |
+| P-LEAD-04 | Leads | Admin: see all, filter by type/status, open details, see configuration, add notes, update status, audit history | 🟢 | ✅ | ✅ | ⬜ | 🔓 | this run | `AdminBusinessLeadsSection` — filter by path, humanised configurator answers, inline notes, status moves, expandable history. A settled lead offers no forward move, so reopening is deliberate | Served QA after migration |
 | P-LEAD-05 | Leads | Customer gets submission confirmation | 🟢 | ✅ | ✅ | ⬜ | 🔓 | — | — | Verify per route |
 | P-LEAD-06 | Leads | Admin notified at `info@gellatti.com` via the canonical notification system | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | **UNBLOCKED by owner correction §1–§3.** Subjects must use the §2 taxonomy | After EMAIL-01..06 |
 
@@ -688,6 +688,8 @@ I recommend deciding this together with the business-leads gate rather than patc
 href, because option 1 makes the copy lie in a quieter way.
 
 ### F-2 · `/shop` tells visitors they are inside HOME — #77's lane · **P2**
+
+> **CLOSED 2026-09-02** by #87 — `activeView={null}`, served-verified on `454a05e1`.
 `GlobalDestinationPages.tsx:104` passes `activeView="home"`. Served proof on
 `staging.pinguinoai.com/shop`: HOME renders `aria-selected="true"`.
 
@@ -700,6 +702,9 @@ Proposed correction: `activeView={null}` on that one line, matching the neutral 
 will not edit another lane's file to satisfy my reading of a rule.
 
 ### F-3 · The lint gate cannot see a duplicate JSX prop · **P2**
+
+> **DEFERRED 2026-09-02 by owner decision** — recorded as tech debt, `eslint-plugin-react`
+> NOT added. The behavioural guard stays.
 This is how the header broke. Merging #77 produced an `AppShell` call carrying `actions`
 **twice** — mine and #77's. Git reported no conflict because neither edit overlapped. In
 JSX the later prop wins, so every Work With Us route rendered no HOME | PRO switch at all,
@@ -786,3 +791,87 @@ or a privacy link is an owner decision.
 
 **OWNER QA remains ⬜ on every row.** P-LEAD-04 stays Served ⬜ because the admin UI was not
 exercised, and P-LEAD-06 is untouched because email dispatch is not deployed.
+
+---
+
+## OWNER DECISIONS AFTER F-1 — OUTCOMES (2026-09-02)
+
+### §1 · Consent / privacy — NO CHANGE MADE, and here is why
+The owner authorised one quiet informational line **only if a canonical Privacy Policy
+destination already exists**. It does not.
+
+Searched exhaustively: the router defines **66 routes and none is legal** — no
+`/privacy`, `/prywatnosc`, `/polityka`, `/regulamin`, `/terms`, `/legal`. No static legal page
+is shipped in `public/`. No footer or shared component links to one, and no copy file mentions
+a privacy policy. The only repo hits for "privacy" are an unrelated code comment about
+storage-quota failures and a note that regulatory label wording is out of scope.
+
+So the instruction's own fallback applies: **do not invent one in this lane.** The form is
+left functional and unchanged — no checkbox, no column, no acceptance state, and no line
+pointing at a page that does not exist. When a canonical Privacy Policy route lands, the
+line is a one-line addition under the submit action.
+
+### §2 · QA leads — LEFT AS DOCUMENTED FIXTURES
+No canonical cleanup path exists. The business-leads authority exposes exactly five
+functions — submit, admin list, admin events, admin update, reference minting — and
+**none deletes**. There are no `INSERT`/`UPDATE`/`DELETE` grants on either table for `anon`
+or `authenticated`; every write goes through a function, and the event log is append-only by
+design.
+
+Adding delete functionality merely to tidy two rows would compromise that authority, so per
+the owner's instruction it was **not** added. Both leads stay, recorded here as staging QA
+fixtures:
+
+| Reference | Type | Source route | Contact | Note |
+| --- | --- | --- | --- | --- |
+| `TRL-2026-00001` | trailer | `/trailer` | `qa-lead-trailer@gellatti.invalid` | submitted while a `pro@pro.com` session was present |
+| `MCH-2026-00002` | machine | `/machines` | `qa-lead-anon@gellatti.invalid` | submitted signed out — `user_id NULL` |
+
+Both use the reserved `.invalid` domain, so neither can reach a real mailbox.
+
+### §3 · P-LEAD-04 — ADMIN SERVED QA: PASS
+Exercised the existing Admin UI at `/admin/leads` on canonical staging as
+`admin@admin.com` (confirmed to hold the `PARTNER` permission the functions require). Only
+existing canonical operations were used; nothing was invented, and no lead was mutated.
+
+| Proved | Evidence |
+| --- | --- |
+| Both QA leads visible | listed under „Zapytania biznesowe" |
+| Correct lead type | `MASZYNY` and `PRZYCZEPA GELLATTI` |
+| Correct source route | `SKĄD /machines` and `SKĄD /trailer` |
+| Status | `NOWE` on both |
+| Reference | `NUMER MCH-2026-00002`, `NUMER TRL-2026-00001` |
+| Contact data | name, e-mail, phone `+48 600 000 000`, `Kraków` / `Gdańsk, Polska`, received timestamps |
+| Event / audit history | „Historia (1)" opens to „1.09.2026, 09:08 Zapytanie wpłynęło." — the `created` event in readable Polish, not the internal code |
+| Type filters | Maszyny → only MCH · Przyczepa Gellatti → only TRL · Wszystkie → all three |
+
+The signed-out `/admin/leads` route refuses with „Ta sekcja jest tylko dla administratorów",
+so the UI gate matches the function gate.
+
+Incidental confirmation: the imported legacy row `FRN-LEGACY-e604fb` shows
+`ZAKWALIFIKOWANE`, exactly the documented `closed → qualified` mapping.
+
+**No defect found in the Admin UI**, so nothing was changed there.
+
+### §4 · F-2 — CLOSED
+`/shop` served HOME with `aria-selected="true"`. Now `activeView={null}`: HOME and PRO both
+visible, **neither active** (all four segments `aria-selected="false"`, 0 px overflow),
+verified on `454a05e1`. `/home` still marks HOME active, so the rule is scoped to
+destinations and has not erased the switch's job. No Shop redesign, no Stripe change, no
+global-header fork.
+
+### §5 · F-3 — TECH DEBT, DEFERRED BY OWNER
+`eslint-plugin-react` was **not** added. The lint gate still cannot see a duplicate JSX prop —
+calibrated: a planted unused variable exits 1, the duplicate prop exits 0.
+
+What stands in its place is behavioural, not lint: `destinationGlobalHeader.test.tsx` mounts
+the surface and fails if the switch stops rendering, stops being neutral, or stops being a
+mutually-exclusive responsive pair; and the `headerActions` default makes that failure mode
+structurally impossible on this surface rather than merely detected. Recorded as debt: the
+gap is real and still open for any OTHER element in the app.
+
+### §6 · P-LEAD-06 — email delivery remains DEFERRED
+Not built and not claimed. Email-job persistence and actual provider delivery stay separate
+states.
+
+**OWNER QA remains ⬜ on every row.**
