@@ -46,7 +46,10 @@ describe('HOME creator copy', () => {
     expect(HOME_CREATOR_COPY_BY_LOCALE.en.intent.question).toBe(
       'What flavour are we making today?',
     );
-    expect(HOME_CREATOR_COPY_BY_LOCALE.en.intent.cta).toBe('Create your recipe');
+    // SUPERSEDED BY OWNER — 2026-09-02: the CTA now names what Gellatti does with the
+    // idea, rather than asking the customer to create the recipe themselves.
+    // Was: 'Create your recipe' / „Stwórz swoją recepturę".
+    expect(HOME_CREATOR_COPY_BY_LOCALE.en.intent.cta).toBe('Turn the idea into a recipe');
   });
 
   it('never shows a fabricated gram value in the masked state (§54)', () => {
