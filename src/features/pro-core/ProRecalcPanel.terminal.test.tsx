@@ -408,12 +408,20 @@ describe('PI visible terminal contract', () => {
     });
     await renderPanel();
 
+    // CROWN-OFF LOCKED ANCHOR (owner, 2026-09-02). The customer is told the
+    // requested amount and the maximum we can actually use, and is offered the
+    // one-click acceptance of it. Internal technical metrics („Udział lodu",
+    // NPAC, water, …) were REMOVED from this customer surface by owner rule and
+    // now live only on the Pro/diagnostic renderer; `Wróć do receptury` reads as
+    // the decline it always was.
     expect(document.body.textContent).toContain(line.ingredient.name);
-    expect(document.body.textContent).toContain('900 g');
-    expect(document.body.textContent).toContain('639 g');
-    expect(document.body.textContent).toContain('Udział lodu');
+    expect(document.body.textContent).toContain('900 g nie jest możliwe w tej recepturze.');
+    expect(document.body.textContent).toContain('Maksymalnie możemy użyć 639 g.');
+    expect(document.body.textContent).not.toContain('Udział lodu');
+    // PRIMARY: accept the advisory maximum. SECONDARY: unlock, or decline.
+    expect(document.body.textContent).toContain('Ustaw 639 g');
     expect(document.body.textContent).toContain('Odblokuj i pokaż podgląd');
-    expect(document.body.textContent).toContain('Wróć do receptury');
+    expect(document.body.textContent).toContain('Zostaw bez zmian');
   });
 
   it('releases only the chosen quantity lock before rerunning PI', async () => {
