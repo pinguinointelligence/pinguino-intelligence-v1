@@ -190,7 +190,11 @@ export function removeAccepted(
   state: LiveScanSessionState,
   identityKey: string,
 ): LiveScanSessionState {
-  const { [identityKey]: _removed, ...acceptedAt } = state.acceptedAt;
+  // Dropping the cooldown entry is the point: a removed product must be scannable
+  // again at once, not after the suppression window.
+  const acceptedAt = Object.fromEntries(
+    Object.entries(state.acceptedAt).filter(([key]) => key !== identityKey),
+  );
   return {
     ...state,
     accepted: state.accepted.filter((p) => p.identityKey !== identityKey),
