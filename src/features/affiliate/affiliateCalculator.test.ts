@@ -140,3 +140,55 @@ describe('affiliate calculator', () => {
     });
   });
 });
+
+describe('Starter Pack — a one-off, not a thirteenth month', () => {
+  it('adds packs × rate to the year exactly once', () => {
+    const base = calculateAffiliateCommission('standard', { homeMonthly: 10 });
+    const withPacks = calculateAffiliateCommission(
+      'standard',
+      { homeMonthly: 10 },
+      { packs: 4, rateCents: 900 },
+    );
+    expect(withPacks.fromStarterPacksCents).toBe(3_600);
+    // The year grows by the packs themselves — NOT by twelve times the packs.
+    expect(withPacks.totalPerYearCents).toBe(base.totalPerYearCents + 3_600);
+  });
+
+  it('feeds the monthly average through the yearly total', () => {
+    const estimate = calculateAffiliateCommission('standard', {}, { packs: 12, rateCents: 1_900 });
+    expect(estimate.totalPerYearCents).toBe(22_800);
+    expect(estimate.averagePerMonthCents).toBe(1_900);
+  });
+
+  it('contributes nothing when absent, so existing callers are unchanged', () => {
+    const withoutArg = calculateAffiliateCommission('gold', { proMonthly: 3 });
+    const withEmpty = calculateAffiliateCommission('gold', { proMonthly: 3 }, {});
+    const withZero = calculateAffiliateCommission('gold', { proMonthly: 3 }, { packs: 0, rateCents: 1_900 });
+    expect(withoutArg.fromStarterPacksCents).toBe(0);
+    expect(withEmpty).toEqual(withoutArg);
+    expect(withZero.totalPerYearCents).toBe(withoutArg.totalPerYearCents);
+  });
+
+  it('refuses a negative or nonsense pack count and rate', () => {
+    for (const packs of [-5, Number.NaN, 'abc', null, undefined]) {
+      expect(
+        calculateAffiliateCommission('standard', {}, { packs, rateCents: 900 })
+          .fromStarterPacksCents,
+      ).toBe(0);
+    }
+    expect(
+      calculateAffiliateCommission('standard', {}, { packs: 3, rateCents: -900 })
+        .fromStarterPacksCents,
+    ).toBe(0);
+  });
+
+  it('reads its rate from the CALLER, never from the frozen rate card', () => {
+    // The pack rate is owner-pending; the module must not imply one exists.
+    const standard = calculateAffiliateCommission('standard', {}, { packs: 1, rateCents: 900 });
+    const gold = calculateAffiliateCommission('standard', {}, { packs: 1, rateCents: 1_900 });
+    expect(standard.fromStarterPacksCents).toBe(900);
+    expect(gold.fromStarterPacksCents).toBe(1_900);
+    // Same subscription tier, different pack rate — they are independent.
+    expect(standard.tier).toBe(gold.tier);
+  });
+});

@@ -76,7 +76,10 @@ function Hero() {
             {c.hero.lede}
           </p>
           <div className="mt-7 flex flex-wrap items-center gap-2.5">
-            <a href="#affiliate-application" className={buttonClasses('primary', 'md')}>
+            {/* GELLATTI V2.1 §5: on a graphite/ink surface `primary` is bg-ink —
+                near-black on near-black. The authority's CTA here is the orange
+                fill, which is also the page's one action colour. */}
+            <a href="#affiliate-application" className={buttonClasses('orange', 'md')}>
               {c.cta.signedOut}
             </a>
             <a
@@ -92,13 +95,26 @@ function Hero() {
         </div>
 
         {/* The photograph IS the right half — clipped by the hero's own radius,
-            no card, no border, no overlay. It already carries its lighting. */}
-        <div className="relative min-h-[280px] bg-[#0b0c0d] sm:min-h-[360px] lg:min-h-[520px]">
+            no card, no border, no overlay across the image itself.
+            THE SEAM: the panel is --g-ink and the photograph's own black is
+            #0b0c0d, so where they met there was a visible line. The image is
+            not darkened; only its leading edge is faded into the panel colour,
+            and the edge that needs fading changes with the layout — the photo
+            sits BELOW the copy when stacked and BESIDE it from lg up. */}
+        <div className="relative min-h-[280px] bg-[var(--g-ink)] sm:min-h-[360px] lg:min-h-[520px]">
           <img
             src="/images/affiliate/hero.jpg"
             alt=""
             aria-hidden="true"
             className="absolute inset-0 h-full w-full object-cover object-center"
+          />
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 top-0 h-[76px] bg-gradient-to-b from-[var(--g-ink)] to-transparent lg:hidden"
+          />
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-y-0 left-0 hidden w-[96px] bg-gradient-to-r from-[var(--g-ink)] to-transparent lg:block"
           />
         </div>
       </div>
@@ -296,6 +312,7 @@ const FIELDS: ReadonlyArray<{ key: keyof AffiliateCustomerCounts; label: string 
 
 function Calculator() {
   const [mode, setMode] = useState<AffiliateCalculatorMode>('standard');
+  const [starterPacks, setStarterPacks] = useState(0);
   const [counts, setCounts] = useState<AffiliateCustomerCounts>({
     ...EMPTY_COUNTS,
     homeMonthly: 10,
@@ -305,8 +322,17 @@ function Calculator() {
   });
 
   const estimate = useMemo(
-    () => (isCustomTermsMode(mode) ? null : calculateAffiliateCommission(mode, counts)),
-    [mode, counts],
+    () =>
+      isCustomTermsMode(mode)
+        ? null
+        : calculateAffiliateCommission(mode, counts, {
+            packs: starterPacks,
+            // One level prices the WHOLE estimate: a Standard partner sells
+            // packs at the Standard rate, a Gold partner at the Gold rate.
+            // A second switch here only invited them to disagree.
+            rateCents: STARTER_PACK_PROPOSAL_CENTS[mode],
+          }),
+    [mode, counts, starterPacks],
   );
 
   const setField = (key: keyof AffiliateCustomerCounts, raw: string) =>
@@ -341,6 +367,41 @@ function Calculator() {
             ))}
           </div>
 
+          {/* Starter Pack sits apart from the four plan fields: it is a
+              one-off product, and its rate is a proposal rather than a frozen
+              rate — so it carries its own level switch and its own caveat. */}
+          <div className="mt-5 rounded-[14px] border border-dashed border-[var(--g-line)] px-5 py-5">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+              <label className="block sm:w-[220px]">
+                <span className="block text-[11.5px] font-semibold tracking-[0.05em] text-[var(--g-text-muted)] uppercase">
+                  {c.calculator.starterPacksLabel}
+                </span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  max={MAX_CUSTOMERS_PER_PLAN}
+                  value={starterPacks}
+                  onChange={(event) => setStarterPacks(normalizeCount(event.target.value))}
+                  className="mt-2 h-[46px] w-full rounded-full border border-[var(--g-line)] bg-white px-4 text-[15px] font-semibold text-[var(--g-ink)] tabular-nums outline-none focus-visible:border-[var(--g-orange)]"
+                />
+              </label>
+              {/* No second level switch — the rate simply follows the level
+                  chosen below, and is shown so the number is never a mystery. */}
+              <p className="pb-3 text-[12.5px] leading-[1.5] text-[var(--g-text-secondary)]">
+                {c.calculator.starterPackRateLabel}:{' '}
+                <strong className="font-semibold text-[var(--g-ink)] tabular-nums">
+                  {isCustomTermsMode(mode)
+                    ? '—'
+                    : formatEuro(STARTER_PACK_PROPOSAL_CENTS[mode])}
+                </strong>
+              </p>
+            </div>
+            <p className="mt-3 text-[11px] leading-[1.45] text-[var(--g-text-muted)]">
+              {c.rates.starterPackPending}
+            </p>
+          </div>
+
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <div
               role="group"
@@ -370,7 +431,10 @@ function Calculator() {
             </div>
             <button
               type="button"
-              onClick={() => setCounts({ ...EMPTY_COUNTS })}
+              onClick={() => {
+                setCounts({ ...EMPTY_COUNTS });
+                setStarterPacks(0);
+              }}
               className={buttonClasses('ghost', 'sm')}
             >
               {c.calculator.reset}
@@ -409,6 +473,17 @@ function Calculator() {
                     {formatEuro(estimate.fromAnnualRenewalsCents)}
                   </b>
                 </div>
+                {estimate.fromStarterPacksCents > 0 ? (
+                  <div className="flex justify-between gap-3">
+                    <span>{c.calculator.fromStarterPacks}</span>
+                    <b
+                      data-testid="affiliate-starter-pack-line"
+                      className="font-semibold text-[var(--g-ink)] tabular-nums"
+                    >
+                      {formatEuro(estimate.fromStarterPacksCents)}
+                    </b>
+                  </div>
+                ) : null}
               </div>
               <p className="mt-auto pt-6 text-[11.5px] leading-[1.5] text-[var(--g-text-muted)]">
                 {c.calculator.assumption}

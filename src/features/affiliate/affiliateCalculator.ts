@@ -66,6 +66,23 @@ export interface AffiliateCommissionEstimate {
   readonly totalPerYearCents: number;
   /** D — average monthly equivalent (C / 12, rounded to whole cents). */
   readonly averagePerMonthCents: number;
+  /**
+   * E — commission from Starter Pack sales. A one-off product, so it enters
+   * the YEAR once and is never multiplied by twelve.
+   *
+   * Its rate is passed IN rather than read from `publicRateAuthority`, and
+   * that is deliberate: no Starter Pack commission has ever been frozen in
+   * `commission_rules`, so this module must not be able to imply one exists.
+   * The caller owns the pending proposal and says so on screen.
+   */
+  readonly fromStarterPacksCents: number;
+}
+
+/** Optional Starter Pack input. Absent means it contributes nothing. */
+export interface StarterPackInput {
+  readonly packs?: unknown;
+  /** OWNER-PENDING proposal, supplied by the caller. */
+  readonly rateCents?: number;
 }
 
 /**
@@ -117,6 +134,7 @@ export function normalizeCounts(counts: RawAffiliateCounts): AffiliateCustomerCo
 export function calculateAffiliateCommission(
   tier: PublicAffiliateTier,
   rawCounts: RawAffiliateCounts,
+  starterPack: StarterPackInput = {},
 ): AffiliateCommissionEstimate {
   const counts = normalizeCounts(rawCounts);
 
@@ -131,12 +149,22 @@ export function calculateAffiliateCommission(
   const fromAnnualRenewalsCents =
     counts.homeAnnual * homeAnnualRate + counts.proAnnual * proAnnualRate;
 
-  const totalPerYearCents = monthlyFromMonthlyCents * MONTHS_PER_YEAR + fromAnnualRenewalsCents;
+  // Starter Pack is a ONE-OFF sale: it enters the year once. Multiplying it
+  // by twelve like a monthly plan would overstate the year by 11 packs.
+  const starterPackRate =
+    typeof starterPack.rateCents === 'number' && Number.isFinite(starterPack.rateCents)
+      ? Math.max(0, Math.trunc(starterPack.rateCents))
+      : 0;
+  const fromStarterPacksCents = normalizeCount(starterPack.packs) * starterPackRate;
+
+  const totalPerYearCents =
+    monthlyFromMonthlyCents * MONTHS_PER_YEAR + fromAnnualRenewalsCents + fromStarterPacksCents;
 
   return Object.freeze({
     tier,
     monthlyFromMonthlyCents,
     fromAnnualRenewalsCents,
+    fromStarterPacksCents,
     totalPerYearCents,
     // Whole cents: the page prints currency, and a fractional cent has no
     // meaning in a ledger that stores integers.

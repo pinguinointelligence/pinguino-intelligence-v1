@@ -120,6 +120,9 @@ export interface AffiliateCopy {
     readonly fromAnnualRenewals: string;
     readonly totalPerYear: string;
     readonly averagePerMonth: string;
+    readonly starterPacksLabel: string;
+    readonly starterPackRateLabel: string;
+    readonly fromStarterPacks: string;
     readonly assumption: string;
     readonly eliteState: string;
     readonly eliteCta: string;
@@ -268,7 +271,10 @@ export const affiliateCopyPl: AffiliateCopy = {
     fromAnnualRenewals: 'Prowizja z odnowień rocznych w ciągu roku',
     totalPerYear: 'Szacowana prowizja łącznie / rok',
     averagePerMonth: 'Średnio na miesiąc',
-    assumption: 'Szacunek zakłada udane kwalifikowane płatności i odnowienia.',
+    starterPacksLabel: 'Zestawy Startowe — sprzedane',
+    starterPackRateLabel: 'Stawka za Zestaw Startowy',
+    fromStarterPacks: 'Prowizja z Zestawów Startowych',
+    assumption: 'Szacunek zakłada udane kwalifikowane płatności i odnowienia. Stawka za Zestaw Startowy czeka na zatwierdzenie.',
     eliteState: 'Indywidualne warunki',
     eliteCta: 'Porozmawiajmy',
     reset: 'Wyczyść',
@@ -431,6 +437,9 @@ export const affiliateCopyEn: AffiliateCopy = {
     fromAnnualRenewals: 'Commission from annual renewals over one year',
     totalPerYear: 'Estimated total commission / year',
     averagePerMonth: 'Average per month',
+    starterPacksLabel: 'Starter Packs — sold',
+    starterPackRateLabel: 'Starter Pack rate',
+    fromStarterPacks: 'Commission from Starter Packs',
     assumption: 'The estimate assumes successful qualifying payments and renewals.',
     eliteState: 'Individual terms',
     eliteCta: "Let's talk",
