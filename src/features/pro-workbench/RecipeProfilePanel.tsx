@@ -99,7 +99,14 @@ function NutritionCostProfileGrid({
        the column. The breakdown stays exactly as expandable as it was. */
     <section className="min-w-0 border-b border-[var(--g-line)] pb-5">
       <div className="mb-[13px] flex items-center gap-2.5">
-        <h3 className="shrink-0 text-[10px] leading-[14px] font-semibold tracking-[0.16em] text-[var(--g-text-muted)] uppercase">
+        {/* WYNIK is the label whose glyph box lands on the panel's rounded,
+            clipped corner — the reason the shared 2 px eyebrow inset exists.
+            The rule and its full reasoning live in `gellatti-v2-1.css` under
+            `[data-band-eyebrow]`, so all five band labels move together. */}
+        <h3
+          data-band-eyebrow
+          className="shrink-0 text-[10px] leading-[14px] font-semibold tracking-[0.16em] text-[var(--g-text-muted)] uppercase"
+        >
           Wynik
         </h3>
         <span aria-hidden className="h-px flex-1 bg-[var(--g-line)]" />
@@ -426,7 +433,10 @@ function ProfileContent({
           the accent colour on a link that is never urgent. */}
       <section className="mt-5">
         <div className="mb-[13px] flex items-center gap-2.5">
-          <h3 className="shrink-0 text-[10px] leading-[14px] font-semibold tracking-[0.16em] text-[var(--g-text-muted)] uppercase">
+          <h3
+            data-band-eyebrow
+            className="shrink-0 text-[10px] leading-[14px] font-semibold tracking-[0.16em] text-[var(--g-text-muted)] uppercase"
+          >
             Wiedza
           </h3>
           <span aria-hidden className="h-px flex-1 bg-[var(--g-line)]" />

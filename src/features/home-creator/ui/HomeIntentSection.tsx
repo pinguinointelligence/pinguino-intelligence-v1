@@ -11,12 +11,6 @@
  */
 import { useCallback, useId, useState } from 'react';
 import { cn } from '@/lib/cn';
-import type { EngineIngredient } from '@/engine';
-import { ProductPickerPopover } from '@/features/ingredient-builder/ProductPickerPopover';
-import type { IngredientLibrary } from '@/features/ingredient-builder/ingredientLibrary';
-import type { ProductBehaviorSnapshot } from '@/features/product-intelligence/contracts';
-import type { RecipeToppingIngredient } from '@/features/recipe-composition/recipeCompositionPersistence';
-import { useHomeBehaviorContext } from '../useHomeBehaviorContext';
 import { homeCreatorCopy } from '../homeCreatorCopy';
 import { parseIntent } from '../homeIntentParsing';
 import { useHomeDraftStore, type IntentChip } from '../homeDraftStore';
@@ -32,9 +26,6 @@ export function HomeIntentSection({
   onSubmit,
   onScan,
   onChipClick,
-  library,
-  onAddIngredient,
-  onAddTopping,
   onChooseIdentity,
   resolving = false,
 }: {
@@ -42,15 +33,10 @@ export function HomeIntentSection({
   onScan: () => void;
   onChipClick?: (chip: IntentChip) => void;
   /** §23: the user picked one of the offered real products. */
-  /** The canonical picker library — refinement opens the SAME picker, never a new one. */
-  library: IngredientLibrary;
-  onAddIngredient: (ingredient: EngineIngredient, behavior?: ProductBehaviorSnapshot) => void;
-  onAddTopping: (ingredient: RecipeToppingIngredient, behavior?: ProductBehaviorSnapshot) => void;
   onChooseIdentity?: (chip: IntentChip, candidate: { id: string; name: string }) => void;
   /** §18: identity resolution runs only after `Create my recipe`. */
   resolving?: boolean;
 }) {
-  const behaviorContext = useHomeBehaviorContext();
   const [value, setValue] = useState('');
   const fieldId = useId();
   const chips = useHomeDraftStore((state) => state.chips);
@@ -58,6 +44,8 @@ export function HomeIntentSection({
   const removeChip = useHomeDraftStore((state) => state.removeChip);
   const setProfile = useHomeDraftStore((state) => state.setProfile);
   const storedProfile = useHomeDraftStore((state) => state.profile);
+  /** OWNER FROZEN §4: one idea is enough to turn the prompt into „Jeszcze coś?". */
+  const hasIdea = chips.length > 0;
 
   /** One ingestion path for all three inputs (§19). */
   const ingest = useCallback(
@@ -114,23 +102,52 @@ export function HomeIntentSection({
         <label htmlFor={fieldId} className="sr-only">
           {homeCreatorCopy.intent.inputLabel}
         </label>
-        <textarea
-          id={fieldId}
-          data-testid="home-intent-input"
-          value={value}
-          onChange={(event) => setValue(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' && !event.shiftKey) {
-              event.preventDefault();
-              commitTyped();
+        {/* OWNER FROZEN §4: the composer never moves when the first idea lands. The dot
+            keeps its slot in both states (invisible, not unmounted) and its own box
+            repeats the field's type and vertical padding, so it centres on the first
+            line without a hand-picked offset. Dot 6px + field 6px = the 12px text
+            origin the empty screen already had. */}
+        <div className="flex items-start">
+          <span className="flex items-center py-2.5 text-[16px] leading-snug">
+            <span
+              aria-hidden
+              data-testid="home-intent-dot"
+              className={cn('size-1.5 rounded-full', !hasIdea && 'invisible')}
+              style={{ background: 'var(--g-orange)' }}
+            />
+            {/* A box containing only a 6 px dot is 6 px tall, so it centred 8 px ABOVE
+                the prompt and read as a floating mark (owner, served). The zero-width
+                space gives this box a real text line of the field's own size and
+                leading, so the dot now centres on the prompt's first line and the two
+                read as one sentence. */}
+            <span aria-hidden>{'​'}</span>
+          </span>
+          <textarea
+            id={fieldId}
+            data-testid="home-intent-input"
+            value={value}
+            onChange={(event) => setValue(event.target.value)}
+            onKeyDown={(event) => {
+              // `key` is the normal identity, but some keyboards and input drivers send
+              // the commit key with an empty `key` name; `code` still identifies it.
+              // While an IME is composing, Enter confirms the composition and must not
+              // commit the idea underneath it.
+              const enter =
+                event.key === 'Enter' || event.code === 'Enter' || event.code === 'NumpadEnter';
+              if (enter && !event.shiftKey && !event.nativeEvent.isComposing) {
+                event.preventDefault();
+                commitTyped();
+              }
+            }}
+            onBlur={commitTyped}
+            rows={2}
+            placeholder={
+              hasIdea ? homeCreatorCopy.intent.anythingElse : homeCreatorCopy.intent.placeholder
             }
-          }}
-          onBlur={commitTyped}
-          rows={2}
-          placeholder={homeCreatorCopy.intent.placeholder}
-          className="w-full resize-none bg-transparent px-3 py-2.5 text-[16px] leading-snug outline-none placeholder:opacity-60"
-          style={{ color: 'var(--g-ink)' }}
-        />
+            className="flex-1 resize-none bg-transparent py-2.5 pr-3 pl-1.5 text-[16px] leading-snug outline-none placeholder:opacity-60"
+            style={{ color: 'var(--g-ink)' }}
+          />
+        </div>
         <div className="flex items-center gap-2 px-1 pb-1">
           <button
             type="button"
@@ -229,54 +246,6 @@ export function HomeIntentSection({
                   />
                 ))
             : null}
-
-          {/* OWNER FROZEN, 2026-08-31. Refinement actions appear only once an idea
-              exists — never inside the empty initial input, which stays a text field
-              plus Powiedz and Zeskanuj. They are deliberately subordinate to
-              „Stwórz swoją recepturę": the same light icon-button family as the lower
-              add controls, one size smaller, graphite on a thin border, no orange fill
-              (orange is the focus ring only). They open the canonical pickers. */}
-          <div
-            className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2"
-            data-testid="home-intent-refine"
-          >
-            <span className="inline-flex items-center gap-2" data-testid="home-refine-ingredient">
-              <ProductPickerPopover
-                library={library}
-                scope="BASE_FORMULATION"
-                triggerVariant="icon"
-                triggerSize="sm"
-                behaviorContext={behaviorContext}
-                triggerLabel={homeCreatorCopy.intent.refineIngredient}
-                onAdd={(ingredient, behavior) => onAddIngredient(ingredient, behavior)}
-              />
-              <span
-                aria-hidden
-                className="text-[13px]"
-                style={{ color: 'var(--g-text-secondary)' }}
-              >
-                {homeCreatorCopy.intent.refineIngredient}
-              </span>
-            </span>
-            <span className="inline-flex items-center gap-2" data-testid="home-refine-topping">
-              <ProductPickerPopover
-                library={library}
-                scope="POST_PROCESS_ADDON"
-                triggerVariant="icon"
-                triggerSize="sm"
-                behaviorContext={behaviorContext}
-                triggerLabel={homeCreatorCopy.intent.refineTopping}
-                onAdd={(ingredient, behavior) => onAddTopping(ingredient, behavior)}
-              />
-              <span
-                aria-hidden
-                className="text-[13px]"
-                style={{ color: 'var(--g-text-secondary)' }}
-              >
-                {homeCreatorCopy.intent.refineTopping}
-              </span>
-            </span>
-          </div>
         </div>
       ) : null}
 
@@ -289,7 +258,11 @@ export function HomeIntentSection({
         disabled={chips.length === 0 && value.trim() === ''}
         data-testid="home-intent-cta"
         className={cn(
-          'mt-8 inline-flex min-h-[52px] w-full items-center justify-center rounded-full px-6 text-[15px] font-semibold transition-opacity',
+          // OWNER 2026-09-02: full width on mobile is an easy thumb target; on desktop
+          // the same bar dominated the whole screen, so it settles to a restrained
+          // centred button. A max-width, not a hardcoded viewport position.
+          'mt-8 flex min-h-[52px] w-full items-center justify-center rounded-full px-6 text-[15px] font-semibold transition-opacity',
+          'sm:mx-auto sm:max-w-[360px]',
           'focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40 disabled:cursor-not-allowed disabled:opacity-35',
         )}
         style={{ background: 'var(--g-ink)', color: '#ffffff' }}
@@ -304,11 +277,18 @@ export function HomeIntentSection({
         >
           {homeCreatorCopy.intent.resolving}
         </p>
-      ) : chips.length === 0 ? (
-        <p className="mt-3 text-center text-[12px]" style={{ color: 'var(--g-text-muted)' }}>
+      ) : hasIdea || value.trim() !== '' ? null : (
+        /* OWNER SERVED QA: the hint used to depend on chips alone, so someone who had
+           just typed „bananowy sorbet" was still told to add an ingredient. It answers
+           the question the screen is actually in — nothing described yet. */
+        <p
+          className="mt-3 text-center text-[12px]"
+          data-testid="home-intent-empty-hint"
+          style={{ color: 'var(--g-text-muted)' }}
+        >
           {homeCreatorCopy.intent.emptyHint}
         </p>
-      ) : null}
+      )}
     </HomeSection>
   );
 }
