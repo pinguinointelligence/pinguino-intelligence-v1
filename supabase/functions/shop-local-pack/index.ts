@@ -85,7 +85,9 @@ Deno.serve(async (req) => {
     return json(400, { error: 'invalid_json' });
   }
 
-  const countryIso2 = String(body.countryIso2 ?? '').trim().toUpperCase();
+  const countryIso2 = String(body.countryIso2 ?? '')
+    .trim()
+    .toUpperCase();
   if (!/^[A-Z]{2}$/.test(countryIso2)) return json(400, { error: 'country_required' });
 
   /* D: a delivery/contact address is REQUIRED even at 0 EUR. It is what lets us
@@ -163,18 +165,32 @@ Deno.serve(async (req) => {
   };
 
   /* The reusable address. One default per user, upserted rather than piled up. */
-  await admin.from('shop_customer_addresses').delete().eq('user_id', user.id).eq('is_default', true);
+  await admin
+    .from('shop_customer_addresses')
+    .delete()
+    .eq('user_id', user.id)
+    .eq('is_default', true);
+  /* Columns named explicitly. Spreading `address` would have carried its
+     camelCase `postalCode` into the insert as an unknown column and failed the
+     whole write — the address is the reason this 0 EUR order exists, so it
+     cannot be a casualty of a convenient spread. */
   await admin.from('shop_customer_addresses').insert({
     user_id: user.id,
-    ...address,
+    name: address.name,
+    line1: address.line1,
+    line2: address.line2,
     postal_code: address.postalCode,
+    city: address.city,
+    state: address.state,
+    phone: address.phone,
     country: countryIso2,
     is_default: true,
   });
 
-  const orderNumber = `G-${new Date().toISOString().slice(0, 10).replaceAll('-', '')}-${
-    crypto.randomUUID().slice(0, 6).toUpperCase()
-  }`;
+  const orderNumber = `G-${new Date().toISOString().slice(0, 10).replaceAll('-', '')}-${crypto
+    .randomUUID()
+    .slice(0, 6)
+    .toUpperCase()}`;
 
   const { data: order, error: orderError } = await admin
     .from('shop_orders')

@@ -3,7 +3,13 @@ import { useState } from 'react';
 import { ApplicationState } from '@/components/shared/ApplicationState';
 import { applicationSecondaryClasses } from '@/components/ui/applicationControlStyles';
 import { cn } from '@/lib/cn';
-import { supabase } from '@/lib/supabase/client';
+import {
+  getAdminCountryComponents,
+  getAdminShopCountries,
+  saveCountryComponent,
+  setCountryFlag,
+  type ShopCountryComponentRow,
+} from '@/services/shopCountries';
 import { ADMIN_TABLE, ADMIN_TD, ADMIN_TH } from './adminUi';
 
 /**
@@ -26,85 +32,44 @@ import { ADMIN_TABLE, ADMIN_TD, ADMIN_TH } from './adminUi';
  */
 
 const table = `${ADMIN_TABLE} min-w-[860px]`;
-
-interface ReadinessRow {
-  iso2: string;
-  name: string;
-  active: boolean;
-  physical_starter_pack_available: boolean;
-  local_starter_pack_available: boolean;
-  components_required: number;
-  components_ready: number;
-  missing_components: string[];
-  mapping_complete: boolean;
-  local_starter_pack_live: boolean;
-}
-
-interface ComponentRow {
-  id: string;
-  country_iso2: string;
-  component_product_id: string;
-  local_product_name: string | null;
-  supplier_name: string | null;
-  purchase_url: string | null;
-  pack_size: string | null;
-  display_price: string | null;
-  notes: string | null;
-  active: boolean;
-  sort_order: number;
-  shop_products: { sku: string; title: string } | null;
-}
-
-const readCountries = async (): Promise<ReadinessRow[]> => {
-  if (!supabase) throw new Error('backend unavailable');
-  const { data, error } = await supabase.from('shop_country_local_readiness').select('*');
-  if (error) throw error;
-  return ((data ?? []) as unknown as ReadinessRow[]).sort((a, b) => a.name.localeCompare(b.name));
-};
-
-const readComponents = async (iso2: string): Promise<ComponentRow[]> => {
-  if (!supabase) throw new Error('backend unavailable');
-  const { data, error } = await supabase
-    .from('shop_country_components')
-    .select('*,shop_products!inner(sku,title)')
-    .eq('country_iso2', iso2)
-    .order('sort_order', { ascending: true });
-  if (error) throw error;
-  return (data ?? []) as unknown as ComponentRow[];
-};
-
 const field =
   'h-[34px] w-full rounded-[8px] border border-[var(--g-line-strong)] bg-white px-2 text-[12.5px]';
+
+const FIELDS = [
+  ['localProductName', 'Nazwa u dostawcy'],
+  ['supplierName', 'Sklep / dostawca'],
+  ['purchaseUrl', 'https://…'],
+  ['packSize', 'np. 500 g'],
+] as const;
+
+type EditableKey = (typeof FIELDS)[number][0];
+type Draft = Partial<Record<EditableKey, string>>;
 
 function ComponentEditor({ iso2 }: { iso2: string }) {
   const queryClient = useQueryClient();
   const components = useQuery({
     queryKey: ['admin', 'starter-country-components', iso2],
-    queryFn: () => readComponents(iso2),
+    queryFn: () => getAdminCountryComponents(iso2),
   });
-  const [draft, setDraft] = useState<Record<string, Partial<ComponentRow>>>({});
+  const [drafts, setDrafts] = useState<Record<string, Draft>>({});
 
   const save = useMutation({
-    mutationFn: async (row: ComponentRow) => {
-      if (!supabase) throw new Error('backend unavailable');
-      const patch = draft[row.id] ?? {};
-      const { error } = await supabase
-        .from('shop_country_components')
-        .update({
-          local_product_name: patch.local_product_name ?? row.local_product_name,
-          supplier_name: patch.supplier_name ?? row.supplier_name,
-          purchase_url: patch.purchase_url ?? row.purchase_url,
-          pack_size: patch.pack_size ?? row.pack_size,
-          notes: patch.notes ?? row.notes,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', row.id);
-      if (error) throw error;
+    mutationFn: async (row: ShopCountryComponentRow) => {
+      const draft = drafts[row.id] ?? {};
+      await saveCountryComponent(row.id, {
+        localProductName: draft.localProductName ?? row.localProductName,
+        supplierName: draft.supplierName ?? row.supplierName,
+        purchaseUrl: draft.purchaseUrl ?? row.purchaseUrl,
+        packSize: draft.packSize ?? row.packSize,
+        notes: row.notes,
+      });
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: ['admin', 'starter-country-components', iso2],
       });
+      /* Readiness is COMPUTED, so the country row must be re-read too — that is
+         what turns the last saved link into LIVE without a deploy. */
       void queryClient.invalidateQueries({ queryKey: ['admin', 'starter-countries'] });
     },
   });
@@ -113,8 +78,6 @@ function ComponentEditor({ iso2 }: { iso2: string }) {
   if (components.isError) {
     return <ApplicationState kind="error" title="Nie udało się wczytać składników." />;
   }
-
-  const rows = components.data ?? [];
 
   return (
     <div className="overflow-x-auto">
@@ -130,21 +93,20 @@ function ComponentEditor({ iso2 }: { iso2: string }) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => {
-            const patch = draft[row.id] ?? {};
-            const value = <K extends keyof ComponentRow>(key: K) =>
-              (patch[key] ?? row[key] ?? '') as string;
+          {(components.data ?? []).map((row) => {
+            const draft = drafts[row.id] ?? {};
+            const value = (key: EditableKey) => draft[key] ?? row[key] ?? '';
             const complete =
-              Boolean((patch.local_product_name ?? row.local_product_name)?.trim()) &&
-              Boolean((patch.supplier_name ?? row.supplier_name)?.trim()) &&
-              Boolean((patch.purchase_url ?? row.purchase_url)?.trim());
+              value('localProductName').trim() !== '' &&
+              value('supplierName').trim() !== '' &&
+              value('purchaseUrl').trim() !== '';
             return (
-              <tr key={row.id} data-testid={`country-component-${row.shop_products?.sku}`}>
+              <tr key={row.id} data-testid={`country-component-${row.sku}`}>
                 <td className={`${ADMIN_TD} text-[var(--g-ink)]`}>
                   <span className="font-mono text-[11px] text-[var(--g-text-secondary)]">
-                    {row.shop_products?.sku}
+                    {row.sku}
                   </span>
-                  <span className="mt-0.5 block">{row.shop_products?.title}</span>
+                  <span className="mt-0.5 block">{row.componentTitle}</span>
                   {!complete ? (
                     <span
                       className="mt-1 inline-block rounded-[5px] bg-[var(--g-orange)] px-1.5 py-0.5 text-[10px] font-bold text-white"
@@ -154,26 +116,19 @@ function ComponentEditor({ iso2 }: { iso2: string }) {
                     </span>
                   ) : null}
                 </td>
-                {(
-                  [
-                    ['local_product_name', 'Nazwa u dostawcy'],
-                    ['supplier_name', 'Sklep / dostawca'],
-                    ['purchase_url', 'https://…'],
-                    ['pack_size', 'np. 500 g'],
-                  ] as const
-                ).map(([key, placeholder]) => (
+                {FIELDS.map(([key, placeholder]) => (
                   <td className={ADMIN_TD} key={key}>
                     <input
                       className={field}
                       placeholder={placeholder}
                       value={value(key)}
                       onChange={(event) =>
-                        setDraft((prev) => ({
+                        setDrafts((prev) => ({
                           ...prev,
                           [row.id]: { ...prev[row.id], [key]: event.target.value },
                         }))
                       }
-                      data-testid={`component-${key}-${row.shop_products?.sku}`}
+                      data-testid={`component-${key}-${row.sku}`}
                     />
                   </td>
                 ))}
@@ -183,7 +138,7 @@ function ComponentEditor({ iso2 }: { iso2: string }) {
                     onClick={() => save.mutate(row)}
                     disabled={save.isPending}
                     className={applicationSecondaryClasses('text-[12px]')}
-                    data-testid={`component-save-${row.shop_products?.sku}`}
+                    data-testid={`component-save-${row.sku}`}
                   >
                     Zapisz
                   </button>
@@ -201,19 +156,16 @@ export function AdminStarterCountriesSection() {
   const queryClient = useQueryClient();
   const countries = useQuery({
     queryKey: ['admin', 'starter-countries'],
-    queryFn: readCountries,
+    queryFn: getAdminShopCountries,
   });
   const [open, setOpen] = useState<string | null>(null);
 
   const toggle = useMutation({
-    mutationFn: async (input: { iso2: string; column: string; value: boolean }) => {
-      if (!supabase) throw new Error('backend unavailable');
-      const { error } = await supabase
-        .from('shop_countries')
-        .update({ [input.column]: input.value, updated_at: new Date().toISOString() })
-        .eq('iso2', input.iso2);
-      if (error) throw error;
-    },
+    mutationFn: (input: {
+      iso2: string;
+      column: 'physical_starter_pack_available' | 'local_starter_pack_available';
+      value: boolean;
+    }) => setCountryFlag(input.iso2, input.column, input.value),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'starter-countries'] }),
   });
 
@@ -260,7 +212,7 @@ export function AdminStarterCountriesSection() {
                 <td className={ADMIN_TD}>
                   <input
                     type="checkbox"
-                    checked={row.physical_starter_pack_available}
+                    checked={row.physicalAvailable}
                     onChange={(event) =>
                       toggle.mutate({
                         iso2: row.iso2,
@@ -274,7 +226,7 @@ export function AdminStarterCountriesSection() {
                 <td className={ADMIN_TD}>
                   <input
                     type="checkbox"
-                    checked={row.local_starter_pack_available}
+                    checked={row.localIntended}
                     onChange={(event) =>
                       toggle.mutate({
                         iso2: row.iso2,
@@ -286,12 +238,12 @@ export function AdminStarterCountriesSection() {
                   />
                 </td>
                 <td className={`${ADMIN_TD} font-mono tabular-nums`}>
-                  {row.components_ready} / {row.components_required}
+                  {row.componentsReady} / {row.componentsRequired}
                 </td>
                 <td className={ADMIN_TD}>
-                  {row.missing_components?.length ? (
+                  {row.missingComponents.length ? (
                     <span className="font-mono text-[11px] text-[var(--g-attention-ink)]">
-                      {row.missing_components.join(', ')}
+                      {row.missingComponents.join(', ')}
                     </span>
                   ) : (
                     <span className="text-[12px] text-[var(--g-text-secondary)]">—</span>
@@ -301,13 +253,13 @@ export function AdminStarterCountriesSection() {
                   <span
                     className={cn(
                       'rounded-[5px] px-1.5 py-0.5 text-[10px] font-bold',
-                      row.local_starter_pack_live
+                      row.localLive
                         ? 'bg-[var(--g-ink)] text-white'
                         : 'bg-[var(--g-line-quiet)] text-[var(--g-lock)]',
                     )}
                     data-testid={`local-live-${row.iso2}`}
                   >
-                    {row.local_starter_pack_live ? 'LIVE' : 'NIEKOMPLETNY'}
+                    {row.localLive ? 'LIVE' : 'NIEKOMPLETNY'}
                   </span>
                 </td>
                 <td className={ADMIN_TD}>

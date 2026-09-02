@@ -4,7 +4,7 @@ import { applicationPrimaryClasses } from '@/components/ui/applicationControlSty
 import { shopCopy as c, shopGrams, shopMoney } from '@/copy/shop';
 import type { ShopProduct } from '@/services/shop';
 import { shopOrderTotals } from './shopShipping';
-import { getShippingRate, type ShopShippingRate } from './shopCountryAuthority';
+import { getShippingRate, type ShopShippingRate } from '@/services/shopCountries';
 import { selectedShopCountry, useShopCountryStore } from './shopCountryStore';
 import { shopContentTitle } from './shopContentTitle';
 import type { ShopCartLine } from './shopCartStore';

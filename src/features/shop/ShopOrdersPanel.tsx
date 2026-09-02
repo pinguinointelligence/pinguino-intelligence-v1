@@ -13,7 +13,7 @@ import {
   shopOrderStatusLabelPl,
 } from '@/copy/shop';
 import { shopContentTitle } from './shopContentTitle';
-import { getLocalPackSnapshot } from './localStarterPack';
+import { getLocalPackSnapshot } from '@/services/localStarterPack';
 import { downloadLocalStarterPackPdf } from './localStarterPackPdf';
 
 /**

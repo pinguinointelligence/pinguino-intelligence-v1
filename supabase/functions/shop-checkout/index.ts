@@ -50,9 +50,7 @@ interface ShippingRateRow {
 }
 
 /** Every country with an enabled physical rate, cheapest-priority first. */
-const loadShippingRates = async (
-  db: { from: (t: string) => any },
-): Promise<ShippingRateRow[]> => {
+const loadShippingRates = async (db: { from: (t: string) => any }): Promise<ShippingRateRow[]> => {
   const { data, error } = await db
     .from('shop_shipping_rates')
     .select(
@@ -119,11 +117,16 @@ Deno.serve(async (req) => {
   }
 
   const allowlist = parseUrlAllowlist(Deno.env.get('BILLING_REDIRECT_URL_ALLOWLIST'));
-  if (!isAllowedRedirectUrl(body.successUrl, allowlist) || !isAllowedRedirectUrl(body.cancelUrl, allowlist)) {
+  if (
+    !isAllowedRedirectUrl(body.successUrl, allowlist) ||
+    !isAllowedRedirectUrl(body.cancelUrl, allowlist)
+  ) {
     return json(400, { error: 'redirect_url_not_allowed' });
   }
 
-  const countryIso2 = String(body.countryIso2 ?? '').trim().toUpperCase();
+  const countryIso2 = String(body.countryIso2 ?? '')
+    .trim()
+    .toUpperCase();
   if (!/^[A-Z]{2}$/.test(countryIso2)) return json(400, { error: 'country_required' });
 
   const requested = (body.items ?? [])
@@ -143,14 +146,20 @@ Deno.serve(async (req) => {
   const { data: products, error: productError } = await admin
     .from('shop_products')
     .select('id,sku,title,pack_size_g,price_cents,currency,availability,lead_time_weeks,active')
-    .in('sku', requested.map((item) => item.sku));
+    .in(
+      'sku',
+      requested.map((item) => item.sku),
+    );
   if (productError) return json(500, { error: 'catalog_lookup_failed' });
 
-  const bySku = new Map<string, ProductRow>((products ?? []).map((row) => [row.sku, row as ProductRow]));
+  const bySku = new Map<string, ProductRow>(
+    (products ?? []).map((row) => [row.sku, row as ProductRow]),
+  );
   const lines: Array<{ product: ProductRow; quantity: number }> = [];
   for (const item of requested) {
     const product = bySku.get(item.sku);
-    if (!product || !product.active) return json(400, { error: 'product_unavailable', sku: item.sku });
+    if (!product || !product.active)
+      return json(400, { error: 'product_unavailable', sku: item.sku });
     if (product.availability === 'out_of_stock') {
       return json(409, { error: 'product_out_of_stock', sku: item.sku });
     }
@@ -234,9 +243,10 @@ Deno.serve(async (req) => {
   const shippingCents = shippingRate.customer_price_cents;
   const shippingCountries = [countryIso2];
 
-  const orderNumber = `G-${new Date().toISOString().slice(0, 10).replaceAll('-', '')}-${
-    crypto.randomUUID().slice(0, 6).toUpperCase()
-  }`;
+  const orderNumber = `G-${new Date().toISOString().slice(0, 10).replaceAll('-', '')}-${crypto
+    .randomUUID()
+    .slice(0, 6)
+    .toUpperCase()}`;
   const { data: order, error: orderError } = await admin
     .from('shop_orders')
     .insert({

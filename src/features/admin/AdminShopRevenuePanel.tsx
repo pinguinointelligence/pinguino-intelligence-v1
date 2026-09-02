@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { ApplicationState } from '@/components/shared/ApplicationState';
-import { supabase } from '@/lib/supabase/client';
 import { shopMoney } from '@/copy/shop';
+import { getShopRevenueSummary, type ShopRevenueSummary } from '@/services/shopCountries';
 
 /**
  * SHOP, READ ON ITS OWN.
@@ -20,27 +20,6 @@ import { shopMoney } from '@/copy/shop';
  *    recorded. Revenue labelled profit against unknown costs is a lie the
  *    dashboard would repeat every day.
  */
-
-interface ShopSummary {
-  orders: number;
-  paid: number;
-  awaitingFulfilment: number;
-  shipped: number;
-  refunded: number;
-  productRevenueCents: number;
-  shippingCollectedCents: number;
-  localPackOrders: number;
-  carrierCostKnownCents: number;
-  carrierCostKnown: boolean;
-  error?: string;
-}
-
-const readSummary = async (): Promise<ShopSummary> => {
-  if (!supabase) throw new Error('backend unavailable');
-  const { data, error } = await supabase.rpc('gellatti_shop_revenue_summary_v1');
-  if (error) throw new Error(error.message);
-  return data as unknown as ShopSummary;
-};
 
 const Metric = ({
   label,
@@ -65,13 +44,13 @@ const Metric = ({
 );
 
 export function AdminShopRevenuePanel() {
-  const summary = useQuery({ queryKey: ['admin', 'shop-revenue'], queryFn: readSummary });
+  const summary = useQuery({ queryKey: ['admin', 'shop-revenue'], queryFn: getShopRevenueSummary });
 
   if (summary.isLoading) return <ApplicationState kind="loading" title="Wczytuję dane sklepu…" />;
   if (summary.isError || summary.data?.error) {
     return <ApplicationState kind="error" title="Nie udało się wczytać danych sklepu." />;
   }
-  const data = summary.data!;
+  const data: ShopRevenueSummary = summary.data!;
 
   return (
     <section className="mt-6" data-testid="admin-shop-revenue">

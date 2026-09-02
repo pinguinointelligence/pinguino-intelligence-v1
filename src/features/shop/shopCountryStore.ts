@@ -5,7 +5,7 @@ import {
   starterPackModeFor,
   type ShopCountry,
   type StarterPackMode,
-} from './shopCountryAuthority';
+} from '@/services/shopCountries';
 
 interface ShopCountryState {
   /** ISO-3166-1 alpha-2, or null until the customer answers. */

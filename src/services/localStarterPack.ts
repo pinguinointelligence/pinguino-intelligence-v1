@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase/client';
-import type { LocalPackSnapshot } from './localStarterPackPdf';
+import type { LocalPackSnapshot } from '@/features/shop/localStarterPackPdf';
 
 /**
  * The client half of the 0 EUR Local Starter Pack.

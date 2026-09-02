@@ -14,7 +14,7 @@ import {
   selectedStarterPackMode,
   useShopCountryStore,
 } from './shopCountryStore';
-import { getShippingRate, type ShopShippingRate } from './shopCountryAuthority';
+import { getShippingRate, type ShopShippingRate } from '@/services/shopCountries';
 
 /**
  * THE ONE featured offer — Shop C3, owner approved 2026-08-31, with the

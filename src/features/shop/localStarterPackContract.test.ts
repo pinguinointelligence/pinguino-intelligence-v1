@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { localStarterPackTotals } from './shopShipping';
-import { starterPackModeFor, type ShopCountry } from './shopCountryAuthority';
+import { starterPackModeFor, type ShopCountry } from '@/services/shopCountries';
 
 /**
  * THE LOCAL STARTER PACK INVARIANTS.
@@ -112,9 +112,8 @@ describe('a free order earns no commission', () => {
   });
 
   it('keeps the quotable rates untouched', async () => {
-    const { publicStarterPackRate, PUBLIC_STARTER_PACK_RETAIL_CENTS } = await import(
-      '@/features/affiliate/publicRateAuthority'
-    );
+    const { publicStarterPackRate, PUBLIC_STARTER_PACK_RETAIL_CENTS } =
+      await import('@/features/affiliate/publicRateAuthority');
     expect(PUBLIC_STARTER_PACK_RETAIL_CENTS).toBe(5_900);
     expect(publicStarterPackRate('standard')).toBe(900);
     expect(publicStarterPackRate('gold')).toBe(1_900);

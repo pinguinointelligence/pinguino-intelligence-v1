@@ -5,7 +5,7 @@ import { WorkflowNotice } from '@/components/shared/WorkflowNotice';
 import { applicationPrimaryClasses } from '@/components/ui/applicationControlStyles';
 import { shopCopy as c } from '@/copy/shop';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
-import { createLocalStarterPackOrder, LocalPackError } from '@/features/shop/localStarterPack';
+import { createLocalStarterPackOrder, LocalPackError } from '@/services/localStarterPack';
 import {
   selectedShopCountry,
   selectedStarterPackMode,

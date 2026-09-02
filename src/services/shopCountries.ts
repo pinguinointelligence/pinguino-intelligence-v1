@@ -181,3 +181,142 @@ export async function getLocalComponents(iso2: string): Promise<ShopLocalCompone
     };
   });
 }
+
+/* ── Admin authority ───────────────────────────────────────────────────────
+   Operator reads and writes live here for the same reason customer reads do:
+   `src/features/**` and `src/pages/**` must not reach Supabase directly, so
+   every table touch crosses this boundary once (`studioBoundary` guards it). */
+
+export interface ShopCountryAdminRow {
+  iso2: string;
+  name: string;
+  active: boolean;
+  physicalAvailable: boolean;
+  localIntended: boolean;
+  localLive: boolean;
+  mappingComplete: boolean;
+  componentsRequired: number;
+  componentsReady: number;
+  missingComponents: string[];
+}
+
+export interface ShopCountryComponentRow {
+  id: string;
+  sku: string;
+  componentTitle: string;
+  localProductName: string | null;
+  supplierName: string | null;
+  purchaseUrl: string | null;
+  packSize: string | null;
+  notes: string | null;
+}
+
+export async function getAdminShopCountries(): Promise<ShopCountryAdminRow[]> {
+  if (!supabase) return unavailable();
+  const { data, error } = await supabase.from('shop_country_local_readiness').select('*');
+  if (error) throw error;
+  const rows = (data ?? []) as unknown as Array<Record<string, unknown>>;
+  return rows
+    .map((row) => ({
+      iso2: String(row.iso2),
+      name: String(row.name),
+      active: row.active !== false,
+      physicalAvailable: row.physical_starter_pack_available === true,
+      localIntended: row.local_starter_pack_available === true,
+      localLive: row.local_starter_pack_live === true,
+      mappingComplete: row.mapping_complete === true,
+      componentsRequired: Number(row.components_required ?? 0),
+      componentsReady: Number(row.components_ready ?? 0),
+      missingComponents: Array.isArray(row.missing_components)
+        ? (row.missing_components as string[])
+        : [],
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export async function getAdminCountryComponents(iso2: string): Promise<ShopCountryComponentRow[]> {
+  if (!supabase) return unavailable();
+  const { data, error } = await supabase
+    .from('shop_country_components')
+    .select(
+      'id,local_product_name,supplier_name,purchase_url,pack_size,notes,sort_order,' +
+        'shop_products!inner(sku,title)',
+    )
+    .eq('country_iso2', iso2)
+    .order('sort_order', { ascending: true });
+  if (error) throw error;
+  const rows = (data ?? []) as unknown as Array<Record<string, unknown>>;
+  return rows.map((row) => {
+    const product = row.shop_products as { sku?: unknown; title?: unknown } | undefined;
+    return {
+      id: String(row.id),
+      sku: String(product?.sku ?? ''),
+      componentTitle: String(product?.title ?? ''),
+      localProductName: row.local_product_name == null ? null : String(row.local_product_name),
+      supplierName: row.supplier_name == null ? null : String(row.supplier_name),
+      purchaseUrl: row.purchase_url == null ? null : String(row.purchase_url),
+      packSize: row.pack_size == null ? null : String(row.pack_size),
+      notes: row.notes == null ? null : String(row.notes),
+    };
+  });
+}
+
+export async function saveCountryComponent(
+  id: string,
+  patch: {
+    localProductName?: string | null;
+    supplierName?: string | null;
+    purchaseUrl?: string | null;
+    packSize?: string | null;
+    notes?: string | null;
+  },
+): Promise<void> {
+  if (!supabase) return unavailable();
+  const { error } = await supabase
+    .from('shop_country_components')
+    .update({
+      local_product_name: patch.localProductName,
+      supplier_name: patch.supplierName,
+      purchase_url: patch.purchaseUrl,
+      pack_size: patch.packSize,
+      notes: patch.notes,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', id);
+  if (error) throw error;
+}
+
+export async function setCountryFlag(
+  iso2: string,
+  column: 'physical_starter_pack_available' | 'local_starter_pack_available' | 'active',
+  value: boolean,
+): Promise<void> {
+  if (!supabase) return unavailable();
+  const { error } = await supabase
+    .from('shop_countries')
+    .update({ [column]: value, updated_at: new Date().toISOString() })
+    .eq('iso2', iso2);
+  if (error) throw error;
+}
+
+/** The Shop's own numbers, separated from application revenue (§N). */
+export interface ShopRevenueSummary {
+  orders: number;
+  paid: number;
+  awaitingFulfilment: number;
+  shipped: number;
+  refunded: number;
+  productRevenueCents: number;
+  shippingCollectedCents: number;
+  localPackOrders: number;
+  carrierCostKnownCents: number;
+  carrierCostKnown: boolean;
+  error?: string;
+}
+
+export async function getShopRevenueSummary(): Promise<ShopRevenueSummary> {
+  if (!supabase) return unavailable();
+  const { data, error } = await supabase.rpc('gellatti_shop_revenue_summary_v1');
+  if (error) throw new Error(error.message);
+  return data as unknown as ShopRevenueSummary;
+}
