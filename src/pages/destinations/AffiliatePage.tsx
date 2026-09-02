@@ -166,23 +166,27 @@ function RecurringFlow() {
       {/* The flow above says only "the partner earns". The customer gains too,
           and saying so out loud is what makes the link worth sharing. One line
           and one figure — not a second section. */}
-      <aside className="mt-7 flex flex-col gap-5 rounded-[16px] bg-[#f0ede7] px-6 py-6 sm:flex-row sm:items-center sm:gap-7 sm:px-8">
-        <span className="text-[40px] leading-none font-bold tracking-[-0.04em] text-[var(--g-ink)] tabular-nums">
-          {c.customerBenefit.figure}
-          <span className="text-[14px] font-semibold tracking-[-0.01em]">
-            {c.customerBenefit.figureUnit}
-          </span>
-        </span>
-        <div>
-          <h3 className="text-[16px] font-semibold tracking-[-0.018em] text-[var(--g-ink)]">
-            {c.customerBenefit.title}
-          </h3>
-          <p className="mt-1.5 max-w-[64ch] text-[13px] leading-[1.55] text-[var(--g-text-secondary)]">
-            {fillTemplate(c.customerBenefit.bodyTemplate, {
-              emphasis: c.customerBenefit.emphasis,
-            })}{' '}
-            {c.customerBenefit.monthlyNote}
+      {/* The bonus is VALUE, so the figure leads and the prose follows. It used
+          to read as a disclaimer: a small number buried in two sentences. */}
+      <aside className="mt-9 overflow-hidden rounded-[20px] bg-[var(--g-ink)] text-white">
+        <div className="flex flex-col gap-7 px-7 py-9 sm:px-10 lg:flex-row lg:items-center lg:gap-12">
+          <p className="flex-none text-[46px] leading-[0.95] font-bold tracking-[-0.045em] sm:text-[56px]">
+            {c.customerBenefit.figure}
+            <span className="ml-2 block text-[16px] font-semibold tracking-[-0.015em] text-[var(--g-orange)] sm:mt-1 sm:ml-0 sm:text-[18px]">
+              {c.customerBenefit.figureUnit}
+            </span>
           </p>
+          <div className="lg:border-l lg:border-white/12 lg:pl-12">
+            <h3 className="text-[21px] font-bold tracking-[-0.028em] sm:text-[24px]">
+              {c.customerBenefit.title}
+            </h3>
+            <p className="mt-2.5 max-w-[52ch] text-[14.5px] leading-relaxed text-[#c9c5bd]">
+              {fillTemplate(c.customerBenefit.bodyTemplate, {
+                emphasis: c.customerBenefit.emphasis,
+              })}
+            </p>
+            <p className="mt-3 text-[12.5px] text-[#9d988f]">{c.customerBenefit.monthlyNote}</p>
+          </div>
         </div>
       </aside>
     </section>
@@ -297,6 +301,34 @@ const FIELDS: ReadonlyArray<{ key: keyof AffiliateCustomerCounts; label: string 
   { key: 'proAnnual', label: c.calculator.proAnnualLabel },
 ];
 
+/** One input, whatever it counts — the Starter Pack is not a special case. */
+function CountField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  onChange: (raw: string) => void;
+}) {
+  return (
+    <label className="block">
+      <span className="block text-[11.5px] font-semibold tracking-[0.05em] text-[var(--g-text-muted)] uppercase">
+        {label}
+      </span>
+      <input
+        type="number"
+        inputMode="numeric"
+        min={0}
+        max={MAX_CUSTOMERS_PER_PLAN}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="mt-2 h-[46px] w-full rounded-full border border-[var(--g-line)] bg-white px-4 text-[15px] font-semibold text-[var(--g-ink)] tabular-nums outline-none focus-visible:border-[var(--g-orange)]"
+      />
+    </label>
+  );
+}
+
 function Calculator() {
   const [mode, setMode] = useState<AffiliateCalculatorMode>('standard');
   const [starterPacks, setStarterPacks] = useState(0);
@@ -337,50 +369,21 @@ function Calculator() {
         <div className="px-6 py-7 sm:px-8">
           <div className="grid gap-4 sm:grid-cols-2">
             {FIELDS.map((field) => (
-              <label key={field.key} className="block">
-                <span className="block text-[11.5px] font-semibold tracking-[0.05em] text-[var(--g-text-muted)] uppercase">
-                  {field.label}
-                </span>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
-                  max={MAX_CUSTOMERS_PER_PLAN}
-                  value={counts[field.key]}
-                  onChange={(event) => setField(field.key, event.target.value)}
-                  className="mt-2 h-[46px] w-full rounded-full border border-[var(--g-line)] bg-white px-4 text-[15px] font-semibold text-[var(--g-ink)] tabular-nums outline-none focus-visible:border-[var(--g-orange)]"
-                />
-              </label>
+              <CountField
+                key={field.key}
+                label={field.label}
+                value={counts[field.key]}
+                onChange={(raw) => setField(field.key, raw)}
+              />
             ))}
-          </div>
-
-          {/* Starter Pack sits apart from the four plan fields because it is a
-              ONE-OFF sale, not a subscription: it enters the year once. */}
-          <div className="mt-5 rounded-[14px] border border-[var(--g-line-quiet,#e6e2db)] px-5 py-5">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-              <label className="block sm:w-[220px]">
-                <span className="block text-[11.5px] font-semibold tracking-[0.05em] text-[var(--g-text-muted)] uppercase">
-                  {c.calculator.starterPacksLabel}
-                </span>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
-                  max={MAX_CUSTOMERS_PER_PLAN}
-                  value={starterPacks}
-                  onChange={(event) => setStarterPacks(normalizeCount(event.target.value))}
-                  className="mt-2 h-[46px] w-full rounded-full border border-[var(--g-line)] bg-white px-4 text-[15px] font-semibold text-[var(--g-ink)] tabular-nums outline-none focus-visible:border-[var(--g-orange)]"
-                />
-              </label>
-              {/* No second level switch — the rate simply follows the level
-                  chosen below, and is shown so the number is never a mystery. */}
-              <p className="pb-3 text-[12.5px] leading-[1.5] text-[var(--g-text-secondary)]">
-                {c.calculator.starterPackRateLabel}:{' '}
-                <strong className="font-semibold text-[var(--g-ink)] tabular-nums">
-                  {isCustomTermsMode(mode) ? '—' : formatEuro(publicStarterPackRate(mode))}
-                </strong>
-              </p>
-            </div>
+            {/* The fifth input, in the same style as the four plans: a pack is
+                counted, not configured. Its rate follows the level below and is
+                already shown in the rate cards, so it is not repeated here. */}
+            <CountField
+              label={c.calculator.starterPacksLabel}
+              value={starterPacks}
+              onChange={(raw) => setStarterPacks(normalizeCount(raw))}
+            />
           </div>
 
           <div className="mt-6 flex flex-wrap items-center gap-3">
@@ -494,22 +497,43 @@ function Calculator() {
 
 /* ── 5. AUDIENCE · 6. THREE STEPS · 7. CTA ───────────────────────────────── */
 
+/* Card order matches the copy order, so the image belongs to the group rather
+   than to an index that could silently drift. */
+const AUDIENCE_IMAGES: readonly string[] = [
+  '/images/affiliate/creators.jpg',
+  '/images/affiliate/professionals.jpg',
+  '/images/affiliate/communities.jpg',
+];
+
 function Audience() {
   return (
     <section className="mt-[58px]">
       <SectionHead eyebrow={c.audience.eyebrow} title={c.audience.title} />
       <div className="mt-7 grid gap-4 lg:grid-cols-3">
-        {c.audience.groups.map((group) => (
+        {c.audience.groups.map((group, index) => (
           <article
             key={group.title}
-            className="rounded-[16px] border border-[var(--g-line-quiet,#e6e2db)] bg-white px-6 py-6"
+            className="flex flex-col overflow-hidden rounded-[16px] border border-[var(--g-line-quiet,#e6e2db)] bg-white"
           >
-            <h3 className="text-[17px] font-semibold tracking-[-0.018em] text-[var(--g-ink)]">
-              {group.title}
-            </h3>
-            <p className="mt-2 text-[13px] leading-[1.58] text-[var(--g-text-secondary)]">
-              {group.body}
-            </p>
+            {/* Fixed aspect so the three cards keep one rhythm whatever the
+                copy length does underneath. */}
+            <div className="aspect-[4/3] w-full overflow-hidden bg-[var(--g-ivory-deep,#f6f4ef)]">
+              <img
+                src={AUDIENCE_IMAGES[index]}
+                alt=""
+                aria-hidden="true"
+                loading="lazy"
+                className="h-full w-full object-cover"
+              />
+            </div>
+            <div className="flex-1 px-6 py-6">
+              <h3 className="text-[17px] font-semibold tracking-[-0.018em] text-[var(--g-ink)]">
+                {group.title}
+              </h3>
+              <p className="mt-2 text-[13px] leading-[1.58] text-[var(--g-text-secondary)]">
+                {group.body}
+              </p>
+            </div>
           </article>
         ))}
       </div>
@@ -560,7 +584,6 @@ function ApplyBand() {
           <a href="/partner" className={buttonClasses('primary', 'md')}>
             {c.apply.signInCta}
           </a>
-          <span className="text-[12px] text-[var(--g-text-muted)]">{c.apply.signedOutBody}</span>
         </div>
       </div>
     </section>

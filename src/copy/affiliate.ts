@@ -119,7 +119,6 @@ export interface AffiliateCopy {
     readonly totalPerYear: string;
     readonly averagePerMonth: string;
     readonly starterPacksLabel: string;
-    readonly starterPackRateLabel: string;
     readonly fromStarterPacks: string;
     readonly assumption: string;
     readonly eliteState: string;
@@ -210,13 +209,13 @@ export const affiliateCopyPl: AffiliateCopy = {
     rejectedBody: 'Możesz zgłosić się ponownie — powód decyzji znajdziesz w szczegółach.',
   },
   recurring: {
-    eyebrow: 'Jak liczy się prowizja',
-    title: 'Dobra rekomendacja pracuje dłużej niż jeden dzień.',
-    body: 'Wynagrodzenie nie kończy się na pierwszej płatności. Dopóki polecona osoba zostaje z Gellatti, każde opłacone odnowienie liczy się dla Ciebie.',
+    eyebrow: 'Jak działa wynagrodzenie',
+    title: 'Polecasz Gellatti. Twoi odbiorcy korzystają. Ty zarabiasz.',
+    body: 'Wynagrodzenie nie kończy się na pierwszej płatności. Dopóki polecona osoba korzysta z Gellatti, każde opłacone odnowienie liczy się dla Ciebie.',
     steps: [
       { title: 'Ktoś korzysta z polecenia', body: 'Przychodzi przez Twój link albo podaje Twój kod.' },
-      { title: 'Zostaje z Tobą', body: 'Od pierwszej opłaconej płatności jest Twoim poleceniem.' },
-      { title: 'Zostaje na dłużej', body: 'Przedłuża plan na kolejny okres.' },
+      { title: 'Zostaje z Gellatti', body: 'Od pierwszej opłaconej płatności jest przypisany do Twojego polecenia.' },
+      { title: 'Odnawia plan', body: 'Przedłuża subskrypcję na kolejny okres.' },
       { title: 'Ty znów otrzymujesz wynagrodzenie', body: 'Za to odnowienie i za każde następne.' },
     ],
     honest: 'Liczy się opłacona płatność — nieopłacona lub zwrócona nie daje wynagrodzenia.',
@@ -267,7 +266,6 @@ export const affiliateCopyPl: AffiliateCopy = {
     totalPerYear: 'Szacowana prowizja łącznie / rok',
     averagePerMonth: 'Średnio na miesiąc',
     starterPacksLabel: 'Zestawy Startowe — sprzedane',
-    starterPackRateLabel: 'Stawka za Zestaw Startowy',
     fromStarterPacks: 'Prowizja z Zestawów Startowych',
     assumption: 'To szacunek przy opłaconych planach i odnowieniach.',
     eliteState: 'Indywidualne warunki',
@@ -276,7 +274,7 @@ export const affiliateCopyPl: AffiliateCopy = {
   },
   audience: {
     eyebrow: 'Dla kogo',
-    title: 'Dla tych, którzy pomagają innym wybierać lepiej.',
+    title: 'Dla tych, którzy inspirują, uczą i polecają to, co działa.',
     groups: [
       {
         title: 'Twórcy i influencerzy',
@@ -294,7 +292,7 @@ export const affiliateCopyPl: AffiliateCopy = {
   },
   how: {
     eyebrow: 'Jak to działa',
-    title: 'Polecasz. Oni zyskują. Ty zarabiasz.',
+    title: 'Polecasz Gellatti. Twoi odbiorcy korzystają. Ty zarabiasz.',
     steps: [
       {
         index: '01',
@@ -304,20 +302,20 @@ export const affiliateCopyPl: AffiliateCopy = {
       {
         index: '02',
         title: 'Odbierz swoje linki i kody',
-        body: 'Twórz własne linki i kody dla różnych kanałów i kampanii.',
+        body: 'Twórz własne linki i kody dla różnych kampanii.',
       },
       {
         index: '03',
         title: 'Dziel się Gellatti',
-        body: 'Twoi odbiorcy korzystają z dodatkowych korzyści, a Ty widzisz przypisanych klientów i prowizje na bieżąco.',
+        body: 'Twoi odbiorcy korzystają z dodatkowych korzyści, a Ty otrzymujesz prowizję za opłacone płatności.',
       },
     ],
   },
   apply: {
     eyebrow: 'Zgłoszenie',
-    title: 'Polecaj rozwiązanie, które naprawdę pomaga.',
-    body: 'Twoi odbiorcy dostają dodatkową korzyść. Ty otrzymujesz prowizję za udane płatności i kolejne odnowienia.',
-    signedOutBody: 'Konto założysz po drodze — wrócisz prosto tutaj.',
+    title: 'Dołącz do programu Affiliate.',
+    body: 'Polecaj rozwiązanie, które naprawdę pomaga — i zarabiaj także przy odnowieniach.',
+    signedOutBody: '',
     signInCta: 'Zgłoś się',
   },
   panel: {
@@ -436,7 +434,6 @@ export const affiliateCopyEn: AffiliateCopy = {
     totalPerYear: 'Estimated total commission / year',
     averagePerMonth: 'Average per month',
     starterPacksLabel: 'Starter Packs — sold',
-    starterPackRateLabel: 'Starter Pack rate',
     fromStarterPacks: 'Commission from Starter Packs',
     assumption: 'The estimate assumes successful qualifying payments and renewals.',
     eliteState: 'Individual terms',
@@ -463,7 +460,7 @@ export const affiliateCopyEn: AffiliateCopy = {
   },
   how: {
     eyebrow: 'Getting started',
-    title: 'Three steps and you have your links.',
+    title: 'You recommend Gellatti. Your audience gains. You earn.',
     steps: [
       {
         index: '01',
