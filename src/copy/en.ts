@@ -371,6 +371,7 @@ export const copy = {
       machine: 'Maszyna',
       community: 'Community',
       workWithUs: 'Współpraca',
+      affiliate: 'Affiliate',
       franchise: 'Franchise',
     },
     account: {
