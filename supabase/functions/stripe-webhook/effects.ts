@@ -334,6 +334,11 @@ export interface SubscriptionSnapshot {
   endedAtEpoch: number | null;
   canceledAtEpoch: number | null;
   latestInvoiceId: string | null;
+  /**
+   * `pi_user_id` from `subscription_data.metadata`, stamped by
+   * create-checkout-session. CORRELATION ONLY — it never decides a plan.
+   */
+  metadataUserId: string | null;
 }
 
 /**
@@ -351,6 +356,10 @@ export function extractSubscriptionSnapshot(subscription: Payload): Subscription
     customerId: asId(subscription.customer),
     status: asString(subscription.status) ?? 'unknown',
     priceId: price ? asString(price.id) : null,
+    metadataUserId: (() => {
+      const meta = asObject(subscription.metadata);
+      return meta ? asString(meta.pi_user_id) : null;
+    })(),
     currentPeriodStartEpoch:
       asNumber(subscription.current_period_start) ??
       (firstItem ? asNumber(firstItem.current_period_start) : null),
