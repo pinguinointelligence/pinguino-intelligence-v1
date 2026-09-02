@@ -22,11 +22,13 @@
 
 /* ── Workbench shell geometry ───────────────────────────────────────────── */
 .gellatti-pro-workbench {
-  /* The preview's outer gutter is 12 px per side; `--pro-page-gutter` is the
-     TOTAL the shell subtracts, so 24 px produces 12 px left and 12 px right on
-     BOTH the header row and the workbench body — which is exactly what keeps
-     the tab strip and the display column on the same pixels. */
-  --pro-page-gutter: 24px;
+  /* OWNER GEOMETRY DECISION 2026-09-02: the PRO-specific 24 px override is
+     REMOVED. It produced a 12 px half-gutter per side, against 28.8 px in the
+     approved Shop at the same viewport — the two surfaces did not line up.
+     PRO now inherits the global `--pro-page-gutter: clamp(2rem, 4vw, 4rem)`,
+     so at 1440 both resolve to 57.6 px total, 28.8 px per side, and the delta
+     between Shop and PRO is 0. The header row and the workbench body still
+     share one token, so they still land on the same pixels. */
   --pro-workbench-gap: var(--g-split-gap);
   /* The blanket `.pro-studio-radius-system` corner normaliser resolves through
      this token, so pointing it at the approved CONTROL radius makes every
