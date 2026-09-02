@@ -77,6 +77,47 @@ canonical authority consumed by both surfaces. The NPAC scientific statement sta
 historically true: Protein NPAC-based hardness remains unsupported; the canonical
 authority is the ice-fraction/texture one.
 
+## 3b. Authoritative store-action map (evidence, 2026-09-03)
+
+Surfaces defined from the router, not guessed — HOME = `pages/home` +
+`home-creator` + `customer-shell` + `pi-monitor` (85 files); PRO = `pages/pro` +
+`pro-core` + `pro-workbench` + `constraint-studio` + `studio` + `studioFlow`
+(117 files). 25 of the 50 `recipeStore` actions are referenced by either surface.
+
+**SHARED — same canonical action, parity by construction at the state layer (6):**
+`loadRecipeInput`, `removeItem`, `setBatchGrams`, `setDirectionTarget`,
+`setLockType`, `setMachineSelection`.
+
+> This corrects §0: HOME **does** use the canonical `setDirectionTarget` (on
+> `HomePage`). The divergence is therefore *not* "HOME has no Direction" — it is
+> that HOME has **two** Direction routes: the canonical store action on
+> `HomePage`, and the PI-Monitor `axisIntents → texturePreference → spine` route
+> on `customer-shell`.
+
+**HOME-only actions (6):** `addIngredient`, `addTopping`, `rebuildNewRecipeStarter`,
+`setMainIngredient`, `setPlannedGrams`, `setProductBehaviorSnapshot`.
+
+**PRO-only actions (13):** `applyVerifiedRecipeInput`, `setGramLock`,
+`setPercentLock`, `setRangeLock`, `clearRangeLock`, `setCategory`,
+`setFormulationStrategy`, `startNewRecipe`, `loadPreset`, `resetToDemo`,
+`syncProductBehaviorSnapshots`, `bumpDraftRevision`, `acknowledgePracticalRecipeAudit`.
+
+### Asymmetries this exposes — to be audited per profile
+
+| # | CAPABILITY | ASYMMETRY | RISK | STATUS |
+|---|---|---|---|---|
+| 7 | ingredient grams | HOME writes directly via `setPlannedGrams`; PRO commits via `applyVerifiedRecipeInput` after Preview verification | **HIGH** — different validation semantics for the same intent; HOME may write a value PRO would refuse | ⏳ |
+| 16 | ProductBehavior | HOME `setProductBehaviorSnapshot` (singular); PRO `syncProductBehaviorSnapshots` (plural) | **HIGH** — different sync semantics | ⏳ |
+| 8 | lock / unlock | PRO has gram/percent/range locks; HOME has only `setLockType` | MEDIUM — HOME cannot express PRO lock kinds | ⏳ |
+| 1 / 30 | product type + switching | PRO `setCategory` + `startNewRecipe`; HOME `rebuildNewRecipeStarter` | MEDIUM — **connects to the OPEN `visibleProductType` pinning bug** | ⏳ |
+| 9 | Crown / Main | HOME `setMainIngredient`; PRO never calls it (uses `lock_type: 'main'` via constraint studio) | MEDIUM | ⏳ |
+| 4 | OPTIMAL / ECO | `setFormulationStrategy` PRO-only | MEDIUM — HOME may not express strategy | ⏳ |
+
+**Positive parity signals found (not defects):** `homeAddAmountDecision.ts`
+imports the canonical `resolveMainCapability` and `productDosageAuthority`, and
+`homeAmountAuthority.ts` uses canonical `planContainerSplit` — HOME's add/amount
+path is canonical-backed, with "containers" a presentation concept only.
+
 ## 4. Still to do (not started)
 
 - Capabilities 1–9, 12–17, 21–30 across Gelato / Sorbet / Vegan / Protein.
