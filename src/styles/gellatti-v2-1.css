@@ -108,6 +108,33 @@
     transform: translateX(2px);
   }
 
+  /* ── Legend box (owner reference 2026-09-03) ──────────────────────────
+     DOSTOSUJ RECEPTURĘ, USTAWIENIA and WIEDZA are BOXES whose label is
+     notched into the top border, not bands of eyebrow + hairline. The three
+     sections read as three instruments of the same make; a band cannot say
+     that, because its hairline runs to the column edge and so belongs to the
+     column rather than to the group beneath it.
+
+     The label sits ON the border and needs the column's own ground painted
+     behind it to cut the line. That ground is white in every workbench state
+     (`.right-pane` is `bg-white`, and at xl it is transparent over a white
+     page), so the value is white rather than a token that resolves to ivory
+     on some other surface. If this box is ever reused on a tinted surface,
+     override `--pro-legend-ground` on that surface — do not restyle here. */
+  .pro-legend-box {
+    position: relative;
+    border: 1px solid var(--g-line);
+    border-radius: 14px;
+  }
+
+  .pro-legend-box > [data-band-legend] {
+    position: absolute;
+    top: -7px;
+    left: 17px;
+    padding: 0 8px;
+    background: var(--pro-legend-ground, #fff);
+  }
+
   /* ── Module tabs (owner §8) ───────────────────────────────────────────
      Underline only. The preview has NO filled or boxed active tab: the
      active module is marked by a 2 px orange rule ON THE HEADER HAIRLINE.

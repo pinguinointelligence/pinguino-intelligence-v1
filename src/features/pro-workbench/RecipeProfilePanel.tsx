@@ -97,20 +97,12 @@ function NutritionCostProfileGrid({
        and the label sits underneath. The old card put a 14 px value behind an
        icon and a shadow; here the figure you came for is the largest thing in
        the column. The breakdown stays exactly as expandable as it was. */
-    <section className="min-w-0 border-b border-[var(--g-line)] pb-5">
-      <div className="mb-[13px] flex items-center gap-2.5">
-        {/* WYNIK is the label whose glyph box lands on the panel's rounded,
-            clipped corner — the reason the shared 2 px eyebrow inset exists.
-            The rule and its full reasoning live in `gellatti-v2-1.css` under
-            `[data-band-eyebrow]`, so all five band labels move together. */}
-        <h3
-          data-band-eyebrow
-          className="shrink-0 text-[10px] leading-[14px] font-semibold tracking-[0.16em] text-[var(--g-text-muted)] uppercase"
-        >
-          Wynik
-        </h3>
-        <span aria-hidden className="h-px flex-1 bg-[var(--g-line)]" />
-      </div>
+    <section className="min-w-0">
+      {/* OWNER AUTHORITY 2026-09-03 (approved desktop reference). There is NO
+          eyebrow above the figures. The numbers are the loudest thing in the
+          column and need no one to announce them; a "WYNIK" label above a
+          30 px figure only pushed the reading down by a row. The section keeps
+          its accessible name below, on the summary. */}
       <details className="group min-w-0" data-testid="profile-nutrition-cost-summary">
         {/* OWNER AUTHORITY 2026-09-02 (approved desktop PDF, §4). The result was
             a bordered two-cell box on ivory — a container competing with the
@@ -173,7 +165,7 @@ function NutritionCostProfileGrid({
                 strokeLinejoin="round"
               />
             </svg>
-            <span className="min-w-0">Rozwiń pełny rozkład składników i kosztów</span>
+            <span className="min-w-0">Rozwiń rozkład składników i kosztów</span>
           </span>
         </summary>
         <div className="profile-nutrition-details grid gap-x-8 gap-y-5 pt-4 min-[520px]:grid-cols-2">
@@ -433,7 +425,7 @@ function ProfileContent({
           numbers before knowing whose numbers they were. The cards are gone, so
           the rhythm between bands, not a border, is what separates them. */}
       <div
-        className="grid min-w-0 items-start gap-5 xl:gap-[18px]"
+        className="grid min-w-0 items-start gap-[26px]"
         data-testid="profile-desktop-grid"
         data-profile-layout="stacked"
         data-profile-band-order="recipe,result,direction,settings"
@@ -449,33 +441,37 @@ function ProfileContent({
         <ProfileDirectionAxes result={frozenNutritionResult} className="min-w-0" />
         <WorkbenchSettingsLine className="min-w-0" compact />
       </div>
-      {/* OWNER FROZEN PRO VISUAL: WIEDZA is a BAND like every other section —
-          its own eyebrow closed by a hairline, then one quiet row. It used to
-          be a 58 px bordered card with a permanent orange chevron, which spent
-          the accent colour on a link that is never urgent. */}
-      <section className="mt-5">
-        <div className="mb-[13px] flex items-center gap-2.5">
-          <h3
-            data-band-eyebrow
-            className="shrink-0 text-[10px] leading-[14px] font-semibold tracking-[0.16em] text-[var(--g-text-muted)] uppercase"
-          >
-            Wiedza
-          </h3>
-          <span aria-hidden className="h-px flex-1 bg-[var(--g-line)]" />
-        </div>
+      {/* OWNER AUTHORITY 2026-09-03 (approved desktop reference): WIEDZA is the
+          third BOX of the same make as DOSTOSUJ RECEPTURĘ and USTAWIENIA — a
+          notched legend, one row, an icon in a ring on the left and a chevron
+          on the right. It matches USTAWIENIA exactly because the two are the
+          same kind of thing: a way in, not a reading.
+
+          The explanatory second line is gone. The reference carries one line,
+          and the row's own words already say what is behind it. */}
+      <section className="pro-legend-box mt-[26px] px-5 pt-[22px] pb-[18px]">
+        <h3
+          data-band-legend
+          className="text-[10px] leading-[14px] font-semibold tracking-[0.16em] text-[var(--g-text-muted)] uppercase"
+        >
+          Wiedza
+        </h3>
         <button
           type="button"
           onClick={onOpenEducation}
-          className="pro-focus-ring flex min-h-11 w-full items-center gap-3 bg-transparent text-left"
+          className="pro-focus-ring flex w-full min-w-0 items-center gap-4 bg-transparent text-left"
           data-testid="profile-learning-entry"
         >
-          <span className="min-w-0 flex-1">
-            <span className="block text-[13.5px] leading-[19px] font-semibold tracking-[-0.015em] text-[var(--g-ink)]">
-              Wiedza o recepturze
-            </span>
-            <span className="mt-0.5 block truncate text-[11.5px] leading-[16px] font-normal text-[var(--g-text-muted)]">
-              Dlaczego taki wynik i jak przygotować recepturę?
-            </span>
+          <span className="grid size-11 shrink-0 place-items-center rounded-full border border-[var(--g-line)] text-[var(--g-ink)]">
+            <svg aria-hidden width="19" height="19" viewBox="0 0 24 24" fill="none">
+              <g stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 6.6C10.4 5.2 8.4 4.6 5.4 4.6A1 1 0 0 0 4.4 5.6v11.1a1 1 0 0 0 1 1c3 0 5 .6 6.6 2 1.6-1.4 3.6-2 6.6-2a1 1 0 0 0 1-1V5.6a1 1 0 0 0-1-1c-3 0-5 .6-6.6 2Z" />
+                <path d="M12 6.6v13.1" />
+              </g>
+            </svg>
+          </span>
+          <span className="min-w-0 flex-1 truncate text-[15px] leading-[21px] font-semibold tracking-[-0.02em] text-[var(--g-ink)]">
+            Wiedza o recepturze
           </span>
           <svg
             aria-hidden
