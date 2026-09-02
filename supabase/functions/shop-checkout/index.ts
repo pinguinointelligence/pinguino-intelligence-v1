@@ -27,14 +27,44 @@ const CORS = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-/** Where Gellatti ships today. Widening this is a business decision, not a
- *  code change made in passing. */
-const SHIPPING_COUNTRIES = [
-  'PL', 'ES', 'DE', 'FR', 'IT', 'PT', 'NL', 'BE', 'AT', 'CZ', 'SK', 'DK', 'SE', 'FI', 'IE',
-] as const;
+/**
+ * SHIPPING IS NOT DECLARED HERE.
+ *
+ * This function used to carry its own country list and its own flat rate, kept
+ * equal to the cart's copy by a test. A drift detector is not an authority: two
+ * places could still be edited apart, and the customer would only find out from
+ * a card statement.
+ *
+ * Both sides now resolve `shop_shipping_rates`. The rate charged is re-read
+ * server-side at session time, so a client cannot propose one, and Admin can
+ * change a price or add a carrier without a deploy.
+ */
+interface ShippingRateRow {
+  country_iso2: string;
+  carrier: string;
+  service: string | null;
+  customer_price_cents: number;
+  currency: string;
+  eta_min_days: number | null;
+  eta_max_days: number | null;
+}
 
-/** Flat courier rate, in cents, in the order currency. */
-const SHIPPING_FLAT_CENTS = 990;
+/** Every country with an enabled physical rate, cheapest-priority first. */
+const loadShippingRates = async (
+  db: { from: (t: string) => any },
+): Promise<ShippingRateRow[]> => {
+  const { data, error } = await db
+    .from('shop_shipping_rates')
+    .select(
+      'country_iso2,carrier,service,customer_price_cents,currency,eta_min_days,eta_max_days,sort_order',
+    )
+    .eq('enabled', true)
+    .eq('active', true)
+    .eq('physical_starter_pack_allowed', true)
+    .order('sort_order', { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as ShippingRateRow[];
+};
 
 const json = (status: number, body: Record<string, unknown>) =>
   new Response(JSON.stringify(body), {
@@ -76,6 +106,11 @@ Deno.serve(async (req) => {
     successUrl?: string;
     cancelUrl?: string;
     idempotencySuffix?: string;
+    /* WHERE ARE YOU STARTING? — chosen in the Shop before checkout opens, so
+       the exact rate is known here. Without it the session would have to offer
+       every country's rate and `expected_total_cents` could not be written,
+       which is the settlement authority. */
+    countryIso2?: string;
   };
   try {
     body = await req.json();
@@ -87,6 +122,9 @@ Deno.serve(async (req) => {
   if (!isAllowedRedirectUrl(body.successUrl, allowlist) || !isAllowedRedirectUrl(body.cancelUrl, allowlist)) {
     return json(400, { error: 'redirect_url_not_allowed' });
   }
+
+  const countryIso2 = String(body.countryIso2 ?? '').trim().toUpperCase();
+  if (!/^[A-Z]{2}$/.test(countryIso2)) return json(400, { error: 'country_required' });
 
   const requested = (body.items ?? [])
     .map((item) => ({
@@ -187,6 +225,15 @@ Deno.serve(async (req) => {
   }
 
   // The order exists before Stripe does, so a session always maps to one order.
+  /* THE rate, re-resolved server-side. A client may propose a country; it may
+     never propose a price. No enabled row means no physical offer for that
+     country — refused rather than defaulted. */
+  const shippingRates = await loadShippingRates(admin);
+  const shippingRate = shippingRates.find((rate) => rate.country_iso2 === countryIso2);
+  if (!shippingRate) return json(400, { error: 'shipping_unavailable_for_country' });
+  const shippingCents = shippingRate.customer_price_cents;
+  const shippingCountries = [countryIso2];
+
   const orderNumber = `G-${new Date().toISOString().slice(0, 10).replaceAll('-', '')}-${
     crypto.randomUUID().slice(0, 6).toUpperCase()
   }`;
@@ -207,7 +254,10 @@ Deno.serve(async (req) => {
          Tax is 0 (provider-side tax calculation is not enabled) and no
          discounts exist. Settlement refuses any event whose amount_total does
          not match this exactly. */
-      expected_total_cents: subtotal + SHIPPING_FLAT_CENTS,
+      shipping_cents: shippingCents,
+      shipping_country: countryIso2,
+      order_type: 'PHYSICAL',
+      expected_total_cents: subtotal + shippingCents,
       expected_currency: currency,
     })
     .select('id,order_number')
@@ -250,18 +300,27 @@ Deno.serve(async (req) => {
         /* A parcel needs a destination. Checkout collects the address, and
            `shop-order-sync` writes it back onto the order so whoever packs it
            can read it without opening Stripe. */
-        shipping_address_collection: { allowed_countries: SHIPPING_COUNTRIES },
+        shipping_address_collection: { allowed_countries: shippingCountries },
         phone_number_collection: { enabled: true },
+        /* One option per enabled country rate. Stripe shows the customer the
+           row that matches the address they enter, and the amount is the one
+           Admin configured — never a literal from this file. */
         shipping_options: [
           {
             shipping_rate_data: {
               type: 'fixed_amount',
-              fixed_amount: { amount: SHIPPING_FLAT_CENTS, currency },
-              display_name: 'Wysyłka kurierem',
-              delivery_estimate: {
-                minimum: { unit: 'business_day', value: 2 },
-                maximum: { unit: 'business_day', value: 5 },
-              },
+              fixed_amount: { amount: shippingCents, currency },
+              display_name: shippingRate.service
+                ? `${shippingRate.carrier} · ${shippingRate.service}`
+                : shippingRate.carrier,
+              ...(shippingRate.eta_min_days != null && shippingRate.eta_max_days != null
+                ? {
+                    delivery_estimate: {
+                      minimum: { unit: 'business_day', value: shippingRate.eta_min_days },
+                      maximum: { unit: 'business_day', value: shippingRate.eta_max_days },
+                    },
+                  }
+                : {}),
             },
           },
         ],
