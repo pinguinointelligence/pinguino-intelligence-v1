@@ -28,6 +28,7 @@ import {
   starterServingModeForTemperature,
 } from '@/features/recipes/newRecipeStarter';
 import { homeCreatorCopy } from '@/features/home-creator/homeCreatorCopy';
+import { homeCustomerNotice } from '@/features/home-creator/homeCustomerNotice';
 import { useHomeDraftStore } from '@/features/home-creator/homeDraftStore';
 import {
   useHomeEntitlement,
@@ -36,6 +37,7 @@ import {
 import { useHomeFlow } from '@/features/home-creator/useHomeFlow';
 import { useHomeRecipeResult } from '@/features/home-creator/useHomeRecipeResult';
 import { useHomeIntentIngredients } from '@/features/home-creator/useHomeIntentIngredients';
+import { LiveMultiScanner } from '@/features/product-scanner/LiveMultiScanner';
 import { HomeMatchGate } from '@/features/home-creator/matching/HomeMatchGate';
 import {
   NO_MATCH,
@@ -93,6 +95,7 @@ export function HomeCreatorPage() {
   // which is a normal outcome that shows no popup at all.
   const [matchResult, setMatchResult] = useState<HomeMatchResult | null>(null);
   const [matchDismissed, setMatchDismissed] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
   const intentIngredients = useHomeIntentIngredients();
   // §56: the SAME library the Pro builder feeds its picker. Demo/free get the local
   // preview catalogue, an authenticated paid session gets live Mapper search — HOME
@@ -471,10 +474,7 @@ export function HomeCreatorPage() {
                 void runMatching();
               }
             }}
-            onScan={() => {
-              // The cheap scanner pre-check is Phase 2; until it exists the button
-              // must not pretend to work, so it is not wired to a fake result.
-            }}
+            onScan={() => setScannerOpen(true)}
           />
         ) : null}
 
@@ -605,6 +605,9 @@ export function HomeCreatorPage() {
                 ? recipeSave.saveVersion()
                 : recipeSave.createNew(name.trim()));
             }}
+            // The canonical handler owns the reason; HOME only has to show it, filtered
+            // into customer language the same way every other HOME notice is.
+            saveNotice={homeCustomerNotice(recipeSave.error)}
             onLetsMakeIt={() => useHomeDraftStore.getState().startPreparation()}
             onShare={() => undefined}
             canShare={false}
@@ -658,6 +661,25 @@ export function HomeCreatorPage() {
       <span hidden data-testid="home-result-present">
         {result ? 'yes' : 'no'}
       </span>
+
+      {scannerOpen ? (
+        <div className="fixed inset-0 z-50 bg-white">
+          <LiveMultiScanner
+            onClose={() => setScannerOpen(false)}
+            onAddToRecipe={(products) => {
+              // The SAME door a typed ingredient uses. The scanner supplies identities;
+              // every rule about what they may do in a recipe stays where it lives.
+              for (const product of products)
+                void intentIngredients.addScannedProduct(product.identityKey);
+            }}
+            onNeedsDeepScan={() => {
+              // Not something the catalogue knows yet, so it belongs to the existing
+              // deep Scanner, which is where a new product is profiled and submitted.
+              navigate('/products/scan');
+            }}
+          />
+        </div>
+      ) : null}
     </AppShell>
   );
 }
