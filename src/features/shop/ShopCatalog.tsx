@@ -12,6 +12,7 @@ import { ShopCart, type ShopCartEntry } from './ShopCart';
 import { ShopConfirmation } from './ShopConfirmation';
 import { ShopProductCard } from './ShopProductCard';
 import { ShopStarterContents } from './ShopStarterContents';
+import { useNavigate } from 'react-router';
 import { ShopStarterOffer } from './ShopStarterOffer';
 
 /** The Gellatti shop: a small, factual catalogue and one honest checkout. */
@@ -20,6 +21,7 @@ const label =
   'text-[10px] leading-[1.25] font-bold tracking-[0.1em] text-[var(--g-text-secondary)] uppercase';
 
 export function ShopCatalog() {
+  const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const catalog = useQuery({ queryKey: ['shop-catalog'], queryFn: getShopCatalog });
   const cart = useShopCartStore();
@@ -120,6 +122,9 @@ export function ShopCatalog() {
             product={bundle}
             inCart={cart.lines.some((line) => line.sku === bundle.sku)}
             onAdd={() => cart.add(bundle.sku)}
+            /* Intent goes into the ROUTE, so signing in or reloading resumes
+               the same flow with the same country. */
+            onLocalPack={() => navigate('/shop/local-starter-pack')}
           />
           <ShopStarterContents product={bundle} />
         </>
