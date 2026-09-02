@@ -35,6 +35,7 @@ interface World {
   quantity?: number;
   partnerOwnedByBuyer?: boolean;
   sku?: string;
+  extraItems?: boolean;
   existingEntry?: boolean;
 }
 
@@ -52,6 +53,12 @@ class Fake implements DbClient {
     ]);
     this.tables.set('shop_order_items', [
       { order_id: ORDER, sku: w.sku ?? SKU, unit_price_cents: w.packPriceCents ?? 5_900, quantity: w.quantity ?? 1 },
+      ...(w.extraItems
+        ? [
+            { order_id: ORDER, sku: 'GEL-DEX-500', unit_price_cents: 490, quantity: 2 },
+            { order_id: ORDER, sku: 'GEL-INU-500', unit_price_cents: 990, quantity: 1 },
+          ]
+        : []),
     ]);
     this.tables.set('partners', [
       { id: PARTNER, user_id: w.partnerOwnedByBuyer ? BUYER : 'someone-else' },
@@ -99,6 +106,12 @@ class Fake implements DbClient {
       select: () => sel([]),
       insert: (values: Row) => {
         // The unique index on shop_order_id, modelled.
+        if (table === 'user_notifications' && values.dedupe_key) {
+          const clash = list().some((r) => r.dedupe_key === values.dedupe_key);
+          if (clash) {
+            return Promise.resolve({ data: null, error: { code: '23505', message: 'duplicate key' } });
+          }
+        }
         if (table === 'commission_entries' && values.shop_order_id) {
           const clash = list().some((r) => r.shop_order_id === values.shop_order_id);
           if (clash) {
@@ -163,10 +176,72 @@ describe('Starter Pack commission', () => {
     expect(only(entries(db), 'entry')).toMatchObject({ tier: 'gold', amount_cents: 1_900 });
   });
 
-  it('Elite defers to the individual authority — no row, and a note that says so', async () => {
+  // ELITE must not be guessed AND must not vanish. It reuses the existing
+  // admin operational-signal channel — the one STRIPE_WEBHOOK_FAILED uses.
+  it('Elite books no commission and never guesses 9 or 19 EUR', async () => {
     const { db, note } = await run({ tier: 'elite' });
     expect(entries(db)).toHaveLength(0);
     expect(note).toContain('skipped_elite_starter_pack_manual');
+    // The two automatic rates must appear nowhere in what was written.
+    const written = JSON.stringify(db.rows('user_notifications'));
+    expect(written).not.toMatch(/"amount_cents"\s*:\s*(900|1900)/);
+  });
+
+  it('Elite raises an ACTIONABLE settlement signal for admin/finance', async () => {
+    const { db, note } = await run({ tier: 'elite' });
+    expect(note).toContain('signalled');
+    const signal = only(db.rows('user_notifications'), 'notification');
+    expect(signal).toMatchObject({
+      admin_permission: 'PARTNER',
+      notification_type: 'AFFILIATE_ELITE_STARTER_PACK_MANUAL',
+      entity_type: 'shop_orders',
+      entity_id: ORDER,
+      dedupe_key: `elite_starter_pack:${ORDER}`,
+    });
+    // Finance needs the facts, not just a ping.
+    expect(signal.payload).toMatchObject({
+      partner_id: PARTNER,
+      shop_order_id: ORDER,
+      qualifying_packs: 1,
+    });
+  });
+
+  it('an Elite sale cannot disappear, and a replay does not spam the signal', async () => {
+    const db = new Fake({ tier: 'elite' });
+    const deps = { db, refetch: async (r: StripeResource) => { throw new Error(String(r)); } };
+    await applyEventEffects(deps, ev('evt_a'));
+    // A genuine replay arrives at an order Stripe already settled, with the
+    // ORIGINAL payment time recorded — that time is what the tier month is
+    // read from, so it must survive the replay.
+    const order = only(db.rows('shop_orders'), 'order');
+    order.status = 'paid';
+    order.paid_at = new Date(PAID_AT * 1000).toISOString();
+    const second = await applyEventEffects(deps, ev('evt_b'));
+    expect(db.rows('user_notifications')).toHaveLength(1);
+    expect(second.note).toContain('already_signalled');
+    expect(entries(db)).toHaveLength(0);
+  });
+
+  // The hole this closes: settle succeeds, commission fails, and every later
+  // delivery refuses early — order paid, partner never paid.
+  it('a paid order whose commission never landed is still booked on redelivery', async () => {
+    const db = new Fake({ tier: 'standard' });
+    const deps = { db, refetch: async (r: StripeResource) => { throw new Error(String(r)); } };
+    // The order settled earlier; no commission exists yet.
+    const order = only(db.rows('shop_orders'), 'order');
+    order.status = 'paid';
+    order.paid_at = new Date(PAID_AT * 1000).toISOString();
+    expect(entries(db)).toHaveLength(0);
+    await applyEventEffects(deps, ev('evt_late'));
+    expect(entries(db)).toHaveLength(1);
+    expect(only(entries(db), 'entry').amount_cents).toBe(900);
+  });
+
+  it('Elite quantity reaches finance so the manual amount is computable', async () => {
+    const { db } = await run({ tier: 'elite', quantity: 4 });
+    expect(only(db.rows('user_notifications'), 'notification').payload).toMatchObject({
+      qualifying_packs: 4,
+    });
   });
 
   it('no attribution → no partner commission', async () => {
@@ -208,9 +283,34 @@ describe('Starter Pack commission', () => {
     expect(only(db.rows('referral_attributions'), 'attribution').status).toBe('pending');
   });
 
-  it('quantity multiplies nothing — the pack rate is per ORDER, booked once', async () => {
-    const { db } = await run({ quantity: 3 });
+  // The commission is PER SOLD PACK. One aggregated entry per order keeps the
+  // order as the idempotency key, but the amount must scale with quantity.
+  it('Standard x4 books exactly 36 EUR, in ONE entry', async () => {
+    const { db } = await run({ tier: 'standard', quantity: 4 });
     expect(entries(db)).toHaveLength(1);
+    expect(only(entries(db), 'entry').amount_cents).toBe(3_600);
+  });
+
+  it('Gold x4 books exactly 76 EUR', async () => {
+    const { db } = await run({ tier: 'gold', quantity: 4 });
+    expect(only(entries(db), 'entry').amount_cents).toBe(7_600);
+  });
+
+  it('a mixed cart earns on the packs only, never on the other products', async () => {
+    const { db } = await run({ tier: 'standard', quantity: 4, extraItems: true });
+    // 4 packs x 9 EUR — the ingredients in the same cart add nothing.
+    expect(only(entries(db), 'entry').amount_cents).toBe(3_600);
+  });
+
+  it('other Shop products alone earn no Starter Pack commission', async () => {
+    const { db, note } = await run({ sku: 'GEL-INU-500', extraItems: true });
+    expect(entries(db)).toHaveLength(0);
+    expect(note ?? '').not.toContain('skipped_starter_pack_not_paid');
+  });
+
+  it('reads quantity from the order LINES, never from the order total', async () => {
+    // A large order total with a single pack must still pay for one pack.
+    const { db } = await run({ tier: 'standard', quantity: 1, extraItems: true });
     expect(only(entries(db), 'entry').amount_cents).toBe(900);
   });
 
