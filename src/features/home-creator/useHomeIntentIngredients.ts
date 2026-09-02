@@ -83,34 +83,55 @@ export function useHomeIntentIngredients() {
    * and is reported as `needs_amount`, so the UI can surface Recalculate (§60) rather
    * than silently shipping a zero-gram ingredient.
    */
-  const addResolvedChip = useCallback(
-    async (chip: IntentChip): Promise<IntentIngredientOutcome> => {
-      if (chip.productId === null) return { chipId: chip.id, status: 'unresolved' };
-      if (handled.current.has(chip.id)) return { chipId: chip.id, status: 'duplicate' };
-      handled.current.add(chip.id);
+  const addByProductId = useCallback(
+    async (key: string, productId: string): Promise<IntentIngredientOutcome> => {
+      if (handled.current.has(key)) return { chipId: key, status: 'duplicate' };
+      handled.current.add(key);
 
-      const ingredient = await hydrateIngredient(chip.productId);
-      if (ingredient === null) return { chipId: chip.id, status: 'unresolved' };
+      const ingredient = await hydrateIngredient(productId);
+      if (ingredient === null) return { chipId: key, status: 'unresolved' };
 
       const store = useRecipeStore.getState();
       const added = store.addIngredient(ingredient, 0);
-      if (added.status === 'duplicate') return { chipId: chip.id, status: 'duplicate' };
+      if (added.status === 'duplicate') return { chipId: key, status: 'duplicate' };
 
       // §49: ASK the existing authority. It refuses an ineligible product on its own.
       useRecipeStore.getState().setMainIngredient(added.lineId);
       const line = useRecipeStore.getState().items.find((item) => item.id === added.lineId);
-      if (line?.lock_type === 'main') return { chipId: chip.id, status: 'crowned' };
+      if (line?.lock_type === 'main') return { chipId: key, status: 'crowned' };
       return {
-        chipId: chip.id,
+        chipId: key,
         status: line && line.planned_grams > 0 ? 'added' : 'needs_amount',
       };
     },
     [],
   );
 
+  const addResolvedChip = useCallback(
+    async (chip: IntentChip): Promise<IntentIngredientOutcome> => {
+      if (chip.productId === null) return { chipId: chip.id, status: 'unresolved' };
+      return await addByProductId(chip.id, chip.productId);
+    },
+    [addByProductId],
+  );
+
+  /**
+   * A product collected by the LIVE SCANNER.
+   *
+   * It goes in through exactly the same door as a typed intent chip — same hydration,
+   * same `addIngredient`, same crown question — because a scanned product is not a
+   * different kind of ingredient. The scanner only supplies the identity; every rule
+   * about what that identity may do in a recipe stays where it already lives.
+   */
+  const addScannedProduct = useCallback(
+    async (productId: string): Promise<IntentIngredientOutcome> =>
+      await addByProductId(`scan:${productId}`, productId),
+    [addByProductId],
+  );
+
   const reset = useCallback(() => {
     handled.current = new Set();
   }, []);
 
-  return { resolveOne, addResolvedChip, reset };
+  return { resolveOne, addResolvedChip, addScannedProduct, reset };
 }
