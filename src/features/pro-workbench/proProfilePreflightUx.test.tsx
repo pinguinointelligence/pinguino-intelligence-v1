@@ -77,7 +77,11 @@ describe('canonical Pro header contract', () => {
     const logo = read('components', 'shared', 'OfficialProLogo.tsx');
     // In workbench mode the header shares the workbench cap so the module strip
     // stays on the display column; other PRO surfaces keep the 1776 page width.
-    expect(page).toContain("workbench ? 'max-w-[1440px]' : 'max-w-[1776px]'");
+    // SUPERSEDED, owner 2026-09-02 (option A). The header keeps the page's full
+    // width on EVERY route again — the 1440 cap it briefly carried is now on the
+    // centred band inside it, not on the row, so the hamburger, the wordmark and
+    // the login measure 32 / 96 / 32 px identically on Shop and PRO.
+    expect(page).toContain('maxWidthClass="max-w-[1776px]"');
     expect(page).toContain('brand={<OfficialProLogo />}');
     expect(page).not.toContain('data-testid="pro-top-score"');
     expect(header).toContain('data-testid="workbench-intelligence-header"');
