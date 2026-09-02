@@ -203,7 +203,16 @@ export function DirectNumberControl({
   return (
     <div
       className={cn(
-        'grid min-w-0 max-w-full items-center overflow-hidden rounded-2xl border border-ink/12 bg-white shadow-pro-sm transition-[border-color,background-color,box-shadow] focus-within:border-[#f58a07] focus-within:shadow-[0_0_0_3px_rgb(245_138_7_/_0.15)]',
+        'grid min-w-0 max-w-full items-center overflow-hidden border border-ink/12 bg-white shadow-pro-sm transition-[border-color,background-color,box-shadow] focus-within:border-[#f58a07] focus-within:shadow-[0_0_0_3px_rgb(245_138_7_/_0.15)]',
+        // The radius is chosen HERE, not in the base literal, because
+        // `.pro-studio-radius-system` normalises every rectangular Tailwind
+        // radius to 9 px with `!important` and excludes only `rounded-full`.
+        // Carrying `rounded-2xl` AND `rounded-full` on the same element
+        // therefore loses to the !important rule and silently stays 9 px —
+        // which is exactly what happened on the first attempt. Non-compact
+        // keeps `rounded-2xl` so HOME and Production are byte-for-byte
+        // unchanged; only the compact PRO stepper becomes a pill.
+        compact ? 'rounded-full' : 'rounded-2xl',
         compact && 'h-8',
         responsive && 'lg:h-8 lg:rounded-xl lg:shadow-none',
         widthPreset === 'percent' &&
@@ -242,7 +251,12 @@ export function DirectNumberControl({
               : lockSegment
                 ? 'w-full grid-cols-[44px_minmax(80px,1fr)_44px_44px]'
                 : 'w-full grid-cols-[44px_minmax(80px,1fr)_44px]'),
-        compact ? 'rounded-xl shadow-none' : null,
+        // OWNER DECISION 2026-09-02 (option 2): the PRO row stepper is a full
+        // pill, matching the Przelicz CTA. Scoped to `compact` ON PURPOSE —
+        // `responsive` is what HOME's recipe section and Production use, and
+        // neither was in scope. The 32 px density and the 13 px value are
+        // untouched: this changes the corner radius and nothing else.
+        compact ? 'shadow-none' : null,
         softDanger && 'ingredient-control-soft-danger',
         lockSegment?.pressed
           ? 'border-stone-400/70 bg-stone-100 shadow-[inset_0_1px_2px_rgb(16_17_19_/_0.06)]'
