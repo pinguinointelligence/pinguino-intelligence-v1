@@ -164,6 +164,17 @@ describe('ONE page gutter — a page may not re-scope the global header', () => 
     expect(scope.slice(0, scope.indexOf('}'))).not.toMatch(/--pro-page-gutter\s*:/);
   });
 
+  it('gives the workbench actions box no mobile gap of its own', () => {
+    /**
+     * Served, 2026-09-02: the authenticated workbench's switch sat exactly ONE
+     * left-cluster gap right of every destination's — +12 px at 390 (`gap-3`)
+     * and +20 px at 768 (`sm:gap-5`). Below `xl` every child of `ProTopActions`
+     * is itself hidden, so the box rendered at zero width — and a zero-width
+     * FLEX ITEM still takes a gap. It must not be a flex item down there.
+     */
+    expect(shell).toContain('<div className="hidden min-w-0 items-center xl:flex">{actions}</div>');
+  });
+
   it('still resolves the header and the workspace through that one token', () => {
     expect(APP_HEADER_ROW).toContain('xl:w-[calc(100%-var(--pro-page-gutter))]');
     expect(APP_PAGE_WORKSPACE).toContain('xl:w-[calc(100%-var(--pro-page-gutter))]');

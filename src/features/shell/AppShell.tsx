@@ -134,8 +134,17 @@ export function AppShell({
           {/* The workbench's page actions carry `flex-1`, which used to consume the
               header row's free space and drag the switch 135 px off the column edge.
               Containing them here keeps that growth inside their own box, so the
-              switch still closes the column. Their internal layout is unchanged. */}
-          {viewportLock ? <div className="flex min-w-0 items-center">{actions}</div> : null}
+              switch still closes the column. Their internal layout is unchanged.
+
+              `hidden xl:flex`, not a bare `flex`: below the workbench breakpoint every
+              child of `ProTopActions` is itself hidden, so this box rendered at zero
+              width — but a zero-width FLEX ITEM still takes a gap. Served staging
+              measured the authenticated workbench's switch exactly one gap right of
+              every destination's: +12 px at 390 (`gap-3`) and +20 px at 768
+              (`sm:gap-5`). Removing the empty item removes the gap with it. */}
+          {viewportLock ? (
+            <div className="hidden min-w-0 items-center xl:flex">{actions}</div>
+          ) : null}
           {/* The TRAILING EDGE of the work column — never the viewport edge — so the
               switch keeps one global x whether or not the right display column is
               occupied. Rendered on EVERY route, workbench included: the workbench
