@@ -379,7 +379,10 @@ export function WorkbenchSettingsLine({
     >
       <div className="mb-2 flex min-h-6 items-center">
         <div className="flex min-w-0 items-center gap-2">
-          <h3 className="text-[11px] leading-[16px] font-semibold tracking-[0.08em] text-[var(--g-text-secondary)] uppercase">
+          <h3
+            data-band-eyebrow
+            className="text-[11px] leading-[16px] font-semibold tracking-[0.08em] text-[var(--g-text-secondary)] uppercase"
+          >
             Ustawienia
           </h3>
         <span aria-hidden className="h-px flex-1 bg-[var(--g-line)]" />
