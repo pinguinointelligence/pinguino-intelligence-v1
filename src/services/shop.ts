@@ -222,6 +222,10 @@ export interface PaymentReference {
 }
 
 export interface AdminShopOrder extends ShopOrder {
+  /** From the shipping authority. Null when no cost is recorded — margin is
+   *  shown only where a cost genuinely exists, never inferred. */
+  carrier?: string | null;
+  carrierCostCents?: number | null;
   email: string;
   userId: string | null;
   cancelledAt: string | null;
