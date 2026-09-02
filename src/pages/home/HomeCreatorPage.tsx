@@ -28,6 +28,7 @@ import {
   starterServingModeForTemperature,
 } from '@/features/recipes/newRecipeStarter';
 import { homeCreatorCopy } from '@/features/home-creator/homeCreatorCopy';
+import { homeCustomerNotice } from '@/features/home-creator/homeCustomerNotice';
 import { useHomeDraftStore } from '@/features/home-creator/homeDraftStore';
 import {
   useHomeEntitlement,
@@ -605,6 +606,9 @@ export function HomeCreatorPage() {
                 ? recipeSave.saveVersion()
                 : recipeSave.createNew(name.trim()));
             }}
+            // The canonical handler owns the reason; HOME only has to show it, filtered
+            // into customer language the same way every other HOME notice is.
+            saveNotice={homeCustomerNotice(recipeSave.error)}
             onLetsMakeIt={() => useHomeDraftStore.getState().startPreparation()}
             onShare={() => undefined}
             canShare={false}
