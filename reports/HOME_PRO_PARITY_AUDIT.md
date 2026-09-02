@@ -242,7 +242,68 @@ from its payload, which is correct for an authoritative resolver sweep but means
 a HOME-added snapshot outside that payload would not survive a PRO sync. Worth a
 targeted roundtrip test when capability 32/33 (HOME↔PRO persistence) is audited.
 
-**CAPABILITY 16 = PARITY (lifecycle difference only).**
+### Cross-surface persistence proof — PASS, all four profiles
+
+| check | GELATO | SORBET | VEGAN | PROTEIN |
+|---|---|---|---|---|
+| HOME sets one snapshot | ✅ | ✅ | ✅ | ✅ |
+| survives PRO's inclusive authoritative sync | ✅ | ✅ | ✅ | ✅ |
+| removed when PRO's payload omits it | ✅ | ✅ | ✅ | ✅ |
+| other snapshots kept | ✅ | ✅ | ✅ | ✅ |
+| preserved across a HOME gram edit | ✅ | ✅ | ✅ | ✅ |
+| cleaned when the line is removed | ✅ | ✅ | ✅ | ✅ |
+| `processScope` mismatch rejected | ✅ | ✅ | ✅ | ✅ |
+
+Removal-by-omission is **correct authoritative cleanup, not accidental loss**:
+both surfaces resolve through the same `productBehaviorResolver`, so a line
+absent from the sweep is genuinely unresolved. The invariant this depends on —
+PRO's payload must be the complete resolver result for the current lines — is
+recorded here so it is not broken later.
+
+**CAPABILITY 16 = PARITY (lifecycle difference only), cross-surface persistence proven.**
+
+## 3f. THE REAL SHAPE OF THE SPLIT — it is not "HOME vs PRO"
+
+`RoleAwareEntryRoute.tsx:53` selects between **two live HOME surfaces**:
+
+```tsx
+return entry === 'start' ? <CustomerShellV1 /> : <HomeCreatorPage />;
+```
+
+and its own comment records an owner decision:
+
+> **OWNER SUPERSESSION (HOME Creator V1 §9)**: the public root renders the HOME
+> CREATOR… `/start` keeps serving the existing customer shell so older links and
+> bookmarks retain their meaning. *"the root and `/home` are the creator;
+> `/start` remains the legacy shell."*
+
+| route | surface | Direction authority | sweetness | hardness |
+|---|---|---|---|---|
+| `/`, `/home` | **HomeCreatorPage** (current HOME) | canonical `setDirectionTarget` → `buildRecipeDirectionPlan` | ✅ same action as PRO | **no control at all** |
+| `/start`, `/classic`, `/demo`, `/customer-v1` | **CustomerShellV1** (legacy shell) | PI Monitor `axisIntents` → `texturePreference` → `@/spine` | different authority | different authority |
+| `/pro` | PRO | canonical Direction | ✅ | ✅ (Protein `blocked_science`) |
+
+All of these are routed today; `/classic`, `/demo` and `/customer-v1` redirect
+*into* `/start`, so the legacy shell is reachable by anyone with an old link.
+
+**Consequences — these correct earlier entries in this report:**
+
+1. **Current HOME's sweetness is already canonical.** `HomeCreatorPage.tsx:403`
+   calls `setDirectionTarget('sweetness', …)` — the same store action as PRO,
+   with a §62 comment about preserving a Pro recipe's ±2. Authority-level parity;
+   behavioural proof still owed.
+2. **Current HOME has no hardness control**, so there is no current-HOME Protein
+   hardness to be "restored" to.
+3. **The working Protein hardness path found earlier lives on the LEGACY
+   `/start` shell**, not on current HOME. The owner's memory that "it worked" is
+   confirmed and now precisely located.
+4. The second formulation authority is therefore **the legacy shell**, not HOME
+   in general — that is the canonicalisation target.
+
+**Open owner question this raises (recorded, not decided):** whether `/start`
+should be canonicalised onto the shared authority, or retired to a redirect now
+that §9 has superseded it. That is an architecture decision, not an
+implementation detail.
 
 ## 4. Still to do (not started)
 
