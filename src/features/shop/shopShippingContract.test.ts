@@ -52,7 +52,9 @@ describe('shipping has exactly one authority', () => {
     expect(code).not.toMatch(/\b990\b/);
     expect(code).not.toMatch(/SHOP_SHIPPING_COUNTRIES/);
     // Shipping arrives as a parameter, so a caller with no rate has no offer.
-    expect(code).toMatch(/shopOrderTotals\s*=\s*\(\s*subtotalCents:\s*number,\s*shippingCents:\s*number/);
+    expect(code).toMatch(
+      /shopOrderTotals\s*=\s*\(\s*subtotalCents:\s*number,\s*shippingCents:\s*number/,
+    );
   });
 });
 

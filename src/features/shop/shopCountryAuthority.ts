@@ -101,9 +101,13 @@ export async function getShopCountries(): Promise<ShopCountry[]> {
         'local_starter_pack_live,missing_components,components_required,components_ready',
     );
   if (error) throw error;
-  return (data ?? [])
+  /* The generated database types do not yet describe these objects, so the rows
+     cross the boundary as `unknown` and are narrowed here — once, in the reader
+     that owns the shape, rather than at every call site. */
+  const rows = (data ?? []) as unknown as Array<Record<string, unknown>>;
+  return rows
     .filter((row) => row.active !== false)
-    .map((row) => rowToCountry(row as Record<string, unknown>))
+    .map(rowToCountry)
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
@@ -126,7 +130,7 @@ export async function getShippingRate(iso2: string): Promise<ShopShippingRate | 
     .order('sort_order', { ascending: true })
     .limit(1);
   if (error) throw error;
-  const row = (data ?? [])[0];
+  const row = ((data ?? []) as unknown as Array<Record<string, unknown>>)[0];
   if (!row) return null;
   return {
     countryIso2: String(row.country_iso2),
@@ -162,10 +166,9 @@ export async function getLocalComponents(iso2: string): Promise<ShopLocalCompone
     .not('supplier_name', 'is', null)
     .order('sort_order', { ascending: true });
   if (error) throw error;
-  return (data ?? []).map((row) => {
-    const product = (row as Record<string, unknown>).shop_products as
-      | { sku?: unknown; title?: unknown }
-      | undefined;
+  const rows = (data ?? []) as unknown as Array<Record<string, unknown>>;
+  return rows.map((row) => {
+    const product = row.shop_products as { sku?: unknown; title?: unknown } | undefined;
     return {
       componentSku: String(product?.sku ?? ''),
       componentTitle: String(product?.title ?? ''),

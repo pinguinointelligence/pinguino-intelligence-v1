@@ -21,8 +21,7 @@ import { shopContentTitle } from './shopContentTitle';
  * under what number. The row carries all five.
  */
 
-const label =
-  'text-[10px] font-bold tracking-[0.1em] text-[var(--g-text-secondary)] uppercase';
+const label = 'text-[10px] font-bold tracking-[0.1em] text-[var(--g-text-secondary)] uppercase';
 
 const chip =
   'border border-[var(--g-line)] px-2 py-1 text-[11px] tracking-[0.08em] text-[var(--g-text-secondary)] uppercase';
@@ -66,7 +65,10 @@ function OrderRow({
             <span className="min-w-0 text-ink">
               {shopContentTitle(item.title)}
               {item.packSizeG ? (
-                <span className="text-[var(--g-text-secondary)]"> · {shopGrams(item.packSizeG)}</span>
+                <span className="text-[var(--g-text-secondary)]">
+                  {' '}
+                  · {shopGrams(item.packSizeG)}
+                </span>
               ) : null}
               {item.quantity > 1 ? ` × ${item.quantity}` : ''}
               {item.isPreorder && order.leadTimeWeeks ? (

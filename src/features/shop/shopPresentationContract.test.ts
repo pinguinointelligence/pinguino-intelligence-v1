@@ -211,7 +211,11 @@ describe('shop C3 · the Shop declares no header of its own', () => {
 describe('shop C3 · commerce behaviour is unchanged', () => {
   it('states the shipping cost before the payment page, from one authority', () => {
     const cart = read('features', 'shop', 'ShopCart.tsx');
-    expect(cart).toContain('SHOP_SHIPPING_FLAT_CENTS');
+    /* The cart no longer knows a rate. It resolves one from the shipping
+       authority for the chosen country and withholds the row when there is
+       none — a constant here would be a promise checkout might not keep. */
+    expect(cart).not.toContain('SHOP_SHIPPING_FLAT_CENTS');
+    expect(cart).toContain('getShippingRate');
     expect(cart).toContain('shopOrderTotals');
     // No invented tax row: the session charges items + shipping and returns
     // amount_tax 0. A VAT line here would be a claim checkout cannot honour.

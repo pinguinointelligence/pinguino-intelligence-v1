@@ -1,8 +1,11 @@
+import { useEffect, useState } from 'react';
 import { cn } from '@/lib/cn';
 import { applicationPrimaryClasses } from '@/components/ui/applicationControlStyles';
 import { shopCopy as c, shopGrams, shopMoney } from '@/copy/shop';
 import type { ShopProduct } from '@/services/shop';
-import { SHOP_SHIPPING_FLAT_CENTS, shopOrderTotals } from './shopShipping';
+import { shopOrderTotals } from './shopShipping';
+import { getShippingRate, type ShopShippingRate } from './shopCountryAuthority';
+import { selectedShopCountry, useShopCountryStore } from './shopCountryStore';
 import { shopContentTitle } from './shopContentTitle';
 import type { ShopCartLine } from './shopCartStore';
 
@@ -92,8 +95,36 @@ export function ShopCart({
   onSignIn: () => void;
 }) {
   const units = entries.reduce((sum, entry) => sum + entry.line.quantity, 0);
+  /* The cart shows the rate the checkout will actually charge, resolved from
+     `shop_shipping_rates` for the chosen country. Before a country is chosen —
+     or where none is enabled — there is no number to show, so the row is
+     withheld rather than filled with a guess. */
+  const country = useShopCountryStore(selectedShopCountry);
+  /* Rates are CACHED BY COUNTRY and the visible rate is DERIVED, not mirrored.
+     Setting state synchronously in the effect to clear a stale rate would
+     cascade a render and, worse, briefly show one country's price under
+     another's name. Switching back to a country already resolved costs no
+     request at all. */
+  const [ratesByCountry, setRatesByCountry] = useState<Record<string, ShopShippingRate | null>>({});
+  useEffect(() => {
+    if (!country?.physicalAvailable) return;
+    const iso2 = country.iso2;
+    let cancelled = false;
+    void getShippingRate(iso2)
+      .then((rate) => {
+        if (!cancelled) setRatesByCountry((prev) => ({ ...prev, [iso2]: rate }));
+      })
+      .catch(() => {
+        if (!cancelled) setRatesByCountry((prev) => ({ ...prev, [iso2]: null }));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [country]);
+  const shippingRate = country?.physicalAvailable ? (ratesByCountry[country.iso2] ?? null) : null;
   const totals = shopOrderTotals(
     entries.reduce((sum, entry) => sum + entry.product.priceCents * entry.line.quantity, 0),
+    shippingRate?.priceCents ?? 0,
   );
   const preorderWeeks = entries.reduce(
     (max, entry) =>
@@ -179,12 +210,14 @@ export function ShopCart({
                 {shopMoney(totals.subtotalCents, currency)}
               </b>
             </div>
-            <div className="flex justify-between gap-3 py-2 text-[13px] text-[var(--g-text-secondary)]">
-              <span>{c.cart.shippingRow}</span>
-              <b className="font-mono text-[13px] font-normal text-ink tabular-nums">
-                {shopMoney(SHOP_SHIPPING_FLAT_CENTS, currency)}
-              </b>
-            </div>
+            {shippingRate ? (
+              <div className="flex justify-between gap-3 py-2 text-[13px] text-[var(--g-text-secondary)]">
+                <span>{c.cart.shippingRow}</span>
+                <b className="font-mono text-[13px] font-normal text-ink tabular-nums">
+                  {shopMoney(shippingRate.priceCents, shippingRate.currency)}
+                </b>
+              </div>
+            ) : null}
             <div className="mt-1.5 flex items-baseline justify-between gap-3 border-t border-[var(--g-line-strong)] pt-3.5">
               <span className="text-[13px] font-semibold">{c.cart.grandTotal}</span>
               <strong

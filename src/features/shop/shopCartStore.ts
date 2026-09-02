@@ -30,9 +30,7 @@ export const useShopCartStore = create<ShopCartState>()(
           return existing
             ? {
                 lines: state.lines.map((line) =>
-                  line.sku === sku
-                    ? { ...line, quantity: Math.min(20, line.quantity + 1) }
-                    : line,
+                  line.sku === sku ? { ...line, quantity: Math.min(20, line.quantity + 1) } : line,
                 ),
               }
             : { lines: [...state.lines, { sku, quantity: 1 }] };

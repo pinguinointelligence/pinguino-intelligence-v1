@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { cn } from '@/lib/cn';
 import {
   applicationPrimaryClasses,
@@ -8,7 +8,13 @@ import { shopAvailabilityLabelPl, shopCopy as c, shopGrams, shopMoney } from '@/
 import type { ShopProduct } from '@/services/shop';
 import { SHOP_STARTER_SHOTS, type ShopShotId } from './shopStarterShots';
 import { shopProductName } from './shopProductName';
-import { SHOP_SHIPPING_FLAT_CENTS } from './shopShipping';
+import { ShopCountrySelector } from './ShopCountrySelector';
+import {
+  selectedShopCountry,
+  selectedStarterPackMode,
+  useShopCountryStore,
+} from './shopCountryStore';
+import { getShippingRate, type ShopShippingRate } from './shopCountryAuthority';
 
 /**
  * THE ONE featured offer — Shop C3, owner approved 2026-08-31, with the
@@ -35,6 +41,33 @@ export function ShopStarterOffer({
   onAdd: () => void;
 }) {
   const [shot, setShot] = useState<ShopShotId>('front');
+  /* The offer is a function of WHERE. `mode` selects which experience renders;
+     `shippingRate` is resolved from the authority for the chosen country and is
+     null whenever no enabled rate exists — never a fallback constant. */
+  const mode = useShopCountryStore(selectedStarterPackMode);
+  const country = useShopCountryStore(selectedShopCountry);
+  /* Rates are CACHED BY COUNTRY and the visible rate is DERIVED, not mirrored.
+     Setting state synchronously in the effect to clear a stale rate would
+     cascade a render and, worse, briefly show one country's price under
+     another's name. Switching back to a country already resolved costs no
+     request at all. */
+  const [ratesByCountry, setRatesByCountry] = useState<Record<string, ShopShippingRate | null>>({});
+  useEffect(() => {
+    if (!country?.physicalAvailable) return;
+    const iso2 = country.iso2;
+    let cancelled = false;
+    void getShippingRate(iso2)
+      .then((rate) => {
+        if (!cancelled) setRatesByCountry((prev) => ({ ...prev, [iso2]: rate }));
+      })
+      .catch(() => {
+        if (!cancelled) setRatesByCountry((prev) => ({ ...prev, [iso2]: null }));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [country]);
+  const shippingRate = country?.physicalAvailable ? (ratesByCountry[country.iso2] ?? null) : null;
   const primary = SHOP_STARTER_SHOTS.find((s) => s.id === shot) ?? SHOP_STARTER_SHOTS[0]!;
   /* The strip only ever offers what is NOT on display. */
   const alternates = SHOP_STARTER_SHOTS.filter((s) => s.id !== primary.id);
@@ -114,8 +147,13 @@ export function ShopStarterOffer({
         </div>
 
         <p className="mt-3 max-w-[44ch] text-[14.5px] leading-relaxed text-[var(--g-text-secondary)] md:mt-5 md:text-[15.5px]">
-          {c.starterPack.offerLede}
+          {mode === 'local' ? c.localPack.body : c.starterPack.offerLede}
         </p>
+
+        {/* The question sits BEFORE the money, because it decides which money
+            is shown. Asking it in checkout would mean quoting a price and then
+            taking it away. */}
+        <ShopCountrySelector className="mt-4 md:mt-[22px]" />
 
         {/* Both purchase conditions, read before the money. Orange marks the
             made-to-order state and nothing else. */}
@@ -132,12 +170,18 @@ export function ShopStarterOffer({
             ) : null}
             {shopAvailabilityLabelPl(product.availability, product.leadTimeWeeks)}
           </p>
-          <p className="mt-1 ml-4 text-[13px] text-[var(--g-text-secondary)]">
-            {c.starterPack.offerShipping.replace(
-              '{amount}',
-              shopMoney(SHOP_SHIPPING_FLAT_CENTS, product.currency),
-            )}
-          </p>
+          {/* The shipping line states a RESOLVED rate or says nothing. It used
+              to print a constant, which is a promise the checkout might not
+              keep; a country with no enabled rate has no physical offer, and
+              silence is more honest than a number. */}
+          {mode === 'physical' && shippingRate ? (
+            <p className="mt-1 ml-4 text-[13px] text-[var(--g-text-secondary)]">
+              {c.starterPack.offerShipping.replace(
+                '{amount}',
+                shopMoney(shippingRate.priceCents, shippingRate.currency),
+              )}
+            </p>
+          ) : null}
         </div>
 
         {/* The money: clear, never the dominant graphic object. */}
