@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   Fragment,
   useId,
@@ -184,6 +185,16 @@ type ProductPickerPopoverProps = {
   triggerSize?: 'sm' | 'md';
   className?: string;
   behaviorContext?: Omit<ProductBehaviorContext, 'processScope' | 'requestedRole' | 'module'>;
+  /**
+   * Opt-in presentation filter for the "cannot add this" notice (OWNER served QA
+   * 2026-09-02). The pipeline writes those sentences for the PRO diagnosis view, where
+   * naming ProductBehavior, the Mapper or a snapshot is the point; a HOME customer
+   * cannot act on any of it. A surface that passes this gets the filtered sentence.
+   *
+   * It changes WORDING ONLY — the refusal itself is decided before this runs and is
+   * never softened. PRO passes nothing and is unaffected.
+   */
+  sanitizeNotice?: (technical: string) => string | null;
   /** Read-only Base duplicate check before ProductBehavior/network work. The
    * store's atomic add remains the final race-safe authority. */
   onPreflightDuplicate?: (ingredient: EngineIngredient) => ProductPickerSelectionResult | void;
@@ -217,6 +228,7 @@ export function ProductPickerPopover({
   triggerSize = 'md',
   className,
   behaviorContext,
+  sanitizeNotice,
   onPreflightDuplicate,
   handoff,
   onRouteToScope,
@@ -226,7 +238,17 @@ export function ProductPickerPopover({
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
   const [adding, setAdding] = useState(false);
-  const [unavailableNotice, setUnavailableNotice] = useState<string | null>(null);
+  const [unavailableNotice, setUnavailableNoticeText] = useState<string | null>(null);
+  /**
+   * Every notice in this component goes through here, so a surface that opted into a
+   * customer voice cannot be leaked past by a call site added later. Clearing (`null`)
+   * is never filtered.
+   */
+  const setUnavailableNotice = useCallback(
+    (text: string | null) =>
+      setUnavailableNoticeText(text === null ? null : (sanitizeNotice?.(text) ?? text)),
+    [sanitizeNotice],
+  );
   const [informationOption, setInformationOption] = useState<PickerOption | null>(null);
   const [handoffTargetProductId, setHandoffTargetProductId] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<IngredientCategoryFilterId>('all');
@@ -264,7 +286,9 @@ export function ProductPickerPopover({
     setHandoffTargetProductId(handoff.productId);
     setActiveFilter('all');
     setActiveIndex(0);
-    setUnavailableNotice(null);
+    // Clearing needs no presentation filter, so this uses the raw setter and keeps the
+    // effect's dependencies exactly what they were.
+    setUnavailableNoticeText(null);
     setInformationOption(null);
     setScanning(false);
     setOpen(true);

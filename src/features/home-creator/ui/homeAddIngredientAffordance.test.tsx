@@ -3,7 +3,18 @@
  *
  * "After the user has added the first ingredient, it is not visually obvious how to add
  * another one." The controls existed, but below sweetness, Przelicz and a paragraph, so
- * they read as unrelated to the list they act on.
+ * they read as unrelated to the list they act on. That placement fix still holds.
+ *
+ * ── PARTLY SUPERSEDED BY OWNER — 2026-09-02 ──────────────────────────────────────
+ * The 2026-08-31 answer used the round ICON trigger with a `max-sm:hidden` text hint
+ * beside it. Served, that read as "two anonymous circular + buttons", and on mobile the
+ * only label was hidden. The owner replaced the icon variant with the canonical PILL
+ * trigger, so each action reads „Dodaj składnik" / „Dodaj topping" at every width.
+ *
+ * What survives: the affordance still sits with the list, is still ONE per section, and
+ * still opens the canonical picker with no HOME selection logic. What is superseded:
+ * the icon variant and the desktop-only label — the two cases below record that.
+ * ─────────────────────────────────────────────────────────────────────────────────
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
@@ -40,15 +51,14 @@ describe('the add-ingredient affordance is attached to the ingredient list', () 
     }
   });
 
-  it('carries the accessible name "Dodaj składnik" without a second visible plus', () => {
+  it('carries the label "Dodaj składnik" as visible text, not only as an aria-label', () => {
     expect(section).toContain('triggerLabel={homeCreatorCopy.recipe.addIngredient}');
-    // The desktop hint is decorative; the name comes from the trigger's aria-label.
-    expect(section).toContain('aria-hidden');
     expect(picker).toContain('aria-label={label}');
   });
 
-  it('shows the text label only on desktop', () => {
-    expect(section).toContain('max-sm:hidden');
+  it('SUPERSEDED 2026-09-02: the label is no longer desktop-only', () => {
+    // Was: expect(section).toContain('max-sm:hidden') — the mobile user saw a bare `+`.
+    expect(section).not.toContain('max-sm:hidden text-[13px]');
   });
 
   it('gives toppings the analogous affordance', () => {
@@ -57,7 +67,7 @@ describe('the add-ingredient affordance is attached to the ingredient list', () 
   });
 });
 
-describe('the icon trigger follows the Designbook family', () => {
+describe('the trigger family', () => {
   it('uses the shared round icon button, not a large orange CTA', () => {
     expect(picker).toContain('iconButtonClasses(triggerSize)');
     const iconBranch = picker.slice(
@@ -68,11 +78,11 @@ describe('the icon trigger follows the Designbook family', () => {
     expect(iconBranch).not.toContain("buttonClasses('orange'");
   });
 
-  it('is at least a 44x44 touch target', () => {
-    // The list affordance takes the default md size, which is size-11 == 44px. The
-    // compact refinement variant is covered in pickerTriggerVariants.contract.test.tsx.
-    expect(picker).toContain("triggerSize = 'md'");
-    expect(section).toContain('triggerVariant="icon"');
+  it('SUPERSEDED 2026-09-02: HOME uses the labelled pill, not the anonymous icon', () => {
+    // Was: expect(section).toContain('triggerVariant="icon"').
+    expect(section).not.toContain('triggerVariant="icon"');
+    expect(section.match(/triggerVariant="pill"/g) ?? []).toHaveLength(2);
+    // The pill keeps its own 44 px target; the compact refinement size is not used here.
     expect(section).not.toContain('triggerSize="sm"');
   });
 
