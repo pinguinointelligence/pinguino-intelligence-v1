@@ -132,3 +132,24 @@ Owner action, if this keeps happening: the cheapest fix is to stop that file
 printing full solver payloads to stdout on every case, or to give the job an
 explicit `timeout-minutes` and `--reporter=dot` so a kill is distinguishable
 from a hang in the log.
+
+## New blocker — 2026-09-02
+
+**Blocker 5 — no Privacy Policy destination exists anywhere in the application.**
+Recorded by owner instruction as a **separate GLOBAL pre-production task**, not as a Work
+With Us item.
+
+| # | Area | Blocker | Worked around by | Owner action needed |
+|---|------|---------|------------------|---------------------|
+| 5 | Global — legal / pre-production | The application has **no Privacy Policy route, page or link**. The router defines 66 routes and none is legal: no `/privacy`, `/prywatnosc`, `/polityka`, `/regulamin`, `/terms`, `/legal`. Nothing is shipped in `public/`, no shared component or footer links to one, and no copy file mentions a privacy policy. | Nothing was invented. The public business-lead form at `/work-with-us#lead` collects name, e-mail and optional phone, country, city and message, and ships **without** consent copy or a policy link — the owner's explicit ruling, because a line pointing at a page that does not exist is worse than no line. The form is fully functional; the canonical `business_leads` authority has no consent column and none was added. | Decide the canonical Privacy Policy destination and publish it. Once a route exists, the already-approved informational line is a one-line addition beneath the submit action: „Wysyłając formularz, przekazujesz dane w celu obsługi zapytania. Szczegóły znajdziesz w Polityce prywatności." — informational only, **not** a consent gate. |
+
+**Why this is pre-production and not merely cosmetic.** The lead form is a public,
+signed-out surface that stores personal data (name, e-mail, phone, city) in
+`business_leads`. Every other property of that lane is closed and served-verified; the
+missing piece is a published policy to point at, which is an owner/legal decision rather
+than an engineering one.
+
+**Scope note.** This entry is deliberately filed here rather than in
+`GELLATTI_WORK_WITH_US_MASTER_CHECKLIST.md`. It is global — any current or future form,
+sign-up or checkout surface has the same gap — and the Work With Us lane is closed at
+implementation level and awaiting OWNER QA.
