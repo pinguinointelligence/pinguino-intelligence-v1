@@ -139,11 +139,25 @@
   --pro-workbench-header-height: 90px;
   /* Mobile preview navigation bar (Receptura/Monitor/Produkcja/Etykieta). */
   --pro-bottom-nav-height: 3.5rem;
+  /* CANONICAL HEADER OFFSET below the workbench breakpoint (owner, 2026-09-03).
+     The global header is content-driven — a 44 px control inside `py-2`, and
+     `sm:py-3` from 640 up — so it measures 65 px on a phone and 69 px from the
+     `sm` breakpoint. Anything that overlays the page on mobile starts HERE, so
+     the hamburger and HOME | PRO stay reachable underneath it. Measured live at
+     360 / 390 / 430 / 640 / 768 / 1024. */
+  --pro-mobile-header-height: 65px;
 }
 
 /* The notch inset still applies at every width; only its floor is dropped where
    the header's height is fixed. On a device with a real inset the value simply
    wins the `max()` as before. */
+@media (min-width: 40rem) {
+  :root {
+    /* `sm:py-3` adds 4 px to the same 44 px control. */
+    --pro-mobile-header-height: 69px;
+  }
+}
+
 @media (min-width: 1280px) {
   :root {
     --app-header-top-floor: 0px;

@@ -513,7 +513,15 @@ export function StudioEngineSurface({
         </div>
         {mobileCockpitOpen && mobileViewport ? (
           <div
-            className="fixed inset-x-0 top-0 bottom-[calc(var(--pro-bottom-nav-height)+env(safe-area-inset-bottom))] z-50 xl:hidden"
+            /* OWNER 2026-09-03: the sheet starts BELOW the global header, not at
+               `top-0`. On a phone Monitor and Produkcja open this cockpit as soon
+               as you visit them — it is how those modules are presented, not a
+               stray modal — and at `top-0` it covered the header at z-50, so the
+               hamburger and HOME | PRO were unreachable on those two routes. The
+               backdrop is inset with it, so the header is neither dimmed nor
+               swallowed. `--pro-mobile-header-height` is the canonical offset:
+               65 px on a phone, 69 px from `sm`, both measured live. */
+            className="fixed inset-x-0 top-[var(--pro-mobile-header-height)] bottom-[calc(var(--pro-bottom-nav-height)+env(safe-area-inset-bottom))] z-50 xl:hidden"
             data-testid="mobile-cockpit-sheet"
           >
             <button
@@ -528,7 +536,11 @@ export function StudioEngineSurface({
               role="dialog"
               aria-modal="true"
               aria-labelledby="mobile-cockpit-title"
-              className="absolute inset-x-0 bottom-0 flex h-[min(92dvh,calc(100dvh-env(safe-area-inset-top)-0.5rem))] max-h-full flex-col overflow-hidden rounded-t-[22px] border-t border-ink/10 bg-white shadow-pro-e3 [overscroll-behavior:contain]"
+              /* The panel filled 92dvh measured from the VIEWPORT, which is what
+                 pushed it up over the header. It now fills its own container,
+                 which already starts below the header, so the height follows the
+                 offset instead of competing with it. */
+              className="absolute inset-x-0 bottom-0 flex h-full max-h-full flex-col overflow-hidden rounded-t-[22px] border-t border-ink/10 bg-white shadow-pro-e3 [overscroll-behavior:contain]"
             >
               <div className="relative z-40 flex shrink-0 items-center justify-between border-b border-ink/10 bg-white px-4 py-3">
                 <h2 id="mobile-cockpit-title" className="text-sm font-semibold text-ink">
