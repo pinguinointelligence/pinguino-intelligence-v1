@@ -93,7 +93,11 @@ export function HomeProSwitch({
             data-treatment={treatment}
             onClick={() => go(segment)}
             className={cn(
-              'min-h-[32px] rounded-full px-4 text-[11px] font-bold tracking-[0.14em] transition-colors',
+              // Owner, mobile: the switch sat too large in the phone header. It shrinks
+              // below `sm` only — the desktop header keeps the geometry it was frozen with.
+              'min-h-[26px] px-1.5 text-[10px] tracking-[0.06em]',
+              'sm:min-h-[32px] sm:px-4 sm:text-[11px] sm:tracking-[0.14em]',
+              'rounded-full font-bold transition-colors',
               'focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40',
             )}
             style={
