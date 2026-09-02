@@ -20,6 +20,7 @@ import { getSharedBarcodeDecoder, type BarcodeImageSource } from './barcodeDecod
 import type { CatalogHit, RecognitionCapabilities } from './liveRecognition';
 import { lookupExactBarcode } from '@/services/productScanner';
 import { searchProducts } from '@/services/globalCatalog';
+import type { OcrRunOutcome } from '@/features/ocr-intake/intakeContracts';
 
 /** How much of a read label is worth searching for. */
 const OCR_MIN_TEXT_LENGTH = 3;
@@ -53,6 +54,30 @@ async function resolveNameExactly(text: string): Promise<CatalogHit | null> {
   return { id: hit.id, displayName: hit.displayName, brand: hit.brand };
 }
 
+type OcrRecognize = (input: {
+  imageId: string;
+  bytes: Uint8Array;
+  mime: 'image/png';
+  languages: string[];
+}) => Promise<OcrRunOutcome>;
+
+/**
+ * ONE OCR engine for the whole sweep.
+ *
+ * The provider owns a WASM worker. Building a new one per attempt would spawn a worker,
+ * load the language data and tear it all down again every 1.5 s — far more expensive than
+ * the recognition it performs. The engine is also imported LAZILY, so a sweep that only
+ * ever sees barcodes never downloads it at all.
+ */
+let ocrProvider: Promise<{ recognize: OcrRecognize }> | null = null;
+
+function sharedOcrProvider(): Promise<{ recognize: OcrRecognize }> {
+  ocrProvider ??= import('@/features/ocr-intake/provider/tesseractProvider').then(
+    ({ TesseractOcrProvider }) => new TesseractOcrProvider() as { recognize: OcrRecognize },
+  );
+  return ocrProvider;
+}
+
 export interface LiveCapabilityOptions {
   /** Off by default: the sweep is barcode-first, and OCR costs a second of CPU a frame. */
   readonly enableOcr?: boolean;
@@ -84,10 +109,9 @@ export function createLiveScanCapabilities(
       if (!(source instanceof ImageData)) return null;
       const bytes = await encodeFrame(source);
       if (!bytes) return null;
-      // Lazy: the WASM engine is only fetched if a sweep actually reaches this rung.
-      const { TesseractOcrProvider } =
-        await import('@/features/ocr-intake/provider/tesseractProvider');
-      const outcome = await new TesseractOcrProvider().recognize({
+      const outcome = await (
+        await sharedOcrProvider()
+      ).recognize({
         imageId: `live-${Date.now()}`,
         bytes,
         mime: 'image/png',
