@@ -445,9 +445,6 @@ export function HomeCreatorPage() {
               }, 60);
             }}
             resolving={resolving}
-            library={library}
-            onAddIngredient={handleAddIngredient}
-            onAddTopping={handleAddTopping}
             onChooseIdentity={(chip, candidate) => {
               // §23: the user answered the identity question. Record the real
               // catalogue identity, clear the question, and — if the recipe already
