@@ -3,7 +3,7 @@
 **Canonical ledger — 199 rows** (A12 B9 C16 D7 E17 F16 G12 H22 I14 J8 K22 L10 M9 N25).
 Earlier prints said `TOTAL 172`. That denominator was wrong; the row text was always these 199.
 
-**Branch** `claude/gellatti-affiliate` @ `211dee25` · base `origin/staging` (webhook files unchanged since `8b7244eb`)
+**Branch** `claude/gellatti-affiliate` @ `0b074201` (merged `origin/staging` `656ecd8a`, zero file overlap)
 **Legend** 🟢 proven with evidence · 🟡 built, proof partial · 🔴 blocked · ⚪ not started
 
 ```
@@ -95,8 +95,8 @@ M09 🟢 No Production/main change — every DB op and the deploy targeted stagi
 FINAL QA / DELIVERY                                                          7/25
 N01 🟢 Focused tests            N02 🟢 Typecheck exit 0     N03 🟢 Lint exit 0
 N04 🟢 Owner-locked exit 0      N05 🟢 Protected-paths 0    N06 🟢 Build exit 0
-N07 🟢 Full suite — 11 361 passed, 0 test failures (4 files fail to LOAD from a
-       node_modules symlink + sandbox font denial; none are mine)
+N07 🟡 Full suite POST-MERGE — 11 400 tests passed, 0 TEST failures; but 4 FILE
+       COLLECTION failures remain, so this is NOT 'completely green' (see E01)
 N08 ⚪ PR CI  N09 ⚪ Normal merge  N10 ⚪ No --admin  N11 ⚪ No force
 N12 ⚪ Staging alias = merge deployment      N13 ⚪ meta.githubCommitSha == merge SHA
 N14 🟡 /affiliate 1440 (local)  N15 🟡 /affiliate 390 (local)
@@ -121,3 +121,57 @@ N23 ⚪ No known unfinished item  N24 ⚪ OWNER QA package  N25 ⚪ STOP
 v24 also shipped shop settlement + `checkout_session_expired`, merged on staging
 (`80f73dc5`) but never deployed. Supabase deploys whole functions, so this could
 not be separated from the referral change.
+
+
+## BLOCKER REGISTER
+
+These are tracked outside the 199 scored rows so the total stays canonical.
+Each names the numbered rows it holds hostage.
+
+```
+W01 ⏸ STRIPE SIGNED TEST EVENT -> WAITING ON TOOL / OWNER
+    Blocks: H13 H14 H15 H16 H17 H18 H19 H20 H21 H22 · K19 K20 K21 K22 · N16 N17 N19 N20
+    Owner:  BILLING / STRIPE
+    Evidence gathered 2026-09-02:
+      - a Stripe connector IS registered to the account:
+        "claude.ai Stripe", mcpsrv_01ARLfHsyWKYxK3xC48abgbS
+      - it sits in ~/.claude/mcp-needs-auth-cache.json -> UNAUTHENTICATED
+      - it exposes ZERO tools in this session (ToolSearch: no Stripe tools;
+        list_connectors on stripe/payments/billing -> [])
+      - no STRIPE_* in env, no ~/.config/stripe, no CLI, no key in repo
+        (createCheckoutSession.test.ts + stripeWebhook.test.ts actively FORBID one)
+      - stripe_webhook_events since v24 deploy = 0
+    Unblock: authenticate the Stripe connector, or supply a TEST-mode
+             restricted key. Forging a Stripe-Signature is refused and
+             would prove nothing.
+
+W02 ⚪ SECURITY - commission_entries broad DML grants rely solely on RLS
+    Owner:  SECURITY / BILLING HARDENING
+    Finding: anon AND authenticated hold
+             INSERT/UPDATE/DELETE/TRUNCATE/SELECT on public.commission_entries.
+             RLS is enabled with exactly ONE policy, and it is SELECT-only
+             (polcmd 'r'); there is no write policy, so writes are denied today.
+             RLS is therefore the ONLY barrier - disabling it, or adding one
+             permissive policy, would immediately expose write access to anon.
+    Status:  NOT harmless. Not fixed here on purpose: a grant cleanup does not
+             belong in an Affiliate UI PR.
+    Note:    the L03 probe ran against an EMPTY table, so "0 rows updated" is
+             weak evidence. Re-run it against a REAL commission row once W01
+             clears - that is the strong test.
+
+W03 ⚪ ENVIRONMENT - node_modules symlink defeats 4 test files
+    Affects: N07
+    Cause:   ./node_modules -> ../pinguino-pro-completion/node_modules, and the
+             sandbox denies loading @fontsource assets from outside the cwd.
+             4 files collect 0 tests: LabelWorkspace.runtime, proProfilePreflightUx,
+             proRecipeStateRegression, ProWorkspacePage.libraryHandoff.
+             None are mine; all pass in CI where node_modules is installed locally.
+
+W04 ⏸ GIT PUSH DENIED -> WAITING ON OWNER PERMISSION
+    Blocks: N08 N09 N12 N13 · B08 B09 C15 C16 E16 E17 N14 N15 (served re-run)
+            · F02-F16 · G01-G12
+    `git push -u origin claude/gellatti-affiliate` was refused by the
+    permission classifier. Without the branch on the remote there is no PR,
+    no CI, no merge, no staging deployment, and therefore no canonical
+    served QA. Branch is committed locally at 0b074201 and ready.
+```
