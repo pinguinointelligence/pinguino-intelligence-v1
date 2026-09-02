@@ -508,7 +508,7 @@ describe('closed row payloads', () => {
       stripeInvoiceId: null,
       shopOrderId: 'order-1',
       stripePaymentIntentId: 'pi_shop_1',
-      offerKey: 'GEL-STARTER-PACK',
+      offerKey: null,
       product: 'shop_starter_pack',
       commissionCadence: 'one_off',
       tier: 'standard',
@@ -520,6 +520,7 @@ describe('closed row payloads', () => {
     // Same column set — one ledger, two shapes, never two tables.
     expect(Object.keys(row).sort()).toEqual([...COMMISSION_ENTRY_ROW_KEYS].sort());
     expect(row.shop_order_id).toBe('order-1');
+    expect(row.offer_key).toBeNull();
     expect(row.stripe_subscription_id).toBeNull();
     expect(row.stripe_invoice_id).toBeNull();
     expect(row.subscription_id).toBeNull();

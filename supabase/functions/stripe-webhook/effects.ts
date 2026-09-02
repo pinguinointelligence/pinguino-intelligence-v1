@@ -615,7 +615,7 @@ export interface CommissionEntryRow {
   stripe_subscription_id: string | null;
   stripe_invoice_id: string | null;
   stripe_payment_intent_id: string | null;
-  offer_key: string;
+  offer_key: string | null;
   product: string;
   cadence: string;
   tier: string;
@@ -674,7 +674,7 @@ export function buildCommissionEntryRow(input: {
   /** Set ONLY for a one-off entry — it is that entry's idempotency key. */
   shopOrderId?: string | null;
   stripePaymentIntentId: string | null;
-  offerKey: string;
+  offerKey: string | null;
   product: string;
   commissionCadence: string;
   tier: string;

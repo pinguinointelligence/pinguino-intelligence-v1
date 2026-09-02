@@ -307,7 +307,10 @@ async function applyStarterPackCommission(
     stripeInvoiceId: null,
     shopOrderId: orderId,
     stripePaymentIntentId: paymentIntentId,
-    offerKey: STARTER_PACK_SKU,
+    // No offer key: `offer_key` is a foreign key into the SUBSCRIPTION
+    // catalogue, and a shop SKU is not an offer there. The order this entry
+    // points at names the SKU, so nothing is lost.
+    offerKey: null,
     product: 'shop_starter_pack',
     commissionCadence: 'one_off',
     tier,

@@ -153,6 +153,8 @@ describe('Starter Pack commission', () => {
       amount_cents: 900, status: 'held', currency: 'eur',
       stripe_subscription_id: null, stripe_invoice_id: null,
       stripe_payment_intent_id: 'pi_shop_1',
+      // No catalogue offer: offer_key is an FK into the SUBSCRIPTION catalogue.
+      offer_key: null,
     });
   });
 
