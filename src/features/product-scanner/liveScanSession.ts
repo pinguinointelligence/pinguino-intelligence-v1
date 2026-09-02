@@ -36,6 +36,11 @@ export type LiveScanEvent =
   | { kind: 'candidate'; identityKey: string; label: string; evidence: number; needed: number }
   /** GREEN. Accepted exactly once, with the best frame of the window. */
   | { kind: 'confirmed'; product: AcceptedProduct }
+  /**
+   * Identified but NOT matched to the catalogue — collected without a green lock, so
+   * the customer is never shown a product Gellatti cannot actually stand behind.
+   */
+  | { kind: 'unresolved'; product: AcceptedProduct }
   /** Already in the basket and still in view — deliberately silent. */
   | { kind: 'duplicate_suppressed'; identityKey: string };
 
@@ -46,6 +51,16 @@ export interface ScanObservation {
   readonly barcode?: string | null;
   /** True only when the barcode passed checksum/format validation. */
   readonly barcodeValidated?: boolean;
+  /**
+   * True only when the identity was resolved to an EXACT catalogue/SKU entry.
+   *
+   * OWNER CORRECTION: a syntactically valid barcode is not a product. A checksum only
+   * proves the digits are well formed — it says nothing about what is in the box, and
+   * showing a confirmed product from it would be a false green. Without a catalogue
+   * resolution the scan is collected as UNRESOLVED and routed to the existing
+   * contribution flow.
+   */
+  readonly catalogResolved?: boolean;
   /** Stable identity for the recognised thing, e.g. a catalogue id or `ean:123…`. */
   readonly identityKey?: string | null;
   readonly label?: string | null;
@@ -63,6 +78,8 @@ export interface AcceptedProduct {
   readonly evidence: number;
   /** True when the product still needs the deep Scanner/contribution flow. */
   readonly needsDeepScan: boolean;
+  /** Only a catalogue-resolved product is green. */
+  readonly acceptance: 'confirmed' | 'needs_resolution';
 }
 
 export interface LiveScanSessionState {
@@ -163,14 +180,18 @@ export function observeFrame(
     };
   }
 
+  // GREEN belongs to the catalogue, not to the decoder. An exact SKU resolution is the
+  // only thing that turns a reading into a product the customer can be shown.
+  const resolved = observation.catalogResolved === true;
   const product: AcceptedProduct = {
     identityKey,
     label,
-    route: observation.route,
+    route: resolved ? observation.route : 'UNKNOWN',
     acceptedAt: observation.at,
     evidence: timestamps.length,
     // An identified-but-unmatched product is where the EXISTING deep Scanner takes over.
-    needsDeepScan: observation.route === 'UNKNOWN',
+    needsDeepScan: !resolved,
+    acceptance: resolved ? 'confirmed' : 'needs_resolution',
   };
 
   return {
@@ -181,7 +202,7 @@ export function observeFrame(
       acceptedAt: { ...state.acceptedAt, [identityKey]: observation.at },
       counters,
     },
-    event: { kind: 'confirmed', product },
+    event: resolved ? { kind: 'confirmed', product } : { kind: 'unresolved', product },
   };
 }
 
@@ -205,3 +226,7 @@ export function removeAccepted(
 /** The products that still need the deep Scanner before they can enter a recipe. */
 export const unresolvedProducts = (state: LiveScanSessionState): readonly AcceptedProduct[] =>
   state.accepted.filter((p) => p.needsDeepScan);
+
+/** The products that resolved to the catalogue and may enter a recipe as they are. */
+export const confirmedProducts = (state: LiveScanSessionState): readonly AcceptedProduct[] =>
+  state.accepted.filter((p) => p.acceptance === 'confirmed');

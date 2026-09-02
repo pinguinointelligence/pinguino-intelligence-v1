@@ -14,6 +14,7 @@ import {
   emptyLiveScanSession,
   observeFrame,
   removeAccepted,
+  confirmedProducts,
   unresolvedProducts,
   type LiveScanSessionState,
   type ScanObservation,
@@ -39,6 +40,7 @@ const barcodeFrame = (at: number, ean = '5901234123457'): ScanObservation => ({
   quality: good,
   barcode: ean,
   barcodeValidated: true,
+  catalogResolved: true,
   identityKey: `ean:${ean}`,
   label: 'OREO Original 154 g',
   route: 'LOCAL_BARCODE',
@@ -50,6 +52,7 @@ const recognitionFrame = (at: number, key = 'pi:banana', confidence = 0.9): Scan
   identityKey: key,
   label: key === 'pi:banana' ? 'Banan' : 'Jabłko',
   route: 'VISION_FALLBACK',
+  catalogResolved: true,
   confidence,
 });
 
@@ -79,6 +82,26 @@ describe('3 · a validated barcode locks immediately', () => {
     ]);
     expect(events[0]?.kind).toBe('searching');
     expect(state.accepted).toHaveLength(0);
+  });
+});
+
+describe('OWNER CORRECTION · a valid barcode is not yet a product', () => {
+  it('does NOT turn green when the barcode is unknown to the catalogue', () => {
+    const unknownSku = { ...barcodeFrame(0), catalogResolved: false, label: 'EAN 5901234123457' };
+    const { state, events } = run([unknownSku]);
+    // Collected, but never presented as a confirmed product.
+    expect(events[0]?.kind).toBe('unresolved');
+    expect(state.accepted[0]?.acceptance).toBe('needs_resolution');
+    expect(state.accepted[0]?.needsDeepScan).toBe(true);
+    expect(confirmedProducts(state)).toHaveLength(0);
+    expect(unresolvedProducts(state)).toHaveLength(1);
+  });
+
+  it('turns green only once the SKU resolves', () => {
+    const { state, events } = run([barcodeFrame(0)]);
+    expect(events[0]?.kind).toBe('confirmed');
+    expect(state.accepted[0]?.acceptance).toBe('confirmed');
+    expect(confirmedProducts(state)).toHaveLength(1);
   });
 });
 
@@ -191,10 +214,13 @@ describe('10 · an unknown product is handed to the existing deep flow', () => {
       identityKey: 'unknown:blob-1',
       label: 'Nierozpoznany produkt',
       route: 'UNKNOWN',
+      catalogResolved: false,
       confidence: 0.95,
     };
-    const { state } = run([unknown, { ...unknown, at: 100 }, { ...unknown, at: 200 }]);
+    const { state, events } = run([unknown, { ...unknown, at: 100 }, { ...unknown, at: 200 }]);
+    expect(events[2]?.kind).toBe('unresolved');
     expect(state.accepted[0]?.needsDeepScan).toBe(true);
+    expect(state.accepted[0]?.acceptance).toBe('needs_resolution');
     expect(unresolvedProducts(state)).toHaveLength(1);
   });
 
