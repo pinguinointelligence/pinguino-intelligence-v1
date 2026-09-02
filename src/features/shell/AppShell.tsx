@@ -125,6 +125,12 @@ export function AppShell({
         <div
           className={cn(
             'flex min-w-0 items-center gap-3 sm:gap-5',
+            // Owner, mobile: the header row is `justify-between` with a single child on
+            // a phone, so this slot was content-width and `ml-auto` stopped 74 px short
+            // of the edge. Growing it below `sm` lets the switch reach the right gutter.
+            // Deliberately NOT applied from `sm` up — the desktop header keeps the
+            // geometry it was frozen with.
+            'max-sm:flex-1',
             'xl:col-start-1 xl:row-start-1',
           )}
         >
