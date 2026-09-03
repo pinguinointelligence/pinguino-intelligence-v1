@@ -34,6 +34,9 @@ import {
   type PreviewIssue,
   type RecalculationTerminalState,
 } from '@/features/constraint-studio/constraintStudioStore';
+import { cn } from '@/lib/cn';
+import { GellattiNotice } from '@/components/ui/GellattiNotice';
+import { productIdentityLines } from '@/features/ingredient-builder/productIdentityLines';
 import {
   diagnoseRecalcFailure,
   isAllLocked,
@@ -58,6 +61,7 @@ import {
 import { useProCoreAccessStore } from '@/features/pro-core/proCoreAccessStore';
 
 const r = copy.proWorkbar.recalcPanel;
+const n = copy.proWorkbar.maxAmountNotice;
 const d = constraintStudioCopy.diagnosis;
 const FOCUSABLE =
   'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -908,6 +912,7 @@ export function ProRecalcPanel({
   const starterPackRescueReport = useConstraintStudioStore((s) => s.starterPackRescueReport);
   const starterPackRescuePending = useConstraintStudioStore((s) => s.starterPackRescuePending);
   const previewIssue = useConstraintStudioStore((s) => s.previewIssue);
+  const crownOffCorrectionNotice = useConstraintStudioStore((s) => s.crownOffCorrectionNotice);
   const blocked = useConstraintStudioStore((s) => s.blocked);
   const history = useConstraintStudioStore((s) => s.history);
   const recalculationTerminal = useConstraintStudioStore((s) => s.recalculationTerminal);
@@ -1041,6 +1046,27 @@ export function ProRecalcPanel({
     void retryRunner();
   };
 
+  // The correction is ALREADY in the recipe (applied through the canonical door
+  // by the same click). This is the whole remaining interaction — one sentence
+  // and one acknowledgement — so it renders whether or not the recalculation
+  // overlay is still open, and it replaces that overlay rather than stacking on
+  // top of it.
+  if (crownOffCorrectionNotice) {
+    const notice = crownOffCorrectionNotice;
+    return (
+      <GellattiNotice
+        testId="crown-off-correction-notice"
+        tone="attention"
+        title={n.title}
+        body={n.body(productIdentityLines(notice.ingredientName).name, notice.safeMaximumGrams)}
+        primaryLabel={n.confirm}
+        onPrimary={() => {
+          store.acknowledgeCrownOffCorrection();
+          onClose();
+        }}
+      />
+    );
+  }
   if (!open) return null;
   const customerPreviewOpen = preview !== null && recalculationTerminal?.state === 'PREVIEW_READY';
   const dialogLabel = customerPreviewOpen ? 'Sprawdź proponowaną korektę.' : r.title;
@@ -1089,11 +1115,24 @@ export function ProRecalcPanel({
         aria-label={dialogLabel}
         data-testid="pro-recalc-panel"
         data-terminal-state={recalculationTerminal?.state ?? 'IDLE'}
-        className={
+        /* OWNER 2026-09-03 — ONE Gellatti dialog language. This overlay used to
+           carry two shells: a light one for the customer preview and a GRAPHITE
+           `#191a1d` diagnostic one for everything else, so a plain sentence
+           ("Nie udało się przeliczyć receptury") arrived on a dark technical
+           box while the rest of the product spoke in light premium surfaces.
+           Both states now share the light token set. The children are written
+           against `--color-ivory` / `--color-shell`, so re-pointing those two
+           variables carries every nested control across with its contrast
+           relationships intact — `text-ivory/80` becomes graphite at 80 % on
+           white, `bg-ivory`/`text-shell` stays a solid dark button with a light
+           label. No child markup, wording or affordance is changed here. */
+        className={cn(
+          'absolute top-1/2 left-1/2 w-[min(680px,calc(100vw-1.5rem))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-[18px] border border-black/10 bg-white text-ivory shadow-pro-md',
+          '[--color-charcoal:#191a1d] [--color-ivory:#202124] [--color-shell:#f5f3ee] [color-scheme:light]',
           customerPreviewOpen
-            ? 'absolute top-1/2 left-1/2 max-h-[92dvh] w-[min(680px,calc(100vw-1rem))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-[18px] border border-black/10 bg-white px-3 py-3 text-ivory shadow-pro-md [--color-charcoal:#191a1d] [--color-ivory:#202124] [--color-shell:#f5f3ee] [color-scheme:light] sm:max-h-[88vh] sm:w-[min(680px,calc(100vw-1.5rem))] sm:px-4 sm:py-4'
-            : 'absolute top-1/2 left-1/2 max-h-[88vh] w-[min(680px,calc(100vw-1.5rem))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-white/10 bg-shell px-4 py-4 text-ivory shadow-pro-md [--color-charcoal:#191a1d] [--color-ivory:#efe9dc] [--color-shell:#191a1d] [color-scheme:dark] sm:px-5 sm:py-5'
-        }
+            ? 'max-h-[92dvh] w-[min(680px,calc(100vw-1rem))] px-3 py-3 sm:max-h-[88vh] sm:w-[min(680px,calc(100vw-1.5rem))] sm:px-4 sm:py-4'
+            : 'max-h-[88vh] px-4 py-4 sm:px-5 sm:py-5',
+        )}
       >
         {!customerPreviewOpen ? (
           <div className="flex items-center justify-between gap-3">

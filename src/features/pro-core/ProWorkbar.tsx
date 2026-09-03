@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useParams } from 'react-router';
 import { copy } from '@/copy/en';
 import { cn } from '@/lib/cn';
 import { useRecipeStore } from '@/stores/recipeStore';
@@ -13,6 +14,7 @@ import { NewRecipeConfirmationDialog } from '@/features/recipes/NewRecipeConfirm
 import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import { iconButtonClasses } from '@/components/ui/buttonStyles';
+import { withWorkbenchOrigin, workbenchOriginForSection } from '@/pages/pro/workbenchOrigin';
 import { announceFriendlyLabMoment } from '@/components/shared/friendlyLabMoment';
 
 const w = copy.proWorkbar;
@@ -37,6 +39,11 @@ export function ProWorkbar({
   variant?: 'bar' | 'panel';
   onSaveAttentionChange?: (required: boolean) => void;
 }) {
+  const { section } = useParams();
+  // The menu is rendered inside the workbench, so the CURRENT section is the
+  // origin. It is read from the route rather than hard-coded so opening
+  // Wersje from Monitor or Production returns there, not to /pro/recipe.
+  const versionsHref = withWorkbenchOrigin('/pro/versions', workbenchOriginForSection(section));
   const savedRecipeId = useRecipeStore((s) => s.savedRecipeId);
   const savedRecipeName = useRecipeStore((s) => s.savedRecipeName);
   const currentVersionNumber = useRecipeStore((s) => s.currentVersionNumber);
@@ -251,13 +258,14 @@ export function ProWorkbar({
         >
           {linked ? 'Zapisz nową wersję' : w.saveNew}
         </button>
-        <a
-          href="/pro/versions"
+        <Link
+          to={versionsHref}
+          data-testid="pro-workbar-versions-link"
           className="mt-2 block border-t border-ink/10 pt-2 text-xs font-semibold text-stone-600"
         >
           Wersje
           <ReviewDecisionLabel />
-        </a>
+        </Link>
       </div>
     </details>
   );
@@ -521,13 +529,14 @@ export function ProWorkbar({
                 {currentVersionNumber ? `v${currentVersionNumber}` : 'wersja robocza'} ·{' '}
                 {w.status[statusKey]}
               </p>
-              <a
-                href="/pro/versions"
+              <Link
+                to={versionsHref}
+                data-testid="pro-workbar-versions-link"
                 className="mt-3 block border-t border-ink/10 pt-2 text-xs font-semibold text-stone-600"
               >
                 Wersje
                 <ReviewDecisionLabel />
-              </a>
+              </Link>
             </div>
           </details>
           {statusNode}
