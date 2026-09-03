@@ -16,8 +16,9 @@ import {
   applicationSecondaryClasses,
 } from '@/components/ui/applicationControlStyles';
 import { createLiveFrameSource } from './liveFrameSource';
+import { LiveProductScanner } from './LiveProductScanner';
 import { LiveRecognizer } from './liveRecognition';
-import { createLiveScanCapabilities } from './liveScanCapabilities';
+import { createLiveScanCapabilities, releaseLiveScanCapabilities } from './liveScanCapabilities';
 import {
   LiveScanController,
   createVideoFrameGrabber,
@@ -37,7 +38,12 @@ export interface LiveMultiScannerProps {
   readonly enableOcr?: boolean;
 }
 
-type Phase = 'starting' | 'scanning' | 'review' | 'no_camera';
+/**
+ * `deep` is the existing Scanner opened as a NESTED step, not a navigation. The customer
+ * never leaves this overlay, so the HOME draft they just built and the sweep they are in
+ * the middle of both survive completing one unknown product.
+ */
+type Phase = 'starting' | 'scanning' | 'review' | 'deep' | 'no_camera';
 
 const primaryButton = applicationPrimaryClasses('w-full disabled:opacity-45');
 const secondaryButton = applicationSecondaryClasses('');
@@ -58,9 +64,18 @@ export function LiveMultiScanner({
   /** The name that just locked, shown briefly. Never a diagnostic. */
   const [flash, setFlash] = useState<string | null>(null);
   const [hint, setHint] = useState<string | null>(null);
+  /** The unresolved product currently being completed in the nested deep flow. */
+  const [deepTarget, setDeepTarget] = useState<AcceptedProduct | null>(null);
+  /** One id for the whole sweep, so identification can dedupe and account for cost. */
+  const sessionIdRef = useRef<string>(crypto.randomUUID());
+
+  // One statically checkable flag rather than a phase expression in the dependency
+  // array: it stays true across starting -> scanning, so opening the camera does not
+  // re-trigger itself, and both `review` and `deep` tear it down.
+  const cameraActive = phase === 'starting' || phase === 'scanning';
 
   useEffect(() => {
-    if (phase !== 'starting' && phase !== 'scanning') return;
+    if (!cameraActive) return;
     let cancelled = false;
     let stopFrames: (() => void) | null = null;
     let stream: MediaStream | null = null;
@@ -86,7 +101,9 @@ export function LiveMultiScanner({
 
       const controller = new LiveScanController({
         grabFrame: createVideoFrameGrabber(video),
-        recognizer: new LiveRecognizer(createLiveScanCapabilities({ enableOcr })),
+        recognizer: new LiveRecognizer(
+          createLiveScanCapabilities({ enableOcr, sessionId: sessionIdRef.current }),
+        ),
         stream,
         resumeFrom: snapshotRef.current,
         onUpdate: ({ event, state }) => {
@@ -122,9 +139,11 @@ export function LiveMultiScanner({
       controllerRef.current?.stop();
       for (const track of stream?.getTracks() ?? []) track.stop();
     };
-    // The sweep is set up once; `phase` transitions to review tear it down.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase === 'review', enableOcr]);
+  }, [cameraActive, enableOcr]);
+
+  // Leaving the scanner for good releases the OCR engine's worker as well as the camera.
+  // Neither should outlive the sweep on a phone.
+  useEffect(() => () => void releaseLiveScanCapabilities(), []);
 
   // The green flash is a confirmation, not a message that has to be dismissed.
   useEffect(() => {
@@ -140,6 +159,13 @@ export function LiveMultiScanner({
     // too — otherwise "Skanuj dalej" would bring the deleted product straight back.
     snapshotRef.current = controller?.snapshot() ?? null;
     setSession(next);
+  }, []);
+
+  const openDeepFlow = useCallback((product: AcceptedProduct) => {
+    snapshotRef.current = controllerRef.current?.snapshot() ?? null;
+    controllerRef.current?.stop();
+    setDeepTarget(product);
+    setPhase('deep');
   }, []);
 
   const finish = useCallback(() => {
@@ -171,6 +197,26 @@ export function LiveMultiScanner({
     );
   }
 
+  if (phase === 'deep' && deepTarget) {
+    return (
+      <DeepCompletionStep
+        product={deepTarget}
+        onResolved={(resolution) => {
+          const controller = controllerRef.current;
+          const next = controller?.resolve(deepTarget.identityKey, resolution) ?? session;
+          snapshotRef.current = controller?.snapshot() ?? snapshotRef.current;
+          setSession(next);
+          setDeepTarget(null);
+          setPhase('review');
+        }}
+        onBack={() => {
+          setDeepTarget(null);
+          setPhase('review');
+        }}
+      />
+    );
+  }
+
   if (phase === 'review') {
     return (
       <ReviewScreen
@@ -180,6 +226,7 @@ export function LiveMultiScanner({
           remove(identityKey);
           setPhase('starting');
         }}
+        onComplete={openDeepFlow}
         onBackToScanning={() => setPhase('starting')}
         onAccept={accept}
         onClose={onClose}
@@ -237,6 +284,7 @@ function ReviewScreen({
   products,
   onRemove,
   onRescan,
+  onComplete,
   onBackToScanning,
   onAccept,
   onClose,
@@ -244,51 +292,68 @@ function ReviewScreen({
   products: readonly AcceptedProduct[];
   onRemove: (identityKey: string) => void;
   onRescan: (identityKey: string) => void;
+  onComplete: (product: AcceptedProduct) => void;
   onBackToScanning: () => void;
   onAccept: () => void;
   onClose: () => void;
 }) {
+  const ready = products.filter((product) => product.acceptance === 'confirmed').length;
   return (
-    <div className="flex h-full w-full flex-col gap-4 p-5">
+    <div className="flex h-full w-full flex-col gap-4 overflow-y-auto p-5">
       <h2 className="text-lg font-medium text-ink">Zebrane produkty</h2>
 
       {products.length === 0 ? (
         <p className="text-ink/60">Nie zebraliśmy jeszcze żadnego produktu.</p>
       ) : (
         <ul className="flex flex-col gap-2">
-          {products.map((product) => (
-            <li
-              key={product.identityKey}
-              className="flex items-center justify-between gap-3 rounded-2xl border border-ink/10 bg-white px-4 py-3"
-            >
-              <span className="min-w-0 flex-1 truncate text-ink">{reviewLabel(product)}</span>
-              <button
-                type="button"
-                className={quietButton}
-                onClick={() => onRescan(product.identityKey)}
+          {products.map((product) => {
+            const unresolved = product.acceptance === 'needs_resolution';
+            return (
+              <li
+                key={product.identityKey}
+                className="flex flex-wrap items-center gap-2 rounded-2xl border border-ink/10 bg-white px-4 py-3"
               >
-                Zmień
-              </button>
-              <button
-                type="button"
-                className={quietButton}
-                onClick={() => onRemove(product.identityKey)}
-              >
-                Usuń
-              </button>
-            </li>
-          ))}
+                <span className="min-w-0 flex-1 truncate text-ink">{reviewLabel(product)}</span>
+                {unresolved ? (
+                  <button
+                    type="button"
+                    className={secondaryButton}
+                    onClick={() => onComplete(product)}
+                  >
+                    Uzupełnij
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className={quietButton}
+                    onClick={() => onRescan(product.identityKey)}
+                  >
+                    Zmień
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className={quietButton}
+                  onClick={() => onRemove(product.identityKey)}
+                >
+                  Usuń
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
 
-      <div className="mt-auto flex flex-col gap-2">
-        <button
-          type="button"
-          className={primaryButton}
-          onClick={onAccept}
-          disabled={products.length === 0}
-        >
-          Dodaj do przepisu
+      {products.length > ready ? (
+        // Said plainly, and it never blocks: the finished products go in either way.
+        <p className="text-sm text-ink/60">
+          Jeden produkt czeka na uzupełnienie. Resztę możesz dodać już teraz.
+        </p>
+      ) : null}
+
+      <div className="mt-auto flex flex-col gap-2 pt-2">
+        <button type="button" className={primaryButton} onClick={onAccept} disabled={ready === 0}>
+          Dodaj do przepisu{ready > 0 ? ` (${ready})` : ''}
         </button>
         <button type="button" className={secondaryButton} onClick={onBackToScanning}>
           Skanuj dalej
@@ -296,6 +361,44 @@ function ReviewScreen({
         <button type="button" className={quietButton} onClick={onClose}>
           Anuluj
         </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Completing ONE unknown product, without leaving the sweep.
+ *
+ * This is the existing deep Scanner, mounted here rather than navigated to. That single
+ * choice is what keeps the customer's recipe and their half-finished sweep alive while
+ * they finish a product Gellatti has never seen.
+ */
+function DeepCompletionStep({
+  product,
+  onResolved,
+  onBack,
+}: {
+  product: AcceptedProduct;
+  onResolved: (resolution: { id: string; displayName: string }) => void;
+  onBack: () => void;
+}) {
+  return (
+    <div className="flex h-full w-full flex-col overflow-y-auto bg-white">
+      <div className="flex items-center justify-between gap-3 border-b border-ink/10 px-5 py-3">
+        <span className="text-sm text-ink/70">Uzupełnij produkt</span>
+        <button type="button" className={quietButton} onClick={onBack}>
+          Wróć do listy
+        </button>
+      </div>
+      <div className="p-5">
+        <LiveProductScanner
+          intro="Ten produkt nie jest jeszcze w katalogu Gellatti. Dokończ go, a wróci na Twoją listę."
+          resolveLabel="Dodaj do listy"
+          onResolved={(resolved) => {
+            void product;
+            onResolved({ id: resolved.id, displayName: resolved.displayName });
+          }}
+        />
       </div>
     </div>
   );

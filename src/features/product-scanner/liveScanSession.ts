@@ -25,6 +25,10 @@ export type ScanRoute =
   | 'LOCAL_OCR'
   | 'CATALOG_MATCH'
   | 'VISION_FALLBACK'
+  /** A paid identification the catalogue then confirmed. */
+  | 'VISION_RESOLVED'
+  /** A paid identification the catalogue did not know. Counted, because it is the cost. */
+  | 'VISION_UNRESOLVED'
   | 'UNKNOWN';
 
 export type LiveScanEvent =
@@ -67,6 +71,12 @@ export interface ScanObservation {
   readonly route: ScanRoute;
   /** 0..1 for the recognition routes. Ignored for a validated barcode. */
   readonly confidence?: number;
+  /**
+   * True when label text read locally supported the SAME identity the recogniser
+   * returned. Two independent readings of one label are worth more than two frames of
+   * the same one, so this lowers how much repetition acceptance needs.
+   */
+  readonly corroboratedByText?: boolean;
 }
 
 export interface AcceptedProduct {
@@ -98,6 +108,27 @@ export interface LiveScanSessionState {
  */
 export const BARCODE_EVIDENCE_REQUIRED = 1;
 export const RECOGNITION_EVIDENCE_REQUIRED = 3;
+/**
+ * How much agreement a STRONG identification needs.
+ *
+ * Evidence is not counted mechanically — it is weighed. A paid identification that came
+ * back highly confident AND was confirmed by the catalogue, especially one corroborated by
+ * text read off the same label, is not the same kind of claim as one weak visual guess, and
+ * making the customer hold a banana still for three separate paid calls would be both
+ * slower and more expensive for no gain in truth.
+ *
+ * So a strong result needs fewer agreeing frames — but never ZERO agreement, because a
+ * single frame is exactly where a confident-sounding mistake lives.
+ */
+export const STRONG_EVIDENCE_REQUIRED = 2;
+/**
+ * Two INDEPENDENT readings of the same label — a confident catalogue-confirmed
+ * identification plus text that agrees with it — are already the corroboration that
+ * repetition is only a proxy for. Charging a second paid call for it would buy nothing.
+ */
+export const CORROBORATED_EVIDENCE_REQUIRED = 1;
+/** Above this, a catalogue-confirmed identification counts as strong. */
+export const STRONG_CONFIDENCE_FLOOR = 0.85;
 /** Below this a recognition observation is not even counted as evidence. */
 export const RECOGNITION_CONFIDENCE_FLOOR = 0.7;
 /**
@@ -131,6 +162,8 @@ const EMPTY_COUNTERS: Record<ScanRoute, number> = {
   LOCAL_OCR: 0,
   CATALOG_MATCH: 0,
   VISION_FALLBACK: 0,
+  VISION_RESOLVED: 0,
+  VISION_UNRESOLVED: 0,
   UNKNOWN: 0,
 };
 
@@ -147,8 +180,30 @@ const qualifies = (observation: ScanObservation): boolean => {
   return (observation.confidence ?? 0) >= RECOGNITION_CONFIDENCE_FLOOR;
 };
 
-const evidenceRequired = (observation: ScanObservation): number =>
-  observation.barcodeValidated === true ? BARCODE_EVIDENCE_REQUIRED : RECOGNITION_EVIDENCE_REQUIRED;
+/**
+ * How many agreeing observations THIS one has to be part of.
+ *
+ * The ladder produces evidence of genuinely different strength, so the bar moves with it
+ * rather than being one number for everything.
+ */
+const evidenceRequired = (observation: ScanObservation): number => {
+  if (observation.barcodeValidated === true) return BARCODE_EVIDENCE_REQUIRED;
+
+  const confident =
+    observation.catalogResolved === true &&
+    (observation.confidence ?? 0) >= STRONG_CONFIDENCE_FLOOR;
+  if (!confident) return RECOGNITION_EVIDENCE_REQUIRED;
+
+  // Evidence is weighed by INDEPENDENCE, not repetition. Text read off the same label
+  // that agrees with what the recogniser said is a second, separate reading of the same
+  // product — worth more than seeing the same frame again, and enough on its own.
+  if (observation.corroboratedByText === true || observation.route === 'LOCAL_OCR') {
+    return CORROBORATED_EVIDENCE_REQUIRED;
+  }
+  // One confident, catalogue-confirmed identification still has to be seen twice. Never
+  // once: a single frame is exactly where a confident-sounding mistake lives.
+  return STRONG_EVIDENCE_REQUIRED;
+};
 
 /**
  * Fold one observation into the session.
@@ -241,6 +296,38 @@ export function removeAccepted(
     accepted: state.accepted.filter((p) => p.identityKey !== identityKey),
     acceptedAt,
   };
+}
+
+/**
+ * Replace an unresolved product with the catalogue identity the deep flow established.
+ *
+ * The sweep keeps its place: the product stays where it was collected, in order, and the
+ * customer returns to the same review list rather than starting again.
+ */
+export function resolveAccepted(
+  state: LiveScanSessionState,
+  identityKey: string,
+  resolution: { readonly id: string; readonly displayName: string },
+): LiveScanSessionState {
+  const accepted = state.accepted.map((product) =>
+    product.identityKey === identityKey
+      ? {
+          ...product,
+          identityKey: resolution.id,
+          label: resolution.displayName,
+          route: 'CATALOG_MATCH' as ScanRoute,
+          needsDeepScan: false,
+          acceptance: 'confirmed' as const,
+        }
+      : product,
+  );
+  // The new identity inherits the suppression, so finishing a product does not make it
+  // collectable again for the rest of the sweep.
+  const acceptedAt = { ...state.acceptedAt };
+  const was = acceptedAt[identityKey];
+  delete acceptedAt[identityKey];
+  if (was !== undefined) acceptedAt[resolution.id] = was;
+  return { ...state, accepted, acceptedAt };
 }
 
 /** The products that still need the deep Scanner before they can enter a recipe. */

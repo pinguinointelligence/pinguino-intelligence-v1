@@ -48,7 +48,16 @@ const sweepCapabilities = (
   resolveBarcode: async (barcode) => CATALOG[barcode.lookupValue] ?? null,
   recognizeObject: async () => {
     const seen = visible();
-    return seen === 'banana' ? { identityKey: 'banana', label: 'Banan', confidence: 0.92 } : null;
+    // The boundary resolves against the catalogue server-side and returns the canonical
+    // identity — the recogniser never invents one.
+    return seen === 'banana'
+      ? {
+          identityKey: 'banana',
+          label: 'Banan',
+          confidence: 0.92,
+          resolved: { id: 'prod-banana', displayName: 'Banan' },
+        }
+      : null;
   },
   resolveName: async (text) => (text === 'Banan' ? (CATALOG.banana ?? null) : null),
 });

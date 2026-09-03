@@ -96,6 +96,7 @@ export function HomeCreatorPage() {
   const [matchResult, setMatchResult] = useState<HomeMatchResult | null>(null);
   const [matchDismissed, setMatchDismissed] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [scanNotice, setScanNotice] = useState<string | null>(null);
   const intentIngredients = useHomeIntentIngredients();
   // §56: the SAME library the Pro builder feeds its picker. Demo/free get the local
   // preview catalogue, an authenticated paid session gets live Mapper search — HOME
@@ -478,6 +479,13 @@ export function HomeCreatorPage() {
           />
         ) : null}
 
+        {scanNotice ? (
+          // Polite, dismissible, and never in the way of the recipe itself.
+          <p role="status" aria-live="polite" className="px-1 text-sm text-ink/60">
+            {scanNotice}
+          </p>
+        ) : null}
+
         {flow.stages.includes('profile') ? (
           <HomeProfileSection
             selected={draft.profile}
@@ -667,15 +675,22 @@ export function HomeCreatorPage() {
           <LiveMultiScanner
             onClose={() => setScannerOpen(false)}
             onAddToRecipe={(products) => {
+              setScanNotice(null);
               // The SAME door a typed ingredient uses. The scanner supplies identities;
               // every rule about what they may do in a recipe stays where it lives.
               for (const product of products)
                 void intentIngredients.addScannedProduct(product.identityKey);
             }}
-            onNeedsDeepScan={() => {
-              // Not something the catalogue knows yet, so it belongs to the existing
-              // deep Scanner, which is where a new product is profiled and submitted.
-              navigate('/products/scan');
+            onNeedsDeepScan={(products) => {
+              // NEVER navigate away. The customer has a recipe half-built on this page;
+              // one unknown product is not a reason to lose it. The scanner completes
+              // such a product in a nested step and hands it back resolved, so all that
+              // is left here is to say plainly what did not make it in.
+              setScanNotice(
+                products.length === 1
+                  ? 'Jeden produkt czeka na uzupełnienie — znajdziesz go w skanerze.'
+                  : `${products.length} produkty czekają na uzupełnienie — znajdziesz je w skanerze.`,
+              );
             }}
           />
         </div>
