@@ -425,18 +425,20 @@ export function WorkbenchSettingsLine({
 
   return (
     <section
-      /* OWNER FROZEN PRO VISUAL: Settings is a BAND in the display column, not
-         an ivory panel sitting on it. At rest it carries no surface at all —
-         the eyebrow and the field grid are the whole treatment.
+      /* OWNER AUTHORITY 2026-09-03 (approved desktop reference): Settings is a
+         BOX whose label is notched into its own top border — the same make as
+         DOSTOSUJ RECEPTURĘ above it and WIEDZA below it. It was a band (eyebrow
+         + hairline) wrapped around a second bordered button, which drew two
+         nested rectangles to express one group.
 
-         A real CONFLICT still takes a surface, because that is an error rather
-         than a pending step, and an error is exactly the exception a surface
-         should be spent on. Unconfirmed remains carried by the control alone. */
+         A real CONFLICT still recolours that box, because an error is exactly
+         the exception a surface should be spent on. Unconfirmed stays carried
+         by the control's own status text. */
       className={cn(
-        'transition-colors',
+        'pro-legend-box px-5 py-7 transition-colors',
         hardConflict
-          ? 'rounded-[10px] border border-status-error/45 bg-status-error/[0.035] p-2.5 lg:p-3'
-          : 'border-0 bg-transparent p-0',
+          ? 'border-status-error/45 bg-status-error/[0.035]'
+          : 'bg-transparent',
         className,
       )}
       data-testid="workbench-settings-line"
@@ -445,15 +447,12 @@ export function WorkbenchSettingsLine({
         hardConflict ? 'conflict' : confirmed ? 'confirmed' : 'needs-confirmation'
       }
     >
-      <div className="mb-[13px] flex items-center gap-2.5">
-        <h3
-          data-band-eyebrow
-          className="shrink-0 text-[10px] leading-[14px] font-semibold tracking-[0.16em] text-[var(--g-text-muted)] uppercase"
-        >
-          Ustawienia
-        </h3>
-        <span aria-hidden className="h-px flex-1 bg-[var(--g-line)]" />
-      </div>
+      <h3
+        data-band-legend
+        className="text-[10px] leading-[14px] font-semibold tracking-[0.16em] text-[var(--g-text-muted)] uppercase"
+      >
+        Ustawienia
+      </h3>
 
       {/* The band's own row: what the settings ARE, and the way in. The summary
           is the only thing allowed to shorten — the status and the chevron
@@ -464,10 +463,10 @@ export function WorkbenchSettingsLine({
         aria-expanded={expanded}
         data-testid="settings-grid-status"
         data-settings-cell="confirmation"
-        className="pro-focus-ring flex w-full min-w-0 items-center gap-4 rounded-[14px] border border-[var(--g-line)] bg-transparent px-4 py-3 text-left transition-colors hover:border-ink/25"
+        className="pro-focus-ring group/settings flex w-full min-w-0 items-center gap-4 bg-transparent text-left"
       >
-        <span className="grid size-11 shrink-0 place-items-center rounded-full border border-[var(--g-line)] text-[var(--g-ink)]">
-          <svg aria-hidden width="19" height="19" viewBox="0 0 24 24" fill="none">
+        <span className="grid size-[38px] shrink-0 place-items-center rounded-full border border-[var(--g-line)] text-[var(--g-ink)]">
+          <svg aria-hidden width="18" height="18" viewBox="0 0 24 24" fill="none">
             <g stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round">
               <path d="M10.34 2.79A9.6 9.6 0 0 1 13.66 2.79L13.88 4.86A7.35 7.35 0 0 1 15.73 5.63L17.4 4.27A9.6 9.6 0 0 1 19.73 6.6L18.37 8.27A7.35 7.35 0 0 1 19.14 10.12L21.21 10.34A9.6 9.6 0 0 1 21.21 13.66L19.14 13.88A7.35 7.35 0 0 1 18.37 15.73L19.73 17.4A9.6 9.6 0 0 1 17.4 19.73L15.73 18.37A7.35 7.35 0 0 1 13.88 19.14L13.66 21.21A9.6 9.6 0 0 1 10.34 21.21L10.12 19.14A7.35 7.35 0 0 1 8.27 18.37L6.6 19.73A9.6 9.6 0 0 1 4.27 17.4L5.63 15.73A7.35 7.35 0 0 1 4.86 13.88L2.79 13.66A9.6 9.6 0 0 1 2.79 10.34L4.86 10.12A7.35 7.35 0 0 1 5.63 8.27L4.27 6.6A9.6 9.6 0 0 1 6.6 4.27L8.27 5.63A7.35 7.35 0 0 1 10.12 4.86Z" />
               <circle cx="12" cy="12" r="2.85" />

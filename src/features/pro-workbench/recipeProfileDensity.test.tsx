@@ -18,32 +18,57 @@ describe('Recipe profile visual density contract', () => {
   it('puts the five positions ON one continuous bipolar rail', () => {
     const axes = read('ProfileDirectionAxes.tsx');
 
-    // OWNER FROZEN PRO VISUAL supersedes the V2.1 boxed-detent band. Measured
-    // from the frozen authority: a 4 px rail, white 2x8 ticks at 0/25/50/75/100,
-    // a 16 px thumb in a white ring, and the numerals in their own row BELOW
-    // the track instead of inside the mark. The state model is untouched —
-    // five detents, radiogroup and arrow keys are all still asserted elsewhere.
+    /* OWNER AUTHORITY 2026-09-03 supersedes the rail. The approved reference
+       shows five DOTS with the segment between the neutral centre and the
+       chosen detent filled — a bipolar instrument that says which way you went
+       and how far. The old form was a continuous 4 px rail with white ticks
+       punched through it and a numeral row underneath, which read as a volume
+       slider and cost four lines per axis. The state model is untouched: five
+       detents, radiogroup and arrow keys are all still asserted elsewhere. */
     expect(axes).not.toContain('xl:min-h-[66px]');
-    expect(axes).toContain('[&+&]:border-t [&+&]:border-[var(--g-line)]');
-
-    expect(axes).toContain('absolute inset-x-0 top-[11px] h-1 rounded-full bg-[var(--g-rail-track)]');
+    expect(axes).not.toContain('absolute inset-x-0 top-[11px] h-1 rounded-full');
     expect(axes).toContain("`${((detent + 2) / 4) * 100}%`");
-    expect(axes).toContain('top-[9px] -ml-px h-2 w-0.5');
+    expect(axes).toContain('top-[9.5px] -ml-[3.5px] size-[7px] rounded-full bg-[var(--g-rail-track)]');
+    // The fill runs centre → position, never end → position.
+    expect(axes).toContain("const fillLeft = position >= 0 ? '50%' : at(position);");
+    expect(axes).toContain('const fillWidth = `${Math.abs(position) * 25}%`;');
     expect(axes).toContain('top-[5px] -ml-2 size-4 rounded-full shadow-[0_0_0_3px_#fff]');
     // A 26 px target on a 16 px mark: the thing you press is bigger than the
     // thing you see, which is the opposite of the old 28 px numeral button.
     expect(axes).toContain('-ml-[13px] size-[26px]');
-    // The numerals live in their own row and the chosen one is ink, not white
-    // on orange (see directionDetentContrast.test.ts for the ratios).
-    expect(axes).toContain("'font-bold text-[var(--g-ink)]'");
+    /* One row per axis: name on the left, track on the right. `contents` puts
+       both rows in the SAME grid, so the two tracks share one x under any
+       translation — two nested grids would align only in Polish. */
+    expect(axes).toContain('className="contents"');
+    expect(axes).toContain('grid-cols-[minmax(104px,max-content)_1fr]');
 
-    // The chosen position is still the one orange mark in the panel.
-    expect((axes.match(/bg-\[#f58a07\]/g) ?? []).length).toBe(1);
-    // The section carries no card of its own; the heading is a quiet eyebrow
-    // closed by a hairline that runs to the column edge.
+    /* The accent is spent on the CHOSEN POSITION and on nothing else. It now
+       paints two elements — the fill and the thumb — but they are one
+       continuous mark: the fill ends exactly where the thumb sits, so what a
+       reader sees is a single orange stroke from neutral to the choice. Both
+       uses are paired with the blocked-axis tint, which is how the assertion
+       below proves neither of them is decoration somewhere else. */
+    const accent = axes.match(/bg-\[#f58a07\]/g) ?? [];
+    const blocked = axes.match(/bg-\[#fcd6a8\]/g) ?? [];
+    expect(accent.length).toBe(2);
+    expect(blocked.length).toBe(accent.length);
+    /* Every accent use is REACHED THROUGH the disabled ternary, so neither can
+       become decoration that survives on a blocked axis. Matched as a pairing
+       rather than as one literal string: the thumb branch also carries the
+       blocked outline, and asserting the exact characters would fail the next
+       time that branch gains a class it should be allowed to gain. */
+    for (const m of axes.matchAll(/bg-\[#f58a07\]/g)) {
+      const before = axes.slice(Math.max(0, m.index - 220), m.index);
+      expect(before, 'accent not guarded by the disabled ternary').toMatch(/disabled\s*\?/);
+      expect(before).toContain('#fcd6a8');
+    }
+    /* The section is a BOX with a notched legend (owner reference 2026-09-03),
+       not an eyebrow closed by a hairline running to the column edge. */
     expect(axes).not.toContain('rounded-[10px] border border-[var(--g-line)] bg-white');
+    expect(axes).not.toContain('h-px flex-1 bg-[var(--g-line)]');
+    expect(axes).toContain('pro-legend-box');
+    expect(axes).toContain('data-band-legend');
     expect(axes).toContain('tracking-[0.16em] text-[var(--g-text-muted)] uppercase');
-    expect(axes).toContain('h-px flex-1 bg-[var(--g-line)]');
   });
 
   it('lays Settings out as ONE three-row, two-column grid of 46 px fields', () => {
@@ -82,10 +107,16 @@ describe('Recipe profile visual density contract', () => {
     expect(settings).toContain('bg-[var(--g-graphite)] px-5');
     expect(settings).toContain('data-testid="profile-settings-save-default"');
     expect(settings.includes('bg-[#f58a07] px-3 text-xs font-semibold text-white')).toBe(false);
-    // ...and the panel itself no longer carries the ivory card. Settings is a
-    // band in the display column; only a real CONFLICT still takes a surface.
+    /* OWNER AUTHORITY 2026-09-03: Settings is a BOX whose label is notched
+       into its own top border — the same make as DOSTOSUJ RECEPTURĘ above and
+       WIEDZA below. It was a band (eyebrow + hairline) wrapped around a second
+       bordered button, i.e. two nested rectangles for one group. The ivory
+       card it replaced earlier stays refused, and a real CONFLICT still
+       recolours the box rather than adding another surface. */
     expect(settings).not.toContain("'border-[var(--g-line)] bg-[var(--g-ivory)]'");
-    expect(settings).toContain("'border-0 bg-transparent p-0'");
+    expect(settings).not.toContain('data-band-eyebrow');
+    expect(settings).toContain('pro-legend-box');
+    expect(settings).toContain('data-band-legend');
     expect(settings).toContain('border-status-error/45 bg-status-error/[0.035]');
   });
 

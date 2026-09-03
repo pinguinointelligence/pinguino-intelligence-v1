@@ -146,6 +146,41 @@
   }
 }
 
+/* ── Legend box (owner reference 2026-09-03) ────────────────────────────
+   DOSTOSUJ RECEPTURĘ, USTAWIENIA and WIEDZA are BOXES whose label is notched
+   into the top border, not bands of eyebrow + hairline. The three sections
+   read as three instruments of the same make; a band cannot say that, because
+   its hairline runs to the column edge and so belongs to the column rather
+   than to the group beneath it.
+
+   Deliberately OUTSIDE the 1280 px block. These three sections also render on
+   the phone, inside the cockpit sheet. Scoped to desktop, the border and the
+   notch would simply not apply there and the sections would fall back to bare
+   uppercase labels with nothing separating them — worse than the bands they
+   replaced, and a regression shipped into the half of the app that was not
+   even being worked on.
+
+   The label sits ON the border and needs the column's own ground painted
+   behind it to cut the line. That ground is white in every workbench state
+   (`.right-pane` is `bg-white`, and at xl it is transparent over a white
+   page), so the value is white rather than a token that resolves to ivory on
+   some other surface. If this box is ever reused on a tinted surface, override
+   `--pro-legend-ground` on that surface — do not restyle here. */
+.pro-legend-box {
+  position: relative;
+  border: 1px solid var(--g-line);
+  border-radius: 16px;
+}
+
+.pro-legend-box > [data-band-legend] {
+  position: absolute;
+  top: -7px;
+  left: 17px;
+  padding: 0 8px;
+  background: var(--pro-legend-ground, #fff);
+}
+
+
 /* ── Ingredient row (Recipe + Production editor) ────────────────────────── */
 @media (min-width: 1280px) {
   .gellatti-pro-workbench [data-gellatti-row='ingredient'] {

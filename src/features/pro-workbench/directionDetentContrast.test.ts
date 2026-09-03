@@ -28,7 +28,7 @@ import { describe, expect, it } from 'vitest';
 const axes = readFileSync(resolve(import.meta.dirname, 'ProfileDirectionAxes.tsx'), 'utf8');
 const tokens = readFileSync(resolve(import.meta.dirname, '../../styles/tokens.css'), 'utf8');
 
-/** Every ground the readout can sit on — the section itself is transparent. */
+/** Every ground the track can sit on — the box itself is transparent. */
 const GROUNDS = ['#ffffff', 'var(--g-ivory)', 'var(--g-ivory-deep)'] as const;
 
 /** First capture of `pattern`, or a named failure — never `undefined`. */
@@ -73,15 +73,6 @@ function colour(raw: string): string {
   return BARE[raw] ?? raw;
 }
 
-/** The readout's two colours are the ternary on `profile-regulator-*-value`. */
-const READOUT = axes.match(/disabled\s*\?\s*'text-\[([^\]]+)\]'\s*:\s*'text-\[([^\]]+)\]'/);
-
-function readoutColour(state: 'unavailable' | 'interactive'): string {
-  const raw = READOUT?.[state === 'unavailable' ? 1 : 2];
-  if (raw === undefined) throw new Error(`readout colour for ${state} not found`);
-  return colour(raw);
-}
-
 describe('Direction readability — the reported value', () => {
   it('never dims the control with a group opacity', () => {
     // Group opacity flattens fill AND value together; no colour survives it.
@@ -91,20 +82,47 @@ describe('Direction readability — the reported value', () => {
 
   it('never prints the value inside the orange thumb again', () => {
     // The 2.46:1 exception existed only because the numeral lived in the fill.
+    // That half of the contract is permanent and unchanged.
     expect(axes).not.toMatch(/bg-\[#f58a07\][^"']*text-white/);
-    expect(axes).toContain('profile-regulator-${id}-value');
   });
 
-  it('keeps the value readable on every ground it can sit on, in both states', () => {
-    for (const state of ['unavailable', 'interactive'] as const) {
-      const ink = readoutColour(state);
-      for (const ground of GROUNDS) {
-        expect(
-          contrast(ink, colour(ground)),
-          `${state} readout ${ink} on ${ground}`,
-        ).toBeGreaterThanOrEqual(4.5);
-      }
+  /* OWNER AUTHORITY 2026-09-03 supersedes the VISIBLE readout, not the
+     guarantee behind it. The approved reference prints no numerals: no value
+     beside the label, and no numeral row under the track. What the frozen
+     contract was actually protecting — that the position is never encoded in
+     the 2.46:1 orange alone — now has to hold through the accessible name, so
+     that is what is asserted here. A sighted user reads the position from the
+     thumb and the fill; assistive tech reads "Słodycz: +1" on the checked
+     detent. If the owner ever wants the numeral back on screen, restore the
+     ternary AND the ratio loop that used to live in this file. */
+  it('still reports the value to assistive tech on every detent', () => {
+    expect(axes).toContain('aria-label={`${label}: ${sign(detent)}`}');
+    expect(axes).toContain('aria-checked={position === detent}');
+    expect(axes).toContain('const sign =');
+  });
+
+  it('encodes the position in more than colour alone', () => {
+    // Thumb POSITION and fill WIDTH both carry it, so the reading survives a
+    // viewer who cannot separate the orange from the rail.
+    expect(axes).toContain('style={{ left: at(position) }}');
+    expect(axes).toContain('style={{ left: fillLeft, width: fillWidth }}');
+  });
+
+  /* With the numerals gone the MARK is the only thing reporting the position,
+     so on a blocked axis — the case this whole file exists for — the mark has
+     to be findable. The pale fill alone is not: #fcd6a8 sits at 1.07:1 against
+     the dots it has to be picked out from. The outline is what carries it, and
+     it is measured here against every ground the track can sit on rather than
+     matched as a class string, so retuning the token fails this test. */
+  it('keeps a blocked position findable without a numeral', () => {
+    const outline = colour('var(--g-attention-ink)');
+    for (const ground of [...GROUNDS, 'var(--g-rail-track)', '#fcd6a8']) {
+      expect(
+        contrast(outline, colour(ground)),
+        `blocked outline ${outline} on ${ground}`,
+      ).toBeGreaterThanOrEqual(3);
     }
+    expect(axes).toContain("border-[1.5px] border-[var(--g-attention-ink)] bg-[#fcd6a8]");
   });
 
   it('still marks the chosen position when the axis is blocked', () => {

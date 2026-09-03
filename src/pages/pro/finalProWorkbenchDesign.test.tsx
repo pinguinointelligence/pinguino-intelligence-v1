@@ -288,8 +288,9 @@ describe('profile semantics and readiness', () => {
     for (const id of ['sweetness', 'softness']) {
       expect(panel).toContain(`['${id}',`);
     }
-    for (const label of ['Słodycz', 'Twardość', 'Mniej słodkie', 'Bardziej twarde'])
-      expect(panel).toContain(label);
+    // End labels removed by the owner reference of 2026-09-03; the axis NAMES
+    // are what the contract protects, and they are unchanged.
+    for (const label of ['Słodycz', 'Twardość']) expect(panel).toContain(label);
     expect(panel).toContain('const DETENTS = [-2, -1, 0, 1, 2] as const');
     expect(panel).not.toContain('creaminess');
     expect(panel).not.toContain('intensity');
@@ -446,7 +447,24 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
     );
     expect(surface).toContain('mobile-cockpit-trigger');
     expect(surface).toContain('mobile-cockpit-sheet');
-    expect(surface).toContain('h-[min(92dvh,calc(100dvh-env(safe-area-inset-top)-0.5rem))]');
+    /* OWNER 2026-09-03 — a real functional defect found in served QA. The sheet
+       was `fixed top-0 z-50` and 92dvh tall measured from the VIEWPORT, so on a
+       phone it stood over the global header. Monitor and Produkcja open it as
+       soon as you visit them, which left the hamburger and HOME | PRO
+       unreachable on both routes — the user was trapped under a permanent
+       overlay simply by navigating there.
+
+       It now starts at the canonical header offset and fills only its own box,
+       so the header stays visible and clickable underneath. Measured live: the
+       sheet's top equals the header's bottom to the pixel — 65 / 65 at 390 and
+       430, 69 / 69 at 640 — with the hamburger and the switch hit-testing OK on
+       all four PRO routes. The viewport-measured height must never come back. */
+    expect(surface).toContain('top-[var(--pro-mobile-header-height)]');
+    expect(surface).not.toContain('fixed inset-x-0 top-0 bottom-[calc(var(--pro-bottom-nav-height)');
+    expect(surface).not.toContain('h-[min(92dvh,calc(100dvh-env(safe-area-inset-top)-0.5rem))]');
+    // The sheet is a modal state and must keep an explicit way out.
+    expect(surface).toContain('Zamknij kokpit');
+    expect(read('styles', 'tokens.css')).toContain('--pro-mobile-header-height');
     expect(surface).not.toContain('overflow-x-auto');
   });
 

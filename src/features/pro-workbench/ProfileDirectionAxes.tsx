@@ -17,51 +17,46 @@ function RegulatorRow({
   id,
   label,
   position,
-  leftLabel,
-  rightLabel,
   onSet,
   disabled,
 }: {
   id: string;
   label: string;
   position: DirectionIntent;
-  leftLabel: string;
-  rightLabel: string;
   onSet: (value: DirectionIntent) => void;
   disabled?: boolean;
 }) {
+  /* The fill spans CENTRE → current position, so the track reads as a bipolar
+     instrument: which way you went, and how far. A rail filled from the left
+     end would read as a volume slider — a different claim about the axis. */
+  const fillLeft = position >= 0 ? '50%' : at(position);
+  const fillWidth = `${Math.abs(position) * 25}%`;
   return (
     <article
-      /* OWNER FROZEN PRO VISUAL: a bipolar TRACK. The axes are one instrument —
-         no per-axis card, just a rule between them. */
-      className="[&+&]:mt-[22px] [&+&]:border-t [&+&]:border-[var(--g-line)] [&+&]:pt-5"
+      /* OWNER AUTHORITY 2026-09-03 (approved desktop reference): the axis is
+         ONE ROW — its name on the left, its track on the right. The stacked
+         form (name above, track below, numerals under that, end labels under
+         those) spent four lines on what the reference says in one, and made
+         two axes taller than the whole result readout above them.
+
+         `contents`, not a grid of its own: both rows are cells of the SAME
+         grid on the parent, so the two tracks start on one x whatever the
+         label column resolves to. Two independent grids would align only in
+         Polish and drift the moment "Słodycz" and "Twardość" translate to
+         different widths. */
+      className="contents"
       data-testid={`profile-regulator-${id}`}
       data-regulator-state={disabled ? 'unavailable' : 'interactive'}
     >
-      <div className="mb-3 flex items-baseline">
-        <b className="text-[11px] leading-[16px] font-semibold tracking-[0.15em] text-[var(--g-text-secondary)] uppercase">
-          {label}
-        </b>
-        {/* The value reads as text on the page ground. It used to be a numeral
-            printed inside the thumb: white on #f58a07 is 2.46:1, and on a
-            blocked axis white on #fcd6a8 is 1.37:1 — the control hid the very
-            value it exists to report. Here, and in the numeral row below, it
-            clears 4.5:1 in both states. */}
-        <span
-          data-testid={`profile-regulator-${id}-value`}
-          className={cn(
-            'ml-auto text-[11px] leading-[16px] tabular-nums',
-            disabled ? 'text-[var(--g-attention-ink)]' : 'text-[var(--g-text-secondary)]',
-          )}
-        >
-          {sign(position)}
-        </span>
-      </div>
-      {/* 13 px, not 10: the side room has to clear the widest thing centred on
-          an end detent, and that is the 26 px HIT TARGET, not the 16 px thumb.
-          At 10 px the −2 and +2 targets overflowed the display column by 3 px
-          each — measured, not visible, but a real horizontal overflow. */}
-      <div className="px-[13px]">
+      <b className="min-w-0 truncate text-[15px] leading-[21px] font-semibold tracking-[-0.02em] text-[var(--g-ink)]">
+        {label}
+      </b>
+      {/* No side inset here. The 13 px the track used to carry existed because
+          it ran to the DISPLAY COLUMN's own edge, where a 26 px hit target
+          centred on ±2 overflowed by 3 px. Inside this box the 20 px padding
+          already absorbs that half-target, so insetting again would pull both
+          end detents 13 px off the reference and shorten the instrument. */}
+      <div className="min-w-0">
         <div
           role="radiogroup"
           aria-label={label}
@@ -84,24 +79,48 @@ function RegulatorRow({
           }}
           className="relative h-[26px]"
         >
-          <span
-            aria-hidden
-            className="absolute inset-x-0 top-[11px] h-1 rounded-full bg-[var(--g-rail-track)]"
-          />
           {DETENTS.map((detent) => (
             <span
-              key={`tick-${detent}`}
+              key={`dot-${detent}`}
               aria-hidden
               style={{ left: at(detent) }}
-              className="absolute top-[9px] -ml-px h-2 w-0.5 rounded-[1px] bg-white shadow-[0_0_0_1px_var(--g-line)]"
+              className="absolute top-[9.5px] -ml-[3.5px] size-[7px] rounded-full bg-[var(--g-rail-track)]"
             />
           ))}
+          <span
+            aria-hidden
+            style={{ left: fillLeft, width: fillWidth }}
+            className={cn(
+              'absolute top-[11.5px] h-[3px] rounded-full transition-[left,width,background-color]',
+              disabled ? 'bg-[#fcd6a8]' : 'bg-[#f58a07]',
+            )}
+          />
+          {/* The neutral centre stays visible as a hollow detent whenever it is
+              not the current position, so "back to neutral" is always a target
+              you can see and aim at rather than a coordinate you infer. */}
+          {position !== 0 ? (
+            <span
+              aria-hidden
+              style={{ left: at(0) }}
+              className="absolute top-[7.5px] -ml-[5.5px] size-[11px] rounded-full border-[1.5px] border-[var(--g-drag)] bg-white"
+            />
+          ) : null}
+          {/* The blocked thumb carries an OUTLINE, not just a muted fill. With
+              the numerals gone, the mark is the only thing reporting the
+              position, and #fcd6a8 sits at 1.07:1 against the dot colour —
+              invisible. The attention ink reaches 4.33:1 against those dots
+              and 6.33:1 against the ground, so a blocked axis still SHOWS
+              where it stands while the pale fill keeps saying "not available".
+              The interactive thumb is untouched: its 2.46:1 accent is the
+              owner-approved V2.1 exception and is not reopened here. */}
           <span
             aria-hidden
             style={{ left: at(position) }}
             className={cn(
               'absolute top-[5px] -ml-2 size-4 rounded-full shadow-[0_0_0_3px_#fff] transition-[left,background-color]',
-              disabled ? 'bg-[#fcd6a8]' : 'bg-[#f58a07]',
+              disabled
+                ? 'border-[1.5px] border-[var(--g-attention-ink)] bg-[#fcd6a8]'
+                : 'bg-[#f58a07]',
             )}
           />
           {DETENTS.map((detent) => (
@@ -110,37 +129,19 @@ function RegulatorRow({
               type="button"
               role="radio"
               aria-checked={position === detent}
+              /* The position survives here even though the reference prints no
+                 numerals: the label carries the value, so assistive tech still
+                 reads "Słodycz: +1" on the checked detent. */
               aria-label={`${label}: ${sign(detent)}`}
               disabled={disabled}
               onClick={() => onSet(detent)}
               style={{ left: at(detent) }}
-              /* A 26 px target centred on each tick — the mark is small, the
+              /* A 26 px target centred on each dot — the mark is small, the
                  thing you press is not. */
               className="pro-focus-ring absolute top-0 -ml-[13px] size-[26px] rounded-full bg-transparent"
             />
           ))}
         </div>
-        <div className="relative mt-1 h-4">
-          {DETENTS.map((detent) => (
-            <span
-              key={`num-${detent}`}
-              aria-hidden
-              style={{ left: at(detent) }}
-              className={cn(
-                'absolute -translate-x-1/2 text-[10.5px] leading-4 tabular-nums',
-                position === detent
-                  ? 'font-bold text-[var(--g-ink)]'
-                  : 'font-medium text-[var(--g-text-muted)]',
-              )}
-            >
-              {sign(detent)}
-            </span>
-          ))}
-        </div>
-      </div>
-      <div className="mt-[9px] flex justify-between gap-3 text-[10.5px] leading-[14px] text-[var(--g-text-muted)]">
-        <span className="min-w-0 truncate">{leftLabel}</span>
-        <span className="min-w-0 truncate text-right">{rightLabel}</span>
       </div>
     </article>
   );
@@ -169,19 +170,20 @@ export function ProfileDirectionAxes({
 
   return (
     <section
-      className={cn('border-b border-[var(--g-line)] bg-transparent pb-5', className)}
+      className={cn('pro-legend-box bg-transparent px-5 pt-8 pb-6', className)}
       data-testid="profile-direction-axes"
     >
-      <div className="mb-[13px] flex items-center gap-2.5">
-        <h3
-          data-band-eyebrow
-          className="shrink-0 text-[10px] leading-[14px] font-semibold tracking-[0.16em] text-[var(--g-text-muted)] uppercase"
-        >
-          Dostosuj recepturę
-        </h3>
-        <span aria-hidden className="h-px flex-1 bg-[var(--g-line)]" />
-      </div>
-      <div>
+      <h3
+        data-band-legend
+        className="text-[10px] leading-[14px] font-semibold tracking-[0.16em] text-[var(--g-text-muted)] uppercase"
+      >
+        Dostosuj recepturę
+      </h3>
+      {/* The label column is `max-content` with a 76 px floor, not a fixed
+          width: German and Hungarian run 45-80% longer than Polish, and a
+          fixed column would clip them. The track keeps `min-w-0` so it yields
+          instead of overflowing the column. */}
+      <div className="grid grid-cols-[minmax(104px,max-content)_1fr] items-center gap-x-5 gap-y-3">
         {(
           [
             ['sweetness', 'Słodycz'],
@@ -195,8 +197,6 @@ export function ProfileDirectionAxes({
               id={axis}
               label={label}
               position={intents[axis]}
-              leftLabel={axis === 'sweetness' ? 'Mniej słodkie' : 'Bardziej miękkie'}
-              rightLabel={axis === 'sweetness' ? 'Bardziej słodkie' : 'Bardziej twarde'}
               onSet={(next) => set(axis, next)}
               disabled={status?.status !== 'working'}
             />
