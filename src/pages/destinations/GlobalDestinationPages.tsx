@@ -29,8 +29,6 @@ import {
 } from '@/components/shared/destinationEditorial';
 import { ShopCatalog } from '@/features/shop/ShopCatalog';
 import { ShopCartCount } from '@/features/shop/ShopCartCount';
-import { HomeProSwitch } from '@/features/home-creator/ui/HomeProSwitch';
-import { useHomeEntitlement } from '@/features/home-creator/useHomeEntitlement';
 import { ShopOrdersPanel } from '@/features/shop/ShopOrdersPanel';
 import { shopCopy } from '@/copy/shop';
 import { FranchiseInquiryForm } from '@/features/franchise/FranchiseInquiryForm';
@@ -92,7 +90,6 @@ export function HowItWorksPage() {
 }
 
 export function ShopPage() {
-  const entitlement = useHomeEntitlement();
   return (
     <DestinationSurface
       eyebrow={shopCopy.page.eyebrow}
@@ -108,7 +105,6 @@ export function ShopPage() {
          HOME as the current page while a visitor read a commercial page, which
          is the claim the owner ruled out for every global destination. Both
          segments stay visible; neither presents as current. */
-      headerActions={<HomeProSwitch entitlement={entitlement} activeView={null} />}
       bare
     >
       {/* SHOP C3 (owner approved 2026-08-31, product emphasis 2026-09-01).

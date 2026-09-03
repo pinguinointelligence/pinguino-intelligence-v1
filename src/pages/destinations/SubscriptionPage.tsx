@@ -1,6 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
-import { OfficialProLogo } from '@/components/shared/OfficialProLogo';
 import { cn } from '@/lib/cn';
 import {
   color,
@@ -10,7 +9,7 @@ import {
   touchButtonClasses,
   type,
 } from '@/features/customer-shell/ui';
-import { CustomerMenu } from '@/features/customer-shell/ui/CustomerMenu';
+import { AppShell } from '@/features/shell/AppShell';
 import { useAuthStore } from '@/stores/authStore';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { landingCopy } from '@/pages/landing/landingCopy';
@@ -35,10 +34,8 @@ import {
  * Track C (design-system unification, owner 2026-07-17): REBUILT on the
  * light-first customer system so the paywall's own destination stops looking
  * like a different, darker application. It reuses the SAME `landingCopy.plans`
- * tiers the landing shows and the SAME `CustomerMenu` + token system (one
- * button/radius/shadow language). Presentation only — the real checkout arrives
- * with the monetization track; until then the Pro action is honest (sign in to
- * be first), never a dead button.
+ * tiers the landing shows and the canonical `AppShell` header. Checkout,
+ * authentication and continuation behavior remain owned by this page.
  */
 const s = landingCopy.subscription;
 const plans = landingCopy.plans;
@@ -267,21 +264,7 @@ export function SubscriptionPage() {
   };
 
   return (
-    <div className="gellatti-application pro-studio-radius-system theme-pro-light min-h-[100dvh] w-full bg-paper text-ink">
-      <header className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-5 py-6 sm:px-8">
-        {/* Owner override (V2.1 §6): hamburger LEFT, wordmark immediately after it. */}
-        <div className="flex min-w-0 items-center gap-3">
-          <CustomerMenu showBrand={false} />
-          <Link
-            to="/"
-            aria-label={landingCopy.brand.name}
-            className={cn('flex items-center rounded', focusRing)}
-          >
-            <OfficialProLogo />
-          </Link>
-        </div>
-      </header>
-
+    <AppShell>
       <main className="mx-auto w-full max-w-5xl px-5 pb-24 pt-6 sm:px-8 sm:pt-10">
         <p className={cn(type.label, color.textMuted)}>{s.eyebrow}</p>
         <h1 className="mt-4 max-w-3xl text-balance text-[38px] font-semibold leading-[0.99] tracking-[-0.04em] text-ink sm:text-[52px]">
@@ -391,6 +374,6 @@ export function SubscriptionPage() {
           </Link>
         </div>
       </main>
-    </div>
+    </AppShell>
   );
 }

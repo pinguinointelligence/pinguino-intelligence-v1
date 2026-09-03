@@ -1117,7 +1117,7 @@ export function IngredientBuilder({
                         // The SAME dock is pinned above the mobile preview bar below
                         // the workbench breakpoint, so it is never shown twice.
                         <div
-                          className="ml-auto hidden min-w-0 xl:block"
+                          className="pro-workbench-action-dock ml-auto hidden min-w-0"
                           data-testid="ingredient-action-slot"
                         >
                           {recipeActionDock}

@@ -408,7 +408,7 @@ export function StudioEngineSurface({
       {/* ── ONE-SCREEN WORKBENCH — fills the remaining viewport height on desktop; every
           edit-loop control lives INSIDE this section (owner zero-page-scroll rule). ── */}
       <section
-        className="flex min-h-0 flex-col pb-[calc(var(--pro-bottom-nav-height)+4.75rem+env(safe-area-inset-bottom))] xl:flex-1 xl:overflow-hidden xl:pb-0"
+        className="pro-workbench-surface flex min-h-0 flex-col pb-[calc(var(--pro-bottom-nav-height)+4.75rem+env(safe-area-inset-bottom))]"
         data-testid="pro-workbench"
       >
         {activeTab === 'production' && production.session ? (
@@ -418,7 +418,7 @@ export function StudioEngineSurface({
         <div
           /* ONE split, shared verbatim with the shell header row, so the module
              tab strip above the display column cannot drift (owner §8). */
-          className={`min-h-0 flex-1 xl:grid xl:h-full xl:pt-3 xl:pb-3 ${DESKTOP_WORKBENCH_COLUMNS}`}
+          className={`pro-workbench-body-grid min-h-0 flex-1 ${DESKTOP_WORKBENCH_COLUMNS}`}
         >
           <span
             aria-hidden
@@ -430,10 +430,7 @@ export function StudioEngineSurface({
               data-testid="workbench-divider-handle"
             />
           </span>
-          <div
-            className="min-h-0 xl:flex xl:min-w-0 xl:flex-col xl:overflow-hidden xl:rounded-[10px] xl:border xl:border-ink/10 xl:bg-white xl:shadow-pro-e0"
-            data-testid="workbench-editor-pane"
-          >
+          <div className="pro-workbench-editor-track min-h-0" data-testid="workbench-editor-pane">
             {/* Owner v1.4 §7: an immutable snapshot opened from the library's WERSJA selector must
                 announce itself before any of its grams are read as the current recipe. */}
             <HistoricalVersionNotice />
@@ -462,7 +459,7 @@ export function StudioEngineSurface({
               change (useStudioResult), ONE predictable internal scroll surface (B6).
               Mobile reaches the SAME content through the Monitor bottom sheet. */}
           <aside
-            className="hidden min-h-0 xl:block xl:min-w-0 xl:overflow-hidden"
+            className="pro-workbench-right-track hidden min-h-0"
             data-testid="pro-monitor-panel"
             aria-label={copy.proWorkbench.profile.title}
           >
@@ -492,7 +489,7 @@ export function StudioEngineSurface({
             formal calculation state is never more than a thumb away, and the
             whole stack respects `env(safe-area-inset-bottom)`. */}
         <div
-          className="fixed inset-x-0 bottom-0 z-[60] xl:hidden"
+          className="pro-workbench-mobile-only fixed inset-x-0 bottom-0 z-[60]"
           data-testid="mobile-cockpit-trigger"
         >
           {mobileRecipeActionDock ? (
@@ -521,7 +518,7 @@ export function StudioEngineSurface({
                backdrop is inset with it, so the header is neither dimmed nor
                swallowed. `--pro-mobile-header-height` is the canonical offset:
                65 px on a phone, 69 px from `sm`, both measured live. */
-            className="fixed inset-x-0 top-[var(--pro-mobile-header-height)] bottom-[calc(var(--pro-bottom-nav-height)+env(safe-area-inset-bottom))] z-50 xl:hidden"
+            className="pro-workbench-mobile-only fixed inset-x-0 top-[var(--pro-mobile-header-height)] bottom-[calc(var(--pro-bottom-nav-height)+env(safe-area-inset-bottom))] z-50"
             data-testid="mobile-cockpit-sheet"
           >
             <button

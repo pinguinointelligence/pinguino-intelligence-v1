@@ -733,15 +733,14 @@ describe('Production workspace touch-first UI', () => {
     // V2.1 §17: the acknowledgement lives INSIDE the desktop ingredient line
     // (never as a second row under it), and stays hidden below the workbench
     // breakpoint so the mobile card remains the phone's own affordance.
-    expect(html).toContain('hidden min-w-0 flex-1 items-center gap-2 xl:flex');
-    expect(html).toContain('xl:flex');
+    expect(html).toContain('pro-workbench-desktop-only min-w-0 flex-1 items-center gap-2');
 
     const cockpitSource = readFileSync(
       resolve(import.meta.dirname, 'ProductionCockpit.tsx'),
       'utf8',
     );
     expect(cockpitSource).toContain('data-testid="production-heat-information"');
-    expect(cockpitSource).toContain('xl:hidden');
+    expect(cockpitSource).toContain('pro-workbench-mobile-only');
     expect(cockpitSource).toContain('acknowledge-production-heat-information');
   });
 

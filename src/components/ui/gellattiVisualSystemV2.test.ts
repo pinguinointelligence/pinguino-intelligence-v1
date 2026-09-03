@@ -101,11 +101,15 @@ describe('Gellatti Visual System V2', () => {
     const customer = read('features', 'customer-shell', 'CustomerShellV1.tsx');
     const subscription = read('pages', 'destinations', 'SubscriptionPage.tsx');
 
-    for (const source of [appShell, landing, customer, subscription]) {
+    for (const source of [appShell, landing]) {
       expect(source).toContain('gellatti-application');
       expect(source).toContain('pro-studio-radius-system');
       expect(source).toContain('theme-pro-light');
     }
+    // Application routes consume that scope through the one AppShell rather
+    // than restating its classes in route-local roots.
+    expect(customer).toContain('<AppShell>');
+    expect(subscription).toContain('<AppShell>');
   });
 
   it('uses one shared state family instead of naked loading copy on routed pages', () => {

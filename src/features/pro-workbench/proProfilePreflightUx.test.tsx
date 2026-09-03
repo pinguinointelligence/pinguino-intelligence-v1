@@ -651,7 +651,7 @@ describe('profile hierarchy and compact preflight', () => {
   it('uses one inset shell and one desktop body scroller for every cockpit tab', () => {
     const panel = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
     const surface = read('features', 'studio', 'StudioEngineSurface.tsx');
-    expect(surface).toContain('xl:flex xl:min-w-0 xl:flex-col xl:overflow-hidden');
+    expect(surface).toContain('pro-workbench-editor-track');
     expect(panel).toContain('lg:rounded-[10px]');
     expect(panel).toContain('lg:shadow-pro-e0');
     expect(panel).toContain('lg:flex-1 lg:overflow-y-auto');

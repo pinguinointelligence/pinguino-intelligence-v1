@@ -4,7 +4,6 @@ import { SurfaceToneContext } from '@/components/ui/surface';
 import { copy } from '@/copy/en';
 import { cn } from '@/lib/cn';
 import { AppShell } from '@/features/shell/AppShell';
-import { DestinationHomeProSwitch } from './DestinationHomeProSwitch';
 import {
   APP_PAGE_BLOCK,
   APP_PAGE_CANVAS,
@@ -29,7 +28,6 @@ export function DestinationSurface({
   title,
   blurb,
   actions,
-  headerActions = <DestinationHomeProSwitch />,
   bare = false,
   children,
 }: {
@@ -46,17 +44,6 @@ export function DestinationSurface({
    */
   contextLabel?: string;
   /**
-   * Controls for the GLOBAL header row — in practice the HOME | PRO switch.
-   *
-   * They are handed straight to `AppShell`, which since the global header
-   * parity change (#76) places non-workbench actions at the trailing edge of
-   * the left work column. This is consumption of that slot, not a second
-   * header implementation: no geometry is declared here.
-   *
-   * `actions` (unprefixed) still belongs to the PAGE heading.
-   */
-  headerActions?: ReactNode;
-  /**
    * GELLATTI V2.1 §5 — the commercial destinations (Sklep, Franchise,
    * Współpraca) open on a HERO that carries the page title itself, so the
    * shared `PageHeading` would render the same title twice, 40 px above the
@@ -70,11 +57,8 @@ export function DestinationSurface({
   return (
     <div className="pro-studio-radius-system theme-pro-light">
       <AppShell
-        /* The canonical global header (#76) carries hamburger, logo and HOME | PRO
-           at one x on every route. A destination CONSUMES that slot (#77) and
-           declares no geometry of its own. The default lives on the prop, so this
-           stays a single unconditional hand-off. */
-        globalSwitch={headerActions}
+        /* The canonical global header owns hamburger, logo and HOME | PRO.
+           Destinations declare no route-local header controls or geometry. */
         navigationPosition="trailing"
         /* GLOBAL HEADER PARITY, FORWARD FIX (owner, 2026-09-01): the global row
            carries the hamburger, the official wordmark and HOME | PRO — nothing
