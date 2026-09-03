@@ -161,54 +161,24 @@ export function WorkbenchSettingsLine({
   const openDraft = useRecipeProfileStore((state) => state.openDraft);
   const rebindDraftIdentity = useRecipeProfileStore((state) => state.rebindDraftIdentity);
   const confirmSettings = useRecipeProfileStore((state) => state.confirmSettings);
-  /* OWNER AUTHORITY 2026-09-02 (approved desktop PDF, §6): Settings are
-     COLLAPSED at rest. They are the recipe's context, not its work — the band
-     states what they are in one line and opens only when the user goes there. */
-  /* OWNER AUTHORITY 2026-09-03: while the recipe card is refusing to save, this
-     module is where the owner has to act, so it opens itself and takes the
-     change marker — the same attention treatment a gram field wears after it
-     is edited, but drawn all the way round because here the whole module is
-     what changed, not one field in a row.
+  /* OWNER AUTHORITY 2026-09-03: disclosure intent, initial onboarding and a
+     save refusal are three different facts.
 
-     TWO STATES, deliberately not one. `manualExpanded` is what the owner chose;
-     `settingsBlocked` is what the blocker imposes. Only the first is ever
-     written.
-
-     Collapsing them into a single flag produced a real bug. While the blocker
-     held the module open the flag was still false, so the toggle read a click
-     meant to CLOSE as "flip false to true". The module could not be closed
-     during the block — correct — but the instant the block cleared it stayed
-     OPEN, the opposite of what the click asked for. Proven in the browser
-     before that fix: aria-expanded stayed `true`, all four fields visible,
-     module height unchanged at 230.3 px.
-
-     Now a click under a forced opening can only ever record "closed". The
-     module still cannot visibly collapse while the blocker stands, and it
-     collapses by itself the moment the blocker clears. Nothing writes the
-     derived value back into the manual one, so there is no open/close loop.
-
-     SCOPED TO THE BLOCKER THIS MODULE ANSWERS. Opening Settings for every
-     preflight refusal was wrong the moment the refusal was a recalculation:
-     the module would open, take the attention marker and show „Zatwierdzone",
-     while the sentence beside it asked for something else entirely. One
-     blocker gets one next action, and this module is that action only when
-     `action === 'settings'`. That is also why no separate boolean is derived
-     from the message text — the typed blocker is the only authority. */
+     - `manualExpanded` is the owner's disclosure choice.
+     - `initialSettingsAttentionRequired` is the one authority allowed to open
+       the module automatically. A successful confirmation consumes it for the
+       exact draft identity.
+     - the typed `preflightBlocker` remains a visible warning/Save fact, but has
+       no say in disclosure state. Ingredient edits, Direction, dirty state and
+       recalculation can therefore never make Settings jump open again. */
   const [manualExpanded, setManualExpanded] = useState(false);
   const preflightBlocker = useRecipeProfileStore((state) => state.preflightBlocker);
-  const settingsBlocked = preflightBlocker?.action === 'settings';
-  const open = manualExpanded || settingsBlocked;
+  const preflightBlocked = preflightBlocker?.action === 'settings';
+  const initialSettingsAttentionRequired =
+    activeDraftIdentity === null || confirmedDraftIdentity !== activeDraftIdentity;
+  const open = manualExpanded || initialSettingsAttentionRequired;
 
   const toggleDisclosure = () => {
-    /* Under the blocker the module is open because the blocker holds it, never
-       because the owner opened it — so the only intent a click can carry here
-       is "close". Recording that, rather than toggling, is what lets the module
-       collapse on its own once the blocker is gone, and is what keeps a manual
-       opening from being invented out of a forced one. */
-    if (settingsBlocked) {
-      setManualExpanded(false);
-      return;
-    }
     setManualExpanded((wasOpen) => !wasOpen);
   };
   const saveDefaultsLocal = useRecipeProfileStore((state) => state.saveDefaults);
@@ -306,18 +276,9 @@ export function WorkbenchSettingsLine({
   }, [activeDraftIdentity, confirmed, setSettingsConfirmed]);
   useEffect(() => () => setSettingsConfirmed(null), [setSettingsConfirmed]);
 
-  /* NO auto-collapse effect. `open = manualExpanded || settingsBlocked` already
-     closes the module the instant its blocker clears, because a forced opening
-     never wrote anything to collapse.
-
-     The effect this replaces tracked "the blocker opened it" in a ref and then
-     forced the open flag to false once confirmation succeeded. It reached the
-     same place down one path and missed the others: a blocker that cleared for
-     any reason OTHER than a successful confirmation left the module open, and
-     writing the open state back meant the forced opening could still be
-     remembered as a manual one. Deriving it needs neither the ref nor the
-     effect, and an owner who opened the module themselves still keeps it open
-     because `manualExpanded` is theirs alone. */
+  /* No blocker-driven open/close effect. Initial attention is derived from the
+     confirmed draft identity, and successful confirmation explicitly returns
+     the disclosure to its collapsed resting state. */
 
   const hardConflict =
     !Number.isFinite(store.target_batch_grams) ||
@@ -491,6 +452,7 @@ export function WorkbenchSettingsLine({
    */
   const confirmAndSeedDefaults = () => {
     if (activeDraftIdentity === null) return;
+    setManualExpanded(false);
     confirmSettings(signature, activeDraftIdentity, store.draftContextSeq);
     if (!defaultsOwner) return;
     const alreadyEstablished = useRecipeProfileStore
@@ -537,7 +499,7 @@ export function WorkbenchSettingsLine({
         'pro-legend-box px-5 py-7 transition-colors',
         hardConflict
           ? 'border-status-error/45 bg-status-error/[0.035]'
-          : settingsBlocked
+          : preflightBlocked
             ? 'settings-preflight-blocked'
             : 'bg-transparent',
         className,
@@ -547,7 +509,7 @@ export function WorkbenchSettingsLine({
       data-preflight-state={
         hardConflict ? 'conflict' : confirmed ? 'confirmed' : 'needs-confirmation'
       }
-      data-preflight-blocked={settingsBlocked ? 'true' : undefined}
+      data-preflight-blocked={preflightBlocked ? 'true' : undefined}
     >
       <h3
         data-band-legend
