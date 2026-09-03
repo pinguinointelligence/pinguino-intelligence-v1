@@ -28,7 +28,15 @@ describe('Recipe profile visual density contract', () => {
     expect(axes).not.toContain('xl:min-h-[66px]');
     expect(axes).not.toContain('absolute inset-x-0 top-[11px] h-1 rounded-full');
     expect(axes).toContain("`${((detent + 2) / 4) * 100}%`");
-    expect(axes).toContain('top-[9.5px] -ml-[3.5px] size-[7px] rounded-full bg-[var(--g-rail-track)]');
+    /* OWNER 2026-09-03: the dots are a RAMP, not five identical marks — the
+       size is what tells you which way the axis runs, so it is computed per
+       detent rather than fixed in a class. */
+    expect(axes).toContain('const DOT_PX = [5, 6.5, 8, 9.5, 11] as const');
+    expect(axes).toContain('const THUMB_PX = [13, 14.5, 16, 17.5, 19] as const');
+    expect(axes).toContain('width: d, height: d, marginLeft: -d / 2, top: 13 - d / 2');
+    // Mirrored for Twardość, where the engine runs soft -> firm left to right.
+    expect(axes).toContain('ascending ? detent + 2 : 2 - detent');
+    expect(axes).toContain("ascending={axis === 'sweetness'}");
     // The fill runs centre → position, never end → position.
     /* OWNER 2026-09-03: the detents are CONNECTED. Five loose dots stopped
        reading as one instrument, and the orange stroke stopped reading as a
@@ -38,10 +46,10 @@ describe('Recipe profile visual density contract', () => {
     const railAt = axes.indexOf('absolute inset-x-0 top-[11.5px] h-[3px] rounded-full bg-[var(--g-line)]');
     expect(railAt).toBeGreaterThan(-1);
     expect(railAt).toBeLessThan(axes.indexOf('style={{ left: fillLeft, width: fillWidth }}'));
-    expect(railAt).toBeLessThan(axes.indexOf('style={{ left: at(position) }}'));
+    expect(railAt).toBeLessThan(axes.indexOf('left: at(position),'));
     expect(axes).toContain("const fillLeft = position >= 0 ? '50%' : at(position);");
     expect(axes).toContain('const fillWidth = `${Math.abs(position) * 25}%`;');
-    expect(axes).toContain('top-[5px] -ml-2 size-4 rounded-full shadow-[0_0_0_3px_#fff]');
+    expect(axes).toContain("rounded-full shadow-[0_0_0_3px_#fff] transition-[left,width,height");
     // A 26 px target on a 16 px mark: the thing you press is bigger than the
     // thing you see, which is the opposite of the old 28 px numeral button.
     expect(axes).toContain('-ml-[13px] size-[26px]');

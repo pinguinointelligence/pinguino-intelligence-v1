@@ -959,6 +959,58 @@ describe('preflight and recipe-specific persistence', () => {
   });
 });
 
+describe('Direction explains itself, and agrees with the engine', () => {
+  const axes = read('features', 'pro-workbench', 'ProfileDirectionAxes.tsx');
+  const engine = read('features', 'recipe-direction', 'recipeDirectionTargets.ts');
+  const v21 = read('styles', 'gellatti-v2-1.css');
+
+  it('ramps the mark by size instead of printing a number', () => {
+    expect(axes).toContain('const DOT_PX = [5, 6.5, 8, 9.5, 11] as const');
+    expect(axes).toContain('const THUMB_PX = [13, 14.5, 16, 17.5, 19] as const');
+    // No +1 / -2 anywhere in the control any more, in any form.
+    expect(axes).not.toContain('const sign =');
+    expect(axes).not.toMatch(/\+\$\{detent\}/);
+  });
+
+  it('mirrors the ramp for Twardość IN THE DIRECTION THE ENGINE MOVES', () => {
+    /* This is the load-bearing one. The engine says so in its own words: the
+       persisted field is still called `softness`, but its sign follows the
+       Twardość control, where -2 is MORE SOFT and +2 is MORE FIRM. So the big
+       aerated ball belongs on the LEFT and the small dense one on the RIGHT,
+       and the end labels have to read soft -> firm in that order.
+
+       The owner's request for this ramp described the direction the other way
+       round. The picture it asked for was right and is implemented verbatim;
+       only the words were inverted, which is exactly the mistake this test
+       exists to catch if anyone ever "corrects" the labels to match them. */
+    expect(engine).toContain('-2 = more soft (higher NPAC), +2 = more firm (lower NPAC)');
+    expect(axes).toContain("ascending={axis === 'sweetness'}");
+    const softEnds = axes.indexOf("['bardziej miękkie', 'bardziej twarde']");
+    expect(softEnds, 'Twardość must read soft -> firm, left to right').toBeGreaterThan(-1);
+    expect(axes).not.toContain("['bardziej twarde', 'bardziej miękkie']");
+    // ...and the spoken names follow the same order.
+    const soft = axes.indexOf('znacznie bardziej miękkie');
+    const firm = axes.indexOf('znacznie bardziej twarde');
+    expect(soft).toBeGreaterThan(-1);
+    expect(soft).toBeLessThan(firm);
+  });
+
+  it('tells the reader the column continues, since the scrollbar is hidden', () => {
+    /* Expanding the breakdown pushes WIEDZA below the fold. It stays reachable
+       — measured at 1440x820, 143 px of scroll brings it fully into view — but
+       from 1536 px up `index.css` deliberately hides the scrollbar, so nothing
+       said so and the section read as deleted.
+
+       Four background layers and no scroll listener: two `local` layers scroll
+       with the content and paint the ground, two `scroll` layers stay at the
+       scroller's edges and paint a shadow. At either end the ground covers the
+       shadow; in between it shows. */
+    expect(v21).toMatch(/\.intelligence-tabpanel-scroll \{[\s\S]*?no-repeat local/);
+    expect(v21).toMatch(/\.intelligence-tabpanel-scroll \{[\s\S]*?no-repeat\s+scroll/);
+    expect((v21.match(/--pro-scroll-ground/g) ?? []).length).toBe(2);
+  });
+});
+
 describe('a refused save points at the module that answers it', () => {
   const settings = read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx');
   const workbar = read('features', 'pro-core', 'ProWorkbar.tsx');

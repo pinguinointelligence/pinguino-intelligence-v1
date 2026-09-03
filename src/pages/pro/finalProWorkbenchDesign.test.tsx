@@ -364,10 +364,12 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
     expect(axes).toContain('role="radio"');
     expect(axes).toContain('aria-checked={position === detent}');
     expect(axes).toContain("event.key === 'ArrowRight'");
-    // The chosen position is now an orange THUMB on the rail; the numeral it
-    // used to contain became the readout beside the track (see
-    // directionDetentContrast.test.ts for the ratios that motivated the move).
-    expect(axes).toContain('size-4 rounded-full shadow-[0_0_0_3px_#fff]');
+    /* OWNER 2026-09-03: the chosen position is an orange thumb whose SIZE
+       varies with the detent — that size is now the primary statement of
+       direction, replacing the numeral entirely (see
+       directionDetentContrast.test.ts for what assistive tech gets instead). */
+    expect(axes).toContain("rounded-full shadow-[0_0_0_3px_#fff] transition-[left,width,height");
+    expect(axes).toContain('const thumbSize = THUMB_PX[rampIndex(position, ascending)]');
     expect(axes).not.toContain('Po zmianie:');
     expect(axes).not.toContain('Legenda kierunku');
     for (const label of ['Wartości odżywcze i koszt', 'Na 100 g', 'Węglowodany', 'Cała partia']) {

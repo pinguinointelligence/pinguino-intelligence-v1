@@ -11,21 +11,69 @@ const DETENTS = [-2, -1, 0, 1, 2] as const;
 /** `left:` for a detent, matching the frozen 0 / 25 / 50 / 75 / 100 spacing. */
 const at = (detent: DirectionIntent) => `${((detent + 2) / 4) * 100}%`;
 
-const sign = (detent: DirectionIntent) => (detent > 0 ? `+${detent}` : `${detent}`);
+/* OWNER AUTHORITY 2026-09-03 — the control explains ITSELF.
+
+   The numerals are gone: nobody should have to read "+1" to know which way
+   they went. Meaning is carried by the SIZE of the mark, indexed by detent.
+
+   SŁODYCZ ramps up to the right: a bigger ball is more sugar, which is the
+   direction the engine actually moves (sorbet sweetness centres run 16 → 24
+   from -2 to +2).
+
+   TWARDOŚĆ ramps the other way, and that is not decoration — it is what the
+   engine does. `recipeDirectionTargets.ts` states it outright: the persisted
+   field is still called `softness`, but its sign follows the customer-facing
+   Twardość control, where -2 is MORE SOFT and +2 is MORE FIRM. So the big,
+   round ball sits on the LEFT (soft, aerated) and the small, tight one on the
+   RIGHT (firm, dense). The owner's requested picture and the engine agree; the
+   words in the request did not, so the end labels below follow the engine. */
+const DOT_PX = [5, 6.5, 8, 9.5, 11] as const;
+const THUMB_PX = [13, 14.5, 16, 17.5, 19] as const;
+
+/** Index into the size ramps: ascending to the right, or mirrored. */
+const rampIndex = (detent: DirectionIntent, ascending: boolean) =>
+  ascending ? detent + 2 : 2 - detent;
+
+/* Screen readers never saw the ball, so they used to get the numeral. Now that
+   nobody gets the numeral, they get the sentence instead — the same thing the
+   size says, in words. */
+const PHRASES: Record<'ascending' | 'descending', readonly string[]> = {
+  ascending: [
+    'znacznie mniej słodkie',
+    'mniej słodkie',
+    'średnio',
+    'bardziej słodkie',
+    'znacznie bardziej słodkie',
+  ],
+  descending: [
+    'znacznie bardziej miękkie',
+    'bardziej miękkie',
+    'średnio',
+    'bardziej twarde',
+    'znacznie bardziej twarde',
+  ],
+};
 
 function RegulatorRow({
   id,
   label,
   position,
+  ascending,
+  endLabels,
   onSet,
   disabled,
 }: {
   id: string;
   label: string;
   position: DirectionIntent;
+  /** true = the ball grows to the right; false = it grows to the left. */
+  ascending: boolean;
+  endLabels: readonly [string, string];
   onSet: (value: DirectionIntent) => void;
   disabled?: boolean;
 }) {
+  const phrases = PHRASES[ascending ? 'ascending' : 'descending'];
+  const thumbSize = THUMB_PX[rampIndex(position, ascending)];
   /* The fill spans CENTRE → current position, so the track reads as a bipolar
      instrument: which way you went, and how far. A rail filled from the left
      end would read as a volume slider — a different claim about the axis. */
@@ -89,14 +137,17 @@ function RegulatorRow({
             aria-hidden
             className="absolute inset-x-0 top-[11.5px] h-[3px] rounded-full bg-[var(--g-line)]"
           />
-          {DETENTS.map((detent) => (
-            <span
-              key={`dot-${detent}`}
-              aria-hidden
-              style={{ left: at(detent) }}
-              className="absolute top-[9.5px] -ml-[3.5px] size-[7px] rounded-full bg-[var(--g-rail-track)]"
-            />
-          ))}
+          {DETENTS.map((detent) => {
+            const d = DOT_PX[rampIndex(detent, ascending)];
+            return (
+              <span
+                key={`dot-${detent}`}
+                aria-hidden
+                style={{ left: at(detent), width: d, height: d, marginLeft: -d / 2, top: 13 - d / 2 }}
+                className="absolute rounded-full bg-[var(--g-rail-track)]"
+              />
+            );
+          })}
           <span
             aria-hidden
             style={{ left: fillLeft, width: fillWidth }}
@@ -111,8 +162,8 @@ function RegulatorRow({
           {position !== 0 ? (
             <span
               aria-hidden
-              style={{ left: at(0) }}
-              className="absolute top-[7.5px] -ml-[5.5px] size-[11px] rounded-full border-[1.5px] border-[var(--g-drag)] bg-white"
+              style={{ left: at(0), top: 13 - DOT_PX[2] / 2 - 2, marginLeft: -DOT_PX[2] / 2 - 2 }}
+              className="absolute size-[12px] rounded-full border-[1.5px] border-[var(--g-drag)] bg-white"
             />
           ) : null}
           {/* The blocked thumb carries an OUTLINE, not just a muted fill. With
@@ -125,9 +176,15 @@ function RegulatorRow({
               owner-approved V2.1 exception and is not reopened here. */}
           <span
             aria-hidden
-            style={{ left: at(position) }}
+            style={{
+              left: at(position),
+              width: thumbSize,
+              height: thumbSize,
+              marginLeft: -thumbSize / 2,
+              top: 13 - thumbSize / 2,
+            }}
             className={cn(
-              'absolute top-[5px] -ml-2 size-4 rounded-full shadow-[0_0_0_3px_#fff] transition-[left,background-color]',
+              'absolute rounded-full shadow-[0_0_0_3px_#fff] transition-[left,width,height,margin,top,background-color]',
               disabled
                 ? 'border-[1.5px] border-[var(--g-attention-ink)] bg-[#fcd6a8]'
                 : 'bg-[#f58a07]',
@@ -139,10 +196,9 @@ function RegulatorRow({
               type="button"
               role="radio"
               aria-checked={position === detent}
-              /* The position survives here even though the reference prints no
-                 numerals: the label carries the value, so assistive tech still
-                 reads "Słodycz: +1" on the checked detent. */
-              aria-label={`${label}: ${sign(detent)}`}
+              /* The size is invisible to a screen reader, so the name carries
+                 the same statement in words: "Słodycz: bardziej słodkie". */
+              aria-label={`${label}: ${phrases[rampIndex(detent, ascending)]}`}
               disabled={disabled}
               onClick={() => onSet(detent)}
               style={{ left: at(detent) }}
@@ -151,6 +207,19 @@ function RegulatorRow({
               className="pro-focus-ring absolute top-0 -ml-[13px] size-[26px] rounded-full bg-transparent"
             />
           ))}
+        </div>
+        {/* Size says WHICH WAY; these two words say which way is which. Kept
+            because a bigger ball is only self-evident on Słodycz — on Twardość
+            a large ball could be read as "harder" just as easily as "softer",
+            and that misreading is not hypothetical: the request that asked for
+            this ramp described the direction backwards. Deliberately quiet, at
+            the smallest size in the panel, so they inform without competing. */}
+        <div
+          className="mt-[7px] flex justify-between gap-3 text-[10.5px] leading-[14px] text-[var(--g-text-muted)]"
+          data-testid={`profile-regulator-${id}-ends`}
+        >
+          <span className="min-w-0 truncate">{endLabels[0]}</span>
+          <span className="min-w-0 truncate text-right">{endLabels[1]}</span>
         </div>
       </div>
     </article>
@@ -207,6 +276,14 @@ export function ProfileDirectionAxes({
               id={axis}
               label={label}
               position={intents[axis]}
+              ascending={axis === 'sweetness'}
+              endLabels={
+                axis === 'sweetness'
+                  ? ['mniej słodkie', 'bardziej słodkie']
+                  : /* Engine order, not the order the request named: the axis
+                       runs soft → firm left to right (see the ramp note). */
+                    ['bardziej miękkie', 'bardziej twarde']
+              }
               onSet={(next) => set(axis, next)}
               disabled={status?.status !== 'working'}
             />
