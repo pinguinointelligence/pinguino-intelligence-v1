@@ -477,6 +477,51 @@ describe('trusted Production Rescue authorization', () => {
     const retry = await authorizeTrustedProductionRescue(OWNER, request(), deps);
     expect(retry).toEqual(first);
   });
+
+  it('keeps the same proof after its rescue-preview audit event is appended', async () => {
+    let firstProof: PersistTrustedAuthorizationInput | null = null;
+    await authorizeTrustedProductionRescue(
+      OWNER,
+      request(),
+      dependencies(context(), (input) => {
+        firstProof = input;
+      }),
+    );
+
+    const auditedContext = context();
+    auditedContext.events.push({
+      id: '77777777-7777-4777-8777-777777777777',
+      event_type: 'rescue_previewed',
+      detail: firstProof!.safeMetadata.title,
+      amendment: {
+        authorizationId: AUTHORIZATION,
+        stableOptionId: firstProof!.stableOptionId,
+        candidateFingerprint: firstProof!.candidateFingerprint,
+        preview: firstProof!.safeMetadata,
+      },
+      created_by: OWNER,
+      created_at: '2026-08-19T00:02:00.000Z',
+    });
+
+    let retryProof: PersistTrustedAuthorizationInput | null = null;
+    await authorizeTrustedProductionRescue(
+      OWNER,
+      request(),
+      dependencies(auditedContext, (input) => {
+        retryProof = input;
+      }),
+    );
+
+    expect(retryProof).toMatchObject({
+      sourceFingerprint: firstProof!.sourceFingerprint,
+      candidateFingerprint: firstProof!.candidateFingerprint,
+      productBehaviorFingerprint: firstProof!.productBehaviorFingerprint,
+      requestFingerprint: firstProof!.requestFingerprint,
+      recipeInput: firstProof!.recipeInput,
+      productComposition: firstProof!.productComposition,
+      safeMetadata: firstProof!.safeMetadata,
+    });
+  });
 });
 
 describe('canonical serialization and Edge shell security', () => {
