@@ -33,7 +33,13 @@ const FULFILLMENT: readonly ShopFulfillmentStatus[] = [
   'cancelled',
 ];
 
-function StatusChip({ children, tone }: { children: string; tone: 'neutral' | 'attention' | 'paid' }) {
+function StatusChip({
+  children,
+  tone,
+}: {
+  children: string;
+  tone: 'neutral' | 'attention' | 'paid';
+}) {
   return (
     <span
       className={cn(
@@ -83,10 +89,26 @@ export function AdminShopOrderCard({
       data-testid={`admin-order-${order.orderNumber}`}
       data-order-status={order.status}
       data-order-fulfillment={order.fulfillmentStatus}
+      data-order-type={order.orderType}
     >
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="font-mono text-sm text-ink">{order.orderNumber}</p>
+          {/* O: a 0 EUR Local pack must not wear the parcel lifecycle. PAID ->
+              AWAITING FULFILMENT -> SHIPPED describes a journey a PDF never
+              takes, so the row says what it actually is. */}
+          {order.orderType === 'LOCAL_STARTER_PACK' ? (
+            <p
+              className="mt-1 inline-block rounded-[5px] bg-[var(--g-ink)] px-1.5 py-0.5 text-[10px] font-bold text-white"
+              data-testid="admin-order-local"
+            >
+              LOKALNY · 0 € · {order.localPackCountry ?? '—'}
+              {order.localPackReady ? ' · PDF' : ''}
+              {order.localPackEmailStatus
+                ? ` · MAIL ${order.localPackEmailStatus.toUpperCase()}`
+                : ''}
+            </p>
+          ) : null}
           <p className="mt-1 font-mono text-[11px] text-[var(--g-text-secondary)]">
             {order.created_at.slice(0, 16).replace('T', ' ')}
           </p>
@@ -199,7 +221,8 @@ export function AdminShopOrderCard({
       {/* Recording a shipment and marking it shipped are ONE action, so a
           parcel can never be „shipped" with nobody able to say under what
           number. */}
-      {order.status === 'paid' && order.fulfillmentStatus !== 'shipped' &&
+      {order.status === 'paid' &&
+      order.fulfillmentStatus !== 'shipped' &&
       order.fulfillmentStatus !== 'delivered' ? (
         <div className="mt-5 grid gap-2 border-t border-[var(--g-line)] pt-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_auto]">
           <label className="grid gap-1">
