@@ -27,7 +27,15 @@ vi.mock('@/features/global-catalog/useGlobalCatalogPicker', () => ({
     );
     return {
       hits,
-      favorites: new Set<string>(),
+      favorites: new Set(
+        mocks.hits
+          .filter((hit) => hit.favorite)
+          .map(
+            (hit) =>
+              `${hit.entityKind}:${hit.entityKind === 'pi_base' ? hit.mappedIngredientId : hit.id}`,
+          ),
+      ),
+      favoritesSettled: true,
       recent: new Set(
         hits
           .filter((hit) => hit.recentlyUsedAt)
@@ -200,13 +208,14 @@ describe('ProductPickerPopover catalog presentation', () => {
     vi.clearAllMocks();
   });
 
-  const renderPicker = async (onAdd = vi.fn()) => {
+  const renderPicker = async (onAdd = vi.fn(), intent: 'ADD' | 'REPLACE' = 'ADD') => {
     await act(async () => {
       root.render(
         <MemoryRouter>
           <ProductPickerPopover
             library={serverSearchLibrary()}
             scope="BASE_FORMULATION"
+            intent={intent}
             onAdd={onAdd}
           />
         </MemoryRouter>,
@@ -219,6 +228,8 @@ describe('ProductPickerPopover catalog presentation', () => {
 
   it('A/B/D/F/J hides technical metadata in browsing rows and keeps stable headings', async () => {
     await renderPicker();
+    const all = document.querySelector<HTMLButtonElement>('[data-product-filter="all"]');
+    await act(async () => all?.click());
     const text = document.body.textContent ?? '';
 
     expect(text).not.toContain('PI-ING-000180');
@@ -242,6 +253,75 @@ describe('ProductPickerPopover catalog presentation', () => {
     for (const option of document.querySelectorAll<HTMLElement>('[role="option"]')) {
       expect(option.getAttribute('aria-label')).not.toMatch(/PI-ING-|Status danych/);
     }
+  });
+
+  it('renders the canonical top-level filter order and keeps form filters contextual', async () => {
+    await renderPicker();
+    const filters = Array.from(
+      document.querySelectorAll<HTMLButtonElement>('[data-product-filter]'),
+    ).map((button) => button.dataset.productFilter);
+    expect(filters).toEqual([
+      'favorites',
+      'all',
+      'fruit',
+      'dairy',
+      'nuts',
+      'chocolate',
+      'technical',
+    ]);
+    expect(document.querySelector('[data-product-filter="fresh"]')).toBeNull();
+    expect(document.querySelector('[data-product-filter="paste"]')).toBeNull();
+
+    const fruits = document.querySelector<HTMLButtonElement>('[data-product-filter="fruit"]');
+    await act(async () => fruits?.click());
+    expect(
+      Array.from(document.querySelectorAll<HTMLElement>('[data-product-subfilter]')).map(
+        (button) => button.dataset.productSubfilter,
+      ),
+    ).toEqual(['all', 'fresh']);
+    expect(document.querySelectorAll('[data-product-filter][aria-pressed="true"]')).toHaveLength(1);
+  });
+
+  it('opens in All when no favorite exists', async () => {
+    mocks.hits = [cream];
+    await renderPicker();
+    expect(
+      document
+        .querySelector<HTMLButtonElement>('[data-product-filter="all"]')
+        ?.getAttribute('aria-pressed'),
+    ).toBe('true');
+  });
+
+  it('opens in Favorites when favorites exist and offers one-click Search all on no match', async () => {
+    await renderPicker();
+    const favorites = document.querySelector<HTMLButtonElement>(
+      '[data-product-filter="favorites"]',
+    );
+    expect(favorites?.getAttribute('aria-pressed')).toBe('true');
+
+    const search = document.querySelector<HTMLInputElement>('input[role="combobox"]');
+    await act(async () => {
+      if (search) {
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+        setter?.call(search, 'cream');
+        search.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    });
+    const searchAll = document.querySelector<HTMLButtonElement>(
+      '[data-testid="product-picker-search-all"]',
+    );
+    expect(searchAll?.textContent).toContain('Szukaj we wszystkich');
+    await act(async () => searchAll?.click());
+    expect(document.body.textContent).toContain('CREAM 30%');
+  });
+
+  it('uses one action contract per invocation', async () => {
+    mocks.hits = [cream];
+    await renderPicker(vi.fn(), 'REPLACE');
+    expect(document.querySelector('button[aria-label^="Zamień na CREAM 30%"]')).not.toBeNull();
+    expect(
+      document.querySelector('button[aria-label="Dodaj CREAM 30% · Mlekovita Cream · Chilled"]'),
+    ).toBeNull();
   });
 
   it('C/K opens neutral product details and preserves favorite and add actions', async () => {
@@ -316,13 +396,12 @@ describe('ProductPickerPopover catalog presentation', () => {
 
   it('G/H/I keeps one or two segments through filtering, searching, and long scroll', async () => {
     await renderPicker();
-    const pastes = Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find(
-      (button) => button.textContent?.includes('Pasty'),
+    const fruits = Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find(
+      (button) => button.textContent?.includes('Owoce'),
     );
-    await act(async () => pastes?.click());
-    expect(document.body.textContent).toContain('SKŁADNIKI');
-    expect(document.body.textContent).toContain('ALMOND PASTE');
-    expect(document.body.textContent).not.toContain('BANANA · Fresh Fruit');
+    await act(async () => fruits?.click());
+    expect(document.body.textContent).toContain('BANANA · Fresh Fruit');
+    expect(document.body.textContent).not.toContain('ALMOND PASTE');
     expect(document.querySelectorAll('[data-picker-segment]')).toHaveLength(1);
 
     const all = Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find((button) =>
@@ -338,9 +417,9 @@ describe('ProductPickerPopover catalog presentation', () => {
       }
     });
     expect(document.body.textContent).toContain('Znaleziono 1 składnik');
-    // Query active: the one hit is a favourite, so it leads under ULUBIONE.
-    expect(document.querySelectorAll('[data-picker-segment="favorites"]')).toHaveLength(1);
-    expect(document.querySelectorAll('[data-picker-segment="remaining"]')).toHaveLength(0);
+    // Query active: favorite state is only the star, never a ranking section.
+    expect(document.querySelectorAll('[data-picker-segment="ingredients"]')).toHaveLength(1);
+    expect(document.querySelectorAll('[data-picker-segment="favorites"]')).toHaveLength(0);
 
     await act(async () => {
       if (search) {
@@ -366,6 +445,8 @@ describe('ProductPickerPopover catalog presentation', () => {
     mocks.isFetching = true;
 
     await renderPicker();
+    const all = document.querySelector<HTMLButtonElement>('[data-product-filter="all"]');
+    await act(async () => all?.click());
 
     expect(document.body.textContent).toContain('BANANA · Fresh Fruit');
     expect(document.body.textContent).toContain('CREAM 30% · Mlekovita Cream · Chilled');

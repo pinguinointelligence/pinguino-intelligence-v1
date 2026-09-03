@@ -32,12 +32,45 @@ export function normalizeSearchText(input: string): string {
 
 /** Polish filler words that never identify an ingredient (already diacritic-stripped). */
 const STOPWORDS: ReadonlySet<string> = new Set([
-  'swieze', 'swiezy', 'swieza', 'swiezych', 'swiezej', 'mrozone', 'mrozona', 'mrozony',
-  'z', 'ze', 'i', 'w', 'na', 'do', 'oraz', 'lub', 'the', 'de', 'con',
+  'swieze',
+  'swiezy',
+  'swieza',
+  'swiezych',
+  'swiezej',
+  'mrozone',
+  'mrozona',
+  'mrozony',
+  'z',
+  'ze',
+  'i',
+  'w',
+  'na',
+  'do',
+  'oraz',
+  'lub',
+  'the',
+  'de',
+  'con',
 ]);
 
 /** Inflectional suffixes stripped (longest-first) to reach a Polish search root. */
-const SUFFIXES = ['owych', 'owym', 'owej', 'owe', 'owy', 'owa', 'ami', 'ach', 'om', 'ow', 'ie', 'y', 'i', 'a', 'e'];
+const SUFFIXES = [
+  'owych',
+  'owym',
+  'owej',
+  'owe',
+  'owy',
+  'owa',
+  'ami',
+  'ach',
+  'om',
+  'ow',
+  'ie',
+  'y',
+  'i',
+  'a',
+  'e',
+];
 
 /**
  * Words that only LOOK inflected. „cocoa" is not „coco" + a Polish ending, and
@@ -74,10 +107,14 @@ export function stem(token: string): string {
 interface AliasFamily {
   readonly roots: readonly string[];
   readonly categories?: readonly string[];
+  readonly concept?: CanonicalSearchConcept;
 }
+
+export type CanonicalSearchConcept = 'fruit' | 'milk' | 'cream' | 'sugar' | 'stabilizer' | 'inulin';
 
 const FRUIT = ['fruit'] as const;
 const ALIAS_FAMILIES: readonly AliasFamily[] = [
+  { roots: ['owoc', 'fruit', 'frucht', 'fruta', 'frutta'], categories: FRUIT, concept: 'fruit' },
   { roots: ['truskaw', 'straw', 'fragol', 'fresa', 'freson'], categories: FRUIT }, // strawberry
   { roots: ['wanil', 'wanili', 'vanil', 'vanigl', 'vanill'] }, // vanilla (forms span categories)
   { roots: ['ananas', 'pineapp', 'pina'], categories: FRUIT }, // pineapple
@@ -94,25 +131,49 @@ const ALIAS_FAMILIES: readonly AliasFamily[] = [
   { roots: ['wisni', 'czeresn', 'cherry', 'cilieg', 'amaren'], categories: FRUIT }, // cherry
   { roots: ['cytryn', 'lemon', 'limon'], categories: FRUIT }, // lemon
   { roots: ['limonk', 'lime'], categories: FRUIT }, // lime
-  { roots: ['czekolad', 'chocolat', 'cioccolat', 'cocoa', 'kakao'], categories: ['chocolate', 'cocoa'] },
+  {
+    roots: ['czekolad', 'chocolat', 'cioccolat', 'cocoa', 'kakao'],
+    categories: ['chocolate', 'cocoa'],
+  },
   { roots: ['pistacj', 'pistach', 'pistacchio'], categories: ['nut'] },
   { roots: ['orzech', 'laskow', 'hazelnut', 'nocciol'], categories: ['nut'] },
   // „mleczna" („milk" as an adjective) does not begin with the „mlek" root, so
   // „czekolada mleczna" never reached MILK CHOCOLATE without stating it.
-  { roots: ['mlek', 'mleczn', 'milk', 'latte', 'leche'], categories: ['dairy'] }, // milk
+  {
+    roots: ['mlek', 'mleczn', 'milk', 'milch', 'latte', 'leche', 'lait'],
+    categories: ['dairy'],
+    concept: 'milk',
+  }, // milk
   // Coconut is deliberately WITHOUT the root „coco": „cocoa" starts with it, and
   // a chocolate query must never resolve to coconut.
   { roots: ['kokos', 'coconut', 'cocco'] }, // coconut (fat, milk, flakes — many categories)
   { roots: ['olej', 'oliw', 'oil', 'olio', 'aceite'] }, // oil
-  { roots: ['smietan', 'cream', 'crema', 'panna'], categories: ['dairy'] }, // cream
+  {
+    roots: ['smietan', 'cream', 'crema', 'panna', 'sahne', 'rahm', 'creme'],
+    categories: ['dairy'],
+    concept: 'cream',
+  }, // cream
   { roots: ['bazyl', 'basil', 'basilic', 'albahac'], categories: ['botanical'] }, // basil
   { roots: ['miet', 'mint', 'menta'], categories: ['botanical'] }, // mint
   { roots: ['rozmaryn', 'rosemar', 'rosmarin', 'romero'], categories: ['botanical'] }, // rosemary
   { roots: ['tymian', 'thyme', 'timo', 'tomillo'], categories: ['botanical'] }, // thyme
-  { roots: ['cukier', 'sugar', 'sacharoz', 'sucros'], categories: ['sweetener'] }, // sugar/sucrose
+  {
+    roots: ['cukier', 'sugar', 'zucker', 'azucar', 'zuccher', 'sucre', 'sacharoz', 'sucros'],
+    categories: ['sweetener'],
+    concept: 'sugar',
+  }, // sugar/sucrose
   { roots: ['dekstroz', 'dextros'], categories: ['sweetener'] }, // dextrose
   { roots: ['fruktoz', 'fructos'], categories: ['sweetener'] }, // fructose
   { roots: ['glukoz', 'glucos'], categories: ['sweetener'] }, // glucose
+  {
+    roots: ['stabiliz', 'stabilis', 'estabiliz'],
+    categories: ['stabilizer'],
+    concept: 'stabilizer',
+  },
+  // INULIN itself is a governed specialty row while fiber blends also contain
+  // the term. Do not apply a category preference that would lift a blend above
+  // the canonical INULIN identity.
+  { roots: ['inulin'], concept: 'inulin' },
   { roots: ['lask', 'pod', 'bean', 'strak'] }, // vanilla-bean concept („laska wanilii")
   { roots: ['ekstrakt', 'extract', 'estratt'] }, // extract forms
   // powder-form concept: „mleko w proszku" must reach *_powder rows (staging proof: 0 rows
@@ -134,6 +195,30 @@ function familyExpansionFor(root: string): string[] {
     if (familyMatchesRoot(family, root)) out.push(...family.roots);
   }
   return out;
+}
+
+/**
+ * Resolve a generic technological intent only when every meaningful word belongs
+ * to the same canonical concept. An unknown token keeps the query exact, so
+ * "Hacendado leche" remains a commercial-brand search while "mleko 3.6" stays
+ * a generic Milk-slot request.
+ */
+export function canonicalSearchConceptForQuery(rawQuery: string): CanonicalSearchConcept | null {
+  const normalized = normalizeSearchText(rawQuery);
+  if (normalized === '') return null;
+  const concepts = new Set<CanonicalSearchConcept>();
+  for (const token of normalized.split(' ')) {
+    if (token.length < 2 || STOPWORDS.has(token) || /^\d+$/.test(token)) continue;
+    const root = stem(token);
+    const matching = new Set(
+      ALIAS_FAMILIES.filter((family) => family.concept && familyMatchesRoot(family, root)).map(
+        (family) => family.concept!,
+      ),
+    );
+    if (matching.size !== 1) return null;
+    concepts.add([...matching][0]!);
+  }
+  return concepts.size === 1 ? [...concepts][0]! : null;
 }
 
 /**
@@ -197,7 +282,13 @@ export function formRank(form: string | null | undefined): number {
   const f = (form ?? '').toLowerCase();
   if (f === '') return 5;
   // natural / base forms first (fresh fruit, fresh herbs, plain dairy milk)
-  if (f.includes('fresh') || f === 'fruit_profile' || f.includes('tropical_fruit') || f.includes('fruit_peel')) return 0;
+  if (
+    f.includes('fresh') ||
+    f === 'fruit_profile' ||
+    f.includes('tropical_fruit') ||
+    f.includes('fruit_peel')
+  )
+    return 0;
   if (f === 'milk') return 0; // canonical plain dairy milk (MILK 3.5% …)
   if (f.includes('frozen')) return 1;
   if (f.includes('puree')) return 2;
@@ -210,7 +301,8 @@ export function formRank(form: string | null | undefined): number {
   if (f.includes('syrup') || f.includes('sweetened') || f.includes('sauce')) return 7;
   if (f.includes('coconut_milk')) return 8;
   if (f.includes('aroma') || f.includes('flavour') || f.includes('flavor')) return 8;
-  if (f.includes('soda') || f.includes('drink') || f.includes('beverage') || f.includes('energy')) return 9;
+  if (f.includes('soda') || f.includes('drink') || f.includes('beverage') || f.includes('energy'))
+    return 9;
   return 5;
 }
 
@@ -247,8 +339,18 @@ export function nameMatchQuality(normalizedName: string, rawQuery: string): 0 | 
 export function formLabelPl(form: string | null | undefined): string {
   const rank = formRank(form);
   return (
-    ['Świeże', 'Mrożone', 'Przecier', 'Koncentrat', 'Suszone', '', 'Pasta', 'Proszek', 'Aromat', 'Napój'][rank] ??
-    ''
+    [
+      'Świeże',
+      'Mrożone',
+      'Przecier',
+      'Koncentrat',
+      'Suszone',
+      '',
+      'Pasta',
+      'Proszek',
+      'Aromat',
+      'Napój',
+    ][rank] ?? ''
   );
 }
 
@@ -277,10 +379,17 @@ export function rankIngredients<T extends { id: string; name: string }>(
     .map((item, i) => {
       const nameHay = meta.nameIndex.get(item.id) ?? normalizeSearchText(item.name);
       const nameHit = haystackMatchesQuery(nameHay, rawQuery) ? 0 : 1;
-      return { item, i, nameHit, form: formRank(meta.formIndex.get(item.id)), name: item.name.toLowerCase() };
+      return {
+        item,
+        i,
+        nameHit,
+        form: formRank(meta.formIndex.get(item.id)),
+        name: item.name.toLowerCase(),
+      };
     })
     .sort(
-      (a, b) => a.nameHit - b.nameHit || a.form - b.form || a.name.localeCompare(b.name) || a.i - b.i,
+      (a, b) =>
+        a.nameHit - b.nameHit || a.form - b.form || a.name.localeCompare(b.name) || a.i - b.i,
     )
     .map((x) => x.item);
 }
@@ -328,7 +437,10 @@ export interface IngredientSearchHit {
  *   3. natural form — fresh/plain milk → frozen → puree → … → paste → powder → beverage;
  *   4. alphabetical, stable.
  */
-export function rankSearchHits<T extends IngredientSearchHit>(hits: readonly T[], rawQuery: string): T[] {
+export function rankSearchHits<T extends IngredientSearchHit>(
+  hits: readonly T[],
+  rawQuery: string,
+): T[] {
   if (rawQuery.trim() === '') return [...hits];
   const concept = conceptCategoriesFor(rawQuery);
   return hits

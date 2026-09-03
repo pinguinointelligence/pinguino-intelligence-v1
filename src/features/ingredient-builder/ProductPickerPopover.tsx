@@ -12,6 +12,7 @@ import {
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router';
 import { copy } from '@/copy/en';
+import { productDiscoveryCopy } from '@/copy/productDiscovery';
 import type { EngineIngredient } from '@/engine';
 import type { CarbonationStatus } from '@/data/products/carbonation';
 import { CarbonationBubbles } from '@/components/product/CarbonationBubbles';
@@ -47,11 +48,17 @@ import {
 import { closeProductPickerForPointer } from './productPickerBackdrop';
 import { mobileProductPickerRect } from './productPickerViewport';
 import { IngredientCategoryIcon } from './IngredientCategoryIcon';
+import { ingredientCategorySymbolFor } from './ingredientCategorySymbols';
 import {
-  ingredientCategoryMatchesFilter,
-  ingredientCategorySymbolFor,
-  type IngredientCategoryFilterId,
-} from './ingredientCategorySymbols';
+  PRODUCT_DISCOVERY_TOP_FILTERS,
+  availableContextualSubfilters,
+  matchesProductDiscoveryFilter,
+  matchesProductDiscoverySubfilter,
+  projectCatalogHitsForDiscovery,
+  resolveInitialProductDiscoveryFilter,
+  type ProductDiscoverySubfilter,
+  type ProductDiscoveryTopFilter,
+} from './canonicalProductDiscovery';
 import {
   buildProductPickerSegments,
   canonicalCatalogProductId,
@@ -111,17 +118,12 @@ interface PickerOption {
   carbonationStatus: CarbonationStatus;
 }
 
-const PICKER_FILTERS: ReadonlyArray<{ id: IngredientCategoryFilterId; label: string }> = [
-  { id: 'all', label: 'Wszystkie' },
-  { id: 'favorites', label: 'Ulubione' },
-  { id: 'fresh', label: 'Świeże' },
-  { id: 'dairy', label: 'Mleczne' },
-  { id: 'dry', label: 'Suche' },
-  { id: 'chocolate', label: 'Czekolada' },
-  { id: 'fruit', label: 'Owoce' },
-  { id: 'nuts', label: 'Orzechy' },
-  { id: 'paste', label: 'Pasty' },
-];
+const discoveryCopy = productDiscoveryCopy();
+
+const discoveryFilterIcon = (
+  filter: ProductDiscoveryTopFilter,
+): Parameters<typeof IngredientCategoryIcon>[0]['symbol'] =>
+  filter === 'technical' ? 'dry' : filter;
 
 const CATEGORY_LABELS: Readonly<Record<string, string>> = {
   dairy: 'Mleczne',
@@ -149,12 +151,6 @@ const publicPickerUnavailableReason = (option: PickerOption, scope: ProductPicke
     ? `${option.name} nie ma obecnie kompletnego zatwierdzenia do bazy receptury. Odśwież dane lub wybierz inny produkt.`
     : `${option.name} nie ma obecnie kompletnych danych do użycia jako topping. Uzupełnij dane lub wybierz inny produkt.`;
 };
-
-const matchesPickerFilter = (option: PickerOption, filter: IngredientCategoryFilterId): boolean =>
-  ingredientCategoryMatchesFilter(
-    { category: option.category, form: option.detail, favorite: option.favorite },
-    filter,
-  );
 
 interface PickerPosition {
   desktop: boolean;
@@ -251,7 +247,8 @@ export function ProductPickerPopover({
   );
   const [informationOption, setInformationOption] = useState<PickerOption | null>(null);
   const [handoffTargetProductId, setHandoffTargetProductId] = useState<string | null>(null);
-  const [activeFilter, setActiveFilter] = useState<IngredientCategoryFilterId>('all');
+  const [activeFilter, setActiveFilter] = useState<ProductDiscoveryTopFilter>('all');
+  const [activeSubfilter, setActiveSubfilter] = useState<ProductDiscoverySubfilter>('all');
   const [scanning, setScanning] = useState(false);
   const [scrollThumb, setScrollThumb] = useState({ top: 0, height: 50, visible: false });
   const [position, setPosition] = useState<PickerPosition | null>(null);
@@ -261,6 +258,7 @@ export function ProductPickerPopover({
   const dialogRef = useRef<HTMLDivElement>(null);
   const informationCloseRef = useRef<HTMLButtonElement>(null);
   const lastHandoffKeyRef = useRef<number | null>(null);
+  const defaultFilterAppliedRef = useRef(false);
   const pickerInstanceId = useId().replace(/:/g, '');
   const globalCatalog = useGlobalCatalogPicker({
     enabled: open && library.serverSearch,
@@ -278,6 +276,18 @@ export function ProductPickerPopover({
     mapperOnly: false,
   });
   useEffect(() => {
+    if (!open) {
+      defaultFilterAppliedRef.current = false;
+      return;
+    }
+    if (defaultFilterAppliedRef.current || !globalCatalog.favoritesSettled) return;
+    setActiveFilter(resolveInitialProductDiscoveryFilter(globalCatalog.favorites.size));
+    setActiveSubfilter('all');
+    setActiveIndex(0);
+    defaultFilterAppliedRef.current = true;
+  }, [globalCatalog.favorites.size, globalCatalog.favoritesSettled, open]);
+
+  useEffect(() => {
     if (!handoff || handoff.scope !== scope || lastHandoffKeyRef.current === handoff.key) {
       return;
     }
@@ -285,7 +295,9 @@ export function ProductPickerPopover({
     setQuery(handoff.query);
     setHandoffTargetProductId(handoff.productId);
     setActiveFilter('all');
+    setActiveSubfilter('all');
     setActiveIndex(0);
+    defaultFilterAppliedRef.current = true;
     // Clearing needs no presentation filter, so this uses the raw setter and keeps the
     // effect's dependencies exactly what they were.
     setUnavailableNoticeText(null);
@@ -371,15 +383,23 @@ export function ProductPickerPopover({
         (hit) =>
           hit.entityKind !== 'pi_base' || referenceHits.has(hit) || siblingReferenceHits.has(hit),
       );
+      const filtered = eligible.filter(
+        (hit) =>
+          matchesProductDiscoveryFilter(hit, activeFilter) &&
+          matchesProductDiscoverySubfilter(hit, activeFilter, activeSubfilter),
+      );
       const catalog = globalCatalog.isSettled
-        ? preserveServerProductRank(eligible, globalCatalog.preferences).map((hit) => ({
+        ? projectCatalogHitsForDiscovery({
+            hits: preserveServerProductRank(filtered, globalCatalog.preferences),
+            query,
+          }).map(({ hit, primaryName, secondaryText }) => ({
             id:
               hit.entityKind === 'pi_base'
                 ? `mapper:${hit.mappedIngredientId ?? hit.id}`
                 : `catalog:${hit.id}`,
-            name: hit.displayName,
+            name: primaryName,
             detail: hit.productForm ?? hit.brand ?? hit.canonicalFamily ?? 'Produkt',
-            brand: hit.brand,
+            brand: secondaryText,
             category: hit.category ?? hit.productForm ?? hit.canonicalFamily,
             articleNumber: canonicalCatalogProductId(hit),
             entityKind: hit.entityKind,
@@ -402,12 +422,11 @@ export function ProductPickerPopover({
             carbonationStatus: hit.carbonationStatus ?? 'UNKNOWN',
           }))
         : [];
-      // The RPC is relevance-first. Do not sort or filter by presentation group
-      // afterwards: multilingual and typo hits must retain server authority.
+      // Exact queries preserve the RPC order. Generic technological queries are
+      // projected into canonical slots and use their family-specific ordering.
       // Legacy owner-private `library.products` are deliberately absent here;
       // they are neither shared-catalog UUIDs nor automatically VERIFIED.
-      const relevant = catalog.filter((option) => matchesPickerFilter(option, activeFilter));
-      return [...new Map(relevant.map((option) => [option.id, option])).values()];
+      return [...new Map(catalog.map((option) => [option.id, option])).values()];
     }
     return filterIngredients(library.ingredients, query, library.searchIndex)
       .map((item) => ({
@@ -433,9 +452,31 @@ export function ProductPickerPopover({
         carbonationStatus: item.carbonation_status ?? 'UNKNOWN',
         verification: { status: 'GELLATTI — SPRAWDZONY' as const, reason: null },
       }))
-      .filter((option) => matchesPickerFilter(option, activeFilter));
+      .filter((option) =>
+        matchesProductDiscoveryFilter(
+          {
+            displayName: option.name,
+            category: option.category,
+            productForm: option.detail,
+            favorite: option.favorite,
+          },
+          activeFilter,
+        ),
+      )
+      .filter((option) =>
+        matchesProductDiscoverySubfilter(
+          {
+            displayName: option.name,
+            category: option.category,
+            productForm: option.detail,
+          },
+          activeFilter,
+          activeSubfilter,
+        ),
+      );
   }, [
     activeFilter,
+    activeSubfilter,
     globalCatalog.hits,
     globalCatalog.isSettled,
     globalCatalog.preferences,
@@ -444,6 +485,14 @@ export function ProductPickerPopover({
     query,
     scope,
   ]);
+  const contextualSubfilters = useMemo(
+    () =>
+      availableContextualSubfilters(
+        globalCatalog.hits.filter((hit) => matchesProductDiscoveryFilter(hit, activeFilter)),
+        activeFilter,
+      ),
+    [activeFilter, globalCatalog.hits],
+  );
   const segments = useMemo(() => {
     const primary = options.filter((option) => {
       if (!option.catalog) return true;
@@ -541,6 +590,12 @@ export function ProductPickerPopover({
     if (open) {
       close();
       return;
+    }
+    defaultFilterAppliedRef.current = false;
+    if (globalCatalog.favoritesSettled) {
+      setActiveFilter(resolveInitialProductDiscoveryFilter(globalCatalog.favorites.size));
+      setActiveSubfilter('all');
+      defaultFilterAppliedRef.current = true;
     }
     setActiveIndex(0);
     setUnavailableNotice(null);
@@ -1037,32 +1092,65 @@ export function ProductPickerPopover({
                       </button>
                     </div>
                     <div
-                      className="mt-2 flex flex-wrap items-center gap-1.5"
-                      aria-label="Filtry katalogu"
+                      className="product-picker-filter-row mt-2 flex items-center gap-1.5 overflow-x-auto pb-1 whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                      aria-label={discoveryCopy.filtersLabel}
                     >
-                      {PICKER_FILTERS.map((filter) => (
+                      {PRODUCT_DISCOVERY_TOP_FILTERS.map((filter) => (
                         <button
-                          key={filter.id}
+                          key={filter}
                           type="button"
-                          aria-pressed={activeFilter === filter.id}
+                          data-product-filter={filter}
+                          aria-pressed={activeFilter === filter}
                           onClick={() => {
-                            setActiveFilter(filter.id);
+                            defaultFilterAppliedRef.current = true;
+                            setActiveFilter(filter);
+                            setActiveSubfilter('all');
                             setActiveIndex(0);
                             setUnavailableNotice(null);
                             setInformationOption(null);
                           }}
                           className={cn(
-                            'pro-focus-ring inline-flex min-h-11 items-center gap-1 rounded-full border px-2.5 text-[11px] font-semibold lg:min-h-8 lg:px-2',
-                            activeFilter === filter.id
-                              ? 'border-[#29a447]/50 bg-[#effaf1] text-[#14762d]'
+                            'pro-focus-ring inline-flex min-h-10 shrink-0 items-center gap-1 rounded-lg border px-2.5 text-[11px] font-semibold lg:min-h-8 lg:px-2',
+                            activeFilter === filter
+                              ? 'border-ink bg-ink text-white'
                               : 'border-ink/10 bg-white text-stone-600 hover:border-ink/25 hover:text-ink',
                           )}
                         >
-                          <IngredientCategoryIcon symbol={filter.id} />
-                          {filter.label}
+                          <IngredientCategoryIcon symbol={discoveryFilterIcon(filter)} />
+                          {discoveryCopy.topFilters[filter]}
                         </button>
                       ))}
                     </div>
+                    {contextualSubfilters.length > 0 ? (
+                      <div
+                        className="mt-1.5 flex items-center gap-1.5 overflow-x-auto pb-1 whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                        aria-label={discoveryCopy.subfiltersLabel}
+                        data-testid="product-picker-contextual-filters"
+                      >
+                        {contextualSubfilters.map((subfilter) => (
+                          <button
+                            key={subfilter}
+                            type="button"
+                            data-product-subfilter={subfilter}
+                            aria-pressed={activeSubfilter === subfilter}
+                            onClick={() => {
+                              setActiveSubfilter(subfilter);
+                              setActiveIndex(0);
+                              setUnavailableNotice(null);
+                              setInformationOption(null);
+                            }}
+                            className={cn(
+                              'pro-focus-ring min-h-9 shrink-0 rounded-sm border px-2.5 text-[10px] font-semibold',
+                              activeSubfilter === subfilter
+                                ? 'border-[#f58a07]/55 bg-[#fff7ed] text-ink'
+                                : 'border-ink/10 bg-white text-stone-500 hover:border-ink/25 hover:text-ink',
+                            )}
+                          >
+                            {discoveryCopy.subfilters[subfilter]}
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
                     <p className="mt-2 text-xs text-stone-600" role="status" aria-live="polite">
                       {library.serverSearch && query.trim() && !globalCatalog.isSettled
                         ? 'Szukam…'
@@ -1121,6 +1209,21 @@ export function ProductPickerPopover({
                             <div className="px-3 py-5 text-sm text-stone-600">
                               <p>Nie znaleziono produktu.</p>
                               <div className="mt-3 flex flex-wrap gap-2">
+                                {activeFilter === 'favorites' ? (
+                                  <button
+                                    type="button"
+                                    data-testid="product-picker-search-all"
+                                    className="pro-focus-ring min-h-11 rounded-sm border border-ink bg-ink px-4 text-xs font-semibold text-white"
+                                    onClick={() => {
+                                      defaultFilterAppliedRef.current = true;
+                                      setActiveFilter('all');
+                                      setActiveSubfilter('all');
+                                      setActiveIndex(0);
+                                    }}
+                                  >
+                                    {discoveryCopy.searchAll}
+                                  </button>
+                                ) : null}
                                 <button
                                   type="button"
                                   className="pro-focus-ring min-h-11 rounded-full border border-ink/15 bg-white px-4 text-xs font-semibold text-ink"
@@ -1311,12 +1414,19 @@ export function ProductPickerPopover({
                                       </button>
                                       <button
                                         type="button"
-                                        aria-label={`Dodaj ${option.name}`}
+                                        aria-label={`${intent === 'REPLACE' ? discoveryCopy.replace : discoveryCopy.add}${
+                                          intent === 'REPLACE' ? ' na' : ''
+                                        } ${option.name}`}
                                         disabled={!option.selectable || adding}
-                                        className="pro-focus-ring mr-2 grid size-9 shrink-0 place-items-center rounded-xl border border-ink/10 bg-white text-xl leading-none text-ink shadow-sm hover:border-[#f58a07]/60 hover:text-[#f58a07] disabled:cursor-not-allowed disabled:opacity-40"
+                                        className={cn(
+                                          'pro-focus-ring mr-2 grid min-h-9 shrink-0 place-items-center rounded-lg border border-ink/10 bg-white leading-none text-ink shadow-sm hover:border-[#f58a07]/60 hover:text-[#f58a07] disabled:cursor-not-allowed disabled:opacity-40',
+                                          intent === 'REPLACE'
+                                            ? 'px-3 text-[11px] font-semibold'
+                                            : 'size-9 text-xl',
+                                        )}
                                         onClick={() => void choose(option)}
                                       >
-                                        +
+                                        {intent === 'REPLACE' ? discoveryCopy.replace : '+'}
                                       </button>
                                     </div>
                                   );
