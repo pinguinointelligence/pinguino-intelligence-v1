@@ -62,5 +62,10 @@ export function tapChangesStoredValue(
   stored: RecipeDirectionTarget,
   choice: HomeSweetness,
 ): boolean {
-  return stored !== sweetnessValueForTap(choice);
+  // Compare what HOME is SHOWING with what was tapped — not the value a tap
+  // would write. `stored !== sweetnessValueForTap(choice)` looks equivalent and
+  // is not: at +2 the displayed segment is already "sweeter", yet the write
+  // value is +1, so the guard reported a change and the tap silently degraded a
+  // PRO +2 to +1. That is the precision loss §62 exists to prevent.
+  return projectSweetnessForDisplay(stored) !== choice;
 }
