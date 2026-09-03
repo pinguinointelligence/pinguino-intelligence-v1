@@ -62,7 +62,7 @@ export async function composeLocalStarterPackPdf(
   snapshot: LocalPackSnapshot,
   orderNumber: string,
 ): Promise<Uint8Array> {
-  const { PDFDocument, rgb } = await import('pdf-lib');
+  const { PDFDocument, PDFName, PDFString, rgb } = await import('pdf-lib');
   const fontkit = (await import('@pdf-lib/fontkit')).default;
 
   const doc = await PDFDocument.create();
@@ -87,14 +87,52 @@ export async function composeLocalStarterPackPdf(
       page = doc.addPage([width, height]);
       y = height - margin;
     }
+    const drawnY = y - size;
     page.drawText(value, {
       x: margin,
-      y: y - size,
+      y: drawnY,
       size,
       font,
       color: rgb(color.r, color.g, color.b),
     });
     y -= size + (options.gap ?? 6);
+    /* Where the text landed, so a caller can hang a link annotation on it. */
+    return { page, x: margin, y: drawnY, width: font.widthOfTextAtSize(value, size), height: size };
+  };
+
+  /* A CLICKABLE link over an already-drawn run of text.
+   *
+   * The URL stays visible in the document: this list is meant to survive being
+   * printed and carried around a shop, where an annotation is worth nothing. But
+   * a reader on a phone must be able to tap it, so the visible text and the
+   * clickable region are the same box rather than a choice between them.
+   *
+   * pdf-lib has no link helper, so the annotation is built as a raw PDF object:
+   * a /Link with a /URI action and no visible border (the underline below is
+   * ours, drawn deliberately). */
+  const linkify = (
+    box: { page: typeof page; x: number; y: number; width: number; height: number },
+    url: string,
+  ) => {
+    const annotation = doc.context.register(
+      doc.context.obj({
+        Type: 'Annot',
+        Subtype: 'Link',
+        Rect: [box.x - 1, box.y - 2, box.x + box.width + 1, box.y + box.height],
+        Border: [0, 0, 0],
+        A: { Type: 'Action', S: 'URI', URI: PDFString.of(url) },
+      }),
+    );
+    const existing = box.page.node.Annots();
+    if (existing) existing.push(annotation);
+    else box.page.node.set(PDFName.of('Annots'), doc.context.obj([annotation]));
+    /* A hairline under the link, so it reads as one on paper too. */
+    box.page.drawLine({
+      start: { x: box.x, y: box.y - 1.5 },
+      end: { x: box.x + box.width, y: box.y - 1.5 },
+      thickness: 0.4,
+      color: rgb(MUTED.r, MUTED.g, MUTED.b),
+    });
   };
 
   // ── Masthead ──────────────────────────────────────────────────────────────
@@ -120,15 +158,20 @@ export async function composeLocalStarterPackPdf(
       .join(' · ');
     if (facts) line(facts, { size: 10, gap: 3 });
     line(item.supplierName, { size: 9.5, color: MUTED, gap: 3 });
-    // The link is the point of the document, so it is printed in full: a PDF
-    // read on paper cannot be clicked.
-    line(item.purchaseUrl, { size: 8.5, color: MUTED, gap: item.notes ? 3 : 14 });
+    // The link is the point of the document. Printed in full for paper, and
+    // wrapped in a real annotation so a digital reader can click it.
+    const urlBox = line(item.purchaseUrl, {
+      size: 8.5,
+      color: MUTED,
+      gap: item.notes ? 3 : 14,
+    });
+    linkify(urlBox, item.purchaseUrl);
     if (item.notes) line(item.notes, { size: 9, color: MUTED, gap: 14 });
   }
 
   // ── Foot ──────────────────────────────────────────────────────────────────
   y -= 6;
-  line(GELLATTI_URL, { size: 10, font: bold, color: MUTED });
+  linkify(line(GELLATTI_URL, { size: 10, font: bold, color: MUTED }), 'https://www.gellatti.com');
 
   return doc.save();
 }
