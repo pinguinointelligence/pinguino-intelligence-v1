@@ -293,7 +293,8 @@ describe('profile semantics and readiness', () => {
     // End labels removed by the owner reference of 2026-09-03; the axis NAMES
     // are what the contract protects, and they are unchanged.
     for (const label of ['Słodycz', 'Twardość']) expect(panel).toContain(label);
-    expect(panel).toContain('const DETENTS = [-2, -1, 0, 1, 2] as const');
+    // Five marks, addressed by visual slot since Twardość is drawn mirrored.
+    expect(panel).toContain('const DETENTS = [-2, -1, 0, 1, 2] as const;');
     expect(panel).not.toContain('creaminess');
     expect(panel).not.toContain('intensity');
     expect(panel).not.toContain("['structure',");
@@ -362,14 +363,16 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
     const axes = read('features', 'pro-workbench', 'ProfileDirectionAxes.tsx');
     const summary = read('features', 'pi-panel', 'NutritionCostScorePanel.tsx');
     const proCopy = read('copy', 'pro.pl.ts');
-    expect(axes).toContain('const DETENTS = [-2, -1, 0, 1, 2] as const');
+    expect(axes).toContain('const DETENTS = [-2, -1, 0, 1, 2] as const;');
     expect(axes).toContain('role="radio"');
     expect(axes).toContain('aria-checked={position === detent}');
     expect(axes).toContain("event.key === 'ArrowRight'");
-    // The chosen position is now an orange THUMB on the rail; the numeral it
-    // used to contain became the readout beside the track (see
-    // directionDetentContrast.test.ts for the ratios that motivated the move).
-    expect(axes).toContain('size-4 rounded-full shadow-[0_0_0_3px_#fff]');
+    /* OWNER 2026-09-03: the chosen position is an orange thumb whose SIZE
+       varies with the detent — that size is now the primary statement of
+       direction, replacing the numeral entirely (see
+       directionDetentContrast.test.ts for what assistive tech gets instead). */
+    expect(axes).toContain("rounded-full shadow-[0_0_0_3px_#fff] transition-[left,width,height");
+    expect(axes).toContain('const thumbSize = sizeAt(thumbSizes, activeIndex);');
     expect(axes).not.toContain('Po zmianie:');
     expect(axes).not.toContain('Legenda kierunku');
     for (const label of ['Wartości odżywcze i koszt', 'Na 100 g', 'Węglowodany', 'Cała partia']) {

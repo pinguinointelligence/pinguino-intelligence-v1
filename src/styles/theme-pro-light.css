@@ -136,6 +136,38 @@ body:has(details[open] [data-testid^='row-menu-']) [data-testid='design-review-o
   color: var(--color-attention);
 }
 
+/* The SAME change marker, drawn all the way round.
+
+   A gram field wears it as an inset rail on one edge, because what changed is
+   one cell in a row. When the recipe card refuses to save, what needs the
+   owner's attention is the whole Settings module, so the marker closes into a
+   ring: identical colour and identical 4% tint, 2 px of edge (1 px border plus
+   1 px inset ring) to match the rail's weight.
+
+   The legend is notched into that border and paints the column's ground behind
+   itself to cut the line. On a tinted box that ground is no longer plain white,
+   so `--pro-legend-ground` is re-pointed at the composite the box actually
+   resolves to — otherwise a white notch sits over the tint at the top left. */
+.pro-legend-box.settings-preflight-blocked {
+  /* Two classes on purpose. `.pro-legend-box` sets `border` as a SHORTHAND, so
+     a single-class rule here is the same specificity and loses on stylesheet
+     order — the ring landed but the border stayed line-grey. Measured, not
+     guessed: the box reported `border-top-color: rgb(222,217,208)`.
+
+     The tint is mixed with #fff rather than with `transparent`. The one-edge
+     marker rides over whatever ground a row happens to have; this box only
+     ever sits on the white display column, and an opaque mix resolves to the
+     exact colour the legend has to paint behind itself to cut the border. */
+  border-color: var(--color-attention);
+  box-shadow: inset 0 0 0 1px var(--color-attention);
+  background-color: color-mix(in srgb, var(--color-attention) 4%, #fff);
+  --pro-legend-ground: color-mix(in srgb, var(--color-attention) 4%, #fff);
+}
+
+.pro-legend-box.settings-preflight-blocked > [data-band-legend] {
+  color: var(--color-attention);
+}
+
 .pro-module {
   border: 1px solid var(--color-pro-line);
   border-radius: 0.875rem;

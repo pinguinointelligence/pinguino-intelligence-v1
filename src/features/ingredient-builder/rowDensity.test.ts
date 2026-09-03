@@ -52,7 +52,13 @@ describe('D2/D4/D5 — compact V2.1 housings, unchanged typography', () => {
     );
     expect(control).toContain("compact && 'h-8'");
     expect(control).toContain("responsive && 'lg:h-8 lg:rounded-xl lg:shadow-none'");
-    expect(control).toContain("'h-8 w-[22px]'");
+    /* OWNER QA 2026-09-03: 30 px, was 22. The padlock sits in the pill's
+       rounded end and a 22 px segment left the glyph against the curve, so the
+       end read as clipped rather than round. HEIGHT is the density contract
+       this test protects and it is unchanged at 32 px — only the segment's
+       width moved, and only outward. */
+    expect(control).toContain("'h-8 w-[30px]'");
+    expect(control).not.toContain("'h-8 w-[22px]'");
   });
 
   it('BOTH steppers actually request the compact density', () => {
