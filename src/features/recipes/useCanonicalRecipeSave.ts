@@ -47,6 +47,7 @@ import {
 } from '@/features/product-intelligence';
 import { validateRecipeBehaviorOnServer } from '@/services/productIntelligence';
 import { productionVersionFingerprint } from '@/features/production-workspace/productionReadinessState';
+import { SAVE_BLOCKER_MESSAGE_PL, type PracticalBlock } from '@/features/recipes/saveBlocker';
 
 const TRACE = {
   engineVersion: ENGINE_VERSION,
@@ -165,6 +166,11 @@ export interface CanonicalRecipeSave {
   /** Pro-only execution gate. Home supplies its own payload and is untouched. */
   practicalBlocked: boolean;
   practicalBlockMessage: string | null;
+  /**
+   * WHAT kind of refusal this is. The surface needs it to point at the ONE control that
+   * answers the blocker — a message alone can only be printed, never routed.
+   */
+  practicalBlock: PracticalBlock | null;
   /** Create a NEW recipe aggregate + immutable v1 with this name (+ optional first-version note). */
   createNew: (title: string, note?: string) => Promise<boolean>;
   /** Append a new immutable version to the currently-linked recipe (+ optional change note). */
@@ -213,7 +219,7 @@ export function useCanonicalRecipeSave(
     void draftRevision;
     // Explicit payloads belong to Home/other surfaces. This reconstruction is
     // deliberately Pro-only and must not change their accepted save contract.
-    if (options.buildInput !== undefined) return { blocked: false, message: null };
+    if (options.buildInput !== undefined) return { blocked: false, kind: null, message: null };
     const input = buildRecipeInputFromStore();
     const state = useRecipeStore.getState();
     const composition = recipeCompositionFromState(state);
@@ -228,6 +234,7 @@ export function useCanonicalRecipeSave(
     if (!behaviorGate.ready) {
       return {
         blocked: true,
+        kind: 'PRODUCT_DATA_REQUIRED' as const,
         message: productBehaviorSaveGateMessage(state.newRecipeStarterKey !== null),
       };
     }
@@ -236,23 +243,27 @@ export function useCanonicalRecipeSave(
       practicalRecipeAudit,
     );
     if (!restoredVerified) {
+      // The draft has moved away from the audit that verified it. What the customer has
+      // to do is press one button, so that is all the sentence says.
       return {
         blocked: true,
-        message:
-          'Jeszcze jeden krok. Otwórz podgląd i zastosuj zweryfikowaną recepturę przed zapisem.',
+        kind: 'RECALCULATION_REQUIRED' as const,
+        message: SAVE_BLOCKER_MESSAGE_PL.RECALCULATION_REQUIRED,
       };
     }
     const result = practicalizeRecipeCandidate(input, constraints);
-    if (!result.ok) return { blocked: true, message: result.messagePl };
+    // A real refusal from the engine, carrying its own reason. No control on this screen
+    // answers it, so it must not point at one.
+    if (!result.ok) return { blocked: true, kind: 'REFUSED' as const, message: result.messagePl };
     const exactAsWritten =
       practicalRecipeInputFingerprint(result.audit.executableInput) ===
       practicalRecipeInputFingerprint(input);
     return exactAsWritten
-      ? { blocked: false, message: null }
+      ? { blocked: false, kind: null, message: null }
       : {
           blocked: true,
-          message:
-            'Jeszcze jeden krok. Otwórz podgląd i zastosuj zweryfikowaną recepturę z pełnymi gramaturami przed zapisem.',
+          kind: 'APPLY_REQUIRED' as const,
+          message: SAVE_BLOCKER_MESSAGE_PL.APPLY_REQUIRED,
         };
   }, [constraints, draftRevision, options.buildInput, practicalRecipeAudit]);
 
@@ -344,6 +355,10 @@ export function useCanonicalRecipeSave(
     clearError: () => setError(null),
     practicalBlocked: practicalGate.blocked,
     practicalBlockMessage: practicalGate.message,
+    practicalBlock:
+      practicalGate.blocked && practicalGate.kind !== null && practicalGate.message !== null
+        ? ({ kind: practicalGate.kind, message: practicalGate.message } satisfies PracticalBlock)
+        : null,
     createNew: (title, note) =>
       run(async () => {
         const recipeInput = buildInput();

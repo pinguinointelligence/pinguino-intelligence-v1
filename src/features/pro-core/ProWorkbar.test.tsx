@@ -64,6 +64,7 @@ const mockSave = {
   archive: async () => true,
   practicalBlocked: false,
   practicalBlockMessage: null,
+  practicalBlock: null,
 };
 
 vi.mock('@/stores/recipeStore', () => ({
@@ -152,7 +153,12 @@ describe('ProWorkbar (sticky top workbar)', () => {
     expect(unnamed).not.toContain('pointer-events-none opacity-0');
 
     const clean = render(
-      { savedRecipeId: 'r1', savedRecipeName: 'Pistachio Dream', currentVersionNumber: 4, dirty: false },
+      {
+        savedRecipeId: 'r1',
+        savedRecipeName: 'Pistachio Dream',
+        currentVersionNumber: 4,
+        dirty: false,
+      },
       'panel',
     );
     expect(clean).toContain('data-recipe-identity-state="saved"');
@@ -160,7 +166,12 @@ describe('ProWorkbar (sticky top workbar)', () => {
     expect(clean).toContain('pointer-events-none opacity-0');
 
     const dirtyHtml = render(
-      { savedRecipeId: 'r1', savedRecipeName: 'Pistachio Dream', currentVersionNumber: 4, dirty: true },
+      {
+        savedRecipeId: 'r1',
+        savedRecipeName: 'Pistachio Dream',
+        currentVersionNumber: 4,
+        dirty: true,
+      },
       'panel',
     );
     expect(dirtyHtml).toContain('data-recipe-identity-state="dirty"');
