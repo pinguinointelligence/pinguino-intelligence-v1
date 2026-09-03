@@ -105,6 +105,51 @@ export const FRANCHISE_PAGE: LanePageCopy = {
   next: 'Napisz, jaki format i jakie miejsce masz na myśli. Odzywamy się, wspólnie sprawdzamy, czy to się spina, i dopiero wtedy rozmawiamy o warunkach.',
 };
 
+/**
+ * Who brings what — owner-approved 2026-09-03, at a deliberately NON-FINANCIAL
+ * level. It is the answer to "what do I get and what is on me", written as two
+ * plain columns rather than as a contract.
+ *
+ * The owner's ban list still holds and is the reason nothing below names a
+ * number: no franchise fee, royalty, territory exclusivity, ROI, payback,
+ * CAPEX, guaranteed revenue, exact equipment package or opening cost. Those
+ * stay "ustalane indywidualnie po kwalifikacji projektu", which is what `note`
+ * says in customer language.
+ */
+export const FRANCHISE_SPLIT = {
+  eyebrow: 'Podział ról',
+  title: 'Gellatti daje Ci system. Ty prowadzisz swój biznes.',
+  note: 'Zakres inwestycji i warunki współpracy ustalamy indywidualnie dla wybranego formatu i lokalizacji.',
+  gellatti: {
+    title: 'Po stronie Gellatti',
+    lead: 'Technologia, know-how, standard marki, receptury i wsparcie uruchomienia.',
+    items: [
+      'Marka i system konceptu Gellatti',
+      'Aplikacja Gellatti i technologia receptur',
+      'Receptury, narzędzia do produkcji i prowadzenie produktu',
+      'Wdrożenie, materiały szkoleniowe i wsparcie przy starcie',
+      'Standardy marki i obsługi gościa',
+      'Wskazania produktowe, surowcowe i dostawcze — tam, gdzie je mamy',
+      'Bieżące aktualizacje aplikacji, receptur i konceptu',
+      'Wspólne materiały cyfrowe i marketingowe w zakresie obecnego systemu',
+    ],
+  },
+  operator: {
+    title: 'Po Twojej stronie',
+    lead: 'Lokal, zespół, codzienna operacja i wymagania lokalnego rynku.',
+    items: [
+      'Lokalizacja i przygotowanie miejsca',
+      'Firma, pozwolenia i zgodność z lokalnymi przepisami',
+      'Zespół, zatrudnienie i codzienne zarządzanie',
+      'Media i bieżące koszty prowadzenia punktu',
+      'Zapasy, surowce i materiały eksploatacyjne',
+      'Higiena, BHP i bezpieczeństwo żywności na miejscu',
+      'Lokalne działania marketingowe, o ile nie ustalimy inaczej',
+      'Prace i wyposażenie w zakresie ustalonym dla wybranego formatu',
+    ],
+  },
+} as const;
+
 export const MACHINES_PAGE: LanePageCopy = {
   ...LANES.machines,
   headline: 'Sprzęt, który dobieramy do Twojego lokalu',

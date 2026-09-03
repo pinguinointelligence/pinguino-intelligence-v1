@@ -41,7 +41,7 @@ import {
   franchiseConceptBlurbPl,
   franchiseConceptLabelPl,
 } from '@/features/franchise/franchiseConcepts';
-import { FRANCHISE_PAGE } from '@/copy/workWithUsLanes';
+import { FRANCHISE_PAGE, FRANCHISE_SPLIT } from '@/copy/workWithUsLanes';
 
 /** One panel for each account concern — same card as the rest of the product. */
 const ACCOUNT_PANEL =
@@ -226,6 +226,62 @@ export function FranchisePage() {
           ))}
         </div>
       </DestinationSection>
+      {/* Who brings what (owner-approved 2026-09-03, non-financial).
+          Same hairline grid the figures below already use, so this is one more
+          instance of an established pattern rather than a new component.
+          Charcoal for Gellatti, white for the operator: the anchor/working-space
+          split the approved Affiliate page established. No number appears here —
+          the commercial terms are deliberately absent, and the note says so. */}
+      <DestinationSection>
+        <DestinationSectionHead eyebrow={FRANCHISE_SPLIT.eyebrow} title={FRANCHISE_SPLIT.title} />
+        <div className="grid gap-px overflow-hidden rounded-[12px] border border-[var(--g-line)] bg-[var(--g-line)] lg:grid-cols-2">
+          <div className="bg-[var(--g-graphite,#191a1d)] px-6 py-7 text-white sm:px-7">
+            <h3 className="text-[19px] leading-[1.2] font-bold tracking-[-0.02em]">
+              {FRANCHISE_SPLIT.gellatti.title}
+            </h3>
+            <p className="mt-2 text-[13px] leading-[1.55] text-[#c9c5bd]">
+              {FRANCHISE_SPLIT.gellatti.lead}
+            </p>
+            <ul className="mt-5 flex flex-col gap-2.5">
+              {FRANCHISE_SPLIT.gellatti.items.map((item) => (
+                <li key={item} className="flex gap-2.5 text-[13px] leading-[1.5] text-[#efe8dc]">
+                  <span
+                    aria-hidden="true"
+                    className="mt-[7px] size-[3px] shrink-0 rounded-full bg-[var(--g-orange)]"
+                  />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="bg-white px-6 py-7 sm:px-7">
+            <h3 className="text-[19px] leading-[1.2] font-bold tracking-[-0.02em] text-[var(--g-ink)]">
+              {FRANCHISE_SPLIT.operator.title}
+            </h3>
+            <p className="mt-2 text-[13px] leading-[1.55] text-[var(--g-text-secondary)]">
+              {FRANCHISE_SPLIT.operator.lead}
+            </p>
+            <ul className="mt-5 flex flex-col gap-2.5">
+              {FRANCHISE_SPLIT.operator.items.map((item) => (
+                <li
+                  key={item}
+                  className="flex gap-2.5 text-[13px] leading-[1.5] text-[var(--g-text-secondary)]"
+                >
+                  <span
+                    aria-hidden="true"
+                    className="mt-[7px] size-[3px] shrink-0 rounded-full bg-[var(--g-line-strong,#c9c5bd)]"
+                  />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+        <p className="mt-4 text-[12px] leading-relaxed text-[var(--g-text-muted)]">
+          {FRANCHISE_SPLIT.note}
+        </p>
+      </DestinationSection>
+
       <DestinationSection>
         <div className="grid gap-px overflow-hidden rounded-[12px] border border-[var(--g-line)] bg-[var(--g-line)] lg:grid-cols-2">
           <figure className="bg-white">
