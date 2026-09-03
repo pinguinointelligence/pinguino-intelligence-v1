@@ -183,6 +183,56 @@ describe('canonical technological slot projection', () => {
     ).toEqual([3.7, 18, 30]);
   });
 
+  it('preserves canonical server relevance order for Sugars and Stabilizers', () => {
+    const sugarHits = [
+      hit({
+        id: 'dextrose',
+        displayName: 'DEXTROSE',
+        category: 'sweetener',
+        mappedIngredientId: 'PI-ING-000410',
+        favorite: false,
+        recentlyUsedAt: null,
+      }),
+      hit({
+        id: 'sucrose',
+        displayName: 'SUCROSE',
+        category: 'sugar',
+        mappedIngredientId: 'PI-ING-000411',
+        favorite: true,
+        recentlyUsedAt: '2026-09-03T08:00:00.000Z',
+      }),
+    ];
+    const stabilizerHits = [
+      hit({
+        id: 'tara',
+        displayName: 'TARA GUM',
+        category: 'stabilizer',
+        mappedIngredientId: 'PI-ING-000420',
+        favorite: false,
+        recentlyUsedAt: null,
+      }),
+      hit({
+        id: 'gellatti',
+        displayName: 'GELLATTI STABILIZER',
+        category: 'stabilizer',
+        mappedIngredientId: 'PI-ING-000421',
+        favorite: true,
+        recentlyUsedAt: '2026-09-03T09:00:00.000Z',
+      }),
+    ];
+
+    expect(
+      projectCatalogHitsForDiscovery({ hits: sugarHits, query: 'sugar' }).map(
+        (item) => item.hit.id,
+      ),
+    ).toEqual(['dextrose', 'sucrose']);
+    expect(
+      projectCatalogHitsForDiscovery({ hits: stabilizerHits, query: 'stabilizer' }).map(
+        (item) => item.hit.id,
+      ),
+    ).toEqual(['tara', 'gellatti']);
+  });
+
   it('preserves explicit brand, EAN and article searches as exact commercial discovery', () => {
     for (const query of ['Hacendado', '8410000000001', 'PR-ING-000101']) {
       const projected = projectCatalogHitsForDiscovery({ hits: [localMilk36A], query });

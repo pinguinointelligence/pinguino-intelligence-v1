@@ -33,12 +33,29 @@ Updated: 2026-09-03 (Europe/Madrid)
 - [x] Picker result action is invocation-specific: `+` for Add, `Zamień` for Replace.
 - [x] Account Settings now exposes the existing `primary_market` authority as Primary Product Country while preserving additional enabled countries.
 - [x] Added a HOME↔PRO shared-component/live-transport parity gate.
+- [x] Proved that Sugar and Stabilizer projections preserve canonical server relevance order; favorites and recency do not create a second client ranking authority.
+- [x] Added rendered Account Settings acceptance for changing Primary Product Country while retaining all other enabled countries.
+
+## Continuation checkpoint and audits
+
+- Initial checkpoint commit: `7fbf846b3b92dc4abfcead4343522fe9c1de923b`, pushed only to `origin/codex/canonical-product-picker-v19`.
+- Current user-SKU model permits any number of distinct owned products to share one Mapper slot: `product_behavior_bindings` has one current binding per product, while `user_product_relations` is unique only by `(user_id, product_id)`.
+- `user_product_relations` contains `favorite` and `recently_used_at`; it has no `preferred`, `last_selected`, or equivalent per-slot winner field. Those informational signals are not treated as preference authority.
+- The Vercel and Netlify configurations expose no application-consumed coarse-country signal. The current client service has an account-country then browser-locale fallback, but no signed-out Product Country persistence or guest-to-account merge contract.
+- Because `src/services/globalCatalog.ts` is owned by the active Global Country workstream, the forbidden browser-language fallback was audited but not modified here.
+
+## Continuation verification
+
+- Focused acceptance: `npm test -- --run src/features/ingredient-builder/canonicalProductDiscovery.test.ts src/features/global-catalog/AccountProductMarkets.test.ts src/features/global-catalog/AccountProductMarkets.render.test.tsx` — 3 files / 18 tests passed.
+- Full regression: `npm test` — 932 files / 11,795 tests passed; 23 files / 122 tests skipped.
+- Local staging gate: `npm run verify:staging` — owner-locked guard passed, protected-path guard passed, 18 contract files / 179 tests passed, typecheck passed, lint passed with 0 errors / 7 existing warnings, and production-style build passed.
+- Served-staging E2E was not run and is not implied by the local staging gate.
 
 ## Waiting on active Cloud authority
 
 - [ ] **WAITING_ON_CLOUD — country default/base resolution.** `claude/global-country-readiness` currently owns `src/services/globalCatalog.ts`, `src/features/global-catalog/catalogIngredient.ts`, catalog ingest functions, and the new `country_local_products`, `country_default_bases`, and `country_base_components` migrations. The picker must consume that authority after it lands; creating another table/service now would violate the brief.
 - [ ] **WAITING_ON_CLOUD — user-specific exact-product override precedence.** Existing owned products can be discovered exactly, but the active country schema and service must first define the approved country default seam. If several owned SKUs map to one slot, no current preference authority chooses a winner; the picker does not invent one.
-- [ ] **WAITING_ON_CLOUD — automatic first-country detection.** Current staging falls back from account country to browser-language region inside `src/services/globalCatalog.ts`; that is explicitly forbidden by v1.9 and is in the active country branch's file set. No verified coarse deployment-country signal or signed-out persistence authority exists on staging.
+- [ ] **BLOCKED / ARCHITECTURE GAP — automatic first-country detection.** Current staging falls back from account country to browser-language region inside `src/services/globalCatalog.ts`; that is explicitly forbidden by v1.9 and is in the active country branch's file set. No verified coarse deployment-country signal exists in the Vercel/Netlify SPA configuration or application code.
 - [ ] **WAITING_ON_CLOUD — contextual Replace wiring for recipe rows.** The pure Dextrose/Tara/GELLATTI Stabilizer/Inulin/Milk route contract is implemented and tested. `IngredientBuilder.tsx` overlaps PR #136 and `ToppingRow.tsx` is modified in the user's other active checkout, so row-context plumbing is intentionally not overwritten.
 - [ ] **WAITING_ON_CLOUD — full HOME/PRO country and owned-product parity scenarios.** Shared UI/search semantics are live in code; country/default/override semantics cannot be truthfully gated until the active country authority lands.
 
@@ -47,7 +64,8 @@ Updated: 2026-09-03 (Europe/Madrid)
 - [ ] Merge/rebase after the active country-readiness branch lands and resolve against its canonical schema/service.
 - [ ] Add country-resolution tests for Spain + Polish UI, Poland + Spanish UI, explicit-country persistence, no foreign fallback, per-user override isolation, and multiple-owned-SKU ambiguity.
 - [ ] Verify a reliable country-level deployment signal; never substitute UI/browser language.
-- [ ] Define or reuse guest/local preference persistence before claiming signed-out Product Country.
+- [ ] **BLOCKED / ARCHITECTURE GAP:** define or reuse guest/local preference persistence before claiming signed-out Product Country; signed-out reads currently return defaults and saves require authentication.
+- [ ] **BLOCKED / ARCHITECTURE GAP:** define the deterministic guest-to-account merge contract after a guest store exists.
 - [ ] Run the required served-staging scenarios after integration and staging deployment.
 - [ ] Staging deployment is not performed from this side branch; production deployment is expressly out of scope.
 
@@ -57,9 +75,9 @@ Updated: 2026-09-03 (Europe/Madrid)
 - [x] The repository currently ships one application UI locale: `pl`.
 - [ ] Additional UI locale resources do not exist in staging. Search aliases are multilingual, but no unsupported UI locale is falsely claimed as shipped.
 
-## Frozen checkpoint capability ledger
+## Current capability ledger
 
-Checkpoint denominator: 48 capability gates. `DONE = 28 / 48 = 58.3%`.
+Denominator unchanged: 48 capability gates. `DONE = 30 / 48 = 62.5%`.
 Owner QA is excluded from the denominator and is not marked.
 
 | ID    | Status                    | Capability                                                                                | Acceptance evidence                                                              |
@@ -92,30 +110,32 @@ Owner QA is excluded from the denominator and is not marked.
 | CP-26 | DONE                      | HOME/PRO category and search implementation cannot diverge locally                        | Shared-component/live-transport parity gate                                      |
 | CP-27 | DONE                      | New visible picker concepts use current locale-resource authority                         | `productDiscovery.test.ts`; every shipped locale covered                         |
 | CP-28 | DONE                      | Mapper, Scanner, Engine, solver, profiles, and recipe mutation authority remain untouched | Final diff audit, protected-path gate, full 11,793-test suite                    |
-| CP-29 | INTERNAL_SAFE_REMAINING   | Prove/define canonical technical ordering for Sugars and Stabilizers                      | No complete family-specific ordering contract yet                                |
-| CP-30 | INTERNAL_SAFE_REMAINING   | Rendered interaction acceptance for Primary Product Country Account control               | Pure preservation test/build exist; UI existence alone is not counted            |
-| CP-31 | WAITING_ON_GLOBAL_COUNTRY | Integrate the final canonical Global Country schema/service                               | Active country work owns the files and tables                                    |
-| CP-32 | WAITING_ON_GLOBAL_COUNTRY | Resolve canonical slot through approved primary-country/default SKU                       | Requires CP-31                                                                   |
-| CP-33 | WAITING_ON_GLOBAL_COUNTRY | Prove no foreign commercial fallback                                                      | Requires final resolver and country fixtures                                     |
-| CP-34 | WAITING_ON_GLOBAL_COUNTRY | Reuse a canonical safe same-country fallback, if the authority defines one                | Must not invent ranking                                                          |
-| CP-35 | WAITING_ON_GLOBAL_COUNTRY | Apply one explicit user-preferred SKU before the country default                          | Requires final country seam and preference model                                 |
-| CP-36 | OWNER_DECISION_REQUIRED   | Choose deterministic authority when several user-owned SKUs share one slot                | No winner authority exists; first/cheapest/newest are forbidden                  |
-| CP-37 | WAITING_ON_GLOBAL_COUNTRY | Reuse country-base product relationships                                                  | Canonical tables are still active Cloud work                                     |
-| CP-38 | WAITING_ON_GLOBAL_COUNTRY | Show resolved exact SKU/brand behind the canonical primary title                          | Requires deterministic resolution, not a UI guess                                |
-| CP-39 | WAITING_ON_GLOBAL_COUNTRY | Prove a reliable coarse first-country signal                                              | Deployment/network signal not yet verified                                       |
-| CP-40 | WAITING_ON_GLOBAL_COUNTRY | Remove browser/UI-language country inference                                              | Owning service file is in the active country workstream                          |
-| CP-41 | WAITING_ON_GLOBAL_COUNTRY | Prove explicit Product Country survives travel/VPN/location changes                       | Requires persisted canonical authority                                           |
-| CP-42 | WAITING_ON_GLOBAL_COUNTRY | Define/reuse signed-out Product Country persistence                                       | No verified guest setting authority exists                                       |
-| CP-43 | WAITING_ON_GLOBAL_COUNTRY | Deterministically merge guest country into signed-in profile                              | Requires CP-42 and final profile seam                                            |
-| CP-44 | WAITING_ON_CLOUD_CONFLICT | Wire contextual Replace from current recipe rows                                          | `IngredientBuilder.tsx` overlaps PR #136; `ToppingRow.tsx` is active elsewhere   |
-| CP-45 | WAITING_ON_GLOBAL_COUNTRY | Prove HOME/PRO country-resolution parity                                                  | Requires CP-31 through CP-43                                                     |
-| CP-46 | WAITING_ON_GLOBAL_COUNTRY | Prove HOME/PRO user-override parity                                                       | Requires CP-35/CP-36                                                             |
-| CP-47 | WAITING_ON_GLOBAL_COUNTRY | Complete automated country/override acceptance matrix                                     | Country fixtures/resolver not canonical yet                                      |
-| CP-48 | INTERNAL_SAFE_REMAINING   | Run served-staging E2E scenarios after integration/deployment                             | Separate from automated/local verification and still pending                     |
+| CP-29 | DONE                      | Prove/define canonical technical ordering for Sugars and Stabilizers                      | Regression proves the client preserves server relevance order despite favorite/recency state |
+| CP-30 | DONE                      | Rendered interaction acceptance for Primary Product Country Account control               | jsdom interaction selects ES, retains PL/DE, and saves the exact preference       |
+| CP-31 | WAITING                   | Integrate the final canonical Global Country schema/service                               | `WAITING_ON_GLOBAL_COUNTRY`; active country work owns the files and tables        |
+| CP-32 | WAITING                   | Resolve canonical slot through approved primary-country/default SKU                       | `WAITING_ON_GLOBAL_COUNTRY`; requires CP-31                                      |
+| CP-33 | WAITING                   | Prove no foreign commercial fallback                                                      | `WAITING_ON_GLOBAL_COUNTRY`; requires final resolver and country fixtures         |
+| CP-34 | WAITING                   | Reuse a canonical safe same-country fallback, if the authority defines one                | `WAITING_ON_GLOBAL_COUNTRY`; must not invent ranking                             |
+| CP-35 | WAITING                   | Apply one explicit user-preferred SKU before the country default                          | `WAITING_ON_GLOBAL_COUNTRY`; preference seam absent                             |
+| CP-36 | BLOCKED                   | Choose deterministic authority when several user-owned SKUs share one slot                | `OWNER_DECISION_REQUIRED`; no preferred/last-selected field or per-user/slot uniqueness exists |
+| CP-37 | WAITING                   | Reuse country-base product relationships                                                  | `WAITING_ON_GLOBAL_COUNTRY`; canonical tables are active Cloud work               |
+| CP-38 | WAITING                   | Show resolved exact SKU/brand behind the canonical primary title                          | `WAITING_ON_GLOBAL_COUNTRY`; requires deterministic resolution                   |
+| CP-39 | BLOCKED                   | Prove a reliable coarse first-country signal                                              | Architecture gap: no geo header/edge signal is consumed by the current SPA       |
+| CP-40 | WAITING                   | Remove browser/UI-language country inference                                              | `WAITING_ON_GLOBAL_COUNTRY`; owning service file is active Cloud work             |
+| CP-41 | WAITING                   | Prove explicit Product Country survives travel/VPN/location changes                       | `WAITING_ON_GLOBAL_COUNTRY`; requires persisted canonical authority               |
+| CP-42 | BLOCKED                   | Define/reuse signed-out Product Country persistence                                       | Architecture gap: signed-out read returns defaults; save requires auth; no guest store |
+| CP-43 | BLOCKED                   | Deterministically merge guest country into signed-in profile                              | Architecture gap: no guest source or merge contract exists                       |
+| CP-44 | WAITING                   | Wire contextual Replace from current recipe rows                                          | `WAITING_ON_CLOUD_CONFLICT`; PR #136 and active checkout overlap                 |
+| CP-45 | WAITING                   | Prove HOME/PRO country-resolution parity                                                  | `WAITING_ON_GLOBAL_COUNTRY`; requires CP-31 through CP-43                         |
+| CP-46 | WAITING                   | Prove HOME/PRO user-override parity                                                       | `WAITING_ON_GLOBAL_COUNTRY`; requires CP-35/CP-36                                |
+| CP-47 | WAITING                   | Complete automated country/override acceptance matrix                                     | `WAITING_ON_GLOBAL_COUNTRY`; resolver/fixtures not canonical                     |
+| CP-48 | WAITING                   | Run served-staging E2E scenarios after integration/deployment                             | Separate from automated/local verification and still pending                     |
 
 Frozen remaining categories:
 
-- `WAITING_ON_GLOBAL_COUNTRY`: CP-31–CP-35, CP-37–CP-43, CP-45–CP-47.
+- `DONE`: CP-01–CP-30.
+- `WAITING_ON_GLOBAL_COUNTRY`: CP-31–CP-35, CP-37–CP-38, CP-40–CP-41, CP-45–CP-47; CP-39 and CP-42–CP-43 are confirmed architecture gaps the canonical authority must address.
 - `WAITING_ON_CLOUD_CONFLICT`: CP-44.
 - `OWNER_DECISION_REQUIRED`: CP-36.
-- `INTERNAL_SAFE_REMAINING`: CP-29, CP-30, CP-48.
+- `INTERNAL_SAFE_REMAINING`: none.
+- `SERVED_STAGING_PENDING`: CP-48.
