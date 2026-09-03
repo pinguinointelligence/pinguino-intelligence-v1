@@ -52,10 +52,13 @@ import { ingredientCategorySymbolFor } from './ingredientCategorySymbols';
 import {
   PRODUCT_DISCOVERY_TOP_FILTERS,
   availableContextualSubfilters,
+  matchesProductDiscoveryFamily,
   matchesProductDiscoveryFilter,
   matchesProductDiscoverySubfilter,
   projectCatalogHitsForDiscovery,
   resolveInitialProductDiscoveryFilter,
+  type ProductDiscoveryReplaceContext,
+  type ProductDiscoveryReplaceFamily,
   type ProductDiscoverySubfilter,
   type ProductDiscoveryTopFilter,
 } from './canonicalProductDiscovery';
@@ -94,6 +97,11 @@ export interface ProductPickerHandoff extends ProductPickerRouteRequest {
 export interface ProductPickerSelectionResult {
   /** Existing or newly-created row that should receive focus after close. */
   focusLineId?: string;
+}
+
+export interface ProductPickerReplaceInvocation {
+  key: number;
+  context: ProductDiscoveryReplaceContext;
 }
 
 interface PickerOption {
@@ -161,6 +169,14 @@ interface PickerPosition {
   bottom?: number;
 }
 
+const replaceContextQuery = (context: ProductDiscoveryReplaceContext): string => {
+  if (context.family) return context.family;
+  if (context.subfilter === 'sugars') return 'sugar';
+  if (context.subfilter === 'stabilizers') return 'stabilizer';
+  if (context.subfilter === 'inulin') return 'inulin';
+  return '';
+};
+
 type ProductPickerPopoverProps = {
   library: IngredientLibrary;
   triggerLabel?: string;
@@ -195,6 +211,10 @@ type ProductPickerPopoverProps = {
    * store's atomic add remains the final race-safe authority. */
   onPreflightDuplicate?: (ingredient: EngineIngredient) => ProductPickerSelectionResult | void;
   intent?: 'ADD' | 'REPLACE';
+  /** Explicit row-owned invocation. The normal visible trigger always keeps
+   * its declared intent; this request only opens the same picker for Replace. */
+  replaceInvocation?: ProductPickerReplaceInvocation | null;
+  onClose?: () => void;
   /** Parent-owned transfer between the two recipe picker contexts. */
   handoff?: ProductPickerHandoff | null;
   onRouteToScope?: (request: ProductPickerRouteRequest) => void;
@@ -229,9 +249,13 @@ export function ProductPickerPopover({
   handoff,
   onRouteToScope,
   intent = 'ADD',
+  replaceInvocation,
+  onClose,
 }: ProductPickerPopoverProps) {
   const [open, setOpen] = useState(false);
+  const [activeIntent, setActiveIntent] = useState<'ADD' | 'REPLACE'>(intent);
   const [query, setQuery] = useState('');
+  const [contextQuery, setContextQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
   const [adding, setAdding] = useState(false);
   const [unavailableNotice, setUnavailableNoticeText] = useState<string | null>(null);
@@ -249,6 +273,7 @@ export function ProductPickerPopover({
   const [handoffTargetProductId, setHandoffTargetProductId] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<ProductDiscoveryTopFilter>('all');
   const [activeSubfilter, setActiveSubfilter] = useState<ProductDiscoverySubfilter>('all');
+  const [activeFamily, setActiveFamily] = useState<ProductDiscoveryReplaceFamily>(null);
   const [scanning, setScanning] = useState(false);
   const [scrollThumb, setScrollThumb] = useState({ top: 0, height: 50, visible: false });
   const [position, setPosition] = useState<PickerPosition | null>(null);
@@ -258,11 +283,12 @@ export function ProductPickerPopover({
   const dialogRef = useRef<HTMLDivElement>(null);
   const informationCloseRef = useRef<HTMLButtonElement>(null);
   const lastHandoffKeyRef = useRef<number | null>(null);
+  const lastReplaceInvocationKeyRef = useRef<number | null>(null);
   const defaultFilterAppliedRef = useRef(false);
   const pickerInstanceId = useId().replace(/:/g, '');
   const globalCatalog = useGlobalCatalogPicker({
     enabled: open && library.serverSearch,
-    query,
+    query: query.trim() === '' ? contextQuery : query,
     favoritesOnly: activeFilter === 'favorites',
     context: scope === 'BASE_FORMULATION' ? 'BASE' : 'TOPPING',
     productProfile: behaviorContext?.productProfile ?? null,
@@ -283,6 +309,7 @@ export function ProductPickerPopover({
     if (defaultFilterAppliedRef.current || !globalCatalog.favoritesSettled) return;
     setActiveFilter(resolveInitialProductDiscoveryFilter(globalCatalog.favorites.size));
     setActiveSubfilter('all');
+    setActiveFamily(null);
     setActiveIndex(0);
     defaultFilterAppliedRef.current = true;
   }, [globalCatalog.favorites.size, globalCatalog.favoritesSettled, open]);
@@ -293,9 +320,12 @@ export function ProductPickerPopover({
     }
     lastHandoffKeyRef.current = handoff.key;
     setQuery(handoff.query);
+    setContextQuery('');
     setHandoffTargetProductId(handoff.productId);
     setActiveFilter('all');
     setActiveSubfilter('all');
+    setActiveFamily(null);
+    setActiveIntent(intent);
     setActiveIndex(0);
     defaultFilterAppliedRef.current = true;
     // Clearing needs no presentation filter, so this uses the raw setter and keeps the
@@ -304,7 +334,31 @@ export function ProductPickerPopover({
     setInformationOption(null);
     setScanning(false);
     setOpen(true);
-  }, [handoff, scope]);
+  }, [handoff, intent, scope]);
+
+  useEffect(() => {
+    if (
+      scope !== 'BASE_FORMULATION' ||
+      !replaceInvocation ||
+      lastReplaceInvocationKeyRef.current === replaceInvocation.key
+    ) {
+      return;
+    }
+    lastReplaceInvocationKeyRef.current = replaceInvocation.key;
+    setQuery('');
+    setContextQuery(replaceContextQuery(replaceInvocation.context));
+    setHandoffTargetProductId(null);
+    setActiveFilter(replaceInvocation.context.filter);
+    setActiveSubfilter(replaceInvocation.context.subfilter);
+    setActiveFamily(replaceInvocation.context.family);
+    setActiveIntent('REPLACE');
+    setActiveIndex(0);
+    defaultFilterAppliedRef.current = true;
+    setUnavailableNoticeText(null);
+    setInformationOption(null);
+    setScanning(false);
+    setOpen(true);
+  }, [replaceInvocation, scope]);
 
   useEffect(() => {
     if (!open) return;
@@ -385,13 +439,14 @@ export function ProductPickerPopover({
       );
       const filtered = eligible.filter(
         (hit) =>
+          (activeFamily === null || matchesProductDiscoveryFamily(hit, activeFamily)) &&
           matchesProductDiscoveryFilter(hit, activeFilter) &&
           matchesProductDiscoverySubfilter(hit, activeFilter, activeSubfilter),
       );
       const catalog = globalCatalog.isSettled
         ? projectCatalogHitsForDiscovery({
             hits: preserveServerProductRank(filtered, globalCatalog.preferences),
-            query,
+            query: (activeFamily ?? query) || contextQuery,
           }).map(({ hit, primaryName, secondaryText }) => ({
             id:
               hit.entityKind === 'pi_base'
@@ -453,6 +508,18 @@ export function ProductPickerPopover({
         verification: { status: 'GELLATTI — SPRAWDZONY' as const, reason: null },
       }))
       .filter((option) =>
+        activeFamily === null
+          ? true
+          : matchesProductDiscoveryFamily(
+              {
+                displayName: option.name,
+                category: option.category,
+                productForm: option.detail,
+              },
+              activeFamily,
+            ),
+      )
+      .filter((option) =>
         matchesProductDiscoveryFilter(
           {
             displayName: option.name,
@@ -476,12 +543,14 @@ export function ProductPickerPopover({
       );
   }, [
     activeFilter,
+    activeFamily,
     activeSubfilter,
     globalCatalog.hits,
     globalCatalog.isSettled,
     globalCatalog.preferences,
     globalCatalog.recent,
     library,
+    contextQuery,
     query,
     scope,
   ]);
@@ -500,7 +569,7 @@ export function ProductPickerPopover({
         getProductPickerCompatibility(option.catalog, scope).state !== 'AVAILABLE_IN_OTHER_CONTEXT'
       );
     });
-    const contextual = (intent === 'ADD' ? options : [])
+    const contextual = (activeIntent === 'ADD' ? options : [])
       .filter((option) => {
         if (!option.catalog) return false;
         return (
@@ -510,7 +579,9 @@ export function ProductPickerPopover({
       })
       .slice(0, 5);
     return [
-      ...buildProductPickerSegments(primary, { activeQuery: query.trim() !== '' }),
+      ...buildProductPickerSegments(primary, {
+        activeQuery: query.trim() !== '' || activeIntent === 'REPLACE',
+      }),
       ...(contextual.length > 0
         ? [
             {
@@ -521,7 +592,7 @@ export function ProductPickerPopover({
           ]
         : []),
     ];
-  }, [intent, options, query, scope]);
+  }, [activeIntent, options, query, scope]);
   const visibleOptions = useMemo(() => segments.flatMap((segment) => segment.items), [segments]);
   const uniqueOptionCount = uniqueCatalogProductCount(segments);
   const handoffTargetIndex = handoffTargetProductId
@@ -559,6 +630,7 @@ export function ProductPickerPopover({
     setOpen(false);
     setUnavailableNotice(null);
     setInformationOption(null);
+    onClose?.();
     queueMicrotask(() => {
       if (focusLineId) {
         const row = Array.from(document.querySelectorAll<HTMLElement>('[data-line-id]')).find(
@@ -591,6 +663,9 @@ export function ProductPickerPopover({
       close();
       return;
     }
+    setActiveIntent(intent);
+    setActiveFamily(null);
+    setContextQuery('');
     defaultFilterAppliedRef.current = false;
     if (globalCatalog.favoritesSettled) {
       setActiveFilter(resolveInitialProductDiscoveryFilter(globalCatalog.favorites.size));
@@ -666,7 +741,7 @@ export function ProductPickerPopover({
         );
         return;
       }
-      if (scope === 'BASE_FORMULATION' && onPreflightDuplicate) {
+      if (activeIntent === 'ADD' && scope === 'BASE_FORMULATION' && onPreflightDuplicate) {
         const duplicate = onPreflightDuplicate(ingredient as EngineIngredient);
         if (duplicate?.focusLineId) {
           close(duplicate.focusLineId);
@@ -818,7 +893,7 @@ export function ProductPickerPopover({
         );
         return;
       }
-      if (scope === 'BASE_FORMULATION' && onPreflightDuplicate) {
+      if (activeIntent === 'ADD' && scope === 'BASE_FORMULATION' && onPreflightDuplicate) {
         const duplicate = onPreflightDuplicate(ingredient as EngineIngredient);
         if (duplicate?.focusLineId) {
           setScanning(false);
@@ -1105,6 +1180,8 @@ export function ProductPickerPopover({
                             defaultFilterAppliedRef.current = true;
                             setActiveFilter(filter);
                             setActiveSubfilter('all');
+                            setActiveFamily(null);
+                            setContextQuery('');
                             setActiveIndex(0);
                             setUnavailableNotice(null);
                             setInformationOption(null);
@@ -1135,6 +1212,7 @@ export function ProductPickerPopover({
                             aria-pressed={activeSubfilter === subfilter}
                             onClick={() => {
                               setActiveSubfilter(subfilter);
+                              setContextQuery('');
                               setActiveIndex(0);
                               setUnavailableNotice(null);
                               setInformationOption(null);
@@ -1162,7 +1240,11 @@ export function ProductPickerPopover({
                       <LiveProductScanner
                         onResolved={(resolved) => void addScannedProduct(resolved)}
                         resolveLabel={
-                          scope === 'BASE_FORMULATION' ? 'Dodaj do receptury' : 'Dodaj jako topping'
+                          activeIntent === 'REPLACE'
+                            ? 'Zamień produkt'
+                            : scope === 'BASE_FORMULATION'
+                              ? 'Dodaj do receptury'
+                              : 'Dodaj jako topping'
                         }
                         intro="Pokaż produkt kamerze. Znaleziony lub utworzony produkt wraca prosto do tej receptury."
                       />
@@ -1218,6 +1300,8 @@ export function ProductPickerPopover({
                                       defaultFilterAppliedRef.current = true;
                                       setActiveFilter('all');
                                       setActiveSubfilter('all');
+                                      setActiveFamily(null);
+                                      setContextQuery('');
                                       setActiveIndex(0);
                                     }}
                                   >
@@ -1414,19 +1498,19 @@ export function ProductPickerPopover({
                                       </button>
                                       <button
                                         type="button"
-                                        aria-label={`${intent === 'REPLACE' ? discoveryCopy.replace : discoveryCopy.add}${
-                                          intent === 'REPLACE' ? ' na' : ''
+                                        aria-label={`${activeIntent === 'REPLACE' ? discoveryCopy.replace : discoveryCopy.add}${
+                                          activeIntent === 'REPLACE' ? ' na' : ''
                                         } ${option.name}`}
                                         disabled={!option.selectable || adding}
                                         className={cn(
                                           'pro-focus-ring mr-2 grid min-h-9 shrink-0 place-items-center rounded-lg border border-ink/10 bg-white leading-none text-ink shadow-sm hover:border-[#f58a07]/60 hover:text-[#f58a07] disabled:cursor-not-allowed disabled:opacity-40',
-                                          intent === 'REPLACE'
+                                          activeIntent === 'REPLACE'
                                             ? 'px-3 text-[11px] font-semibold'
                                             : 'size-9 text-xl',
                                         )}
                                         onClick={() => void choose(option)}
                                       >
-                                        {intent === 'REPLACE' ? discoveryCopy.replace : '+'}
+                                        {activeIntent === 'REPLACE' ? discoveryCopy.replace : '+'}
                                       </button>
                                     </div>
                                   );

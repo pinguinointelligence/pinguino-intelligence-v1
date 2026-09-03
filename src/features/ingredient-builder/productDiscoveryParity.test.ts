@@ -35,4 +35,18 @@ describe('HOME and PRO canonical product-discovery parity gate', () => {
       expect(source).not.toContain('canonicalSearchConceptForQuery');
     }
   });
+
+  it('keeps row Replace on the same picker contract used by HOME and PRO Add flows', () => {
+    const home = read('src/features/home-creator/ui/HomeRecipeSection.tsx');
+    const pro = read('src/features/ingredient-builder/IngredientBuilder.tsx');
+    const picker = read('src/features/ingredient-builder/ProductPickerPopover.tsx');
+
+    expect(home).toContain('<ProductPickerPopover');
+    expect(pro).toContain('<ProductPickerPopover');
+    expect(pro).toContain('replaceInvocation={replaceRequest?.invocation ?? null}');
+    expect(picker).toContain('export interface ProductPickerReplaceInvocation');
+    expect(picker).toContain("activeIntent === 'REPLACE'");
+    expect(home).not.toMatch(/HomeProductPicker|homeReplacePicker/);
+    expect(pro).not.toMatch(/ProProductPicker|proReplacePicker/);
+  });
 });

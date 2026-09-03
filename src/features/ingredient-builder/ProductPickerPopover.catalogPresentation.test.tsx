@@ -6,6 +6,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CatalogProductSearchHit } from '@/features/global-catalog/contracts';
 import type { EngineIngredient } from '@/engine';
 
+(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT =
+  true;
+
 const mocks = vi.hoisted(() => ({
   hits: [] as CatalogProductSearchHit[],
   getRow: vi.fn(),
@@ -23,7 +26,12 @@ vi.mock('@/features/global-catalog/useGlobalCatalogPicker', () => ({
     const hits = mocks.hits.filter(
       (hit) =>
         (!input.favoritesOnly || hit.favorite) &&
-        (!query || hit.displayName.toLocaleLowerCase('pl').includes(query)),
+        (!query ||
+          [hit.displayName, hit.canonicalFamily, hit.category, hit.productForm, ...hit.aliases]
+            .filter(Boolean)
+            .join(' ')
+            .toLocaleLowerCase('pl')
+            .includes(query)),
     );
     return {
       hits,
@@ -72,7 +80,7 @@ vi.mock('@/data/ingredients/ingredientMapper', () => ({
   ingredientRowToEngineIngredient: mocks.toEngine,
 }));
 
-import { ProductPickerPopover } from './ProductPickerPopover';
+import { ProductPickerPopover, type ProductPickerReplaceInvocation } from './ProductPickerPopover';
 import { serverSearchLibrary } from './ingredientLibrary';
 
 const catalogHit = (overrides: Partial<CatalogProductSearchHit> = {}): CatalogProductSearchHit => ({
@@ -208,7 +216,11 @@ describe('ProductPickerPopover catalog presentation', () => {
     vi.clearAllMocks();
   });
 
-  const renderPicker = async (onAdd = vi.fn(), intent: 'ADD' | 'REPLACE' = 'ADD') => {
+  const renderPicker = async (
+    onAdd = vi.fn(),
+    intent: 'ADD' | 'REPLACE' = 'ADD',
+    replaceInvocation?: ProductPickerReplaceInvocation,
+  ) => {
     await act(async () => {
       root.render(
         <MemoryRouter>
@@ -216,13 +228,16 @@ describe('ProductPickerPopover catalog presentation', () => {
             library={serverSearchLibrary()}
             scope="BASE_FORMULATION"
             intent={intent}
+            replaceInvocation={replaceInvocation}
             onAdd={onAdd}
           />
         </MemoryRouter>,
       );
     });
-    const trigger = document.querySelector<HTMLButtonElement>('button[aria-haspopup="dialog"]');
-    await act(async () => trigger?.click());
+    if (!replaceInvocation) {
+      const trigger = document.querySelector<HTMLButtonElement>('button[aria-haspopup="dialog"]');
+      await act(async () => trigger?.click());
+    }
     return onAdd;
   };
 
@@ -322,6 +337,123 @@ describe('ProductPickerPopover catalog presentation', () => {
     expect(
       document.querySelector('button[aria-label="Dodaj CREAM 30% · Mlekovita Cream · Chilled"]'),
     ).toBeNull();
+  });
+
+  it('opens an external row Replace directly in its Milk context and keeps numeric order', async () => {
+    mocks.hits = [
+      catalogHit({
+        id: 'milk-35',
+        mappedIngredientId: 'PI-ING-000351',
+        displayName: 'MILK 3.5% · Reference',
+        category: 'dairy',
+        canonicalFamily: 'milk',
+        productForm: 'milk',
+      }),
+      catalogHit({
+        id: 'cream-30',
+        mappedIngredientId: 'PI-ING-000300',
+        displayName: 'CREAM 30% · Reference',
+        category: 'dairy',
+        canonicalFamily: 'cream',
+        productForm: 'cream',
+      }),
+      catalogHit({
+        id: 'milk-05',
+        mappedIngredientId: 'PI-ING-000051',
+        displayName: 'MILK 0.5% · Reference',
+        category: 'dairy',
+        canonicalFamily: 'milk',
+        productForm: 'milk',
+      }),
+    ];
+    const onReplace = await renderPicker(vi.fn(), 'ADD', {
+      key: 1,
+      context: { filter: 'dairy', subfilter: 'all', family: 'milk' },
+    });
+
+    expect(
+      document.querySelector('[data-product-filter="dairy"]')?.getAttribute('aria-pressed'),
+    ).toBe('true');
+    expect(document.body.textContent).not.toContain('CREAM 30%');
+    const actions = Array.from(
+      document.querySelectorAll<HTMLButtonElement>('button[aria-label^="Zamień na MILK"]'),
+    );
+    expect(actions.map((button) => button.textContent)).toEqual(['Zamień', 'Zamień']);
+    expect(actions.map((button) => button.getAttribute('aria-label'))).toEqual([
+      'Zamień na MILK 0.5%',
+      'Zamień na MILK 3.5%',
+    ]);
+    expect(
+      Array.from(document.querySelectorAll<HTMLButtonElement>('button')).filter(
+        (button) => button.textContent?.trim() === '+',
+      ),
+    ).toHaveLength(0);
+
+    await act(async () => actions[0]?.click());
+    expect(onReplace).toHaveBeenCalledWith(engineIngredient, undefined);
+  });
+
+  it.each([
+    ['DEXTROSE', 'sweetener', 'sugars', 'PI-ING-000101'],
+    ['TARA GUM', 'stabilizer', 'stabilizers', 'PI-ING-000102'],
+    ['GELLATTI STABILIZER', 'stabilizer', 'stabilizers', 'PI-ING-000103'],
+    ['INULIN', 'fiber', 'inulin', 'PI-ING-000104'],
+  ] as const)(
+    'opens %s Replace in its Technical subcontext',
+    async (name, category, subfilter, mapperId) => {
+      mocks.hits = [
+        catalogHit({
+          id: name.toLocaleLowerCase('en-US').replaceAll(' ', '-'),
+          mappedIngredientId: mapperId,
+          displayName: name,
+          category,
+          canonicalFamily: subfilter === 'sugars' ? 'sugar' : null,
+          productForm: category,
+        }),
+      ];
+      await renderPicker(vi.fn(), 'ADD', {
+        key: 1,
+        context: { filter: 'technical', subfilter, family: null },
+      });
+
+      expect(
+        document.querySelector('[data-product-filter="technical"]')?.getAttribute('aria-pressed'),
+      ).toBe('true');
+      expect(
+        document
+          .querySelector(`[data-product-subfilter="${subfilter}"]`)
+          ?.getAttribute('aria-pressed'),
+      ).toBe('true');
+      expect(document.querySelector(`button[aria-label="Zamień na ${name}"]`)).not.toBeNull();
+    },
+  );
+
+  it('opens Cream Replace in the Cream-only dairy family', async () => {
+    mocks.hits = [
+      catalogHit({
+        id: 'cream-20',
+        mappedIngredientId: 'PI-ING-000200',
+        displayName: 'CREAM 20%',
+        category: 'dairy',
+        canonicalFamily: 'cream',
+        productForm: 'cream',
+      }),
+      catalogHit({
+        id: 'milk-35',
+        mappedIngredientId: 'PI-ING-000351',
+        displayName: 'MILK 3.5%',
+        category: 'dairy',
+        canonicalFamily: 'milk',
+        productForm: 'milk',
+      }),
+    ];
+    await renderPicker(vi.fn(), 'ADD', {
+      key: 1,
+      context: { filter: 'dairy', subfilter: 'all', family: 'cream' },
+    });
+
+    expect(document.querySelector('button[aria-label="Zamień na CREAM 20%"]')).not.toBeNull();
+    expect(document.body.textContent).not.toContain('MILK 3.5%');
   });
 
   it('C/K opens neutral product details and preserves favorite and add actions', async () => {

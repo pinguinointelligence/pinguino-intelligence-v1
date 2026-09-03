@@ -23,6 +23,7 @@ import {
   type IngredientRowMeta,
   type SubstituteCandidate,
 } from './ingredientTableUx';
+import type { ProductDiscoveryReplaceContext } from './canonicalProductDiscovery';
 import { DialogShell } from '@/components/ui/DialogShell';
 import { HoverPreview } from '@/components/ui/HoverPreview';
 import { DirectNumberControl } from './DirectNumberControl';
@@ -90,6 +91,7 @@ export interface IngredientRowActions {
     candidate: SubstituteCandidate,
     mainIdentityConfirmed: boolean,
   ) => void | Promise<void>;
+  requestReplace?: (lineId: string, context: ProductDiscoveryReplaceContext) => void;
   /** Retained store capability; Recipe mode intentionally no longer calls it. */
   markIngredientUnavailable?: (lineId: string) => void;
   moveUp?: (lineId: string) => void;
@@ -556,6 +558,13 @@ function RecipeRow({
       .finally(() => setSubstitutesLoading(false));
   };
 
+  const openReplace = () => {
+    const context = meta.replaceContext;
+    if (!context || !actions.requestReplace) return;
+    closeLineMenus();
+    actions.requestReplace(item.id, context);
+  };
+
   // ONE presentation model. Desktop and mobile render this exact compact panel;
   // every callback below remains the existing Recipe-row authority.
   const articlePanelContent = (
@@ -572,6 +581,9 @@ function RecipeRow({
         data-control-height="44"
       >
         <span className="flex min-w-0 items-center gap-2.5">
+        {actions.requestReplace && meta.replaceContext ? (
+          <ArticleActionButton label="Zamień produkt" icon="swap" onClick={openReplace} />
+        ) : null}
         <ArticleActionButton
           label="Przesuń wyżej"
           icon="up"

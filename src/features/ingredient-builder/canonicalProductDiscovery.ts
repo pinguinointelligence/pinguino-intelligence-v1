@@ -27,6 +27,8 @@ export type ProductDiscoverySubfilter =
 
 type TechnologicalFamily = CanonicalSearchConcept | 'dairy' | 'nuts' | 'chocolate' | null;
 
+export type ProductDiscoveryReplaceFamily = 'milk' | 'cream' | null;
+
 export interface ProductDiscoveryMetadata {
   displayName: string;
   originalName?: string | null;
@@ -130,6 +132,7 @@ export function matchesProductDiscoveryFilter(
       ['emulsifier', 'acid', 'additive', 'functional_additive', 'fiber'].includes(category)
     );
   }
+  if (filter === 'dairy') return family === 'milk' || family === 'cream' || family === 'dairy';
   return family === filter;
 }
 
@@ -142,6 +145,13 @@ export function matchesProductDiscoverySubfilter(
   if (filter === 'fruit') return fruitSubfilterFor(hit) === subfilter;
   if (filter === 'technical') return technicalSubfilterFor(hit) === subfilter;
   return true;
+}
+
+export function matchesProductDiscoveryFamily(
+  hit: ProductDiscoveryMetadata,
+  family: Exclude<ProductDiscoveryReplaceFamily, null>,
+): boolean {
+  return technologicalFamilyFor(hit) === family;
 }
 
 export function availableContextualSubfilters(
@@ -296,11 +306,11 @@ export function projectCatalogHitsForDiscovery(input: {
 export interface ProductDiscoveryReplaceContext {
   filter: ProductDiscoveryTopFilter;
   subfilter: ProductDiscoverySubfilter;
-  family: 'milk' | 'cream' | null;
+  family: ProductDiscoveryReplaceFamily;
 }
 
 export function canonicalReplaceContext(
-  hit: CatalogProductSearchHit,
+  hit: ProductDiscoveryMetadata,
 ): ProductDiscoveryReplaceContext {
   const family = technologicalFamilyFor(hit);
   const technical = technicalSubfilterFor(hit);

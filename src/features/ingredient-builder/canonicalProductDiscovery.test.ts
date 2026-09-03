@@ -253,6 +253,21 @@ describe('canonical technological slot projection', () => {
 });
 
 describe('contextual Replace routing contract', () => {
+  it('keeps Milk and Cream inside the Dairy top-level filter', () => {
+    expect(
+      matchesProductDiscoveryFilter(
+        hit({ displayName: 'MILK 3.5%', category: 'dairy', canonicalFamily: 'milk' }),
+        'dairy',
+      ),
+    ).toBe(true);
+    expect(
+      matchesProductDiscoveryFilter(
+        hit({ displayName: 'CREAM 30%', category: 'dairy', canonicalFamily: 'cream' }),
+        'dairy',
+      ),
+    ).toBe(true);
+  });
+
   it.each([
     [
       hit({ displayName: 'DEXTROSE', category: 'sweetener' }),
@@ -278,6 +293,15 @@ describe('contextual Replace routing contract', () => {
         productForm: 'milk',
       }),
       { filter: 'dairy', subfilter: 'all', family: 'milk' },
+    ],
+    [
+      hit({
+        displayName: 'CREAM 30%',
+        category: 'dairy',
+        canonicalFamily: 'cream',
+        productForm: 'cream',
+      }),
+      { filter: 'dairy', subfilter: 'all', family: 'cream' },
     ],
   ])('routes %s through its canonical family context', (product, expected) => {
     expect(canonicalReplaceContext(product)).toEqual(expected);
