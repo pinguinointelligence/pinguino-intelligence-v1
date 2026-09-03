@@ -300,10 +300,65 @@ All of these are routed today; `/classic`, `/demo` and `/customer-v1` redirect
 4. The second formulation authority is therefore **the legacy shell**, not HOME
    in general — that is the canonicalisation target.
 
-**Open owner question this raises (recorded, not decided):** whether `/start`
-should be canonicalised onto the shared authority, or retired to a redirect now
-that §9 has superseded it. That is an architecture decision, not an
-implementation detail.
+**OWNER DECISION 2026-09-03: `/start` is removed.** It is not a supported
+Gellatti surface; the canonical customer entry is `gellatti.com/`. Retirement
+happens only AFTER forensic extraction of anything valuable.
+
+## 3g. LEGACY SHELL FORENSIC INVENTORY (pre-retirement)
+
+### External dependency surface — what actually holds the legacy code alive
+
+| consumer | what it imports | classification |
+|---|---|---|
+| `machine-onboarding/*` (6 files) | `customer-shell/ui/tokens`, `TextField`, `TouchButton` | **UI kit only** — shared design infrastructure, no formulation. Keep (relocate later if desired). |
+| `pages/landing/landingMonitorDemo.ts` | `buildMonitorHomeView` from `pi-monitor` | **presentation demo** on the landing page |
+| `pages/dev/PiMonitorDevPage.tsx` | `pi-monitor` fixtures/panel | **dev page**, not a customer surface |
+| `customer-shell/CustomerShellV1` + `PiMonitorSection` | `isMonitorTuningApproved`, monitor view | **the legacy formulation route itself** — to retire |
+
+**No current customer formulation surface depends on `pi-monitor`.** Retiring the
+legacy shell therefore does not strand PRO or current HOME.
+
+### Where the Protein hardness authority actually lives — MOSTLY SHARED ALREADY
+
+This is the decisive extraction finding: the physics is **not** owned by the
+legacy shell. Only thin mapping wrappers are.
+
+| layer | module | owned by | status |
+|---|---|---|---|
+| approved Protein ice band `iceFraction [45,54.5] / [46,54] / [46,52]`, status `owner_approved_standard_physics_protein_v1` | `src/spine/temperatureRegulator.ts` | **SHARED** | ✅ already canonical |
+| evidence gate `hasDirectIceAuthorityAtTemperature` | `src/features/recipe-constraints/freezingStabilityStatus.ts` | **SHARED** | ✅ already canonical |
+| texture semantics `TEXTURE_TARGETS` → `lower_safe_side / clean_center / upper_safe_side` | `src/spine/designRecipe.ts` | **SHARED** | ✅ already canonical |
+| axis → metric mapping `miekkosc_twardosc → ice_fraction` | `pi-monitor/piMonitorAxes.ts` | legacy | **EXTRACT** (thin) |
+| intent → preference `decrease→soft, increase→firm` | `pi-monitor/piMonitorIntent.ts` | legacy | **EXTRACT** (thin) |
+| approval wrapper `isMonitorTuningApproved` | `pi-monitor/monitorTuningApproval.ts` | legacy | **EXTRACT** (one-line delegate to the shared gate) |
+
+**Classification: UNIQUE PROVEN PROFILE AUTHORITY — MUST EXTRACT**, but the
+extraction is small because the physics and the gate are already shared. Nothing
+of scientific substance is trapped in the legacy shell.
+
+### Remaining legacy-shell capabilities
+
+| capability | classification |
+|---|---|
+| `customer-shell/ui/*` (tokens, TextField, TouchButton, Toast, BottomSheet…) | UI kit — **CURRENT CANONICAL ALREADY EXISTS / keep as design infra** |
+| `CustomerShellV1` orchestration | **OBSOLETE DUPLICATE** (superseded by HomeCreatorPage, §9) |
+| `PiMonitorSection` Direction lever | **OBSOLETE DUPLICATE** once the authority above is extracted |
+| `useIngredientResolution`, `ResolutionSheet`, `SubstitutionSheet` | ⏳ to audit against current HOME's resolution path |
+| `homeRecipeSave`, `HomeSaveSection` | ⏳ to audit against canonical save |
+| `customerShellAccess` | ⏳ entitlement — relevant to the `/demo` question |
+| `resultPresentation`, `batchPresentation` | presentation only |
+
+### Protein hardness — capability 11 reclassified per owner
+
+- **A. CURRENT HOME** — no hardness control. Intentional UX capability
+  difference; parity does not require it (parity binds only where both surfaces
+  expose the intent).
+- **B. PRO** — Protein hardness blocked. **OPEN FUNCTIONAL REGRESSION.**
+- **C. LEGACY SHELL** — holds the historical working route (mapping only; the
+  physics is shared, per the table above).
+- **D. REQUIRED FIX** — extract the mapping into a canonical **profile-specific**
+  hardness authority, reconnect **PRO**, retire legacy ownership. No Gelato NPAC,
+  no invented Protein physics.
 
 ## 4. Still to do (not started)
 
