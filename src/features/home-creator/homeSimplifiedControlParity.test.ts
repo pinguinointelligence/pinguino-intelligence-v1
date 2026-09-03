@@ -94,6 +94,29 @@ describe.each(PROFILES)('HOME simplified-control parity — %s', (profile) => {
     }
   });
 
+  // ---- HOME → PRO → HOME roundtrip persistence -----------------------------
+  it.each([-2, -1, 0, 1, 2] as const)(
+    'HOME→PRO→HOME leaves a stored %s untouched when nothing is edited',
+    (stored) => {
+      st().setDirectionTarget('sweetness', stored);
+      const shown = openHome();          // HOME renders
+      // "switch to PRO": PRO reads the canonical axis directly.
+      expect(st().direction_targets.sweetness).toBe(stored);
+      // "switch back to HOME": render again, still no edit.
+      expect(openHome()).toBe(shown);
+      expect(sweetness()).toBe(stored);
+    },
+  );
+
+  it('a deliberate HOME edit survives the roundtrip as HOME\'s own value', () => {
+    st().setDirectionTarget('sweetness', -2);
+    openHome();
+    homeTap('sweeter');                  // explicit edit → +1
+    expect(sweetness()).toBe(1);
+    expect(openHome()).toBe('sweeter');  // back in HOME, displayed as MORE
+    expect(sweetness()).toBe(1);         // and still exactly +1, not restored to −2
+  });
+
   // ---- §63/§64 — a sweetness edit may not move another axis -----------------
   it('a HOME sweetness edit leaves hardness untouched', () => {
     st().setDirectionTarget('softness', 2);
