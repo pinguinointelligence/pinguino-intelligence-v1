@@ -133,7 +133,7 @@ export function AppNavDrawer() {
 
       {open ? (
         /* OWNER QA 2026-09-03 — the drawer is the app's TOP layer.
-           
+
            At z-50 it was below the mobile cockpit strip, which is `z-[60]`, so
            an open menu still had Receptura / Monitor / Produkcja / Etykieta and
            the sticky "Przelicz" bar sitting on top of it — two navigations on
