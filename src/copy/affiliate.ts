@@ -76,6 +76,9 @@ export interface AffiliateCopy {
   readonly customerBenefit: {
     readonly figure: string;
     readonly figureUnit: string;
+    /** Sits before the title, in orange. The unit stays neutral so this is the
+        only place the offer is named — never both. */
+    readonly badge: string;
     readonly title: string;
     readonly bodyTemplate: string;
     readonly emphasis: string;
@@ -224,7 +227,8 @@ export const affiliateCopyPl: AffiliateCopy = {
   },
   customerBenefit: {
     figure: '3',
-    figureUnit: ' miesiące gratis',
+    figureUnit: 'miesiące',
+    badge: 'GRATIS!',
     title: 'Daj swoim odbiorcom coś więcej.',
     bodyTemplate:
       'Każdy, kto wybierze roczny plan Gellatti z Twojego linku lub kodu, otrzyma {emphasis}.',
@@ -394,7 +398,8 @@ export const affiliateCopyEn: AffiliateCopy = {
   },
   customerBenefit: {
     figure: '15',
-    figureUnit: ' months',
+    figureUnit: 'months',
+    badge: 'BONUS!',
     title: 'The customer gains too.',
     bodyTemplate: 'Anyone who buys an annual plan through your link or code gets {emphasis}. The price does not change.',
     emphasis: '15 months for the price of 12',

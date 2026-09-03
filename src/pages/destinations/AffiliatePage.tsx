@@ -169,21 +169,31 @@ function RecurringFlow() {
       {/* The bonus is VALUE, so the figure leads and the prose follows. It used
           to read as a disclaimer: a small number buried in two sentences. */}
       <aside className="mt-9 overflow-hidden rounded-[20px] bg-[var(--g-ink)] text-white">
-        <div className="flex flex-col gap-7 px-7 py-9 sm:px-10 lg:flex-row lg:items-center lg:gap-12">
-          {/* The offer reads as ONE phrase. The figure and its unit were
-              competing as two marks; they are now a single baseline lockup, so
-              the eye takes "3 miesiące gratis" in at once instead of assembling
-              it from pieces. */}
-          <p className="flex flex-none items-baseline gap-2.5 text-[var(--g-orange)]">
-            <span className="text-[64px] leading-[0.85] font-bold tracking-[-0.05em] sm:text-[76px]">
+        <div className="flex flex-col items-center gap-6 px-7 py-9 sm:px-10 lg:flex-row lg:gap-11">
+          {/* The figure carries the size, the unit carries the colour. The
+              offer is named ONCE, by the badge below — so the unit stays
+              neutral and the two never repeat each other.
+              fontFamily is pinned: the number must be the same face at 390 as
+              at 1440, and inheritance alone let it drift to a fallback. */}
+          <div
+            className="flex flex-none flex-col items-center"
+            style={{ fontFamily: 'var(--font-sans)' }}
+          >
+            <span className="text-[104px] leading-[0.78] font-extrabold tracking-[-0.055em] tabular-nums sm:text-[120px]">
               {c.customerBenefit.figure}
             </span>
-            <span className="text-[22px] leading-[1.1] font-bold tracking-[-0.02em] sm:text-[26px]">
+            <span className="mt-2 text-[20px] leading-none font-bold text-[var(--g-orange)] sm:text-[21px]">
               {c.customerBenefit.figureUnit}
             </span>
-          </p>
-          <div className="lg:border-l lg:border-white/12 lg:pl-12">
-            <h3 className="text-[21px] font-bold tracking-[-0.028em] sm:text-[24px]">
+          </div>
+
+          {/* Horizontal while stacked, vertical once side by side — the same
+              separation read at both widths. */}
+          <div className="h-px w-full bg-white/12 lg:h-auto lg:w-px lg:self-stretch" />
+
+          <div className="w-full lg:flex-1">
+            <h3 className="text-[21px] font-bold tracking-[-0.028em] sm:text-[25px]">
+              <span className="text-[var(--g-orange)]">{c.customerBenefit.badge}</span>{' '}
               {c.customerBenefit.title}
             </h3>
             <p className="mt-2.5 max-w-[46ch] text-[14.5px] leading-relaxed text-[#c9c5bd]">
