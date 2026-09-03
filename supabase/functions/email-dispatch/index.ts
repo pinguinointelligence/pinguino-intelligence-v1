@@ -1,5 +1,5 @@
 /**
- * email-dispatch — Edge Function (Deno). ***NOT DEPLOYED BY CLAUDE.***
+ * email-dispatch — Edge Function (Deno).
  *
  * The execution layer for the persisted email lane:
  *   claim (idempotent) → provider → settle sent/failed → retry → Admin visible
@@ -9,9 +9,17 @@
  *  - Provider-agnostic: this file is the ONLY place that knows the vendor. The
  *    domain (src/notifications/domain) and the database know nothing about it.
  *  - **A missing credential may block delivery; it must never produce a false
- *    `sent`.** With no API key the worker records a RETRYABLE failure with a
- *    truthful reason and sends nothing — the job stays visible and delivers
- *    itself once the key exists.
+ *    `sent`.** With no API key the worker claims NOTHING and returns
+ *    `skipped: 'missing_credential'` — the queue is left exactly as it was and
+ *    delivers itself once the key exists.
+ *
+ *    That guard replaced an earlier shape that claimed the batch and settled
+ *    every job as a RETRYABLE failure. It looked equivalent and was not:
+ *    `gellatti_mark_email_failed_v1` abandons a job at
+ *    `attempts >= max_attempts`, so once this worker was actually scheduled,
+ *    five passes with no key would have destroyed real customer mail rather
+ *    than holding it. Not spending an attempt is what makes the promise above
+ *    true.
  *
  * Invariants (test-pinned via logic.ts + source scans):
  *  - claiming is `for update skip locked`, so two concurrent invocations claim
@@ -20,8 +28,10 @@
  *    which require the row to still be claimed;
  *  - `sent` is written only with a provider message id — the DB CHECK refuses
  *    anything else;
- *  - the worker is invoked by the scheduler with the service role; there is no
- *    client-callable path.
+ *  - the worker is invoked by the scheduler (`gellatti-email-dispatch`, see
+ *    the email dispatch scheduler migration) and authorises that caller
+ *    ITSELF, by the service role key. `verify_jwt` alone admits the public
+ *    anon key, so it never made this operator-only.
  *
  * Required env (names only): RESEND_API_KEY (optional — absence is handled),
  * EMAIL_PROVIDER_NAME (optional, default 'resend'), EMAIL_DISPATCH_BATCH_SIZE
@@ -38,6 +48,16 @@ import {
 } from './logic.ts';
 
 const PROVIDER_ENDPOINT = 'https://api.resend.com/emails';
+
+/** Length-then-XOR compare, so a caller cannot probe the key byte by byte. */
+const secretEquals = (a: string, b: string): boolean => {
+  if (a.length !== b.length || a.length === 0) return false;
+  let diff = 0;
+  for (let index = 0; index < a.length; index += 1) {
+    diff |= a.charCodeAt(index) ^ b.charCodeAt(index);
+  }
+  return diff === 0;
+};
 
 const json = (status: number, body: Record<string, unknown>) =>
   new Response(JSON.stringify(body), {
@@ -93,9 +113,53 @@ Deno.serve(async (request: Request) => {
     return json(500, { error: 'server_not_configured' });
   }
 
+  /* CALLER AUTHORISATION — `verify_jwt` is NOT access control here.
+     The anon key is a valid project JWT and ships inside the public frontend
+     bundle, so before this check ANY visitor could drive the worker: verified
+     2026-09-03, an unauthenticated request carrying only the published anon key
+     returned HTTP 200. The docblock's "there is no client-callable path" was
+     simply untrue.
+
+     The worker is operator-only, so it requires the service role key it is
+     already given — no new secret to provision, and the scheduler presents
+     exactly this from Vault. Backoff already bounds what an early trigger can
+     do, but an endpoint that drives outbound mail should not be reachable from
+     a browser at all. */
+  const presented = (request.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '').trim();
+  if (!secretEquals(presented, serviceRoleKey)) {
+    return json(403, { error: 'forbidden' });
+  }
+
   const providerName = Deno.env.get('EMAIL_PROVIDER_NAME') ?? 'resend';
   const apiKey = Deno.env.get('RESEND_API_KEY') ?? '';
   const batchSize = Number.parseInt(Deno.env.get('EMAIL_DISPATCH_BATCH_SIZE') ?? '10', 10);
+
+  /* A MISSING CREDENTIAL IS A PRECONDITION, NOT A PER-JOB FAILURE — so nothing
+     is claimed and no attempt is spent.
+
+     The previous shape claimed the batch first and then settled every job as
+     `retryable`, which reads as harmless and is not:
+     `gellatti_mark_email_failed_v1` abandons a job once `attempts >=
+     max_attempts`, so five scheduled passes with no key would have burned
+     through `max_attempts = 5` and left real customer mail `abandoned` with
+     `next_attempt_at = null` — unreachable forever, destroyed by the very
+     retry loop meant to protect it.
+
+     Refusing to claim is what makes "it delivers itself once the key exists"
+     actually true, and it is also what keeps a scheduled dispatcher from
+     hammering the queue while an operator is still adding the secret. */
+  if (apiKey.trim() === '') {
+    const refusal = missingCredentialOutcome(providerName);
+    return json(200, {
+      claimed: 0,
+      sent: 0,
+      failed: 0,
+      skipped: 'missing_credential',
+      provider: providerName,
+      credentialConfigured: false,
+      detail: refusal.failureMessage,
+    });
+  }
 
   const db = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
@@ -114,11 +178,8 @@ Deno.serve(async (request: Request) => {
   let failed = 0;
 
   for (const job of jobs) {
-    // 2. PROVIDER — or a truthful refusal when no credential exists.
-    const outcome =
-      apiKey.trim() === ''
-        ? missingCredentialOutcome(providerName)
-        : await sendViaProvider(job, apiKey, providerName);
+    // 2. PROVIDER. The credential is guaranteed present by the guard above.
+    const outcome = await sendViaProvider(job, apiKey, providerName);
 
     // 3. SETTLE. `sent` requires the provider's message id; the DB constraint
     //    refuses anything else, so a false success cannot be written from here.
@@ -149,6 +210,6 @@ Deno.serve(async (request: Request) => {
     sent,
     failed,
     provider: providerName,
-    credentialConfigured: apiKey.trim() !== '',
+    credentialConfigured: true,
   });
 });
