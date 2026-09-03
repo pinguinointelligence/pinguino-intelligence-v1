@@ -194,6 +194,7 @@ changes the sentence; no number is fixed.
 | `pages/pro/workbenchOrigin.test.ts` | The origin contract, refresh-safety, forged values, global entry carries no origin |
 | `pages/pro/ProWorkspacePage.test.tsx` | `← Wróć` present for all three origins, absent for the global entry and for a forged one |
 | `pro-core/ProWorkbar.test.tsx` | The `••• → Wersje` link carries the right origin in both variants and all three sections, and is never a raw document link |
+| `pro-core/crownOffCorrectionNotice.test.tsx` (shell case) | Both simple PRO notices go through `GellattiNotice`; the graphite diagnostic shell is gone from the recalculation overlay |
 
 ### Owner matrix
 
@@ -258,10 +259,11 @@ sorbet-policy test.
    and types, not on an executed test. Driving
    `createOptimizePreviewWithServerAuthority` with a Main-capable fixture needs the heavy
    server-authority harness.
-3. **The stabilizer-limit dialog is not migrated.** On `staging` it is an inline
-   `WorkflowNotice`, not a dialog; the dialog is introduced by **#136** on a parallel
-   branch. When #136 lands, its dialog should adopt `GellattiNotice` rather than carrying
-   its own shell. Migrating it here would duplicate and conflict with that work.
+3. ~~The stabilizer-limit dialog is not migrated.~~ **Closed.** #136 landed on `staging`
+   mid-branch and was merged in; its stabilizer dialog was already white and already used
+   `DialogShell`, but hand-rolled its own headline/body/button. It now renders through
+   `GellattiNotice` and keeps its `stabilizer-limit-ok` acknowledgement id via the new
+   `primaryTestId`. It stays `informational` — reaching a ceiling is a fact, not an alarm.
 4. **Four local-only suite-load artefacts, proven pre-existing** — see §6. They run
    normally where `node_modules` is real.
 5. **No test CI runs on PRs** in this repository, so the suite evidence above is local.
