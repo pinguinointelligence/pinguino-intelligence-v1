@@ -46,8 +46,14 @@ describe('affiliate copy', () => {
     // Polish. D03 asks that attribution be EXPLAINED, not that one term be
     // used, so this accepts either — and still fails if the idea disappears.
     expect(affiliateCopyPl.hero.lede).toMatch(/przypisan|zostaje z Tobą/i);
+    // D03 asks that attribution be EXPLAINED, not that a particular word land
+    // in the title: the step is now titled "Zostaje z Gellatti" and explains
+    // the assignment in its body. Both are searched, so the requirement still
+    // fails if the idea disappears from the step entirely.
     expect(
-      affiliateCopyPl.recurring.steps.some((step) => /przypisan|zostaje z Tobą/i.test(step.title)),
+      affiliateCopyPl.recurring.steps.some((step) =>
+        /przypisan|zostaje z (Tobą|Gellatti)/i.test(`${step.title} ${step.body}`),
+      ),
     ).toBe(
       true,
     );
