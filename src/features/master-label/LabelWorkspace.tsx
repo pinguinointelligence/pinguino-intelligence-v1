@@ -364,7 +364,7 @@ export function LabelWorkspace({
   };
 
   if (busy && !profile) {
-    return <p className="py-8 text-sm text-stone-500">Sprawdzamy profil i zapis etykiety…</p>;
+    return <p className="py-8 text-sm text-[var(--g-text-secondary)]">Sprawdzamy profil i zapis etykiety…</p>;
   }
 
   if (!profile) {
@@ -389,7 +389,7 @@ export function LabelWorkspace({
               {logoUrl ? (
                 <img src={logoUrl} alt="Logo profilu etykiet" className="size-16 object-contain" />
               ) : (
-                <div className="grid size-16 place-items-center border border-ink/10 text-xs text-stone-400">
+                <div className="grid size-16 place-items-center border border-[var(--g-line)] text-xs text-[var(--g-text-muted)]">
                   Logo
                 </div>
               )}
@@ -397,7 +397,7 @@ export function LabelWorkspace({
                 <h2 className="text-xl font-semibold text-ink">
                   {profile.businessName || 'Nazwa firmy nieuzupełniona'}
                 </h2>
-                <p className="mt-1 text-sm text-stone-500">
+                <p className="mt-1 text-sm text-[var(--g-text-secondary)]">
                   {profileMarket?.label} · {profile.labelLanguages.join(', ').toUpperCase()}
                 </p>
               </div>
@@ -479,19 +479,19 @@ export function LabelWorkspace({
         {visibleView === 'label' ? (
           <>
             <Card padding="none" className="overflow-hidden rounded-[22px]">
-              <header className="flex flex-wrap items-start justify-between gap-4 border-b border-ink/10 p-4 sm:p-5">
+              <header className="flex flex-wrap items-start justify-between gap-4 border-b border-[var(--g-line)] p-4 sm:p-5">
                 <div>
                   <SectionLabel>Etykieta produktu</SectionLabel>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <h2 className="text-xl font-semibold text-ink">{productName}</h2>
                     <span
-                      className="rounded-full border border-ink/10 bg-stone-50 px-2.5 py-1 text-xs font-semibold"
+                      className="rounded-full border border-[var(--g-line)] bg-[var(--g-ivory)] px-2.5 py-1 text-xs font-semibold"
                       data-testid="active-label-market"
                     >
                       {activeMarket.flag} {activeMarket.label}
                     </span>
                   </div>
-                  <p className="mt-1 text-sm text-stone-500">
+                  <p className="mt-1 text-sm text-[var(--g-text-secondary)]">
                     Wybrany rynek wyznacza wymagane dane i układ wydruku
                   </p>
                 </div>
@@ -548,12 +548,12 @@ export function LabelWorkspace({
               </header>
               {!preflight?.readyForSystemPrint ? (
                 <div
-                  className="border-b border-ink/10 bg-[#f7f5f0] px-4 py-3"
+                  className="border-b border-[var(--g-line)] bg-[var(--g-ivory-deep)] px-4 py-3"
                   role="status"
                   data-testid="label-print-blocked-message"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-                    <span className="text-stone-700">
+                    <span className="text-[var(--g-ink)]">
                       Do wydruku brakuje: {unresolved.length}{' '}
                       {unresolved.length === 1 ? 'pozycja' : 'pozycji'}
                     </span>
@@ -570,7 +570,7 @@ export function LabelWorkspace({
                   </div>
                 </div>
               ) : null}
-              <div className="border-b border-ink/10 bg-white px-4 py-3 text-[11px] text-stone-600">
+              <div className="border-b border-[var(--g-line)] bg-white px-4 py-3 text-[11px] text-[var(--g-text-secondary)]">
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                   <strong className="text-ink">
                     {label.size.widthMm} × {label.size.heightMm} mm
@@ -586,7 +586,7 @@ export function LabelWorkspace({
                     {preflight?.geometry.xHeightMm.toFixed(2)} mm
                   </span>
                 </div>
-                <p className="mt-1 text-stone-500">
+                <p className="mt-1 text-[var(--g-text-secondary)]">
                   Podgląd, PDF i wydruk zachowują ten sam układ i wymiary. PDF możesz przygotować
                   bez podłączonej drukarki.
                 </p>
@@ -607,7 +607,7 @@ export function LabelWorkspace({
                     unit="€"
                   />
                 </dl>
-                <p className="mt-3 text-[11px] text-stone-500">Dane wewnętrzne · poza wydrukiem</p>
+                <p className="mt-3 text-[11px] text-[var(--g-text-secondary)]">Dane wewnętrzne · poza wydrukiem</p>
               </OverviewCard>
               <OverviewCard title="Baza techniczna">
                 <dl className="space-y-2 text-xs">
@@ -619,8 +619,8 @@ export function LabelWorkspace({
               </OverviewCard>
             </section>
 
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-ink/10 bg-white px-4 py-3">
-              <p className="text-xs text-stone-600">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-[var(--g-line)] bg-white px-4 py-3">
+              <p className="text-xs text-[var(--g-text-secondary)]">
                 {saved
                   ? `Etykieta partii zapisana · ${new Date(saved.createdAt).toLocaleString('pl-PL')}`
                   : 'Finalny zapis zachowa rynek, treść, LOT i logo dla tej partii.'}
@@ -690,7 +690,7 @@ export function LabelWorkspace({
       {settingsLiveHere ? (
       <nav
         aria-label="Widoki workspace etykiety"
-        className="sticky bottom-[var(--label-workspace-bottom-inset,0px)] z-20 flex min-h-11 items-center justify-center gap-2 border-t border-ink/8 bg-white/95 px-4 backdrop-blur"
+        className="sticky bottom-[var(--label-workspace-bottom-inset,0px)] z-20 flex min-h-11 items-center justify-center gap-2 border-t border-[var(--g-line-quiet)] bg-white/95 px-4 backdrop-blur"
         data-testid="label-workspace-dots"
       >
         {(
@@ -726,7 +726,7 @@ export function LabelWorkspace({
               aria-hidden
               className={cn(
                 'block size-1.5 rounded-full border border-ink/35 transition-[width,background-color,border-color]',
-                visibleView === view && 'w-4 border-[#b58b32] bg-[#b58b32]',
+                visibleView === view && 'w-4 border-[var(--g-orange)] bg-[var(--g-orange)]',
               )}
             />
           </button>
@@ -743,7 +743,7 @@ export function LabelWorkspace({
 
 function OverviewCard({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <article className="min-w-0 rounded-[18px] border border-ink/10 bg-white p-4 shadow-pro-e0">
+    <article className="min-w-0 rounded-[18px] border border-[var(--g-line)] bg-white p-4 shadow-pro-e0">
       <h3 className="mb-3 text-sm font-semibold text-ink">{title}</h3>
       {children}
     </article>
@@ -761,7 +761,7 @@ function OverviewMetric({
 }) {
   return (
     <div className="flex justify-between gap-3">
-      <dt className="text-stone-600">{label}</dt>
+      <dt className="text-[var(--g-text-secondary)]">{label}</dt>
       <dd className="font-mono tabular-nums">
         {value == null ? '—' : `${value.toFixed(2)} ${unit}`}
       </dd>
@@ -843,7 +843,7 @@ function ProfileEditor({
           Dane firmy i trwałość · używane ponownie
         </summary>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          <label className="text-xs text-stone-600">
+          <label className="text-xs text-[var(--g-text-secondary)]">
             Kraj / kod kraju
             <input
               value={draft.facilityDefaults.countryCode}
@@ -859,7 +859,7 @@ function ProfileEditor({
               className={SETTINGS_INPUT_CLASS}
             />
           </label>
-          <label className="text-xs text-stone-600">
+          <label className="text-xs text-[var(--g-text-secondary)]">
             Strona internetowa
             <input
               value={draft.facilityDefaults.website ?? ''}
@@ -875,7 +875,7 @@ function ProfileEditor({
               className={SETTINGS_INPUT_CLASS}
             />
           </label>
-          <label className="text-xs text-stone-600">
+          <label className="text-xs text-[var(--g-text-secondary)]">
             Kontakt
             <input
               value={draft.facilityDefaults.contact}
@@ -891,7 +891,7 @@ function ProfileEditor({
               className={SETTINGS_INPUT_CLASS}
             />
           </label>
-          <label className="text-xs text-stone-600">
+          <label className="text-xs text-[var(--g-text-secondary)]">
             Importer · nazwa
             <input
               value={draft.facilityDefaults.importerName ?? ''}
@@ -907,7 +907,7 @@ function ProfileEditor({
               className={SETTINGS_INPUT_CLASS}
             />
           </label>
-          <label className="text-xs text-stone-600">
+          <label className="text-xs text-[var(--g-text-secondary)]">
             Importer · kod kraju
             <input
               value={draft.facilityDefaults.importerCountryCode ?? ''}
@@ -923,7 +923,7 @@ function ProfileEditor({
               className={SETTINGS_INPUT_CLASS}
             />
           </label>
-          <label className="text-xs text-stone-600 sm:col-span-2">
+          <label className="text-xs text-[var(--g-text-secondary)] sm:col-span-2">
             Importer · adres fizyczny
             <input
               value={draft.facilityDefaults.importerAddress ?? ''}
@@ -939,7 +939,7 @@ function ProfileEditor({
               className={SETTINGS_INPUT_CLASS}
             />
           </label>
-          <label className="text-xs text-stone-600">
+          <label className="text-xs text-[var(--g-text-secondary)]">
             Dostawca / dystrybutor · nazwa
             <input
               value={draft.facilityDefaults.distributorName ?? ''}
@@ -955,7 +955,7 @@ function ProfileEditor({
               className={SETTINGS_INPUT_CLASS}
             />
           </label>
-          <label className="text-xs text-stone-600">
+          <label className="text-xs text-[var(--g-text-secondary)]">
             Dostawca / dystrybutor · kod kraju
             <input
               value={draft.facilityDefaults.distributorCountryCode ?? ''}
@@ -971,7 +971,7 @@ function ProfileEditor({
               className={SETTINGS_INPUT_CLASS}
             />
           </label>
-          <label className="text-xs text-stone-600 sm:col-span-2">
+          <label className="text-xs text-[var(--g-text-secondary)] sm:col-span-2">
             Dostawca / dystrybutor · adres fizyczny
             <input
               value={draft.facilityDefaults.distributorAddress ?? ''}
@@ -987,7 +987,7 @@ function ProfileEditor({
               className={SETTINGS_INPUT_CLASS}
             />
           </label>
-          <label className="text-xs text-stone-600">
+          <label className="text-xs text-[var(--g-text-secondary)]">
             Rola firmy
             <select
               value={draft.facilityDefaults.operatorRole ?? 'producer'}
@@ -1013,7 +1013,7 @@ function ProfileEditor({
               <option value="supplier">Dostawca</option>
             </select>
           </label>
-          <label className="text-xs text-stone-600 sm:col-span-2">
+          <label className="text-xs text-[var(--g-text-secondary)] sm:col-span-2">
             Źródło i podstawa daty trwałości
             <input
               value={draft.shelfLifeAuthority.authority}
@@ -1135,14 +1135,14 @@ function CompactRunLabelSettings({
   return (
     <Card
       padding="none"
-      className="mx-auto max-w-3xl overflow-hidden rounded-[22px] border-ink/10 shadow-pro-e1"
+      className="mx-auto max-w-3xl overflow-hidden rounded-[22px] border-[var(--g-line)] shadow-pro-e1"
       data-testid="label-settings-view"
     >
-      <header className="border-b border-ink/10 bg-white px-4 py-5 sm:px-6">
+      <header className="border-b border-[var(--g-line)] bg-white px-4 py-5 sm:px-6">
         <button
           type="button"
           onClick={onClose}
-          className="pro-focus-ring -ml-1 min-h-11 px-1 text-xs font-semibold text-stone-600 hover:text-ink"
+          className="pro-focus-ring -ml-1 min-h-11 px-1 text-xs font-semibold text-[var(--g-text-secondary)] hover:text-ink"
         >
           ← Etykieta
         </button>
@@ -1150,14 +1150,14 @@ function CompactRunLabelSettings({
         <h2 className="mt-1 text-2xl font-semibold tracking-[-0.03em] text-ink">
           Profil, format i drukarka
         </h2>
-        <p className="mt-1 text-sm text-stone-600">
+        <p className="mt-1 text-sm text-[var(--g-text-secondary)]">
           Tylko konfiguracja. Brakujące dane produktu zawsze wracają do kroku 1.
         </p>
       </header>
 
       <div className="px-4 sm:px-6">
         <SettingsSection title="Rynek i język">
-          <label className="block text-xs font-medium text-stone-600">
+          <label className="block text-xs font-medium text-[var(--g-text-secondary)]">
             Rynek sprzedaży
             <select
               data-testid="label-market-select"
@@ -1174,7 +1174,7 @@ function CompactRunLabelSettings({
             </select>
           </label>
           {draft.market === 'AU_NZ' ? (
-            <p className="mt-2 text-xs text-stone-600" data-testid="au-nz-shared-profile-note">
+            <p className="mt-2 text-xs text-[var(--g-text-secondary)]" data-testid="au-nz-shared-profile-note">
               Jeden wspólny profil. Automatycznie stosuje bezpieczny zestaw wymagań Australii i
               Nowej Zelandii.
             </p>
@@ -1184,7 +1184,7 @@ function CompactRunLabelSettings({
               ETYKIETA WEWNĘTRZNA / INFORMACYJNA · NIEZWERYFIKOWANA DO SPRZEDAŻY DETALICZNEJ
             </p>
           ) : null}
-          <label className="mt-3 block text-xs font-medium text-stone-600">
+          <label className="mt-3 block text-xs font-medium text-[var(--g-text-secondary)]">
             Języki etykiety · po przecinku
             <input
               value={draft.labelLanguages.join(', ')}
@@ -1212,7 +1212,7 @@ function CompactRunLabelSettings({
               'pro-focus-ring min-h-11 rounded-[10px] border px-3 text-xs font-semibold',
               draft.layoutMode === 'auto'
                 ? 'border-ink bg-ink text-white'
-                : 'border-ink/15 bg-white text-ink',
+                : 'border-[var(--g-line)] bg-white text-ink',
             )}
             onClick={() => setDraft(applyAutoLabelLayout(draft))}
           >
@@ -1229,7 +1229,7 @@ function CompactRunLabelSettings({
               })
             }
           />
-          <details className="mt-3 rounded-[12px] border border-ink/10 bg-white p-3">
+          <details className="mt-3 rounded-[12px] border border-[var(--g-line)] bg-white p-3">
             <summary className="cursor-pointer text-xs font-semibold text-ink">
               Własny rozmiar i ustawienia zaawansowane
             </summary>
@@ -1258,7 +1258,7 @@ function CompactRunLabelSettings({
           </details>
         </SettingsSection>
 
-        <label className="my-5 flex min-h-12 items-center gap-3 rounded-[12px] border border-ink/10 bg-stone-50 px-3 text-xs text-ink">
+        <label className="my-5 flex min-h-12 items-center gap-3 rounded-[12px] border border-[var(--g-line)] bg-[var(--g-ivory)] px-3 text-xs text-ink">
           <input
             type="checkbox"
             className="size-5 accent-ink"
@@ -1269,7 +1269,7 @@ function CompactRunLabelSettings({
         </label>
       </div>
 
-      <footer className="sticky bottom-11 z-10 grid grid-cols-2 gap-2 border-t border-ink/10 bg-white/95 p-4 backdrop-blur sm:px-6">
+      <footer className="sticky bottom-11 z-10 grid grid-cols-2 gap-2 border-t border-[var(--g-line)] bg-white/95 p-4 backdrop-blur sm:px-6">
         <Button variant="ghost" onClick={onClose}>
           Wstecz
         </Button>
@@ -1304,7 +1304,7 @@ function CompactPrinterFields({
   const profile = PRINTER_PROFILES[value.profileId];
   return (
     <div className="mt-4 grid gap-3 sm:grid-cols-2">
-      <label className="text-xs font-medium text-stone-600">
+      <label className="text-xs font-medium text-[var(--g-text-secondary)]">
         Drukarka
         <select
           value={QUICK_PRINTER_IDS.includes(value.profileId) ? value.profileId : 'more'}
@@ -1324,7 +1324,7 @@ function CompactPrinterFields({
           <option value="more">Więcej drukarek…</option>
         </select>
       </label>
-      <label className="text-xs font-medium text-stone-600">
+      <label className="text-xs font-medium text-[var(--g-text-secondary)]">
         Format
         <select
           value={value.presetId ?? 'auto'}
@@ -1356,9 +1356,9 @@ function CompactPrinterFields({
           ))}
         </select>
       </label>
-      <details className="sm:col-span-2 rounded-[10px] border border-ink/10 p-3">
+      <details className="sm:col-span-2 rounded-[10px] border border-[var(--g-line)] p-3">
         <summary className="cursor-pointer text-xs font-semibold text-ink">Więcej drukarek</summary>
-        <label className="mt-2 block text-xs font-medium text-stone-600">
+        <label className="mt-2 block text-xs font-medium text-[var(--g-text-secondary)]">
           Pełna lista
           <select
             value={value.profileId}
@@ -1407,14 +1407,14 @@ export function LegacyRunLabelSettings({
   return (
     <Card
       padding="none"
-      className="overflow-hidden rounded-[18px] border-ink/10 shadow-pro-e0"
+      className="overflow-hidden rounded-[18px] border-[var(--g-line)] shadow-pro-e0"
       data-testid="label-settings-view"
     >
-      <header className="border-b border-ink/10 bg-[#fffdf8] px-4 py-4 sm:px-5">
+      <header className="border-b border-[var(--g-line)] bg-[var(--g-ivory)] px-4 py-4 sm:px-5">
         <button
           type="button"
           onClick={onClose}
-          className="pro-focus-ring -ml-1 min-h-11 px-1 text-xs font-semibold text-stone-600 transition-colors hover:text-ink"
+          className="pro-focus-ring -ml-1 min-h-11 px-1 text-xs font-semibold text-[var(--g-text-secondary)] transition-colors hover:text-ink"
         >
           ← Etykieta
         </button>
@@ -1424,12 +1424,12 @@ export function LegacyRunLabelSettings({
             <h2 className="mt-1 text-xl font-semibold tracking-[-0.02em] text-ink">
               Profil, format i drukarka
             </h2>
-            <p className="mt-1 text-sm leading-relaxed text-stone-600">
+            <p className="mt-1 text-sm leading-relaxed text-[var(--g-text-secondary)]">
               Konfiguracja wydruku i opcjonalnych elementów. Obowiązkowe dane uzupełnia się w kroku
               1
             </p>
           </div>
-          <span className="rounded-full border border-ink/10 bg-white px-2.5 py-1 text-xs font-semibold text-ink">
+          <span className="rounded-full border border-[var(--g-line)] bg-white px-2.5 py-1 text-xs font-semibold text-ink">
             {marketProfile(draft.market).flag} {marketProfile(draft.market).label}
           </span>
         </div>
@@ -1438,7 +1438,7 @@ export function LegacyRunLabelSettings({
       <div className="px-4 sm:px-5">
         <SettingsSection title="Rynek i profil">
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className="text-xs font-medium text-stone-600">
+            <label className="text-xs font-medium text-[var(--g-text-secondary)]">
               Cel etykiety
               <select
                 value={draft.purpose}
@@ -1455,7 +1455,7 @@ export function LegacyRunLabelSettings({
                 <option value="display_gelateria">Ekspozycja / gelateria</option>
               </select>
             </label>
-            <label className="text-xs font-medium text-stone-600">
+            <label className="text-xs font-medium text-[var(--g-text-secondary)]">
               Sposób sprzedaży
               <select
                 value={draft.packagingContext}
@@ -1475,7 +1475,7 @@ export function LegacyRunLabelSettings({
             </label>
           </div>
           <div className="mt-3">
-            <span className="text-xs font-medium text-stone-600">Jurysdykcja / profil</span>
+            <span className="text-xs font-medium text-[var(--g-text-secondary)]">Jurysdykcja / profil</span>
             <div className="mt-2 grid grid-cols-2 gap-1.5 min-[480px]:grid-cols-3">
               {MARKET_CODES.map((code) => (
                 <button
@@ -1485,7 +1485,7 @@ export function LegacyRunLabelSettings({
                     'pro-focus-ring grid min-h-12 content-center rounded-[10px] border px-2 py-1 text-xs font-semibold transition-colors',
                     draft.market === code
                       ? 'border-ink bg-ink text-white'
-                      : 'border-ink/12 bg-white text-ink hover:bg-stone-50',
+                      : 'border-[var(--g-line)] bg-white text-ink hover:bg-[var(--g-ivory)]',
                   )}
                   data-market-active={draft.market === code ? 'true' : undefined}
                   title={MARKET_PROFILES[code].jurisdiction}
@@ -1523,7 +1523,7 @@ export function LegacyRunLabelSettings({
               ))}
             </div>
           </div>
-          <label className="mt-3 block text-xs font-medium text-stone-600">
+          <label className="mt-3 block text-xs font-medium text-[var(--g-text-secondary)]">
             Języki · po przecinku
             <input
               value={draft.labelLanguages.join(', ')}
@@ -1544,7 +1544,7 @@ export function LegacyRunLabelSettings({
         </SettingsSection>
 
         <SettingsSection title="Marka i elementy opcjonalne">
-          <label className="block text-xs font-medium text-stone-600">
+          <label className="block text-xs font-medium text-[var(--g-text-secondary)]">
             Marka / nazwa firmy
             <input
               value={draft.businessName}
@@ -1552,11 +1552,11 @@ export function LegacyRunLabelSettings({
               className={SETTINGS_INPUT_CLASS}
             />
           </label>
-          <label className="mt-3 flex min-h-14 items-center gap-3 rounded-[12px] border border-ink/10 bg-[#fffdf8] p-3 text-xs text-stone-600">
+          <label className="mt-3 flex min-h-14 items-center gap-3 rounded-[12px] border border-[var(--g-line)] bg-[var(--g-ivory)] p-3 text-xs text-[var(--g-text-secondary)]">
             {logoUrl ? (
               <img src={logoUrl} alt="Aktualne logo" className="size-12 object-contain" />
             ) : (
-              <span className="grid size-12 shrink-0 place-items-center rounded-[10px] border border-ink/10 bg-white text-[10px] text-stone-400">
+              <span className="grid size-12 shrink-0 place-items-center rounded-[10px] border border-[var(--g-line)] bg-white text-[10px] text-[var(--g-text-muted)]">
                 Logo
               </span>
             )}
@@ -1584,7 +1584,7 @@ export function LegacyRunLabelSettings({
           />
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             {draft.enabledOptionalFields.includes('origin') ? (
-              <label className="text-xs font-medium text-stone-600">
+              <label className="text-xs font-medium text-[var(--g-text-secondary)]">
                 Pochodzenie
                 <input
                   value={draft.origin[primaryLanguage] ?? ''}
@@ -1594,7 +1594,7 @@ export function LegacyRunLabelSettings({
               </label>
             ) : null}
             {draft.enabledOptionalFields.includes('customer_note') ? (
-              <label className="text-xs font-medium text-stone-600">
+              <label className="text-xs font-medium text-[var(--g-text-secondary)]">
                 Nota dla klienta
                 <input
                   value={draft.customerNote[primaryLanguage] ?? ''}
@@ -1606,7 +1606,7 @@ export function LegacyRunLabelSettings({
               </label>
             ) : null}
             {draft.enabledOptionalFields.includes('short_description') ? (
-              <label className="text-xs font-medium text-stone-600">
+              <label className="text-xs font-medium text-[var(--g-text-secondary)]">
                 Krótki opis
                 <input
                   value={draft.shortDescription?.[primaryLanguage] ?? ''}
@@ -1618,7 +1618,7 @@ export function LegacyRunLabelSettings({
               </label>
             ) : null}
             {draft.enabledOptionalFields.includes('qr_code') ? (
-              <label className="text-xs font-medium text-stone-600">
+              <label className="text-xs font-medium text-[var(--g-text-secondary)]">
                 Wartość QR
                 <input
                   value={draft.qrCodeValue ?? ''}
@@ -1630,7 +1630,7 @@ export function LegacyRunLabelSettings({
               </label>
             ) : null}
             {draft.enabledOptionalFields.includes('gtin') ? (
-              <label className="text-xs font-medium text-stone-600">
+              <label className="text-xs font-medium text-[var(--g-text-secondary)]">
                 Potwierdzony GTIN / EAN
                 <input
                   inputMode="numeric"
@@ -1650,7 +1650,7 @@ export function LegacyRunLabelSettings({
               'pro-focus-ring min-h-11 rounded-[10px] border px-3 text-xs font-semibold',
               draft.layoutMode === 'auto'
                 ? 'border-ink bg-ink text-white'
-                : 'border-ink/15 bg-white text-ink',
+                : 'border-[var(--g-line)] bg-white text-ink',
             )}
             onClick={() => setDraft(applyAutoLabelLayout(draft))}
           >
@@ -1667,7 +1667,7 @@ export function LegacyRunLabelSettings({
               })
             }
           />
-          <details className="mt-3 rounded-[12px] border border-ink/10 bg-white p-3">
+          <details className="mt-3 rounded-[12px] border border-[var(--g-line)] bg-white p-3">
             <summary className="cursor-pointer text-xs font-semibold text-ink">
               Zaawansowane · własne wymiary i kształt
             </summary>
@@ -1696,7 +1696,7 @@ export function LegacyRunLabelSettings({
           </details>
         </SettingsSection>
 
-        <label className="my-5 flex min-h-12 items-center gap-3 rounded-[12px] border border-ink/10 bg-[#fffdf8] px-3 text-xs text-ink">
+        <label className="my-5 flex min-h-12 items-center gap-3 rounded-[12px] border border-[var(--g-line)] bg-[var(--g-ivory)] px-3 text-xs text-ink">
           <input
             type="checkbox"
             className="size-5 accent-ink"
@@ -1707,7 +1707,7 @@ export function LegacyRunLabelSettings({
         </label>
       </div>
 
-      <footer className="sticky bottom-11 z-10 grid grid-cols-2 gap-2 border-t border-ink/10 bg-white/95 p-4 backdrop-blur sm:px-5">
+      <footer className="sticky bottom-11 z-10 grid grid-cols-2 gap-2 border-t border-[var(--g-line)] bg-white/95 p-4 backdrop-blur sm:px-5">
         <Button variant="ghost" onClick={onClose}>
           Wróć do etykiety
         </Button>
@@ -1806,22 +1806,22 @@ function CompactRunLabelEditor({
   return (
     <Card
       padding="none"
-      className="mx-auto max-w-3xl overflow-hidden rounded-[22px] border-ink/10 shadow-pro-e1"
+      className="mx-auto max-w-3xl overflow-hidden rounded-[22px] border-[var(--g-line)] shadow-pro-e1"
       data-testid="label-data-intake"
       data-label-market={draft.market}
     >
-      <header className="border-b border-ink/10 bg-white px-4 py-5 sm:px-6">
+      <header className="border-b border-[var(--g-line)] bg-white px-4 py-5 sm:px-6">
         <div className="flex items-start justify-between gap-4">
           <div>
             <SectionLabel>Dane do etykiety</SectionLabel>
             <h2 className="mt-1 text-2xl font-semibold tracking-[-0.03em] text-ink">
               Dokończ etykietę
             </h2>
-            <p className="mt-1 max-w-xl text-sm leading-relaxed text-stone-600">
+            <p className="mt-1 max-w-xl text-sm leading-relaxed text-[var(--g-text-secondary)]">
               Pokazujemy tylko informacje, których nie możemy bezpiecznie uzupełnić z tej partii.
             </p>
           </div>
-          <span className="shrink-0 rounded-full border border-ink/10 bg-stone-50 px-2.5 py-1 text-xs font-semibold">
+          <span className="shrink-0 rounded-full border border-[var(--g-line)] bg-[var(--g-ivory)] px-2.5 py-1 text-xs font-semibold">
             {marketProfile(draft.market).flag} {marketProfile(draft.market).label}
           </span>
         </div>
@@ -1843,14 +1843,14 @@ function CompactRunLabelEditor({
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
             {completedFacts.map(([name, ready]) => (
               <div key={name} className="flex items-center justify-between gap-3 text-xs">
-                <span className="text-stone-600">
+                <span className="text-[var(--g-text-secondary)]">
                   {name === 'Nazwa produktu'
                     ? primaryText(draft.productName, draft.labelLanguages) || name
                     : name === 'Rzeczywista masa partii'
                       ? `${name} · ${actualMass} g`
                       : name}
                 </span>
-                <span className={ready ? 'font-semibold text-status-success' : 'text-[#8a5b23]'}>
+                <span className={ready ? 'font-semibold text-status-success' : 'text-[var(--g-attention-ink)]'}>
                   {ready ? '✓ GOTOWE' : 'WYMAGA DANYCH'}
                 </span>
               </div>
@@ -1861,7 +1861,7 @@ function CompactRunLabelEditor({
         <section
           className={cn(
             'rounded-[16px] border bg-white p-4',
-            missing('net_quantity') ? 'border-[#a96832]/55 bg-[#fffaf4]' : 'border-ink/10',
+            missing('net_quantity') ? 'border-[var(--g-attention-ink)]/55 bg-[var(--g-attention-surface)]' : 'border-[var(--g-line)]',
           )}
           data-label-field="net_quantity"
           data-missing-required={missing('net_quantity') ? 'true' : undefined}
@@ -1869,7 +1869,7 @@ function CompactRunLabelEditor({
           <div className="flex items-start justify-between gap-3">
             <div>
               <h3 className="text-sm font-semibold text-ink">Opakowanie</h3>
-              <p className="mt-0.5 text-xs text-stone-600">
+              <p className="mt-0.5 text-xs text-[var(--g-text-secondary)]">
                 Domyślnie cała zakończona partia jest jednym opakowaniem.
               </p>
             </div>
@@ -1879,7 +1879,7 @@ function CompactRunLabelEditor({
               <RequiredBadge />
             )}
           </div>
-          <label className="mt-3 flex min-h-11 items-center gap-3 rounded-[12px] bg-stone-50 px-3 text-sm font-medium text-ink">
+          <label className="mt-3 flex min-h-11 items-center gap-3 rounded-[12px] bg-[var(--g-ivory)] px-3 text-sm font-medium text-ink">
             <input
               type="radio"
               name="package-mode"
@@ -1893,7 +1893,7 @@ function CompactRunLabelEditor({
             Cała partia = jedno opakowanie
           </label>
           {!splitPackages ? (
-            <label className="mt-3 block text-xs font-medium text-stone-600">
+            <label className="mt-3 block text-xs font-medium text-[var(--g-text-secondary)]">
               Masa netto · g
               <input
                 data-testid="whole-batch-package-mass"
@@ -1923,7 +1923,7 @@ function CompactRunLabelEditor({
           </label>
           {splitPackages ? (
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              <label className="text-xs font-medium text-stone-600">
+              <label className="text-xs font-medium text-[var(--g-text-secondary)]">
                 Masa jednego opakowania · g
                 <input
                   type="number"
@@ -1934,7 +1934,7 @@ function CompactRunLabelEditor({
                   className={SETTINGS_INPUT_CLASS}
                 />
               </label>
-              <label className="text-xs font-medium text-stone-600">
+              <label className="text-xs font-medium text-[var(--g-text-secondary)]">
                 Liczba opakowań
                 <input
                   type="number"
@@ -1952,7 +1952,7 @@ function CompactRunLabelEditor({
             </div>
           ) : null}
           {draft.market === 'CA' ? (
-            <label className="mt-3 block text-xs font-medium text-stone-600">
+            <label className="mt-3 block text-xs font-medium text-[var(--g-text-secondary)]">
               Obowiązkowa objętość netto dla Canada · mL
               <input
                 type="number"
@@ -1984,7 +1984,7 @@ function CompactRunLabelEditor({
         {missing('jurisdiction_context') ? (
           <MissingDataCard field="jurisdiction_context" title="Kontekst sprzedaży">
             {draft.market === 'EU' ? (
-              <label className="block text-xs font-medium text-stone-600">
+              <label className="block text-xs font-medium text-[var(--g-text-secondary)]">
                 Docelowe państwo członkowskie
                 <select
                   value={draft.jurisdictionContext?.euDestinationCountryCode ?? ''}
@@ -2017,7 +2017,7 @@ function CompactRunLabelEditor({
                 </select>
               </label>
             ) : draft.market === 'UK' ? (
-              <label className="block text-xs font-medium text-stone-600">
+              <label className="block text-xs font-medium text-[var(--g-text-secondary)]">
                 Obszar sprzedaży
                 <select
                   value={draft.jurisdictionContext?.ukRegion ?? 'unresolved'}
@@ -2041,7 +2041,7 @@ function CompactRunLabelEditor({
                 </select>
               </label>
             ) : draft.market === 'US' ? (
-              <label className="block text-xs font-medium text-stone-600">
+              <label className="block text-xs font-medium text-[var(--g-text-secondary)]">
                 Sposób sprzedaży
                 <select
                   value={draft.jurisdictionContext?.usSaleContext ?? 'unresolved'}
@@ -2092,7 +2092,7 @@ function CompactRunLabelEditor({
         {missing('operator') ? <MissingOperatorFields value={draft} onChange={setDraft} /> : null}
         {missing('date_mark') ? (
           <MissingDataCard field="date_mark" title="Data trwałości">
-            <label className="block text-xs font-medium text-stone-600">
+            <label className="block text-xs font-medium text-[var(--g-text-secondary)]">
               Najlepiej spożyć przed
               <input
                 type="date"
@@ -2122,7 +2122,7 @@ function CompactRunLabelEditor({
         ) : null}
         {missing('production_date') ? (
           <MissingDataCard field="production_date" title="Data produkcji">
-            <label className="block text-xs font-medium text-stone-600">
+            <label className="block text-xs font-medium text-[var(--g-text-secondary)]">
               Data zakończenia produkcji
               <input
                 type="date"
@@ -2141,7 +2141,7 @@ function CompactRunLabelEditor({
         ) : null}
         {missing('lot') ? (
           <MissingDataCard field="lot" title="Identyfikator partii Nr partii">
-            <label className="block text-xs font-medium text-stone-600">
+            <label className="block text-xs font-medium text-[var(--g-text-secondary)]">
               LOT
               <input
                 value={draft.lotCode}
@@ -2235,7 +2235,7 @@ function CompactRunLabelEditor({
 
         {missing('languages') ? (
           <MissingDataCard field="languages" title="Wymagane języki etykiety">
-            <label className="block text-xs font-medium text-stone-600">
+            <label className="block text-xs font-medium text-[var(--g-text-secondary)]">
               Kody języków · po przecinku
               <input
                 value={draft.labelLanguages.join(', ')}
@@ -2266,15 +2266,15 @@ function CompactRunLabelEditor({
               className="rounded-[14px] border border-[#9b5f55]/35 bg-[#fff7f5] p-4"
             >
               <strong className="text-sm text-[#7e4037]">{item.label}</strong>
-              <p className="mt-1 text-xs leading-relaxed text-stone-700">{item.message}</p>
+              <p className="mt-1 text-xs leading-relaxed text-[var(--g-ink)]">{item.message}</p>
             </div>
           ))}
       </div>
 
-      <footer className="sticky bottom-11 z-10 border-t border-ink/10 bg-white/95 p-4 backdrop-blur sm:px-6">
+      <footer className="sticky bottom-11 z-10 border-t border-[var(--g-line)] bg-white/95 p-4 backdrop-blur sm:px-6">
         {blockers.length > 0 ? (
           <p
-            className="mb-2 text-center text-xs text-stone-600"
+            className="mb-2 text-center text-xs text-[var(--g-text-secondary)]"
             data-testid="label-cta-blocked-reason"
           >
             {blockers[0]?.message}
@@ -2306,7 +2306,7 @@ function MissingDataCard({
     <section
       data-label-field={field}
       data-missing-required="true"
-      className="rounded-[16px] border border-[#a96832]/55 bg-[#fffaf4] p-4"
+      className="rounded-[16px] border border-[var(--g-attention-ink)]/55 bg-[var(--g-attention-surface)] p-4"
     >
       <div className="mb-3 flex items-center justify-between gap-3">
         <h3 className="text-sm font-semibold text-ink">{title}</h3>
@@ -2334,7 +2334,7 @@ function MissingTextFields({
     <MissingDataCard field={field} title={title}>
       <div className="grid gap-3 sm:grid-cols-2">
         {languages.map((language) => (
-          <label key={language} className="text-xs font-medium text-stone-600">
+          <label key={language} className="text-xs font-medium text-[var(--g-text-secondary)]">
             {title} · {language.toUpperCase()}
             <input
               value={values[language] ?? ''}
@@ -2363,7 +2363,7 @@ function MissingOperatorFields({
       title={needsDistributor ? 'Dostawca · Australia / Nowa Zelandia' : 'Dane firmy odpowiedzialnej'}
     >
       <div className="grid gap-3 sm:grid-cols-2">
-        <label className="text-xs font-medium text-stone-600">
+        <label className="text-xs font-medium text-[var(--g-text-secondary)]">
           Operator / producent
           <input
             value={value.operator.operatorName}
@@ -2376,7 +2376,7 @@ function MissingOperatorFields({
             className={SETTINGS_INPUT_CLASS}
           />
         </label>
-        <label className="text-xs font-medium text-stone-600">
+        <label className="text-xs font-medium text-[var(--g-text-secondary)]">
           Adres operatora
           <input
             value={value.operator.address}
@@ -2389,7 +2389,7 @@ function MissingOperatorFields({
             className={SETTINGS_INPUT_CLASS}
           />
         </label>
-        <label className="text-xs font-medium text-stone-600">
+        <label className="text-xs font-medium text-[var(--g-text-secondary)]">
           Kod kraju operatora
           <input
             maxLength={2}
@@ -2408,7 +2408,7 @@ function MissingOperatorFields({
         </label>
         {needsImporter ? (
           <>
-            <label className="text-xs font-medium text-stone-600">
+            <label className="text-xs font-medium text-[var(--g-text-secondary)]">
               Importer / dealer na rynku
               <input
                 value={value.operator.importerName ?? ''}
@@ -2421,7 +2421,7 @@ function MissingOperatorFields({
                 className={SETTINGS_INPUT_CLASS}
               />
             </label>
-            <label className="text-xs font-medium text-stone-600">
+            <label className="text-xs font-medium text-[var(--g-text-secondary)]">
               Adres importera / dealera
               <input
                 value={value.operator.importerAddress ?? ''}
@@ -2434,7 +2434,7 @@ function MissingOperatorFields({
                 className={SETTINGS_INPUT_CLASS}
               />
             </label>
-            <label className="text-xs font-medium text-stone-600">
+            <label className="text-xs font-medium text-[var(--g-text-secondary)]">
               Kod kraju importera
               <input
                 maxLength={2}
@@ -2455,7 +2455,7 @@ function MissingOperatorFields({
         ) : null}
         {needsDistributor ? (
           <>
-            <label className="text-xs font-medium text-stone-600">
+            <label className="text-xs font-medium text-[var(--g-text-secondary)]">
               Dostawca / dystrybutor
               <input
                 value={value.operator.distributorName ?? ''}
@@ -2468,7 +2468,7 @@ function MissingOperatorFields({
                 className={SETTINGS_INPUT_CLASS}
               />
             </label>
-            <label className="text-xs font-medium text-stone-600">
+            <label className="text-xs font-medium text-[var(--g-text-secondary)]">
               Adres dostawcy
               <input
                 value={value.operator.distributorAddress ?? ''}
@@ -2481,7 +2481,7 @@ function MissingOperatorFields({
                 className={SETTINGS_INPUT_CLASS}
               />
             </label>
-            <label className="text-xs font-medium text-stone-600">
+            <label className="text-xs font-medium text-[var(--g-text-secondary)]">
               Kod kraju dostawcy
               <input
                 maxLength={2}
@@ -2520,7 +2520,7 @@ function CompactMarketNutritionFields({
   const updateFact = (field: keyof typeof facts, raw: string) =>
     onChange({ ...value, regulatoryNutrition: { ...facts, [field]: num(raw) } });
   const numberField = (field: keyof typeof facts, label: string) => (
-    <label key={field} className="text-xs font-medium text-stone-600">
+    <label key={field} className="text-xs font-medium text-[var(--g-text-secondary)]">
       {label}
       <input
         type="number"
@@ -2576,21 +2576,21 @@ function CompactMarketNutritionFields({
       field="market_nutrition"
       title={`Dane do tabeli · ${marketProfile(value.market).label}`}
     >
-      <p className="mb-3 text-xs leading-relaxed text-stone-600">
+      <p className="mb-3 text-xs leading-relaxed text-[var(--g-text-secondary)]">
         Tylko pola, których nie ma w finalnych danych partii lub profilu rynku.
       </p>
       <div className="grid gap-3 sm:grid-cols-2">
         {sourceMissing && saturatedFatAuthorityMissing ? (
           <div className="grid gap-2 sm:col-span-2">
             {value.saturatedFatAuthority?.missingIngredientNames.length ? (
-              <p className="text-[11px] leading-relaxed text-[#7a4a25]">
+              <p className="text-[11px] leading-relaxed text-[var(--g-attention-ink)]">
                 Brak potwierdzonych danych składników:{' '}
                 {value.saturatedFatAuthority.missingIngredientNames.join(', ')}. Wymagana jest
                 potwierdzona wartość zamiast wartości zastępczej.
               </p>
             ) : null}
             <div className="grid gap-3 sm:grid-cols-2">
-              <label className="text-xs font-medium text-stone-600">
+              <label className="text-xs font-medium text-[var(--g-text-secondary)]">
                 Tłuszcze nasycone · g / 100 g produktu
                 <input
                   data-label-nutrition-source="saturated_fat_g"
@@ -2602,7 +2602,7 @@ function CompactMarketNutritionFields({
                   className={SETTINGS_INPUT_CLASS}
                 />
               </label>
-              <label className="text-xs font-medium text-stone-600">
+              <label className="text-xs font-medium text-[var(--g-text-secondary)]">
                 Źródło potwierdzenia
                 <input
                   data-label-nutrition-authority="saturated_fat_source"
@@ -2616,7 +2616,7 @@ function CompactMarketNutritionFields({
           </div>
         ) : null}
         {sourceMissing && value.nutritionSource?.sugars_g === null ? (
-          <label className="text-xs font-medium text-stone-600">
+          <label className="text-xs font-medium text-[var(--g-text-secondary)]">
             Cukry · g / 100 g
             <input
               data-label-nutrition-source="sugars_g"
@@ -2645,7 +2645,7 @@ function CompactMarketNutritionFields({
           : null}
         {(value.market === 'EU' || value.market === 'UK' || value.market === 'AU_NZ') &&
         facts.energyAuthority === 'unresolved' ? (
-          <label className="text-xs font-medium text-stone-600">
+          <label className="text-xs font-medium text-[var(--g-text-secondary)]">
             Podstawa energii
             <select
               value={facts.energyAuthority}
@@ -2668,7 +2668,7 @@ function CompactMarketNutritionFields({
         ) : null}
         {value.market === 'AU_NZ' || value.market === 'US' || value.market === 'CA'
           ? value.labelLanguages.map((language) => (
-              <label key={language} className="text-xs font-medium text-stone-600">
+              <label key={language} className="text-xs font-medium text-[var(--g-text-secondary)]">
                 Opis porcji · {language.toUpperCase()}
                 <input
                   value={facts.servingDescription[language] ?? ''}
@@ -2716,7 +2716,7 @@ function CompactMarketNutritionFields({
         ) : null}
         {value.market === 'CA' ? (
           <>
-            <label className="text-xs font-medium text-stone-600">
+            <label className="text-xs font-medium text-[var(--g-text-secondary)]">
               Forma produktu
               <select
                 value={facts.canadaProductForm ?? 'unresolved'}
@@ -2741,7 +2741,7 @@ function CompactMarketNutritionFields({
             </label>
             {numberField('servingVolumeMl', 'Objętość porcji · mL')}
             {numberField('productDensityGPerMl', 'Gęstość produktu · g / mL')}
-            <label className="text-xs font-medium text-stone-600">
+            <label className="text-xs font-medium text-[var(--g-text-secondary)]">
               Dostępna powierzchnia etykiety · cm²
               <input
                 type="number"
@@ -2754,7 +2754,7 @@ function CompactMarketNutritionFields({
                 className={SETTINGS_INPUT_CLASS}
               />
             </label>
-            <label className="text-xs font-medium text-stone-600">
+            <label className="text-xs font-medium text-[var(--g-text-secondary)]">
               FOP (Kanada)
               <select
                 value={facts.canadaFopExemption}
@@ -2793,7 +2793,7 @@ function MissingAlcoholFields({
   return (
     <MissingDataCard field="alcohol_declaration" title="Deklaracja alkoholu">
       <div className="grid gap-3 sm:grid-cols-2">
-        <label className="text-xs font-medium text-stone-600">
+        <label className="text-xs font-medium text-[var(--g-text-secondary)]">
           Rodzaj produktu
           <select
             value={value.alcoholDeclarationApplicability ?? 'unresolved'}
@@ -2815,7 +2815,7 @@ function MissingAlcoholFields({
         </label>
         {value.alcoholDeclarationApplicability === 'required_beverage_over_1_2' ? (
           <>
-            <label className="text-xs font-medium text-stone-600">
+            <label className="text-xs font-medium text-[var(--g-text-secondary)]">
               Rzeczywista zawartość · % vol
               <input
                 type="number"
@@ -2878,7 +2878,7 @@ export function LegacyRunLabelEditor({
       SETTINGS_INPUT_CLASS,
       missing(field) &&
         empty &&
-        'border-[#a96832] bg-[#fffaf4] ring-1 ring-[#a96832]/15 focus:border-[#8a5b23]',
+        'border-[var(--g-attention-ink)] bg-[var(--g-attention-surface)] ring-1 ring-[var(--g-attention-ink)]/15 focus:border-[var(--g-attention-ink)]',
     );
   const updateText = (
     field:
@@ -2894,23 +2894,23 @@ export function LegacyRunLabelEditor({
   return (
     <Card
       padding="none"
-      className="overflow-hidden rounded-[18px] border-ink/10 shadow-pro-e0"
+      className="overflow-hidden rounded-[18px] border-[var(--g-line)] shadow-pro-e0"
       data-testid="label-data-intake"
       data-label-market={draft.market}
     >
-      <header className="border-b border-ink/10 bg-[#fffdf8] px-4 py-4 sm:px-5">
+      <header className="border-b border-[var(--g-line)] bg-[var(--g-ivory)] px-4 py-4 sm:px-5">
         <div className="mt-1 flex flex-wrap items-end justify-between gap-3">
           <div>
             <SectionLabel>Dane do etykiety</SectionLabel>
             <h2 className="mt-1 text-xl font-semibold tracking-[-0.02em] text-ink">
               Uzupełnij wszystko przed podglądem
             </h2>
-            <p className="mt-1 max-w-2xl text-sm leading-relaxed text-stone-600">
+            <p className="mt-1 max-w-2xl text-sm leading-relaxed text-[var(--g-text-secondary)]">
               To jedyne miejsce na obowiązkowe dane. Etykietę pokażemy dopiero, gdy będzie gotowa do
               druku i eksportu PDF.
             </p>
           </div>
-          <span className="rounded-full border border-ink/10 bg-white px-2.5 py-1 text-xs font-semibold text-ink">
+          <span className="rounded-full border border-[var(--g-line)] bg-white px-2.5 py-1 text-xs font-semibold text-ink">
             {marketProfile(draft.market).flag} {marketProfile(draft.market).label}
           </span>
         </div>
@@ -2918,7 +2918,7 @@ export function LegacyRunLabelEditor({
           className={cn(
             'mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[12px] border px-3 py-3',
             blockingCount > 0
-              ? 'border-[#d8bb8d] bg-[#fbf8f1]'
+              ? 'border-[var(--g-line-strong)] bg-[var(--g-ivory)]'
               : 'border-status-ideal/25 bg-status-ideal/[0.06]',
           )}
           data-testid="label-data-missing-count"
@@ -2931,7 +2931,7 @@ export function LegacyRunLabelEditor({
                 ? 'Uzupełnij wymagane pola'
                 : 'Wszystkie wymagane informacje są uzupełnione'}
             </strong>
-            <span className="mt-0.5 block text-xs text-stone-600">
+            <span className="mt-0.5 block text-xs text-[var(--g-text-secondary)]">
               {blockingCount > 0
                 ? `Do gotowego wydruku brakuje ${blockingCount} pozycji. Wszystkie są dostępne na tym ekranie.`
                 : 'Możesz przejść bezpośrednio do gotowej etykiety.'}
@@ -2940,7 +2940,7 @@ export function LegacyRunLabelEditor({
           {blockingCount > 0 ? (
             <button
               type="button"
-              className="pro-focus-ring min-h-11 px-2 text-xs font-semibold text-[#8a5b23] underline underline-offset-4"
+              className="pro-focus-ring min-h-11 px-2 text-xs font-semibold text-[var(--g-attention-ink)] underline underline-offset-4"
               onClick={(event) => {
                 const root = event.currentTarget.closest('[data-testid="label-data-intake"]');
                 const control = root?.querySelector<HTMLElement>(
@@ -2959,7 +2959,7 @@ export function LegacyRunLabelEditor({
       <div className="px-4 sm:px-5">
         <SettingsSection title="Rynek i język">
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className="text-xs font-medium text-stone-600">
+            <label className="text-xs font-medium text-[var(--g-text-secondary)]">
               Cel etykiety
               <select
                 value={draft.purpose}
@@ -2976,7 +2976,7 @@ export function LegacyRunLabelEditor({
                 <option value="display_gelateria">Ekspozycja / gelateria</option>
               </select>
             </label>
-            <label className="text-xs font-medium text-stone-600">
+            <label className="text-xs font-medium text-[var(--g-text-secondary)]">
               Sposób sprzedaży
               <select
                 value={draft.packagingContext}
@@ -2996,7 +2996,7 @@ export function LegacyRunLabelEditor({
             </label>
           </div>
           {draft.market === 'EU' ? (
-            <label className="mt-3 block text-xs font-medium text-stone-600">
+            <label className="mt-3 block text-xs font-medium text-[var(--g-text-secondary)]">
               Docelowe państwo członkowskie · kod ISO
               <input
                 maxLength={2}
@@ -3018,7 +3018,7 @@ export function LegacyRunLabelEditor({
             </label>
           ) : null}
           {draft.market === 'UK' ? (
-            <label className="mt-3 block text-xs font-medium text-stone-600">
+            <label className="mt-3 block text-xs font-medium text-[var(--g-text-secondary)]">
               UK sub-context
               <select
                 value={draft.jurisdictionContext?.ukRegion ?? 'unresolved'}
@@ -3043,7 +3043,7 @@ export function LegacyRunLabelEditor({
             </label>
           ) : null}
           {draft.market === 'AU_NZ' ? (
-            <label className="mt-3 block text-xs font-medium text-stone-600">
+            <label className="mt-3 block text-xs font-medium text-[var(--g-text-secondary)]">
               AU/NZ sub-context
               <select
                 value={draft.jurisdictionContext?.auNzCountry ?? 'unresolved'}
@@ -3068,7 +3068,7 @@ export function LegacyRunLabelEditor({
             </label>
           ) : null}
           {draft.market === 'US' ? (
-            <label className="mt-3 block text-xs font-medium text-stone-600">
+            <label className="mt-3 block text-xs font-medium text-[var(--g-text-secondary)]">
               FDA sale context
               <select
                 value={draft.jurisdictionContext?.usSaleContext ?? 'unresolved'}
@@ -3096,7 +3096,7 @@ export function LegacyRunLabelEditor({
             </label>
           ) : null}
           <div>
-            <span className="text-xs font-medium text-stone-600">Jurysdykcja / profil</span>
+            <span className="text-xs font-medium text-[var(--g-text-secondary)]">Jurysdykcja / profil</span>
             <div className="mt-2 grid grid-cols-2 gap-1.5 min-[480px]:grid-cols-3">
               {MARKET_CODES.map((code) => (
                 <button
@@ -3106,7 +3106,7 @@ export function LegacyRunLabelEditor({
                     'pro-focus-ring grid min-h-12 content-center rounded-[10px] border px-2 py-1 text-xs font-semibold transition-colors',
                     draft.market === code
                       ? 'border-ink bg-ink text-white'
-                      : 'border-ink/12 bg-white text-ink hover:bg-stone-50',
+                      : 'border-[var(--g-line)] bg-white text-ink hover:bg-[var(--g-ivory)]',
                   )}
                   data-market-active={draft.market === code ? 'true' : undefined}
                   title={MARKET_PROFILES[code].jurisdiction}
@@ -3142,12 +3142,12 @@ export function LegacyRunLabelEditor({
               ))}
             </div>
             {draft.market === 'WORLD' ? (
-              <p className="mt-3 text-xs text-stone-500">
+              <p className="mt-3 text-xs text-[var(--g-text-secondary)]">
                 Uniwersalna etykieta informacyjna — bez profilu prawnego konkretnego kraju.
               </p>
             ) : null}
           </div>
-          <label className="mt-3 block text-xs font-medium text-stone-600">
+          <label className="mt-3 block text-xs font-medium text-[var(--g-text-secondary)]">
             Języki · po przecinku
             <input
               value={draft.labelLanguages.join(', ')}
@@ -3169,7 +3169,7 @@ export function LegacyRunLabelEditor({
 
         <SettingsSection title="Firma">
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className="text-xs font-medium text-stone-600">
+            <label className="text-xs font-medium text-[var(--g-text-secondary)]">
               Marka / nazwa firmy
               <input
                 value={draft.businessName}
@@ -3181,7 +3181,7 @@ export function LegacyRunLabelEditor({
             </label>
             <RequiredSettingsField field="operator" missing={missing('operator')}>
               <div className="grid gap-3">
-                <label className="text-xs font-medium text-stone-600">
+                <label className="text-xs font-medium text-[var(--g-text-secondary)]">
                   Operator
                   <input
                     value={draft.operator.operatorName}
@@ -3194,7 +3194,7 @@ export function LegacyRunLabelEditor({
                     className={fieldClass('operator', !draft.operator.operatorName.trim())}
                   />
                 </label>
-                <label className="text-xs font-medium text-stone-600">
+                <label className="text-xs font-medium text-[var(--g-text-secondary)]">
                   Adres operatora
                   <input
                     value={draft.operator.address}
@@ -3207,7 +3207,7 @@ export function LegacyRunLabelEditor({
                     className={fieldClass('operator', !draft.operator.address.trim())}
                   />
                 </label>
-                <label className="text-xs font-medium text-stone-600">
+                <label className="text-xs font-medium text-[var(--g-text-secondary)]">
                   Kod kraju operatora
                   <input
                     value={draft.operator.countryCode}
@@ -3220,7 +3220,7 @@ export function LegacyRunLabelEditor({
                     className={fieldClass('operator', !draft.operator.countryCode.trim())}
                   />
                 </label>
-                <label className="text-xs font-medium text-stone-600">
+                <label className="text-xs font-medium text-[var(--g-text-secondary)]">
                   Importer · nazwa / kod kraju
                   <div className="grid grid-cols-[1fr_5rem] gap-2">
                     <input
@@ -3248,7 +3248,7 @@ export function LegacyRunLabelEditor({
                     />
                   </div>
                 </label>
-                <label className="text-xs font-medium text-stone-600">
+                <label className="text-xs font-medium text-[var(--g-text-secondary)]">
                   Adres importera
                   <input
                     value={draft.operator.importerAddress ?? ''}
@@ -3261,7 +3261,7 @@ export function LegacyRunLabelEditor({
                     className={SETTINGS_INPUT_CLASS}
                   />
                 </label>
-                <label className="text-xs font-medium text-stone-600">
+                <label className="text-xs font-medium text-[var(--g-text-secondary)]">
                   Dostawca / dystrybutor · nazwa / kod kraju
                   <div className="grid grid-cols-[1fr_5rem] gap-2">
                     <input
@@ -3292,7 +3292,7 @@ export function LegacyRunLabelEditor({
                     />
                   </div>
                 </label>
-                <label className="text-xs font-medium text-stone-600">
+                <label className="text-xs font-medium text-[var(--g-text-secondary)]">
                   Adres supplier / distributor
                   <input
                     value={draft.operator.distributorAddress ?? ''}
@@ -3311,11 +3311,11 @@ export function LegacyRunLabelEditor({
               </div>
             </RequiredSettingsField>
           </div>
-          <label className="mt-3 flex min-h-14 items-center gap-3 rounded-[12px] border border-ink/10 bg-[#fffdf8] p-3 text-xs text-stone-600">
+          <label className="mt-3 flex min-h-14 items-center gap-3 rounded-[12px] border border-[var(--g-line)] bg-[var(--g-ivory)] p-3 text-xs text-[var(--g-text-secondary)]">
             {logoUrl ? (
               <img src={logoUrl} alt="Aktualne logo" className="size-12 object-contain" />
             ) : (
-              <span className="grid size-12 shrink-0 place-items-center rounded-[10px] border border-ink/10 bg-white text-[10px] text-stone-400">
+              <span className="grid size-12 shrink-0 place-items-center rounded-[10px] border border-[var(--g-line)] bg-white text-[10px] text-[var(--g-text-muted)]">
                 Logo
               </span>
             )}
@@ -3343,7 +3343,7 @@ export function LegacyRunLabelEditor({
             <RequiredSettingsField field="product_name" missing={missing('product_name')}>
               <div className="grid gap-3">
                 {draft.labelLanguages.map((language) => (
-                  <label key={`name:${language}`} className="text-xs font-medium text-stone-600">
+                  <label key={`name:${language}`} className="text-xs font-medium text-[var(--g-text-secondary)]">
                     Nazwa produktu · {language.toUpperCase()}
                     <input
                       value={draft.productName[language] ?? ''}
@@ -3365,7 +3365,7 @@ export function LegacyRunLabelEditor({
             >
               <div className="grid gap-3">
                 {draft.labelLanguages.map((language) => (
-                  <label key={`legal:${language}`} className="text-xs font-medium text-stone-600">
+                  <label key={`legal:${language}`} className="text-xs font-medium text-[var(--g-text-secondary)]">
                     <span className="flex items-center justify-between gap-2">
                       <span>Nazwa prawna · {language.toUpperCase()}</span>
                       {missing('legal_product_name') ? <RequiredBadge /> : null}
@@ -3386,7 +3386,7 @@ export function LegacyRunLabelEditor({
             </RequiredSettingsField>
             <RequiredSettingsField field="net_quantity" missing={missing('net_quantity')}>
               <div className="grid gap-2">
-                <label className="text-xs font-medium text-stone-600">
+                <label className="text-xs font-medium text-[var(--g-text-secondary)]">
                   Napełnienie opakowania
                   <select
                     value={
@@ -3452,7 +3452,7 @@ export function LegacyRunLabelEditor({
                     )}
                   </select>
                 </label>
-                <label className="text-xs font-medium text-stone-600">
+                <label className="text-xs font-medium text-[var(--g-text-secondary)]">
                   {draft.market === 'CA' ? 'Własna objętość netto · mL' : 'Własna masa netto · g'}
                   <input
                     type="number"
@@ -3494,7 +3494,7 @@ export function LegacyRunLabelEditor({
                     )}
                   />
                 </label>
-                <p className="text-[11px] text-stone-500">
+                <p className="text-[11px] text-[var(--g-text-secondary)]">
                   Partia produkcyjna: {draft.actualBatchQuantityG ?? '—'} g. Etykieta używa
                   wyłącznie wybranego fillu opakowania
                 </p>
@@ -3516,19 +3516,19 @@ export function LegacyRunLabelEditor({
         <SettingsSection title="Daty i identyfikacja">
           <div className="grid gap-3 sm:grid-cols-2">
             <RequiredSettingsField field="lot" missing={missing('lot')}>
-              <div className="text-xs font-medium text-stone-600">
+              <div className="text-xs font-medium text-[var(--g-text-secondary)]">
                 Nr partii · nadawany automatycznie
                 <output
                   className={cn(
                     SETTINGS_INPUT_CLASS,
-                    'flex items-center bg-stone-50 font-mono tabular-nums',
+                    'flex items-center bg-[var(--g-ivory)] font-mono tabular-nums',
                   )}
                 >
                   {lotCodeForDisplay(draft.lotCode)}
                 </output>
               </div>
             </RequiredSettingsField>
-            <label className="text-xs font-medium text-stone-600">
+            <label className="text-xs font-medium text-[var(--g-text-secondary)]">
               Data produkcji
               <input
                 type="date"
@@ -3544,7 +3544,7 @@ export function LegacyRunLabelEditor({
               />
             </label>
             <RequiredSettingsField field="date_mark" missing={missing('date_mark')}>
-              <label className="text-xs font-medium text-stone-600">
+              <label className="text-xs font-medium text-[var(--g-text-secondary)]">
                 <span className="flex items-center justify-between gap-2">
                   <span>Najlepiej spożyć przed</span>
                   {missing('date_mark') ? <RequiredBadge /> : null}
@@ -3579,7 +3579,7 @@ export function LegacyRunLabelEditor({
 
         <SettingsSection title="Informacje dodatkowe">
           <RequiredSettingsField field="storage" missing={missing('storage')}>
-            <label className="text-xs font-medium text-stone-600">
+            <label className="text-xs font-medium text-[var(--g-text-secondary)]">
               <span className="flex items-center justify-between gap-2">
                 <span>Przechowywanie · {primaryLanguage.toUpperCase()}</span>
                 {missing('storage') ? <RequiredBadge /> : null}
@@ -3603,7 +3603,7 @@ export function LegacyRunLabelEditor({
           />
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             {draft.enabledOptionalFields.includes('origin') ? (
-              <label className="text-xs font-medium text-stone-600">
+              <label className="text-xs font-medium text-[var(--g-text-secondary)]">
                 Pochodzenie
                 <input
                   value={draft.origin[primaryLanguage] ?? ''}
@@ -3615,7 +3615,7 @@ export function LegacyRunLabelEditor({
               </label>
             ) : null}
             {draft.enabledOptionalFields.includes('customer_note') ? (
-              <label className="text-xs font-medium text-stone-600">
+              <label className="text-xs font-medium text-[var(--g-text-secondary)]">
                 Nota dla klienta
                 <input
                   value={draft.customerNote[primaryLanguage] ?? ''}
@@ -3627,7 +3627,7 @@ export function LegacyRunLabelEditor({
               </label>
             ) : null}
             {draft.enabledOptionalFields.includes('short_description') ? (
-              <label className="text-xs font-medium text-stone-600">
+              <label className="text-xs font-medium text-[var(--g-text-secondary)]">
                 Krótki opis
                 <input
                   value={draft.shortDescription?.[primaryLanguage] ?? ''}
@@ -3639,7 +3639,7 @@ export function LegacyRunLabelEditor({
               </label>
             ) : null}
             {draft.enabledOptionalFields.includes('qr_code') ? (
-              <label className="text-xs font-medium text-stone-600">
+              <label className="text-xs font-medium text-[var(--g-text-secondary)]">
                 Wartość QR
                 <input
                   value={draft.qrCodeValue ?? ''}
@@ -3651,7 +3651,7 @@ export function LegacyRunLabelEditor({
               </label>
             ) : null}
             {draft.enabledOptionalFields.includes('gtin') ? (
-              <label className="text-xs font-medium text-stone-600">
+              <label className="text-xs font-medium text-[var(--g-text-secondary)]">
                 Potwierdzony GTIN / EAN
                 <input
                   inputMode="numeric"
@@ -3662,7 +3662,7 @@ export function LegacyRunLabelEditor({
               </label>
             ) : null}
             {draft.enabledOptionalFields.includes('internal_article_id') ? (
-              <label className="text-xs font-medium text-stone-600">
+              <label className="text-xs font-medium text-[var(--g-text-secondary)]">
                 Wewnętrzny identyfikator artykułu
                 <input
                   value={draft.internalArticleId ?? ''}
@@ -3674,7 +3674,7 @@ export function LegacyRunLabelEditor({
               </label>
             ) : null}
             {draft.enabledOptionalFields.includes('website') ? (
-              <label className="text-xs font-medium text-stone-600">
+              <label className="text-xs font-medium text-[var(--g-text-secondary)]">
                 Strona internetowa
                 <input
                   value={draft.operator.website ?? ''}
@@ -3698,7 +3698,7 @@ export function LegacyRunLabelEditor({
               'pro-focus-ring min-h-11 rounded-[10px] border px-3 text-xs font-semibold',
               draft.layoutMode === 'auto'
                 ? 'border-ink bg-ink text-white'
-                : 'border-ink/15 bg-white text-ink',
+                : 'border-[var(--g-line)] bg-white text-ink',
             )}
             onClick={() => setDraft(applyAutoLabelLayout(draft))}
           >
@@ -3715,7 +3715,7 @@ export function LegacyRunLabelEditor({
               })
             }
           />
-          <details className="mt-3 rounded-[12px] border border-ink/10 bg-white p-3">
+          <details className="mt-3 rounded-[12px] border border-[var(--g-line)] bg-white p-3">
             <summary className="cursor-pointer text-xs font-semibold text-ink">
               Zaawansowane · własne wymiary i kształt
             </summary>
@@ -3746,7 +3746,7 @@ export function LegacyRunLabelEditor({
 
         <SettingsSection title="Weryfikacja">
           <div className="grid gap-2">
-            <label className="flex min-h-12 items-center gap-3 rounded-[12px] border border-ink/10 bg-white px-3 text-xs text-ink">
+            <label className="flex min-h-12 items-center gap-3 rounded-[12px] border border-[var(--g-line)] bg-white px-3 text-xs text-ink">
               <input
                 type="checkbox"
                 className="size-5 accent-ink"
@@ -3763,7 +3763,7 @@ export function LegacyRunLabelEditor({
               />
               Potwierdzam kompletność tłumaczeń w wymaganych językach
             </label>
-            <label className="flex min-h-12 items-center gap-3 rounded-[12px] border border-ink/10 bg-white px-3 text-xs text-ink">
+            <label className="flex min-h-12 items-center gap-3 rounded-[12px] border border-[var(--g-line)] bg-white px-3 text-xs text-ink">
               <input
                 type="checkbox"
                 className="size-5 accent-ink"
@@ -3780,7 +3780,7 @@ export function LegacyRunLabelEditor({
               />
               Potwierdzam kolejność składników i przegląd QUID
             </label>
-            <label className="flex min-h-12 items-center gap-3 rounded-[12px] border border-ink/10 bg-white px-3 text-xs text-ink">
+            <label className="flex min-h-12 items-center gap-3 rounded-[12px] border border-[var(--g-line)] bg-white px-3 text-xs text-ink">
               <input
                 type="checkbox"
                 className="size-5 accent-ink"
@@ -3824,7 +3824,7 @@ export function LegacyRunLabelEditor({
               <label
                 className={cn(
                   'flex min-h-12 items-center gap-3 rounded-[12px] border px-3 text-xs text-ink',
-                  missing('allergens') ? 'border-[#a96832] bg-[#fffaf4]' : 'border-ink/10 bg-white',
+                  missing('allergens') ? 'border-[var(--g-attention-ink)] bg-[var(--g-attention-surface)]' : 'border-[var(--g-line)] bg-white',
                 )}
               >
                 <input
@@ -3845,7 +3845,7 @@ export function LegacyRunLabelEditor({
                 {missing('allergens') ? <RequiredBadge /> : null}
               </label>
             </RequiredSettingsField>
-            <label className="flex min-h-12 items-center gap-3 rounded-[12px] border border-ink/10 bg-white px-3 text-xs text-ink">
+            <label className="flex min-h-12 items-center gap-3 rounded-[12px] border border-[var(--g-line)] bg-white px-3 text-xs text-ink">
               <input
                 type="checkbox"
                 className="size-5 accent-ink"
@@ -3857,14 +3857,14 @@ export function LegacyRunLabelEditor({
               Sprawdziłem dane etykiety przed wydrukiem.
             </label>
           </div>
-          <p className="mt-3 text-xs leading-relaxed text-stone-500">
+          <p className="mt-3 text-xs leading-relaxed text-[var(--g-text-secondary)]">
             Profil prawny pozostaje oznaczony zgodnie z istniejącą macierzą. Gellatti nie deklaruje
             certyfikacji prawnej.
           </p>
         </SettingsSection>
       </div>
 
-      <footer className="sticky bottom-11 z-10 border-t border-ink/10 bg-white/95 p-4 backdrop-blur sm:px-5">
+      <footer className="sticky bottom-11 z-10 border-t border-[var(--g-line)] bg-white/95 p-4 backdrop-blur sm:px-5">
         <Button
           className="w-full"
           data-testid="show-label-preview"
@@ -3879,12 +3879,12 @@ export function LegacyRunLabelEditor({
 }
 
 const SETTINGS_INPUT_CLASS =
-  'mt-1 h-11 w-full rounded-[10px] border border-ink/15 bg-white px-3 text-sm text-ink outline-none transition-[border-color,box-shadow,background-color] focus:border-ink/35 focus:ring-2 focus:ring-ink/5';
+  'mt-1 h-11 w-full rounded-[10px] border border-[var(--g-line)] bg-white px-3 text-sm text-ink outline-none transition-[border-color,box-shadow,background-color] focus:border-ink/35 focus:ring-2 focus:ring-ink/5';
 
 function SettingsSection({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="border-b border-ink/8 py-5 last:border-b-0">
-      <h3 className="mb-3 text-xs font-semibold tracking-[0.08em] text-stone-600 uppercase">
+    <section className="border-b border-[var(--g-line-quiet)] py-5 last:border-b-0">
+      <h3 className="mb-3 text-xs font-semibold tracking-[0.08em] text-[var(--g-text-secondary)] uppercase">
         {title}
       </h3>
       {children}
@@ -3894,7 +3894,7 @@ function SettingsSection({ title, children }: { title: string; children: ReactNo
 
 function RequiredBadge() {
   return (
-    <span className="shrink-0 rounded-full border border-[#a96832]/30 bg-[#fff7ed] px-2 py-0.5 text-[9px] font-semibold tracking-[0.06em] text-[#8a5b23] uppercase">
+    <span className="shrink-0 rounded-full border border-[var(--g-attention-ink)]/30 bg-[var(--g-attention-surface)] px-2 py-0.5 text-[9px] font-semibold tracking-[0.06em] text-[var(--g-attention-ink)] uppercase">
       Wymagane
     </span>
   );
@@ -3917,7 +3917,7 @@ function RequiredSettingsField({
     >
       {children}
       {missing ? (
-        <p className="mt-1 text-[11px] font-medium text-[#8a5b23]">Brak wymaganej wartości</p>
+        <p className="mt-1 text-[11px] font-medium text-[var(--g-attention-ink)]">Brak wymaganej wartości</p>
       ) : null}
     </div>
   );
@@ -3928,14 +3928,14 @@ function ReviewLine({ label, ready, message }: { label: string; ready: boolean; 
     <div
       className={cn(
         'flex min-h-12 items-start justify-between gap-3 rounded-[12px] border px-3 py-2.5',
-        ready ? 'border-ink/10 bg-white' : 'border-[#a96832] bg-[#fffaf4]',
+        ready ? 'border-[var(--g-line)] bg-white' : 'border-[var(--g-attention-ink)] bg-[var(--g-attention-surface)]',
       )}
     >
       <span>
         <strong className="block text-xs text-ink">{label}</strong>
-        <span className="mt-0.5 block text-[11px] leading-relaxed text-stone-600">{message}</span>
+        <span className="mt-0.5 block text-[11px] leading-relaxed text-[var(--g-text-secondary)]">{message}</span>
       </span>
-      <span className="shrink-0 font-mono text-[10px] font-semibold text-stone-500">
+      <span className="shrink-0 font-mono text-[10px] font-semibold text-[var(--g-text-secondary)]">
         {ready ? 'GOTOWE' : 'BRAK'}
       </span>
     </div>
@@ -3996,7 +3996,7 @@ function IngredientAuthorityFields({
       {value.ingredients.map((ingredient, index) => (
         <details
           key={ingredient.lineId}
-          className="rounded-[12px] border border-ink/10 bg-white p-3"
+          className="rounded-[12px] border border-[var(--g-line)] bg-white p-3"
         >
           <summary className="cursor-pointer text-xs font-semibold text-ink">
             {primaryText(ingredient.names, value.labelLanguages) || 'Składnik'} ·{' '}
@@ -4004,7 +4004,7 @@ function IngredientAuthorityFields({
           </summary>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             {value.labelLanguages.map((language) => (
-              <label key={language} className="text-xs text-stone-600">
+              <label key={language} className="text-xs text-[var(--g-text-secondary)]">
                 Deklaracja składnika · {language}
                 <input
                   value={ingredient.names[language] ?? ''}
@@ -4019,11 +4019,11 @@ function IngredientAuthorityFields({
               </label>
             ))}
           </div>
-          <p className="mt-2 text-[11px] leading-relaxed text-stone-500">
+          <p className="mt-2 text-[11px] leading-relaxed text-[var(--g-text-secondary)]">
             Rzeczywista masa i kolejność pochodzą z finalnego zapisu zakończonej partii i nie są
             tutaj edytowalne.
           </p>
-          <label className="mt-3 flex min-h-11 items-center gap-2 rounded-[10px] border border-ink/10 px-3 text-xs text-ink">
+          <label className="mt-3 flex min-h-11 items-center gap-2 rounded-[10px] border border-[var(--g-line)] px-3 text-xs text-ink">
             <input
               type="checkbox"
               className="size-5"
@@ -4047,7 +4047,7 @@ function IngredientAuthorityFields({
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               {value.labelLanguages.map((language) => (
                 <div key={language} className="space-y-3">
-                  <label className="block text-xs text-stone-600">
+                  <label className="block text-xs text-[var(--g-text-secondary)]">
                     Nazwa składnika złożonego · {language}
                     <input
                       value={ingredient.compound?.displayName[language] ?? ''}
@@ -4070,7 +4070,7 @@ function IngredientAuthorityFields({
                       className={SETTINGS_INPUT_CLASS}
                     />
                   </label>
-                  <label className="block text-xs text-stone-600">
+                  <label className="block text-xs text-[var(--g-text-secondary)]">
                     Komponenty w zatwierdzonej kolejności · {language} · po przecinku
                     <textarea
                       value={(ingredient.compound?.components ?? [])
@@ -4079,7 +4079,7 @@ function IngredientAuthorityFields({
                       onChange={(event) =>
                         updateCompoundComponents(index, language, event.currentTarget.value)
                       }
-                      className="mt-1 min-h-20 w-full resize-y rounded-[10px] border border-ink/15 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ink/35 focus:ring-2 focus:ring-ink/5"
+                      className="mt-1 min-h-20 w-full resize-y rounded-[10px] border border-[var(--g-line)] bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ink/35 focus:ring-2 focus:ring-ink/5"
                     />
                   </label>
                 </div>
@@ -4088,7 +4088,7 @@ function IngredientAuthorityFields({
           ) : null}
           {quidMarket ? (
             <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_140px_1fr] sm:items-end">
-              <label className="flex min-h-11 items-center gap-2 rounded-[10px] border border-ink/10 px-3 text-xs text-ink">
+              <label className="flex min-h-11 items-center gap-2 rounded-[10px] border border-[var(--g-line)] px-3 text-xs text-ink">
                 <input
                   type="checkbox"
                   className="size-5"
@@ -4107,7 +4107,7 @@ function IngredientAuthorityFields({
                 />
                 QUID wymagany
               </label>
-              <label className="text-xs text-stone-600">
+              <label className="text-xs text-[var(--g-text-secondary)]">
                 Procent
                 <input
                   type="number"
@@ -4133,7 +4133,7 @@ function IngredientAuthorityFields({
                   className={SETTINGS_INPUT_CLASS}
                 />
               </label>
-              <label className="flex min-h-11 items-center gap-2 rounded-[10px] border border-ink/10 px-3 text-xs text-ink">
+              <label className="flex min-h-11 items-center gap-2 rounded-[10px] border border-[var(--g-line)] px-3 text-xs text-ink">
                 <input
                   type="checkbox"
                   className="size-5"
@@ -4198,14 +4198,14 @@ function OptionalFieldSettings({
   return (
     <fieldset className="mt-4" data-testid="label-field-settings">
       <legend className="text-sm font-semibold text-ink">Pola etykiety</legend>
-      <p className="mt-1 text-xs text-stone-500">
+      <p className="mt-1 text-xs text-[var(--g-text-secondary)]">
         Wymagane pola profilu {profile.label} są zawsze aktywne
       </p>
       <div className="mt-3 flex flex-wrap gap-1.5" data-testid="required-label-fields">
         {profile.requiredFields.map((field) => (
           <span
             key={field}
-            className="rounded-full bg-stone-100 px-2.5 py-1 text-[11px] text-stone-600"
+            className="rounded-full bg-stone-100 px-2.5 py-1 text-[11px] text-[var(--g-text-secondary)]"
           >
             🔒 {LABEL_FIELD_NAMES[field]}
           </span>
@@ -4215,7 +4215,7 @@ function OptionalFieldSettings({
         {profile.optionalFields.map((field) => (
           <label
             key={field}
-            className="flex min-h-11 items-center gap-2 rounded-[10px] border border-ink/10 bg-white px-3 text-xs text-ink"
+            className="flex min-h-11 items-center gap-2 rounded-[10px] border border-[var(--g-line)] bg-white px-3 text-xs text-ink"
           >
             <input
               type="checkbox"
@@ -4278,7 +4278,7 @@ function RegulatoryNutritionFields({
     label: string,
     unit: string,
   ) => (
-    <label key={key} className="text-xs font-medium text-stone-600">
+    <label key={key} className="text-xs font-medium text-[var(--g-text-secondary)]">
       {label} · {unit}
       <input
         type="number"
@@ -4315,12 +4315,12 @@ function RegulatoryNutritionFields({
       <div
         className={cn(
           'rounded-[14px] border p-3',
-          missing ? 'border-[#a96832] bg-[#fffaf4]' : 'border-ink/10 bg-[#fffdf8]',
+          missing ? 'border-[var(--g-attention-ink)] bg-[var(--g-attention-surface)]' : 'border-[var(--g-line)] bg-[var(--g-ivory)]',
         )}
         data-label-field="market_nutrition"
         data-missing-required={missing ? 'true' : undefined}
       >
-        <p className="text-xs leading-relaxed text-stone-600">
+        <p className="text-xs leading-relaxed text-[var(--g-text-secondary)]">
           Wartości dodatkowe muszą mieć udokumentowane źródło produktu. Brak danych blokuje wydruk
           detaliczny; Gellatti nie zgaduje wartości.
         </p>
@@ -4338,7 +4338,7 @@ function RegulatoryNutritionFields({
               const confirmed = value.nutritionSource?.[key] !== null;
               const editable = editableNutritionSourceKeys.has(key);
               return (
-                <label key={key} className="text-xs font-medium text-stone-600">
+                <label key={key} className="text-xs font-medium text-[var(--g-text-secondary)]">
                   {label} · g / 100 g
                   <input
                     type="number"
@@ -4352,10 +4352,10 @@ function RegulatoryNutritionFields({
                     }
                     className={cn(
                       SETTINGS_INPUT_CLASS,
-                      'font-mono tabular-nums disabled:bg-stone-50 disabled:text-stone-500',
+                      'font-mono tabular-nums disabled:bg-[var(--g-ivory)] disabled:text-[var(--g-text-secondary)]',
                     )}
                   />
-                  <span className="mt-1 block text-[11px] text-stone-500">
+                  <span className="mt-1 block text-[11px] text-[var(--g-text-secondary)]">
                     {confirmed
                       ? 'Wartość pochodzi z finalnych danych partii.'
                       : 'Brakującą wartość wpisz wyłącznie na podstawie potwierdzonej dokumentacji.'}
@@ -4368,7 +4368,7 @@ function RegulatoryNutritionFields({
         {(value.market === 'EU' || value.market === 'UK') &&
         (value.nutritionSource?.alcohol_g ?? 0) > 0 ? (
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <label className="text-xs font-medium text-stone-600">
+            <label className="text-xs font-medium text-[var(--g-text-secondary)]">
               Zastosowanie deklaracji alkoholu
               <select
                 value={value.alcoholDeclarationApplicability ?? 'unresolved'}
@@ -4392,7 +4392,7 @@ function RegulatoryNutritionFields({
             </label>
             {value.alcoholDeclarationApplicability === 'required_beverage_over_1_2' ? (
               <>
-                <label className="text-xs font-medium text-stone-600">
+                <label className="text-xs font-medium text-[var(--g-text-secondary)]">
                   Rzeczywista zawartość alkoholu · % vol
                   <input
                     type="number"
@@ -4409,7 +4409,7 @@ function RegulatoryNutritionFields({
                     className={SETTINGS_INPUT_CLASS}
                   />
                 </label>
-                <label className="flex min-h-11 items-center gap-2 text-xs text-stone-600 sm:col-span-2">
+                <label className="flex min-h-11 items-center gap-2 text-xs text-[var(--g-text-secondary)] sm:col-span-2">
                   <input
                     type="checkbox"
                     checked={Boolean(value.alcoholDeclarationReviewed)}
@@ -4427,7 +4427,7 @@ function RegulatoryNutritionFields({
           </div>
         ) : null}
         {value.market === 'US' || value.market === 'CA' ? (
-          <label className="mt-3 block max-w-xs text-xs font-medium text-stone-600">
+          <label className="mt-3 block max-w-xs text-xs font-medium text-[var(--g-text-secondary)]">
             Potwierdzona dostępna powierzchnia etykiety · cm²
             <input
               type="number"
@@ -4447,7 +4447,7 @@ function RegulatoryNutritionFields({
         {value.market === 'EU' || value.market === 'UK' || value.market === 'AU_NZ' ? (
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             {numberField('energyKjPer100g', 'Energia według zasad rynku', 'kJ / 100 g')}
-            <label className="text-xs font-medium text-stone-600">
+            <label className="text-xs font-medium text-[var(--g-text-secondary)]">
               Podstawa wartości energii
               <select
                 value={facts.energyAuthority ?? 'unresolved'}
@@ -4469,7 +4469,7 @@ function RegulatoryNutritionFields({
         ) : null}
         <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {value.labelLanguages.map((language) => (
-            <label key={`serving:${language}`} className="text-xs font-medium text-stone-600">
+            <label key={`serving:${language}`} className="text-xs font-medium text-[var(--g-text-secondary)]">
               Opis porcji · {language.toUpperCase()}
               <input
                 value={facts.servingDescription[language] ?? ''}
@@ -4485,7 +4485,7 @@ function RegulatoryNutritionFields({
               />
             </label>
           ))}
-          <label className="text-xs font-medium text-stone-600">
+          <label className="text-xs font-medium text-[var(--g-text-secondary)]">
             Wielkość porcji · g
             <input
               type="number"
@@ -4510,7 +4510,7 @@ function RegulatoryNutritionFields({
             : null}
           {nutrients.map(([key, label, unit]) => numberField(key, label, unit))}
           {value.market === 'US' ? (
-            <label className="text-xs font-medium text-stone-600">
+            <label className="text-xs font-medium text-[var(--g-text-secondary)]">
               Format tabeli FDA Nutrition Facts
               <select
                 value={facts.usFormatFamily ?? 'auto'}
@@ -4533,7 +4533,7 @@ function RegulatoryNutritionFields({
           ) : null}
           {value.market === 'CA' ? (
             <>
-              <label className="text-xs font-medium text-stone-600">
+              <label className="text-xs font-medium text-[var(--g-text-secondary)]">
                 Kanadyjska kategoria ilości referencyjnej
                 <select
                   value={facts.canadaProductForm ?? 'unresolved'}
@@ -4554,7 +4554,7 @@ function RegulatoryNutritionFields({
                   <option value="single_portion">Lód na patyku / baton / kubeczek · 75 mL</option>
                 </select>
               </label>
-              <label className="text-xs font-medium text-stone-600">
+              <label className="text-xs font-medium text-[var(--g-text-secondary)]">
                 Kanadyjski format NFT
                 <select
                   value={facts.canadaFormatFamily ?? 'auto'}
@@ -4571,7 +4571,7 @@ function RegulatoryNutritionFields({
                   <option value="bilingual_standard">Bilingual standard · Figure 3.4(B)</option>
                 </select>
               </label>
-              <label className="text-xs font-medium text-stone-600">
+              <label className="text-xs font-medium text-[var(--g-text-secondary)]">
                 Klasa produktu FOP
                 <select
                   value={facts.canadaFopProductClass}
@@ -4587,7 +4587,7 @@ function RegulatoryNutritionFields({
                   <option value="main_dish">Danie główne ≥ 200 g</option>
                 </select>
               </label>
-              <label className="text-xs font-medium text-stone-600">
+              <label className="text-xs font-medium text-[var(--g-text-secondary)]">
                 FOP / zwolnienie
                 <select
                   value={facts.canadaFopExemption}
@@ -4606,7 +4606,7 @@ function RegulatoryNutritionFields({
                 </select>
               </label>
               {facts.canadaFopExemption !== 'none' && facts.canadaFopExemption !== 'unresolved' ? (
-                <label className="text-xs font-medium text-stone-600 lg:col-span-2">
+                <label className="text-xs font-medium text-[var(--g-text-secondary)] lg:col-span-2">
                   Podstawa wyjątku
                   <input
                     value={facts.canadaFopExemptionReason}
@@ -4621,11 +4621,11 @@ function RegulatoryNutritionFields({
           ) : null}
         </div>
         {value.market === 'CA' ? (
-          <div className="mt-3 rounded-[10px] border border-ink/10 bg-white p-3 text-xs text-stone-600">
+          <div className="mt-3 rounded-[10px] border border-[var(--g-line)] bg-white p-3 text-xs text-[var(--g-text-secondary)]">
             <strong className="block text-ink">Canada FOP: {canadaFop.state}</strong>
             <span className="mt-1 block">{canadaFop.reason}</span>
             {canadaFop.state === 'required' && !facts.canadaFopAssetId ? (
-              <span className="mt-1 block font-semibold text-[#8a5b23]">
+              <span className="mt-1 block font-semibold text-[var(--g-attention-ink)]">
                 Nie można wydrukować: wymagany jest zatwierdzony, oficjalny materiał Health Canada.
               </span>
             ) : null}
@@ -4658,7 +4658,7 @@ function PresentationFields({
   return (
     <fieldset className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
       <legend className="sr-only">Prezentacja etykiety</legend>
-      <label className="text-xs text-stone-600">
+      <label className="text-xs text-[var(--g-text-secondary)]">
         Format
         <select
           value={format}
@@ -4671,7 +4671,7 @@ function PresentationFields({
           <option value="round">Okrągła</option>
         </select>
       </label>
-      <label className="text-xs text-stone-600">
+      <label className="text-xs text-[var(--g-text-secondary)]">
         Szerokość · mm
         <input
           type="number"
@@ -4683,7 +4683,7 @@ function PresentationFields({
           className={cn(SETTINGS_INPUT_CLASS, 'font-mono tabular-nums')}
         />
       </label>
-      <label className="text-xs text-stone-600">
+      <label className="text-xs text-[var(--g-text-secondary)]">
         Wysokość · mm
         <input
           type="number"
@@ -4698,7 +4698,7 @@ function PresentationFields({
           className={cn(SETTINGS_INPUT_CLASS, 'font-mono tabular-nums')}
         />
       </label>
-      <label className="text-xs text-stone-600">
+      <label className="text-xs text-[var(--g-text-secondary)]">
         Kopie
         <input
           type="number"
@@ -4726,10 +4726,10 @@ function PrinterSettingsFields({
     onChange(normalizePrinterSettings({ ...value, ...next }));
 
   return (
-    <fieldset className="mt-5 rounded-[14px] border border-ink/10 bg-[#fffdf8] p-3">
+    <fieldset className="mt-5 rounded-[14px] border border-[var(--g-line)] bg-[var(--g-ivory)] p-3">
       <legend className="px-1 text-sm font-semibold text-ink">Ustawienia drukarki</legend>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <label className="text-xs text-stone-600">
+        <label className="text-xs text-[var(--g-text-secondary)]">
           Drukarka
           <select
             value={value.profileId}
@@ -4758,7 +4758,7 @@ function PrinterSettingsFields({
             ))}
           </select>
         </label>
-        <label className="text-xs text-stone-600">
+        <label className="text-xs text-[var(--g-text-secondary)]">
           Format
           <select
             value={value.presetId ?? 'custom'}
@@ -4788,7 +4788,7 @@ function PrinterSettingsFields({
             ))}
           </select>
         </label>
-        <label className="text-xs text-stone-600">
+        <label className="text-xs text-[var(--g-text-secondary)]">
           Orientacja
           <select
             value={value.orientation}
@@ -4803,7 +4803,7 @@ function PrinterSettingsFields({
             <option value="landscape">Poziom</option>
           </select>
         </label>
-        <label className="text-xs text-stone-600">
+        <label className="text-xs text-[var(--g-text-secondary)]">
           Kopie
           <input
             type="number"
@@ -4814,12 +4814,12 @@ function PrinterSettingsFields({
           />
         </label>
       </div>
-      <details className="mt-3 border-t border-ink/10 pt-3">
+      <details className="mt-3 border-t border-[var(--g-line)] pt-3">
         <summary className="cursor-pointer text-xs font-semibold text-ink">
           Zaawansowane ustawienia drukarki
         </summary>
         <div className="mt-3 grid gap-3 sm:grid-cols-3">
-          <label className="text-xs text-stone-600">
+          <label className="text-xs text-[var(--g-text-secondary)]">
             Połączenie
             <select
               value={value.connection}
@@ -4837,7 +4837,7 @@ function PrinterSettingsFields({
               ))}
             </select>
           </label>
-          <label className="text-xs text-stone-600">
+          <label className="text-xs text-[var(--g-text-secondary)]">
             Rozdzielczość
             <select
               value={value.dpi}
@@ -4851,7 +4851,7 @@ function PrinterSettingsFields({
               ))}
             </select>
           </label>
-          <label className="text-xs text-stone-600">
+          <label className="text-xs text-[var(--g-text-secondary)]">
             Margines · mm
             <input
               type="number"
@@ -4865,7 +4865,7 @@ function PrinterSettingsFields({
           </label>
         </div>
       </details>
-      <p className="mt-3 text-[11px] leading-relaxed text-stone-500">
+      <p className="mt-3 text-[11px] leading-relaxed text-[var(--g-text-secondary)]">
         {profile.workflowNote} Oprogramowanie: {profile.softwareVerification}. Sprzęt:{' '}
         {profile.hardwareVerification}.
       </p>
@@ -4988,7 +4988,7 @@ function MarketAndIdentityFields({
           ))}
         </div>
         {market === 'WORLD' ? (
-          <p className="mt-2 text-xs leading-relaxed text-stone-500">
+          <p className="mt-2 text-xs leading-relaxed text-[var(--g-text-secondary)]">
             Uniwersalna etykieta informacyjna — bez profilu prawnego konkretnego kraju.
           </p>
         ) : null}
