@@ -1279,6 +1279,15 @@ function solveSorbetFreezingPhysics(input) {
 //#endregion
 //#region src/engine/config/iceAnchors.ts
 /**
+* Ice-fraction anchor configuration (spec §9) — category-aware from day one.
+*
+* The anchor-matrix MVP model estimates ice fraction from (category, target
+* temperature, NPAC). ALL values here are calibration data: only active
+* external reference fixtures may change them (config-only change + CONFIG_VERSION bump,
+* spec §16–§17). Documented upgrade path: more per-category rows and/or a
+* freezing-curve model replace the internals later without an API change.
+*/
+/**
 * Seeded milk_gelato anchor rows, all transcribed from ALREADY-APPROVED reference
 * records — nothing here is invented.
 *
@@ -1390,6 +1399,38 @@ function resolveIceAnchorRows(anchors, category) {
 	if (own.length > 0) return own;
 	if (category === "sorbet") return [];
 	return anchors.filter((row) => row.category === ICE_ANCHOR_CATEGORY_FALLBACK);
+}
+/**
+* True when the anchor-matrix ice model has a SEEDED anchor at exactly
+* `temperatureC` for `category` (its own, or the milk_gelato fallback at that
+* temperature) — i.e. the estimate needs NO cross-temperature extrapolation.
+*
+* Sorbet is deliberately excluded from the milk_gelato fallback: it has no
+* anchor rows and never borrows milk truth (mirrors `estimateIceFraction`).
+* Sorbet's direct authority is answered by `hasDirectIceAuthorityAtTemperature`.
+*/
+function hasSeededIceAnchorAtTemperature(category, temperatureC) {
+	const seededAt = (cat) => ICE_ANCHOR_ROWS.some((r) => r.category === cat && r.temperature_c === temperatureC && r.status === "seeded");
+	if (category === "sorbet") return seededAt("sorbet");
+	return seededAt(category) || seededAt("milk_gelato");
+}
+/**
+* True when the Engine owns a DIRECT ice authority for `category` at exactly
+* `temperatureC`, so interactive Monitor tuning (`isMonitorTuningApproved`)
+* may rely on the ice result without cross-temperature extrapolation:
+*  - Sorbet → the composition-sensitive solver (−13 … −11 °C), never milk rows;
+*  - every other category → a same-temperature seeded anchor row (its own, or
+*    the documented milk_gelato fallback), exactly as before.
+* Gelato / Protein / Vegan behaviour is unchanged by the Sorbet branch.
+*
+* NOTE: the professional Monitor *status* row is stricter — see
+* `src/features/recipe-constraints/freezingStabilityStatus.ts`: anchor-calibrated
+* categories certify GOOD only from their OWN seeded row (the milk_gelato
+* fallback is insufficient there), and Sorbet only from an available solver result.
+*/
+function hasDirectIceAuthorityAtTemperature(category, temperatureC) {
+	if (category === "sorbet") return isSorbetFreezingTemperatureSupported(temperatureC);
+	return hasSeededIceAnchorAtTemperature(category, temperatureC);
 }
 
 //#endregion
@@ -5793,6 +5834,99 @@ const isSupportedTemperature = (value) => value === -11 || value === -12 || valu
 const getTemperatureRegulatorSettingsOrNull = (productProfile, servingTemperatureC) => isActiveProfile(productProfile) && isSupportedTemperature(servingTemperatureC) ? REGISTRY[productProfile][servingTemperatureC] : null;
 
 //#endregion
+//#region src/features/protein-gelato/proteinHardnessAuthority.ts
+/**
+* CANONICAL PROTEIN HARDNESS AUTHORITY — owner decision 2026-09-03 (option A).
+*
+* Protein hardness is targeted through **ice fraction**, never through NPAC. The
+* NPAC route stays blocked and that scientific statement is unchanged: at an
+* otherwise constant formulation, instrumental hardness rises 13.60 N → 47.66 N
+* as protein goes 4 % → 10 % (Applied Food Research 2(1) 100029, 2022), so the
+* Gelato NPAC→hardness calibration does not transfer to a high-protein mix.
+* Restoring hardness through the ice-fraction path does not overturn that.
+*
+* This module OWNS nothing scientific. Every number it returns comes from the
+* already-published Protein regulator entry (`iceFraction.band`, status
+* `owner_approved_standard_physics_protein_v1`), and its availability comes from
+* the shared engine gate `hasDirectIceAuthorityAtTemperature`. It exists so the
+* mapping stops being owned by the legacy PI-Monitor surface.
+*
+* GRANULARITY IS THE AUTHORITY'S, NOT THE UI'S. Sorbet publishes five distinct
+* NPAC centres per temperature (`SORBET_HARDNESS_TARGET_CENTERS`) and therefore
+* earns five positions. Protein publishes an ice BAND with **no clean centre and
+* no per-level centres** — no `iceFraction` entry on any profile carries one —
+* so it supports exactly the three positions the existing `texturePreference`
+* semantics express: `lower_safe_side / clean_center / upper_safe_side`.
+* Rendering five positions where −2 ≡ −1 would be fake precision. A genuine
+* five-level Protein control is a future calibration task, not a code change.
+*/
+/**
+* The exact Direction value each position WRITES. Never ±2 — the authority has
+* no fourth or fifth target to write.
+*/
+const PROTEIN_HARDNESS_TARGET_VALUE = Object.freeze({
+	softer: -1,
+	balanced: 0,
+	firmer: 1
+});
+/**
+* DISPLAY ONLY — project a stored Direction value onto the three positions.
+* Many-to-one, so a draft that already carries ±2 (set elsewhere, or inherited)
+* renders honestly instead of being silently rewritten. Reading must never write.
+*/
+function projectProteinHardnessForDisplay(stored) {
+	if (stored < 0) return "softer";
+	if (stored > 0) return "firmer";
+	return "balanced";
+}
+/**
+* Availability, from the SHARED engine gate — the same authority the customer
+* Monitor surface used. Never a local re-derivation.
+*/
+function proteinHardnessApplies(category, servingTemperatureC) {
+	return category === "protein_gelato" && hasDirectIceAuthorityAtTemperature(category, servingTemperatureC);
+}
+/**
+* The ice-fraction target band for a position, derived ONLY by dividing the
+* published Protein band at its own midpoint:
+*
+*   softer   → lower safe side  (less frozen water reads softer)
+*   balanced → the published band, unnarrowed (the clean centre)
+*   firmer   → upper safe side
+*
+* The polarity is the documented one — "low ice fraction = softer, high =
+* harder" (`piMonitorAxes`) — and is the INVERSE of NPAC, where a higher value
+* is softer. No limit is restated here and no centre is invented: the midpoint
+* is arithmetic on the published band, nothing more.
+*
+* Returns `null` when Protein has no approved ice band at this temperature, so
+* the caller refuses honestly instead of guessing.
+*/
+function proteinHardnessIceBand(servingTemperatureC, step) {
+	const band = getTemperatureRegulatorSettingsOrNull("protein_gelato", servingTemperatureC)?.iceFraction?.band ?? null;
+	if (!band) return null;
+	const [min, max] = band;
+	if (!Number.isFinite(min) || !Number.isFinite(max) || min > max) return null;
+	const midpoint = (min + max) / 2;
+	if (step === "softer") return {
+		min,
+		max: midpoint
+	};
+	if (step === "firmer") return {
+		min: midpoint,
+		max
+	};
+	return {
+		min,
+		max
+	};
+}
+/** Convenience: the band for a stored Direction value, via the display projection. */
+function proteinHardnessBandForTarget(servingTemperatureC, stored) {
+	return proteinHardnessIceBand(servingTemperatureC, projectProteinHardnessForDisplay(stored));
+}
+
+//#endregion
 //#region src/features/recipe-direction/recipeDirectionTargets.ts
 const DEFAULT_RECIPE_DIRECTION_TARGETS = Object.freeze({
 	sweetness: 0,
@@ -5980,7 +6114,29 @@ function computeRecipeDirectionPlan(input) {
 		targetCenter: null,
 		reason: "Brak zatwierdzonego zakresu POD dla tego profilu i temperatury."
 	});
-	if (regulator?.npac?.cleanCenter && softnessOperational) {
+	if (proteinHardnessApplies(input.category, input.target_temperature_c)) {
+		const proteinBand = proteinHardnessBandForTarget(input.target_temperature_c, targets.softness);
+		if (proteinBand) {
+			if (enabled) bands.ice_fraction = proteinBand;
+			axes.push({
+				axis: "softness",
+				target: targets.softness,
+				status: "working",
+				metric: "ice_fraction",
+				targetBand: proteinBand,
+				targetCenter: null,
+				reason: null
+			});
+		} else axes.push({
+			axis: "softness",
+			target: targets.softness,
+			status: "blocked_data",
+			metric: "ice_fraction",
+			targetBand: null,
+			targetCenter: null,
+			reason: "Brak zatwierdzonego zakresu lodu dla tego profilu i temperatury."
+		});
+	} else if (regulator?.npac?.cleanCenter && softnessOperational) {
 		const sorbetTemperature = input.target_temperature_c;
 		const targetCenter = profile === "sorbet" ? SORBET_HARDNESS_TARGET_CENTERS[sorbetTemperature]?.[targets.softness] ?? null : null;
 		const targetBand = targetCenter !== null ? exactPreferencePoint(targetCenter) : softnessBand(regulator.npac.band, regulator.npac.cleanCenter, targets.softness);

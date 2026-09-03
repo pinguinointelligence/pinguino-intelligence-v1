@@ -21,8 +21,8 @@
     "productionSessionSchema": 2
   },
   "bundle": {
-    "bytes": 338310,
-    "sha256": "f833af78ffdc08cf8bdf69a13bfdb6ee1bb0dff29467d21ae281cd1488574f49",
+    "bytes": 345388,
+    "sha256": "2602cb4743af909300741a4c3941318c2127781bf548cb62e9021fefebafede6",
     "externalImports": 0,
     "dynamicImports": 0
   },
@@ -208,6 +208,10 @@
       "sha256": "1a93b89061969614e3e486b7cd4e379e7190ca8627a97e8f7f826b08db10a913"
     },
     {
+      "path": "src/features/protein-gelato/proteinHardnessAuthority.ts",
+      "sha256": "c12d29e1f39a486b1579505045d30b9292f9ef1339d944ef0667d8876f45c842"
+    },
+    {
       "path": "src/features/protein-gelato/proteinQualification.ts",
       "sha256": "e6534f96b013372d086e49794045932f949595ad4a8f9d66bf40db946246e522"
     },
@@ -237,7 +241,7 @@
     },
     {
       "path": "src/features/recipe-constraints/gelatoStabilizerSystemAuthority.ts",
-      "sha256": "194d10cb551fcedcdfc9bd71146eb95946d77723eccab5722c11ccb4f37e19bf"
+      "sha256": "a55ae86604460ec0b54cfbbfa391d2581a66ad4ea0c8eea65795143596c28d83"
     },
     {
       "path": "src/features/recipe-constraints/recipeConstraintAuthority.ts",
@@ -245,7 +249,7 @@
     },
     {
       "path": "src/features/recipe-constraints/sorbetStabilizerSystemAuthority.ts",
-      "sha256": "ae8aac4759390a4d1e68b1a45a15f9e926927ba56a1b7bf2ab8d7760af810e9e"
+      "sha256": "2ec0ba3dad8d937f466920a391589fe970b6b9e649723f7924e200fade55bb40"
     },
     {
       "path": "src/features/recipe-direction/recipeDirectionAssessment.ts",
@@ -253,7 +257,7 @@
     },
     {
       "path": "src/features/recipe-direction/recipeDirectionTargets.ts",
-      "sha256": "f5c97d21a9de79dcec2fcf88ee51508085a9aba1bdcf3fb2df6d9c7c0d0340a7"
+      "sha256": "de812e8b3691f65cd79fc43fb499a29d50a82b77947b99c9f7fa8689f50278c6"
     },
     {
       "path": "src/features/recipe-score/recipeMatchScore.ts",
@@ -268,5 +272,5 @@
       "sha256": "a2207c9c4e9431daa728d6b03fe1b9c4a4a3ba3403a0c056f2808c0759a455c8"
     }
   ],
-  "sourceClosureSha256": "f902e0e7b45f6f58d45250cd5d192b57be7fec237fbb511a96161066e1eb9c12"
+  "sourceClosureSha256": "9adba52c83679a0babec69a56ed2dce4f1bcb013c95bd7426f219b7c2b3f7a3e"
 }

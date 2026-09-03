@@ -965,11 +965,13 @@ describe('Direction explains itself, and agrees with the engine', () => {
   const v21 = read('styles', 'gellatti-v2-1.css');
 
   it('ramps the mark by size instead of printing a number', () => {
-    expect(axes).toMatch(/const DOT_PX: Ramp = \[5, 6\.5, 8, 9\.5, 11\]/);
-    expect(axes).toMatch(/const THUMB_PX: Ramp = \[13, 14\.5, 16, 17\.5, 19\]/);
+    expect(axes).toMatch(/const DOT_RAMP = \[5, 6\.5, 8, 9\.5, 11\]/);
+    expect(axes).toMatch(/const THUMB_RAMP = \[13, 14\.5, 16, 17\.5, 19\]/);
     // Sized by SLOT, so the ball grows across the screen rather than along the
     // number line — the two differ on a mirrored axis.
-    expect(axes).toContain('const rampAt = (sizes: Ramp, slot: Slot, reversed: boolean): number');
+    /* Sampled across the axis's own count, which is what lets a three-position
+       profile share the ramp without inventing a level it cannot deliver. */
+    expect(axes).toContain('const sampleRamp = (ramp: readonly number[], count: number)');
     // No +1 / -2 anywhere in the control any more, in any form.
     expect(axes).not.toContain('const sign =');
     expect(axes).not.toMatch(/\+\$\{detent\}/);
@@ -983,8 +985,8 @@ describe('Direction explains itself, and agrees with the engine', () => {
        did. Nothing here may be "simplified" into flipping the stored value. */
     expect(engine).toContain('-2 = more soft (higher NPAC), +2 = more firm (lower NPAC)');
     expect(axes).toContain("reversed={axis === 'softness'}");
-    expect(axes).toContain('(reversed ? 2 - slot : slot - 2) as DirectionIntent');
-    expect(axes).toContain('(reversed ? 2 - detent : detent + 2) as Slot');
+    expect(axes).toContain('const visual = reversed ? [...detents].reverse() : [...detents];');
+    expect(axes).toContain('const indexOfDetent = (detent: DirectionIntent) =>');
     // Firm left, soft right — the owner's approved reading order.
     expect(axes).toContain("['bardziej twarde', 'bardziej miękkie']");
     expect(axes).not.toContain("['bardziej miękkie', 'bardziej twarde']");
@@ -994,16 +996,17 @@ describe('Direction explains itself, and agrees with the engine', () => {
     const firm = axes.indexOf('znacznie bardziej twarde');
     expect(soft).toBeGreaterThan(-1);
     expect(soft).toBeLessThan(firm);
-    expect(axes).toContain('phrases[(detent + 2) as Slot]');
+    expect(axes).toContain('PHRASES[axisKey][detent]');
   });
 
   it('walks the arrow keys across the SCREEN, not along the number line', () => {
     // On a mirrored axis ArrowLeft must reach the mark to the left, which is
     // canonical +2. Stepping the stored value instead would send the keyboard
     // the opposite way from the eye.
-    expect(axes).toContain('onSet(detentForSlot(Math.max(0, Math.min(4, next)) as Slot, reversed))');
-    expect(axes).not.toContain('onSet(Math.max(-2, position - 1)');
-    expect(axes).not.toContain('onSet(Math.min(2, position + 1)');
+    expect(axes).toContain('const clamped = Math.max(0, Math.min(count - 1, next));');
+    expect(axes).toContain('if (target !== undefined) onSet(target);');
+    expect(axes).not.toContain('onSet(Math.max(-span, position - 1)');
+    expect(axes).not.toContain('onSet(Math.min(span, position + 1)');
   });
 
   it('tells the reader the column continues, since the scrollbar is hidden', () => {
@@ -1087,7 +1090,9 @@ describe('five-detent direction language', () => {
     expect(axes).toContain("['sweetness'");
     expect(axes).toContain("['softness'");
     // Five marks, now addressed by visual slot rather than by a value list.
-    expect(axes).toContain('const SLOTS = [0, 1, 2, 3, 4] as const');
+    // Five real positions by default; three where the authority publishes three.
+    expect(axes).toContain('const DETENTS = [-2, -1, 0, 1, 2] as const;');
+    expect(axes).toContain('const DETENTS_THREE = [-1, 0, 1] as const;');
     expect(axes).not.toContain('Wybrano:');
     /* OWNER AUTHORITY 2026-09-03: the approved reference carries NO end labels
        under the track — the axis is one row, its name and its instrument. The
