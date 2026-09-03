@@ -127,6 +127,44 @@ export async function lookupExactBarcode(barcode: ValidBarcode): Promise<ScanExa
   };
 }
 
+/**
+ * LIVE IDENTIFICATION — "what is this?", and nothing more.
+ *
+ * Separate from `analyzeProductImages` on purpose. That one PROFILES a product: nutrition,
+ * ingredients, allergens, the evidence gate, and it is capped at two vision calls for a
+ * whole session. A live sweep asks a much smaller question, many more times, so it gets
+ * its own cheap boundary — `product-identify-live` — which cannot profile anything.
+ *
+ * The response never carries a canonical id the model chose. `resolution` is filled in
+ * server-side from the catalogue, or left null, in which case the sweep treats the product
+ * as unresolved.
+ */
+export interface LiveIdentifyResponse {
+  status: 'RESOLVED' | 'UNRESOLVED';
+  identity: { name: string | null; brand: string | null; variant: string | null } | null;
+  confidence: number;
+  evidenceType: string;
+  resolution: { productId: string; displayName: string; brand: string | null } | null;
+  usage: { visionCalls: number; estimatedCostUsd: number };
+}
+
+export async function identifyLiveFrame(input: {
+  sessionId: string;
+  frame: { mime: string; base64: string } | null;
+  evidence?: { barcode?: string | null; ocrText?: string | null; brandText?: string | null };
+}): Promise<LiveIdentifyResponse | null> {
+  if (!supabase) return null;
+  const { data, error } = await supabase.functions.invoke('product-identify-live', {
+    body: input,
+  });
+  // A sweep must survive its own network: a failed identification is a frame that said
+  // nothing, never an error thrown into the customer's face mid-scan.
+  if (error || !data || typeof data !== 'object' || (data as { error?: unknown }).error) {
+    return null;
+  }
+  return data as LiveIdentifyResponse;
+}
+
 export interface ScanAnalysisResponse {
   sessionId: string;
   result: ProductScanResult;

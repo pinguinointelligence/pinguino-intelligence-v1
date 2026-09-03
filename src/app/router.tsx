@@ -40,7 +40,6 @@ import { SharedRecipePage } from '@/pages/community/SharedRecipePage';
 import { TopHundredPage } from '@/pages/community/TopHundredPage';
 import {
   APIPage,
-  AccountSettingsPage,
   FranchisePage,
   HowItWorksPage,
   LabelsHubPage,
@@ -58,6 +57,8 @@ import {
   WorkWithUsPage,
   AffiliatePage,
 } from '@/pages/destinations';
+import { LocalStarterPackPage } from '@/pages/shop/LocalStarterPackPage';
+import { AccountWorkspacePage } from '@/pages/account/AccountWorkspacePage';
 
 /** The canonical PINGÜINO Pro recipe editor path — the ONE professional workspace (owner P0). */
 export const PRO_RECIPE_PATH = '/pro/recipe';
@@ -117,6 +118,9 @@ export function AppRoutes() {
       <Route path="/home" element={<RoleAwareEntryRoute entry="home" />} />
       <Route path="/how-it-works" element={<HowItWorksPage />} />
       <Route path="/shop" element={<ShopPage />} />
+      {/* The 0 EUR Local pack is its own ROUTE so the intent survives auth and
+          refresh — see `LocalStarterPackPage`. */}
+      <Route path="/shop/local-starter-pack" element={<LocalStarterPackPage />} />
       <Route path="/affiliate" element={<AffiliatePage />} />
       <Route path="/franchise" element={<FranchisePage />} />
       {/* The three Work With Us lanes that had no route. The gateway links to
@@ -228,7 +232,9 @@ export function AppRoutes() {
       <Route path="/products" element={<ProductsHubPage />} />
       <Route path="/production" element={<ProductionHubPage />} />
       <Route path="/labels" element={<LabelsHubPage />} />
-      <Route path="/account" element={<AccountSettingsPage />} />
+      {/* Sectioned account. `?section=` + `?order=` is what makes
+          "Pokaż moje zamówienie" land on the ORDER and survive a refresh. */}
+      <Route path="/account" element={<AccountWorkspacePage />} />
       <Route path="/machine" element={<MachineProfilePage />} />
       <Route path="/label" element={<LegacyDestinationRedirect pathname="/labels" />} />
 
