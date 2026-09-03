@@ -70,6 +70,7 @@ const SYSTEM_PROMPT = [
   'Prefer the language of any text visible on the packaging; otherwise use Polish.',
   'Never guess a brand that is not visible. Never describe nutrition, ingredients or weight.',
   'If you cannot tell what the item is, return name null, kind UNCLEAR and a low confidence.',
+  'kind FRESH_PRODUCE means unpackaged food with no label to read, such as loose fruit.',
 ].join(' ');
 
 const json = (body: unknown, status = 200) =>
@@ -188,12 +189,16 @@ Deno.serve(async (request) => {
     hit: CatalogHit | null,
     visionCalls: number,
     cost = 0,
+    // What was being looked at. The client escalates to local OCR only for things that
+    // HAVE a label, so a banana is never made to wait for a text engine to download.
+    kind: 'FRESH_PRODUCE' | 'PACKAGED' | 'UNCLEAR' = 'UNCLEAR',
   ) =>
     json({
       status: hit ? 'RESOLVED' : 'UNRESOLVED',
       identity,
       confidence,
       evidenceType,
+      kind,
       resolution: hit,
       usage: { visionCalls, estimatedCostUsd: cost },
     });
@@ -201,13 +206,30 @@ Deno.serve(async (request) => {
   // ── 1. Local evidence first. Both of these cost nothing. ──────────────────────
   if (barcode) {
     const hit = await resolve(barcode);
-    if (hit) return answer({ name: hit.displayName, brand: hit.brand, variant: null }, 1, 'BARCODE', hit, 0);
+    if (hit)
+      return answer(
+        { name: hit.displayName, brand: hit.brand, variant: null },
+        1,
+        'BARCODE',
+        hit,
+        0,
+        0,
+        'PACKAGED',
+      );
   }
   const localText = ocrText ?? brandText;
   if (localText) {
     const hit = await resolve(localText);
     if (hit)
-      return answer({ name: hit.displayName, brand: hit.brand, variant: null }, 0.85, 'OCR', hit, 0);
+      return answer(
+        { name: hit.displayName, brand: hit.brand, variant: null },
+        0.85,
+        'OCR',
+        hit,
+        0,
+        0,
+        'PACKAGED',
+      );
   }
 
   // ── 2. Only now is the model worth paying for. ────────────────────────────────
@@ -265,7 +287,15 @@ Deno.serve(async (request) => {
 
   const identified = parseIdentity(payload);
   if (!identified?.name) {
-    return answer(null, identified?.confidence ?? 0, 'VISUAL', null, MAX_VISION_CALLS_PER_REQUEST, cost);
+    return answer(
+      null,
+      identified?.confidence ?? 0,
+      'VISUAL',
+      null,
+      MAX_VISION_CALLS_PER_REQUEST,
+      cost,
+      (identified?.kind as 'FRESH_PRODUCE' | 'PACKAGED' | 'UNCLEAR') ?? 'UNCLEAR',
+    );
   }
 
   // The model named something. The CATALOGUE decides whether that is a Gellatti product.
@@ -278,5 +308,6 @@ Deno.serve(async (request) => {
     hit,
     MAX_VISION_CALLS_PER_REQUEST,
     cost,
+    (identified.kind as 'FRESH_PRODUCE' | 'PACKAGED' | 'UNCLEAR') ?? 'UNCLEAR',
   );
 });

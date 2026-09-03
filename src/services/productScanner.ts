@@ -144,6 +144,11 @@ export interface LiveIdentifyResponse {
   identity: { name: string | null; brand: string | null; variant: string | null } | null;
   confidence: number;
   evidenceType: string;
+  /**
+   * What was being looked at. The scanner escalates to local OCR only for things that
+   * HAVE a label, so fresh produce is never made to wait for a text engine to download.
+   */
+  kind?: 'FRESH_PRODUCE' | 'PACKAGED' | 'UNCLEAR';
   resolution: { productId: string; displayName: string; brand: string | null } | null;
   usage: { visionCalls: number; estimatedCostUsd: number };
 }
