@@ -32,12 +32,12 @@ describe('Recipe profile visual density contract', () => {
     /* OWNER 2026-09-03: the dots are a RAMP, not five identical marks — the
        size is what tells you which way the axis runs, so it is computed per
        detent rather than fixed in a class. */
-    expect(axes).toContain('const DOT_PX = [5, 6.5, 8, 9.5, 11] as const');
-    expect(axes).toContain('const THUMB_PX = [13, 14.5, 16, 17.5, 19] as const');
+    expect(axes).toMatch(/const DOT_PX: Ramp = \[5, 6\.5, 8, 9\.5, 11\]/);
+    expect(axes).toMatch(/const THUMB_PX: Ramp = \[13, 14\.5, 16, 17\.5, 19\]/);
     expect(axes).toContain('const d = rampAt(DOT_PX, slot, reversed);');
     /* Mirrored for Twardość as PRESENTATION: the largest ball sits leftmost
        and still writes canonical +2, which the engine reads as firmer. */
-    expect(axes).toContain('sizes[reversed ? 4 - slot : slot]');
+    expect(axes).toContain('sizes[(reversed ? 4 - slot : slot) as Slot]');
     expect(axes).toContain("reversed={axis === 'softness'}");
     // The fill runs centre → position, never end → position.
     /* OWNER 2026-09-03: the detents are CONNECTED. Five loose dots stopped

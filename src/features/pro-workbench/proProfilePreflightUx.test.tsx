@@ -965,11 +965,11 @@ describe('Direction explains itself, and agrees with the engine', () => {
   const v21 = read('styles', 'gellatti-v2-1.css');
 
   it('ramps the mark by size instead of printing a number', () => {
-    expect(axes).toContain('const DOT_PX = [5, 6.5, 8, 9.5, 11] as const');
-    expect(axes).toContain('const THUMB_PX = [13, 14.5, 16, 17.5, 19] as const');
+    expect(axes).toMatch(/const DOT_PX: Ramp = \[5, 6\.5, 8, 9\.5, 11\]/);
+    expect(axes).toMatch(/const THUMB_PX: Ramp = \[13, 14\.5, 16, 17\.5, 19\]/);
     // Sized by SLOT, so the ball grows across the screen rather than along the
     // number line — the two differ on a mirrored axis.
-    expect(axes).toContain('const rampAt = (sizes: readonly number[], slot: Slot, reversed: boolean)');
+    expect(axes).toContain('const rampAt = (sizes: Ramp, slot: Slot, reversed: boolean): number');
     // No +1 / -2 anywhere in the control any more, in any form.
     expect(axes).not.toContain('const sign =');
     expect(axes).not.toMatch(/\+\$\{detent\}/);
@@ -994,7 +994,7 @@ describe('Direction explains itself, and agrees with the engine', () => {
     const firm = axes.indexOf('znacznie bardziej twarde');
     expect(soft).toBeGreaterThan(-1);
     expect(soft).toBeLessThan(firm);
-    expect(axes).toContain('phrases[detent + 2]');
+    expect(axes).toContain('phrases[(detent + 2) as Slot]');
   });
 
   it('walks the arrow keys across the SCREEN, not along the number line', () => {

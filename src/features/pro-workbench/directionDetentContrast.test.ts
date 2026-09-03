@@ -103,7 +103,7 @@ describe('Direction readability — the reported value', () => {
     /* Indexed by the CANONICAL value, never by the slot: Twardość is drawn
        firm-left, so a slot-indexed name would announce the mirror image of
        what was actually stored. */
-    expect(axes).toContain('aria-label={`${label}: ${phrases[detent + 2]}`}');
+    expect(axes).toContain('aria-label={`${label}: ${phrases[(detent + 2) as Slot]}`}');
     expect(axes).toContain('aria-checked={position === detent}');
     expect(axes).toContain('const PHRASES');
     // Five phrases per direction, so every detent is named, and the neutral one
