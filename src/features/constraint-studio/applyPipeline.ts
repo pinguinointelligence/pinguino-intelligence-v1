@@ -3454,7 +3454,7 @@ export function projectCrownOffMainTarget(
       requestedGrams,
       selectedGrams,
       requestPreserved: selectedGrams === requestedGrams,
-      limitingTechnicalRules: [...proof.limitingTechnicalRules],
+      limitingTechnicalRules: [...(proof.limitingTechnicalRules ?? [])],
     },
   };
 }
@@ -6799,7 +6799,26 @@ export function buildOptimizePreview(
     nearestFeasibleGrams,
     alternativeProductType: null,
     solverInvocations: 0,
-    iteration: { solverInvocations: 0, rounds: [], capped: false, stopReason: 'fixed_point' },
+    iteration: {
+      // The proposal was rejected by product authority, not by the solver: no
+      // round ran, so every counter is honestly zero rather than invented.
+      solverInvocations: 0,
+      draftVectorSearches: 0,
+      candidateVector: [],
+      draftPlannedSumGrams: plannedSum(input),
+      draftLineGrams: input.items.map((item) => ({
+        lineId: item.id,
+        ingredientId: canonicalIngredientId(item.ingredient),
+        grams: item.planned_grams,
+      })),
+      startPlannedSumGrams: plannedSum(input),
+      targetBatchGrams: input.target_batch_grams,
+      rounds: [],
+      stopReason: 'fixed_point_no_proposal',
+      stopDetail: null,
+      capped: false,
+      attemptedMoves: [],
+    },
     templateId: 'none',
     templateStatus: 'approved',
   };
