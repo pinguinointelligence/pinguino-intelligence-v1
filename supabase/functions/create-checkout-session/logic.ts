@@ -154,3 +154,67 @@ export function buildCheckoutIdempotencyKey(input: {
 }): string {
   return `checkout:${input.userId}:${input.offerKey}:${input.attributionId ?? 'none'}`;
 }
+
+/* ── PARTNER 15-MONTH BENEFIT — offer substitution (D-01, Phase A) ─────────
+ *
+ * The canonical "12 paid + 3 free" offers already exist in Stripe and in
+ * billing_price_catalog: same amount as the plain annual, an initial term of
+ * interval_count 15 months, and renewal_offer_key pointing back at the normal
+ * annual offer. The benefit is therefore delivered by CHOOSING THE RIGHT PRICE
+ * at checkout — never by extending an entitlement afterwards.
+ *
+ * These offers stay OUT of PURCHASABLE_OFFERS on purpose. That table resolves
+ * CLIENT-submitted keys, so a customer who posts `home_15m_standard_partner`
+ * still gets `unknown_or_unpurchasable_offer`, exactly like garbage. Reaching a
+ * 15-month price is only possible through the substitution below, which runs on
+ * the server, after attribution, and only on a GRANTED decision from the single
+ * eligibility authority (`decideFifteenMonthBenefit`).
+ *
+ * PHASE A ONLY. Selecting the offer does not consume the benefit — an unpaid or
+ * abandoned checkout must leave the lifetime use unspent. Consumption is Phase
+ * B, on real completion, in the webhook.
+ */
+export interface PartnerFifteenMonthOffer {
+  readonly offerKey: string;
+  readonly envVarName: string;
+}
+
+/** Plain annual offer → its canonical partner 15-month counterpart. */
+export const PARTNER_FIFTEEN_MONTH_OFFERS: Readonly<Record<string, PartnerFifteenMonthOffer>> =
+  Object.freeze({
+    home_yearly_standard: Object.freeze({
+      offerKey: 'home_15m_standard_partner',
+      envVarName: 'STRIPE_PRICE_HOME_15M_STANDARD_PARTNER',
+    }),
+    home_yearly_launch: Object.freeze({
+      offerKey: 'home_15m_launch_partner',
+      envVarName: 'STRIPE_PRICE_HOME_15M_LAUNCH_PARTNER',
+    }),
+    pro_yearly_standard: Object.freeze({
+      offerKey: 'pro_15m_standard_partner',
+      envVarName: 'STRIPE_PRICE_PRO_15M_STANDARD_PARTNER',
+    }),
+    pro_yearly_founding: Object.freeze({
+      offerKey: 'pro_15m_founding_partner',
+      envVarName: 'STRIPE_PRICE_PRO_15M_FOUNDING_PARTNER',
+    }),
+  });
+
+/**
+ * Substitute the partner 15-month offer for a plain annual one.
+ *
+ * `granted` MUST be the result of `decideFifteenMonthBenefit` — this function
+ * deliberately restates none of the eligibility rules, so a monthly offer, an
+ * unattributed buyer, a renewal or a prior lifetime use are all simply
+ * `granted: false` decided upstream by the one authority.
+ *
+ * Returns null when nothing should change, and the caller keeps the offer the
+ * customer actually chose.
+ */
+export function resolvePartnerFifteenMonthOffer(
+  resolvedOfferKey: string,
+  granted: boolean,
+): PartnerFifteenMonthOffer | null {
+  if (!granted) return null;
+  return PARTNER_FIFTEEN_MONTH_OFFERS[resolvedOfferKey] ?? null;
+}

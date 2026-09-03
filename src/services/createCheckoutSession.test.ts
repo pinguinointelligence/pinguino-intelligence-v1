@@ -14,9 +14,12 @@ import {
   buildCheckoutIdempotencyKey,
   buildCheckoutMetadata,
   hasConflictingActiveSubscription,
+  PARTNER_FIFTEEN_MONTH_OFFERS,
   PURCHASABLE_OFFERS,
+  resolvePartnerFifteenMonthOffer,
   resolvePurchasableOffer,
 } from '../../supabase/functions/create-checkout-session/logic.ts';
+import { decideFifteenMonthBenefit, type BenefitEvidence } from '@/billing/domain/attribution';
 
 const ROOT = resolve(import.meta.dirname, '..', '..');
 const fnDir = join(ROOT, 'supabase', 'functions', 'create-checkout-session');
@@ -221,5 +224,96 @@ describe('Deno entrypoint — source pins', () => {
     expect(/^\s*import\s/m.test(logicSource)).toBe(false);
     expect(logicSource.includes('Deno.')).toBe(false);
     expect(logicSource.includes('createClient')).toBe(false);
+  });
+});
+
+
+/* ── D-01 PHASE A: partner 15-month offer substitution ───────────────────── */
+
+/** Eligible unless a field says otherwise — mirrors the authority's own shape. */
+const benefitEvidence = (over: Partial<BenefitEvidence> = {}): BenefitEvidence => ({
+  paymentKind: 'initial_annual_purchase',
+  attributed: true,
+  benefitAlreadyGrantedForSubscription: false,
+  userHadPriorBenefit: false,
+  isPartnersOwnFreeEntitlement: false,
+  hadInviteTrial: false,
+  ...over,
+});
+
+const granted = (over: Partial<BenefitEvidence> = {}): boolean =>
+  decideFifteenMonthBenefit(benefitEvidence(over)).granted;
+
+describe('partner 15-month offer substitution (D-01 phase A)', () => {
+  it('a customer can NEVER reach a 15-month price by naming it', () => {
+    // The whole security property: these keys are not client-resolvable, so a
+    // hand-crafted request for the partner price is refused like garbage.
+    for (const target of Object.values(PARTNER_FIFTEEN_MONTH_OFFERS)) {
+      expect(
+        resolvePurchasableOffer(target.offerKey, { launchEnabled: true, foundingEnabled: true }),
+      ).toEqual({ ok: false, reason: 'unknown_or_unpurchasable_offer' });
+      expect(PURCHASABLE_OFFERS.some((o) => o.offerKey === target.offerKey)).toBe(false);
+    }
+  });
+
+  it('substitutes each annual offer for its canonical partner counterpart', () => {
+    expect(resolvePartnerFifteenMonthOffer('home_yearly_standard', granted())?.offerKey).toBe(
+      'home_15m_standard_partner',
+    );
+    expect(resolvePartnerFifteenMonthOffer('home_yearly_launch', granted())?.offerKey).toBe(
+      'home_15m_launch_partner',
+    );
+    expect(resolvePartnerFifteenMonthOffer('pro_yearly_standard', granted())?.offerKey).toBe(
+      'pro_15m_standard_partner',
+    );
+    expect(resolvePartnerFifteenMonthOffer('pro_yearly_founding', granted())?.offerKey).toBe(
+      'pro_15m_founding_partner',
+    );
+  });
+
+  it('refuses every case the authority refuses — no rule is restated here', () => {
+    const cases: Partial<BenefitEvidence>[] = [
+      { attributed: false }, //                        not_attributed
+      { paymentKind: 'annual_renewal' }, //             renewal_not_eligible
+      { paymentKind: 'rebuy_after_cancel' }, //         rebuy_not_eligible
+      { userHadPriorBenefit: true }, //                 lifetime already spent
+      { benefitAlreadyGrantedForSubscription: true }, // stacking_rejected
+      { isPartnersOwnFreeEntitlement: true }, //        partner's own entitlement
+    ];
+    for (const over of cases) {
+      expect(resolvePartnerFifteenMonthOffer('pro_yearly_standard', granted(over))).toBeNull();
+    }
+  });
+
+  it('grants on conversion_to_annual, so D-02 uses the same authority', () => {
+    expect(
+      resolvePartnerFifteenMonthOffer('pro_yearly_standard', granted({ paymentKind: 'conversion_to_annual' }))
+        ?.offerKey,
+    ).toBe('pro_15m_standard_partner');
+  });
+
+  it('an invite trial is NOT a refusal', () => {
+    expect(resolvePartnerFifteenMonthOffer('home_yearly_standard', granted({ hadInviteTrial: true }))).not.toBeNull();
+  });
+
+  it('never substitutes a monthly offer', () => {
+    for (const key of ['home_monthly_standard', 'pro_monthly_standard', 'pro_monthly_founding']) {
+      expect(resolvePartnerFifteenMonthOffer(key, granted())).toBeNull();
+    }
+  });
+
+  it('LOCKSTEP: every target exists in the app catalog, is 15 months, costs the '
+    + 'same as the annual it replaces, and renews back to it', () => {
+    for (const [annualKey, target] of Object.entries(PARTNER_FIFTEEN_MONTH_OFFERS)) {
+      const annual = PRICE_CATALOG.find((o) => o.offerKey === annualKey);
+      const fifteen = PRICE_CATALOG.find((o) => o.offerKey === target.offerKey);
+      expect(annual, `${annualKey} missing from PRICE_CATALOG`).toBeDefined();
+      expect(fifteen, `${target.offerKey} missing from PRICE_CATALOG`).toBeDefined();
+      // The customer pays the ordinary annual price — that IS the promise.
+      expect(fifteen!.amountCents).toBe(annual!.amountCents);
+      expect(fifteen!.cadence).toBe('initial_15_month');
+      // After the bonus term it must fall back to the normal annual offer.
+      expect(fifteen!.renewalOfferKey).toBe(annualKey);
+    }
   });
 });
