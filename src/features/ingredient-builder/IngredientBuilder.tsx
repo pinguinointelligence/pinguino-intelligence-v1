@@ -1,3 +1,4 @@
+import { DialogShell } from '@/components/ui/DialogShell';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { MetricValue } from '@/components/shared/MetricValue';
@@ -180,6 +181,23 @@ export function IngredientBuilder({
   const draggedBaseId = useRef<string | null>(null);
   const draggedToppingId = useRef<string | null>(null);
   const [pickerNotice, setPickerNotice] = useState<string | null>(null);
+  /* OWNER QA 2026-09-03: reaching the stabilizer ceiling is an EVENT, not a
+     condition, so it is told once in a dialog rather than parked as a banner
+     above the table for the rest of the session.
+
+     `acknowledgedStabilizerLimit` holds the ceiling the owner has already been
+     told about, so a render — or a second press against the same wall — cannot
+     reopen it. It is cleared as soon as a stabilizer edit lands WITHOUT hitting
+     the ceiling, which is exactly "reduce, then hit it again". A batch or
+     profile change moves the canonical ceiling to a different number, so the
+     comparison fails and the new limit is announced on its own. */
+  const [stabilizerLimitGrams, setStabilizerLimitGrams] = useState<number | null>(null);
+  /* A REF, not state. Two presses can land in one React batch — a held key, or
+     a fast double-tap — and a state read from the handler's closure would still
+     be the pre-batch value, so the second press would consult a stale
+     acknowledgement and stay silent when it should speak. The ref is always
+     current at the moment the press is handled. */
+  const acknowledgedStabilizerLimit = useRef<number | null>(null);
   const [reorderNotice, setReorderNotice] = useState('');
   const [pickerHandoff, setPickerHandoff] = useState<ProductPickerHandoff | null>(null);
   const pickerHandoffKey = useRef(0);
@@ -281,7 +299,17 @@ export function IngredientBuilder({
       const draft = selectCanonicalDraft();
       const aggregate = clampOwnerStabilizerComponentGrams(draft.input, lineId, requestedGrams);
       lockAwareCoreActions.setPlannedGrams(lineId, aggregate.grams);
-      if (aggregate.messagePl) setPickerNotice(aggregate.messagePl);
+      if (aggregate.reason === 'aggregate_limit') {
+        // The ceiling: a dialog, once per limit event. Never a banner.
+        if (acknowledgedStabilizerLimit.current !== aggregate.limitGrams) {
+          setStabilizerLimitGrams(aggregate.limitGrams);
+        }
+      } else {
+        // Anything below the ceiling re-arms the announcement, so hitting it
+        // again after reducing informs the owner again.
+        acknowledgedStabilizerLimit.current = null;
+        if (aggregate.messagePl) setPickerNotice(aggregate.messagePl);
+      }
       markDoseUserSet(lineId);
     },
   };
@@ -952,6 +980,37 @@ export function IngredientBuilder({
               variant="neutral"
               testId="product-picker-notice"
             />
+          ) : null}
+          {stabilizerLimitGrams !== null ? (
+            <DialogShell
+              label="Limit stabilizatora osiągnięty"
+              testId="stabilizer-limit-dialog"
+              onClose={() => {
+                acknowledgedStabilizerLimit.current = stabilizerLimitGrams;
+                setStabilizerLimitGrams(null);
+              }}
+              panelClassName="max-w-[380px]"
+            >
+              {/* Informative, not an error: the amount was applied, it simply
+                  stopped at the ceiling. No engine or constraint vocabulary. */}
+              <h2 className="text-[17px] leading-6 font-semibold tracking-[-0.02em] text-[var(--g-ink)]">
+                Limit stabilizatora osiągnięty
+              </h2>
+              <p className="mt-2 text-[13.5px] leading-[19px] text-[var(--g-text-secondary)]">
+                {`Dla tej partii maksymalna ilość systemu stabilizującego to ${stabilizerLimitGrams} g.`}
+              </p>
+              <button
+                type="button"
+                data-testid="stabilizer-limit-ok"
+                onClick={() => {
+                  acknowledgedStabilizerLimit.current = stabilizerLimitGrams;
+                  setStabilizerLimitGrams(null);
+                }}
+                className="pro-focus-ring mt-4 inline-flex h-10 w-full items-center justify-center rounded-full bg-[var(--g-graphite)] px-5 text-[13.5px] font-semibold text-white"
+              >
+                OK
+              </button>
+            </DialogShell>
           ) : null}
           <p
             className="sr-only"

@@ -7,6 +7,7 @@
  * HOME|PRO switch rendering on neither surface.
  */
 import { readFileSync, readdirSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter } from 'react-router';
@@ -187,5 +188,35 @@ describe('ONE page gutter — a page may not re-scope the global header', () => 
     expect(APP_PAGE_WORKSPACE).toContain('xl:w-[calc(100%-var(--pro-page-gutter))]');
     // mx-auto is what turns the token into the page origin: margin = gutter / 2.
     expect(APP_HEADER_ROW).toContain('mx-auto');
+  });
+});
+
+describe('the header canvas cannot silently swallow its own controls', () => {
+  const shell = readFileSync(resolve(import.meta.dirname, 'AppShell.tsx'), 'utf8');
+  const geometry = readFileSync(resolve(import.meta.dirname, 'shellGeometry.ts'), 'utf8');
+
+  /* OWNER QA 2026-09-03 — the regression this locks out.
+
+     The header canvas is `pointer-events-none` so its transparent band cannot
+     intercept clicks meant for the page beneath. That makes every control
+     placed on it inert until it opts back in. HOME | PRO opted in; the module
+     tab strip did not, so Receptura / Monitor / Produkcja / Etykieta rendered
+     perfectly and were completely dead to the mouse on every desktop PRO page.
+     Measured before the fix: `pointer-events: none` on each tab, and
+     `elementFromPoint` at a tab's own centre returning the HEADER.
+
+     Nothing about the strip's appearance changed when it broke, and no test
+     looked at pointer events, which is exactly why it reached staging. */
+  it('every child group placed on the canvas re-enables pointer events', () => {
+    expect(geometry).toContain('xl:pointer-events-none');
+    const canvasBlock = shell.slice(shell.indexOf('APP_HEADER_CANVAS'));
+    const region = canvasBlock.slice(0, canvasBlock.indexOf('</header>'));
+    // The two groups the canvas carries: the actions/switch column, and the
+    // workbench module strip. Both must opt in.
+    expect((region.match(/pointer-events-auto/g) ?? []).length).toBeGreaterThanOrEqual(2);
+    expect(shell).toContain('data-testid="app-header-workbench-chrome"');
+    expect(shell).toMatch(
+      /pointer-events-auto contents"\s*data-testid="app-header-workbench-chrome"/,
+    );
   });
 });
