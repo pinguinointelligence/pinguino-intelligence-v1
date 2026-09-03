@@ -20,6 +20,10 @@ const picker = fs.readFileSync(
   path.join(ROOT, 'src/features/ingredient-builder/ProductPickerPopover.tsx'),
   'utf8',
 );
+const productDiscoveryCopy = fs.readFileSync(
+  path.join(ROOT, 'src/copy/productDiscovery.ts'),
+  'utf8',
+);
 const ingredientService = fs.readFileSync(path.join(ROOT, 'src/services/ingredients.ts'), 'utf8');
 const productionFiles = fs
   .readdirSync(path.join(ROOT, 'src/features/production-workspace'))
@@ -396,21 +400,26 @@ describe('global catalog RLS and trust boundaries', () => {
 });
 
 describe('catalog picker scope and visual lock', () => {
-  it('keeps favorites and approved category filters inside the full editor-pane picker', () => {
+  it('keeps the canonical category filters inside the full editor-pane picker', () => {
     expect(picker).toContain('\'[data-testid="workbench-editor-pane"]\'');
     for (const label of [
-      'Wszystkie',
       'Ulubione',
-      'Świeże',
-      'Mleczne',
-      'Suche',
-      'Czekolada',
+      'Wszystkie',
       'Owoce',
+      'Mleczne',
       'Orzechy',
-      'Pasty',
+      'Czekolada',
+      'Techniczne',
     ]) {
-      expect(picker).toContain(`label: '${label}'`);
+      expect(productDiscoveryCopy).toContain(`'${label}'`);
     }
+    expect(picker).toContain('PRODUCT_DISCOVERY_TOP_FILTERS.map');
+    const topFilters = productDiscoveryCopy.slice(
+      productDiscoveryCopy.indexOf('topFilters: {'),
+      productDiscoveryCopy.indexOf('subfilters: {'),
+    );
+    expect(topFilters).not.toContain('fresh:');
+    expect(topFilters).not.toContain('paste:');
     expect(picker).toContain('product-picker-scroll-thumb');
     expect(picker).toContain('role="listbox"');
     expect(picker).toContain('aria-activedescendant');

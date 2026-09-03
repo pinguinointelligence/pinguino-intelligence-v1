@@ -65,9 +65,9 @@ describe('shared ingredient category symbols', () => {
 
   it('drives both picker chips and product result marks without letter avatars', () => {
     const picker = readFileSync(new URL('./ProductPickerPopover.tsx', import.meta.url), 'utf8');
-    expect(picker).toContain('<IngredientCategoryIcon symbol={filter.id} />');
+    expect(picker).toContain('<IngredientCategoryIcon symbol={discoveryFilterIcon(filter)} />');
     expect(picker).toContain('symbol={ingredientCategorySymbolFor({');
-    expect(picker).toContain('ingredientCategoryMatchesFilter(');
+    expect(picker).toContain('matchesProductDiscoveryFilter(');
     expect(picker).not.toContain('.slice(0, 1)');
   });
 });

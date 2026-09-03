@@ -173,6 +173,12 @@ export type AddIngredientResult =
   | { status: 'added'; lineId: string; canonicalId: string }
   | { status: 'duplicate'; lineId: string; canonicalId: string };
 
+export type ReplaceIngredientResult =
+  | { status: 'replaced'; lineId: string; canonicalId: string }
+  | { status: 'duplicate'; lineId: string; canonicalId: string }
+  | { status: 'missing'; lineId: string }
+  | { status: 'invalid_behavior'; lineId: string };
+
 export type RecipeBatchSource =
   | 'MACHINE_DEFAULT'
   | 'USER_OVERRIDE'
@@ -440,6 +446,14 @@ export interface RecipeState {
    * dirty the draft, refresh product data or invalidate Preview/Undo state.
    */
   addIngredient: (ingredient: EngineIngredient, grams?: number) => AddIngredientResult;
+  /** Replace one Base row in place. The line id, amount and explicit locks are
+   * retained; selecting a canonical identity already present elsewhere is a
+   * strict no-op rather than a duplicate-producing add. */
+  replaceIngredient: (
+    lineId: string,
+    ingredient: EngineIngredient,
+    behavior?: ProductBehaviorSnapshot,
+  ) => ReplaceIngredientResult;
   addTopping: (ingredient: RecipeToppingIngredient, grams?: number) => void;
   removeTopping: (lineId: string) => void;
   setToppingGrams: (lineId: string, grams: number) => void;
@@ -1756,6 +1770,64 @@ export const useRecipeStore = create<RecipeState>()(
           };
         });
         return { status: 'added', lineId: added.id, canonicalId };
+      },
+
+      replaceIngredient: (lineId, ingredient, behavior) => {
+        const current = get();
+        const target = current.items.find((item) => item.id === lineId);
+        if (!target) return { status: 'missing', lineId };
+        if (behavior && behavior.processScope !== 'BASE_FORMULATION') {
+          return { status: 'invalid_behavior', lineId };
+        }
+        const canonicalId = canonicalIngredientId(ingredient);
+        const duplicate = orderedBaseItems(current.items, current.baseOrder).find(
+          (item) => item.id !== lineId && canonicalIngredientId(item.ingredient) === canonicalId,
+        );
+        if (duplicate) {
+          return { status: 'duplicate', lineId: duplicate.id, canonicalId };
+        }
+
+        const normalized = normalizeIngredientIdentity(ingredient);
+        set((state) => {
+          const items = state.items.map((item) =>
+            item.id === lineId ? { ...item, ingredient: normalized } : item,
+          );
+          const productBehaviorSnapshots = { ...state.productBehaviorSnapshots };
+          if (behavior) {
+            productBehaviorSnapshots[lineId] = preserveOwnerReviewGate(state.ownerReviewGate, {
+              ...behavior,
+              lineId,
+            });
+          } else {
+            delete productBehaviorSnapshots[lineId];
+          }
+          return {
+            items,
+            productBehaviorSnapshots,
+            compositionMigrationAmbiguities: state.compositionMigrationAmbiguities.filter(
+              (ambiguity) => ambiguity.lineId !== lineId,
+            ),
+            starterReservedMainGrams: reservationAfterMainCheck({
+              items,
+              productBehaviorSnapshots,
+              starterReservedMainGrams: state.starterReservedMainGrams,
+            }),
+            ...(state.visibleProductType === 'gelato'
+              ? { category: gelatoInternalCategory(items) }
+              : {}),
+            // Explicit replacement is also an explicit selection of the new
+            // identity, so a stale exclusion for that identity cannot survive.
+            excludedIngredientIds: state.excludedIngredientIds.filter(
+              (id) => canonicalIngredientIdFromSourceId(id) !== canonicalId,
+            ),
+            unavailableMainIngredientIds: state.unavailableMainIngredientIds.filter(
+              (id) => canonicalIngredientIdFromSourceId(id) !== canonicalId,
+            ),
+            dirty: true,
+            draftRevision: state.draftRevision + 1,
+          };
+        });
+        return { status: 'replaced', lineId, canonicalId };
       },
 
       addTopping: (ingredient, grams = 0) =>
