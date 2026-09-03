@@ -22,6 +22,8 @@ const state = (accepted: readonly AcceptedProduct[]): LiveScanSessionState => ({
     LOCAL_OCR: 0,
     CATALOG_MATCH: 0,
     VISION_FALLBACK: 0,
+    VISION_RESOLVED: 0,
+    VISION_UNRESOLVED: 0,
     UNKNOWN: 0,
   },
 });

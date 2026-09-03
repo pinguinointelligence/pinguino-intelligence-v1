@@ -20,10 +20,24 @@ import { getSharedBarcodeDecoder, type BarcodeImageSource } from './barcodeDecod
 import type { CatalogHit, RecognitionCapabilities } from './liveRecognition';
 import { lookupExactBarcode } from '@/services/productScanner';
 import { searchProducts } from '@/services/globalCatalog';
-import type { OcrRunOutcome } from '@/features/ocr-intake/intakeContracts';
+import type { LabelOcrSession } from '@/features/ocr-intake/ocrEngine';
+import { identifyLiveFrame } from '@/services/productScanner';
 
 /** How much of a read label is worth searching for. */
 const OCR_MIN_TEXT_LENGTH = 3;
+
+/** Encode a frame as a JPEG data payload — one selected still, never a stream. */
+async function encodeFrameBase64(pixels: ImageData, quality = 0.8): Promise<string | null> {
+  const canvas = document.createElement('canvas');
+  canvas.width = pixels.width;
+  canvas.height = pixels.height;
+  const context = canvas.getContext('2d');
+  if (!context) return null;
+  context.putImageData(pixels, 0, 0);
+  const url = canvas.toDataURL('image/jpeg', quality);
+  const comma = url.indexOf(',');
+  return comma === -1 ? null : url.slice(comma + 1);
+}
 
 /** Encode a frame for the OCR engine, which works on an encoded image, not raw pixels. */
 async function encodeFrame(pixels: ImageData): Promise<Uint8Array | null> {
@@ -54,34 +68,53 @@ async function resolveNameExactly(text: string): Promise<CatalogHit | null> {
   return { id: hit.id, displayName: hit.displayName, brand: hit.brand };
 }
 
-type OcrRecognize = (input: {
-  imageId: string;
-  bytes: Uint8Array;
-  mime: 'image/png';
-  languages: string[];
-}) => Promise<OcrRunOutcome>;
-
 /**
- * ONE OCR engine for the whole sweep.
+ * ONE OCR worker for the whole sweep.
  *
- * The provider owns a WASM worker. Building a new one per attempt would spawn a worker,
- * load the language data and tear it all down again every 1.5 s — far more expensive than
- * the recognition it performs. The engine is also imported LAZILY, so a sweep that only
- * ever sees barcodes never downloads it at all.
+ * `startLabelOcr` creates a Tesseract worker, recognises once and terminates it — right
+ * for the intake flow, where a person picks a photo and waits, and badly wrong for a sweep
+ * that reads a frame every second or two. `createLabelOcrSession` is the same engine with
+ * the worker lifetime handed to the caller, so the live scanner loads the language data
+ * once and keeps it until the camera closes.
+ *
+ * Still imported LAZILY: a sweep that only ever sees barcodes never downloads the engine.
  */
-let ocrProvider: Promise<{ recognize: OcrRecognize }> | null = null;
+let ocrSession: Promise<LabelOcrSession> | null = null;
 
-function sharedOcrProvider(): Promise<{ recognize: OcrRecognize }> {
-  ocrProvider ??= import('@/features/ocr-intake/provider/tesseractProvider').then(
-    ({ TesseractOcrProvider }) => new TesseractOcrProvider() as { recognize: OcrRecognize },
+function sharedOcrSession(languages: readonly string[]): Promise<LabelOcrSession> {
+  // A type-only import keeps the engine out of the bundle until this rung actually runs.
+  ocrSession ??= import('@/features/ocr-intake/ocrEngine').then(({ createLabelOcrSession }) =>
+    createLabelOcrSession({ langs: [...languages] }),
   );
-  return ocrProvider;
+  return ocrSession;
 }
 
 export interface LiveCapabilityOptions {
   /** Off by default: the sweep is barcode-first, and OCR costs a second of CPU a frame. */
   readonly enableOcr?: boolean;
   readonly languages?: readonly string[];
+  /**
+   * Identifies the sweep to the identification boundary, for dedupe and cost accounting.
+   * Without it the paid rung is simply not offered.
+   */
+  readonly sessionId?: string | null;
+}
+
+/**
+ * Release the OCR engine.
+ *
+ * The worker outlives any single sweep unless it is told not to, so the scanner ends by
+ * letting it go rather than leaving a WASM worker resident on a phone.
+ */
+export async function releaseLiveScanCapabilities(): Promise<void> {
+  const pending = ocrSession;
+  ocrSession = null;
+  if (!pending) return;
+  try {
+    await (await pending).close();
+  } catch {
+    // Releasing an engine that never finished loading is not a failure worth reporting.
+  }
 }
 
 /** The production capability set. */
@@ -101,23 +134,45 @@ export function createLiveScanCapabilities(
     resolveName: resolveNameExactly,
   };
 
-  if (options.enableOcr !== true) return base;
+  const sessionId = options.sessionId ?? null;
+  const withVision: RecognitionCapabilities = sessionId
+    ? {
+        ...base,
+        async recognizeObject(source, localText) {
+          if (!(source instanceof ImageData)) return null;
+          const base64 = await encodeFrameBase64(source);
+          if (!base64) return null;
+          const answer = await identifyLiveFrame({
+            sessionId,
+            frame: { mime: 'image/jpeg', base64 },
+            evidence: { ocrText: localText ?? null },
+          });
+          if (!answer || !answer.identity?.name) return null;
+          return {
+            identityKey: answer.identity.name.toLowerCase(),
+            label: answer.identity.name,
+            confidence: answer.confidence,
+            // The CATALOGUE's answer, resolved server-side. Null means Gellatti does not
+            // know it, and the sweep will route it to the deep flow rather than name it.
+            resolved: answer.resolution
+              ? { id: answer.resolution.productId, displayName: answer.resolution.displayName }
+              : null,
+          };
+        },
+      }
+    : base;
+
+  if (options.enableOcr !== true) return withVision;
 
   return {
-    ...base,
+    ...withVision,
     async readLabelText(source) {
       if (!(source instanceof ImageData)) return null;
       const bytes = await encodeFrame(source);
       if (!bytes) return null;
-      const outcome = await (
-        await sharedOcrProvider()
-      ).recognize({
-        imageId: `live-${Date.now()}`,
-        bytes,
-        mime: 'image/png',
-        languages: [...(options.languages ?? ['pol', 'eng'])],
-      });
-      return outcome.ok ? outcome.result.fullText : null;
+      const session = await sharedOcrSession(options.languages ?? ['pol', 'eng']);
+      const outcome = await session.run(bytes).done;
+      return outcome.status === 'ok' ? (outcome.text ?? null) : null;
     },
   };
 }
