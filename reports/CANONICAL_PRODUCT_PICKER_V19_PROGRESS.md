@@ -4,10 +4,10 @@ Updated: 2026-09-03 (Europe/Madrid)
 
 ## Isolation baseline
 
-- [x] Reconciled `origin/staging`: `285f15ed2ecf8836ae8365622f11bb906a4707b5`.
+- [x] Reconciled current `origin/staging`: `7cb8470100ef2b2bf50f6c9fed24ba251611a97a` (including canonical #136 at `4a8822cf0540e0579496fd4e6aa036bf4143c8ce`).
 - [x] Isolated work on `codex/canonical-product-picker-v19` in a clean dedicated worktree.
 - [x] Kept production/main untouched.
-- [x] Did not modify Scanner, Engine, solver, product profiles, recipe mutation stores, or `mapper_basement`.
+- [x] Did not modify Scanner, Engine, solver, product profiles, or `mapper_basement`; the recipe store gained only the explicit, tested atomic CP-44 replacement mutation.
 - [x] Rechecked open PRs and the active `claude/global-country-readiness` worktree before country work.
 
 ## Safe implementation
@@ -36,10 +36,12 @@ Updated: 2026-09-03 (Europe/Madrid)
 - [x] Proved that Sugar and Stabilizer projections preserve canonical server relevance order; favorites and recency do not create a second client ranking authority.
 - [x] Added rendered Account Settings acceptance for changing Primary Product Country while retaining all other enabled countries.
 - [x] Added the owner-approved per-user/Mapper-slot exact-product preference authority with one-pointer enforcement, explicit set/get/clear RPCs, RLS, and current-binding validation.
+- [x] Existing recipe-row Replace opens the shared picker in contextual REPLACE mode and atomically replaces the selected row without creating a duplicate.
 
 ## Continuation checkpoint and audits
 
 - Initial checkpoint commit: `7fbf846b3b92dc4abfcead4343522fe9c1de923b`, pushed only to `origin/codex/canonical-product-picker-v19`.
+- Refreshed semantically through canonical #136 and current staging #138. #136's `editRefusal`/ProductBehavior row metadata is retained and extended with `replaceContext`; #138's practical-save verification method and CP-44's replacement method coexist in `recipeStore.ts`.
 - The source product model still permits any number of distinct owned products to share one Mapper slot. The new `user_preferred_product_slots` table adds the owner-approved, unique `(user_id, mapper_ingredient_id) -> preferred_product_id` pointer without changing product or country authority.
 - Preference changes occur only through an explicit authenticated setter. `favorite`, `recently_used_at`, and generic recency remain informational and never participate.
 - The active getter returns `NULL` if the stored product is deleted, inactive, merged, blocked, inaccessible, no longer on its current version/binding, or no longer bound to the requested Mapper slot. It never selects another user product.
@@ -53,13 +55,15 @@ Updated: 2026-09-03 (Europe/Madrid)
 - Local staging gate: `npm run verify:staging` — owner-locked guard passed, protected-path guard passed, 18 contract files / 179 tests passed, typecheck passed, lint passed with 0 errors / 7 existing warnings, and production-style build passed.
 - Served-staging E2E was not run and is not implied by the local staging gate.
 - CP-36 focused migration contracts: 5 files / 56 tests passed. A 16-assertion pgTAP suite was added; local execution is unavailable because this checkout has no running Supabase/Postgres container and Docker/Podman is not installed.
+- CP-44 + current-staging seam verification: 13 files / 174 tests passed after merging current staging, including contextual picker routing, atomic replacement, #136 refusal/edit behavior, and #138 save-gate tests.
+- Final full regression on current staging integration: `npm test` — 939 files / 11,864 tests passed; 23 files / 122 tests skipped. An earlier saturated-host run timed out one 60-second constraint test after 81 seconds; its exact isolated rerun passed 46/46 in 47.4 seconds, and the final idle-host full run passed it in the complete corpus.
+- Final local staging gate: `npm run verify:staging` — owner-locked guard passed, protected-path semantic changes acknowledged, 18 contract files / 179 tests passed, typecheck passed, lint passed with 0 errors / 7 existing warnings, and production-style build passed.
 
 ## Waiting on active Cloud authority
 
 - [ ] **WAITING_ON_CLOUD — country default/base resolution.** `claude/global-country-readiness` currently owns `src/services/globalCatalog.ts`, `src/features/global-catalog/catalogIngredient.ts`, catalog ingest functions, and the new `country_local_products`, `country_default_bases`, and `country_base_components` migrations. The picker must consume that authority after it lands; creating another table/service now would violate the brief.
 - [ ] **WAITING_ON_CLOUD — user-specific exact-product resolver precedence.** The isolated preference authority now deterministically selects one user/slot SKU. Inserting it before the approved country default still waits for the final Global Country resolver seam.
 - [ ] **BLOCKED / ARCHITECTURE GAP — automatic first-country detection.** Current staging falls back from account country to browser-language region inside `src/services/globalCatalog.ts`; that is explicitly forbidden by v1.9 and is in the active country branch's file set. No verified coarse deployment-country signal exists in the Vercel/Netlify SPA configuration or application code.
-- [ ] **WAITING_ON_CLOUD — contextual Replace wiring for recipe rows.** The pure Dextrose/Tara/GELLATTI Stabilizer/Inulin/Milk route contract is implemented and tested. `IngredientBuilder.tsx` overlaps PR #136 and `ToppingRow.tsx` is modified in the user's other active checkout, so row-context plumbing is intentionally not overwritten.
 - [ ] **WAITING_ON_CLOUD — full HOME/PRO country and owned-product parity scenarios.** Shared UI/search semantics are live in code; country/default/override semantics cannot be truthfully gated until the active country authority lands.
 
 ## External/served verification still required
@@ -80,7 +84,7 @@ Updated: 2026-09-03 (Europe/Madrid)
 
 ## Current capability ledger
 
-Denominator unchanged: 48 capability gates. `DONE = 31 / 48 = 64.6%`.
+Denominator unchanged: 48 capability gates. `DONE = 32 / 48 = 66.7%`.
 Owner QA is excluded from the denominator and is not marked.
 
 | ID    | Status                    | Capability                                                                                | Acceptance evidence                                                              |
@@ -128,7 +132,7 @@ Owner QA is excluded from the denominator and is not marked.
 | CP-41 | WAITING                   | Prove explicit Product Country survives travel/VPN/location changes                       | `WAITING_ON_GLOBAL_COUNTRY`; requires persisted canonical authority               |
 | CP-42 | BLOCKED                   | Define/reuse signed-out Product Country persistence                                       | Architecture gap: signed-out read returns defaults; save requires auth; no guest store |
 | CP-43 | BLOCKED                   | Deterministically merge guest country into signed-in profile                              | Architecture gap: no guest source or merge contract exists                       |
-| CP-44 | WAITING                   | Wire contextual Replace from current recipe rows                                          | `WAITING_ON_CLOUD_CONFLICT`; PR #136 and active checkout overlap                 |
+| CP-44 | DONE                      | Wire contextual Replace from current recipe rows                                          | Shared picker opens in REPLACE mode with canonical context; 13-file seam suite, atomic-store tests, and final full regression pass |
 | CP-45 | WAITING                   | Prove HOME/PRO country-resolution parity                                                  | `WAITING_ON_GLOBAL_COUNTRY`; requires CP-31 through CP-43                         |
 | CP-46 | WAITING                   | Prove HOME/PRO user-override parity                                                       | `WAITING_ON_GLOBAL_COUNTRY`; preference infrastructure exists, resolver parity does not |
 | CP-47 | WAITING                   | Complete automated country/override acceptance matrix                                     | `WAITING_ON_GLOBAL_COUNTRY`; resolver/fixtures not canonical                     |
@@ -136,9 +140,9 @@ Owner QA is excluded from the denominator and is not marked.
 
 Frozen remaining categories:
 
-- `DONE`: CP-01–CP-30 and CP-36.
+- `DONE`: CP-01–CP-30, CP-36, and CP-44.
 - `WAITING_ON_GLOBAL_COUNTRY`: CP-31–CP-35, CP-37–CP-38, CP-40–CP-41, CP-45–CP-47; CP-39 and CP-42–CP-43 are confirmed architecture gaps the canonical authority must address.
-- `WAITING_ON_CLOUD_CONFLICT`: CP-44.
+- `WAITING_ON_CLOUD_CONFLICT`: none.
 - `OWNER_DECISION_REQUIRED`: none.
 - `INTERNAL_SAFE_REMAINING`: none.
 - `SERVED_STAGING_PENDING`: CP-48.
