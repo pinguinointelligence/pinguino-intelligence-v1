@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import type { SaveBlocker } from '@/features/recipes/saveBlocker';
 import type { ProductMode, RecipeDirectionTarget, RecipeDirectionTargets } from '@/engine';
 import type { VisibleProductType } from '@/features/studio/productType';
 import type { ProductDoseMeta } from '@/features/ingredient-builder/productDoseSuggestion';
@@ -128,8 +129,18 @@ export interface RecipeProfileState {
    * draft and is absent from the persist allow-list below, so a reload
    * recomputes it rather than restoring a stale refusal.
    */
-  preflightBlockMessage: string | null;
-  setPreflightBlockMessage: (message: string | null) => void;
+  preflightBlocker: SaveBlocker | null;
+  setPreflightBlocker: (blocker: SaveBlocker | null) => void;
+  /**
+   * Whether the CURRENT settings have been confirmed for this draft.
+   *
+   * Settings owns this fact and publishes it; it is not a second save gate. The workbar
+   * needs it because unconfirmed settings outrank whatever the practical gate found —
+   * recalculating a draft whose settings are about to change is work the customer would
+   * immediately have to redo. Transient, like the blocker itself.
+   */
+  settingsConfirmed: boolean | null;
+  setSettingsConfirmed: (confirmed: boolean | null) => void;
   openDraft: (
     contextSeq: number,
     targets?: DirectionTargets,
@@ -263,9 +274,20 @@ export const useRecipeProfileStore = create<RecipeProfileState>()(
       confirmedContextSeq: null,
       calculatedRecipeAuthority: null,
       defaultsByOwner: {},
-      preflightBlockMessage: null,
-      setPreflightBlockMessage: (message) =>
-        set((state) => (state.preflightBlockMessage === message ? state : { preflightBlockMessage: message })),
+      preflightBlocker: null,
+      settingsConfirmed: null,
+      setPreflightBlocker: (blocker) =>
+        set((state) =>
+          state.preflightBlocker?.kind === blocker?.kind &&
+          state.preflightBlocker?.message === blocker?.message
+            ? state
+            : { preflightBlocker: blocker },
+        ),
+
+      setSettingsConfirmed: (confirmed) =>
+        set((state) =>
+          state.settingsConfirmed === confirmed ? state : { settingsConfirmed: confirmed },
+        ),
 
       openDraft: (
         openedContextSeq,

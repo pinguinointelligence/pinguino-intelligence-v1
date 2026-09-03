@@ -65,6 +65,7 @@ const mockSave = {
   archive: async () => true,
   practicalBlocked: false,
   practicalBlockMessage: null,
+  practicalBlock: null,
 };
 
 vi.mock('@/stores/recipeStore', () => ({

@@ -2,6 +2,7 @@ import { calculateRecipe, type RecipeInput, type RecipeResult } from '@/engine';
 import { useEffect, useMemo } from 'react';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { useRecipeProfileStore } from './recipeProfileStore';
+import { cn } from '@/lib/cn';
 import {
   buildRecipeBehaviorAuthority,
   recipeBehaviorLegacyInspection,
@@ -119,6 +120,13 @@ export function WorkbenchIntelligenceHeader({
     calculatedForDraft,
     calculatedAuthorityCurrent,
   });
+
+  /* THE ONE HIGHLIGHT. When the save gate's answer is „Przelicz recepturę, aby zapisać.",
+     this is the control that sentence names — so this is the control that wears the
+     marker, and Settings does not. Read from the same published blocker the card printed,
+     never recomputed here: a second opinion could disagree with the sentence beside it. */
+  const preflightBlocker = useRecipeProfileStore((state) => state.preflightBlocker);
+  const recalcAttention = preflightBlocker?.action === 'recalculate';
   const hasRecipe = result.total_batch_g > 0;
   const previewInput =
     recalculationTerminal?.state === 'PREVIEW_READY'
@@ -226,10 +234,7 @@ export function WorkbenchIntelligenceHeader({
               className="flex min-w-0 shrink items-center gap-2 text-[11px] leading-tight text-[var(--g-attention-ink)]"
               data-testid="pro-workbar-recalc-cue"
             >
-              <i
-                aria-hidden
-                className="size-1.5 shrink-0 rounded-full bg-[#f58a07]"
-              />
+              <i aria-hidden className="size-1.5 shrink-0 rounded-full bg-[#f58a07]" />
               <span className="truncate">
                 {working
                   ? 'Gellatti przygotowuje wynik'
@@ -246,7 +251,11 @@ export function WorkbenchIntelligenceHeader({
               disabled={!onRecalculate || working}
               aria-busy={working}
               data-testid="pro-workbar-recalc"
-              className="pro-focus-ring flex h-11 shrink-0 items-center justify-center rounded-full bg-[var(--g-graphite)] px-7 text-sm font-semibold text-white disabled:cursor-wait disabled:opacity-70"
+              data-save-attention={recalcAttention ? 'true' : undefined}
+              className={cn(
+                'pro-focus-ring flex h-11 shrink-0 items-center justify-center rounded-full bg-[var(--g-graphite)] px-7 text-sm font-semibold text-white disabled:cursor-wait disabled:opacity-70',
+                recalcAttention && 'pro-action-attention',
+              )}
             >
               {working ? 'Przeliczanie…' : 'Przelicz'}
             </button>

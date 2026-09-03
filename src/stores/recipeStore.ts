@@ -56,7 +56,11 @@ import {
   normalizeFormulationStrategy,
   type FormulationStrategy,
 } from '@/features/formulation-strategy/strategy';
+import type { ConstraintSet } from '@/features/recipe-constraints';
 import {
+  attachPracticalRecipeAudit,
+  practicalRecipeInputFingerprint,
+  practicalizeRecipeCandidate,
   readPracticalRecipeAudit,
   type PracticalRecipeSavedAudit,
   unusedZeroGramLineIds,
@@ -99,10 +103,7 @@ import {
   planSorbetStabilizerSystemRescale,
   sorbetStabilizerSystemItems,
 } from '@/features/recipe-constraints';
-import {
-  buildRecipeInput,
-  type RecipeInputState,
-} from '@/features/studio/buildRecipeInput';
+import { buildRecipeInput, type RecipeInputState } from '@/features/studio/buildRecipeInput';
 import { classifyProfileTransition } from '@/features/pro-workbench/profileCompatibility';
 import {
   MACHINE_CATALOG,
@@ -343,6 +344,18 @@ export interface RecipeState {
   /** Verified whole-gram provenance restored from a saved recipe/version. It
    * never grants Apply consent; every consumer matches its material fingerprint. */
   practicalRecipeAudit: PracticalRecipeSavedAudit | null;
+  /**
+   * Record that the CURRENT draft is executable exactly as written.
+   *
+   * A preview that finds nothing to change has verified the recipe, but has nothing to
+   * apply — and an apply is the only thing that used to write an audit. So the save gate
+   * kept asking for a recalculation that had just happened.
+   *
+   * This is not a way of marking a recipe verified: it runs the SAME practicalization the
+   * gate runs and records the result only when it comes back byte-identical to the draft
+   * on screen. If anything at all would change, nothing is recorded.
+   */
+  verifyPracticalAsWritten: (constraints: ConstraintSet) => boolean;
   /** Exact immutable recipe-version identity last persisted for Production.
    * Kept separate from `dirty` and from the current technical calculation. */
   savedProductionFingerprint: string | null;
@@ -679,14 +692,11 @@ const nextStarterReservation = (
   activeReservedGrams: number,
   lineSumAfter: number,
   nextBatchGrams: number,
-): number =>
-  activeReservedGrams > 0 ? Math.max(0, nextBatchGrams - lineSumAfter) : 0;
+): number => (activeReservedGrams > 0 ? Math.max(0, nextBatchGrams - lineSumAfter) : 0);
 
 /** A row the batch resize must not move: physically weighed, or pinned in grams. */
 const isBatchFixedLine = (item: RecipeItem): boolean =>
-  item.actual_grams !== null ||
-  item.grams_constraint !== undefined ||
-  item.lock_type === 'grams';
+  item.actual_grams !== null || item.grams_constraint !== undefined || item.lock_type === 'grams';
 
 /**
  * The ONE recipe-batch resize authority used by both machine selection and
@@ -2503,6 +2513,26 @@ export const useRecipeStore = create<RecipeState>()(
           .getState()
           .openDraft(opened.draftContextSeq, DEFAULT_DIRECTION_TARGETS);
       },
+      verifyPracticalAsWritten: (constraints) => {
+        const input = buildRecipeInput(get());
+        const result = practicalizeRecipeCandidate(input, constraints);
+        if (!result.ok) return false;
+        // Byte-identical, or nothing is recorded: a recipe that would still change is
+        // not a verified recipe, however encouraging the preview sounded.
+        if (
+          practicalRecipeInputFingerprint(result.audit.executableInput) !==
+          practicalRecipeInputFingerprint(input)
+        ) {
+          return false;
+        }
+        const audit = readPracticalRecipeAudit(
+          attachPracticalRecipeAudit(result.audit.executableInput, input, new Date().toISOString()),
+        );
+        if (audit === null) return false;
+        set({ practicalRecipeAudit: audit });
+        return true;
+      },
+
       loadRecipeInput: (input, link = {}) => {
         useIngredientTableUxStore.getState().reset();
         const metadata = readRecipeProfileMetadata(input);
@@ -2881,7 +2911,7 @@ export const useRecipeStore = create<RecipeState>()(
             unavailableMainIngredientIds: [],
             activePresetId: null,
             newRecipeStarterTemplateId: starter.templateId,
-          starterReservedMainGrams: Math.max(0, starter.metrics.missingMainMassGrams),
+            starterReservedMainGrams: Math.max(0, starter.metrics.missingMainMassGrams),
             newRecipeStarterKey: {
               visibleProductType: starter.visibleProductType,
               servingModeId: starter.servingModeId,

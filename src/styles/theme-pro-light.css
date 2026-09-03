@@ -168,6 +168,17 @@ body:has(details[open] [data-testid^='row-menu-']) [data-testid='design-review-o
   color: var(--color-attention);
 }
 
+/* The SAME attention language as the Settings box, worn by a button instead of a module.
+   Orange, never red: red is how this app says something is WRONG, and nothing here is
+   wrong — the customer simply has one thing left to press. The inner ring is drawn inset
+   so it cannot shift the control's geometry, and the halo outside it is the same hue at
+   low opacity, so the mark reads at a glance without competing with the label. */
+.pro-action-attention {
+  box-shadow:
+    inset 0 0 0 1px var(--color-attention),
+    0 0 0 3px color-mix(in srgb, var(--color-attention) 22%, transparent);
+}
+
 .pro-module {
   border: 1px solid var(--color-pro-line);
   border-radius: 0.875rem;

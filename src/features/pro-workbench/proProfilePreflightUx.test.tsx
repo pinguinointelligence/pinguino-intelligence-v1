@@ -1035,29 +1035,38 @@ describe('a refused save points at the module that answers it', () => {
     // The gate lives in useCanonicalRecipeSave and only the workbar calls it.
     // Settings reads what the card renders rather than recomputing it, so the
     // two can never disagree about whether the recipe is refusing to save.
-    expect(workbar).toContain('setPreflightBlockMessage(publishedBlock)');
-    expect(workbar).toContain("variant === 'panel' ? save.practicalBlockMessage : null");
-    expect(settings).toContain('useRecipeProfileStore((state) => state.preflightBlockMessage)');
+    expect(workbar).toContain('setPreflightBlocker(blocker)');
+    expect(workbar).toContain('resolveSaveBlocker({ practical: save.practicalBlock');
+    expect(settings).toContain('useRecipeProfileStore((state) => state.preflightBlocker)');
     expect(settings).not.toContain('practicalRecipeAuditMatchesInput');
     // Transient: absent from the persist allow-list, so a reload recomputes it
     // instead of restoring a refusal the draft may no longer earn.
-    expect(store).not.toContain('preflightBlockMessage: state.preflightBlockMessage');
+    expect(store).not.toContain('preflightBlocker: state.preflightBlocker');
+    expect(store).not.toContain('settingsConfirmed: state.settingsConfirmed');
   });
 
   it('opens Settings on the refusal WITHOUT trapping it open', () => {
     // Derived, never a setExpanded(true) effect: forcing the state would leave
     // the module stuck open after the block clears and would fight an owner
     // who collapsed it deliberately.
-    /* SUPERSEDED, owner 2026-09-03. `expanded || preflightBlocked` behind a
-       plain toggle had a real defect: while the blocker held the module open
-       the flag was still false, so a click meant to CLOSE flipped it to true
-       and the module stayed open once the blocker cleared. The two states are
-       now separate and only the manual one is ever written. */
-    expect(settings).toContain('const open = manualExpanded || forcedOpen;');
-    expect(settings).toContain('const forcedOpen = preflightBlockMessage !== null;');
-    // Under the blocker a click can only ever record "closed".
-    expect(settings).toMatch(/if \(forcedOpen\) \{\s*setManualExpanded\(false\);\s*return;/);
+    /* MERGED, owner 2026-09-03. Two corrections land together.
+
+       From #138: the forced opening is scoped to the blocker this module can
+       actually answer. Opening Settings for every refusal was wrong the moment
+       the refusal was a recalculation.
+
+       From #136: manual expansion and a forced opening are separate states and
+       only the manual one is ever written. Behind a plain toggle the flag was
+       still false while the blocker held the module open, so a click meant to
+       CLOSE flipped it to true and the module stayed open once the blocker
+       cleared. */
+    expect(settings).toContain('const open = manualExpanded || settingsBlocked;');
+    expect(settings).toContain("const settingsBlocked = preflightBlocker?.action === 'settings';");
+    // Under a forced opening a click can only ever record "closed".
+    expect(settings).toMatch(/if \(settingsBlocked\) \{\s*setManualExpanded\(false\);\s*return;/);
     expect(settings).not.toContain('setExpanded');
+    // ...and no effect writes the derived value back into the manual one.
+    expect(settings).not.toContain('openedByBlocker');
     expect(settings).toContain("data-settings-surface={open ? 'expanded' : 'collapsed'}");
   });
 
@@ -1079,8 +1088,91 @@ describe('a refused save points at the module that answers it', () => {
 
   it('never lets a sign-in prompt or a network error pull Settings open', () => {
     // Neither is something Settings can resolve; only the preflight refusal is.
-    expect(workbar).not.toContain('setPreflightBlockMessage(save.error');
-    expect(workbar).not.toContain('setPreflightBlockMessage(blockedMsg');
+    expect(workbar).not.toContain('setPreflightBlocker(save.error');
+    expect(workbar).not.toContain('setPreflightBlocker(blockedMsg');
+  });
+});
+
+describe('OWNER CORRECTION · one blocker, one next action', () => {
+  const settings = read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx');
+  const header = read('features', 'pro-workbench', 'WorkbenchIntelligenceHeader.tsx');
+  const blocker = read('features', 'recipes', 'saveBlocker.ts');
+  const gate = read('features', 'recipes', 'useCanonicalRecipeSave.ts');
+  const theme = read('styles', 'theme-pro-light.css');
+
+  it('says what to press, not what the pipeline does', () => {
+    expect(blocker).toContain("RECALCULATION_REQUIRED: 'Przelicz recepturę, aby zapisać.'");
+    expect(blocker).toContain(
+      "SETTINGS_CONFIRMATION_REQUIRED: 'Potwierdź ustawienia, aby zapisać.'",
+    );
+    // The old sentence described our Preview/Apply pipeline to a customer who only
+    // needed to know which button to press.
+    expect(gate).not.toContain('Otwórz podgląd i zastosuj zweryfikowaną recepturę');
+  });
+
+  it('Settings opens ONLY for the blocker Settings answers', () => {
+    expect(settings).toContain("preflightBlocker?.action === 'settings'");
+    // A recalculation must not pull open a module that is already „Zatwierdzone".
+    expect(settings).not.toContain('preflightBlocker !== null');
+  });
+
+  it('the recalculation blocker highlights Przelicz instead', () => {
+    expect(header).toContain("preflightBlocker?.action === 'recalculate'");
+    expect(header).toContain("recalcAttention && 'pro-action-attention'");
+  });
+
+  it('the attention marker is orange, never red', () => {
+    // Red is how this app says something is WRONG. Nothing here is wrong — the customer
+    // simply has one thing left to press.
+    expect(theme).toMatch(/\.pro-action-attention \{[\s\S]*?var\(--color-attention\)/);
+    expect(theme).not.toMatch(/\.pro-action-attention \{[\s\S]*?status-error/);
+  });
+
+  it('a blocker no control answers points at nothing at all', () => {
+    // Missing product data and an engine refusal are not button problems; highlighting
+    // one would send the customer to press something that cannot help them.
+    expect(blocker).toContain('PRODUCT_DATA_REQUIRED: null');
+    expect(blocker).toContain('REFUSED: null');
+  });
+
+  it('settings outrank the practical gate, because they are upstream of it', () => {
+    expect(blocker).toContain('if (input.settingsConfirmed === false)');
+  });
+});
+
+describe('settings confirmation lifecycle', () => {
+  const settings = read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx');
+
+  it('the FIRST-EVER confirmation establishes the defaults, and only that one', () => {
+    expect(settings).toContain('const confirmAndSeedDefaults');
+    expect(settings).toContain('if (alreadyEstablished) return;');
+    // Later confirmations are for the recipe in front of you; only „Zapisz jako
+    // domyślne" may rewrite what every future recipe starts from.
+    expect(settings).toContain('const saveAsDefault');
+  });
+
+  it('collapses when its blocker clears, by derivation and not by an effect', () => {
+    /* SUPERSEDED, owner 2026-09-03. This asserted a ref-and-effect pair that
+       remembered "the blocker opened it" and called setExpanded(false) once a
+       confirmation succeeded. It closed the module down ONE path and left it
+       open on every other way a blocker can clear, and writing the open state
+       back is exactly how a forced opening became a remembered manual one.
+
+       `open = manualExpanded || settingsBlocked` needs neither: it collapses
+       the instant the blocker clears, because a forced opening never wrote
+       anything, and an owner who opened the module themselves keeps it open
+       because that flag is theirs alone. */
+    expect(settings).toContain('const open = manualExpanded || settingsBlocked;');
+    expect(settings).not.toContain('openedByBlocker');
+    // Not while the blocker still stands, and not on a failed validation.
+    expect(settings).toContain('if (settingsBlocked) {');
+  });
+
+  it('publishes its own fact and concludes nothing about Save', () => {
+    expect(settings).toContain(
+      'setSettingsConfirmed(activeDraftIdentity === null ? null : confirmed)',
+    );
+    expect(settings).not.toContain('practicalizeRecipeCandidate');
   });
 });
 
