@@ -265,6 +265,20 @@ export function IngredientBuilder({
       clearLineMeta(lineId);
     },
   });
+  /* The SAME gate the click path applies, evaluated once per row so the
+     control can show that it is closed. `productBehaviorIsManaged` is false
+     for an unresolved workspace, so nothing changes signed-out or on the demo
+     preset — this only speaks where the gate actually governs. */
+  const editRefusalFor = (item: EffectiveRecipeItem): string | null => {
+    const snapshots = useRecipeStore.getState().productBehaviorSnapshots;
+    if (!productBehaviorIsManaged(snapshots)) return null;
+    const required = productBehaviorRequiredLineIds({ items: [item] });
+    if (required.length === 0) return null;
+    const gate = productBehaviorModuleGate(snapshots, 'BASE_RECIPE', required);
+    if (gate.ready) return null;
+    return gate.reason ?? 'Dane tego produktu wymagają ponownego zatwierdzenia.';
+  };
+
   const coreActions: IngredientRowActions = {
     ...lockAwareCoreActions,
     setPlannedGrams: (lineId, grams) => {
@@ -656,7 +670,11 @@ export function IngredientBuilder({
         lock={lockFor(item)}
         compact={layout === 'workbench'}
         mode={mode}
-        meta={{ ...storedMeta, unavailable: storedMeta.unavailable || unavailableFromDraft }}
+        meta={{
+          ...storedMeta,
+          unavailable: storedMeta.unavailable || unavailableFromDraft,
+          editRefusal: editRefusalFor(item),
+        }}
         priceView={mode === 'recipe' ? priceView : undefined}
         productionLine={productionLine}
         productionActions={productionActions}
