@@ -10,6 +10,7 @@ import {
   startNewProRecipe,
 } from '@/pages/destinations/startNewProRecipe';
 import { NewRecipeConfirmationDialog } from '@/features/recipes/NewRecipeConfirmationDialog';
+import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import { iconButtonClasses } from '@/components/ui/buttonStyles';
 import { withWorkbenchOrigin, workbenchOriginForSection } from '@/pages/pro/workbenchOrigin';
@@ -163,6 +164,20 @@ export function ProWorkbar({
       ? 'dirty'
       : 'saved';
   const tongueVisible = identityState !== 'saved';
+  /** The card is graphite in every state but `unnamed`, and the message
+   *  tones inside it have to follow that ground rather than the page's. */
+  const onGraphite = identityState !== 'unnamed';
+
+  /* Publish the preflight refusal so Settings can open itself on it. Only the
+     panel variant publishes: the compact variants render the same workbar in
+     places where no Settings module exists to answer, and two publishers would
+     race to own one slot. */
+  const setPreflightBlockMessage = useRecipeProfileStore((s) => s.setPreflightBlockMessage);
+  const publishedBlock = variant === 'panel' ? save.practicalBlockMessage : null;
+  useEffect(() => {
+    setPreflightBlockMessage(publishedBlock);
+  }, [publishedBlock, setPreflightBlockMessage]);
+  useEffect(() => () => setPreflightBlockMessage(null), [setPreflightBlockMessage]);
 
   const statusNode = (
     <span
@@ -252,56 +267,19 @@ export function ProWorkbar({
         data-recipe-identity-state={identityState}
         className=""
       >
-        {/* OWNER AUTHORITY 2026-09-03: the word "Receptura" is GONE from this
-            band. The global header already names the section, so printing it a
-            second time 40 px lower said nothing and cost a line of vertical
-            room. The band itself stays — the rule, "+ Nowa receptura" and the
-            overflow menu are unchanged; only the duplicated label is removed,
-            so the rule now starts at the column's left edge. The section keeps
-            its accessible name from `aria-label` on the element above. */}
-        <div className="mb-[13px] flex items-center gap-2.5">
-          <span aria-hidden className="h-px flex-1 bg-[var(--g-line)]" />
-          <button
-            type="button"
-            onClick={requestNewDraft}
-            data-testid="pro-workbar-new-recipe"
-            data-workbar-action-size="primary"
-            data-workbar-action-width="content"
-            className="pro-focus-ring shrink-0 rounded-full border border-[var(--g-line)] bg-white px-3 py-1 text-[11px] font-semibold whitespace-nowrap text-[var(--g-text-secondary)] transition-colors hover:border-ink/35 hover:text-ink"
-          >
-            + Nowa receptura
-          </button>
-          {overflowMenu}
-        </div>
+        {/* OWNER AUTHORITY 2026-09-03: the RECIPE leads the column. The card is
+            the first thing in the panel and the actions sit underneath it, in
+            the 34 px the tongue already reserved — one band doing two jobs
+            instead of a row of controls standing above the thing they act on.
 
-        {/* The 34 px are reserved in EVERY state, so the tongue's arrival and
-            departure move nothing below. */}
+            The 34 px are reserved in EVERY state, so the tongue's arrival and
+            departure still move nothing below.
+
+            Three layers, and the order matters: the rule and the actions sit
+            at the bottom (z-0), the tongue slides out over them (z-[1]) so the
+            rule passes behind it, and the card occludes the tongue's top
+            (z-[2]) so it still reads as sliding out from behind the card. */}
         <div className="relative pb-[34px]">
-          {/* Rendered BEFORE the card so the DOM order stays Save → name (the
-              canonical contract), while z-index — not source order — decides
-              that the graphite occludes the tongue's top. */}
-          <button
-            type="button"
-            onClick={() => void doSave()}
-            disabled={save.busy || save.blocked !== null || save.practicalBlocked}
-            data-attention={saveAttention ? 'required' : undefined}
-            data-testid="pro-workbar-save"
-            data-workbar-action-size="primary"
-            data-workbar-action-width="content"
-            data-workbar-save-shape="tongue"
-            className={cn(
-              'pro-focus-ring absolute right-[26px] bottom-0 z-0 inline-flex h-[58px] max-w-[calc(100%-52px)] items-end gap-2 rounded-b-[15px] px-[22px] pb-[9px] text-[15px] leading-4 font-bold tracking-[-0.02em] whitespace-nowrap',
-              /* Graphite ink on the accent is 7.5:1. White on the accent would
-                 be 2.5:1 — the same mistake that was removed from Direction. */
-              'bg-[#f58a07] text-[var(--g-graphite)] transition-[background-color,opacity] hover:bg-[#e07f06]',
-              'disabled:cursor-not-allowed disabled:bg-[var(--g-line-quiet)] disabled:text-[var(--g-lock)]',
-              tongueVisible ? null : 'pointer-events-none opacity-0',
-            )}
-            aria-hidden={tongueVisible ? undefined : true}
-            tabIndex={tongueVisible ? undefined : -1}
-          >
-            {save.busy ? w.status.saving : 'ZAPISZ'}
-          </button>
 
           {/* ONE surface in every state, so it always occludes the tongue's
               top. The first attempt left the status line outside the painted
@@ -309,7 +287,7 @@ export function ProWorkbar({
               caught by measurement, not by reading the code. */}
           <div
             className={cn(
-              'relative z-[1] min-w-0 rounded-2xl px-7 py-6',
+              'relative z-[2] min-w-0 rounded-2xl px-7 py-6',
               identityState === 'unnamed'
                 ? 'border-[1.5px] border-[#f58a07]/55 bg-white'
                 : 'border-l-[6px] border-[#f58a07] bg-[var(--g-graphite)]',
@@ -338,7 +316,103 @@ export function ProWorkbar({
               />
             </label>
             {statusNode}
+            {/* OWNER AUTHORITY 2026-09-03: the blocking message lives INSIDE
+                the card, under the status it qualifies. It used to print below
+                the save control, which put the reason for the refusal further
+                from the name it refuses to save than from the next section.
+
+                The tones branch on the card's own ground: #8a5a2a and
+                status-error are legible on the white unnamed card and would be
+                near-invisible on graphite, where the light warm tones read at
+                11:1 and above. */}
+            {nameError ? (
+              <p
+                role="alert"
+                className={cn(
+                  'mt-1.5 text-xs',
+                  onGraphite ? 'text-[#ffb3a7]' : 'text-status-error',
+                )}
+                data-testid="pro-workbar-name-error"
+              >
+                {nameError}
+              </p>
+            ) : null}
+            {save.error ? (
+              <p
+                role="alert"
+                className={cn('mt-1.5 text-xs', onGraphite ? 'text-[#ffb3a7]' : 'text-status-error')}
+                data-testid="pro-workbar-error"
+              >
+                {save.error}
+              </p>
+            ) : save.practicalBlockMessage ? (
+              <p
+                className={cn('mt-1.5 text-xs', onGraphite ? 'text-[#f8c98a]' : 'text-attention')}
+                data-testid="pro-workbar-practical-block"
+              >
+                {save.practicalBlockMessage}
+              </p>
+            ) : blockedMsg ? (
+              <p
+                className={cn('mt-1.5 text-xs', onGraphite ? 'text-white/70' : 'text-stone-600')}
+              >
+                {blockedMsg}
+              </p>
+            ) : null}
           </div>
+
+          {/* The actions share the tongue's band. The rule runs the full width
+              and the tongue paints over it, so a short segment stays visible to
+              the right of ZAPISZ — the band reads as one line, not as a control
+              parked beside a gap. */}
+          <div className="absolute inset-x-0 bottom-0 z-0 flex h-[34px] items-center gap-2.5">
+            <button
+              type="button"
+              onClick={requestNewDraft}
+              data-testid="pro-workbar-new-recipe"
+              data-workbar-action-size="primary"
+              data-workbar-action-width="content"
+              className="pro-focus-ring shrink-0 rounded-full border border-[var(--g-line)] bg-white px-3 py-1 text-[11px] font-semibold whitespace-nowrap text-[var(--g-text-secondary)] transition-colors hover:border-ink/35 hover:text-ink"
+            >
+              + Nowa receptura
+            </button>
+            {overflowMenu}
+            <span aria-hidden className="h-px flex-1 bg-[var(--g-line)]" />
+          </div>
+
+          {/* LAST in source, so tab order follows the eye: name, then the two
+              actions on the left of the band, then Save on its right. It used
+              to be rendered first, purely to satisfy a Save→name ordering
+              contract, back when it sat directly under the card and nothing
+              else shared its row. Now that the actions share the band, that
+              source order sent a keyboard from the bottom-right control back up
+              to the name and down again to the bottom-left.
+
+              Painting is unaffected: the card occludes the tongue's top through
+              z-index (card z-[2] over tongue z-[1]), never through source
+              order, so the tongue still reads as sliding out from behind it. */}
+          <button
+            type="button"
+            onClick={() => void doSave()}
+            disabled={save.busy || save.blocked !== null || save.practicalBlocked}
+            data-attention={saveAttention ? 'required' : undefined}
+            data-testid="pro-workbar-save"
+            data-workbar-action-size="primary"
+            data-workbar-action-width="content"
+            data-workbar-save-shape="tongue"
+            className={cn(
+              'pro-focus-ring absolute right-[26px] bottom-0 z-[1] inline-flex h-[58px] max-w-[calc(100%-52px)] items-end gap-2 rounded-b-[15px] px-[22px] pb-[9px] text-[15px] leading-4 font-bold tracking-[-0.02em] whitespace-nowrap',
+              /* Graphite ink on the accent is 7.5:1. White on the accent would
+                 be 2.5:1 — the same mistake that was removed from Direction. */
+              'bg-[#f58a07] text-[var(--g-graphite)] transition-[background-color,opacity] hover:bg-[#e07f06]',
+              'disabled:cursor-not-allowed disabled:bg-[var(--g-line-quiet)] disabled:text-[var(--g-lock)]',
+              tongueVisible ? null : 'pointer-events-none opacity-0',
+            )}
+            aria-hidden={tongueVisible ? undefined : true}
+            tabIndex={tongueVisible ? undefined : -1}
+          >
+            {save.busy ? w.status.saving : 'ZAPISZ'}
+          </button>
         </div>
 
         <span className="sr-only" data-testid="pro-workbar-context">
@@ -348,15 +422,6 @@ export function ProWorkbar({
           {context}
         </span>
 
-        {nameError ? (
-          <p
-            role="alert"
-            className="mt-1 text-xs text-status-error"
-            data-testid="pro-workbar-name-error"
-          >
-            {nameError}
-          </p>
-        ) : null}
         {dirty && appliedHistoryLength > 0 ? (
           <p
             className="mt-2 border-t border-[var(--g-line)] pt-2 text-xs leading-relaxed text-[var(--g-text-secondary)]"
@@ -364,21 +429,6 @@ export function ProWorkbar({
           >
             {w.recalcPanel.applied}
           </p>
-        ) : null}
-        {save.error ? (
-          <p
-            role="alert"
-            className="mt-1 text-xs text-status-error"
-            data-testid="pro-workbar-error"
-          >
-            {save.error}
-          </p>
-        ) : save.practicalBlockMessage ? (
-          <p className="mt-1 text-xs text-attention" data-testid="pro-workbar-practical-block">
-            {save.practicalBlockMessage}
-          </p>
-        ) : blockedMsg ? (
-          <p className="mt-1 text-xs text-stone-600">{blockedMsg}</p>
         ) : null}
 
         <NewRecipeConfirmationDialog

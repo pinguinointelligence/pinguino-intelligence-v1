@@ -191,10 +191,26 @@ export function assessGelatoStabilizerSystem(
   };
 }
 
+/**
+ * Why the CALLER gets a reason rather than a sentence to parse.
+ *
+ * Two very different things used to arrive as one Polish string: "you have
+ * reached the batch's stabilizer ceiling" and "this system takes whole grams".
+ * The first now opens a dialog the owner dismisses once; the second stays an
+ * inline notice. A UI that told them apart by matching text would break the
+ * moment the copy was translated — which this app is built to do.
+ *
+ * `limitGrams` is the CANONICAL ceiling for the current batch and profile, so
+ * the dialog can state the real number instead of repeating a hardcoded one.
+ */
+export type StabilizerClampReason = 'aggregate_limit' | 'whole_gram' | null;
+
 export interface ClampGelatoStabilizerComponentResult {
   grams: number;
   clamped: boolean;
   messagePl: string | null;
+  reason: StabilizerClampReason;
+  limitGrams: number;
 }
 
 /** Manual-edit helper: the requested line stays a whole gram and cannot push
@@ -205,11 +221,11 @@ export function clampGelatoStabilizerComponentGrams(
   requestedGrams: number,
 ): ClampGelatoStabilizerComponentResult {
   if (!gelatoStabilizerSystemApplies(input.category)) {
-    return { grams: requestedGrams, clamped: false, messagePl: null };
+    return { grams: requestedGrams, clamped: false, messagePl: null, reason: null, limitGrams: 0 };
   }
   const line = input.items.find((item) => item.id === lineId);
   if (!line || resolveFunctionalRole(line.ingredient) !== 'stabilizer') {
-    return { grams: requestedGrams, clamped: false, messagePl: null };
+    return { grams: requestedGrams, clamped: false, messagePl: null, reason: null, limitGrams: 0 };
   }
   const band = gelatoStabilizerWholeGramBand(input.target_batch_grams);
   const otherGrams = gelatoStabilizerSystemItems(input.items)
@@ -219,13 +235,17 @@ export function clampGelatoStabilizerComponentGrams(
   const rounded = Math.max(0, Math.round(requestedGrams));
   const grams = Math.min(maximumForLine, rounded);
   const clamped = !Object.is(grams, requestedGrams);
+  const reason: StabilizerClampReason =
+    requestedGrams > maximumForLine ? 'aggregate_limit' : clamped ? 'whole_gram' : null;
   return {
     grams,
     clamped,
+    reason,
+    limitGrams: band.maxGrams,
     messagePl:
-      requestedGrams > maximumForLine
+      reason === 'aggregate_limit'
         ? `Łączny limit systemu stabilizującego dla tej partii został osiągnięty: ${band.maxGrams} g.`
-        : clamped
+        : reason === 'whole_gram'
           ? 'Składniki systemu stabilizującego Gelato muszą mieć pełne gramy.'
           : null,
   };

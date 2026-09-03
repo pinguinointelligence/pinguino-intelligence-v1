@@ -200,7 +200,23 @@ export function AppShell({
             {!viewportLock ? actions : null}
             {globalSwitch}
           </div>
-          {viewportLock ? workbenchChrome : null}
+          {/* OWNER QA 2026-09-03 — REGRESSION FIX. The header canvas is
+              `pointer-events-none` so the transparent band cannot swallow
+              clicks meant for the page beneath it; every real control inside it
+              has to opt back in. The HOME | PRO group did. The module tab strip
+              never did, so Receptura / Monitor / Produkcja / Etykieta rendered
+              perfectly and were completely dead to the mouse — measured:
+              `pointer-events: none`, and `elementFromPoint` on each tab's own
+              centre returned the HEADER, not the tab.
+
+              Opting in here rather than inside the strip keeps the rule where
+              the canvas is declared: anything placed on this canvas is inert
+              until this file says otherwise. */}
+          {viewportLock ? (
+            <div className="pointer-events-auto contents" data-testid="app-header-workbench-chrome">
+              {workbenchChrome}
+            </div>
+          ) : null}
         </div>
 
         {/* OWNER 2026-09-02: the login closes the row at the same inset the

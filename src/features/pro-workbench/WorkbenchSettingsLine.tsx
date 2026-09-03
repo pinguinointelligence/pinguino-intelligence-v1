@@ -167,7 +167,44 @@ export function WorkbenchSettingsLine({
   /* OWNER AUTHORITY 2026-09-02 (approved desktop PDF, §6): Settings are
      COLLAPSED at rest. They are the recipe's context, not its work — the band
      states what they are in one line and opens only when the user goes there. */
-  const [expanded, setExpanded] = useState(false);
+  /* OWNER AUTHORITY 2026-09-03: while the recipe card is refusing to save, this
+     module is where the owner has to act, so it opens itself and takes the
+     change marker — the same attention treatment a gram field wears after it
+     is edited, but drawn all the way round because here the whole module is
+     what changed, not one field in a row.
+
+     TWO STATES, deliberately not one. `manualExpanded` is what the owner chose;
+     `forcedOpen` is what the blocker imposes. Only the first is ever written.
+
+     Collapsing them into a single flag produced a real bug. While the blocker
+     held the module open the flag was still false, so the toggle read a click
+     meant to CLOSE as "flip false to true". The module could not be closed
+     during the block — correct — but the instant the block cleared it stayed
+     OPEN, the opposite of what the click asked for. Proven in the browser
+     before this fix: aria-expanded stayed `true`, all four fields visible,
+     module height unchanged at 230.3 px.
+
+     Now a click under `forcedOpen` can only ever record "closed". The module
+     still cannot visibly collapse while the blocker exists, and it collapses
+     by itself the moment the blocker clears. Nothing writes the derived value
+     back into the manual one, so there is no open/close loop. */
+  const [manualExpanded, setManualExpanded] = useState(false);
+  const preflightBlockMessage = useRecipeProfileStore((state) => state.preflightBlockMessage);
+  const forcedOpen = preflightBlockMessage !== null;
+  const preflightBlocked = forcedOpen;
+  const open = manualExpanded || forcedOpen;
+
+  const toggleDisclosure = () => {
+    /* Under the blocker the module is open because the blocker holds it, never
+       because the owner opened it — so the only intent a click can carry here
+       is "close". Recording that, rather than toggling, is what lets the module
+       collapse on its own once the blocker is gone. */
+    if (forcedOpen) {
+      setManualExpanded(false);
+      return;
+    }
+    setManualExpanded((wasOpen) => !wasOpen);
+  };
   const saveDefaultsLocal = useRecipeProfileStore((state) => state.saveDefaults);
   const authenticatedOwner = useAuthStore((state) => state.user?.id ?? null);
   const defaultsOwner = authenticatedOwner ?? (import.meta.env.DEV ? 'local-device' : null);
@@ -438,7 +475,9 @@ export function WorkbenchSettingsLine({
         'pro-legend-box px-5 py-7 transition-colors',
         hardConflict
           ? 'border-status-error/45 bg-status-error/[0.035]'
-          : 'bg-transparent',
+          : preflightBlocked
+            ? 'settings-preflight-blocked'
+            : 'bg-transparent',
         className,
       )}
       data-testid="workbench-settings-line"
@@ -446,6 +485,7 @@ export function WorkbenchSettingsLine({
       data-preflight-state={
         hardConflict ? 'conflict' : confirmed ? 'confirmed' : 'needs-confirmation'
       }
+      data-preflight-blocked={preflightBlocked ? 'true' : undefined}
     >
       <h3
         data-band-legend
@@ -459,8 +499,8 @@ export function WorkbenchSettingsLine({
           carry the decision and must survive every translation. */}
       <button
         type="button"
-        onClick={() => setExpanded((open) => !open)}
-        aria-expanded={expanded}
+        onClick={toggleDisclosure}
+        aria-expanded={open}
         data-testid="settings-grid-status"
         data-settings-cell="confirmation"
         className="pro-focus-ring group/settings flex w-full min-w-0 items-center gap-4 bg-transparent text-left"
@@ -508,7 +548,7 @@ export function WorkbenchSettingsLine({
           height="15"
           viewBox="0 0 24 24"
           fill="none"
-          className={cn('shrink-0 text-[var(--g-text-muted)] transition-transform', expanded && 'rotate-90')}
+          className={cn('shrink-0 text-[var(--g-text-muted)] transition-transform', open && 'rotate-90')}
         >
           <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
@@ -535,7 +575,7 @@ export function WorkbenchSettingsLine({
           and `hidden` is the honest semantic — not relevant right now — so it
           leaves the accessibility tree and the tab order without pretending the
           settings do not exist. */}
-      <div hidden={!expanded} data-settings-surface={expanded ? 'expanded' : 'collapsed'}>
+      <div hidden={!open} data-settings-surface={open ? 'expanded' : 'collapsed'}>
       <div
         className={cn(
           compact ? 'profile-settings-grid grid grid-cols-2 items-stretch gap-2' : 'space-y-3',

@@ -143,18 +143,31 @@ describe('ProWorkbar (sticky top workbar)', () => {
     // The 34 px are reserved in EVERY state, so the tongue's arrival cannot
     // move kcal, cost, the left edge or anything below it.
     expect(html).toContain('relative pb-[34px]');
-    // Behind the card, not painted over it.
-    expect(html).toContain('z-0 inline-flex h-[58px]');
-    expect(html).toContain('relative z-[1]');
+    /* OWNER AUTHORITY 2026-09-03: three layers now share this band, and the
+       order between them is the contract. The rule and the two actions sit at
+       the bottom, the tongue slides out OVER the rule, and the card occludes
+       the tongue's top — so the tongue still reads as coming from behind the
+       card while the rule passes behind the tongue. */
+    expect(html).toContain('z-[1] inline-flex h-[58px]');
+    expect(html).toContain('relative z-[2]');
+    expect(html).toContain('absolute inset-x-0 bottom-0 z-0 flex h-[34px]');
     // Exactly one status node — the card must not duplicate it.
     expect(html.match(/data-testid="pro-workbar-status"/g)).toHaveLength(1);
-    // DOM order stays New → Save → name, so the canonical ordering contract
-    // still describes the panel even though the tongue is positioned.
+    /* SUPERSEDED, owner authority 2026-09-03. The panel used to render
+       New → Save → name to satisfy a canonical ordering contract written when
+       the actions stood ABOVE the card. The approved layout puts the card
+       first and the actions beneath it, so that order would now walk a
+       keyboard from the bottom-right control up to the name and back down to
+       the bottom-left. Source order follows the eye instead: the card's name,
+       then the two actions on the left of the band, then Save on its right.
+
+       The bar variant is untouched and still asserts New → Save → menu →
+       status in the test above; only the panel's own reading order moved. */
     const newAt = html.indexOf('data-testid="pro-workbar-new-recipe"');
     const saveAt = html.indexOf('data-testid="pro-workbar-save"');
     const nameAt = html.indexOf('data-testid="pro-workbar-name"');
+    expect(nameAt).toBeLessThan(newAt);
     expect(newAt).toBeLessThan(saveAt);
-    expect(saveAt).toBeLessThan(nameAt);
   });
 
   it('shows the tongue when there is something to save and hides it when clean', () => {
