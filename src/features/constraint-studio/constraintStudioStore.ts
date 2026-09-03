@@ -1319,6 +1319,13 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           if (result.code === 'already_clean' || result.code === 'best_safe_result') {
             establishCurrentRecipeCalculation();
           }
+          if (result.code === 'already_clean') {
+            /* Nothing to apply, so closing the modal has to be enough: the recipe was
+               just checked and found correct. The recipe store owns the write and does
+               the verification itself — this feature may not reach into it directly, and
+               that boundary is exactly what keeps recipe writes atomic and guarded. */
+            useRecipeStore.getState().verifyPracticalAsWritten(get().constraints);
+          }
           set({
             preview: null,
             directionBestCandidate: null,
@@ -3342,8 +3349,7 @@ export async function runPiRecalculationWithTerminal(
       useConstraintStudioStore.setState({
         recalculationTerminal: {
           state: 'ERROR',
-          messagePl:
-            'Przeliczenie zakończyło się bez wyniku. Wróć do receptury i spróbuj ponownie',
+          messagePl: 'Przeliczenie zakończyło się bez wyniku. Wróć do receptury i spróbuj ponownie',
         },
       });
     }

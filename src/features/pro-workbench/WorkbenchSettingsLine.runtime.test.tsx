@@ -12,6 +12,10 @@ import { machineDisplayName, machineOnboardingCopy } from '@/features/machine-on
 import { useRecipeStore } from '@/stores/recipeStore';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import type { VisibleProductType } from '@/features/studio/productType';
+import {
+  SAVE_BLOCKER_MESSAGE_PL,
+  type SaveBlocker,
+} from '@/features/recipes/saveBlocker';
 import { useRecipeProfileStore } from './recipeProfileStore';
 import { WorkbenchSettingsLine } from './WorkbenchSettingsLine';
 
@@ -766,10 +770,23 @@ describe('WorkbenchSettingsLine — forced open vs manual expansion', () => {
       'data-preflight-blocked',
     );
 
-  const setBlocker = async (message: string | null) => {
+  /* The blocker is TYPED now, and its `action` is what routes it. Settings is
+     the next action only for `SETTINGS_CONFIRMATION_REQUIRED`; a recalculation
+     refusal must leave this module alone, which the last test below proves. */
+  const setBlocker = async (blocker: SaveBlocker | null) => {
     await act(async () => {
-      useRecipeProfileStore.getState().setPreflightBlockMessage(message);
+      useRecipeProfileStore.getState().setPreflightBlocker(blocker);
     });
+  };
+  const settingsBlocker: SaveBlocker = {
+    kind: 'SETTINGS_CONFIRMATION_REQUIRED',
+    message: SAVE_BLOCKER_MESSAGE_PL.SETTINGS_CONFIRMATION_REQUIRED,
+    action: 'settings',
+  };
+  const recalcBlocker: SaveBlocker = {
+    kind: 'RECALCULATION_REQUIRED',
+    message: SAVE_BLOCKER_MESSAGE_PL.RECALCULATION_REQUIRED,
+    action: 'recalculate',
   };
 
   beforeEach(async () => {
@@ -809,7 +826,7 @@ describe('WorkbenchSettingsLine — forced open vs manual expansion', () => {
      in `useCanonicalRecipeSave` and reaches this module only as that published
      message. What is under test is this module's response to it. */
   it('forced open -> attempted collapse -> blocker clears -> COLLAPSED', async () => {
-    await setBlocker('Jeszcze jeden krok. Otwórz podgląd i zastosuj zweryfikowaną recepturę.');
+    await setBlocker(settingsBlocker);
     expect(surface(), 'the blocker must open the module').toBe('expanded');
     expect(blocked()).toBe('true');
 
@@ -822,15 +839,30 @@ describe('WorkbenchSettingsLine — forced open vs manual expansion', () => {
     expect(blocked()).toBeNull();
   });
 
+  it('leaves this module alone when the next action is somewhere else', async () => {
+    /* ONE blocker, ONE next action. A recalculation refusal points at
+       „Przelicz"; if Settings opened and took the attention marker here it
+       would show „Zatwierdzone" beside a sentence asking for something else,
+       and send the owner looking for a decision they had already made. */
+    await setBlocker(recalcBlocker);
+    expect(surface()).toBe('collapsed');
+    expect(blocked()).toBeNull();
+
+    // ...and it still answers its OWN blocker.
+    await setBlocker(settingsBlocker);
+    expect(surface()).toBe('expanded');
+    expect(blocked()).toBe('true');
+  });
+
   it('collapses on its own when the blocker clears untouched', async () => {
-    await setBlocker('blokada');
+    await setBlocker(settingsBlocker);
     expect(surface()).toBe('expanded');
     await setBlocker(null);
     expect(surface()).toBe('collapsed');
   });
 
   it('does not fight the owner after the blocker is gone', async () => {
-    await setBlocker('blokada');
+    await setBlocker(settingsBlocker);
     await act(async () => disclosure().click());
     await setBlocker(null);
     expect(surface()).toBe('collapsed');
@@ -845,7 +877,7 @@ describe('WorkbenchSettingsLine — forced open vs manual expansion', () => {
   it('keeps a deliberate manual expansion after the blocker comes and goes', async () => {
     await act(async () => disclosure().click());
     expect(surface()).toBe('expanded');
-    await setBlocker('blokada');
+    await setBlocker(settingsBlocker);
     expect(surface()).toBe('expanded');
     await setBlocker(null);
     // Never touched during the block, so the owner's own choice survives it.
@@ -853,7 +885,7 @@ describe('WorkbenchSettingsLine — forced open vs manual expansion', () => {
   });
 
   it('settles immediately — no open/close flicker while the blocker stands', async () => {
-    await setBlocker('blokada');
+    await setBlocker(settingsBlocker);
     const seen = new Set<string | null>();
     for (let i = 0; i < 4; i += 1) {
       await act(async () => root.render(<WorkbenchSettingsLine compact />));

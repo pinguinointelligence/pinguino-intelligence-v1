@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { copy } from '@/copy/en';
 import { cn } from '@/lib/cn';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { useCanonicalRecipeSave } from '@/features/recipes/useCanonicalRecipeSave';
+import { resolveSaveBlocker } from '@/features/recipes/saveBlocker';
 import { ReviewDecisionLabel } from '@/features/design-review/ReviewBadge';
 import {
   hasUnsavedProRecipeChanges,
@@ -165,12 +166,23 @@ export function ProWorkbar({
      panel variant publishes: the compact variants render the same workbar in
      places where no Settings module exists to answer, and two publishers would
      race to own one slot. */
-  const setPreflightBlockMessage = useRecipeProfileStore((s) => s.setPreflightBlockMessage);
-  const publishedBlock = variant === 'panel' ? save.practicalBlockMessage : null;
+  const setPreflightBlocker = useRecipeProfileStore((s) => s.setPreflightBlocker);
+  const settingsConfirmed = useRecipeProfileStore((s) => s.settingsConfirmed);
+  /* ONE blocker, resolved in ONE place. The gate says what it refused on; Settings says
+     whether its own values are confirmed; this picks the single thing to ask for. The
+     mapping is pure and lives in `saveBlocker`, so it is testable without a browser and
+     cannot quietly diverge from the copy the card prints. */
+  const blocker = useMemo(
+    () =>
+      variant === 'panel'
+        ? resolveSaveBlocker({ practical: save.practicalBlock, settingsConfirmed })
+        : null,
+    [save.practicalBlock, settingsConfirmed, variant],
+  );
   useEffect(() => {
-    setPreflightBlockMessage(publishedBlock);
-  }, [publishedBlock, setPreflightBlockMessage]);
-  useEffect(() => () => setPreflightBlockMessage(null), [setPreflightBlockMessage]);
+    setPreflightBlocker(blocker);
+  }, [blocker, setPreflightBlocker]);
+  useEffect(() => () => setPreflightBlocker(null), [setPreflightBlocker]);
 
   const statusNode = (
     <span
@@ -209,7 +221,6 @@ export function ProWorkbar({
     </span>
   );
 
-
   const overflowMenu = (
     <details className="relative shrink-0" data-testid="pro-workbar-menu">
       <summary
@@ -221,7 +232,9 @@ export function ProWorkbar({
         •••
       </summary>
       <div className="absolute top-9 right-0 z-40 w-72 rounded-[22px] border border-ink/15 bg-white p-4 shadow-pro-e3">
-        <p className="text-xs font-semibold tracking-[0.04em] text-stone-600 uppercase">Receptura</p>
+        <p className="text-xs font-semibold tracking-[0.04em] text-stone-600 uppercase">
+          Receptura
+        </p>
         <p className="mt-2 text-xs text-ink">{context}</p>
         <p className="mt-1 text-xs text-stone-600">
           {currentVersionNumber ? `v${currentVersionNumber}` : 'wersja robocza'} ·{' '}
@@ -271,7 +284,6 @@ export function ProWorkbar({
             rule passes behind it, and the card occludes the tongue's top
             (z-[2]) so it still reads as sliding out from behind the card. */}
         <div className="relative pb-[34px]">
-
           {/* ONE surface in every state, so it always occludes the tongue's
               top. The first attempt left the status line outside the painted
               area and the tongue showed through a transparent 24 px band —
@@ -331,22 +343,23 @@ export function ProWorkbar({
             {save.error ? (
               <p
                 role="alert"
-                className={cn('mt-1.5 text-xs', onGraphite ? 'text-[#ffb3a7]' : 'text-status-error')}
+                className={cn(
+                  'mt-1.5 text-xs',
+                  onGraphite ? 'text-[#ffb3a7]' : 'text-status-error',
+                )}
                 data-testid="pro-workbar-error"
               >
                 {save.error}
               </p>
-            ) : save.practicalBlockMessage ? (
+            ) : blocker ? (
               <p
                 className={cn('mt-1.5 text-xs', onGraphite ? 'text-[#f8c98a]' : 'text-attention')}
                 data-testid="pro-workbar-practical-block"
               >
-                {save.practicalBlockMessage}
+                {blocker.message}
               </p>
             ) : blockedMsg ? (
-              <p
-                className={cn('mt-1.5 text-xs', onGraphite ? 'text-white/70' : 'text-stone-600')}
-              >
+              <p className={cn('mt-1.5 text-xs', onGraphite ? 'text-white/70' : 'text-stone-600')}>
                 {blockedMsg}
               </p>
             ) : null}
@@ -490,10 +503,7 @@ export function ProWorkbar({
           >
             {save.busy ? w.status.saving : linked ? 'Zapisz nową wersję' : w.saveNew}
           </button>
-          <details
-            className="relative shrink-0"
-            data-testid="pro-workbar-menu"
-          >
+          <details className="relative shrink-0" data-testid="pro-workbar-menu">
             <summary
               className={cn(iconButtonClasses('xs'), 'cursor-pointer list-none')}
               aria-label={w.more}
@@ -543,9 +553,7 @@ export function ProWorkbar({
             />
           </label>
           <span
-            className={cn(
-              'max-w-56 shrink-0 truncate text-xs text-stone-600 hidden xl:block',
-            )}
+            className={cn('max-w-56 shrink-0 truncate text-xs text-stone-600 hidden xl:block')}
             data-testid="pro-workbar-context"
           >
             {context}
@@ -578,12 +586,12 @@ export function ProWorkbar({
         <p role="alert" className="mt-1 text-xs text-status-error" data-testid="pro-workbar-error">
           {save.error}
         </p>
-      ) : save.practicalBlockMessage ? (
+      ) : blocker ? (
         <p
           className="mt-1 text-xs text-attention 2xl:sr-only"
           data-testid="pro-workbar-practical-block"
         >
-          {save.practicalBlockMessage}
+          {blocker.message}
         </p>
       ) : blockedMsg ? (
         <p className="mt-1 text-xs text-stone-600">{blockedMsg}</p>
