@@ -170,9 +170,15 @@ function RecurringFlow() {
           to read as a disclaimer: a small number buried in two sentences. */}
       <aside className="mt-9 overflow-hidden rounded-[20px] bg-[var(--g-ink)] text-white">
         <div className="flex flex-col gap-7 px-7 py-9 sm:px-10 lg:flex-row lg:items-center lg:gap-12">
-          <p className="flex-none text-[46px] leading-[0.95] font-bold tracking-[-0.045em] sm:text-[56px]">
-            {c.customerBenefit.figure}
-            <span className="ml-2 block text-[16px] font-semibold tracking-[-0.015em] text-[var(--g-orange)] sm:mt-1 sm:ml-0 sm:text-[18px]">
+          {/* The offer reads as ONE phrase. The figure and its unit were
+              competing as two marks; they are now a single baseline lockup, so
+              the eye takes "3 miesiące gratis" in at once instead of assembling
+              it from pieces. */}
+          <p className="flex flex-none items-baseline gap-2.5 text-[var(--g-orange)]">
+            <span className="text-[64px] leading-[0.85] font-bold tracking-[-0.05em] sm:text-[76px]">
+              {c.customerBenefit.figure}
+            </span>
+            <span className="text-[22px] leading-[1.1] font-bold tracking-[-0.02em] sm:text-[26px]">
               {c.customerBenefit.figureUnit}
             </span>
           </p>
@@ -180,12 +186,10 @@ function RecurringFlow() {
             <h3 className="text-[21px] font-bold tracking-[-0.028em] sm:text-[24px]">
               {c.customerBenefit.title}
             </h3>
-            <p className="mt-2.5 max-w-[52ch] text-[14.5px] leading-relaxed text-[#c9c5bd]">
-              {fillTemplate(c.customerBenefit.bodyTemplate, {
-                emphasis: c.customerBenefit.emphasis,
-              })}
+            <p className="mt-2.5 max-w-[46ch] text-[14.5px] leading-relaxed text-[#c9c5bd]">
+              {c.customerBenefit.shortBody}
             </p>
-            <p className="mt-3 text-[12.5px] text-[#9d988f]">{c.customerBenefit.monthlyNote}</p>
+            <p className="mt-3 text-[12px] text-[#8b867e]">{c.customerBenefit.monthlyNote}</p>
           </div>
         </div>
       </aside>
@@ -301,7 +305,16 @@ const FIELDS: ReadonlyArray<{ key: keyof AffiliateCustomerCounts; label: string 
   { key: 'proAnnual', label: c.calculator.proAnnualLabel },
 ];
 
-/** One input, whatever it counts — the Starter Pack is not a special case. */
+/**
+ * One input, whatever it counts — the Starter Pack is not a special case.
+ *
+ * The field keeps its own DRAFT string while it has focus, which is what stops
+ * the leading zero: a controlled numeric input bound straight to 0 turns
+ * typing "5" into "05", because the 0 is still there when the keystroke
+ * arrives. The draft lets the box be momentarily empty, and the committed
+ * NUMBER is normalised on every change, so the estimate never sees a partial
+ * value. On blur an empty box settles back to 0.
+ */
 function CountField({
   label,
   value,
@@ -309,22 +322,62 @@ function CountField({
 }: {
   label: string;
   value: number;
-  onChange: (raw: string) => void;
+  /**
+   * Takes an UPDATER, not a number. Two rapid clicks on the same button land
+   * in one React batch, and a handler that computed `value + delta` from its
+   * closure would read the same stale value twice — two clicks on minus moved
+   * 4 to 3 instead of 2. The updater always sees the committed value.
+   */
+  onChange: (update: (previous: number) => number) => void;
 }) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const shown = draft ?? String(value);
+
+  const step = (delta: number) => {
+    setDraft(null);
+    onChange((previous) => Math.min(MAX_CUSTOMERS_PER_PLAN, Math.max(0, previous + delta)));
+  };
+
   return (
     <label className="block">
       <span className="block text-[11.5px] font-semibold tracking-[0.05em] text-[var(--g-text-muted)] uppercase">
         {label}
       </span>
-      <input
-        type="number"
-        inputMode="numeric"
-        min={0}
-        max={MAX_CUSTOMERS_PER_PLAN}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="mt-2 h-[46px] w-full rounded-full border border-[var(--g-line)] bg-white px-4 text-[15px] font-semibold text-[var(--g-ink)] tabular-nums outline-none focus-visible:border-[var(--g-orange)]"
-      />
+      <div className="mt-2 flex h-[46px] items-center justify-between gap-1 rounded-full border border-[var(--g-line)] bg-white pr-1.5 pl-2 focus-within:border-[var(--g-orange)]">
+        <button
+          type="button"
+          onClick={() => step(-1)}
+          disabled={value <= 0}
+          aria-label={`${label}: mniej`}
+          className="grid h-[34px] w-[34px] flex-none place-items-center rounded-full text-[18px] leading-none text-[var(--g-ink)] transition-colors hover:bg-[var(--g-ivory-deep,#f6f4ef)] disabled:opacity-30"
+        >
+          −
+        </button>
+        <input
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          value={shown}
+          onFocus={() => setDraft(String(value))}
+          onChange={(event) => {
+            // Digits only, and a leading zero cannot survive a real entry.
+            const digits = event.target.value.replace(/[^0-9]/g, '').replace(/^0+(?=\d)/, '');
+            setDraft(digits);
+            onChange(() => normalizeCount(digits));
+          }}
+          onBlur={() => setDraft(null)}
+          className="min-w-0 flex-1 bg-transparent text-center text-[15px] font-semibold text-[var(--g-ink)] tabular-nums outline-none"
+        />
+        <button
+          type="button"
+          onClick={() => step(1)}
+          disabled={value >= MAX_CUSTOMERS_PER_PLAN}
+          aria-label={`${label}: więcej`}
+          className="grid h-[34px] w-[34px] flex-none place-items-center rounded-full text-[18px] leading-none text-[var(--g-ink)] transition-colors hover:bg-[var(--g-ivory-deep,#f6f4ef)] disabled:opacity-30"
+        >
+          +
+        </button>
+      </div>
     </label>
   );
 }
@@ -354,9 +407,6 @@ function Calculator() {
     [mode, counts, starterPacks],
   );
 
-  const setField = (key: keyof AffiliateCustomerCounts, raw: string) =>
-    setCounts((prev) => ({ ...prev, [key]: normalizeCount(raw) }));
-
   return (
     <section id="affiliate-calculator" className="mt-[58px] scroll-mt-[110px]">
       <SectionHead
@@ -373,7 +423,9 @@ function Calculator() {
                 key={field.key}
                 label={field.label}
                 value={counts[field.key]}
-                onChange={(raw) => setField(field.key, raw)}
+                onChange={(update) =>
+                  setCounts((prev) => ({ ...prev, [field.key]: update(prev[field.key]) }))
+                }
               />
             ))}
             {/* The fifth input, in the same style as the four plans: a pack is
@@ -382,7 +434,7 @@ function Calculator() {
             <CountField
               label={c.calculator.starterPacksLabel}
               value={starterPacks}
-              onChange={(raw) => setStarterPacks(normalizeCount(raw))}
+              onChange={(update) => setStarterPacks((prev) => update(prev))}
             />
           </div>
 
