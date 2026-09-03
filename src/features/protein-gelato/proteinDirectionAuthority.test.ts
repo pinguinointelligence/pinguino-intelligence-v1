@@ -126,7 +126,7 @@ const sweep = (serving: Serving, strategy: 'optimal' | 'eco'): Delivered[] =>
 
 describe('Protein Direction axis status', () => {
   it.each([-11, -12, -13] as const)(
-    '@ %d °C sweetness is operational and hardness stays scientifically blocked',
+    '@ %d °C sweetness is operational and hardness runs on the ICE authority, never NPAC',
     (temperatureC) => {
       const serving = `temp_minus_${Math.abs(temperatureC)}` as Serving;
       const input = draft(serving, 'optimal', 0);
@@ -138,12 +138,17 @@ describe('Protein Direction axis status', () => {
       expect(sweetness.metric).toBe('pod');
       expect(sweetness.targetBand).not.toBeNull();
 
-      // Sweetness working must NOT unlock hardness — separate authority.
-      expect(hardness.status).toBe('blocked_science');
-      expect(hardness.targetBand).toBeNull();
-      expect(hardness.reason).toBeTruthy();
+      // Sweetness and hardness remain SEPARATE authorities. Hardness was
+      // restored on 2026-09-03 through the profile's own approved ICE-FRACTION
+      // band (owner decision, option A) — the NPAC statement documented above is
+      // unchanged and still true: NPAC-based Protein hardness stays unsupported,
+      // and no NPAC band is ever published for this profile.
+      expect(hardness.status).toBe('working');
+      expect(hardness.metric).toBe('ice_fraction');
+      expect(hardness.targetBand).not.toBeNull();
+      expect(plan.bands.npac).toBeUndefined();
 
-      expect(assessRecipeDirection(input, calculateRecipe(input)).supportedAxisCount).toBe(1);
+      expect(assessRecipeDirection(input, calculateRecipe(input)).supportedAxisCount).toBe(2);
     },
   );
 

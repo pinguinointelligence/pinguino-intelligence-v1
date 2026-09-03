@@ -388,14 +388,18 @@ describe('§18/§19 — Direction axis status and Rescue are truthful for Protei
 
     // Hardness stays blocked on its own scientific authority and must not be
     // unlocked merely because Sweetness now works.
-    expect(softness.status).toBe('blocked_science');
+    // Restored 2026-09-03 through the Protein ICE-FRACTION authority. NPAC-based
+    // Protein hardness stays unsupported and no NPAC band is published.
+    expect(softness.status).toBe('working');
+    expect(softness.metric).toBe('ice_fraction');
     // A blocked axis must always say WHY — never fail silently.
-    expect(softness.reason).toBeTruthy();
+    expect(softness.reason).toBeNull();
     // And it must never publish a target band it cannot honour.
-    expect(softness.targetBand).toBeNull();
+    expect(softness.targetBand).not.toBeNull();
 
     const assessment = assessRecipeDirection(input, calculateRecipe(input));
-    expect(assessment.supportedAxisCount).toBe(1);
+    // Two supported axes since the hardness restoration (pod + ice_fraction).
+    expect(assessment.supportedAxisCount).toBe(2);
 
     console.info(
       'DIRSTATUS ' +
@@ -428,10 +432,30 @@ describe('§18/§19 — Direction axis status and Rescue are truthful for Protei
     // strongest possible reason: the requested Direction target was actually
     // reached, so there is nothing left to rescue toward. Before the shared
     // NEAREST fix this same request could not be honoured at all.
-    expect(direction.supportedAxisCount).toBe(1);
-    expect(direction.reached).toBe(true);
-    expect(report.simulations).toEqual([]);
-    expect(report.advice).toBeNull();
+    // TWO axes since the 2026-09-03 hardness restoration: sweetness (pod) and
+    // hardness (ice_fraction). Both are the profile's own authorities.
+    expect(direction.supportedAxisCount).toBe(2);
+
+    // This case requests sweetness +2 AND hardness −2 (softest). Since the
+    // 2026-09-03 restoration hardness is a real axis, so "reached" now needs
+    // BOTH. At −11 the softer ice band contains the candidate and the target is
+    // met. At −12/−13 it does not: the softer band excludes the candidate's ice
+    // fraction, so the honest answer is "not reached".
+    //
+    // Rescue then behaves correctly for the RIGHT reason in BOTH cases, which is
+    // what this contract measures:
+    //   −11  → target met, so Rescue is silent because there is nothing to
+    //          rescue toward;
+    //   −12/−13 → hardness unmet, so Rescue DOES propose candidates. The
+    //          ingredient advisor follows the restored ice-fraction axis; it is
+    //          not blind to it.
+    expect(direction.reached).toBe(temperatureC === -11);
+    if (temperatureC === -11) {
+      expect(report.simulations).toEqual([]);
+      expect(report.advice).toBeNull();
+    } else {
+      expect(report.simulations.length).toBeGreaterThan(0);
+    }
 
     console.info(
       'RESCUE ' +
@@ -443,7 +467,7 @@ describe('§18/§19 — Direction axis status and Rescue are truthful for Protei
           advice: report.advice,
           reached: direction.reached,
           reason:
-            'Sweetness target reached on the executable candidate — nothing to rescue toward; Hardness stays blocked_science',
+            'Sweetness target reached on the executable candidate — nothing to rescue toward; Hardness runs on the Protein ice-fraction authority',
         }),
     );
   }, 600_000);
