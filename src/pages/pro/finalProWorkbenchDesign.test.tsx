@@ -209,7 +209,9 @@ describe('one global menu and four local contexts', () => {
 describe('recipe and production table modes', () => {
   it('normal recipe mode shows planned grams but no actual-production column', () => {
     const html = renderIngredients('recipe');
-    expect(html).toContain('Cena/kg');
+    expect(html).not.toContain('data-testid="recipe-table-header"');
+    expect(html).not.toContain('Cena/kg');
+    expect(html).toContain('aria-label="Składniki receptury"');
     expect(html).toContain('Zablokuj gramy');
     expect(html).toContain('Zablokuj % partii');
     expect(html).not.toContain('Faktycznie');
