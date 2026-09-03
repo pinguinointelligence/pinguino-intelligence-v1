@@ -228,8 +228,14 @@ sorbet-policy test.
 
 - `npm run build` (`tsc -b && vite build`) passes.
 - prettier + eslint clean on the changed files only (no directory-wide reformat).
-- Targeted suites: **1850 passed** across `pro-core`, `constraint-studio`,
-  `product-intelligence`, `pages/pro`, and **all 179 owner-locked contracts**.
+- **Full suite: 11 718 tests passed, 0 failed** (952 files, 122 skipped, 871 s),
+  including all **179 owner-locked contracts**.
+- 4 test FILES fail to load, all with **0 tests run**, from two environment causes in
+  this worktree's symlinked `node_modules` — `Denied ID …/@fontsource/…woff` (Vite
+  `fs.allow`) and `failed to load ./ita.special-words` (tesseract data). **Proven
+  identical on the base commit `285f15ed`**, so they are unrelated to this change:
+  `ProWorkspacePage.libraryHandoff`, `LabelWorkspace.runtime`, `proProfilePreflightUx`,
+  `proRecipeStateRegression`.
 
 ---
 
@@ -256,10 +262,8 @@ sorbet-policy test.
    `WorkflowNotice`, not a dialog; the dialog is introduced by **#136** on a parallel
    branch. When #136 lands, its dialog should adopt `GellattiNotice` rather than carrying
    its own shell. Migrating it here would duplicate and conflict with that work.
-4. **Local-only test artefact, proven pre-existing.**
-   `ProWorkspacePage.libraryHandoff.test.tsx` fails locally with
-   `Denied ID …/@fontsource/…` because this worktree's `node_modules` is a symlink outside
-   Vite's `fs.allow`. Identical on the base commit; unrelated to this change.
+4. **Four local-only suite-load artefacts, proven pre-existing** — see §6. They run
+   normally where `node_modules` is real.
 5. **No test CI runs on PRs** in this repository, so the suite evidence above is local.
 
 ---
