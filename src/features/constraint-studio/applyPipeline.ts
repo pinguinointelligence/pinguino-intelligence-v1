@@ -8934,8 +8934,7 @@ export type BlockedApply =
     };
 
 export type CommitPreviewResult =
-  | { ok: true; verified: VerifiedApply }
-  | ({ ok: false } & BlockedApply);
+  { ok: true; verified: VerifiedApply } | ({ ok: false } & BlockedApply);
 
 function productBehaviorIdentityViolation(
   input: RecipeInput,
@@ -9291,7 +9290,8 @@ export class VerifiedApply {
       //     -> truthful publication: a materially different candidate is real,
       //        an unchanged one is the forged NEAREST this door exists to stop.
       const explicitDirectionRoute =
-        preview.directionFallback !== undefined || preview.starterPackRescue !== undefined;
+        preview.directionFallback !== undefined ||
+        preview.starterPackRescue !== undefined;
       const directionSatisfied = explicitDirectionRoute
         ? directionProgress.accepted
         : directionProgress.publishable;
