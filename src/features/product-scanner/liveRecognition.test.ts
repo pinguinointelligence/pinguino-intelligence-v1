@@ -61,8 +61,34 @@ describe('the ladder spends nothing it does not have to', () => {
     expect(nextRecognitionAttempt(ladder({ busy: true }))).toBe('NONE');
   });
 
-  it('prefers the free local rung over the paid one', () => {
-    expect(nextFallbackAttempt(ladder({ hasOcr: true, hasVision: true }))).toBe('OCR');
+  it('reaches for object identification before label text', () => {
+    // OCR is not "the cheap one" in the way that matters: it costs a second of phone CPU
+    // and a multi-megabyte engine download, and it only ever answers packaging. Vision
+    // answers both packaging and produce, so it goes first.
+    expect(nextFallbackAttempt(ladder({ hasOcr: true, hasVision: true }))).toBe('VISION');
+  });
+
+  it('does not touch OCR while vision has not yet failed on anything', () => {
+    // Nothing has escalated, so the engine is never requested — and therefore never
+    // downloaded — even though it is available.
+    expect(nextFallbackAttempt(ladder({ hasOcr: true, hasVision: true }))).not.toBe('OCR');
+  });
+
+  it('but uses OCR directly on a device with no vision at all', () => {
+    // There is no better rung to escalate FROM, so we are already past it.
+    expect(nextFallbackAttempt(ladder({ hasOcr: true, hasVision: false }))).toBe('OCR');
+  });
+
+  it('once escalated, OCR outranks repeating the paid call that just failed', () => {
+    expect(nextFallbackAttempt(ladder({ hasOcr: true, hasVision: true, ocrEscalated: true }))).toBe(
+      'OCR',
+    );
+  });
+
+  it('offers OCR once vision has failed on something with a label', () => {
+    expect(
+      nextFallbackAttempt(ladder({ hasOcr: true, hasVision: false, ocrEscalated: true })),
+    ).toBe('OCR');
   });
 
   it('throttles paid recognition', () => {
@@ -89,6 +115,71 @@ describe('the throttle and the evidence window must stay compatible', () => {
     const spread = (RECOGNITION_EVIDENCE_REQUIRED - 1) * VISION_MIN_INTERVAL_MS;
     expect(spread).toBeLessThan(EVIDENCE_WINDOW_MS);
     expect(EVIDENCE_WINDOW_MS - spread).toBeGreaterThanOrEqual(VISION_MIN_INTERVAL_MS);
+  });
+});
+
+describe('OWNER RULE · OCR is an escalation, never a queue position', () => {
+  const withVision = (kind: 'FRESH_PRODUCE' | 'PACKAGED' | 'UNCLEAR', resolved = null) => ({
+    decodeBarcode: vi.fn().mockResolvedValue(null),
+    resolveBarcode: vi.fn(),
+    readLabelText: vi.fn().mockResolvedValue('jakiś tekst'),
+    resolveName: vi.fn().mockResolvedValue(null),
+    recognizeObject: vi.fn().mockResolvedValue({
+      identityKey: 'thing',
+      label: 'Rzecz',
+      confidence: 0.9,
+      kind,
+      resolved,
+    }),
+  });
+
+  it('a banana NEVER waits for OCR', async () => {
+    const capabilities = withVision('FRESH_PRODUCE');
+    const recognizer = new LiveRecognizer(capabilities);
+    for (let at = 0; at < 12_000; at += VISION_MIN_INTERVAL_MS) {
+      await recognizer.observe(frame, good, at);
+    }
+    // Produce has no label, so reading text could not have helped and was never run.
+    expect(capabilities.readLabelText).not.toHaveBeenCalled();
+    expect(recognizer.spent.ocrReads).toBe(0);
+    expect(recognizer.spent.ocrEscalations).toBe(0);
+  });
+
+  it('unresolved PACKAGING escalates to OCR', async () => {
+    const capabilities = withVision('PACKAGED');
+    const recognizer = new LiveRecognizer(capabilities);
+    for (let at = 0; at < 12_000; at += VISION_MIN_INTERVAL_MS) {
+      await recognizer.observe(frame, good, at);
+    }
+    expect(recognizer.spent.ocrEscalations).toBe(1);
+    expect(capabilities.readLabelText).toHaveBeenCalled();
+  });
+
+  it('a resolved product never escalates at all', async () => {
+    const capabilities = withVision('PACKAGED', {
+      id: 'prod-1',
+      displayName: 'OREO Original 154 g',
+    } as never);
+    const recognizer = new LiveRecognizer(capabilities);
+    for (let at = 0; at < 6_000; at += VISION_MIN_INTERVAL_MS) {
+      await recognizer.observe(frame, good, at);
+    }
+    expect(recognizer.spent.ocrEscalations).toBe(0);
+    expect(capabilities.readLabelText).not.toHaveBeenCalled();
+  });
+
+  it('a barcode sweep never escalates either', async () => {
+    const readLabelText = vi.fn();
+    const recognizer = new LiveRecognizer({
+      decodeBarcode: vi.fn().mockResolvedValue(OREO),
+      resolveBarcode: vi.fn().mockResolvedValue(OREO_HIT),
+      readLabelText,
+      resolveName: vi.fn(),
+      recognizeObject: vi.fn(),
+    });
+    for (let at = 0; at < 5_000; at += 200) await recognizer.observe(frame, good, at);
+    expect(readLabelText).not.toHaveBeenCalled();
+    expect(recognizer.spent.ocrEscalations).toBe(0);
   });
 });
 
