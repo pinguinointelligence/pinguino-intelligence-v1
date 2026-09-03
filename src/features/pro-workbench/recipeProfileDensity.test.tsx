@@ -27,11 +27,17 @@ describe('Recipe profile visual density contract', () => {
        detents, radiogroup and arrow keys are all still asserted elsewhere. */
     expect(axes).not.toContain('xl:min-h-[66px]');
     expect(axes).not.toContain('absolute inset-x-0 top-[11px] h-1 rounded-full');
-    expect(axes).toContain("`${((detent + 2) / 4) * 100}%`");
+    // Same 0/25/50/75/100 spacing, now expressed through the shared span
+    // helper: atSpan(detent, 2) === ((detent + 2) / 4) * 100. A three-position
+    // axis reuses the identical end-to-end geometry with span 1.
+    expect(axes).toContain('`${((detent + span) / (span * 2)) * 100}%`');
+    expect(axes).toContain('const DETENTS = [-2, -1, 0, 1, 2] as const;');
     expect(axes).toContain('top-[9.5px] -ml-[3.5px] size-[7px] rounded-full bg-[var(--g-rail-track)]');
     // The fill runs centre → position, never end → position.
-    expect(axes).toContain("const fillLeft = position >= 0 ? '50%' : at(position);");
-    expect(axes).toContain('const fillWidth = `${Math.abs(position) * 25}%`;');
+    expect(axes).toContain("const fillLeft = position >= 0 ? '50%' : detentAt(position);");
+    // Fill still spans centre → position; the divisor is now the axis's own
+    // span so a three-position rail fills half-widths instead of quarters.
+    expect(axes).toContain('const fillWidth = `${(Math.abs(position) / (span * 2)) * 100}%`;');
     expect(axes).toContain('top-[5px] -ml-2 size-4 rounded-full shadow-[0_0_0_3px_#fff]');
     // A 26 px target on a 16 px mark: the thing you press is bigger than the
     // thing you see, which is the opposite of the old 28 px numeral button.
