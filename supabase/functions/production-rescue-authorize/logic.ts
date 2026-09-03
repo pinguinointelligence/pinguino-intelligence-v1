@@ -327,6 +327,11 @@ export async function sha256Hex(value: string): Promise<string> {
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
+// Keep the Edge authority aligned with private.production_rescue_source_fingerprint_v1:
+// preview audit rows are evidence about an authorization, not mutable Production source input.
+const productionAuthorityEvents = (events: RawEventRow[]): RawEventRow[] =>
+  events.filter((event) => event.event_type !== 'rescue_previewed');
+
 function buildCanonicalSession(context: TrustedRescueContext, ownerUserId: string) {
   const { run, version } = context;
   if (run.owner_user_id !== ownerUserId || version.owner_user_id !== ownerUserId) {
@@ -453,7 +458,7 @@ function buildCanonicalSession(context: TrustedRescueContext, ownerUserId: strin
         : null,
     completedAt: run.completed_at,
     cancelledAt: run.cancelled_at,
-    events: context.events.map((event) => ({
+    events: productionAuthorityEvents(context.events).map((event) => ({
       eventId: event.id,
       type: event.event_type,
       at: event.created_at,
@@ -599,7 +604,7 @@ export async function authorizeTrustedProductionRescue(
       version: context.version,
       planned: context.planned.slice().sort((left, right) => left.position - right.position),
       actual: context.actual,
-      events: context.events
+      events: productionAuthorityEvents(context.events)
         .slice()
         .sort(
           (left, right) =>
