@@ -242,26 +242,27 @@ Deno.serve(async (req) => {
   const appOrigin = Deno.env.get('APP_PUBLIC_ORIGIN') ?? 'https://staging.pinguinoai.com';
   const environment = appOrigin.includes('gellatti.com') ? 'production' : 'staging';
   const orderUrl = `${appOrigin}/account?section=orders&order=${order.id}`;
-  const { data: emailJob, error: emailError } = await admin
-    .from('email_jobs')
-    .insert({
-      idempotency_key: `local-pack:${order.id}`,
-      subject_key: 'shop.localStarterPack.ready',
-      subject: 'Twój Lokalny Zestaw Startowy Gellatti',
-      recipient: user.email ?? '',
-      environment,
-      body_text:
-        `Twój Lokalny Zestaw Startowy (${readiness.name}) jest gotowy.\n\n` +
-        `Lista zakupów: ${orderUrl}\n\nwww.gellatti.com\n`,
-      body_html:
-        `<p>Twój Lokalny Zestaw Startowy (${readiness.name}) jest gotowy.</p>` +
-        `<p><a href="${orderUrl}">Otwórz swoją listę zakupów</a></p>` +
-        `<p><a href="https://www.gellatti.com">www.gellatti.com</a></p>`,
-      metadata: { area: 'SHOP', event: 'local_starter_pack_ready', order_id: order.id },
-      status: 'queued',
-    })
-    .select('id')
-    .single();
+  /* Queued through the CANONICAL enqueue RPC rather than a direct insert. It
+     owns idempotency (`on conflict (idempotency_key) do nothing`), normalises
+     the recipient and sets `next_attempt_at`, so this function does not carry a
+     second, slightly different version of how a Gellatti email is created. */
+  const { data: enqueued, error: emailError } = await admin.rpc('gellatti_enqueue_email_v1', {
+    p_idempotency_key: `local-pack:${order.id}`,
+    p_subject_key: 'shop.localStarterPack.ready',
+    p_subject: 'Twój Lokalny Zestaw Startowy Gellatti',
+    p_recipient: user.email ?? '',
+    p_body_html:
+      `<p>Twój Lokalny Zestaw Startowy (${readiness.name}) jest gotowy.</p>` +
+      `<p><a href="${orderUrl}">Otwórz swoją listę zakupów</a></p>` +
+      `<p><a href="https://www.gellatti.com">www.gellatti.com</a></p>`,
+    p_body_text:
+      `Twój Lokalny Zestaw Startowy (${readiness.name}) jest gotowy.\n\n` +
+      `Lista zakupów: ${orderUrl}\n\nwww.gellatti.com\n`,
+    p_environment: environment,
+    p_metadata: { area: 'SHOP', event: 'local_starter_pack_ready', order_id: order.id },
+    p_max_attempts: 5,
+  });
+  const emailJob = enqueued as { id?: string; status?: string; deduplicated?: boolean } | null;
 
   if (emailJob?.id) {
     await admin
