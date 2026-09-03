@@ -6,46 +6,60 @@ import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { useRecipeStore } from '@/stores/recipeStore';
 import type { AdjustableAxisId, DirectionIntent } from './recipeProfileStore';
 
-const DETENTS = [-2, -1, 0, 1, 2] as const;
+/* OWNER AUTHORITY 2026-09-03 — the control explains ITSELF, and PRESENTATION
+   ORDER is separate from the stored value.
 
-/** `left:` for a detent, matching the frozen 0 / 25 / 50 / 75 / 100 spacing. */
-const at = (detent: DirectionIntent) => `${((detent + 2) / 4) * 100}%`;
+   The numerals are gone: nobody should have to read "+1" to know which way they
+   went. Meaning is carried by the SIZE of the mark.
 
-/* OWNER AUTHORITY 2026-09-03 — the control explains ITSELF.
+   The five marks are addressed by VISUAL SLOT — 0 leftmost to 4 rightmost —
+   and each axis declares how a slot maps to the canonical value it writes.
+   That separation is the whole point: the engine's Twardość sign is FROZEN
+   (`recipeDirectionTargets.ts`: "-2 = more soft (higher NPAC), +2 = more firm
+   (lower NPAC)"), while the owner wants firm on the LEFT. Reversing the slot
+   map gives that picture without the solver ever seeing a different number.
 
-   The numerals are gone: nobody should have to read "+1" to know which way
-   they went. Meaning is carried by the SIZE of the mark, indexed by detent.
+   SŁODYCZ  slot 0..4 -> canonical -2..+2, smallest ball left, largest right.
+   TWARDOŚĆ slot 0..4 -> canonical +2..-2, largest ball left, smallest right.
 
-   SŁODYCZ ramps up to the right: a bigger ball is more sugar, which is the
-   direction the engine actually moves (sorbet sweetness centres run 16 → 24
-   from -2 to +2).
+   So the leftmost mark on Twardość writes canonical +2 (firmer) and the
+   rightmost writes -2 (softer). Stored meaning unchanged; only the order in
+   which the five are drawn, and the arrow keys that walk them, are mirrored. */
+const SLOTS = [0, 1, 2, 3, 4] as const;
+type Slot = (typeof SLOTS)[number];
 
-   TWARDOŚĆ ramps the other way, and that is not decoration — it is what the
-   engine does. `recipeDirectionTargets.ts` states it outright: the persisted
-   field is still called `softness`, but its sign follows the customer-facing
-   Twardość control, where -2 is MORE SOFT and +2 is MORE FIRM. So the big,
-   round ball sits on the LEFT (soft, aerated) and the small, tight one on the
-   RIGHT (firm, dense). The owner's requested picture and the engine agree; the
-   words in the request did not, so the end labels below follow the engine. */
+/** `left:` for a visual slot — the frozen 0 / 25 / 50 / 75 / 100 spacing. */
+const slotLeft = (slot: Slot) => `${(slot / 4) * 100}%`;
+
+/** Canonical value a slot writes. `reversed` mirrors the axis. */
+const detentForSlot = (slot: Slot, reversed: boolean) =>
+  (reversed ? 2 - slot : slot - 2) as DirectionIntent;
+
+/** Slot a canonical value occupies — the exact inverse of `detentForSlot`. */
+const slotForDetent = (detent: DirectionIntent, reversed: boolean) =>
+  (reversed ? 2 - detent : detent + 2) as Slot;
+
+/* The ball always grows from left to right ON SCREEN for Słodycz and shrinks
+   left to right for Twardość, so the ramp is indexed by SLOT, never by the
+   stored value. */
 const DOT_PX = [5, 6.5, 8, 9.5, 11] as const;
 const THUMB_PX = [13, 14.5, 16, 17.5, 19] as const;
+const rampAt = (sizes: readonly number[], slot: Slot, reversed: boolean) =>
+  sizes[reversed ? 4 - slot : slot];
 
-/** Index into the size ramps: ascending to the right, or mirrored. */
-const rampIndex = (detent: DirectionIntent, ascending: boolean) =>
-  ascending ? detent + 2 : 2 - detent;
-
-/* Screen readers never saw the ball, so they used to get the numeral. Now that
-   nobody gets the numeral, they get the sentence instead — the same thing the
-   size says, in words. */
-const PHRASES: Record<'ascending' | 'descending', readonly string[]> = {
-  ascending: [
+/* Screen readers never saw the ball, so they used to get the numeral. They now
+   get the sentence — and it is indexed by the CANONICAL value, not the slot,
+   so it states what was actually selected however the row is drawn. */
+const PHRASES: Record<'sweetness' | 'softness', readonly string[]> = {
+  sweetness: [
     'znacznie mniej słodkie',
     'mniej słodkie',
     'średnio',
     'bardziej słodkie',
     'znacznie bardziej słodkie',
   ],
-  descending: [
+  // Index 0 is canonical -2, which the engine defines as MORE SOFT.
+  softness: [
     'znacznie bardziej miękkie',
     'bardziej miękkie',
     'średnio',
@@ -58,7 +72,8 @@ function RegulatorRow({
   id,
   label,
   position,
-  ascending,
+  axisKey,
+  reversed,
   endLabels,
   onSet,
   disabled,
@@ -66,19 +81,21 @@ function RegulatorRow({
   id: string;
   label: string;
   position: DirectionIntent;
-  /** true = the ball grows to the right; false = it grows to the left. */
-  ascending: boolean;
+  axisKey: 'sweetness' | 'softness';
+  /** true = slot 0 writes canonical +2 (Twardość: firm on the left). */
+  reversed: boolean;
   endLabels: readonly [string, string];
   onSet: (value: DirectionIntent) => void;
   disabled?: boolean;
 }) {
-  const phrases = PHRASES[ascending ? 'ascending' : 'descending'];
-  const thumbSize = THUMB_PX[rampIndex(position, ascending)];
+  const phrases = PHRASES[axisKey];
+  const activeSlot = slotForDetent(position, reversed);
+  const thumbSize = rampAt(THUMB_PX, activeSlot, reversed);
   /* The fill spans CENTRE → current position, so the track reads as a bipolar
      instrument: which way you went, and how far. A rail filled from the left
      end would read as a volume slider — a different claim about the axis. */
-  const fillLeft = position >= 0 ? '50%' : at(position);
-  const fillWidth = `${Math.abs(position) * 25}%`;
+  const fillLeft = activeSlot >= 2 ? '50%' : slotLeft(activeSlot);
+  const fillWidth = `${Math.abs(activeSlot - 2) * 25}%`;
   return (
     <article
       /* OWNER AUTHORITY 2026-09-03 (approved desktop reference): the axis is
@@ -111,18 +128,22 @@ function RegulatorRow({
           aria-disabled={disabled || undefined}
           onKeyDown={(event) => {
             if (disabled) return;
+            /* Arrows move ON SCREEN, not through the number line: on a
+               mirrored axis ArrowLeft has to reach the mark to the left, which
+               is canonical +2, not -2. Walking slots keeps the keyboard and
+               the eye agreed on both axes. */
+            const step = (next: number) => {
+              event.preventDefault();
+              onSet(detentForSlot(Math.max(0, Math.min(4, next)) as Slot, reversed));
+            };
             if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') {
-              event.preventDefault();
-              onSet(Math.max(-2, position - 1) as DirectionIntent);
+              step(activeSlot - 1);
             } else if (event.key === 'ArrowRight' || event.key === 'ArrowUp') {
-              event.preventDefault();
-              onSet(Math.min(2, position + 1) as DirectionIntent);
+              step(activeSlot + 1);
             } else if (event.key === 'Home') {
-              event.preventDefault();
-              onSet(-2);
+              step(0);
             } else if (event.key === 'End') {
-              event.preventDefault();
-              onSet(2);
+              step(4);
             }
           }}
           className="relative h-[26px]"
@@ -137,13 +158,19 @@ function RegulatorRow({
             aria-hidden
             className="absolute inset-x-0 top-[11.5px] h-[3px] rounded-full bg-[var(--g-line)]"
           />
-          {DETENTS.map((detent) => {
-            const d = DOT_PX[rampIndex(detent, ascending)];
+          {SLOTS.map((slot) => {
+            const d = rampAt(DOT_PX, slot, reversed);
             return (
               <span
-                key={`dot-${detent}`}
+                key={`dot-${slot}`}
                 aria-hidden
-                style={{ left: at(detent), width: d, height: d, marginLeft: -d / 2, top: 13 - d / 2 }}
+                style={{
+                  left: slotLeft(slot),
+                  width: d,
+                  height: d,
+                  marginLeft: -d / 2,
+                  top: 13 - d / 2,
+                }}
                 className="absolute rounded-full bg-[var(--g-rail-track)]"
               />
             );
@@ -162,7 +189,11 @@ function RegulatorRow({
           {position !== 0 ? (
             <span
               aria-hidden
-              style={{ left: at(0), top: 13 - DOT_PX[2] / 2 - 2, marginLeft: -DOT_PX[2] / 2 - 2 }}
+              style={{
+                left: slotLeft(2),
+                top: 13 - DOT_PX[2] / 2 - 2,
+                marginLeft: -DOT_PX[2] / 2 - 2,
+              }}
               className="absolute size-[12px] rounded-full border-[1.5px] border-[var(--g-drag)] bg-white"
             />
           ) : null}
@@ -177,7 +208,7 @@ function RegulatorRow({
           <span
             aria-hidden
             style={{
-              left: at(position),
+              left: slotLeft(activeSlot),
               width: thumbSize,
               height: thumbSize,
               marginLeft: -thumbSize / 2,
@@ -190,7 +221,9 @@ function RegulatorRow({
                 : 'bg-[#f58a07]',
             )}
           />
-          {DETENTS.map((detent) => (
+          {SLOTS.map((slot) => {
+            const detent = detentForSlot(slot, reversed);
+            return (
             <button
               key={detent}
               type="button"
@@ -198,15 +231,16 @@ function RegulatorRow({
               aria-checked={position === detent}
               /* The size is invisible to a screen reader, so the name carries
                  the same statement in words: "Słodycz: bardziej słodkie". */
-              aria-label={`${label}: ${phrases[rampIndex(detent, ascending)]}`}
+              aria-label={`${label}: ${phrases[detent + 2]}`}
               disabled={disabled}
               onClick={() => onSet(detent)}
-              style={{ left: at(detent) }}
+              style={{ left: slotLeft(slot) }}
               /* A 26 px target centred on each dot — the mark is small, the
                  thing you press is not. */
               className="pro-focus-ring absolute top-0 -ml-[13px] size-[26px] rounded-full bg-transparent"
             />
-          ))}
+            );
+          })}
         </div>
         {/* Size says WHICH WAY; these two words say which way is which. Kept
             because a bigger ball is only self-evident on Słodycz — on Twardość
@@ -276,13 +310,15 @@ export function ProfileDirectionAxes({
               id={axis}
               label={label}
               position={intents[axis]}
-              ascending={axis === 'sweetness'}
+              axisKey={axis}
+              reversed={axis === 'softness'}
               endLabels={
                 axis === 'sweetness'
                   ? ['mniej słodkie', 'bardziej słodkie']
-                  : /* Engine order, not the order the request named: the axis
-                       runs soft → firm left to right (see the ramp note). */
-                    ['bardziej miękkie', 'bardziej twarde']
+                  : /* Mirrored PRESENTATION: firm on the left, soft on the
+                       right. The canonical sign is untouched — the leftmost
+                       mark still writes +2, which the engine reads as firmer. */
+                    ['bardziej twarde', 'bardziej miękkie']
               }
               onSet={(next) => set(axis, next)}
               disabled={status?.status !== 'working'}

@@ -291,7 +291,8 @@ describe('profile semantics and readiness', () => {
     // End labels removed by the owner reference of 2026-09-03; the axis NAMES
     // are what the contract protects, and they are unchanged.
     for (const label of ['Słodycz', 'Twardość']) expect(panel).toContain(label);
-    expect(panel).toContain('const DETENTS = [-2, -1, 0, 1, 2] as const');
+    // Five marks, addressed by visual slot since Twardość is drawn mirrored.
+    expect(panel).toContain('const SLOTS = [0, 1, 2, 3, 4] as const');
     expect(panel).not.toContain('creaminess');
     expect(panel).not.toContain('intensity');
     expect(panel).not.toContain("['structure',");
@@ -360,7 +361,7 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
     const axes = read('features', 'pro-workbench', 'ProfileDirectionAxes.tsx');
     const summary = read('features', 'pi-panel', 'NutritionCostScorePanel.tsx');
     const proCopy = read('copy', 'pro.pl.ts');
-    expect(axes).toContain('const DETENTS = [-2, -1, 0, 1, 2] as const');
+    expect(axes).toContain('const SLOTS = [0, 1, 2, 3, 4] as const');
     expect(axes).toContain('role="radio"');
     expect(axes).toContain('aria-checked={position === detent}');
     expect(axes).toContain("event.key === 'ArrowRight'");
@@ -369,7 +370,7 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
        direction, replacing the numeral entirely (see
        directionDetentContrast.test.ts for what assistive tech gets instead). */
     expect(axes).toContain("rounded-full shadow-[0_0_0_3px_#fff] transition-[left,width,height");
-    expect(axes).toContain('const thumbSize = THUMB_PX[rampIndex(position, ascending)]');
+    expect(axes).toContain('const thumbSize = rampAt(THUMB_PX, activeSlot, reversed)');
     expect(axes).not.toContain('Po zmianie:');
     expect(axes).not.toContain('Legenda kierunku');
     for (const label of ['Wartości odżywcze i koszt', 'Na 100 g', 'Węglowodany', 'Cała partia']) {

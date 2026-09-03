@@ -167,23 +167,44 @@ export function WorkbenchSettingsLine({
   /* OWNER AUTHORITY 2026-09-02 (approved desktop PDF, §6): Settings are
      COLLAPSED at rest. They are the recipe's context, not its work — the band
      states what they are in one line and opens only when the user goes there. */
-  const [expanded, setExpanded] = useState(false);
-
   /* OWNER AUTHORITY 2026-09-03: while the recipe card is refusing to save, this
      module is where the owner has to act, so it opens itself and takes the
      change marker — the same attention treatment a gram field wears after it
      is edited, but drawn all the way round because here the whole module is
      what changed, not one field in a row.
 
-     `expanded || preflightBlocked` is DERIVED rather than pushed through an
-     effect that forces the open state:
-     forcing the state would leave the module stuck open after the block
-     clears, and would fight the owner if they collapsed it deliberately. As a
-     derived value it opens on the block, and returns to whatever the owner had
-     chosen the moment the block is resolved. */
+     TWO STATES, deliberately not one. `manualExpanded` is what the owner chose;
+     `forcedOpen` is what the blocker imposes. Only the first is ever written.
+
+     Collapsing them into a single flag produced a real bug. While the blocker
+     held the module open the flag was still false, so the toggle read a click
+     meant to CLOSE as "flip false to true". The module could not be closed
+     during the block — correct — but the instant the block cleared it stayed
+     OPEN, the opposite of what the click asked for. Proven in the browser
+     before this fix: aria-expanded stayed `true`, all four fields visible,
+     module height unchanged at 230.3 px.
+
+     Now a click under `forcedOpen` can only ever record "closed". The module
+     still cannot visibly collapse while the blocker exists, and it collapses
+     by itself the moment the blocker clears. Nothing writes the derived value
+     back into the manual one, so there is no open/close loop. */
+  const [manualExpanded, setManualExpanded] = useState(false);
   const preflightBlockMessage = useRecipeProfileStore((state) => state.preflightBlockMessage);
-  const preflightBlocked = preflightBlockMessage !== null;
-  const open = expanded || preflightBlocked;
+  const forcedOpen = preflightBlockMessage !== null;
+  const preflightBlocked = forcedOpen;
+  const open = manualExpanded || forcedOpen;
+
+  const toggleDisclosure = () => {
+    /* Under the blocker the module is open because the blocker holds it, never
+       because the owner opened it — so the only intent a click can carry here
+       is "close". Recording that, rather than toggling, is what lets the module
+       collapse on its own once the blocker is gone. */
+    if (forcedOpen) {
+      setManualExpanded(false);
+      return;
+    }
+    setManualExpanded((wasOpen) => !wasOpen);
+  };
   const saveDefaultsLocal = useRecipeProfileStore((state) => state.saveDefaults);
   const authenticatedOwner = useAuthStore((state) => state.user?.id ?? null);
   const defaultsOwner = authenticatedOwner ?? (import.meta.env.DEV ? 'local-device' : null);
@@ -478,7 +499,7 @@ export function WorkbenchSettingsLine({
           carry the decision and must survive every translation. */}
       <button
         type="button"
-        onClick={() => setExpanded((open) => !open)}
+        onClick={toggleDisclosure}
         aria-expanded={open}
         data-testid="settings-grid-status"
         data-settings-cell="confirmation"

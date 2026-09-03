@@ -752,3 +752,113 @@ describe('WorkbenchSettingsLine — one editable batch field', () => {
   });
 
 });
+
+describe('WorkbenchSettingsLine — forced open vs manual expansion', () => {
+  let host: HTMLDivElement;
+  let root: ReturnType<typeof createRoot>;
+
+  const surface = () =>
+    host.querySelector('[data-settings-surface]')!.getAttribute('data-settings-surface');
+  const disclosure = () =>
+    host.querySelector('[data-testid="settings-grid-status"]') as HTMLButtonElement;
+  const blocked = () =>
+    host.querySelector('[data-testid="workbench-settings-line"]')!.getAttribute(
+      'data-preflight-blocked',
+    );
+
+  const setBlocker = async (message: string | null) => {
+    await act(async () => {
+      useRecipeProfileStore.getState().setPreflightBlockMessage(message);
+    });
+  };
+
+  beforeEach(async () => {
+    (
+      globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
+    ).IS_REACT_ACT_ENVIRONMENT = true;
+    localStorage.clear();
+    useConstraintStudioStore.getState().resetForTests();
+    useRecipeProfileStore.getState().resetForTests();
+    useRecipeStore.getState().startNewRecipe('gelato');
+    host = document.createElement('div');
+    document.body.append(host);
+    root = createRoot(host);
+    await act(async () => root.render(<WorkbenchSettingsLine compact />));
+  });
+
+  afterEach(async () => {
+    await act(async () => root.unmount());
+    host.remove();
+  });
+
+  it('starts collapsed when nothing is blocking the save', async () => {
+    expect(surface()).toBe('collapsed');
+    expect(blocked()).toBeNull();
+  });
+
+  /* THE REGRESSION THE OWNER ASKED FOR, end to end.
+
+     The defect being locked out: while the blocker held the module open, the
+     single `expanded` flag was still false, so a click meant to CLOSE flipped
+     it to TRUE. The module correctly refused to collapse during the block —
+     and then stayed open once the block cleared, which is the opposite of what
+     the click asked for.
+
+     The blocker is cleared here through the profile store rather than by
+     driving a real confirmation, because that is the seam: the save gate lives
+     in `useCanonicalRecipeSave` and reaches this module only as that published
+     message. What is under test is this module's response to it. */
+  it('forced open -> attempted collapse -> blocker clears -> COLLAPSED', async () => {
+    await setBlocker('Jeszcze jeden krok. Otwórz podgląd i zastosuj zweryfikowaną recepturę.');
+    expect(surface(), 'the blocker must open the module').toBe('expanded');
+    expect(blocked()).toBe('true');
+
+    await act(async () => disclosure().click());
+    expect(surface(), 'it may not collapse while the blocker holds it').toBe('expanded');
+    expect(blocked()).toBe('true');
+
+    await setBlocker(null);
+    expect(surface(), 'the attempted close must win once the blocker is gone').toBe('collapsed');
+    expect(blocked()).toBeNull();
+  });
+
+  it('collapses on its own when the blocker clears untouched', async () => {
+    await setBlocker('blokada');
+    expect(surface()).toBe('expanded');
+    await setBlocker(null);
+    expect(surface()).toBe('collapsed');
+  });
+
+  it('does not fight the owner after the blocker is gone', async () => {
+    await setBlocker('blokada');
+    await act(async () => disclosure().click());
+    await setBlocker(null);
+    expect(surface()).toBe('collapsed');
+
+    // Normal toggling resumes: open, then closed, with nothing overriding it.
+    await act(async () => disclosure().click());
+    expect(surface()).toBe('expanded');
+    await act(async () => disclosure().click());
+    expect(surface()).toBe('collapsed');
+  });
+
+  it('keeps a deliberate manual expansion after the blocker comes and goes', async () => {
+    await act(async () => disclosure().click());
+    expect(surface()).toBe('expanded');
+    await setBlocker('blokada');
+    expect(surface()).toBe('expanded');
+    await setBlocker(null);
+    // Never touched during the block, so the owner's own choice survives it.
+    expect(surface()).toBe('expanded');
+  });
+
+  it('settles immediately — no open/close flicker while the blocker stands', async () => {
+    await setBlocker('blokada');
+    const seen = new Set<string | null>();
+    for (let i = 0; i < 4; i += 1) {
+      await act(async () => root.render(<WorkbenchSettingsLine compact />));
+      seen.add(surface());
+    }
+    expect([...seen]).toEqual(['expanded']);
+  });
+});

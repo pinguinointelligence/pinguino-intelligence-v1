@@ -27,16 +27,18 @@ describe('Recipe profile visual density contract', () => {
        detents, radiogroup and arrow keys are all still asserted elsewhere. */
     expect(axes).not.toContain('xl:min-h-[66px]');
     expect(axes).not.toContain('absolute inset-x-0 top-[11px] h-1 rounded-full');
-    expect(axes).toContain("`${((detent + 2) / 4) * 100}%`");
+    // Same frozen 0 / 25 / 50 / 75 / 100 spacing, expressed in visual slots.
+    expect(axes).toContain('`${(slot / 4) * 100}%`');
     /* OWNER 2026-09-03: the dots are a RAMP, not five identical marks — the
        size is what tells you which way the axis runs, so it is computed per
        detent rather than fixed in a class. */
     expect(axes).toContain('const DOT_PX = [5, 6.5, 8, 9.5, 11] as const');
     expect(axes).toContain('const THUMB_PX = [13, 14.5, 16, 17.5, 19] as const');
-    expect(axes).toContain('width: d, height: d, marginLeft: -d / 2, top: 13 - d / 2');
-    // Mirrored for Twardość, where the engine runs soft -> firm left to right.
-    expect(axes).toContain('ascending ? detent + 2 : 2 - detent');
-    expect(axes).toContain("ascending={axis === 'sweetness'}");
+    expect(axes).toContain('const d = rampAt(DOT_PX, slot, reversed);');
+    /* Mirrored for Twardość as PRESENTATION: the largest ball sits leftmost
+       and still writes canonical +2, which the engine reads as firmer. */
+    expect(axes).toContain('sizes[reversed ? 4 - slot : slot]');
+    expect(axes).toContain("reversed={axis === 'softness'}");
     // The fill runs centre → position, never end → position.
     /* OWNER 2026-09-03: the detents are CONNECTED. Five loose dots stopped
        reading as one instrument, and the orange stroke stopped reading as a
@@ -46,9 +48,9 @@ describe('Recipe profile visual density contract', () => {
     const railAt = axes.indexOf('absolute inset-x-0 top-[11.5px] h-[3px] rounded-full bg-[var(--g-line)]');
     expect(railAt).toBeGreaterThan(-1);
     expect(railAt).toBeLessThan(axes.indexOf('style={{ left: fillLeft, width: fillWidth }}'));
-    expect(railAt).toBeLessThan(axes.indexOf('left: at(position),'));
-    expect(axes).toContain("const fillLeft = position >= 0 ? '50%' : at(position);");
-    expect(axes).toContain('const fillWidth = `${Math.abs(position) * 25}%`;');
+    expect(railAt).toBeLessThan(axes.indexOf('left: slotLeft(activeSlot),'));
+    expect(axes).toContain("const fillLeft = activeSlot >= 2 ? '50%' : slotLeft(activeSlot);");
+    expect(axes).toContain('const fillWidth = `${Math.abs(activeSlot - 2) * 25}%`;');
     expect(axes).toContain("rounded-full shadow-[0_0_0_3px_#fff] transition-[left,width,height");
     // A 26 px target on a 16 px mark: the thing you press is bigger than the
     // thing you see, which is the opposite of the old 28 px numeral button.

@@ -967,32 +967,43 @@ describe('Direction explains itself, and agrees with the engine', () => {
   it('ramps the mark by size instead of printing a number', () => {
     expect(axes).toContain('const DOT_PX = [5, 6.5, 8, 9.5, 11] as const');
     expect(axes).toContain('const THUMB_PX = [13, 14.5, 16, 17.5, 19] as const');
+    // Sized by SLOT, so the ball grows across the screen rather than along the
+    // number line — the two differ on a mirrored axis.
+    expect(axes).toContain('const rampAt = (sizes: readonly number[], slot: Slot, reversed: boolean)');
     // No +1 / -2 anywhere in the control any more, in any form.
     expect(axes).not.toContain('const sign =');
     expect(axes).not.toMatch(/\+\$\{detent\}/);
   });
 
-  it('mirrors the ramp for Twardość IN THE DIRECTION THE ENGINE MOVES', () => {
-    /* This is the load-bearing one. The engine says so in its own words: the
-       persisted field is still called `softness`, but its sign follows the
-       Twardość control, where -2 is MORE SOFT and +2 is MORE FIRM. So the big
-       aerated ball belongs on the LEFT and the small dense one on the RIGHT,
-       and the end labels have to read soft -> firm in that order.
-
-       The owner's request for this ramp described the direction the other way
-       round. The picture it asked for was right and is implemented verbatim;
-       only the words were inverted, which is exactly the mistake this test
-       exists to catch if anyone ever "corrects" the labels to match them. */
+  it('mirrors Twardość in PRESENTATION ONLY, never in what it stores', () => {
+    /* The load-bearing one. The engine's sign is frozen and says so itself:
+       canonical -2 is MORE SOFT, +2 is MORE FIRM. The owner wants firm on the
+       LEFT. Both are satisfied by mirroring the slot map, so the leftmost mark
+       WRITES +2 while the solver keeps reading exactly the number it always
+       did. Nothing here may be "simplified" into flipping the stored value. */
     expect(engine).toContain('-2 = more soft (higher NPAC), +2 = more firm (lower NPAC)');
-    expect(axes).toContain("ascending={axis === 'sweetness'}");
-    const softEnds = axes.indexOf("['bardziej miękkie', 'bardziej twarde']");
-    expect(softEnds, 'Twardość must read soft -> firm, left to right').toBeGreaterThan(-1);
-    expect(axes).not.toContain("['bardziej twarde', 'bardziej miękkie']");
-    // ...and the spoken names follow the same order.
+    expect(axes).toContain("reversed={axis === 'softness'}");
+    expect(axes).toContain('(reversed ? 2 - slot : slot - 2) as DirectionIntent');
+    expect(axes).toContain('(reversed ? 2 - detent : detent + 2) as Slot');
+    // Firm left, soft right — the owner's approved reading order.
+    expect(axes).toContain("['bardziej twarde', 'bardziej miękkie']");
+    expect(axes).not.toContain("['bardziej miękkie', 'bardziej twarde']");
+    /* Spoken names stay canonical: index 0 of the softness table is -2, and -2
+       is SOFT. If this ever flips, the control announces its own mirror. */
     const soft = axes.indexOf('znacznie bardziej miękkie');
     const firm = axes.indexOf('znacznie bardziej twarde');
     expect(soft).toBeGreaterThan(-1);
     expect(soft).toBeLessThan(firm);
+    expect(axes).toContain('phrases[detent + 2]');
+  });
+
+  it('walks the arrow keys across the SCREEN, not along the number line', () => {
+    // On a mirrored axis ArrowLeft must reach the mark to the left, which is
+    // canonical +2. Stepping the stored value instead would send the keyboard
+    // the opposite way from the eye.
+    expect(axes).toContain('onSet(detentForSlot(Math.max(0, Math.min(4, next)) as Slot, reversed))');
+    expect(axes).not.toContain('onSet(Math.max(-2, position - 1)');
+    expect(axes).not.toContain('onSet(Math.min(2, position + 1)');
   });
 
   it('tells the reader the column continues, since the scrollbar is hidden', () => {
@@ -1034,8 +1045,16 @@ describe('a refused save points at the module that answers it', () => {
     // Derived, never a setExpanded(true) effect: forcing the state would leave
     // the module stuck open after the block clears and would fight an owner
     // who collapsed it deliberately.
-    expect(settings).toContain('const open = expanded || preflightBlocked;');
-    expect(settings).not.toMatch(/setExpanded\(true\)/);
+    /* SUPERSEDED, owner 2026-09-03. `expanded || preflightBlocked` behind a
+       plain toggle had a real defect: while the blocker held the module open
+       the flag was still false, so a click meant to CLOSE flipped it to true
+       and the module stayed open once the blocker cleared. The two states are
+       now separate and only the manual one is ever written. */
+    expect(settings).toContain('const open = manualExpanded || forcedOpen;');
+    expect(settings).toContain('const forcedOpen = preflightBlockMessage !== null;');
+    // Under the blocker a click can only ever record "closed".
+    expect(settings).toMatch(/if \(forcedOpen\) \{\s*setManualExpanded\(false\);\s*return;/);
+    expect(settings).not.toContain('setExpanded');
     expect(settings).toContain("data-settings-surface={open ? 'expanded' : 'collapsed'}");
   });
 
@@ -1067,7 +1086,8 @@ describe('five-detent direction language', () => {
     const axes = read('features', 'pro-workbench', 'ProfileDirectionAxes.tsx');
     expect(axes).toContain("['sweetness'");
     expect(axes).toContain("['softness'");
-    expect(axes).toContain('[-2, -1, 0, 1, 2]');
+    // Five marks, now addressed by visual slot rather than by a value list.
+    expect(axes).toContain('const SLOTS = [0, 1, 2, 3, 4] as const');
     expect(axes).not.toContain('Wybrano:');
     /* OWNER AUTHORITY 2026-09-03: the approved reference carries NO end labels
        under the track — the axis is one row, its name and its instrument. The

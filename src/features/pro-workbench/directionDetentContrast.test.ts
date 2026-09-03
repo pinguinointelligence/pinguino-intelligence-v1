@@ -100,7 +100,10 @@ describe('Direction readability — the reported value', () => {
        never the thing a screen-reader user needed — "Słodycz: -2" told them
        the coordinate, not the meaning. The sentence says what the ball's size
        says to everyone else, so both channels now carry the same statement. */
-    expect(axes).toContain('aria-label={`${label}: ${phrases[rampIndex(detent, ascending)]}`}');
+    /* Indexed by the CANONICAL value, never by the slot: Twardość is drawn
+       firm-left, so a slot-indexed name would announce the mirror image of
+       what was actually stored. */
+    expect(axes).toContain('aria-label={`${label}: ${phrases[detent + 2]}`}');
     expect(axes).toContain('aria-checked={position === detent}');
     expect(axes).toContain('const PHRASES');
     // Five phrases per direction, so every detent is named, and the neutral one
@@ -114,12 +117,12 @@ describe('Direction readability — the reported value', () => {
   it('encodes the position in more than colour alone', () => {
     // Thumb POSITION and fill WIDTH both carry it, so the reading survives a
     // viewer who cannot separate the orange from the rail.
-    expect(axes).toContain('left: at(position)');
+    expect(axes).toContain('left: slotLeft(activeSlot)');
     expect(axes).toContain('style={{ left: fillLeft, width: fillWidth }}');
     /* And now by SIZE as well: the mark grows or shrinks with the detent, so
        the reading survives a viewer who cannot separate the orange from the
        rail AND one who cannot judge a small horizontal offset. */
-    expect(axes).toContain('const thumbSize = THUMB_PX[rampIndex(position, ascending)]');
+    expect(axes).toContain('const thumbSize = rampAt(THUMB_PX, activeSlot, reversed)');
   });
 
   /* With the numerals gone the MARK is the only thing reporting the position,
