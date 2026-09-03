@@ -41,6 +41,11 @@ export interface ObjectGuess {
   readonly identityKey: string;
   readonly label: string;
   readonly confidence: number;
+  /**
+   * The CATALOGUE's answer, when it had one. Never the recogniser's own invention: the
+   * boundary that produced this guess resolved it server-side, or left this null.
+   */
+  readonly resolved?: { readonly id: string; readonly displayName: string } | null;
 }
 
 /**
@@ -56,14 +61,30 @@ export interface RecognitionCapabilities {
   readLabelText?(source: BarcodeImageSource): Promise<string | null>;
   /** Catalogue search by name — used by both the OCR and the vision rungs. */
   resolveName?(text: string): Promise<CatalogHit | null>;
-  /** Paid recognition. Optional, throttled and capped. */
-  recognizeObject?(source: BarcodeImageSource): Promise<ObjectGuess | null>;
+  /**
+   * Paid recognition. Optional, throttled and capped.
+   *
+   * It receives any label text already read locally, because the identification boundary
+   * resolves the catalogue itself and text is the cheapest thing that can disambiguate.
+   */
+  recognizeObject?(
+    source: BarcodeImageSource,
+    localText?: string | null,
+  ): Promise<ObjectGuess | null>;
 }
 
 /** Paid recognition is never fired faster than this, however fast frames arrive. */
 export const VISION_MIN_INTERVAL_MS = 1_200;
 /** A hard ceiling for one session, so a long sweep cannot run up a bill. */
 export const VISION_MAX_CALLS = 12;
+/**
+ * How long the ladder stays committed to a rung that produced an identity.
+ *
+ * Deliberately just longer than the session's evidence window, so a commitment always
+ * outlives the evidence it exists to let accumulate.
+ */
+export const PRODUCTIVE_ROUTE_TTL_MS = 4_500;
+
 /**
  * Local OCR is free of NETWORK cost but expensive in CPU: the in-browser WASM engine
  * takes on the order of a second per frame on a phone. So it is not a per-frame rung —
@@ -84,6 +105,8 @@ export interface LadderInput {
   readonly lastOcrAt: number | null;
   readonly lastVisionAt: number | null;
   readonly visionCalls: number;
+  /** The rung that last produced an identity, while its evidence is still fresh. */
+  readonly productiveRoute?: RecognitionAttempt | null;
 }
 
 /**
@@ -100,6 +123,17 @@ export function nextRecognitionAttempt(input: LadderInput): RecognitionAttempt {
 
 /** The rung to try when the frame carried no readable barcode. */
 export function nextFallbackAttempt(input: LadderInput): RecognitionAttempt {
+  // STAY WITH WHAT WORKED. Alternating rungs looks fair and is actively harmful: a fresh
+  // product identified by the paid rung needs its observations to AGREE INSIDE one
+  // evidence window, and spending every other frame on a rung that already returned
+  // nothing pushes them apart until the window lapses — so the product never confirms at
+  // all. Once a rung has named something, it keeps its turn while that evidence is alive.
+  if (input.productiveRoute === 'VISION' && input.hasVision) {
+    const due =
+      input.lastVisionAt === null || input.at - input.lastVisionAt >= VISION_MIN_INTERVAL_MS;
+    // Not yet due: wait for it rather than spending the frame on the other rung.
+    return due && input.visionCalls < VISION_MAX_CALLS ? 'VISION' : 'NONE';
+  }
   if (
     input.hasOcr &&
     (input.lastOcrAt === null || input.at - input.lastOcrAt >= OCR_MIN_INTERVAL_MS)
@@ -144,6 +178,10 @@ export class LiveRecognizer {
   private readonly resolved = new Map<string, CatalogHit | null>();
   private busy = false;
   private lastOcrAt: number | null = null;
+  /** The rung that last named something, and when — so the ladder can stay on it. */
+  private productive: { route: RecognitionAttempt; at: number } | null = null;
+  /** The most recent label text read locally, kept to corroborate a later identification. */
+  private lastText: string | null = null;
   private lastVisionAt: number | null = null;
   private cost: RecognitionCost = {
     catalogLookups: 0,
@@ -156,6 +194,14 @@ export class LiveRecognizer {
 
   get spent(): RecognitionCost {
     return this.cost;
+  }
+
+  /** Does the text we read locally actually support the name we were given? */
+  private textAgreesWith(label: string): boolean {
+    const read = this.lastText?.toLowerCase();
+    if (!read) return false;
+    const name = label.toLowerCase();
+    return read.includes(name) || name.includes(read);
   }
 
   private spend(key: keyof RecognitionCost): void {
@@ -199,6 +245,11 @@ export class LiveRecognizer {
       lastOcrAt: this.lastOcrAt,
       lastVisionAt: this.lastVisionAt,
       visionCalls: this.cost.visionCalls,
+      // The commitment expires with the evidence it was protecting.
+      productiveRoute:
+        this.productive && at - this.productive.at < PRODUCTIVE_ROUTE_TTL_MS
+          ? this.productive.route
+          : null,
     };
     if (nextRecognitionAttempt(ladder) === 'NONE') return silent(at, quality);
 
@@ -272,6 +323,7 @@ export class LiveRecognizer {
       this.spend('ocrReads');
       const text = await this.capabilities.readLabelText(source);
       const named = text?.trim();
+      this.lastText = named ?? null;
       if (named) {
         const hit = await this.resolveOnce(`text:${named.toLowerCase()}`, () =>
           this.capabilities.resolveName
@@ -280,7 +332,8 @@ export class LiveRecognizer {
         );
         // Read text is weaker than a barcode, so it earns evidence rather than a lock:
         // the session still requires agreeing frames before anything turns green.
-        if (hit)
+        if (hit) {
+          this.productive = { route: 'OCR', at };
           return {
             at,
             quality,
@@ -290,6 +343,7 @@ export class LiveRecognizer {
             route: 'LOCAL_OCR',
             confidence: 0.85,
           };
+        }
       }
       return silent(at, quality, 'LOCAL_OCR');
     }
@@ -297,23 +351,25 @@ export class LiveRecognizer {
     if (attempt === 'VISION' && this.capabilities.recognizeObject) {
       this.lastVisionAt = at;
       this.spend('visionCalls');
-      const guess = await this.capabilities.recognizeObject(source);
+      // Whatever local text this frame produced travels WITH the request: it both helps
+      // the recogniser and, when it agrees, corroborates the answer.
+      const guess = await this.capabilities.recognizeObject(source, this.lastText);
       if (guess) {
-        const hit = await this.resolveOnce(`vision:${guess.identityKey}`, () =>
-          this.capabilities.resolveName
-            ? this.capabilities.resolveName(guess.label)
-            : Promise.resolve(null),
-        );
-        if (hit)
+        // The identification boundary already asked the catalogue; if it resolved, the id
+        // is canonical and there is nothing left to look up.
+        if (guess.resolved) {
+          this.productive = { route: 'VISION', at };
           return {
             at,
             quality,
             catalogResolved: true,
-            identityKey: hit.id,
-            label: hit.displayName,
-            route: 'VISION_FALLBACK',
+            identityKey: guess.resolved.id,
+            label: guess.resolved.displayName,
+            route: 'VISION_RESOLVED',
             confidence: guess.confidence,
+            corroboratedByText: this.textAgreesWith(guess.label),
           };
+        }
         // Recognised, but not something Gellatti stocks. Carried, never named.
         return {
           at,
@@ -321,7 +377,7 @@ export class LiveRecognizer {
           catalogResolved: false,
           identityKey: `vision:${guess.identityKey}`,
           label: null,
-          route: 'UNKNOWN',
+          route: 'VISION_UNRESOLVED',
           confidence: guess.confidence,
         };
       }

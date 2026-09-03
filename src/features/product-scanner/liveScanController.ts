@@ -22,6 +22,7 @@ import {
   emptyLiveScanSession,
   observeFrame,
   removeAccepted,
+  resolveAccepted,
   type AcceptedProduct,
   type LiveScanEvent,
   type LiveScanSessionState,
@@ -146,6 +147,20 @@ export class LiveScanController {
   remove(identityKey: string): LiveScanSessionState {
     this.session = removeAccepted(this.session, identityKey);
     this.captures.delete(identityKey);
+    return this.session;
+  }
+
+  /** Adopt the identity the deep flow established for a product collected here. */
+  resolve(
+    identityKey: string,
+    resolution: { readonly id: string; readonly displayName: string },
+  ): LiveScanSessionState {
+    const capture = this.captures.get(identityKey);
+    this.session = resolveAccepted(this.session, identityKey, resolution);
+    if (capture) {
+      this.captures.delete(identityKey);
+      this.captures.set(resolution.id, capture);
+    }
     return this.session;
   }
 

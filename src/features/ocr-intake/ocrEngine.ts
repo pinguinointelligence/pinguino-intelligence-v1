@@ -96,11 +96,17 @@ export function validateLabelImage(meta: {
   sizeBytes: number | null;
 }): LabelImageValidation {
   if (!isAcceptedLabelImage(meta.mime, meta.filename)) {
-    return { ok: false, reason: `„${meta.filename}” nie jest obsługiwanym obrazem etykiety. Użyj PNG, JPEG lub WebP.` };
+    return {
+      ok: false,
+      reason: `„${meta.filename}” nie jest obsługiwanym obrazem etykiety. Użyj PNG, JPEG lub WebP.`,
+    };
   }
   if (meta.sizeBytes !== null && meta.sizeBytes > MAX_LABEL_IMAGE_BYTES) {
     const mb = (meta.sizeBytes / (1024 * 1024)).toFixed(1);
-    return { ok: false, reason: `Obraz ma ${mb} MB. Limit to ${MAX_LABEL_IMAGE_BYTES / (1024 * 1024)} MB.` };
+    return {
+      ok: false,
+      reason: `Obraz ma ${mb} MB. Limit to ${MAX_LABEL_IMAGE_BYTES / (1024 * 1024)} MB.`,
+    };
   }
   if (meta.sizeBytes !== null && meta.sizeBytes === 0) {
     return { ok: false, reason: 'Plik jest pusty (0 bajtów).' };
@@ -135,7 +141,8 @@ export async function downscaleImageIfNeeded(image: Blob, maxDimension = 2200): 
   return canvas.convertToBlob({ type: 'image/png' });
 }
 
-const errorMessage = (error: unknown): string => (error instanceof Error ? error.message : String(error));
+const errorMessage = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error);
 
 /** Extract per-line text + confidence + per-word bboxes from a recognized page. */
 function richLinesFromPage(page: Tesseract.Page): OcrLine[] {
@@ -179,21 +186,32 @@ export interface OcrJob {
  * Run REAL OCR on a label image. One automatic retry on a transient engine error
  * (never on cancel). The image stays in memory; nothing is persisted or uploaded.
  */
-export function startLabelOcr(image: OcrImageInput, options: OcrEngineOptions = {}): OcrJob {
-  let cancelled = false;
+/**
+ * A LIVE OCR session: one worker, many recognitions.
+ *
+ * `startLabelOcr` creates a worker, recognises once and terminates it — right for the
+ * intake flow, where a person picks a photo and waits. It is wrong for the live scanner,
+ * which reads a frame every second or two: spawning a worker and re-loading the language
+ * data each time costs far more than the recognition itself.
+ *
+ * So the worker lifetime becomes the caller's choice, and there is still exactly ONE
+ * implementation of the engine below — `startLabelOcr` is now a session that closes
+ * itself, which is precisely what it always was.
+ */
+export interface LabelOcrSession {
+  /** Recognise one image on this session's worker. */
+  run(image: OcrImageInput, overrides?: Pick<OcrEngineOptions, 'onProgress'>): OcrJob;
+  /** Terminate the worker. Safe to call twice, and safe to call with nothing running. */
+  close(): Promise<void>;
+}
+
+export function createLabelOcrSession(options: OcrEngineOptions = {}): LabelOcrSession {
+  let workerPromise: Promise<Tesseract.Worker> | null = null;
   let activeWorker: Tesseract.Worker | null = null;
+  let closed = false;
 
-  // Mid-recognition cancellation: terminating the worker can leave the pending
-  // recognize() promise unsettled, so `done` races it against this cancel promise.
-  let signalCancelled: (() => void) | undefined;
-  const cancelledResult: OcrFailure = { status: 'failed', reason: 'cancelled', message: 'OCR anulowano.' };
-  const cancelPromise = new Promise<OcrFailure>((resolve) => {
-    signalCancelled = () => resolve(cancelledResult);
-  });
-
-  const runOnce = async (): Promise<OcrRunResult> => {
-    const startedAt = Date.now();
-    const worker = await Tesseract.createWorker(
+  const worker = (onProgress?: OcrEngineOptions['onProgress']): Promise<Tesseract.Worker> => {
+    workerPromise ??= Tesseract.createWorker(
       [...(options.langs ?? OCR_LANGS)],
       undefined, // default OEM (LSTM only — matches the vendored *_best_int models)
       {
@@ -201,71 +219,147 @@ export function startLabelOcr(image: OcrImageInput, options: OcrEngineOptions = 
         ...(options.cachePath !== undefined ? { cachePath: options.cachePath } : {}),
         gzip: true,
         logger: (m) => {
-          if (options.onProgress && typeof m.progress === 'number') {
-            options.onProgress({ status: m.status, progress: m.progress });
+          const report = onProgress ?? options.onProgress;
+          if (report && typeof m.progress === 'number') {
+            report({ status: m.status, progress: m.progress });
           }
         },
       },
-    );
-    activeWorker = worker;
-    try {
-      if (cancelled) return { status: 'failed', reason: 'cancelled', message: 'OCR anulowano przed rozpoczęciem rozpoznawania.' };
-      // Uint8Array is handled by both tesseract.js loadImage paths (copied verbatim)
-      // but is missing from its ImageLike type — hence the cast.
-      const recognizePromise = worker.recognize(image as Tesseract.ImageLike, {}, { text: true, blocks: true });
-      recognizePromise.catch(() => undefined); // post-cancel rejection is expected noise
-      const settled = await Promise.race([recognizePromise, cancelPromise]);
-      if ('status' in settled) return settled; // cancelled mid-recognition
-      const { data } = settled;
-      const text = data.text.trim();
-      const alphanumeric = (text.match(/[\p{L}\p{N}]/gu) ?? []).length;
-      if (alphanumeric < MIN_READABLE_CHARS) {
-        return {
-          status: 'failed',
-          reason: 'unreadable_image',
-          message: 'Nie znaleziono czytelnego tekstu na etykiecie. Zrób wyraźniejsze zdjęcie w dobrym świetle.',
-        };
-      }
-      const richLines = richLinesFromPage(data);
-      return {
-        status: 'ok',
-        text: data.text,
-        lines: richLines.map(({ text: t, confidence }) => ({ text: t, confidence })),
-        richLines,
-        overallConfidence: Math.round(data.confidence),
-        durationMs: Date.now() - startedAt,
-      };
-    } finally {
-      activeWorker = null;
-      await worker.terminate().catch(() => undefined);
-    }
+    ).then((created) => {
+      activeWorker = created;
+      return created;
+    });
+    return workerPromise;
   };
 
-  const done = (async (): Promise<OcrRunResult> => {
-    const maxAttempts = 2;
-    let lastError = '';
-    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-      if (cancelled) return { status: 'failed', reason: 'cancelled', message: 'OCR anulowano.' };
-      try {
-        return await runOnce();
-      } catch (error) {
-        if (cancelled) return { status: 'failed', reason: 'cancelled', message: 'OCR anulowano.' };
-        lastError = errorMessage(error);
-      }
-    }
-    return {
-      status: 'failed',
-      reason: 'engine_error',
-      message: `OCR nie zakończył analizy po ${maxAttempts} próbach: ${lastError}`,
-    };
-  })();
+  /** Drop the worker so the next run builds a fresh one. */
+  const discard = async (): Promise<void> => {
+    const pending = workerPromise;
+    workerPromise = null;
+    activeWorker = null;
+    if (!pending) return;
+    await pending.then((w) => w.terminate()).catch(() => undefined);
+  };
 
   return {
-    done,
+    run(image, overrides) {
+      let cancelled = false;
+
+      // Mid-recognition cancellation: terminating the worker can leave the pending
+      // recognize() promise unsettled, so `done` races it against this cancel promise.
+      let signalCancelled: (() => void) | undefined;
+      const cancelledResult: OcrFailure = {
+        status: 'failed',
+        reason: 'cancelled',
+        message: 'OCR anulowano.',
+      };
+      const cancelPromise = new Promise<OcrFailure>((resolve) => {
+        signalCancelled = () => resolve(cancelledResult);
+      });
+
+      const runOnce = async (): Promise<OcrRunResult> => {
+        const startedAt = Date.now();
+        if (closed) {
+          return { status: 'failed', reason: 'cancelled', message: 'OCR anulowano.' };
+        }
+        const engine = await worker(overrides?.onProgress);
+        if (cancelled) {
+          return {
+            status: 'failed',
+            reason: 'cancelled',
+            message: 'OCR anulowano przed rozpoczęciem rozpoznawania.',
+          };
+        }
+        // Uint8Array is handled by both tesseract.js loadImage paths (copied verbatim)
+        // but is missing from its ImageLike type — hence the cast.
+        const recognizePromise = engine.recognize(
+          image as Tesseract.ImageLike,
+          {},
+          { text: true, blocks: true },
+        );
+        recognizePromise.catch(() => undefined); // post-cancel rejection is expected noise
+        const settled = await Promise.race([recognizePromise, cancelPromise]);
+        if ('status' in settled) return settled; // cancelled mid-recognition
+        const { data } = settled;
+        const text = data.text.trim();
+        const alphanumeric = (text.match(/[\p{L}\p{N}]/gu) ?? []).length;
+        if (alphanumeric < MIN_READABLE_CHARS) {
+          return {
+            status: 'failed',
+            reason: 'unreadable_image',
+            message:
+              'Nie znaleziono czytelnego tekstu na etykiecie. Zrób wyraźniejsze zdjęcie w dobrym świetle.',
+          };
+        }
+        const richLines = richLinesFromPage(data);
+        return {
+          status: 'ok',
+          text: data.text,
+          lines: richLines.map(({ text: t, confidence }) => ({ text: t, confidence })),
+          richLines,
+          overallConfidence: Math.round(data.confidence),
+          durationMs: Date.now() - startedAt,
+        };
+      };
+
+      const done = (async (): Promise<OcrRunResult> => {
+        const maxAttempts = 2;
+        let lastError = '';
+        for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+          if (cancelled)
+            return { status: 'failed', reason: 'cancelled', message: 'OCR anulowano.' };
+          try {
+            return await runOnce();
+          } catch (error) {
+            if (cancelled) {
+              return { status: 'failed', reason: 'cancelled', message: 'OCR anulowano.' };
+            }
+            lastError = errorMessage(error);
+            // A worker that threw cannot be trusted for the retry.
+            await discard();
+          }
+        }
+        return {
+          status: 'failed',
+          reason: 'engine_error',
+          message: `OCR nie zakończył analizy po ${maxAttempts} próbach: ${lastError}`,
+        };
+      })();
+
+      return {
+        done,
+        cancel: () => {
+          cancelled = true;
+          signalCancelled?.();
+          // Tesseract cannot abort a running recognition, so cancelling costs the worker.
+          // The session simply builds a new one on the next run.
+          if (activeWorker) void discard();
+        },
+      };
+    },
+    async close() {
+      closed = true;
+      await discard();
+    },
+  };
+}
+
+/**
+ * Run REAL OCR on a label image. One automatic retry on a transient engine error
+ * (never on cancel). The image stays in memory; nothing is persisted or uploaded.
+ *
+ * This is a single-use session: the worker is terminated as soon as the job settles.
+ */
+export function startLabelOcr(image: OcrImageInput, options: OcrEngineOptions = {}): OcrJob {
+  const session = createLabelOcrSession(options);
+  const job = session.run(image);
+  return {
+    done: job.done.finally(() => {
+      void session.close();
+    }),
     cancel: () => {
-      cancelled = true;
-      signalCancelled?.();
-      if (activeWorker) void activeWorker.terminate().catch(() => undefined);
+      job.cancel();
+      void session.close();
     },
   };
 }
