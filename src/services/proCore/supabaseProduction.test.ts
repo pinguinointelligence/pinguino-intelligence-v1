@@ -16,6 +16,7 @@ import { productionCapabilitiesFor } from '@/features/pro-core/proCoreCapabiliti
 import {
   isProductionRescueAuthorizationRefreshError,
   isProductionRescueOptionUnavailableError,
+  productionRescueErrorMessagePl,
   productionRescueOptionUnavailableDetails,
   supabaseProductionRepository,
 } from './supabaseProduction';
@@ -1234,6 +1235,39 @@ describe('supabaseProduction — atomic served start, Rescue, and completion', (
         violationMetrics: ['lactose_sandiness_risk', 'lactose'],
       });
     }
+  });
+
+  it('preserves an Edge bundle mismatch as a deterministic fail-closed reason', async () => {
+    const repo = repoFor(store);
+    const run = await repo.startRun({
+      ownerUserId: U1,
+      version: makeVersion('ver-1'),
+      target: { kind: 'weight_g', grams: 1000 },
+      capabilities: PRO,
+      by: U1,
+      meta: { thermalMode: 'HEAT_CAPABLE' },
+    });
+    store.functionErrorPayloads['production-rescue-authorize'] = {
+      error: 'engine_bundle_mismatch',
+      expectedEngineBundleSha256: 'a'.repeat(64),
+      actualEngineBundleSha256: 'b'.repeat(64),
+    };
+
+    try {
+      await repo.authorizeRescue({
+        runId: run.runId,
+        stableOptionId: 'enlarge_batch',
+        expectedActualRevision: 0,
+        expectedRescueRevision: 0,
+        idempotencyKey: 'bundle-mismatch',
+      });
+      throw new Error('expected Production Rescue bundle mismatch');
+    } catch (error) {
+      expect(productionRescueErrorMessagePl(error)).toBe(
+        'Korekta partii jest chwilowo niedostępna — wersja obliczeń na serwerze nie jest zgodna z aplikacją.',
+      );
+    }
+    expect(store.rpcCalls.some((call) => call.name.includes('consume_rescue'))).toBe(false);
   });
 
   it('classifies served expiry as requiring a fresh Rescue Preview', async () => {
