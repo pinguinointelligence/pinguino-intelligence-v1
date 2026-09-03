@@ -68,12 +68,19 @@ export function GellattiNotice({
       placement="responsive"
       dismissOnBackdrop
       panelClassName={cn(
-        'border-[var(--g-line)] bg-white text-[var(--g-graphite)]',
+        'bg-white text-[var(--g-graphite)]',
         // The attention state is an OUTLINE and a glow, never a fill: a tinted
         // panel would drag the whole notice away from the Gellatti white
         // surface for what is a single line of emphasis.
-        tone === 'attention' &&
-          'border-[var(--g-orange)] shadow-[0_0_0_4px_rgba(245,138,7,0.16),0_18px_40px_-16px_rgba(25,26,29,0.35)]',
+        //
+        // It is a RING, not a border, and deliberately so. `cn` is a plain
+        // class joiner, not tailwind-merge, so a `border-*` here does not
+        // replace DialogShell's own `border-ink/15` — both ship and CSS order
+        // decides, which is how the first attempt declared an orange outline
+        // that never painted. Measured on served staging: the panel border came
+        // back `ink/15`. A ring occupies a property DialogShell does not set,
+        // so it cannot be silently outranked.
+        tone === 'attention' && 'ring-2 ring-[var(--g-orange)]',
       )}
     >
       <div
