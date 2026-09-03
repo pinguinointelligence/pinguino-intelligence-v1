@@ -273,3 +273,56 @@ sorbet-policy test.
 ## 8. Not marked FINAL or FROZEN
 
 Per the owner's instruction.
+
+---
+
+# SERVED STAGING ACCEPTANCE — 2026-09-03, after merge
+
+Merge SHA `ddbd9747bb4fda21bda15fdb04affb825d563f13` · `origin/staging` = same ·
+served bundle `assets/index-sXlDXtP2.js` on `https://staging.pinguinoai.com`
+(verified to contain `Maksymalna ilość została osiągnięta`, `pro-section-back`,
+`crown-off-correction-notice`, `stabilizer-limit-ok`).
+
+Real authenticated PRO session (`pro@pro.com`), Gelato / OPTIMAL / −11 °C /
+1000 g, WATERMELON · Fresh Fruit as the Main.
+
+**Served Crown MAX SAFE = 364 g (36.4 %)**, established by Crown ON → Przelicz
+before the Crown-OFF cases.
+
+| Case | What was done | Result |
+|---|---|---|
+| **A** | Crown OFF, stepped Main to **600 g** (batch 1236 g), one Przelicz | → **364 g**, batch 1000 g, notice shown, recalculation overlay already closed. **No second Apply.** Matches Crown MAX SAFE exactly. |
+| **B** | Crown OFF, **300 g** (below max), Przelicz | **300 g preserved exactly** — WATERMELON does not appear in the change list at all; only support lines move to reconcile the batch. No correction notice. Score 10/10. |
+| **C** | **Locked** Main at 600 g, Przelicz | Typed refusal: „Przy ograniczeniu … = 600 g … **Najbliższa wykonalna wartość … 364 g.** Receptura nie została zmieniona." Main stays 600 g — **no silent rewrite** — and „Odblokuj i pokaż podgląd" is offered. |
+| **C′** | Accepted that unlock | The now-unlocked 600 g went straight through the correction to **364 g** with the notice — case A again by a second route. |
+| **D** | `••• → Wersje` | Link is `/pro/versions?from=recipe`; the page shows `← Wróć` → `/pro/recipe`. `/pro/versions` (global entry) and `/pro/versions?from=nowhere` show **no** back control. |
+| **E** | Saved „QA Crown-OFF 364" (v2), reopened from Moje receptury | Reopens at **364 g / 1000 g, v2** — the correction persists. |
+| **F** | HOME → PRO roundtrip | **364 g / 1000 g** unchanged. |
+| **G** | The recalculation refusal dialog | Computed style `background rgb(255,255,255)`, `color rgb(32,33,36)`, `color-scheme light` — white where the graphite `#191a1d` diagnostic box used to be. |
+| **H** | Stepped TARA GUM past its ceiling | Stabilizer-limit dialog on the SAME shell: white, `data-notice-align="center"`, `tone="informational"` (correctly not orange), one rounded OK, `stabilizer-limit-ok` id preserved. |
+
+The correction notice itself measured `background rgb(255,255,255)`, centered
+headline and body, a single `OK`, and **no `%` anywhere** in its text.
+
+## Defect found by this acceptance — fixed in PR #148
+
+`tone="attention"` declared `border-[var(--g-orange)]` plus a shadow glow, but the
+panel's computed border on served staging was **ink/15** and the shadow was plain
+`shadow-pro-e3`: `cn` is a plain class joiner, not `tailwind-merge`, so the
+attention classes shipped alongside `DialogShell`'s own and lost on CSS order.
+The jsdom test was green the whole time because the class *was* present.
+
+Fixed by making the outline a **ring** — a property `DialogShell` does not set —
+with the test now pinning the ring and forbidding the border form. The orange
+acknowledgement button was rendering correctly throughout.
+
+**A class being present is not evidence that it renders.**
+
+## Served-QA notes worth keeping
+
+- Typing into a gram field and pressing Enter does **not** commit the value; only
+  the +/− steppers do. Pre-existing behaviour, but it means served gram QA has to
+  drive the steppers.
+- The header renders „Zaloguj" until the Supabase session hydrates, so it is not
+  a reliable signed-in check — read the session or a real authenticated surface.
+- „Moje receptury" needs its „Moje" tab clicked before the list renders.
