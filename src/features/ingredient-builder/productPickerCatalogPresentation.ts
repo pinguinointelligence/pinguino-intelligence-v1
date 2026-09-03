@@ -83,25 +83,29 @@ export function buildProductPickerSegments<T extends SegmentableCatalogProduct>(
     unique.push(product);
   }
 
-  // A query changes what the sections MEAN.
-  //
-  // While searching, the only reason to lift something to the top is that it
-  // matches AND the user already favours it. Being favourite or recently used
-  // is not a reason to appear at all — every row here already matches, and a
-  // recent-but-less-relevant row must not push the best answer down.
-  //
+  // A non-empty query is already relevance-ordered by the canonical search
+  // authority. Favorite/recent state is decoration only here; segmenting either
+  // group above the first match would silently replace that deterministic order.
+  if (activeQuery) {
+    return unique.length === 0
+      ? []
+      : [
+          {
+            id: 'ingredients',
+            label: PRODUCT_PICKER_SEGMENT_LABELS.ingredients,
+            items: unique,
+          },
+        ];
+  }
+
   // With an empty box there is no relevance to sort by, so the useful default is
   // what the user actually reaches for: recently used first, then the catalogue.
   // Recency is used rather than favourites because people reuse an ingredient
   // many times without ever marking it.
-  const leadBy = activeQuery ? (product: T) => product.favorite : (product: T) => product.recent;
-  const leadLabel = activeQuery
-    ? PRODUCT_PICKER_SEGMENT_LABELS.favorites
-    : PRODUCT_PICKER_SEGMENT_LABELS.recent;
-  const leadId: ProductPickerSegmentId = activeQuery ? 'favorites' : 'recent';
-  const restLabel = activeQuery
-    ? PRODUCT_PICKER_SEGMENT_LABELS.remaining
-    : PRODUCT_PICKER_SEGMENT_LABELS.all;
+  const leadBy = (product: T) => product.recent;
+  const leadLabel = PRODUCT_PICKER_SEGMENT_LABELS.recent;
+  const leadId: ProductPickerSegmentId = 'recent';
+  const restLabel = PRODUCT_PICKER_SEGMENT_LABELS.all;
 
   const lead = unique.filter(leadBy);
   if (lead.length === 0) {
@@ -123,7 +127,7 @@ export function buildProductPickerSegments<T extends SegmentableCatalogProduct>(
     ...(remaining.length > 0
       ? [
           {
-            id: (activeQuery ? 'remaining' : 'all') as ProductPickerSegmentId,
+            id: 'all' as ProductPickerSegmentId,
             label: restLabel,
             items: remaining,
           },

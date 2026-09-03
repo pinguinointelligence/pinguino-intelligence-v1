@@ -3,6 +3,7 @@ import {
   EMPTY_PRODUCT_DOSE_META,
   type ProductDoseMeta,
 } from './productDoseSuggestion';
+import type { ProductDiscoveryReplaceContext } from './canonicalProductDiscovery';
 
 /** Customer vocabulary only. Engine lock enums are deliberately not exposed here. */
 export type IngredientCustomerRole = 'standard' | 'addition';
@@ -30,6 +31,9 @@ export interface IngredientRowMeta {
    * exactly as the click path produces it.
    */
   editRefusal?: string | null;
+  /** Context for the explicit row-level Replace invocation. This is derived
+   * from the current ingredient and never persisted as product authority. */
+  replaceContext?: ProductDiscoveryReplaceContext | null;
 }
 
 export interface SubstituteCandidate {

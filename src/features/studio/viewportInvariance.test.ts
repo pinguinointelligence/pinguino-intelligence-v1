@@ -56,10 +56,11 @@ describe('responsive invariant', () => {
 
   it('no viewport signal anywhere in src feeds a functional value', () => {
     /**
-     * The three legitimate viewport readers, each PRESENTATION-only:
+     * The legitimate viewport readers, each PRESENTATION-only:
      *  - AutoConfigTransition: prefers-reduced-motion (animation)
      *  - StudioEngineSurface:  which surface hosts the cockpit (modal behaviour)
      *  - ProductPickerPopover / productPickerViewport: popover placement
+     *  - ProWorkbar: recipe overflow-popover placement inside the viewport
      * Anything else must justify itself by being added here deliberately.
      */
     const ALLOWED = [
@@ -68,6 +69,7 @@ describe('responsive invariant', () => {
       'studio/mobileCockpitModal.ts',
       'ingredient-builder/ProductPickerPopover.tsx',
       'ingredient-builder/productPickerViewport.ts',
+      'pro-core/ProWorkbar.tsx',
       'components/ui/HoverPreview.tsx',
     ];
     const offenders = sourceFiles(join(SRC, 'features'))
