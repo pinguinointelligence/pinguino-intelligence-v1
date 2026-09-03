@@ -373,6 +373,38 @@ describe('Production trusted Rescue runtime races', () => {
     expect(new Set([...firstKeys, ...retryKeys]).size).toBe(8);
   });
 
+  it('fails closed with the exact deployment-sync reason when browser and Edge bundles differ', async () => {
+    const authorizeRescue = vi.fn(async () => {
+      throw new Error('engine_bundle_mismatch');
+    });
+    mocks.resolveProductionRepository.mockReturnValue({
+      repository: { authorizeRescue } as unknown as ProductionRepository,
+      mode: 'backend',
+      isLocalDev: false,
+      unavailable: false,
+    });
+
+    await act(async () => root.render(<EnabledHarness />));
+    await act(async () => {
+      await vi.waitFor(() => expect(authorizeRescue).toHaveBeenCalledTimes(4));
+      await vi.waitFor(() =>
+        expect(
+          Object.values(view!.rescueOptionStates).filter((state) => state?.status === 'error'),
+        ).toHaveLength(4),
+      );
+    });
+
+    expect(view?.selectedRescueOptionId).toBeNull();
+    expect(view?.recommendedRescueOptionId).toBeNull();
+    for (const state of Object.values(view!.rescueOptionStates)) {
+      expect(state).toEqual({
+        status: 'error',
+        reason:
+          'Korekta partii jest chwilowo niedostępna — wersja obliczeń na serwerze nie jest zgodna z aplikacją.',
+      });
+    }
+  });
+
   it('blocks operator edits while authorizing and ignores a late response after invalidation', async () => {
     const pending = deferred<ProductionRescueAuthorization>();
     const repository = {
