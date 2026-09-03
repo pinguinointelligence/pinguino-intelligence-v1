@@ -70,6 +70,7 @@ const SYSTEM_PROMPT = [
   'Prefer the language of any text visible on the packaging; otherwise use Polish.',
   'Never guess a brand that is not visible. Never describe nutrition, ingredients or weight.',
   'If you cannot tell what the item is, return name null, kind UNCLEAR and a low confidence.',
+  'kind FRESH_PRODUCE means unpackaged food with no label to read, such as loose fruit.',
 ].join(' ');
 
 const json = (body: unknown, status = 200) =>
