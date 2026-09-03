@@ -6,10 +6,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CatalogProductSearchHit } from '@/features/global-catalog/contracts';
 import type { EngineIngredient } from '@/engine';
 
+(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT =
+  true;
+
 const mocks = vi.hoisted(() => ({
   hits: [] as CatalogProductSearchHit[],
   getRow: vi.fn(),
   markUsed: vi.fn(),
+  setPreferred: vi.fn(),
   toggleFavorite: vi.fn(),
   loadMore: vi.fn(),
   toEngine: vi.fn(),
@@ -23,11 +27,24 @@ vi.mock('@/features/global-catalog/useGlobalCatalogPicker', () => ({
     const hits = mocks.hits.filter(
       (hit) =>
         (!input.favoritesOnly || hit.favorite) &&
-        (!query || hit.displayName.toLocaleLowerCase('pl').includes(query)),
+        (!query ||
+          [hit.displayName, hit.canonicalFamily, hit.category, hit.productForm, ...hit.aliases]
+            .filter(Boolean)
+            .join(' ')
+            .toLocaleLowerCase('pl')
+            .includes(query)),
     );
     return {
       hits,
-      favorites: new Set<string>(),
+      favorites: new Set(
+        mocks.hits
+          .filter((hit) => hit.favorite)
+          .map(
+            (hit) =>
+              `${hit.entityKind}:${hit.entityKind === 'pi_base' ? hit.mappedIngredientId : hit.id}`,
+          ),
+      ),
+      favoritesSettled: true,
       recent: new Set(
         hits
           .filter((hit) => hit.recentlyUsedAt)
@@ -58,13 +75,15 @@ vi.mock('@/services/ingredients', () => ({
 
 vi.mock('@/services/globalCatalog', () => ({
   markCatalogProductUsed: mocks.markUsed,
+  searchProducts: vi.fn().mockResolvedValue([]),
+  setUserPreferredExactProductForSlot: mocks.setPreferred,
 }));
 
 vi.mock('@/data/ingredients/ingredientMapper', () => ({
   ingredientRowToEngineIngredient: mocks.toEngine,
 }));
 
-import { ProductPickerPopover } from './ProductPickerPopover';
+import { ProductPickerPopover, type ProductPickerReplaceInvocation } from './ProductPickerPopover';
 import { serverSearchLibrary } from './ingredientLibrary';
 
 const catalogHit = (overrides: Partial<CatalogProductSearchHit> = {}): CatalogProductSearchHit => ({
@@ -181,6 +200,7 @@ describe('ProductPickerPopover catalog presentation', () => {
     }));
     mocks.toEngine.mockReturnValue(engineIngredient);
     mocks.markUsed.mockResolvedValue(undefined);
+    mocks.setPreferred.mockResolvedValue(undefined);
     mocks.isFetching = false;
     mocks.isSettled = true;
     Object.defineProperty(window, 'matchMedia', {
@@ -200,25 +220,35 @@ describe('ProductPickerPopover catalog presentation', () => {
     vi.clearAllMocks();
   });
 
-  const renderPicker = async (onAdd = vi.fn()) => {
+  const renderPicker = async (
+    onAdd = vi.fn(),
+    intent: 'ADD' | 'REPLACE' = 'ADD',
+    replaceInvocation?: ProductPickerReplaceInvocation,
+  ) => {
     await act(async () => {
       root.render(
         <MemoryRouter>
           <ProductPickerPopover
             library={serverSearchLibrary()}
             scope="BASE_FORMULATION"
+            intent={intent}
+            replaceInvocation={replaceInvocation}
             onAdd={onAdd}
           />
         </MemoryRouter>,
       );
     });
-    const trigger = document.querySelector<HTMLButtonElement>('button[aria-haspopup="dialog"]');
-    await act(async () => trigger?.click());
+    if (!replaceInvocation) {
+      const trigger = document.querySelector<HTMLButtonElement>('button[aria-haspopup="dialog"]');
+      await act(async () => trigger?.click());
+    }
     return onAdd;
   };
 
   it('A/B/D/F/J hides technical metadata in browsing rows and keeps stable headings', async () => {
     await renderPicker();
+    const all = document.querySelector<HTMLButtonElement>('[data-product-filter="all"]');
+    await act(async () => all?.click());
     const text = document.body.textContent ?? '';
 
     expect(text).not.toContain('PI-ING-000180');
@@ -242,6 +272,300 @@ describe('ProductPickerPopover catalog presentation', () => {
     for (const option of document.querySelectorAll<HTMLElement>('[role="option"]')) {
       expect(option.getAttribute('aria-label')).not.toMatch(/PI-ING-|Status danych/);
     }
+  });
+
+  it('renders the canonical top-level filter order and keeps form filters contextual', async () => {
+    await renderPicker();
+    const filters = Array.from(
+      document.querySelectorAll<HTMLButtonElement>('[data-product-filter]'),
+    ).map((button) => button.dataset.productFilter);
+    expect(filters).toEqual([
+      'favorites',
+      'all',
+      'fruit',
+      'dairy',
+      'nuts',
+      'chocolate',
+      'technical',
+    ]);
+    expect(document.querySelector('[data-product-filter="fresh"]')).toBeNull();
+    expect(document.querySelector('[data-product-filter="paste"]')).toBeNull();
+
+    const fruits = document.querySelector<HTMLButtonElement>('[data-product-filter="fruit"]');
+    await act(async () => fruits?.click());
+    expect(
+      Array.from(document.querySelectorAll<HTMLElement>('[data-product-subfilter]')).map(
+        (button) => button.dataset.productSubfilter,
+      ),
+    ).toEqual(['all', 'fresh']);
+    expect(document.querySelectorAll('[data-product-filter][aria-pressed="true"]')).toHaveLength(1);
+  });
+
+  it('opens in All when no favorite exists', async () => {
+    mocks.hits = [cream];
+    await renderPicker();
+    expect(
+      document
+        .querySelector<HTMLButtonElement>('[data-product-filter="all"]')
+        ?.getAttribute('aria-pressed'),
+    ).toBe('true');
+  });
+
+  it('opens in Favorites when favorites exist and offers one-click Search all on no match', async () => {
+    await renderPicker();
+    const favorites = document.querySelector<HTMLButtonElement>(
+      '[data-product-filter="favorites"]',
+    );
+    expect(favorites?.getAttribute('aria-pressed')).toBe('true');
+
+    const search = document.querySelector<HTMLInputElement>('input[role="combobox"]');
+    await act(async () => {
+      if (search) {
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+        setter?.call(search, 'cream');
+        search.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    });
+    const searchAll = document.querySelector<HTMLButtonElement>(
+      '[data-testid="product-picker-search-all"]',
+    );
+    expect(searchAll?.textContent).toContain('Szukaj we wszystkich');
+    await act(async () => searchAll?.click());
+    expect(document.body.textContent).toContain('CREAM 30%');
+  });
+
+  it('uses one action contract per invocation', async () => {
+    mocks.hits = [cream];
+    await renderPicker(vi.fn(), 'REPLACE');
+    expect(document.querySelector('button[aria-label^="Zamień na CREAM 30%"]')).not.toBeNull();
+    expect(
+      document.querySelector('button[aria-label="Dodaj CREAM 30% · Mlekovita Cream · Chilled"]'),
+    ).toBeNull();
+  });
+
+  it('selects the resolved country SKU behind one canonical row without turning it into a passive preference write', async () => {
+    const exact = catalogHit({
+      id: 'spanish-milk-product',
+      entityKind: 'commercial_product',
+      productCode: 'PR-ING-000901',
+      currentVersionId: 'spanish-milk-version',
+      status: 'verified',
+      verificationMethod: 'human',
+      displayName: 'Leche entera 3.6%',
+      brand: 'Marca ES',
+      mappedIngredientId: 'PI-ING-000236',
+      markets: ['ES'],
+      publicData: {
+        productIntelligence: { engineUsable: true },
+        technicalComposition: {
+          water: 88.6,
+          totalSolids: 11.4,
+          fat: 3.6,
+          protein: 3.2,
+          carbohydrate: 4.7,
+          sugars: 4.7,
+          salt: 0.1,
+        },
+      },
+    });
+    mocks.hits = [
+      catalogHit({
+        id: 'milk-mapper',
+        displayName: 'MILK 3.6% · Milk · Chilled',
+        canonicalFamily: 'milk',
+        category: 'dairy',
+        productForm: 'milk',
+        mappedIngredientId: 'PI-ING-000236',
+        resolvedExactProduct: exact,
+        resolutionSource: 'COUNTRY_PRIMARY_DEFAULT',
+        resolutionCountry: 'ES',
+      }),
+      exact,
+    ];
+    const onAdd = await renderPicker();
+    const all = document.querySelector<HTMLButtonElement>('[data-product-filter="all"]');
+    await act(async () => all?.click());
+    const search = document.querySelector<HTMLInputElement>('input[role="combobox"]');
+    await act(async () => {
+      if (search) {
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+        setter?.call(search, 'milk');
+        search.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    });
+
+    expect(document.body.textContent).toContain('MILK 3.6%');
+    expect(document.body.textContent).toContain('Marca ES · Leche entera 3.6%');
+    expect(document.querySelectorAll('button[aria-label="Dodaj MILK 3.6%"]')).toHaveLength(1);
+
+    const add = document.querySelector<HTMLButtonElement>('button[aria-label="Dodaj MILK 3.6%"]');
+    await act(async () => add?.click());
+    expect(onAdd.mock.calls[0]?.[0]).toMatchObject({
+      id: 'PR-ING-000901',
+      private_product_id: 'catalog:spanish-milk-product:version:spanish-milk-version',
+      name: 'Leche entera 3.6%',
+    });
+    expect(mocks.markUsed).toHaveBeenCalledWith({
+      entityKind: 'commercial_product',
+      id: 'spanish-milk-product',
+    });
+    expect(mocks.setPreferred).not.toHaveBeenCalled();
+  });
+
+  it('updates CP-36 only when the user consciously selects an exact commercial result', async () => {
+    const exact = catalogHit({
+      id: 'user-milk-product',
+      entityKind: 'commercial_product',
+      productCode: 'PR-ING-000902',
+      currentVersionId: 'user-milk-version',
+      status: 'verified',
+      verificationMethod: 'human',
+      displayName: 'Leche exacta B',
+      brand: 'Marca B',
+      mappedIngredientId: 'PI-ING-000236',
+      markets: ['ES'],
+      publicData: {
+        productIntelligence: { engineUsable: true },
+        technicalComposition: {
+          water: 88.6,
+          totalSolids: 11.4,
+          fat: 3.6,
+          protein: 3.2,
+          carbohydrate: 4.7,
+          sugars: 4.7,
+          salt: 0.1,
+        },
+      },
+    });
+    mocks.hits = [exact];
+    const onAdd = await renderPicker();
+    const add = document.querySelector<HTMLButtonElement>(
+      'button[aria-label="Dodaj Leche exacta B"]',
+    );
+    await act(async () => add?.click());
+
+    expect(onAdd).toHaveBeenCalledOnce();
+    expect(mocks.setPreferred).toHaveBeenCalledWith({
+      mapperIngredientId: 'PI-ING-000236',
+      productId: 'user-milk-product',
+    });
+  });
+
+  it('opens an external row Replace directly in its Milk context and keeps numeric order', async () => {
+    mocks.hits = [
+      catalogHit({
+        id: 'milk-35',
+        mappedIngredientId: 'PI-ING-000351',
+        displayName: 'MILK 3.5% · Reference',
+        category: 'dairy',
+        canonicalFamily: 'milk',
+        productForm: 'milk',
+      }),
+      catalogHit({
+        id: 'cream-30',
+        mappedIngredientId: 'PI-ING-000300',
+        displayName: 'CREAM 30% · Reference',
+        category: 'dairy',
+        canonicalFamily: 'cream',
+        productForm: 'cream',
+      }),
+      catalogHit({
+        id: 'milk-05',
+        mappedIngredientId: 'PI-ING-000051',
+        displayName: 'MILK 0.5% · Reference',
+        category: 'dairy',
+        canonicalFamily: 'milk',
+        productForm: 'milk',
+      }),
+    ];
+    const onReplace = await renderPicker(vi.fn(), 'ADD', {
+      key: 1,
+      context: { filter: 'dairy', subfilter: 'all', family: 'milk' },
+    });
+
+    expect(
+      document.querySelector('[data-product-filter="dairy"]')?.getAttribute('aria-pressed'),
+    ).toBe('true');
+    expect(document.body.textContent).not.toContain('CREAM 30%');
+    const actions = Array.from(
+      document.querySelectorAll<HTMLButtonElement>('button[aria-label^="Zamień na MILK"]'),
+    );
+    expect(actions.map((button) => button.textContent)).toEqual(['Zamień', 'Zamień']);
+    expect(actions.map((button) => button.getAttribute('aria-label'))).toEqual([
+      'Zamień na MILK 0.5%',
+      'Zamień na MILK 3.5%',
+    ]);
+    expect(
+      Array.from(document.querySelectorAll<HTMLButtonElement>('button')).filter(
+        (button) => button.textContent?.trim() === '+',
+      ),
+    ).toHaveLength(0);
+
+    await act(async () => actions[0]?.click());
+    expect(onReplace).toHaveBeenCalledWith(engineIngredient, undefined);
+  });
+
+  it.each([
+    ['DEXTROSE', 'sweetener', 'sugars', 'PI-ING-000101'],
+    ['TARA GUM', 'stabilizer', 'stabilizers', 'PI-ING-000102'],
+    ['GELLATTI STABILIZER', 'stabilizer', 'stabilizers', 'PI-ING-000103'],
+    ['INULIN', 'fiber', 'inulin', 'PI-ING-000104'],
+  ] as const)(
+    'opens %s Replace in its Technical subcontext',
+    async (name, category, subfilter, mapperId) => {
+      mocks.hits = [
+        catalogHit({
+          id: name.toLocaleLowerCase('en-US').replaceAll(' ', '-'),
+          mappedIngredientId: mapperId,
+          displayName: name,
+          category,
+          canonicalFamily: subfilter === 'sugars' ? 'sugar' : null,
+          productForm: category,
+        }),
+      ];
+      await renderPicker(vi.fn(), 'ADD', {
+        key: 1,
+        context: { filter: 'technical', subfilter, family: null },
+      });
+
+      expect(
+        document.querySelector('[data-product-filter="technical"]')?.getAttribute('aria-pressed'),
+      ).toBe('true');
+      expect(
+        document
+          .querySelector(`[data-product-subfilter="${subfilter}"]`)
+          ?.getAttribute('aria-pressed'),
+      ).toBe('true');
+      expect(document.querySelector(`button[aria-label="Zamień na ${name}"]`)).not.toBeNull();
+    },
+  );
+
+  it('opens Cream Replace in the Cream-only dairy family', async () => {
+    mocks.hits = [
+      catalogHit({
+        id: 'cream-20',
+        mappedIngredientId: 'PI-ING-000200',
+        displayName: 'CREAM 20%',
+        category: 'dairy',
+        canonicalFamily: 'cream',
+        productForm: 'cream',
+      }),
+      catalogHit({
+        id: 'milk-35',
+        mappedIngredientId: 'PI-ING-000351',
+        displayName: 'MILK 3.5%',
+        category: 'dairy',
+        canonicalFamily: 'milk',
+        productForm: 'milk',
+      }),
+    ];
+    await renderPicker(vi.fn(), 'ADD', {
+      key: 1,
+      context: { filter: 'dairy', subfilter: 'all', family: 'cream' },
+    });
+
+    expect(document.querySelector('button[aria-label="Zamień na CREAM 20%"]')).not.toBeNull();
+    expect(document.body.textContent).not.toContain('MILK 3.5%');
   });
 
   it('C/K opens neutral product details and preserves favorite and add actions', async () => {
@@ -316,13 +640,12 @@ describe('ProductPickerPopover catalog presentation', () => {
 
   it('G/H/I keeps one or two segments through filtering, searching, and long scroll', async () => {
     await renderPicker();
-    const pastes = Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find(
-      (button) => button.textContent?.includes('Pasty'),
+    const fruits = Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find(
+      (button) => button.textContent?.includes('Owoce'),
     );
-    await act(async () => pastes?.click());
-    expect(document.body.textContent).toContain('SKŁADNIKI');
-    expect(document.body.textContent).toContain('ALMOND PASTE');
-    expect(document.body.textContent).not.toContain('BANANA · Fresh Fruit');
+    await act(async () => fruits?.click());
+    expect(document.body.textContent).toContain('BANANA · Fresh Fruit');
+    expect(document.body.textContent).not.toContain('ALMOND PASTE');
     expect(document.querySelectorAll('[data-picker-segment]')).toHaveLength(1);
 
     const all = Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find((button) =>
@@ -338,9 +661,9 @@ describe('ProductPickerPopover catalog presentation', () => {
       }
     });
     expect(document.body.textContent).toContain('Znaleziono 1 składnik');
-    // Query active: the one hit is a favourite, so it leads under ULUBIONE.
-    expect(document.querySelectorAll('[data-picker-segment="favorites"]')).toHaveLength(1);
-    expect(document.querySelectorAll('[data-picker-segment="remaining"]')).toHaveLength(0);
+    // Query active: favorite state is only the star, never a ranking section.
+    expect(document.querySelectorAll('[data-picker-segment="ingredients"]')).toHaveLength(1);
+    expect(document.querySelectorAll('[data-picker-segment="favorites"]')).toHaveLength(0);
 
     await act(async () => {
       if (search) {
@@ -366,6 +689,8 @@ describe('ProductPickerPopover catalog presentation', () => {
     mocks.isFetching = true;
 
     await renderPicker();
+    const all = document.querySelector<HTMLButtonElement>('[data-product-filter="all"]');
+    await act(async () => all?.click());
 
     expect(document.body.textContent).toContain('BANANA · Fresh Fruit');
     expect(document.body.textContent).toContain('CREAM 30% · Mlekovita Cream · Chilled');

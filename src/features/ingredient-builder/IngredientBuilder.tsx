@@ -41,6 +41,7 @@ import {
 import {
   ProductPickerPopover,
   type ProductPickerHandoff,
+  type ProductPickerReplaceInvocation,
   type ProductPickerRouteRequest,
 } from './ProductPickerPopover';
 import { ToppingRow } from './ToppingRow';
@@ -82,6 +83,10 @@ import { type ProductDoseMeta } from './productDoseSuggestion';
 import { clampOwnerStabilizerComponentGrams } from '@/features/recipe-constraints';
 import { LegacyRecipeReferenceNotice } from './LegacyRecipeReferenceNotice';
 import { WorkflowNotice } from '@/components/shared/WorkflowNotice';
+import {
+  canonicalReplaceContext,
+  type ProductDiscoveryReplaceContext,
+} from './canonicalProductDiscovery';
 
 const b = copy.studio.builder;
 /**
@@ -132,6 +137,7 @@ export function IngredientBuilder({
   }, [customerOwnerUserId, loadCustomerPrices]);
 
   const addIngredient = useRecipeStore((state) => state.addIngredient);
+  const replaceIngredient = useRecipeStore((state) => state.replaceIngredient);
   const addTopping = useRecipeStore((state) => state.addTopping);
   const setProductBehaviorSnapshot = useRecipeStore((state) => state.setProductBehaviorSnapshot);
   const behaviorProfile = useRecipeStore((state) => state.category);
@@ -169,6 +175,11 @@ export function IngredientBuilder({
   const [reorderNotice, setReorderNotice] = useState('');
   const [pickerHandoff, setPickerHandoff] = useState<ProductPickerHandoff | null>(null);
   const pickerHandoffKey = useRef(0);
+  const [replaceRequest, setReplaceRequest] = useState<{
+    lineId: string;
+    invocation: ProductPickerReplaceInvocation;
+  } | null>(null);
+  const replaceRequestKey = useRef(0);
   const library = useIngredientLibrary({ demo });
   const { lockFor, wrapActions } = useLineLockControls();
   const legacyReferenceIssues = compositionMigrationAmbiguities.filter((issue) =>
@@ -414,6 +425,13 @@ export function IngredientBuilder({
       });
       setPickerNotice(null);
     },
+    requestReplace: (lineId, context: ProductDiscoveryReplaceContext) => {
+      replaceRequestKey.current += 1;
+      setReplaceRequest({
+        lineId,
+        invocation: { key: replaceRequestKey.current, context },
+      });
+    },
     moveUp: (lineId) => {
       moveBaseItem(lineId, -1);
       setReorderNotice(baseReorderNotice(lineId, 'Przesunięto wyżej'));
@@ -623,6 +641,14 @@ export function IngredientBuilder({
           ...storedMeta,
           unavailable: storedMeta.unavailable || unavailableFromDraft,
           editRefusal: editRefusalFor(item),
+          replaceContext:
+            mode === 'recipe'
+              ? canonicalReplaceContext({
+                  displayName: item.ingredient.name,
+                  category: item.ingredient.category,
+                  productForm: item.ingredient.source_subcategory,
+                })
+              : null,
         }}
         priceView={mode === 'recipe' ? priceView : undefined}
         productionLine={productionLine}
@@ -745,6 +771,32 @@ export function IngredientBuilder({
     return { focusLineId: existing.id };
   };
 
+  const replaceSelectedBaseIngredient = (
+    ingredient: Parameters<typeof replaceIngredient>[1],
+    behavior?: ProductBehaviorSnapshot,
+  ) => {
+    if (!replaceRequest) return addIngredientAndResolveRequiredRole(ingredient, behavior);
+    const result = replaceIngredient(replaceRequest.lineId, ingredient, behavior);
+    if (result.status === 'duplicate') {
+      setPickerNotice(
+        `${ingredient.name} już znajduje się w Bazie. Nie utworzono duplikatu i przeniesiono fokus do istniejącego wiersza.`,
+      );
+      return { focusLineId: result.lineId };
+    }
+    if (result.status !== 'replaced') {
+      setPickerNotice('Nie udało się zamienić produktu. Odśwież recepturę i spróbuj ponownie.');
+      return { focusLineId: replaceRequest.lineId };
+    }
+    setDoseMeta(result.lineId, {
+      provenance: 'UNKNOWN',
+      groupId: null,
+      suggestedPercent: null,
+      suggestedTotalGrams: null,
+    });
+    setPickerNotice(null);
+    return { focusLineId: result.lineId };
+  };
+
   const addOrFocusTopping = (
     ingredient: Parameters<typeof addTopping>[0],
     behavior?: ProductBehaviorSnapshot,
@@ -801,7 +853,9 @@ export function IngredientBuilder({
         mode: behaviorMode,
       }}
       onPreflightDuplicate={preflightDuplicateBaseIngredient}
-      onAdd={addIngredientAndResolveRequiredRole}
+      onAdd={replaceRequest ? replaceSelectedBaseIngredient : addIngredientAndResolveRequiredRole}
+      replaceInvocation={replaceRequest?.invocation ?? null}
+      onClose={() => setReplaceRequest(null)}
       handoff={pickerHandoff?.scope === 'BASE_FORMULATION' ? pickerHandoff : null}
       onRouteToScope={routeProductPicker}
     />

@@ -440,6 +440,23 @@ describe('compact ingredient article panel', () => {
     ).toBeNull();
   });
 
+  it('routes the explicit row Replace action to the parent with canonical context', async () => {
+    const requestReplace = vi.fn();
+    const context = { filter: 'dairy', subfilter: 'all', family: 'milk' } as const;
+    await renderRow({ ...actions(), requestReplace }, baseItem, false, true, null, {
+      ...DEFAULT_INGREDIENT_ROW_META,
+      replaceContext: context,
+    });
+    await click(
+      document.querySelector(`[aria-label="Opcje składnika ${baseItem.ingredient.name}"]`),
+    );
+
+    await click(document.querySelector('[aria-label="Zamień produkt"]'));
+
+    expect(requestReplace).toHaveBeenCalledWith(baseItem.id, context);
+    expect(document.querySelector(`[data-testid="row-menu-${baseItem.id}"]`)).toBeNull();
+  });
+
   it('opens the existing substitute flow as a responsive compact sheet', async () => {
     await renderRow(actions());
     await click(

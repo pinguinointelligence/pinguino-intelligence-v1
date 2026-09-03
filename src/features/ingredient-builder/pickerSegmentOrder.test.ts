@@ -1,7 +1,6 @@
 /**
- * A query changes what the picker's sections mean: while searching, only a
- * MATCHING favourite earns the top; with an empty box, what the user reaches
- * for most recently does.
+ * A query is ordered only by canonical search relevance. Favorite and recent
+ * state remain visible metadata; recency may still lead the empty view.
  */
 import { describe, expect, it } from 'vitest';
 import { buildProductPickerSegments } from './productPickerCatalogPresentation';
@@ -14,13 +13,14 @@ const product = (id: string, over: { favorite?: boolean; recent?: boolean } = {}
 });
 
 describe('picker section order', () => {
-  it('leads with matching favourites while a query is active', () => {
+  it('does not lift matching favourites while a query is active', () => {
     const segments = buildProductPickerSegments(
       [product('inulin'), product('pistachio', { favorite: true })],
       { activeQuery: true },
     );
-    expect(segments[0]!.label).toBe('ULUBIONE');
-    expect(segments[0]!.items.map((i) => i.canonicalId)).toEqual(['pistachio']);
+    expect(segments).toHaveLength(1);
+    expect(segments[0]!.label).toBe('SKŁADNIKI');
+    expect(segments[0]!.items.map((i) => i.canonicalId)).toEqual(['inulin', 'pistachio']);
   });
 
   it('renders no favourites section when no favourite matches', () => {

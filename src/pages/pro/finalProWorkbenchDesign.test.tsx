@@ -166,7 +166,9 @@ describe('one global menu and four local contexts', () => {
     // of a responsive pair — a CSS-hidden duplicate still reached the accessibility tree
     // (served 8dd11c9b). The guarantee this pins — the shell owning `ml-auto` at the
     // column edge — is unchanged.
-    expect(read('features', 'shell', 'AppShell.tsx')).toContain('ml-auto flex min-w-0 items-center');
+    expect(read('features', 'shell', 'AppShell.tsx')).toContain(
+      'ml-auto flex min-w-0 items-center',
+    );
     for (const source of [workbar, ingredient, topping]) {
       expect(source).toContain("iconButtonClasses('xs')");
       expect(source).toContain('•••');
@@ -245,20 +247,20 @@ describe('recipe and production table modes', () => {
   it('uses one opaque, metadata-filtered picker for Base and Toppings without visible technical ids', () => {
     const picker = read('features', 'ingredient-builder', 'ProductPickerPopover.tsx');
     const builder = read('features', 'ingredient-builder', 'IngredientBuilder.tsx');
+    const discoveryCopy = read('copy', 'productDiscovery.ts');
     for (const label of [
-      'Wszystkie',
       'Ulubione',
-      'Świeże',
-      'Mleczne',
-      'Suche',
-      'Czekolada',
+      'Wszystkie',
       'Owoce',
+      'Mleczne',
       'Orzechy',
-      'Pasty',
+      'Czekolada',
+      'Techniczne',
     ]) {
-      expect(picker).toContain(`label: '${label}'`);
+      expect(discoveryCopy).toContain(`'${label}'`);
     }
-    expect(picker).toContain('matchesPickerFilter');
+    expect(picker).toContain('PRODUCT_DISCOVERY_TOP_FILTERS.map');
+    expect(picker).toContain('matchesProductDiscoveryFilter');
     expect(picker).not.toContain('Status danych ·');
     expect(picker).toContain('Pokaż status danych produktu:');
     expect(picker).toContain('data-testid="product-data-status-dialog"');
@@ -465,7 +467,9 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
        430, 69 / 69 at 640 — with the hamburger and the switch hit-testing OK on
        all four PRO routes. The viewport-measured height must never come back. */
     expect(surface).toContain('top-[var(--pro-mobile-header-height)]');
-    expect(surface).not.toContain('fixed inset-x-0 top-0 bottom-[calc(var(--pro-bottom-nav-height)');
+    expect(surface).not.toContain(
+      'fixed inset-x-0 top-0 bottom-[calc(var(--pro-bottom-nav-height)',
+    );
     expect(surface).not.toContain('h-[min(92dvh,calc(100dvh-env(safe-area-inset-top)-0.5rem))]');
     // The sheet is a modal state and must keep an explicit way out.
     expect(surface).toContain('Zamknij kokpit');
