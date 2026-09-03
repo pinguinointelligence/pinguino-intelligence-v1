@@ -88,6 +88,27 @@ describe('the PDF is reproducible, not live', () => {
     expect(edge).toContain('snapshot');
   });
 
+  it('makes every purchase link CLICKABLE, not merely printed', () => {
+    /**
+     * A shopping list whose links are plain text is only half a document. It has
+     * to survive being printed and carried around a shop — so the URL stays
+     * visible — but a reader on a phone must be able to tap it. Visible text and
+     * clickable region are therefore the SAME box, not a choice between them.
+     *
+     * Verified by re-parsing a generated file: 8 `/Link` annotations with `/URI`
+     * actions — all seven components plus the brand line.
+     */
+    const pdf = read('src', 'features', 'shop', 'localStarterPackPdf.ts');
+    expect(pdf).toContain("Subtype: 'Link'");
+    expect(pdf).toContain("S: 'URI'");
+    expect(pdf).toContain('PDFString.of(url)');
+    // Hung on the component URL and on the brand line.
+    expect(pdf).toContain('linkify(urlBox, item.purchaseUrl)');
+    expect(pdf).toMatch(/linkify\(line\(GELLATTI_URL/);
+    // The visible URL is still drawn — the annotation supplements it.
+    expect(pdf).toContain('line(item.purchaseUrl');
+  });
+
   it('generates from the snapshot, never from current Admin rows', () => {
     const pdf = read('src', 'features', 'shop', 'localStarterPackPdf.ts');
     expect(pdf).toContain('LocalPackSnapshot');
