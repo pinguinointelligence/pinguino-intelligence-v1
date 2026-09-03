@@ -38,6 +38,7 @@ export function GellattiNotice({
   tone = 'informational',
   align = 'center',
   testId,
+  primaryTestId,
   onClose,
 }: {
   title: string;
@@ -52,6 +53,9 @@ export function GellattiNotice({
   tone?: 'informational' | 'attention';
   align?: 'center' | 'start';
   testId: string;
+  /** Keeps an existing acknowledgement test id when a hand-rolled notice is
+   * migrated onto this shell. Defaults to `<testId>-primary`. */
+  primaryTestId?: string;
   /** Escape / backdrop. Defaults to the primary acknowledgement. */
   onClose?: () => void;
 }) {
@@ -120,7 +124,7 @@ export function GellattiNotice({
           <button
             type="button"
             onClick={onPrimary}
-            data-testid={`${testId}-primary`}
+            data-testid={primaryTestId ?? `${testId}-primary`}
             className={cn(
               'pro-focus-ring inline-flex min-h-11 items-center justify-center rounded-full px-6 text-sm font-bold transition-colors',
               // Graphite ink on the accent measures 7.5:1; white on the accent

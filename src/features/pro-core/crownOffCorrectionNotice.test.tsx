@@ -8,6 +8,8 @@
  * for an acknowledgement. What it must never become is the thing it replaced: a
  * graphite diagnostic panel quoting percentages and asking for a second Apply.
  */
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -133,5 +135,28 @@ describe('Crown-OFF correction notice', () => {
     await render(false);
     expect(notice()).not.toBeNull();
     expect(document.querySelector('[data-testid="pro-recalc-overlay"]')).toBeNull();
+  });
+
+  it('shares its shell with the other simple PRO notices', async () => {
+    // OWNER item 4 — ONE visual system. `GellattiNotice` is the single shell;
+    // a second hand-rolled headline/body/button trio is what this replaces.
+    // The stabilizer-limit notice (from #136) was migrated onto it, keeping its
+    // own acknowledgement test id.
+    const source = readFileSync(
+      resolve(process.cwd(), 'src/features/ingredient-builder/IngredientBuilder.tsx'),
+      'utf8',
+    );
+    expect(source).toContain('<GellattiNotice');
+    expect(source).toContain('primaryTestId="stabilizer-limit-ok"');
+    expect(source).not.toContain('testId="stabilizer-limit-dialog"\n              panelClassName');
+
+    // And the recalculation overlay no longer carries the graphite diagnostic
+    // shell that made a plain sentence look like an error dump.
+    const panel = readFileSync(
+      resolve(process.cwd(), 'src/features/pro-core/ProRecalcPanel.tsx'),
+      'utf8',
+    );
+    expect(panel).not.toContain('[color-scheme:dark]');
+    expect(panel).not.toContain('bg-shell px-4 py-4');
   });
 });

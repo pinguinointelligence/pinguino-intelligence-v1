@@ -1,6 +1,6 @@
-import { DialogShell } from '@/components/ui/DialogShell';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { GellattiNotice } from '@/components/ui/GellattiNotice';
 import { MetricValue } from '@/components/shared/MetricValue';
 import { SectionLabel } from '@/components/shared/SectionLabel';
 import { Card } from '@/components/ui/Card';
@@ -1000,35 +1000,25 @@ export function IngredientBuilder({
             />
           ) : null}
           {stabilizerLimitGrams !== null ? (
-            <DialogShell
-              label="Limit stabilizatora osiągnięty"
+            /* Informative, not an error: the amount was applied, it simply
+               stopped at the ceiling. No engine or constraint vocabulary.
+               Moved onto the ONE shared Gellatti notice shell (owner
+               2026-09-03) so it is centered and carries the same headline,
+               body and acknowledgement geometry as every other simple notice.
+               It stays `informational`: reaching a ceiling is a fact, not an
+               alarm, and orange is reserved for notices the user must
+               register. */
+            <GellattiNotice
               testId="stabilizer-limit-dialog"
-              onClose={() => {
+              primaryTestId="stabilizer-limit-ok"
+              title="Limit stabilizatora osiągnięty"
+              body={`Dla tej partii maksymalna ilość systemu stabilizującego to ${stabilizerLimitGrams} g.`}
+              primaryLabel="OK"
+              onPrimary={() => {
                 acknowledgedStabilizerLimit.current = stabilizerLimitGrams;
                 setStabilizerLimitGrams(null);
               }}
-              panelClassName="max-w-[380px]"
-            >
-              {/* Informative, not an error: the amount was applied, it simply
-                  stopped at the ceiling. No engine or constraint vocabulary. */}
-              <h2 className="text-[17px] leading-6 font-semibold tracking-[-0.02em] text-[var(--g-ink)]">
-                Limit stabilizatora osiągnięty
-              </h2>
-              <p className="mt-2 text-[13.5px] leading-[19px] text-[var(--g-text-secondary)]">
-                {`Dla tej partii maksymalna ilość systemu stabilizującego to ${stabilizerLimitGrams} g.`}
-              </p>
-              <button
-                type="button"
-                data-testid="stabilizer-limit-ok"
-                onClick={() => {
-                  acknowledgedStabilizerLimit.current = stabilizerLimitGrams;
-                  setStabilizerLimitGrams(null);
-                }}
-                className="pro-focus-ring mt-4 inline-flex h-10 w-full items-center justify-center rounded-full bg-[var(--g-graphite)] px-5 text-[13.5px] font-semibold text-white"
-              >
-                OK
-              </button>
-            </DialogShell>
+            />
           ) : null}
           <p
             className="sr-only"
