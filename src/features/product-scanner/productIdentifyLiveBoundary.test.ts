@@ -19,6 +19,11 @@ describe('it identifies, and does not profile', () => {
     expect(schema).not.toMatch(/nutrition|allergen|ingredient|kcal|protein|fat|sugar/i);
   });
 
+  it('reports what it was looking at, so the client can escalate correctly', () => {
+    // `kind` is what keeps a banana from waiting on a text engine that could not help it.
+    expect(FUNCTION).toContain("kind: 'FRESH_PRODUCE' | 'PACKAGED' | 'UNCLEAR'");
+  });
+
   it('never asks the model for a product id', () => {
     // The schema is the enforcement: a model cannot return a field that does not exist.
     const properties = between('properties: {', '} as const');
@@ -51,6 +56,31 @@ describe('it cannot run up a bill', () => {
   it('refuses anything bigger than a selected still', () => {
     expect(FUNCTION).toContain('MAX_FRAME_BYTES');
     expect(FUNCTION).toContain('identify_frame_too_large');
+  });
+});
+
+describe('the OCR engine is never downloaded speculatively', () => {
+  const CAPABILITIES = readFileSync('src/features/product-scanner/liveScanCapabilities.ts', 'utf8');
+  const SCANNER = readFileSync('src/features/product-scanner/LiveMultiScanner.tsx', 'utf8');
+
+  it('the engine is imported only inside the rung that uses it', () => {
+    // A static import here would pull multi-megabyte WASM and language data into the
+    // bundle, downloaded the moment the scanner opens — for a sweep that may only ever
+    // see barcodes.
+    expect(CAPABILITIES).not.toMatch(/^import \{[^}]*createLabelOcrSession/m);
+    expect(CAPABILITIES).toContain("import('@/features/ocr-intake/ocrEngine')");
+    // The type-only import carries no runtime cost.
+    expect(CAPABILITIES).toContain('import type { LabelOcrSession }');
+  });
+
+  it('the customer is never asked to turn OCR on', () => {
+    expect(SCANNER).not.toContain('enableOcr');
+    expect(CAPABILITIES).not.toContain('enableOcr');
+  });
+
+  it('and the session releases the engine when the camera closes', () => {
+    expect(CAPABILITIES).toContain('releaseLiveScanCapabilities');
+    expect(SCANNER).toContain('releaseLiveScanCapabilities');
   });
 });
 

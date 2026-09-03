@@ -39,13 +39,32 @@ Reused untouched: `createLiveFrameSource`, `scoreRgbaFrame`, `RollingBestFrameWi
 ## The ladder
 
 ```
-LOCAL BARCODE  → exact catalogue SKU                 → GREEN immediately   (0 paid calls)
-LOCAL OCR      → catalogue match                     → GREEN on agreement  (0 paid calls)
-BEST FRAME     → identification → catalogue          → GREEN on evidence   (1 paid call)
+LOCAL BARCODE  → exact catalogue SKU        → GREEN immediately        (0 paid calls)
+otherwise
+BEST FRAME     → identification → catalogue → GREEN on evidence        (1 paid call)
+otherwise, for PACKAGED products only
+LAZY OCR       → catalogue match            → GREEN on agreement       (0 paid calls)
 otherwise      → UNRESOLVED → keep scanning → deep/contribution flow
 ```
 
 Fresh produce (BANANA, APPLE, STRAWBERRY) is a normal path, not an error.
+
+**OCR is an escalation, not a queue position.** It is ordered by what actually resolves
+products, not by what is cheapest to run: object identification answers both produce and
+packaging, while reading label text answers only packaging and costs a second of phone CPU
+plus a multi-megabyte engine download the first time it is asked. So OCR sits BELOW vision
+and is reached only when vision has already failed on something that HAS a label — the
+`kind` the boundary returns is what decides that. A banana therefore never waits for OCR:
+vision names it, or it goes to the deep flow, because text was never going to help.
+
+Once escalated, OCR goes AHEAD of another paid call, since repeating a call that just
+returned nothing on the same view is the one option guaranteed to cost without informing.
+The escalation lapses with the evidence window and is cleared the moment vision resolves
+something, so each new product starts back at the top of the ladder.
+
+The customer never toggles OCR, and nothing is downloaded when the scanner opens: the
+engine is behind a dynamic import inside the rung itself, one worker per sweep, released
+on close. `ocrEscalations` in the telemetry answers how often it was needed at all.
 
 ## Cost controls
 
@@ -82,12 +101,20 @@ test rather than by reading.
    half-built draft. The deep Scanner is now a nested step that returns the product
    resolved, in place.
 
-## The 15-point acceptance matrix
+## Status
+
+```
+SCANNER: 15/15 IMPLEMENTED / DETERMINISTIC TESTS
+REAL DEVICE OWNER QA: 1/15 proven
+```
 
 All fifteen are proven deterministically in `liveScanAcceptance.test.ts`, plus the combined
-BANAN → OREO → MLEKO sweep. **Real-phone staging QA is a separate gate and is NOT claimed
-by these tests** — camera permission, live preview, and a paid identification against the
-deployed function can only be proven on a device.
+BANAN → OREO → MLEKO sweep. Case 15 (permission refused, then a clean reopen with the HOME
+draft intact) is additionally proven served on canonical staging.
+
+**Real-phone QA is a separate gate and is NOT claimed by these tests** — camera permission,
+live preview, and a paid identification against the deployed function can only be proven on
+a device. The scanner is NOT FINAL until the real-phone matrix passes.
 
 ## Deployment
 
