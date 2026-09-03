@@ -90,7 +90,8 @@ function hasCompleteLabelOnlyToppingFacts(publicData: Record<string, unknown> | 
   const nutrition = publicData?.nutrition;
   if (!nutrition || typeof nutrition !== 'object') return false;
   const facts = nutrition as Record<string, unknown>;
-  return facts.basis === 'per_100g'
+  // 1 ml = 1 g (OWNER RULE, frozen 2026-08-25).
+  return ['per_100g', 'per_100ml'].includes(String(facts.basis))
     && typeof publicData?.ingredientsText === 'string' && publicData.ingredientsText.trim().length > 0
     && typeof publicData?.allergensText === 'string' && publicData.allergensText.trim().length > 0
     && REQUIRED_TOPPING_FACTS.every((key) => {
