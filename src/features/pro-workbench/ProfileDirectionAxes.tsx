@@ -79,6 +79,16 @@ function RegulatorRow({
           }}
           className="relative h-[26px]"
         >
+          {/* The RAIL connects the five dots into one instrument. Without it
+              the detents read as five unrelated marks and the axis stops
+              looking like a thing you slide — the reference draws the line, and
+              the orange fill is then visibly a SEGMENT OF that line rather than
+              a stroke floating between dots. It is a shade lighter than the
+              dots so the positions still stand out on it. */}
+          <span
+            aria-hidden
+            className="absolute inset-x-0 top-[11.5px] h-[3px] rounded-full bg-[var(--g-line)]"
+          />
           {DETENTS.map((detent) => (
             <span
               key={`dot-${detent}`}

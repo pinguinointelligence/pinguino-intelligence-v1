@@ -168,6 +168,21 @@ export function WorkbenchSettingsLine({
      COLLAPSED at rest. They are the recipe's context, not its work — the band
      states what they are in one line and opens only when the user goes there. */
   const [expanded, setExpanded] = useState(false);
+
+  /* OWNER AUTHORITY 2026-09-03: while the recipe card is refusing to save, this
+     module is where the owner has to act, so it opens itself and takes the
+     change marker — the same attention treatment a gram field wears after it
+     is edited, but drawn all the way round because here the whole module is
+     what changed, not one field in a row.
+
+     `expanded || preflightBlocked` rather than a `setExpanded(true)` effect:
+     forcing the state would leave the module stuck open after the block
+     clears, and would fight the owner if they collapsed it deliberately. As a
+     derived value it opens on the block, and returns to whatever the owner had
+     chosen the moment the block is resolved. */
+  const preflightBlockMessage = useRecipeProfileStore((state) => state.preflightBlockMessage);
+  const preflightBlocked = preflightBlockMessage !== null;
+  const open = expanded || preflightBlocked;
   const saveDefaultsLocal = useRecipeProfileStore((state) => state.saveDefaults);
   const authenticatedOwner = useAuthStore((state) => state.user?.id ?? null);
   const defaultsOwner = authenticatedOwner ?? (import.meta.env.DEV ? 'local-device' : null);
@@ -438,7 +453,9 @@ export function WorkbenchSettingsLine({
         'pro-legend-box px-5 py-7 transition-colors',
         hardConflict
           ? 'border-status-error/45 bg-status-error/[0.035]'
-          : 'bg-transparent',
+          : preflightBlocked
+            ? 'settings-preflight-blocked'
+            : 'bg-transparent',
         className,
       )}
       data-testid="workbench-settings-line"
@@ -446,6 +463,7 @@ export function WorkbenchSettingsLine({
       data-preflight-state={
         hardConflict ? 'conflict' : confirmed ? 'confirmed' : 'needs-confirmation'
       }
+      data-preflight-blocked={preflightBlocked ? 'true' : undefined}
     >
       <h3
         data-band-legend
@@ -460,7 +478,7 @@ export function WorkbenchSettingsLine({
       <button
         type="button"
         onClick={() => setExpanded((open) => !open)}
-        aria-expanded={expanded}
+        aria-expanded={open}
         data-testid="settings-grid-status"
         data-settings-cell="confirmation"
         className="pro-focus-ring group/settings flex w-full min-w-0 items-center gap-4 bg-transparent text-left"
@@ -508,7 +526,7 @@ export function WorkbenchSettingsLine({
           height="15"
           viewBox="0 0 24 24"
           fill="none"
-          className={cn('shrink-0 text-[var(--g-text-muted)] transition-transform', expanded && 'rotate-90')}
+          className={cn('shrink-0 text-[var(--g-text-muted)] transition-transform', open && 'rotate-90')}
         >
           <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
@@ -535,7 +553,7 @@ export function WorkbenchSettingsLine({
           and `hidden` is the honest semantic — not relevant right now — so it
           leaves the accessibility tree and the tab order without pretending the
           settings do not exist. */}
-      <div hidden={!expanded} data-settings-surface={expanded ? 'expanded' : 'collapsed'}>
+      <div hidden={!open} data-settings-surface={open ? 'expanded' : 'collapsed'}>
       <div
         className={cn(
           compact ? 'profile-settings-grid grid grid-cols-2 items-stretch gap-2' : 'space-y-3',

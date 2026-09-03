@@ -179,8 +179,21 @@ describe('canonical PINGÜINO Pro — workbar (proofs 7–15)', () => {
     const name = html.indexOf('data-testid="pro-workbar-name"');
     const save = html.indexOf('data-testid="pro-workbar-save"');
     expect(name).toBeGreaterThan(-1);
-    expect(save).toBeLessThan(name);
+    expect(save).toBeGreaterThan(-1);
     expect(html).toContain('ZAPISZ');
+    /* The proof is ADJACENCY, and it still holds: Save shares the identity
+       card's own band and nothing comes between them. It used to be checked as
+       `save < name` in source, which was only ever a proxy — and a proxy that
+       broke when the owner moved the actions BELOW the card on 2026-09-03,
+       where Save must come last so a keyboard walks the band left to right.
+
+       Checked here as "no other section opens between the two", which is what
+       "directly beside" actually claims and what would really regress if Save
+       were ever banished to another part of the panel. */
+    const between = html.slice(Math.min(name, save), Math.max(name, save));
+    expect(between).not.toContain('data-testid="profile-direction-axes"');
+    expect(between).not.toContain('data-testid="workbench-settings-line"');
+    expect(between).not.toContain('data-testid="profile-nutrition-cost-summary"');
   });
 
   it('11. Monitor is visible in the top context tabs', () => {
