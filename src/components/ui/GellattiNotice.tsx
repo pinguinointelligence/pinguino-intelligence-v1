@@ -67,6 +67,13 @@ export function GellattiNotice({
       onClose={onClose ?? onPrimary}
       placement="responsive"
       dismissOnBackdrop
+      showCloseControl
+      closeLabel="Zamknij komunikat"
+      initialFocusTestId={
+        secondaryLabel && onSecondary
+          ? `${testId}-secondary`
+          : (primaryTestId ?? `${testId}-primary`)
+      }
       panelClassName={cn(
         'border-[var(--g-line)] bg-white text-[var(--g-graphite)]',
         // The attention state is an OUTLINE and a glow, never a fill: a tinted
@@ -84,7 +91,7 @@ export function GellattiNotice({
         <h2
           className={cn(
             'text-[19px] leading-[1.3] font-bold tracking-[-0.01em] text-[var(--g-graphite)]',
-            centered && 'mx-auto max-w-[26ch]',
+            centered ? 'mx-auto max-w-[26ch] px-10' : 'pr-12',
           )}
           data-testid={`${testId}-title`}
         >

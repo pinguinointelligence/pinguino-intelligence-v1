@@ -21,7 +21,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/services/productIntelligence', async () => ({
   ...(await vi.importActual<typeof import('@/services/productIntelligence')>(
-    '@/services/productIntelligence'
+    '@/services/productIntelligence',
   )),
   resolveLegacyRecipeBehaviorForSelection: mocks.resolve,
 }));
@@ -32,42 +32,43 @@ vi.mock('@/services/ingredients', async () => ({
 
 import { useLegacyRecipeBehaviorRevalidation } from './useLegacyRecipeBehaviorRevalidation';
 
-const rowFromEngine = (ingredient: EngineIngredient): IngredientRow => ({
-  ingredient_id: ingredient.canonical_ingredient_id ?? ingredient.id,
-  ingredient_name_internal: ingredient.name,
-  ingredient_name_display: ingredient.name,
-  ingredient_category: ingredient.category,
-  ingredient_subcategory: ingredient.category,
-  approved_for_base: true,
-  approved_for_engines: true,
-  verification_status: 'Verified',
-  data_confidence_percent: 100,
-  water_percent: ingredient.composition.water_percent,
-  total_solids_percent: ingredient.composition.solids_percent,
-  fat_percent: ingredient.composition.fat_percent,
-  saturated_fat_percent: ingredient.composition.saturated_fat_percent ?? null,
-  protein_percent: ingredient.composition.protein_percent,
-  carbohydrate_percent: ingredient.composition.carbohydrate_percent,
-  total_sugars_percent: ingredient.composition.sugar_percent,
-  sucrose_percent: ingredient.composition.sucrose_percent,
-  glucose_percent: ingredient.composition.glucose_percent,
-  dextrose_percent: ingredient.composition.dextrose_percent,
-  fructose_percent: ingredient.composition.fructose_percent,
-  lactose_percent: ingredient.composition.lactose_percent,
-  polyol_percent: ingredient.composition.polyol_percent,
-  fiber_percent: ingredient.composition.fiber_percent,
-  salt_percent: ingredient.composition.salt_percent,
-  alcohol_percent: ingredient.composition.alcohol_percent,
-  kcal_per_100g: ingredient.composition.kcal_per_100g,
-  pod_value: ingredient.pod_value,
-  pac_value: ingredient.pac_value,
-  de_value: ingredient.de_value,
-  vegan: ingredient.flags?.is_animal_origin ? 'false' : 'unknown',
-  dairy_free: 'unknown',
-  gluten_free: 'unknown',
-  contains_alcohol: 'unknown',
-  dataset_version: 'runtime-fixture',
-} as IngredientRow);
+const rowFromEngine = (ingredient: EngineIngredient): IngredientRow =>
+  ({
+    ingredient_id: ingredient.canonical_ingredient_id ?? ingredient.id,
+    ingredient_name_internal: ingredient.name,
+    ingredient_name_display: ingredient.name,
+    ingredient_category: ingredient.category,
+    ingredient_subcategory: ingredient.category,
+    approved_for_base: true,
+    approved_for_engines: true,
+    verification_status: 'Verified',
+    data_confidence_percent: 100,
+    water_percent: ingredient.composition.water_percent,
+    total_solids_percent: ingredient.composition.solids_percent,
+    fat_percent: ingredient.composition.fat_percent,
+    saturated_fat_percent: ingredient.composition.saturated_fat_percent ?? null,
+    protein_percent: ingredient.composition.protein_percent,
+    carbohydrate_percent: ingredient.composition.carbohydrate_percent,
+    total_sugars_percent: ingredient.composition.sugar_percent,
+    sucrose_percent: ingredient.composition.sucrose_percent,
+    glucose_percent: ingredient.composition.glucose_percent,
+    dextrose_percent: ingredient.composition.dextrose_percent,
+    fructose_percent: ingredient.composition.fructose_percent,
+    lactose_percent: ingredient.composition.lactose_percent,
+    polyol_percent: ingredient.composition.polyol_percent,
+    fiber_percent: ingredient.composition.fiber_percent,
+    salt_percent: ingredient.composition.salt_percent,
+    alcohol_percent: ingredient.composition.alcohol_percent,
+    kcal_per_100g: ingredient.composition.kcal_per_100g,
+    pod_value: ingredient.pod_value,
+    pac_value: ingredient.pac_value,
+    de_value: ingredient.de_value,
+    vegan: ingredient.flags?.is_animal_origin ? 'false' : 'unknown',
+    dairy_free: 'unknown',
+    gluten_free: 'unknown',
+    contains_alcohol: 'unknown',
+    dataset_version: 'runtime-fixture',
+  }) as IngredientRow;
 
 function Harness() {
   useLegacyRecipeBehaviorRevalidation();
@@ -133,8 +134,9 @@ describe('legacy recipe runtime resolution', () => {
   let root: ReturnType<typeof createRoot>;
 
   beforeEach(() => {
-    (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean })
-      .IS_REACT_ACT_ENVIRONMENT = true;
+    (
+      globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
+    ).IS_REACT_ACT_ENVIRONMENT = true;
     host = document.createElement('div');
     root = createRoot(host);
     useAuthStore.setState({
@@ -156,10 +158,12 @@ describe('legacy recipe runtime resolution', () => {
     const saved = starterMilkBase();
     const savedBytes = JSON.stringify(saved);
     const expected = productBehaviorTestSnapshots(saved);
-    const byMapper = new Map(saved.items.map((item) => [
-      item.ingredient.canonical_ingredient_id ?? item.ingredient.id,
-      { item, snapshot: expected[item.id]! },
-    ]));
+    const byMapper = new Map(
+      saved.items.map((item) => [
+        item.ingredient.canonical_ingredient_id ?? item.ingredient.id,
+        { item, snapshot: expected[item.id]! },
+      ]),
+    );
     mocks.resolve.mockImplementation(async ({ reference }) => {
       const fixture = byMapper.get(reference.mapperIngredientId ?? reference.canonicalIdentity);
       if (!fixture) return null;
@@ -207,9 +211,11 @@ describe('legacy recipe runtime resolution', () => {
     await vi.waitFor(() => {
       const state = useRecipeStore.getState();
       expect(Object.keys(state.productBehaviorSnapshots)).toHaveLength(saved.items.length);
-      expect(Object.values(state.productBehaviorSnapshots).every(
-        (snapshot) => snapshot.resolutionState === 'RESOLVED',
-      )).toBe(true);
+      expect(
+        Object.values(state.productBehaviorSnapshots).every(
+          (snapshot) => snapshot.resolutionState === 'RESOLVED',
+        ),
+      ).toBe(true);
     });
 
     expect(mocks.resolve).toHaveBeenCalledTimes(saved.items.length);
@@ -417,7 +423,9 @@ describe('legacy recipe runtime resolution', () => {
     const saved = starterMilkBase();
     saved.items[0] = { ...saved.items[0]!, lock_type: 'main' };
     mockResolvedBehaviorFor(saved);
-    useRecipeStore.getState().loadRecipeInput(saved, { savedId: 'owner-review', savedName: 'Owner' });
+    useRecipeStore
+      .getState()
+      .loadRecipeInput(saved, { savedId: 'owner-review', savedName: 'Owner' });
     useRecipeStore.setState({
       ownerReviewGate: {
         status: 'OWNER_REVIEW_EDITABLE',
@@ -436,7 +444,8 @@ describe('legacy recipe runtime resolution', () => {
     });
 
     const mainCall = mocks.resolve.mock.calls.find(
-      ([input]) => input.reference.mapperIngredientId === saved.items[0]!.ingredient.canonical_ingredient_id,
+      ([input]) =>
+        input.reference.mapperIngredientId === saved.items[0]!.ingredient.canonical_ingredient_id,
     );
     expect(mainCall?.[0].context.requestedRole).toBe('STANDARD');
     expect(useRecipeStore.getState().items[0]?.lock_type).toBe('main');
@@ -451,10 +460,12 @@ describe('legacy recipe runtime resolution', () => {
     useRecipeStore.getState().startNewRecipe('sorbet');
     const starter = buildRecipeInput(useRecipeStore.getState());
     const expected = productBehaviorTestSnapshots(starter);
-    const byMapper = new Map(starter.items.map((item) => [
-      item.ingredient.canonical_ingredient_id ?? item.ingredient.id,
-      { item, snapshot: expected[item.id]! },
-    ]));
+    const byMapper = new Map(
+      starter.items.map((item) => [
+        item.ingredient.canonical_ingredient_id ?? item.ingredient.id,
+        { item, snapshot: expected[item.id]! },
+      ]),
+    );
     mocks.resolve.mockImplementation(async ({ reference }) => {
       const fixture = byMapper.get(reference.mapperIngredientId ?? reference.canonicalIdentity);
       if (!fixture) return null;
@@ -537,10 +548,12 @@ describe('legacy recipe runtime resolution', () => {
 
     expect(useRecipeStore.getState().visibleProductType).toBe('gelato');
     expect(useRecipeStore.getState().items).toEqual(hydratedGelatoItems);
-    expect(host.querySelector('[role="dialog"]')).not.toBeNull();
+    expect(document.body.querySelector('[role="dialog"]')).not.toBeNull();
 
     await act(async () =>
-      (host.querySelector('[data-testid="confirm-new-recipe"]') as HTMLButtonElement).click(),
+      (
+        document.body.querySelector('[data-testid="confirm-new-recipe"]') as HTMLButtonElement
+      ).click(),
     );
 
     const protein = useRecipeStore.getState();

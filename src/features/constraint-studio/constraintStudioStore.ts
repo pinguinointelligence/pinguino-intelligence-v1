@@ -596,6 +596,14 @@ export interface ConstraintStudioState {
   starterPackRescuePending: boolean;
   directionConsent: DirectionBestAchievableConsent | null;
   blocked: BlockedApply | null;
+  /** A successful canonical recipe write whose secondary consumers could not
+   * all be republished. This is deliberately not `blocked`: the recipe and
+   * Apply history already changed, so customer copy must never say that the
+   * change was not applied. Session-only and acknowledgement-only. */
+  postApplyNotice: {
+    state: 'APPLIED_WITH_INCOMPLETE_CONSUMERS';
+    messagePl: string;
+  } | null;
   /** Terminal Apply lifecycle state; true only while server/Worker validation runs. */
   applyPending: boolean;
   feasibility: ConstraintFeasibilityAnalysis | null;
@@ -676,6 +684,7 @@ export interface ConstraintStudioState {
   runFeasibility: () => void;
   clearFeasibility: () => void;
   dismissBlocked: () => void;
+  acknowledgePostApplyNotice: () => void;
   markProCoreRecipe: (recipeId: string, versionNumber: number) => void;
 
   /** Test seam — fresh session state. */
@@ -699,6 +708,7 @@ const INITIAL = {
   starterPackRescuePending: false,
   directionConsent: null,
   blocked: null,
+  postApplyNotice: null as ConstraintStudioState['postApplyNotice'],
   applyPending: false,
   feasibility: null,
   history: [] as AppliedChangeRecord[],
@@ -726,6 +736,7 @@ const CLEAR_STAGED = {
   directionConsent: null,
   feasibility: null,
   blocked: null,
+  postApplyNotice: null,
   applyPending: false,
   recalculationTerminal: null,
 };
@@ -2049,6 +2060,8 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
       acknowledgeCrownOffCorrection: () => set({ crownOffCorrectionNotice: null }),
 
       dismissBlocked: () => set({ blocked: null }),
+
+      acknowledgePostApplyNotice: () => set({ postApplyNotice: null }),
 
       markProCoreRecipe: (recipeId, versionNumber) =>
         set({ proCoreRecipeId: recipeId, lastSavedVersion: versionNumber }),
@@ -3769,12 +3782,18 @@ export async function applyPreviewWithServerAuthority(
       : currentSnapshots;
   const revision = draft.revision;
   const technicalOnlyMainLineIds = recipeAtStart.ownerReviewGate?.technicalOnlyMainLineIds ?? [];
-  useConstraintStudioStore.setState({ applyPending: true, blocked: null });
+  useConstraintStudioStore.setState({
+    applyPending: true,
+    blocked: null,
+    postApplyNotice: null,
+  });
+  let technicalApplyCommitted = false;
 
   const publishStale = (): void => {
     useConstraintStudioStore.setState({
       preview: null,
       applyPending: false,
+      postApplyNotice: null,
       blocked: {
         code: 'stale_preview',
         messagePl:
@@ -3875,6 +3894,7 @@ export async function applyPreviewWithServerAuthority(
     ) {
       return;
     }
+    technicalApplyCommitted = true;
 
     const appliedDraft = selectCanonicalDraft();
     const appliedRevision = appliedDraft.revision;
@@ -3901,10 +3921,11 @@ export async function applyPreviewWithServerAuthority(
     if (!currentResult.ready) {
       useConstraintStudioStore.setState({
         applyPending: false,
-        blocked: {
-          code: 'apply_validation_failed',
+        blocked: null,
+        postApplyNotice: {
+          state: 'APPLIED_WITH_INCOMPLETE_CONSUMERS',
           messagePl:
-            'Zmiany zostały zastosowane, ale bieżący wynik nie przeszedł pełnej walidacji Monitor / wartości odżywcze / koszt. Uruchom Przelicz ponownie.',
+            'Receptura została zmieniona, ale Monitor, wartości odżywcze lub koszt nie zostały w pełni odświeżone. Uruchom Przelicz ponownie.',
         },
       });
       return;
@@ -3930,18 +3951,35 @@ export async function applyPreviewWithServerAuthority(
     // promotion. These calls store no duplicate numbers; the UI recomputes from
     // the same canonical input/frozen facts through its normal selectors.
     establishCurrentRecipeCalculation();
-    useConstraintStudioStore.setState({ applyPending: false, blocked: null });
+    useConstraintStudioStore.setState({
+      applyPending: false,
+      blocked: null,
+      postApplyNotice: null,
+    });
   } catch {
     const current = useConstraintStudioStore.getState();
     if (current.preview !== preview && !current.applyPending) return;
-    useConstraintStudioStore.setState({
-      applyPending: false,
-      blocked: {
-        code: 'apply_validation_failed',
-        messagePl:
-          'Nie można zastosować zmian: ponowna weryfikacja podglądu nie została zakończona. Utwórz nowy podgląd.',
-      },
-    });
+    useConstraintStudioStore.setState(
+      technicalApplyCommitted
+        ? {
+            applyPending: false,
+            blocked: null,
+            postApplyNotice: {
+              state: 'APPLIED_WITH_INCOMPLETE_CONSUMERS',
+              messagePl:
+                'Receptura została zmieniona, ale jej bieżące wyniki nie zostały w pełni odświeżone. Uruchom Przelicz ponownie.',
+            },
+          }
+        : {
+            applyPending: false,
+            postApplyNotice: null,
+            blocked: {
+              code: 'apply_validation_failed',
+              messagePl:
+                'Nie można zastosować zmian: ponowna weryfikacja podglądu nie została zakończona. Utwórz nowy podgląd.',
+            },
+          },
+    );
   } finally {
     const current = useConstraintStudioStore.getState();
     if (current.preview === preview && current.applyPending) {

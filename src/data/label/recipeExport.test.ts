@@ -18,6 +18,7 @@ const NUTRITION: NutritionPer100g = {
 };
 
 const COMPLETE_COSTS: RecipeCosts = {
+  known_cost: 1.2,
   total_cost: 1.2,
   cost_per_kg: 2.4,
   cost_per_serving_60g: 0.14,
@@ -28,6 +29,7 @@ const COMPLETE_COSTS: RecipeCosts = {
 } as unknown as RecipeCosts;
 
 const INCOMPLETE_COSTS: RecipeCosts = {
+  known_cost: 0.8,
   total_cost: null,
   cost_per_kg: null,
   cost_per_serving_60g: null,

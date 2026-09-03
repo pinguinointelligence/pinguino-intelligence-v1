@@ -5,6 +5,7 @@ import { SectionLabel } from '@/components/shared/SectionLabel';
 import { buttonClasses } from '@/components/ui/buttonStyles';
 import { copy } from '@/copy/en';
 import { cn } from '@/lib/cn';
+import { DialogShell } from '@/components/ui/DialogShell';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { recipeCapabilitiesFor } from '@/features/pro-core/proCoreCapabilities';
 import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
@@ -148,112 +149,117 @@ export function SaveRecipeDialog({ onClose }: { onClose: () => void }) {
   };
 
   const primaryLabel = busy ? d.saving : asNew ? d.createButton : d.versionButton(nextVersion);
+  const dialogTitle = asNew ? d.createTitle : d.versionTitle;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-6">
-      <button
-        type="button"
-        aria-label={d.cancel}
-        className="absolute inset-0 h-full w-full bg-ink/30"
-        onClick={onClose}
-      />
-      <div className="relative w-full max-w-sm rounded-xl border border-ink/10 bg-paper p-7">
-        <SectionLabel>{asNew ? d.createTitle : d.versionTitle}</SectionLabel>
+    <DialogShell
+      label={dialogTitle}
+      testId="save-recipe-dialog"
+      onClose={onClose}
+      placement="responsive"
+      dismissOnBackdrop
+      showCloseControl
+      closeLabel={d.cancel}
+      initialFocusTestId={needsName ? 'save-name' : 'save-note'}
+      panelClassName="max-w-sm bg-paper p-7"
+    >
+      <div className="pr-12">
+        <SectionLabel>{dialogTitle}</SectionLabel>
+      </div>
 
-        {linked && !asNew ? (
-          <p className="mt-3 text-xs leading-relaxed text-stone-500" data-testid="save-linked-line">
-            {d.linkedLine(savedRecipeName ?? '—', latestVersionNumber ?? currentVersionNumber ?? 1)}
-          </p>
-        ) : null}
+      {linked && !asNew ? (
+        <p className="mt-3 text-xs leading-relaxed text-stone-500" data-testid="save-linked-line">
+          {d.linkedLine(savedRecipeName ?? '—', latestVersionNumber ?? currentVersionNumber ?? 1)}
+        </p>
+      ) : null}
 
-        {viewingHistoricalVersion && !asNew ? (
-          <p
-            className="mt-3 text-xs leading-relaxed text-stone-600"
-            data-testid="save-historical-note"
-          >
-            {d.historicalSaveNote(currentVersionNumber ?? 1, nextVersion)}
-          </p>
-        ) : null}
+      {viewingHistoricalVersion && !asNew ? (
+        <p
+          className="mt-3 text-xs leading-relaxed text-stone-600"
+          data-testid="save-historical-note"
+        >
+          {d.historicalSaveNote(currentVersionNumber ?? 1, nextVersion)}
+        </p>
+      ) : null}
 
-        {isLocalDev ? (
-          <p className="mt-3 rounded border border-amber-400 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-            {copy.proCore.localMode}
-          </p>
-        ) : null}
+      {isLocalDev ? (
+        <p className="mt-3 rounded border border-amber-400 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          {copy.proCore.localMode}
+        </p>
+      ) : null}
 
-        <form className="mt-5 space-y-4" onSubmit={onSubmit}>
-          {needsName ? (
-            <label className="block">
-              <span className="text-xs tracking-label text-stone-500 uppercase">{d.nameLabel}</span>
-              <input
-                required
-                autoFocus
-                value={name}
-                placeholder={d.namePlaceholder}
-                onChange={(event) => setName(event.target.value)}
-                className={fieldClass}
-                data-testid="save-name"
-              />
-            </label>
-          ) : null}
+      <form className="mt-5 space-y-4" onSubmit={onSubmit}>
+        {needsName ? (
           <label className="block">
-            <span className="text-xs tracking-label text-stone-500 uppercase">
-              {asNew ? d.firstNoteLabel : d.changeNoteLabel}
-            </span>
-            <textarea
-              rows={2}
-              value={note}
-              onChange={(event) => setNote(event.target.value)}
-              className={cn(fieldClass, 'resize-none')}
-              data-testid="save-note"
+            <span className="text-xs tracking-label text-stone-500 uppercase">{d.nameLabel}</span>
+            <input
+              required
+              autoFocus
+              value={name}
+              placeholder={d.namePlaceholder}
+              onChange={(event) => setName(event.target.value)}
+              className={fieldClass}
+              data-testid="save-name"
             />
           </label>
+        ) : null}
+        <label className="block">
+          <span className="text-xs tracking-label text-stone-500 uppercase">
+            {asNew ? d.firstNoteLabel : d.changeNoteLabel}
+          </span>
+          <textarea
+            rows={2}
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+            className={cn(fieldClass, 'resize-none')}
+            data-testid="save-note"
+          />
+        </label>
 
-          {blocked ? <p className="text-xs leading-relaxed text-stone-500">{blocked}</p> : null}
-          {error ? (
-            <p
-              role="alert"
-              className="text-xs leading-relaxed text-status-risky"
-              data-testid="save-error"
-            >
-              {error}
-            </p>
-          ) : null}
+        {blocked ? <p className="text-xs leading-relaxed text-stone-500">{blocked}</p> : null}
+        {error ? (
+          <p
+            role="alert"
+            className="text-xs leading-relaxed text-status-risky"
+            data-testid="save-error"
+          >
+            {error}
+          </p>
+        ) : null}
 
-          <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2">
+          <button
+            type="submit"
+            disabled={!canSubmit}
+            className={cn(buttonClasses('primary', 'sm'), !canSubmit && 'opacity-50')}
+            data-testid="save-primary"
+          >
+            {primaryLabel}
+          </button>
+          {linked && !asNew ? (
             <button
-              type="submit"
-              disabled={!canSubmit}
-              className={cn(buttonClasses('primary', 'sm'), !canSubmit && 'opacity-50')}
-              data-testid="save-primary"
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                setAsNew(true);
+                setError(null);
+              }}
+              className={cn(buttonClasses('ghost', 'sm'), busy && 'opacity-50')}
+              data-testid="save-as-new"
             >
-              {primaryLabel}
+              {d.saveAsNew}
             </button>
-            {linked && !asNew ? (
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => {
-                  setAsNew(true);
-                  setError(null);
-                }}
-                className={cn(buttonClasses('ghost', 'sm'), busy && 'opacity-50')}
-                data-testid="save-as-new"
-              >
-                {d.saveAsNew}
-              </button>
-            ) : null}
-          </div>
-        </form>
+          ) : null}
+        </div>
+      </form>
 
-        <button
-          type="button"
-          className="mt-4 text-xs text-stone-400 transition-colors hover:text-ink"
-          onClick={onClose}
-        >
-          {r.cancel}
-        </button>
-      </div>
-    </div>
+      <button
+        type="button"
+        className="mt-4 text-xs text-stone-400 transition-colors hover:text-ink"
+        onClick={onClose}
+      >
+        {r.cancel}
+      </button>
+    </DialogShell>
   );
 }

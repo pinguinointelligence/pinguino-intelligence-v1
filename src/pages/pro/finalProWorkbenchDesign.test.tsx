@@ -420,8 +420,8 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
     expect(panel).not.toContain('UserMonitorPro');
     expect(panel).not.toContain('OverallScoreCard');
     const preview = read('features', 'pro-core', 'ProRecalcPanel.tsx');
-    expect(preview).toContain('fixed inset-0');
-    expect(preview).toContain('role="dialog"');
+    expect(preview).toContain('<DialogShell');
+    expect(read('components', 'ui', 'DialogShell.tsx')).toContain('role="dialog"');
     expect(preview).toContain('effectiveAccess?.canAdmin === true');
     expect(preview).toContain('showTechnicalDetails={canViewTechnicalDetails}');
     expect(preview).toContain("'Sprawdź proponowaną korektę.'");

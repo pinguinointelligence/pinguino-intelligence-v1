@@ -2,13 +2,12 @@
  * PINGÜINO Pro — Monitor PI drawer (bottom sheet on mobile, right sheet on sm+). Opened
  * from the workbar; renders the SAME complete `MonitorPanelContent` as the desktop LIVE
  * right panel (owner B1 parity — the sheet is never a reduced Monitor) on the LIVE
- * engine result (recomputed on every change) — no new Monitor math. Dark panel per the
- * design lock. ONE predictable scroll surface (B6): the sheet body scrolls, nothing
- * inside it clips. Accessible: backdrop, body-scroll lock, Escape, safe-area padding.
+ * engine result (recomputed on every change) — no new Monitor math. ONE predictable
+ * scroll surface (B6): the shared light Gellatti shell scrolls, nothing inside it clips.
+ * DialogShell owns backdrop, focus, body-scroll lock, Escape and safe-area padding.
  */
-import { useEffect } from 'react';
-import { SurfaceToneContext } from '@/components/ui/surface';
 import { copy } from '@/copy/en';
+import { DialogShell } from '@/components/ui/DialogShell';
 import { MonitorPanelContent } from '@/features/pro-workbench/MonitorPanelContent';
 import { useStudioResult } from '@/features/studio/useStudioResult';
 import { useRecipeStore } from '@/stores/recipeStore';
@@ -17,70 +16,28 @@ export function MonitorDrawer({ open, onClose }: { open: boolean; onClose: () =>
   const { result, corrections, input } = useStudioResult();
   const temperatureC = useRecipeStore((s) => s.target_temperature_c);
 
-  useEffect(() => {
-    if (!open) return;
-    const body = document.body;
-    const prev = body.style.overflow;
-    body.style.overflow = 'hidden';
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      body.style.overflow = prev;
-    };
-  }, [open, onClose]);
-
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50" data-testid="pro-monitor-drawer">
-      <button
-        type="button"
-        aria-label={copy.shell.closeMenu}
-        onClick={onClose}
-        className="absolute inset-0 h-full w-full bg-black/60 motion-safe:animate-[appFadeIn_150ms_ease-out]"
+    <DialogShell
+      label={copy.proWorkbar.monitor}
+      testId="pro-monitor-drawer"
+      onClose={onClose}
+      placement="responsive"
+      dismissOnBackdrop
+      showCloseControl
+      closeLabel={copy.shell.closeMenu}
+      panelClassName="bg-white p-5 text-ink [color-scheme:light] sm:w-[min(680px,94vw)]"
+    >
+      <h2 className="mb-4 pr-12 text-sm font-semibold tracking-label text-ink uppercase">
+        {copy.proWorkbar.monitor}
+      </h2>
+      <MonitorPanelContent
+        result={result}
+        servingTemperatureC={temperatureC}
+        corrections={corrections}
+        input={input}
       />
-      <SurfaceToneContext.Provider value="shell">
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label={copy.proWorkbar.monitor}
-          className="absolute inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto rounded-t-2xl border-t border-ivory/10 bg-shell p-5 text-ivory [color-scheme:dark] sm:inset-y-0 sm:left-auto sm:right-0 sm:max-h-none sm:w-[480px] sm:max-w-[92vw] sm:rounded-none sm:border-l sm:border-t-0"
-          style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 1.25rem)' }}
-        >
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-medium tracking-label text-ivory uppercase">
-              {copy.proWorkbar.monitor}
-            </h2>
-            <button
-              type="button"
-              aria-label={copy.shell.closeMenu}
-              onClick={onClose}
-              className="grid h-11 w-11 place-items-center rounded-lg text-ivory transition-colors hover:bg-ivory/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-ivory/40"
-            >
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={1.7}
-                aria-hidden
-              >
-                <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
-              </svg>
-            </button>
-          </div>
-          <MonitorPanelContent
-            result={result}
-            servingTemperatureC={temperatureC}
-            corrections={corrections}
-            input={input}
-          />
-        </div>
-      </SurfaceToneContext.Provider>
-    </div>
+    </DialogShell>
   );
 }
