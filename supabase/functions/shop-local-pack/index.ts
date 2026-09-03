@@ -69,6 +69,11 @@ Deno.serve(async (req) => {
 
   let body: {
     countryIso2?: string;
+    /* QA ONLY (§15). Sends a SECOND, clearly-marked copy of the notification to
+       an owner inbox so a country's pack can be inspected without logging in as
+       that country's QA account. Honoured only for a FINANCE admin and only
+       outside production — the customer's own mail is untouched either way. */
+    qaDeliverTo?: string;
     address?: {
       name?: string;
       line1?: string;
@@ -273,6 +278,51 @@ Deno.serve(async (req) => {
     console.error('local-pack email queue failed', order.id, emailError.message);
   }
 
+  /* §15 — the QA copy. A SEPARATE `email_jobs` row through the same canonical
+     enqueue, never a second mail system and never a redirect of the customer's
+     own message: the order stays attributed to its country QA account, and the
+     owner inbox gets an unmistakably labelled duplicate.
+
+     Gated twice. Production is refused outright, and the caller must hold the
+     same FINANCE permission Admin requires — otherwise any signed-in customer
+     could post `qaDeliverTo` and have Gellatti mail a stranger. */
+  let qaEmailQueued = false;
+  const qaTarget = String(body.qaDeliverTo ?? '')
+    .trim()
+    .toLowerCase();
+  if (qaTarget !== '' && environment !== 'production') {
+    const { data: isAdmin } = await admin.rpc('gellatti_admin_has_permission_v1', {
+      p_permission: 'FINANCE',
+      p_actor_user_id: user.id,
+    });
+    if (isAdmin === true) {
+      const { data: qaJob } = await admin.rpc('gellatti_enqueue_email_v1', {
+        p_idempotency_key: `local-pack-qa:${order.id}`,
+        p_subject_key: 'shop.localStarterPack.qa',
+        p_subject: `Gellatti Local Starter Pack — ${readiness.name} [QA]`,
+        p_recipient: qaTarget,
+        p_body_html:
+          `<p><strong>QA — ${readiness.name} (${countryIso2})</strong></p>` +
+          `<p>Order ${order.order_number} · ${snapshot.components.length} components · 0 EUR</p>` +
+          `<p><a href="${orderUrl}">Open the shopping list</a></p>` +
+          `<p><a href="https://www.gellatti.com">www.gellatti.com</a></p>`,
+        p_body_text:
+          `QA — ${readiness.name} (${countryIso2})\n` +
+          `Order ${order.order_number} · ${snapshot.components.length} components · 0 EUR\n\n` +
+          `${orderUrl}\n\nwww.gellatti.com\n`,
+        p_environment: environment,
+        p_metadata: {
+          area: 'SHOP',
+          event: 'local_starter_pack_qa',
+          order_id: order.id,
+          country: countryIso2,
+        },
+        p_max_attempts: 5,
+      });
+      qaEmailQueued = Boolean((qaJob as { id?: string } | null)?.id);
+    }
+  }
+
   return json(200, {
     orderId: order.id,
     orderNumber: order.order_number,
@@ -281,5 +331,6 @@ Deno.serve(async (req) => {
     /* Reported, not hidden: the order is valid either way, but an operator
        should not have to query the database to learn the mail never queued. */
     emailQueued: Boolean(emailJob?.id),
+    qaEmailQueued,
   });
 });
