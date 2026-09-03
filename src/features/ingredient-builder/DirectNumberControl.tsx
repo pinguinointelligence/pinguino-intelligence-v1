@@ -208,7 +208,8 @@ export function DirectNumberControl({
   return (
     <div
       className={cn(
-        'grid min-w-0 max-w-full items-center overflow-hidden border border-ink/12 bg-white shadow-pro-sm transition-[border-color,background-color,box-shadow] focus-within:border-[#f58a07] focus-within:shadow-[0_0_0_3px_rgb(245_138_7_/_0.15)]',
+        'grid box-border min-w-0 max-w-full items-center overflow-hidden border border-ink/12 bg-white shadow-pro-sm transition-[border-color,background-color,box-shadow] focus-within:border-[#f58a07] focus-within:shadow-[0_0_0_3px_rgb(245_138_7_/_0.15)]',
+        widthPreset !== 'fluid' && 'shrink-0',
         // The radius is chosen HERE, not in the base literal, because
         // `.pro-studio-radius-system` normalises every rectangular Tailwind
         // radius to 9 px with `!important` and excludes only `rounded-full`.
@@ -223,11 +224,11 @@ export function DirectNumberControl({
         widthPreset === 'percent' &&
           (compact
             ? lockSegment
-              ? 'w-[142px] grid-cols-[28px_64px_28px_22px]'
+              ? 'w-[142px] grid-cols-[28px_54px_28px_30px]'
               : 'w-[114px] grid-cols-[28px_58px_28px]'
             : responsive
               ? lockSegment
-                ? 'w-[204px] grid-cols-[44px_72px_44px_44px] lg:w-[142px] lg:grid-cols-[28px_64px_28px_22px]'
+                ? 'w-[204px] grid-cols-[44px_72px_44px_44px] lg:w-[142px] lg:grid-cols-[28px_54px_28px_30px]'
                 : 'w-[160px] grid-cols-[44px_72px_44px] lg:w-[114px] lg:grid-cols-[28px_58px_28px]'
               : lockSegment
                 ? 'w-[204px] grid-cols-[44px_72px_44px_44px]'
@@ -235,11 +236,11 @@ export function DirectNumberControl({
         widthPreset === 'grams' &&
           (compact
             ? lockSegment
-              ? 'w-[150px] grid-cols-[28px_72px_28px_22px]'
+              ? 'w-[150px] grid-cols-[28px_62px_28px_30px]'
               : 'w-[122px] grid-cols-[28px_66px_28px]'
             : responsive
               ? lockSegment
-                ? 'w-[220px] grid-cols-[44px_88px_44px_44px] lg:w-[150px] lg:grid-cols-[28px_72px_28px_22px]'
+                ? 'w-[220px] grid-cols-[44px_88px_44px_44px] lg:w-[150px] lg:grid-cols-[28px_62px_28px_30px]'
                 : 'w-[176px] grid-cols-[44px_88px_44px] lg:w-[122px] lg:grid-cols-[28px_66px_28px]'
               : lockSegment
                 ? 'w-[220px] grid-cols-[44px_88px_44px_44px]'
@@ -247,11 +248,11 @@ export function DirectNumberControl({
         widthPreset === 'fluid' &&
           (compact
             ? lockSegment
-              ? 'w-full grid-cols-[28px_minmax(66px,1fr)_28px_28px]'
+              ? 'w-full grid-cols-[28px_minmax(62px,1fr)_28px_30px]'
               : 'w-full grid-cols-[28px_minmax(66px,1fr)_28px]'
             : responsive
               ? lockSegment
-                ? 'w-full grid-cols-[44px_minmax(80px,1fr)_44px_44px] lg:grid-cols-[28px_minmax(66px,1fr)_28px_28px]'
+                ? 'w-full grid-cols-[44px_minmax(80px,1fr)_44px_44px] lg:grid-cols-[28px_minmax(62px,1fr)_28px_30px]'
                 : 'w-full grid-cols-[44px_minmax(80px,1fr)_44px] lg:grid-cols-[28px_minmax(66px,1fr)_28px]'
               : lockSegment
                 ? 'w-full grid-cols-[44px_minmax(80px,1fr)_44px_44px]'
@@ -327,7 +328,15 @@ export function DirectNumberControl({
       <label
         className={cn(
           'col-start-2 row-start-1 flex h-full min-w-0 items-center justify-center border-x border-ink/18',
-          compact ? 'px-1.5' : responsive ? 'px-2 lg:px-1.5' : 'px-2',
+          compact
+            ? lockSegment
+              ? 'px-1'
+              : 'px-1.5'
+            : responsive
+              ? lockSegment
+                ? 'px-2 lg:px-1'
+                : 'px-2 lg:px-1.5'
+              : 'px-2',
         )}
       >
         <span className="sr-only">{ariaLabel}</span>
@@ -464,7 +473,7 @@ export function DirectNumberControl({
             lockSegment.onToggle();
           }}
           className={cn(
-            'col-start-4 row-start-1 inline-flex items-center justify-center border-l border-ink/18 transition-colors focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#f58a07]',
+            'col-start-4 row-start-1 inline-flex shrink-0 items-center justify-center border-l border-ink/18 transition-colors focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#f58a07]',
             lockSegmentSize,
             lockSegment.pressed
               ? 'bg-stone-200 text-ink'
