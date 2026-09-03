@@ -3,6 +3,7 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { copy } from '@/copy/en';
+import { findDemoIngredient } from '@/data/demoIngredients';
 import { assessSorbetStabilizerSystem } from '@/features/recipe-constraints';
 import { starterMilkBase } from '@/features/recipe-constraints/constraintFixtures';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
@@ -17,6 +18,10 @@ import {
   type SaveBlocker,
 } from '@/features/recipes/saveBlocker';
 import { useRecipeProfileStore } from './recipeProfileStore';
+import {
+  attachRecipeProfileMetadata,
+  profileSnapshotFromState,
+} from './recipeProfilePersistence';
 import { WorkbenchSettingsLine } from './WorkbenchSettingsLine';
 
 const NATIVE_PROFILE_STARTERS = {
@@ -757,7 +762,7 @@ describe('WorkbenchSettingsLine — one editable batch field', () => {
 
 });
 
-describe('WorkbenchSettingsLine — forced open vs manual expansion', () => {
+describe('WorkbenchSettingsLine — initial attention vs manual expansion', () => {
   let host: HTMLDivElement;
   let root: ReturnType<typeof createRoot>;
 
@@ -772,7 +777,15 @@ describe('WorkbenchSettingsLine — forced open vs manual expansion', () => {
 
   /* The blocker is TYPED now, and its `action` is what routes it. Settings is
      the next action only for `SETTINGS_CONFIRMATION_REQUIRED`; a recalculation
-     refusal must leave this module alone, which the last test below proves. */
+     refusal must leave this module alone. Neither blocker controls disclosure. */
+  const confirm = async () => {
+    const button = host.querySelector(
+      '[data-testid="profile-settings-confirm"]',
+    ) as HTMLButtonElement;
+    expect(button).not.toBeNull();
+    await act(async () => button.click());
+  };
+
   const setBlocker = async (blocker: SaveBlocker | null) => {
     await act(async () => {
       useRecipeProfileStore.getState().setPreflightBlocker(blocker);
@@ -808,89 +821,123 @@ describe('WorkbenchSettingsLine — forced open vs manual expansion', () => {
     host.remove();
   });
 
-  it('starts collapsed when nothing is blocking the save', async () => {
-    expect(surface()).toBe('collapsed');
+  it('auto-opens a new recipe with no confirmed Settings baseline', async () => {
+    expect(surface()).toBe('expanded');
+    expect(disclosure().getAttribute('aria-expanded')).toBe('true');
     expect(blocked()).toBeNull();
   });
 
-  /* THE REGRESSION THE OWNER ASKED FOR, end to end.
+  it('collapses immediately after the initial Settings confirmation', async () => {
+    await confirm();
+    expect(surface()).toBe('collapsed');
+    expect(disclosure().getAttribute('aria-expanded')).toBe('false');
+    expect(host.querySelector('[data-testid="profile-settings-confirmed"]')).not.toBeNull();
+  });
 
-     The defect being locked out: while the blocker held the module open, the
-     single `expanded` flag was still false, so a click meant to CLOSE flipped
-     it to TRUE. The module correctly refused to collapse during the block —
-     and then stayed open once the block cleared, which is the opposite of what
-     the click asked for.
+  it.each([
+    ['sweetness', () => useRecipeStore.getState().setDirectionTarget('sweetness', 1)],
+    ['hardness', () => useRecipeStore.getState().setDirectionTarget('softness', -1)],
+    [
+      'ingredient grams',
+      () => {
+        const line = useRecipeStore.getState().items[0]!;
+        useRecipeStore.getState().setPlannedGrams(line.id, line.planned_grams + 1);
+      },
+    ],
+    [
+      'ingredient add',
+      () => useRecipeStore.getState().addIngredient(findDemoIngredient('inulin')!, 5),
+    ],
+    [
+      'ingredient remove',
+      () => useRecipeStore.getState().removeItem(useRecipeStore.getState().items[1]!.id),
+    ],
+    [
+      'ingredient replace',
+      () => {
+        const first = useRecipeStore.getState().items[0]!;
+        const replacement = findDemoIngredient('inulin')!;
+        useRecipeStore.setState((state) => ({
+          items: state.items.map((item) =>
+            item.id === first.id ? { ...item, ingredient: replacement } : item,
+          ),
+          dirty: true,
+          draftRevision: state.draftRevision + 1,
+        }));
+        useRecipeProfileStore.getState().markRecalculationRequired();
+      },
+    ],
+    [
+      'topping add',
+      () =>
+        useRecipeStore
+          .getState()
+          .addTopping(useRecipeStore.getState().items[0]!.ingredient, 12),
+    ],
+    [
+      'dirty/recalculation state',
+      () => {
+        useRecipeStore.setState({ dirty: true });
+        useRecipeProfileStore.getState().markRecalculationRequired();
+      },
+    ],
+  ])('stays collapsed after confirmation when %s changes', async (_name, mutate) => {
+    await confirm();
+    await act(async () => mutate());
+    expect(surface()).toBe('collapsed');
+  });
 
-     The blocker is cleared here through the profile store rather than by
-     driving a real confirmation, because that is the seam: the save gate lives
-     in `useCanonicalRecipeSave` and reaches this module only as that published
-     message. What is under test is this module's response to it. */
-  it('forced open -> attempted collapse -> blocker clears -> COLLAPSED', async () => {
+  it('reopens the same confirmed saved recipe collapsed without replaying onboarding', async () => {
+    await confirm();
+    const recipe = useRecipeStore.getState();
+    const profile = useRecipeProfileStore.getState();
+    const input = attachRecipeProfileMetadata(
+      buildRecipeInput(recipe),
+      profileSnapshotFromState(recipe, recipe.direction_targets, profile.directionIntents),
+    );
+    await act(async () => {
+      useRecipeStore
+        .getState()
+        .markSaved('settings-reopen', 'Settings reopen', 1, null, undefined, 'settings-reopen-v1');
+      useRecipeStore.getState().loadRecipeInput(input, {
+        savedId: 'settings-reopen',
+        savedName: 'Settings reopen',
+        versionNumber: 1,
+        versionId: 'settings-reopen-v1',
+      });
+    });
+    expect(surface()).toBe('collapsed');
+    expect(host.textContent).toContain('Zatwierdzone');
+  });
+
+  it('shows a later settings-specific warning but leaves disclosure closed', async () => {
+    await confirm();
+    await act(async () => useRecipeStore.getState().setFormulationStrategy('eco'));
     await setBlocker(settingsBlocker);
-    expect(surface(), 'the blocker must open the module').toBe('expanded');
-    expect(blocked()).toBe('true');
 
-    await act(async () => disclosure().click());
-    expect(surface(), 'it may not collapse while the blocker holds it').toBe('expanded');
+    expect(host.textContent).toContain('Wymaga potwierdzenia');
     expect(blocked()).toBe('true');
+    expect(surface()).toBe('collapsed');
+  });
+
+  it('respects manual open and close intent even while a save blocker is present', async () => {
+    await confirm();
+    await act(async () => disclosure().click());
+    expect(surface()).toBe('expanded');
+
+    await setBlocker(settingsBlocker);
+    expect(surface()).toBe('expanded');
+    await act(async () => disclosure().click());
+    expect(surface()).toBe('collapsed');
 
     await setBlocker(null);
-    expect(surface(), 'the attempted close must win once the blocker is gone').toBe('collapsed');
-    expect(blocked()).toBeNull();
+    expect(surface()).toBe('collapsed');
   });
 
-  it('leaves this module alone when the next action is somewhere else', async () => {
-    /* ONE blocker, ONE next action. A recalculation refusal points at
-       „Przelicz"; if Settings opened and took the attention marker here it
-       would show „Zatwierdzone" beside a sentence asking for something else,
-       and send the owner looking for a decision they had already made. */
+  it('does not route a recalculation blocker into Settings attention', async () => {
+    await confirm();
     await setBlocker(recalcBlocker);
     expect(surface()).toBe('collapsed');
     expect(blocked()).toBeNull();
-
-    // ...and it still answers its OWN blocker.
-    await setBlocker(settingsBlocker);
-    expect(surface()).toBe('expanded');
-    expect(blocked()).toBe('true');
-  });
-
-  it('collapses on its own when the blocker clears untouched', async () => {
-    await setBlocker(settingsBlocker);
-    expect(surface()).toBe('expanded');
-    await setBlocker(null);
-    expect(surface()).toBe('collapsed');
-  });
-
-  it('does not fight the owner after the blocker is gone', async () => {
-    await setBlocker(settingsBlocker);
-    await act(async () => disclosure().click());
-    await setBlocker(null);
-    expect(surface()).toBe('collapsed');
-
-    // Normal toggling resumes: open, then closed, with nothing overriding it.
-    await act(async () => disclosure().click());
-    expect(surface()).toBe('expanded');
-    await act(async () => disclosure().click());
-    expect(surface()).toBe('collapsed');
-  });
-
-  it('keeps a deliberate manual expansion after the blocker comes and goes', async () => {
-    await act(async () => disclosure().click());
-    expect(surface()).toBe('expanded');
-    await setBlocker(settingsBlocker);
-    expect(surface()).toBe('expanded');
-    await setBlocker(null);
-    // Never touched during the block, so the owner's own choice survives it.
-    expect(surface()).toBe('expanded');
-  });
-
-  it('settles immediately — no open/close flicker while the blocker stands', async () => {
-    await setBlocker(settingsBlocker);
-    const seen = new Set<string | null>();
-    for (let i = 0; i < 4; i += 1) {
-      await act(async () => root.render(<WorkbenchSettingsLine compact />));
-      seen.add(surface());
-    }
-    expect([...seen]).toEqual(['expanded']);
   });
 });
