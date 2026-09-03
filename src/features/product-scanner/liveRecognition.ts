@@ -42,6 +42,11 @@ export interface ObjectGuess {
   readonly label: string;
   readonly confidence: number;
   /**
+   * What the recogniser thinks it is looking at. This is what decides whether reading
+   * label text could possibly help: packaging has text, a banana does not.
+   */
+  readonly kind?: 'FRESH_PRODUCE' | 'PACKAGED' | 'UNCLEAR';
+  /**
    * The CATALOGUE's answer, when it had one. Never the recogniser's own invention: the
    * boundary that produced this guess resolved it server-side, or left this null.
    */
@@ -107,6 +112,11 @@ export interface LadderInput {
   readonly visionCalls: number;
   /** The rung that last produced an identity, while its evidence is still fresh. */
   readonly productiveRoute?: RecognitionAttempt | null;
+  /**
+   * True once vision has seen something it could not resolve that DOES carry label text
+   * worth reading. Only then is the OCR engine worth downloading and running.
+   */
+  readonly ocrEscalated?: boolean;
 }
 
 /**
@@ -121,30 +131,49 @@ export function nextRecognitionAttempt(input: LadderInput): RecognitionAttempt {
   return 'BARCODE';
 }
 
-/** The rung to try when the frame carried no readable barcode. */
+/**
+ * The rung to try when the frame carried no readable barcode.
+ *
+ * THE ESCALATION IS ORDERED BY WHAT ACTUALLY RESOLVES PRODUCTS, not by what is cheapest
+ * to run. Object identification answers both fresh produce and packaging; reading label
+ * text answers only packaging, and costs a second of phone CPU plus a multi-megabyte
+ * engine download the first time it is asked. So OCR sits BELOW vision and is reached
+ * only when vision has already failed to resolve something that has a label worth
+ * reading.
+ *
+ * A banana therefore never waits for OCR: vision names it, or it stays unresolved and
+ * goes to the deep flow. Text was never going to help.
+ */
 export function nextFallbackAttempt(input: LadderInput): RecognitionAttempt {
-  // STAY WITH WHAT WORKED. Alternating rungs looks fair and is actively harmful: a fresh
+  // STAY WITH WHAT WORKED. Alternating rungs looks fair and is actively harmful: a
   // product identified by the paid rung needs its observations to AGREE INSIDE one
-  // evidence window, and spending every other frame on a rung that already returned
-  // nothing pushes them apart until the window lapses — so the product never confirms at
-  // all. Once a rung has named something, it keeps its turn while that evidence is alive.
-  if (input.productiveRoute === 'VISION' && input.hasVision) {
-    const due =
-      input.lastVisionAt === null || input.at - input.lastVisionAt >= VISION_MIN_INTERVAL_MS;
-    // Not yet due: wait for it rather than spending the frame on the other rung.
-    return due && input.visionCalls < VISION_MAX_CALLS ? 'VISION' : 'NONE';
+  // evidence window, and spending every other frame elsewhere pushes them apart until the
+  // window lapses — so the product never confirms at all. Once a rung has named
+  // something, it keeps its turn while that evidence is alive.
+  if (input.productiveRoute === 'OCR' && input.hasOcr) {
+    const due = input.lastOcrAt === null || input.at - input.lastOcrAt >= OCR_MIN_INTERVAL_MS;
+    return due ? 'OCR' : 'NONE';
   }
-  if (
-    input.hasOcr &&
-    (input.lastOcrAt === null || input.at - input.lastOcrAt >= OCR_MIN_INTERVAL_MS)
-  )
-    return 'OCR';
-  if (
-    input.hasVision &&
-    input.visionCalls < VISION_MAX_CALLS &&
-    (input.lastVisionAt === null || input.at - input.lastVisionAt >= VISION_MIN_INTERVAL_MS)
-  )
-    return 'VISION';
+
+  const visionDue =
+    input.lastVisionAt === null || input.at - input.lastVisionAt >= VISION_MIN_INTERVAL_MS;
+  const visionAffordable = input.hasVision && input.visionCalls < VISION_MAX_CALLS;
+  const ocrDue = input.lastOcrAt === null || input.at - input.lastOcrAt >= OCR_MIN_INTERVAL_MS;
+
+  if (input.productiveRoute === 'VISION' && input.hasVision) {
+    // Not yet due: wait for it rather than spending the frame on something weaker.
+    return visionDue && visionAffordable ? 'VISION' : 'NONE';
+  }
+
+  // OCR is an ESCALATION, not a queue position. It becomes eligible only once vision has
+  // looked at something with a label and failed to resolve it — or when there is no
+  // vision on this device at all, in which case we are already past that rung. From then
+  // on it goes AHEAD of another paid call, because repeating a call that just returned
+  // nothing on this same view is the one option guaranteed to cost without informing.
+  const escalated = input.ocrEscalated === true || !input.hasVision;
+  if (escalated && input.hasOcr && ocrDue) return 'OCR';
+
+  if (visionAffordable && visionDue) return 'VISION';
   return 'NONE';
 }
 
@@ -165,6 +194,8 @@ export interface RecognitionCost {
   readonly visionCalls: number;
   readonly ocrReads: number;
   readonly barcodeDecodes: number;
+  /** How often the escalation actually reached OCR — the answer to "do we need it?". */
+  readonly ocrEscalations: number;
 }
 
 /**
@@ -180,6 +211,11 @@ export class LiveRecognizer {
   private lastOcrAt: number | null = null;
   /** The rung that last named something, and when — so the ladder can stay on it. */
   private productive: { route: RecognitionAttempt; at: number } | null = null;
+  /**
+   * Set once vision has seen unresolved PACKAGING. Until then the OCR engine is never
+   * asked for, and therefore never downloaded.
+   */
+  private ocrEscalatedAt: number | null = null;
   /** The most recent label text read locally, kept to corroborate a later identification. */
   private lastText: string | null = null;
   private lastVisionAt: number | null = null;
@@ -188,12 +224,19 @@ export class LiveRecognizer {
     visionCalls: 0,
     ocrReads: 0,
     barcodeDecodes: 0,
+    ocrEscalations: 0,
   };
 
   constructor(private readonly capabilities: RecognitionCapabilities) {}
 
   get spent(): RecognitionCost {
     return this.cost;
+  }
+
+  /** Open the OCR rung, and record that the escalation needed it. */
+  private escalateToOcr(at: number): void {
+    if (this.ocrEscalatedAt === null) this.spend('ocrEscalations');
+    this.ocrEscalatedAt = at;
   }
 
   /** Does the text we read locally actually support the name we were given? */
@@ -250,6 +293,10 @@ export class LiveRecognizer {
         this.productive && at - this.productive.at < PRODUCTIVE_ROUTE_TTL_MS
           ? this.productive.route
           : null,
+      // The escalation belongs to the VIEW that raised it, so it lapses with the
+      // evidence window. A new product starts back at the top of the ladder.
+      ocrEscalated:
+        this.ocrEscalatedAt !== null && at - this.ocrEscalatedAt < PRODUCTIVE_ROUTE_TTL_MS,
     };
     if (nextRecognitionAttempt(ladder) === 'NONE') return silent(at, quality);
 
@@ -359,6 +406,8 @@ export class LiveRecognizer {
         // is canonical and there is nothing left to look up.
         if (guess.resolved) {
           this.productive = { route: 'VISION', at };
+          // Resolved: whatever raised the escalation is answered, so it ends here.
+          this.ocrEscalatedAt = null;
           return {
             at,
             quality,
@@ -370,6 +419,10 @@ export class LiveRecognizer {
             corroboratedByText: this.textAgreesWith(guess.label),
           };
         }
+        // Vision looked and the catalogue did not know it. Reading label text is worth
+        // the engine download ONLY if there is a label: packaging has one, produce does
+        // not, so a banana goes straight to the deep flow instead of waiting for OCR.
+        if (guess.kind !== 'FRESH_PRODUCE') this.escalateToOcr(at);
         // Recognised, but not something Gellatti stocks. Carried, never named.
         return {
           at,
@@ -381,6 +434,8 @@ export class LiveRecognizer {
           confidence: guess.confidence,
         };
       }
+      // Vision saw nothing it could name at all. Text is the only thing left to try.
+      this.escalateToOcr(at);
       return silent(at, quality, 'VISION_FALLBACK');
     }
 

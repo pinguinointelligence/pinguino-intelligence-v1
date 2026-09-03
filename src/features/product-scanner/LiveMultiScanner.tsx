@@ -34,8 +34,6 @@ export interface LiveMultiScannerProps {
   /** Products the catalogue does not know — handed to the existing deep Scanner. */
   readonly onNeedsDeepScan: (products: readonly AcceptedProduct[]) => void;
   readonly onClose: () => void;
-  /** Off by default: local OCR costs about a second of phone CPU per frame. */
-  readonly enableOcr?: boolean;
 }
 
 /**
@@ -53,7 +51,6 @@ export function LiveMultiScanner({
   onAddToRecipe,
   onNeedsDeepScan,
   onClose,
-  enableOcr = false,
 }: LiveMultiScannerProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const controllerRef = useRef<LiveScanController | null>(null);
@@ -102,7 +99,7 @@ export function LiveMultiScanner({
       const controller = new LiveScanController({
         grabFrame: createVideoFrameGrabber(video),
         recognizer: new LiveRecognizer(
-          createLiveScanCapabilities({ enableOcr, sessionId: sessionIdRef.current }),
+          createLiveScanCapabilities({ sessionId: sessionIdRef.current }),
         ),
         stream,
         resumeFrom: snapshotRef.current,
@@ -139,7 +136,7 @@ export function LiveMultiScanner({
       controllerRef.current?.stop();
       for (const track of stream?.getTracks() ?? []) track.stop();
     };
-  }, [cameraActive, enableOcr]);
+  }, [cameraActive]);
 
   // Leaving the scanner for good releases the OCR engine's worker as well as the camera.
   // Neither should outlive the sweep on a phone.

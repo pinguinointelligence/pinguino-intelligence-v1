@@ -90,14 +90,12 @@ function sharedOcrSession(languages: readonly string[]): Promise<LabelOcrSession
 }
 
 export interface LiveCapabilityOptions {
-  /** Off by default: the sweep is barcode-first, and OCR costs a second of CPU a frame. */
-  readonly enableOcr?: boolean;
-  readonly languages?: readonly string[];
   /**
    * Identifies the sweep to the identification boundary, for dedupe and cost accounting.
    * Without it the paid rung is simply not offered.
    */
   readonly sessionId?: string | null;
+  readonly languages?: readonly string[];
 }
 
 /**
@@ -152,6 +150,7 @@ export function createLiveScanCapabilities(
             identityKey: answer.identity.name.toLowerCase(),
             label: answer.identity.name,
             confidence: answer.confidence,
+            kind: answer.kind ?? 'UNCLEAR',
             // The CATALOGUE's answer, resolved server-side. Null means Gellatti does not
             // know it, and the sweep will route it to the deep flow rather than name it.
             resolved: answer.resolution
@@ -162,8 +161,9 @@ export function createLiveScanCapabilities(
       }
     : base;
 
-  if (options.enableOcr !== true) return withVision;
-
+  // OCR is always AVAILABLE and never eagerly loaded. `readLabelText` is only ever
+  // called once the ladder has escalated to it, and the engine is imported inside that
+  // call — so a sweep that resolves by barcode or vision downloads no WASM at all.
   return {
     ...withVision,
     async readLabelText(source) {
