@@ -3,7 +3,7 @@
 **Canonical ledger — 199 rows** (A12 B9 C16 D7 E17 F16 G12 H22 I14 J8 K22 L10 M9 N25).
 Earlier prints said `TOTAL 172`. That denominator was wrong; the row text was always these 199.
 
-**Branch** `claude/gellatti-affiliate` @ `0b074201` (merged `origin/staging` `656ecd8a`, zero file overlap)
+**Branch** merged to `staging` @ `22ce861c` (PR #135, squash). Deployed + served-verified.
 **Legend** 🟢 proven with evidence · 🟡 built, proof partial · 🔴 blocked · ⚪ not started
 
 ```
@@ -24,23 +24,30 @@ B07 🟢 No Machines/Trailer/Franchise mix
 B08 🟢 Desktop nav — 1440 drawer: Affiliate->/affiliate, no Work With Us, no overflow
 B09 🟢 Mobile nav — 390 drawer: identical result
 
-AFFILIATE PAGE — VISUAL / COPY                                               14/16
+AFFILIATE PAGE — VISUAL / COPY                                               16/16
 C01-C14 🟢 hero · CTA · approved/pending · explainer · Standard · Gold ·
            Elite no public rate · "Indywidualne warunki." · audience · 3-step ·
            application · six sections pinned by test
-C15 🟡 Desktop visual QA — 1440 local preview: tiers present, Elite no €, 0 overflow
-C16 🟡 Mobile visual QA  — 390  local preview: same; SERVED run pending merge
+C15 🟢 Desktop visual QA — SERVED 1440 @22ce861c: bonus block reads figure │ vertical
+       rule │ text (x=112/246/291), Manrope loaded at 120px, 0 overflow
+C16 🟢 Mobile visual QA  — SERVED 390  @22ce861c: same hierarchy stacked, rule turns
+       horizontal (302×1), Manrope loaded at 104px, 0 overflow
+       Not owner QA — owner sees staging next.
 
 AFFILIATE PUBLIC COPY — FROZEN MEANING                                        7/7
 D01-D07 🟢 no "lifetime" · recurring renewals · attribution · Standard vs Gold ·
            threshold interpolated · no digit in any Elite string · 18-pattern leak guard
 
-AFFILIATE CALCULATOR                                                        15/17
+AFFILIATE CALCULATOR                                                        17/17
 E01-E14 🟢 implemented · Standard · Gold · 4 inputs · monthly · annual-renewal ·
            total · average · Elite no rate · Elite routes to conversation
 E15 🟢 Invalid input proven in-browser: negative->0, text->0, huge clamps at 1e6
        10 HOME-m + 5 PRO-m = 44,85 € ; +3/2 annual = 85 € ; 623,20 €/yr ; 51,93 €/mo
-E16 🟡 Calculator desktop QA (local 1440)   E17 🟡 Calculator mobile QA (local 390)
+E16 🟢 Calculator desktop QA — SERVED 1440 @22ce861c: 5 fields × 2 steppers, three
+       same-tick + clicks = 3 (functional updater, not stale closure), 0 overflow
+E17 🟢 Calculator mobile QA  — SERVED 390  @22ce861c: same; "02" → 2; two + from 0 = 2
+       Zestawy Startowe ×2 DISPLAYS 18 € (Standard 9 € × 2). Display only —
+       booking a commission row is #122 and is NOT done.
 
 AFFILIATE APPLICATION                                                         1/16
 F01 🟢 Existing authority reused — same panel, same RPC, same row
@@ -92,14 +99,21 @@ M01 ⚪ HOME  M02 ⚪ PRO  M03 ⚪ Shop  M04 🟡 Work With Us route (test, need
 M05 ⚪ Franchise  M06 ⚪ Global header  M07 ⚪ Partner data  M08 ⚪ Commission history
 M09 🟢 No Production/main change — every DB op and the deploy targeted staging only
 
-FINAL QA / DELIVERY                                                          7/25
+FINAL QA / DELIVERY                                                         15/25
 N01 🟢 Focused tests            N02 🟢 Typecheck exit 0     N03 🟢 Lint exit 0
 N04 🟢 Owner-locked exit 0      N05 🟢 Protected-paths 0    N06 🟢 Build exit 0
 N07 🟡 Full suite POST-MERGE — 11 400 tests passed, 0 TEST failures; but 4 FILE
        COLLECTION failures remain, so this is NOT 'completely green' (see E01)
-N08 ⚪ PR CI  N09 ⚪ Normal merge  N10 ⚪ No --admin  N11 ⚪ No force
-N12 ⚪ Staging alias = merge deployment      N13 ⚪ meta.githubCommitSha == merge SHA
-N14 🟡 /affiliate 1440 (local)  N15 🟡 /affiliate 390 (local)
+N08 🟢 PR CI — #135 all 7 checks pass on head bb6ffe2d; run head_sha checked against
+       the PR head so a stale green could not be mistaken for a fresh one
+N09 🟢 Normal merge — squash via `gh pr merge 135 --squash`, branch 0 behind staging,
+       mergeStateStatus CLEAN. Both Affiliate files byte-identical branch -> merge
+       commit (matching blob hashes), so the squash dropped nothing
+N10 🟢 No --admin       N11 🟢 No force-push, no direct staging/main push
+N12 🟢 Staging alias = merge deployment — dpl_DWxZnKXLEobqs6F4YpBWB74KfCGd, READY,
+       alias list contains staging.pinguinoai.com
+N13 🟢 meta.githubCommitSha = 22ce861cb7fcd344e9cfa03fe43d019541550439 == merge SHA
+N14 🟢 /affiliate 1440 SERVED   N15 🟢 /affiliate 390 SERVED   (both @22ce861c)
 N16 🔴 Application->approval->link->paid served    N17 🔴 Recurring renewal proof
 N18 🟢 Calculator proof — real DOM, real keystrokes
 N19 🔴 Referral monthly served  N20 🔴 Referral annual served
