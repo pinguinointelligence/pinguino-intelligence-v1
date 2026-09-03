@@ -197,6 +197,49 @@
 
    Below `lg` the element does not scroll, both layer sets coincide, and the
    covers hide the shadows — the affordance costs nothing where it is wrong. */
+/* ── The open drawer owns the screen (owner 2026-09-03) ─────────────────
+   `mobile-cockpit-trigger` is the one wrapper holding BOTH the sticky
+   score/"Przelicz" strip and the bottom module nav, so one rule suppresses
+   both. It is display:none rather than dimmed: at 60% opacity the module
+   labels stayed readable under the scrim, and the owner refused a second
+   navigation competing with the menu.
+
+   Keyed off the drawer's own body flag, so it costs nothing when the drawer is
+   closed and needs no knowledge of which route is mounted. The bottom chrome's
+   normal behaviour — sticky recalc, module switching — is untouched and
+   returns the moment the flag is removed. */
+body[data-app-drawer='open'] [data-testid='mobile-cockpit-trigger'] {
+  display: none;
+}
+
+/* ── Compact desktop module strip (owner 2026-09-03) ────────────────────
+   Between 1280 and 1500 the accepted geometry has two right edges that
+   converge: the module strip sits on the centred 1440 canvas, while the
+   login/account control is anchored to the PAGE's right gutter, mirroring the
+   hamburger. Measured at 1400, the strip's right edge reached 1340 while the
+   login started at 1296 — a 44 px overlap, exactly what the owner screenshot
+   shows. At 1600 there is still 52 px of clearance, which is why the band is
+   bounded on both sides and nothing at 1500+ is touched.
+
+   Neither anchor is sacrificed. The strip keeps its LEFT edge on the display
+   column — that is what makes it read as belonging to the column — and gives
+   back the space it was never using: four EQUAL 125 px columns for four labels
+   that need roughly half of that. Content-sized columns pulled to the start
+   reclaim it, and the right edge comes in far enough that the login is clear
+   at every width in the band.
+
+   Deliberately NOT a display change: the tabs stay grid cells with their
+   bottom border intact, so the active module's orange rule still lands on the
+   header hairline exactly as it does above 1500. */
+@media (min-width: 1280px) and (max-width: 1499.98px) {
+  [data-variant='header'][data-testid$='-tabs'] {
+    width: max-content;
+    justify-self: start;
+    grid-template-columns: repeat(4, max-content);
+    column-gap: 4px;
+  }
+}
+
 .intelligence-tabpanel-scroll {
   background:
     linear-gradient(var(--pro-scroll-ground, #fff) 30%, rgb(255 255 255 / 0)) top / 100% 26px

@@ -220,3 +220,42 @@ describe('the header canvas cannot silently swallow its own controls', () => {
     );
   });
 });
+
+describe('layering and the intermediate desktop band', () => {
+  const drawer = readFileSync(resolve(import.meta.dirname, 'AppNavDrawer.tsx'), 'utf8');
+  const studio = readFileSync(
+    resolve(import.meta.dirname, '../studio/StudioEngineSurface.tsx'),
+    'utf8',
+  );
+  const v21 = readFileSync(resolve(import.meta.dirname, '../../styles/gellatti-v2-1.css'), 'utf8');
+
+  it('puts the mobile drawer ABOVE the page bottom chrome', () => {
+    /* The defect: the drawer was z-50 while the mobile cockpit strip is
+       z-[60], so an open menu had the module nav and the sticky "Przelicz"
+       bar sitting on top of it — and still clickable through the scrim. */
+    expect(studio).toContain('fixed inset-x-0 bottom-0 z-[60]');
+    expect(drawer).toContain('fixed inset-0 z-[70]');
+    expect(drawer).not.toContain('fixed inset-0 z-50');
+  });
+
+  it('suppresses the bottom chrome outright, not behind a 60% scrim', () => {
+    // Raising the drawer stopped the click-through; the strip was still
+    // legible underneath, which is two navigations on screen at once.
+    expect(drawer).toContain("body.dataset.appDrawer = 'open'");
+    expect(drawer).toContain('delete body.dataset.appDrawer');
+    expect(v21).toMatch(
+      /body\[data-app-drawer='open'\] \[data-testid='mobile-cockpit-trigger'\] \{\s*display: none;/,
+    );
+  });
+
+  it('compacts the module strip in the band where the two right edges converge', () => {
+    /* Between 1280 and 1500 the strip rides the centred 1440 canvas while the
+       login is anchored to the page gutter. Measured at 1400 before the fix:
+       strip right 1340 against login left 1296 — a 44 px overlap. The strip
+       keeps its LEFT edge on the display column and gives back the space four
+       equal 125 px columns were never using. Nothing at 1500+ is touched. */
+    expect(v21).toMatch(/@media \(min-width: 1280px\) and \(max-width: 1499\.98px\)/);
+    expect(v21).toMatch(/grid-template-columns: repeat\(4, max-content\)/);
+    expect(v21).toMatch(/justify-self: start/);
+  });
+});
