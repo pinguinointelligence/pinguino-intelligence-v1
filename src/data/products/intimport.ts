@@ -111,8 +111,21 @@ export function intimportNumber(raw: string | null | undefined): {
   return parseNumeric(raw);
 }
 
-/** Per-100 g and per-100 ml are different bases; only per-100 g maps to the g-based fields. */
+/** The raw manufacturer basis, preserved exactly as declared. */
 export type IntimportNutritionBasis = 'per_100g' | 'per_100ml' | null;
+
+/**
+ * How a declared basis became Gellatti working values. OWNER RULE, frozen
+ * 2026-08-25: Gellatti normalises 1 ml = 1 g (1 L = 1000 g), deliberately
+ * ignoring the small physical density differences between water, milk, cream
+ * and so on. A per-100 ml panel therefore becomes per-100 g NUMERICALLY 1:1 —
+ * milk at 3.2 g fat/100 ml is 3.2 g fat/100 g.
+ *
+ * The raw declaration is never overwritten: `IntimportCandidate` keeps both the
+ * manufacturer's `nutritionBasis` and this marker, so a reader can always tell
+ * a genuine per-100 g label from a normalised one.
+ */
+export type IntimportNormalizationBasis = 'SOURCE_PER_100G' | 'GELLATTI_1ML_1G_NORMALIZATION';
 
 /** Normalize the free-text basis cell ("100 g", "W 100 g", "per 100 g", "100 ml", …). */
 export function normalizeNutritionBasis(raw: string | null | undefined): IntimportNutritionBasis {
@@ -138,7 +151,10 @@ export interface IntimportCandidate {
   eanRaw: string | null;
   sourceCategory: string | null;
   sourceSubcategory: string | null;
+  /** Exactly what the manufacturer declared. Never rewritten. */
   nutritionBasis: IntimportNutritionBasis;
+  /** How that declaration became the g-based working values beside it. */
+  normalizationBasis: IntimportNormalizationBasis;
   insert: ProductInsert;
   /** All 36 official fields, sentinel-normalized. Nothing is thrown away. */
   source: Record<IntimportColumn, string | null>;
@@ -334,22 +350,29 @@ export function mapIntimportRow(row: Record<string, string>, rowIndex: number): 
   if (source['Nutrition Basis'] && nutritionBasis === null) {
     warnings.push(`unrecognized nutrition basis "${source['Nutrition Basis']}"`);
   }
+  /* OWNER RULE (2026-08-25, frozen): 1 ml = 1 g, so a per-100 ml panel maps to
+     the g-based fields 1:1. Gellatti deliberately ignores the density spread
+     between water, milk and cream — there is no density input and none is
+     wanted. Before this, a per-100 ml row was refused for want of a density,
+     which silently excluded ALL liquid dairy: milk and cream are the dairy and
+     fat carriers of every gelato base, and EU liquid dairy is declared per 100
+     ml, so no country could build a base from real local SKUs. */
+  const normalizationBasis: IntimportNormalizationBasis =
+    nutritionBasis === 'per_100ml' ? 'GELLATTI_1ML_1G_NORMALIZATION' : 'SOURCE_PER_100G';
+  const normalizable = nutritionBasis === 'per_100g' || nutritionBasis === 'per_100ml';
   let mappedNutrition = 0;
   for (const [column, field] of NUTRITION_FIELDS) {
     const { value, warning } = intimportNumber(row[column]);
     if (warning) warnings.push(`${column}: ${warning}`);
     if (value === null) continue;
     mappedNutrition += 1;
-    // The g-based product fields are defined per 100 g. A per-100 ml declaration is a
-    // different basis and is NOT converted here — inventing a density would be a lie.
-    if (nutritionBasis === 'per_100g') assign(insert, field, value);
+    if (normalizable) assign(insert, field, value);
   }
-  if (mappedNutrition > 0 && nutritionBasis !== 'per_100g') {
-    reasons.push(
-      nutritionBasis === 'per_100ml'
-        ? 'nutrition declared per 100 ml — needs density before it can be used per 100 g'
-        : 'nutrition present without a recognized per-100 g basis',
-    );
+  /* An UNRECOGNISED basis is still refused. The rule normalises ml to g; it does
+     not license reading numbers off a panel whose basis we never established
+     (per portion, per serving, per 30 g). */
+  if (mappedNutrition > 0 && !normalizable) {
+    reasons.push('nutrition present without a recognized per-100 g or per-100 ml basis');
   }
 
   // ── EAN / GTIN — a STRING, validated by the existing checksum authority ──────
@@ -397,6 +420,7 @@ export function mapIntimportRow(row: Record<string, string>, rowIndex: number): 
     sourceCategory,
     sourceSubcategory,
     nutritionBasis,
+    normalizationBasis,
     insert,
     source,
     warnings,

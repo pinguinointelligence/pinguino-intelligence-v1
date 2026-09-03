@@ -284,8 +284,12 @@ function evidenceFields(
   // A checksum-valid GTIN is registry-grade identity evidence.
   if (candidate.ean) fields.barcode = 'barcode_registry';
 
-  // Nutrition only counts when it is on a basis the product model can use.
-  if (candidate.nutritionBasis === 'per_100g') {
+  /* Nutrition counts on either per-100 g or per-100 ml. OWNER RULE (frozen
+     2026-08-25): Gellatti normalises 1 ml = 1 g, so the two are numerically the
+     same declaration; `candidate.normalizationBasis` records which one it was.
+     Previously a per-100 ml row contributed only its basis string and none of
+     its values, so no liquid dairy could ever gather label evidence. */
+  if (candidate.nutritionBasis === 'per_100g' || candidate.nutritionBasis === 'per_100ml') {
     put('nutritionBasis', s['Nutrition Basis']);
     put('energyKcal', s['Energy kcal']);
     put('fat', s['Fat g']);
@@ -294,8 +298,6 @@ function evidenceFields(
     put('fiber', s['Fibre g']);
     put('protein', s['Protein g']);
     put('salt', s['Salt g']);
-  } else if (candidate.nutritionBasis === 'per_100ml') {
-    put('nutritionBasis', s['Nutrition Basis']);
   }
 
   // A strong family match can SUPPLEMENT missing evidence — never replace it, and
