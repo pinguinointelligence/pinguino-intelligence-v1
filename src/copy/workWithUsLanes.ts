@@ -71,6 +71,40 @@ export const LANES = {
   },
 } as const satisfies Record<string, LaneCopy>;
 
+/**
+ * Franchise is the only lane whose page was never given its own copy, so it
+ * ran on the hero blurb alone. Everything here is sourced: the production
+ * model, the four concepts (`franchiseConcepts.ts`), and what the app actually
+ * does. Nothing states a fee, a package, a territory or a split of
+ * responsibilities — that is commercial authority this file does not have, and
+ * the rule at the top of this file forbids inventing it.
+ */
+export const FRANCHISE_PAGE: LanePageCopy = {
+  ...LANES.franchise,
+  headline: 'Lodziarnia, w której lody powstają na miejscu',
+  intro:
+    'Gellatti nie jest mrożonym produktem z centralnej fabryki. Gelato powstaje w lokalu, w małych partiach, według receptur prowadzonych w aplikacji. Format dobieramy do miejsca — pełny lokal, przyczepa, wózek albo punkt.',
+  points: [
+    {
+      title: 'Świeże, robione u Ciebie',
+      body: 'Produkcja idzie na miejscu i w małych partiach — tyle, ile schodzi. Gość dostaje lody zrobione w tym lokalu, a nie przywiezione.',
+    },
+    {
+      title: 'Aplikacja prowadzi produkcję',
+      body: 'Receptury, profil maszyny, przeliczanie partii, etykiety i historia produkcji są w Gellatti. Powtarzalność nie zależy od pamięci jednej osoby.',
+    },
+    {
+      title: 'Format pod miejsce, nie odwrotnie',
+      body: 'Zaczynamy od tego, czym dysponujesz i gdzie sprzedajesz. Dopiero z tego wychodzi, który z czterech formatów ma sens.',
+    },
+    {
+      title: 'Warunki ustalamy w rozmowie',
+      body: 'Zakres współpracy i koszty zależą od miejsca i skali. Mówimy o nich przy konkretnym projekcie, a nie jako obietnicę na stronie.',
+    },
+  ],
+  next: 'Napisz, jaki format i jakie miejsce masz na myśli. Odzywamy się, wspólnie sprawdzamy, czy to się spina, i dopiero wtedy rozmawiamy o warunkach.',
+};
+
 export const MACHINES_PAGE: LanePageCopy = {
   ...LANES.machines,
   headline: 'Sprzęt, który dobieramy do Twojego lokalu',

@@ -38,8 +38,10 @@ import { OwnerAssetImage } from '@/features/work-with-us/OwnerAssetImage';
 import {
   FRANCHISE_CONCEPT_INITIAL,
   FRANCHISE_CONCEPT_ORDER,
+  franchiseConceptBlurbPl,
   franchiseConceptLabelPl,
 } from '@/features/franchise/franchiseConcepts';
+import { FRANCHISE_PAGE } from '@/copy/workWithUsLanes';
 
 /** One panel for each account concern — same card as the rest of the product. */
 const ACCOUNT_PANEL =
@@ -172,11 +174,38 @@ export function FranchisePage() {
           </div>
         }
       />
+      {/* The lane had a hero and an enquiry form with nothing in between: a
+          reader could not learn what a Gellatti lodziarnia actually is before
+          being asked to enquire. These points are the sourced answer — the
+          production model, the app, and how the format is chosen. */}
+      <DestinationSection>
+        <DestinationSectionHead
+          eyebrow="Czym jest Gellatti"
+          title={FRANCHISE_PAGE.headline}
+          helper={FRANCHISE_PAGE.intro}
+        />
+        <div className="grid gap-3 sm:grid-cols-2">
+          {FRANCHISE_PAGE.points.map((point) => (
+            <article
+              key={point.title}
+              className="rounded-[12px] border border-[var(--g-line)] bg-white p-[18px]"
+            >
+              <h3 className="text-[19px] leading-[1.2] font-bold tracking-[-0.02em] text-[var(--g-ink)]">
+                {point.title}
+              </h3>
+              <p className="mt-2 text-[13px] leading-[1.55] text-[var(--g-text-secondary)]">
+                {point.body}
+              </p>
+            </article>
+          ))}
+        </div>
+      </DestinationSection>
+
       <DestinationSection>
         <DestinationSectionHead
           eyebrow="Potwierdzone koncepty"
           title="Cztery formaty. Bez wymyślonych warunków."
-          helper="Karty są kategoriami enquiry, nie ofertami cenowymi ani obietnicą dostępności."
+          helper="Karty opisują format. Zakres współpracy i koszty ustalamy przy konkretnym miejscu."
         />
         <div className="grid gap-3 sm:grid-cols-2">
           {FRANCHISE_CONCEPT_ORDER.map((concept) => (
@@ -190,8 +219,8 @@ export function FranchisePage() {
               <h3 className="mt-4 text-[21px] leading-[1.2] font-bold tracking-[-0.02em] text-[var(--g-ink)]">
                 {franchiseConceptLabelPl(concept)}
               </h3>
-              <p className="mt-2 text-[12px] leading-[1.5] text-[var(--g-text-secondary)]">
-                Szczegóły wymagają rozmowy i potwierdzonego źródła.
+              <p className="mt-2 text-[13px] leading-[1.55] text-[var(--g-text-secondary)]">
+                {franchiseConceptBlurbPl(concept)}
               </p>
             </article>
           ))}
