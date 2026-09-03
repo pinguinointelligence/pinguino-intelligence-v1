@@ -28,7 +28,7 @@ import { describe, expect, it } from 'vitest';
 const axes = readFileSync(resolve(import.meta.dirname, 'ProfileDirectionAxes.tsx'), 'utf8');
 const tokens = readFileSync(resolve(import.meta.dirname, '../../styles/tokens.css'), 'utf8');
 
-/** Every ground the readout can sit on — the section itself is transparent. */
+/** Every ground the track can sit on — the box itself is transparent. */
 const GROUNDS = ['#ffffff', 'var(--g-ivory)', 'var(--g-ivory-deep)'] as const;
 
 /** First capture of `pattern`, or a named failure — never `undefined`. */
@@ -106,6 +106,23 @@ describe('Direction readability — the reported value', () => {
     // viewer who cannot separate the orange from the rail.
     expect(axes).toContain('style={{ left: at(position) }}');
     expect(axes).toContain('style={{ left: fillLeft, width: fillWidth }}');
+  });
+
+  /* With the numerals gone the MARK is the only thing reporting the position,
+     so on a blocked axis — the case this whole file exists for — the mark has
+     to be findable. The pale fill alone is not: #fcd6a8 sits at 1.07:1 against
+     the dots it has to be picked out from. The outline is what carries it, and
+     it is measured here against every ground the track can sit on rather than
+     matched as a class string, so retuning the token fails this test. */
+  it('keeps a blocked position findable without a numeral', () => {
+    const outline = colour('var(--g-attention-ink)');
+    for (const ground of [...GROUNDS, 'var(--g-rail-track)', '#fcd6a8']) {
+      expect(
+        contrast(outline, colour(ground)),
+        `blocked outline ${outline} on ${ground}`,
+      ).toBeGreaterThanOrEqual(3);
+    }
+    expect(axes).toContain("border-[1.5px] border-[var(--g-attention-ink)] bg-[#fcd6a8]");
   });
 
   it('still marks the chosen position when the axis is blocked', () => {

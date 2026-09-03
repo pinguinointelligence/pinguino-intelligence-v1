@@ -105,12 +105,22 @@ function RegulatorRow({
               className="absolute top-[7.5px] -ml-[5.5px] size-[11px] rounded-full border-[1.5px] border-[var(--g-drag)] bg-white"
             />
           ) : null}
+          {/* The blocked thumb carries an OUTLINE, not just a muted fill. With
+              the numerals gone, the mark is the only thing reporting the
+              position, and #fcd6a8 sits at 1.07:1 against the dot colour —
+              invisible. The attention ink reaches 4.33:1 against those dots
+              and 6.33:1 against the ground, so a blocked axis still SHOWS
+              where it stands while the pale fill keeps saying "not available".
+              The interactive thumb is untouched: its 2.46:1 accent is the
+              owner-approved V2.1 exception and is not reopened here. */}
           <span
             aria-hidden
             style={{ left: at(position) }}
             className={cn(
               'absolute top-[5px] -ml-2 size-4 rounded-full shadow-[0_0_0_3px_#fff] transition-[left,background-color]',
-              disabled ? 'bg-[#fcd6a8]' : 'bg-[#f58a07]',
+              disabled
+                ? 'border-[1.5px] border-[var(--g-attention-ink)] bg-[#fcd6a8]'
+                : 'bg-[#f58a07]',
             )}
           />
           {DETENTS.map((detent) => (

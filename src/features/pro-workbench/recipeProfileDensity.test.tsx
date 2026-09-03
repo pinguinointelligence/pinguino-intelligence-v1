@@ -52,7 +52,16 @@ describe('Recipe profile visual density contract', () => {
     const blocked = axes.match(/bg-\[#fcd6a8\]/g) ?? [];
     expect(accent.length).toBe(2);
     expect(blocked.length).toBe(accent.length);
-    expect((axes.match(/disabled \? 'bg-\[#fcd6a8\]' : 'bg-\[#f58a07\]'/g) ?? []).length).toBe(2);
+    /* Every accent use is REACHED THROUGH the disabled ternary, so neither can
+       become decoration that survives on a blocked axis. Matched as a pairing
+       rather than as one literal string: the thumb branch also carries the
+       blocked outline, and asserting the exact characters would fail the next
+       time that branch gains a class it should be allowed to gain. */
+    for (const m of axes.matchAll(/bg-\[#f58a07\]/g)) {
+      const before = axes.slice(Math.max(0, m.index - 220), m.index);
+      expect(before, 'accent not guarded by the disabled ternary').toMatch(/disabled\s*\?/);
+      expect(before).toContain('#fcd6a8');
+    }
     /* The section is a BOX with a notched legend (owner reference 2026-09-03),
        not an eyebrow closed by a hairline running to the column edge. */
     expect(axes).not.toContain('rounded-[10px] border border-[var(--g-line)] bg-white');
