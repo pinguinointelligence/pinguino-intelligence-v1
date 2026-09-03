@@ -564,13 +564,68 @@ async function applyCommissionablePayment(deps: DispatchDeps, event: WebhookEven
   // 15-month pay annual).
   const { data: catalogRow, error: catalogError } = await deps.db
     .from('billing_price_catalog')
-    .select('commission_cadence')
+    .select('commission_cadence, cadence')
     .eq('offer_key', offerKey)
     .maybeSingle();
   throwOnDbError(catalogError, 'billing_price_catalog cadence lookup');
   const commissionCadence =
     catalogRow && typeof catalogRow.commission_cadence === 'string' ? catalogRow.commission_cadence : null;
   if (!commissionCadence) throw new RetryableEffectError('offer_missing_commission_cadence');
+
+  // D-01 PHASE B — consume the 15-month benefit, only now that money moved.
+  //
+  // Eligibility was decided BEFORE checkout by decideFifteenMonthBenefit, and
+  // Stripe then charged the 15-month price. So the question here is not "is the
+  // customer eligible" — re-deciding post-hoc would let a changed fact contradict
+  // what the customer was actually billed. The question is "was the benefit
+  // delivered", and the paid offer's own cadence is the ground truth for that.
+  //
+  // Consumption is therefore tied to real payment: an unpaid, failed or
+  // abandoned checkout never reaches this line, so the lifetime use stays
+  // unspent.
+  //
+  // The insert IS the concurrency control. partner_benefit_uses is unique on
+  // user_id (lifetime), subscription_id and stripe_subscription_id, so a
+  // duplicate is the DB telling us another conversion already won — never a
+  // read-then-write. A webhook replay collides on the subscription keys and is
+  // an ordinary no-op; a genuine second subscription colliding on user_id means
+  // the customer was billed a 15-month price for a benefit already spent, which
+  // is a money anomaly a human must see rather than a line to swallow.
+  if (catalogRow && catalogRow.cadence === 'initial_15_month') {
+    const benefitOutcome = await insertIgnoringDuplicate(
+      deps.db,
+      'partner_benefit_uses',
+      {
+        partner_id: partnerId,
+        user_id: customerUserId,
+        subscription_id: cacheId,
+        stripe_subscription_id: invoice.subscriptionId,
+        offer_key: offerKey,
+        attribution_id: attributionId,
+        used_at: new Date(paidAtUtcMs).toISOString(),
+      } as unknown as Row,
+      'partner_benefit_uses insert',
+    );
+    if (benefitOutcome === 'duplicate') {
+      const { data: priorRows, error: priorError } = await deps.db
+        .from('partner_benefit_uses')
+        .select('stripe_subscription_id')
+        .eq('user_id', customerUserId);
+      throwOnDbError(priorError, 'partner_benefit_uses prior lookup');
+      const prior = (priorRows ?? [])[0];
+      if (!prior || prior.stripe_subscription_id !== invoice.subscriptionId) {
+        // A replay of THIS subscription collides on the subscription keys and is
+        // an ordinary no-op, handled by falling through. Reaching here means the
+        // collision was on user_id from a DIFFERENT subscription: the customer
+        // was billed a 15-month price for a benefit already spent. That is a
+        // money discrepancy, so the event fails terminally and waits for a human
+        // rather than being silently absorbed.
+        throw new EffectConflictError(
+          `partner_benefit_lifetime_conflict:${invoice.subscriptionId ?? invoice.id}`,
+        );
+      }
+    }
+  }
 
   // T6: the tier for the earned month comes from THAT month's snapshot only —
   // never another month, never the partners.tier convenience mirror. Missing
