@@ -35,13 +35,14 @@ import { ShopOrdersPanel } from '@/features/shop/ShopOrdersPanel';
 import { shopCopy } from '@/copy/shop';
 import { FranchiseInquiryForm } from '@/features/franchise/FranchiseInquiryForm';
 import { OwnerAssetImage } from '@/features/work-with-us/OwnerAssetImage';
+import { LeadEnquirySection } from '@/features/work-with-us/LeadEnquirySection';
 import {
   FRANCHISE_CONCEPT_INITIAL,
   FRANCHISE_CONCEPT_ORDER,
   franchiseConceptBlurbPl,
   franchiseConceptLabelPl,
 } from '@/features/franchise/franchiseConcepts';
-import { FRANCHISE_PAGE, FRANCHISE_SPLIT } from '@/copy/workWithUsLanes';
+import { FRANCHISE_FORMAT_LINKS, FRANCHISE_PAGE, FRANCHISE_SPLIT } from '@/copy/workWithUsLanes';
 
 /** One panel for each account concern — same card as the rest of the product. */
 const ACCOUNT_PANEL =
@@ -302,8 +303,51 @@ export function FranchisePage() {
           </figure>
         </div>
       </DestinationSection>
+      {/* The formats that keep their own detail page. Franchise is the umbrella,
+          so they are reached from here rather than from a second top-level
+          menu. */}
+      <DestinationSection>
+        <DestinationSectionHead
+          eyebrow="Formaty w szczegółach"
+          title="Zobacz konkretny format."
+          helper="Każdy z nich prowadzi do tego samego zapytania — wybierasz tylko, o czym rozmawiamy."
+        />
+        <div className="grid gap-3 sm:grid-cols-3">
+          {FRANCHISE_FORMAT_LINKS.map((lane) => (
+            <Link
+              key={lane.href}
+              to={lane.href}
+              className="rounded-[12px] border border-[var(--g-line)] bg-white p-[18px] transition-colors hover:border-[var(--g-line-strong,#c9c5bd)]"
+            >
+              <span className="block text-[10px] leading-[1.25] font-bold tracking-[0.16em] text-[var(--g-text-secondary)] uppercase">
+                {lane.kicker}
+              </span>
+              <h3 className="mt-2.5 text-[19px] leading-[1.2] font-bold tracking-[-0.02em] text-[var(--g-ink)]">
+                {lane.title}
+              </h3>
+              <p className="mt-2 text-[13px] leading-[1.55] text-[var(--g-text-secondary)]">
+                {lane.card}
+              </p>
+            </Link>
+          ))}
+        </div>
+      </DestinationSection>
+
       <DestinationSection>
         <FranchiseInquiryForm />
+      </DestinationSection>
+
+      {/* The general enquiry, carried over from the retired Work With Us page.
+          It is NOT a duplicate of the form above: that one applies for a
+          specific Gellatti concept, this one answers `?from=` questions about
+          maszyny, wózek and przyczepa, preselects the subject from that param
+          and records it as the lead's source_route.
+
+          It also owns `id="lead"`, so `/work-with-us?from=%2Ftrailer#lead` —
+          the target every lane CTA still points at — resolves after the
+          redirect exactly as it did before. */}
+      <DestinationSection>
+        <LeadEnquirySection />
       </DestinationSection>
     </DestinationSurface>
   );
