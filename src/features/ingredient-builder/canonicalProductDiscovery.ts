@@ -240,8 +240,8 @@ const exactProductProjection = (hit: CatalogProductSearchHit): CanonicalProductD
 /**
  * Generic technological intent projects commercial duplicates through their
  * canonical Mapper slot. Exact brand/EAN/article queries preserve exact products.
- * A Mapper reference wins a grouped slot, so the client never invents a preferred
- * commercial brand while the country-default authority is still absent.
+ * A Mapper reference wins a grouped slot. Canonical country/user resolution may
+ * attach one exact product behind it without creating duplicate generic rows.
  */
 export function projectCatalogHitsForDiscovery(input: {
   hits: readonly CatalogProductSearchHit[];
@@ -273,12 +273,19 @@ export function projectCatalogHitsForDiscovery(input: {
       if (!reference && group.length > 1) return [];
       const chosen = reference ?? group[0]!;
       const percent = technologicalPercent(chosen.hit);
+      const resolvedExact = chosen.hit.resolvedExactProduct;
       return [
         {
           hit: chosen.hit,
           slotKey,
           primaryName: canonicalPrimaryName(chosen.hit, chosen.family, percent),
-          secondaryText: chosen.hit.entityKind === 'commercial_product' ? chosen.hit.brand : null,
+          secondaryText: resolvedExact
+            ? resolvedExact.brand
+              ? `${resolvedExact.brand} · ${resolvedExact.displayName}`
+              : resolvedExact.displayName
+            : chosen.hit.entityKind === 'commercial_product'
+              ? chosen.hit.brand
+              : null,
           family: chosen.family,
           variantPercent: percent,
           firstIndex: Math.min(...group.map((candidate) => candidate.index)),

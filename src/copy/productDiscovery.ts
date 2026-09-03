@@ -14,6 +14,9 @@ export interface ProductDiscoveryCopy {
   replace: string;
   primaryCountryLabel: string;
   primaryCountryHint: string;
+  guestCountryConflict: string;
+  keepAccountCountry: string;
+  useGuestCountry: string;
 }
 
 const pl: ProductDiscoveryCopy = {
@@ -44,6 +47,10 @@ const pl: ProductDiscoveryCopy = {
   primaryCountryLabel: 'Główny kraj produktu',
   primaryCountryHint:
     'Ten kraj rozstrzyga domyślny produkt za kanonicznym wariantem. Pozostałe wybrane kraje pozostają dostępne.',
+  guestCountryConflict:
+    'Na tym urządzeniu wybrano inny kraj produktów przed logowaniem. Wybierz, którą jawną decyzję zachować.',
+  keepAccountCountry: 'Zachowaj kraj konta',
+  useGuestCountry: 'Użyj kraju z tego urządzenia',
 };
 
 const resources: Readonly<Partial<Record<AppLocale, ProductDiscoveryCopy>>> = { pl };

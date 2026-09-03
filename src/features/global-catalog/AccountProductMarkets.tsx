@@ -7,6 +7,7 @@ import {
   detectCatalogMarketCountry,
   getCatalogMarketPreferences,
   listCatalogMarketCountries,
+  resolveGuestProductCountryConflict,
   saveCatalogMarketPreferences,
 } from '@/services/globalCatalog';
 import type { CatalogMarketPreferences } from './contracts';
@@ -46,6 +47,14 @@ export function AccountProductMarkets() {
     onSuccess: async (_data, variables) => {
       setDraft(null);
       queryClient.setQueryData(['global-catalog-market-preferences'], variables);
+      await queryClient.invalidateQueries({ queryKey: ['product-search-v1'] });
+    },
+  });
+  const mergeConflict = useMutation({
+    mutationFn: resolveGuestProductCountryConflict,
+    onSuccess: async (preferences) => {
+      setDraft(null);
+      queryClient.setQueryData(['global-catalog-market-preferences'], preferences);
       await queryClient.invalidateQueries({ queryKey: ['product-search-v1'] });
     },
   });
@@ -89,7 +98,13 @@ export function AccountProductMarkets() {
         </div>
         <button
           type="button"
-          disabled={mutation.isPending || preferencesUnavailable || countries.isPending}
+          disabled={
+            mutation.isPending ||
+            mergeConflict.isPending ||
+            preferencesUnavailable ||
+            countries.isPending ||
+            Boolean(form.guestCountryConflict)
+          }
           onClick={() => mutation.mutate(form)}
           className="pro-focus-ring min-h-11 rounded-sm bg-ink px-4 text-xs font-semibold text-white disabled:opacity-50"
         >
@@ -97,10 +112,42 @@ export function AccountProductMarkets() {
         </button>
       </div>
 
+      {form.guestCountryConflict ? (
+        <div
+          className="mt-4 border border-[var(--g-line)] bg-[var(--g-ivory-deep)] px-4 py-3"
+          role="alert"
+        >
+          <p className="text-xs leading-relaxed text-[var(--g-ink)]">
+            {discoveryCopy.guestCountryConflict}{' '}
+            <strong>
+              {form.guestCountryConflict.accountCountry} ↔ {form.guestCountryConflict.guestCountry}
+            </strong>
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={mergeConflict.isPending}
+              onClick={() => mergeConflict.mutate('account')}
+              className="pro-focus-ring min-h-10 border border-[var(--g-line)] bg-white px-3 text-xs font-semibold text-ink disabled:opacity-50"
+            >
+              {discoveryCopy.keepAccountCountry}
+            </button>
+            <button
+              type="button"
+              disabled={mergeConflict.isPending}
+              onClick={() => mergeConflict.mutate('guest')}
+              className="pro-focus-ring min-h-10 bg-ink px-3 text-xs font-semibold text-white disabled:opacity-50"
+            >
+              {discoveryCopy.useGuestCountry}
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       {!form.primaryMarket && detectedCountry ? (
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border border-[var(--g-line)] bg-[var(--g-ivory-deep)] px-4 py-3">
           <p className="text-xs text-[var(--g-ink)]">
-            Proponowany rynek na podstawie ustawień konta lub języka przeglądarki:{' '}
+            Proponowany rynek na podstawie ustawień konta lub przybliżonego kraju połączenia:{' '}
             <strong>
               {detectedCountry.namePl} ({detectedCountry.code})
             </strong>
@@ -231,6 +278,11 @@ export function AccountProductMarkets() {
       {mutation.isError ? (
         <p className="mt-3 text-xs text-status-error" role="alert">
           Nie udało się zapisać krajów.
+        </p>
+      ) : null}
+      {mergeConflict.isError ? (
+        <p className="mt-3 text-xs text-status-error" role="alert">
+          Nie udało się rozstrzygnąć kraju produktów. Wybór nie został zmieniony.
         </p>
       ) : null}
       {saved.isError || countries.isError ? (

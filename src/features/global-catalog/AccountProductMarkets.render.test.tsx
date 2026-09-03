@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   detectCountry: vi.fn(),
   getPreferences: vi.fn(),
   listCountries: vi.fn(),
+  resolveConflict: vi.fn(),
   savePreferences: vi.fn(),
 }));
 
@@ -21,6 +22,7 @@ vi.mock('@/services/globalCatalog', () => ({
   detectCatalogMarketCountry: mocks.detectCountry,
   getCatalogMarketPreferences: mocks.getPreferences,
   listCatalogMarketCountries: mocks.listCountries,
+  resolveGuestProductCountryConflict: mocks.resolveConflict,
   saveCatalogMarketPreferences: mocks.savePreferences,
 }));
 
@@ -62,6 +64,13 @@ describe('Primary Product Country rendered interaction', () => {
     ]);
     mocks.detectCountry.mockResolvedValue(null);
     mocks.savePreferences.mockResolvedValue(undefined);
+    mocks.resolveConflict.mockResolvedValue({
+      primaryMarket: 'ES',
+      additionalMarkets: ['PL'],
+      preferredRetailers: [],
+      defaultScope: 'my_markets',
+      guestCountryConflict: null,
+    });
   });
 
   afterEach(async () => {
@@ -104,5 +113,34 @@ describe('Primary Product Country rendered interaction', () => {
       preferredRetailers: ['Mercadona'],
       defaultScope: 'my_markets_and_global',
     });
+  });
+
+  it('requires an explicit choice when account and guest countries conflict', async () => {
+    mocks.getPreferences.mockResolvedValue({
+      primaryMarket: 'PL',
+      additionalMarkets: [],
+      preferredRetailers: [],
+      defaultScope: 'my_markets',
+      guestCountryConflict: { accountCountry: 'PL', guestCountry: 'ES' },
+    });
+    await act(async () => {
+      root.render(
+        <QueryClientProvider client={queryClient}>
+          <AccountProductMarkets />
+        </QueryClientProvider>,
+      );
+    });
+    await settleQueries();
+
+    const save = [...host.querySelectorAll('button')].find(
+      (button) => button.textContent === 'Zapisz ustawienia',
+    );
+    expect(save?.disabled).toBe(true);
+    const useGuest = [...host.querySelectorAll('button')].find((button) =>
+      button.textContent?.includes('Użyj kraju z tego urządzenia'),
+    );
+    await act(async () => useGuest?.click());
+    await settleQueries();
+    expect(mocks.resolveConflict).toHaveBeenCalledWith('guest', expect.anything());
   });
 });

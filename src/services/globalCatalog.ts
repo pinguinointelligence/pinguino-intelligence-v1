@@ -9,6 +9,11 @@ import type {
 } from '@/features/global-catalog/contracts';
 import { carbonationProfileFromPublicData } from '@/data/products/carbonation';
 import { ingestProduct } from '@/services/productIngest';
+import {
+  localProductCountryPreferenceStore,
+  productCountryPreferenceRecord,
+  type ProductCountryPreferenceRecord,
+} from '@/features/global-catalog/productCountryPreference';
 
 const UNAVAILABLE = 'Global product catalog is not available in this build.';
 const CATALOG_DEVICE_SIGNAL_KEY = 'pinguino_catalog_device_session_v1';
@@ -18,9 +23,10 @@ function currentCatalogDeviceSignal(): string | null {
   try {
     const existing = window.sessionStorage.getItem(CATALOG_DEVICE_SIGNAL_KEY);
     if (existing) return existing;
-    const created = typeof crypto.randomUUID === 'function'
-      ? crypto.randomUUID()
-      : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+    const created =
+      typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
     window.sessionStorage.setItem(CATALOG_DEVICE_SIGNAL_KEY, created);
     return created;
   } catch {
@@ -70,6 +76,19 @@ interface SearchRow {
   relevance: number | string;
 }
 
+interface ResolvedCountryProductRow extends SearchRow {
+  requested_mapper_ingredient_id: string;
+  resolution_source: 'USER_PREFERRED' | 'COUNTRY_PRIMARY_DEFAULT' | 'COUNTRY_SAFE_FALLBACK';
+  resolution_country: string | null;
+}
+
+export interface ResolvedCountryProduct {
+  mapperIngredientId: string;
+  source: ResolvedCountryProductRow['resolution_source'];
+  country: string | null;
+  product: CatalogProductSearchHit;
+}
+
 interface DuplicatePreviewRow {
   product_id: string;
   strength: 'exact' | 'likely' | 'none';
@@ -82,28 +101,31 @@ interface DuplicatePreviewRow {
   ean: string | null;
 }
 
-const REQUIRED_TOPPING_FACTS = [
-  'fat', 'protein', 'carbohydrate', 'salt', 'energyKcal',
-] as const;
+const REQUIRED_TOPPING_FACTS = ['fat', 'protein', 'carbohydrate', 'salt', 'energyKcal'] as const;
 
 function hasCompleteLabelOnlyToppingFacts(publicData: Record<string, unknown> | null): boolean {
   const nutrition = publicData?.nutrition;
   if (!nutrition || typeof nutrition !== 'object') return false;
   const facts = nutrition as Record<string, unknown>;
-  return facts.basis === 'per_100g'
-    && typeof publicData?.ingredientsText === 'string' && publicData.ingredientsText.trim().length > 0
-    && typeof publicData?.allergensText === 'string' && publicData.allergensText.trim().length > 0
-    && REQUIRED_TOPPING_FACTS.every((key) => {
-    const value = facts[key];
-    return typeof value === 'number' && Number.isFinite(value);
-  });
+  return (
+    facts.basis === 'per_100g' &&
+    typeof publicData?.ingredientsText === 'string' &&
+    publicData.ingredientsText.trim().length > 0 &&
+    typeof publicData?.allergensText === 'string' &&
+    publicData.allergensText.trim().length > 0 &&
+    REQUIRED_TOPPING_FACTS.every((key) => {
+      const value = facts[key];
+      return typeof value === 'number' && Number.isFinite(value);
+    })
+  );
 }
 
 function mapSearchRow(row: SearchRow): CatalogProductSearchHit {
   const nutrition = row.public_data?.nutrition;
-  const nutritionBasis = nutrition && typeof nutrition === 'object'
-    ? (nutrition as Record<string, unknown>).basis
-    : null;
+  const nutritionBasis =
+    nutrition && typeof nutrition === 'object'
+      ? (nutrition as Record<string, unknown>).basis
+      : null;
   const publicData = row.public_data ?? {};
   return {
     id: row.id,
@@ -135,9 +157,10 @@ function mapSearchRow(row: SearchRow): CatalogProductSearchHit {
     mainAllowed: row.main_allowed,
     // Label-only additions stay outside Base/Engine. Declared nutrition can
     // still feed product mass, cost and final-label preflight.
-    usableAsTopping: row.entity_kind === 'pi_base' || row.mapped_ingredient_id
-      ? row.usable_as_topping
-      : row.usable_as_topping && hasCompleteLabelOnlyToppingFacts(row.public_data),
+    usableAsTopping:
+      row.entity_kind === 'pi_base' || row.mapped_ingredient_id
+        ? row.usable_as_topping
+        : row.usable_as_topping && hasCompleteLabelOnlyToppingFacts(row.public_data),
     blockedReason: row.blocked_reason,
     relevance: Number(row.relevance),
     missingFields: row.missing_fields ?? [],
@@ -163,13 +186,16 @@ export async function savePrivateCatalogProductPrice(input: {
   if (!supabase) throw new Error(UNAVAILABLE);
   const user = await getCurrentUser();
   if (!user) throw new Error('Authentication required.');
-  const { error } = await supabase.from('user_product_relations').upsert({
-    user_id: user.id,
-    product_id: input.catalogProductId,
-    private_price: input.pricePerKg,
-    currency: input.currency,
-    updated_at: new Date().toISOString(),
-  }, { onConflict: 'user_id,product_id' });
+  const { error } = await supabase.from('user_product_relations').upsert(
+    {
+      user_id: user.id,
+      product_id: input.catalogProductId,
+      private_price: input.pricePerKg,
+      currency: input.currency,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'user_id,product_id' },
+  );
   if (error) throw new Error(error.message);
 }
 
@@ -224,6 +250,42 @@ export async function searchProducts(input: {
   return ((data ?? []) as SearchRow[]).map(mapSearchRow);
 }
 
+export async function resolveCountryProductsForSlots(input: {
+  mapperIngredientIds: readonly string[];
+  productCountry: string | null;
+  productProfile?: string | null;
+}): Promise<ResolvedCountryProduct[]> {
+  if (!supabase || input.mapperIngredientIds.length === 0) return [];
+  const { data, error } = await supabase.rpc('resolve_country_product_slots_v1', {
+    p_mapper_ingredient_ids: [...new Set(input.mapperIngredientIds.filter(Boolean))],
+    p_product_country: normalizeMarketCountry(input.productCountry),
+    p_product_profile: input.productProfile ?? null,
+  });
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as ResolvedCountryProductRow[]).map((row) => ({
+    mapperIngredientId: row.requested_mapper_ingredient_id,
+    source: row.resolution_source,
+    country: normalizeMarketCountry(row.resolution_country),
+    product: mapSearchRow(row),
+  }));
+}
+
+/** A conscious exact-product pick may update CP-36. Callers must not invoke
+ * this for a generic Mapper row whose exact SKU was selected automatically. */
+export async function setUserPreferredExactProductForSlot(input: {
+  mapperIngredientId: string;
+  productId: string;
+}): Promise<void> {
+  if (!supabase) return;
+  const user = await getCurrentUser();
+  if (!user) return;
+  const { error } = await supabase.rpc('set_user_preferred_product_for_slot_v1', {
+    p_mapper_ingredient_id: input.mapperIngredientId,
+    p_preferred_product_id: input.productId,
+  });
+  if (error) throw new Error(error.message);
+}
+
 export async function previewProductDuplicates(facts: {
   displayName: string | null;
   brand: string | null;
@@ -251,7 +313,9 @@ export async function previewProductDuplicates(facts: {
   }));
 }
 
-export async function listCatalogFavorites(): Promise<Array<{ entityKind: 'pi_base' | 'commercial_product'; id: string }>> {
+export async function listCatalogFavorites(): Promise<
+  Array<{ entityKind: 'pi_base' | 'commercial_product'; id: string }>
+> {
   if (!supabase) return emptyUnconfiguredRead('globalCatalog.favorites', []);
   const { data, error } = await supabase
     .from('global_catalog_favorites')
@@ -270,14 +334,19 @@ export async function listCatalogFavorites(): Promise<Array<{ entityKind: 'pi_ba
   if (commercialError) throw new Error(commercialError.message);
   return [
     ...pi,
-    ...(commercial ?? []).map((row) => ({ entityKind: 'commercial_product' as const, id: row.product_id })),
+    ...(commercial ?? []).map((row) => ({
+      entityKind: 'commercial_product' as const,
+      id: row.product_id,
+    })),
   ];
 }
 
 /** Recipe-picker relation source. It deliberately never reads commercial
  * product relations, so an old owner/custom favorite cannot become a product
  * record in the active ingredient catalog. */
-export async function listCurrentMapperCatalogFavorites(): Promise<Array<{ entityKind: 'pi_base'; id: string }>> {
+export async function listCurrentMapperCatalogFavorites(): Promise<
+  Array<{ entityKind: 'pi_base'; id: string }>
+> {
   if (!supabase) return emptyUnconfiguredRead('globalCatalog.mapperFavorites', []);
   const { data, error } = await supabase
     .from('global_catalog_favorites')
@@ -291,7 +360,9 @@ export async function listCurrentMapperCatalogFavorites(): Promise<Array<{ entit
   );
 }
 
-export async function listCatalogRecent(): Promise<Array<{ entityKind: 'pi_base' | 'commercial_product'; id: string }>> {
+export async function listCatalogRecent(): Promise<
+  Array<{ entityKind: 'pi_base' | 'commercial_product'; id: string }>
+> {
   if (!supabase) return emptyUnconfiguredRead('globalCatalog.recent', []);
   const { data, error } = await supabase
     .from('global_catalog_recent_usage')
@@ -314,13 +385,18 @@ export async function listCatalogRecent(): Promise<Array<{ entityKind: 'pi_base'
   if (commercialError) throw new Error(commercialError.message);
   return [
     ...pi,
-    ...(commercial ?? []).map((row) => ({ entityKind: 'commercial_product' as const, id: row.product_id })),
+    ...(commercial ?? []).map((row) => ({
+      entityKind: 'commercial_product' as const,
+      id: row.product_id,
+    })),
   ];
 }
 
 /** Same fail-closed source rule as favorites: recents rank current Mapper rows;
  * they never carry or hydrate a historical product snapshot. */
-export async function listCurrentMapperCatalogRecent(): Promise<Array<{ entityKind: 'pi_base'; id: string }>> {
+export async function listCurrentMapperCatalogRecent(): Promise<
+  Array<{ entityKind: 'pi_base'; id: string }>
+> {
   if (!supabase) return emptyUnconfiguredRead('globalCatalog.mapperRecent', []);
   const { data, error } = await supabase
     .from('global_catalog_recent_usage')
@@ -345,12 +421,15 @@ export async function setCatalogFavorite(input: {
   const user = await getCurrentUser();
   if (!user) throw new Error('Musisz być zalogowany, aby zmienić Ulubione.');
   if (input.entityKind === 'commercial_product') {
-    const { error } = await supabase.from('user_product_relations').upsert({
-      user_id: user.id,
-      product_id: input.id,
-      favorite: input.favorite,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'user_id,product_id' });
+    const { error } = await supabase.from('user_product_relations').upsert(
+      {
+        user_id: user.id,
+        product_id: input.id,
+        favorite: input.favorite,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'user_id,product_id' },
+    );
     if (error) throw new Error(error.message);
     return;
   }
@@ -393,12 +472,15 @@ export async function markCatalogProductUsed(input: {
   if (!user) return;
   const commercial = input.entityKind === 'commercial_product';
   if (commercial) {
-    const { error } = await supabase.from('user_product_relations').upsert({
-      user_id: user.id,
-      product_id: input.id,
-      recently_used_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'user_id,product_id' });
+    const { error } = await supabase.from('user_product_relations').upsert(
+      {
+        user_id: user.id,
+        product_id: input.id,
+        recently_used_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'user_id,product_id' },
+    );
     if (error) throw new Error(error.message);
     return;
   }
@@ -427,6 +509,71 @@ export const DEFAULT_CATALOG_MARKET_PREFERENCES: CatalogMarketPreferences = {
   defaultScope: 'my_markets_and_global',
 };
 
+interface GuestCountryMergeResult {
+  mergeOutcome:
+    | 'GUEST_MERGED'
+    | 'ALREADY_MATCHED'
+    | 'ACCOUNT_KEPT'
+    | 'EXPLICIT_CONFLICT'
+    | 'GUEST_CHOSEN';
+  primaryMarket: string | null;
+  additionalMarkets: string[];
+  preferredRetailers: string[];
+  defaultScope: CatalogMarketPreferences['defaultScope'];
+  guestCountry?: string;
+}
+
+const marketPreferencesFromRow = (data: Record<string, unknown>): CatalogMarketPreferences => ({
+  primaryMarket: normalizeMarketCountry(data.primary_market as string | null | undefined),
+  additionalMarkets: ((data.additional_markets ?? []) as string[])
+    .map(normalizeMarketCountry)
+    .filter((market: string | null): market is string => market !== null),
+  preferredRetailers: (data.preferred_retailers ?? []) as string[],
+  defaultScope: data.default_scope as CatalogMarketPreferences['defaultScope'],
+});
+
+const marketPreferencesFromMerge = (data: GuestCountryMergeResult): CatalogMarketPreferences => ({
+  primaryMarket: normalizeMarketCountry(data.primaryMarket),
+  additionalMarkets: (data.additionalMarkets ?? [])
+    .map(normalizeMarketCountry)
+    .filter((market): market is string => market !== null),
+  preferredRetailers: data.preferredRetailers ?? [],
+  defaultScope: data.defaultScope,
+  guestCountryConflict:
+    data.mergeOutcome === 'EXPLICIT_CONFLICT' && data.primaryMarket && data.guestCountry
+      ? {
+          accountCountry: data.primaryMarket,
+          guestCountry: data.guestCountry,
+        }
+      : null,
+});
+
+async function mergeGuestCountryIntoAccount(
+  guest: ProductCountryPreferenceRecord,
+  conflictChoice: 'ACCOUNT' | 'GUEST' | null = null,
+): Promise<CatalogMarketPreferences> {
+  if (!supabase) throw new Error(UNAVAILABLE);
+  const { data, error } = await supabase.rpc('merge_guest_product_country_v1', {
+    p_guest_country: guest.countryCode,
+    p_guest_source: guest.source.toUpperCase(),
+    p_conflict_choice: conflictChoice,
+  });
+  if (error) throw new Error(error.message);
+  const result = data as GuestCountryMergeResult;
+  if (result.mergeOutcome !== 'EXPLICIT_CONFLICT') {
+    await localProductCountryPreferenceStore().clear();
+  }
+  return marketPreferencesFromMerge(result);
+}
+
+export async function resolveGuestProductCountryConflict(
+  choice: 'account' | 'guest',
+): Promise<CatalogMarketPreferences> {
+  const guest = await localProductCountryPreferenceStore().load();
+  if (!guest || guest.source !== 'explicit') return getCatalogMarketPreferences();
+  return mergeGuestCountryIntoAccount(guest, choice === 'guest' ? 'GUEST' : 'ACCOUNT');
+}
+
 export interface CatalogMarketCountry {
   code: string;
   namePl: string;
@@ -445,14 +592,42 @@ export async function listCatalogMarketCountries(): Promise<CatalogMarketCountry
 }
 
 const COUNTRY_NAME_TO_CODE: Readonly<Record<string, string>> = {
-  polska: 'PL', poland: 'PL', hiszpania: 'ES', spain: 'ES', españa: 'ES',
-  niemcy: 'DE', germany: 'DE', deutschland: 'DE', francja: 'FR', france: 'FR',
-  włochy: 'IT', italy: 'IT', italia: 'IT', portugalia: 'PT', portugal: 'PT',
-  austria: 'AT', belgia: 'BE', belgium: 'BE', holandia: 'NL', netherlands: 'NL',
-  czechy: 'CZ', czechia: 'CZ', słowacja: 'SK', slovakia: 'SK', dania: 'DK',
-  denmark: 'DK', szwecja: 'SE', sweden: 'SE', finlandia: 'FI', finland: 'FI',
-  irlandia: 'IE', ireland: 'IE', 'wielka brytania': 'GB', 'united kingdom': 'GB',
-  filipiny: 'PH', philippines: 'PH',
+  polska: 'PL',
+  poland: 'PL',
+  hiszpania: 'ES',
+  spain: 'ES',
+  españa: 'ES',
+  niemcy: 'DE',
+  germany: 'DE',
+  deutschland: 'DE',
+  francja: 'FR',
+  france: 'FR',
+  włochy: 'IT',
+  italy: 'IT',
+  italia: 'IT',
+  portugalia: 'PT',
+  portugal: 'PT',
+  austria: 'AT',
+  belgia: 'BE',
+  belgium: 'BE',
+  holandia: 'NL',
+  netherlands: 'NL',
+  czechy: 'CZ',
+  czechia: 'CZ',
+  słowacja: 'SK',
+  slovakia: 'SK',
+  dania: 'DK',
+  denmark: 'DK',
+  szwecja: 'SE',
+  sweden: 'SE',
+  finlandia: 'FI',
+  finland: 'FI',
+  irlandia: 'IE',
+  ireland: 'IE',
+  'wielka brytania': 'GB',
+  'united kingdom': 'GB',
+  filipiny: 'PH',
+  philippines: 'PH',
 };
 
 export function normalizeMarketCountry(value: string | null | undefined): string | null {
@@ -462,64 +637,134 @@ export function normalizeMarketCountry(value: string | null | undefined): string
   return COUNTRY_NAME_TO_CODE[normalized.toLocaleLowerCase('pl-PL')] ?? null;
 }
 
-/** Proposed once; never persisted until the user explicitly confirms Save. */
-export async function detectCatalogMarketCountry(): Promise<string | null> {
-  if (!supabase) return null;
-  const user = await getCurrentUser();
-  if (!user) return null;
-  const { data } = await supabase
-    .from('account_profiles')
-    .select('country')
-    .eq('user_id', user.id)
-    .maybeSingle();
-  const accountCountry = normalizeMarketCountry(data?.country);
-  if (accountCountry) return accountCountry;
-  if (typeof navigator === 'undefined') return null;
-  for (const locale of navigator.languages ?? [navigator.language]) {
-    const region = locale.split(/[-_]/)[1];
-    const code = normalizeMarketCountry(region);
-    if (code) return code;
+export async function readDeploymentProductCountry(
+  fetcher: typeof fetch = fetch,
+): Promise<string | null> {
+  try {
+    const response = await fetcher('/api/product-country', {
+      credentials: 'same-origin',
+      cache: 'no-store',
+      headers: { Accept: 'application/json' },
+    });
+    if (!response.ok) return null;
+    const payload = (await response.json()) as { country?: unknown };
+    return normalizeMarketCountry(typeof payload.country === 'string' ? payload.country : null);
+  } catch {
+    return null;
   }
-  return null;
+}
+
+/** Product Country bootstrap. Explicit account/guest state always wins; the
+ * deployment signal is coarse request metadata and UI/browser language is not
+ * consulted. */
+export async function detectCatalogMarketCountry(): Promise<string | null> {
+  const guestStore = localProductCountryPreferenceStore();
+  const guest = await guestStore.load();
+  const user = await getCurrentUser();
+  if (supabase && user) {
+    const [{ data: marketPreference }, { data: profile }] = await Promise.all([
+      supabase
+        .from('account_product_market_preferences')
+        .select('primary_market')
+        .eq('user_id', user.id)
+        .maybeSingle(),
+      supabase.from('account_profiles').select('country').eq('user_id', user.id).maybeSingle(),
+    ]);
+    const explicitCountry = normalizeMarketCountry(marketPreference?.primary_market);
+    if (explicitCountry) return explicitCountry;
+    if (guest) return guest.countryCode;
+    const profileCountry = normalizeMarketCountry(profile?.country);
+    if (profileCountry) return profileCountry;
+  } else if (guest) {
+    return guest.countryCode;
+  }
+
+  const detected = await readDeploymentProductCountry();
+  if (detected && !user) {
+    await guestStore
+      .save(productCountryPreferenceRecord(detected, 'detected'))
+      .catch(() => undefined);
+  }
+  return detected;
 }
 
 export async function getCatalogMarketPreferences(): Promise<CatalogMarketPreferences> {
-  if (!supabase) return emptyUnconfiguredRead('globalCatalog.marketPreferences', DEFAULT_CATALOG_MARKET_PREFERENCES);
+  const guestStore = localProductCountryPreferenceStore();
+  const guest = await guestStore.load();
   const user = await getCurrentUser();
-  if (!user) return DEFAULT_CATALOG_MARKET_PREFERENCES;
+  if (!supabase || !user) {
+    const detected = guest?.countryCode ?? (await readDeploymentProductCountry());
+    if (!guest && detected) {
+      await guestStore
+        .save(productCountryPreferenceRecord(detected, 'detected'))
+        .catch(() => undefined);
+    }
+    if (!detected)
+      return supabase
+        ? DEFAULT_CATALOG_MARKET_PREFERENCES
+        : emptyUnconfiguredRead(
+            'globalCatalog.marketPreferences',
+            DEFAULT_CATALOG_MARKET_PREFERENCES,
+          );
+    return {
+      ...DEFAULT_CATALOG_MARKET_PREFERENCES,
+      primaryMarket: detected,
+      defaultScope: 'my_markets',
+    };
+  }
   const { data, error } = await supabase
     .from('account_product_market_preferences')
     .select('*')
     .eq('user_id', user.id)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  if (!data) return DEFAULT_CATALOG_MARKET_PREFERENCES;
-  return {
-    primaryMarket: normalizeMarketCountry(data.primary_market),
-    additionalMarkets: ((data.additional_markets ?? []) as string[])
-      .map(normalizeMarketCountry)
-      .filter((market: string | null): market is string => market !== null),
-    preferredRetailers: data.preferred_retailers ?? [],
-    defaultScope: data.default_scope,
-  } as CatalogMarketPreferences;
+  if (guest) return mergeGuestCountryIntoAccount(guest);
+  if (!data) {
+    const detected = await detectCatalogMarketCountry();
+    return detected
+      ? {
+          ...DEFAULT_CATALOG_MARKET_PREFERENCES,
+          primaryMarket: detected,
+          defaultScope: 'my_markets',
+        }
+      : DEFAULT_CATALOG_MARKET_PREFERENCES;
+  }
+  return marketPreferencesFromRow(data as Record<string, unknown>);
 }
 
-export async function saveCatalogMarketPreferences(preferences: CatalogMarketPreferences): Promise<void> {
-  if (!supabase) throw new Error(UNAVAILABLE);
+export async function saveCatalogMarketPreferences(
+  preferences: CatalogMarketPreferences,
+): Promise<void> {
   const user = await getCurrentUser();
-  if (!user) throw new Error('Musisz być zalogowany, aby zapisać rynki produktów.');
   const primary = normalizeMarketCountry(preferences.primaryMarket);
-  const additional = [...new Set(preferences.additionalMarkets
-    .map(normalizeMarketCountry)
-    .filter((value): value is string => Boolean(value) && value !== primary))];
-  const { error } = await supabase.from('account_product_market_preferences').upsert({
-    user_id: user.id,
-    primary_market: primary,
-    additional_markets: additional,
-    preferred_retailers: [...new Set(preferences.preferredRetailers.filter(Boolean))],
-    default_scope: preferences.defaultScope,
-  }, { onConflict: 'user_id' });
+  const additional = [
+    ...new Set(
+      preferences.additionalMarkets
+        .map(normalizeMarketCountry)
+        .filter((value): value is string => Boolean(value) && value !== primary),
+    ),
+  ];
+  if (!supabase || !user) {
+    const guestStore = localProductCountryPreferenceStore();
+    if (primary) {
+      await guestStore.save(productCountryPreferenceRecord(primary, 'explicit'));
+    } else {
+      await guestStore.clear();
+    }
+    return;
+  }
+  const { error } = await supabase.from('account_product_market_preferences').upsert(
+    {
+      user_id: user.id,
+      primary_market: primary,
+      additional_markets: additional,
+      preferred_retailers: [...new Set(preferences.preferredRetailers.filter(Boolean))],
+      default_scope: preferences.defaultScope,
+    },
+    { onConflict: 'user_id' },
+  );
   if (error) throw new Error(error.message);
+  await localProductCountryPreferenceStore().clear();
 }
 
 export async function submitOwnedOcrProductToGlobalCatalog(input: {

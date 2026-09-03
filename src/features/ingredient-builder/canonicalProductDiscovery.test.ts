@@ -159,6 +159,25 @@ describe('canonical technological slot projection', () => {
     expect(projected.map((item) => item.variantPercent)).toEqual([1.5, 3.6]);
   });
 
+  it('keeps one canonical row and shows the resolved exact SKU only as secondary text', () => {
+    const resolved = {
+      ...milk36,
+      resolvedExactProduct: localMilk36A,
+      resolutionSource: 'COUNTRY_PRIMARY_DEFAULT' as const,
+      resolutionCountry: 'ES',
+    };
+    const projected = projectCatalogHitsForDiscovery({
+      hits: [resolved, localMilk36A, localMilk36B],
+      query: 'mleko',
+    });
+    expect(projected).toHaveLength(1);
+    expect(projected[0]).toMatchObject({
+      primaryName: 'MILK 3.6%',
+      secondaryText: 'Hacendado · Hacendado Leche Entera',
+      hit: { entityKind: 'pi_base', resolvedExactProduct: { id: 'sku-a' } },
+    });
+  });
+
   it('keeps the canonical one-decimal Milk title even for whole numeric values', () => {
     expect(projectCatalogHitsForDiscovery({ hits: [milk20], query: 'milk' })[0]?.primaryName).toBe(
       'MILK 2.0%',

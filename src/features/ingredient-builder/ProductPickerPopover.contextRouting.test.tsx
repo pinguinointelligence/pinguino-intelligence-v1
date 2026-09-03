@@ -45,6 +45,8 @@ vi.mock('@/services/productCapabilityReanalysis', () => ({
 
 vi.mock('@/services/globalCatalog', () => ({
   markCatalogProductUsed: vi.fn().mockResolvedValue(undefined),
+  searchProducts: vi.fn().mockResolvedValue([]),
+  setUserPreferredExactProductForSlot: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('@/services/ingredients', () => ({

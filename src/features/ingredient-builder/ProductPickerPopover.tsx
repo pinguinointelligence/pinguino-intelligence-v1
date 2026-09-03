@@ -19,7 +19,11 @@ import { CarbonationBubbles } from '@/components/product/CarbonationBubbles';
 import { ingredientRowToEngineIngredient } from '@/data/ingredients/ingredientMapper';
 import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
 import { getEngineApprovedIngredientById } from '@/services/ingredients';
-import { markCatalogProductUsed, searchProducts } from '@/services/globalCatalog';
+import {
+  markCatalogProductUsed,
+  searchProducts,
+  setUserPreferredExactProductForSlot,
+} from '@/services/globalCatalog';
 import {
   LiveProductScanner,
   type ResolvedScanProduct,
@@ -719,9 +723,10 @@ export function ProductPickerPopover({
     setAdding(true);
     try {
       let ingredient: RecipeToppingIngredient | null = option.local ?? null;
+      const selectionCatalog = option.catalog?.resolvedExactProduct ?? option.catalog;
       if (!ingredient && option.catalog) {
         const resolvedSelection = await resolveCurrentMapperCatalogSelection(
-          option.catalog,
+          selectionCatalog!,
           scope === 'BASE_FORMULATION' ? 'BASE' : 'TOPPING',
           getEngineApprovedIngredientById,
         );
@@ -729,7 +734,7 @@ export function ProductPickerPopover({
           setUnavailableNotice(resolvedSelection.message);
           return;
         }
-        ingredient = engineIngredientForCatalogSelection(option.catalog, resolvedSelection);
+        ingredient = engineIngredientForCatalogSelection(selectionCatalog!, resolvedSelection);
       } else if (!ingredient) {
         ingredient = await getEngineApprovedIngredientById(option.id).then((row) =>
           row ? ingredientRowToEngineIngredient(row) : null,
@@ -750,13 +755,13 @@ export function ProductPickerPopover({
       }
       let behavior: ProductBehaviorSnapshot | undefined;
       if (ingredient && behaviorContext) {
-        const entity = option.catalog
-          ? option.catalog.entityKind === 'pi_base' && option.catalog.mappedIngredientId
-            ? { entityKind: 'mapper' as const, entityId: option.catalog.mappedIngredientId }
-            : option.catalog.currentVersionId
+        const entity = selectionCatalog
+          ? selectionCatalog.entityKind === 'pi_base' && selectionCatalog.mappedIngredientId
+            ? { entityKind: 'mapper' as const, entityId: selectionCatalog.mappedIngredientId }
+            : selectionCatalog.currentVersionId
               ? {
                   entityKind: 'catalog_product_version' as const,
-                  entityId: option.catalog.currentVersionId,
+                  entityId: selectionCatalog.currentVersionId,
                 }
               : null
           : {
@@ -810,15 +815,24 @@ export function ProductPickerPopover({
           : onAdd(ingredient as EngineIngredient, behavior)
         : undefined;
       if (ingredient) {
+        if (
+          option.catalog?.entityKind === 'commercial_product' &&
+          option.catalog.mappedIngredientId
+        ) {
+          void setUserPreferredExactProductForSlot({
+            mapperIngredientId: option.catalog.mappedIngredientId,
+            productId: option.catalog.id,
+          }).catch(() => undefined);
+        }
         // Recent-use telemetry is private ranking metadata; an unavailable
         // backend must never turn a valid ingredient selection into an error.
-        const relation = option.catalog
+        const relation = selectionCatalog
           ? {
-              entityKind: option.catalog.entityKind,
+              entityKind: selectionCatalog.entityKind,
               id:
-                option.catalog.entityKind === 'pi_base'
-                  ? option.catalog.mappedIngredientId!
-                  : option.catalog.id,
+                selectionCatalog.entityKind === 'pi_base'
+                  ? selectionCatalog.mappedIngredientId!
+                  : selectionCatalog.id,
             }
           : { entityKind: 'pi_base' as const, id: option.id.replace(/^mapper:/, '') };
         void markCatalogProductUsed(relation).catch(() => undefined);
@@ -944,6 +958,12 @@ export function ProductPickerPopover({
         scope === 'POST_PROCESS_ADDON'
           ? onAdd(ingredient, behavior)
           : onAdd(ingredient as EngineIngredient, behavior);
+      if (hit.entityKind === 'commercial_product' && hit.mappedIngredientId) {
+        void setUserPreferredExactProductForSlot({
+          mapperIngredientId: hit.mappedIngredientId,
+          productId: hit.id,
+        }).catch(() => undefined);
+      }
       void markCatalogProductUsed({
         entityKind: hit.entityKind,
         id: hit.entityKind === 'pi_base' ? hit.mappedIngredientId! : hit.id,

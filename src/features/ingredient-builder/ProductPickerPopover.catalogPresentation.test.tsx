@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   hits: [] as CatalogProductSearchHit[],
   getRow: vi.fn(),
   markUsed: vi.fn(),
+  setPreferred: vi.fn(),
   toggleFavorite: vi.fn(),
   loadMore: vi.fn(),
   toEngine: vi.fn(),
@@ -74,6 +75,8 @@ vi.mock('@/services/ingredients', () => ({
 
 vi.mock('@/services/globalCatalog', () => ({
   markCatalogProductUsed: mocks.markUsed,
+  searchProducts: vi.fn().mockResolvedValue([]),
+  setUserPreferredExactProductForSlot: mocks.setPreferred,
 }));
 
 vi.mock('@/data/ingredients/ingredientMapper', () => ({
@@ -197,6 +200,7 @@ describe('ProductPickerPopover catalog presentation', () => {
     }));
     mocks.toEngine.mockReturnValue(engineIngredient);
     mocks.markUsed.mockResolvedValue(undefined);
+    mocks.setPreferred.mockResolvedValue(undefined);
     mocks.isFetching = false;
     mocks.isSettled = true;
     Object.defineProperty(window, 'matchMedia', {
@@ -337,6 +341,114 @@ describe('ProductPickerPopover catalog presentation', () => {
     expect(
       document.querySelector('button[aria-label="Dodaj CREAM 30% · Mlekovita Cream · Chilled"]'),
     ).toBeNull();
+  });
+
+  it('selects the resolved country SKU behind one canonical row without turning it into a passive preference write', async () => {
+    const exact = catalogHit({
+      id: 'spanish-milk-product',
+      entityKind: 'commercial_product',
+      productCode: 'PR-ING-000901',
+      currentVersionId: 'spanish-milk-version',
+      status: 'verified',
+      verificationMethod: 'human',
+      displayName: 'Leche entera 3.6%',
+      brand: 'Marca ES',
+      mappedIngredientId: 'PI-ING-000236',
+      markets: ['ES'],
+      publicData: {
+        productIntelligence: { engineUsable: true },
+        technicalComposition: {
+          water: 88.6,
+          totalSolids: 11.4,
+          fat: 3.6,
+          protein: 3.2,
+          carbohydrate: 4.7,
+          sugars: 4.7,
+          salt: 0.1,
+        },
+      },
+    });
+    mocks.hits = [
+      catalogHit({
+        id: 'milk-mapper',
+        displayName: 'MILK 3.6% · Milk · Chilled',
+        canonicalFamily: 'milk',
+        category: 'dairy',
+        productForm: 'milk',
+        mappedIngredientId: 'PI-ING-000236',
+        resolvedExactProduct: exact,
+        resolutionSource: 'COUNTRY_PRIMARY_DEFAULT',
+        resolutionCountry: 'ES',
+      }),
+      exact,
+    ];
+    const onAdd = await renderPicker();
+    const all = document.querySelector<HTMLButtonElement>('[data-product-filter="all"]');
+    await act(async () => all?.click());
+    const search = document.querySelector<HTMLInputElement>('input[role="combobox"]');
+    await act(async () => {
+      if (search) {
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+        setter?.call(search, 'milk');
+        search.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    });
+
+    expect(document.body.textContent).toContain('MILK 3.6%');
+    expect(document.body.textContent).toContain('Marca ES · Leche entera 3.6%');
+    expect(document.querySelectorAll('button[aria-label="Dodaj MILK 3.6%"]')).toHaveLength(1);
+
+    const add = document.querySelector<HTMLButtonElement>('button[aria-label="Dodaj MILK 3.6%"]');
+    await act(async () => add?.click());
+    expect(onAdd.mock.calls[0]?.[0]).toMatchObject({
+      id: 'PR-ING-000901',
+      private_product_id: 'catalog:spanish-milk-product:version:spanish-milk-version',
+      name: 'Leche entera 3.6%',
+    });
+    expect(mocks.markUsed).toHaveBeenCalledWith({
+      entityKind: 'commercial_product',
+      id: 'spanish-milk-product',
+    });
+    expect(mocks.setPreferred).not.toHaveBeenCalled();
+  });
+
+  it('updates CP-36 only when the user consciously selects an exact commercial result', async () => {
+    const exact = catalogHit({
+      id: 'user-milk-product',
+      entityKind: 'commercial_product',
+      productCode: 'PR-ING-000902',
+      currentVersionId: 'user-milk-version',
+      status: 'verified',
+      verificationMethod: 'human',
+      displayName: 'Leche exacta B',
+      brand: 'Marca B',
+      mappedIngredientId: 'PI-ING-000236',
+      markets: ['ES'],
+      publicData: {
+        productIntelligence: { engineUsable: true },
+        technicalComposition: {
+          water: 88.6,
+          totalSolids: 11.4,
+          fat: 3.6,
+          protein: 3.2,
+          carbohydrate: 4.7,
+          sugars: 4.7,
+          salt: 0.1,
+        },
+      },
+    });
+    mocks.hits = [exact];
+    const onAdd = await renderPicker();
+    const add = document.querySelector<HTMLButtonElement>(
+      'button[aria-label="Dodaj Leche exacta B"]',
+    );
+    await act(async () => add?.click());
+
+    expect(onAdd).toHaveBeenCalledOnce();
+    expect(mocks.setPreferred).toHaveBeenCalledWith({
+      mapperIngredientId: 'PI-ING-000236',
+      productId: 'user-milk-product',
+    });
   });
 
   it('opens an external row Replace directly in its Milk context and keeps numeric order', async () => {
