@@ -1,0 +1,388 @@
+// Guard-anchored, per-slot EAN-13 evidence accumulation across scanlines and frames (research spike).
+// Nothing here concatenates strings. Evidence is indexed by MODULE POSITION anchored on guard patterns,
+// accumulated as per-slot class posteriors, and the final EAN is the best CHECKSUM-VALID path with an
+// explicit margin over the second-best valid path.
+import { L, G, R, PARITY } from './ean13.mjs';
+
+const bitsOf = (s) => [...s].map(Number);
+export const LEFT_CLASSES = [...L.map(bitsOf), ...G.map(bitsOf)]; // 0..9 = L digit, 10..19 = G digit
+export const RIGHT_CLASSES = R.map(bitsOf);                        // 0..9 = R digit
+export const slotStart = (k) => (k < 6 ? 3 + 7 * k : 50 + 7 * (k - 6));
+
+// Signatures: [moduleIndexOfTemplateStart, bits]
+const SIGNATURES = {
+  start: { mod: -7, bits: [0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0] },   // 7-module quiet zone + 101 + first (always light) module of digit 1
+  middle: { mod: 44, bits: [1, 0, 1, 0, 1, 0, 1] },        // last module of digit 6 (always dark) + 01010 + first module of digit 7 (always dark)
+  end: { mod: 91, bits: [0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0] },      // last module of digit 12 (always light) + 101 + 7-module quiet zone
+};
+
+/** Coarse module-width estimate from run lengths after local-threshold binarisation (25th percentile of run widths). */
+export function estimateModuleWidth(profile, { window = 15 } = {}) {
+  const n = profile.length; const runs = [];
+  let prev = null, len = 0;
+  for (let i = 0; i < n; i++) {
+    const v = profile[i]; if (Number.isNaN(v)) { if (prev !== null && len > 0) runs.push(len); prev = null; len = 0; continue; }
+    let mn = Infinity, mx = -Infinity;
+    for (let j = Math.max(0, i - window); j <= Math.min(n - 1, i + window); j++) { const u = profile[j]; if (Number.isNaN(u)) continue; if (u < mn) mn = u; if (u > mx) mx = u; }
+    if (mx - mn < 30) { if (prev !== null && len > 0) runs.push(len); prev = null; len = 0; continue; }
+    const dark = v < (mn + mx) / 2;
+    if (prev === null) { prev = dark; len = 1; } else if (dark === prev) len++; else { runs.push(len); prev = dark; len = 1; }
+  }
+  if (prev !== null && len > 0) runs.push(len);
+  if (runs.length < 12) return null;
+  runs.sort((a, b) => a - b);
+  return runs[Math.floor(runs.length * 0.25)];
+}
+
+/** Render a module bit pattern into per-pixel dark coverage (0..1) at module width m, origin offset x0 (px of module 0), for pixel centres i+0.5, i=0..n-1. */
+function renderTemplate(bits, m, x0, n, blur = 0.6) {
+  const out = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const a = i - x0, b = a + 1; // pixel span in px relative to module 0 start
+    let cov = 0;
+    const m0 = Math.floor(a / m), m1 = Math.floor((b - 1e-9) / m);
+    for (let k = m0; k <= m1; k++) {
+      const bit = k >= 0 && k < bits.length ? bits[k] : 0; // outside template = light (unknown neighbours assumed light for anchors)
+      if (!bit) continue;
+      const s = Math.max(a, k * m), e = Math.min(b, (k + 1) * m);
+      if (e > s) cov += e - s;
+    }
+    out[i] = cov;
+  }
+  // Gaussian smoothing approximates optical blur (sigma in px)
+  if (blur <= 0.05) return out;
+  const rad = Math.max(1, Math.ceil(blur * 2.5)); const k = new Float32Array(2 * rad + 1); let ks = 0;
+  for (let i = -rad; i <= rad; i++) { k[i + rad] = Math.exp(-(i * i) / (2 * blur * blur)); ks += k[i + rad]; }
+  const sm = new Float32Array(n);
+  for (let i = 0; i < n; i++) { let a = 0; for (let j = -rad; j <= rad; j++) { const idx = Math.min(n - 1, Math.max(0, i + j)); a += out[idx] * k[j + rad]; } sm[i] = a / ks; }
+  return sm;
+}
+const BLUR_LEVELS = [0.4, 0.9, 1.5, 2.2];
+
+/** Normalised cross-correlation between profile window (intensity, dark = low) and template coverage (dark = high). Returns ncc in [-1,1] or NaN. */
+function ncc(profile, start, tmpl) {
+  const n = tmpl.length; let sx = 0, sy = 0, sxx = 0, syy = 0, sxy = 0, cnt = 0;
+  for (let i = 0; i < n; i++) {
+    const v = profile[start + i]; if (Number.isNaN(v)) return NaN;
+    const x = -v, y = tmpl[i]; // negate intensity so dark bars correlate positively with coverage
+    sx += x; sy += y; sxx += x * x; syy += y * y; sxy += x * y; cnt++;
+  }
+  const mx = sx / cnt, my = sy / cnt;
+  const vx = sxx / cnt - mx * mx, vy = syy / cnt - my * my;
+  if (vx <= 1e-9 || vy <= 1e-12) return NaN;
+  return (sxy / cnt - mx * my) / Math.sqrt(vx * vy);
+}
+
+/** Sub-pixel edge positions from derivative extrema whose magnitude exceeds a fraction of the local contrast. */
+export function detectEdges(profile, { minContrast = 25, window = 15 } = {}) {
+  const n = profile.length; const d = new Float32Array(n);
+  for (let i = 1; i < n - 1; i++) { const a = profile[i - 1], b = profile[i + 1]; d[i] = Number.isNaN(a) || Number.isNaN(b) ? 0 : (b - a) / 2; }
+  const edges = [];
+  for (let i = 2; i < n - 2; i++) {
+    const v = d[i]; if (Math.abs(v) < 4) continue;
+    if ((v > 0 && v >= d[i - 1] && v > d[i + 1]) || (v < 0 && v <= d[i - 1] && v < d[i + 1])) {
+      let mn = Infinity, mx = -Infinity;
+      for (let j = Math.max(0, i - window); j <= Math.min(n - 1, i + window); j++) { const u = profile[j]; if (Number.isNaN(u)) continue; if (u < mn) mn = u; if (u > mx) mx = u; }
+      if (mx - mn < minContrast) continue;
+      if (Math.abs(v) < 0.12 * (mx - mn)) continue;
+      const denom = d[i - 1] - 2 * d[i] + d[i + 1]; const off = denom !== 0 ? 0.5 * (d[i - 1] - d[i + 1]) / denom : 0; // parabolic sub-pixel
+      edges.push(i + (Math.abs(off) < 1 ? off : 0));
+    }
+  }
+  return edges;
+}
+/** Module width by periodicity fit: every edge-to-edge distance in a 1D code is an integer multiple (1..4) of the module width. */
+export function estimateModulePeriod(edges, { mMin = 0.8, mMax = 6, step = 0.01 } = {}) {
+  if (edges.length < 8) return null;
+  const sp = []; for (let i = 1; i < edges.length; i++) { const v = edges[i] - edges[i - 1]; if (v > 0.5 && v < 40) sp.push(v); }
+  if (sp.length < 6) return null;
+  let best = null, bestScore = -1; const scores = [];
+  for (let m = mMin; m <= mMax; m += step) {
+    let sc = 0, cnt = 0;
+    for (const v of sp) { const r = v / m; if (r > 4.6 || r < 0.6) continue; cnt++; sc += Math.cos(2 * Math.PI * r) ; }
+    const val = cnt >= 6 ? sc / sp.length : -1; scores.push([m, val]);
+    if (val > bestScore) { bestScore = val; best = m; }
+  }
+  // prefer the LARGEST m whose score is within 8% of the best (rejects the m/2, m/3 harmonics)
+  let chosen = best;
+  for (const [m, val] of scores) if (val >= bestScore * 0.92 && m > chosen) chosen = m;
+  return { m: chosen, score: bestScore, edges: edges.length };
+}
+
+/**
+ * Find anchor candidates by matched filtering over (position, module width).
+ * profile: Float32Array (NaN = outside image). Returns { start:[{x,m,ncc}], middle:[...], end:[...] } with x = pixel of the TEMPLATE start.
+ */
+export function findAnchors(profile, { mMin = 0.9, mMax = 5.0, mStep = 0.05, minNcc = 0.85, maxPerType = 14, minTemplatePx = 9 } = {}) {
+  const out = {};
+  const mRun = estimateModuleWidth(profile);
+  const mEst = mRun;
+  const lo = mRun ? Math.max(mMin, mRun * 0.4) : mMin;
+  const hi = mRun ? Math.min(mMax, mRun * 1.6) : mMax;
+  out.mEst = mEst; out.period = null; out.mRun = mRun;
+  for (const [name, sig] of Object.entries(SIGNATURES)) {
+    const peaks = [];
+    for (let m = lo; m <= hi + 1e-9; m += mStep) {
+      const n = Math.round(sig.bits.length * m);
+      if (n < minTemplatePx) continue;
+      for (const blur of BLUR_LEVELS) {
+        const tmpl = renderTemplate(sig.bits, m, 0, n, blur);
+        let prev = NaN, prev2 = NaN;
+        for (let x = 0; x + n <= profile.length; x++) {
+          const c = ncc(profile, x, tmpl);
+          if (!Number.isNaN(prev) && !Number.isNaN(prev2) && prev >= minNcc && prev >= prev2 && prev > c) {
+            const denom = prev2 - 2 * prev + c; const off = denom !== 0 ? 0.5 * (prev2 - c) / denom : 0;
+            peaks.push({ x: x - 1 + (Math.abs(off) < 1 ? off : 0), m, ncc: prev, blur });
+          }
+          prev2 = prev; prev = c;
+        }
+      }
+    }
+    peaks.sort((a, b) => b.ncc - a.ncc);
+    const kept = [];
+    for (const p of peaks) {
+      if (kept.every((q) => Math.abs(q.x - p.x) > 2.5 * p.m || Math.abs(q.m - p.m) / p.m > 0.15)) kept.push(p);
+      if (kept.length >= maxPerType) break;
+    }
+    out[name] = kept;
+  }
+  return out;
+}
+
+/** Combine anchors into a linear module frame {origin (px of module 0), m, quality, kind}. Prefers anchor PAIRS; falls back to single anchors. */
+export function resolveFrames(anchors, { pairTolerance = 0.30 } = {}) {
+  const frames = [];
+  const types = ['start', 'middle', 'end'];
+  for (let i = 0; i < 3; i++) for (let j = i + 1; j < 3; j++) {
+    if (!Array.isArray(anchors[types[i]]) || !Array.isArray(anchors[types[j]])) continue;
+    for (const a of anchors[types[i]] || []) for (const b of anchors[types[j]] || []) {
+      const dm = SIGNATURES[types[j]].mod - SIGNATURES[types[i]].mod;
+      const m = (b.x - a.x) / dm;
+      if (m < 0.7 || m > 6) continue;
+      if (Math.abs(a.m - m) / m > pairTolerance || Math.abs(b.m - m) / m > pairTolerance) continue;
+      const origin = a.x - SIGNATURES[types[i]].mod * m;
+      frames.push({ origin, m, quality: (a.ncc + b.ncc) / 2, kind: `${types[i]}+${types[j]}`, anchors: 2, blur: (a.blur + b.blur) / 2 });
+    }
+  }
+  if (frames.length === 0) {
+    const mP = anchors.period && anchors.period.score > 0.35 ? anchors.period.m : null;
+    for (const t of types) for (const a of (Array.isArray(anchors[t]) ? anchors[t] : [])) { const m = mP ?? a.m; frames.push({ origin: a.x - SIGNATURES[t].mod * m, m, quality: a.ncc * 0.8, kind: t, anchors: 1, blur: a.blur }); }
+  }
+  frames.sort((a, b) => b.quality - a.quality);
+  return frames;
+}
+
+/**
+ * Score every visible slot under a module frame. Returns array of 12 entries (null when not observable):
+ * { classes: Float64Array(20|10) of ncc per class, bestNcc, shiftPx }.
+ * Interior-only comparison (0.6 module margin) so unknown neighbouring digits do not bias the match.
+ */
+export function scoreSlots(profile, frame, { shiftFrac = 0.45, shiftStep = 0.1, minNcc = 0.45 } = {}) {
+  const { origin, m } = frame; const blur = frame.blur ?? 0.6;
+  const slots = new Array(12).fill(null);
+  // slot visiting order: walk away from the anchor so alignment drift can be chained
+  const kind = frame.kind || 'start';
+  let order;
+  if (kind.startsWith('start')) order = [0,1,2,3,4,5,6,7,8,9,10,11];
+  else if (kind.startsWith('middle+end') || kind === 'end') order = [11,10,9,8,7,6,5,4,3,2,1,0];
+  else order = [5,4,3,2,1,0,6,7,8,9,10,11];
+  let carry = 0; // accumulated shift (px) chained from the previous slot
+  for (const k of order) {
+    if ((kind === 'middle' && k === 6)) carry = 0;
+    const classes = k < 6 ? LEFT_CLASSES : RIGHT_CLASSES;
+    const S = slotStart(k);
+    const xs = origin + S * m + carry, xe = origin + (S + 7) * m + carry;
+    const i0 = Math.ceil(xs + 0.6 * m), i1 = Math.floor(xe - 0.6 * m); // pixel indices (centre at i+0.5)
+    if (i1 - i0 + 1 < 4) continue;
+    if (i0 - 1 < 0 || i1 + 1 >= profile.length) continue;
+    let bad = false; for (let i = i0 - 1; i <= i1 + 1; i++) if (Number.isNaN(profile[i])) { bad = true; break; }
+    if (bad) continue;
+    const scores = new Float64Array(classes.length).fill(-1);
+    let bestNcc = -1, bestShift = 0;
+    for (let c = 0; c < classes.length; c++) {
+      for (let d = -shiftFrac; d <= shiftFrac + 1e-9; d += shiftStep) {
+        const x0 = xs + d * m; // template start in px
+        const n = i1 - i0 + 1;
+        // render template coverage for pixels i0..i1 given template origin x0
+        const tmpl = renderTemplate(classes[c], m, x0 - i0, n, blur);
+        const v = ncc(profile, i0, tmpl);
+        if (!Number.isNaN(v) && v > scores[c]) scores[c] = v;
+        if (!Number.isNaN(v) && v > bestNcc) { bestNcc = v; bestShift = d * m; }
+      }
+    }
+    if (bestNcc < minNcc) continue;
+    if (bestNcc >= 0.8) carry = Math.max(-0.6 * m, Math.min(0.6 * m, carry + bestShift * 0.5));
+    slots[k] = { classes: scores, bestNcc, shiftPx: bestShift, n: i1 - i0 + 1 };
+  }
+  return slots;
+}
+
+/** Per-slot posterior from ncc scores. kappa = effective sharpness (n / (2 sigmaRel^2) when derived from sample count). */
+export function slotPosterior(scores, kappa) {
+  const n = scores.length; const out = new Float64Array(n);
+  let mx = -Infinity; for (let i = 0; i < n; i++) mx = Math.max(mx, scores[i] * kappa);
+  let s = 0; for (let i = 0; i < n; i++) { out[i] = Math.exp(scores[i] * kappa - mx); s += out[i]; }
+  for (let i = 0; i < n; i++) out[i] /= s;
+  return out;
+}
+
+/** One scanline → observation {slots:[posterior|null x12], frame, quality}. */
+export function observeScanline(profile, { sigmaRel = 0.35, anchorOpts, frameOpts } = {}) {
+  const anchors = findAnchors(profile, anchorOpts);
+  const frames = resolveFrames(anchors, frameOpts);
+  if (frames.length === 0) return null;
+  // try the best few frames, keep the one that explains the most slots with the highest mean ncc
+  let best = null;
+  const twoAnchor = frames.filter((f) => f.anchors === 2);
+  for (const fr of (twoAnchor.length ? twoAnchor : frames).slice(0, 4)) {
+    const slots = scoreSlots(profile, fr);
+    const seen = slots.filter(Boolean);
+    if (seen.length === 0) continue;
+    const meanNcc = seen.reduce((a, s) => a + s.bestNcc, 0) / seen.length;
+    const value = seen.reduce((a, s) => a + s.n * s.bestNcc, 0); // sample-weighted explained correlation
+    if (!best || value > best.value) best = { value, frame: fr, slots, meanNcc };
+  }
+  if (!best) return null;
+  return {
+    frame: best.frame,
+    value: best.value,
+    quality: best.meanNcc,
+    slots: best.slots.map((s) => { if (!s) return null; const sig = sigmaRel * (1 + 0.6 * (best.frame.blur ?? 0.6)); return { p: slotPosterior(s.classes, s.n / (2 * sig * sig)), ncc: s.bestNcc, n: s.n }; }),
+  };
+}
+
+// ---------------- accumulation across frames ----------------
+export class EanEvidence {
+  constructor({ temper = 1.0, singleAnchorWeight = 0.0, intraFrame = 0.5 } = {}) {
+    this.temper = temper; this.singleAnchorWeight = singleAnchorWeight; this.intraFrame = intraFrame;
+    this.frames = []; // per camera frame: { slots: [ {p, ncc} | null ], weight, t }
+  }
+  /** observations: array of scanline observations from ONE camera frame. Averages posteriors per slot within the frame. */
+  addFrame(observations, t = this.frames.length) {
+    let obs = observations.filter(Boolean);
+    if (this.singleAnchorWeight === 0) obs = obs.filter((o) => o.frame.anchors === 2);
+    if (obs.length >= 2) {
+      let bestC = null, bestV = -1;
+      for (const c of obs) { const members = obs.filter((o) => Math.abs(o.frame.m - c.frame.m) / c.frame.m <= 0.08); const v = members.reduce((a, o) => a + o.value, 0); if (v > bestV) { bestV = v; bestC = members; } }
+      obs = bestC;
+    }
+    if (obs.length === 0) { this.frames.push({ slots: new Array(12).fill(null), weight: 0, t }); return; }
+    const slots = new Array(12).fill(null);
+    let anchorsMax = 1;
+    for (let k = 0; k < 12; k++) {
+      const contributions = obs.filter((o) => o.slots[k]);
+      if (contributions.length === 0) continue;
+      const n = contributions[0].slots[k].p.length; const acc = new Float64Array(n); let wsum = 0;
+      for (const o of contributions) { const w = o.frame.anchors === 2 ? 1 : this.singleAnchorWeight; anchorsMax = Math.max(anchorsMax, o.frame.anchors); for (let i = 0; i < n; i++) acc[i] += w * o.slots[k].p[i]; wsum += w; }
+      for (let i = 0; i < n; i++) acc[i] /= wsum;
+      slots[k] = { p: acc, ncc: Math.max(...contributions.map((o) => o.slots[k].ncc)) };
+    }
+    this.frames.push({ slots, weight: anchorsMax === 2 ? 1 : this.singleAnchorWeight, t });
+  }
+
+  /** Frames agree if they overlap on >=1 slot and their argmax classes agree on >= 80% of overlapping slots (digit identity; parity ignored for left). */
+  static agree(a, b) {
+    let overlap = 0, same = 0;
+    for (let k = 0; k < 12; k++) {
+      if (!a.slots[k] || !b.slots[k]) continue;
+      overlap++;
+      const da = argmax(a.slots[k].p) % 10, db = argmax(b.slots[k].p) % 10;
+      if (da === db) same++;
+    }
+    return overlap > 0 && same / overlap >= 0.8;
+  }
+
+  /** Largest connected component of mutually consistent frames (chimera guard). */
+  consistentComponent() {
+    const fr = this.frames.map((f, i) => ({ ...f, i })).filter((f) => f.weight > 0 && f.slots.some(Boolean));
+    const parent = fr.map((_, i) => i);
+    const find = (x) => (parent[x] === x ? x : (parent[x] = find(parent[x])));
+    for (let i = 0; i < fr.length; i++) for (let j = i + 1; j < fr.length; j++) if (EanEvidence.agree(fr[i], fr[j])) parent[find(i)] = find(j);
+    const groups = new Map();
+    fr.forEach((f, i) => { const r = find(i); if (!groups.has(r)) groups.set(r, []); groups.get(r).push(f); });
+    let best = null, bestScore = -1;
+    for (const g of groups.values()) {
+      const covered = new Set(); let mass = 0;
+      for (const f of g) for (let k = 0; k < 12; k++) if (f.slots[k]) { covered.add(k); mass += f.weight * f.slots[k].ncc; }
+      const score = covered.size * 100 + mass;
+      if (score > bestScore) { bestScore = score; best = g; }
+    }
+    return { component: best || [], groups: groups.size };
+  }
+
+  decode({ marginThreshold = 3.0, minMarginal = 0.5, minFramesPerSlot = 2, consistency = true } = {}) {
+    const { component, groups } = consistency ? this.consistentComponent() : { component: this.frames.filter((f) => f.weight > 0), groups: 1 };
+    const logp = Array.from({ length: 12 }, (_, k) => new Float64Array(k < 6 ? 20 : 10));
+    const coverage = new Array(12).fill(0);
+    for (const f of component) for (let k = 0; k < 12; k++) {
+      const s = f.slots[k]; if (!s) continue; coverage[k]++;
+      for (let i = 0; i < s.p.length; i++) logp[k][i] += this.temper * f.weight * Math.log(Math.max(s.p[i], 1e-9));
+    }
+    const marginals = logp.map((lp) => { const p = slotPosterior(lp, 1); return p; });
+    // DP over parity patterns with checksum residue state, top-2 paths per state
+    const candidates = [];
+    for (let P = 0; P < 10; P++) {
+      const pat = PARITY[P];
+      let states = new Map(); states.set(P % 10, [{ score: 0, digits: [] }]);
+      for (let k = 0; k < 12; k++) {
+        const weight = (k + 2) % 2 === 0 ? 3 : 1;
+        const next = new Map();
+        for (const [res, entries] of states) for (const e of entries) for (let d = 0; d < 10; d++) {
+          const cls = k < 6 ? (pat[k] === 'L' ? d : 10 + d) : d;
+          const sc = e.score + (coverage[k] > 0 ? logp[k][cls] : Math.log(0.1));
+          const nr = (res + weight * d) % 10;
+          const arr = next.get(nr) || []; arr.push({ score: sc, digits: [...e.digits, d] }); next.set(nr, arr);
+        }
+        for (const [r, arr] of next) { arr.sort((a, b) => b.score - a.score); next.set(r, arr.slice(0, 2)); }
+        states = next;
+      }
+      for (const e of states.get(0) || []) candidates.push({ ean: String(P) + e.digits.join(''), score: e.score, P });
+    }
+    candidates.sort((a, b) => b.score - a.score);
+    const best = candidates[0] || null;
+    const second = candidates.find((c) => c.ean !== best?.ean) || null;
+    const margin = best && second ? best.score - second.score : best ? Infinity : -Infinity;
+    // parity-pattern confidence for the first digit
+    const bestOtherP = candidates.find((c) => c.P !== best?.P);
+    const firstDigitMargin = best && bestOtherP ? best.score - bestOtherP.score : best ? Infinity : -Infinity;
+    // resolved digits (display): slot marginal >= 0.95 AND agrees with best path
+    let shown = '';
+    if (best) {
+      shown += firstDigitMargin >= marginThreshold ? best.ean[0] : '•';
+      for (let k = 0; k < 12; k++) {
+        const d = Number(best.ean[k + 1]);
+        const cls = k < 6 ? (PARITY[best.P][k] === 'L' ? d : 10 + d) : d;
+        const mg = coverage[k] >= 2 ? marginals[k][cls] : 0;
+        shown += mg >= 0.95 ? best.ean[k + 1] : '•';
+      }
+    }
+    const slotMarg = best ? Array.from({ length: 12 }, (_, k) => { const d = Number(best.ean[k + 1]); const cls = k < 6 ? (PARITY[best.P][k] === 'L' ? d : 10 + d) : d; return coverage[k] > 0 ? marginals[k][cls] : 0; }) : [];
+    const fullCoverage = coverage.every((c) => c >= minFramesPerSlot);
+    const accepted = !!best && fullCoverage && margin >= marginThreshold && firstDigitMargin >= marginThreshold && slotMarg.every((v) => v >= minMarginal);
+    const reasons = [];
+    if (!best) reasons.push('no_valid_hypothesis');
+    if (!fullCoverage) reasons.push('coverage:' + coverage.map((c) => (c >= minFramesPerSlot ? '1' : '0')).join(''));
+    if (best && margin < marginThreshold) reasons.push('margin:' + margin.toFixed(2));
+    if (best && firstDigitMargin < marginThreshold) reasons.push('parity_margin:' + firstDigitMargin.toFixed(2));
+    if (best && slotMarg.some((v) => v < minMarginal)) reasons.push('weak_slots');
+    if (groups > 1) reasons.push('inconsistent_groups:' + groups);
+    const resolvedCount = shown ? [...shown].filter((c) => c !== '•').length : 0;
+    return { best, second, margin, firstDigitMargin, coverage, shown, resolvedCount, accepted, reasons, groups, framesUsed: component.length, progress: resolvedCount / 13 };
+  }
+}
+function argmax(a) { let b = 0; for (let i = 1; i < a.length; i++) if (a[i] > a[b]) b = i; return b; }
+
+// ---------------- profile sampling helpers ----------------
+export function bilinear(gray, w, h, x, y) {
+  if (x < 0 || y < 0 || x > w - 1 || y > h - 1) return NaN;
+  const x0 = Math.floor(x), y0 = Math.floor(y), x1 = Math.min(w - 1, x0 + 1), y1 = Math.min(h - 1, y0 + 1);
+  const fx = x - x0, fy = y - y0;
+  return (gray[y0 * w + x0] * (1 - fx) + gray[y0 * w + x1] * fx) * (1 - fy) + (gray[y1 * w + x0] * (1 - fx) + gray[y1 * w + x1] * fx) * fy;
+}
+/** Sample an intensity profile along the segment p0->p1 extended by `extend` px each side, 1 px spacing. NaN outside the image. */
+export function sampleProfile(gray, w, h, p0, p1, extend = 0) {
+  const dx = p1[0] - p0[0], dy = p1[1] - p0[1]; const len = Math.hypot(dx, dy); const ux = dx / len, uy = dy / len;
+  const n = Math.ceil(len + 2 * extend); const out = new Float32Array(n);
+  for (let i = 0; i < n; i++) { const t = i - extend + 0.5; out[i] = bilinear(gray, w, h, p0[0] + ux * t, p0[1] + uy * t); }
+  return out;
+}

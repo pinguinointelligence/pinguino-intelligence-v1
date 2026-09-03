@@ -1,0 +1,86 @@
+{
+  "tag": "bench",
+  "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Safari/605.1.15",
+  "time": "2026-09-03T18:15:04.542Z",
+  "frames": [
+    {
+      "frame": "a_00_dist_120mm_3_0_px_module_.png",
+      "w": 1280,
+      "h": 720,
+      "getImageDataMs": 2,
+      "zxingHarderMs": 14,
+      "zxingFastMs": 3,
+      "zbarMs": 27,
+      "zxing": "3818095251828",
+      "zbar": "3818095251828"
+    },
+    {
+      "frame": "a_01_dist_180mm_2_0_px_module_.png",
+      "w": 1280,
+      "h": 720,
+      "getImageDataMs": 2,
+      "zxingHarderMs": 12,
+      "zxingFastMs": 2,
+      "zbarMs": 16,
+      "zxing": "3818095251828",
+      "zbar": "3818095251828"
+    },
+    {
+      "frame": "a_02_dist_240mm_1_5_px_module_.png",
+      "w": 1280,
+      "h": 720,
+      "getImageDataMs": 1,
+      "zxingHarderMs": 10,
+      "zxingFastMs": 2,
+      "zbarMs": 13,
+      "zxing": "-",
+      "zbar": "-"
+    },
+    {
+      "frame": "a_03_dist_300mm_1_2_px_module_.png",
+      "w": 1280,
+      "h": 720,
+      "getImageDataMs": 1,
+      "zxingHarderMs": 11,
+      "zxingFastMs": 1,
+      "zbarMs": 15,
+      "zxing": "-",
+      "zbar": "-"
+    },
+    {
+      "frame": "a_07_blur_0_7_180mm.png",
+      "w": 1280,
+      "h": 720,
+      "getImageDataMs": 2,
+      "zxingHarderMs": 10,
+      "zxingFastMs": 1,
+      "zbarMs": 14,
+      "zxing": "-",
+      "zbar": "-"
+    },
+    {
+      "frame": "a_08_blur_1_2_180mm.png",
+      "w": 1280,
+      "h": 720,
+      "getImageDataMs": 1,
+      "zxingHarderMs": 10,
+      "zxingFastMs": 1,
+      "zbarMs": 14,
+      "zxing": "-",
+      "zbar": "-"
+    },
+    {
+      "frame": "a_09_blur_1_8_180mm.png",
+      "w": 1280,
+      "h": 720,
+      "getImageDataMs": 1,
+      "zxingHarderMs": 10,
+      "zxingFastMs": 2,
+      "zbarMs": 13,
+      "zxing": "-",
+      "zbar": "-"
+    }
+  ],
+  "zxingWarmupMs": 86,
+  "zbarWarmupMs": 16
+}
