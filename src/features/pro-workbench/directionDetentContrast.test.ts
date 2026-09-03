@@ -104,7 +104,12 @@ describe('Direction readability — the reported value', () => {
   it('encodes the position in more than colour alone', () => {
     // Thumb POSITION and fill WIDTH both carry it, so the reading survives a
     // viewer who cannot separate the orange from the rail.
-    expect(axes).toContain('style={{ left: at(position) }}');
+    // The helper is now parameterised by the axis's detent set, so a profile
+    // whose authority publishes three targets (Protein ice-fraction hardness)
+    // renders three real positions on the same geometry. The contract is
+    // unchanged in substance: the thumb's position is still derived from the
+    // VALUE, not from colour alone.
+    expect(axes).toContain('style={{ left: detentAt(position) }}');
     expect(axes).toContain('style={{ left: fillLeft, width: fillWidth }}');
   });
 

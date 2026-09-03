@@ -79,6 +79,7 @@ const EXPECTED_SOURCE_CLOSURE = [
   'src/features/protein-gelato/proteinAuthority.ts',
   'src/features/protein-gelato/proteinBehavior.ts',
   'src/features/protein-gelato/proteinQualification.ts',
+  'src/features/protein-gelato/proteinHardnessAuthority.ts',
   'src/features/protein-gelato/proteinScienceAuthority.ts',
   'src/features/protein-gelato/proteinStructureQuality.ts',
   'src/features/recipe-composition/finalProduct.ts',

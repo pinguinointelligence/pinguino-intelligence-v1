@@ -87,10 +87,14 @@ const LEGACY_SWEETNESS_CELLS = SWEETNESS_CELLS.filter(
 );
 // Vegan softness uses its OWN approved NPAC cleanCenter per temperature
 // ([40,47] / [48,54] / [53.5,60.0]); no dairy fallback is borrowed.
+// Protein softness is operational through its OWN approved ICE-FRACTION band
+// (owner decision 2026-09-03, option A) — never through NPAC, and never through
+// the milk calibration. NPAC-based Protein hardness stays unsupported.
 const SOFTNESS_CELLS = CELLS.filter(
   ([category, temperature]) =>
     category === 'milk_gelato' ||
     category === 'vegan_gelato' ||
+    category === 'protein_gelato' ||
     (category === 'sorbet' && [-11, -12, -13].includes(temperature)),
 );
 const NON_EXACT_SOFTNESS_CELLS = CELLS.filter(
@@ -183,7 +187,15 @@ describe('canonical recipe Direction target contract', () => {
     },
   );
 
-  it.each(SOFTNESS_CELLS)(
+  // NPAC profiles only. NPAC and ice run OPPOSITE ways — a firmer NPAC target is
+  // a LOWER value (less freezing-point depression) while a firmer ice target is a
+  // HIGHER one (more frozen water). Protein's ice monotonicity is asserted in its
+  // own contract below, in its own direction.
+  const NPAC_SOFTNESS_CELLS = SOFTNESS_CELLS.filter(
+    ([category]) => category !== 'protein_gelato',
+  );
+
+  it.each(NPAC_SOFTNESS_CELLS)(
     '%s @ %d maps visible Hardness -2 (soft) through +2 (firm) monotonically',
     (category, temperature) => {
       const zones = ([-2, -1, 0, 1, 2] as const).map(
@@ -223,6 +235,47 @@ describe('canonical recipe Direction target contract', () => {
       expect(plan.bands.npac).toBeUndefined();
     },
   );
+
+  it.each([-11, -12, -13] as const)(
+    'protein_gelato @ %d resolves softness through its OWN ice band, never NPAC',
+    (temperature) => {
+      const plan = buildRecipeDirectionPlan(
+        withDirection(
+          { ...starterMilkBase(), category: 'protein_gelato', target_temperature_c: temperature },
+          0,
+          1,
+        ),
+      );
+      const softness = plan.axes.find((axis) => axis.axis === 'softness');
+      expect(softness?.status).toBe('working');
+      expect(softness?.metric).toBe('ice_fraction');
+      expect(softness?.targetBand).not.toBeNull();
+      // The scientific statement is unchanged: no NPAC band is published for
+      // Protein hardness, and no milk calibration is borrowed.
+      expect(plan.bands.npac).toBeUndefined();
+      expect(plan.bands.ice_fraction).toEqual(softness?.targetBand);
+    },
+  );
+
+  it('protein_gelato hardness exposes THREE real positions, not five look-alikes', () => {
+    const bandAt = (level: -2 | -1 | 0 | 1 | 2) =>
+      buildRecipeDirectionPlan(
+        withDirection(
+          { ...starterMilkBase(), category: 'protein_gelato', target_temperature_c: -11 },
+          0,
+          level,
+        ),
+      ).axes.find((axis) => axis.axis === 'softness')?.targetBand;
+    // −2 ≡ −1 and +1 ≡ +2: the authority publishes a band with no per-level
+    // centres, so there are three targets. Rendering five would be fake precision.
+    expect(bandAt(-2)).toEqual(bandAt(-1));
+    expect(bandAt(1)).toEqual(bandAt(2));
+    // …and the three are genuinely distinct and monotonic (softer = less ice).
+    expect(bandAt(-1)).not.toEqual(bandAt(0));
+    expect(bandAt(0)).not.toEqual(bandAt(1));
+    expect(bandAt(-1)!.max).toBeLessThan(bandAt(1)!.max);
+    expect(bandAt(-1)!.min).toBeLessThanOrEqual(bandAt(1)!.min);
+  });
 
   it('keeps creaminess and flavour blocked independently, without disabling working axes', () => {
     const plan = buildRecipeDirectionPlan(withDirection(starterMilkBase(), 0, 0));
