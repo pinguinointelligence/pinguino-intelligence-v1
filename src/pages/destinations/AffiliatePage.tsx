@@ -240,6 +240,14 @@ function TierCard({ tier }: { tier: PublicAffiliateTier }) {
         </span>
       ) : null}
 
+      {/* Gold's header is taller than Standard's by exactly the badge, so each
+          card used to start its rule wherever its own header happened to end —
+          43px apart, and the rate rows inherited the offset. This spacer eats
+          the slack in the shorter card so both rules land on one line.
+          It collapses to nothing in the tallest card and when the cards stack,
+          which leaves the spacing of those cases untouched. */}
+      <div aria-hidden="true" className="grow" />
+
       <dl className="mt-5 flex flex-col gap-3.5 border-t border-[var(--g-line-quiet,#e6e2db)] pt-5">
         {publicRateCard(tier).map((rate) => (
           <div
