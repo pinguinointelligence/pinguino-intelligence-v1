@@ -175,7 +175,8 @@ export function WorkbenchSettingsLine({
      is edited, but drawn all the way round because here the whole module is
      what changed, not one field in a row.
 
-     `expanded || preflightBlocked` rather than a `setExpanded(true)` effect:
+     `expanded || preflightBlocked` is DERIVED rather than pushed through an
+     effect that forces the open state:
      forcing the state would leave the module stuck open after the block
      clears, and would fight the owner if they collapsed it deliberately. As a
      derived value it opens on the block, and returns to whatever the owner had

@@ -959,6 +959,57 @@ describe('preflight and recipe-specific persistence', () => {
   });
 });
 
+describe('a refused save points at the module that answers it', () => {
+  const settings = read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx');
+  const workbar = read('features', 'pro-core', 'ProWorkbar.tsx');
+  const store = read('features', 'pro-workbench', 'recipeProfileStore.ts');
+  const theme = read('styles', 'theme-pro-light.css');
+
+  it('carries the refusal through ONE authority, not a second copy of the gate', () => {
+    // The gate lives in useCanonicalRecipeSave and only the workbar calls it.
+    // Settings reads what the card renders rather than recomputing it, so the
+    // two can never disagree about whether the recipe is refusing to save.
+    expect(workbar).toContain('setPreflightBlockMessage(publishedBlock)');
+    expect(workbar).toContain("variant === 'panel' ? save.practicalBlockMessage : null");
+    expect(settings).toContain('useRecipeProfileStore((state) => state.preflightBlockMessage)');
+    expect(settings).not.toContain('practicalRecipeAuditMatchesInput');
+    // Transient: absent from the persist allow-list, so a reload recomputes it
+    // instead of restoring a refusal the draft may no longer earn.
+    expect(store).not.toContain('preflightBlockMessage: state.preflightBlockMessage');
+  });
+
+  it('opens Settings on the refusal WITHOUT trapping it open', () => {
+    // Derived, never a setExpanded(true) effect: forcing the state would leave
+    // the module stuck open after the block clears and would fight an owner
+    // who collapsed it deliberately.
+    expect(settings).toContain('const open = expanded || preflightBlocked;');
+    expect(settings).not.toMatch(/setExpanded\(true\)/);
+    expect(settings).toContain("data-settings-surface={open ? 'expanded' : 'collapsed'}");
+  });
+
+  it('wears the SAME attention marker a changed gram field wears, closed into a ring', () => {
+    expect(settings).toContain("'settings-preflight-blocked'");
+    // Same colour and same 4% tint as `.ingredient-line-changed`; the only
+    // difference is that it goes all the way round, because here the whole
+    // module is what needs attention rather than one cell in a row.
+    expect(theme).toMatch(/\.ingredient-line-changed \{[^}]*var\(--color-attention\)/);
+    expect(theme).toMatch(
+      /\.pro-legend-box\.settings-preflight-blocked \{[\s\S]*?border-color: var\(--color-attention\)/,
+    );
+    expect(theme).toMatch(
+      /\.pro-legend-box\.settings-preflight-blocked \{[\s\S]*?color-mix\(in srgb, var\(--color-attention\) 4%/,
+    );
+    // Two classes, or the border shorthand on .pro-legend-box wins on order.
+    expect(theme).not.toMatch(/^\.settings-preflight-blocked \{/m);
+  });
+
+  it('never lets a sign-in prompt or a network error pull Settings open', () => {
+    // Neither is something Settings can resolve; only the preflight refusal is.
+    expect(workbar).not.toContain('setPreflightBlockMessage(save.error');
+    expect(workbar).not.toContain('setPreflightBlockMessage(blockedMsg');
+  });
+});
+
 describe('five-detent direction language', () => {
   it('renders only the two approved five-detent customer controls', () => {
     const axes = read('features', 'pro-workbench', 'ProfileDirectionAxes.tsx');

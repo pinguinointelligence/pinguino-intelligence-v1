@@ -30,6 +30,15 @@ describe('Recipe profile visual density contract', () => {
     expect(axes).toContain("`${((detent + 2) / 4) * 100}%`");
     expect(axes).toContain('top-[9.5px] -ml-[3.5px] size-[7px] rounded-full bg-[var(--g-rail-track)]');
     // The fill runs centre → position, never end → position.
+    /* OWNER 2026-09-03: the detents are CONNECTED. Five loose dots stopped
+       reading as one instrument, and the orange stroke stopped reading as a
+       segment of anything. The rail is a shade lighter than the dots so the
+       positions still stand out on it, and it is rendered FIRST so the fill,
+       the neutral ring and the thumb all paint over it. */
+    const railAt = axes.indexOf('absolute inset-x-0 top-[11.5px] h-[3px] rounded-full bg-[var(--g-line)]');
+    expect(railAt).toBeGreaterThan(-1);
+    expect(railAt).toBeLessThan(axes.indexOf('style={{ left: fillLeft, width: fillWidth }}'));
+    expect(railAt).toBeLessThan(axes.indexOf('style={{ left: at(position) }}'));
     expect(axes).toContain("const fillLeft = position >= 0 ? '50%' : at(position);");
     expect(axes).toContain('const fillWidth = `${Math.abs(position) * 25}%`;');
     expect(axes).toContain('top-[5px] -ml-2 size-4 rounded-full shadow-[0_0_0_3px_#fff]');
