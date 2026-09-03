@@ -36,6 +36,16 @@ Plus: zero real-device evidence exists in the repo (338 passing tests, all synth
 
 **Next step:** Phase 0 (§9) — one week of *instrumented real-device baseline* with a throwaway harness before any production code, because the repository contains no phone measurement at all.
 
+### 0.1 Owner decisions — APPROVED 2026-09-03 (evening)
+
+The owner approved the architecture (Tracked Evidence Pipeline on open primitives; commercial SDKs = benchmark only) and authorised **Phase 0** only. HOME scanner integration stays **frozen**; no production scanner is built; merging PR #143 is not implementation.
+
+1. **Two-stage scanner / product UX.** Scanner state and product/catalogue resolution are separate facts. Scanner: SEARCHING → neutral; FOUND / READING / HOLD → amber; COMPLETE → green (local scan confirmation); persistent actionable blocker → red plus exactly one action (move closer, move away, hold, reduce glare, increase light, show label). After scanner COMPLETE: PRODUCT FOUND → green product result; scan complete but product unknown / needs resolution → amber product result. Scanner green never depends on the catalogue or the network.
+2. **Coarse object category is OFF by default.** The core may localize and track objects without showing speculative categories; coarse categories exist only for diagnostics, benchmark telemetry and future optional capability unless explicitly approved later.
+3. **Temporal slow lane is research-gated** behind `policy.slowLane` and is not a release dependency. Main release path: localize → track → rectify ROI → full decode → two agreeing valid decodes → COMPLETE. The slow lane may ship only if real-device evidence preserves zero wrong acceptances. Never: concatenate OCR fragments; repair an EAN by checksum guessing; accept non-overlapping or chimeric evidence; trade safety for sensitivity.
+4. **Phase 0 devices.** iPhone 15 Pro Max, iOS 26.6.1 (Safari tab and standalone Home-Screen PWA) and Samsung Galaxy Note10+ SM-N975F/DS (Android Chrome). No unique device identifiers are recorded. Phase 0 runs on a fresh branch `claude/scan-core-phase-0` from the *current* `origin/staging` (69370d42 at Phase 0 start; this package's base 285f15ed is historical) with an isolated `/scan-lab/baseline` route.
+
+
 ---
 
 ## 1. CURRENT FORENSIC — what the existing scanner does and why it feels dead
@@ -367,7 +377,7 @@ UI ◀── ScanArtefact ────────────────┤ 4 
 
 The intermediate amber state is deliberate: it is the localized-but-undecoded state that ML Kit and Dynamsoft use to trigger auto-zoom, and it is what turns "is anything happening?" into "it sees it, get closer". Red is reserved for a persistent, actionable blocker — never for frame-to-frame flicker.
 
-**Two lights, one truth.** The scanner's green means *the code is read* (or the object is well captured). The product's green — catalogue-confirmed — is a separate downstream state with its own copy ("Odczytano kod → Szukam produktu… → Dodano" or "Nowy produkt — dokończysz później"). The current single-light design is the reason a working decode looks like failure.
+**Two lights, one truth (owner-approved, §0.1).** The scanner's green means *the code is read* (or the object is well captured). The product result is a separate downstream state: green when the catalogue resolves the product, amber when the scan is complete but the product is unknown or needs resolution, with its own copy ("Odczytano kod → Szukam produktu… → Dodano" or "Nowy produkt — dokończysz później"). The current single-light design is the reason a working decode looks like failure.
 
 ---
 
@@ -639,7 +649,7 @@ Measured per scene (p50 / p95): camera ready; first target detection; first visi
 6. **Spike limits**: oracle localization in Spike B (the quad came from the renderer); synthetic blur/noise models; N = 12–40 per condition; the consistency chain's necessity was not exercised because upstream gates already refused half-only evidence.
 7. **Commercial trials not run** — no accounts were created; vendor numbers remain vendor claims.
 8. **Codex branch naming**: the main checkout's `codex/live-product-scanner` branch is production-recovery work (49 files under production-workspace/engine), not scanner work — no in-flight collision, but the name misleads.
-9. **Owner decisions needed before Phase 1**: (a) confirm the two-light UX (scanner green ≠ product green); (b) confirm object-mode coarse category stays off by default; (c) confirm the slow lane is research-gated (`policy.slowLane`) and not a release dependency; (d) approve the Phase 0 device set.
+9. **Owner decisions — resolved 2026-09-03 (§0.1)**: two-stage UX approved; coarse category OFF by default; slow lane research-gated behind `policy.slowLane`; Phase 0 devices = iPhone 15 Pro Max (iOS 26.6.1) and Galaxy Note10+ (Android Chrome).
 
 ## 12. Evidence ledger
 
@@ -649,3 +659,4 @@ Measured per scene (p50 / p95): camera ready; first target detection; first visi
 - Browser probes: capability probe and WASM bench pages served from `127.0.0.1:48731`, opened in Safari 26.5 and in the in-app Chromium pane; results posted back as JSON (archived).
 - Research: Appendices A–F (`reports/scan-core-decision-2026-09-03/research/R1…R5, F1`), each with per-bullet tags and a fetched-sources list.
 - Deployments: none. Production `main`: untouched. Staging: untouched.
+- 2026-09-04 addendum: owner decisions recorded in §0.1; `origin/staging` had moved to 69370d42 (PRs #136, #138, #144–#147, #150) — none of them touched the scanner, router, build or PWA files; Phase 0 branch `claude/scan-core-phase-0` created from that SHA.
