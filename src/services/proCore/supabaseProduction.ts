@@ -408,6 +408,9 @@ export const isProductionRescueOptionUnavailableError = (error: unknown): boolea
 /** Presentation-only mapping; authorization/error protocol strings remain unchanged. */
 export const productionRescueErrorMessagePl = (error: unknown): string => {
   const message = error instanceof Error ? error.message : String(error);
+  if (message.includes('engine_bundle_mismatch')) {
+    return 'Korekta partii jest chwilowo niedostępna — wersja obliczeń na serwerze nie jest zgodna z aplikacją.';
+  }
   if (message.includes('Production Rescue option is unavailable.')) {
     return 'Korekta partii jest teraz niedostępna.';
   }
