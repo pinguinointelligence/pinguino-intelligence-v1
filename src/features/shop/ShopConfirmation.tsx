@@ -21,8 +21,7 @@ import type { ShopOrder } from '@/services/shop';
  * the order even if it wanted to.
  */
 
-const label =
-  'block text-[9px] font-bold tracking-[0.1em] text-[var(--g-text-muted)] uppercase';
+const label = 'block text-[9px] font-bold tracking-[0.1em] text-[var(--g-text-muted)] uppercase';
 
 function addressLines(order: ShopOrder): string[] {
   const { shipping } = order;
@@ -98,7 +97,11 @@ export function ShopConfirmation({
               <dt className={label}>{c.orders.shipTo}</dt>
               <dd className="mt-1.5 text-[13px] leading-[1.55]">
                 {address.length > 0
-                  ? address.map((line) => <span key={line} className="block">{line}</span>)
+                  ? address.map((line) => (
+                      <span key={line} className="block">
+                        {line}
+                      </span>
+                    ))
                   : '—'}
               </dd>
             </div>
@@ -141,7 +144,15 @@ export function ShopConfirmation({
       ) : null}
 
       <div className="flex flex-wrap items-center gap-3 border-t border-[var(--g-line)] px-7 py-4">
-        <Link to="/account" className={applicationPrimaryClasses()}>
+        {/* J: land on the ORDER, not the account landing page. The id travels
+            in the URL, so a refresh or a reopened tab returns to the same
+            place — and the same link shape serves a paid parcel and a 0 EUR
+            Local pack, because Account resolves the row by id either way. */}
+        <Link
+          to={order ? `/account?section=orders&order=${order.id}` : '/account?section=orders'}
+          className={applicationPrimaryClasses()}
+          data-testid="confirmation-view-order"
+        >
           {c.confirmation.viewOrders}
         </Link>
         <button type="button" onClick={onBack} className={applicationSecondaryClasses()}>
