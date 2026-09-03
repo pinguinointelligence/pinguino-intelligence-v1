@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { act } from 'react';
+import { MemoryRouter, Route, Routes } from 'react-router';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -62,14 +63,23 @@ describe('ProWorkbar new-recipe confirmation', () => {
   let root: ReturnType<typeof createRoot>;
 
   beforeEach(async () => {
-    (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean })
-      .IS_REACT_ACT_ENVIRONMENT = true;
+    (
+      globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
+    ).IS_REACT_ACT_ENVIRONMENT = true;
     mocks.hasUnsaved.mockReset();
     mocks.start.mockReset();
     host = document.createElement('div');
     document.body.append(host);
     root = createRoot(host);
-    await act(async () => root.render(<ProWorkbar />));
+    await act(async () =>
+      root.render(
+        <MemoryRouter initialEntries={['/pro/recipe']}>
+          <Routes>
+            <Route path="/pro/:section" element={<ProWorkbar />} />
+          </Routes>
+        </MemoryRouter>,
+      ),
+    );
   });
 
   afterEach(async () => {
@@ -102,7 +112,11 @@ describe('ProWorkbar new-recipe confirmation', () => {
       'Niezapisane zmiany w bieżącej recepturze zostaną usunięte.',
     );
 
-    await click(Array.from(host.querySelectorAll('button')).find((button) => button.textContent === 'Anuluj') ?? null);
+    await click(
+      Array.from(host.querySelectorAll('button')).find(
+        (button) => button.textContent === 'Anuluj',
+      ) ?? null,
+    );
     expect(host.querySelector('[role="dialog"]')).toBeNull();
     expect(mocks.start).not.toHaveBeenCalled();
 

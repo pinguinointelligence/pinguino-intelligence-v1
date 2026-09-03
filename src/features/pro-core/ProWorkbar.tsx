@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Link, useParams } from 'react-router';
 import { copy } from '@/copy/en';
 import { cn } from '@/lib/cn';
 import { useRecipeStore } from '@/stores/recipeStore';
@@ -11,6 +12,7 @@ import {
 import { NewRecipeConfirmationDialog } from '@/features/recipes/NewRecipeConfirmationDialog';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import { iconButtonClasses } from '@/components/ui/buttonStyles';
+import { withWorkbenchOrigin, workbenchOriginForSection } from '@/pages/pro/workbenchOrigin';
 import { announceFriendlyLabMoment } from '@/components/shared/friendlyLabMoment';
 
 const w = copy.proWorkbar;
@@ -35,6 +37,11 @@ export function ProWorkbar({
   variant?: 'bar' | 'panel';
   onSaveAttentionChange?: (required: boolean) => void;
 }) {
+  const { section } = useParams();
+  // The menu is rendered inside the workbench, so the CURRENT section is the
+  // origin. It is read from the route rather than hard-coded so opening
+  // Wersje from Monitor or Production returns there, not to /pro/recipe.
+  const versionsHref = withWorkbenchOrigin('/pro/versions', workbenchOriginForSection(section));
   const savedRecipeId = useRecipeStore((s) => s.savedRecipeId);
   const savedRecipeName = useRecipeStore((s) => s.savedRecipeName);
   const currentVersionNumber = useRecipeStore((s) => s.currentVersionNumber);
@@ -194,7 +201,6 @@ export function ProWorkbar({
     </span>
   );
 
-
   const overflowMenu = (
     <details className="relative shrink-0" data-testid="pro-workbar-menu">
       <summary
@@ -206,7 +212,9 @@ export function ProWorkbar({
         •••
       </summary>
       <div className="absolute top-9 right-0 z-40 w-72 rounded-[22px] border border-ink/15 bg-white p-4 shadow-pro-e3">
-        <p className="text-xs font-semibold tracking-[0.04em] text-stone-600 uppercase">Receptura</p>
+        <p className="text-xs font-semibold tracking-[0.04em] text-stone-600 uppercase">
+          Receptura
+        </p>
         <p className="mt-2 text-xs text-ink">{context}</p>
         <p className="mt-1 text-xs text-stone-600">
           {currentVersionNumber ? `v${currentVersionNumber}` : 'wersja robocza'} ·{' '}
@@ -223,13 +231,14 @@ export function ProWorkbar({
         >
           {linked ? 'Zapisz nową wersję' : w.saveNew}
         </button>
-        <a
-          href="/pro/versions"
+        <Link
+          to={versionsHref}
+          data-testid="pro-workbar-versions-link"
           className="mt-2 block border-t border-ink/10 pt-2 text-xs font-semibold text-stone-600"
         >
           Wersje
           <ReviewDecisionLabel />
-        </a>
+        </Link>
       </div>
     </details>
   );
@@ -340,7 +349,11 @@ export function ProWorkbar({
         </span>
 
         {nameError ? (
-          <p role="alert" className="mt-1 text-xs text-status-error" data-testid="pro-workbar-name-error">
+          <p
+            role="alert"
+            className="mt-1 text-xs text-status-error"
+            data-testid="pro-workbar-name-error"
+          >
             {nameError}
           </p>
         ) : null}
@@ -353,7 +366,11 @@ export function ProWorkbar({
           </p>
         ) : null}
         {save.error ? (
-          <p role="alert" className="mt-1 text-xs text-status-error" data-testid="pro-workbar-error">
+          <p
+            role="alert"
+            className="mt-1 text-xs text-status-error"
+            data-testid="pro-workbar-error"
+          >
             {save.error}
           </p>
         ) : save.practicalBlockMessage ? (
@@ -432,10 +449,7 @@ export function ProWorkbar({
           >
             {save.busy ? w.status.saving : linked ? 'Zapisz nową wersję' : w.saveNew}
           </button>
-          <details
-            className="relative shrink-0"
-            data-testid="pro-workbar-menu"
-          >
+          <details className="relative shrink-0" data-testid="pro-workbar-menu">
             <summary
               className={cn(iconButtonClasses('xs'), 'cursor-pointer list-none')}
               aria-label={w.more}
@@ -453,13 +467,14 @@ export function ProWorkbar({
                 {currentVersionNumber ? `v${currentVersionNumber}` : 'wersja robocza'} ·{' '}
                 {w.status[statusKey]}
               </p>
-              <a
-                href="/pro/versions"
+              <Link
+                to={versionsHref}
+                data-testid="pro-workbar-versions-link"
                 className="mt-3 block border-t border-ink/10 pt-2 text-xs font-semibold text-stone-600"
               >
                 Wersje
                 <ReviewDecisionLabel />
-              </a>
+              </Link>
             </div>
           </details>
           {statusNode}
@@ -485,9 +500,7 @@ export function ProWorkbar({
             />
           </label>
           <span
-            className={cn(
-              'max-w-56 shrink-0 truncate text-xs text-stone-600 hidden xl:block',
-            )}
+            className={cn('max-w-56 shrink-0 truncate text-xs text-stone-600 hidden xl:block')}
             data-testid="pro-workbar-context"
           >
             {context}

@@ -108,6 +108,32 @@ describe('ProWorkspacePage (S3)', () => {
     expect(html).toContain('data-testid="pro-core-versions"');
   });
 
+  // OWNER 2026-09-03 — contextual back, both entry paths.
+  it('shows „Wróć" on Wersje ONLY when it was opened from the workbench', () => {
+    // Entry path 1: ••• → Wersje from the workbench. The control exists and
+    // returns to the exact section the user left.
+    for (const [origin, expected] of [
+      ['recipe', '/pro/recipe'],
+      ['monitor', '/pro/monitor'],
+      ['production', '/pro/production'],
+    ] as const) {
+      const html = renderAt(`/pro/versions?from=${origin}`, 'pro');
+      expect(html, origin).toContain('data-testid="pro-section-back"');
+      expect(html, origin).toContain(`href="${expected}"`);
+      expect(html, origin).toContain('Wróć');
+    }
+
+    // Entry path 2: the global hamburger. No origin, so no back control — a
+    // „Wróć" here would imply a workbench the user never came from.
+    const fromGlobalMenu = renderAt('/pro/versions', 'pro');
+    expect(fromGlobalMenu).toContain('data-testid="pro-core-versions"');
+    expect(fromGlobalMenu).not.toContain('data-testid="pro-section-back"');
+
+    // A hand-edited origin is not a workbench context either.
+    const forged = renderAt('/pro/versions?from=nowhere', 'pro');
+    expect(forged).not.toContain('data-testid="pro-section-back"');
+  });
+
   it('keeps Profile, Monitor, Production and Summary in one right-side workspace', () => {
     const production = renderAt('/pro/production', 'pro');
     expect(production).toContain('data-testid="pro-context-tabs"');

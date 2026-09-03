@@ -279,6 +279,16 @@ export interface OptimizePreviewOptions extends FormulationOptions {
    * to generate an alternative candidate. It prevents nested soft-anchor
    * probes while retaining the independent Direction-neighborhood search. */
   softAnchorPass?: boolean;
+  /**
+   * INTERNAL. Lowers the Main frontier's search ceiling to this whole-gram
+   * amount. It is the ONLY input the Crown-OFF manual-target correction
+   * changes: "highest safe Main <= X" is the existing Crown maximisation
+   * objective with its cap moved down to X, never a second search. It can only
+   * NARROW the frontier — batch, linear-relaxation and ProductBehavior bounds
+   * still apply — so a capped run can never accept an amount the uncapped
+   * Crown run would have rejected.
+   */
+  mainSearchCeilingGrams?: number;
 }
 
 /* ── fingerprints (staleness guard) ──────────────────────────────────────── */
@@ -441,7 +451,10 @@ export function directionTargetFingerprint(input: RecipeInput): string {
  * produce the optimisation wording by construction.
  */
 export type PreviewOutcome =
-  'batch_rescale' | 'engine_optimization' | 'batch_rescale_and_optimization' | 'no_verified_change';
+  | 'batch_rescale'
+  | 'engine_optimization'
+  | 'batch_rescale_and_optimization'
+  | 'no_verified_change';
 
 export interface PreviewOutcomeClassification {
   outcome: PreviewOutcome;
@@ -756,6 +769,14 @@ export interface ConstraintPreview {
    * eligible lines.
    */
   mainObjective?: MainFlavourObjectiveProof;
+  /**
+   * An UNLOCKED Crown-OFF manual Main target was answered by the SAME Crown
+   * maximisation authority with its ceiling capped at the request. Present
+   * whenever that path produced the proposal; `requestPreserved` distinguishes
+   * "your amount was safe and is kept" from "your amount was above the safe
+   * maximum and was brought down to it".
+   */
+  crownOffMainCorrection?: CrownOffMainTargetProof;
   /**
    * Sorbet exact five-step Direction: the closed-form projection moved only
    * the canonical adjustable roles and kept every Main line byte-exact, so no
@@ -3300,6 +3321,144 @@ export function projectManualIngredientTarget(
   return { input: technicalStart, proof: null };
 }
 
+export interface CrownOffMainTargetProof {
+  lineId: string;
+  ingredientName: string;
+  /** Whole grams the user typed on the uncrowned Main-capable line. */
+  requestedGrams: number;
+  /** Highest safe amount at or below the request, from the Crown authority. */
+  selectedGrams: number;
+  /** TRUE when the request itself was admissible and is preserved byte-exact. */
+  requestPreserved: boolean;
+  limitingTechnicalRules: string[];
+}
+
+/**
+ * OWNER 2026-09-03 — an UNLOCKED Crown-OFF manual Main target.
+ *
+ * The user turns the Crown off and types an amount into a Main-capable line.
+ * "Highest safe amount at or below X" is not a new question: it is the EXISTING
+ * Crown maximisation objective with its search ceiling moved down to X. So this
+ * function proposes no amounts of its own and runs no search of its own. It
+ * crowns the requested line in a PROBE input, hands that probe to the unchanged
+ * `maximizeMainTechnicalObjective` with `mainSearchCeilingGrams: X`, and
+ * transplants the answer back onto the uncrowned draft. Every candidate is still
+ * accepted only by the unchanged Engine, `verifyMainEnvelope`, practicalization,
+ * locks and the batch invariant inside that authority.
+ *
+ * Two consequences follow by construction, and both are owner requirements:
+ * with an unchanged draft the recovered ceiling AGREES with Crown MAX SAFE
+ * (same authority, same bounds, cap simply not binding), and a request that is
+ * already safe is returned exactly (the descending sweep accepts its first probe).
+ *
+ * Deliberately NOT engaged for:
+ * - a genuinely LOCKED/ranged manual requirement — a lock is a hard requirement
+ *   and keeps its existing typed refusal; this must never silently rewrite one;
+ * - a draft that still has a crowned Main — the Crown authority already owns it,
+ *   including the split-Main capability band;
+ * - a request BELOW the published sensory floor — under that share the product
+ *   is a garnish and the Main policy deliberately stays out of it
+ *   (`verifyMainEnvelope`'s own engagement threshold). Crowning such a line
+ *   would manufacture a `main_below_floor` refusal that the approved
+ *   capability-scoped band does not raise.
+ */
+export function projectCrownOffMainTarget(
+  identityInput: RecipeInput,
+  set: ConstraintSet,
+  options: OptimizePreviewOptions = {},
+  technicalStart: RecipeInput = identityInput,
+): { input: RecipeInput; proof: CrownOffMainTargetProof | null } {
+  const unchanged = { input: technicalStart, proof: null } as const;
+  const snapshots = options.productBehaviorSnapshots ?? {};
+  if (Object.keys(snapshots).length === 0) return unchanged;
+  // The Crown authority owns every draft that still holds a Main role.
+  if (captureMainIngredientIntent(identityInput).length > 0) return unchanged;
+  if (identityInput.items.some((item) => item.actual_grams !== null)) return unchanged;
+  if (!(identityInput.target_batch_grams > 0)) return unchanged;
+
+  const technicalOnly = new Set(options.technicalOnlyMainLineIds ?? []);
+  const candidates = identityInput.items.filter((item) => {
+    if (item.lock_type !== 'unlocked' || item.actual_grams !== null) return false;
+    if (isConstrained(set, item.id)) return false;
+    if (technicalOnly.has(item.id)) return false;
+    const requested = item.user_target_grams;
+    if (requested === undefined || !Number.isFinite(requested) || requested <= 0) return false;
+    const snapshot = snapshots[item.id];
+    if (!snapshot) return false;
+    // A calibrated MAIN_CAPABLE product is the only one carrying a published
+    // policy, and without a policy there is no safe maximum to recover.
+    const capability = resolveMainCapability({ snapshot, snapshotRequired: true });
+    if (capability.state !== 'MAIN_CAPABLE' || capability.userHeld) return false;
+    return (
+      snapshot.mainEquivalentFactor !== null &&
+      snapshot.ecoFloorPercent !== null &&
+      snapshot.hardLimitPercent !== null
+    );
+  });
+  // One uncrowned manual target is the owner's case. A multi-line uncrowned
+  // group has no user-declared ratio to move as one, so it keeps its existing
+  // behaviour rather than having a ratio invented for it here.
+  if (candidates.length !== 1) return unchanged;
+  const targetLine = candidates[0]!;
+  if (!technicalStart.items.some((item) => item.id === targetLine.id)) return unchanged;
+
+  const snapshot = snapshots[targetLine.id]!;
+  const requestedGrams = Math.max(1, Math.round(targetLine.user_target_grams!));
+  const requestedPercent =
+    ((requestedGrams * snapshot.mainEquivalentFactor!) / identityInput.target_batch_grams) * 100;
+  // Below the engagement threshold the safety band itself stays out (garnish).
+  if (requestedPercent < snapshot.ecoFloorPercent! - MAIN_OBJECTIVE_EPSILON_G) return unchanged;
+
+  const crown = (input: RecipeInput): RecipeInput => ({
+    ...input,
+    items: input.items.map((item) =>
+      item.id === targetLine.id
+        ? { ...item, lock_type: 'main' as const, planned_grams: requestedGrams }
+        : item,
+    ),
+  });
+  const uncrown = (input: RecipeInput): RecipeInput => ({
+    ...input,
+    items: input.items.map((item) =>
+      item.id === targetLine.id ? { ...item, lock_type: targetLine.lock_type } : item,
+    ),
+  });
+
+  const probeIdentity = crown(identityInput);
+  const probeStart = crown(technicalStart);
+  const { input: maximized, proof } = maximizeMainTechnicalObjective(
+    probeIdentity,
+    set,
+    { ...options, mainSearchCeilingGrams: requestedGrams },
+    [],
+    probeStart,
+  );
+  if (proof === null) return unchanged;
+
+  const selectedGrams = Math.round(
+    maximized.items.find((item) => item.id === targetLine.id)?.planned_grams ?? 0,
+  );
+  // The capped frontier returning nothing usable is not a correction. Fall
+  // through to the unchanged path so the existing refusal still explains itself.
+  if (!(selectedGrams > 0) || selectedGrams > requestedGrams) return unchanged;
+  if (proof.status === 'no_admissible_increase' && selectedGrams === proof.startingMainGrams) {
+    // The authority never accepted a candidate; it echoed its own input.
+    if (Math.round(proof.startingMainGrams) === requestedGrams) return unchanged;
+  }
+
+  return {
+    input: uncrown(maximized),
+    proof: {
+      lineId: targetLine.id,
+      ingredientName: targetLine.ingredient.name,
+      requestedGrams,
+      selectedGrams,
+      requestPreserved: selectedGrams === requestedGrams,
+      limitingTechnicalRules: [...proof.limitingTechnicalRules],
+    },
+  };
+}
+
 /**
  * Owner final Main semantics. This is deliberately product orchestration, not
  * Engine science: all candidate amounts are proposed outside Engine, every
@@ -3987,9 +4146,18 @@ function maximizeMainTechnicalObjective(
     linearBound.status === 'certified'
       ? (linearBound.wholeGramUpperBound ?? batchUpperBound)
       : batchUpperBound;
-  const upperBound = Math.max(1, Math.min(batchUpperBound, linearUpperBound, behaviorUpperBound));
+  // A requested manual cap NARROWS the same frontier; it never widens it.
+  const requestedCeiling =
+    options.mainSearchCeilingGrams !== undefined && Number.isFinite(options.mainSearchCeilingGrams)
+      ? Math.max(1, Math.floor(options.mainSearchCeilingGrams))
+      : batchUpperBound;
+  const upperBound = Math.max(
+    1,
+    Math.min(batchUpperBound, linearUpperBound, behaviorUpperBound, requestedCeiling),
+  );
   const behaviorCeilingIsLimiting =
-    behaviorCeiling !== null && behaviorUpperBound <= Math.min(linearUpperBound, batchUpperBound);
+    behaviorCeiling !== null &&
+    behaviorUpperBound <= Math.min(linearUpperBound, batchUpperBound, requestedCeiling);
   const upperAllocation = resolveMainRatioScale(identityInput, set.byLineId, upperBound);
   if (!upperAllocation.ok) {
     return {
@@ -4567,8 +4735,15 @@ function maximizeMainTechnicalObjective(
 
   const maximum = Math.round(accepted.mainGrams);
   const nextFailure = rejected.get(maximum + 1) ?? null;
+  // A run stopped by the REQUESTED cap has proven only "X is admissible", never
+  // "X is the maximum". Certifying it would let a capped search publish the
+  // user's own number as a frontier — the same defect GEL-P0-027 removed when a
+  // failed sweep relabelled its input as the accepted maximum.
+  const requestedCeilingIsLimiting =
+    requestedCeiling < Math.min(batchUpperBound, linearUpperBound, behaviorUpperBound);
   const mathematicallyCertified =
     maximum === upperBound &&
+    !requestedCeilingIsLimiting &&
     (behaviorCeilingIsLimiting ||
       (linearBound.status === 'certified' && linearBound.wholeGramUpperBound !== null));
   const limitingCertifiedRules = behaviorCeilingIsLimiting
@@ -5170,6 +5345,23 @@ export function maximizeMainFlavourObjective(
   return selected;
 }
 
+/**
+ * Publish the Crown-OFF correction marker ONLY when the finished proposal
+ * really carries the amount the capped Crown authority selected. Later stages
+ * (Direction ranking, practicalization, the polish pass) may move the line
+ * again; a marker that survived such a move would tell the user a number the
+ * recipe does not contain.
+ */
+function attachCrownOffMainCorrection(
+  preview: ConstraintPreview,
+  proof: CrownOffMainTargetProof | null,
+): void {
+  if (!proof) return;
+  const line = preview.proposedInput.items.find((item) => item.id === proof.lineId);
+  if (!line || Math.round(line.planned_grams) !== proof.selectedGrams) return;
+  preview.crownOffMainCorrection = proof;
+}
+
 function attachMainObjective(
   preview: ConstraintPreview,
   identityInput: RecipeInput,
@@ -5660,8 +5852,18 @@ function buildFormulationPreviewInternal(
     built.proposal.proposedInput,
     solverOptions,
   );
-  const manualTarget = projectManualIngredientTarget(input, set, solverOptions, iterated.working);
-  const manualTargetInput = manualTarget.proof ? manualTarget.input : iterated.working;
+  // An uncrowned manual Main target is answered by the Crown authority itself
+  // (capped at the request), so it takes precedence over the generic nearest
+  // manual-target projection, which knows nothing about the Main safety band.
+  const crownOffTarget = projectCrownOffMainTarget(input, set, solverOptions, iterated.working);
+  const manualTarget = crownOffTarget.proof
+    ? { input: crownOffTarget.input, proof: null }
+    : projectManualIngredientTarget(input, set, solverOptions, iterated.working);
+  const manualTargetInput = crownOffTarget.proof
+    ? crownOffTarget.input
+    : manualTarget.proof
+      ? manualTarget.input
+      : iterated.working;
   const mainObjective = maximizeMainFlavourObjective(input, manualTargetInput, set, solverOptions);
   let working = mainObjective.input;
   const solverRounds = iterated.diagnostics.solverInvocations;
@@ -5976,6 +6178,7 @@ function buildFormulationPreviewInternal(
     stabilizerDoseNotePl,
   };
   attachMainObjective(preview, input, rankedMainObjective.proof);
+  attachCrownOffMainCorrection(preview, crownOffTarget.proof);
   preview.autoBalance = { batchRescaled: true, solverRounds };
   preview.iteration = iterated.diagnostics;
   preview.formulation = {
@@ -6487,7 +6690,122 @@ function enforceTargetBatchInvariant(
   return { ok: false, code: 'no_proposal' };
 }
 
+/**
+ * OWNER 2026-09-03 — the Crown-OFF Main SAFETY BACKSTOP.
+ *
+ * `verifyMainEnvelope` gained a capability-scoped safety band so that an
+ * UNCROWNED Main-capable line still answers to its published hard limit and
+ * carrier floor. The band was never consulted on the Crown-OFF preview path,
+ * because the whole Main envelope is evaluated inside the Crown frontier and
+ * Crown OFF never enters it. Measured on staging's own policy data: WATERMELON
+ * with a certified Crown MAX SAFE of 450 g (45.0 %) shipped a clean Preview at
+ * 571 g (57.10 %) — a vector the canonical envelope calls
+ * `main_above_hard_limit`.
+ *
+ * The unlocked half is answered by `projectCrownOffMainTarget`, which corrects
+ * the amount. This is the backstop for everything else — above all a LOCKED
+ * amount, which must NOT be silently rewritten: it becomes the same typed
+ * `impossible_under_constraints` conflict the crowned locked lane already
+ * returns, carrying the safe maximum as `nearestFeasibleGrams` so the refusal
+ * can name it.
+ *
+ * It is deliberately a POST-check on the finished proposal, not a pre-flight.
+ * A pre-flight fired on any over-batch lock and pre-empted better answers the
+ * existing machinery already gives (a 501 g lock in a 206 g batch is answered
+ * far better by the existing suggested-fix path than by a Main-policy refusal).
+ * Checking the OUTPUT means this can only ever reject a proposal that the
+ * product's own authority rejects, and it is scoped to Crown-OFF drafts so the
+ * frozen Crown-ON behaviour (GEL-P0-027) is untouched.
+ */
 export function buildOptimizePreview(
+  input: RecipeInput,
+  set: ConstraintSet,
+  createdAt: string,
+  options: OptimizePreviewOptions = {},
+): BuildPreviewResult {
+  const result = buildOptimizePreviewInternal(input, set, createdAt, options);
+  if (!result.ok) return result;
+  const snapshots = options.productBehaviorSnapshots ?? {};
+  if (Object.keys(snapshots).length === 0) return result;
+  // Crown ON owns its own envelope; this closes only the uncrowned hole.
+  if (captureMainIngredientIntent(result.preview.proposedInput).length > 0) return result;
+  const verdict = verifyMainEnvelope({
+    recipe: result.preview.proposedInput,
+    snapshots,
+    mode:
+      normalizeFormulationStrategy(input.goals?.formulation_strategy ?? input.mode) === 'eco'
+        ? 'eco'
+        : 'optimal',
+    enforceFloor: false,
+    technicalOnlyMainLineIds: options.technicalOnlyMainLineIds,
+  });
+  if (verdict.ok) return result;
+  const unsafe = verdict.violations.filter(
+    (violation) =>
+      violation.code === 'main_above_hard_limit' ||
+      violation.code === 'liquid_dairy_carrier_below_floor',
+  );
+  if (unsafe.length === 0) return result;
+
+  const lineId = unsafe[0]!.lineIds[0];
+  const offending =
+    lineId === undefined ? undefined : input.items.find((item) => item.id === lineId);
+  const constraint = lineId === undefined ? undefined : set.byLineId[lineId];
+  const requestedGrams =
+    constraint?.mode === 'locked' && constraint.grams !== undefined
+      ? Math.round(constraint.grams)
+      : Math.round(offending?.planned_grams ?? 0);
+  // Name the safe maximum with the SAME capped Crown authority, its cap removed
+  // and the conflicting lock relaxed — the construction the crowned lane uses.
+  let nearestFeasibleGrams: number | null = null;
+  if (offending !== undefined && lineId !== undefined) {
+    const crowned: RecipeInput = {
+      ...input,
+      items: input.items.map((item) =>
+        item.id === lineId ? { ...item, lock_type: 'main' as const } : item,
+      ),
+    };
+    const relaxedSet: ConstraintSet = {
+      ...set,
+      byLineId: Object.fromEntries(
+        Object.entries(set.byLineId).filter(([held]) => held !== lineId),
+      ),
+    };
+    const { input: maximized, proof } = maximizeMainTechnicalObjective(
+      crowned,
+      relaxedSet,
+      options,
+    );
+    const grams = Math.round(
+      maximized.items.find((item) => item.id === lineId)?.planned_grams ?? 0,
+    );
+    if (proof !== null && grams > 0 && grams < requestedGrams) nearestFeasibleGrams = grams;
+  }
+  return {
+    ok: false,
+    code: 'impossible_under_constraints',
+    conflict:
+      offending === undefined || lineId === undefined
+        ? null
+        : {
+            lineId,
+            ingredientName: offending.ingredient.name,
+            kind: constraint?.mode === 'locked' ? 'locked' : 'grams_lock',
+            grams: requestedGrams,
+          },
+    hardViolatedMetrics: [],
+    residualViolatedMetrics: [],
+    capReached: false,
+    nearestFeasibleGrams,
+    alternativeProductType: null,
+    solverInvocations: 0,
+    iteration: { solverInvocations: 0, rounds: [], capped: false, stopReason: 'fixed_point' },
+    templateId: 'none',
+    templateStatus: 'approved',
+  };
+}
+
+function buildOptimizePreviewInternal(
   input: RecipeInput,
   set: ConstraintSet,
   createdAt: string,
@@ -7620,8 +7938,17 @@ function buildOptimizePreviewWithDirection(
     null,
     options.productBehaviorSnapshots,
   );
-  const manualTarget = projectManualIngredientTarget(input, set, options, iterated.working);
-  const manualTargetInput = manualTarget.proof ? manualTarget.input : iterated.working;
+  // Same precedence as the formulation route: the Crown authority owns an
+  // uncrowned manual Main target, capped at the request.
+  const crownOffTarget = projectCrownOffMainTarget(input, set, options, iterated.working);
+  const manualTarget = crownOffTarget.proof
+    ? { input: crownOffTarget.input, proof: null }
+    : projectManualIngredientTarget(input, set, options, iterated.working);
+  const manualTargetInput = crownOffTarget.proof
+    ? crownOffTarget.input
+    : manualTarget.proof
+      ? manualTarget.input
+      : iterated.working;
   const mainObjective = maximizeMainFlavourObjective(input, manualTargetInput, set, options);
   working = mainObjective.input;
   const hardSafeDirection = bestHardSafeDirectionSegment(
@@ -7824,6 +8151,7 @@ function buildOptimizePreviewWithDirection(
   );
   preview = polishPracticalDirectionPreview(input, set, preview, createdAt, options);
   attachMainObjective(preview, input, mainObjective.proof);
+  attachCrownOffMainCorrection(preview, crownOffTarget.proof);
   preview.autoBalance = { batchRescaled, solverRounds };
   preview.iteration = iterated.diagnostics;
   // ACCEPTANCE ADDENDUM (1+3): the local-correction preview carries the same
@@ -8587,7 +8915,8 @@ export type BlockedApply =
     };
 
 export type CommitPreviewResult =
-  { ok: true; verified: VerifiedApply } | ({ ok: false } & BlockedApply);
+  | { ok: true; verified: VerifiedApply }
+  | ({ ok: false } & BlockedApply);
 
 function productBehaviorIdentityViolation(
   input: RecipeInput,
@@ -8943,8 +9272,7 @@ export class VerifiedApply {
       //     -> truthful publication: a materially different candidate is real,
       //        an unchanged one is the forged NEAREST this door exists to stop.
       const explicitDirectionRoute =
-        preview.directionFallback !== undefined ||
-        preview.starterPackRescue !== undefined;
+        preview.directionFallback !== undefined || preview.starterPackRescue !== undefined;
       const directionSatisfied = explicitDirectionRoute
         ? directionProgress.accepted
         : directionProgress.publishable;

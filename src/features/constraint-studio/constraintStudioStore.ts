@@ -560,6 +560,19 @@ export interface ConstraintStudioState {
   constraints: ConstraintSet;
   preview: ConstraintPreview | null;
   previewIssue: PreviewIssue | null;
+  /**
+   * OWNER 2026-09-03 — the ONE informational result of an automatic Crown-OFF
+   * Main correction. It is published only AFTER the correction has already been
+   * applied through the canonical door, so it never asks for a second action:
+   * the recipe on screen is already the corrected one. Session-only, never
+   * persisted, and cleared by the acknowledgement (no lingering banner).
+   */
+  crownOffCorrectionNotice: {
+    ingredientName: string;
+    requestedGrams: number;
+    safeMaximumGrams: number;
+  } | null;
+  acknowledgeCrownOffCorrection: () => void;
   /** Session-only; never persisted. Bound to exact base + Main identity swap. */
   substitutionConsent: SubstitutionConsent | null;
   substitutionAuthorization: SubstitutionSessionAuthorization | null;
@@ -673,6 +686,7 @@ const INITIAL = {
   constraints: { byLineId: {} } as ConstraintSet,
   preview: null,
   previewIssue: null,
+  crownOffCorrectionNotice: null as ConstraintStudioState['crownOffCorrectionNotice'],
   substitutionConsent: null,
   substitutionAuthorization: null,
   proposalProductBehaviorAuthorization: null,
@@ -698,6 +712,7 @@ const INITIAL = {
 const CLEAR_STAGED = {
   preview: null,
   previewIssue: null,
+  crownOffCorrectionNotice: null,
   substitutionConsent: null,
   substitutionAuthorization: null,
   proposalProductBehaviorAuthorization: null,
@@ -2024,6 +2039,8 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
 
       clearFeasibility: () => set({ feasibility: null }),
 
+      acknowledgeCrownOffCorrection: () => set({ crownOffCorrectionNotice: null }),
+
       dismissBlocked: () => set({ blocked: null }),
 
       markProCoreRecipe: (recipeId, versionNumber) =>
@@ -3156,6 +3173,41 @@ export async function createOptimizePreviewWithServerAuthority(
     ...computation,
     createdAt: optimizeCreatedAt,
   });
+  // OWNER 2026-09-03 — ONE deterministic correction must feel like ONE action.
+  // The user asked for an impossible amount; the capped Crown authority already
+  // proved the highest safe one and the staged Preview already contains it.
+  // Making them read a change list and press Zastosuj to accept a result that
+  // is not in dispute is work for nothing. So the SAME canonical Apply door
+  // runs here — nothing is committed that a manual Zastosuj would not have
+  // committed, and every trust check still runs — and the user is left with the
+  // corrected recipe plus one informational notice.
+  const staged = useConstraintStudioStore.getState().preview;
+  const correction = staged?.crownOffMainCorrection;
+  if (
+    staged &&
+    correction &&
+    correction.requestPreserved === false &&
+    staged.diagnosticOnly !== true &&
+    isCurrentPiRun(ownedGeneration) &&
+    useRecipeStore.getState().draftRevision === draft.revision
+  ) {
+    await applyPreviewWithServerAuthority();
+    if (!isCurrentPiRun(ownedGeneration)) return;
+    const after = useConstraintStudioStore.getState();
+    // Only an accepted commit earns the "we already fixed it" sentence. If the
+    // door refused, the existing blocked/preview surface stays exactly as it is.
+    if (after.preview === null && after.blocked === null) {
+      useConstraintStudioStore.setState({
+        crownOffCorrectionNotice: {
+          ingredientName: correction.ingredientName,
+          requestedGrams: correction.requestedGrams,
+          safeMaximumGrams: correction.selectedGrams,
+        },
+        recalculationTerminal: null,
+      });
+    }
+    return;
+  }
   if (fallbackReport !== null) {
     useConstraintStudioStore.setState({
       directionFallbackReport: fallbackReport,
@@ -3342,8 +3394,7 @@ export async function runPiRecalculationWithTerminal(
       useConstraintStudioStore.setState({
         recalculationTerminal: {
           state: 'ERROR',
-          messagePl:
-            'Przeliczenie zakończyło się bez wyniku. Wróć do receptury i spróbuj ponownie',
+          messagePl: 'Przeliczenie zakończyło się bez wyniku. Wróć do receptury i spróbuj ponownie',
         },
       });
     }

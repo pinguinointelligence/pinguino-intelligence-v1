@@ -600,6 +600,18 @@ export const copy = {
       applied: 'Zmiany są w recepturze roboczej. Zapisz, aby je zachować.',
       undo: 'Cofnij',
     },
+    /** The automatic Crown-OFF Main correction. It is INFORMATIONAL: by the time
+     * it is shown the recipe already holds the safe amount, so it names the
+     * limit and the action taken, and asks for nothing but an acknowledgement.
+     * No percentages, no NPAC/POD, no solver vocabulary — the user asked for an
+     * amount and needs to know which one they got. */
+    maxAmountNotice: {
+      title: 'Maksymalna ilość została osiągnięta',
+      body: (ingredientName: string, safeMaximumGrams: number) =>
+        `Dla tej receptury maksymalna bezpieczna ilość ${ingredientName} to ${safeMaximumGrams} g. ` +
+        'Ustawiliśmy tę wartość automatycznie.',
+      confirm: 'OK',
+    },
   },
   /** ONE-SCREEN Pro workbench (owner architecture, 2026-07-24) — ADDITIVE copy only.
    * The /pro/recipe editor is a single-viewport workspace: compact settings line,
