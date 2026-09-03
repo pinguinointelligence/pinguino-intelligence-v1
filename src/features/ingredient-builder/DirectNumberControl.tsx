@@ -113,10 +113,15 @@ export function DirectNumberControl({
    * because everything became tiny.
    */
   const segment = compact ? 'h-8 w-7' : responsive ? 'size-11 lg:h-8 lg:w-7' : 'size-11';
+  /* OWNER QA 2026-09-03: 30 px, was 22. The padlock sits in the pill's rounded
+     end, where a 22 px segment left the glyph almost touching the curve and the
+     end read as clipped rather than round. Height and glyph are untouched — the
+     segment only gains breathing room sideways, which is what makes the rounded
+     end visibly wider. The 44 px non-compact case already had the room. */
   const lockSegmentSize = compact
-    ? 'h-8 w-[22px]'
+    ? 'h-8 w-[30px]'
     : responsive
-      ? 'size-11 lg:h-8 lg:w-[22px]'
+      ? 'size-11 lg:h-8 lg:w-[30px]'
       : 'size-11';
   const accessibleValue = Number(value.toFixed(decimals));
   const valueRef = useRef(value);

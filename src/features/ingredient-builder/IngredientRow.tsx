@@ -510,6 +510,10 @@ function RecipeRow({
   const required = meta.required || item.lock_type === 'required';
   const rangeLocked = lock?.state === 'range' || item.range_constraint !== undefined;
   const gramsLocked = !rangeLocked && (lock?.state === 'locked' || item.lock_type === 'grams');
+  /* The ProductBehavior gate, read at RENDER rather than only on click. See
+     `IngredientRowMeta.editRefusal`: the refusal was already correct, it was
+     just invisible until you pressed a button that then did nothing. */
+  const editRefusal = meta.editRefusal ?? null;
   const estimated = !item.ingredient.is_verified || item.ingredient.confidence_score < 90;
   const missingAmount = meta.dose.provenance === 'UNKNOWN' && item.planned_grams <= 0;
   const displayQuantity = item.planned_grams;
@@ -851,6 +855,17 @@ function RecipeRow({
                 ) : null}
               </span>
             </span>
+            {editRefusal ? (
+              /* Beside the name, not in a banner at the top of the table: the
+                 refusal is about THIS line's amount, and a message two hundred
+                 pixels away is why a closed control read as a broken one. */
+              <span
+                className="mt-1 block text-xs font-medium text-[var(--g-attention-ink)]"
+                data-testid={`row-edit-refusal-${item.id}`}
+              >
+                {editRefusal}
+              </span>
+            ) : null}
             {meta.unavailable ? (
               <span className="mt-1 flex items-center gap-2 text-xs font-semibold text-status-error">
                 {t.recipe.unavailableStatus}
@@ -900,7 +915,8 @@ function RecipeRow({
                   !actions.setPlannedPercent ||
                   Boolean(lock?.plannedDisabled) ||
                   gramsLocked ||
-                  Boolean(lock?.percentLocked)
+                  Boolean(lock?.percentLocked) ||
+                  editRefusal !== null
                 }
                 onChange={(percent) => actions.setPlannedPercent?.(item.id, percent)}
                 testId={`row-percent-control-${item.id}`}
@@ -934,7 +950,10 @@ function RecipeRow({
                 suffix={unit}
                 ariaLabel={`${item.ingredient.name} — ilość w ${unit}`}
                 disabled={
-                  Boolean(lock?.plannedDisabled) || gramsLocked || Boolean(lock?.percentLocked)
+                  Boolean(lock?.plannedDisabled) ||
+                  gramsLocked ||
+                  Boolean(lock?.percentLocked) ||
+                  editRefusal !== null
                 }
                 onChange={(next) => actions.setPlannedGrams(item.id, Math.max(0, next))}
                 testId={`row-grams-control-${item.id}`}
@@ -1435,6 +1454,7 @@ export function IngredientRow({
       data-production-active={mode === 'production' && productionActive ? 'true' : undefined}
       data-changed={mode === 'recipe' && changed ? 'true' : undefined}
       data-unavailable={mode === 'recipe' && meta.unavailable ? 'true' : undefined}
+      data-edit-refused={mode === 'recipe' && meta.editRefusal ? 'true' : undefined}
       data-line-id={item.id}
       data-customer-role={mode === 'recipe' ? customerRoleFor(item.lock_type, meta) : undefined}
       tabIndex={-1}

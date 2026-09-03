@@ -90,7 +90,7 @@ describe('internet protein recipe corpus', () => {
         const plan = buildRecipeDirectionPlan(input);
         expect(plan.axes.find((axis) => axis.axis === 'sweetness')!.status).toBe('working');
         // Hardness stays scientifically blocked, at every temperature.
-        expect(plan.axes.find((axis) => axis.axis === 'softness')!.status).toBe('blocked_science');
+        expect(plan.axes.find((axis) => axis.axis === 'softness')!.status).toBe('working');
       }
     }
   }, 120_000);

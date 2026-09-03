@@ -29,6 +29,29 @@ export const FRANCHISE_CONCEPT_ORDER: readonly FranchiseConcept[] = [
   'punkt',
 ];
 
+/**
+ * What each format physically IS. The cards used to repeat one sentence about
+ * needing a conversation, which told a reader nothing about the difference
+ * between a lokal and a punkt — the one thing the card exists to explain.
+ *
+ * These describe the format only. Cost, scope of cooperation and who supplies
+ * what are commercial authority the repo does not hold, so they stay in the
+ * conversation the enquiry opens.
+ */
+export const FRANCHISE_CONCEPT_BLURB_PL: Readonly<Record<FranchiseConcept, string>> = {
+  lokal:
+    'Pełna lodziarnia z ladą, miejscem dla gości i zapleczem produkcyjnym. Produkcja i sprzedaż w jednym adresie.',
+  przyczepa:
+    'Samodzielny punkt na kołach. Dojeżdża na miejsce i pracuje jak mała lodziarnia — sezon, festiwal, wydarzenie.',
+  wozek:
+    'Mniejszy punkt mobilny do obsługi pojedynczego wydarzenia: wesela, eventu firmowego, dnia w kurorcie.',
+  punkt:
+    'Wydzielone stanowisko w istniejącym miejscu — galeria, lokal partnera albo lokalizacja sezonowa.',
+};
+
+export const franchiseConceptBlurbPl = (concept: FranchiseConcept): string =>
+  FRANCHISE_CONCEPT_BLURB_PL[concept] ?? '';
+
 export const FRANCHISE_CONCEPT_INITIAL: Readonly<Record<FranchiseConcept, string>> = {
   lokal: 'L',
   punkt: 'P',
