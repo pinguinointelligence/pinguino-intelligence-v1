@@ -68,6 +68,7 @@ import {
   APP_PAGE_WORKSPACE,
 } from '@/features/shell/shellGeometry';
 import { cockpitTabFromRoute, routeForCockpitTab } from './workbenchRoute';
+import { WORKBENCH_ORIGIN_PARAM, workbenchOriginReturnPath } from './workbenchOrigin';
 import {
   ExecutableRecipeHandoffError,
   openExecutableRecipeTemplate,
@@ -344,6 +345,7 @@ export function ProWorkspacePage() {
   const persona = useProCorePersona();
   const { section } = useParams<{ section?: string }>();
   const [searchParams] = useSearchParams();
+  const workbenchReturnPath = workbenchOriginReturnPath(searchParams.get(WORKBENCH_ORIGIN_PARAM));
   const userId = useAuthStore((state) => state.user?.id ?? null);
   const ownerReviewGate = useRecipeStore((state) => state.ownerReviewGate);
   const [libraryHandoff, setLibraryHandoff] = useState<
@@ -610,6 +612,21 @@ export function ProWorkspacePage() {
           <>
             <div className={`${APP_PAGE_WORKSPACE} pt-8`}>
               <div className={APP_PAGE_MEASURE}>
+                {/* OWNER 2026-09-03: contextual back. It exists ONLY when this
+                    page was opened from the workbench (`?from=<section>`), and
+                    it returns to that exact section. Reached from the global
+                    hamburger there is no origin and no control — a back button
+                    implying a workbench the user never came from would be a
+                    lie. See `workbenchOrigin.ts`. */}
+                {workbenchReturnPath ? (
+                  <Link
+                    to={workbenchReturnPath}
+                    data-testid="pro-section-back"
+                    className="pro-focus-ring mb-3 -ml-1 inline-flex items-center gap-1.5 rounded-full px-1 py-0.5 text-xs font-semibold text-stone-600 transition-colors hover:text-ink"
+                  >
+                    <span aria-hidden>←</span> Wróć
+                  </Link>
+                ) : null}
                 <PageHeading eyebrow={w.eyebrow} title={`${w.title} — ${w.tabs[activeTab]}`} />
               </div>
             </div>

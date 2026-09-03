@@ -1,4 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
+import { createPortal } from 'react-dom';
+import { Link, useParams } from 'react-router';
 import { copy } from '@/copy/en';
 import { cn } from '@/lib/cn';
 import { useRecipeStore } from '@/stores/recipeStore';
@@ -13,6 +23,7 @@ import { NewRecipeConfirmationDialog } from '@/features/recipes/NewRecipeConfirm
 import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import { iconButtonClasses } from '@/components/ui/buttonStyles';
+import { withWorkbenchOrigin, workbenchOriginForSection } from '@/pages/pro/workbenchOrigin';
 import { announceFriendlyLabMoment } from '@/components/shared/friendlyLabMoment';
 
 const w = copy.proWorkbar;
@@ -28,6 +39,240 @@ const SERVING_LABEL: Record<string, string> = {
   ninja_swirl: 'Ninja Swirl',
 };
 
+export const WORKBAR_POPOVER_IDLE_MS = 4_500;
+export const WORKBAR_POPOVER_FADE_MS = 180;
+const WORKBAR_POPOVER_GUTTER_PX = 12;
+const WORKBAR_POPOVER_GAP_PX = 8;
+const WORKBAR_POPOVER_ESTIMATED_HEIGHT_PX = 210;
+
+interface WorkbarPopoverPosition {
+  left: number;
+  top: number;
+  width: number;
+  maxHeight: number;
+}
+
+const clamp = (value: number, minimum: number, maximum: number): number =>
+  Math.min(Math.max(value, minimum), Math.max(minimum, maximum));
+
+/**
+ * A true viewport layer for the recipe overflow control.
+ *
+ * The recipe card lives inside two independent overflow containers. An
+ * absolutely positioned `<details>` menu cannot out-rank or escape either of
+ * them, regardless of its local z-index. This portal measures the trigger and
+ * the recipe card, then paints a fixed panel directly under `<body>` so the
+ * entire surface remains readable and inside the viewport.
+ */
+function RecipeOverflowPopover({
+  variant,
+  label,
+  children,
+}: {
+  variant: 'bar' | 'panel';
+  label: string;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const [autoDismissState, setAutoDismissState] = useState<'active' | 'fading'>('active');
+  const [position, setPosition] = useState<WorkbarPopoverPosition | null>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const popoverRef = useRef<HTMLElement>(null);
+  const dismissTimerRef = useRef<number | null>(null);
+  const fadeTimerRef = useRef<number | null>(null);
+  const popoverId = useId();
+
+  const clearAutoDismiss = useCallback(() => {
+    if (dismissTimerRef.current !== null) window.clearTimeout(dismissTimerRef.current);
+    if (fadeTimerRef.current !== null) window.clearTimeout(fadeTimerRef.current);
+    dismissTimerRef.current = null;
+    fadeTimerRef.current = null;
+  }, []);
+
+  const closeImmediately = useCallback(
+    (restoreFocus = false) => {
+      clearAutoDismiss();
+      setOpen(false);
+      setAutoDismissState('active');
+      if (restoreFocus) triggerRef.current?.focus();
+    },
+    [clearAutoDismiss],
+  );
+
+  const startAutoDismiss = useCallback(() => {
+    clearAutoDismiss();
+    dismissTimerRef.current = window.setTimeout(() => {
+      setAutoDismissState('fading');
+      fadeTimerRef.current = window.setTimeout(() => {
+        setOpen(false);
+        setAutoDismissState('active');
+        fadeTimerRef.current = null;
+      }, WORKBAR_POPOVER_FADE_MS);
+      dismissTimerRef.current = null;
+    }, WORKBAR_POPOVER_IDLE_MS);
+  }, [clearAutoDismiss]);
+
+  const pauseAutoDismiss = useCallback(() => {
+    clearAutoDismiss();
+    setAutoDismissState('active');
+  }, [clearAutoDismiss]);
+
+  const measure = useCallback((): WorkbarPopoverPosition | null => {
+    const trigger = triggerRef.current;
+    if (!trigger) return null;
+    const triggerRect = trigger.getBoundingClientRect();
+    const workbarRect = trigger
+      .closest<HTMLElement>('[data-testid="pro-workbar"]')
+      ?.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const maximumWidth = Math.max(0, viewportWidth - WORKBAR_POPOVER_GUTTER_PX * 2);
+    const preferredWidth =
+      variant === 'panel' && workbarRect ? workbarRect.width : Math.max(288, triggerRect.width);
+    const width = Math.min(preferredWidth, maximumWidth);
+    const preferredLeft =
+      variant === 'panel' && workbarRect ? workbarRect.left : triggerRect.right - width;
+    const left = clamp(
+      preferredLeft,
+      WORKBAR_POPOVER_GUTTER_PX,
+      viewportWidth - width - WORKBAR_POPOVER_GUTTER_PX,
+    );
+    const measuredHeight =
+      popoverRef.current?.getBoundingClientRect().height || WORKBAR_POPOVER_ESTIMATED_HEIGHT_PX;
+    const belowTop = triggerRect.bottom + WORKBAR_POPOVER_GAP_PX;
+    const aboveTop = triggerRect.top - measuredHeight - WORKBAR_POPOVER_GAP_PX;
+    const roomBelow = viewportHeight - belowTop - WORKBAR_POPOVER_GUTTER_PX;
+    const roomAbove = triggerRect.top - WORKBAR_POPOVER_GAP_PX - WORKBAR_POPOVER_GUTTER_PX;
+    const top =
+      roomBelow >= measuredHeight || roomBelow >= roomAbove
+        ? clamp(
+            belowTop,
+            WORKBAR_POPOVER_GUTTER_PX,
+            viewportHeight - measuredHeight - WORKBAR_POPOVER_GUTTER_PX,
+          )
+        : clamp(
+            aboveTop,
+            WORKBAR_POPOVER_GUTTER_PX,
+            viewportHeight - measuredHeight - WORKBAR_POPOVER_GUTTER_PX,
+          );
+    return {
+      left,
+      top,
+      width,
+      maxHeight: Math.max(120, viewportHeight - top - WORKBAR_POPOVER_GUTTER_PX),
+    };
+  }, [variant]);
+
+  const openPopover = () => {
+    if (open) {
+      closeImmediately();
+      return;
+    }
+    setPosition(measure());
+    setAutoDismissState('active');
+    setOpen(true);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    startAutoDismiss();
+    const updatePosition = () => setPosition(measure());
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    return () => {
+      clearAutoDismiss();
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [clearAutoDismiss, measure, open, startAutoDismiss]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (triggerRef.current?.contains(target) || popoverRef.current?.contains(target)) return;
+      closeImmediately();
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      closeImmediately(true);
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [closeImmediately, open]);
+
+  const layer =
+    open && position ? (
+      <section
+        ref={popoverRef}
+        id={popoverId}
+        role="dialog"
+        aria-label="Opcje receptury"
+        data-testid="pro-workbar-popover"
+        data-popover-layer="viewport-portal"
+        data-auto-dismiss-state={autoDismissState}
+        style={position}
+        className={cn(
+          'fixed z-[100] overflow-y-auto rounded-[14px] border border-ink/15 bg-white p-4 pr-12 text-ink shadow-pro-e3',
+          'transition-opacity duration-150 ease-out motion-reduce:transition-none',
+          autoDismissState === 'fading' ? 'pointer-events-none opacity-0' : 'opacity-100',
+        )}
+        onPointerEnter={pauseAutoDismiss}
+        onPointerMove={pauseAutoDismiss}
+        onPointerLeave={(event) => {
+          if (!event.currentTarget.contains(document.activeElement)) startAutoDismiss();
+        }}
+        onPointerDown={pauseAutoDismiss}
+        onFocusCapture={pauseAutoDismiss}
+        onBlurCapture={(event) => {
+          const next = event.relatedTarget;
+          if (!(next instanceof Node) || !event.currentTarget.contains(next)) startAutoDismiss();
+        }}
+      >
+        <button
+          type="button"
+          aria-label="Zamknij opcje receptury"
+          title="Zamknij"
+          onClick={() => closeImmediately(true)}
+          data-testid="pro-workbar-popover-close"
+          className={cn(
+            iconButtonClasses('xs'),
+            'pro-focus-ring absolute top-3 right-3 text-base leading-none',
+          )}
+        >
+          ×
+        </button>
+        {children}
+      </section>
+    ) : null;
+
+  return (
+    <span className="relative shrink-0" data-testid="pro-workbar-menu">
+      <button
+        ref={triggerRef}
+        type="button"
+        className={cn(iconButtonClasses('xs'), 'cursor-pointer')}
+        aria-label={label}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-controls={open ? popoverId : undefined}
+        title={label}
+        data-testid="pro-workbar-menu-trigger"
+        data-workbar-action-size="compact"
+        onClick={openPopover}
+      >
+        •••
+      </button>
+      {layer && typeof document !== 'undefined' ? createPortal(layer, document.body) : layer}
+    </span>
+  );
+}
+
 /** One persistent recipe bar. It combines recipe identity, save, working context,
  * preview/undo state and owner-review entry without introducing a second workflow. */
 export function ProWorkbar({
@@ -37,6 +282,11 @@ export function ProWorkbar({
   variant?: 'bar' | 'panel';
   onSaveAttentionChange?: (required: boolean) => void;
 }) {
+  const { section } = useParams();
+  // The menu is rendered inside the workbench, so the CURRENT section is the
+  // origin. It is read from the route rather than hard-coded so opening
+  // Wersje from Monitor or Production returns there, not to /pro/recipe.
+  const versionsHref = withWorkbenchOrigin('/pro/versions', workbenchOriginForSection(section));
   const savedRecipeId = useRecipeStore((s) => s.savedRecipeId);
   const savedRecipeName = useRecipeStore((s) => s.savedRecipeName);
   const currentVersionNumber = useRecipeStore((s) => s.currentVersionNumber);
@@ -162,10 +412,10 @@ export function ProWorkbar({
    *  tones inside it have to follow that ground rather than the page's. */
   const onGraphite = identityState !== 'unnamed';
 
-  /* Publish the preflight refusal so Settings can open itself on it. Only the
-     panel variant publishes: the compact variants render the same workbar in
-     places where no Settings module exists to answer, and two publishers would
-     race to own one slot. */
+  /* Publish the typed preflight refusal so Settings can show the matching
+     warning. It deliberately does not control disclosure state. Only the panel
+     variant publishes: compact variants render where no Settings module exists
+     to answer, and two publishers would race to own one slot. */
   const setPreflightBlocker = useRecipeProfileStore((s) => s.setPreflightBlocker);
   const settingsConfirmed = useRecipeProfileStore((s) => s.settingsConfirmed);
   /* ONE blocker, resolved in ONE place. The gate says what it refused on; Settings says
@@ -222,16 +472,8 @@ export function ProWorkbar({
   );
 
   const overflowMenu = (
-    <details className="relative shrink-0" data-testid="pro-workbar-menu">
-      <summary
-        className={cn(iconButtonClasses('xs'), 'cursor-pointer list-none')}
-        aria-label={w.more}
-        title={w.more}
-        data-workbar-action-size="compact"
-      >
-        •••
-      </summary>
-      <div className="absolute top-9 right-0 z-40 w-72 rounded-[22px] border border-ink/15 bg-white p-4 shadow-pro-e3">
+    <RecipeOverflowPopover variant={variant} label={w.more}>
+      <div>
         <p className="text-xs font-semibold tracking-[0.04em] text-stone-600 uppercase">
           Receptura
         </p>
@@ -240,26 +482,29 @@ export function ProWorkbar({
           {currentVersionNumber ? `v${currentVersionNumber}` : 'wersja robocza'} ·{' '}
           {w.status[statusKey]}
         </p>
-        {/* In the SAVED state the tongue is gone by design, so the deliberate
-            "save another version with no changes" path lives here rather than
-            being lost. */}
-        <button
-          type="button"
-          onClick={() => void doSave()}
-          disabled={save.busy || save.blocked !== null || save.practicalBlocked}
-          className="pro-focus-ring mt-3 block w-full border-t border-ink/10 pt-2 text-left text-xs font-semibold text-stone-600 disabled:text-[var(--g-lock)]"
-        >
-          {linked ? 'Zapisz nową wersję' : w.saveNew}
-        </button>
-        <a
-          href="/pro/versions"
+        {variant === 'panel' ? (
+          /* In the SAVED state the tongue is gone by design, so the deliberate
+             "save another version with no changes" path lives here rather than
+             being lost. */
+          <button
+            type="button"
+            onClick={() => void doSave()}
+            disabled={save.busy || save.blocked !== null || save.practicalBlocked}
+            className="pro-focus-ring mt-3 block w-full border-t border-ink/10 pt-2 text-left text-xs font-semibold text-stone-600 disabled:text-[var(--g-lock)]"
+          >
+            {linked ? 'Zapisz nową wersję' : w.saveNew}
+          </button>
+        ) : null}
+        <Link
+          to={versionsHref}
+          data-testid="pro-workbar-versions-link"
           className="mt-2 block border-t border-ink/10 pt-2 text-xs font-semibold text-stone-600"
         >
           Wersje
           <ReviewDecisionLabel />
-        </a>
+        </Link>
       </div>
-    </details>
+    </RecipeOverflowPopover>
   );
 
   if (variant === 'panel') {
@@ -503,33 +748,7 @@ export function ProWorkbar({
           >
             {save.busy ? w.status.saving : linked ? 'Zapisz nową wersję' : w.saveNew}
           </button>
-          <details className="relative shrink-0" data-testid="pro-workbar-menu">
-            <summary
-              className={cn(iconButtonClasses('xs'), 'cursor-pointer list-none')}
-              aria-label={w.more}
-              title={w.more}
-              data-workbar-action-size="compact"
-            >
-              •••
-            </summary>
-            <div className="absolute bottom-10 left-0 z-40 w-72 rounded-[22px] border border-ink/15 bg-white p-4 shadow-pro-e3">
-              <p className="text-xs font-semibold tracking-[0.04em] text-stone-600 uppercase">
-                Receptura
-              </p>
-              <p className="mt-2 text-xs text-ink">{context}</p>
-              <p className="mt-1 text-xs text-stone-600">
-                {currentVersionNumber ? `v${currentVersionNumber}` : 'wersja robocza'} ·{' '}
-                {w.status[statusKey]}
-              </p>
-              <a
-                href="/pro/versions"
-                className="mt-3 block border-t border-ink/10 pt-2 text-xs font-semibold text-stone-600"
-              >
-                Wersje
-                <ReviewDecisionLabel />
-              </a>
-            </div>
-          </details>
+          {overflowMenu}
           {statusNode}
           <span className="sr-only" data-testid="pro-workbar-profile-summary">
             {context}

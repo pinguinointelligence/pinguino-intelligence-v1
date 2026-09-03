@@ -119,15 +119,13 @@ export interface RecipeProfileState {
    * The PREFLIGHT refusal the recipe card is currently showing, or null.
    *
    * The save gate lives in `useCanonicalRecipeSave`, which only the workbar
-   * calls. Settings needs the same fact — when the card refuses to save, that
-   * is the module the owner has to act in — and recomputing the gate here
-   * would be a second copy free to drift from the first. So the workbar
-   * publishes what it renders and Settings reads it: one authority, one
-   * message, no duplication. Scoped to the preflight refusal on purpose — a
-   * sign-in prompt or a network error is not something Settings can resolve,
-   * so those must never pull that module open. Deliberately transient: it is derived from the
-   * draft and is absent from the persist allow-list below, so a reload
-   * recomputes it rather than restoring a stale refusal.
+   * calls. Settings needs the same fact to show a matching warning without
+   * recomputing a second gate that can drift from the card. The blocker has no
+   * disclosure authority: only first-run setup may auto-open Settings. Scoped
+   * to the preflight refusal on purpose — sign-in and network errors do not
+   * belong on the Settings row. Deliberately transient: it is absent from the
+   * persist allow-list below, so a reload recomputes rather than restoring a
+   * stale refusal.
    */
   preflightBlocker: SaveBlocker | null;
   setPreflightBlocker: (blocker: SaveBlocker | null) => void;
