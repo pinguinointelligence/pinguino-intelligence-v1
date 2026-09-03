@@ -42,15 +42,22 @@ const slotForDetent = (detent: DirectionIntent, reversed: boolean) =>
 /* The ball always grows from left to right ON SCREEN for Słodycz and shrinks
    left to right for Twardość, so the ramp is indexed by SLOT, never by the
    stored value. */
-const DOT_PX = [5, 6.5, 8, 9.5, 11] as const;
-const THUMB_PX = [13, 14.5, 16, 17.5, 19] as const;
-const rampAt = (sizes: readonly number[], slot: Slot, reversed: boolean) =>
-  sizes[reversed ? 4 - slot : slot];
+/* Five-element tuples, not `number[]`, so indexing by `Slot` is TOTAL and the
+   lookups cannot read as possibly `undefined` under `noUncheckedIndexedAccess`
+   (the check that turned #136 red on four TS18048s). `4 - slot` is 0..4 by
+   construction, but TypeScript loses the literal union through the arithmetic,
+   so the union is restated rather than guessed at. */
+type Ramp = readonly [number, number, number, number, number];
+const DOT_PX: Ramp = [5, 6.5, 8, 9.5, 11];
+const THUMB_PX: Ramp = [13, 14.5, 16, 17.5, 19];
+const rampAt = (sizes: Ramp, slot: Slot, reversed: boolean): number =>
+  sizes[(reversed ? 4 - slot : slot) as Slot];
 
 /* Screen readers never saw the ball, so they used to get the numeral. They now
    get the sentence — and it is indexed by the CANONICAL value, not the slot,
    so it states what was actually selected however the row is drawn. */
-const PHRASES: Record<'sweetness' | 'softness', readonly string[]> = {
+type Phrases = readonly [string, string, string, string, string];
+const PHRASES: Record<'sweetness' | 'softness', Phrases> = {
   sweetness: [
     'znacznie mniej słodkie',
     'mniej słodkie',
@@ -231,7 +238,7 @@ function RegulatorRow({
               aria-checked={position === detent}
               /* The size is invisible to a screen reader, so the name carries
                  the same statement in words: "Słodycz: bardziej słodkie". */
-              aria-label={`${label}: ${phrases[detent + 2]}`}
+              aria-label={`${label}: ${phrases[(detent + 2) as Slot]}`}
               disabled={disabled}
               onClick={() => onSet(detent)}
               style={{ left: slotLeft(slot) }}
