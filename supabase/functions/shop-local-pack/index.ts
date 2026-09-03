@@ -230,19 +230,26 @@ Deno.serve(async (req) => {
   if (orderError || !order) return json(500, { error: 'order_create_failed' });
 
   /* H: delivery through the ONE transactional mail path. The mail carries a
-     link into Account → Orders rather than an attachment, so the document is
+     link into Account -> Orders rather than an attachment, so the document is
      always regenerated from the snapshot above and can never go stale.
-     A failed send does NOT invalidate the order — the PDF stays available in
-     the account, and `email_jobs` owns the retry. */
+
+     `environment` is NOT NULL and `metadata.area` is a CLOSED vocabulary that
+     `email_jobs` enforces — the first version of this omitted both and the row
+     was silently refused, leaving a real order with no mail. The error is now
+     READ rather than ignored: a failed queue must not invalidate the order (the
+     PDF stays in the account and Admin can see the gap), but it must not vanish
+     either. */
   const appOrigin = Deno.env.get('APP_PUBLIC_ORIGIN') ?? 'https://staging.pinguinoai.com';
+  const environment = appOrigin.includes('gellatti.com') ? 'production' : 'staging';
   const orderUrl = `${appOrigin}/account?section=orders&order=${order.id}`;
-  const { data: emailJob } = await admin
+  const { data: emailJob, error: emailError } = await admin
     .from('email_jobs')
     .insert({
       idempotency_key: `local-pack:${order.id}`,
       subject_key: 'shop.localStarterPack.ready',
       subject: 'Twój Lokalny Zestaw Startowy Gellatti',
       recipient: user.email ?? '',
+      environment,
       body_text:
         `Twój Lokalny Zestaw Startowy (${readiness.name}) jest gotowy.\n\n` +
         `Lista zakupów: ${orderUrl}\n\nwww.gellatti.com\n`,
@@ -250,7 +257,7 @@ Deno.serve(async (req) => {
         `<p>Twój Lokalny Zestaw Startowy (${readiness.name}) jest gotowy.</p>` +
         `<p><a href="${orderUrl}">Otwórz swoją listę zakupów</a></p>` +
         `<p><a href="https://www.gellatti.com">www.gellatti.com</a></p>`,
-      metadata: { area: 'shop', event: 'local_starter_pack_ready', order_id: order.id },
+      metadata: { area: 'SHOP', event: 'local_starter_pack_ready', order_id: order.id },
       status: 'queued',
     })
     .select('id')
@@ -261,6 +268,8 @@ Deno.serve(async (req) => {
       .from('shop_orders')
       .update({ local_pack_email_job_id: emailJob.id })
       .eq('id', order.id);
+  } else if (emailError) {
+    console.error('local-pack email queue failed', order.id, emailError.message);
   }
 
   return json(200, {
@@ -268,5 +277,8 @@ Deno.serve(async (req) => {
     orderNumber: order.order_number,
     country: readiness.name,
     components: snapshot.components.length,
+    /* Reported, not hidden: the order is valid either way, but an operator
+       should not have to query the database to learn the mail never queued. */
+    emailQueued: Boolean(emailJob?.id),
   });
 });
