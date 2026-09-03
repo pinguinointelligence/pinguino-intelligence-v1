@@ -76,9 +76,14 @@ export interface AffiliateCopy {
   readonly customerBenefit: {
     readonly figure: string;
     readonly figureUnit: string;
+    /** Sits before the title, in orange. The unit stays neutral so this is the
+        only place the offer is named — never both. */
+    readonly badge: string;
     readonly title: string;
     readonly bodyTemplate: string;
     readonly emphasis: string;
+    /** The block's own line — shorter than bodyTemplate, which stays for prose. */
+    readonly shortBody: string;
     readonly monthlyNote: string;
   };
   readonly rates: {
@@ -222,17 +227,19 @@ export const affiliateCopyPl: AffiliateCopy = {
   },
   customerBenefit: {
     figure: '3',
-    figureUnit: ' miesiące gratis',
+    figureUnit: 'miesiące',
+    badge: 'GRATIS!',
     title: 'Daj swoim odbiorcom coś więcej.',
     bodyTemplate:
       'Każdy, kto wybierze roczny plan Gellatti z Twojego linku lub kodu, otrzyma {emphasis}.',
     emphasis: '3 dodatkowe miesiące bez opłat',
+    shortBody: 'Tyle dostaje każdy, kto wybierze roczny plan Gellatti z Twojego linku lub kodu.',
     monthlyNote: 'Korzyść dotyczy planów rocznych.',
   },
   rates: {
     eyebrow: 'Stawki',
     title: 'Standard, Gold i warunki indywidualne.',
-    body: 'Konkretne kwoty w euro — za każdą opłaconą płatność i za każde odnowienie.',
+    body: 'Konkretne kwoty w euro dla każdego planu i poziomu współpracy.',
     perRenewal: 'za udane odnowienie',
     homeMonthly: 'HOME miesięcznie',
     proMonthly: 'PRO miesięcznie',
@@ -391,10 +398,12 @@ export const affiliateCopyEn: AffiliateCopy = {
   },
   customerBenefit: {
     figure: '15',
-    figureUnit: ' months',
+    figureUnit: 'months',
+    badge: 'BONUS!',
     title: 'The customer gains too.',
     bodyTemplate: 'Anyone who buys an annual plan through your link or code gets {emphasis}. The price does not change.',
     emphasis: '15 months for the price of 12',
+    shortBody: 'That is what anyone choosing an annual Gellatti plan through your link or code receives.',
     monthlyNote: 'Monthly plans do not carry the bonus.',
   },
   rates: {
