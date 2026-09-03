@@ -7,6 +7,7 @@
  * HOME|PRO switch rendering on neither surface.
  */
 import { readFileSync, readdirSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter } from 'react-router';
@@ -187,5 +188,74 @@ describe('ONE page gutter — a page may not re-scope the global header', () => 
     expect(APP_PAGE_WORKSPACE).toContain('xl:w-[calc(100%-var(--pro-page-gutter))]');
     // mx-auto is what turns the token into the page origin: margin = gutter / 2.
     expect(APP_HEADER_ROW).toContain('mx-auto');
+  });
+});
+
+describe('the header canvas cannot silently swallow its own controls', () => {
+  const shell = readFileSync(resolve(import.meta.dirname, 'AppShell.tsx'), 'utf8');
+  const geometry = readFileSync(resolve(import.meta.dirname, 'shellGeometry.ts'), 'utf8');
+
+  /* OWNER QA 2026-09-03 — the regression this locks out.
+
+     The header canvas is `pointer-events-none` so its transparent band cannot
+     intercept clicks meant for the page beneath. That makes every control
+     placed on it inert until it opts back in. HOME | PRO opted in; the module
+     tab strip did not, so Receptura / Monitor / Produkcja / Etykieta rendered
+     perfectly and were completely dead to the mouse on every desktop PRO page.
+     Measured before the fix: `pointer-events: none` on each tab, and
+     `elementFromPoint` at a tab's own centre returning the HEADER.
+
+     Nothing about the strip's appearance changed when it broke, and no test
+     looked at pointer events, which is exactly why it reached staging. */
+  it('every child group placed on the canvas re-enables pointer events', () => {
+    expect(geometry).toContain('xl:pointer-events-none');
+    const canvasBlock = shell.slice(shell.indexOf('APP_HEADER_CANVAS'));
+    const region = canvasBlock.slice(0, canvasBlock.indexOf('</header>'));
+    // The two groups the canvas carries: the actions/switch column, and the
+    // workbench module strip. Both must opt in.
+    expect((region.match(/pointer-events-auto/g) ?? []).length).toBeGreaterThanOrEqual(2);
+    expect(shell).toContain('data-testid="app-header-workbench-chrome"');
+    expect(shell).toMatch(
+      /pointer-events-auto contents"\s*data-testid="app-header-workbench-chrome"/,
+    );
+  });
+});
+
+describe('layering and the intermediate desktop band', () => {
+  const drawer = readFileSync(resolve(import.meta.dirname, 'AppNavDrawer.tsx'), 'utf8');
+  const studio = readFileSync(
+    resolve(import.meta.dirname, '../studio/StudioEngineSurface.tsx'),
+    'utf8',
+  );
+  const v21 = readFileSync(resolve(import.meta.dirname, '../../styles/gellatti-v2-1.css'), 'utf8');
+
+  it('puts the mobile drawer ABOVE the page bottom chrome', () => {
+    /* The defect: the drawer was z-50 while the mobile cockpit strip is
+       z-[60], so an open menu had the module nav and the sticky "Przelicz"
+       bar sitting on top of it — and still clickable through the scrim. */
+    expect(studio).toContain('fixed inset-x-0 bottom-0 z-[60]');
+    expect(drawer).toContain('fixed inset-0 z-[70]');
+    expect(drawer).not.toContain('fixed inset-0 z-50');
+  });
+
+  it('suppresses the bottom chrome outright, not behind a 60% scrim', () => {
+    // Raising the drawer stopped the click-through; the strip was still
+    // legible underneath, which is two navigations on screen at once.
+    expect(drawer).toContain("body.dataset.appDrawer = 'open'");
+    expect(drawer).toContain('delete body.dataset.appDrawer');
+    expect(v21).toMatch(
+      /body\[data-app-drawer='open'\] \[data-testid='mobile-cockpit-trigger'\] \{\s*display: none;/,
+    );
+  });
+
+  it('compacts the module strip in the band where the two right edges converge', () => {
+    /* Between 1280 and 1500 the strip rides the centred 1440 canvas while the
+       login is anchored to the page gutter. Measured at 1400 before the fix:
+       strip right 1340 against login left 1296 — a 44 px overlap. The strip
+       keeps its LEFT edge on the display column and gives back the space four
+       equal 125 px columns were never using. Nothing at 1500+ is touched. */
+    expect(v21).toMatch(/@media \(min-width: 1280px\) and \(max-width: 1499\.98px\)/);
+    expect(v21).toMatch(/grid-template-columns: repeat\(4, max-content\)/);
+    expect(v21).toMatch(/justify-self: start/);
   });
 });

@@ -959,12 +959,140 @@ describe('preflight and recipe-specific persistence', () => {
   });
 });
 
+describe('Direction explains itself, and agrees with the engine', () => {
+  const axes = read('features', 'pro-workbench', 'ProfileDirectionAxes.tsx');
+  const engine = read('features', 'recipe-direction', 'recipeDirectionTargets.ts');
+  const v21 = read('styles', 'gellatti-v2-1.css');
+
+  it('ramps the mark by size instead of printing a number', () => {
+    expect(axes).toMatch(/const DOT_RAMP = \[5, 6\.5, 8, 9\.5, 11\]/);
+    expect(axes).toMatch(/const THUMB_RAMP = \[13, 14\.5, 16, 17\.5, 19\]/);
+    // Sized by SLOT, so the ball grows across the screen rather than along the
+    // number line — the two differ on a mirrored axis.
+    /* Sampled across the axis's own count, which is what lets a three-position
+       profile share the ramp without inventing a level it cannot deliver. */
+    expect(axes).toContain('const sampleRamp = (ramp: readonly number[], count: number)');
+    // No +1 / -2 anywhere in the control any more, in any form.
+    expect(axes).not.toContain('const sign =');
+    expect(axes).not.toMatch(/\+\$\{detent\}/);
+  });
+
+  it('mirrors Twardość in PRESENTATION ONLY, never in what it stores', () => {
+    /* The load-bearing one. The engine's sign is frozen and says so itself:
+       canonical -2 is MORE SOFT, +2 is MORE FIRM. The owner wants firm on the
+       LEFT. Both are satisfied by mirroring the slot map, so the leftmost mark
+       WRITES +2 while the solver keeps reading exactly the number it always
+       did. Nothing here may be "simplified" into flipping the stored value. */
+    expect(engine).toContain('-2 = more soft (higher NPAC), +2 = more firm (lower NPAC)');
+    expect(axes).toContain("reversed={axis === 'softness'}");
+    expect(axes).toContain('const visual = reversed ? [...detents].reverse() : [...detents];');
+    expect(axes).toContain('const indexOfDetent = (detent: DirectionIntent) =>');
+    // Firm left, soft right — the owner's approved reading order.
+    expect(axes).toContain("['bardziej twarde', 'bardziej miękkie']");
+    expect(axes).not.toContain("['bardziej miękkie', 'bardziej twarde']");
+    /* Spoken names stay canonical: index 0 of the softness table is -2, and -2
+       is SOFT. If this ever flips, the control announces its own mirror. */
+    const soft = axes.indexOf('znacznie bardziej miękkie');
+    const firm = axes.indexOf('znacznie bardziej twarde');
+    expect(soft).toBeGreaterThan(-1);
+    expect(soft).toBeLessThan(firm);
+    expect(axes).toContain('PHRASES[axisKey][detent]');
+  });
+
+  it('walks the arrow keys across the SCREEN, not along the number line', () => {
+    // On a mirrored axis ArrowLeft must reach the mark to the left, which is
+    // canonical +2. Stepping the stored value instead would send the keyboard
+    // the opposite way from the eye.
+    expect(axes).toContain('const clamped = Math.max(0, Math.min(count - 1, next));');
+    expect(axes).toContain('if (target !== undefined) onSet(target);');
+    expect(axes).not.toContain('onSet(Math.max(-span, position - 1)');
+    expect(axes).not.toContain('onSet(Math.min(span, position + 1)');
+  });
+
+  it('tells the reader the column continues, since the scrollbar is hidden', () => {
+    /* Expanding the breakdown pushes WIEDZA below the fold. It stays reachable
+       — measured at 1440x820, 143 px of scroll brings it fully into view — but
+       from 1536 px up `index.css` deliberately hides the scrollbar, so nothing
+       said so and the section read as deleted.
+
+       Four background layers and no scroll listener: two `local` layers scroll
+       with the content and paint the ground, two `scroll` layers stay at the
+       scroller's edges and paint a shadow. At either end the ground covers the
+       shadow; in between it shows. */
+    expect(v21).toMatch(/\.intelligence-tabpanel-scroll \{[\s\S]*?no-repeat local/);
+    expect(v21).toMatch(/\.intelligence-tabpanel-scroll \{[\s\S]*?no-repeat\s+scroll/);
+    expect((v21.match(/--pro-scroll-ground/g) ?? []).length).toBe(2);
+  });
+});
+
+describe('a refused save points at the module that answers it', () => {
+  const settings = read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx');
+  const workbar = read('features', 'pro-core', 'ProWorkbar.tsx');
+  const store = read('features', 'pro-workbench', 'recipeProfileStore.ts');
+  const theme = read('styles', 'theme-pro-light.css');
+
+  it('carries the refusal through ONE authority, not a second copy of the gate', () => {
+    // The gate lives in useCanonicalRecipeSave and only the workbar calls it.
+    // Settings reads what the card renders rather than recomputing it, so the
+    // two can never disagree about whether the recipe is refusing to save.
+    expect(workbar).toContain('setPreflightBlockMessage(publishedBlock)');
+    expect(workbar).toContain("variant === 'panel' ? save.practicalBlockMessage : null");
+    expect(settings).toContain('useRecipeProfileStore((state) => state.preflightBlockMessage)');
+    expect(settings).not.toContain('practicalRecipeAuditMatchesInput');
+    // Transient: absent from the persist allow-list, so a reload recomputes it
+    // instead of restoring a refusal the draft may no longer earn.
+    expect(store).not.toContain('preflightBlockMessage: state.preflightBlockMessage');
+  });
+
+  it('opens Settings on the refusal WITHOUT trapping it open', () => {
+    // Derived, never a setExpanded(true) effect: forcing the state would leave
+    // the module stuck open after the block clears and would fight an owner
+    // who collapsed it deliberately.
+    /* SUPERSEDED, owner 2026-09-03. `expanded || preflightBlocked` behind a
+       plain toggle had a real defect: while the blocker held the module open
+       the flag was still false, so a click meant to CLOSE flipped it to true
+       and the module stayed open once the blocker cleared. The two states are
+       now separate and only the manual one is ever written. */
+    expect(settings).toContain('const open = manualExpanded || forcedOpen;');
+    expect(settings).toContain('const forcedOpen = preflightBlockMessage !== null;');
+    // Under the blocker a click can only ever record "closed".
+    expect(settings).toMatch(/if \(forcedOpen\) \{\s*setManualExpanded\(false\);\s*return;/);
+    expect(settings).not.toContain('setExpanded');
+    expect(settings).toContain("data-settings-surface={open ? 'expanded' : 'collapsed'}");
+  });
+
+  it('wears the SAME attention marker a changed gram field wears, closed into a ring', () => {
+    expect(settings).toContain("'settings-preflight-blocked'");
+    // Same colour and same 4% tint as `.ingredient-line-changed`; the only
+    // difference is that it goes all the way round, because here the whole
+    // module is what needs attention rather than one cell in a row.
+    expect(theme).toMatch(/\.ingredient-line-changed \{[^}]*var\(--color-attention\)/);
+    expect(theme).toMatch(
+      /\.pro-legend-box\.settings-preflight-blocked \{[\s\S]*?border-color: var\(--color-attention\)/,
+    );
+    expect(theme).toMatch(
+      /\.pro-legend-box\.settings-preflight-blocked \{[\s\S]*?color-mix\(in srgb, var\(--color-attention\) 4%/,
+    );
+    // Two classes, or the border shorthand on .pro-legend-box wins on order.
+    expect(theme).not.toMatch(/^\.settings-preflight-blocked \{/m);
+  });
+
+  it('never lets a sign-in prompt or a network error pull Settings open', () => {
+    // Neither is something Settings can resolve; only the preflight refusal is.
+    expect(workbar).not.toContain('setPreflightBlockMessage(save.error');
+    expect(workbar).not.toContain('setPreflightBlockMessage(blockedMsg');
+  });
+});
+
 describe('five-detent direction language', () => {
   it('renders only the two approved five-detent customer controls', () => {
     const axes = read('features', 'pro-workbench', 'ProfileDirectionAxes.tsx');
     expect(axes).toContain("['sweetness'");
     expect(axes).toContain("['softness'");
-    expect(axes).toContain('[-2, -1, 0, 1, 2]');
+    // Five marks, now addressed by visual slot rather than by a value list.
+    // Five real positions by default; three where the authority publishes three.
+    expect(axes).toContain('const DETENTS = [-2, -1, 0, 1, 2] as const;');
+    expect(axes).toContain('const DETENTS_THREE = [-1, 0, 1] as const;');
     expect(axes).not.toContain('Wybrano:');
     /* OWNER AUTHORITY 2026-09-03: the approved reference carries NO end labels
        under the track — the axis is one row, its name and its instrument. The
