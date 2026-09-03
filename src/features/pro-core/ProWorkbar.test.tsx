@@ -8,6 +8,7 @@
  * + „Monitor PI" are ALWAYS rendered in the workbar (not only at the page bottom).
  */
 import { readFileSync } from 'node:fs';
+import { MemoryRouter, Route, Routes } from 'react-router';
 import { join, resolve } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { createRoot } from 'react-dom/client';
@@ -83,12 +84,35 @@ vi.mock('@/features/constraint-studio/constraintStudioStore', () => ({
 const { ProWorkbar } = await import('./ProWorkbar');
 const w = copy.proWorkbar;
 
-const render = (state: Partial<MockRecipeState>, variant: 'bar' | 'panel' = 'bar') => {
+const render = (
+  state: Partial<MockRecipeState>,
+  variant: 'bar' | 'panel' = 'bar',
+  section = 'recipe',
+) => {
   mockState = { ...mockState, ...state };
-  return renderToStaticMarkup(<ProWorkbar variant={variant} />);
+  return renderToStaticMarkup(
+    <MemoryRouter initialEntries={[`/pro/${section}`]}>
+      <Routes>
+        <Route path="/pro/:section" element={<ProWorkbar variant={variant} />} />
+      </Routes>
+    </MemoryRouter>,
+  );
 };
 
 describe('ProWorkbar (sticky top workbar)', () => {
+  // OWNER 2026-09-03 — ••• → Wersje is the ORIGIN half of the contextual back.
+  it('links Wersje as an in-app navigation that names where it was opened from', () => {
+    for (const variant of ['bar', 'panel'] as const) {
+      for (const section of ['recipe', 'monitor', 'production'] as const) {
+        const html = render({}, variant, section);
+        expect(html, `${variant}/${section}`).toContain(`href="/pro/versions?from=${section}"`);
+        // A raw document link would reload the SPA and throw the draft away —
+        // which is what made this trip one-way in the first place.
+        expect(html, `${variant}/${section}`).not.toContain('href="/pro/versions"');
+      }
+    }
+  });
+
   it('orders New, Save, compact menu, then right-aligned recipe status', () => {
     const html = render({ savedRecipeId: null, dirty: false });
     expect(html).toContain('data-testid="pro-workbar-new-recipe"');
@@ -269,7 +293,15 @@ describe('ProWorkbar (sticky top workbar)', () => {
       moments.push((event as CustomEvent<FriendlyLabMomentEventDetail>).detail);
     window.addEventListener(FRIENDLY_LAB_MOMENT_EVENT, onMoment);
     try {
-      await act(async () => root.render(<ProWorkbar variant="panel" />));
+      await act(async () =>
+        root.render(
+          <MemoryRouter initialEntries={['/pro/recipe']}>
+            <Routes>
+              <Route path="/pro/:section" element={<ProWorkbar variant="panel" />} />
+            </Routes>
+          </MemoryRouter>,
+        ),
+      );
       const button = host.querySelector<HTMLButtonElement>('[data-testid="pro-workbar-save"]');
       expect(button).not.toBeNull();
       await act(async () => {
