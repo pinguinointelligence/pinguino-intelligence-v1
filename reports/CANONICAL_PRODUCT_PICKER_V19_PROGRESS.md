@@ -4,7 +4,7 @@ Updated: 2026-09-03 (Europe/Madrid)
 
 ## Isolation baseline
 
-- [x] Reconciled current `origin/staging`: `b51107a53f6637f8a157b61bd3079314cc43ed65` (including canonical #136 at `4a8822cf0540e0579496fd4e6aa036bf4143c8ce`).
+- [x] Reconciled current `origin/staging`: `79423cd6f3391639bc09375971324dbacb54c5da` (including canonical #136 at `4a8822cf0540e0579496fd4e6aa036bf4143c8ce` and #146 Settings disclosure / recipe overflow work).
 - [x] Isolated work on `codex/canonical-product-picker-v19` in a clean dedicated worktree.
 - [x] Kept production/main untouched.
 - [x] Did not modify Scanner, Engine, solver, product profiles, or `mapper_basement`; the recipe store gained only the explicit, tested atomic CP-44 replacement mutation.
@@ -58,6 +58,7 @@ Updated: 2026-09-03 (Europe/Madrid)
 - CP-44 + current-staging seam verification: 13 files / 174 tests passed after merging current staging, including contextual picker routing, atomic replacement, #136 refusal/edit behavior, and #138 save-gate tests.
 - Final full regression on current staging integration: `npm test` — 939 files / 11,864 tests passed; 23 files / 122 tests skipped. An earlier saturated-host run timed out one 60-second constraint test after 81 seconds; its exact isolated rerun passed 46/46 in 47.4 seconds, and the final idle-host full run passed it in the complete corpus.
 - The final no-overlap staging advance from `7cb84701` to `b51107a5` changed only production-workspace/language-map files; its tests plus the CP-44 seam suite passed 11 files / 109 tests after the merge.
+- Base refresh from `b51107a5` to `79423cd6` had one same-file presentation overlap in `IngredientBuilder.tsx`: staging moved the stabilizer-limit disclosure to the shared `GellattiNotice`; CP-44 replacement hunks were untouched. The accepted CP-44 seam suite plus that notice-shell regression passed 9 files / 65 tests after the merge.
 - Final local staging gate: `npm run verify:staging` — owner-locked guard passed, protected-path semantic changes acknowledged, 18 contract files / 179 tests passed, typecheck passed, lint passed with 0 errors / 7 existing warnings, and production-style build passed.
 
 ## Waiting on active Cloud authority
