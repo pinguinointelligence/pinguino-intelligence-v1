@@ -30,9 +30,18 @@ const at = (detent: DirectionIntent) => `${((detent + 2) / 4) * 100}%`;
 const DOT_PX = [5, 6.5, 8, 9.5, 11] as const;
 const THUMB_PX = [13, 14.5, 16, 17.5, 19] as const;
 
+/**
+ * A position in the five-step size ramps. Stated as a union because both
+ * expressions below land in 0..4 BY CONSTRUCTION — `DirectionIntent` is exactly
+ * `-2 | -1 | 0 | 1 | 2`, so `detent + 2` and `2 - detent` are each 0..4 — but
+ * TypeScript loses the literal union through the arithmetic and then reports
+ * every ramp lookup as possibly `undefined`.
+ */
+type RampIndex = 0 | 1 | 2 | 3 | 4;
+
 /** Index into the size ramps: ascending to the right, or mirrored. */
-const rampIndex = (detent: DirectionIntent, ascending: boolean) =>
-  ascending ? detent + 2 : 2 - detent;
+const rampIndex = (detent: DirectionIntent, ascending: boolean): RampIndex =>
+  (ascending ? detent + 2 : 2 - detent) as RampIndex;
 
 /* Screen readers never saw the ball, so they used to get the numeral. Now that
    nobody gets the numeral, they get the sentence instead — the same thing the
