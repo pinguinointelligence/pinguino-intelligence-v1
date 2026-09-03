@@ -370,3 +370,68 @@ of scientific substance is trapped in the legacy shell.
 
 **Neither HOME nor PRO may be marked FINAL/OWNER-READY until this is complete.**
 Any HOME checklist item whose proof relied on HOME-specific calculation is reopened.
+
+
+## 3h. PROTEIN HARDNESS — 5-LEVEL FORENSIC COMPLETE (2026-09-03)
+
+Owner instruction: do not infer authority granularity from the old 3-label HOME
+UI. The forensic was run for a genuine Protein-specific 5-level authority.
+
+### What a real 5-level hardness authority looks like here
+
+Sorbet has one, and it is explicit — `SORBET_HARDNESS_TARGET_CENTERS`, five
+distinct NPAC centers per serving temperature:
+
+| °C | −2 | −1 | 0 | +1 | +2 |
+|---|---|---|---|---|---|
+| −11 | 39.5 | 38.5 | 37.5 | 36.5 | 35.5 |
+| −12 | 48.3 | 46.9 | 45.5 | 44.1 | 42.7 |
+| −13 | 54.3 | 52.9 | 51.5 | 50.1 | 48.7 |
+
+### Evidence that no Protein equivalent has ever existed
+
+1. **No such table, ever.** `git log --all -S "HARDNESS_TARGET_CENTERS"` returns
+   only Sorbet commits. `PROTEIN_ICE`, `proteinIce`, `PROTEIN_HARDNESS_TARGET`
+   and `protein_hardness` return **0 commits each** across all history.
+2. **The 5-level derivation is structurally inapplicable to ice.** The generic
+   `softnessBand(band, cleanCenter, target)` needs a `cleanCenter`. NPAC carries
+   16 `cleanCenter` entries in `temperatureRegulator.ts`; **no `iceFraction`
+   entry on any profile carries one** — they publish `band` only, plus in some
+   cases a single `lockedReference`. Protein at −11 has
+   `iceFraction: { band: [45, 54.5] }` with no reference point at all.
+3. **The closeout tested all five and found nothing behind them.**
+   `PROTEIN_FINAL_CLOSEOUT_2026-08-23.md`: *"Sweetness enabled, five levels;
+   Hardness all five disabled"*, with 1200 checks pinning the inertness.
+4. **The legacy 3-label UI matched its authority, it was not a simplification.**
+   `texturePreference` is a 3-valued type (`firm | medium | soft`) mapping to
+   `lower_safe_side / clean_center / upper_safe_side` — exactly what a band with
+   no per-level centers can express.
+
+Point 4 is the one that answers the owner's question directly: the 3 labels were
+**not** a simplified projection of a finer authority; they are the authority's
+own granularity, and points 1–3 show no finer one was ever published.
+
+### Verdict
+
+**PROTEIN HARDNESS — OWNER + CHATGPT DECISION REQUIRED.**
+
+A Protein-specific 5-level hardness calibration does not exist and cannot be
+derived from published data without inventing physics. The proven Protein
+hardness authority (ice_fraction + texture semantics) supports **3 distinct
+targets**.
+
+| | OPTION A — restore 3-level | OPTION B — publish a 5-point Protein ice calibration | OPTION C — leave blocked |
+|---|---|---|---|
+| authority | existing: approved Protein ice band + `TEXTURE_TARGETS` + `hasDirectIceAuthorityAtTemperature` | new owner calibration, shaped like `SORBET_HARDNESS_TARGET_CENTERS` | — |
+| PRO −2…+2 | maps by SIGN onto soft/medium/firm; −2≡−1 and +1≡+2 | five genuinely distinct targets | axis stays disabled |
+| invented physics | **none** | none, but requires owner/lab calibration input | none |
+| restores the capability | **yes** | yes, better | no |
+| cost | small extraction, already scoped | calibration work outside code | zero |
+| NPAC statement | unaffected — stays blocked and true | unaffected | unaffected |
+
+**Recommendation: A now, B as the upgrade path.** A restores Protein Twardość in
+PRO using only proven authority; B can replace it later without changing the
+call site, because both resolve through the same canonical profile dispatch.
+
+Not implemented — awaiting the owner decision, per the owner's own rule for this
+case. Capability 11 stays **OPEN**.
