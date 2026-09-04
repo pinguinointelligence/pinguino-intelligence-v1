@@ -34,10 +34,30 @@ export function BaselinePage() {
   const [modelLabel, setModelLabel] = useState('');
   const [declared, setDeclared] = useState('');
   const [resume, setResume] = useState(() => HarnessController.readResume());
+  const [previous, setPrevious] = useState<
+    Array<{ sessionId: string; modelLabel: string; createdAt: string; scenes: number }>
+  >([]);
   const [probeDone, setProbeDone] = useState(false);
   const scene = SCENES[flow.sceneIndex];
 
   useEffect(() => installBaselineManifest(), []);
+  useEffect(() => {
+    if (flow.step !== 'intro') return;
+    let cancelled = false;
+    void controller.listPreviousRuns().then((runs) => {
+      if (!cancelled) setPrevious(runs);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [controller, flow.step]);
+  const onOpenPrevious = useCallback(
+    async (sessionId: string) => {
+      const ok = await controller.openPreviousRun(sessionId);
+      if (ok) dispatch({ type: 'FINISH' });
+    },
+    [controller, dispatch],
+  );
   useEffect(() => () => controller.dispose(), [controller]);
 
   const supported =
@@ -182,6 +202,26 @@ export function BaselinePage() {
                   {copy.resume.fresh}
                 </button>
               </div>
+            </div>
+          )}
+          {previous.length > 0 && (
+            <div style={styles.resumeBox}>
+              <div style={styles.h2}>{copy.previous.heading}</div>
+              <p style={styles.hint}>{copy.previous.hint}</p>
+              {previous.map((r) => (
+                <div key={r.sessionId} style={styles.kv}>
+                  <span>
+                    {r.modelLabel} · {new Date(r.createdAt).toLocaleString('pl-PL')} ·{' '}
+                    {copy.previous.scenes(r.scenes)}
+                  </span>
+                  <button
+                    style={styles.buttonSecondary}
+                    onClick={() => void onOpenPrevious(r.sessionId)}
+                  >
+                    {copy.previous.open}
+                  </button>
+                </div>
+              ))}
             </div>
           )}
           <button

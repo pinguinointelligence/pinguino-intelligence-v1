@@ -1,11 +1,12 @@
 import type { CameraOption } from '../types';
 
-const ULTRAWIDE = /ultra[\s-]?wide|wide[\s-]?angle|0[.,]5\s?x|\buw\b|camera2 2\b|szerokok/i;
-const NON_PRIMARY = /telephoto|\btele\b|macro|depth|infrared|\bir\b|camera2 3\b|camera2 4\b/i;
+const ULTRAWIDE = /ultra[\s-]?wide|wide[\s-]?angle|0[.,]5\s?x|\buw\b|camera2 2\b|ultraszerokok/i;
+const NON_PRIMARY =
+  /telephoto|\btele\b|długoogniskow|macro|makro|depth|infrared|\bir\b|camera2 3\b|camera2 4\b/i;
 const BACK = /back|rear|environment|tyln|world/i;
 const FRONT = /front|user|face|przedn|selfie/i;
-const IOS_VIRTUAL_MULTI = /dual|triple/i;
-const IOS_SINGLE_WIDE = /^back camera$/i;
+const IOS_VIRTUAL_MULTI = /dual|triple|dwuobiektywow|trójobiektywow/i;
+const IOS_SINGLE_WIDE = /^(back camera|tylny aparat)$/i;
 const ANDROID_PRIMARY = /camera2 0\b|camera 0\b|\bmain\b|primary/i;
 
 /**

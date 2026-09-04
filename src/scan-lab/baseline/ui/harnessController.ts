@@ -308,6 +308,58 @@ export class HarnessController {
     }
   }
 
+  /** Completed or abandoned sessions still stored on this phone (newest first). */
+  async listPreviousRuns(): Promise<
+    Array<{ sessionId: string; modelLabel: string; createdAt: string; scenes: number }>
+  > {
+    try {
+      this.db ??= await openCorpusDb();
+      const runs = await this.db.listRuns();
+      const out: Array<{
+        sessionId: string;
+        modelLabel: string;
+        createdAt: string;
+        scenes: number;
+      }> = [];
+      for (const run of runs) {
+        const scenes = await this.db.getSceneResults(run.sessionId);
+        out.push({
+          sessionId: run.sessionId,
+          modelLabel: run.device.modelLabel,
+          createdAt: run.createdAt,
+          scenes: scenes.length,
+        });
+      }
+      return out;
+    } catch {
+      return [];
+    }
+  }
+
+  /** Re-opens a stored session so its summary can be exported or sent again. */
+  async openPreviousRun(sessionId: string): Promise<boolean> {
+    try {
+      this.db ??= await openCorpusDb();
+      const existing = await this.db.getRun(sessionId);
+      if (!existing) return false;
+      this.run = existing;
+      this.declaredCode = existing.scenes[0]?.declaredCode ?? null;
+      const scenes = await this.db.getSceneResults(existing.sessionId);
+      this.publish({
+        sessionId: existing.sessionId,
+        scenes,
+        report: null,
+        archive: null,
+        error: null,
+      });
+      void this.refreshStorage();
+      return true;
+    } catch (error) {
+      this.fail(error, 'Nie udało się otworzyć zapisanej sesji.');
+      return false;
+    }
+  }
+
   async refreshStorage(): Promise<void> {
     try {
       const e = await estimateStorage();

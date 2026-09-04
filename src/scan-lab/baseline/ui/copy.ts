@@ -124,4 +124,10 @@ export const copy = {
   },
   error: { ok: 'OK' },
   resume: { found: 'Znaleziono przerwaną sesję.', continue: 'Kontynuuj', fresh: 'Zacznij od nowa' },
+  previous: {
+    heading: 'Zapisane sesje na tym telefonie',
+    hint: 'Dane sesji zostają w telefonie, dopóki ich nie usuniesz. Otwórz podsumowanie, aby wysłać lub pobrać plik jeszcze raz.',
+    open: 'Otwórz podsumowanie',
+    scenes: (n: number) => `${n} scen`,
+  },
 } as const;
