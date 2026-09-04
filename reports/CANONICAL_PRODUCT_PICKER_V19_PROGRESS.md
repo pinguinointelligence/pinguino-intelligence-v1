@@ -8,9 +8,9 @@ Updated: 2026-09-04 (Europe/Madrid)
 - Denominator unchanged: 48 capability gates. Blocked items remain in the denominator.
 - Status: **PARTIALLY IMPLEMENTED / BLOCKED ON APPROVED COUNTRY DEFAULT DATA**.
 - Owner QA is separate, excluded from the denominator, and is not marked.
-- Current canonical Git base: `origin/staging` at `69370d428d582e31935f0ebc0cef93b4953e8e77`.
+- Current canonical Git base: `origin/staging` at `7384a16871ba7a42df8efe295789750f8a39908d`.
 - PR #150 merged the FILTR checkpoint `80cd3311df0889314815210d1e7d79dfca1ece74` normally into staging. The dedicated branch remains intact and unmerged into production/main.
-- No newer staging delta or semantic overlap exists after the PR #150 merge.
+- PR #151 advanced staging while follow-up PR #152 was in CI. Its `IngredientBuilder` overlap removes the recipe legend/header and adjusts control geometry; it does not change the accepted CP-44 request/replace flow, picker contracts, `IngredientRow`, `ingredientTableUx`, `ProductPickerPopover`, or `recipeStore`. Current-base seam tests pass.
 - No active Global Country owner/workstream remains. The stale `claude/global-country-readiness` worktree is clean, behind staging, has no PR/session, and contains no canonical exact-SKU picker resolver to reuse.
 - Production/main and the production Supabase project were not touched.
 
@@ -33,7 +33,7 @@ Updated: 2026-09-04 (Europe/Madrid)
 ## Verification
 
 - Focused country + picker + CP-44 seam: 25 files / 256 tests passed.
-- Full regression after the app-bootstrap follow-up: 946 files / 11,932 tests passed; 23 files / 122 tests skipped.
+- Full regression after the app-bootstrap follow-up and before the PR #151 base refresh: 946 files / 11,932 tests passed; 23 files / 122 tests skipped.
 - `npm run verify:staging` passed:
   - owner-locked guard passed;
   - protected-path guard passed with the previously accepted CP-44 acknowledgement;
@@ -45,6 +45,7 @@ Updated: 2026-09-04 (Europe/Madrid)
 - Local Docker/Podman is unavailable, so the standalone pgTAP files cannot run locally. Their equivalent precedence kernel was executed against the actual staging PostgreSQL schema during rollback validation.
 - Local `verify:staging` is not served-staging E2E.
 - Follow-up guest-country reachability gate: 3 files / 17 tests passed; typecheck and diff check passed.
+- Current staging/CP-44 semantic seam after merging PR #151: 9 files / 103 tests passed; typecheck and diff check passed.
 
 ## Served staging findings
 
@@ -130,7 +131,7 @@ The staging migration dry-run now reports the database is up to date for all thr
 - `WAITING_ON_GLOBAL_COUNTRY`: none.
 - `WAITING_ON_CLOUD_CONFLICT`: none.
 - `OWNER_DECISION_REQUIRED`: CP-32 — provide eligible exact products plus explicit approved country/Mapper-slot/exact-product assignments for Spain, Poland, and France.
-- `INTERNAL_SAFE_REMAINING`: checkpoint/push the isolated bootstrap; normal follow-up PR/CI; prove served guest local persistence after deployment.
+- `INTERNAL_SAFE_REMAINING`: push the current-staging merge to PR #152; rerun normal CI; merge normally; prove served guest local persistence after deployment.
 - `SERVED STAGING E2E`: CP-48.
 - `OWNER QA`: not started and not marked.
 
@@ -140,10 +141,10 @@ The staging migration dry-run now reports the database is up to date for all thr
 2. Completed work: country/default authority, user override wiring, coarse-country bootstrap, guest persistence/merge, HOME/PRO parity, automated matrix, regression verification, normal PR #150 merge, and staging-only migration application.
 3. Files changed: country migration/pgTAP; global catalog service/contracts/hook; guest store; Vercel endpoint; picker projection/selection; Account Settings conflict UI; app-level Product Country bootstrap; tests; this report.
 4. Tests added/changed: country migration contract, guest store/service/bootstrap, Account Settings conflict, canonical projection, picker selection/CP-36, and pgTAP precedence/RLS coverage.
-5. Exact commands: focused `npm test -- --run ...` (25 files), `npm test`, `npm run verify:staging`, focused bootstrap tests (3 files), `npm run typecheck`, Supabase linked dry-runs, rollback-only SQL validation, and staging acceptance RPC checks.
-6. Test results: focused 256 passed; final full 11,932 passed / 122 skipped; staging gate passed; bootstrap 17 passed; typecheck passed; live SQL precedence assertions passed.
+5. Exact commands: focused `npm test -- --run ...` (25 files), `npm test`, `npm run verify:staging`, focused bootstrap tests (3 files), current-staging CP-44/bootstrap seam (9 files), `npm run typecheck`, Supabase linked dry-runs, rollback-only SQL validation, and staging acceptance RPC checks.
+6. Test results: focused 256 passed; full 11,932 passed / 122 skipped before the PR #151 refresh; staging gate passed; bootstrap 17 passed; current-base seam 103 passed; typecheck passed; live SQL precedence assertions passed.
 7. Previously accepted flows retested: shared HOME/PRO discovery, exact search, favorites/recency, contextual Replace, atomic recipe replacement, ProductBehavior seams, and owner contracts.
 8. Deployment environment: PR #150 and all three migrations are on staging; follow-up guest-bootstrap deployment pending; production untouched.
 9. Remaining incomplete: CP-32 and CP-48.
 10. Exact blockers: no owner-approved ES/PL/FR assignment rows and no Engine-usable exact Milk SKU; served proof cannot truthfully claim defaults or exact override without them.
-11. Git diff/commit status: checkpoint `80cd3311df0889314815210d1e7d79dfca1ece74` is pushed and merged to staging; the isolated guest-bootstrap follow-up is pending checkpoint/PR and is reported in chat after completion.
+11. Git diff/commit status: checkpoint `80cd3311df0889314815210d1e7d79dfca1ece74` is merged to staging; guest-bootstrap checkpoint `f3da8f52cc746e6176a269f90172fa4640761114` is pushed; current-staging merge `11f9b5aced74468b7ea497a070ebd84addfb942d` is pending push to PR #152.
