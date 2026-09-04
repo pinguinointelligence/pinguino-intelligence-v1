@@ -91,7 +91,7 @@ function rescoreScene(sc, events, declared, kind) {
   else if (hits.length === 0) verdict = 'NO_DECODE';
   else if (confirmed) verdict = expected && confirmed.text !== expected ? 'MISREAD' : 'DECODED_CONFIRMED';
   else verdict = expected && correct === 0 ? 'MISREAD' : 'DECODED_UNCONFIRMED';
-  const confirmedWrong = confirmed && (expected ? confirmed.text !== expected : majority && confirmed.text !== majority && counts[confirmed.text] < counts[majority]);
+  const confirmedWrong = confirmed && (expected ? confirmed.text !== expected : majority && !topSet.has(confirmed.text) && counts[confirmed.text] < counts[majority]);
   return { hits: hits.length, attempts: reads.length, counts, firstHitMs: hits[0]?.tMs ?? null, firstConfirmedMs: confirmed?.tMs ?? null, confirmedText: confirmed?.text ?? null, verdict, misread, rawContradicting, expected, confirmedWrong: Boolean(confirmedWrong) };
 }
 const ms = (v) => (typeof v === 'number' && Number.isFinite(v) ? Math.round(v).toString() : '—');

@@ -61,7 +61,7 @@ Events per scene: ean-12cm=53, ean-18cm=54, ean-25cm=52, ean-30cm=52, ean-approa
 ## Phase 1 headline targets measured on this corpus (diagnostic — NOT Phase 0 gates)
 | target | measured | result |
 |---|---|---|
-| wrong codes = 0 (headline: CONFIRMED wrong values) | 1 confirmed wrong value(s); 0 MISREAD scene(s) vs declared 7622210669315 (P1 scenes only, 0 raw hit(s) differ); 8 raw single-frame read(s) contradicting the scene majority (ean-curved-can: 8411092731130×40 vs 0141200001098×6; ean-hand-motion: 8426617014032×59 vs 5130150516023×1; ean-small-bottle: 8402001022845×24 vs 8720181292095×1) | misses |
+| wrong codes = 0 (headline: CONFIRMED wrong values) | 0 confirmed wrong value(s); 0 MISREAD scene(s) vs declared 7622210669315 (P1 scenes only, 0 raw hit(s) differ); 8 raw single-frame read(s) contradicting the scene majority (ean-curved-can: 8411092731130×40 vs 0141200001098×6; ean-hand-motion: 8426617014032×59 vs 5130150516023×1; ean-small-bottle: 8402001022845×24 vs 8720181292095×1) | meets |
 | EAN-13 completion 12–30 cm p50 ≤ 0.7 s / p95 ≤ 2.0 s (headline) | p50 650 ms / p95 2246 ms over 4 confirmed scene(s) | misses |
 | two consecutive frames agreeing on a WRONG value (fast-lane hazard) | ean-curved-can: 0141200001098 at 5861 ms (frames 139/142) | misses |
 
