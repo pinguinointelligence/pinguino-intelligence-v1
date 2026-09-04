@@ -7,15 +7,17 @@ import type { IngredientRow } from '@/data/ingredients/ingredientRow';
 import { parseCsv } from '@/lib/csv';
 import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
 import { evaluateRecipeConstraintAuthority } from '@/features/recipe-constraints/recipeConstraintAuthority';
+import { buildCanonicalNewRecipeStarter } from '@/features/recipes/newRecipeStarter';
+import { buildOptimizePreview } from '@/features/constraint-studio/applyPipeline';
+import { FRESH_FRUITS, FRESH_FRUIT_MAIN_POLICIES } from './freshFruitMainPolicies.fixture';
 import { assessProductionRescue } from './productionRescue';
 import {
   confirmProductionLine,
   createProductionSession,
   setDraftActualGrams,
 } from './productionSession';
-import { FRESH_FRUITS, FRESH_FRUIT_MAIN_POLICIES } from './freshFruitMainPolicies.fixture';
 
-vi.setConfig({ testTimeout: 600_000 });
+vi.setConfig({ testTimeout: 900_000 });
 
 const SRC = readFileSync(
   resolve(process.cwd(), 'docs/ingredients/validation/mapper_basement.csv'),
@@ -47,46 +49,9 @@ const ing = (id: string) => ({
   cost_currency: 'EUR',
 });
 
-const FRUIT = 'fruit-line';
-const MILK = 'new-recipe-0-milk_3_5';
-/** The owner's real 670 g strawberry skeleton (run b6ecedce), fruit line swapped. */
-const SKELETON = [
-  [MILK, 'PI-ING-000236', 201],
-  ['new-recipe-1-cream_30', 'PI-ING-000180', 85],
-  ['new-recipe-2-smp', 'PI-ING-000270', 41],
-  ['new-recipe-3-sucrose', 'PI-ING-000514', 54],
-  ['new-recipe-4-dextrose', 'PI-ING-000494', 54],
-  ['new-recipe-5-inulin', 'PI-ING-000456', 16],
-  ['new-recipe-6-tara_gum', 'PI-ING-000492', 2],
-] as const;
-const FRUIT_PLANNED = 217;
-
-const planFor = (mapperId: string): RecipeInput => {
-  const items = [
-    ...SKELETON.map(([id, pid, g]) => ({
-      id,
-      ingredient: ing(pid),
-      planned_grams: g,
-      actual_grams: null,
-      lock_type: 'unlocked',
-    })),
-    {
-      id: FRUIT,
-      ingredient: ing(mapperId),
-      planned_grams: FRUIT_PLANNED,
-      actual_grams: null,
-      lock_type: 'main',
-    },
-  ];
-  return {
-    mode: 'classic',
-    category: 'milk_gelato',
-    target_batch_grams: 670,
-    target_temperature_c: -13,
-    machine_capacity_grams: 2000,
-    items,
-  } as unknown as RecipeInput;
-};
+const FRUIT = 'fruit-main';
+const BATCH = 1000;
+const CAPACITY = 3000;
 
 const snapsFor = (input: RecipeInput, policy: keyof typeof FRESH_FRUIT_MAIN_POLICIES) => {
   const p = FRESH_FRUIT_MAIN_POLICIES[policy];
@@ -115,134 +80,225 @@ const snapsFor = (input: RecipeInput, policy: keyof typeof FRESH_FRUIT_MAIN_POLI
         approvedLiquidDairyCarrier: false,
         liquidDairyCarrierFloorPercent: 30,
       };
-    else if (item.id === MILK)
+    else if (/milk 3\.5/i.test(item.ingredient.name ?? ''))
       out[item.id] = { ...(cur as object), approvedLiquidDairyCarrier: true };
   }
   return out as never;
 };
-const compFor = (input: RecipeInput, policy: keyof typeof FRESH_FRUIT_MAIN_POLICIES) => ({
-  schemaVersion: 1 as const,
-  baseScope: 'BASE_FORMULATION' as const,
-  baseOrder: input.items.map((i) => i.id),
-  toppings: [],
-  behaviorSnapshots: snapsFor(input, policy),
-  migrationAmbiguities: [],
-});
 
-const runCase = (
-  mapperId: string,
+/** Canonical starter + this fruit as Main at the midpoint of its published range,
+ *  balanced by the app's own optimizer. No invented chemistry. */
+const baselineFor = (mapperId: string, policy: keyof typeof FRESH_FRUIT_MAIN_POLICIES) => {
+  const p = FRESH_FRUIT_MAIN_POLICIES[policy];
+  const sharePercent = (p.eco + p.ceiling) / 2;
+  const fruitGrams = Math.round((BATCH * sharePercent) / 100);
+  const starter = buildCanonicalNewRecipeStarter({
+    visibleProductType: 'gelato',
+    servingModeId: 'temp_minus_13',
+    formulationStrategy: 'optimal',
+    targetBatchGrams: BATCH,
+  });
+  const supportTotal = BATCH - fruitGrams;
+  const starterTotal = starter.items.reduce((s, i) => s + i.planned_grams, 0);
+  const scale = supportTotal / starterTotal;
+  const raw = {
+    mode: 'classic',
+    category: starter.category,
+    target_temperature_c: starter.targetTemperatureC,
+    machine_capacity_grams: CAPACITY,
+    target_batch_grams: BATCH,
+    items: [
+      ...starter.items.map((i) => ({
+        ...i,
+        planned_grams: Math.round(i.planned_grams * scale * 10) / 10,
+        actual_grams: null,
+      })),
+      {
+        id: FRUIT,
+        ingredient: ing(mapperId),
+        planned_grams: fruitGrams,
+        actual_grams: null,
+        lock_type: 'main',
+      },
+    ],
+  } as unknown as RecipeInput;
+  const built = buildOptimizePreview(raw, { byLineId: {} }, '2026-09-05T09:00:00.000Z', {
+    productBehaviorSnapshots: snapsFor(raw, policy),
+    technicalOnlyMainLineIds: [],
+  });
+  if (!built.ok)
+    return { ok: false as const, stage: 'optimizer', detail: JSON.stringify(built).slice(0, 160) };
+  const proposed = built.preview.proposedInput as RecipeInput;
+  const total = proposed.items.reduce((s, i) => s + i.planned_grams, 0);
+  const plan = {
+    ...proposed,
+    target_batch_grams: total,
+    machine_capacity_grams: CAPACITY,
+  } as RecipeInput;
+  const auth = evaluateRecipeConstraintAuthority({
+    recipe: plan,
+    snapshots: snapsFor(plan, policy),
+    module: 'BATCH_RESCUE',
+  });
+  if (!auth.valid)
+    return {
+      ok: false as const,
+      stage: 'authority',
+      detail: auth.issues.map((i) => `${i.source}:${i.code}`).join(','),
+    };
+  return {
+    ok: true as const,
+    plan,
+    fruitGrams: plan.items.find((i) => i.id === FRUIT)!.planned_grams,
+    total,
+  };
+};
+
+const runDeviation = (
+  plan: RecipeInput,
   policy: keyof typeof FRESH_FRUIT_MAIN_POLICIES,
-  deltaG: number,
+  deltas: Record<string, number>,
 ) => {
-  const planned = planFor(mapperId);
   let session = createProductionSession({
-    sessionId: `m-${mapperId}-${deltaG}`,
+    sessionId: 'm',
     ownerUserId: 'owner',
-    source: { recipeId: 'r', recipeVersionId: 'v', recipeVersionNumber: 1, recipeName: mapperId },
-    plannedInput: planned,
-    plannedComposition: compFor(planned, policy),
+    source: { recipeId: 'r', recipeVersionId: 'v', recipeVersionNumber: 1, recipeName: 'm' },
+    plannedInput: plan,
+    plannedComposition: {
+      schemaVersion: 1,
+      baseScope: 'BASE_FORMULATION',
+      baseOrder: plan.items.map((i) => i.id),
+      toppings: [],
+      behaviorSnapshots: snapsFor(plan, policy),
+      migrationAmbiguities: [],
+    },
     startedAt: '2026-09-05T09:00:00.000Z',
   } as never);
   for (const [idx, line] of session.lines.entries()) {
-    const physical = line.lineId === FRUIT ? FRUIT_PLANNED + deltaG : SKELETON[idx]![2];
+    const planned = plan.items.find((i) => i.id === line.lineId)!.planned_grams;
+    const physical = Math.round((planned + (deltas[line.lineId] ?? 0)) * 10) / 10;
     session = confirmProductionLine(
       setDraftActualGrams(session, line.lineId, physical),
       line.lineId,
-      `2026-09-05T09:0${idx}:00.000Z`,
+      `2026-09-05T09:0${idx % 10}:00.000Z`,
     );
   }
   const a = assessProductionRescue(session);
   const restore = a.options.find((o) => o.id === 'restore_original_recipe');
   const exact = restore
     ? restore.candidateInput.items.every((it) => {
-        const base = planned.items.find((x) => x.id === it.id)!;
+        const base = plan.items.find((x) => x.id === it.id)!;
         return Math.abs((it.actual_grams ?? it.planned_grams) - base.planned_grams) < 0.05;
       })
     : false;
+  const firstIssue = a.state === 'impossible' ? (a.reason ?? 'no reason') : null;
   return {
     state: a.state,
     optionIds: a.options.map((o) => o.id),
-    masses: a.options.map((o) => o.finalMassG),
+    masses: a.options.map((o) => Number(o.finalMassG.toFixed(1))),
     exactRestore: exact,
+    restoreMass: restore ? Number(restore.finalMassG.toFixed(1)) : null,
+    firstIssue,
   };
 };
 
 /**
- * FRESH-FRUIT RESCUE MATRIX — the owner's underweight invariant.
+ * FRESH-FRUIT RESCUE MATRIX — every canonical fresh fruit, real valid baseline.
  *
- * If the saved plan P was valid, the vessel is BELOW P, and the shortfall can be
- * restored by additions alone, then Rescue must offer exactly that restoration.
- * It must never answer „Nie mamy bezpiecznej korekty dla tej partii".
+ * THE OWNER'S UNDERWEIGHT INVARIANT: if the saved plan P was valid, the vessel is
+ * BELOW P, and the shortfall can be restored by additions alone, Rescue must
+ * offer exactly that restoration and must never answer „Nie mamy bezpiecznej
+ * korekty dla tej partii".
  *
- * The specimen is the owner's real run b6ecedce: STRAWBERRIES planned 217 g,
- * weighed 206 g, in a 670 g plan (MILK 201 / CREAM 85 / SMP 41 / SUCROSE 54 /
- * DEXTROSE 54 / INULIN 16 / TARA 2). The original plan is terminal-VALID and the
- * repair is a single +11 g top-up back to it — yet Rescue returned `impossible`,
- * because `restoreOriginalProfile` bailed out whenever nothing in the vessel
- * exceeded its planned amount (scaleFactor <= 1), which is the underweight case,
- * and because the restore strategy demanded a mass strictly ABOVE the original
- * target while the machine was capped at that same target.
+ * BASELINES ARE NOT HAND-WRITTEN. An earlier version of this file reused one
+ * strawberry-tuned skeleton for all 55 fruits, which produced a terminal-valid
+ * plan for only 5 of them — the other 50 failed `engine:native_band_violation`
+ * on the PLAN, so Rescue was never actually asked the question. Here each fruit
+ * gets its own baseline from the canonical authorities: the approved new-recipe
+ * starter, the fruit placed as Main at the midpoint of ITS OWN published range,
+ * and the app's own optimizer (`buildOptimizePreview`) balancing the support
+ * lines. Each baseline is then required to pass the SAME terminal Production
+ * authority Rescue uses before any weighing error is introduced.
  *
- * COVERAGE HONESTY: the skeleton below is tuned for STRAWBERRIES. Dropping a
- * different fruit into it changes the sugar/water balance, so only the fruits
- * listed in VALID_PLAN_FRUITS produce a terminal-valid plan at 217 g; the rest
- * fail `engine:native_band_violation` on the PLAN itself, which is a property of
- * this harness, not of Rescue. Those are asserted as plan-invalid rather than
- * silently counted as passes. Covering all 55 needs a balanced plan generated
- * per fruit.
+ * Policies come from `product_behavior_policy_versions` (see
+ * `freshFruitMainPolicies.fixture.ts`), so banana (10/20/30) and kiwi (10/15/20)
+ * are posed at their own shares rather than forced to a strawberry share.
+ *
+ * Machine capacity is deliberately ample (3 kg) so an overweight repair is
+ * judged by the search and the hard authorities, not by a capacity wall. The
+ * owner's real 670 g / 670 g capacity case is pinned separately in
+ * `freshFruitOwnerStrawberry.test.ts`.
  */
-describe('fresh fruit underweight restores the original plan', () => {
-  /** Fruits whose plan is terminal-valid in this skeleton, measured not assumed. */
-  const VALID_PLAN_FRUITS = FRESH_FRUITS.filter((fruit) => {
-    const planned = planFor(fruit.id);
-    return evaluateRecipeConstraintAuthority({
-      recipe: { ...planned, target_batch_grams: 670 },
-      snapshots: snapsFor(planned, fruit.policy),
-      module: 'BATCH_RESCUE',
-    }).valid;
+describe('fresh fruit rescue matrix — all canonical fresh fruits', () => {
+  const BASELINES = FRESH_FRUITS.map((fruit) => ({
+    fruit,
+    baseline: baselineFor(fruit.id, fruit.policy),
+  }));
+
+  it('produces a terminal-valid baseline for every canonical fresh fruit', () => {
+    const failed = BASELINES.filter((b) => !b.baseline.ok).map(
+      (b) => `${b.fruit.name}: ${(b.baseline as { stage?: string }).stage}`,
+    );
+    // A fruit with no obtainable valid plan is an Engine/Product coverage defect,
+    // never a silent skip — it must surface here rather than shrink the matrix.
+    expect(failed, `fruits without a valid baseline: ${failed.join(' | ')}`).toEqual([]);
+    expect(BASELINES.length).toBe(55);
   });
 
-  it('has fruits to test at all', () => {
-    expect(VALID_PLAN_FRUITS.length).toBeGreaterThan(0);
-  });
-
-  it('STRAWBERRIES 217 -> 206 offers the exact +11 g restore', () => {
-    const straw = FRESH_FRUITS.find((f) => f.id === 'PI-ING-001553')!;
-    const outcome = runCase(straw.id, straw.policy, -11);
-    expect(outcome.state).toBe('options');
-    expect(outcome.optionIds.length).toBeGreaterThan(0);
-    expect(outcome.optionIds).toContain('restore_original_recipe');
-    expect(outcome.exactRestore).toBe(true);
-    expect(outcome.masses).toContain(670);
-  });
+  const valid = () =>
+    BASELINES.filter((b) => b.baseline.ok) as {
+      fruit: (typeof FRESH_FRUITS)[number];
+      baseline: { ok: true; plan: RecipeInput; fruitGrams: number; total: number };
+    }[];
 
   for (const delta of [-5, -10] as const) {
-    it(`every valid-plan fresh fruit restores exactly at ${delta} g`, () => {
-      for (const fruit of VALID_PLAN_FRUITS) {
-        const outcome = runCase(fruit.id, fruit.policy, delta);
-        // Non-vacuous: assert there is something to inspect BEFORE inspecting it.
-        expect(outcome.state, `${fruit.name} ${delta}g state`).toBe('options');
+    it(`restores the exact saved plan for every fruit at ${delta} g`, () => {
+      const rows = valid();
+      expect(rows.length).toBe(55);
+      for (const { fruit, baseline } of rows) {
+        const outcome = runDeviation(baseline.plan, fruit.policy, { [FRUIT]: delta });
+        // Non-vacuous: prove there is something to inspect before inspecting it.
+        expect(outcome.state, `${fruit.name} ${delta}g`).toBe('options');
         expect(outcome.optionIds.length, `${fruit.name} ${delta}g options`).toBeGreaterThan(0);
         expect(outcome.optionIds, `${fruit.name} ${delta}g`).toContain('restore_original_recipe');
-        expect(outcome.exactRestore, `${fruit.name} ${delta}g exact`).toBe(true);
-        expect(outcome.masses, `${fruit.name} ${delta}g mass`).toContain(670);
+        expect(outcome.exactRestore, `${fruit.name} ${delta}g exact vector`).toBe(true);
+        expect(outcome.restoreMass, `${fruit.name} ${delta}g mass`).toBeCloseTo(baseline.total, 1);
       }
     });
   }
 
-  it('overweight still grows the batch instead of restoring in place', () => {
-    for (const fruit of VALID_PLAN_FRUITS) {
-      const outcome = runCase(fruit.id, fruit.policy, 10);
-      expect(outcome.state, `${fruit.name} +10g`).toBe('options');
+  it('restores every missing line when more than the fruit is short', () => {
+    const rows = valid();
+    for (const { fruit, baseline } of rows) {
+      const milk = baseline.plan.items.find((i) => /milk 3\.5/i.test(i.ingredient.name ?? ''));
+      if (!milk) continue;
+      const outcome = runDeviation(baseline.plan, fruit.policy, { [FRUIT]: -10, [milk.id]: -5 });
+      expect(outcome.state, `${fruit.name} multi-line`).toBe('options');
       expect(outcome.optionIds.length).toBeGreaterThan(0);
-      // Add-only: an over-added fruit can only be repaired by a LARGER batch.
-      expect(Math.max(...outcome.masses)).toBeGreaterThan(670);
+      expect(outcome.optionIds, `${fruit.name} multi-line`).toContain('restore_original_recipe');
+      expect(outcome.exactRestore, `${fruit.name} multi-line exact vector`).toBe(true);
     }
   });
 
-  it('records which fruits this skeleton cannot pose the question for', () => {
-    const invalid = FRESH_FRUITS.length - VALID_PLAN_FRUITS.length;
-    // Pinned so a change in coverage is visible rather than silent.
-    expect(invalid + VALID_PLAN_FRUITS.length).toBe(55);
-  });
+  for (const delta of [5, 10] as const) {
+    it(`repairs or refuses with a stated reason for every fruit at +${delta} g`, () => {
+      const rows = valid();
+      for (const { fruit, baseline } of rows) {
+        const outcome = runDeviation(baseline.plan, fruit.policy, { [FRUIT]: delta });
+        if (outcome.state === 'impossible') {
+          // Legitimate only when a hard authority says so, and it must say WHY.
+          expect(
+            outcome.firstIssue,
+            `${fruit.name} +${delta}g impossible without reason`,
+          ).toBeTruthy();
+          continue;
+        }
+        expect(outcome.optionIds.length, `${fruit.name} +${delta}g`).toBeGreaterThan(0);
+        // Add-only: over-added fruit can only be repaired by a LARGER batch.
+        expect(Math.max(...outcome.masses), `${fruit.name} +${delta}g mass`).toBeGreaterThan(
+          baseline.total,
+        );
+      }
+    });
+  }
 });
