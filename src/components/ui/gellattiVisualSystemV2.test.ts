@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { buttonClasses } from './buttonStyles';
 import {
@@ -13,6 +13,13 @@ import {
 
 const read = (...parts: string[]) =>
   readFileSync(new URL(`../../${parts.join('/')}`, import.meta.url), 'utf8');
+
+const sourceFilesUnder = (directory: URL): URL[] =>
+  readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const child = new URL(`${entry.name}${entry.isDirectory() ? '/' : ''}`, directory);
+    if (entry.isDirectory()) return sourceFilesUnder(child);
+    return entry.name.endsWith('.tsx') && !entry.name.includes('.test.') ? [child] : [];
+  });
 
 describe('Gellatti Visual System V2', () => {
   it('projects current-PRO controls outward without changing their source recipe', () => {
@@ -133,5 +140,96 @@ describe('Gellatti Visual System V2', () => {
     expect(dialog).toContain('role="dialog"');
     expect(dialog).toContain('aria-modal="true"');
     expect(dialog).toContain("event.key === 'Escape'");
+  });
+
+  it('keeps every PRO Recipe modal/notice on the shared Gellatti primitives', () => {
+    const recalc = read('features', 'pro-core', 'ProRecalcPanel.tsx');
+    const newRecipe = read('features', 'recipes', 'NewRecipeConfirmationDialog.tsx');
+    const saveRecipe = read('features', 'recipes', 'SaveRecipeDialog.tsx');
+    const monitorDrawer = read('features', 'pro-core', 'MonitorDrawer.tsx');
+    const dialog = read('components', 'ui', 'DialogShell.tsx');
+    const notice = read('components', 'ui', 'GellattiNotice.tsx');
+
+    expect(recalc).toContain('<DialogShell');
+    expect(recalc).toContain('<GellattiNotice');
+    expect(recalc).not.toContain('className="fixed inset-0');
+    expect(newRecipe).toContain('<GellattiNotice');
+    expect(newRecipe).not.toContain('role="dialog"');
+    expect(saveRecipe).toContain('<DialogShell');
+    expect(saveRecipe).not.toContain('className="fixed inset-0');
+    expect(monitorDrawer).toContain('<DialogShell');
+    expect(monitorDrawer).not.toContain('role="dialog"');
+
+    expect(notice).toContain('<DialogShell');
+    expect(notice).toContain('showCloseControl');
+    expect(dialog).toContain('data-dialog-shell="gellatti"');
+    expect(dialog).toContain('data-dialog-panel="gellatti"');
+    expect(dialog).toContain('showCloseControl');
+
+    const existingShellConsumers = [
+      read('features', 'ingredient-builder', 'IngredientRow.tsx'),
+      read('features', 'ingredient-builder', 'IngredientLineControls.tsx'),
+      read('features', 'ingredient-builder', 'ToppingRow.tsx'),
+      read('features', 'machine-onboarding', 'ui', 'RecipeCustomMachineDialog.tsx'),
+      read('features', 'production-workspace', 'ProductionCockpit.tsx'),
+    ];
+    existingShellConsumers.forEach((source) => expect(source).toContain('<DialogShell'));
+
+    const existingNoticeConsumers = [
+      read('features', 'ingredient-builder', 'IngredientBuilder.tsx'),
+      recalc,
+      newRecipe,
+    ];
+    existingNoticeConsumers.forEach((source) => expect(source).toContain('<GellattiNotice'));
+  });
+
+  it('pins the three approved non-modal-shell PRO Recipe exceptions by structure', () => {
+    const workbar = read('features', 'pro-core', 'ProWorkbar.tsx');
+    const picker = read('features', 'ingredient-builder', 'ProductPickerPopover.tsx');
+    const cockpit = read('features', 'studio', 'StudioEngineSurface.tsx');
+
+    // OWNER-accepted anchored three-dots popover: viewport portal, its own X,
+    // outside/Escape and timed-dismiss behaviour must stay intact.
+    expect(workbar).toContain('data-popover-layer="viewport-portal"');
+    expect(workbar).toContain('pro-workbar-popover-close');
+    expect(workbar).toContain("event.key !== 'Escape'");
+    expect(workbar).toContain('WORKBAR_POPOVER_IDLE_MS = 4_500');
+
+    // Anchored catalog picker and the mobile cockpit are structural navigation
+    // surfaces, not Recipe outcome/refusal notices. Their exception markers
+    // prevent an unmarked one-off outcome modal from joining this allow-list.
+    expect(picker).toContain(
+      "data-picker-position={anchored ? 'anchored' : 'keyboard-safe-sheet'}",
+    );
+    expect(picker).toContain('data-testid="product-data-status-dialog"');
+    expect(cockpit).toContain('data-testid="mobile-cockpit-sheet"');
+    expect(cockpit).toContain('id="mobile-cockpit-dialog"');
+  });
+
+  it('rejects any unlisted raw overlay added to the PRO Recipe feature roots', () => {
+    const roots = [
+      new URL('../../features/pro-core/', import.meta.url),
+      new URL('../../features/pro-workbench/', import.meta.url),
+      new URL('../../features/constraint-studio/', import.meta.url),
+      new URL('../../features/ingredient-builder/', import.meta.url),
+      new URL('../../features/recipes/', import.meta.url),
+      new URL('../../features/production-workspace/', import.meta.url),
+      new URL('../../features/machine-onboarding/', import.meta.url),
+      new URL('../../features/studio/', import.meta.url),
+      new URL('../../pages/pro/', import.meta.url),
+    ];
+    const approvedRawExceptions = new Set([
+      'features/ingredient-builder/ProductPickerPopover.tsx',
+      'features/pro-core/ProWorkbar.tsx',
+      'features/studio/StudioEngineSurface.tsx',
+    ]);
+    const rawOverlayPattern = /role=["']dialog["']|aria-modal=["']true["']|fixed\s+inset-0/;
+    const unapproved = roots
+      .flatMap(sourceFilesUnder)
+      .filter((file) => rawOverlayPattern.test(readFileSync(file, 'utf8')))
+      .map((file) => file.pathname.split('/src/').at(-1) ?? file.pathname)
+      .filter((file) => !approvedRawExceptions.has(file));
+
+    expect(unapproved).toEqual([]);
   });
 });

@@ -69,6 +69,35 @@ afterEach(async () => {
 });
 
 describe('PI visible terminal contract', () => {
+  it('renders a committed-but-incomplete Apply only as applied, never as not applied', async () => {
+    const onClose = vi.fn();
+    useConstraintStudioStore.setState({
+      blocked: null,
+      postApplyNotice: {
+        state: 'APPLIED_WITH_INCOMPLETE_CONSUMERS',
+        messagePl:
+          'Receptura została zmieniona, ale koszt nie został w pełni odświeżony. Uruchom Przelicz ponownie.',
+      },
+    });
+
+    await renderPanel(onClose);
+
+    expect(document.body.textContent).toContain('Zmiany zastosowano');
+    expect(document.body.textContent).toContain('Receptura została zmieniona');
+    expect(document.body.textContent).not.toContain('Zmian nie zastosowano');
+    expect(useConstraintStudioStore.getState().blocked).toBeNull();
+
+    await act(async () => {
+      document
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="pro-recalc-applied-with-incomplete-consumers-primary"]',
+        )
+        ?.click();
+    });
+    expect(useConstraintStudioStore.getState().postApplyNotice).toBeNull();
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
   it('clears a cancelled or failed Preview score and renders the next recalculation score', async () => {
     const onClose = vi.fn();
     useConstraintStudioStore.setState({

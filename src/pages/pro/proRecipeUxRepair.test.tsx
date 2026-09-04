@@ -414,12 +414,14 @@ describe('recalculation overlay', () => {
 
   it('renders as a fixed compact dialog (520–720 px), with Zastosuj/Anuluj inside', () => {
     const src = read('features', 'pro-core', 'ProRecalcPanel.tsx');
-    expect(src).toContain('data-testid="pro-recalc-overlay"');
-    expect(src).toContain('fixed inset-0');
+    const dialog = read('components', 'ui', 'DialogShell.tsx');
+    expect(src).toContain('testId="pro-recalc-overlay"');
+    expect(src).toContain('<DialogShell');
+    expect(dialog).toContain('fixed inset-0');
     expect(src).toContain('w-[min(680px,calc(100vw-1.5rem))]'); // compact desktop, safe mobile gutter
-    expect(src).toContain('role="dialog"');
+    expect(dialog).toContain('role="dialog"');
     // Apply closes the overlay ONLY on success (blocked apply keeps the honest notice).
-    expect(src).toContain('after.preview === null && after.blocked === null');
+    expect(src).toContain('after.postApplyNotice === null');
     expect(src).toContain('applyPreviewWithServerAuthority');
     expect(src).not.toContain('store.applyPreview()');
   });

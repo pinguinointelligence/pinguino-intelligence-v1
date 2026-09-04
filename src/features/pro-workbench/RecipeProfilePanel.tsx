@@ -37,6 +37,7 @@ import { useConstraintStudioStore } from '@/features/constraint-studio/constrain
 import { buildCurrentRecipeResultAuthority } from './currentRecipeResultAuthority';
 import { friendlyLabRecipeJourneyState } from './friendlyLabRecipeJourney';
 import { CostSummaryIcon, NutritionSummaryIcon } from '@/components/icons/PinguinoIcons';
+import { proWorkbenchCopy } from '@/copy/pro.pl';
 
 export type ProContextTab = 'recipe' | 'monitor' | 'production';
 export type CockpitTab = WorkbenchModuleTab;
@@ -68,18 +69,20 @@ function CompactMetricRow({
   );
 }
 
-function NutritionCostProfileGrid({
+export function NutritionCostProfileGrid({
   result,
   nutritionReady,
   costReady,
   nutritionOverride,
   costsOverride,
+  costMissingNames = [],
 }: {
   result: RecipeResult;
   nutritionReady: boolean;
   costReady: boolean;
   nutritionOverride?: NutritionPer100g | ProductLabelNutritionPer100g | null;
   costsOverride?: RecipeCosts | null;
+  costMissingNames?: readonly string[];
 }) {
   const nutrition = nutritionReady
     ? nutritionOverride === undefined
@@ -91,6 +94,20 @@ function NutritionCostProfileGrid({
     value === null || value === undefined ? '—' : `${value.toFixed(precision)} g`;
   const euro = (value: number | null | undefined) =>
     value === null || value === undefined ? '—' : `${value.toFixed(2)} €`;
+  const partialCost = costs !== null && costs.complete === false;
+  const knownPartialCost = partialCost && costs.known_cost > 0;
+  const costReadout = partialCost
+    ? knownPartialCost
+      ? `${costs.known_cost.toFixed(2)} €`
+      : '—'
+    : costs?.cost_per_kg == null
+      ? '—'
+      : `${costs.cost_per_kg.toFixed(2)} €`;
+  const costReadoutLabel = partialCost
+    ? knownPartialCost
+      ? proWorkbenchCopy.nutrition.knownBatchCost.toLocaleLowerCase('pl')
+      : proWorkbenchCopy.nutrition.noPrices.toLocaleLowerCase('pl')
+    : 'za kg';
   return (
     /* OWNER FROZEN PRO VISUAL: the result opens the display column as a
        READOUT — the number leads at 22 px with its unit tucked in beside it,
@@ -147,14 +164,25 @@ function NutritionCostProfileGrid({
               </span>
               <span className="min-w-0">
                 <b className="block text-[30px] leading-none font-extrabold tracking-[-0.042em] tabular-nums text-[var(--g-ink)]">
-                  {costs?.cost_per_kg == null ? '—' : `${costs.cost_per_kg.toFixed(2)} €`}
+                  {costReadout}
                 </b>
                 <span className="mt-[7px] block text-[13px] leading-4 text-[var(--g-text-muted)]">
-                  za kg
+                  {costReadoutLabel}
                 </span>
               </span>
             </span>
           </span>
+          {partialCost ? (
+            <span
+              className="mt-4 block pl-[21px] text-[11px] leading-[17px] text-[var(--g-text-muted)]"
+              data-testid="profile-partial-cost-summary"
+            >
+              {proWorkbenchCopy.nutrition.costIncomplete}{' '}
+              {costMissingNames.length > 0
+                ? proWorkbenchCopy.nutrition.missingPrice(costMissingNames)
+                : null}
+            </span>
+          ) : null}
           <span className="mt-[26px] flex min-w-0 items-start gap-3 pl-[21px] text-[15.5px] leading-[22px] font-medium tracking-[-0.02em] text-[var(--g-text-secondary)]">
             <svg
               aria-hidden
@@ -176,42 +204,53 @@ function NutritionCostProfileGrid({
           </span>
         </summary>
         <div className="profile-nutrition-details grid gap-x-8 gap-y-5 pt-4 min-[520px]:grid-cols-2">
-        <section className="min-w-0" data-testid="profile-nutrition-card">
-          <h3 className="mb-1.5 text-[9px] leading-[14px] font-semibold tracking-[0.08em] text-[var(--g-text-muted)] uppercase">
-            Wartości odżywcze
-          </h3>
-          <dl>
-            <CompactMetricRow
-              label="Energia"
-              value={nutrition ? `${nutrition.kcal.toFixed(0)} kcal` : '—'}
-            />
-            <CompactMetricRow label="Tłuszcz" value={grams(nutrition?.fat_g)} />
-            <CompactMetricRow
-              label="W tym kwasy nasycone"
-              value={grams(nutrition?.saturated_fat_g)}
-              muted
-            />
-            <CompactMetricRow label="Węglowodany" value={grams(nutrition?.carbohydrate_g)} />
-            <CompactMetricRow label="W tym cukry" value={grams(nutrition?.sugars_g)} muted />
-            <CompactMetricRow label="Białko" value={grams(nutrition?.protein_g)} />
-            <CompactMetricRow label="Sól" value={grams(nutrition?.salt_g, 2)} />
-            <CompactMetricRow label="Błonnik" value={grams(nutrition?.fiber_g)} />
-          </dl>
-        </section>
-        <section className="min-w-0" data-testid="profile-cost-card">
-          <h3 className="mb-1.5 text-[9px] leading-[14px] font-semibold tracking-[0.08em] text-[var(--g-text-muted)] uppercase">
-            Koszt
-          </h3>
-          <dl>
-            <CompactMetricRow label="Na 1 kg" value={euro(costs?.cost_per_kg)} />
-            <CompactMetricRow label="Cała partia" value={euro(costs?.total_cost)} />
-            <CompactMetricRow label="Porcja 60 g" value={euro(costs?.cost_per_serving_60g)} />
-            <CompactMetricRow label="Porcja 70 g" value={euro(costs?.cost_per_serving_70g)} />
-            <CompactMetricRow label="Porcja 80 g" value={euro(costs?.cost_per_serving_80g)} />
-          </dl>
-          <p className="mt-2 text-[10px] leading-[15px] text-[var(--g-text-muted)]">
-            Aktualizuj ceny w produktach
-          </p>
+          <section className="min-w-0" data-testid="profile-nutrition-card">
+            <h3 className="mb-1.5 text-[9px] leading-[14px] font-semibold tracking-[0.08em] text-[var(--g-text-muted)] uppercase">
+              Wartości odżywcze
+            </h3>
+            <dl>
+              <CompactMetricRow
+                label="Energia"
+                value={nutrition ? `${nutrition.kcal.toFixed(0)} kcal` : '—'}
+              />
+              <CompactMetricRow label="Tłuszcz" value={grams(nutrition?.fat_g)} />
+              <CompactMetricRow
+                label="W tym kwasy nasycone"
+                value={grams(nutrition?.saturated_fat_g)}
+                muted
+              />
+              <CompactMetricRow label="Węglowodany" value={grams(nutrition?.carbohydrate_g)} />
+              <CompactMetricRow label="W tym cukry" value={grams(nutrition?.sugars_g)} muted />
+              <CompactMetricRow label="Białko" value={grams(nutrition?.protein_g)} />
+              <CompactMetricRow label="Sól" value={grams(nutrition?.salt_g, 2)} />
+              <CompactMetricRow label="Błonnik" value={grams(nutrition?.fiber_g)} />
+            </dl>
+          </section>
+          <section className="min-w-0" data-testid="profile-cost-card">
+            <h3 className="mb-1.5 text-[9px] leading-[14px] font-semibold tracking-[0.08em] text-[var(--g-text-muted)] uppercase">
+              Koszt
+            </h3>
+            <dl>
+              {partialCost ? (
+                <CompactMetricRow
+                  label={proWorkbenchCopy.nutrition.knownBatchCost}
+                  value={knownPartialCost ? euro(costs.known_cost) : '—'}
+                />
+              ) : (
+                <>
+                  <CompactMetricRow label="Na 1 kg" value={euro(costs?.cost_per_kg)} />
+                  <CompactMetricRow label="Cała partia" value={euro(costs?.total_cost)} />
+                  <CompactMetricRow label="Porcja 60 g" value={euro(costs?.cost_per_serving_60g)} />
+                  <CompactMetricRow label="Porcja 70 g" value={euro(costs?.cost_per_serving_70g)} />
+                  <CompactMetricRow label="Porcja 80 g" value={euro(costs?.cost_per_serving_80g)} />
+                </>
+              )}
+            </dl>
+            <p className="mt-2 text-[10px] leading-[15px] text-[var(--g-text-muted)]">
+              {partialCost && costMissingNames.length > 0
+                ? proWorkbenchCopy.nutrition.missingPrice(costMissingNames)
+                : 'Aktualizuj ceny w produktach'}
+            </p>
           </section>
         </div>
       </details>
@@ -404,6 +443,17 @@ function ProfileContent({
       'planning',
     );
   }, [customerPrices, finalCostReady, input, toppings]);
+  const costMissingNames = useMemo(() => {
+    const missingIds = new Set(finalCostProduct?.finalCosts?.missing_cost_ingredient_ids ?? []);
+    if (missingIds.size === 0) return [];
+    const namesById = new Map(
+      (finalCostProduct?.finalItems ?? []).map((item) => [
+        item.ingredient.id,
+        item.ingredient.name,
+      ]),
+    );
+    return [...missingIds].map((id) => namesById.get(id) ?? id);
+  }, [finalCostProduct]);
   return (
     <div
       className="w-full min-w-0 p-3 xl:p-0"
@@ -444,6 +494,7 @@ function ProfileContent({
           costReady={finalCostReady}
           nutritionOverride={finalNutritionProduct?.finalLabelNutritionPer100g}
           costsOverride={finalCostProduct?.finalCosts}
+          costMissingNames={costMissingNames}
         />
         <ProfileDirectionAxes result={frozenNutritionResult} className="min-w-0" />
         <WorkbenchSettingsLine className="min-w-0" compact />
@@ -471,7 +522,12 @@ function ProfileContent({
         >
           <span className="grid size-[38px] shrink-0 place-items-center rounded-full border border-[var(--g-line)] text-[var(--g-ink)]">
             <svg aria-hidden width="18" height="18" viewBox="0 0 24 24" fill="none">
-              <g stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <g
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <path d="M12 6.6C10.4 5.2 8.4 4.6 5.4 4.6A1 1 0 0 0 4.4 5.6v11.1a1 1 0 0 0 1 1c3 0 5 .6 6.6 2 1.6-1.4 3.6-2 6.6-2a1 1 0 0 0 1-1V5.6a1 1 0 0 0-1-1c-3 0-5 .6-6.6 2Z" />
                 <path d="M12 6.6v13.1" />
               </g>

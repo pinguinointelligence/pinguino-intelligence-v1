@@ -233,7 +233,7 @@ describe('mobile preview navigation', () => {
     // silently covered it on mobile — the PI dialog appeared behind Przelicz.
     const recalc = read('features', 'pro-core', 'ProRecalcPanel.tsx');
     const dialog = read('components', 'ui', 'DialogShell.tsx');
-    expect(recalc).toContain('z-[80]');
+    expect(recalc).toContain('<DialogShell');
     expect(dialog).toContain('z-[70]');
     expect(surface).toContain('z-[60]');
   });

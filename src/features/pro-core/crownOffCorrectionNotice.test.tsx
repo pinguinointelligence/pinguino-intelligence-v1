@@ -85,7 +85,7 @@ describe('Crown-OFF correction notice', () => {
     expect(second).not.toContain('450');
   });
 
-  it('carries no technical noise and no second action', async () => {
+  it('carries no technical noise and only one semantic action plus the shared close control', async () => {
     await render(true);
     const text = notice()?.textContent ?? '';
     // No raw engine percentages, no internal constraint vocabulary.
@@ -93,11 +93,14 @@ describe('Crown-OFF correction notice', () => {
     for (const token of ['NPAC', 'POD', 'PAC', 'hard_limit', 'main_above', 'solver', 'Engine']) {
       expect(text, token).not.toContain(token);
     }
-    // Exactly ONE control: the acknowledgement. No Zastosuj, no Cofnij, no
-    // change list — the recipe is already correct.
+    // Exactly ONE semantic action: the acknowledgement. The second button is
+    // the shared, explicit dialog X — never another recipe action.
     const buttons = [...(notice()?.querySelectorAll('button') ?? [])];
-    expect(buttons).toHaveLength(1);
-    expect(buttons[0]?.textContent).toBe('OK');
+    expect(buttons).toHaveLength(2);
+    expect(buttons.filter((button) => button.textContent === 'OK')).toHaveLength(1);
+    expect(
+      buttons.filter((button) => button.getAttribute('aria-label') === 'Zamknij komunikat'),
+    ).toHaveLength(1);
     expect(text).not.toContain('Zastosuj');
     expect(document.querySelector('[data-testid="pro-recalc-preview-motion"]')).toBeNull();
   });
