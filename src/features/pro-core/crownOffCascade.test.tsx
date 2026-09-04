@@ -155,6 +155,49 @@ describe('one Przelicz click, one visible outcome', () => {
     expect(last[0]?.text).toContain('364 g');
   });
 
+  /**
+   * THE CASE THAT WAS MISSING — and why served still failed after the first fix.
+   *
+   * Re-measured on served staging (merge `4ee3db2`) the flow was down to THREE
+   * states, all 520 px: WORKING, then `IDLE` „Zmiany są w recepturze roboczej"
+   * at t+1371 for ~480 ms, then the notice at t+1849. `PREVIEW_READY` and the
+   * 680 px flash were gone, but the applied/undo window still painted.
+   *
+   * The cause was NOT in the panel. `correctionInFlight` was listed in
+   * `CLEAR_STAGED`, and the recipe-store subscriber spreads that object on any
+   * Base technical change — which is precisely what the correction's own commit
+   * is. So the flag was lowered in the middle of the operation it exists to
+   * span, the panel dropped its suppression, and the applied state reached the
+   * screen before the notice arrived.
+   *
+   * The earlier cascade cases could not see it because they hand-wrote
+   * `correctionInFlight: true` at the commit step — encoding the assumption
+   * instead of the system's behaviour. This one changes the RECIPE and lets the
+   * real subscriber run, and proves the subscriber actually fired by asserting
+   * the staged content it is responsible for really was cleared.
+   */
+  it('keeps the in-flight flag through a real commit that clears staged content', async () => {
+    set({ preview: realPreview(CORRECTION) as never, correctionInFlight: true });
+
+    // A real Base technical change — the same kind of write the correction's
+    // commit performs — which is what fires the staged-clearing subscriber.
+    await act(async () => {
+      const base = starterMilkBase();
+      useRecipeStore.getState().loadRecipeInput({
+        ...base,
+        items: base.items.map((item, index) =>
+          index === 0 ? { ...item, planned_grams: item.planned_grams + 137 } : item,
+        ),
+      });
+    });
+
+    const after = useConstraintStudioStore.getState();
+    // Not vacuous: the subscriber DID run and did its real job.
+    expect(after.preview, 'the staged preview should have been cleared').toBeNull();
+    // ...and the flow flag survived it.
+    expect(after.correctionInFlight, 'the commit lowered the in-flight flag').toBe(true);
+  });
+
   it('keeps one canonical width for the whole corrected flow', async () => {
     await act(async () => {
       root.render(<ProRecalcPanel open onClose={vi.fn()} />);
