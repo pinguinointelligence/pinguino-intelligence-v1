@@ -3085,10 +3085,20 @@ function minimumSafeRecovery(request) {
 		let firstCoarseSafe = null;
 		for (let additionG = coarseStepG; additionG <= maxAdditionalMassG + EPSILON$1; additionG += coarseStepG) {
 			const roundedAddition = roundTo(additionG, fineStepG);
-			const reasons = reasonsFor(calculateRecipe(withLineAddition(request.input, item.id, roundedAddition)));
+			const candidate = withLineAddition(request.input, item.id, roundedAddition);
+			const result = calculateRecipe(candidate);
+			const reasons = reasonsFor(result);
 			evaluatedCandidateCount += 1;
 			reasonSets.set(reasonKey(reasons), reasons);
-			if (reasons.length === 0) {
+			const candidateRecord = {
+				input: candidate,
+				result,
+				actions: [actionFor(item, roundedAddition)],
+				additionalMassG: roundedAddition,
+				scaleFactor: null
+			};
+			if (reasons.length === 0) hardSafeCandidateCount += 1;
+			if (reasons.length === 0 && (request.acceptCandidate?.(candidateRecord) ?? true)) {
 				firstCoarseSafe = roundedAddition;
 				break;
 			}
@@ -3098,10 +3108,20 @@ function minimumSafeRecovery(request) {
 		const refinementStart = Math.max(fineStepG, firstCoarseSafe - coarseStepG + fineStepG);
 		for (let additionG = refinementStart; additionG <= firstCoarseSafe + EPSILON$1; additionG += fineStepG) {
 			const roundedAddition = roundTo(additionG, fineStepG);
-			const reasons = reasonsFor(calculateRecipe(withLineAddition(request.input, item.id, roundedAddition)));
+			const candidate = withLineAddition(request.input, item.id, roundedAddition);
+			const result = calculateRecipe(candidate);
+			const reasons = reasonsFor(result);
 			evaluatedCandidateCount += 1;
 			reasonSets.set(reasonKey(reasons), reasons);
-			if (reasons.length === 0) {
+			const candidateRecord = {
+				input: candidate,
+				result,
+				actions: [actionFor(item, roundedAddition)],
+				additionalMassG: roundedAddition,
+				scaleFactor: null
+			};
+			if (reasons.length === 0) hardSafeCandidateCount += 1;
+			if (reasons.length === 0 && (request.acceptCandidate?.(candidateRecord) ?? true)) {
 				bestAddition = roundedAddition;
 				break;
 			}
@@ -3110,14 +3130,15 @@ function minimumSafeRecovery(request) {
 			const input = withLineAddition(request.input, item.id, additionG);
 			const result = calculateRecipe(input);
 			if (reasonsFor(result).length !== 0) continue;
-			hardSafeCandidateCount += 1;
-			candidates.push({
+			const candidateRecord = {
 				input,
 				result,
 				actions: [actionFor(item, additionG)],
 				additionalMassG: additionG,
 				scaleFactor: null
-			});
+			};
+			if (!(request.acceptCandidate?.(candidateRecord) ?? true)) continue;
+			candidates.push(candidateRecord);
 		}
 	}
 	candidates.sort((left, right) => left.additionalMassG - right.additionalMassG || left.actions[0].target_line_id.localeCompare(right.actions[0].target_line_id));
@@ -3135,6 +3156,7 @@ function minimumSafeRecovery(request) {
 }
 function restoreOriginalProfile(request) {
 	const precision = Math.max(.1, request.fineStepG ?? DEFAULT_FINE_STEP_G);
+	const coarseStepG = Math.max(precision, request.coarseStepG ?? DEFAULT_COARSE_STEP_G);
 	const currentById = new Map(request.input.items.map((item) => [item.id, item]));
 	let scaleFactor = 1;
 	for (const baseline of request.baselineInput.items) {
@@ -3154,48 +3176,83 @@ function restoreOriginalProfile(request) {
 		}
 	};
 	const baselineById = new Map(request.baselineInput.items.map((item) => [item.id, item]));
-	const actions = [];
-	const items = request.input.items.map((item) => {
-		const baseline = baselineById.get(item.id);
-		if (!baseline) return item;
-		const currentGrams = effectiveGrams(item);
-		const targetGrams = Math.max(currentGrams, roundTo(baseline.planned_grams * scaleFactor, precision));
-		const additionG = targetGrams - currentGrams;
-		if (additionG > EPSILON$1) actions.push(actionFor(item, additionG));
-		return item.actual_grams === null ? {
-			...item,
-			planned_grams: targetGrams
-		} : {
-			...item,
-			actual_grams: targetGrams
-		};
-	});
-	const input = {
-		...request.input,
-		items,
-		target_batch_grams: totalMass({
+	const currentTotal = totalMass(request.input);
+	const baselineTotal = totalMass(request.baselineInput);
+	const maxAdditionalMassG = Math.max(coarseStepG, request.maxAdditionalMassG ?? Math.min(500, Math.max(10, currentTotal / 2)));
+	const reasonSets = /* @__PURE__ */ new Map();
+	const seenVectors = /* @__PURE__ */ new Set();
+	let evaluatedCandidateCount = 0;
+	let hardSafeCandidateCount = 0;
+	const candidateAtScale = (candidateScale) => {
+		const actions = [];
+		const items = request.input.items.map((item) => {
+			const baseline = baselineById.get(item.id);
+			if (!baseline) return item;
+			const currentGrams = effectiveGrams(item);
+			const targetGrams = Math.max(currentGrams, roundTo(baseline.planned_grams * candidateScale, precision));
+			const additionG = targetGrams - currentGrams;
+			if (additionG > EPSILON$1) actions.push(actionFor(item, additionG));
+			return item.actual_grams === null ? {
+				...item,
+				planned_grams: targetGrams
+			} : {
+				...item,
+				actual_grams: targetGrams
+			};
+		});
+		const vectorKey = items.map((item) => effectiveGrams(item).toFixed(6)).join("|");
+		if (seenVectors.has(vectorKey)) return null;
+		seenVectors.add(vectorKey);
+		const input = {
 			...request.input,
-			items
-		})
+			items,
+			target_batch_grams: totalMass({
+				...request.input,
+				items
+			})
+		};
+		const result = calculateRecipe(input);
+		const reasons = reasonsFor(result);
+		evaluatedCandidateCount += 1;
+		reasonSets.set(reasonKey(reasons), reasons);
+		if (reasons.length === 0) hardSafeCandidateCount += 1;
+		return {
+			input,
+			result,
+			actions,
+			additionalMassG: result.total_batch_g - currentTotal,
+			scaleFactor: candidateScale
+		};
 	};
-	const result = calculateRecipe(input);
-	const reasons = reasonsFor(result);
-	const candidate = {
-		input,
-		result,
-		actions,
-		additionalMassG: result.total_batch_g - totalMass(request.input),
-		scaleFactor
-	};
+	const accepted = (candidate) => candidate !== null && candidate.actions.length > 0 && reasonsFor(candidate.result).length === 0 && candidate.additionalMassG <= maxAdditionalMassG + EPSILON$1 && (request.acceptCandidate?.(candidate) ?? true);
+	let firstAccepted = null;
+	const minimum = candidateAtScale(scaleFactor);
+	if (accepted(minimum)) firstAccepted = minimum;
+	else for (let extraScaleMassG = coarseStepG; extraScaleMassG <= maxAdditionalMassG + EPSILON$1; extraScaleMassG += coarseStepG) {
+		const candidate = candidateAtScale(scaleFactor + extraScaleMassG / baselineTotal);
+		if (accepted(candidate)) {
+			firstAccepted = candidate;
+			const refinementStart = Math.max(precision, extraScaleMassG - coarseStepG + precision);
+			for (let refinedMassG = refinementStart; refinedMassG < extraScaleMassG - EPSILON$1; refinedMassG += precision) {
+				const refined = candidateAtScale(scaleFactor + refinedMassG / baselineTotal);
+				if (accepted(refined)) {
+					firstAccepted = refined;
+					break;
+				}
+			}
+			break;
+		}
+	}
+	const candidates = firstAccepted ? [firstAccepted] : [];
 	return {
-		candidates: reasons.length === 0 && actions.length > 0 ? [candidate] : [],
+		candidates,
 		trace: {
 			objective: "restore_original_profile",
-			evaluatedCandidateCount: 1,
-			hardSafeCandidateCount: reasons.length === 0 ? 1 : 0,
+			evaluatedCandidateCount,
+			hardSafeCandidateCount,
 			eligibleLineCount: request.input.items.length,
-			uniqueHardReasonSets: [reasons],
-			finalCandidateGrams: reasons.length === 0 ? [result.total_batch_g] : []
+			uniqueHardReasonSets: [...reasonSets.values()],
+			finalCandidateGrams: candidates.map((candidate) => candidate.result.total_batch_g)
 		}
 	};
 }
@@ -7722,6 +7779,27 @@ function calculateFinalProduct(baseInput, toppings = [], context = "planning") {
 }
 
 //#endregion
+//#region src/features/production-workspace/productionRescueAuthority.ts
+/**
+* The terminal authority for the exact 0.1 g vector that Production will
+* persist and later hydrate. Engine bands are necessary but not sufficient:
+* this also retains Main and stabilizer policy, frozen ProductBehavior and all
+* profile gates.
+*/
+function evaluateProductionRescueTerminalAuthority(candidate, composition) {
+	const candidateBatchGrams = candidate.items.reduce((sum, item) => sum + item.planned_grams, 0);
+	return evaluateRecipeConstraintAuthority({
+		recipe: {
+			...candidate,
+			target_batch_grams: candidateBatchGrams
+		},
+		snapshots: composition.behaviorSnapshots ?? {},
+		module: "BATCH_RESCUE",
+		technicalOnlyMainLineIds: composition.ownerReviewGate?.technicalOnlyMainLineIds
+	});
+}
+
+//#endregion
 //#region src/features/production-workspace/productionSession.ts
 const PRODUCTION_GRAMS_EPSILON = 1e-6;
 function productionLotCodeForRun(sessionId, completedAt) {
@@ -7808,8 +7886,10 @@ function createProductionSession(input) {
 		carbonatedProductIds: [...input.carbonatedProductIds ?? []],
 		durableRescueAcceptedAt: null,
 		durableRescueRevision: 0,
+		supersededRescue: null,
 		durableActualRevision: 0,
 		lastDeviationDecision: null,
+		invalidDurableRescue: null,
 		rescueAddedItems: [],
 		topUpTasks: [],
 		lines: orderedBaseItems.map((item) => ({
@@ -7963,16 +8043,7 @@ function productionLineIdsExecutedAfterRescue(run, rescueRevision) {
 }
 function applyVerifiedRescueInput(session, candidate, rescueRevision = session.durableRescueRevision + 1) {
 	requireActive(session);
-	const candidateBatchGrams = candidate.items.reduce((sum, item) => sum + item.planned_grams, 0);
-	const authority = evaluateRecipeConstraintAuthority({
-		recipe: {
-			...candidate,
-			target_batch_grams: candidateBatchGrams
-		},
-		snapshots: session.plannedComposition.behaviorSnapshots ?? {},
-		module: "BATCH_RESCUE",
-		technicalOnlyMainLineIds: session.plannedComposition.ownerReviewGate?.technicalOnlyMainLineIds
-	});
+	const authority = evaluateProductionRescueTerminalAuthority(candidate, session.plannedComposition);
 	if (!authority.valid) throw new Error(authority.issues[0]?.messagePl ?? "Production Rescue requires a fully verified recipe candidate.");
 	const candidateById = new Map(candidate.items.map((item) => [item.id, item]));
 	const lines = session.lines.map((line) => {
@@ -8017,6 +8088,8 @@ function applyVerifiedRescueInput(session, candidate, rescueRevision = session.d
 	return materializeAuthorizedProductionTopUps({
 		...session,
 		durableRescueRevision: rescueRevision,
+		supersededRescue: null,
+		invalidDurableRescue: null,
 		rescueAddedItems,
 		lines: [...lines, ...addedLines]
 	}, rescueRevision, session.durableActualRevision);
@@ -8131,17 +8204,58 @@ function hydrateProductionSessionFromRun(run, source, plannedInput, plannedCompo
 				}
 			}
 		};
-		session = applyVerifiedRescueInput(session, run.rescue.recipeInput, run.rescue.revision);
-		session = {
-			...session,
-			durableRescueAcceptedAt: run.rescue.acceptedAt,
-			durableRescueRevision: run.rescue.revision
-		};
+		const durableAuthority = evaluateProductionRescueTerminalAuthority(run.rescue.recipeInput, session.plannedComposition);
+		if (durableAuthority.valid) {
+			session = applyVerifiedRescueInput(session, run.rescue.recipeInput, run.rescue.revision);
+			session = {
+				...session,
+				durableRescueAcceptedAt: run.rescue.acceptedAt,
+				durableRescueRevision: run.rescue.revision
+			};
+		} else {
+			const actualById = new Map(run.actual?.items.map((item) => [item.id, item.actualGrams]) ?? []);
+			const originalIds = new Set(session.plannedInput.items.map((item) => item.id));
+			const physicallyPresentRescueItems = run.rescue.recipeInput.items.filter((item) => !originalIds.has(item.id) && (actualById.get(item.id) ?? 0) > 1e-6).map((item) => ({
+				...item,
+				planned_grams: actualById.get(item.id) ?? 0,
+				actual_grams: null
+			}));
+			session = {
+				...session,
+				durableRescueAcceptedAt: run.rescue.acceptedAt,
+				durableRescueRevision: run.rescue.revision,
+				supersededRescue: {
+					revision: run.rescue.revision,
+					acceptedAt: run.rescue.acceptedAt,
+					reasonPl: durableAuthority.issues[0]?.messagePl ?? "Zapisana korekta partii nie spełnia już aktualnych reguł bezpieczeństwa."
+				},
+				invalidDurableRescue: {
+					revision: run.rescue.revision,
+					acceptedAt: run.rescue.acceptedAt,
+					issueCodes: [...new Set(durableAuthority.issues.map((issue) => issue.code))]
+				},
+				rescueAddedItems: physicallyPresentRescueItems,
+				lines: [...session.lines, ...physicallyPresentRescueItems.map((item) => ({
+					lineId: item.id,
+					canonicalIngredientId: item.ingredient.canonical_ingredient_id ?? item.ingredient.id ?? null,
+					name: item.ingredient.name,
+					plannedGrams: 0,
+					targetGrams: item.planned_grams,
+					draftActualGrams: item.planned_grams,
+					draftActualEdited: false,
+					physicalAddedGrams: 0,
+					confirmed: false,
+					confirmedAt: null,
+					confirmationOrder: null,
+					recordCorrectionCount: 0
+				}))]
+			};
+		}
 	}
 	const decisionEvent = [...run.events].reverse().find((event) => event.type === "deviation_decision_accepted");
 	const decision = decisionEvent?.amendment;
 	const strategy = decision?.stableOptionId;
-	if (decisionEvent && (strategy === "keep_original_batch" || strategy === "enlarge_batch" || strategy === "restore_original_recipe" || strategy === "leave_as_is") && typeof decision?.sourceActualRevision === "number" && typeof decision?.rescueRevision === "number" && typeof decision?.finalMassG === "number" && typeof decision?.scoreDisplay === "string") session = {
+	if (decisionEvent && session.invalidDurableRescue?.revision !== decision?.rescueRevision && (strategy === "keep_original_batch" || strategy === "enlarge_batch" || strategy === "restore_original_recipe" || strategy === "leave_as_is") && typeof decision?.sourceActualRevision === "number" && typeof decision?.rescueRevision === "number" && typeof decision?.finalMassG === "number" && typeof decision?.scoreDisplay === "string") session = {
 		...session,
 		lastDeviationDecision: {
 			strategy,
@@ -8188,7 +8302,7 @@ function hydrateProductionSessionFromRun(run, source, plannedInput, plannedCompo
 			internalProductionNote: run.actual.operatorNotes ?? ""
 		};
 	}
-	if (run.rescue && run.actual) session = materializeAuthorizedProductionTopUps(session, run.rescue.revision, session.lastDeviationDecision?.sourceActualRevision ?? run.actual.revision, productionLineIdsExecutedAfterRescue(run, run.rescue.revision));
+	if (run.rescue && run.actual && session.invalidDurableRescue === null) session = materializeAuthorizedProductionTopUps(session, run.rescue.revision, session.lastDeviationDecision?.sourceActualRevision ?? run.actual.revision, productionLineIdsExecutedAfterRescue(run, run.rescue.revision));
 	return run.status === "completed" ? completeProductionSession(session, calculateRecipe(buildFinalActualInput(session)), run.completedAt ?? run.updatedAt, run.actual?.recordedBy ?? run.ownerUserId) : session;
 }
 
@@ -8199,7 +8313,7 @@ function hydrateProductionSessionFromRun(run, source, plannedInput, plannedCompo
 * continue to identify the formulas and calibrated data; this stamp identifies
 * the option-selection and practicalization layer authorized by the server.
 */
-const PRODUCTION_RESCUE_MODEL_VERSION = "production-rescue-v4";
+const PRODUCTION_RESCUE_MODEL_VERSION = "production-rescue-v5";
 /**
 * OWNER RULE §17 — a batch size is spoken exactly as the Engine verified it.
 * 1086 g is reported as 1086 g; it is never rounded up to a tidier 1100 g.
@@ -8276,6 +8390,8 @@ function assessProductionHardSafety(input, result) {
 	};
 }
 const nativeSafe = (input, result) => assessProductionHardSafety(input, result).safe;
+const productionRescueTerminalAuthority = (input, session) => evaluateProductionRescueTerminalAuthority(input, session.plannedComposition);
+const terminallyAuthorized = (input, session) => productionRescueTerminalAuthority(input, session).valid;
 function preservesPhysicalReality(session, candidate) {
 	const candidateById = new Map(candidate.items.map((item) => [item.id, item]));
 	return session.lines.every((line) => {
@@ -8499,6 +8615,7 @@ function instructionsFor(before, after, actions) {
 }
 function bestOption(id, title, explanation, session, forecastInput, context, acceptMass, recoveryObjective = null) {
 	const canonicalPlan = currentCanonicalProductionPlan(session);
+	const authorityIssueSets = /* @__PURE__ */ new Map();
 	const proposed = proposeAutoFix({
 		input: forecastInput,
 		context,
@@ -8514,10 +8631,22 @@ function bestOption(id, title, explanation, session, forecastInput, context, acc
 			precision: "whole"
 		}] : [];
 	});
+	const acceptRecoveryCandidate = ({ input }) => {
+		const audit = tenthGramProductionAudit(session, input);
+		if (!audit?.hardGatePassed) return false;
+		const executable = audit.executableInput;
+		if (!preservesPhysicalReality(session, executable)) return false;
+		if (!acceptMass(totalFor(executable)) || !nativeSafe(executable, audit.executableResult)) return false;
+		const authority = productionRescueTerminalAuthority(executable, session);
+		const issueCodes = authority.issues.map((issue) => issue.code).sort();
+		authorityIssueSets.set(issueCodes.join("|"), issueCodes);
+		return authority.valid;
+	};
 	const recovery = recoveryObjective ? proposeBatchRecovery({
 		input: forecastInput,
 		baselineInput: canonicalPlan,
-		objective: recoveryObjective
+		objective: recoveryObjective,
+		acceptCandidate: acceptRecoveryCandidate
 	}) : null;
 	const completedCandidates = [...solverCandidates, ...recovery?.candidates.map((candidate) => ({
 		input: candidate.input,
@@ -8537,6 +8666,7 @@ function bestOption(id, title, explanation, session, forecastInput, context, acc
 			if (!preservesPhysicalReality(session, candidateInput)) continue;
 			const mass = totalFor(candidateInput);
 			if (!acceptMass(mass) || !nativeSafe(candidateInput, audit.executableResult)) continue;
+			if (!terminallyAuthorized(candidateInput, session)) continue;
 			const score = recipeFitForInput(candidateInput, audit.executableResult);
 			candidates.push({
 				id,
@@ -8567,6 +8697,7 @@ function bestOption(id, title, explanation, session, forecastInput, context, acc
 			if (!acceptMass(mass)) continue;
 			const result = practical.audit.executableResult;
 			if (!nativeSafe(candidateInput, result)) continue;
+			if (!terminallyAuthorized(candidateInput, session)) continue;
 			const score = recipeFitForInput(candidateInput, result);
 			candidates.push({
 				id,
@@ -8591,6 +8722,7 @@ function bestOption(id, title, explanation, session, forecastInput, context, acc
 			generatedSafeCandidateCount: solverCandidates.length + (recovery?.trace.hardSafeCandidateCount ?? 0),
 			acceptedCandidateCount: candidates.length,
 			hardReasonSets: recovery?.trace.uniqueHardReasonSets ?? [],
+			authorityIssueSets: [...authorityIssueSets.values()],
 			finalCandidateGrams: candidates.map((candidate) => candidate.finalMassG)
 		}
 	};
@@ -8601,6 +8733,7 @@ const emptyStrategyTrace = () => ({
 	generatedSafeCandidateCount: 0,
 	acceptedCandidateCount: 0,
 	hardReasonSets: [],
+	authorityIssueSets: [],
 	finalCandidateGrams: []
 });
 /**
@@ -8642,7 +8775,7 @@ function assessProductionRescue(session) {
 			const practical = practicalizeProductionRescueCandidate(session, forecastInput, Math.round(totalFor(forecastInput)));
 			continuationAudit = practical.ok ? practical.audit : null;
 		}
-		if (continuationAudit && preservesPhysicalReality(session, continuationAudit.executableInput) && nativeSafe(continuationAudit.executableInput, continuationAudit.executableResult)) {
+		if (continuationAudit && preservesPhysicalReality(session, continuationAudit.executableInput) && nativeSafe(continuationAudit.executableInput, continuationAudit.executableResult) && terminallyAuthorized(continuationAudit.executableInput, session)) {
 			const candidateInput = continuationAudit.executableInput;
 			options.push({
 				id: "leave_as_is",
@@ -8825,4 +8958,4 @@ function scaledRecipeInput(version, scaled) {
 }
 
 //#endregion
-export { CONFIG_VERSION, ENGINE_VERSION, PRACTICAL_RECIPE_MODEL_VERSION, PRODUCTION_RESCUE_MODEL_VERSION, assessProductionRescue, hydrateProductionSessionFromRun, productionRescueCandidateFingerprint, scaleRecipeVersion, scaledRecipeInput };
+export { CONFIG_VERSION, ENGINE_VERSION, PRACTICAL_RECIPE_MODEL_VERSION, PRODUCTION_RESCUE_MODEL_VERSION, assessProductionRescue, hydrateProductionSessionFromRun, productionRescueCandidateFingerprint, productionRescueTerminalAuthority, scaleRecipeVersion, scaledRecipeInput };

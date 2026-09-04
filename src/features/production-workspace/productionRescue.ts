@@ -28,6 +28,7 @@ import {
   buildProductionForecastInput,
   type ProductionSession,
 } from './productionSession';
+import { evaluateProductionRescueTerminalAuthority } from './productionRescueAuthority';
 
 export type ProductionRescueOptionId = ProductionRescueStableOptionId;
 
@@ -36,7 +37,7 @@ export type ProductionRescueOptionId = ProductionRescueStableOptionId;
  * continue to identify the formulas and calibrated data; this stamp identifies
  * the option-selection and practicalization layer authorized by the server.
  */
-export const PRODUCTION_RESCUE_MODEL_VERSION = 'production-rescue-v4' as const;
+export const PRODUCTION_RESCUE_MODEL_VERSION = 'production-rescue-v5' as const;
 
 export interface ProductionRescueInstruction {
   lineId: string | null;
@@ -86,6 +87,7 @@ export interface ProductionRescueStrategyTrace {
   generatedSafeCandidateCount: number;
   acceptedCandidateCount: number;
   hardReasonSets: string[][];
+  authorityIssueSets: string[][];
   finalCandidateGrams: number[];
 }
 
@@ -225,6 +227,12 @@ export function assessProductionHardSafety(
 
 const nativeSafe = (input: RecipeInput, result: RecipeResult): boolean =>
   assessProductionHardSafety(input, result).safe;
+
+export const productionRescueTerminalAuthority = (input: RecipeInput, session: ProductionSession) =>
+  evaluateProductionRescueTerminalAuthority(input, session.plannedComposition);
+
+const terminallyAuthorized = (input: RecipeInput, session: ProductionSession): boolean =>
+  productionRescueTerminalAuthority(input, session).valid;
 
 function preservesPhysicalReality(session: ProductionSession, candidate: RecipeInput): boolean {
   const candidateById = new Map(candidate.items.map((item) => [item.id, item]));
@@ -554,6 +562,7 @@ function bestOption(
   recoveryObjective: 'minimum_safe' | 'restore_original_profile' | null = null,
 ): { option: ProductionRescueOption | null; trace: ProductionRescueStrategyTrace } {
   const canonicalPlan = currentCanonicalProductionPlan(session);
+  const authorityIssueSets = new Map<string, string[]>();
   const proposed = proposeAutoFix({
     input: forecastInput,
     context,
@@ -567,11 +576,24 @@ function bestOption(
         const input = candidateFromProposal(forecastInput, proposal, context);
         return input ? [{ input, actions: proposal.actions, precision: 'whole' as const }] : [];
       });
+  const acceptRecoveryCandidate = ({ input }: { input: RecipeInput }): boolean => {
+    const audit = tenthGramProductionAudit(session, input);
+    if (!audit?.hardGatePassed) return false;
+    const executable = audit.executableInput;
+    if (!preservesPhysicalReality(session, executable)) return false;
+    const mass = totalFor(executable);
+    if (!acceptMass(mass) || !nativeSafe(executable, audit.executableResult)) return false;
+    const authority = productionRescueTerminalAuthority(executable, session);
+    const issueCodes = authority.issues.map((issue) => issue.code).sort();
+    authorityIssueSets.set(issueCodes.join('|'), issueCodes);
+    return authority.valid;
+  };
   const recovery = recoveryObjective
     ? proposeBatchRecovery({
         input: forecastInput,
         baselineInput: canonicalPlan,
         objective: recoveryObjective,
+        acceptCandidate: acceptRecoveryCandidate,
       })
     : null;
   const completedCandidates = [
@@ -596,6 +618,7 @@ function bestOption(
       if (!preservesPhysicalReality(session, candidateInput)) continue;
       const mass = totalFor(candidateInput);
       if (!acceptMass(mass) || !nativeSafe(candidateInput, audit.executableResult)) continue;
+      if (!terminallyAuthorized(candidateInput, session)) continue;
       const score = recipeFitForInput(candidateInput, audit.executableResult);
       candidates.push({
         id,
@@ -635,6 +658,7 @@ function bestOption(
       if (!acceptMass(mass)) continue;
       const result = practical.audit.executableResult;
       if (!nativeSafe(candidateInput, result)) continue;
+      if (!terminallyAuthorized(candidateInput, session)) continue;
       const score = recipeFitForInput(candidateInput, result);
       candidates.push({
         id,
@@ -665,6 +689,7 @@ function bestOption(
         solverCandidates.length + (recovery?.trace.hardSafeCandidateCount ?? 0),
       acceptedCandidateCount: candidates.length,
       hardReasonSets: recovery?.trace.uniqueHardReasonSets ?? [],
+      authorityIssueSets: [...authorityIssueSets.values()],
       finalCandidateGrams: candidates.map((candidate) => candidate.finalMassG),
     },
   };
@@ -676,6 +701,7 @@ const emptyStrategyTrace = (): ProductionRescueStrategyTrace => ({
   generatedSafeCandidateCount: 0,
   acceptedCandidateCount: 0,
   hardReasonSets: [],
+  authorityIssueSets: [],
   finalCandidateGrams: [],
 });
 
@@ -767,7 +793,8 @@ export function assessProductionRescue(session: ProductionSession): ProductionRe
     if (
       continuationAudit &&
       preservesPhysicalReality(session, continuationAudit.executableInput) &&
-      nativeSafe(continuationAudit.executableInput, continuationAudit.executableResult)
+      nativeSafe(continuationAudit.executableInput, continuationAudit.executableResult) &&
+      terminallyAuthorized(continuationAudit.executableInput, session)
     ) {
       const candidateInput = continuationAudit.executableInput;
       options.push({
