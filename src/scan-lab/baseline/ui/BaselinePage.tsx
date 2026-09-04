@@ -303,7 +303,7 @@ export function BaselinePage() {
           <p style={styles.hint}>{copy.device.declaredHint}</p>
           <p style={styles.hint}>
             {copy.device.modeLabel}: {executionMode} · {uaGuess.os} · {uaGuess.browser} ·{' '}
-            {copy.device.build}: {HARNESS_VERSION} · {copy.device.build}: {HARNESS_VERSION}
+            {copy.device.build}: {HARNESS_VERSION} ·
           </p>
           <details style={styles.details}>
             <summary style={styles.label}>
