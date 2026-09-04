@@ -63,3 +63,31 @@ The pipeline order is documented in the code itself (`scanRouting.ts:1-14`): *ba
 **Malformed values.** Non-digit garbage: client silently strips, server rejects (`identify_bad_request` only for unparsable JSON; a bad barcode simply yields no local hit and falls through to OCR/model). No `INVALID_CODE` state is surfaced to the user from a checksum failure — the code is treated as "no barcode" (see Section 15). PARTIAL.
 
 **Section verdict.** EAN-13 / EAN-8 / UPC-A / UPC-E identity: PASS on the client; PARTIAL end-to-end (symbology by length, UPC-E value/format mismatch on the server, 14-digit persistence without check digit, invalid-code collapsed into no-code). QR: NOT SUPPORTED BY CONTRACT.
+
+## SECTION 3 — RESOLUTION PRECEDENCE (actual, recovered from code)
+
+**The precedence engine is `routeScan()` (`scanRouting.ts:51-77`) and it is pure and tested (`liveScanFlow.test.ts`, `pipeline.test.ts`).** For a confirmed barcode the order is:
+
+```
+confirmed digits (ValidBarcode)
+ 1. catalogMatch → 'existing_product'      exact catalogue identity, nothing analysed, nothing charged
+ 2. barcode && !eanLookupDone → 'ean_lookup'   server: exact product by EAN again, else ONE narrow web research call
+ 3. evidence.complete → 'ready'
+ 4. frames > analysed && visionCalls < max → 'analyze_label'   (paid model, max 2 per session)
+ 5. evidence.requestView → 'request_evidence'  (one precise photograph request)
+ 6. otherwise → 'estimate'                 Product Intelligence + Mapper estimation (generic)
+```
+Step 1 is evaluated twice with two different implementations:
+- **Client** `lookupExactBarcode()` (`src/services/productScanner.ts:97-129`): calls `searchProducts` (RPC `search_products_v1`, context `TOPPING`, market scope `global`, limit 20) once per lookup candidate (`value`, `lookupValue`, zero-padded variants) and takes the FIRST row whose `eans[]` contains any candidate. The live sweep uses the SAME function (`liveScanCapabilities.ts:9,127`).
+- **Server** `exactProductForBarcode()` (`product-scan-analyze/index.ts:85-130`): `product_variants.ean IN (digits, 0+digits, digits without leading 0)` with `is_current = true`, `limit(1).maybeSingle()`; the product must be active and not merged; a `customer_provisional` product is returned only to an account already linked to it (`customer_added_product_accounts`), otherwise treated as no match so the other customer goes through evidence/finalize (which adds the relation).
+- **Live identify** `product-identify-live` `resolve()` (`index.ts:158-176`): `search_products_v1(p_query = barcode string, limit 5)` and accepts the hit ONLY when exactly one row returns; several rows → `null` → `UNRESOLVED` (ambiguity is silent, see Section 15).
+
+Step 2 (`ean_lookup`, `product-scan-analyze` mode `ean_lookup`, `index.ts:261-330`): if the server exact lookup hits, it returns `kind: 'existing_product'` with `usage: 0` (the "rescan of a known package" path, §16 comment). Otherwise it reserves one lookup per session (`reserve_product_scan_ean_lookup_v1`; a refused reservation is "not a failure" — the flow continues locally, §24) and calls `intimport-enrich` — "the narrowest dedicated server-side source path", with its own flag, caps and source-authority classification; the Scanner's general web search is NOT enabled for it (§6). The returned facts are merged by `mergeProductScanResults` with the source rank `label 4 > manufacturer 3 > barcode_registry 2 > retailer 1` (`_shared/productScanner.ts:286-291`) and lookup facts "carry NO evidence rows on purpose … a label read from the package must always outrank a page found on the web" (`:1186-1188`).
+
+**Authorities that are NOT in the scanner path.** The three 2026-09-03 picker authorities — `country_product_slot_assignments` (PRIMARY_DEFAULT / SAFE_FALLBACK per Mapper slot, admin-approved, `20260903212502`), `user_preferred_product_slots` (explicit per-user exact-SKU pointer, `20260903173641`), and the deterministic picker order (`20260903170000`) — are consumed only by the Global Catalog picker (`useGlobalCatalogPicker.ts:178 → resolveCountryProductsForSlots → rpc resolve_country_product_slots_v1`, `globalCatalog.ts:253-261`). The scanner never calls them: a scanned code resolves to the catalogue row whose EAN equals the digits, full stop. There is also no "user's own product first" rule in the scanner beyond the customer-provisional visibility gate above.
+
+**Does stronger exact identity always beat weaker generic identity?** Within one session, yes by construction: `existing_product` short-circuits everything (`routeScan` step 1, `nextProductScanStep` `pipeline.ts:38-41`), the model is never allowed to name a product id (identify-live header, `index.ts:9-18`), and web facts never outrank label facts. **Two gaps break the guarantee across the boundary:**
+- G3.1 — `lookupExactBarcode` takes `rows.find(...)` over a ranked search result: if two catalogue rows carry the same EAN (variants of different products, or a customer-provisional row next to a controlled row), the winner is the search ranking (favorite, relevance, recency), not identity strength. Whether the schema forbids duplicate EANs across products is checked in Section 4.
+- G3.2 — the client and server exact lookups can disagree: the client searches `search_products_v1` (Mapper references + commercial products projection, `eans` = `ean_code_normalized` + current variants), the server searches `product_variants` only. A product whose EAN lives only in `products.ean_code_normalized` (no current variant row) is exact on the client and unknown on the server, so the session falls into the paid `ean_lookup`/analysis path for a product the client already resolved.
+
+**Verdict.** Precedence is explicit, documented in code and tested: PASS for the order itself. Identity-strength guarantee: PARTIAL (G3.1 ranking-decides-duplicates, G3.2 two exact lookups with different scopes). No new precedence is proposed here; both gaps are fixable inside the existing order.
