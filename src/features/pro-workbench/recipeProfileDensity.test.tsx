@@ -102,19 +102,18 @@ describe('Recipe profile visual density contract', () => {
   it('lays Settings out as ONE three-row, two-column grid of 46 px fields', () => {
     const settings = read('WorkbenchSettingsLine.tsx');
     const theme = read('../../styles/theme-pro-light.css');
+    const visualSystem = read('../../styles/gellatti-v2-1.css');
 
     // Six cells in the approved reading order: confirmation/type, then
     // machine/serving, then batch/mode. Batch and Tryb are ordinary cells of
     // the same grid — never a separate three-row sub-grid pinned to row 1.
     expect(settings).toContain('profile-settings-grid grid grid-cols-2 items-stretch gap-2');
-    // Was 2 — batch card + strategy card. The batch card is removed with its
-    // field (owner authority 2026-09-02), so the mode card is the only one left.
-    expect(settings.match(/data-settings-final-card=/g)).toHaveLength(1);
-    expect(settings.match(/data-settings-label=/g)).toHaveLength(1);
-    expect(settings.match(/data-settings-control=/g)).toHaveLength(1);
-    // SUPERSEDED, owner authority 2026-09-02 (final Settings contract): the
-    // order-5 cell was the target-batch card and is removed with the field.
-    expect(settings).not.toContain('order-5');
+    // Batch and mode are both accepted cells again (owner regression restore
+    // 2026-09-04), with one target control and no duplicate Base readout.
+    expect(settings.match(/data-settings-final-card=/g)).toHaveLength(2);
+    expect(settings.match(/data-settings-label=/g)).toHaveLength(2);
+    expect(settings.match(/data-settings-control=/g)).toHaveLength(2);
+    expect(settings).toContain('order-5');
     // SUPERSEDED, owner authority 2026-09-02 (approved desktop PDF §5): the
     // sixth cell was the duplicated `Baza receptury` readout and is REMOVED.
     // The grid is now the four approved fields plus the batch row; nothing may
@@ -135,6 +134,9 @@ describe('Recipe profile visual density contract', () => {
     expect(settings).toContain('bg-[var(--g-graphite)] px-5');
     expect(settings).toContain('data-testid="profile-settings-save-default"');
     expect(settings.includes('bg-[#f58a07] px-3 text-xs font-semibold text-white')).toBe(false);
+    expect(visualSystem).toContain("[data-testid='profile-settings-confirm']");
+    expect(visualSystem).toContain('border-radius: 9999px !important;');
+    expect(visualSystem).not.toContain('border-radius: 8px !important;');
     /* OWNER AUTHORITY 2026-09-03: Settings is a BOX whose label is notched
        into its own top border — the same make as DOSTOSUJ RECEPTURĘ above and
        WIEDZA below. It was a band (eyebrow + hairline) wrapped around a second
