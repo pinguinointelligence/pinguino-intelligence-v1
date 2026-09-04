@@ -6,3 +6,4 @@
 | Realme | Android 10 | Chrome 142.0 | chrome_tab | 24 | 90 | **NO-GO** |
 | Iphone | iOS 26.6.1 | Chrome iOS 152.0 | browser_tab | 24 | 97 | **GO** |
 | iPhone safari | iOS 18.7 | Safari 26.6.1 | safari_tab | 24 | 104 | **GO** |
+| Samsung Chrome | Android 10 | Chrome 147.0 | chrome_tab | 24 | 100 | **NO-GO** |
