@@ -116,15 +116,20 @@ export class Confirmation {
       .sort((a, b) => b.n - a.n);
     const top = ranked[0];
     const second = ranked[1];
+    // §17: the winning value needs at least one non-rectified read
+    const topHasIndependent = top
+      ? this.reads.some((r) => r.text === top.text && r.source !== 'rectified')
+      : false;
     if (
       top &&
+      topHasIndependent &&
       top.n >= CONFIRMATION.slowAgreeing &&
       (!second || top.n >= second.n * CONFIRMATION.slowMargin)
     ) {
       this.state = {
         status: 'confirmed',
         value: top.text,
-        lane: 'slow',
+        lane: 'consensus',
         agreeing: top.n,
         confirmedAt: read.tMs,
         frames: top.frames,
