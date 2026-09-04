@@ -261,22 +261,21 @@ describe('recalculation entry', () => {
 });
 
 describe('new Pro profile layout', () => {
-  it('exposes four stable right-panel contexts and surfaces no batch in the profile', () => {
+  it('exposes four stable right-panel contexts and one target batch in Settings', () => {
     const profile = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
     const tabs = read('features', 'pro-workbench', 'WorkbenchModuleTabs.tsx');
     for (const label of ['Receptura', 'Monitor', 'Produkcja', 'Etykieta']) {
       expect(tabs).toContain(label);
     }
-    expect(tabs).toContain("export type WorkbenchModuleTab = 'profile' | 'monitor' | 'production' | 'summary'");
+    expect(tabs).toContain(
+      "export type WorkbenchModuleTab = 'profile' | 'monitor' | 'production' | 'summary'",
+    );
     expect(profile).toContain('export type CockpitTab = WorkbenchModuleTab');
     const settings = read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx');
-    // SUPERSEDED, owner authority 2026-09-02 (final Settings contract): the
-    // profile neither prints NOR edits the batch any more. `Baza receptury`
-    // duplicated the left column's „Baza lodowa"; the `Partia docelowa` field
-    // was removed on the owner's explicit instruction that it must not be
-    // recreated anywhere. The batch authority itself is untouched — it is
-    // simply no longer surfaced here, and that absence is what is protected.
-    expect(settings).not.toContain('profile-batch-combined');
+    // Owner regression restore 2026-09-04: Settings owns exactly one editable
+    // target-batch control, while the duplicate `Baza receptury` stays removed.
+    expect(settings).toContain('profile-batch-combined');
+    expect(settings).toContain('aria-label="Docelowa partia"');
     expect(settings).not.toContain('actualBatchG');
   });
 

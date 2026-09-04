@@ -207,10 +207,13 @@
     border-radius: var(--g-card-radius) !important;
   }
 
-  /* The approved COMPACT BUTTON corner. */
+  /* OWNER REGRESSION RESTORE 2026-09-04: the confirmation moved from the
+     compact band action into the expanded Settings action row. It is now the
+     accepted 44 px primary PILL beside `Zapisz jako domyślne`; the old 8 px
+     `!important` override silently defeated its `rounded-full` class. */
   .gellatti-pro-workbench [data-testid='profile-settings-confirm'],
   .gellatti-pro-workbench [data-testid='profile-settings-confirmed'] {
-    border-radius: 8px !important;
+    border-radius: 9999px !important;
   }
 
   /* ── Display-column band eyebrows ─────────────────────────────────────
