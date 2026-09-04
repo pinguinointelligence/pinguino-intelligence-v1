@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { calculateRecipe, detectViolations, type RecipeInput } from '@/engine';
 import { INTERNET_PROTEIN_RECIPES } from '@/features/protein-gelato/__fixtures__/internetProteinRecipes';
 import { recipeFitForInput } from '@/features/protein-gelato/proteinAuthority';
-import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
 import {
   sorbetMapperIngredient,
   sorbetMultiMainBase,
@@ -32,6 +31,7 @@ import {
   type ProductionRescueOption,
 } from './productionRescue';
 import { productionRescueAuthorizationInvalidation } from './useProductionWorkspace';
+import { productionTestComposition } from './productionTestComposition.fixture';
 
 const AT = '2026-08-25T09:01:00.000Z';
 
@@ -125,14 +125,7 @@ const sessionFor = (id: string, input: RecipeInput): ProductionSession =>
       recipeName: id === 'served' ? 'test produkcja 250826' : id,
     },
     plannedInput: input,
-    plannedComposition: {
-      schemaVersion: 1,
-      baseScope: 'BASE_FORMULATION',
-      baseOrder: input.items.map((item) => item.id),
-      toppings: [],
-      behaviorSnapshots: productBehaviorTestSnapshots(input),
-      migrationAmbiguities: [],
-    },
+    plannedComposition: productionTestComposition(input),
     startedAt: '2026-08-25T09:00:00.000Z',
   });
 
@@ -174,11 +167,11 @@ const assertLivePath = (session: ProductionSession) => {
   return { assessment, path };
 };
 
-const enlargeFor = (session: ProductionSession): ProductionRescueOption => {
+const enlargeFor = (session: ProductionSession, context?: string): ProductionRescueOption => {
   const enlarge = assessProductionRescue(session).options.find(
     (option) => option.id === 'enlarge_batch',
   );
-  expect(enlarge).toBeDefined();
+  expect(enlarge, context).toBeDefined();
   return enlarge!;
 };
 
@@ -549,7 +542,7 @@ describe('Production sequential-deviation P0', () => {
       let session = sessionFor(`enlarge-${entry.id}`, entry.input);
       session = confirmAtNextRevision(session, entry.preconfirmedTopUpLineId);
       session = confirmAtNextRevision(session, entry.changedLineId, entry.physical);
-      const enlarge = enlargeFor(session);
+      const enlarge = enlargeFor(session, entry.id);
       const hardSafety = assessProductionHardSafety(
         enlarge.candidateInput,
         calculateRecipe(enlarge.candidateInput),
