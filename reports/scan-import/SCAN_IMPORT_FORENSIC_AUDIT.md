@@ -153,3 +153,27 @@ Step 2 (`ean_lookup`, `product-scan-analyze` mode `ean_lookup`, `index.ts:261-33
 - F6.3 (P3) `ProductScanConfidence high|medium|low` (per field) and the 0–100 product score are two scales with no documented mapping.
 
 **Verdict.** Provenance model: PASS. Confirmation requirement as a first-class output: PARTIAL.
+
+## SECTION 7 — DEDUPLICATION + IDEMPOTENCY
+
+**Loop audited:** scan code → resolve → import → save → reopen → scan the SAME code again.
+
+| Step | Mechanism | Evidence | Verdict |
+|---|---|---|---|
+| One session = one barcode | a second, different barcode on an existing session is refused `scan_session_barcode_conflict` 409 | `product-scan-analyze/index.ts:226-228` | PASS |
+| Rescan of a known package | server exact lookup answers `kind: 'existing_product'` with zero usage ("§16") | `product-scan-analyze/index.ts:261-282` | PASS (subject to F4.2/F7.2 scope) |
+| Finalize replay | `state = finalized` + `exact_product_id` → `kind: 'idempotent'` with the same product; `idempotencyKey` (8–160 chars) required by the RPC | `product-scan-finalize/index.ts:381-398`, RPC `:217-218` | PASS |
+| Central identity by EAN | `customer_added_products.normalized_ean UNIQUE`; an existing pending product for the EAN returns `kind: 'existing_product'` and only links the account (`on conflict(user_id,product_id) do update set favorite=true`), `distinct_customer_count` recomputed | RPC `:265-270, 351-352, 361-375` | PASS — no duplicate SKU, no duplicate private copy per user |
+| Evidence per scan | `customer_added_product_evidence unique(user_id, scan_session_id)`, `on conflict do nothing` | RPC `:387-392`, migration `:75` | PASS |
+| New product row | `products` inserted with `owner_user_id = null`, `created_by = actor`, `product_kind = 'customer_provisional'`, `visibility = 'internal'`, `normalized_identity = 'ean:'||ean`, `search_document`; version 1 with sha256 `facts_fingerprint`; behaviour binding via `classify_catalog_product_behavior_v2` | RPC `:311-337` | PASS (single canonical lineage) |
+| Variant EAN row | added **only when no `product_variants` row already holds that EAN** ("historical canonical retirement … may still own the global variant-EAN slot") | RPC `:342-350` | see F7.2 |
+| Live sweep | identity key `ean:<lookupValue>`; an already-accepted identity still in view emits `duplicate_suppressed` (silent by design); acceptance cooldown per identity | `liveRecognition.ts:334`, `liveScanSession.ts` (`LiveScanEvent`, `acceptedAt` cooldown) | PASS |
+| Text import (INTIMPORT) | canonical lookup keyed by `barcode.lookupValue`; preflight buckets `NEW_CANONICAL_PRODUCT` / `EXISTING_CANONICAL_REUSE` | `src/services/intimportCanonicalLookup.ts:30-62`, `reports/INTIMPORT_DEDUP_CLOSEOUT_2026-08-24.md` | PASS |
+| Manual product / picker | `manualProduct.ts` builds `ean = barcode.lookupValue` (`:48`) but performs no exact-EAN lookup of its own before submission; whether the receiving RPC dedupes by EAN was not proven in this pass | `src/services/manualProduct.ts:38-49` | UNKNOWN → F7.3 |
+
+**Findings.**
+- F7.1 (P2) Same code across HOME live sweep, deep scanner and PRO picker resolves through three different lookups (`lookupExactBarcode` client search, `exactProductForBarcode` server variants, picker search ranking); they agree only when the catalogue is clean of EAN twins (F4.1).
+- F7.2 (P1) A customer-added product whose EAN slot is held by a retired canonical variant gets **no `product_variants` row**, so the server exact path (`product_variants` only) never finds it: every later rescan of that package by the same customer skips the zero-cost "existing product" answer and re-enters the evidence flow (the RPC then dedupes, so no duplicate is created, but the cost and the user experience are those of a new product).
+- F7.3 (P2) Manual product creation path not proven idempotent by EAN (UNKNOWN; needs one targeted test).
+
+**Verdict.** Identity loop for the scanner channels: PASS. Cross-channel consistency: PARTIAL (F7.1, F7.2). Manual channel: UNKNOWN (F7.3).
