@@ -7961,19 +7961,21 @@ function productionLineIdsExecutedAfterRescue(run, rescueRevision) {
 		return typeof lineId === "string" && lineId.length > 0 ? [lineId] : [];
 	}));
 }
-function applyVerifiedRescueInput(session, candidate, rescueRevision = session.durableRescueRevision + 1) {
+function applyVerifiedRescueInput(session, candidate, rescueRevision = session.durableRescueRevision + 1, options = {}) {
 	requireActive(session);
 	const candidateBatchGrams = candidate.items.reduce((sum, item) => sum + item.planned_grams, 0);
-	const authority = evaluateRecipeConstraintAuthority({
-		recipe: {
-			...candidate,
-			target_batch_grams: candidateBatchGrams
-		},
-		snapshots: session.plannedComposition.behaviorSnapshots ?? {},
-		module: "BATCH_RESCUE",
-		technicalOnlyMainLineIds: session.plannedComposition.ownerReviewGate?.technicalOnlyMainLineIds
-	});
-	if (!authority.valid) throw new Error(authority.issues[0]?.messagePl ?? "Production Rescue requires a fully verified recipe candidate.");
+	if (options.alreadyAuthorized !== true) {
+		const authority = evaluateRecipeConstraintAuthority({
+			recipe: {
+				...candidate,
+				target_batch_grams: candidateBatchGrams
+			},
+			snapshots: session.plannedComposition.behaviorSnapshots ?? {},
+			module: "BATCH_RESCUE",
+			technicalOnlyMainLineIds: session.plannedComposition.ownerReviewGate?.technicalOnlyMainLineIds
+		});
+		if (!authority.valid) throw new Error(authority.issues[0]?.messagePl ?? "Production Rescue requires a fully verified recipe candidate.");
+	}
 	const candidateById = new Map(candidate.items.map((item) => [item.id, item]));
 	const lines = session.lines.map((line) => {
 		const item = candidateById.get(line.lineId);
@@ -8131,7 +8133,7 @@ function hydrateProductionSessionFromRun(run, source, plannedInput, plannedCompo
 				}
 			}
 		};
-		session = applyVerifiedRescueInput(session, run.rescue.recipeInput, run.rescue.revision);
+		session = applyVerifiedRescueInput(session, run.rescue.recipeInput, run.rescue.revision, { alreadyAuthorized: true });
 		session = {
 			...session,
 			durableRescueAcceptedAt: run.rescue.acceptedAt,

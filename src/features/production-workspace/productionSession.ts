@@ -749,11 +749,10 @@ function materializeAuthorizedProductionTopUps(
   sourceActualRevision: number,
   executedAfterAuthorizationLineIds: ReadonlySet<string> = new Set(),
 ): ProductionSession {
-  const correctionBecameStale =
-    session.lines.some((line) => {
-      if (!executedAfterAuthorizationLineIds.has(line.lineId)) return false;
-      return Math.abs(line.physicalAddedGrams - line.targetGrams) > PRODUCTION_GRAMS_EPSILON;
-    });
+  const correctionBecameStale = session.lines.some((line) => {
+    if (!executedAfterAuthorizationLineIds.has(line.lineId)) return false;
+    return Math.abs(line.physicalAddedGrams - line.targetGrams) > PRODUCTION_GRAMS_EPSILON;
+  });
   if (correctionBecameStale) {
     return {
       ...session,
@@ -839,10 +838,7 @@ function productionLineIdsExecutedAfterRescue(
   if (decisionIndex < 0) return new Set();
   return new Set(
     run.events.slice(decisionIndex + 1).flatMap((event) => {
-      if (
-        event.type !== 'ingredient_actual_confirmed' &&
-        event.type !== 'actual_entry_corrected'
-      ) {
+      if (event.type !== 'ingredient_actual_confirmed' && event.type !== 'actual_entry_corrected') {
         return [];
       }
       const lineId = event.amendment?.lineId;
@@ -855,23 +851,42 @@ export function applyVerifiedRescueInput(
   session: ProductionSession,
   candidate: RecipeInput,
   rescueRevision = session.durableRescueRevision + 1,
+  options: { alreadyAuthorized?: boolean } = {},
 ): ProductionSession {
   requireActive(session);
   const candidateBatchGrams = candidate.items.reduce((sum, item) => sum + item.planned_grams, 0);
-  const authority = evaluateRecipeConstraintAuthority({
-    // Rescue is authorized precisely because the future plan may increase or
-    // reduce the original target. Validate the exact new composition against
-    // its actual candidate mass without rewriting the frozen source target.
-    recipe: { ...candidate, target_batch_grams: candidateBatchGrams },
-    snapshots: session.plannedComposition.behaviorSnapshots ?? {},
-    module: 'BATCH_RESCUE',
-    technicalOnlyMainLineIds: session.plannedComposition.ownerReviewGate?.technicalOnlyMainLineIds,
-  });
-  if (!authority.valid) {
-    throw new Error(
-      authority.issues[0]?.messagePl ??
-        'Production Rescue requires a fully verified recipe candidate.',
-    );
+  // RECOVERY RECONSTRUCTS, IT DOES NOT RE-DECIDE (owner repro 2026-09-04, run
+  // 2fc85403). A durable rescue snapshot was already authorized by the server
+  // and physically executed into the vessel. Re-running the formulation
+  // authority over it at hydration cannot make anything safer — the material is
+  // in the tub either way — but it CAN strand the batch forever: that run's
+  // candidate put BANANA at 345 / 1149.9 g = 30.0026 %, 0.0026 pp over its 30 %
+  // hard limit, because the support lines were solved to sit exactly on the
+  // limit and two of them lost 0.05 g each to tenth-gram rounding. Every reload
+  // then threw „Grupa Main przekracza twardy limit 30.0%.", which the durable
+  // recovery catch swallowed into „Nie udało się odzyskać partii".
+  //
+  // The physical guards below (line still present, no reduction of already
+  // added material) are the ones that matter at recovery and all still run.
+  // A brand-new rescue — anything that is not already durably accepted — is
+  // still fully re-validated here.
+  if (options.alreadyAuthorized !== true) {
+    const authority = evaluateRecipeConstraintAuthority({
+      // Rescue is authorized precisely because the future plan may increase or
+      // reduce the original target. Validate the exact new composition against
+      // its actual candidate mass without rewriting the frozen source target.
+      recipe: { ...candidate, target_batch_grams: candidateBatchGrams },
+      snapshots: session.plannedComposition.behaviorSnapshots ?? {},
+      module: 'BATCH_RESCUE',
+      technicalOnlyMainLineIds:
+        session.plannedComposition.ownerReviewGate?.technicalOnlyMainLineIds,
+    });
+    if (!authority.valid) {
+      throw new Error(
+        authority.issues[0]?.messagePl ??
+          'Production Rescue requires a fully verified recipe candidate.',
+      );
+    }
   }
   const candidateById = new Map(candidate.items.map((item) => [item.id, item]));
   const lines = session.lines.map((line) => {
@@ -1123,7 +1138,9 @@ export function hydrateProductionSessionFromRun(
         },
       },
     };
-    session = applyVerifiedRescueInput(session, run.rescue.recipeInput, run.rescue.revision);
+    session = applyVerifiedRescueInput(session, run.rescue.recipeInput, run.rescue.revision, {
+      alreadyAuthorized: true,
+    });
     session = {
       ...session,
       durableRescueAcceptedAt: run.rescue.acceptedAt,
