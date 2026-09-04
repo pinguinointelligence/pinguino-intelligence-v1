@@ -43,13 +43,13 @@ Freeze: 🔓 OPEN · 🧊 READY TO FREEZE · 🔒 FROZEN
 | S-25 | Checkout | Duplicate CTA click cannot mint a second order | 🟢 | ✅ | ✅ | ⬜ | 🧊 | 3f56a03d | ref guard + server reuse | Served proof |
 | S-26 | Checkout | Reconciliation idempotent; `paid_at` stamped once; refund never walked back | 🟢 | ✅ | ✅ | ⬜ | 🧊 | 3f56a03d | Repeated reconciliation proven live: an expired session moved `pending → cancelled`, no `paid_at`, no intent. `paid_at` stamped once; refunded never walked back. | — |
 | S-27 | Order | Confirmation shows number, items, total, payment status, address, next steps | 🟢 | ✅ | ✅ | ⬜ | 🧊 | 3f56a03d | number, items, €73.80, address, 3 next steps, preorder lead time | OWNER QA |
-| S-28 | Order | Customer order visibility (`/account`) shows address, shipping, tracking | 🟢 | ⬜ | ✅ | ⬜ | 🔓 | 3f56a03d | `/account` desktop + 390: number, items, quantities, preorder line, total, shipping cost, full address, payment + fulfilment state in customer language. **No internal terminology leaks** (asserted). | — |
+| S-28 | Order | Customer order visibility (`/account`) shows address, shipping, tracking | 🟢 | ⬜ | ✅ | ⬜ | 🔓 | 3f56a03d | Live on desktop + 390 **after shipping**: `OPŁACONE | WYSŁANE | … | PRZESYŁKA DPD · GEL-QA-0001`. Full address, totals, preorder line. `leak: false` — no internal terminology reaches the customer. | — |
 | S-29 | Email | Order confirmation / paid / shipped / refund emails | 🔴 | ✅ | ⬜ | ⬜ | 🔓 | #49 | **AUDITED: no email architecture exists.** No provider (Resend/Postmark/SendGrid), no shared mail module, no email job anywhere in `supabase/functions/**` or `src/**`. Partner/Home invites ride Supabase Auth's own mailer, which is not a Gellatti-branded transactional sender. Needs a provider account, a verified `gellatti.com` sending domain (SPF/DKIM) and a shared job — all owner decisions/credentials. | Emit into the shared email-job architecture once it exists — do not build a Shop-specific provider |
 | S-30 | Admin | Order list with paid / unpaid / refunded visibility | 🟢 | ✅ | ✅ | ⬜ | 🧊 | 3f56a03d | — | Served proof |
-| S-31 | Admin | Fulfilment queues: to ship / waiting preorder / unpaid / shipped | 🟢 | ✅ | ✅ | ⬜ | 🧊 | 3f56a03d | live queues: to-ship 0 · waiting-preorder 1 · unpaid 3 · shipped 0 | OWNER QA |
+| S-31 | Admin | Fulfilment queues: to ship / waiting preorder / unpaid / shipped | 🟢 | ✅ | ✅ | ⬜ | 🧊 | 3f56a03d | Live queue transitions proven on the real paid order — to-ship 0→1→0, waiting 2→1, shipped 0→1. | — |
 | S-32 | Admin | Order detail answers "what to pack, where to send" | 🟢 | ✅ | ✅ | ⬜ | 🧊 | 3f56a03d | card answers pack/where/paid/next on the real order | OWNER QA |
-| S-33 | Admin | Tracking carrier + number recorded in the same action as shipped | 🟢 | ✅ | ✅ | ⬜ | 🧊 | 3f56a03d | — | Served proof |
-| S-34 | Admin | Cancellation / refund states visible with timestamps | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | 3f56a03d | — | No refunded order exists to observe |
+| S-33 | Admin | Tracking carrier + number recorded in the same action as shipped | 🟢 | ✅ | ✅ | ⬜ | 🧊 | 3f56a03d | Live: WAITING(2)→PREPARING→bench(1)→SHIPPED. `DPD · GEL-QA-0001` persisted, `shipped_at` 17:29:05 stamped, `paid_at` **unchanged** 13:16:20. | — |
+| S-34 | Admin | Cancellation / refund states visible with timestamps | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | 3f56a03d | Cancellation proven (expired session → cancelled, live). Refund states unobserved — no refunded order exists. | Depends on S-43 |
 | S-35 | Mobile | 390 × 844: hero, list, detail, cart, checkout entry, confirmation — no overflow | 🟢 | ⬜ | ✅ | ⬜ | 🧊 | 3f56a03d | — | After visual pass |
 | S-36 | A11y | Visible focus (2 px orange), no colour-only state, readable disabled | 🟢 | ✅ | ✅ | ⬜ | 🧊 | 3f56a03d | readable disabled + chip states named in words | Served QA |
 | S-37 | QA | Served staging QA across all states | 🟢 | ⬜ | ✅ | ⬜ | 🧊 | 3f56a03d | — | After merge |
@@ -60,14 +60,20 @@ Freeze: 🔓 OPEN · 🧊 READY TO FREEZE · 🔒 FROZEN
 | S-42 | Policy | Stock authority — no inventory counts; availability is manual | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | `availability` + `lead_time_weeks` are operator-controlled and canonical. There is **no stock quantity** and nothing decrements. Preorder hand-off uses the operator's existing `preparing` transition — no invented stock rule. Origins documented in GELLATTI_SHOP_COMMERCE_POLICY_ORIGINS.md | Owner inventory decision |
 | S-43 | Policy | Refund from Admin — reconciled only, not initiated | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | Whether Admin may refund is an owner decision | Owner decision |
 | S-44 | Policy | Legal commerce pages (terms, returns, withdrawal) | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | Legal decision | Owner decision |
-| S-45 | Payment authority | Provider event — not the browser — settles the order | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | — | **RECLASSIFIED technical, not business.** Forensic: Stripe delivered `checkout.session.completed` 13:16:13.98 carrying `pi_shop_order_id`; `paid_at` written 13:16:20.58 by the browser return — the canonical webhook was live but shop-blind. Answer = **B, server-side verification after the success return**. Fixed by extending the EXISTING webhook (no second architecture): guarded `pending→paid`, `paid_at` once, refunded never reversed, expired cancels once, async events settle too. 11 regressions. | Deploy the function, then prove pay-and-close-the-tab |
+| S-45 | Payment authority | Provider event — not the browser — settles the order | 🟡 | ✅ | ⬜ | ⬜ | 🔓 | — | Code complete + merged. EXACT-total authority added (`expected_total_cents`/`expected_currency`, written once by shop-checkout); ONE shared decision `_shared/shopSettlement.ts` used by webhook AND browser return; `checkout.session.expired` routed; completion≠payment. 759 tests green. **Live proof blocked: Edge Functions need deploying and the endpoint's event subscriptions verified.** | Owner: Supabase deploy token / CLI run + Stripe event subscriptions |
 
 ## TOTALS
 
-Work: 🟢 37 · 🟡 1 · 🔴 7 · ⚪ 0 — of 45
-Served QA: ✅ 36 · ⬜ 9 · ❌ 0
+Work: 🟢 38 · 🟡 3 · 🔴 6 · ⚪ 0 — of 45
+Served QA: ✅ 38 · ⬜ 7 · ❌ 0
 OWNER QA: ⬜ 45 (never self-marked)
 Freeze: 🧊 33 · 🔓 12 · 🔒 0
+
+**Blocked on two infrastructure gaps, both owner-side, neither a policy decision:**
+1. **Supabase Edge Function deployment** — no access token or CLI here. The
+   canonical webhook (95 KB, also carrying subscriptions/invoices/commissions)
+   must not be hand-transcribed into a tool call.
+2. **Stripe endpoint event subscriptions** — cannot be read from this side.
 
 **NOT a freeze candidate yet.** Payment finality (S-45) is fixed in code and
 proven by 11 regressions, but the webhook must be deployed and the
