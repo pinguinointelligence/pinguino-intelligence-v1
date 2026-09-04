@@ -220,3 +220,21 @@ Step 2 (`ean_lookup`, `product-scan-analyze` mode `ean_lookup`, `index.ts:261-33
 - F9.2 (P3) `labelLanguages` is collected but not used by any resolution rule (dead evidence today).
 
 **Verdict.** PASS.
+
+## SECTION 10 — OFFLINE
+
+**Implemented.**
+- Network/transport failures are classified before they reach the UI: `productScanner.ts:47-57` sets `networkFailure` for `FunctionsFetchError` / `FunctionsRelayError`, and `scannerErrors.ts:141-146` maps it to the code `connection` with the copy „Nie mamy teraz połączenia. Sprawdź sieć i spróbuj ponownie." (`:59`); the render gate (`services/scannerErrorGuard.ts`) blocks every raw transport phrasing (tests `names a quota, an auth loss and a connection loss distinctly`, `never renders any of them`, `scannerErrors.test.ts:76,127`). PASS for the deep scanner.
+- Live sweep: "a decoder or network failure mid-sweep must not end the session" (`liveRecognition.ts:274`); a failed identification is treated as a frame that said nothing (`productScanner.ts:165`). PASS for robustness, but the customer is never told the sweep is offline (see F10.2).
+- Known product offline: the local barcode decode is network-free (`liveRecognition.ts:16`), but **every** exact resolution is a server call (`search_products_v1` / edge functions); there is no offline catalogue — `inMemoryCatalog` is exported by `product-picker` but has no runtime consumer (grep: only tests/dev), and the React Query caches use `staleTime` 15 s – 5 min without persistence (`useGlobalCatalogPicker.ts:87-184`). A known product therefore does NOT resolve offline. FAIL vs the owner expectation "resolve locally where supported" (nothing is supported today).
+- Unknown product offline: the deep scanner surfaces `connection`; the EAN lookup swallows the failure and marks the lookup done (Section 5, F5.2), so the session's next step is a paid label analysis that will also fail with `connection` — honest, no fake success. PASS (honest), PARTIAL (path).
+- No `navigator.onLine` or connectivity pre-check anywhere in the scanner (grep: 0 hits).
+
+**Findings.**
+- F10.1 (P1) No offline resolution path for known products (no local EAN → product cache); every rescan needs the network. Design gap rather than defect, but it contradicts the offline expectation and makes shop-floor use fragile.
+- F10.2 (P2) Live sweep never surfaces connectivity loss; a code the catalogue knows becomes "unresolved" while offline, i.e. the same state as a truly unknown product.
+- F10.3 (P2) `ean_lookup` network failure is recorded as a completed lookup (`eanLookupDone = true`), so reconnecting does not retry the free path.
+
+**Verdict.** Honest failure states: PASS. Offline resolution of known products: MISSING (F10.1).
+
+<!-- CHECKPOINT: sections 1-10 written. NEXT SECTION: 11 (ProductBehaviour authority). Evidence already located: product-scan-finalize/index.ts:440-560 (profile/behaviour validation), src/features/product-intelligence/productBehaviorAuthority.ts, customerProductFamily.ts:59-140, classify_catalog_product_behavior_v2 (migration), productBehaviorFingerprint.migration.test.ts. -->
