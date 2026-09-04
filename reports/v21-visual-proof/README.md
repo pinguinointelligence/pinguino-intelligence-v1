@@ -202,3 +202,39 @@ which is the whole argument for doing it in that order:
 
 `px` on Sklep mobile stays low locally only because the catalogue cannot load there; the
 hero itself measures exactly x 80, y 124, w 1280, h 470 — the authority's own numbers.
+
+## Served proof, after merge (`staging.pinguinoai.com`, `bdba6c52`)
+
+Same authority addressing, same measurement, same two viewports as the pre-merge baseline —
+so these are directly comparable. Captured after PR #10 merged and the staging deployment
+reported success.
+
+| State | Desktop BEFORE → AFTER | Mobile BEFORE → AFTER |
+|---|---|---|
+| **Sklep** | 51.6 → **87.8** (+36.2) | 22.0 → **40.3** (+18.3) |
+| **Współpracuj z nami** | 59.4 → **82.7**; ink 64.3 → **96.8** (+32.5) | 41.6 → **61.3**; ink 46.2 → **86.1** (+39.9) |
+| **Franchise** | 87.7 → **94.5** (+6.8) | 63.9 → **81.7** (+17.8) |
+| Receptury | 95.1 → 95.1 | 82.7 → **85.1** |
+| Produkty | 95.0 → **95.1** | 84.8 → **85.2** |
+| Ustawienia etykiety | 93.7 → **94.2** | 84.5 → 84.2 |
+| Ustawienia maszyny | 95.1 → **95.4** | 84.4 → **87.6** |
+
+The served numbers land on the local ones to within a point, which is the real confirmation
+that what merged is what was measured.
+
+Confirmed by eye on served staging: the Sklep hero renders the approved 470 px band with its
+graphite half, and „Zestaw startowy / Gellatti Starter Pack" now appears exactly ONCE — the
+duplicate the pre-merge baseline caught is gone.
+
+### A measurement failure worth recording
+
+The first served-AFTER run produced numbers showing Współpraca and Franchise getting WORSE
+after the merge. They were nonsense: the local authority server on port 5299 had died, so
+every "authority" capture in that run was a Chrome `ERR_CONNECTION_REFUSED` page. Some states
+still scored 98 % against it, because an error page and a light app page are both mostly
+white — the same white-space artefact that made the entitlement-gate PRO scores look like
+92 %.
+
+Twice now this harness has produced high, confident, meaningless numbers from a screenshot of
+the wrong thing. The rule that follows: a comparison is only evidence once BOTH sides have
+been confirmed to be the thing they claim to be.
