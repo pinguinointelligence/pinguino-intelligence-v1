@@ -62,7 +62,11 @@ export interface DecodeEvent {
 }
 
 export type SceneVerdict =
-  'DECODED_CONFIRMED' | 'DECODED_UNCONFIRMED' | 'MISREAD' | 'NO_DECODE' | 'NOT_APPLICABLE';
+  | 'DECODED_CONFIRMED'
+  | 'DECODED_UNCONFIRMED'
+  | 'MISREAD'
+  | 'NO_DECODE'
+  | 'NOT_APPLICABLE';
 
 export const SCENE_VERDICTS: readonly SceneVerdict[] = [
   'DECODED_CONFIRMED',

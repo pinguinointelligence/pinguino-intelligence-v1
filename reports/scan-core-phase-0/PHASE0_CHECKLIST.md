@@ -2,7 +2,7 @@
 
 Frozen 2026-09-04 (owner brief of 2026-09-03). Statuses: DONE · IN PROGRESS · WAITING_ON_OWNER_DEVICE · WAITING_ON_OWNER_RUN · BLOCKED · NOT STARTED. "VERIFIED DONE" counts only items with evidence of the kind the item requires (a phone item needs phone evidence). Rules: implementation ≠ real-device proof · desktop ≠ phone · Safari desktop ≠ iPhone Safari · preview deploy ≠ Phase 0 DONE · synthetic benchmark ≠ phone benchmark · Owner QA cannot be self-approved.
 
-Devices: iPhone 15 Pro Max / iOS 26.6.1 (Safari tab + standalone PWA) · Samsung Galaxy Note10+ SM-N975F/DS / Android Chrome (owner-provided 2026-09-04; Android version to be read by the harness). No unique device identifiers are recorded anywhere.
+Devices: iPhone 15 Pro Max / iOS 26.6.1 (Safari tab + standalone PWA) · Samsung Galaxy Note10+ SM-N975F/DS / Android Chrome (owner confirmed AVAILABLE 2026-09-04, page already opened from the QR; Android version to be read by the harness). Bundles reach the Mac either by the tester's explicit "Wyślij na komputer (tunel)" button (collector on the tunnel origin only; never automatic, never on staging/production) or by the download/share buttons. No unique device identifiers are recorded anywhere.
 
 | id | item | evidence required | status |
 |---|---|---|---|

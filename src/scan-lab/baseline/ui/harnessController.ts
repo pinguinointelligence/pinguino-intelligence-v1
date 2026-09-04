@@ -8,8 +8,11 @@ import { ultrawideSuspicionFromSettings } from '../camera/cameraHeuristics';
 import { openCorpusDb, estimateStorage, type CorpusDb, type FrameTag } from '../corpus/corpusDb';
 import {
   buildRunArchive,
+  collectorAvailable,
+  downloadOnly,
   HARNESS_VERSION,
   shareOrDownload,
+  uploadToCollector,
   type ArchiveResult,
   type ShareOutcome,
 } from '../corpus/corpusExport';
@@ -104,6 +107,8 @@ export interface HarnessSnapshot {
   report: BaselineReport | null;
   archive: ArchiveResult | null;
   archiveBusy: boolean;
+  /** Mac-side collector reachable on this origin (tunnel only). */
+  collector: boolean;
   error: string | null;
 }
 
@@ -154,6 +159,7 @@ export class HarnessController {
     report: null,
     archive: null,
     archiveBusy: false,
+    collector: false,
     error: null,
   };
   private db: CorpusDb | null = null;
@@ -745,6 +751,25 @@ export class HarnessController {
       this.fail(error, 'Nie udało się przygotować archiwum.');
       return null;
     }
+  }
+
+  async probeCollector(): Promise<boolean> {
+    const collector = await collectorAvailable();
+    this.publish({ collector });
+    return collector;
+  }
+
+  download(): ShareOutcome {
+    const archive = this.snap.archive;
+    if (!archive) return 'unsupported';
+    return downloadOnly(archive.blob, archive.fileName);
+  }
+
+  /** Explicit tester action; never called automatically. */
+  async sendToCollector(): Promise<{ ok: boolean; bytes: number; error?: string }> {
+    const archive = this.snap.archive;
+    if (!archive) return { ok: false, bytes: 0, error: 'no archive' };
+    return uploadToCollector(archive.blob, archive.fileName);
   }
 
   /** Must run synchronously inside the tap handler — no awaits before the share call. */

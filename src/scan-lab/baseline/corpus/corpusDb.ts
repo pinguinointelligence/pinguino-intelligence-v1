@@ -85,7 +85,12 @@ export function toCorpusError(error: unknown, context: string): CorpusError {
 // ---------------------------------------------------------------------------------------------
 
 export type FrameTag =
-  'interval' | 'first_candidate' | 'first_decode' | 'best_quality' | 'wrong_value' | 'manual';
+  | 'interval'
+  | 'first_candidate'
+  | 'first_decode'
+  | 'best_quality'
+  | 'wrong_value'
+  | 'manual';
 
 export interface FrameMeta {
   /** performance.now() at capture, ms (same clock as FrameEvidence.tCapture). */

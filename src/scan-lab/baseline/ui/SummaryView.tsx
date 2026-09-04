@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { SCENE_BY_ID } from '../scenes';
 import { copy } from './copy';
 import type { HarnessController, HarnessSnapshot } from './harnessController';
@@ -16,7 +16,22 @@ export function SummaryView({
   snap: HarnessSnapshot;
 }) {
   const [status, setStatus] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
   const report = snap.report;
+  useEffect(() => {
+    void controller.probeCollector();
+  }, [controller]);
+  const onDownload = () => {
+    const outcome = controller.download();
+    setStatus(outcome === 'downloaded' ? copy.summary.downloaded : copy.summary.unsupported);
+  };
+  const onSend = () => {
+    setSending(true);
+    void controller.sendToCollector().then((r) => {
+      setSending(false);
+      setStatus(r.ok ? copy.summary.sent((r.bytes / 1048576).toFixed(1)) : copy.summary.sendFailed);
+    });
+  };
   const onShare = () => {
     // synchronous inside the tap: Web Share needs the gesture
     void controller.share().then((outcome) => {
@@ -105,6 +120,22 @@ export function SummaryView({
             ? copy.summary.preparing
             : `${copy.summary.export}${snap.archive ? ` · ${(snap.archive.bytes / 1048576).toFixed(1)} MB` : ''}`}
         </button>
+        <button
+          style={styles.buttonSecondary}
+          disabled={!snap.archive || snap.archiveBusy}
+          onClick={onDownload}
+        >
+          {copy.summary.download}
+        </button>
+        {snap.collector && (
+          <button
+            style={styles.button}
+            disabled={!snap.archive || snap.archiveBusy || sending}
+            onClick={onSend}
+          >
+            {sending ? copy.summary.sending : copy.summary.sendToMac}
+          </button>
+        )}
         <button style={styles.buttonSecondary} disabled={!report} onClick={onCopy}>
           {copy.summary.copyJson}
         </button>

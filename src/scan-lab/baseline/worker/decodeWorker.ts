@@ -134,7 +134,8 @@ async function handleFrame(msg: FrameMessage): Promise<void> {
   let luma: Uint8Array;
   let luminanceMs: number | undefined;
   const bitmapSource = (msg.bitmap ?? msg.videoFrame) as
-    (CanvasImageSource & { close(): void }) | undefined;
+    | (CanvasImageSource & { close(): void })
+    | undefined;
   try {
     if (msg.luma) {
       luma = new Uint8Array(msg.luma);

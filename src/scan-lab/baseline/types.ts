@@ -8,7 +8,11 @@
  */
 
 export type ExecutionMode =
-  'safari_tab' | 'standalone_pwa' | 'chrome_tab' | 'browser_tab' | 'unknown';
+  | 'safari_tab'
+  | 'standalone_pwa'
+  | 'chrome_tab'
+  | 'browser_tab'
+  | 'unknown';
 
 export interface DeviceMeta {
   /** Chosen or typed by the tester (e.g. "iPhone 15 Pro Max", "Galaxy Note10+"). Never a serial number. */
@@ -140,7 +144,11 @@ export interface SaliencyResult {
 }
 
 export type DecodeVariant =
-  'full_cheap' | 'full_harder' | 'roi_cheap' | 'roi_harder' | 'rectified_cheap';
+  | 'full_cheap'
+  | 'full_harder'
+  | 'roi_cheap'
+  | 'roi_harder'
+  | 'rectified_cheap';
 
 export interface DecodeOutcome {
   variant: DecodeVariant;

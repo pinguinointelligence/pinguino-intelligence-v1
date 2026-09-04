@@ -28,7 +28,7 @@ export function archiveFileName(modelLabel: string, createdAtIso: string): strin
   return `scan-baseline_${slugify(modelLabel)}_${compactTimestamp(createdAtIso)}.zip`;
 }
 
-const README_TXT = `SCAN LAB — PHASE 0 BASELINE (PINGÜINO / GELLATTI)
+const README_TXT = `SCAN LAB — PHASE 0 BASELINE (GELLATTI)
 
 PL: To archiwum zawiera pomiary z testu aparatu i dekodera kodów kreskowych wykonanego na Twoim
 telefonie: metadane urządzenia (bez identyfikatorów), ustawienia aparatu, czasy klatek i dekodowania
@@ -133,6 +133,46 @@ export function shareOrDownload(
       });
   }
   return Promise.resolve(triggerDownload(blob, fileName, doc));
+}
+
+/** Plain download (no share sheet): Android Chrome saves to Downloads, desktop browsers to the download folder. */
+export function downloadOnly(blob: Blob, fileName: string, doc: Document = document): ShareOutcome {
+  return triggerDownload(blob, fileName, doc);
+}
+
+export const COLLECTOR_HEALTH_PATH = '/scan-lab/upload/health';
+export const COLLECTOR_UPLOAD_PATH = '/scan-lab/upload';
+
+/** True only when the page is served by the Mac-side collector (tunnel); staging/production never expose it. */
+export async function collectorAvailable(fetchImpl: typeof fetch = fetch): Promise<boolean> {
+  try {
+    const res = await fetchImpl(COLLECTOR_HEALTH_PATH, { cache: 'no-store' });
+    if (!res.ok) return false;
+    const body = (await res.json()) as { ok?: boolean; collector?: string };
+    return body.ok === true && body.collector === 'mac';
+  } catch {
+    return false;
+  }
+}
+
+/** Explicit tester action: POST the archive to the Mac collector on the same origin. Never automatic. */
+export async function uploadToCollector(
+  blob: Blob,
+  fileName: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<{ ok: boolean; bytes: number; file?: string; error?: string }> {
+  try {
+    const res = await fetchImpl(COLLECTOR_UPLOAD_PATH, {
+      method: 'POST',
+      body: blob,
+      headers: { 'Content-Type': 'application/zip', 'X-Scan-Lab-File': fileName },
+    });
+    if (!res.ok) return { ok: false, bytes: 0, error: `HTTP ${res.status}` };
+    const body = (await res.json()) as { ok?: boolean; bytes?: number; file?: string };
+    return { ok: body.ok === true, bytes: body.bytes ?? 0, file: body.file };
+  } catch (error) {
+    return { ok: false, bytes: 0, error: String(error) };
+  }
 }
 
 function triggerDownload(blob: Blob, fileName: string, doc: Document): ShareOutcome {

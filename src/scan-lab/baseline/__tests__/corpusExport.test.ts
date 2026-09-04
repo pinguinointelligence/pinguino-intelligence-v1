@@ -1,3 +1,5 @@
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { CorpusReader, FrameEntry } from '../corpus/corpusDb';
 import {
@@ -9,7 +11,7 @@ import {
 import { crc32 } from '../corpus/zip';
 import type { FrameEvidence, SceneRunSummary, SessionRecord } from '../types';
 import { percentiles } from '../stats/percentiles';
-import { readZip } from './zip.test';
+import { readZip } from './zipReader';
 
 const P = percentiles([]);
 const run: SessionRecord = {
@@ -139,5 +141,70 @@ describe('buildRunArchive', () => {
   });
   it('rejects an unknown run', async () => {
     await expect(buildRunArchive(fakeDb, 'nope', null, 'x')).rejects.toThrow(/not found/);
+  });
+});
+
+describe('sample bundle for the Mac-side parser', () => {
+  it('writes a sample bundle when SCAN_LAB_SAMPLE_DIR is set (skipped otherwise)', async () => {
+    const dir = process.env['SCAN_LAB_SAMPLE_DIR'];
+    if (!dir) return;
+    const report = {
+      scenes: [
+        {
+          sceneId: 'ean-12cm',
+          attempt: 1,
+          kind: 'barcode',
+          verdict: 'DECODED_CONFIRMED',
+          firstHitMs: 120,
+          firstConfirmedMs: 160,
+          confirmedText: '5901234123457',
+          hits: 20,
+          decodeAttempts: 24,
+          misreadCount: 0,
+          fps: { p50: 29.8, p95: 31 },
+          cadenceMs: { p50: 33.5 },
+          workerRoundTripMs: { p50: 42, p95: 61 },
+          variants: [
+            { variant: 'full_cheap', attempts: 24, hits: 20, decodeMs: { p50: 21, p95: 30 } },
+            { variant: 'roi_cheap', attempts: 20, hits: 18, decodeMs: { p50: 4, p95: 7 } },
+          ],
+          medianCandidateWidthPx: 310,
+          medianAbsAngleDeg: 3,
+          frames: { droppedRatio: 0.2 },
+        },
+        {
+          sceneId: 'loop-60s',
+          attempt: 1,
+          kind: 'object',
+          verdict: 'NOT_APPLICABLE',
+          firstHitMs: null,
+          firstConfirmedMs: null,
+          confirmedText: null,
+          hits: 0,
+          decodeAttempts: 900,
+          misreadCount: 0,
+          fps: { p50: 28, p95: 30 },
+          cadenceMs: { p50: 35 },
+          workerRoundTripMs: { p50: 40, p95: 66 },
+          variants: [],
+          medianCandidateWidthPx: null,
+          medianAbsAngleDeg: null,
+          frames: { droppedRatio: 0.3 },
+        },
+      ],
+      verdictCounts: {
+        DECODED_CONFIRMED: 1,
+        DECODED_UNCONFIRMED: 0,
+        MISREAD: 0,
+        NO_DECODE: 0,
+        NOT_APPLICABLE: 1,
+      },
+      totals: { misreads: 0 },
+    };
+    const result = await buildRunArchive(fakeDb, 's1', report, '2026-09-04T12:00:00.000Z');
+    mkdirSync(dir, { recursive: true });
+    const target = join(dir, result.fileName);
+    writeFileSync(target, new Uint8Array(await result.blob.arrayBuffer()));
+    expect(result.bytes).toBeGreaterThan(0);
   });
 });
