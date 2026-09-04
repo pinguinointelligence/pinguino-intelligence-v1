@@ -8,8 +8,8 @@ Updated: 2026-09-04 (Europe/Madrid)
 - Denominator unchanged: 48 capability gates. Blocked items remain in the denominator.
 - Status: **PARTIALLY IMPLEMENTED / BLOCKED ON APPROVED COUNTRY DEFAULT DATA**.
 - Owner QA is separate, excluded from the denominator, and is not marked.
-- Current canonical Git base: `origin/staging` at `735f80a574d9afd681296ee0de141bc4571f458b`.
-- PR #150 merged the FILTR checkpoint `80cd3311df0889314815210d1e7d79dfca1ece74` normally into staging. The dedicated branch remains intact and unmerged into production/main.
+- Current canonical Git base: `origin/staging` at `f6cd1290c8df384eb0c0064af9aa4b9e68625537`.
+- PR #150 merged the FILTR implementation checkpoint `80cd3311df0889314815210d1e7d79dfca1ece74`; PR #152 merged the app-level guest bootstrap normally into staging. The dedicated branch remains intact and unmerged into production/main.
 - PR #151 advanced staging while follow-up PR #152 was in CI. Its `IngredientBuilder` overlap removes the recipe legend/header and adjusts control geometry; it does not change the accepted CP-44 request/replace flow, picker contracts, `IngredientRow`, `ingredientTableUx`, `ProductPickerPopover`, or `recipeStore`. Current-base seam tests pass.
 - PR #153 then advanced the responsive frame. It changes picker breakpoint/backdrop presentation and row/action geometry, but preserves the complete CP-44 `replaceInvocation`, context, and selection path; the expanded current-base seam passes.
 - PR #154 advanced Crown/cost/dialog behavior without changing Product Country, picker, Replace, or shared picker contracts. The final current-base seam remains green.
@@ -54,11 +54,13 @@ Updated: 2026-09-04 (Europe/Madrid)
 ## Served staging findings
 
 - `https://staging.pinguinoai.com/api/product-country` returns HTTP 200 with a normalized coarse country and `Cache-Control: private, no-store,max-age=0`.
+- A clean, unauthenticated browser origin on the exact deployed PR #152 artifact stored `ES` as `detected` in `pinguino.product_country.v1`; after reload the full record and original `selectedAt` were unchanged and no second detection request was required.
 - Live staging RPC checks proved explicit Product Country change, conflict-aware guest merge, and fail-closed no-foreign behavior for ES, PL, and FR.
+- Served contextual Replace opened from the `MILK 3.5%` row, selected the `Mleczne` context, loaded 21 candidates, and exposed `Zamień na …` actions without mutating the recipe.
 - Staging currently has **zero** approved `country_product_slot_assignments` rows.
 - Staging search currently returns **zero** commercial Milk rows and **zero** Engine-usable exact Milk SKUs for the required default/override scenario.
 - Therefore an actual approved primary-country SKU, user-preferred exact Milk override, HOME/PRO exact-SKU parity, and exact brand/EAN served scenario cannot be truthfully demonstrated. No arbitrary product or assignment was created.
-- Browser inspection exposed that the signed-out Demo shell did not invoke the guest-country authority unless a live picker surface mounted. The isolated app bootstrap and tests in this follow-up close that reachability gap; served persistence is rechecked after the follow-up deployment.
+- Browser inspection exposed that the signed-out Demo shell did not invoke the guest-country authority unless a live picker surface mounted. The isolated app bootstrap closes that reachability gap and the deployed reload proof now passes.
 
 ## Staging database reconciliation
 
@@ -120,9 +122,9 @@ The staging migration dry-run now reports the database is up to date for all thr
 | CP-39 | DONE    | Reliable coarse first-country signal                 | Vercel request-header endpoint and endpoint tests; no GPS                                                                                                                                               |
 | CP-40 | DONE    | Remove browser/UI-language inference                 | Service source contract and ES/PL/FR locale matrix                                                                                                                                                      |
 | CP-41 | DONE    | Explicit country survives travel/VPN/locale          | Account-first persistence tests                                                                                                                                                                         |
-| CP-42 | DONE    | Signed-out Product Country persistence               | Versioned corruption-safe store plus app-level bootstrap; focused reachability/persistence tests                                                                                                        |
+| CP-42 | DONE    | Signed-out Product Country persistence               | Versioned store plus app bootstrap; clean served origin preserved the exact ES/detected record across reload                                                                                            |
 | CP-43 | DONE    | Guest-to-account country merge                       | Atomic RPC, explicit conflict UI, client/source tests, staging SQL compile                                                                                                                              |
-| CP-44 | DONE    | Contextual Replace                                   | Combined CP-44 seam passes in 25-file / 256-test gate                                                                                                                                                   |
+| CP-44 | DONE    | Contextual Replace                                   | Combined seam passes; served MILK 3.5% flow loaded 21 contextual replacement actions                                                                                                                    |
 | CP-45 | DONE    | HOME/PRO country-resolution parity                   | Shared resolver hook/source contract                                                                                                                                                                    |
 | CP-46 | DONE    | HOME/PRO user-override parity                        | Shared resolver/picker authority                                                                                                                                                                        |
 | CP-47 | DONE    | Automated country/override matrix                    | Locale, guest/account, override, invalid/fallback, foreign-fail-closed tests; full regression green                                                                                                     |
@@ -135,20 +137,20 @@ The staging migration dry-run now reports the database is up to date for all thr
 - `WAITING_ON_GLOBAL_COUNTRY`: none.
 - `WAITING_ON_CLOUD_CONFLICT`: none.
 - `OWNER_DECISION_REQUIRED`: CP-32 — provide eligible exact products plus explicit approved country/Mapper-slot/exact-product assignments for Spain, Poland, and France.
-- `INTERNAL_SAFE_REMAINING`: push the latest current-staging merge to PR #152; rerun normal CI; merge normally; prove served guest local persistence after deployment.
+- `INTERNAL_SAFE_REMAINING`: none.
 - `SERVED STAGING E2E`: CP-48.
 - `OWNER QA`: not started and not marked.
 
 ## Completion ledger
 
 1. Requested scope: continue CP-31–CP-48 without stale blockers while preserving canonical precedence and CP-44.
-2. Completed work: country/default authority, user override wiring, coarse-country bootstrap, guest persistence/merge, HOME/PRO parity, automated matrix, regression verification, normal PR #150 merge, and staging-only migration application.
+2. Completed work: country/default authority, user override wiring, coarse-country bootstrap, guest persistence/merge, HOME/PRO parity, automated matrix, regression verification, normal PR #150/#152 merges, staging-only migration application, and served guest/Replace proofs.
 3. Files changed: country migration/pgTAP; global catalog service/contracts/hook; guest store; Vercel endpoint; picker projection/selection; Account Settings conflict UI; app-level Product Country bootstrap; tests; this report.
 4. Tests added/changed: country migration contract, guest store/service/bootstrap, Account Settings conflict, canonical projection, picker selection/CP-36, and pgTAP precedence/RLS coverage.
-5. Exact commands: focused `npm test -- --run ...` (25 files), `npm test`, `npm run verify:staging`, focused bootstrap tests (3 files), current-staging CP-44/bootstrap seams (9 and 11 files), `npm run typecheck`, Supabase linked dry-runs, rollback-only SQL validation, and staging acceptance RPC checks.
+5. Exact commands: focused `npm test -- --run ...` (25 files), `npm test`, `npm run verify:staging`, focused bootstrap tests (3 files), current-staging CP-44/bootstrap seams (9 and 11 files), `npm run typecheck`, Supabase linked dry-runs, rollback-only SQL validation, staging acceptance RPC checks, and browser reload/contextual-Replace served checks.
 6. Test results: focused 256 passed; full 11,932 passed / 122 skipped before the PR #151 refresh; staging gate passed; bootstrap 17 passed; current-base seams 103 and 107 passed; typecheck passed; live SQL precedence assertions passed.
 7. Previously accepted flows retested: shared HOME/PRO discovery, exact search, favorites/recency, contextual Replace, atomic recipe replacement, ProductBehavior seams, and owner contracts.
-8. Deployment environment: PR #150 and all three migrations are on staging; follow-up guest-bootstrap deployment pending; production untouched.
+8. Deployment environment: PR #150, PR #152, and all three FILTR migrations are on staging; exact merge SHA deployment succeeded; production untouched.
 9. Remaining incomplete: CP-32 and CP-48.
 10. Exact blockers: no owner-approved ES/PL/FR assignment rows and no Engine-usable exact Milk SKU; served proof cannot truthfully claim defaults or exact override without them.
-11. Git diff/commit status: checkpoint `80cd3311df0889314815210d1e7d79dfca1ece74` is merged to staging; guest-bootstrap checkpoint `f3da8f52cc746e6176a269f90172fa4640761114` is isolated in PR #152; branch history incorporates current staging through merge commits `11f9b5aced74468b7ea497a070ebd84addfb942d`, `3509c784ffa957f6c689b269628ff29e07c89878`, and `85047793b440e1a7c9a13ac23ad204c4479cafc1`.
+11. Git diff/commit status: implementation checkpoint `80cd3311df0889314815210d1e7d79dfca1ece74` and bootstrap checkpoint `f3da8f52cc746e6176a269f90172fa4640761114` are merged to staging through PR #150/#152; merge SHA is `f6cd1290c8df384eb0c0064af9aa4b9e68625537`; the final report checkpoint is reported in chat.
