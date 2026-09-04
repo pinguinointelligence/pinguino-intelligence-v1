@@ -12,10 +12,17 @@ import type { ProductionRescueAssessment } from '../../../../src/features/produc
 export const ENGINE_VERSION: '0.4.0';
 export const CONFIG_VERSION: '0.7.0';
 export const PRACTICAL_RECIPE_MODEL_VERSION: 'pro-whole-gram-v1';
-export const PRODUCTION_RESCUE_MODEL_VERSION: 'production-rescue-v3';
+export const PRODUCTION_RESCUE_MODEL_VERSION: 'production-rescue-v5';
 
 export function assessProductionRescue(session: ProductionSession): ProductionRescueAssessment;
 export function productionRescueCandidateFingerprint(input: RecipeInput): string;
+export function productionRescueTerminalAuthority(
+  input: RecipeInput,
+  session: ProductionSession,
+): {
+  valid: boolean;
+  issues: Array<{ code: string; messagePl: string }>;
+};
 export function hydrateProductionSessionFromRun(
   run: ProductionRun,
   source: ProductionSource,

@@ -31,7 +31,7 @@ import {
   type ProductionRescueOption,
 } from './productionRescue';
 import { productionRescueAuthorizationInvalidation } from './useProductionWorkspace';
-import { productionTestComposition } from './__fixtures__/productionTestComposition';
+import { productionTestComposition } from './productionTestComposition.fixture';
 
 const AT = '2026-08-25T09:01:00.000Z';
 
@@ -167,11 +167,11 @@ const assertLivePath = (session: ProductionSession) => {
   return { assessment, path };
 };
 
-const enlargeFor = (session: ProductionSession): ProductionRescueOption => {
+const enlargeFor = (session: ProductionSession, context?: string): ProductionRescueOption => {
   const enlarge = assessProductionRescue(session).options.find(
     (option) => option.id === 'enlarge_batch',
   );
-  expect(enlarge).toBeDefined();
+  expect(enlarge, context).toBeDefined();
   return enlarge!;
 };
 
@@ -542,7 +542,7 @@ describe('Production sequential-deviation P0', () => {
       let session = sessionFor(`enlarge-${entry.id}`, entry.input);
       session = confirmAtNextRevision(session, entry.preconfirmedTopUpLineId);
       session = confirmAtNextRevision(session, entry.changedLineId, entry.physical);
-      const enlarge = enlargeFor(session);
+      const enlarge = enlargeFor(session, entry.id);
       const hardSafety = assessProductionHardSafety(
         enlarge.candidateInput,
         calculateRecipe(enlarge.candidateInput),

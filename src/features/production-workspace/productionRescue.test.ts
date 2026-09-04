@@ -24,7 +24,7 @@ import {
 } from './productionSession';
 import { recipeFitForInput } from '@/features/protein-gelato/proteinAuthority';
 import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
-import { productionTestComposition } from './__fixtures__/productionTestComposition';
+import { productionTestComposition } from './productionTestComposition.fixture';
 import { assessProductionHardSafety, assessProductionRescue } from './productionRescue';
 
 const input: RecipeInput = {
@@ -832,6 +832,47 @@ describe('production rescue orchestration', () => {
     ]);
     expect(assessment.options.every((option) => option.verifiedByEngine)).toBe(true);
     expect(assessment.options.every((option) => option.scoreDisplay === '10/10')).toBe(true);
+  });
+
+  it('continues proportional add-only search until a larger batch repairs the stabilizer floor', () => {
+    const planned = ownerScenario();
+    const tara = planned.items.find((item) => item.id === 'tara')!;
+    const milk = planned.items.find((item) => item.id === 'milk')!;
+    tara.planned_grams = 2;
+    milk.planned_grams += 1;
+    let run = createProductionSession({
+      sessionId: 'run-stabilizer-floor-search',
+      ownerUserId: 'owner',
+      source: {
+        recipeId: 'recipe-stabilizer-floor-search',
+        recipeVersionId: 'version-stabilizer-floor-search',
+        recipeVersionNumber: 1,
+        recipeName: 'Stabilizer floor search',
+      },
+      plannedInput: planned,
+      plannedComposition: productionTestComposition(planned),
+      startedAt: '2026-09-04T12:00:00.000Z',
+    });
+    run = confirmProductionLine(
+      setDraftActualGrams(run, milk.id, milk.planned_grams + 1),
+      milk.id,
+      '2026-09-04T12:01:00.000Z',
+    );
+
+    const assessment = assessProductionRescue(run);
+    const restore = assessment.options.find((option) => option.id === 'restore_original_recipe');
+    expect(assessment.strategyTrace.restore_original_recipe?.authorityIssueSets).toEqual(
+      expect.arrayContaining([expect.arrayContaining(['aggregate_below_minimum'])]),
+    );
+    expect(restore).toBeDefined();
+    expect(restore!.finalMassG).toBeGreaterThan(1_200);
+    expect(restore!.candidateInput.items.find((item) => item.id === tara.id)?.planned_grams).toBe(
+      3,
+    );
+    expect(restore!.instructions.every((instruction) => instruction.kind === 'add')).toBe(true);
+    expect(
+      assessment.strategyTrace.restore_original_recipe?.evaluatedCandidateCount,
+    ).toBeGreaterThan(1);
   });
 
   it('can add more to an already-confirmed ingredient without subtracting its physical amount', () => {

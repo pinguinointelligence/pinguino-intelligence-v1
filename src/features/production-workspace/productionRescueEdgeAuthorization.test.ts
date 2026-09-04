@@ -15,7 +15,7 @@ import {
   type PersistTrustedAuthorizationInput,
   type TrustedRescueContext,
 } from '../../../supabase/functions/production-rescue-authorize/logic';
-import { productionTestBehaviorSnapshots } from './__fixtures__/productionTestComposition';
+import { productionTestBehaviorSnapshots } from './productionTestComposition.fixture';
 
 const OWNER = '11111111-1111-4111-8111-111111111111';
 const RUN = '22222222-2222-4222-8222-222222222222';
@@ -440,7 +440,7 @@ describe('trusted Production Rescue authorization', () => {
       engineVersion: '0.4.0',
       configVersion: '0.7.0',
       practicalRecipeVersion: 'pro-whole-gram-v1',
-      rescueModelVersion: 'production-rescue-v4',
+      rescueModelVersion: 'production-rescue-v5',
       bundlerVersion: '1.0.3',
       ttlSeconds: 300,
     });

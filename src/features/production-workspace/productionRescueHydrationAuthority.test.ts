@@ -43,24 +43,29 @@ import { parseCsv } from '@/lib/csv';
 import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
 import { verifyMainEnvelope } from '@/features/product-intelligence';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
+import type { ProductionRun } from '@/features/pro-core/productionContracts';
+import type { RecipeCompositionMetadata } from '@/features/recipe-composition/recipeCompositionPersistence';
 import { evaluateRecipeConstraintAuthority } from '@/features/recipe-constraints/recipeConstraintAuthority';
-import { assessProductionHardSafety } from './productionRescue';
+import { assessProductionHardSafety, assessProductionRescue } from './productionRescue';
 import {
   applyVerifiedRescueInput,
   createProductionSession,
   hydrateProductionSessionFromRun,
 } from './productionSession';
 import {
-  OWNER_ACTUAL_GRAMS,
-  OWNER_ACTUAL_TOTAL_G,
+  authorizeTrustedProductionRescue,
+  type PersistTrustedAuthorizationInput,
+  type TrustedRescueContext,
+} from '../../../supabase/functions/production-rescue-authorize/logic';
+import {
+  OWNER_BANANA_MAIN_POLICY,
   OWNER_BANANA_PHYSICAL_G,
   OWNER_LINE_IDS,
+  OWNER_MAPPER_IDS,
   OWNER_PLANNED_GRAMS,
-  OWNER_PLANNED_TOTAL_G,
-  OWNER_RESCUE_REVISION,
+  OWNER_RESCUE_GRAMS,
   OWNER_RUN_ID,
-  OWNER_SOURCE_ACTUAL_REVISION,
-} from './__fixtures__/ownerRescueRun2fc85403';
+} from './ownerRescueRun2fc85403.fixture';
 
 vi.setConfig({ testTimeout: 60_000 });
 
@@ -99,15 +104,7 @@ const ingredient = (id: string) => ({
   cost_per_kg: 1,
   cost_currency: 'EUR',
 });
-const IDS = {
-  milk: 'PI-ING-000236',
-  cream: 'PI-ING-000180',
-  smp: 'PI-ING-000270',
-  sucrose: 'PI-ING-000514',
-  dextrose: 'PI-ING-000494',
-  tara: 'PI-ING-000492',
-  banana: 'PI-ING-000345',
-} as const;
+const IDS = OWNER_MAPPER_IDS;
 
 const line = (
   id: string,
@@ -126,13 +123,13 @@ const line = (
 /** The rescue candidate exactly as the durable run stores it. */
 const candidate = (support: readonly number[], banana: number): RecipeInput => {
   const items = [
-    line('new-recipe-0-milk_3_5', IDS.milk, support[0]!),
-    line('new-recipe-1-cream_30', IDS.cream, support[1]!),
-    line('new-recipe-2-smp', IDS.smp, support[2]!),
-    line('new-recipe-3-sucrose', IDS.sucrose, support[3]!),
-    line('new-recipe-4-dextrose', IDS.dextrose, support[4]!),
-    line('new-recipe-5-tara_gum', IDS.tara, support[5]!),
-    line('line-mtn5pdnv-1', IDS.banana, banana, 'main'),
+    line(OWNER_LINE_IDS.milk, IDS.milk, support[0]!),
+    line(OWNER_LINE_IDS.cream, IDS.cream, support[1]!),
+    line(OWNER_LINE_IDS.smp, IDS.smp, support[2]!),
+    line(OWNER_LINE_IDS.sucrose, IDS.sucrose, support[3]!),
+    line(OWNER_LINE_IDS.dextrose, IDS.dextrose, support[4]!),
+    line(OWNER_LINE_IDS.tara, IDS.tara, support[5]!),
+    line(OWNER_LINE_IDS.banana, IDS.banana, banana, 'main'),
   ];
   const total = items.reduce((sum, item) => sum + item.planned_grams, 0);
   return {
@@ -146,9 +143,11 @@ const candidate = (support: readonly number[], banana: number): RecipeInput => {
 };
 
 /** What Rescue stored. */
-const STORED = candidate([492.2, 129.9, 46, 69, 63.2, 4.6], 345);
+const STORED = candidate(OWNER_RESCUE_GRAMS.slice(0, 6), OWNER_BANANA_PHYSICAL_G);
 /** The same intent without the 0.1 g the rounding gives away. */
 const EXACT = candidate([492.2, 129.95, 46, 69, 63.25, 4.6], 345);
+/** Immutable 1,000 g source plan for the owner run. */
+const ORIGINAL = candidate(OWNER_PLANNED_GRAMS.slice(0, 6), OWNER_PLANNED_GRAMS[6]);
 
 /**
  * The published `main-banana-fresh-dairy` v2 policy, copied from the durable
@@ -156,34 +155,21 @@ const EXACT = candidate([492.2, 129.95, 46, 69, 63.25, 4.6], 345);
  * The generic test fixture resolves BANANA with `hardLimitPercent: null`, which
  * cannot express the limit this defect turns on.
  */
-const BANANA_POLICY = {
-  mainCapability: 'MAIN_CAPABLE',
-  behaviorRole: 'MAIN_PROFILE_SPECIFIC',
-  mainClassification: 'MAIN_PROFILE_SPECIFIC',
-  mainAuthority: 'CALIBRATED',
-  mainCalibrationLevel: 'FAMILY',
-  mainBasis: 'FRUIT_EQUIVALENT',
-  mainEquivalentFactor: 1,
-  mainPolicyId: 'main-banana-fresh-dairy',
-  mainPolicyVersion: '2',
-  ecoFloorPercent: 10,
-  optimalCeilingPercent: 20,
-  hardLimitPercent: 30,
-  multiMainHardLimitPercent: null,
-  requiresLiquidDairyCarrier: true,
-  approvedLiquidDairyCarrier: false,
-  liquidDairyCarrierFloorPercent: 30,
-} as const;
+const BANANA_POLICY = OWNER_BANANA_MAIN_POLICY;
 
-const snapshotsFor = (input: RecipeInput) => {
+const snapshotsFor = (input: RecipeInput): Record<string, ProductBehaviorSnapshot> => {
   const base = productBehaviorTestSnapshots(input) as Record<string, ProductBehaviorSnapshot>;
   return {
     ...base,
+    'new-recipe-0-milk_3_5': {
+      ...base['new-recipe-0-milk_3_5'],
+      approvedLiquidDairyCarrier: true,
+    } as ProductBehaviorSnapshot,
     'line-mtn5pdnv-1': {
       ...base['line-mtn5pdnv-1'],
       ...BANANA_POLICY,
     } as ProductBehaviorSnapshot,
-  } as Readonly<Record<string, ProductBehaviorSnapshot | undefined>>;
+  } as Record<string, ProductBehaviorSnapshot>;
 };
 
 const violationCodes = (input: RecipeInput): string[] => {
@@ -258,42 +244,58 @@ describe('rescued Production run is written in a state its own recovery refuses'
     expect(assessment.capacityExceeded).toBe(false);
   });
 
-  /**
-   * THE FIX'S CONTRACT. A rescue that is already durably accepted is a physical
-   * fact in the vessel: recovery reconstructs it, it does not re-decide it. A
-   * brand-new rescue is still fully re-validated.
-   */
-  describe('recovery reconstructs, it does not re-decide', () => {
+  describe('terminal authority and invalid durable recovery', () => {
     it('a NEW rescue carrying the over-limit candidate is still refused', () => {
       expect(() => applyVerifiedRescueInput(sessionFor(STORED), STORED, 1)).toThrow(
         'Grupa Main przekracza twardy limit 30.0%.',
       );
     });
 
-    it('recovery supersedes the invalid target instead of stranding OR blessing it', () => {
-      const planned = candidate(OWNER_PLANNED_GRAMS.slice(0, 6) as unknown as number[], 300);
-      const session = sessionFor(planned);
+    it('does not expose a bypass that can apply the invalid durable vector', () => {
+      expect(applyVerifiedRescueInput).toHaveLength(2);
+      const legacyBypassCall = applyVerifiedRescueInput as unknown as (
+        session: ReturnType<typeof sessionFor>,
+        candidate: RecipeInput,
+        revision: number,
+        options: { alreadyAuthorized: boolean },
+      ) => unknown;
+      expect(() =>
+        legacyBypassCall(sessionFor(STORED), STORED, 1, {
+          alreadyAuthorized: true,
+        }),
+      ).toThrow('Grupa Main przekracza twardy limit 30.0%.');
+    });
+
+    it('recovers the stuck run from immutable plan + physical facts and searches past 1149.9 g', async () => {
+      const composition: RecipeCompositionMetadata = {
+        schemaVersion: 1,
+        baseScope: 'BASE_FORMULATION',
+        baseOrder: ORIGINAL.items.map((item) => item.id),
+        toppings: [],
+        behaviorSnapshots: snapshotsFor(ORIGINAL),
+        migrationAmbiguities: [],
+      };
       const run = {
         runId: OWNER_RUN_ID,
         ownerUserId: 'owner-1',
-        recipeId: session.source.recipeId,
-        recipeVersionId: session.source.recipeVersionId,
-        recipeVersionNumber: session.source.recipeVersionNumber,
+        recipeId: 'recipe-1',
+        recipeVersionId: 'version-1',
+        recipeVersionNumber: 1,
         status: 'in_progress',
-        plannedBatchG: OWNER_PLANNED_TOTAL_G,
-        plannedItems: session.lines.map((line, index) => ({
-          id: line.lineId,
-          name: line.name,
-          canonicalIngredientId: line.canonicalIngredientId,
+        plannedBatchG: 1_000,
+        plannedItems: ORIGINAL.items.map((item, index) => ({
+          id: item.id,
+          name: item.ingredient.name,
+          canonicalIngredientId: item.ingredient.canonical_ingredient_id ?? item.ingredient.id,
           processScope: 'BASE_FORMULATION',
           scopePosition: index,
-          plannedGrams: line.plannedGrams,
-          displayGrams: line.plannedGrams,
+          plannedGrams: item.planned_grams,
+          displayGrams: item.planned_grams,
         })),
-        productProfile: planned.category,
-        temperatureC: planned.target_temperature_c,
-        engineVersion: 'test',
-        configVersion: 'test',
+        productProfile: ORIGINAL.category,
+        temperatureC: ORIGINAL.target_temperature_c,
+        engineVersion: '0.4.0',
+        configVersion: '0.7.0',
         mapperDatasetVersion: null,
         plannedDate: null,
         machine: null,
@@ -302,62 +304,283 @@ describe('rescued Production run is written in a state its own recovery refuses'
         notes: null,
         createdBy: 'owner-1',
         createdAt: '2026-09-04T16:18:36.000Z',
-        updatedAt: '2026-09-04T16:19:04.000Z',
-        events: [],
+        updatedAt: '2026-09-04T16:19:04.947Z',
         actual: {
-          revision: OWNER_SOURCE_ACTUAL_REVISION,
-          recordedAt: '2026-09-04T16:18:59.000Z',
-          items: session.lines.map((line, index) => ({
-            id: line.lineId,
-            name: line.name,
-            actualGrams: OWNER_ACTUAL_GRAMS[index]!,
-            confirmedAt: '2026-09-04T16:18:59.000Z',
+          items: ORIGINAL.items.map((item, index) => ({
+            id: item.id,
+            name: item.ingredient.name,
+            actualGrams: item.id === 'line-mtn5pdnv-1' ? 345 : item.planned_grams,
+            confirmedAt: `2026-09-04T16:18:${String(40 + index).padStart(2, '0')}.000Z`,
             confirmationOrder: index + 1,
           })),
-          substitutions: [],
-          totalMixG: OWNER_ACTUAL_TOTAL_G,
-          yieldG: null,
+          actualTotalMixG: 1_045,
+          actualYieldG: null,
           wasteG: null,
+          substitutions: [],
           operatorNotes: null,
           deviationReason: null,
+          recordedBy: 'owner-1',
+          recordedAt: '2026-09-04T16:19:00.000Z',
+          revision: 8,
         },
         rescue: {
-          revision: OWNER_RESCUE_REVISION,
-          acceptedAt: '2026-09-04T16:19:04.947Z',
           recipeInput: STORED,
-          productComposition: session.plannedComposition,
+          productComposition: { ...composition, behaviorSnapshots: snapshotsFor(STORED) },
+          acceptedBy: 'owner-1',
+          acceptedAt: '2026-09-04T16:19:04.947Z',
+          revision: 1,
         },
-      } as unknown as Parameters<typeof hydrateProductionSessionFromRun>[0];
+        completedAt: null,
+        cancelledAt: null,
+        events: [
+          {
+            eventId: 'event-started',
+            type: 'started',
+            at: '2026-09-04T16:18:36.000Z',
+            by: 'owner-1',
+            detail: null,
+            amendment: null,
+          },
+          {
+            eventId: 'event-invalid-rescue-decision',
+            type: 'deviation_decision_accepted',
+            at: '2026-09-04T16:19:04.947Z',
+            by: 'owner-1',
+            detail: null,
+            amendment: {
+              stableOptionId: 'restore_original_recipe',
+              sourceActualRevision: 8,
+              rescueRevision: 1,
+              finalMassG: 1149.9,
+              scoreDisplay: '10/10',
+            },
+          },
+        ],
+      } as unknown as ProductionRun;
 
-      const hydrated = hydrateProductionSessionFromRun(
+      const recovered = hydrateProductionSessionFromRun(
         run,
-        session.source,
-        planned,
-        session.plannedComposition,
+        {
+          recipeId: 'recipe-1',
+          recipeVersionId: 'version-1',
+          recipeVersionNumber: 1,
+          recipeName: 'QA RESCUE COMPLETE BANANA',
+        },
+        ORIGINAL,
+        composition,
       );
+      const banana = recovered.lines.find((line) => line.lineId === 'line-mtn5pdnv-1')!;
+      expect(recovered.invalidDurableRescue).toMatchObject({
+        revision: 1,
+        issueCodes: expect.arrayContaining(['main_above_hard_limit']),
+      });
+      expect(recovered.supersededRescue).toMatchObject({
+        revision: 1,
+        reasonPl: 'Grupa Main przekracza twardy limit 30.0%.',
+      });
+      expect(recovered.durableRescueRevision).toBe(1);
+      expect(recovered.lastDeviationDecision).toBeNull();
+      expect(banana.targetGrams).toBe(300);
+      expect(banana.physicalAddedGrams).toBe(345);
+      expect(recovered.topUpTasks).toEqual([]);
 
-      // Not stranded: recovery completed.
-      expect(hydrated.sessionId).toBe(OWNER_RUN_ID);
-      // Not blessed: the invalid 1149.9 g future is NOT the live plan.
-      const bananaLine = hydrated.lines.find((line) => line.lineId === OWNER_LINE_IDS.banana)!;
-      expect(bananaLine.targetGrams).not.toBeCloseTo(345, 6);
-      // Physical facts preserved exactly.
-      expect(bananaLine.physicalAddedGrams).toBeCloseTo(OWNER_BANANA_PHYSICAL_G, 6);
-      // The authorization survives as audit, with the real reason.
-      expect(hydrated.supersededRescue?.revision).toBe(OWNER_RESCUE_REVISION);
-      expect(hydrated.supersededRescue?.reasonPl).toBe('Grupa Main przekracza twardy limit 30.0%.');
+      const assessment = assessProductionRescue(recovered);
+      const restore = assessment.options.find((option) => option.id === 'restore_original_recipe');
+      expect(restore?.finalMassG).toBeGreaterThan(1149.9);
+      expect(restore?.instructions.every((instruction) => instruction.kind === 'add')).toBe(true);
+      expect(
+        evaluateRecipeConstraintAuthority({
+          recipe: restore!.candidateInput,
+          snapshots: recovered.plannedComposition.behaviorSnapshots ?? {},
+          module: 'BATCH_RESCUE',
+        }).valid,
+      ).toBe(true);
+
+      let edgePersisted: PersistTrustedAuthorizationInput | null = null;
+      const edgeContext: TrustedRescueContext = {
+        recipeTitle: recovered.source.recipeName,
+        run: {
+          id: run.runId,
+          owner_user_id: run.ownerUserId,
+          recipe_id: run.recipeId,
+          recipe_version_id: run.recipeVersionId,
+          recipe_version_number: run.recipeVersionNumber,
+          status: run.status,
+          planned_batch_g: run.plannedBatchG,
+          product_profile: run.productProfile,
+          temperature_c: run.temperatureC,
+          engine_version: run.engineVersion,
+          config_version: run.configVersion,
+          mapper_dataset_version: run.mapperDatasetVersion,
+          planned_date: run.plannedDate,
+          machine: run.machine,
+          location: run.location,
+          batch_reference: run.batchReference,
+          notes: run.notes,
+          created_by: run.createdBy,
+          created_at: run.createdAt,
+          updated_at: run.updatedAt,
+          completed_at: run.completedAt,
+          cancelled_at: run.cancelledAt,
+          rescue_recipe_input: STORED as unknown as Record<string, unknown>,
+          rescue_product_composition: {
+            ...composition,
+            behaviorSnapshots: snapshotsFor(STORED),
+          } as unknown as Record<string, unknown>,
+          rescue_accepted_by: run.ownerUserId,
+          rescue_accepted_at: run.rescue!.acceptedAt,
+          rescue_revision: 1,
+          actual_revision: 8,
+        },
+        version: {
+          id: run.recipeVersionId,
+          recipe_id: run.recipeId,
+          owner_user_id: run.ownerUserId,
+          version_number: run.recipeVersionNumber,
+          recipe_input: ORIGINAL as unknown as Record<string, unknown>,
+          product_composition: composition as unknown as Record<string, unknown>,
+          total_batch_g: 1_000,
+          product_profile: ORIGINAL.category,
+          temperature_c: ORIGINAL.target_temperature_c,
+          engine_version: run.engineVersion,
+          config_version: run.configVersion,
+          mapper_dataset_version: null,
+          source: 'manual',
+          created_by: run.ownerUserId,
+          created_at: run.createdAt,
+          restored_from_version: null,
+          note: null,
+        },
+        planned: run.plannedItems.map((item, position) => ({
+          line_id: item.id,
+          name: item.name,
+          canonical_ingredient_id: item.canonicalIngredientId,
+          planned_grams: item.plannedGrams,
+          display_grams: item.displayGrams,
+          position,
+          process_scope: item.processScope,
+          scope_position: item.scopePosition,
+        })),
+        actual: {
+          actual_items: run.actual!.items,
+          substitutions: [],
+          actual_total_mix_g: 1_045,
+          actual_yield_g: null,
+          waste_g: null,
+          operator_notes: null,
+          deviation_reason: null,
+          recorded_by: run.ownerUserId,
+          recorded_at: run.actual!.recordedAt,
+        },
+        events: run.events.map((event) => ({
+          id: event.eventId,
+          event_type: event.type,
+          detail: event.detail,
+          amendment: event.amendment,
+          created_by: event.by,
+          created_at: event.at,
+        })),
+      };
+      const bundleSha = (
+        JSON.parse(
+          readFileSync(
+            resolve(
+              process.cwd(),
+              'supabase/functions/_shared/generated/productionRescueEngine.manifest.json',
+            ),
+            'utf8',
+          ),
+        ) as { bundle: { sha256: string } }
+      ).bundle.sha256;
+      const edgeResult = await authorizeTrustedProductionRescue(
+        run.ownerUserId,
+        {
+          runId: run.runId,
+          stableOptionId: 'restore_original_recipe',
+          expectedActualRevision: 8,
+          expectedRescueRevision: 1,
+          idempotencyKey: 'owner-banana-rescue-revision-2',
+          expectedEngineBundleSha256: bundleSha,
+        },
+        {
+          loadContext: async () => edgeContext,
+          persistAuthorization: async (input) => {
+            edgePersisted = input;
+            return {
+              authorizationId: 'authorization-owner-banana-revision-2',
+              runId: input.runId,
+              stableOptionId: input.stableOptionId,
+              expectedActualRevision: input.expectedActualRevision,
+              expectedRescueRevision: input.expectedRescueRevision,
+              candidateFingerprint: input.candidateFingerprint,
+              authorizedAt: '2026-09-04T16:24:00.000Z',
+              expiresAt: '2026-09-04T16:29:00.000Z',
+              safeMetadata: input.safeMetadata,
+            };
+          },
+        },
+      );
+      expect(edgeResult.preview.finalMassG).toBeGreaterThan(1149.9);
+      expect(edgePersisted).not.toBeNull();
+      expect(
+        evaluateRecipeConstraintAuthority({
+          recipe: edgePersisted!.recipeInput as unknown as RecipeInput,
+          snapshots: snapshotsFor(ORIGINAL),
+          module: 'BATCH_RESCUE',
+        }).valid,
+      ).toBe(true);
+
+      const repairedRun = {
+        ...run,
+        updatedAt: '2026-09-04T16:25:00.000Z',
+        rescue: {
+          recipeInput: restore!.candidateInput,
+          productComposition: {
+            ...composition,
+            baseOrder: restore!.candidateInput.items.map((item) => item.id),
+            behaviorSnapshots: snapshotsFor(restore!.candidateInput),
+          },
+          acceptedBy: 'owner-1',
+          acceptedAt: '2026-09-04T16:25:00.000Z',
+          revision: 2,
+        },
+        events: [
+          ...run.events,
+          {
+            eventId: 'event-valid-rescue-decision',
+            type: 'deviation_decision_accepted' as const,
+            at: '2026-09-04T16:25:00.000Z',
+            by: 'owner-1',
+            detail: null,
+            amendment: {
+              stableOptionId: 'restore_original_recipe',
+              sourceActualRevision: 8,
+              rescueRevision: 2,
+              finalMassG: restore!.finalMassG,
+              scoreDisplay: restore!.scoreDisplay,
+            },
+          },
+        ],
+      } as ProductionRun;
+      const superseded = hydrateProductionSessionFromRun(
+        repairedRun,
+        recovered.source,
+        ORIGINAL,
+        composition,
+      );
+      expect(superseded.invalidDurableRescue).toBeNull();
+      expect(superseded.supersededRescue).toBeNull();
+      expect(superseded.durableRescueRevision).toBe(2);
+      expect(superseded.lastDeviationDecision).toMatchObject({
+        strategy: 'restore_original_recipe',
+        rescueRevision: 2,
+      });
+      expect(superseded.topUpTasks.length).toBeGreaterThan(0);
+      expect(
+        superseded.topUpTasks.every(
+          (task) => task.cumulativeTargetG === task.physicalBaselineG + task.authorizedDeltaG,
+        ),
+      ).toBe(true);
     });
   });
-
-  /**
-   * NOT YET PROVEN HERE — the bounded add-only search reaching a legal
-   * candidate for the owner's vessel. A synthetic session built from this
-   * fixture returns `impossible`
-   * ("Brak bezpiecznej korekty, która zachowuje fizycznie dodane składniki…"),
-   * while the real run demonstrably produced candidates, so the fixture still
-   * diverges from the persisted session in a way this file has not isolated.
-   * A test that asserts over an empty option list would pass vacuously, so
-   * none is written. This claim is proven end-to-end on served staging by the
-   * fresh Banana run instead.
-   */
 });

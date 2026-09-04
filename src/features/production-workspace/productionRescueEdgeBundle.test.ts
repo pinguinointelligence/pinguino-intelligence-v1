@@ -7,6 +7,7 @@ import { DEFAULT_PRESET } from '@/data/demoPresets';
 import type { RecipeInput } from '@/engine';
 import { sorbetMapperIngredient } from '@/features/recipe-constraints/__fixtures__/sorbetAuthorityFixture';
 import { assessProductionRescue as assessCanonical } from './productionRescue';
+import { productionTestComposition } from './productionTestComposition.fixture';
 import {
   confirmProductionLine,
   createProductionSession,
@@ -19,7 +20,6 @@ import {
   PRODUCTION_RESCUE_MODEL_VERSION,
   assessProductionRescue as assessGenerated,
 } from '../../../supabase/functions/_shared/generated/productionRescueEngine.bundle.mjs';
-import { productionTestComposition } from './__fixtures__/productionTestComposition';
 
 const generatedDir = join(process.cwd(), 'supabase/functions/_shared/generated');
 const manifest = JSON.parse(
@@ -153,7 +153,7 @@ describe('generated canonical Production Rescue Edge bundle', () => {
       engine: '0.4.0',
       config: '0.7.0',
       practicalRecipe: 'pro-whole-gram-v1',
-      productionRescue: 'production-rescue-v4',
+      productionRescue: 'production-rescue-v5',
     });
     expect(manifest.bundler.version).toBe('1.0.3');
     expect(manifest.versions.productionSessionSchema).toBe(2);

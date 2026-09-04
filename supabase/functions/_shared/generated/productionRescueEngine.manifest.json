@@ -9,6 +9,7 @@
   "exportedRuntime": [
     "assessProductionRescue",
     "productionRescueCandidateFingerprint",
+    "productionRescueTerminalAuthority",
     "hydrateProductionSessionFromRun",
     "scaleRecipeVersion",
     "scaledRecipeInput"
@@ -17,12 +18,12 @@
     "engine": "0.4.0",
     "config": "0.7.0",
     "practicalRecipe": "pro-whole-gram-v1",
-    "productionRescue": "production-rescue-v4",
+    "productionRescue": "production-rescue-v5",
     "productionSessionSchema": 2
   },
   "bundle": {
-    "bytes": 346279,
-    "sha256": "9284d59dfa3a7d9ed9a4863cf8c84aac31e07c3af798e7f4efd18545eff3a26d",
+    "bytes": 351010,
+    "sha256": "177c39a8509cee98f1b27d12f571d5a68ec0d7b0cddf433d14c097602db89878",
     "externalImports": 0,
     "dynamicImports": 0
   },
@@ -85,7 +86,7 @@
     },
     {
       "path": "src/engine/corrections/recovery.ts",
-      "sha256": "2f02fbac908929ab4c3b2100c03343f98074d679662f97b9570c403997e850c1"
+      "sha256": "cf5f41b2f633faea6b66ce264e967d51a6fda6a52378f251cbc3197013857a89"
     },
     {
       "path": "src/engine/corrections/redact.ts",
@@ -193,11 +194,15 @@
     },
     {
       "path": "src/features/production-workspace/productionRescue.ts",
-      "sha256": "00d8e00f15f79fa2dcd8ff62f2ca8a6486e9d775f51d233a45c6ca9566f3fdab"
+      "sha256": "60749ddf7787b8d8165c5bdea12ae2fc931c98b734e418b7cb9000f0b737d07a"
+    },
+    {
+      "path": "src/features/production-workspace/productionRescueAuthority.ts",
+      "sha256": "d8524652b23b22e8ce92a8a0faaa42e18386909969908d83a88f7dec7c9af22e"
     },
     {
       "path": "src/features/production-workspace/productionSession.ts",
-      "sha256": "5ff75faedf70cdcdd9b003234b39afaccbf9f4401b9ef81d5ceb5c5321aaa6ff"
+      "sha256": "1602c32b2a379433a725796ecc58e09ece72f52b99715f1714c3c5164fa5d9f2"
     },
     {
       "path": "src/features/protein-gelato/proteinAuthority.ts",
@@ -272,5 +277,5 @@
       "sha256": "a2207c9c4e9431daa728d6b03fe1b9c4a4a3ba3403a0c056f2808c0759a455c8"
     }
   ],
-  "sourceClosureSha256": "9459884eac76d355945c843fb7481de7aafeeecafaec7fad23ba001fa0a69282"
+  "sourceClosureSha256": "61e879e9e7070bc3b581881050f29a3920ae2ca0a0408d693bdea58696dbc082"
 }
