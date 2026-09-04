@@ -582,7 +582,8 @@ function bestOption(
     const executable = audit.executableInput;
     if (!preservesPhysicalReality(session, executable)) return false;
     const mass = totalFor(executable);
-    if (!acceptMass(mass) || !nativeSafe(executable, audit.executableResult)) return false;
+    if (!acceptMass(mass)) return false;
+    if (!nativeSafe(executable, audit.executableResult)) return false;
     const authority = productionRescueTerminalAuthority(executable, session);
     const issueCodes = authority.issues.map((issue) => issue.code).sort();
     authorityIssueSets.set(issueCodes.join('|'), issueCodes);
@@ -772,7 +773,20 @@ export function assessProductionRescue(session: ProductionSession): ProductionRe
     session,
     forecastInput,
     'actual_batch',
-    (mass) => mass > currentTarget + 0.1,
+    // RESTORING THE ORIGINAL RECIPE CAN MEAN RETURNING TO IT, NOT ONLY GROWING
+    // PAST IT. This predicate used to demand `mass > currentTarget + 0.1`, an
+    // overweight assumption: it fits BANANA (345 g physically in a 300 g line
+    // forces the batch up to 1150.1 g) but excludes the underweight case
+    // entirely. STRAWBERRIES planned 217 g and weighed 206 g needs exactly
+    // +11 g to reconstruct the ALREADY-VALID 670 g plan — a mass equal to the
+    // original target, which `> target + 0.1` rejected. With the machine also
+    // capped at 670 g nothing above qualified either, so a one-ingredient
+    // add-only repair reported „Nie mamy bezpiecznej korekty dla tej partii".
+    //
+    // The original target is the floor, never a value to step over: physical
+    // material can never be removed, so a restore can only ever land at or
+    // above it.
+    (mass) => mass >= currentTarget - 0.1,
     'restore_original_profile',
   );
   if (restoreSearch.option) options.push(restoreSearch.option);

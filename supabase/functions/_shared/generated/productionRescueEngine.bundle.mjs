@@ -3164,17 +3164,6 @@ function restoreOriginalProfile(request) {
 		if (!current || baseline.planned_grams <= EPSILON$1) continue;
 		scaleFactor = Math.max(scaleFactor, effectiveGrams(current) / baseline.planned_grams);
 	}
-	if (scaleFactor <= 1.000000001) return {
-		candidates: [],
-		trace: {
-			objective: "restore_original_profile",
-			evaluatedCandidateCount: 0,
-			hardSafeCandidateCount: 0,
-			eligibleLineCount: request.input.items.length,
-			uniqueHardReasonSets: [],
-			finalCandidateGrams: []
-		}
-	};
 	const baselineById = new Map(request.baselineInput.items.map((item) => [item.id, item]));
 	const currentTotal = totalMass(request.input);
 	const baselineTotal = totalMass(request.baselineInput);
@@ -8636,7 +8625,8 @@ function bestOption(id, title, explanation, session, forecastInput, context, acc
 		if (!audit?.hardGatePassed) return false;
 		const executable = audit.executableInput;
 		if (!preservesPhysicalReality(session, executable)) return false;
-		if (!acceptMass(totalFor(executable)) || !nativeSafe(executable, audit.executableResult)) return false;
+		if (!acceptMass(totalFor(executable))) return false;
+		if (!nativeSafe(executable, audit.executableResult)) return false;
 		const authority = productionRescueTerminalAuthority(executable, session);
 		const issueCodes = authority.issues.map((issue) => issue.code).sort();
 		authorityIssueSets.set(issueCodes.join("|"), issueCodes);
@@ -8767,7 +8757,7 @@ function assessProductionRescue(session) {
 		trace: emptyStrategyTrace()
 	} : bestOption("enlarge_batch", (mass) => `Minimalna bezpieczna korekta · ${formatBatchMassG(mass)} g`, (mass) => `Najmniejsza bezpieczna partia powyżej ${formatBatchMassG(currentTarget)} g dla tego, co jest już w naczyniu: ${formatBatchMassG(mass)} g.`, session, forecastInput, "actual_batch", (mass) => mass > currentTarget + .1, "minimum_safe");
 	if (enlargeSearch.option) options.push(enlargeSearch.option);
-	const restoreSearch = bestOption("restore_original_recipe", (mass) => `Przywróć oryginalną recepturę · ${formatBatchMassG(mass)} g`, (mass) => `Skaluje wyjściową recepturę do ${formatBatchMassG(mass)} g i może ponownie otworzyć potwierdzone produkty wyłącznie jako dodatnie dolewki.`, session, forecastInput, "actual_batch", (mass) => mass > currentTarget + .1, "restore_original_profile");
+	const restoreSearch = bestOption("restore_original_recipe", (mass) => `Przywróć oryginalną recepturę · ${formatBatchMassG(mass)} g`, (mass) => `Skaluje wyjściową recepturę do ${formatBatchMassG(mass)} g i może ponownie otworzyć potwierdzone produkty wyłącznie jako dodatnie dolewki.`, session, forecastInput, "actual_batch", (mass) => mass >= currentTarget - .1, "restore_original_profile");
 	if (restoreSearch.option) options.push(restoreSearch.option);
 	if (hardSafety.safe) {
 		let continuationAudit = tenthGramProductionAudit(session, forecastInput);

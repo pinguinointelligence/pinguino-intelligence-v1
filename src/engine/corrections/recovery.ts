@@ -247,19 +247,19 @@ function restoreOriginalProfile(request: BatchRecoveryRequest): BatchRecoveryRes
     if (!current || baseline.planned_grams <= EPSILON) continue;
     scaleFactor = Math.max(scaleFactor, effectiveGrams(current) / baseline.planned_grams);
   }
-  if (scaleFactor <= 1 + EPSILON) {
-    return {
-      candidates: [],
-      trace: {
-        objective: 'restore_original_profile',
-        evaluatedCandidateCount: 0,
-        hardSafeCandidateCount: 0,
-        eligibleLineCount: request.input.items.length,
-        uniqueHardReasonSets: [],
-        finalCandidateGrams: [],
-      },
-    };
-  }
+  // NO EARLY RETURN AT scaleFactor == 1. This used to bail out whenever nothing
+  // in the vessel exceeded its planned amount, which is precisely the
+  // UNDERWEIGHT case — and it is the one with the simplest possible answer:
+  // scale 1.0 IS the original plan, so `candidateAtScale(1)` tops every short
+  // line back up to its planned grams and proposes nothing else. Bailing out
+  // reported „Nie mamy bezpiecznej korekty dla tej partii" for STRAWBERRIES
+  // planned 217 g / weighed 206 g, where +11 g reconstructs the already-valid
+  // 670 g plan exactly.
+  //
+  // A vessel that already matches its plan is still not a rescue: that
+  // candidate has no actions, and `accepted()` below requires at least one.
+  // `scaleFactor` is clamped at 1 by its own initializer, so an overweight
+  // batch is unaffected (BANANA 345 / 300 keeps scaleFactor 1.15).
 
   const baselineById = new Map(request.baselineInput.items.map((item) => [item.id, item]));
   const currentTotal = totalMass(request.input);
