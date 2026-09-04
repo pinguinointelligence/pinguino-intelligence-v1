@@ -1,7 +1,7 @@
 /**
  * Pure reconciliation of evidence into a provenance ledger. This is NOT a technical authority: it
- * records who said what, keeps conflicts visible, and derives the lifecycle stage from facts that
- * exist — it never fills a gap with a value.
+ * records who said what (source, authority, time), keeps conflicts visible, and derives the lifecycle
+ * stage from facts that exist — it never fills a gap with a value.
  */
 import type { CodeIdentity } from '../contracts';
 import type {
@@ -30,11 +30,20 @@ function scalar(v: unknown): string | number | null {
   return typeof v === 'string' || typeof v === 'number' ? v : null;
 }
 
+function authorityOf(src: FactSource): string {
+  if (src === 'barcode') return 'scan-core';
+  if (src === 'label' || src === 'user_confirmed') return 'product-scan-analyze';
+  if (src === 'catalog') return 'resolve_exact_products_by_gtin_v1';
+  return 'intimport-enrich';
+}
+
 export function buildLedger(
   identity: CodeIdentity,
   result: ScanResultLike | null,
   missingCritical: readonly string[],
+  context: { sessionId?: string | null; recordedAt?: number | null } = {},
 ): FactLedger {
+  const recordedAt = context.recordedAt ?? null;
   const facts: Fact[] = [
     {
       field: 'barcode',
@@ -42,6 +51,9 @@ export function buildLedger(
       source: 'barcode',
       confidence: 'high',
       sourceUrl: null,
+      authority: 'scan-core',
+      recordedAt,
+      contributingSources: ['barcode'],
     },
     {
       field: 'symbology',
@@ -49,6 +61,9 @@ export function buildLedger(
       source: 'barcode',
       confidence: 'high',
       sourceUrl: null,
+      authority: 'scan-core',
+      recordedAt,
+      contributingSources: ['barcode'],
     },
   ];
   const conflicts: FactConflict[] = [];
@@ -60,10 +75,19 @@ export function buildLedger(
       if (src) bySource.set(e.field, src);
     }
     const external = new Map<string, { url: string | null; source: FactSource }>();
+    const contributors = new Map<string, Set<FactSource>>();
     for (const s of result.externalSources ?? []) {
       const src = asSource(s.sourceType) ?? 'web_search';
       sources.add(src); // consulted, even where the label later outranks it (visible in conflicts)
-      for (const f of s.fieldsUsed ?? []) external.set(f, { url: s.url, source: src });
+      for (const f of s.fieldsUsed ?? []) {
+        if (!external.has(f)) external.set(f, { url: s.url, source: src });
+        contributors.set(f, (contributors.get(f) ?? new Set<FactSource>()).add(src));
+      }
+    }
+    for (const e of result.evidence ?? []) {
+      const src = asSource(e.source);
+      if (src)
+        contributors.set(e.field, (contributors.get(e.field) ?? new Set<FactSource>()).add(src));
     }
     const push = (field: string, value: unknown) => {
       const v = scalar(value);
@@ -71,12 +95,21 @@ export function buildLedger(
       const ext = external.get(field);
       const src = bySource.get(field) ?? ext?.source ?? null;
       if (!src) return; // a value without provenance is not a fact (we do not guess where it came from)
+      const contributing = [...(contributors.get(field) ?? new Set<FactSource>([src]))];
       facts.push({
         field,
         value: v,
         source: src,
-        confidence: src === 'label' ? 'high' : src === 'manufacturer' ? 'medium' : 'low',
+        confidence:
+          src === 'label' || src === 'user_confirmed'
+            ? 'high'
+            : src === 'manufacturer'
+              ? 'medium'
+              : 'low',
         sourceUrl: ext?.url ?? null,
+        authority: authorityOf(src),
+        recordedAt,
+        contributingSources: contributing.length > 0 ? contributing : [src],
       });
       sources.add(src);
     };
@@ -99,6 +132,10 @@ export function buildLedger(
     }
   }
   return {
+    gtin: identity.canonicalGtin13,
+    symbology: identity.symbology,
+    sessionId: context.sessionId ?? null,
+    recordedAt,
     facts,
     conflicts,
     identity: {

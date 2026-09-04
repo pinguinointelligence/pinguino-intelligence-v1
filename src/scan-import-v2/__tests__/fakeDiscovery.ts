@@ -24,6 +24,12 @@ export interface ProviderFacts {
   sourceType?: 'manufacturer' | 'barcode_registry' | 'retailer' | 'web_search';
   url?: string;
 }
+/** a second provider answering the same field: the legacy server merge keeps the higher-ranked value and lists both sources */
+export interface SecondProviderFacts {
+  brand?: string;
+  sourceType: 'manufacturer' | 'barcode_registry' | 'retailer' | 'web_search';
+  url?: string;
+}
 export interface LabelFacts {
   displayName?: string;
   brand?: string;
@@ -43,6 +49,8 @@ function missingOf(result: ScanResultLike | null): string[] {
 export class FakeDiscovery implements DiscoveryPort {
   serverCatalogue = new Map<string, ExactCandidate>();
   provider = new Map<string, ProviderFacts>();
+  secondProvider = new Map<string, SecondProviderFacts>();
+  clock = 1_000;
   providerError: 'provider_timeout' | 'provider_failed' | 'provider_unavailable' | null = null;
   label = new Map<string, LabelFacts>();
   /** the canonical ProductBehaviour authority's verdict per created product (never invented here) */
@@ -70,8 +78,9 @@ export class FakeDiscovery implements DiscoveryPort {
     }
     return s;
   }
-  async research(identity: CodeIdentity): Promise<ResearchOutcome> {
+  async research(identity: CodeIdentity, ctx?: RequestContext): Promise<ResearchOutcome> {
     this.calls.push(`research:${identity.canonicalGtin13}`);
+    if (ctx) this.clock = ctx.now;
     const exact = this.serverCatalogue.get(identity.canonicalGtin13);
     if (exact) return { kind: 'existing_product', product: exact };
     const s = this.session(identity);
@@ -86,20 +95,38 @@ export class FakeDiscovery implements DiscoveryPort {
           (f === 'identity.brand' && p.brand) ||
           (f === 'identity.countryOfOrigin' && p.countryOfOrigin),
       );
+      const externalSources = [
+        { sourceType: src, url: p.url ?? null, title: null, fieldsUsed: fields },
+      ];
+      let brand = p.brand ?? null;
+      const second = this.secondProvider.get(identity.canonicalGtin13);
+      if (second?.brand) {
+        // legacy rank: manufacturer 3 > barcode_registry 2 > retailer 1 > web_search 0 — the winner's value is kept,
+        // both sources are listed as contributors; the losing VALUE is not carried by the legacy payload
+        const rank = { manufacturer: 3, barcode_registry: 2, retailer: 1, web_search: 0 } as const;
+        if (rank[second.sourceType] > rank[src]) brand = second.brand;
+        externalSources.push({
+          sourceType: second.sourceType,
+          url: second.url ?? null,
+          title: null,
+          fieldsUsed: ['identity.brand'],
+        });
+      }
       s.result = {
         ...(s.result ?? {}),
         identity: {
           displayName: p.displayName ?? null,
-          brand: p.brand ?? null,
+          brand,
           countryOfOrigin: p.countryOfOrigin ?? null,
         },
         evidence: [],
-        externalSources: [{ sourceType: src, url: p.url ?? null, title: null, fieldsUsed: fields }],
+        externalSources,
         conflicts: [],
       };
-      s.usage = { ...s.usage, webCalls: 1 };
+      s.usage = { ...s.usage, webCalls: externalSources.length };
     }
     s.missingCritical = missingOf(s.result);
+    s.recordedAt = this.clock;
     return { kind: 'researched', session: s, evidenceError: null };
   }
   async analyzeLabel(
@@ -154,6 +181,7 @@ export class FakeDiscovery implements DiscoveryPort {
     };
     s.missingCritical = missingOf(s.result);
     s.usage = { ...s.usage, visionCalls: s.usage.visionCalls + 1 };
+    s.recordedAt = this.clock + 1;
     return { kind: 'analyzed', session: s };
   }
   async finalize(session: DiscoverySession, input: FinalizeInput): Promise<FinalizeOutcome> {

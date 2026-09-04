@@ -50,7 +50,10 @@ function pending(
   >['evidenceError'] = null,
   note: string | null = null,
 ): Extract<ScanImportV2Result, { kind: 'discovered_pending' }> {
-  const ledger = buildLedger(session.identity, session.result, session.missingCritical);
+  const ledger = buildLedger(session.identity, session.result, session.missingCritical, {
+    sessionId: session.sessionId,
+    recordedAt: session.recordedAt ?? null,
+  });
   const stage = stageFromLedger(ledger);
   const next: Extract<ScanImportV2Result, { kind: 'discovered_pending' }>['next'] =
     !ledger.facts.some((f) => f.source === 'label')
@@ -137,7 +140,7 @@ export async function startDiscovery(
       requestId: own.requestId,
       status: own.status,
       stage: 'evidence_collected',
-      ledger: buildLedger(identity, null, []),
+      ledger: buildLedger(identity, null, [], { recordedAt: ctx.now }),
       canonical: false,
       engineReady: false,
     };
@@ -191,7 +194,10 @@ export async function continueDiscovery(
       } as DiscoveryResult;
     return pending(a.session);
   }
-  const ledger = buildLedger(session.identity, session.result, session.missingCritical);
+  const ledger = buildLedger(session.identity, session.result, session.missingCritical, {
+    sessionId: session.sessionId,
+    recordedAt: session.recordedAt ?? null,
+  });
   if (action.type === 'request') {
     const q = await port.submitRequest(session.identity, ledger, session, ctx);
     if (q.kind === 'existing_product')

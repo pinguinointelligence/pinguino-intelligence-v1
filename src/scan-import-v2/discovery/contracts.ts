@@ -36,6 +36,12 @@ export interface Fact {
   source: FactSource;
   confidence: 'high' | 'medium' | 'low' | null;
   sourceUrl: string | null;
+  /** the authority that produced the fact (e.g. scan-core, product-scan-analyze, intimport-enrich, resolve_exact_products_by_gtin_v1) */
+  authority: string | null;
+  /** when the fact was recorded in this ledger (ctx.now / session time), null when unknown */
+  recordedAt: number | null;
+  /** every source that contributed to this field; more than one = the server merged by authority rank */
+  contributingSources: readonly FactSource[];
 }
 
 export interface FactConflict {
@@ -46,6 +52,11 @@ export interface FactConflict {
 }
 
 export interface FactLedger {
+  /** identity + time context of this ledger */
+  gtin: string;
+  symbology: string;
+  sessionId: string | null;
+  recordedAt: number | null;
   facts: readonly Fact[];
   conflicts: readonly FactConflict[];
   identity: { name: string | null; brand: string | null };
@@ -87,6 +98,8 @@ export interface ScanResultLike {
 export interface DiscoverySession {
   sessionId: string;
   identity: CodeIdentity;
+  /** when the session's evidence was last recorded (ctx.now of the last call), for ledger timestamps */
+  recordedAt?: number | null;
   result: ScanResultLike | null;
   overlayState: string | null;
   missingCritical: readonly string[];
