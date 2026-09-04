@@ -273,3 +273,110 @@ sorbet-policy test.
 ## 8. Not marked FINAL or FROZEN
 
 Per the owner's instruction.
+
+---
+
+# SERVED STAGING ACCEPTANCE — 2026-09-03, after merge
+
+Merge SHA `ddbd9747bb4fda21bda15fdb04affb825d563f13` · `origin/staging` = same ·
+served bundle `assets/index-sXlDXtP2.js` on `https://staging.pinguinoai.com`
+(verified to contain `Maksymalna ilość została osiągnięta`, `pro-section-back`,
+`crown-off-correction-notice`, `stabilizer-limit-ok`).
+
+Real authenticated PRO session (`pro@pro.com`), Gelato / OPTIMAL / −11 °C /
+1000 g, WATERMELON · Fresh Fruit as the Main.
+
+**Served Crown MAX SAFE = 364 g (36.4 %)**, established by Crown ON → Przelicz
+before the Crown-OFF cases.
+
+| Case | What was done | Result |
+|---|---|---|
+| **A** | Crown OFF, stepped Main to **600 g** (batch 1236 g), one Przelicz | → **364 g**, batch 1000 g, notice shown, recalculation overlay already closed. **No second Apply.** Matches Crown MAX SAFE exactly. |
+| **B** | Crown OFF, **300 g** (below max), Przelicz | **300 g preserved exactly** — WATERMELON does not appear in the change list at all; only support lines move to reconcile the batch. No correction notice. Score 10/10. |
+| **C** | **Locked** Main at 600 g, Przelicz | Typed refusal: „Przy ograniczeniu … = 600 g … **Najbliższa wykonalna wartość … 364 g.** Receptura nie została zmieniona." Main stays 600 g — **no silent rewrite** — and „Odblokuj i pokaż podgląd" is offered. |
+| **C′** | Accepted that unlock | The now-unlocked 600 g went straight through the correction to **364 g** with the notice — case A again by a second route. |
+| **D** | `••• → Wersje` | Link is `/pro/versions?from=recipe`; the page shows `← Wróć` → `/pro/recipe`. `/pro/versions` (global entry) and `/pro/versions?from=nowhere` show **no** back control. |
+| **E** | Saved „QA Crown-OFF 364" (v2), reopened from Moje receptury | Reopens at **364 g / 1000 g, v2** — the correction persists. |
+| **F** | HOME → PRO roundtrip | **364 g / 1000 g** unchanged. |
+| **G** | The recalculation refusal dialog | Computed style `background rgb(255,255,255)`, `color rgb(32,33,36)`, `color-scheme light` — white where the graphite `#191a1d` diagnostic box used to be. |
+| **H** | Stepped TARA GUM past its ceiling | Stabilizer-limit dialog on the SAME shell: white, `data-notice-align="center"`, `tone="informational"` (correctly not orange), one rounded OK, `stabilizer-limit-ok` id preserved. |
+
+The correction notice itself measured `background rgb(255,255,255)`, centered
+headline and body, a single `OK`, and **no `%` anywhere** in its text.
+
+## Defect found by this acceptance — took THREE attempts, closed at #156
+
+`tone="attention"` declared `border-[var(--g-orange)]` plus a shadow glow, but the
+panel's computed border on served staging was **ink/15** and the shadow was plain
+`shadow-pro-e3`: `cn` is a plain class joiner, not `tailwind-merge`, so the
+attention classes shipped alongside `DialogShell`'s own and lost on CSS order.
+The jsdom test was green the whole time because the class *was* present.
+
+**PR #148 did not fix it, and was verified the same wrong way.** It moved the
+declaration from `border` to `ring-2 ring-[var(--g-orange)]` — a property
+`DialogShell` does not set — and the jsdom test pinned the new class. Re-measured
+on served staging after #148 merged (`22e7c937`, bundle `index-CSmSdIEy.js`), the
+live notice reported:
+
+```
+--tw-ring-shadow : 0 0 0 calc(2px + 0px) #f58a07
+box-shadow       : rgba(16,17,19,.12) 0 8px 18px, rgba(16,17,19,.24) 0 28px 72px
+```
+
+Enumerating every stylesheet rule that sets `box-shadow` and matches the panel
+returned exactly one: `.shadow-pro-e3`. The ring populated a custom property
+that nothing consumed. **The orange still never reached the screen.**
+
+Hunting for a property the shell does not happen to use yet is what produced two
+dead fixes. **PR #156** removes the collision instead: `DialogShell` takes a
+`tone` and chooses EXACTLY ONE border colour and EXACTLY ONE box-shadow for
+itself, with the warm ring carried inside the same shadow value as the
+elevation, so there is no second declaration left to lose. Its test counts the
+utilities on the panel and fails if either is not exactly one — jsdom cannot
+resolve the cascade, but it can prove nothing is fighting.
+
+### Closed — served computed-style proof after #156
+
+Merged `0e49df6c`, served bundle `index-B18lWAga.js` / `index-DXNfgHbM.css`.
+Same flow, same account, same product (WATERMELON 624 g → corrected to 364 g),
+measured on the live notice panel:
+
+```
+data-dialog-tone : attention
+border-color     : rgb(245, 138, 7)          ← was oklab(… / 0.15), i.e. ink/15
+box-shadow       : rgba(245,138,7,0.18) 0 0 0 4px,
+                   rgba(16,17,19,0.12)  0 8px 18px,
+                   rgba(16,17,19,0.24)  0 28px 72px
+background-color : rgb(255, 255, 255)
+```
+
+The warm ring is **inside the painted `box-shadow`**, ahead of the two elevation
+layers, and the border is the orange token. Confirmed visually as well: white
+surface, centered headline and body, one orange `OK`, warm ring on the panel
+edge. **PASS.**
+
+The orange acknowledgement button was rendering correctly throughout.
+
+**A class being present is not evidence that it renders — and neither is a
+green jsdom test that asserts the class.** The durable protection is the
+utility-counting assertion added in #156: it fails when two utilities touch the
+same property, which is the only thing jsdom can prove and exactly what both
+dead fixes violated.
+
+### Still open — the same collision in a second caller
+
+`ProRecalcPanel` passes `panelClassName="… border-black/10 … shadow-pro-md"` into
+the same shell (introduced by #154), which now owns both properties itself. That
+is the identical layering pattern, so one of those two declarations is decided by
+CSS order rather than intent. Not touched here: changing it would alter an
+owner-approved panel surface inside a closure PR. Recorded for a separate
+decision.
+
+## Served-QA notes worth keeping
+
+- Typing into a gram field and pressing Enter does **not** commit the value; only
+  the +/− steppers do. Pre-existing behaviour, but it means served gram QA has to
+  drive the steppers.
+- The header renders „Zaloguj" until the Supabase session hydrates, so it is not
+  a reliable signed-in check — read the session or a real authenticated surface.
+- „Moje receptury" needs its „Moje" tab clicked before the list renders.
