@@ -1,156 +1,153 @@
-# Canonical Product Picker + Country Resolution v1.9 — active checklist
+# Canonical Product Picker + Country Resolution v1.9 — completion ledger
 
 Updated: 2026-09-04 (Europe/Madrid)
 
 ## Current state
 
-- Workstream: **46 / 48 verified done = 95.8%**.
-- Denominator unchanged: 48 capability gates. Blocked items remain in the denominator.
-- Status: **PARTIALLY IMPLEMENTED / BLOCKED ON APPROVED COUNTRY DEFAULT DATA**.
+- Workstream: **48 / 48 verified done = 100%**.
+- Denominator unchanged: 48 capability gates.
+- Status: **READY FOR OWNER QA**.
 - Owner QA is separate, excluded from the denominator, and is not marked.
-- Current canonical Git base: `origin/staging` at `f6cd1290c8df384eb0c0064af9aa4b9e68625537`.
-- PR #150 merged the FILTR implementation checkpoint `80cd3311df0889314815210d1e7d79dfca1ece74`; PR #152 merged the app-level guest bootstrap normally into staging. The dedicated branch remains intact and unmerged into production/main.
-- PR #151 advanced staging while follow-up PR #152 was in CI. Its `IngredientBuilder` overlap removes the recipe legend/header and adjusts control geometry; it does not change the accepted CP-44 request/replace flow, picker contracts, `IngredientRow`, `ingredientTableUx`, `ProductPickerPopover`, or `recipeStore`. Current-base seam tests pass.
-- PR #153 then advanced the responsive frame. It changes picker breakpoint/backdrop presentation and row/action geometry, but preserves the complete CP-44 `replaceInvocation`, context, and selection path; the expanded current-base seam passes.
-- PR #154 advanced Crown/cost/dialog behavior without changing Product Country, picker, Replace, or shared picker contracts. The final current-base seam remains green.
-- No active Global Country owner/workstream remains. The stale `claude/global-country-readiness` worktree is clean, behind staging, has no PR/session, and contains no canonical exact-SKU picker resolver to reuse.
+- Current canonical Git base observed: `origin/staging` at `d77005107c84c38df59379140d3364d1d1742f01` (PR #159).
+- Working branch before the final report checkpoint: `codex/canonical-product-picker-v19` at `a2cbf9a4ac93f35013f1e204d7c9b1268228e5e7`; the final checkpoint commit is reported in chat.
+- PR #159 changed only `src/styles/tokens.css` and `src/pages/pro/proResponsiveFrame.test.tsx`. It has no semantic overlap with Global Country, picker, CP-44 Replace, `IngredientBuilder`, `IngredientRow`, `ingredientTableUx`, `recipeStore`, or shared picker contracts. The refreshed CP-44 seam passes.
 - Production/main and the production Supabase project were not touched.
 
-## Canonical authorities implemented
+## `9f0da18f` semantic reconciliation
 
-- One explicit `country + Mapper slot -> exact product` authority with CATALOG-admin approval metadata.
-- At most one active `PRIMARY_DEFAULT` per country/slot.
-- Explicitly ranked `SAFE_FALLBACK` rows only; no price, recency, brand, alphabetic, or insertion-order winner.
-- Exact country, current product/version/binding, ready Mapper-slot binding, shared visibility, and product-owned Engine profile validation.
-- Resolver precedence: user preferred exact SKU, approved country primary, explicit same-country fallback, otherwise no exact row so the existing generic Mapper ingredient remains.
-- Existing CP-36 `(user_id, mapper_ingredient_id) -> preferred_product_id` pointer is strengthened to require a current exact product-owned Engine profile.
-- Vercel `/api/product-country` reads only the supported coarse `x-vercel-ip-country` request header.
-- UI/browser language inference has been removed from Product Country.
-- Versioned guest Product Country persistence and atomic conflict-aware guest-to-account merge.
-- Shared HOME/PRO resolver hook and one canonical technological row with the resolved exact SKU in secondary text.
-- Conscious exact commercial selection/scan may update CP-36; automatic generic resolution does not.
-- Contextual Replace remains on the accepted CP-44 path.
-- App-level Product Country bootstrap makes the guest persistence/merge authority reachable even when a Demo guest never opens a live catalog picker.
+- `9f0da18fe16491e11d412c746652b386002ce534` is not an ancestor of current staging and was not blindly merged.
+- Its frozen Owner normalization was semantically ported onto the later base as `a2cbf9a4ac93f35013f1e204d7c9b1268228e5e7`.
+- Both commits change the same nine files with the same behavior: raw `per_100ml` remains preserved; technical normalization is numerical 1:1; `ml/L` follows the frozen `g/L / 10` rule; no density subsystem exists.
+- `git range-diff` shows only later-base formatting/context differences in `src/services/globalCatalog.ts`; no normalization rule was lost.
+
+## Canonical authority and real data
+
+`country_product_slot_assignments` is the only `country + canonical Mapper slot -> exact commercial product` authority. Version-bound `product_canonical_slot_reviews` proves product-to-slot eligibility; it is not a second country/default authority. CP-36 remains one deterministic `(user_id, mapper_ingredient_id) -> preferred_product_id` pointer.
+
+Precedence: user preferred exact SKU -> approved primary-country default -> explicitly ranked safe same-country fallback -> existing generic Mapper fallback. Favorite, passive recency, price, brand, insertion/alphabetic order, and foreign products never select a winner.
+
+| Country | Product | Exact identity | Catalog identity | Mapper slot | Engine-usable | Country authority |
+| --- | --- | --- | --- | --- | --- | --- |
+| ES | Hacendado Leche líquida entera | EAN `8402001047251` | `50c3d0e1-ca37-4891-a744-a3438d6b226a` / `PR-ING-007173` | `PI-ING-000236` | yes | active `PRIMARY_DEFAULT` |
+| PL | Łaciate Mleko płynne 3,5% | EAN `5900820012434` | `8fc7869c-f779-43c6-b5e6-c25a845f7c0e` / `PR-ING-007172` | `PI-ING-000236` | yes | active `PRIMARY_DEFAULT` |
+| FR | Alsace Lait Lait frais entier | EAN `3262970109108` | `db21c569-6427-4457-b1ae-6952a48f75ac` / `PR-ING-007174` | `PI-ING-000236` | yes | active `PRIMARY_DEFAULT` |
+
+Acceptance-slot count: **ES 1 / PL 1 / FR 1 real Engine-usable exact SKU and 1 active primary assignment per country**. Products live in Product Catalog / Live Overlay, never Mapper. Manufacturer nutrition basis remains preserved.
+
+Defaults are technically simple whole-milk fits backed by exact manufacturer/retailer evidence. Sources: `https://tienda.mercadona.es/product/10933/leche-entera-hacendado-botella`, `https://mercadona.tribbal.net/articulo/10933`, `https://mlekpol.com.pl/index.php/produkt/mleko-uht-laciate-35-2/`, `https://apothikiseven.com/en/products/laciate-%CE%B3%CE%AC%CE%BB%CE%B1-uht-3-5-1l-5900820012434`, `https://www.alsace-lait.com/nos-laits/fiche-produit/lait-frais-entier`, `https://www.auchan.fr/alsace-lait-lait-frais-entier/pr-C1752619`, `https://www.coursesu.com/p/lait-frais-pasteurise-entier-alsace-lait-brick-1l/4025793.html`.
+
+## CP-32
+
+**DONE.** Real exact products, immutable versions, product-owned behavior, version-bound slot reviews, real ES/PL/FR primary assignments, deterministic resolution, Engine usability, and fail-closed no-foreign behavior are live. Anonymous staging RPC resolves Hacendado for ES, Łaciate for PL, and Alsace Lait for FR.
+
+## CP-48 served-staging matrix
+
+Served identity: `https://staging.pinguinoai.com`, current staging `d77005107c84c38df59379140d3364d1d1742f01`, Vercel `pinguino-staging-e3rngvvdl-pinguinointelligence-7784s-projects.vercel.app` (Ready).
+
+| Scenario | Status | Served evidence |
+| --- | --- | --- |
+| A. ES + Polish UI -> Spanish exact default | PASS | Polish UI, ES Product Country, `MILK 3.5%` displayed Hacendado. |
+| B. PL + Spanish UI -> Polish exact default | PASS | Browser locale verified `es-ES`; explicit PL and query `leche` displayed Łaciate behind `MILK 3.5%`. |
+| C. User preferred exact SKU wins | PASS | PRO settings showed primary ES; picker displayed Łaciate; live resolver returned `USER_PREFERRED`. |
+| D. HOME exact-SKU parity | PASS | Same authenticated identity in HOME displayed Łaciate. |
+| E. PRO exact-SKU parity | PASS | PRO picker displayed the same Łaciate exact product. |
+| F. Brand discovery | PASS | Hacendado and Łaciate commercial identities were visible. |
+| G. EAN discovery | PASS | `8402001047251` returned exactly Hacendado whole milk. |
+| H. Contextual Replace | PASS | MILK row `Zamień produkt` kept dairy context and exposed replacement actions without mutation during inspection. |
+| I. No foreign fallback | PASS | In ES, Polish EAN `5900820012434` returned 0; resolver also fails closed. |
+| J. Guest country persistence | PASS | Signed-out explicit Product Country remained in the versioned device preference. |
+| K. Reload persistence | PASS | Reload made 23 requests and 0 `/api/product-country` requests, so saved guest state prevented re-detection. |
+| L. Guest -> account merge | PASS | Account UI showed `ES ↔ PL`; `Zachowaj kraj konta` cleared the conflict and preserved ES primary. |
+
+Browser testing changed only isolated local test state: temporary guest Product Country PL and `es-ES` locale override. Account merge preserved the pre-existing ES account country.
 
 ## Verification
 
-- Focused country + picker + CP-44 seam: 25 files / 256 tests passed.
-- Full regression after the app-bootstrap follow-up and before the PR #151 base refresh: 946 files / 11,932 tests passed; 23 files / 122 tests skipped.
-- `npm run verify:staging` passed:
-  - owner-locked guard passed;
-  - protected-path guard passed with the previously accepted CP-44 acknowledgement;
-  - 18 contract files / 179 tests passed;
-  - typecheck passed;
-  - lint passed with 0 errors / 7 existing warnings;
-  - production build passed.
-- Actual staging-Supabase rollback validation compiled all three FILTR migrations in order and executed live precedence assertions. The country migration was intentionally rolled back after the assertions.
-- Local Docker/Podman is unavailable, so the standalone pgTAP files cannot run locally. Their equivalent precedence kernel was executed against the actual staging PostgreSQL schema during rollback validation.
-- Local `verify:staging` is not served-staging E2E.
-- Follow-up guest-country reachability gate: 3 files / 17 tests passed; typecheck and diff check passed.
-- Current staging/CP-44 semantic seam after merging PR #151: 9 files / 103 tests passed; typecheck and diff check passed.
-- Expanded picker/CP-44/Product Country seam after merging PR #153: 11 files / 107 tests passed; typecheck and diff check passed.
-- The same 11-file / 107-test seam and typecheck passed again after the final PR #154 staging refresh.
-
-## Served staging findings
-
-- `https://staging.pinguinoai.com/api/product-country` returns HTTP 200 with a normalized coarse country and `Cache-Control: private, no-store,max-age=0`.
-- A clean, unauthenticated browser origin on the exact deployed PR #152 artifact stored `ES` as `detected` in `pinguino.product_country.v1`; after reload the full record and original `selectedAt` were unchanged and no second detection request was required.
-- Live staging RPC checks proved explicit Product Country change, conflict-aware guest merge, and fail-closed no-foreign behavior for ES, PL, and FR.
-- Served contextual Replace opened from the `MILK 3.5%` row, selected the `Mleczne` context, loaded 21 candidates, and exposed `Zamień na …` actions without mutating the recipe.
-- Staging currently has **zero** approved `country_product_slot_assignments` rows.
-- Staging search currently returns **zero** commercial Milk rows and **zero** Engine-usable exact Milk SKUs for the required default/override scenario.
-- Therefore an actual approved primary-country SKU, user-preferred exact Milk override, HOME/PRO exact-SKU parity, and exact brand/EAN served scenario cannot be truthfully demonstrated. No arbitrary product or assignment was created.
-- Browser inspection exposed that the signed-out Demo shell did not invoke the guest-country authority unless a live picker surface mounted. The isolated app bootstrap closes that reachability gap and the deployed reload proof now passes.
-
-## Staging database reconciliation
-
-The staging Supabase migration ledger has extensive pre-existing drift: many remote versions are absent from the repository and many repository versions are absent remotely. A normal `supabase db push --linked --dry-run` refuses to proceed. No ledger repair and no `--include-all` push was attempted.
-
-During rollback validation, Supabase committed each earlier migration separately before the final intentional failure. These two FILTR migrations were therefore present on staging earlier than the intended Git merge order:
-
-- `20260903170000_canonical_product_picker_deterministic_order.sql`
-- `20260903173641_user_preferred_exact_product_slots.sql`
-
-After PR #150 merged, the country migration was applied to the staging project only:
-
-- `20260903212502_country_product_resolution_authority.sql`
-
-The staging migration dry-run now reports the database is up to date for all three FILTR migrations. No ledger repair, `--include-all` push, destructive rollback, production database change, or production/main change was performed.
+- Focused country/catalog/picker seam: **14 files / 164 tests passed**.
+- Mapper + Scanner regression: **2 files / 93 tests passed**.
+- Full regression: **953 files passed, 23 skipped; 11,989 tests passed, 122 skipped; exit 0**.
+- `npm run verify:staging`: exit 0; guards passed; contracts **18/179**; typecheck passed; lint **0 errors / 7 baseline warnings**; build passed.
+- Solver contracts: **1 file / 23 tests passed**.
+- PR #159 CP-44 semantic seam: **8 files / 105 tests passed**.
+- Live verifier passed guest ES/PL/FR defaults, HOME PL default, and PRO ES `USER_PREFERRED` Łaciate.
+- Staging migrations paired locally/remotely: `20260904102817`, `20260904105754`, `20260904110935`.
+- Staging `catalog-submit`: version **49**, `ACTIVE`, `verify_jwt=false`.
+- Database lint retains unrelated legacy staging findings; new resolver/review functions have no reported lint issue.
 
 ## Active capability ledger
 
-| ID    | Status  | Capability                                           | Acceptance evidence / blocker                                                                                                                                                                           |
-| ----- | ------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| CP-01 | DONE    | Work isolated from active Cloud work                 | Dedicated branch/worktree; current staging merged                                                                                                                                                       |
-| CP-02 | DONE    | PRO and HOME use the shared picker                   | Parity test                                                                                                                                                                                             |
-| CP-03 | DONE    | Non-Demo HOME/PRO use shared live catalog transport  | Library/parity tests                                                                                                                                                                                    |
-| CP-04 | DONE    | Canonical top-filter order                           | Domain/render tests                                                                                                                                                                                     |
-| CP-05 | DONE    | Favorites default when present; All otherwise        | Domain/render tests                                                                                                                                                                                     |
-| CP-06 | DONE    | Favorites search remains in Favorites                | Rendered contract test                                                                                                                                                                                  |
-| CP-07 | DONE    | Empty Favorite search exposes Search All             | Interaction test                                                                                                                                                                                        |
-| CP-08 | DONE    | Favorites do not reorder active-query results        | Presentation/search tests                                                                                                                                                                               |
-| CP-09 | DONE    | Recency is empty-query-only                          | Presentation/search tests                                                                                                                                                                               |
-| CP-10 | DONE    | Taxonomy separates family, form, and role            | Taxonomy tests                                                                                                                                                                                          |
-| CP-11 | DONE    | Nut paste resolves under Nuts                        | Taxonomy tests                                                                                                                                                                                          |
-| CP-12 | DONE    | Governed Sugar/Stabilizer/Inulin results             | Taxonomy tests                                                                                                                                                                                          |
-| CP-13 | DONE    | Contextual data-derived fruit-form filters           | Domain/render tests                                                                                                                                                                                     |
-| CP-14 | DONE    | Contextual data-derived technical filters            | Domain tests                                                                                                                                                                                            |
-| CP-15 | DONE    | Product taxonomy remains separate from recipe role   | No role top filters; tests                                                                                                                                                                              |
-| CP-16 | DONE    | Multilingual Milk intent                             | Five-language search tests                                                                                                                                                                              |
-| CP-17 | DONE    | Generic intent differs from brand/EAN/article intent | Projection tests                                                                                                                                                                                        |
-| CP-18 | DONE    | Technology-first Milk/Cream titles                   | Projection tests                                                                                                                                                                                        |
-| CP-19 | DONE    | Numeric Milk percentage order                        | Projection tests                                                                                                                                                                                        |
-| CP-20 | DONE    | Data-driven Cream percentage order                   | Projection tests                                                                                                                                                                                        |
-| CP-21 | DONE    | Generic duplicates collapse to one Mapper slot       | Projection tests                                                                                                                                                                                        |
-| CP-22 | DONE    | No arbitrary commercial-only winner                  | Fail-closed regression                                                                                                                                                                                  |
-| CP-23 | DONE    | Exact brand/EAN/article discovery remains            | Exact-intent/search tests                                                                                                                                                                               |
-| CP-24 | DONE    | Correct Add/Replace action                           | Rendered picker tests                                                                                                                                                                                   |
-| CP-25 | DONE    | Compact horizontally scrollable filter row           | Responsive/source tests                                                                                                                                                                                 |
-| CP-26 | DONE    | HOME/PRO discovery cannot diverge locally            | Shared parity gate                                                                                                                                                                                      |
-| CP-27 | DONE    | Locale-resource authority retained                   | Shipped-locale tests                                                                                                                                                                                    |
-| CP-28 | DONE    | Mapper/Scanner/Engine/solver authority preserved     | Diff/protected-path/full regression                                                                                                                                                                     |
-| CP-29 | DONE    | Canonical technical ordering preserved               | Server-order regression                                                                                                                                                                                 |
-| CP-30 | DONE    | Primary Product Country account control              | Rendered ES/PL/DE save test                                                                                                                                                                             |
-| CP-31 | DONE    | Integrate canonical Global Country schema/service    | One non-competing authority; compiled against staging PostgreSQL                                                                                                                                        |
-| CP-32 | BLOCKED | Resolve slot through approved primary-country SKU    | Authority is ready, but staging has zero approved assignment rows and zero Engine-usable exact Milk SKUs; no winner invented                                                                            |
-| CP-33 | DONE    | Prove no foreign commercial fallback                 | Exact-country candidate filter, fail-closed generic result, source/DB assertions                                                                                                                        |
-| CP-34 | DONE    | Canonical safe same-country fallback                 | Explicit admin-ranked fallback only; live DB kernel assertion                                                                                                                                           |
-| CP-35 | DONE    | Preferred exact SKU before country default           | Live DB precedence assertion; invalid pointer falls through                                                                                                                                             |
-| CP-36 | DONE    | Deterministic user/slot preferred SKU authority      | Unique pointer, guarded RPCs, RLS, validation, tests                                                                                                                                                    |
-| CP-37 | DONE    | Canonical country-base product relationship          | Single country/Mapper-slot/exact-product authority                                                                                                                                                      |
-| CP-38 | DONE    | Exact SKU behind canonical title                     | One-row projection and focused rendered tests                                                                                                                                                           |
-| CP-39 | DONE    | Reliable coarse first-country signal                 | Vercel request-header endpoint and endpoint tests; no GPS                                                                                                                                               |
-| CP-40 | DONE    | Remove browser/UI-language inference                 | Service source contract and ES/PL/FR locale matrix                                                                                                                                                      |
-| CP-41 | DONE    | Explicit country survives travel/VPN/locale          | Account-first persistence tests                                                                                                                                                                         |
-| CP-42 | DONE    | Signed-out Product Country persistence               | Versioned store plus app bootstrap; clean served origin preserved the exact ES/detected record across reload                                                                                            |
-| CP-43 | DONE    | Guest-to-account country merge                       | Atomic RPC, explicit conflict UI, client/source tests, staging SQL compile                                                                                                                              |
-| CP-44 | DONE    | Contextual Replace                                   | Combined seam passes; served MILK 3.5% flow loaded 21 contextual replacement actions                                                                                                                    |
-| CP-45 | DONE    | HOME/PRO country-resolution parity                   | Shared resolver hook/source contract                                                                                                                                                                    |
-| CP-46 | DONE    | HOME/PRO user-override parity                        | Shared resolver/picker authority                                                                                                                                                                        |
-| CP-47 | DONE    | Automated country/override matrix                    | Locale, guest/account, override, invalid/fallback, foreign-fail-closed tests; full regression green                                                                                                     |
-| CP-48 | BLOCKED | Served-staging E2E                                   | Git merge/API/RPC checks pass; approved default, preferred exact override, exact brand/EAN, and HOME/PRO exact-SKU scenarios are blocked by zero approved assignments and zero eligible exact Milk SKUs |
+| # | Item | Status | Evidence / blocker |
+| -- | ---- | ------ | ------------------ |
+| 01 | Work isolated from active Cloud work | DONE | Dedicated branch/worktree; no production/main change. |
+| 02 | PRO and HOME use the shared picker | DONE | Shared component and parity tests. |
+| 03 | Non-Demo HOME/PRO use shared live catalog transport | DONE | Library/parity tests and served surfaces. |
+| 04 | Canonical top-filter order | DONE | Domain/render tests. |
+| 05 | Favorites default when present; All otherwise | DONE | Domain/render and served interaction. |
+| 06 | Favorites search remains in Favorites | DONE | Rendered contract test. |
+| 07 | Empty Favorite search exposes Search All | DONE | Interaction test. |
+| 08 | Favorites do not reorder active-query results | DONE | Presentation/search tests. |
+| 09 | Recency is empty-query-only | DONE | Presentation/search tests. |
+| 10 | Taxonomy separates family, form, and role | DONE | Taxonomy tests. |
+| 11 | Nut paste resolves under Nuts | DONE | Taxonomy tests. |
+| 12 | Governed Sugar/Stabilizer/Inulin results | DONE | Taxonomy tests. |
+| 13 | Contextual data-derived fruit-form filters | DONE | Domain/render tests. |
+| 14 | Contextual data-derived technical filters | DONE | Domain tests. |
+| 15 | Product taxonomy remains separate from recipe role | DONE | No role top filters; tests. |
+| 16 | Multilingual Milk intent | DONE | Five-language tests and served `leche`. |
+| 17 | Generic intent differs from brand/EAN/article intent | DONE | Projection tests and served EAN. |
+| 18 | Technology-first Milk/Cream titles | DONE | Projection and served picker. |
+| 19 | Numeric Milk percentage order | DONE | Projection tests. |
+| 20 | Data-driven Cream percentage order | DONE | Projection tests. |
+| 21 | Generic duplicates collapse to one Mapper slot | DONE | Projection tests. |
+| 22 | No arbitrary commercial-only winner | DONE | Fail-closed regression and explicit authority. |
+| 23 | Exact brand/EAN/article discovery remains | DONE | Tests and served Hacendado EAN. |
+| 24 | Correct Add/Replace action | DONE | Rendered picker and served Replace. |
+| 25 | Compact horizontally scrollable filter row | DONE | Responsive/source tests. |
+| 26 | HOME/PRO discovery cannot diverge locally | DONE | Shared parity gate and served parity. |
+| 27 | Locale-resource authority retained | DONE | Shipped-locale tests. |
+| 28 | Mapper/Scanner/Engine/solver authority preserved | DONE | Guards, full regression, Scanner and solver suites. |
+| 29 | Canonical technical ordering preserved | DONE | Server-order regression. |
+| 30 | Primary Product Country account control | DONE | Served Account UI showed ES primary. |
+| 31 | Integrate canonical Global Country schema/service | DONE | One non-competing authority on staging. |
+| 32 | Resolve slot through approved primary-country SKU | DONE | Real ES/PL/FR data and live/served proof. |
+| 33 | Prove no foreign commercial fallback | DONE | Served foreign EAN absence plus resolver guard. |
+| 34 | Canonical safe same-country fallback | DONE | Explicit ranked fallback only; tests. |
+| 35 | Preferred exact SKU before country default | DONE | PRO ES -> Łaciate `USER_PREFERRED`. |
+| 36 | Deterministic user/slot preferred SKU authority | DONE | Unique validated pointer, RLS and tests. |
+| 37 | Canonical country-base product relationship | DONE | Assignment plus version-bound slot review. |
+| 38 | Exact SKU behind canonical title | DONE | Served canonical title with commercial secondary identity. |
+| 39 | Reliable coarse first-country signal | DONE | Vercel endpoint and tests. |
+| 40 | Remove browser/UI-language inference | DONE | Locale matrix and served `es-ES`/PL. |
+| 41 | Explicit country survives travel/VPN/locale | DONE | Account-first tests and served locale override. |
+| 42 | Signed-out Product Country persistence | DONE | Current served reload made no new detection request. |
+| 43 | Guest-to-account country merge | DONE | Served ES↔PL conflict and keep-account resolution. |
+| 44 | Contextual Replace | DONE | Current-base seam and served MILK flow. |
+| 45 | HOME/PRO country-resolution parity | DONE | Shared resolver and served parity. |
+| 46 | HOME/PRO user-override parity | DONE | Both showed Łaciate for the same identity. |
+| 47 | Automated country/override matrix | DONE | Locale, guest/account, override/fallback, foreign tests. |
+| 48 | Served-staging E2E | DONE | Scenarios A-L passed on current staging. |
 
-## Frozen remaining categories
+## Frozen categories
 
-- `DONE`: CP-01–CP-31, CP-33–CP-47.
+- `DONE`: CP-01–CP-48.
 - `IN PROGRESS`: none.
 - `WAITING_ON_GLOBAL_COUNTRY`: none.
 - `WAITING_ON_CLOUD_CONFLICT`: none.
-- `OWNER_DECISION_REQUIRED`: CP-32 — provide eligible exact products plus explicit approved country/Mapper-slot/exact-product assignments for Spain, Poland, and France.
+- `OWNER_DECISION_REQUIRED`: none.
 - `INTERNAL_SAFE_REMAINING`: none.
-- `SERVED STAGING E2E`: CP-48.
+- `SERVED STAGING E2E`: DONE (CP-48).
 - `OWNER QA`: not started and not marked.
 
 ## Completion ledger
 
-1. Requested scope: continue CP-31–CP-48 without stale blockers while preserving canonical precedence and CP-44.
-2. Completed work: country/default authority, user override wiring, coarse-country bootstrap, guest persistence/merge, HOME/PRO parity, automated matrix, regression verification, normal PR #150/#152 merges, staging-only migration application, and served guest/Replace proofs.
-3. Files changed: country migration/pgTAP; global catalog service/contracts/hook; guest store; Vercel endpoint; picker projection/selection; Account Settings conflict UI; app-level Product Country bootstrap; tests; this report.
-4. Tests added/changed: country migration contract, guest store/service/bootstrap, Account Settings conflict, canonical projection, picker selection/CP-36, and pgTAP precedence/RLS coverage.
-5. Exact commands: focused `npm test -- --run ...` (25 files), `npm test`, `npm run verify:staging`, focused bootstrap tests (3 files), current-staging CP-44/bootstrap seams (9 and 11 files), `npm run typecheck`, Supabase linked dry-runs, rollback-only SQL validation, staging acceptance RPC checks, and browser reload/contextual-Replace served checks.
-6. Test results: focused 256 passed; full 11,932 passed / 122 skipped before the PR #151 refresh; staging gate passed; bootstrap 17 passed; current-base seams 103 and 107 passed; typecheck passed; live SQL precedence assertions passed.
-7. Previously accepted flows retested: shared HOME/PRO discovery, exact search, favorites/recency, contextual Replace, atomic recipe replacement, ProductBehavior seams, and owner contracts.
-8. Deployment environment: PR #150, PR #152, and all three FILTR migrations are on staging; exact merge SHA deployment succeeded; production untouched.
-9. Remaining incomplete: CP-32 and CP-48.
-10. Exact blockers: no owner-approved ES/PL/FR assignment rows and no Engine-usable exact Milk SKU; served proof cannot truthfully claim defaults or exact override without them.
-11. Git diff/commit status: implementation checkpoint `80cd3311df0889314815210d1e7d79dfca1ece74` and bootstrap checkpoint `f3da8f52cc746e6176a269f90172fa4640761114` are merged to staging through PR #150/#152; merge SHA is `f6cd1290c8df384eb0c0064af9aa4b9e68625537`; the final report checkpoint is reported in chat.
+1. Requested scope: finish CP-32/CP-48 with real country data, Engine-usable SKUs, current served staging, and no competing authority.
+2. Completed work: ES/PL/FR research/data, readiness fixes, slot review, primary assignments, CP-36 preference, normalization, live resolver and served A-L.
+3. Files changed: three migrations; seed/verifier scripts; migration/catalog/normalization tests; mapper donor regression; `catalog-submit`; this report.
+4. Tests added/changed: migration/static-seed/readiness tests and dairy donor regression; existing country/picker/Scanner/solver suites retained.
+5. Exact commands: focused `npm test -- --run ...`, `npm test -- --maxWorkers=1`, `npm run typecheck`, `npm run verify:staging`, `npm run solver:contracts`, live verifier, Supabase inspection/deploy, browser served checks.
+6. Test results: all requested local gates and live resolver checks passed; exact counts above.
+7. Accepted flows retested: discovery, CP-44 Replace, HOME/PRO parity, persistence/merge, Mapper, Scanner, Engine and solver.
+8. Deployment verified: Vercel staging Ready; Supabase staging migrations live; `catalog-submit` v49 Active. Production untouched.
+9. Remaining incomplete: Owner QA only; excluded from the 48-item denominator and not marked.
+10. Blockers/external actions: none before Owner QA.
+11. Git status: final normal commit and pushed dedicated branch are reported in chat; this checkpoint does not merge to staging/main.
