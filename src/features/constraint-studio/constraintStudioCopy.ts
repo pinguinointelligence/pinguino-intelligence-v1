@@ -101,6 +101,9 @@ export const constraintStudioCopy = {
     added: 'Nowy składnik',
     removed: 'Usunięty',
     batchLine: (before: string, after: string) => `Partia: ${before} → ${after}`,
+    batchTargetMismatch: (current: string, target: string) =>
+      `Receptura ma ${current}, ale zapisany cel partii to ${target}. ` +
+      `Podgląd przelicza ją do zapisanej masy ${target}.`,
     outOfBandDelta: (before: number, after: number) =>
       `Parametry poza optymalnym zakresem: ${before} → ${after}`,
     apply: 'Zastosuj zmiany',
