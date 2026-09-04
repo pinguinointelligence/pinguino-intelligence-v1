@@ -2,4 +2,4 @@
 
 | device | os | browser | mode | scenes | frames | Phase 0 |
 |---|---|---|---|---|---|---|
-| Realme  | Android 15 | Chrome 125.0 | chrome_tab | 24 | 98 | **NO-GO** |
+| Iphone | iOS 26.6.1 | Chrome iOS 152.0 | browser_tab | 26 | 107 | **GO** |

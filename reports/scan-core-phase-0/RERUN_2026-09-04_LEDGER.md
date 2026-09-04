@@ -1,0 +1,23 @@
+# Phase 0 device-matrix RE-RUN ledger — 2026-09-04 (owner decision: repeat the physical phone evidence from scratch)
+
+Harness build for every RERUN bundle: `scan-lab-baseline/0.1.0+ed94869f` (branch claude/scan-core-phase-0, PR #155 DRAFT).
+Durable corpus: `~/Developer/scan-corpus/received/` (COPY A) + `~/Documents/scan-corpus-backup/received/` (COPY B), SHA-256 in `received/INDEX.md`.
+Identity is the session id, never the file name. Baseline mode = the harness defaults (Diagnostyka untouched).
+
+| # | device / browser | session id | session name typed | created (UTC) | received via | scenes | Phase 0 gates | confirmed wrong values | completion 12–30 cm p50 / p95 | status |
+|---|---|---|---|---|---|---|---|---|---|---|
+| R1 | Realme RMX3840 (client hint) · Android · Chrome 142 · chrome_tab | ccb0b44f-3e69-44eb-bf31-a933d5eceb61 | Chrome | 15:27:28 | tunnel 15:35:34 (+ AirDrop duplicate, identical sha256 718f05a9…) | 25/26 | NO-GO (CPU proxy 84 %: main-thread capture→luma 60.9 ms p50) | **1** — ean-25cm confirmed `0602002492786`, majority `7622201492786` | 389 ms / 1935 ms (meets) | RECEIVED · VERIFIED · PARSED |
+| bonus | Realme RMX3840 · Android 15 · stock "Internet" browser (Chrome 125 UA) · chrome_tab | 8816a7bf-ee2b-4a96-ab29-1b376958e85c | Internet browser | 15:14:33 | AirDrop only (sha256 49ac4f97…) | 24/26 | NO-GO (CPU proxy 84 %) | 0 (declared 7622201492786; ean-25cm and ean-30cm never confirmed) | 439 ms / 7078 ms (misses) | RECEIVED · VERIFIED · PARSED (outside the matrix, kept as extra evidence) |
+| I1 | iPhone 15 Pro Max · iOS 26.6.1 · Chrome iOS · chrome_tab | de13a57b-a09a-4d5d-b6b7-7859db2d30f7 | Chrome | 15:37:06 | tunnel 15:50:41 (47 MB, sha256 f579ee43…) | 26/26 | **GO** (locate p95 5.0 ms, CPU 54 %) | **1** — ean-30cm confirmed `8622262492786`, majority `7622201492786` | 312 ms / 4261 ms (misses: ean-12cm first confirm 4.26 s) | RECEIVED · VERIFIED · PARSED |
+| D1 | iPhone 15 Pro Max · Safari tab | | | | | | | | | PENDING |
+| D2 | iPhone 15 Pro Max · Home-Screen PWA (must show standalone_pwa) | | | | | | | | | PENDING |
+| D3 | Galaxy Note10+ · Chrome | | | | | | | | | PENDING |
+| S0 | Galaxy Note10+ · Samsung Internet | | | | | | | | | PENDING |
+| P1 | Galaxy Note10+ · Chrome · NOTE10-P1-PROBE (scene 26 ×4 + two probes) | | | | | | | | | PENDING |
+
+## Findings so far (evidence, not interpretation of the pending runs)
+1. **Two confirmed wrong values on two different phones, same defect class.** Baseline confirmation (two agreeing raw reads) accepted `0602002492786` (Realme, 25 cm) and `8622262492786` (iPhone Chrome, 30 cm) for the product `7622201492786`: leading-digit / first-group corruptions that pass the EAN-13 checksum. This is the exact failure the Phase 1 track-scoped consensus lane (4 frames, 2:1 majority, rectified-alone never confirms) is designed to remove; the corpus replay in `reports/scan-core-phase-1/P1_POLICY_REPLAY_2026-09-04.md` reported 0 wrong values on the morning corpus and must be re-run on these bundles.
+2. **Android throughput gate fails identically on both Realme browsers** (main-thread `getImageData` 61 ms p50 at 6.3 fps) — the same root cause as the morning Note10+ result; unchanged by design because acquisition policy is MEASURE FIRST (Note10+ P1 probe).
+3. The Realme Chrome bundle arrived through the tunnel AND by AirDrop; both copies are byte-identical. The tunnel path is proven on Android Chrome and iOS Chrome.
+
+Parsed results: `reports/scan-core-phase-0/results/` (three new files, one per session). Verification per bundle: ZIP integrity (`unzip -t`), size, manifest session id, device line, scene count, SHA-256 equal in COPY A and COPY B.
