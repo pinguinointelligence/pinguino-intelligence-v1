@@ -39,8 +39,8 @@ Devices: iPhone 15 Pro Max / iOS 26.6.1 (Safari tab + standalone PWA) · Samsung
 | C3 | Unit tests for harness logic (stats, saliency on synthetic frames, rectification, ZIP/export, scene state machine) pass — 78 tests / 12 files green: percentiles, luminance, deviceInfo, zip (+system unzip), gtin, sceneMachine, report verdicts, evidence adapter, saliency+rectify on synthetic EAN-13, zxing-wasm node decode, export archive parse | LOCAL TESTS | DONE |
 | C4 | Production build succeeds; harness chunk absent when the flag is off — see A3 | LOCAL TESTS | DONE |
 | C5 | Desktop camera smoke (labelled NOT phone evidence) — flag-on build served locally: intro → device → camera step reached; permission-denied path shows the Polish message; built `decodeWorker` chunk loaded from the page: wasm warm-up 24 ms, `full_cheap` decoded synthetic EAN-13 `5901234123457` (13 lines) in 32 ms at 640×360, luma buffer returned (230400 B), round trip 75 ms; saliency 34 ms first call and split the code into two collinear candidates (176 px + 96 px) — merge rule is a Phase 1 item, B15 measures it | Chromium browser pane on the Mac, 2026-09-04 | DONE (desktop only) |
-| C6 | HTTPS access for the phone: Vercel preview reachable without login, or cloudflared tunnel live | URL fetched from outside | NOT STARTED |
-| C7 | QR code + exact Safari, PWA, scene-flow and export instructions delivered | message + file | NOT STARTED |
+| C6 | HTTPS access for the phone: Vercel preview reachable without login, or cloudflared tunnel live — Vercel previews are SSO-protected (`pinguino-staging`: all_except_custom_domains), so a cloudflared quick tunnel serves the flag-on production build from the Mac; route 200 text/html, manifest 200 application/manifest+json, worker chunk + wasm (application/wasm, 1.09 MB) fetched from outside 2026-09-04 06:33 CEST; durable path after merge = staging.pinguinoai.com with the flag set on the staging Vercel project only | URL fetched from outside | DONE (tunnel, valid while the Mac runs) |
+| C7 | QR code + exact Safari, PWA, scene-flow and export instructions delivered — QR PNG + OWNER_RUN_INSTRUCTIONS (PL) sent 2026-09-04 | message + file | DONE |
 | D1 | iPhone Safari tab run: all barcode + object scenes, repetitions, corpus exported | IPHONE SAFARI | WAITING_ON_OWNER_RUN |
 | D2 | iPhone standalone PWA run: same scenes | IPHONE PWA | WAITING_ON_OWNER_RUN |
 | D3 | Android Chrome run (Galaxy Note10+): same scenes | ANDROID CHROME | WAITING_ON_OWNER_RUN |
@@ -48,4 +48,4 @@ Devices: iPhone 15 Pro Max / iOS 26.6.1 (Safari tab + standalone PWA) · Samsung
 | D5 | GO / NO-GO report per device class against the Decision Package targets | GO / NO-GO | WAITING_ON_OWNER_RUN |
 | D6 | Owner QA sign-off | OWNER QA | WAITING_ON_OWNER |
 
-**SCAN CORE PHASE 0 — 12 / 41 VERIFIED DONE = 29 %** (A1 A2 A5 A6 A3 B22 C1 C2 C3 C4 + A4 in progress; 21 B-items implemented, phone evidence pending)
+**SCAN CORE PHASE 0 — 14 / 41 VERIFIED DONE = 34 %** (A1 A2 A5 A6 A3 B22 C1 C2 C3 C4 + A4 in progress; 21 B-items implemented, phone evidence pending)
