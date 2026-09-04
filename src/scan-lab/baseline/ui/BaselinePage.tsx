@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useState, useSyncExternalStore } from 'react';
 import { SCENES } from '../scenes';
 import type { SceneDefinition } from '../types';
+import { HARNESS_VERSION } from '../corpus/corpusExport';
 import { copy } from './copy';
 import { DiagnosticsPanel } from './DiagnosticsPanel';
 import { HarnessController } from './harnessController';
@@ -44,6 +45,7 @@ export function BaselinePage() {
   );
   const [flow, dispatch] = useFlow(activeScenes);
   const [modelLabel, setModelLabel] = useState('');
+  const [sessionName, setSessionName] = useState('');
   const [declared, setDeclared] = useState('');
   const [resume, setResume] = useState(() => HarnessController.readResume());
   const [previous, setPrevious] = useState<
@@ -104,12 +106,17 @@ export function BaselinePage() {
 
   const onDeviceSubmit = useCallback(async () => {
     try {
-      await controller.startSession(modelLabel, declared || null);
+      await controller.startSession(
+        modelLabel,
+        declared || null,
+        undefined,
+        sessionName.trim() || null,
+      );
       dispatch({ type: 'SET_DEVICE', modelLabel, declaredCode: declared || null });
     } catch {
       /* error published in snapshot */
     }
-  }, [controller, dispatch, modelLabel, declared]);
+  }, [controller, dispatch, modelLabel, declared, sessionName]);
 
   const onResume = useCallback(async () => {
     if (!resume) return;
@@ -263,6 +270,16 @@ export function BaselinePage() {
             />
           </label>
           <label style={styles.label}>
+            {copy.device.sessionName}
+            <input
+              style={styles.input}
+              value={sessionName}
+              placeholder={copy.device.sessionNamePlaceholder}
+              onChange={(e) => setSessionName(e.target.value)}
+              autoComplete="off"
+            />
+          </label>
+          <label style={styles.label}>
             {copy.device.declaredCode}
             <input
               style={styles.input}
@@ -275,7 +292,8 @@ export function BaselinePage() {
           </label>
           <p style={styles.hint}>{copy.device.declaredHint}</p>
           <p style={styles.hint}>
-            {copy.device.modeLabel}: {executionMode} · {uaGuess.os} · {uaGuess.browser}
+            {copy.device.modeLabel}: {executionMode} · {uaGuess.os} · {uaGuess.browser} ·{' '}
+            {copy.device.build}: {HARNESS_VERSION}
           </p>
           <details style={styles.details}>
             <summary style={styles.label}>

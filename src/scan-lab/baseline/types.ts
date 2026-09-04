@@ -303,4 +303,6 @@ export interface SessionRecord {
   probes?: ProbeResult[];
   scenes: SceneRunSummary[];
   harnessVersion: string;
+  /** Optional tester-typed session name (e.g. RERUN-D1-2026-09-04); identity stays the sessionId. */
+  sessionName?: string;
 }

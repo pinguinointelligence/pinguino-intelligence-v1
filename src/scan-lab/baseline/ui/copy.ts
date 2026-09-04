@@ -10,6 +10,9 @@ export const copy = {
   },
   device: {
     modelLabel: 'Model telefonu',
+    sessionName: 'Nazwa sesji (opcjonalnie)',
+    sessionNamePlaceholder: 'np. RERUN-D1-2026-09-04',
+    build: 'Wersja testu',
     modelPlaceholder: 'np. iPhone 15 Pro Max',
     declaredCode: 'Cyfry pod kodem kreskowym (opcjonalnie)',
     declaredHint:

@@ -7,7 +7,9 @@ import type { FrameEvidence } from '../types';
 import type { CorpusReader } from './corpusDb';
 import { buildZip, type ZipEntryInput } from './zip';
 
-export const HARNESS_VERSION = 'scan-lab-baseline/0.1.0';
+/** Harness identity carried by every bundle: package version + git commit injected at build time. */
+export const HARNESS_BUILD: string = import.meta.env.VITE_SCAN_LAB_BUILD ?? 'dev';
+export const HARNESS_VERSION = `scan-lab-baseline/0.1.0+${HARNESS_BUILD}`;
 
 export function slugify(label: string): string {
   const ascii = label.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ł/g, 'l').replace(/Ł/g, 'L');
@@ -24,8 +26,13 @@ export function compactTimestamp(iso: string): string {
   return iso.replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
 }
 
-export function archiveFileName(modelLabel: string, createdAtIso: string): string {
-  return `scan-baseline_${slugify(modelLabel)}_${compactTimestamp(createdAtIso)}.zip`;
+export function archiveFileName(
+  modelLabel: string,
+  createdAtIso: string,
+  sessionName?: string,
+): string {
+  const name = sessionName ? `_${slugify(sessionName)}` : '';
+  return `scan-baseline_${slugify(modelLabel)}${name}_${compactTimestamp(createdAtIso)}.zip`;
 }
 
 const README_TXT = `SCAN LAB — PHASE 0 BASELINE (GELLATTI)
@@ -97,7 +104,7 @@ export async function buildRunArchive(
   const blob = await buildZip(entries);
   return {
     blob,
-    fileName: archiveFileName(run.device.modelLabel, run.createdAt),
+    fileName: archiveFileName(run.device.modelLabel, run.createdAt, run.sessionName),
     entries: entries.length,
     bytes: blob.size,
   };

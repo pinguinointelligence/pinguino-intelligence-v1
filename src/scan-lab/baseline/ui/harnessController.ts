@@ -296,6 +296,7 @@ export class HarnessController {
     modelLabel: string,
     declaredCode: string | null,
     resumeSessionId?: string,
+    sessionName: string | null = null,
   ): Promise<void> {
     this.declaredCode = declaredCode;
     try {
@@ -324,6 +325,7 @@ export class HarnessController {
         worker: null,
         scenes: [],
         harnessVersion: HARNESS_VERSION,
+        ...(sessionName ? { sessionName } : {}),
       };
       await this.db.createRun(run);
       this.run = run;
