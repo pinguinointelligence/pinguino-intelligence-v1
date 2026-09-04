@@ -24,6 +24,7 @@ import {
   resetRuntimeAccountOwnerForTests,
   resolvedAccountBoundaryRequiresClear,
   shouldClearAccountScopedState,
+  writePersistedAccountOwner,
 } from './accountSessionReset';
 
 describe('boot-safe persisted owner gate', () => {
@@ -85,6 +86,30 @@ describe('isAccountBoundaryChange — fires only on a real account boundary', ()
 
   it('does not fire when the same signed-in user repeats', () => {
     expect(isAccountBoundaryChange('user-a', 'user-a')).toBe(false);
+  });
+});
+
+describe('account owner marker storage scope', () => {
+  it('updates only its own marker and never clears unrelated browser storage', () => {
+    const values = new Map<string, string>([
+      ['unrelated-preference', 'keep-me'],
+      ['sb-project-auth-token', 'opaque-session-value'],
+    ]);
+    const removed: string[] = [];
+    const storage = {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+      removeItem: (key: string) => {
+        removed.push(key);
+        values.delete(key);
+      },
+    };
+
+    writePersistedAccountOwner(storage, 'user-a');
+
+    expect(values.get('unrelated-preference')).toBe('keep-me');
+    expect(values.get('sb-project-auth-token')).toBe('opaque-session-value');
+    expect(removed).toEqual([]);
   });
 });
 
