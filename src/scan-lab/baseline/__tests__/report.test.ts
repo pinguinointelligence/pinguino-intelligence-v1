@@ -5,7 +5,7 @@ import { percentiles } from '../stats/percentiles';
 
 const P = percentiles([]);
 const scene = (id: string, over: Partial<SceneRunSummary> = {}): SceneRunSummary => ({
-  sceneId: id,
+  sceneId: id === 'bar' ? 'ean-25cm' : id,
   attempt: 1,
   startedAt: '2026-09-04T10:00:00.000Z',
   t0: 0,
@@ -115,7 +115,7 @@ describe('firstConfirmation (two consecutive agreeing hits from different frames
 });
 
 describe('summarizeScene verdicts', () => {
-  const def = defs.get('bar');
+  const def = defs.get('ean-25cm');
   it('NO_DECODE without hits', () => {
     expect(summarizeScene(scene('bar'), [ev(1, 1, null)], undefined, def).verdict).toBe(
       'NO_DECODE',
@@ -188,7 +188,10 @@ describe('buildReport', () => {
     const report = buildReport({
       run,
       scenes: [scene('bar', { attempt: 2, declaredCode: '5901234123457' }), scene('obj')],
-      eventsByScene: { 'bar:2': [ev(50, 1, '5901234123457'), ev(90, 2, '5901234123457')], obj: [] },
+      eventsByScene: {
+        'ean-25cm:2': [ev(50, 1, '5901234123457'), ev(90, 2, '5901234123457')],
+        obj: [],
+      },
       generatedAt: '2026-09-04T11:00:00.000Z',
       sceneDefinitions: defs,
     });
@@ -203,5 +206,26 @@ describe('buildReport', () => {
       confirmedScenes: 1,
     });
     expect(report.totals.workerRoundTripMs.count).toBe(2);
+  });
+});
+
+describe('declared code scope', () => {
+  it('ignores the declared code on scenes that prescribe a different product', () => {
+    const can = summarizeScene(
+      scene('ean-curved-can', { declaredCode: '5901234123457' }),
+      [ev(50, 1, '8411092731130'), ev(90, 2, '8411092731130')],
+      undefined,
+      {
+        id: 'ean-curved-can',
+        kind: 'barcode',
+        title: 'Puszka',
+        instruction: '',
+        durationMs: 8000,
+        expectsCode: true,
+      },
+    );
+    expect(can.verdict).toBe('DECODED_CONFIRMED');
+    expect(can.misreadCount).toBe(0);
+    expect(can.expectedCode).toBeNull();
   });
 });

@@ -176,6 +176,24 @@ export interface ReportInput {
 
 const EMPTY_TEXT_ORDER = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 
+/**
+ * Scenes recorded with the tester's main product (the code typed at the device step). Every other barcode
+ * scene prescribes a different object (can, small bottle, glossy pack, damaged code, small code, two
+ * products), so the declared code is only an expectation here. D1 evidence 2026-09-04: applying it to all
+ * scenes produced 9 false MISREAD verdicts.
+ */
+export const DECLARED_CODE_SCENES: ReadonlySet<string> = new Set([
+  'ean-12cm',
+  'ean-18cm',
+  'ean-25cm',
+  'ean-30cm',
+  'ean-approach-40cm',
+  'ean-enter-edge',
+  'ean-yaw-30',
+  'ean-yaw-60',
+  'ean-partial',
+]);
+
 /** Removes every whitespace character; an empty result is "no code". */
 export function normalizeCode(code: string | null | undefined): string | null {
   if (typeof code !== 'string') return null;
@@ -270,7 +288,9 @@ export function summarizeScene(
   definition: SceneDefinition | undefined,
 ): SceneSummary {
   const kind: SceneKind = definition?.kind ?? 'barcode';
-  const expectedCode = normalizeCode(scene.declaredCode);
+  const expectedCode = DECLARED_CODE_SCENES.has(scene.sceneId)
+    ? normalizeCode(scene.declaredCode)
+    : null;
   const ordered = sortedByTime(events);
 
   // Frames + cadence

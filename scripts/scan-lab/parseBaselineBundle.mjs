@@ -49,6 +49,51 @@ function readZip(bytes) {
 }
 
 const text = (u8) => new TextDecoder().decode(u8);
+
+/** Scenes that use the tester's main product (the one whose digits were typed). Every other barcode scene
+ *  prescribes a different object (can, small bottle, glossy pack, damaged code, small code, two products),
+ *  so the declared code must not be compared there. */
+const DECLARED_CODE_SCENES = new Set(['ean-12cm', 'ean-18cm', 'ean-25cm', 'ean-30cm', 'ean-approach-40cm', 'ean-enter-edge', 'ean-yaw-30', 'ean-yaw-60', 'ean-partial']);
+const isGtinValid = (t) => {
+  if (!/^\d{8}$|^\d{12,14}$/.test(t)) return false;
+  let sum = 0, w = 3;
+  for (let i = t.length - 2; i >= 0; i -= 1) { sum += (t.charCodeAt(i) - 48) * w; w = w === 3 ? 1 : 3; }
+  return (10 - (sum % 10)) % 10 === t.charCodeAt(t.length - 1) - 48;
+};
+
+/** Re-derives hits, confirmation (two consecutive checksum-valid reads from DIFFERENT frames agreeing) and the
+ *  verdict on the Mac, with the declared code scoped to DECLARED_CODE_SCENES. Mirrors stats/report.ts. */
+function rescoreScene(sc, events, declared, kind) {
+  const expected = DECLARED_CODE_SCENES.has(sc.sceneId) ? declared : null;
+  const reads = [];
+  for (const e of [...events].sort((a, b) => a.tCapture - b.tCapture || a.frameIndex - b.frameIndex)) {
+    for (const d of e.decodes ?? []) {
+      const hit = d.results.find((r) => r.checksumValid && isGtinValid(r.text.replace(/\D/g, '')));
+      reads.push({ frame: e.frameIndex, tMs: e.tCapture - sc.t0, text: hit ? hit.text.replace(/\D/g, '') : null });
+    }
+  }
+  const hits = reads.filter((r) => r.text);
+  const counts = {};
+  for (const h of hits) counts[h.text] = (counts[h.text] ?? 0) + 1;
+  let prev = null, confirmed = null;
+  for (const h of hits) {
+    if (prev && prev.text === h.text && prev.frame !== h.frame) { confirmed = { text: h.text, tMs: h.tMs }; break; }
+    if (!prev || prev.text !== h.text) prev = h;
+  }
+  const majority = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+  const legit = sc.sceneId === 'ean-two-codes' ? 2 : 1;
+  const topSet = new Set(Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, legit).map(([t]) => t));
+  const rawContradicting = hits.filter((h) => !topSet.has(h.text)).length;
+  const correct = expected ? hits.filter((h) => h.text === expected).length : null;
+  const misread = expected ? hits.length - correct : 0;
+  let verdict;
+  if (kind === 'object') verdict = 'NOT_APPLICABLE';
+  else if (hits.length === 0) verdict = 'NO_DECODE';
+  else if (confirmed) verdict = expected && confirmed.text !== expected ? 'MISREAD' : 'DECODED_CONFIRMED';
+  else verdict = expected && correct === 0 ? 'MISREAD' : 'DECODED_UNCONFIRMED';
+  const confirmedWrong = confirmed && (expected ? confirmed.text !== expected : majority && confirmed.text !== majority && counts[confirmed.text] < counts[majority]);
+  return { hits: hits.length, attempts: reads.length, counts, firstHitMs: hits[0]?.tMs ?? null, firstConfirmedMs: confirmed?.tMs ?? null, confirmedText: confirmed?.text ?? null, verdict, misread, rawContradicting, expected, confirmedWrong: Boolean(confirmedWrong) };
+}
 const ms = (v) => (typeof v === 'number' && Number.isFinite(v) ? Math.round(v).toString() : '—');
 const ms1 = (v) => (typeof v === 'number' && Number.isFinite(v) ? v.toFixed(1) : '—');
 const pct = (v) => (typeof v === 'number' && Number.isFinite(v) ? `${Math.round(v * 100)} %` : '—');
@@ -82,6 +127,13 @@ export function analyzeBundle(bytes, fileName) {
     if (!raw) return [];
     return text(raw).split('\n').filter(Boolean).map((l) => JSON.parse(l));
   };
+  const declaredRaw = scenes.find((sc) => sc.declaredCode)?.declaredCode ?? null;
+  const declared = declaredRaw ? declaredRaw.replace(/\D/g, '') : null;
+  const rescored = new Map();
+  for (const sc of scenes) {
+    const kind = (report?.scenes ?? []).find((x) => x.sceneId === sc.sceneId && x.attempt === sc.attempt)?.kind ?? (sc.sceneId.startsWith('ean') ? 'barcode' : 'object');
+    rescored.set(`${sc.sceneId}:${sc.attempt}`, rescoreScene(sc, eventsOf(sc.sceneId, sc.attempt), declared, kind));
+  }
   const pooled = { locateRoi: [], sal: [], roi: [], transferProxy: [], rawWrong: 0, rawWrongDetail: [] };
   const mainCaptureMs = [];
   for (const sc of scenes) {
@@ -96,14 +148,10 @@ export function analyzeBundle(bytes, fileName) {
       if (typeof e.roundTripMs === 'number' && typeof e.workerBusyMs === 'number') pooled.transferProxy.push(e.roundTripMs - e.workerBusyMs);
     }
     if (isBar) {
-      const vals = Object.entries(sc.decodedValues ?? {}).sort((a, b) => b[1] - a[1]);
-      // ean-two-codes legitimately carries two products; everything beyond the expected majority set is a contradiction
-      const legitimate = sc.sceneId === 'ean-two-codes' ? 2 : 1;
-      if (vals.length > legitimate) {
-        const top = vals.slice(0, legitimate).reduce((a, [, n]) => a + n, 0);
-        const contradicting = vals.reduce((a, [, n]) => a + n, 0) - top;
-        pooled.rawWrong += contradicting;
-        pooled.rawWrongDetail.push(`${sc.sceneId}: ${vals.map(([v, n]) => `${v}×${n}`).join(' vs ')}`);
+      const rs = rescored.get(`${sc.sceneId}:${sc.attempt}`);
+      if (rs && rs.rawContradicting > 0) {
+        pooled.rawWrong += rs.rawContradicting;
+        pooled.rawWrongDetail.push(`${sc.sceneId}: ${Object.entries(rs.counts).sort((a, b) => b[1] - a[1]).map(([v, n]) => `${v}×${n}`).join(' vs ')}`);
       }
     }
     for (const t of sc.frameTicks ?? []) if (t.processed && typeof t.captureToLumaMs === 'number') mainCaptureMs.push(t.captureToLumaMs);
@@ -137,8 +185,31 @@ export function analyzeBundle(bytes, fileName) {
   const fpsTail = avg(tail5);
   const duty = loop ? loop.localizeDutyCycle + loop.decodeDutyCycle : null;
   const sceneSeconds = scenes.filter((s) => s.durationMs >= TARGETS.minSceneSeconds * 1000).length;
-  const misreads = report?.totals?.misreads ?? null;
-  const completion = barcodeScenes.filter((s) => /^ean-(12|18|25|30)cm$/.test(s.sceneId)).map((s) => s.firstConfirmedMs).filter((v) => typeof v === 'number');
+  const rescoredRows = [...rescored.values()];
+  const misreads = declared ? rescoredRows.reduce((a, r) => a + r.misread, 0) : null;
+  const confirmedWrongCount = rescoredRows.filter((r) => r.confirmedWrong).length;
+  const verdictCounts = {};
+  for (const r of rescoredRows) verdictCounts[r.verdict] = (verdictCounts[r.verdict] ?? 0) + 1;
+  const distScenes = scenes.filter((s) => /^ean-(12|18|25|30)cm$/.test(s.sceneId));
+  const completionAll = distScenes.map((s) => rescored.get(`${s.sceneId}:${s.attempt}`)?.firstConfirmedMs ?? null);
+  const completion = completionAll.filter((v) => typeof v === 'number');
+  const neverConfirmed = distScenes.filter((s, i) => completionAll[i] === null).map((s) => s.sceneId);
+  const wrongPairs = [];
+  for (const sc of scenes) {
+    if (!sc.sceneId.startsWith('ean')) continue;
+    const rs = rescored.get(`${sc.sceneId}:${sc.attempt}`);
+    const ref = rs?.expected ?? Object.entries(rs?.counts ?? {}).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+    if (!ref) continue;
+    const ev = eventsOf(sc.sceneId, sc.attempt).sort((a, b) => a.tCapture - b.tCapture || a.frameIndex - b.frameIndex);
+    let prev = null;
+    for (const e of ev) for (const d of e.decodes ?? []) {
+      const hit = d.results.find((r) => r.checksumValid);
+      if (!hit) continue;
+      const t = hit.text.replace(/\D/g, '');
+      if (prev && prev.t === t && prev.f !== e.frameIndex && t !== ref) { wrongPairs.push(`${sc.sceneId}: ${t} at ${Math.round(e.tCapture - sc.t0)} ms (frames ${prev.f}/${e.frameIndex})`); break; }
+      if (!prev || prev.t !== t) prev = { t, f: e.frameIndex };
+    }
+  }
   const completionP50 = percentile(completion, 0.5);
   const completionP95 = percentile(completion, 0.95);
 
@@ -147,8 +218,9 @@ export function analyzeBundle(bytes, fileName) {
     { id: '≥ 15 fps PROCESSED sustained 60 s (loop-60s)', value: processedFps === null ? '— (loop-60s not run)' : `${ms1(processedFps)} fps processed (min second ${processedFpsMin ?? '—'}); camera presented ${loop ? ms1(loop.framesPresented / dur60) : '—'} fps, rVFC callbacks ${ms1(ticks60.length / (dur60 || 1))}/s (first 5 s ${ms1(fpsHead)} → last 5 s ${ms1(fpsTail)})`, pass: processedFps === null ? null : processedFps >= TARGETS.sustainedFps && (processedFpsMin === null || processedFpsMin >= TARGETS.sustainedFps) },
     { id: 'CPU proxy ≤ 60 % of one core (worker duty + main-thread capture share)', value: duty === null ? '—' : `worker ${pct(loop.localizeDutyCycle)} localize + ${pct(loop.decodeDutyCycle)} decode = ${pct(duty)}; main-thread capture→luma ${ms1(mainCaptureP50)}/${ms1(mainCaptureP95)} ms p50/p95 × ${ms1(processedFps)} fps = ${pct(mainShare)}; combined ${pct(duty + (mainShare ?? 0))}`, pass: duty === null ? null : duty + (mainShare ?? 0) <= TARGETS.dutyCycleMax },
     { id: 'corpus ≥ 20 scenes × ≥ 3 s', value: `${sceneSeconds} scenes ≥ 3 s (${scenes.length} recorded, ${frames} frames stored)`, pass: sceneSeconds >= TARGETS.minScenes },
-    { id: 'wrong codes = 0 (headline)', value: misreads === null ? '—' : `${misreads} misread hit(s) vs declared code; ${report.verdictCounts.MISREAD} MISREAD scene(s); ${pooled.rawWrong} raw single-frame read(s) contradicting the scene majority${pooled.rawWrongDetail.length ? ` (${pooled.rawWrongDetail.join('; ')})` : ''}`, pass: misreads === null ? null : misreads === 0 && report.verdictCounts.MISREAD === 0 },
-    { id: 'EAN-13 completion 12–30 cm p50 ≤ 0.7 s / p95 ≤ 2.0 s (headline)', value: completion.length ? `p50 ${ms(completionP50)} ms / p95 ${ms(completionP95)} ms over ${completion.length} confirmed scene(s)` : '— (no confirmed 12–30 cm scene)', pass: completion.length ? completionP50 <= TARGETS.completionP50Ms && completionP95 <= TARGETS.completionP95Ms : null },
+    { id: 'wrong codes = 0 (headline: CONFIRMED wrong values)', value: `${confirmedWrongCount} confirmed wrong value(s); ${verdictCounts.MISREAD ?? 0} MISREAD scene(s)${declared ? ` vs declared ${declared} (P1 scenes only, ${misreads} raw hit(s) differ)` : ' (no declared code)'}; ${pooled.rawWrong} raw single-frame read(s) contradicting the scene majority${pooled.rawWrongDetail.length ? ` (${pooled.rawWrongDetail.join('; ')})` : ''}`, pass: confirmedWrongCount === 0 && (verdictCounts.MISREAD ?? 0) === 0 },
+    { id: 'EAN-13 completion 12–30 cm p50 ≤ 0.7 s / p95 ≤ 2.0 s (headline)', value: `${completion.length ? `p50 ${ms(completionP50)} ms / p95 ${ms(completionP95)} ms over ${completion.length} confirmed scene(s)` : 'no confirmed 12–30 cm scene'}${neverConfirmed.length ? `; NEVER confirmed: ${neverConfirmed.join(', ')}` : ''}`, pass: distScenes.length ? neverConfirmed.length === 0 && completionP50 <= TARGETS.completionP50Ms && completionP95 <= TARGETS.completionP95Ms : null },
+    { id: 'two consecutive frames agreeing on a WRONG value (fast-lane hazard)', value: wrongPairs.length ? wrongPairs.join('; ') : 'none observed', pass: wrongPairs.length === 0 },
   ];
   const phase0 = checks.slice(0, 4);
   const verdict = phase0.every((c) => c.pass === true) ? 'GO' : phase0.some((c) => c.pass === false) ? 'NO-GO' : 'INCOMPLETE';
@@ -179,7 +251,9 @@ export function analyzeBundle(bytes, fileName) {
   lines.push('## Scenes');
   lines.push('| scene | kind | att | verdict | 1st hit ms | confirmed ms | hits/att | misread | fps p50 | cadence p50 | worker RT p50/p95 | localize p50/p95 | full_cheap p50/p95 (hits) | full_harder p50/p95 (hits) | roi p50/p95 (hits) | rect p50/p95 (hits) | cand px / |°| | dropped |');
   lines.push('|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|');
-  for (const s of report?.scenes ?? []) {
+  for (const s0 of report?.scenes ?? []) {
+    const rs = rescored.get(`${s0.sceneId}:${s0.attempt}`);
+    const s = rs ? { ...s0, verdict: rs.verdict, firstHitMs: rs.firstHitMs, firstConfirmedMs: rs.firstConfirmedMs, confirmedText: rs.confirmedText, hits: rs.hits, decodeAttempts: rs.attempts, misreadCount: rs.misread } : s0;
     const raw = sceneMap.get(`${s.sceneId}:${s.attempt}`);
     const v = (name) => { const x = s.variants.find((q) => q.variant === name); return x ? `${P(x.decodeMs)} (${x.hits}/${x.attempts})` : '—'; };
     lines.push(`| ${s.sceneId} | ${s.kind} | ${s.attempt} | ${s.verdict} | ${ms(s.firstHitMs)} | ${ms(s.firstConfirmedMs)}${s.confirmedText ? ` ${s.confirmedText}` : ''} | ${s.hits}/${s.decodeAttempts} | ${s.misreadCount} | ${ms1(s.fps.p50)} | ${ms1(s.cadenceMs.p50)} | ${P(s.workerRoundTripMs)} | ${raw ? P(raw.localizeMs) : '—'} | ${v('full_cheap')} | ${v('full_harder')} | ${v('roi_cheap')} | ${v('rectified_cheap')} | ${ms(s.medianCandidateWidthPx)} / ${ms(s.medianAbsAngleDeg)} | ${pct(s.frames.droppedRatio)} |`);
@@ -197,7 +271,7 @@ export function analyzeBundle(bytes, fileName) {
   lines.push('|---|---|---|');
   for (const c of checks.slice(4)) lines.push(`| ${c.id} | ${c.value} | ${c.pass === null ? 'n/a' : c.pass ? 'meets' : 'misses'} |`);
   lines.push('');
-  lines.push(`Verdict counts: ${Object.entries(report?.verdictCounts ?? {}).map(([k, n]) => `${k}=${n}`).join(', ')}`);
+  lines.push(`Verdict counts (rescored on the Mac, declared code scoped to the P1 scenes): ${Object.entries(verdictCounts).map(([k, n]) => `${k}=${n}`).join(', ')}`);
   return { markdown: lines.join('\n'), verdict, checks, device: d, sceneCount: scenes.length, frames, pooled, scenes, report, run, fileName, processedFps, processedFpsMin, duty, mainShare, sceneSeconds };
 }
 
