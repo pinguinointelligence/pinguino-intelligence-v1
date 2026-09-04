@@ -59,8 +59,11 @@ import {
 } from '../../../supabase/functions/production-rescue-authorize/logic';
 import {
   OWNER_BANANA_MAIN_POLICY,
+  OWNER_ACCEPTED_RESCUE_GRAMS,
+  OWNER_ACCEPTED_RESCUE_TOTAL_G,
   OWNER_BANANA_PHYSICAL_G,
   OWNER_LINE_IDS,
+  OWNER_MINIMUM_LEGAL_TOTAL_G,
   OWNER_MAPPER_IDS,
   OWNER_PLANNED_GRAMS,
   OWNER_RESCUE_GRAMS,
@@ -581,6 +584,65 @@ describe('rescued Production run is written in a state its own recovery refuses'
           (task) => task.cumulativeTargetG === task.physicalBaselineG + task.authorizedDeltaG,
         ),
       ).toBe(true);
+    });
+  });
+
+  /**
+   * B/C — THE SEARCH CONTINUES, proven with the two REAL candidates the served
+   * system actually produced for this vessel rather than a synthetic search:
+   *
+   *   candidate N    1149.9 g  BANANA 30.0026 %  REFUSED  (authorized pre-fix,
+   *                                                        rescue_revision 1)
+   *   candidate N+1  1150.1 g  BANANA 29.9974 %  ACCEPTED (rescue_revision 2,
+   *                                                        run completed)
+   *
+   * The transition is caused by tenth-gram quantization alone: CREAM 129.9 -> 130
+   * and DEXTROSE 63.2 -> 63.3 return the 0.1 g that pushed the Main share over
+   * its ceiling. Both vectors are concrete, so neither assertion can pass
+   * vacuously.
+   */
+  describe('the bounded add-only search reaches a legal candidate', () => {
+    const ACCEPTED = candidate(
+      OWNER_ACCEPTED_RESCUE_GRAMS.slice(0, 6) as unknown as number[],
+      OWNER_BANANA_PHYSICAL_G,
+    );
+
+    it('candidate N (1149.9 g) is refused by the terminal authority', () => {
+      const total = STORED.items.reduce((sum, item) => sum + item.planned_grams, 0);
+      expect(total).toBeCloseTo(1149.9, 6);
+      expect(
+        evaluateRecipeConstraintAuthority({
+          recipe: STORED,
+          snapshots: snapshotsFor(STORED),
+          module: 'BATCH_RESCUE',
+        }).valid,
+      ).toBe(false);
+    });
+
+    it('candidate N+1 (1150.1 g) passes the SAME terminal authority', () => {
+      const total = ACCEPTED.items.reduce((sum, item) => sum + item.planned_grams, 0);
+      expect(total).toBeCloseTo(OWNER_ACCEPTED_RESCUE_TOTAL_G, 6);
+      expect(
+        evaluateRecipeConstraintAuthority({
+          recipe: ACCEPTED,
+          snapshots: snapshotsFor(ACCEPTED),
+          module: 'BATCH_RESCUE',
+        }).valid,
+      ).toBe(true);
+    });
+
+    it('the accepted candidate keeps BANANA inside its published hard limit', () => {
+      const total = ACCEPTED.items.reduce((sum, item) => sum + item.planned_grams, 0);
+      const banana = ACCEPTED.items.find((item) => item.id === OWNER_LINE_IDS.banana)!;
+      const percent = (banana.planned_grams / total) * 100;
+      expect(percent).toBeLessThanOrEqual(OWNER_BANANA_MAIN_POLICY.hardLimitPercent);
+      expect(percent).toBeCloseTo(29.9974, 3);
+      // Add-only: it had to reach at least the derived minimum legal batch.
+      expect(total).toBeGreaterThanOrEqual(OWNER_MINIMUM_LEGAL_TOTAL_G);
+    });
+
+    it('the accepted candidate is one recovery can reopen, so reload cannot strand it', () => {
+      expect(() => applyVerifiedRescueInput(sessionFor(ACCEPTED), ACCEPTED, 2)).not.toThrow();
     });
   });
 });

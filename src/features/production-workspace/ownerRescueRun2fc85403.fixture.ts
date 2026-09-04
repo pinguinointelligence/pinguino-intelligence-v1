@@ -42,6 +42,22 @@ export const OWNER_RESCUE_OPTION_ID = 'restore_original_recipe';
 export const OWNER_RESCUE_REVISION = 1;
 export const OWNER_SOURCE_ACTUAL_REVISION = 8;
 
+/**
+ * THE ACCEPTED REPAIR — rescue_revision 2, computed by the FIXED build on served
+ * staging (accepted 2026-09-04T18:56:01Z, run completed 18:57:19Z). Same option
+ * (`restore_original_recipe`), same physical BANANA, but CREAM is 130 (not
+ * 129.9) and DEXTROSE 63.3 (not 63.2): the 0.1 g that tenth-gram rounding used
+ * to give away is kept, so the batch is 1150.1 g and BANANA lands at 29.9974 %
+ * — inside its 30 % hard limit instead of 0.0026 pp outside it.
+ *
+ * The durable `rescue_applied` / `rescue_accepted` events for that revision
+ * carry `supersededRescueRevision: 1` naming the invalid authorization it
+ * replaced.
+ */
+export const OWNER_ACCEPTED_RESCUE_GRAMS = [492.2, 130, 46, 69, 63.3, 4.6, 345] as const;
+export const OWNER_ACCEPTED_RESCUE_TOTAL_G = 1150.1;
+export const OWNER_ACCEPTED_RESCUE_REVISION = 2;
+
 export const OWNER_BANANA_MAIN_POLICY = {
   mainCapability: 'MAIN_CAPABLE',
   behaviorRole: 'MAIN_PROFILE_SPECIFIC',
