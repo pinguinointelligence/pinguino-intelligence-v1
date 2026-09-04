@@ -304,7 +304,7 @@ before the Crown-OFF cases.
 The correction notice itself measured `background rgb(255,255,255)`, centered
 headline and body, a single `OK`, and **no `%` anywhere** in its text.
 
-## Defect found by this acceptance — took THREE attempts, still open at #148
+## Defect found by this acceptance — took THREE attempts, closed at #156
 
 `tone="attention"` declared `border-[var(--g-orange)]` plus a shadow glow, but the
 panel's computed border on served staging was **ink/15** and the shadow was plain
@@ -335,10 +335,42 @@ elevation, so there is no second declaration left to lose. Its test counts the
 utilities on the panel and fails if either is not exactly one — jsdom cannot
 resolve the cascade, but it can prove nothing is fighting.
 
+### Closed — served computed-style proof after #156
+
+Merged `0e49df6c`, served bundle `index-B18lWAga.js` / `index-DXNfgHbM.css`.
+Same flow, same account, same product (WATERMELON 624 g → corrected to 364 g),
+measured on the live notice panel:
+
+```
+data-dialog-tone : attention
+border-color     : rgb(245, 138, 7)          ← was oklab(… / 0.15), i.e. ink/15
+box-shadow       : rgba(245,138,7,0.18) 0 0 0 4px,
+                   rgba(16,17,19,0.12)  0 8px 18px,
+                   rgba(16,17,19,0.24)  0 28px 72px
+background-color : rgb(255, 255, 255)
+```
+
+The warm ring is **inside the painted `box-shadow`**, ahead of the two elevation
+layers, and the border is the orange token. Confirmed visually as well: white
+surface, centered headline and body, one orange `OK`, warm ring on the panel
+edge. **PASS.**
+
 The orange acknowledgement button was rendering correctly throughout.
 
 **A class being present is not evidence that it renders — and neither is a
-green jsdom test that asserts the class.**
+green jsdom test that asserts the class.** The durable protection is the
+utility-counting assertion added in #156: it fails when two utilities touch the
+same property, which is the only thing jsdom can prove and exactly what both
+dead fixes violated.
+
+### Still open — the same collision in a second caller
+
+`ProRecalcPanel` passes `panelClassName="… border-black/10 … shadow-pro-md"` into
+the same shell (introduced by #154), which now owns both properties itself. That
+is the identical layering pattern, so one of those two declarations is decided by
+CSS order rather than intent. Not touched here: changing it would alter an
+owner-approved panel surface inside a closure PR. Recorded for a separate
+decision.
 
 ## Served-QA notes worth keeping
 
