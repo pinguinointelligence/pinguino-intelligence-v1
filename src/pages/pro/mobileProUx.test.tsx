@@ -110,8 +110,8 @@ describe('collapsed mobile recipe line', () => {
   });
 
   it('replaces the five-column table below lg instead of squeezing it', () => {
-    expect(row).toContain('<div className="lg:hidden">');
-    expect(row).toContain('<div className="hidden lg:block">');
+    expect(row).toContain('<div className="pro-ingredient-row-mobile lg:hidden">');
+    expect(row).toContain('<div className="pro-ingredient-row-desktop hidden lg:block">');
     expect(row).toContain('<MobileIngredientLine');
   });
 

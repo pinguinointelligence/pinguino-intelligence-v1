@@ -13,6 +13,7 @@ import { DESKTOP_WORKBENCH_COLUMNS } from './desktopTabAnchorContract';
 import { APP_HEADER_CANVAS, APP_HEADER_ROW, APP_SHELL_MAX_WIDTH_CLASS } from './shellGeometry';
 import { HomeProSwitch } from '@/features/home-creator/ui/HomeProSwitch';
 import { useHomeEntitlement } from '@/features/home-creator/useHomeEntitlement';
+import { useApplicationScaleAuthority } from './applicationScaleAuthority';
 
 /**
  * THE ONE canonical application shell.
@@ -70,6 +71,7 @@ export function AppShell({
    */
   stickyHeader?: boolean;
 }) {
+  useApplicationScaleAuthority();
   const persona = useProCorePersona();
   const location = useLocation();
   const entitlement = useHomeEntitlement();

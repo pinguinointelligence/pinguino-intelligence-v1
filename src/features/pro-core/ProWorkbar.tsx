@@ -1,12 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useId,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useParams } from 'react-router';
 import { copy } from '@/copy/en';
@@ -25,6 +17,11 @@ import { useConstraintStudioStore } from '@/features/constraint-studio/constrain
 import { iconButtonClasses } from '@/components/ui/buttonStyles';
 import { withWorkbenchOrigin, workbenchOriginForSection } from '@/pages/pro/workbenchOrigin';
 import { announceFriendlyLabMoment } from '@/components/shared/friendlyLabMoment';
+import {
+  applicationViewportGeometry,
+  applicationViewportSize,
+  currentApplicationScale,
+} from '@/features/shell/applicationScaleAuthority';
 
 const w = copy.proWorkbar;
 const pm = copy.proMachine;
@@ -120,12 +117,15 @@ function RecipeOverflowPopover({
   const measure = useCallback((): WorkbarPopoverPosition | null => {
     const trigger = triggerRef.current;
     if (!trigger) return null;
-    const triggerRect = trigger.getBoundingClientRect();
-    const workbarRect = trigger
+    const scale = currentApplicationScale();
+    const triggerRect = applicationViewportGeometry(trigger.getBoundingClientRect(), scale);
+    const rawWorkbarRect = trigger
       .closest<HTMLElement>('[data-testid="pro-workbar"]')
       ?.getBoundingClientRect();
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
+    const workbarRect = rawWorkbarRect
+      ? applicationViewportGeometry(rawWorkbarRect, scale)
+      : undefined;
+    const { width: viewportWidth, height: viewportHeight } = applicationViewportSize(scale);
     const maximumWidth = Math.max(0, viewportWidth - WORKBAR_POPOVER_GUTTER_PX * 2);
     const preferredWidth =
       variant === 'panel' && workbarRect ? workbarRect.width : Math.max(288, triggerRect.width);
@@ -137,8 +137,9 @@ function RecipeOverflowPopover({
       WORKBAR_POPOVER_GUTTER_PX,
       viewportWidth - width - WORKBAR_POPOVER_GUTTER_PX,
     );
-    const measuredHeight =
-      popoverRef.current?.getBoundingClientRect().height || WORKBAR_POPOVER_ESTIMATED_HEIGHT_PX;
+    const measuredHeight = popoverRef.current
+      ? applicationViewportGeometry(popoverRef.current.getBoundingClientRect(), scale).height
+      : WORKBAR_POPOVER_ESTIMATED_HEIGHT_PX;
     const belowTop = triggerRect.bottom + WORKBAR_POPOVER_GAP_PX;
     const aboveTop = triggerRect.top - measuredHeight - WORKBAR_POPOVER_GAP_PX;
     const roomBelow = viewportHeight - belowTop - WORKBAR_POPOVER_GUTTER_PX;
@@ -700,13 +701,13 @@ export function ProWorkbar({
     >
       <div
         className={cn(
-          'grid min-w-0 gap-2',
+          'pro-workbar-layout grid min-w-0 gap-2',
           'xl:grid-cols-[minmax(0,1.62fr)_minmax(360px,1fr)] xl:items-center xl:gap-[var(--pro-workbench-gap)]',
         )}
       >
         <div
           className={cn(
-            'flex min-w-0 flex-wrap items-center px-0.5',
+            'pro-workbar-actions flex min-w-0 flex-wrap items-center px-0.5',
             'justify-end gap-2 xl:flex-nowrap',
           )}
         >
@@ -772,7 +773,9 @@ export function ProWorkbar({
             />
           </label>
           <span
-            className={cn('max-w-56 shrink-0 truncate text-xs text-stone-600 hidden xl:block')}
+            className={cn(
+              'pro-workbar-context max-w-56 shrink-0 truncate text-xs text-stone-600 hidden xl:block',
+            )}
             data-testid="pro-workbar-context"
           >
             {context}

@@ -245,13 +245,10 @@ describe('layering and the intermediate desktop band', () => {
     );
   });
 
-  it('compacts the module strip in the band where the two right edges converge', () => {
-    /* Between 1280 and 1500 the strip rides the centred 1440 canvas while the
-       login is anchored to the page gutter. Measured at 1400 before the fix:
-       strip right 1340 against login left 1296 — a 44 px overlap. The strip
-       keeps its LEFT edge on the display column and gives back the space four
-       equal 125 px columns were never using. Nothing at 1500+ is touched. */
-    expect(v21).toMatch(/@media \(min-width: 70rem\) and \(max-width: 93\.749rem\)/);
+  it('keeps the module strip on one canonical desktop geometry', () => {
+    /* The former intermediate band is superseded by whole-application scale.
+       The canonical 1440 px tab geometry now scales with the rest of the shell. */
+    expect(v21).not.toMatch(/max-width:\s*93\.749rem/);
     expect(v21).toMatch(/grid-template-columns: repeat\(4, max-content\)/);
     expect(v21).toMatch(/justify-content: start/);
     expect(v21).toMatch(/\.pro-workbench-section-nav\s*\{[\s\S]*width:\s*100%/);

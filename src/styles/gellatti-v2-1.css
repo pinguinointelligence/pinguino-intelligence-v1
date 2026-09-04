@@ -14,14 +14,26 @@
      §6  the hamburger is LEFT and the drawer opens from the LEFT everywhere;
      §8  the module tab strip is anchored to the RIGHT workbench column.
 
-   Mobile is deliberately NOT reshaped here (owner §19/§20): the existing
-   mobile interaction architecture is preserved 1:1 and only inherits the
-   approved surfaces, type and colour. Desktop geometry begins at the shared
-   70 rem structural breakpoint; tight and compact density absorb the widths
-   that used to fall into the tablet shell too early.
+   Mobile is deliberately NOT reshaped here (owner §19/§20). Desktop uses one
+   accepted 1440 px composition and one continuous scale; the existing mobile
+   interaction architecture begins only at the shared 60 rem boundary.
    ────────────────────────────────────────────────────────────────────────── */
 
 /* ── Workbench shell geometry ───────────────────────────────────────────── */
+body[data-gellatti-scale-mode='desktop'] {
+  /* CSS zoom participates in layout and includes BODY portals. The body is
+     expanded to the pre-zoom application viewport so the painted result still
+     fills the real viewport edge to edge. */
+  zoom: var(--gellatti-ui-scale, 1);
+  width: var(--gellatti-layout-viewport-width, 100%);
+  min-width: var(--gellatti-layout-viewport-width, 100%);
+  min-height: var(--gellatti-layout-viewport-height, 100dvh);
+}
+
+body[data-gellatti-scale-mode='desktop'] .gellatti-application {
+  min-height: var(--gellatti-layout-viewport-height, 100dvh);
+}
+
 .app-shell-header-row {
   position: relative;
   display: flex;
@@ -29,7 +41,7 @@
      That moved the centred switch by 7.5 px whenever a route began scrolling,
      although the viewport itself did not change. The global header is viewport
      chrome, so its physical box is viewport-authored at every breakpoint. */
-  width: 100vw;
+  width: var(--gellatti-layout-viewport-width, 100vw);
   margin-inline: 0;
 }
 
@@ -38,11 +50,11 @@
   display: none;
 }
 
-@media (min-width: 70rem) {
+@media (min-width: 60rem) {
   .app-shell-header-row {
-    width: min(1776px, calc(100vw - var(--pro-page-gutter)));
+    width: min(1776px, calc(var(--gellatti-layout-viewport-width, 100vw) - 57.6px));
     max-width: none;
-    margin-inline: max(calc(var(--pro-page-gutter) / 2), calc((100vw - 1776px) / 2));
+    margin-inline: max(28.8px, calc((var(--gellatti-layout-viewport-width, 100vw) - 1776px) / 2));
     height: var(--pro-header-height);
     padding: 0;
   }
@@ -99,7 +111,7 @@
 
   .pro-workbench-shell-lock {
     display: flex;
-    height: 100dvh;
+    height: var(--gellatti-layout-viewport-height, 100dvh);
     min-height: 0;
     flex-direction: column;
     overflow: hidden;
@@ -146,6 +158,70 @@
     overflow: hidden;
   }
 
+  .gellatti-pro-workbench [data-testid='pro-profile-panel'] {
+    display: flex;
+    height: 100%;
+    min-height: 0;
+    flex-direction: column;
+    overflow: hidden;
+    border: 0;
+    background: transparent;
+  }
+
+  .gellatti-pro-workbench .intelligence-tabpanel-scroll {
+    min-height: 0;
+    flex: 1;
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+  }
+
+  .gellatti-pro-workbench
+    :is(
+      [data-testid='pro-context-recipe'],
+      [data-testid='pro-context-summary'],
+      [data-testid='pro-context-monitor']
+    ) {
+    padding: 0;
+  }
+
+  .gellatti-pro-workbench .pro-workbar-layout {
+    grid-template-columns: minmax(0, 1.62fr) minmax(360px, 1fr);
+    align-items: center;
+    gap: 20.16px;
+  }
+
+  .gellatti-pro-workbench .pro-workbar-actions {
+    flex-wrap: nowrap;
+  }
+
+  .gellatti-pro-workbench .pro-workbar-context {
+    display: block;
+    max-width: 12rem;
+  }
+
+  .gellatti-pro-workbench [data-testid='pro-recalc-required-block'] {
+    display: inline;
+  }
+
+  .gellatti-pro-workbench .pro-ingredient-row-mobile {
+    display: none;
+  }
+
+  .gellatti-pro-workbench .pro-ingredient-row-desktop {
+    display: block;
+  }
+
+  .gellatti-pro-workbench [data-line-id][data-ingredient-mode='recipe'] {
+    padding-block: 0;
+    padding-left: 12px;
+    padding-right: 10px;
+  }
+
+  .gellatti-pro-workbench [data-line-id][data-ingredient-mode='production'] {
+    padding: 6px 12px;
+  }
+
   .pro-workbench-mobile-only {
     display: none !important;
   }
@@ -155,7 +231,7 @@
   }
 }
 
-@media (min-width: 80rem) {
+@media (min-width: 60rem) {
   .app-header-account-slot {
     display: inline-flex;
   }
@@ -177,7 +253,7 @@
   --radius-pro-studio: 9px;
 }
 
-@media (min-width: 70rem) {
+@media (min-width: 60rem) {
   /* The one editor/display split. Both cards carry the preview's 10 px corner
      and its single hairline; the display column is an explicit length so the
      tab strip above it cannot drift (see `desktopTabAnchorContract`). */
@@ -258,6 +334,9 @@
   .gellatti-pro-workbench [data-testid='pro-context-tabs'] {
     border-bottom: 0;
     height: var(--pro-header-height);
+    grid-template-columns: repeat(4, max-content);
+    justify-content: start;
+    column-gap: 4px;
   }
 
   .gellatti-pro-workbench [data-testid='pro-context-tabs'] > button {
@@ -352,7 +431,7 @@ body[data-app-drawer='open'] [data-testid='mobile-cockpit-trigger'] {
 }
 
 /* ── Ingredient row (Recipe + Production editor) ────────────────────────── */
-@media (min-width: 70rem) {
+@media (min-width: 60rem) {
   .gellatti-pro-workbench [data-gellatti-row='ingredient'] {
     /* drag | identity | percent | grams | price | menu — the preview's own
        tracks. The row is a fixed 54 px; the process-attention variant is the
@@ -374,7 +453,7 @@ body[data-app-drawer='open'] [data-testid='mobile-cockpit-trigger'] {
 }
 
 /* ── Monitor metric row ─────────────────────────────────────────────────── */
-@media (min-width: 70rem) {
+@media (min-width: 60rem) {
   .gellatti-pro-workbench [data-gellatti-monitor='row'] {
     /* icon | metric | code badge | rail | fixed value | chevron.
        The value and chevron tracks are FIXED, which is what puts every value
@@ -383,30 +462,6 @@ body[data-app-drawer='open'] [data-testid='mobile-cockpit-trigger'] {
     column-gap: 7px;
     align-items: center;
     min-height: var(--pro-monitor-row-height);
-  }
-}
-
-@media (min-width: 70rem) and (max-width: 79.999rem) {
-  .gellatti-pro-workbench [data-gellatti-monitor='row'] {
-    grid-template-columns: 28px minmax(0, 1fr) 38px 70px 76px 12px;
-    column-gap: 5px;
-  }
-
-  .gellatti-pro-workbench [data-testid='pro-context-tabs'] > button {
-    padding-inline: 6px;
-    font-size: 11px;
-  }
-}
-
-/* The navigation BOX still occupies the complete right workbench track. On
-   tight/compact desktop its four controls use only their intrinsic width,
-   leaving the canonical account slot clear without changing the track's
-   measured edges or detaching it from the body panel. */
-@media (min-width: 70rem) and (max-width: 93.749rem) {
-  .gellatti-pro-workbench [data-testid='pro-context-tabs'] {
-    grid-template-columns: repeat(4, max-content);
-    justify-content: start;
-    column-gap: 4px;
   }
 }
 
