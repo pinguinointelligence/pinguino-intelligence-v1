@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from '@/lib/cn';
-import { isTopmostDialogShell, registerDialogShell } from './dialogShellRegistry';
+import { isTopmostDialogShell, openDialogCount, registerDialogShell } from './dialogShellRegistry';
 
 /**
  * THE one modal primitive for PINGÜINO Pro line-level dialogs.
@@ -31,6 +31,47 @@ const CENTERED_WIDTH = {
   wide: 'w-[min(680px,94vw)]',
 } as const;
 
+const FOCUSABLE_SELECTOR =
+  'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])';
+const ACTIONABLE_SELECTOR =
+  'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), a[href]';
+
+const isCssHidden = (node: HTMLElement): boolean => {
+  for (let current: HTMLElement | null = node; current; current = current.parentElement) {
+    const style = window.getComputedStyle(current);
+    if (style.display === 'none' || style.visibility === 'hidden') return true;
+  }
+  return false;
+};
+
+const isUsableFocusTarget = (node: HTMLElement | null): node is HTMLElement =>
+  Boolean(
+    node?.isConnected &&
+    node.matches(FOCUSABLE_SELECTOR) &&
+    !node.matches(':disabled') &&
+    !node.closest('[aria-hidden="true"], [inert], [hidden]') &&
+    !isCssHidden(node),
+  );
+
+const focusableWithin = (root: ParentNode | null): HTMLElement[] =>
+  root
+    ? [...root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)].filter(isUsableFocusTarget)
+    : [];
+
+const actionableWithin = (root: ParentNode | null): HTMLElement[] =>
+  root
+    ? [...root.querySelectorAll<HTMLElement>(ACTIONABLE_SELECTOR)].filter(isUsableFocusTarget)
+    : [];
+
+/**
+ * Focus restoration runs after React has committed the state that closed the
+ * dialog. That timing matters: Apply removes the Przelicz trigger and mounts
+ * its real successor (Cofnij) in the same commit.
+ */
+const afterDialogCommit = (run: () => void): void => {
+  setTimeout(run, 0);
+};
+
 export function DialogShell({
   label,
   testId,
@@ -47,6 +88,7 @@ export function DialogShell({
   panelTestId,
   panelState,
   initialFocusTestId,
+  returnFocus,
 }: {
   label: string;
   testId: string;
@@ -92,34 +134,54 @@ export function DialogShell({
   panelTestId?: string;
   panelState?: string;
   initialFocusTestId?: string;
+  /**
+   * Resolves a semantic successor when the original trigger no longer exists.
+   * The original connected trigger always wins. Callers return a real enabled
+   * control (for example Apply -> Cofnij), never a decorative/tabindex target.
+   */
+  returnFocus?: () => HTMLElement | null;
 }) {
   const dialogRef = useRef<HTMLElement>(null);
   const onCloseRef = useRef(onClose);
+  const returnFocusRef = useRef(returnFocus);
+  const isTopmostRef = useRef(true);
+  const hadUnderlyingDialogRef = useRef(false);
   const shellId = useRef<symbol>(undefined as unknown as symbol);
   if (shellId.current === undefined) shellId.current = Symbol('dialog-shell');
   const [isTopmost, setIsTopmost] = useState(true);
   useEffect(() => {
     const id = shellId.current;
-    return registerDialogShell(id, () => setIsTopmost(isTopmostDialogShell(id)));
+    return registerDialogShell(id, () => {
+      const next = isTopmostDialogShell(id);
+      isTopmostRef.current = next;
+      if (next) hadUnderlyingDialogRef.current = openDialogCount() > 1;
+      setIsTopmost(next);
+    });
   }, []);
   useEffect(() => {
     onCloseRef.current = onClose;
   }, [onClose]);
   useEffect(() => {
+    returnFocusRef.current = returnFocus;
+  }, [returnFocus]);
+  useEffect(() => {
     const previousFocus =
       document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const focusBeforeOpen = focusableWithin(document).filter(
+      (node) => !dialogRef.current?.contains(node),
+    );
+    const previousIndex = previousFocus ? focusBeforeOpen.indexOf(previousFocus) : -1;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    const focusable = () => [
-      ...(dialogRef.current?.querySelectorAll<HTMLElement>(
-        'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
-      ) ?? []),
-    ];
+    const focusable = () => focusableWithin(dialogRef.current);
     const initialFocus = initialFocusTestId
       ? focusable().find((node) => node.dataset.testid === initialFocusTestId)
       : null;
     (initialFocus ?? focusable()[0])?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
+      // Only the visible/topmost shell owns keyboard focus. Without this gate,
+      // every mounted shell handles the same Escape/Tab event.
+      if (!isTopmostRef.current) return;
       if (event.key === 'Escape') {
         event.preventDefault();
         onCloseRef.current();
@@ -142,7 +204,78 @@ export function DialogShell({
     return () => {
       document.removeEventListener('keydown', onKeyDown);
       document.body.style.overflow = previousOverflow;
-      previousFocus?.focus();
+      const ownedFocus = isTopmostRef.current;
+      if (!ownedFocus) return;
+      const hadUnderlyingDialog = hadUnderlyingDialogRef.current;
+
+      // Contract A does not need to wait for a replacement commit. Preserve
+      // the long-standing Escape behaviour (including New Recipe) and avoid a
+      // visible frame on BODY when the real trigger is still connected.
+      const activeSurvivor = document.querySelector<HTMLElement>(
+        '[data-dialog-panel="gellatti"][data-dialog-active="true"]',
+      );
+      if (
+        isUsableFocusTarget(previousFocus) &&
+        (!activeSurvivor || activeSurvivor.contains(previousFocus))
+      ) {
+        previousFocus.focus();
+        return;
+      }
+
+      afterDialogCommit(() => {
+        // A queued/nested dialog takes precedence over any page-level return
+        // target. Restore inside the one active shell, never behind its scrim.
+        if (openDialogCount() > 0) {
+          // No dialog existed under this one. Any shell present now opened
+          // later and already owns its own initial focus; an old deferred
+          // cleanup must not steal it.
+          if (!hadUnderlyingDialog) return;
+          const activePanel = document.querySelector<HTMLElement>(
+            '[data-dialog-panel="gellatti"][data-dialog-active="true"]',
+          );
+          if (!activePanel) return;
+          if (isUsableFocusTarget(previousFocus) && activePanel.contains(previousFocus)) {
+            previousFocus.focus();
+            return;
+          }
+          focusableWithin(activePanel)[0]?.focus();
+          return;
+        }
+
+        // Contract A: the original trigger survived.
+        if (isUsableFocusTarget(previousFocus)) {
+          previousFocus.focus();
+          return;
+        }
+
+        // Contracts B/C: the caller knows the semantic post-action successor.
+        const semanticSuccessor = returnFocusRef.current?.() ?? null;
+        if (isUsableFocusTarget(semanticSuccessor)) {
+          semanticSuccessor.focus();
+          return;
+        }
+
+        // Contract D: choose the nearest stable action that existed beside the
+        // caller when it opened. If none survived, use the first real action in
+        // the application main region. BODY and decorative tabindex shims are
+        // never focus targets.
+        const stableCandidates = focusBeforeOpen.filter(
+          (node) => isUsableFocusTarget(node) && node.matches(ACTIONABLE_SELECTOR),
+        );
+        if (stableCandidates.length > 0) {
+          const nearest =
+            previousIndex < 0
+              ? stableCandidates[0]
+              : stableCandidates.reduce((best, node) => {
+                  const distance = Math.abs(focusBeforeOpen.indexOf(node) - previousIndex);
+                  const bestDistance = Math.abs(focusBeforeOpen.indexOf(best) - previousIndex);
+                  return distance < bestDistance ? node : best;
+                });
+          nearest?.focus();
+          return;
+        }
+        actionableWithin(document.querySelector('main'))[0]?.focus();
+      });
     };
   }, [initialFocusTestId]);
 

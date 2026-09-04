@@ -5,7 +5,7 @@
  * (`AuthUser`), never raw Supabase types. When Supabase is not configured every
  * call resolves to an "unavailable" result so the UI can degrade gracefully.
  */
-import type { Session, User } from '@supabase/supabase-js';
+import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase/client';
 import {
   CustomerOperationError,
@@ -42,6 +42,21 @@ const toUser = (user: User | null | undefined): AuthUser | null =>
         displayName: (user.user_metadata?.display_name as string | undefined) ?? null,
       }
     : null;
+
+/**
+ * Opt-in served QA trace. It records only event shape — never token, email,
+ * user id, headers or storage values. `?owner-auth-trace=1` is intentionally a
+ * diagnostic switch rather than permanent customer console noise.
+ */
+const traceAuth = (
+  event: AuthChangeEvent | 'SESSION_SNAPSHOT' | 'SESSION_READ_FAILED',
+  sessionPresent: boolean,
+  userPresent: boolean,
+): void => {
+  if (typeof window === 'undefined') return;
+  if (new URLSearchParams(window.location.search).get('owner-auth-trace') !== '1') return;
+  console.info('[owner-auth-trace]', { event, sessionPresent, userPresent });
+};
 
 export async function signUp(email: string, password: string): Promise<AuthResult> {
   if (!supabase) return unavailable();
@@ -85,15 +100,26 @@ export async function signOut(): Promise<void> {
 
 export async function getCurrentUser(): Promise<AuthUser | null> {
   if (!supabase) return null;
-  const { data } = await supabase.auth.getSession();
+  const { data, error } = await supabase.auth.getSession();
+  if (error) {
+    traceAuth('SESSION_READ_FAILED', false, false);
+    // A transient read/refresh error is not proof of logout. The auth store
+    // keeps its current projection and waits for the authoritative auth event.
+    throw error;
+  }
+  traceAuth('SESSION_SNAPSHOT', Boolean(data.session), Boolean(data.session?.user));
   return toUser(data.session?.user);
 }
 
 /** Subscribe to auth changes; returns an unsubscribe function. */
-export function onAuthChange(callback: (user: AuthUser | null) => void): () => void {
+export function onAuthChange(
+  callback: (event: AuthChangeEvent, user: AuthUser | null) => void,
+): () => void {
   if (!supabase) return () => {};
-  const { data } = supabase.auth.onAuthStateChange((_event, session: Session | null) => {
-    callback(toUser(session?.user));
+  const { data } = supabase.auth.onAuthStateChange((event, session: Session | null) => {
+    const user = toUser(session?.user);
+    traceAuth(event, Boolean(session), Boolean(user));
+    callback(event, user);
   });
   return () => data.subscription.unsubscribe();
 }

@@ -998,6 +998,25 @@ export function ProRecalcPanel({
     void retryRunner();
   };
 
+  /**
+   * The Przelicz control is conditional. Apply replaces it with the canonical
+   * bottom-bar Cofnij action; a no-change result replaces it with the current
+   * score action. Give DialogShell those semantic successors explicitly.
+   */
+  const resolveRecalculationReturnFocus = (): HTMLElement | null => {
+    for (const testId of ['workbench-undo', 'workbench-score-action']) {
+      const candidates = document.querySelectorAll<HTMLElement>(`[data-testid="${testId}"]`);
+      const eligible = [...candidates].filter((candidate) => !candidate.matches(':disabled'));
+      // The workbench has responsive presentations of the same semantic
+      // action. Prefer the rendered one; jsdom has no layout and falls back to
+      // the first eligible control for the component tests.
+      const enabled =
+        eligible.find((candidate) => candidate.getClientRects().length > 0) ?? eligible[0];
+      if (enabled) return enabled;
+    }
+    return null;
+  };
+
   // The correction is ALREADY in the recipe (applied through the canonical door
   // by the same click). This is the whole remaining interaction — one sentence
   // and one acknowledgement — so it renders whether or not the recalculation
@@ -1097,6 +1116,7 @@ export function ProRecalcPanel({
         recalculationTerminal?.state === 'WORKING' || suppressIntermediate ? 'Anuluj' : r.close
       }
       closeTestId="pro-recalc-close"
+      returnFocus={resolveRecalculationReturnFocus}
       panelClassName={cn(
         /* OWNER 2026-09-03 — ONE Gellatti dialog language. This overlay used to
            carry two shells: a light one for the customer preview and a GRAPHITE
