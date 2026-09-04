@@ -373,17 +373,21 @@ describe('Recipe ingredient table — locks, units and availability', () => {
     expect(button).not.toContain('disabled');
     expect(button).toContain('Zablokuj % partii');
     expect(button).toContain('aria-pressed="false"');
+    expect(button).toContain('data-lock-visual-state="unlocked"');
+    expect(button).toContain('data-lock-glyph="unlocked"');
     expect(button).toContain('<svg aria-hidden="true"');
     expect(button).not.toContain('<span aria-hidden="true">%</span>');
     expect(html.toLowerCase()).not.toContain('blokada procentowa w przygotowaniu');
   });
 
-  it('makes an active exact gram lock obvious with a quiet gray grouped state, never red', () => {
+  it('makes an active exact gram lock obvious with a graphite grouped state, never red', () => {
     const html = renderRow({ ...baseItem, lock_type: 'grams' }, DEFAULT_INGREDIENT_ROW_META, false);
     const gramButton =
       html.match(/<button[^>]*data-testid="row-lock-grams-[\s\S]*?<\/button>/)?.[0] ?? '';
-    expect(gramButton).toContain('bg-stone-200');
-    expect(gramButton).toContain('text-ink');
+    expect(gramButton).toContain('bg-ink');
+    expect(gramButton).toContain('text-white');
+    expect(gramButton).toContain('data-lock-visual-state="locked"');
+    expect(gramButton).toContain('data-lock-glyph="locked"');
     expect(gramButton).toContain('Gramatura zablokowana');
     expect(gramButton).toContain('<svg aria-hidden="true"');
     expect(gramButton).not.toContain('<span aria-hidden="true">g</span>');

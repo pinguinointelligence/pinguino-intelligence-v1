@@ -62,10 +62,11 @@ interface DirectNumberControlProps {
   };
 }
 
-function LockGlyph() {
+function LockGlyph({ locked }: { locked: boolean }) {
   return (
     <svg
       aria-hidden
+      data-lock-glyph={locked ? 'locked' : 'unlocked'}
       width="16"
       height="16"
       viewBox="0 0 16 16"
@@ -74,7 +75,11 @@ function LockGlyph() {
       strokeWidth="1.5"
     >
       <rect x="3" y="7" width="10" height="7" rx="2" />
-      <path d="M5.25 7V5a2.75 2.75 0 0 1 5.5 0v2" strokeLinecap="round" />
+      {locked ? (
+        <path d="M5.25 7V5a2.75 2.75 0 0 1 5.5 0v2" strokeLinecap="round" />
+      ) : (
+        <path d="M10.75 7V5a2.75 2.75 0 0 0-5.5 0" strokeLinecap="round" />
+      )}
     </svg>
   );
 }
@@ -276,6 +281,9 @@ export function DirectNumberControl({
         widthPreset === 'percent' ? '100.0%' : widthPreset === 'grams' ? '10000g' : 'fluid'
       }
       data-control-locked={lockSegment?.pressed ? 'true' : 'false'}
+      data-lock-visual-state={
+        lockSegment ? (lockSegment.pressed ? 'locked' : 'unlocked') : undefined
+      }
       data-soft-danger={softDanger ? 'true' : undefined}
       data-value-padding="roomy"
     >
@@ -461,6 +469,7 @@ export function DirectNumberControl({
           aria-pressed={lockSegment.pressed}
           title={lockSegment.title}
           data-testid={lockSegment.testId}
+          data-lock-visual-state={lockSegment.pressed ? 'locked' : 'unlocked'}
           /* Masked rows route EVERY amount control to the entitlement gate, not just the
              steppers. The lock mutates protected recipe state (`lock_type`), so letting
              it through while grams are withheld would be the same contract breach in a
@@ -476,12 +485,12 @@ export function DirectNumberControl({
             'col-start-4 row-start-1 inline-flex shrink-0 items-center justify-center border-l border-ink/18 transition-colors focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#f58a07]',
             lockSegmentSize,
             lockSegment.pressed
-              ? 'bg-stone-200 text-ink'
-              : 'bg-white text-stone-500 hover:bg-stone-100 hover:text-ink',
+              ? 'bg-ink text-white hover:bg-ink-soft'
+              : 'bg-white text-stone-600 hover:bg-stone-100 hover:text-ink',
             lockSegment.disabled && 'cursor-not-allowed opacity-35',
           )}
         >
-          <LockGlyph />
+          <LockGlyph locked={lockSegment.pressed} />
         </button>
       ) : null}
     </div>
