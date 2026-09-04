@@ -208,27 +208,39 @@ body:has(details[open] [data-testid^='row-menu-']) [data-testid='design-review-o
   box-shadow: var(--shadow-pro-e3);
 }
 
-.pro-focus-ring:focus-visible {
-  outline: 2px solid var(--color-gellatti-orange);
-  outline-offset: 3px;
+/* One focus authority for the Pro surface.
+ *
+ * Browser :focus-visible heuristics can promote an already pointer-focused
+ * control when a modifier key is pressed. The document modality authority
+ * therefore owns visibility: pointer input clears the indicator, modifier-only
+ * keys leave it unchanged, and genuine keyboard navigation enables it. Tailwind
+ * ring variables are neutralised so a component cannot reintroduce the old
+ * orange rectangle alongside this restrained graphite outline. */
+.theme-pro-light :where(button, a, input, select, textarea, summary, [tabindex]):focus {
+  outline: none !important;
+  --tw-ring-color: transparent !important;
+  --tw-ring-offset-shadow: 0 0 #0000 !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
 }
 
-.theme-pro-light .bg-pro-graphite.pro-focus-ring:focus-visible,
-.theme-pro-light
-  [data-testid='pro-recalc-panel']
-  :where(button, a, input, select, summary):focus-visible {
-  outline-color: var(--color-gellatti-orange);
+html[data-gellatti-input-modality='keyboard']
+  .theme-pro-light
+  :where(button, a, input, select, textarea, summary, [tabindex]):focus {
+  outline: 2px solid #4b4d52 !important;
+  outline-offset: 2px !important;
+}
+
+html[data-gellatti-input-modality='keyboard']
+  .theme-pro-light
+  :where(.bg-pro-graphite, [data-testid='pro-recalc-panel'])
+  :where(button, a, input, select, textarea, summary, [tabindex]):focus {
+  outline-color: #d7d4cd !important;
 }
 
 .pro-scroll-safe {
   min-width: 0;
   max-width: 100%;
   overflow-wrap: anywhere;
-}
-
-.theme-pro-light :where(button, a, input, select, summary):focus-visible {
-  outline: 2px solid var(--color-gellatti-orange);
-  outline-offset: 2px;
 }
 
 /* GELLATTI V2.1 §13 — Batch and Tryb are ordinary cells of the ONE Settings

@@ -61,6 +61,14 @@ describe('D2/D4/D5 — compact V2.1 housings, unchanged typography', () => {
     expect(control).not.toContain("'h-8 w-[22px]'");
   });
 
+  it('keeps both table columns fixed while reserving the full lock cell inside the pill', () => {
+    expect(control).toContain("'size-11 lg:h-8 lg:w-[30px]'");
+    expect(control).toContain("'w-[142px] grid-cols-[28px_54px_28px_30px]'");
+    expect(control).toContain("'w-[150px] grid-cols-[28px_62px_28px_30px]'");
+    expect(control).toContain("widthPreset !== 'fluid' && 'shrink-0'");
+    expect(control).toContain('grid box-border min-w-0 max-w-full');
+  });
+
   it('BOTH steppers actually request the compact density', () => {
     // The earlier pass failed exactly here: the prop was never added.
     expect(row.match(/density="compact"/g)).toHaveLength(2);

@@ -39,11 +39,11 @@ describe('Gellatti Visual System V2', () => {
     expect(direct).toContain("compact ? 'h-8 w-7'");
     expect(direct).toContain("'size-11 lg:h-8 lg:w-7'");
     /* OWNER OVERRIDE 2026-09-03 — the lock cell, and ONLY the lock cell, is
-       re-pinned at 30px. The owner asked for horizontal breathing room around
-       the lock icon; every other geometry in this contract is unchanged and
-       still frozen, which is why they are all still asserted below. */
+       pinned at 30px. Its grid track must own those same 30px; the former 22px
+       track clipped the accepted button under the pill's overflow boundary. */
     expect(direct).toContain("'h-8 w-[30px]'");
-    expect(direct).toContain("'w-[150px] grid-cols-[28px_72px_28px_22px]'");
+    expect(direct).toContain("'w-[142px] grid-cols-[28px_54px_28px_30px]'");
+    expect(direct).toContain("'w-[150px] grid-cols-[28px_62px_28px_30px]'");
     expect(direct).toContain("'w-[122px] grid-cols-[28px_66px_28px]'");
     expect(direct).toContain("'w-[176px] grid-cols-[44px_88px_44px]");
     expect(production).toContain('w-[226px] grid-cols-[176px_44px] gap-1.5');
