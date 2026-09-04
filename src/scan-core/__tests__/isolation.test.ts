@@ -157,7 +157,7 @@ describe('two-code isolation: crossing codes keep their identities', () => {
   it('greedy nearest-first would swap two crossing codes; the 2-opt guard keeps ids by continuity', () => {
     const tr = new Tracker();
     const cands = (xa: number, xb: number) =>
-      mergeCollinear([raw(xa, 960, 200), raw(xb, 960, 200)], 1080);
+      mergeCollinear([raw(xa, 800, 200), raw(xb, 1100, 200)], 1080);
     // A moves right at 60 px/frame, B moves left at 60 px/frame; they cross around frame 5
     let a: Track | undefined;
     let b: Track | undefined;
@@ -189,8 +189,8 @@ describe('symbology-aware agreement and raw text', () => {
   });
   it('agreeing reads carry the normalised symbology; a second symbology on the same digits is flagged', () => {
     const c = new Confirmation();
-    c.push(read(1, '8410297112386', { format: 'EAN13' }));
-    c.push(read(2, '8410297112386', { format: 'UPCA', source: 'rectified' }));
+    c.push(read(1, '8410297112386', { format: 'UPCA', source: 'rectified', tMs: 0 }));
+    c.push(read(2, '8410297112386', { format: 'EAN13', tMs: 100 }));
     const st = c.push(read(3, '8410297112386', { format: 'EAN13', tMs: 250 }));
     expect(st.status).toBe('confirmed');
     expect(st.format).toBe('EAN-13');
