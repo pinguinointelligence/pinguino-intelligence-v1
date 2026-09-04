@@ -8,10 +8,11 @@ Updated: 2026-09-04 (Europe/Madrid)
 - Denominator unchanged: 48 capability gates. Blocked items remain in the denominator.
 - Status: **PARTIALLY IMPLEMENTED / BLOCKED ON APPROVED COUNTRY DEFAULT DATA**.
 - Owner QA is separate, excluded from the denominator, and is not marked.
-- Current canonical Git base: `origin/staging` at `9be827e0ebfb13c35d34c90098b2899a56ef4041`.
+- Current canonical Git base: `origin/staging` at `735f80a574d9afd681296ee0de141bc4571f458b`.
 - PR #150 merged the FILTR checkpoint `80cd3311df0889314815210d1e7d79dfca1ece74` normally into staging. The dedicated branch remains intact and unmerged into production/main.
 - PR #151 advanced staging while follow-up PR #152 was in CI. Its `IngredientBuilder` overlap removes the recipe legend/header and adjusts control geometry; it does not change the accepted CP-44 request/replace flow, picker contracts, `IngredientRow`, `ingredientTableUx`, `ProductPickerPopover`, or `recipeStore`. Current-base seam tests pass.
 - PR #153 then advanced the responsive frame. It changes picker breakpoint/backdrop presentation and row/action geometry, but preserves the complete CP-44 `replaceInvocation`, context, and selection path; the expanded current-base seam passes.
+- PR #154 advanced Crown/cost/dialog behavior without changing Product Country, picker, Replace, or shared picker contracts. The final current-base seam remains green.
 - No active Global Country owner/workstream remains. The stale `claude/global-country-readiness` worktree is clean, behind staging, has no PR/session, and contains no canonical exact-SKU picker resolver to reuse.
 - Production/main and the production Supabase project were not touched.
 
@@ -48,6 +49,7 @@ Updated: 2026-09-04 (Europe/Madrid)
 - Follow-up guest-country reachability gate: 3 files / 17 tests passed; typecheck and diff check passed.
 - Current staging/CP-44 semantic seam after merging PR #151: 9 files / 103 tests passed; typecheck and diff check passed.
 - Expanded picker/CP-44/Product Country seam after merging PR #153: 11 files / 107 tests passed; typecheck and diff check passed.
+- The same 11-file / 107-test seam and typecheck passed again after the final PR #154 staging refresh.
 
 ## Served staging findings
 
@@ -149,4 +151,4 @@ The staging migration dry-run now reports the database is up to date for all thr
 8. Deployment environment: PR #150 and all three migrations are on staging; follow-up guest-bootstrap deployment pending; production untouched.
 9. Remaining incomplete: CP-32 and CP-48.
 10. Exact blockers: no owner-approved ES/PL/FR assignment rows and no Engine-usable exact Milk SKU; served proof cannot truthfully claim defaults or exact override without them.
-11. Git diff/commit status: checkpoint `80cd3311df0889314815210d1e7d79dfca1ece74` is merged to staging; guest-bootstrap checkpoint `f3da8f52cc746e6176a269f90172fa4640761114` is isolated in PR #152; branch history incorporates current staging through merge commits `11f9b5aced74468b7ea497a070ebd84addfb942d` and `3509c784ffa957f6c689b269628ff29e07c89878`.
+11. Git diff/commit status: checkpoint `80cd3311df0889314815210d1e7d79dfca1ece74` is merged to staging; guest-bootstrap checkpoint `f3da8f52cc746e6176a269f90172fa4640761114` is isolated in PR #152; branch history incorporates current staging through merge commits `11f9b5aced74468b7ea497a070ebd84addfb942d`, `3509c784ffa957f6c689b269628ff29e07c89878`, and `85047793b440e1a7c9a13ac23ad204c4479cafc1`.
