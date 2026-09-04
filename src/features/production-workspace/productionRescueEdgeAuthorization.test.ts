@@ -440,7 +440,7 @@ describe('trusted Production Rescue authorization', () => {
       engineVersion: '0.4.0',
       configVersion: '0.7.0',
       practicalRecipeVersion: 'pro-whole-gram-v1',
-      rescueModelVersion: 'production-rescue-v5',
+      rescueModelVersion: 'production-rescue-v6',
       bundlerVersion: '1.0.3',
       ttlSeconds: 300,
     });

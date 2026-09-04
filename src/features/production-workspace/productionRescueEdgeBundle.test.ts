@@ -153,7 +153,7 @@ describe('generated canonical Production Rescue Edge bundle', () => {
       engine: '0.4.0',
       config: '0.7.0',
       practicalRecipe: 'pro-whole-gram-v1',
-      productionRescue: 'production-rescue-v5',
+      productionRescue: 'production-rescue-v6',
     });
     expect(manifest.bundler.version).toBe('1.0.3');
     expect(manifest.versions.productionSessionSchema).toBe(2);
