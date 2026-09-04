@@ -37,7 +37,7 @@ export type ProductionRescueOptionId = ProductionRescueStableOptionId;
  * continue to identify the formulas and calibrated data; this stamp identifies
  * the option-selection and practicalization layer authorized by the server.
  */
-export const PRODUCTION_RESCUE_MODEL_VERSION = 'production-rescue-v5' as const;
+export const PRODUCTION_RESCUE_MODEL_VERSION = 'production-rescue-v6' as const;
 
 export interface ProductionRescueInstruction {
   lineId: string | null;
@@ -767,12 +767,12 @@ export function assessProductionRescue(session: ProductionSession): ProductionRe
     'restore_original_recipe',
     (mass) => `Przywróć oryginalną recepturę · ${formatBatchMassG(mass)} g`,
     (mass) =>
-      `Skaluje wyjściową recepturę do ${formatBatchMassG(mass)} g i może ponownie ` +
+      `Przywraca lub skaluje wyjściową recepturę do ${formatBatchMassG(mass)} g i może ponownie ` +
       'otworzyć potwierdzone produkty wyłącznie jako dodatnie dolewki.',
     session,
     forecastInput,
     'actual_batch',
-    (mass) => mass > currentTarget + 0.1,
+    (mass) => mass + PRODUCTION_GRAMS_EPSILON >= currentTarget,
     'restore_original_profile',
   );
   if (restoreSearch.option) options.push(restoreSearch.option);

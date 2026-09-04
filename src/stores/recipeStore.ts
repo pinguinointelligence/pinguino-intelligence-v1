@@ -2515,6 +2515,28 @@ export const useRecipeStore = create<RecipeState>()(
           // typed after the seed, or an amount that existed before the crown,
           // is preserved exactly. No gram stack, no history.
           const autoSeeded = state.crownAutoSeededLineIds.includes(lineId);
+          const returnedAutoSeedToZero =
+            roleChanged &&
+            autoSeeded &&
+            state.items.some(
+              (item) =>
+                item.id === lineId &&
+                item.lock_type === 'main' &&
+                crownOffPlannedGrams(item.planned_grams, autoSeeded) === 0,
+            );
+          const productBehaviorSnapshots = requireProductBehaviorLineRevalidation(
+            state.productBehaviorSnapshots,
+            lineId,
+          );
+          if (returnedAutoSeedToZero) {
+            // A zero-gram Standard line is deliberately outside the PB-required
+            // set. Leaving its role-transition snapshot as REVALIDATION_REQUIRED
+            // creates a deadlock: PI cannot validate a zero line and the stale
+            // snapshot hides the Crown trigger. Forget only this now-inapplicable
+            // Main-context snapshot. Re-crowning seeds 1 g, makes the line PB
+            // required again, and the normal managed pass resolves fresh facts.
+            delete productBehaviorSnapshots[lineId];
+          }
           return {
             items: state.items.map((item) => {
               if (item.id !== lineId || item.lock_type !== 'main') return item;
@@ -2537,10 +2559,7 @@ export const useRecipeStore = create<RecipeState>()(
             crownAutoSeededLineIds: clearCrownAutoSeeded(state.crownAutoSeededLineIds, lineId),
             ...(roleChanged
               ? {
-                  productBehaviorSnapshots: requireProductBehaviorLineRevalidation(
-                    state.productBehaviorSnapshots,
-                    lineId,
-                  ),
+                  productBehaviorSnapshots,
                   practicalRecipeAudit: null,
                   savedProductionFingerprint: null,
                 }
