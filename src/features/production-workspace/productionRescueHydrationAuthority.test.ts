@@ -386,7 +386,7 @@ describe('rescued Production run is written in a state its own recovery refuses'
 
       const assessment = assessProductionRescue(recovered);
       const restore = assessment.options.find((option) => option.id === 'restore_original_recipe');
-      expect(restore?.finalMassG).toBeGreaterThan(1149.9);
+      expect(restore?.finalMassG).toBe(1150.1);
       expect(restore?.instructions.every((instruction) => instruction.kind === 'add')).toBe(true);
       expect(
         evaluateRecipeConstraintAuthority({
@@ -520,7 +520,7 @@ describe('rescued Production run is written in a state its own recovery refuses'
           },
         },
       );
-      expect(edgeResult.preview.finalMassG).toBeGreaterThan(1149.9);
+      expect(edgeResult.preview.finalMassG).toBe(1150.1);
       expect(edgePersisted).not.toBeNull();
       expect(
         evaluateRecipeConstraintAuthority({
