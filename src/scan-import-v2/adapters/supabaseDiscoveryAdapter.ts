@@ -286,6 +286,7 @@ export function createSupabaseDiscoveryPort(
       };
     },
     async findOwnRequest(identity): Promise<OwnRequest | null> {
+      // gellatti_my_product_requests_v1 → array of { id, ean, name, brand, status, approvedProductId, ... } (verified on staging)
       const { data, error } = await client.rpc('gellatti_my_product_requests_v1', {
         p_archived: false,
       });
@@ -295,28 +296,26 @@ export function createSupabaseDiscoveryPort(
         : Array.isArray(obj(data)['requests'])
           ? (obj(data)['requests'] as unknown[])
           : [];
+      const CLOSED = new Set(['REJECTED', 'DUPLICATE', 'USER_CANCELED']);
+      let approved: OwnRequest | null = null;
       for (const raw of list) {
         const r = obj(raw);
-        const ean = String(r['detectedEan'] ?? r['detected_ean'] ?? '');
+        const ean = String(r['ean'] ?? r['detectedEan'] ?? r['detected_ean'] ?? '');
+        if (!identity.lookupKeys.includes(ean)) continue;
         const status = String(r['status'] ?? '');
-        if (
-          identity.lookupKeys.includes(ean) &&
-          !['APPROVED', 'REJECTED', 'DUPLICATE', 'USER_CANCELED'].includes(status)
-        )
-          return {
-            requestId: String(r['id'] ?? r['requestId'] ?? ''),
-            status,
-            approvedProductId: null,
-          };
-        if (identity.lookupKeys.includes(ean) && status === 'APPROVED')
-          return {
-            requestId: String(r['id'] ?? r['requestId'] ?? ''),
+        const requestId = String(r['id'] ?? r['requestId'] ?? '');
+        if (status === 'APPROVED') {
+          approved = {
+            requestId,
             status,
             approvedProductId:
               String(r['approvedProductId'] ?? r['approved_product_id'] ?? '') || null,
           };
+          continue;
+        }
+        if (!CLOSED.has(status)) return { requestId, status, approvedProductId: null };
       }
-      return null;
+      return approved;
     },
   };
 }
