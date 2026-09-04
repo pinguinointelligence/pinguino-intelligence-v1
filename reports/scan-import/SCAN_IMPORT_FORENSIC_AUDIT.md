@@ -237,4 +237,30 @@ Step 2 (`ean_lookup`, `product-scan-analyze` mode `ean_lookup`, `index.ts:261-33
 
 **Verdict.** Honest failure states: PASS. Offline resolution of known products: MISSING (F10.1).
 
-<!-- CHECKPOINT: sections 1-10 written. NEXT SECTION: 11 (ProductBehaviour authority). Evidence already located: product-scan-finalize/index.ts:440-560 (profile/behaviour validation), src/features/product-intelligence/productBehaviorAuthority.ts, customerProductFamily.ts:59-140, classify_catalog_product_behavior_v2 (migration), productBehaviorFingerprint.migration.test.ts. -->
+
+## SECTION 11 — PRODUCTBEHAVIOUR AUTHORITY
+
+**Canonical owner.** `PRODUCT_BEHAVIOR_AUTHORITY = 'PRODUCT_BEHAVIOR_V1'` in `src/features/product-intelligence/productBehaviorAuthority.ts` (`classifyProspectiveProductBehavior`, `validateProductBehaviorAuthority`, outcomes `classified | unknown_requires_review | blocked`), fed by Mapper rows (`mapper_basement`) and behaviour bindings (`mapper_product_behavior_bindings`); on the database side `classify_catalog_product_behavior_v2(version_id, 'product-behavior-v2')` (`20260825210000_product_behavior_authority_restore.sql`, `20260827101000_customer_added_recipe_readiness.sql`) — pinned VOLATILE and service_role-only by `productBehaviorFingerprint.migration.test.ts:31-47`. The engine-side authorities (`productBehaviorAccess.ts`, `mainCapability.ts`, `mainEnvelope.ts`, `canonicalModuleEligibility.ts`) are owner-locked protected paths (`scripts/protectedPaths.json:14-17`).
+
+**How an imported product reaches it (proved in `product-scan-finalize/index.ts:447-500`).**
+```
+corrections → familyResolution (must be RESOLVED, else kind: 'family_confirmation_required')
+ → customerProductProfileProposal(scanResult, recognitionEvidence, recognition, userConfirmedFields)
+ → validateIntimportProductProfileProposal({ origin: 'CUSTOMER_ADDED', proposedMapperIngredientId: null, …, rows: Mapper rows })
+      ↳ null → 409 customer_product_profile_rejected
+ → validateProductBehaviorAuthority({ productProfile, behaviorRows })
+ → finalizeProductProductionAccuracy(profile, behavior)
+ → ONE readiness authority: productAccuracyAssessment.roleReadiness (BASE_READY | TOPPING_READY | …), gellattiReadiness.ready, criticalBlockers
+ → RPC gellatti_upsert_customer_added_product_v1(p_product_profile, p_product_behavior) → products + product_versions(v1, facts incl. productBehaviorAuthority) → classify_catalog_product_behavior_v2 → products.current_behavior_binding_id
+```
+The finalize comment states the rule explicitly: "One readiness authority for every surface … reassembling raw missing fields here made a TOPPING_READY article look simultaneously blocked by BASE-only water/freezing requirements" (`:484-488`).
+
+**Does Scan Import invent engine eligibility, Main capability, process scope, formulation role or technical behaviour?** No. Every one of those is computed by the shared authority from the profile; the scanner only supplies evidence and the customer's *family* choice, and that choice fills only fields the classifier left UNKNOWN (`applyCustomerProductFamily`: `ingredientFamily !== 'unknown' → unchanged`; archetype/form/role defaults apply only when `UNKNOWN`/`NEITHER_REVIEW`; `classificationSource: 'CUSTOMER_CONFIRMED'`, `customerProductFamily.ts:100-140`). PASS.
+
+**Immutable snapshot / version.** The accepted profile and behaviour are written into `product_versions.facts.productIntelligence.{productBehaviorAuthority, productProfileAuthority}` for version 1 with a sha256 `facts_fingerprint` (`20260827100000:305-337`); recipe use references the version/binding (Section 13). PASS.
+
+**Findings.**
+- F11.1 (P3) The customer family choice can set `intendedUsageRole` (e.g. `BASE_ONLY`) when the classifier returned `NEITHER_REVIEW`; the value still passes `validateProductBehaviorAuthority`, so it cannot bypass the authority, but the UI does not tell the customer that their family pick influences the allowed role.
+- F11.2 (P3) Two TypeScript authorities are imported by the Deno edge function through relative paths into `src/` (`productBehaviorAuthority.ts`, `productRecognition.ts`); one source of truth (good), but a client-side refactor silently changes server behaviour — the fingerprint test covers only the SQL function.
+
+**Verdict.** PASS — Scan Import defers to the canonical ProductBehaviour authority; no bypass found.
