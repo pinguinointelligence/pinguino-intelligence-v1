@@ -82,7 +82,10 @@ export function GellattiNotice({
       // served staging — the border came back ink/15, and the ring left
       // `--tw-ring-shadow` set while `box-shadow` stayed the elevation alone.
       tone={tone === 'attention' ? 'attention' : 'default'}
-      panelClassName="bg-white text-[var(--g-graphite)]"
+      // Nothing here may name a property the shell owns. The headline, body
+      // and buttons each set their own colour, so the panel-level `bg-white`
+      // and graphite text were duplicates of the shell's own `bg-white` /
+      // `text-ink` — removed rather than left to the cascade.
     >
       <div
         data-notice-tone={tone}

@@ -1032,7 +1032,8 @@ function RecipeRow({
                 }
                 testId={`row-menu-${item.id}`}
                 placement="responsive"
-                panelClassName="sm:!min-h-[290px] sm:!w-[min(500px,calc(100vw-32px))] sm:!rounded-[14px] sm:!p-0"
+                size="compact"
+                panelClassName="sm:min-h-[290px] sm:p-0"
                 onClose={() => closeLineMenus()}
               >
                 <div id={`row-menu-dialog-${item.id}`} data-ingredient-modal-shell="true">

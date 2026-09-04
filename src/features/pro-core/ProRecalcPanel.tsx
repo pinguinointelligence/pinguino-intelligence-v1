@@ -1069,6 +1069,7 @@ export function ProRecalcPanel({
       panelTestId="pro-recalc-panel"
       panelState={recalculationTerminal?.state ?? 'IDLE'}
       placement="center"
+      size="wide"
       onClose={closeOrCancel}
       showCloseControl
       closeLabel={recalculationTerminal?.state === 'WORKING' ? 'Anuluj' : r.close}
@@ -1085,10 +1086,20 @@ export function ProRecalcPanel({
            relationships intact — `text-ivory/80` becomes graphite at 80 % on
            white, `bg-ivory`/`text-shell` stays a solid dark button with a light
            label. No child markup, wording or affordance is changed here. */
-        'w-[min(680px,calc(100vw-1.5rem))] rounded-[18px] border-black/10 bg-white text-ivory shadow-pro-md',
+        // MEASURED on served staging before this change: `border-black/10`,
+        // `shadow-pro-md` and `rounded-[18px]` were all DEAD — the shell's own
+        // `border-ink/15`, `shadow-pro-e3` and `rounded-[24px]` won every one
+        // of them (only `.shadow-pro-e3` matched the panel for box-shadow).
+        // Removing them therefore changes nothing on screen; it removes three
+        // declarations that only looked like they were in charge. The width
+        // DID win, and is now stated as the canonical `size="wide"` instead.
+        'text-ivory',
         '[--color-charcoal:#191a1d] [--color-ivory:#202124] [--color-shell:#f5f3ee] [color-scheme:light]',
+        // Only PADDING and height differ between the two states now; the width
+        // is the canonical `size="wide"` in both, so the panel no longer
+        // changes dimension as the recalculation moves between them.
         customerPreviewOpen
-          ? 'max-h-[92dvh] w-[min(680px,calc(100vw-1rem))] px-3 py-3 sm:max-h-[88vh] sm:w-[min(680px,calc(100vw-1.5rem))] sm:px-4 sm:py-4'
+          ? 'max-h-[92dvh] px-3 py-3 sm:max-h-[88vh] sm:px-4 sm:py-4'
           : 'max-h-[88vh] px-4 py-4 sm:px-5 sm:py-5',
       )}
     >

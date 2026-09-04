@@ -27,7 +27,8 @@ export function MonitorDrawer({ open, onClose }: { open: boolean; onClose: () =>
       dismissOnBackdrop
       showCloseControl
       closeLabel={copy.shell.closeMenu}
-      panelClassName="bg-white p-5 text-ink [color-scheme:light] sm:w-[min(680px,94vw)]"
+      size="wide"
+      panelClassName="p-5 [color-scheme:light]"
     >
       <h2 className="mb-4 pr-12 text-sm font-semibold tracking-label text-ink uppercase">
         {copy.proWorkbar.monitor}
