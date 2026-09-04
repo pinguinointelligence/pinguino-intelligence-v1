@@ -36,3 +36,11 @@ DEFERRED HOME INTEGRATION: any HOME/PRO wiring, replacing the legacy scanner, li
 
 ## Safety
 No legacy file changed (diff vs staging: `src/scan-contract`, `src/scan-import-v2`, `src/pages/dev/ScanImportV2LabPage*`, two lines in `src/app/router.tsx`, one allow-list line in `authSecurity.test.ts`, one migration, `reports/scan-import-v2`). HOME untouched. Production/main untouched. Scan Core untouched. Staging writes made by proofs: one scan session, one lookup reservation, one product request (#32, SUBMITTED, home@home.com).
+
+## Staging QA harness — hand-over state (2026-09-05)
+
+- Route `/dev/scan-import-v2` is live on the branch preview of `claude/scan-import-v2` (Vercel project `pinguino-staging`, branch alias `pinguino-staging-git-5527b7-pinguinointelligence-7784s-projects.vercel.app`). The preview is SSO-protected; a 23-hour bypass link was generated with the Vercel tooling and handed to the owner. Verified in a browser: the page renders as guest, no console errors.
+- `VITE_SCAN_IMPORT_LAB=1` is set on the staging Vercel project (preview + production) — no owner action needed. After PR #167 merges, the same page is reachable on the staging domain under `/dev/scan-import-v2`.
+- Exact-identity authority is selected **explicitly** by a second policed flag: `VITE_SCAN_IMPORT_GTIN_RPC=1` → dedicated guest-safe RPC `resolve_exact_products_by_gtin_v1` (migration `20260905090000`, part of this PR, not yet applied on staging); otherwise the interim search authority. The page states which one is active. There is no silent fallback between the two paths. Consequence until the migration is applied: guests see known products as *unknown* (the search RPC is not guest-visible); signed-in accounts get the full known flow.
+- Order of operations after merge (all internal, none requires the owner to touch Vercel): (1) migration applied on staging through the migration workflow, (2) `VITE_SCAN_IMPORT_GTIN_RPC=1` set on the staging project, (3) redeploy, (4) guest exact lookup re-verified on the harness.
+- Branch reconciled with `origin/staging` 349bfb12 (PR #170) by a normal merge; the merge touched only `recipeStore.ts` and its Crown test — no V2 file.
