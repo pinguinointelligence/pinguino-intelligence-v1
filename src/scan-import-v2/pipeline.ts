@@ -105,6 +105,7 @@ async function finish(
     try {
       imported = await ports.importer.importOrLink({
         identity,
+        product,
         idempotencyKey: idempotencyKey(identity, ctx),
         ctx,
       });

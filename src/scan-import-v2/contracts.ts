@@ -41,6 +41,10 @@ export interface ExactCandidate {
   mapperSlotId: string | null;
   /** market country of the row when the authority carries one; null = global */
   country: string | null;
+  /** current immutable version pointer when the authority exposes it (stale-identity guard for caches) */
+  currentVersionId?: string | null;
+  /** raw authority facts kept for parity evidence (never used for identity decisions) */
+  evidence?: Readonly<Record<string, unknown>>;
 }
 
 export interface RequestContext {
@@ -94,6 +98,7 @@ export interface ImportOutcome {
 export interface ImportPort {
   importOrLink(input: {
     identity: CodeIdentity;
+    product: ExactCandidate;
     idempotencyKey: string;
     ctx: RequestContext;
   }): Promise<ImportOutcome>;
