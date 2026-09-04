@@ -34,6 +34,10 @@ describe('ScanImportV2LabPage boundary', () => {
       /dangerouslySetInnerHTML|service_role|SERVICE_ROLE|\.from\(|\.rpc\(|functions\.invoke/,
     );
   });
+  it('selects the exact authority explicitly by flag (no silent fallback between the two paths)', () => {
+    expect(PAGE).toMatch(/VITE_SCAN_IMPORT_GTIN_RPC === '1' \? 'gtin_rpc' : 'search_rpc'/);
+    expect(PAGE).toMatch(/exactAuthority: EXACT_AUTHORITY/);
+  });
   it('drives the lifecycle only through the V2 entry points', () => {
     expect(PAGE).toMatch(/runScanImportV2\(/);
     expect(PAGE).toMatch(/continueDiscovery\(/);

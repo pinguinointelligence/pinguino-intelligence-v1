@@ -32,6 +32,9 @@ import {
 import fixtures from '@/scan-import-v2/__fixtures__/scanCoreObservations.json';
 
 const LAB_ENABLED = import.meta.env.DEV || import.meta.env.VITE_SCAN_IMPORT_LAB === '1';
+/** the dedicated exact-identity RPC exists only once migration 20260905090000 is deployed; until then the interim search authority */
+const EXACT_AUTHORITY =
+  import.meta.env.VITE_SCAN_IMPORT_GTIN_RPC === '1' ? 'gtin_rpc' : 'search_rpc';
 const FIXTURES = fixtures as Record<string, ScanCoreObservationLike>;
 const FAMILIES = [
   'dairy',
@@ -182,7 +185,7 @@ export function ScanImportV2LabPage() {
     if (!supabase) return null;
     const client = supabase as never;
     return {
-      ...createSupabaseV2Ports(client),
+      ...createSupabaseV2Ports(client, { exactAuthority: EXACT_AUTHORITY }),
       external: null,
       offlineCache: cache,
       externalTimeoutMs: 20_000,
@@ -259,7 +262,11 @@ export function ScanImportV2LabPage() {
       <p style={{ color: '#555' }}>
         {accountId
           ? 'Zalogowano — pełna ścieżka (rozpoznawanie, zapis)'
-          : 'Gość — tylko odczyt znanych produktów'}
+          : 'Gość — tylko odczyt znanych produktów'}{' '}
+        · autorytet dokładnego dopasowania:{' '}
+        {EXACT_AUTHORITY === 'gtin_rpc'
+          ? 'dedykowany (gtin)'
+          : 'tymczasowy (search) — goście nie widzą znanych produktów do czasu wdrożenia migracji'}
       </p>
       <section style={{ display: 'grid', gap: 8 }}>
         <label>
