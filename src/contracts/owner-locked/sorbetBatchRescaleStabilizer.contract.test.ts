@@ -144,12 +144,27 @@ describe('OWNER-LOCKED — batch rescale keeps the Sorbet stabilizer system cano
        Production Rescue Edge source closure (GEL-P0-018), and a Studio-side
        repair has no business enlarging that closure. It owns no limit of its
        own — every number still comes from the authority it imports. */
+    // The algorithm now lives in the OWNER projection so every product type
+    // with a published whole-gram band is rescaled the same way; the Sorbet
+    // entry point keeps the Sorbet guard and delegates. The invariant this
+    // contract protects is unchanged and is now asserted on BOTH files:
+    // neither restates a limit, and both take their numbers from the authority.
     const projection = readFileSync(
+      'src/features/recipe-constraints/ownerStabilizerRescaleProjection.ts',
+      'utf8',
+    );
+    expect(projection).toContain('ownerStabilizerWholeGramBand');
+    expect(projection).toContain("from './ownerStabilizerSystemAuthority'");
+
+    const sorbetEntry = readFileSync(
       'src/features/recipe-constraints/sorbetStabilizerRescaleProjection.ts',
       'utf8',
     );
-    expect(projection).toContain('sorbetStabilizerWholeGramBand');
-    expect(projection).toContain("from './sorbetStabilizerSystemAuthority'");
+    expect(sorbetEntry).toContain("from './sorbetStabilizerSystemAuthority'");
+    expect(sorbetEntry).toContain('planOwnerStabilizerSystemRescale');
+    const sorbetCode = sorbetEntry.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+    expect(sorbetCode).not.toMatch(/\b0\.[0-9]+\b/);
+    expect(sorbetCode.match(/\b[2-9][0-9]*\b/g) ?? []).toEqual([]);
     // Only the whole-gram arithmetic may carry numerals; no percentage and no
     // gram ceiling may be restated here.
     const code = projection.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
@@ -162,7 +177,7 @@ describe('OWNER-LOCKED — batch rescale keeps the Sorbet stabilizer system cano
       store.indexOf('/** Snapshot of a preset as fresh store state'),
     );
     const helperCode = helper.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
-    expect(helperCode).toContain('planSorbetStabilizerSystemRescale');
+    expect(helperCode).toContain('planOwnerStabilizerSystemRescale');
     // `0` is an emptiness check, never a limit; any other numeral would be one.
     expect(helperCode.match(/\b[1-9][0-9]*\b/g) ?? []).toEqual([]);
   });

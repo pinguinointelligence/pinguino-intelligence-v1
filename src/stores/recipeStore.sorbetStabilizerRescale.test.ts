@@ -38,6 +38,7 @@ import {
   unusedZeroGramLineIds,
 } from '@/features/practical-recipe/practicalRecipe';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
+import { resolveFunctionalRole } from '@/features/formulation/ingredientRoles';
 import { useRecipeStore } from './recipeStore';
 
 /** A second real stabilizer, standing in for the VITACEL CITRUS FIBER of the
@@ -166,18 +167,46 @@ describe('PC-02 — batch rescale keeps the Sorbet stabilizer system canonical',
     });
   });
 
-  it('6. non-Sorbet batch rescaling is unchanged', () => {
+  it('6. Gelato batch rescaling is projected too — the repair is not Sorbet-scoped', () => {
+    // Originally this asserted a purely proportional non-Sorbet rescale, i.e.
+    // that PC-02 had touched Sorbet ONLY. That scope was the defect: a
+    // proportional factor produces fractional grams for every product type
+    // whose stabilizer ceiling is a percentage rounded inward, so Gelato was
+    // left holding 2.0100000000000002 g of TARA GUM at 670 g. The synthetic
+    // template stabilizer hold froze that value, and the LP could no longer
+    // integer-certify against it.
     useRecipeStore.getState().startNewRecipe('gelato');
     const before = state().items.map((item) => ({ id: item.id, grams: item.planned_grams }));
     const currentSum = before.reduce((total, item) => total + item.grams, 0);
 
     useRecipeStore.getState().setBatchGrams(670);
-    const factor = 670 / currentSum;
-    state().items.forEach((item, index) => {
-      expect(item.id).toBe(before[index]!.id);
-      expect(item.planned_grams).toBeCloseTo(before[index]!.grams * factor, 6);
-    });
+
+    // The stabilizer system lands on whole grams, which is the whole point.
+    for (const grams of stabilizerGrams()) expect(Number.isInteger(grams)).toBe(true);
     expect(sum()).toBeCloseTo(670, 6);
+
+    // Everything else still travels proportionally: the ordinary lines keep
+    // their proportions RELATIVE TO EACH OTHER, absorbing only the sub-gram
+    // difference the projection moved.
+    const stabilizerIds = new Set(
+      state()
+        .items.filter((item) => resolveFunctionalRole(item.ingredient) === 'stabilizer')
+        .map((item) => item.id),
+    );
+    const ordinaryBefore = before.filter((item) => !stabilizerIds.has(item.id));
+    const ordinaryAfter = state().items.filter((item) => !stabilizerIds.has(item.id));
+    const beforeTotal = ordinaryBefore.reduce((total, item) => total + item.grams, 0);
+    const afterTotal = ordinaryAfter.reduce((total, item) => total + item.planned_grams, 0);
+    ordinaryAfter.forEach((item, index) => {
+      expect(item.id).toBe(ordinaryBefore[index]!.id);
+      expect(item.planned_grams / afterTotal).toBeCloseTo(
+        ordinaryBefore[index]!.grams / beforeTotal,
+        6,
+      );
+    });
+    // And the projection moved less than a gram, not a redesign of the vector.
+    const factor = 670 / currentSum;
+    expect(Math.abs(afterTotal - beforeTotal * factor)).toBeLessThan(1);
   });
 
   it('7. add-time stabilizer clamping is unchanged', () => {
