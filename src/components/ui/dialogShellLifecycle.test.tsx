@@ -9,6 +9,8 @@
  *
  * These are behavioural assertions on the rendered DOM, not class-name checks.
  */
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -52,9 +54,10 @@ describe('canonical modal sizing', () => {
     expect(panels()[0]?.className).toContain('w-[min(520px,94vw)]');
   });
 
-  it('offers exactly three widths, and nothing else', async () => {
+  it('offers exactly TWO widths, and nothing else', async () => {
+    // Owner rule: if the content fits, use `default` — including short content.
+    // A narrower third member is what made the app read small → medium → large.
     for (const [size, width] of [
-      ['compact', '420px'],
       ['default', '520px'],
       ['wide', '680px'],
     ] as const) {
@@ -68,6 +71,10 @@ describe('canonical modal sizing', () => {
       expect(panels()[0]?.getAttribute('data-dialog-size'), size).toBe(size);
       expect(panels()[0]?.className, size).toContain(width);
     }
+    // 420 must not come back.
+    expect(
+      readFileSync(resolve(process.cwd(), 'src/components/ui/DialogShell.tsx'), 'utf8'),
+    ).not.toContain('420px');
   });
 
   it('centers every placement variant the app uses', async () => {

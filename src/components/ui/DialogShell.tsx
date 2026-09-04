@@ -22,13 +22,11 @@ import { isTopmostDialogShell, registerDialogShell } from './dialogShellRegistry
  * the viewport on a phone through the same `94vw`/gutter clamp.
  */
 const PANEL_WIDTH = {
-  compact: 'sm:w-[min(420px,94vw)]',
   default: 'sm:w-[min(520px,94vw)]',
   wide: 'sm:w-[min(680px,94vw)]',
 } as const;
 
 const CENTERED_WIDTH = {
-  compact: 'w-[min(420px,94vw)]',
   default: 'w-[min(520px,94vw)]',
   wide: 'w-[min(680px,94vw)]',
 } as const;
@@ -72,17 +70,21 @@ export function DialogShell({
    */
   tone?: 'default' | 'attention';
   /**
-   * The panel's canonical WIDTH, chosen from a fixed family rather than typed
-   * per dialog.
+   * The panel's canonical WIDTH. There are TWO members, on purpose.
    *
-   * The audit that produced this found five different widths in thirteen
-   * dialogs — 520, 680, 500, `max-w-sm` twice — each written inline, three of
-   * them fighting the shell's own `w-[min(520px,94vw)]` and winning or losing
-   * on source order. `default` is the reference the owner accepted (the
-   * „Maksymalna ilość została osiągnięta" notice). Reach for `wide` only when
-   * the content genuinely needs it, and `compact` only for a short form.
+   * The audit found five different widths across thirteen dialogs — 520, 680,
+   * 500 and `max-w-sm` twice — each typed inline, three of them fighting the
+   * shell's own and winning or losing on source order. `default` (520) is the
+   * reference the owner accepted: the „Maksymalna ilość została osiągnięta"
+   * notice.
+   *
+   * OWNER RULE: if the content fits, use `default` — including short content.
+   * A dialog is NOT made narrower just because it says less; that is what made
+   * the app feel like small → medium → large as the user moved through it. Take
+   * `wide` only where the content genuinely needs the horizontal room, and be
+   * able to say which content that is.
    */
-  size?: 'compact' | 'default' | 'wide';
+  size?: 'default' | 'wide';
   dismissOnBackdrop?: boolean;
   showCloseControl?: boolean;
   closeLabel?: string;

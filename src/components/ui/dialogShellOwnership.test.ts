@@ -128,7 +128,7 @@ describe('DialogShell ownership', () => {
         if (found) inlineWidths.push(`${file}: ${found.join(' ')}`);
       }
     }
-    expect(inlineWidths, `use size="compact" | "default" | "wide"`).toEqual([]);
+    expect(inlineWidths, `use size="default" | "wide"`).toEqual([]);
   });
 
   it('the shell declares each owned property exactly once per branch', () => {

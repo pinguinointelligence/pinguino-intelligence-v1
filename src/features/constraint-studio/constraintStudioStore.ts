@@ -572,6 +572,25 @@ export interface ConstraintStudioState {
     requestedGrams: number;
     safeMaximumGrams: number;
   } | null;
+  /**
+   * TRUE while an automatic Crown-OFF correction is completing.
+   *
+   * ONE click produced FOUR visible dialogs, measured on served staging:
+   * WORKING 680x117 (t+70 ms) -> PREVIEW_READY 680x347 (t+1259) -> applied/undo
+   * 680x169 (t+1464) -> the notice 520x255 (t+1981). The two middle ones are
+   * implementation steps of a single operation — the pipeline stages a Preview
+   * and then commits it through the canonical door — but the panel reads the
+   * same store the pipeline is mutating, so each intermediate step painted as
+   * its own window.
+   *
+   * This flag is raised in the SAME synchronous tick as the Preview is staged,
+   * so React batches the two updates and PREVIEW_READY never reaches the
+   * screen; it stays raised across the commit so the applied/undo state does
+   * not either. The panel keeps showing the progress state it already had.
+   * Nothing is hidden after the fact — the intermediate states are never
+   * presented in the first place.
+   */
+  correctionInFlight: boolean;
   acknowledgeCrownOffCorrection: () => void;
   /** Session-only; never persisted. Bound to exact base + Main identity swap. */
   substitutionConsent: SubstitutionConsent | null;
@@ -696,6 +715,7 @@ const INITIAL = {
   preview: null,
   previewIssue: null,
   crownOffCorrectionNotice: null as ConstraintStudioState['crownOffCorrectionNotice'],
+  correctionInFlight: false,
   substitutionConsent: null,
   substitutionAuthorization: null,
   proposalProductBehaviorAuthorization: null,
@@ -723,6 +743,7 @@ const CLEAR_STAGED = {
   preview: null,
   previewIssue: null,
   crownOffCorrectionNotice: null,
+  correctionInFlight: false,
   substitutionConsent: null,
   substitutionAuthorization: null,
   proposalProductBehaviorAuthorization: null,
@@ -3211,11 +3232,17 @@ export async function createOptimizePreviewWithServerAuthority(
     isCurrentPiRun(ownedGeneration) &&
     useRecipeStore.getState().draftRevision === draft.revision
   ) {
+    // SYNCHRONOUS with the Preview publish above — no await between them — so
+    // React batches both into one render and `PREVIEW_READY` never paints. The
+    // first `await` below is the earliest the browser can show anything, and by
+    // then the panel already knows to keep showing progress instead.
+    useConstraintStudioStore.setState({ correctionInFlight: true });
     await applyPreviewWithServerAuthority();
     if (!isCurrentPiRun(ownedGeneration)) return;
     const after = useConstraintStudioStore.getState();
     // Only an accepted commit earns the "we already fixed it" sentence. If the
-    // door refused, the existing blocked/preview surface stays exactly as it is.
+    // door refused, the existing blocked/preview surface stays exactly as it is
+    // — and the flag has to come down, or that surface would stay suppressed.
     if (after.preview === null && after.blocked === null) {
       useConstraintStudioStore.setState({
         crownOffCorrectionNotice: {
@@ -3223,8 +3250,11 @@ export async function createOptimizePreviewWithServerAuthority(
           requestedGrams: correction.requestedGrams,
           safeMaximumGrams: correction.selectedGrams,
         },
+        correctionInFlight: false,
         recalculationTerminal: null,
       });
+    } else {
+      useConstraintStudioStore.setState({ correctionInFlight: false });
     }
     return;
   }

@@ -161,7 +161,7 @@ export function SaveRecipeDialog({ onClose }: { onClose: () => void }) {
       showCloseControl
       closeLabel={d.cancel}
       initialFocusTestId={needsName ? 'save-name' : 'save-note'}
-      size="compact"
+      size="default"
       panelClassName="p-7"
     >
       <div className="pr-12">
