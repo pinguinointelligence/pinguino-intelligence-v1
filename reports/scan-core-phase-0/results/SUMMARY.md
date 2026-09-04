@@ -2,4 +2,4 @@
 
 | device | os | browser | mode | scenes | frames | Phase 0 |
 |---|---|---|---|---|---|---|
-| Galaxy | Android 10 | Samsung Internet 30.0 | browser_tab | 25 | 95 | **NO-GO** |
+| iPhone  | iOS 18.7 | Safari 26.6.1 | standalone_pwa | 25 | 103 | **GO** |
