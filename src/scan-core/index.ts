@@ -17,7 +17,13 @@ export {
   type ConfirmationState,
   type Lane,
 } from './confirmation';
-export { formatOf, type ScanObservation } from './observation';
+export {
+  formatFromDecoder,
+  type ScanObservation,
+  type ScanNone,
+  type BarcodeFormat,
+  type BarcodeEvidenceSummary,
+} from './observation';
 export { mergeCollinear, type RawCandidate, type MergedCandidate } from './candidates';
 export {
   Tracker,
@@ -32,3 +38,12 @@ export {
   type TrackState,
   type TrackerUpdate,
 } from './track';
+export {
+  TargetStateMachine,
+  STATE,
+  type ScanState,
+  type CameraAction,
+  type StateInput,
+  type StateOutput,
+} from './stateMachine';
+export { candidateQuality, candidateBox, type CandidateQuality, type CutEdge } from './quality';
