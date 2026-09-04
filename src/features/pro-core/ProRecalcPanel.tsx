@@ -863,6 +863,7 @@ export function ProRecalcPanel({
   const starterPackRescuePending = useConstraintStudioStore((s) => s.starterPackRescuePending);
   const previewIssue = useConstraintStudioStore((s) => s.previewIssue);
   const crownOffCorrectionNotice = useConstraintStudioStore((s) => s.crownOffCorrectionNotice);
+  const correctionInFlight = useConstraintStudioStore((s) => s.correctionInFlight);
   const blocked = useConstraintStudioStore((s) => s.blocked);
   const postApplyNotice = useConstraintStudioStore((s) => s.postApplyNotice);
   const history = useConstraintStudioStore((s) => s.history);
@@ -1034,7 +1035,16 @@ export function ProRecalcPanel({
     );
   }
   if (!open) return null;
-  const customerPreviewOpen = preview !== null && recalculationTerminal?.state === 'PREVIEW_READY';
+  // ONE click, ONE visible outcome. While an automatic correction is completing,
+  // the pipeline stages a Preview and then commits it — both of which are store
+  // states this panel would otherwise render as their own windows. Measured on
+  // served staging, that is exactly what produced the 680x347 „Sprawdź
+  // proponowaną korektę" flash and the 680x169 applied/undo flash between the
+  // click and the final notice. Here the panel simply keeps showing the progress
+  // it was already showing, so those states never reach the screen.
+  const suppressIntermediate = correctionInFlight;
+  const customerPreviewOpen =
+    !suppressIntermediate && preview !== null && recalculationTerminal?.state === 'PREVIEW_READY';
   const dialogLabel = customerPreviewOpen ? 'Sprawdź proponowaną korektę.' : r.title;
   const previewCard = preview ? (
     <ConstraintPreviewCard
@@ -1067,11 +1077,25 @@ export function ProRecalcPanel({
       label={dialogLabel}
       testId="pro-recalc-overlay"
       panelTestId="pro-recalc-panel"
-      panelState={recalculationTerminal?.state ?? 'IDLE'}
+      // The attribute must describe what is PRESENTED, not what the pipeline
+      // is doing internally. While the correction completes the panel shows
+      // progress, so reporting PREVIEW_READY here would make the diagnostic
+      // attribute contradict the screen — and a served trace read it.
+      panelState={suppressIntermediate ? 'WORKING' : (recalculationTerminal?.state ?? 'IDLE')}
       placement="center"
+      // CONTENT-DRIVEN, not per-dialog. Everything this panel says on its own
+      // — progress, a refusal, a recoverable error, the applied state — is a
+      // sentence and a button, so it uses the canonical 520 the owner named.
+      // It grows to 680 only while the CHANGE LIST is on screen, which is the
+      // one piece of content here with columns. In the automatic-correction
+      // flow the change list never shows, so that flow now opens and closes at
+      // one single width instead of stepping 680 -> 520.
+      size={customerPreviewOpen ? 'wide' : 'default'}
       onClose={closeOrCancel}
       showCloseControl
-      closeLabel={recalculationTerminal?.state === 'WORKING' ? 'Anuluj' : r.close}
+      closeLabel={
+        recalculationTerminal?.state === 'WORKING' || suppressIntermediate ? 'Anuluj' : r.close
+      }
       closeTestId="pro-recalc-close"
       panelClassName={cn(
         /* OWNER 2026-09-03 — ONE Gellatti dialog language. This overlay used to
@@ -1085,10 +1109,20 @@ export function ProRecalcPanel({
            relationships intact — `text-ivory/80` becomes graphite at 80 % on
            white, `bg-ivory`/`text-shell` stays a solid dark button with a light
            label. No child markup, wording or affordance is changed here. */
-        'w-[min(680px,calc(100vw-1.5rem))] rounded-[18px] border-black/10 bg-white text-ivory shadow-pro-md',
+        // MEASURED on served staging before this change: `border-black/10`,
+        // `shadow-pro-md` and `rounded-[18px]` were all DEAD — the shell's own
+        // `border-ink/15`, `shadow-pro-e3` and `rounded-[24px]` won every one
+        // of them (only `.shadow-pro-e3` matched the panel for box-shadow).
+        // Removing them therefore changes nothing on screen; it removes three
+        // declarations that only looked like they were in charge. The width
+        // DID win, and is now stated as the canonical `size="wide"` instead.
+        'text-ivory',
         '[--color-charcoal:#191a1d] [--color-ivory:#202124] [--color-shell:#f5f3ee] [color-scheme:light]',
+        // Only PADDING and height differ between the two states now; the width
+        // is the canonical `size="wide"` in both, so the panel no longer
+        // changes dimension as the recalculation moves between them.
         customerPreviewOpen
-          ? 'max-h-[92dvh] w-[min(680px,calc(100vw-1rem))] px-3 py-3 sm:max-h-[88vh] sm:w-[min(680px,calc(100vw-1.5rem))] sm:px-4 sm:py-4'
+          ? 'max-h-[92dvh] px-3 py-3 sm:max-h-[88vh] sm:px-4 sm:py-4'
           : 'max-h-[88vh] px-4 py-4 sm:px-5 sm:py-5',
       )}
     >
@@ -1101,7 +1135,7 @@ export function ProRecalcPanel({
       ) : null}
 
       <div className={customerPreviewOpen ? 'space-y-3' : 'mt-3 space-y-3'}>
-        {recalculationTerminal?.state === 'WORKING' ? (
+        {recalculationTerminal?.state === 'WORKING' || suppressIntermediate ? (
           <FriendlyLabMessageMotion
             timing="progress"
             className="text-sm leading-relaxed text-ivory/80"
@@ -1255,7 +1289,10 @@ export function ProRecalcPanel({
           />
         ) : null}
 
-        {preview && previewCard && recalculationTerminal?.state === 'PREVIEW_READY' ? (
+        {!suppressIntermediate &&
+        preview &&
+        previewCard &&
+        recalculationTerminal?.state === 'PREVIEW_READY' ? (
           preview.directionFallback || preview.starterPackRescue ? (
             previewCard
           ) : (
@@ -1269,7 +1306,7 @@ export function ProRecalcPanel({
           )
         ) : null}
 
-        {!preview && recalculationTerminal === null && undoAvailable ? (
+        {!suppressIntermediate && !preview && recalculationTerminal === null && undoAvailable ? (
           <div className="space-y-2" data-testid="pro-recalc-applied">
             <p className="text-sm leading-relaxed text-ivory/80">{r.applied}</p>
             <button

@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from '@/lib/cn';
+import { isTopmostDialogShell, registerDialogShell } from './dialogShellRegistry';
 
 /**
  * THE one modal primitive for PINGÜINO Pro line-level dialogs.
@@ -15,6 +16,21 @@ import { cn } from '@/lib/cn';
  * `env(safe-area-inset-bottom)`, and uses the same border/radius/elevation
  * language as the centered variant.
  */
+/**
+ * Canonical widths. One family, three members — never a per-dialog number.
+ * The desktop values are the panel's own width; every one of them stays inside
+ * the viewport on a phone through the same `94vw`/gutter clamp.
+ */
+const PANEL_WIDTH = {
+  default: 'sm:w-[min(520px,94vw)]',
+  wide: 'sm:w-[min(680px,94vw)]',
+} as const;
+
+const CENTERED_WIDTH = {
+  default: 'w-[min(520px,94vw)]',
+  wide: 'w-[min(680px,94vw)]',
+} as const;
+
 export function DialogShell({
   label,
   testId,
@@ -23,6 +39,7 @@ export function DialogShell({
   placement = 'center',
   panelClassName,
   tone = 'default',
+  size = 'default',
   dismissOnBackdrop = false,
   showCloseControl = false,
   closeLabel = 'Zamknij',
@@ -52,6 +69,22 @@ export function DialogShell({
    * only ever one declaration per property, so nothing can be outranked.
    */
   tone?: 'default' | 'attention';
+  /**
+   * The panel's canonical WIDTH. There are TWO members, on purpose.
+   *
+   * The audit found five different widths across thirteen dialogs — 520, 680,
+   * 500 and `max-w-sm` twice — each typed inline, three of them fighting the
+   * shell's own and winning or losing on source order. `default` (520) is the
+   * reference the owner accepted: the „Maksymalna ilość została osiągnięta"
+   * notice.
+   *
+   * OWNER RULE: if the content fits, use `default` — including short content.
+   * A dialog is NOT made narrower just because it says less; that is what made
+   * the app feel like small → medium → large as the user moved through it. Take
+   * `wide` only where the content genuinely needs the horizontal room, and be
+   * able to say which content that is.
+   */
+  size?: 'default' | 'wide';
   dismissOnBackdrop?: boolean;
   showCloseControl?: boolean;
   closeLabel?: string;
@@ -62,6 +95,13 @@ export function DialogShell({
 }) {
   const dialogRef = useRef<HTMLElement>(null);
   const onCloseRef = useRef(onClose);
+  const shellId = useRef<symbol>(undefined as unknown as symbol);
+  if (shellId.current === undefined) shellId.current = Symbol('dialog-shell');
+  const [isTopmost, setIsTopmost] = useState(true);
+  useEffect(() => {
+    const id = shellId.current;
+    return registerDialogShell(id, () => setIsTopmost(isTopmostDialogShell(id)));
+  }, []);
   useEffect(() => {
     onCloseRef.current = onClose;
   }, [onClose]);
@@ -110,6 +150,11 @@ export function DialogShell({
     <div
       className={cn(
         'fixed inset-0 z-[70] bg-black/45',
+        // ONE overlay reads as active at a time. A shell that is no longer the
+        // topmost keeps its own state but stops painting a second scrim and
+        // stops taking pointer events, so a flow that briefly holds two shells
+        // cannot present them as two stacked windows.
+        isTopmost ? null : 'pointer-events-none bg-transparent',
         placement === 'bottom'
           ? 'flex flex-col justify-end p-0'
           : placement === 'responsive'
@@ -119,6 +164,7 @@ export function DialogShell({
       data-testid={testId}
       data-placement={placement}
       data-dialog-shell="gellatti"
+      data-dialog-active={isTopmost ? 'true' : 'false'}
       data-overlay-scope="viewport"
       onMouseDown={(event) => {
         if (dismissOnBackdrop && event.target === event.currentTarget) onCloseRef.current();
@@ -132,6 +178,9 @@ export function DialogShell({
         data-testid={panelTestId}
         data-dialog-panel="gellatti"
         data-dialog-tone={tone}
+        data-dialog-size={size}
+        data-dialog-active={isTopmost ? 'true' : 'false'}
+        aria-hidden={isTopmost ? undefined : true}
         data-dialog-state={panelState}
         data-terminal-state={panelState}
         className={cn(
@@ -146,8 +195,11 @@ export function DialogShell({
           placement === 'bottom'
             ? 'max-h-[min(88dvh,calc(100dvh-env(safe-area-inset-top)-0.5rem))] w-full rounded-t-[22px] border-x-0 border-b-0 pb-[env(safe-area-inset-bottom)]'
             : placement === 'responsive'
-              ? 'max-h-[min(88dvh,calc(100dvh-env(safe-area-inset-top)-0.5rem))] w-full rounded-t-[22px] border-x-0 border-b-0 pb-[env(safe-area-inset-bottom)] sm:max-h-[min(86vh,760px)] sm:w-[min(520px,94vw)] sm:rounded-[24px] sm:border sm:p-5'
-              : 'max-h-[min(86vh,760px)] w-[min(520px,94vw)] rounded-[24px] p-5',
+              ? cn(
+                  'max-h-[min(88dvh,calc(100dvh-env(safe-area-inset-top)-0.5rem))] w-full rounded-t-[22px] border-x-0 border-b-0 pb-[env(safe-area-inset-bottom)] sm:max-h-[min(86vh,760px)] sm:rounded-[24px] sm:border sm:p-5',
+                  PANEL_WIDTH[size],
+                )
+              : cn('max-h-[min(86vh,760px)] rounded-[24px] p-5', CENTERED_WIDTH[size]),
           panelClassName,
         )}
       >
