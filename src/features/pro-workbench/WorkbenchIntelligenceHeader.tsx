@@ -285,6 +285,7 @@ export function WorkbenchIntelligenceHeader({
         onClick={recalculateNeeded ? onRecalculate : onOpenLearning}
         disabled={working || (recalculateNeeded ? !onRecalculate : !onOpenLearning)}
         aria-busy={working}
+        data-testid="workbench-score-action"
         className={`pro-focus-ring flex items-center justify-end gap-3 rounded-[12px] text-right disabled:cursor-default ${variant === 'global' ? 'min-h-12 sm:min-w-[210px]' : 'min-h-14 w-full'}`}
       >
         <span className={variant === 'global' ? 'hidden min-w-0 sm:block' : 'min-w-0'}>

@@ -235,8 +235,11 @@
   --pro-row-height-attention: 54px;
   --pro-monitor-row-height: 58px;
   --pro-row-drag-width: 18px;
-  --pro-row-percent-width: 118px;
-  --pro-row-grams-width: 124px;
+  /* OWNER LOCK GEOMETRY: each segmented control includes its 30 px lock cell.
+     The row track must therefore preserve the control's canonical outer width
+     instead of shrinking it and letting `max-w-full` clip the final segment. */
+  --pro-row-percent-width: 142px;
+  --pro-row-grams-width: 150px;
   --pro-row-price-width: 80px;
   --pro-row-menu-width: 24px;
   --pro-row-column-gap: 5px;
@@ -259,8 +262,6 @@
     --pro-row-height-attention: 56px;
     --pro-monitor-row-height: 60px;
     --pro-row-drag-width: 20px;
-    --pro-row-percent-width: 122px;
-    --pro-row-grams-width: 128px;
     --pro-row-price-width: 84px;
     --pro-row-menu-width: 25px;
     --pro-row-column-gap: 6px;
@@ -277,8 +278,6 @@
     --pro-row-height-attention: 57px;
     --pro-monitor-row-height: 60px;
     --pro-row-drag-width: 20px;
-    --pro-row-percent-width: 126px;
-    --pro-row-grams-width: 133px;
     --pro-row-price-width: 87px;
     --pro-row-menu-width: 25px;
     --pro-row-column-gap: 6px;

@@ -66,11 +66,24 @@ describe('PRO responsive frame authority', () => {
 
   it('keeps the full ingredient control grid unclipped at the tight desktop breakpoint', () => {
     const row = read('features', 'ingredient-builder', 'IngredientRow.tsx');
+    const directNumberControl = read('features', 'ingredient-builder', 'DirectNumberControl.tsx');
     expect(row).toContain('data-gellatti-row="ingredient"');
     expect(css).toMatch(
       /@media \(min-width: 70rem\)[\s\S]*\[data-gellatti-row='ingredient'\][\s\S]*grid-template-columns:/,
     );
     expect(css).toContain('minmax(0, 1fr)');
+
+    // OWNER LOCK GEOMETRY: DirectNumberControl owns a 30 px final lock cell.
+    // Responsive density may tighten neighbouring tracks, but it must never
+    // make the percent/grams grid areas narrower than their complete controls.
+    expect(directNumberControl).toContain("'w-[142px] grid-cols-[28px_54px_28px_30px]'");
+    expect(directNumberControl).toContain("'w-[150px] grid-cols-[28px_62px_28px_30px]'");
+    expect(
+      [...tokens.matchAll(/--pro-row-percent-width:\s*([^;]+);/g)].map((match) => match[1]),
+    ).toEqual(['142px']);
+    expect(
+      [...tokens.matchAll(/--pro-row-grams-width:\s*([^;]+);/g)].map((match) => match[1]),
+    ).toEqual(['150px']);
   });
 
   it('uses the same structural breakpoint for viewport JS and portal positioning', () => {

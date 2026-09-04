@@ -43,6 +43,7 @@ export function WorkbenchScoreDisplay({
         disabled={!onOpenLearning}
         aria-label={`Dopasowanie techniczne receptury — ${heading}: ${accessibleResult}`}
         className="pro-focus-ring flex h-11 max-w-full shrink-0 items-center gap-2 rounded-[10px] px-1.5 text-left disabled:cursor-default"
+        data-testid="workbench-score-action"
         data-score-variant="compact-inline"
       >
         <ScoreRing score={score} />
