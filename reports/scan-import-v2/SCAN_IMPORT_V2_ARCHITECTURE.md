@@ -39,3 +39,11 @@ Repo-native names are reused: `ScannerErrorCode` copy semantics (`connection`, `
 
 ## Out of scope in this branch
 HOME/PRO wiring, Supabase adapters, edge functions, any legacy modification, production.
+
+## Decisions taken without the owner (documented, reversible)
+- **D1 — slot authorities only disambiguate.** The user-preferred exact SKU and the approved country assignments (`user_preferred_product_slots`, `country_product_slot_assignments`) answer "which product for this Mapper slot"; in Scan Import 2.0 they may only choose between exact candidates that already match the confirmed code. An unknown code stays UNKNOWN (`next: 'analyze_label'`) — no authority in the repo maps a barcode to a different product, and doing so would be the silent collapse the audit forbids.
+- **D2 — identity strength order.** `canonical_shared commercial > canonical_shared pi_base (Mapper reference) > provisional_linked > private_own`; equal strength → AMBIGUOUS with the candidates (never "first ranked row", audit F4.1/F4.3). A provisional row not linked to the account is invisible (legacy rule preserved).
+- **D3 — no `resolved_generic` variant.** The audit found no canonical policy that lets a confirmed barcode resolve to a generic ingredient; the variant is deliberately absent so it cannot be reached by accident. Engine mapping stays a ProductBehaviour concern behind the exact identity.
+- **D4 — idempotency key** = `<accountId|guest>:<GTIN-13>:<symbology>`; the same confirmed code from the same account always replays the same import (`created: false`); the real adapter passes it as `p_idempotency_key`.
+- **D5 — external evidence is never fatal.** Timeout (pipeline-enforced, `externalTimeoutMs`), malformed and failed provider answers are recorded on the UNKNOWN result (`evidenceError`) — the legacy rule "a refused lookup is not a failure of the scan" kept.
+- **D6 — offline.** Known = present in the per-account offline cache written on every successful online resolution (candidate + behaviour outcome + price state); unknown offline = honest `offline`. A network failure while online is `failed: connection`, distinct from `unknown`.
