@@ -280,16 +280,6 @@ export function BaselinePage() {
             />
           </label>
           <label style={styles.label}>
-            {copy.device.sessionName}
-            <input
-              style={styles.input}
-              value={sessionName}
-              placeholder={copy.device.sessionNamePlaceholder}
-              onChange={(e) => setSessionName(e.target.value)}
-              autoComplete="off"
-            />
-          </label>
-          <label style={styles.label}>
             {copy.device.declaredCode}
             <input
               style={styles.input}
@@ -303,7 +293,7 @@ export function BaselinePage() {
           <p style={styles.hint}>{copy.device.declaredHint}</p>
           <p style={styles.hint}>
             {copy.device.modeLabel}: {executionMode} · {uaGuess.os} · {uaGuess.browser} ·{' '}
-            {copy.device.build}: {HARNESS_VERSION} ·
+            {copy.device.build}: {HARNESS_VERSION}
           </p>
           <details style={styles.details}>
             <summary style={styles.label}>

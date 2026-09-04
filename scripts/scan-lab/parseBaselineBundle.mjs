@@ -384,7 +384,7 @@ export function analyzeBundle(bytes, fileName) {
   lines.push(`# ${d.modelLabel} — ${d.os} — ${d.browser} — ${d.executionMode}`);
   lines.push('');
   lines.push(
-    `Bundle \`${fileName}\` · session ${run.sessionId} · created ${run.createdAt} · exported ${manifest.exportedAt} · harness ${manifest.harness}`,
+    `Bundle \`${fileName}\` · session ${run.sessionId} · created ${run.createdAt} · exported ${manifest.exportedAt} · harness ${manifest.harness} · session name ${run.sessionName ?? '—'}`,
   );
   lines.push('');
   lines.push('## Device + camera');
