@@ -198,21 +198,26 @@ export function analyzeBundle(bytes, fileName) {
   for (const sc of scenes) {
     if (!sc.sceneId.startsWith('ean')) continue;
     const rs = rescored.get(`${sc.sceneId}:${sc.attempt}`);
-    const ref = rs?.expected ?? Object.entries(rs?.counts ?? {}).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
-    if (!ref) continue;
+    if (!rs) continue;
+    const ranked = Object.entries(rs.counts).sort((a, b) => b[1] - a[1]).map(([t]) => t);
+    const legit = new Set(rs.expected ? [rs.expected] : ranked.slice(0, sc.sceneId === 'ean-two-codes' ? 2 : 1));
+    if (legit.size === 0) continue;
     const ev = eventsOf(sc.sceneId, sc.attempt).sort((a, b) => a.tCapture - b.tCapture || a.frameIndex - b.frameIndex);
     let prev = null;
-    for (const e of ev) for (const d of e.decodes ?? []) {
-      const hit = d.results.find((r) => r.checksumValid);
-      if (!hit) continue;
-      const t = hit.text.replace(/\D/g, '');
-      if (prev && prev.t === t && prev.f !== e.frameIndex && t !== ref) { wrongPairs.push(`${sc.sceneId}: ${t} at ${Math.round(e.tCapture - sc.t0)} ms (frames ${prev.f}/${e.frameIndex})`); break; }
-      if (!prev || prev.t !== t) prev = { t, f: e.frameIndex };
+    const seen = new Set();
+    for (const e of ev) {
+      for (const d of e.decodes ?? []) {
+        const hit = d.results.find((r) => r.checksumValid);
+        if (!hit) continue;
+        const t = hit.text.replace(/\D/g, '');
+        if (prev && prev.t === t && prev.f !== e.frameIndex && !legit.has(t) && !seen.has(t)) {
+          seen.add(t);
+          wrongPairs.push(`${sc.sceneId}: ${t} at ${Math.round(e.tCapture - sc.t0)} ms (frames ${prev.f}/${e.frameIndex})`);
+        }
+        if (!prev || prev.t !== t) prev = { t, f: e.frameIndex };
+      }
     }
   }
-  const completionP50 = percentile(completion, 0.5);
-  const completionP95 = percentile(completion, 0.95);
-
   const checks = [
     { id: 'locate+roi per-frame p95 ≤ 40 ms (pooled over barcode frames)', value: locateRoiP95 === null ? '— (no frame carried both a saliency and a roi_cheap timing)' : `p50 ${ms1(locateRoiP50)} / p95 ${ms1(locateRoiP95)} ms (saliency p95 ${ms1(locateP95)} + roi p95 ${ms1(roiP95)}, n=${pooled.locateRoi.length})`, pass: locateRoiP95 === null ? null : locateRoiP95 <= TARGETS.locateRoiP95Ms },
     { id: '≥ 15 fps PROCESSED sustained 60 s (loop-60s)', value: processedFps === null ? '— (loop-60s not run)' : `${ms1(processedFps)} fps processed (min second ${processedFpsMin ?? '—'}); camera presented ${loop ? ms1(loop.framesPresented / dur60) : '—'} fps, rVFC callbacks ${ms1(ticks60.length / (dur60 || 1))}/s (first 5 s ${ms1(fpsHead)} → last 5 s ${ms1(fpsTail)})`, pass: processedFps === null ? null : processedFps >= TARGETS.sustainedFps && (processedFpsMin === null || processedFpsMin >= TARGETS.sustainedFps) },
