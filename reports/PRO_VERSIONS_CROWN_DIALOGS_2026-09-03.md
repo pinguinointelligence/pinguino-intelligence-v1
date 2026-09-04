@@ -304,7 +304,7 @@ before the Crown-OFF cases.
 The correction notice itself measured `background rgb(255,255,255)`, centered
 headline and body, a single `OK`, and **no `%` anywhere** in its text.
 
-## Defect found by this acceptance — fixed in PR #148
+## Defect found by this acceptance — took THREE attempts, still open at #148
 
 `tone="attention"` declared `border-[var(--g-orange)]` plus a shadow glow, but the
 panel's computed border on served staging was **ink/15** and the shadow was plain
@@ -312,11 +312,33 @@ panel's computed border on served staging was **ink/15** and the shadow was plai
 attention classes shipped alongside `DialogShell`'s own and lost on CSS order.
 The jsdom test was green the whole time because the class *was* present.
 
-Fixed by making the outline a **ring** — a property `DialogShell` does not set —
-with the test now pinning the ring and forbidding the border form. The orange
-acknowledgement button was rendering correctly throughout.
+**PR #148 did not fix it, and was verified the same wrong way.** It moved the
+declaration from `border` to `ring-2 ring-[var(--g-orange)]` — a property
+`DialogShell` does not set — and the jsdom test pinned the new class. Re-measured
+on served staging after #148 merged (`22e7c937`, bundle `index-CSmSdIEy.js`), the
+live notice reported:
 
-**A class being present is not evidence that it renders.**
+```
+--tw-ring-shadow : 0 0 0 calc(2px + 0px) #f58a07
+box-shadow       : rgba(16,17,19,.12) 0 8px 18px, rgba(16,17,19,.24) 0 28px 72px
+```
+
+Enumerating every stylesheet rule that sets `box-shadow` and matches the panel
+returned exactly one: `.shadow-pro-e3`. The ring populated a custom property
+that nothing consumed. **The orange still never reached the screen.**
+
+Hunting for a property the shell does not happen to use yet is what produced two
+dead fixes. **PR #156** removes the collision instead: `DialogShell` takes a
+`tone` and chooses EXACTLY ONE border colour and EXACTLY ONE box-shadow for
+itself, with the warm ring carried inside the same shadow value as the
+elevation, so there is no second declaration left to lose. Its test counts the
+utilities on the panel and fails if either is not exactly one — jsdom cannot
+resolve the cascade, but it can prove nothing is fighting.
+
+The orange acknowledgement button was rendering correctly throughout.
+
+**A class being present is not evidence that it renders — and neither is a
+green jsdom test that asserts the class.**
 
 ## Served-QA notes worth keeping
 
