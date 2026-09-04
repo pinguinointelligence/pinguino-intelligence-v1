@@ -58,7 +58,9 @@ export function compareWithLegacy(
       }).kind
     : 'invalid';
   const v2ProductId =
-    v2.kind === 'resolved_exact' || v2.kind === 'needs_confirmation' ? v2.product.productId : null;
+    v2.kind === 'resolved_exact' || v2.kind === 'needs_confirmation'
+      ? (v2.product?.productId ?? null)
+      : null;
   const differences: string[] = [];
   if (Boolean(barcode) !== (v2.kind !== 'invalid_code')) differences.push('validity');
   if (exact && v2.kind === 'ambiguous')

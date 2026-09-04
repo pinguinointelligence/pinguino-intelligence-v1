@@ -13,6 +13,7 @@ import type {
   ScanImportV2Result,
 } from './contracts';
 import { resolveIdentity } from './resolver';
+import { startDiscovery } from './discovery/discovery';
 
 /** audit §6: an exact canonical match scores ≥ 97; slot-derived disambiguation is PROVISIONAL 90 */
 export const CONFIDENCE = { exactCatalog: 97, localCache: 97, slotDerived: 90 } as const;
@@ -184,6 +185,23 @@ export async function runScanImportV2(
   if (resolution.kind === 'ambiguous')
     return { kind: 'ambiguous', identity, candidates: resolution.candidates };
   if (resolution.kind === 'none') {
+    // authenticated + discovery available: the unknown half of the product flow starts here
+    if (ctx.accountId !== null && ports.discovery) {
+      try {
+        const d = await startDiscovery(identity, ctx, ports.discovery);
+        if (d.kind === 'resolved_exact') return finish(identity, d.product, 'catalog', ctx, ports);
+        return d;
+      } catch (error) {
+        if (error instanceof Error && (error as { kind?: string }).kind === 'network')
+          return { kind: 'failed', code: 'connection', identity, detail: null };
+        return {
+          kind: 'failed',
+          code: 'lookup_failed',
+          identity,
+          detail: error instanceof Error ? error.message : null,
+        };
+      }
+    }
     const ev = await research(identity, ctx, ports);
     return { kind: 'unknown', identity, next: 'analyze_label', ...ev };
   }

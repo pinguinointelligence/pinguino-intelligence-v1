@@ -130,6 +130,8 @@ export interface ScanImportV2Ports {
   price: PricePort;
   /** provider research budget; the pipeline enforces it regardless of the port */
   externalTimeoutMs: number;
+  /** unknown-product discovery over the existing scan-session / finalize / product-request authorities (authenticated only) */
+  discovery?: import('./discovery/contracts').DiscoveryPort | null;
 }
 
 export type ResolutionProvenance =
@@ -157,10 +159,50 @@ export type ScanImportV2Result =
   | {
       kind: 'needs_confirmation';
       identity: CodeIdentity;
-      product: ExactCandidate;
+      /** null while the product does not exist yet (discovery family confirmation) */
+      product: ExactCandidate | null;
       provenance: ResolutionProvenance;
-      reason: 'behaviour_review' | 'behaviour_blocked';
+      reason: 'behaviour_review' | 'behaviour_blocked' | 'family_confirmation';
       behaviour: { outcome: 'unknown_requires_review' | 'blocked'; bindingId: string | null };
+      sessionId?: string;
+      options?: readonly string[];
+    }
+  | {
+      /** unknown code with an OPEN discovery: identity preserved, evidence collected so far, what happens next */
+      kind: 'discovered_pending';
+      identity: CodeIdentity;
+      sessionId: string;
+      stage: import('./discovery/contracts').DiscoveryStage;
+      ledger: import('./discovery/contracts').FactLedger;
+      next: 'label_photo' | 'finalize';
+      evidenceError: 'provider_timeout' | 'provider_failed' | 'provider_unavailable' | null;
+      note: string | null;
+      engineReady: false;
+      canonical: false;
+    }
+  | {
+      /** a NEW exact SKU created through the finalize/profile/ProductBehaviour authorities (customer-provisional) */
+      kind: 'discovered_exact';
+      identity: CodeIdentity;
+      sessionId: string;
+      product: ExactCandidate;
+      stage: import('./discovery/contracts').DiscoveryStage;
+      ledger: import('./discovery/contracts').FactLedger;
+      engineReady: boolean;
+      behaviour: { outcome: BehaviourOutcome; bindingId: string | null };
+      canonical: false;
+      readiness: { engineReady: boolean; missingCritical: readonly string[]; note: string | null };
+    }
+  | {
+      /** durable discovery candidate (product request) awaiting verification; canonical = false, engine usable = false */
+      kind: 'discovery_requested';
+      identity: CodeIdentity;
+      requestId: string;
+      status: string;
+      stage: import('./discovery/contracts').DiscoveryStage;
+      ledger: import('./discovery/contracts').FactLedger;
+      canonical: false;
+      engineReady: false;
     }
   | { kind: 'ambiguous'; identity: CodeIdentity; candidates: readonly ExactCandidate[] }
   | {
