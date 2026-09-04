@@ -12,12 +12,13 @@ Identity is the session id, never the file name. Baseline mode = the harness def
 | D1 | iPhone 15 Pro Max · Safari tab | | | | | | | | | PENDING |
 | D2 | iPhone 15 Pro Max · Home-Screen PWA (must show standalone_pwa) | | | | | | | | | PENDING |
 | D3 | Galaxy Note10+ · Chrome | | | | | | | | | PENDING |
-| S0 | Galaxy Note10+ · Samsung Internet | | | | | | | | | PENDING |
+| S0 | Galaxy Note10+ SM-N975F · Android 10 · Samsung Internet 30.0 · browser_tab | 8880c735-ec7a-40cc-8b8f-075fba803178 | Internet browser | 15:52:51 | tunnel 16:00:35 (sha256 647e24ae…) | 25/26 | NO-GO (CPU proxy 85 %: main-thread capture→luma 65.6 ms p50 at 4.7 fps) | 0 (0 raw contradictions) | 338 ms / 697 ms (meets) | RECEIVED · VERIFIED · PARSED |
 | P1 | Galaxy Note10+ · Chrome · NOTE10-P1-PROBE (scene 26 ×4 + two probes) | | | | | | | | | PENDING |
 
 ## Findings so far (evidence, not interpretation of the pending runs)
 1. **Two confirmed wrong values on two different phones, same defect class.** Baseline confirmation (two agreeing raw reads) accepted `0602002492786` (Realme, 25 cm) and `8622262492786` (iPhone Chrome, 30 cm) for the product `7622201492786`: leading-digit / first-group corruptions that pass the EAN-13 checksum. This is the exact failure the Phase 1 track-scoped consensus lane (4 frames, 2:1 majority, rectified-alone never confirms) is designed to remove; the corpus replay in `reports/scan-core-phase-1/P1_POLICY_REPLAY_2026-09-04.md` reported 0 wrong values on the morning corpus and must be re-run on these bundles.
 2. **Android throughput gate fails identically on both Realme browsers** (main-thread `getImageData` 61 ms p50 at 6.3 fps) — the same root cause as the morning Note10+ result; unchanged by design because acquisition policy is MEASURE FIRST (Note10+ P1 probe).
-3. The Realme Chrome bundle arrived through the tunnel AND by AirDrop; both copies are byte-identical. The tunnel path is proven on Android Chrome and iOS Chrome.
+3. Samsung Internet on the Note10+ confirmed 16 scenes with zero wrong values and zero raw contradictions, the cleanest run so far — the same phone/browser that failed only the throughput gates this morning.
+4. The Realme Chrome bundle arrived through the tunnel AND by AirDrop; both copies are byte-identical. The tunnel path is proven on Android Chrome and iOS Chrome.
 
 Parsed results: `reports/scan-core-phase-0/results/` (three new files, one per session). Verification per bundle: ZIP integrity (`unzip -t`), size, manifest session id, device line, scene count, SHA-256 equal in COPY A and COPY B.
