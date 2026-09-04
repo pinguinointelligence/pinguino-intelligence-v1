@@ -1032,7 +1032,11 @@ function RecipeRow({
                 }
                 testId={`row-menu-${item.id}`}
                 placement="responsive"
-                size="compact"
+                // Its `!w-[min(500px,…)]` used `!important`, so unlike the
+                // other overrides it really did paint. `default` (520) is the
+                // nearest canonical member, so the row menu keeps essentially
+                // the width it had while stating it once instead of forcing it.
+                size="default"
                 panelClassName="sm:min-h-[290px] sm:p-0"
                 onClose={() => closeLineMenus()}
               >
