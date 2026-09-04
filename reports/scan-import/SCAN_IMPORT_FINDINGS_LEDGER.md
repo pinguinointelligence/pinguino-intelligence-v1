@@ -1,3 +1,23 @@
-# SCAN_IMPORT_FINDINGS_LEDGER
+# SCAN IMPORT — FINDINGS LEDGER (staging e2e1a61a, 2026-09-04) — no implementation yet
 
-(filled at the end of the audit; see SCAN_IMPORT_FORENSIC_AUDIT.md for the running sections)
+| ID | SEVERITY | AREA | EXPECTED | ACTUAL | EVIDENCE | ROOT CAUSE | FIX DIRECTION | STATUS |
+|---|---|---|---|---|---|---|---|---|
+| F4.1 | P1 | exact identity | one EAN → one canonical product regardless of visibility | private/provisional and shared products may share an EAN; the client picks the first ranked row | `0009_products_identity.sql:77-79`, `20260813110300:83-86`, `productScanner.ts:97-108` | EAN uniqueness is scoped per owner and per visibility, and the client exact lookup reuses ranked search | prefer canonical shared > linked provisional > private by rule, else return AMBIGUOUS; add an EAN-twin test | OPEN |
+| F4.2 / F7.2 | P1 | exact lookup scope | client and server exact lookups return the same product | server reads `product_variants` only; a customer-added product whose EAN slot is held by a retired variant has no variant row | `product-scan-analyze/index.ts:85-104`, `20260827100000:342-350` | two implementations of "exact by EAN" | one shared exact-by-EAN RPC used by both; or include `products.ean_code_normalized` on the server | OPEN |
+| F5.1 | P1 | external lookup | provider research call bounded in time | no `AbortSignal` on the research fetch (only the semantic call has 30 s) | `intimport-enrich/index.ts:352-354,590` | omission | add `AbortSignal.timeout` + explicit `lookup_timeout` error | OPEN |
+| F10.1 | P1 | offline | known product resolves locally where supported | every resolution is a server call; no EAN→product cache | Section 10 | design gap | small IndexedDB cache of confirmed exact products per account (id, EAN, name, version) with TTL; offline = read-only | OPEN |
+| F4.3 / F15.2 | P2 | ambiguity | user learns two candidates exist | several rows → `null` → UNRESOLVED (identify-live) or first row (client) | `product-identify-live/index.ts:170-172` | single-row rule with no ambiguous outcome | add `ambiguous` outcome + candidate list | OPEN |
+| F15.1 | P2 | failure states | INVALID_CODE surfaced | checksum failure collapsed into no-code | `barcode.ts:47-64`, `_shared/productScanner.ts:248-262` | validator returns null without reason | return `{ reason: 'checksum' | 'length' }` and show „kod nieczytelny" | OPEN |
+| F5.2 / F10.3 | P2 | offline | network failure ≠ not found; reconnect retries the free path | `researchBarcode` swallows errors and sets `eanLookupDone = true` | `LiveProductScanner.tsx:243-246` | catch-all | keep `eanLookupDone` false on `networkFailure`; surface `connection` | OPEN |
+| F10.2 | P2 | offline (live) | sweep tells the user it is offline | silent | `liveRecognition.ts:274`, `productScanner.ts:165` | robustness rule without a signal | add an `offline` event to `LiveScanEvent` when N consecutive resolutions fail with `networkFailure` | OPEN |
+| §2 symbology | P2 | code identity | decoder symbology preserved to persistence | re-derived from digit length client and server; UPC-E value/format mismatch on the server; 14-digit persisted without check | `barcode.ts:57-62`, `_shared/productScanner.ts:549-560`, `20260827100000:33` | length-based inference | carry `format` through `product_scan_sessions` and the RPC; server validates format against value | OPEN |
+| F6.1 | P2 | confidence | one `needsConfirmation` output | four overlapping signals | Section 6 | organic growth | `ImportResolution.needs_confirmation` (boundary doc) | OPEN |
+| F6.2 | P2 | provenance | exactness reason recorded | implicit in the route | Section 6 | — | add `exactness: 'exact_gtin' | 'single_row' | 'name_match'` to the result | OPEN |
+| F7.1 | P2 | cross-channel | same code → same product on every channel | three lookups (client search, server variants, picker ranking) | Section 7 | duplication | see F4.2 | OPEN |
+| F7.3 | P2 | manual channel | idempotent by EAN | not proven | `manualProduct.ts:38-49` | untested | one targeted test | VERIFY |
+| F8.2 | P2 | catalog | customer can fix an identity mistake | only behaviour re-analysis exists | Section 8 | — | correction request to CATALOG admins | OPEN |
+| F13.1 | P2 | persistence | recipe reference field pinned | not pinned by a scanner-area test | Section 13 | — | contract test on `recipe_input` ingredient reference | VERIFY |
+| F14.1 | P2 | security | demo view exposes only intended columns | any new column becomes anon-readable | `20260809194003`, `20260902120000` | invoker-false view | column allow-list test | OPEN |
+| F8.1, F9.1, F9.2, F11.1, F11.2, F12.1, F12.2, F13.2, F14.2, F15.4, F5.3, F5.4, F6.3 | P3 | naming / copy / docs | — | see the audit sections | — | — | small follow-ups | OPEN |
+
+Counts: **P0 0 · P1 4 (F4.1, F4.2/F7.2, F5.1, F10.1) · P2 12 · P3 13.**
