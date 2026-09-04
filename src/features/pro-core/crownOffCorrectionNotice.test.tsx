@@ -111,8 +111,14 @@ describe('Crown-OFF correction notice', () => {
     expect(surface, 'the notice must use the shared DialogShell surface').not.toBeNull();
     expect(surface?.className).toContain('bg-white');
     // Attention is an OUTLINE, never a tinted panel that would drag the notice
-    // off the Gellatti white surface.
-    expect(surface?.className).toContain('border-[var(--g-orange)]');
+    // off the Gellatti white surface — and it is a RING, because `cn` is a
+    // plain joiner: a `border-*` here would ship ALONGSIDE DialogShell's
+    // `border-ink/15` and lose on CSS order. That is not hypothetical; served
+    // staging measured the panel border as ink/15 while this class was present.
+    expect(surface?.className).toContain('ring-[var(--g-orange)]');
+    expect(surface?.className, 'a border would be outranked by DialogShell').not.toContain(
+      'border-[var(--g-orange)]',
+    );
     const body = notice()?.querySelector('[data-notice-tone]');
     expect(body?.getAttribute('data-notice-tone')).toBe('attention');
     expect(body?.getAttribute('data-notice-align')).toBe('center');
