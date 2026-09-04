@@ -44,7 +44,8 @@ describe.skipIf(!RUN)('Scan Import 2.0 against STAGING (read-only)', () => {
         };
       },
     };
-    const real = createSupabaseV2Ports(auth as never);
+    const authority = process.env['SCAN_IMPORT_V2_GTIN_RPC'] === '1' ? 'gtin_rpc' : 'search_rpc';
+    const real = createSupabaseV2Ports(auth as never, { exactAuthority: authority });
     const ports = {
       ...real,
       importer: recorder,
@@ -110,7 +111,7 @@ describe.skipIf(!RUN)('Scan Import 2.0 against STAGING (read-only)', () => {
         externalTimeoutMs: 1000,
       },
     );
-    expect(guest.kind).toBe('unknown');
+    expect(guest.kind).toBe(authority === 'gtin_rpc' ? 'resolved_exact' : 'unknown');
     const proof = {
       stagingUrlHost: new URL(url).host,
       ranAt: new Date().toISOString(),

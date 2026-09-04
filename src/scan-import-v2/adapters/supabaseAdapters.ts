@@ -1,16 +1,17 @@
 /**
  * SCAN IMPORT 2.0 — Supabase adapters (staging development only; not wired to any UI).
  *
- * ONE exact-by-code data path: `search_products_v1(p_query = <digits>)`, whose numeric qualification is
- * exact equality against the catalogue's `eans[]` (products.ean_code_normalized ∪ current product_variants.ean)
- * — see the forensic audit §3. It runs as the caller's own JWT from the browser and from any server path,
- * so client and server can only differ by account visibility, and that difference is explicit
- * (`guestScope`). Direct table reads are NOT used: RLS on `products` exposes own rows only (verified on
- * staging 2026-09-04). Catalogue, behaviour and price ports read the SAME memoised RPC row.
+ * ONE exact-by-code authority for guests AND authenticated users (owner decision D8):
+ * `resolve_exact_products_by_gtin_v1(p_gtin, p_symbology)` (migration 20260905090000) — exact only,
+ * read-only, bounded, validated server-side, public facts for guests, `ownership` fact for authenticated
+ * callers. It runs as the caller's own JWT from the browser and from any server path, so client and
+ * server can only differ by account visibility, and that difference is explicit in `ownership`.
+ * Direct table reads are NOT used (RLS on `products` exposes own rows only — verified on staging).
  *
- * Known limits (documented in SCAN_IMPORT_V2_IMPLEMENTATION_STATUS.md): the RPC does not expose
- * ownership/visibility, so `private_own` twins cannot be told apart from `canonical_shared` here; guests
- * have no exact path (the RPC is revoked from anon). A dedicated exact-identity RPC is the next step.
+ * `exactAuthority: 'search_rpc'` keeps the interim path (`search_products_v1` numeric exact match,
+ * authenticated only) available until the migration is applied on staging; both map to the same
+ * `ExactCandidate` shape. Authenticated enrichment facts (private price, product intelligence) are read
+ * from the search row of the SAME product id — facts, never identity.
  */
 import type {
   BehaviourPort,
@@ -110,8 +111,70 @@ export function candidateFromRow(row: SearchRow, keys: readonly string[]): Exact
   };
 }
 
-/** One adapter session shares the memoised RPC rows between the catalogue, behaviour and price ports. */
-export function createSupabaseV2Ports(client: SupabaseLike): {
+export type ExactAuthority = 'gtin_rpc' | 'search_rpc';
+
+interface GtinRow {
+  product_id: string;
+  product_code: string | null;
+  display_name: string;
+  brand: string | null;
+  matched_gtin: string;
+  matched_from: string;
+  product_kind: string;
+  entity_kind: string;
+  visibility: string;
+  ownership: 'own' | 'linked' | 'public';
+  current_version_id: string | null;
+  verification_status: string | null;
+  product_country: string | null;
+  markets: string[] | null;
+  mapper_ingredient_id: string | null;
+  engine_usable: boolean;
+  lifecycle_rejected: boolean;
+}
+
+/** Identity strength from the resolver's explicit facts (audit F4.1: never search ranking). */
+export function candidateFromGtinRow(row: GtinRow): ExactCandidate {
+  const strength: ExactCandidate['strength'] =
+    row.entity_kind === 'customer_provisional' || row.ownership === 'linked'
+      ? 'provisional_linked'
+      : row.ownership === 'own' && row.visibility !== 'shared'
+        ? 'private_own'
+        : 'canonical_shared';
+  const markets = Array.isArray(row.markets)
+    ? row.markets.filter((m) => typeof m === 'string')
+    : [];
+  return {
+    productId: row.product_id,
+    productCode: row.product_code,
+    displayName: row.display_name,
+    brand: row.brand,
+    ean: row.matched_gtin,
+    strength,
+    entityKind:
+      row.entity_kind === 'pi_base' || row.entity_kind === 'customer_provisional'
+        ? row.entity_kind
+        : 'commercial_product',
+    engineReady: row.engine_usable === true,
+    mapperSlotId: row.mapper_ingredient_id ?? null,
+    country: row.product_country ?? (markets.length === 1 ? markets[0]! : null),
+    currentVersionId: row.current_version_id,
+    evidence: {
+      matchedFrom: row.matched_from,
+      visibility: row.visibility,
+      ownership: row.ownership,
+      verificationStatus: row.verification_status,
+      lifecycleRejected: row.lifecycle_rejected === true,
+      markets,
+    },
+  };
+}
+
+/** One adapter session shares the memoised rows between the catalogue, behaviour and price ports. */
+export function createSupabaseV2Ports(
+  client: SupabaseLike,
+  options: { exactAuthority?: ExactAuthority } = {},
+): {
   catalog: CatalogPort;
   behaviour: BehaviourPort;
   price: PricePort;
@@ -120,6 +183,20 @@ export function createSupabaseV2Ports(client: SupabaseLike): {
   rowsById: ReadonlyMap<string, SearchRow>;
 } {
   const rowsById = new Map<string, SearchRow>();
+  const gtinRowsById = new Map<string, GtinRow>();
+  const authority: ExactAuthority = options.exactAuthority ?? 'gtin_rpc';
+
+  const resolveExact = async (gtin: string, symbology: string): Promise<GtinRow[]> => {
+    const { data, error } = await client.rpc('resolve_exact_products_by_gtin_v1', {
+      p_gtin: gtin,
+      p_symbology: symbology,
+    });
+    if (error) {
+      if (NETWORK.test(error.message)) throw new NetworkError(error.message);
+      throw new Error(`lookup_failed: ${error.message}`);
+    }
+    return Array.isArray(data) ? (data as GtinRow[]) : [];
+  };
 
   const searchExact = async (key: string): Promise<SearchRow[]> => {
     const { data, error } = await client.rpc('search_products_v1', {
@@ -143,7 +220,25 @@ export function createSupabaseV2Ports(client: SupabaseLike): {
 
   const catalog: CatalogPort = {
     async exactByKeys(keys, ctx: RequestContext) {
-      // guests: the exact RPC is revoked from anon — no exact path, explicitly (never a silent empty)
+      if (authority === 'gtin_rpc') {
+        // the resolver derives every leading-zero key itself from the canonical GTIN; one call per identity
+        const gtin = keys.reduce((a, b) => (b.length > a.length ? b : a), keys[0] ?? '');
+        const symbology =
+          gtin.length === 13
+            ? 'EAN-13'
+            : gtin.length === 12
+              ? 'UPC-A'
+              : gtin.length === 8
+                ? 'EAN-8'
+                : null;
+        const out = new Map<string, ExactCandidate>();
+        for (const row of await resolveExact(gtin, symbology ?? 'EAN-13')) {
+          gtinRowsById.set(row.product_id, row);
+          if (!out.has(row.product_id)) out.set(row.product_id, candidateFromGtinRow(row));
+        }
+        return [...out.values()];
+      }
+      // interim authority (authenticated only): the search RPC's numeric exact qualification
       if (ctx.accountId === null) return [];
       const out = new Map<string, ExactCandidate>();
       for (const key of keys) {
@@ -159,6 +254,13 @@ export function createSupabaseV2Ports(client: SupabaseLike): {
 
   const behaviour: BehaviourPort = {
     async classify(productId) {
+      const g = gtinRowsById.get(productId);
+      if (g) {
+        if (g.lifecycle_rejected) return { outcome: 'blocked', bindingId: null };
+        return g.engine_usable
+          ? { outcome: 'classified', bindingId: g.current_version_id }
+          : { outcome: 'unknown_requires_review', bindingId: null };
+      }
       const row = rowsById.get(productId);
       if (!row) return { outcome: 'unknown_requires_review', bindingId: null };
       const pd = row.public_data ?? {};
@@ -171,7 +273,20 @@ export function createSupabaseV2Ports(client: SupabaseLike): {
   };
 
   const price: PricePort = {
-    async priceState(productId): Promise<PriceState> {
+    async priceState(productId, ctx): Promise<PriceState> {
+      // guests never receive a price fact; authenticated callers read their private overlay from the
+      // search row of the same product id (facts, never identity), fetched lazily once
+      if (ctx.accountId !== null && !rowsById.has(productId)) {
+        const g = gtinRowsById.get(productId);
+        if (g) {
+          try {
+            for (const r of await searchExact(g.matched_gtin))
+              if (r.id === productId) rowsById.set(r.id, r);
+          } catch {
+            /* price is optional: a failed enrichment read leaves it missing */
+          }
+        }
+      }
       const row = rowsById.get(productId);
       if (
         row &&
