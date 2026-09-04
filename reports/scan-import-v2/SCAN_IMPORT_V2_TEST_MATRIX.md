@@ -1,4 +1,4 @@
-# SCAN IMPORT 2.0 — test matrix (owner list) → `npx vitest run src/scan-import-v2` = 8 files, 130 passed + 2 flag-gated (staging) @ 6bde3baa
+# SCAN IMPORT 2.0 — test matrix (owner list) → `npx vitest run src/scan-import-v2` = 10 files, 162 passed + 2 flag-gated (staging) @ 315413f8; plus harness boundary (5) and env allow-list
 
 | # | case | test (file: name) | result |
 |---|---|---|---|
@@ -68,3 +68,14 @@ Not covered here (needs real adapters): Supabase-backed ports, the HOME/PRO wiri
 | EXACT BRANDED CODE never generic | `EXACT BRANDED CODE NEVER COLLAPSES…` | PASS |
 | D8 guest resolver (6 tests) | adapters.test.ts `D8 — guest-safe exact resolver adapter` | PASS |
 | discovery adapter contracts (6 tests) | discoveryAdapter.test.ts | PASS |
+
+## Internal closeout additions
+| case | test | result |
+|---|---|---|
+| lifecycle journey: 8 transitions, one identity, one SKU, one request | journey.test.ts `walks CONFIRMED CODE → … → rescan` | PASS |
+| provenance audit per fact (value/source/authority/time/confidence/conflict) | journey.test.ts `every important fact answers…` | PASS |
+| value without provenance is not a fact | journey.test.ts | PASS |
+| provider A vs provider B conflict | journey.test.ts `provider A (retailer) vs provider B (manufacturer)…` | PASS |
+| label X vs internet Y; confident provider never flips readiness | journey.test.ts | PASS |
+| offline persistence: reload, expiry, schema, version mismatch, account/guest separation, no duplicates, broken storage | offlinePersistence.test.ts (7) | PASS |
+| harness boundary (gate, route, imports, no raw HTML, V2 entry points only) | ScanImportV2LabPage.security.test.ts (5) | PASS |
