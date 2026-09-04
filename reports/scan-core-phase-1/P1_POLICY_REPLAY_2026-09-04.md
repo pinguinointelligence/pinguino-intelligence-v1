@@ -30,7 +30,7 @@ Outcome column = decode approximated by the recorded variant closest to the chos
 | ean-glare | NATIVE_ROI (78 %) | FAR_NATIVE_ROI (12 %) | fill 0.27, module 3.0 px: native crop, margin 0.15 (tables 2–3) | 1012 ms (fast) 8426617014032 | 646 ms | 8426617014032 |
 | ean-hand-motion | NATIVE_ROI (70 %) | FAR_NATIVE_ROI (25 %) | fill 0.23, module 2.6 px: native crop, margin 0.15; unstable (tables 2–3) | 889 ms (fast) 8426617014032 | 389 ms | 8426617014032 |
 | ean-low-light | NATIVE_ROI (76 %) | FAR_NATIVE_ROI (12 %) | fill 0.16, module 1.9 px: native crop, margin 0.25 (tables 2–3) | 1905 ms (fast) 8426617014032 | 1471 ms | 8426617014032 |
-| ean-two-codes | NATIVE_ROI (64 %) | LOW_MEDIUM (30 %) | fill 0.25, module 2.8 px: native crop, margin 0.15 (tables 2–3) | 858 ms (slow) 8411902004089 | 192 ms | 8411902004089/8480000235138 |
+| ean-two-codes | NATIVE_ROI (64 %) | LOW_MEDIUM (30 %) | fill 0.25, module 2.8 px: native crop, margin 0.15 (tables 2–3) | 792 ms (slow) 8411902004089 | 192 ms | 8411902004089/8480000235138 |
 
 ## iPhone desktop Scania lab — Safari 26.6.1 — standalone_pwa (bundle-iphone-pwa)
 | scene | dominant path (share) | 2nd path | reason (dominant) | replay confirmation | Phase 0 first hit | reference |
@@ -45,7 +45,7 @@ Outcome column = decode approximated by the recorded variant closest to the chos
 | ean-glare | NATIVE_ROI (84 %) | FAR_NATIVE_ROI (15 %) | fill 0.20, module 2.3 px: native crop, margin 0.15; unstable (tables 2–3) | 4675 ms (slow) 8426617014032 | 4342 ms | 8426617014032 |
 | ean-hand-motion | NATIVE_ROI (45 %) | SKIP_NO_CANDIDATE (24 %) | fill 0.18, module 2.1 px: native crop, margin 0.25; unstable (tables 2–3) | 224 ms (fast) 8426617014032 | 139 ms | 8426617014032 |
 | ean-low-light | SKIP_NO_CANDIDATE (45 %) | FAR_NATIVE_ROI (36 %) | no candidate | not confirmed | 7827 ms | 8426617014032 |
-| ean-two-codes | NATIVE_ROI (61 %) | LOW_MEDIUM (28 %) | fill 0.17, module 1.9 px: native crop, margin 0.25 (tables 2–3) | 725 ms (slow) 8480000105745 | 425 ms | 8480000105745/8410297112386 |
+| ean-two-codes | NATIVE_ROI (61 %) | LOW_MEDIUM (28 %) | fill 0.17, module 1.9 px: native crop, margin 0.25 (tables 2–3) | 659 ms (slow) 8480000105745 | 425 ms | 8480000105745/8410297112386 |
 
 ## iPhone safari — Safari 26.6.1 — safari_tab (bundle-iphone-safari)
 | scene | dominant path (share) | 2nd path | reason (dominant) | replay confirmation | Phase 0 first hit | reference |
@@ -84,8 +84,8 @@ Outcome column = decode approximated by the recorded variant closest to the chos
 | ean-approach-40cm | NATIVE_ROI (81 %) | FAR_NATIVE_ROI (19 %) | fill 0.16, module 1.8 px: native crop, margin 0.25 (tables 2–3) | not confirmed | 3176 ms | 8410297112386 |
 | ean-small | NATIVE_ROI (66 %) | LOW_MEDIUM (20 %) | fill 0.27, module 3.0 px: native crop, margin 0.15; unstable (tables 2–3) | 659 ms (fast) 40279787 | 32 ms | 40279787 |
 | ean-curved-can | NATIVE_ROI (55 %) | LOW_MEDIUM (45 %) | fill 0.35, module 3.9 px: native crop, margin 0.15 (tables 2–3) | 6134 ms (fast) 8411092731130 | 257 ms | 8411092731130 |
-| ean-glare | NATIVE_ROI (93 %) | SKIP_BLUR (3 %) | fill 0.23, module 2.6 px: native crop, margin 0.15 (tables 2–3) | 1308 ms (fast) 8426617014032 | 760 ms | 8426617014032 |
-| ean-hand-motion | NATIVE_ROI (59 %) | FAR_NATIVE_ROI (21 %) | fill 0.23, module 2.6 px: native crop, margin 0.15 (tables 2–3) | 5997 ms (fast) 8426617014032 | 1011 ms | 8426617014032 |
+| ean-glare | NATIVE_ROI (93 %) | SKIP_BLUR (3 %) | fill 0.23, module 2.6 px: native crop, margin 0.15 (tables 2–3) | 1308 ms (slow) 8426617014032 | 203 ms | 8426617014032 |
+| ean-hand-motion | NATIVE_ROI (59 %) | FAR_NATIVE_ROI (21 %) | fill 0.23, module 2.6 px: native crop, margin 0.15 (tables 2–3) | 1606 ms (slow) 8426617014032 | 273 ms | 8426617014032 |
 | ean-low-light | NATIVE_ROI (61 %) | SKIP_NO_CANDIDATE (14 %) | fill 0.17, module 1.9 px: native crop, margin 0.25; unstable (tables 2–3) | 1539 ms (fast) 8426617014032 | 687 ms | 8426617014032 |
 | ean-two-codes | LOW_MEDIUM (63 %) | NATIVE_ROI (37 %) | fill 0.38 ≥ 0.35: module 2.1 px on MEDIUM (table 3) | 618 ms (slow) 8410297112386 | 26 ms | 8410297112386/8411092731130 |
 
@@ -98,10 +98,10 @@ Outcome column = decode approximated by the recorded variant closest to the chos
 | ean-30cm | NATIVE_ROI (98 %) | FAR_NATIVE_ROI (2 %) | fill 0.18, module 2.0 px: native crop, margin 0.25 (tables 2–3) | not confirmed | 1862 ms | 7622210669315 |
 | ean-approach-40cm | FAR_NATIVE_ROI (93 %) | NATIVE_ROI (7 %) | module 1.52 px < 1.7 (table 2: 15 % wrong reads at ≤ 1.5 px): native crop, harder, slow lane | 718 ms (slow) 7622210669315 | 16 ms | 7622210669315 |
 | ean-small | NATIVE_ROI (77 %) | LOW_MEDIUM (18 %) | fill 0.19, module 2.1 px: native crop, margin 0.25 (tables 2–3) | 879 ms (fast) 40279787 | 509 ms | 40279787 |
-| ean-curved-can | NATIVE_ROI (63 %) | LOW_MEDIUM (37 %) | fill 0.29, module 3.3 px: native crop, margin 0.15 (tables 2–3) | not confirmed | — | 8411092731130 |
+| ean-curved-can | NATIVE_ROI (63 %) | LOW_MEDIUM (37 %) | fill 0.29, module 3.3 px: native crop, margin 0.15 (tables 2–3) | 1156 ms (slow) 8411092731130 | 14 ms | 8411092731130 |
 | ean-glare | NATIVE_ROI (96 %) | SKIP_BLUR (2 %) | fill 0.27, module 3.1 px: native crop, margin 0.15 (tables 2–3) | 1967 ms (fast) 8426617014032 | 1614 ms | 8426617014032 |
 | ean-hand-motion | NATIVE_ROI (59 %) | FAR_NATIVE_ROI (30 %) | fill 0.19, module 2.2 px: native crop, margin 0.25 (tables 2–3) | 3130 ms (fast) 8426617014032 | 219 ms | 8426617014032 |
 | ean-low-light | NATIVE_ROI (59 %) | LOW_MEDIUM (24 %) | fill 0.21, module 2.4 px: native crop, margin 0.15 (tables 2–3) | 508 ms (fast) 8426617014032 | 145 ms | 8426617014032 |
 | ean-two-codes | NATIVE_ROI (70 %) | LOW_MEDIUM (22 %) | fill 0.21, module 2.4 px: native crop, margin 0.15; unstable (tables 2–3) | 693 ms (slow) 8411902004089 | 44 ms | 8410297112386/8411902004089 |
 
-Replayed confirmations: 56; wrong confirmations: 0.
+Replayed confirmations: 57; wrong confirmations: 0.

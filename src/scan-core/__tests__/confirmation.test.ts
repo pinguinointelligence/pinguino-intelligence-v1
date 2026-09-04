@@ -25,10 +25,27 @@ describe('fast lane', () => {
     c.push(r(7, 'A'));
     expect(c.push(r(7, 'A')).status).toBe('reading');
   });
-  it('rectified-crop reads never confirm on their own (D3 can alias)', () => {
+  it('rectified reads never take the fast lane but count on the slow lane (D3 can: 40 correct rectified reads vs 6 aliases)', () => {
     const c = new Confirmation();
-    for (let i = 0; i < 6; i += 1) c.push(r(139 + i, '0141200001098', 5, { source: 'rectified' }));
-    expect(c.state.status).toBe('reading');
+    c.push(r(139, '0141200001098', 5, { source: 'rectified' }));
+    expect(c.push(r(142, '0141200001098', 5, { source: 'rectified' })).status).toBe('reading');
+    const d = new Confirmation();
+    const seq = [
+      '8411092731130',
+      '8411092731130',
+      '0141200001098',
+      '8411092731130',
+      '8411092731130',
+      '0141200001098',
+      '8411092731130',
+    ];
+    let confirmed: string | null = null;
+    seq.forEach((t, i) => {
+      const st = d.push(r(200 + i * 3, t, 5, { source: 'rectified' }));
+      if (st.status === 'confirmed' && !confirmed) confirmed = st.value;
+    });
+    expect(confirmed).toBe('8411092731130');
+    expect(d.state.lane).toBe('slow');
   });
   it('low lineCount or small modules fall to the slow lane', () => {
     const c = new Confirmation();

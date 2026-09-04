@@ -167,7 +167,7 @@ describe('policy replay over the Phase 0 corpus', () => {
           };
           let variant: { variant: string; results: Ev['decodes'][number]['results'] } | null = null;
           let source: Read['source'] = 'native';
-          if (d.path === 'LOW_MEDIUM' || d.path === 'SKIP_MOTION') {
+          if (d.path === 'LOW_MEDIUM') {
             variant = pick(['full_harder', 'full_cheap']);
             source = 'medium';
           } else if (d.path === 'RESCUE_FULL') {
@@ -177,6 +177,15 @@ describe('policy replay over the Phase 0 corpus', () => {
             variant = d.harder
               ? pick(['full_harder', 'roi_cheap', 'full_cheap'])
               : pick(['roi_cheap', 'full_cheap']);
+            // tilted candidates may only read through the rectified crop (D3 can: all 40 correct reads); slow lane only
+            const tilt = cand ? Math.abs(((cand.angleDeg % 90) + 90) % 90) : 0;
+            if (!variant?.results.some((x) => x.checksumValid) && tilt > 8 && tilt < 82) {
+              const rect = pick(['rectified_cheap']);
+              if (rect) {
+                variant = rect;
+                source = 'rectified';
+              }
+            }
           } else if (d.path === 'FAR_NATIVE_ROI') {
             variant = pick(['full_harder', 'roi_cheap']);
           }

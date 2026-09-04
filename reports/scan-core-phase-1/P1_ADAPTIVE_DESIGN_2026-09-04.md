@@ -32,7 +32,7 @@ Path selection in FOUND/READING (evidence-derived):
 Thermal budget: if worker busy > 50 % of wall time over the last 2 s, halve the RESCUE cadence and drop the harder retry; the ROI path stays (≤ 2 ms).
 
 ## 4. Confirmation (wrong-code policy, table 6 + Phase 0 hazards)
-- A read counts only if checksum-valid and **not from the rectified crop alone** (D3 can: 6 consecutive aliases from rectification).
+- A read counts only if checksum-valid. **Rectified-crop reads never take the fast lane** (D3 can: 6 consecutive aliases from rectification) but count on the slow lane — on the same can all 40 correct reads came from the rectified crop; excluding them would make cylinders unreadable on the Note10+.
 - **Fast lane** (COMPLETE on two reads): two reads from **different frames** agreeing, each `lineCount ≥ 4`, `module_native ≥ 2 px`, no contradicting read in between. P(wrong read) at these gates ≤ 0.7 % (table 6) and the observed wrong pairs (D1 40 cm, D3 can) all violate one of them.
 - **Slow lane** (everything else): **four** agreeing reads from different frames, margin ≥ **2:1** over any other value, within 1500 ms. Calibrated on the D1 40 cm sequence (frames 100–146): the correct code won 6 reads against eight scattered aliases of 1–5 reads each; a 3:1 margin never confirmed it, 2:1 with ≥ 4 frames confirms it at frame 141 and confirms no alias (unit test `confirmation.test.ts`).
 - One product per window: a second value while READING resets the agreement counter (two-codes scenes confirm both because they alternate frames; the observation contract carries all confirmed values with their frames).

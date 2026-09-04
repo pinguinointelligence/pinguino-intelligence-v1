@@ -96,9 +96,10 @@ export class Confirmation {
     }
 
     // slow lane: count agreeing reads from distinct frames within the window
+    // rectified reads COUNT on the slow lane (D3 can: all 40 correct reads came from the rectified crop) but
+    // never carry the fast lane (the same crop also produced 6 consecutive aliases)
     const byText = new Map<string, Set<number>>();
     for (const r of this.reads) {
-      if (r.source === 'rectified') continue;
       const set = byText.get(r.text) ?? new Set<number>();
       set.add(r.frameIndex);
       byText.set(r.text, set);

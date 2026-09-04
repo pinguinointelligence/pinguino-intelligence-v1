@@ -160,6 +160,19 @@ export class PolicyState {
         f.workerDuty > THRESHOLDS.dutyBudget
           ? THRESHOLDS.rescueEveryN * 2
           : THRESHOLDS.rescueEveryN;
+      // a large candidate that just vanished together with sharpness = too close for this lens (D1/D2 12 cm)
+      const med = this.sharpMedian();
+      const tooClose =
+        this.lastFill !== null &&
+        this.lastFill > 0.3 &&
+        f.tMs - this.lastCandidateAt <= 1500 &&
+        med !== null &&
+        f.sharpness < THRESHOLDS.blurRel * med;
+      const guidance: Guidance = tooClose
+        ? 'move_away'
+        : f.tMs - this.noCandidateSince > THRESHOLDS.noCandidateGuidanceMs
+          ? 'aim_in_frame'
+          : 'none';
       if (this.framesSinceRescue >= cadence) {
         this.framesSinceRescue = 0;
         return {
@@ -168,19 +181,13 @@ export class PolicyState {
           reason: `no candidate; scheduled full-frame pass on the MEDIUM plane every ${cadence} frames`,
           roi: { x: 0, y: 0, w: planes.medium.w, h: planes.medium.h, plane: 'medium' },
           harder: true,
-          guidance:
-            f.tMs - this.noCandidateSince > THRESHOLDS.noCandidateGuidanceMs
-              ? 'aim_in_frame'
-              : 'none',
+          guidance,
         };
       }
       return {
         ...base,
-        reason: 'no candidate',
-        guidance:
-          f.tMs - this.noCandidateSince > THRESHOLDS.noCandidateGuidanceMs
-            ? 'aim_in_frame'
-            : 'none',
+        reason: tooClose ? 'no candidate after a large blurred one: too close' : 'no candidate',
+        guidance,
       };
     }
 
