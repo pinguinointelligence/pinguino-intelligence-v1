@@ -1,4 +1,4 @@
-# SCAN IMPORT 2.0 — test matrix (owner list) → `npx vitest run src/scan-import-v2` = 3 files, 45 tests, all green @ 1467458b
+# SCAN IMPORT 2.0 — test matrix (owner list) → `npx vitest run src/scan-import-v2` = 5 files, 74 passed + 1 flag-gated (staging) @ d272d535
 
 | # | case | test (file: name) | result |
 |---|---|---|---|
@@ -34,3 +34,17 @@
 | — | boundary purity | e2e: `Scan Core observations carry no product data; Scan Import 2.0 imports nothing from the camera side` | PASS |
 
 Not covered here (needs real adapters): Supabase-backed ports, the HOME/PRO wiring (deliberately not built), RLS behaviour of the real catalogue port.
+
+## Adapter layer additions
+| case | test | result |
+|---|---|---|
+| real staging row shape → exact candidate + end-to-end resolution | adapters: `maps the real staging row shape…` | PASS |
+| name/alias RPC hit is not an identity | adapters: `an RPC row matched by name/alias but not by EAN is not an identity` | PASS |
+| UPC-A both keys on one path | adapters: `UPC-A tries both keys on the same path…` | PASS |
+| guest scope explicit | adapters: `guest has no exact path…` | PASS |
+| connection vs lookup_failed | adapters: `network failure on the RPC is failed:connection…` | PASS |
+| behaviour blocked / review; price overlay | adapters: `behaviour: lifecycleRejected → blocked…` | PASS |
+| EAN twins → preferred → same-country default → ambiguous | adapters: `EAN twins at equal strength…` | PASS |
+| link import idempotent, never creates | adapters: `link import is idempotent…` | PASS |
+| offline cache TTL + version pointer | adapters: `offline cache: entries expire by TTL…` | PASS |
+| REAL STAGING (flag-gated, read-only) | staging: `resolves the three real products…` | PASS 11/11 (2026-09-04) |

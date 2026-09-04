@@ -22,3 +22,6 @@ Harness: `src/scan-import-v2/legacyComparison.ts` (`compareWithLegacy`) runs the
 | guest | identify-live requires sign-in | read-only resolution of shared rows, no import | test 21 |
 
 Observed on the real products (in-memory catalogue seeded with their EANs): legacy exact match and V2 exact identity agree for Hacendado, Łaciate and Alsace Lait; for the UPC-A fixture legacy validates `UPC_A` and V2 reports `unknown` (no catalogue row) — identical validity, identical lookup keys.
+
+## Observed on staging (real adapter, 2026-09-04)
+Legacy `lookupExactBarcode` and V2 use the same RPC for the exact path, so for the three seeded products both find the same canonical id. The difference is the server side: legacy `product-scan-analyze` reads `product_variants` only (all three have a current variant row, so they agree today), while V2 has no second path. A customer-added product without a variant row (audit F7.2) would differ: legacy server = not found, V2 = found through `eans[]`.
