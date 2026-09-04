@@ -23,4 +23,14 @@ Identity is the session id, never the file name. Baseline mode = the harness def
 5. The iPhone Home-Screen PWA never confirmed the 12 cm and 18 cm scenes. Owner-reported context (2026-09-04 ~18:50): the morning iPhone runs behaved better near range; this time the near scenes looked blurred "as if the zoom were weak", possibly different light. So this is NOT yet attributable to the PWA mode: the morning D1/D2/I1 parsed tables in `results/` (raw bundles lost, parsed evidence kept) count as evidence alongside the RERUN bundles, and the near-range comparison must be made across both sets before any iOS acquisition policy is frozen.
 6. The Realme Chrome bundle arrived through the tunnel AND by AirDrop; both copies are byte-identical. The tunnel path is proven on Android Chrome and iOS Chrome.
 
+### Cross-day near-range evidence (morning parsed tables + RERUN bundles)
+| run | iPhone browser / mode | ean-12cm | ean-18cm | ean-25cm | ean-30cm |
+|---|---|---|---|---|---|
+| I1 morning 07:38 | Chrome iOS | CONFIRMED 3.96 s | CONFIRMED 0.12 s | CONFIRMED 0.19 s | CONFIRMED 0.19 s |
+| D1 morning 08:01 | Safari tab | NO_DECODE | NO_DECODE | CONFIRMED 0.12 s | CONFIRMED 0.29 s |
+| D2 morning 08:24 | Home-Screen PWA | NO_DECODE | MISREAD (single read) | CONFIRMED 0.13 s | CONFIRMED 0.18 s |
+| I1 RERUN 15:37 | Chrome iOS | CONFIRMED 4.26 s | CONFIRMED 0.24 s | CONFIRMED 0.31 s | CONFIRMED 0.48 s (wrong value) |
+| D2 RERUN 16:38 | Home-Screen PWA | NO_DECODE | NO_DECODE | CONFIRMED 0.12 s | CONFIRMED 0.19 s |
+Reading: on the iPhone 15 Pro Max, Safari-engine sessions (Safari tab, Home-Screen PWA) never decoded at 12 cm or 18 cm in four out of four runs across two days, while Chrome iOS decoded 12 cm only after ~4 s of focus hunting. Products differed (morning main code 8410297112386 / 7622210669315 / 8480000511461; RERUN 7622201492786), light differed, result did not. This points at the main camera's near-focus limit in the web capture path, not at the PWA mode and not at today's light; it is a MEASURE-FIRST input for the iOS acquisition policy (macro/lens handoff is a deferred owner decision in the P1 reconciliation).
+
 Parsed results: `reports/scan-core-phase-0/results/` (three new files, one per session). Verification per bundle: ZIP integrity (`unzip -t`), size, manifest session id, device line, scene count, SHA-256 equal in COPY A and COPY B.
