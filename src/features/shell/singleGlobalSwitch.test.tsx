@@ -44,8 +44,9 @@ const mount = (entitlement: ViewEntitlement, activeView: 'home' | 'pro' | null) 
 };
 
 describe('the shell renders the switch once', () => {
-  it('has exactly one globalSwitch render site', () => {
-    expect((shell.match(/\{globalSwitch\}/g) ?? []).length).toBe(1);
+  it('has exactly one canonical switch render site', () => {
+    expect((shell.match(/<HomeProSwitch /g) ?? []).length).toBe(1);
+    expect(shell).not.toContain('globalSwitch');
   });
 
   it('no longer hides a duplicate with CSS', () => {

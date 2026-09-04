@@ -149,26 +149,23 @@ describe('one global menu and four local contexts', () => {
     // header parity lane made global — one control per meaning, one geometry per route.
     expect(page).not.toContain('data-testid="pro-plan-indicator"');
     expect(page).not.toContain('bg-[var(--g-graphite)] px-2.5 text-[9px]');
-    expect(page).toContain(
+    const shell = read('features', 'shell', 'AppShell.tsx');
+    expect(shell).toContain(
       "import { HomeProSwitch } from '@/features/home-creator/ui/HomeProSwitch'",
     );
-    // OWNER, 2026-09-02: the switch moved OUT of the workbar and into the shell's
-    // canonical `globalSwitch` slot. In the workbar it was conditional on
+    // OWNER, 2026-09-02: the switch moved OUT of the workbar and into AppShell.
+    // In the workbar it was conditional on
     // `workbench` — true only for a signed-in PRO on a workbench tab — so a
     // signed-out visitor saw no switch at all on /pro. Same component, same
     // `activeView`, now unconditional. The workbar must not render a second copy.
-    expect(page).toContain(
-      'globalSwitch={<HomeProSwitch entitlement={proEntitlement} activeView="pro" />}',
-    );
-    expect(page).not.toContain('<HomeProSwitch entitlement={entitlement} activeView="pro" />');
+    expect(shell).toContain('<HomeProSwitch entitlement={entitlement} activeView={activeView} />');
+    expect(page).not.toContain('<HomeProSwitch');
     // The trailing edge of column 1 is owned by the shell, for every route. The class
     // list lost its `hidden xl:flex` because the group is no longer a desktop-only copy
     // of a responsive pair — a CSS-hidden duplicate still reached the accessibility tree
     // (served 8dd11c9b). The guarantee this pins — the shell owning `ml-auto` at the
     // column edge — is unchanged.
-    expect(read('features', 'shell', 'AppShell.tsx')).toContain(
-      'ml-auto flex min-w-0 items-center',
-    );
+    expect(shell).toContain('pro-workbench-header-primary');
     for (const source of [workbar, ingredient, topping]) {
       expect(source).toContain("iconButtonClasses('xs')");
       expect(source).toContain('•••');
@@ -211,7 +208,9 @@ describe('one global menu and four local contexts', () => {
 describe('recipe and production table modes', () => {
   it('normal recipe mode shows planned grams but no actual-production column', () => {
     const html = renderIngredients('recipe');
-    expect(html).toContain('Cena/kg');
+    expect(html).not.toContain('data-testid="recipe-table-header"');
+    expect(html).not.toContain('Cena/kg');
+    expect(html).toContain('aria-label="Składniki receptury"');
     expect(html).toContain('Zablokuj gramy');
     expect(html).toContain('Zablokuj % partii');
     expect(html).not.toContain('Faktycznie');
@@ -371,7 +370,7 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
        varies with the detent — that size is now the primary statement of
        direction, replacing the numeral entirely (see
        directionDetentContrast.test.ts for what assistive tech gets instead). */
-    expect(axes).toContain("rounded-full shadow-[0_0_0_3px_#fff] transition-[left,width,height");
+    expect(axes).toContain('rounded-full shadow-[0_0_0_3px_#fff] transition-[left,width,height');
     expect(axes).toContain('const thumbSize = sizeAt(thumbSizes, activeIndex);');
     expect(axes).not.toContain('Po zmianie:');
     expect(axes).not.toContain('Legenda kierunku');
@@ -421,8 +420,8 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
     expect(panel).not.toContain('UserMonitorPro');
     expect(panel).not.toContain('OverallScoreCard');
     const preview = read('features', 'pro-core', 'ProRecalcPanel.tsx');
-    expect(preview).toContain('fixed inset-0');
-    expect(preview).toContain('role="dialog"');
+    expect(preview).toContain('<DialogShell');
+    expect(read('components', 'ui', 'DialogShell.tsx')).toContain('role="dialog"');
     expect(preview).toContain('effectiveAccess?.canAdmin === true');
     expect(preview).toContain('showTechnicalDetails={canViewTechnicalDetails}');
     expect(preview).toContain("'Sprawdź proponowaną korektę.'");
@@ -431,8 +430,8 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
   it('locks the desktop body and provides a mobile cockpit bottom sheet without horizontal scrolling', () => {
     const shell = read('features', 'shell', 'AppShell.tsx');
     const surface = read('features', 'studio', 'StudioEngineSurface.tsx');
-    expect(shell).toContain('xl:h-dvh');
-    expect(shell).toContain('xl:overflow-hidden');
+    expect(shell).toContain('pro-workbench-shell-lock');
+    expect(shell).toContain('pro-workbench-main-lock');
     expect(shell).toContain('DESKTOP_WORKBENCH_COLUMNS');
     // The workbench's global elements still sit in column 1 of the shared two-track
     // grid. The condition became unconditional when that grid was promoted to the
@@ -443,7 +442,7 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
     // the login keep the page's full width on EVERY route — measured 32 / 96 / 32
     // px identically on Shop and PRO — while HOME | PRO and the module strip stay
     // on the workbench column edge inside that band.
-    expect(shell).toContain('xl:col-start-1 xl:row-start-1');
+    expect(shell).toContain('pro-workbench-header-primary');
     expect(read('styles', 'theme-pro-light.css')).toContain(
       '@container right-pane (max-width: 420px)',
     );

@@ -30,10 +30,7 @@ import {
 import { homeCreatorCopy } from '@/features/home-creator/homeCreatorCopy';
 import { homeCustomerNotice } from '@/features/home-creator/homeCustomerNotice';
 import { useHomeDraftStore } from '@/features/home-creator/homeDraftStore';
-import {
-  useHomeEntitlement,
-  useCanSeeExactGrams,
-} from '@/features/home-creator/useHomeEntitlement';
+import { useCanSeeExactGrams } from '@/features/home-creator/useHomeEntitlement';
 import { useHomeFlow } from '@/features/home-creator/useHomeFlow';
 import { useHomeRecipeResult } from '@/features/home-creator/useHomeRecipeResult';
 import { useHomeIntentIngredients } from '@/features/home-creator/useHomeIntentIngredients';
@@ -63,7 +60,6 @@ import {
   type HomeSweetness,
 } from '@/features/home-creator/homeSweetness';
 import type { HomeStage } from '@/features/home-creator/homeStageFlow';
-import { HomeProSwitch } from '@/features/home-creator/ui/HomeProSwitch';
 import { HomeIntentSection } from '@/features/home-creator/ui/HomeIntentSection';
 import { HomeProfileSection } from '@/features/home-creator/ui/HomeProfileSection';
 import { HomeMachineSection } from '@/features/home-creator/ui/HomeMachineSection';
@@ -79,7 +75,6 @@ function useScrollToStage() {
 }
 
 export function HomeCreatorPage() {
-  const entitlement = useHomeEntitlement();
   const canSeeGrams = useCanSeeExactGrams();
   const scrollToStage = useScrollToStage();
 
@@ -421,12 +416,7 @@ export function HomeCreatorPage() {
     .join(' · ');
 
   return (
-    <AppShell
-      navigationPosition="trailing"
-      stickyHeader
-      globalSwitch={<HomeProSwitch entitlement={entitlement} activeView="home" />}
-      contentClassName="pb-24"
-    >
+    <AppShell navigationPosition="trailing" stickyHeader contentClassName="pb-24">
       <div data-testid="home-creator">
         {flow.stages.includes('intent') ? (
           <HomeIntentSection

@@ -21,8 +21,8 @@
     "productionSessionSchema": 2
   },
   "bundle": {
-    "bytes": 345388,
-    "sha256": "2602cb4743af909300741a4c3941318c2127781bf548cb62e9021fefebafede6",
+    "bytes": 344619,
+    "sha256": "c7f83abecfbf35b2fc174a6464576805a4a7ea21aa8c9e6821b2450ad688bdb1",
     "externalImports": 0,
     "dynamicImports": 0
   },
@@ -101,7 +101,7 @@
     },
     {
       "path": "src/engine/cost.ts",
-      "sha256": "0783a91bee213457e5e3373c0f6a8f12434b3ceef3ee496a53880e1a82a023c0"
+      "sha256": "343b1bb0f589a4c5d41b5bcba3f9fdb78f9156727cf07091d5179d72b380ee1e"
     },
     {
       "path": "src/engine/iceFraction.ts",
@@ -161,7 +161,7 @@
     },
     {
       "path": "src/features/practical-recipe/practicalRecipe.ts",
-      "sha256": "16c62f7a2088518fa248f5a5894f9575e76536cd661221c67c244012c8033090"
+      "sha256": "4bd1f8383a2f4dc64619b68e1f36d956c6479989db9d631ac02ac1ce2591d44b"
     },
     {
       "path": "src/features/pro-core/recipeScaling.ts",
@@ -225,7 +225,7 @@
     },
     {
       "path": "src/features/recipe-composition/finalProduct.ts",
-      "sha256": "a48cc291d2281d1aac4f5eeded7d7ac40420ddb79c71ddb570ad0447c3e98cae"
+      "sha256": "a64c9f8e00479ff4c8176399c003423c55144b46015b1ff8a094c15c15dfb9e8"
     },
     {
       "path": "src/features/recipe-composition/labelTopping.ts",
@@ -272,5 +272,5 @@
       "sha256": "a2207c9c4e9431daa728d6b03fe1b9c4a4a3ba3403a0c056f2808c0759a455c8"
     }
   ],
-  "sourceClosureSha256": "5d541a49384e2d6dacdcf0a2599d21e73cf9d0bf4fdc2aff502aac11d0ef1729"
+  "sourceClosureSha256": "c4c1eb6a4cd2790f7ebcc8b6b9224985db42091e55adfa1a3500fd9efd48b0e6"
 }

@@ -123,6 +123,21 @@ describe('final product composition', () => {
       catalog_product_id: 'strawberry-sauce',
     });
     expect(result.finalCosts?.complete).toBe(false);
+    expect(result.finalCosts?.known_cost).toBeGreaterThan(0);
     expect(result.finalCosts?.missing_cost_ingredient_ids).toContain('catalog:strawberry-sauce');
+  });
+
+  it('keeps a 5 g unpriced post-production topping outside the 1000 g technical Base', () => {
+    const before = calculateRecipe(base);
+    const result = calculateFinalProduct(base, [labelTopping(5)]);
+
+    expect(result.baseResult).toEqual(before);
+    expect(result.baseMassG).toBe(1000);
+    expect(result.toppingMassG).toBe(5);
+    expect(result.finalMassG).toBe(1005);
+    expect(result.finalCosts).toMatchObject({
+      complete: false,
+      known_cost: before.costs?.known_cost,
+    });
   });
 });

@@ -129,6 +129,43 @@ describe('DirectNumberControl', () => {
     expect(html).not.toContain('>%</button>');
   });
 
+  it('keeps the accepted 30px lock cell fully inside both compact fixed-width controls', () => {
+    const renderLocked = (widthPreset: 'percent' | 'grams') =>
+      renderToStaticMarkup(
+        <DirectNumberControl
+          value={widthPreset === 'percent' ? 100 : 10000}
+          step={1}
+          decimals={widthPreset === 'percent' ? 1 : 0}
+          suffix={widthPreset === 'percent' ? '%' : 'g'}
+          ariaLabel={widthPreset}
+          onChange={() => {}}
+          testId={`compact-${widthPreset}`}
+          widthPreset={widthPreset}
+          density="compact"
+          lockSegment={{
+            pressed: false,
+            ariaLabel: `Zablokuj ${widthPreset}`,
+            title: 'Zablokuj',
+            suffix: widthPreset === 'percent' ? '%' : 'g',
+            onToggle: () => {},
+            testId: `compact-${widthPreset}-lock`,
+          }}
+        />,
+      );
+
+    const percent = renderLocked('percent');
+    expect(percent).toContain('w-[142px] grid-cols-[28px_54px_28px_30px]');
+    expect(percent).toContain('h-8 w-[30px]');
+    expect(percent).toContain('box-border');
+    expect(percent).toContain('shrink-0');
+    expect(percent).toContain('value="100.0"');
+
+    const grams = renderLocked('grams');
+    expect(grams).toContain('w-[150px] grid-cols-[28px_62px_28px_30px]');
+    expect(grams).toContain('h-8 w-[30px]');
+    expect(grams).toContain('value="10000"');
+  });
+
   it('reserves exactly five whole-gram digits without expanding the topping control', () => {
     const html = renderToStaticMarkup(
       <DirectNumberControl

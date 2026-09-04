@@ -38,6 +38,7 @@ vi.setConfig({ testTimeout: 60_000 });
 // candidate-rebuild equality, hard Apply door, and guarded recipe mutation.
 const currentResultResolution = vi.hoisted(() => ({
   blocked: false,
+  incomplete: false,
   release: null as null | (() => void),
 }));
 
@@ -58,6 +59,12 @@ vi.mock('@/services/productIntelligence', () => ({
     if (input.module === 'SUMMARY') {
       const { productBehaviorTestSnapshots } =
         await import('@/features/product-intelligence/productBehaviorTestFixture');
+      if (currentResultResolution.incomplete) {
+        return {
+          snapshots: {},
+          unresolvedLineIds: [input.recipe.items[0]!.id],
+        };
+      }
       return {
         snapshots: productBehaviorTestSnapshots(input.recipe, input.toppings),
         unresolvedLineIds: [],
@@ -152,6 +159,7 @@ beforeAll(() => {
 
 beforeEach(() => {
   currentResultResolution.blocked = false;
+  currentResultResolution.incomplete = false;
   currentResultResolution.release = null;
   useRecipeStore.getState().resetToDemo();
   useRecipeProfileStore.getState().resetForTests();
@@ -304,6 +312,26 @@ describe('NEAREST / BEST-POSSIBLE Preview → Apply lifecycle', () => {
     currentResultResolution.release?.();
     await applying;
     expectSuccessfulApply(displayed, 10);
+  });
+
+  it('keeps a committed Apply successful when secondary current-result publication is incomplete', async () => {
+    const displayed = stagePreview(score10, false);
+    const before = workingVector();
+    currentResultResolution.incomplete = true;
+
+    await applyPreviewWithServerAuthority(immediateRuntime(score10));
+
+    const state = useConstraintStudioStore.getState();
+    expect(state.applyPending).toBe(false);
+    expect(state.blocked).toBeNull();
+    expect(state.postApplyNotice).toMatchObject({
+      state: 'APPLIED_WITH_INCOMPLETE_CONSUMERS',
+    });
+    expect(state.preview).toBeNull();
+    expect(state.history).toHaveLength(1);
+    expect(workingVector()).not.toEqual(before);
+    expect(workingVector()).toEqual(vector(displayed.proposedInput));
+    expect(useRecipeProfileStore.getState().awaitingRecalculation).toBe(true);
   });
 
   it('B. does not stage the old unchanged unreached 9/10 BEST-POSSIBLE candidate', () => {

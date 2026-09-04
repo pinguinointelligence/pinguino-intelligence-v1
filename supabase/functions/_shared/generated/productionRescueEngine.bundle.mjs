@@ -1690,6 +1690,7 @@ function computeRecipeCosts(items, totalBatchG, customServingG) {
 	const cost_per_kg = complete && totalBatchG > 0 ? total / totalBatchG * 1e3 : null;
 	const serving = (grams) => cost_per_kg !== null ? cost_per_kg * grams / 1e3 : null;
 	const costs = {
+		known_cost: total,
 		total_cost,
 		cost_per_kg,
 		cost_per_serving_60g: serving(STANDARD_SERVINGS_G[0]),
@@ -7229,7 +7230,6 @@ function evaluateRecipeConstraintAuthority(input) {
 //#region src/features/practical-recipe/practicalRecipe.ts
 const PRACTICAL_RECIPE_MODEL_VERSION = "pro-whole-gram-v1";
 const INTEGER_EPSILON = 1e-9;
-const MAX_MAIN_COMBINATIONS = 4096;
 const MAX_HARD_GATE_REPAIR_ROUNDS = 12;
 const cloneInput = (input) => ({
 	...input,
@@ -7315,49 +7315,20 @@ function mainIntegerCandidates(exactInput, rounded, set) {
 		index
 	})).filter(({ item }) => item.lock_type === "main" && item.planned_grams > 0);
 	if (mainIndexes.length <= 1) return rounded;
-	const candidateValues = mainIndexes.map(({ item, index }) => {
-		const alreadyFixed = rounded.items[index].planned_grams;
-		if (item.actual_grams !== null || item.grams_constraint !== void 0 || item.percent_constraint !== void 0) return [alreadyFixed];
-		return [...new Set([
-			Math.round(item.planned_grams),
-			Math.floor(item.planned_grams),
-			Math.ceil(item.planned_grams)
-		])].filter((value) => value > 0);
-	});
-	let explored = 0;
-	let bestInput = null;
-	let bestError = Number.POSITIVE_INFINITY;
-	let bestOrder = "";
-	const chosen = [];
-	const visit = (depth) => {
-		if (explored >= MAX_MAIN_COMBINATIONS) return;
-		if (depth < candidateValues.length) {
-			for (const value of candidateValues[depth]) {
-				chosen.push(value);
-				visit(depth + 1);
-				chosen.pop();
-			}
-			return;
-		}
-		explored += 1;
-		const candidate = cloneInput(rounded);
-		mainIndexes.forEach(({ index }, position) => {
-			candidate.items[index] = {
-				...candidate.items[index],
-				planned_grams: chosen[position]
-			};
-		});
-		if (!verifyMainIngredientIdentity(exactInput, candidate, set.byLineId).ok) return;
-		const error = mainIndexes.reduce((sum, { item }, position) => sum + Math.abs(chosen[position] - item.planned_grams), 0);
-		const order = chosen.join("|");
-		if (bestInput === null || error < bestError - INTEGER_EPSILON || Math.abs(error - bestError) <= INTEGER_EPSILON && order < bestOrder) {
-			bestInput = candidate;
-			bestError = error;
-			bestOrder = order;
-		}
-	};
-	visit(0);
-	return bestInput;
+	const desiredMainTotal = mainIndexes.reduce((sum, { index }) => sum + rounded.items[index].planned_grams, 0);
+	const resolution = resolveMainRatioScale(exactInput, set.byLineId, desiredMainTotal);
+	if (!resolution.ok) return null;
+	const allocationByLineId = new Map(resolution.allocations.map(({ lineId, grams }) => [lineId, grams]));
+	const candidate = cloneInput(rounded);
+	for (const { item, index } of mainIndexes) {
+		const grams = allocationByLineId.get(item.id);
+		if (grams === void 0 || !Number.isInteger(grams) || grams <= 0) return null;
+		candidate.items[index] = {
+			...candidate.items[index],
+			planned_grams: grams
+		};
+	}
+	return verifyMainIngredientIdentity(exactInput, candidate, set.byLineId).ok ? candidate : null;
 }
 function reconcileResidual(exactInput, roundedInput, set, nonIncreasableLineIds) {
 	const residualBefore = Math.round(exactInput.target_batch_grams) - totalPlanned(roundedInput);
@@ -7697,8 +7668,7 @@ function combineLabelNutrition(factual, factualMassG, labelItems, finalMassG) {
 function combineCosts(factual, labelItems, finalMassG) {
 	if (!factual) return null;
 	const missing = [...factual.missing_cost_ingredient_ids];
-	let knownTotal = factual.total_cost ?? 0;
-	if (!factual.complete) knownTotal = 0;
+	let knownTotal = factual.known_cost ?? factual.total_cost ?? 0;
 	for (const item of labelItems) {
 		const price = item.ingredient.cost_per_kg;
 		if (price === null) missing.push(item.ingredient.id);
@@ -7709,6 +7679,7 @@ function combineCosts(factual, labelItems, finalMassG) {
 	const perKg = complete && finalMassG > 0 ? knownTotal / finalMassG * 1e3 : null;
 	const serving = (grams) => perKg === null ? null : perKg * grams / 1e3;
 	return {
+		known_cost: knownTotal,
 		total_cost: totalCost,
 		cost_per_kg: perKg,
 		cost_per_serving_60g: serving(60),

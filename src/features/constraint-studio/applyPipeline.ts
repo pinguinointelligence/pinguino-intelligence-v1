@@ -1508,7 +1508,6 @@ export type BuildPreviewResult =
       messagePl: string;
     }
   | { ok: false; code: 'practicalization_blocked'; lineIds: string[]; messagePl: string }
-  | { ok: false; code: 'missing_prices'; lineIds: string[]; ingredientNames: string[] }
   /** Owner P0 (Przelicz z PI): a no-proposal failure carries the PROOF — the solver
    * really ran (invocation count) and these exact metrics stayed out of band. */
   | {
@@ -7716,21 +7715,16 @@ function buildOptimizePreviewWithDirection(
   if (sorbetDirectionPreview !== null) return sorbetDirectionPreview;
   const initialProteinTarget = assessProteinFormulation(working);
   const strategy = normalizeFormulationStrategy(input.goals?.formulation_strategy ?? input.mode);
-  if (strategy === 'eco') {
-    const missingPrices = input.items.filter(
-      (item) =>
-        effectiveCostForIngredient(item.ingredient, options.effectivePriceOverrides ?? {})
-          .pricePerKg === null,
-    );
-    if (missingPrices.length > 0) {
-      return {
-        ok: false,
-        code: 'missing_prices',
-        lineIds: missingPrices.map((item) => item.id),
-        ingredientNames: missingPrices.map((item) => item.ingredient.name),
-      };
-    }
-
+  const ecoMissingPrices =
+    strategy === 'eco'
+      ? input.items.filter(
+          (item) =>
+            effectiveCostForIngredient(item.ingredient, options.effectivePriceOverrides ?? {})
+              .pricePerKg === null,
+        )
+      : [];
+  const ecoCostComplete = ecoMissingPrices.length === 0;
+  if (strategy === 'eco' && ecoCostComplete) {
     /**
      * A technically clean current recipe is already the null hypothesis for
      * ECO. Running the technical corrector first can move it out of band before
@@ -7865,7 +7859,7 @@ function buildOptimizePreviewWithDirection(
     }
   }
   if (
-    strategy !== 'eco' &&
+    (strategy !== 'eco' || !ecoCostComplete) &&
     recipeDirectionViolations(working).length === 0 &&
     ownerInulinPolicyIssues(working).length === 0 &&
     !hasCritical &&
@@ -8934,7 +8928,8 @@ export type BlockedApply =
     };
 
 export type CommitPreviewResult =
-  { ok: true; verified: VerifiedApply } | ({ ok: false } & BlockedApply);
+  | { ok: true; verified: VerifiedApply }
+  | ({ ok: false } & BlockedApply);
 
 function productBehaviorIdentityViolation(
   input: RecipeInput,
@@ -9290,8 +9285,7 @@ export class VerifiedApply {
       //     -> truthful publication: a materially different candidate is real,
       //        an unchanged one is the forged NEAREST this door exists to stop.
       const explicitDirectionRoute =
-        preview.directionFallback !== undefined ||
-        preview.starterPackRescue !== undefined;
+        preview.directionFallback !== undefined || preview.starterPackRescue !== undefined;
       const directionSatisfied = explicitDirectionRoute
         ? directionProgress.accepted
         : directionProgress.publishable;

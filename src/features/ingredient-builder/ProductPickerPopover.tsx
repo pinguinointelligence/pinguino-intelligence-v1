@@ -49,6 +49,7 @@ import {
   productPickerVerificationView,
   type ProductPickerVerificationView,
 } from './productPickerModel';
+import { PRO_DESKTOP_MEDIA_QUERY } from '@/features/shell/proFrameGeometry';
 import { closeProductPickerForPointer } from './productPickerBackdrop';
 import { mobileProductPickerRect } from './productPickerViewport';
 import { IngredientCategoryIcon } from './IngredientCategoryIcon';
@@ -374,7 +375,7 @@ export function ProductPickerPopover({
     const updatePosition = () => {
       const trigger = triggerRef.current?.getBoundingClientRect();
       if (!trigger) return;
-      const desktop = window.matchMedia('(min-width: 1280px)').matches;
+      const desktop = window.matchMedia(PRO_DESKTOP_MEDIA_QUERY).matches;
       if (!desktop) {
         const visualViewport = window.visualViewport;
         setPosition({
@@ -1054,7 +1055,7 @@ export function ProductPickerPopover({
         ? createPortal(
             <>
               <div
-                className="fixed inset-0 z-[89] bg-black/10 xl:bg-transparent"
+                className="pro-product-picker-backdrop fixed inset-0 z-[89] bg-black/10"
                 aria-hidden="true"
                 onPointerDown={(event) => {
                   // The anchored picker visually overlaps the workbench but PI

@@ -23,6 +23,12 @@ export function DialogShell({
   placement = 'center',
   panelClassName,
   dismissOnBackdrop = false,
+  showCloseControl = false,
+  closeLabel = 'Zamknij',
+  closeTestId,
+  panelTestId,
+  panelState,
+  initialFocusTestId,
 }: {
   label: string;
   testId: string;
@@ -31,6 +37,12 @@ export function DialogShell({
   placement?: 'center' | 'bottom' | 'responsive';
   panelClassName?: string;
   dismissOnBackdrop?: boolean;
+  showCloseControl?: boolean;
+  closeLabel?: string;
+  closeTestId?: string;
+  panelTestId?: string;
+  panelState?: string;
+  initialFocusTestId?: string;
 }) {
   const dialogRef = useRef<HTMLElement>(null);
   const onCloseRef = useRef(onClose);
@@ -44,10 +56,13 @@ export function DialogShell({
     document.body.style.overflow = 'hidden';
     const focusable = () => [
       ...(dialogRef.current?.querySelectorAll<HTMLElement>(
-        'button:not([disabled]), input:not([disabled]), select:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+        'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
       ) ?? []),
     ];
-    focusable()[0]?.focus();
+    const initialFocus = initialFocusTestId
+      ? focusable().find((node) => node.dataset.testid === initialFocusTestId)
+      : null;
+    (initialFocus ?? focusable()[0])?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
@@ -73,7 +88,7 @@ export function DialogShell({
       document.body.style.overflow = previousOverflow;
       previousFocus?.focus();
     };
-  }, []);
+  }, [initialFocusTestId]);
 
   const overlay = (
     <div
@@ -87,6 +102,7 @@ export function DialogShell({
       )}
       data-testid={testId}
       data-placement={placement}
+      data-dialog-shell="gellatti"
       data-overlay-scope="viewport"
       onMouseDown={(event) => {
         if (dismissOnBackdrop && event.target === event.currentTarget) onCloseRef.current();
@@ -97,8 +113,12 @@ export function DialogShell({
         role="dialog"
         aria-modal="true"
         aria-label={label}
+        data-testid={panelTestId}
+        data-dialog-panel="gellatti"
+        data-dialog-state={panelState}
+        data-terminal-state={panelState}
         className={cn(
-          'overflow-y-auto border border-ink/15 bg-white text-ink shadow-pro-e3 [overscroll-behavior:contain]',
+          'relative overflow-y-auto border border-ink/15 bg-white text-ink shadow-pro-e3 [overscroll-behavior:contain]',
           placement === 'bottom'
             ? 'max-h-[min(88dvh,calc(100dvh-env(safe-area-inset-top)-0.5rem))] w-full rounded-t-[22px] border-x-0 border-b-0 pb-[env(safe-area-inset-bottom)]'
             : placement === 'responsive'
@@ -107,6 +127,26 @@ export function DialogShell({
           panelClassName,
         )}
       >
+        {showCloseControl ? (
+          <button
+            type="button"
+            aria-label={closeLabel}
+            onClick={() => onCloseRef.current()}
+            data-testid={closeTestId}
+            className="pro-focus-ring absolute top-3 right-3 z-10 inline-flex size-10 items-center justify-center rounded-full border border-[var(--g-line-strong)] bg-white text-[var(--g-text-secondary)] transition-colors hover:border-ink/35 hover:text-[var(--g-graphite)]"
+          >
+            <svg aria-hidden viewBox="0 0 20 20" className="size-4">
+              <path
+                d="m6 6 8 8M14 6l-8 8"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                strokeLinecap="round"
+              />
+            </svg>
+            <span className="sr-only">{closeLabel}</span>
+          </button>
+        ) : null}
         {children}
       </section>
     </div>
