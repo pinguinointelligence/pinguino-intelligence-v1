@@ -44,6 +44,7 @@ Devices: iPhone 15 Pro Max / iOS 26.6.1 (Safari tab + standalone PWA) · Samsung
 | D1 | iPhone Safari tab run: all barcode + object scenes, repetitions, corpus exported | IPHONE SAFARI | WAITING_ON_OWNER_RUN |
 | D2 | iPhone standalone PWA run: same scenes | IPHONE PWA | WAITING_ON_OWNER_RUN |
 | D3 | Android Chrome run (Galaxy Note10+): same scenes — bundle 2026-09-04 07:21 UTC; ran in Samsung Internet 30, not Chrome; see D3_SAMSUNG_NOTE10PLUS_2026-09-04.md | ANDROID CHROME | RECEIVED — NO-GO as configured |
+| R1 | EXTRA device class received 2026-09-04 07:36 UTC: Realme (model untyped), Android Chrome 142, main 12 MP camera — 16/18 barcode scenes confirmed, NO-GO as configured (6.6 processed fps, 79 % CPU proxy); see R1_REALME_ANDROID_CHROME_2026-09-04.md | CORPUS | RECEIVED — NO-GO as configured |
 | D4 | Corpus bundles received and parsed on the Mac; metrics tables produced per device class — parser + results table for D3 done; D1/D2 pending | CORPUS | IN PROGRESS |
 | D5 | GO / NO-GO report per device class against the Decision Package targets | GO / NO-GO | WAITING_ON_OWNER_RUN |
 | D6 | Owner QA sign-off | OWNER QA | WAITING_ON_OWNER |

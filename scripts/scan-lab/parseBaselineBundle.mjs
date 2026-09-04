@@ -96,9 +96,11 @@ export function analyzeBundle(bytes, fileName) {
       if (typeof e.roundTripMs === 'number' && typeof e.workerBusyMs === 'number') pooled.transferProxy.push(e.roundTripMs - e.workerBusyMs);
     }
     if (isBar) {
-      const vals = Object.entries(sc.decodedValues ?? {});
-      if (vals.length > 1) {
-        const top = Math.max(...vals.map(([, n]) => n));
+      const vals = Object.entries(sc.decodedValues ?? {}).sort((a, b) => b[1] - a[1]);
+      // ean-two-codes legitimately carries two products; everything beyond the expected majority set is a contradiction
+      const legitimate = sc.sceneId === 'ean-two-codes' ? 2 : 1;
+      if (vals.length > legitimate) {
+        const top = vals.slice(0, legitimate).reduce((a, [, n]) => a + n, 0);
         const contradicting = vals.reduce((a, [, n]) => a + n, 0) - top;
         pooled.rawWrong += contradicting;
         pooled.rawWrongDetail.push(`${sc.sceneId}: ${vals.map(([v, n]) => `${v}×${n}`).join(' vs ')}`);
