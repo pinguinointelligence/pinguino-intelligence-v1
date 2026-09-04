@@ -264,3 +264,21 @@ The finalize comment states the rule explicitly: "One readiness authority for ev
 - F11.2 (P3) Two TypeScript authorities are imported by the Deno edge function through relative paths into `src/` (`productBehaviorAuthority.ts`, `productRecognition.ts`); one source of truth (good), but a client-side refactor silently changes server behaviour — the fingerprint test covers only the SQL function.
 
 **Verdict.** PASS — Scan Import defers to the canonical ProductBehaviour authority; no bypass found.
+
+## SECTION 12 — PRICE
+
+**Standing contract.** Missing price = costing incompleteness only, never a technical Engine failure (owner rule "MOJA CENA": a missing price must never block the engine; a user-level price is saved as the user's own price, never into Mapper).
+
+**Implemented.**
+- Price is modelled as a *state*, not a requirement: `{ state: 'known', pricePerKg, currency, source: 'private' | 'reference' } | { state: 'missing', pricePerKg: null, currency: null, source: 'missing' }` (`src/features/product-intelligence/recipeBehaviorAuthority.ts:390-421`); "the private overlay wins without ever entering the immutable shared" product record (`:393`).
+- Costing (`src/features/pro-core/costing.ts:24-72`) resolves `customer_override` → `mapper_reference` → nothing, with every branch null-safe; `effectiveRecipePricing.ts` / `costContracts.ts` carry the incompleteness forward as cost state.
+- The scanner writes the customer's price only to the per-user overlay: `privateOverlay.price` validated (finite, ≤ 1 000 000, else `invalid_private_price` 400, `product-scan-finalize/index.ts:570-578`) → RPC `p_private_overlay` → `user_product_relations.private_price/currency` (Section 8). The central `products` / `product_versions` rows never receive it. PASS (rule respected).
+- No price field participates in the profile or readiness authorities: `_shared/intimportWholeProfileAuthority.ts` and `productEvidenceConfidence.ts` contain no price logic (grep: 0 hits), so `productAccuracyAssessment.criticalBlockers` cannot contain a price gap and `engineUsable` is price-independent. PASS.
+
+**Loop check (import without price → recipe → technical calculation → save → identity).** Identity and version are created regardless of price (Section 7); the recipe authority reports `price.state = 'missing'` and costing marks the recipe cost incomplete; nothing in the audited path turns that into a solver refusal. PASS.
+
+**Findings.**
+- F12.1 (P3) The scanner's price prompt is optional and un-hinted: nothing tells the customer that leaving it empty leaves the recipe cost incomplete (copy check only; not a correctness issue).
+- F12.2 (P3) `privateOverlay.price` is stored as a single number without a unit basis on the scanner path (`price` per what? the RPC maps `privatePrice` per kg on the ingest path, `20260813110300:1914`); the scanner call site sends `price` — the unit is implied. Worth one explicit field name.
+
+**Verdict.** PASS.
