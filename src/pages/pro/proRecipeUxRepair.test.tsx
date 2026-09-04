@@ -418,7 +418,13 @@ describe('recalculation overlay', () => {
     expect(src).toContain('testId="pro-recalc-overlay"');
     expect(src).toContain('<DialogShell');
     expect(dialog).toContain('fixed inset-0');
-    expect(src).toContain('w-[min(680px,calc(100vw-1.5rem))]'); // compact desktop, safe mobile gutter
+    // The width is no longer typed here. `size="wide"` is the canonical 680 px
+    // member of the shell's size family — still inside this test's 520–720
+    // band, but stated once in `DialogShell` instead of competing with the
+    // shell's own `w-[min(520px,94vw)]` through `panelClassName`.
+    expect(src).toContain('size="wide"');
+    expect(dialog).toContain("wide: 'sm:w-[min(680px,94vw)]'");
+    expect(dialog).toContain("wide: 'w-[min(680px,94vw)]'");
     expect(dialog).toContain('role="dialog"');
     // Apply closes the overlay ONLY on success (blocked apply keeps the honest notice).
     expect(src).toContain('after.postApplyNotice === null');
