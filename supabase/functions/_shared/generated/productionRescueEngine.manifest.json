@@ -18,12 +18,12 @@
     "engine": "0.4.0",
     "config": "0.7.0",
     "practicalRecipe": "pro-whole-gram-v1",
-    "productionRescue": "production-rescue-v5",
+    "productionRescue": "production-rescue-v6",
     "productionSessionSchema": 2
   },
   "bundle": {
-    "bytes": 351010,
-    "sha256": "177c39a8509cee98f1b27d12f571d5a68ec0d7b0cddf433d14c097602db89878",
+    "bytes": 350759,
+    "sha256": "e35e419443a3456dc1d06485ecec0b8b3a3cfd5dea298b1d41b35c482b4ee2fe",
     "externalImports": 0,
     "dynamicImports": 0
   },
@@ -86,7 +86,7 @@
     },
     {
       "path": "src/engine/corrections/recovery.ts",
-      "sha256": "cf5f41b2f633faea6b66ce264e967d51a6fda6a52378f251cbc3197013857a89"
+      "sha256": "140d47adefbfc8586dee73a9cc6a142627efbf67f792ae0469cee4d3f97beea9"
     },
     {
       "path": "src/engine/corrections/redact.ts",
@@ -194,7 +194,7 @@
     },
     {
       "path": "src/features/production-workspace/productionRescue.ts",
-      "sha256": "60749ddf7787b8d8165c5bdea12ae2fc931c98b734e418b7cb9000f0b737d07a"
+      "sha256": "0c84b14b546704f43d798be5ed84ce54fadeebac7e026a57c9a3dfbbdafca9ea"
     },
     {
       "path": "src/features/production-workspace/productionRescueAuthority.ts",
@@ -277,5 +277,5 @@
       "sha256": "a2207c9c4e9431daa728d6b03fe1b9c4a4a3ba3403a0c056f2808c0759a455c8"
     }
   ],
-  "sourceClosureSha256": "61e879e9e7070bc3b581881050f29a3920ae2ca0a0408d693bdea58696dbc082"
+  "sourceClosureSha256": "2aa425063910dd8e9df8ed69be7b56104406e1565a0afcc68ee34facdf3fc5c0"
 }
