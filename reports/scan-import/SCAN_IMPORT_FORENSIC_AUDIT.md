@@ -177,3 +177,30 @@ Step 2 (`ean_lookup`, `product-scan-analyze` mode `ean_lookup`, `index.ts:261-33
 - F7.3 (P2) Manual product creation path not proven idempotent by EAN (UNKNOWN; needs one targeted test).
 
 **Verdict.** Identity loop for the scanner channels: PASS. Cross-channel consistency: PARTIAL (F7.1, F7.2). Manual channel: UNKNOWN (F7.3).
+
+## SECTION 8 — PRODUCT CATALOG / LIVE OVERLAY
+
+**What exists at runtime (proved from migrations + functions).**
+| Concept | Runtime object | Evidence | Status |
+|---|---|---|---|
+| Central product record | `public.products` (`product_kind`: `mapper_reference`, `commercial_product`, `customer_provisional`, …; `visibility in ('shared','account_private','internal')`; `owner_user_id`, `created_by`, `ean_code`, `ean_code_normalized`, `normalized_identity`, `current_version_id`, `current_behavior_binding_id`, `merged_into_product_id`, `is_active`) | `20260716101708_0007_products.sql`, `20260813110300_canonical_product_root_and_ingest.sql`, RPC `20260827100000:311-337` | EXISTS |
+| Product versioning | `public.product_versions` (`version`, `facts`, `evidence_snapshot`, `facts_fingerprint` sha256, `is_current`, `provenance`); `products.current_version_id` | RPC `:326-337` | EXISTS — immutable versions, one current pointer |
+| Package variants | `public.product_variants` (`ean` globally unique where not null, `is_current`, `market`) | `20260813110300:214` | EXISTS |
+| Superseding / merge | `products.merged_into_product_id` + `is_active=false` on retirement; every exact lookup filters `merged_into_product_id is null` | `20260813110300:166,1926`; `product-scan-analyze/index.ts:107` | EXISTS |
+| Per-user overlay | `public.user_product_relations (user_id, product_id, favorite, private_price, currency, supplier, notes, stock)`; written from `p_private_overlay` by the ingest RPC and by the scanner finalize (`privateOverlay.price` validated ≤ 1 000 000) | `20260813110300:1909-1919`, `product-scan-finalize/index.ts:570-579` | EXISTS — this is the only "overlay" a user owns |
+| Publication state of a scan | `product_scan_sessions.overlay_state ∈ SCAN_DRAFT, USABLE_FOR_OWNER, PENDING_PUBLICATION, PUBLISHED, BLOCKED`, set by the analyze validation and forced to `BLOCKED` on budget/provider failures | `product-scan-analyze/index.ts:381,678,723,752,777` | EXISTS |
+| Customer-added products (central by EAN, account-scoped access) | `customer_added_products` (unique `normalized_ean`, `distinct_customer_count`, `status`), `customer_added_product_accounts`, `customer_added_product_evidence`; RLS lets only linked accounts or CATALOG admins read the provisional product/version/binding/variant rows | `20260827100000:31-122` | EXISTS |
+| Editing | customer corrections applied at finalize (`applyCustomerCorrections`, bound to the session barcode) — no post-finalize edit path in the scanner; PRO product editing lives elsewhere | `product-scan-finalize/index.ts:175-181` | PARTIAL |
+| Revalidation | `product_capability_reanalysis_requests` + `gellatti_request_product_capability_reanalysis_v1` / admin integration (ProductBehavior re-analysis, not identity) | `20260827103000:9,66,136,224,407` | EXISTS (behaviour only) |
+| Country / global records | `products.country` (from `identity.countryOfOrigin`), `product_variants.market` (`'GLOBAL'` for customer-added), `catalog_market_countries`, `country_product_slot_assignments` (picker authority, Section 3) | RPC `:319,349`; `20260903212502` | EXISTS |
+| Legacy global catalog | `global_catalog_variants` (unique `ean`) from the 2026-08-13 global catalog import | `20260813110000:78` | EXISTS (historical) |
+| "Live Overlay" as an engine-identity authority | migration `20260824150000_live_overlay_engine_identity.sql`: evidence-based PR→PI identity *proposal* (macro agreement within tolerance, refuses ambiguity, excludes high-risk/technical products, "writes nothing"); runtime authorization **retired** by `20260825210000_product_behavior_authority_restore.sql`; pinned by `liveOverlayIdentity.migration.test.ts` | test header lines 1-15; `reports/LIVE_OVERLAY_ENGINE_IDENTITY_2026-08-24.md` | DESIGNED ONLY / RETIRED (read-only proposal) |
+
+**Precedence between the layers (for a scanned code).** Central product identity first (EAN equality); the per-user overlay never changes identity, only favorite/price/supplier/stock; a `customer_provisional` product is central by EAN but visible only to linked accounts until it is published. The user overlay is therefore not an identity authority (PASS), and there is no runtime "Live Overlay" that could override catalogue identity (the owner's 2026-08-24 decision: no EANs on the 2088 Mapper rows; identity through Product Intelligence / Catalog authority instead).
+
+**Findings.**
+- F8.1 (P2) The name "overlay" carries three meanings in the code (`user_product_relations` private overlay, `overlay_state` publication state, the retired Live Overlay engine-identity proposal); Scan Import documentation must pick one.
+- F8.2 (P2) No customer-facing edit path after finalize for a customer-added product except the ProductBehavior re-analysis request; an identity mistake (wrong brand/name) can only be fixed by CATALOG admins.
+- F8.3 (P3) `global_catalog_variants` and `product_variants` both hold unique EAN slots; only `product_variants` is consulted by the scanner. Historical only, but it is a second place an EAN can "exist".
+
+**Verdict.** Product Catalog: EXISTS, versioned, superseding-safe. Live Overlay (engine identity): DESIGNED ONLY / RETIRED. User overlay: EXISTS and correctly non-authoritative for identity.
