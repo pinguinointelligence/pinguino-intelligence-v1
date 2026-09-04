@@ -281,7 +281,7 @@ describe('Supabase adapters (stub client) — one RPC row feeds catalogue, behav
       offlineCache: cache,
       externalTimeoutMs: 50,
     });
-    expect(cache.size()).toBe(1);
+    expect(await cache.size()).toBe(1);
     t = 50;
     expect(
       await runScanImportV2(scan('8402001047251'), ctx({ online: false }), {

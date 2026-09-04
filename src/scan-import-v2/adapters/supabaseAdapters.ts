@@ -27,6 +27,7 @@ import type {
   RequestContext,
 } from '../contracts';
 import { NetworkError } from '../contracts';
+import { createMemoryStore, type KeyValueStore } from '../offline/persistentStore';
 
 export interface SupabaseLike {
   rpc(
@@ -377,47 +378,93 @@ export function createSupabaseV2Ports(
   return { catalog, behaviour, price, preferences, importer, rowsById };
 }
 
-/** Offline cache: IndexedDB when available (browser), in-memory otherwise. Entries carry the version pointer and a TTL. */
+/**
+ * Offline cache over a persistent store (memory / Web Storage / IndexedDB — see offline/persistentStore.ts).
+ *
+ * Entries are namespaced per account (guests under 'guest'), carry the schema version, the resolution
+ * time and the product's current version pointer. An entry is trusted offline only while ALL hold:
+ * same schema version, not older than the TTL, and — when the caller knows a newer version pointer — the
+ * pointer matches. Online resolutions always overwrite the entry (the authority wins; the cache is a
+ * convenience, never a second product authority).
+ */
 export const OFFLINE_CACHE_TTL_MS = 30 * 24 * 3600 * 1000; // PROVISIONAL — owner may shorten
+export const OFFLINE_CACHE_SCHEMA = 2;
 
 interface StoredEntry {
+  schema: number;
   entry: OfflineCacheEntry;
   resolvedAt: number;
   versionId: string | null;
+  accountId: string | null;
 }
 
-export function createOfflineCache(
-  options: { now?: () => number; ttlMs?: number; store?: Map<string, StoredEntry> } = {},
-): OfflineCachePort & {
-  size(): number;
+export interface OfflineCacheOptions {
+  now?: () => number;
+  ttlMs?: number;
+  store?: KeyValueStore;
+}
+
+export function createOfflineCache(options: OfflineCacheOptions = {}): OfflineCachePort & {
+  size(): Promise<number>;
+  /** invalidates an entry whose version pointer no longer matches the authority (stale identity guard) */
+  invalidateIfStale(
+    accountId: string | null,
+    canonicalGtin13: string,
+    currentVersionId: string | null,
+  ): Promise<boolean>;
 } {
   const now = options.now ?? (() => Date.now());
   const ttl = options.ttlMs ?? OFFLINE_CACHE_TTL_MS;
-  const store = options.store ?? new Map<string, StoredEntry>();
-  const key = (accountId: string | null, gtin13: string) => `${accountId ?? 'guest'}:${gtin13}`;
+  const store = options.store ?? createMemoryStore();
+  const ns = (accountId: string | null) => `v${OFFLINE_CACHE_SCHEMA}:${accountId ?? 'guest'}:`;
+  const key = (accountId: string | null, gtin13: string) => `${ns(accountId)}${gtin13}`;
+  const gtin13Of = (ean: string) =>
+    ean.length === 12 ? `0${ean}` : ean.length === 8 ? `00000${ean}` : ean;
+  const read = async (accountId: string | null, gtin13: string): Promise<StoredEntry | null> => {
+    const raw = await store.get(key(accountId, gtin13));
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw) as StoredEntry;
+      if (parsed.schema !== OFFLINE_CACHE_SCHEMA || parsed.accountId !== accountId) return null;
+      return parsed;
+    } catch {
+      return null;
+    }
+  };
   return {
     async get(accountId, canonicalGtin13) {
-      const hit = store.get(key(accountId, canonicalGtin13));
+      const hit = await read(accountId, canonicalGtin13);
       if (!hit) return null;
       if (now() - hit.resolvedAt > ttl) {
-        store.delete(key(accountId, canonicalGtin13));
+        await store.delete(key(accountId, canonicalGtin13));
         return null;
       }
       return hit.entry;
     },
     async put(accountId, entry) {
-      const gtin13 =
-        entry.candidate.ean.length === 12
-          ? `0${entry.candidate.ean}`
-          : entry.candidate.ean.length === 8
-            ? `00000${entry.candidate.ean}`
-            : entry.candidate.ean;
-      store.set(key(accountId, gtin13), {
+      const gtin13 = gtin13Of(entry.candidate.ean);
+      const stored: StoredEntry = {
+        schema: OFFLINE_CACHE_SCHEMA,
         entry,
         resolvedAt: now(),
         versionId: entry.candidate.currentVersionId ?? null,
-      });
+        accountId,
+      };
+      await store.set(key(accountId, gtin13), JSON.stringify(stored));
     },
-    size: () => store.size,
+    async invalidateIfStale(accountId, canonicalGtin13, currentVersionId) {
+      const hit = await read(accountId, canonicalGtin13);
+      if (!hit) return false;
+      if (
+        currentVersionId !== null &&
+        hit.versionId !== null &&
+        hit.versionId !== currentVersionId
+      ) {
+        await store.delete(key(accountId, canonicalGtin13));
+        return true;
+      }
+      return false;
+    },
+    size: async () => (await store.keys(`v${OFFLINE_CACHE_SCHEMA}:`)).length,
   };
 }
