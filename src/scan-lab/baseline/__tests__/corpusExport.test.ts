@@ -139,6 +139,40 @@ describe('buildRunArchive', () => {
     expect(result.entries).toBe(5);
     expect(result.bytes).toBe(result.blob.size);
   });
+  it('exports a retried scene under its attempt key', async () => {
+    const retried: CorpusReader = {
+      ...fakeDb,
+      getSceneResults: async () => [{ ...scene, attempt: 2 }],
+      iterateEvents: async (_run, sceneId, visit) => {
+        if (sceneId !== 'ean-12cm#2') return 0;
+        visit(events[0]!, 0);
+        return 1;
+      },
+      listFrames: async (_run, sceneId) =>
+        sceneId === 'ean-12cm#2'
+          ? [
+              {
+                runId: 's1',
+                sceneId,
+                frameIndex: 3,
+                meta: {
+                  tCapture: 1,
+                  width: 1,
+                  height: 1,
+                  mime: 'image/jpeg',
+                  tag: 'interval',
+                  bytes: 4,
+                },
+              },
+            ]
+          : [],
+    };
+    const result = await buildRunArchive(retried, 's1', null, '2026-09-04T12:00:00.000Z');
+    const names = readZip(new Uint8Array(await result.blob.arrayBuffer())).map((e) => e.name);
+    expect(names).toContain('events/ean-12cm#2.ndjson');
+    expect(names).toContain('frames/ean-12cm#2/00003_interval.jpg');
+  });
+
   it('rejects an unknown run', async () => {
     await expect(buildRunArchive(fakeDb, 'nope', null, 'x')).rejects.toThrow(/not found/);
   });

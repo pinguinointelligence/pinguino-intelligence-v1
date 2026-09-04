@@ -20,6 +20,9 @@ Extra classes: I1 iPhone · Chrome for iOS 152 → GO (20 fps, 58 %); R1 Realme 
 6. **Standalone PWA ≡ Safari tab** on iOS 26.6.1: same camera open time class, no re-prompt cost measurable, same throughput; the route-scoped manifest install works.
 7. Corpus: six bundles, 145 scene recordings, ~600 JPEG frames, ~25k processed-frame evidence rows, all on the Mac; nothing left the phones automatically.
 
+## B10 addendum (Note10+ / Chrome 147 at 720×1280, diagnostic)
+Halving the analysis plane raised processed fps 5.4 → 7.1 and total duty 85 → 83 %, kept locate+ROI at 20 ms p95, and lost the 30 cm and 40 cm reads. Main-thread capture fell only 63 → 50 ms per frame (fixed readback cost). Resolution alone does not cross the Android gates; the acquisition path must move off the main thread and be pipelined (details and the Phase 1 direction in `B10_NOTE10PLUS_1280_2026-09-04.md`).
+
 ## Verdict
 Phase 0 delivered its acceptance table for both target classes. **iPhone Safari and PWA: GO.** **Android Chrome (Note10+): NO-GO as configured**, with the cause isolated to the harness's capture/decode configuration rather than the device or the decoder; the decision package's „no-go → revisit resolution/ROI strategy before Phase 1” branch applies, and the strategy is already identified above.
 

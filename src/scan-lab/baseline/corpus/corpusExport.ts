@@ -75,16 +75,19 @@ export async function buildRunArchive(
   });
   entries.push({ name: 'scenes.json', data: JSON.stringify(scenes, null, 2) });
   for (const scene of scenes) {
-    const key = `${scene.sceneId}`;
+    // events + frames are stored under the ATTEMPT key (sceneId for attempt 1, sceneId#n for retries) —
+    // B10 evidence 2026-09-04: iterating by sceneId alone silently dropped every retried scene's events.
+    const storeKey = scene.attempt > 1 ? `${scene.sceneId}#${scene.attempt}` : scene.sceneId;
+    const key = storeKey;
     const lines: string[] = [];
-    await db.iterateEvents(runId, scene.sceneId, (event: FrameEvidence) => {
+    await db.iterateEvents(runId, storeKey, (event: FrameEvidence) => {
       lines.push(JSON.stringify(event));
     });
     if (lines.length > 0)
       entries.push({ name: `events/${key}.ndjson`, data: `${lines.join('\n')}\n` });
-    const frames = await db.listFrames(runId, scene.sceneId);
+    const frames = await db.listFrames(runId, storeKey);
     for (const frame of frames) {
-      const blob = await db.getFrameBlob(runId, scene.sceneId, frame.frameIndex);
+      const blob = await db.getFrameBlob(runId, storeKey, frame.frameIndex);
       if (!blob) continue;
       const ext = frame.meta.mime === 'image/png' ? 'png' : 'jpg';
       const index = String(frame.frameIndex).padStart(5, '0');
