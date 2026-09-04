@@ -25,3 +25,12 @@ Observed on the real products (in-memory catalogue seeded with their EANs): lega
 
 ## Observed on staging (real adapter, 2026-09-04)
 Legacy `lookupExactBarcode` and V2 use the same RPC for the exact path, so for the three seeded products both find the same canonical id. The difference is the server side: legacy `product-scan-analyze` reads `product_variants` only (all three have a current variant row, so they agree today), while V2 has no second path. A customer-added product without a variant row (audit F7.2) would differ: legacy server = not found, V2 = found through `eans[]`.
+
+## Unknown product (2026-09-05)
+| dimension | Legacy | Scan Import 2.0 |
+|---|---|---|
+| after "not in catalogue" | `ean_lookup` → label analysis → evidence request → estimate; the session is the only carrier; expires | same authorities, but the identity and every fact travel in a provenance ledger; seven explicit stages; a durable request candidate when the profile cannot complete |
+| identity vs readiness | one finalize decides both | identity (exact SKU, provisional) and readiness (authority) are separate results: `discovered_exact` with `engineReady=false` is valid |
+| conflicts | kept in `result.conflicts` (label retained) | surfaced as ledger conflicts with both values and the retained source on every state |
+| continuity | session id per scan; re-scans start over | by code + account through the request read model and the exact authority (linked provisional) |
+| guests | identify-live requires sign-in | read-only exact resolution (D8), no discovery |

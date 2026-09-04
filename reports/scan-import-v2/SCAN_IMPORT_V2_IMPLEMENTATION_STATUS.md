@@ -1,29 +1,30 @@
-# SCAN IMPORT 2.0 — implementation status (2026-09-04 evening, branch `claude/scan-import-v2`, base origin/staging 3149f345 merged)
+# SCAN IMPORT 2.0 — implementation status (2026-09-05, branch `claude/scan-import-v2`, base origin/staging 3149f345)
 
-STATUS: **SCAN IMPORT 2.0 ADAPTER LAYER INTERNALLY COMPLETE for the read path; import is LINK-ONLY; not wired to any UI; DRAFT PR; not OWNER ACCEPTED.**
+## Flows (owner definition of done)
+| flow | status | evidence |
+|---|---|---|
+| KNOWN PRODUCT: confirmed code → exact SKU → canonical relations → readiness → persistence/idempotency | **COMPLETE** | pipeline + adapters; staging read proof (Hacendado/Łaciate/Alsace Lait → PR-ING-007173/007172/007174); guest RPC validated in rolled-back transactions |
+| UNKNOWN PRODUCT: confirmed unknown code → identity preserved → real evidence collection → catalogue lifecycle → truthful incomplete state → canonical technical authority → same identity later → no fabricated readiness | **COMPLETE as a lifecycle; PARTIAL in staging coverage** | `discovery/` + fake port: 13 acceptance tests (label + internet evidence, conflicts, not-ready, created SKU with engineReady=false, later completion, rescan continuity, request continuity); staging: research + finalize refusal + request #32 + rescan continuity PROVEN; label analysis and a real customer-provisional creation NOT run on staging (no label photograph available in this session) |
+| LABEL EVIDENCE | COMPLETE (design + adapter + tests) · PARTIAL (staging run pending a real label photo) | `analyzeLabel` over `product-scan-analyze`; ledger provenance `label`; conflict test |
+| EXTERNAL EVIDENCE | COMPLETE (real flow through `ean_lookup` → `intimport-enrich`) | staging: three sources with per-field provenance for 4305615614434 |
+| PRODUCT CATALOG / LIVE OVERLAY LIFECYCLE | COMPLETE for the existing lifecycle objects (scan session → customer-provisional product → request → admin verification); no new authority | D10; staging request #32 |
+| PRODUCTBEHAVIOUR | COMPLETE (authority-only) | finalize path + behaviour port; engineReady never invented |
+| ENGINE-READINESS GATING | COMPLETE | `engineReady` only from `engineUsable`/authority; `needs_confirmation(behaviour_review)` on rescan until the authority classifies |
+| OFFLINE | COMPLETE (cache) · PARTIAL (memory backend; IndexedDB adapter pending) | tests 6/7 + guest offline |
+| IDENTITY / DEDUP | COMPLETE | central EAN identity, link-only import, request idempotency key, continuity tests |
+| PROVENANCE | COMPLETE | ledger per fact + conflicts; request provenance on staging |
+| GUEST EXACT RESOLUTION (D8) | COMPLETE (RPC migration in this PR; adapter default) · applies on staging after the migration is deployed through the normal workflow | migration `20260905090000`; six D8 stub tests; staging SQL validation |
+| CANONICAL AUTO-CREATION FROM CODE (D7) | NO — enforced (finalize path only; request otherwise) | discovery tests 1, 3, 4, 5 |
 
-## Implemented (new files only; legacy Scan Import, HOME, production untouched)
-- Pure module (contracts, code identity, resolver, pipeline, legacy comparison) — see the architecture doc; 45 pure tests.
-- `adapters/supabaseAdapters.ts`: catalogue + behaviour + price over ONE `search_products_v1` exact path (memoised row), preferences over the two slot RPCs, link-only import over `user_product_relations`, offline cache with TTL + version pointer. Stub-client tests: 9. Flag-gated staging test: 1 (11 assertions), run read-only against staging as `home@home.com` — proof file committed.
-- Reconciliation: origin/staging 3149f345 merged (PR #163/#164/#165: canonical country product resolution, rescue terminal authority, PRO settings) — pure baseline unchanged 45/45; no contract incompatibility.
+## Tests
+`npx vitest run src/scan-import-v2` → 8 files, 130 passed, 2 flag-gated skipped (staging read, staging discovery). With flags: staging read 11/11 (search authority; gtin authority after migration), staging discovery 11/11. `tsc --noEmit` clean, eslint clean.
 
-## Test results (current)
-`npx vitest run src/scan-import-v2` → 5 files, 74 passed, 1 skipped (the staging test without the flag). With the flag: staging test 11/11. `tsc --noEmit` clean, eslint clean.
-
-## Real staging results (read-only)
-| product | EAN | result | canonical id | product code | visibility/strength | country | ProductBehaviour | price |
-|---|---|---|---|---|---|---|---|---|
-| Hacendado | 8402001047251 | FOUND · resolved_exact | 50c3d0e1-ca37-4891-a744-a3438d6b226a | PR-ING-007173 | shared · canonical_shared · commercial_product | ES | classified (version 44d44d53…) | missing |
-| Łaciate | 5900820012434 | FOUND · resolved_exact | 8fc7869c-f779-43c6-b5e6-c25a845f7c0e | PR-ING-007172 | shared · canonical_shared · commercial_product | PL | classified | missing |
-| Alsace Lait | 3262970109108 | FOUND · resolved_exact | db21c569-6427-4457-b1ae-6952a48f75ac | PR-ING-007174 | shared · canonical_shared · commercial_product | FR | classified | missing |
-Unknown 4305615614434 → `unknown`. Guest → `unknown` (explicit scope). Direct `products`/`product_variants` reads as the QA account → 0 rows (RLS).
-
-## Not done / next steps
-1. `resolve_exact_products_by_code_v1` RPC (migration in a PR, validated in a rolled-back transaction, never applied by hand) exposing visibility, ownership, active state, version, twins evidence → removes the `private_own` limit and gives guests a deliberate read-only exact path if the owner wants one.
-2. Import of NEW products from a confirmed code (owner decision: allow `gellatti_upsert_customer_added_product_v1` without an analysed session, or keep the legacy evidence flow as the only creator).
-3. Staging WRITE proof for the link-only import (behind `SCAN_IMPORT_V2_STAGING_WRITE=1`), then a flag-gated staging dev page: Scan Core harness → `fromScanCoreObservation` → V2 with real adapters, for owner QA. No HOME change.
-4. Scan Core contract-only change on its own branch (`toConfirmedScan()`), rename one `ScanObservation`.
-5. External-evidence adapter over `intimport-enrich` with `AbortSignal` (the pipeline timeout already bounds it).
+## Remaining gaps (exact)
+1. Label analysis on staging with a real label photograph, then a real customer-provisional creation through finalize (the code path exists and is unit-tested; the staging run needs an owner photo or a QA label image).
+2. `SCAN_IMPORT_V2_GTIN_RPC` staging adapter run after migration `20260905090000` is applied by the normal workflow (function proven in rolled-back transactions; adapter proven with stubs).
+3. IndexedDB backend for the offline cache (memory backend today).
+4. A staging-only, flag-gated dev page: Scan Core harness → `fromScanCoreObservation` → V2 with real adapters (owner QA). HOME untouched.
+5. Scan Core contract-only change on its branch (`toConfirmedScan()`), rename one `ScanObservation`.
 
 ## Safety
-No legacy file changed (diff vs staging: `src/scan-contract`, `src/scan-import-v2`, `reports/scan-import-v2` only). HOME untouched. Production/main untouched. Staging DB not modified (read-only proof; the link upsert was recorded, not executed).
+No legacy file changed; HOME untouched; production/main untouched; Scan Core untouched (0490b223). Staging writes made by the discovery proof: one scan session, one lookup reservation, one product request (#32, SUBMITTED, QA account home@home.com) — all test data in the canonical lifecycle, cancellable by admin.

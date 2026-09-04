@@ -1,4 +1,4 @@
-# SCAN IMPORT 2.0 — test matrix (owner list) → `npx vitest run src/scan-import-v2` = 5 files, 74 passed + 1 flag-gated (staging) @ d272d535
+# SCAN IMPORT 2.0 — test matrix (owner list) → `npx vitest run src/scan-import-v2` = 8 files, 130 passed + 2 flag-gated (staging) @ 6bde3baa
 
 | # | case | test (file: name) | result |
 |---|---|---|---|
@@ -48,3 +48,23 @@ Not covered here (needs real adapters): Supabase-backed ports, the HOME/PRO wiri
 | link import idempotent, never creates | adapters: `link import is idempotent…` | PASS |
 | offline cache TTL + version pointer | adapters: `offline cache: entries expire by TTL…` | PASS |
 | REAL STAGING (flag-gated, read-only) | staging: `resolves the three real products…` | PASS 11/11 (2026-09-04) |
+
+## Unknown-product acceptance (discovery.test.ts + staging.discovery.test.ts)
+| acceptance row | test | result |
+|---|---|---|
+| UNKNOWN VALID GTIN: discovery starts, no placeholder dead end | `UNKNOWN VALID GTIN…` | PASS (+ staging: session ed9d0d48, request #32) |
+| UNKNOWN + LABEL EVIDENCE contributes to the same identity | `UNKNOWN + LABEL EVIDENCE…` | PASS (fake port; staging pending a label photo) |
+| UNKNOWN + INTERNET EVIDENCE contributes to the same identity | `UNKNOWN + INTERNET EVIDENCE…` | PASS (+ staging: 3 real sources with provenance) |
+| LABEL / INTERNET CONFLICT: no silent winner | `LABEL / INTERNET CONFLICT…` | PASS |
+| UNKNOWN WITHOUT ENOUGH TECHNICAL DATA: product preserved, not created, engineReady=false | `UNKNOWN WITHOUT ENOUGH TECHNICAL DATA…` | PASS (+ staging: finalize refused, 0 product rows) |
+| NEW EXACT SKU through the authorities, engineReady only from the authority | `NEW EXACT SKU…` | PASS (fake) |
+| LATER PROFILE COMPLETION → same product eligible | `RESCAN AFTER CREATION + LATER PROFILE COMPLETION…` | PASS |
+| RESCAN AFTER COMPLETION: same product, no duplicate | same test (`created.size === 1`, one research) | PASS |
+| DURABLE CANDIDATE across sessions | `DURABLE DISCOVERY CANDIDATE…` | PASS (+ staging: rescan → discovery_requested) |
+| PROVIDER FINDS UNKNOWN GTIN → still not canonical | `EXTERNAL PROVIDER FINDS…` | PASS |
+| PROVIDER TIMEOUT during discovery | `PROVIDER TIMEOUT during discovery…` | PASS |
+| SERVER EXACT during discovery → exact, never new | `SERVER EXACT during discovery…` | PASS |
+| GUEST unknown: no discovery | `GUEST unknown…` | PASS |
+| EXACT BRANDED CODE never generic | `EXACT BRANDED CODE NEVER COLLAPSES…` | PASS |
+| D8 guest resolver (6 tests) | adapters.test.ts `D8 — guest-safe exact resolver adapter` | PASS |
+| discovery adapter contracts (6 tests) | discoveryAdapter.test.ts | PASS |

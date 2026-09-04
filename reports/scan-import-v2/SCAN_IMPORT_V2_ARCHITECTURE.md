@@ -54,3 +54,30 @@ HOME/PRO wiring, Supabase adapters, edge functions, any legacy modification, pro
 - **D8 — explicit guest scope.** The exact RPC is revoked from anon, so a guest gets `unknown` with no RPC call (no silent partial catalogue). This is the only place client/server results legitimately differ, and it is by account visibility, not by path.
 - **Verified on staging (read-only, QA account home@home.com):** Hacendado 8402001047251 → PR-ING-007173 (ES), Łaciate 5900820012434 → PR-ING-007172 (PL), Alsace Lait 3262970109108 → PR-ING-007174 (FR): all `canonical_shared commercial_product`, behaviour `classified`, price `missing`, confidence 97; unknown 4305615614434 → `unknown`; guest → `unknown`. Direct table reads by the same account return nothing (RLS: own rows only) — proof that the RPC is the only client-usable exact path today. File: `STAGING_READ_PROOF_2026-09-04.json`.
 - **Known limits:** the RPC exposes no ownership/visibility, so a `private_own` twin is indistinguishable from `canonical_shared` (both would be reported at the same strength → AMBIGUOUS rather than a wrong pick); `bindingId` is the current version pointer, not the binding row id; a dedicated `resolve_exact_products_by_code_v1` RPC returning visibility, ownership, active state and version would remove both limits (NEXT STEP, migration + PR, not applied by hand).
+
+## Unknown-product flow (owner correction 2026-09-05) — `src/scan-import-v2/discovery/`
+Scan Import 2.0 owns the complete identification flow after confirmation. When the exact authority does not know the code, discovery orchestrates the EXISTING authorities — no second product authority, no Mapper rows, nothing invented:
+```
+confirmed code (exact authority: none)
+ → findOwnRequest (continuity)            gellatti_my_product_requests_v1
+ → research                                product-scan-analyze mode ean_lookup: server exact lookup, else ONE bounded exact-source research
+      existing_product → resolved_exact    (the server knew it: never a new product)
+      facts → discovered_pending           stage code_known | commercial_identity_hypothesis, next label_photo
+ → label evidence                          product-scan-analyze mode analyze (photographs) → same session, same identity
+      → discovered_pending                 stage evidence_collected; ledger: facts with provenance, conflicts with both values + retained source
+ → finalize                                product-scan-finalize → profile authority + PRODUCT_BEHAVIOR_V1
+      family_confirmation_required → needs_confirmation(family)
+      not_ready / identity_required → discovered_pending (product NOT created; identity + evidence preserved)
+      created → discovered_exact            customer-provisional exact SKU; engineReady ONLY from the authority; stage exact_sku_created | behaviour_bound | engine_ready
+ → request                                 gellatti_submit_product_request_v1 → discovery_requested (durable candidate, canonical=false, engine usable=false)
+ later: rescan → exact authority returns the provisional (ownership linked) → resolved_exact / needs_confirmation(behaviour_review) with the SAME product id;
+        profile completion or admin verification flips readiness through the authority — identity unchanged.
+```
+Seven distinct truths are kept apart in `DiscoveryStage`: code_known → commercial_identity_hypothesis → evidence_collected → exact_sku_created → technical_data_known → behaviour_bound → engine_ready. The ledger (`discovery/ledger.ts`) records every fact with its source (barcode · label · manufacturer · barcode_registry · retailer · web_search · user_confirmed · catalog) and keeps every conflict visible (both values, retained source = the legacy rank: the label outranks the web). A value without provenance is not a fact.
+
+- **D9 — label evidence through the scan-session authority.** Photographs are analysed by `product-scan-analyze`, the only place label facts are extracted and merged; V2 never runs OCR/vision itself and never treats extracted text as truth (missing critical fields stay missing).
+- **D10 — the product request is the durable discovery candidate.** It is the canonical model's own "discovery" object (source SCANNER, detected EAN, evidence, provenance, admin verification → canonical product). V2 submits it with `authority: SCAN_IMPORT_V2_DISCOVERY_V1`, the Scan Core symbology/GTIN, source URLs and the conflict list. Continuity across sessions/browsers is by code + account through the read model.
+- **D11 — market country vs origin evidence.** The request's market country is the account/context Product Country (never UI language); the label/web `countryOfOrigin` is evidence in the ledger. They are different facts and are stored separately (verified on staging: request market PL, origin evidence Deutschland).
+- **Guests never discover** (no session, honest `unknown`); saving/linking/discovery is authenticated only.
+
+Verified on staging (2026-09-04/05, HOME QA account) for the genuinely unknown code 4305615614434: research through the real authority found three web sources with per-field provenance (title "altapharma Magnesium + Calcium + D3"), the identity was NOT accepted from the web alone (displayName null, missing product_identity), finalize without a profile refused (no product row created — 0 products for the code), the durable request #32 was created with V2 provenance, and a rescan resolved to `discovery_requested` (continuity). File: `STAGING_DISCOVERY_PROOF_2026-09-05.json`.
