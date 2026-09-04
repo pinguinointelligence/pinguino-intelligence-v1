@@ -89,6 +89,14 @@ export interface SceneLive {
   rectifiedP50: number;
   decodedValues: Record<string, number>;
   wrongValues: string[];
+  core: {
+    state: string;
+    guidance: string;
+    action: string;
+    path: string;
+    trackId: string | null;
+    observed: string | null;
+  } | null;
 }
 
 export interface HarnessSnapshot {
@@ -104,6 +112,7 @@ export interface HarnessSnapshot {
   transferPath: FrameTransferPath;
   availablePaths: FrameTransferPath[];
   maxDecodeWidth: number;
+  mode: 'baseline' | 'scancore';
   torchOn: boolean;
   live: SceneLive | null;
   lastScene: SceneRunSummary | null;
@@ -158,6 +167,7 @@ export class HarnessController {
     transferPath: 'rgba_buffer',
     availablePaths: ['rgba_buffer'],
     maxDecodeWidth: 0,
+    mode: 'baseline',
     torchOn: false,
     live: null,
     lastScene: null,
@@ -213,6 +223,14 @@ export class HarnessController {
     flushTimer: ReturnType<typeof setInterval> | null;
     hudTimer: ReturnType<typeof setInterval> | null;
     onDone: ((summary: SceneRunSummary) => void) | null;
+    lastDecision: {
+      state: string;
+      guidance: string;
+      action: string;
+      path: string;
+      trackId: string | null;
+    } | null;
+    lastObserved: string | null;
   } | null = null;
   private snapshotCanvas: HTMLCanvasElement | null = null;
 
@@ -463,9 +481,10 @@ export class HarnessController {
       const controls = await this.camera.probeControls();
       if (!this.client) {
         this.client = new DecodeClient({
-          plan: { maxDecodeWidth: 0 },
+          plan: { maxDecodeWidth: 0, mode: this.snap.mode },
           onResult: (evidence) => this.onEvidence(evidence),
           onError: (message) => this.publish({ error: `Błąd dekodera: ${message}` }),
+          onObservation: () => undefined,
         });
         const ready = await this.client.start();
         const worker = {
@@ -485,15 +504,47 @@ export class HarnessController {
         await this.db?.updateRun(this.run.sessionId, { controls });
       }
       this.publish({ controls });
+      this.sendProfileToWorker(controls);
     } catch (error) {
       this.fail(error, 'Nie udało się sprawdzić sterowania aparatem.');
       throw error;
     }
   }
 
+  private sendProfileToWorker(controls: CameraControls | null): void {
+    const d = this.snap.delivered;
+    const client = this.client;
+    if (!d || !client) return;
+    client.sendProfile(
+      {
+        formFactor: this.run?.device.formFactor ?? 'unknown',
+        sourceW: d.width,
+        sourceH: d.height,
+        fps: d.frameRate,
+        autofocus: d.autofocus,
+        zoomMax: controls?.zoom.range?.max ?? null,
+        torch: controls?.torch.supported ?? false,
+        startSharpness: d.startQuality?.laplacianVar ?? null,
+        hardwareConcurrency: this.run?.device.hardwareConcurrency ?? null,
+      },
+      false, // zoom becomes automatic only after the probe approves it
+    );
+    client.sendCameraState({ zoomLevel: 1, torchOn: this.snap.torchOn, refocusAvailable: false });
+  }
+
+  setMode(mode: 'baseline' | 'scancore'): void {
+    this.publish({ mode });
+    this.client?.setPlan({ mode });
+  }
+
   async setTorch(on: boolean): Promise<void> {
     const ok = await this.camera.setTorch(on);
     this.publish({ torchOn: ok ? on : false });
+    this.client?.sendCameraState({
+      zoomLevel: 1,
+      torchOn: ok ? on : false,
+      refocusAvailable: false,
+    });
   }
 
   setTransferPath(path: FrameTransferPath): void {
@@ -552,6 +603,8 @@ export class HarnessController {
       flushTimer: null,
       hudTimer: null,
       onDone,
+      lastDecision: null,
+      lastObserved: null,
     };
     client.resetStats();
     this.loop = new FrameLoop({
@@ -584,6 +637,28 @@ export class HarnessController {
     rec.evidence.push(evidence);
     rec.pending.push(evidence);
     rec.frameCount += 1;
+    const d = evidence.decision as
+      | {
+          scanState?: string;
+          guidance?: string;
+          action?: string;
+          primaryTrackId?: string | null;
+          tracks?: Array<{ path?: string }>;
+        }
+      | undefined;
+    if (d)
+      rec.lastDecision = {
+        state: d.scanState ?? '',
+        guidance: d.guidance ?? 'none',
+        action: d.action ?? 'none',
+        path: d.tracks?.[0]?.path ?? '',
+        trackId: d.primaryTrackId ?? null,
+      };
+    const o = evidence.observation as
+      | { barcode?: { value?: string; format?: string; lane?: string } }
+      | undefined;
+    if (o?.barcode?.value)
+      rec.lastObserved = `${o.barcode.value} ${o.barcode.format ?? ''} (${o.barcode.lane ?? ''})`;
     const tMs = evidence.tCapture - rec.t0;
     if (evidence.transfer) rec.transfer.push(evidence.transfer.mainToWorkerMs);
     if (typeof evidence.roundTripMs === 'number') rec.roundTrip.push(evidence.roundTripMs);
@@ -729,6 +804,7 @@ export class HarnessController {
         rectifiedP50: rec.rectified.snapshot().p50,
         decodedValues: { ...rec.decodedValues },
         wrongValues: [...rec.wrongValues],
+        core: rec.lastDecision ? { ...rec.lastDecision, observed: rec.lastObserved } : null,
       },
     });
   }

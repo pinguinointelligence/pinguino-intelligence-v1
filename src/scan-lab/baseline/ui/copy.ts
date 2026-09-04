@@ -86,6 +86,9 @@ export const copy = {
     toggle: 'Diagnostyka',
     hide: 'Ukryj diagnostykę',
     transferPath: 'Ścieżka przekazania klatki do workera',
+    mode: 'Tryb dekodowania',
+    modeBaseline: 'Pomiar bazowy (warianty co klatkę)',
+    modeScanCore: 'Scan Core v0 (adaptacyjny, śledzenie)',
     decodeWidth: 'Rozdzielczość analizy (dłuższy bok klatki)',
     native: 'natywna (jak dostarcza aparat)',
     storage: 'Pamięć lokalna',
@@ -133,6 +136,23 @@ export const copy = {
     sendHint:
       'Wyślij plik .zip (AirDrop, e-mail, komunikator). Nic nie zostało wysłane automatycznie.',
   },
+  guidance: {
+    none: '',
+    hold_steady: 'Trzymaj nieruchomo',
+    move_closer: 'Przybliż',
+    move_away: 'Oddal',
+    aim_in_frame: 'Umieść kod w kadrze',
+    improve_light: 'Popraw oświetlenie',
+    camera_inadequate: 'Ta kamera nie daje wystarczającej ostrości',
+  } as Record<string, string>,
+  scanState: {
+    SEARCHING: 'SZUKAM',
+    FOUND: 'WIDZĘ KOD',
+    READING: 'CZYTAM',
+    HOLD: 'TRZYMAJ',
+    COMPLETE: 'GOTOWE',
+    LOST: 'ZGUBIONY',
+  } as Record<string, string>,
   error: { ok: 'OK' },
   resume: { found: 'Znaleziono przerwaną sesję.', continue: 'Kontynuuj', fresh: 'Zacznij od nowa' },
   previous: {

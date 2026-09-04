@@ -84,6 +84,28 @@ export function SceneRunner({ controller, snap, step, scene }: Props) {
           {snap.torchOn ? copy.scene.torchOff : copy.scene.torchOn}
         </button>
       )}
+      {live?.core && (
+        <div
+          style={{
+            ...styles.badge,
+            top: 44,
+            background:
+              live.core.state === 'COMPLETE'
+                ? '#2ee6a6'
+                : live.core.state === 'SEARCHING' || live.core.state === 'LOST'
+                  ? '#8899aa'
+                  : '#ffd166',
+            color: '#062016',
+          }}
+        >
+          {copy.scanState[live.core.state] ?? live.core.state}
+          {live.core.guidance && live.core.guidance !== 'none'
+            ? ` · ${copy.guidance[live.core.guidance] ?? live.core.guidance}`
+            : ''}
+          {live.core.action !== 'none' ? ` · auto:${live.core.action}` : ''}
+          {live.core.observed ? ` · ${live.core.observed}` : ''}
+        </div>
+      )}
       {live && (
         <div style={styles.hud}>
           <div style={styles.hudCell}>

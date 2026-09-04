@@ -61,6 +61,14 @@ export class BarSaliency {
     this.opts = { ...DEFAULTS, ...options };
   }
 
+  private lastPlane: { data: Uint8Array; width: number; height: number; factor: number } | null =
+    null;
+
+  /** The downscaled plane of the last analyze() call (reused buffer — read before the next call). */
+  lastLevel(): { data: Uint8Array; width: number; height: number; factor: number } | null {
+    return this.lastPlane;
+  }
+
   analyze(luma: Uint8Array, width: number, height: number): SaliencyResult {
     const t0 = performance.now();
     const o = this.opts;
@@ -68,6 +76,7 @@ export class BarSaliency {
     const level = downscaleLuminance(luma, width, height, factor, this.buf.down);
     this.buf.down = level.data;
     const { data, width: w, height: h } = level;
+    this.lastPlane = { data, width: w, height: h, factor };
     const B = o.blockSize;
     const bw = Math.floor(w / B);
     const bh = Math.floor(h / B);

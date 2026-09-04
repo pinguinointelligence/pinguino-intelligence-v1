@@ -41,6 +41,18 @@ export function DiagnosticsPanel({
             </b>
           </div>
           <label style={styles.label}>
+            {copy.diagnostics.mode}
+            <select
+              style={styles.input}
+              value={snap.mode}
+              disabled={snap.live !== null}
+              onChange={(e) => controller.setMode(e.target.value as 'baseline' | 'scancore')}
+            >
+              <option value="baseline">{copy.diagnostics.modeBaseline}</option>
+              <option value="scancore">{copy.diagnostics.modeScanCore}</option>
+            </select>
+          </label>
+          <label style={styles.label}>
             {copy.diagnostics.transferPath}
             <select
               style={styles.input}

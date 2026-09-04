@@ -8,6 +8,7 @@ import type { DecodeOutcome, FrameEvidence, Quad, SaliencyCandidate } from '../t
 import { downscaleLuminance, lumaQuality, rgbaToLuminance } from '../vision/luminance';
 import { expandQuad, rectifyQuad } from '../vision/rectify';
 import { BarSaliency } from '../vision/saliency';
+import { ScanCoreLane } from './scanCoreLane';
 import {
   CHEAP_OPTIONS,
   HARDER_OPTIONS,
@@ -31,6 +32,8 @@ const scope = self as unknown as WorkerScope;
 let decoder: ZxingDecoder | null = null;
 let plan: DecodePlan = { ...DEFAULT_DECODE_PLAN };
 const saliency = new BarSaliency();
+const lane = new ScanCoreLane();
+let warmDecodeMs: number | null = null;
 let busy = false;
 let framesWithoutHit = 0;
 
@@ -175,45 +178,74 @@ async function handleFrame(msg: FrameMessage): Promise<void> {
   const dec = decoder;
   if (!dec) throw new Error('decoder not initialised');
 
-  if (plan.fullCheap)
-    decodes.push(await dec.decodeLuma(decodeLuma, dw, dh, 'full_cheap', CHEAP_OPTIONS));
-  if (!hasValidHit(decodes)) {
-    framesWithoutHit += 1;
-    if (plan.fullHarderEveryN > 0 && framesWithoutHit % plan.fullHarderEveryN === 0) {
-      decodes.push(await dec.decodeLuma(decodeLuma, dw, dh, 'full_harder', HARDER_OPTIONS));
-    }
+  let decision: unknown;
+  let observation: unknown;
+  if (plan.mode === 'scancore' && lane.ready) {
+    const core = await lane.process(
+      dec,
+      luma,
+      width,
+      height,
+      frameIndex,
+      tCapture,
+      saliencyResult,
+      saliency.lastLevel(),
+      quality,
+    );
+    decodes.push(...core.decodes);
+    decision = core.decision;
+    observation = core.observation;
+    if (core.observation) post({ type: 'observation', frameIndex, observation: core.observation });
   } else {
-    framesWithoutHit = 0;
-  }
-
-  if (best) {
-    if (plan.roiCheap) {
-      const b = quadBounds(best.quad, width, height, 0.12);
-      if (b.w >= 32 && b.h >= 8) {
-        const roi = cropLuma(luma, width, b.x0, b.y0, b.w, b.h);
-        decodes.push(
-          offsetOutcome(
-            await dec.decodeLuma(roi, b.w, b.h, 'roi_cheap', CHEAP_OPTIONS),
-            b.x0,
-            b.y0,
-          ),
-        );
-      }
+    if (plan.fullCheap) {
+      const cheap = await dec.decodeLuma(decodeLuma, dw, dh, 'full_cheap', CHEAP_OPTIONS);
+      warmDecodeMs ??= cheap.durationMs; // first warm full-frame decode = budget seed for the Scan Core lane
+      decodes.push(cheap);
     }
-    if (plan.rectifiedCheap && Math.abs(normalizedAngle(best.orientationDeg)) > 8) {
-      const region = rectifyQuad(luma, width, height, expandQuad(best.quad, 0.15, 0.25), rectified);
-      rectified = region.data;
-      const outcome = await dec.decodeLuma(
-        region.data,
-        region.width,
-        region.height,
-        'rectified_cheap',
-        CHEAP_OPTIONS,
-      );
-      outcome.durationMs += region.durationMs; // rectification is part of this variant's cost
-      // geometry of a rectified crop is not in frame coordinates; drop it rather than mislead
-      for (const r of outcome.results) r.quad = null;
-      decodes.push(outcome);
+    if (!hasValidHit(decodes)) {
+      framesWithoutHit += 1;
+      if (plan.fullHarderEveryN > 0 && framesWithoutHit % plan.fullHarderEveryN === 0) {
+        decodes.push(await dec.decodeLuma(decodeLuma, dw, dh, 'full_harder', HARDER_OPTIONS));
+      }
+    } else {
+      framesWithoutHit = 0;
+    }
+
+    if (best) {
+      if (plan.roiCheap) {
+        const b = quadBounds(best.quad, width, height, 0.12);
+        if (b.w >= 32 && b.h >= 8) {
+          const roi = cropLuma(luma, width, b.x0, b.y0, b.w, b.h);
+          decodes.push(
+            offsetOutcome(
+              await dec.decodeLuma(roi, b.w, b.h, 'roi_cheap', CHEAP_OPTIONS),
+              b.x0,
+              b.y0,
+            ),
+          );
+        }
+      }
+      if (plan.rectifiedCheap && Math.abs(normalizedAngle(best.orientationDeg)) > 8) {
+        const region = rectifyQuad(
+          luma,
+          width,
+          height,
+          expandQuad(best.quad, 0.15, 0.25),
+          rectified,
+        );
+        rectified = region.data;
+        const outcome = await dec.decodeLuma(
+          region.data,
+          region.width,
+          region.height,
+          'rectified_cheap',
+          CHEAP_OPTIONS,
+        );
+        outcome.durationMs += region.durationMs; // rectification is part of this variant's cost
+        // geometry of a rectified crop is not in frame coordinates; drop it rather than mislead
+        for (const r of outcome.results) r.quad = null;
+        decodes.push(outcome);
+      }
     }
   }
 
@@ -228,6 +260,8 @@ async function handleFrame(msg: FrameMessage): Promise<void> {
     saliency: saliencyResult,
     decodes,
     quality,
+    decision,
+    observation,
   };
   const tWorkerDone = performance.timeOrigin + performance.now();
   if (msg.luma) post({ type: 'result', evidence, luma: msg.luma, tWorkerDone }, [msg.luma]);
@@ -252,6 +286,16 @@ scope.onmessage = (event) => {
       .catch((error: unknown) =>
         post({ type: 'error', frameIndex: null, message: `wasm warmup failed: ${String(error)}` }),
       );
+    return;
+  }
+  if (msg.type === 'profile') {
+    lane.setProfile(msg.profile, msg.profile.hardwareConcurrency, msg.zoomApproved, warmDecodeMs);
+    return;
+  }
+  if (msg.type === 'camera') {
+    lane.camera.zoomLevel = msg.zoomLevel;
+    lane.camera.torchOn = msg.torchOn;
+    lane.camera.refocusAvailable = msg.refocusAvailable;
     return;
   }
   if (msg.type === 'plan') {

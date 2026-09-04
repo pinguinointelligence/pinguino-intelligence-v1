@@ -14,6 +14,8 @@ export interface DecodePlan {
   localize: boolean;
   /** Decode input width cap; a 1920-wide plane is decoded as-is when 0. */
   maxDecodeWidth: number;
+  /** 'baseline' = Phase 0 measurement variants every frame; 'scancore' = adaptive Scan Core v0 drives decodes. */
+  mode: 'baseline' | 'scancore';
 }
 
 export const DEFAULT_DECODE_PLAN: DecodePlan = {
@@ -23,6 +25,7 @@ export const DEFAULT_DECODE_PLAN: DecodePlan = {
   rectifiedCheap: true,
   localize: true,
   maxDecodeWidth: 0,
+  mode: 'baseline',
 };
 
 export interface InitMessage {
@@ -52,7 +55,35 @@ export interface PlanMessage {
   plan: Partial<DecodePlan>;
 }
 
-export type MainToWorker = InitMessage | FrameMessage | PlanMessage;
+export interface ProfileMessage {
+  type: 'profile';
+  profile: {
+    formFactor: 'mobile' | 'desktop' | 'unknown';
+    sourceW: number;
+    sourceH: number;
+    fps: number | null;
+    autofocus: boolean | null;
+    zoomMax: number | null;
+    torch: boolean;
+    startSharpness: number | null;
+    hardwareConcurrency: number | null;
+  };
+  zoomApproved: boolean;
+}
+
+export interface CameraStateMessage {
+  type: 'camera';
+  zoomLevel: number;
+  torchOn: boolean;
+  refocusAvailable: boolean;
+}
+
+export type MainToWorker =
+  | InitMessage
+  | FrameMessage
+  | PlanMessage
+  | ProfileMessage
+  | CameraStateMessage;
 
 export interface ReadyMessage {
   type: 'ready';
@@ -83,7 +114,18 @@ export interface WorkerErrorMessage {
   luma?: ArrayBuffer;
 }
 
-export type WorkerToMain = ReadyMessage | ResultMessage | DroppedMessage | WorkerErrorMessage;
+export interface ObservationMessage {
+  type: 'observation';
+  frameIndex: number;
+  observation: unknown;
+}
+
+export type WorkerToMain =
+  | ReadyMessage
+  | ResultMessage
+  | DroppedMessage
+  | WorkerErrorMessage
+  | ObservationMessage;
 
 export const VARIANT_ORDER: readonly DecodeVariant[] = [
   'full_cheap',

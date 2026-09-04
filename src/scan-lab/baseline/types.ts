@@ -162,7 +162,11 @@ export type DecodeVariant =
   | 'full_harder'
   | 'roi_cheap'
   | 'roi_harder'
-  | 'rectified_cheap';
+  | 'rectified_cheap'
+  | 'core_medium'
+  | 'core_native'
+  | 'core_rectified'
+  | 'core_rescue';
 
 export interface DecodeOutcome {
   variant: DecodeVariant;
@@ -196,6 +200,10 @@ export interface FrameEvidence {
   luminanceMs?: number;
   saliency?: SaliencyResult;
   decodes: DecodeOutcome[];
+  /** Scan Core v0 per-frame decision record (audit diagnostics), present in scancore mode. */
+  decision?: unknown;
+  /** Scan Core observation emitted on this frame, if any. */
+  observation?: unknown;
   /** Blur proxy (variance of a subsampled Laplacian) and exposure proxy on the luminance plane. */
   quality?: { laplacianVar: number; meanLuma: number; clippedHighRatio: number };
 }

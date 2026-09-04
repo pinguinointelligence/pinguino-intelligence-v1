@@ -5,7 +5,13 @@
  */
 import type { FrameEvidence, FrameTransferPath, TransferStats } from '../types';
 import { SampleBuffer } from '../stats/percentiles';
-import type { DecodePlan, ReadyMessage, WorkerToMain } from './protocol';
+import type {
+  CameraStateMessage,
+  DecodePlan,
+  ProfileMessage,
+  ReadyMessage,
+  WorkerToMain,
+} from './protocol';
 
 export interface SubmitFrame {
   frameIndex: number;
@@ -23,6 +29,7 @@ export interface DecodeClientOptions {
   onResult: (evidence: FrameEvidence) => void;
   onDropped?: (frameIndex: number) => void;
   onError?: (message: string, frameIndex: number | null) => void;
+  onObservation?: (frameIndex: number, observation: unknown) => void;
   /** Worker factory (injectable for tests). */
   createWorker?: () => Worker;
   readyTimeoutMs?: number;
@@ -82,6 +89,14 @@ export class DecodeClient {
 
   setPlan(plan: Partial<DecodePlan>): void {
     this.worker?.postMessage({ type: 'plan', plan });
+  }
+
+  sendProfile(profile: ProfileMessage['profile'], zoomApproved: boolean): void {
+    this.worker?.postMessage({ type: 'profile', profile, zoomApproved } satisfies ProfileMessage);
+  }
+
+  sendCameraState(state: Omit<CameraStateMessage, 'type'>): void {
+    this.worker?.postMessage({ type: 'camera', ...state } satisfies CameraStateMessage);
   }
 
   /** Luma buffer from the pool (allocates only when the pool is empty or the size changed). */
@@ -179,6 +194,10 @@ export class DecodeClient {
     if (msg.type === 'dropped') {
       this.release(msg.luma);
       this.opts.onDropped?.(msg.frameIndex);
+      return;
+    }
+    if (msg.type === 'observation') {
+      this.opts.onObservation?.(msg.frameIndex, msg.observation);
       return;
     }
     if (msg.type === 'error') {
