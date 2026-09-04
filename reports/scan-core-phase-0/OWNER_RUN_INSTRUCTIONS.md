@@ -43,3 +43,15 @@ zatrzymanym aparacie — wróć do kroku „Włącz aparat”; zapisane sceny ni
 ## Debugowanie po kablu (opcjonalne, NIE wymagane)
 iPhone: Ustawienia → Safari → Zaawansowane → *Inspektor www* włączony; Mac: Safari → Programowanie → nazwa iPhone'a →
 karta testu. Android: `chrome://inspect` na Macu w Chrome, telefon z włączonym debugowaniem USB.
+
+## Tryb „Scan Core v0” (opcjonalny, od 51b3ea12)
+
+W panelu **Diagnostyka** jest pole **Tryb dekodowania**: „Pomiar bazowy” (domyślny — wszystkie
+instrukcje powyżej zakładają ten tryb) albo „Scan Core v0 (adaptacyjny, śledzenie)”. Tryb można
+zmienić tylko, gdy żadna scena nie jest w toku. W trybie Scan Core v0 nad podglądem pojawia się
+plakietka stanu (SZUKAM / WIDZĘ KOD / CZYTAM / TRZYMAJ / GOTOWE / ZGUBIONY), wskazówka
+(np. „Przybliż”), automatyczna akcja (`auto:zoom_step`, `auto:torch_on`) oraz ostatnia
+potwierdzona wartość z formatem i torem potwierdzenia. Każda klatka zapisuje decyzję rdzenia
+i obserwację do paczki (pola `decision` / `observation`), więc paczka z tego trybu jest
+audytowalna klatka po klatce. Prośba: po sondzie w trybie bazowym uruchom jeszcze jedną scenę
+26 (pętla 60 s) w trybie Scan Core v0 i wyślij paczkę tą samą drogą.
