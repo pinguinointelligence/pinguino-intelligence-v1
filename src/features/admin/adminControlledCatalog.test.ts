@@ -88,8 +88,15 @@ describe('controlled customer product intake', () => {
     expect(submit).toContain('administrator_required');
     expect(submit).toContain('requireApprovalReady');
     expect(submit).toContain('approval_not_ready');
+    expect(submit).toContain('productProfileDiagnostics: serverProductProfileAuthority');
+    expect(submit).toContain(
+      'mapperRejectedCandidates: serverProductProfileAuthority.mapperRejectedCandidates',
+    );
     expect(submit).toContain('product_request_approval_binding_required');
     expect(submit).toContain("canonicalInput.provenance !== 'product_add_request_admin_v1'");
+    expect(submit.indexOf('canonicalInput = legacyPrivateProductId')).toBeLessThan(
+      submit.indexOf("canonicalInput.provenance !== 'product_add_request_admin_v1'"),
+    );
     expect(requestPrAuthority).toContain('product_add_request_admin_v1');
     expect(requestPrAuthority).toContain(
       "request_authority.status in ('SUBMITTED','ADMIN_REVIEW','NEEDS_INFO','RESUBMITTED')",
