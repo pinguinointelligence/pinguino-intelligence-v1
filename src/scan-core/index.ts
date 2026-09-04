@@ -47,3 +47,11 @@ export {
   type StateOutput,
 } from './stateMachine';
 export { candidateQuality, candidateBox, type CandidateQuality, type CutEdge } from './quality';
+export {
+  classifyTier,
+  budgetFor,
+  TIER_BUDGETS,
+  type DeviceTier,
+  type TierBudget,
+  type TierEvidence,
+} from './tiers';

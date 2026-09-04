@@ -3,9 +3,12 @@
  * Fast lane: two reads from DIFFERENT frames agreeing, each lineCount ≥ 4 and module ≥ 2 px, neither from
  * a rectified crop alone, no contradicting read in between (table 6: P(wrong) ≤ 0.7 % at lineCount 4; the
  * observed wrong pairs — D1 40 cm, D3 can — all violate one of these).
- * Slow lane: four agreeing reads from different frames with ≥ 2:1 margin over any other value within the
- * window (D1 40 cm alias sequence: the correct code won 6 reads against eight scattered aliases of 1–5 each;
- * a 3:1 margin never confirmed it, 2:1 with ≥ 4 frames confirms it and no alias).
+ * Consensus lane (NOT the audited slot-accumulator slow lane, which stays research-gated): four agreeing
+ * reads from different frames with ≥ 2:1 margin over any other value within the window (D1 40 cm alias
+ * sequence: the correct code won 6 reads against eight scattered aliases of 1–5 each; a 3:1 margin never
+ * confirmed it, 2:1 with ≥ 4 frames confirms it and no alias).
+ * §17 rectified rule (corpus): a systematic homography alias repeats identically across frames, so rectified
+ * reads never confirm on their own — every confirmation needs at least one non-rectified agreeing read.
  */
 export type ReadSource = 'medium' | 'native' | 'rescue' | 'rectified';
 
@@ -18,7 +21,7 @@ export interface Read {
   source: ReadSource;
 }
 
-export type Lane = 'fast' | 'slow';
+export type Lane = 'fast' | 'consensus';
 
 export interface ConfirmationState {
   status: 'idle' | 'reading' | 'confirmed';
@@ -33,6 +36,8 @@ export interface ConfirmationState {
 export const CONFIRMATION = {
   fastLineCount: 4,
   fastModulePx: 2,
+  /** audit §5.5: the two agreeing decodes of the fast lane must land within 400 ms */
+  fastWindowMs: 400,
   slowAgreeing: 4,
   slowMargin: 2,
   windowMs: 1500,
@@ -74,15 +79,17 @@ export class Confirmation {
     this.reads = this.reads.filter((r) => read.tMs - r.tMs <= CONFIRMATION.windowMs);
     this.reads.push(read);
 
-    // fast lane: the previous read (any source) must agree and come from another frame; both fast-eligible;
-    // a contradicting read between them is impossible by construction (we look at the immediately previous read)
+    // fast lane (audit §5.5 + corpus gates): the immediately previous read agrees, comes from another frame,
+    // both fast-eligible, within 400 ms, and at least one of the two is NOT from a rectified crop (§17)
     const prev = this.reads.length >= 2 ? this.reads[this.reads.length - 2] : undefined;
     if (
       prev &&
       prev.text === read.text &&
       prev.frameIndex !== read.frameIndex &&
+      read.tMs - prev.tMs <= CONFIRMATION.fastWindowMs &&
       this.fastEligible(prev) &&
-      this.fastEligible(read)
+      this.fastEligible(read) &&
+      !(prev.source === 'rectified' && read.source === 'rectified')
     ) {
       this.state = {
         status: 'confirmed',

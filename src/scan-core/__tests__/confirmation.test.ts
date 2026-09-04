@@ -20,32 +20,39 @@ describe('fast lane', () => {
     expect(s.lane).toBe('fast');
     expect(s.frames).toEqual([1, 2]);
   });
+  it('fast lane needs the two reads within 400 ms (audit); later agreement goes to the consensus lane', () => {
+    const c = new Confirmation();
+    c.push({ frameIndex: 1, tMs: 0, text: 'A', lineCount: 5, moduleNative: 2.3, source: 'native' });
+    const late = c.push({
+      frameIndex: 20,
+      tMs: 900,
+      text: 'A',
+      lineCount: 5,
+      moduleNative: 2.3,
+      source: 'native',
+    });
+    expect(late.status).toBe('reading');
+  });
   it('never confirms from two results of the same frame', () => {
     const c = new Confirmation();
     c.push(r(7, 'A'));
     expect(c.push(r(7, 'A')).status).toBe('reading');
   });
-  it('rectified reads never take the fast lane but count on the slow lane (D3 can: 40 correct rectified reads vs 6 aliases)', () => {
-    const c = new Confirmation();
-    c.push(r(139, '0141200001098', 5, { source: 'rectified' }));
-    expect(c.push(r(142, '0141200001098', 5, { source: 'rectified' })).status).toBe('reading');
-    const d = new Confirmation();
-    const seq = [
-      '8411092731130',
-      '8411092731130',
-      '0141200001098',
-      '8411092731130',
-      '8411092731130',
-      '0141200001098',
-      '8411092731130',
-    ];
-    let confirmed: string | null = null;
-    seq.forEach((t, i) => {
-      const st = d.push(r(200 + i * 3, t, 5, { source: 'rectified' }));
-      if (st.status === 'confirmed' && !confirmed) confirmed = st.value;
-    });
-    expect(confirmed).toBe('8411092731130');
-    expect(d.state.lane).toBe('slow');
+  it('§17: rectified-only agreement never confirms, however many frames; one non-rectified agreeing read unlocks it', () => {
+    const alone = new Confirmation();
+    for (let i = 0; i < 12; i += 1)
+      alone.push(r(200 + i * 3, '8411092731130', 6, { source: 'rectified', tMs: 6000 + i * 100 }));
+    expect(alone.state.status).toBe('reading');
+    const mixed = new Confirmation();
+    for (let i = 0; i < 5; i += 1)
+      mixed.push(r(300 + i * 3, '8411092731130', 6, { source: 'rectified', tMs: 9000 + i * 100 }));
+    const st = mixed.push(r(320, '8411092731130', 6, { source: 'native', tMs: 9500 }));
+    expect(st.status).toBe('confirmed');
+    expect(['fast', 'consensus']).toContain(st.lane);
+    const alias = new Confirmation();
+    for (let i = 0; i < 6; i += 1)
+      alias.push(r(139 + i * 3, '0141200001098', 5, { source: 'rectified', tMs: 5700 + i * 160 }));
+    expect(alias.state.status).toBe('reading');
   });
   it('low lineCount or small modules fall to the slow lane', () => {
     const c = new Confirmation();
@@ -53,7 +60,7 @@ describe('fast lane', () => {
     expect(c.push(r(2, 'A', 2)).status).toBe('reading');
     expect(c.push(r(3, 'A', 2)).status).toBe('reading');
     expect(c.push(r(4, 'A', 2)).status).toBe('confirmed');
-    expect(c.state.lane).toBe('slow');
+    expect(c.state.lane).toBe('consensus');
     const d = new Confirmation();
     d.push(r(1, 'A', 6, { moduleNative: 1.2 }));
     expect(d.push(r(2, 'A', 6, { moduleNative: 1.2 })).status).toBe('reading');
@@ -94,6 +101,6 @@ describe('D1 approach-40cm alias sequence (real frames 100–146 from the Safari
       }
     }
     expect(confirmed?.value).toBe('7622210669315');
-    expect(confirmed?.lane).toBe('slow');
+    expect(confirmed?.lane).toBe('consensus');
   });
 });
