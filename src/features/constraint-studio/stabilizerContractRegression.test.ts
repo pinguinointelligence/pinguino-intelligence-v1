@@ -310,9 +310,7 @@ describe('owner-approved Gelato aggregate stabilizer contract', () => {
         const input = ownerDirectionFixture(sweetness, softness, strategy);
         const built = buildOptimizePreview(input, NO_CONSTRAINTS, AT);
         if (!built.ok) {
-          // ECO on this fixture has no owner prices — an honest refusal, and
-          // an already-clean draft is equally acceptable.
-          expect(['already_clean', 'missing_prices']).toContain(built.code);
+          expect(built.code).toBe('already_clean');
           continue;
         }
         // The user's 1.9 g may be held byte-exact by the solver-side stabilizer

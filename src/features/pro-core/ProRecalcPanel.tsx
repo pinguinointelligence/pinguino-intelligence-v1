@@ -9,7 +9,7 @@
  * stays intact. Preview rows render through the same pure ConstraintPreviewCard; failures render
  * the same honest Polish messages; a verify-failed apply renders the same BlockedApplyNotice.
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { copy } from '@/copy/en';
 import { calculateRecipe } from '@/engine';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
@@ -36,6 +36,7 @@ import {
 } from '@/features/constraint-studio/constraintStudioStore';
 import { cn } from '@/lib/cn';
 import { GellattiNotice } from '@/components/ui/GellattiNotice';
+import { DialogShell } from '@/components/ui/DialogShell';
 import { productIdentityLines } from '@/features/ingredient-builder/productIdentityLines';
 import {
   diagnoseRecalcFailure,
@@ -63,8 +64,6 @@ import { useProCoreAccessStore } from '@/features/pro-core/proCoreAccessStore';
 const r = copy.proWorkbar.recalcPanel;
 const n = copy.proWorkbar.maxAmountNotice;
 const d = constraintStudioCopy.diagnosis;
-const FOCUSABLE =
-  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /** The headline for a classified failure — proven by the lock report below it. */
 function diagnosisMessage(diagnosis: RecalcDiagnosis, issue: PreviewIssue): string {
@@ -296,7 +295,6 @@ function RecalcDiagnosisView({
   if (
     issue.code === 'unsupported_profile' ||
     issue.code === 'practicalization_blocked' ||
-    issue.code === 'missing_prices' ||
     issue.code === 'missing_required_role' ||
     issue.code === 'vegan_ingredient_conflict' ||
     issue.code === 'vegan_profile_constraint' ||
@@ -851,58 +849,10 @@ export function ProRecalcPanel({
    * request-generation + timeout wrapper. */
   retryRunner?: () => Promise<void>;
 }) {
-  const panelRef = useRef<HTMLElement | null>(null);
-  const onCloseRef = useRef(onClose);
   const [refreshingProductBehavior, setRefreshingProductBehavior] = useState(false);
   const [productBehaviorRefreshError, setProductBehaviorRefreshError] = useState<string | null>(
     null,
   );
-  useEffect(() => {
-    onCloseRef.current = onClose;
-  }, [onClose]);
-
-  useEffect(() => {
-    if (!open) return;
-    const body = document.body;
-    const previousOverflow = body.style.overflow;
-    const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    body.style.overflow = 'hidden';
-    const focusables = () =>
-      panelRef.current ? Array.from(panelRef.current.querySelectorAll<HTMLElement>(FOCUSABLE)) : [];
-    (focusables()[0] ?? panelRef.current)?.focus();
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        if (useConstraintStudioStore.getState().recalculationTerminal?.state === 'WORKING') {
-          cancelPiRecalculation();
-        }
-        onCloseRef.current();
-        return;
-      }
-      if (event.key !== 'Tab') return;
-      const list = focusables();
-      const first = list[0];
-      const last = list[list.length - 1];
-      if (!first || !last) {
-        event.preventDefault();
-        panelRef.current?.focus();
-        return;
-      }
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('keydown', onKeyDown);
-      body.style.overflow = previousOverflow;
-      trigger?.focus();
-    };
-  }, [open]);
 
   const preview = useConstraintStudioStore((s) => s.preview);
   const applyPending = useConstraintStudioStore((s) => s.applyPending);
@@ -914,6 +864,7 @@ export function ProRecalcPanel({
   const previewIssue = useConstraintStudioStore((s) => s.previewIssue);
   const crownOffCorrectionNotice = useConstraintStudioStore((s) => s.crownOffCorrectionNotice);
   const blocked = useConstraintStudioStore((s) => s.blocked);
+  const postApplyNotice = useConstraintStudioStore((s) => s.postApplyNotice);
   const history = useConstraintStudioStore((s) => s.history);
   const recalculationTerminal = useConstraintStudioStore((s) => s.recalculationTerminal);
   const constraints = useConstraintStudioStore((s) => s.constraints);
@@ -1067,6 +1018,21 @@ export function ProRecalcPanel({
       />
     );
   }
+  if (postApplyNotice) {
+    return (
+      <GellattiNotice
+        testId="pro-recalc-applied-with-incomplete-consumers"
+        tone="attention"
+        title="Zmiany zastosowano"
+        body={postApplyNotice.messagePl}
+        primaryLabel="Rozumiem"
+        onPrimary={() => {
+          store.acknowledgePostApplyNotice();
+          onClose();
+        }}
+      />
+    );
+  }
   if (!open) return null;
   const customerPreviewOpen = preview !== null && recalculationTerminal?.state === 'PREVIEW_READY';
   const dialogLabel = customerPreviewOpen ? 'Sprawdź proponowaną korektę.' : r.title;
@@ -1074,7 +1040,6 @@ export function ProRecalcPanel({
     <ConstraintPreviewCard
       preview={preview}
       applyPending={applyPending}
-      showCloseControl
       showTechnicalDetails={canViewTechnicalDetails}
       onApply={() => {
         void (async () => {
@@ -1082,7 +1047,8 @@ export function ProRecalcPanel({
           // Close only after the same terminal server validation used by
           // Constraint Studio. A stale/blocked preview stays visible.
           const after = useConstraintStudioStore.getState();
-          if (after.preview === null && after.blocked === null) onClose();
+          if (after.preview === null && after.blocked === null && after.postApplyNotice === null)
+            onClose();
         })();
       }}
       onCancel={() => {
@@ -1097,24 +1063,17 @@ export function ProRecalcPanel({
   // editor + LIVE Monitor update in place and the bottom action bar carries the
   // applied confirmation + Cofnij. Same store pipeline, same testids.
   return (
-    // Above the mobile preview bar and the score/Przelicz strip (z-60): a
-    // BLOCKING dialog must never be overlapped by the controls it blocks. The
-    // bar was introduced after this overlay and silently outranked it.
-    <div className="fixed inset-0 z-[80]" data-testid="pro-recalc-overlay">
-      <button
-        type="button"
-        aria-label={recalculationTerminal?.state === 'WORKING' ? 'Anuluj przeliczenie' : r.close}
-        onClick={closeOrCancel}
-        className="absolute inset-0 h-full w-full bg-black/60 motion-safe:animate-[appFadeIn_150ms_ease-out]"
-      />
-      <section
-        ref={panelRef}
-        tabIndex={-1}
-        role="dialog"
-        aria-modal="true"
-        aria-label={dialogLabel}
-        data-testid="pro-recalc-panel"
-        data-terminal-state={recalculationTerminal?.state ?? 'IDLE'}
+    <DialogShell
+      label={dialogLabel}
+      testId="pro-recalc-overlay"
+      panelTestId="pro-recalc-panel"
+      panelState={recalculationTerminal?.state ?? 'IDLE'}
+      placement="center"
+      onClose={closeOrCancel}
+      showCloseControl
+      closeLabel={recalculationTerminal?.state === 'WORKING' ? 'Anuluj' : r.close}
+      closeTestId="pro-recalc-close"
+      panelClassName={cn(
         /* OWNER 2026-09-03 — ONE Gellatti dialog language. This overlay used to
            carry two shells: a light one for the customer preview and a GRAPHITE
            `#191a1d` diagnostic one for everything else, so a plain sentence
@@ -1126,219 +1085,204 @@ export function ProRecalcPanel({
            relationships intact — `text-ivory/80` becomes graphite at 80 % on
            white, `bg-ivory`/`text-shell` stays a solid dark button with a light
            label. No child markup, wording or affordance is changed here. */
-        className={cn(
-          'absolute top-1/2 left-1/2 w-[min(680px,calc(100vw-1.5rem))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-[18px] border border-black/10 bg-white text-ivory shadow-pro-md',
-          '[--color-charcoal:#191a1d] [--color-ivory:#202124] [--color-shell:#f5f3ee] [color-scheme:light]',
-          customerPreviewOpen
-            ? 'max-h-[92dvh] w-[min(680px,calc(100vw-1rem))] px-3 py-3 sm:max-h-[88vh] sm:w-[min(680px,calc(100vw-1.5rem))] sm:px-4 sm:py-4'
-            : 'max-h-[88vh] px-4 py-4 sm:px-5 sm:py-5',
-        )}
-      >
-        {!customerPreviewOpen ? (
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-xs font-medium tracking-label text-ivory/60 uppercase">
-              {dialogLabel}
+        'w-[min(680px,calc(100vw-1.5rem))] rounded-[18px] border-black/10 bg-white text-ivory shadow-pro-md',
+        '[--color-charcoal:#191a1d] [--color-ivory:#202124] [--color-shell:#f5f3ee] [color-scheme:light]',
+        customerPreviewOpen
+          ? 'max-h-[92dvh] w-[min(680px,calc(100vw-1rem))] px-3 py-3 sm:max-h-[88vh] sm:w-[min(680px,calc(100vw-1.5rem))] sm:px-4 sm:py-4'
+          : 'max-h-[88vh] px-4 py-4 sm:px-5 sm:py-5',
+      )}
+    >
+      {!customerPreviewOpen ? (
+        <div className="flex min-h-10 items-center pr-12">
+          <p className="text-xs font-medium tracking-label text-ivory/60 uppercase">
+            {dialogLabel}
+          </p>
+        </div>
+      ) : null}
+
+      <div className={customerPreviewOpen ? 'space-y-3' : 'mt-3 space-y-3'}>
+        {recalculationTerminal?.state === 'WORKING' ? (
+          <FriendlyLabMessageMotion
+            timing="progress"
+            className="text-sm leading-relaxed text-ivory/80"
+            testId="pro-recalc-working"
+          >
+            Liczymy balans receptury…
+          </FriendlyLabMessageMotion>
+        ) : null}
+
+        {recalculationTerminal?.state === 'SETTINGS_CONFIRMATION_REQUIRED' ? (
+          <div className="space-y-2" data-testid="pro-recalc-settings-required">
+            <p className="text-sm leading-relaxed text-ivory/85" role="alert">
+              Jeszcze jeden krok. Potwierdź ustawienia, a potem przeliczymy recepturę.
             </p>
             <button
               type="button"
-              onClick={closeOrCancel}
-              data-testid="pro-recalc-close"
-              className="min-h-11 rounded-lg border border-ivory/20 px-3 py-1.5 text-xs font-medium text-ivory transition-colors hover:border-ivory/40 disabled:cursor-wait disabled:opacity-50"
+              className="inline-flex min-h-11 items-center justify-center rounded-lg border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
+              onClick={goToSettings}
             >
-              {recalculationTerminal?.state === 'WORKING' ? 'Anuluj' : r.close}
+              Otwórz ustawienia
             </button>
           </div>
         ) : null}
 
-        <div className={customerPreviewOpen ? 'space-y-3' : 'mt-3 space-y-3'}>
-          {recalculationTerminal?.state === 'WORKING' ? (
-            <FriendlyLabMessageMotion
-              timing="progress"
-              className="text-sm leading-relaxed text-ivory/80"
-              testId="pro-recalc-working"
-            >
-              Liczymy balans receptury…
-            </FriendlyLabMessageMotion>
-          ) : null}
-
-          {recalculationTerminal?.state === 'SETTINGS_CONFIRMATION_REQUIRED' ? (
-            <div className="space-y-2" data-testid="pro-recalc-settings-required">
-              <p className="text-sm leading-relaxed text-ivory/85" role="alert">
-                Jeszcze jeden krok. Potwierdź ustawienia, a potem przeliczymy recepturę.
+        {recalculationTerminal?.state === 'TIMEOUT' || recalculationTerminal?.state === 'ERROR' ? (
+          <div className="space-y-3" data-testid="pro-recalc-recoverable-error" role="alert">
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-ivory">
+                {recalculationTerminal.state === 'TIMEOUT'
+                  ? 'Nie udało się zakończyć przeliczenia.'
+                  : 'Nie udało się przeliczyć receptury.'}
               </p>
-              <button
-                type="button"
-                className="inline-flex min-h-11 items-center justify-center rounded-lg border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
-                onClick={goToSettings}
-              >
-                Otwórz ustawienia
-              </button>
-            </div>
-          ) : null}
-
-          {recalculationTerminal?.state === 'TIMEOUT' ||
-          recalculationTerminal?.state === 'ERROR' ? (
-            <div className="space-y-3" data-testid="pro-recalc-recoverable-error" role="alert">
-              <div className="space-y-1">
-                <p className="text-sm font-semibold text-ivory">
-                  {recalculationTerminal.state === 'TIMEOUT'
-                    ? 'Nie udało się zakończyć przeliczenia.'
-                    : 'Nie udało się przeliczyć receptury.'}
-                </p>
-                <p className="text-sm leading-relaxed text-ivory/80">
-                  {recalculationTerminal.messagePl}
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={retryRecalculation}
-                  className="inline-flex min-h-11 items-center justify-center rounded-lg bg-ivory px-4 py-2 text-sm font-semibold text-shell"
-                  data-testid="pro-recalc-retry"
-                >
-                  Spróbuj ponownie
-                </button>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="inline-flex min-h-11 items-center justify-center rounded-lg border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory"
-                >
-                  Wróć do receptury
-                </button>
-              </div>
-            </div>
-          ) : null}
-
-          {recalculationTerminal?.state === 'BLOCKED_WITH_EXACT_ACTION' &&
-          recalculationTerminal.messagePl &&
-          !previewIssue ? (
-            <div className="space-y-2" data-testid="pro-recalc-exact-action-block">
-              <p className="text-sm leading-relaxed text-ivory/85" role="alert">
+              <p className="text-sm leading-relaxed text-ivory/80">
                 {recalculationTerminal.messagePl}
               </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                className="inline-flex min-h-11 items-center justify-center rounded-lg border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
-                onClick={
-                  recalculationTerminal.action === 'choose_product'
-                    ? openBaseProductPicker
-                    : onClose
-                }
+                onClick={retryRecalculation}
+                className="inline-flex min-h-11 items-center justify-center rounded-lg bg-ivory px-4 py-2 text-sm font-semibold text-shell"
+                data-testid="pro-recalc-retry"
               >
-                {recalculationTerminal.action === 'choose_product'
-                  ? 'Wybierz produkt'
-                  : 'Wróć do receptury'}
+                Spróbuj ponownie
               </button>
-            </div>
-          ) : null}
-
-          {blocked ? (
-            <BlockedApplyNotice blocked={blocked} onDismiss={store.dismissBlocked} />
-          ) : null}
-
-          {directionFallbackReport && !preview ? (
-            <DirectionFallbackDecision
-              fallbackReport={directionFallbackReport}
-              alternativeReport={starterPackRescueReport}
-              alternativePending={starterPackRescuePending}
-              onUseFallback={() => {
-                void openDirectionFallbackPreviewWithServerAuthority();
-              }}
-              onTryAlternative={() => {
-                void requestStarterPackRescueWithServerAuthority();
-              }}
-              onOpenAlternative={() => {
-                void openStarterPackRescuePreviewWithServerAuthority();
-              }}
-              onBack={() => {
-                store.cancelPreview();
-                onClose();
-              }}
-            />
-          ) : null}
-
-          {!directionFallbackReport && previewIssue && recalculationTerminal ? (
-            <RecalcDiagnosisView
-              issue={previewIssue}
-              input={currentInput}
-              constraints={constraints}
-              servingModeId={servingModeId}
-              onReturnToRecipe={returnToProductDose}
-              onChooseOtherProduct={openBaseProductPicker}
-              onCompleteProductData={goToProductData}
-              onRefreshProductBehavior={refreshProductBehavior}
-              refreshingProductBehavior={refreshingProductBehavior}
-              productBehaviorRefreshError={productBehaviorRefreshError}
-              onUnlockAndPreview={unlockAndPreview}
-              onRemoveStandardAndPreview={(lineId) => {
-                void createExplicitStandardRemovalPreviewWithServerAuthority(lineId);
-              }}
-              terminal={recalculationTerminal}
-              rescueAdvice={rescueAdvice}
-              starterPackRescueReport={starterPackRescueReport}
-              starterPackRescuePending={starterPackRescuePending}
-              onAddRescueIngredient={() => {
-                store.cancelPreview();
-                openBaseProductPicker();
-              }}
-              onOpenStarterPackRescue={() => {
-                void openStarterPackRescuePreviewWithServerAuthority();
-              }}
-            />
-          ) : null}
-
-          {!directionFallbackReport &&
-          directionBestCandidate &&
-          recalculationTerminal?.state === 'PREVIEW_READY' ? (
-            <DirectionBestDecision
-              candidate={directionBestCandidate}
-              onAccept={store.acceptBestDirectionCandidate}
-              onBack={() => {
-                store.cancelPreview();
-                onClose();
-              }}
-              rescueAdvice={rescueAdvice}
-              starterPackRescueReport={starterPackRescueReport}
-              starterPackRescuePending={starterPackRescuePending}
-              onAddRescueIngredient={() => {
-                store.cancelPreview();
-                openBaseProductPicker();
-              }}
-              onOpenStarterPackRescue={() => {
-                void openStarterPackRescuePreviewWithServerAuthority();
-              }}
-            />
-          ) : null}
-
-          {preview && previewCard && recalculationTerminal?.state === 'PREVIEW_READY' ? (
-            preview.directionFallback || preview.starterPackRescue ? (
-              previewCard
-            ) : (
-              <FriendlyLabMessageMotion
-                timing="persistent"
-                role={undefined}
-                testId="pro-recalc-preview-motion"
-              >
-                {previewCard}
-              </FriendlyLabMessageMotion>
-            )
-          ) : null}
-
-          {!preview && recalculationTerminal === null && undoAvailable ? (
-            <div className="space-y-2" data-testid="pro-recalc-applied">
-              <p className="text-sm leading-relaxed text-ivory/80">{r.applied}</p>
               <button
                 type="button"
-                onClick={store.undoLastApply}
-                data-testid="pro-recalc-undo"
-                className="inline-flex min-h-11 items-center justify-center rounded-lg border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
+                onClick={onClose}
+                className="inline-flex min-h-11 items-center justify-center rounded-lg border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory"
               >
-                {r.undo}
+                Wróć do receptury
               </button>
             </div>
-          ) : null}
-        </div>
-      </section>
-    </div>
+          </div>
+        ) : null}
+
+        {recalculationTerminal?.state === 'BLOCKED_WITH_EXACT_ACTION' &&
+        recalculationTerminal.messagePl &&
+        !previewIssue ? (
+          <div className="space-y-2" data-testid="pro-recalc-exact-action-block">
+            <p className="text-sm leading-relaxed text-ivory/85" role="alert">
+              {recalculationTerminal.messagePl}
+            </p>
+            <button
+              type="button"
+              className="inline-flex min-h-11 items-center justify-center rounded-lg border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
+              onClick={
+                recalculationTerminal.action === 'choose_product' ? openBaseProductPicker : onClose
+              }
+            >
+              {recalculationTerminal.action === 'choose_product'
+                ? 'Wybierz produkt'
+                : 'Wróć do receptury'}
+            </button>
+          </div>
+        ) : null}
+
+        {blocked ? <BlockedApplyNotice blocked={blocked} onDismiss={store.dismissBlocked} /> : null}
+
+        {directionFallbackReport && !preview ? (
+          <DirectionFallbackDecision
+            fallbackReport={directionFallbackReport}
+            alternativeReport={starterPackRescueReport}
+            alternativePending={starterPackRescuePending}
+            onUseFallback={() => {
+              void openDirectionFallbackPreviewWithServerAuthority();
+            }}
+            onTryAlternative={() => {
+              void requestStarterPackRescueWithServerAuthority();
+            }}
+            onOpenAlternative={() => {
+              void openStarterPackRescuePreviewWithServerAuthority();
+            }}
+            onBack={() => {
+              store.cancelPreview();
+              onClose();
+            }}
+          />
+        ) : null}
+
+        {!directionFallbackReport && previewIssue && recalculationTerminal ? (
+          <RecalcDiagnosisView
+            issue={previewIssue}
+            input={currentInput}
+            constraints={constraints}
+            servingModeId={servingModeId}
+            onReturnToRecipe={returnToProductDose}
+            onChooseOtherProduct={openBaseProductPicker}
+            onCompleteProductData={goToProductData}
+            onRefreshProductBehavior={refreshProductBehavior}
+            refreshingProductBehavior={refreshingProductBehavior}
+            productBehaviorRefreshError={productBehaviorRefreshError}
+            onUnlockAndPreview={unlockAndPreview}
+            onRemoveStandardAndPreview={(lineId) => {
+              void createExplicitStandardRemovalPreviewWithServerAuthority(lineId);
+            }}
+            terminal={recalculationTerminal}
+            rescueAdvice={rescueAdvice}
+            starterPackRescueReport={starterPackRescueReport}
+            starterPackRescuePending={starterPackRescuePending}
+            onAddRescueIngredient={() => {
+              store.cancelPreview();
+              openBaseProductPicker();
+            }}
+            onOpenStarterPackRescue={() => {
+              void openStarterPackRescuePreviewWithServerAuthority();
+            }}
+          />
+        ) : null}
+
+        {!directionFallbackReport &&
+        directionBestCandidate &&
+        recalculationTerminal?.state === 'PREVIEW_READY' ? (
+          <DirectionBestDecision
+            candidate={directionBestCandidate}
+            onAccept={store.acceptBestDirectionCandidate}
+            onBack={() => {
+              store.cancelPreview();
+              onClose();
+            }}
+            rescueAdvice={rescueAdvice}
+            starterPackRescueReport={starterPackRescueReport}
+            starterPackRescuePending={starterPackRescuePending}
+            onAddRescueIngredient={() => {
+              store.cancelPreview();
+              openBaseProductPicker();
+            }}
+            onOpenStarterPackRescue={() => {
+              void openStarterPackRescuePreviewWithServerAuthority();
+            }}
+          />
+        ) : null}
+
+        {preview && previewCard && recalculationTerminal?.state === 'PREVIEW_READY' ? (
+          preview.directionFallback || preview.starterPackRescue ? (
+            previewCard
+          ) : (
+            <FriendlyLabMessageMotion
+              timing="persistent"
+              role={undefined}
+              testId="pro-recalc-preview-motion"
+            >
+              {previewCard}
+            </FriendlyLabMessageMotion>
+          )
+        ) : null}
+
+        {!preview && recalculationTerminal === null && undoAvailable ? (
+          <div className="space-y-2" data-testid="pro-recalc-applied">
+            <p className="text-sm leading-relaxed text-ivory/80">{r.applied}</p>
+            <button
+              type="button"
+              onClick={store.undoLastApply}
+              data-testid="pro-recalc-undo"
+              className="inline-flex min-h-11 items-center justify-center rounded-lg border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
+            >
+              {r.undo}
+            </button>
+          </div>
+        ) : null}
+      </div>
+    </DialogShell>
   );
 }

@@ -6,6 +6,7 @@ import {
   type IngredientConstraint,
 } from '@/features/recipe-constraints';
 import {
+  resolveMainRatioScale,
   verifyMainIngredientIdentity,
   type MainIdentityViolation,
 } from '@/features/formulation/mainIngredientContract';
@@ -24,7 +25,6 @@ import { classifyViolationBands } from '@/features/formulation/violationBands';
 export const PRACTICAL_RECIPE_MODEL_VERSION = 'pro-whole-gram-v1';
 export const PRACTICAL_RECIPE_METADATA_KEY = 'pinguino_practical_v1' as const;
 const INTEGER_EPSILON = 1e-9;
-const MAX_MAIN_COMBINATIONS = 4096;
 const MAX_HARD_GATE_REPAIR_ROUNDS = 12;
 
 export type PracticalRecipeBlockCode =
@@ -363,63 +363,31 @@ function mainIntegerCandidates(
     .filter(({ item }) => item.lock_type === 'main' && item.planned_grams > 0);
   if (mainIndexes.length <= 1) return rounded;
 
-  const candidateValues = mainIndexes.map(({ item, index }) => {
-    const alreadyFixed = rounded.items[index]!.planned_grams;
-    if (
-      item.actual_grams !== null ||
-      item.grams_constraint !== undefined ||
-      item.percent_constraint !== undefined
-    ) {
-      return [alreadyFixed];
-    }
-    return [
-      ...new Set([
-        Math.round(item.planned_grams),
-        Math.floor(item.planned_grams),
-        Math.ceil(item.planned_grams),
-      ]),
-    ].filter((value) => value > 0);
-  });
+  // The canonical Main contract owns ratio allocation. Adjacent rounding of
+  // every line independently can falsely refuse a perfectly legal whole-gram
+  // Crown split (for example a newly selected 1 g Main beside an established
+  // Main). Keep the Main mass selected by the existing per-line whole-gram
+  // rounding pass, then let the accepted deterministic largest-remainder
+  // allocator produce the executable split. Summing the already-rounded lines
+  // is intentional: changing this to `round(sum(exact))` can remove one gram
+  // from a representable ratio (for example a 2:1 group at 55.6 g + 27.7 g).
+  const desiredMainTotal = mainIndexes.reduce(
+    (sum, { index }) => sum + rounded.items[index]!.planned_grams,
+    0,
+  );
+  const resolution = resolveMainRatioScale(exactInput, set.byLineId, desiredMainTotal);
+  if (!resolution.ok) return null;
 
-  let explored = 0;
-  let bestInput: RecipeInput | null = null;
-  let bestError = Number.POSITIVE_INFINITY;
-  let bestOrder = '';
-  const chosen: number[] = [];
-
-  const visit = (depth: number): void => {
-    if (explored >= MAX_MAIN_COMBINATIONS) return;
-    if (depth < candidateValues.length) {
-      for (const value of candidateValues[depth]!) {
-        chosen.push(value);
-        visit(depth + 1);
-        chosen.pop();
-      }
-      return;
-    }
-    explored += 1;
-    const candidate = cloneInput(rounded);
-    mainIndexes.forEach(({ index }, position) => {
-      candidate.items[index] = { ...candidate.items[index]!, planned_grams: chosen[position]! };
-    });
-    if (!verifyMainIngredientIdentity(exactInput, candidate, set.byLineId).ok) return;
-    const error = mainIndexes.reduce(
-      (sum, { item }, position) => sum + Math.abs(chosen[position]! - item.planned_grams),
-      0,
-    );
-    const order = chosen.join('|');
-    if (
-      bestInput === null ||
-      error < bestError - INTEGER_EPSILON ||
-      (Math.abs(error - bestError) <= INTEGER_EPSILON && order < bestOrder)
-    ) {
-      bestInput = candidate;
-      bestError = error;
-      bestOrder = order;
-    }
-  };
-  visit(0);
-  return bestInput;
+  const allocationByLineId = new Map(
+    resolution.allocations.map(({ lineId, grams }) => [lineId, grams] as const),
+  );
+  const candidate = cloneInput(rounded);
+  for (const { item, index } of mainIndexes) {
+    const grams = allocationByLineId.get(item.id);
+    if (grams === undefined || !Number.isInteger(grams) || grams <= 0) return null;
+    candidate.items[index] = { ...candidate.items[index]!, planned_grams: grams };
+  }
+  return verifyMainIngredientIdentity(exactInput, candidate, set.byLineId).ok ? candidate : null;
 }
 
 function reconcileResidual(

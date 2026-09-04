@@ -61,7 +61,8 @@ export type ToppingMassContext = 'planning' | 'actual_batch';
 export const toppingEffectiveGrams = (
   item: RecipeToppingItem,
   context: ToppingMassContext,
-): number => (context === 'actual_batch' ? (item.actual_grams ?? item.planned_grams) : item.planned_grams);
+): number =>
+  context === 'actual_batch' ? (item.actual_grams ?? item.planned_grams) : item.planned_grams;
 
 function scienceToppingItem(
   item: RecipeToppingItem,
@@ -136,9 +137,8 @@ function combineLabelNutrition(
   const total: Omit<ProductLabelNutritionPer100g, 'alcohol_g'> = {
     kcal: (factual.kcal * factualMassG) / 100,
     fat_g: (factual.fat_g * factualMassG) / 100,
-    saturated_fat_g: factual.saturated_fat_g === null
-      ? null
-      : (factual.saturated_fat_g * factualMassG) / 100,
+    saturated_fat_g:
+      factual.saturated_fat_g === null ? null : (factual.saturated_fat_g * factualMassG) / 100,
     carbohydrate_g: (factual.carbohydrate_g * factualMassG) / 100,
     sugars_g: (factual.sugars_g * factualMassG) / 100,
     protein_g: (factual.protein_g * factualMassG) / 100,
@@ -183,8 +183,9 @@ function combineCosts(
 ): RecipeCosts | null {
   if (!factual) return null;
   const missing = [...factual.missing_cost_ingredient_ids];
-  let knownTotal = factual.total_cost ?? 0;
-  if (!factual.complete) knownTotal = 0;
+  // `total_cost` fallback keeps older stored calculation artifacts readable;
+  // every current Engine result publishes the explicit known subtotal.
+  let knownTotal = factual.known_cost ?? factual.total_cost ?? 0;
   for (const item of labelItems) {
     const price = item.ingredient.cost_per_kg;
     if (price === null) missing.push(item.ingredient.id);
@@ -193,8 +194,9 @@ function combineCosts(
   const complete = factual.complete && missing.length === 0;
   const totalCost = complete ? knownTotal : null;
   const perKg = complete && finalMassG > 0 ? (knownTotal / finalMassG) * 1000 : null;
-  const serving = (grams: number) => perKg === null ? null : (perKg * grams) / 1000;
+  const serving = (grams: number) => (perKg === null ? null : (perKg * grams) / 1000);
   return {
+    known_cost: knownTotal,
     total_cost: totalCost,
     cost_per_kg: perKg,
     cost_per_serving_60g: serving(60),

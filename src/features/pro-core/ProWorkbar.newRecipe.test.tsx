@@ -99,7 +99,7 @@ describe('ProWorkbar new-recipe confirmation', () => {
 
     expect(mocks.start).toHaveBeenCalledTimes(1);
     expect(mocks.start).toHaveBeenCalledWith('gelato');
-    expect(host.querySelector('[role="dialog"]')).toBeNull();
+    expect(document.body.querySelector('[role="dialog"]')).toBeNull();
   });
 
   it('shows the exact confirmation copy and cancels or confirms an unsaved draft', async () => {
@@ -107,21 +107,21 @@ describe('ProWorkbar new-recipe confirmation', () => {
 
     await click(host.querySelector('[data-testid="pro-workbar-new-recipe"]'));
     expect(mocks.start).not.toHaveBeenCalled();
-    expect(host.textContent).toContain('Rozpocząć nową recepturę?');
-    expect(host.textContent).toContain(
+    expect(document.body.textContent).toContain('Rozpocząć nową recepturę?');
+    expect(document.body.textContent).toContain(
       'Niezapisane zmiany w bieżącej recepturze zostaną usunięte.',
     );
 
     await click(
-      Array.from(host.querySelectorAll('button')).find(
+      Array.from(document.body.querySelectorAll('button')).find(
         (button) => button.textContent === 'Anuluj',
       ) ?? null,
     );
-    expect(host.querySelector('[role="dialog"]')).toBeNull();
+    expect(document.body.querySelector('[role="dialog"]')).toBeNull();
     expect(mocks.start).not.toHaveBeenCalled();
 
     await click(host.querySelector('[data-testid="pro-workbar-new-recipe"]'));
-    await click(host.querySelector('[data-testid="confirm-new-recipe"]'));
+    await click(document.body.querySelector('[data-testid="confirm-new-recipe"]'));
     expect(mocks.start).toHaveBeenCalledTimes(1);
   });
 });
