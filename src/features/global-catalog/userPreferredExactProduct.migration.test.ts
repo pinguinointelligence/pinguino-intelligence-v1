@@ -9,6 +9,13 @@ const migration = readFileSync(
   ),
   'utf8',
 ).replace(/\r\n/g, '\n');
+const currentSlotSeam = readFileSync(
+  join(
+    process.cwd(),
+    'supabase/migrations/20260904110935_product_canonical_slot_review_authority.sql',
+  ),
+  'utf8',
+).replace(/\r\n/g, '\n');
 
 describe('user preferred exact-product authority migration', () => {
   it('enforces one explicit product pointer per user and canonical Mapper slot', () => {
@@ -21,17 +28,17 @@ describe('user preferred exact-product authority migration', () => {
   });
 
   it('accepts only a currently usable exact product truthfully bound to the same slot', () => {
-    const validator = migration.slice(
-      migration.indexOf('create or replace function private.user_preferred_product_slot_is_usable_v1'),
-      migration.indexOf('create or replace function private.validate_user_preferred_product_slot_v1'),
+    const validator = currentSlotSeam.slice(
+      currentSlotSeam.indexOf(
+        'create or replace function private.user_preferred_product_slot_is_usable_v1',
+      ),
+      currentSlotSeam.indexOf(
+        'revoke all on function private.user_preferred_product_slot_is_usable_v1',
+      ),
     );
     expect(validator).toContain('public.can_use_product_relation_v1(p_user_id, p_product_id)');
-    expect(validator).toContain("p.product_kind in ('commercial_product', 'customer_provisional')");
-    expect(validator).toContain('b.id = p.current_behavior_binding_id');
-    expect(validator).toContain('b.product_version_id = p.current_version_id');
-    expect(validator).toContain('b.is_current');
-    expect(validator).toContain("b.binding_status = 'ready'");
-    expect(validator).toContain('b.mapper_ingredient_id = btrim(p_mapper_ingredient_id)');
+    expect(validator).toContain('private.product_has_current_canonical_slot_review_v1(');
+    expect(validator).not.toContain('binding.mapper_ingredient_id');
     expect(migration).toContain("raise exception 'preferred_product_slot_mismatch'");
   });
 
