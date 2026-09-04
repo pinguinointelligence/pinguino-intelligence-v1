@@ -7808,6 +7808,7 @@ function createProductionSession(input) {
 		carbonatedProductIds: [...input.carbonatedProductIds ?? []],
 		durableRescueAcceptedAt: null,
 		durableRescueRevision: 0,
+		supersededRescue: null,
 		durableActualRevision: 0,
 		lastDeviationDecision: null,
 		rescueAddedItems: [],
@@ -7961,21 +7962,19 @@ function productionLineIdsExecutedAfterRescue(run, rescueRevision) {
 		return typeof lineId === "string" && lineId.length > 0 ? [lineId] : [];
 	}));
 }
-function applyVerifiedRescueInput(session, candidate, rescueRevision = session.durableRescueRevision + 1, options = {}) {
+function applyVerifiedRescueInput(session, candidate, rescueRevision = session.durableRescueRevision + 1) {
 	requireActive(session);
 	const candidateBatchGrams = candidate.items.reduce((sum, item) => sum + item.planned_grams, 0);
-	if (options.alreadyAuthorized !== true) {
-		const authority = evaluateRecipeConstraintAuthority({
-			recipe: {
-				...candidate,
-				target_batch_grams: candidateBatchGrams
-			},
-			snapshots: session.plannedComposition.behaviorSnapshots ?? {},
-			module: "BATCH_RESCUE",
-			technicalOnlyMainLineIds: session.plannedComposition.ownerReviewGate?.technicalOnlyMainLineIds
-		});
-		if (!authority.valid) throw new Error(authority.issues[0]?.messagePl ?? "Production Rescue requires a fully verified recipe candidate.");
-	}
+	const authority = evaluateRecipeConstraintAuthority({
+		recipe: {
+			...candidate,
+			target_batch_grams: candidateBatchGrams
+		},
+		snapshots: session.plannedComposition.behaviorSnapshots ?? {},
+		module: "BATCH_RESCUE",
+		technicalOnlyMainLineIds: session.plannedComposition.ownerReviewGate?.technicalOnlyMainLineIds
+	});
+	if (!authority.valid) throw new Error(authority.issues[0]?.messagePl ?? "Production Rescue requires a fully verified recipe candidate.");
 	const candidateById = new Map(candidate.items.map((item) => [item.id, item]));
 	const lines = session.lines.map((line) => {
 		const item = candidateById.get(line.lineId);
@@ -8133,11 +8132,31 @@ function hydrateProductionSessionFromRun(run, source, plannedInput, plannedCompo
 				}
 			}
 		};
-		session = applyVerifiedRescueInput(session, run.rescue.recipeInput, run.rescue.revision, { alreadyAuthorized: true });
-		session = {
+		const stillAuthorized = evaluateRecipeConstraintAuthority({
+			recipe: {
+				...run.rescue.recipeInput,
+				target_batch_grams: run.rescue.recipeInput.items.reduce((sum, item) => sum + item.planned_grams, 0)
+			},
+			snapshots: session.plannedComposition.behaviorSnapshots ?? {},
+			module: "BATCH_RESCUE",
+			technicalOnlyMainLineIds: session.plannedComposition.ownerReviewGate?.technicalOnlyMainLineIds
+		});
+		if (stillAuthorized.valid) {
+			session = applyVerifiedRescueInput(session, run.rescue.recipeInput, run.rescue.revision);
+			session = {
+				...session,
+				durableRescueAcceptedAt: run.rescue.acceptedAt,
+				durableRescueRevision: run.rescue.revision
+			};
+		} else session = {
 			...session,
 			durableRescueAcceptedAt: run.rescue.acceptedAt,
-			durableRescueRevision: run.rescue.revision
+			durableRescueRevision: run.rescue.revision,
+			supersededRescue: {
+				revision: run.rescue.revision,
+				acceptedAt: run.rescue.acceptedAt,
+				reasonPl: stillAuthorized.issues[0]?.messagePl ?? "Zapisana korekta partii nie spełnia już aktualnych reguł bezpieczeństwa."
+			}
 		};
 	}
 	const decisionEvent = [...run.events].reverse().find((event) => event.type === "deviation_decision_accepted");
@@ -8278,6 +8297,21 @@ function assessProductionHardSafety(input, result) {
 	};
 }
 const nativeSafe = (input, result) => assessProductionHardSafety(input, result).safe;
+/**
+* TERMINAL AUTHORITY — the one a stored candidate is judged by for the rest of
+* its life. Run on the PRACTICALIZED 0.1 g vector, because that is what gets
+* persisted and what every later hydration re-validates.
+*/
+const productionRescueTerminalAuthority = (input, session) => evaluateRecipeConstraintAuthority({
+	recipe: {
+		...input,
+		target_batch_grams: totalFor(input)
+	},
+	snapshots: session.plannedComposition.behaviorSnapshots ?? {},
+	module: "BATCH_RESCUE",
+	technicalOnlyMainLineIds: session.plannedComposition.ownerReviewGate?.technicalOnlyMainLineIds
+});
+const terminallyAuthorized = (input, session) => productionRescueTerminalAuthority(input, session).valid;
 function preservesPhysicalReality(session, candidate) {
 	const candidateById = new Map(candidate.items.map((item) => [item.id, item]));
 	return session.lines.every((line) => {
@@ -8539,6 +8573,7 @@ function bestOption(id, title, explanation, session, forecastInput, context, acc
 			if (!preservesPhysicalReality(session, candidateInput)) continue;
 			const mass = totalFor(candidateInput);
 			if (!acceptMass(mass) || !nativeSafe(candidateInput, audit.executableResult)) continue;
+			if (!terminallyAuthorized(candidateInput, session)) continue;
 			const score = recipeFitForInput(candidateInput, audit.executableResult);
 			candidates.push({
 				id,
@@ -8569,6 +8604,7 @@ function bestOption(id, title, explanation, session, forecastInput, context, acc
 			if (!acceptMass(mass)) continue;
 			const result = practical.audit.executableResult;
 			if (!nativeSafe(candidateInput, result)) continue;
+			if (!terminallyAuthorized(candidateInput, session)) continue;
 			const score = recipeFitForInput(candidateInput, result);
 			candidates.push({
 				id,

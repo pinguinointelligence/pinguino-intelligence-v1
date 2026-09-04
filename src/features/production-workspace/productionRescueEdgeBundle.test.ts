@@ -19,6 +19,7 @@ import {
   PRODUCTION_RESCUE_MODEL_VERSION,
   assessProductionRescue as assessGenerated,
 } from '../../../supabase/functions/_shared/generated/productionRescueEngine.bundle.mjs';
+import { productionTestComposition } from './__fixtures__/productionTestComposition';
 
 const generatedDir = join(process.cwd(), 'supabase/functions/_shared/generated');
 const manifest = JSON.parse(
@@ -52,6 +53,7 @@ const make = () =>
       recipeName: 'Milk base',
     },
     plannedInput: input,
+    plannedComposition: productionTestComposition(input),
     startedAt: '2026-08-19T00:00:00.000Z',
   });
 
@@ -105,6 +107,7 @@ const exactP0DextroseDeviation = () => {
       recipeName: 'P0 score authority',
     },
     plannedInput,
+    plannedComposition: productionTestComposition(plannedInput),
     startedAt: '2026-08-27T21:00:00.000Z',
   });
   for (const [index, line] of session.lines.entries()) {

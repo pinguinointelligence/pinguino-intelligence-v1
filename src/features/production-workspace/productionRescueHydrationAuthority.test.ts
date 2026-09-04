@@ -45,7 +45,22 @@ import { verifyMainEnvelope } from '@/features/product-intelligence';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
 import { evaluateRecipeConstraintAuthority } from '@/features/recipe-constraints/recipeConstraintAuthority';
 import { assessProductionHardSafety } from './productionRescue';
-import { applyVerifiedRescueInput, createProductionSession } from './productionSession';
+import {
+  applyVerifiedRescueInput,
+  createProductionSession,
+  hydrateProductionSessionFromRun,
+} from './productionSession';
+import {
+  OWNER_ACTUAL_GRAMS,
+  OWNER_ACTUAL_TOTAL_G,
+  OWNER_BANANA_PHYSICAL_G,
+  OWNER_LINE_IDS,
+  OWNER_PLANNED_GRAMS,
+  OWNER_PLANNED_TOTAL_G,
+  OWNER_RESCUE_REVISION,
+  OWNER_RUN_ID,
+  OWNER_SOURCE_ACTUAL_REVISION,
+} from './__fixtures__/ownerRescueRun2fc85403';
 
 vi.setConfig({ testTimeout: 60_000 });
 
@@ -124,7 +139,7 @@ const candidate = (support: readonly number[], banana: number): RecipeInput => {
     mode: 'classic',
     category: 'milk_gelato',
     target_batch_grams: total,
-    target_temp_c: -11,
+    target_temperature_c: -11,
     machine_capacity_grams: null,
     items,
   } as unknown as RecipeInput;
@@ -180,6 +195,28 @@ const violationCodes = (input: RecipeInput): string[] => {
   return verdict.ok ? [] : verdict.violations.map((violation) => violation.code);
 };
 
+const sessionFor = (input: RecipeInput) =>
+  createProductionSession({
+    sessionId: 'owner-repro-2fc85403',
+    ownerUserId: 'owner-1',
+    source: {
+      recipeId: 'recipe-1',
+      recipeVersionId: 'version-1',
+      recipeVersionNumber: 1,
+      recipeName: 'QA RESCUE COMPLETE BANANA',
+    },
+    plannedInput: input,
+    plannedComposition: {
+      schemaVersion: 1,
+      baseScope: 'BASE_FORMULATION',
+      baseOrder: input.items.map((item) => item.id),
+      toppings: [],
+      behaviorSnapshots: snapshotsFor(input),
+      migrationAmbiguities: [],
+    },
+    startedAt: '2026-09-04T16:18:36.000Z',
+  } as unknown as Parameters<typeof createProductionSession>[0]);
+
 describe('rescued Production run is written in a state its own recovery refuses', () => {
   it('the stored candidate puts BANANA over its own hard limit by rounding alone', () => {
     const banana = STORED.items.find((item) => item.id === 'line-mtn5pdnv-1')!;
@@ -227,38 +264,100 @@ describe('rescued Production run is written in a state its own recovery refuses'
    * brand-new rescue is still fully re-validated.
    */
   describe('recovery reconstructs, it does not re-decide', () => {
-    const sessionFor = (input: RecipeInput) =>
-      createProductionSession({
-        sessionId: 'owner-repro-2fc85403',
-        ownerUserId: 'owner-1',
-        source: {
-          recipeId: 'recipe-1',
-          recipeVersionId: 'version-1',
-          recipeVersionNumber: 1,
-          recipeName: 'QA RESCUE COMPLETE BANANA',
-        },
-        plannedInput: input,
-        plannedComposition: {
-          schemaVersion: 1,
-          baseScope: 'BASE_FORMULATION',
-          baseOrder: input.items.map((item) => item.id),
-          toppings: [],
-          behaviorSnapshots: snapshotsFor(input),
-          migrationAmbiguities: [],
-        },
-        startedAt: '2026-09-04T16:18:36.000Z',
-      } as unknown as Parameters<typeof createProductionSession>[0]);
-
     it('a NEW rescue carrying the over-limit candidate is still refused', () => {
       expect(() => applyVerifiedRescueInput(sessionFor(STORED), STORED, 1)).toThrow(
         'Grupa Main przekracza twardy limit 30.0%.',
       );
     });
 
-    it('an ALREADY AUTHORIZED rescue reopens instead of stranding the batch', () => {
-      expect(() =>
-        applyVerifiedRescueInput(sessionFor(STORED), STORED, 1, { alreadyAuthorized: true }),
-      ).not.toThrow();
+    it('recovery supersedes the invalid target instead of stranding OR blessing it', () => {
+      const planned = candidate(OWNER_PLANNED_GRAMS.slice(0, 6) as unknown as number[], 300);
+      const session = sessionFor(planned);
+      const run = {
+        runId: OWNER_RUN_ID,
+        ownerUserId: 'owner-1',
+        recipeId: session.source.recipeId,
+        recipeVersionId: session.source.recipeVersionId,
+        recipeVersionNumber: session.source.recipeVersionNumber,
+        status: 'in_progress',
+        plannedBatchG: OWNER_PLANNED_TOTAL_G,
+        plannedItems: session.lines.map((line, index) => ({
+          id: line.lineId,
+          name: line.name,
+          canonicalIngredientId: line.canonicalIngredientId,
+          processScope: 'BASE_FORMULATION',
+          scopePosition: index,
+          plannedGrams: line.plannedGrams,
+          displayGrams: line.plannedGrams,
+        })),
+        productProfile: planned.category,
+        temperatureC: planned.target_temperature_c,
+        engineVersion: 'test',
+        configVersion: 'test',
+        mapperDatasetVersion: null,
+        plannedDate: null,
+        machine: null,
+        location: null,
+        batchReference: null,
+        notes: null,
+        createdBy: 'owner-1',
+        createdAt: '2026-09-04T16:18:36.000Z',
+        updatedAt: '2026-09-04T16:19:04.000Z',
+        events: [],
+        actual: {
+          revision: OWNER_SOURCE_ACTUAL_REVISION,
+          recordedAt: '2026-09-04T16:18:59.000Z',
+          items: session.lines.map((line, index) => ({
+            id: line.lineId,
+            name: line.name,
+            actualGrams: OWNER_ACTUAL_GRAMS[index]!,
+            confirmedAt: '2026-09-04T16:18:59.000Z',
+            confirmationOrder: index + 1,
+          })),
+          substitutions: [],
+          totalMixG: OWNER_ACTUAL_TOTAL_G,
+          yieldG: null,
+          wasteG: null,
+          operatorNotes: null,
+          deviationReason: null,
+        },
+        rescue: {
+          revision: OWNER_RESCUE_REVISION,
+          acceptedAt: '2026-09-04T16:19:04.947Z',
+          recipeInput: STORED,
+          productComposition: session.plannedComposition,
+        },
+      } as unknown as Parameters<typeof hydrateProductionSessionFromRun>[0];
+
+      const hydrated = hydrateProductionSessionFromRun(
+        run,
+        session.source,
+        planned,
+        session.plannedComposition,
+      );
+
+      // Not stranded: recovery completed.
+      expect(hydrated.sessionId).toBe(OWNER_RUN_ID);
+      // Not blessed: the invalid 1149.9 g future is NOT the live plan.
+      const bananaLine = hydrated.lines.find((line) => line.lineId === OWNER_LINE_IDS.banana)!;
+      expect(bananaLine.targetGrams).not.toBeCloseTo(345, 6);
+      // Physical facts preserved exactly.
+      expect(bananaLine.physicalAddedGrams).toBeCloseTo(OWNER_BANANA_PHYSICAL_G, 6);
+      // The authorization survives as audit, with the real reason.
+      expect(hydrated.supersededRescue?.revision).toBe(OWNER_RESCUE_REVISION);
+      expect(hydrated.supersededRescue?.reasonPl).toBe('Grupa Main przekracza twardy limit 30.0%.');
     });
   });
+
+  /**
+   * NOT YET PROVEN HERE — the bounded add-only search reaching a legal
+   * candidate for the owner's vessel. A synthetic session built from this
+   * fixture returns `impossible`
+   * ("Brak bezpiecznej korekty, która zachowuje fizycznie dodane składniki…"),
+   * while the real run demonstrably produced candidates, so the fixture still
+   * diverges from the persisted session in a way this file has not isolated.
+   * A test that asserts over an empty option list would pass vacuously, so
+   * none is written. This claim is proven end-to-end on served staging by the
+   * fresh Banana run instead.
+   */
 });

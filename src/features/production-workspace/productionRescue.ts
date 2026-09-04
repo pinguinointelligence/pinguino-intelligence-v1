@@ -16,6 +16,7 @@ import {
   type PracticalRecipeAudit,
 } from '@/features/practical-recipe/practicalRecipe';
 import { recipeFitForInput } from '@/features/protein-gelato/proteinAuthority';
+import { evaluateRecipeConstraintAuthority } from '@/features/recipe-constraints/recipeConstraintAuthority';
 import {
   verifyConstraintsPreserved,
   type ConstraintSet,
@@ -225,6 +226,22 @@ export function assessProductionHardSafety(
 
 const nativeSafe = (input: RecipeInput, result: RecipeResult): boolean =>
   assessProductionHardSafety(input, result).safe;
+
+/**
+ * TERMINAL AUTHORITY — the one a stored candidate is judged by for the rest of
+ * its life. Run on the PRACTICALIZED 0.1 g vector, because that is what gets
+ * persisted and what every later hydration re-validates.
+ */
+export const productionRescueTerminalAuthority = (input: RecipeInput, session: ProductionSession) =>
+  evaluateRecipeConstraintAuthority({
+    recipe: { ...input, target_batch_grams: totalFor(input) },
+    snapshots: session.plannedComposition.behaviorSnapshots ?? {},
+    module: 'BATCH_RESCUE',
+    technicalOnlyMainLineIds: session.plannedComposition.ownerReviewGate?.technicalOnlyMainLineIds,
+  });
+
+const terminallyAuthorized = (input: RecipeInput, session: ProductionSession): boolean =>
+  productionRescueTerminalAuthority(input, session).valid;
 
 function preservesPhysicalReality(session: ProductionSession, candidate: RecipeInput): boolean {
   const candidateById = new Map(candidate.items.map((item) => [item.id, item]));
@@ -596,6 +613,7 @@ function bestOption(
       if (!preservesPhysicalReality(session, candidateInput)) continue;
       const mass = totalFor(candidateInput);
       if (!acceptMass(mass) || !nativeSafe(candidateInput, audit.executableResult)) continue;
+      if (!terminallyAuthorized(candidateInput, session)) continue;
       const score = recipeFitForInput(candidateInput, audit.executableResult);
       candidates.push({
         id,
@@ -635,6 +653,7 @@ function bestOption(
       if (!acceptMass(mass)) continue;
       const result = practical.audit.executableResult;
       if (!nativeSafe(candidateInput, result)) continue;
+      if (!terminallyAuthorized(candidateInput, session)) continue;
       const score = recipeFitForInput(candidateInput, result);
       candidates.push({
         id,

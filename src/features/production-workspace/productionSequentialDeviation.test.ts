@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { calculateRecipe, detectViolations, type RecipeInput } from '@/engine';
 import { INTERNET_PROTEIN_RECIPES } from '@/features/protein-gelato/__fixtures__/internetProteinRecipes';
 import { recipeFitForInput } from '@/features/protein-gelato/proteinAuthority';
-import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
 import {
   sorbetMapperIngredient,
   sorbetMultiMainBase,
@@ -32,6 +31,7 @@ import {
   type ProductionRescueOption,
 } from './productionRescue';
 import { productionRescueAuthorizationInvalidation } from './useProductionWorkspace';
+import { productionTestComposition } from './__fixtures__/productionTestComposition';
 
 const AT = '2026-08-25T09:01:00.000Z';
 
@@ -125,14 +125,7 @@ const sessionFor = (id: string, input: RecipeInput): ProductionSession =>
       recipeName: id === 'served' ? 'test produkcja 250826' : id,
     },
     plannedInput: input,
-    plannedComposition: {
-      schemaVersion: 1,
-      baseScope: 'BASE_FORMULATION',
-      baseOrder: input.items.map((item) => item.id),
-      toppings: [],
-      behaviorSnapshots: productBehaviorTestSnapshots(input),
-      migrationAmbiguities: [],
-    },
+    plannedComposition: productionTestComposition(input),
     startedAt: '2026-08-25T09:00:00.000Z',
   });
 

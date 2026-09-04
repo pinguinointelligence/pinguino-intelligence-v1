@@ -24,6 +24,7 @@ import {
 } from './productionSession';
 import { recipeFitForInput } from '@/features/protein-gelato/proteinAuthority';
 import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
+import { productionTestComposition } from './__fixtures__/productionTestComposition';
 import { assessProductionHardSafety, assessProductionRescue } from './productionRescue';
 
 const input: RecipeInput = {
@@ -46,6 +47,7 @@ const make = () =>
       recipeName: 'Milk base',
     },
     plannedInput: input,
+    plannedComposition: productionTestComposition(input),
     startedAt: '2026-08-09T10:00:00.000Z',
   });
 
@@ -84,6 +86,7 @@ const makeOwnerScenario = (formulationStrategy: 'optimal' | 'eco' = 'optimal') =
       recipeName: 'Owner milk base',
     },
     plannedInput: ownerScenario(formulationStrategy),
+    plannedComposition: productionTestComposition(ownerScenario(formulationStrategy)),
     startedAt: '2026-08-25T10:00:00.000Z',
   });
 
@@ -170,6 +173,7 @@ const makeExactOwnerEightLineSession = () =>
       recipeName: 'Owner banana gelato',
     },
     plannedInput: exactOwnerEightLineInput(),
+    plannedComposition: productionTestComposition(exactOwnerEightLineInput()),
     startedAt: '2026-08-25T12:00:00.000Z',
   });
 
@@ -633,6 +637,7 @@ describe('production rescue orchestration', () => {
         recipeName: 'Owner Dextrose control',
       },
       plannedInput: directed,
+      plannedComposition: productionTestComposition(directed),
       startedAt: '2026-08-25T14:00:00.000Z',
     });
     for (const [lineId, grams, minute] of [

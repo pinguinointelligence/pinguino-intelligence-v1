@@ -179,6 +179,18 @@ export interface ProductionSession {
   durableRescueAcceptedAt: string | null;
   /** Monotonic durable Rescue revision used for lost-response reconciliation. */
   durableRescueRevision: number;
+  /**
+   * A durably accepted Rescue whose target is no longer valid under the
+   * canonical terminal authority, so recovery refused to adopt it. Kept as
+   * audit history: the physical facts it produced are preserved, its PENDING
+   * instructions are superseded, and a fresh add-only Rescue is computed from
+   * the current vessel. See `reports/production-rescue/OWNER_REPRO_2fc85403.md`.
+   */
+  supersededRescue: {
+    revision: number;
+    acceptedAt: string | null;
+    reasonPl: string;
+  } | null;
   /** Monotonic durable actual revision used for lost-response reconciliation. */
   durableActualRevision: number;
   /** Latest explicit decision that resolved a confirmed deviation. */
@@ -311,6 +323,7 @@ export function createProductionSession(input: CreateProductionSessionInput): Pr
     carbonatedProductIds: [...(input.carbonatedProductIds ?? [])],
     durableRescueAcceptedAt: null,
     durableRescueRevision: 0,
+    supersededRescue: null,
     durableActualRevision: 0,
     lastDeviationDecision: null,
     rescueAddedItems: [],
@@ -851,42 +864,23 @@ export function applyVerifiedRescueInput(
   session: ProductionSession,
   candidate: RecipeInput,
   rescueRevision = session.durableRescueRevision + 1,
-  options: { alreadyAuthorized?: boolean } = {},
 ): ProductionSession {
   requireActive(session);
   const candidateBatchGrams = candidate.items.reduce((sum, item) => sum + item.planned_grams, 0);
-  // RECOVERY RECONSTRUCTS, IT DOES NOT RE-DECIDE (owner repro 2026-09-04, run
-  // 2fc85403). A durable rescue snapshot was already authorized by the server
-  // and physically executed into the vessel. Re-running the formulation
-  // authority over it at hydration cannot make anything safer — the material is
-  // in the tub either way — but it CAN strand the batch forever: that run's
-  // candidate put BANANA at 345 / 1149.9 g = 30.0026 %, 0.0026 pp over its 30 %
-  // hard limit, because the support lines were solved to sit exactly on the
-  // limit and two of them lost 0.05 g each to tenth-gram rounding. Every reload
-  // then threw „Grupa Main przekracza twardy limit 30.0%.", which the durable
-  // recovery catch swallowed into „Nie udało się odzyskać partii".
-  //
-  // The physical guards below (line still present, no reduction of already
-  // added material) are the ones that matter at recovery and all still run.
-  // A brand-new rescue — anything that is not already durably accepted — is
-  // still fully re-validated here.
-  if (options.alreadyAuthorized !== true) {
-    const authority = evaluateRecipeConstraintAuthority({
-      // Rescue is authorized precisely because the future plan may increase or
-      // reduce the original target. Validate the exact new composition against
-      // its actual candidate mass without rewriting the frozen source target.
-      recipe: { ...candidate, target_batch_grams: candidateBatchGrams },
-      snapshots: session.plannedComposition.behaviorSnapshots ?? {},
-      module: 'BATCH_RESCUE',
-      technicalOnlyMainLineIds:
-        session.plannedComposition.ownerReviewGate?.technicalOnlyMainLineIds,
-    });
-    if (!authority.valid) {
-      throw new Error(
-        authority.issues[0]?.messagePl ??
-          'Production Rescue requires a fully verified recipe candidate.',
-      );
-    }
+  const authority = evaluateRecipeConstraintAuthority({
+    // Rescue is authorized precisely because the future plan may increase or
+    // reduce the original target. Validate the exact new composition against
+    // its actual candidate mass without rewriting the frozen source target.
+    recipe: { ...candidate, target_batch_grams: candidateBatchGrams },
+    snapshots: session.plannedComposition.behaviorSnapshots ?? {},
+    module: 'BATCH_RESCUE',
+    technicalOnlyMainLineIds: session.plannedComposition.ownerReviewGate?.technicalOnlyMainLineIds,
+  });
+  if (!authority.valid) {
+    throw new Error(
+      authority.issues[0]?.messagePl ??
+        'Production Rescue requires a fully verified recipe candidate.',
+    );
   }
   const candidateById = new Map(candidate.items.map((item) => [item.id, item]));
   const lines = session.lines.map((line) => {
@@ -1138,14 +1132,49 @@ export function hydrateProductionSessionFromRun(
         },
       },
     };
-    session = applyVerifiedRescueInput(session, run.rescue.recipeInput, run.rescue.revision, {
-      alreadyAuthorized: true,
+    // RECOVERY RECONSTRUCTS PHYSICAL FACTS; IT NEVER BLESSES AN INVALID FUTURE.
+    // A durably accepted Rescue is re-judged by the SAME canonical authority a
+    // new one must satisfy. If it still holds, reconstruct normally. If it does
+    // not — the owner specimen's candidate put BANANA at 30.0026 % against a
+    // 30 % hard limit — its pending instructions are superseded rather than
+    // adopted: the grams already in the vessel stay (they are restored from the
+    // durable actuals below), the authorization is kept as audit, and the
+    // deviation flow computes a fresh add-only Rescue from the current physical
+    // facts through the gate that now refuses such candidates up front.
+    const stillAuthorized = evaluateRecipeConstraintAuthority({
+      recipe: {
+        ...run.rescue.recipeInput,
+        target_batch_grams: run.rescue.recipeInput.items.reduce(
+          (sum, item) => sum + item.planned_grams,
+          0,
+        ),
+      },
+      snapshots: session.plannedComposition.behaviorSnapshots ?? {},
+      module: 'BATCH_RESCUE',
+      technicalOnlyMainLineIds:
+        session.plannedComposition.ownerReviewGate?.technicalOnlyMainLineIds,
     });
-    session = {
-      ...session,
-      durableRescueAcceptedAt: run.rescue.acceptedAt,
-      durableRescueRevision: run.rescue.revision,
-    };
+    if (stillAuthorized.valid) {
+      session = applyVerifiedRescueInput(session, run.rescue.recipeInput, run.rescue.revision);
+      session = {
+        ...session,
+        durableRescueAcceptedAt: run.rescue.acceptedAt,
+        durableRescueRevision: run.rescue.revision,
+      };
+    } else {
+      session = {
+        ...session,
+        durableRescueAcceptedAt: run.rescue.acceptedAt,
+        durableRescueRevision: run.rescue.revision,
+        supersededRescue: {
+          revision: run.rescue.revision,
+          acceptedAt: run.rescue.acceptedAt,
+          reasonPl:
+            stillAuthorized.issues[0]?.messagePl ??
+            'Zapisana korekta partii nie spełnia już aktualnych reguł bezpieczeństwa.',
+        },
+      };
+    }
   }
 
   const decisionEvent = [...run.events]
