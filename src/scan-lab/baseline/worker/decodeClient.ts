@@ -123,7 +123,7 @@ export class DecodeClient {
     if (message.luma) transfer.push(message.luma);
     if (frame.bitmap) transfer.push(frame.bitmap);
     if (frame.videoFrame) transfer.push(frame.videoFrame as unknown as Transferable);
-    message.tSent = performance.now();
+    message.tSent = performance.timeOrigin + performance.now();
     worker.postMessage(message, transfer);
     return true;
   }
@@ -168,7 +168,7 @@ export class DecodeClient {
       this.inFlight = null;
       this.release(msg.luma);
       if (msg.evidence.transfer) this.mainToWorker.push(msg.evidence.transfer.mainToWorkerMs);
-      this.workerReply.push(Math.max(0, now - msg.tWorkerDone));
+      this.workerReply.push(Math.max(0, performance.timeOrigin + now - msg.tWorkerDone));
       if (flight && flight.frameIndex === msg.evidence.frameIndex) {
         msg.evidence.roundTripMs = now - flight.tSubmit;
         this.roundTrip.push(msg.evidence.roundTripMs);

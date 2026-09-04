@@ -62,13 +62,28 @@ export function rankCameras(
     .map(({ o }) => o);
 }
 
-/** Cheap check of the selected track for a likely-ultrawide misselection from settings alone (no identifiers). */
+/**
+ * Cheap check of the selected track for a likely-ultrawide / fixed-focus misselection (no identifiers).
+ * Note10+ evidence (2026-09-04): `facingMode: environment` delivered "camera 2" whose CAPABILITIES listed
+ * focusMode ["manual"] only and a 16 MP sensor while SETTINGS still claimed focusMode "continuous" — the
+ * capabilities are the honest signal.
+ */
 export function ultrawideSuspicionFromSettings(
   settings: Record<string, unknown>,
   selected: CameraOption | null,
+  capabilities: Record<string, unknown> | null = null,
 ): { suspicious: boolean; reason: string | null } {
-  if (selected?.likelyUltrawide)
+  if (selected?.likelyUltrawide) {
     return { suspicious: true, reason: 'Etykieta kamery wskazuje na obiektyw ultraszerokokątny.' };
+  }
+  const capFocus = capabilities?.['focusMode'];
+  if (Array.isArray(capFocus) && capFocus.length > 0 && !capFocus.includes('continuous')) {
+    return {
+      suspicious: true,
+      reason:
+        'Ta kamera nie oferuje ciągłego ustawiania ostrości (możliwości: tylko manual) — zwykle obiektyw ultraszerokokątny ze stałą ostrością.',
+    };
+  }
   const focusMode = settings['focusMode'];
   const focusDistance = settings['focusDistance'];
   if (focusMode === 'manual' && typeof focusDistance === 'number' && focusDistance === 0) {

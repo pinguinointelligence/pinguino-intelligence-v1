@@ -16,7 +16,7 @@ import {
   type ArchiveResult,
   type ShareOutcome,
 } from '../corpus/corpusExport';
-import { collectDeviceMeta } from '../device/deviceInfo';
+import { collectClientHints, collectDeviceMeta } from '../device/deviceInfo';
 import { availableTransferPaths, FrameLoop } from '../loop/frameLoop';
 import { SCENES } from '../scenes';
 import { eventsFromEvidence, ticksFromRecords } from '../stats/evidenceAdapter';
@@ -285,6 +285,7 @@ export class HarnessController {
         }
       }
       const device = collectDeviceMeta(modelLabel, navigator, window, now);
+      device.clientHints = await collectClientHints(navigator);
       const run: SessionRecord = {
         sessionId: newSessionId(),
         createdAt: now(),
@@ -327,16 +328,39 @@ export class HarnessController {
     const video = this.video;
     if (!video) throw new Error('video element not attached');
     this.publish({ cameraBusy: true, error: null });
-    const requested: RequestedVideo = deviceId ? { ...DEFAULT_REQUEST, deviceId } : DEFAULT_REQUEST;
+    let requested: RequestedVideo = deviceId ? { ...DEFAULT_REQUEST, deviceId } : DEFAULT_REQUEST;
     try {
       this.stopEnded?.();
-      const delivered = await this.camera.open(video, requested);
+      let delivered = await this.camera.open(video, requested);
       const cameras = await this.camera.listCameras();
+      let autoSwitchedFrom: DeliveredVideo | null = null;
+      // Note10+ evidence 2026-09-04: `facingMode: environment` handed out the fixed-focus ultra-wide ("camera 2")
+      // while the ranked primary ("camera 0") sat unused. When the tester made no explicit choice, re-open once
+      // on the ranked primary back camera and keep the first delivery on record.
+      const primary = cameras.find((c) => c.facing === 'environment');
+      if (!deviceId && primary && primary.deviceId && primary.label !== delivered.label) {
+        const first = delivered;
+        try {
+          requested = { ...DEFAULT_REQUEST, deviceId: primary.deviceId };
+          delivered = await this.camera.open(video, requested);
+          autoSwitchedFrom = first;
+        } catch {
+          // keep the first stream if the primary refuses to open
+          requested = DEFAULT_REQUEST;
+          delivered = await this.camera.open(video, requested);
+        }
+      }
       const label = delivered.label;
       const selected =
         cameras.find((c) => c.label === label) ??
-        (deviceId ? (cameras.find((c) => c.deviceId === deviceId) ?? null) : null);
-      const ultrawideSuspicion = ultrawideSuspicionFromSettings(delivered.settings, selected);
+        (requested.deviceId
+          ? (cameras.find((c) => c.deviceId === requested.deviceId) ?? null)
+          : null);
+      const ultrawideSuspicion = ultrawideSuspicionFromSettings(
+        delivered.settings,
+        selected,
+        delivered.capabilities,
+      );
       this.stopEnded = this.camera.onEnded(() =>
         this.publish({
           error: 'Aparat został zatrzymany (aplikacja była w tle). Włącz go ponownie.',
@@ -350,6 +374,7 @@ export class HarnessController {
           options: stripped,
           requested: { ...requested, deviceId: requested.deviceId ? '(chosen)' : undefined },
           delivered,
+          autoSwitchedFrom,
         };
         await this.db?.updateRun(this.run.sessionId, { camera: this.run.camera });
       }
@@ -373,7 +398,7 @@ export class HarnessController {
       const controls = await this.camera.probeControls();
       if (!this.client) {
         this.client = new DecodeClient({
-          plan: { maxDecodeWidth: this.snap.maxDecodeWidth },
+          plan: { maxDecodeWidth: 0 },
           onResult: (evidence) => this.onEvidence(evidence),
           onError: (message) => this.publish({ error: `Błąd dekodera: ${message}` }),
         });
@@ -412,7 +437,6 @@ export class HarnessController {
 
   setMaxDecodeWidth(width: number): void {
     this.publish({ maxDecodeWidth: width });
-    this.client?.setPlan({ maxDecodeWidth: width });
   }
 
   // ---- scenes ---------------------------------------------------------------------------------
@@ -469,6 +493,7 @@ export class HarnessController {
       video,
       client,
       path: this.snap.transferPath,
+      analysisLongEdge: this.snap.maxDecodeWidth,
       onTick: (tick) => {
         const rec = this.rec;
         if (!rec) return;

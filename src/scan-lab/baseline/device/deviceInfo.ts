@@ -44,6 +44,7 @@ export function detectExecutionMode(nav: Navigator, win: Window): ExecutionMode 
   const ua = nav.userAgent;
   if (/(?:iPhone|iPad|iPod)/.test(ua) && /Safari/.test(ua) && !/CriOS|FxiOS/.test(ua))
     return 'safari_tab';
+  if (/SamsungBrowser\//.test(ua)) return 'browser_tab';
   if (/Chrome\//.test(ua) && !/Version\//.test(ua)) return 'chrome_tab';
   return 'browser_tab';
 }
@@ -72,4 +73,35 @@ export function collectDeviceMeta(
     deviceMemoryGb: typeof extended.deviceMemory === 'number' ? extended.deviceMemory : null,
     capturedAt: now(),
   };
+}
+
+interface UaDataLike {
+  getHighEntropyValues?: (hints: string[]) => Promise<Record<string, unknown>>;
+  brands?: Array<{ brand: string; version: string }>;
+}
+
+/** Chromium exposes the real platform version + model string via client hints; Safari has none. Never throws. */
+export async function collectClientHints(nav: Navigator): Promise<DeviceMeta['clientHints']> {
+  const uaData = (nav as Navigator & { userAgentData?: UaDataLike }).userAgentData;
+  if (!uaData || typeof uaData.getHighEntropyValues !== 'function') return null;
+  try {
+    const v = await uaData.getHighEntropyValues([
+      'platform',
+      'platformVersion',
+      'model',
+      'fullVersionList',
+    ]);
+    const list = v['fullVersionList'] as Array<{ brand: string; version: string }> | undefined;
+    const brands =
+      (list ?? uaData.brands ?? []).map((b) => `${b.brand} ${b.version}`).join('; ') || null;
+    const str = (x: unknown) => (typeof x === 'string' && x.length > 0 ? x : null);
+    return {
+      platform: str(v['platform']),
+      platformVersion: str(v['platformVersion']),
+      model: str(v['model']),
+      brands,
+    };
+  } catch {
+    return null;
+  }
 }

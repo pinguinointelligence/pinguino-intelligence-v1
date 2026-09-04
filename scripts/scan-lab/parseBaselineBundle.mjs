@@ -76,14 +76,57 @@ export function analyzeBundle(bytes, fileName) {
   const controls = run.controls;
   const worker = run.worker;
   const sceneMap = new Map(scenes.map((s) => [`${s.sceneId}:${s.attempt}`, s]));
+  const eventsOf = (sceneId, attempt) => {
+    const key = attempt > 1 ? `${sceneId}#${attempt}` : sceneId;
+    const raw = z.get(`events/${key}.ndjson`);
+    if (!raw) return [];
+    return text(raw).split('\n').filter(Boolean).map((l) => JSON.parse(l));
+  };
+  const pooled = { locateRoi: [], sal: [], roi: [], transferProxy: [], rawWrong: 0, rawWrongDetail: [] };
+  const mainCaptureMs = [];
+  for (const sc of scenes) {
+    const ev = eventsOf(sc.sceneId, sc.attempt);
+    const isBar = sc.sceneId.startsWith('ean');
+    for (const e of ev) {
+      const sd = e.saliency ? e.saliency.durationMs : null;
+      const rd = (e.decodes ?? []).find((d) => d.variant === 'roi_cheap');
+      if (isBar && sd !== null) pooled.sal.push(sd);
+      if (isBar && rd) pooled.roi.push(rd.durationMs);
+      if (isBar && sd !== null && rd) pooled.locateRoi.push(sd + rd.durationMs);
+      if (typeof e.roundTripMs === 'number' && typeof e.workerBusyMs === 'number') pooled.transferProxy.push(e.roundTripMs - e.workerBusyMs);
+    }
+    if (isBar) {
+      const vals = Object.entries(sc.decodedValues ?? {});
+      if (vals.length > 1) {
+        const top = Math.max(...vals.map(([, n]) => n));
+        const contradicting = vals.reduce((a, [, n]) => a + n, 0) - top;
+        pooled.rawWrong += contradicting;
+        pooled.rawWrongDetail.push(`${sc.sceneId}: ${vals.map(([v, n]) => `${v}×${n}`).join(' vs ')}`);
+      }
+    }
+    for (const t of sc.frameTicks ?? []) if (t.processed && typeof t.captureToLumaMs === 'number') mainCaptureMs.push(t.captureToLumaMs);
+  }
 
   // --- GO / NO-GO inputs
   const barcodeScenes = (report?.scenes ?? []).filter((s) => s.kind === 'barcode');
-  const locateP95 = percentile(scenes.map((s) => s.localizeMs?.p95).filter((v) => typeof v === 'number' && v > 0), 0.95);
-  const roiP95 = percentile(barcodeScenes.flatMap((s) => s.variants.filter((v) => v.variant === 'roi_cheap').map((v) => v.decodeMs.p95)).filter((v) => v > 0), 0.95);
-  const locateRoiP95 = locateP95 !== null && roiP95 !== null ? locateP95 + roiP95 : null;
+  const locateP95 = percentile(pooled.sal, 0.95);
+  const roiP95 = percentile(pooled.roi, 0.95);
+  const locateRoiP50 = percentile(pooled.locateRoi, 0.5);
+  const locateRoiP95 = percentile(pooled.locateRoi, 0.95);
   const loop60 = (report?.scenes ?? []).find((s) => s.sceneId === 'loop-60s');
   const loop60Raw = scenes.find((s) => s.sceneId === 'loop-60s');
+  const ticks60 = loop60Raw?.frameTicks ?? [];
+  const processed60 = ticks60.filter((t) => t.processed).length;
+  const dur60 = loop60Raw ? loop60Raw.durationMs / 1000 : 0;
+  const processedFps = dur60 > 0 ? processed60 / dur60 : null;
+  const perSec = [];
+  for (const t of ticks60) { const sec = Math.floor(t.tMs / 1000); perSec[sec] = (perSec[sec] ?? 0) + (t.processed ? 1 : 0); }
+  const perSecTrim = perSec.slice(1, Math.max(1, perSec.length - 1)).filter((v) => typeof v === 'number');
+  const processedFpsMin = perSecTrim.length ? Math.min(...perSecTrim) : null;
+  const cameraSkipped = loop && ticks60.length ? loop.framesPresented - ticks60.length : null;
+  const mainCaptureP50 = percentile(mainCaptureMs, 0.5);
+  const mainCaptureP95 = percentile(mainCaptureMs, 0.95);
+  const mainShare = loop && mainCaptureP50 !== null && processedFps !== null ? (processedFps * mainCaptureP50) / 1000 : null;
   const fpsSeries = loop?.fpsPerSecond ?? [];
   const tail5 = fpsSeries.slice(-6, -1);
   const head5 = fpsSeries.slice(1, 6);
@@ -98,11 +141,11 @@ export function analyzeBundle(bytes, fileName) {
   const completionP95 = percentile(completion, 0.95);
 
   const checks = [
-    { id: 'locate+roi p95 ≤ 40 ms', value: locateRoiP95 === null ? '—' : `${ms1(locateP95)} + ${ms1(roiP95)} = ${ms1(locateRoiP95)} ms`, pass: locateRoiP95 === null ? null : locateRoiP95 <= TARGETS.locateRoiP95Ms },
-    { id: '≥ 15 fps sustained 60 s (loop-60s fps p50, last 5 s)', value: loop60 ? `p50 ${ms1(loop60.fps.p50)} fps; first 5 s ${ms1(fpsHead)} → last 5 s ${ms1(fpsTail)}` : '— (loop-60s not run)', pass: loop60 ? loop60.fps.p50 >= TARGETS.sustainedFps && (fpsTail === null || fpsTail >= TARGETS.sustainedFps) : null },
-    { id: 'worker duty cycle ≤ 60 % (CPU proxy)', value: duty === null ? '—' : `${pct(loop.localizeDutyCycle)} localize + ${pct(loop.decodeDutyCycle)} decode = ${pct(duty)}`, pass: duty === null ? null : duty <= TARGETS.dutyCycleMax },
+    { id: 'locate+roi per-frame p95 ≤ 40 ms (pooled over barcode frames)', value: locateRoiP95 === null ? '— (no frame carried both a saliency and a roi_cheap timing)' : `p50 ${ms1(locateRoiP50)} / p95 ${ms1(locateRoiP95)} ms (saliency p95 ${ms1(locateP95)} + roi p95 ${ms1(roiP95)}, n=${pooled.locateRoi.length})`, pass: locateRoiP95 === null ? null : locateRoiP95 <= TARGETS.locateRoiP95Ms },
+    { id: '≥ 15 fps PROCESSED sustained 60 s (loop-60s)', value: processedFps === null ? '— (loop-60s not run)' : `${ms1(processedFps)} fps processed (min second ${processedFpsMin ?? '—'}); camera presented ${loop ? ms1(loop.framesPresented / dur60) : '—'} fps, rVFC callbacks ${ms1(ticks60.length / (dur60 || 1))}/s (first 5 s ${ms1(fpsHead)} → last 5 s ${ms1(fpsTail)})`, pass: processedFps === null ? null : processedFps >= TARGETS.sustainedFps && (processedFpsMin === null || processedFpsMin >= TARGETS.sustainedFps) },
+    { id: 'CPU proxy ≤ 60 % of one core (worker duty + main-thread capture share)', value: duty === null ? '—' : `worker ${pct(loop.localizeDutyCycle)} localize + ${pct(loop.decodeDutyCycle)} decode = ${pct(duty)}; main-thread capture→luma ${ms1(mainCaptureP50)}/${ms1(mainCaptureP95)} ms p50/p95 × ${ms1(processedFps)} fps = ${pct(mainShare)}; combined ${pct(duty + (mainShare ?? 0))}`, pass: duty === null ? null : duty + (mainShare ?? 0) <= TARGETS.dutyCycleMax },
     { id: 'corpus ≥ 20 scenes × ≥ 3 s', value: `${sceneSeconds} scenes ≥ 3 s (${scenes.length} recorded, ${frames} frames stored)`, pass: sceneSeconds >= TARGETS.minScenes },
-    { id: 'wrong codes = 0 (headline)', value: misreads === null ? '—' : `${misreads} misread hit(s); ${report.verdictCounts.MISREAD} MISREAD scene(s)`, pass: misreads === null ? null : misreads === 0 },
+    { id: 'wrong codes = 0 (headline)', value: misreads === null ? '—' : `${misreads} misread hit(s) vs declared code; ${report.verdictCounts.MISREAD} MISREAD scene(s); ${pooled.rawWrong} raw single-frame read(s) contradicting the scene majority${pooled.rawWrongDetail.length ? ` (${pooled.rawWrongDetail.join('; ')})` : ''}`, pass: misreads === null ? null : misreads === 0 && report.verdictCounts.MISREAD === 0 },
     { id: 'EAN-13 completion 12–30 cm p50 ≤ 0.7 s / p95 ≤ 2.0 s (headline)', value: completion.length ? `p50 ${ms(completionP50)} ms / p95 ${ms(completionP95)} ms over ${completion.length} confirmed scene(s)` : '— (no confirmed 12–30 cm scene)', pass: completion.length ? completionP50 <= TARGETS.completionP50Ms && completionP95 <= TARGETS.completionP95Ms : null },
   ];
   const phase0 = checks.slice(0, 4);
@@ -125,7 +168,11 @@ export function analyzeBundle(bytes, fileName) {
   lines.push(`| focusMode exposed | ${controls ? (controls.focusModeExposed ? 'yes' : 'no') : '—'} |`);
   lines.push(`| worker | ${worker ? `zxing-wasm ${worker.zxingVersion} · warm-up ${ms(worker.warmupMs)} ms · OffscreenCanvas ${worker.offscreenCanvas ? 'yes' : 'no'}` : '—'} |`);
   lines.push(`| loop (last scene) | ${loop ? `${loop.source} · presented ${loop.framesPresented} · processed ${loop.framesProcessed} · dropped(decode busy) ${loop.framesDroppedDecode} · cadence p50/p95 ${P(loop.cadenceMs)} ms · visibility events ${loop.visibilityEvents.length}` : '—'} |`);
-  lines.push(`| transfer | ${transfer ? `${transfer.path} · main→worker p50/p95 ${P(transfer.mainToWorkerMs)} ms · reply p50/p95 ${P(transfer.workerReplyMs)} ms · buffer reuse ${transfer.bufferReuseHits} / alloc ${transfer.bufferAllocations}` : '—'} |`);
+  lines.push(`| transfer | ${transfer ? `${transfer.path} · main→worker p50/p95 ${P(transfer.mainToWorkerMs)} ms · reply p50/p95 ${P(transfer.workerReplyMs)} ms · buffer reuse ${transfer.bufferReuseHits} / alloc ${transfer.bufferAllocations} · round-trip minus worker-busy p50/p95 ${ms1(percentile(pooled.transferProxy, 0.5))}/${ms1(percentile(pooled.transferProxy, 0.95))} ms` : '—'} |`);
+  lines.push(`| main-thread capture→luma | ${mainCaptureMs.length ? `${ms1(mainCaptureP50)} / ${ms1(mainCaptureP95)} ms p50/p95 over ${mainCaptureMs.length} processed frames` : '—'} |`);
+  lines.push(`| loop-60s frames | ${loop60Raw ? `presented ${loop?.framesPresented ?? '—'} · surfaced ${ticks60.length} (camera-side skipped ${cameraSkipped ?? '—'}) · processed ${processed60} · dropped(busy) ${loop?.framesDroppedDecode ?? '—'}` : '—'} |`);
+  lines.push(`| client hints | ${d.clientHints ? `${d.clientHints.platform ?? '?'} ${d.clientHints.platformVersion ?? '?'} · model ${d.clientHints.model ?? '?'} · ${d.clientHints.brands ?? ''}` : 'none (Safari, or hints refused) — reduced UA only'} |`);
+  lines.push(`| camera auto-switch | ${run.camera?.autoSwitchedFrom ? `re-opened on the ranked primary; first delivery was ${run.camera.autoSwitchedFrom.label} ${run.camera.autoSwitchedFrom.width}×${run.camera.autoSwitchedFrom.height}` : 'none'} |`);
   lines.push('');
   lines.push('## Scenes');
   lines.push('| scene | kind | att | verdict | 1st hit ms | confirmed ms | hits/att | misread | fps p50 | cadence p50 | worker RT p50/p95 | localize p50/p95 | full_cheap p50/p95 (hits) | full_harder p50/p95 (hits) | roi p50/p95 (hits) | rect p50/p95 (hits) | cand px / |°| | dropped |');

@@ -64,7 +64,7 @@ export function DiagnosticsPanel({
               onChange={(e) => controller.setMaxDecodeWidth(Number(e.target.value))}
             >
               <option value={0}>{copy.diagnostics.native}</option>
-              <option value={1280}>1280</option>
+              <option value={1280}>1280 (720p)</option>
               <option value={960}>960</option>
               <option value={640}>640</option>
             </select>

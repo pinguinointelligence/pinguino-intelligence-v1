@@ -26,6 +26,14 @@ export interface DeviceMeta {
   screen: { width: number; height: number; dpr: number };
   hardwareConcurrency: number | null;
   deviceMemoryGb: number | null;
+  /** From navigator.userAgentData high-entropy hints when the browser grants them (Chromium): real
+   *  platform version + model string (e.g. "SM-N975F"); the reduced UA only says "Android 10; K". */
+  clientHints?: {
+    platform: string | null;
+    platformVersion: string | null;
+    model: string | null;
+    brands: string | null;
+  } | null;
   capturedAt: string; // ISO timestamp
 }
 
@@ -245,6 +253,8 @@ export interface SessionRecord {
     options: CameraOption[];
     requested: RequestedVideo;
     delivered: DeliveredVideo | null;
+    /** Set when the harness re-opened on the ranked primary camera after facingMode picked another lens. */
+    autoSwitchedFrom?: DeliveredVideo | null;
   };
   controls: CameraControls | null;
   loop: LoopStats | null;

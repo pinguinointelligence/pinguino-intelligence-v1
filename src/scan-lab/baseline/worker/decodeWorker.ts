@@ -128,7 +128,7 @@ async function lumaFromBitmap(
 
 async function handleFrame(msg: FrameMessage): Promise<void> {
   const tRecv = performance.now();
-  const transferMs = tRecv - msg.tSent;
+  const transferMs = performance.timeOrigin + tRecv - msg.tSent;
   const { width, height, frameIndex, tCapture } = msg;
   const decodes: DecodeOutcome[] = [];
   let luma: Uint8Array;
@@ -229,7 +229,7 @@ async function handleFrame(msg: FrameMessage): Promise<void> {
     decodes,
     quality,
   };
-  const tWorkerDone = performance.now();
+  const tWorkerDone = performance.timeOrigin + performance.now();
   if (msg.luma) post({ type: 'result', evidence, luma: msg.luma, tWorkerDone }, [msg.luma]);
   else post({ type: 'result', evidence, tWorkerDone });
 }

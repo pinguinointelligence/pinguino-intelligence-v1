@@ -36,7 +36,8 @@ export interface FrameMessage {
   type: 'frame';
   frameIndex: number;
   tCapture: number;
-  /** performance.now() right before postMessage — the worker measures main→worker transfer from it. */
+  /** Epoch ms (performance.timeOrigin + performance.now()) right before postMessage — comparable across the
+   *  worker boundary; each worker has its OWN performance.now() origin, so a raw now() would be meaningless. */
   tSent: number;
   path: FrameTransferPath;
   width: number;
@@ -65,6 +66,7 @@ export interface ResultMessage {
   evidence: FrameEvidence;
   /** The luma buffer handed back for reuse (rgba_buffer path only). */
   luma?: ArrayBuffer;
+  /** Epoch ms (see FrameMessage.tSent). */
   tWorkerDone: number;
 }
 

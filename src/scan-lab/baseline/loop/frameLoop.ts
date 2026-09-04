@@ -25,8 +25,8 @@ export interface FrameLoopOptions {
   video: HTMLVideoElement;
   client: DecodeClient;
   path: FrameTransferPath | 'auto';
-  /** Analysis width in px; 0 = the delivered video width (capped at 1920). */
-  analysisWidth?: number;
+  /** Cap on the analysis plane's LONG edge in px (portrait phones deliver 1080×1920); 0 = native, capped at 1920. */
+  analysisLongEdge?: number;
   onTick?: (tick: FrameTickRecord & { frameIndex: number }) => void;
   doc?: Document;
 }
@@ -245,11 +245,16 @@ export class FrameLoop {
     const vh = video.videoHeight;
     if (!vw || !vh) return { width: 0, height: 0 };
     const cap =
-      this.opts.analysisWidth && this.opts.analysisWidth > 0 ? this.opts.analysisWidth : 1920;
-    if (vw <= cap) return { width: vw, height: vh };
-    const width = cap;
-    const height = Math.round((vh * cap) / vw / 2) * 2;
-    return { width, height };
+      this.opts.analysisLongEdge && this.opts.analysisLongEdge > 0
+        ? this.opts.analysisLongEdge
+        : 1920;
+    const long = Math.max(vw, vh);
+    if (long <= cap) return { width: vw, height: vh };
+    const scale = cap / long;
+    return {
+      width: Math.round((vw * scale) / 2) * 2,
+      height: Math.round((vh * scale) / 2) * 2,
+    };
   }
 
   private captureLuma(width: number, height: number): Uint8Array | null {
