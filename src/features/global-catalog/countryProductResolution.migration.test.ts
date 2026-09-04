@@ -2,10 +2,17 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-const migration = readFileSync(
+const authorityMigration = readFileSync(
   join(
     process.cwd(),
     'supabase/migrations/20260903212502_country_product_resolution_authority.sql',
+  ),
+  'utf8',
+).replace(/\r\n/g, '\n');
+const currentSlotSeam = readFileSync(
+  join(
+    process.cwd(),
+    'supabase/migrations/20260904110935_product_canonical_slot_review_authority.sql',
   ),
   'utf8',
 ).replace(/\r\n/g, '\n');
@@ -18,36 +25,40 @@ const api = readFileSync(join(process.cwd(), 'api/product-country.js'), 'utf8');
 
 describe('canonical country product resolution migration', () => {
   it('creates one explicit country/Mapper relationship authority with enforced primary and fallback order', () => {
-    expect(migration).toContain('create table public.country_product_slot_assignments');
-    expect(migration).toContain('country_product_slot_one_active_primary_idx');
-    expect(migration).toContain("assignment_kind = 'PRIMARY_DEFAULT'");
-    expect(migration).toContain('country_product_slot_fallback_priority_idx');
-    expect(migration).toContain("assignment_kind = 'SAFE_FALLBACK'");
-    expect(migration).toContain('fallback_priority between 1 and 32767');
-    const resolverRanking = migration.slice(
-      migration.indexOf('private.choose_country_product_resolution_v1'),
-      migration.indexOf('revoke all on function private.choose_country_product_resolution_v1'),
+    expect(authorityMigration).toContain('create table public.country_product_slot_assignments');
+    expect(authorityMigration).toContain('country_product_slot_one_active_primary_idx');
+    expect(authorityMigration).toContain("assignment_kind = 'PRIMARY_DEFAULT'");
+    expect(authorityMigration).toContain('country_product_slot_fallback_priority_idx');
+    expect(authorityMigration).toContain("assignment_kind = 'SAFE_FALLBACK'");
+    expect(authorityMigration).toContain('fallback_priority between 1 and 32767');
+    const resolverRanking = authorityMigration.slice(
+      authorityMigration.indexOf('private.choose_country_product_resolution_v1'),
+      authorityMigration.indexOf(
+        'revoke all on function private.choose_country_product_resolution_v1',
+      ),
     );
     expect(resolverRanking).not.toMatch(/price|created_at|brand|display_name/i);
   });
 
-  it('accepts only a current ready shared product bound to the same Mapper slot and exact country', () => {
-    const validator = migration.slice(
-      migration.indexOf('private.country_product_slot_assignment_is_usable_v1'),
-      migration.indexOf('private.validate_country_product_slot_assignment_v1'),
+  it('accepts only a reviewed current ready shared product for the same slot and exact country', () => {
+    const validator = currentSlotSeam.slice(
+      currentSlotSeam.indexOf('private.country_product_slot_assignment_is_usable_v1'),
+      currentSlotSeam.indexOf(
+        'revoke all on function private.country_product_slot_assignment_is_usable_v1',
+      ),
     );
-    expect(validator).toContain("p.visibility = 'shared'");
-    expect(validator).toContain('private.exact_product_has_picker_profile_v1(');
-    expect(validator).toContain('version.id = p.current_version_id');
-    expect(validator).toContain('binding.id = p.current_behavior_binding_id');
-    expect(validator).toContain("binding.binding_status = 'ready'");
-    expect(validator).toContain('binding.mapper_ingredient_id = btrim(p_mapper_ingredient_id)');
+    expect(validator).toContain("product.visibility = 'shared'");
+    expect(validator).toContain('private.product_has_current_canonical_slot_review_v1(');
+    expect(validator).toContain('version.id = product.current_version_id');
+    expect(validator).not.toContain('binding.mapper_ingredient_id');
     expect(validator).toContain(
       'upper(coalesce(variant_market.market, variant.market)) = upper(btrim(p_country_code))',
     );
-    const exactProfile = migration.slice(
-      migration.indexOf('private.exact_product_has_picker_profile_v1'),
-      migration.indexOf('revoke all on function private.exact_product_has_picker_profile_v1'),
+    const exactProfile = currentSlotSeam.slice(
+      currentSlotSeam.indexOf('private.product_canonical_slot_candidate_is_valid_v1'),
+      currentSlotSeam.indexOf(
+        'revoke all on function private.product_canonical_slot_candidate_is_valid_v1',
+      ),
     );
     for (const field of [
       'water',
@@ -66,25 +77,31 @@ describe('canonical country product resolution migration', () => {
   });
 
   it('enforces the owner precedence and returns no implicit foreign/generic commercial winner', () => {
-    const resolver = migration.slice(
-      migration.indexOf('create or replace function public.resolve_country_product_slots_v1'),
-      migration.indexOf('create or replace function public.merge_guest_product_country_v1'),
+    const resolver = currentSlotSeam.slice(
+      currentSlotSeam.indexOf(
+        'create or replace function public.resolve_country_product_slots_v1',
+      ),
+      currentSlotSeam.indexOf(
+        'revoke all on function public.resolve_country_product_slots_v1(text[], text, text)',
+      ),
     );
     expect(resolver).toContain("'USER_PREFERRED'::text");
     expect(resolver).toContain('0 as authority_rank');
     expect(resolver).toContain("then 'COUNTRY_PRIMARY_DEFAULT'");
     expect(resolver).toContain("else 'COUNTRY_SAFE_FALLBACK'");
     expect(resolver).toContain('private.choose_country_product_resolution_v1(');
-    expect(migration).toContain('order by candidates.authority_rank, candidates.fallback_rank');
+    expect(authorityMigration).toContain(
+      'order by candidates.authority_rank, candidates.fallback_rank',
+    );
     expect(resolver).toContain('assignment.country_code = effective_country.country_code');
     expect(resolver).not.toMatch(/favorite[^\n]*authority_rank|recent[^\n]*authority_rank/i);
     expect(resolver).not.toMatch(/limit\s+1/i);
   });
 
   it('lets saved account Product Country override a transient request country', () => {
-    const effective = migration.slice(
-      migration.indexOf('effective_country as ('),
-      migration.indexOf('preferred_candidates as ('),
+    const effective = currentSlotSeam.slice(
+      currentSlotSeam.indexOf('effective_country as ('),
+      currentSlotSeam.indexOf('preferred_candidates as ('),
     );
     expect(effective.indexOf('pref.primary_market')).toBeLessThan(
       effective.indexOf('p_product_country'),
@@ -92,9 +109,11 @@ describe('canonical country product resolution migration', () => {
   });
 
   it('keeps the assignment table admin-only while exposing only the bounded resolver', () => {
-    expect(migration).toContain("gellatti_admin_has_permission_v1('CATALOG')");
-    expect(migration).toContain('revoke all on table public.country_product_slot_assignments');
-    expect(migration).toContain(
+    expect(authorityMigration).toContain("gellatti_admin_has_permission_v1('CATALOG')");
+    expect(authorityMigration).toContain(
+      'revoke all on table public.country_product_slot_assignments',
+    );
+    expect(currentSlotSeam).toContain(
       'grant execute on function public.resolve_country_product_slots_v1(text[], text, text)',
     );
   });
@@ -111,8 +130,10 @@ describe('canonical country product resolution migration', () => {
   });
 
   it('merges safe guest cases and surfaces different explicit choices as a conflict', () => {
-    const merge = migration.slice(
-      migration.indexOf('create or replace function public.merge_guest_product_country_v1'),
+    const merge = authorityMigration.slice(
+      authorityMigration.indexOf(
+        'create or replace function public.merge_guest_product_country_v1',
+      ),
     );
     expect(merge).toContain("'GUEST_MERGED'");
     expect(merge).toContain("'ACCOUNT_KEPT'");
