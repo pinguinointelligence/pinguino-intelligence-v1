@@ -282,3 +282,69 @@ The finalize comment states the rule explicitly: "One readiness authority for ev
 - F12.2 (P3) `privateOverlay.price` is stored as a single number without a unit basis on the scanner path (`price` per what? the RPC maps `privatePrice` per kg on the ingest path, `20260813110300:1914`); the scanner call site sends `price` — the unit is implied. Worth one explicit field name.
 
 **Verdict.** PASS.
+
+## SECTION 13 — PERSISTENCE (import → recipe → save → reopen → version → HOME/PRO → rescan)
+
+| Stage | Identity carried | Evidence | Verdict |
+|---|---|---|---|
+| import | `products.id` (uuid) + `product_code`, `ean_code` / `ean_code_normalized`, `normalized_identity = 'ean:<digits>'`, `current_version_id` (v1, sha256 `facts_fingerprint`), `current_behavior_binding_id`; scan session keeps `exact_product_id` | RPC `20260827100000:311-337`, finalize `:381-398` | PASS |
+| recipe use (HOME live sweep + intent chips) | the catalogue product id is re-read fresh by stable id through the authenticated Base-approved selection view — "a search row alone is NOT enough: it carries no composition" (`hydrateIngredient`, `home-creator/homeIntentResolutionService.ts:71-82`, `services/ingredients.ts:225`) → `recipeStore.addIngredient` | `liveScanHandoff.ts:7-10` | PASS |
+| save / version | `recipe_versions (recipe_id, version_number, recipe_input jsonb, product_profile, engine_version, config_version, mapper_dataset_version, restored_from_version)` — an immutable snapshot per version | `20260716102958_0027_saved_recipes_and_versions.sql:32-55` | PASS |
+| reopen after catalogue lifecycle changes | `resolve_legacy_recipe_behavior_v1` "follows version successors and merge aliases to the current picker identity when one exists"; `validate_recipe_behavior_v1` "may accept the exact frozen snapshot of an immutable recipe version owned by auth.uid(), without replacing its facts" — "a catalog lifecycle change must not invalidate an immutable recipe" (P0 comment) | `20260827160000_historical_recipe_product_authority.sql:1-10,32,247` | PASS |
+| customer-added product in a recipe | carries the same `PRODUCT_BEHAVIOR_V1` null runtime Mapper identity as PR/PM; both serialisations of that null are accepted without granting a runtime Mapper binding | `20260827101000_customer_added_recipe_readiness.sql:1-6` | PASS |
+| HOME vs PRO | HOME: sweep → `hydrateIngredient`; PRO: Global Catalog picker (`search_products_v1` + country slot / preferred exact slot authorities). Both end in the same product id; only the *default selection* rules differ | Sections 3, 8 | PASS (identity), see F7.1 |
+| rescan | same EAN → same product (Section 7); the server exact path misses customer-added products without a variant row (F7.2) | Section 7 | PARTIAL |
+
+**Provenance + ownership through the loop.** `product_versions.provenance = 'customer_added_scanner_v1'`, `evidence_snapshot = { scanSessionId }`, `customer_added_product_evidence (user_id, scan_session_id)`; ownership through `customer_added_product_accounts`; the private overlay lives in `user_product_relations` and never enters the version (Sections 8, 12). PASS.
+
+**Findings.**
+- F13.1 (P2) The exact field carried inside `recipe_input` for an ingredient (product id vs version id) is not pinned by a contract test in the scanner area; the historical authority compensates at reopen time, but a version-less reference relies on that resolver. VERIFY with one test (not proven here).
+- F13.2 (P3) `evidence_snapshot` stores only the session id; the raw scan result that produced version 1 is reachable only while `product_scan_sessions` rows live (they expire, `expires_at`).
+
+**Verdict.** PASS for identity stability across the loop; PARTIAL on rescan (F7.2) and on the un-pinned recipe reference field (F13.1).
+
+## SECTION 14 — SECURITY / TRUST BOUNDARIES
+
+| Boundary | Control | Evidence | Verdict |
+|---|---|---|---|
+| Barcode string (client → server) | client `validateBarcode` (digits + check digit); server `normalizeValidatedBarcode` rejects anything but digits/space/dash and re-checks the digit; a session is bound to one code (`scan_session_barcode_conflict`) | Section 2; `product-scan-analyze/index.ts:226-228` | PASS |
+| Provider JSON (OpenAI) | strict JSON schema (`strict: true`) on every call; `validateServerResult` re-validates; a malformed response "is ignored, never partially trusted"; model never asked for or given a product id; no tools on the identify call ("gives the model no tools, so it cannot browse or call anything", `productIdentifyLiveBoundary.test.ts:52`) | Section 5; `productIdentifyLiveBoundary.test.ts:17-52` | PASS |
+| Web research | `web_search` hard-filtered to `allowed_domains` when an official domain is known; facts ranked below the label; conflicts retained with `retainedSource = label` | Section 5 | PASS |
+| Images | size caps (`identify_frame_too_large` 413, `scan_image_too_large`, `scan_payload_too_large`), encoding validation (`invalid_scan_image_encoding`), no images or raw IPs in diagnostics ("records safe cost/rate diagnostics without raw IPs or images", `productScanner.boundary.test.ts:135`) | server error vocabulary | PASS |
+| Secrets | OpenAI key and model choice server-only (`productScanner.boundary.test.ts:33`); service-role client only inside edge functions | | PASS |
+| Data ownership (RLS) | `product_scan_sessions`, `product_scan_assets`, `product_scan_field_evidence`, `product_scan_external_sources`, `product_scan_usage_ledger`: `select using (auth.uid() = user_id)` and no client insert/update policies (server-owned, `20260821120000:152-165`); `user_product_relations_own` (`20260813110300:608`); customer-added rows readable only by linked accounts or CATALOG admins (`20260827100000:88-122`); `search_products_v1` / `gellatti_search_match_tier` revoked from `public, anon` | migrations | PASS |
+| Anon exposure of catalogue views | `mapper_basement_search_demo` is `security_invoker = false` and `grant select … to anon, authenticated` (`20260809194003:28,48`, `20260902120000_mapper_search_views_read_only.sql:50`) — the 2026-09-02 migration is the read-only closure of the earlier anon write hole; SELECT by anon remains by design (demo) | migrations | PASS (verify the revoke lines printed above) |
+| Rendering of provider strings | no `dangerouslySetInnerHTML` in scanner/product/picker UI (grep: 0); every user-facing failure passes `assertUserSafeScannerMessage` (render gate) | Section 10 | PASS |
+| Engine authority | external facts can never set ProductBehaviour; the profile/behaviour authorities are the only writers (Section 11); "keeps private commerce data outside shared overlay and never mutates Mapper" (`productScanner.boundary.test.ts:82`) | | PASS |
+| Silent overwrite of stronger records | a customer-added product cannot overwrite a shared commercial product (separate `product_kind`, own EAN uniqueness index); web facts cannot overwrite label facts; corrections are bound to the session barcode | Sections 4, 5, 7 | PASS |
+
+**Findings.**
+- F14.1 (P2) The demo Mapper view remains anon-readable by design; any future column added to `mapper_basement_search_demo` is automatically public — worth a column allow-list test.
+- F14.2 (P3) `customer_added_products.normalized_ean ~ '^[0-9]{8,14}$'` accepts a 14-digit value without a check digit (Section 2); only server code protects it today.
+
+**Verdict.** PASS — external evidence is treated as evidence; no injection or authority bypass found on the audited paths.
+
+## SECTION 15 — FAILURE STATES (actual vocabulary → owner meaning)
+
+The repo does NOT use a single enum. Four vocabularies exist: the client `ScannerErrorCode` (`scannerErrors.ts:20-34`: `analysis_failed | analysis_incomplete | save_failed | save_not_ready | quota_reached | auth_required | connection | unavailable`), the server error codes (49 distinct `error: '…'` values across identify/analyze/finalize), the session outcome `ScanOutcome` (`existing_product | cancelled | analysis_failed | incomplete_awaiting_evidence | duplicate_of_existing | product_created`, `scanRouting.ts:80-87`), and the live-sweep events (`ignored_low_quality | searching | candidate | confirmed | unresolved | duplicate_suppressed`, `liveScanSession.ts`). Mapping to the owner's states:
+
+| Owner state | ACTUAL repository state | OWNER-FACING MEANING (today) | RECOVERABLE? | USER ACTION | PERSISTENCE EFFECT |
+|---|---|---|---|---|---|
+| NO_CODE | live: `searching` / `ignored_low_quality`; deep: `routeScan → collect`; identify-live: `evidenceType` without barcode | "szukam" / nothing yet | yes | keep scanning | none |
+| INVALID_CODE | **collapsed into NO_CODE**: `validateBarcode` returns `null` and the frame is treated as having no barcode; server `normalizeValidatedBarcode` → `null` → falls through to OCR/model | not shown | yes | none possible (user cannot see a checksum failure) | none |
+| KNOWN_PRODUCT | `existing_product` (route / `ScanOutcome` / analyze `kind`), finalize `kind: 'idempotent'`, live `confirmed` | product name, "already in catalogue", green | — | use it | account link + favorite (customer-added) |
+| UNKNOWN_PRODUCT | live `unresolved` (→ deep scanner); identify-live `status: 'UNRESOLVED'`; deep: `ean_lookup` → `analyze_label` → `request_evidence` → `estimate` | "nie znamy tego produktu, zeskanuj etykietę" | yes | photograph label / confirm family | session rows; product only on finalize |
+| NETWORK_UNAVAILABLE | client `connection` (deep scanner); live sweep: **silent** (a failed identification is "a frame that said nothing"); `ean_lookup` failure: **recorded as lookup done** | „Nie mamy teraz połączenia…" (deep) / nothing (live) | yes | retry | none; but `eanLookupDone = true` blocks the free retry (F10.3) |
+| LOOKUP_FAILED | server `provider_request_failed`, `scanner_provider_unavailable`, `identify_unavailable`, `scanner_lookup_preflight_failed` → client `analysis_failed` / `unavailable` | „Skaner potrzebuje chwili…" / analysis failed | yes | retry later | session keeps evidence (`analysisRetained` per code) |
+| AMBIGUOUS | **does not exist**: identify-live returns `UNRESOLVED` when several catalogue rows match; client `lookupExactBarcode` picks the first row (F4.1, F4.3) | not shown | — | — | possible wrong exact product (client path) |
+| NEEDS_CONFIRMATION | finalize `kind: 'family_confirmation_required'`, analyze `request_evidence` with `missingCriticalFields`, overlay `USABLE_FOR_OWNER` / `PENDING_PUBLICATION`, live `needs_resolution` | "potwierdź rodzinę produktu" / "brakuje: …" | yes | confirm / photograph | session `validation_json` |
+| IMPORT_FAILED | `customer_product_persistence_failed` 503, `customer_product_profile_rejected` 409, `customer_product_identity_required` 409, `scan_not_ready_for_creation` 409 → client `save_failed` / `save_not_ready` | „nie udało się zapisać" with the analysis retained on screen | yes (retry finalize with the same idempotency key) | retry | none until success |
+| quota / auth (extra) | `session_vision_limit`, `scanner_call_cost_limit`, `scanner_product_quota_reached` → `quota_reached`; `authentication_required`, ownership mismatch → `auth_required` | explicit Polish copy | partly | wait / sign in | session preserved |
+
+**Findings.**
+- F15.1 (P2) INVALID_CODE is never surfaced: a checksum-failing read is indistinguishable from "no barcode", so a damaged label produces a slow, expensive path instead of an instant "kod nieczytelny" hint.
+- F15.2 (P2) AMBIGUOUS does not exist (see F4.3); two different fallbacks (UNRESOLVED vs first-row) depending on the entry point.
+- F15.3 (P2) NETWORK_UNAVAILABLE is honest on the deep scanner but silent on the live sweep and mis-recorded on the EAN lookup (F10.2, F10.3).
+- F15.4 (P3) Four vocabularies with no documented mapping; the client copy layer (`SCANNER_ERROR_COPY`) is the only place where the mapping is visible.
+
+**Verdict.** Failure states are honest (no fake success anywhere) — PASS; but three owner states are missing or collapsed (INVALID_CODE, AMBIGUOUS, live NETWORK_UNAVAILABLE) — PARTIAL.
