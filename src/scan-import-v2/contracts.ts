@@ -98,9 +98,14 @@ export interface ImportPort {
     ctx: RequestContext;
   }): Promise<ImportOutcome>;
 }
+export interface OfflineCacheEntry {
+  candidate: ExactCandidate;
+  behaviour: { outcome: 'classified'; bindingId: string | null };
+  price: PriceState;
+}
 export interface OfflineCachePort {
-  get(accountId: string | null, canonicalGtin13: string): Promise<ExactCandidate | null>;
-  put(accountId: string | null, candidate: ExactCandidate): Promise<void>;
+  get(accountId: string | null, canonicalGtin13: string): Promise<OfflineCacheEntry | null>;
+  put(accountId: string | null, entry: OfflineCacheEntry): Promise<void>;
 }
 export interface PricePort {
   /** the per-user overlay price; missing is a costing state, never a failure (audit §12) */
