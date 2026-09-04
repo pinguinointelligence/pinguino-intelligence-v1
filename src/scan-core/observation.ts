@@ -25,6 +25,8 @@ export interface BarcodeEvidenceSummary {
   format: BarcodeFormat;
   /** present only when verified */
   value?: string;
+  /** the decoder's own text of the first agreeing read (before digit normalisation) */
+  rawValue?: string;
   verified: boolean;
   agreeingFrames: number;
   lane: 'fast' | 'consensus' | null;

@@ -10,6 +10,8 @@
  * §17 rectified rule (corpus): a systematic homography alias repeats identically across frames, so rectified
  * reads never confirm on their own — every confirmation needs at least one non-rectified agreeing read.
  */
+import { formatFromDecoder, type BarcodeFormat } from './observation';
+
 export type ReadSource = 'medium' | 'native' | 'rescue' | 'rectified';
 
 export interface Read {
@@ -19,6 +21,10 @@ export interface Read {
   lineCount: number;
   moduleNative: number | null;
   source: ReadSource;
+  /** decoder-reported symbology string (e.g. 'EAN13'); reads of different symbologies never agree */
+  format?: string;
+  /** decoder text before digit normalisation */
+  rawText?: string;
 }
 
 export type Lane = 'fast' | 'consensus';
@@ -31,6 +37,10 @@ export interface ConfirmationState {
   confirmedAt: number | null;
   /** frames that contributed to the confirmation */
   frames: number[];
+  /** normalised symbology of the agreeing reads (null before any read) */
+  format: BarcodeFormat | null;
+  /** reads of the confirmed digits arrived with more than one known symbology */
+  mixedFormats: boolean;
 }
 
 export const CONFIRMATION = {
@@ -43,27 +53,39 @@ export const CONFIRMATION = {
   windowMs: 1500,
 } as const;
 
+const IDLE: ConfirmationState = {
+  status: 'idle',
+  value: null,
+  lane: null,
+  agreeing: 0,
+  confirmedAt: null,
+  frames: [],
+  format: null,
+  mixedFormats: false,
+};
+
+/** Agreement key: digits + normalised symbology. An unknown symbology agrees only with unknown. */
+function agreementKey(r: Read): string {
+  return `${r.text}|${formatFromDecoder(r.format ?? '')}`;
+}
+
 export class Confirmation {
   private reads: Read[] = [];
-  state: ConfirmationState = {
-    status: 'idle',
-    value: null,
-    lane: null,
-    agreeing: 0,
-    confirmedAt: null,
-    frames: [],
-  };
+  state: ConfirmationState = { ...IDLE };
 
   reset(): void {
     this.reads = [];
-    this.state = {
-      status: 'idle',
-      value: null,
-      lane: null,
-      agreeing: 0,
-      confirmedAt: null,
-      frames: [],
-    };
+    this.state = { ...IDLE };
+  }
+
+  private mixedFormats(text: string): boolean {
+    const known = new Set(
+      this.reads
+        .filter((r) => r.text === text)
+        .map((r) => formatFromDecoder(r.format ?? ''))
+        .filter((f) => f !== 'unknown'),
+    );
+    return known.size > 1;
   }
 
   private fastEligible(r: Read): boolean {
@@ -84,7 +106,7 @@ export class Confirmation {
     const prev = this.reads.length >= 2 ? this.reads[this.reads.length - 2] : undefined;
     if (
       prev &&
-      prev.text === read.text &&
+      agreementKey(prev) === agreementKey(read) &&
       prev.frameIndex !== read.frameIndex &&
       read.tMs - prev.tMs <= CONFIRMATION.fastWindowMs &&
       this.fastEligible(prev) &&
@@ -98,6 +120,8 @@ export class Confirmation {
         agreeing: 2,
         confirmedAt: read.tMs,
         frames: [prev.frameIndex, read.frameIndex],
+        format: formatFromDecoder(read.format ?? ''),
+        mixedFormats: this.mixedFormats(read.text),
       };
       return this.state;
     }
@@ -105,20 +129,30 @@ export class Confirmation {
     // slow lane: count agreeing reads from distinct frames within the window
     // rectified reads COUNT on the slow lane (D3 can: all 40 correct reads came from the rectified crop) but
     // never carry the fast lane (the same crop also produced 6 consecutive aliases)
-    const byText = new Map<string, Set<number>>();
+    const byKey = new Map<string, { text: string; format: BarcodeFormat; frames: Set<number> }>();
     for (const r of this.reads) {
-      const set = byText.get(r.text) ?? new Set<number>();
-      set.add(r.frameIndex);
-      byText.set(r.text, set);
+      const key = agreementKey(r);
+      const g = byKey.get(key) ?? {
+        text: r.text,
+        format: formatFromDecoder(r.format ?? ''),
+        frames: new Set<number>(),
+      };
+      g.frames.add(r.frameIndex);
+      byKey.set(key, g);
     }
-    const ranked = [...byText.entries()]
-      .map(([text, frames]) => ({ text, n: frames.size, frames: [...frames] }))
+    const ranked = [...byKey.values()]
+      .map((g) => ({ text: g.text, format: g.format, n: g.frames.size, frames: [...g.frames] }))
       .sort((a, b) => b.n - a.n);
     const top = ranked[0];
     const second = ranked[1];
     // §17: the winning value needs at least one non-rectified read
     const topHasIndependent = top
-      ? this.reads.some((r) => r.text === top.text && r.source !== 'rectified')
+      ? this.reads.some(
+          (r) =>
+            r.text === top.text &&
+            formatFromDecoder(r.format ?? '') === top.format &&
+            r.source !== 'rectified',
+        )
       : false;
     if (
       top &&
@@ -133,6 +167,8 @@ export class Confirmation {
         agreeing: top.n,
         confirmedAt: read.tMs,
         frames: top.frames,
+        format: top.format,
+        mixedFormats: this.mixedFormats(top.text),
       };
       return this.state;
     }
@@ -143,6 +179,8 @@ export class Confirmation {
       agreeing: top?.n ?? 0,
       confirmedAt: null,
       frames: top?.frames ?? [],
+      format: top?.format ?? null,
+      mixedFormats: top ? this.mixedFormats(top.text) : false,
     };
     return this.state;
   }

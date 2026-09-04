@@ -76,6 +76,8 @@ export interface TrackDecisionRecord {
   harder: boolean;
   quality: CandidateQuality | null;
   agreeing: number;
+  /** per-track escalation ladder level (Track.escalationLevel) */
+  escalation: 0 | 1 | 2 | 3;
 }
 
 export interface FrameDecisionRecord {
@@ -93,6 +95,8 @@ export interface FrameDecisionRecord {
   blocker: boolean;
   progress: number;
   decodeRequests: number;
+  /** READING/HOLD exceeded STATE.readingTimeoutMs without a confirmation */
+  timedOut: boolean;
 }
 
 export interface EngineOptions {
@@ -108,6 +112,16 @@ export class ScanCoreEngine {
   private readonly searchPolicy: PolicyState;
   private readonly emitted = new Set<string>();
   private roiTimestamps: number[] = [];
+  /**
+   * Valid reads from full-frame rescue decodes that no single track could own (several live tracks,
+   * none of which has read that value). Kept as evidence, never confirmed from. Bounded.
+   */
+  readonly unattributedReads: Array<{
+    frameIndex: number;
+    tMs: number;
+    text: string;
+    format: string;
+  }> = [];
 
   constructor(readonly opts: EngineOptions) {
     this.searchPolicy = new PolicyState(opts.profile, opts.zoomApproved);
@@ -206,7 +220,8 @@ export class ScanCoreEngine {
           const tilt =
             quality?.tiltDeg ??
             Math.min(Math.abs(candidate.angleDeg % 90), 90 - Math.abs(candidate.angleDeg % 90));
-          const rectify = native && tilt > 8 && track.misses >= 1;
+          const level = track.escalationLevel();
+          const rectify = native && tilt > 8 && level >= 1;
           requests.push({
             trackId: track.id,
             frameIndex: input.frameIndex,
@@ -214,7 +229,7 @@ export class ScanCoreEngine {
             harder,
             rectify,
             retryFrames:
-              track.misses >= 2 ? track.retryFrames().filter((f) => f !== input.frameIndex) : [],
+              level >= 2 ? track.retryFrames().filter((f) => f !== input.frameIndex) : [],
             source: rectify ? 'rectified' : native ? 'native' : 'medium',
           });
         }
@@ -236,6 +251,7 @@ export class ScanCoreEngine {
         harder: d.harder,
         quality,
         agreeing: track.confirmation.state.agreeing,
+        escalation: track.escalationLevel(),
       });
     }
 
@@ -274,6 +290,7 @@ export class ScanCoreEngine {
         harder: d.harder,
         quality: null,
         agreeing: 0,
+        escalation: 0,
       });
     }
 
@@ -307,15 +324,47 @@ export class ScanCoreEngine {
       blocker: sm.blocker,
       progress: sm.progress,
       decodeRequests: requests.length,
+      timedOut: sm.timedOut,
     };
     return { record, requests };
   }
 
   /** Decode results come back asynchronously; evidence goes to the track, confirmation may emit an observation. */
+  /**
+   * A rescue decode reads the whole frame, so its result carries no track geometry. It may be
+   * attributed to a track only when the attribution is unambiguous: a single live track, or exactly
+   * one track that has already read these digits. Otherwise the read is retained as unattributed
+   * evidence and can never confirm anything (two-code isolation).
+   */
+  private attributeRescue(result: DecodeResult): Track | undefined {
+    const live = this.tracker.tracks.filter((t) => t.state !== 'LOST');
+    if (live.length === 0) return undefined;
+    if (live.length === 1) return live[0];
+    const digitsOf = (i: DecodeResultItem) => i.text.replace(/\D/g, '');
+    const valid = result.items.filter((i) => i.checksumValid && digitsOf(i));
+    const owners = new Set<Track>();
+    for (const i of valid) {
+      const d = digitsOf(i);
+      for (const t of live)
+        if (t.evidence.some((e) => e.kind === 'valid_read' && e.text === d)) owners.add(t);
+    }
+    if (owners.size === 1) return [...owners][0];
+    for (const i of valid) {
+      this.unattributedReads.push({
+        frameIndex: result.frameIndex,
+        tMs: result.tMs,
+        text: digitsOf(i),
+        format: i.format,
+      });
+      if (this.unattributedReads.length > 32) this.unattributedReads.shift();
+    }
+    return undefined;
+  }
+
   ingestDecode(result: DecodeResult): ScanObservation | null {
     const track = result.trackId
       ? this.tracker.tracks.find((t) => t.id === result.trackId)
-      : this.rescueTarget();
+      : this.attributeRescue(result);
     if (!track) return null;
     const policy = this.policyFor(track);
     let anyValid = false;
@@ -330,6 +379,8 @@ export class ScanCoreEngine {
           lineCount: item.lineCount,
           moduleNative: this.lastModule(track),
           source: result.source,
+          format: item.format,
+          rawText: item.text,
         };
         track.pushRead(read);
         track.evidence[track.evidence.length - 1]!.format = item.format;
@@ -361,8 +412,14 @@ export class ScanCoreEngine {
     const st = track.confirmation.state;
     if (st.status === 'confirmed' && !this.emitted.has(track.id)) {
       this.emitted.add(track.id);
-      const reads = track.evidence.filter((e) => e.kind === 'valid_read' && e.text === st.value);
+      const reads = track.evidence.filter(
+        (e) =>
+          e.kind === 'valid_read' &&
+          e.text === st.value &&
+          (st.format === null || formatFromDecoder(e.format ?? '') === st.format),
+      );
       const fmt = reads.map((e) => e.format).find((f): f is string => Boolean(f)) ?? '';
+      const rawValue = reads.map((e) => e.rawText).find((r): r is string => Boolean(r));
       return {
         trackId: track.id,
         kind: 'barcode',
@@ -370,6 +427,7 @@ export class ScanCoreEngine {
         barcode: {
           format: formatFromDecoder(fmt),
           value: st.value ?? undefined,
+          rawValue,
           verified: true,
           agreeingFrames: st.agreeing,
           lane: st.lane,
@@ -384,7 +442,7 @@ export class ScanCoreEngine {
           completedAt: st.confirmedAt ?? undefined,
           framesObserved: track.frames,
         },
-        reasons: [],
+        reasons: st.mixedFormats ? ['mixed_formats'] : [],
       };
     }
     return null;
@@ -395,7 +453,4 @@ export class ScanCoreEngine {
   }
 
   /** A rescue decode has no track; attach it to the primary track if one exists (else it only informs search). */
-  private rescueTarget(): Track | undefined {
-    return this.tracker.primary(this.opts.profile.sourceW, this.opts.profile.sourceH) ?? undefined;
-  }
 }

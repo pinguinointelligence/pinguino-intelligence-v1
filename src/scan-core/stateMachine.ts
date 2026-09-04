@@ -32,6 +32,8 @@ export interface StateInput {
 }
 
 export interface StateOutput {
+  /** READING/HOLD lasted longer than STATE.readingTimeoutMs without a confirmation */
+  timedOut: boolean;
   state: ScanState;
   /** the automatic action to try first; guidance shown only when actions are exhausted */
   action: CameraAction;
@@ -53,6 +55,8 @@ export const STATE = {
   blockerMs: 1000,
   darkLuma: 60,
   maxZoomSteps: 2,
+  /** PROVISIONAL — needs probe evidence: READING/HOLD without a confirmation for this long raises a blocker */
+  readingTimeoutMs: 4000,
 } as const;
 
 export class TargetStateMachine {
@@ -66,6 +70,7 @@ export class TargetStateMachine {
   private refocusTried = false;
   private guidanceSince: { code: Guidance; tMs: number } | null = null;
   private lastActionAt = -Infinity;
+  private readingSince: number | null = null;
 
   private transition(next: ScanState, tMs: number): void {
     if (next === this.state) {
@@ -93,6 +98,7 @@ export class TargetStateMachine {
   }
 
   private rearm(): void {
+    this.readingSince = null;
     this.zoomSteps = 0;
     this.torchTried = false;
     this.refocusTried = false;
@@ -161,7 +167,13 @@ export class TargetStateMachine {
     }
 
     // guidance only when no action is pending; persistent blocker after 1 s of the same blocking code
+    if (this.state === 'READING' || this.state === 'HOLD') {
+      if (this.readingSince === null) this.readingSince = inp.tMs;
+    } else this.readingSince = null;
+    const timedOut =
+      this.readingSince !== null && inp.tMs - this.readingSince > STATE.readingTimeoutMs;
     let guidance: Guidance = action !== 'none' ? 'none' : inp.guidance;
+    if (timedOut && guidance === 'none') guidance = 'hold_steady';
     if (
       guidance === 'move_closer' &&
       inp.zoomAvailable &&
@@ -170,7 +182,7 @@ export class TargetStateMachine {
     )
       guidance = 'none';
     if (this.state === 'COMPLETE') guidance = 'none';
-    let blocker = false;
+    let blocker = timedOut;
     if (guidance !== 'none' && guidance !== 'hold_steady') {
       if (!this.guidanceSince || this.guidanceSince.code !== guidance)
         this.guidanceSince = { code: guidance, tMs: inp.tMs };
@@ -187,6 +199,14 @@ export class TargetStateMachine {
                 (p.state === 'READING' ? 0.3 : p.state === 'FOUND' ? 0.15 : 0),
             )
           : 0;
-    return { state: this.state, action, guidance, blocker, trackId: this.trackId, progress };
+    return {
+      state: this.state,
+      action,
+      guidance,
+      blocker,
+      trackId: this.trackId,
+      progress,
+      timedOut,
+    };
   }
 }

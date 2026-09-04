@@ -39,6 +39,8 @@ export interface EvidenceEntry {
   source: Read['source'] | 'none';
   text?: string;
   format?: string;
+  /** decoder text before digit normalisation (valid reads) */
+  rawText?: string;
   lineCount?: number;
   error?: string;
   moduleNative?: number | null;
@@ -162,6 +164,18 @@ export class Track {
   }
 
   /** Frames the decoder should retry against when the live frame fails (sharpest first, unique). */
+  /**
+   * Per-track decode escalation ladder, derived from consecutive misses since the last valid read:
+   * 0 cheap crop · 1 harder / rectified when tilted · 2 retry the best retained frames · 3 rescue-eligible.
+   * A returning code gets a new track and therefore a fresh ladder; a valid read resets it (pushRead).
+   */
+  escalationLevel(): 0 | 1 | 2 | 3 {
+    if (this.misses <= 0) return 0;
+    if (this.misses === 1) return 1;
+    if (this.misses < 4) return 2;
+    return 3;
+  }
+
   retryFrames(): number[] {
     const order: BestCropKey[] = ['sharpest', 'largestModule', 'contrast', 'leastTilt'];
     const out: number[] = [];
@@ -181,6 +195,8 @@ export class Track {
       text: read.text,
       lineCount: read.lineCount,
       moduleNative: read.moduleNative,
+      format: read.format,
+      rawText: read.rawText,
     });
     const st = this.confirmation.push(read);
     if (st.status === 'confirmed') this.state = 'COMPLETE';
@@ -216,14 +232,46 @@ export class Tracker {
       });
     }
     pairs.sort((a, b) => a.d - b.d);
+    const cost = new Map<string, number>();
+    for (const pr of pairs) cost.set(`${pr.t.id}:${pr.i}`, pr.d);
+    const chosen: Array<{ t: Track; i: number }> = [];
     for (const pr of pairs) {
       if (usedTrack.has(pr.t.id) || usedCand.has(pr.i)) continue;
-      const c = candidates[pr.i]!;
-      const stability = pr.t.stability(c);
-      pr.t.update(frameIndex, tMs, c);
       usedTrack.add(pr.t.id);
       usedCand.add(pr.i);
-      assigned.push({ track: pr.t, candidate: c, stability });
+      chosen.push({ t: pr.t, i: pr.i });
+    }
+    // Swap guard (2-opt): greedy nearest-first can pair two crossing codes the wrong way round when
+    // the first pick is cheap and leaves the other track an expensive leftover. Exchange any two
+    // assignments whose swapped total is strictly cheaper, so identities follow the cheaper joint
+    // explanation rather than the first match.
+    let improved = true;
+    while (improved) {
+      improved = false;
+      for (let a = 0; a < chosen.length; a += 1)
+        for (let b = a + 1; b < chosen.length; b += 1) {
+          const A = chosen[a]!;
+          const B = chosen[b]!;
+          const current = cost.get(`${A.t.id}:${A.i}`)! + cost.get(`${B.t.id}:${B.i}`)!;
+          const swappedA = cost.get(`${A.t.id}:${B.i}`);
+          const swappedB = cost.get(`${B.t.id}:${A.i}`);
+          if (
+            swappedA !== undefined &&
+            swappedB !== undefined &&
+            swappedA + swappedB < current - 1e-9
+          ) {
+            const tmp = A.i;
+            A.i = B.i;
+            B.i = tmp;
+            improved = true;
+          }
+        }
+    }
+    for (const { t, i } of chosen) {
+      const c = candidates[i]!;
+      const stability = t.stability(c);
+      t.update(frameIndex, tMs, c);
+      assigned.push({ track: t, candidate: c, stability });
     }
     candidates.forEach((c, i) => {
       if (usedCand.has(i)) return;
