@@ -256,7 +256,7 @@ describe('mobile preview navigation', () => {
     expect(surface).toContain('showTabs={false}');
     // The score / Przelicz dock is shown once: bottom stack on mobile, toolbar on xl.
     expect(read('features', 'ingredient-builder', 'IngredientBuilder.tsx')).toContain(
-      'ml-auto hidden min-w-0 xl:block',
+      'pro-workbench-action-dock ml-auto hidden min-w-0',
     );
   });
 });

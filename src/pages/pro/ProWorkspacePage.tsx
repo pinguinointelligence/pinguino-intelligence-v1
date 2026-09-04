@@ -52,8 +52,6 @@ import type { ProCorePersona } from '@/features/pro-core/proCoreCapabilities';
 import type { CockpitTab, ProContextTab } from '@/features/pro-workbench/RecipeProfilePanel';
 import type { LabelWorkspaceView } from '@/features/master-label/LabelWorkspace';
 import { DESKTOP_TAB_STRIP } from '@/features/shell/desktopTabAnchorContract';
-import { HomeProSwitch } from '@/features/home-creator/ui/HomeProSwitch';
-import { useHomeEntitlement } from '@/features/home-creator/useHomeEntitlement';
 import { WorkbenchModuleTabs } from '@/features/pro-workbench/WorkbenchModuleTabs';
 import { ReviewBadge } from '@/features/design-review/ReviewBadge';
 import { OfficialProLogo } from '@/components/shared/OfficialProLogo';
@@ -66,6 +64,7 @@ import {
   APP_PAGE_BLOCK,
   APP_PAGE_MEASURE,
   APP_PAGE_WORKSPACE,
+  PRO_WORKBENCH_FRAME_CLASS,
 } from '@/features/shell/shellGeometry';
 import { cockpitTabFromRoute, routeForCockpitTab } from './workbenchRoute';
 import { WORKBENCH_ORIGIN_PARAM, workbenchOriginReturnPath } from './workbenchOrigin';
@@ -143,9 +142,8 @@ function ProTopActions({ persona }: { persona: ProCorePersona }) {
       {/* The switch used to be rendered HERE, which made it conditional on
           `workbench` — true only for a signed-in PRO on a workbench tab. A
           signed-out visitor therefore saw no switch at all on /pro, breaking the
-          frozen contract. It now lives in the shell's `globalSwitch` slot, which
-          renders on every route unconditionally, so the workbar must not render a
-          second copy. */}
+          frozen contract. AppShell now owns and renders it once on every route,
+          so the workbar must not render a second copy. */}
     </div>
   );
 }
@@ -162,7 +160,7 @@ function ProWorkbenchHeaderChrome({
       /* OWNER OVERRIDE §8 — the strip belongs to the RIGHT display column, not
          to the viewport. `DESKTOP_TAB_STRIP` pins its box to that column, so
          switching Receptura → Monitor → Produkcja → Etykieta moves it 0 px. */
-      className={`hidden min-w-0 xl:block ${DESKTOP_TAB_STRIP}`}
+      className={`pro-workbench-header-section-nav min-w-0 ${DESKTOP_TAB_STRIP}`}
       data-testid="pro-global-workbench-chrome"
     >
       <WorkbenchModuleTabs
@@ -338,7 +336,6 @@ function SectionPanel({ tab, persona }: { tab: TabId; persona: ProCorePersona })
 export function ProWorkspacePage() {
   /* Unconditional, above every early return: the canonical switch renders on
      /pro for EVERY audience, so its entitlement must not sit behind a guard. */
-  const proEntitlement = useHomeEntitlement();
   const [recalcOpen, setRecalcOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -482,22 +479,7 @@ export function ProWorkspacePage() {
     // White precision workspace: presentation-only token remap. The same components,
     // values, content, actions and below-fold review zone remain intact.
     <div
-      /* OWNER 2026-09-02: PRO must read as the SAME application as Shop, not an
-         enlarged one. The whole workbench scope is laid out at the approved
-         1440 px authority and rendered at Shop's 1280 px canvas — 1280/1440 =
-         0.8889 — so rows, type, steppers, spacing, the display column, the
-         recipe card, WYNIK, USTAWIENIA and the module strip all shrink by the
-         same factor, together. It sits HERE rather than on the workbench panel
-         so the header scales with the body; on the panel alone the module strip
-         stopped lining up with the display column beneath it.
-
-         `zoom`, not `transform: scale()`: zoom takes part in layout, so the
-         scope genuinely occupies the smaller box instead of leaving a phantom
-         one. The locked height is divided by the same factor, otherwise the
-         scaled `100dvh` would come up 11 % short of the viewport.
-
-         Hierarchy, order, copy and logic are untouched — only the scale. */
-      className={`pro-studio-radius-system theme-pro-light${workbench ? ' gellatti-pro-workbench xl:h-dvh' : ''}`}
+      className={`pro-studio-radius-system theme-pro-light${workbench ? ' gellatti-pro-workbench' : ''}`}
       data-testid="pro-light-scope"
     >
       <AppShell
@@ -514,7 +496,6 @@ export function ProWorkspacePage() {
            difference: PRO presents as the current view, HOME as the other one.
            It closes the work column beside `ProTopActions`; the module strip
            keeps the right display column untouched. */
-        globalSwitch={<HomeProSwitch entitlement={proEntitlement} activeView="pro" />}
         workbenchChrome={
           workbench ? (
             <ProWorkbenchHeaderChrome activeTab={activeCockpitTab} onTabChange={changeCockpitTab} />
@@ -551,17 +532,7 @@ export function ProWorkspacePage() {
           // ONE-SCREEN workbench (recipe + monitor): no page heading, no tab row — the
           // viewport belongs to the edit loop; every destination lives in the hamburger.
           <div
-            /* OWNER 2026-09-02: PRO has to read as the SAME application as Shop,
-               not an enlarged one. Shop's content sits in `APP_PAGE_CANVAS`
-               (max-w-1280) nested inside the 1776 px workspace; the workbench had
-               no inner canvas and ran nearly edge to edge.
-
-               A bare max-width would only crop the page — the rows, type,
-               steppers and gaps would stay oversized. The scale is therefore
-               applied to the whole PRO scope (see `pro-light-scope` above), not
-               here: putting it on this panel alone left the HEADER unscaled, and
-               the module strip stopped lining up with the display column. */
-            className="xl:mx-auto xl:flex xl:h-full xl:min-h-0 xl:w-[calc(100%-var(--pro-page-gutter))] xl:max-w-[1440px] xl:flex-col xl:[zoom:0.8889]"
+            className={`${PRO_WORKBENCH_FRAME_CLASS} pro-workbench-body-frame`}
             data-testid={`pro-panel-${activeTab}`}
           >
             {activeLibraryHandoff.state === 'loading' ? (

@@ -49,8 +49,8 @@ describe('the header grid is GLOBAL, not a workbench detail', () => {
   it('applies the shared two-track grid regardless of viewportLock', () => {
     // viewportLock also locks the BODY (h-dvh, overflow-hidden) — right for the
     // workbench, wrong for a long sequential document. Geometry must not ride on it.
-    expect(shell).toContain('`xl:grid ${DESKTOP_WORKBENCH_COLUMNS}`');
-    expect(shell).not.toContain('viewportLock && `xl:grid');
+    expect(shell).toContain("cn('contents', APP_HEADER_CANVAS, DESKTOP_WORKBENCH_COLUMNS)");
+    expect(shell).not.toContain('viewportLock && DESKTOP_WORKBENCH_COLUMNS');
   });
 
   it('keeps the global elements in column 1 on every page', () => {
@@ -60,18 +60,16 @@ describe('the header grid is GLOBAL, not a workbench detail', () => {
     // px identically on Shop and PRO — while HOME | PRO and the module strip stay
     // on the workbench column edge inside that band.
     expect(shell).toContain('APP_HEADER_CANVAS');
-    expect(shell).toContain('xl:col-start-1 xl:row-start-1');
+    expect(shell).toContain('pro-workbench-header-primary');
   });
 
   it('anchors non-workbench actions to the work column, never the viewport edge', () => {
     // The trailing group is now inside the centred band, still `ml-auto`.
-    expect(shell).toContain('ml-auto flex min-w-0 items-center');
+    expect(shell).toContain('pro-workbench-header-primary pointer-events-auto ml-auto flex');
   });
 
   it('does NOT give non-workbench pages the workbench body lock', () => {
-    expect(shell).toContain(
-      "viewportLock && 'xl:flex xl:h-dvh xl:min-h-0 xl:flex-col xl:overflow-hidden'",
-    );
+    expect(shell).toContain("viewportLock && 'pro-workbench-shell-lock'");
   });
 
   it('renders no plan badge beside the switch', () => {
@@ -180,7 +178,8 @@ describe('ONE page gutter — a page may not re-scope the global header', () => 
      * is itself hidden, so the box rendered at zero width — and a zero-width
      * FLEX ITEM still takes a gap. It must not be a flex item down there.
      */
-    expect(shell).toContain('<div className="hidden min-w-0 items-center xl:flex">{actions}</div>');
+    expect(shell).toContain('pro-workbench-desktop-only min-w-0 items-center');
+    expect(shell).not.toContain('{!viewportLock ? actions : null}');
   });
 
   it('still resolves the header and the workspace through that one token', () => {
@@ -193,7 +192,6 @@ describe('ONE page gutter — a page may not re-scope the global header', () => 
 
 describe('the header canvas cannot silently swallow its own controls', () => {
   const shell = readFileSync(resolve(import.meta.dirname, 'AppShell.tsx'), 'utf8');
-  const geometry = readFileSync(resolve(import.meta.dirname, 'shellGeometry.ts'), 'utf8');
 
   /* OWNER QA 2026-09-03 — the regression this locks out.
 
@@ -208,16 +206,15 @@ describe('the header canvas cannot silently swallow its own controls', () => {
      Nothing about the strip's appearance changed when it broke, and no test
      looked at pointer events, which is exactly why it reached staging. */
   it('every child group placed on the canvas re-enables pointer events', () => {
-    expect(geometry).toContain('xl:pointer-events-none');
+    const css = readFileSync('src/styles/gellatti-v2-1.css', 'utf8');
+    expect(css).toMatch(/\.pro-workbench-header-canvas\s*\{[\s\S]*pointer-events:\s*none/);
     const canvasBlock = shell.slice(shell.indexOf('APP_HEADER_CANVAS'));
     const region = canvasBlock.slice(0, canvasBlock.indexOf('</header>'));
     // The two groups the canvas carries: the actions/switch column, and the
     // workbench module strip. Both must opt in.
     expect((region.match(/pointer-events-auto/g) ?? []).length).toBeGreaterThanOrEqual(2);
     expect(shell).toContain('data-testid="app-header-workbench-chrome"');
-    expect(shell).toMatch(
-      /pointer-events-auto contents"\s*data-testid="app-header-workbench-chrome"/,
-    );
+    expect(shell).toContain('pro-workbench-header-chrome pointer-events-auto contents');
   });
 });
 
@@ -254,8 +251,9 @@ describe('layering and the intermediate desktop band', () => {
        strip right 1340 against login left 1296 — a 44 px overlap. The strip
        keeps its LEFT edge on the display column and gives back the space four
        equal 125 px columns were never using. Nothing at 1500+ is touched. */
-    expect(v21).toMatch(/@media \(min-width: 1280px\) and \(max-width: 1499\.98px\)/);
+    expect(v21).toMatch(/@media \(min-width: 70rem\) and \(max-width: 93\.749rem\)/);
     expect(v21).toMatch(/grid-template-columns: repeat\(4, max-content\)/);
-    expect(v21).toMatch(/justify-self: start/);
+    expect(v21).toMatch(/justify-content: start/);
+    expect(v21).toMatch(/\.pro-workbench-section-nav\s*\{[\s\S]*width:\s*100%/);
   });
 });

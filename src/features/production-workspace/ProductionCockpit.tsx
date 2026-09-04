@@ -51,7 +51,7 @@ function HeatInformationCard({ production }: { production: ProductionWorkspaceVi
   if (acknowledged) return null;
   return (
     <section
-      className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1.5 rounded-[12px] border border-[#d9c49a] bg-[#fbf8f1] px-3 py-2.5 text-ink xl:hidden"
+      className="pro-workbench-mobile-only grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1.5 rounded-[12px] border border-[#d9c49a] bg-[#fbf8f1] px-3 py-2.5 text-ink"
       role="status"
       data-testid="production-heat-information"
       data-acknowledged={acknowledged ? 'true' : 'false'}
@@ -648,7 +648,10 @@ export function ProductionCockpit({
     progress.totalCount > 0 ? (progress.confirmedCount / progress.totalCount) * 100 : 0;
 
   return (
-    <div className="pro-scroll-safe space-y-3 p-3 text-ink xl:space-y-2.5 xl:p-0" data-testid="production-cockpit">
+    <div
+      className="pro-scroll-safe space-y-3 p-3 text-ink xl:space-y-2.5 xl:p-0"
+      data-testid="production-cockpit"
+    >
       <MachineOperationCard production={production} />
       {production.persistenceError ? (
         <p
@@ -931,9 +934,9 @@ export function ProductionCockpit({
                 Nie mamy bezpiecznej korekty dla tej partii
               </p>
               <p className="mt-1 text-[11px] leading-relaxed text-stone-600">
-                Jeśli wartość jest błędna, wybierz „Popraw zapis” w jej wierszu. Jeśli ilości
-                w naczyniu są prawidłowe, przerwij partię i rozpocznij nową — nie dodawaj składników bez
-                zatwierdzonego planu.
+                Jeśli wartość jest błędna, wybierz „Popraw zapis” w jej wierszu. Jeśli ilości w
+                naczyniu są prawidłowe, przerwij partię i rozpocznij nową — nie dodawaj składników
+                bez zatwierdzonego planu.
               </p>
               <button
                 type="button"

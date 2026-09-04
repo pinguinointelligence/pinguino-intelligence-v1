@@ -1,0 +1,1158 @@
+{
+  "generatedAt": "2026-09-03T23:59:14.571Z",
+  "url": "http://127.0.0.1:5177/pro/recipe",
+  "fixture": {
+    "route": "/pro/recipe",
+    "baseRows": 6
+  },
+  "viewports": [
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080,
+        "dpr": 1
+      },
+      "density": "SPACIOUS",
+      "structuralMode": "DESKTOP",
+      "outerFrame": {
+        "left": 320,
+        "right": 1600,
+        "top": 82,
+        "bottom": 1080,
+        "width": 1280,
+        "height": 998,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "header": {
+        "left": 72,
+        "right": 1848,
+        "top": 0,
+        "bottom": 82,
+        "width": 1776,
+        "height": 82,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "leftTrack": {
+        "left": 320,
+        "right": 1144,
+        "top": 94,
+        "bottom": 1068,
+        "width": 824,
+        "height": 974,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "rightTrack": {
+        "left": 1156,
+        "right": 1600,
+        "top": 94,
+        "bottom": 1068,
+        "width": 444,
+        "height": 974,
+        "display": "block",
+        "visibility": "visible"
+      },
+      "sectionNavigationTrack": {
+        "left": 1156,
+        "right": 1600,
+        "top": -0.5,
+        "bottom": 81.5,
+        "width": 444,
+        "height": 82,
+        "display": "grid",
+        "visibility": "visible"
+      },
+      "bottomNavigation": {
+        "left": 0,
+        "right": 0,
+        "top": 0,
+        "bottom": 0,
+        "width": 0,
+        "height": 0,
+        "display": "none",
+        "visibility": "visible"
+      },
+      "bottomNavigationVisible": false,
+      "leftGutter": 320,
+      "rightGutter": 320,
+      "gutterDelta": 0,
+      "headerBodyRightTrackLeftDelta": 0,
+      "headerBodyRightTrackWidthDelta": 0,
+      "ingredientRowsVisible": 6,
+      "ingredientTableClipped": false,
+      "document": {
+        "scrollWidth": 1920,
+        "clientWidth": 1920,
+        "overflowX": false,
+        "scrollHeight": 1080,
+        "clientHeight": 1080
+      },
+      "portals": {
+        "picker": {
+          "position": "anchored",
+          "parentIsBody": true,
+          "box": {
+            "left": 320,
+            "right": 1144,
+            "top": 94,
+            "bottom": 1064,
+            "width": 824,
+            "height": 970
+          },
+          "withinViewport": true,
+          "backdrop": "rgba(0, 0, 0, 0)"
+        },
+        "dialog": {
+          "overlayParentIsBody": true,
+          "overlayBox": {
+            "left": 0,
+            "right": 1920,
+            "top": 0,
+            "bottom": 1080,
+            "width": 1920,
+            "height": 1080
+          },
+          "panelBox": {
+            "left": 710,
+            "right": 1210,
+            "top": 391.5,
+            "bottom": 688.5,
+            "width": 500,
+            "height": 297
+          },
+          "overlayCoversViewport": true,
+          "panelWithinViewport": true
+        }
+      },
+      "screenshot": "1920x1080.png"
+    },
+    {
+      "viewport": {
+        "width": 1728,
+        "height": 1117,
+        "dpr": 1
+      },
+      "density": "SPACIOUS",
+      "structuralMode": "DESKTOP",
+      "outerFrame": {
+        "left": 224,
+        "right": 1504,
+        "top": 82,
+        "bottom": 1117,
+        "width": 1280,
+        "height": 1035,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "header": {
+        "left": 32,
+        "right": 1696,
+        "top": 0,
+        "bottom": 82,
+        "width": 1664,
+        "height": 82,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "leftTrack": {
+        "left": 224,
+        "right": 1048,
+        "top": 94,
+        "bottom": 1105,
+        "width": 824,
+        "height": 1011,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "rightTrack": {
+        "left": 1060,
+        "right": 1504,
+        "top": 94,
+        "bottom": 1105,
+        "width": 444,
+        "height": 1011,
+        "display": "block",
+        "visibility": "visible"
+      },
+      "sectionNavigationTrack": {
+        "left": 1060,
+        "right": 1504,
+        "top": -0.5,
+        "bottom": 81.5,
+        "width": 444,
+        "height": 82,
+        "display": "grid",
+        "visibility": "visible"
+      },
+      "bottomNavigation": {
+        "left": 0,
+        "right": 0,
+        "top": 0,
+        "bottom": 0,
+        "width": 0,
+        "height": 0,
+        "display": "none",
+        "visibility": "visible"
+      },
+      "bottomNavigationVisible": false,
+      "leftGutter": 224,
+      "rightGutter": 224,
+      "gutterDelta": 0,
+      "headerBodyRightTrackLeftDelta": 0,
+      "headerBodyRightTrackWidthDelta": 0,
+      "ingredientRowsVisible": 6,
+      "ingredientTableClipped": false,
+      "document": {
+        "scrollWidth": 1728,
+        "clientWidth": 1728,
+        "overflowX": false,
+        "scrollHeight": 1117,
+        "clientHeight": 1117
+      },
+      "portals": {
+        "picker": {
+          "position": "anchored",
+          "parentIsBody": true,
+          "box": {
+            "left": 224,
+            "right": 1048,
+            "top": 94,
+            "bottom": 1101,
+            "width": 824,
+            "height": 1007
+          },
+          "withinViewport": true,
+          "backdrop": "rgba(0, 0, 0, 0)"
+        },
+        "dialog": {
+          "overlayParentIsBody": true,
+          "overlayBox": {
+            "left": 0,
+            "right": 1728,
+            "top": 0,
+            "bottom": 1117,
+            "width": 1728,
+            "height": 1117
+          },
+          "panelBox": {
+            "left": 614,
+            "right": 1114,
+            "top": 410,
+            "bottom": 707,
+            "width": 500,
+            "height": 297
+          },
+          "overlayCoversViewport": true,
+          "panelWithinViewport": true
+        }
+      },
+      "screenshot": "1728x1117.png"
+    },
+    {
+      "viewport": {
+        "width": 1600,
+        "height": 900,
+        "dpr": 1
+      },
+      "density": "SPACIOUS",
+      "structuralMode": "DESKTOP",
+      "outerFrame": {
+        "left": 160,
+        "right": 1440,
+        "top": 82,
+        "bottom": 900,
+        "width": 1280,
+        "height": 818,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "header": {
+        "left": 32,
+        "right": 1568,
+        "top": 0,
+        "bottom": 82,
+        "width": 1536,
+        "height": 82,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "leftTrack": {
+        "left": 160,
+        "right": 984,
+        "top": 94,
+        "bottom": 888,
+        "width": 824,
+        "height": 794,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "rightTrack": {
+        "left": 996,
+        "right": 1440,
+        "top": 94,
+        "bottom": 888,
+        "width": 444,
+        "height": 794,
+        "display": "block",
+        "visibility": "visible"
+      },
+      "sectionNavigationTrack": {
+        "left": 996,
+        "right": 1440,
+        "top": -0.5,
+        "bottom": 81.5,
+        "width": 444,
+        "height": 82,
+        "display": "grid",
+        "visibility": "visible"
+      },
+      "bottomNavigation": {
+        "left": 0,
+        "right": 0,
+        "top": 0,
+        "bottom": 0,
+        "width": 0,
+        "height": 0,
+        "display": "none",
+        "visibility": "visible"
+      },
+      "bottomNavigationVisible": false,
+      "leftGutter": 160,
+      "rightGutter": 160,
+      "gutterDelta": 0,
+      "headerBodyRightTrackLeftDelta": 0,
+      "headerBodyRightTrackWidthDelta": 0,
+      "ingredientRowsVisible": 6,
+      "ingredientTableClipped": false,
+      "document": {
+        "scrollWidth": 1600,
+        "clientWidth": 1600,
+        "overflowX": false,
+        "scrollHeight": 900,
+        "clientHeight": 900
+      },
+      "portals": {
+        "picker": {
+          "position": "anchored",
+          "parentIsBody": true,
+          "box": {
+            "left": 160,
+            "right": 984,
+            "top": 94,
+            "bottom": 884,
+            "width": 824,
+            "height": 790
+          },
+          "withinViewport": true,
+          "backdrop": "rgba(0, 0, 0, 0)"
+        },
+        "dialog": {
+          "overlayParentIsBody": true,
+          "overlayBox": {
+            "left": 0,
+            "right": 1600,
+            "top": 0,
+            "bottom": 900,
+            "width": 1600,
+            "height": 900
+          },
+          "panelBox": {
+            "left": 550,
+            "right": 1050,
+            "top": 301.5,
+            "bottom": 598.5,
+            "width": 500,
+            "height": 297
+          },
+          "overlayCoversViewport": true,
+          "panelWithinViewport": true
+        }
+      },
+      "screenshot": "1600x900.png"
+    },
+    {
+      "viewport": {
+        "width": 1536,
+        "height": 864,
+        "dpr": 1
+      },
+      "density": "SPACIOUS",
+      "structuralMode": "DESKTOP",
+      "outerFrame": {
+        "left": 128,
+        "right": 1408,
+        "top": 82,
+        "bottom": 864,
+        "width": 1280,
+        "height": 782,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "header": {
+        "left": 30.72,
+        "right": 1505.27,
+        "top": 0,
+        "bottom": 82,
+        "width": 1474.55,
+        "height": 82,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "leftTrack": {
+        "left": 128,
+        "right": 952,
+        "top": 94,
+        "bottom": 852,
+        "width": 824,
+        "height": 758,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "rightTrack": {
+        "left": 964,
+        "right": 1408,
+        "top": 94,
+        "bottom": 852,
+        "width": 444,
+        "height": 758,
+        "display": "block",
+        "visibility": "visible"
+      },
+      "sectionNavigationTrack": {
+        "left": 963.98,
+        "right": 1407.98,
+        "top": -0.5,
+        "bottom": 81.5,
+        "width": 444,
+        "height": 82,
+        "display": "grid",
+        "visibility": "visible"
+      },
+      "bottomNavigation": {
+        "left": 0,
+        "right": 0,
+        "top": 0,
+        "bottom": 0,
+        "width": 0,
+        "height": 0,
+        "display": "none",
+        "visibility": "visible"
+      },
+      "bottomNavigationVisible": false,
+      "leftGutter": 128,
+      "rightGutter": 128,
+      "gutterDelta": 0,
+      "headerBodyRightTrackLeftDelta": 0.02,
+      "headerBodyRightTrackWidthDelta": 0,
+      "ingredientRowsVisible": 6,
+      "ingredientTableClipped": false,
+      "document": {
+        "scrollWidth": 1536,
+        "clientWidth": 1536,
+        "overflowX": false,
+        "scrollHeight": 864,
+        "clientHeight": 864
+      },
+      "portals": {
+        "picker": {
+          "position": "anchored",
+          "parentIsBody": true,
+          "box": {
+            "left": 128,
+            "right": 952,
+            "top": 94,
+            "bottom": 848,
+            "width": 824,
+            "height": 754
+          },
+          "withinViewport": true,
+          "backdrop": "rgba(0, 0, 0, 0)"
+        },
+        "dialog": {
+          "overlayParentIsBody": true,
+          "overlayBox": {
+            "left": 0,
+            "right": 1536,
+            "top": 0,
+            "bottom": 864,
+            "width": 1536,
+            "height": 864
+          },
+          "panelBox": {
+            "left": 518,
+            "right": 1018,
+            "top": 283.5,
+            "bottom": 580.5,
+            "width": 500,
+            "height": 297
+          },
+          "overlayCoversViewport": true,
+          "panelWithinViewport": true
+        }
+      },
+      "screenshot": "1536x864.png"
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900,
+        "dpr": 1
+      },
+      "density": "COMPACT",
+      "structuralMode": "DESKTOP",
+      "outerFrame": {
+        "left": 80,
+        "right": 1360,
+        "top": 82,
+        "bottom": 900,
+        "width": 1280,
+        "height": 818,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "header": {
+        "left": 28.8,
+        "right": 1411.19,
+        "top": 0,
+        "bottom": 82,
+        "width": 1382.39,
+        "height": 82,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "leftTrack": {
+        "left": 80,
+        "right": 904.48,
+        "top": 92,
+        "bottom": 890,
+        "width": 824.48,
+        "height": 798,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "rightTrack": {
+        "left": 916,
+        "right": 1360,
+        "top": 92,
+        "bottom": 890,
+        "width": 444,
+        "height": 798,
+        "display": "block",
+        "visibility": "visible"
+      },
+      "sectionNavigationTrack": {
+        "left": 915.98,
+        "right": 1359.98,
+        "top": -0.5,
+        "bottom": 81.5,
+        "width": 444,
+        "height": 82,
+        "display": "grid",
+        "visibility": "visible"
+      },
+      "bottomNavigation": {
+        "left": 0,
+        "right": 0,
+        "top": 0,
+        "bottom": 0,
+        "width": 0,
+        "height": 0,
+        "display": "none",
+        "visibility": "visible"
+      },
+      "bottomNavigationVisible": false,
+      "leftGutter": 80,
+      "rightGutter": 80,
+      "gutterDelta": 0,
+      "headerBodyRightTrackLeftDelta": 0.02,
+      "headerBodyRightTrackWidthDelta": 0,
+      "ingredientRowsVisible": 6,
+      "ingredientTableClipped": false,
+      "document": {
+        "scrollWidth": 1440,
+        "clientWidth": 1440,
+        "overflowX": false,
+        "scrollHeight": 900,
+        "clientHeight": 900
+      },
+      "portals": {
+        "picker": {
+          "position": "anchored",
+          "parentIsBody": true,
+          "box": {
+            "left": 80,
+            "right": 904.48,
+            "top": 92,
+            "bottom": 884,
+            "width": 824.48,
+            "height": 792
+          },
+          "withinViewport": true,
+          "backdrop": "rgba(0, 0, 0, 0)"
+        },
+        "dialog": {
+          "overlayParentIsBody": true,
+          "overlayBox": {
+            "left": 0,
+            "right": 1440,
+            "top": 0,
+            "bottom": 900,
+            "width": 1440,
+            "height": 900
+          },
+          "panelBox": {
+            "left": 470,
+            "right": 970,
+            "top": 301.5,
+            "bottom": 598.5,
+            "width": 500,
+            "height": 297
+          },
+          "overlayCoversViewport": true,
+          "panelWithinViewport": true
+        }
+      },
+      "screenshot": "1440x900.png"
+    },
+    {
+      "viewport": {
+        "width": 1366,
+        "height": 768,
+        "dpr": 1
+      },
+      "density": "COMPACT",
+      "structuralMode": "DESKTOP",
+      "outerFrame": {
+        "left": 43,
+        "right": 1323,
+        "top": 82,
+        "bottom": 768,
+        "width": 1280,
+        "height": 686,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "header": {
+        "left": 27.31,
+        "right": 1338.67,
+        "top": 0,
+        "bottom": 82,
+        "width": 1311.36,
+        "height": 82,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "leftTrack": {
+        "left": 43,
+        "right": 874.97,
+        "top": 92,
+        "bottom": 758,
+        "width": 831.97,
+        "height": 666,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "rightTrack": {
+        "left": 885.89,
+        "right": 1323,
+        "top": 92,
+        "bottom": 758,
+        "width": 437.11,
+        "height": 666,
+        "display": "block",
+        "visibility": "visible"
+      },
+      "sectionNavigationTrack": {
+        "left": 885.88,
+        "right": 1322.98,
+        "top": -0.5,
+        "bottom": 81.5,
+        "width": 437.11,
+        "height": 82,
+        "display": "grid",
+        "visibility": "visible"
+      },
+      "bottomNavigation": {
+        "left": 0,
+        "right": 0,
+        "top": 0,
+        "bottom": 0,
+        "width": 0,
+        "height": 0,
+        "display": "none",
+        "visibility": "visible"
+      },
+      "bottomNavigationVisible": false,
+      "leftGutter": 43,
+      "rightGutter": 43,
+      "gutterDelta": 0,
+      "headerBodyRightTrackLeftDelta": 0.01,
+      "headerBodyRightTrackWidthDelta": 0,
+      "ingredientRowsVisible": 6,
+      "ingredientTableClipped": false,
+      "document": {
+        "scrollWidth": 1366,
+        "clientWidth": 1366,
+        "overflowX": false,
+        "scrollHeight": 768,
+        "clientHeight": 768
+      },
+      "portals": {
+        "picker": {
+          "position": "anchored",
+          "parentIsBody": true,
+          "box": {
+            "left": 43,
+            "right": 874.97,
+            "top": 92,
+            "bottom": 752,
+            "width": 831.97,
+            "height": 660
+          },
+          "withinViewport": true,
+          "backdrop": "rgba(0, 0, 0, 0)"
+        },
+        "dialog": {
+          "overlayParentIsBody": true,
+          "overlayBox": {
+            "left": 0,
+            "right": 1366,
+            "top": 0,
+            "bottom": 768,
+            "width": 1366,
+            "height": 768
+          },
+          "panelBox": {
+            "left": 433,
+            "right": 933,
+            "top": 235.5,
+            "bottom": 532.5,
+            "width": 500,
+            "height": 297
+          },
+          "overlayCoversViewport": true,
+          "panelWithinViewport": true
+        }
+      },
+      "screenshot": "1366x768.png"
+    },
+    {
+      "viewport": {
+        "width": 1280,
+        "height": 800,
+        "dpr": 1
+      },
+      "density": "COMPACT",
+      "structuralMode": "DESKTOP",
+      "outerFrame": {
+        "left": 25.59,
+        "right": 1254.39,
+        "top": 82,
+        "bottom": 800,
+        "width": 1228.8,
+        "height": 718,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "header": {
+        "left": 25.59,
+        "right": 1254.39,
+        "top": 0,
+        "bottom": 82,
+        "width": 1228.8,
+        "height": 82,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "leftTrack": {
+        "left": 25.59,
+        "right": 834.56,
+        "top": 92,
+        "bottom": 790,
+        "width": 808.97,
+        "height": 698,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "rightTrack": {
+        "left": 844.8,
+        "right": 1254.39,
+        "top": 92,
+        "bottom": 790,
+        "width": 409.59,
+        "height": 698,
+        "display": "block",
+        "visibility": "visible"
+      },
+      "sectionNavigationTrack": {
+        "left": 844.8,
+        "right": 1254.39,
+        "top": -0.5,
+        "bottom": 81.5,
+        "width": 409.59,
+        "height": 82,
+        "display": "grid",
+        "visibility": "visible"
+      },
+      "bottomNavigation": {
+        "left": 0,
+        "right": 0,
+        "top": 0,
+        "bottom": 0,
+        "width": 0,
+        "height": 0,
+        "display": "none",
+        "visibility": "visible"
+      },
+      "bottomNavigationVisible": false,
+      "leftGutter": 25.59,
+      "rightGutter": 25.61,
+      "gutterDelta": 0.02,
+      "headerBodyRightTrackLeftDelta": 0,
+      "headerBodyRightTrackWidthDelta": 0,
+      "ingredientRowsVisible": 6,
+      "ingredientTableClipped": false,
+      "document": {
+        "scrollWidth": 1280,
+        "clientWidth": 1280,
+        "overflowX": false,
+        "scrollHeight": 800,
+        "clientHeight": 800
+      },
+      "portals": {
+        "picker": {
+          "position": "anchored",
+          "parentIsBody": true,
+          "box": {
+            "left": 25.59,
+            "right": 834.56,
+            "top": 92,
+            "bottom": 784,
+            "width": 808.97,
+            "height": 692
+          },
+          "withinViewport": true,
+          "backdrop": "rgba(0, 0, 0, 0)"
+        },
+        "dialog": {
+          "overlayParentIsBody": true,
+          "overlayBox": {
+            "left": 0,
+            "right": 1280,
+            "top": 0,
+            "bottom": 800,
+            "width": 1280,
+            "height": 800
+          },
+          "panelBox": {
+            "left": 390,
+            "right": 890,
+            "top": 251.5,
+            "bottom": 548.5,
+            "width": 500,
+            "height": 297
+          },
+          "overlayCoversViewport": true,
+          "panelWithinViewport": true
+        }
+      },
+      "screenshot": "1280x800.png"
+    },
+    {
+      "viewport": {
+        "width": 1200,
+        "height": 800,
+        "dpr": 1
+      },
+      "density": "TIGHT",
+      "structuralMode": "DESKTOP",
+      "outerFrame": {
+        "left": 24,
+        "right": 1176,
+        "top": 82,
+        "bottom": 800,
+        "width": 1152,
+        "height": 718,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "header": {
+        "left": 24,
+        "right": 1176,
+        "top": 0,
+        "bottom": 82,
+        "width": 1152,
+        "height": 82,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "leftTrack": {
+        "left": 24,
+        "right": 782.41,
+        "top": 90,
+        "bottom": 792,
+        "width": 758.41,
+        "height": 702,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "rightTrack": {
+        "left": 792,
+        "right": 1176,
+        "top": 90,
+        "bottom": 792,
+        "width": 384,
+        "height": 702,
+        "display": "block",
+        "visibility": "visible"
+      },
+      "sectionNavigationTrack": {
+        "left": 792,
+        "right": 1176,
+        "top": -0.5,
+        "bottom": 81.5,
+        "width": 384,
+        "height": 82,
+        "display": "grid",
+        "visibility": "visible"
+      },
+      "bottomNavigation": {
+        "left": 0,
+        "right": 0,
+        "top": 0,
+        "bottom": 0,
+        "width": 0,
+        "height": 0,
+        "display": "none",
+        "visibility": "visible"
+      },
+      "bottomNavigationVisible": false,
+      "leftGutter": 24,
+      "rightGutter": 24,
+      "gutterDelta": 0,
+      "headerBodyRightTrackLeftDelta": 0,
+      "headerBodyRightTrackWidthDelta": 0,
+      "ingredientRowsVisible": 6,
+      "ingredientTableClipped": false,
+      "document": {
+        "scrollWidth": 1200,
+        "clientWidth": 1200,
+        "overflowX": false,
+        "scrollHeight": 800,
+        "clientHeight": 800
+      },
+      "portals": {
+        "picker": {
+          "position": "anchored",
+          "parentIsBody": true,
+          "box": {
+            "left": 24,
+            "right": 782.41,
+            "top": 90,
+            "bottom": 784,
+            "width": 758.41,
+            "height": 694
+          },
+          "withinViewport": true,
+          "backdrop": "rgba(0, 0, 0, 0)"
+        },
+        "dialog": {
+          "overlayParentIsBody": true,
+          "overlayBox": {
+            "left": 0,
+            "right": 1200,
+            "top": 0,
+            "bottom": 800,
+            "width": 1200,
+            "height": 800
+          },
+          "panelBox": {
+            "left": 350,
+            "right": 850,
+            "top": 251.5,
+            "bottom": 548.5,
+            "width": 500,
+            "height": 297
+          },
+          "overlayCoversViewport": true,
+          "panelWithinViewport": true
+        }
+      },
+      "screenshot": "1200x800.png"
+    },
+    {
+      "viewport": {
+        "width": 1024,
+        "height": 768,
+        "dpr": 1
+      },
+      "density": "TABLET",
+      "structuralMode": "TABLET",
+      "outerFrame": {
+        "left": 0,
+        "right": 1024,
+        "top": 69,
+        "bottom": 711,
+        "width": 1024,
+        "height": 642,
+        "display": "block",
+        "visibility": "visible"
+      },
+      "header": {
+        "left": 0,
+        "right": 1024,
+        "top": 0,
+        "bottom": 69,
+        "width": 1024,
+        "height": 69,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "leftTrack": {
+        "left": 0,
+        "right": 1024,
+        "top": 69,
+        "bottom": 579,
+        "width": 1024,
+        "height": 510,
+        "display": "block",
+        "visibility": "visible"
+      },
+      "rightTrack": {
+        "left": 0,
+        "right": 0,
+        "top": 0,
+        "bottom": 0,
+        "width": 0,
+        "height": 0,
+        "display": "none",
+        "visibility": "visible"
+      },
+      "sectionNavigationTrack": {
+        "left": 0,
+        "right": 0,
+        "top": 0,
+        "bottom": 0,
+        "width": 0,
+        "height": 0,
+        "display": "grid",
+        "visibility": "visible"
+      },
+      "bottomNavigation": {
+        "left": 0,
+        "right": 1024,
+        "top": 650,
+        "bottom": 768,
+        "width": 1024,
+        "height": 118,
+        "display": "block",
+        "visibility": "visible"
+      },
+      "bottomNavigationVisible": true,
+      "leftGutter": 0,
+      "rightGutter": 0,
+      "gutterDelta": 0,
+      "headerBodyRightTrackLeftDelta": 0,
+      "headerBodyRightTrackWidthDelta": 0,
+      "ingredientRowsVisible": 6,
+      "ingredientTableClipped": false,
+      "document": {
+        "scrollWidth": 1024,
+        "clientWidth": 1024,
+        "overflowX": false,
+        "scrollHeight": 768,
+        "clientHeight": 768
+      },
+      "portals": null,
+      "screenshot": "1024x768.png"
+    },
+    {
+      "viewport": {
+        "width": 768,
+        "height": 900,
+        "dpr": 1
+      },
+      "density": "TABLET",
+      "structuralMode": "TABLET",
+      "outerFrame": {
+        "left": 0,
+        "right": 768,
+        "top": 69,
+        "bottom": 771,
+        "width": 768,
+        "height": 702,
+        "display": "block",
+        "visibility": "visible"
+      },
+      "header": {
+        "left": 0,
+        "right": 768,
+        "top": 0,
+        "bottom": 69,
+        "width": 768,
+        "height": 69,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "leftTrack": {
+        "left": 0,
+        "right": 768,
+        "top": 69,
+        "bottom": 639,
+        "width": 768,
+        "height": 570,
+        "display": "block",
+        "visibility": "visible"
+      },
+      "rightTrack": {
+        "left": 0,
+        "right": 0,
+        "top": 0,
+        "bottom": 0,
+        "width": 0,
+        "height": 0,
+        "display": "none",
+        "visibility": "visible"
+      },
+      "sectionNavigationTrack": {
+        "left": 0,
+        "right": 0,
+        "top": 0,
+        "bottom": 0,
+        "width": 0,
+        "height": 0,
+        "display": "grid",
+        "visibility": "visible"
+      },
+      "bottomNavigation": {
+        "left": 0,
+        "right": 768,
+        "top": 782,
+        "bottom": 900,
+        "width": 768,
+        "height": 118,
+        "display": "block",
+        "visibility": "visible"
+      },
+      "bottomNavigationVisible": true,
+      "leftGutter": 0,
+      "rightGutter": 0,
+      "gutterDelta": 0,
+      "headerBodyRightTrackLeftDelta": 0,
+      "headerBodyRightTrackWidthDelta": 0,
+      "ingredientRowsVisible": 6,
+      "ingredientTableClipped": false,
+      "document": {
+        "scrollWidth": 768,
+        "clientWidth": 768,
+        "overflowX": false,
+        "scrollHeight": 900,
+        "clientHeight": 900
+      },
+      "portals": null,
+      "screenshot": "768x900.png"
+    }
+  ]
+}

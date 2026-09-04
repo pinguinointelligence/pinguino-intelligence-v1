@@ -127,16 +127,17 @@ describe('canonical Gellatti Pro — menu (proofs 4–6, 17–18)', () => {
     // …and every shell renders AppNavDrawer: the canonical AppShell, and the customer bar.
     expect(read('features', 'shell', 'AppShell.tsx')).toContain('AppNavDrawer');
     expect(read('features', 'customer-shell', 'ui', 'CustomerMenu.tsx')).toContain('AppNavDrawer');
-    // Landing, flow and subscription mount the customer bar; authenticated destinations
-    // compose the same AppShell through DestinationSurface — one drawer everywhere.
+    // The public landing keeps the customer wrapper. Every application route,
+    // including /start and /subscription, mounts the same AppShell directly or
+    // through DestinationSurface — one drawer and one header everywhere.
     expect(read('pages', 'landing', 'LandingPage.tsx')).toContain('CustomerMenu');
-    expect(read('features', 'customer-shell', 'CustomerShellV1.tsx')).toContain('CustomerMenu');
+    expect(read('features', 'customer-shell', 'CustomerShellV1.tsx')).toContain('AppShell');
     // Maszyna moved onto the ONE authenticated shell (owner „global subpage
     // style unification", 2026-08-24): it is reached from the same drawer as
     // every other destination, so it must wear the same header — it previously
     // rendered the customer menu and put its hamburger somewhere else entirely.
     expect(read('pages', 'profile', 'MachineProfilePage.tsx')).toContain('DestinationSurface');
-    expect(read('pages', 'destinations', 'SubscriptionPage.tsx')).toContain('CustomerMenu');
+    expect(read('pages', 'destinations', 'SubscriptionPage.tsx')).toContain('AppShell');
     expect(read('pages', 'recipes', 'MyRecipesPage.tsx')).toContain('AppShell');
     expect(read('pages', 'pro', 'ProWorkspacePage.tsx')).toContain('AppShell');
     expect(read('components', 'shared', 'DestinationSurface.tsx')).toContain('AppShell');
