@@ -155,7 +155,7 @@ async function fileToLabelImage(file: File): Promise<LabelImage> {
   const bytes = new Uint8Array(buf);
   for (let i = 0; i < bytes.length; i += 1) binary += String.fromCharCode(bytes[i]!);
   return {
-    assetId: `lab-${Date.now()}`,
+    assetId: globalThis.crypto.randomUUID(),
     mime: file.type || 'image/jpeg',
     base64: btoa(binary),
     source: 'gallery',

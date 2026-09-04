@@ -121,11 +121,43 @@ export function createSupabaseDiscoveryPort(
     }
     return s;
   };
+  /** FunctionsHttpError carries the response in `context`; the server's own error code lives in its JSON body. */
+  const serverCode = async (error: unknown): Promise<string | null> => {
+    const ctx = (
+      error as {
+        context?: { json?: () => Promise<unknown>; clone?: () => { json(): Promise<unknown> } };
+      }
+    ).context;
+    try {
+      const body = ctx?.clone ? await ctx.clone().json() : ctx?.json ? await ctx.json() : null;
+      const code = (body as { error?: unknown } | null)?.error;
+      return typeof code === 'string' ? code : null;
+    } catch {
+      return null;
+    }
+  };
+  /** The finalize authority answers "not ready" / "confirm family" as structured 409 bodies with a `kind`. */
+  const structuredVerdict = async (error: unknown): Promise<Record<string, unknown> | null> => {
+    const ctx = (error as { context?: { clone?: () => { json(): Promise<unknown> } } }).context;
+    try {
+      const body = ctx?.clone ? await ctx.clone().json() : null;
+      return body &&
+        typeof body === 'object' &&
+        typeof (body as Record<string, unknown>)['kind'] === 'string'
+        ? (body as Record<string, unknown>)
+        : null;
+    } catch {
+      return null;
+    }
+  };
   const invoke = async (name: string, body: unknown): Promise<Record<string, unknown>> => {
     const { data, error } = await client.functions.invoke(name, { body });
     if (error) {
       if (NETWORK.test(error.message)) throw new NetworkError(error.message);
-      throw new Error(`${name}: ${error.message}`);
+      const verdict = await structuredVerdict(error);
+      if (verdict) return verdict;
+      const code = await serverCode(error);
+      throw new Error(`${name}: ${code ?? error.message}`);
     }
     const d = obj(data);
     if (typeof d['error'] === 'string') throw new Error(`${name}: ${d['error']}`);
@@ -216,16 +248,36 @@ export function createSupabaseDiscoveryPort(
               'other',
             ],
           };
-        case 'customer_product_not_ready':
+        case 'customer_product_not_ready': {
+          // the profile/ProductBehaviour authorities refused an Engine product; carry WHY (never invent readiness)
+          const assessment = obj(
+            obj(d['profile'])['productAccuracyAssessment'] ?? d['productAccuracyAssessment'],
+          );
+          const recognition = obj(d['recognition']);
+          const reasons = [
+            ...(Array.isArray(d['reasons']) ? (d['reasons'] as string[]) : []),
+            ...(Array.isArray(assessment['criticalBlockers'])
+              ? (assessment['criticalBlockers'] as string[])
+              : []),
+            ...(typeof assessment['roleReadiness'] === 'string'
+              ? [`roleReadiness:${assessment['roleReadiness']}`]
+              : []),
+            ...(typeof recognition['productArchetype'] === 'string'
+              ? [
+                  `recognition:${recognition['productArchetype']}/${recognition['intendedUsageRole'] ?? '?'}`,
+                ]
+              : []),
+          ];
           return {
             kind: 'not_ready',
             missingCritical: Array.isArray(d['missingCriticalFields'])
               ? (d['missingCriticalFields'] as string[])
-              : [],
-            reasons: Array.isArray(d['reasons'])
-              ? (d['reasons'] as string[])
-              : ['customer_product_not_ready'],
+              : Array.isArray(assessment['missingCritical'])
+                ? (assessment['missingCritical'] as string[])
+                : [],
+            reasons: reasons.length > 0 ? reasons : ['customer_product_not_ready'],
           };
+        }
         case 'profile_preview':
           return {
             kind: 'not_ready',
