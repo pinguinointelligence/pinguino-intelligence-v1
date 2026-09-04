@@ -204,3 +204,19 @@ Step 2 (`ean_lookup`, `product-scan-analyze` mode `ean_lookup`, `index.ts:261-33
 - F8.3 (P3) `global_catalog_variants` and `product_variants` both hold unique EAN slots; only `product_variants` is consulted by the scanner. Historical only, but it is a second place an EAN can "exist".
 
 **Verdict.** Product Catalog: EXISTS, versioned, superseding-safe. Live Overlay (engine identity): DESIGNED ONLY / RETIRED. User overlay: EXISTS and correctly non-authoritative for identity.
+
+## SECTION 9 — COUNTRY VS LANGUAGE
+
+**Where "product country" comes from.** `account_product_market_preferences (user_id, primary_market, additional_markets[], preferred_retailers[], default_scope ∈ my_markets | my_markets_and_global | global)` (`20260813110000_global_product_catalog.sql:144-150`) — an explicit account setting. The picker passes `productCountry: resolvedPreferences.primaryMarket` (`useGlobalCatalogPicker.ts:107-124,173-180`) into `resolve_country_product_slots_v1`, normalised by `normalizeMarketCountry` (`globalCatalog.ts:261`). Valid countries are the admin-maintained `catalog_market_countries (code, name_pl, name_en, …)` (`20260826120000:83-101`) and `country_product_slot_assignments.country_code` is constrained to `^[A-Z]{2}$` (`20260903212502:27-28`).
+
+**Where "language" comes from.** The scanner records `identity.labelLanguages[]` and `identity.countryOfOrigin` as *label evidence* (`_shared/productScanner.ts:43-54,649,713-716`); `countryOfOrigin` is copied to `products.country` at creation (`20260827100000:319`). The UI locale (Polish/English registry) is never passed into product queries: `search_products_v1` has no language parameter (signature `text,text,text,text[],boolean,text,text,integer,integer,jsonb`), `product-identify-live` and `product-scan-analyze` request bodies carry no locale, and no scanner/picker/service file reads `navigator.language` or the i18n language (grep: 0 hits in `product-scanner`, `global-catalog`, `globalCatalog.ts`, `productScanner.ts`).
+
+**EAN prefix.** No code infers a country from the GS1 prefix; `gs1.org` appears only as a source-authority domain (`sourceAuthority.ts:76-77`, `researchPlan.ts:78`). PASS.
+
+**Proof of decoupling.** PRODUCT COUNTRY = account `primary_market` (explicit) or label `countryOfOrigin` (evidence); UI LANGUAGE = locale registry; neither is derived from the other anywhere in the audited paths. PASS.
+
+**Findings.**
+- F9.1 (P3) `products.country` is filled from the label's `countryOfOrigin` (where the product was *made*) while the picker's country authority means the *market* where it is sold; the two notions share one column name. Documentation gap, not a coupling.
+- F9.2 (P3) `labelLanguages` is collected but not used by any resolution rule (dead evidence today).
+
+**Verdict.** PASS.
