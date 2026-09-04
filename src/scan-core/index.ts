@@ -55,3 +55,13 @@ export {
   type TierBudget,
   type TierEvidence,
 } from './tiers';
+export {
+  ScanCoreEngine,
+  type EngineFrameInput,
+  type EngineOptions,
+  type DecodeRequest,
+  type DecodeResult,
+  type DecodeResultItem,
+  type FrameDecisionRecord,
+  type TrackDecisionRecord,
+} from './engine';
