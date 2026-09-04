@@ -19,3 +19,16 @@ export {
 } from './confirmation';
 export { formatOf, type ScanObservation } from './observation';
 export { mergeCollinear, type RawCandidate, type MergedCandidate } from './candidates';
+export {
+  Tracker,
+  Track,
+  TRACK,
+  resetTrackIds,
+  type EvidenceEntry,
+  type EvidenceKind,
+  type BestCrop,
+  type BestCropKey,
+  type Geometry,
+  type TrackState,
+  type TrackerUpdate,
+} from './track';
