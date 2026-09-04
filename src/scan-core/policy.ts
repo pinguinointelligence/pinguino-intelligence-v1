@@ -8,7 +8,6 @@ import { moduleNativePx, planeSizes, type CameraProfile } from './profile';
 export type ScanPath =
   | 'SKIP_NO_CANDIDATE'
   | 'SKIP_BLUR'
-  | 'SKIP_MOTION'
   | 'LOW_MEDIUM'
   | 'NATIVE_ROI'
   | 'FAR_NATIVE_ROI'
@@ -105,6 +104,7 @@ export class PolicyState {
   private framesSinceRescue = 0;
   private missesOnStable = 0;
   private farSince: number | null = null;
+  private lastFill: number | null = null;
 
   constructor(
     readonly profile: CameraProfile,
@@ -195,6 +195,7 @@ export class PolicyState {
     }
     this.lastCandidate = c;
     this.lastCandidateAt = f.tMs;
+    this.lastFill = c.fill;
 
     this.pushSharp(f.sharpness);
     const med = this.sharpMedian();
@@ -233,25 +234,10 @@ export class PolicyState {
     }
     this.blurSince = null;
 
-    if (stab !== null && stab >= THRESHOLDS.motionStab) {
-      // decode on the MEDIUM plane only; the expensive path waits for a steadier candidate
-      const roi = this.cropOn(
-        c,
-        planes.medium.factor,
-        planes.medium.w,
-        planes.medium.h,
-        THRESHOLDS.marginNarrow,
-        'medium',
-      );
-      return {
-        ...out,
-        path: 'SKIP_MOTION',
-        reason: `stability ${stab.toFixed(2)} ≥ ${THRESHOLDS.motionStab} (table 7): MEDIUM crop only`,
-        roi,
-        harder: false,
-        guidance: light !== 'none' ? light : 'hold_steady',
-      };
-    }
+    // instability (table 7: 33 % vs 59 % success) is a MODIFIER: the crop is still decoded on the plane the
+    // fill selects (≤ 2 ms), but no harder retry, no zoom request and no escalation while the candidate jitters
+    const unstable = stab !== null && stab >= THRESHOLDS.motionStab;
+    if (unstable) this.missesOnStable = 0;
 
     if (c.fill >= THRESHOLDS.largeFill) {
       this.farSince = null;
@@ -276,14 +262,14 @@ export class PolicyState {
     if (moduleNative < THRESHOLDS.farModulePx) {
       this.farSince ??= f.tMs;
       const roi = this.cropOn(c, 1, p.sourceW, p.sourceH, THRESHOLDS.marginWide, 'native');
-      const canZoom = this.zoomApproved && (p.zoomMax ?? 1) >= 2 && !f.zoomApplied;
+      const canZoom = !unstable && this.zoomApproved && (p.zoomMax ?? 1) >= 2 && !f.zoomApplied;
       const tooLong = f.tMs - this.farSince > THRESHOLDS.inadequateAfterMs;
       return {
         ...out,
         path: 'FAR_NATIVE_ROI',
-        reason: `module ${moduleNative.toFixed(2)} px < ${THRESHOLDS.farModulePx} (table 2: 15 % wrong reads at ≤ 1.5 px): native crop, harder, slow lane`,
+        reason: `module ${moduleNative.toFixed(2)} px < ${THRESHOLDS.farModulePx} (table 2: 15 % wrong reads at ≤ 1.5 px): native crop, harder, slow lane${unstable ? '; unstable' : ''}`,
         roi,
-        harder: true,
+        harder: !unstable,
         requestZoom: canZoom,
         guidance:
           tooLong && !canZoom
@@ -300,14 +286,14 @@ export class PolicyState {
     const margin =
       c.fill < THRESHOLDS.wideMarginBelowFill ? THRESHOLDS.marginWide : THRESHOLDS.marginNarrow;
     const roi = this.cropOn(c, 1, p.sourceW, p.sourceH, margin, 'native');
-    const harder = this.missesOnStable >= 2;
+    const harder = !unstable && this.missesOnStable >= 2;
     return {
       ...out,
       path: 'NATIVE_ROI',
-      reason: `fill ${c.fill.toFixed(2)}, module ${moduleNative.toFixed(1)} px: native crop, margin ${margin}${harder ? ', harder after 2 misses' : ''} (tables 2–3)`,
+      reason: `fill ${c.fill.toFixed(2)}, module ${moduleNative.toFixed(1)} px: native crop, margin ${margin}${harder ? ', harder after 2 misses' : ''}${unstable ? '; unstable' : ''} (tables 2–3)`,
       roi,
       harder,
-      guidance: light,
+      guidance: light !== 'none' ? light : unstable ? 'hold_steady' : 'none',
     };
   }
 

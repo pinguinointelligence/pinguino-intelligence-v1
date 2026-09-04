@@ -102,13 +102,26 @@ describe('path selection (evidence-derived thresholds)', () => {
     expect(d.path).toBe('SKIP_BLUR');
     expect(d.guidance).toBe('move_closer');
   });
-  it('motion (stability ≥ 0.2) → MEDIUM crop only', () => {
-    const p = new PolicyState(phone);
+  it('instability (≥ 0.2) is a modifier: same plane, no harder retry, no zoom, hold-steady guidance', () => {
+    const p = new PolicyState(phone, true);
     p.decide(sig(1, { candidate: cand(0.2, 1080, 300, 900) }));
+    p.noteMiss();
+    p.noteMiss();
     const d = p.decide(sig(2, { candidate: cand(0.2, 1080, 700, 900) }));
-    expect(d.path).toBe('SKIP_MOTION');
-    expect(d.roi?.plane).toBe('medium');
+    expect(d.path).toBe('NATIVE_ROI');
+    expect(d.harder).toBe(false);
+    expect(d.guidance).toBe('hold_steady');
     expect(d.stab!).toBeGreaterThanOrEqual(THRESHOLDS.motionStab);
+    const far = new PolicyState(phone, true);
+    far.decide(sig(1, { candidate: cand(0.1, 1080, 300, 900) }));
+    expect(far.decide(sig(2, { candidate: cand(0.1, 1080, 700, 900) })).requestZoom).toBe(false);
+  });
+  it('a large candidate that vanishes with the sharpness → move_away (too close for the lens)', () => {
+    const p = new PolicyState(phone);
+    for (let i = 0; i < 10; i += 1) p.decide(sig(i, { candidate: cand(0.36), sharpness: 2000 }));
+    const d = p.decide(sig(11, { candidate: null, sharpness: 300 }));
+    expect(d.path).toBe('SKIP_NO_CANDIDATE');
+    expect(d.guidance).toBe('move_away');
   });
   it('no candidate: rescue every 10th frame, every 20th under thermal pressure, guidance after 1.5 s', () => {
     const p = new PolicyState(phone);

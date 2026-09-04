@@ -18,3 +18,4 @@ export {
   type Lane,
 } from './confirmation';
 export { formatOf, type ScanObservation } from './observation';
+export { mergeCollinear, type RawCandidate, type MergedCandidate } from './candidates';

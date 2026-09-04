@@ -10,6 +10,7 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { Confirmation, type Read } from '../confirmation';
+import { mergeCollinear } from '../candidates';
 import { PolicyState, type FrameSignals, type ScanPath } from '../policy';
 import type { CameraProfile } from '../profile';
 
@@ -121,22 +122,28 @@ describe('policy replay over the Phase 0 corpus', () => {
                   .map(([t]) => t),
               );
         for (const e of evs) {
-          const c = e.saliency?.candidates?.[0];
           const tMs = e.tCapture - sc.t0;
-          const cand = c
-            ? (() => {
-                const p = c.quad.points;
-                const w = Math.hypot(p[1]!.x - p[0]!.x, p[1]!.y - p[0]!.y);
-                const h = Math.hypot(p[3]!.x - p[0]!.x, p[3]!.y - p[0]!.y);
-                return {
-                  fill: w / sourceW,
-                  widthPx: w,
-                  heightPx: h,
-                  angleDeg: c.orientationDeg,
-                  cx: p.reduce((a, q) => a + q.x, 0) / 4,
-                  cy: p.reduce((a, q) => a + q.y, 0) / 4,
-                };
-              })()
+          const merged = e.saliency
+            ? mergeCollinear(
+                (e.saliency.candidates ?? []).map((q) => ({
+                  quad: q.quad,
+                  orientationDeg: q.orientationDeg,
+                  score: (q as { score?: number }).score ?? 1,
+                  blockCount: (q as { blockCount?: number }).blockCount ?? 1,
+                })),
+                sourceW,
+              )
+            : [];
+          const m = merged[0];
+          const cand = m
+            ? {
+                fill: m.fill,
+                widthPx: m.widthPx,
+                heightPx: m.heightPx,
+                angleDeg: m.angleDeg,
+                cx: m.cx,
+                cy: m.cy,
+              }
             : null;
           const sig: FrameSignals = {
             frameIndex: e.frameIndex,
