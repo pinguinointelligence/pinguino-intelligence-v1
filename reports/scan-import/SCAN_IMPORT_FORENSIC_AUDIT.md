@@ -1,0 +1,42 @@
+# SCAN IMPORT — DEEP FORENSIC AUDIT (audit only, no runtime change)
+
+Staging audited: `e2e1a61a` (origin/staging, 2026-09-04). Branch: `claude/scan-import-forensic-audit`. Auditor: Claude (foreground pass, one section per commit).
+Method: targeted search of `src/`, `supabase/functions/`, `supabase/migrations/`, `docs/`, `reports/`; existing tests run where cited; every IMPLEMENTED claim carries a file reference. Camera/acquisition/decoding performance is out of scope (Scan Core lane).
+Companion files: `SCAN_IMPORT_GAP_MATRIX.md`, `SCAN_IMPORT_BOUNDARY.md`, `SCAN_IMPORT_FINDINGS_LEDGER.md` (same directory).
+
+## SECTION 1 — CURRENT IMPLEMENTATION IDENTITY
+
+**Canonical name in the repo.** There is no module called "Scan Import". The behaviour the owner calls Scan Import is split across three named things:
+1. **Product Scanner** (`src/features/product-scanner/`, 43 non-fixture files; schema id `gellatti_product_scan_v1` in `contracts.ts:1`) — the "deep" scanner: barcode validation, evidence collection, label analysis, finalize/persist.
+2. **LIVE SCANNER / live sweep** (`LiveMultiScanner.tsx`, `liveScanSession.ts`, `liveRecognition.ts`, `liveScanHandoff.ts`, `liveScanController.ts` in the same directory) — the multi-product camera sweep; its own header calls it "LIVE SCANNER" (`liveScanHandoff.ts:1-15`).
+3. **Product Intelligence / INTIMPORT / TEXTIMPORT** (`src/features/product-intelligence/`, `src/features/product-textimport/`, edge functions `intimport-enrich`, `product-textimport-*`) — non-camera import channels that share the identity, evidence and ProductBehavior authorities with the scanner.
+The pipeline order is documented in the code itself (`scanRouting.ts:1-14`): *barcode read locally → Gellatti's own catalogue (free) → exact GTIN lookup at the source (one server call) → label analysis once (paid) → one precise evidence request → estimation through Product Intelligence*.
+
+**Entry points (UI).**
+- `src/pages/products/ProductScanPage.tsx` (deep scanner page) and `src/pages/products/ProductScannerV1Page.tsx` (v1 page kept; camera test `ProductScannerV1Page.camera.test.tsx`).
+- `src/pages/home/HomeCreatorPage.tsx` mounts the live sweep (`LiveMultiScanner`) for HOME.
+- `src/pages/destinations/ProductImportPage.tsx` + `productImportController` — the catalogue/text import destination (non-camera).
+- Product picker (`src/features/product-picker/`, `src/services/productPicker/`) is the manual entry into the same catalogue identity.
+
+**Identity + routing (pure client code).**
+- `barcode.ts` — `validateBarcode(value, hintedFormat)` accepts EAN-8 / EAN-13 / UPC-A / UPC-E with GTIN check digit (`gtinCheckDigit`, `expandUpce`), returns `{ value, format, lookupValue }`; `barcodeLookupCandidates()` adds the leading-zero variants (UPC-A ↔ EAN-13) for catalogue matching.
+- `scanRouting.ts` — `routeScan()` (precedence engine, see Section 3) and `ScanOutcome`.
+- `pipeline.ts` — `exactBarcodeMatch()` (catalogue hit whose `eans[]` contains any lookup candidate) and `nextProductScanStep()` (budget: 4 images, 2 vision calls, 1 web call).
+- `liveRecognition.ts` / `liveScanSession.ts` / `liveScanHandoff.ts` — live sweep state; `planHandoff()` splits results into `toRecipe` (CONFIRMED → the SAME HOME draft via `hydrateIngredient` + `recipeStore.addIngredient`) and `toDeepScan` (NEEDS_RESOLUTION → deep scanner contribution flow). The live sweep "never invents" a product (`liveScanHandoff.ts:11-14`).
+
+**Server boundary (Supabase edge functions, Deno).**
+- `product-identify-live` (313 lines) — one question per call: "what is visible in this one frame"; barcode/OCR/brand text tried first through `search_products_v1` (zero vision calls); model (`gpt-5.6-luna`, max 1 vision call, frame ≤ 1.5 MB) only when local evidence resolves nothing; **canonical identity comes only from the catalogue RPC and only when exactly ONE row returns** (`index.ts:158-176`); response `{ status: RESOLVED | UNRESOLVED, identity, confidence, evidenceType, kind, resolution, usage }`.
+- `product-scan-analyze` (799 lines) — label profiling (nutrition, allergens, composition) through the model; uses `_shared/productScanner.ts` (`PRODUCT_SCAN_RESPONSE_SCHEMA`, `mergeProductScanResults`, `validateServerResult`, `normalizeValidatedBarcode`).
+- `product-scan-finalize` (601 lines) — persistence: loads the owned `product_scan_sessions` row, idempotent replay when `state = finalized` (`index.ts:381-398`), applies customer corrections, validates the ProductBehavior authority (`validateProductBehaviorAuthority` from `src/features/product-intelligence/productBehaviorAuthority.ts`), then `rpc('gellatti_upsert_customer_added_product_v1', { p_scan_result, p_product_profile, p_product_behavior, p_private_overlay, p_idempotency_key })` (`index.ts:580-590`).
+- `product-import-run` (131 lines), `product-textimport-adapt`, `product-textimport-ean-resolve` (477 lines; web research with authority classes OFFICIAL_MANUFACTURER … STRUCTURED_PRODUCT_DATABASE, caps 6 web calls/row, 18/run; delegates to `intimport-enrich` which calls `api.openai.com/v1/responses`), `intimport-enrich` (734 lines), `catalog-submit`.
+- External HTTP providers found in code: **Open Food Facts** (`src/data/products/openFoodFactsAdapter.ts`, `https://world.openfoodfacts.org/api/v2/product/<gtin>.json`) and **OpenAI Responses API** (identify-live, scan-analyze, intimport-enrich). No GS1, UPCitemdb or BarcodeLookup integration exists.
+
+**Persistence (tables/RPCs named by the code).** `product_scan_sessions` (state machine: … → `analyzed` → `finalized`; columns include `barcode`, `overlay_state`, `exact_product_id`, `expires_at`), `products` (`product_code`, `product_name_display`, `brand`), `mapper_basement` + `mapper_product_behavior_bindings` (ProductBehavior authority rows), RPC `search_products_v1` (catalogue search authority), RPC `gellatti_upsert_customer_added_product_v1` (customer-added products, migration `20260827100000_scanner_customer_added_products.sql`), `product_recognition_v2_cache` (`20260825230000`), article-code exact match (`20260825214500_product_article_code_exact_match.sql`), country resolution authority (`20260903212502_country_product_resolution_authority.sql`), user preferred exact product slots (`20260903173641`), canonical picker deterministic order (`20260903170000`).
+
+**Tests that pin the module (present on staging).** In `src/features/product-scanner/`: `barcode.test.ts`, `barcodeDecoder.test.ts`, `pipeline.test.ts`, `eanLookupEvidence.test.ts`, `finalizeSaveContract.test.ts`, `liveScanFlow/Session/Controller/Acceptance/Handoff.test.ts`, `productIdentifyLiveBoundary.test.ts`, `productScanner.boundary.test.ts`, `realProductRegression.test.ts`, `ownerCocaColaLiveRegression.test.ts`, `scannerErrors.test.ts`, `customerAddedProductArchitecture.migration.test.ts`, `productBehaviorFingerprint.migration.test.ts`, `scanRetryQuota.migration.test.ts`, `liveEvidenceQuota.migration.test.ts`; in `src/services/`: `productScanner.errors.test.ts`, `productCatalogImport(.security).test.ts`, `intimportCanonicalLookup.test.ts`; pages: `ProductScanPage.test.tsx`, `ProductImportPage.security.test.ts`, `productImportController.test.ts`.
+
+**Freeze / owner-lock status.** `scripts/protectedPaths.json` protects the ProductBehavior authorities the scanner depends on — `productBehaviorAccess.ts` ("ProductBehavior access/resolver gate"), `mainCapability.ts`, `mainEnvelope.ts`, `canonicalModuleEligibility.ts` — but **no Product Scanner file is a protected path**; `scripts/guardProtectedPaths.mjs` + `guardOwnerLockedContracts.mjs` run in `.github/workflows/ci.yml`. HOME Scanner is frozen by owner instruction, not by a guard.
+
+**Dependencies out of the module.** `@/features/global-catalog/contracts` (`CatalogProductSearchHit` with `eans[]`), `src/features/product-intelligence/productBehaviorAuthority.ts` + `productRecognition.ts` (imported by the finalize edge function through a relative path into `src/` — server and client share one TypeScript authority), `recipeStore.addIngredient` + `hydrateIngredient` (HOME draft), Mapper (`mapper_basement`).
+
+**Coupling to Scan Core today: NONE.** Scan Core (`src/scan-core`, `src/scan-lab`) exists only on `claude/scan-core-phase-0`; nothing on staging imports it. The de-facto input contract of Scan Import is a *string barcode* (`evidence.barcode` in identify-live, `ValidBarcode` in the client) plus optional OCR/brand text and one frame — there is no symbology, confirmation-state or evidence field on that boundary.
