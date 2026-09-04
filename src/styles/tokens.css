@@ -233,8 +233,11 @@
   --pro-row-height-attention: 56px;
   --pro-monitor-row-height: 60px;
   --pro-row-drag-width: 20px;
-  --pro-row-percent-width: 122px;
-  --pro-row-grams-width: 128px;
+  /* OWNER LOCK GEOMETRY: each segmented control includes its 30 px lock cell.
+     The canonical row tracks preserve the controls' complete outer widths at
+     every desktop viewport; the whole application scale handles narrowing. */
+  --pro-row-percent-width: 142px;
+  --pro-row-grams-width: 150px;
   --pro-row-price-width: 84px;
   --pro-row-menu-width: 25px;
   --pro-row-column-gap: 6px;

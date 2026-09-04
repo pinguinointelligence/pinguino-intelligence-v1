@@ -38,8 +38,9 @@ the source-pixel sizes separately rather than claiming an unverified device-pixe
 
 The accepted 1440 px composition remains the reference: 1280 px frame, 444 px right column,
 11.52 px column gap, 136×48 px logo, 48 px recipe row, 12 px ingredient label, 28×32 px plus
-button, 128×32 px grams control, 278×26 px direction rail, and a 444 px navigation/settings
-track. Wider viewports retain scale 1 and gain only surrounding canvas. Below 1440, the one body
+button, 150×32 px complete grams control (including its 30 px lock cell), 278×26 px direction
+rail, and a 444 px navigation/settings track. Wider viewports retain scale 1 and gain only
+surrounding canvas. Below 1440, the one body
 scale is `viewportWidth / 1440` until the true-mobile transition.
 
 Automated evidence was captured with `scripts/captureProResponsiveFrame.mjs` against the rebased
@@ -52,12 +53,12 @@ tolerance is 0.02; the worst measured delta was 0.0023.
 |     1728 | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 |   1.0000 | 1.0000 | yes  |
 |     1600 | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 |   1.0000 | 1.0000 | yes  |
 |     1440 | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 |   1.0000 | 1.0000 | yes  |
-|     1366 | 0.9486 | 0.9485 | 0.9485 | 0.9486 | 0.9482 | 0.9486 | 0.9479 | 0.9486 | 0.9483 |   0.9486 | 0.9486 | yes  |
-|     1280 | 0.8889 | 0.8888 | 0.8887 | 0.8889 | 0.8886 | 0.8888 | 0.8889 | 0.8889 | 0.8882 |   0.8889 | 0.8889 | yes  |
+|     1366 | 0.9486 | 0.9485 | 0.9485 | 0.9486 | 0.9482 | 0.9485 | 0.9479 | 0.9486 | 0.9483 |   0.9486 | 0.9486 | yes  |
+|     1280 | 0.8889 | 0.8888 | 0.8887 | 0.8889 | 0.8886 | 0.8889 | 0.8889 | 0.8889 | 0.8882 |   0.8889 | 0.8889 | yes  |
 |     1200 | 0.8333 | 0.8333 | 0.8333 | 0.8333 | 0.8332 | 0.8333 | 0.8333 | 0.8333 | 0.8323 |   0.8333 | 0.8333 | yes  |
-|     1100 | 0.7639 | 0.7638 | 0.7637 | 0.7639 | 0.7636 | 0.7638 | 0.7639 | 0.7639 | 0.7623 |   0.7639 | 0.7639 | yes  |
+|     1100 | 0.7639 | 0.7638 | 0.7637 | 0.7639 | 0.7636 | 0.7639 | 0.7639 | 0.7639 | 0.7623 |   0.7639 | 0.7639 | yes  |
 |     1024 | 0.7111 | 0.7110 | 0.7110 | 0.7111 | 0.7111 | 0.7111 | 0.7109 | 0.7111 | 0.7090 |   0.7111 | 0.7111 | yes  |
-|      960 | 0.6667 | 0.6666 | 0.6667 | 0.6667 | 0.6664 | 0.6666 | 0.6667 | 0.6667 | 0.6644 |   0.6667 | 0.6667 | yes  |
+|      960 | 0.6667 | 0.6666 | 0.6667 | 0.6667 | 0.6664 | 0.6667 | 0.6667 | 0.6667 | 0.6644 |   0.6667 | 0.6667 | yes  |
 
 At every desktop viewport the two columns and desktop route navigation remained visible, the bottom
 navigation remained absent, horizontal overflow and ingredient clipping were false, the picker
