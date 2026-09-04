@@ -158,7 +158,7 @@
   }
 }
 
-@media (min-width: 1280px) {
+@media (min-width: 70rem) {
   :root {
     --app-header-top-floor: 0px;
   }
@@ -214,4 +214,74 @@
   --g-monitor-row-height: 64px;
   --g-field-height: 46px;
   --g-stepper-height: 32px;
+}
+
+/* ── Canonical responsive PRO frame ──────────────────────────────────────
+   These tokens describe one real, centred frame used by BOTH the header
+   canvas and the workbench body. `--pro-desktop-min-width` documents the CSS
+   media-query authority (70rem = 1120px); JavaScript imports the matching
+   value from `proFrameGeometry.ts` instead of inventing a second breakpoint. */
+:root {
+  --pro-desktop-min-width: 70rem;
+  --pro-structural-mode: TABLET;
+  --pro-density-state: TABLET;
+  --pro-frame-inline-gutter: clamp(16px, 2vw, 32px);
+  --pro-frame-max-width: 1280px;
+  --pro-frame-gap: clamp(8px, 0.8vw, 12px);
+  --pro-frame-right-width: clamp(360px, 32vw, 444px);
+  --pro-frame-left-min-width: 700px;
+  --pro-frame-block-padding: 8px;
+  --pro-row-height: 46px;
+  --pro-row-height-attention: 54px;
+  --pro-monitor-row-height: 58px;
+  --pro-row-drag-width: 18px;
+  --pro-row-percent-width: 118px;
+  --pro-row-grams-width: 124px;
+  --pro-row-price-width: 80px;
+  --pro-row-menu-width: 24px;
+  --pro-row-column-gap: 5px;
+  --pro-row-inline-padding: 8px;
+}
+
+@media (min-width: 70rem) and (max-width: 79.999rem) {
+  :root {
+    --pro-structural-mode: DESKTOP;
+    --pro-density-state: TIGHT;
+  }
+}
+
+@media (min-width: 80rem) and (max-width: 93.749rem) {
+  :root {
+    --pro-structural-mode: DESKTOP;
+    --pro-density-state: COMPACT;
+    --pro-frame-block-padding: 10px;
+    --pro-row-height: 48px;
+    --pro-row-height-attention: 56px;
+    --pro-monitor-row-height: 60px;
+    --pro-row-drag-width: 20px;
+    --pro-row-percent-width: 122px;
+    --pro-row-grams-width: 128px;
+    --pro-row-price-width: 84px;
+    --pro-row-menu-width: 25px;
+    --pro-row-column-gap: 6px;
+    --pro-row-inline-padding: 9px;
+  }
+}
+
+@media (min-width: 93.75rem) {
+  :root {
+    --pro-structural-mode: DESKTOP;
+    --pro-density-state: SPACIOUS;
+    --pro-frame-block-padding: 12px;
+    --pro-row-height: 48px;
+    --pro-row-height-attention: 57px;
+    --pro-monitor-row-height: 60px;
+    --pro-row-drag-width: 20px;
+    --pro-row-percent-width: 126px;
+    --pro-row-grams-width: 133px;
+    --pro-row-price-width: 87px;
+    --pro-row-menu-width: 25px;
+    --pro-row-column-gap: 6px;
+    --pro-row-inline-padding: 10px;
+  }
 }

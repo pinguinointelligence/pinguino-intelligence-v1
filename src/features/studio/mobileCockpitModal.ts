@@ -3,7 +3,9 @@
  * starts once both the ingredient editor and the technical cockpit have enough
  * room to remain independently readable.
  */
-export const MOBILE_COCKPIT_QUERY = '(max-width: 1279px)';
+import { PRO_TABLET_MEDIA_QUERY } from '@/features/shell/proFrameGeometry';
+
+export const MOBILE_COCKPIT_QUERY = PRO_TABLET_MEDIA_QUERY;
 
 export function shouldActivateMobileCockpitModal(open: boolean, mobileViewport: boolean): boolean {
   return open && mobileViewport;

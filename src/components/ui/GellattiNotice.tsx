@@ -67,14 +67,22 @@ export function GellattiNotice({
       onClose={onClose ?? onPrimary}
       placement="responsive"
       dismissOnBackdrop
-      panelClassName={cn(
-        'border-[var(--g-line)] bg-white text-[var(--g-graphite)]',
-        // The attention state is an OUTLINE and a glow, never a fill: a tinted
-        // panel would drag the whole notice away from the Gellatti white
-        // surface for what is a single line of emphasis.
-        tone === 'attention' &&
-          'border-[var(--g-orange)] shadow-[0_0_0_4px_rgba(245,138,7,0.16),0_18px_40px_-16px_rgba(25,26,29,0.35)]',
-      )}
+      showCloseControl
+      closeLabel="Zamknij komunikat"
+      initialFocusTestId={
+        secondaryLabel && onSecondary
+          ? `${testId}-secondary`
+          : (primaryTestId ?? `${testId}-primary`)
+      }
+      // The surface treatment is DialogShell's to choose. Handing it a tone
+      // instead of extra classes is what makes the attention state actually
+      // paint: `cn` is a plain joiner, so a `border-*` or `ring-*` added here
+      // ships ALONGSIDE the shell's own `border-ink/15` / `shadow-pro-e3` and
+      // loses the cascade. Both were tried and both were measured dead on
+      // served staging — the border came back ink/15, and the ring left
+      // `--tw-ring-shadow` set while `box-shadow` stayed the elevation alone.
+      tone={tone === 'attention' ? 'attention' : 'default'}
+      panelClassName="bg-white text-[var(--g-graphite)]"
     >
       <div
         data-notice-tone={tone}
@@ -84,7 +92,7 @@ export function GellattiNotice({
         <h2
           className={cn(
             'text-[19px] leading-[1.3] font-bold tracking-[-0.01em] text-[var(--g-graphite)]',
-            centered && 'mx-auto max-w-[26ch]',
+            centered ? 'mx-auto max-w-[26ch] px-10' : 'pr-12',
           )}
           data-testid={`${testId}-title`}
         >

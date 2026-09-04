@@ -186,9 +186,8 @@ describe.each([['1366×768'], ['1440×900'], ['1920×1080']])(
     it(`body never scrolls during normal editing — ${label}`, () => {
       const html = renderAt('/pro/recipe');
       // The shell root locks to the viewport on desktop; main is the one scroll surface.
-      expect(html).toContain('xl:h-dvh');
-      expect(html).toContain('xl:overflow-hidden');
-      expect(html).toContain('xl:overflow-hidden');
+      expect(html).toContain('pro-workbench-shell-lock');
+      expect(html).toContain('pro-workbench-main-lock');
       // The viewport region fills main exactly; the split consumes the space left by the
       // workbar instead of relying on a brittle viewport subtraction.
       expect(html).toContain('data-testid="pro-viewport-region"');
@@ -415,12 +414,14 @@ describe('recalculation overlay', () => {
 
   it('renders as a fixed compact dialog (520–720 px), with Zastosuj/Anuluj inside', () => {
     const src = read('features', 'pro-core', 'ProRecalcPanel.tsx');
-    expect(src).toContain('data-testid="pro-recalc-overlay"');
-    expect(src).toContain('fixed inset-0');
+    const dialog = read('components', 'ui', 'DialogShell.tsx');
+    expect(src).toContain('testId="pro-recalc-overlay"');
+    expect(src).toContain('<DialogShell');
+    expect(dialog).toContain('fixed inset-0');
     expect(src).toContain('w-[min(680px,calc(100vw-1.5rem))]'); // compact desktop, safe mobile gutter
-    expect(src).toContain('role="dialog"');
+    expect(dialog).toContain('role="dialog"');
     // Apply closes the overlay ONLY on success (blocked apply keeps the honest notice).
-    expect(src).toContain('after.preview === null && after.blocked === null');
+    expect(src).toContain('after.postApplyNotice === null');
     expect(src).toContain('applyPreviewWithServerAuthority');
     expect(src).not.toContain('store.applyPreview()');
   });
@@ -481,7 +482,7 @@ describe('no unrelated module removal across the split surface files', () => {
     expect(actionBar).toContain('excludedIngredientIds');
     expect(actionBar).toContain('machine_capacity_source: machineCapacitySource');
     // Desktop aside + mobile sheet are intentional responsive variants.
-    expect(surface).toContain('xl:hidden');
+    expect(surface).toContain('pro-workbench-mobile-only');
     expect(surface).toContain('hidden min-h-0');
   });
 

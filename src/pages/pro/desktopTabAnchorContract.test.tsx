@@ -26,20 +26,17 @@ describe('P0 desktop Workbench tab anchor', () => {
     const surface = read('features', 'studio', 'StudioEngineSurface.tsx');
     const contract = read('features', 'shell', 'desktopTabAnchorContract.ts');
 
-    const sharedGrid = 'xl:grid-cols-[minmax(0,1fr)_var(--g-side-width)]';
-    const sharedGap = 'xl:gap-[var(--g-split-gap)]';
-
-    expect(contract).toContain(sharedGrid);
-    expect(contract).toContain(sharedGap);
+    expect(contract).toContain("DESKTOP_WORKBENCH_COLUMNS = 'pro-workbench-columns'");
     // SUPERSEDED, owner geometry decision 2026-09-02: the strip is EXACTLY the
     // display column, not the column plus 10 px. The overhang was right-aligned,
     // so it all fell on the LEFT — right edges matched to the pixel while the
     // left edges sat 10 px apart. Measured live at 1440 after the fix: strip
     // 896.2→1396.2, column 896.2→1396.2, both deltas 0.
-    expect(contract).toContain('xl:w-[var(--g-side-width)]');
+    expect(contract).toContain("DESKTOP_TAB_STRIP = 'pro-workbench-section-nav'");
     expect(contract).not.toContain('+10px');
-    expect(contract).toContain('xl:col-start-2');
-    expect(contract).toContain('xl:justify-self-end');
+    const css = read('styles', 'gellatti-v2-1.css');
+    expect(css).toMatch(/\.pro-workbench-section-nav\s*\{[\s\S]*grid-column:\s*2/);
+    expect(css).toMatch(/\.pro-workbench-section-nav\s*\{[\s\S]*width:\s*100%/);
 
     // Both surfaces REUSE the one recipe; neither re-types its own columns.
     expect(shell).toContain('DESKTOP_WORKBENCH_COLUMNS');
@@ -88,7 +85,7 @@ describe('P0 desktop Workbench tab anchor', () => {
 
     expect(tabs).toContain("variant?: 'header' | 'bottom'");
     expect(tabs).toContain('min-h-[var(--pro-bottom-nav-height)]');
-    expect(surface).toContain('fixed inset-x-0 bottom-0 z-[60] xl:hidden');
+    expect(surface).toContain('pro-workbench-mobile-only fixed inset-x-0 bottom-0 z-[60]');
     expect(surface).toContain('variant="bottom"');
   });
 });

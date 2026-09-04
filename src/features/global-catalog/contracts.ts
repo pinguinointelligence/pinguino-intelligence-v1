@@ -126,6 +126,11 @@ export interface CatalogProductSearchHit {
   /** Caller-private projection from owner-RLS data; never part of shared facts. */
   privatePricePerKg?: number | null;
   privatePriceCurrency?: string | null;
+  /** Exact product selected by canonical country/user resolution for this
+   * Mapper row. The row remains the one generic technological result. */
+  resolvedExactProduct?: CatalogProductSearchHit | null;
+  resolutionSource?: 'USER_PREFERRED' | 'COUNTRY_PRIMARY_DEFAULT' | 'COUNTRY_SAFE_FALLBACK' | null;
+  resolutionCountry?: string | null;
 }
 
 export interface CatalogMarketPreferences {
@@ -133,12 +138,22 @@ export interface CatalogMarketPreferences {
   additionalMarkets: string[];
   preferredRetailers: string[];
   defaultScope: 'my_markets' | 'my_markets_and_global' | 'global';
+  guestCountryConflict?: {
+    accountCountry: string;
+    guestCountry: string;
+  } | null;
 }
 
 export interface CatalogReviewCase {
   key: string;
   productId: string;
-  kind: 'manual_unverified' | 'duplicate_dispute' | 'verification_failed' | 'correction' | 'conflict' | 'suspicious';
+  kind:
+    | 'manual_unverified'
+    | 'duplicate_dispute'
+    | 'verification_failed'
+    | 'correction'
+    | 'conflict'
+    | 'suspicious';
   submissionCount: number;
   markets: string[];
   missingFields: string[];
@@ -148,7 +163,14 @@ export interface CatalogReviewCase {
 }
 
 export interface CatalogSubmissionResult {
-  kind: 'existing' | 'created' | 'updated' | 'retired' | 'likely_duplicate' | 'blocked' | 'rate_limited';
+  kind:
+    | 'existing'
+    | 'created'
+    | 'updated'
+    | 'retired'
+    | 'likely_duplicate'
+    | 'blocked'
+    | 'rate_limited';
   productId: string | null;
   status: CatalogStatus | null;
   autoFavorited: boolean;
@@ -157,7 +179,16 @@ export interface CatalogSubmissionResult {
   invalidFields?: string[];
   reviewCaseKey: string | null;
   retryAt: string | null;
-  rateReason?: 'burst' | 'hourly' | 'daily' | 'rolling_30d' | 'cooldown' | 'duplicate_payload' | 'ip_risk' | 'device_risk' | null;
+  rateReason?:
+    | 'burst'
+    | 'hourly'
+    | 'daily'
+    | 'rolling_30d'
+    | 'cooldown'
+    | 'duplicate_payload'
+    | 'ip_risk'
+    | 'device_risk'
+    | null;
   challengeRequired?: boolean;
   /** Product resolution succeeded, but no new human-review work was queued. */
   reviewEscalationLimited?: boolean;

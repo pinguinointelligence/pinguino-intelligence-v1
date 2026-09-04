@@ -209,7 +209,7 @@ describe('Pro executable validation', () => {
     expect([...useIngredientChangeStore.getState().changedByLastRecalculation]).toEqual([]);
   });
 
-  it('has one blocked terminal state with exact missing-price evidence in ECO', () => {
+  it('keeps a technically clean ECO recipe successful when costing is incomplete', () => {
     const input = structuredClone(starterMilkBase());
     input.goals = { ...input.goals, formulation_strategy: 'eco' };
     input.items[0] = {
@@ -222,12 +222,10 @@ describe('Pro executable validation', () => {
     useConstraintStudioStore.getState().createOptimizePreview();
 
     expect(useConstraintStudioStore.getState().previewIssue).toMatchObject({
-      code: 'missing_prices',
-      ingredientNames: [input.items[0]!.ingredient.name],
+      code: 'already_clean',
     });
     expect(useConstraintStudioStore.getState().recalculationTerminal).toEqual({
-      state: 'BLOCKED_WITH_EXACT_ACTION',
-      code: 'missing_prices',
+      state: 'NO_CHANGE_NEEDED',
     });
     expect(useConstraintStudioStore.getState().history).toEqual([]);
   });

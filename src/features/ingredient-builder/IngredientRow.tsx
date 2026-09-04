@@ -23,6 +23,7 @@ import {
   type IngredientRowMeta,
   type SubstituteCandidate,
 } from './ingredientTableUx';
+import type { ProductDiscoveryReplaceContext } from './canonicalProductDiscovery';
 import { DialogShell } from '@/components/ui/DialogShell';
 import { HoverPreview } from '@/components/ui/HoverPreview';
 import { DirectNumberControl } from './DirectNumberControl';
@@ -90,6 +91,7 @@ export interface IngredientRowActions {
     candidate: SubstituteCandidate,
     mainIdentityConfirmed: boolean,
   ) => void | Promise<void>;
+  requestReplace?: (lineId: string, context: ProductDiscoveryReplaceContext) => void;
   /** Retained store capability; Recipe mode intentionally no longer calls it. */
   markIngredientUnavailable?: (lineId: string) => void;
   moveUp?: (lineId: string) => void;
@@ -556,6 +558,13 @@ function RecipeRow({
       .finally(() => setSubstitutesLoading(false));
   };
 
+  const openReplace = () => {
+    const context = meta.replaceContext;
+    if (!context || !actions.requestReplace) return;
+    closeLineMenus();
+    actions.requestReplace(item.id, context);
+  };
+
   // ONE presentation model. Desktop and mobile render this exact compact panel;
   // every callback below remains the existing Recipe-row authority.
   const articlePanelContent = (
@@ -572,85 +581,88 @@ function RecipeRow({
         data-control-height="44"
       >
         <span className="flex min-w-0 items-center gap-2.5">
-        <ArticleActionButton
-          label="Przesuń wyżej"
-          icon="up"
-          disabled={!canMoveUp}
-          onClick={() => actions.moveUp?.(item.id)}
-        />
-        <ArticleActionButton
-          label="Przesuń niżej"
-          icon="down"
-          disabled={!canMoveDown}
-          onClick={() => actions.moveDown?.(item.id)}
-        />
-        <div
-          /* The paired control has to be sized, not just capped: in a flex row
+          {actions.requestReplace && meta.replaceContext ? (
+            <ArticleActionButton label="Zamień produkt" icon="swap" onClick={openReplace} />
+          ) : null}
+          <ArticleActionButton
+            label="Przesuń wyżej"
+            icon="up"
+            disabled={!canMoveUp}
+            onClick={() => actions.moveUp?.(item.id)}
+          />
+          <ArticleActionButton
+            label="Przesuń niżej"
+            icon="down"
+            disabled={!canMoveDown}
+            onClick={() => actions.moveDown?.(item.id)}
+          />
+          <div
+            /* The paired control has to be sized, not just capped: in a flex row
              `min-w-0` let the crown collapse to 14 px — a real target squeezed
              out by its own sibling. 92 px gives the crown 64 px beside the
              28 px role-info segment, both at the 44 px touch height. */
-          className="grid h-11 w-[92px] shrink-0 grid-cols-[minmax(0,1fr)_28px] overflow-hidden rounded-full border border-gold/22 bg-white"
-          data-testid="article-panel-role-control"
-          data-control-height="44"
-        >
-          <HoverPreview
-            text={isMain ? 'Usuń rolę główną' : mainUnavailableReason || 'Ustaw jako główny'}
-            maxWidthPx={240}
-            className="flex min-w-0"
+            className="grid h-11 w-[92px] shrink-0 grid-cols-[minmax(0,1fr)_28px] overflow-hidden rounded-full border border-gold/22 bg-white"
+            data-testid="article-panel-role-control"
+            data-control-height="44"
           >
-            {isMain ? (
-              <MainRoleBadge
-                testId={`article-panel-main-${item.id}`}
-                ariaLabel="Usuń rolę główną"
-                title="Usuń rolę główną"
-                variant="article"
-                onClick={() => setRole('standard')}
-              />
-            ) : (
-              <MainRoleTrigger
-                testId={`article-panel-main-${item.id}`}
-                ariaLabel="Ustaw jako główny"
-                title={mainUnavailableReason || 'Ustaw jako główny'}
-                variant="article"
-                disabled={Boolean(mainUnavailableReason)}
-                onClick={() => setRole('main')}
-              />
-            )}
-          </HoverPreview>
-          <HoverPreview
-            text="Rola składnika. Możesz oznaczyć składnik jako główny."
-            maxWidthPx={260}
-            className="grid h-11 shrink-0 place-items-center border-l border-gold/16 bg-education-ivory/35 text-[9px] font-semibold text-stone-500 transition-colors hover:bg-education-ivory/70"
-          >
-            <button
-              type="button"
-              aria-label="Informacja o roli składnika"
-              onClick={() => setIngredientModalView('data')}
-              className="pro-focus-ring grid h-full w-full place-items-center"
+            <HoverPreview
+              text={isMain ? 'Usuń rolę główną' : mainUnavailableReason || 'Ustaw jako główny'}
+              maxWidthPx={240}
+              className="flex min-w-0"
             >
-              <span
-                aria-hidden
-                className="grid size-3.5 place-items-center rounded-full border border-ink/12 bg-white"
+              {isMain ? (
+                <MainRoleBadge
+                  testId={`article-panel-main-${item.id}`}
+                  ariaLabel="Usuń rolę główną"
+                  title="Usuń rolę główną"
+                  variant="article"
+                  onClick={() => setRole('standard')}
+                />
+              ) : (
+                <MainRoleTrigger
+                  testId={`article-panel-main-${item.id}`}
+                  ariaLabel="Ustaw jako główny"
+                  title={mainUnavailableReason || 'Ustaw jako główny'}
+                  variant="article"
+                  disabled={Boolean(mainUnavailableReason)}
+                  onClick={() => setRole('main')}
+                />
+              )}
+            </HoverPreview>
+            <HoverPreview
+              text="Rola składnika. Możesz oznaczyć składnik jako główny."
+              maxWidthPx={260}
+              className="grid h-11 shrink-0 place-items-center border-l border-gold/16 bg-education-ivory/35 text-[9px] font-semibold text-stone-500 transition-colors hover:bg-education-ivory/70"
+            >
+              <button
+                type="button"
+                aria-label="Informacja o roli składnika"
+                onClick={() => setIngredientModalView('data')}
+                className="pro-focus-ring grid h-full w-full place-items-center"
               >
-                ?
-              </span>
-            </button>
-          </HoverPreview>
-        </div>
+                <span
+                  aria-hidden
+                  className="grid size-3.5 place-items-center rounded-full border border-ink/12 bg-white"
+                >
+                  ?
+                </span>
+              </button>
+            </HoverPreview>
+          </div>
         </span>
         <span className="flex min-w-0 items-center gap-2.5">
-        <ArticleActionButton
-          label={meta.unavailable ? 'Oznacz jako dostępny' : 'Oznacz jako niedostępny'}
-          icon="availability"
-          selected={meta.unavailable}
-          onClick={() => actions.setIngredientUnavailable?.(item.id, !meta.unavailable)}
-        />
-        <ArticleActionButton label="Znajdź zamiennik" icon="swap" onClick={openSubstitute} />
-        <ArticleActionButton
-          label="Dane składnika"
-          icon="info"
-          onClick={() => setIngredientModalView('data')}
-        />
+          <ArticleActionButton
+            label={meta.unavailable ? 'Oznacz jako dostępny' : 'Oznacz jako niedostępny'}
+            icon="availability"
+            selected={meta.unavailable}
+            onClick={() => actions.setIngredientUnavailable?.(item.id, !meta.unavailable)}
+          />
+          <ArticleActionButton label="Znajdź zamiennik" icon="swap" onClick={openSubstitute} />
+          <ArticleActionButton
+            label="Dane składnika"
+            icon="info"
+            onClick={() => setIngredientModalView('data')}
+          />
         </span>
       </div>
 
@@ -716,6 +728,7 @@ function RecipeRow({
             event.preventDefault();
             onDrop?.(item.id);
           }}
+          data-gellatti-row="ingredient"
           data-scope="BASE_FORMULATION"
         >
           {/* The drag handle is its own grid track (V2.1): every product icon
@@ -807,7 +820,7 @@ function RecipeRow({
               ) : null}
               {processReminder ? (
                 <span
-                  className="hidden min-w-0 flex-1 items-center gap-2 xl:flex"
+                  className="pro-workbench-desktop-only min-w-0 flex-1 items-center gap-2"
                   data-testid="production-inline-process-reminder"
                 >
                   <span className="min-w-0">

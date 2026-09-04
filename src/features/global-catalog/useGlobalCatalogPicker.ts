@@ -8,6 +8,7 @@ import {
   listCatalogRecent,
   listCurrentMapperCatalogFavorites,
   listCurrentMapperCatalogRecent,
+  resolveCountryProductsForSlots,
   searchProducts,
   setCatalogFavorite,
   setCurrentMapperCatalogFavorite,
@@ -34,6 +35,7 @@ export function resolveCatalogMarketScope(input: {
 export interface GlobalCatalogPickerState {
   hits: CatalogProductSearchHit[];
   favorites: ReadonlySet<string>;
+  favoritesSettled: boolean;
   recent: ReadonlySet<string>;
   preferences: CatalogMarketPreferences;
   isSettled: boolean;
@@ -110,11 +112,12 @@ export function useGlobalCatalogPicker(input: {
   // Favorites are an account-owned collection, not a market projection. A
   // Polish favorite must remain visible after Poland is disabled in Settings.
   const favoritesIgnoreMarket = input.favoritesOnly;
-  const effectiveMarkets = input.forceGlobal || favoritesIgnoreMarket
-    ? []
-    : input.selectedMarkets.length > 0
-      ? [...input.selectedMarkets]
-      : preferredMarkets;
+  const effectiveMarkets =
+    input.forceGlobal || favoritesIgnoreMarket
+      ? []
+      : input.selectedMarkets.length > 0
+        ? [...input.selectedMarkets]
+        : preferredMarkets;
   const marketScope = resolveCatalogMarketScope({
     forceGlobal: input.forceGlobal === true || favoritesIgnoreMarket,
     hasSelectedMarkets: input.selectedMarkets.length > 0,
@@ -157,6 +160,32 @@ export function useGlobalCatalogPicker(input: {
     refetchOnMount: 'always',
   });
   const searchHits = mergeCatalogSearchPages(search.data?.pages ?? []);
+  const mapperIds = [
+    ...new Set(
+      searchHits.flatMap((hit) =>
+        hit.entityKind === 'pi_base' && hit.mappedIngredientId ? [hit.mappedIngredientId] : [],
+      ),
+    ),
+  ].sort();
+  const countryResolution = useQuery({
+    queryKey: [
+      'country-product-resolution-v1',
+      resolvedPreferences.primaryMarket,
+      input.productProfile ?? '',
+      mapperIds.join(','),
+    ],
+    queryFn: () =>
+      resolveCountryProductsForSlots({
+        mapperIngredientIds: mapperIds,
+        productCountry: resolvedPreferences.primaryMarket,
+        productProfile: input.productProfile,
+      }),
+    enabled: input.enabled && mapperIds.length > 0,
+    staleTime: 15_000,
+  });
+  const resolvedProductsByMapper = new Map(
+    (countryResolution.data ?? []).map((resolution) => [resolution.mapperIngredientId, resolution]),
+  );
   const favoritesQueryKey = [
     'global-catalog-favorites',
     input.mapperOnly ? CURRENT_MAPPER_CATALOG_CACHE_KEY : 'all-products',
@@ -213,25 +242,41 @@ export function useGlobalCatalogPicker(input: {
   const favoriteKeys = new Set(favoriteRelations.map((item) => `${item.entityKind}:${item.id}`));
   const recentKeys = new Set(recentRelations.map((item) => `${item.entityKind}:${item.id}`));
   return {
-    hits: searchHits.map((hit) => ({
-      ...hit,
-      // Once the private favourites query has settled it is the sole truth. An
-      // optimistic UNSTAR must not be undone by a stale favourite bit embedded
-      // in the previous search response.
-      favorite: favorites.isSuccess
-        ? favoriteKeys.has(
-            `${hit.entityKind}:${hit.entityKind === 'pi_base' ? hit.mappedIngredientId : hit.id}`,
-          )
-        : hit.favorite,
-    })),
+    hits: searchHits.map((hit) => {
+      const resolution = hit.mappedIngredientId
+        ? resolvedProductsByMapper.get(hit.mappedIngredientId)
+        : undefined;
+      return {
+        ...hit,
+        ...(hit.entityKind === 'pi_base' && resolution
+          ? {
+              resolvedExactProduct: resolution.product,
+              resolutionSource: resolution.source,
+              resolutionCountry: resolution.country,
+            }
+          : {}),
+        // Once the private favourites query has settled it is the sole truth. An
+        // optimistic UNSTAR must not be undone by a stale favourite bit embedded
+        // in the previous search response.
+        favorite: favorites.isSuccess
+          ? favoriteKeys.has(
+              `${hit.entityKind}:${hit.entityKind === 'pi_base' ? hit.mappedIngredientId : hit.id}`,
+            )
+          : hit.favorite,
+      };
+    }),
     favorites: favoriteKeys,
+    favoritesSettled: favorites.isFetched,
     recent: recentKeys,
     preferences: resolvedPreferences,
     // Fetching the next page must not make already-visible hits stale. A new
     // debounced query is still hidden until its own first page has resolved.
-    isSettled: settledQuery === input.query && !search.isPending,
-    isFetching: search.isFetching,
-    isError: search.isError,
+    isSettled:
+      settledQuery === input.query &&
+      !search.isPending &&
+      (mapperIds.length === 0 || !countryResolution.isPending),
+    isFetching: search.isFetching || countryResolution.isFetching,
+    isError: search.isError || countryResolution.isError,
     hasMore: search.hasNextPage,
     loadMore: () => {
       if (search.hasNextPage && !search.isFetchingNextPage) void search.fetchNextPage();

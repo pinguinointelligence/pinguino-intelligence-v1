@@ -233,7 +233,7 @@ describe('mobile preview navigation', () => {
     // silently covered it on mobile — the PI dialog appeared behind Przelicz.
     const recalc = read('features', 'pro-core', 'ProRecalcPanel.tsx');
     const dialog = read('components', 'ui', 'DialogShell.tsx');
-    expect(recalc).toContain('z-[80]');
+    expect(recalc).toContain('<DialogShell');
     expect(dialog).toContain('z-[70]');
     expect(surface).toContain('z-[60]');
   });
@@ -256,7 +256,7 @@ describe('mobile preview navigation', () => {
     expect(surface).toContain('showTabs={false}');
     // The score / Przelicz dock is shown once: bottom stack on mobile, toolbar on xl.
     expect(read('features', 'ingredient-builder', 'IngredientBuilder.tsx')).toContain(
-      'ml-auto hidden min-w-0 xl:block',
+      'pro-workbench-action-dock ml-auto hidden min-w-0',
     );
   });
 });

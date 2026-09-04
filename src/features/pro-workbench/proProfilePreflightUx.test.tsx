@@ -651,7 +651,7 @@ describe('profile hierarchy and compact preflight', () => {
   it('uses one inset shell and one desktop body scroller for every cockpit tab', () => {
     const panel = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
     const surface = read('features', 'studio', 'StudioEngineSurface.tsx');
-    expect(surface).toContain('xl:flex xl:min-w-0 xl:flex-col xl:overflow-hidden');
+    expect(surface).toContain('pro-workbench-editor-track');
     expect(panel).toContain('lg:rounded-[10px]');
     expect(panel).toContain('lg:shadow-pro-e0');
     expect(panel).toContain('lg:flex-1 lg:overflow-y-auto');
@@ -1025,7 +1025,7 @@ describe('Direction explains itself, and agrees with the engine', () => {
   });
 });
 
-describe('a refused save points at the module that answers it', () => {
+describe('Settings onboarding attention stays separate from save refusal', () => {
   const settings = read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx');
   const workbar = read('features', 'pro-core', 'ProWorkbar.tsx');
   const store = read('features', 'pro-workbench', 'recipeProfileStore.ts');
@@ -1045,29 +1045,20 @@ describe('a refused save points at the module that answers it', () => {
     expect(store).not.toContain('settingsConfirmed: state.settingsConfirmed');
   });
 
-  it('opens Settings on the refusal WITHOUT trapping it open', () => {
-    // Derived, never a setExpanded(true) effect: forcing the state would leave
-    // the module stuck open after the block clears and would fight an owner
-    // who collapsed it deliberately.
-    /* MERGED, owner 2026-09-03. Two corrections land together.
-
-       From #138: the forced opening is scoped to the blocker this module can
-       actually answer. Opening Settings for every refusal was wrong the moment
-       the refusal was a recalculation.
-
-       From #136: manual expansion and a forced opening are separate states and
-       only the manual one is ever written. Behind a plain toggle the flag was
-       still false while the blocker held the module open, so a click meant to
-       CLOSE flipped it to true and the module stayed open once the blocker
-       cleared. */
-    expect(settings).toContain('const open = manualExpanded || settingsBlocked;');
-    expect(settings).toContain("const settingsBlocked = preflightBlocker?.action === 'settings';");
-    // Under a forced opening a click can only ever record "closed".
-    expect(settings).toMatch(/if \(settingsBlocked\) \{\s*setManualExpanded\(false\);\s*return;/);
-    expect(settings).not.toContain('setExpanded');
-    // ...and no effect writes the derived value back into the manual one.
+  it('auto-opens only for a draft with no confirmed Settings baseline', () => {
+    expect(settings).toContain('const initialSettingsAttentionRequired =');
+    expect(settings).toContain('confirmedDraftIdentity !== activeDraftIdentity');
+    expect(settings).toContain('const open = manualExpanded || initialSettingsAttentionRequired;');
+    expect(settings).not.toContain('manualExpanded || preflightBlocked');
+    expect(settings).not.toContain('manualExpanded || settingsBlocked');
     expect(settings).not.toContain('openedByBlocker');
     expect(settings).toContain("data-settings-surface={open ? 'expanded' : 'collapsed'}");
+  });
+
+  it('keeps a typed save refusal visible without giving it disclosure authority', () => {
+    expect(settings).toContain("const preflightBlocked = preflightBlocker?.action === 'settings';");
+    expect(settings).toContain("data-preflight-blocked={preflightBlocked ? 'true' : undefined}");
+    expect(settings).toContain("'settings-preflight-blocked'");
   });
 
   it('wears the SAME attention marker a changed gram field wears, closed into a ring', () => {
@@ -1151,21 +1142,13 @@ describe('settings confirmation lifecycle', () => {
     expect(settings).toContain('const saveAsDefault');
   });
 
-  it('collapses when its blocker clears, by derivation and not by an effect', () => {
-    /* SUPERSEDED, owner 2026-09-03. This asserted a ref-and-effect pair that
-       remembered "the blocker opened it" and called setExpanded(false) once a
-       confirmation succeeded. It closed the module down ONE path and left it
-       open on every other way a blocker can clear, and writing the open state
-       back is exactly how a forced opening became a remembered manual one.
-
-       `open = manualExpanded || settingsBlocked` needs neither: it collapses
-       the instant the blocker clears, because a forced opening never wrote
-       anything, and an owner who opened the module themselves keeps it open
-       because that flag is theirs alone. */
-    expect(settings).toContain('const open = manualExpanded || settingsBlocked;');
+  it('collapses after confirmation without coupling disclosure to the blocker', () => {
+    expect(settings).toContain('const open = manualExpanded || initialSettingsAttentionRequired;');
     expect(settings).not.toContain('openedByBlocker');
-    // Not while the blocker still stands, and not on a failed validation.
-    expect(settings).toContain('if (settingsBlocked) {');
+    expect(settings).toMatch(
+      /const confirmAndSeedDefaults = \(\) => \{[\s\S]*?setManualExpanded\(false\);[\s\S]*?confirmSettings/,
+    );
+    expect(settings).not.toContain('if (settingsBlocked) {');
   });
 
   it('publishes its own fact and concludes nothing about Save', () => {

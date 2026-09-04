@@ -21,5 +21,9 @@ export const proWorkbenchCopy = {
     serving70: 'Porcja 70 g',
     serving80: 'Porcja 80 g',
     costIncomplete: 'Koszt częściowy — uzupełnij brakujące ceny składników.',
+    knownBatchCost: 'Znany koszt partii',
+    missingPrice: (ingredientNames: readonly string[]) =>
+      `Brak ceny: ${ingredientNames.join(', ')}. Dokładny koszt za kg pozostaje niedostępny.`,
+    noPrices: 'Brak cen',
   },
 } as const;

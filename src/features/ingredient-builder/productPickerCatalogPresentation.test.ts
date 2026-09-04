@@ -61,8 +61,14 @@ describe('neutral catalog data presentation', () => {
     });
 
     expect([
-      [canonicalCatalogProductId(verified), formatDataConfidencePercent(catalogDataConfidencePercent(verified))],
-      [canonicalCatalogProductId(estimated), formatDataConfidencePercent(catalogDataConfidencePercent(estimated))],
+      [
+        canonicalCatalogProductId(verified),
+        formatDataConfidencePercent(catalogDataConfidencePercent(verified)),
+      ],
+      [
+        canonicalCatalogProductId(estimated),
+        formatDataConfidencePercent(catalogDataConfidencePercent(estimated)),
+      ],
     ]).toEqual([
       ['PI-ING-000180', '98%'],
       ['PI-ING-000345', '92%'],
@@ -78,24 +84,33 @@ describe('neutral catalog data presentation', () => {
     expect(normalizeDataConfidencePercent(101.2)).toBe(100);
     expect(normalizeDataConfidencePercent(91.6)).toBe(92);
     expect(formatDataConfidencePercent(100)).toBe('100%');
-    expect(catalogDataConfidencePercent(hit({
-      publicData: { productAccuracy: 96, sourceConfidence: 41 },
-    }))).toBe(96);
+    expect(
+      catalogDataConfidencePercent(
+        hit({
+          publicData: { productAccuracy: 96, sourceConfidence: 41 },
+        }),
+      ),
+    ).toBe(96);
   });
 
   it('keeps an unbound product existing catalog root instead of inventing an ID', () => {
-    expect(canonicalCatalogProductId(hit({ id: 'existing-product-root', mappedIngredientId: null })))
-      .toBe('existing-product-root');
+    expect(
+      canonicalCatalogProductId(hit({ id: 'existing-product-root', mappedIngredientId: null })),
+    ).toBe('existing-product-root');
   });
 
   it('keeps the commercial product code primary and never substitutes its Mapper binding', () => {
-    expect(canonicalCatalogProductId(hit({
-      id: '0cfa39a9-e683-4dea-b4b9-7f732a7c9c08',
-      entityKind: 'commercial_product',
-      productCode: 'PR-ING-006308',
-      mappedIngredientId: 'PI-ING-000091',
-      displayName: 'Baitz Baton choco cocos',
-    }))).toBe('PR-ING-006308');
+    expect(
+      canonicalCatalogProductId(
+        hit({
+          id: '0cfa39a9-e683-4dea-b4b9-7f732a7c9c08',
+          entityKind: 'commercial_product',
+          productCode: 'PR-ING-006308',
+          mappedIngredientId: 'PI-ING-000091',
+          displayName: 'Baitz Baton choco cocos',
+        }),
+      ),
+    ).toBe('PR-ING-006308');
   });
 });
 
@@ -116,14 +131,12 @@ describe('stable catalog segments', () => {
     expect(segments[1]?.items.map((item) => item.canonicalId)).toEqual(['PI-ING-000180']);
   });
 
-  it('F renders exactly the two accepted headings and never PINGÜINO Base', () => {
-    // A favourite leads only while a query is active — that is what makes it a
-    // MATCHING favourite rather than an unrelated one.
+  it('F preserves deterministic server relevance during a query without a favorite section', () => {
     const labels = buildProductPickerSegments(
       [product('favorite', { favorite: true }), product('ordinary')],
       { activeQuery: true },
     ).map((segment) => segment.label);
-    expect(labels).toEqual(['ULUBIONE', 'POZOSTAŁE SKŁADNIKI']);
+    expect(labels).toEqual(['SKŁADNIKI']);
     expect(labels).not.toContain('PINGÜINO Base');
   });
 
@@ -144,9 +157,10 @@ describe('stable catalog segments', () => {
       product('fruit-hidden', { category: 'fruit' }),
     ].filter((item) => item.category === 'paste');
     const segments = buildProductPickerSegments(filtered, { activeQuery: true });
-    expect(segments.flatMap((segment) => segment.items).every((item) => item.category === 'paste'))
-      .toBe(true);
-    expect(segments).toHaveLength(2);
+    expect(
+      segments.flatMap((segment) => segment.items).every((item) => item.category === 'paste'),
+    ).toBe(true);
+    expect(segments).toHaveLength(1);
   });
 
   it('I keeps at most two headings across a long interleaved paginated result set', () => {
@@ -154,7 +168,8 @@ describe('stable catalog segments', () => {
       product(`PI-ING-${String(index).padStart(6, '0')}`, {
         favorite: index % 7 === 0,
         recent: index % 11 === 0,
-      }));
+      }),
+    );
     const withRepeatedPageEdges = [
       ...batches.slice(0, 100),
       batches[99]!,

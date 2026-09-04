@@ -48,7 +48,7 @@ describe('Recipes Hub executable Owner Review projection', () => {
   });
 
   const clickByText = async (text: string) => {
-    const target = Array.from(host.querySelectorAll('button')).find((button) =>
+    const target = Array.from(document.body.querySelectorAll('button')).find((button) =>
       button.textContent?.includes(text),
     );
     if (!target) throw new Error(`Missing button: ${text}`);
@@ -123,20 +123,22 @@ describe('Recipes Hub executable Owner Review projection', () => {
     await clickByText('Fantasy');
     await clickByText('Otwórz w Pro');
 
-    expect(host.querySelector('[role="dialog"]')).not.toBeNull();
-    expect(host.textContent).toContain(
+    expect(document.body.querySelector('[role="dialog"]')).not.toBeNull();
+    expect(document.body.textContent).toContain(
       'Niezapisane zmiany w bieżącej recepturze zostaną usunięte.',
     );
 
     await clickByText('Anuluj');
-    expect(host.querySelector('[role="dialog"]')).toBeNull();
+    expect(document.body.querySelector('[role="dialog"]')).toBeNull();
     expect(useRecipeStore.getState().dirty).toBe(true);
 
     await clickByText('Otwórz w Pro');
-    const confirm = host.querySelector<HTMLButtonElement>('[data-testid="confirm-new-recipe"]');
+    const confirm = document.body.querySelector<HTMLButtonElement>(
+      '[data-testid="confirm-new-recipe"]',
+    );
     expect(confirm).not.toBeNull();
     await act(async () => confirm?.click());
-    expect(host.querySelector('[role="dialog"]')).toBeNull();
+    expect(document.body.querySelector('[role="dialog"]')).toBeNull();
     expect(useRecipeStore.getState().dirty).toBe(false);
   });
 });
