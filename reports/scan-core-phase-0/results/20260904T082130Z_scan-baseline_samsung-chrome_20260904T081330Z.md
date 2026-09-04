@@ -7,7 +7,8 @@ Bundle `20260904T082130Z_scan-baseline_samsung-chrome_20260904T081330Z.zip` · s
 |---|---|
 | screen / dpr / cores / memory | 412×869 / 2.625 / 8 / 8 GB |
 | requested | 1920×1080 @ 30 (environment) |
-| delivered | 1080×1920 @ 30 · camera 0, facing back · facing environment · open 711 ms · first frame 739 ms |
+| delivered | 1080×1920 @ 30 · camera 0, facing back · facing environment · open 711 ms · first frame 739 ms · autofocus not exposed · start sharpness — |
+| form factor | unknown |
 | cameras seen | camera 0, facing back r0; camera 2, facing back r1; camera 1, facing front r6; camera 3, facing front r6 |
 | zoom | 1–8 · apply ok (1 → 2, 25 ms) |
 | torch | exposed · apply ok (11 ms) |

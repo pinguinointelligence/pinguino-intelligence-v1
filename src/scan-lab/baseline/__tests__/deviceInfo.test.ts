@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { collectDeviceMeta, detectExecutionMode, parseUserAgent } from '../device/deviceInfo';
+import {
+  collectDeviceMeta,
+  detectExecutionMode,
+  detectFormFactor,
+  parseUserAgent,
+} from '../device/deviceInfo';
 
 const UA = {
   iphoneSafari:
@@ -83,5 +88,15 @@ describe('collectDeviceMeta', () => {
       expect.arrayContaining(['deviceId', 'serial', 'imei', 'macAddress', 'identifierForVendor']),
     );
     expect(JSON.stringify(meta)).not.toMatch(/deviceId|serialNumber|imei|macAddress/i);
+  });
+});
+
+describe('detectFormFactor', () => {
+  it('separates phones from desktops', () => {
+    expect(detectFormFactor(UA.iphoneSafari)).toBe('mobile');
+    expect(detectFormFactor(UA.androidChrome)).toBe('mobile');
+    expect(detectFormFactor(UA.macSafari)).toBe('desktop');
+    expect(detectFormFactor(UA.macChrome)).toBe('desktop');
+    expect(detectFormFactor(UA.firefox)).toBe('desktop');
   });
 });

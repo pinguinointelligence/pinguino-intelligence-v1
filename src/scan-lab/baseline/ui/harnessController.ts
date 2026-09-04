@@ -3,7 +3,7 @@
  * records evidence per scene, and publishes a throttled HUD snapshot for React (useSyncExternalStore).
  * It is plain TypeScript so the page stays a thin view.
  */
-import { CameraSession, describeCameraError } from '../camera/cameraSession';
+import { CameraSession, describeCameraError, sanitizeTrackRecord } from '../camera/cameraSession';
 import { ultrawideSuspicionFromSettings } from '../camera/cameraHeuristics';
 import { openCorpusDb, estimateStorage, type CorpusDb, type FrameTag } from '../corpus/corpusDb';
 import {
@@ -17,6 +17,7 @@ import {
   type ShareOutcome,
 } from '../corpus/corpusExport';
 import { collectClientHints, collectDeviceMeta } from '../device/deviceInfo';
+import { lumaQuality, rgbaToLuminance } from '../vision/luminance';
 import { availableTransferPaths, FrameLoop } from '../loop/frameLoop';
 import { SCENES } from '../scenes';
 import { eventsFromEvidence, ticksFromRecords } from '../stats/evidenceAdapter';
@@ -34,6 +35,8 @@ import type {
   FrameEvidence,
   FrameTickRecord,
   FrameTransferPath,
+  ProbeResult,
+  ProbeStep,
   Quad,
   RequestedVideo,
   SceneDefinition,
@@ -109,6 +112,8 @@ export interface HarnessSnapshot {
   report: BaselineReport | null;
   archive: ArchiveResult | null;
   archiveBusy: boolean;
+  probeBusy: boolean;
+  probes: ProbeResult[];
   /** Mac-side collector reachable on this origin (tunnel only). */
   collector: boolean;
   error: string | null;
@@ -161,6 +166,8 @@ export class HarnessController {
     report: null,
     archive: null,
     archiveBusy: false,
+    probeBusy: false,
+    probes: [],
     collector: false,
     error: null,
   };
@@ -404,6 +411,10 @@ export class HarnessController {
           delivered = await this.camera.open(video, requested);
         }
       }
+      // sharpness / exposure right after the first frame (desktop webcams differ wildly here)
+      const q = this.sampleQuality();
+      if (q.lap !== null && q.mean !== null)
+        delivered.startQuality = { laplacianVar: q.lap, meanLuma: q.mean };
       const label = delivered.label;
       const selected =
         cameras.find((c) => c.label === label) ??
@@ -784,6 +795,155 @@ export class HarnessController {
       rec.onDone?.(summary);
     };
     void finalize();
+  }
+
+  // ---- Phase 1 probes (resolution switch, zoom) ----------------------------------------------
+  private probeCanvas: HTMLCanvasElement | null = null;
+
+  private sampleQuality(): { lap: number | null; mean: number | null } {
+    const video = this.video;
+    if (!video || !video.videoWidth) return { lap: null, mean: null };
+    const canvas = (this.probeCanvas ??= document.createElement('canvas'));
+    const w = 320;
+    const h = Math.max(2, Math.round((video.videoHeight / video.videoWidth) * w));
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w;
+      canvas.height = h;
+    }
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return { lap: null, mean: null };
+    ctx.drawImage(video, 0, 0, w, h);
+    const luma = rgbaToLuminance(ctx.getImageData(0, 0, w, h).data, w, h);
+    const q = lumaQuality(luma, w, h, 2);
+    return { lap: q.laplacianVar, mean: q.meanLuma };
+  }
+
+  /** Counts presented frames for `ms` and reports the gap to the first one (rVFC, rAF fallback). */
+  private watchFrames(ms: number): Promise<{ frames: number; firstGapMs: number | null }> {
+    const video = this.video as
+      | (HTMLVideoElement & {
+          requestVideoFrameCallback?: (cb: () => void) => number;
+          cancelVideoFrameCallback?: (h: number) => void;
+        })
+      | null;
+    return new Promise((resolve) => {
+      if (!video) {
+        resolve({ frames: 0, firstGapMs: null });
+        return;
+      }
+      const t0 = performance.now();
+      let frames = 0;
+      let firstGapMs: number | null = null;
+      let handle = 0;
+      let done = false;
+      const tick = () => {
+        if (done) return;
+        frames += 1;
+        if (firstGapMs === null) firstGapMs = performance.now() - t0;
+        schedule();
+      };
+      const schedule = () => {
+        if (done) return;
+        if (typeof video.requestVideoFrameCallback === 'function')
+          handle = video.requestVideoFrameCallback(tick);
+        else handle = requestAnimationFrame(tick);
+      };
+      schedule();
+      setTimeout(() => {
+        done = true;
+        if (typeof video.cancelVideoFrameCallback === 'function')
+          video.cancelVideoFrameCallback(handle);
+        else cancelAnimationFrame(handle);
+        resolve({ frames, firstGapMs });
+      }, ms);
+    });
+  }
+
+  private async probeStep(label: string, constraints: MediaTrackConstraints): Promise<ProbeStep> {
+    const track = this.camera.track;
+    const before = track ? sanitizeTrackRecord(track.getSettings()) : {};
+    const q0 = this.sampleQuality();
+    const step: ProbeStep = {
+      label,
+      applyMs: 0,
+      settingsBefore: before,
+      settingsAfter: {},
+      frameGapMs: null,
+      framesIn2s: 0,
+      lapBefore: q0.lap,
+      lapAfter: [],
+      meanBefore: q0.mean,
+      meanAfter: [],
+    };
+    if (!track) {
+      step.error = 'no track';
+      return step;
+    }
+    const t0 = performance.now();
+    try {
+      await track.applyConstraints(constraints);
+    } catch (error) {
+      step.error = String(error);
+    }
+    step.applyMs = performance.now() - t0;
+    const watch = this.watchFrames(2000);
+    // quality series every ~200 ms for 2 s
+    for (let i = 0; i < 10; i += 1) {
+      await new Promise((r) => setTimeout(r, 200));
+      const q = this.sampleQuality();
+      if (q.lap !== null) step.lapAfter.push(Math.round(q.lap));
+      if (q.mean !== null) step.meanAfter.push(Math.round(q.mean));
+    }
+    const w = await watch;
+    step.framesIn2s = w.frames;
+    step.frameGapMs = w.firstGapMs;
+    step.settingsAfter = sanitizeTrackRecord(track.getSettings());
+    return step;
+  }
+
+  async runProbe(kind: ProbeResult['kind']): Promise<ProbeResult | null> {
+    if (!this.camera.track || this.rec || this.snap.probeBusy) return null;
+    this.publish({ probeBusy: true, error: null });
+    const steps: ProbeStep[] = [];
+    try {
+      if (kind === 'resolution_switch') {
+        for (let cycle = 1; cycle <= 3; cycle += 1) {
+          steps.push(
+            await this.probeStep(`${cycle}: → 1280×720`, {
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+            }),
+          );
+          steps.push(
+            await this.probeStep(`${cycle}: → 1920×1080`, {
+              width: { ideal: 1920 },
+              height: { ideal: 1080 },
+            }),
+          );
+        }
+      } else {
+        steps.push(
+          await this.probeStep('zoom → 2', { advanced: [{ zoom: 2 } as MediaTrackConstraintSet] }),
+        );
+        steps.push(
+          await this.probeStep('zoom → 1', { advanced: [{ zoom: 1 } as MediaTrackConstraintSet] }),
+        );
+      }
+    } finally {
+      this.publish({ probeBusy: false });
+    }
+    const result: ProbeResult = { kind, at: new Date().toISOString(), steps };
+    const probes = [...this.snap.probes, result];
+    this.publish({ probes });
+    if (this.run && this.db) {
+      this.run.probes = probes;
+      try {
+        await this.db.updateRun(this.run.sessionId, { probes });
+      } catch (error) {
+        this.fail(error, 'Nie udało się zapisać wyniku sondy.');
+      }
+    }
+    return result;
   }
 
   // ---- summary --------------------------------------------------------------------------------

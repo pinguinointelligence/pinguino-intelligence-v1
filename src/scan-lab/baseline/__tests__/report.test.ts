@@ -74,6 +74,7 @@ const run: SessionRecord = {
     os: 'iOS 26.6.1',
     browser: 'Safari 26.6',
     executionMode: 'safari_tab',
+    formFactor: 'mobile',
     userAgent: 'ua',
     screen: { width: 430, height: 932, dpr: 3 },
     hardwareConcurrency: 6,

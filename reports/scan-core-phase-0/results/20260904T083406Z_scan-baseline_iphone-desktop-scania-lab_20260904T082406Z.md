@@ -7,7 +7,8 @@ Bundle `20260904T083406Z_scan-baseline_iphone-desktop-scania-lab_20260904T082406
 |---|---|
 | screen / dpr / cores / memory | 430×932 / 3 / 4 / — GB |
 | requested | 1920×1080 @ 30 (environment) |
-| delivered | 1080×1920 @ 30 · Tylny aparat · facing environment · open 192 ms · first frame 490 ms |
+| delivered | 1080×1920 @ 30 · Tylny aparat · facing environment · open 192 ms · first frame 490 ms · autofocus not exposed · start sharpness — |
+| form factor | unknown |
 | cameras seen | Tylny aparat r0; Tylny aparat trójobiektywowy r1; Tylny dwuobiektywowy aparat szerokokątny r1; Tylny aparat dwuobiektywowy r1; Tylny aparat ultraszerokokątny (ultra-wide?) r4; Tylny aparat długoogniskowy r5; Przedni aparat r6 |
 | zoom | 1–10 · apply ok (1 → 2, 1 ms) |
 | torch | exposed · apply ok (6 ms) |

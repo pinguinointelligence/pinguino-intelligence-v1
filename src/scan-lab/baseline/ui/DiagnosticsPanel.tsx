@@ -69,6 +69,29 @@ export function DiagnosticsPanel({
               <option value={640}>640</option>
             </select>
           </label>
+          <div style={styles.row}>
+            <button
+              style={styles.buttonSecondary}
+              disabled={!snap.delivered || snap.live !== null || snap.probeBusy}
+              onClick={() => void controller.runProbe('resolution_switch')}
+            >
+              {copy.diagnostics.probeResolution}
+            </button>
+            <button
+              style={styles.buttonSecondary}
+              disabled={!snap.delivered || snap.live !== null || snap.probeBusy}
+              onClick={() => void controller.runProbe('zoom')}
+            >
+              {copy.diagnostics.probeZoom}
+            </button>
+          </div>
+          {snap.probeBusy && <p style={styles.warn}>{copy.diagnostics.probeRunning}</p>}
+          {!snap.delivered && <p style={styles.hint}>{copy.diagnostics.probeNeedsCamera}</p>}
+          {snap.probes.length > 0 && (
+            <p style={styles.hint}>
+              {copy.diagnostics.probeDone(snap.probes[snap.probes.length - 1]?.steps.length ?? 0)}
+            </p>
+          )}
           {snap.delivered && (
             <pre style={styles.mono}>
               {JSON.stringify(

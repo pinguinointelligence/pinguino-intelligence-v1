@@ -49,6 +49,13 @@ export function detectExecutionMode(nav: Navigator, win: Window): ExecutionMode 
   return 'browser_tab';
 }
 
+export function detectFormFactor(ua: string): DeviceMeta['formFactor'] {
+  if (/Mobile|iPhone|iPod|Windows Phone/i.test(ua)) return 'mobile';
+  if (/iPad|Android/i.test(ua)) return 'mobile';
+  if (/Macintosh|Windows NT|X11|Linux x86_64|CrOS/i.test(ua)) return 'desktop';
+  return 'unknown';
+}
+
 export function collectDeviceMeta(
   modelLabel: string,
   nav: Navigator,
@@ -62,6 +69,7 @@ export function collectDeviceMeta(
     os,
     browser,
     executionMode: detectExecutionMode(nav, win),
+    formFactor: detectFormFactor(nav.userAgent),
     userAgent: nav.userAgent,
     screen: {
       width: win.screen?.width ?? 0,

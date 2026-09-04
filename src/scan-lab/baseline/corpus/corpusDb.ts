@@ -375,9 +375,10 @@ export class CorpusDb implements CorpusReader {
   /** Upserts the summary of one scene (key [runId, sceneId]; a retry overwrites the earlier attempt). */
   async putSceneResult(runId: string, result: SceneRunSummary): Promise<void> {
     const tx = this.transaction(STORE_SCENES, 'readwrite', 'putSceneResult');
+    // retries keep their own row (key sceneId#attempt) so per-attempt loop/transfer evidence survives
     const row: SceneRow = {
       runId,
-      sceneId: result.sceneId,
+      sceneId: result.attempt > 1 ? `${result.sceneId}#${result.attempt}` : result.sceneId,
       result,
       updatedAt: new Date().toISOString(),
     };

@@ -174,6 +174,13 @@ export class CameraSession {
       facingMode: typeof settings.facingMode === 'string' ? settings.facingMode : null,
       deviceId: null,
       label: track?.label ?? null,
+      autofocus: (() => {
+        const modes = (capabilities as Record<string, unknown> | null)?.['focusMode'];
+        if (Array.isArray(modes)) return modes.includes('continuous');
+        const mode = (settings as Record<string, unknown>)['focusMode'];
+        return typeof mode === 'string' ? mode === 'continuous' : null;
+      })(),
+      startQuality: null,
       settings: sanitizeTrackRecord(settings),
       capabilities: capabilities ? sanitizeTrackRecord(capabilities) : null,
       supportedConstraints: { ...supported },

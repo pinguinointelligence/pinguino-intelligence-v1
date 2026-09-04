@@ -242,7 +242,11 @@ export function analyzeBundle(bytes, fileName) {
   lines.push('|---|---|');
   lines.push(`| screen / dpr / cores / memory | ${d.screen.width}×${d.screen.height} / ${d.screen.dpr} / ${d.hardwareConcurrency ?? '—'} / ${d.deviceMemoryGb ?? '—'} GB |`);
   lines.push(`| requested | ${run.camera?.requested?.width}×${run.camera?.requested?.height} @ ${run.camera?.requested?.frameRate} (${run.camera?.requested?.facingMode ?? 'deviceId'}) |`);
-  lines.push(`| delivered | ${cam ? `${cam.width}×${cam.height} @ ${cam.frameRate ?? '?'} · ${cam.label ?? '—'} · facing ${cam.facingMode ?? '—'} · open ${ms(cam.openMs)} ms · first frame ${ms(cam.firstFrameMs)} ms` : '—'} |`);
+  lines.push(`| delivered | ${cam ? `${cam.width}×${cam.height} @ ${cam.frameRate ?? '?'} · ${cam.label ?? '—'} · facing ${cam.facingMode ?? '—'} · open ${ms(cam.openMs)} ms · first frame ${ms(cam.firstFrameMs)} ms · autofocus ${cam.autofocus === null || cam.autofocus === undefined ? 'not exposed' : cam.autofocus ? 'yes' : 'NO'} · start sharpness ${cam.startQuality ? `${Math.round(cam.startQuality.laplacianVar)} / mean ${Math.round(cam.startQuality.meanLuma)}` : '—'}` : '—'} |`);
+  lines.push(`| form factor | ${d.formFactor ?? 'unknown'} |`);
+  for (const pr of run.probes ?? []) {
+    lines.push(`| probe ${pr.kind} | ${pr.steps.map((st) => `${st.label}: apply ${ms(st.applyMs)} ms, gap ${st.frameGapMs === null ? '—' : ms(st.frameGapMs)} ms, ${st.framesIn2s} fr/2 s, ${st.settingsAfter.width ?? '?'}×${st.settingsAfter.height ?? '?'}${st.settingsAfter.zoom !== undefined ? ` z${st.settingsAfter.zoom}` : ''}, sharp ${st.lapBefore === null ? '—' : Math.round(st.lapBefore)}→[${st.lapAfter.join(' ')}], mean ${st.meanBefore === null ? '—' : Math.round(st.meanBefore)}→[${st.meanAfter.join(' ')}]${st.error ? ` ERROR ${st.error}` : ''}`).join('<br>')} |`);
+  }
   lines.push(`| cameras seen | ${(run.camera?.options ?? []).map((o) => `${o.label}${o.likelyUltrawide ? ' (ultra-wide?)' : ''} r${o.primaryRank}`).join('; ') || '—'} |`);
   lines.push(`| zoom | ${controls?.zoom?.supported ? `${controls.zoom.range?.min}–${controls.zoom.range?.max} · apply ${controls.zoom.ok ? 'ok' : 'FAILED'} (${controls.zoom.before} → ${controls.zoom.after ?? '?'}, ${ms(controls.zoom.durationMs)} ms)` : 'not exposed'} |`);
   lines.push(`| torch | ${controls?.torch?.supported ? `exposed · apply ${controls.torch.ok ? 'ok' : 'FAILED'} (${ms(controls.torch.durationMs)} ms)` : 'not exposed'} |`);
@@ -254,6 +258,23 @@ export function analyzeBundle(bytes, fileName) {
   lines.push(`| loop-60s frames | ${loop60Raw ? `presented ${loop?.framesPresented ?? '—'} · surfaced ${ticks60.length} (camera-side skipped ${cameraSkipped ?? '—'}) · processed ${processed60} · dropped(busy) ${loop?.framesDroppedDecode ?? '—'}` : '—'} |`);
   lines.push(`| client hints | ${d.clientHints ? `${d.clientHints.platform ?? '?'} ${d.clientHints.platformVersion ?? '?'} · model ${d.clientHints.model ?? '?'} · ${d.clientHints.brands ?? ''}` : 'none (Safari, or hints refused) — reduced UA only'} |`);
   lines.push(`| camera auto-switch | ${run.camera?.autoSwitchedFrom ? `re-opened on the ranked primary; first delivery was ${run.camera.autoSwitchedFrom.label} ${run.camera.autoSwitchedFrom.width}×${run.camera.autoSwitchedFrom.height}` : 'none'} |`);
+  const loopAttempts = scenes.filter((sc) => sc.sceneId === 'loop-60s').sort((a, b) => a.attempt - b.attempt);
+  if (loopAttempts.length > 1) {
+    lines.push('');
+    lines.push('## loop-60s attempts (transfer-path comparison)');
+    lines.push('| attempt | path | processed fps | main capture p50/p95 ms | worker RT p50/p95 | localize p50 | full_cheap p50 |');
+    lines.push('|---|---|---|---|---|---|---|');
+    for (const la of loopAttempts) {
+      const t = la.frameTicks ?? [];
+      const pr = t.filter((x) => x.processed).length;
+      const c2 = t.filter((x) => x.processed && typeof x.captureToLumaMs === 'number').map((x) => x.captureToLumaMs);
+      const ev = eventsOf(la.sceneId, la.attempt);
+      const rt = ev.map((e) => e.roundTripMs).filter((v) => typeof v === 'number');
+      const loc = ev.map((e) => e.saliency?.durationMs).filter((v) => typeof v === 'number');
+      const fc = ev.flatMap((e) => (e.decodes ?? []).filter((dd) => dd.variant === 'full_cheap').map((dd) => dd.durationMs));
+      lines.push(`| ${la.attempt} | ${la.transferPath ?? '?'} | ${ms1(pr / (la.durationMs / 1000))} | ${ms1(percentile(c2, 0.5))} / ${ms1(percentile(c2, 0.95))} | ${ms1(percentile(rt, 0.5))} / ${ms1(percentile(rt, 0.95))} | ${ms1(percentile(loc, 0.5))} | ${ms1(percentile(fc, 0.5))} |`);
+    }
+  }
   lines.push('');
   lines.push('## Scenes');
   lines.push('| scene | kind | att | verdict | 1st hit ms | confirmed ms | hits/att | misread | fps p50 | cadence p50 | worker RT p50/p95 | localize p50/p95 | full_cheap p50/p95 (hits) | full_harder p50/p95 (hits) | roi p50/p95 (hits) | rect p50/p95 (hits) | cand px / |°| | dropped |');

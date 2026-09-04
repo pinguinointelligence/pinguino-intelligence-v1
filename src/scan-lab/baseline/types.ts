@@ -22,6 +22,8 @@ export interface DeviceMeta {
   /** Detected browser + version (e.g. "Safari 26.6", "Chrome 148"). */
   browser: string;
   executionMode: ExecutionMode;
+  /** Desktop/laptop vs phone/tablet, from the UA (Mobile token / platform); drives the capability profile. */
+  formFactor: 'mobile' | 'desktop' | 'unknown';
   userAgent: string;
   screen: { width: number; height: number; dpr: number };
   hardwareConcurrency: number | null;
@@ -68,6 +70,10 @@ export interface DeliveredVideo {
   settings: Record<string, unknown>;
   capabilities: Record<string, unknown> | null;
   supportedConstraints: Record<string, boolean>;
+  /** capabilities.focusMode lists 'continuous' (or settings say so); null when the browser exposes nothing. */
+  autofocus: boolean | null;
+  /** Sharpness (Laplacian variance) and mean luma of a 320-px sample right after the first frame. */
+  startQuality: { laplacianVar: number; meanLuma: number } | null;
   /** How long getUserMedia took from call to first resolved stream, ms. */
   openMs: number;
   /** Time from getUserMedia call to the first decoded video frame (loadeddata/rVFC), ms. */
@@ -194,6 +200,30 @@ export interface FrameEvidence {
   quality?: { laplacianVar: number; meanLuma: number; clippedHighRatio: number };
 }
 
+export interface ProbeStep {
+  label: string;
+  /** applyConstraints wall time, ms. */
+  applyMs: number;
+  settingsBefore: Record<string, unknown>;
+  settingsAfter: Record<string, unknown>;
+  /** ms from the end of applyConstraints to the first presented frame (rVFC), null when none came. */
+  frameGapMs: number | null;
+  /** presented frames in the 2 s after the apply. */
+  framesIn2s: number;
+  /** sharpness (Laplacian variance) and mean luma of a 320-px sample: before, then every ~200 ms for 2 s. */
+  lapBefore: number | null;
+  lapAfter: number[];
+  meanBefore: number | null;
+  meanAfter: number[];
+  error?: string;
+}
+
+export interface ProbeResult {
+  kind: 'resolution_switch' | 'zoom';
+  at: string;
+  steps: ProbeStep[];
+}
+
 export type SceneKind = 'barcode' | 'object';
 
 export interface SceneDefinition {
@@ -261,6 +291,8 @@ export interface SessionRecord {
   transfer: TransferStats | null;
   /** Decode worker facts recorded once per session. */
   worker: { warmupMs: number; zxingVersion: string; offscreenCanvas: boolean } | null;
+  /** Phase 1 probes (resolution switch, zoom) run from the diagnostics panel. */
+  probes?: ProbeResult[];
   scenes: SceneRunSummary[];
   harnessVersion: string;
 }

@@ -91,6 +91,11 @@ export const copy = {
     storage: 'Pamięć lokalna',
     session: 'Sesja',
     worker: 'Dekoder',
+    probeResolution: 'Sonda: przełączanie rozdzielczości (1080p ↔ 720p ×3)',
+    probeZoom: 'Sonda: zoom ×2 i powrót',
+    probeRunning: 'Sonda trwa… trzymaj telefon nieruchomo nad kodem',
+    probeDone: (n: number) => `Sonda zapisana (${n} kroków). Wynik trafi do paczki.`,
+    probeNeedsCamera: 'Najpierw włącz aparat; sondy działają tylko poza nagrywaniem sceny.',
   },
   summary: {
     heading: 'Podsumowanie',
