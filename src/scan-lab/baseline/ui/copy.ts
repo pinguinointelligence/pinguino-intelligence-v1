@@ -15,6 +15,12 @@ export const copy = {
     declaredHint:
       'Wpisz 13 cyfr z produktu, którego użyjesz w scenach z kodem. Dzięki temu policzymy błędne odczyty.',
     modeLabel: 'Tryb uruchomienia',
+    scenesHeading: 'Sceny do wykonania',
+    scenesHint:
+      'Domyślnie wszystkie 26. Odznacz sceny już zaliczone, aby nagrać tylko brakujące — wyniki łączą się na komputerze według urządzenia i przeglądarki.',
+    scenesAll: 'Wszystkie',
+    scenesNone: 'Żadna',
+    scenesCount: (n: number, total: number) => `${n} z ${total}`,
     next: 'Dalej',
   },
   camera: {

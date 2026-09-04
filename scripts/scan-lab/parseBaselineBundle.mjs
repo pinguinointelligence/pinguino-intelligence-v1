@@ -187,26 +187,66 @@ export function analyzeBundle(bytes, fileName) {
   lines.push('');
   lines.push(`Events per scene: ${Object.entries(eventCounts).map(([k, n]) => `${k}=${n}`).join(', ') || '—'}`);
   lines.push('');
-  lines.push(`## Phase 0 GO / NO-GO — **${verdict}**`);
-  lines.push('| check | measured | result |');
+  lines.push(`## Phase 0 GATES (decision package Phase 0 acceptance) — **${verdict}**`);
+  lines.push('| gate | measured | result |');
   lines.push('|---|---|---|');
-  for (const c of checks) lines.push(`| ${c.id} | ${c.value} | ${c.pass === null ? 'n/a' : c.pass ? 'PASS' : 'FAIL'} |`);
+  for (const c of phase0) lines.push(`| ${c.id} | ${c.value} | ${c.pass === null ? 'n/a' : c.pass ? 'PASS' : 'FAIL'} |`);
+  lines.push('');
+  lines.push('## Phase 1 headline targets measured on this corpus (diagnostic — NOT Phase 0 gates)');
+  lines.push('| target | measured | result |');
+  lines.push('|---|---|---|');
+  for (const c of checks.slice(4)) lines.push(`| ${c.id} | ${c.value} | ${c.pass === null ? 'n/a' : c.pass ? 'meets' : 'misses'} |`);
   lines.push('');
   lines.push(`Verdict counts: ${Object.entries(report?.verdictCounts ?? {}).map(([k, n]) => `${k}=${n}`).join(', ')}`);
-  return { markdown: lines.join('\n'), verdict, checks, device: d, sceneCount: scenes.length, frames };
+  return { markdown: lines.join('\n'), verdict, checks, device: d, sceneCount: scenes.length, frames, pooled, scenes, report, run, fileName, processedFps, processedFpsMin, duty, mainShare, sceneSeconds };
+}
+
+/**
+ * Canonical evidence merging: bundles of the SAME device label + browser + execution mode are combined —
+ * the scene set is the union (newest attempt per scene wins), locate+ROI is pooled over all frames, the
+ * loop gates come from whichever bundle carried loop-60s (newest). Every merged row names its bundle.
+ */
+export function mergeDeviceClass(results) {
+  const byScene = new Map();
+  for (const r of results) {
+    for (const sc of r.report?.scenes ?? []) {
+      const prev = byScene.get(sc.sceneId);
+      if (!prev || r.run.createdAt > prev.createdAt) byScene.set(sc.sceneId, { ...sc, bundle: r.fileName, createdAt: r.run.createdAt });
+    }
+  }
+  const scenes = [...byScene.values()].sort((a, b) => a.sceneId.localeCompare(b.sceneId));
+  const locateRoi = results.flatMap((r) => r.pooled.locateRoi);
+  const loopSource = results.filter((r) => r.processedFps !== null).sort((a, b) => (a.run.createdAt < b.run.createdAt ? 1 : -1))[0] ?? null;
+  const sceneSeconds = scenes.filter((sc) => sc.durationMs >= TARGETS.minSceneSeconds * 1000).length;
+  const gates = [
+    { id: 'locate+roi per-frame p95 ≤ 40 ms (pooled over all bundles)', value: locateRoi.length ? `p50 ${ms1(percentile(locateRoi, 0.5))} / p95 ${ms1(percentile(locateRoi, 0.95))} ms (n=${locateRoi.length})` : '—', pass: locateRoi.length ? percentile(locateRoi, 0.95) <= TARGETS.locateRoiP95Ms : null },
+    { id: '≥ 15 fps PROCESSED sustained 60 s', value: loopSource ? `${ms1(loopSource.processedFps)} fps (min second ${loopSource.processedFpsMin ?? '—'}) from ${loopSource.fileName}` : '— (no bundle carried loop-60s)', pass: loopSource ? loopSource.processedFps >= TARGETS.sustainedFps && (loopSource.processedFpsMin === null || loopSource.processedFpsMin >= TARGETS.sustainedFps) : null },
+    { id: 'CPU proxy ≤ 60 %', value: loopSource && loopSource.duty !== null ? `${pct(loopSource.duty + (loopSource.mainShare ?? 0))} from ${loopSource.fileName}` : '—', pass: loopSource && loopSource.duty !== null ? loopSource.duty + (loopSource.mainShare ?? 0) <= TARGETS.dutyCycleMax : null },
+    { id: 'corpus ≥ 20 scenes × ≥ 3 s (union)', value: `${sceneSeconds} scenes ≥ 3 s across ${results.length} bundle(s)`, pass: sceneSeconds >= TARGETS.minScenes },
+  ];
+  const verdict = gates.every((g) => g.pass === true) ? 'GO' : gates.some((g) => g.pass === false) ? 'NO-GO' : 'INCOMPLETE';
+  const d = results[0].device;
+  const lines = [`# MERGED — ${d.modelLabel} — ${d.os} — ${d.browser} — ${d.executionMode}`, '', `Bundles: ${results.map((r) => r.fileName).join(', ')}`, '', '| scene | verdict | confirmed ms | hits/att | bundle |', '|---|---|---|---|---|'];
+  for (const sc of scenes) lines.push(`| ${sc.sceneId} | ${sc.verdict} | ${ms(sc.firstConfirmedMs)} | ${sc.hits}/${sc.decodeAttempts} | ${sc.bundle} |`);
+  lines.push('', `## Phase 0 GATES (merged) — **${verdict}**`, '| gate | measured | result |', '|---|---|---|');
+  for (const g of gates) lines.push(`| ${g.id} | ${g.value} | ${g.pass === null ? 'n/a' : g.pass ? 'PASS' : 'FAIL'} |`);
+  return { markdown: lines.join('\n'), verdict, key: `${d.modelLabel}|${d.browser}|${d.executionMode}` };
 }
 
 const args = process.argv.slice(2);
 const outIdx = args.indexOf('--out');
 const outDir = outIdx >= 0 ? (args[outIdx + 1] ?? null) : null;
-const files = args.filter((a, i) => outIdx < 0 || (i !== outIdx && i !== outIdx + 1));
+const merge = args.includes('--merge');
+const files = args.filter((a, i) => a !== '--merge' && (outIdx < 0 || (i !== outIdx && i !== outIdx + 1)));
 if (files.length === 0 && import.meta.url === `file://${process.argv[1]}`) {
   console.error('usage: node scripts/scan-lab/parseBaselineBundle.mjs <bundle.zip> [...] [--out dir]');
   process.exit(2);
 }
 const summary = [];
+const all = [];
 for (const f of files) {
   const res = analyzeBundle(new Uint8Array(readFileSync(f)), basename(f));
+  all.push(res);
   summary.push(`| ${res.device.modelLabel} | ${res.device.os} | ${res.device.browser} | ${res.device.executionMode} | ${res.sceneCount} | ${res.frames} | **${res.verdict}** |`);
   if (outDir) {
     mkdirSync(outDir, { recursive: true });
@@ -216,6 +256,20 @@ for (const f of files) {
   } else {
     console.log(res.markdown);
     console.log('');
+  }
+}
+if (merge) {
+  const groups = new Map();
+  for (const r of all) {
+    const key = `${r.device.modelLabel}|${r.device.browser}|${r.device.executionMode}`;
+    groups.set(key, [...(groups.get(key) ?? []), r]);
+  }
+  for (const [key, rs] of groups) {
+    if (rs.length < 2) continue;
+    const m = mergeDeviceClass(rs);
+    summary.push(`| MERGED ${rs[0].device.modelLabel} | ${rs[0].device.os} | ${rs[0].device.browser} | ${rs[0].device.executionMode} | ${rs.length} bundles | — | **${m.verdict}** |`);
+    if (outDir) writeFileSync(join(outDir, `MERGED_${key.replace(/[^A-Za-z0-9]+/g, '_')}.md`), m.markdown + '\n');
+    else console.log(m.markdown);
   }
 }
 if (files.length > 1 || outDir) {

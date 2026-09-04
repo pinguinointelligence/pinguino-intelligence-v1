@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useReducer, useState, useSyncExternalStore } from 'react';
 import { SCENES } from '../scenes';
+import type { SceneDefinition } from '../types';
 import { copy } from './copy';
 import { DiagnosticsPanel } from './DiagnosticsPanel';
 import { HarnessController } from './harnessController';
@@ -12,9 +13,15 @@ import { detectExecutionMode, parseUserAgent } from '../device/deviceInfo';
 
 const SCENE_IDS = SCENES.map((s) => s.id);
 
-function useFlow(): [FlowState, (a: FlowAction) => void] {
+function useFlow(active: readonly SceneDefinition[]): [FlowState, (a: FlowAction) => void] {
   return useReducer(
-    (s: FlowState, a: FlowAction) => flowReducer(s, a, SCENES.length, SCENE_IDS),
+    (s: FlowState, a: FlowAction) =>
+      flowReducer(
+        s,
+        a,
+        active.length,
+        active.map((x) => x.id),
+      ),
     initialFlowState,
   );
 }
@@ -30,7 +37,12 @@ export function BaselinePage() {
     controller.getSnapshot,
     controller.getSnapshot,
   );
-  const [flow, dispatch] = useFlow();
+  const [selectedIds, setSelectedIds] = useState<string[]>(SCENE_IDS);
+  const activeScenes = useMemo(
+    () => SCENES.filter((x) => selectedIds.includes(x.id)),
+    [selectedIds],
+  );
+  const [flow, dispatch] = useFlow(activeScenes);
   const [modelLabel, setModelLabel] = useState('');
   const [declared, setDeclared] = useState('');
   const [resume, setResume] = useState(() => HarnessController.readResume());
@@ -38,7 +50,7 @@ export function BaselinePage() {
     Array<{ sessionId: string; modelLabel: string; createdAt: string; scenes: number }>
   >([]);
   const [probeDone, setProbeDone] = useState(false);
-  const scene = SCENES[flow.sceneIndex];
+  const scene = activeScenes[flow.sceneIndex];
 
   useEffect(() => installBaselineManifest(), []);
   useEffect(() => {
@@ -86,8 +98,9 @@ export function BaselinePage() {
       sceneIndex: flow.sceneIndex,
       completed: flow.completed,
       skipped: flow.skipped,
+      sceneIds: selectedIds,
     });
-  }, [controller, flow.step, flow.sceneIndex, flow.completed, flow.skipped]);
+  }, [controller, flow.step, flow.sceneIndex, flow.completed, flow.skipped, selectedIds]);
 
   const onDeviceSubmit = useCallback(async () => {
     try {
@@ -103,6 +116,7 @@ export function BaselinePage() {
     try {
       await controller.startSession(resume.modelLabel, resume.declaredCode, resume.sessionId);
       setModelLabel(resume.modelLabel);
+      if (resume.sceneIds && resume.sceneIds.length > 0) setSelectedIds(resume.sceneIds);
       dispatch({
         type: 'RESUME',
         modelLabel: resume.modelLabel,
@@ -163,7 +177,9 @@ export function BaselinePage() {
       <header style={styles.header}>
         <div style={styles.title}>{copy.title}</div>
         {flow.step !== 'intro' && flow.step !== 'device' && scene && flow.step !== 'summary' && (
-          <div style={styles.subtitle}>{copy.scene.of(flow.sceneIndex + 1, SCENES.length)}</div>
+          <div style={styles.subtitle}>
+            {copy.scene.of(flow.sceneIndex + 1, activeScenes.length)}
+          </div>
         )}
       </header>
 
@@ -261,9 +277,42 @@ export function BaselinePage() {
           <p style={styles.hint}>
             {copy.device.modeLabel}: {executionMode} · {uaGuess.os} · {uaGuess.browser}
           </p>
+          <details style={styles.details}>
+            <summary style={styles.label}>
+              {copy.device.scenesHeading} ·{' '}
+              {copy.device.scenesCount(selectedIds.length, SCENES.length)}
+            </summary>
+            <p style={styles.hint}>{copy.device.scenesHint}</p>
+            <div style={styles.row}>
+              <button style={styles.buttonSecondary} onClick={() => setSelectedIds(SCENE_IDS)}>
+                {copy.device.scenesAll}
+              </button>
+              <button style={styles.buttonSecondary} onClick={() => setSelectedIds([])}>
+                {copy.device.scenesNone}
+              </button>
+            </div>
+            {SCENES.map((x, i) => (
+              <label key={x.id} style={styles.kv}>
+                <span>
+                  {i + 1}. {x.title}
+                </span>
+                <input
+                  type="checkbox"
+                  checked={selectedIds.includes(x.id)}
+                  onChange={(e) =>
+                    setSelectedIds((prev) =>
+                      e.target.checked
+                        ? SCENE_IDS.filter((id) => id === x.id || prev.includes(id))
+                        : prev.filter((id) => id !== x.id),
+                    )
+                  }
+                />
+              </label>
+            ))}
+          </details>
           <button
             style={styles.button}
-            disabled={!modelLabel.trim()}
+            disabled={!modelLabel.trim() || selectedIds.length === 0}
             onClick={() => void onDeviceSubmit()}
           >
             {copy.device.next}

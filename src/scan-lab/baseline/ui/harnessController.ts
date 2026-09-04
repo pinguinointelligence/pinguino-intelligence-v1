@@ -57,6 +57,8 @@ export interface ResumeInfo {
   sceneIndex: number;
   completed: Record<string, number>;
   skipped: string[];
+  /** Scene ids chosen for this run (targeted make-up runs); absent = all scenes. */
+  sceneIds?: string[];
 }
 
 export interface SceneLive {
