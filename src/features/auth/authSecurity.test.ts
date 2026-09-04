@@ -33,6 +33,7 @@ const FILES = allSourceFiles();
 const ALLOWED_ENV = new Set([
   'VITE_SUPABASE_URL',
   'VITE_SUPABASE_ANON_KEY',
+  'VITE_SCAN_IMPORT_LAB', // staging-only QA harness for Scan Import 2.0 (/dev/scan-import-v2); never HOME
   'VITE_SENTRY_DSN',
   'VITE_OFFER_LAUNCH_ENABLED',
   'VITE_OFFER_FOUNDING_ENABLED',
