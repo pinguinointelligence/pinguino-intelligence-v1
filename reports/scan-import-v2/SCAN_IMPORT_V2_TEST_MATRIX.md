@@ -53,7 +53,7 @@ Not covered here (needs real adapters): Supabase-backed ports, the HOME/PRO wiri
 | acceptance row | test | result |
 |---|---|---|
 | UNKNOWN VALID GTIN: discovery starts, no placeholder dead end | `UNKNOWN VALID GTIN…` | PASS (+ staging: session ed9d0d48, request #32) |
-| UNKNOWN + LABEL EVIDENCE contributes to the same identity | `UNKNOWN + LABEL EVIDENCE…` | PASS (fake port; staging pending a label photo) |
+| UNKNOWN + LABEL EVIDENCE contributes to the same identity | `UNKNOWN + LABEL EVIDENCE…` + staging.label tests | PASS (fake) + PASS on staging with real photos (3/4 identified from the label) |
 | UNKNOWN + INTERNET EVIDENCE contributes to the same identity | `UNKNOWN + INTERNET EVIDENCE…` | PASS (+ staging: 3 real sources with provenance) |
 | LABEL / INTERNET CONFLICT: no silent winner | `LABEL / INTERNET CONFLICT…` | PASS |
 | UNKNOWN WITHOUT ENOUGH TECHNICAL DATA: product preserved, not created, engineReady=false | `UNKNOWN WITHOUT ENOUGH TECHNICAL DATA…` | PASS (+ staging: finalize refused, 0 product rows) |
@@ -79,3 +79,4 @@ Not covered here (needs real adapters): Supabase-backed ports, the HOME/PRO wiri
 | label X vs internet Y; confident provider never flips readiness | journey.test.ts | PASS |
 | offline persistence: reload, expiry, schema, version mismatch, account/guest separation, no duplicates, broken storage | offlinePersistence.test.ts (7) | PASS |
 | harness boundary (gate, route, imports, no raw HTML, V2 entry points only) | ScanImportV2LabPage.security.test.ts (5) | PASS |
+| REAL PHOTOS on staging: exact → research → label → finalize verdict → request → new-session continuity | staging.label.test.ts (phase 1), staging.label.finalize.test.ts (phases 2–3) | PASS 4/4 (proof file) |
