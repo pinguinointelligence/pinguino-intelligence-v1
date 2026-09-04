@@ -128,7 +128,28 @@ Step 2 (`ean_lookup`, `product-scan-analyze` mode `ean_lookup`, `index.ts:261-33
 **Findings.**
 - F5.1 (P1) The research call to the provider has no timeout; a hung provider holds the edge function until the platform kills it, and the client treats the eventual failure as "looked up, nothing found".
 - F5.2 (P2) Network failure and provider "not found" collapse into one client outcome (`eanLookupDone = true`, no error state).
-- F5.3 (P2) Open Food Facts fetch has no timeout and no `res.ok` check for non-404 errors (`openFoodFacts.ts:15-18`); low blast radius because it sits behind a human reviewer.
+- F5.3 (P3) Open Food Facts fetch has no timeout and no retry (`openFoodFacts.ts:14-18`; non-404 errors do throw, `:17`); low blast radius because it sits behind a human reviewer and outside the scanner path.
 - F5.4 (P3) Provenance of a *rejected* external fact (conflict lost to the label) is kept only inside the session/version JSON; nothing surfaces it to the customer.
 
 **Verdict.** Provider trust model: PASS. Timeouts / failure distinction: PARTIAL (F5.1, F5.2). Caching + provenance: PASS with F5.4.
+
+## SECTION 6 — CONFIDENCE + PROVENANCE
+
+**Actual vocabulary (three layers, not one).**
+1. Per-field evidence on a scan result: `ProductScanEvidenceRef { assetId, field, source: label|barcode_registry|manufacturer|retailer, confidence: high|medium|low, region, directVisibility }` (`contracts.ts:12-29`); external sources `ProductScanExternalSource { sourceType, url, title, fieldsUsed }` (`:38-43`); conflicts `ProductScanConflict` (Section 5). Live-sweep field provenance `ScanFieldProvenance = camera|catalog|ean_lookup|official_source|external_source|mapper_estimated|derived` (`evidenceState.ts:15-23`) and `LiveScanFieldSource = camera|catalog|ean_lookup|vision` (`liveFieldState.ts:19`).
+2. Product-level deterministic score: `assessProductConfidence()` (`product-intelligence/productEvidenceConfidence.ts:185-230`) — weighted field credit by `EVIDENCE_SOURCE_RANK` (`label = user_confirmed = mapper_exact 6 > manufacturer 5 > barcode_registry = source_file 4 > retailer = web_search 2 > mapper_family 1`; "a family inference can never outrank a direct fact", `:33-44`), `exactCanonicalMatch → ≥ 97`, validated GTIN `+3` ("never alone completes a product"), `−12` per material conflict; output `{ confidence 0-100, criticalReadiness, missingCritical[], reasons[] (owner-readable Polish, never internal weights) }`. Thresholds: `NO_WEB_CONFIDENCE = 90`, `AUTO_IMPORT_FLOOR = 85` (`:231-233`).
+3. Publication / usability state of the imported product: `ProductScanOverlayState = SCAN_DRAFT | USABLE_FOR_OWNER | PENDING_PUBLICATION | PUBLISHED | BLOCKED` (`contracts.ts:5-10`, column `product_scan_sessions.overlay_state`), plus the finalize profile gate `productAccuracyAssessment { roleReadiness, gellattiReadiness.ready, criticalBlockers }` and `engineUsable` (`product-scan-finalize/index.ts:479-516`); a profile the authority rejects ends the import with `customer_product_profile_rejected` 409, i.e. nothing weak is persisted as usable.
+
+**Does every imported identity preserve source, exactness, confidence, evidence and a confirmation requirement?**
+- Source + evidence: PASS — evidence refs and external sources are part of the result schema and are validated server-side (`validateServerResult`).
+- Exactness: PASS by construction for catalogue hits (`exactCanonicalMatch → 97`, `existing_product` route) — but the *reason* a product is exact (EAN equality) is not stored as a distinct provenance value: `ScanFieldProvenance` has `catalog` and `ean_lookup`, no `exact_gtin` vs `name_match` distinction. PARTIAL.
+- Confidence: PASS (deterministic, reasoned).
+- Confirmation requirement: PARTIAL — the states that mean "a human must confirm" are spread over `missingCriticalFields`, `USABLE_FOR_OWNER` vs `PENDING_PUBLICATION`, `criticalBlockers`, and the live sweep's NEEDS_RESOLUTION; there is no single `needsConfirmation` flag on the import output, so each UI derives it differently (Section 15).
+- Silent weak-evidence import: NOT POSSIBLE for the customer-added path (profile gate) — PASS; for the live sweep, a non-catalogue read is carried but never green (`liveRecognition.ts:322-330`) — PASS.
+
+**Findings.**
+- F6.1 (P2) No single confirmation-requirement field on the import result; four partially overlapping signals.
+- F6.2 (P2) Exactness provenance is implicit (route) rather than recorded (`exact_gtin` / `single_catalogue_row` / `name_match` are indistinguishable after the fact).
+- F6.3 (P3) `ProductScanConfidence high|medium|low` (per field) and the 0–100 product score are two scales with no documented mapping.
+
+**Verdict.** Provenance model: PASS. Confirmation requirement as a first-class output: PARTIAL.
