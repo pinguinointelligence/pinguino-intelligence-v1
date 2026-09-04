@@ -59,7 +59,6 @@ import { NonProductionBadge } from '@/features/design-review/NonProductionMarker
 import {
   CustomerSurface,
   CustomerSection,
-  CustomerMenu,
   TouchButton,
   TextField,
   MicrophoneButton,
@@ -74,6 +73,7 @@ import {
   notice,
   type MicState,
 } from '@/features/customer-shell/ui';
+import { AppShell } from '@/features/shell/AppShell';
 import {
   MachineOnboarding,
   MachineContextBar,
@@ -232,15 +232,14 @@ function Notice({ children }: { children: ReactNode }) {
  */
 function ShellRoot({ persona, children }: { persona: CustomerPersona; children: ReactNode }) {
   return (
-    // `data-persona` is the machine-checkable trace of the ENTITLEMENT-derived
-    // persona (never a hardcode): tests assert it flips with the access store,
-    // and staging QA can verify the signed-in plan without exposing any number.
-    <div
-      data-persona={persona}
-      className="gellatti-application pro-studio-radius-system theme-pro-light min-h-[100dvh] w-full bg-paper"
-    >
-      {children}
-    </div>
+    <AppShell>
+      {/* `/start` formerly mounted its own CustomerMenu header. The current PRO
+          header is now the one authority here too; only the customer content
+          remains route-local. */}
+      <div data-persona={persona} className="min-h-[100dvh] w-full bg-paper">
+        {children}
+      </div>
+    </AppShell>
   );
 }
 
@@ -610,7 +609,6 @@ export function CustomerShellV1() {
     return (
       <ShellRoot persona={persona}>
         <CustomerSurface measure="workspace">
-          <CustomerMenu />
           <div className="pt-6 sm:pt-8">
             <DevPersonaSelect persona={persona} onChange={switchPersona} />
             <header className="pt-2">
@@ -1045,7 +1043,6 @@ export function CustomerShellV1() {
   return (
     <ShellRoot persona={persona}>
       <CustomerSurface hasStickyCta={showStickyUpgrade} stickyReservePx={stickyReservePx}>
-        <CustomerMenu />
         {/* §7.3 machine context bar. Shows the machine the CURRENT recipe uses;
             an override adds the „Domyślna maszyna: X” line + revert / promote
             actions. „Zmień dla tej receptury” is recipe-scope only. */}

@@ -11,7 +11,7 @@
  * The repair is a SINGLE explicit column definition shared by the header row
  * and the workbench body:
  *
- *   [ 1fr flexible editor ] [ --g-split-gap ] [ --g-side-width display column ]
+ *   [ 1fr flexible editor ] [ --pro-frame-gap ] [ --pro-frame-right-width display ]
  *
  * Because the right track is an explicit length that does not depend on its
  * content, the strip's box is identical in all four modules. Switching tabs
@@ -26,22 +26,14 @@
  * The one split. Applied identically to the shell header row and to the
  * workbench body so both resolve to the same two tracks.
  */
-export const DESKTOP_WORKBENCH_COLUMNS =
-  'xl:grid-cols-[minmax(0,1fr)_var(--g-side-width)] xl:gap-[var(--g-split-gap)]';
+export const DESKTOP_WORKBENCH_COLUMNS = 'pro-workbench-columns';
 
 /**
  * The tab strip itself. It is right-aligned inside the display column and
  * carries the preview's own 4 × equal-track geometry, so no tab's label length
  * can move any other tab.
  */
-export const DESKTOP_TAB_STRIP =
-  /* OWNER GEOMETRY DECISION 2026-09-02: the strip is EXACTLY the display
-     column. The old ten-pixel addend made it 530 px against a 520 px track, and because it
-     is right-aligned the whole overhang fell on the LEFT — the right edges
-     matched to the pixel while the left edges were 10 px apart. The strip has
-     no width of its own: it is the column's width, so both edges coincide by
-     construction and cannot drift again. */
-  'xl:col-start-2 xl:row-start-1 xl:w-[var(--g-side-width)] xl:shrink-0 xl:justify-self-end';
+export const DESKTOP_TAB_STRIP = 'pro-workbench-section-nav';
 
 /**
  * The anchor is verified by `desktopTabAnchorContract.test.ts`: the strip's
