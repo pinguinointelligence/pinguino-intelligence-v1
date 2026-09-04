@@ -147,4 +147,4 @@ The staging migration dry-run now reports the database is up to date for all thr
 8. Deployment environment: PR #150 and all three migrations are on staging; follow-up guest-bootstrap deployment pending; production untouched.
 9. Remaining incomplete: CP-32 and CP-48.
 10. Exact blockers: no owner-approved ES/PL/FR assignment rows and no Engine-usable exact Milk SKU; served proof cannot truthfully claim defaults or exact override without them.
-11. Git diff/commit status: checkpoint `80cd3311df0889314815210d1e7d79dfca1ece74` is merged to staging; guest-bootstrap checkpoint `f3da8f52cc746e6176a269f90172fa4640761114` is pushed; current-staging merge `11f9b5aced74468b7ea497a070ebd84addfb942d` is pending push to PR #152.
+11. Git diff/commit status: checkpoint `80cd3311df0889314815210d1e7d79dfca1ece74` is merged to staging; guest-bootstrap checkpoint `f3da8f52cc746e6176a269f90172fa4640761114` and current-staging merge `11f9b5aced74468b7ea497a070ebd84addfb942d` are pushed to PR #152; refreshed CI is pending.
