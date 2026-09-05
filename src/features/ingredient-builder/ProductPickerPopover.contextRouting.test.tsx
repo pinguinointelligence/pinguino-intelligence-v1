@@ -29,6 +29,7 @@ vi.mock('@/features/global-catalog/useGlobalCatalogPicker', () => ({
       preferredRetailers: [],
       defaultScope: 'global',
     },
+    searchIsSettled: true,
     isSettled: true,
     isFetching: false,
     isError: false,
