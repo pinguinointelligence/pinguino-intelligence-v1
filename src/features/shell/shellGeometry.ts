@@ -16,8 +16,9 @@ export const APP_SHELL_MAX_WIDTH_CLASS = 'max-w-[1776px]';
 
 /**
  * ONE physical PRO frame. The header canvas and workbench body both consume
- * this class, whose real dimensions live in `gellatti-v2-1.css`. No transform
- * or zoom is involved, so fixed/portal coordinates remain viewport-native.
+ * this class, whose real dimensions live in `gellatti-v2-1.css`. The complete
+ * AppShell is painted through `applicationScaleAuthority`; portals convert
+ * viewport measurements through that same authority.
  */
 export const PRO_WORKBENCH_FRAME_CLASS = 'pro-workbench-frame';
 
@@ -28,7 +29,7 @@ export const APP_HEADER_CANVAS = `pro-workbench-header-canvas ${PRO_WORKBENCH_FR
  * The one header row. Identical geometry with and without `viewportLock`, so
  * the hamburger, the wordmark and the page origin land on the same pixels on
  * every screen. The semantic CSS class on the row resolves the shared desktop
- * frame from 1120 px while these utility classes preserve older page contracts.
+ * frame from 960 px while these utility classes preserve older page contracts.
  */
 export const APP_HEADER_ROW =
   'mx-auto flex w-full shrink-0 items-center justify-between gap-4 border-b border-ink/8 bg-white ' +

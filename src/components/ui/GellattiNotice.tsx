@@ -40,6 +40,7 @@ export function GellattiNotice({
   testId,
   primaryTestId,
   onClose,
+  returnFocus,
 }: {
   title: string;
   /** The short sentence(s) of a simple notice. */
@@ -58,6 +59,9 @@ export function GellattiNotice({
   primaryTestId?: string;
   /** Escape / backdrop. Defaults to the primary acknowledgement. */
   onClose?: () => void;
+  /** Semantic page action to focus when acknowledging the notice removes the
+   * original trigger. Forwarded to the shared DialogShell focus contract. */
+  returnFocus?: () => HTMLElement | null;
 }) {
   const centered = align === 'center';
   return (
@@ -74,6 +78,7 @@ export function GellattiNotice({
           ? `${testId}-secondary`
           : (primaryTestId ?? `${testId}-primary`)
       }
+      returnFocus={returnFocus}
       // The surface treatment is DialogShell's to choose. Handing it a tone
       // instead of extra classes is what makes the attention state actually
       // paint: `cn` is a plain joiner, so a `border-*` or `ring-*` added here

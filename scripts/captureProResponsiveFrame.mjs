@@ -12,9 +12,27 @@ const VIEWPORTS = Object.freeze([
   { width: 1366, height: 768 },
   { width: 1280, height: 800 },
   { width: 1200, height: 800 },
+  { width: 1100, height: 800 },
   { width: 1024, height: 768 },
+  { width: 960, height: 768 },
+  { width: 959, height: 768 },
   { width: 768, height: 900 },
+  /* Owner captures were Retina source pixels. Their local originals disappeared
+     after the reported computer freeze, so these are the exact DPR=2 CSS
+     equivalents retained from the supplied source dimensions. The report and
+     baseline document keep that inference explicit instead of presenting it as
+     recovered browser metadata. */
+  { width: 1074, height: 598 },
+  { width: 1486, height: 1021 },
+  { width: 1390, height: 1030 },
+  { width: 1382, height: 1028 },
+  { width: 1835, height: 1024 },
+  { width: 1645, height: 1003 },
+  { width: 1602, height: 1022 },
 ]);
+
+const REFERENCE_VIEWPORT_WIDTH = 1440;
+const RATIO_TOLERANCE = 0.02;
 
 function argument(name, fallback) {
   const prefix = `--${name}=`;
@@ -137,6 +155,32 @@ const geometryExpression = String.raw`(() => {
   const header = document.querySelector('header');
   const rows = [...document.querySelectorAll('[data-gellatti-row="ingredient"]')]
     .filter((row) => getComputedStyle(row).display !== 'none');
+  const firstRow = rows[0] ?? null;
+  const firstName = firstRow?.querySelector('span[class*="text-[12px]"]') ?? null;
+  const firstGrams = firstRow?.querySelector('[data-testid^="row-grams-control-"]') ?? null;
+  const firstPlus = firstGrams?.querySelector('button[aria-label$="zwiększ"]') ?? null;
+  const logo = document.querySelector('[data-logo-asset]')?.parentElement ?? null;
+  const sweetnessRail = test('profile-regulator-sweetness')?.querySelector('[role="radiogroup"]') ?? null;
+  const settings = test('workbench-settings-line');
+  const applicationScale = Number(
+    (Number.parseFloat(document.body.style.getPropertyValue('--gellatti-ui-scale')) || 1).toFixed(6)
+  );
+  const textBox = (element) => {
+    if (!element) return null;
+    const node = [...element.childNodes].find((child) => child.nodeType === Node.TEXT_NODE);
+    if (!node) return box(element);
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    const rect = range.getBoundingClientRect();
+    return {
+      left: Number(rect.left.toFixed(2)),
+      right: Number(rect.right.toFixed(2)),
+      top: Number(rect.top.toFixed(2)),
+      bottom: Number(rect.bottom.toFixed(2)),
+      width: Number(rect.width.toFixed(2)),
+      height: Number(rect.height.toFixed(2)),
+    };
+  };
   const frame = box(bodyFrame);
   const left = box(leftTrack);
   const right = box(rightTrack);
@@ -158,6 +202,22 @@ const geometryExpression = String.raw`(() => {
     leftTrack: left,
     rightTrack: right,
     sectionNavigationTrack: nav,
+    applicationScale,
+    representative: {
+      logo: box(logo),
+      recipeRow: box(firstRow),
+      ingredientNameInk: textBox(firstName),
+      ingredientNamePaintedFontSize: firstName
+        ? Number((Number.parseFloat(getComputedStyle(firstName).fontSize) * applicationScale).toFixed(4))
+        : null,
+      plusButton: box(firstPlus),
+      gramsControl: box(firstGrams),
+      columnGap: left && right ? Number((right.left - left.right).toFixed(2)) : null,
+      rightColumn: right,
+      slider: box(sweetnessRail),
+      settingsCard: box(settings),
+      navigation: nav,
+    },
     bottomNavigation: bottom,
     bottomNavigationVisible: Boolean(bottom && bottom.display !== 'none' && bottom.visibility !== 'hidden'),
     leftGutter: frame ? Number(frame.left.toFixed(2)) : null,
@@ -180,7 +240,7 @@ const geometryExpression = String.raw`(() => {
 })()`;
 
 const portalExpression = String.raw`(async () => {
-  if (innerWidth < 1120) return null;
+  if (innerWidth < 960) return null;
   const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   const box = (element) => {
     if (!element) return null;
@@ -331,10 +391,90 @@ try {
     fixture,
     viewports: measurements,
   };
+
+  const reference = measurements.find(
+    (measurement) => measurement.viewport.width === REFERENCE_VIEWPORT_WIDTH,
+  );
+  if (!reference) throw new Error('Canonical 1440 px measurement is unavailable');
+  const metricValue = (measurement, metric) => {
+    const representative = measurement.representative;
+    if (metric === 'logo') return representative.logo?.width ?? null;
+    if (metric === 'row') return representative.recipeRow?.height ?? null;
+    if (metric === 'font') return representative.ingredientNamePaintedFontSize;
+    if (metric === 'button') return representative.plusButton?.width ?? null;
+    if (metric === 'grams') return representative.gramsControl?.width ?? null;
+    if (metric === 'gap') return representative.columnGap;
+    if (metric === 'rightPanel') return representative.rightColumn?.width ?? null;
+    if (metric === 'slider') return representative.slider?.width ?? null;
+    if (metric === 'settings') return representative.settingsCard?.width ?? null;
+    if (metric === 'navigation') return representative.navigation?.width ?? null;
+    return null;
+  };
+  const metrics = [
+    'logo',
+    'row',
+    'font',
+    'button',
+    'grams',
+    'gap',
+    'rightPanel',
+    'slider',
+    'settings',
+    'navigation',
+  ];
+  const ratioRows = measurements.map((measurement) => {
+    const desktop = measurement.structuralMode === 'DESKTOP';
+    const ratios = Object.fromEntries(
+      metrics.map((metric) => {
+        const actual = metricValue(measurement, metric);
+        const canonical = metricValue(reference, metric);
+        return [
+          metric,
+          actual !== null && canonical ? Number((actual / canonical).toFixed(4)) : null,
+        ];
+      }),
+    );
+    const presentRatios = Object.values(ratios).filter((ratio) => ratio !== null);
+    const spread =
+      desktop && presentRatios.length > 0
+        ? Number((Math.max(...presentRatios) - Math.min(...presentRatios)).toFixed(4))
+        : null;
+    const maxScaleDelta =
+      desktop && presentRatios.length > 0
+        ? Number(
+            Math.max(
+              ...presentRatios.map((ratio) => Math.abs(ratio - measurement.applicationScale)),
+            ).toFixed(4),
+          )
+        : null;
+    return {
+      viewport: measurement.viewport,
+      structuralMode: measurement.structuralMode,
+      expectedScale: measurement.applicationScale,
+      ratios,
+      spread,
+      maxScaleDelta,
+      pass:
+        !desktop ||
+        (spread !== null &&
+          maxScaleDelta !== null &&
+          spread <= RATIO_TOLERANCE &&
+          maxScaleDelta <= RATIO_TOLERANCE),
+    };
+  });
+  const ratioFailures = ratioRows.filter((row) => !row.pass);
+  report.uniformScaleAcceptance = {
+    referenceViewportWidth: REFERENCE_VIEWPORT_WIDTH,
+    tolerance: RATIO_TOLERANCE,
+    metrics,
+    rows: ratioRows,
+    failures: ratioFailures,
+  };
   await writeFile(join(outputDir, 'geometry.json'), `${JSON.stringify(report, null, 2)}\n`);
   process.stdout.write(
-    `${basename(outputDir)}: captured ${measurements.length} viewports; geometry=${join(outputDir, 'geometry.json')}\n`,
+    `${basename(outputDir)}: captured ${measurements.length} viewports; ratio-failures=${ratioFailures.length}; geometry=${join(outputDir, 'geometry.json')}\n`,
   );
+  if (ratioFailures.length > 0) process.exitCode = 1;
   socket.close();
 } finally {
   chrome.kill();

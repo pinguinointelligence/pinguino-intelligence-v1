@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { act } from 'react';
+import { act, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { starterMilkBase } from '@/features/recipe-constraints/constraintFixtures';
@@ -96,6 +96,48 @@ describe('PI visible terminal contract', () => {
     });
     expect(useConstraintStudioStore.getState().postApplyNotice).toBeNull();
     expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it('returns an acknowledged incomplete-consumer Apply to Cofnij, not the header fallback', async () => {
+    const headerFallback = document.createElement('button');
+    headerFallback.dataset.testid = 'app-nav-trigger';
+    headerFallback.textContent = 'Otwórz menu';
+    const undo = document.createElement('button');
+    undo.dataset.testid = 'workbench-undo';
+    undo.textContent = 'Cofnij';
+    document.body.insertBefore(headerFallback, host);
+    document.body.insertBefore(undo, host);
+    useConstraintStudioStore.setState({
+      blocked: null,
+      postApplyNotice: {
+        state: 'APPLIED_WITH_INCOMPLETE_CONSUMERS',
+        messagePl:
+          'Receptura została zmieniona, ale koszt nie został w pełni odświeżony. Uruchom Przelicz ponownie.',
+      },
+    });
+
+    function Harness() {
+      const [open, setOpen] = useState(true);
+      return open ? <ProRecalcPanel open onClose={() => setOpen(false)} /> : null;
+    }
+
+    try {
+      await act(async () => root.render(<Harness />));
+      await act(async () => {
+        document
+          .querySelector<HTMLButtonElement>(
+            '[data-testid="pro-recalc-applied-with-incomplete-consumers-primary"]',
+          )
+          ?.click();
+      });
+
+      await vi.waitFor(() => expect(document.activeElement).toBe(undo));
+      expect(document.activeElement).not.toBe(headerFallback);
+      expect(document.activeElement).not.toBe(document.body);
+    } finally {
+      headerFallback.remove();
+      undo.remove();
+    }
   });
 
   it('clears a cancelled or failed Preview score and renders the next recalculation score', async () => {

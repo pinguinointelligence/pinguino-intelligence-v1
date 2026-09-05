@@ -20,6 +20,7 @@
  */
 import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
+import { applicationViewportGeometry } from '@/features/shell/applicationScaleAuthority';
 import {
   createCustomerFlow,
   setProductType,
@@ -298,7 +299,8 @@ export function CustomerShellV1() {
       setStickyReservePx(null);
       return;
     }
-    const measure = () => setStickyReservePx(el.getBoundingClientRect().height);
+    const measure = () =>
+      setStickyReservePx(applicationViewportGeometry(el.getBoundingClientRect()).height);
     measure();
     if (typeof ResizeObserver !== 'undefined') {
       const ro = new ResizeObserver(measure);

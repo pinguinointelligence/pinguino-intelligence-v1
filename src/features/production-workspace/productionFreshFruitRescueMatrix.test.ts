@@ -8,6 +8,10 @@ import type { IngredientRow } from '@/data/ingredients/ingredientRow';
 import { parseCsv } from '@/lib/csv';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence/contracts';
 import {
+  practicalizeRecipeCandidate,
+  practicalRecipeInputFingerprint,
+} from '@/features/practical-recipe/practicalRecipe';
+import {
   confirmProductionLine,
   createProductionSession,
   setDraftActualGrams,
@@ -140,7 +144,14 @@ const FRESH_FRUITS = mapperRecords
   .map(authorityFor)
   .sort((a, b) => a.ingredientId.localeCompare(b.ingredientId));
 
+const mapperIngredientCache = new Map<
+  string,
+  ReturnType<typeof ingredientRowToEngineIngredient>
+>();
+
 const mapperIngredient = (ingredientId: string) => {
+  const cached = mapperIngredientCache.get(ingredientId);
+  if (cached) return cached;
   const fruit = FRESH_FRUITS.find((candidate) => candidate.ingredientId === ingredientId);
   const record =
     fruit?.row ??
@@ -151,7 +162,9 @@ const mapperIngredient = (ingredientId: string) => {
       if (!source) throw new Error(`Missing immutable Mapper row ${ingredientId}`);
       return rowFromRecord(source);
     })();
-  return ingredientRowToEngineIngredient(record);
+  const ingredient = ingredientRowToEngineIngredient(record);
+  mapperIngredientCache.set(ingredientId, ingredient);
+  return ingredient;
 };
 
 const SUPPORT = [
@@ -164,6 +177,7 @@ const SUPPORT = [
   ['tara', 'PI-ING-000492', 2],
 ] as const;
 const TARGET_G = 670;
+const NO_CONSTRAINTS = { byLineId: {} } as const;
 
 const inputFor = (
   fruit: FreshFruitAuthority,
@@ -257,8 +271,13 @@ const legalReferenceFor = (fruit: FreshFruitAuthority): RecipeInput => {
     for (const fruitGrams of candidates) {
       for (const cream of [90, 100, 80]) {
         for (const smp of [40, 45, 35]) {
-          for (const inulin of [5, 15, 25]) {
-            for (const sucrose of [0, 10, 20, 30, 40, 50, 60]) {
+          // Production's practical-recipe gate requires inulin to remain at
+          // 2–8% of the batch. Do not discover a scientifically valid Rescue
+          // fixture that the served workspace cannot execute.
+          for (const inulin of [15, 25]) {
+            // Zero-gram rows are non-executable drafts and must be omitted, not
+            // smuggled into a saved Production reference.
+            for (const sucrose of [10, 20, 30, 40, 50, 60]) {
               for (const dextrose of [20, 30, 40, 50, 60, 70, 80, 90, 100]) {
                 const milk = TARGET_G - fruitGrams - cream - smp - sucrose - dextrose - inulin - 2;
                 if (milk < Math.ceil(TARGET_G * 0.3)) continue;
@@ -368,6 +387,12 @@ describe('Production Rescue canonical fresh-fruit matrix', () => {
       const session = sessionWithFruitDeviation(fruit, input, 0);
       expect(calculateRecipe(input).total_batch_g).toBe(TARGET_G);
       expect(assessProductionHardSafety(input, calculateRecipe(input)).safe).toBe(true);
+      const practical = practicalizeRecipeCandidate(input, NO_CONSTRAINTS);
+      expect(practical.ok, practical.ok ? '' : practical.messagePl).toBe(true);
+      if (!practical.ok) return;
+      expect(practicalRecipeInputFingerprint(practical.audit.executableInput)).toBe(
+        practicalRecipeInputFingerprint(input),
+      );
       expect(productionRescueTerminalAuthority(input, session).valid).toBe(true);
       expect(session.plannedComposition.baseOrder).toHaveLength(input.items.length);
       expect(Object.keys(session.plannedComposition!.behaviorSnapshots!)).toHaveLength(
