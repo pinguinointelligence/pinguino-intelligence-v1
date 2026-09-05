@@ -98,7 +98,11 @@ export const educationCopy = {
         body: 'Nadaje słodycz i pomaga decydować, jak miękkie będą lody po zamrożeniu. Różne cukry nie działają tak samo.',
         voice: 'Podobna słodycz nie zawsze oznacza tę samą miękkość.',
         annotations: [
-          { id: 'sucrose', title: 'Sacharoza', detail: 'Słodycz: średnia · miękkość: średnia' },
+          {
+            id: 'sucrose',
+            title: 'Cukier (sacharoza)',
+            detail: 'Słodycz: średnia · miękkość: średnia',
+          },
           { id: 'dextrose', title: 'Dekstroza', detail: 'Słodycz: niższa · miękkość: wysoka' },
           { id: 'fructose', title: 'Fruktoza', detail: 'Słodycz: wysoka · miękkość: wysoka' },
         ],
@@ -112,6 +116,7 @@ export const educationCopy = {
           { id: 'cream', title: 'Śmietanka', detail: 'Daje gładsze, pełniejsze odczucie' },
           { id: 'milk-powder', title: 'Mleko w proszku', detail: 'Buduje pełniejszą strukturę' },
           { id: 'inulin', title: 'Inulina', detail: 'Dodaje ciała bez większej słodyczy' },
+          { id: 'result', title: 'gellattissimo!', detail: 'Kremowy efekt całego balansu' },
         ],
       },
       flavour: {

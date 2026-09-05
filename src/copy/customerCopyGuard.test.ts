@@ -109,9 +109,9 @@ describe('customer copy guard', () => {
     expect(formatEntries(violations)).toBe('');
   });
 
-  it('allows only the two remaining approved Italian success moments', () => {
+  it('allows only the remaining Owner-approved Italian brand moments', () => {
     /**
-     * This rule caps Italian CELEBRATION copy at two approved moments. It is not
+     * This rule caps Italian CELEBRATION copy at Owner-approved moments. It is not
      * a ban on the word itself.
      *
      * `gellattissimo` is also the name of a neon sign physically present in the
@@ -119,8 +119,8 @@ describe('customer copy guard', () => {
      * 2026-08-31 that it is intentional Gellatti branding which must never be
      * removed. Alt text that describes what is in a frame is a factual
      * description, not a success exclamation, so those two strings are carved
-     * out by exact text — narrowly, so a NEW celebratory "Gellattissimo!"
-     * anywhere, including in this file, still fails.
+     * out by exact text. The lowercase Guide slogan is a third explicit Owner
+     * decision; a NEW celebratory "Gellattissimo!" anywhere still fails.
      */
     const imageDescriptionAllowlist = new Set([
       'src/features/work-with-us/ownerAssets.ts\0Przyczepa Gellatti w drodze na festiwal food trucków, z neonem gellattissimo.',
@@ -135,6 +135,10 @@ describe('customer copy guard', () => {
       {
         file: 'src/components/shared/friendlyLabMoment.ts',
         text: 'Gellattissimo! Partia gotowa.',
+      },
+      {
+        file: 'src/copy/education.pl.ts',
+        text: 'gellattissimo!',
       },
       {
         file: 'src/features/pro-workbench/friendlyLabRecipeCopy.ts',

@@ -27,12 +27,12 @@ describe('canonical global destination hubs', () => {
     persona = 'pro';
   });
 
-  it('renders the eight-step Tour in the one canonical shell without a local header', () => {
+  it('renders the nine-step Tour in the one canonical shell without a local header', () => {
     const html = render(<HowItWorksPage />, '/how-it-works?step=7');
     expect(html).toContain('data-testid="knowledge-tour"');
     expect(html).toContain('data-active-step="7"');
     expect(html).toContain('data-owner-asset="07.png"');
-    expect(html.match(/class="knowledge-tour__dot"/g)).toHaveLength(8);
+    expect(html.match(/class="knowledge-tour__dot"/g)).toHaveLength(9);
     expect(html.match(/data-testid="app-nav-trigger"/g)).toHaveLength(1);
     expect(html.match(/data-testid="home-pro-switch"/g)).toHaveLength(1);
     expect(html.match(/data-logo-source="\/brand\/gellatti-wordmark-graphite.svg"/g)).toHaveLength(
@@ -43,18 +43,20 @@ describe('canonical global destination hubs', () => {
     expect(html).not.toContain('DestinationSurface');
   });
 
-  it('selects the exact source ending for Home and Pro while keeping eight steps', () => {
+  it('keeps HOME machines at Step 8 and professional production at Step 9 in every mode', () => {
     persona = 'home';
     const home = render(<HowItWorksPage />, '/how-it-works?step=8');
-    expect(home).toContain('data-audience="home"');
     expect(home).toContain('data-owner-asset="08.png"');
-    expect(home.match(/class="knowledge-tour__dot"/g)).toHaveLength(8);
+    expect(home.match(/class="knowledge-tour__dot"/g)).toHaveLength(9);
 
     persona = 'pro';
-    const pro = render(<HowItWorksPage />, '/how-it-works?step=8');
-    expect(pro).toContain('data-audience="pro"');
-    expect(pro).toContain('data-owner-asset="09.png"');
-    expect(pro.match(/class="knowledge-tour__dot"/g)).toHaveLength(8);
+    const proHomeMachines = render(<HowItWorksPage />, '/how-it-works?step=8');
+    expect(proHomeMachines).toContain('data-owner-asset="08.png"');
+    expect(proHomeMachines).not.toContain('data-audience=');
+
+    const proProduction = render(<HowItWorksPage />, '/how-it-works?step=9');
+    expect(proProduction).toContain('data-owner-asset="09.png"');
+    expect(proProduction.match(/class="knowledge-tour__dot"/g)).toHaveLength(9);
   });
 
   it('keeps Franchise separate from the Collaboration destination', () => {

@@ -1,6 +1,5 @@
 import { educationCopy } from '@/copy/education.pl';
 
-export type KnowledgeTourAudience = 'home' | 'pro';
 export type KnowledgeTourStepId =
   | 'worlds'
   | 'freezing'
@@ -9,12 +8,15 @@ export type KnowledgeTourStepId =
   | 'flavour'
   | 'stabilizer'
   | 'temperature'
-  | 'machine';
+  | 'home-machines'
+  | 'professional-production';
 
 export interface KnowledgeTourAnnotation {
   id: string;
   title: string;
   detail: string;
+  /** Horizontal object centre in the original Owner image coordinate system. */
+  anchorX: number;
 }
 
 export interface KnowledgeTourStep {
@@ -27,7 +29,6 @@ export interface KnowledgeTourStep {
   voice: string;
   annotations: readonly KnowledgeTourAnnotation[];
   compactMobileAnnotations: boolean;
-  annotationLayout?: 'ingredient-chain' | 'pro-process';
 }
 
 export const OWNER_GUIDE_ASSET_SHA256 = {
@@ -37,14 +38,32 @@ export const OWNER_GUIDE_ASSET_SHA256 = {
   '04.png': '72f485d68d4cd86933b8c9b2607dcdc082b17e68578fc1a631444384abe77744',
   '05.png': '2fc007fe17c0b7907b8d3e3da2d8d5b241cf01a545c38e9deedf70c7b58b02d4',
   '06.png': '63fd21d2eae58c93274f2e8dfa8753944a81f7ceacf7b6ea5a2d3ade458083bb',
-  '07.png': 'd40dc0add5f3ca4714aac7ce47f203652ef0828d77bd06eb4f421bdd2925676b',
+  '07.png': '4e25919ca458cb258f47c62a2b1d8522e6060f309b2f8648f7a5d018967f2ea9',
   '08.png': 'daccacf208250a72b89bb9ee6e0c8c4a1c04028f215f2a9cf89622927cce1885',
   '09.png': 'e0479fb59c9c1738130d571ed070aeb14b054cef75b311e99bb731af5f553917',
 } as const;
 
 const c = educationCopy.knowledgeTour.steps;
 
-const CORE_STEPS: readonly KnowledgeTourStep[] = [
+function anchored<T extends { id: string; title: string; detail: string }>(
+  annotations: readonly T[],
+  anchors: readonly number[],
+): readonly (T & { anchorX: number })[] {
+  if (annotations.length !== anchors.length) {
+    throw new Error('Every Knowledge Tour caption must have one image-coordinate anchor.');
+  }
+  return annotations.map((annotation, index) => ({ ...annotation, anchorX: anchors[index]! }));
+}
+
+export function projectKnowledgeTourAnchor(
+  imageLeft: number,
+  displayedImageWidth: number,
+  normalizedAnchorX: number,
+): number {
+  return imageLeft + displayedImageWidth * normalizedAnchorX;
+}
+
+const STEPS: readonly KnowledgeTourStep[] = [
   {
     id: 'worlds',
     image: '/guide/01.png',
@@ -52,6 +71,7 @@ const CORE_STEPS: readonly KnowledgeTourStep[] = [
     edgeColor: '#f9f0e3',
     compactMobileAnnotations: true,
     ...c.worlds,
+    annotations: anchored(c.worlds.annotations, [0.137, 0.387, 0.626, 0.854]),
   },
   {
     id: 'freezing',
@@ -60,6 +80,7 @@ const CORE_STEPS: readonly KnowledgeTourStep[] = [
     edgeColor: '#fefcfb',
     compactMobileAnnotations: false,
     ...c.freezing,
+    annotations: anchored(c.freezing.annotations, [0.257, 0.497, 0.731]),
   },
   {
     id: 'sugars',
@@ -68,6 +89,7 @@ const CORE_STEPS: readonly KnowledgeTourStep[] = [
     edgeColor: '#f7efeb',
     compactMobileAnnotations: false,
     ...c.sugars,
+    annotations: anchored(c.sugars.annotations, [0.194, 0.499, 0.812]),
   },
   {
     id: 'creaminess',
@@ -75,8 +97,8 @@ const CORE_STEPS: readonly KnowledgeTourStep[] = [
     ownerAsset: '04.png',
     edgeColor: '#f4ede6',
     compactMobileAnnotations: true,
-    annotationLayout: 'ingredient-chain',
     ...c.creaminess,
+    annotations: anchored(c.creaminess.annotations, [0.158, 0.329, 0.5, 0.681, 0.861]),
   },
   {
     id: 'flavour',
@@ -85,6 +107,7 @@ const CORE_STEPS: readonly KnowledgeTourStep[] = [
     edgeColor: '#f4f0ec',
     compactMobileAnnotations: true,
     ...c.flavour,
+    annotations: anchored(c.flavour.annotations, [0.125, 0.375, 0.625, 0.875]),
   },
   {
     id: 'stabilizer',
@@ -93,6 +116,7 @@ const CORE_STEPS: readonly KnowledgeTourStep[] = [
     edgeColor: '#dec9ae',
     compactMobileAnnotations: false,
     ...c.stabilizer,
+    annotations: anchored(c.stabilizer.annotations, [0.25, 0.75]),
   },
   {
     id: 'temperature',
@@ -101,29 +125,28 @@ const CORE_STEPS: readonly KnowledgeTourStep[] = [
     edgeColor: '#e3d8cc',
     compactMobileAnnotations: false,
     ...c.temperature,
+    annotations: anchored(c.temperature.annotations, [0.19, 0.5, 0.82]),
   },
-];
-
-const ENDINGS: Record<KnowledgeTourAudience, KnowledgeTourStep> = {
-  home: {
-    id: 'machine',
+  {
+    id: 'home-machines',
     image: '/guide/08.png',
     ownerAsset: '08.png',
     edgeColor: '#ede6e2',
     compactMobileAnnotations: true,
     ...c.homeEnding,
+    annotations: anchored(c.homeEnding.annotations, [0.125, 0.375, 0.625, 0.875]),
   },
-  pro: {
-    id: 'machine',
+  {
+    id: 'professional-production',
     image: '/guide/09.png',
     ownerAsset: '09.png',
     edgeColor: '#e1d3c6',
     compactMobileAnnotations: false,
-    annotationLayout: 'pro-process',
     ...c.proEnding,
+    annotations: anchored(c.proEnding.annotations, [0.26, 0.535, 0.81]),
   },
-};
+];
 
-export function knowledgeTourSteps(audience: KnowledgeTourAudience): readonly KnowledgeTourStep[] {
-  return [...CORE_STEPS, ENDINGS[audience]];
+export function knowledgeTourSteps(): readonly KnowledgeTourStep[] {
+  return STEPS;
 }
