@@ -155,6 +155,22 @@ Option 2 is the smallest and the only one that also protects future products; op
 narrowest one-off. Both are outside the authorised scope of this PR (Mapper/PI lineage), so nothing
 has been done.
 
+### What was actually applied
+
+Both migrations are live on staging (`20260905103024` and `20260905141...`). The reclassification ran
+for the 3 products whose Mapper lineage is current and skipped the 7 whose lineage is stale:
+
+| product                                                     | before              | after                                                                          |
+| ----------------------------------------------------------- | ------------------- | ------------------------------------------------------------------------------ |
+| `PR-ING-007172` Łaciate 3,5%                                | nut=false lab=false | **nut=true lab=true**, binding `base-only-nutrition-label-v1:55afbb8e30d936fd` |
+| `PR-ING-007173` Leche Hacendado                             | nut=false lab=false | **nut=true lab=true**, binding `base-only-nutrition-label-v1:654e531b1aff20f6` |
+| `PR-ING-007174` Lait Alsace                                 | nut=false lab=false | **nut=true lab=true**, binding `base-only-nutrition-label-v1:b64142e90747ae5d` |
+| `PR-ING-007142` **Cacao Puro**                              | nut=false           | unchanged — SKIPPED, stale lineage                                             |
+| `CA-ING-007165` Cacao 100%                                  | nut=false           | unchanged — SKIPPED, stale lineage                                             |
+| `PR-ING-007148` / `007154` / `007155` / `007158` / `007159` | nut=false           | unchanged — SKIPPED, stale lineage                                             |
+
+BASE_RECIPE, MONITOR, PRODUCTION and SAVE are unchanged for all ten. Nothing was downgraded.
+
 ## 5. Residual: PRODUCTION without NUTRITION (now fixed in the derivation)
 
 The fix removes the contradiction for every product whose **label evidence is complete**. It does

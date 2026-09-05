@@ -54,6 +54,22 @@ begin
   select p.id as product_id,
          p.product_code,
          p.current_version_id as version_id,
+         -- A product may only be reclassified while the Mapper behaviour binding
+         -- its frozen authority was computed against is still current. The
+         -- 2026-08-29 canonical-module-eligibility-v1 sweep superseded every
+         -- Mapper binding row and re-enqueued dependants by
+         -- `catalog_binding.mapper_ingredient_id`, which is NULL for these PR
+         -- products, so they were never re-linked. Reclassifying one of them
+         -- would fail `v_product_behavior_accepted` and strip every permission
+         -- it holds. Those are recorded and skipped, never forced.
+         exists(
+           select 1 from public.mapper_product_behavior_bindings mb
+           where mb.id::text = v.facts#>>'{productIntelligence,productBehaviorAuthority,mapperBehaviorBindingId}'
+             and mb.mapper_ingredient_id = nullif(
+               v.facts#>>'{productIntelligence,productBehaviorAuthority,referenceMapperIngredientId}','')
+             and mb.is_current
+             and coalesce((mb.profile_permissions->>'BASE_RECIPE')::boolean, false)
+         ) as mapper_lineage_current,
          -- the classifier's own evidence predicate, evaluated here only to
          -- record which products SHOULD gain NUTRITION and which must not
          (p.canonical_verification_status <> 'blocked'
@@ -74,8 +90,18 @@ begin
 
   select count(*) into v_before from _base_only_nutrition_before;
   raise notice 'base-only NUTRITION bindings before: %', v_before;
+  for v_row in
+    select product_code from _base_only_nutrition_before
+    where not mapper_lineage_current order by product_code
+  loop
+    raise notice 'SKIPPED (stale mapper lineage, needs a separate repair): %', v_row.product_code;
+  end loop;
 
-  for v_row in select * from _base_only_nutrition_before order by product_code loop
+  for v_row in
+    select * from _base_only_nutrition_before
+    where mapper_lineage_current
+    order by product_code
+  loop
     perform public.enqueue_product_behavior_reclassification_v1(
       'catalog_product_version',
       v_row.version_id::text,
@@ -108,7 +134,8 @@ begin
   from _base_only_nutrition_before before
   join public.products p on p.id = before.product_id
   join public.product_behavior_bindings b on b.id = p.current_behavior_binding_id
-  where before.label_evidence_complete
+  where before.mapper_lineage_current
+    and before.label_evidence_complete
     and not coalesce((b.profile_permissions->>'NUTRITION')::boolean, false);
   if v_uncured > 0 then
     raise exception '% product(s) with complete label evidence still lack NUTRITION', v_uncured;
@@ -119,7 +146,8 @@ begin
   from _base_only_nutrition_before before
   join public.products p on p.id = before.product_id
   join public.product_behavior_bindings b on b.id = p.current_behavior_binding_id
-  where not before.label_evidence_complete
+  where before.mapper_lineage_current
+    and not before.label_evidence_complete
     and coalesce((b.profile_permissions->>'NUTRITION')::boolean, false);
   if v_regressed > 0 then
     raise exception '% product(s) without label evidence were granted NUTRITION', v_regressed;
@@ -131,7 +159,8 @@ begin
   from _base_only_nutrition_before before
   join public.products p on p.id = before.product_id
   join public.product_behavior_bindings b on b.id = p.current_behavior_binding_id
-  where before.label_evidence_complete
+  where before.mapper_lineage_current
+    and before.label_evidence_complete
     and not coalesce((b.profile_permissions->>'PRODUCTION')::boolean, false);
   if v_uncured > 0 then
     raise exception '% complete product(s) lost PRODUCTION', v_uncured;
@@ -141,7 +170,8 @@ begin
   from _base_only_nutrition_before before
   join public.products p on p.id = before.product_id
   join public.product_behavior_bindings b on b.id = p.current_behavior_binding_id
-  where not before.label_evidence_complete
+  where before.mapper_lineage_current
+    and not before.label_evidence_complete
     and coalesce((b.profile_permissions->>'PRODUCTION')::boolean, false);
   if v_regressed > 0 then
     raise exception '% product(s) without label evidence kept PRODUCTION', v_regressed;
@@ -152,7 +182,8 @@ begin
   from _base_only_nutrition_before before
   join public.products p on p.id = before.product_id
   join public.product_behavior_bindings b on b.id = p.current_behavior_binding_id
-  where not before.label_evidence_complete
+  where before.mapper_lineage_current
+    and not before.label_evidence_complete
     and not (coalesce((b.profile_permissions->>'SAVE')::boolean, false)
       and coalesce((b.profile_permissions->>'BASE_RECIPE')::boolean, false)
       and coalesce((b.profile_permissions->>'MONITOR')::boolean, false));
@@ -160,14 +191,21 @@ begin
     raise exception '% incomplete product(s) lost SAVE/BASE_RECIPE/MONITOR', v_regressed;
   end if;
 
-  -- The contradictory executable state must not survive anywhere.
+  -- The contradictory executable state must not survive on anything this
+  -- migration was able to republish. Products skipped for stale Mapper lineage
+  -- keep their historical binding and are tracked in the report instead; the
+  -- derivation-level proof that the pair is unreachable lives in GEL-P0-028 D.
   select count(*) into v_regressed
   from public.products p
   join public.product_behavior_bindings b on b.id = p.current_behavior_binding_id
   where p.merged_into_product_id is null
     and p.is_active
     and coalesce((b.profile_permissions->>'PRODUCTION')::boolean, false)
-    and not coalesce((b.profile_permissions->>'NUTRITION')::boolean, false);
+    and not coalesce((b.profile_permissions->>'NUTRITION')::boolean, false)
+    and not exists(
+      select 1 from _base_only_nutrition_before before
+      where before.product_id = p.id and not before.mapper_lineage_current
+    );
   if v_regressed > 0 then
     raise exception '% selectable binding(s) still grant PRODUCTION without NUTRITION', v_regressed;
   end if;
