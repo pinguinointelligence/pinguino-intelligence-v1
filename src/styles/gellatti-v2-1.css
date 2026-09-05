@@ -50,10 +50,6 @@ body[data-gellatti-scale-mode='desktop'] .gellatti-application {
   display: none;
 }
 
-.pro-bottom-right-floating-actions {
-  display: none;
-}
-
 @media (min-width: 60rem) {
   .app-shell-header-row {
     width: min(1776px, calc(var(--gellatti-layout-viewport-width, 100vw) - 57.6px));
@@ -230,20 +226,8 @@ body[data-gellatti-scale-mode='desktop'] .gellatti-application {
     display: none !important;
   }
 
-  /* OWNER LOCK: viewport-fixed Pro Monitor/Recalculate actions. Do not move into workbench/document flow without explicit Owner authorization. */
-  .pro-bottom-right-floating-actions {
-    position: fixed;
-    right: var(--gellatti-viewport-fixed-inset, 28.8px);
-    bottom: var(--gellatti-viewport-fixed-inset, 28.8px);
-    z-index: 45;
-    display: flex;
-    align-items: flex-end;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  body[data-app-drawer='open'] .pro-bottom-right-floating-actions {
-    visibility: hidden;
+  .pro-workbench-action-dock {
+    display: block;
   }
 }
 
