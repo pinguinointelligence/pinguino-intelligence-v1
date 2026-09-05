@@ -421,11 +421,11 @@ describe('ProductPickerPopover catalog presentation', () => {
     expect(mocks.setPreferred).not.toHaveBeenCalled();
   });
 
-  it('keeps a server-resolved exact SKU attached when its canonical Mapper slot owns the approved Engine profile', async () => {
+  it('keeps a resolved exact SKU attached when the resolver projection omits its product code', async () => {
     const exact = catalogHit({
       id: 'preferred-milk-product',
       entityKind: 'commercial_product',
-      productCode: 'PR-ING-000903',
+      productCode: null,
       currentVersionId: 'preferred-milk-version',
       status: 'manual_unverified',
       verificationMethod: 'human',
@@ -435,6 +435,16 @@ describe('ProductPickerPopover catalog presentation', () => {
       markets: ['ES'],
       publicData: {
         nutrition: { basis: 'per_100ml', fat: 3.5 },
+        productIntelligence: { engineUsable: true },
+        technicalComposition: {
+          water: 88.8,
+          totalSolids: 11.2,
+          fat: 3.5,
+          protein: 3.2,
+          carbohydrate: 4.7,
+          sugars: 4.7,
+          salt: 0.1,
+        },
       },
     });
     mocks.hits = [
