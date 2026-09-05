@@ -46,14 +46,11 @@ describe('responsive Pro workbench structure', () => {
     expect(surface).not.toContain('2xl:grid-cols-[1062px_635px]');
   });
 
-  it('keeps recipe actions viewport-fixed and out of the Base/Topping toolbar', () => {
+  it('anchors one recipe action dock beside the Base and Topping pickers', () => {
     const builder = read('features', 'ingredient-builder', 'IngredientBuilder.tsx');
-    const floating = read('features', 'pro-workbench', 'ProBottomRightFloatingActions.tsx');
     expect(builder).toContain('data-testid="ingredient-add-slot"');
-    expect(builder).not.toContain('data-testid="ingredient-action-slot"');
-    expect(builder).not.toContain('{recipeActionDock}');
-    expect(floating).toContain('data-testid="pro-bottom-right-floating-actions"');
-    expect(floating).toContain('data-position-authority="viewport"');
+    expect(builder).toContain('data-testid="ingredient-action-slot"');
+    expect(builder).toContain('{recipeActionDock}');
     expect(builder).not.toContain('data-testid="ingredient-add-toolbar"');
     expect(builder).not.toContain('2xl:grid-cols-[minmax(300px,1fr)_222px_260px_76px_44px]');
     expect(builder).not.toContain('placeholder="Szukaj skÅ‚adnikÃ³w');
