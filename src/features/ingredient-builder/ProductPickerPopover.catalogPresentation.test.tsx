@@ -421,6 +421,110 @@ describe('ProductPickerPopover catalog presentation', () => {
     expect(mocks.setPreferred).not.toHaveBeenCalled();
   });
 
+  it('keeps a server-resolved exact SKU attached when its canonical Mapper slot owns the approved Engine profile', async () => {
+    const exact = catalogHit({
+      id: 'preferred-milk-product',
+      entityKind: 'commercial_product',
+      productCode: 'PR-ING-000903',
+      currentVersionId: 'preferred-milk-version',
+      status: 'manual_unverified',
+      verificationMethod: 'human',
+      displayName: 'Leche entera 3.5%',
+      brand: 'Marca Preferida',
+      mappedIngredientId: 'PI-ING-000236',
+      markets: ['ES'],
+      publicData: {
+        nutrition: { basis: 'per_100ml', fat: 3.5 },
+      },
+    });
+    mocks.hits = [
+      catalogHit({
+        id: 'milk-mapper',
+        displayName: 'MILK 3.5% · Milk · Chilled',
+        canonicalFamily: 'milk',
+        category: 'dairy',
+        productForm: 'milk',
+        mappedIngredientId: 'PI-ING-000236',
+        resolvedExactProduct: exact,
+        resolutionSource: 'USER_PREFERRED',
+        resolutionCountry: 'ES',
+      }),
+      exact,
+    ];
+    const onAdd = await renderPicker(vi.fn(), 'REPLACE');
+    const all = document.querySelector<HTMLButtonElement>('[data-product-filter="all"]');
+    await act(async () => all?.click());
+    const search = document.querySelector<HTMLInputElement>('input[role="combobox"]');
+    await act(async () => {
+      if (search) {
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+        setter?.call(search, 'milk');
+        search.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    });
+
+    const add = document.querySelector<HTMLButtonElement>('button[aria-label="Zamień na MILK 3.5%"]');
+    await act(async () => add?.click());
+
+    expect(mocks.getRow).toHaveBeenCalledWith('PI-ING-000236');
+    expect(onAdd.mock.calls[0]?.[0]).toMatchObject({
+      id: 'catalog:preferred-milk-product',
+      canonical_ingredient_id: 'PI-ING-000236',
+      private_product_id: 'catalog:preferred-milk-product:version:preferred-milk-version',
+      identity_provenance: 'reference',
+      name: 'Marca Preferida · Leche entera 3.5%',
+    });
+    expect(mocks.markUsed).toHaveBeenCalledWith({
+      entityKind: 'commercial_product',
+      id: 'preferred-milk-product',
+    });
+    expect(mocks.setPreferred).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when a resolved exact SKU does not match the canonical Mapper slot', async () => {
+    const exact = catalogHit({
+      id: 'mismatched-milk-product',
+      entityKind: 'commercial_product',
+      productCode: 'PR-ING-000904',
+      currentVersionId: 'mismatched-milk-version',
+      status: 'manual_unverified',
+      verificationMethod: 'human',
+      displayName: 'Wrong slot milk',
+      mappedIngredientId: 'PI-ING-000999',
+      publicData: { nutrition: { basis: 'per_100ml', fat: 3.5 } },
+    });
+    mocks.hits = [
+      catalogHit({
+        id: 'milk-mapper',
+        displayName: 'MILK 3.5% · Milk · Chilled',
+        canonicalFamily: 'milk',
+        category: 'dairy',
+        productForm: 'milk',
+        mappedIngredientId: 'PI-ING-000236',
+        resolvedExactProduct: exact,
+        resolutionSource: 'USER_PREFERRED',
+      }),
+    ];
+    const onAdd = await renderPicker();
+    const all = document.querySelector<HTMLButtonElement>('[data-product-filter="all"]');
+    await act(async () => all?.click());
+    const search = document.querySelector<HTMLInputElement>('input[role="combobox"]');
+    await act(async () => {
+      if (search) {
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+        setter?.call(search, 'milk');
+        search.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    });
+
+    const add = document.querySelector<HTMLButtonElement>('button[aria-label="Dodaj MILK 3.5%"]');
+    await act(async () => add?.click());
+
+    expect(onAdd).not.toHaveBeenCalled();
+    expect(mocks.getRow).not.toHaveBeenCalled();
+    expect(document.body.textContent).toContain('wymaga odświeżenia powiązania produktu');
+  });
+
   it('updates CP-36 only when the user consciously selects an exact commercial result', async () => {
     const exact = catalogHit({
       id: 'user-milk-product',
