@@ -20,3 +20,4 @@ export {
   OFFLINE_CACHE_SCHEMA,
 } from './adapters/supabaseAdapters';
 export { createSupabaseDiscoveryPort } from './adapters/supabaseDiscoveryAdapter';
+export { fileToLabelImage, dataUrlToLabelImage, LABEL_IMAGE_TRANSFORMATIONS } from './labelImage';
