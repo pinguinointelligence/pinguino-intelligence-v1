@@ -19,11 +19,11 @@ describe('ScanImportV2LabPage boundary', () => {
     );
     expect(ROUTER.match(/scan-import-v2/g)?.length).toBe(1);
   });
-  it('consumes only the V2 boundary: shared contract + scan-import-v2 + app client; no legacy scanner, no HOME, no engine', () => {
+  it('consumes only the V2 boundary: shared contract + scan-import-v2 + the services-layer wiring (never the backend client directly); no legacy scanner, no HOME, no engine', () => {
     const imports = [...PAGE.matchAll(/from '([^']+)'/g)].map((m) => m[1]);
     for (const i of imports)
       expect(i, i).toMatch(
-        /^(react|@\/pages\/NotFoundPage|@\/lib\/supabase\/client|@\/scan-contract\/confirmedScan|@\/scan-import-v2(\/__fixtures__\/scanCoreObservations\.json)?)$/,
+        /^(react|@\/pages\/NotFoundPage|@\/services\/scanImportV2|@\/scan-contract\/confirmedScan|@\/scan-import-v2(\/__fixtures__\/scanCoreObservations\.json)?)$/,
       );
     expect(PAGE).not.toMatch(
       /features\/product-scanner|LiveMultiScanner|LiveProductScanner|ProductScanPage|home-creator|recipeStore|productScanner'|scan-core|scan-lab/,
@@ -33,6 +33,7 @@ describe('ScanImportV2LabPage boundary', () => {
     expect(PAGE).not.toMatch(
       /dangerouslySetInnerHTML|service_role|SERVICE_ROLE|\.from\(|\.rpc\(|functions\.invoke/,
     );
+    expect(/\bsupabase\b/i.test(PAGE), 'backend client referenced from the page').toBe(false);
   });
   it('selects the exact authority explicitly by flag (no silent fallback between the two paths)', () => {
     expect(PAGE).toMatch(/VITE_SCAN_IMPORT_GTIN_RPC === '1' \? 'gtin_rpc' : 'search_rpc'/);

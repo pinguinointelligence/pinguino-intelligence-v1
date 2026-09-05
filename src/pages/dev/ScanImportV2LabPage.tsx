@@ -3,7 +3,7 @@
  *
  * Runs: confirmed scan (a fixture observation from the Scan Core engine, or a typed code as if Scan Core
  * had confirmed it) → shared ConfirmedScan contract → Scan Import 2.0 → REAL adapters (this account's
- * Supabase session; guests get the read-only public path) → a plain-language outcome. Label photos,
+ * backend session; guests get the read-only public path) → a plain-language outcome. Label photos,
  * family confirmation and the durable discovery request drive the unknown-product lifecycle through the
  * SAME authorities the product flow uses. No business logic lives here.
  *
@@ -11,7 +11,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { NotFoundPage } from '@/pages/NotFoundPage';
-import { supabase } from '@/lib/supabase/client';
+import { createScanImportV2AppPorts, getScanImportV2AccountId } from '@/services/scanImportV2';
 import {
   fromScanCoreObservation,
   type ConfirmedScan,
@@ -20,8 +20,6 @@ import {
 import {
   createIndexedDbStore,
   createOfflineCache,
-  createSupabaseDiscoveryPort,
-  createSupabaseV2Ports,
   runScanImportV2,
   continueDiscovery,
   type DiscoverySession,
@@ -181,21 +179,13 @@ export function ScanImportV2LabPage() {
   const [session, setSession] = useState<DiscoverySession | null>(null);
 
   const cache = useMemo(() => createOfflineCache({ store: createIndexedDbStore() }), []);
-  const ports = useMemo(() => {
-    if (!supabase) return null;
-    const client = supabase as never;
-    return {
-      ...createSupabaseV2Ports(client, { exactAuthority: EXACT_AUTHORITY }),
-      external: null,
-      offlineCache: cache,
-      externalTimeoutMs: 20_000,
-      discovery: createSupabaseDiscoveryPort(client),
-    };
-  }, [cache]);
+  const ports = useMemo(
+    () => createScanImportV2AppPorts({ exactAuthority: EXACT_AUTHORITY, offlineCache: cache }),
+    [cache],
+  );
 
   useEffect(() => {
-    if (!supabase) return;
-    void supabase.auth.getUser().then(({ data }) => setAccountId(data.user?.id ?? null));
+    void getScanImportV2AccountId().then(setAccountId);
   }, []);
 
   if (!LAB_ENABLED) return <NotFoundPage />;
@@ -210,7 +200,7 @@ export function ScanImportV2LabPage() {
 
   const run = async (scan: ConfirmedScan) => {
     if (!ports) {
-      setError('Supabase nie jest skonfigurowane');
+      setError('Backend nie jest skonfigurowany');
       return;
     }
     setBusy(true);
