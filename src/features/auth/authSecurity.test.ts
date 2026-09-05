@@ -44,6 +44,10 @@ const ALLOWED_ENV = new Set([
   // Public build identity shown in the staging operations workspace.
   'VITE_VERCEL_GIT_COMMIT_SHA',
   'VITE_GIT_COMMIT_SHA',
+  // Build-time switch ("1") that includes the isolated Scan Core Phase 0 measurement route
+  // /scan-lab/baseline. Set only on the staging Vercel project; carries no secret.
+  'VITE_SCAN_LAB_BASELINE',
+  'VITE_SCAN_LAB_BUILD', // build-time git commit stamped into Scan Lab bundles (harness identity)
 ]);
 
 describe('Phase 2A security guards', () => {

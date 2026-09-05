@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes, useLocation, useParams } from 'react-router';
 import { legacyDestinationRedirectTo } from './redirectState';
 import { NotFoundPage } from '@/pages/NotFoundPage';
@@ -107,6 +108,18 @@ export function PublicRecipeOrPartnerRoute() {
   const { handle } = useParams();
   return handle?.startsWith('@') ? <PublicRecipeRoute /> : <PartnerPublicRoute />;
 }
+
+/**
+ * SCAN CORE PHASE 0 — isolated measurement harness (reports/scan-core-phase-0/PHASE0_CHECKLIST.md A3).
+ * Built ONLY when VITE_SCAN_LAB_BASELINE=1: the flag is inlined at build time, so with it unset the
+ * lazy chunk is dead code and never ships. Never linked from the UI.
+ */
+const SCAN_LAB_BASELINE_ENABLED = import.meta.env.VITE_SCAN_LAB_BASELINE === '1';
+const ScanLabBaselinePage = SCAN_LAB_BASELINE_ENABLED
+  ? lazy(() =>
+      import('@/scan-lab/baseline/ui/BaselinePage').then((m) => ({ default: m.BaselinePage })),
+    )
+  : null;
 
 export function AppRoutes() {
   return (
@@ -266,6 +279,16 @@ export function AppRoutes() {
         element={<LegacyDestinationRedirect pathname="/products/scan" />}
       />
       {import.meta.env.DEV && <Route path="/products/scan/legacy" element={<ProductScanPage />} />}
+      {ScanLabBaselinePage && (
+        <Route
+          path="/scan-lab/baseline"
+          element={
+            <Suspense fallback={null}>
+              <ScanLabBaselinePage />
+            </Suspense>
+          }
+        />
+      )}
 
       {/* Legacy customer-shell preview path → the flow's new canonical /start. */}
       <Route path="/customer-v1" element={<LegacyDestinationRedirect pathname="/start" />} />
