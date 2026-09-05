@@ -65,6 +65,8 @@ export class FakeDiscovery implements DiscoveryPort {
   calls: string[] = [];
   /** the next label analysis fails with this reason (once), leaving the session untouched */
   failNextLabel: LabelFailureReason | null = null;
+  /** family choices this authority cannot map — it would ask again (older finalize behaviour) */
+  unmappableFamilies = new Set<string>();
 
   private session(identity: CodeIdentity): DiscoverySession {
     let s = this.sessions.get(identity.canonicalGtin13);
@@ -231,7 +233,10 @@ export class FakeDiscovery implements DiscoveryPort {
       s.missingCritical = missingOf(s.result);
     }
     if (!s.result?.identity?.displayName) return { kind: 'identity_required' };
-    if (!input.customerFamily)
+    if (
+      (!input.customerFamily || this.unmappableFamilies.has(input.customerFamily)) &&
+      !input.savePrivateNotReady
+    )
       return {
         kind: 'family_confirmation_required',
         options: [
@@ -268,9 +273,16 @@ export class FakeDiscovery implements DiscoveryPort {
     const gtin = session.identity.canonicalGtin13;
     const existing = this.created.get(gtin);
     if (existing) return { kind: 'created', ...existing, existing: true };
+    const confirmedIdentity = (
+      input.confirmations?.productFields as
+        | { identity?: { displayName?: string | null; brand?: string | null } }
+        | undefined
+    )?.identity;
     const created = {
       productId: `CA-${gtin}`,
       productCode: `CA-ING-${gtin.slice(-6)}`,
+      displayName: confirmedIdentity?.displayName ?? null,
+      brand: confirmedIdentity?.brand ?? null,
       engineUsable: this.authorityEngineUsable.get(`CA-${gtin}`) ?? false,
     };
     this.created.set(gtin, created);

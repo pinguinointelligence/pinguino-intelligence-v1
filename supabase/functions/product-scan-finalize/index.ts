@@ -421,6 +421,8 @@ Deno.serve(async (request) => {
   const familyChoice = FAMILY_CHOICES.has(body.customerFamily as CustomerProductFamilyChoice)
     ? (body.customerFamily as CustomerProductFamilyChoice)
     : null;
+  // an explicitly requested private (not recipe-ready) save — owner authorization 2026-09-05
+  const savePrivateNotReady = body.savePrivateNotReady === true;
   let familyResolution = resolveCustomerProductFamily(recognition);
   if (familyResolution.status !== 'RESOLVED' && familyChoice) {
     recognition = applyCustomerProductFamily(recognition, familyChoice);
@@ -451,7 +453,10 @@ Deno.serve(async (request) => {
   if (persistError || !persisted)
     return json({ error: 'scanner_corrections_persistence_failed' }, 503);
 
-  if (familyResolution.status !== 'RESOLVED') {
+  // Ask for the family once. A choice the taxonomy cannot map (e.g. "Inne") is still an answer: the
+  // product then simply cannot become recipe-ready here (readiness decides below) — it is never asked
+  // again, and an explicitly requested private save is never blocked by an unknown family.
+  if (familyResolution.status !== 'RESOLVED' && !familyChoice && !savePrivateNotReady) {
     return json({
       kind: 'family_confirmation_required',
       recognition,
@@ -573,7 +578,6 @@ Deno.serve(async (request) => {
   if (action === 'preview') return json(preview);
   // owner contract (2026-09-05): the customer may keep a not-ready exact product PRIVATELY; only an
   // explicit request takes that path, and it never touches the ready (recipe-eligible) authority
-  const savePrivateNotReady = body.savePrivateNotReady === true;
   if (!ready && !savePrivateNotReady)
     return json({ ...preview, kind: 'customer_product_not_ready' }, 409);
 

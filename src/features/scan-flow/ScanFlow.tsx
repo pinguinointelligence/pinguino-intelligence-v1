@@ -146,9 +146,10 @@ const STATUS_TEXT: Record<CaptureStatus, string> = {
 
 const LABEL_FAILURE_TEXT: Record<string, string> = {
   burst: 'Za dużo analiz w krótkim czasie — spróbuj ponownie za minutę.',
-  vision_limit: 'Limit analiz zdjęć dla tego skanu został wyczerpany.',
+  vision_limit:
+    'Limit odczytów zdjęć dla tego skanu został wyczerpany — uzupełnij dane ręcznie lub zapisz produkt prywatnie.',
   asset_conflict: 'To zdjęcie było już wysłane — dodaj inne ujęcie.',
-  asset_metadata: 'Nie udało się przesłać tego zdjęcia — spróbuj ponownie.',
+  asset_metadata: 'Nie udało się przesłać tego zdjęcia — spróbuj ponownie lub dodaj inne ujęcie.',
   network: 'Brak połączenia — zdjęcie zostanie odczytane po ponowieniu.',
   provider: 'Odczyt etykiet jest chwilowo niedostępny — spróbuj za chwilę.',
   other: 'Nie udało się odczytać tego zdjęcia — spróbuj ponownie lub dodaj inne.',
@@ -222,17 +223,24 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
     brand: string | null;
   } | null>(null);
   const [photos, setPhotos] = useState<LabelPhoto[]>([]);
+  /** mirror of `photos` for the analysis queue, which runs outside React's render cycle */
+  const photosRef = useRef<LabelPhoto[]>([]);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const captureRef = useRef<ScanCoreCapture | null>(null);
   const codeRef = useRef<string | null>(null);
   const scanRef = useRef<ConfirmedScan | null>(null);
   const labelTriedRef = useRef(false);
   const refusedOnceRef = useRef(false);
+  /** the customer already answered the family question in this session — never ask it twice */
+  const familyAnsweredRef = useRef(false);
   const familyRef = useRef<CustomerFamily | null>(null);
   const valuesRef = useRef<Record<string, string | boolean>>({});
   const trackedSinceRef = useRef<number | null>(null);
   const blurredSinceRef = useRef<number | null>(null);
   const queueRef = useRef<Promise<void>>(Promise.resolve());
+  /** label analyses the authority accepted in this scan (it allows two per scan session) */
+  const analysesUsedRef = useRef(0);
+  const analysisInFlightRef = useRef(false);
   familyRef.current = family;
   valuesRef.current = values;
 
@@ -285,6 +293,27 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
           });
           return;
         case 'needs_confirmation': {
+          if (r.reason === 'family_confirmation' && r.sessionId && familyAnsweredRef.current) {
+            // the authority could not map the answer ("Inne") to a recipe family: the product cannot become
+            // recipe-ready here, but it is never lost — plain fields, then a private save
+            refusedOnceRef.current = true;
+            const next = session ?? seedSession(r.sessionId, r.identity, []);
+            const fields = plainFieldsFor(next.missingCritical, {
+              needIdentity: !(researched ?? recognized),
+            });
+            setPhase(
+              fields.length > 0
+                ? { kind: 'fields', session: next, fields, notice: null, canSavePrivate: true }
+                : {
+                    kind: 'label',
+                    session: next,
+                    notice:
+                      'Ten rodzaj produktu wymaga jeszcze weryfikacji przed użyciem w recepturze — możesz zapisać go prywatnie.',
+                    canSavePrivate: true,
+                  },
+            );
+            return;
+          }
           if (r.reason === 'family_confirmation' && r.sessionId) {
             const next = session ?? seedSession(r.sessionId, r.identity, []);
             const web = session ? null : identityFromEvidence(r.externalEvidence);
@@ -466,6 +495,9 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
       scanRef.current = scan;
       labelTriedRef.current = false;
       refusedOnceRef.current = false;
+      familyAnsweredRef.current = false;
+      analysesUsedRef.current = 0;
+      analysisInFlightRef.current = false;
       setBusy(true);
       setPhotos([]);
       setResearched(null);
@@ -623,30 +655,46 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
   /* discovery steps (label photographs are additive; a failed one is retried alone)             */
   /* ------------------------------------------------------------------------------------------ */
 
-  const setPhoto = (id: string, patch: Partial<LabelPhoto>) =>
+  const setPhoto = (id: string, patch: Partial<LabelPhoto>) => {
+    photosRef.current = photosRef.current.map((p) => (p.id === id ? { ...p, ...patch } : p));
     setPhotos((list) => list.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+  };
 
-  const analyzePhoto = async (session: DiscoverySession, photo: LabelPhoto) => {
+  const MAX_ANALYSES = 2; // the analysis authority: one fast call + one accurate retry per scan session
+  const MAX_BATCH = 3; // images per accurate call (the authority takes up to four per call)
+
+  /** one analysis call for a batch of photographs — every photo in it succeeds or fails together */
+  const analyzeBatch = async (session: DiscoverySession, batch: LabelPhoto[]) => {
     const port = ports?.discovery;
-    if (!port) return;
-    setPhoto(photo.id, { status: 'analyzing', error: null });
+    if (!port || batch.length === 0) return;
+    if (analysesUsedRef.current >= MAX_ANALYSES) {
+      for (const p of batch)
+        setPhoto(p.id, { status: 'failed', error: LABEL_FAILURE_TEXT['vision_limit']! });
+      return;
+    }
+    analysisInFlightRef.current = true;
+    for (const p of batch) setPhoto(p.id, { status: 'analyzing', error: null });
     const ctx = contextFor(await getScanImportV2AccountId());
     let r: ScanImportV2Result;
     try {
-      const image = await fileToLabelImage(await downscaled(photo.file), photo.source);
-      r = await continueDiscovery(session, { type: 'label', images: [image] }, ctx, port);
+      const images: LabelImage[] = [];
+      for (const p of batch)
+        images.push(await fileToLabelImage(await downscaled(p.file), p.source));
+      r = await continueDiscovery(session, { type: 'label', images }, ctx, port);
     } catch {
-      setPhoto(photo.id, { status: 'failed', error: LABEL_FAILURE_TEXT['network']! });
+      analysisInFlightRef.current = false;
+      for (const p of batch)
+        setPhoto(p.id, { status: 'failed', error: LABEL_FAILURE_TEXT['network']! });
       return;
     }
+    analysisInFlightRef.current = false;
     if (r.kind === 'discovered_pending' && r.labelError) {
-      setPhoto(photo.id, {
-        status: 'failed',
-        error: LABEL_FAILURE_TEXT[r.labelError.reason] ?? LABEL_FAILURE_TEXT['other']!,
-      });
+      const error = LABEL_FAILURE_TEXT[r.labelError.reason] ?? LABEL_FAILURE_TEXT['other']!;
+      for (const p of batch) setPhoto(p.id, { status: 'failed', error });
       return;
     }
-    setPhoto(photo.id, { status: 'done', error: null });
+    analysesUsedRef.current += 1;
+    for (const p of batch) setPhoto(p.id, { status: 'done', error: null });
     labelTriedRef.current = true;
     if (r.kind === 'discovered_pending') {
       // the label was read: the authority decides what is still missing
@@ -665,20 +713,37 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
     await handleResult(r, codeRef.current ?? '', ctx);
   };
 
-  const addPhoto = (session: DiscoverySession, file: File, source: LabelImage['source']) => {
-    const photo: LabelPhoto = { id: newId(), file, source, status: 'pending', error: null };
-    setPhotos((list) => [...list, photo]);
+  /** every waiting photograph goes out in ONE call (the session's accurate retry) */
+  const analyzePending = (session: DiscoverySession) => {
     queueRef.current = queueRef.current
-      .then(() => analyzePhoto(session, photo))
+      .then(() => {
+        const waiting = photosRef.current.filter((p) => p.status === 'pending').slice(0, MAX_BATCH);
+        return analyzeBatch(session, waiting);
+      })
       .catch(() => undefined);
   };
 
+  const addPhoto = (session: DiscoverySession, file: File, source: LabelImage['source']) => {
+    const photo: LabelPhoto = { id: newId(), file, source, status: 'pending', error: null };
+    photosRef.current = [...photosRef.current, photo];
+    setPhotos((list) => [...list, photo]);
+    if (analysesUsedRef.current === 0 && !analysisInFlightRef.current) {
+      // the first photograph is read at once
+      queueRef.current = queueRef.current
+        .then(() => analyzeBatch(session, [photo]))
+        .catch(() => undefined);
+      return;
+    }
+    if (analysesUsedRef.current >= MAX_ANALYSES) {
+      setPhoto(photo.id, { status: 'failed', error: LABEL_FAILURE_TEXT['vision_limit']! });
+      return;
+    }
+    // later photographs wait and go out together — the customer decides when
+  };
+
   const retryPhoto = (session: DiscoverySession, id: string) => {
-    const photo = photos.find((p) => p.id === id);
-    if (!photo) return;
-    queueRef.current = queueRef.current
-      .then(() => analyzePhoto(session, { ...photo, status: 'pending', error: null }))
-      .catch(() => undefined);
+    setPhoto(id, { status: 'pending', error: null });
+    analyzePending(session);
   };
 
   const withBusy = async (work: () => Promise<void>, onError: () => void) => {
@@ -696,6 +761,7 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
     withBusy(
       async () => {
         setFamily(choice);
+        familyAnsweredRef.current = true;
         const ctx = contextFor(await getScanImportV2AccountId());
         await finalize(
           session,
@@ -876,6 +942,25 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
     </label>
   );
 
+  const waitingCount = photos.filter((p) => p.status === 'pending').length;
+  const readWaitingButton = (session: DiscoverySession) =>
+    waitingCount > 0 && analysesUsedRef.current > 0 && analysesUsedRef.current < MAX_ANALYSES ? (
+      <div className="flex flex-wrap items-center gap-2 text-xs text-stone-700">
+        <button
+          type="button"
+          className={btnPrimary}
+          disabled={busy}
+          onClick={() => analyzePending(session)}
+          data-testid="scan-flow-read-waiting"
+        >
+          Odczytaj dodane zdjęcia ({Math.min(waitingCount, MAX_BATCH)})
+        </button>
+        <span>Możesz dodać do {MAX_BATCH} zdjęć i odczytać je razem.</span>
+      </div>
+    ) : waitingCount > 0 && analysesUsedRef.current >= MAX_ANALYSES ? (
+      <p className="text-xs text-stone-700">{LABEL_FAILURE_TEXT['vision_limit']}</p>
+    ) : null;
+
   const photoList = (session: DiscoverySession) =>
     photos.length > 0 ? (
       <ul className="space-y-1" data-testid="scan-flow-photos">
@@ -903,6 +988,7 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
             ) : null}
           </li>
         ))}
+        <li>{readWaitingButton(session)}</li>
       </ul>
     ) : null;
 

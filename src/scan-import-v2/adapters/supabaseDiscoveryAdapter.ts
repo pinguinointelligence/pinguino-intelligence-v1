@@ -178,37 +178,67 @@ export function createSupabaseDiscoveryPort(
     return s;
   };
 
+  const research = async (identity: CodeIdentity): Promise<ResearchOutcome> => {
+    const s = sessionFor(identity);
+    const d = await invoke('product-scan-analyze', {
+      sessionId: s.sessionId,
+      mode: 'ean_lookup',
+      images: [],
+      barcode: legacyBarcode(identity),
+    });
+    if (d['kind'] === 'existing_product')
+      return { kind: 'existing_product', product: exactFromServer(obj(d['product']), identity) };
+    applySession(s, d);
+    if (typeof d['skipped'] === 'string')
+      return { kind: 'skipped', session: s, reason: d['skipped'] as string };
+    return {
+      kind: 'researched',
+      session: s,
+      evidenceError: d['providerUnavailable'] === true ? 'provider_unavailable' : null,
+    };
+  };
+
   return {
-    async research(identity): Promise<ResearchOutcome> {
-      const s = sessionFor(identity);
-      const d = await invoke('product-scan-analyze', {
-        sessionId: s.sessionId,
-        mode: 'ean_lookup',
-        images: [],
-        barcode: legacyBarcode(identity),
-      });
-      if (d['kind'] === 'existing_product')
-        return { kind: 'existing_product', product: exactFromServer(obj(d['product']), identity) };
-      applySession(s, d);
-      if (typeof d['skipped'] === 'string')
-        return { kind: 'skipped', session: s, reason: d['skipped'] as string };
-      return {
-        kind: 'researched',
-        session: s,
-        evidenceError: d['providerUnavailable'] === true ? 'provider_unavailable' : null,
-      };
-    },
+    research,
     async analyzeLabel(session, images): Promise<AnalyzeOutcome> {
-      const s = adopt(session);
-      let d: Record<string, unknown>;
-      try {
-        d = await invoke('product-scan-analyze', {
+      let s = adopt(session);
+      // The analysis authority allows two vision calls per scan session: one 'fast' call, then one
+      // 'accurate' retry (same idempotency key per kind; a different payload under a used key raises).
+      // The call kind therefore follows the session's recorded usage, never a client guess.
+      const attempt = (accurate: boolean) =>
+        invoke('product-scan-analyze', {
           sessionId: s.sessionId,
           images: [...images],
           barcode: legacyBarcode(session.identity),
-          accurateRetry: false,
+          accurateRetry: accurate,
           missingFields: [...s.missingCritical],
         });
+      let d: Record<string, unknown>;
+      try {
+        try {
+          d = await attempt(s.usage.visionCalls >= 1);
+        } catch (first) {
+          const m = first instanceof Error ? first.message : String(first);
+          if (
+            s.usage.visionCalls < 1 &&
+            /fast_call_already_used|scanner_budget_preflight_failed/.test(m)
+          ) {
+            // the local usage record was lost (reload): the session already had its fast call
+            d = await attempt(true);
+          } else if (
+            /analysis_call_already_failed|accurate_retry_requires_fast_evidence|invalid_scan_session|scan_session_ownership_mismatch/.test(
+              m,
+            )
+          ) {
+            // a session the authority will not analyse again (an earlier call failed inside it): the
+            // identity and every fact survive in a fresh session — the customer never restarts
+            sessions.delete(session.identity.canonicalGtin13);
+            const r = await research(session.identity);
+            if (r.kind === 'existing_product') throw first;
+            s = r.session;
+            d = await attempt(false);
+          } else throw first;
+        }
       } catch (error) {
         // one failed image is a failed image — never a lost session (owner QA 2026-09-05)
         const m = error instanceof Error ? error.message : String(error);
@@ -218,11 +248,15 @@ export function createSupabaseDiscoveryPort(
             ? 'vision_limit'
             : /scan_asset_identity_conflict/.test(m)
               ? 'asset_conflict'
-              : /scan_asset_metadata_failed|invalid_scan_image/.test(m)
+              : /scan_asset_metadata_failed|invalid_scan_image|scan_(image|payload)_too_large/.test(
+                    m,
+                  )
                 ? 'asset_metadata'
                 : error instanceof NetworkError
                   ? 'network'
-                  : /scanner_(disabled|analysis_not_configured|openai)|provider/.test(m)
+                  : /scanner_(disabled|analysis_not_configured|openai|unavailable|model_pricing|budget)|provider/.test(
+                        m,
+                      )
                     ? 'provider'
                     : 'other';
         return {
@@ -318,6 +352,8 @@ export function createSupabaseDiscoveryPort(
             kind: 'created',
             productId: String(d['productId'] ?? ''),
             productCode: typeof d['productCode'] === 'string' ? (d['productCode'] as string) : null,
+            displayName: typeof d['displayName'] === 'string' ? (d['displayName'] as string) : null,
+            brand: typeof d['brand'] === 'string' ? (d['brand'] as string) : null,
             engineUsable: d['engineUsable'] === true,
             privateNotReady: d['privateNotReady'] === true,
             existing: d['kind'] !== 'customer_added_product',

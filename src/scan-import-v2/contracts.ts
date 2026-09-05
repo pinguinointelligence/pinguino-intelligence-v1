@@ -187,6 +187,8 @@ export type ScanImportV2Result =
       labelError?: {
         reason: import('./discovery/contracts').LabelFailureReason;
         retryAfterMs: number | null;
+        /** the authority's raw code — diagnostics for proofs and logs, never customer copy */
+        detail?: string | null;
       } | null;
     }
   | {

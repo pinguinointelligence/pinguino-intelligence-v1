@@ -178,6 +178,9 @@ export type FinalizeOutcome =
       kind: 'created';
       productId: string;
       productCode: string | null;
+      /** the persisted identity as the authority saved it (never the bare code) */
+      displayName?: string | null;
+      brand?: string | null;
       /** saved privately although not recipe-ready */
       privateNotReady?: boolean;
       engineUsable: boolean;
