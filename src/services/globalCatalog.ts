@@ -362,12 +362,16 @@ export async function listCurrentMapperCatalogFavorites(): Promise<
 }
 
 export async function listCatalogRecent(): Promise<
-  Array<{ entityKind: 'pi_base' | 'commercial_product'; id: string }>
+  Array<{
+    entityKind: 'pi_base' | 'commercial_product';
+    id: string;
+    recentlyUsedAt: string;
+  }>
 > {
   if (!supabase) return emptyUnconfiguredRead('globalCatalog.recent', []);
   const { data, error } = await supabase
     .from('global_catalog_recent_usage')
-    .select('entity_kind,catalog_product_id,mapper_ingredient_id')
+    .select('entity_kind,catalog_product_id,mapper_ingredient_id,last_used_at')
     .eq('entity_kind', 'pi_base')
     .order('last_used_at', { ascending: false })
     .limit(100);
@@ -375,7 +379,9 @@ export async function listCatalogRecent(): Promise<
   const pi = (data ?? []).flatMap((row) => {
     const entityKind = row.entity_kind as 'pi_base' | 'commercial_product';
     const id = entityKind === 'pi_base' ? row.mapper_ingredient_id : row.catalog_product_id;
-    return typeof id === 'string' ? [{ entityKind, id }] : [];
+    return typeof id === 'string' && typeof row.last_used_at === 'string'
+      ? [{ entityKind, id, recentlyUsedAt: row.last_used_at }]
+      : [];
   });
   const { data: commercial, error: commercialError } = await supabase
     .from('user_product_relations')
@@ -389,26 +395,33 @@ export async function listCatalogRecent(): Promise<
     ...(commercial ?? []).map((row) => ({
       entityKind: 'commercial_product' as const,
       id: row.product_id,
+      recentlyUsedAt: row.recently_used_at!,
     })),
-  ];
+  ].sort((left, right) => Date.parse(right.recentlyUsedAt) - Date.parse(left.recentlyUsedAt));
 }
 
 /** Same fail-closed source rule as favorites: recents rank current Mapper rows;
  * they never carry or hydrate a historical product snapshot. */
 export async function listCurrentMapperCatalogRecent(): Promise<
-  Array<{ entityKind: 'pi_base'; id: string }>
+  Array<{ entityKind: 'pi_base'; id: string; recentlyUsedAt: string }>
 > {
   if (!supabase) return emptyUnconfiguredRead('globalCatalog.mapperRecent', []);
   const { data, error } = await supabase
     .from('global_catalog_recent_usage')
-    .select('mapper_ingredient_id')
+    .select('mapper_ingredient_id,last_used_at')
     .eq('entity_kind', 'pi_base')
     .order('last_used_at', { ascending: false })
     .limit(100);
   if (error) throw new Error(error.message);
   return (data ?? []).flatMap((row) =>
-    typeof row.mapper_ingredient_id === 'string'
-      ? [{ entityKind: 'pi_base' as const, id: row.mapper_ingredient_id }]
+    typeof row.mapper_ingredient_id === 'string' && typeof row.last_used_at === 'string'
+      ? [
+          {
+            entityKind: 'pi_base' as const,
+            id: row.mapper_ingredient_id,
+            recentlyUsedAt: row.last_used_at,
+          },
+        ]
       : [],
   );
 }
