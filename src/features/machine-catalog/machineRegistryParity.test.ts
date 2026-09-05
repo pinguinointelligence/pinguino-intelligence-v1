@@ -75,6 +75,7 @@ describe('canonical machine registry cross-surface parity', () => {
       target_temperature_c: -11,
       target_batch_grams: 950,
       machine_capacity_grams: 950,
+      machine_capacity_source: 'machine',
       items: [],
     };
     const persisted = attachRecipeProfileMetadata(input, {

@@ -330,6 +330,7 @@ export interface ProductionRescueUnavailableDiagnostics {
   forecastMassG: number;
   originalTargetG: number;
   machineCapacityG: number | null;
+  machineCapacitySource?: 'machine' | 'manual' | null;
   forecastViolationDetails: ProductionRescueViolationDiagnosticPayload[];
   fixedTargetRebalance: {
     candidateMassG: number;
@@ -448,6 +449,10 @@ const unavailableDiagnostics = (value: unknown): ProductionRescueUnavailableDiag
     forecastMassG,
     originalTargetG,
     machineCapacityG,
+    machineCapacitySource:
+      record.machineCapacitySource === 'machine' || record.machineCapacitySource === 'manual'
+        ? record.machineCapacitySource
+        : null,
     forecastViolationDetails: violationDiagnosticPayloads(record.forecastViolationDetails),
     fixedTargetRebalance:
       fixedRecord && fixedMassG !== null

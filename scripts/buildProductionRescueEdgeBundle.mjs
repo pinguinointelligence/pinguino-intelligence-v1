@@ -39,6 +39,9 @@ const EXPECTED_SOURCE_CLOSURE = [
   'src/engine/corrections/verify.ts',
   'src/engine/cost.ts',
   'src/engine/iceFraction.ts',
+  // REVIEWED 2026-09-05 (capacity provenance). Pure authority projection:
+  // legacy numeric values without machine/manual provenance are not limits.
+  'src/engine/machineCapacity.ts',
   'src/engine/nutrition.ts',
   'src/engine/pac.ts',
   'src/engine/pod.ts',

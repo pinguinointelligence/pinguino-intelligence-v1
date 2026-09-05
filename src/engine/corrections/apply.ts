@@ -31,6 +31,7 @@ import type {
   CorrectionResult,
   RedactedCorrectionProposal,
 } from './types';
+import { effectiveMachineCapacityGrams } from '../machineCapacity';
 import { applyCorrectionActions, type CorrectionConstraints } from './verify';
 
 export interface ProposeAutoFixArgs {
@@ -99,7 +100,7 @@ export function applyAutoFix(args: ApplyAutoFixArgs): ApplyAutoFixResult {
     context,
     mode: input.mode,
     allow_main_ingredient_reduction: args.allowMainIngredientReduction ?? false,
-    machine_capacity_grams: input.machine_capacity_grams,
+    machine_capacity_grams: effectiveMachineCapacityGrams(input),
     // Symmetric with `proposeAutoFix`: apply honours the same user-intent floor
     // the proposal was generated under, so the two can never disagree.
     target_batch_grams: input.target_batch_grams,

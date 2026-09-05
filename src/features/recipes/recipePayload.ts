@@ -147,6 +147,7 @@ export const recipeInputSchema = z.looseObject({
   target_temperature_c: z.number(),
   target_batch_grams: z.number(),
   machine_capacity_grams: z.number().nullable(),
+  machine_capacity_source: z.enum(['machine', 'manual']).nullable().optional(),
   goals: z.looseObject({}).optional(),
 });
 

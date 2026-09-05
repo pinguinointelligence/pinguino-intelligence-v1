@@ -40,6 +40,7 @@ const gelatoInput = (): RecipeInput => ({
   target_temperature_c: -11,
   target_batch_grams: 1_000,
   machine_capacity_grams: 1_200,
+  machine_capacity_source: 'manual',
   goals: { formulation_strategy: 'optimal' },
   items: [
     ['milk', 'PI-ING-000236', 584, 'unlocked'],
@@ -72,6 +73,7 @@ const starterInput = (profile: 'vegan' | 'protein'): RecipeInput => {
     target_temperature_c: starter.targetTemperatureC,
     target_batch_grams: starter.targetBatchGrams,
     machine_capacity_grams: 1_200,
+    machine_capacity_source: 'manual',
     goals: { formulation_strategy: 'optimal' },
     items: starter.items,
   };
@@ -94,7 +96,11 @@ const PROFILES: ReadonlyArray<{ id: FastProfileId; input: RecipeInput }> = [
   { id: 'gelato', input: gelatoInput() },
   {
     id: 'sorbet',
-    input: { ...sorbetMultiMainBase(-11), machine_capacity_grams: 1_200 },
+    input: {
+      ...sorbetMultiMainBase(-11),
+      machine_capacity_grams: 1_200,
+      machine_capacity_source: 'manual',
+    },
   },
   {
     id: 'vegan',
@@ -260,7 +266,11 @@ const buildEvidence = ({
     confirm(sessionFor(`${id}-main`, mainInput), [[mainLine.id, mainLine.planned_grams + 5]]),
   );
 
-  const fullyOverInput = { ...input, machine_capacity_grams: 1_200 };
+  const fullyOverInput = {
+    ...input,
+    machine_capacity_grams: 1_200,
+    machine_capacity_source: 'manual' as const,
+  };
   const fullyOverSession = confirm(
     sessionFor(`${id}-add-only`, fullyOverInput),
     fullyOverInput.items.map(
@@ -276,7 +286,11 @@ const buildEvidence = ({
   );
   if (!addOnlyRestore) throw new Error(`${id}: add-only restore missing`);
 
-  const capacityInput = { ...input, machine_capacity_grams: input.target_batch_grams };
+  const capacityInput = {
+    ...input,
+    machine_capacity_grams: input.target_batch_grams,
+    machine_capacity_source: 'manual' as const,
+  };
   const capacitySession = confirm(
     sessionFor(`${id}-capacity`, capacityInput),
     capacityInput.items.map(
