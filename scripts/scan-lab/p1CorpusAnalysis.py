@@ -65,7 +65,7 @@ for tag,d in BUNDLES.items():
             if best and prev and prev[0]:
                 stab=abs(w-prev[0])/max(w,1) + math.hypot(cx-prev[1],cy-prev[2])/max(W,1)
             frames.append(dict(tag=tag, scene=s['sceneId'], dist=DIST.get(s['sceneId']), t=e['tCapture']-s['t0'], W=W, H=H, w=w, h=h, mod=mod, fill=fill, ori=ori, lap=e['quality']['laplacianVar'], mean=e['quality']['meanLuma'], clip=e['quality']['clippedHighRatio'], per=per, anyvalid=anyvalid, anywrong=anywrong, errgeom=errgeom, stab=stab, cand=bool(best)))
-            if best: prev=(w,cx,cy); widths.append(w); laps.append(e['quality']['laplacianVar']); 
+            if best: prev=(w,cx,cy); widths.append(w); laps.append(e['quality']['laplacianVar']);
             if best and mod: mods.append(mod)
             if anyvalid and first_hit is None: first_hit=e['tCapture']-s['t0']
         scene_rows.append(dict(tag=tag, scene=s['sceneId'], W=W, n=len(ev), w=med(widths), fill=(med(widths)/W if widths else None), mod=med(mods), lap=med(laps), first=first_hit, hits=sum(1 for e in ev if any(r['checksumValid'] for dd in e['decodes'] for r in dd['results']))))
@@ -172,7 +172,7 @@ for tag,d in BUNDLES.items():
     fs=[f for f in frames if f['tag']==tag and f['scene'].startswith('ean')]
     scenes=json.load(open(f'{d}/scenes.json'))
     c2l=[t['captureToLumaMs'] for s in scenes for t in (s.get('frameTicks') or []) if t.get('processed') and t.get('captureToLumaMs') is not None]
-    def cost(v): 
+    def cost(v):
         a=[f['per'][v][1] for f in fs if v in f['per']]; return f"{q(a,.5):.1f}" if a else "—"
     sal=[]
     for s in scenes:
