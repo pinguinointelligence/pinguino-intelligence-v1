@@ -8655,7 +8655,7 @@ function hydrateProductionSessionFromRun(run, source, plannedInput, plannedCompo
 * continue to identify the formulas and calibrated data; this stamp identifies
 * the option-selection and practicalization layer authorized by the server.
 */
-const PRODUCTION_RESCUE_MODEL_VERSION = "production-rescue-v9";
+const PRODUCTION_RESCUE_MODEL_VERSION = "production-rescue-v10";
 const violationDiagnosticsFor = (result) => detectViolations(result).flatMap((violation) => violation.value === null || violation.band === null ? [] : [{
 	metric: violation.metric,
 	direction: violation.direction,
@@ -8846,7 +8846,86 @@ const productionIngredientExplicitlyUnavailable = (input, item) => {
 	return unavailable.has(item.ingredient.id) || unavailable.has(canonicalIngredientId(item.ingredient));
 };
 const PRODUCTION_RESCUE_INTEGER_NODE_BUDGET = 2e4;
+const PRODUCTION_RESCUE_SORBET_INTEGER_NODE_BUDGET = 2048;
 const PRODUCTION_RESCUE_EXTREME_NODE_BUDGET = 512;
+const PRODUCTION_RESCUE_LINEAR_EPSILON = 1e-8;
+/** Rescue-only integer proof with per-line execution steps. The shared Main
+* technical solver deliberately retains its historical branching byte-for-byte;
+* Sorbet needs this separate path because stabilizer components execute only in
+* whole grams while every other Production line executes in tenths. */
+function solveProductionRescueIntegerMaximum(baseRows, baseBounds, objective, maxNodes, branchOrder, variableSteps) {
+	let nodes = 0;
+	let exhausted = false;
+	let bestValue = -Infinity;
+	let bestSolution = null;
+	let rootIntegerUpperBound = null;
+	const stepFor = (index) => {
+		const requested = variableSteps[index];
+		return requested && Number.isInteger(requested) && requested > 0 ? requested : 1;
+	};
+	const floorToStep = (value, index) => Math.floor(value / stepFor(index) + PRODUCTION_RESCUE_LINEAR_EPSILON) * stepFor(index);
+	const ceilToStep = (value, index) => Math.ceil(value / stepFor(index) - PRODUCTION_RESCUE_LINEAR_EPSILON) * stepFor(index);
+	const roundToStep = (value, index) => Math.round(value / stepFor(index)) * stepFor(index);
+	const distanceToStep = (value, index) => Math.abs(value - roundToStep(value, index));
+	const stack = [{
+		extraRows: [],
+		extraBounds: []
+	}];
+	while (stack.length > 0) {
+		if (nodes >= maxNodes) {
+			exhausted = true;
+			break;
+		}
+		const { extraRows, extraBounds } = stack.pop();
+		nodes += 1;
+		const solved = new LinearProgram([...baseRows, ...extraRows], [...baseBounds, ...extraBounds], objective).solve();
+		if (solved.status !== "optimal") continue;
+		if (rootIntegerUpperBound === null) rootIntegerUpperBound = Math.floor(solved.value + PRODUCTION_RESCUE_LINEAR_EPSILON);
+		if (Math.floor(solved.value + PRODUCTION_RESCUE_LINEAR_EPSILON) <= bestValue + PRODUCTION_RESCUE_LINEAR_EPSILON) continue;
+		let branchIndex = branchOrder.find((index) => index >= 0 && index < solved.solution.length && distanceToStep(solved.solution[index], index) > PRODUCTION_RESCUE_LINEAR_EPSILON) ?? -1;
+		let branchDistance = 0;
+		for (let index = 0; branchIndex === -1 && index < solved.solution.length; index += 1) {
+			const distance = distanceToStep(solved.solution[index], index) / stepFor(index);
+			if (distance > PRODUCTION_RESCUE_LINEAR_EPSILON && distance > branchDistance + PRODUCTION_RESCUE_LINEAR_EPSILON) {
+				branchIndex = index;
+				branchDistance = distance;
+			}
+		}
+		if (branchIndex === -1) {
+			bestValue = Math.round(solved.value);
+			bestSolution = solved.solution.map((value, index) => Math.max(0, roundToStep(value, index)));
+			if (bestValue >= rootIntegerUpperBound - PRODUCTION_RESCUE_LINEAR_EPSILON) stack.length = 0;
+			continue;
+		}
+		const value = solved.solution[branchIndex];
+		const lowerRow = Array.from({ length: objective.length }, () => 0);
+		lowerRow[branchIndex] = -1;
+		const upperRow = Array.from({ length: objective.length }, () => 0);
+		upperRow[branchIndex] = 1;
+		stack.push({
+			extraRows: [...extraRows, upperRow],
+			extraBounds: [...extraBounds, floorToStep(value, branchIndex)]
+		});
+		stack.push({
+			extraRows: [...extraRows, lowerRow],
+			extraBounds: [...extraBounds, -ceilToStep(value, branchIndex)]
+		});
+	}
+	if (exhausted || bestSolution === null || !Number.isFinite(bestValue)) return {
+		status: "unavailable",
+		value: null,
+		solution: null,
+		nodes,
+		exhausted
+	};
+	return {
+		status: "optimal",
+		value: bestValue,
+		solution: bestSolution,
+		nodes,
+		exhausted: false
+	};
+}
 /**
 * Build a necessary linear relaxation of the canonical Engine bands. This is
 * candidate generation only: the exact 0.1 g vector is always re-run through
@@ -8978,9 +9057,11 @@ function certifiedMinimumLargerBatchCandidate(session, forecastInput, lowerBound
 			addHomogeneousUpper(totalRow.map((value, index) => carrierFloorPercent / 100 * value - (carrierIndices.has(index) ? 1 : 0)));
 		}
 	}
-	const gelatoStabilizers = gelatoStabilizerSystemApplies(forecastInput.category) ? new Set(gelatoStabilizerSystemItems(forecastInput.items).map((item) => item.id)) : null;
-	if (gelatoStabilizers && gelatoStabilizers.size > 0) {
-		const stabilizerRow = forecastInput.items.map((item) => gelatoStabilizers.has(item.id) ? 1 : 0);
+	const stabilizerItems = gelatoStabilizerSystemApplies(forecastInput.category) ? gelatoStabilizerSystemItems(forecastInput.items) : sorbetStabilizerSystemApplies(forecastInput.category) ? sorbetStabilizerSystemItems(forecastInput.items) : [];
+	const stabilizerIds = new Set(stabilizerItems.map((item) => item.id));
+	const stabilizerWholeGramBand = gelatoStabilizerSystemApplies(forecastInput.category) ? gelatoStabilizerWholeGramBand : sorbetStabilizerSystemApplies(forecastInput.category) ? sorbetStabilizerWholeGramBand : null;
+	if (stabilizerIds.size > 0) {
+		const stabilizerRow = forecastInput.items.map((item) => stabilizerIds.has(item.id) ? 1 : 0);
 		addHomogeneousUpper(totalRow.map((value, index) => .002 * value - stabilizerRow[index]));
 		addHomogeneousUpper(totalRow.map((value, index) => stabilizerRow[index] - .005 * value));
 	}
@@ -9007,7 +9088,9 @@ function certifiedMinimumLargerBatchCandidate(session, forecastInput, lowerBound
 		baseIntegerBounds.push(roundingBound, roundingBound);
 	}
 	const objectiveOrder = [...forecastInput.items.flatMap((item, index) => behaviorSnapshots[item.id]?.approvedLiquidDairyCarrier === true ? [index] : []), ...forecastInput.items.map((_, index) => index)].filter((index, position, values) => values.indexOf(index) === position);
-	const stabilizerRow = gelatoStabilizers && gelatoStabilizers.size > 0 ? forecastInput.items.map((item) => gelatoStabilizers.has(item.id) ? 1 : 0) : null;
+	const integerBranchOrder = [...mainItems.map(({ index }) => index), ...forecastInput.items.map((_, index) => index).reverse()].filter((index, position, values) => values.indexOf(index) === position);
+	const integerVariableSteps = forecastInput.items.map((item) => stabilizerIds.has(item.id) ? 10 : 1);
+	const stabilizerRow = stabilizerIds.size > 0 ? forecastInput.items.map((item) => stabilizerIds.has(item.id) ? 1 : 0) : null;
 	const massIntervals = [];
 	if (!stabilizerRow) massIntervals.push({
 		firstTenths: firstTargetTenths,
@@ -9017,10 +9100,10 @@ function certifiedMinimumLargerBatchCandidate(session, forecastInput, lowerBound
 	else {
 		let intervalStart = firstTargetTenths;
 		while (intervalStart <= ceilingTenths) {
-			const band = gelatoStabilizerWholeGramBand(intervalStart / 10);
+			const band = stabilizerWholeGramBand(intervalStart / 10);
 			let intervalEnd = intervalStart;
 			while (intervalEnd < ceilingTenths) {
-				const nextBand = gelatoStabilizerWholeGramBand((intervalEnd + 1) / 10);
+				const nextBand = stabilizerWholeGramBand((intervalEnd + 1) / 10);
 				if (nextBand.minGrams !== band.minGrams || nextBand.maxGrams !== band.maxGrams) break;
 				intervalEnd += 1;
 			}
@@ -9083,33 +9166,72 @@ function certifiedMinimumLargerBatchCandidate(session, forecastInput, lowerBound
 			intervalRows.push(stabilizerRow, stabilizerRow.map((value) => -value));
 			intervalBounds.push(interval.stabilizerBand.maxGrams * 10, -interval.stabilizerBand.minGrams * 10);
 		}
-		const minimum = solveIntegerLinearMaximum(intervalRows, intervalBounds, totalRow.map((value) => -value), PRODUCTION_RESCUE_INTEGER_NODE_BUDGET);
-		if (minimum.status !== "optimal" || !minimum.solution) {
-			if (minimum.exhausted) return null;
-			continue;
+		if (!sorbetStabilizerSystemApplies(forecastInput.category)) {
+			const minimum = solveIntegerLinearMaximum(intervalRows, intervalBounds, totalRow.map((value) => -value), PRODUCTION_RESCUE_INTEGER_NODE_BUDGET);
+			if (minimum.status !== "optimal" || !minimum.solution) {
+				if (minimum.exhausted) return null;
+				continue;
+			}
+			const targetTenths = Math.round(minimum.solution.reduce((sum, value) => sum + value, 0));
+			const minimumSeed = seedForSolution(minimum.solution, targetTenths);
+			if (minimumSeed) return minimumSeed;
+			const fixedRows = [
+				...intervalRows,
+				totalRow,
+				totalRow.map((value) => -value)
+			];
+			const fixedBounds = [
+				...intervalBounds,
+				targetTenths,
+				-targetTenths
+			];
+			for (const objectiveIndex of objectiveOrder) {
+				const objective = Array.from({ length: size }, () => 0);
+				objective[objectiveIndex] = 1;
+				const solved = solveIntegerLinearMaximum(fixedRows, fixedBounds, objective, PRODUCTION_RESCUE_EXTREME_NODE_BUDGET);
+				if (solved.status !== "optimal" || !solved.solution) continue;
+				const seed = seedForSolution(solved.solution, targetTenths);
+				if (seed) return seed;
+			}
+			return null;
 		}
-		const targetTenths = Math.round(minimum.solution.reduce((sum, value) => sum + value, 0));
-		const minimumSeed = seedForSolution(minimum.solution, targetTenths);
-		if (minimumSeed) return minimumSeed;
-		const fixedRows = [
-			...intervalRows,
-			totalRow,
-			totalRow.map((value) => -value)
-		];
-		const fixedBounds = [
-			...intervalBounds,
-			targetTenths,
-			-targetTenths
-		];
-		for (const objectiveIndex of objectiveOrder) {
-			const objective = Array.from({ length: size }, () => 0);
-			objective[objectiveIndex] = 1;
-			const solved = solveIntegerLinearMaximum(fixedRows, fixedBounds, objective, PRODUCTION_RESCUE_EXTREME_NODE_BUDGET);
-			if (solved.status !== "optimal" || !solved.solution) continue;
-			const seed = seedForSolution(solved.solution, targetTenths);
-			if (seed) return seed;
+		const stabilizerTotals = interval.stabilizerBand ? Array.from({ length: interval.stabilizerBand.maxGrams - interval.stabilizerBand.minGrams + 1 }, (_, index) => interval.stabilizerBand.minGrams + index) : [null];
+		for (let targetTenths = interval.firstTenths; targetTenths <= interval.lastTenths; targetTenths += 1) {
+			let linearCandidateWithoutTerminalProof = false;
+			for (const stabilizerTotal of stabilizerTotals) {
+				const fixedRows = [
+					...intervalRows,
+					totalRow,
+					totalRow.map((value) => -value)
+				];
+				const fixedBounds = [
+					...intervalBounds,
+					targetTenths,
+					-targetTenths
+				];
+				if (stabilizerRow && stabilizerTotal !== null) {
+					fixedRows.push(stabilizerRow, stabilizerRow.map((value) => -value));
+					fixedBounds.push(stabilizerTotal * 10, -stabilizerTotal * 10);
+				}
+				const feasible = solveProductionRescueIntegerMaximum(fixedRows, fixedBounds, Array.from({ length: size }, () => 0), PRODUCTION_RESCUE_SORBET_INTEGER_NODE_BUDGET, integerBranchOrder, integerVariableSteps);
+				if (feasible.status !== "optimal" || !feasible.solution) {
+					if (feasible.exhausted) return null;
+					continue;
+				}
+				let seed = seedForSolution(feasible.solution, targetTenths);
+				if (!seed) for (const objectiveIndex of objectiveOrder) {
+					const objective = Array.from({ length: size }, () => 0);
+					objective[objectiveIndex] = 1;
+					const solved = solveProductionRescueIntegerMaximum(fixedRows, fixedBounds, objective, PRODUCTION_RESCUE_EXTREME_NODE_BUDGET, integerBranchOrder, integerVariableSteps);
+					if (solved.status !== "optimal" || !solved.solution) continue;
+					seed = seedForSolution(solved.solution, targetTenths);
+					if (seed) break;
+				}
+				if (seed) return seed;
+				linearCandidateWithoutTerminalProof = true;
+			}
+			if (linearCandidateWithoutTerminalProof) return null;
 		}
-		return null;
 	}
 	return null;
 }
