@@ -24,10 +24,8 @@ import {
   searchProducts,
   setUserPreferredExactProductForSlot,
 } from '@/services/globalCatalog';
-import {
-  LiveProductScanner,
-  type ResolvedScanProduct,
-} from '@/features/product-scanner/LiveProductScanner';
+import type { ResolvedScanProduct } from '@/features/product-scanner/LiveProductScanner';
+import { ScanFlow } from '@/features/scan-flow/ScanFlow';
 import { cn } from '@/lib/cn';
 import { iconButtonClasses } from '@/components/ui/buttonStyles';
 import { preserveServerProductRank } from '@/features/global-catalog/ranking';
@@ -1272,7 +1270,8 @@ export function ProductPickerPopover({
                   </div>
                   {scanning ? (
                     <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
-                      <LiveProductScanner
+                      <ScanFlow
+                        mode="recipe"
                         onResolved={(resolved) => void addScannedProduct(resolved)}
                         resolveLabel={
                           activeIntent === 'REPLACE'
@@ -1281,7 +1280,7 @@ export function ProductPickerPopover({
                               ? 'Dodaj do receptury'
                               : 'Dodaj jako topping'
                         }
-                        intro="Pokaż produkt kamerze. Znaleziony lub utworzony produkt wraca prosto do tej receptury."
+                        intro="Pokaż kod kreskowy produktu aparatowi. Znaleziony lub zapisany produkt wraca prosto do tej receptury."
                       />
                     </div>
                   ) : (
