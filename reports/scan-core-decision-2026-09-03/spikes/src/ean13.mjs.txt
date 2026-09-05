@@ -1,0 +1,246 @@
+// Synthetic EAN-13 frame generator with realistic degradations. Pure JS, no deps.
+// Canonical plane: barcode left edge at x=0, 95 modules of width 1.0 (module units), bars from y=0..BAR_H.
+export const L = ['0001101','0011001','0010011','0111101','0100011','0110001','0101111','0111011','0110111','0001011'];
+export const R = L.map(s => [...s].map(c => (c === '0' ? '1' : '0')).join(''));
+export const G = R.map(s => [...s].reverse().join(''));
+export const PARITY = ['LLLLLL','LLGLGG','LLGGLG','LLGGGL','LGLLGG','LGGLLG','LGGGLL','LGLGLG','LGLGGL','LGGLGL'];
+export const MODULES = 95;
+export const QUIET = 9; // quiet zone in modules on each side (spec: 11 left / 7 right; we use 9/9)
+
+export function checkDigit(d12) {
+  let sum = 0;
+  for (let i = 0; i < 12; i++) sum += Number(d12[i]) * (i % 2 === 0 ? 1 : 3);
+  return (10 - (sum % 10)) % 10;
+}
+export function randomEan13(rng = Math.random) {
+  let s = '';
+  for (let i = 0; i < 12; i++) s += Math.floor(rng() * 10);
+  return s + checkDigit(s);
+}
+export function isValidEan13(s) {
+  return /^\d{13}$/.test(s) && checkDigit(s.slice(0, 12)) === Number(s[12]);
+}
+/** 95 module bits, 1 = dark bar. */
+export function ean13Modules(ean) {
+  if (!isValidEan13(ean)) throw new Error('invalid ean ' + ean);
+  const first = Number(ean[0]);
+  const parity = PARITY[first];
+  let bits = '101';
+  for (let i = 0; i < 6; i++) {
+    const d = Number(ean[1 + i]);
+    bits += parity[i] === 'L' ? L[d] : G[d];
+  }
+  bits += '01010';
+  for (let i = 0; i < 6; i++) bits += R[Number(ean[7 + i])];
+  bits += '101';
+  return [...bits].map(Number);
+}
+
+// ---------- geometry ----------
+/** Solve homography H mapping src quad -> dst quad (4 points each, [x,y]). Returns 3x3 row-major. */
+export function homographyFromPoints(src, dst) {
+  const A = [], b = [];
+  for (let i = 0; i < 4; i++) {
+    const [x, y] = src[i], [u, v] = dst[i];
+    A.push([x, y, 1, 0, 0, 0, -u * x, -u * y]); b.push(u);
+    A.push([0, 0, 0, x, y, 1, -v * x, -v * y]); b.push(v);
+  }
+  const h = solveLinear(A, b);
+  return [h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], 1];
+}
+function solveLinear(A, b) {
+  const n = b.length; const M = A.map((r, i) => [...r, b[i]]);
+  for (let c = 0; c < n; c++) {
+    let p = c; for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r;
+    [M[c], M[p]] = [M[p], M[c]];
+    const d = M[c][c]; if (Math.abs(d) < 1e-12) throw new Error('singular');
+    for (let k = c; k <= n; k++) M[c][k] /= d;
+    for (let r = 0; r < n; r++) if (r !== c) { const f = M[r][c]; if (f !== 0) for (let k = c; k <= n; k++) M[r][k] -= f * M[c][k]; }
+  }
+  return M.map(r => r[n]);
+}
+export function applyH(H, x, y) {
+  const w = H[6] * x + H[7] * y + H[8];
+  return [(H[0] * x + H[1] * y + H[2]) / w, (H[3] * x + H[4] * y + H[5]) / w];
+}
+export function invertH(H) {
+  const [a, b, c, d, e, f, g, h, i] = H;
+  const A = e * i - f * h, B = -(d * i - f * g), C = d * h - e * g;
+  const det = a * A + b * B + c * C;
+  const D = -(b * i - c * h), E = a * i - c * g, F = -(a * h - b * g);
+  const Gg = b * f - c * e, Hh = -(a * f - c * d), I = a * e - b * d;
+  return [A / det, D / det, Gg / det, B / det, E / det, Hh / det, C / det, F / det, I / det];
+}
+
+/**
+ * Project the canonical barcode (in mm) into an image via a pinhole camera.
+ * pose: { yawDeg, pitchDeg, rollDeg, distanceMm, cx, cy } ; camera: { focalPx }
+ * Returns homography canonical(mm) -> image(px). Canonical origin = barcode centre.
+ */
+export function poseHomography(pose, camera, barcodeWidthMm, barcodeHeightMm) {
+  const hw = barcodeWidthMm / 2, hh = barcodeHeightMm / 2;
+  const corners = [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]];
+  const yaw = (pose.yawDeg || 0) * Math.PI / 180, pitch = (pose.pitchDeg || 0) * Math.PI / 180, roll = (pose.rollDeg || 0) * Math.PI / 180;
+  const proj = corners.map(([x, y]) => {
+    // roll in plane
+    let X = x * Math.cos(roll) - y * Math.sin(roll), Y = x * Math.sin(roll) + y * Math.cos(roll), Z = 0;
+    // yaw about vertical axis
+    let X2 = X * Math.cos(yaw), Z2 = Z + X * Math.sin(yaw);
+    // pitch about horizontal axis
+    let Y3 = Y * Math.cos(pitch), Z3 = Z2 + Y * Math.sin(pitch);
+    const Zc = pose.distanceMm + Z3;
+    return [pose.cx + camera.focalPx * X2 / Zc, pose.cy + camera.focalPx * Y3 / Zc];
+  });
+  return homographyFromPoints(corners, proj);
+}
+
+// ---------- rendering ----------
+/**
+ * Render a frame. opts:
+ *  ean, width, height, pose, camera, xDimMm (module width in mm, 0.33 nominal), barHeightMm,
+ *  curvatureRadiusMm (0 = flat; cylinder axis vertical), blurSigma (px), motionBlurPx (horizontal), noiseSigma (0..255),
+ *  contrast (0..1 multiplier on bar darkness), paper (0..255 background), ink (0..255), glare {x,y,r,strength}, supersample (int)
+ * Returns { gray: Uint8Array, width, height, quad: [[x,y]x4] image-space corners of the bar area, modulePx }
+ */
+export function renderFrame(opts) {
+  const {
+    ean, width, height, pose, camera, xDimMm = 0.33, barHeightMm = 22, curvatureRadiusMm = 0,
+    blurSigma = 0, motionBlurPx = 0, noiseSigma = 0, contrast = 1, paper = 235, ink = 25, glare = null, supersample = 3,
+    humanReadable = true,
+  } = opts;
+  const bits = ean13Modules(ean);
+  const bcW = MODULES * xDimMm; // bar area width
+  const totalW = (MODULES + 2 * QUIET) * xDimMm;
+  const totalH = barHeightMm + (humanReadable ? 3 : 0) + 2; // small margins
+  const H = poseHomography(pose, camera, totalW, totalH); // canonical (mm, centred) -> px
+  const Hinv = invertH(H);
+  const img = new Float32Array(width * height).fill(paper);
+  const ss = supersample; const inv = 1 / (ss * ss);
+  const inkVal = paper - (paper - ink) * contrast;
+  // digit glyph rows (crude 5x7 numerals) for human-readable line — approximate dark texture, not exact typography
+  const glyphs = DIGIT_GLYPHS;
+  for (let py = 0; py < height; py++) {
+    for (let px = 0; px < width; px++) {
+      let acc = 0;
+      for (let sy = 0; sy < ss; sy++) for (let sx = 0; sx < ss; sx++) {
+        const u = px + (sx + 0.5) / ss, v = py + (sy + 0.5) / ss;
+        let [x, y] = applyH(Hinv, u, v); // mm, centred
+        // cylinder: the observed x is the projection of the arc; unwrap to arc length
+        if (curvatureRadiusMm > 0) {
+          const s = x / curvatureRadiusMm;
+          if (Math.abs(s) >= 1) { acc += paper; continue; }
+          x = curvatureRadiusMm * Math.asin(s);
+        }
+        const xm = x + totalW / 2; // 0..totalW
+        const ym = y + totalH / 2;  // 0..totalH
+        let val = paper;
+        if (xm >= 0 && xm < totalW && ym >= 0 && ym < totalH) {
+          const mod = Math.floor(xm / xDimMm) - QUIET;
+          if (ym >= 1 && ym < 1 + barHeightMm && mod >= 0 && mod < MODULES && bits[mod] === 1) val = inkVal;
+          // guards extend 1.5 mm lower than digit bars (spec: guards are taller)
+          else if (ym >= 1 + barHeightMm && ym < 1 + barHeightMm + 1.5 && mod >= 0 && mod < MODULES && bits[mod] === 1 &&
+            (mod < 3 || (mod >= 45 && mod < 50) || mod >= 92)) val = inkVal;
+          else if (humanReadable && ym >= 1 + barHeightMm + 0.3 && ym < 1 + barHeightMm + 2.8) {
+            // human-readable digits: first digit left of start guard, 6 under left half, 6 under right half
+            const gy = Math.floor((ym - (1 + barHeightMm + 0.3)) / (2.5 / 7));
+            const slotW = 7 * xDimMm;
+            let digitIndex = -1, localX = 0;
+            if (mod >= -8 && mod < -1) { digitIndex = 0; localX = (xm - (QUIET - 8) * xDimMm) / slotW; }
+            else if (mod >= 3 && mod < 45) { digitIndex = 1 + Math.floor((mod - 3) / 7); localX = ((xm - (QUIET + 3) * xDimMm) % slotW) / slotW; }
+            else if (mod >= 50 && mod < 92) { digitIndex = 7 + Math.floor((mod - 50) / 7); localX = ((xm - (QUIET + 50) * xDimMm) % slotW) / slotW; }
+            if (digitIndex >= 0 && gy >= 0 && gy < 7) {
+              const gx = Math.floor(localX * 5);
+              if (gx >= 0 && gx < 5 && glyphs[Number(ean[digitIndex])][gy][gx] === '1') val = inkVal;
+            }
+          }
+        }
+        acc += val;
+      }
+      img[py * width + px] = acc * inv;
+    }
+  }
+  if (glare) addGlare(img, width, height, glare);
+  let out = img;
+  if (motionBlurPx > 1) out = motionBlurH(out, width, height, motionBlurPx);
+  if (blurSigma > 0.05) out = gaussianBlur(out, width, height, blurSigma);
+  const gray = new Uint8Array(width * height);
+  let seed = hashString(ean) ^ Math.floor((pose.cx || 0) * 7919 + (pose.cy || 0) * 104729 + (pose.yawDeg || 0) * 31);
+  const rnd = mulberry32(seed);
+  for (let i = 0; i < gray.length; i++) {
+    let v = out[i];
+    if (noiseSigma > 0) v += gaussNoise(rnd) * noiseSigma;
+    gray[i] = v < 0 ? 0 : v > 255 ? 255 : Math.round(v);
+  }
+  // bar-area quad in image space
+  const hw = bcW / 2, top = -totalH / 2 + 1, bot = top + barHeightMm;
+  const quad = [[-hw, top], [hw, top], [hw, bot], [-hw, bot]].map(([x, y]) => {
+    let xx = x;
+    if (curvatureRadiusMm > 0) xx = curvatureRadiusMm * Math.sin(x / curvatureRadiusMm);
+    return applyH(H, xx, y);
+  });
+  const modulePx = Math.hypot(quad[1][0] - quad[0][0], quad[1][1] - quad[0][1]) / MODULES;
+  return { gray, width, height, quad, modulePx, H, bits };
+}
+
+function addGlare(img, w, h, g) {
+  const { x, y, r, strength } = g;
+  for (let py = Math.max(0, Math.floor(y - 2 * r)); py < Math.min(h, y + 2 * r); py++)
+    for (let px = Math.max(0, Math.floor(x - 2 * r)); px < Math.min(w, x + 2 * r); px++) {
+      const d2 = ((px - x) ** 2 + (py - y) ** 2) / (r * r);
+      const k = strength * Math.exp(-d2 * 1.5);
+      const i = py * w + px; img[i] = img[i] + (255 - img[i]) * Math.min(1, k);
+    }
+}
+export function gaussianBlur(src, w, h, sigma) {
+  const rad = Math.max(1, Math.ceil(sigma * 3)); const k = new Float32Array(2 * rad + 1); let s = 0;
+  for (let i = -rad; i <= rad; i++) { k[i + rad] = Math.exp(-(i * i) / (2 * sigma * sigma)); s += k[i + rad]; }
+  for (let i = 0; i < k.length; i++) k[i] /= s;
+  const tmp = new Float32Array(w * h), out = new Float32Array(w * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { let a = 0; for (let i = -rad; i <= rad; i++) { const xx = Math.min(w - 1, Math.max(0, x + i)); a += src[y * w + xx] * k[i + rad]; } tmp[y * w + x] = a; }
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { let a = 0; for (let i = -rad; i <= rad; i++) { const yy = Math.min(h - 1, Math.max(0, y + i)); a += tmp[yy * w + x] * k[i + rad]; } out[y * w + x] = a; }
+  return out;
+}
+export function motionBlurH(src, w, h, len) {
+  const out = new Float32Array(w * h); const half = Math.floor(len / 2);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { let a = 0, n = 0; for (let i = -half; i <= half; i++) { const xx = x + i; if (xx >= 0 && xx < w) { a += src[y * w + xx]; n++; } } out[y * w + x] = a / n; }
+  return out;
+}
+export function mulberry32(a) { return function () { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+function gaussNoise(rnd) { let u = 0, v = 0; while (u === 0) u = rnd(); while (v === 0) v = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+function hashString(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+
+/** Write an 8-bit PGM for eyeballing. */
+export function toPgm(gray, w, h) {
+  const header = Buffer.from(`P5\n${w} ${h}\n255\n`, 'ascii');
+  return Buffer.concat([header, Buffer.from(gray.buffer, gray.byteOffset, gray.length)]);
+}
+/** Minimal PNG encoder (grayscale, no compression tricks: stored deflate via zlib). */
+import zlib from 'node:zlib';
+export function toPng(gray, w, h) {
+  const raw = Buffer.alloc((w + 1) * h);
+  for (let y = 0; y < h; y++) { raw[y * (w + 1)] = 0; Buffer.from(gray.buffer, gray.byteOffset + y * w, w).copy(raw, y * (w + 1) + 1); }
+  const chunks = [];
+  const chunk = (type, data) => { const len = Buffer.alloc(4); len.writeUInt32BE(data.length); const td = Buffer.concat([Buffer.from(type, 'ascii'), data]); const crc = Buffer.alloc(4); crc.writeUInt32BE(crc32(td) >>> 0); return Buffer.concat([len, td, crc]); };
+  const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(w, 0); ihdr.writeUInt32BE(h, 4); ihdr[8] = 8; ihdr[9] = 0; ihdr[10] = 0; ihdr[11] = 0; ihdr[12] = 0;
+  chunks.push(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk('IHDR', ihdr), chunk('IDAT', zlib.deflateSync(raw)), chunk('IEND', Buffer.alloc(0)));
+  return Buffer.concat(chunks);
+}
+let CRC_TABLE = null;
+function crc32(buf) {
+  if (!CRC_TABLE) { CRC_TABLE = new Int32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; CRC_TABLE[n] = c; } }
+  let c = -1; for (let i = 0; i < buf.length; i++) c = CRC_TABLE[(c ^ buf[i]) & 0xff] ^ (c >>> 8); return c ^ -1;
+}
+export function grayToRgba(gray) { const out = new Uint8ClampedArray(gray.length * 4); for (let i = 0; i < gray.length; i++) { out[i * 4] = out[i * 4 + 1] = out[i * 4 + 2] = gray[i]; out[i * 4 + 3] = 255; } return out; }
+
+const DIGIT_GLYPHS = [
+  ['01110','10001','10011','10101','11001','10001','01110'],
+  ['00100','01100','00100','00100','00100','00100','01110'],
+  ['01110','10001','00001','00010','00100','01000','11111'],
+  ['11111','00010','00100','00010','00001','10001','01110'],
+  ['00010','00110','01010','10010','11111','00010','00010'],
+  ['11111','10000','11110','00001','00001','10001','01110'],
+  ['00110','01000','10000','11110','10001','10001','01110'],
+  ['11111','00001','00010','00100','01000','01000','01000'],
+  ['01110','10001','10001','01110','10001','10001','01110'],
+  ['01110','10001','10001','01111','00001','00010','01100'],
+];

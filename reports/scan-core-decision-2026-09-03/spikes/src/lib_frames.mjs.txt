@@ -1,0 +1,28 @@
+import { observeScanline, sampleProfile, bilinear } from './evidence.mjs';
+import { applyH, MODULES, QUIET } from './ean13.mjs';
+/** Image-space scanlines along the (oracle) barcode axis. */
+export function observeFrame(f, { ns = 7, sigmaRel = 0.35 } = {}) {
+  const { gray, width, height, quad, modulePx } = f; const obs = [];
+  for (let j = 0; j < ns; j++) {
+    const t = ns === 1 ? 0.5 : 0.15 + (0.7 * j) / (ns - 1);
+    const p0 = [quad[0][0] + t * (quad[3][0] - quad[0][0]), quad[0][1] + t * (quad[3][1] - quad[0][1])];
+    const p1 = [quad[1][0] + t * (quad[2][0] - quad[1][0]), quad[1][1] + t * (quad[2][1] - quad[1][1])];
+    obs.push(observeScanline(sampleProfile(gray, width, height, p0, p1, 12 * modulePx), { sigmaRel }));
+  }
+  return obs;
+}
+/** Rectified scanlines: sample in the canonical (mm) plane through the oracle homography, ~1 px spacing at the code centre. */
+export function observeFrameRectified(f, { ns = 7, sigmaRel = 0.35, xDimMm = 0.33, barHeightMm = 22, humanReadable = true } = {}) {
+  const { gray, width, height, H, modulePx } = f; const obs = [];
+  const totalW = (MODULES + 2 * QUIET) * xDimMm, totalH = barHeightMm + (humanReadable ? 3 : 0) + 2;
+  const stepMm = xDimMm / modulePx; // ≈ 1 px at the centre
+  const x0 = -totalW / 2 - 3 * xDimMm, x1 = totalW / 2 + 3 * xDimMm;
+  for (let j = 0; j < ns; j++) {
+    const t = ns === 1 ? 0.5 : 0.15 + (0.7 * j) / (ns - 1);
+    const y = -totalH / 2 + 1 + t * barHeightMm;
+    const n = Math.ceil((x1 - x0) / stepMm); const prof = new Float32Array(n);
+    for (let i = 0; i < n; i++) { const [px, py] = applyH(H, x0 + (i + 0.5) * stepMm, y); prof[i] = bilinear(gray, width, height, px, py); }
+    obs.push(observeScanline(prof, { sigmaRel }));
+  }
+  return obs;
+}
