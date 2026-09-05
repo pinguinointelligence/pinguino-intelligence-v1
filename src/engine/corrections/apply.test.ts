@@ -47,15 +47,73 @@ const ZERO: IngredientComponentProfile = {
   kcal_per_100g: 0,
 };
 
-const MILK = { water_percent: 87.5, solids_percent: 12.5, fat_percent: 3.5, protein_percent: 3.3, carbohydrate_percent: 4.8, sugar_percent: 4.8, lactose_percent: 4.8, salt_percent: 0.1, kcal_per_100g: 64 };
-const CREAM35 = { water_percent: 58.9, solids_percent: 41.1, fat_percent: 35, protein_percent: 2.2, carbohydrate_percent: 3.1, sugar_percent: 3.1, lactose_percent: 3.1, salt_percent: 0.1, kcal_per_100g: 337 };
-const SMP = { water_percent: 3.5, solids_percent: 96.5, fat_percent: 0.8, protein_percent: 35, carbohydrate_percent: 52, sugar_percent: 52, lactose_percent: 52, salt_percent: 1, kcal_per_100g: 360 };
-const SUCROSE = { solids_percent: 100, carbohydrate_percent: 100, sugar_percent: 100, sucrose_percent: 100, kcal_per_100g: 400 };
-const DEXTROSE = { water_percent: 8, solids_percent: 92, carbohydrate_percent: 92, sugar_percent: 92, dextrose_percent: 92, kcal_per_100g: 368 };
-const TARA = { water_percent: 12, solids_percent: 88, carbohydrate_percent: 80, fiber_percent: 80, kcal_per_100g: 200 };
+const MILK = {
+  water_percent: 87.5,
+  solids_percent: 12.5,
+  fat_percent: 3.5,
+  protein_percent: 3.3,
+  carbohydrate_percent: 4.8,
+  sugar_percent: 4.8,
+  lactose_percent: 4.8,
+  salt_percent: 0.1,
+  kcal_per_100g: 64,
+};
+const CREAM35 = {
+  water_percent: 58.9,
+  solids_percent: 41.1,
+  fat_percent: 35,
+  protein_percent: 2.2,
+  carbohydrate_percent: 3.1,
+  sugar_percent: 3.1,
+  lactose_percent: 3.1,
+  salt_percent: 0.1,
+  kcal_per_100g: 337,
+};
+const SMP = {
+  water_percent: 3.5,
+  solids_percent: 96.5,
+  fat_percent: 0.8,
+  protein_percent: 35,
+  carbohydrate_percent: 52,
+  sugar_percent: 52,
+  lactose_percent: 52,
+  salt_percent: 1,
+  kcal_per_100g: 360,
+};
+const SUCROSE = {
+  solids_percent: 100,
+  carbohydrate_percent: 100,
+  sugar_percent: 100,
+  sucrose_percent: 100,
+  kcal_per_100g: 400,
+};
+const DEXTROSE = {
+  water_percent: 8,
+  solids_percent: 92,
+  carbohydrate_percent: 92,
+  sugar_percent: 92,
+  dextrose_percent: 92,
+  kcal_per_100g: 368,
+};
+const TARA = {
+  water_percent: 12,
+  solids_percent: 88,
+  carbohydrate_percent: 80,
+  fiber_percent: 80,
+  kcal_per_100g: 200,
+};
 const JIM_BEAM = { water_percent: 60, alcohol_percent: 40, kcal_per_100g: 280 };
 /** Dessert chocolate ~72 % — the hero/premium ingredient for the lock tests. */
-const CHOCOLATE = { water_percent: 14.593, solids_percent: 85.407, fat_percent: 44.5, protein_percent: 8.1, carbohydrate_percent: 32.8, sugar_percent: 26.1, sucrose_percent: 26.1, kcal_per_100g: 580 };
+const CHOCOLATE = {
+  water_percent: 14.593,
+  solids_percent: 85.407,
+  fat_percent: 44.5,
+  protein_percent: 8.1,
+  carbohydrate_percent: 32.8,
+  sugar_percent: 26.1,
+  sucrose_percent: 26.1,
+  kcal_per_100g: 580,
+};
 
 interface ItemOptions {
   lock?: LockType;
@@ -105,7 +163,8 @@ const pro = (result: CorrectionResult): CorrectionProposal[] => {
 
 const deepCollectNumbers = (value: unknown, found: string[] = [], path = '$'): string[] => {
   if (typeof value === 'number') found.push(path);
-  else if (Array.isArray(value)) value.forEach((v, i) => deepCollectNumbers(v, found, `${path}[${i}]`));
+  else if (Array.isArray(value))
+    value.forEach((v, i) => deepCollectNumbers(v, found, `${path}[${i}]`));
   else if (value !== null && typeof value === 'object') {
     for (const [key, v] of Object.entries(value)) deepCollectNumbers(v, found, `${path}.${key}`);
   }
@@ -113,7 +172,10 @@ const deepCollectNumbers = (value: unknown, found: string[] = [], path = '$'): s
 };
 
 /** Map an active reference fixture (verified inline DNA) into a RecipeInput. */
-const fixtureToInput = (fixture: ActiveRecipeFixture, over: Partial<RecipeInput> = {}): RecipeInput => ({
+const fixtureToInput = (
+  fixture: ActiveRecipeFixture,
+  over: Partial<RecipeInput> = {},
+): RecipeInput => ({
   items: fixture.input.map((l, i) => ({
     id: `line-${i}`,
     ingredient: {
@@ -224,9 +286,9 @@ describe('Auto Fix apply — idempotence', () => {
     if (!applied.success) return;
 
     // POD is now in-band on the corrected recipe → never re-proposed
-    expect(detectViolations(calculateRecipe(applied.newInput)).some((v) => v.metric === 'pod')).toBe(
-      false,
-    );
+    expect(
+      detectViolations(calculateRecipe(applied.newInput)).some((v) => v.metric === 'pod'),
+    ).toBe(false);
   });
 
   it('repeated propose→apply reaches a fixed point (never keeps changing a fixed recipe)', () => {
@@ -237,7 +299,9 @@ describe('Auto Fix apply — idempotence', () => {
     for (let i = 0; i < 6; i += 1) {
       const result = proposeAutoFix({ input, context: 'planning', exactCorrectionGrams: true });
       if (result.redacted) throw new Error('expected unredacted result');
-      const correction = result.proposals.find((p) => p.kind === 'correction' && p.actions.length > 0);
+      const correction = result.proposals.find(
+        (p) => p.kind === 'correction' && p.actions.length > 0,
+      );
       if (!correction) {
         reachedFixedPoint = true; // no actionable correction remains — stable
         break;
@@ -313,7 +377,14 @@ describe('Auto Fix apply — locks & hero protection', () => {
     )[0]!;
     expect(proposal.kind).toBe('correction');
 
-    const allowedCandidateIds = new Set(['sucrose', 'dextrose', 'milk_3_5', 'cream_30', 'smp', 'inulin']);
+    const allowedCandidateIds = new Set([
+      'sucrose',
+      'dextrose',
+      'milk_3_5',
+      'cream_30',
+      'smp',
+      'inulin',
+    ]);
     for (const action of proposal.actions) {
       expect(action.type).toBe('add'); // never reduce the hero
       expect(allowedCandidateIds.has(action.ingredient_id)).toBe(true);
@@ -375,14 +446,22 @@ describe('Auto Fix apply — alcohol behaviour', () => {
 
   it('in actual-batch rescue, physically-added spirit is never reduced — add-only or an honest tradeoff', () => {
     // production rescue: the spirit is already in the machine (actual_grams set).
-    const input = alcoholHighInput({ machine_capacity_grams: 1100 });
+    const input = alcoholHighInput({
+      machine_capacity_grams: 1100,
+      machine_capacity_source: 'manual',
+    });
     input.items = input.items.map((line) =>
       line.id === 'jim-beam'
         ? { ...line, actual_grams: 70, lock_type: 'already_added' as const }
         : line,
     );
     const proposals = pro(
-      proposeAutoFix({ input, context: 'actual_batch', exactCorrectionGrams: true, focus: ['alcohol'] }),
+      proposeAutoFix({
+        input,
+        context: 'actual_batch',
+        exactCorrectionGrams: true,
+        focus: ['alcohol'],
+      }),
     );
     for (const proposal of proposals) {
       // never reduce physically-added material; never add high-PAC sugar
@@ -437,8 +516,18 @@ describe('Auto Fix apply — mutation & redaction', () => {
 
   it('Free Preview (redacted) proposals carry no grams and no ingredient names', () => {
     const input = podLowInput();
-    const proResult = proposeAutoFix({ input, context: 'planning', exactCorrectionGrams: true, focus: ['pod'] });
-    const demoResult = proposeAutoFix({ input, context: 'planning', exactCorrectionGrams: false, focus: ['pod'] });
+    const proResult = proposeAutoFix({
+      input,
+      context: 'planning',
+      exactCorrectionGrams: true,
+      focus: ['pod'],
+    });
+    const demoResult = proposeAutoFix({
+      input,
+      context: 'planning',
+      exactCorrectionGrams: false,
+      focus: ['pod'],
+    });
 
     expect(demoResult.redacted).toBe(true);
     if (!demoResult.redacted) return;
@@ -463,7 +552,12 @@ describe('Auto Fix apply — mutation & redaction', () => {
 
   it('Pro proposals carry exact grams and can be applied; redacted cannot', () => {
     const input = podLowInput();
-    const proResult = proposeAutoFix({ input, context: 'planning', exactCorrectionGrams: true, focus: ['pod'] });
+    const proResult = proposeAutoFix({
+      input,
+      context: 'planning',
+      exactCorrectionGrams: true,
+      focus: ['pod'],
+    });
     expect(proResult.redacted).toBe(false);
     const proposal = pro(proResult)[0]!;
     expect(proposal.actions[0]!.grams).toBeGreaterThan(0);
@@ -472,7 +566,12 @@ describe('Auto Fix apply — mutation & redaction', () => {
 
     expect(applyAutoFix({ input, proposal, context: 'planning' }).success).toBe(true);
 
-    const demoResult = proposeAutoFix({ input, context: 'planning', exactCorrectionGrams: false, focus: ['pod'] });
+    const demoResult = proposeAutoFix({
+      input,
+      context: 'planning',
+      exactCorrectionGrams: false,
+      focus: ['pod'],
+    });
     if (demoResult.redacted) {
       const redacted = demoResult.proposals[0]!;
       expect(applyAutoFix({ input, proposal: redacted, context: 'planning' })).toEqual({

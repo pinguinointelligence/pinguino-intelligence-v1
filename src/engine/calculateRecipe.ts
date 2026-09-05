@@ -36,6 +36,7 @@ import { CONFIG_VERSION, ENGINE_VERSION } from './config/version';
 import { computeRecipeCosts } from './cost';
 import { estimateIceFraction } from './iceFraction';
 import { computeNutritionPer100g } from './nutrition';
+import { effectiveMachineCapacityGrams } from './machineCapacity';
 import { computeRecipeNpac, computeRecipePac } from './pac';
 import { computeRecipePod } from './pod';
 import { computeScores } from './scoring';
@@ -75,11 +76,12 @@ function collectWarnings(
     });
   }
 
-  if (input.machine_capacity_grams !== null && totalBatchG > input.machine_capacity_grams) {
+  const machineCapacityGrams = effectiveMachineCapacityGrams(input);
+  if (machineCapacityGrams !== null && totalBatchG > machineCapacityGrams) {
     warnings.push({
       code: 'machine_capacity_exceeded',
       severity: 'critical',
-      context: { total_batch_g: totalBatchG, machine_capacity_grams: input.machine_capacity_grams },
+      context: { total_batch_g: totalBatchG, machine_capacity_grams: machineCapacityGrams },
     });
   }
 

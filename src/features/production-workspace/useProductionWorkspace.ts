@@ -5,7 +5,6 @@ import {
   calculateRecipe,
   proposeCorrections,
   type RecipeInput,
-  type TargetMetric,
 } from '@/engine';
 import { useAuthStore } from '@/stores/authStore';
 import { useRecipeStore, type RecipeState } from '@/stores/recipeStore';
@@ -65,7 +64,6 @@ import {
   productionRescueOptionUnavailableDiagnostics,
   productionRescueOptionUnavailableDetails,
 } from '@/services/proCore/supabaseProduction';
-import { metricLabel } from '@/features/pi-panel/indicatorView';
 import type {
   ProductionRescueStableOptionId,
   ProductionRun,
@@ -147,10 +145,8 @@ export const productionRescueAuthorizationInvalidation = (
   return !Number.isFinite(expiresAtMs) || expiresAtMs <= nowMs ? 'expired' : null;
 };
 
-/**
- * OWNER RULE §16 — when the original batch can no longer be saved, say exactly
- * that, with its mass, instead of a generic authorization failure.
- */
+/** Customer copy stays current-state → next solution. Exact technical evidence
+ * remains available in the structured authorization diagnostics. */
 export const rescueOptionUnavailableMessage = (
   stableOptionId: ProductionRescueStableOptionId,
   originalTargetG: number,
@@ -159,81 +155,30 @@ export const rescueOptionUnavailableMessage = (
   if (!isProductionRescueOptionUnavailableError(error)) {
     return productionRescueErrorMessagePl(error);
   }
-  const target = Number.isInteger(originalTargetG)
-    ? originalTargetG.toFixed(0)
-    : originalTargetG.toFixed(1);
+  void originalTargetG;
   const diagnostics = productionRescueOptionUnavailableDiagnostics(error);
-  const formatMass = (grams: number) => grams.toLocaleString('pl-PL', { maximumFractionDigits: 1 });
-  const formatMetricValue = (value: number) =>
-    value.toLocaleString('pl-PL', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
   if (
     diagnostics &&
     diagnostics.machineCapacityG !== null &&
     diagnostics.physicalConfirmedG > diagnostics.machineCapacityG + 0.000001
   ) {
-    return (
-      `Niedostępne — w naczyniu jest ${formatMass(diagnostics.physicalConfirmedG)} g, ` +
-      `a pojemność maszyny wynosi ${formatMass(diagnostics.machineCapacityG)} g.`
-    );
+    return 'Ta partia potrzebuje większej pojemności, żeby zachować właściwy balans.';
   }
-  const irreducible = diagnostics?.irreducibleConfirmedViolations[0];
-  if (irreducible) {
-    return (
-      `Niedostępne — przy celu ${formatMass(diagnostics.originalTargetG)} g potwierdzone ilości ` +
-      `dają co najmniej ${metricLabel(irreducible.metric as TargetMetric)} ` +
-      `${formatMetricValue(irreducible.value)}% (maks. ${formatMetricValue(irreducible.max)}%). ` +
-      'Bez usuwania produktu korekta wymaga większej partii.'
-    );
-  }
-  const fixedTargetViolation = diagnostics?.fixedTargetRebalance?.violationDetails[0];
-  if (fixedTargetViolation) {
-    const boundary =
-      fixedTargetViolation.direction === 'low'
-        ? `poniżej minimum ${formatMetricValue(fixedTargetViolation.min)}`
-        : `powyżej maksimum ${formatMetricValue(fixedTargetViolation.max)}`;
-    return (
-      `Niedostępne — przeliczenie pozostałych ilości do ${formatMass(
-        diagnostics.fixedTargetRebalance!.candidateMassG,
-      )} g pozostaje poza zakresem: ${metricLabel(fixedTargetViolation.metric as TargetMetric)} ` +
-      `${formatMetricValue(fixedTargetViolation.value)}% (${boundary}%).`
-    );
+  if (
+    stableOptionId === 'keep_original_batch' &&
+    (diagnostics?.irreducibleConfirmedViolations.length ||
+      diagnostics?.fixedTargetRebalance?.violationDetails.length)
+  ) {
+    return 'Żeby zachować to, co już jest w naczyniu, potrzebna jest większa partia.';
   }
   const details = productionRescueOptionUnavailableDetails(error);
   if (details?.reasonCode === 'machine_capacity_exceeded') {
-    return diagnostics && diagnostics.machineCapacityG !== null
-      ? `Niedostępne — bezpieczna korekta przekracza pojemność maszyny ${formatMass(diagnostics.machineCapacityG)} g.`
-      : 'Niedostępne — obecna masa przekracza pojemność ustawionej maszyny.';
+    return 'Ta partia potrzebuje większej pojemności, żeby zachować właściwy balans.';
   }
   if (stableOptionId === 'keep_original_batch') {
-    return `Niedostępne — potwierdzonych ilości nie można już dopasować do partii ${target} g.`;
+    return 'Żeby zachować to, co już jest w naczyniu, potrzebna jest większa partia.';
   }
-  if (stableOptionId === 'enlarge_batch') {
-    return 'Niedostępne — nie znaleziono minimalnej bezpiecznej dolewki dla obecnych ilości.';
-  }
-  if (stableOptionId === 'restore_original_recipe') {
-    return 'Niedostępne — obecnych ilości nie można bezpiecznie przeskalować do wyjściowych proporcji.';
-  }
-  const knownMetrics = new Set<TargetMetric>([
-    'pod',
-    'npac',
-    'ice_fraction',
-    'total_solids',
-    'water',
-    'fat',
-    'aerating_protein',
-    'protein_in_solids',
-    'lactose',
-    'lactose_sandiness_risk',
-    'alcohol',
-  ]);
-  const hardMetrics =
-    details?.violationMetrics.filter((metric): metric is TargetMetric =>
-      knownMetrics.has(metric as TargetMetric),
-    ) ?? [];
-  if (hardMetrics.length > 0) {
-    return `Niedostępne — przekroczone twarde zakresy: ${hardMetrics.map(metricLabel).join(', ')}.`;
-  }
-  return 'Niedostępne — obecny wynik nie ma pełnej natywnej walidacji bezpieczeństwa.';
+  return 'Tej partii nie możemy już bezpiecznie dostosować z dostępnych składników.';
 };
 
 const productionRescueIdempotencyKey = (): string =>
@@ -248,8 +193,8 @@ const productionRescueChoices = [
   },
   {
     id: 'enlarge_batch',
-    title: 'Minimalna bezpieczna korekta',
-    explanation: 'Użyjemy najmniejszej ilości dodatkowego materiału zaakceptowanej przez Engine.',
+    title: 'Zwiększ partię',
+    explanation: 'Znajdziemy najmniejszą większą partię i przeliczymy pozostałe ilości.',
   },
   {
     id: 'restore_original_recipe',

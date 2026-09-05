@@ -369,10 +369,21 @@ describe('warnings', () => {
   const codes = (input: RecipeInput) => calculateRecipe(input).warnings.map((w) => w.code);
 
   it('emits machine_capacity_exceeded (critical) when the batch exceeds capacity', () => {
-    const result = calculateRecipe(appendixInput({ machine_capacity_grams: 500 }));
+    const result = calculateRecipe(
+      appendixInput({ machine_capacity_grams: 500, machine_capacity_source: 'manual' }),
+    );
     const warning = result.warnings.find((w) => w.code === 'machine_capacity_exceeded');
     expect(warning).toBeDefined();
     expect(warning!.severity).toBe('critical');
+  });
+
+  it('does not fabricate a hard limit from an unprovenanced legacy capacity value', () => {
+    const result = calculateRecipe(
+      appendixInput({ machine_capacity_grams: 500, machine_capacity_source: null }),
+    );
+    expect(result.warnings.some((warning) => warning.code === 'machine_capacity_exceeded')).toBe(
+      false,
+    );
   });
 
   it('emits alcohol_above_safe_range above the band warn threshold', () => {

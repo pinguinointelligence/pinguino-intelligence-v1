@@ -237,17 +237,17 @@ describe('trusted Production Rescue authorization basis', () => {
     );
   });
 
-  it('explains unavailable choices with the exact original target and hard metrics', () => {
+  it('keeps technical Rescue diagnostics internal and returns solution-first customer copy', () => {
     const hardSafetyError = new ProductionRescueOptionUnavailableError(
       'stable_rescue_option_stale',
       'hard_safety_violations',
       ['lactose_sandiness_risk', 'lactose'],
     );
     expect(rescueOptionUnavailableMessage('keep_original_batch', 1_000, hardSafetyError)).toBe(
-      'Niedostępne — potwierdzonych ilości nie można już dopasować do partii 1000 g.',
+      'Żeby zachować to, co już jest w naczyniu, potrzebna jest większa partia.',
     );
     expect(rescueOptionUnavailableMessage('leave_as_is', 1_000, hardSafetyError)).toBe(
-      'Niedostępne — przekroczone twarde zakresy: Ryzyko piaszczystości, Laktoza.',
+      'Tej partii nie możemy już bezpiecznie dostosować z dostępnych składników.',
     );
 
     const irreducibleOwnerError = new ProductionRescueOptionUnavailableError(
@@ -272,7 +272,7 @@ describe('trusted Production Rescue authorization basis', () => {
       },
     );
     expect(rescueOptionUnavailableMessage('keep_original_batch', 670, irreducibleOwnerError)).toBe(
-      'Niedostępne — przy celu 670 g potwierdzone ilości dają co najmniej Laktoza 6,194% (maks. 6,000%). Bez usuwania produktu korekta wymaga większej partii.',
+      'Żeby zachować to, co już jest w naczyniu, potrzebna jest większa partia.',
     );
 
     const lowFixedTargetError = new ProductionRescueOptionUnavailableError(
@@ -287,15 +287,13 @@ describe('trusted Production Rescue authorization basis', () => {
         forecastViolationDetails: [],
         fixedTargetRebalance: {
           candidateMassG: 670,
-          violationDetails: [
-            { metric: 'npac', direction: 'low', value: 47.179, min: 55, max: 70 },
-          ],
+          violationDetails: [{ metric: 'npac', direction: 'low', value: 47.179, min: 55, max: 70 }],
         },
         irreducibleConfirmedViolations: [],
       },
     );
     expect(rescueOptionUnavailableMessage('keep_original_batch', 670, lowFixedTargetError)).toBe(
-      'Niedostępne — przeliczenie pozostałych ilości do 670 g pozostaje poza zakresem: Stabilność mrożenia · NPAC 47,179% (poniżej minimum 55,000%).',
+      'Żeby zachować to, co już jest w naczyniu, potrzebna jest większa partia.',
     );
 
     const highFixedTargetError = new ProductionRescueOptionUnavailableError(
@@ -318,7 +316,7 @@ describe('trusted Production Rescue authorization basis', () => {
       },
     );
     expect(rescueOptionUnavailableMessage('keep_original_batch', 670, highFixedTargetError)).toBe(
-      'Niedostępne — przeliczenie pozostałych ilości do 670 g pozostaje poza zakresem: Laktoza 6,194% (powyżej maksimum 6,000%).',
+      'Żeby zachować to, co już jest w naczyniu, potrzebna jest większa partia.',
     );
 
     const capacityOwnerError = new ProductionRescueOptionUnavailableError(
@@ -336,7 +334,15 @@ describe('trusted Production Rescue authorization basis', () => {
       },
     );
     expect(rescueOptionUnavailableMessage('leave_as_is', 670, capacityOwnerError)).toBe(
-      'Niedostępne — w naczyniu jest 676 g, a pojemność maszyny wynosi 670 g.',
+      'Ta partia potrzebuje większej pojemności, żeby zachować właściwy balans.',
+    );
+    const visibleCopy = [
+      rescueOptionUnavailableMessage('keep_original_batch', 670, irreducibleOwnerError),
+      rescueOptionUnavailableMessage('keep_original_batch', 670, lowFixedTargetError),
+      rescueOptionUnavailableMessage('leave_as_is', 1_000, hardSafetyError),
+    ].join(' ');
+    expect(visibleCopy).not.toMatch(
+      /lakto|\bPAC\b|\bPOD\b|\bNPAC\b|water|solids|hard-bound|denominator|solver|Engine|ProductBehavior|twarde zakresy/i,
     );
   });
 
