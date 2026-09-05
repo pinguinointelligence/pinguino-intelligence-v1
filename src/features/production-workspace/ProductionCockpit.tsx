@@ -627,6 +627,14 @@ export function ProductionCockpit({
   const visibleDecisionOptions = decisionOptions.filter(
     (option) => production.rescueOptionStates?.[option.id]?.status !== 'unavailable',
   );
+  const unavailableDecisionReasons = Array.from(
+    new Set(
+      decisionOptions.flatMap((option) => {
+        const evaluation = production.rescueOptionStates?.[option.id];
+        return evaluation?.status === 'unavailable' ? [evaluation.reason] : [];
+      }),
+    ),
+  );
   const completionLabel = production.persistenceBusy
     ? 'Zapisywanie partii…'
     : correctionCalculating
@@ -933,6 +941,16 @@ export function ProductionCockpit({
               <p className="text-xs font-semibold text-ink">
                 Nie mamy bezpiecznej korekty dla tej partii
               </p>
+              {unavailableDecisionReasons.length > 0 ? (
+                <ul
+                  className="mt-2 space-y-1 text-[11px] leading-relaxed text-stone-700"
+                  data-testid="production-decision-recovery-reasons"
+                >
+                  {unavailableDecisionReasons.map((reason) => (
+                    <li key={reason}>{reason}</li>
+                  ))}
+                </ul>
+              ) : null}
               <p className="mt-1 text-[11px] leading-relaxed text-stone-600">
                 Jeśli wartość jest błędna, wybierz „Popraw zapis” w jej wierszu. Jeśli ilości w
                 naczyniu są prawidłowe, przerwij partię i rozpocznij nową — nie dodawaj składników
