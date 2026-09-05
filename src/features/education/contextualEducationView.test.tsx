@@ -40,6 +40,16 @@ describe('contextual education runtime surface', () => {
     expect(html.match(/data-testid="education-entry"/g)).toHaveLength(3);
   });
 
+  it('keeps the accepted mobile height while sizing the desktop right-panel surface to content', () => {
+    const html = renderToStaticMarkup(
+      <ContextualEducationView input={starterMilkBase()} audience="pro" onBack={() => {}} />,
+    );
+
+    expect(html).toContain('min-h-full');
+    expect(html).toContain('w-full');
+    expect(html).toContain('lg:min-h-0');
+  });
+
   it('implements tap/click controls and no hover-only lesson path', () => {
     expect(source).toContain('onClick={() => onOpen');
     expect(source).toContain('<details');
