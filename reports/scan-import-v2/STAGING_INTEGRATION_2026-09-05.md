@@ -47,7 +47,8 @@ Owner authorization: **SCAN IMPORT ACCEPTED — INTEGRATE** (after an earlier ST
 ## Gates on the final SHA 5324f375
 - PR head 65fec1b3 CI: Owner-locked PASS, Solver contracts PASS, Starter-pack Direction rescue PASS, Typecheck/lint/tests/build PASS (12m46s).
 - Local on 5324f375: typecheck clean; lint 0 errors (7 pre-existing warnings, one `react-refresh` warning in router.tsx from the gated route export); V2 + contract + boundary + owner-locked suites 33 files / 376 passed / 4 skipped; build OK.
-- Staging CI run 33950226095 on 5324f375: see the final report.
+- Staging CI run 33950226095 on 5324f375: **PASS** — Owner-locked (1m57s), Solver contracts (49s), Starter-pack Direction rescue (8m09s), Typecheck/lint/tests/build (19m15s).
+- Cleanup: the temporary branch-scoped Preview values (`VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` for `claude/scan-import-v2`) were removed after readiness; the staging Production values are untouched.
 
 ## Boundaries
 Scan Core, HOME scanner, Mapper, Engine, production/main: untouched (merge diff limited to `src/scan-import-v2/**`, `src/scan-contract`, `src/services/scanImportV2.ts`, the gated dev page, the router gate, the auth allow-list, the migration, reports).
