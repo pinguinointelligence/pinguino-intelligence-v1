@@ -89,7 +89,6 @@ export const educationCopy = {
         voice: 'Dobra konsystencja wynika z balansu całej receptury.',
         annotations: [
           { id: 'hard', title: 'Więcej lodu', detail: 'Zbyt twardo' },
-          { id: 'balanced', title: 'Właściwy balans', detail: 'Gładko i stabilnie' },
           { id: 'soft', title: 'Mniej lodu', detail: 'Zbyt miękko' },
         ],
       },

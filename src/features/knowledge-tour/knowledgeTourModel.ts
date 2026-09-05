@@ -44,6 +44,11 @@ export const OWNER_GUIDE_ASSET_SHA256 = {
 } as const;
 
 const c = educationCopy.knowledgeTour.steps;
+const OWNER_IMAGE_WIDTH_PX = 1672;
+
+function ownerImageAnchor(centerX: number): number {
+  return centerX / OWNER_IMAGE_WIDTH_PX;
+}
 
 function anchored<T extends { id: string; title: string; detail: string }>(
   annotations: readonly T[],
@@ -80,7 +85,7 @@ const STEPS: readonly KnowledgeTourStep[] = [
     edgeColor: '#fefcfb',
     compactMobileAnnotations: false,
     ...c.freezing,
-    annotations: anchored(c.freezing.annotations, [0.257, 0.497, 0.731]),
+    annotations: anchored(c.freezing.annotations, [ownerImageAnchor(384), ownerImageAnchor(1222)]),
   },
   {
     id: 'sugars',
@@ -125,7 +130,11 @@ const STEPS: readonly KnowledgeTourStep[] = [
     edgeColor: '#e3d8cc',
     compactMobileAnnotations: false,
     ...c.temperature,
-    annotations: anchored(c.temperature.annotations, [0.19, 0.5, 0.82]),
+    annotations: anchored(c.temperature.annotations, [
+      ownerImageAnchor(303),
+      ownerImageAnchor(836),
+      ownerImageAnchor(1371),
+    ]),
   },
   {
     id: 'home-machines',

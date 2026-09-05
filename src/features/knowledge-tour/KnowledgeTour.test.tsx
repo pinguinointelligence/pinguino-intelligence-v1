@@ -57,10 +57,26 @@ describe('responsive Knowledge Tour interactions', () => {
     expect(surface.querySelector('[data-annotation="minus-12"]')?.textContent).toContain('−12°C');
     expect(surface.querySelector('[data-annotation="minus-13"]')?.textContent).toContain('−13°C');
     expect(
-      (surface.querySelector('[data-annotation="minus-11"]') as HTMLElement).style.getPropertyValue(
-        '--tour-anchor-x',
+      Number.parseFloat(
+        (
+          surface.querySelector('[data-annotation="minus-11"]') as HTMLElement
+        ).style.getPropertyValue('--tour-anchor-x'),
       ),
-    ).toBe('19%');
+    ).toBeCloseTo((303 / 1672) * 100, 5);
+  });
+
+  it('centers Step 2 labels on the two visual objects and removes the middle caption', () => {
+    const surface = mount('/how-it-works?step=2');
+    const left = surface.querySelector('[data-annotation="hard"]') as HTMLElement;
+
+    expect(surface.querySelectorAll('.knowledge-tour__annotation')).toHaveLength(2);
+    expect(surface.querySelector('[data-annotation="balanced"]')).toBeNull();
+    expect(surface.textContent).not.toContain('Właściwy balans');
+    expect(surface.textContent).not.toContain('Gładko i stabilnie');
+    expect(Number.parseFloat(left.style.getPropertyValue('--tour-anchor-x'))).toBeCloseTo(
+      (384 / 1672) * 100,
+      5,
+    );
   });
 
   it('supports next, back, direct dots, keyboard and horizontal swipe from real guide state', () => {

@@ -39,7 +39,7 @@ describe('Owner Knowledge Tour source contract', () => {
     const steps = knowledgeTourSteps();
     const expected = [
       ['gelato', 'sorbet', 'vegan', 'protein'],
-      ['hard', 'balanced', 'soft'],
+      ['hard', 'soft'],
       ['sucrose', 'dextrose', 'fructose'],
       ['milk', 'cream', 'milk-powder', 'inulin', 'result'],
       ['strawberry', 'banana', 'pistachio', 'chocolate'],
@@ -62,6 +62,13 @@ describe('Owner Knowledge Tour source contract', () => {
     expect(projectKnowledgeTourAnchor(120, 1000, 0.25)).toBe(370);
     expect(projectKnowledgeTourAnchor(40, 520, 0.25)).toBe(170);
     expect(projectKnowledgeTourAnchor(0, 800, 0.82)).toBe(656);
+  });
+
+  it('locks the final Step 2 and Step 7 centers to Owner-image pixel anchors', () => {
+    const steps = knowledgeTourSteps();
+
+    expect(steps[1]?.annotations[0]?.anchorX).toBeCloseTo(384 / 1672, 7);
+    expect(steps[6]?.annotations[0]?.anchorX).toBeCloseTo(303 / 1672, 7);
   });
 
   it('uses the exact Owner copy for sucrose, gellattissimo and temperatures', () => {
