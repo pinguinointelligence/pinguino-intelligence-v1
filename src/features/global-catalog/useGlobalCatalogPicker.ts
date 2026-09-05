@@ -38,6 +38,9 @@ export interface GlobalCatalogPickerState {
   favoritesSettled: boolean;
   recent: ReadonlySet<string>;
   preferences: CatalogMarketPreferences;
+  /** The visible hits belong to the current debounced search. Country/SKU
+   * enrichment may still be appending without invalidating those rows. */
+  searchIsSettled: boolean;
   isSettled: boolean;
   isFetching: boolean;
   isError: boolean;
@@ -279,6 +282,7 @@ export function useGlobalCatalogPicker(input: {
     favoritesSettled: favorites.isFetched,
     recent: recentKeys,
     preferences: resolvedPreferences,
+    searchIsSettled: settledQuery === input.query && !search.isPending,
     // Fetching the next page must not make already-visible hits stale. A new
     // debounced query is still hidden until its own first page has resolved.
     isSettled:

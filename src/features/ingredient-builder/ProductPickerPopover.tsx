@@ -1,7 +1,6 @@
 import {
   useCallback,
   useEffect,
-  Fragment,
   useId,
   useLayoutEffect,
   useMemo,
@@ -459,7 +458,12 @@ export function ProductPickerPopover({
           matchesProductDiscoveryFilter(hit, activeFilter) &&
           matchesProductDiscoverySubfilter(hit, activeFilter, activeSubfilter),
       );
-      const catalog = globalCatalog.isSettled
+      // A newly appended search page expands the set of Mapper slots that need
+      // country/SKU enrichment. Keep the current search rows mounted during
+      // that enrichment so the native scroll container retains its finite
+      // height and position. Selection remains guarded by `isSettled` in
+      // `choose`, so an unresolved exact-SKU authority can never be used.
+      const catalog = globalCatalog.searchIsSettled
         ? projectCatalogHitsForDiscovery({
             hits: preserveServerProductRank(filtered, globalCatalog.preferences),
             query: (activeFamily ?? query) || contextQuery,
@@ -566,9 +570,9 @@ export function ProductPickerPopover({
     activeFamily,
     activeSubfilter,
     globalCatalog.hits,
-    globalCatalog.isSettled,
     globalCatalog.preferences,
     globalCatalog.recent,
+    globalCatalog.searchIsSettled,
     library,
     contextQuery,
     query,
@@ -1408,7 +1412,16 @@ export function ProductPickerPopover({
                               .slice(0, segmentIndex)
                               .reduce((count, previous) => count + previous.items.length, 0);
                             return (
-                              <Fragment key={segment.id}>
+                              <div
+                                role="presentation"
+                                key={segment.id}
+                                data-picker-section={segment.id}
+                                className={cn(
+                                  segment.id === 'recent' && 'bg-[#fffaf5] pb-1',
+                                  segment.id === 'all' &&
+                                    'mt-3 border-t border-ink/10 bg-white pt-2',
+                                )}
+                              >
                                 <p
                                   role="presentation"
                                   data-picker-segment={segment.id}
@@ -1586,7 +1599,7 @@ export function ProductPickerPopover({
                                     </div>
                                   );
                                 })}
-                              </Fragment>
+                              </div>
                             );
                           })
                         )}
