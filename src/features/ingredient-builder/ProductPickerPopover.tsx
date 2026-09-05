@@ -126,6 +126,8 @@ interface PickerOption {
   status: 'pi_base' | 'verified' | 'manual_unverified' | 'blocked';
   favorite: boolean;
   recent: boolean;
+  sortTitle: string;
+  recentlyUsedAt: string | null;
   market: string | null;
   originalName: string | null;
   catalog?: CatalogProductSearchHit;
@@ -480,6 +482,8 @@ export function ProductPickerPopover({
                   hit.entityKind === 'pi_base' ? hit.mappedIngredientId : hit.id
                 }`,
               ),
+            sortTitle: primaryName,
+            recentlyUsedAt: hit.recentlyUsedAt,
             market: hit.markets[0] ?? null,
             originalName: hit.originalName,
             catalog: hit,
@@ -509,6 +513,8 @@ export function ProductPickerPopover({
         status: 'pi_base' as const,
         favorite: false,
         recent: false,
+        sortTitle: item.name,
+        recentlyUsedAt: null,
         market: null,
         originalName: null,
         canonicalId: canonicalIngredientId(item),

@@ -15,6 +15,7 @@ import {
   type PersistTrustedAuthorizationInput,
   type TrustedRescueContext,
 } from '../../../supabase/functions/production-rescue-authorize/logic';
+import { productionTestBehaviorSnapshots } from './productionTestComposition.fixture';
 
 const OWNER = '11111111-1111-4111-8111-111111111111';
 const RUN = '22222222-2222-4222-8222-222222222222';
@@ -58,9 +59,11 @@ function context(): TrustedRescueContext {
     target_batch_grams: DEFAULT_PRESET.target_batch_grams,
     machine_capacity_grams: null,
   };
-  const behaviorSnapshots = Object.fromEntries(
-    recipeInput.items.map((item) => [item.id, { schemaVersion: 1, lineId: item.id }]),
-  );
+  // Was `{ schemaVersion: 1, lineId }` — a stub with no `moduleEligibility`, so
+  // the canonical terminal authority could not read module eligibility at all.
+  // Production always persists complete snapshots (see the owner specimen in
+  // `reports/production-rescue/OWNER_REPRO_2fc85403.md`).
+  const behaviorSnapshots = productionTestBehaviorSnapshots(recipeInput);
   const sucrose = recipeInput.items.find((item) =>
     item.ingredient.name.toLowerCase().includes('sucrose'),
   )!;
@@ -437,7 +440,7 @@ describe('trusted Production Rescue authorization', () => {
       engineVersion: '0.4.0',
       configVersion: '0.7.0',
       practicalRecipeVersion: 'pro-whole-gram-v1',
-      rescueModelVersion: 'production-rescue-v4',
+      rescueModelVersion: 'production-rescue-v6',
       bundlerVersion: '1.0.3',
       ttlSeconds: 300,
     });

@@ -22,7 +22,28 @@ export interface SegmentableCatalogProduct {
   canonicalId: string;
   favorite: boolean;
   recent: boolean;
+  /** Already-localized customer-visible title used only by the empty view. */
+  sortTitle?: string;
+  /** Exact private use event. Passive browsing never writes this value. */
+  recentlyUsedAt?: string | null;
 }
+
+const naturalTitleCollator = new Intl.Collator(undefined, {
+  numeric: true,
+  sensitivity: 'base',
+});
+
+const naturalEmptyViewCompare = <T extends SegmentableCatalogProduct>(left: T, right: T): number =>
+  naturalTitleCollator.compare(
+    left.sortTitle ?? left.canonicalId,
+    right.sortTitle ?? right.canonicalId,
+  ) || left.canonicalId.localeCompare(right.canonicalId, 'en', { numeric: true });
+
+const recentTimestamp = (product: SegmentableCatalogProduct): number => {
+  if (!product.recentlyUsedAt) return Number.NEGATIVE_INFINITY;
+  const value = Date.parse(product.recentlyUsedAt);
+  return Number.isFinite(value) ? value : Number.NEGATIVE_INFINITY;
+};
 
 /** Primary customer-facing identity follows the entity, never its binding.
  * A commercial row owns its PR-ING code; a Mapper reference owns its PI-ING id. */
@@ -70,11 +91,17 @@ export function buildProductPickerSegments<T extends SegmentableCatalogProduct>(
     const existingIndex = indexById.get(product.canonicalId);
     if (existingIndex !== undefined) {
       const existing = unique[existingIndex]!;
-      if ((product.favorite && !existing.favorite) || (product.recent && !existing.recent)) {
+      const productHasNewerUse = recentTimestamp(product) > recentTimestamp(existing);
+      if (
+        (product.favorite && !existing.favorite) ||
+        (product.recent && !existing.recent) ||
+        productHasNewerUse
+      ) {
         unique[existingIndex] = {
           ...existing,
           favorite: existing.favorite || product.favorite,
           recent: existing.recent || product.recent,
+          recentlyUsedAt: productHasNewerUse ? product.recentlyUsedAt : existing.recentlyUsedAt,
         };
       }
       continue;
@@ -107,7 +134,11 @@ export function buildProductPickerSegments<T extends SegmentableCatalogProduct>(
   const leadId: ProductPickerSegmentId = 'recent';
   const restLabel = PRODUCT_PICKER_SEGMENT_LABELS.all;
 
-  const lead = unique.filter(leadBy);
+  const lead = unique.filter(leadBy).sort((left, right) => {
+    const timestampOrder = recentTimestamp(right) - recentTimestamp(left);
+    return timestampOrder || naturalEmptyViewCompare(left, right);
+  });
+  const alphabetized = (items: T[]) => items.sort(naturalEmptyViewCompare);
   if (lead.length === 0) {
     return unique.length === 0
       ? []
@@ -115,13 +146,13 @@ export function buildProductPickerSegments<T extends SegmentableCatalogProduct>(
           {
             id: 'ingredients',
             label: PRODUCT_PICKER_SEGMENT_LABELS.ingredients,
-            items: unique,
+            items: alphabetized(unique),
           },
         ];
   }
 
   const leadIds = new Set(lead.map((product) => product.canonicalId));
-  const remaining = unique.filter((product) => !leadIds.has(product.canonicalId));
+  const remaining = alphabetized(unique.filter((product) => !leadIds.has(product.canonicalId)));
   return [
     { id: leadId, label: leadLabel, items: lead },
     ...(remaining.length > 0

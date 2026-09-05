@@ -75,6 +75,7 @@ const EXPECTED_SOURCE_CLOSURE = [
   'src/features/product-intelligence/productBehaviorResolver.ts',
   'src/features/product-intelligence/recipeBehaviorAuthority.ts',
   'src/features/production-workspace/productionRescue.ts',
+  'src/features/production-workspace/productionRescueAuthority.ts',
   'src/features/production-workspace/productionSession.ts',
   'src/features/protein-gelato/proteinAuthority.ts',
   'src/features/protein-gelato/proteinBehavior.ts',
@@ -105,7 +106,7 @@ const sources = {
 };
 
 const virtualSource = [
-  `export { assessProductionRescue, productionRescueCandidateFingerprint, PRODUCTION_RESCUE_MODEL_VERSION } from ${JSON.stringify(sources.rescue)};`,
+  `export { assessProductionRescue, productionRescueCandidateFingerprint, productionRescueTerminalAuthority, PRODUCTION_RESCUE_MODEL_VERSION } from ${JSON.stringify(sources.rescue)};`,
   `export { hydrateProductionSessionFromRun } from ${JSON.stringify(sources.session)};`,
   `export { scaleRecipeVersion, scaledRecipeInput } from ${JSON.stringify(sources.scaling)};`,
   `export { ENGINE_VERSION, CONFIG_VERSION } from ${JSON.stringify(sources.engineVersion)};`,
@@ -203,6 +204,7 @@ const manifest = {
   exportedRuntime: [
     'assessProductionRescue',
     'productionRescueCandidateFingerprint',
+    'productionRescueTerminalAuthority',
     'hydrateProductionSessionFromRun',
     'scaleRecipeVersion',
     'scaledRecipeInput',

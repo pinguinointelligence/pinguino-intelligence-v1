@@ -743,7 +743,14 @@ const CLEAR_STAGED = {
   preview: null,
   previewIssue: null,
   crownOffCorrectionNotice: null,
-  correctionInFlight: false,
+  // `correctionInFlight` is deliberately NOT here. This object clears staged
+  // CONTENT, and the recipe-store subscriber below spreads it on any Base
+  // technical change — which is exactly what the automatic correction's own
+  // commit is. Keeping the flag here cleared it in the middle of the operation
+  // it exists to span, so the panel dropped its suppression and painted the
+  // applied/undo window for ~480 ms before the notice. It is FLOW state: it is
+  // raised where the correction starts and lowered on every one of that
+  // operation's exits (below), plus a new run and cancelPreview.
   substitutionConsent: null,
   substitutionAuthorization: null,
   proposalProductBehaviorAuthorization: null,
@@ -1826,6 +1833,9 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
         clearRecalculationMarker();
         set({
           preview: null,
+          // Cancelling ends the automatic correction too, so its flow flag must
+          // come down or the panel would keep suppressing the real surface.
+          correctionInFlight: false,
           directionBestCandidate: null,
           starterPackRescueReport: null,
           starterPackRescuePending: false,
@@ -3025,6 +3035,12 @@ export async function createOptimizePreviewWithServerAuthority(
   // with a new result.
   const ownedGeneration = generation ?? beginPiRecalculation();
   if (!isCurrentPiRun(ownedGeneration)) return;
+  // A new run owns the surface: no earlier correction may still be suppressing
+  // it. This is also what releases a flag left raised by a run that was
+  // superseded mid-commit, so the panel can never be stuck on progress.
+  if (useConstraintStudioStore.getState().correctionInFlight) {
+    useConstraintStudioStore.setState({ correctionInFlight: false });
+  }
   const draft = selectCanonicalDraft();
   const missingProductDose = missingProductDosePreviewIssue(draft.input);
   if (missingProductDose) {

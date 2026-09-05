@@ -38,6 +38,8 @@ export interface BatchRecoveryRequest {
   fineStepG?: number;
   coarseStepG?: number;
   maxAdditionalMassG?: number;
+  /** Optional product-layer terminal gate for the exact candidate vector. */
+  acceptCandidate?: (candidate: BatchRecoveryCandidate) => boolean;
 }
 
 export interface AdditiveRecoveryNeighborhoodEvaluation {
@@ -58,11 +60,7 @@ const totalMass = (input: RecipeInput): number =>
 const roundTo = (value: number, precision: number): number =>
   Math.round((value + Number.EPSILON) / precision) * precision;
 
-const withLineAddition = (
-  input: RecipeInput,
-  lineId: string,
-  additionG: number,
-): RecipeInput => {
+const withLineAddition = (input: RecipeInput, lineId: string, additionG: number): RecipeInput => {
   const items = input.items.map((item) => {
     if (item.id !== lineId) return item;
     return item.actual_grams === null
@@ -99,10 +97,7 @@ const reasonsFor = (result: RecipeResult): CorrectionReasonCode[] =>
 const reasonKey = (reasons: readonly CorrectionReasonCode[]): string =>
   [...reasons].sort().join('|');
 
-const actionFor = (
-  item: RecipeInput['items'][number],
-  grams: number,
-): CorrectionAction => ({
+const actionFor = (item: RecipeInput['items'][number], grams: number): CorrectionAction => ({
   type: 'add',
   ingredient_id: item.ingredient.id,
   ingredient_name: item.ingredient.name,
@@ -154,14 +149,26 @@ function minimumSafeRecovery(request: BatchRecoveryRequest): BatchRecoveryResult
 
   for (const item of eligible) {
     let firstCoarseSafe: number | null = null;
-    for (let additionG = coarseStepG; additionG <= maxAdditionalMassG + EPSILON; additionG += coarseStepG) {
+    for (
+      let additionG = coarseStepG;
+      additionG <= maxAdditionalMassG + EPSILON;
+      additionG += coarseStepG
+    ) {
       const roundedAddition = roundTo(additionG, fineStepG);
       const candidate = withLineAddition(request.input, item.id, roundedAddition);
       const result = calculateRecipe(candidate);
       const reasons = reasonsFor(result);
       evaluatedCandidateCount += 1;
       reasonSets.set(reasonKey(reasons), reasons);
-      if (reasons.length === 0) {
+      const candidateRecord: BatchRecoveryCandidate = {
+        input: candidate,
+        result,
+        actions: [actionFor(item, roundedAddition)],
+        additionalMassG: roundedAddition,
+        scaleFactor: null,
+      };
+      if (reasons.length === 0) hardSafeCandidateCount += 1;
+      if (reasons.length === 0 && (request.acceptCandidate?.(candidateRecord) ?? true)) {
         firstCoarseSafe = roundedAddition;
         break;
       }
@@ -181,7 +188,15 @@ function minimumSafeRecovery(request: BatchRecoveryRequest): BatchRecoveryResult
       const reasons = reasonsFor(result);
       evaluatedCandidateCount += 1;
       reasonSets.set(reasonKey(reasons), reasons);
-      if (reasons.length === 0) {
+      const candidateRecord: BatchRecoveryCandidate = {
+        input: candidate,
+        result,
+        actions: [actionFor(item, roundedAddition)],
+        additionalMassG: roundedAddition,
+        scaleFactor: null,
+      };
+      if (reasons.length === 0) hardSafeCandidateCount += 1;
+      if (reasons.length === 0 && (request.acceptCandidate?.(candidateRecord) ?? true)) {
         bestAddition = roundedAddition;
         break;
       }
@@ -192,14 +207,15 @@ function minimumSafeRecovery(request: BatchRecoveryRequest): BatchRecoveryResult
       const result = calculateRecipe(input);
       const reasons = reasonsFor(result);
       if (reasons.length !== 0) continue;
-      hardSafeCandidateCount += 1;
-      candidates.push({
+      const candidateRecord: BatchRecoveryCandidate = {
         input,
         result,
         actions: [actionFor(item, additionG)],
         additionalMassG: additionG,
         scaleFactor: null,
-      });
+      };
+      if (!(request.acceptCandidate?.(candidateRecord) ?? true)) continue;
+      candidates.push(candidateRecord);
     }
   }
 
@@ -223,6 +239,7 @@ function minimumSafeRecovery(request: BatchRecoveryRequest): BatchRecoveryResult
 
 function restoreOriginalProfile(request: BatchRecoveryRequest): BatchRecoveryResult {
   const precision = Math.max(0.1, request.fineStepG ?? DEFAULT_FINE_STEP_G);
+  const coarseStepG = Math.max(precision, request.coarseStepG ?? DEFAULT_COARSE_STEP_G);
   const currentById = new Map(request.input.items.map((item) => [item.id, item]));
   let scaleFactor = 1;
   for (const baseline of request.baselineInput.items) {
@@ -230,52 +247,104 @@ function restoreOriginalProfile(request: BatchRecoveryRequest): BatchRecoveryRes
     if (!current || baseline.planned_grams <= EPSILON) continue;
     scaleFactor = Math.max(scaleFactor, effectiveGrams(current) / baseline.planned_grams);
   }
-  if (scaleFactor <= 1 + EPSILON) {
-    return {
-      candidates: [],
-      trace: {
-        objective: 'restore_original_profile',
-        evaluatedCandidateCount: 0,
-        hardSafeCandidateCount: 0,
-        eligibleLineCount: request.input.items.length,
-        uniqueHardReasonSets: [],
-        finalCandidateGrams: [],
-      },
-    };
-  }
-
   const baselineById = new Map(request.baselineInput.items.map((item) => [item.id, item]));
-  const actions: CorrectionAction[] = [];
-  const items = request.input.items.map((item) => {
-    const baseline = baselineById.get(item.id);
-    if (!baseline) return item;
-    const currentGrams = effectiveGrams(item);
-    const targetGrams = Math.max(currentGrams, roundTo(baseline.planned_grams * scaleFactor, precision));
-    const additionG = targetGrams - currentGrams;
-    if (additionG > EPSILON) actions.push(actionFor(item, additionG));
-    return item.actual_grams === null
-      ? { ...item, planned_grams: targetGrams }
-      : { ...item, actual_grams: targetGrams };
-  });
-  const input = { ...request.input, items, target_batch_grams: totalMass({ ...request.input, items }) };
-  const result = calculateRecipe(input);
-  const reasons = reasonsFor(result);
-  const candidate: BatchRecoveryCandidate = {
-    input,
-    result,
-    actions,
-    additionalMassG: result.total_batch_g - totalMass(request.input),
-    scaleFactor,
+  const currentTotal = totalMass(request.input);
+  const baselineTotal = totalMass(request.baselineInput);
+  const maxAdditionalMassG = Math.max(
+    coarseStepG,
+    request.maxAdditionalMassG ?? Math.min(500, Math.max(10, currentTotal / 2)),
+  );
+  const reasonSets = new Map<string, CorrectionReasonCode[]>();
+  const seenVectors = new Set<string>();
+  let evaluatedCandidateCount = 0;
+  let hardSafeCandidateCount = 0;
+
+  const candidateAtScale = (candidateScale: number): BatchRecoveryCandidate | null => {
+    const actions: CorrectionAction[] = [];
+    const items = request.input.items.map((item) => {
+      const baseline = baselineById.get(item.id);
+      if (!baseline) return item;
+      const currentGrams = effectiveGrams(item);
+      const targetGrams = Math.max(
+        currentGrams,
+        roundTo(baseline.planned_grams * candidateScale, precision),
+      );
+      const additionG = targetGrams - currentGrams;
+      if (additionG > EPSILON) actions.push(actionFor(item, additionG));
+      return item.actual_grams === null
+        ? { ...item, planned_grams: targetGrams }
+        : { ...item, actual_grams: targetGrams };
+    });
+    const vectorKey = items.map((item) => effectiveGrams(item).toFixed(6)).join('|');
+    if (seenVectors.has(vectorKey)) return null;
+    seenVectors.add(vectorKey);
+    const input = {
+      ...request.input,
+      items,
+      target_batch_grams: totalMass({ ...request.input, items }),
+    };
+    const result = calculateRecipe(input);
+    const reasons = reasonsFor(result);
+    evaluatedCandidateCount += 1;
+    reasonSets.set(reasonKey(reasons), reasons);
+    if (reasons.length === 0) hardSafeCandidateCount += 1;
+    return {
+      input,
+      result,
+      actions,
+      additionalMassG: result.total_batch_g - currentTotal,
+      scaleFactor: candidateScale,
+    };
   };
+
+  const accepted = (
+    candidate: BatchRecoveryCandidate | null,
+  ): candidate is BatchRecoveryCandidate =>
+    candidate !== null &&
+    candidate.actions.length > 0 &&
+    reasonsFor(candidate.result).length === 0 &&
+    candidate.additionalMassG <= maxAdditionalMassG + EPSILON &&
+    (request.acceptCandidate?.(candidate) ?? true);
+
+  let firstAccepted: BatchRecoveryCandidate | null = null;
+  const minimum = candidateAtScale(scaleFactor);
+  if (accepted(minimum)) {
+    firstAccepted = minimum;
+  } else {
+    for (
+      let extraScaleMassG = coarseStepG;
+      extraScaleMassG <= maxAdditionalMassG + EPSILON;
+      extraScaleMassG += coarseStepG
+    ) {
+      const candidate = candidateAtScale(scaleFactor + extraScaleMassG / baselineTotal);
+      if (accepted(candidate)) {
+        firstAccepted = candidate;
+        const refinementStart = Math.max(precision, extraScaleMassG - coarseStepG + precision);
+        for (
+          let refinedMassG = refinementStart;
+          refinedMassG < extraScaleMassG - EPSILON;
+          refinedMassG += precision
+        ) {
+          const refined = candidateAtScale(scaleFactor + refinedMassG / baselineTotal);
+          if (accepted(refined)) {
+            firstAccepted = refined;
+            break;
+          }
+        }
+        break;
+      }
+    }
+  }
+  const candidates = firstAccepted ? [firstAccepted] : [];
   return {
-    candidates: reasons.length === 0 && actions.length > 0 ? [candidate] : [],
+    candidates,
     trace: {
       objective: 'restore_original_profile',
-      evaluatedCandidateCount: 1,
-      hardSafeCandidateCount: reasons.length === 0 ? 1 : 0,
+      evaluatedCandidateCount,
+      hardSafeCandidateCount,
       eligibleLineCount: request.input.items.length,
-      uniqueHardReasonSets: [reasons],
-      finalCandidateGrams: reasons.length === 0 ? [result.total_batch_g] : [],
+      uniqueHardReasonSets: [...reasonSets.values()],
+      finalCandidateGrams: candidates.map((candidate) => candidate.result.total_batch_g),
     },
   };
 }

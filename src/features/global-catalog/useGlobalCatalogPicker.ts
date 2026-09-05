@@ -241,6 +241,9 @@ export function useGlobalCatalogPicker(input: {
     : (recent.data ?? []);
   const favoriteKeys = new Set(favoriteRelations.map((item) => `${item.entityKind}:${item.id}`));
   const recentKeys = new Set(recentRelations.map((item) => `${item.entityKind}:${item.id}`));
+  const recentUsageByKey = new Map(
+    recentRelations.map((item) => [`${item.entityKind}:${item.id}`, item.recentlyUsedAt]),
+  );
   return {
     hits: searchHits.map((hit) => {
       const resolution = hit.mappedIngredientId
@@ -248,6 +251,13 @@ export function useGlobalCatalogPicker(input: {
         : undefined;
       return {
         ...hit,
+        // The dedicated private relation read owns exact usage time. Keep it
+        // attached to the hit so the empty picker can sort newest-first instead
+        // of reducing recency to an unordered boolean.
+        recentlyUsedAt:
+          recentUsageByKey.get(
+            `${hit.entityKind}:${hit.entityKind === 'pi_base' ? hit.mappedIngredientId : hit.id}`,
+          ) ?? hit.recentlyUsedAt,
         ...(hit.entityKind === 'pi_base' && resolution
           ? {
               resolvedExactProduct: resolution.product,

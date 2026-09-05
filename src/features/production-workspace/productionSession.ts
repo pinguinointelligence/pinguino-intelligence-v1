@@ -26,7 +26,7 @@ import {
   type ProductionThermalMode,
 } from '@/features/product-intelligence';
 import type { ProductionRun } from '@/features/pro-core/productionContracts';
-import { evaluateRecipeConstraintAuthority } from '@/features/recipe-constraints';
+import { evaluateProductionRescueTerminalAuthority } from './productionRescueAuthority';
 
 export const PRODUCTION_GRAMS_EPSILON = 0.000_001;
 
@@ -94,6 +94,13 @@ export interface ProductionDeviationDecision {
   rescueRevision: number;
   finalMassG: number;
   scoreDisplay: string;
+}
+
+export interface InvalidDurableProductionRescue {
+  revision: number;
+  acceptedAt: string;
+  /** Stable authority codes only; no private candidate or ProductBehavior facts. */
+  issueCodes: string[];
 }
 
 export interface ProductionSubstitution {
@@ -179,10 +186,28 @@ export interface ProductionSession {
   durableRescueAcceptedAt: string | null;
   /** Monotonic durable Rescue revision used for lost-response reconciliation. */
   durableRescueRevision: number;
+  /**
+   * A durably accepted Rescue whose target is no longer valid under the
+   * canonical terminal authority, so recovery refused to adopt it. Kept as
+   * audit history: the physical facts it produced are preserved, its PENDING
+   * instructions are superseded, and a fresh add-only Rescue is computed from
+   * the current vessel. See `reports/production-rescue/OWNER_REPRO_2fc85403.md`.
+   */
+  supersededRescue: {
+    revision: number;
+    acceptedAt: string | null;
+    reasonPl: string;
+  } | null;
   /** Monotonic durable actual revision used for lost-response reconciliation. */
   durableActualRevision: number;
   /** Latest explicit decision that resolved a confirmed deviation. */
   lastDeviationDecision: ProductionDeviationDecision | null;
+  /**
+   * A historical snapshot that fails today's same terminal authority. It is
+   * never installed as the active plan; immutable source plus durable actuals
+   * remain the recovery basis until a valid higher Rescue revision replaces it.
+   */
+  invalidDurableRescue: InvalidDurableProductionRescue | null;
   /** Solver-verified additions required after production starts. The frozen plan remains untouched. */
   rescueAddedItems: RecipeItem[];
   /** Authorized additions for already-confirmed lines; never recipe ingredients. */
@@ -311,8 +336,10 @@ export function createProductionSession(input: CreateProductionSessionInput): Pr
     carbonatedProductIds: [...(input.carbonatedProductIds ?? [])],
     durableRescueAcceptedAt: null,
     durableRescueRevision: 0,
+    supersededRescue: null,
     durableActualRevision: 0,
     lastDeviationDecision: null,
+    invalidDurableRescue: null,
     rescueAddedItems: [],
     topUpTasks: [],
     lines: orderedBaseItems.map((item) => ({
@@ -749,11 +776,10 @@ function materializeAuthorizedProductionTopUps(
   sourceActualRevision: number,
   executedAfterAuthorizationLineIds: ReadonlySet<string> = new Set(),
 ): ProductionSession {
-  const correctionBecameStale =
-    session.lines.some((line) => {
-      if (!executedAfterAuthorizationLineIds.has(line.lineId)) return false;
-      return Math.abs(line.physicalAddedGrams - line.targetGrams) > PRODUCTION_GRAMS_EPSILON;
-    });
+  const correctionBecameStale = session.lines.some((line) => {
+    if (!executedAfterAuthorizationLineIds.has(line.lineId)) return false;
+    return Math.abs(line.physicalAddedGrams - line.targetGrams) > PRODUCTION_GRAMS_EPSILON;
+  });
   if (correctionBecameStale) {
     return {
       ...session,
@@ -839,10 +865,7 @@ function productionLineIdsExecutedAfterRescue(
   if (decisionIndex < 0) return new Set();
   return new Set(
     run.events.slice(decisionIndex + 1).flatMap((event) => {
-      if (
-        event.type !== 'ingredient_actual_confirmed' &&
-        event.type !== 'actual_entry_corrected'
-      ) {
+      if (event.type !== 'ingredient_actual_confirmed' && event.type !== 'actual_entry_corrected') {
         return [];
       }
       const lineId = event.amendment?.lineId;
@@ -857,16 +880,10 @@ export function applyVerifiedRescueInput(
   rescueRevision = session.durableRescueRevision + 1,
 ): ProductionSession {
   requireActive(session);
-  const candidateBatchGrams = candidate.items.reduce((sum, item) => sum + item.planned_grams, 0);
-  const authority = evaluateRecipeConstraintAuthority({
-    // Rescue is authorized precisely because the future plan may increase or
-    // reduce the original target. Validate the exact new composition against
-    // its actual candidate mass without rewriting the frozen source target.
-    recipe: { ...candidate, target_batch_grams: candidateBatchGrams },
-    snapshots: session.plannedComposition.behaviorSnapshots ?? {},
-    module: 'BATCH_RESCUE',
-    technicalOnlyMainLineIds: session.plannedComposition.ownerReviewGate?.technicalOnlyMainLineIds,
-  });
+  const authority = evaluateProductionRescueTerminalAuthority(
+    candidate,
+    session.plannedComposition,
+  );
   if (!authority.valid) {
     throw new Error(
       authority.issues[0]?.messagePl ??
@@ -933,6 +950,8 @@ export function applyVerifiedRescueInput(
     {
       ...session,
       durableRescueRevision: rescueRevision,
+      supersededRescue: null,
+      invalidDurableRescue: null,
       rescueAddedItems,
       lines: [...lines, ...addedLines],
     },
@@ -1123,12 +1142,69 @@ export function hydrateProductionSessionFromRun(
         },
       },
     };
-    session = applyVerifiedRescueInput(session, run.rescue.recipeInput, run.rescue.revision);
-    session = {
-      ...session,
-      durableRescueAcceptedAt: run.rescue.acceptedAt,
-      durableRescueRevision: run.rescue.revision,
-    };
+    const durableAuthority = evaluateProductionRescueTerminalAuthority(
+      run.rescue.recipeInput,
+      session.plannedComposition,
+    );
+    if (durableAuthority.valid) {
+      session = applyVerifiedRescueInput(session, run.rescue.recipeInput, run.rescue.revision);
+      session = {
+        ...session,
+        durableRescueAcceptedAt: run.rescue.acceptedAt,
+        durableRescueRevision: run.rescue.revision,
+      };
+    } else {
+      const actualById = new Map(
+        run.actual?.items.map((item) => [item.id, item.actualGrams] as const) ?? [],
+      );
+      const originalIds = new Set(session.plannedInput.items.map((item) => item.id));
+      const physicallyPresentRescueItems = run.rescue.recipeInput.items
+        .filter(
+          (item) =>
+            !originalIds.has(item.id) && (actualById.get(item.id) ?? 0) > PRODUCTION_GRAMS_EPSILON,
+        )
+        .map((item) => ({
+          ...item,
+          planned_grams: actualById.get(item.id) ?? 0,
+          actual_grams: null,
+        }));
+      session = {
+        ...session,
+        durableRescueAcceptedAt: run.rescue.acceptedAt,
+        durableRescueRevision: run.rescue.revision,
+        supersededRescue: {
+          revision: run.rescue.revision,
+          acceptedAt: run.rescue.acceptedAt,
+          reasonPl:
+            durableAuthority.issues[0]?.messagePl ??
+            'Zapisana korekta partii nie spełnia już aktualnych reguł bezpieczeństwa.',
+        },
+        invalidDurableRescue: {
+          revision: run.rescue.revision,
+          acceptedAt: run.rescue.acceptedAt,
+          issueCodes: [...new Set(durableAuthority.issues.map((issue) => issue.code))],
+        },
+        rescueAddedItems: physicallyPresentRescueItems,
+        lines: [
+          ...session.lines,
+          ...physicallyPresentRescueItems.map((item) => ({
+            lineId: item.id,
+            canonicalIngredientId:
+              item.ingredient.canonical_ingredient_id ?? item.ingredient.id ?? null,
+            name: item.ingredient.name,
+            plannedGrams: 0,
+            targetGrams: item.planned_grams,
+            draftActualGrams: item.planned_grams,
+            draftActualEdited: false,
+            physicalAddedGrams: 0,
+            confirmed: false,
+            confirmedAt: null,
+            confirmationOrder: null,
+            recordCorrectionCount: 0,
+          })),
+        ],
+      };
+    }
   }
 
   const decisionEvent = [...run.events]
@@ -1138,6 +1214,7 @@ export function hydrateProductionSessionFromRun(
   const strategy = decision?.stableOptionId;
   if (
     decisionEvent &&
+    session.invalidDurableRescue?.revision !== decision?.rescueRevision &&
     (strategy === 'keep_original_batch' ||
       strategy === 'enlarge_batch' ||
       strategy === 'restore_original_recipe' ||
@@ -1200,7 +1277,7 @@ export function hydrateProductionSessionFromRun(
     };
   }
 
-  if (run.rescue && run.actual) {
+  if (run.rescue && run.actual && session.invalidDurableRescue === null) {
     session = materializeAuthorizedProductionTopUps(
       session,
       run.rescue.revision,
