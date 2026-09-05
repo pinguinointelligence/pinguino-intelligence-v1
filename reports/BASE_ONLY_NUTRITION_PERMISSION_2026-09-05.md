@@ -207,7 +207,72 @@ same `v_topping` evidence conjunct, so the contradictory pair is unreachable by 
 five incomplete products keep SAVE, BASE_RECIPE and MONITOR and lose only PRODUCTION -- which they
 could never have completed. Asserted by `GEL-P0-028 D` across the full 16-row truth table.
 
-## 6. What this PR changed
+## 6. Served staging E2E (owner account `pro@pro.com`, 2026-09-05)
+
+Run on https://staging.pinguinoai.com against the applied migrations. No credentials were typed: an
+owner session was already live in the browser.
+
+### `PR-ING-007172` Mleko płynne Łaciate 3,5% — the nutrition path PASSES
+
+| step                            | result                                                                                              |
+| ------------------------------- | --------------------------------------------------------------------------------------------------- |
+| add to recipe                   | line added                                                                                          |
+| Recalculate                     | preview produced ("Sprawdź proponowaną korektę")                                                    |
+| Apply ("Zastosuj zmiany")       | applied                                                                                             |
+| **incomplete-refresh warning**  | **none** — `staleWarningsFound: []`                                                                 |
+| **second recalculate demanded** | **no** — badge reads "Wynik aktualny"                                                               |
+| `data-label-ready`              | **`true`** (LABEL gate ready ⇒ NUTRITION gate ready ⇒ result is CURRENT)                            |
+| Save                            | saved as `34583b01-…` v1, 7 lines                                                                   |
+| reopen                          | "Zapisane · v1" + "Wynik aktualny", no stale warning, `data-label-ready=true`                       |
+| frozen snapshot                 | `NUTRITION: eligible`, `LABEL: eligible` on binding `base-only-nutrition-label-v1:55afbb8e30d936fd` |
+
+The loop is gone. Before the fix this recipe could never have reached CURRENT.
+
+### Łaciate at Production — refused by a DIFFERENT, pre-existing gate
+
+Production shows _"Nie udało się potwierdzić produktów"_ with the single action **"Wróć do receptury"**.
+It is a dead end, **not a loop**: `module_permission_missing` is deliberately absent from
+`REFRESHABLE_SNAPSHOT_REASON_CODES`, so no refresh button is offered.
+
+The cause is not nutrition. Łaciate's binding carries
+`process_behavior.decision = 'UNKNOWN'`, `verificationStatus = 'unknown'`, so `v_has_process` is false
+and `resolve_product_behavior_evidence_gate_v1` blocks `PROCESS` and `PRODUCTION`:
+
+```sql
+or (v_module in ('PROCESS','PRODUCTION') and v_scope='BASE_FORMULATION' and not v_has_process)
+```
+
+That predates this work and is untouched by it. **The refusal copy is misleading**, though: it says the
+product verification needs refreshing when the real blocker is missing process evidence. Worth a
+separate copy fix so the message names the actual gap.
+
+### `PR-ING-007173` Leche líquida entera Hacendado — the FULL lifecycle PASSES
+
+Same cured set, and it does carry verified process evidence (`COLD_PROCESS_OK` / `verified`).
+
+| step                           | result                                                                                                   |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| add, Recalculate               | "Receptura już spełnia wybrany profil" — no change required                                              |
+| result state                   | "Wynik aktualny", `data-label-ready=true`, no stale warnings                                             |
+| Save                           | `34583b01-…` **v2**, "QA Hacendado production path"                                                      |
+| frozen snapshot (catalog line) | `NUTRITION: eligible`, `PROCESS: eligible`, `PRODUCTION: eligible`                                       |
+| **Production**                 | **"WSZYSTKO GOTOWE DO ROZPOCZĘCIA PARTII"** — 0/7 składników, Wersja 2, 1000 g, Źródło "Zapisana wersja" |
+
+The only remaining step is acknowledging the TARA GUM heat notice, which is ordinary process
+information, not a permission gate.
+
+### `PR-ING-007142` Cacao Puro — NOT RUN
+
+Blocked by §4. Cacao Puro could not be reclassified, so its binding still reads
+`NUTRITION=false` and the original loop still reproduces. This is the one part of the brief that
+remains undelivered.
+
+### Incomplete-product refusal — NOT RUN
+
+All five incomplete products are in the stale-lineage group, so none could be republished with the
+new PRODUCTION rule. The rule itself is proven at the derivation level by `GEL-P0-028 B` and `D`.
+
+## 7. What this PR changed
 
 | file                                                                             |                                                                                                    |
 | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
@@ -218,7 +283,7 @@ could never have completed. Asserted by `GEL-P0-028 D` across the full 16-row tr
 Unchanged: Engine math, PAC/POD/NPAC, Mapper/PI, CACAO's PI assignment, product country/origin/
 manufacturer facts, FILTR, Scanner, Shop.
 
-## 7. Separate follow-ups
+## 8. Separate follow-ups
 
 - **CACAO water/solids data quality.** `water_percent = 0`, `totalSolids = 100`, inherited from
   neighbour `PI-ING-001313`. Declared macros sum to 89.53 g/100 g, leaving ~10.5 g unaccounted
