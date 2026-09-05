@@ -1,15 +1,16 @@
 import { Link } from 'react-router';
-import { LiveProductScanner } from '@/features/product-scanner/LiveProductScanner';
+import { ScanFlow } from '@/features/scan-flow/ScanFlow';
 import { useAuthStore } from '@/stores/authStore';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
 import { applicationPrimaryClasses } from '@/components/ui/applicationControlStyles';
 
 /**
- * The standalone scanner destination. The scanning itself lives in
- * `LiveProductScanner`, because the same session — the same camera, the same
- * evidence, the same Product Intelligence — is what the recipe's „Dodaj składnik"
- * opens (§37). There is one scanner, entered from two places.
+ * The standalone scanner destination (Produkty → „Skanuj produkt”). The scanning itself is the
+ * ONE shared flow — camera → Scan Core → EAN/GTIN → Scan Import 2.0 — the same the recipe's
+ * „Dodaj składnik → Skanuj” opens. Here a known product is shown as already existing (never
+ * duplicated); an unknown one is recognised and, when the label still lacks data, completed by the
+ * customer and saved as a private local product.
  */
 export function ProductScannerV1Page() {
   const authStatus = useAuthStore((state) => state.status);
@@ -19,7 +20,7 @@ export function ProductScannerV1Page() {
     return (
       <DestinationSurface
         title="Skanuj produkt"
-        blurb="Dodaj produkt do właściwego katalogu Gellatti."
+        blurb="Sprawdź produkt po kodzie kreskowym albo dodaj go do swojego katalogu."
       >
         <section className="rounded-[var(--radius-pro-studio)] border border-ink/10 bg-white p-5 sm:p-6">
           <p className="max-w-xl text-sm leading-6 text-stone-600">
@@ -41,7 +42,7 @@ export function ProductScannerV1Page() {
   return (
     <DestinationSurface
       title="Skanuj produkt"
-      blurb="Dodaj jedno dobre zdjęcie opakowania. Gellatti odczyta etykietę, sprawdzi produkt i przygotuje go do użycia."
+      blurb="Pokaż kod kreskowy aparatowi. Znany produkt pokażemy od razu; nowy rozpoznamy i zapiszemy jako Twój."
     >
       <Link
         to="/products"
@@ -49,7 +50,7 @@ export function ProductScannerV1Page() {
       >
         ← Produkty
       </Link>
-      <LiveProductScanner />
+      <ScanFlow mode="catalog" />
     </DestinationSurface>
   );
 }

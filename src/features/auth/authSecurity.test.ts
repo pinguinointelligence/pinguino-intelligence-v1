@@ -33,6 +33,8 @@ const FILES = allSourceFiles();
 const ALLOWED_ENV = new Set([
   'VITE_SUPABASE_URL',
   'VITE_SUPABASE_ANON_KEY',
+  'VITE_SCAN_IMPORT_LAB', // staging-only QA harness for Scan Import 2.0 (/dev/scan-import-v2); never HOME
+  'VITE_SCAN_IMPORT_GTIN_RPC', // harness: dedicated exact-identity RPC once migration 20260905090000 is deployed
   'VITE_SENTRY_DSN',
   'VITE_OFFER_LAUNCH_ENABLED',
   'VITE_OFFER_FOUNDING_ENABLED',
@@ -42,6 +44,10 @@ const ALLOWED_ENV = new Set([
   // Public build identity shown in the staging operations workspace.
   'VITE_VERCEL_GIT_COMMIT_SHA',
   'VITE_GIT_COMMIT_SHA',
+  // Build-time switch ("1") that includes the isolated Scan Core Phase 0 measurement route
+  // /scan-lab/baseline. Set only on the staging Vercel project; carries no secret.
+  'VITE_SCAN_LAB_BASELINE',
+  'VITE_SCAN_LAB_BUILD', // build-time git commit stamped into Scan Lab bundles (harness identity)
 ]);
 
 describe('Phase 2A security guards', () => {
