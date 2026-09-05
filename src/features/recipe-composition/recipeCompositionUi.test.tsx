@@ -100,7 +100,6 @@ describe('Base/Topping owner entry points', () => {
             targetBatchG={input.target_batch_grams}
             demo
             layout="workbench"
-            recipeActionDock={<div data-testid="test-recipe-action-dock">Dock</div>}
           />
         </SurfaceToneContext.Provider>
       </QueryClientProvider>,

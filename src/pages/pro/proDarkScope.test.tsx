@@ -111,11 +111,13 @@ describe('Pro workspace — white precision scope', () => {
     expect(html).toContain('theme-pro-light');
   });
 
-  it('editor action dock, profile tabs and save render INSIDE the scope', () => {
+  it('viewport actions, profile tabs and save render INSIDE the scope', () => {
     const html = renderAt('/pro/recipe', 'pro');
     for (const id of [
       'pro-workbar',
-      'ingredient-action-slot',
+      'pro-bottom-right-floating-actions',
+      'pro-floating-monitor',
+      'pro-floating-recalculate',
       'pro-context-tabs',
       'pro-workbar-save',
     ]) {

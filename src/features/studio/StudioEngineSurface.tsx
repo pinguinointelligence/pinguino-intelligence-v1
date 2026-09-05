@@ -27,6 +27,7 @@ import { RecipeProfilePanel, type CockpitTab } from '@/features/pro-workbench/Re
 import type { LabelWorkspaceView } from '@/features/master-label/LabelWorkspace';
 import { DEFAULT_PRESET } from '@/data/demoPresets';
 import { WorkbenchRecipeActionDock } from '@/features/pro-workbench/WorkbenchRecipeActionDock';
+import { ProBottomRightFloatingActions } from '@/features/pro-workbench/ProBottomRightFloatingActions';
 import { WorkbenchModuleTabs } from '@/features/pro-workbench/WorkbenchModuleTabs';
 import { useProductionWorkspace } from '@/features/production-workspace/useProductionWorkspace';
 import { ProductionWorkspaceHeader } from '@/features/production-workspace/ProductionWorkspaceHeader';
@@ -362,23 +363,12 @@ export function StudioEngineSurface({
     };
   }, [activeTab, mobileCockpitOpen, mobileViewport]);
 
-  // ONE recipe action dock (score / „Przelicz" + the action bar). It is placed
-  // in the editor toolbar on the workbench breakpoint and in the mobile bottom
-  // stack below it — exactly one of the two is visible at any viewport width.
+  // Mobile keeps its accepted score / „Przelicz" bottom stack. Desktop actions
+  // are viewport-fixed below and therefore never enter IngredientBuilder flow.
   const openLearning = () => {
     onTabChange('profile');
     queueMicrotask(() => window.dispatchEvent(new Event('pinguino:open-learning')));
   };
-  const recipeActionDock =
-    !productionActive && onRecalculate ? (
-      <WorkbenchRecipeActionDock
-        result={planning.result}
-        input={planning.input}
-        onRecalculate={onRecalculate}
-        onOpenPreview={onOpenExistingPreview ?? (() => undefined)}
-        onOpenLearning={openLearning}
-      />
-    ) : null;
   const mobileRecipeActionDock =
     !productionActive && onRecalculate ? (
       <WorkbenchRecipeActionDock
@@ -445,7 +435,6 @@ export function StudioEngineSurface({
                   mode={productionActive ? 'production' : 'recipe'}
                   production={production}
                   productionReadyPresentation={activeTab === 'production' && !productionActive}
-                  recipeActionDock={recipeActionDock ?? undefined}
                 />
               </div>
             ) : (
@@ -574,6 +563,13 @@ export function StudioEngineSurface({
           </div>
         ) : null}
       </section>
+
+      {!productionActive && onRecalculate ? (
+        <ProBottomRightFloatingActions
+          onMonitor={() => onTabChange('monitor')}
+          onRecalculate={onRecalculate}
+        />
+      ) : null}
 
       {/* Przelicz z PI — the compact OVERLAY (never a page section). */}
       {recalcSlot}

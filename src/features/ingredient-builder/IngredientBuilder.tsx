@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { GellattiNotice } from '@/components/ui/GellattiNotice';
 import { MetricValue } from '@/components/shared/MetricValue';
@@ -102,7 +102,6 @@ export function IngredientBuilder({
   mode = 'recipe',
   production,
   productionReadyPresentation = false,
-  recipeActionDock,
 }: {
   items: EffectiveRecipeItem[];
   totalBatchG: number;
@@ -114,7 +113,6 @@ export function IngredientBuilder({
   /** Desktop-only presentation bridge for the approved inline process reminder.
    * Mobile keeps the current Production cockpit card and interaction model. */
   productionReadyPresentation?: boolean;
-  recipeActionDock?: ReactNode;
 }) {
   const queryClient = useQueryClient();
   const authUserId = useAuthStore((state) =>
@@ -1113,16 +1111,6 @@ export function IngredientBuilder({
                         {picker}
                         {toppingPicker}
                       </div>
-                      {recipeActionDock ? (
-                        // The SAME dock is pinned above the mobile preview bar below
-                        // the workbench breakpoint, so it is never shown twice.
-                        <div
-                          className="pro-workbench-action-dock ml-auto hidden min-w-0"
-                          data-testid="ingredient-action-slot"
-                        >
-                          {recipeActionDock}
-                        </div>
-                      ) : null}
                     </div>
                     <section
                       className="border-t border-status-ideal/15"
