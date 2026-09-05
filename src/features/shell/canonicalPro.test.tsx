@@ -103,6 +103,9 @@ describe('canonical Gellatti Pro — menu (proofs 4–6, 17–18)', () => {
     expect(items.map((item) => item.id)).toEqual([
       'proWorkspace',
       'recipes',
+      // OWNER 2026-09-05: the educational Tour is one canonical destination
+      // for Guest, Home and Pro — never a workbench-local duplicate.
+      'howItWorks',
       'production',
       'products',
       'machine',

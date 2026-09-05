@@ -53,6 +53,7 @@ describe('plan-aware global navigation', () => {
     expect(ids('home')).toEqual([
       'homeWorkspace',
       'recipes',
+      'howItWorks',
       'products',
       'machine',
       'community',
@@ -67,6 +68,7 @@ describe('plan-aware global navigation', () => {
     expect(ids('pro')).toEqual([
       'proWorkspace',
       'recipes',
+      'howItWorks',
       'production',
       'products',
       'machine',
@@ -111,6 +113,16 @@ describe('plan-aware global navigation', () => {
     const community = APP_NAV_ITEMS.find((item) => item.id === 'community');
     expect(community?.to).toBe('/community');
     expect(community?.audiences).toEqual(['guest', 'home', 'pro']);
+  });
+
+  it('offers one canonical Dlaczego to działa? entry to every audience', () => {
+    const entry = APP_NAV_ITEMS.find((item) => item.id === 'howItWorks');
+    expect(entry?.label).toBe('Dlaczego to działa?');
+    expect(entry?.to).toBe('/how-it-works');
+    expect(entry?.audiences).toEqual(['guest', 'home', 'pro']);
+    for (const audience of ['guest', 'home', 'pro'] as const) {
+      expect(visibleNavItems(audience).filter((item) => item.id === 'howItWorks')).toHaveLength(1);
+    }
   });
 
   it('never promotes contextual actions, internals or a separate Studio destination', () => {

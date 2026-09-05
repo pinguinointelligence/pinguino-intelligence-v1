@@ -81,8 +81,8 @@ export const APP_NAV_ITEMS: readonly AppNavItem[] = [
     label: s.items.howItWorks,
     to: '/how-it-works',
     group: 'product',
-    order: 2,
-    audiences: ['guest'],
+    order: 1.5,
+    audiences: ['guest', 'home', 'pro'],
     isActive: exact('/how-it-works'),
   },
   {
