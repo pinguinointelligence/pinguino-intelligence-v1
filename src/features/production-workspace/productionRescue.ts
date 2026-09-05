@@ -24,6 +24,9 @@ import {
   gelatoStabilizerSystemApplies,
   gelatoStabilizerSystemItems,
   gelatoStabilizerWholeGramBand,
+  sorbetStabilizerSystemApplies,
+  sorbetStabilizerSystemItems,
+  sorbetStabilizerWholeGramBand,
   type ConstraintSet,
   type IngredientConstraint,
 } from '@/features/recipe-constraints';
@@ -47,7 +50,7 @@ export type ProductionRescueOptionId = ProductionRescueStableOptionId;
  * continue to identify the formulas and calibrated data; this stamp identifies
  * the option-selection and practicalization layer authorized by the server.
  */
-export const PRODUCTION_RESCUE_MODEL_VERSION = 'production-rescue-v9' as const;
+export const PRODUCTION_RESCUE_MODEL_VERSION = 'production-rescue-v10' as const;
 
 export interface ProductionRescueInstruction {
   lineId: string | null;
@@ -445,7 +448,118 @@ interface ProductionRescueLinearRow {
 }
 
 const PRODUCTION_RESCUE_INTEGER_NODE_BUDGET = 20_000;
+const PRODUCTION_RESCUE_SORBET_INTEGER_NODE_BUDGET = 2_048;
 const PRODUCTION_RESCUE_EXTREME_NODE_BUDGET = 512;
+const PRODUCTION_RESCUE_LINEAR_EPSILON = 1e-8;
+
+/** Rescue-only integer proof with per-line execution steps. The shared Main
+ * technical solver deliberately retains its historical branching byte-for-byte;
+ * Sorbet needs this separate path because stabilizer components execute only in
+ * whole grams while every other Production line executes in tenths. */
+function solveProductionRescueIntegerMaximum(
+  baseRows: readonly number[][],
+  baseBounds: readonly number[],
+  objective: readonly number[],
+  maxNodes: number,
+  branchOrder: readonly number[],
+  variableSteps: readonly number[],
+): ReturnType<typeof solveIntegerLinearMaximum> {
+  let nodes = 0;
+  let exhausted = false;
+  let bestValue = -Infinity;
+  let bestSolution: number[] | null = null;
+  let rootIntegerUpperBound: number | null = null;
+
+  interface SearchNode {
+    extraRows: readonly number[][];
+    extraBounds: readonly number[];
+  }
+
+  const stepFor = (index: number): number => {
+    const requested = variableSteps[index];
+    return requested && Number.isInteger(requested) && requested > 0 ? requested : 1;
+  };
+  const floorToStep = (value: number, index: number): number =>
+    Math.floor(value / stepFor(index) + PRODUCTION_RESCUE_LINEAR_EPSILON) * stepFor(index);
+  const ceilToStep = (value: number, index: number): number =>
+    Math.ceil(value / stepFor(index) - PRODUCTION_RESCUE_LINEAR_EPSILON) * stepFor(index);
+  const roundToStep = (value: number, index: number): number =>
+    Math.round(value / stepFor(index)) * stepFor(index);
+  const distanceToStep = (value: number, index: number): number =>
+    Math.abs(value - roundToStep(value, index));
+
+  const stack: SearchNode[] = [{ extraRows: [], extraBounds: [] }];
+  while (stack.length > 0) {
+    if (nodes >= maxNodes) {
+      exhausted = true;
+      break;
+    }
+    const { extraRows, extraBounds } = stack.pop()!;
+    nodes += 1;
+    const solved = new LinearProgram(
+      [...baseRows, ...extraRows],
+      [...baseBounds, ...extraBounds],
+      objective,
+    ).solve();
+    if (solved.status !== 'optimal') continue;
+    if (rootIntegerUpperBound === null) {
+      rootIntegerUpperBound = Math.floor(solved.value + PRODUCTION_RESCUE_LINEAR_EPSILON);
+    }
+    if (
+      Math.floor(solved.value + PRODUCTION_RESCUE_LINEAR_EPSILON) <=
+      bestValue + PRODUCTION_RESCUE_LINEAR_EPSILON
+    ) {
+      continue;
+    }
+
+    let branchIndex =
+      branchOrder.find(
+        (index) =>
+          index >= 0 &&
+          index < solved.solution.length &&
+          distanceToStep(solved.solution[index]!, index) > PRODUCTION_RESCUE_LINEAR_EPSILON,
+      ) ?? -1;
+    let branchDistance = 0;
+    for (let index = 0; branchIndex === -1 && index < solved.solution.length; index += 1) {
+      const distance = distanceToStep(solved.solution[index]!, index) / stepFor(index);
+      if (
+        distance > PRODUCTION_RESCUE_LINEAR_EPSILON &&
+        distance > branchDistance + PRODUCTION_RESCUE_LINEAR_EPSILON
+      ) {
+        branchIndex = index;
+        branchDistance = distance;
+      }
+    }
+    if (branchIndex === -1) {
+      bestValue = Math.round(solved.value);
+      bestSolution = solved.solution.map((value, index) =>
+        Math.max(0, roundToStep(value, index)),
+      );
+      if (bestValue >= rootIntegerUpperBound - PRODUCTION_RESCUE_LINEAR_EPSILON) {
+        stack.length = 0;
+      }
+      continue;
+    }
+
+    const value = solved.solution[branchIndex]!;
+    const lowerRow = Array.from({ length: objective.length }, () => 0);
+    lowerRow[branchIndex] = -1;
+    const upperRow = Array.from({ length: objective.length }, () => 0);
+    upperRow[branchIndex] = 1;
+    stack.push({
+      extraRows: [...extraRows, upperRow],
+      extraBounds: [...extraBounds, floorToStep(value, branchIndex)],
+    });
+    stack.push({
+      extraRows: [...extraRows, lowerRow],
+      extraBounds: [...extraBounds, -ceilToStep(value, branchIndex)],
+    });
+  }
+  if (exhausted || bestSolution === null || !Number.isFinite(bestValue)) {
+    return { status: 'unavailable', value: null, solution: null, nodes, exhausted };
+  }
+  return { status: 'optimal', value: bestValue, solution: bestSolution, nodes, exhausted: false };
+}
 
 /**
  * Build a necessary linear relaxation of the canonical Engine bands. This is
@@ -659,24 +773,21 @@ function certifiedMinimumLargerBatchCandidate(
     }
   }
 
-  const gelatoStabilizers = gelatoStabilizerSystemApplies(forecastInput.category)
-    ? new Set(gelatoStabilizerSystemItems(forecastInput.items).map((item) => item.id))
-    : null;
-  if (gelatoStabilizers && gelatoStabilizers.size > 0) {
-    const stabilizerRow = forecastInput.items.map((item) =>
-      gelatoStabilizers.has(item.id) ? 1 : 0,
-    );
-    addHomogeneousUpper(
-      totalRow.map(
-        (value, index) =>
-          0.002 * value - stabilizerRow[index]!,
-      ),
-    );
-    addHomogeneousUpper(
-      totalRow.map(
-        (value, index) => stabilizerRow[index]! - 0.005 * value,
-      ),
-    );
+  const stabilizerItems = gelatoStabilizerSystemApplies(forecastInput.category)
+    ? gelatoStabilizerSystemItems(forecastInput.items)
+    : sorbetStabilizerSystemApplies(forecastInput.category)
+      ? sorbetStabilizerSystemItems(forecastInput.items)
+      : [];
+  const stabilizerIds = new Set(stabilizerItems.map((item) => item.id));
+  const stabilizerWholeGramBand = gelatoStabilizerSystemApplies(forecastInput.category)
+    ? gelatoStabilizerWholeGramBand
+    : sorbetStabilizerSystemApplies(forecastInput.category)
+      ? sorbetStabilizerWholeGramBand
+      : null;
+  if (stabilizerIds.size > 0) {
+    const stabilizerRow = forecastInput.items.map((item) => (stabilizerIds.has(item.id) ? 1 : 0));
+    addHomogeneousUpper(totalRow.map((value, index) => 0.002 * value - stabilizerRow[index]!));
+    addHomogeneousUpper(totalRow.map((value, index) => stabilizerRow[index]! - 0.005 * value));
   }
 
   const continuous = new LinearProgram(
@@ -726,14 +837,21 @@ function certifiedMinimumLargerBatchCandidate(
     ),
     ...forecastInput.items.map((_, index) => index),
   ].filter((index, position, values) => values.indexOf(index) === position);
+  const integerBranchOrder = [
+    ...mainItems.map(({ index }) => index),
+    ...forecastInput.items.map((_, index) => index).reverse(),
+  ].filter((index, position, values) => values.indexOf(index) === position);
+  const integerVariableSteps = forecastInput.items.map((item) =>
+    stabilizerIds.has(item.id) ? 10 : 1,
+  );
   const stabilizerRow =
-    gelatoStabilizers && gelatoStabilizers.size > 0
-      ? forecastInput.items.map((item) => (gelatoStabilizers.has(item.id) ? 1 : 0))
+    stabilizerIds.size > 0
+      ? forecastInput.items.map((item) => (stabilizerIds.has(item.id) ? 1 : 0))
       : null;
   const massIntervals: Array<{
     firstTenths: number;
     lastTenths: number;
-    stabilizerBand: ReturnType<typeof gelatoStabilizerWholeGramBand> | null;
+    stabilizerBand: { minGrams: number; maxGrams: number } | null;
   }> = [];
   if (!stabilizerRow) {
     massIntervals.push({
@@ -747,10 +865,10 @@ function certifiedMinimumLargerBatchCandidate(
     // interval instead of launching branch-and-bound for every 0.1 g step.
     let intervalStart = firstTargetTenths;
     while (intervalStart <= ceilingTenths) {
-      const band = gelatoStabilizerWholeGramBand(intervalStart / 10);
+      const band = stabilizerWholeGramBand!(intervalStart / 10);
       let intervalEnd = intervalStart;
       while (intervalEnd < ceilingTenths) {
-        const nextBand = gelatoStabilizerWholeGramBand((intervalEnd + 1) / 10);
+        const nextBand = stabilizerWholeGramBand!((intervalEnd + 1) / 10);
         if (
           nextBand.minGrams !== band.minGrams ||
           nextBand.maxGrams !== band.maxGrams
@@ -818,50 +936,114 @@ function certifiedMinimumLargerBatchCandidate(
       -interval.firstTenths,
     ];
     if (stabilizerRow && interval.stabilizerBand) {
-      intervalRows.push(stabilizerRow, stabilizerRow.map((value) => -value));
+      intervalRows.push(
+        stabilizerRow,
+        stabilizerRow.map((value) => -value),
+      );
       intervalBounds.push(
         interval.stabilizerBand.maxGrams * 10,
         -interval.stabilizerBand.minGrams * 10,
       );
     }
-    const minimum = solveIntegerLinearMaximum(
-      intervalRows,
-      intervalBounds,
-      totalRow.map((value) => -value),
-      PRODUCTION_RESCUE_INTEGER_NODE_BUDGET,
-    );
-    if (minimum.status !== 'optimal' || !minimum.solution) {
-      // Budget exhaustion cannot prove that a later interval is truly the
-      // minimum. Fail closed and leave the existing recovery paths untouched.
-      if (minimum.exhausted) return null;
-      continue;
-    }
-    const targetTenths = Math.round(
-      minimum.solution.reduce((sum, value) => sum + value, 0),
-    );
-    const minimumSeed = seedForSolution(minimum.solution, targetTenths);
-    if (minimumSeed) return minimumSeed;
-
-    // Necessary linear bounds normally make the minimum vector terminal. If a
-    // profile has an additional nonlinear gate, sample deterministic extreme
-    // points at that SAME proven-minimum mass; never skip to a larger mass and
-    // falsely call it the smallest.
-    const fixedRows = [...intervalRows, totalRow, totalRow.map((value) => -value)];
-    const fixedBounds = [...intervalBounds, targetTenths, -targetTenths];
-    for (const objectiveIndex of objectiveOrder) {
-      const objective = Array.from({ length: size }, () => 0);
-      objective[objectiveIndex] = 1;
-      const solved = solveIntegerLinearMaximum(
-        fixedRows,
-        fixedBounds,
-        objective,
-        PRODUCTION_RESCUE_EXTREME_NODE_BUDGET,
+    if (!sorbetStabilizerSystemApplies(forecastInput.category)) {
+      const minimum = solveIntegerLinearMaximum(
+        intervalRows,
+        intervalBounds,
+        totalRow.map((value) => -value),
+        PRODUCTION_RESCUE_INTEGER_NODE_BUDGET,
       );
-      if (solved.status !== 'optimal' || !solved.solution) continue;
-      const seed = seedForSolution(solved.solution, targetTenths);
-      if (seed) return seed;
+      if (minimum.status !== 'optimal' || !minimum.solution) {
+        if (minimum.exhausted) return null;
+        continue;
+      }
+      const targetTenths = Math.round(
+        minimum.solution.reduce((sum, value) => sum + value, 0),
+      );
+      const minimumSeed = seedForSolution(minimum.solution, targetTenths);
+      if (minimumSeed) return minimumSeed;
+
+      const fixedRows = [...intervalRows, totalRow, totalRow.map((value) => -value)];
+      const fixedBounds = [...intervalBounds, targetTenths, -targetTenths];
+      for (const objectiveIndex of objectiveOrder) {
+        const objective = Array.from({ length: size }, () => 0);
+        objective[objectiveIndex] = 1;
+        const solved = solveIntegerLinearMaximum(
+          fixedRows,
+          fixedBounds,
+          objective,
+          PRODUCTION_RESCUE_EXTREME_NODE_BUDGET,
+        );
+        if (solved.status !== 'optimal' || !solved.solution) continue;
+        const seed = seedForSolution(solved.solution, targetTenths);
+        if (seed) return seed;
+      }
+      return null;
     }
-    return null;
+    const stabilizerTotals = interval.stabilizerBand
+      ? Array.from(
+          { length: interval.stabilizerBand.maxGrams - interval.stabilizerBand.minGrams + 1 },
+          (_, index) => interval.stabilizerBand!.minGrams + index,
+        )
+      : [null];
+    // Exact total mass is the strongest integer cut available here. Walk the
+    // executable 0.1 g grid in order and prove every earlier mass infeasible.
+    // Whole-gram stabilizer totals form a tiny finite authority range at each
+    // mass, avoiding the broad mixed tree that exceeded the Edge CPU budget.
+    for (
+      let targetTenths = interval.firstTenths;
+      targetTenths <= interval.lastTenths;
+      targetTenths += 1
+    ) {
+      let linearCandidateWithoutTerminalProof = false;
+      for (const stabilizerTotal of stabilizerTotals) {
+        const fixedRows = [...intervalRows, totalRow, totalRow.map((value) => -value)];
+        const fixedBounds = [...intervalBounds, targetTenths, -targetTenths];
+        if (stabilizerRow && stabilizerTotal !== null) {
+          fixedRows.push(
+            stabilizerRow,
+            stabilizerRow.map((value) => -value),
+          );
+          fixedBounds.push(stabilizerTotal * 10, -stabilizerTotal * 10);
+        }
+        const feasible = solveProductionRescueIntegerMaximum(
+          fixedRows,
+          fixedBounds,
+          Array.from({ length: size }, () => 0),
+          PRODUCTION_RESCUE_SORBET_INTEGER_NODE_BUDGET,
+          integerBranchOrder,
+          integerVariableSteps,
+        );
+        if (feasible.status !== 'optimal' || !feasible.solution) {
+          if (feasible.exhausted) return null;
+          continue;
+        }
+
+        let seed = seedForSolution(feasible.solution, targetTenths);
+        if (!seed) {
+          for (const objectiveIndex of objectiveOrder) {
+            const objective = Array.from({ length: size }, () => 0);
+            objective[objectiveIndex] = 1;
+            const solved = solveProductionRescueIntegerMaximum(
+              fixedRows,
+              fixedBounds,
+              objective,
+              PRODUCTION_RESCUE_EXTREME_NODE_BUDGET,
+              integerBranchOrder,
+              integerVariableSteps,
+            );
+            if (solved.status !== 'optimal' || !solved.solution) continue;
+            seed = seedForSolution(solved.solution, targetTenths);
+            if (seed) break;
+          }
+        }
+        if (seed) return seed;
+        linearCandidateWithoutTerminalProof = true;
+      }
+      // A necessary-linear candidate existed at this mass, but the bounded
+      // terminal sampler could not certify it. Skipping it would make any later
+      // candidate's “smallest” label dishonest, so fail closed.
+      if (linearCandidateWithoutTerminalProof) return null;
+    }
   }
   return null;
 }
