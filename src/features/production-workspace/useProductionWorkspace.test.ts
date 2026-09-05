@@ -275,6 +275,52 @@ describe('trusted Production Rescue authorization basis', () => {
       'Niedostępne — przy celu 670 g potwierdzone ilości dają co najmniej Laktoza 6,194% (maks. 6,000%). Bez usuwania produktu korekta wymaga większej partii.',
     );
 
+    const lowFixedTargetError = new ProductionRescueOptionUnavailableError(
+      'stable_rescue_option_stale',
+      'no_safe_original_target_candidate',
+      ['npac'],
+      {
+        physicalConfirmedG: 443,
+        forecastMassG: 675,
+        originalTargetG: 670,
+        machineCapacityG: 670,
+        forecastViolationDetails: [],
+        fixedTargetRebalance: {
+          candidateMassG: 670,
+          violationDetails: [
+            { metric: 'npac', direction: 'low', value: 47.179, min: 55, max: 70 },
+          ],
+        },
+        irreducibleConfirmedViolations: [],
+      },
+    );
+    expect(rescueOptionUnavailableMessage('keep_original_batch', 670, lowFixedTargetError)).toBe(
+      'Niedostępne — przeliczenie pozostałych ilości do 670 g pozostaje poza zakresem: Stabilność mrożenia · NPAC 47,179% (poniżej minimum 55,000%).',
+    );
+
+    const highFixedTargetError = new ProductionRescueOptionUnavailableError(
+      'stable_rescue_option_stale',
+      'no_safe_original_target_candidate',
+      ['lactose'],
+      {
+        physicalConfirmedG: 381,
+        forecastMassG: 675,
+        originalTargetG: 670,
+        machineCapacityG: 670,
+        forecastViolationDetails: [],
+        fixedTargetRebalance: {
+          candidateMassG: 670,
+          violationDetails: [
+            { metric: 'lactose', direction: 'high', value: 6.194, min: 4, max: 6 },
+          ],
+        },
+        irreducibleConfirmedViolations: [],
+      },
+    );
+    expect(rescueOptionUnavailableMessage('keep_original_batch', 670, highFixedTargetError)).toBe(
+      'Niedostępne — przeliczenie pozostałych ilości do 670 g pozostaje poza zakresem: Laktoza 6,194% (powyżej maksimum 6,000%).',
+    );
+
     const capacityOwnerError = new ProductionRescueOptionUnavailableError(
       'stable_rescue_option_stale',
       'machine_capacity_exceeded',
