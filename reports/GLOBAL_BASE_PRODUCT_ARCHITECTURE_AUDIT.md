@@ -248,3 +248,55 @@ The binding stays untouched until C04/C05.
 - The Vegan authority is COUPLED to four frozen brand rows (002109-002112). Leaving them frozen is
   correct per Owner decision, but the coupling means the vegan soy path currently depends on Spanish
   retail brands rather than a neutral type.
+
+## MILK POWDER DECISION TEST — ANSWER: NO (composition, not class)
+
+QUESTION: does SKIMMED vs WHOLE change any Engine/production authority in a way that cannot be
+represented by PI = MILK POWDER + exact PR composition?
+
+EVIDENCE 1 - no code branches on the two identities or on their subcategories.
+  grep for PI-ING-000270 / PI-ING-000296 across src: matches only in engine __fixtures__ and one
+  display string. No authority, gate, router or classifier reads them.
+
+EVIDENCE 2 - THE ENGINE ALREADY HAS ITS OWN NEUTRAL VOCABULARY, and it does not make this distinction.
+  src/spine/productProfiles.ts defines `CorrectionFamily`, the profile-level ingredient vocabulary:
+    milk | cream | skimmed_milk_powder | sucrose | dextrose | inulin_fiber | stabilizer | water |
+    fruit | hero_flavor_ingredient | oat_drink | soy_drink | almond_drink | rice_drink |
+    coconut_milk_cream | plant_fat | plant_protein | whey_protein_concentrate |
+    milk_protein_concentrate | high_protein_dairy | dark_chocolate | milk_chocolate | cocoa_powder |
+    cocoa_mass | cocoa_butter | chocolate_paste
+  There is EXACTLY ONE powder family and NO `whole_milk_powder`. The authority never distinguished
+  skimmed from whole; it simply only ever modelled one powder lever.
+
+EVIDENCE 3 - every gate that a powder moves is composition-driven: fat, total_solids, npac, water,
+  aerating_protein. The family name is used for PERMISSION and LEVER ROUTING
+  (`allowedCorrectionFamilies` intersected with `leverFamilies`), never for physics.
+
+CONCLUSION: the future neutral concept is MILK POWDER. `skimmed_milk_powder` is itself a legacy
+percentage-flavoured label, not a technological class.
+
+ONE REAL CONSEQUENCE TO CARRY INTO C04/C05 (routing, not taxonomy):
+  optimizationFlowRouter uses `skimmed_milk_powder` as the lever for increase_aerating_protein,
+  increase_solids, decrease_water and decrease_npac. A single MILK POWDER family would let that lever
+  pick a 26%-fat whole powder and push the HARD fat gate. The fix belongs in lever selection - choose
+  the candidate by composition (low fat, high protein) instead of by the family label - NOT in keeping
+  two PI types. Same-shaped risk applies to CREAM POWDER if it ever becomes a lever.
+
+## THE SAME TEST APPLIED TO MILK, CREAM, CREAM POWDER
+
+MILK   - the engine family is already `milk`, with no percentage. Answer: NO class distinction.
+         The Mapper's MILK 1.5 / 2 / 3.2 / 3.2 / 3.5 rows are the anomaly, not the model.
+CREAM  - the engine family is already `cream`, with no percentage. Answer: NO class distinction.
+CREAM POWDER - there is NO `cream_powder` family in the engine vocabulary at all, yet the Starter Pack
+         sells "Smietanka w proszku 42%" (GEL-CRP-500) and the rescue palette consumes PI-ING-000260.
+         So cream powder is in real production use with no neutral family and no engine family. This is
+         a genuine gap at BOTH layers, and the strongest remaining family-level candidate after SOY.
+SOY DRINK - `soy_drink` is ALREADY a first-class CorrectionFamily alongside oat/almond/rice. Independent
+         confirmation that soy is a technological type, and that only the PI layer is missing it.
+
+## WHAT THIS MEANS ARCHITECTURALLY
+
+The neutral technological vocabulary the Owner is asking for ALREADY EXISTS one layer up, in the engine
+profile authority (`CorrectionFamily`). The proliferation is confined to the Mapper/PI layer. So the
+target family vocabulary is not an invention - it can be derived from an authority already in
+production, which is the cheapest and safest possible source.
