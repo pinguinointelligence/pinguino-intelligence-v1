@@ -27,7 +27,9 @@ export function manualConfirmedScan(input: string, now = Date.now()): ConfirmedS
     symbology,
     value: digits,
     rawValue: input.trim(),
-    confirmation: { lane: 'consensus', agreeingFrames: 0, sources: ['manual'] },
+    // a code typed by the customer is a confirmed value, not a single unverified read: the identity
+    // contract requires two agreeing reads, and the QA harness records a typed code the same way
+    confirmation: { lane: 'consensus', agreeingFrames: 2, sources: ['manual'] },
     evidence: { moduleNative: null, fill: null, mixedFormats: false },
     timing: { firstSeenAt: now, completedAt: now },
     provenance: { trackId: 'manual', harnessBuild: null },
