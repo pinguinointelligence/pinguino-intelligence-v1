@@ -445,6 +445,7 @@ interface ProductionRescueLinearRow {
 }
 
 const PRODUCTION_RESCUE_INTEGER_NODE_BUDGET = 20_000;
+const PRODUCTION_RESCUE_EXTREME_NODE_BUDGET = 512;
 
 /**
  * Build a necessary linear relaxation of the canonical Engine bands. This is
@@ -854,7 +855,7 @@ function certifiedMinimumLargerBatchCandidate(
         fixedRows,
         fixedBounds,
         objective,
-        PRODUCTION_RESCUE_INTEGER_NODE_BUDGET,
+        PRODUCTION_RESCUE_EXTREME_NODE_BUDGET,
       );
       if (solved.status !== 'optimal' || !solved.solution) continue;
       const seed = seedForSolution(solved.solution, targetTenths);

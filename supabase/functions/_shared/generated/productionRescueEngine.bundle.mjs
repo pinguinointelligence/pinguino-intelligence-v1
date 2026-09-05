@@ -7926,15 +7926,22 @@ const solveIntegerLinearMaximum = (baseRows, baseBounds, objective, maxNodes = M
 	let exhausted = false;
 	let bestValue = -Infinity;
 	let bestSolution = null;
-	const visit = (extraRows, extraBounds) => {
+	let rootIntegerUpperBound = null;
+	const stack = [{
+		extraRows: [],
+		extraBounds: []
+	}];
+	while (stack.length > 0) {
 		if (nodes >= maxNodes) {
 			exhausted = true;
-			return;
+			break;
 		}
+		const { extraRows, extraBounds } = stack.pop();
 		nodes += 1;
 		const solved = new LinearProgram([...baseRows, ...extraRows], [...baseBounds, ...extraBounds], objective).solve();
-		if (solved.status !== "optimal") return;
-		if (Math.floor(solved.value + EPSILON) <= bestValue + EPSILON) return;
+		if (solved.status !== "optimal") continue;
+		if (rootIntegerUpperBound === null) rootIntegerUpperBound = Math.floor(solved.value + EPSILON);
+		if (Math.floor(solved.value + EPSILON) <= bestValue + EPSILON) continue;
 		let branchIndex = -1;
 		let branchDistance = 0;
 		for (let index = 0; index < solved.solution.length; index += 1) {
@@ -7948,17 +7955,23 @@ const solveIntegerLinearMaximum = (baseRows, baseBounds, objective, maxNodes = M
 		if (branchIndex === -1) {
 			bestValue = Math.round(solved.value);
 			bestSolution = solved.solution.map((value) => Math.max(0, Math.round(value)));
-			return;
+			if (bestValue >= rootIntegerUpperBound - EPSILON) stack.length = 0;
+			continue;
 		}
 		const value = solved.solution[branchIndex];
 		const lowerRow = Array.from({ length: objective.length }, () => 0);
 		lowerRow[branchIndex] = -1;
-		visit([...extraRows, lowerRow], [...extraBounds, -Math.ceil(value)]);
 		const upperRow = Array.from({ length: objective.length }, () => 0);
 		upperRow[branchIndex] = 1;
-		visit([...extraRows, upperRow], [...extraBounds, Math.floor(value)]);
-	};
-	visit([], []);
+		stack.push({
+			extraRows: [...extraRows, upperRow],
+			extraBounds: [...extraBounds, Math.floor(value)]
+		});
+		stack.push({
+			extraRows: [...extraRows, lowerRow],
+			extraBounds: [...extraBounds, -Math.ceil(value)]
+		});
+	}
 	if (exhausted || bestSolution === null || !Number.isFinite(bestValue)) return {
 		status: "unavailable",
 		value: null,
@@ -8833,6 +8846,7 @@ const productionIngredientExplicitlyUnavailable = (input, item) => {
 	return unavailable.has(item.ingredient.id) || unavailable.has(canonicalIngredientId(item.ingredient));
 };
 const PRODUCTION_RESCUE_INTEGER_NODE_BUDGET = 2e4;
+const PRODUCTION_RESCUE_EXTREME_NODE_BUDGET = 512;
 /**
 * Build a necessary linear relaxation of the canonical Engine bands. This is
 * candidate generation only: the exact 0.1 g vector is always re-run through
@@ -9090,7 +9104,7 @@ function certifiedMinimumLargerBatchCandidate(session, forecastInput, lowerBound
 		for (const objectiveIndex of objectiveOrder) {
 			const objective = Array.from({ length: size }, () => 0);
 			objective[objectiveIndex] = 1;
-			const solved = solveIntegerLinearMaximum(fixedRows, fixedBounds, objective, PRODUCTION_RESCUE_INTEGER_NODE_BUDGET);
+			const solved = solveIntegerLinearMaximum(fixedRows, fixedBounds, objective, PRODUCTION_RESCUE_EXTREME_NODE_BUDGET);
 			if (solved.status !== "optimal" || !solved.solution) continue;
 			const seed = seedForSolution(solved.solution, targetTenths);
 			if (seed) return seed;

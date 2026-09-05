@@ -250,20 +250,35 @@ export const solveIntegerLinearMaximum = (
   let exhausted = false;
   let bestValue = -Infinity;
   let bestSolution: number[] | null = null;
+  let rootIntegerUpperBound: number | null = null;
 
-  const visit = (extraRows: readonly number[][], extraBounds: readonly number[]): void => {
+  interface SearchNode {
+    extraRows: readonly number[][];
+    extraBounds: readonly number[];
+  }
+
+  const stack: SearchNode[] = [{ extraRows: [], extraBounds: [] }];
+  while (stack.length > 0) {
     if (nodes >= maxNodes) {
       exhausted = true;
-      return;
+      break;
     }
+    const { extraRows, extraBounds } = stack.pop()!;
     nodes += 1;
     const solved = new LinearProgram(
       [...baseRows, ...extraRows],
       [...baseBounds, ...extraBounds],
       objective,
     ).solve();
-    if (solved.status !== 'optimal') return;
-    if (Math.floor(solved.value + EPSILON) <= bestValue + EPSILON) return;
+    if (solved.status !== 'optimal') continue;
+    if (rootIntegerUpperBound === null) {
+      // Every caller uses an integer-coefficient objective. Therefore the
+      // floor of the root LP relaxation is a global integer upper bound. Once
+      // an executable integer vector reaches it, the optimum is certified and
+      // no remaining branch can improve it.
+      rootIntegerUpperBound = Math.floor(solved.value + EPSILON);
+    }
+    if (Math.floor(solved.value + EPSILON) <= bestValue + EPSILON) continue;
 
     let branchIndex = -1;
     let branchDistance = 0;
@@ -278,20 +293,27 @@ export const solveIntegerLinearMaximum = (
     if (branchIndex === -1) {
       bestValue = Math.round(solved.value);
       bestSolution = solved.solution.map((value) => Math.max(0, Math.round(value)));
-      return;
+      if (bestValue >= rootIntegerUpperBound - EPSILON) stack.length = 0;
+      continue;
     }
 
     const value = solved.solution[branchIndex]!;
     const lowerRow = Array.from({ length: objective.length }, () => 0);
     lowerRow[branchIndex] = -1;
-    // Explore the high branch first because the objective is a Main maximum.
-    visit([...extraRows, lowerRow], [...extraBounds, -Math.ceil(value)]);
     const upperRow = Array.from({ length: objective.length }, () => 0);
     upperRow[branchIndex] = 1;
-    visit([...extraRows, upperRow], [...extraBounds, Math.floor(value)]);
-  };
-
-  visit([], []);
+    // LIFO: enqueue the upper branch first so the high branch retains the
+    // historical deterministic priority without consuming the JavaScript call
+    // stack on deep integer trees.
+    stack.push({
+      extraRows: [...extraRows, upperRow],
+      extraBounds: [...extraBounds, Math.floor(value)],
+    });
+    stack.push({
+      extraRows: [...extraRows, lowerRow],
+      extraBounds: [...extraBounds, -Math.ceil(value)],
+    });
+  }
   if (exhausted || bestSolution === null || !Number.isFinite(bestValue)) {
     return { status: 'unavailable', value: null, solution: null, nodes, exhausted };
   }

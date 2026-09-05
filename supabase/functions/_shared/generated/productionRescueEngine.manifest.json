@@ -22,8 +22,8 @@
     "productionSessionSchema": 2
   },
   "bundle": {
-    "bytes": 395192,
-    "sha256": "a4a3d148c4d451ff0a750c11dee1aef3b8e6124e05479e53c56f143d7003f966",
+    "bytes": 395608,
+    "sha256": "26a5cd4984f2a968dba699fad93c325d2aa3c6bedf8663adf5a7d4ed9c3c69ef",
     "externalImports": 0,
     "dynamicImports": 0
   },
@@ -146,7 +146,7 @@
     },
     {
       "path": "src/features/constraint-studio/mainTechnicalLinearBound.ts",
-      "sha256": "8d5995bda349c3d16f6f5158b0126ca6ea40a279da5e4b0c59fbaefa6bfee2ee"
+      "sha256": "a7a52200b6c2b6edea10f164e6506d5be6d99d68dc2b84e265500873f90ca36b"
     },
     {
       "path": "src/features/formulation-strategy/strategy.ts",
@@ -206,7 +206,7 @@
     },
     {
       "path": "src/features/production-workspace/productionRescue.ts",
-      "sha256": "f820ba6122a2cd9439c6488c5f5a902093e992225f249f961e0d6842079b4ed9"
+      "sha256": "1ed65ab7e5ed66b79b5bcaffcf9d09e9f51f4ce77a5784d38ba9fc40764b46e7"
     },
     {
       "path": "src/features/production-workspace/productionRescueAuthority.ts",
@@ -289,5 +289,5 @@
       "sha256": "a2207c9c4e9431daa728d6b03fe1b9c4a4a3ba3403a0c056f2808c0759a455c8"
     }
   ],
-  "sourceClosureSha256": "785d26f17c8c2b58ebca27f4197b4802d244c286d87f80daa590e67f3f483651"
+  "sourceClosureSha256": "ec746469bc9d883b8b90cf1f5b8660b069e2d82a7aee366fb41355cdcc5b5705"
 }
