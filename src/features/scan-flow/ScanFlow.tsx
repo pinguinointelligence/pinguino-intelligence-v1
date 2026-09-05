@@ -22,12 +22,14 @@ import {
   createMemoryStore,
   createOfflineCache,
   fileToLabelImage,
+  identifyCode,
   identityFromEvidence,
   runScanImportV2,
   type CustomerFamily,
   type DiscoverySession,
   type ExactCandidate,
   type ExactWebIdentity,
+  type ExternalEvidence,
   type FinalizeInput,
   type LabelImage,
   type RequestContext,
@@ -127,6 +129,10 @@ const btnSecondary = `${btn} border border-ink/15 bg-white text-ink`;
 const input =
   'pro-focus-ring min-h-11 w-full rounded-xl border border-ink/15 bg-white px-3 text-sm text-ink';
 
+function isExternalEvidence(v: unknown): v is ExternalEvidence {
+  return Boolean(v) && typeof v === 'object' && Array.isArray((v as { facts?: unknown }).facts);
+}
+
 function seedSession(
   sessionId: string,
   identity: DiscoverySession['identity'],
@@ -174,6 +180,7 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
   const [recognized, setRecognized] = useState<ExactWebIdentity | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const codeRef = useRef<string | null>(null);
+  const labelTriedRef = useRef(false);
   const cache = useMemo(
     () =>
       createOfflineCache({
@@ -260,12 +267,15 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
           const noteText = r.note ?? null;
           const afterFinalize = session !== undefined;
           if (afterFinalize) {
-            // the authority answered: either it still needs the label, or it named plain facts
+            // the authority answered: plain facts it still needs, the label it still needs, or only
+            // technical readiness the customer cannot supply — then the product is reported, not looped
             const fields = plainFieldsFor(r.ledger.missingCritical, {
               needIdentity: /identity/.test(noteText ?? ''),
             });
             if (fields.length > 0) setPhase({ kind: 'fields', session: next, fields, note: null });
-            else setPhase({ kind: 'label', session: next, note: noteText });
+            else if (!labelTriedRef.current)
+              setPhase({ kind: 'label', session: next, note: recognized ? null : noteText });
+            else setPhase({ kind: 'fields', session: next, fields: [], note: null });
             return;
           }
           const web = identityFromEvidence(r.externalEvidence);
@@ -338,12 +348,26 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
     async (scan: ConfirmedScan) => {
       if (!ports) return fail('Backend nie jest skonfigurowany.');
       codeRef.current = scan.value;
+      labelTriedRef.current = false;
       setBusy(true);
       setRecognized(null);
       setPhase({ kind: 'resolving', code: scan.value });
       try {
         const accountId = await getScanImportV2AccountId();
         const ctx = contextFor(accountId);
+        // the exact-GTIN registry answers in about a second; the server research can take much longer —
+        // show the identity as soon as it is known (the memoised port makes this a single request)
+        const identity = identifyCode(scan);
+        if (identity.ok && ports.external && ctx.online) {
+          void ports.external
+            .research(identity.identity, ctx)
+            .then((ev) => {
+              if (codeRef.current !== scan.value) return;
+              const web = identityFromEvidence(isExternalEvidence(ev) ? ev : null);
+              if (web) setRecognized((current) => current ?? web);
+            })
+            .catch(() => undefined);
+        }
         const r = await runScanImportV2(scan, ctx, ports);
         await handleResult(r, scan.value, ctx);
       } catch {
@@ -396,6 +420,7 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
   }, [phase.kind]);
 
   const restart = () => {
+    labelTriedRef.current = false;
     setManual('');
     setValues({});
     setFamily(null);
@@ -428,6 +453,7 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
       const ctx = contextFor(await getScanImportV2AccountId());
       const image = await fileToLabelImage(await downscaled(file), source);
       const r = await continueDiscovery(session, { type: 'label', images: [image] }, ctx, port);
+      labelTriedRef.current = true;
       if (r.kind === 'discovered_pending') {
         // the label was read: let the authority decide what is still missing (plain fields, not another photo)
         const next = seedSession(r.sessionId, r.identity, r.ledger.missingCritical);
@@ -853,8 +879,9 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
           ))}
           {phase.fields.length === 0 ? (
             <p className="text-xs text-stone-600">
-              Z etykiety nie da się uzupełnić brakujących danych. Możesz zgłosić produkt do
-              weryfikacji.
+              {recognized
+                ? 'Produkt rozpoznany, ale nie jest jeszcze gotowy do receptury — brakuje danych, których nie da się odczytać z etykiety. Zgłoś go do weryfikacji.'
+                : 'Z etykiety nie da się uzupełnić brakujących danych. Możesz zgłosić produkt do weryfikacji.'}
             </p>
           ) : null}
           <div className="flex flex-wrap gap-2">

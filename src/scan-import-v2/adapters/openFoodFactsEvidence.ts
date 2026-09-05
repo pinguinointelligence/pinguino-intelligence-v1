@@ -129,23 +129,37 @@ export function evidenceFromProduct(
   return { provider: OPEN_FOOD_FACTS_PROVIDER, queriedAt, query: code, facts, confidence };
 }
 
+const MEMO_TTL_MS = 5 * 60_000;
+
 export function createOpenFoodFactsEvidencePort(
   opts: OpenFoodFactsOptions = {},
 ): ExternalEvidencePort {
   const base = (opts.baseUrl ?? 'https://world.openfoodfacts.org').replace(/\/$/, '');
+  // one registry request per code: the flow shows the identity early and the pipeline reuses the answer
+  const memo = new Map<string, { at: number; value: Promise<ExternalEvidence | null> }>();
+  const lookup = async (code: string, now: number): Promise<ExternalEvidence | null> => {
+    const f = opts.fetchImpl ?? globalThis.fetch;
+    if (typeof f !== 'function') return null;
+    const url = `${base}/api/v2/product/${encodeURIComponent(code)}.json?fields=${FIELDS.join(',')}`;
+    const res = await f(url, { headers: { Accept: 'application/json' } });
+    if (res.status === 404) return null;
+    if (!res.ok) throw new Error(`openfoodfacts_http_${res.status}`);
+    const json = (await res.json()) as Obj;
+    const product = json['product'];
+    if (json['status'] !== 1 || !product || typeof product !== 'object') return null;
+    return evidenceFromProduct(product as Obj, code, now, `${base}/product/${code}`);
+  };
   return {
     async research(identity: CodeIdentity, ctx: RequestContext): Promise<ExternalEvidence | null> {
-      const f = opts.fetchImpl ?? globalThis.fetch;
-      if (typeof f !== 'function') return null;
       const code = identity.canonicalGtin13;
-      const url = `${base}/api/v2/product/${encodeURIComponent(code)}.json?fields=${FIELDS.join(',')}`;
-      const res = await f(url, { headers: { Accept: 'application/json' } });
-      if (res.status === 404) return null;
-      if (!res.ok) throw new Error(`openfoodfacts_http_${res.status}`);
-      const json = (await res.json()) as Obj;
-      const product = json['product'];
-      if (json['status'] !== 1 || !product || typeof product !== 'object') return null;
-      return evidenceFromProduct(product as Obj, code, ctx.now, `${base}/product/${code}`);
+      const hit = memo.get(code);
+      if (hit && ctx.now - hit.at < MEMO_TTL_MS) return hit.value;
+      const value = lookup(code, ctx.now).catch((error: unknown) => {
+        memo.delete(code); // a failed lookup is not remembered
+        throw error;
+      });
+      memo.set(code, { at: ctx.now, value });
+      return value;
     },
   };
 }
