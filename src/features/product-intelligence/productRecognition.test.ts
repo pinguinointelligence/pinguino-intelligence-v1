@@ -211,6 +211,51 @@ describe('Product Recognition V2 — deterministic semantic authority', () => {
     expect(result.intendedUsageRole).toBe('BASE_ONLY');
   });
 
+  it('classifies a general functional beverage without turning it into plant milk', () => {
+    const result = classifyProductSemantics(
+      evidence({
+        name: 'Sport 002',
+        brand: 'Vitamin Well',
+        category: 'Bebida refrescante con vitaminas y minerales',
+        description: 'Bebida sin gas con vitaminas y minerales.',
+      }),
+    );
+
+    expect(result).toMatchObject({
+      classificationSource: 'DETERMINISTIC',
+      productArchetype: 'NORMAL_INGREDIENT',
+      ingredientFamily: 'beverage',
+      physicalForm: 'LIQUID',
+      intendedUsageRole: 'BASE_ONLY',
+      modelRequired: false,
+    });
+    expect(result.compatibleMapperCategories).toEqual(['beverage']);
+  });
+
+  it('recognizes a packaged brownie as confectionery/inclusion rather than base chocolate', () => {
+    const result = classifyProductSemantics(
+      evidence({
+        name: 'Choco brownie',
+        brand: 'Milka',
+        category: 'Brownies',
+        ingredients: 'sugar, wheat flour, cocoa butter, cocoa mass, milk powder',
+      }),
+    );
+
+    expect(result).toMatchObject({
+      productArchetype: 'CONFECTIONERY',
+      ingredientFamily: 'confectionery',
+      physicalForm: 'SOLID',
+      intendedUsageRole: 'TOPPING_ONLY',
+      modelRequired: false,
+    });
+    expect(result.compatibleMapperCategories).toEqual([
+      'inclusion',
+      'bakery_inclusion',
+      'confectionery_inclusion',
+    ]);
+  });
+
   it('normalizes manufacturer g/L against the final 1000 g Gellatti base rule', () => {
     for (const [raw, value, percent] of [
       ['3 g/L', 3, 0.3],

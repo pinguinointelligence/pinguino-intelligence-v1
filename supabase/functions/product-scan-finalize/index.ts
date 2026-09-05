@@ -296,9 +296,28 @@ async function serverSemanticClassification(input: {
   authorization: string;
   sessionId: string;
   evidence: ReturnType<typeof productSemanticEvidenceFromScanResult>;
-}): Promise<ProductSemanticClassification> {
+}): Promise<{
+  classification: ProductSemanticClassification;
+  semanticModelAudit: {
+    required: boolean;
+    attempted: boolean;
+    outcome: 'not_required' | 'accepted' | 'rejected' | 'unavailable';
+    cacheHit: boolean | null;
+    error: string | null;
+  };
+}> {
   const deterministic = classifyProductSemantics(input.evidence);
-  if (!deterministic.modelRequired) return deterministic;
+  if (!deterministic.modelRequired)
+    return {
+      classification: deterministic,
+      semanticModelAudit: {
+        required: false,
+        attempted: false,
+        outcome: 'not_required',
+        cacheHit: null,
+        error: null,
+      },
+    };
   try {
     const response = await fetch(`${input.url}/functions/v1/intimport-enrich`, {
       method: 'POST',
@@ -314,8 +333,18 @@ async function serverSemanticClassification(input: {
         evidence: input.evidence,
       }),
     });
-    if (!response.ok) return deterministic;
     const payload = objectValue(await response.json());
+    if (!response.ok)
+      return {
+        classification: deterministic,
+        semanticModelAudit: {
+          required: true,
+          attempted: true,
+          outcome: 'unavailable',
+          cacheHit: null,
+          error: typeof payload.error === 'string' ? payload.error.slice(0, 160) : `http_${response.status}`,
+        },
+      };
     const classification = objectValue(
       payload.classification,
     ) as unknown as ProductSemanticClassification;
@@ -324,12 +353,40 @@ async function serverSemanticClassification(input: {
       classification.classificationSource === 'SERVER_MODEL' &&
       classification.evidenceFingerprint === deterministic.evidenceFingerprint
     )
-      return classification;
+      return {
+        classification,
+        semanticModelAudit: {
+          required: true,
+          attempted: true,
+          outcome: 'accepted',
+          cacheHit: payload.cacheHit === true,
+          error: null,
+        },
+      };
+    return {
+      classification: deterministic,
+      semanticModelAudit: {
+        required: true,
+        attempted: true,
+        outcome: 'rejected',
+        cacheHit: payload.cacheHit === true,
+        error: 'invalid_semantic_model_authority',
+      },
+    };
   } catch {
     // A model outage cannot create authority. Deterministic UNKNOWN is retained
     // and the short family confirmation remains available to the customer.
+    return {
+      classification: deterministic,
+      semanticModelAudit: {
+        required: true,
+        attempted: true,
+        outcome: 'unavailable',
+        cacheHit: null,
+        error: 'semantic_provider_unavailable',
+      },
+    };
   }
-  return deterministic;
 }
 
 Deno.serve(async (request) => {
@@ -411,16 +468,20 @@ Deno.serve(async (request) => {
   if (!corrections.barcode) return json({ error: 'customer_product_valid_ean_required' }, 409);
 
   const recognitionEvidence = productSemanticEvidenceFromScanResult(corrections.result);
-  let recognition = await serverSemanticClassification({
+  const semanticClassification = await serverSemanticClassification({
     url,
     anonKey,
     authorization,
     sessionId,
     evidence: recognitionEvidence,
   });
+  let recognition = semanticClassification.classification;
+  const semanticModelAudit = semanticClassification.semanticModelAudit;
   const familyChoice = FAMILY_CHOICES.has(body.customerFamily as CustomerProductFamilyChoice)
     ? (body.customerFamily as CustomerProductFamilyChoice)
     : null;
+  // an explicitly requested private (not recipe-ready) save — owner authorization 2026-09-05
+  const savePrivateNotReady = body.savePrivateNotReady === true;
   let familyResolution = resolveCustomerProductFamily(recognition);
   if (familyResolution.status !== 'RESOLVED' && familyChoice) {
     recognition = applyCustomerProductFamily(recognition, familyChoice);
@@ -433,6 +494,7 @@ Deno.serve(async (request) => {
     packageEvidenceExhausted: objectValue(body.confirmations).packageEvidenceExhausted === true,
     customerFamily: familyChoice,
     recognition,
+    classificationModel: semanticModelAudit,
   };
   const persistedAt = new Date().toISOString();
   const { data: persisted, error: persistError } = await service
@@ -451,7 +513,10 @@ Deno.serve(async (request) => {
   if (persistError || !persisted)
     return json({ error: 'scanner_corrections_persistence_failed' }, 503);
 
-  if (familyResolution.status !== 'RESOLVED') {
+  // Ask for the family once. A choice the taxonomy cannot map (e.g. "Inne") is still an answer: the
+  // product then simply cannot become recipe-ready here (readiness decides below) — it is never asked
+  // again, and an explicitly requested private save is never blocked by an unknown family.
+  if (familyResolution.status !== 'RESOLVED' && !familyChoice && !savePrivateNotReady) {
     return json({
       kind: 'family_confirmation_required',
       recognition,
@@ -541,6 +606,7 @@ Deno.serve(async (request) => {
         : [],
     },
     classification: recognition,
+    classificationModel: semanticModelAudit,
     completion: {
       mapperDonorId: profile.profileReferenceMapperIngredientId,
       mapperSimilarity: profile.mapperSimilarity,
@@ -571,7 +637,10 @@ Deno.serve(async (request) => {
     .eq('state', 'analyzed');
   if (traceError) return json({ error: 'scanner_trace_persistence_failed' }, 503);
   if (action === 'preview') return json(preview);
-  if (!ready) return json({ ...preview, kind: 'customer_product_not_ready' }, 409);
+  // owner contract (2026-09-05): the customer may keep a not-ready exact product PRIVATELY; only an
+  // explicit request takes that path, and it never touches the ready (recipe-eligible) authority
+  if (!ready && !savePrivateNotReady)
+    return json({ ...preview, kind: 'customer_product_not_ready' }, 409);
 
   const privateOverlay = objectValue(body.privateOverlay);
   if (
@@ -584,7 +653,9 @@ Deno.serve(async (request) => {
     privateOverlay.price = price;
   }
   const { data: saved, error: saveError } = await service.rpc(
-    'gellatti_upsert_customer_added_product_v1',
+    ready
+      ? 'gellatti_upsert_customer_added_product_v1'
+      : 'gellatti_upsert_customer_private_product_v1',
     {
       p_actor_user_id: auth.user.id,
       p_session_id: sessionId,
@@ -598,8 +669,10 @@ Deno.serve(async (request) => {
   if (saveError || !saved) return json({ error: 'customer_product_persistence_failed' }, 503);
   return json({
     ...objectValue(saved),
-    engineUsable: profile.engineUsable,
-    usableProductCreated: true,
+    engineUsable: ready ? profile.engineUsable : false,
+    usableProductCreated: ready,
+    privateNotReady: !ready,
+    readiness: { ready, roleReady, criticalGaps },
     controlledCatalog: false,
     recognition,
     mapper: preview.mapper,

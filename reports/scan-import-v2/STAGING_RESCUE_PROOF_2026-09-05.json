@@ -1,0 +1,66 @@
+{
+  "ranAt": "2026-09-05T19:08:11.374Z",
+  "qaAccount": "home@home.com",
+  "r1": {
+    "code": "7340222800464",
+    "before": {
+      "kind": "resolved_exact",
+      "product": {
+        "code": "CA-ING-007176",
+        "name": "Sport 002",
+        "engineReady": true,
+        "entityKind": "customer_provisional"
+      }
+    },
+    "after": {
+      "kind": "resolved_exact",
+      "product": {
+        "code": "CA-ING-007176",
+        "name": "Sport 002",
+        "engineReady": true
+      }
+    }
+  },
+  "r2": {
+    "code": "7622210669315",
+    "before": {
+      "kind": "resolved_exact",
+      "product": {
+        "code": "CA-ING-007177",
+        "name": "Choco brownie",
+        "engineReady": true,
+        "entityKind": "customer_provisional"
+      }
+    },
+    "after": {
+      "kind": "resolved_exact",
+      "product": {
+        "code": "CA-ING-007177",
+        "name": "Choco brownie",
+        "engineReady": true
+      }
+    }
+  },
+  "r3": {
+    "account": "test1@test1.com",
+    "code": "7340222800464",
+    "firstKind": "discovered_pending",
+    "outcome": {
+      "kind": "discovered_exact",
+      "product": {
+        "code": "CA-ING-007176",
+        "name": "Sport 002"
+      },
+      "detail": null
+    },
+    "product": {
+      "code": "CA-ING-007176",
+      "name": "Sport 002"
+    }
+  },
+  "r4": {
+    "a": "CA-ING-007177",
+    "b": "CA-ING-007177",
+    "engineReady": true
+  }
+}

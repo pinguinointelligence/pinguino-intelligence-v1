@@ -214,11 +214,6 @@ Deno.serve(async (request) => {
     return json({ error: 'intimport_enrichment_not_configured' }, 503);
   }
 
-  // Own flag. Scanner flags are deliberately NOT read here.
-  if (Deno.env.get('INTIMPORT_WEB_ENRICHMENT_ENABLED') !== 'true') {
-    return json({ error: 'intimport_web_enrichment_disabled' }, 403);
-  }
-
   const authorization = request.headers.get('Authorization') ?? '';
   const authed = createClient(url, anonKey, {
     global: { headers: { Authorization: authorization } },
@@ -420,6 +415,8 @@ Deno.serve(async (request) => {
         inputTokens: Number(objectValue(semanticPayload.usage).input_tokens ?? 0),
         outputTokens: Number(objectValue(semanticPayload.usage).output_tokens ?? 0),
         error: 'semantic_output_rejected',
+        // Audit only: WHY the strict validator refused. Never read back as authority.
+        rejectedOutput: (outputText ?? '').slice(0, 3000),
       };
       await finalizeSemanticAttempt(rejectedResult);
       return json({
@@ -457,6 +454,13 @@ Deno.serve(async (request) => {
       evidenceReceipt: idempotencyKey,
       cacheHit: false,
     });
+  }
+
+  // This flag governs only external web research. Semantic classification uses
+  // no web-search tool and has its own independent cap above, so disabling web
+  // enrichment must never silently disable Product Recognition.
+  if (Deno.env.get('INTIMPORT_WEB_ENRICHMENT_ENABLED') !== 'true') {
+    return json({ error: 'intimport_web_enrichment_disabled' }, 403);
   }
 
   const product = objectValue(body.product);
@@ -667,7 +671,17 @@ Deno.serve(async (request) => {
 
   // Authority is decided HERE, from the actual URL — never from the model's own
   // claim about what kind of source it used.
-  const facts = (Array.isArray(parsed.facts) ? parsed.facts : []).flatMap((item) => {
+  // A scanner lookup usually starts with a bare GTIN: the brand is DISCOVERED by
+  // this very research. Classifying the official brand domain against a null
+  // brand filed milka.com and vitaminwell.de as "some web page"; the brand fact
+  // the research itself returned is exact evidence and may recognize the domain.
+  const rawFacts = Array.isArray(parsed.facts) ? parsed.facts : [];
+  const discoveredBrand = rawFacts
+    .map((item) => objectValue(item))
+    .filter((row) => String(row.field ?? '') === 'identity.brand')
+    .map((row) => (typeof row.value === 'string' ? row.value.trim() : ''))
+    .find((value) => value !== '');
+  const facts = rawFacts.flatMap((item) => {
     const row = objectValue(item);
     const field = String(row.field ?? '');
     const value = typeof row.value === 'string' ? row.value.trim() : '';
@@ -675,7 +689,7 @@ Deno.serve(async (request) => {
     if (!RESEARCHABLE.has(field) || value === '' || !requestedFields.includes(field)) return [];
     const authority = classifySourceAuthority({
       url: sourceUrl,
-      brand: identity.brand,
+      brand: identity.brand ?? discoveredBrand ?? null,
       manufacturer: identity.manufacturer,
       ownerProvided: false,
     });

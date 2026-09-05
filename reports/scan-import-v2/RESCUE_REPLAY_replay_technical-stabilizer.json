@@ -1,0 +1,367 @@
+{
+  "label": "technical-stabilizer",
+  "gtin": "8001234567897",
+  "recognition": {
+    "deterministic": {
+      "archetype": "STABILIZER",
+      "family": "stabilizer_hydrocolloid",
+      "form": "POWDER",
+      "role": "BASE_ONLY",
+      "modelRequired": false,
+      "modelReasonCodes": [],
+      "compatibleMapperCategories": [
+        "stabilizer"
+      ]
+    },
+    "final": {
+      "source": "DETERMINISTIC",
+      "archetype": "STABILIZER",
+      "family": "stabilizer_hydrocolloid",
+      "form": "POWDER",
+      "role": "BASE_ONLY",
+      "modelRequired": false,
+      "modelReasonCodes": [],
+      "compatibleMapperCategories": [
+        "stabilizer"
+      ],
+      "familyResolution": "RESOLVED"
+    }
+  },
+  "mapper": {
+    "candidatesBeforeFilter": [
+      "PI-ING-000465",
+      "PI-ING-000466",
+      "PI-ING-000477",
+      "PI-ING-000478",
+      "PI-ING-000479",
+      "PI-ING-000480",
+      "PI-ING-000481",
+      "PI-ING-000482",
+      "PI-ING-000483",
+      "PI-ING-000484",
+      "PI-ING-000485",
+      "PI-ING-000486",
+      "PI-ING-000487"
+    ],
+    "candidatesAfterFilter": [
+      "PI-ING-000481",
+      "PI-ING-000487",
+      "PI-ING-000465",
+      "PI-ING-000480",
+      "PI-ING-000466",
+      "PI-ING-000477"
+    ],
+    "rejected": [
+      {
+        "ingredientId": "PI-ING-000478",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-000479",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-000482",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-000483",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-000484",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-000485",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-000486",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION"
+        ]
+      }
+    ],
+    "donor": "PI-ING-000481",
+    "similarity": 0.8682,
+    "basis": "neighbour_set",
+    "estimatedFromMapperIds": [
+      "PI-ING-000481"
+    ],
+    "hintCategories": [],
+    "verified": {
+      "confidence": 0.8682,
+      "basis": "neighbour_set",
+      "rejected": null,
+      "candidatesBeforeFilter": [
+        "PI-ING-000465",
+        "PI-ING-000466",
+        "PI-ING-000477",
+        "PI-ING-000478",
+        "PI-ING-000479",
+        "PI-ING-000480",
+        "PI-ING-000481",
+        "PI-ING-000482",
+        "PI-ING-000483",
+        "PI-ING-000484",
+        "PI-ING-000485",
+        "PI-ING-000486",
+        "PI-ING-000487"
+      ],
+      "candidatesAfterFilter": [
+        "PI-ING-000481",
+        "PI-ING-000487",
+        "PI-ING-000465",
+        "PI-ING-000480",
+        "PI-ING-000466",
+        "PI-ING-000477"
+      ],
+      "rejectedCandidates": [
+        {
+          "ingredientId": "PI-ING-000478",
+          "reasonCodes": [
+            "SEMANTIC_FAMILY_CONTRADICTION"
+          ]
+        },
+        {
+          "ingredientId": "PI-ING-000479",
+          "reasonCodes": [
+            "SEMANTIC_FAMILY_CONTRADICTION"
+          ]
+        },
+        {
+          "ingredientId": "PI-ING-000482",
+          "reasonCodes": [
+            "SEMANTIC_FAMILY_CONTRADICTION"
+          ]
+        },
+        {
+          "ingredientId": "PI-ING-000483",
+          "reasonCodes": [
+            "SEMANTIC_FAMILY_CONTRADICTION"
+          ]
+        },
+        {
+          "ingredientId": "PI-ING-000484",
+          "reasonCodes": [
+            "SEMANTIC_FAMILY_CONTRADICTION"
+          ]
+        },
+        {
+          "ingredientId": "PI-ING-000485",
+          "reasonCodes": [
+            "SEMANTIC_FAMILY_CONTRADICTION"
+          ]
+        },
+        {
+          "ingredientId": "PI-ING-000486",
+          "reasonCodes": [
+            "SEMANTIC_FAMILY_CONTRADICTION"
+          ]
+        }
+      ],
+      "donorReference": "PI-ING-000481"
+    }
+  },
+  "fieldTruth": {
+    "water_percent": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.8682,
+      "refs": [
+        "PI-ING-000481"
+      ]
+    },
+    "total_solids_percent": {
+      "value": 100,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.8682,
+      "refs": [
+        "PI-ING-000481"
+      ]
+    },
+    "fat_percent": {
+      "value": 0.5,
+      "state": "VERIFIED",
+      "basis": "user_confirmed",
+      "confidence": 0.63,
+      "refs": []
+    },
+    "protein_percent": {
+      "value": 1,
+      "state": "VERIFIED",
+      "basis": "user_confirmed",
+      "confidence": 0.63,
+      "refs": []
+    },
+    "carbohydrate_percent": {
+      "value": 70,
+      "state": "VERIFIED",
+      "basis": "user_confirmed",
+      "confidence": 0.63,
+      "refs": []
+    },
+    "total_sugars_percent": {
+      "value": 5,
+      "state": "VERIFIED",
+      "basis": "user_confirmed",
+      "confidence": 0.63,
+      "refs": []
+    },
+    "sucrose_percent": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.8682,
+      "refs": [
+        "PI-ING-000481"
+      ]
+    },
+    "dextrose_percent": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.8682,
+      "refs": [
+        "PI-ING-000481"
+      ]
+    },
+    "glucose_percent": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.8682,
+      "refs": [
+        "PI-ING-000481"
+      ]
+    },
+    "fructose_percent": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.8682,
+      "refs": [
+        "PI-ING-000481"
+      ]
+    },
+    "lactose_percent": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.8682,
+      "refs": [
+        "PI-ING-000481"
+      ]
+    },
+    "polyol_percent": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.8682,
+      "refs": [
+        "PI-ING-000481"
+      ]
+    },
+    "fiber_percent": {
+      "value": 15,
+      "state": "VERIFIED",
+      "basis": "user_confirmed",
+      "confidence": 0.63,
+      "refs": []
+    },
+    "salt_percent": {
+      "value": 0.5,
+      "state": "VERIFIED",
+      "basis": "user_confirmed",
+      "confidence": 0.63,
+      "refs": []
+    },
+    "alcohol_percent": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.8682,
+      "refs": [
+        "PI-ING-000481"
+      ]
+    },
+    "kcal_per_100g": {
+      "value": 250,
+      "state": "VERIFIED",
+      "basis": "user_confirmed",
+      "confidence": 0.63,
+      "refs": []
+    },
+    "pod_value": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.8682,
+      "refs": [
+        "PI-ING-000481"
+      ]
+    },
+    "pac_value": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.8682,
+      "refs": [
+        "PI-ING-000481"
+      ]
+    },
+    "sweetness_factor": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.8682,
+      "refs": [
+        "PI-ING-000481"
+      ]
+    },
+    "freezing_factor": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.8682,
+      "refs": [
+        "PI-ING-000481"
+      ]
+    }
+  },
+  "missingEngineFields": [],
+  "criticalPhysicsBlockers": [
+    "UNRESOLVED_SWEETENING_FREEZING_PATH",
+    "SELF_CONTRADICTORY_DECLARATION"
+  ],
+  "sweetnessPath": {
+    "kind": "unresolved",
+    "resolved": false,
+    "reason": "Pozostała niepewność jest istotna: POD Δmax 3.8925, NPAC Δmax 13.201, tolerancja obliczeń 0.5"
+  },
+  "readiness": "REVIEW",
+  "engineUsable": false,
+  "productAccuracy": 86.4,
+  "roleReadiness": "REVIEW",
+  "ready": false,
+  "blockers": [
+    "SELF_CONTRADICTORY_DECLARATION",
+    "TECHNICAL_DOSAGE_AUTHORITY_REQUIRED",
+    "UNRESOLVED_SWEETENING_FREEZING_PATH"
+  ]
+}

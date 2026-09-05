@@ -75,22 +75,43 @@ function pending(
   };
 }
 
+function nonEmpty(v: string | null | undefined): string | null {
+  return typeof v === 'string' && v.trim().length > 0 ? v.trim() : null;
+}
+
+/** the identity the customer confirmed in the finalize input (registry-prefilled or typed) */
+function confirmedIdentity(
+  input: FinalizeInput,
+): { displayName?: string | null; brand?: string | null } | null {
+  const fields = input.confirmations?.productFields as
+    | { identity?: { displayName?: string | null; brand?: string | null } }
+    | undefined;
+  return fields?.identity ?? null;
+}
+
 export function discoveredExact(
   identity: CodeIdentity,
   ledger: FactLedger,
   created: {
     productId: string;
     productCode: string | null;
+    displayName?: string | null;
+    brand?: string | null;
     engineUsable: boolean;
     existing: boolean;
   },
   sessionId: string,
+  confirmed?: { displayName?: string | null; brand?: string | null } | null,
 ): Extract<ScanImportV2Result, { kind: 'discovered_exact' }> {
   const product: ExactCandidate = {
     productId: created.productId,
     productCode: created.productCode,
-    displayName: ledger.identity.name ?? identity.value,
-    brand: ledger.identity.brand,
+    displayName:
+      nonEmpty(created.displayName) ??
+      nonEmpty(confirmed?.displayName) ??
+      nonEmpty(ledger.identity.name) ??
+      identity.value,
+    brand: nonEmpty(created.brand) ?? nonEmpty(confirmed?.brand) ?? ledger.identity.brand,
     ean: identity.canonicalGtin13,
     strength: 'provisional_linked',
     entityKind: 'customer_provisional',
@@ -175,6 +196,11 @@ export async function continueDiscovery(
 ): Promise<DiscoveryResult> {
   if (action.type === 'label') {
     const a = await port.analyzeLabel(session, action.images, ctx);
+    if (a.kind === 'failed')
+      return {
+        ...pending(session),
+        labelError: { reason: a.reason, retryAfterMs: a.retryAfterMs, detail: a.detail ?? null },
+      };
     if (a.kind === 'existing_product')
       return {
         kind: 'resolved_exact',
@@ -228,7 +254,16 @@ export async function continueDiscovery(
   const f = await port.finalize(session, action.input, ctx);
   switch (f.kind) {
     case 'created':
-      return discoveredExact(session.identity, ledger, f, session.sessionId);
+      return {
+        ...discoveredExact(
+          session.identity,
+          ledger,
+          f,
+          session.sessionId,
+          confirmedIdentity(action.input),
+        ),
+        privateNotReady: f.privateNotReady === true,
+      };
     case 'family_confirmation_required':
       return {
         kind: 'needs_confirmation',

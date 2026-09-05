@@ -12,20 +12,22 @@ const read = (rel: string) => readFileSync(join(here, rel), 'utf8');
 const FLOW = read('ScanFlow.tsx');
 const CAPTURE = read('scanCoreCapture.ts');
 const LOGIC = read('scanFlowLogic.ts');
+const REENRICH = read('reenrichment.ts');
 const POPOVER = read('../ingredient-builder/ProductPickerPopover.tsx');
 const CATALOG_PAGE = read('../../pages/products/ProductScannerV1Page.tsx');
+const HOME_CREATOR = read('../../pages/home/HomeCreatorPage.tsx');
 
 const imports = (src: string) => [...src.matchAll(/from '([^']+)'/g)].map((m) => m[1]);
 
 describe('scan flow boundary', () => {
   it('reaches the backend only through the services layer and the Scan Import 2.0 entry points', () => {
-    for (const src of [FLOW, CAPTURE, LOGIC]) {
+    for (const src of [FLOW, CAPTURE, LOGIC, REENRICH]) {
       expect(/\bsupabase\b/i.test(src), 'backend client named').toBe(false);
       expect(src).not.toMatch(/\.from\(|\.rpc\(|functions\.invoke|service_role/);
     }
     for (const i of imports(FLOW))
       expect(i, i).toMatch(
-        /^(react|@\/scan-contract\/confirmedScan|@\/scan-import-v2|@\/services\/scanImportV2|\.\/scanCoreCapture|\.\/scanFlowLogic)$/,
+        /^(react|@\/scan-contract\/confirmedScan|@\/scan-import-v2|@\/services\/scanImportV2|\.\/scanCoreCapture|\.\/scanFlowLogic|\.\/reenrichment)$/,
       );
     expect(FLOW).toMatch(/runScanImportV2\(/);
     expect(FLOW).toMatch(/continueDiscovery\(/);
@@ -66,5 +68,20 @@ describe('scan flow boundary', () => {
     expect(POPOVER).not.toMatch(/<LiveProductScanner/);
     expect(CATALOG_PAGE).toMatch(/<ScanFlow mode="catalog"/);
     expect(CATALOG_PAGE).not.toMatch(/<LiveProductScanner/);
+    // HOME's own scan button is the same flow too — no separate HOME scanner
+    expect(HOME_CREATOR).toMatch(/<ScanFlow\s+mode="recipe"/);
+    expect(HOME_CREATOR).not.toMatch(/LiveMultiScanner/);
+  });
+
+  it('never shows an internal readiness code and never drops to a generic error after a decode', () => {
+    expect(FLOW).not.toMatch(
+      /MISSING_TOTAL_SOLIDS|MISSING_WATER|PRODUCT_SEMANTICS|SWEETENING_FREEZING|roleReadiness|BASE_ONLY/,
+    );
+    expect(FLOW).not.toMatch(/\{[^{}]*\.note\}/); // a server note is a signal, never rendered as customer copy
+    expect(FLOW).not.toMatch(/Coś poszło nie tak/);
+    expect(FLOW).toMatch(/savePrivateNotReady: true/);
+    expect(FLOW).toMatch(/Produkt zapisany prywatnie/);
+    expect(FLOW).toMatch(/Ponów to zdjęcie/);
+    expect(FLOW).toMatch(/decodeStill\(/);
   });
 });

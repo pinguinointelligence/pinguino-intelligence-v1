@@ -24,14 +24,20 @@ import {
   CONSENSUS_BANDS,
   findProfileMatch,
   inferMapperValues,
+  MAX_RESIDUAL_SPREAD,
+  MIN_FAMILY_COHORT,
+  normalizeName,
+  profileDonor,
   profileFieldValue,
   residualSolidsEstimate,
+  semanticFilterRows,
   PROFILE_MATCH_FLOOR,
   type ProfileMatch,
   type MapperInferenceInput,
   type MapperInferenceTier,
   type MapperKnowledge,
 } from './mapperValueInference.ts';
+import { ENGINE_RESULT_ACCEPTANCE_TOLERANCE } from '../../engine/config/acceptance.ts';
 import {
   applyFieldTruth,
   emptyFieldTruthMap,
@@ -44,6 +50,7 @@ import {
 } from './productFieldTruth.ts';
 import {
   assessSweeteningFreezingMateriality,
+  maximumRecipeShareFor,
   type SweeteningFreezingMateriality,
 } from './sweeteningFreezingMateriality.ts';
 
@@ -202,6 +209,14 @@ export interface ProductWorkingValues {
   trace: string[];
 }
 
+/**
+ * A spectrum "covers" the declared total when it reaches it within rounding: label
+ * values carry one decimal, and 32.3 + 3.8 + 1.9 evaluates below 38 in floating point.
+ */
+const SPECTRUM_COVERAGE_TOLERANCE = 0.05;
+/** Largest ratio between a donor's named sugars and the declared total that still transfers composition. */
+const MAX_SPECTRUM_SCALE = 1.5;
+
 export type SweetnessPathKind =
   | 'stored'
   | 'sugar_spectrum'
@@ -275,7 +290,7 @@ export function sweetnessPathOf(
   );
   if (sugars !== null && verifiedSpectrum.length > 0 && (polyol ?? 0) === 0) {
     const named = verifiedSpectrum.reduce((total, truth) => total + (truth.value ?? 0), 0);
-    if (named + Number.EPSILON >= sugars) {
+    if (named + SPECTRUM_COVERAGE_TOLERANCE >= sugars) {
       return {
         kind: 'sugar_spectrum',
         resolved: true,
@@ -310,7 +325,7 @@ export function sweetnessPathOf(
     profilePowers &&
     sugars !== null &&
     (polyol ?? 0) === 0 &&
-    profileNamedSugar + Number.EPSILON >= sugars
+    profileNamedSugar + SPECTRUM_COVERAGE_TOLERANCE >= sugars
   ) {
     return {
       kind: 'stored',
@@ -441,6 +456,11 @@ export function resolveProductWorkingValues(
     }
   }
   const inference = inferMapperValues({ ...input.identity, knownMacros }, knowledge);
+  // A product that declares its three major macros owns its mass balance: a
+  // cohort's ABSOLUTE water/solids median says nothing about this product's dry
+  // matter beyond what its own label already fixes. Only the unnamed residual
+  // may come from references (steps 3c/4b/4c below).
+  const declaredMassBalance = !input.technical && ownMassBalanceKnown(fields);
   for (const field of WORKING_NUMERIC_FIELDS) {
     const candidate = inference.fields[field];
     if (!candidate) continue;
@@ -449,6 +469,9 @@ export function resolveProductWorkingValues(
       ((field === 'water_percent' && fields.total_solids_percent.value !== null) ||
         (field === 'total_solids_percent' && fields.water_percent.value !== null))
     ) {
+      continue;
+    }
+    if (declaredMassBalance && (field === 'water_percent' || field === 'total_solids_percent')) {
       continue;
     }
     fields = applyFieldTruth(fields, field, candidate);
@@ -474,9 +497,42 @@ export function resolveProductWorkingValues(
     },
     knowledge,
   );
+  // A product that DECLARES its three major macros knows its own dry matter up
+  // to the small unnamed residual (ash, minerals, acids). A donor's absolute
+  // water/solids must then never overwrite that: a dry cookie donor would hand
+  // a moist brownie 4% water although its own label already fixes ≥84% solids.
+  // The donor may teach the residual (below), not the water.
+  const ownMassBalance = !input.technical && ownMassBalanceKnown(fields);
   if (profileMatch.confidence >= PROFILE_MATCH_FLOOR) {
     let filled = 0;
+    // B — the product's own named solids plus the donor set's unnamed residual over
+    // the fields BOTH publish (apples to apples). Preferred whenever it exists.
+    const profileMassBalance = ownMassBalance
+      ? commonFieldResidualSolids(
+          fields,
+          profileMatch.rows,
+          1,
+          profileDonor(profileMatch)?.ingredient_id ?? null,
+        )
+      : null;
     for (const field of WORKING_NUMERIC_FIELDS) {
+      if (ownMassBalance && (field === 'water_percent' || field === 'total_solids_percent')) {
+        if (profileMassBalance) continue;
+        // A — the donor's own mass balance, admissible only when it does not
+        // contradict the label: a donor whose dry matter is BELOW what this
+        // product already names cannot describe this product's water.
+        const supplied = profileFieldValue(profileMatch, field);
+        if (!supplied) continue;
+        const donorSolids =
+          field === 'total_solids_percent' ? supplied.value : round4(100 - supplied.value);
+        const named = namedSolidsOf(fields);
+        if (donorSolids + 0.5 < named) {
+          trace.push(
+            `profile_match: pominieto ${field} dawcy (sucha masa dawcy ${donorSolids} < nazwane ${round4(named)})`,
+          );
+          continue;
+        }
+      }
       // The accepted profile is the AUTHORITY for the formulation vector, so it
       // replaces per-field cohort estimates rather than merely filling their
       // gaps. Those medians are drawn field by field from different subsets, so
@@ -514,8 +570,52 @@ export function resolveProductWorkingValues(
       `profile_match: ${profileMatch.basis} ${Math.round(profileMatch.confidence * 100)}% → ${filled} pol`,
       ...profileMatch.reasons,
     );
+    // A reference teaches the COMPOSITION of a declared sugar total, not absolute
+    // grams: a donor with 45 g named sugars cannot complete a label that declares
+    // 38 g, and one with 48 g leaves a 57 g label with 9 g of "unknown sugar". Left
+    // as is, the consistency gate withdrew the whole spectrum (or materiality
+    // refused the gap) although the label fixed the total. The donor's spectrum
+    // (and its powers, which scale with it) are therefore scaled to the declared
+    // total, both ways within a bounded ratio; provenance stays ESTIMATED with the
+    // donor id.
+    fields = scaleProfileSugarSpectrumToDeclaredTotal(fields, trace);
   } else if (profileMatch.rejected) {
     trace.push(`profile_match odrzucony: ${profileMatch.rejected}`);
+  }
+
+  /* 3c. B — own named solids + the accepted profile's common-field residual */
+  if (
+    ownMassBalance &&
+    profileMatch.confidence >= PROFILE_MATCH_FLOOR &&
+    fields.total_solids_percent.value === null &&
+    fields.water_percent.value === null
+  ) {
+    const estimate = commonFieldResidualSolids(
+      fields,
+      profileMatch.rows,
+      1,
+      profileDonor(profileMatch)?.ingredient_id ?? null,
+    );
+    if (estimate) {
+      fields = applyFieldTruth(
+        fields,
+        'total_solids_percent',
+        knownField({
+          value: estimate.totalSolids,
+          state: 'ESTIMATED',
+          confidence: round4(
+            Math.min(weakestMajorConfidence(fields), profileMatch.confidence) * 0.97,
+          ),
+          basis: 'mapper_similar_profile',
+          mapperReferences: estimate.contributors,
+          mapperFingerprint: knowledge.fingerprint,
+          note: `sucha masa = nazwane makroskladniki + reszta niewymieniona ${estimate.residual} wg zgodnego profilu`,
+        }),
+      );
+      trace.push(
+        `profile_residual_solids: ${estimate.totalSolids} (reszta ${estimate.residual}, ${estimate.contributors.length} wierszy)`,
+      );
+    }
   }
 
   /* 4. arithmetic closure over what is now known */
@@ -564,6 +664,132 @@ export function resolveProductWorkingValues(
           `residual_solids: ${estimate.totalSolids} = ${round4(namedSolids)} + ${estimate.residual}`,
         );
         fields = closeArithmetic(fields, trace);
+      }
+    }
+  }
+
+  /* 4c. solids from own macros + the residual of the verified rows of the kind's Mapper categories */
+  // No name cohort and no accepted profile, but Product Recognition knows WHICH
+  // Mapper categories this kind lives in: every verified row of those categories
+  // that passes the semantic gate is evidence about the unnamed residual of that
+  // kind of product. REFERENCE_LINKED: contributors are listed, the value is an
+  // estimate, and the cohort must agree (same dispersion gate as any cohort).
+  // A post-process-only article (TOPPING_ONLY) consumes governed ProductBehavior,
+  // not physics: without a verified donor no number may be invented for it.
+  const baseRequested = input.identity.semantic?.intendedUsageRole !== 'TOPPING_ONLY';
+  if (
+    ownMassBalance &&
+    baseRequested &&
+    fields.total_solids_percent.value === null &&
+    fields.water_percent.value === null
+  ) {
+    const categories = (input.identity.semantic?.compatibleMapperCategories ?? [])
+      .map((entry) => normalizeName(entry).replace(/\s+/g, '_'))
+      .filter((entry) => entry.length > 0);
+    if (categories.length > 0) {
+      const categoryRows = knowledge.rows.filter((row) => {
+        if (row.is_active === false) return false;
+        const category = normalizeName(row.ingredient_category).replace(/\s+/g, '_');
+        return categories.some(
+          (allowed) => category === allowed || category.startsWith(`${allowed}_`),
+        );
+      });
+      const compatibleRows = semanticFilterRows(input.identity.semantic, categoryRows).rows;
+      const namedSolids = namedSolidsOf(fields);
+      const estimate = commonFieldResidualSolids(fields, compatibleRows, MIN_FAMILY_COHORT);
+      if (estimate) {
+        fields = applyFieldTruth(
+          fields,
+          'total_solids_percent',
+          knownField({
+            value: estimate.totalSolids,
+            state: 'ESTIMATED',
+            confidence: round4(weakestMajorConfidence(fields) * 0.9),
+            basis: 'mapper_family_consensus',
+            mapperReferences: estimate.contributors,
+            mapperFingerprint: knowledge.fingerprint,
+            note: `sucha masa = makroskladniki ${round4(namedSolids)} + reszta niewymieniona ${estimate.residual} (kategorie Mappera: ${categories.join(', ')})`,
+          }),
+        );
+        trace.push(
+          `category_residual_solids: ${estimate.totalSolids} = ${round4(namedSolids)} + ${estimate.residual} (${compatibleRows.length} wierszy)`,
+        );
+        fields = closeArithmetic(fields, trace);
+      } else {
+        trace.push(
+          `category_residual_solids: brak zgodnej kohorty (${compatibleRows.length} wierszy)`,
+        );
+      }
+    }
+  }
+
+  /* 4d. bounded deterministic closure — only when the residual band is immaterial to the Engine */
+  // Every food's dry matter is its named macros plus a small unnamed residual.
+  // Without any reference cohort the residual is unknown inside a physical band
+  // (a clear drink carries almost none; a baked or powdered solid a few points).
+  // The Engine materiality authority decides whether that band matters at the
+  // largest share this kind of product can take in a recipe: immaterial → DERIVED
+  // (the label decided, arithmetic closed it); material → the field stays UNKNOWN
+  // and the product waits for a reference or a label fact. Never a guess.
+  if (
+    ownMassBalance &&
+    baseRequested &&
+    fields.total_solids_percent.value === null &&
+    fields.water_percent.value === null
+  ) {
+    const form = input.identity.semantic?.physicalForm ?? 'UNKNOWN';
+    const band =
+      form === 'LIQUID' || form === 'SAUCE' || form === 'PUREE'
+        ? { low: 0, high: 0.8 }
+        : { low: 0.3, high: 3 };
+    const namedSolids = namedSolidsOf(fields);
+    const residual = round4((band.low + band.high) / 2);
+    const halfWidth = round4((band.high - band.low) / 2);
+    const solids = round4(namedSolids + residual);
+    if (solids <= 100) {
+      const probe = applyFieldTruth(
+        applyFieldTruth(
+          fields,
+          'total_solids_percent',
+          knownField({
+            value: solids,
+            state: 'ESTIMATED',
+            confidence: 0.5,
+            basis: 'derived',
+            note: 'probe',
+          }),
+        ),
+        'water_percent',
+        knownField({
+          value: round4(100 - solids),
+          state: 'ESTIMATED',
+          confidence: 0.5,
+          basis: 'derived',
+          note: 'probe',
+        }),
+      );
+      const share = maximumRecipeShareFor(probe, input.identity.semantic);
+      const effect = round4(halfWidth * share);
+      if (effect <= ENGINE_RESULT_ACCEPTANCE_TOLERANCE) {
+        fields = applyFieldTruth(
+          fields,
+          'total_solids_percent',
+          knownField({
+            value: solids,
+            state: 'ESTIMATED',
+            confidence: round4(weakestMajorConfidence(fields) * 0.9),
+            basis: 'derived',
+            note: `sucha masa = makroskladniki ${round4(namedSolids)} + reszta ${residual} (pasmo ${band.low}–${band.high}, udzial max ${share}, wplyw ${effect} ≤ ${ENGINE_RESULT_ACCEPTANCE_TOLERANCE})`,
+          }),
+        );
+        trace.push(
+          `bounded_residual_solids: ${solids} = ${round4(namedSolids)} + ${residual}±${halfWidth} (udzial ${share}, wplyw ${effect}) → DERIVED`,
+        );
+        fields = closeArithmetic(fields, trace);
+      } else {
+        trace.push(
+          `bounded_residual_solids: pasmo ${band.low}–${band.high} istotne (udzial ${share}, wplyw ${effect} > ${ENGINE_RESULT_ACCEPTANCE_TOLERANCE}) → UNKNOWN`,
+        );
       }
     }
   }
@@ -699,6 +925,199 @@ export function resolveProductWorkingValues(
     contradictedByDeclaration: plausibility.contradictedByDeclaration,
     trace,
   };
+}
+
+/** Donor sugar composition → the product's own declared total. */
+function scaleProfileSugarSpectrumToDeclaredTotal(
+  fields: ProductFieldTruthMap,
+  trace: string[],
+): ProductFieldTruthMap {
+  const total = fields.total_sugars_percent;
+  if (total.value === null || total.provenance.state !== 'VERIFIED') return fields;
+  const supplied = SUGAR_SPECTRUM_FIELDS.filter(
+    (field) =>
+      fields[field].value !== null &&
+      fields[field].provenance.state === 'ESTIMATED' &&
+      fields[field].provenance.basis === 'mapper_similar_profile',
+  );
+  const named = supplied.reduce((sum, field) => sum + (fields[field].value ?? 0), 0);
+  if (supplied.length === 0 || named <= 0) return fields;
+  if (Math.abs(named - total.value) <= SPECTRUM_COVERAGE_TOLERANCE) return fields;
+  const factor = total.value / named;
+  // The reference teaches composition in both directions, within reason: a donor
+  // whose named sugars sit far from the declared total does not represent this
+  // product's sugar structure, and the materiality authority then decides.
+  if (factor > MAX_SPECTRUM_SCALE || factor < 1 / MAX_SPECTRUM_SCALE) return fields;
+  let next = fields;
+  let scaledSum = 0;
+  let largest: WorkingNumericField | null = null;
+  for (const field of supplied) {
+    const truth = fields[field];
+    const value = round4((truth.value ?? 0) * factor);
+    scaledSum += value;
+    if (largest === null || value > (next[largest].value ?? 0)) largest = field;
+    next = {
+      ...next,
+      [field]: {
+        ...truth,
+        value,
+        provenance: {
+          ...truth.provenance,
+          note: `${truth.provenance.note ?? ''} · przeskalowane do zadeklarowanych cukrow ${total.value}`.trim(),
+        },
+      },
+    };
+  }
+  // Exact closure on the declared total (rounding residue goes to the largest component).
+  if (largest) {
+    const residue = round4(total.value - scaledSum);
+    if (Math.abs(residue) > 0) {
+      const truth = next[largest];
+      next = {
+        ...next,
+        [largest]: { ...truth, value: round4((truth.value ?? 0) + residue) },
+      };
+    }
+  }
+  for (const field of ['pod_value', 'pac_value'] as const) {
+    const truth = next[field];
+    if (
+      truth.value !== null &&
+      truth.provenance.state === 'ESTIMATED' &&
+      truth.provenance.basis === 'mapper_similar_profile'
+    ) {
+      next = { ...next, [field]: { ...truth, value: round4(truth.value * factor) } };
+    }
+  }
+  trace.push(
+    `profile_sugar_spectrum: przeskalowano ${supplied.length} pol z ${round4(named)} do ${total.value} (x${round4(factor)})`,
+  );
+  return next;
+}
+
+const MAJOR_MACRO_FIELDS = ['fat_percent', 'protein_percent', 'carbohydrate_percent'] as const;
+const MINOR_SOLID_FIELDS = ['fiber_percent', 'salt_percent'] as const;
+
+/** True when the product itself states the three macros that dominate dry matter. */
+function ownMassBalanceKnown(fields: ProductFieldTruthMap): boolean {
+  return MAJOR_MACRO_FIELDS.every(
+    (field) => fields[field].value !== null && fields[field].provenance.state === 'VERIFIED',
+  );
+}
+
+/** Dry matter the product names itself (macros + fibre + salt); the residual is what it does not. */
+function namedSolidsOf(fields: ProductFieldTruthMap): number {
+  return [...MAJOR_MACRO_FIELDS, ...MINOR_SOLID_FIELDS].reduce(
+    (total, field) => total + (fields[field].value ?? 0),
+    0,
+  );
+}
+
+const NAMED_FIELDS = [...MAJOR_MACRO_FIELDS, ...MINOR_SOLID_FIELDS] as const;
+
+const sortedMedian = (sorted: readonly number[]): number => {
+  const mid = sorted.length >> 1;
+  const upper = sorted[mid] ?? 0;
+  return sorted.length % 2 === 1 ? upper : ((sorted[mid - 1] ?? upper) + upper) / 2;
+};
+const sortedQuantile = (sorted: readonly number[], q: number): number => {
+  if (sorted.length <= 1) return sorted[0] ?? 0;
+  const pos = (sorted.length - 1) * q;
+  const low = Math.floor(pos);
+  const high = Math.ceil(pos);
+  const lowValue = sorted[low] ?? 0;
+  const highValue = sorted[high] ?? lowValue;
+  return low === high ? lowValue : lowValue + (highValue - lowValue) * (pos - low);
+};
+
+type MapperKnowledgeRowLike = {
+  ingredient_id: string;
+  is_active?: boolean | null;
+  water_percent: number | null;
+  total_solids_percent: number | null;
+  fat_percent: number | null;
+  protein_percent: number | null;
+  carbohydrate_percent: number | null;
+  fiber_percent: number | null;
+  salt_percent: number | null;
+};
+
+/**
+ * Transfer a reference's UNNAMED dry matter to this product, apples to apples.
+ *
+ * For every reference row the comparison uses only the named fields BOTH sides
+ * publish (fat, protein and carbohydrate always; fibre and salt when both state
+ * them). The row's residual beyond those fields is added to THIS product's own
+ * sum over the same fields, so a field one side leaves unstated sits inside the
+ * residual on both sides instead of being counted as zero on one of them. Rows
+ * whose numbers do not add up (negative or >25-point residual) or that would
+ * push this product past 100% are not evidence; the set must agree (IQR gate).
+ */
+function commonFieldResidualSolids(
+  fields: ProductFieldTruthMap,
+  rows: readonly MapperKnowledgeRowLike[],
+  minRows: number,
+  /** The set's donor. When it cannot transfer, lower-ranked rows must not
+   * substitute a different labelling convention for it. */
+  anchorId: string | null = null,
+): { totalSolids: number; residual: number; contributors: string[]; spread: number } | null {
+  const candidates: { solids: number; residual: number; id: string }[] = [];
+  let overflow = 0;
+  let anchorSeen = false;
+  for (const row of rows) {
+    if (row.is_active === false) continue;
+    const rowSolids =
+      numeric(row.total_solids_percent) ??
+      (numeric(row.water_percent) !== null ? round4(100 - (row.water_percent as number)) : null);
+    if (rowSolids === null) continue;
+    if (MAJOR_MACRO_FIELDS.some((field) => numeric(row[field]) === null)) continue;
+    let productNamed = 0;
+    let rowNamed = 0;
+    for (const field of NAMED_FIELDS) {
+      const productValue = fields[field].value;
+      const rowValue = numeric(row[field]);
+      if (productValue === null || rowValue === null) continue;
+      productNamed += productValue;
+      rowNamed += rowValue;
+    }
+    const residual = round4(rowSolids - rowNamed);
+    if (residual < 0 || residual > 25) continue;
+    const solids = round4(productNamed + residual);
+    if (solids < 0) continue;
+    if (solids > 100) {
+      // This product names MORE dry matter than the reference does under the same
+      // fields: the two labels do not partition dry matter the same way, so the
+      // reference's residual cannot be transferred.
+      overflow += 1;
+      continue;
+    }
+    if (row.ingredient_id === anchorId) anchorSeen = true;
+    candidates.push({ solids, residual, id: row.ingredient_id });
+  }
+  if (candidates.length < minRows) return null;
+  if (anchorId !== null && rows.some((row) => row.ingredient_id === anchorId) && !anchorSeen)
+    return null;
+  // When the transfer overflows for most references, the surviving few are not a
+  // consistent set — the references describe a different labelling convention.
+  if (overflow > 0 && overflow >= candidates.length) return null;
+  const sortedSolids = candidates.map((c) => c.solids).sort((a, b) => a - b);
+  const spread = round4(
+    (sortedQuantile(sortedSolids, 0.75) - sortedQuantile(sortedSolids, 0.25)) / 2,
+  );
+  if (spread > MAX_RESIDUAL_SPREAD) return null;
+  return {
+    totalSolids: round4(sortedMedian(sortedSolids)),
+    residual: round4(sortedMedian(candidates.map((c) => c.residual).sort((a, b) => a - b))),
+    contributors: candidates.map((c) => c.id),
+    spread,
+  };
+}
+
+function weakestMajorConfidence(fields: ProductFieldTruthMap): number {
+  return MAJOR_MACRO_FIELDS.reduce(
+    (min, field) => Math.min(min, fields[field].provenance.confidence),
+    1,
+  );
 }
 
 /**

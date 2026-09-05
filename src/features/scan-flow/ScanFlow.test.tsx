@@ -22,6 +22,7 @@ vi.mock('@/services/scanImportV2', async () => {
     externalTimeoutMs: 200,
   });
   (globalThis as Record<string, unknown>)['__scanFlowFakes'] = { discovery, registry };
+  (globalThis as Record<string, unknown>)['__scanFlowPorts'] = p;
   return {
     createScanImportV2AppPorts: () => p,
     getScanImportV2AccountId: async () => 'user-1',
@@ -132,7 +133,7 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     });
     await typeCode(UNKNOWN);
     // internet evidence collected, the label is still needed
-    expect(text()).toContain('Zrób zdjęcie etykiety');
+    expect(text()).toContain('Zrób zdjęcia etykiety');
     expect(discovery.calls).toContain(`research:${UNKNOWN}`);
     // label photograph
     const capture = host.querySelector<HTMLInputElement>('input[type="file"][capture]')!;
@@ -151,7 +152,7 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     });
     await flush();
     // still missing: only the plain field the label did not give (ingredients)
-    expect(text()).toContain('Uzupełnij brakujące dane z etykiety');
+    expect(text()).toContain('Uzupełnij dane z etykiety');
     expect(text()).toContain('Skład (z etykiety)');
     expect(text()).not.toContain('Energia'); // the label already gave it
     expect(text()).not.toMatch(/\b(PAC|POD|NPAC|Mapper|ProductBehavior)\b/);
@@ -291,7 +292,9 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     expect(text()).toContain('Sport 002');
     expect(text()).toContain('Vitamin Well');
     expect(text()).not.toContain('Co to za produkt?');
-    expect(text()).toContain('Zapisano jako Twój produkt');
+    // the fake authority did not mark it engine-usable: kept privately, honest about recipe readiness
+    expect(text()).toContain('Produkt zapisany prywatnie');
+    expect(text()).toContain('wymaga jeszcze weryfikacji');
   });
 
   it('a registry identity whose family nobody can tell asks it once, with the product name shown', async () => {
@@ -334,6 +337,282 @@ describe('ScanFlow (jsdom, fake ports)', () => {
       button('Inne')!.click();
     });
     await flush();
+    expect(text()).toContain('Produkt zapisany prywatnie');
+  });
+
+  it('the family question is never asked twice: an answer the authority cannot map leads to the private save', async () => {
+    const { registry, discovery } = fakes();
+    discovery.unmappableFamilies.add('other');
+    const CODE = '5901111222235'; // fresh valid EAN-13 (no other journey marks it engine-usable)
+    registry.set(CODE, {
+      provider: 'openfoodfacts',
+      queriedAt: 1,
+      query: CODE,
+      confidence: 0.9,
+      facts: [
+        {
+          field: 'identity.displayName',
+          value: 'Mystery 003',
+          sourceUrl: 'u',
+          authority: 'barcode_registry',
+        },
+        { field: 'identity.brand', value: 'Acme', sourceUrl: 'u', authority: 'barcode_registry' },
+        {
+          field: 'nutrition.energyKcal',
+          value: '10',
+          sourceUrl: 'u',
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'ingredientsText',
+          value: 'something',
+          sourceUrl: 'u',
+          authority: 'barcode_registry',
+        },
+      ],
+    });
+    await act(async () => {
+      root.render(<ScanFlow mode="catalog" />);
+    });
+    await typeCode(CODE);
+    await flush();
+    expect(text()).toContain('Co to za produkt? (Mystery 003)');
+    await act(async () => {
+      button('Inne')!.click();
+    });
+    await flush();
+    // asked again by the authority → the flow does NOT show the question again
+    expect(text()).not.toContain('Co to za produkt?');
+    expect(text()).toContain('Mystery 003');
+    const save = button('Zapisz prywatnie') ?? button('Zapisz jako mój produkt');
+    expect(save, text().slice(0, 400)).not.toBeNull();
+    const before = text();
+    await act(async () => {
+      save!.click();
+    });
+    await flush();
+    expect(text(), before.slice(0, 300)).toContain('Produkt zapisany prywatnie');
+  });
+
+  it('a rescan of an own private not-ready product re-runs the automatic enrichment once and shows it ready', async () => {
+    const { discovery, registry } = fakes();
+    const p = (globalThis as Record<string, unknown>)['__scanFlowPorts'] as ReturnType<
+      typeof import('@/scan-import-v2/__tests__/fakes').ports
+    >;
+    const CODE = '4008400402222'; // an own private product that could not be completed at first (fresh EAN: the fake authority is shared across journeys)
+    p.catalog.rows.push({
+      productId: 'ca-own-1',
+      productCode: 'linked:user-1',
+      displayName: 'Sport 002',
+      brand: 'Vitamin Well',
+      ean: CODE,
+      strength: 'provisional_linked',
+      entityKind: 'customer_provisional',
+      engineReady: false,
+      mapperSlotId: null,
+      country: null,
+    });
+    p.behaviour.outcomes.set('ca-own-1', 'unknown_requires_review');
+    registry.set(CODE, {
+      provider: 'openfoodfacts',
+      queriedAt: 1,
+      query: CODE,
+      confidence: 0.9,
+      facts: [
+        {
+          field: 'identity.displayName',
+          value: 'Sport 002',
+          sourceUrl: 'u',
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'identity.brand',
+          value: 'Vitamin Well',
+          sourceUrl: 'u',
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'nutrition.energyKcal',
+          value: '1',
+          sourceUrl: 'u',
+          authority: 'barcode_registry',
+        },
+        { field: 'nutrition.fat', value: '0', sourceUrl: 'u', authority: 'barcode_registry' },
+        {
+          field: 'nutrition.carbohydrate',
+          value: '0',
+          sourceUrl: 'u',
+          authority: 'barcode_registry',
+        },
+        { field: 'nutrition.sugars', value: '0', sourceUrl: 'u', authority: 'barcode_registry' },
+        { field: 'nutrition.protein', value: '0', sourceUrl: 'u', authority: 'barcode_registry' },
+        { field: 'nutrition.salt', value: '0.12', sourceUrl: 'u', authority: 'barcode_registry' },
+        {
+          field: 'ingredientsText',
+          value: 'water, citric acid, sucralose',
+          sourceUrl: 'u',
+          authority: 'barcode_registry',
+        },
+      ],
+    });
+    // this time the authorities can complete it (a trusted reference of the same kind was found)
+    discovery.authorityEngineUsable.set(`CA-${CODE}`, true);
+    await act(async () => {
+      root.render(<ScanFlow mode="catalog" />);
+    });
+    await typeCode(CODE);
+    await flush();
+    await flush();
+    expect(text()).toContain('Sport 002');
+    // no family question, no photos, no fields: the product came back ready and saved
+    expect(text()).not.toContain('Co to za produkt?');
+    expect(text()).not.toContain('wymaga jeszcze weryfikacji');
     expect(text()).toContain('Zapisano jako Twój produkt');
+    expect(discovery.calls.filter((c) => c.startsWith(`finalize:${CODE}`)).length).toBe(1);
+  });
+
+  it('owner contract: a not-ready exact product is saved privately, never lost to a category or a photo loop', async () => {
+    const { discovery, registry } = fakes();
+    const CODE = '8411902004089'; // Cabreiroá — registry knows name + brand, nothing else
+    registry.set(CODE, {
+      provider: 'openfoodfacts',
+      queriedAt: 1,
+      query: CODE,
+      confidence: 0.9,
+      facts: [
+        {
+          field: 'identity.displayName',
+          value: 'Agua mineral natural',
+          sourceUrl: 'u',
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'identity.brand',
+          value: 'Cabreiroá',
+          sourceUrl: 'u',
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'identity.quantity',
+          value: '50 cl',
+          sourceUrl: 'u',
+          authority: 'barcode_registry',
+        },
+      ],
+    });
+    await act(async () => {
+      root.render(<ScanFlow mode="catalog" />);
+    });
+    await typeCode(CODE);
+    await flush();
+    // identified; the authority still misses label facts → the label step, with the private save offered
+    expect(text()).toContain('Rozpoznano po kodzie');
+    expect(text()).toContain('Cabreiroá');
+    expect(text()).not.toContain('Co to za produkt?');
+    expect(text()).not.toMatch(/MISSING_|_REQUIRED|_UNRESOLVED|roleReadiness|BASE_ONLY/);
+    const save = host.querySelector<HTMLButtonElement>('[data-testid="scan-flow-save-private"]');
+    expect(save).not.toBeNull();
+    await act(async () => {
+      save!.click();
+    });
+    await flush();
+    expect(text()).toContain('Produkt zapisany prywatnie');
+    expect(text()).toContain('wymaga jeszcze weryfikacji');
+    expect(discovery.created.get(CODE)).toMatchObject({ engineUsable: false });
+    expect(button('Dodaj do receptury')).toBeNull(); // catalogue mode; and never recipe-eligible
+  });
+
+  it('multi-photo: the second photo failing keeps the first one and can be retried alone', async () => {
+    const { discovery } = fakes();
+    const CODE = '3017620422003'; // a fresh valid EAN-13 (its fake session starts empty)
+    discovery.provider.set(CODE, {
+      displayName: 'Stabilo Test Pen',
+      brand: 'Stabilo',
+      sourceType: 'manufacturer',
+    });
+    discovery.label.set(CODE, { energyKcal: 300 });
+    await act(async () => {
+      root.render(<ScanFlow mode="catalog" />);
+    });
+    await typeCode(CODE);
+    const sendPhoto = async () => {
+      const capture = host.querySelector<HTMLInputElement>('input[type="file"][capture]')!;
+      const file = new File([new Uint8Array([1, 2, 3])], 'label.jpg', { type: 'image/jpeg' });
+      Object.defineProperty(capture, 'files', { value: [file], configurable: true });
+      await act(async () => {
+        capture.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+      await flush();
+      await flush();
+    };
+    await sendPhoto(); // photo 1 → read → authority asks the family
+    expect(text()).toContain('Co to za produkt?');
+    await act(async () => {
+      button('Inne')!.click();
+    });
+    await flush();
+    // ingredients still missing → plain field, with the photo list still showing photo 1 as read
+    expect(text()).toContain('Zdjęcie 1:');
+    expect(text()).toContain('odczytane ✓');
+    // photo 2 waits: later photographs go out together in the session's one remaining call
+    await sendPhoto();
+    expect(text()).toContain('Zdjęcie 2:');
+    expect(text()).toContain('czeka');
+    expect(text()).toContain('Odczytaj dodane zdjęcia (1)');
+    discovery.failNextLabel = 'burst';
+    await act(async () => {
+      button('Odczytaj dodane zdjęcia (1)')!.click();
+    });
+    await flush();
+    await flush();
+    // the call fails (burst) — photo 1 untouched, identity kept, no generic error
+    expect(text()).toContain('Za dużo analiz w krótkim czasie');
+    expect(text()).toContain('odczytane ✓');
+    expect(text()).not.toContain('Coś poszło nie tak');
+    expect(text()).toContain('Stabilo Test Pen');
+    await act(async () => {
+      button('Ponów to zdjęcie')!.click();
+    });
+    await flush();
+    await flush();
+    expect(text()).not.toContain('Za dużo analiz w krótkim czasie');
+    expect(text().match(/odczytane ✓/g)?.length).toBe(2);
+    expect(
+      discovery.calls.filter((c) => c.startsWith(`analyze:${CODE}:`)).length,
+    ).toBeGreaterThanOrEqual(3);
+    // the authority's two analyses are used up: a third photograph is refused honestly, without a call
+    const callsBefore = discovery.calls.length;
+    await sendPhoto();
+    expect(text()).toContain('Zdjęcie 3:');
+    expect(text()).toContain('Limit odczytów zdjęć dla tego skanu');
+    expect(discovery.calls.length).toBe(callsBefore);
+  });
+
+  it('a lookup failure keeps the decoded code and retries the lookup, not the scan', async () => {
+    await act(async () => {
+      root.render(<ScanFlow mode="catalog" />);
+    });
+    const p = (globalThis as Record<string, unknown>)['__scanFlowPorts'] as ReturnType<
+      typeof import('@/scan-import-v2/__tests__/fakes').ports
+    >;
+    const original = p.catalog.exactByKeys.bind(p.catalog);
+    let failures = 1;
+    p.catalog.exactByKeys = async (keys, ctx) => {
+      if (failures > 0) {
+        failures -= 1;
+        throw new Error('connection reset');
+      }
+      return original(keys, ctx);
+    };
+    await typeCode('8402001047251');
+    expect(text()).toContain('Kod został zachowany');
+    expect(text()).toContain('8402001047251');
+    await act(async () => {
+      button('Spróbuj ponownie')!.click();
+    });
+    await flush();
+    expect(text()).toContain('nie tworzymy duplikatu');
+    expect(text()).toContain('Hacendado');
+    p.catalog.exactByKeys = original;
   });
 });

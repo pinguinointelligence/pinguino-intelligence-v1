@@ -1,0 +1,517 @@
+{
+  "label": "incomplete-label-no-sugars",
+  "gtin": "5449000054227",
+  "recognition": {
+    "deterministic": {
+      "archetype": "UNKNOWN",
+      "family": "unknown",
+      "form": "LIQUID",
+      "role": "NEITHER_REVIEW",
+      "modelRequired": true,
+      "modelReasonCodes": [
+        "ARCHETYPE_UNKNOWN",
+        "FAMILY_UNKNOWN"
+      ],
+      "compatibleMapperCategories": []
+    },
+    "final": {
+      "source": "CUSTOMER_CONFIRMED",
+      "archetype": "NORMAL_INGREDIENT",
+      "family": "beverage",
+      "form": "LIQUID",
+      "role": "BASE_ONLY",
+      "modelRequired": false,
+      "modelReasonCodes": [],
+      "compatibleMapperCategories": [
+        "beverage"
+      ],
+      "familyResolution": "RESOLVED"
+    }
+  },
+  "mapper": {
+    "candidatesBeforeFilter": [
+      "PI-ING-000357",
+      "PI-ING-000358",
+      "PI-ING-000378",
+      "PI-ING-000429",
+      "PI-ING-000647",
+      "PI-ING-000660",
+      "PI-ING-000702",
+      "PI-ING-000736",
+      "PI-ING-000959",
+      "PI-ING-000999",
+      "PI-ING-001220",
+      "PI-ING-001549",
+      "PI-ING-001744",
+      "PI-ING-001766",
+      "PI-ING-001767",
+      "PI-ING-001804",
+      "PI-ING-001882",
+      "PI-ING-001883",
+      "PI-ING-001884",
+      "PI-ING-001897",
+      "PI-ING-001903",
+      "PI-ING-001905",
+      "PI-ING-001906",
+      "PI-ING-001909",
+      "PI-ING-001912",
+      "PI-ING-001951",
+      "PI-ING-001956",
+      "PI-ING-001959",
+      "PI-ING-001966",
+      "PI-ING-002010",
+      "PI-ING-002106"
+    ],
+    "candidatesAfterFilter": [
+      "PI-ING-001903",
+      "PI-ING-001959",
+      "PI-ING-001905",
+      "PI-ING-001906",
+      "PI-ING-001882",
+      "PI-ING-001897",
+      "PI-ING-001956",
+      "PI-ING-001804",
+      "PI-ING-002106",
+      "PI-ING-001884",
+      "PI-ING-001951",
+      "PI-ING-001966",
+      "PI-ING-001909",
+      "PI-ING-001883",
+      "PI-ING-001912"
+    ],
+    "rejected": [
+      {
+        "ingredientId": "PI-ING-000357",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION",
+          "SEMANTIC_CATEGORY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-000358",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION",
+          "SEMANTIC_CATEGORY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-000378",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION",
+          "SEMANTIC_CATEGORY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-000429",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION",
+          "SEMANTIC_CATEGORY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-000647",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION",
+          "SEMANTIC_ROLE_CONTRADICTION",
+          "SEMANTIC_CATEGORY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-000660",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION",
+          "SEMANTIC_FORM_CONTRADICTION",
+          "SEMANTIC_CATEGORY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-000702",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION",
+          "SEMANTIC_ROLE_CONTRADICTION",
+          "SEMANTIC_CATEGORY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-000736",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION",
+          "SEMANTIC_CATEGORY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-000959",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION",
+          "SEMANTIC_CATEGORY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-000999",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION",
+          "SEMANTIC_ROLE_CONTRADICTION",
+          "SEMANTIC_CATEGORY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-001220",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION",
+          "SEMANTIC_ROLE_CONTRADICTION",
+          "SEMANTIC_CATEGORY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-001549",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION",
+          "SEMANTIC_CATEGORY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-001744",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION",
+          "SEMANTIC_CATEGORY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-001766",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION",
+          "SEMANTIC_CATEGORY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-001767",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION",
+          "SEMANTIC_CATEGORY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-002010",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION",
+          "SEMANTIC_FORM_CONTRADICTION",
+          "SEMANTIC_ROLE_CONTRADICTION",
+          "SEMANTIC_CATEGORY_CONTRADICTION"
+        ]
+      }
+    ],
+    "donor": "PI-ING-001883",
+    "similarity": 0.94,
+    "basis": "brand_sibling",
+    "estimatedFromMapperIds": [
+      "PI-ING-001883"
+    ],
+    "hintCategories": [],
+    "verified": {
+      "confidence": 0.94,
+      "basis": "brand_sibling",
+      "rejected": null,
+      "candidatesBeforeFilter": [
+        "PI-ING-000357",
+        "PI-ING-000358",
+        "PI-ING-000378",
+        "PI-ING-000429",
+        "PI-ING-000647",
+        "PI-ING-000660",
+        "PI-ING-000702",
+        "PI-ING-000736",
+        "PI-ING-000959",
+        "PI-ING-000999",
+        "PI-ING-001220",
+        "PI-ING-001549",
+        "PI-ING-001744",
+        "PI-ING-001766",
+        "PI-ING-001767",
+        "PI-ING-001883"
+      ],
+      "candidatesAfterFilter": [
+        "PI-ING-001883"
+      ],
+      "rejectedCandidates": [
+        {
+          "ingredientId": "PI-ING-000357",
+          "reasonCodes": [
+            "SEMANTIC_FAMILY_CONTRADICTION",
+            "SEMANTIC_CATEGORY_CONTRADICTION"
+          ]
+        },
+        {
+          "ingredientId": "PI-ING-000358",
+          "reasonCodes": [
+            "SEMANTIC_FAMILY_CONTRADICTION",
+            "SEMANTIC_CATEGORY_CONTRADICTION"
+          ]
+        },
+        {
+          "ingredientId": "PI-ING-000378",
+          "reasonCodes": [
+            "SEMANTIC_FAMILY_CONTRADICTION",
+            "SEMANTIC_CATEGORY_CONTRADICTION"
+          ]
+        },
+        {
+          "ingredientId": "PI-ING-000429",
+          "reasonCodes": [
+            "SEMANTIC_FAMILY_CONTRADICTION",
+            "SEMANTIC_CATEGORY_CONTRADICTION"
+          ]
+        },
+        {
+          "ingredientId": "PI-ING-000647",
+          "reasonCodes": [
+            "SEMANTIC_FAMILY_CONTRADICTION",
+            "SEMANTIC_ROLE_CONTRADICTION",
+            "SEMANTIC_CATEGORY_CONTRADICTION"
+          ]
+        },
+        {
+          "ingredientId": "PI-ING-000660",
+          "reasonCodes": [
+            "SEMANTIC_FAMILY_CONTRADICTION",
+            "SEMANTIC_FORM_CONTRADICTION",
+            "SEMANTIC_CATEGORY_CONTRADICTION"
+          ]
+        },
+        {
+          "ingredientId": "PI-ING-000702",
+          "reasonCodes": [
+            "SEMANTIC_FAMILY_CONTRADICTION",
+            "SEMANTIC_ROLE_CONTRADICTION",
+            "SEMANTIC_CATEGORY_CONTRADICTION"
+          ]
+        },
+        {
+          "ingredientId": "PI-ING-000736",
+          "reasonCodes": [
+            "SEMANTIC_FAMILY_CONTRADICTION",
+            "SEMANTIC_CATEGORY_CONTRADICTION"
+          ]
+        },
+        {
+          "ingredientId": "PI-ING-000959",
+          "reasonCodes": [
+            "SEMANTIC_FAMILY_CONTRADICTION",
+            "SEMANTIC_CATEGORY_CONTRADICTION"
+          ]
+        },
+        {
+          "ingredientId": "PI-ING-000999",
+          "reasonCodes": [
+            "SEMANTIC_FAMILY_CONTRADICTION",
+            "SEMANTIC_ROLE_CONTRADICTION",
+            "SEMANTIC_CATEGORY_CONTRADICTION"
+          ]
+        },
+        {
+          "ingredientId": "PI-ING-001220",
+          "reasonCodes": [
+            "SEMANTIC_FAMILY_CONTRADICTION",
+            "SEMANTIC_ROLE_CONTRADICTION",
+            "SEMANTIC_CATEGORY_CONTRADICTION"
+          ]
+        },
+        {
+          "ingredientId": "PI-ING-001549",
+          "reasonCodes": [
+            "SEMANTIC_FAMILY_CONTRADICTION",
+            "SEMANTIC_CATEGORY_CONTRADICTION"
+          ]
+        },
+        {
+          "ingredientId": "PI-ING-001744",
+          "reasonCodes": [
+            "SEMANTIC_FAMILY_CONTRADICTION",
+            "SEMANTIC_CATEGORY_CONTRADICTION"
+          ]
+        },
+        {
+          "ingredientId": "PI-ING-001766",
+          "reasonCodes": [
+            "SEMANTIC_FAMILY_CONTRADICTION",
+            "SEMANTIC_CATEGORY_CONTRADICTION"
+          ]
+        },
+        {
+          "ingredientId": "PI-ING-001767",
+          "reasonCodes": [
+            "SEMANTIC_FAMILY_CONTRADICTION",
+            "SEMANTIC_CATEGORY_CONTRADICTION"
+          ]
+        }
+      ],
+      "donorReference": "PI-ING-001883"
+    }
+  },
+  "fieldTruth": {
+    "water_percent": {
+      "value": 90.59,
+      "state": "ESTIMATED",
+      "basis": "derived",
+      "confidence": 0.7779,
+      "refs": [
+        "PI-ING-001883"
+      ]
+    },
+    "total_solids_percent": {
+      "value": 9.41,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.7779,
+      "refs": [
+        "PI-ING-001883"
+      ]
+    },
+    "fat_percent": {
+      "value": 0,
+      "state": "VERIFIED",
+      "basis": "user_confirmed",
+      "confidence": 0.802,
+      "refs": []
+    },
+    "protein_percent": {
+      "value": 0,
+      "state": "VERIFIED",
+      "basis": "user_confirmed",
+      "confidence": 0.802,
+      "refs": []
+    },
+    "carbohydrate_percent": {
+      "value": 9.4,
+      "state": "VERIFIED",
+      "basis": "user_confirmed",
+      "confidence": 0.802,
+      "refs": []
+    },
+    "total_sugars_percent": {
+      "value": 4.5,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.94,
+      "refs": [
+        "PI-ING-001883"
+      ]
+    },
+    "sucrose_percent": {
+      "value": 2.7,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.94,
+      "refs": [
+        "PI-ING-001883"
+      ]
+    },
+    "dextrose_percent": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.94,
+      "refs": [
+        "PI-ING-001883"
+      ]
+    },
+    "glucose_percent": {
+      "value": 0.9,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.94,
+      "refs": [
+        "PI-ING-001883"
+      ]
+    },
+    "fructose_percent": {
+      "value": 0.9,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.94,
+      "refs": [
+        "PI-ING-001883"
+      ]
+    },
+    "lactose_percent": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.94,
+      "refs": [
+        "PI-ING-001883"
+      ]
+    },
+    "polyol_percent": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.94,
+      "refs": [
+        "PI-ING-001883"
+      ]
+    },
+    "fiber_percent": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.94,
+      "refs": [
+        "PI-ING-001883"
+      ]
+    },
+    "salt_percent": {
+      "value": 0.01,
+      "state": "VERIFIED",
+      "basis": "user_confirmed",
+      "confidence": 0.802,
+      "refs": []
+    },
+    "alcohol_percent": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.94,
+      "refs": [
+        "PI-ING-001883"
+      ]
+    },
+    "kcal_per_100g": {
+      "value": 39,
+      "state": "VERIFIED",
+      "basis": "user_confirmed",
+      "confidence": 0.802,
+      "refs": []
+    },
+    "pod_value": {
+      "value": 4.41,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.94,
+      "refs": [
+        "PI-ING-001883"
+      ]
+    },
+    "pac_value": {
+      "value": 6.12,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.94,
+      "refs": [
+        "PI-ING-001883"
+      ]
+    }
+  },
+  "missingEngineFields": [],
+  "criticalPhysicsBlockers": [],
+  "sweetnessPath": {
+    "kind": "stored",
+    "resolved": true,
+    "reason": "zgodny profil Mappera uzupełnił widmo 4.5 z 4.5 g oraz POD/PAC jako ESTIMATED"
+  },
+  "readiness": "ESTIMATED_READY",
+  "engineUsable": true,
+  "productAccuracy": 92.12,
+  "roleReadiness": "BASE_READY",
+  "ready": true,
+  "blockers": []
+}

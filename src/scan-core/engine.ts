@@ -5,7 +5,7 @@
  * No camera, no pixels, no product knowledge here.
  */
 import { mergeCollinear, type MergedCandidate, type RawCandidate } from './candidates';
-import type { Read, ReadSource } from './confirmation';
+import type { DigitVotes, Read, ReadSource } from './confirmation';
 import { formatFromDecoder, type ScanObservation } from './observation';
 import { PolicyState, type Decision, type Guidance, type Roi } from './policy';
 import { planeSizes, type CameraProfile } from './profile';
@@ -41,6 +41,8 @@ export interface DecodeRequest {
   harder: boolean;
   /** decode the homography-rectified crop (tilted candidates); result provenance = 'rectified' */
   rectify: boolean;
+  /** the code's reading axis is vertical (bars horizontal): transpose the crop by 90° before decoding — lossless, so the read keeps its native/medium provenance */
+  rotate90: boolean;
   /** additional retained frames to retry against when the live crop fails (best-crop memory) */
   retryFrames: number[];
   source: ReadSource;
@@ -78,6 +80,11 @@ export interface TrackDecisionRecord {
   agreeing: number;
   /** per-track escalation ladder level (Track.escalationLevel) */
   escalation: 0 | 1 | 2 | 3;
+  /** candidate orientation (degrees; 0 = bars vertical, reads left→right) and the axis the decoder is fed */
+  angleDeg: number | null;
+  readingAxis: 'horizontal' | 'vertical' | null;
+  /** digit-by-digit evidence from the reads so far (null before the first read) */
+  digits: DigitVotes | null;
 }
 
 export interface FrameDecisionRecord {
@@ -221,13 +228,18 @@ export class ScanCoreEngine {
             quality?.tiltDeg ??
             Math.min(Math.abs(candidate.angleDeg % 90), 90 - Math.abs(candidate.angleDeg % 90));
           const level = track.escalationLevel();
-          const rectify = native && tilt > 8 && level >= 1;
+          // reading axis: a code held at 90° / 270° (bars horizontal) folds to tilt 0 and would be decoded
+          // as rows — instead its ROI is swapped about the centre and the crop transposed (owner QA 2026-09-05)
+          const verticalAxis = readingAxisOf(candidate.angleDeg) === 'vertical';
+          const roi = verticalAxis ? swapRoiAboutCentre(d.roi) : d.roi;
+          const rectify = native && tilt > 8 && level >= 1 && !verticalAxis;
           requests.push({
             trackId: track.id,
             frameIndex: input.frameIndex,
-            roi: d.roi,
+            roi,
             harder,
             rectify,
+            rotate90: verticalAxis,
             retryFrames:
               level >= 2 ? track.retryFrames().filter((f) => f !== input.frameIndex) : [],
             source: rectify ? 'rectified' : native ? 'native' : 'medium',
@@ -252,6 +264,9 @@ export class ScanCoreEngine {
         quality,
         agreeing: track.confirmation.state.agreeing,
         escalation: track.escalationLevel(),
+        angleDeg: candidate.angleDeg,
+        readingAxis: readingAxisOf(candidate.angleDeg),
+        digits: track.confirmation.digitVotes(),
       });
     }
 
@@ -274,6 +289,7 @@ export class ScanCoreEngine {
           roi: d.roi,
           harder: this.opts.budget.harderAllowed,
           rectify: false,
+          rotate90: false,
           retryFrames: [],
           source: 'rescue',
         });
@@ -291,6 +307,9 @@ export class ScanCoreEngine {
         quality: null,
         agreeing: 0,
         escalation: 0,
+        angleDeg: null,
+        readingAxis: null,
+        digits: null,
       });
     }
 
@@ -453,4 +472,17 @@ export class ScanCoreEngine {
   }
 
   /** A rescue decode has no track; attach it to the primary track if one exists (else it only informs search). */
+}
+
+/** the axis the decoder must scan along: bars vertical (0°/180°) → horizontal reading; bars horizontal (90°/270°) → vertical */
+export function readingAxisOf(angleDeg: number): 'horizontal' | 'vertical' {
+  const axis = ((angleDeg % 180) + 180) % 180;
+  return axis > 45 && axis < 135 ? 'vertical' : 'horizontal';
+}
+
+/** the policy sizes the ROI along the horizontal axis; a vertical code needs the same box turned about its centre */
+export function swapRoiAboutCentre(roi: Roi): Roi {
+  const cx = roi.x + roi.w / 2;
+  const cy = roi.y + roi.h / 2;
+  return { x: cx - roi.h / 2, y: cy - roi.w / 2, w: roi.h, h: roi.w, plane: roi.plane };
 }

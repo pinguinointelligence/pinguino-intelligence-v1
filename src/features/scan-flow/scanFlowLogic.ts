@@ -247,20 +247,81 @@ export function positionHint(
   return null;
 }
 
-/** one line for the customer: guidance outranks position, position outranks the bare state */
-export function scanFeedbackText(frame: {
+export interface FeedbackInput {
   state: ScanState;
   guidance: ScanGuidance;
   timedOut: boolean;
   position: PositionHint;
-}): string {
+  /** sharpness of the tracked code relative to the session median (null before a track) */
+  sharpRel?: number | null;
+  /** the camera's focus control as probed — 'unknown' on a desktop means fixed-focus in practice */
+  focusControl?: 'continuous' | 'none' | 'unknown';
+  formFactor?: 'mobile' | 'desktop' | 'unknown';
+  /** the engine scans the code along this axis; a vertical axis without a read → rotation hint */
+  readingAxis?: 'horizontal' | 'vertical' | null;
+  /** ms the engine has been tracking a code without a single read (0 = fresh) */
+  trackedWithoutReadMs?: number;
+}
+
+const BLUR_REL = 0.5;
+
+/** the camera cannot sharpen by itself: a fixed-focus lens, or a desktop camera exposing no focus control */
+export function fixedFocus(input: Pick<FeedbackInput, 'focusControl' | 'formFactor'>): boolean {
+  return (
+    input.focusControl === 'none' ||
+    (input.focusControl === 'unknown' && input.formFactor === 'desktop')
+  );
+}
+
+/** one line for the customer: blur/focus > rotation > guidance > position > bare state */
+export function scanFeedbackText(frame: FeedbackInput): string {
   if (frame.state === 'COMPLETE') return STATE_TEXT.COMPLETE;
   if (frame.timedOut) return 'Nie udało się potwierdzić kodu — spróbuj bliżej albo pod innym kątem';
+  const blurred = typeof frame.sharpRel === 'number' && frame.sharpRel < BLUR_REL;
+  if (blurred && fixedFocus(frame)) {
+    return frame.guidance === 'move_closer'
+      ? 'Obraz jest nieostry — przybliżaj powoli, aż kod będzie wyraźny'
+      : 'Obraz jest nieostry — odsuń produkt ok. 30 cm od kamery i trzymaj nieruchomo';
+  }
+  if (blurred && frame.guidance === 'hold_steady') return 'Ustawiam ostrość — trzymaj nieruchomo';
+  if (
+    frame.readingAxis === 'vertical' &&
+    (frame.trackedWithoutReadMs ?? 0) > 1500 &&
+    frame.state !== 'HOLD'
+  )
+    return 'Obróć produkt lub telefon, aby kod leżał poziomo';
   if (frame.guidance !== 'none' && frame.guidance !== 'hold_steady')
     return GUIDANCE_TEXT[frame.guidance];
   if (frame.position && frame.state !== 'HOLD') return POSITION_TEXT[frame.position];
   if (frame.guidance === 'hold_steady') return GUIDANCE_TEXT.hold_steady;
   return STATE_TEXT[frame.state];
+}
+
+/** when the live image cannot get sharp for a while, the still photograph is the honest way out */
+export function offerPhotoFallback(input: {
+  blurredForMs: number;
+  trackedWithoutReadMs: number;
+  focusControl?: FeedbackInput['focusControl'];
+  formFactor?: FeedbackInput['formFactor'];
+}): boolean {
+  if (fixedFocus(input)) return input.blurredForMs > 2500 || input.trackedWithoutReadMs > 6000;
+  return input.trackedWithoutReadMs > 8000;
+}
+
+/** masked progress from digit votes: stable digits, unstable ones (a single read) and unknown positions */
+export function maskedDigits(
+  votes: { digits: (string | null)[]; stable: boolean[] } | null,
+): { text: string; stableCount: number; total: number } | null {
+  if (!votes || votes.digits.length === 0) return null;
+  let stableCount = 0;
+  const text = votes.digits
+    .map((d, i) => {
+      if (d === null) return '•';
+      if (votes.stable[i]) stableCount += 1;
+      return d;
+    })
+    .join('');
+  return { text, stableCount, total: votes.digits.length };
 }
 
 /** the registry's facts as the prefilled answers of the plain fields */
@@ -276,4 +337,16 @@ export function prefillFromIdentity(web: ExactWebIdentity): Record<string, strin
   if (typeof pf['ingredientsText'] === 'string') out['ingredientsText'] = pf['ingredientsText'];
   if (typeof pf['allergensText'] === 'string') out['allergensText'] = pf['allergensText'];
   return out;
+}
+
+/** the identity the discovery ledger already holds (server research or label), for the customer to see */
+export function ledgerIdentity(ledger: {
+  facts: readonly { field: string; value: unknown }[];
+}): { displayName: string; brand: string | null } | null {
+  const get = (f: string) => {
+    const v = ledger.facts.find((x) => x.field === f)?.value;
+    return typeof v === 'string' && v.trim() ? v.trim() : null;
+  };
+  const displayName = get('identity.displayName');
+  return displayName ? { displayName, brand: get('identity.brand') } : null;
 }

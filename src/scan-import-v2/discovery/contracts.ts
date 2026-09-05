@@ -129,6 +129,8 @@ export type CustomerFamily =
 
 export interface FinalizeInput {
   customerFamily?: CustomerFamily | null;
+  /** owner contract (2026-09-05): persist the exact product PRIVATELY even when it is not recipe-ready */
+  savePrivateNotReady?: boolean;
   confirmations?: {
     packageEvidenceExhausted?: boolean;
     notOnLabelFields?: string[];
@@ -151,15 +153,36 @@ export type ResearchOutcome =
     }
   | { kind: 'skipped'; session: DiscoverySession; reason: string };
 
+export type LabelFailureReason =
+  | 'burst'
+  | 'vision_limit'
+  | 'asset_conflict'
+  | 'asset_metadata'
+  | 'network'
+  | 'provider'
+  | 'other';
+
 export type AnalyzeOutcome =
   | { kind: 'existing_product'; product: ExactCandidate }
-  | { kind: 'analyzed'; session: DiscoverySession };
+  | { kind: 'analyzed'; session: DiscoverySession }
+  /** this image could not be analysed; the session and every earlier photograph's evidence stay intact */
+  | {
+      kind: 'failed';
+      reason: LabelFailureReason;
+      retryAfterMs: number | null;
+      detail: string | null;
+    };
 
 export type FinalizeOutcome =
   | {
       kind: 'created';
       productId: string;
       productCode: string | null;
+      /** the persisted identity as the authority saved it (never the bare code) */
+      displayName?: string | null;
+      brand?: string | null;
+      /** saved privately although not recipe-ready */
+      privateNotReady?: boolean;
       engineUsable: boolean;
       existing: boolean;
     }

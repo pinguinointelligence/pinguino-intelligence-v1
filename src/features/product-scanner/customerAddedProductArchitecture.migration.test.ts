@@ -12,6 +12,9 @@ const relationRlsMigration = read(
 );
 const finalize = read('supabase/functions/product-scan-finalize/index.ts');
 const analyze = read('supabase/functions/product-scan-analyze/index.ts');
+const rescueRefreshMigration = read(
+  'supabase/migrations/20260905183000_customer_product_rescue_refresh.sql',
+);
 const service = read('src/services/productScanner.ts');
 const ui = read('src/features/product-scanner/LiveProductScanner.tsx');
 
@@ -69,6 +72,31 @@ describe('Scanner customer-added product authority', () => {
     expect(analyze).toContain(".eq('user_id', actorUserId)");
     expect(analyze).toContain('if (!linked) return null');
     expect(analyze).toContain('exactProductForBarcode(service, barcode, auth.user.id)');
+  });
+
+  it('reopens a linked private-not-ready product for rescue instead of stranding it', () => {
+    expect(analyze).toContain('shouldContinueRescue');
+    expect(analyze).toContain("product.product_kind === 'customer_provisional'");
+    expect(analyze).toContain('product.engine_ready !== true');
+    expect(analyze.indexOf('shouldContinueRescue')).toBeLessThan(
+      analyze.indexOf("if (mode === 'ean_lookup')"),
+    );
+  });
+
+  it('refreshes the same provisional UUID with a superseding ready profile after rescue', () => {
+    expect(rescueRefreshMigration).toContain(
+      "'public.gellatti_upsert_customer_added_product_v1(uuid,uuid,text,jsonb,jsonb,jsonb,jsonb)'",
+    );
+    expect(rescueRefreshMigration).toContain('insert into public.product_versions');
+    expect(rescueRefreshMigration).toContain('supersedes');
+    expect(rescueRefreshMigration).toContain('current_version_id=v_version_id');
+    expect(rescueRefreshMigration).toMatch(
+      /classify_catalog_product_behavior_v2\(\s*v_version_id,'customer-added-rescue-refresh-v1'\s*\)/,
+    );
+    expect(rescueRefreshMigration).not.toMatch(
+      /(?:insert|update|delete|truncate)\s+(?:table\s+)?public\.mapper_basement/i,
+    );
+    expect(rescueRefreshMigration).not.toMatch(/next_product_code\(\)/);
   });
 
   it('uses native system capture and keeps desktop multi-upload/drop', () => {

@@ -69,9 +69,50 @@ function agreementKey(r: Read): string {
   return `${r.text}|${formatFromDecoder(r.format ?? '')}`;
 }
 
+/** per-position digit evidence from the reads in the window — never more than the decoder actually read */
+export interface DigitVotes {
+  /** the digit at each position when every read agrees there (or a ≥ 2:1 majority), else null */
+  digits: (string | null)[];
+  /** true when at least two reads from different frames agree on that position */
+  stable: boolean[];
+  reads: number;
+}
+
 export class Confirmation {
   private reads: Read[] = [];
   state: ConfirmationState = { ...IDLE };
+
+  /** what the reads so far support, digit by digit (null before any read); length = the dominant read length */
+  digitVotes(): DigitVotes | null {
+    if (this.reads.length === 0) return null;
+    const byLength = new Map<number, Read[]>();
+    for (const r of this.reads) {
+      const list = byLength.get(r.text.length) ?? [];
+      list.push(r);
+      byLength.set(r.text.length, list);
+    }
+    const [length, reads] = [...byLength.entries()].sort((a, b) => b[1].length - a[1].length)[0]!;
+    const digits: (string | null)[] = [];
+    const stable: boolean[] = [];
+    for (let i = 0; i < length; i += 1) {
+      const counts = new Map<string, Set<number>>();
+      for (const r of reads) {
+        const ch = r.text[i]!;
+        const frames = counts.get(ch) ?? new Set<number>();
+        frames.add(r.frameIndex);
+        counts.set(ch, frames);
+      }
+      const ranked = [...counts.entries()]
+        .map(([ch, frames]) => ({ ch, n: frames.size }))
+        .sort((a, b) => b.n - a.n);
+      const best = ranked[0]!;
+      const second = ranked[1]?.n ?? 0;
+      const agreed = second === 0 || best.n >= 2 * second;
+      digits.push(agreed ? best.ch : null);
+      stable.push(agreed && best.n >= 2);
+    }
+    return { digits, stable, reads: reads.length };
+  }
 
   reset(): void {
     this.reads = [];

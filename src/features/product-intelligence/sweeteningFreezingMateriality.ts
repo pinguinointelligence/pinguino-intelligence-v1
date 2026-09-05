@@ -93,6 +93,9 @@ const familyCategories = (
     case 'liquid_vegetable_oil':
       return ['vegan_gelato'];
     case 'fruit':
+    case 'beverage':
+      // A soft/functional drink enters a recipe the way a fruit base does: as the
+      // water-rich body of a sorbet.
       return ['sorbet'];
     case 'nut':
     case 'nut_paste':
@@ -131,6 +134,19 @@ function maximumShare(fields: ProductFieldTruthMap, band: TargetBand): number {
   constrain('fat_percent', 'fat');
   constrain('alcohol_percent', 'alcohol');
   return Math.max(0, Math.min(1, share));
+}
+
+/**
+ * Largest admissible recipe share of this product across the Engine bands its
+ * kind can enter. Shared with the mass-balance closure so that an unnamed-solids
+ * uncertainty is judged by the SAME share model as the sweetening uncertainty.
+ */
+export function maximumRecipeShareFor(
+  fields: ProductFieldTruthMap,
+  semantic: ProductSemanticClassification | null | undefined,
+): number {
+  const bands = relevantBands(semantic);
+  return round4(bands.reduce((best, band) => Math.max(best, maximumShare(fields, band)), 0));
 }
 
 function iceSlope(category: ProductCategory, temperatureC: number): number | null {

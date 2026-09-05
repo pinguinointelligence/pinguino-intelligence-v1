@@ -143,6 +143,21 @@ async function exactProductForBarcode(
   };
 }
 
+/**
+ * A linked provisional product is an exact identity, but a not-ready version is
+ * not a terminal answer. Re-entering the same GTIN must run the normal source →
+ * semantic → Mapper rescue path so later evidence can supersede that version.
+ */
+function shouldContinueRescue(
+  product: Awaited<ReturnType<typeof exactProductForBarcode>>,
+): boolean {
+  return Boolean(
+    product &&
+      product.product_kind === 'customer_provisional' &&
+      product.engine_ready !== true,
+  );
+}
+
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: cors });
   if (request.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
@@ -228,7 +243,8 @@ Deno.serve(async (request) => {
     return json({ error: 'scan_session_barcode_conflict' }, 409);
   }
   const barcode = establishedBarcode ?? incomingBarcode;
-  const exact = await exactProductForBarcode(service, barcode, auth.user.id);
+  const exactCandidate = await exactProductForBarcode(service, barcode, auth.user.id);
+  const exact = shouldContinueRescue(exactCandidate) ? null : exactCandidate;
   if (!existingSession) {
     const { error: insertSessionError } = await service.from('product_scan_sessions').insert({
       id: sessionId,
@@ -269,7 +285,12 @@ Deno.serve(async (request) => {
           id: exact.id,
           displayName: exact.product_name_display,
           brand: exact.brand ?? null,
-          entityKind: exact.product_kind === 'mapper_reference' ? 'pi_base' : 'commercial_product',
+          entityKind:
+            exact.product_kind === 'mapper_reference'
+              ? 'pi_base'
+              : exact.product_kind === 'customer_provisional'
+                ? 'customer_provisional'
+                : 'commercial_product',
           status:
             exact.product_kind === 'mapper_reference'
               ? 'pi_base'
@@ -474,7 +495,12 @@ Deno.serve(async (request) => {
         id: exact.id,
         displayName: exact.product_name_display,
         brand: exact.brand ?? null,
-        entityKind: exact.product_kind === 'mapper_reference' ? 'pi_base' : 'commercial_product',
+        entityKind:
+          exact.product_kind === 'mapper_reference'
+            ? 'pi_base'
+            : exact.product_kind === 'customer_provisional'
+              ? 'customer_provisional'
+              : 'commercial_product',
         status:
           exact.product_kind === 'mapper_reference'
             ? 'pi_base'

@@ -34,7 +34,7 @@ import { useCanSeeExactGrams } from '@/features/home-creator/useHomeEntitlement'
 import { useHomeFlow } from '@/features/home-creator/useHomeFlow';
 import { useHomeRecipeResult } from '@/features/home-creator/useHomeRecipeResult';
 import { useHomeIntentIngredients } from '@/features/home-creator/useHomeIntentIngredients';
-import { LiveMultiScanner } from '@/features/product-scanner/LiveMultiScanner';
+import { ScanFlow } from '@/features/scan-flow/ScanFlow';
 import { HomeMatchGate } from '@/features/home-creator/matching/HomeMatchGate';
 import {
   NO_MATCH,
@@ -661,28 +661,49 @@ export function HomeCreatorPage() {
       </span>
 
       {scannerOpen ? (
-        <div className="fixed inset-0 z-50 bg-white">
-          <LiveMultiScanner
-            onClose={() => setScannerOpen(false)}
-            onAddToRecipe={(products) => {
-              setScanNotice(null);
-              // The SAME door a typed ingredient uses. The scanner supplies identities;
-              // every rule about what they may do in a recipe stays where it lives.
-              for (const product of products)
-                void intentIngredients.addScannedProduct(product.identityKey);
-            }}
-            onNeedsDeepScan={(products) => {
-              // NEVER navigate away. The customer has a recipe half-built on this page;
-              // one unknown product is not a reason to lose it. The scanner completes
-              // such a product in a nested step and hands it back resolved, so all that
-              // is left here is to say plainly what did not make it in.
-              setScanNotice(
-                products.length === 1
-                  ? 'Jeden produkt czeka na uzupełnienie — znajdziesz go w skanerze.'
-                  : `${products.length} produkty czekają na uzupełnienie — znajdziesz je w skanerze.`,
-              );
-            }}
-          />
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-white p-4">
+          <div className="mx-auto max-w-lg space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold text-ink">Skanuj produkt</h2>
+              <button
+                type="button"
+                className="pro-focus-ring min-h-11 rounded-full border border-ink/15 bg-white px-4 text-xs font-semibold text-ink"
+                onClick={() => setScannerOpen(false)}
+              >
+                Zamknij
+              </button>
+            </div>
+            {/* ONE shared scanner (camera → Scan Core → EAN → Scan Import 2.0); the product goes in
+                through the SAME door a typed ingredient uses. */}
+            <ScanFlow
+              mode="recipe"
+              resolveLabel="Dodaj do receptury"
+              onResolved={(product) => {
+                setScanNotice(null);
+                setScannerOpen(false);
+                // the outcome of the shared add door is reported, never swallowed (owner QA 2026-09-05)
+                void intentIngredients.addScannedProduct(product.id).then((outcome) => {
+                  const name = product.displayName;
+                  switch (outcome.status) {
+                    case 'unresolved':
+                    case 'unavailable':
+                      setScanNotice(
+                        `${name}: produkt jest zapisany, ale nie jest jeszcze gotowy do użycia w recepturze.`,
+                      );
+                      return;
+                    case 'duplicate':
+                      setScanNotice(`${name} jest już w recepturze.`);
+                      return;
+                    case 'needs_amount':
+                      setScanNotice(`${name} dodano do receptury — ustaw ilość.`);
+                      return;
+                    default:
+                      return;
+                  }
+                });
+              }}
+            />
+          </div>
         </div>
       ) : null}
     </AppShell>

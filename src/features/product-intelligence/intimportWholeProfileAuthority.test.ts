@@ -430,6 +430,80 @@ describe('INTIMPORT trusted product-owned profile', () => {
     expect(authority?.estimatedFromMapperIds).toEqual([]);
   });
 
+  it('reports broad semantic candidates but takes numbers only from a trusted donor', () => {
+    const beverageEvidence = {
+      ...inulinRecognitionEvidence,
+      name: 'Sport 002',
+      brand: 'Vitamin Well',
+      category: 'Bebida refrescante con vitaminas y minerales',
+      description: 'Bebida funcional sin gas.',
+      ingredients: 'water, vitamins, minerals',
+    };
+    const trusted = baseRow({
+      ingredient_id: 'PI-ING-TRUSTED-ZERO-DRINK',
+      ingredient_name_internal: 'zero functional drink',
+      ingredient_name_display: 'ZERO FUNCTIONAL DRINK',
+      brand: 'Reference',
+      ingredient_category: 'beverage',
+      ingredient_subcategory: 'functional_drink',
+      water_percent: 99.88,
+      total_solids_percent: 0.12,
+      carbohydrate_percent: 0,
+      total_sugars_percent: 0,
+      fiber_percent: 0,
+      salt_percent: 0.12,
+      kcal_per_100g: 1,
+    });
+    const semanticOnly = baseRow({
+      ingredient_id: 'PI-ING-SEMANTIC-ONLY',
+      ingredient_name_internal: 'vitamin beverage reference',
+      ingredient_name_display: 'VITAMIN BEVERAGE REFERENCE',
+      brand: 'Other',
+      ingredient_category: 'beverage',
+      ingredient_subcategory: 'functional_drink',
+      verification_status: 'Estimated / Needs Label Review',
+      water_percent: 12,
+      total_solids_percent: 88,
+    });
+
+    const authority = validateIntimportProductProfileProposal({
+      proposedMapperIngredientId: null,
+      matchInput: input({
+        name: 'Sport 002',
+        brand: 'Vitamin Well',
+        category: beverageEvidence.category,
+        subcategory: null,
+        technical: false,
+        knownMacros: {
+          fat_percent: 0,
+          protein_percent: 0,
+          carbohydrate_percent: 0,
+          total_sugars_percent: 0,
+          fiber_percent: 0,
+          salt_percent: 0.12,
+        },
+      }),
+      declared: {
+        fat_percent: 0,
+        protein_percent: 0,
+        carbohydrate_percent: 0,
+        total_sugars_percent: 0,
+        fiber_percent: 0,
+        salt_percent: 0.12,
+      },
+      evidence: completeEvidence,
+      recognitionEvidence: beverageEvidence,
+      rows: [semanticOnly, trusted],
+    });
+
+    expect(authority?.mapperCandidatesBeforeFilter).toEqual(
+      expect.arrayContaining(['PI-ING-SEMANTIC-ONLY', 'PI-ING-TRUSTED-ZERO-DRINK']),
+    );
+    expect(authority?.estimatedFromMapperIds).toContain('PI-ING-TRUSTED-ZERO-DRINK');
+    expect(authority?.estimatedFromMapperIds).not.toContain('PI-ING-SEMANTIC-ONLY');
+    expect(authority?.technicalComposition.water).toBe(99.88);
+  });
+
   it('persists PM user values with USER_CONFIRMED provenance and recalculates accuracy', () => {
     const authority = validateIntimportProductProfileProposal({
       origin: 'PM',

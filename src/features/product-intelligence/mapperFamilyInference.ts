@@ -29,6 +29,7 @@ export type ProductFamilyId =
   | 'emulsifier'
   | 'fibre_inulin'
   | 'starch'
+  | 'beverage'
   | 'plant_beverage'
   | 'dairy_liquid'
   | 'fruit'
@@ -155,6 +156,16 @@ const FAMILY_RULES: readonly FamilyRule[] = [
     categories: ['beverage'],
   },
   {
+    // "Milk chocolate", "white chocolate", "dark chocolate" (and their Polish,
+    // Spanish, German, Italian, French names) are chocolate: the dairy word is
+    // the variety, not the kind. Must precede the generic dairy word rule.
+    family: 'chocolate',
+    technical: false,
+    pattern:
+      /\b(milk|white|dark|bitter|ruby)\s+chocolate\b|\bczekolad\w*\s+(mleczn|bial|gorzk|deserow)\w*|\bchocolate\s+(con\s+leche|negro|blanco|amargo)\b|\b(milch|weisse?|weiss|zartbitter|dunkle)\s*schokolade\b|\bcioccolato\s+(al\s+latte|bianco|fondente)\b|\bchocolat\s+(au\s+lait|blanc|noir)\b/i,
+    categories: ['chocolate', 'cocoa', 'cacao'],
+  },
+  {
     family: 'dairy_liquid',
     technical: false,
     pattern: /\b(milk|cream|smietan|smietan|mleko)\b/i,
@@ -209,7 +220,11 @@ const CATEGORY_RULES: readonly CategoryRule[] = [
   { family: 'chocolate', technical: false, category: /chocolate|cocoa|cacao/ },
   { family: 'nut_paste', technical: false, category: /\bnut/ },
   { family: 'fruit', technical: false, category: /\bfruit\b/ },
-  { family: 'plant_beverage', technical: false, category: /beverage/ },
+  {
+    family: 'beverage',
+    technical: false,
+    category: /beverage|\bdrink\b|bebida|boisson|napoj/,
+  },
   { family: 'dairy_liquid', technical: false, category: /\bdairy\b/ },
   { family: 'sugar_sucrose', technical: false, category: /sweetener/ },
   { family: 'alcohol', technical: false, category: /alcohol/ },

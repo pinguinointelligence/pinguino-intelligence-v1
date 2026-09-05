@@ -163,8 +163,11 @@ describe('Supabase discovery adapter (stub) — mirrors the legacy scan-session 
     });
     expect(f).toEqual({
       kind: 'created',
+      privateNotReady: false,
       productId: 'CA-1',
       productCode: 'CA-ING-1',
+      displayName: null,
+      brand: null,
       engineUsable: false,
       existing: false,
     });

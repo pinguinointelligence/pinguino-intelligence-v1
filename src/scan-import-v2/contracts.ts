@@ -183,6 +183,13 @@ export type ScanImportV2Result =
       canonical: false;
       /** exact-GTIN registry evidence gathered alongside discovery (null = none / provider unavailable) */
       externalEvidence?: ExternalEvidence | null;
+      /** the last label photograph failed (the session and earlier photographs are untouched) */
+      labelError?: {
+        reason: import('./discovery/contracts').LabelFailureReason;
+        retryAfterMs: number | null;
+        /** the authority's raw code — diagnostics for proofs and logs, never customer copy */
+        detail?: string | null;
+      } | null;
     }
   | {
       /** a NEW exact SKU created through the finalize/profile/ProductBehaviour authorities (customer-provisional) */
@@ -190,6 +197,8 @@ export type ScanImportV2Result =
       identity: CodeIdentity;
       sessionId: string;
       product: ExactCandidate;
+      /** saved privately although not recipe-ready (owner contract 2026-09-05) */
+      privateNotReady?: boolean;
       stage: import('./discovery/contracts').DiscoveryStage;
       ledger: import('./discovery/contracts').FactLedger;
       engineReady: boolean;

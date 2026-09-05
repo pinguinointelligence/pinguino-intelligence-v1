@@ -36,6 +36,7 @@ export class ScanCoreLane {
   };
   private medium: Uint8Array | undefined;
   private crop: Uint8Array | undefined;
+  private turned: Uint8Array | undefined;
   private rect: Uint8Array | undefined;
   private busyWindow: Array<{ t: number; ms: number }> = [];
 
@@ -175,10 +176,24 @@ export class ScanCoreLane {
           this.crop = out;
           for (let y = 0; y < h; y += 1)
             out.set(plane.subarray((y0 + y) * pw + x0, (y0 + y) * pw + x0 + w), y * w);
+          let decodeBuf = out;
+          let dw = w;
+          let dh = h;
+          if (req.rotate90) {
+            // vertical reading axis: rotate the crop 90° clockwise (lossless) so the decoder scans along the code
+            const t =
+              this.turned && this.turned.length === size ? this.turned : new Uint8Array(size);
+            this.turned = t;
+            for (let y = 0; y < h; y += 1)
+              for (let x = 0; x < w; x += 1) t[x * h + (h - 1 - y)] = out[y * w + x]!;
+            decodeBuf = t;
+            dw = h;
+            dh = w;
+          }
           outcome = await dec.decodeLuma(
-            out,
-            w,
-            h,
+            decodeBuf,
+            dw,
+            dh,
             req.source === 'medium' ? 'core_medium' : 'core_native',
             opts,
           );
@@ -186,6 +201,13 @@ export class ScanCoreLane {
           for (const r of outcome.results) {
             if (!r.quad) continue;
             for (const pt of r.quad.points) {
+              if (req.rotate90) {
+                // back from the rotated crop: x' = h-1-y, y' = x
+                const ox = pt.y;
+                const oy = h - 1 - pt.x;
+                pt.x = ox;
+                pt.y = oy;
+              }
               pt.x = (pt.x + x0) * scale;
               pt.y = (pt.y + y0) * scale;
             }

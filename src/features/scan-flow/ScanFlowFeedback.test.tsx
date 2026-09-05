@@ -45,8 +45,13 @@ function frame(over: Partial<CaptureFrame>): CaptureFrame {
     sourceW: 1080,
     sourceH: 1920,
     roi: null,
+    readingAxis: null,
+    sharpRel: null,
+    digits: null,
     zoomLevel: 1,
     torchOn: false,
+    focusControl: 'unknown',
+    formFactor: 'mobile',
     ...over,
   };
 }
@@ -118,11 +123,89 @@ describe('ScanFlow — scanner feedback overlay', () => {
     expect(feedback()).toMatch(/Zgubiłem kod/);
   });
 
-  it('shows a green confirmation the moment the code is confirmed', async () => {
+  it('shows a green confirmation with the code the moment Scan Core confirms it', async () => {
     await emit(frame({ state: 'COMPLETE', guidance: 'none', progress: 1 }));
     await status('confirmed');
+    const h = await capture();
+    await act(async () => {
+      h.onConfirmed({
+        symbology: 'EAN-13',
+        value: '7340222800464',
+        confirmation: { lane: 'fast', agreeingFrames: 2, sources: ['native'] },
+        evidence: { moduleNative: 3, fill: 0.4, mixedFormats: false },
+        timing: { firstSeenAt: 0, completedAt: 1 },
+        provenance: { trackId: 't1', harnessBuild: null },
+      });
+    });
     const el = host.querySelector('[data-testid="scan-flow-feedback"]')!;
     expect(el.textContent).toContain('Odczytano ✓');
+    expect(el.textContent).toContain('7340222800464');
     expect(el.className).toContain('bg-emerald-600');
+  });
+
+  it('desktop, fixed-focus camera: blur guidance says to move the product back and offers the photo fallback', async () => {
+    await emit(
+      frame({
+        state: 'FOUND',
+        guidance: 'hold_steady',
+        progress: 0.1,
+        sharpRel: 0.2,
+        focusControl: 'unknown',
+        formFactor: 'desktop',
+        roi: { x: 300, y: 800, w: 500, h: 200 },
+      }),
+    );
+    expect(feedback()).toContain('Obraz jest nieostry — odsuń produkt');
+    await emit(
+      frame({
+        state: 'FOUND',
+        guidance: 'move_closer',
+        progress: 0.1,
+        sharpRel: 0.2,
+        focusControl: 'none',
+        formFactor: 'desktop',
+      }),
+    );
+    expect(feedback()).toContain('przybliżaj powoli');
+  });
+
+  it('a code held sideways for a while gets the rotation hint, and read digits are shown masked', async () => {
+    await emit(
+      frame({ state: 'READING', guidance: 'none', progress: 0.3, readingAxis: 'vertical' }),
+    );
+    await new Promise((r) => setTimeout(r, 1600));
+    await emit(
+      frame({ state: 'READING', guidance: 'none', progress: 0.3, readingAxis: 'vertical' }),
+    );
+    expect(feedback()).toContain('Obróć produkt lub telefon');
+    await emit(
+      frame({
+        state: 'READING',
+        guidance: 'none',
+        progress: 0.5,
+        digits: {
+          digits: ['7', '3', null, null, null, null, null, null, '0', '0', '4', '6', '4'],
+          stable: [
+            true,
+            true,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            true,
+            true,
+            true,
+            true,
+            true,
+          ],
+          reads: 2,
+        },
+      }),
+    );
+    expect(host.querySelector('[data-testid="scan-flow-digits"]')?.textContent).toBe(
+      '73••••••00464',
+    );
   });
 });

@@ -47,4 +47,17 @@ describe('customer product family gate', () => {
     });
     expect(confirmed).not.toHaveProperty('technicalComposition');
   });
+
+  it('maps the generic beverage choice to a neutral beverage family, not plant milk', () => {
+    const classification = classifyProductSemantics(evidence('Sport 002'));
+    const confirmed = applyCustomerProductFamily(classification, 'beverage');
+
+    expect(confirmed).toMatchObject({
+      ingredientFamily: 'beverage',
+      productArchetype: 'NORMAL_INGREDIENT',
+      physicalForm: 'LIQUID',
+      intendedUsageRole: 'BASE_ONLY',
+    });
+    expect(confirmed.ingredientFamily).not.toBe('plant_beverage');
+  });
 });
