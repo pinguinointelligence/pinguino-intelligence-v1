@@ -184,6 +184,10 @@ function finiteNumberAt(value: unknown, key: string): number | null {
 function technologicalPercent(hit: CatalogProductSearchHit): number | null {
   const technical = finiteNumberAt(hit.publicData.technicalComposition, 'fat');
   if (technical !== null) return technical;
+  const productOwnedNutrition = finiteNumberAt(hit.publicData.nutrition, 'fat');
+  if (hit.entityKind === 'commercial_product' && productOwnedNutrition !== null) {
+    return productOwnedNutrition;
+  }
   const label = `${hit.displayName} ${hit.originalName ?? ''}`.match(/(\d+(?:[.,]\d+)?)\s*%/);
   if (!label) return null;
   const parsed = Number(label[1]!.replace(',', '.'));
@@ -228,14 +232,25 @@ export interface CanonicalProductDiscoveryItem {
   variantPercent: number | null;
 }
 
-const exactProductProjection = (hit: CatalogProductSearchHit): CanonicalProductDiscoveryItem => ({
-  hit,
-  slotKey: `${hit.entityKind}:${hit.id}`,
-  primaryName: hit.displayName,
-  secondaryText: hit.brand,
-  family: technologicalFamilyFor(hit),
-  variantPercent: technologicalPercent(hit),
-});
+const exactProductProjection = (hit: CatalogProductSearchHit): CanonicalProductDiscoveryItem => {
+  const family = technologicalFamilyFor(hit);
+  const productOwnedFat =
+    hit.entityKind === 'commercial_product'
+      ? finiteNumberAt(hit.publicData.nutrition, 'fat')
+      : null;
+  const productFact =
+    (family === 'milk' || family === 'cream') && productOwnedFat !== null
+      ? `${percentageLabel(productOwnedFat, family === 'milk' ? 1 : 0)}% tłuszczu`
+      : null;
+  return {
+    hit,
+    slotKey: `${hit.entityKind}:${hit.id}`,
+    primaryName: hit.displayName,
+    secondaryText: [hit.brand, productFact].filter(Boolean).join(' · ') || null,
+    family,
+    variantPercent: technologicalPercent(hit),
+  };
+};
 
 /**
  * Generic technological intent projects commercial duplicates through their
@@ -267,9 +282,9 @@ export function projectCatalogHitsForDiscovery(input: {
   return [...grouped.entries()]
     .flatMap(([slotKey, group]) => {
       const reference = group.find((candidate) => candidate.hit.entityKind === 'pi_base');
-      // Until the country-default/user-preference authority lands, two exact
-      // products without a canonical reference are ambiguous. Hiding that slot
-      // is safer than making the first network row a silent business rule.
+      // Country defaults and user preferences attach exact products behind a
+      // canonical reference. Without that reference, two exact products remain
+      // ambiguous; the first network row must never become a business rule.
       if (!reference && group.length > 1) return [];
       const chosen = reference ?? group[0]!;
       const percent = technologicalPercent(chosen.hit);

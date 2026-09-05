@@ -108,10 +108,10 @@ export function filterCurrentMapperCatalogHits(
   return [...byIdentity.values()];
 }
 
-export function filterCurrentMapperCatalogRelations(
-  relations: readonly CatalogRelation[],
+export function filterCurrentMapperCatalogRelations<T extends CatalogRelation>(
+  relations: readonly T[],
   accessibleIds: ReadonlySet<string>,
-): CatalogRelation[] {
+): T[] {
   const seen = new Set<string>();
   return relations.filter((relation) => {
     const key = `${relation.entityKind}:${relation.id}`;
