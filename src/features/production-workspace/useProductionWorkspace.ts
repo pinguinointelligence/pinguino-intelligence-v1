@@ -62,6 +62,7 @@ import {
   isProductionRescueOptionUnavailableError,
   PRODUCTION_RESCUE_AUTHORITY_NAMESPACE,
   productionRescueErrorMessagePl,
+  productionRescueOptionUnavailableDiagnostics,
   productionRescueOptionUnavailableDetails,
 } from '@/services/proCore/supabaseProduction';
 import { metricLabel } from '@/features/pi-panel/indicatorView';
@@ -161,6 +162,46 @@ export const rescueOptionUnavailableMessage = (
   const target = Number.isInteger(originalTargetG)
     ? originalTargetG.toFixed(0)
     : originalTargetG.toFixed(1);
+  const diagnostics = productionRescueOptionUnavailableDiagnostics(error);
+  const formatMass = (grams: number) => grams.toLocaleString('pl-PL', { maximumFractionDigits: 1 });
+  const formatMetricValue = (value: number) =>
+    value.toLocaleString('pl-PL', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+  if (
+    diagnostics &&
+    diagnostics.machineCapacityG !== null &&
+    diagnostics.physicalConfirmedG > diagnostics.machineCapacityG + 0.000001
+  ) {
+    return (
+      `Niedostępne — w naczyniu jest ${formatMass(diagnostics.physicalConfirmedG)} g, ` +
+      `a pojemność maszyny wynosi ${formatMass(diagnostics.machineCapacityG)} g.`
+    );
+  }
+  const irreducible = diagnostics?.irreducibleConfirmedViolations[0];
+  if (irreducible) {
+    return (
+      `Niedostępne — przy celu ${formatMass(diagnostics.originalTargetG)} g potwierdzone ilości ` +
+      `dają co najmniej ${metricLabel(irreducible.metric as TargetMetric)} ` +
+      `${formatMetricValue(irreducible.value)}% (maks. ${formatMetricValue(irreducible.max)}%). ` +
+      'Bez usuwania produktu korekta wymaga większej partii.'
+    );
+  }
+  const fixedTargetViolation = diagnostics?.fixedTargetRebalance?.violationDetails[0];
+  if (fixedTargetViolation) {
+    return (
+      `Niedostępne — przeliczenie pozostałych ilości do ${formatMass(
+        diagnostics.fixedTargetRebalance!.candidateMassG,
+      )} g nadal przekracza zakres: ${metricLabel(fixedTargetViolation.metric as TargetMetric)} ` +
+      `${formatMetricValue(fixedTargetViolation.value)}% (maks. ${formatMetricValue(
+        fixedTargetViolation.max,
+      )}%).`
+    );
+  }
+  const details = productionRescueOptionUnavailableDetails(error);
+  if (details?.reasonCode === 'machine_capacity_exceeded') {
+    return diagnostics && diagnostics.machineCapacityG !== null
+      ? `Niedostępne — bezpieczna korekta przekracza pojemność maszyny ${formatMass(diagnostics.machineCapacityG)} g.`
+      : 'Niedostępne — obecna masa przekracza pojemność ustawionej maszyny.';
+  }
   if (stableOptionId === 'keep_original_batch') {
     return `Niedostępne — potwierdzonych ilości nie można już dopasować do partii ${target} g.`;
   }
@@ -169,10 +210,6 @@ export const rescueOptionUnavailableMessage = (
   }
   if (stableOptionId === 'restore_original_recipe') {
     return 'Niedostępne — obecnych ilości nie można bezpiecznie przeskalować do wyjściowych proporcji.';
-  }
-  const details = productionRescueOptionUnavailableDetails(error);
-  if (details?.reasonCode === 'machine_capacity_exceeded') {
-    return 'Niedostępne — obecna masa przekracza pojemność ustawionej maszyny.';
   }
   const knownMetrics = new Set<TargetMetric>([
     'pod',
@@ -310,7 +347,10 @@ export const durableRescueRequiresReconciliation = (
   Boolean(remote.rescue && local && remote.rescue.revision !== local.durableRescueRevision);
 
 export type DurableProductionRecoveryRelation =
-  'missing_remote' | 'new_rescue' | 'new_actual' | 'same';
+  | 'missing_remote'
+  | 'new_rescue'
+  | 'new_actual'
+  | 'same';
 
 class MissingDurableProductionRunError extends Error {
   constructor() {
@@ -1030,13 +1070,8 @@ export function useProductionWorkspace(enabled: boolean) {
         .catch((error) => {
           if (cancelled) return;
           const unavailable = isProductionRescueOptionUnavailableError(error);
-          const basisProgress = productionProgress(basisSession);
-          const currentTarget = basisProgress.currentPlanMassG;
-          const confirmedMass = basisProgress.confirmedMassG;
-          const reason =
-            option.id === 'keep_original_batch' && confirmedMass > currentTarget + 0.000001
-              ? `Niedostępne — w naczyniu jest już więcej niż ${currentTarget.toLocaleString('pl-PL', { maximumFractionDigits: 1 })} g.`
-              : rescueOptionUnavailableMessage(option.id, currentTarget, error);
+          const currentTarget = productionProgress(basisSession).currentPlanMassG;
+          const reason = rescueOptionUnavailableMessage(option.id, currentTarget, error);
           setRescueOptionsEvaluation((current) =>
             current.basisKey === rescueOptionsEvaluationKey
               ? {
