@@ -264,6 +264,33 @@ describe('ConstraintPreviewCard (§19.1)', () => {
     expect(customerHtml).not.toContain('Parametry poza optymalnym zakresem');
   });
 
+  it('names a hidden source-to-target batch mismatch instead of blaming old locks', () => {
+    const preview = syntheticPreview();
+    const template = preview.proposedInput.items[0]!;
+    preview.proposedInput = {
+      ...preview.proposedInput,
+      target_batch_grams: 670,
+      items: [{ ...template, planned_grams: 670 }],
+    };
+    preview.lines = [
+      {
+        lineId: template.id,
+        name: template.ingredient.name,
+        beforeGrams: 1_000,
+        afterGrams: 670,
+        kind: 'changed',
+        locked: false,
+      },
+    ];
+
+    const rendered = render(
+      <ConstraintPreviewCard preview={preview} onApply={noop} onCancel={noop} />,
+    );
+    expect(rendered).toContain('data-testid="preview-target-mismatch"');
+    expect(rendered).toContain('Receptura ma 1000 g, ale zapisany cel partii to 670 g.');
+    expect(rendered).toContain('Podgląd przelicza ją do zapisanej masy 670 g.');
+  });
+
   it.each([10, 9, 8] as const)(
     'reuses the approved dynamic score ring for Preview score %i',
     (score) => {
