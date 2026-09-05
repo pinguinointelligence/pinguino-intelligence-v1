@@ -688,13 +688,12 @@ export function LabelWorkspace({
       </div>
 
       {settingsLiveHere ? (
-      <nav
-        aria-label="Widoki workspace etykiety"
-        className="sticky bottom-[var(--label-workspace-bottom-inset,0px)] z-20 flex min-h-11 items-center justify-center gap-2 border-t border-ink/8 bg-white/95 px-4 backdrop-blur"
-        data-testid="label-workspace-dots"
-      >
-        {(
-          settingsLiveHere
+        <nav
+          aria-label="Widoki workspace etykiety"
+          className="sticky bottom-[var(--label-workspace-bottom-inset,0px)] z-20 flex min-h-11 items-center justify-center gap-2 border-t border-ink/8 bg-white/95 px-4 backdrop-blur"
+          data-testid="label-workspace-dots"
+        >
+          {(settingsLiveHere
             ? ([
                 ['data', 'Dane do etykiety'],
                 ['label', 'Etykieta'],
@@ -704,34 +703,34 @@ export function LabelWorkspace({
                 ['data', 'Dane do etykiety'],
                 ['label', 'Etykieta'],
               ] as const)
-        ).map(([view, label]) => (
-          <button
-            key={view}
-            type="button"
-            aria-label={label}
-            aria-current={visibleView === view ? 'step' : undefined}
-            disabled={
-              Boolean(saved) && view !== 'label'
-                ? true
-                : (visibleView === 'data' && !labelDataReady && view !== 'data') ||
-                  (view === 'label' && visibleView !== 'label' && !labelDataReady)
-            }
-            onClick={() => openView(view)}
-            className={cn(
-              'pro-focus-ring grid size-8 place-items-center rounded-full disabled:cursor-not-allowed disabled:opacity-35',
-            )}
-            data-testid={`label-workspace-dot-${view}`}
-          >
-            <span
-              aria-hidden
+          ).map(([view, label]) => (
+            <button
+              key={view}
+              type="button"
+              aria-label={label}
+              aria-current={visibleView === view ? 'step' : undefined}
+              disabled={
+                Boolean(saved) && view !== 'label'
+                  ? true
+                  : (visibleView === 'data' && !labelDataReady && view !== 'data') ||
+                    (view === 'label' && visibleView !== 'label' && !labelDataReady)
+              }
+              onClick={() => openView(view)}
               className={cn(
-                'block size-1.5 rounded-full border border-ink/35 transition-[width,background-color,border-color]',
-                visibleView === view && 'w-4 border-[#b58b32] bg-[#b58b32]',
+                'pro-focus-ring grid size-8 place-items-center rounded-full disabled:cursor-not-allowed disabled:opacity-35',
               )}
-            />
-          </button>
-        ))}
-      </nav>
+              data-testid={`label-workspace-dot-${view}`}
+            >
+              <span
+                aria-hidden
+                className={cn(
+                  'block size-1.5 rounded-full border border-ink/35 transition-[width,background-color,border-color]',
+                  visibleView === view && 'w-4 border-[#b58b32] bg-[#b58b32]',
+                )}
+              />
+            </button>
+          ))}
+        </nav>
       ) : null}
       <style>{`
         @keyframes labelWorkspaceInFromRight { from { opacity: .55; transform: translateX(22px); } to { opacity: 1; transform: translateX(0); } }
@@ -790,7 +789,8 @@ function ProfileEditor({
       testId="label-profile-editor"
       placement="responsive"
       onClose={onClose}
-      panelClassName="p-5 sm:w-[min(680px,94vw)]"
+      size="wide"
+      panelClassName="p-5"
     >
       <EditorHeader title="Domyślny profil etykiet" onClose={onClose} />
       <MarketAndIdentityFields
@@ -838,7 +838,10 @@ function ProfileEditor({
           }
         }}
       />
-      <details className="mt-4 rounded-[12px] border border-[var(--g-line)] bg-[var(--g-ivory)] p-[18px]" open>
+      <details
+        className="mt-4 rounded-[12px] border border-[var(--g-line)] bg-[var(--g-ivory)] p-[18px]"
+        open
+      >
         <summary className="cursor-pointer text-[14px] leading-[1.35] font-bold text-[var(--g-ink)]">
           Dane firmy i trwałość · używane ponownie
         </summary>
@@ -2198,8 +2201,8 @@ function CompactRunLabelEditor({
               </label>
             ) : (
               <p className="text-xs leading-relaxed text-[#7e4037]">
-                Brakuje potwierdzonych danych źródłowych składników. Nie można ich zastąpić potwierdzeniem
-                na tym ekranie.
+                Brakuje potwierdzonych danych źródłowych składników. Nie można ich zastąpić
+                potwierdzeniem na tym ekranie.
               </p>
             )}
           </MissingDataCard>
@@ -2360,7 +2363,9 @@ function MissingOperatorFields({
   return (
     <MissingDataCard
       field="operator"
-      title={needsDistributor ? 'Dostawca · Australia / Nowa Zelandia' : 'Dane firmy odpowiedzialnej'}
+      title={
+        needsDistributor ? 'Dostawca · Australia / Nowa Zelandia' : 'Dane firmy odpowiedzialnej'
+      }
     >
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="text-xs font-medium text-stone-600">
@@ -3090,7 +3095,9 @@ export function LegacyRunLabelEditor({
                 className={SETTINGS_INPUT_CLASS}
               >
                 <option value="unresolved">Wybierz kontekst</option>
-                <option value="interstate_retail">Sprzedaż detaliczna w opakowaniu / handel międzystanowy (USA)</option>
+                <option value="interstate_retail">
+                  Sprzedaż detaliczna w opakowaniu / handel międzystanowy (USA)
+                </option>
                 <option value="food_service">Food service</option>
               </select>
             </label>

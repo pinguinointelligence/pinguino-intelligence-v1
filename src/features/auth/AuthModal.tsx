@@ -68,7 +68,8 @@ export function AuthModal({ onClose }: { onClose: () => void }) {
       testId="auth-modal"
       onClose={onClose}
       dismissOnBackdrop
-      panelClassName="!w-full !max-w-sm !rounded-[var(--radius-pro-studio)] !p-5 sm:!p-6"
+      size="default"
+      panelClassName="p-5 sm:p-6"
     >
       <p className="text-xs font-semibold text-stone-500">{copy.brand.name}</p>
       <h2 className="mt-2 text-xl font-semibold tracking-[-0.02em] text-ink">

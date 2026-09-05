@@ -7,6 +7,7 @@ import { DEFAULT_PRESET } from '@/data/demoPresets';
 import type { RecipeInput } from '@/engine';
 import { sorbetMapperIngredient } from '@/features/recipe-constraints/__fixtures__/sorbetAuthorityFixture';
 import { assessProductionRescue as assessCanonical } from './productionRescue';
+import { productionTestComposition } from './productionTestComposition.fixture';
 import {
   confirmProductionLine,
   createProductionSession,
@@ -52,6 +53,7 @@ const make = () =>
       recipeName: 'Milk base',
     },
     plannedInput: input,
+    plannedComposition: productionTestComposition(input),
     startedAt: '2026-08-19T00:00:00.000Z',
   });
 
@@ -105,6 +107,7 @@ const exactP0DextroseDeviation = () => {
       recipeName: 'P0 score authority',
     },
     plannedInput,
+    plannedComposition: productionTestComposition(plannedInput),
     startedAt: '2026-08-27T21:00:00.000Z',
   });
   for (const [index, line] of session.lines.entries()) {
@@ -150,7 +153,7 @@ describe('generated canonical Production Rescue Edge bundle', () => {
       engine: '0.4.0',
       config: '0.7.0',
       practicalRecipe: 'pro-whole-gram-v1',
-      productionRescue: 'production-rescue-v4',
+      productionRescue: 'production-rescue-v6',
     });
     expect(manifest.bundler.version).toBe('1.0.3');
     expect(manifest.versions.productionSessionSchema).toBe(2);

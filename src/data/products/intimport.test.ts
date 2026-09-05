@@ -269,15 +269,55 @@ describe('INTIMPORT nutrition basis', () => {
     expect(normalizeNutritionBasis(raw)).toBe(expected);
   });
 
-  it('does not map per-100 ml values into the per-100 g fields', () => {
+  /* OWNER RULE, frozen 2026-08-25: Gellatti normalises 1 ml = 1 g (1 L = 1000 g),
+     deliberately ignoring the density spread between water, milk and cream.
+     A per-100 ml panel therefore becomes per-100 g NUMERICALLY 1:1.
+
+     The rule is not cosmetic. While per-100 ml rows were refused for want of a
+     density, no liquid dairy product could ever reach the Engine — and milk and
+     cream are the dairy and fat carriers of every gelato base, declared per 100
+     ml throughout the EU. Density must never be reintroduced as a requirement. */
+  it('maps a per-100 ml panel into the per-100 g fields 1:1', () => {
     const candidate = mapIntimportRow(
-      row({ 'Nutrition Basis': '100 ml', 'Energy kcal': '60', 'Fat g': '3.5' }),
+      row({
+        'Nutrition Basis': '100 ml',
+        'Energy kcal': '60',
+        'Fat g': '3.2',
+        'Carbohydrates g': '4.7',
+        'Protein g': '3.2',
+        'Ingredients Original': 'mleko',
+      }),
+      1,
+    );
+    expect(candidate.insert.kcal_per_100g).toBe(60);
+    expect(candidate.insert.fat_percent).toBe(3.2);
+    expect(candidate.insert.carbohydrate_percent).toBe(4.7);
+    expect(candidate.insert.protein_percent).toBe(3.2);
+    // No density was consulted, and the row is not held for one.
+    expect(candidate.reasons.join(' ')).not.toContain('density');
+    expect(candidate.state).toBe('READY');
+  });
+
+  it('preserves BOTH the manufacturer basis and how it was normalized', () => {
+    const ml = mapIntimportRow(row({ 'Nutrition Basis': '100 ml', 'Fat g': '3.2' }), 1);
+    expect(ml.nutritionBasis).toBe('per_100ml');
+    expect(ml.normalizationBasis).toBe('GELLATTI_1ML_1G_NORMALIZATION');
+    // A genuine per-100 g label stays distinguishable from a normalized one.
+    const g = mapIntimportRow(row({ 'Nutrition Basis': '100 g', 'Fat g': '3.2' }), 1);
+    expect(g.nutritionBasis).toBe('per_100g');
+    expect(g.normalizationBasis).toBe('SOURCE_PER_100G');
+  });
+
+  it('still refuses a basis it never established', () => {
+    // The rule converts ml to g. It does not license reading a panel declared
+    // per portion or per serving as though it were per 100 g.
+    const candidate = mapIntimportRow(
+      row({ 'Nutrition Basis': 'per portion (30 g)', 'Energy kcal': '60', 'Fat g': '3.5' }),
       1,
     );
     expect(candidate.insert.kcal_per_100g).toBeUndefined();
     expect(candidate.insert.fat_percent).toBeUndefined();
-    expect(candidate.reasons.join(' ')).toContain('per 100 ml');
-    // The declared values are still retained as source evidence.
+    expect(candidate.reasons.join(' ')).toContain('without a recognized');
     expect(candidate.source['Energy kcal']).toBe('60');
   });
 });

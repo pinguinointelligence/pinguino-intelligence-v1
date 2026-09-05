@@ -703,7 +703,7 @@ function RecipeRow({
           scannable (§7). The breakpoint is `lg`, not `md`: between 768 and
           1024 px the five-column table can only fit by truncating ingredient
           names, which is exactly the squeeze §5 forbids. */}
-      <div className="lg:hidden">
+      <div className="pro-ingredient-row-mobile lg:hidden">
         <MobileIngredientLine
           item={item}
           percent={share}
@@ -720,7 +720,7 @@ function RecipeRow({
       </div>
 
       {/* WIDE (lg+) — the accepted Production table row, unchanged. */}
-      <div className="hidden lg:block">
+      <div className="pro-ingredient-row-desktop hidden lg:block">
         <div
           className={cn('group/row', compact ? COMPACT_ROW_GRID : ROW_GRID)}
           onDragOver={(event) => event.preventDefault()}
@@ -1032,7 +1032,12 @@ function RecipeRow({
                 }
                 testId={`row-menu-${item.id}`}
                 placement="responsive"
-                panelClassName="sm:!min-h-[290px] sm:!w-[min(500px,calc(100vw-32px))] sm:!rounded-[14px] sm:!p-0"
+                // Its `!w-[min(500px,…)]` used `!important`, so unlike the
+                // other overrides it really did paint. `default` (520) is the
+                // nearest canonical member, so the row menu keeps essentially
+                // the width it had while stating it once instead of forcing it.
+                size="default"
+                panelClassName="sm:min-h-[290px] sm:p-0"
                 onClose={() => closeLineMenus()}
               >
                 <div id={`row-menu-dialog-${item.id}`} data-ingredient-modal-shell="true">

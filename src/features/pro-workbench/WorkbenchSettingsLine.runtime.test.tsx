@@ -136,7 +136,7 @@ describe('WorkbenchSettingsLine deferred batch editing', () => {
     };
   };
 
-  it('a batch resize preserves the active starter vector', async () => {
+  it('a target-batch step preserves the active starter vector', async () => {
     useRecipeStore.getState().addTopping(useRecipeStore.getState().items[0]!.ingredient, 12);
     useRecipeStore
       .getState()
@@ -144,21 +144,16 @@ describe('WorkbenchSettingsLine deferred batch editing', () => {
         useRecipeStore.getState().items[0]!.id,
         useRecipeStore.getState().items[0]!.planned_grams,
       );
-    /* SUPERSEDED, owner authority 2026-09-02 (final Settings contract): the
-       target-batch FIELD is gone from Settings and must not be recreated. The
-       behaviour under test is not the input — it is what the STORE does when
-       the batch changes — so the driver moves to the same entry point the field
-       called, `resizeBatchGrams`. Nothing this test protected is lost; the
-       deferred-commit-on-blur semantics stay covered by
-       `DeferredNumberInput.test.tsx`, which owns them. */
     const before = materialVector();
     expect(useRecipeStore.getState().target_batch_grams).toBe(1_000);
 
-    await act(async () => {
-      useConstraintStudioStore.getState().resizeBatchGrams(2_222);
-    });
+    const increment = host.querySelector(
+      '[data-testid="workbench-batch-increment"]',
+    ) as HTMLButtonElement;
+    expect(increment).not.toBeNull();
+    await act(async () => increment.click());
 
-    expect(useRecipeStore.getState().target_batch_grams).toBe(2_222);
+    expect(useRecipeStore.getState().target_batch_grams).toBe(1_010);
     // The point of the test: a batch resize must not re-author the material
     // vector — locks and toppings survive it untouched.
     expect(materialVector()).toEqual(before);
@@ -335,6 +330,8 @@ describe('WorkbenchSettingsLine deferred batch editing', () => {
       );
       expect(target.target_batch_grams).toBe(1_000);
       expect(target.batch_source).toBe('PROFESSIONAL_USER_BATCH');
+      expect(host.querySelector('[data-testid="profile-batch-combined"]')).not.toBeNull();
+      expect(host.querySelectorAll('[aria-label="Docelowa partia"]')).toHaveLength(1);
       if (expected.category === 'sorbet') {
         // The point of the projection: the recipe the customer lands on is one
         // the owner stabilizer authority accepts.
@@ -601,13 +598,13 @@ describe('WorkbenchSettingsLine — over-capacity batch guidance', () => {
 });
 
 /**
- * Owner UX correction — the batch field must read as ONE editable amount.
+ * Owner regression restore — the batch field must read as ONE editable amount.
  *
  * The old presentation put the recipe's current Base and the target batch in
  * one `5000 / 470 g` row, which read as two inputs, overflowed the card, and
  * left no way to tell where to type or what the second number meant. The fix
- * is presentation only: one labelled editable field, the Base demoted to a
- * read-only line, and the machine guidance kept separate.
+ * is presentation only: one labelled editable stepper, no duplicate Base
+ * readout, and the machine guidance kept separate.
  */
 describe('WorkbenchSettingsLine — one editable batch field', () => {
   let host: HTMLDivElement;
@@ -639,19 +636,14 @@ describe('WorkbenchSettingsLine — one editable batch field', () => {
   });
 
   for (const compact of [true, false]) {
-    it(`exposes NO target-batch field on the Settings surface (compact=${compact})`, async () => {
-      // SUPERSEDED, owner authority 2026-09-02 (final Settings contract). This
-      // used to pin exactly ONE editable batch amount in a batch card. The
-      // owner removed the field outright and instructed that it must NOT be
-      // recreated anywhere, so the contract inverts: the absence is now the
-      // thing worth protecting, because a duplicate creeping back is exactly
-      // what this file exists to prevent.
+    it(`exposes exactly one target-batch stepper on the Settings surface (compact=${compact})`, async () => {
       await render(compact);
       const panel = host.querySelector('[data-testid="workbench-settings-line"]')!;
-      expect(panel.querySelector('[aria-label="Docelowa partia"]')).toBeNull();
-      expect(panel.querySelector('[aria-label="Jednostka partii"]')).toBeNull();
-      expect(panel.querySelector('[data-testid="profile-batch-combined"]')).toBeNull();
-      expect(panel.textContent).not.toContain('Partia docelowa');
+      expect(panel.querySelectorAll('[aria-label="Docelowa partia"]')).toHaveLength(1);
+      expect(panel.querySelectorAll('[data-testid="profile-batch-combined"]')).toHaveLength(1);
+      expect(panel.querySelectorAll('[data-testid="workbench-batch-decrement"]')).toHaveLength(1);
+      expect(panel.querySelectorAll('[data-testid="workbench-batch-increment"]')).toHaveLength(1);
+      expect(panel.textContent).toContain('Partia docelowa');
       expect(panel.textContent).not.toContain('Baza receptury');
     });
   }
@@ -687,9 +679,12 @@ describe('WorkbenchSettingsLine — one editable batch field', () => {
     });
     await render();
 
-    // 1 — what I want to make. The field is gone, so the target is read from
-    //     the authority that still owns it.
+    // 1 — what I want to make. The restored editable target reads from the
+    //     same canonical authority.
     expect(useRecipeStore.getState().target_batch_grams).toBe(5_000);
+    expect((host.querySelector('[aria-label="Docelowa partia"]') as HTMLInputElement).value).toBe(
+      '5000',
+    );
     // 2 — the machine reading, kept separate from the target.
     const capacity = host.querySelector('[data-testid="home-machine-capacity"]')!;
     expect(capacity.textContent).toContain('Zalecany wsad na cykl');
@@ -702,12 +697,76 @@ describe('WorkbenchSettingsLine — one editable batch field', () => {
     expect(useRecipeStore.getState().target_batch_grams).toBe(5_000);
   });
 
-  it('renders NO batch control anywhere in the panel', async () => {
+  it('keeps one batch control across Professional/Home and OPTIMAL/ECO', async () => {
     await render();
     const panel = host.querySelector('[data-testid="workbench-settings-line"]')!;
-    expect(panel.querySelectorAll('[aria-label="Docelowa partia"]')).toHaveLength(0);
-    expect(panel.querySelectorAll('[aria-label="Jednostka partii"]')).toHaveLength(0);
-    expect(panel.querySelectorAll('[data-testid="profile-batch-combined"]')).toHaveLength(0);
+    expect(panel.querySelectorAll('[aria-label="Docelowa partia"]')).toHaveLength(1);
+
+    const strategy = panel.querySelector('[data-testid="workbench-strategy"]') as HTMLSelectElement;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')?.set?.call(
+        strategy,
+        'eco',
+      );
+      strategy.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    expect(panel.querySelectorAll('[aria-label="Docelowa partia"]')).toHaveLength(1);
+
+    const home = listActiveHomeMachines(MACHINE_CATALOG)[0]!;
+    const setup = MACHINE_CATALOG.find((candidate) => candidate.id === home.id)!;
+    await act(async () => {
+      useRecipeStore.getState().setMachineSelection({
+        kind: 'home',
+        servingModeId: 'temp_minus_12',
+        machineId: home.id,
+        label: machineDisplayName(setup),
+        temperatureC: -12,
+        batchGrams: 670,
+        capacityGrams: 670,
+        batchSource: 'MACHINE_DEFAULT',
+      });
+    });
+    expect(panel.querySelectorAll('[aria-label="Docelowa partia"]')).toHaveLength(1);
+    expect((panel.querySelector('[aria-label="Docelowa partia"]') as HTMLInputElement).value).toBe(
+      '670',
+    );
+  });
+
+  it('marks a confirmed batch change for confirmation and returns to confirmed', async () => {
+    const confirm = () =>
+      host.querySelector('[data-testid="profile-settings-confirm"]') as HTMLButtonElement;
+    const disclosure = host.querySelector(
+      '[data-testid="settings-grid-status"]',
+    ) as HTMLButtonElement;
+
+    await act(async () => confirm().click());
+    expect(host.textContent).toContain('Zatwierdzone');
+    await act(async () => disclosure.click());
+
+    const increment = host.querySelector(
+      '[data-testid="workbench-batch-increment"]',
+    ) as HTMLButtonElement;
+    await act(async () => increment.click());
+
+    expect(useRecipeStore.getState().target_batch_grams).toBe(1_010);
+    expect(host.textContent).toContain('Wymaga potwierdzenia');
+    expect(confirm()).not.toBeNull();
+    await act(async () => confirm().click());
+    expect(host.textContent).toContain('Zatwierdzone');
+  });
+
+  it('keeps both accepted Settings actions at the pill geometry', async () => {
+    const save = host.querySelector(
+      '[data-testid="profile-settings-save-default"]',
+    ) as HTMLButtonElement;
+    const confirm = host.querySelector(
+      '[data-testid="profile-settings-confirm"]',
+    ) as HTMLButtonElement;
+    for (const button of [save, confirm]) {
+      expect(button.className).toContain('rounded-full');
+      expect(button.className).toContain('h-11');
+      expect(button.className).toContain('px-5');
+    }
   });
 });
 

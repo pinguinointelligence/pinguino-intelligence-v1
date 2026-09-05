@@ -40,6 +40,7 @@ export function GellattiNotice({
   testId,
   primaryTestId,
   onClose,
+  returnFocus,
 }: {
   title: string;
   /** The short sentence(s) of a simple notice. */
@@ -58,6 +59,9 @@ export function GellattiNotice({
   primaryTestId?: string;
   /** Escape / backdrop. Defaults to the primary acknowledgement. */
   onClose?: () => void;
+  /** Semantic page action to focus when acknowledging the notice removes the
+   * original trigger. Forwarded to the shared DialogShell focus contract. */
+  returnFocus?: () => HTMLElement | null;
 }) {
   const centered = align === 'center';
   return (
@@ -74,14 +78,19 @@ export function GellattiNotice({
           ? `${testId}-secondary`
           : (primaryTestId ?? `${testId}-primary`)
       }
-      panelClassName={cn(
-        'border-[var(--g-line)] bg-white text-[var(--g-graphite)]',
-        // The attention state is an OUTLINE and a glow, never a fill: a tinted
-        // panel would drag the whole notice away from the Gellatti white
-        // surface for what is a single line of emphasis.
-        tone === 'attention' &&
-          'border-[var(--g-orange)] shadow-[0_0_0_4px_rgba(245,138,7,0.16),0_18px_40px_-16px_rgba(25,26,29,0.35)]',
-      )}
+      returnFocus={returnFocus}
+      // The surface treatment is DialogShell's to choose. Handing it a tone
+      // instead of extra classes is what makes the attention state actually
+      // paint: `cn` is a plain joiner, so a `border-*` or `ring-*` added here
+      // ships ALONGSIDE the shell's own `border-ink/15` / `shadow-pro-e3` and
+      // loses the cascade. Both were tried and both were measured dead on
+      // served staging — the border came back ink/15, and the ring left
+      // `--tw-ring-shadow` set while `box-shadow` stayed the elevation alone.
+      tone={tone === 'attention' ? 'attention' : 'default'}
+      // Nothing here may name a property the shell owns. The headline, body
+      // and buttons each set their own colour, so the panel-level `bg-white`
+      // and graphite text were duplicates of the shell's own `bg-white` /
+      // `text-ink` — removed rather than left to the cascade.
     >
       <div
         data-notice-tone={tone}

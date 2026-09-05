@@ -6,6 +6,7 @@ import {
   assessProductionRescue,
   hydrateProductionSessionFromRun,
   productionRescueCandidateFingerprint,
+  productionRescueTerminalAuthority,
   scaleRecipeVersion,
   scaledRecipeInput,
 } from '../_shared/generated/productionRescueEngine.bundle.mjs';
@@ -538,6 +539,12 @@ export async function authorizeTrustedProductionRescue(
     items: Array<Record<string, unknown>>;
     target_batch_grams: number;
   };
+  const terminalAuthority = productionRescueTerminalAuthority(option.candidateInput, session);
+  if (!terminalAuthority.valid) {
+    throw new RescueAuthorizationError('engine_candidate_terminal_authority_failed', 409, {
+      issueCodes: terminalAuthority.issues.map((issue: { code: string }) => issue.code),
+    });
+  }
   const isSupportedProductionMass = (value: unknown): boolean => {
     const grams = Number(value);
     return (

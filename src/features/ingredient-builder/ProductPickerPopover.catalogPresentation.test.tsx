@@ -28,7 +28,15 @@ vi.mock('@/features/global-catalog/useGlobalCatalogPicker', () => ({
       (hit) =>
         (!input.favoritesOnly || hit.favorite) &&
         (!query ||
-          [hit.displayName, hit.canonicalFamily, hit.category, hit.productForm, ...hit.aliases]
+          [
+            hit.displayName,
+            hit.productCode,
+            hit.canonicalFamily,
+            hit.category,
+            hit.productForm,
+            ...hit.eans,
+            ...hit.aliases,
+          ]
             .filter(Boolean)
             .join(' ')
             .toLocaleLowerCase('pl')
@@ -272,6 +280,7 @@ describe('ProductPickerPopover catalog presentation', () => {
     for (const option of document.querySelectorAll<HTMLElement>('[role="option"]')) {
       expect(option.getAttribute('aria-label')).not.toMatch(/PI-ING-|Status danych/);
     }
+    expect(mocks.markUsed).not.toHaveBeenCalled();
   });
 
   it('renders the canonical top-level filter order and keeps form filters contextual', async () => {
@@ -449,6 +458,40 @@ describe('ProductPickerPopover catalog presentation', () => {
       mapperIngredientId: 'PI-ING-000236',
       productId: 'user-milk-product',
     });
+  });
+
+  it('shows the current product-owned percentage on an exact Hacendado EAN result', async () => {
+    mocks.hits = [
+      catalogHit({
+        id: 'hacendado-current',
+        productCode: 'PR-ING-007173',
+        entityKind: 'commercial_product',
+        status: 'manual_unverified',
+        verificationMethod: 'human',
+        displayName: 'Leche líquida entera Hacendado',
+        brand: 'Hacendado',
+        canonicalFamily: 'milk',
+        category: 'dairy',
+        productForm: 'milk',
+        mappedIngredientId: 'PI-ING-000236',
+        markets: ['ES'],
+        eans: ['8402001047251'],
+        publicData: { nutrition: { basis: 'per_100ml', fat: 3.5 } },
+      }),
+    ];
+    await renderPicker();
+    const search = document.querySelector<HTMLInputElement>('input[role="combobox"]');
+    await act(async () => {
+      if (search) {
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+        setter?.call(search, '8402001047251');
+        search.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    });
+
+    expect(document.body.textContent).toContain('Leche líquida entera Hacendado');
+    expect(document.body.textContent).toContain('Hacendado · 3.5% tłuszczu');
+    expect(document.querySelector('[data-info-product-id="PR-ING-007173"]')).not.toBeNull();
   });
 
   it('opens an external row Replace directly in its Milk context and keeps numeric order', async () => {

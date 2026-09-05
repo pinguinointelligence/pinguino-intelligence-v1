@@ -55,7 +55,11 @@ export function catalogHasCompleteToppingFacts(hit: CatalogProductSearchHit): bo
     && hit.status !== 'blocked'
     && typeof nutrition === 'object'
     && nutrition !== null
-    && (nutrition as Record<string, unknown>).basis === 'per_100g'
+    // 1 ml = 1 g (OWNER RULE, frozen 2026-08-25): a per-100 ml panel is the
+    // same declaration numerically, so it must not disqualify a topping.
+    && ['per_100g', 'per_100ml'].includes(
+      String((nutrition as Record<string, unknown>).basis),
+    )
     && REQUIRED_LABEL_TOPPING_FACTS.every((key) => numberAt(hit.publicData, key) !== null)
     && typeof hit.publicData.ingredientsText === 'string'
     && hit.publicData.ingredientsText.trim().length > 0

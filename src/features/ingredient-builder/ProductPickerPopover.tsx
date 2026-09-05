@@ -50,6 +50,11 @@ import {
   type ProductPickerVerificationView,
 } from './productPickerModel';
 import { PRO_DESKTOP_MEDIA_QUERY } from '@/features/shell/proFrameGeometry';
+import {
+  applicationViewportGeometry,
+  applicationViewportSize,
+  currentApplicationScale,
+} from '@/features/shell/applicationScaleAuthority';
 import { closeProductPickerForPointer } from './productPickerBackdrop';
 import { mobileProductPickerRect } from './productPickerViewport';
 import { IngredientCategoryIcon } from './IngredientCategoryIcon';
@@ -121,6 +126,8 @@ interface PickerOption {
   status: 'pi_base' | 'verified' | 'manual_unverified' | 'blocked';
   favorite: boolean;
   recent: boolean;
+  sortTitle: string;
+  recentlyUsedAt: string | null;
   market: string | null;
   originalName: string | null;
   catalog?: CatalogProductSearchHit;
@@ -373,8 +380,9 @@ export function ProductPickerPopover({
   useLayoutEffect(() => {
     if (!open || typeof window === 'undefined') return;
     const updatePosition = () => {
-      const trigger = triggerRef.current?.getBoundingClientRect();
-      if (!trigger) return;
+      const rawTrigger = triggerRef.current?.getBoundingClientRect();
+      if (!rawTrigger) return;
+      const scale = currentApplicationScale();
       const desktop = window.matchMedia(PRO_DESKTOP_MEDIA_QUERY).matches;
       if (!desktop) {
         const visualViewport = window.visualViewport;
@@ -391,12 +399,14 @@ export function ProductPickerPopover({
         });
         return;
       }
-      const editor = document
+      const rawEditor = document
         .querySelector<HTMLElement>('[data-testid="workbench-editor-pane"]')
         ?.getBoundingClientRect();
-      if (!editor) return;
+      if (!rawEditor) return;
+      const editor = applicationViewportGeometry(rawEditor, scale);
+      const viewport = applicationViewportSize(scale);
       const top = Math.max(84, editor.top);
-      const height = Math.max(320, Math.min(editor.height, window.innerHeight - top - 16));
+      const height = Math.max(320, Math.min(editor.height, viewport.height - top - 16));
       setPosition({
         desktop: true,
         left: editor.left,
@@ -472,6 +482,8 @@ export function ProductPickerPopover({
                   hit.entityKind === 'pi_base' ? hit.mappedIngredientId : hit.id
                 }`,
               ),
+            sortTitle: primaryName,
+            recentlyUsedAt: hit.recentlyUsedAt,
             market: hit.markets[0] ?? null,
             originalName: hit.originalName,
             catalog: hit,
@@ -501,6 +513,8 @@ export function ProductPickerPopover({
         status: 'pi_base' as const,
         favorite: false,
         recent: false,
+        sortTitle: item.name,
+        recentlyUsedAt: null,
         market: null,
         originalName: null,
         canonicalId: canonicalIngredientId(item),

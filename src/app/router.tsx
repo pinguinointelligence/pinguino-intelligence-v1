@@ -6,6 +6,7 @@ import { MapperBatch6Page } from '@/pages/dev/MapperBatch6Page';
 import { MapperReviewPage } from '@/pages/dev/MapperReviewPage';
 import { MapperStatusPage } from '@/pages/dev/MapperStatusPage';
 import { MapperSmokePage } from '@/pages/dev/MapperSmokePage';
+import { ScanImportV2LabPage } from '@/pages/dev/ScanImportV2LabPage';
 import { EnrichmentPreviewPage } from '@/pages/dev/EnrichmentPreviewPage';
 import { SnapshotAuditPage } from '@/pages/dev/SnapshotAuditPage';
 import { StudioPickerProofPage } from '@/pages/dev/StudioPickerProofPage';
@@ -296,6 +297,10 @@ export function AppRoutes() {
           In production import.meta.env.DEV is false, so the route is never created and
           MapperSmokePage is dead-code-eliminated from the bundle. */}
       {import.meta.env.DEV && <Route path="/dev/mapper-smoke" element={<MapperSmokePage />} />}
+      {/* Scan Import 2.0 QA harness: dev, or staging with VITE_SCAN_IMPORT_LAB=1. Never HOME. */}
+      {(import.meta.env.DEV || import.meta.env.VITE_SCAN_IMPORT_LAB === '1') && (
+        <Route path="/dev/scan-import-v2" element={<ScanImportV2LabPage />} />
+      )}
       {import.meta.env.DEV && <Route path="/dev/mapper-batch-6" element={<MapperBatch6Page />} />}
       {import.meta.env.DEV && <Route path="/dev/mapper-review" element={<MapperReviewPage />} />}
       {import.meta.env.DEV && <Route path="/dev/mapper-status" element={<MapperStatusPage />} />}

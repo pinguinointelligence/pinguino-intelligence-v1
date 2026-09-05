@@ -261,6 +261,43 @@ describe('canonical technological slot projection', () => {
     }
   });
 
+  it('presents an exact commercial milk percentage only from its own current nutrition fact', () => {
+    const hacendado = hit({
+      ...localMilk36A,
+      id: 'hacendado-current',
+      productCode: 'PR-ING-007173',
+      displayName: 'Leche líquida entera Hacendado',
+      eans: ['8402001047251'],
+      publicData: { nutrition: { basis: 'per_100ml', fat: 3.5 } },
+    });
+
+    expect(
+      projectCatalogHitsForDiscovery({ hits: [hacendado], query: '8402001047251' })[0],
+    ).toMatchObject({
+      primaryName: 'Leche líquida entera Hacendado',
+      secondaryText: 'Hacendado · 3.5% tłuszczu',
+      variantPercent: 3.5,
+      hit: { id: 'hacendado-current', productCode: 'PR-ING-007173' },
+    });
+  });
+
+  it('does not fabricate an exact commercial percentage when current product facts omit it', () => {
+    const withoutPercentage = hit({
+      ...localMilk36A,
+      id: 'milk-without-current-fat',
+      displayName: 'Leche entera de prueba',
+      publicData: { nutrition: { basis: 'per_100ml', protein: 3.2 } },
+    });
+
+    expect(
+      projectCatalogHitsForDiscovery({ hits: [withoutPercentage], query: 'PR-ING-000101' })[0],
+    ).toMatchObject({
+      primaryName: 'Leche entera de prueba',
+      secondaryText: 'Hacendado',
+      variantPercent: null,
+    });
+  });
+
   it('does not invent a generic winner when several commercial SKUs have no canonical reference', () => {
     expect(
       projectCatalogHitsForDiscovery({

@@ -55,6 +55,16 @@ const TRACE = {
   mapperDatasetVersion: null,
 };
 
+/**
+ * Opt-in served trace for `?owner-auth-trace=1`. Payloads are deliberately
+ * structural: no token, user id, email, recipe id/name, request body or header.
+ */
+const traceOwnerSave = (stage: string, detail: Record<string, unknown>): void => {
+  if (typeof window === 'undefined') return;
+  if (new URLSearchParams(window.location.search).get('owner-auth-trace') !== '1') return;
+  console.info('[owner-save-trace]', { stage, ...detail });
+};
+
 /** The DEFAULT payload source: the Pro recipe-store draft (`/pro` behaviour, unchanged). */
 const buildRecipeInputFromStore = (): RecipeInput => {
   const state = useRecipeStore.getState();
@@ -322,16 +332,31 @@ export function useCanonicalRecipeSave(
     fn: () => Promise<string | null>,
     requirePracticalRecipe = false,
   ): Promise<boolean> => {
-    if (blocked !== null || !repository) return false;
+    traceOwnerSave('run:start', {
+      authProjected: authed,
+      authUserPresent: Boolean(authUserId),
+      canSaveRecipe: caps.canSaveRecipe,
+      blocked,
+      linkedRecipePresent: Boolean(savedRecipeId),
+      draftRevision,
+      route: typeof window === 'undefined' ? null : window.location.pathname,
+    });
+    if (blocked !== null || !repository) {
+      traceOwnerSave('run:blocked', { blocked });
+      return false;
+    }
     if (requirePracticalRecipe && practicalGate.blocked) {
       setError(practicalGate.message);
+      traceOwnerSave('run:practical-blocked', { kind: practicalGate.kind });
       return false;
     }
     setBusy(true);
     setError(null);
     try {
       const linkedId = await fn();
+      traceOwnerSave('run:persisted', { linkedRecipePresent: Boolean(linkedId) });
       await invalidate(linkedId);
+      traceOwnerSave('run:complete', { queryInvalidationComplete: true });
       return true;
     } catch (caught) {
       const customerMessage = canonicalRecipeSaveErrorMessage(caught);
@@ -342,6 +367,12 @@ export function useCanonicalRecipeSave(
         );
       }
       setError(customerMessage);
+      traceOwnerSave('run:failed', {
+        failureType:
+          caught instanceof Error && PRODUCT_BEHAVIOR_SCOPE_MISMATCH.test(caught.message)
+            ? 'product-behavior-scope'
+            : 'repository-or-validation',
+      });
       return false;
     } finally {
       setBusy(false);
@@ -367,6 +398,7 @@ export function useCanonicalRecipeSave(
             ? recipeCompositionFromState(useRecipeStore.getState())
             : null;
         await validateCurrentBehavior(recipeInput, productComposition);
+        traceOwnerSave('create:behavior-validated', { ready: true });
         const { recipe, version } = await repository!.createRecipe({
           ownerUserId: ownerId,
           title: title.trim(),
@@ -377,6 +409,11 @@ export function useCanonicalRecipeSave(
           source: 'manual',
           by: ownerId,
           capabilities: caps,
+        });
+        traceOwnerSave('create:repository-success', {
+          recipeIdPresent: Boolean(recipe.recipeId),
+          versionIdPresent: Boolean(version.versionId),
+          versionNumber: version.versionNumber,
         });
         if (linkStoreDraft) {
           markSaved(
@@ -402,6 +439,7 @@ export function useCanonicalRecipeSave(
             ? recipeCompositionFromState(useRecipeStore.getState())
             : null;
         await validateCurrentBehavior(recipeInput, productComposition);
+        traceOwnerSave('version:behavior-validated', { ready: true });
         const version = await repository!.saveNewVersion(
           savedRecipeId,
           recipeInput,
@@ -412,6 +450,10 @@ export function useCanonicalRecipeSave(
           },
           productComposition,
         );
+        traceOwnerSave('version:repository-success', {
+          versionIdPresent: Boolean(version.versionId),
+          versionNumber: version.versionNumber,
+        });
         if (linkStoreDraft) {
           markSaved(
             savedRecipeId,

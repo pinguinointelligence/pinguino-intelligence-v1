@@ -667,7 +667,7 @@ describe('profile hierarchy and compact preflight', () => {
     const confirmationAt = card.indexOf('data-settings-cell="confirmation"');
     const machineAt = card.indexOf('workbench-machine');
     const conditionalAt = card.indexOf('machine-conditional-settings');
-    // `workbench-batch` no longer exists — see the field-order note below.
+    const batchAt = card.indexOf('<TargetBatchControl');
     const strategyAt = card.indexOf('workbench-strategy');
     expect(productAt).toBeGreaterThan(-1);
     // OWNER FROZEN PRO VISUAL: the confirmation left the grid for the band
@@ -676,16 +676,15 @@ describe('profile hierarchy and compact preflight', () => {
     expect(confirmationAt).toBeLessThan(productAt);
     expect(machineAt).toBeGreaterThan(productAt);
     expect(conditionalAt).toBeGreaterThan(machineAt);
-    expect(strategyAt).toBeGreaterThan(conditionalAt);
-    // SUPERSEDED TWICE, owner authority 2026-09-02. The approved model reads
-    // type | mode / serving | machine — the target-batch field was removed from
-    // this surface entirely on the owner's final Settings contract, so the
-    // grid order is 1 product-type, 2 strategy, 3 conditional, 4 machine — and
-    // the duplicated `Baza receptury` cell is gone entirely.
+    expect(batchAt).toBeGreaterThan(conditionalAt);
+    expect(strategyAt).toBeGreaterThan(batchAt);
+    // Owner regression restore 2026-09-04: the approved model again includes
+    // the editable target batch after the machine/serving row.
     expect(card).toContain("compact && 'order-1'");
     expect(card).toContain('relative order-2 min-w-0');
     expect(card).toContain("compact ? 'order-3'");
     expect(card).toContain("compact && 'order-4'");
+    expect(card).toContain('order-5');
     expect(card).not.toContain('profile-settings-base-readout order-6');
     expect(card).not.toContain('workbench-quality');
     expect(card).not.toContain('Więcej ustawień');
@@ -704,9 +703,10 @@ describe('profile hierarchy and compact preflight', () => {
     expect(card).toContain('testid="workbench-serving"');
     expect(card).toContain('data-testid="home-machine-capacity"');
     expect(card).toContain('Zalecany wsad na cykl');
-    // The target-batch field is REMOVED from Settings and must not return.
-    expect(card).not.toContain('data-testid="profile-batch-combined"');
-    expect(card).not.toContain('aria-label="Docelowa partia"');
+    expect(card).toContain('data-testid="profile-batch-combined"');
+    expect(card).toContain('aria-label="Docelowa partia"');
+    expect(card).toContain('data-testid="workbench-batch-decrement"');
+    expect(card).toContain('data-testid="workbench-batch-increment"');
     expect(card).toContain('data-testid="settings-grid-status"');
     expect(card).not.toContain('data-testid="settings-header-status"');
     // The collapsed band row carries the confirmation STATUS and is the way
@@ -719,14 +719,12 @@ describe('profile hierarchy and compact preflight', () => {
     expect(card.indexOf('data-settings-cell="product-type"')).toBeLessThan(
       card.indexOf('data-settings-cell="machine"'),
     );
-    // The batch card's helper line went with the card itself (owner authority
-    // 2026-09-02, final Settings contract).
-    expect(card).not.toContain('Baza lodowa bez toppingu');
+    expect(card).toContain('Ilość bazy lodowej do przygotowania');
     expect(card).not.toContain('BAZA LODOWA BEZ TOPPINGU');
-    // `w-16` was the batch UNIT select, removed with the batch field.
     expect(card).not.toContain("compactSelect, 'w-16'");
     expect(card).not.toContain('2xl:h-[63px]');
     expect(card).not.toContain('Ustaw jako domyślne');
+    expect(card).toContain('inline-flex h-11 items-center justify-center rounded-full');
     expect(read('features', 'pro-workbench', 'AccountRecipeDefaults.tsx')).toContain(
       'Domyślne ustawienia receptury',
     );

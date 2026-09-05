@@ -26,7 +26,6 @@ import {
   type AboveRecommendationChoice,
   type MachineOnboardingCompletion,
 } from '@/features/machine-onboarding';
-import { ReadinessBadge } from '@/features/design-review/ReadinessMarker';
 import {
   profileSettingsSignature,
   savedRecipeProfileDraftIdentity,
@@ -38,6 +37,7 @@ import {
   FORMULATION_STRATEGIES,
   type FormulationStrategy,
 } from '@/features/formulation-strategy/strategy';
+import { DeferredNumberInput } from '@/components/forms/DeferredNumberInput';
 import {
   isNewRecipeServingModeId,
   starterServingModeForTemperature,
@@ -79,6 +79,7 @@ const compactSettingsHelper = 'sr-only';
    white cells in the Settings palette — an advisory, never a primary control. */
 const aboveActionClass =
   'pro-focus-ring min-h-9 rounded-[8px] border border-[var(--g-line)] bg-white px-3 text-xs font-semibold whitespace-nowrap text-ink shadow-none transition-colors hover:border-ink/35';
+const TARGET_BATCH_STEP_GRAMS = 10;
 
 function LabeledSelect<T extends string>({
   label,
@@ -138,10 +139,110 @@ function LabeledSelect<T extends string>({
   );
 }
 
-/* The actual-base-mass prop is gone with the fields it fed: the `Baza
-   receptury` readout and the target-vs-base mismatch marker. The live base mass
-   is the LEFT column's authority (`Baza lodowa`) and is no longer mirrored
-   here. */
+function TargetBatchControl({
+  grams,
+  compact,
+  homeMachine,
+  capacity,
+  cyclePlan,
+  resizeConflict,
+  onChange,
+}: {
+  grams: number;
+  compact: boolean;
+  homeMachine: boolean;
+  capacity: number | null;
+  cyclePlan: ReturnType<typeof planContainerSplit>;
+  resizeConflict: boolean;
+  onChange: (grams: number) => void;
+}) {
+  const helper = !homeMachine
+    ? 'Ilość bazy lodowej do przygotowania.'
+    : cyclePlan === null
+      ? 'Brak potwierdzonej pojemności tej maszyny.'
+      : cyclePlan.containers === 1
+        ? 'Jedna partia = jeden cykl.'
+        : `${cyclePlan.containers} ${pluralCykle(cyclePlan.containers)} · ${cyclePlan.gramsPerContainer.toLocaleString('pl-PL')} g / cykl`;
+
+  return (
+    <div
+      className={cn(
+        'min-w-0',
+        compact
+          ? cn('profile-settings-final-card', homeMachine ? 'order-3' : 'order-5')
+          : 'rounded-[12px] border border-ink/10 bg-white px-3 py-2',
+      )}
+      data-testid="profile-batch-combined"
+      data-settings-cell="batch"
+      data-settings-final-card="batch"
+    >
+      <span
+        className={cn(compactFinalSettingsLabel, !compact && 'text-xs font-medium text-stone-600')}
+        data-settings-label="batch"
+      >
+        Partia docelowa
+      </span>
+      <div
+        className="mt-2 inline-grid h-11 min-w-[172px] grid-cols-[42px_minmax(86px,1fr)_42px] overflow-hidden rounded-full border border-[var(--g-line-strong)] bg-white lg:h-[46px]"
+        data-settings-control="batch"
+      >
+        <button
+          type="button"
+          aria-label={`Zmniejsz partię docelową o ${TARGET_BATCH_STEP_GRAMS} g`}
+          data-testid="workbench-batch-decrement"
+          disabled={grams <= 1}
+          onClick={() => onChange(Math.max(1, grams - TARGET_BATCH_STEP_GRAMS))}
+          className="pro-focus-ring grid place-items-center text-[17px] text-[var(--g-ink)] transition-colors hover:bg-[var(--g-ivory-deep)] disabled:cursor-not-allowed disabled:text-[var(--g-lock)]"
+        >
+          −
+        </button>
+        <span className="flex min-w-0 items-center justify-center gap-1 border-x border-[var(--g-line-quiet)] px-1.5">
+          <DeferredNumberInput
+            className="min-w-0 w-[5ch] bg-transparent text-right font-mono text-[14px] font-semibold text-[var(--g-ink)] tabular-nums outline-none"
+            value={Number.isFinite(grams) ? grams : 0}
+            min={1}
+            decimals={0}
+            aria-label="Docelowa partia"
+            data-testid="workbench-batch"
+            onCommit={onChange}
+          />
+          <span className="font-mono text-[11px] text-[var(--g-text-secondary)]">g</span>
+        </span>
+        <button
+          type="button"
+          aria-label={`Zwiększ partię docelową o ${TARGET_BATCH_STEP_GRAMS} g`}
+          data-testid="workbench-batch-increment"
+          onClick={() => onChange(grams + TARGET_BATCH_STEP_GRAMS)}
+          className="pro-focus-ring grid place-items-center text-[17px] text-[var(--g-ink)] transition-colors hover:bg-[var(--g-ivory-deep)]"
+        >
+          +
+        </button>
+      </div>
+      <p
+        className="mt-1.5 text-[10px] leading-relaxed text-[var(--g-text-secondary)]"
+        data-testid={homeMachine ? 'home-machine-cycles' : undefined}
+      >
+        {helper}
+      </p>
+      {homeMachine ? (
+        <span className="sr-only" data-testid="home-machine-capacity">
+          Zalecany wsad na cykl: {capacity === null ? 'brak danych' : `${capacity} g`}
+        </span>
+      ) : null}
+      {resizeConflict ? (
+        <p
+          role="alert"
+          className="mt-1.5 text-xs text-status-error"
+          data-testid="batch-resize-conflict"
+        >
+          Nie można ustawić tej partii bez naruszenia blokad receptury. Zmień blokady lub wybierz
+          inną ilość.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 export function WorkbenchSettingsLine({
   className,
   compact = false,
@@ -668,43 +769,12 @@ export function WorkbenchSettingsLine({
             />
           </div>
 
-          <div
-            className={cn(compact ? 'order-3' : 'ml-[7.3rem]')}
-            data-testid="machine-conditional-settings"
-            data-settings-cell="serving"
-          >
-            {!showsProfessionalServing(store.machineKind) ? (
-              <div className="space-y-0.5 text-xs text-stone-600">
-                <p data-testid="home-machine-capacity">
-                  Zalecany wsad na cykl:{' '}
-                  <strong className="font-mono text-ink">
-                    {capacity === null ? '—' : `${capacity.toLocaleString('pl-PL')} g`}
-                  </strong>
-                </p>
-                {cyclePlan ? (
-                  <p data-testid="home-machine-cycles">
-                    {cyclePlan.containers === 1
-                      ? 'Jedna partia mieści się w jednym cyklu.'
-                      : `${cyclePlan.containers} ${pluralCykle(cyclePlan.containers)} · ${cyclePlan.gramsPerContainer.toLocaleString('pl-PL')} g / cykl`}
-                  </p>
-                ) : (
-                  <ReadinessBadge
-                    state="W PRZYGOTOWANIU"
-                    details={{
-                      limitation: 'Brak potwierdzonej pojemności tej maszyny.',
-                      calculationImpact: 'Liczba cykli nie jest wyliczana.',
-                      remaining: 'Potwierdzić pojemność modelu.',
-                    }}
-                  />
-                )}
-                {store.batchResizeConflict !== null ? (
-                  <p role="alert" className="text-status-error" data-testid="batch-resize-conflict">
-                    Nie można ustawić tej partii bez naruszenia blokad receptury. Zmień blokady lub
-                    wybierz inną ilość.
-                  </p>
-                ) : null}
-              </div>
-            ) : (
+          {showsProfessionalServing(store.machineKind) ? (
+            <div
+              className={cn(compact ? 'order-3' : 'ml-[7.3rem]')}
+              data-testid="machine-conditional-settings"
+              data-settings-cell="serving"
+            >
               <LabeledSelect
                 label="Tryb serwowania"
                 value={activeServing}
@@ -714,26 +784,21 @@ export function WorkbenchSettingsLine({
                 testid="workbench-serving"
                 stacked={compact}
               />
-            )}
-          </div>
+            </div>
+          ) : null}
+
+          <TargetBatchControl
+            grams={store.target_batch_grams}
+            compact={compact}
+            homeMachine={!showsProfessionalServing(store.machineKind)}
+            capacity={capacity}
+            cyclePlan={cyclePlan}
+            resizeConflict={store.batchResizeConflict !== null}
+            onChange={changeBatch}
+          />
 
           {compact ? (
-            /* GELLATTI V2.1 §13 — Batch and Tryb are the THIRD ROW of the one
-             Settings grid, two ordinary 46 px fields side by side. The former
-             three-row sub-grid (label / control / helper) is gone: it made the
-             last row taller than the two above it. */
             <>
-              {/* OWNER AUTHORITY 2026-09-02 (final Settings contract). `Partia
-                docelowa` is REMOVED from the right Settings surface, and the
-                owner's instruction is explicit that it must NOT be recreated
-                anywhere else — the main recipe surface keeps only the
-                informational mass summary (Baza lodowa / Toppingi / Produkt
-                finalny). Recorded plainly because it is load-bearing: after
-                this there is NO user-facing control for the target batch. It
-                is still authored by the machine and product-type authorities
-                and by the feasibility remedy, and every store path is
-                untouched — only the field is gone. */}
-
               <div
                 className="profile-settings-final-card relative order-2 min-w-0"
                 data-settings-cell="strategy"
@@ -802,18 +867,8 @@ export function WorkbenchSettingsLine({
             </>
           )}
 
-          {/* The recipe's CURRENT base, read-only (owner UX correction). It answers
-            "what does the recipe weigh right now" beside "what do I want to
-            make" — deliberately NOT a second input, and never editable. A grid
-            child so it stays directly under the batch field it reports on: full
-            width under the 2-column row, and re-ordered ahead of Tryb when the
-            grid collapses to one column. */}
-          {/* OWNER AUTHORITY 2026-09-02 (approved desktop PDF, §5): the
-            permanent `Baza receptury` readout is REMOVED from the right-hand
-            Settings surface. It duplicated a number the left column already
-            owns as `Baza lodowa`, and a settings field that cannot be set is
-            not a setting. The mass itself is unchanged and still lives on the
-            left; only the duplicate display is gone. */}
+          {/* The duplicate read-only `Baza receptury` stays removed. The target
+              control above owns intent; the left recipe column owns actual mass. */}
         </div>
 
         {/* Above the machine recommendation: warn + offer the three owner actions,
@@ -906,7 +961,7 @@ export function WorkbenchSettingsLine({
             onClick={saveAsDefault}
             disabled={defaultsOwner === null || defaultsStatus === 'saving'}
             data-testid="profile-settings-save-default"
-            className="pro-focus-ring inline-flex h-11 items-center rounded-full border border-[var(--g-line)] bg-white px-5 text-[13px] font-semibold whitespace-nowrap text-[var(--g-ink)] transition-colors hover:border-ink/35 disabled:cursor-not-allowed disabled:text-[var(--g-lock)]"
+            className="pro-focus-ring inline-flex h-11 items-center justify-center rounded-full border border-[var(--g-line)] bg-white px-5 text-[13px] font-semibold whitespace-nowrap text-[var(--g-ink)] transition-colors hover:border-ink/35 disabled:cursor-not-allowed disabled:text-[var(--g-lock)]"
           >
             {defaultsStatus === 'saving' ? 'Zapisuję…' : 'Zapisz jako domyślne'}
           </button>
@@ -916,7 +971,7 @@ export function WorkbenchSettingsLine({
               disabled={hardConflict}
               onClick={confirmAndSeedDefaults}
               data-testid="profile-settings-confirm"
-              className="pro-focus-ring inline-flex h-11 items-center rounded-full bg-[var(--g-graphite)] px-5 text-[13px] font-semibold whitespace-nowrap text-white transition-colors hover:bg-ink-soft disabled:cursor-not-allowed disabled:bg-[var(--g-line-quiet)] disabled:text-[var(--g-lock)]"
+              className="pro-focus-ring inline-flex h-11 items-center justify-center rounded-full bg-[var(--g-graphite)] px-5 text-[13px] font-semibold whitespace-nowrap text-white transition-colors hover:bg-ink-soft disabled:cursor-not-allowed disabled:bg-[var(--g-line-quiet)] disabled:text-[var(--g-lock)]"
             >
               Potwierdź zmiany
             </button>
