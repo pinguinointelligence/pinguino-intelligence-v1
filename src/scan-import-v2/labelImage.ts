@@ -20,12 +20,23 @@ function bytesToBase64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
+async function blobBytes(file: Blob): Promise<Uint8Array> {
+  if (typeof file.arrayBuffer === 'function') return new Uint8Array(await file.arrayBuffer());
+  // older engines (and jsdom) expose only FileReader
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(new Uint8Array(reader.result as ArrayBuffer));
+    reader.onerror = () => reject(reader.error ?? new Error('label image unreadable'));
+    reader.readAsArrayBuffer(file);
+  });
+}
+
 export async function fileToLabelImage(
   file: Blob,
   source: LabelImage['source'] = 'gallery',
 ): Promise<LabelImage> {
   const mime = file.type || 'image/jpeg';
-  const bytes = new Uint8Array(await file.arrayBuffer());
+  const bytes = await blobBytes(file);
   return {
     assetId: globalThis.crypto.randomUUID(),
     mime,

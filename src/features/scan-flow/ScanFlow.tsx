@@ -373,7 +373,8 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
       const ctx = contextFor(await getScanImportV2AccountId());
       const image = await fileToLabelImage(await downscaled(file), source);
       const r = await continueDiscovery(session, { type: 'label', images: [image] }, ctx, port);
-      if (r.kind === 'discovered_pending' && r.next === 'finalize') {
+      if (r.kind === 'discovered_pending') {
+        // the label was read: let the authority decide what is still missing (plain fields, not another photo)
         const next = seedSession(r.sessionId, r.identity, r.ledger.missingCritical);
         await finalize(next, { customerFamily: family }, ctx, codeRef.current ?? '');
         return;
@@ -417,6 +418,13 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
         ctx,
         codeRef.current ?? '',
       );
+    });
+
+  /** no usable photograph: ask the authority now and let the customer type what is missing */
+  const enterManually = (session: DiscoverySession) =>
+    withBusy(async () => {
+      const ctx = contextFor(await getScanImportV2AccountId());
+      await finalize(session, { customerFamily: family }, ctx, codeRef.current ?? '');
     });
 
   const requestVerification = (session: DiscoverySession) =>
@@ -577,6 +585,14 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
                 }}
               />
             </label>
+            <button
+              type="button"
+              className={btnSecondary}
+              disabled={busy}
+              onClick={() => void enterManually(phase.session)}
+            >
+              Wpiszę dane ręcznie
+            </button>
             <button
               type="button"
               className={btnSecondary}

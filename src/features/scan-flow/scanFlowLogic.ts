@@ -117,7 +117,7 @@ export function plainFieldsFor(
       kind: 'text',
       required: true,
     });
-  const nutritionCodes = codes.filter((c) => /^nutrition[_-]/.test(c));
+  const nutritionCodes = codes.filter((c) => /^nutrition[._-]/.test(c));
   if (nutritionCodes.length > 0) {
     add({
       key: 'basis',
@@ -130,7 +130,7 @@ export function plainFieldsFor(
       ],
     });
     for (const code of nutritionCodes) {
-      const name = code.replace(/^nutrition[_-]/, '').replace(/[_-]/g, '');
+      const name = code.replace(/^nutrition[._-]/, '').replace(/[._-]/g, '');
       if (name === 'basis') continue;
       const n = NUTRITION[name];
       if (n)
@@ -144,7 +144,7 @@ export function plainFieldsFor(
     }
   }
   for (const code of codes) {
-    if (/^nutrition[_-]/.test(code)) continue;
+    if (/^nutrition[._-]/.test(code)) continue;
     const d = DECLARATIONS.find((x) => x.test.test(code));
     if (d) add({ key: d.key, label: d.label, kind: 'number', required: true, unit: '%' });
   }

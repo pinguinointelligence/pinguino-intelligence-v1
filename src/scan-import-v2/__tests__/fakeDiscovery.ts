@@ -187,6 +187,36 @@ export class FakeDiscovery implements DiscoveryPort {
   async finalize(session: DiscoverySession, input: FinalizeInput): Promise<FinalizeOutcome> {
     this.calls.push(`finalize:${session.identity.canonicalGtin13}`);
     const s = this.session(session.identity);
+    // customer-entered plain fields (finalize confirmations.productFields), as the server's corrections apply them
+    const pf = (input.confirmations?.productFields ?? {}) as Record<string, unknown>;
+    const pfIdentity = (pf['identity'] ?? {}) as Record<string, unknown>;
+    const pfNutrition = (pf['nutrition'] ?? {}) as Record<string, unknown>;
+    if (Object.keys(pf).length > 0) {
+      const prior = s.result ?? {};
+      s.result = {
+        ...prior,
+        identity: {
+          ...(prior.identity ?? {}),
+          ...(typeof pfIdentity['displayName'] === 'string'
+            ? { displayName: pfIdentity['displayName'] as string }
+            : {}),
+          ...(typeof pfIdentity['brand'] === 'string'
+            ? { brand: pfIdentity['brand'] as string }
+            : {}),
+        },
+        nutrition: {
+          ...(prior.nutrition ?? {}),
+          ...(typeof pfNutrition['energyKcal'] === 'number'
+            ? { energyKcal: pfNutrition['energyKcal'] as number }
+            : {}),
+        },
+        ingredientsText:
+          typeof pf['ingredientsText'] === 'string'
+            ? (pf['ingredientsText'] as string)
+            : (prior.ingredientsText ?? null),
+      };
+      s.missingCritical = missingOf(s.result);
+    }
     if (!s.result?.identity?.displayName) return { kind: 'identity_required' };
     if (!input.customerFamily)
       return {
