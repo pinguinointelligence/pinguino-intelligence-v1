@@ -1,0 +1,296 @@
+{
+  "label": "identity-only-unknown",
+  "gtin": "5909876543213",
+  "recognition": {
+    "deterministic": {
+      "archetype": "UNKNOWN",
+      "family": "unknown",
+      "form": "UNKNOWN",
+      "role": "NEITHER_REVIEW",
+      "modelRequired": true,
+      "modelReasonCodes": [
+        "ARCHETYPE_UNKNOWN",
+        "FAMILY_UNKNOWN",
+        "FORM_UNKNOWN"
+      ],
+      "compatibleMapperCategories": []
+    },
+    "final": {
+      "source": "REVIEW_REQUIRED",
+      "archetype": "UNKNOWN",
+      "family": "unknown",
+      "form": "UNKNOWN",
+      "role": "NEITHER_REVIEW",
+      "modelRequired": true,
+      "modelReasonCodes": [
+        "ARCHETYPE_UNKNOWN",
+        "FAMILY_UNKNOWN",
+        "FORM_UNKNOWN"
+      ],
+      "compatibleMapperCategories": [],
+      "familyResolution": "CUSTOMER_CONFIRMATION_REQUIRED"
+    }
+  },
+  "mapper": {
+    "candidatesBeforeFilter": [
+      "PI-ING-000748",
+      "PI-ING-001158",
+      "PI-ING-002015",
+      "PI-ING-001239",
+      "PI-ING-001325",
+      "PI-ING-001345",
+      "PI-ING-001347",
+      "PI-ING-001650",
+      "PI-ING-001666",
+      "PI-ING-001667"
+    ],
+    "candidatesAfterFilter": [
+      "PI-ING-000748",
+      "PI-ING-001158",
+      "PI-ING-001239",
+      "PI-ING-001650",
+      "PI-ING-002015",
+      "PI-ING-001325",
+      "PI-ING-001345",
+      "PI-ING-001347",
+      "PI-ING-001666",
+      "PI-ING-001667"
+    ],
+    "rejected": [],
+    "donor": "PI-ING-000748",
+    "similarity": 0.872,
+    "basis": "neighbour_set",
+    "estimatedFromMapperIds": [
+      "PI-ING-000748"
+    ],
+    "hintCategories": [],
+    "verified": {
+      "confidence": 0.872,
+      "basis": "neighbour_set",
+      "rejected": null,
+      "candidatesBeforeFilter": [
+        "PI-ING-000748",
+        "PI-ING-001158",
+        "PI-ING-001239",
+        "PI-ING-001325",
+        "PI-ING-001345",
+        "PI-ING-001347",
+        "PI-ING-001650",
+        "PI-ING-001666",
+        "PI-ING-001667"
+      ],
+      "candidatesAfterFilter": [
+        "PI-ING-000748",
+        "PI-ING-001158",
+        "PI-ING-001239",
+        "PI-ING-001650",
+        "PI-ING-001325",
+        "PI-ING-001345",
+        "PI-ING-001347",
+        "PI-ING-001666",
+        "PI-ING-001667"
+      ],
+      "rejectedCandidates": [],
+      "donorReference": "PI-ING-000748"
+    }
+  },
+  "fieldTruth": {
+    "water_percent": {
+      "value": 25.65,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.872,
+      "refs": [
+        "PI-ING-000748"
+      ]
+    },
+    "total_solids_percent": {
+      "value": 74.35,
+      "state": "ESTIMATED",
+      "basis": "derived",
+      "confidence": 0.872,
+      "refs": [
+        "PI-ING-000748"
+      ]
+    },
+    "fat_percent": {
+      "value": 0.5,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.872,
+      "refs": [
+        "PI-ING-000748"
+      ]
+    },
+    "protein_percent": {
+      "value": 0.2,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.872,
+      "refs": [
+        "PI-ING-000748"
+      ]
+    },
+    "carbohydrate_percent": {
+      "value": 73.6,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.872,
+      "refs": [
+        "PI-ING-000748"
+      ]
+    },
+    "total_sugars_percent": {
+      "value": 50.5,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.872,
+      "refs": [
+        "PI-ING-000748"
+      ]
+    },
+    "sucrose_percent": {
+      "value": 5.5,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.872,
+      "refs": [
+        "PI-ING-000748"
+      ]
+    },
+    "dextrose_percent": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.872,
+      "refs": [
+        "PI-ING-000748"
+      ]
+    },
+    "glucose_percent": {
+      "value": 27,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.872,
+      "refs": [
+        "PI-ING-000748"
+      ]
+    },
+    "fructose_percent": {
+      "value": 18,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.872,
+      "refs": [
+        "PI-ING-000748"
+      ]
+    },
+    "lactose_percent": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.872,
+      "refs": [
+        "PI-ING-000748"
+      ]
+    },
+    "polyol_percent": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.872,
+      "refs": [
+        "PI-ING-000748"
+      ]
+    },
+    "fiber_percent": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.872,
+      "refs": [
+        "PI-ING-000748"
+      ]
+    },
+    "salt_percent": {
+      "value": 0.05,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.872,
+      "refs": [
+        "PI-ING-000748"
+      ]
+    },
+    "alcohol_percent": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.872,
+      "refs": [
+        "PI-ING-000748"
+      ]
+    },
+    "kcal_per_100g": {
+      "value": 320,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.872,
+      "refs": [
+        "PI-ING-000748"
+      ]
+    },
+    "pod_value": {
+      "value": 56.89,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.872,
+      "refs": [
+        "PI-ING-000748"
+      ]
+    },
+    "pac_value": {
+      "value": 91.293,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.872,
+      "refs": [
+        "PI-ING-000748"
+      ]
+    },
+    "sweetness_factor": {
+      "value": 1.1265,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.872,
+      "refs": [
+        "PI-ING-000748"
+      ]
+    },
+    "freezing_factor": {
+      "value": 1.8078,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.872,
+      "refs": [
+        "PI-ING-000748"
+      ]
+    }
+  },
+  "missingEngineFields": [],
+  "criticalPhysicsBlockers": [],
+  "sweetnessPath": {
+    "kind": "stored",
+    "resolved": true,
+    "reason": "zgodny profil Mappera uzupełnił widmo 50.5 z 50.5 g oraz POD/PAC jako ESTIMATED"
+  },
+  "readiness": "ESTIMATED_READY",
+  "engineUsable": true,
+  "productAccuracy": 65.4,
+  "roleReadiness": "REVIEW",
+  "ready": false,
+  "blockers": [
+    "INGREDIENTS_EVIDENCE_REQUIRED",
+    "PRODUCT_SEMANTICS_UNRESOLVED",
+    "product_semantics_unresolved"
+  ]
+}

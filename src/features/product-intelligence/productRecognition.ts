@@ -14,7 +14,8 @@ import { foldLatin, inferMapperFamily, type ProductFamilyId } from './mapperFami
 
 export const PRODUCT_RECOGNITION_VERSION = 'PRODUCT_RECOGNITION_V2' as const;
 /** Bumps the exact-evidence cache without changing the persisted V2 authority contract. */
-export const PRODUCT_RECOGNITION_CACHE_REVISION = 'READY_ROLE_COCOA_BAKERY_NUT_V1' as const;
+export const PRODUCT_RECOGNITION_CACHE_REVISION =
+  'BEVERAGE_FAMILY_CONFECTIONERY_INCLUSION_V2' as const;
 
 export type ProductArchetype =
   | 'NORMAL_INGREDIENT'
@@ -290,6 +291,7 @@ const SEMANTIC_FAMILIES: readonly ProductSemanticFamily[] = [
   'emulsifier',
   'fibre_inulin',
   'starch',
+  'beverage',
   'plant_beverage',
   'dairy_liquid',
   'fruit',
@@ -694,10 +696,10 @@ const archetypeOf = (
     /\b(sugar|zucker|cukier|azucar|zucchero)\b/.test(ingredients) &&
     /\b(gelatin|gelatine|gelatina|zelatyn\w*)\b/.test(ingredients);
   if (
-    /\b(baton\w*|wafer\w*|wafel\w*|cookie\w*|biscuit\w*|herbatnik\w*|ciastk\w*|praline bar|gumm(?:y|i)\w*|fruit gum\w*|candy\w*|candies\w*|zelk\w*)\b/.test(
+    /\b(baton\w*|wafer\w*|wafel\w*|cookie\w*|biscuit\w*|brownie\w*|herbatnik\w*|ciastk\w*|praline bar|gumm(?:y|i)\w*|fruit gum\w*|candy\w*|candies\w*|zelk\w*)\b/.test(
       confectioneryIdentity,
     ) ||
-    /\b(baton\w*|wafer\w*|wafel\w*|cookie\w*|biscuit\w*|herbatnik\w*|ciastk\w*|praline|gumm(?:y|i)\w*|fruit gum\w*|candy\w*|candies\w*|zelk\w*)\b/.test(
+    /\b(baton\w*|wafer\w*|wafel\w*|cookie\w*|biscuit\w*|brownie\w*|herbatnik\w*|ciastk\w*|praline|gumm(?:y|i)\w*|fruit gum\w*|candy\w*|candies\w*|zelk\w*)\b/.test(
       specificConfectionerySubcategory,
     ) ||
     gummyConfectioneryIngredients
@@ -774,6 +776,11 @@ const semanticFamilyOf = (
   if (archetype === 'INCLUSION') return 'inclusion';
   if (archetype === 'COATING') return 'coating';
   if (archetype === 'TECHNICAL_ADDITIVE') return 'technical_additive';
+  // "Milk chocolate" is chocolate: the dairy word in its name describes the
+  // variety, not the kind. The archetype already resolved it; only cocoa butter
+  // keeps its own (chocolate-family) fat identity.
+  if (archetype === 'CHOCOLATE')
+    return inferredFamily === 'cocoa_butter' ? 'cocoa_butter' : 'chocolate';
   return inferredFamily ?? 'unknown';
 };
 
@@ -796,7 +803,13 @@ const formOf = (
     return 'SAUCE';
   if (/\b(puree|puree|pulp|przecier)\w*/.test(all)) return 'PUREE';
   if (/\b(paste|pasta|krem)\w*/.test(all)) return 'PASTE';
-  if (/\b(liquid|plyn|syrup|syrop)\w*/.test(all)) return 'LIQUID';
+  if (
+    /\b(liquid|plyn|syrup|syrop|beverage|drink|bebida|boisson|napoj|getrank|getraenk|refresco|soda|lemonade|limonade|tonic|isotonic|electrolyte)\w*/.test(
+      all,
+    )
+  ) {
+    return 'LIQUID';
+  }
   if (/\b(coating|shell|copertura|polewa|otulina)\w*/.test(all)) return 'COATING';
   if (/(?:\b(?:powder|polvo|poudre|pulver|proszek|polvere|liofiliz)\w*|\bpo\b)/.test(all)) {
     return 'POWDER';
@@ -804,7 +817,7 @@ const formOf = (
   if (/\b(dry tea|dried leaves|suszon[a-z]* lisc|herbata sucha|lisciasta)\b/.test(all))
     return 'DRY';
   if (
-    /\b(baton\w*|bar\b|wafer\w*|wafel\w*|cookie\w*|biscuit\w*|ciastk\w*|chocolate tablet\w*|tabliczk\w*)/.test(
+    /\b(baton\w*|bar\b|wafer\w*|wafel\w*|cookie\w*|biscuit\w*|brownie\w*|ciastk\w*|chocolate tablet\w*|tabliczk\w*)/.test(
       all,
     ) ||
     archetype === 'CONFECTIONERY'
@@ -815,6 +828,16 @@ const formOf = (
   }
   if (archetype === 'TEA') return 'DRY';
   if (archetype === 'COFFEE') return 'DRY';
+  // A chocolate article whose identity or description names the solid article
+  // (tablet, bar, couverture, callets, chunks…) is SOLID. A chocolate with no
+  // form cue at all stays UNKNOWN for the model, as the owner's gate requires.
+  if (
+    archetype === 'CHOCOLATE' &&
+    /\b(tablet\w*|tableta\w*|tabliczk\w*|tafel\w*|bar|bars|barra\w*|riegel|couverture|kuwertur\w*|callets|drops|chunks|block\w*|pieces|pastilles)\b/.test(
+      all,
+    )
+  )
+    return 'SOLID';
   return 'UNKNOWN';
 };
 
@@ -881,9 +904,43 @@ const mapperCategoriesFor = (
     stabilizer_hydrocolloid: ['stabilizer'],
     emulsifier: ['emulsifier', 'stabilizer'],
     alcohol: ['alcohol'],
+    beverage: ['beverage'],
+    // Families whose Mapper home is unambiguous. Without these a product whose
+    // NAME carries no Mapper vocabulary (a Spanish or German retail name) but
+    // whose kind is known has no candidate pool at all — the matcher then
+    // reports "no donor" although the Mapper holds dozens of verified rows of
+    // exactly that kind. Mirrors the matcher's own ALLOWED_CATEGORIES.
+    plant_beverage: ['beverage'],
+    dairy_liquid: ['dairy', 'specialty'],
+    dairy_protein: ['dairy', 'protein', 'specialty'],
+    plant_protein_isolate: ['protein'],
+    coconut_fat: ['coconut', 'fat'],
+    liquid_vegetable_oil: ['fat', 'coconut'],
+    sugar_sucrose: ['sweetener'],
+    glucose_dextrose: ['sweetener'],
+    other_sugar: ['sweetener'],
+    starch: ['starch', 'fiber', 'base_mix'],
+    fibre_inulin: ['fiber', 'stabilizer'],
+    flavor_paste: ['flavor_paste', 'flavor_powder', 'flavor_syrup', 'flavor_concentrate'],
+    inclusion: ['inclusion', 'bakery_inclusion', 'confectionery_inclusion'],
+    confectionery: ['inclusion', 'bakery_inclusion', 'confectionery_inclusion'],
   };
   return map[family] ?? [];
 };
+
+/** The Mapper categories a resolved kind may draw candidates from (shared with the customer family gate). */
+export const mapperCategoriesForSemantics = mapperCategoriesFor;
+
+/** Archetypes whose identity includes how they are dosed. */
+export const dosageGovernsArchetype = (archetype: ProductArchetype): boolean =>
+  [
+    'STABILIZER',
+    'EMULSIFIER',
+    'INTEGRATOR',
+    'TECHNICAL_ADDITIVE',
+    'BASE_MIX',
+    'FLAVOR_CONCENTRATE',
+  ].includes(archetype);
 
 /** Deterministic first pass. It never calls a model and never fabricates missing fields. */
 export function classifyProductSemantics(
@@ -942,7 +999,13 @@ export function classifyProductSemantics(
   if (physicalForm === 'UNKNOWN' && productArchetype !== 'NORMAL_INGREDIENT') {
     modelReasonCodes.push('FORM_UNKNOWN');
   }
-  if (dosage.semantics === 'UNKNOWN') modelReasonCodes.push('DOSAGE_SEMANTICS_UNKNOWN');
+  // Dosage wording is part of the identity only where dosage governs the article
+  // (technical additives, base mixes, concentrates). On a consumer food a stray
+  // web "dosage" string is noise, not an unresolved dimension: it must never
+  // keep the product waiting for a model that has nothing to decide.
+  if (dosage.semantics === 'UNKNOWN' && dosageGovernsArchetype(productArchetype)) {
+    modelReasonCodes.push('DOSAGE_SEMANTICS_UNKNOWN');
+  }
   const modelRequired = modelReasonCodes.length > 0;
 
   const reasonCodes = [
@@ -1135,7 +1198,9 @@ export function validateProductSemanticModelOutput(
     ...(finalFamily === 'unknown' ? ['FAMILY_UNKNOWN'] : []),
     ...(finalForm === 'UNKNOWN' ? ['FORM_UNKNOWN'] : []),
     ...(finalRole === 'NEITHER_REVIEW' ? ['ROLE_UNKNOWN'] : []),
-    ...(dosage.semantics === 'UNKNOWN' ? ['DOSAGE_SEMANTICS_UNKNOWN'] : []),
+    ...(dosage.semantics === 'UNKNOWN' && dosageGovernsArchetype(finalArchetype)
+      ? ['DOSAGE_SEMANTICS_UNKNOWN']
+      : []),
   ];
 
   return {
@@ -1177,6 +1242,11 @@ const compatibleFamilyGroups: readonly (readonly ProductSemanticFamily[])[] = [
   // role gates below still prevent a solid chocolate bar or wet coating from
   // borrowing a powder profile; this only removes the false family-level veto.
   ['chocolate', 'cocoa', 'cocoa_butter'],
+  // A packaged confectionery/bakery article (brownie, cookie, bar) and a Mapper
+  // "inclusion" row are the same kind of post-process solid: the Mapper's own
+  // inclusion rows ARE the reference for such products. Form and role gates
+  // still apply (a sauce cannot lend to a bar).
+  ['confectionery', 'inclusion'],
 ];
 const familyCompatible = (a: ProductSemanticFamily, b: ProductSemanticFamily): boolean =>
   a === 'unknown' ||

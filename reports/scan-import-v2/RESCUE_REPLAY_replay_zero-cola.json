@@ -1,0 +1,259 @@
+{
+  "label": "zero-cola",
+  "gtin": "5449000131805",
+  "recognition": {
+    "deterministic": {
+      "archetype": "UNKNOWN",
+      "family": "unknown",
+      "form": "LIQUID",
+      "role": "NEITHER_REVIEW",
+      "modelRequired": true,
+      "modelReasonCodes": [
+        "ARCHETYPE_UNKNOWN",
+        "FAMILY_UNKNOWN"
+      ],
+      "compatibleMapperCategories": []
+    },
+    "final": {
+      "source": "CUSTOMER_CONFIRMED",
+      "archetype": "NORMAL_INGREDIENT",
+      "family": "beverage",
+      "form": "LIQUID",
+      "role": "BASE_ONLY",
+      "modelRequired": false,
+      "modelReasonCodes": [],
+      "compatibleMapperCategories": [
+        "beverage"
+      ],
+      "familyResolution": "RESOLVED"
+    }
+  },
+  "mapper": {
+    "candidatesBeforeFilter": [
+      "PI-ING-001876",
+      "PI-ING-001877",
+      "PI-ING-001878",
+      "PI-ING-001879",
+      "PI-ING-001894",
+      "PI-ING-001921",
+      "PI-ING-001944",
+      "PI-ING-001953",
+      "PI-ING-001955"
+    ],
+    "candidatesAfterFilter": [
+      "PI-ING-001876",
+      "PI-ING-001879",
+      "PI-ING-001944",
+      "PI-ING-001955",
+      "PI-ING-001877",
+      "PI-ING-001878",
+      "PI-ING-001894",
+      "PI-ING-001953",
+      "PI-ING-001921"
+    ],
+    "rejected": [],
+    "donor": "PI-ING-001876",
+    "similarity": 0.94,
+    "basis": "neighbour_set",
+    "estimatedFromMapperIds": [
+      "PI-ING-001876",
+      "PI-ING-001877",
+      "PI-ING-001878",
+      "PI-ING-001879",
+      "PI-ING-001894"
+    ],
+    "hintCategories": [],
+    "verified": {
+      "confidence": 0.94,
+      "basis": "neighbour_set",
+      "rejected": null,
+      "candidatesBeforeFilter": [
+        "PI-ING-001876",
+        "PI-ING-001877",
+        "PI-ING-001878",
+        "PI-ING-001879",
+        "PI-ING-001894"
+      ],
+      "candidatesAfterFilter": [
+        "PI-ING-001876",
+        "PI-ING-001879",
+        "PI-ING-001877",
+        "PI-ING-001878",
+        "PI-ING-001894"
+      ],
+      "rejectedCandidates": [],
+      "donorReference": "PI-ING-001876"
+    }
+  },
+  "fieldTruth": {
+    "water_percent": {
+      "value": 99.98,
+      "state": "ESTIMATED",
+      "basis": "derived",
+      "confidence": 0.7857,
+      "refs": [
+        "PI-ING-001876",
+        "PI-ING-001879",
+        "PI-ING-001877",
+        "PI-ING-001878",
+        "PI-ING-001894"
+      ]
+    },
+    "total_solids_percent": {
+      "value": 0.02,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.7857,
+      "refs": [
+        "PI-ING-001876",
+        "PI-ING-001879",
+        "PI-ING-001877",
+        "PI-ING-001878",
+        "PI-ING-001894"
+      ]
+    },
+    "fat_percent": {
+      "value": 0,
+      "state": "VERIFIED",
+      "basis": "user_confirmed",
+      "confidence": 0.81,
+      "refs": []
+    },
+    "protein_percent": {
+      "value": 0,
+      "state": "VERIFIED",
+      "basis": "user_confirmed",
+      "confidence": 0.81,
+      "refs": []
+    },
+    "carbohydrate_percent": {
+      "value": 0,
+      "state": "VERIFIED",
+      "basis": "user_confirmed",
+      "confidence": 0.81,
+      "refs": []
+    },
+    "total_sugars_percent": {
+      "value": 0,
+      "state": "VERIFIED",
+      "basis": "user_confirmed",
+      "confidence": 0.81,
+      "refs": []
+    },
+    "sucrose_percent": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.94,
+      "refs": [
+        "PI-ING-001876"
+      ]
+    },
+    "dextrose_percent": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.94,
+      "refs": [
+        "PI-ING-001876"
+      ]
+    },
+    "glucose_percent": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.94,
+      "refs": [
+        "PI-ING-001876"
+      ]
+    },
+    "fructose_percent": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.94,
+      "refs": [
+        "PI-ING-001876"
+      ]
+    },
+    "lactose_percent": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.94,
+      "refs": [
+        "PI-ING-001876"
+      ]
+    },
+    "polyol_percent": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.94,
+      "refs": [
+        "PI-ING-001876"
+      ]
+    },
+    "fiber_percent": {
+      "value": 0,
+      "state": "VERIFIED",
+      "basis": "user_confirmed",
+      "confidence": 0.81,
+      "refs": []
+    },
+    "salt_percent": {
+      "value": 0.02,
+      "state": "VERIFIED",
+      "basis": "user_confirmed",
+      "confidence": 0.81,
+      "refs": []
+    },
+    "alcohol_percent": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.94,
+      "refs": [
+        "PI-ING-001876"
+      ]
+    },
+    "kcal_per_100g": {
+      "value": 0.2,
+      "state": "VERIFIED",
+      "basis": "user_confirmed",
+      "confidence": 0.81,
+      "refs": []
+    },
+    "pod_value": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.94,
+      "refs": [
+        "PI-ING-001876"
+      ]
+    },
+    "pac_value": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.94,
+      "refs": [
+        "PI-ING-001876"
+      ]
+    }
+  },
+  "missingEngineFields": [],
+  "criticalPhysicsBlockers": [],
+  "sweetnessPath": {
+    "kind": "trivially_zero",
+    "resolved": true,
+    "reason": "Brak cukrow i polioli oraz brak semantycznej przeslanki alkoholu — moce sa zerowe"
+  },
+  "readiness": "ESTIMATED_READY",
+  "engineUsable": true,
+  "productAccuracy": 94.8,
+  "roleReadiness": "BASE_READY",
+  "ready": true,
+  "blockers": []
+}

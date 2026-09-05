@@ -1,0 +1,24 @@
+{
+  "label": "milka-choco-brownie",
+  "gtin": "7622210669315",
+  "customerFamily": "cocoa_chocolate",
+  "confirmedFields": ["identity", "brand", "ingredients", "allergens", "nutritionBasis", "energyKcal", "fat", "carbohydrate", "sugars", "fiber", "protein", "salt"],
+  "scanResult": {
+    "claims": ["Una sabrosa combinación de bizcocho esponjoso y el delicioso sabor del chocolate con leche acompañado de trocitos de chocolate Milka hacen de este brownie el descanso más tierno y dulce del día."],
+    "package": { "unit": "g", "netQuantity": 150, "netQuantityText": "150 g" },
+    "barcodes": [{ "value": "7622210669315", "format": "EAN_13" }],
+    "identity": { "brand": "Milka", "variant": null, "category": "Brownies", "displayName": "Choco brownie", "originalName": null, "labelLanguages": [], "countryOfOrigin": "España", "explicitlyUnbranded": false },
+    "warnings": [], "conflicts": [], "evidence": [],
+    "nutrition": { "fat": 27, "salt": 0.3725, "basis": "per_100g", "fibre": 1.7, "sugars": 38, "protein": 5, "energyKj": 1947.6, "energyKcal": 467.495219885277, "carbohydrate": 50, "saturatedFat": 12 },
+    "manufacturer": "Mondeléz Deutschland GmbH, 28078 Bremen", "allergensText": "eggs, gluten, milk, soybeans", "missingFields": [], "schemaVersion": "gellatti_product_scan_v1",
+    "ingredientsText": "Azúcar, HUEVO, grasa de palma, harina de TRIGO, aceite de nabina, pasta de cacao, manteca de cacao, jarabe de glucosa, humectante (glicerol), LECHE en polvo, cacao magro en polvo, LECHE desnatada en polvo, emulgentes (E492, lecitinas de SOJA, E476), LECHE desnatada condensada, suero de LECHE en polvo, grasa de LECHE, almidón, sal, conservador (sorbato potásico), corrector de acidez (ácido cítrico), gelificante (alginato de sodio), gasificantes (carbonatos de sodio, difosfatos), aromas. PUEDE CONTENER FRUTOS DE CASCARA Y GRANOS DE SÉSAMO.",
+    "mayContainAllergens": [], "storageInstructions": null,
+    "productionDeclarations": { "brix": null, "alcoholAbv": null, "dosageText": null, "formDeclaration": null, "concentrationText": null, "cocoaButterPercent": null, "cocoaSolidsPercent": null, "fruitContentPercent": null, "technicalParametersText": null },
+    "externalSources": [
+      { "url": "https://foodclock.com/food/brownies/choco-brownie/7622210669315", "title": "Choco brownie, Milka — barcode 7622210669315", "fieldsUsed": ["identity.category"], "sourceType": "web_search" },
+      { "url": "https://www.milka.com/es/productos/milka-choco-brownie-150g-41130/", "title": "Milka Choco Brownie 150g", "fieldsUsed": ["claims", "ingredientsText", "allergensText", "nutrition.basis", "nutrition.energyKj", "nutrition.energyKcal", "nutrition.fat", "nutrition.saturatedFat", "nutrition.carbohydrate", "nutrition.sugars", "nutrition.fibre", "nutrition.protein", "nutrition.salt", "package.netQuantity"], "sourceType": "web_search" },
+      { "url": "https://www.compraonline.alcampo.es/products/milka-brownies-de-chocolate-6-uds-x-25-g/714151", "title": "MILKA Brownies de chocolate 6 uds. x 25 g.", "fieldsUsed": ["identity.countryOfOrigin"], "sourceType": "web_search" },
+      { "url": "https://www.lebensmittel-sonderposten.de/produkte/suesswaren/kuchen-gebaeck/7184/milka-choco-brownie-kuchen-150g-mhd-31.5.23", "title": "Milka Choco Brownie Kuchen 150g", "fieldsUsed": ["manufacturer"], "sourceType": "web_search" }
+    ]
+  }
+}

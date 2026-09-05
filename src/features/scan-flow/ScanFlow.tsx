@@ -42,6 +42,7 @@ import {
   type CaptureFrame,
   type CaptureStatus,
 } from './scanCoreCapture';
+import { reenrichOwnProvisional } from './reenrichment';
 import {
   confirmationsFromFields,
   ledgerIdentity,
@@ -233,6 +234,8 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
   const refusedOnceRef = useRef(false);
   /** the customer already answered the family question in this session — never ask it twice */
   const familyAnsweredRef = useRef(false);
+  /** one automatic re-enrichment attempt per scan of an own private not-ready product */
+  const reenrichedRef = useRef(false);
   const familyRef = useRef<CustomerFamily | null>(null);
   const valuesRef = useRef<Record<string, string | boolean>>({});
   const trackedSinceRef = useRef<number | null>(null);
@@ -342,6 +345,31 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
             return;
           }
           if (r.product) {
+            // An exact product this account holds privately but not recipe-ready: the SAME automatic
+            // enrichment a new product gets runs once more (sources → recognition → reference
+            // completion → readiness), silently. Ready → the superseded product is shown as saved and
+            // usable; still not ready → the known product is shown exactly as before. Never a question.
+            if (
+              ports &&
+              r.product.entityKind === 'customer_provisional' &&
+              !r.product.engineReady &&
+              ctx.accountId !== null &&
+              !reenrichedRef.current
+            ) {
+              reenrichedRef.current = true;
+              setPhase({ kind: 'resolving', code });
+              const upgraded = await reenrichOwnProvisional({
+                identity: r.identity,
+                ctx,
+                ports,
+                familyHint: familyRef.current,
+              }).catch(() => null);
+              if (codeRef.current !== code) return;
+              if (upgraded && upgraded.kind === 'discovered_exact' && upgraded.engineReady) {
+                await handleResult(upgraded, code, ctx);
+                return;
+              }
+            }
             setPhase({
               kind: 'known',
               product: r.product,
@@ -496,6 +524,7 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
       labelTriedRef.current = false;
       refusedOnceRef.current = false;
       familyAnsweredRef.current = false;
+      reenrichedRef.current = false;
       analysesUsedRef.current = 0;
       analysisInFlightRef.current = false;
       setBusy(true);

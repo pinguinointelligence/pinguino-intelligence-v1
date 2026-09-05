@@ -296,9 +296,28 @@ async function serverSemanticClassification(input: {
   authorization: string;
   sessionId: string;
   evidence: ReturnType<typeof productSemanticEvidenceFromScanResult>;
-}): Promise<ProductSemanticClassification> {
+}): Promise<{
+  classification: ProductSemanticClassification;
+  semanticModelAudit: {
+    required: boolean;
+    attempted: boolean;
+    outcome: 'not_required' | 'accepted' | 'rejected' | 'unavailable';
+    cacheHit: boolean | null;
+    error: string | null;
+  };
+}> {
   const deterministic = classifyProductSemantics(input.evidence);
-  if (!deterministic.modelRequired) return deterministic;
+  if (!deterministic.modelRequired)
+    return {
+      classification: deterministic,
+      semanticModelAudit: {
+        required: false,
+        attempted: false,
+        outcome: 'not_required',
+        cacheHit: null,
+        error: null,
+      },
+    };
   try {
     const response = await fetch(`${input.url}/functions/v1/intimport-enrich`, {
       method: 'POST',
@@ -314,8 +333,18 @@ async function serverSemanticClassification(input: {
         evidence: input.evidence,
       }),
     });
-    if (!response.ok) return deterministic;
     const payload = objectValue(await response.json());
+    if (!response.ok)
+      return {
+        classification: deterministic,
+        semanticModelAudit: {
+          required: true,
+          attempted: true,
+          outcome: 'unavailable',
+          cacheHit: null,
+          error: typeof payload.error === 'string' ? payload.error.slice(0, 160) : `http_${response.status}`,
+        },
+      };
     const classification = objectValue(
       payload.classification,
     ) as unknown as ProductSemanticClassification;
@@ -324,12 +353,40 @@ async function serverSemanticClassification(input: {
       classification.classificationSource === 'SERVER_MODEL' &&
       classification.evidenceFingerprint === deterministic.evidenceFingerprint
     )
-      return classification;
+      return {
+        classification,
+        semanticModelAudit: {
+          required: true,
+          attempted: true,
+          outcome: 'accepted',
+          cacheHit: payload.cacheHit === true,
+          error: null,
+        },
+      };
+    return {
+      classification: deterministic,
+      semanticModelAudit: {
+        required: true,
+        attempted: true,
+        outcome: 'rejected',
+        cacheHit: payload.cacheHit === true,
+        error: 'invalid_semantic_model_authority',
+      },
+    };
   } catch {
     // A model outage cannot create authority. Deterministic UNKNOWN is retained
     // and the short family confirmation remains available to the customer.
+    return {
+      classification: deterministic,
+      semanticModelAudit: {
+        required: true,
+        attempted: true,
+        outcome: 'unavailable',
+        cacheHit: null,
+        error: 'semantic_provider_unavailable',
+      },
+    };
   }
-  return deterministic;
 }
 
 Deno.serve(async (request) => {
@@ -411,13 +468,15 @@ Deno.serve(async (request) => {
   if (!corrections.barcode) return json({ error: 'customer_product_valid_ean_required' }, 409);
 
   const recognitionEvidence = productSemanticEvidenceFromScanResult(corrections.result);
-  let recognition = await serverSemanticClassification({
+  const semanticClassification = await serverSemanticClassification({
     url,
     anonKey,
     authorization,
     sessionId,
     evidence: recognitionEvidence,
   });
+  let recognition = semanticClassification.classification;
+  const semanticModelAudit = semanticClassification.semanticModelAudit;
   const familyChoice = FAMILY_CHOICES.has(body.customerFamily as CustomerProductFamilyChoice)
     ? (body.customerFamily as CustomerProductFamilyChoice)
     : null;
@@ -435,6 +494,7 @@ Deno.serve(async (request) => {
     packageEvidenceExhausted: objectValue(body.confirmations).packageEvidenceExhausted === true,
     customerFamily: familyChoice,
     recognition,
+    classificationModel: semanticModelAudit,
   };
   const persistedAt = new Date().toISOString();
   const { data: persisted, error: persistError } = await service
@@ -546,6 +606,7 @@ Deno.serve(async (request) => {
         : [],
     },
     classification: recognition,
+    classificationModel: semanticModelAudit,
     completion: {
       mapperDonorId: profile.profileReferenceMapperIngredientId,
       mapperSimilarity: profile.mapperSimilarity,

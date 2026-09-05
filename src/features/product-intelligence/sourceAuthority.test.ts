@@ -72,7 +72,9 @@ describe('source authority is classified from the actual source', () => {
   });
 
   it('recognizes a structured product/GTIN database', () => {
-    const result = classifySourceAuthority({ url: 'https://world.openfoodfacts.org/product/59024' });
+    const result = classifySourceAuthority({
+      url: 'https://world.openfoodfacts.org/product/59024',
+    });
     expect(result.authority).toBe('STRUCTURED_PRODUCT_DATABASE');
     expect(result.evidenceSource).toBe('barcode_registry');
   });
@@ -147,7 +149,9 @@ describe('one implementation, shared by server and client', () => {
     expect(canonical).toMatch(/function classifySourceAuthority/);
     expect(canonical).toContain('RETAILER_DOMAINS');
     // … and the Edge module only re-exports them, never restates them.
-    expect(edgeShim).toContain("export * from '../../../src/features/product-intelligence/sourceAuthority.ts'");
+    expect(edgeShim).toContain(
+      "export * from '../../../src/features/product-intelligence/sourceAuthority.ts'",
+    );
     expect(edgeShim).not.toMatch(/function classifySourceAuthority|RETAILER_DOMAINS/);
   });
 
@@ -201,5 +205,13 @@ describe('private-label ownership', () => {
           .authority,
       ).toBe('OFFICIAL_PRIVATE_LABEL');
     }
+  });
+});
+
+describe('brand domains of multi-word brands', () => {
+  it('recognizes vitaminwell.com as the official domain of "Vitamin Well"', () => {
+    expect(domainMatchesEntity('vitaminwell.com', 'Vitamin Well')).toBe(true);
+    expect(domainMatchesEntity('milka.com', 'Milka')).toBe(true);
+    expect(domainMatchesEntity('elcorteingles.es', 'Vitamin Well')).toBe(false);
   });
 });

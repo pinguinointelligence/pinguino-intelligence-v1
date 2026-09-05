@@ -394,6 +394,83 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     expect(text(), before.slice(0, 300)).toContain('Produkt zapisany prywatnie');
   });
 
+  it('a rescan of an own private not-ready product re-runs the automatic enrichment once and shows it ready', async () => {
+    const { discovery, registry } = fakes();
+    const p = (globalThis as Record<string, unknown>)['__scanFlowPorts'] as ReturnType<
+      typeof import('@/scan-import-v2/__tests__/fakes').ports
+    >;
+    const CODE = '4008400402222'; // an own private product that could not be completed at first (fresh EAN: the fake authority is shared across journeys)
+    p.catalog.rows.push({
+      productId: 'ca-own-1',
+      productCode: 'linked:user-1',
+      displayName: 'Sport 002',
+      brand: 'Vitamin Well',
+      ean: CODE,
+      strength: 'provisional_linked',
+      entityKind: 'customer_provisional',
+      engineReady: false,
+      mapperSlotId: null,
+      country: null,
+    });
+    p.behaviour.outcomes.set('ca-own-1', 'unknown_requires_review');
+    registry.set(CODE, {
+      provider: 'openfoodfacts',
+      queriedAt: 1,
+      query: CODE,
+      confidence: 0.9,
+      facts: [
+        {
+          field: 'identity.displayName',
+          value: 'Sport 002',
+          sourceUrl: 'u',
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'identity.brand',
+          value: 'Vitamin Well',
+          sourceUrl: 'u',
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'nutrition.energyKcal',
+          value: '1',
+          sourceUrl: 'u',
+          authority: 'barcode_registry',
+        },
+        { field: 'nutrition.fat', value: '0', sourceUrl: 'u', authority: 'barcode_registry' },
+        {
+          field: 'nutrition.carbohydrate',
+          value: '0',
+          sourceUrl: 'u',
+          authority: 'barcode_registry',
+        },
+        { field: 'nutrition.sugars', value: '0', sourceUrl: 'u', authority: 'barcode_registry' },
+        { field: 'nutrition.protein', value: '0', sourceUrl: 'u', authority: 'barcode_registry' },
+        { field: 'nutrition.salt', value: '0.12', sourceUrl: 'u', authority: 'barcode_registry' },
+        {
+          field: 'ingredientsText',
+          value: 'water, citric acid, sucralose',
+          sourceUrl: 'u',
+          authority: 'barcode_registry',
+        },
+      ],
+    });
+    // this time the authorities can complete it (a trusted reference of the same kind was found)
+    discovery.authorityEngineUsable.set(`CA-${CODE}`, true);
+    await act(async () => {
+      root.render(<ScanFlow mode="catalog" />);
+    });
+    await typeCode(CODE);
+    await flush();
+    await flush();
+    expect(text()).toContain('Sport 002');
+    // no family question, no photos, no fields: the product came back ready and saved
+    expect(text()).not.toContain('Co to za produkt?');
+    expect(text()).not.toContain('wymaga jeszcze weryfikacji');
+    expect(text()).toContain('Zapisano jako Twój produkt');
+    expect(discovery.calls.filter((c) => c.startsWith(`finalize:${CODE}`)).length).toBe(1);
+  });
+
   it('owner contract: a not-ready exact product is saved privately, never lost to a category or a photo loop', async () => {
     const { discovery, registry } = fakes();
     const CODE = '8411902004089'; // Cabreiroá — registry knows name + brand, nothing else

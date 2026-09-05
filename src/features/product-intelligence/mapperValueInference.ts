@@ -1071,6 +1071,7 @@ const ALLOWED_CATEGORIES: Readonly<Partial<Record<ProductFamilyId, readonly stri
     dairy_liquid: ['dairy', 'specialty'],
     dairy_protein: ['dairy', 'protein', 'specialty'],
     plant_beverage: ['beverage', 'plant_beverage'],
+    beverage: ['beverage'],
     fruit: ['fruit', 'vegetable'],
     chocolate: ['chocolate', 'cocoa', 'confectionery_inclusion'],
     cocoa_butter: ['chocolate', 'cocoa', 'fat'],
@@ -1169,9 +1170,7 @@ function donorSugarSpectrumCoversDeclaredTotal(
   return knownValues.reduce((total, value) => total + value, 0) + Number.EPSILON >= declaredTotal;
 }
 
-function mostCompleteProfileDonor(
-  rows: readonly MapperKnowledgeRow[],
-): MapperKnowledgeRow | null {
+function mostCompleteProfileDonor(rows: readonly MapperKnowledgeRow[]): MapperKnowledgeRow | null {
   let best: MapperKnowledgeRow | null = null;
   let bestCompleteness = -1;
   for (const row of rows) {
@@ -1229,7 +1228,7 @@ const semanticDecisionFor = (
       })
     : { compatible: true as const, reasonCodes: [] as string[] };
 
-function semanticFilterRows(
+export function semanticFilterRows(
   semantic: ProductSemanticClassification | null | undefined,
   rows: readonly MapperKnowledgeRow[],
 ): {
@@ -1413,68 +1412,107 @@ export function findProfileMatch(
           (row) => normalizeName(row.brand) === normalizeName(input.brand),
         )
       : [];
-  const pool =
-    similar.rows.length > 0
-      ? similar.rows
-      : brandTaxonomyRows.length > 0
-        ? brandTaxonomyRows
-        : brandSemanticRows.length > 0
-          ? brandSemanticRows
-          : semanticCategoryRows.length > 0
-            ? semanticCategoryRows
-            : productFamily
-              ? (knowledge.byFamily.get(productFamily) ?? [])
-              : [];
-  const candidatesBeforeFilter = pool.map((row) => row.ingredient_id);
+  // Candidate pools in precedence order. The FIRST pool that yields at least one
+  // scoreable (semantically compatible, complete) candidate decides; a pool whose
+  // every row is refused must not shadow the next one — a name-similar set of
+  // chocolate pastes used to hide the verified inclusion rows that Recognition
+  // had explicitly authorized for a packaged brownie. Rejections from every pool
+  // tried stay in the audit.
+  const semanticCategoryPool =
+    semanticCategories.size > 0
+      ? knowledge.rows.filter((row) => {
+          const category = normalizeName(row.ingredient_category).replace(/\s+/g, '_');
+          return [...semanticCategories].some(
+            (allowed) => category === allowed || category.startsWith(`${allowed}_`),
+          );
+        })
+      : [];
+  const pools: readonly (readonly MapperKnowledgeRow[])[] = [
+    similar.rows,
+    brandTaxonomyRows,
+    brandSemanticRows,
+    semanticCategoryRows.length > 0 ? semanticCategoryRows : semanticCategoryPool,
+    productFamily ? (knowledge.byFamily.get(productFamily) ?? []) : [],
+  ].filter((candidates) => candidates.length > 0);
+  const seenBefore = new Set<string>();
+  const candidatesBeforeFilter: string[] = [];
+  const scorePool = (candidates: readonly MapperKnowledgeRow[]) =>
+    candidates
+      .map((row) => {
+        if (!seenBefore.has(row.ingredient_id)) {
+          seenBefore.add(row.ingredient_id);
+          candidatesBeforeFilter.push(row.ingredient_id);
+        }
+        const rowFamily = familyOf(row);
 
-  const scored = pool
-    .map((row) => {
-      const rowFamily = familyOf(row);
+        // HARD CONTRADICTIONS ONLY. Family is one signal among several, not a
+        // passport: an unknown family lowers what a candidate can score, but it
+        // never bars a match that other evidence carries. What IS barred is a
+        // known kind meeting an incompatible one — a yoghurt cannot take a soft
+        // drink's profile however close their macros read.
+        if (!familiesCompatible(productFamily, rowFamily)) {
+          reject(row, ['SEMANTIC_FAMILY_CONTRADICTION']);
+          return null;
+        }
+        if (!categoryAllowed(productFamily, row)) {
+          reject(row, ['SEMANTIC_CATEGORY_CONTRADICTION']);
+          return null;
+        }
+        const semantic = semanticDecisionFor(input.semantic, row);
+        if (!semantic.compatible) {
+          reject(row, semantic.reasonCodes);
+          return null;
+        }
 
-      // HARD CONTRADICTIONS ONLY. Family is one signal among several, not a
-      // passport: an unknown family lowers what a candidate can score, but it
-      // never bars a match that other evidence carries. What IS barred is a
-      // known kind meeting an incompatible one — a yoghurt cannot take a soft
-      // drink's profile however close their macros read.
-      if (!familiesCompatible(productFamily, rowFamily)) {
-        reject(row, ['SEMANTIC_FAMILY_CONTRADICTION']);
-        return null;
-      }
-      if (!categoryAllowed(productFamily, row)) {
-        reject(row, ['SEMANTIC_CATEGORY_CONTRADICTION']);
-        return null;
-      }
-      const semantic = semanticDecisionFor(input.semantic, row);
-      if (!semantic.compatible) {
-        reject(row, semantic.reasonCodes);
-        return null;
-      }
+        const completeness = profileCompleteness(row);
+        if (completeness === 0) return null;
+        const similarity = macroSimilarity(row, input.knownMacros);
 
-      const completeness = profileCompleteness(row);
-      if (completeness === 0) return null;
-      const similarity = macroSimilarity(row, input.knownMacros);
+        // How much the kind of thing is actually established on both sides. The
+        // Mapper-family inference knows only Engine ingredient families; when
+        // Product Recognition established the SAME kind on both sides (for example
+        // confectionery ↔ inclusion, beverage ↔ beverage) that agreement is family
+        // evidence too — otherwise two well-recognized articles scored as "two
+        // unknown kinds" and could never reach the floor.
+        const semanticFamilyAgreement =
+          input.semantic != null &&
+          input.semantic.ingredientFamily !== 'unknown' &&
+          'candidate' in semantic &&
+          semantic.candidate.ingredientFamily !== 'unknown';
+        // Engine-family agreement (both Mapper families known) is the strongest
+        // kind evidence (1). Recognition-level kind agreement is coarser — an
+        // "inclusion" spans cookies, bars, candied fruit and gummies — so it
+        // counts for less (0.8): close macros still carry a match, mediocre ones
+        // no longer reach the floor on kind agreement alone.
+        const familySignal =
+          productFamily !== null && rowFamily !== null
+            ? 1
+            : semanticFamilyAgreement
+              ? 0.8
+              : productFamily !== null || rowFamily !== null
+                ? 0.6
+                : 0.4;
 
-      // How much the kind of thing is actually established on both sides.
-      const familySignal =
-        productFamily !== null && rowFamily !== null
-          ? 1
-          : productFamily !== null || rowFamily !== null
-            ? 0.6
-            : 0.4;
+        // Declared macros are the strongest validation available, so they dominate
+        // when present. Without them a strong identity match against a complete,
+        // compatible profile can still carry a product — which is the whole point
+        // of a proxy — while two unknown kinds together cannot reach the floor.
+        const score =
+          similarity === null
+            ? 0.62 + 0.22 * familySignal + 0.1 * completeness
+            : 0.5 + 0.3 * similarity + 0.12 * familySignal + 0.08 * completeness;
 
-      // Declared macros are the strongest validation available, so they dominate
-      // when present. Without them a strong identity match against a complete,
-      // compatible profile can still carry a product — which is the whole point
-      // of a proxy — while two unknown kinds together cannot reach the floor.
-      const score =
-        similarity === null
-          ? 0.62 + 0.22 * familySignal + 0.1 * completeness
-          : 0.5 + 0.3 * similarity + 0.12 * familySignal + 0.08 * completeness;
-
-      return { row, score, similarity, completeness };
-    })
-    .filter((entry): entry is NonNullable<typeof entry> => entry !== null)
-    .sort((a, b) => b.score - a.score);
+        return { row, score, similarity, completeness };
+      })
+      .filter((entry): entry is NonNullable<typeof entry> => entry !== null)
+      .sort((a, b) => b.score - a.score);
+  let scored: ReturnType<typeof scorePool> = [];
+  let pool: readonly MapperKnowledgeRow[] = [];
+  for (const candidates of pools) {
+    pool = candidates;
+    scored = scorePool(candidates);
+    if (scored.length > 0) break;
+  }
 
   if (scored.length === 0) {
     return productFamily || pool.length > 0

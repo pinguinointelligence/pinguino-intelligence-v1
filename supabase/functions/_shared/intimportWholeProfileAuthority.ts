@@ -118,6 +118,18 @@ export interface IntimportTrustedProductProfile {
   mapperCandidatesBeforeFilter: string[];
   mapperCandidatesAfterFilter: string[];
   mapperRejectedCandidates: { ingredientId: string; reasonCodes: string[] }[];
+  /** Mapper categories the broad semantic probe suggested when Recognition named none (audit). */
+  mapperSemanticHintCategories?: string[];
+  /** The VERIFIED-donor match on its own (audit): what the numeric authority saw and decided. */
+  mapperVerifiedMatch?: {
+    confidence: number;
+    basis: string;
+    rejected: string | null;
+    candidatesBeforeFilter: string[];
+    candidatesAfterFilter: string[];
+    rejectedCandidates: { ingredientId: string; reasonCodes: string[] }[];
+    donorReference: string | null;
+  };
   mapperFingerprint: string;
   recognition: ProductSemanticClassification | null;
 }
@@ -259,6 +271,18 @@ export function validateIntimportProductProfileProposal(
     input.trustedRecognition.evidenceFingerprint === deterministicRecognition.evidenceFingerprint
       ? input.trustedRecognition
       : deterministicRecognition;
+  // Candidate discovery and numeric authority are deliberately separate. All
+  // active Mapper rows may explain what kind of product was considered and why
+  // it was rejected, but only the verified/Engine-approved subset below is
+  // allowed to lend a single number to the product-owned profile.
+  const broadKnowledge = buildMapperKnowledge(
+    input.rows.filter((row) => row.is_active !== false),
+    mapperFingerprint,
+  );
+  const broadSemanticMatch = findProfileMatch(
+    { ...input.matchInput, semantic: recognition },
+    broadKnowledge,
+  );
   // Only verified, Engine-approved Mapper rows may contribute estimates. The
   // browser's proposed ID is deliberately ignored: the server recomputes the
   // donor from canonical facts, and a stale/wrong hint must degrade to the
@@ -268,26 +292,59 @@ export function validateIntimportProductProfileProposal(
     mapperFingerprint,
   );
   const evidenceAssessment = assessProductConfidence(input.evidence);
-  const resolved = resolveProductWorkingValues(
-    {
-      declared: input.declared,
-      declaredBasis: input.declaredBasis,
-      declaredConfidence: evidenceAssessment.confidence / 100,
-      sourceCard: input.sourceCard ?? null,
-      identity: {
-        name: input.matchInput.name,
-        variant: input.matchInput.variant,
-        brand: input.matchInput.brand,
-        category: input.matchInput.category,
-        subcategory: input.matchInput.subcategory,
-        barcode: input.matchInput.barcode,
-        semantic: recognition,
+  const resolveWith = (semantic: ProductSemanticClassification | null) =>
+    resolveProductWorkingValues(
+      {
+        declared: input.declared,
+        declaredBasis: input.declaredBasis,
+        declaredConfidence: evidenceAssessment.confidence / 100,
+        sourceCard: input.sourceCard ?? null,
+        identity: {
+          name: input.matchInput.name,
+          variant: input.matchInput.variant,
+          brand: input.matchInput.brand,
+          category: input.matchInput.category,
+          subcategory: input.matchInput.subcategory,
+          barcode: input.matchInput.barcode,
+          semantic,
+        },
+        technical: recognition?.isTechnicalProduct ?? input.matchInput.technical === true,
+        technicalAuthority: false,
       },
-      technical: recognition?.isTechnicalProduct ?? input.matchInput.technical === true,
-      technicalAuthority: false,
-    },
-    knowledge,
-  );
+      knowledge,
+    );
+  const isAccepted = (match: ReturnType<typeof findProfileMatch> | null) =>
+    match !== null &&
+    match.confidence >= PROFILE_MATCH_FLOOR &&
+    match.rejected === null &&
+    match.basis !== 'none';
+  // Pass 1: exactly the recognized semantics. Pass 2 (only when pass 1 found no
+  // trusted donor and Recognition named no Mapper categories): the categories of
+  // the rows the broad semantic probe accepted become the candidate hint. The
+  // probe may include Estimated rows — they explain WHAT the product is; the
+  // verified subset still decides every number.
+  let resolved = resolveWith(recognition);
+  const mapperSemanticHintCategories: string[] = [];
+  if (
+    recognition &&
+    recognition.compatibleMapperCategories.length === 0 &&
+    !isAccepted(resolved.profileMatch) &&
+    broadSemanticMatch.confidence >= PROFILE_MATCH_FLOOR &&
+    broadSemanticMatch.rejected === null
+  ) {
+    for (const row of broadSemanticMatch.rows) {
+      const category = (row.ingredient_category ?? '').trim().toLowerCase().replace(/\s+/g, '_');
+      if (category && !mapperSemanticHintCategories.includes(category))
+        mapperSemanticHintCategories.push(category);
+    }
+    if (mapperSemanticHintCategories.length > 0) {
+      const hinted = resolveWith({
+        ...recognition,
+        compatibleMapperCategories: mapperSemanticHintCategories.slice(0, 4),
+      });
+      if (isAccepted(hinted.profileMatch)) resolved = hinted;
+    }
+  }
 
   const acceptedMatch =
     resolved.profileMatch &&
@@ -302,15 +359,7 @@ export function validateIntimportProductProfileProposal(
   // enter `fieldTruth` or `technicalComposition`. BASE products deliberately
   // retain the Verified-only completion rule above.
   const toppingBehaviorMatch =
-    !acceptedMatch && recognition?.intendedUsageRole === 'TOPPING_ONLY'
-      ? findProfileMatch(
-          { ...input.matchInput, semantic: recognition },
-          buildMapperKnowledge(
-            input.rows.filter((row) => row.is_active !== false),
-            mapperFingerprint,
-          ),
-        )
-      : null;
+    !acceptedMatch && recognition?.intendedUsageRole === 'TOPPING_ONLY' ? broadSemanticMatch : null;
   const acceptedBehaviorMatch =
     toppingBehaviorMatch &&
     toppingBehaviorMatch.confidence >= PROFILE_MATCH_FLOOR &&
@@ -401,24 +450,27 @@ export function validateIntimportProductProfileProposal(
     mapperSimilarity: referenceMatch?.confidence ?? null,
     mapperProfileBasis:
       referenceMatch && referenceMatch.basis !== 'none' ? referenceMatch.basis : null,
-    mapperCandidatesBeforeFilter: [
-      ...(referenceMatch?.candidatesBeforeFilter ??
-        resolved.profileMatch?.candidatesBeforeFilter ??
-        []),
-    ],
-    mapperCandidatesAfterFilter: [
-      ...(referenceMatch?.candidatesAfterFilter ??
-        resolved.profileMatch?.candidatesAfterFilter ??
-        []),
-    ],
-    mapperRejectedCandidates: (
-      referenceMatch?.rejectedCandidates ??
-      resolved.profileMatch?.rejectedCandidates ??
-      []
-    ).map((candidate) => ({
+    mapperCandidatesBeforeFilter: [...broadSemanticMatch.candidatesBeforeFilter],
+    mapperCandidatesAfterFilter: [...broadSemanticMatch.candidatesAfterFilter],
+    mapperRejectedCandidates: broadSemanticMatch.rejectedCandidates.map((candidate) => ({
       ingredientId: candidate.ingredientId,
       reasonCodes: [...candidate.reasonCodes],
     })),
+    mapperSemanticHintCategories: [...mapperSemanticHintCategories],
+    mapperVerifiedMatch: resolved.profileMatch
+      ? {
+          confidence: resolved.profileMatch.confidence,
+          basis: resolved.profileMatch.basis,
+          rejected: resolved.profileMatch.rejected,
+          candidatesBeforeFilter: [...resolved.profileMatch.candidatesBeforeFilter],
+          candidatesAfterFilter: [...resolved.profileMatch.candidatesAfterFilter],
+          rejectedCandidates: resolved.profileMatch.rejectedCandidates.map((candidate) => ({
+            ingredientId: candidate.ingredientId,
+            reasonCodes: [...candidate.reasonCodes],
+          })),
+          donorReference: resolved.profileMatch.donorReference ?? null,
+        }
+      : undefined,
     mapperFingerprint,
     recognition,
   };
