@@ -18,6 +18,8 @@ const mocks = vi.hoisted(() => ({
   loadMore: vi.fn(),
   toEngine: vi.fn(),
   isFetching: false,
+  hasMore: true,
+  searchIsSettled: true,
   isSettled: true,
 }));
 
@@ -67,10 +69,11 @@ vi.mock('@/features/global-catalog/useGlobalCatalogPicker', () => ({
         preferredRetailers: [],
         defaultScope: 'global',
       },
+      searchIsSettled: mocks.searchIsSettled,
       isSettled: mocks.isSettled,
       isFetching: mocks.isFetching,
       isError: false,
-      hasMore: true,
+      hasMore: mocks.hasMore,
       loadMore: mocks.loadMore,
       toggleFavorite: mocks.toggleFavorite,
     };
@@ -210,6 +213,8 @@ describe('ProductPickerPopover catalog presentation', () => {
     mocks.markUsed.mockResolvedValue(undefined);
     mocks.setPreferred.mockResolvedValue(undefined);
     mocks.isFetching = false;
+    mocks.hasMore = true;
+    mocks.searchIsSettled = true;
     mocks.isSettled = true;
     Object.defineProperty(window, 'matchMedia', {
       configurable: true,
@@ -233,24 +238,39 @@ describe('ProductPickerPopover catalog presentation', () => {
     intent: 'ADD' | 'REPLACE' = 'ADD',
     replaceInvocation?: ProductPickerReplaceInvocation,
   ) => {
+    const tree = (
+      <MemoryRouter>
+        <ProductPickerPopover
+          library={serverSearchLibrary()}
+          scope="BASE_FORMULATION"
+          intent={intent}
+          replaceInvocation={replaceInvocation}
+          onAdd={onAdd}
+        />
+      </MemoryRouter>
+    );
     await act(async () => {
-      root.render(
-        <MemoryRouter>
-          <ProductPickerPopover
-            library={serverSearchLibrary()}
-            scope="BASE_FORMULATION"
-            intent={intent}
-            replaceInvocation={replaceInvocation}
-            onAdd={onAdd}
-          />
-        </MemoryRouter>,
-      );
+      root.render(tree);
     });
     if (!replaceInvocation) {
       const trigger = document.querySelector<HTMLButtonElement>('button[aria-haspopup="dialog"]');
       await act(async () => trigger?.click());
     }
     return onAdd;
+  };
+
+  const rerenderOpenPicker = async (onAdd = vi.fn()) => {
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <ProductPickerPopover
+            library={serverSearchLibrary()}
+            scope="BASE_FORMULATION"
+            onAdd={onAdd}
+          />
+        </MemoryRouter>,
+      );
+    });
   };
 
   it('A/B/D/F/J hides technical metadata in browsing rows and keeps stable headings', async () => {
@@ -281,6 +301,26 @@ describe('ProductPickerPopover catalog presentation', () => {
       expect(option.getAttribute('aria-label')).not.toMatch(/PI-ING-|Status danych/);
     }
     expect(mocks.markUsed).not.toHaveBeenCalled();
+  });
+
+  it('visually separates the subtly warm Recent block from the white All catalogue', async () => {
+    await renderPicker();
+    const all = document.querySelector<HTMLButtonElement>('[data-product-filter="all"]');
+    await act(async () => all?.click());
+
+    const recent = document.querySelector<HTMLElement>('[data-picker-section="recent"]');
+    const catalogue = document.querySelector<HTMLElement>('[data-picker-section="all"]');
+
+    expect(recent?.className).toContain('bg-[#fffaf5]');
+    expect(recent?.textContent).toContain('OSTATNIO UŻYWANE');
+    expect(recent?.textContent).toContain('BANANA · Fresh Fruit');
+    expect(recent?.className).not.toContain('border');
+
+    expect(catalogue?.className).toContain('bg-white');
+    expect(catalogue?.className).toContain('mt-3');
+    expect(catalogue?.className).toContain('border-t');
+    expect(catalogue?.textContent).toContain('WSZYSTKIE SKŁADNIKI');
+    expect(catalogue?.textContent).not.toContain('BANANA · Fresh Fruit');
   });
 
   it('renders the canonical top-level filter order and keeps form filters contextual', async () => {
@@ -854,5 +894,69 @@ describe('ProductPickerPopover catalog presentation', () => {
     expect(document.body.textContent).toContain('Znaleziono 3 składników');
     expect(document.body.textContent).not.toContain('Znaleziono 0 składników');
     expect(document.body.textContent).not.toContain('Nie znaleziono produktu.');
+  });
+
+  it('reaches a finite true bottom without a blank/reset and then scrolls upward normally', async () => {
+    const firstPage = Array.from({ length: 18 }, (_, index) =>
+      catalogHit({
+        id: `page-one-${index}`,
+        mappedIngredientId: `PI-ING-${String(1000 + index).padStart(6, '0')}`,
+        displayName: `${String(index + 1).padStart(2, '0')} INGREDIENT`,
+        recentlyUsedAt: index < 2 ? `2026-09-0${index + 3}T10:00:00.000Z` : null,
+      }),
+    );
+    const finalItem = catalogHit({
+      id: 'final-page-item',
+      mappedIngredientId: 'PI-ING-009999',
+      displayName: 'ZZZ FINAL INGREDIENT',
+    });
+    mocks.hits = firstPage;
+
+    await renderPicker();
+    const all = document.querySelector<HTMLButtonElement>('[data-product-filter="all"]');
+    await act(async () => all?.click());
+    const list = document.querySelector<HTMLElement>('.product-picker-results');
+    if (!list) throw new Error('catalog list missing');
+    Object.defineProperties(list, {
+      clientHeight: { configurable: true, value: 200 },
+      scrollHeight: { configurable: true, value: 1200 },
+      scrollTop: { configurable: true, value: 1000, writable: true },
+    });
+
+    await act(async () => list.dispatchEvent(new Event('scroll', { bubbles: true })));
+    expect(mocks.loadMore).toHaveBeenCalledTimes(1);
+
+    // This is the real pagination seam: the new search page is current, while
+    // its expanded country/SKU resolution is still pending. Existing and newly
+    // appended rows must remain mounted so the browser preserves scrollTop.
+    mocks.hits = [...firstPage, finalItem];
+    mocks.isFetching = true;
+    mocks.isSettled = false;
+    await rerenderOpenPicker();
+
+    const pendingList = document.querySelector<HTMLElement>('.product-picker-results');
+    expect(pendingList).toBe(list);
+    expect(pendingList?.querySelectorAll('[role="option"]').length).toBeGreaterThan(0);
+    expect(pendingList?.textContent).toContain('ZZZ FINAL INGREDIENT');
+    expect(pendingList?.textContent).not.toContain('Wczytuję katalog…');
+    expect(pendingList?.scrollTop).toBe(1000);
+
+    mocks.isFetching = false;
+    mocks.isSettled = true;
+    mocks.hasMore = false;
+    await rerenderOpenPicker();
+    const finalList = document.querySelector<HTMLElement>('.product-picker-results');
+    expect(finalList).toBe(list);
+    expect(finalList?.textContent).toContain('ZZZ FINAL INGREDIENT');
+    expect(finalList?.scrollTop).toBe(1000);
+
+    await act(async () => finalList?.dispatchEvent(new Event('scroll', { bubbles: true })));
+    expect(mocks.loadMore).toHaveBeenCalledTimes(1);
+
+    if (!finalList) throw new Error('final catalog list missing');
+    finalList.scrollTop = 600;
+    await act(async () => finalList.dispatchEvent(new Event('scroll', { bubbles: true })));
+    expect(finalList.scrollTop).toBe(600);
+    expect(finalList.textContent).toContain('ZZZ FINAL INGREDIENT');
   });
 });

@@ -17,6 +17,7 @@ import {
   isProductionRescueAuthorizationRefreshError,
   isProductionRescueOptionUnavailableError,
   productionRescueErrorMessagePl,
+  productionRescueOptionUnavailableDiagnostics,
   productionRescueOptionUnavailableDetails,
   supabaseProductionRepository,
 } from './supabaseProduction';
@@ -1217,6 +1218,24 @@ describe('supabaseProduction — atomic served start, Rescue, and completion', (
       stableOptionId: 'leave_as_is',
       reason: 'hard_safety_violations',
       violationMetrics: ['lactose_sandiness_risk', 'lactose'],
+      diagnostics: {
+        physicalConfirmedG: 381,
+        forecastMassG: 675,
+        originalTargetG: 670,
+        machineCapacityG: 670,
+        forecastViolationDetails: [
+          { metric: 'lactose', direction: 'high', value: 6.1477, min: 4, max: 6 },
+        ],
+        fixedTargetRebalance: {
+          candidateMassG: 670,
+          violationDetails: [
+            { metric: 'lactose', direction: 'high', value: 6.1936, min: 4, max: 6 },
+          ],
+        },
+        irreducibleConfirmedViolations: [
+          { metric: 'lactose', direction: 'high', value: 6.1936, min: 4, max: 6 },
+        ],
+      },
     };
 
     try {
@@ -1233,6 +1252,16 @@ describe('supabaseProduction — atomic served start, Rescue, and completion', (
       expect(productionRescueOptionUnavailableDetails(error)).toEqual({
         reasonCode: 'hard_safety_violations',
         violationMetrics: ['lactose_sandiness_risk', 'lactose'],
+      });
+      expect(productionRescueOptionUnavailableDiagnostics(error)).toMatchObject({
+        physicalConfirmedG: 381,
+        forecastMassG: 675,
+        originalTargetG: 670,
+        machineCapacityG: 670,
+        fixedTargetRebalance: { candidateMassG: 670 },
+        irreducibleConfirmedViolations: [
+          { metric: 'lactose', direction: 'high', value: 6.1936, min: 4, max: 6 },
+        ],
       });
     }
   });

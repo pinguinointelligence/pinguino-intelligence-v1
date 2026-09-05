@@ -27,12 +27,34 @@ describe('canonical global destination hubs', () => {
     persona = 'pro';
   });
 
-  it('explains one simple public flow without exposing internal tools', () => {
-    const html = render(<HowItWorksPage />);
-    for (const step of ['Pomysł', 'Składniki', 'Gellatti', 'Receptura', 'Produkcja']) {
-      expect(html).toContain(step);
-    }
+  it('renders the eight-step Tour in the one canonical shell without a local header', () => {
+    const html = render(<HowItWorksPage />, '/how-it-works?step=7');
+    expect(html).toContain('data-testid="knowledge-tour"');
+    expect(html).toContain('data-active-step="7"');
+    expect(html).toContain('data-owner-asset="07.png"');
+    expect(html.match(/class="knowledge-tour__dot"/g)).toHaveLength(8);
+    expect(html.match(/data-testid="app-nav-trigger"/g)).toHaveLength(1);
+    expect(html.match(/data-testid="home-pro-switch"/g)).toHaveLength(1);
+    expect(html.match(/data-logo-source="\/brand\/gellatti-wordmark-graphite.svg"/g)).toHaveLength(
+      1,
+    );
+    expect(html).not.toMatch(/gellatti AI/i);
     expect(html).not.toMatch(/API|Mapper|readiness/i);
+    expect(html).not.toContain('DestinationSurface');
+  });
+
+  it('selects the exact source ending for Home and Pro while keeping eight steps', () => {
+    persona = 'home';
+    const home = render(<HowItWorksPage />, '/how-it-works?step=8');
+    expect(home).toContain('data-audience="home"');
+    expect(home).toContain('data-owner-asset="08.png"');
+    expect(home.match(/class="knowledge-tour__dot"/g)).toHaveLength(8);
+
+    persona = 'pro';
+    const pro = render(<HowItWorksPage />, '/how-it-works?step=8');
+    expect(pro).toContain('data-audience="pro"');
+    expect(pro).toContain('data-owner-asset="09.png"');
+    expect(pro.match(/class="knowledge-tour__dot"/g)).toHaveLength(8);
   });
 
   it('keeps Franchise separate from the Collaboration destination', () => {

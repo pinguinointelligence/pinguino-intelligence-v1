@@ -286,6 +286,7 @@ describe('production rescue orchestration', () => {
       scoreDisplay: '10/10',
     });
     expect(assessment.options.map((option) => option.id)).toEqual([
+      'keep_original_batch',
       'restore_original_recipe',
       'leave_as_is',
     ]);
@@ -557,7 +558,7 @@ describe('production rescue orchestration', () => {
     expect(matrix).toHaveLength(12);
     const expectedByOverage = {
       1: {
-        preserve: false,
+        preserve: true,
         enlarge: false,
         restore: true,
         unchanged: true,
@@ -827,6 +828,7 @@ describe('production rescue orchestration', () => {
 
     const assessment = assessProductionRescue(run);
     expect(assessment.options.map((option) => option.id)).toEqual([
+      'keep_original_batch',
       'restore_original_recipe',
       'leave_as_is',
     ]);

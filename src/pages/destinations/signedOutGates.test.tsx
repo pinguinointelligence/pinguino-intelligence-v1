@@ -42,9 +42,13 @@ describe('signed-out and entitlement gates are designed states', () => {
   });
 });
 
-describe('public pages use the shared card and rail language', () => {
+describe('public pages use the approved destination language', () => {
   const recipes = () =>
     readFileSync(join(SRC, 'pages', 'destinations', 'RecipesHubPage.tsx'), 'utf8');
+  const knowledgeTour = () =>
+    readFileSync(join(SRC, 'features', 'knowledge-tour', 'KnowledgeTour.tsx'), 'utf8');
+  const knowledgeTourStyles = () =>
+    readFileSync(join(SRC, 'features', 'knowledge-tour', 'KnowledgeTour.css'), 'utf8');
 
   it('makes the Gellatti collection tiles real cards', () => {
     // They were a single `border-t` with no radius and no fill, which read as
@@ -54,10 +58,12 @@ describe('public pages use the shared card and rail language', () => {
     expect(source).not.toContain('min-h-40 w-full border-t border-ink/12');
   });
 
-  it('runs the how-it-works rail on the approved tokens', () => {
-    const source = page();
-    expect(source).toContain('border-y border-[var(--g-line)] sm:grid-cols-5');
-    expect(source).not.toContain('grid border-y border-ink/10 sm:grid-cols-5');
+  it('runs how-it-works as the responsive eight-step Tour, not the retired five-step rail', () => {
+    expect(page()).toContain('<KnowledgeTour audience={audience} />');
+    expect(knowledgeTour()).toContain('knowledge-tour__progress');
+    expect(knowledgeTour()).toContain('data-swipe-enabled="true"');
+    expect(knowledgeTourStyles()).toContain('grid-template-rows: minmax(0, 1fr) auto');
+    expect(page()).not.toContain('border-y border-[var(--g-line)] sm:grid-cols-5');
   });
 });
 

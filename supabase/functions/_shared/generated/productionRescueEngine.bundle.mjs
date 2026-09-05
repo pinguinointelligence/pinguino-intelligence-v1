@@ -3435,6 +3435,154 @@ function canonicalIngredientId(ingredient) {
 const BATCH_SUM_TOLERANCE_G = .1;
 /** Numeric equality for a percentage share (percentage points). */
 const PERCENT_LOCK_TOLERANCE = 1e-9;
+const isFiniteNonNegative = (g) => Number.isFinite(g) && g >= 0;
+/**
+* Structural validation of a constraint set against a recipe. Never throws.
+* 'error' issues block apply/analysis; 'note' issues are informational.
+*/
+function validateConstraintSet(input, set) {
+	const issues = [];
+	const lineById = new Map(input.items.map((item) => [item.id, item]));
+	for (const [lineId, constraint] of Object.entries(set.byLineId)) {
+		const line = lineById.get(lineId);
+		if (!line) {
+			issues.push({
+				code: "unknown_line",
+				lineId,
+				severity: "error"
+			});
+			continue;
+		}
+		if (constraint.mode === "locked") {
+			if (!Number.isFinite(constraint.grams)) issues.push({
+				code: "non_finite_grams",
+				lineId,
+				severity: "error"
+			});
+			else if (constraint.grams < 0) issues.push({
+				code: "negative_grams",
+				lineId,
+				severity: "error"
+			});
+		} else if (constraint.mode === "percent") {
+			if (!Number.isFinite(constraint.percent) || constraint.percent < 0 || constraint.percent > 100) issues.push({
+				code: "invalid_percent",
+				lineId,
+				severity: "error"
+			});
+		} else if (constraint.mode === "range") {
+			if (!Number.isFinite(constraint.minGrams) || !Number.isFinite(constraint.maxGrams)) issues.push({
+				code: "non_finite_grams",
+				lineId,
+				severity: "error"
+			});
+			else if (constraint.minGrams < 0 || constraint.maxGrams < 0) issues.push({
+				code: "negative_grams",
+				lineId,
+				severity: "error"
+			});
+			else if (constraint.minGrams > constraint.maxGrams) issues.push({
+				code: "range_min_above_max",
+				lineId,
+				severity: "error"
+			});
+			else if (line.planned_grams < constraint.minGrams || line.planned_grams > constraint.maxGrams) issues.push({
+				code: "current_grams_outside_range",
+				lineId,
+				severity: "error"
+			});
+		}
+		if (line.actual_grams !== null && constraint.mode !== "ai") issues.push({
+			code: "constrained_line_has_actuals",
+			lineId,
+			severity: "note"
+		});
+	}
+	return {
+		ok: issues.every((issue) => issue.severity !== "error"),
+		issues
+	};
+}
+/** Is this line's mass preserved exactly under a batch change? */
+function isPreservedUnderBatchChange(item, set) {
+	const constraint = set.byLineId[item.id];
+	if (constraint && constraint.mode !== "ai" && constraint.mode !== "percent") return true;
+	if (!constraint && item.lock_type === "grams") return true;
+	return false;
+}
+const percentShareFor = (item, set, currentBatchGrams) => {
+	const constraint = set.byLineId[item.id];
+	if (constraint?.mode === "percent") return constraint.percent;
+	if (constraint === void 0 && item.lock_type === "percent" && currentBatchGrams > 0) return item.planned_grams / currentBatchGrams * 100;
+	return null;
+};
+/**
+* Change the target batch WITHOUT rescaling locked grams (§17.4): locked and
+* range lines keep their exact gram values (same float64 — the item objects
+* are reused untouched); only the remaining lines scale, by one factor, to
+* reach the new batch. Refuses (honest codes, never silent):
+*  - when any line has actual_grams (batch scaling is a planning operation —
+*    physically poured mass cannot be scaled);
+*  - when nothing is scalable, or the preserved mass alone exceeds the new
+*    batch (→ 'locked_sum_exceeds_batch' with the genuinely computed minimum).
+*/
+function rescaleBatchToTarget(input, set, newBatchGrams) {
+	const validation = validateConstraintSet(input, set);
+	if (!validation.ok) return {
+		ok: false,
+		reason: "invalid_constraints",
+		issues: validation.issues
+	};
+	if (!isFiniteNonNegative(newBatchGrams)) return {
+		ok: false,
+		reason: "invalid_constraints",
+		issues: []
+	};
+	if (input.items.some((item) => item.actual_grams !== null)) return {
+		ok: false,
+		reason: "actuals_present"
+	};
+	let preservedSum = 0;
+	let scalableSum = 0;
+	let percentTotal = 0;
+	for (const item of input.items) {
+		const percent = percentShareFor(item, set, input.target_batch_grams);
+		if (percent !== null) percentTotal += percent;
+		else if (isPreservedUnderBatchChange(item, set)) preservedSum += item.planned_grams;
+		else scalableSum += item.planned_grams;
+	}
+	const percentageMass = newBatchGrams * percentTotal / 100;
+	if (preservedSum + percentageMass > newBatchGrams + .1) return {
+		ok: false,
+		reason: "locked_sum_exceeds_batch",
+		minimumBatchGrams: percentTotal >= 100 ? Number.POSITIVE_INFINITY : preservedSum / (1 - percentTotal / 100)
+	};
+	if (scalableSum <= 0 && Math.abs(preservedSum + percentageMass - newBatchGrams) > .1) return {
+		ok: false,
+		reason: "no_scalable_lines"
+	};
+	const scaleFactor = scalableSum > 0 ? (newBatchGrams - preservedSum - percentageMass) / scalableSum : 1;
+	const items = input.items.map((item) => {
+		const percent = percentShareFor(item, set, input.target_batch_grams);
+		if (percent !== null) return {
+			...item,
+			planned_grams: newBatchGrams * percent / 100
+		};
+		return isPreservedUnderBatchChange(item, set) ? item : {
+			...item,
+			planned_grams: item.planned_grams * scaleFactor
+		};
+	});
+	return {
+		ok: true,
+		input: {
+			...input,
+			items,
+			target_batch_grams: newBatchGrams
+		},
+		scaleFactor
+	};
+}
 /**
 * Verify that a (possibly solver-modified) recipe still honors the constraint
 * set: locked lines carry the EXACT grams (Object.is — no epsilon), range
@@ -8302,7 +8450,14 @@ function hydrateProductionSessionFromRun(run, source, plannedInput, plannedCompo
 * continue to identify the formulas and calibrated data; this stamp identifies
 * the option-selection and practicalization layer authorized by the server.
 */
-const PRODUCTION_RESCUE_MODEL_VERSION = "production-rescue-v6";
+const PRODUCTION_RESCUE_MODEL_VERSION = "production-rescue-v7";
+const violationDiagnosticsFor = (result) => detectViolations(result).flatMap((violation) => violation.value === null || violation.band === null ? [] : [{
+	metric: violation.metric,
+	direction: violation.direction,
+	value: violation.value,
+	min: violation.band.min,
+	max: violation.band.max
+}]);
 /**
 * OWNER RULE §17 — a batch size is spoken exactly as the Engine verified it.
 * 1086 g is reported as 1086 g; it is never rounded up to a tidier 1100 g.
@@ -8480,6 +8635,175 @@ function productionConstraintSet(session, exactPlanningCandidate) {
 	return { byLineId };
 }
 /**
+* Rescue's add-only recovery is the right authority once every useful gram is
+* already in the vessel. During weighing, however, the still-unconfirmed rows
+* remain an honest planning surface: their targets may be rescaled around the
+* immutable confirmed facts while the total batch remains unchanged.
+*
+* This uses the existing constraint-aware batch rescaler, then projects only
+* its free pending rows onto Production's 0.1 g execution grid by deterministic
+* largest remainder. No technical band is invented here; the completed vector
+* still has to pass the canonical Engine and terminal ProductBehavior gates in
+* `bestOption` before it can be exposed or authorized.
+*/
+function pendingPlanRebalanceCandidate(session, forecastInput, targetBatchGrams) {
+	if (totalFor(forecastInput) <= targetBatchGrams + 1e-6) return null;
+	const canonicalPlan = currentCanonicalProductionPlan(session);
+	const canonicalById = new Map(canonicalPlan.items.map((item) => [item.id, item]));
+	const lineById = new Map(session.lines.map((line) => [line.lineId, line]));
+	const planningInput = {
+		...forecastInput,
+		target_batch_grams: targetBatchGrams,
+		items: forecastInput.items.map((item) => ({
+			...item,
+			planned_grams: item.actual_grams ?? item.planned_grams,
+			actual_grams: null,
+			lock_type: canonicalById.get(item.id)?.lock_type ?? item.lock_type
+		}))
+	};
+	const byLineId = {};
+	for (const item of planningInput.items) {
+		const line = lineById.get(item.id);
+		if (!line) return null;
+		if (line.confirmed) {
+			byLineId[item.id] = {
+				mode: "locked",
+				grams: line.physicalAddedGrams
+			};
+			continue;
+		}
+		const persisted = persistedProductionConstraint(sourceItemFor(session, item.id), item, canonicalPlan.target_batch_grams);
+		if (persisted) byLineId[item.id] = persisted;
+	}
+	const constraints = { byLineId };
+	const rescaled = rescaleBatchToTarget(planningInput, constraints, targetBatchGrams);
+	if (!rescaled.ok) return null;
+	const protectedIds = new Set(Object.keys(byLineId));
+	const adjustable = rescaled.input.items.map((item, index) => ({
+		item,
+		index
+	})).filter(({ item }) => !protectedIds.has(item.id));
+	if (adjustable.length === 0) return null;
+	const fixedTenths = rescaled.input.items.filter((item) => protectedIds.has(item.id)).reduce((sum, item) => {
+		const tenths = item.planned_grams * 10;
+		return sum + (Math.abs(tenths - Math.round(tenths)) <= 1e-8 ? Math.round(tenths) : NaN);
+	}, 0);
+	const targetTenths = targetBatchGrams * 10;
+	if (!Number.isFinite(fixedTenths) || Math.abs(targetTenths - Math.round(targetTenths)) > 1e-8) return null;
+	const allocations = adjustable.map(({ item, index }) => {
+		const exactTenths = item.planned_grams * 10;
+		const floorTenths = Math.floor(exactTenths + 1e-8);
+		return {
+			index,
+			lineId: item.id,
+			exactTenths,
+			floorTenths,
+			fraction: exactTenths - floorTenths
+		};
+	});
+	let remainder = Math.round(targetTenths) - fixedTenths - allocations.reduce((sum, item) => sum + item.floorTenths, 0);
+	if (remainder < 0 || remainder > allocations.length) return null;
+	const byLargestRemainder = [...allocations].sort((left, right) => right.fraction - left.fraction || left.lineId.localeCompare(right.lineId));
+	const tenthsByIndex = new Map(allocations.map((item) => [item.index, item.floorTenths]));
+	for (const allocation of byLargestRemainder) {
+		if (remainder <= 0) break;
+		tenthsByIndex.set(allocation.index, allocation.floorTenths + 1);
+		remainder -= 1;
+	}
+	if (remainder !== 0) return null;
+	const candidate = {
+		...rescaled.input,
+		target_batch_grams: targetBatchGrams,
+		items: rescaled.input.items.map((item, index) => {
+			const tenths = tenthsByIndex.get(index);
+			return tenths === void 0 ? item : {
+				...item,
+				planned_grams: tenths / 10
+			};
+		})
+	};
+	if (!verifyConstraintsPreserved(constraints, candidate).ok) return null;
+	if (Math.abs(totalFor(candidate) - targetBatchGrams) > 1e-6) return null;
+	const actions = [];
+	const beforeById = new Map(forecastInput.items.map((item) => [item.id, item]));
+	for (const item of candidate.items) {
+		const before = beforeById.get(item.id);
+		if (!before) continue;
+		const beforeGrams = before.actual_grams ?? before.planned_grams;
+		const delta = item.planned_grams - beforeGrams;
+		if (Math.abs(delta) <= 1e-6) continue;
+		actions.push({
+			type: delta > 0 ? "add" : "reduce",
+			ingredient_id: item.ingredient.id,
+			ingredient_name: item.ingredient.name,
+			ingredient_category: item.ingredient.category,
+			grams: Math.abs(delta),
+			target_line_id: item.id
+		});
+	}
+	return actions.length > 0 ? {
+		input: candidate,
+		actions,
+		precision: "tenth"
+	} : null;
+}
+/**
+* Prove the strongest useful fixed-target lower bound without inventing a new
+* recipe. Confirmed physical rows are immutable. All remaining mass is assigned
+* to the pending ingredient with the lowest lactose contribution, and the
+* canonical Engine calculates the resulting value. If that optimistic vector
+* is still above the hard lactose band, no legal redistribution of the pending
+* rows can repair the original target mass.
+*/
+function confirmedPhysicalFloorDiagnostics(session, forecastInput, targetBatchGrams) {
+	const lineById = new Map(session.lines.map((line) => [line.lineId, line]));
+	const remainingMassG = targetBatchGrams - session.lines.reduce((sum, line) => sum + (line.confirmed ? line.physicalAddedGrams : 0), 0);
+	if (remainingMassG < -1e-6) return [];
+	const optimisticFiller = forecastInput.items.filter((item) => !lineById.get(item.id)?.confirmed).sort((left, right) => left.ingredient.composition.lactose_percent - right.ingredient.composition.lactose_percent || left.id.localeCompare(right.id))[0];
+	if (!optimisticFiller && remainingMassG > 1e-6) return [];
+	return violationDiagnosticsFor(calculateRecipe({
+		...forecastInput,
+		target_batch_grams: targetBatchGrams,
+		items: forecastInput.items.map((item) => {
+			const line = lineById.get(item.id);
+			const grams = line?.confirmed ? line.physicalAddedGrams : item.id === optimisticFiller?.id ? Math.max(0, remainingMassG) : 0;
+			return {
+				...item,
+				planned_grams: grams,
+				actual_grams: null
+			};
+		})
+	})).filter((violation) => violation.metric === "lactose" && violation.direction === "high").map((violation) => ({
+		...violation,
+		basis: "confirmed_physical_floor_at_target"
+	}));
+}
+function productionRescueDiagnostics(session, forecastInput, forecastResult, targetBatchGrams, pendingRebalance) {
+	const fixedTargetRebalance = pendingRebalance ? (() => {
+		const result = calculateRecipe(pendingRebalance.input);
+		const hardSafety = assessProductionHardSafety(pendingRebalance.input, result);
+		const authority = productionRescueTerminalAuthority(pendingRebalance.input, session);
+		return {
+			attempted: true,
+			candidateMassG: result.total_batch_g,
+			violationDetails: violationDiagnosticsFor(result),
+			capacityExceeded: hardSafety.capacityExceeded,
+			provisional: hardSafety.provisional,
+			nativeProfileValidated: hardSafety.nativeProfileValidated,
+			terminalIssueCodes: authority.issues.map((issue) => issue.code)
+		};
+	})() : null;
+	return {
+		physicalConfirmedG: session.lines.reduce((sum, line) => sum + (line.confirmed ? line.physicalAddedGrams : 0), 0),
+		forecastMassG: forecastResult.total_batch_g,
+		originalTargetG: targetBatchGrams,
+		machineCapacityG: forecastInput.machine_capacity_grams,
+		forecastViolationDetails: violationDiagnosticsFor(forecastResult),
+		fixedTargetRebalance,
+		irreducibleConfirmedViolations: confirmedPhysicalFloorDiagnostics(session, forecastInput, targetBatchGrams)
+	};
+}
+/**
 * Convert a solver rescue into the actual whole-gram plan the operator will
 * execute. Confirmed physical history stays in `ProductionSession`; this copy
 * deliberately represents final planned targets so Engine evaluates exactly
@@ -8602,7 +8926,7 @@ function instructionsFor(before, after, actions) {
 	}
 	return instructions.sort((a, b) => (a.kind === "add" ? 0 : 1) - (b.kind === "add" ? 0 : 1) || a.ingredientName.localeCompare(b.ingredientName));
 }
-function bestOption(id, title, explanation, session, forecastInput, context, acceptMass, recoveryObjective = null) {
+function bestOption(id, title, explanation, session, forecastInput, context, acceptMass, recoveryObjective = null, seededCandidates = []) {
 	const canonicalPlan = currentCanonicalProductionPlan(session);
 	const authorityIssueSets = /* @__PURE__ */ new Map();
 	const proposed = proposeAutoFix({
@@ -8637,11 +8961,15 @@ function bestOption(id, title, explanation, session, forecastInput, context, acc
 		objective: recoveryObjective,
 		acceptCandidate: acceptRecoveryCandidate
 	}) : null;
-	const completedCandidates = [...solverCandidates, ...recovery?.candidates.map((candidate) => ({
-		input: candidate.input,
-		actions: candidate.actions,
-		precision: "tenth"
-	})) ?? []];
+	const completedCandidates = [
+		...seededCandidates,
+		...solverCandidates,
+		...recovery?.candidates.map((candidate) => ({
+			input: candidate.input,
+			actions: candidate.actions,
+			precision: "tenth"
+		})) ?? []
+	];
 	const candidates = [];
 	for (const completed of completedCandidates) {
 		if (context === "actual_batch" && completed.actions.some((action) => action.type !== "add")) continue;
@@ -8735,6 +9063,7 @@ function assessProductionRescue(session) {
 	const forecastResult = calculateRecipe(forecastInput);
 	const forecastScore = recipeFitForInput(forecastInput, forecastResult);
 	const hardSafety = assessProductionHardSafety(forecastInput, forecastResult);
+	const currentTarget = currentCanonicalProductionPlan(session).target_batch_grams;
 	const hasConfirmedDeviation = session.lines.some((line) => line.confirmed && Math.abs(line.physicalAddedGrams - line.plannedGrams) > 1e-6);
 	if (!hasConfirmedDeviation) return {
 		state: "not_needed",
@@ -8745,11 +9074,12 @@ function assessProductionRescue(session) {
 		hasConfirmedDeviation,
 		options: [],
 		reason: null,
-		strategyTrace: {}
+		strategyTrace: {},
+		diagnostics: productionRescueDiagnostics(session, forecastInput, forecastResult, currentTarget, null)
 	};
 	const options = [];
-	const currentTarget = currentCanonicalProductionPlan(session).target_batch_grams;
-	const keepSearch = bestOption("keep_original_batch", (mass) => `Napraw do ${formatBatchMassG(mass)} g`, () => "Zmienia wyłącznie to, czego jeszcze nie potwierdzono, i zachowuje docelową masę partii.", session, forecastInput, "planning", (mass) => Math.abs(mass - currentTarget) <= .1);
+	const pendingRebalance = pendingPlanRebalanceCandidate(session, forecastInput, currentTarget);
+	const keepSearch = bestOption("keep_original_batch", (mass) => `Napraw do ${formatBatchMassG(mass)} g`, () => "Zmienia wyłącznie to, czego jeszcze nie potwierdzono, i zachowuje docelową masę partii.", session, forecastInput, "planning", (mass) => Math.abs(mass - currentTarget) <= .1, null, pendingRebalance ? [pendingRebalance] : []);
 	if (keepSearch.option) options.push(keepSearch.option);
 	const enlargeSearch = hardSafety.safe ? {
 		option: null,
@@ -8793,7 +9123,8 @@ function assessProductionRescue(session) {
 			keep_original_batch: keepSearch.trace,
 			enlarge_batch: enlargeSearch.trace,
 			restore_original_recipe: restoreSearch.trace
-		}
+		},
+		diagnostics: productionRescueDiagnostics(session, forecastInput, forecastResult, currentTarget, pendingRebalance)
 	};
 }
 

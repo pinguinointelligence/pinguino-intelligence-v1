@@ -359,7 +359,7 @@ export const copy = {
     },
     items: {
       tryPinguino: 'Wypróbuj Gellatti',
-      howItWorks: 'Jak to działa',
+      howItWorks: 'Dlaczego to działa?',
       shop: 'Sklep',
       plans: 'Plany',
       homeWorkspace: 'Gellatti Home',
