@@ -85,7 +85,7 @@ const largestRemainderPairBounds = (
 };
 
 /** Deterministic two-phase simplex for max c·x subject to A·x ≤ b, x ≥ 0. */
-class LinearProgram {
+export class LinearProgram {
   private readonly m: number;
   private readonly n: number;
   private readonly basic: number[];
@@ -221,11 +221,14 @@ class LinearProgram {
   }
 }
 
-interface IntegerLinearResult {
+export interface IntegerLinearResult {
   status: 'optimal' | 'unavailable';
   value: number | null;
   solution: readonly number[] | null;
   nodes: number;
+  /** True means the node budget ended the proof; false means the explored
+   * integer region was exhausted and an unavailable result is infeasible. */
+  exhausted: boolean;
 }
 
 /** Hard deterministic computation budget for the exact whole-gram proof.
@@ -237,7 +240,7 @@ export const MAIN_TECHNICAL_INTEGER_NODE_BUDGET = 4096;
 /** Exact branch-and-bound over whole-gram line variables. The LP relaxation at
  * every node remains a safe upper bound; `optimal` is returned only after the
  * complete deterministic tree has been exhausted. */
-const solveIntegerLinearMaximum = (
+export const solveIntegerLinearMaximum = (
   baseRows: readonly number[][],
   baseBounds: readonly number[],
   objective: readonly number[],
@@ -247,20 +250,35 @@ const solveIntegerLinearMaximum = (
   let exhausted = false;
   let bestValue = -Infinity;
   let bestSolution: number[] | null = null;
+  let rootIntegerUpperBound: number | null = null;
 
-  const visit = (extraRows: readonly number[][], extraBounds: readonly number[]): void => {
+  interface SearchNode {
+    extraRows: readonly number[][];
+    extraBounds: readonly number[];
+  }
+
+  const stack: SearchNode[] = [{ extraRows: [], extraBounds: [] }];
+  while (stack.length > 0) {
     if (nodes >= maxNodes) {
       exhausted = true;
-      return;
+      break;
     }
+    const { extraRows, extraBounds } = stack.pop()!;
     nodes += 1;
     const solved = new LinearProgram(
       [...baseRows, ...extraRows],
       [...baseBounds, ...extraBounds],
       objective,
     ).solve();
-    if (solved.status !== 'optimal') return;
-    if (Math.floor(solved.value + EPSILON) <= bestValue + EPSILON) return;
+    if (solved.status !== 'optimal') continue;
+    if (rootIntegerUpperBound === null) {
+      // Every caller uses an integer-coefficient objective. Therefore the
+      // floor of the root LP relaxation is a global integer upper bound. Once
+      // an executable integer vector reaches it, the optimum is certified and
+      // no remaining branch can improve it.
+      rootIntegerUpperBound = Math.floor(solved.value + EPSILON);
+    }
+    if (Math.floor(solved.value + EPSILON) <= bestValue + EPSILON) continue;
 
     let branchIndex = -1;
     let branchDistance = 0;
@@ -275,24 +293,31 @@ const solveIntegerLinearMaximum = (
     if (branchIndex === -1) {
       bestValue = Math.round(solved.value);
       bestSolution = solved.solution.map((value) => Math.max(0, Math.round(value)));
-      return;
+      if (bestValue >= rootIntegerUpperBound - EPSILON) stack.length = 0;
+      continue;
     }
 
     const value = solved.solution[branchIndex]!;
     const lowerRow = Array.from({ length: objective.length }, () => 0);
     lowerRow[branchIndex] = -1;
-    // Explore the high branch first because the objective is a Main maximum.
-    visit([...extraRows, lowerRow], [...extraBounds, -Math.ceil(value)]);
     const upperRow = Array.from({ length: objective.length }, () => 0);
     upperRow[branchIndex] = 1;
-    visit([...extraRows, upperRow], [...extraBounds, Math.floor(value)]);
-  };
-
-  visit([], []);
-  if (exhausted || bestSolution === null || !Number.isFinite(bestValue)) {
-    return { status: 'unavailable', value: null, solution: null, nodes };
+    // LIFO: enqueue the upper branch first so the high branch retains the
+    // historical deterministic priority without consuming the JavaScript call
+    // stack on deep integer trees.
+    stack.push({
+      extraRows: [...extraRows, upperRow],
+      extraBounds: [...extraBounds, Math.floor(value)],
+    });
+    stack.push({
+      extraRows: [...extraRows, lowerRow],
+      extraBounds: [...extraBounds, -Math.ceil(value)],
+    });
   }
-  return { status: 'optimal', value: bestValue, solution: bestSolution, nodes };
+  if (exhausted || bestSolution === null || !Number.isFinite(bestValue)) {
+    return { status: 'unavailable', value: null, solution: null, nodes, exhausted };
+  }
+  return { status: 'optimal', value: bestValue, solution: bestSolution, nodes, exhausted: false };
 };
 
 const componentPercent = (ingredient: EngineIngredient, metric: TargetMetric): number => {
@@ -672,7 +697,13 @@ export function mainTechnicalLinearUpperBound(input: {
   const continuous = Math.max(0, solved.value);
   const integer =
     input.certifyWholeGram === false
-      ? { status: 'unavailable' as const, value: null, solution: null, nodes: 0 }
+      ? {
+          status: 'unavailable' as const,
+          value: null,
+          solution: null,
+          nodes: 0,
+          exhausted: false,
+        }
       : solveIntegerLinearMaximum(rows, bounds, objective, input.integerNodeBudget);
   const activeRules = [
     ...new Set(
