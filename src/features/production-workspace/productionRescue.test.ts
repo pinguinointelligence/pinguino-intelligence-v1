@@ -434,7 +434,12 @@ describe('production rescue orchestration', () => {
       safe: false,
       violationMetrics: ['total_solids', 'water', 'fat'],
     });
-    expect(assessment.options.map((option) => option.id)).toEqual(['restore_original_recipe']);
+    // The Owner-ordered search now also exposes the strictly smaller safe
+    // add-only batch; the historical exact-profile restore remains available.
+    expect(assessment.options.map((option) => option.id)).toEqual([
+      'enlarge_batch',
+      'restore_original_recipe',
+    ]);
     expect(restore).toMatchObject({
       finalMassG: 1_156.1,
       scoreDisplay: '10/10',
