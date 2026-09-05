@@ -40,6 +40,8 @@ import {
   franchiseConceptLabelPl,
 } from '@/features/franchise/franchiseConcepts';
 import { FRANCHISE_PAGE, FRANCHISE_SPLIT } from '@/copy/workWithUsLanes';
+import { AppShell } from '@/features/shell/AppShell';
+import { KnowledgeTour } from '@/features/knowledge-tour/KnowledgeTour';
 
 /** One panel for each account concern — same card as the rest of the product. */
 const ACCOUNT_PANEL =
@@ -49,43 +51,13 @@ const quietLink =
   'flex min-h-14 items-center justify-between border-b border-[var(--g-line)] py-3 text-sm text-ink transition-opacity hover:opacity-55';
 
 export function HowItWorksPage() {
-  const steps = ['Pomysł', 'Składniki', 'Gellatti', 'Receptura', 'Produkcja'];
+  const persona = useProCorePersona();
+  const audience = persona === 'pro' ? 'pro' : 'home';
+
   return (
-    <DestinationSurface
-      eyebrow="GELLATTI"
-      title="Jak to działa"
-      blurb="Jedna logiczna droga od pomysłu do receptury i bezpiecznej produkcji."
-    >
-      {/* The same numbered rail Współpraca uses for „Jak to działa" — one
-          pattern for one idea, rather than a second near-identical one. The
-          steps keep their existing labels; no explanatory copy is invented
-          here. */}
-      <DestinationSectionHead
-        eyebrow="Droga receptury"
-        title="Pięć kroków, od pomysłu do gotowej partii."
-      />
-      <ol className="grid border-y border-[var(--g-line)] sm:grid-cols-5">
-        {steps.map((step, index) => (
-          <li
-            key={step}
-            className="border-b border-[var(--g-line)] px-5 py-6 last:border-b-0 sm:border-r sm:border-b-0 sm:last:border-r-0"
-          >
-            <span className="font-mono text-[12px] text-[var(--g-text-muted)]">0{index + 1}</span>
-            <strong className="mt-3 block text-[14px] leading-[1.35] font-bold text-[var(--g-ink)]">
-              {step}
-            </strong>
-          </li>
-        ))}
-      </ol>
-      <div className="mt-8 flex flex-wrap gap-3">
-        <Link to="/start" className={buttonClasses('primary', 'md')}>
-          Wypróbuj Gellatti
-        </Link>
-        <Link to="/subscription" className={buttonClasses('ghost', 'md')}>
-          Porównaj Home i Pro
-        </Link>
-      </div>
-    </DestinationSurface>
+    <AppShell navigationPosition="trailing" contentClassName="bg-white">
+      <KnowledgeTour audience={audience} />
+    </AppShell>
   );
 }
 

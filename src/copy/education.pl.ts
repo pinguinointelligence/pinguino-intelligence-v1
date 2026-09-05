@@ -58,6 +58,139 @@ export const educationCopy = {
     technical: 'Wersja techniczna',
     learnMore: 'Dowiedz się więcej',
   },
+  knowledgeTour: {
+    eyebrow: 'DLACZEGO TO DZIAŁA?',
+    imageAltPrefix: 'Ilustracja edukacyjna:',
+    navigation: {
+      label: 'Nawigacja przewodnika',
+      back: 'Wstecz',
+      next: 'Dalej',
+      restart: 'Od początku',
+      progress: 'Postęp przewodnika',
+      goToStep: 'Przejdź do kroku',
+      step: 'Krok',
+      of: 'z',
+    },
+    steps: {
+      worlds: {
+        title: 'Jakie lody robisz?',
+        body: 'Każdy rodzaj lodów potrzebuje innego balansu składników.',
+        voice: 'Najpierw wybierasz rodzaj lodów, potem dopasowujesz resztę.',
+        annotations: [
+          { id: 'gelato', title: 'Gelato', detail: 'Lody mleczne i kremowe' },
+          { id: 'sorbet', title: 'Sorbet', detail: 'Owocowy, bez mleka' },
+          { id: 'vegan', title: 'Vegan', detail: 'Kremowe, bez składników odzwierzęcych' },
+          { id: 'protein', title: 'Protein', detail: 'Więcej białka i inna struktura' },
+        ],
+      },
+      freezing: {
+        title: 'Dlaczego lody nie są kostką lodu?',
+        body: 'Za dużo zamarzniętej wody daje zbyt twarde lody. Za mało — zbyt miękkie. Szukamy właściwego balansu.',
+        voice: 'Dobra konsystencja wynika z balansu całej receptury.',
+        annotations: [
+          { id: 'hard', title: 'Więcej lodu', detail: 'Zbyt twardo' },
+          { id: 'balanced', title: 'Właściwy balans', detail: 'Gładko i stabilnie' },
+          { id: 'soft', title: 'Mniej lodu', detail: 'Zbyt miękko' },
+        ],
+      },
+      sugars: {
+        title: 'Cukier robi dwie rzeczy',
+        body: 'Nadaje słodycz i pomaga decydować, jak miękkie będą lody po zamrożeniu. Różne cukry nie działają tak samo.',
+        voice: 'Podobna słodycz nie zawsze oznacza tę samą miękkość.',
+        annotations: [
+          { id: 'sucrose', title: 'Sacharoza', detail: 'Słodycz: średnia · miękkość: średnia' },
+          { id: 'dextrose', title: 'Dekstroza', detail: 'Słodycz: niższa · miękkość: wysoka' },
+          { id: 'fructose', title: 'Fruktoza', detail: 'Słodycz: wysoka · miękkość: wysoka' },
+        ],
+      },
+      creaminess: {
+        title: 'Skąd bierze się kremowość?',
+        body: 'Kremowość tworzy zespół składników. Każdy wnosi do mieszanki coś innego.',
+        voice: 'Pełna tekstura nie musi oznaczać większej słodyczy.',
+        annotations: [
+          { id: 'milk', title: 'Mleko', detail: 'Buduje płynną część bazy' },
+          { id: 'cream', title: 'Śmietanka', detail: 'Daje gładsze, pełniejsze odczucie' },
+          { id: 'milk-powder', title: 'Mleko w proszku', detail: 'Buduje pełniejszą strukturę' },
+          { id: 'inulin', title: 'Inulina', detail: 'Dodaje ciała bez większej słodyczy' },
+        ],
+      },
+      flavour: {
+        title: 'Smak też zmienia strukturę',
+        body: 'Smak to nie tylko aromat. Gellatti widzi, co wnosi składnik, i przelicza resztę mieszanki.',
+        voice: 'Ten sam poziom smaku może wymagać zupełnie innego balansu.',
+        annotations: [
+          { id: 'strawberry', title: 'Truskawka', detail: 'Wnosi dużo wody' },
+          { id: 'banana', title: 'Banan', detail: 'Daje naturalną gęstość' },
+          { id: 'pistachio', title: 'Pistacja', detail: 'Wnosi tłuszcz i suchą masę' },
+          { id: 'chocolate', title: 'Czekolada', detail: 'Szybko zmienia gęstość mieszanki' },
+        ],
+      },
+      stabilizer: {
+        title: 'Mały ochroniarz tekstury',
+        body: 'Stabilizator wspiera kontrolę wody i ogranicza wzrost dużych kryształków lodu.',
+        voice: 'Czasem naprawdę mała ilość robi dużą różnicę.',
+        annotations: [
+          {
+            id: 'without',
+            title: 'Bez stabilizatora',
+            detail: 'Większe kryształki, bardziej szorstka tekstura',
+          },
+          { id: 'with', title: 'Ze stabilizatorem', detail: 'Drobniejsza, gładsza struktura' },
+        ],
+      },
+      temperature: {
+        title: 'Temperatura zmienia wszystko',
+        body: 'Ta sama receptura zachowuje się inaczej w różnych warunkach podania. Gellatti liczy dla realnej temperatury.',
+        voice: 'Miękkość przy −11°C nie będzie taka sama jak przy −13°C.',
+        annotations: [
+          { id: 'minus-11', title: '−11°C', detail: 'Bardziej miękko' },
+          { id: 'minus-12', title: '−12°C', detail: 'Pośrodku' },
+          { id: 'minus-13', title: '−13°C', detail: 'Bardziej twardo' },
+        ],
+      },
+      homeEnding: {
+        title: 'Różne maszyny, różne drogi do lodów',
+        body: 'Domowe urządzenia różni moment zamrażania i sposób obróbki mieszanki.',
+        voice: 'Ten sam cel może wymagać innego procesu przygotowania.',
+        annotations: [
+          {
+            id: 'frozen-container',
+            title: 'Zamrożony pojemnik',
+            detail: 'Najpierw zamrażasz bazę, potem maszyna ją rozdrabnia i wygładza.',
+          },
+          {
+            id: 'frozen-soft',
+            title: 'Zamrożona baza do softu',
+            detail: 'Zamrożoną bazę obrabiasz i podajesz w miękkiej formie.',
+          },
+          {
+            id: 'compressor',
+            title: 'Płynna mieszanka',
+            detail: 'Maszyna sama ją chłodzi, mrozi i miesza.',
+          },
+          {
+            id: 'frozen-bowl',
+            title: 'Wstępnie zamrożona misa',
+            detail: 'Zimna misa odbiera ciepło podczas mieszania.',
+          },
+        ],
+      },
+      proEnding: {
+        title: 'Profesjonalna produkcja',
+        body: 'Efekt zależy zarówno od procesu, jak i od warunków serwowania lub ekspozycji.',
+        voice: 'Gellatti liczy dla realnej produkcji i warunków podania.',
+        annotations: [
+          { id: 'machine', title: 'Maszyna', detail: 'Proces mrożenia i napowietrzania' },
+          { id: 'product', title: 'Gotowy produkt', detail: 'Struktura, którą chcesz uzyskać' },
+          {
+            id: 'serving',
+            title: 'Warunki podania',
+            detail: 'Temperatura serwowania lub ekspozycji',
+          },
+        ],
+      },
+    },
+  },
   sugar: {
     title: 'Cukier nie tylko słodzi',
     intro: 'Cukier wpływa także na to, ile wody zamarza.',

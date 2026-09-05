@@ -1,0 +1,386 @@
+.knowledge-tour {
+  --tour-accent: #e88419;
+  container-name: knowledge-tour;
+  container-type: inline-size;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  min-height: calc(100dvh - var(--pro-mobile-header-height));
+  overflow: hidden;
+  background: #fff;
+  color: var(--g-ink);
+}
+
+.knowledge-tour__stage {
+  display: grid;
+  min-height: 0;
+  width: min(100%, 1776px);
+  margin: 0 auto;
+  padding: clamp(1.2rem, 2.8vw, 3rem) var(--pro-mobile-gutter) clamp(1.5rem, 4vh, 3.5rem);
+  align-items: center;
+  gap: clamp(1.5rem, 3.6vw, 4.75rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.knowledge-tour__copy {
+  min-width: 0;
+  max-width: 32rem;
+}
+
+.knowledge-tour__eyebrow {
+  color: var(--tour-accent);
+  font-size: 0.68rem;
+  font-weight: 750;
+  letter-spacing: 0.17em;
+  line-height: 1.2;
+}
+
+.knowledge-tour__title {
+  max-width: 13ch;
+  margin-top: 0.85rem;
+  font-size: clamp(2.25rem, 4.2vw, 4.65rem);
+  font-weight: 720;
+  letter-spacing: -0.055em;
+  line-height: 0.98;
+}
+
+.knowledge-tour__body {
+  max-width: 29rem;
+  margin-top: 1.2rem;
+  color: var(--g-text-secondary);
+  font-size: clamp(0.98rem, 1.14vw, 1.16rem);
+  line-height: 1.58;
+}
+
+.knowledge-tour__voice {
+  max-width: 28rem;
+  margin-top: clamp(1.25rem, 3vh, 2rem);
+  padding-left: 0.9rem;
+  border-left: 2px solid var(--tour-accent);
+  color: var(--g-text-secondary);
+  font-size: 0.79rem;
+  font-weight: 620;
+  line-height: 1.55;
+}
+
+.knowledge-tour__story {
+  min-width: 0;
+  width: 100%;
+  max-width: 72rem;
+  justify-self: center;
+}
+
+.knowledge-tour__artwork {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  overflow: hidden;
+  background: #fff;
+}
+
+.knowledge-tour__artwork::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background: radial-gradient(ellipse 72% 72% at 50% 50%, var(--tour-image-edge) 0 64%, #fff 96%);
+  content: '';
+}
+
+.knowledge-tour__artwork img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: min(61dvh, 660px);
+  object-fit: contain;
+  object-position: center;
+  -webkit-mask-image:
+    linear-gradient(to right, transparent 0, #000 5%, #000 95%, transparent 100%),
+    linear-gradient(to bottom, transparent 0, #000 5%, #000 95%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to right, transparent 0, #000 5%, #000 95%, transparent 100%),
+    linear-gradient(to bottom, transparent 0, #000 5%, #000 95%, transparent 100%);
+  mask-composite: intersect;
+}
+
+.knowledge-tour__annotations {
+  display: grid;
+  grid-template-columns: repeat(var(--tour-columns), minmax(0, 1fr));
+  width: 100%;
+  margin-top: 0.35rem;
+}
+
+.knowledge-tour__annotation {
+  min-width: 0;
+  padding: 0.72rem clamp(0.35rem, 1vw, 0.9rem) 0;
+  border-top: 1px solid var(--g-line);
+  text-align: center;
+}
+
+.knowledge-tour__annotation + .knowledge-tour__annotation {
+  border-left: 1px solid color-mix(in srgb, var(--g-line) 58%, transparent);
+}
+
+/* Asset 04 contains four ingredient stations followed by the finished gelato.
+   The labels occupy the same first four stations and deliberately leave the
+   result area unlabelled, so "Inulina" can never drift beneath the scoop. */
+.knowledge-tour__annotations[data-layout='ingredient-chain'] {
+  grid-template-columns: 7% repeat(4, minmax(0, 18%)) 21%;
+}
+
+.knowledge-tour__annotations[data-layout='ingredient-chain']
+  .knowledge-tour__annotation:first-child {
+  grid-column: 2;
+}
+
+/* Asset 09 is not three equal panels: the machine is a wider left scene, the
+   produced gelato is central, and service/display fills the right. These
+   tracks follow those visual centres instead of distributing labels blindly. */
+.knowledge-tour__annotations[data-layout='pro-process'] {
+  grid-template-columns: 9% 36% 18% 28% 9%;
+}
+
+.knowledge-tour__annotations[data-layout='pro-process'] .knowledge-tour__annotation:first-child {
+  grid-column: 2;
+}
+
+.knowledge-tour__annotation-index {
+  display: none;
+  color: var(--tour-accent);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.64rem;
+}
+
+.knowledge-tour__annotation-title {
+  display: block;
+  font-size: clamp(0.75rem, 0.92vw, 0.88rem);
+  font-weight: 750;
+  line-height: 1.25;
+}
+
+.knowledge-tour__annotation-detail {
+  display: block;
+  max-width: 15rem;
+  margin: 0.3rem auto 0;
+  color: var(--g-text-secondary);
+  font-size: clamp(0.68rem, 0.76vw, 0.76rem);
+  line-height: 1.42;
+}
+
+.knowledge-tour__mobile-notes {
+  display: none;
+}
+
+.knowledge-tour__navigation {
+  display: grid;
+  width: min(100%, 1776px);
+  margin: 0 auto;
+  padding: 0.82rem var(--pro-mobile-gutter) max(0.82rem, env(safe-area-inset-bottom));
+  grid-template-columns: minmax(5.5rem, 1fr) auto minmax(5.5rem, 1fr);
+  align-items: center;
+  gap: 0.75rem;
+  border-top: 1px solid var(--g-line);
+  background: #fff;
+}
+
+.knowledge-tour__nav-button {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.55rem;
+  border: 0;
+  background: transparent;
+  color: var(--g-ink);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.knowledge-tour__nav-button:last-child {
+  justify-self: end;
+}
+
+.knowledge-tour__nav-button:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.knowledge-tour__nav-button:focus-visible,
+.knowledge-tour__dot:focus-visible {
+  outline: 2px solid var(--tour-accent);
+  outline-offset: 3px;
+}
+
+.knowledge-tour__progress {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.52rem;
+}
+
+.knowledge-tour__dot {
+  width: 0.54rem;
+  height: 0.54rem;
+  padding: 0;
+  border: 1px solid #928b82;
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+  transition:
+    width 160ms ease,
+    background 160ms ease,
+    border-color 160ms ease;
+}
+
+.knowledge-tour__dot[aria-current='step'] {
+  width: 1.3rem;
+  border-color: var(--tour-accent);
+  background: var(--tour-accent);
+}
+
+@container knowledge-tour (min-width: 920px) {
+  .knowledge-tour__stage {
+    grid-template-columns: minmax(18rem, 0.63fr) minmax(0, 1.7fr);
+    padding-right: max(2rem, calc(var(--pro-page-gutter) / 2));
+    padding-left: max(2rem, calc(var(--pro-page-gutter) / 2));
+  }
+
+  .knowledge-tour__navigation {
+    padding-right: max(2rem, calc(var(--pro-page-gutter) / 2));
+    padding-left: max(2rem, calc(var(--pro-page-gutter) / 2));
+  }
+}
+
+@container knowledge-tour (max-width: 919px) {
+  .knowledge-tour__stage {
+    align-content: start;
+  }
+
+  .knowledge-tour__copy {
+    max-width: 40rem;
+  }
+
+  .knowledge-tour__title {
+    max-width: 18ch;
+  }
+
+  .knowledge-tour__story {
+    max-width: 44rem;
+  }
+
+  .knowledge-tour__artwork img {
+    max-height: 45dvh;
+  }
+}
+
+@container knowledge-tour (max-width: 520px) {
+  .knowledge-tour__stage {
+    padding-top: 1.25rem;
+    gap: 0.95rem;
+  }
+
+  .knowledge-tour__title {
+    font-size: clamp(2rem, 9.5vw, 2.8rem);
+  }
+
+  .knowledge-tour__body {
+    margin-top: 0.8rem;
+    font-size: 0.9rem;
+  }
+
+  .knowledge-tour__voice {
+    display: none;
+  }
+
+  .knowledge-tour__artwork img {
+    max-height: 35dvh;
+  }
+
+  .knowledge-tour__annotation {
+    padding: 0.55rem 0.18rem 0;
+  }
+
+  .knowledge-tour__annotation-title {
+    font-size: 0.7rem;
+  }
+
+  .knowledge-tour__annotation-detail {
+    font-size: 0.66rem;
+  }
+
+  .knowledge-tour__annotations[data-compact-mobile='true'] .knowledge-tour__annotation-detail {
+    display: none;
+  }
+
+  .knowledge-tour__annotations[data-compact-mobile='true'] .knowledge-tour__annotation-index {
+    display: block;
+    margin-bottom: 0.2rem;
+  }
+
+  .knowledge-tour__mobile-notes[data-visible='true'] {
+    display: grid;
+    margin-top: 0.85rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.55rem 1rem;
+  }
+
+  .knowledge-tour__mobile-note {
+    display: grid;
+    grid-template-columns: 1rem minmax(0, 1fr);
+    gap: 0.35rem;
+    color: var(--g-text-secondary);
+    font-size: 0.69rem;
+    line-height: 1.4;
+  }
+
+  .knowledge-tour__mobile-note-index {
+    color: var(--tour-accent);
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 700;
+  }
+
+  .knowledge-tour__navigation {
+    grid-template-columns: 2.8rem 1fr 2.8rem;
+    padding-top: 0.65rem;
+  }
+
+  .knowledge-tour__nav-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .knowledge-tour__progress {
+    gap: 0.4rem;
+  }
+
+  .knowledge-tour__dot {
+    width: 0.46rem;
+    height: 0.46rem;
+  }
+
+  .knowledge-tour__dot[aria-current='step'] {
+    width: 0.95rem;
+  }
+}
+
+@media (min-width: 70rem) {
+  .knowledge-tour {
+    min-height: calc(100dvh - var(--pro-header-height));
+  }
+}
+
+@media (max-width: 520px) {
+  .knowledge-tour {
+    min-height: calc(100svh - var(--pro-mobile-header-height));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .knowledge-tour__dot {
+    transition: none;
+  }
+}
