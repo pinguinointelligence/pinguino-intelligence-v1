@@ -24,8 +24,15 @@ const label = 'text-[10px] font-semibold tracking-[0.13em] text-stone-500 upperc
  */
 export function FranchiseInquiryForm({
   initialConcept = 'lokal',
+  sourceRoute,
 }: {
   initialConcept?: FranchiseConcept;
+  /**
+   * Route the question started on, from `?from=`. Recorded on the lead so Admin
+   * can tell a /machines enquiry from a /trailer one — equipment has no concept
+   * of its own, so without this the two would be indistinguishable.
+   */
+  sourceRoute?: string;
 }) {
   const [concept, setConcept] = useState<FranchiseConcept>(initialConcept);
   const [form, setForm] = useState({
@@ -37,7 +44,7 @@ export function FranchiseInquiryForm({
     note: '',
   });
   const submit = useMutation({
-    mutationFn: () => submitFranchiseInquiry({ concept, ...form }),
+    mutationFn: () => submitFranchiseInquiry({ concept, sourceRoute, ...form }),
   });
 
   const set = (key: keyof typeof form, value: string) =>

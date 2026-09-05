@@ -18,6 +18,8 @@ export interface FranchiseInquiryDraft {
   city?: string;
   country?: string;
   note?: string;
+  /** Route the enquiry started on. Server validates it against an allowlist. */
+  sourceRoute?: string;
 }
 
 export interface FranchiseInquiry {

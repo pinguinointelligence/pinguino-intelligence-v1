@@ -37,9 +37,11 @@ import {
   FRANCHISE_CONCEPT_INITIAL,
   FRANCHISE_CONCEPT_ORDER,
   franchiseConceptBlurbPl,
+  franchiseConceptFromRoute,
   franchiseConceptLabelPl,
+  franchiseSourceRouteFrom,
 } from '@/features/franchise/franchiseConcepts';
-import { FRANCHISE_PAGE, FRANCHISE_SPLIT } from '@/copy/workWithUsLanes';
+import { FRANCHISE_FORMAT_LINKS, FRANCHISE_PAGE, FRANCHISE_SPLIT } from '@/copy/workWithUsLanes';
 
 /** One panel for each account concern — same card as the rest of the product. */
 const ACCOUNT_PANEL =
@@ -138,6 +140,8 @@ export function ShopPage() {
 }
 
 export function FranchisePage() {
+  const [params] = useSearchParams();
+  const fromRoute = params.get('from');
   return (
     <DestinationSurface
       eyebrow="Ekosystem Gellatti"
@@ -298,9 +302,54 @@ export function FranchisePage() {
           </figure>
         </div>
       </DestinationSection>
+      {/* The formats that keep their own detail page. Franchise is the umbrella,
+          so they are reached from here rather than from a second top-level
+          menu. */}
       <DestinationSection>
-        <FranchiseInquiryForm />
+        <DestinationSectionHead
+          eyebrow="Formaty w szczegółach"
+          title="Zobacz konkretny format."
+          helper="Każdy z nich prowadzi do tego samego zapytania — wybierasz tylko, o czym rozmawiamy."
+        />
+        <div className="grid gap-3 sm:grid-cols-3">
+          {FRANCHISE_FORMAT_LINKS.map((lane) => (
+            <Link
+              key={lane.href}
+              to={lane.href}
+              className="rounded-[12px] border border-[var(--g-line)] bg-white p-[18px] transition-colors hover:border-[var(--g-line-strong,#c9c5bd)]"
+            >
+              <span className="block text-[10px] leading-[1.25] font-bold tracking-[0.16em] text-[var(--g-text-secondary)] uppercase">
+                {lane.kicker}
+              </span>
+              <h3 className="mt-2.5 text-[19px] leading-[1.2] font-bold tracking-[-0.02em] text-[var(--g-ink)]">
+                {lane.title}
+              </h3>
+              <p className="mt-2 text-[13px] leading-[1.55] text-[var(--g-text-secondary)]">
+                {lane.card}
+              </p>
+            </Link>
+          ))}
+        </div>
       </DestinationSection>
+
+      {/* ONE Franchise enquiry (owner decision 2026-09-03). The legacy general
+          form wrote to a second table with its own Admin queue; the useful half
+          of it — `?from=` context, concept preselection, route attribution and
+          the #lead deep link — lives here instead, so a visitor produces exactly
+          one lead in one place.
+
+          `#lead` is carried by this wrapper because every in-app CTA and every
+          old external link points at it. */}
+      <DestinationSection>
+        <div id="lead" className="scroll-mt-28">
+          <FranchiseInquiryForm
+            initialConcept={franchiseConceptFromRoute(fromRoute) ?? 'lokal'}
+            sourceRoute={franchiseSourceRouteFrom(fromRoute)}
+          />
+        </div>
+      </DestinationSection>
+
+
     </DestinationSurface>
   );
 }

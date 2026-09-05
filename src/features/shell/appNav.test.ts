@@ -43,7 +43,6 @@ describe('plan-aware global navigation', () => {
       'guestShop',
       'plans',
       'community',
-      'workWithUs',
       'affiliate',
       'franchise',
     ]);
@@ -57,7 +56,6 @@ describe('plan-aware global navigation', () => {
       'machine',
       'community',
       'memberShop',
-      'workWithUs',
       'affiliate',
       'franchise',
     ]);
@@ -72,7 +70,6 @@ describe('plan-aware global navigation', () => {
       'machine',
       'community',
       'memberShop',
-      'workWithUs',
       'affiliate',
       'franchise',
     ]);
@@ -137,5 +134,39 @@ describe('plan-aware global navigation', () => {
       expect(new Set(items.map((item) => item.label)).size).toBe(items.length);
       expect(items.filter((item) => item.workspaceHome)).toHaveLength(audience === 'guest' ? 0 : 1);
     }
+  });
+});
+
+/* ── COLLABORATION IA (owner decision 2026-09-03) ────────────────────────── */
+
+describe('collaboration information architecture', () => {
+  it('exposes exactly TWO collaboration entries: Affiliate and Franchise', () => {
+    for (const audience of ['guest', 'home', 'pro'] as const) {
+      const audienceIds = ids(audience);
+      expect(audienceIds).toContain('affiliate');
+      expect(audienceIds).toContain('franchise');
+      // Work With Us is retired as a category, and Partner was never a separate
+      // user-facing entry — Affiliate is the one name for that programme.
+      expect(audienceIds).not.toContain('workWithUs');
+      expect(audienceIds.filter((id) => id === 'partner' || id === 'work')).toEqual([]);
+    }
+  });
+
+  it('no collaboration entry points at an operating format directly', () => {
+    // maszyny / wózek / przyczepa are concepts INSIDE Franchise. They keep their
+    // detail routes for deep links, but none may become a top-level door.
+    const tops = visibleNavItems('guest').map((i) => i.to);
+    for (const detail of ['/machines', '/mobile', '/trailer', '/work-with-us']) {
+      expect(tops).not.toContain(detail);
+    }
+  });
+
+  it('Franchise stays the current entry while a visitor reads any of its formats', () => {
+    const franchise = visibleNavItems('guest').find((i) => i.id === 'franchise');
+    expect(franchise).toBeDefined();
+    for (const path of ['/franchise', '/machines', '/mobile', '/trailer', '/work-with-us']) {
+      expect(franchise!.isActive(loc(path)), `${path} should mark Franchise current`).toBe(true);
+    }
+    expect(franchise!.isActive(loc('/affiliate'))).toBe(false);
   });
 });

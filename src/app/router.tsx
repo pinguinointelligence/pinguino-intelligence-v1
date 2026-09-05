@@ -56,7 +56,6 @@ import {
   ShopPage,
   SubscriptionPage,
   TrailerPage,
-  WorkWithUsPage,
   AffiliatePage,
 } from '@/pages/destinations';
 import { LocalStarterPackPage } from '@/pages/shop/LocalStarterPackPage';
@@ -254,7 +253,20 @@ export function AppRoutes() {
 
       {/* Existing destination functions preserved, but no longer promoted as global menu items. */}
       <Route path="/api" element={<APIPage />} />
-      <Route path="/work-with-us" element={<WorkWithUsPage />} />
+      {/* COLLABORATION IA (owner decision 2026-09-03): Affiliate and Franchise
+          are the only two user-facing collaboration entries. Work With Us was a
+          third door onto the same conversation, so it folds into Franchise
+          rather than staying a competing surface.
+
+          The redirect preserves search AND hash, which is load-bearing: every
+          lane CTA points at `/work-with-us?from=%2Ftrailer#lead`, and that
+          `from` is what selects the enquiry subject and becomes the lead's
+          source_route. Dropping either would silently cost a click and the
+          attribution of where the question started. */}
+      <Route
+        path="/work-with-us"
+        element={<LegacyDestinationRedirect pathname="/franchise" />}
+      />
       <Route path="/subscription" element={<SubscriptionPage />} />
       <Route
         path="/create-ingredient"

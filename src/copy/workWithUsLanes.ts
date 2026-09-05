@@ -150,6 +150,13 @@ export const FRANCHISE_SPLIT = {
   },
 } as const;
 
+/**
+ * Franchise is the umbrella (owner decision 2026-09-03), so the formats that
+ * still have their own detail page must be reachable FROM it. These are the
+ * same LANES entries — one source, no second list to drift.
+ */
+export const FRANCHISE_FORMAT_LINKS = [LANES.trailer, LANES.mobile, LANES.machines] as const;
+
 export const MACHINES_PAGE: LanePageCopy = {
   ...LANES.machines,
   headline: 'Sprzęt, który dobieramy do Twojego lokalu',
