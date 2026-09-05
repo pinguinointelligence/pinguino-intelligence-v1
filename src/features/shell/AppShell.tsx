@@ -129,6 +129,7 @@ export function AppShell({
         {/* The hamburger is the first element of the header on EVERY screen: one
             fixed origin the eye can rely on while moving between sections. */}
         <div
+          data-testid="app-header-left-region"
           className={cn(
             'flex min-w-0 items-center gap-3 sm:gap-5',
             // Owner, mobile: the header row is `justify-between` with a single child on
@@ -191,7 +192,10 @@ export function AppShell({
             `pointer-events-none` on the band with `pointer-events-auto` on its own
             controls: the band spans the row, and without this it would sit over
             the hamburger and the login and swallow their clicks. */}
-        <div className={cn('contents', APP_HEADER_CANVAS, DESKTOP_WORKBENCH_COLUMNS)}>
+        <div
+          data-testid="app-header-center-region"
+          className={cn('contents', APP_HEADER_CANVAS, DESKTOP_WORKBENCH_COLUMNS)}
+        >
           <div className="pro-workbench-header-primary pointer-events-auto ml-auto flex min-w-0 items-center gap-2 sm:gap-3">
             <HomeProSwitch entitlement={entitlement} activeView={activeView} />
           </div>
