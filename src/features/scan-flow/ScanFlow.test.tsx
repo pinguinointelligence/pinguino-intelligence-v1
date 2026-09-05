@@ -15,8 +15,13 @@ vi.mock('@/services/scanImportV2', async () => {
   const fakes = await import('@/scan-import-v2/__tests__/fakes');
   const { FakeDiscovery } = await import('@/scan-import-v2/__tests__/fakeDiscovery');
   const discovery = new FakeDiscovery();
-  const p = fakes.ports({ discovery });
-  (globalThis as Record<string, unknown>)['__scanFlowFakes'] = { discovery };
+  const registry = new Map<string, unknown>();
+  const p = fakes.ports({
+    discovery,
+    external: { research: async (identity) => registry.get(identity.canonicalGtin13) ?? null },
+    externalTimeoutMs: 200,
+  });
+  (globalThis as Record<string, unknown>)['__scanFlowFakes'] = { discovery, registry };
   return {
     createScanImportV2AppPorts: () => p,
     getScanImportV2AccountId: async () => 'user-1',
@@ -30,7 +35,10 @@ vi.mock('./scanCoreCapture', () => ({
 import { ScanFlow } from './ScanFlow';
 
 const fakes = () =>
-  (globalThis as Record<string, unknown>)['__scanFlowFakes'] as { discovery: FakeDiscovery };
+  (globalThis as Record<string, unknown>)['__scanFlowFakes'] as {
+    discovery: FakeDiscovery;
+    registry: Map<string, unknown>;
+  };
 
 const UNKNOWN = '4006381333931'; // valid EAN-13, absent from the fake catalogue
 
@@ -165,5 +173,167 @@ describe('ScanFlow (jsdom, fake ports)', () => {
       barcode: UNKNOWN,
       engineReady: true,
     });
+  });
+
+  it('owner case: an unknown code the registry identifies is saved without a label or a category question', async () => {
+    const { discovery, registry } = fakes();
+    const MILKA = '7622210669315';
+    registry.set(MILKA, {
+      provider: 'openfoodfacts',
+      queriedAt: 1,
+      query: MILKA,
+      confidence: 0.9,
+      facts: [
+        {
+          field: 'identity.displayName',
+          value: 'Choco brownie',
+          sourceUrl: 'u',
+          authority: 'barcode_registry',
+        },
+        { field: 'identity.brand', value: 'Milka', sourceUrl: 'u', authority: 'barcode_registry' },
+        {
+          field: 'identity.quantity',
+          value: '150 g',
+          sourceUrl: 'u',
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'category.tags',
+          value: 'en:snacks;en:cakes;en:brownies',
+          sourceUrl: 'u',
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'ingredientsText',
+          value: 'Azúcar, HUEVO, harina de TRIGO',
+          sourceUrl: 'u',
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'nutrition.energyKcal',
+          value: '467.5',
+          sourceUrl: 'u',
+          authority: 'barcode_registry',
+        },
+        { field: 'nutrition.fat', value: '27', sourceUrl: 'u', authority: 'barcode_registry' },
+      ],
+    });
+    discovery.authorityEngineUsable.set(`CA-${MILKA}`, true);
+    const onResolved = vi.fn();
+    await act(async () => {
+      root.render(
+        <ScanFlow mode="recipe" onResolved={onResolved} resolveLabel="Dodaj do receptury" />,
+      );
+    });
+    await typeCode(MILKA);
+    await flush();
+    expect(text()).toContain('Rozpoznano po kodzie');
+    expect(text()).toContain('Choco brownie');
+    expect(text()).toContain('Milka');
+    expect(text()).not.toContain('Co to za produkt?');
+    expect(text()).not.toContain('Zrób zdjęcie etykiety ze składem');
+    expect(text()).toContain('Zapisano jako Twój produkt');
+    expect(discovery.calls.filter((c) => c.startsWith(`analyze:${MILKA}`))).toHaveLength(0);
+    expect(discovery.created.get(MILKA)).toMatchObject({ productId: `CA-${MILKA}` });
+    await act(async () => {
+      button('Dodaj do receptury')!.click();
+    });
+    expect(onResolved.mock.calls[0]![0]).toMatchObject({ id: `CA-${MILKA}`, barcode: MILKA });
+  });
+
+  it('owner case 7340222800464: Vitamin Well Sport 002 is identified and saved as a beverage, no question', async () => {
+    const { registry } = fakes();
+    const VW = '7340222800464';
+    registry.set(VW, {
+      provider: 'openfoodfacts',
+      queriedAt: 1,
+      query: VW,
+      confidence: 0.9,
+      facts: [
+        {
+          field: 'identity.displayName',
+          value: 'Sport 002',
+          sourceUrl: 'u',
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'identity.brand',
+          value: 'Vitamin Well',
+          sourceUrl: 'u',
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'identity.servingSize',
+          value: '1 bottle (500 ml)',
+          sourceUrl: 'u',
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'nutrition.energyKcal',
+          value: '1.2',
+          sourceUrl: 'u',
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'ingredientsText',
+          value: 'water, minerals',
+          sourceUrl: 'u',
+          authority: 'barcode_registry',
+        },
+      ],
+    });
+    await act(async () => {
+      root.render(<ScanFlow mode="catalog" />);
+    });
+    await typeCode(VW);
+    await flush();
+    expect(text()).toContain('Rozpoznano po kodzie');
+    expect(text()).toContain('Sport 002');
+    expect(text()).toContain('Vitamin Well');
+    expect(text()).not.toContain('Co to za produkt?');
+    expect(text()).toContain('Zapisano jako Twój produkt');
+  });
+
+  it('a registry identity whose family nobody can tell asks it once, with the product name shown', async () => {
+    const { registry } = fakes();
+    const CODE = '5449000000996';
+    registry.set(CODE, {
+      provider: 'openfoodfacts',
+      queriedAt: 1,
+      query: CODE,
+      confidence: 0.9,
+      facts: [
+        {
+          field: 'identity.displayName',
+          value: 'Mystery 002',
+          sourceUrl: 'u',
+          authority: 'barcode_registry',
+        },
+        { field: 'identity.brand', value: 'Acme', sourceUrl: 'u', authority: 'barcode_registry' },
+        {
+          field: 'nutrition.energyKcal',
+          value: '10',
+          sourceUrl: 'u',
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'ingredientsText',
+          value: 'something',
+          sourceUrl: 'u',
+          authority: 'barcode_registry',
+        },
+      ],
+    });
+    await act(async () => {
+      root.render(<ScanFlow mode="catalog" />);
+    });
+    await typeCode(CODE);
+    await flush();
+    expect(text()).toContain('Co to za produkt? (Mystery 002)');
+    await act(async () => {
+      button('Inne')!.click();
+    });
+    await flush();
+    expect(text()).toContain('Zapisano jako Twój produkt');
   });
 });

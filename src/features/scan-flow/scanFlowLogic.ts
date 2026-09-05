@@ -7,7 +7,7 @@
  *     technical parameter — and the customer's answers become the finalize confirmations.
  */
 import type { ConfirmedScan } from '@/scan-contract/confirmedScan';
-import type { ExactCandidate, FinalizeInput } from '@/scan-import-v2';
+import type { ExactCandidate, ExactWebIdentity, FinalizeInput } from '@/scan-import-v2';
 import type { ScanExactProduct } from '@/services/productScanner';
 
 export type ResolvedScanProductLike = ScanExactProduct & { barcode: string | null };
@@ -191,4 +191,89 @@ export function confirmationsFromFields(
   }
   if (Object.keys(declarations).length > 0) productFields['productionDeclarations'] = declarations;
   return { productFields };
+}
+
+/* ---------------------------------------------------------------------------------------------- */
+/* Scanner feedback: what the customer reads while the engine works                                */
+/* ---------------------------------------------------------------------------------------------- */
+
+export type ScanState = 'SEARCHING' | 'FOUND' | 'READING' | 'HOLD' | 'COMPLETE' | 'LOST';
+export type ScanGuidance =
+  | 'none'
+  | 'hold_steady'
+  | 'move_closer'
+  | 'move_away'
+  | 'aim_in_frame'
+  | 'improve_light'
+  | 'camera_inadequate';
+export type PositionHint = 'left' | 'right' | 'up' | 'down' | null;
+
+const STATE_TEXT: Record<ScanState, string> = {
+  SEARCHING: 'Szukam kodu…',
+  FOUND: 'Widzę kod',
+  READING: 'Odczytuję kod…',
+  HOLD: 'Trzymaj nieruchomo…',
+  COMPLETE: 'Odczytano',
+  LOST: 'Zgubiłem kod — pokaż go ponownie',
+};
+const GUIDANCE_TEXT: Record<Exclude<ScanGuidance, 'none'>, string> = {
+  hold_steady: 'Trzymaj telefon nieruchomo',
+  move_closer: 'Przybliż telefon do kodu',
+  move_away: 'Odsuń telefon od kodu',
+  aim_in_frame: 'Ustaw kod w ramce',
+  improve_light: 'Potrzeba więcej światła',
+  camera_inadequate: 'Ten aparat nie odczyta tego kodu — wpisz kod ręcznie',
+};
+const POSITION_TEXT: Record<NonNullable<PositionHint>, string> = {
+  left: 'Przesuń telefon w lewo',
+  right: 'Przesuń telefon w prawo',
+  up: 'Unieś telefon wyżej',
+  down: 'Opuść telefon niżej',
+};
+
+/** where the code sits in the frame → which way to move the phone to centre it */
+export function positionHint(
+  roi: { x: number; y: number; w: number; h: number } | null,
+  sourceW: number,
+  sourceH: number,
+): PositionHint {
+  if (!roi || sourceW <= 0 || sourceH <= 0) return null;
+  const cx = (roi.x + roi.w / 2) / sourceW;
+  const cy = (roi.y + roi.h / 2) / sourceH;
+  if (cx < 0.28) return 'left';
+  if (cx > 0.72) return 'right';
+  if (cy < 0.28) return 'up';
+  if (cy > 0.72) return 'down';
+  return null;
+}
+
+/** one line for the customer: guidance outranks position, position outranks the bare state */
+export function scanFeedbackText(frame: {
+  state: ScanState;
+  guidance: ScanGuidance;
+  timedOut: boolean;
+  position: PositionHint;
+}): string {
+  if (frame.state === 'COMPLETE') return STATE_TEXT.COMPLETE;
+  if (frame.timedOut) return 'Nie udało się potwierdzić kodu — spróbuj bliżej albo pod innym kątem';
+  if (frame.guidance !== 'none' && frame.guidance !== 'hold_steady')
+    return GUIDANCE_TEXT[frame.guidance];
+  if (frame.position && frame.state !== 'HOLD') return POSITION_TEXT[frame.position];
+  if (frame.guidance === 'hold_steady') return GUIDANCE_TEXT.hold_steady;
+  return STATE_TEXT[frame.state];
+}
+
+/** the registry's facts as the prefilled answers of the plain fields */
+export function prefillFromIdentity(web: ExactWebIdentity): Record<string, string | boolean> {
+  const out: Record<string, string | boolean> = { displayName: web.displayName };
+  if (web.brand) out['brand'] = web.brand;
+  const pf = web.productFields;
+  const nutrition = (pf['nutrition'] ?? {}) as Record<string, unknown>;
+  for (const [k, v] of Object.entries(nutrition)) {
+    if (k === 'basis') out['basis'] = String(v);
+    else if (typeof v === 'number') out[k] = String(v);
+  }
+  if (typeof pf['ingredientsText'] === 'string') out['ingredientsText'] = pf['ingredientsText'];
+  if (typeof pf['allergensText'] === 'string') out['allergensText'] = pf['allergensText'];
+  return out;
 }

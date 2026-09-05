@@ -4,6 +4,9 @@ import {
   confirmationsFromFields,
   manualConfirmedScan,
   plainFieldsFor,
+  positionHint,
+  prefillFromIdentity,
+  scanFeedbackText,
   toResolvedScanProduct,
 } from './scanFlowLogic';
 
@@ -130,6 +133,77 @@ describe('scan flow — pure rules', () => {
     expect(confirmationsFromFields({ fat: 'abc' }).productFields).toEqual({});
     expect(confirmationsFromFields({ fat: '1', basis: 'per_100ml' }).productFields).toEqual({
       nutrition: { fat: 1, basis: 'per_100ml' },
+    });
+  });
+
+  it('the customer always reads what the scanner is doing: guidance > position > state', () => {
+    const base = {
+      state: 'SEARCHING' as const,
+      guidance: 'none' as const,
+      timedOut: false,
+      position: null,
+    };
+    expect(scanFeedbackText(base)).toBe('Szukam kodu…');
+    expect(scanFeedbackText({ ...base, state: 'FOUND' })).toBe('Widzę kod');
+    expect(scanFeedbackText({ ...base, state: 'READING' })).toBe('Odczytuję kod…');
+    expect(scanFeedbackText({ ...base, state: 'HOLD', guidance: 'hold_steady' })).toBe(
+      'Trzymaj telefon nieruchomo',
+    );
+    expect(scanFeedbackText({ ...base, state: 'FOUND', guidance: 'move_closer' })).toBe(
+      'Przybliż telefon do kodu',
+    );
+    expect(scanFeedbackText({ ...base, state: 'FOUND', guidance: 'move_away' })).toBe(
+      'Odsuń telefon od kodu',
+    );
+    expect(scanFeedbackText({ ...base, state: 'FOUND', guidance: 'improve_light' })).toBe(
+      'Potrzeba więcej światła',
+    );
+    expect(scanFeedbackText({ ...base, state: 'FOUND', position: 'left' })).toBe(
+      'Przesuń telefon w lewo',
+    );
+    expect(scanFeedbackText({ ...base, state: 'READING', position: 'right' })).toBe(
+      'Przesuń telefon w prawo',
+    );
+    expect(scanFeedbackText({ ...base, state: 'READING', timedOut: true })).toMatch(
+      /spróbuj bliżej/,
+    );
+    expect(scanFeedbackText({ ...base, state: 'COMPLETE' })).toBe('Odczytano');
+    expect(scanFeedbackText({ ...base, state: 'LOST' })).toMatch(/Zgubiłem kod/);
+  });
+
+  it('where the code sits in the frame becomes a left/right/up/down hint', () => {
+    expect(positionHint({ x: 0, y: 900, w: 200, h: 100 }, 1080, 1920)).toBe('left');
+    expect(positionHint({ x: 880, y: 900, w: 200, h: 100 }, 1080, 1920)).toBe('right');
+    expect(positionHint({ x: 440, y: 0, w: 200, h: 100 }, 1080, 1920)).toBe('up');
+    expect(positionHint({ x: 440, y: 1800, w: 200, h: 100 }, 1080, 1920)).toBe('down');
+    expect(positionHint({ x: 440, y: 900, w: 200, h: 100 }, 1080, 1920)).toBeNull();
+    expect(positionHint(null, 1080, 1920)).toBeNull();
+  });
+
+  it('registry facts prefill the plain fields the customer would otherwise type', () => {
+    const values = prefillFromIdentity({
+      displayName: 'Choco brownie',
+      brand: 'Milka',
+      quantity: '150 g',
+      family: 'other',
+      sourceUrl: 'u',
+      productFields: {
+        identity: { displayName: 'Choco brownie', brand: 'Milka' },
+        nutrition: { energyKcal: 467.5, fat: 27, basis: 'per_100g' },
+        ingredientsText: 'Azúcar, HUEVO',
+        allergensText: 'eggs, gluten',
+      },
+      hasNutrition: true,
+      hasIngredients: true,
+    });
+    expect(values).toEqual({
+      displayName: 'Choco brownie',
+      brand: 'Milka',
+      energyKcal: '467.5',
+      fat: '27',
+      basis: 'per_100g',
+      ingredientsText: 'Azúcar, HUEVO',
+      allergensText: 'eggs, gluten',
     });
   });
 });

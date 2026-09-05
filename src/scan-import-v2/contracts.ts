@@ -166,6 +166,8 @@ export type ScanImportV2Result =
       behaviour: { outcome: 'unknown_requires_review' | 'blocked'; bindingId: string | null };
       sessionId?: string;
       options?: readonly string[];
+      /** exact-GTIN registry evidence gathered alongside discovery (null = none / provider unavailable) */
+      externalEvidence?: ExternalEvidence | null;
     }
   | {
       /** unknown code with an OPEN discovery: identity preserved, evidence collected so far, what happens next */
@@ -179,6 +181,8 @@ export type ScanImportV2Result =
       note: string | null;
       engineReady: false;
       canonical: false;
+      /** exact-GTIN registry evidence gathered alongside discovery (null = none / provider unavailable) */
+      externalEvidence?: ExternalEvidence | null;
     }
   | {
       /** a NEW exact SKU created through the finalize/profile/ProductBehaviour authorities (customer-provisional) */

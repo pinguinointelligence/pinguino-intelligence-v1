@@ -9,6 +9,7 @@
  */
 import { supabase } from '@/lib/supabase/client';
 import {
+  createOpenFoodFactsEvidencePort,
   createSupabaseDiscoveryPort,
   createSupabaseV2Ports,
   type OfflineCachePort,
@@ -31,9 +32,10 @@ export function createScanImportV2AppPorts(opts: {
   const client = supabase as never;
   return {
     ...createSupabaseV2Ports(client, { exactAuthority: opts.exactAuthority }),
-    external: null,
+    // exact-GTIN registry evidence (Open Food Facts, by code only) — the first source for an unknown code
+    external: createOpenFoodFactsEvidencePort(),
     offlineCache: opts.offlineCache,
-    externalTimeoutMs: opts.externalTimeoutMs ?? 20_000,
+    externalTimeoutMs: opts.externalTimeoutMs ?? 8_000,
     discovery: createSupabaseDiscoveryPort(client),
   };
 }
