@@ -300,3 +300,68 @@ The neutral technological vocabulary the Owner is asking for ALREADY EXISTS one 
 profile authority (`CorrectionFamily`). The proliferation is confined to the Mapper/PI layer. So the
 target family vocabulary is not an invention - it can be derived from an authority already in
 production, which is the cheapest and safest possible source.
+
+## B02-B06 — GLOBAL VARIANT DISCOVERY, TESTED BY DIMENSION
+
+Method: instead of enumerating SKUs, test every dimension in which global variation could be
+TYPE-level, and ask what the engine actually reads. Composition -> PR. Only a real class -> PI.
+
+| Dimension | What the authority actually does | Verdict |
+|---|---|---|
+| Fat % (milk, cream, powder) | every gate reads composition; the FR resolver proves the Engine uses the PR's own 3.6 | PR |
+| Lactose-free | `computeLactoseSandinessRisk(totals.lactose_g, totals.water_g)`; composition.ts sums `lactose_percent` per component | PR |
+| UHT vs pasteurised vs raw | ProductBehavior `processBehavior` on the PR (e.g. UHT_READY_TO_USE -> COLD_PROCESS_OK) | PR |
+| Aerating protein | `aerating_protein = percentages.protein_percent` - plain total protein | PR |
+| Dairy identity | `is_dairy` FLAG, needed only because composition cannot see dairy fat carrying no lactose (butterfat). A flag on the ingredient, not a type | PR flag |
+| Glucose syrup / maltodextrin DE | `src/engine/pac.ts` has an explicit Syrup DE path: non-null `de_value` -> anchor-interpolated PAC | PR |
+| Plant source (oat/soy/almond/rice/coconut) | separate `CorrectionFamily` values; different botanical class | **PI (type)** |
+| Whey vs milk protein | separate families `whey_protein_concentrate` / `milk_protein_concentrate` | **PI (type)** |
+| Individual gums | distinct molecules, each already a neutral row | **PI (type)** |
+
+NOTHING NEW became a type. Every dimension of real global variation in milk / cream / powders is
+composition the engine already consumes.
+
+### Additional proliferation found by the same rule (frozen, not migrated)
+
+GLUCOSE SYRUP DRY - SIX rows differing ONLY by DE: 22.5, 27.5, 31, 39, 42, 62.
+MALTODEXTRIN      - SIX rows differing ONLY by DE: 10, 11, 11.5, 16.5, 18.5, 30.5.
+  The engine interpolates PAC from `de_value`, so DE is composition it already reads. Under the
+  corrected rule these twelve identities carry two technological types.
+  NOTE for C04: the existing split does not even follow the standard DE-20 boundary - maltodextrin
+  rows reach DE 30.5 while glucose syrup starts at DE 22.5, so the two overlap. Whether GLUCOSE SYRUP
+  and MALTODEXTRIN are one starch-hydrolysate continuum or two types is a technologist judgement, not
+  something this audit should assert.
+
+WHEY PROTEIN CONCENTRATE - WPC 60% (PI-ING-000294) and WPC 80% (PI-ING-000295) differ only by protein
+  content. One type, composition in PR. WPC vs MPC remains a genuine type split (separate families).
+
+LOCUST BEAN GUM - PI-ING-001384 and PI-ING-000475 (LOCUST BEAN GUM CAROB) are the same gum, twice.
+
+### Consolidated proliferation ledger (evidence only - Mapper untouched)
+
+  MILK               5 percentage rows  -> 1 type
+  GLUCOSE SYRUP      6 DE rows          -> 1 type
+  MALTODEXTRIN       6 DE rows          -> 1 type
+  WPC                2 protein% rows    -> 1 type
+  LOCUST BEAN GUM    2 duplicate rows   -> 1 type
+  CREAM              1 neutral (33%) + brand legacy -> 1 type
+  Total: 22 identities carrying 6 technological types.
+
+### Family vocabulary standing after B02-B06
+
+Confirmed types, already present: DEXTROSE, FRUCTOSE, SUCROSE, LACTOSE, INULIN, the single gums,
+egg yolk / dried egg yolk, starches, plant drinks (oat, rice, almond), coconut, pea/rice protein,
+WPC, MPC, GELLATTI STABILIZER.
+Confirmed missing: SOY DRINK (neutral) - the vegan authority already names the family `soy_drink`
+but only brand rows exist.
+Family concepts absent at BOTH layers: CREAM POWDER (sold as GEL-CRP-500, consumed by the rescue
+palette via a brand row, and no `cream_powder` CorrectionFamily exists).
+Still withdrawn: CARRAGEENAN, generic EMULSIFIER - no profile authority references either.
+
+### C05 PRECONDITION RECORDED (Owner instruction 2026-09-05)
+
+`skimmed_milk_powder` stays as legacy routing authority. Do not rename or refactor any
+CorrectionFamily value. Any future collapse to MILK POWDER must FIRST make lever selection in
+optimizationFlowRouter composition-aware (low fat / high protein), because that family is the lever
+for increase_aerating_protein, increase_solids, decrease_water and decrease_npac, and a merged family
+could otherwise hand the optimizer a 26%-fat powder against a HARD fat gate.
