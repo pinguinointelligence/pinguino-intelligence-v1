@@ -22,7 +22,10 @@ export const PRODUCTION_RESCUE_AUTHORIZATION_TTL_SECONDS = 300;
 const FRUCTOSE_CANONICAL_ID = 'PI-ING-000496';
 
 export type StableRescueOptionId =
-  'keep_original_batch' | 'enlarge_batch' | 'restore_original_recipe' | 'leave_as_is';
+  | 'keep_original_batch'
+  | 'enlarge_batch'
+  | 'restore_original_recipe'
+  | 'leave_as_is';
 
 export interface AuthorizeRescueRequest {
   runId: string;
@@ -515,24 +518,32 @@ export async function authorizeTrustedProductionRescue(
       (sum: number, line: { physicalAddedGrams: number }) => sum + line.physicalAddedGrams,
       0,
     );
-    const reason =
-      request.stableOptionId === 'keep_original_batch'
-        ? physicalConfirmedG > session.plannedInput.target_batch_grams + 0.000001
-          ? 'physical_mass_above_original_target'
-          : 'no_safe_original_target_candidate'
-        : request.stableOptionId === 'enlarge_batch'
-          ? 'no_safe_larger_candidate'
-          : assessment.hardSafety.capacityExceeded
-            ? 'machine_capacity_exceeded'
-            : assessment.hardSafety.provisional
-              ? 'provisional_profile_not_hard_safe'
-              : assessment.hardSafety.violationMetrics.length > 0
-                ? 'hard_safety_violations'
-                : 'native_profile_not_hard_safe';
+    const machineCapacityG = assessment.diagnostics.machineCapacityG;
+    const physicalCapacityExceeded =
+      machineCapacityG !== null && physicalConfirmedG > machineCapacityG + 0.000001;
+    const confirmedFloorUnsafe = assessment.diagnostics.irreducibleConfirmedViolations.length > 0;
+    const reason = physicalCapacityExceeded
+      ? 'machine_capacity_exceeded'
+      : confirmedFloorUnsafe
+        ? 'confirmed_physical_floor_above_hard_limit'
+        : request.stableOptionId === 'keep_original_batch'
+          ? physicalConfirmedG > session.plannedInput.target_batch_grams + 0.000001
+            ? 'physical_mass_above_original_target'
+            : 'no_safe_original_target_candidate'
+          : request.stableOptionId === 'enlarge_batch'
+            ? 'no_safe_larger_candidate'
+            : assessment.hardSafety.capacityExceeded
+              ? 'machine_capacity_exceeded'
+              : assessment.hardSafety.provisional
+                ? 'provisional_profile_not_hard_safe'
+                : assessment.hardSafety.violationMetrics.length > 0
+                  ? 'hard_safety_violations'
+                  : 'native_profile_not_hard_safe';
     throw new RescueAuthorizationError('stable_rescue_option_stale', 409, {
       stableOptionId: request.stableOptionId,
       reason,
       violationMetrics: assessment.hardSafety.violationMetrics,
+      diagnostics: assessment.diagnostics,
     });
   }
   const candidate = option.candidateInput as unknown as Record<string, unknown> & {
@@ -596,13 +607,15 @@ export async function authorizeTrustedProductionRescue(
     explanation: option.explanation,
     finalMassG: option.finalMassG,
     scoreDisplay: option.scoreDisplay,
-    instructions: option.instructions.map((instruction): SafeRescueInstruction => ({
-      lineId: instruction.lineId ?? null,
-      ingredientName: instruction.ingredientName,
-      kind: instruction.kind as SafeRescueInstruction['kind'],
-      grams: instruction.grams,
-      finalTargetGrams: instruction.finalTargetGrams,
-    })),
+    instructions: option.instructions.map(
+      (instruction): SafeRescueInstruction => ({
+        lineId: instruction.lineId ?? null,
+        ingredientName: instruction.ingredientName,
+        kind: instruction.kind as SafeRescueInstruction['kind'],
+        grams: instruction.grams,
+        finalTargetGrams: instruction.finalTargetGrams,
+      }),
+    ),
   };
   const productBehaviorFingerprint = await sha256Hex(stableCanonicalJson(productComposition));
   const sourceFingerprint = await sha256Hex(

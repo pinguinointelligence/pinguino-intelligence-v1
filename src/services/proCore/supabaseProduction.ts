@@ -317,11 +317,33 @@ export class ProductionRescueAuthorizationError extends ProductionPersistenceErr
   }
 }
 
+export interface ProductionRescueViolationDiagnosticPayload {
+  metric: string;
+  direction: 'low' | 'high';
+  value: number;
+  min: number;
+  max: number;
+}
+
+export interface ProductionRescueUnavailableDiagnostics {
+  physicalConfirmedG: number;
+  forecastMassG: number;
+  originalTargetG: number;
+  machineCapacityG: number | null;
+  forecastViolationDetails: ProductionRescueViolationDiagnosticPayload[];
+  fixedTargetRebalance: {
+    candidateMassG: number;
+    violationDetails: ProductionRescueViolationDiagnosticPayload[];
+  } | null;
+  irreducibleConfirmedViolations: ProductionRescueViolationDiagnosticPayload[];
+}
+
 export class ProductionRescueOptionUnavailableError extends ProductionPersistenceError {
   constructor(
     message: string,
     public readonly reasonCode: string | null,
     public readonly violationMetrics: string[],
+    public readonly diagnostics: ProductionRescueUnavailableDiagnostics | null = null,
   ) {
     super(message);
     this.name = 'ProductionRescueOptionUnavailableError';
@@ -363,6 +385,83 @@ const persistenceError = (message: string): ProductionPersistenceError => {
     : new ProductionPersistenceError(message);
 };
 
+const finiteNumber = (value: unknown): number | null =>
+  typeof value === 'number' && Number.isFinite(value) ? value : null;
+
+const violationDiagnosticPayload = (
+  value: unknown,
+): ProductionRescueViolationDiagnosticPayload | null => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const record = value as Record<string, unknown>;
+  const metric = typeof record.metric === 'string' ? record.metric : null;
+  const direction =
+    record.direction === 'low' || record.direction === 'high' ? record.direction : null;
+  const numeric = {
+    value: finiteNumber(record.value),
+    min: finiteNumber(record.min),
+    max: finiteNumber(record.max),
+  };
+  return metric &&
+    direction &&
+    numeric.value !== null &&
+    numeric.min !== null &&
+    numeric.max !== null
+    ? { metric, direction, value: numeric.value, min: numeric.min, max: numeric.max }
+    : null;
+};
+
+const violationDiagnosticPayloads = (
+  value: unknown,
+): ProductionRescueViolationDiagnosticPayload[] =>
+  Array.isArray(value)
+    ? value.flatMap((entry) => {
+        const parsed = violationDiagnosticPayload(entry);
+        return parsed ? [parsed] : [];
+      })
+    : [];
+
+const unavailableDiagnostics = (value: unknown): ProductionRescueUnavailableDiagnostics | null => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const record = value as Record<string, unknown>;
+  const physicalConfirmedG = finiteNumber(record.physicalConfirmedG);
+  const forecastMassG = finiteNumber(record.forecastMassG);
+  const originalTargetG = finiteNumber(record.originalTargetG);
+  const machineCapacityG =
+    record.machineCapacityG === null ? null : finiteNumber(record.machineCapacityG);
+  if (
+    physicalConfirmedG === null ||
+    forecastMassG === null ||
+    originalTargetG === null ||
+    (record.machineCapacityG !== null && machineCapacityG === null)
+  ) {
+    return null;
+  }
+  const fixedRecord =
+    record.fixedTargetRebalance &&
+    typeof record.fixedTargetRebalance === 'object' &&
+    !Array.isArray(record.fixedTargetRebalance)
+      ? (record.fixedTargetRebalance as Record<string, unknown>)
+      : null;
+  const fixedMassG = fixedRecord ? finiteNumber(fixedRecord.candidateMassG) : null;
+  return {
+    physicalConfirmedG,
+    forecastMassG,
+    originalTargetG,
+    machineCapacityG,
+    forecastViolationDetails: violationDiagnosticPayloads(record.forecastViolationDetails),
+    fixedTargetRebalance:
+      fixedRecord && fixedMassG !== null
+        ? {
+            candidateMassG: fixedMassG,
+            violationDetails: violationDiagnosticPayloads(fixedRecord.violationDetails),
+          }
+        : null,
+    irreducibleConfirmedViolations: violationDiagnosticPayloads(
+      record.irreducibleConfirmedViolations,
+    ),
+  };
+};
+
 const edgeFunctionError = async (error: unknown): Promise<ProductionPersistenceError> => {
   const candidate = error as {
     message?: unknown;
@@ -387,6 +486,7 @@ const edgeFunctionError = async (error: unknown): Promise<ProductionPersistenceE
       Array.isArray(record.violationMetrics)
         ? record.violationMetrics.filter((metric): metric is string => typeof metric === 'string')
         : [],
+      unavailableDiagnostics(record.diagnostics),
     );
   }
   return persistenceError(message || 'Production Rescue authorization failed.');
@@ -426,6 +526,11 @@ export const productionRescueOptionUnavailableDetails = (
   error instanceof ProductionRescueOptionUnavailableError
     ? { reasonCode: error.reasonCode, violationMetrics: error.violationMetrics }
     : null;
+
+export const productionRescueOptionUnavailableDiagnostics = (
+  error: unknown,
+): ProductionRescueUnavailableDiagnostics | null =>
+  error instanceof ProductionRescueOptionUnavailableError ? error.diagnostics : null;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);

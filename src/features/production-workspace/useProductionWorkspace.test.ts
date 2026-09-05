@@ -249,6 +249,49 @@ describe('trusted Production Rescue authorization basis', () => {
     expect(rescueOptionUnavailableMessage('leave_as_is', 1_000, hardSafetyError)).toBe(
       'Niedostępne — przekroczone twarde zakresy: Ryzyko piaszczystości, Laktoza.',
     );
+
+    const irreducibleOwnerError = new ProductionRescueOptionUnavailableError(
+      'stable_rescue_option_stale',
+      'confirmed_physical_floor_above_hard_limit',
+      ['lactose'],
+      {
+        physicalConfirmedG: 381,
+        forecastMassG: 675,
+        originalTargetG: 670,
+        machineCapacityG: 670,
+        forecastViolationDetails: [],
+        fixedTargetRebalance: {
+          candidateMassG: 670,
+          violationDetails: [
+            { metric: 'lactose', direction: 'high', value: 6.193582, min: 4, max: 6 },
+          ],
+        },
+        irreducibleConfirmedViolations: [
+          { metric: 'lactose', direction: 'high', value: 6.193582, min: 4, max: 6 },
+        ],
+      },
+    );
+    expect(rescueOptionUnavailableMessage('keep_original_batch', 670, irreducibleOwnerError)).toBe(
+      'Niedostępne — przy celu 670 g potwierdzone ilości dają co najmniej Laktoza 6,194% (maks. 6,000%). Bez usuwania produktu korekta wymaga większej partii.',
+    );
+
+    const capacityOwnerError = new ProductionRescueOptionUnavailableError(
+      'stable_rescue_option_stale',
+      'machine_capacity_exceeded',
+      [],
+      {
+        physicalConfirmedG: 676,
+        forecastMassG: 676,
+        originalTargetG: 670,
+        machineCapacityG: 670,
+        forecastViolationDetails: [],
+        fixedTargetRebalance: null,
+        irreducibleConfirmedViolations: [],
+      },
+    );
+    expect(rescueOptionUnavailableMessage('leave_as_is', 670, capacityOwnerError)).toBe(
+      'Niedostępne — w naczyniu jest 676 g, a pojemność maszyny wynosi 670 g.',
+    );
   });
 
   it('exposes only stable server decisions and never computes a candidate in the browser hook', () => {
