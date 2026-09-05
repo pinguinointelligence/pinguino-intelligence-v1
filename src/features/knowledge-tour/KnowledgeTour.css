@@ -66,7 +66,7 @@
 .knowledge-tour__story {
   min-width: 0;
   width: 100%;
-  max-width: 72rem;
+  max-width: min(72rem, 108.39dvh);
   justify-self: center;
 }
 
@@ -74,6 +74,7 @@
   position: relative;
   isolation: isolate;
   width: 100%;
+  aspect-ratio: 1672 / 941;
   overflow: hidden;
   background: #fff;
 }
@@ -86,11 +87,37 @@
   content: '';
 }
 
+.knowledge-tour__artwork::after {
+  position: absolute;
+  z-index: 2;
+  inset: -1px;
+  background:
+    linear-gradient(
+      to right,
+      #fff 0,
+      rgba(255, 255, 255, 0.72) 2.5%,
+      transparent 7%,
+      transparent 93%,
+      rgba(255, 255, 255, 0.72) 97.5%,
+      #fff 100%
+    ),
+    linear-gradient(
+      to bottom,
+      #fff 0,
+      rgba(255, 255, 255, 0.58) 2.5%,
+      transparent 7%,
+      transparent 92%,
+      rgba(255, 255, 255, 0.62) 97%,
+      #fff 100%
+    );
+  pointer-events: none;
+  content: '';
+}
+
 .knowledge-tour__artwork img {
   display: block;
   width: 100%;
-  height: auto;
-  max-height: min(61dvh, 660px);
+  height: 100%;
   object-fit: contain;
   object-position: center;
   -webkit-mask-image:
@@ -104,44 +131,32 @@
 }
 
 .knowledge-tour__annotations {
-  display: grid;
-  grid-template-columns: repeat(var(--tour-columns), minmax(0, 1fr));
+  position: relative;
   width: 100%;
+  min-height: 5rem;
   margin-top: 0.35rem;
+  border-top: 1px solid var(--g-line);
 }
 
 .knowledge-tour__annotation {
+  position: absolute;
+  top: 0;
+  left: var(--tour-anchor-x);
+  width: var(--tour-caption-width);
   min-width: 0;
   padding: 0.72rem clamp(0.35rem, 1vw, 0.9rem) 0;
-  border-top: 1px solid var(--g-line);
   text-align: center;
+  transform: translateX(-50%);
 }
 
-.knowledge-tour__annotation + .knowledge-tour__annotation {
-  border-left: 1px solid color-mix(in srgb, var(--g-line) 58%, transparent);
-}
-
-/* Asset 04 contains four ingredient stations followed by the finished gelato.
-   The labels occupy the same first four stations and deliberately leave the
-   result area unlabelled, so "Inulina" can never drift beneath the scoop. */
-.knowledge-tour__annotations[data-layout='ingredient-chain'] {
-  grid-template-columns: 7% repeat(4, minmax(0, 18%)) 21%;
-}
-
-.knowledge-tour__annotations[data-layout='ingredient-chain']
-  .knowledge-tour__annotation:first-child {
-  grid-column: 2;
-}
-
-/* Asset 09 is not three equal panels: the machine is a wider left scene, the
-   produced gelato is central, and service/display fills the right. These
-   tracks follow those visual centres instead of distributing labels blindly. */
-.knowledge-tour__annotations[data-layout='pro-process'] {
-  grid-template-columns: 9% 36% 18% 28% 9%;
-}
-
-.knowledge-tour__annotations[data-layout='pro-process'] .knowledge-tour__annotation:first-child {
-  grid-column: 2;
+.knowledge-tour__annotation::before {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 1px;
+  height: 0.38rem;
+  background: color-mix(in srgb, var(--g-line) 72%, transparent);
+  content: '';
 }
 
 .knowledge-tour__annotation-index {
@@ -265,11 +280,7 @@
   }
 
   .knowledge-tour__story {
-    max-width: 44rem;
-  }
-
-  .knowledge-tour__artwork img {
-    max-height: 45dvh;
+    max-width: min(44rem, 79.96dvh);
   }
 }
 
@@ -292,8 +303,16 @@
     display: none;
   }
 
-  .knowledge-tour__artwork img {
-    max-height: 35dvh;
+  .knowledge-tour__story {
+    max-width: min(100%, 62.19dvh);
+  }
+
+  .knowledge-tour__annotations {
+    min-height: 5.5rem;
+  }
+
+  .knowledge-tour__annotations[data-compact-mobile='true'] {
+    min-height: 4.6rem;
   }
 
   .knowledge-tour__annotation {

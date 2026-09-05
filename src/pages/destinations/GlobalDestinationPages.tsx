@@ -51,12 +51,9 @@ const quietLink =
   'flex min-h-14 items-center justify-between border-b border-[var(--g-line)] py-3 text-sm text-ink transition-opacity hover:opacity-55';
 
 export function HowItWorksPage() {
-  const persona = useProCorePersona();
-  const audience = persona === 'pro' ? 'pro' : 'home';
-
   return (
     <AppShell navigationPosition="trailing" contentClassName="bg-white">
-      <KnowledgeTour audience={audience} />
+      <KnowledgeTour />
     </AppShell>
   );
 }

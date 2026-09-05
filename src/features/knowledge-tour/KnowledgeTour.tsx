@@ -1,14 +1,10 @@
 import { useEffect, useRef, type CSSProperties, type KeyboardEvent, type TouchEvent } from 'react';
 import { useSearchParams } from 'react-router';
 import { educationCopy } from '@/copy/education.pl';
-import {
-  knowledgeTourSteps,
-  type KnowledgeTourAudience,
-  type KnowledgeTourStep,
-} from './knowledgeTourModel';
+import { knowledgeTourSteps, type KnowledgeTourStep } from './knowledgeTourModel';
 import './KnowledgeTour.css';
 
-const STEP_COUNT = 8;
+const STEP_COUNT = 9;
 const SWIPE_DISTANCE_PX = 56;
 
 function stepFromSearch(rawStep: string | null): number {
@@ -34,21 +30,33 @@ function Arrow({ direction }: { direction: 'left' | 'right' }) {
 }
 
 function AnnotationRail({ step }: { step: KnowledgeTourStep }) {
-  const columns = { '--tour-columns': step.annotations.length } as CSSProperties;
+  const captionWidth = (index: number) => {
+    const anchor = step.annotations[index]!.anchorX;
+    const previousGap = index === 0 ? anchor * 2 : anchor - step.annotations[index - 1]!.anchorX;
+    const nextGap =
+      index === step.annotations.length - 1
+        ? (1 - anchor) * 2
+        : step.annotations[index + 1]!.anchorX - anchor;
+    return Math.min(previousGap, nextGap) * 92;
+  };
 
   return (
     <>
       <div
         className="knowledge-tour__annotations"
         data-compact-mobile={step.compactMobileAnnotations}
-        data-layout={step.annotationLayout ?? 'equal'}
-        style={columns}
       >
         {step.annotations.map((annotation, index) => (
           <div
             className="knowledge-tour__annotation"
             data-annotation={annotation.id}
             key={annotation.id}
+            style={
+              {
+                '--tour-anchor-x': `${annotation.anchorX * 100}%`,
+                '--tour-caption-width': `${captionWidth(index)}%`,
+              } as CSSProperties
+            }
           >
             <span className="knowledge-tour__annotation-index" aria-hidden="true">
               {index + 1}
@@ -75,12 +83,12 @@ function AnnotationRail({ step }: { step: KnowledgeTourStep }) {
   );
 }
 
-export function KnowledgeTour({ audience }: { audience: KnowledgeTourAudience }) {
+export function KnowledgeTour() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const steps = knowledgeTourSteps(audience);
+  const steps = knowledgeTourSteps();
   const activeIndex = stepFromSearch(searchParams.get('step'));
-  // Both audience stories are model-locked to eight steps; `stepFromSearch`
-  // clamps to that same closed interval before this lookup.
+  // The progressive story is model-locked to nine steps and is deliberately
+  // independent from the HOME / PRO selector in the surrounding AppShell.
   const step = steps[activeIndex]!;
   const titleRef = useRef<HTMLHeadingElement>(null);
   const touchRef = useRef<{ x: number; y: number } | null>(null);
@@ -136,7 +144,6 @@ export function KnowledgeTour({ audience }: { audience: KnowledgeTourAudience })
     <section
       className="knowledge-tour"
       data-testid="knowledge-tour"
-      data-audience={audience}
       data-active-step={activeIndex + 1}
       data-owner-asset={step.ownerAsset}
       data-swipe-enabled="true"
