@@ -254,9 +254,12 @@ describe('mobile preview navigation', () => {
   it('retires the old „Otwórz kokpit receptury" button and the duplicate tab row', () => {
     expect(surface).not.toContain('Otwórz kokpit receptury');
     expect(surface).toContain('showTabs={false}');
-    // The score / Przelicz dock is shown once: bottom stack on mobile, toolbar on xl.
-    expect(read('features', 'ingredient-builder', 'IngredientBuilder.tsx')).toContain(
-      'pro-workbench-action-dock ml-auto hidden min-w-0',
+    // Mobile retains its existing score / Przelicz bottom stack. Desktop owns
+    // a separate viewport-fixed action pair and never moves it into the table.
+    expect(surface).toContain('{mobileRecipeActionDock ? (');
+    expect(read('features', 'ingredient-builder', 'IngredientBuilder.tsx')).not.toContain(
+      'pro-workbench-action-dock',
     );
+    expect(surface).toContain('<ProBottomRightFloatingActions');
   });
 });

@@ -59,8 +59,11 @@ describe('final Pro visual system', () => {
   it('keeps primary actions black with white text and semantic colors purposeful', () => {
     const editor = read('features', 'ingredient-builder', 'IngredientBuilder.tsx');
     const scoreDock = read('features', 'pro-workbench', 'WorkbenchIntelligenceHeader.tsx');
+    const floating = read('features', 'pro-workbench', 'ProBottomRightFloatingActions.tsx');
     const workbar = read('features', 'pro-core', 'ProWorkbar.tsx');
-    expect(editor).toContain('data-testid="ingredient-action-slot"');
+    expect(editor).not.toContain('data-testid="ingredient-action-slot"');
+    expect(floating).toContain('variant="primary"');
+    expect(floating).toContain('data-testid="pro-floating-recalculate"');
     expect(scoreDock).toContain('data-testid="pro-workbar-recalc"');
     // OWNER FROZEN PRO VISUAL: the recalculate CTA now rests in graphite like
     // every other primary action — which is what this test's own name asks for.

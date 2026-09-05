@@ -1,10 +1,9 @@
-import { Link } from 'react-router';
 import { copy } from '@/copy/en';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { useAuthStore } from '@/stores/authStore';
 
 const SLOT_CLASS =
-  'app-header-account-slot ml-auto hidden max-w-52 shrink-0 items-center truncate rounded-full border border-[var(--g-line)] px-4 py-1.5 text-[12px] font-semibold whitespace-nowrap text-[var(--g-text-secondary)] transition-colors hover:border-ink/30 hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40';
+  'app-header-account-slot ml-auto hidden h-11 w-auto shrink-0 items-center justify-center rounded-full border border-[var(--g-line)] px-3 text-[11px] font-medium whitespace-nowrap text-[var(--g-text-secondary)] transition-colors hover:border-ink/30 hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40';
 
 /**
  * The header and drawer read the same auth store. The former hard-coded
@@ -14,19 +13,21 @@ const SLOT_CLASS =
 export function AppHeaderAccountSlot() {
   const status = useAuthStore((state) => state.status);
   const user = useAuthStore((state) => state.user);
+  const signOut = useAuthStore((state) => state.signOut);
   const openAuthModal = useAuthModalStore((state) => state.open);
 
   if (status === 'authed' && user) {
     return (
-      <Link
-        to="/account"
+      <button
+        type="button"
+        onClick={() => void signOut()}
         data-testid="app-header-account"
         data-auth-state="authed"
-        aria-label="Otwórz konto"
+        aria-label={copy.shell.account.headerSignOut}
         className={SLOT_CLASS}
       >
-        <span className="truncate">{user.email ?? 'Konto'}</span>
-      </Link>
+        {copy.shell.account.headerSignOut}
+      </button>
     );
   }
 
@@ -38,7 +39,7 @@ export function AppHeaderAccountSlot() {
       data-auth-state="anon"
       className={SLOT_CLASS}
     >
-      {copy.nav.signIn}
+      {copy.shell.account.headerSignIn}
     </button>
   );
 }
