@@ -7,7 +7,6 @@ import type { VisibleProductType } from '@/features/studio/productType';
 import type { FormulationStrategy } from '@/features/formulation-strategy/strategy';
 import { MACHINE_CATALOG, deriveMachineSetup } from '@/features/machine-catalog';
 import { machineDisplayName } from '@/features/machine-onboarding';
-import { temperatureForMode } from '@/features/customer-flow/servingMode';
 import {
   isNewRecipeServingModeId,
   newRecipeStarterMaterialFingerprint,
@@ -74,9 +73,10 @@ export function changeProRecipeProductType(next: VisibleProductType): void {
     id: previous.machineId,
     label: previous.machineLabel,
     technology: previous.machineTechnology,
+    homeFormulationModuleId: previous.homeFormulationModuleId,
     servingModeId: previous.servingModeId,
     temperatureC: previous.target_temperature_c,
-    capacityGrams: previous.machine_capacity_grams,
+    hardCapacityGrams: previous.machine_capacity_grams,
     batchGrams: previous.target_batch_grams,
     batchSource: previous.batch_source,
   } as const;
@@ -87,20 +87,17 @@ export function changeProRecipeProductType(next: VisibleProductType): void {
   if (prior.kind === 'home' && machine !== null) {
     const setup = deriveMachineSetup(machine, next);
     if (setup.resolvedVisibleMode === null || setup.recommendedBatchGrams === null) return;
-    const temperatureC = temperatureForMode(setup.resolvedVisibleMode);
-    if (temperatureC === null) return;
     recipe.setMachineSelection({
       kind: 'home',
       servingModeId: setup.resolvedVisibleMode,
       machineId: machine.id,
       label: machineDisplayName(machine),
       machineTechnology: machine.technology,
-      temperatureC,
+      homeFormulationModuleId: machine.homeFormulationModuleId,
+      temperatureC: setup.engineTemperatureC,
       batchGrams:
-        prior.batchSource === 'MACHINE_DEFAULT'
-          ? setup.recommendedBatchGrams
-          : prior.batchGrams,
-      capacityGrams: setup.recommendedBatchGrams,
+        prior.batchSource === 'MACHINE_DEFAULT' ? setup.recommendedBatchGrams : prior.batchGrams,
+      hardCapacityGrams: setup.hardMaximumBatchGrams,
       batchSource: prior.batchSource,
     });
     return;
@@ -113,9 +110,10 @@ export function changeProRecipeProductType(next: VisibleProductType): void {
       machineId: prior.id,
       label: prior.label ?? 'Własna maszyna',
       machineTechnology: prior.technology,
+      homeFormulationModuleId: prior.homeFormulationModuleId,
       temperatureC: prior.temperatureC,
       batchGrams: prior.batchGrams,
-      capacityGrams: prior.capacityGrams ?? prior.batchGrams,
+      hardCapacityGrams: prior.hardCapacityGrams,
       batchSource: 'CUSTOM_MACHINE_BATCH',
     });
     return;
@@ -129,7 +127,7 @@ export function changeProRecipeProductType(next: VisibleProductType): void {
       label: prior.label ?? 'Maszyna profesjonalna',
       temperatureC: prior.temperatureC,
       batchGrams: prior.batchGrams,
-      capacityGrams: null,
+      hardCapacityGrams: null,
       batchSource:
         prior.batchSource === 'PROFESSIONAL_DEFAULT'
           ? 'PROFESSIONAL_DEFAULT'
@@ -155,7 +153,9 @@ export type NewRecipeStarterSettingsPatch = Partial<
 >;
 
 export type NewRecipeStarterSettingsChangeResult =
-  'starter_replaced' | 'confirmation_required' | 'existing_recipe';
+  | 'starter_replaced'
+  | 'confirmation_required'
+  | 'existing_recipe';
 
 const currentStarterKey = (): NewRecipeStarterKey => {
   const recipe = useRecipeStore.getState();
@@ -241,7 +241,7 @@ export function applyProfessionalStarterMachineSelection(
     label,
     temperatureC: starterTemperatureForServingMode(servingModeId),
     batchGrams: null,
-    capacityGrams: null,
+    hardCapacityGrams: null,
   });
 }
 

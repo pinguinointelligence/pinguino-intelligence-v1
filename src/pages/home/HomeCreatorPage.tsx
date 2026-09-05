@@ -20,7 +20,6 @@ import { useNavigate } from 'react-router';
 import { AppShell } from '@/features/shell/AppShell';
 import { deriveMachineSetup, type HomeMachineProfile } from '@/features/machine-catalog';
 import { machineDisplayName } from '@/features/machine-onboarding/machineViews';
-import { temperatureForMode } from '@/features/customer-flow/servingMode';
 import { useRecipeStore } from '@/stores/recipeStore';
 import {
   DEFAULT_NEW_RECIPE_SERVING_MODE,
@@ -223,17 +222,17 @@ export function HomeCreatorPage() {
     (selected: HomeMachineProfile) => {
       const setup = deriveMachineSetup(selected, visibleProductTypeFor(draft.profile ?? 'gelato'));
       const mode = setup.resolvedVisibleMode;
-      const temperatureC = mode ? temperatureForMode(mode) : null;
-      if (mode === null || temperatureC === null) return null;
+      if (mode === null) return null;
       useRecipeStore.getState().setMachineSelection({
         kind: 'home',
         servingModeId: mode,
         machineId: selected.id,
         label: machineDisplayName(selected),
         machineTechnology: selected.technology,
-        temperatureC,
+        homeFormulationModuleId: selected.homeFormulationModuleId,
+        temperatureC: setup.engineTemperatureC,
         batchGrams: setup.recommendedBatchGrams,
-        capacityGrams: setup.recommendedBatchGrams,
+        hardCapacityGrams: setup.hardMaximumBatchGrams,
         batchSource: 'MACHINE_DEFAULT',
       });
       return setup;
@@ -504,8 +503,7 @@ export function HomeCreatorPage() {
                 visibleProductTypeFor(draft.profile ?? 'gelato'),
               );
               const mode = setup.resolvedVisibleMode;
-              const temperatureC = mode ? temperatureForMode(mode) : null;
-              if (mode === null || temperatureC === null) return;
+              if (mode === null) return;
               setMachine(selected);
               setForceMachineStage(false);
               setAmount(defaultHomeAmount(setup.recommendedBatchGrams));
@@ -515,9 +513,10 @@ export function HomeCreatorPage() {
                 machineId: selected.id,
                 label: machineDisplayName(selected),
                 machineTechnology: selected.technology,
-                temperatureC,
+                homeFormulationModuleId: selected.homeFormulationModuleId,
+                temperatureC: setup.engineTemperatureC,
                 batchGrams: setup.recommendedBatchGrams,
-                capacityGrams: setup.recommendedBatchGrams,
+                hardCapacityGrams: setup.hardMaximumBatchGrams,
                 batchSource: 'MACHINE_DEFAULT',
               });
             }}

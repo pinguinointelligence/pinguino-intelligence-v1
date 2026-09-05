@@ -5,7 +5,7 @@ import type { ProductMode, RecipeDirectionTarget, RecipeDirectionTargets } from 
 import type { VisibleProductType } from '@/features/studio/productType';
 import type { ProductDoseMeta } from '@/features/ingredient-builder/productDoseSuggestion';
 import type { RecipeBatchSource } from '@/stores/recipeStore';
-import type { MachineTechnology } from '@/features/machine-catalog';
+import type { HomeFormulationModuleId, MachineTechnology } from '@/features/machine-catalog';
 import {
   normalizeFormulationStrategy,
   type FormulationStrategy,
@@ -52,6 +52,7 @@ export interface ProfileSettingsSnapshot {
   machineId: string | null;
   machineLabel: string;
   machineTechnology?: MachineTechnology | null;
+  homeFormulationModuleId?: HomeFormulationModuleId | null;
   servingModeId: string;
   targetTemperatureC: number;
   machineCapacityGrams: number | null;
@@ -75,6 +76,7 @@ export function profileSettingsSignature(settings: ProfileSettingsSnapshot): str
     settings.machineKind,
     settings.machineId,
     settings.machineTechnology ?? null,
+    settings.homeFormulationModuleId ?? null,
     settings.servingModeId,
     settings.targetTemperatureC,
     settings.machineCapacityGrams,
@@ -222,6 +224,7 @@ export function mergeMachineAccountDefault(
     machineId: machine.machineId,
     machineLabel: machine.machineLabel,
     machineTechnology: machine.machineTechnology,
+    homeFormulationModuleId: machine.homeFormulationModuleId,
     machineCapacityGrams: machine.machineCapacityGrams,
     targetBatchGrams: machine.targetBatchGrams,
     batchSource: machine.batchSource,

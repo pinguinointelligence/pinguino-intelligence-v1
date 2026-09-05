@@ -15,9 +15,17 @@
  *     silently rewritten by `applyMachineRecordIfUnanswered`.
  */
 import { describe, expect, it } from 'vitest';
-import { createCustomerFlow, resolveBatch, setBatchGrams } from '@/features/customer-flow';
+import {
+  createCustomerFlow,
+  resolveBatch,
+  resolveServingRoute,
+  setBatchGrams,
+} from '@/features/customer-flow';
 import { MACHINE_CATALOG_VERSION, NINJA_CREAMI_SCOOP_SWIRL_NC7 } from '@/features/machine-catalog';
-import { buildMachinePreferenceRecord, type MachinePreferenceRecord } from '@/features/machine-onboarding';
+import {
+  buildMachinePreferenceRecord,
+  type MachinePreferenceRecord,
+} from '@/features/machine-onboarding';
 import { applyMachineRecordIfUnanswered, applyMachineRecordToFlow } from './machineFlowBridge';
 
 const nc7Record = (): MachinePreferenceRecord => {
@@ -39,6 +47,8 @@ describe('applyMachineRecordToFlow — saved machine answers mode + amount', () 
     const flow = applyMachineRecordToFlow(createCustomerFlow({ text: 'wanilia' }), record);
     expect(flow.mode).toBe('ninja_swirl');
     expect(flow.explicitBatchGrams).toBe(460);
+    expect(flow.homeFormulationModuleId).toBe('SOFT_DISPENSE');
+    expect(resolveServingRoute(flow).temperatureC).toBe(-11);
 
     const batch = resolveBatch(flow);
     expect(batch.satisfied).toBe(true);
@@ -67,7 +77,10 @@ describe('applyMachineRecordToFlow — saved machine answers mode + amount', () 
 
 describe('applyMachineRecordIfUnanswered — owner test 11 (no silent overwrites)', () => {
   it('applies to a flow whose mode question is still open', () => {
-    const flow = applyMachineRecordIfUnanswered(createCustomerFlow({ text: 'wanilia' }), nc7Record());
+    const flow = applyMachineRecordIfUnanswered(
+      createCustomerFlow({ text: 'wanilia' }),
+      nc7Record(),
+    );
     expect(flow.mode).toBe('ninja_swirl');
     expect(flow.explicitBatchGrams).toBe(460);
   });

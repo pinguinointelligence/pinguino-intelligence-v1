@@ -24,24 +24,27 @@ import type {
   MachineDerivation,
   MachineTechnology,
   RecommendedBatchSource,
+  HomeFormulationModuleId,
 } from '@/features/machine-catalog';
 import {
+  HOME_ENGINE_TEMPERATURE_C,
   deriveMachineSetup,
+  homeFormulationModuleForTechnology,
+  isHomeFormulationModuleId,
   isHomeSupportedTechnology,
   validateHomeMachineProfile,
   visibleModeForTechnology,
 } from '@/features/machine-catalog';
 
 /**
- * Current record shape. v2 (owner hotfix 2026-07-17) adds the user's OWN
- * default batch, the „Używam innego pojemnika” override and `updatedAt`.
- * The parser accepts v2 AND losslessly upgrades v1 (adding explicit nulls —
- * never an invented value), so a saved machine is never silently dropped.
+ * Current record shape. v3 adds the canonical formulation module and explicit
+ * −11 Home Engine route. The parser accepts v1/v2 and migrates those two facts
+ * deterministically from their saved canonical technology.
  */
-export const MACHINE_PREFERENCE_SCHEMA_VERSION = 2 as const;
+export const MACHINE_PREFERENCE_SCHEMA_VERSION = 3 as const;
 
 /** Every record shape the parser can read (older ones are upgraded on read). */
-const READABLE_SCHEMA_VERSIONS: ReadonlySet<number> = new Set([1, 2]);
+const READABLE_SCHEMA_VERSIONS: ReadonlySet<number> = new Set([1, 2, 3]);
 
 /** What the user picked: a catalog record (by id) or their own custom machine. */
 export type MachinePreferenceSelection =
@@ -53,6 +56,10 @@ export interface SavedMachineCapacitySnapshot {
   readonly vesselCapacityMl: number | null;
   readonly maximumLiquidMixMl: number | null;
   readonly workingCapacityMl: number | null;
+  readonly maximumBatchMl: number | null;
+  readonly hardMaximumBatchGrams: number | null;
+  readonly trueHardMaximumDocumented: boolean;
+  readonly finishedProductCapacityMl: number | null;
   readonly manufacturerMaxMixGrams: number | null;
   readonly vesselCount: number | null;
   readonly maxFillDefinedByManufacturer: boolean;
@@ -97,6 +104,8 @@ export interface MachinePreferenceRecord {
   /** Market token of the saved machine record (§8.6 saves the region). */
   readonly market: string;
   readonly resolvedTechnology: MachineTechnology;
+  readonly resolvedHomeFormulationModuleId: HomeFormulationModuleId;
+  readonly engineTemperatureC: typeof HOME_ENGINE_TEMPERATURE_C;
   readonly resolvedVisibleMode: HomeVisibleModeId;
   readonly capacity: SavedMachineCapacitySnapshot;
   /**
@@ -169,7 +178,8 @@ export function buildMachinePreferenceRecord(
 ): MachinePreferenceRecord | null {
   const { profile } = input;
   const derivation = deriveMachineSetup(profile);
-  if (derivation.homeSupport !== 'supported' || derivation.resolvedVisibleMode === null) return null;
+  if (derivation.homeSupport !== 'supported' || derivation.resolvedVisibleMode === null)
+    return null;
   if (!isHomeSupportedTechnology(profile.technology)) return null;
   return {
     schemaVersion: MACHINE_PREFERENCE_SCHEMA_VERSION,
@@ -178,11 +188,17 @@ export function buildMachinePreferenceRecord(
       : { kind: 'catalog', machineProfileId: profile.id },
     market: profile.market,
     resolvedTechnology: profile.technology,
+    resolvedHomeFormulationModuleId: profile.homeFormulationModuleId,
+    engineTemperatureC: derivation.engineTemperatureC,
     resolvedVisibleMode: derivation.resolvedVisibleMode,
     capacity: {
       vesselCapacityMl: profile.capacity.vesselCapacityMl,
       maximumLiquidMixMl: profile.capacity.maximumLiquidMixMl,
       workingCapacityMl: profile.capacity.workingCapacityMl,
+      maximumBatchMl: profile.capacity.maximumBatchMl,
+      hardMaximumBatchGrams: profile.capacity.hardMaximumBatchGrams,
+      trueHardMaximumDocumented: profile.capacity.trueHardMaximumDocumented,
+      finishedProductCapacityMl: profile.capacity.finishedProductCapacityMl ?? null,
       manufacturerMaxMixGrams: profile.capacity.manufacturerMaxMixGrams ?? null,
       vesselCount: profile.capacity.vesselCount ?? null,
       maxFillDefinedByManufacturer: profile.capacity.maxFillDefinedByManufacturer,
@@ -280,10 +296,21 @@ function parseCapacitySnapshot(value: unknown): SavedMachineCapacitySnapshot | n
   // Records saved before the owner correction lack the grams field — absent
   // reads as null (additive evolution), but a present wrong type is corrupt.
   const maxMixGrams = 'manufacturerMaxMixGrams' in value ? value.manufacturerMaxMixGrams : null;
+  const maximumBatchMl = 'maximumBatchMl' in value ? value.maximumBatchMl : null;
+  const hardMaximumBatchGrams =
+    'hardMaximumBatchGrams' in value ? value.hardMaximumBatchGrams : null;
+  const trueHardMaximumDocumented =
+    'trueHardMaximumDocumented' in value ? value.trueHardMaximumDocumented : false;
+  const finishedProductCapacityMl =
+    'finishedProductCapacityMl' in value ? value.finishedProductCapacityMl : null;
   if (
     !isNullableNumber(vesselCapacityMl) ||
     !isNullableNumber(maximumLiquidMixMl) ||
     !isNullableNumber(workingCapacityMl) ||
+    !isNullableNumber(maximumBatchMl) ||
+    !isNullableNumber(hardMaximumBatchGrams) ||
+    typeof trueHardMaximumDocumented !== 'boolean' ||
+    !isNullableNumber(finishedProductCapacityMl) ||
     !isNullableNumber(maxMixGrams) ||
     !isNullableNumber(vesselCount) ||
     typeof value.maxFillDefinedByManufacturer !== 'boolean'
@@ -294,6 +321,10 @@ function parseCapacitySnapshot(value: unknown): SavedMachineCapacitySnapshot | n
     vesselCapacityMl,
     maximumLiquidMixMl,
     workingCapacityMl,
+    maximumBatchMl,
+    hardMaximumBatchGrams,
+    trueHardMaximumDocumented,
+    finishedProductCapacityMl,
     manufacturerMaxMixGrams: maxMixGrams,
     vesselCount,
     maxFillDefinedByManufacturer: value.maxFillDefinedByManufacturer,
@@ -339,7 +370,10 @@ function parseDefaultBatch(value: unknown): SavedDefaultBatch | null {
   return null;
 }
 
-function parseSelection(value: unknown): MachinePreferenceSelection | null {
+function parseSelection(
+  value: unknown,
+  allowLegacyModuleMigration: boolean,
+): MachinePreferenceSelection | null {
   if (!isRecord(value)) return null;
   if (value.kind === 'catalog') {
     const id = value.machineProfileId;
@@ -351,7 +385,30 @@ function parseSelection(value: unknown): MachinePreferenceSelection | null {
     // A custom profile is validated structurally by the catalog invariants —
     // a profile that fails them is treated as corrupt, never patched up.
     if (!isRecord(profile)) return null;
-    const candidate = profile as unknown as HomeMachineProfile;
+    if (typeof profile.technology !== 'string' || !isRecord(profile.capacity)) return null;
+    const rawProfile = profile as unknown as HomeMachineProfile;
+    const legacyTechnology = rawProfile.technology;
+    const legacyModule = homeFormulationModuleForTechnology(legacyTechnology);
+    if (legacyModule === null) return null;
+    const homeFormulationModuleId =
+      rawProfile.homeFormulationModuleId ?? (allowLegacyModuleMigration ? legacyModule : null);
+    if (!isHomeFormulationModuleId(homeFormulationModuleId)) return null;
+    const candidate: HomeMachineProfile = {
+      ...rawProfile,
+      homeFormulationModuleId,
+      capacity: {
+        ...rawProfile.capacity,
+        hardMaximumBatchGrams: rawProfile.capacity.hardMaximumBatchGrams ?? null,
+        trueHardMaximumDocumented:
+          rawProfile.capacity.trueHardMaximumDocumented ??
+          rawProfile.capacity.maxFillDefinedByManufacturer,
+        maxFillRules:
+          rawProfile.capacity.maxFillRules ??
+          (rawProfile.capacity.maxFillDefinedByManufacturer
+            ? [{ kind: 'marked_line', scope: 'legacy user-declared vessel' }]
+            : undefined),
+      },
+    };
     if (typeof candidate.id !== 'string' || typeof candidate.market !== 'string') return null;
     if (typeof candidate.technology !== 'string') return null;
     if (!isHomeSupportedTechnology(candidate.technology as MachineTechnology)) return null;
@@ -387,10 +444,9 @@ function parseCustomContainer(value: unknown): SavedCustomContainer | null | 'co
  * Strict: unknown versions, missing fields, wrong types, ml→g-shaped nonsense
  * and mode/technology mismatches all yield `null` — never a repaired guess.
  *
- * v1 records (pre-hotfix) are UPGRADED, not dropped: the fields the owner
- * hotfix added are simply absent, which reads as "no own default, no own
- * container" — explicit nulls, never invented values. The user keeps their
- * machine and their next visit shows the recommendation as the starting point.
+ * v1/v2 records are upgraded, not dropped: absent module/route fields are
+ * resolved from the saved canonical technology; v1's absent user-default and
+ * custom-container fields read as explicit nulls.
  */
 export function parseMachinePreferenceRecord(raw: unknown): MachinePreferenceRecord | null {
   if (!isRecord(raw)) return null;
@@ -398,7 +454,10 @@ export function parseMachinePreferenceRecord(raw: unknown): MachinePreferenceRec
     return null;
   }
 
-  const selection = parseSelection(raw.selection);
+  const selection = parseSelection(
+    raw.selection,
+    raw.schemaVersion !== MACHINE_PREFERENCE_SCHEMA_VERSION,
+  );
   if (selection === null) return null;
 
   const { market, resolvedTechnology, resolvedVisibleMode, setAt, catalogVersion } = raw;
@@ -408,6 +467,23 @@ export function parseMachinePreferenceRecord(raw: unknown): MachinePreferenceRec
   const technology = resolvedTechnology as MachineTechnology;
   const expectedMode = visibleModeForTechnology(technology);
   if (expectedMode === null || resolvedVisibleMode !== expectedMode) return null;
+  const expectedModuleId = homeFormulationModuleForTechnology(technology);
+  if (expectedModuleId === null) return null;
+  const resolvedHomeFormulationModuleId =
+    raw.schemaVersion === MACHINE_PREFERENCE_SCHEMA_VERSION
+      ? raw.resolvedHomeFormulationModuleId
+      : expectedModuleId;
+  if (
+    !isHomeFormulationModuleId(resolvedHomeFormulationModuleId) ||
+    resolvedHomeFormulationModuleId !== expectedModuleId
+  ) {
+    return null;
+  }
+  const engineTemperatureC =
+    raw.schemaVersion === MACHINE_PREFERENCE_SCHEMA_VERSION
+      ? raw.engineTemperatureC
+      : HOME_ENGINE_TEMPERATURE_C;
+  if (engineTemperatureC !== HOME_ENGINE_TEMPERATURE_C) return null;
 
   const capacity = parseCapacitySnapshot(raw.capacity);
   if (capacity === null) return null;
@@ -433,6 +509,8 @@ export function parseMachinePreferenceRecord(raw: unknown): MachinePreferenceRec
     selection,
     market,
     resolvedTechnology: technology,
+    resolvedHomeFormulationModuleId,
+    engineTemperatureC,
     resolvedVisibleMode: expectedMode,
     capacity,
     defaultBatch,

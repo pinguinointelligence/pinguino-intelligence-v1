@@ -2,7 +2,7 @@
  * PINGÜINO Machine Catalog — versioned Annex-A seed data (EU/ES focus).
  *
  * Every supported record below was re-checked against current official
- * manufacturer evidence on 2026-08-28. Evidence names the exact facts used;
+ * manufacturer evidence on 2026-09-05. Evidence names the exact facts used;
  * the shared Gellatti fill rule remains the only authority that turns an
  * approved working/cycle capacity into an operating batch in grams.
  *
@@ -10,8 +10,8 @@
  * min/default/max batch and no working capacity is invented anywhere; batch
  * suggestions are derived honestly in `machineDerivation.ts`.
  *
- * This file is DATA ONLY: no engine references, no recipe modifiers, no
- * temperatures. Routing to existing modes lives in `technologyMode.ts`.
+ * This file is DATA ONLY: no engine formulas or ingredient rules. It assigns
+ * the brand-neutral formulation module and records official capacity facts.
  */
 import type { HomeMachineProfile } from './types';
 
@@ -59,7 +59,7 @@ import type { HomeMachineProfile } from './types';
  * 2026-08-28.2 — complete current manufacturer evidence, working/cycle
  * capacities and product-aware batch authority for all ten supported records.
  */
-export const MACHINE_CATALOG_VERSION = '2026-08-28.2';
+export const MACHINE_CATALOG_VERSION = '2026-09-05.1';
 
 /** Provenance meta for the whole seed (report + future persistence track). */
 export const MACHINE_CATALOG_META = {
@@ -103,16 +103,26 @@ export const NINJA_CREAMI_NC302EU: HomeMachineProfile = {
   modelCodes: ['NC302EU'],
   market: 'EU/ES',
   technology: 'respin',
+  homeFormulationModuleId: 'FROZEN_PINT',
   resolvedVisibleMode: 'ninja_gelato',
   capacity: {
     vesselCapacityMl: 473, // owner-pinned figure (final decision 2026-07-17) → 450 g via ×0.95
     maximumLiquidMixMl: null,
     workingCapacityMl: null,
     minimumBatchMl: null,
-    maximumBatchMl: null,
+    maximumBatchMl: 473,
+    hardMaximumBatchGrams: null,
+    trueHardMaximumDocumented: true,
     defaultBatchMl: null,
     finishedProductCapacityMl: null,
     maxFillDefinedByManufacturer: true, // Annex A: "Używaj MAX FILL"
+    maxFillRules: [
+      {
+        kind: 'marked_line',
+        scope: 'CREAMi tub',
+        exception: 'A Ninja-authored recipe may explicitly instruct filling above the line.',
+      },
+    ],
     vesselCount: 2,
   },
   recommendedBatchBasis: 'confirmed_vessel_capacity',
@@ -123,18 +133,18 @@ export const NINJA_CREAMI_NC302EU: HomeMachineProfile = {
   specificationSource: 'manufacturer_official',
   // Live destination of the Annex-B URL (301 from ninjakitchen.es, 2026-07-17).
   specificationSourceUrl:
-    'https://www.sharkninja.es/ninja-creami-6-funciones-2-tarrinas-grisnegro/NC302EU.html',
+    'https://www.sharkninja.es/ninja-creami-6-funciones-pack-ahorro-6-tarrinas/NC302EUBES.html',
   // Owner final decision (2026-07-17): provisional + ACTIVE; the retail-page
   // figure dispute lives in the doc comment above as provenance — no blocking
   // sourceConflicts entry, nothing user-facing.
   specificationEvidence: [
     {
       kind: 'product_page',
-      url: 'https://www.sharkninja.es/ninja-creami-6-funciones-2-tarrinas-grisnegro/NC302EU.html',
+      url: 'https://www.sharkninja.es/ninja-creami-6-funciones-pack-ahorro-6-tarrinas/NC302EUBES.html',
       verifiedFacts: ['nc302eu_family', 'two_473_ml_tubs', 'max_fill', 'mixture_pre_freeze'],
     },
   ],
-  specificationVerifiedAt: '2026-08-28',
+  specificationVerifiedAt: '2026-09-05',
   specificationStatus: 'verified',
   active: true,
 };
@@ -160,16 +170,20 @@ export const NINJA_CREAMI_DELUXE_NC502EU: HomeMachineProfile = {
   modelCodes: ['NC502EU'],
   market: 'EU/ES',
   technology: 'respin',
+  homeFormulationModuleId: 'FROZEN_PINT',
   resolvedVisibleMode: 'ninja_gelato',
   capacity: {
     vesselCapacityMl: 706, // owner-pinned figure (final decision 2026-07-17) → 670 g via ×0.95
     maximumLiquidMixMl: null,
     workingCapacityMl: null,
     minimumBatchMl: null,
-    maximumBatchMl: null,
+    maximumBatchMl: 706,
+    hardMaximumBatchGrams: null,
+    trueHardMaximumDocumented: true,
     defaultBatchMl: null,
     finishedProductCapacityMl: null,
-    maxFillDefinedByManufacturer: false, // MAX FILL not documented for NC5 in the recorded sources
+    maxFillDefinedByManufacturer: true,
+    maxFillRules: [{ kind: 'marked_line', scope: 'Deluxe tub (24 fl oz line)' }],
     vesselCount: 2,
   },
   recommendedBatchBasis: 'confirmed_vessel_capacity',
@@ -181,18 +195,18 @@ export const NINJA_CREAMI_DELUXE_NC502EU: HomeMachineProfile = {
   // Model-exact live product page (stronger source than the old catalog URL,
   // which now 301-redirects to the sharkninja.es catalog; re-read 2026-07-17).
   specificationSourceUrl:
-    'https://www.sharkninja.es/ninja-creami-deluxe-10-funciones-2-tarrinas-grisnegro/NC502EU.html',
+    'https://www.sharkninja.es/ninja-creami-deluxe-10-funciones-pack-ahorro-4-tarrinas/NC502EUBES.html',
   // Owner final decision (2026-07-17): provisional + ACTIVE; dispute history
   // lives in the doc comment above as provenance — never user-facing, never
   // blocking.
   specificationEvidence: [
     {
       kind: 'product_page',
-      url: 'https://www.sharkninja.es/ninja-creami-deluxe-10-funciones-2-tarrinas-grisnegro/NC502EU.html',
+      url: 'https://www.sharkninja.es/ninja-creami-deluxe-10-funciones-pack-ahorro-4-tarrinas/NC502EUBES.html',
       verifiedFacts: ['nc502eu_family', 'two_706_ml_tubs', 'mixture_pre_freeze'],
     },
   ],
-  specificationVerifiedAt: '2026-08-28',
+  specificationVerifiedAt: '2026-09-05',
   specificationStatus: 'verified',
   active: true,
 };
@@ -214,20 +228,24 @@ export const NINJA_CREAMI_SCOOP_SWIRL_NC7: HomeMachineProfile = {
   searchAliases: ['Ninja Scoop & Swirl', 'Ninja NC7'],
   brand: 'Ninja',
   family: 'CREAMi Scoop & Swirl',
-  modelCodes: ['NC7'],
+  modelCodes: ['NC7', 'NC701EU'],
   market: 'EU/ES',
   technology: 'respin_soft',
+  homeFormulationModuleId: 'SOFT_DISPENSE',
   resolvedVisibleMode: 'ninja_swirl',
   capacity: {
     vesselCapacityMl: 480,
     maximumLiquidMixMl: null,
     workingCapacityMl: null,
     minimumBatchMl: null,
-    maximumBatchMl: null,
+    maximumBatchMl: 480,
+    hardMaximumBatchGrams: null,
+    trueHardMaximumDocumented: true,
     defaultBatchMl: null,
     finishedProductCapacityMl: null,
-    maxFillDefinedByManufacturer: false, // not documented for NC7 in the recorded sources
-    vesselCount: null, // tub count not stated in Annex A
+    maxFillDefinedByManufacturer: true,
+    maxFillRules: [{ kind: 'marked_line', scope: 'Swirl tub (16 fl oz line)' }],
+    vesselCount: 2,
   },
   recommendedBatchBasis: 'confirmed_vessel_capacity',
   requiresPreFreeze: true,
@@ -236,15 +254,15 @@ export const NINJA_CREAMI_SCOOP_SWIRL_NC7: HomeMachineProfile = {
   servingStyle: 'both', // "Scoop & Swirl" — scooped and soft dispense (name-level fact)
   specificationSource: 'manufacturer_official',
   specificationSourceUrl:
-    'https://www.sharkninja.es/cocina/heladeras-y-maquinas-de-granizados/heladeras-ninja-creami',
+    'https://www.sharkninja.es/ninja-creami-scoop-swirl-12-funciones-2-tarrinas-grisnegro/NC701EU.html',
   specificationEvidence: [
     {
       kind: 'product_page',
-      url: 'https://www.sharkninja.es/cocina/heladeras-y-maquinas-de-granizados/heladeras-ninja-creami',
+      url: 'https://www.sharkninja.es/ninja-creami-scoop-swirl-12-funciones-2-tarrinas-grisnegro/NC701EU.html',
       verifiedFacts: ['nc7_family', '480_ml_tub', 'scoop_and_soft_dispense', 'mixture_pre_freeze'],
     },
   ],
-  specificationVerifiedAt: '2026-08-28',
+  specificationVerifiedAt: '2026-09-05',
   specificationStatus: 'verified',
   active: true,
 };
@@ -264,19 +282,28 @@ export const MOULINEX_FREEZI_MJ803AF0: HomeMachineProfile = {
   modelCodes: ['MJ803AF0'],
   market: 'ES',
   technology: 'compressor',
+  homeFormulationModuleId: 'COMPRESSOR',
   resolvedVisibleMode: 'fresh',
   capacity: {
     vesselCapacityMl: null, // bowl volume not stated in Annex A
-    maximumLiquidMixMl: null,
+    maximumLiquidMixMl: 1000,
     workingCapacityMl: 1000,
     minimumBatchMl: null,
-    maximumBatchMl: null,
+    maximumBatchMl: 1000,
+    hardMaximumBatchGrams: null,
+    trueHardMaximumDocumented: true,
     defaultBatchMl: null,
-    finishedProductCapacityMl: 1000, // ice-cream program
-    maxFillDefinedByManufacturer: false,
+    finishedProductCapacityMl: 1400,
+    maxFillDefinedByManufacturer: true,
+    maxFillRules: [
+      { kind: 'marked_line', scope: 'ice cream / frozen yogurt: 550–1000 ml input' },
+      { kind: 'marked_line', scope: 'frozen drinks: 550–1200 ml input' },
+    ],
+    vesselCount: 1,
     perProgram: [
       { program: 'ice_cream', capacityMl: 1000 },
-      { program: 'frozen_drink', capacityMl: 1400 },
+      { program: 'frozen_drink_input', capacityMl: 1200 },
+      { program: 'frozen_drink_finished', capacityMl: 1400 },
     ],
   },
   productWorkingCapacities: [
@@ -284,18 +311,18 @@ export const MOULINEX_FREEZI_MJ803AF0: HomeMachineProfile = {
     { productProfile: 'sorbet', workingCapacityMl: 1000 },
     { productProfile: 'vegan', workingCapacityMl: 1000 },
     { productProfile: 'protein', workingCapacityMl: 1000 },
-    { productProfile: 'frozen_drink', workingCapacityMl: 1400 },
+    { productProfile: 'frozen_drink', workingCapacityMl: 1200 },
   ],
   requiresPreFreeze: false,
   preFreezeTarget: 'none',
   servingStyle: 'scoop',
   specificationSource: 'manufacturer_official',
   specificationSourceUrl:
-    'https://www.moulinex.es/p/heladera-freezi-prepara-helados-y-bebidas-heladas-al-momento-5-programas-automaticos-silenciosa-8-raciones-blanca/8010001501',
+    'https://www.moulinex.es/instrucciones-de-uso/coccion-electrica/helados/heladera-freezi-prepara-helados-y-bebidas-heladas-al-momento-5-programas-automaticos-silenciosa-8-raciones-blanca/csp/8010001501',
   specificationEvidence: [
     {
       kind: 'product_page',
-      url: 'https://www.moulinex.es/p/heladera-freezi-prepara-helados-y-bebidas-heladas-al-momento-5-programas-automaticos-silenciosa-8-raciones-blanca/8010001501',
+      url: 'https://www.moulinex.es/instrucciones-de-uso/coccion-electrica/helados/heladera-freezi-prepara-helados-y-bebidas-heladas-al-momento-5-programas-automaticos-silenciosa-8-raciones-blanca/csp/8010001501',
       verifiedFacts: [
         'mj803af0_family',
         'self_cooling',
@@ -305,11 +332,11 @@ export const MOULINEX_FREEZI_MJ803AF0: HomeMachineProfile = {
     },
     {
       kind: 'manual',
-      url: 'https://dam.groupeseb.com/m/d360c0e8b258d3d/original/8020013220-IFU.pdf',
-      verifiedFacts: ['ice_cream_input_up_to_one_litre', 'frozen_drink_program'],
+      url: 'https://dam.groupeseb.com/m/4992c4f36c96c2f3/original/8020013190-IFU-pdf.pdf',
+      verifiedFacts: ['ice_cream_input_550_to_1000_ml', 'frozen_drink_input_550_to_1200_ml'],
     },
   ],
-  specificationVerifiedAt: '2026-08-28',
+  specificationVerifiedAt: '2026-09-05',
   specificationStatus: 'verified',
   operatingFeatures: {
     selfCooling: true,
@@ -326,8 +353,8 @@ export const MOULINEX_FREEZI_MJ803AF0: HomeMachineProfile = {
 /**
  * Magimix Gelato Expert — compressor → existing Świeże (fresh) mode. Annex A:
  * 1.0 l ice cream / 1.3 l sorbet-granita per program; PHYSICAL bowls are 2 l —
- * bowl volume must never be confused with working capacity, so working
- * capacity stays null. Market not stated per-row in Annex A; recorded as 'EU'
+ * bowl volume must never be confused with the separately recorded program
+ * working capacities. Market not stated per-row in Annex A; recorded as 'EU'
  * (international manufacturer page) pending per-market confirmation.
  */
 export const MAGIMIX_GELATO_EXPERT: HomeMachineProfile = {
@@ -339,16 +366,24 @@ export const MAGIMIX_GELATO_EXPERT: HomeMachineProfile = {
   modelCodes: [],
   market: 'EU',
   technology: 'compressor',
+  homeFormulationModuleId: 'COMPRESSOR',
   resolvedVisibleMode: 'fresh',
   capacity: {
     vesselCapacityMl: 2000, // physical bowl volume — NOT a working capacity
-    maximumLiquidMixMl: null,
+    maximumLiquidMixMl: 1000,
     workingCapacityMl: 1000, // verified ice-cream/Gelato working program, not the 2 L bowl
     minimumBatchMl: null,
-    maximumBatchMl: null,
+    maximumBatchMl: 1000,
+    hardMaximumBatchGrams: null,
+    trueHardMaximumDocumented: true,
     defaultBatchMl: null,
     finishedProductCapacityMl: 1000, // ice-cream program
-    maxFillDefinedByManufacturer: false,
+    maxFillDefinedByManufacturer: true,
+    maxFillRules: [
+      { kind: 'fraction_of_vessel', fraction: 0.5, program: 'gelato' },
+      { kind: 'fraction_of_vessel', fraction: 2 / 3, program: 'sorbet_granita' },
+    ],
+    vesselCount: 2,
     perProgram: [
       { program: 'ice_cream', capacityMl: 1000 },
       { program: 'sorbet_granita', capacityMl: 1300 },
@@ -378,8 +413,13 @@ export const MAGIMIX_GELATO_EXPERT: HomeMachineProfile = {
         'no_bowl_pre_freeze',
       ],
     },
+    {
+      kind: 'manual',
+      url: 'https://www.magimix.com/en/faq?category=10',
+      verifiedFacts: ['half_bowl_gelato_fill', 'two_thirds_bowl_sorbet_fill'],
+    },
   ],
-  specificationVerifiedAt: '2026-08-28',
+  specificationVerifiedAt: '2026-09-05',
   specificationStatus: 'verified',
   operatingFeatures: {
     selfCooling: true,
@@ -395,9 +435,8 @@ export const MAGIMIX_GELATO_EXPERT: HomeMachineProfile = {
 
 /**
  * Cuisinart ICE100E (EU) — compressor → existing Świeże (fresh) mode. 1.5 l of
- * FINISHED dessert per the manufacturer; the maximum liquid mix is NOT stated
- * in the recorded sources and must be verified in the manual (Annex A) — it
- * stays null rather than being guessed from the finished volume.
+ * FINISHED dessert per the manufacturer; its manual separately limits an own
+ * liquid recipe to about 1.0 l and requires 4 cm expansion clearance.
  */
 export const CUISINART_ICE100E: HomeMachineProfile = {
   id: 'cuisinart-ice100e-eu',
@@ -408,31 +447,45 @@ export const CUISINART_ICE100E: HomeMachineProfile = {
   modelCodes: ['ICE100E', 'ICE100BCU'],
   market: 'EU/UK',
   technology: 'compressor',
+  homeFormulationModuleId: 'COMPRESSOR',
   resolvedVisibleMode: 'fresh',
   capacity: {
-    vesselCapacityMl: null,
-    maximumLiquidMixMl: null, // Annex A: verify in the manual — do not guess
-    workingCapacityMl: 1500,
+    vesselCapacityMl: 1500,
+    maximumLiquidMixMl: 1000,
+    workingCapacityMl: 1000,
     minimumBatchMl: null,
-    maximumBatchMl: null,
+    maximumBatchMl: 1000,
+    hardMaximumBatchGrams: null,
+    trueHardMaximumDocumented: true,
     defaultBatchMl: null,
     finishedProductCapacityMl: 1500,
-    maxFillDefinedByManufacturer: false,
+    maxFillDefinedByManufacturer: true,
+    maxFillRules: [{ kind: 'clearance_from_rim', clearanceMm: 40, scope: 'own liquid recipe' }],
+    vesselCount: 1,
   },
   requiresPreFreeze: false,
   preFreezeTarget: 'none',
   servingStyle: 'scoop',
   specificationSource: 'manufacturer_official',
   specificationSourceUrl:
-    'https://www.cuisinart.co.uk/cuisinart-ice-cream-and-gelato-professional-ICE100BCU.html',
+    'https://www.cuisinart.eu/en/cuisinart-ice-cream-gelato-professional-ICE100E.html',
   specificationEvidence: [
     {
       kind: 'product_page',
-      url: 'https://www.cuisinart.co.uk/cuisinart-ice-cream-and-gelato-professional-ICE100BCU.html',
-      verifiedFacts: ['one_point_five_litre_capacity', 'professional_compressor', 'no_bowl_pre_freeze'],
+      url: 'https://www.cuisinart.eu/en/cuisinart-ice-cream-gelato-professional-ICE100E.html',
+      verifiedFacts: [
+        'one_point_five_litre_capacity',
+        'professional_compressor',
+        'no_bowl_pre_freeze',
+      ],
+    },
+    {
+      kind: 'manual',
+      url: 'https://www.cuisinart.eu/on/demandware.static/-/Sites-master-eu/fr_FR/v1773615795596/information-booklets/EU/ICE100E%20-%20Notice.pdf',
+      verifiedFacts: ['one_point_five_litre_bowl', 'own_recipe_max_one_litre', 'four_cm_clearance'],
     },
   ],
-  specificationVerifiedAt: '2026-08-28',
+  specificationVerifiedAt: '2026-09-05',
   specificationStatus: 'verified',
   operatingFeatures: {
     selfCooling: true,
@@ -448,10 +501,9 @@ export const CUISINART_ICE100E: HomeMachineProfile = {
 
 /**
  * Cuisinart ICE21E (EU) — frozen bowl → Świeże as the neutral base (§10;
- * capacity/UX profile only, NO recipe modifiers). Annex A states 1.4 l; the
- * figure is recorded as the bowl (vessel) volume per frozen-bowl marketing —
- * confirm the exact meaning in the manual before verifying. Bowl pre-freeze
- * required (duration not stated).
+ * capacity/UX profile only, NO recipe modifiers). Official evidence states a
+ * 1.4 l recipe yield ceiling without establishing the bowl's physical brim
+ * volume. The manual requires a 16–24 hour bowl pre-freeze.
  */
 export const CUISINART_ICE21E: HomeMachineProfile = {
   id: 'cuisinart-ice21e-eu',
@@ -462,32 +514,48 @@ export const CUISINART_ICE21E: HomeMachineProfile = {
   modelCodes: ['ICE21E', 'ICE21U'],
   market: 'EU/UK',
   technology: 'frozen_bowl',
+  homeFormulationModuleId: 'FROZEN_BOWL',
   resolvedVisibleMode: 'fresh',
   capacity: {
-    vesselCapacityMl: 1400,
+    vesselCapacityMl: null,
     maximumLiquidMixMl: null,
     workingCapacityMl: 1400,
     minimumBatchMl: null,
-    maximumBatchMl: null,
+    maximumBatchMl: 1400,
+    hardMaximumBatchGrams: null,
+    trueHardMaximumDocumented: true,
     defaultBatchMl: null,
-    finishedProductCapacityMl: null,
+    finishedProductCapacityMl: 1400,
     maxFillDefinedByManufacturer: false,
+    vesselCount: 1,
   },
   requiresPreFreeze: true,
   preFreezeTarget: 'bowl',
-  preFreezeMinimumHours: 12,
+  preFreezeMinimumHours: 16,
   servingStyle: 'scoop',
   specificationSource: 'manufacturer_official',
   specificationSourceUrl:
-    'https://www.cuisinart.co.uk/cuisinart-cool-scoops-ice-cream-maker-ICE21U.html',
+    'https://www.cuisinart.eu/en/cuisinart-cool-scoops-ice-cream-maker-ICE21E.html',
   specificationEvidence: [
     {
       kind: 'product_page',
-      url: 'https://www.cuisinart.co.uk/cuisinart-cool-scoops-ice-cream-maker-ICE21U.html',
-      verifiedFacts: ['one_point_four_litre_capacity', 'freezer_bowl', 'twelve_hour_bowl_pre_freeze'],
+      url: 'https://www.cuisinart.eu/en/cuisinart-cool-scoops-ice-cream-maker-ICE21E.html',
+      verifiedFacts: [
+        'one_point_four_litre_capacity',
+        'freezer_bowl',
+        'twelve_hour_bowl_pre_freeze',
+      ],
+    },
+    {
+      kind: 'manual',
+      url: 'https://www.cuisinart.eu/on/demandware.static/-/Sites-master-eu/fr_FR/v1776330276668/information-booklets/ICE21E_Manual.pdf',
+      verifiedFacts: [
+        'recipe_yield_no_more_than_1400_ml',
+        'sixteen_to_twenty_four_hour_bowl_pre_freeze',
+      ],
     },
   ],
-  specificationVerifiedAt: '2026-08-28',
+  specificationVerifiedAt: '2026-09-05',
   specificationStatus: 'verified',
   active: true,
 };
@@ -505,32 +573,41 @@ export const CUISINART_ICE30BCE: HomeMachineProfile = {
   modelCodes: ['ICE30BCE', 'ICE30BCU'],
   market: 'EU/UK',
   technology: 'frozen_bowl',
+  homeFormulationModuleId: 'FROZEN_BOWL',
   resolvedVisibleMode: 'fresh',
   capacity: {
     vesselCapacityMl: 2000,
-    maximumLiquidMixMl: null,
-    workingCapacityMl: 2000,
+    maximumLiquidMixMl: 1500,
+    workingCapacityMl: 1500,
     minimumBatchMl: null,
-    maximumBatchMl: null,
+    maximumBatchMl: 1500,
+    hardMaximumBatchGrams: null,
+    trueHardMaximumDocumented: true,
     defaultBatchMl: null,
-    finishedProductCapacityMl: null,
-    maxFillDefinedByManufacturer: false,
+    finishedProductCapacityMl: 2000,
+    maxFillDefinedByManufacturer: true,
+    maxFillRules: [{ kind: 'clearance_from_rim', clearanceMm: 20, scope: 'liquid recipe' }],
+    vesselCount: 1,
   },
   requiresPreFreeze: true,
   preFreezeTarget: 'bowl',
   preFreezeMinimumHours: 12, // Annex A: "około 12 h" — approximate manufacturer guidance
   servingStyle: 'scoop',
   specificationSource: 'manufacturer_official',
-  specificationSourceUrl:
-    'https://www.cuisinart.co.uk/cuisinart-ice-cream-maker-2l-ICE30BCU.html',
+  specificationSourceUrl: 'https://www.cuisinart.eu/en/cuisinart-ice-cream-maker-2l-ICE30BCE.html',
   specificationEvidence: [
     {
       kind: 'product_page',
-      url: 'https://www.cuisinart.co.uk/cuisinart-ice-cream-maker-2l-ICE30BCU.html',
+      url: 'https://www.cuisinart.eu/en/cuisinart-ice-cream-maker-2l-ICE30BCE.html',
       verifiedFacts: ['two_litre_capacity', 'freezer_bowl', 'twelve_hour_bowl_pre_freeze'],
     },
+    {
+      kind: 'manual',
+      url: 'https://www.cuisinart.eu/on/demandware.static/-/Sites-master-eu/default/v1776589445503/information-booklets/EU/ICE30BCE%20-%20Notice.pdf',
+      verifiedFacts: ['liquid_mix_no_more_than_1500_ml', 'two_cm_clearance'],
+    },
   ],
-  specificationVerifiedAt: '2026-08-28',
+  specificationVerifiedAt: '2026-09-05',
   specificationStatus: 'verified',
   active: true,
 };
@@ -550,16 +627,20 @@ export const KITCHENAID_5KSMICM: HomeMachineProfile = {
   modelCodes: ['5KSMICM'],
   market: 'UK/EU',
   technology: 'frozen_bowl',
+  homeFormulationModuleId: 'FROZEN_BOWL',
   resolvedVisibleMode: 'fresh',
   capacity: {
-    vesselCapacityMl: null, // bowl volume itself not stated in Annex A
+    vesselCapacityMl: 1900,
     maximumLiquidMixMl: 1400,
-    workingCapacityMl: null,
+    workingCapacityMl: 1400,
     minimumBatchMl: null,
-    maximumBatchMl: null,
+    maximumBatchMl: 1400,
+    hardMaximumBatchGrams: null,
+    trueHardMaximumDocumented: true,
     defaultBatchMl: null,
     finishedProductCapacityMl: 1900,
     maxFillDefinedByManufacturer: false,
+    vesselCount: 1,
   },
   requiresPreFreeze: true,
   preFreezeTarget: 'bowl',
@@ -580,7 +661,7 @@ export const KITCHENAID_5KSMICM: HomeMachineProfile = {
       ],
     },
   ],
-  specificationVerifiedAt: '2026-08-28',
+  specificationVerifiedAt: '2026-09-05',
   specificationStatus: 'verified',
   active: true,
 };
@@ -609,6 +690,7 @@ export const SAGE_SMART_SCOOP_BCI600: HomeMachineProfile = {
   modelCodes: ['BCI600', 'SCI600', 'SCI600BSS2EEU1'],
   market: 'EU/ES',
   technology: 'compressor',
+  homeFormulationModuleId: 'COMPRESSOR',
   resolvedVisibleMode: 'fresh',
   capacity: {
     vesselCapacityMl: 1000,
@@ -616,9 +698,12 @@ export const SAGE_SMART_SCOOP_BCI600: HomeMachineProfile = {
     workingCapacityMl: null,
     minimumBatchMl: null,
     maximumBatchMl: null,
+    hardMaximumBatchGrams: null,
+    trueHardMaximumDocumented: false,
     defaultBatchMl: null,
     finishedProductCapacityMl: null,
     maxFillDefinedByManufacturer: false,
+    vesselCount: 1,
   },
   recommendedBatchBasis: 'confirmed_vessel_capacity',
   requiresPreFreeze: false,
@@ -639,7 +724,7 @@ export const SAGE_SMART_SCOOP_BCI600: HomeMachineProfile = {
     },
     {
       kind: 'manual',
-      url: 'https://assets.sageappliances.com/BCI600/SCI600_EU_UG6_C21_FA_LR.pdf',
+      url: 'https://assets.sageappliances.com/BCI600/SCI600_EU_UG8_F23_FA_Online.pdf',
       verifiedFacts: [
         'bci600_sci600_family',
         'one_litre_bowl',
@@ -650,7 +735,7 @@ export const SAGE_SMART_SCOOP_BCI600: HomeMachineProfile = {
       ],
     },
   ],
-  specificationVerifiedAt: '2026-08-28',
+  specificationVerifiedAt: '2026-09-05',
   specificationStatus: 'verified',
   operatingFeatures: {
     selfCooling: true,

@@ -23,6 +23,10 @@
  */
 import type { RecipeInput, RecipeItem } from '@/engine';
 import type { ConstraintSet } from '@/features/recipe-constraints';
+import {
+  HOME_ENGINE_TEMPERATURE_C,
+  type HomeFormulationModuleId,
+} from '@/features/machine-catalog';
 import { temperatureForMode } from '@/features/customer-flow/servingMode';
 import type { PreviewIssue } from './constraintStudioStore';
 
@@ -150,6 +154,8 @@ export interface DiagnoseArgs {
   issue: PreviewIssue;
   /** The recipe's routed serving mode (recipeStore.servingModeId), or null. */
   servingModeId: string | null;
+  /** A Home route keeps its visible alias but always uses the existing −11 cell. */
+  homeFormulationModuleId?: HomeFormulationModuleId | null;
 }
 
 /**
@@ -157,7 +163,7 @@ export interface DiagnoseArgs {
  * as the friendly "nothing to fix" note and must not pass it here.
  */
 export function diagnoseRecalcFailure(args: DiagnoseArgs): RecalcDiagnosis {
-  const { input, constraints, issue, servingModeId } = args;
+  const { input, constraints, issue, servingModeId, homeFormulationModuleId } = args;
   const lockReport = buildLockReport(input, constraints);
   const lockedRows = lockReport.filter((row) => !row.adjustable);
   const base = {
@@ -170,7 +176,10 @@ export function diagnoseRecalcFailure(args: DiagnoseArgs): RecalcDiagnosis {
   // 1. Route integrity first: a serving mode whose Engine cell disagrees with the recipe's
   //    temperature makes every downstream number ambiguous.
   if (servingModeId !== null) {
-    const routed = temperatureForMode(servingModeId);
+    const routed =
+      homeFormulationModuleId === null || homeFormulationModuleId === undefined
+        ? temperatureForMode(servingModeId)
+        : HOME_ENGINE_TEMPERATURE_C;
     if (routed !== null && routed !== input.target_temperature_c) {
       return { code: 'temperature_route_mismatch', ...base };
     }

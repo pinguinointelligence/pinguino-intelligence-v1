@@ -1245,6 +1245,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           recipeState.ownerReviewGate?.technicalOnlyMainLineIds ?? [];
         const proposedAuthority = proposalSnapshots ?? snapshots;
         const optimizeOptions = {
+          homeFormulationModuleId: recipeState.homeFormulationModuleId,
           excludedIngredientIds: draft.excludedIngredientIds,
           unavailableMainIngredientIds: draft.unavailableMainIngredientIds,
           effectivePriceOverrides: useCustomerPriceStore.getState().overridesByCanonicalId,
@@ -3123,6 +3124,7 @@ export async function createOptimizePreviewWithServerAuthority(
   }
   const optimizeCreatedAt = nowIso();
   const optimizeOptions = {
+    homeFormulationModuleId: recipeState.homeFormulationModuleId,
     excludedIngredientIds: draft.excludedIngredientIds,
     unavailableMainIngredientIds: draft.unavailableMainIngredientIds,
     effectivePriceOverrides: useCustomerPriceStore.getState().overridesByCanonicalId,
@@ -3897,6 +3899,7 @@ export async function applyPreviewWithServerAuthority(
         constraints: draft.constraints,
         createdAt: preview.createdAt,
         options: {
+          homeFormulationModuleId: recipeAtStart.homeFormulationModuleId,
           excludedIngredientIds: draft.excludedIngredientIds,
           unavailableMainIngredientIds: draft.unavailableMainIngredientIds,
           effectivePriceOverrides: useCustomerPriceStore.getState().overridesByCanonicalId,

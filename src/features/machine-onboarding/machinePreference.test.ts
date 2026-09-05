@@ -44,7 +44,9 @@ function buildFor(profile: HomeMachineProfile, isCustom = false): MachinePrefere
 }
 
 /** Simple in-memory Storage double (vitest runs in a node environment). */
-function fakeStorage(initial: Record<string, string> = {}): StorageLike & { map: Map<string, string> } {
+function fakeStorage(
+  initial: Record<string, string> = {},
+): StorageLike & { map: Map<string, string> } {
   const map = new Map(Object.entries(initial));
   return {
     map,
@@ -68,14 +70,20 @@ describe('buildMachinePreferenceRecord — §8.6 fields, honest batch', () => {
     });
     expect(record.market).toBe('EU/ES');
     expect(record.resolvedTechnology).toBe('respin_soft');
+    expect(record.resolvedHomeFormulationModuleId).toBe('SOFT_DISPENSE');
+    expect(record.engineTemperatureC).toBe(-11);
     expect(record.resolvedVisibleMode).toBe('ninja_swirl');
     expect(record.capacity).toEqual({
       vesselCapacityMl: 480,
       maximumLiquidMixMl: null,
       workingCapacityMl: null,
+      maximumBatchMl: 480,
+      hardMaximumBatchGrams: null,
+      trueHardMaximumDocumented: true,
+      finishedProductCapacityMl: null,
       manufacturerMaxMixGrams: null,
-      vesselCount: null,
-      maxFillDefinedByManufacturer: false,
+      vesselCount: 2,
+      maxFillDefinedByManufacturer: true,
     });
     expect(record.defaultBatch).toEqual({
       kind: 'grams',
@@ -122,7 +130,10 @@ describe('buildMachinePreferenceRecord — §8.6 fields, honest batch', () => {
     };
     expect(buildFor(probe).defaultBatch).toEqual({ kind: 'none' });
     // And the real record now saves the owner-pinned derivation.
-    expect(buildFor(NINJA_CREAMI_NC302EU).defaultBatch).toMatchObject({ kind: 'grams', grams: 450 });
+    expect(buildFor(NINJA_CREAMI_NC302EU).defaultBatch).toMatchObject({
+      kind: 'grams',
+      grams: 450,
+    });
   });
 
   it('a custom machine embeds the user_declared profile with an empty cycle batch', () => {
@@ -159,7 +170,9 @@ describe('parseMachinePreferenceRecord — strict, corrupt-safe', () => {
     expect(parseMachinePreferenceRecord({})).toBeNull();
     expect(parseMachinePreferenceRecord({ ...valid, schemaVersion: 999 })).toBeNull();
     expect(parseMachinePreferenceRecord({ ...valid, market: '' })).toBeNull();
-    expect(parseMachinePreferenceRecord({ ...valid, resolvedTechnology: 'continuous_soft_serve' })).toBeNull();
+    expect(
+      parseMachinePreferenceRecord({ ...valid, resolvedTechnology: 'continuous_soft_serve' }),
+    ).toBeNull();
     // Technology/mode mismatch is corruption, not something to repair.
     expect(parseMachinePreferenceRecord({ ...valid, resolvedVisibleMode: 'fresh' })).toBeNull();
     expect(parseMachinePreferenceRecord({ ...valid, setAt: 'not-a-date' })).toBeNull();
@@ -226,6 +239,19 @@ describe('parseMachinePreferenceRecord — strict, corrupt-safe', () => {
     };
     raw2.selection.customProfile.specificationSource = 'manufacturer_official'; // custom must be user_declared
     expect(parseMachinePreferenceRecord(raw2)).toBeNull();
+  });
+
+  it('rejects a new v3 custom machine record with no module authority', () => {
+    const custom = buildCustomMachineProfile({
+      behaviorAnswerId: 'machine_cools_itself',
+      market: 'ES',
+    });
+    if (custom.outcome !== 'profile') throw new Error('expected profile');
+    const raw = JSON.parse(JSON.stringify(buildFor(custom.profile, true))) as {
+      selection: { customProfile: { homeFormulationModuleId?: string } };
+    };
+    delete raw.selection.customProfile.homeFormulationModuleId;
+    expect(parseMachinePreferenceRecord(raw)).toBeNull();
   });
 });
 
@@ -313,7 +339,10 @@ describe('userScopedMachineKey — per-account device isolation', () => {
     // the same device → Pro inherited Home's machine because the key was global.
     // With the scoped key, the same physical storage keeps the two accounts apart.
     const storage = fakeStorage();
-    const homeStore = localStorageMachinePreferenceStore(storage, userScopedMachineKey('home-user'));
+    const homeStore = localStorageMachinePreferenceStore(
+      storage,
+      userScopedMachineKey('home-user'),
+    );
     const proStore = localStorageMachinePreferenceStore(storage, userScopedMachineKey('pro-user'));
 
     await homeStore.save(machine);

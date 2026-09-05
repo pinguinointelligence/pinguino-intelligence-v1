@@ -86,7 +86,7 @@ describe('OWNER-LOCKED — saved machine preference is the NEW-recipe default', 
     expect(state.machineId).toBe(DELUXE_ID);
     expect(state.machineLabel).toBeTruthy();
     expect(state.target_batch_grams).toBe(grams);
-    expect(state.machine_capacity_grams).toBe(grams);
+    expect(state.machine_capacity_grams).toBeNull();
     expect(state.batch_source).toBe('MACHINE_DEFAULT');
     // The owner's canonical Deluxe authority: 706 ml manufacturer container
     // resolves to 670 g. Pinned so a silent catalogue drift is visible here.
@@ -298,7 +298,9 @@ describe('OWNER-LOCKED — every canonical machine becomes the NEW-recipe defaul
       expect(first.machineKind).toBe('home');
       expect(first.machineId).toBe(profile.id);
       expect(first.target_batch_grams).toBe(grams);
-      expect(first.machine_capacity_grams).toBe(grams);
+      // The soft operating recommendation controls the starting batch only;
+      // none of these volume authorities is a documented hard gram ceiling.
+      expect(first.machine_capacity_grams).toBeNull();
       expect(first.batch_source).toBe('MACHINE_DEFAULT');
       // The Base actually realizes the machine batch — not just a label.
       expect(first.items.reduce((sum, item) => sum + item.planned_grams, 0)).toBe(grams);
@@ -310,7 +312,9 @@ describe('OWNER-LOCKED — every canonical machine becomes the NEW-recipe defaul
       expect(second.target_batch_grams).toBe(grams);
 
       // Production reads these three fields and nothing else for its machine.
-      expect(machineEducationForSelection(second.machineId, second.machineTechnology)).not.toBeNull();
+      expect(
+        machineEducationForSelection(second.machineId, second.machineTechnology),
+      ).not.toBeNull();
     });
   }
 
