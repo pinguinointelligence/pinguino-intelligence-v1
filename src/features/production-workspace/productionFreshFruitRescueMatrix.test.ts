@@ -144,10 +144,7 @@ const FRESH_FRUITS = mapperRecords
   .map(authorityFor)
   .sort((a, b) => a.ingredientId.localeCompare(b.ingredientId));
 
-const mapperIngredientCache = new Map<
-  string,
-  ReturnType<typeof ingredientRowToEngineIngredient>
->();
+const mapperIngredientCache = new Map<string, ReturnType<typeof ingredientRowToEngineIngredient>>();
 
 const mapperIngredient = (ingredientId: string) => {
   const cached = mapperIngredientCache.get(ingredientId);
@@ -319,13 +316,15 @@ const legalReferenceFor = (fruit: FreshFruitAuthority): RecipeInput => {
   );
 };
 
-const sessionWithFruitDeviation = (
+const sessionWithDeviations = (
   fruit: FreshFruitAuthority,
   plannedInput: RecipeInput,
-  deltaG: number,
+  deltasG: Readonly<Record<string, number>>,
 ): ProductionSession => {
   let session = createProductionSession({
-    sessionId: `matrix-${fruit.ingredientId}-${deltaG}`,
+    sessionId: `matrix-${fruit.ingredientId}-${Object.entries(deltasG)
+      .map(([lineId, deltaG]) => `${lineId}-${deltaG}`)
+      .join('-')}`,
     ownerUserId: 'owner',
     source: {
       recipeId: `recipe-${fruit.ingredientId}`,
@@ -338,7 +337,7 @@ const sessionWithFruitDeviation = (
     startedAt: '2026-09-05T00:00:00.000Z',
   });
   for (const line of session.lines) {
-    const actualGrams = line.lineId === 'fruit' ? line.plannedGrams + deltaG : line.plannedGrams;
+    const actualGrams = line.plannedGrams + (deltasG[line.lineId] ?? 0);
     session = confirmProductionLine(
       setDraftActualGrams(session, line.lineId, actualGrams),
       line.lineId,
@@ -347,6 +346,15 @@ const sessionWithFruitDeviation = (
   }
   return session;
 };
+
+const sessionWithFruitDeviation = (
+  fruit: FreshFruitAuthority,
+  plannedInput: RecipeInput,
+  deltaG: number,
+): ProductionSession => sessionWithDeviations(fruit, plannedInput, { fruit: deltaG });
+
+const recipeVector = (input: RecipeInput) =>
+  input.items.map((item) => [canonicalIngredientId(item.ingredient), item.planned_grams]);
 
 const diagnostic = (fruit: FreshFruitAuthority, session: ProductionSession): string => {
   const assessment = assessProductionRescue(session);
@@ -427,6 +435,29 @@ describe('Production Rescue canonical fresh-fruit matrix', () => {
     },
   );
 
+  it.each(FRESH_FRUITS)(
+    '$ingredientId $name restores fruit -10 g and milk -5 g to the exact saved vector',
+    (fruit) => {
+      const input = references.get(fruit.ingredientId)!;
+      const session = sessionWithDeviations(fruit, input, { fruit: -10, milk: -5 });
+      const assessment = assessProductionRescue(session);
+      const restore = assessment.options.find((option) => option.id === 'restore_original_recipe');
+      expect(restore, diagnostic(fruit, session)).toBeDefined();
+      expect(restore?.finalMassG).toBe(TARGET_G);
+      expect(restore?.instructions).toHaveLength(2);
+      expect(restore?.instructions).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ lineId: 'milk', kind: 'add', grams: 5 }),
+          expect.objectContaining({ lineId: 'fruit', kind: 'add', grams: 10 }),
+        ]),
+      );
+      expect(recipeVector(restore!.candidateInput)).toEqual(recipeVector(input));
+      expect(
+        new Set(recipeVector(restore!.candidateInput).map(([ingredientId]) => ingredientId)).size,
+      ).toBe(input.items.length);
+    },
+  );
+
   it.each(FRESH_FRUITS.flatMap((fruit) => [5, 10].map((deltaG) => ({ fruit, deltaG }))))(
     '$fruit.ingredientId $fruit.name repairs P+$deltaG through a larger add-only batch',
     ({ fruit, deltaG }) => {
@@ -476,5 +507,9 @@ describe('Production Rescue canonical fresh-fruit matrix', () => {
         },
       ],
     });
+    expect(recipeVector(restore!.candidateInput)).toEqual(recipeVector(plannedInput));
+    expect(
+      new Set(recipeVector(restore!.candidateInput).map(([ingredientId]) => ingredientId)).size,
+    ).toBe(plannedInput.items.length);
   });
 });

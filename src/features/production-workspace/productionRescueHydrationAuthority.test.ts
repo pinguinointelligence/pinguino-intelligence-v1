@@ -58,9 +58,12 @@ import {
   type TrustedRescueContext,
 } from '../../../supabase/functions/production-rescue-authorize/logic';
 import {
+  OWNER_ACCEPTED_RESCUE_GRAMS,
+  OWNER_ACCEPTED_RESCUE_TOTAL_G,
   OWNER_BANANA_MAIN_POLICY,
   OWNER_BANANA_PHYSICAL_G,
   OWNER_LINE_IDS,
+  OWNER_MINIMUM_LEGAL_TOTAL_G,
   OWNER_MAPPER_IDS,
   OWNER_PLANNED_GRAMS,
   OWNER_RESCUE_GRAMS,
@@ -581,6 +584,55 @@ describe('rescued Production run is written in a state its own recovery refuses'
           (task) => task.cumulativeTargetG === task.physicalBaselineG + task.authorizedDeltaG,
         ),
       ).toBe(true);
+    });
+  });
+
+  describe('the bounded add-only search reaches the served legal Banana candidate', () => {
+    const ACCEPTED = candidate(
+      OWNER_ACCEPTED_RESCUE_GRAMS.slice(0, 6) as unknown as number[],
+      OWNER_BANANA_PHYSICAL_G,
+    );
+
+    it('refuses candidate N at 1149.9 g through the terminal Main authority', () => {
+      const total = STORED.items.reduce((sum, item) => sum + item.planned_grams, 0);
+      expect(total).toBeCloseTo(1149.9, 6);
+      expect(
+        evaluateRecipeConstraintAuthority({
+          recipe: STORED,
+          snapshots: snapshotsFor(STORED),
+          module: 'BATCH_RESCUE',
+        }).valid,
+      ).toBe(false);
+    });
+
+    it('accepts candidate N+1 at 1150.1 g through that same terminal authority', () => {
+      const total = ACCEPTED.items.reduce((sum, item) => sum + item.planned_grams, 0);
+      expect(total).toBeCloseTo(OWNER_ACCEPTED_RESCUE_TOTAL_G, 6);
+      expect(
+        evaluateRecipeConstraintAuthority({
+          recipe: ACCEPTED,
+          snapshots: snapshotsFor(ACCEPTED),
+          module: 'BATCH_RESCUE',
+        }).valid,
+      ).toBe(true);
+    });
+
+    it('keeps BANANA inside its published hard limit without removing material', () => {
+      const total = ACCEPTED.items.reduce((sum, item) => sum + item.planned_grams, 0);
+      const banana = ACCEPTED.items.find((item) => item.id === OWNER_LINE_IDS.banana)!;
+      const percent = (banana.planned_grams / total) * 100;
+      expect(percent).toBeLessThanOrEqual(OWNER_BANANA_MAIN_POLICY.hardLimitPercent);
+      expect(percent).toBeCloseTo(29.9974, 3);
+      expect(total).toBeGreaterThanOrEqual(OWNER_MINIMUM_LEGAL_TOTAL_G);
+      expect(
+        ACCEPTED.items.every(
+          (item, index) => item.planned_grams >= ORIGINAL.items[index]!.planned_grams,
+        ),
+      ).toBe(true);
+    });
+
+    it('reopens the accepted candidate through durable recovery validation', () => {
+      expect(() => applyVerifiedRescueInput(sessionFor(ACCEPTED), ACCEPTED, 2)).not.toThrow();
     });
   });
 });
