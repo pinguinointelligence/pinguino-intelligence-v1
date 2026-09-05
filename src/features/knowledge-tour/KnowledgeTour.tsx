@@ -45,6 +45,9 @@ function AnnotationRail({ step }: { step: KnowledgeTourStep }) {
       <div
         className="knowledge-tour__annotations"
         data-compact-mobile={step.compactMobileAnnotations}
+        data-mobile-layout={
+          step.id === 'professional-production' ? 'equal-columns' : 'image-anchors'
+        }
       >
         {step.annotations.map((annotation, index) => (
           <div

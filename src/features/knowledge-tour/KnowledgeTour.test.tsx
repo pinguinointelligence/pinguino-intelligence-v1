@@ -99,6 +99,13 @@ describe('responsive Knowledge Tour interactions', () => {
     const final = mount('/how-it-works?step=9');
     expect(final.dataset.ownerAsset).toBe('09.png');
     expect(final.querySelector('.knowledge-tour__eyebrow')?.textContent).toContain('Krok 9 z 9');
+    expect(final.querySelector('.knowledge-tour__voice')?.textContent).toBe(
+      'Produkujesz dla realnej produkcji i warunków podania',
+    );
+    expect(
+      final.querySelector('.knowledge-tour__annotations')?.getAttribute('data-mobile-layout'),
+    ).toBe('equal-columns');
+    expect(final.querySelectorAll('.knowledge-tour__annotation')).toHaveLength(3);
   });
 
   it('restarts only from the ninth and final step', () => {

@@ -183,7 +183,7 @@ export const educationCopy = {
       proEnding: {
         title: 'Profesjonalna produkcja',
         body: 'Efekt zależy zarówno od procesu, jak i od warunków serwowania lub ekspozycji.',
-        voice: 'Gellatti liczy dla realnej produkcji i warunków podania.',
+        voice: 'Produkujesz dla realnej produkcji i warunków podania',
         annotations: [
           { id: 'machine', title: 'Maszyna', detail: 'Proces mrożenia i napowietrzania' },
           { id: 'product', title: 'Gotowy produkt', detail: 'Struktura, którą chcesz uzyskać' },
