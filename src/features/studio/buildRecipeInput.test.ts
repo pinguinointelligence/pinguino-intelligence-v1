@@ -47,6 +47,7 @@ describe('buildRecipeInput', () => {
     expect(input.target_temperature_c).toBe(-12);
     expect(input.target_batch_grams).toBe(1200);
     expect(input.machine_capacity_grams).toBe(2000);
+    expect(input.machine_capacity_source).toBe('manual');
     expect(input.goals).toEqual({
       formulation_strategy: 'eco',
       flavor_intensity: 'maximum',
@@ -99,9 +100,13 @@ describe('buildRecipeInput', () => {
     expect(
       buildRecipeInput({ ...base, machine_capacity_source: null }).machine_capacity_grams,
     ).toBeNull();
+    expect(
+      buildRecipeInput({ ...base, machine_capacity_source: null }).machine_capacity_source,
+    ).toBeNull();
     const legacy: RecipeInputState = { ...base };
     delete legacy.machine_capacity_source;
     expect(buildRecipeInput(legacy).machine_capacity_grams).toBeNull();
+    expect(buildRecipeInput(legacy).machine_capacity_source).toBeNull();
   });
 
   it('a machine-derived capacity DOES reach the engine', () => {

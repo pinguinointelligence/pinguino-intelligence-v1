@@ -2728,8 +2728,7 @@ export const useRecipeStore = create<RecipeState>()(
                 batch_source: resolvedBatch?.batchSource ?? ('PROFESSIONAL_USER_BATCH' as const),
                 batchResizeConflict: null,
                 machine_capacity_grams: input.machine_capacity_grams,
-                machine_capacity_source:
-                  input.machine_capacity_grams === null ? null : ('manual' as const),
+                machine_capacity_source: input.machine_capacity_source ?? null,
                 machineKind: null,
                 servingModeId: null,
                 machineId: null,

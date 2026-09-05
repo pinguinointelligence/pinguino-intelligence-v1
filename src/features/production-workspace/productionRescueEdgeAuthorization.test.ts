@@ -386,7 +386,8 @@ describe('trusted Production Rescue authorization', () => {
           physicalConfirmedG: 381,
           forecastMassG: 675,
           originalTargetG: 670,
-          machineCapacityG: 670,
+          machineCapacityG: null,
+          machineCapacitySource: null,
           fixedTargetRebalance: expect.objectContaining({ candidateMassG: 670 }),
           irreducibleConfirmedViolations: [
             expect.objectContaining({
@@ -432,7 +433,7 @@ describe('trusted Production Rescue authorization', () => {
     ]);
   });
 
-  it('returns the exact physical machine-capacity proof for Owner Case 3', async () => {
+  it('authorizes a larger batch for Owner Case 3 when 670 g has no capacity source', async () => {
     const source = ownerRescueContext({
       milk: 201,
       cream: 125,
@@ -443,10 +444,35 @@ describe('trusted Production Rescue authorization', () => {
       strawberries: 92,
       watermelon: 98,
     });
+    const result = await authorizeTrustedProductionRescue(
+      OWNER,
+      request({ stableOptionId: 'enlarge_batch' }),
+      dependencies(source),
+    );
+
+    expect(result.preview).toMatchObject({
+      finalMassG: 678.2,
+      title: 'Zwiększ partię do 678.2 g',
+    });
+  });
+
+  it('returns a physical capacity proof only when Owner Case 3 has explicit authority', async () => {
+    const source = ownerRescueContext({
+      milk: 201,
+      cream: 125,
+      skimmed_milk: 50,
+      sucrose: 31,
+      dextrose: 77,
+      tara: 2,
+      strawberries: 92,
+      watermelon: 98,
+    });
+    (source.version.recipe_input as Record<string, unknown>).machine_capacity_source = 'machine';
+
     await expect(
       authorizeTrustedProductionRescue(
         OWNER,
-        request({ stableOptionId: 'leave_as_is' }),
+        request({ stableOptionId: 'enlarge_batch' }),
         dependencies(source),
       ),
     ).rejects.toMatchObject({
@@ -455,9 +481,9 @@ describe('trusted Production Rescue authorization', () => {
         reason: 'machine_capacity_exceeded',
         diagnostics: expect.objectContaining({
           physicalConfirmedG: 676,
-          forecastMassG: 676,
           originalTargetG: 670,
           machineCapacityG: 670,
+          machineCapacitySource: 'machine',
         }),
       },
     });
@@ -473,7 +499,7 @@ describe('trusted Production Rescue authorization', () => {
       }),
     );
     expect(result.preview.scoreDisplay).toBe('10/10');
-    expect(result.preview.finalMassG).toBe(1236.2);
+    expect(result.preview.finalMassG).toBe(1223);
     expect(result.candidateFingerprint).toMatch(/^[0-9a-f]{64}$/);
     expect(persisted).not.toBeNull();
     expect(persisted!.recipeInput.items).toSatisfy((items: unknown[]) =>
@@ -489,9 +515,7 @@ describe('trusted Production Rescue authorization', () => {
     expect(result.stableOptionId).toBe('enlarge_batch');
     // §16/§17 — the trusted preview names the exact verified batch, never a
     // generic direction and never a tidied-up round number.
-    expect(result.preview.title).toBe(
-      `Minimalna bezpieczna korekta · ${result.preview.finalMassG.toFixed(1)} g`,
-    );
+    expect(result.preview.title).toBe('Zwiększ partię do 1223 g');
   });
 
   it('rejects a no-longer-available stable option without storing authorization', async () => {
@@ -590,7 +614,7 @@ describe('trusted Production Rescue authorization', () => {
       engineVersion: '0.4.0',
       configVersion: '0.7.0',
       practicalRecipeVersion: 'pro-whole-gram-v1',
-      rescueModelVersion: 'production-rescue-v7',
+      rescueModelVersion: 'production-rescue-v9',
       bundlerVersion: '1.0.3',
       ttlSeconds: 300,
     });
