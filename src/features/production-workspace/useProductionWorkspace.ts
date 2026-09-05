@@ -187,13 +187,15 @@ export const rescueOptionUnavailableMessage = (
   }
   const fixedTargetViolation = diagnostics?.fixedTargetRebalance?.violationDetails[0];
   if (fixedTargetViolation) {
+    const boundary =
+      fixedTargetViolation.direction === 'low'
+        ? `poniżej minimum ${formatMetricValue(fixedTargetViolation.min)}`
+        : `powyżej maksimum ${formatMetricValue(fixedTargetViolation.max)}`;
     return (
       `Niedostępne — przeliczenie pozostałych ilości do ${formatMass(
         diagnostics.fixedTargetRebalance!.candidateMassG,
-      )} g nadal przekracza zakres: ${metricLabel(fixedTargetViolation.metric as TargetMetric)} ` +
-      `${formatMetricValue(fixedTargetViolation.value)}% (maks. ${formatMetricValue(
-        fixedTargetViolation.max,
-      )}%).`
+      )} g pozostaje poza zakresem: ${metricLabel(fixedTargetViolation.metric as TargetMetric)} ` +
+      `${formatMetricValue(fixedTargetViolation.value)}% (${boundary}%).`
     );
   }
   const details = productionRescueOptionUnavailableDetails(error);
