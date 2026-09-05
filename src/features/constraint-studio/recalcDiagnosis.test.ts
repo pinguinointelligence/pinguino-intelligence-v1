@@ -190,6 +190,17 @@ describe('failure classification (owner taxonomy)', () => {
     );
   });
 
+  it('a Home module keeps its Ninja visible alias while route integrity checks the −11 Engine cell', () => {
+    const diagnosis = diagnoseRecalcFailure({
+      input: input(-11, cleanBase()),
+      constraints: NO_CONSTRAINTS,
+      issue: noProposal,
+      servingModeId: 'ninja_gelato',
+      homeFormulationModuleId: 'FROZEN_PINT',
+    });
+    expect(diagnosis.code).not.toBe('temperature_route_mismatch');
+  });
+
   it('empty recipe → recipe_input_incomplete; invalid constraints → constraint_verification_failed', () => {
     expect(
       diagnoseRecalcFailure({

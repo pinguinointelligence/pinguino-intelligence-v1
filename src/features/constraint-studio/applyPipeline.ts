@@ -73,6 +73,10 @@ import {
 } from '@/features/pro-core/effectiveRecipePricing';
 import { normalizeFormulationStrategy } from '@/features/formulation-strategy/strategy';
 import {
+  isActiveHomeFormulationPreference,
+  type HomeFormulationModuleId,
+} from '@/features/machine-catalog';
+import {
   verifyEcoFlavourProtection,
   type EcoFlavourViolation,
 } from '@/features/formulation-strategy/flavourFloor';
@@ -249,6 +253,8 @@ const solverHolds = (input: RecipeInput, set: ConstraintSet): ConstraintSet =>
 /** Build-only commercial inputs. They rank ECO candidates in memory and are
  * deliberately absent from RecipeInput, Preview payloads and saved versions. */
 export interface OptimizePreviewOptions extends FormulationOptions {
+  /** Home machine preference; never serialized as a visible Direction target. */
+  homeFormulationModuleId?: HomeFormulationModuleId | null;
   effectivePriceOverrides?: CustomerPriceIndex;
   /** Immutable per-line product/version/policy authority. Engine formulas do
    * not read it; product orchestration and the Apply trust door do. */
@@ -7265,6 +7271,7 @@ function buildOptimizePreviewWithDirection(
   };
   const exactNoCrownNullHypothesis =
     preRouteStrategy !== 'eco' &&
+    !isActiveHomeFormulationPreference(options.homeFormulationModuleId) &&
     mainIntent.length === 0 &&
     (options.rescueSimulationLineIds?.length ?? 0) === 0 &&
     !hasPendingManualTarget &&
@@ -7463,6 +7470,7 @@ function buildOptimizePreviewWithDirection(
     const neighborhood = experimentalNeighborhoodSearch(input, neighborhoodSolverSet, {
       beamWidth: 3,
       evaluationBudget: 2_500,
+      homeFormulationModuleId: options.homeFormulationModuleId,
       excludedIngredientIds: options.excludedIngredientIds,
       effectivePriceOverrides: options.effectivePriceOverrides,
       externalHardGate: (candidate) =>

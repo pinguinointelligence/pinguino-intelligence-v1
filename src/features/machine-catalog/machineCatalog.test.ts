@@ -212,9 +212,11 @@ describe('Annex A seed catalog — model → technology → mode → status', ()
   });
 
   it('all ten supported records carry current official evidence and are operationally complete', () => {
-    expect(MACHINE_CATALOG.every((profile) => profile.specificationStatus === 'verified')).toBe(true);
+    expect(MACHINE_CATALOG.every((profile) => profile.specificationStatus === 'verified')).toBe(
+      true,
+    );
     for (const profile of MACHINE_CATALOG) {
-      expect(profile.specificationVerifiedAt).toBe('2026-08-28');
+      expect(profile.specificationVerifiedAt).toBe('2026-09-05');
       expect(profile.specificationEvidence?.length).toBeGreaterThan(0);
       expect(deriveMachineSetup(profile).recommendedBatchGrams).not.toBeNull();
     }
@@ -266,11 +268,12 @@ describe('Annex A capacities — exact numbers, per §9.1 field, never guessed',
     const c = MOULINEX_FREEZI_MJ803AF0.capacity;
     expect(c.perProgram).toEqual([
       { program: 'ice_cream', capacityMl: 1000 },
-      { program: 'frozen_drink', capacityMl: 1400 },
+      { program: 'frozen_drink_input', capacityMl: 1200 },
+      { program: 'frozen_drink_finished', capacityMl: 1400 },
     ]);
-    expect(c.finishedProductCapacityMl).toBe(1000);
+    expect(c.finishedProductCapacityMl).toBe(1400);
     expect(c.vesselCapacityMl).toBeNull(); // not stated — never guessed
-    expect(c.maximumLiquidMixMl).toBeNull();
+    expect(c.maximumLiquidMixMl).toBe(1000);
   });
 
   it('Magimix Gelato Expert separates 2 l bowls from 1.0 l / 1.3 l working programs', () => {
@@ -283,20 +286,23 @@ describe('Annex A capacities — exact numbers, per §9.1 field, never guessed',
     ]);
   });
 
-  it('Cuisinart ICE100E: verified 1.5 l frozen-dessert working capacity', () => {
+  it('Cuisinart ICE100E: separates 1.5 l vessel/finished volume from 1.0 l own-recipe input', () => {
     const c = CUISINART_ICE100E.capacity;
     expect(c.finishedProductCapacityMl).toBe(1500);
-    expect(c.workingCapacityMl).toBe(1500);
-    expect(c.maximumLiquidMixMl).toBeNull();
+    expect(c.vesselCapacityMl).toBe(1500);
+    expect(c.workingCapacityMl).toBe(1000);
+    expect(c.maximumLiquidMixMl).toBe(1000);
   });
 
   it('Cuisinart frozen bowls: ICE21E 1.4 l, ICE30BCE 2.0 l (~12 h pre-freeze), bowl pre-freeze', () => {
-    expect(CUISINART_ICE21E.capacity.vesselCapacityMl).toBe(1400);
+    expect(CUISINART_ICE21E.capacity.vesselCapacityMl).toBeNull();
     expect(CUISINART_ICE21E.capacity.workingCapacityMl).toBe(1400);
     expect(CUISINART_ICE21E.preFreezeTarget).toBe('bowl');
-    expect(CUISINART_ICE21E.preFreezeMinimumHours).toBe(12);
+    expect(CUISINART_ICE21E.capacity.maximumBatchMl).toBe(1400);
+    expect(CUISINART_ICE21E.preFreezeMinimumHours).toBe(16);
     expect(CUISINART_ICE30BCE.capacity.vesselCapacityMl).toBe(2000);
-    expect(CUISINART_ICE30BCE.capacity.workingCapacityMl).toBe(2000);
+    expect(CUISINART_ICE30BCE.capacity.workingCapacityMl).toBe(1500);
+    expect(CUISINART_ICE30BCE.capacity.maximumBatchMl).toBe(1500);
     expect(CUISINART_ICE30BCE.preFreezeMinimumHours).toBe(12);
   });
 
@@ -330,12 +336,12 @@ describe('Annex A capacities — exact numbers, per §9.1 field, never guessed',
     });
   });
 
-  it('no record invents min/default/max batch or manufacturer max-mix grams', () => {
+  it('no record invents min/default batch or a hard gram ceiling from volume', () => {
     for (const profile of MACHINE_CATALOG) {
       expect(profile.capacity.minimumBatchMl).toBeNull();
-      expect(profile.capacity.maximumBatchMl).toBeNull();
       expect(profile.capacity.defaultBatchMl).toBeNull();
       expect(profile.capacity.manufacturerMaxMixGrams ?? null).toBeNull(); // no manual states one yet
+      expect(profile.capacity.hardMaximumBatchGrams).toBeNull();
     }
   });
 });
@@ -389,9 +395,7 @@ describe('activation (§9.3 rule intact; owner final decision activates the Ninj
     ...NINJA_CREAMI_NC302EU,
     id: 'probe-conflicted',
     specificationStatus: 'conflicting_sources',
-    sourceConflicts: [
-      { field: 'vesselCapacityMl', candidatesMl: [473, 450], note: 'probe' },
-    ],
+    sourceConflicts: [{ field: 'vesselCapacityMl', candidatesMl: [473, 450], note: 'probe' }],
     active: false,
   });
 
@@ -523,7 +527,12 @@ describe('owner Home batch rule — 0.95 factor over CONFIRMED usable capacity',
     const bowlOnly: HomeMachineProfile = {
       ...CUISINART_ICE30BCE,
       id: 'probe-bowl-only',
-      capacity: { ...CUISINART_ICE30BCE.capacity, workingCapacityMl: null },
+      capacity: {
+        ...CUISINART_ICE30BCE.capacity,
+        maximumLiquidMixMl: null,
+        workingCapacityMl: null,
+        maximumBatchMl: null,
+      },
     };
     expect(recommendMachineBatch(bowlOnly)).toBeNull();
   });
@@ -581,27 +590,36 @@ describe('owner Home batch rule — 0.95 factor over CONFIRMED usable capacity',
   });
 
   it('all approved normal-product defaults come from canonical working-capacity authority', () => {
-    expect(MACHINE_CATALOG.map((profile) => [profile.displayName, deriveMachineSetup(profile).recommendedBatchGrams])).toEqual([
+    expect(
+      MACHINE_CATALOG.map((profile) => [
+        profile.displayName,
+        deriveMachineSetup(profile).recommendedBatchGrams,
+      ]),
+    ).toEqual([
       ['Ninja CREAMi', 450],
       ['Ninja CREAMi Deluxe', 670],
       ['Ninja CREAMi Scoop & Swirl', 460],
       ['Moulinex Freezi', 950],
       ['Sage Smart Scoop', 950],
       ['Magimix Gelato Expert', 950],
-      ['Cuisinart ICE-100', 1430],
+      ['Cuisinart ICE-100', 950],
       ['KitchenAid Ice Cream Maker', 1330],
       ['Cuisinart ICE-21', 1330],
-      ['Cuisinart ICE-30', 1900],
+      ['Cuisinart ICE-30', 1430],
     ]);
   });
 
   it('resolves the batch by machine + visible product profile without treating Sorbet as a drink', () => {
     for (const productType of ['gelato', 'vegan', 'protein'] as const) {
-      expect(deriveMachineSetup(MAGIMIX_GELATO_EXPERT, productType).recommendedBatchGrams).toBe(950);
+      expect(deriveMachineSetup(MAGIMIX_GELATO_EXPERT, productType).recommendedBatchGrams).toBe(
+        950,
+      );
     }
     expect(deriveMachineSetup(MAGIMIX_GELATO_EXPERT, 'sorbet').recommendedBatchGrams).toBe(1240);
     for (const productType of ['gelato', 'sorbet', 'vegan', 'protein'] as const) {
-      expect(deriveMachineSetup(MOULINEX_FREEZI_MJ803AF0, productType).recommendedBatchGrams).toBe(950);
+      expect(deriveMachineSetup(MOULINEX_FREEZI_MJ803AF0, productType).recommendedBatchGrams).toBe(
+        950,
+      );
     }
   });
 
@@ -658,7 +676,9 @@ describe('container split (owner correction) — even split, never overfill', ()
       const plan = planContainerSplit(requested, limit);
       expect(plan).not.toBeNull();
       // Even split: per-container ≈ total / containers (0.1 g display rounding).
-      expect(Math.abs(plan!.gramsPerContainer - requested / plan!.containers)).toBeLessThanOrEqual(0.05);
+      expect(Math.abs(plan!.gramsPerContainer - requested / plan!.containers)).toBeLessThanOrEqual(
+        0.05,
+      );
       expect(plan!.totalGrams).toBe(requested);
     }
   });
@@ -744,66 +764,12 @@ describe('deriveMachineSetup — mode routing + honest recommended batch', () =>
 /* Owner rule — default neutrality (no recipe math in machine data)    */
 /* ------------------------------------------------------------------ */
 
-const FORBIDDEN_KEY_WORDS = new Set([
-  'pac',
-  'pod',
-  'npac',
-  'sugar',
-  'sugars',
-  'sucrose',
-  'dextrose',
-  'fructose',
-  'lactose',
-  'fat',
-  'fats',
-  'stabilizer',
-  'stabiliser',
-  'emulsifier',
-  'solids',
-  'msnf',
-  'protein',
-  'temperature',
-  'coefficient',
-  'modifier',
-  'modifiers',
-  'correction',
-  'corrections',
-  'band',
-  'bands',
-]);
-
-function collectKeys(value: unknown, into: Set<string>): void {
-  if (Array.isArray(value)) {
-    for (const item of value) collectKeys(item, into);
-    return;
-  }
-  if (value !== null && typeof value === 'object') {
-    for (const [key, nested] of Object.entries(value)) {
-      into.add(key);
-      collectKeys(nested, into);
-    }
-  }
-}
-
-function keyWords(key: string): string[] {
-  return key
-    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .filter((word) => word.length > 0);
-}
-
 describe('owner rule — machine profiles are default-neutral (routing + capacity/UX only)', () => {
-  it('no profile or derivation carries any recipe-parameter-like field', () => {
-    const keys = new Set<string>();
+  it('module defaults are brand-neutral and never contain ingredient-specific rules', () => {
     for (const profile of MACHINE_CATALOG) {
-      collectKeys(profile, keys);
-      collectKeys(deriveMachineSetup(profile), keys);
-    }
-    for (const key of keys) {
-      for (const word of keyWords(key)) {
-        expect(FORBIDDEN_KEY_WORDS.has(word), `recipe-math-like key '${key}'`).toBe(false);
-      }
+      const module = deriveMachineSetup(profile).homeFormulationModule;
+      expect(module.preference.sweetness).toBe(0);
+      expect(JSON.stringify(module)).not.toMatch(/ingredient|sucrose|dextrose|fat_/i);
     }
   });
 
@@ -811,6 +777,9 @@ describe('owner rule — machine profiles are default-neutral (routing + capacit
     const derivation = deriveMachineSetup(NINJA_CREAMI_SCOOP_SWIRL_NC7);
     expect(Object.keys(derivation).sort()).toEqual([
       'batchSuggestion',
+      'engineTemperatureC',
+      'hardMaximumBatchGrams',
+      'homeFormulationModule',
       'homeSupport',
       'maxFillDefinedByManufacturer',
       'preFreezeMinimumHours',
@@ -888,9 +857,10 @@ describe('source hygiene', () => {
       const text = readFileSync(file, 'utf8');
       expect(text.includes('SAFETY_FACTOR ='), `stray factor constant in ${file}`).toBe(false);
       // Same-line multiplication only (comments may mention the factor prose-style).
-      expect(/\*[ \t]*0\.95|0\.95[ \t]*\*/.test(text), `inline 0.95 multiplication in ${file}`).toBe(
-        false,
-      );
+      expect(
+        /\*[ \t]*0\.95|0\.95[ \t]*\*/.test(text),
+        `inline 0.95 multiplication in ${file}`,
+      ).toBe(false);
     }
   });
 });

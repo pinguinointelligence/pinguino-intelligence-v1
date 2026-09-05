@@ -30,6 +30,12 @@ import type {
 } from './types';
 import { isHomeSupportedTechnology, visibleModeForTechnology } from './technologyMode';
 import {
+  HOME_ENGINE_TEMPERATURE_C,
+  HOME_FORMULATION_MODULES,
+  homeFormulationModuleForTechnology,
+  isHomeFormulationModuleId,
+} from './homeFormulationModule';
+import {
   recommendMachineBatch,
   vesselFigureConflicted,
   type RecommendedBatch,
@@ -75,11 +81,13 @@ export type HomeBatchSuggestion =
 
 export type MachineHomeSupport = 'supported' | 'unsupported_for_home';
 
-/** Everything Home setup needs from a machine — and NOTHING recipe-math. */
+/** Everything Home setup needs from a machine, including its solver preference id. */
 export interface MachineDerivation {
   readonly homeSupport: MachineHomeSupport;
   /** The EXISTING visible mode (from technology); null when unsupported. */
   readonly resolvedVisibleMode: HomeVisibleModeId | null;
+  readonly homeFormulationModule: (typeof HOME_FORMULATION_MODULES)[keyof typeof HOME_FORMULATION_MODULES];
+  readonly engineTemperatureC: typeof HOME_ENGINE_TEMPERATURE_C;
   readonly batchSuggestion: HomeBatchSuggestion;
   /**
    * The DERIVED „Zalecany wsad PINGÜINO” in grams, surfaced flat (owner
@@ -88,6 +96,7 @@ export interface MachineDerivation {
    * honestly user-set, never invented.
    */
   readonly recommendedBatchGrams: number | null;
+  readonly hardMaximumBatchGrams: number | null;
   /** Recommended working capacity in ml, when the sources state one. */
   readonly workingCapacityMl: number | null;
   readonly requiresPreFreeze: boolean;
@@ -99,8 +108,9 @@ export interface MachineDerivation {
 
 /**
  * Derive the Home setup for a machine profile. Pure and default-neutral: the
- * output routes to an EXISTING mode and carries capacity/UX facts only — no
- * recipe parameter is produced or altered here (owner rule / §10.1).
+ * output routes to an EXISTING mode, the existing −11 cell, one brand-neutral
+ * module preference and the capacity/preparation facts. No Engine formula is
+ * duplicated here.
  */
 export function deriveMachineSetup(
   profile: HomeMachineProfile,
@@ -109,7 +119,10 @@ export function deriveMachineSetup(
   const mode = visibleModeForTechnology(profile.technology);
   const recommended = recommendMachineBatch(profile, undefined, productProfile);
   const base = {
+    homeFormulationModule: HOME_FORMULATION_MODULES[profile.homeFormulationModuleId],
+    engineTemperatureC: HOME_ENGINE_TEMPERATURE_C,
     recommendedBatchGrams: recommended?.grams ?? null,
+    hardMaximumBatchGrams: profile.capacity.hardMaximumBatchGrams,
     workingCapacityMl: profile.capacity.workingCapacityMl,
     requiresPreFreeze: profile.requiresPreFreeze,
     preFreezeTarget: profile.preFreezeTarget,
@@ -260,6 +273,10 @@ export function findMachineByModelCode(
 export function isMachineActivatable(profile: HomeMachineProfile): boolean {
   if (profile.specificationStatus === 'conflicting_sources') return false;
   if (!isHomeSupportedTechnology(profile.technology)) return false;
+  if (!isHomeFormulationModuleId(profile.homeFormulationModuleId)) return false;
+  if (profile.homeFormulationModuleId !== homeFormulationModuleForTechnology(profile.technology)) {
+    return false;
+  }
   return profile.resolvedVisibleMode === visibleModeForTechnology(profile.technology);
 }
 
@@ -293,6 +310,17 @@ export function validateHomeMachineProfile(profile: HomeMachineProfile): string[
     }
   }
   const expectedMode = visibleModeForTechnology(profile.technology);
+  const expectedModuleId = homeFormulationModuleForTechnology(profile.technology);
+  if (profile.active && !isHomeFormulationModuleId(profile.homeFormulationModuleId)) {
+    issues.push(`${profile.id}: active Home machine requires a valid homeFormulationModuleId`);
+  } else if (
+    isHomeFormulationModuleId(profile.homeFormulationModuleId) &&
+    profile.homeFormulationModuleId !== expectedModuleId
+  ) {
+    issues.push(
+      `${profile.id}: homeFormulationModuleId '${profile.homeFormulationModuleId}' disagrees with technology mapping '${expectedModuleId}'`,
+    );
+  }
   if (expectedMode === null) {
     issues.push(
       `${profile.id}: technology '${profile.technology}' has no Home mode (Pro/future) — not a Home profile`,
@@ -313,6 +341,19 @@ export function validateHomeMachineProfile(profile: HomeMachineProfile): string[
   if (maxMixGrams !== null && (!Number.isFinite(maxMixGrams) || maxMixGrams <= 0)) {
     issues.push(`${profile.id}: manufacturerMaxMixGrams must be a positive number when stated`);
   }
+  const hardMaxGrams = profile.capacity.hardMaximumBatchGrams;
+  if (hardMaxGrams !== null && (!Number.isFinite(hardMaxGrams) || hardMaxGrams <= 0)) {
+    issues.push(`${profile.id}: hardMaximumBatchGrams must be a positive number when stated`);
+  }
+  if (hardMaxGrams !== null && !profile.capacity.trueHardMaximumDocumented) {
+    issues.push(`${profile.id}: hardMaximumBatchGrams requires documented hard-maximum authority`);
+  }
+  if (
+    profile.capacity.maxFillDefinedByManufacturer !==
+    (profile.capacity.maxFillRules?.length ?? 0) > 0
+  ) {
+    issues.push(`${profile.id}: maxFillDefinedByManufacturer must agree with maxFillRules`);
+  }
   if (profile.specificationStatus === 'verified' && profile.specificationVerifiedAt === undefined) {
     issues.push(`${profile.id}: verified requires a specificationVerifiedAt date`);
   }
@@ -325,7 +366,9 @@ export function validateHomeMachineProfile(profile: HomeMachineProfile): string[
       !Number.isFinite(profile.capacity.vesselCapacityMl) ||
       profile.capacity.vesselCapacityMl <= 0
     ) {
-      issues.push(`${profile.id}: confirmed vessel batch basis requires a positive vessel capacity`);
+      issues.push(
+        `${profile.id}: confirmed vessel batch basis requires a positive vessel capacity`,
+      );
     }
     if (vesselFigureConflicted(profile)) {
       issues.push(`${profile.id}: conflicted vessel cannot be an approved batch basis`);
