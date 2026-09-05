@@ -190,3 +190,61 @@ WHOLE MILK powder (PI-ING-000296) is not a substitute: 26% fat vs 42%, a 16-poin
 
 STILL OPEN, awaiting C03: MILK 3.6% (only real PR evidence is Alsace Lait), CARRAGEENAN, SOY DRINK,
 EMULSIFIER.
+
+## C03 UNDER THE CORRECTED TAXONOMY RULE (composition -> PR, product type -> PI)
+
+DECISION RULE APPLIED: a candidate becomes a PI only if it is a different TECHNOLOGICAL PRODUCT TYPE.
+The same type with a different measurable composition is carried by the exact PR.
+
+| Candidate | Verdict | Evidence |
+|---|---|---|
+| MILK 3.6% | WITHDRAWN - percentage-only | Engine already reads the PR's own composition: the FR resolver returns engine fat 3.6 for Alsace Lait even while bound to the 3.5% slot. The percentage never needed a PI. |
+| CREAM POWDER 42% | WITHDRAWN - percentage-only | same rule |
+| INULIN | WITHDRAWN - already exists | PI-ING-000456 / PI-ING-000455 (BIO), neutral, approved_for_base, already used by the Starter Pack palette AND the vegan toolbox |
+| CARRAGEENAN | WITHDRAWN for now - no demonstrated need | zero carrageenan rows exist in Mapper, but it is also absent from the Starter Pack palette, the vegan toolbox and every profile authority (grep: no reference). Coherence gap only - every other single gum (guar, LBG, xanthan, tara, cassia, pectin, agar) is neutral and present. |
+| EMULSIFIER | WITHDRAWN - not a technological type | ~25 emulsifier rows exist, ALL branded commercial BLENDS (Cremodan, Extrulce, Gelmix, Neutro*, Softin, Fabbrisoft). No standalone emulsifier is referenced by any profile authority. A generic "EMULSIFIER" PI would be a composition carrier, not a type; the honest unit would be a specific single ingredient (E471 etc.) and nothing currently requires one. |
+| SOY DRINK | **REMAINS THE ONLY GENUINE CANDIDATE** | src/data/ingredients/verifiedVeganToolbox.ts requires soy through FOUR brand-named ids (PI-ING-002109 Carrefour, 002110 EcoCesta, 002111 Alpro, 002112 Vivesoy) while its direct peers PI-ING-001565 OAT DRINK, 001566 RICE DRINK, 001587 ALMOND DRINK are neutral. Soy is a distinct botanical/technological class, not a composition variant of oat or almond. |
+
+## FAMILY-LEVEL CONCEPTS THE CORRECTED RULE EXPOSES
+
+The right question is not "is MILK 3.6% missing" but "does a neutral MILK concept exist at all".
+
+MILK - NO neutral family concept. Only percentage variants, all brand 'Standard':
+  PI-ING-000234 MILK 1.5% (fat 1.6 - the NAME AND THE DATA ALREADY DISAGREE)
+  PI-ING-000200 MILK 2%   (fresh_milk)
+  PI-ING-000235 MILK 3.2% (milk, protein 3.0)
+  PI-ING-000201 MILK 3.2% (fresh_milk, protein 3.2)   <- the SAME percentage concept twice
+  PI-ING-000236 MILK 3.5% (milk)
+  plus brand legacy: PI-ING-000546/547/548 Hacendado entera/semi/desnatada
+
+CREAM - one neutral row, itself percentage-named: PI-ING-001387 CREAM 33%.
+  Everything else is brand legacy (Mlekovita 30% / 42%, Suprima PL 33%, Piatnica 18%) or a flavour
+  paste that merely has "CREAM" in its name (Stella, Irca, Comprital) and is not dairy cream.
+
+CREAM POWDER - no neutral row. Only PI-ING-000260 'CREAM . Mlekovita Cream' 42%.
+
+MILK POWDER - ALREADY CORRECT, and it is the precedent to copy:
+  PI-ING-000270 SKIMMED MILK and PI-ING-000296 WHOLE MILK carry NO percentage in their identity and
+  are separated by technological class (skimmed vs whole), with fat 0.8 vs 26 living in the data.
+  This is exactly the Owner model, already implemented, in the same table.
+
+RECOMMENDATION SHAPE (for C04, not implemented): follow the milk-powder precedent. Distinguish MILK by
+technological class where a class genuinely exists (skimmed / semi-skimmed / whole), never by
+1.5 / 2 / 3.2 / 3.5 / 3.6 - those are PR composition. Same for CREAM and CREAM POWDER.
+
+## ALSACE LAIT - FUTURE MIGRATION DIRECTION (documented only, nothing mutated)
+
+Under the corrected model the long-term correction is NOT a new MILK 3.6% type. It is:
+  Alsace Lait exact PR -> neutral MILK (or WHOLE MILK) concept -> Engine uses the exact 3.6% composition.
+The binding stays untouched until C04/C05.
+
+## LEGACY / PROLIFERATION FINDINGS (frozen, not to be migrated now)
+
+- Duplicated percentage concept: MILK 3.2% exists twice (PI-ING-000235 milk, PI-ING-000201 fresh_milk),
+  differing only in protein 3.0 vs 3.2 - a composition difference that under the corrected rule should
+  never have produced two identities.
+- Name/data drift: PI-ING-000234 is called MILK 1.5% and carries fat 1.6.
+- CREAM 33% exists as both a neutral row (001387) and a brand row (001388 Suprima).
+- The Vegan authority is COUPLED to four frozen brand rows (002109-002112). Leaving them frozen is
+  correct per Owner decision, but the coupling means the vegan soy path currently depends on Spanish
+  retail brands rather than a neutral type.
