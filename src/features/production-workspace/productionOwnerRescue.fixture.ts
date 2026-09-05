@@ -73,7 +73,10 @@ export const OWNER_RESCUE_RECIPE: RecipeInput = {
   category: 'milk_gelato',
   target_temperature_c: -13,
   target_batch_grams: 670,
+  // Staging truth: the legacy recipe JSON contains 670 but no machine/manual
+  // provenance. Rescue must retain it for audit without treating it as a cap.
   machine_capacity_grams: 670,
+  machine_capacity_source: null,
   goals: {
     formulation_strategy: 'optimal',
     cost_priority: 'balanced',

@@ -604,8 +604,8 @@ export function ProductionCockpit({
     },
     {
       id: 'enlarge_batch',
-      title: 'Minimalna bezpieczna korekta',
-      explanation: 'Dodamy najmniejszą ilość materiału, która przywraca twarde zakresy.',
+      title: 'Zwiększ partię',
+      explanation: 'Znajdziemy najmniejszą większą partię i przeliczymy pozostałe ilości.',
     },
     {
       id: 'restore_original_recipe',
@@ -792,9 +792,9 @@ export function ProductionCockpit({
           <p className="text-[10px] font-semibold tracking-[0.08em] text-[#8a5b23] uppercase">
             Korekta partii
           </p>
-          <h3 className="mt-1 text-sm font-semibold text-ink">Partia odbiega od planu</h3>
+          <h3 className="mt-1 text-sm font-semibold text-ink">Możemy dostosować tę partię</h3>
           <p className="mt-1 text-xs leading-relaxed text-stone-600">
-            Potwierdzonych ilości nie cofniemy. Wybierz bezpieczny sposób dalszej pracy
+            Zachowamy to, co już jest w naczyniu. Wybierz sposób dalszej pracy.
           </p>
           <div className="mt-3 grid gap-3" data-testid="production-decision-list">
             {visibleDecisionOptions.map((option) => {
@@ -842,7 +842,7 @@ export function ProductionCockpit({
                       <span className="flex flex-wrap items-center gap-2">
                         <strong className="text-xs text-ink">
                           {preview && option.id === 'enlarge_batch'
-                            ? `Minimalna bezpieczna korekta · ${formatPhysicalMassG(preview.finalMassG)} g`
+                            ? `Zwiększ partię do ${formatPhysicalMassG(preview.finalMassG)} g`
                             : preview && option.id === 'restore_original_recipe'
                               ? `Przywróć oryginalną recepturę · ${formatPhysicalMassG(preview.finalMassG)} g`
                               : option.title}
@@ -939,7 +939,7 @@ export function ProductionCockpit({
               data-testid="production-decision-recovery"
             >
               <p className="text-xs font-semibold text-ink">
-                Nie mamy bezpiecznej korekty dla tej partii
+                Tej partii nie możemy teraz bezpiecznie dostosować
               </p>
               {unavailableDecisionReasons.length > 0 ? (
                 <ul
@@ -952,9 +952,9 @@ export function ProductionCockpit({
                 </ul>
               ) : null}
               <p className="mt-1 text-[11px] leading-relaxed text-stone-600">
-                Jeśli wartość jest błędna, wybierz „Popraw zapis” w jej wierszu. Jeśli ilości w
-                naczyniu są prawidłowe, przerwij partię i rozpocznij nową — nie dodawaj składników
-                bez zatwierdzonego planu.
+                Aby zaktualizować zapis, wybierz „Popraw zapis” w odpowiednim wierszu. Jeśli stan
+                naczynia jest aktualny, zakończ tę partię i rozpocznij nową. Zachowamy ilości do
+                kontroli.
               </p>
               <button
                 type="button"
@@ -984,7 +984,12 @@ export function ProductionCockpit({
               : production.selectedRescueOptionId === 'leave_as_is'
                 ? 'Akceptuję wynik i kontynuuję'
                 : production.selectedRescueOptionId === 'enlarge_batch'
-                  ? 'Zastosuj minimalną korektę'
+                  ? production.rescueOptionStates?.enlarge_batch?.status === 'available'
+                    ? `Zwiększ partię do ${formatPhysicalMassG(
+                        production.rescueOptionStates.enlarge_batch.authorization.preview
+                          .finalMassG,
+                      )} g`
+                    : 'Zwiększ partię'
                   : production.selectedRescueOptionId === 'restore_original_recipe'
                     ? 'Przywróć proporcje'
                     : 'Wybierz sposób korekty'}

@@ -1,4 +1,8 @@
-import type { CorrectionContext, RecipeInput } from '@/engine';
+import {
+  effectiveMachineCapacityGrams as effectiveEngineMachineCapacityGrams,
+  type CorrectionContext,
+  type RecipeInput,
+} from '@/engine';
 import { normalizeRecipeItemIdentity } from '@/data/ingredients/canonicalIngredientIdentity';
 import { canonicalInternalCategory } from '@/features/studio/productType';
 import type { RecipeState } from '@/stores/recipeStore';
@@ -28,9 +32,7 @@ export type RecipeInputState = Pick<
   >;
 
 export function effectiveMachineCapacityGrams(state: RecipeInputState): number | null {
-  if (state.machine_capacity_grams === null) return null;
-  if (state.machine_capacity_source == null) return null;
-  return state.machine_capacity_grams;
+  return effectiveEngineMachineCapacityGrams(state);
 }
 
 export type RecipeExecutionContext = 'planning' | 'actual_batch';
@@ -52,6 +54,7 @@ export function buildRecipeInput(
     target_temperature_c: state.target_temperature_c,
     target_batch_grams: state.target_batch_grams,
     machine_capacity_grams: effectiveMachineCapacityGrams(state),
+    machine_capacity_source: state.machine_capacity_source ?? null,
     goals: {
       formulation_strategy: normalizeFormulationStrategy(state.formulation_strategy ?? state.mode),
       flavor_intensity: state.flavor_intensity,

@@ -86,7 +86,7 @@ describe('Owner 670 g Production Rescue served-flow authority', () => {
     expect(result.input.items.reduce((sum, item) => sum + item.planned_grams, 0)).toBe(670);
   });
 
-  it('Case 1 proves that confirmed skimmed milk makes the 670 g lactose limit irreducible', () => {
+  it('Case 1 keeps the 670 g failure diagnostic but finds the smallest larger batch', () => {
     const session = confirm(makeOwnerSession(), [
       ['milk', 201],
       ['cream', 125],
@@ -94,6 +94,7 @@ describe('Owner 670 g Production Rescue served-flow authority', () => {
     ]);
     const assessment = assessProductionRescue(session);
     const correction = assessment.options.find((option) => option.id === 'keep_original_batch');
+    const enlargement = assessment.options.find((option) => option.id === 'enlarge_batch');
 
     expect(correction, diagnostic(session)).toBeUndefined();
     expect(assessment.diagnostics.fixedTargetRebalance).toMatchObject({
@@ -117,7 +118,23 @@ describe('Owner 670 g Production Rescue served-flow authority', () => {
       6.1935820896,
       9,
     );
-    expect(productionContinuationPath(assessment)).toBe('recovery_required');
+    expect(assessment.diagnostics).toMatchObject({
+      originalTargetG: 670,
+      machineCapacityG: null,
+      machineCapacitySource: null,
+    });
+    expect(enlargement, diagnostic(session)).toBeDefined();
+    // 691.6167 g is the first single-limit lower bound. The full canonical
+    // recipe remains outside another hard range there; 711.2 g is the first
+    // executable 0.1 g vector that passes every authority.
+    expect(enlargement?.finalMassG).toBe(711.2);
+    expect(enlargement?.instructions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ lineId: 'strawberries' }),
+        expect.objectContaining({ lineId: 'watermelon' }),
+      ]),
+    );
+    expect(productionContinuationPath(assessment)).toBe('authorized_correction');
   });
 
   it('Case 2 offers a 670 g correction after tara is +0.2 g with two rows remaining', () => {
@@ -178,7 +195,7 @@ describe('Owner 670 g Production Rescue served-flow authority', () => {
     expect(completed.completionSnapshot?.actualFinalMassG).toBe(670);
   });
 
-  it('Case 3 refuses the completed 676 g vessel because it exceeds the 670 g machine capacity', () => {
+  it('Case 3 searches above the immutable 676 g vessel when 670 g has no capacity authority', () => {
     const session = confirm(makeOwnerSession(), [
       ['milk', 201],
       ['cream', 125],
@@ -191,14 +208,120 @@ describe('Owner 670 g Production Rescue served-flow authority', () => {
     ]);
     const assessment = assessProductionRescue(session);
 
-    expect(assessment.state, diagnostic(session)).toBe('impossible');
-    expect(assessment.hardSafety.capacityExceeded).toBe(true);
+    const enlargement = assessment.options.find((option) => option.id === 'enlarge_batch');
+
+    expect(assessment.state, diagnostic(session)).toBe('options');
+    expect(assessment.hardSafety.capacityExceeded).toBe(false);
     expect(assessment.diagnostics).toMatchObject({
       physicalConfirmedG: 676,
       forecastMassG: 676,
       originalTargetG: 670,
-      machineCapacityG: 670,
+      machineCapacityG: null,
+      machineCapacitySource: null,
     });
+    expect(enlargement, diagnostic(session)).toBeDefined();
+    expect(enlargement?.finalMassG).toBe(678.2);
+    expect(productionContinuationPath(assessment)).toBe('authorized_correction');
+  });
+
+  it('keeps a genuine sourced 670 g machine capacity as a hard refusal', () => {
+    const sourceSession = makeOwnerSession();
+    const session = confirm(
+      {
+        ...sourceSession,
+        plannedInput: {
+          ...sourceSession.plannedInput,
+          machine_capacity_source: 'machine',
+        },
+      },
+      [
+        ['milk', 201],
+        ['cream', 125],
+        ['skimmed_milk', 50],
+        ['sucrose', 31],
+        ['dextrose', 77],
+        ['tara', 2],
+        ['strawberries', 92],
+        ['watermelon', 98],
+      ],
+    );
+    const assessment = assessProductionRescue(session);
+
+    expect(assessment.state, diagnostic(session)).toBe('impossible');
+    expect(assessment.hardSafety.capacityExceeded).toBe(true);
+    expect(assessment.diagnostics).toMatchObject({
+      machineCapacityG: 670,
+      machineCapacitySource: 'machine',
+    });
+    expect(productionContinuationPath(assessment)).toBe('recovery_required');
+  });
+
+  it('respects explicit unavailability and finds another existing ingredient', () => {
+    const sourceSession = makeOwnerSession();
+    const sucroseId = sourceSession.plannedInput.items.find((item) => item.id === 'sucrose')!
+      .ingredient.id;
+    const session = confirm(
+      {
+        ...sourceSession,
+        plannedInput: {
+          ...sourceSession.plannedInput,
+          goals: {
+            ...sourceSession.plannedInput.goals,
+            excluded_ingredient_ids: [sucroseId],
+          },
+        },
+      },
+      [
+        ['milk', 201],
+        ['cream', 125],
+        ['skimmed_milk', 50],
+        ['sucrose', 31],
+        ['dextrose', 77],
+        ['tara', 2],
+        ['strawberries', 92],
+        ['watermelon', 98],
+      ],
+    );
+    const enlargement = assessProductionRescue(session).options.find(
+      (option) => option.id === 'enlarge_batch',
+    );
+
+    expect(enlargement, diagnostic(session)).toBeDefined();
+    expect(enlargement?.instructions.some((instruction) => instruction.lineId === 'sucrose')).toBe(
+      false,
+    );
+  });
+
+  it('returns a true refusal when every possible additional ingredient is explicitly unavailable', () => {
+    const sourceSession = makeOwnerSession();
+    const session = confirm(
+      {
+        ...sourceSession,
+        plannedInput: {
+          ...sourceSession.plannedInput,
+          goals: {
+            ...sourceSession.plannedInput.goals,
+            excluded_ingredient_ids: sourceSession.plannedInput.items.map(
+              (item) => item.ingredient.id,
+            ),
+          },
+        },
+      },
+      [
+        ['milk', 201],
+        ['cream', 125],
+        ['skimmed_milk', 50],
+        ['sucrose', 31],
+        ['dextrose', 77],
+        ['tara', 2],
+        ['strawberries', 92],
+        ['watermelon', 98],
+      ],
+    );
+    const assessment = assessProductionRescue(session);
+
+    expect(assessment.state, diagnostic(session)).toBe('impossible');
+    expect(assessment.hardSafety.capacityExceeded).toBe(false);
     expect(productionContinuationPath(assessment)).toBe('recovery_required');
   });
 });

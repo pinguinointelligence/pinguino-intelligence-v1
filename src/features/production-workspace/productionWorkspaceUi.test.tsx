@@ -1133,20 +1133,20 @@ describe('Production workspace touch-first UI', () => {
         onReturnToRecipe={vi.fn()}
       />,
     );
-    expect(html).toContain('Partia odbiega od planu');
+    expect(html).toContain('Możemy dostosować tę partię');
     expect(html).toContain('data-testid="production-rescue-options"');
     expect(html).toContain('data-testid="production-decision-enlarge_batch"');
     expect(html).toContain('data-decision-state="selected"');
     expect(html).not.toContain('data-testid="production-decision-leave_as_is"');
     expect(html).not.toContain('Ta opcja nie jest bezpieczna dla obecnej partii.');
     expect(html).not.toContain('data-testid="production-decision-restore_original_recipe"');
-    expect(html).toContain('Minimalna bezpieczna korekta · 1050 g');
+    expect(html).toContain('Zwiększ partię do 1050 g');
     expect(html).toContain('Rekomendowane');
     expect(html).toContain('tabindex="-1"');
     expect(html).toContain('Nowy plan · Cream');
     expect(html).toContain('→ 350 g');
     expect(html).toContain('data-testid="apply-selected-production-decision"');
-    expect(html).toContain('Zastosuj minimalną korektę');
+    expect(html).toContain('Zwiększ partię do 1050 g');
     expect(html).not.toContain('Pokaż preview');
     expect(html).not.toContain('Odśwież propozycję Rescue');
     expect(html).not.toContain('Engine');
