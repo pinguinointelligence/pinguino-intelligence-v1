@@ -21,9 +21,15 @@
 -- `behavior_binding_version_stale`, which is a refreshable lifecycle reason the
 -- working-copy refresh already knows how to cure.
 --
+-- Deactivated products are out of scope: the classifier refuses them and they
+-- cannot reach a recipe. On staging that is exactly PR-ING-007140 (a superseded
+-- duplicate of the owner's Cacao Puro), which keeps its historical binding.
+--
 -- Products whose own label evidence is genuinely incomplete are re-run through
--- the same path and correctly keep NUTRITION blocked. That is asserted below,
--- not assumed.
+-- the same path, correctly keep NUTRITION blocked, and lose PRODUCTION -- which
+-- they could never have completed. They keep SAVE, BASE_RECIPE and MONITOR, so
+-- they stay visible and usable in a recipe. All of that is asserted below, not
+-- assumed.
 
 select pg_advisory_xact_lock(hashtextextended('reclassify-base-only-nutrition-v1',0));
 
@@ -59,6 +65,10 @@ begin
   join public.product_versions v on v.id = p.current_version_id
   where p.product_kind <> 'mapper_reference'
     and p.merged_into_product_id is null
+    -- `classify_catalog_product_behavior_v2` refuses a deactivated product
+    -- ("active canonical product not found"), and a deactivated product cannot
+    -- reach a recipe, so it is deliberately out of scope rather than forced.
+    and p.is_active
     and coalesce((b.profile_permissions->>'BASE_RECIPE')::boolean, false)
     and not coalesce((b.profile_permissions->>'NUTRITION')::boolean, false);
 
@@ -113,6 +123,53 @@ begin
     and coalesce((b.profile_permissions->>'NUTRITION')::boolean, false);
   if v_regressed > 0 then
     raise exception '% product(s) without label evidence were granted NUTRITION', v_regressed;
+  end if;
+
+  -- A complete product keeps Production; an incomplete one loses it, because
+  -- Production completion requires the nutrition gate it cannot pass.
+  select count(*) into v_uncured
+  from _base_only_nutrition_before before
+  join public.products p on p.id = before.product_id
+  join public.product_behavior_bindings b on b.id = p.current_behavior_binding_id
+  where before.label_evidence_complete
+    and not coalesce((b.profile_permissions->>'PRODUCTION')::boolean, false);
+  if v_uncured > 0 then
+    raise exception '% complete product(s) lost PRODUCTION', v_uncured;
+  end if;
+
+  select count(*) into v_regressed
+  from _base_only_nutrition_before before
+  join public.products p on p.id = before.product_id
+  join public.product_behavior_bindings b on b.id = p.current_behavior_binding_id
+  where not before.label_evidence_complete
+    and coalesce((b.profile_permissions->>'PRODUCTION')::boolean, false);
+  if v_regressed > 0 then
+    raise exception '% product(s) without label evidence kept PRODUCTION', v_regressed;
+  end if;
+
+  -- An incomplete product must stay visible and usable where that is safe.
+  select count(*) into v_regressed
+  from _base_only_nutrition_before before
+  join public.products p on p.id = before.product_id
+  join public.product_behavior_bindings b on b.id = p.current_behavior_binding_id
+  where not before.label_evidence_complete
+    and not (coalesce((b.profile_permissions->>'SAVE')::boolean, false)
+      and coalesce((b.profile_permissions->>'BASE_RECIPE')::boolean, false)
+      and coalesce((b.profile_permissions->>'MONITOR')::boolean, false));
+  if v_regressed > 0 then
+    raise exception '% incomplete product(s) lost SAVE/BASE_RECIPE/MONITOR', v_regressed;
+  end if;
+
+  -- The contradictory executable state must not survive anywhere.
+  select count(*) into v_regressed
+  from public.products p
+  join public.product_behavior_bindings b on b.id = p.current_behavior_binding_id
+  where p.merged_into_product_id is null
+    and p.is_active
+    and coalesce((b.profile_permissions->>'PRODUCTION')::boolean, false)
+    and not coalesce((b.profile_permissions->>'NUTRITION')::boolean, false);
+  if v_regressed > 0 then
+    raise exception '% selectable binding(s) still grant PRODUCTION without NUTRITION', v_regressed;
   end if;
 end $reclassify$;
 

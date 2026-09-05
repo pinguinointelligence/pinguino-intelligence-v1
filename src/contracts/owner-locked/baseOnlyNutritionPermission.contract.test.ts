@@ -61,23 +61,31 @@ const IDENTIFIERS: Record<string, keyof ClassifierInputs> = {
 };
 
 /**
+ * Only the `v_new := $new$ … $new$` bodies are the published derivation. The
+ * migration also mentions each permission in its idempotency markers and in its
+ * `v_old` anchors, and neither of those is what ships.
+ */
+const REPLACEMENT_BODIES = [...permissionMigration.matchAll(/v_new := \$new\$([\s\S]*?)\$new\$/g)]
+  .map((match) => match[1] ?? '')
+  .join('\n');
+
+/**
  * Extracts a permission expression from the migration's published replacement
- * block and evaluates its truth table. This asserts the derivation itself
- * rather than its spelling: a rewrite that changes the answer fails even if it
- * keeps every word.
+ * body and evaluates its truth table. This asserts the derivation itself rather
+ * than its spelling: a rewrite that changes the answer fails even if it keeps
+ * every word.
  */
 function permissionExpression(permission: string): (inputs: ClassifierInputs) => boolean {
-  const block = permissionMigration.slice(permissionMigration.indexOf('v_new :='));
-  const start = block.indexOf(`'${permission}',`);
+  const start = REPLACEMENT_BODIES.indexOf(`'${permission}',`);
   expect(start, `${permission} is not derived in the migration`).toBeGreaterThan(-1);
-  const rest = block.slice(start + `'${permission}',`.length);
-  // The last permission in the replacement block is terminated by the dollar
-  // quote rather than by the next line, so accept whichever terminator is first.
-  const end = [rest.indexOf(',\n'), rest.indexOf(',$new$')]
+  const rest = REPLACEMENT_BODIES.slice(start + `'${permission}',`.length);
+  // A permission is terminated by the comma before the next key, or by the end
+  // of its replacement body.
+  const end = [rest.indexOf(',\n'), rest.length]
     .filter((index) => index !== -1)
     .sort((left, right) => left - right)[0];
   expect(end, `${permission} expression is unterminated`).toBeGreaterThan(0);
-  const raw = rest.slice(0, end).trim();
+  const raw = rest.slice(0, end).trim().replace(/,$/, '');
 
   let js = raw.replace(/\s+/g, ' ');
   for (const [sqlName, key] of Object.entries(IDENTIFIERS)) {
@@ -92,6 +100,16 @@ function permissionExpression(permission: string): (inputs: ClassifierInputs) =>
 
 const NUTRITION = permissionExpression('NUTRITION');
 const LABEL = permissionExpression('LABEL');
+const PRODUCTION = permissionExpression('PRODUCTION');
+
+/** Every combination of the four classifier inputs. */
+const ALL_INPUTS: ClassifierInputs[] = [false, true].flatMap((baseAccepted) =>
+  [false, true].flatMap((vBase) =>
+    [false, true].flatMap((toppingAccepted) =>
+      [false, true].map((vTopping) => ({ baseAccepted, vBase, toppingAccepted, vTopping })),
+    ),
+  ),
+);
 
 const inputs = (overrides: Partial<ClassifierInputs> = {}): ClassifierInputs => ({
   baseAccepted: false,
@@ -150,28 +168,22 @@ describe('GEL-P0-028 A — a complete BASE_ONLY product is fully executable', ()
 });
 
 describe('GEL-P0-028 B — missing nutrition evidence still blocks NUTRITION', () => {
-  it('refuses NUTRITION when the product carries no label evidence', () => {
+  it('refuses NUTRITION and PRODUCTION when the product carries no label evidence', () => {
     // Base-accepted and engine-usable, but no ingredients/allergens/nutrition.
     const missingEvidence = inputs({ baseAccepted: true, vBase: true, vTopping: false });
     expect(NUTRITION(missingEvidence)).toBe(false);
     expect(LABEL(missingEvidence)).toBe(false);
+    // Production completion requires the nutrition gate, so promising Production
+    // here would be a promise the application cannot keep.
+    expect(PRODUCTION(missingEvidence)).toBe(false);
   });
 
   it('keeps the evidence predicate as a required conjunct on every branch', () => {
-    // No combination without label evidence may ever yield the permission.
-    for (const baseAccepted of [false, true]) {
-      for (const vBase of [false, true]) {
-        for (const toppingAccepted of [false, true]) {
-          const withoutEvidence = inputs({
-            baseAccepted,
-            vBase,
-            toppingAccepted,
-            vTopping: false,
-          });
-          expect(NUTRITION(withoutEvidence)).toBe(false);
-          expect(LABEL(withoutEvidence)).toBe(false);
-        }
-      }
+    // No combination without label evidence may ever yield any of the three.
+    for (const withoutEvidence of ALL_INPUTS.filter((candidate) => !candidate.vTopping)) {
+      expect(NUTRITION(withoutEvidence)).toBe(false);
+      expect(LABEL(withoutEvidence)).toBe(false);
+      expect(PRODUCTION(withoutEvidence)).toBe(false);
     }
   });
 
@@ -202,19 +214,24 @@ describe('GEL-P0-028 C — topping-only behaviour is unchanged', () => {
 });
 
 describe('GEL-P0-028 D — PRODUCTION and NUTRITION are never split', () => {
-  it('grants NUTRITION for exactly the base products PRODUCTION is granted for, given evidence', () => {
-    // PRODUCTION's base branch is `baseAccepted and vBase`. Whenever that holds
-    // and the product's own label evidence is complete, NUTRITION must hold too,
-    // so the classifier cannot emit the contradictory executable pair.
-    for (const toppingAccepted of [false, true]) {
-      const productionBase = inputs({
-        baseAccepted: true,
-        vBase: true,
-        toppingAccepted,
-        vTopping: true,
-      });
-      expect(NUTRITION(productionBase)).toBe(true);
+  it('never grants PRODUCTION without NUTRITION, for any input combination', () => {
+    // The contradictory executable pair must be unreachable by construction,
+    // not merely absent from today's data.
+    for (const candidate of ALL_INPUTS) {
+      if (PRODUCTION(candidate)) {
+        expect(
+          NUTRITION(candidate),
+          `PRODUCTION without NUTRITION for ${JSON.stringify(candidate)}`,
+        ).toBe(true);
+      }
     }
+  });
+
+  it('still grants PRODUCTION to every complete product, base or topping', () => {
+    // The coherence rule must not quietly withdraw Production from products
+    // that can legitimately be produced.
+    expect(PRODUCTION(inputs({ baseAccepted: true, vBase: true, vTopping: true }))).toBe(true);
+    expect(PRODUCTION(inputs({ toppingAccepted: true, vTopping: true }))).toBe(true);
   });
 
   it('proves why the split is fatal: the recipe can never become current', () => {

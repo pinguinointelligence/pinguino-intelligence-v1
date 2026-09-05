@@ -82,7 +82,80 @@ questions. Instead:
 That is a schema/naming change across the ingest seam and its consumers, which is why it is not in
 this PR.
 
-## 4. Residual: PRODUCTION without NUTRITION still possible
+## 4. 🔴 BLOCKER — stale mapper lineage prevents reclassification
+
+The classifier fix is applied and correct. **The reclassification cannot be run**, and the migration's
+own assertions caught it and rolled back cleanly.
+
+Reclassifying the 10 active affected products today produces:
+
+| product                           | BASE_RECIPE | MONITOR | NUTRITION | PRODUCTION | SAVE      |
+| --------------------------------- | ----------- | ------- | --------- | ---------- | --------- |
+| `PR-ING-007172` Łaciate 3,5%      | true        | true    | **true**  | true       | true      |
+| `PR-ING-007173` Leche Hacendado   | true        | true    | **true**  | true       | true      |
+| `PR-ING-007174` Lait Alsace       | true        | true    | **true**  | true       | true      |
+| `PR-ING-007142` **Cacao Puro**    | **false**   | false   | false     | false      | **false** |
+| `CA-ING-007165` Cacao 100%        | **false**   | false   | false     | false      | **false** |
+| `PR-ING-007148` Jogurt Fruvita    | **false**   | false   | false     | false      | **false** |
+| `PR-ING-007154` Śmietanka 18%     | **false**   | false   | false     | false      | **false** |
+| `PR-ING-007155` GRANI ARANCIA     | **false**   | false   | false     | false      | **false** |
+| `PR-ING-007158` Masło bez laktozy | **false**   | false   | false     | false      | **false** |
+| `PR-ING-007159` CARAMEL MOU       | **false**   | false   | false     | false      | **false** |
+
+The three that behave correctly prove the fix works. The seven that collapse to _no permissions at
+all_ are hitting a **different, pre-existing defect**.
+
+### Cause
+
+`v_product_behavior_accepted` requires the product's frozen authority to still reference a **current**
+Mapper behaviour binding:
+
+```sql
+and exists(
+  select 1 from public.mapper_product_behavior_bindings authority_binding
+  where authority_binding.id::text =
+      v_public_data#>>'{productIntelligence,productBehaviorAuthority,mapperBehaviorBindingId}'
+    and authority_binding.mapper_ingredient_id = v_behavior_reference
+    and authority_binding.is_current
+    and coalesce((authority_binding.profile_permissions->>'BASE_RECIPE')::boolean,false)
+)
+```
+
+Cacao Puro's facts store `mapperBehaviorBindingId = 8b1147d3-…` for `PI-ING-001313`. That row was
+superseded on **2026-08-29** by the mapper-wide `canonical-module-eligibility-v1` sweep, which
+published `883a28d7-…` as current. The stored id is therefore no longer current, the `exists` fails,
+and every base permission collapses.
+
+The sweep did re-enqueue dependent catalog versions — but that path keys on
+`catalog_binding.mapper_ingredient_id`, which is **NULL** for these PR products, so they were never
+re-linked.
+
+### Scale
+
+Of the 12 active non-Mapper products carrying a `referenceMapperIngredientId`, **9 have stale
+lineage**, and **7 of those are currently base-capable**. Any reclassification of those 7 — from this
+work, from a future Mapper republish, or from any other trigger — silently revokes every permission
+they hold. This landmine predates this PR and is unrelated to the NUTRITION derivation.
+
+### Options (owner decision required)
+
+1. **Re-point the stale reference.** Update each product's frozen
+   `mapperBehaviorBindingId` to the current binding for the same
+   `referenceMapperIngredientId`. Permissions are identical across all 7 historical rows for
+   `PI-ING-001313` (BASE_RECIPE and TOPPING both true throughout), so this changes lineage, not
+   meaning. Touches `product_versions.facts`.
+2. **Match on the ingredient, not the row id.** Change the classifier's `exists` to require a current
+   binding for `v_behavior_reference`, treating the stored id as provenance. Arguably the correct
+   semantics, but it changes an acceptance predicate.
+3. **Re-run the product authority.** Re-analyse each product through the Edge pipeline so a fresh
+   authority is computed against the live Mapper binding. Most faithful to the original design, most
+   expensive, and needs the scanner/ingest path.
+
+Option 2 is the smallest and the only one that also protects future products; option 1 is the
+narrowest one-off. Both are outside the authorised scope of this PR (Mapper/PI lineage), so nothing
+has been done.
+
+## 5. Residual: PRODUCTION without NUTRITION (now fixed in the derivation)
 
 The fix removes the contradiction for every product whose **label evidence is complete**. It does
 not remove it for products whose evidence is genuinely missing, because contract B forbids granting
@@ -113,10 +186,12 @@ Those five products would then refuse Production up front with an honest reason 
 at completion. They would keep `BASE_RECIPE`, `MONITOR`, `COST` and `SAVE`, so they remain fully
 usable in recipes.
 
-**This is deliberately not in this PR.** It changes a permission the owner did not authorise
-changing, and it withdraws a capability from five products. It needs an explicit decision.
+**Owner approved 2026-09-05 and it is now in the migration.** PRODUCTION's base branch carries the
+same `v_topping` evidence conjunct, so the contradictory pair is unreachable by construction. The
+five incomplete products keep SAVE, BASE_RECIPE and MONITOR and lose only PRODUCTION -- which they
+could never have completed. Asserted by `GEL-P0-028 D` across the full 16-row truth table.
 
-## 5. What this PR changed
+## 6. What this PR changed
 
 | file                                                                             |                                                                                                    |
 | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
@@ -127,7 +202,7 @@ changing, and it withdraws a capability from five products. It needs an explicit
 Unchanged: Engine math, PAC/POD/NPAC, Mapper/PI, CACAO's PI assignment, product country/origin/
 manufacturer facts, FILTR, Scanner, Shop.
 
-## 6. Separate follow-ups
+## 7. Separate follow-ups
 
 - **CACAO water/solids data quality.** `water_percent = 0`, `totalSolids = 100`, inherited from
   neighbour `PI-ING-001313`. Declared macros sum to 89.53 g/100 g, leaving ~10.5 g unaccounted
