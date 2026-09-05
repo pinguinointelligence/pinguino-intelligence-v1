@@ -76,6 +76,46 @@ describe('OWNER P0 — Crown toggle at 0 g', () => {
     expect(seededIds()).not.toContain(id);
   });
 
+  it('0 -> Crown -> 1 -> off -> 0 can immediately re-arm Crown without a PB deadlock', () => {
+    const id = loadWith(0);
+    const snapshots = productBehaviorTestSnapshots(buildRecipeInput(useRecipeStore.getState()));
+    useRecipeStore.setState({
+      productBehaviorSnapshots: {
+        ...snapshots,
+        [id]: {
+          ...snapshots[id]!,
+          mainClassification: 'MAIN_ALLOWED',
+          mainCapability: 'MAIN_CAPABLE_UNCALIBRATED',
+        },
+      },
+    });
+
+    useRecipeStore.getState().setMainIngredient(id);
+    expect(grams(id)).toBe(1);
+    // The managed PB pass resolves the positive Main line before the next
+    // customer action, exactly as the served Workbench does.
+    useRecipeStore.getState().syncProductBehaviorSnapshots({
+      ...snapshots,
+      [id]: {
+        ...snapshots[id]!,
+        mainClassification: 'MAIN_ALLOWED',
+        mainCapability: 'MAIN_CAPABLE_UNCALIBRATED',
+      },
+    });
+
+    useRecipeStore.getState().setStandardIngredient(id);
+    expect(grams(id)).toBe(0);
+    expect(useRecipeStore.getState().productBehaviorSnapshots[id]).toBeUndefined();
+
+    useRecipeStore.getState().setMainIngredient(id);
+    expect(useRecipeStore.getState().items.find((item) => item.id === id)).toMatchObject({
+      planned_grams: 1,
+      lock_type: 'main',
+      main_ratio_weight: 1,
+    });
+    expect(seededIds()).toContain(id);
+  });
+
   it('170 -> Crown -> off -> 170', () => {
     const id = loadWith(170);
     useRecipeStore.getState().setMainIngredient(id);

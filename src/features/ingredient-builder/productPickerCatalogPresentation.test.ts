@@ -44,7 +44,13 @@ const hit = (overrides: Partial<CatalogProductSearchHit> = {}): CatalogProductSe
 
 const product = (
   canonicalId: string,
-  overrides: Partial<{ favorite: boolean; recent: boolean; category: string }> = {},
+  overrides: Partial<{
+    favorite: boolean;
+    recent: boolean;
+    category: string;
+    sortTitle: string;
+    recentlyUsedAt: string | null;
+  }> = {},
 ) => ({ canonicalId, favorite: false, recent: false, category: 'other', ...overrides });
 
 describe('neutral catalog data presentation', () => {
@@ -193,5 +199,111 @@ describe('stable catalog segments', () => {
       { activeQuery: true },
     );
     expect(uniqueCatalogProductCount(segments)).toBe(2);
+  });
+
+  it('orders empty-query recents by the exact newest use event, never by title', () => {
+    const segments = buildProductPickerSegments([
+      product('newer', {
+        recent: true,
+        sortTitle: 'ZUCCHERO',
+        recentlyUsedAt: '2026-09-04T12:00:00.000Z',
+      }),
+      product('older', {
+        recent: true,
+        sortTitle: 'ALMOND',
+        recentlyUsedAt: '2026-09-03T12:00:00.000Z',
+      }),
+    ]);
+
+    expect(segments[0]?.items.map((item) => item.canonicalId)).toEqual(['newer', 'older']);
+  });
+
+  it('orders the empty-query catalogue by its visible title with numeric collation', () => {
+    const segments = buildProductPickerSegments([
+      product('hundred', { sortTitle: '100 SDL FRUTTA' }),
+      product('fifty', { sortTitle: '50 F' }),
+      product('absolut', { sortTitle: 'ABSOLUT' }),
+      product('seven', { sortTitle: '7UP' }),
+      product('ampersand', { sortTitle: 'A&W' }),
+      product('nine', { sortTitle: '9 MILE' }),
+    ]);
+
+    expect(segments[0]?.items.map((item) => item.canonicalId)).toEqual([
+      'seven',
+      'nine',
+      'fifty',
+      'hundred',
+      'ampersand',
+      'absolut',
+    ]);
+  });
+
+  it('merges duplicate-page recency using the newest real timestamp', () => {
+    const segments = buildProductPickerSegments([
+      product('same', {
+        recent: true,
+        sortTitle: 'MILK',
+        recentlyUsedAt: '2026-09-01T00:00:00.000Z',
+      }),
+      product('same', {
+        recent: true,
+        sortTitle: 'MILK',
+        recentlyUsedAt: '2026-09-05T00:00:00.000Z',
+      }),
+    ]);
+
+    expect(segments[0]?.items).toHaveLength(1);
+    expect(segments[0]?.items[0]?.recentlyUsedAt).toBe('2026-09-05T00:00:00.000Z');
+  });
+
+  it('keeps chronological and A–Z ordering inside an already-filtered category subset', () => {
+    const dairy = [
+      product('milk-10', { category: 'dairy', sortTitle: 'MILK 10%' }),
+      product('recent-older', {
+        category: 'dairy',
+        recent: true,
+        sortTitle: 'CREAM 30%',
+        recentlyUsedAt: '2026-09-01T00:00:00.000Z',
+      }),
+      product('milk-2', { category: 'dairy', sortTitle: 'MILK 2%' }),
+      product('recent-newer', {
+        category: 'dairy',
+        recent: true,
+        sortTitle: 'MILK 3.5%',
+        recentlyUsedAt: '2026-09-03T00:00:00.000Z',
+      }),
+      product('fruit', { category: 'fruit', sortTitle: 'APPLE' }),
+    ].filter((item) => item.category === 'dairy');
+
+    const segments = buildProductPickerSegments(dairy);
+    expect(segments[0]?.items.map((item) => item.canonicalId)).toEqual([
+      'recent-newer',
+      'recent-older',
+    ]);
+    expect(segments[1]?.items.map((item) => item.canonicalId)).toEqual(['milk-2', 'milk-10']);
+  });
+
+  it('keeps Recent and All scoped to Favorites while preserving their own ordering rules', () => {
+    const favorites = [
+      product('favorite-z', { favorite: true, sortTitle: 'ZUCCHERO' }),
+      product('favorite-a', {
+        favorite: true,
+        recent: true,
+        sortTitle: 'ALMOND',
+        recentlyUsedAt: '2026-09-04T00:00:00.000Z',
+      }),
+      product('not-favorite', { sortTitle: 'BANANA' }),
+      product('favorite-b', { favorite: true, sortTitle: 'BERRY' }),
+    ].filter((item) => item.favorite);
+
+    const segments = buildProductPickerSegments(favorites);
+    expect(segments[0]?.items.map((item) => item.canonicalId)).toEqual(['favorite-a']);
+    expect(segments[1]?.items.map((item) => item.canonicalId)).toEqual([
+      'favorite-b',
+      'favorite-z',
+    ]);
+    expect(segments.flatMap((segment) => segment.items)).not.toContainEqual(
+      expect.objectContaining({ canonicalId: 'not-favorite' }),
+    );
   });
 });

@@ -1035,6 +1035,7 @@ export function ProRecalcPanel({
           store.acknowledgeCrownOffCorrection();
           onClose();
         }}
+        returnFocus={resolveRecalculationReturnFocus}
       />
     );
   }
@@ -1050,6 +1051,7 @@ export function ProRecalcPanel({
           store.acknowledgePostApplyNotice();
           onClose();
         }}
+        returnFocus={resolveRecalculationReturnFocus}
       />
     );
   }
