@@ -25,6 +25,8 @@ import {
   identifyCode,
   identityFromEvidence,
   runScanImportV2,
+  startDiscovery,
+  type CodeIdentity,
   type CustomerFamily,
   type DiscoverySession,
   type ExactCandidate,
@@ -52,6 +54,7 @@ import {
   plainFieldsFor,
   positionHint,
   prefillFromIdentity,
+  productFieldsNotInLedger,
   scanFeedbackText,
   toResolvedScanProduct,
   type PlainField,
@@ -107,7 +110,15 @@ export interface LabelPhoto {
 type Phase =
   | { kind: 'camera'; status: CaptureStatus; error: string | null }
   | { kind: 'confirmed'; code: string }
-  | { kind: 'resolving'; code: string }
+  | { kind: 'resolving'; code: string; step?: 'lookup' | 'research' | 'complete' }
+  /** nobody knows this code yet: the customer decides whether to add the product */
+  | {
+      kind: 'ask_add';
+      identity: CodeIdentity;
+      code: string;
+      web: ExactWebIdentity | null;
+      evidence: ExternalEvidence | null;
+    }
   | {
       kind: 'known';
       product: ExactCandidate;
@@ -132,6 +143,8 @@ type Phase =
       resolved: ResolvedScanProductLike;
       engineReady: boolean;
       privateNotReady: boolean;
+      /** recipe mode: the product the customer asked to add went straight into the recipe */
+      added?: boolean;
     }
   | { kind: 'requested' }
   | { kind: 'error'; message: string; retry: 'lookup' | 'restart' };
@@ -236,6 +249,8 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
   const familyAnsweredRef = useRef(false);
   /** one automatic re-enrichment attempt per scan of an own private not-ready product */
   const reenrichedRef = useRef(false);
+  /** recipe mode: the product the customer asked to add is handed to the recipe exactly once */
+  const autoAddedRef = useRef(false);
   const familyRef = useRef<CustomerFamily | null>(null);
   const valuesRef = useRef<Record<string, string | boolean>>({});
   const trackedSinceRef = useRef<number | null>(null);
@@ -265,6 +280,8 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
     online: typeof navigator === 'undefined' ? true : navigator.onLine,
     surface: 'PRO',
     now: Date.now(),
+    // an unknown code is never researched behind the customer's back: they are asked first
+    discovery: 'ask',
   });
 
   const lookupFailed = () =>
@@ -432,7 +449,12 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
             setFamily(web.family);
             await finalize(
               next,
-              { customerFamily: web.family, confirmations: { productFields: web.productFields } },
+              {
+                customerFamily: web.family,
+                confirmations: {
+                  productFields: productFieldsNotInLedger(web.productFields, r.ledger),
+                },
+              },
               ctx,
               code,
             );
@@ -445,15 +467,24 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
           setPhase({ kind: 'label', session: next, notice: null, canSavePrivate: false });
           return;
         }
-        case 'discovered_exact':
+        case 'discovered_exact': {
+          const resolved = toResolvedScanProduct(r.product, r.engineReady, code);
+          // the customer asked to add this product: a ready one goes straight into the recipe (once)
+          const added = mode === 'recipe' && !!onResolved && r.engineReady && !autoAddedRef.current;
+          if (added) {
+            autoAddedRef.current = true;
+            onResolved!(resolved);
+          }
           setPhase({
             kind: 'saved',
             product: r.product,
-            resolved: toResolvedScanProduct(r.product, r.engineReady, code),
+            resolved,
             engineReady: r.engineReady,
             privateNotReady: r.privateNotReady === true || !r.engineReady,
+            added,
           });
           return;
+        }
         case 'discovery_requested':
           setPhase({ kind: 'requested' });
           return;
@@ -466,7 +497,17 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
           return;
         case 'unknown':
           if (ctx.accountId === null) setPhase({ kind: 'guest' });
-          else lookupFailed();
+          else if (r.next === 'add_product') {
+            const web = identityFromEvidence(r.externalEvidence);
+            if (web) setRecognized((current) => current ?? web);
+            setPhase({
+              kind: 'ask_add',
+              identity: r.identity,
+              code,
+              web,
+              evidence: r.externalEvidence,
+            });
+          } else lookupFailed();
           return;
         case 'invalid_code':
           setPhase({
@@ -496,6 +537,7 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
   ) {
     const port = ports?.discovery;
     if (!port) return lookupFailed();
+    setPhase({ kind: 'resolving', code, step: 'complete' });
     try {
       const r = await continueDiscovery(session, { type: 'finalize', input: inputArg }, ctx, port);
       await handleResult(r, code, ctx, session);
@@ -511,6 +553,29 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
     }
   }
 
+  /** the customer said "add it": server research (registry → web) → completion → save → recipe */
+  const addUnknownProduct = async (ask: Extract<Phase, { kind: 'ask_add' }>) => {
+    const port = ports?.discovery;
+    if (!port) return lookupFailed();
+    setBusy(true);
+    setPhase({ kind: 'resolving', code: ask.code, step: 'research' });
+    try {
+      const ctx = contextFor(await getScanImportV2AccountId());
+      const r = await startDiscovery(ask.identity, ctx, port);
+      if (codeRef.current !== ask.code) return;
+      // the device's registry answer travels with the server result, exactly as the pipeline does
+      await handleResult(
+        r.kind === 'discovered_pending' ? { ...r, externalEvidence: ask.evidence } : r,
+        ask.code,
+        ctx,
+      );
+    } catch {
+      lookupFailed();
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const resolve = useCallback(
     async (scan: ConfirmedScan) => {
       if (!ports)
@@ -525,6 +590,7 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
       refusedOnceRef.current = false;
       familyAnsweredRef.current = false;
       reenrichedRef.current = false;
+      autoAddedRef.current = false;
       analysesUsedRef.current = 0;
       analysisInFlightRef.current = false;
       setBusy(true);
@@ -1210,7 +1276,40 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
             Odczytano ✓ <span className="font-mono font-normal">{phase.code}</span>
           </p>
           {recognizedLine}
-          <p className="text-sm text-stone-700">Sprawdzam produkt…</p>
+          <p className="text-sm text-stone-700" data-testid="scan-flow-progress">
+            {phase.step === 'research'
+              ? 'Szukamy danych produktu w internecie…'
+              : phase.step === 'complete'
+                ? 'Uzupełniamy brakujące dane na podstawie podobnych produktów i zapisujemy…'
+                : 'Sprawdzam produkt…'}
+          </p>
+        </div>
+      ) : null}
+
+      {phase.kind === 'ask_add' ? (
+        <div className="space-y-3" data-testid="scan-flow-ask-add">
+          {recognizedLine}
+          <p className="text-sm font-semibold text-ink">
+            {phase.web
+              ? 'Tego produktu nie ma jeszcze w Twoich produktach.'
+              : 'Nie znamy jeszcze tego produktu.'}
+          </p>
+          <p className="text-xs text-stone-600">
+            Dodać go? Sprawdzimy jego dane w internecie, a brakujące uzupełnimy na podstawie
+            podobnych produktów
+            {mode === 'recipe' ? ' i dodamy go do receptury.' : '.'}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className={btnPrimary}
+              disabled={busy}
+              onClick={() => void addUnknownProduct(phase)}
+            >
+              Dodaj produkt
+            </button>
+            {againButton}
+          </div>
         </div>
       ) : null}
 
@@ -1427,9 +1526,13 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
       {phase.kind === 'saved' ? (
         <div className="space-y-3">
           <p className="text-sm font-semibold text-ink" data-testid="scan-flow-saved">
-            {phase.privateNotReady
-              ? 'Produkt zapisany prywatnie.'
-              : 'Zapisano jako Twój produkt (prywatny, widoczny tylko na Twoim koncie).'}
+            {phase.added
+              ? phase.resolved.completedFromSimilar
+                ? 'Produkt dodany. Brakujące dane uzupełniliśmy na podstawie podobnych produktów.'
+                : 'Produkt dodany do receptury.'
+              : phase.privateNotReady
+                ? 'Produkt zapisany prywatnie.'
+                : 'Zapisano jako Twój produkt (prywatny, widoczny tylko na Twoim koncie).'}
           </p>
           {recognizedLine}
           {productCard(phase.product)}
@@ -1438,7 +1541,7 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
               Produkt jest zapisany. Do użycia w recepturze wymaga jeszcze weryfikacji.
             </p>
           ) : null}
-          {addButton(phase.resolved, phase.engineReady)}
+          {phase.added ? null : addButton(phase.resolved, phase.engineReady)}
           {againButton}
         </div>
       ) : null}

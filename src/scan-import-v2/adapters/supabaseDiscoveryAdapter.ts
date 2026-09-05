@@ -357,6 +357,9 @@ export function createSupabaseDiscoveryPort(
             engineUsable: d['engineUsable'] === true,
             privateNotReady: d['privateNotReady'] === true,
             existing: d['kind'] !== 'customer_added_product',
+            completedFromSimilar:
+              Array.isArray(obj(d['mapper'])['estimatedFromMapperIds']) &&
+              (obj(d['mapper'])['estimatedFromMapperIds'] as unknown[]).length > 0,
           };
       }
     },

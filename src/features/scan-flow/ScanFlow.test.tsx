@@ -62,6 +62,14 @@ describe('ScanFlow (jsdom, fake ports)', () => {
   const text = () => host.textContent ?? '';
   const button = (label: string) =>
     [...host.querySelectorAll('button')].find((b) => b.textContent?.trim() === label) ?? null;
+  /** the flow asks before spending any research on a code nobody knows */
+  const addProduct = async () => {
+    expect(text()).toMatch(/Nie znamy jeszcze tego produktu|Tego produktu nie ma jeszcze/);
+    await act(async () => {
+      button('Dodaj produkt')!.click();
+    });
+    await flush();
+  };
   const typeCode = async (code: string) => {
     const input = host.querySelector<HTMLInputElement>(
       'input[aria-label="Kod kreskowy z opakowania"]',
@@ -132,6 +140,7 @@ describe('ScanFlow (jsdom, fake ports)', () => {
       );
     });
     await typeCode(UNKNOWN);
+    await addProduct();
     // internet evidence collected, the label is still needed
     expect(text()).toContain('Zrób zdjęcia etykiety');
     expect(discovery.calls).toContain(`research:${UNKNOWN}`);
@@ -162,12 +171,10 @@ describe('ScanFlow (jsdom, fake ports)', () => {
       button('Zapisz jako mój produkt')!.click();
     });
     await flush();
-    // saved as the customer's private product, then handed to the recipe
-    expect(text()).toContain('Zapisano jako Twój produkt');
+    // saved as the customer's private product and — because they asked to add it — handed to the recipe at once
+    expect(text()).toContain('Produkt dodany do receptury');
     expect(discovery.created.get(UNKNOWN)).toMatchObject({ productId: `CA-${UNKNOWN}` });
-    await act(async () => {
-      button('Dodaj do receptury')!.click();
-    });
+    expect(button('Dodaj do receptury')).toBeNull();
     expect(onResolved).toHaveBeenCalledTimes(1);
     expect(onResolved.mock.calls[0]![0]).toMatchObject({
       id: `CA-${UNKNOWN}`,
@@ -227,18 +234,19 @@ describe('ScanFlow (jsdom, fake ports)', () => {
       );
     });
     await typeCode(MILKA);
+    await addProduct();
     await flush();
     expect(text()).toContain('Rozpoznano po kodzie');
     expect(text()).toContain('Choco brownie');
     expect(text()).toContain('Milka');
     expect(text()).not.toContain('Co to za produkt?');
     expect(text()).not.toContain('Zrób zdjęcie etykiety ze składem');
-    expect(text()).toContain('Zapisano jako Twój produkt');
+    // the customer asked to add it: a ready product goes straight into the recipe, once, and says so
+    expect(text()).toContain('Produkt dodany');
     expect(discovery.calls.filter((c) => c.startsWith(`analyze:${MILKA}`))).toHaveLength(0);
     expect(discovery.created.get(MILKA)).toMatchObject({ productId: `CA-${MILKA}` });
-    await act(async () => {
-      button('Dodaj do receptury')!.click();
-    });
+    expect(button('Dodaj do receptury')).toBeNull();
+    expect(onResolved).toHaveBeenCalledTimes(1);
     expect(onResolved.mock.calls[0]![0]).toMatchObject({ id: `CA-${MILKA}`, barcode: MILKA });
   });
 
@@ -287,6 +295,7 @@ describe('ScanFlow (jsdom, fake ports)', () => {
       root.render(<ScanFlow mode="catalog" />);
     });
     await typeCode(VW);
+    await addProduct();
     await flush();
     expect(text()).toContain('Rozpoznano po kodzie');
     expect(text()).toContain('Sport 002');
@@ -331,6 +340,7 @@ describe('ScanFlow (jsdom, fake ports)', () => {
       root.render(<ScanFlow mode="catalog" />);
     });
     await typeCode(CODE);
+    await addProduct();
     await flush();
     expect(text()).toContain('Co to za produkt? (Mystery 002)');
     await act(async () => {
@@ -375,6 +385,7 @@ describe('ScanFlow (jsdom, fake ports)', () => {
       root.render(<ScanFlow mode="catalog" />);
     });
     await typeCode(CODE);
+    await addProduct();
     await flush();
     expect(text()).toContain('Co to za produkt? (Mystery 003)');
     await act(async () => {
@@ -504,6 +515,7 @@ describe('ScanFlow (jsdom, fake ports)', () => {
       root.render(<ScanFlow mode="catalog" />);
     });
     await typeCode(CODE);
+    await addProduct();
     await flush();
     // identified; the authority still misses label facts → the label step, with the private save offered
     expect(text()).toContain('Rozpoznano po kodzie');
@@ -535,6 +547,7 @@ describe('ScanFlow (jsdom, fake ports)', () => {
       root.render(<ScanFlow mode="catalog" />);
     });
     await typeCode(CODE);
+    await addProduct();
     const sendPhoto = async () => {
       const capture = host.querySelector<HTMLInputElement>('input[type="file"][capture]')!;
       const file = new File([new Uint8Array([1, 2, 3])], 'label.jpg', { type: 'image/jpeg' });

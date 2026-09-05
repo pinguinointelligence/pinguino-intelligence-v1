@@ -954,10 +954,21 @@ export function ProductPickerPopover({
       ).flat();
       const hit = scannedProductRecipeTarget(hits, resolved, context);
       if (!hit) {
-        // Never invent a recipe line for a product whose own profile is incomplete.
+        // The product exists but its role is the OTHER context (an add-on scanned from the base
+        // picker, or the reverse): say where it belongs instead of asking for more data.
+        const otherContext = scannedProductRecipeTarget(
+          hits,
+          resolved,
+          context === 'BASE' ? 'TOPPING' : 'BASE',
+        );
         setScanning(false);
         setUnavailableNotice(
-          `${resolved.displayName} zapisano w katalogu produktów. Uzupełnij brakujące dane produktu, aby użyć go w recepturze.`,
+          otherContext
+            ? context === 'BASE'
+              ? `${resolved.displayName} nadaje się jako dodatek — dodaj go w sekcji dodatków (topping).`
+              : `${resolved.displayName} nadaje się do bazy receptury — dodaj go w sekcji składników bazy.`
+            : // Never invent a recipe line for a product whose own profile is incomplete.
+              `${resolved.displayName} zapisano w katalogu produktów. Uzupełnij brakujące dane produktu, aby użyć go w recepturze.`,
         );
         return;
       }

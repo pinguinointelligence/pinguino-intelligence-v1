@@ -1,6 +1,9 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
+import { lookupOpenFoodFactsFacts } from '../_shared/openFoodFactsLookup.ts';
 import {
+  EAN_LOOKUP_ESSENTIAL_FIELDS,
   EAN_LOOKUP_FIELDS,
+  EAN_LOOKUP_IDENTITY_FIELDS,
   PRODUCT_SCAN_RESPONSE_SCHEMA,
   scanResultFromLookupFacts,
   SYSTEM_PROMPT,
@@ -152,9 +155,7 @@ function shouldContinueRescue(
   product: Awaited<ReturnType<typeof exactProductForBarcode>>,
 ): boolean {
   return Boolean(
-    product &&
-      product.product_kind === 'customer_provisional' &&
-      product.engine_ready !== true,
+    product && product.product_kind === 'customer_provisional' && product.engine_ready !== true,
   );
 }
 
@@ -328,52 +329,102 @@ Deno.serve(async (request) => {
     }
     const priorResult = objectValue(existingSession?.result_json);
     const identity = objectValue(priorResult.identity);
-    let facts: Record<string, unknown>[] = [];
-    let providerError: string | null;
+    const identityKnown =
+      typeof identity.displayName === 'string' || typeof identity.originalName === 'string';
+    // Source order (owner direction 2026-09-06): the structured registry FIRST — sub-second,
+    // keyed by the exact GTIN, verbatim facts with their URL — then the model-driven web
+    // research ONLY for what the registry did not carry. A record that names the product
+    // and carries its label essentials ends the search: the kitchen does not wait for the
+    // whole internet when a usable profile is already there.
+    const registryStartedAt = Date.now();
+    const registry = await lookupOpenFoodFactsFacts(barcode);
+    const registryMs = Date.now() - registryStartedAt;
+    const registryFields = new Set<string>(registry?.fields ?? []);
+    let facts: Record<string, unknown>[] = [
+      ...((registry?.facts ?? []) as Record<string, unknown>[]),
+    ];
+    let providerError: string | null = null;
     /** What the provider ACTUALLY did — a cache hit costs nothing and must say so. */
     let providerWebCalls = 0;
-    try {
-      // The narrowest dedicated server-side source path this repository has, called
-      // with its OWN flag, its OWN caps and its OWN source-authority classification.
-      // The Scanner's general web search is NOT switched on to reach it (§6).
-      const response = await fetch(`${url}/functions/v1/intimport-enrich`, {
-        method: 'POST',
-        headers: {
-          Authorization: authorization,
-          apikey: anonKey,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          importId: `product-scan-${sessionId}`,
-          product: {
-            brand: typeof identity.brand === 'string' ? identity.brand : null,
-            manufacturer: null,
-            name:
-              typeof identity.displayName === 'string'
-                ? identity.displayName
-                : typeof identity.originalName === 'string'
-                  ? identity.originalName
-                  : null,
-            variant: null,
-            barcode,
-            netQuantity: null,
-            knownSourceUrl: null,
-            technicalPdfUrl: null,
+    let researchMs = 0;
+    const identityMissing = !identityKnown && !registryFields.has('productName');
+    const essentialsMissing = EAN_LOOKUP_ESSENTIAL_FIELDS.filter(
+      (field) => !registryFields.has(field),
+    );
+    const researchFields = [
+      ...(identityMissing ? EAN_LOOKUP_IDENTITY_FIELDS : []),
+      ...EAN_LOOKUP_FIELDS,
+    ].filter((field) => !registryFields.has(field));
+    const researchNeeded = identityMissing || essentialsMissing.length > 0;
+    if (researchNeeded) {
+      const registryValue = (field: string): string | null => {
+        const fact = facts.find((entry) => String(entry.field ?? '') === field);
+        return typeof fact?.value === 'string' ? fact.value : null;
+      };
+      const researchStartedAt = Date.now();
+      try {
+        // The narrowest dedicated server-side source path this repository has, called
+        // with its OWN flag, its OWN caps and its OWN source-authority classification.
+        // The Scanner's general web search is NOT switched on to reach it (§6).
+        const response = await fetch(`${url}/functions/v1/intimport-enrich`, {
+          method: 'POST',
+          headers: {
+            Authorization: authorization,
+            apikey: anonKey,
+            'Content-Type': 'application/json',
           },
-          researchStep: { kind: 'GTIN_LOOKUP', url: null, allowedDomains: [] },
-          fields: [...EAN_LOOKUP_FIELDS],
-        }),
-      });
-      const payload = objectValue(await response.json());
-      if (!response.ok) throw new Error('lookup_provider_failed');
-      facts = Array.isArray(payload.facts) ? payload.facts.map(objectValue) : [];
-      providerError = typeof payload.error === 'string' ? payload.error : null;
-      providerWebCalls =
-        payload.cacheHit === true ? 0 : Math.max(0, Math.min(3, Number(payload.webCalls ?? 1)));
-    } catch {
-      providerError = 'lookup_provider_unavailable';
+          body: JSON.stringify({
+            importId: `product-scan-${sessionId}`,
+            product: {
+              brand:
+                registryValue('brand') ??
+                (typeof identity.brand === 'string' ? identity.brand : null),
+              manufacturer: null,
+              name:
+                registryValue('productName') ??
+                (typeof identity.displayName === 'string'
+                  ? identity.displayName
+                  : typeof identity.originalName === 'string'
+                    ? identity.originalName
+                    : null),
+              variant: null,
+              barcode,
+              netQuantity: registryValue('netQuantity'),
+              knownSourceUrl: null,
+              technicalPdfUrl: null,
+            },
+            researchStep: { kind: 'GTIN_LOOKUP', url: null, allowedDomains: [] },
+            fields: researchFields,
+          }),
+        });
+        const payload = objectValue(await response.json());
+        if (!response.ok) throw new Error('lookup_provider_failed');
+        const researched = Array.isArray(payload.facts) ? payload.facts.map(objectValue) : [];
+        // registry facts win for the fields they carry; the research fills the rest
+        facts = [
+          ...facts,
+          ...researched.filter((fact) => !registryFields.has(String(fact.field ?? ''))),
+        ];
+        providerError = typeof payload.error === 'string' ? payload.error : null;
+        providerWebCalls =
+          payload.cacheHit === true ? 0 : Math.max(0, Math.min(3, Number(payload.webCalls ?? 1)));
+      } catch {
+        providerError = 'lookup_provider_unavailable';
+      }
+      researchMs = Date.now() - researchStartedAt;
     }
-    const lookupResult = providerError ? null : scanResultFromLookupFacts(facts);
+    // a registry record is a result even when the web research failed or was not needed
+    const lookupResult = facts.length > 0 ? scanResultFromLookupFacts(facts) : null;
+    const lookupSources = {
+      registry: registry ? 'openfoodfacts' : null,
+      registryFields: [...registryFields],
+      research: !researchNeeded
+        ? 'skipped_registry_complete'
+        : providerError
+          ? `failed:${providerError}`
+          : 'web',
+      researchFields: researchNeeded ? researchFields : [],
+    };
     const merged = lookupResult
       ? mergeProductScanResults(existingSession?.result_json ?? null, lookupResult, barcode)
       : null;
@@ -413,6 +464,8 @@ Deno.serve(async (request) => {
       result: merged ?? existingSession?.result_json ?? null,
       overlayState: lookupValidation?.overlayState ?? null,
       missingCriticalFields: lookupValidation?.missingCriticalFields ?? [],
+      sources: lookupSources,
+      timings: { registryMs, researchMs },
       usage: {
         visionCalls: Number(existingSession?.vision_calls ?? 0),
         webCalls: providerWebCalls,

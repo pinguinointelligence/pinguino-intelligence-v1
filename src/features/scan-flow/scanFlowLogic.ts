@@ -10,7 +10,32 @@ import type { ConfirmedScan } from '@/scan-contract/confirmedScan';
 import type { ExactCandidate, ExactWebIdentity, FinalizeInput } from '@/scan-import-v2';
 import type { ScanExactProduct } from '@/services/productScanner';
 
-export type ResolvedScanProductLike = ScanExactProduct & { barcode: string | null };
+export type ResolvedScanProductLike = ScanExactProduct & {
+  barcode: string | null;
+  /** missing working values were completed from similar Mapper products (shown to the customer in plain words) */
+  completedFromSimilar?: boolean;
+};
+
+/**
+ * Registry facts the customer's device found that the SERVER session does not hold yet. The server now
+ * consults the same registry itself, so re-sending its facts as customer confirmations would relabel
+ * registry evidence as "confirmed by the customer". Only genuine gaps are prefilled.
+ */
+export function productFieldsNotInLedger(
+  fields: Record<string, unknown>,
+  ledger: { facts: readonly { field: string; source: string }[] },
+): Record<string, unknown> {
+  const has = (prefix: string) =>
+    ledger.facts.some((fact) => fact.field.startsWith(prefix) && fact.source !== 'barcode');
+  const out: Record<string, unknown> = {};
+  if (fields['identity'] && !has('identity.displayName')) out['identity'] = fields['identity'];
+  if (fields['nutrition'] && !has('nutrition.')) out['nutrition'] = fields['nutrition'];
+  if (fields['ingredientsText'] && !has('ingredientsText'))
+    out['ingredientsText'] = fields['ingredientsText'];
+  if (fields['allergensText'] && !has('allergensText'))
+    out['allergensText'] = fields['allergensText'];
+  return out;
+}
 
 export function manualConfirmedScan(input: string, now = Date.now()): ConfirmedScan | null {
   const digits = input.replace(/\D/g, '');
@@ -57,6 +82,7 @@ export function toResolvedScanProduct(
     status: statusOf(product),
     engineReady,
     barcode,
+    completedFromSimilar: product.evidence?.['completedFromSimilar'] === true,
   };
 }
 

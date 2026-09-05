@@ -698,6 +698,11 @@ export function HomeCreatorPage() {
                       setScanNotice(`${name} dodano do receptury — ustaw ilość.`);
                       return;
                     default:
+                      setScanNotice(
+                        product.completedFromSimilar
+                          ? `${name}: produkt dodany. Brakujące dane uzupełniliśmy na podstawie podobnych produktów.`
+                          : `${name}: dodano do receptury.`,
+                      );
                       return;
                   }
                 });

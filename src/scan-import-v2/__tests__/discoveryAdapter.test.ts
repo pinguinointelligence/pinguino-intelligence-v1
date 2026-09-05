@@ -170,6 +170,7 @@ describe('Supabase discovery adapter (stub) — mirrors the legacy scan-session 
       brand: null,
       engineUsable: false,
       existing: false,
+      completedFromSimilar: false,
     });
   });
   it('finalize: family_confirmation_required / not_ready / idempotent are mapped; no engine readiness is invented', async () => {

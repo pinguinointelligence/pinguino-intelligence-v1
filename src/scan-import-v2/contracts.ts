@@ -57,6 +57,12 @@ export interface RequestContext {
   now: number;
   /** Mapper slot hint from label recognition, used only when the code itself is unknown */
   slotHint?: string | null;
+  /**
+   * What happens to a code nobody knows: 'auto' starts the server research at once (harnesses,
+   * re-enrichment); 'ask' returns `unknown` with `next: 'add_product'` so the customer decides
+   * before any research is spent — only the free exact-GTIN registry is consulted to name the product.
+   */
+  discovery?: 'auto' | 'ask';
 }
 
 export class NetworkError extends Error {
@@ -221,7 +227,8 @@ export type ScanImportV2Result =
   | {
       kind: 'unknown';
       identity: CodeIdentity;
-      next: 'analyze_label';
+      /** 'add_product': the customer is asked whether to add it (authenticated, discovery available) */
+      next: 'analyze_label' | 'add_product';
       externalEvidence: ExternalEvidence | null;
       evidenceError: 'provider_timeout' | 'provider_malformed' | 'provider_failed' | null;
     }

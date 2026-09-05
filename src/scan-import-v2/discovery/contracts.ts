@@ -185,6 +185,8 @@ export type FinalizeOutcome =
       privateNotReady?: boolean;
       engineUsable: boolean;
       existing: boolean;
+      /** at least one working value came from similar Mapper products (never the label's own facts) */
+      completedFromSimilar?: boolean;
     }
   | { kind: 'family_confirmation_required'; options: readonly CustomerFamily[] }
   | { kind: 'not_ready'; missingCritical: readonly string[]; reasons: readonly string[] }

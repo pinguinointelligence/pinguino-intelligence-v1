@@ -99,6 +99,7 @@ export function discoveredExact(
     brand?: string | null;
     engineUsable: boolean;
     existing: boolean;
+    completedFromSimilar?: boolean;
   },
   sessionId: string,
   confirmed?: { displayName?: string | null; brand?: string | null } | null,
@@ -119,7 +120,11 @@ export function discoveredExact(
     mapperSlotId: null,
     country: null,
     currentVersionId: null,
-    evidence: { createdThroughFinalize: true, existing: created.existing },
+    evidence: {
+      createdThroughFinalize: true,
+      existing: created.existing,
+      completedFromSimilar: created.completedFromSimilar === true,
+    },
   };
   const stage: DiscoveryStage = created.engineUsable
     ? 'engine_ready'

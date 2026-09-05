@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ExactCandidate } from '@/scan-import-v2';
 import {
+  productFieldsNotInLedger,
   confirmationsFromFields,
   manualConfirmedScan,
   plainFieldsFor,
@@ -47,6 +48,7 @@ describe('scan flow — pure rules', () => {
       status: 'verified',
       engineReady: true,
       barcode: '8402001047251',
+      completedFromSimilar: false,
     });
     expect(
       toResolvedScanProduct(
@@ -64,6 +66,34 @@ describe('scan flow — pure rules', () => {
     ).toMatchObject({
       entityKind: 'pi_base',
       status: 'pi_base',
+    });
+  });
+
+  it('registry facts are prefilled only where the server session has no fact of its own', () => {
+    const fields = {
+      identity: { displayName: 'Jogurt', brand: 'Fruvita' },
+      nutrition: { basis: 'per_100g', fat: 3 },
+      ingredientsText: 'mleko',
+      allergensText: 'mleko',
+    };
+    const serverHasAll = {
+      facts: [
+        { field: 'identity.displayName', source: 'barcode_registry' },
+        { field: 'nutrition.fat', source: 'barcode_registry' },
+        { field: 'ingredientsText', source: 'barcode_registry' },
+        { field: 'allergensText', source: 'barcode_registry' },
+      ],
+    };
+    expect(productFieldsNotInLedger(fields, serverHasAll)).toEqual({});
+    const serverHasNothing = { facts: [{ field: 'barcode', source: 'barcode' }] };
+    expect(productFieldsNotInLedger(fields, serverHasNothing)).toEqual(fields);
+    const serverHasIdentityOnly = {
+      facts: [{ field: 'identity.displayName', source: 'manufacturer' }],
+    };
+    expect(productFieldsNotInLedger(fields, serverHasIdentityOnly)).toEqual({
+      nutrition: fields.nutrition,
+      ingredientsText: 'mleko',
+      allergensText: 'mleko',
     });
   });
 

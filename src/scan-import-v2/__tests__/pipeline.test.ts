@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { FakeDiscovery } from './fakeDiscovery';
 import { scan } from './codeIdentity.test';
 import { HACENDADO, ctx, ports, product } from './fakes';
 import { idempotencyKey, runScanImportV2 } from '../pipeline';
@@ -47,6 +48,15 @@ describe('Scan Import 2.0 pipeline — owner test matrix', () => {
     const p = ports();
     const r = await runScanImportV2(scan('4305615614434'), ctx(), p);
     expect(r).toMatchObject({ kind: 'unknown', next: 'analyze_label', externalEvidence: null });
+    expect(p.importer.calls).toBe(0);
+  });
+  it('5b. ask mode: an unknown code is returned for the customer to decide, with only the free registry consulted', async () => {
+    const discovery = new FakeDiscovery();
+    const p = ports({ discovery });
+    const r = await runScanImportV2(scan('4305615614434'), { ...ctx(), discovery: 'ask' }, p);
+    expect(r).toMatchObject({ kind: 'unknown', next: 'add_product' });
+    // no server research was spent before the customer answered
+    expect(discovery.calls.filter((c) => c.startsWith('research:'))).toEqual([]);
     expect(p.importer.calls).toBe(0);
   });
   it('6/7. offline: a product resolved once is known locally; an unknown one is an honest offline state', async () => {

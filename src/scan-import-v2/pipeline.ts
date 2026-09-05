@@ -187,6 +187,12 @@ export async function runScanImportV2(
   if (resolution.kind === 'none') {
     // authenticated + discovery available: the unknown half of the product flow starts here
     if (ctx.accountId !== null && ports.discovery) {
+      if (ctx.discovery === 'ask') {
+        // the customer decides first (owner, 2026-09-06: "system pyta, czy klient chce go dodać");
+        // the exact-GTIN registry alone — fast and free — lets the question name the product
+        const ev = await research(identity, ctx, ports);
+        return { kind: 'unknown', identity, next: 'add_product', ...ev };
+      }
       try {
         // exact-GTIN registry evidence runs alongside the server research: the strongest identity
         // source for a code nobody in the catalogue knows, gathered before anyone is asked anything

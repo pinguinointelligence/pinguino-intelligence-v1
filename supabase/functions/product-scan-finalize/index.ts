@@ -342,7 +342,10 @@ async function serverSemanticClassification(input: {
           attempted: true,
           outcome: 'unavailable',
           cacheHit: null,
-          error: typeof payload.error === 'string' ? payload.error.slice(0, 160) : `http_${response.status}`,
+          error:
+            typeof payload.error === 'string'
+              ? payload.error.slice(0, 160)
+              : `http_${response.status}`,
         },
       };
     const classification = objectValue(
@@ -468,6 +471,12 @@ Deno.serve(async (request) => {
   if (!corrections.barcode) return json({ error: 'customer_product_valid_ean_required' }, 409);
 
   const recognitionEvidence = productSemanticEvidenceFromScanResult(corrections.result);
+  // The authority rows load WHILE the model answers: neither waits for the other.
+  const finalizeStartedAt = Date.now();
+  const authorityRowsWarmup = Promise.all([
+    loadMapperRows(service),
+    loadBehaviorRows(service),
+  ]).catch(() => null);
   const semanticClassification = await serverSemanticClassification({
     url,
     anonKey,
@@ -477,6 +486,8 @@ Deno.serve(async (request) => {
   });
   let recognition = semanticClassification.classification;
   const semanticModelAudit = semanticClassification.semanticModelAudit;
+  const classificationMs = Date.now() - finalizeStartedAt;
+  await authorityRowsWarmup;
   const familyChoice = FAMILY_CHOICES.has(body.customerFamily as CustomerProductFamilyChoice)
     ? (body.customerFamily as CustomerProductFamilyChoice)
     : null;
@@ -676,5 +687,6 @@ Deno.serve(async (request) => {
     controlledCatalog: false,
     recognition,
     mapper: preview.mapper,
+    timings: { classificationMs, totalMs: Date.now() - finalizeStartedAt },
   });
 });

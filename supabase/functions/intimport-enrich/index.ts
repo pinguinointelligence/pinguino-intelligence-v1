@@ -58,6 +58,10 @@ const numberEnv = (name: string, fallback: number): number => {
 const WORST_CASE_SEARCHES_PER_CALL = 3;
 
 const RESEARCHABLE = new Set([
+  // The Scanner's exact-GTIN lookup may know nothing but the code: the product's own
+  // name and brand are then the first facts to find ("name + EAN" is what a person types).
+  'productName',
+  'brand',
   'ingredients',
   'allergens',
   // The Scanner's exact-GTIN lookup asks for the basis explicitly: nutrition numbers
@@ -678,7 +682,7 @@ Deno.serve(async (request) => {
   const rawFacts = Array.isArray(parsed.facts) ? parsed.facts : [];
   const discoveredBrand = rawFacts
     .map((item) => objectValue(item))
-    .filter((row) => String(row.field ?? '') === 'identity.brand')
+    .filter((row) => ['identity.brand', 'brand'].includes(String(row.field ?? '')))
     .map((row) => (typeof row.value === 'string' ? row.value.trim() : ''))
     .find((value) => value !== '');
   const facts = rawFacts.flatMap((item) => {

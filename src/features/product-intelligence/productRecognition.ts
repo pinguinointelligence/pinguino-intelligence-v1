@@ -1092,9 +1092,14 @@ const formOf = (
   // form cue at all stays UNKNOWN for the model, as the owner's gate requires.
   if (
     archetype === 'CHOCOLATE' &&
-    /\b(tablet\w*|tableta\w*|tabliczk\w*|tafel\w*|bar|bars|barra\w*|riegel|couverture|kuwertur\w*|callets|drops|chunks|block\w*|pieces|pastilles)\b/.test(
+    (/\b(tablet\w*|tableta\w*|tabliczk\w*|tafel\w*|bar|bars|barra\w*|riegel|couverture|kuwertur\w*|callets|drops|chunks|block\w*|pieces|pastilles)\b/.test(
       all,
-    )
+    ) ||
+      // a registry/retail CLASS naming the chocolate article ("dark chocolates", "czekolady
+      // gorzkie") describes solid chocolate; a flavour word ("chocolate", "czekoladowy") does not
+      /\b(dark|milk|white|ruby|bitter|plain)\s+chocolates\b|\bchocolates\b|\bczekolady\s+(gorzkie|mleczne|biale|deserowe)\b|\bczekolady\b|\bschokoladen\b|\bcioccolate\b/.test(
+        `${category} ${subcategory}`,
+      ))
   )
     return 'SOLID';
   // A chocolate with no form cue stays UNKNOWN (owner gate); every other kind whose
