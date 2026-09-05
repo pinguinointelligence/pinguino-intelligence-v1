@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -97,6 +97,23 @@ describe('Scanner customer-added product authority', () => {
       /(?:insert|update|delete|truncate)\s+(?:table\s+)?public\.mapper_basement/i,
     );
     expect(rescueRefreshMigration).not.toMatch(/next_product_code\(\)/);
+  });
+
+  it('supersedes a provisional version only when the rescued profile is better (no version churn)', () => {
+    const files = readdirSync(resolve(process.cwd(), 'supabase/migrations')).filter((name) =>
+      name.endsWith('_customer_product_rescue_refresh_supersede_when_better.sql'),
+    );
+    expect(files).toHaveLength(1);
+    const supersede = read(`supabase/migrations/${files[0]}`);
+    expect(supersede).toContain('rescue-refresh: supersede only when better');
+    expect(supersede).toContain("v_prior_facts#>>'{productIntelligence,engineUsable}'");
+    expect(supersede).toContain("p_product_profile->>'readiness'");
+    expect(supersede).toMatch(/v_new_accuracy>v_prior_accuracy\+0\.5/);
+    expect(supersede).toContain('if v_improves then');
+    // anchored on the refresh insert, never on the create branch (version 1 stays untouched)
+    expect(supersede).toContain('provenance,facts_fingerprint,supersedes');
+    expect(supersede).not.toMatch(/(?:insert|update|delete|truncate)\s+(?:table\s+)?public\.mapper_basement/i);
+    expect(supersede).not.toMatch(/next_product_code\(\)/);
   });
 
   it('uses native system capture and keeps desktop multi-upload/drop', () => {

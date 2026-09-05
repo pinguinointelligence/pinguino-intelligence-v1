@@ -84,7 +84,7 @@ describe('Open Food Facts exact-GTIN lookup', () => {
       '5903767004470',
       'https://world.openfoodfacts.org/product/5903767004470',
     );
-    const result = scanResultFromLookupFacts(facts)!;
+    const result = scanResultFromLookupFacts(facts as unknown as Record<string, unknown>[])!;
     expect(result).not.toBeNull();
     const identity = result['identity'] as Record<string, unknown>;
     expect(identity['displayName']).toBe('Jogurt naturalny 3%');
