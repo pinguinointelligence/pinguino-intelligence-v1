@@ -21,28 +21,29 @@
 }
 
 @layer components {
-  @media (min-width: 1536px) {
-    .intelligence-tabpanel-scroll {
-      scrollbar-width: none;
-    }
-
-    .intelligence-tabpanel-scroll::-webkit-scrollbar {
-      display: none;
-    }
-
-    .product-picker-results {
-      scrollbar-width: none;
-    }
-
-    .product-picker-results::-webkit-scrollbar {
-      display: none;
-    }
-
-    /* The 2xl override that inflated the recipe-table controls back to 40 px is
-       gone (owner density pass, 2026-08-24). The controls now carry ONE compact
-       geometry from `DirectNumberControl`'s `density="compact"`, so the widest
-       screens no longer re-take the space the ingredient name just won. */
+  /* Native scrollbar gutters stay device-pixel sized under CSS zoom and would
+     therefore be a second, non-scaling width authority. Desktop keeps the
+     accepted overlay-scrollbar presentation at every continuous scale. */
+  body[data-gellatti-scale-mode='desktop'] .intelligence-tabpanel-scroll {
+    scrollbar-width: none;
   }
+
+  body[data-gellatti-scale-mode='desktop'] .intelligence-tabpanel-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  body[data-gellatti-scale-mode='desktop'] .product-picker-results {
+    scrollbar-width: none;
+  }
+
+  body[data-gellatti-scale-mode='desktop'] .product-picker-results::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* The 2xl override that inflated the recipe-table controls back to 40 px is
+     gone (owner density pass, 2026-08-24). The controls now carry ONE compact
+     geometry from `DirectNumberControl`'s `density="compact"`, so the widest
+     screens no longer re-take the space the ingredient name just won. */
 }
 
 /* Friendly Lab feedback has one calm, presentation-only motion grammar.

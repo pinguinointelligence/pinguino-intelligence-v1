@@ -61,6 +61,7 @@ describe('responsive invariant', () => {
      *  - StudioEngineSurface:  which surface hosts the cockpit (modal behaviour)
      *  - ProductPickerPopover / productPickerViewport: popover placement
      *  - ProWorkbar: recipe overflow-popover placement inside the viewport
+     *  - applicationScaleAuthority: presentation-only whole-application scale
      * Anything else must justify itself by being added here deliberately.
      */
     const ALLOWED = [
@@ -71,6 +72,7 @@ describe('responsive invariant', () => {
       'ingredient-builder/productPickerViewport.ts',
       'pro-core/ProWorkbar.tsx',
       'components/ui/HoverPreview.tsx',
+      'shell/applicationScaleAuthority.ts',
     ];
     const offenders = sourceFiles(join(SRC, 'features'))
       .concat(sourceFiles(join(SRC, 'stores')))
