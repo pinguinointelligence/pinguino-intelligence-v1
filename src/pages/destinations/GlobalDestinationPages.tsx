@@ -35,12 +35,13 @@ import { ShopOrdersPanel } from '@/features/shop/ShopOrdersPanel';
 import { shopCopy } from '@/copy/shop';
 import { FranchiseInquiryForm } from '@/features/franchise/FranchiseInquiryForm';
 import { OwnerAssetImage } from '@/features/work-with-us/OwnerAssetImage';
-import { LeadEnquirySection } from '@/features/work-with-us/LeadEnquirySection';
 import {
   FRANCHISE_CONCEPT_INITIAL,
   FRANCHISE_CONCEPT_ORDER,
   franchiseConceptBlurbPl,
+  franchiseConceptFromRoute,
   franchiseConceptLabelPl,
+  franchiseSourceRouteFrom,
 } from '@/features/franchise/franchiseConcepts';
 import { FRANCHISE_FORMAT_LINKS, FRANCHISE_PAGE, FRANCHISE_SPLIT } from '@/copy/workWithUsLanes';
 
@@ -143,6 +144,8 @@ export function ShopPage() {
 }
 
 export function FranchisePage() {
+  const [params] = useSearchParams();
+  const fromRoute = params.get('from');
   return (
     <DestinationSurface
       eyebrow="Ekosystem Gellatti"
@@ -333,22 +336,24 @@ export function FranchisePage() {
         </div>
       </DestinationSection>
 
+      {/* ONE Franchise enquiry (owner decision 2026-09-03). The legacy general
+          form wrote to a second table with its own Admin queue; the useful half
+          of it — `?from=` context, concept preselection, route attribution and
+          the #lead deep link — lives here instead, so a visitor produces exactly
+          one lead in one place.
+
+          `#lead` is carried by this wrapper because every in-app CTA and every
+          old external link points at it. */}
       <DestinationSection>
-        <FranchiseInquiryForm />
+        <div id="lead" className="scroll-mt-28">
+          <FranchiseInquiryForm
+            initialConcept={franchiseConceptFromRoute(fromRoute) ?? 'lokal'}
+            sourceRoute={franchiseSourceRouteFrom(fromRoute)}
+          />
+        </div>
       </DestinationSection>
 
-      {/* The general enquiry, carried over from the retired Work With Us page.
-          It is NOT a duplicate of the form above: that one applies for a
-          specific Gellatti concept, this one answers `?from=` questions about
-          maszyny, wózek and przyczepa, preselects the subject from that param
-          and records it as the lead's source_route.
 
-          It also owns `id="lead"`, so `/work-with-us?from=%2Ftrailer#lead` —
-          the target every lane CTA still points at — resolves after the
-          redirect exactly as it did before. */}
-      <DestinationSection>
-        <LeadEnquirySection />
-      </DestinationSection>
     </DestinationSurface>
   );
 }

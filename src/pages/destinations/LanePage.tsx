@@ -46,14 +46,16 @@ export function LanePage({
 }: LanePageProps) {
   const { pathname } = useLocation();
   /**
-   * Every CTA on this page goes to the ONE enquiry surface on the gateway.
+   * Every CTA on this page goes to the ONE enquiry surface, which is now on
+   * Franchise — the umbrella these formats belong to. `/work-with-us` survives
+   * only as a redirect for old external links.
    *
    * `?from=` carries the route the visitor is actually on, which becomes the
    * lead's `source_route` and chooses the initial subject — so arriving from
    * `/trailer` costs no extra click. The two stay separate afterwards: change
    * the subject and the route still records where the question started.
    */
-  const leadHref = `/work-with-us?from=${encodeURIComponent(pathname)}#lead`;
+  const leadHref = `/franchise?from=${encodeURIComponent(pathname)}#lead`;
 
   return (
     <DestinationSurface eyebrow={copy.kicker} title={copy.title} blurb={copy.card} bare>

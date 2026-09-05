@@ -54,7 +54,6 @@ import {
   ShopPage,
   SubscriptionPage,
   TrailerPage,
-  WorkWithUsPage,
   AffiliatePage,
 } from '@/pages/destinations';
 import { LocalStarterPackPage } from '@/pages/shop/LocalStarterPackPage';
