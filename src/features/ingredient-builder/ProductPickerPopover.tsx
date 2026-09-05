@@ -81,6 +81,7 @@ import {
 } from './productPickerCatalogPresentation';
 import {
   catalogProductHasOwnEngineProfile,
+  currentCatalogArticleId,
   engineIngredientForCatalogSelection,
   filterCurrentMapperCatalogHits,
   resolveCurrentMapperCatalogSelection,
@@ -754,20 +755,26 @@ export function ProductPickerPopover({
         );
         return;
       }
+      const catalogContext = scope === 'BASE_FORMULATION' ? 'BASE' : 'TOPPING';
+      const resolvedExactHasSelectableOwnProfile =
+        resolvedExact !== null &&
+        catalogProductHasOwnEngineProfile(resolvedExact) &&
+        currentCatalogArticleId(resolvedExact, catalogContext) !== null;
       // A country/default or CP-36 resolution owns the exact commercial
       // relationship, but it does not invent a second scientific profile. If
-      // that exact SKU has no complete product-owned Engine profile, borrow the
-      // already-approved Mapper row for the same server-resolved canonical slot
-      // while retaining the exact SKU/version identity on the recipe line.
+      // that exact SKU is not independently selectable with a complete
+      // product-owned Engine profile and article identity, borrow the already-
+      // approved Mapper row for the same server-resolved canonical slot while
+      // retaining the exact SKU/version identity on the recipe line.
       const selectionCatalog =
-        resolvedExact && !catalogProductHasOwnEngineProfile(resolvedExact)
+        resolvedExact && !resolvedExactHasSelectableOwnProfile
           ? canonicalCatalog
           : (resolvedExact ?? canonicalCatalog);
       const relationshipCatalog = resolvedExact ?? canonicalCatalog;
       if (!ingredient && option.catalog) {
         const resolvedSelection = await resolveCurrentMapperCatalogSelection(
           selectionCatalog!,
-          scope === 'BASE_FORMULATION' ? 'BASE' : 'TOPPING',
+          catalogContext,
           getEngineApprovedIngredientById,
         );
         if (!resolvedSelection.ok) {
