@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes, useLocation, useParams } from 'react-router';
 import { legacyDestinationRedirectTo } from './redirectState';
 import { NotFoundPage } from '@/pages/NotFoundPage';
@@ -5,6 +6,7 @@ import { MapperBatch6Page } from '@/pages/dev/MapperBatch6Page';
 import { MapperReviewPage } from '@/pages/dev/MapperReviewPage';
 import { MapperStatusPage } from '@/pages/dev/MapperStatusPage';
 import { MapperSmokePage } from '@/pages/dev/MapperSmokePage';
+import { ScanImportV2LabPage } from '@/pages/dev/ScanImportV2LabPage';
 import { EnrichmentPreviewPage } from '@/pages/dev/EnrichmentPreviewPage';
 import { SnapshotAuditPage } from '@/pages/dev/SnapshotAuditPage';
 import { StudioPickerProofPage } from '@/pages/dev/StudioPickerProofPage';
@@ -106,6 +108,18 @@ export function PublicRecipeOrPartnerRoute() {
   const { handle } = useParams();
   return handle?.startsWith('@') ? <PublicRecipeRoute /> : <PartnerPublicRoute />;
 }
+
+/**
+ * SCAN CORE PHASE 0 — isolated measurement harness (reports/scan-core-phase-0/PHASE0_CHECKLIST.md A3).
+ * Built ONLY when VITE_SCAN_LAB_BASELINE=1: the flag is inlined at build time, so with it unset the
+ * lazy chunk is dead code and never ships. Never linked from the UI.
+ */
+const SCAN_LAB_BASELINE_ENABLED = import.meta.env.VITE_SCAN_LAB_BASELINE === '1';
+const ScanLabBaselinePage = SCAN_LAB_BASELINE_ENABLED
+  ? lazy(() =>
+      import('@/scan-lab/baseline/ui/BaselinePage').then((m) => ({ default: m.BaselinePage })),
+    )
+  : null;
 
 export function AppRoutes() {
   return (
@@ -265,6 +279,16 @@ export function AppRoutes() {
         element={<LegacyDestinationRedirect pathname="/products/scan" />}
       />
       {import.meta.env.DEV && <Route path="/products/scan/legacy" element={<ProductScanPage />} />}
+      {ScanLabBaselinePage && (
+        <Route
+          path="/scan-lab/baseline"
+          element={
+            <Suspense fallback={null}>
+              <ScanLabBaselinePage />
+            </Suspense>
+          }
+        />
+      )}
 
       {/* Legacy customer-shell preview path → the flow's new canonical /start. */}
       <Route path="/customer-v1" element={<LegacyDestinationRedirect pathname="/start" />} />
@@ -273,6 +297,10 @@ export function AppRoutes() {
           In production import.meta.env.DEV is false, so the route is never created and
           MapperSmokePage is dead-code-eliminated from the bundle. */}
       {import.meta.env.DEV && <Route path="/dev/mapper-smoke" element={<MapperSmokePage />} />}
+      {/* Scan Import 2.0 QA harness: dev, or staging with VITE_SCAN_IMPORT_LAB=1. Never HOME. */}
+      {(import.meta.env.DEV || import.meta.env.VITE_SCAN_IMPORT_LAB === '1') && (
+        <Route path="/dev/scan-import-v2" element={<ScanImportV2LabPage />} />
+      )}
       {import.meta.env.DEV && <Route path="/dev/mapper-batch-6" element={<MapperBatch6Page />} />}
       {import.meta.env.DEV && <Route path="/dev/mapper-review" element={<MapperReviewPage />} />}
       {import.meta.env.DEV && <Route path="/dev/mapper-status" element={<MapperStatusPage />} />}
