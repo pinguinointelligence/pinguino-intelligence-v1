@@ -42,6 +42,15 @@ export const OWNER_RESCUE_OPTION_ID = 'restore_original_recipe';
 export const OWNER_RESCUE_REVISION = 1;
 export const OWNER_SOURCE_ACTUAL_REVISION = 8;
 
+/**
+ * The terminal-valid served replacement accepted as rescue revision 2. The
+ * extra 0.2 g across CREAM and DEXTROSE moves BANANA from 30.0026% to
+ * 29.9974%, preserving every physical fact while superseding revision 1.
+ */
+export const OWNER_ACCEPTED_RESCUE_GRAMS = [492.2, 130, 46, 69, 63.3, 4.6, 345] as const;
+export const OWNER_ACCEPTED_RESCUE_TOTAL_G = 1150.1;
+export const OWNER_ACCEPTED_RESCUE_REVISION = 2;
+
 export const OWNER_BANANA_MAIN_POLICY = {
   mainCapability: 'MAIN_CAPABLE',
   behaviorRole: 'MAIN_PROFILE_SPECIFIC',
