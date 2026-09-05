@@ -703,7 +703,7 @@ function RecipeRow({
           scannable (§7). The breakpoint is `lg`, not `md`: between 768 and
           1024 px the five-column table can only fit by truncating ingredient
           names, which is exactly the squeeze §5 forbids. */}
-      <div className="lg:hidden">
+      <div className="pro-ingredient-row-mobile lg:hidden">
         <MobileIngredientLine
           item={item}
           percent={share}
@@ -720,7 +720,7 @@ function RecipeRow({
       </div>
 
       {/* WIDE (lg+) — the accepted Production table row, unchanged. */}
-      <div className="hidden lg:block">
+      <div className="pro-ingredient-row-desktop hidden lg:block">
         <div
           className={cn('group/row', compact ? COMPACT_ROW_GRID : ROW_GRID)}
           onDragOver={(event) => event.preventDefault()}
