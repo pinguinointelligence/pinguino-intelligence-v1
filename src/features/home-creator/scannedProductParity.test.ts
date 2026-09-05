@@ -15,7 +15,14 @@ import { describe, expect, it } from 'vitest';
 
 const HOOK = readFileSync('src/features/home-creator/useHomeIntentIngredients.ts', 'utf8');
 const HOME_PAGE = readFileSync('src/pages/home/HomeCreatorPage.tsx', 'utf8');
-const SCANNER = readFileSync('src/features/product-scanner/LiveMultiScanner.tsx', 'utf8');
+/** the ONE shared scanner every entry point mounts (camera → Scan Core → EAN → Scan Import 2.0) */
+const SCANNER = readFileSync('src/features/scan-flow/ScanFlow.tsx', 'utf8');
+/** HOME's mount of the shared scanner: from the element to its self-closing end */
+const HOME_SCANNER_BLOCK = (() => {
+  const start = HOME_PAGE.indexOf('<ScanFlow');
+  const end = HOME_PAGE.indexOf('/>', start);
+  return start >= 0 && end > start ? HOME_PAGE.slice(start, end) : '';
+})();
 
 describe('a scanned product enters through the typed-ingredient door', () => {
   it('both entry points delegate to one add', () => {
@@ -42,13 +49,12 @@ describe('a scanned product enters through the typed-ingredient door', () => {
   });
 
   it('HOME hands the scanner nothing but catalogue ids', () => {
-    const handler = HOME_PAGE.slice(
-      HOME_PAGE.indexOf('onAddToRecipe={'),
-      HOME_PAGE.indexOf('onNeedsDeepScan={'),
-    );
-    expect(handler).toContain('addScannedProduct(product.identityKey)');
+    expect(HOME_SCANNER_BLOCK).toContain('mode="recipe"');
+    expect(HOME_SCANNER_BLOCK).toContain('addScannedProduct(product.id)');
     // No grams, no roles, no engine call: the scanner does no formulation.
-    expect(handler).not.toMatch(/planned_grams|setLockType|rebuild|engine/i);
+    expect(HOME_SCANNER_BLOCK).not.toMatch(/planned_grams|setLockType|rebuild|engine/i);
+    // no second scanner on HOME
+    expect(HOME_PAGE).not.toContain('LiveMultiScanner');
   });
 
   it('the scanner itself never touches the recipe store', () => {
@@ -65,8 +71,10 @@ describe('an unknown product never reaches a recipe', () => {
   });
 
   it('and HOME never navigates away from a half-built recipe because of one', () => {
-    const handler = HOME_PAGE.slice(HOME_PAGE.indexOf('onNeedsDeepScan={'));
-    const block = handler.slice(0, handler.indexOf('/>'));
-    expect(block).not.toContain('navigate(');
+    expect(HOME_SCANNER_BLOCK.length).toBeGreaterThan(0);
+    expect(HOME_SCANNER_BLOCK).not.toContain('navigate(');
+    // an unknown product is resolved, saved privately or refused INSIDE the scanner; HOME only ever
+    // receives a resolved product id
+    expect(HOME_SCANNER_BLOCK).toContain('onResolved={');
   });
 });
