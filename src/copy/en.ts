@@ -378,8 +378,6 @@ export const copy = {
       settings: 'Konto i ustawienia',
       signIn: 'Zaloguj się',
       signOut: 'Wyloguj się',
-      headerSignIn: 'Zaloguj',
-      headerSignOut: 'Wyloguj',
       signedInAs: 'Zalogowano',
       unavailable: 'Logowanie jest chwilowo niedostępne.',
       planPro: 'Plan Pro',
@@ -620,12 +618,6 @@ export const copy = {
    * ingredient editor left, LIVE Monitor PI right, compact action bar, red review
    * zone below the fold. PL copy. */
   proWorkbench: {
-    floatingActions: {
-      ariaLabel: 'Stałe akcje receptury Pro',
-      monitor: 'MONITOR',
-      recalculate: 'PRZELICZ Z PI',
-      recalculating: 'PRZELICZANIE…',
-    },
     profile: {
       tabs: {
         recipe: 'Profil',

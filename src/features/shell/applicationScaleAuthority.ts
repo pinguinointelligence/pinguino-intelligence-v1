@@ -4,33 +4,6 @@ import { PRO_DESKTOP_MIN_WIDTH_PX } from './proFrameGeometry';
 /** Accepted desktop composition reference. Wider screens gain canvas at 100%. */
 export const APPLICATION_SCALE_REFERENCE_WIDTH_PX = 1440;
 
-/**
- * Bounded desktop header regions at the accepted reference composition.
- * `center` includes HOME / PRO and the complete route-navigation reservation;
- * `right` is intentionally the bounded Zaloguj / Wyloguj control, never user
- * identity. The two separation lanes and both outer gutters are load-bearing.
- */
-export const APPLICATION_HEADER_GEOMETRY_REGIONS_PX = Object.freeze({
-  left: 224,
-  center: 976,
-  right: 96,
-  separation: 28,
-  outerGutters: 57.6,
-});
-
-export const APPLICATION_HEADER_GEOMETRY_MIN_WIDTH_PX =
-  APPLICATION_HEADER_GEOMETRY_REGIONS_PX.left +
-  APPLICATION_HEADER_GEOMETRY_REGIONS_PX.center +
-  APPLICATION_HEADER_GEOMETRY_REGIONS_PX.right +
-  APPLICATION_HEADER_GEOMETRY_REGIONS_PX.separation * 2 +
-  APPLICATION_HEADER_GEOMETRY_REGIONS_PX.outerGutters;
-
-/** One trigger for both the accepted workbench and the full three-region header. */
-export const APPLICATION_SCALE_TRIGGER_WIDTH_PX = Math.max(
-  APPLICATION_SCALE_REFERENCE_WIDTH_PX,
-  APPLICATION_HEADER_GEOMETRY_MIN_WIDTH_PX,
-);
-
 export interface ApplicationScaleGeometry {
   mode: 'desktop' | 'mobile';
   scale: number;
@@ -50,7 +23,7 @@ export function applicationScaleGeometry(
       layoutHeight: viewportHeight,
     };
   }
-  const scale = Math.min(1, viewportWidth / APPLICATION_SCALE_TRIGGER_WIDTH_PX);
+  const scale = Math.min(1, viewportWidth / APPLICATION_SCALE_REFERENCE_WIDTH_PX);
   return {
     mode: 'desktop',
     scale,
@@ -62,16 +35,6 @@ export function applicationScaleGeometry(
 const SCALE_PROPERTY = '--gellatti-ui-scale';
 const LAYOUT_WIDTH_PROPERTY = '--gellatti-layout-viewport-width';
 const LAYOUT_HEIGHT_PROPERTY = '--gellatti-layout-viewport-height';
-const VIEWPORT_FIXED_INSET_PROPERTY = '--gellatti-viewport-fixed-inset';
-const APPLICATION_VIEWPORT_FIXED_INSET_PX = 28.8;
-
-/**
- * CSS fixed offsets live inside the zoomed coordinate space. Inverting the
- * scale keeps their painted distance from the real viewport edge invariant.
- */
-export function applicationViewportFixedInset(paintedInsetPx: number, scale: number): number {
-  return scale > 0 && Number.isFinite(scale) ? paintedInsetPx / scale : paintedInsetPx;
-}
 
 /**
  * AppShell is the one owner of desktop magnification. BODY deliberately owns
@@ -84,7 +47,6 @@ export function useApplicationScaleAuthority(): void {
     const previousScale = body.style.getPropertyValue(SCALE_PROPERTY);
     const previousWidth = body.style.getPropertyValue(LAYOUT_WIDTH_PROPERTY);
     const previousHeight = body.style.getPropertyValue(LAYOUT_HEIGHT_PROPERTY);
-    const previousViewportFixedInset = body.style.getPropertyValue(VIEWPORT_FIXED_INSET_PROPERTY);
 
     const sync = () => {
       const geometry = applicationScaleGeometry(window.innerWidth, window.innerHeight);
@@ -92,10 +54,6 @@ export function useApplicationScaleAuthority(): void {
       body.style.setProperty(SCALE_PROPERTY, String(geometry.scale));
       body.style.setProperty(LAYOUT_WIDTH_PROPERTY, `${geometry.layoutWidth}px`);
       body.style.setProperty(LAYOUT_HEIGHT_PROPERTY, `${geometry.layoutHeight}px`);
-      body.style.setProperty(
-        VIEWPORT_FIXED_INSET_PROPERTY,
-        `${applicationViewportFixedInset(APPLICATION_VIEWPORT_FIXED_INSET_PX, geometry.scale)}px`,
-      );
     };
 
     sync();
@@ -110,7 +68,6 @@ export function useApplicationScaleAuthority(): void {
         [SCALE_PROPERTY, previousScale],
         [LAYOUT_WIDTH_PROPERTY, previousWidth],
         [LAYOUT_HEIGHT_PROPERTY, previousHeight],
-        [VIEWPORT_FIXED_INSET_PROPERTY, previousViewportFixedInset],
       ] as const) {
         if (value === '') body.style.removeProperty(property);
         else body.style.setProperty(property, value);

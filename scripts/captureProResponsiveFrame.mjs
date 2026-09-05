@@ -145,30 +145,6 @@ const geometryExpression = String.raw`(() => {
       height: Number(rect.height.toFixed(2)),
       display: style.display,
       visibility: style.visibility,
-      position: style.position,
-    };
-  };
-  const visibleBox = (element) => {
-    if (!element) return null;
-    const measured = box(element);
-    return measured && measured.display !== 'none' && measured.width > 0 && measured.height > 0
-      ? measured
-      : null;
-  };
-  const union = (...boxes) => {
-    const present = boxes.filter(Boolean);
-    if (present.length === 0) return null;
-    const left = Math.min(...present.map((entry) => entry.left));
-    const right = Math.max(...present.map((entry) => entry.right));
-    const top = Math.min(...present.map((entry) => entry.top));
-    const bottom = Math.max(...present.map((entry) => entry.bottom));
-    return {
-      left,
-      right,
-      top,
-      bottom,
-      width: Number((right - left).toFixed(2)),
-      height: Number((bottom - top).toFixed(2)),
     };
   };
   const bodyFrame = test('pro-panel-recipe');
@@ -177,12 +153,6 @@ const geometryExpression = String.raw`(() => {
   const sectionNav = test('pro-context-tabs');
   const bottomNav = test('mobile-cockpit-trigger');
   const header = document.querySelector('header');
-  const navigationTrigger = test('app-nav-trigger');
-  const homeProSwitch = test('home-pro-switch');
-  const account = test('app-header-account') ?? test('app-header-login');
-  const floatingActions = test('pro-bottom-right-floating-actions');
-  const floatingMonitor = test('pro-floating-monitor');
-  const floatingRecalculate = test('pro-floating-recalculate');
   const rows = [...document.querySelectorAll('[data-gellatti-row="ingredient"]')]
     .filter((row) => getComputedStyle(row).display !== 'none');
   const firstRow = rows[0] ?? null;
@@ -216,18 +186,6 @@ const geometryExpression = String.raw`(() => {
   const right = box(rightTrack);
   const nav = box(sectionNav);
   const bottom = box(bottomNav);
-  const leftHeaderRegion = union(visibleBox(navigationTrigger), visibleBox(logo));
-  // The section-nav track intentionally spans the entire display column. Its
-  // unused tail is not interactive geometry, so measure the actual navigation
-  // buttons; otherwise the empty track falsely reports an overlap with auth.
-  const sectionNavigationControls = sectionNav
-    ? union(...[...sectionNav.querySelectorAll('button')].map(visibleBox))
-    : null;
-  const centerHeaderRegion = union(visibleBox(homeProSwitch), sectionNavigationControls);
-  const rightHeaderRegion = visibleBox(account);
-  const fixedStack = visibleBox(floatingActions);
-  const fixedMonitor = visibleBox(floatingMonitor);
-  const fixedRecalculate = visibleBox(floatingRecalculate);
   const rootStyle = getComputedStyle(document.documentElement);
   const ingredientOverflow = rows.some((row) => {
     const rowBox = row.getBoundingClientRect();
@@ -241,28 +199,6 @@ const geometryExpression = String.raw`(() => {
       (right?.display === 'none' ? 'TABLET' : 'DESKTOP'),
     outerFrame: frame,
     header: box(header),
-    headerRegions: {
-      left: leftHeaderRegion,
-      center: centerHeaderRegion,
-      right: rightHeaderRegion,
-      leftCenterSeparation:
-        leftHeaderRegion && centerHeaderRegion
-          ? Number((centerHeaderRegion.left - leftHeaderRegion.right).toFixed(2))
-          : null,
-      centerRightSeparation:
-        centerHeaderRegion && rightHeaderRegion
-          ? Number((rightHeaderRegion.left - centerHeaderRegion.right).toFixed(2))
-          : null,
-      overlap:
-        Boolean(
-          leftHeaderRegion && centerHeaderRegion && leftHeaderRegion.right > centerHeaderRegion.left,
-        ) ||
-        Boolean(
-          centerHeaderRegion && rightHeaderRegion && centerHeaderRegion.right > rightHeaderRegion.left,
-        ),
-      accountText: account?.textContent?.trim() ?? null,
-      accountHasIdentity: Boolean(account?.textContent?.includes('@')),
-    },
     leftTrack: left,
     rightTrack: right,
     sectionNavigationTrack: nav,
@@ -284,21 +220,6 @@ const geometryExpression = String.raw`(() => {
     },
     bottomNavigation: bottom,
     bottomNavigationVisible: Boolean(bottom && bottom.display !== 'none' && bottom.visibility !== 'hidden'),
-    floatingActions: {
-      stack: fixedStack,
-      monitor: fixedMonitor,
-      recalculate: fixedRecalculate,
-      visible: Boolean(fixedStack),
-      monitorAboveRecalculate: Boolean(
-        fixedMonitor && fixedRecalculate && fixedMonitor.bottom <= fixedRecalculate.top,
-      ),
-      rightViewportInset: fixedStack
-        ? Number((innerWidth - fixedStack.right).toFixed(2))
-        : null,
-      bottomViewportInset: fixedStack
-        ? Number((innerHeight - fixedStack.bottom).toFixed(2))
-        : null,
-    },
     leftGutter: frame ? Number(frame.left.toFixed(2)) : null,
     rightGutter: frame ? Number((innerWidth - frame.right).toFixed(2)) : null,
     gutterDelta: frame ? Number(Math.abs(frame.left - (innerWidth - frame.right)).toFixed(2)) : null,
@@ -314,49 +235,6 @@ const geometryExpression = String.raw`(() => {
       overflowX: document.documentElement.scrollWidth > innerWidth + 1,
       scrollHeight: document.documentElement.scrollHeight,
       clientHeight: document.documentElement.clientHeight,
-    },
-  };
-})()`;
-
-const fixedActionScrollProofExpression = String.raw`(async () => {
-  const waitFrame = () => new Promise((resolve) => requestAnimationFrame(() => resolve()));
-  const actions = document.querySelector('[data-testid="pro-bottom-right-floating-actions"]');
-  if (!actions || getComputedStyle(actions).display === 'none') {
-    return { available: false, hiddenForMobile: innerWidth < 960 };
-  }
-  const box = () => {
-    const rect = actions.getBoundingClientRect();
-    return {
-      left: Number(rect.left.toFixed(2)),
-      top: Number(rect.top.toFixed(2)),
-      right: Number(rect.right.toFixed(2)),
-      bottom: Number(rect.bottom.toFixed(2)),
-    };
-  };
-  const candidates = [
-    document.querySelector('[data-testid="ingredient-rows-scroll"]'),
-    document.querySelector('.intelligence-tabpanel-scroll'),
-  ].filter(Boolean);
-  const scroller = candidates.find((entry) => entry.scrollHeight > entry.clientHeight + 1) ?? candidates[0];
-  const before = box();
-  const previousScrollTop = scroller?.scrollTop ?? 0;
-  if (scroller) scroller.scrollTop = Math.min(previousScrollTop + 120, scroller.scrollHeight);
-  await waitFrame();
-  await waitFrame();
-  const after = box();
-  const appliedScrollTop = scroller?.scrollTop ?? 0;
-  if (scroller) scroller.scrollTop = previousScrollTop;
-  return {
-    available: true,
-    position: getComputedStyle(actions).position,
-    scrollerTestId: scroller?.getAttribute('data-testid') ?? scroller?.className ?? null,
-    scrollTopBefore: previousScrollTop,
-    scrollTopAfter: appliedScrollTop,
-    before,
-    after,
-    viewportDelta: {
-      x: Number((after.left - before.left).toFixed(2)),
-      y: Number((after.top - before.top).toFixed(2)),
     },
   };
 })()`;
@@ -504,8 +382,7 @@ try {
     const screenshot = `${viewport.width}x${viewport.height}.png`;
     await captureFullPage(cdp, join(outputDir, screenshot), viewport);
     const portals = await evaluate(cdp, portalExpression);
-    const fixedActionScrollProof = await evaluate(cdp, fixedActionScrollProofExpression);
-    measurements.push({ ...geometry, portals, fixedActionScrollProof, screenshot });
+    measurements.push({ ...geometry, portals, screenshot });
   }
 
   const report = {
@@ -593,56 +470,11 @@ try {
     rows: ratioRows,
     failures: ratioFailures,
   };
-  const followupRows = measurements.map((measurement) => {
-    const desktop = measurement.viewport.width >= 960;
-    const header = measurement.headerRegions;
-    const floating = measurement.floatingActions;
-    const scroll = measurement.fixedActionScrollProof;
-    const headerPass = desktop
-      ? Boolean(
-          header.left &&
-          header.center &&
-          header.right &&
-          !header.overlap &&
-          header.leftCenterSeparation >= 0 &&
-          header.centerRightSeparation >= 0 &&
-          !header.accountHasIdentity &&
-          ['Zaloguj', 'Wyloguj'].includes(header.accountText),
-        )
-      : true;
-    const floatingPass = desktop
-      ? Boolean(
-          floating.visible &&
-          floating.stack?.position === 'fixed' &&
-          floating.monitorAboveRecalculate &&
-          Math.abs(floating.rightViewportInset - 28.8) <= 0.6 &&
-          Math.abs(floating.bottomViewportInset - 28.8) <= 0.6 &&
-          scroll.available &&
-          scroll.position === 'fixed' &&
-          scroll.viewportDelta.x === 0 &&
-          scroll.viewportDelta.y === 0,
-        )
-      : !floating.visible && scroll.hiddenForMobile === true;
-    return {
-      viewport: measurement.viewport,
-      mode: desktop ? 'desktop' : 'mobile',
-      headerPass,
-      floatingPass,
-      pass: headerPass && floatingPass && !measurement.document.overflowX,
-    };
-  });
-  const followupFailures = followupRows.filter((row) => !row.pass);
-  report.ownerResponsiveFollowupAcceptance = {
-    requiredViewports: ['wide', 'medium', 'narrow-above-960', '960', '959'],
-    fixedPaintedInsetPx: 28.8,
-    rows: followupRows,
-    failures: followupFailures,
-  };
   await writeFile(join(outputDir, 'geometry.json'), `${JSON.stringify(report, null, 2)}\n`);
   process.stdout.write(
-    `${basename(outputDir)}: captured ${measurements.length} viewports; ratio-failures=${ratioFailures.length}; followup-failures=${followupFailures.length}; geometry=${join(outputDir, 'geometry.json')}\n`,
+    `${basename(outputDir)}: captured ${measurements.length} viewports; ratio-failures=${ratioFailures.length}; geometry=${join(outputDir, 'geometry.json')}\n`,
   );
-  if (ratioFailures.length > 0 || followupFailures.length > 0) process.exitCode = 1;
+  if (ratioFailures.length > 0) process.exitCode = 1;
   socket.close();
 } finally {
   chrome.kill();
