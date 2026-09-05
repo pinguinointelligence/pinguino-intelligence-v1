@@ -16,6 +16,7 @@ import type {
   RequestOutcome,
   ResearchOutcome,
   ScanResultLike,
+  LabelFailureReason,
 } from '../discovery/contracts';
 
 export interface FunctionsClientLike {
@@ -199,13 +200,38 @@ export function createSupabaseDiscoveryPort(
     },
     async analyzeLabel(session, images): Promise<AnalyzeOutcome> {
       const s = adopt(session);
-      const d = await invoke('product-scan-analyze', {
-        sessionId: s.sessionId,
-        images: [...images],
-        barcode: legacyBarcode(session.identity),
-        accurateRetry: false,
-        missingFields: [...s.missingCritical],
-      });
+      let d: Record<string, unknown>;
+      try {
+        d = await invoke('product-scan-analyze', {
+          sessionId: s.sessionId,
+          images: [...images],
+          barcode: legacyBarcode(session.identity),
+          accurateRetry: false,
+          missingFields: [...s.missingCritical],
+        });
+      } catch (error) {
+        // one failed image is a failed image — never a lost session (owner QA 2026-09-05)
+        const m = error instanceof Error ? error.message : String(error);
+        const reason: LabelFailureReason = /analysis_burst/.test(m)
+          ? 'burst'
+          : /session_vision_limit|scanner_call_cost_limit|daily_cost|monthly_cost/.test(m)
+            ? 'vision_limit'
+            : /scan_asset_identity_conflict/.test(m)
+              ? 'asset_conflict'
+              : /scan_asset_metadata_failed|invalid_scan_image/.test(m)
+                ? 'asset_metadata'
+                : error instanceof NetworkError
+                  ? 'network'
+                  : /scanner_(disabled|analysis_not_configured|openai)|provider/.test(m)
+                    ? 'provider'
+                    : 'other';
+        return {
+          kind: 'failed',
+          reason,
+          retryAfterMs: reason === 'burst' ? 60_000 : null,
+          detail: m,
+        };
+      }
       if (d['kind'] === 'existing_product')
         return {
           kind: 'existing_product',
@@ -224,6 +250,7 @@ export function createSupabaseDiscoveryPort(
           customerFamily: input.customerFamily ?? null,
           confirmations: input.confirmations ?? {},
           privateOverlay: input.privateOverlay ?? {},
+          savePrivateNotReady: input.savePrivateNotReady === true,
         });
       } catch (error) {
         const m = error instanceof Error ? error.message : '';
@@ -292,6 +319,7 @@ export function createSupabaseDiscoveryPort(
             productId: String(d['productId'] ?? ''),
             productCode: typeof d['productCode'] === 'string' ? (d['productCode'] as string) : null,
             engineUsable: d['engineUsable'] === true,
+            privateNotReady: d['privateNotReady'] === true,
             existing: d['kind'] !== 'customer_added_product',
           };
       }

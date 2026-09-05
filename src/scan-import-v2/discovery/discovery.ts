@@ -175,6 +175,11 @@ export async function continueDiscovery(
 ): Promise<DiscoveryResult> {
   if (action.type === 'label') {
     const a = await port.analyzeLabel(session, action.images, ctx);
+    if (a.kind === 'failed')
+      return {
+        ...pending(session),
+        labelError: { reason: a.reason, retryAfterMs: a.retryAfterMs },
+      };
     if (a.kind === 'existing_product')
       return {
         kind: 'resolved_exact',
@@ -228,7 +233,10 @@ export async function continueDiscovery(
   const f = await port.finalize(session, action.input, ctx);
   switch (f.kind) {
     case 'created':
-      return discoveredExact(session.identity, ledger, f, session.sessionId);
+      return {
+        ...discoveredExact(session.identity, ledger, f, session.sessionId),
+        privateNotReady: f.privateNotReady === true,
+      };
     case 'family_confirmation_required':
       return {
         kind: 'needs_confirmation',

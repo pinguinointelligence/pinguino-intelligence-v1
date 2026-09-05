@@ -571,7 +571,11 @@ Deno.serve(async (request) => {
     .eq('state', 'analyzed');
   if (traceError) return json({ error: 'scanner_trace_persistence_failed' }, 503);
   if (action === 'preview') return json(preview);
-  if (!ready) return json({ ...preview, kind: 'customer_product_not_ready' }, 409);
+  // owner contract (2026-09-05): the customer may keep a not-ready exact product PRIVATELY; only an
+  // explicit request takes that path, and it never touches the ready (recipe-eligible) authority
+  const savePrivateNotReady = body.savePrivateNotReady === true;
+  if (!ready && !savePrivateNotReady)
+    return json({ ...preview, kind: 'customer_product_not_ready' }, 409);
 
   const privateOverlay = objectValue(body.privateOverlay);
   if (
@@ -584,7 +588,9 @@ Deno.serve(async (request) => {
     privateOverlay.price = price;
   }
   const { data: saved, error: saveError } = await service.rpc(
-    'gellatti_upsert_customer_added_product_v1',
+    ready
+      ? 'gellatti_upsert_customer_added_product_v1'
+      : 'gellatti_upsert_customer_private_product_v1',
     {
       p_actor_user_id: auth.user.id,
       p_session_id: sessionId,
@@ -598,8 +604,10 @@ Deno.serve(async (request) => {
   if (saveError || !saved) return json({ error: 'customer_product_persistence_failed' }, 503);
   return json({
     ...objectValue(saved),
-    engineUsable: profile.engineUsable,
-    usableProductCreated: true,
+    engineUsable: ready ? profile.engineUsable : false,
+    usableProductCreated: ready,
+    privateNotReady: !ready,
+    readiness: { ready, roleReady, criticalGaps },
     controlledCatalog: false,
     recognition,
     mapper: preview.mapper,
