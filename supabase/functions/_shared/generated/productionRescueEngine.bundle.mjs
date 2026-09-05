@@ -8907,8 +8907,8 @@ function certifiedMinimumLargerBatchCandidate(session, forecastInput, lowerBound
 	for (const indicator of calculateRecipe(forecastInput).indicators) {
 		const band = indicator.band;
 		if (!band || indicator.key === "ice_fraction") continue;
-		let lower = null;
-		let upper = null;
+		let lower;
+		let upper;
 		if (indicator.key === "pod") {
 			lower = factors.map((factor) => band.min / 100 - factor.podPointGramsPerGram);
 			upper = factors.map((factor) => factor.podPointGramsPerGram - band.max / 100);
