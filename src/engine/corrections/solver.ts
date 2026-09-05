@@ -16,6 +16,7 @@
  * deterministic solver settings, not calibration data.
  */
 import { calculateRecipe } from '../calculateRecipe';
+import { effectiveMachineCapacityGrams } from '../machineCapacity';
 import { GOLDEN_MIDDLE_PRIORITY } from '../config/priorities';
 import { MODES } from '../config/modes';
 import { ingredientNpacContribution } from '../pac';
@@ -325,7 +326,7 @@ export function proposeCorrections(request: CorrectionRequest): CorrectionResult
     context,
     mode: input.mode,
     allow_main_ingredient_reduction,
-    machine_capacity_grams: input.machine_capacity_grams,
+    machine_capacity_grams: effectiveMachineCapacityGrams(input),
     // Scale for the user-intent reduction floor (owner SOFT-HOLD). Without it
     // the floor does not bind and behaviour is byte-identical to before.
     target_batch_grams: input.target_batch_grams,

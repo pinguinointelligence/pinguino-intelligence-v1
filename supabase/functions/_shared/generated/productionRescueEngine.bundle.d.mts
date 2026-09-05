@@ -12,7 +12,7 @@ import type { ProductionRescueAssessment } from '../../../../src/features/produc
 export const ENGINE_VERSION: '0.4.0';
 export const CONFIG_VERSION: '0.7.0';
 export const PRACTICAL_RECIPE_MODEL_VERSION: 'pro-whole-gram-v1';
-export const PRODUCTION_RESCUE_MODEL_VERSION: 'production-rescue-v5';
+export const PRODUCTION_RESCUE_MODEL_VERSION: 'production-rescue-v8';
 
 export function assessProductionRescue(session: ProductionSession): ProductionRescueAssessment;
 export function productionRescueCandidateFingerprint(input: RecipeInput): string;

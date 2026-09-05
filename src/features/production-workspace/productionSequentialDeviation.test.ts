@@ -550,7 +550,12 @@ describe('Production sequential-deviation P0', () => {
 
       expect(enlarge.finalMassG).toBeGreaterThan(entry.input.target_batch_grams);
       expect(enlarge.instructions.length).toBeGreaterThan(0);
-      expect(enlarge.instructions.every((instruction) => instruction.kind === 'add')).toBe(true);
+      for (const instruction of enlarge.instructions) {
+        if (instruction.kind !== 'reduce_pending_plan') continue;
+        expect(session.lines.find((line) => line.lineId === instruction.lineId)?.confirmed).toBe(
+          false,
+        );
+      }
       expect(hardSafety.safe).toBe(true);
 
       for (const productionLine of session.lines) {

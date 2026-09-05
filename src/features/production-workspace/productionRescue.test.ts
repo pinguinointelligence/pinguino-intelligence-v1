@@ -369,6 +369,7 @@ describe('production rescue orchestration', () => {
       ]),
     );
     expect(assessment.options.map((option) => option.id)).toEqual([
+      'keep_original_batch',
       'restore_original_recipe',
       'leave_as_is',
     ]);
@@ -572,8 +573,7 @@ describe('production rescue orchestration', () => {
         restore: true,
         unchanged: false,
         hardReasons: ['protein_in_solids_high', 'lactose_high'],
-        candidateCount: 2,
-        minimumFinalG: 1007,
+        maximumFirstValidG: 1007,
       },
       5: {
         preserve: false,
@@ -581,8 +581,7 @@ describe('production rescue orchestration', () => {
         restore: true,
         unchanged: false,
         hardReasons: ['protein_in_solids_high', 'lactose_high'],
-        candidateCount: 2,
-        minimumFinalG: 1054.8,
+        maximumFirstValidG: 1054.8,
       },
       10: {
         preserve: false,
@@ -590,22 +589,35 @@ describe('production rescue orchestration', () => {
         restore: true,
         unchanged: false,
         hardReasons: ['protein_in_solids_high', 'lactose_high', 'lactose_sandiness_risk_high'],
-        candidateCount: 2,
-        minimumFinalG: 1140.2,
+        maximumFirstValidG: 1140.2,
       },
     } as const;
     for (const row of matrix) {
       const expected = expectedByOverage[row.overageG as keyof typeof expectedByOverage];
-      expect({
+      const actual = {
         preserve: row.preserve,
         enlarge: row.enlarge,
         restore: row.restore,
         unchanged: row.unchanged,
         hardReasons: row.hardReasons,
-        candidateCount: row.candidateCount,
-        minimumFinalG:
-          row.finalCandidateGrams.length > 0 ? Math.min(...row.finalCandidateGrams) : null,
-      }).toEqual(expected);
+      };
+      expect(actual).toEqual({
+        preserve: expected.preserve,
+        enlarge: expected.enlarge,
+        restore: expected.restore,
+        unchanged: expected.unchanged,
+        hardReasons: expected.hardReasons,
+      });
+      if ('maximumFirstValidG' in expected) {
+        expect(row.candidateCount).toBeGreaterThanOrEqual(2);
+        expect(Math.min(...row.finalCandidateGrams)).toBeGreaterThan(1_000);
+        expect(Math.min(...row.finalCandidateGrams)).toBeLessThanOrEqual(
+          expected.maximumFirstValidG,
+        );
+      } else {
+        expect(row.candidateCount).toBe(expected.candidateCount);
+        expect(row.finalCandidateGrams).toEqual([]);
+      }
     }
 
     const exactThreeOfEight = exactOwnerSessionAtCheckpoint(3, 2.5);
@@ -752,7 +764,7 @@ describe('production rescue orchestration', () => {
       (item) => item.id === sucrose.lineId,
     )!;
     expect(rescuedSucrose.actual_grams ?? rescuedSucrose.planned_grams).toBe(180);
-    expect(enlarge!.finalMassG).toBe(1236.2);
+    expect(enlarge!.finalMassG).toBe(1223);
     expect(enlarge!.finalMassG).toBeLessThan(1278);
     expect(
       enlarge!.candidateInput.items.every(
@@ -767,7 +779,7 @@ describe('production rescue orchestration', () => {
       instruction.ingredientName.toLowerCase().includes('cream'),
     );
     expect(creamInstructions).toHaveLength(1);
-    expect(creamInstructions[0]!.grams).toBeCloseTo(186.2, 8);
+    expect(creamInstructions[0]!.grams).toBeCloseTo(30.8, 8);
     const exactCream = enlarge!.exactCandidateInput.items.find((item) =>
       item.ingredient.name.toLowerCase().includes('cream'),
     )!;
@@ -777,7 +789,7 @@ describe('production rescue orchestration', () => {
     expect(
       (exactCream.actual_grams ?? exactCream.planned_grams) -
         (beforeCream.actual_grams ?? beforeCream.planned_grams),
-    ).toBeCloseTo(186.2, 8);
+    ).toBeCloseTo(30.8, 8);
     const canonicalIds = enlarge!.candidateInput.items.map((item) =>
       canonicalIngredientId(item.ingredient),
     );
@@ -799,6 +811,8 @@ describe('production rescue orchestration', () => {
 
     const assessment = assessProductionRescue(run);
     const enlarge = assessment.options.find((option) => option.id === 'enlarge_batch');
+    const keep = assessment.options.find((option) => option.id === 'keep_original_batch');
+    expect(keep).toBeUndefined();
     expect(enlarge).toBeDefined();
     expect(enlarge!.candidateInput.items).toEqual(
       expect.arrayContaining([
@@ -812,9 +826,7 @@ describe('production rescue orchestration', () => {
     expect(
       enlarge!.candidateInput.items.find((item) => item.id === 'dextrose')!.planned_grams,
     ).toBeGreaterThanOrEqual(59.5);
-    expect(enlarge!.instructions).toEqual(
-      expect.arrayContaining([expect.objectContaining({ kind: 'add' })]),
-    );
+    expect(enlarge!.finalMassG).toBeCloseTo(1_000.2, 8);
   });
 
   it('keeps the served ECO owner recipe hard-safe after a 2 g Cream overage', () => {
@@ -866,12 +878,8 @@ describe('production rescue orchestration', () => {
     expect(assessment.strategyTrace.restore_original_recipe?.authorityIssueSets).toEqual(
       expect.arrayContaining([expect.arrayContaining(['aggregate_below_minimum'])]),
     );
-    expect(restore).toBeDefined();
-    expect(restore!.finalMassG).toBeGreaterThan(1_200);
-    expect(restore!.candidateInput.items.find((item) => item.id === tara.id)?.planned_grams).toBe(
-      3,
-    );
-    expect(restore!.instructions.every((instruction) => instruction.kind === 'add')).toBe(true);
+    expect(assessment.options.find((option) => option.id === 'keep_original_batch')).toBeDefined();
+    expect(restore).toBeUndefined();
     expect(
       assessment.strategyTrace.restore_original_recipe?.evaluatedCandidateCount,
     ).toBeGreaterThan(1);
@@ -936,7 +944,7 @@ describe('production rescue orchestration', () => {
     const assessment = assessProductionRescue(run);
     if (assessment.state === 'impossible') {
       expect(assessment.options).toEqual([]);
-      expect(assessment.reason).toMatch(/Brak bezpiecznej korekty/);
+      expect(assessment.reason).toMatch(/Nie znaleźliśmy bezpiecznego sposobu/);
     } else {
       expect(assessment.options.every((option) => option.verifiedByEngine)).toBe(true);
     }

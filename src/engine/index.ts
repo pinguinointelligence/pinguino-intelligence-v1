@@ -115,6 +115,8 @@ export {
 } from './statuses';
 
 export { calculateRecipe } from './calculateRecipe';
+export { effectiveMachineCapacityGrams } from './machineCapacity';
+export type { MachineCapacityAuthority } from './machineCapacity';
 export type { TechnicalLinearIngredientFactors } from './technicalLinearFactors';
 export { technicalLinearIngredientFactors } from './technicalLinearFactors';
 
@@ -173,10 +175,7 @@ export type {
   BatchRecoveryResult,
   BatchRecoveryTrace,
 } from './corrections/recovery';
-export {
-  evaluateAdditiveRecoveryNeighborhood,
-  proposeBatchRecovery,
-} from './corrections/recovery';
+export { evaluateAdditiveRecoveryNeighborhood, proposeBatchRecovery } from './corrections/recovery';
 
 /** The assembled default configuration (spec §7–§11, §17) — pure data aggregation. */
 export const DEFAULT_ENGINE_CONFIG: EngineConfig = {

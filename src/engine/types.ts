@@ -277,6 +277,12 @@ export interface RecipeInput {
   /** Always grams internally; liters are converted upstream via density config. */
   target_batch_grams: number;
   machine_capacity_grams: number | null;
+  /**
+   * Authority for a real machine limit. Legacy payloads may contain a numeric
+   * capacity with no provenance; that value is historical context, not a hard
+   * limit. Only an explicit machine selection or manual owner entry may bind.
+   */
+  machine_capacity_source?: 'machine' | 'manual' | null;
   goals?: RecipeGoals;
 }
 
