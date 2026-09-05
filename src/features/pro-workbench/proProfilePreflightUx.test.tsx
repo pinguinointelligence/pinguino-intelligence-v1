@@ -766,7 +766,7 @@ describe('profile hierarchy and compact preflight', () => {
       label: machineDisplayName(home),
       temperatureC: temperature!,
       batchGrams: setup.recommendedBatchGrams,
-      capacityGrams: setup.recommendedBatchGrams,
+      hardCapacityGrams: setup.hardMaximumBatchGrams,
     });
     expect(useRecipeStore.getState().machineKind).toBe('home');
     expect(showsProfessionalServing(useRecipeStore.getState().machineKind)).toBe(false);
@@ -805,6 +805,8 @@ describe('preflight and recipe-specific persistence', () => {
     expect(attached.target_batch_grams).toBe(input.target_batch_grams);
     expect(readRecipeProfileMetadata(attached)).toEqual({
       ...settings(),
+      machineTechnology: null,
+      homeFormulationModuleId: null,
       directionTargets: { ...DEFAULT_DIRECTION_TARGETS, sweetness: -2, softness: 2 },
       directionIntents: { ...DEFAULT_DIRECTION_TARGETS, sweetness: -2, softness: 2 },
       ingredientUxByLineId: { [input.items[0]!.id]: { role: 'addition', required: true } },

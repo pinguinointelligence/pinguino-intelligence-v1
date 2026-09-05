@@ -18,7 +18,11 @@ import {
   buildCustomMachineProfile,
   deriveMachineSetup,
 } from '@/features/machine-catalog';
-import { machineOnboardingCopy as copy, pluralCykle, pluralPojemniki } from './machineOnboardingCopy';
+import {
+  machineOnboardingCopy as copy,
+  pluralCykle,
+  pluralPojemniki,
+} from './machineOnboardingCopy';
 import {
   autoConfigLines,
   buildMachineContextView,
@@ -335,10 +339,10 @@ describe('§7.3 context view — vessel from the catalog record OR the user’s 
     expect(view?.defaultBatchGrams).toBe(470);
   });
 
-  it('a machine without a vessel figure yields name-only (null vessel)', () => {
+  it('a machine with a documented vessel figure surfaces it separately from batch', () => {
     const view = buildMachineContextView(recordFor(KITCHENAID_5KSMICM.id));
     expect(view?.name).toBe('KitchenAid Ice Cream Maker');
-    expect(view?.vesselMl).toBeNull();
+    expect(view?.vesselMl).toBe(1900);
     expect(view?.recommendedBatchGrams).toBe(1330); // carried for batch surfaces only
   });
 

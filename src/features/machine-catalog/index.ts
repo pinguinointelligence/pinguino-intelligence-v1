@@ -6,6 +6,7 @@
  * visible serving mode and carries capacity/UX facts (owner rule / §10.1).
  */
 export * from './types';
+export * from './homeFormulationModule';
 export * from './technologyMode';
 export * from './machineCatalogData';
 export * from './machineOnboarding';

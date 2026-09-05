@@ -143,7 +143,7 @@ function TargetBatchControl({
   grams,
   compact,
   homeMachine,
-  capacity,
+  recommendedBatchGrams,
   cyclePlan,
   resizeConflict,
   onChange,
@@ -151,7 +151,7 @@ function TargetBatchControl({
   grams: number;
   compact: boolean;
   homeMachine: boolean;
-  capacity: number | null;
+  recommendedBatchGrams: number | null;
   cyclePlan: ReturnType<typeof planContainerSplit>;
   resizeConflict: boolean;
   onChange: (grams: number) => void;
@@ -226,7 +226,8 @@ function TargetBatchControl({
       </p>
       {homeMachine ? (
         <span className="sr-only" data-testid="home-machine-capacity">
-          Zalecany wsad na cykl: {capacity === null ? 'brak danych' : `${capacity} g`}
+          Zalecany wsad na cykl:{' '}
+          {recommendedBatchGrams === null ? 'brak danych' : `${recommendedBatchGrams} g`}
         </span>
       ) : null}
       {resizeConflict ? (
@@ -392,8 +393,13 @@ export function WorkbenchSettingsLine({
   const activeServing = snapshot.servingModeId;
   const customSelected = store.machineKind === 'home' && store.machineId?.startsWith('custom-');
   const machineValue = customSelected ? 'custom' : (selectedHome?.id ?? 'professional');
-  const capacity = store.machineKind === 'home' ? store.machine_capacity_grams : null;
-  const cyclePlan = capacity ? planContainerSplit(store.target_batch_grams, capacity) : null;
+  const recommendedBatchGrams =
+    selectedHome === null
+      ? null
+      : deriveMachineSetup(selectedHome, store.visibleProductType).recommendedBatchGrams;
+  const cyclePlan = recommendedBatchGrams
+    ? planContainerSplit(store.target_batch_grams, recommendedBatchGrams)
+    : null;
 
   /* OWNER FINAL DECISION (2026-07-17) — the machine recommendation is a SOFT
      proposal. A recipe batch above it is legitimate and is NEVER capped, but it
@@ -406,19 +412,19 @@ export function WorkbenchSettingsLine({
   const batchChoice: AboveRecommendationChoice =
     aboveChoice !== null &&
     aboveChoice.grams === guidanceGrams &&
-    aboveChoice.recommendedGrams === capacity
+    aboveChoice.recommendedGrams === recommendedBatchGrams
       ? aboveChoice.choice
       : 'undecided';
-  /* `capacity === null` (Professional, or a Home machine with no confirmed
+  /* `recommendedBatchGrams === null` (Professional, or a Home machine with no confirmed
      recommendation) already yields `kind: 'none'` — no second capacity rule. */
   const batchGuidance = deriveBatchGuidance({
-    recommendedGrams: capacity,
+    recommendedGrams: recommendedBatchGrams,
     currentGrams: guidanceGrams,
     choice: batchChoice,
   });
   const batchSplit =
     batchGuidance.kind === 'custom_above' && batchGuidance.split !== null
-      ? containerSplitNotice(batchGuidance.split.totalGrams, capacity)
+      ? containerSplitNotice(batchGuidance.split.totalGrams, recommendedBatchGrams)
       : null;
 
   const pickServing = (id: string, resetToProfessionalDefault = false) => {
@@ -434,7 +440,7 @@ export function WorkbenchSettingsLine({
       label: professionalLabel,
       temperatureC: temp,
       batchGrams: resetToProfessionalDefault ? PROFESSIONAL_DEFAULT_BATCH_GRAMS : null,
-      capacityGrams: null,
+      hardCapacityGrams: null,
       ...(resetToProfessionalDefault ? { batchSource: 'PROFESSIONAL_DEFAULT' as const } : {}),
     });
   };
@@ -450,17 +456,16 @@ export function WorkbenchSettingsLine({
   const selectHome = (profile: HomeMachineProfile) => {
     const setup = deriveMachineSetup(profile, store.visibleProductType);
     if (setup.resolvedVisibleMode === null) return;
-    const temp = temperatureForMode(setup.resolvedVisibleMode);
-    if (temp === null) return;
     store.setMachineSelection({
       kind: 'home',
       servingModeId: setup.resolvedVisibleMode,
       machineId: profile.id,
       label: machineDisplayName(profile),
       machineTechnology: profile.technology,
-      temperatureC: temp,
+      homeFormulationModuleId: profile.homeFormulationModuleId,
+      temperatureC: setup.engineTemperatureC,
       batchGrams: setup.recommendedBatchGrams,
-      capacityGrams: setup.recommendedBatchGrams,
+      hardCapacityGrams: setup.hardMaximumBatchGrams,
       batchSource: 'MACHINE_DEFAULT',
     });
   };
@@ -469,17 +474,16 @@ export function WorkbenchSettingsLine({
     const batchGrams = effectiveDefaultBatchGrams(completion.record);
     const servingModeId = completion.derivation.resolvedVisibleMode;
     if (batchGrams === null || servingModeId === null) return;
-    const temperatureC = temperatureForMode(servingModeId);
-    if (temperatureC === null) return;
     store.setMachineSelection({
       kind: 'home',
       servingModeId,
       machineId: completion.profile.id,
       label: machineDisplayName(completion.profile),
       machineTechnology: completion.profile.technology,
-      temperatureC,
+      homeFormulationModuleId: completion.profile.homeFormulationModuleId,
+      temperatureC: completion.derivation.engineTemperatureC,
       batchGrams,
-      capacityGrams: batchGrams,
+      hardCapacityGrams: completion.derivation.hardMaximumBatchGrams,
       batchSource: 'CUSTOM_MACHINE_BATCH',
     });
     setCustomMachineOpen(false);
@@ -506,16 +510,16 @@ export function WorkbenchSettingsLine({
   };
 
   const chooseAbove = (choice: AboveRecommendationChoice) => {
-    if (guidanceGrams === null || capacity === null) return;
-    setAboveChoice({ grams: guidanceGrams, recommendedGrams: capacity, choice });
+    if (guidanceGrams === null || recommendedBatchGrams === null) return;
+    setAboveChoice({ grams: guidanceGrams, recommendedGrams: recommendedBatchGrams, choice });
   };
   /* Restore goes through the ordinary batch path, so recipe locks answer it the
      same way they answer a typed batch (a refusal surfaces as the existing
      `batchResizeConflict` line — still no block from this guidance). */
   const restoreRecommendedBatch = () => {
-    if (capacity === null) return;
+    if (recommendedBatchGrams === null) return;
     setAboveChoice(null);
-    changeBatch(capacity);
+    changeBatch(recommendedBatchGrams);
   };
 
   /* Collapsed summary — product type · calculation mode · machine, with the
@@ -791,7 +795,7 @@ export function WorkbenchSettingsLine({
             grams={store.target_batch_grams}
             compact={compact}
             homeMachine={!showsProfessionalServing(store.machineKind)}
-            capacity={capacity}
+            recommendedBatchGrams={recommendedBatchGrams}
             cyclePlan={cyclePlan}
             resizeConflict={store.batchResizeConflict !== null}
             onChange={changeBatch}

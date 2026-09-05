@@ -40,7 +40,7 @@ const buildServedCase = (mainGrams: number, options: { starveCarrier?: boolean }
     label: 'Ninja CREAMi Deluxe',
     temperatureC: -11,
     batchGrams: BATCH,
-    capacityGrams: BATCH,
+    hardCapacityGrams: setup.hardMaximumBatchGrams,
     batchSource: 'MACHINE_DEFAULT',
   });
   st().addIngredient(sorbetMapperIngredient(SORBET_MAIN_IDS.strawberry), mainGrams);
@@ -125,9 +125,14 @@ describe('Crown MAX path independence', () => {
     () => {
       const outcomes = STARTING_GRAMS.map((grams) => {
         const { input, snaps, mainLineId } = buildServedCase(grams);
-        const result = maximizeMainFlavourObjective(input, input, { byLineId: {} }, {
-          productBehaviorSnapshots: snaps,
-        });
+        const result = maximizeMainFlavourObjective(
+          input,
+          input,
+          { byLineId: {} },
+          {
+            productBehaviorSnapshots: snaps,
+          },
+        );
         const main = result.input.items.find((item) => item.id === mainLineId)!.planned_grams;
         const proof = result.proof;
         return {
@@ -175,9 +180,14 @@ describe('Crown MAX path independence', () => {
       // 1 → 1, 168 → 168, 214 → 214, 300 → 300, 450 → 450.
       const outcomes = STARTING_GRAMS.map((grams) => {
         const { input, snaps, mainLineId } = buildServedCase(grams, { starveCarrier: true });
-        const result = maximizeMainFlavourObjective(input, input, { byLineId: {} }, {
-          productBehaviorSnapshots: snaps,
-        });
+        const result = maximizeMainFlavourObjective(
+          input,
+          input,
+          { byLineId: {} },
+          {
+            productBehaviorSnapshots: snaps,
+          },
+        );
         const proof = result.proof;
         return {
           startedAt: grams,
@@ -212,9 +222,14 @@ describe('Crown MAX path independence', () => {
     'never inflates the reported frontier to a start above the safety limit',
     () => {
       const { input, snaps } = buildServedCase(450);
-      const proof = maximizeMainFlavourObjective(input, input, { byLineId: {} }, {
-        productBehaviorSnapshots: snaps,
-      }).proof;
+      const proof = maximizeMainFlavourObjective(
+        input,
+        input,
+        { byLineId: {} },
+        {
+          productBehaviorSnapshots: snaps,
+        },
+      ).proof;
       // 450 g is 67.2% — far above the 45% hard limit. The proof must report the
       // derived frontier, never widen itself to cover the incoming grams.
       expect(proof?.searchUpperBoundGrams ?? 0).toBeLessThanOrEqual(Math.ceil(HARD_FRONTIER_G));

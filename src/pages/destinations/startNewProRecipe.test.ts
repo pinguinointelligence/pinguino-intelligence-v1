@@ -432,7 +432,7 @@ describe('visible + Nowa receptura action', () => {
       machineId: 'home-same-temperature',
       label: 'Home −12°C',
       temperatureC: -12,
-      capacityGrams: 500,
+      hardCapacityGrams: 500,
     });
     useRecipeProfileStore.getState().acknowledgeRecalculation();
 
@@ -458,7 +458,7 @@ describe('visible + Nowa receptura action', () => {
       machineId: 'home-edited-same-temperature',
       label: 'Home −12°C',
       temperatureC: -12,
-      capacityGrams: 500,
+      hardCapacityGrams: 500,
     });
     useRecipeProfileStore.getState().acknowledgeRecalculation();
     const line = useRecipeStore.getState().items[0]!;

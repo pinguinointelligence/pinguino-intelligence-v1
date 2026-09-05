@@ -34,6 +34,7 @@ import {
   type ServingModeId,
   type SupportedTemperatureC,
 } from './servingMode';
+import type { HomeFormulationModuleId } from '@/features/machine-catalog/homeFormulationModule';
 
 /** De-duplicate a tag list while preserving first-seen order. */
 const dedupe = (tags: readonly string[]): string[] => {
@@ -63,6 +64,10 @@ export interface CustomerFlowState {
   explicitType: CustomerProductType | null;
   /** The selected serving / machine mode (one of the six), or null. */
   mode: ServingModeId | null;
+  /** Home-machine-only formulation preference. Direct mode choices keep this null. */
+  homeFormulationModuleId: HomeFormulationModuleId | null;
+  /** Home-machine route to the existing −11 °C Engine cell. */
+  homeMachineEngineTemperatureC: SupportedTemperatureC | null;
   /** A batch size the customer set directly, in grams, or null. */
   explicitBatchGrams: number | null;
   /** The chosen recipe path (new vs ready), or null. */
@@ -81,6 +86,8 @@ export function createCustomerFlow(input: CreateCustomerFlowInput = {}): Custome
     addedFlavorTags: [],
     explicitType: null,
     mode: null,
+    homeFormulationModuleId: null,
+    homeMachineEngineTemperatureC: null,
     explicitBatchGrams: null,
     recipePath: null,
   };
@@ -134,9 +141,34 @@ export function selectServingMode(
   state: CustomerFlowState,
   mode: ServingModeId,
 ): CustomerFlowState {
-  if (mode === state.mode) return state;
+  if (
+    mode === state.mode &&
+    state.homeFormulationModuleId === null &&
+    state.homeMachineEngineTemperatureC === null
+  ) {
+    return state;
+  }
   const ninjaInvolved = isNinjaMode(mode) || isNinjaMode(state.mode);
-  return { ...state, mode, ...(ninjaInvolved ? { explicitBatchGrams: null } : {}) };
+  return {
+    ...state,
+    mode,
+    homeFormulationModuleId: null,
+    homeMachineEngineTemperatureC: null,
+    ...(ninjaInvolved ? { explicitBatchGrams: null } : {}),
+  };
+}
+
+/** Attach a saved Home machine after its visible mode has been selected. */
+export function setHomeMachineRoute(
+  state: CustomerFlowState,
+  moduleId: HomeFormulationModuleId,
+  temperatureC: SupportedTemperatureC,
+): CustomerFlowState {
+  return {
+    ...state,
+    homeFormulationModuleId: moduleId,
+    homeMachineEngineTemperatureC: temperatureC,
+  };
 }
 
 export function setBatchGrams(state: CustomerFlowState, grams: number): CustomerFlowState {
@@ -381,7 +413,7 @@ export interface ServingRouteResolution {
 export function resolveServingRoute(state: CustomerFlowState): ServingRouteResolution {
   return {
     mode: servingModeById(state.mode),
-    temperatureC: temperatureForMode(state.mode),
+    temperatureC: state.homeMachineEngineTemperatureC ?? temperatureForMode(state.mode),
   };
 }
 

@@ -102,7 +102,7 @@ const selectHome = (profile: HomeMachineProfile) => {
     label: machineDisplayName(profile),
     temperatureC: profile.resolvedVisibleMode === 'ninja_gelato' ? -13 : -11,
     batchGrams: setup.recommendedBatchGrams,
-    capacityGrams: setup.recommendedBatchGrams,
+    hardCapacityGrams: setup.hardMaximumBatchGrams,
     batchSource: 'MACHINE_DEFAULT',
   });
 };
@@ -116,7 +116,7 @@ const selectProfessional = () =>
     label: 'Maszyna profesjonalna',
     temperatureC: -11,
     batchGrams: PROFESSIONAL_DEFAULT_BATCH_GRAMS,
-    capacityGrams: null,
+    hardCapacityGrams: null,
     batchSource: 'PROFESSIONAL_DEFAULT',
   });
 
@@ -272,7 +272,7 @@ describe('RESTORATION #2 — owner regression matrix', () => {
       label: 'Własna maszyna',
       temperatureC: -11,
       batchGrams: null,
-      capacityGrams: null,
+      hardCapacityGrams: null,
       machineTechnology: 'compressor',
     });
     useRecipeStore.getState().setBatchGrams(700, undefined, 'CUSTOM_MACHINE_BATCH');
@@ -469,7 +469,7 @@ describe('RESTORATION #2 — an applied starter keeps the batch the user asked f
     const state = useRecipeStore.getState();
     expect(state.target_batch_grams).toBe(5000);
     expect(baseSum()).toBeCloseTo(5000, 6);
-    expect(state.machine_capacity_grams).toBe(950); // still the truth about the machine
+    expect(state.machine_capacity_grams).toBeNull(); // volume guidance is not a hard gram ceiling
   });
 
   it('heals an incoherent payload through the shared resize authority, never target-only', () => {

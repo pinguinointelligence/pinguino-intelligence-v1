@@ -8,13 +8,10 @@
  *
  * HARD SCOPE (test-pinned, mirrors the customer-flow layer):
  *  - pure data + pure functions — no IO, no DOM, no clock, no randomness;
- *  - NO engine math and NO recipe modifiers of any kind. A machine profile is
- *    ONLY: routing to an EXISTING visible serving mode + capacity/UX facts
- *    (pre-freeze, serving style, batch suggestion inputs). Owner rule (§10.1):
- *    technology → mode is routing to the existing safe mode; any future
- *    per-technology recipe modifiers must arrive as a SEPARATE versioned,
- *    reversible, feature-flagged config — default neutral. This model has no
- *    modifier fields at all, which is the strongest neutrality guarantee.
+ *  - NO engine math. A machine profile owns routing, capacity/preparation
+ *    facts and one brand-neutral module id. The module is evaluated only by
+ *    the existing solver against existing bands; ingredient-specific rules do
+ *    not belong here.
  *  - volumes are stored in MILLILITRES. The ONLY permitted ml→grams
  *    arithmetic anywhere is the owner's explicit, versioned Home safety-factor
  *    rule (`homeBatchRule.ts`, owner correction 2026-07-17), applied ONLY to a
@@ -22,6 +19,7 @@
  *    a physical bowl volume, and never to a conflicted figure.
  */
 import type { ServingModeId } from '@/features/customer-flow';
+import type { HomeFormulationModuleId } from './homeFormulationModule';
 
 /**
  * Machine technology (§9.2 + §8.3). `respin_soft` is the Ninja Swirl class:
@@ -76,12 +74,7 @@ export type MachineServingStyle = 'scoop' | 'soft' | 'both';
  * deliberately separate future program so normal Sorbet can never be treated
  * as a beverage merely to obtain a larger machine fill.
  */
-export type MachineBatchProductProfile =
-  | 'gelato'
-  | 'sorbet'
-  | 'vegan'
-  | 'protein'
-  | 'frozen_drink';
+export type MachineBatchProductProfile = 'gelato' | 'sorbet' | 'vegan' | 'protein' | 'frozen_drink';
 
 export interface MachineProductWorkingCapacity {
   readonly productProfile: MachineBatchProductProfile;
@@ -100,6 +93,24 @@ export interface MachineProgramCapacity {
   /** Manufacturer-stated capacity for that program, in millilitres. */
   readonly capacityMl: number;
 }
+
+/** Manufacturer-authored fill instruction, stored separately from capacities. */
+export type MachineMaxFillRule =
+  | {
+      readonly kind: 'marked_line';
+      readonly scope: string;
+      readonly exception?: string;
+    }
+  | {
+      readonly kind: 'clearance_from_rim';
+      readonly clearanceMm: number;
+      readonly scope: string;
+    }
+  | {
+      readonly kind: 'fraction_of_vessel';
+      readonly fraction: number;
+      readonly program: string;
+    };
 
 /** Capacity fields that can carry a cross-source conflict (§9.3). */
 export type ConflictableCapacityField =
@@ -146,6 +157,14 @@ export interface MachineCapacity {
   readonly workingCapacityMl: number | null;
   readonly minimumBatchMl: number | null;
   readonly maximumBatchMl: number | null;
+  /**
+   * A true equipment hard ceiling in grams only when the manufacturer states
+   * grams directly or an explicit owner conversion authority exists. Volume
+   * is never treated as equal to mass. Null is the expected honest default.
+   */
+  readonly hardMaximumBatchGrams: number | null;
+  /** Whether the recorded official evidence documents a true hard maximum. */
+  readonly trueHardMaximumDocumented: boolean;
   readonly defaultBatchMl: number | null;
   /**
    * Manufacturer-stated maximum mix quantity in GRAMS, when a manual states
@@ -162,6 +181,8 @@ export interface MachineCapacity {
    * exists on the physical product.
    */
   readonly maxFillDefinedByManufacturer: boolean;
+  /** Exact manufacturer fill instructions; never folded into Engine math. */
+  readonly maxFillRules?: readonly MachineMaxFillRule[];
   /** Number of identical vessels shipped, when sources state it (e.g. 2×473 ml). */
   readonly vesselCount?: number | null;
   /** Per-program manufacturer capacities, kept verbatim (Annex A). */
@@ -213,6 +234,8 @@ export interface HomeMachineProfile {
   /** Market/region token(s) this record applies to, '/'-separated (e.g. 'EU/ES'). */
   readonly market: string;
   readonly technology: MachineTechnology;
+  /** Brand-neutral formulation preference resolved from canonical technology. */
+  readonly homeFormulationModuleId: HomeFormulationModuleId;
   /**
    * The EXISTING visible serving mode this machine routes to (§10). Must agree
    * with `visibleModeForTechnology(technology)`; `continuous_soft_serve` has

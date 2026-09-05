@@ -41,7 +41,10 @@ import {
   withUserDefaultBatch,
   type MachinePreferenceRecord,
 } from './preferenceContracts';
-import { localStorageMachinePreferenceStore, type StorageLike } from './localStorageMachinePreferenceStore';
+import {
+  localStorageMachinePreferenceStore,
+  type StorageLike,
+} from './localStorageMachinePreferenceStore';
 import { deriveBatchGuidance } from './batchGuidance';
 import { MachineProfileSection } from './ui/MachineProfileSection';
 import { MachineAdjustBatchStep } from './ui/MachineAdjustBatchStep';
@@ -118,7 +121,13 @@ describe('owner test 1–2 — Deluxe proposes 670 g in an EDITABLE field', () =
     const view = buildMachineSettingsView(deluxeRecord());
     if (view === null) throw new Error('expected view');
     const html = render(
-      <MachineProfileSection view={view} onSetUp={noop} onChange={noop} onSave={okSave} onGoToRecipe={noop} />,
+      <MachineProfileSection
+        view={view}
+        onSetUp={noop}
+        onChange={noop}
+        onSave={okSave}
+        onGoToRecipe={noop}
+      />,
     );
     expect(html).toContain(`${copy.settings.manufacturerCapacityLabel}`);
     expect(html).toContain('706 ml');
@@ -306,7 +315,13 @@ describe('owner tests 10–11 — above 670 g: warning + choices, never a block'
     const view = buildMachineSettingsView(deluxeRecord());
     if (view === null) throw new Error('expected view');
     const html = render(
-      <MachineProfileSection view={view} onSetUp={noop} onChange={noop} onSave={okSave} onGoToRecipe={noop} />,
+      <MachineProfileSection
+        view={view}
+        onSetUp={noop}
+        onChange={noop}
+        onSave={okSave}
+        onGoToRecipe={noop}
+      />,
     );
     expect(html).not.toContain(copy.batch.aboveWarning);
   });
@@ -322,7 +337,13 @@ describe('owner tests 10–11 — above 670 g: warning + choices, never a block'
     expect(view.userDefaultGrams).toBe(800);
     expect(view.recommendedGrams).toBe(670);
     const html = render(
-      <MachineProfileSection view={view} onSetUp={noop} onChange={noop} onSave={okSave} onGoToRecipe={noop} />,
+      <MachineProfileSection
+        view={view}
+        onSetUp={noop}
+        onChange={noop}
+        onSave={okSave}
+        onGoToRecipe={noop}
+      />,
     );
     expect(html).toContain(copy.batch.aboveWarning);
     expect(html).toContain(copy.batch.splitAction);
@@ -340,7 +361,11 @@ describe('owner tests 10–11 — above 670 g: warning + choices, never a block'
   });
 
   it('„Pozostaw moją ilość” keeps the exact amount and still saves it', async () => {
-    const guidance = deriveBatchGuidance({ recommendedGrams: 670, currentGrams: 800, choice: 'keep_mine' });
+    const guidance = deriveBatchGuidance({
+      recommendedGrams: 670,
+      currentGrams: 800,
+      choice: 'keep_mine',
+    });
     expect(guidance).toMatchObject({ kind: 'custom_above', choice: 'keep_mine', split: null });
     // Saving an above-recommendation amount is accepted, never rejected.
     const saved = withUserDefaultBatch(deluxeRecord(), 800, LATER);
@@ -352,7 +377,11 @@ describe('owner tests 10–11 — above 670 g: warning + choices, never a block'
   });
 
   it('choosing the split proposes an even plan (1340 g @ 670 → 2 × 670)', () => {
-    const guidance = deriveBatchGuidance({ recommendedGrams: 670, currentGrams: 1340, choice: 'split' });
+    const guidance = deriveBatchGuidance({
+      recommendedGrams: 670,
+      currentGrams: 1340,
+      choice: 'split',
+    });
     if (guidance.kind !== 'custom_above') throw new Error('expected custom_above');
     expect(guidance.split).toMatchObject({ containers: 2, gramsPerContainer: 670 });
   });
@@ -367,7 +396,13 @@ describe('owner test 12 — the settings screen always offers the next step', ()
     const view = buildMachineSettingsView(deluxeRecord());
     if (view === null) throw new Error('expected view');
     const html = render(
-      <MachineProfileSection view={view} onSetUp={noop} onChange={noop} onSave={okSave} onGoToRecipe={noop} />,
+      <MachineProfileSection
+        view={view}
+        onSetUp={noop}
+        onChange={noop}
+        onSave={okSave}
+        onGoToRecipe={noop}
+      />,
     );
     expect(html).toContain(copy.settings.goToRecipe);
   });
@@ -425,7 +460,13 @@ describe('owner test 13 — 706 ml is a model parameter, not a personal setting'
     expect(view?.container?.editable).toBe(false);
     if (view === null) throw new Error('expected view');
     const html = render(
-      <MachineProfileSection view={view} onSetUp={noop} onChange={noop} onSave={okSave} onGoToRecipe={noop} />,
+      <MachineProfileSection
+        view={view}
+        onSetUp={noop}
+        onChange={noop}
+        onSave={okSave}
+        onGoToRecipe={noop}
+      />,
     );
     // No input is seeded with the manufacturer capacity…
     expect(html).not.toMatch(/<input[^>]+value="706"/);
@@ -460,9 +501,15 @@ describe('owner test 13 — 706 ml is a model parameter, not a personal setting'
   });
 
   it('rejects a half-declared container instead of completing it with a guess', () => {
-    expect(withCustomContainer(deluxeRecord(), { capacityMl: 0, recommendedBatchGrams: 470 }, LATER)).toBeNull();
-    expect(withCustomContainer(deluxeRecord(), { capacityMl: 500, recommendedBatchGrams: -1 }, LATER)).toBeNull();
-    expect(parseMachinePreferenceRecord({ ...deluxeRecord(), customContainer: { capacityMl: 500 } })).toBeNull();
+    expect(
+      withCustomContainer(deluxeRecord(), { capacityMl: 0, recommendedBatchGrams: 470 }, LATER),
+    ).toBeNull();
+    expect(
+      withCustomContainer(deluxeRecord(), { capacityMl: 500, recommendedBatchGrams: -1 }, LATER),
+    ).toBeNull();
+    expect(
+      parseMachinePreferenceRecord({ ...deluxeRecord(), customContainer: { capacityMl: 500 } }),
+    ).toBeNull();
   });
 });
 
@@ -470,8 +517,8 @@ describe('owner test 13 — 706 ml is a model parameter, not a personal setting'
 /* Record evolution — a saved machine is never silently dropped        */
 /* ------------------------------------------------------------------ */
 
-describe('schema evolution — v1 records upgrade, never re-onboard the user', () => {
-  it('a pre-hotfix v1 record parses as v2 with explicit nulls (no invented values)', () => {
+describe('schema evolution — legacy records upgrade, never re-onboard the user', () => {
+  it('a pre-hotfix v1 record parses as v3 with deterministic module/route and explicit nulls', () => {
     const v2 = deluxeRecord();
     // The exact shape the deployed build wrote before this hotfix.
     const v1 = {
@@ -487,7 +534,9 @@ describe('schema evolution — v1 records upgrade, never re-onboard the user', (
     };
     const parsed = parseMachinePreferenceRecord(v1);
     expect(parsed).not.toBeNull();
-    expect(parsed?.schemaVersion).toBe(2);
+    expect(parsed?.schemaVersion).toBe(3);
+    expect(parsed?.resolvedHomeFormulationModuleId).toBe('FROZEN_PINT');
+    expect(parsed?.engineTemperatureC).toBe(-11);
     expect(parsed?.userDefaultBatchGrams).toBeNull();
     expect(parsed?.customContainer).toBeNull();
     expect(parsed?.updatedAt).toBe(v2.setAt); // no clock invented

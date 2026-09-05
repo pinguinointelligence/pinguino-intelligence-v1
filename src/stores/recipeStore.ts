@@ -107,7 +107,9 @@ import { buildRecipeInput, type RecipeInputState } from '@/features/studio/build
 import { classifyProfileTransition } from '@/features/pro-workbench/profileCompatibility';
 import {
   MACHINE_CATALOG,
+  HOME_ENGINE_TEMPERATURE_C,
   deriveMachineSetup,
+  type HomeFormulationModuleId,
   type MachineTechnology,
 } from '@/features/machine-catalog';
 
@@ -345,6 +347,8 @@ export interface RecipeState {
   machineLabel: string | null;
   /** Custom-machine Production routing; canonical catalog machines can re-resolve by id. */
   machineTechnology: MachineTechnology | null;
+  /** Persisted brand-neutral Home formulation preference; null for Pro/direct routes. */
+  homeFormulationModuleId: HomeFormulationModuleId | null;
   /** Unsaved-changes flag: true after any edit, false after a load or a successful save. */
   dirty: boolean;
   /** Verified whole-gram provenance restored from a saved recipe/version. It
@@ -571,8 +575,12 @@ export interface RecipeState {
     label: string;
     temperatureC: number;
     machineTechnology?: MachineTechnology | null;
+    homeFormulationModuleId?: HomeFormulationModuleId | null;
     batchGrams?: number | null;
-    /** Home machines only: the machine's real usable capacity in grams. */
+    /** Home machines only: documented hard gram ceiling; recommendations never enter here. */
+    hardCapacityGrams?: number | null;
+    /** @deprecated Legacy call-site field. It is intentionally ignored because
+     * historical callers passed the soft recommendation here. */
     capacityGrams?: number | null;
     /** Explicit batch authority when this selection also changes the batch. */
     batchSource?: RecipeBatchSource;
@@ -1009,6 +1017,7 @@ const fromPreset = (preset: DemoPreset) => ({
   machineId: null,
   machineLabel: null,
   machineTechnology: null,
+  homeFormulationModuleId: null,
   dirty: false,
   practicalRecipeAudit: null,
   savedProductionFingerprint: null,
@@ -1158,6 +1167,7 @@ const profileFields = (
   machineId: profile.machineId,
   machineLabel: profile.machineLabel,
   machineTechnology: profile.machineTechnology ?? null,
+  homeFormulationModuleId: profile.homeFormulationModuleId ?? null,
   direction_targets: { ...profile.directionTargets },
   // Owner P1-A: the neutral (0) selection is the CLEAN-MIDDLE INTENT, not the
   // absence of one. Gating activation on "some axis != 0" made Sweetness 0 opt
@@ -1265,6 +1275,7 @@ export function recipePersistPartialize(state: RecipeState) {
     machineId: state.machineId,
     machineLabel: state.machineLabel,
     machineTechnology: state.machineTechnology,
+    homeFormulationModuleId: state.homeFormulationModuleId,
     dirty: state.dirty,
     practicalRecipeAudit: state.practicalRecipeAudit,
     savedProductionFingerprint: state.savedProductionFingerprint,
@@ -1414,8 +1425,8 @@ export const useRecipeStore = create<RecipeState>()(
               resized.items,
               machineDefault,
             ),
-            machine_capacity_grams: machineDefault,
-            machine_capacity_source: 'machine' as const,
+            machine_capacity_grams: state.machine_capacity_grams,
+            machine_capacity_source: state.machine_capacity_source,
             batch_source: 'MACHINE_DEFAULT' as const,
             batchResizeConflict: null,
           };
@@ -1427,7 +1438,13 @@ export const useRecipeStore = create<RecipeState>()(
           // A manual serving-mode choice keeps a professional machine route but clears a Home
           // route (a Home machine's mode is fixed by the machine — owner P0 route integrity).
           ...(state.machineKind === 'home'
-            ? { machineKind: null, machineId: null, machineLabel: null, machineTechnology: null }
+            ? {
+                machineKind: null,
+                machineId: null,
+                machineLabel: null,
+                machineTechnology: null,
+                homeFormulationModuleId: null,
+              }
             : {}),
           productBehaviorSnapshots: requireProductBehaviorRevalidation(
             state.productBehaviorSnapshots,
@@ -1446,6 +1463,7 @@ export const useRecipeStore = create<RecipeState>()(
           machineId: null,
           machineLabel: null,
           machineTechnology: null,
+          homeFormulationModuleId: null,
           // A MACHINE-derived capacity cannot outlive the machine context it
           // came from; an explicit manual entry survives (owner Phase 8).
           machine_capacity_grams:
@@ -1488,7 +1506,6 @@ export const useRecipeStore = create<RecipeState>()(
           reservedMainGrams,
         );
         const batchSource = source ?? manualBatchSourceForState(state);
-        const customBatch = batchSource === 'CUSTOM_MACHINE_BATCH';
         set({
           target_batch_grams,
           items: projected,
@@ -1499,12 +1516,6 @@ export const useRecipeStore = create<RecipeState>()(
           ),
           batch_source: batchSource,
           batchResizeConflict: null,
-          ...(customBatch
-            ? {
-                machine_capacity_grams: target_batch_grams,
-                machine_capacity_source: 'machine' as const,
-              }
-            : {}),
           dirty: true,
           draftRevision: state.draftRevision + 1,
         });
@@ -2734,6 +2745,7 @@ export const useRecipeStore = create<RecipeState>()(
                 machineId: null,
                 machineLabel: null,
                 machineTechnology: null,
+                homeFormulationModuleId: null,
               }),
           formulation_strategy: normalizeFormulationStrategy(
             // Account defaults may configure machine/batch/profile context,
@@ -2933,6 +2945,7 @@ export const useRecipeStore = create<RecipeState>()(
           machineId: defaults?.machineId ?? null,
           machineLabel: defaults?.machineLabel ?? null,
           machineTechnology: defaults?.machineTechnology ?? null,
+          homeFormulationModuleId: defaults?.homeFormulationModuleId ?? null,
           dirty: false,
           draftRevision: state.draftRevision + 1,
           draftContextSeq: state.draftContextSeq + 1,
@@ -3021,6 +3034,7 @@ export const useRecipeStore = create<RecipeState>()(
                   machineId: state.machineId,
                   machineLabel: state.machineLabel,
                   machineTechnology: state.machineTechnology,
+                  homeFormulationModuleId: state.homeFormulationModuleId,
                   machine_capacity_grams: state.machine_capacity_grams,
                   machine_capacity_source: state.machine_capacity_source,
                   batch_source: state.batch_source,
@@ -3032,6 +3046,7 @@ export const useRecipeStore = create<RecipeState>()(
                   machineId: null,
                   machineLabel: null,
                   machineTechnology: null,
+                  homeFormulationModuleId: null,
                   machine_capacity_grams: null,
                   machine_capacity_source: null,
                   batch_source:
@@ -3131,8 +3146,15 @@ export const useRecipeStore = create<RecipeState>()(
                 MACHINE_CATALOG.find((profile) => profile.id === sel.machineId)?.technology ??
                 null)
               : null,
+          homeFormulationModuleId:
+            sel.kind === 'home'
+              ? (sel.homeFormulationModuleId ??
+                MACHINE_CATALOG.find((profile) => profile.id === sel.machineId)
+                  ?.homeFormulationModuleId ??
+                null)
+              : null,
           // Route to the existing supported cell — no Engine change, just the temperature input.
-          target_temperature_c: sel.temperatureC,
+          target_temperature_c: sel.kind === 'home' ? HOME_ENGINE_TEMPERATURE_C : sel.temperatureC,
           target_batch_grams: targetBatchGrams,
           items: projectedItems,
           starterReservedMainGrams: nextStarterReservation(
@@ -3142,9 +3164,9 @@ export const useRecipeStore = create<RecipeState>()(
           ),
           batch_source: batchSource,
           batchResizeConflict: null,
-          machine_capacity_grams: sel.kind === 'home' ? (sel.capacityGrams ?? null) : null,
+          machine_capacity_grams: sel.kind === 'home' ? (sel.hardCapacityGrams ?? null) : null,
           machine_capacity_source:
-            sel.kind === 'home' && sel.capacityGrams != null ? 'machine' : null,
+            sel.kind === 'home' && sel.hardCapacityGrams != null ? 'machine' : null,
           productBehaviorSnapshots: requireProductBehaviorRevalidation(
             current.productBehaviorSnapshots,
           ),
