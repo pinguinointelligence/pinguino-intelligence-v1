@@ -1,0 +1,98 @@
+{
+  "hacendado": {
+    "trackId": "t1",
+    "kind": "barcode",
+    "state": "COMPLETE",
+    "barcode": {
+      "format": "EAN-13",
+      "value": "8402001047251",
+      "rawValue": "8402001047251",
+      "verified": true,
+      "agreeingFrames": 2,
+      "lane": "fast",
+      "sources": ["native"],
+      "moduleNative": 2.2736842105263158,
+      "fill": 0.2,
+      "lineCounts": [5, 5]
+    },
+    "bestFrames": [0],
+    "timing": {
+      "firstSeenAt": 0,
+      "completedAt": 198,
+      "framesObserved": 7
+    },
+    "reasons": []
+  },
+  "laciate": {
+    "trackId": "t1",
+    "kind": "barcode",
+    "state": "COMPLETE",
+    "barcode": {
+      "format": "EAN-13",
+      "value": "5900820012434",
+      "rawValue": "5900820012434",
+      "verified": true,
+      "agreeingFrames": 2,
+      "lane": "fast",
+      "sources": ["native"],
+      "moduleNative": 2.2736842105263158,
+      "fill": 0.2,
+      "lineCounts": [5, 5]
+    },
+    "bestFrames": [0],
+    "timing": {
+      "firstSeenAt": 0,
+      "completedAt": 198,
+      "framesObserved": 7
+    },
+    "reasons": []
+  },
+  "alsaceLait": {
+    "trackId": "t1",
+    "kind": "barcode",
+    "state": "COMPLETE",
+    "barcode": {
+      "format": "EAN-13",
+      "value": "3262970109108",
+      "rawValue": "3262970109108",
+      "verified": true,
+      "agreeingFrames": 2,
+      "lane": "fast",
+      "sources": ["native"],
+      "moduleNative": 2.2736842105263158,
+      "fill": 0.2,
+      "lineCounts": [5, 5]
+    },
+    "bestFrames": [0],
+    "timing": {
+      "firstSeenAt": 0,
+      "completedAt": 198,
+      "framesObserved": 7
+    },
+    "reasons": []
+  },
+  "upca": {
+    "trackId": "t1",
+    "kind": "barcode",
+    "state": "COMPLETE",
+    "barcode": {
+      "format": "UPC-A",
+      "value": "036000291452",
+      "rawValue": "036000291452",
+      "verified": true,
+      "agreeingFrames": 2,
+      "lane": "fast",
+      "sources": ["native"],
+      "moduleNative": 2.2736842105263158,
+      "fill": 0.2,
+      "lineCounts": [5, 5]
+    },
+    "bestFrames": [0],
+    "timing": {
+      "firstSeenAt": 0,
+      "completedAt": 198,
+      "framesObserved": 7
+    },
+    "reasons": []
+  }
+}
