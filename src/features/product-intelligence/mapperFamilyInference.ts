@@ -102,7 +102,7 @@ const FAMILY_RULES: readonly FamilyRule[] = [
     family: 'nut_paste',
     technical: false,
     pattern:
-      /\b(hazelnut|almond|pistachio|cashew|walnut|peanut|macadamia|pecan)\b[^,;]{0,16}\b(paste|butter|praline|pasta)\b|\bpasta\s*(?:z\s+)?(orzechow|migdalow|pistacjow)/i,
+      /\b(hazelnut|almond|pistachio|cashew|walnut|peanut|macadamia|pecan)\b[^,;]{0,16}\b(paste|butter|praline|pasta)\b|\b(pasta|krem|maslo)\s*(?:z\s+)?(orzech\w*|migdal\w*|pistacj\w*|nerkowc\w*|arachidow\w*)/i,
     categories: ['nut', 'flavor_paste'],
   },
   {
@@ -115,7 +115,8 @@ const FAMILY_RULES: readonly FamilyRule[] = [
   {
     family: 'sugar_sucrose',
     technical: false,
-    pattern: /\b(sucrose|saccharose|table\s*sugar|cukier\s*(bialy|krysztal)|sacharoz)\b/i,
+    pattern:
+      /\b(sucrose|saccharose|table\s*sugar|cukier\s*(bialy|krysztal|wanilin\w*|puder|trzcinow\w*|brazow\w*)|vanilla\s*sugar|vanill(?:e|in)zucker|icing\s*sugar|powdered\s*sugar|cane\s*sugar|brown\s*sugar|sacharoz)\b/i,
     categories: ['sweetener'],
   },
   {
@@ -168,7 +169,8 @@ const FAMILY_RULES: readonly FamilyRule[] = [
   {
     family: 'dairy_liquid',
     technical: false,
-    pattern: /\b(milk|cream|smietan|smietan|mleko)\b/i,
+    pattern:
+      /\b(milk|cream|smietan|smietank[aie]|mleko|jogurt\w*|yog(?:h)?urt\w*|joghurt|kefir|skyr|maslank\w*|buttermilk|twarog\w*|quark|serek\w*|cheese|kase|mascarpone|ricotta)\b/i,
     categories: ['dairy'],
   },
   {

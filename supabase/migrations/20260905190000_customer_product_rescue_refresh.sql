@@ -42,10 +42,6 @@ begin
 
     -- Same exact commercial identity, newer immutable technical truth. This is
     -- a version supersession on the existing provisional UUID, not a new item.
-    -- rescue-refresh: canonical ingest context — the create branch sets it; the
-    -- canonical write guards on products/product_versions require it here too.
-    perform set_config('app.canonical_product_ingest','v1',true);
-    perform set_config('app.product_article_origin','CUSTOMER_ADDED',true);
     v_name:=coalesce(nullif(trim(v_identity->>'displayName'),''),
       nullif(trim(v_identity->>'originalName'),''));
     v_brand:=nullif(trim(v_identity->>'brand'),'');

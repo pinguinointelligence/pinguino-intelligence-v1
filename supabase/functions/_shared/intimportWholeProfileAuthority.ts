@@ -13,6 +13,7 @@ import {
   type ProductEvidenceInput,
   type ProductEvidenceField,
   type EvidenceSource,
+  declarationConfidenceOf,
 } from '../../../src/features/product-intelligence/productEvidenceConfidence.ts';
 import {
   resolveProductWorkingValues,
@@ -120,6 +121,13 @@ export interface IntimportTrustedProductProfile {
   mapperRejectedCandidates: { ingredientId: string; reasonCodes: string[] }[];
   /** Mapper categories the broad semantic probe suggested when Recognition named none (audit). */
   mapperSemanticHintCategories?: string[];
+  /** Where the ProductBehavior reference row came from: the verified numeric donor, or
+   * (no donor) the closest Mapper row of the same recognised kind — behaviour only. */
+  mapperBehaviorReferenceBasis?: 'verified_numeric_donor' | 'semantic_kind_reference' | null;
+  /** The manufacturer's declared nutrition basis, kept beside the normalised values. */
+  declaredNutritionBasis?: 'per_100g' | 'per_100ml' | null;
+  /** 1 ml = 1 g (owner-frozen) when the label declared per 100 ml; otherwise source per 100 g. */
+  normalizationBasis?: 'SOURCE_PER_100G' | 'GELLATTI_1ML_1G_NORMALIZATION' | null;
   /** The VERIFIED-donor match on its own (audit): what the numeric authority saw and decided. */
   mapperVerifiedMatch?: {
     confidence: number;
@@ -170,6 +178,8 @@ export interface IntimportProductProfileProposalInput {
    * browser-supplied final profile has no authority at this boundary. */
   proposedTechnicalComposition?: Record<string, unknown>;
   rows: readonly IntimportMapperAuthorityRow[];
+  declaredNutritionBasis?: 'per_100g' | 'per_100ml' | null;
+  normalizationBasis?: 'SOURCE_PER_100G' | 'GELLATTI_1ML_1G_NORMALIZATION' | null;
 }
 
 const TECHNICAL_KEYS: Readonly<Record<WorkingNumericField, string>> = Object.freeze({
@@ -297,7 +307,10 @@ export function validateIntimportProductProfileProposal(
       {
         declared: input.declared,
         declaredBasis: input.declaredBasis,
-        declaredConfidence: evidenceAssessment.confidence / 100,
+        // the declaration's own source tier; the aggregate evidence score (metadata
+        // included) keeps routing enrichment but never decides physics readiness
+        declaredConfidence:
+          declarationConfidenceOf(input.evidence) ?? evidenceAssessment.confidence / 100,
         sourceCard: input.sourceCard ?? null,
         identity: {
           name: input.matchInput.name,
@@ -367,7 +380,37 @@ export function validateIntimportProductProfileProposal(
     toppingBehaviorMatch.basis !== 'none'
       ? toppingBehaviorMatch
       : null;
-  const referenceMatch = acceptedMatch ?? acceptedBehaviorMatch;
+  // No numeric donor at all: the product's KIND is still established and the Mapper
+  // holds rows of that kind. Behaviour (family/form/module permissions) is borrowed
+  // from the closest row of the same kind — matched without the macro filter, so a
+  // sweetened yoghurt still binds to a yoghurt. BASE roles may only borrow from a
+  // verified, Engine-approved row; toppings from any active one. Its numbers never
+  // enter fieldTruth; the basis is recorded on the profile.
+  const baseRoleRequested = recognition?.intendedUsageRole !== 'TOPPING_ONLY';
+  const kindReferenceMatch =
+    !acceptedMatch &&
+    !acceptedBehaviorMatch &&
+    recognition &&
+    recognition.ingredientFamily !== 'unknown'
+      ? findProfileMatch(
+          { ...input.matchInput, knownMacros: undefined, semantic: recognition },
+          baseRoleRequested ? knowledge : broadKnowledge,
+        )
+      : null;
+  const acceptedKindReference =
+    kindReferenceMatch &&
+    kindReferenceMatch.confidence >= PROFILE_MATCH_FLOOR &&
+    kindReferenceMatch.rejected === null &&
+    kindReferenceMatch.basis !== 'none'
+      ? kindReferenceMatch
+      : null;
+  const referenceMatch = acceptedMatch ?? acceptedBehaviorMatch ?? acceptedKindReference;
+  const mapperBehaviorReferenceBasis: IntimportTrustedProductProfile['mapperBehaviorReferenceBasis'] =
+    acceptedMatch
+      ? 'verified_numeric_donor'
+      : acceptedBehaviorMatch || acceptedKindReference
+        ? 'semantic_kind_reference'
+        : null;
   const acceptedProfileReference = referenceMatch ? profileDonor(referenceMatch) : null;
 
   const technicalComposition: Record<string, number> = {};
@@ -457,6 +500,9 @@ export function validateIntimportProductProfileProposal(
       reasonCodes: [...candidate.reasonCodes],
     })),
     mapperSemanticHintCategories: [...mapperSemanticHintCategories],
+    mapperBehaviorReferenceBasis,
+    declaredNutritionBasis: input.declaredNutritionBasis ?? null,
+    normalizationBasis: input.normalizationBasis ?? null,
     mapperVerifiedMatch: resolved.profileMatch
       ? {
           confidence: resolved.profileMatch.confidence,

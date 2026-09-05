@@ -30,7 +30,7 @@ import {
 import fixtures from '@/scan-import-v2/__fixtures__/scanCoreObservations.json';
 
 const LAB_ENABLED = import.meta.env.DEV || import.meta.env.VITE_SCAN_IMPORT_LAB === '1';
-/** the dedicated exact-identity RPC exists only once migration 20260905090000 is deployed; until then the interim search authority */
+/** the dedicated exact-identity RPC exists only once migration 20260905063617 is deployed; until then the interim search authority */
 const EXACT_AUTHORITY =
   import.meta.env.VITE_SCAN_IMPORT_GTIN_RPC === '1' ? 'gtin_rpc' : 'search_rpc';
 const FIXTURES = fixtures as Record<string, ScanCoreObservationLike>;

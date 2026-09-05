@@ -13,7 +13,7 @@ const relationRlsMigration = read(
 const finalize = read('supabase/functions/product-scan-finalize/index.ts');
 const analyze = read('supabase/functions/product-scan-analyze/index.ts');
 const rescueRefreshMigration = read(
-  'supabase/migrations/20260905183000_customer_product_rescue_refresh.sql',
+  'supabase/migrations/20260905190000_customer_product_rescue_refresh.sql',
 );
 const service = read('src/services/productScanner.ts');
 const ui = read('src/features/product-scanner/LiveProductScanner.tsx');

@@ -8,139 +8,20 @@
  * The model step is not available offline; the replay records the deterministic + customer-family
  * classification, which is what staging persisted for both owner products.
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import type { IntimportMapperAuthorityRow } from '../../../supabase/functions/_shared/intimportWholeProfileAuthority.ts';
-import { validateIntimportProductProfileProposal } from '../../../supabase/functions/_shared/intimportWholeProfileAuthority.ts';
-import { customerProductProfileProposal } from '../../../supabase/functions/_shared/customerProductProfile.ts';
-import { productSemanticEvidenceFromScanResult } from '../../../supabase/functions/_shared/productScanner.ts';
 import {
-  applyCustomerProductFamily,
-  resolveCustomerProductFamily,
-  type CustomerProductFamilyChoice,
-} from '../product-scanner/customerProductFamily';
-import type { ProductEvidenceField } from './productEvidenceConfidence';
-import { classifyProductSemantics } from './productRecognition';
-import { loadMapperKnowledgeRows } from './__dryrun__/mapperFixture';
+  loadReplayRows,
+  replayFixture,
+  type ReplayFixture as Fixture,
+} from './__dryrun__/scanRescueHarness';
 import { CORPUS } from './__fixtures__/scanRescue/corpus';
 import milka from './__fixtures__/scanRescue/milkaBrownie.json';
 import vitaminWell from './__fixtures__/scanRescue/vitaminWell.json';
 
-/** Real Mapper rows: the repo's immutable CSV (2089 rows) by default, or a live dump via env. */
-const MAPPER = process.env['SCAN_RESCUE_REPLAY_MAPPER'];
 const TAG = process.env['SCAN_RESCUE_REPLAY_TAG'] ?? 'replay';
-function loadRows(): IntimportMapperAuthorityRow[] {
-  if (MAPPER && existsSync(MAPPER))
-    return JSON.parse(readFileSync(MAPPER, 'utf8')) as IntimportMapperAuthorityRow[];
-  return loadMapperKnowledgeRows().rows.map((row) => ({
-    ...row,
-    approved_for_base: row.approved_for_base === true,
-    approved_for_engines: row.approved_for_engines === true,
-    verification_status: row.verification_status ?? '',
-  })) as IntimportMapperAuthorityRow[];
-}
-
-interface Fixture {
-  label: string;
-  gtin: string;
-  customerFamily: CustomerProductFamilyChoice;
-  confirmedFields: ProductEvidenceField[];
-  scanResult: Record<string, unknown>;
-}
-
-export function replayFixture(fixture: Fixture, rows: readonly IntimportMapperAuthorityRow[]) {
-  const evidence = productSemanticEvidenceFromScanResult(fixture.scanResult);
-  const deterministic = classifyProductSemantics(evidence);
-  let recognition = deterministic;
-  let familyResolution = resolveCustomerProductFamily(recognition);
-  if (familyResolution.status !== 'RESOLVED') {
-    recognition = applyCustomerProductFamily(recognition, fixture.customerFamily);
-    familyResolution = resolveCustomerProductFamily(recognition);
-  }
-  const proposal = customerProductProfileProposal({
-    scanResult: fixture.scanResult,
-    recognitionEvidence: evidence,
-    recognition,
-    userConfirmedFields: fixture.confirmedFields,
-  });
-  if (!proposal) throw new Error('proposal rejected');
-  const profile = validateIntimportProductProfileProposal({
-    origin: 'CUSTOMER_ADDED',
-    proposedMapperIngredientId: null,
-    matchInput: proposal.matchInput,
-    declared: proposal.declared,
-    declaredBasis: proposal.declaredBasis,
-    evidence: proposal.evidence,
-    recognitionEvidence: proposal.recognitionEvidence,
-    trustedRecognition: proposal.trustedRecognition,
-    rows,
-  });
-  if (!profile) throw new Error('profile rejected');
-  const truth = Object.fromEntries(
-    Object.entries(profile.fieldTruth).map(([field, t]) => [
-      field,
-      {
-        value: t!.value,
-        state: t!.state,
-        basis: t!.basis,
-        confidence: t!.confidence,
-        refs: t!.mapperReferences,
-      },
-    ]),
-  );
-  return {
-    label: fixture.label,
-    gtin: fixture.gtin,
-    recognition: {
-      deterministic: {
-        archetype: deterministic.productArchetype,
-        family: deterministic.ingredientFamily,
-        form: deterministic.physicalForm,
-        role: deterministic.intendedUsageRole,
-        modelRequired: deterministic.modelRequired,
-        modelReasonCodes: deterministic.modelReasonCodes,
-        compatibleMapperCategories: deterministic.compatibleMapperCategories,
-      },
-      final: {
-        source: recognition.classificationSource,
-        archetype: recognition.productArchetype,
-        family: recognition.ingredientFamily,
-        form: recognition.physicalForm,
-        role: recognition.intendedUsageRole,
-        modelRequired: recognition.modelRequired,
-        modelReasonCodes: recognition.modelReasonCodes,
-        compatibleMapperCategories: recognition.compatibleMapperCategories,
-        familyResolution: familyResolution.status,
-      },
-    },
-    mapper: {
-      candidatesBeforeFilter: profile.mapperCandidatesBeforeFilter,
-      candidatesAfterFilter: profile.mapperCandidatesAfterFilter,
-      rejected: profile.mapperRejectedCandidates,
-      donor: profile.profileReferenceMapperIngredientId,
-      similarity: profile.mapperSimilarity,
-      basis: profile.mapperProfileBasis,
-      estimatedFromMapperIds: profile.estimatedFromMapperIds,
-      hintCategories: profile.mapperSemanticHintCategories ?? [],
-      verified: profile.mapperVerifiedMatch ?? null,
-    },
-    fieldTruth: truth,
-    missingEngineFields: profile.missingEngineFields,
-    criticalPhysicsBlockers: profile.criticalPhysicsBlockers,
-    sweetnessPath: {
-      kind: profile.sweetnessPath.kind,
-      resolved: profile.sweetnessPath.resolved,
-      reason: profile.sweetnessPath.reason,
-    },
-    readiness: profile.readiness,
-    engineUsable: profile.engineUsable,
-    productAccuracy: profile.productAccuracy,
-    roleReadiness: profile.productAccuracyAssessment.roleReadiness,
-    ready: profile.productAccuracyAssessment.gellattiReadiness.ready,
-    blockers: profile.productAccuracyAssessment.criticalBlockers,
-  };
-}
+const loadRows = loadReplayRows;
 
 interface Expectation {
   family: string;

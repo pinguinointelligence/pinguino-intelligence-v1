@@ -823,6 +823,97 @@ export function residualSolidsEstimate(
 /** How much the cohort's unnamed dry matter may vary and still be usable. */
 export const MAX_RESIDUAL_SPREAD = 2.5;
 
+/**
+ * RESIDUAL POLICY — Mapper-calibrated (owner direction 2026-09-05, §5).
+ *
+ * The former bands (0–0.8 for liquids, 0.3–3 for everything else) were physical
+ * guesses keyed on FORM alone. The verified Mapper rows say something else: in
+ * 94.9 % of the 1 686 verified rows publishing their major macros, total solids
+ * equal the named macros (fat + protein + carbohydrate + fibre + salt) — an unnamed
+ * residual of exactly zero is the Mapper's own labelling convention for consumer
+ * food (dairy, fruit, beverage, sweetener, nut, alcohol: p90 = 0.00). Classes that
+ * hide minerals or unlisted carriers (cocoa, stabilizers, base mixes, starch,
+ * cereals, spices) carry wide, class-specific residuals (p90 7–21).
+ *
+ * The band therefore comes from the verified rows of the KIND's Mapper categories
+ * (p10..p90, point = median), falling back to all verified rows only when the kind
+ * has no calibrated cohort. Its version is recorded on every field it produces.
+ */
+export const RESIDUAL_POLICY_VERSION = 'MAPPER_CALIBRATED_RESIDUAL_V2';
+/** Fewer verified rows than this and a category cannot calibrate its own band. */
+export const RESIDUAL_POLICY_MIN_ROWS = 8;
+
+export interface MapperResidualBand {
+  policy: typeof RESIDUAL_POLICY_VERSION;
+  scope: 'category' | 'global';
+  categories: string[];
+  rows: number;
+  /** Unnamed residual (solids − named macros) in percentage points. */
+  low: number;
+  point: number;
+  high: number;
+}
+
+const rowResidual = (row: MapperKnowledgeRow): number | null => {
+  const solids =
+    numeric(row.total_solids_percent) ??
+    (numeric(row.water_percent) !== null ? 100 - (row.water_percent as number) : null);
+  if (solids === null) return null;
+  if (
+    numeric(row.fat_percent) === null ||
+    numeric(row.protein_percent) === null ||
+    numeric(row.carbohydrate_percent) === null
+  )
+    return null;
+  const named = NAMED_SOLID_FIELDS.reduce((total, field) => total + (numeric(row[field]) ?? 0), 0);
+  const residual = solids - named;
+  // rounding noise below zero is zero; a residual beyond 25 points is a broken row, not a class trait
+  if (residual < -0.5 || residual > 25) return null;
+  return Math.max(0, residual);
+};
+
+const verifiedRow = (row: MapperKnowledgeRow): boolean => {
+  if (row.is_active === false) return false;
+  const status = (row as { verification_status?: string | null }).verification_status;
+  return typeof status === 'string' ? status.trim().toLowerCase().startsWith('verified') : true;
+};
+
+/** The residual band the verified Mapper rows of these categories actually show. */
+export function mapperResidualBand(
+  knowledge: MapperKnowledge,
+  categories: readonly string[],
+): MapperResidualBand | null {
+  const wanted = categories
+    .map((entry) => normalizeName(entry).replace(/\s+/g, '_'))
+    .filter((entry) => entry.length > 0);
+  const inCategory = (row: MapperKnowledgeRow): boolean => {
+    const category = normalizeName(row.ingredient_category).replace(/\s+/g, '_');
+    return wanted.some((allowed) => category === allowed || category.startsWith(`${allowed}_`));
+  };
+  const verified = knowledge.rows.filter(verifiedRow);
+  const pick = (rows: readonly MapperKnowledgeRow[]) =>
+    rows
+      .map(rowResidual)
+      .filter((value): value is number => value !== null)
+      .sort((a, b) => a - b);
+  let residuals = wanted.length > 0 ? pick(verified.filter(inCategory)) : [];
+  let scope: MapperResidualBand['scope'] = 'category';
+  if (residuals.length < RESIDUAL_POLICY_MIN_ROWS) {
+    residuals = pick(verified);
+    scope = 'global';
+  }
+  if (residuals.length < RESIDUAL_POLICY_MIN_ROWS) return null;
+  return {
+    policy: RESIDUAL_POLICY_VERSION,
+    scope,
+    categories: wanted,
+    rows: residuals.length,
+    low: round4(quantile(residuals, 0.1)),
+    point: round4(median(residuals)),
+    high: round4(quantile(residuals, 0.9)),
+  };
+}
+
 /** Run the consensus over one cohort and claim whatever it can stand behind. */
 function applyCohort(
   claim: (field: WorkingNumericField, truth: FieldTruth) => boolean,
@@ -1444,30 +1535,11 @@ export function findProfileMatch(
           candidatesBeforeFilter.push(row.ingredient_id);
         }
         const rowFamily = familyOf(row);
-
-        // HARD CONTRADICTIONS ONLY. Family is one signal among several, not a
-        // passport: an unknown family lowers what a candidate can score, but it
-        // never bars a match that other evidence carries. What IS barred is a
-        // known kind meeting an incompatible one — a yoghurt cannot take a soft
-        // drink's profile however close their macros read.
-        if (!familiesCompatible(productFamily, rowFamily)) {
-          reject(row, ['SEMANTIC_FAMILY_CONTRADICTION']);
-          return null;
-        }
-        if (!categoryAllowed(productFamily, row)) {
-          reject(row, ['SEMANTIC_CATEGORY_CONTRADICTION']);
-          return null;
-        }
         const semantic = semanticDecisionFor(input.semantic, row);
         if (!semantic.compatible) {
           reject(row, semantic.reasonCodes);
           return null;
         }
-
-        const completeness = profileCompleteness(row);
-        if (completeness === 0) return null;
-        const similarity = macroSimilarity(row, input.knownMacros);
-
         // How much the kind of thing is actually established on both sides. The
         // Mapper-family inference knows only Engine ingredient families; when
         // Product Recognition established the SAME kind on both sides (for example
@@ -1479,6 +1551,27 @@ export function findProfileMatch(
           input.semantic.ingredientFamily !== 'unknown' &&
           'candidate' in semantic &&
           semantic.candidate.ingredientFamily !== 'unknown';
+
+        // HARD CONTRADICTIONS ONLY. Family is one signal among several, not a
+        // passport: an unknown family lowers what a candidate can score, but it
+        // never bars a match that other evidence carries. What IS barred is a
+        // known kind meeting an incompatible one — a yoghurt cannot take a soft
+        // drink's profile however close their macros read. When Recognition has
+        // already established the SAME kind on both sides (a granola and a cereal
+        // inclusion), a family the NAME hinted at ("high-protein" → protein) is the
+        // weaker signal and does not veto.
+        if (!semanticFamilyAgreement && !familiesCompatible(productFamily, rowFamily)) {
+          reject(row, ['SEMANTIC_FAMILY_CONTRADICTION']);
+          return null;
+        }
+        if (!semanticFamilyAgreement && !categoryAllowed(productFamily, row)) {
+          reject(row, ['SEMANTIC_CATEGORY_CONTRADICTION']);
+          return null;
+        }
+
+        const completeness = profileCompleteness(row);
+        if (completeness === 0) return null;
+        const similarity = macroSimilarity(row, input.knownMacros);
         // Engine-family agreement (both Mapper families known) is the strongest
         // kind evidence (1). Recognition-level kind agreement is coarser — an
         // "inclusion" spans cookies, bars, candied fruit and gummies — so it

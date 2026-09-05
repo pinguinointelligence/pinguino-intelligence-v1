@@ -166,6 +166,38 @@ const sourceCredit = (source: EvidenceSource): number => {
   }
 };
 
+/**
+ * Confidence a NUTRITION DECLARATION earns from where it was read — the label, the
+ * customer's confirmation, a manufacturer card, a registry, a web page. This is
+ * deliberately not the whole-product evidence score: missing manufacturer, country
+ * or package metadata says nothing about whether "fat 3.5 g" is true (owner
+ * direction 2026-09-05 §7: metadata never decides readiness). Used as the declared
+ * working-value confidence; the aggregate score keeps routing enrichment.
+ */
+export function declarationConfidenceOf(input: ProductEvidenceInput): number | null {
+  const nutritionFields: ProductEvidenceField[] = [
+    'fat',
+    'protein',
+    'carbohydrate',
+    'sugars',
+    'salt',
+    'fiber',
+    'energyKcal',
+  ];
+  const credits = nutritionFields
+    .map((field) => input.fields[field])
+    .filter((source): source is EvidenceSource => source !== null && source !== undefined)
+    .map(sourceCredit);
+  if (credits.length === 0) return null;
+  const weakest = Math.min(...credits);
+  // source credit → declared confidence: a read label still carries transcription risk
+  if (weakest >= 1) return 0.95;
+  if (weakest >= 0.95) return 0.92;
+  if (weakest >= 0.9) return 0.9;
+  if (weakest >= 0.6) return 0.75;
+  return 0.6;
+}
+
 export interface ProductConfidenceAssessment {
   /** 0–100, deterministic. */
   confidence: number;
@@ -182,9 +214,7 @@ const round2 = (value: number): number => Math.round(value * 100) / 100;
  * Score one product's evidence. Pure, deterministic and side-effect free:
  * same input → same number, always.
  */
-export function assessProductConfidence(
-  input: ProductEvidenceInput,
-): ProductConfidenceAssessment {
+export function assessProductConfidence(input: ProductEvidenceInput): ProductConfidenceAssessment {
   const technical = input.kind === 'technical';
   const weights = technical ? TECHNICAL_WEIGHTS : NORMAL_WEIGHTS;
   const critical = technical ? TECHNICAL_CRITICAL : NORMAL_CRITICAL;
@@ -216,7 +246,12 @@ export function assessProductConfidence(
   if (input.validatedBarcode) reasons.push('poprawny kod EAN/GTIN');
   if (input.fields.brand) reasons.push('marka rozpoznana');
   if (input.fields.ingredients) reasons.push('skład kompletny');
-  if (input.fields.energyKcal && input.fields.fat && input.fields.carbohydrate && input.fields.protein) {
+  if (
+    input.fields.energyKcal &&
+    input.fields.fat &&
+    input.fields.carbohydrate &&
+    input.fields.protein
+  ) {
     reasons.push('wartości odżywcze kompletne');
   }
   if (input.mapperFamilyMatch) reasons.push('dopasowanie do rodziny produktów z Mappera');

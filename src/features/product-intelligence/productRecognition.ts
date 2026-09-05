@@ -14,8 +14,7 @@ import { foldLatin, inferMapperFamily, type ProductFamilyId } from './mapperFami
 
 export const PRODUCT_RECOGNITION_VERSION = 'PRODUCT_RECOGNITION_V2' as const;
 /** Bumps the exact-evidence cache without changing the persisted V2 authority contract. */
-export const PRODUCT_RECOGNITION_CACHE_REVISION =
-  'BEVERAGE_FAMILY_CONFECTIONERY_INCLUSION_V2' as const;
+export const PRODUCT_RECOGNITION_CACHE_REVISION = 'SWEETENING_SIGNALS_FAMILY_FORM_V3' as const;
 
 export type ProductArchetype =
   | 'NORMAL_INGREDIENT'
@@ -211,7 +210,45 @@ export interface ProductSemanticClassification {
   evidenceRefs: string[];
   modelRequired: boolean;
   modelReasonCodes: string[];
+  /** Sweetening agents named by the label text — TYPE only, never an amount. */
+  sweetening?: ProductSweeteningSignals;
   evidenceFingerprint: string;
+}
+
+/** A sugar the Engine's spectrum knows, or a compound the label names that maps onto two of them. */
+export type SweeteningAgent =
+  | 'sucrose'
+  | 'glucose'
+  | 'fructose'
+  | 'dextrose'
+  | 'lactose'
+  | 'glucose_fructose'
+  | 'honey';
+
+export type PolyolName = 'erythritol' | 'sorbitol' | 'maltitol' | 'xylitol' | 'glycerol' | 'other';
+
+export type SweeteningType = 'unsweetened' | 'sugar' | 'high_intensity' | 'polyol' | 'mixed';
+
+/**
+ * What kind of sweetening the label declares. Read from the ingredient list and the
+ * front-of-pack claims only; an EU ingredient list is ordered by descending weight, so
+ * `sugarAgents` keeps that order. No amount is ever inferred here — that is the working
+ * values authority's job, and it must say so per field.
+ */
+export interface ProductSweeteningSignals {
+  type: SweeteningType;
+  /** Sugars/sugar-bearing ingredients in label order (descending weight). */
+  sugarAgents: SweeteningAgent[];
+  /** Sugar alcohols named in the list (E-numbers resolved). */
+  polyols: PolyolName[];
+  /** Intense sweeteners named in the list (E-numbers resolved). */
+  highIntensitySweeteners: string[];
+  /** "bez cukru" / "sugar free" / "zero" style claim present. */
+  sugarFreeClaim: boolean;
+  /** Ingredients that carry starch, so carbohydrate minus sugars is not only polyol. */
+  starchyIngredients: boolean;
+  /** An ingredient list was actually read — class assumptions need at least that. */
+  ingredientsListed: boolean;
 }
 
 export interface MapperSemanticCandidate {
@@ -614,6 +651,7 @@ const archetypeOf = (
   description: string,
   ingredients: string,
   inferredFamily: ProductFamilyId | null,
+  declaredFat: number | null = null,
 ): ProductArchetype => {
   const taxonomy = `${category} ${subcategory}`;
   const all = `${identity} ${taxonomy} ${description}`;
@@ -638,6 +676,20 @@ const archetypeOf = (
     /(?:\b(?:powder|polvo|poudre|pulver|proszek|magro|desgrasad|defatted|odtluszcz|alkaliz|amaro)\w*|\bpo\b)/.test(
       `${identity} ${ingredients}`,
     )
+  ) {
+    return 'COCOA_POWDER';
+  }
+  // A branded "Kakao …" whose declared composition is a cocoa powder's (fat ≤ 25 %
+  // with no chocolate, drink or dairy word) is a cocoa powder — composition and name
+  // together, no product-specific exception.
+  if (
+    /\b(cacao|cacau|cocoa|kakao)\b/.test(identity) &&
+    !/\b(choco\w*|czekolad\w*|drink|napoj\w*|mleko|milk|instant|krem\w*|cream|paste|pasta)\b/.test(
+      identity,
+    ) &&
+    declaredFat !== null &&
+    declaredFat <= 25 &&
+    /(?:\b(?:powder|proszek|odtluszcz|alkaliz|kakao|cocoa|cacao)\w*)/.test(ingredients)
   ) {
     return 'COCOA_POWDER';
   }
@@ -689,6 +741,18 @@ const archetypeOf = (
   // marshmallow confectionery signature. It is safe semantic evidence, not a
   // chemistry inference: no ingredient amount or Engine value is fabricated.
   // Broad single ingredient mentions remain deliberately insufficient.
+  // Likewise flour + sugar + fat in a retail sweets/bakery container is a baked
+  // confectionery signature (a filled biscuit, a wafer, a cake bar), whatever coined
+  // name the front carries.
+  const bakedConfectioneryIngredients =
+    /\b(bakery|sweets|slodycz\w*|ciast\w*|cookies?|biscuits?|kekse?)\b/.test(taxonomy) &&
+    /\b(mak[ai]\s+pszenn\w*|maka\b|wheat\s+flour|flour|weizenmehl|harina|farina)\b/.test(
+      ingredients,
+    ) &&
+    /\b(sugar|zucker|cukier|azucar|zucchero|syrop\s+glukozow\w*|glucose\s+syrup)\b/.test(
+      ingredients,
+    ) &&
+    /\b(tluszcz\w*|olej\w*|maslo|butter|fat|oil|palm\w*|shea|kakaow\w*)\b/.test(ingredients);
   const gummyConfectioneryIngredients =
     /\b(glucose syrup|glukosesirup|syrop glukozowy|jarabe de glucosa|sciroppo di glucosio)\b/.test(
       ingredients,
@@ -696,13 +760,14 @@ const archetypeOf = (
     /\b(sugar|zucker|cukier|azucar|zucchero)\b/.test(ingredients) &&
     /\b(gelatin|gelatine|gelatina|zelatyn\w*)\b/.test(ingredients);
   if (
-    /\b(baton\w*|wafer\w*|wafel\w*|cookie\w*|biscuit\w*|brownie\w*|herbatnik\w*|ciastk\w*|praline bar|gumm(?:y|i)\w*|fruit gum\w*|candy\w*|candies\w*|zelk\w*)\b/.test(
+    /\b(baton\w*|wafer\w*|wafel\w*|wafl\w*|gofr\w*|waffle\w*|cookie\w*|biscuit\w*|brownie\w*|herbatnik\w*|ciastk\w*|ciasteczk\w*|praline bar|gumm(?:y|i)\w*|fruit gum\w*|candy\w*|candies\w*|zelk\w*|paczek|paczk\w*|donut\w*|doughnut\w*|drozdzowk\w*|rogalik\w*|croissant\w*|muffin\w*|precel\w*|precle|pretzel\w*|krakers\w*|cracker\w*|ptasie mleczko|pianki?\b|marshmallow\w*|chalw\w*|halva|sezamk\w*|krowk\w*|toffi|toffee|karmelk\w*|lizak\w*|lollipop\w*|draze|dragee\w*|pralin\w*|cukierk\w*|bonbon\w*|nugat|nougat|kolorowych skorupkach|batonik\w*)\b/.test(
       confectioneryIdentity,
     ) ||
     /\b(baton\w*|wafer\w*|wafel\w*|cookie\w*|biscuit\w*|brownie\w*|herbatnik\w*|ciastk\w*|praline|gumm(?:y|i)\w*|fruit gum\w*|candy\w*|candies\w*|zelk\w*)\b/.test(
       specificConfectionerySubcategory,
     ) ||
-    gummyConfectioneryIngredients
+    gummyConfectioneryIngredients ||
+    bakedConfectioneryIngredients
   ) {
     return 'CONFECTIONERY';
   }
@@ -717,7 +782,11 @@ const archetypeOf = (
   }
   if (
     /\b(mieszank[a-z]* bakali|trail mix|mixed nuts|nut mix)\w*/.test(identity) ||
-    (/\bmieszank\w*/.test(identity) && /\bbakali\w*/.test(taxonomy))
+    (/\bmieszank\w*/.test(identity) && /\bbakali\w*/.test(taxonomy)) ||
+    // breakfast cereals, granola and muesli are dry inclusions, whatever flavour word they carry
+    /\b(owsiank\w*|porridge|granol\w*|musli|muesli|platki\s+(?:owsian|kukurydzian|zbozow|sniadaniow)\w*|cereal\w*|crunchy\b)\b/.test(
+      identity,
+    )
   ) {
     return 'DRIED_MIX';
   }
@@ -726,7 +795,7 @@ const archetypeOf = (
   // already been resolved above, and explicit paste/cream words remain paste.
   if (
     !/\b(paste|pasta|krem|cream|puree)\w*/.test(identity) &&
-    /\b(orzech|migdal|almond|cashew|pistach|hazelnut|walnut|macadam|pecan|brazil nut|peanut)\w*/.test(
+    /\b(orzech|migdal|almond|cashew|nerkowc|pistach|hazelnut|walnut|macadam|pecan|brazil nut|peanut)\w*/.test(
       identity,
     ) &&
     (/^(?:orzech|migdal|almond|cashew|pistach|hazelnut|walnut|macadam|pecan|brazil nut|peanut)\w*/.test(
@@ -748,14 +817,20 @@ const archetypeOf = (
   }
   if (inferredFamily === 'nut_paste') return 'NUT_PASTE';
   if (inferredFamily === 'fruit') return 'FRUIT_PRODUCT';
+  // A chocolate ARTICLE carries cocoa fat: the declared composition must allow it.
+  // A "chocolate milk" or "chocolate yoghurt" at 3 % fat is a dairy product with a
+  // flavour word, so the kind falls through to the family the rest of the name states.
+  const chocolateComposition = declaredFat === null || declaredFat >= 15;
   if (
-    inferredFamily === 'chocolate' ||
-    inferredFamily === 'cocoa_butter' ||
-    /\b(choco|czekolad|cocoa|kakao)\w*/.test(all)
+    chocolateComposition &&
+    (inferredFamily === 'chocolate' ||
+      inferredFamily === 'cocoa_butter' ||
+      /\b(choco|czekolad|cocoa|kakao)\w*/.test(all))
   ) {
     return 'CHOCOLATE';
   }
-  if (inferredFamily) return 'NORMAL_INGREDIENT';
+  if (inferredFamily && inferredFamily !== 'chocolate' && inferredFamily !== 'cocoa_butter')
+    return 'NORMAL_INGREDIENT';
   return 'UNKNOWN';
 };
 
@@ -784,12 +859,179 @@ const semanticFamilyOf = (
   return inferredFamily ?? 'unknown';
 };
 
+const HIGH_INTENSITY_SWEETENER_CUES: readonly (readonly [RegExp, string])[] = [
+  [/\b(sukraloz\w*|sucralos\w*|e\s?955)\b/, 'sucralose'],
+  [/\b(acesulfam\w*|e\s?950)\b/, 'acesulfame_k'],
+  [/\b(aspartam\w*|e\s?951)\b/, 'aspartame'],
+  [/\b(sacharyn\w*|saccharin\w*|e\s?954)\b/, 'saccharin'],
+  [/\b(cyklamat\w*|cyclamat\w*|e\s?952)\b/, 'cyclamate'],
+  [
+    /\b(stewi\w*|stevi\w*|steviol\w*|rebaudiozyd\w*|rebaudiosid\w*|e\s?960)\b/,
+    'steviol_glycosides',
+  ],
+  [/\b(neotam\w*|e\s?961)\b/, 'neotame'],
+  [/\b(advantam\w*|e\s?969)\b/, 'advantame'],
+  [/\b(taumatyn\w*|thaumatin\w*|e\s?957)\b/, 'thaumatin'],
+  [/\b(neohesperyd\w*|neohesperid\w*|e\s?959)\b/, 'neohesperidin_dc'],
+];
+
+const POLYOL_CUES: readonly (readonly [RegExp, PolyolName])[] = [
+  [/\b(maltitol\w*|maltytol\w*|e\s?965)\b/, 'maltitol'],
+  [/\b(sorbitol\w*|e\s?420)\b/, 'sorbitol'],
+  [/\b(ksylitol\w*|xylitol\w*|e\s?967)\b/, 'xylitol'],
+  [/\b(erytrytol\w*|erythritol\w*|erytryt\w*|e\s?968)\b/, 'erythritol'],
+  [/\b(glicerol\w*|gliceryn\w*|glycerol\w*|glycerin\w*|e\s?422)\b/, 'glycerol'],
+  [
+    /\b(izomalt\w*|isomalt\w*|e\s?953|laktytol\w*|lactitol\w*|e\s?966|mannitol\w*|mannit\w*|e\s?421)\b/,
+    'other',
+  ],
+];
+
+/** Sugar-bearing ingredients, matched on the ingredient LIST so label order is preserved. */
+const SUGAR_AGENT_CUES: readonly (readonly [RegExp, SweeteningAgent])[] = [
+  [
+    /\b(syrop\s+glukozowo[\s-]*fruktozowy|syrop\s+fruktozowo[\s-]*glukozowy|glucose[\s-]*fructose\s+syrup|fructose[\s-]*glucose\s+syrup|high[\s-]*fructose\s+corn\s+syrup|hfcs|izoglukoz\w*|isoglucose|glukose[\s-]*fruktose[\s-]*sirup|jarabe\s+de\s+glucosa\s+y\s+fructosa|sciroppo\s+di\s+glucosio[\s-]*fruttosio)\b/,
+    'glucose_fructose',
+  ],
+  [
+    /\b(cukier\s+inwertowany|invert\s+sugar|invertzucker|azucar\s+invertido|zucchero\s+invertito)\b/,
+    'glucose_fructose',
+  ],
+  [
+    /\b(syrop\s+glukozowy|glucose\s+syrup|glukosesirup|jarabe\s+de\s+glucosa|sciroppo\s+di\s+glucosio|syrop\s+skrobiowy|maltodekstryn\w*|maltodextrin\w*)\b/,
+    'glucose',
+  ],
+  [/\b(dekstroz\w*|dextrose\w*|glukoz\w*|glucose)\b/, 'dextrose'],
+  [/\b(fruktoz\w*|fructose|fruktose)\b/, 'fructose'],
+  [/\b(miod\w*|honey|miel|honig|miele)\b/, 'honey'],
+  [/\b(laktoz\w*|lactose|laktose|lattosio)\b/, 'lactose'],
+  [
+    /\b(cukier\w*|sugar|zucker|azucar|zucchero|sucre|sacharoz\w*|sucrose|saccharose|melasa|molasses|karmel\w*|caramel\w*|syrop\s+klonowy|maple\s+syrup)\b/,
+    'sucrose',
+  ],
+  [
+    /\b(mleko|milk|milch|leche|latte|lait|serwatk\w*|whey|molke|smietan\w*|cream|sahne|jogurt\w*|yog(?:h)?urt\w*|joghurt|maslank\w*|buttermilk|twarog\w*|quark|ser\b|cheese|kase|mascarpone|ricotta|mleczn\w*)\b/,
+    'lactose',
+  ],
+  [
+    /\b(sok\w*|juice|jus|zumo|succo|koncentrat\w*\s+(?:sok|owoc)\w*|puree|przecier\w*|owoc\w*|fruit\w*|frutta|fruta|obst|suszon\w*|dried|rodzynk\w*|raisin\w*|daktyl\w*|date\w*)\b/,
+    'fructose',
+  ],
+];
+
+const STARCHY_CUES =
+  /\b(mak[ai]\b|maka\s|flour|mehl|harina|farina|skrobi\w*|starch|starke|almidon|amido|owies|owsian\w*|oat\w*|hafer|platki\w*|flakes|ryz\w*|rice|reis|arroz|riso|kasz[ay]\b|kukurydz\w*|corn|mais|ziemniac\w*|potato|pszen\w*|wheat|weizen|zboz\w*|cereal\w*|chleb\w*|bread|bulk\w*|herbatnik\w*|ciastk\w*|biscuit\w*|cookie\w*|wafel\w*|wafer\w*)/;
+
+const SUGAR_FREE_CLAIM =
+  /\b(bez\s+cukru|bez\s+dodatku\s+cukru|sugar[\s-]*free|no\s+added\s+sugar|zero\s+cukru|0\s*%\s*cukru|ohne\s+zucker|zuckerfrei|sin\s+azucar|senza\s+zucchero|sans\s+sucre)\b|\bzero\b/;
+
+/**
+ * Recognise the TYPE of sweetening from the ingredient list and claims. Deterministic,
+ * multilingual, order-preserving. It never returns an amount.
+ */
+export function sweeteningSignalsOf(input: {
+  ingredients: string | null | undefined;
+  identity?: string | null;
+  description?: string | null;
+}): ProductSweeteningSignals {
+  const list = normalized(input.ingredients ?? '');
+  const front = normalized(`${input.identity ?? ''} ${input.description ?? ''}`);
+  const highIntensitySweeteners = HIGH_INTENSITY_SWEETENER_CUES.filter(([cue]) =>
+    cue.test(list),
+  ).map(([, name]) => name);
+  const polyols = [
+    ...new Set(POLYOL_CUES.filter(([cue]) => cue.test(list)).map(([, name]) => name)),
+  ];
+  // ordered by first appearance in the list (EU: descending weight)
+  const positioned: { agent: SweeteningAgent; at: number }[] = [];
+  for (const [cue, agent] of SUGAR_AGENT_CUES) {
+    const match = cue.exec(list);
+    if (!match) continue;
+    // a "bez cukru" phrase inside the list is a claim, not an ingredient
+    if (
+      agent === 'sucrose' &&
+      /\b(bez|ohne|sin|senza|sans|no|free)\s+\w*$/.test(list.slice(0, match.index))
+    )
+      continue;
+    positioned.push({ agent, at: match.index });
+  }
+  positioned.sort((a, b) => a.at - b.at);
+  const sugarAgents = [...new Set(positioned.map((entry) => entry.agent))];
+  const sugarFreeClaim = SUGAR_FREE_CLAIM.test(front);
+  const type: SweeteningType =
+    sugarAgents.length === 0 && polyols.length === 0 && highIntensitySweeteners.length === 0
+      ? 'unsweetened'
+      : [sugarAgents.length > 0, polyols.length > 0, highIntensitySweeteners.length > 0].filter(
+            Boolean,
+          ).length > 1
+        ? 'mixed'
+        : sugarAgents.length > 0
+          ? 'sugar'
+          : polyols.length > 0
+            ? 'polyol'
+            : 'high_intensity';
+  return {
+    type,
+    sugarAgents,
+    polyols,
+    highIntensitySweeteners,
+    sugarFreeClaim,
+    starchyIngredients: STARCHY_CUES.test(list),
+    ingredientsListed: list.trim().length > 0,
+  };
+}
+
+/** Declared fat per 100 g/ml from the evidence's nutrition text, when it is the scanner's JSON. */
+const declaredFatOf = (nutrition: string | null | undefined): number | null => {
+  if (!nutrition) return null;
+  try {
+    const parsed = JSON.parse(nutrition) as { fat?: unknown };
+    return typeof parsed.fat === 'number' && Number.isFinite(parsed.fat) ? parsed.fat : null;
+  } catch {
+    const match = /\bfat\b[^0-9]{0,12}([0-9]+(?:[.,][0-9]+)?)/.exec(nutrition);
+    return match ? Number(match[1]!.replace(',', '.')) : null;
+  }
+};
+
+/**
+ * The physical form a KIND of product has when the label names no form. This is
+ * the family's own definition (a "dairy liquid" is liquid), not a guess about the
+ * article; families whose members span forms (fruit, chocolate) stay unresolved.
+ */
+const familyImpliedForm = (family: ProductFamilyId | null): ProductPhysicalForm => {
+  switch (family) {
+    case 'dairy_liquid':
+    case 'beverage':
+    case 'plant_beverage':
+    case 'liquid_vegetable_oil':
+    case 'alcohol':
+      return 'LIQUID';
+    case 'dairy_protein':
+    case 'plant_protein_isolate':
+    case 'starch':
+    case 'fibre_inulin':
+    case 'sugar_sucrose':
+    case 'glucose_dextrose':
+    case 'other_sugar':
+      return 'POWDER';
+    case 'coconut_fat':
+    case 'cocoa_butter':
+      return 'SOLID';
+    case 'nut_paste':
+    case 'flavor_paste':
+      return 'PASTE';
+    default:
+      return 'UNKNOWN';
+  }
+};
+
 const formOf = (
   identity: string,
   category: string,
   subcategory: string,
   description: string,
   archetype: ProductArchetype,
+  family: ProductFamilyId | null = null,
 ): ProductPhysicalForm => {
   const all = `${identity} ${category} ${subcategory} ${description}`;
   if (archetype === 'COCOA_POWDER' || archetype === 'BAKERY_MIX') return 'POWDER';
@@ -806,10 +1048,27 @@ const formOf = (
   if (
     /\b(liquid|plyn|syrup|syrop|beverage|drink|bebida|boisson|napoj|getrank|getraenk|refresco|soda|lemonade|limonade|tonic|isotonic|electrolyte)\w*/.test(
       all,
+    ) ||
+    // the article IS a liquid by its name: milks, drinking yoghurts, kefir, oils, honey
+    /\b(mleko|mleczko|milk|milch|leche|latte|lait|kefir|maslank\w*|buttermilk|smietank[aie]\b|jogurt\w*\s+pitn\w*|skyr\s+pitn\w*|drinking\s+yog\w*|trinkjoghurt|olej\w*|\boil\b|\bol\b|aceite|olio|huile|miod\w*|honey|miel|honig|miele|likier\w*|liqueur|nalewk\w*)\b/.test(
+      all,
     )
   ) {
     return 'LIQUID';
   }
+  // dried fruit and jams name their form outright
+  if (
+    /\b(suszon\w*|dried|getrocknet\w*|rodzynk\w*|raisin\w*|sultan\w*|sliwk\w*\s+suszon\w*|prune\w*|daktyl\w*|\bdates?\b|zurawin\w*\s+suszon\w*|cranberr\w*|morel\w*\s+suszon\w*|chips\s+owocow\w*|liofilizowan\w*)\b/.test(
+      all,
+    )
+  )
+    return 'DRY';
+  if (
+    /\b(dzem\w*|jam\b|konfitur\w*|powidl\w*|marmolad\w*|marmalade|mus\s+owocow\w*|frużelin\w*|fruzelin\w*)\b/.test(
+      all,
+    )
+  )
+    return 'PUREE';
   if (/\b(coating|shell|copertura|polewa|otulina)\w*/.test(all)) return 'COATING';
   if (/(?:\b(?:powder|polvo|poudre|pulver|proszek|polvere|liofiliz)\w*|\bpo\b)/.test(all)) {
     return 'POWDER';
@@ -838,6 +1097,10 @@ const formOf = (
     )
   )
     return 'SOLID';
+  // A chocolate with no form cue stays UNKNOWN (owner gate); every other kind whose
+  // family DEFINES its form (a dairy liquid, a beverage, an oil, a protein powder)
+  // takes that form — a plain "Mleko 3,2%" is not a question for a model.
+  if (archetype !== 'CHOCOLATE') return familyImpliedForm(family);
   return 'UNKNOWN';
 };
 
@@ -886,7 +1149,7 @@ const mapperCategoriesFor = (
 ): string[] => {
   if (archetype === 'COCOA_POWDER') return ['cocoa', 'chocolate'];
   if (archetype === 'WHOLE_NUT') return ['nut'];
-  if (archetype === 'DRIED_MIX') return ['inclusion', 'bakery_inclusion'];
+  if (archetype === 'DRIED_MIX') return ['inclusion', 'bakery_inclusion', 'cereal', 'nut'];
   if (archetype === 'SAVORY_SPREAD' || archetype === 'BAKERY_MIX') return [];
   if (archetype === 'VARIEGATO') return ['variegato', 'flavor_paste'];
   if (archetype === 'TOPPING') return ['topping', 'flavor_syrup', 'flavor_paste'];
@@ -970,9 +1233,22 @@ export function classifyProductSemantics(
     description,
     ingredients,
     inferredFamily,
+    declaredFatOf(input.nutrition),
   );
   const ingredientFamily = semanticFamilyOf(productArchetype, inferredFamily);
-  const physicalForm = formOf(identity, category, subcategory, description, productArchetype);
+  const physicalForm = formOf(
+    identity,
+    category,
+    subcategory,
+    description,
+    productArchetype,
+    inferredFamily,
+  );
+  const sweetening = sweeteningSignalsOf({
+    ingredients: input.ingredients,
+    identity: `${input.name ?? ''} ${input.variant ?? ''}`,
+    description: input.description,
+  });
   const dosage = parseProductDosage(input.dosage);
   const intendedUsageRole = roleOf(productArchetype, all);
   const flavorDomain = flavorDomainOf(all, productArchetype);
@@ -1058,6 +1334,7 @@ export function classifyProductSemantics(
     evidenceRefs,
     modelRequired,
     modelReasonCodes,
+    sweetening,
     evidenceFingerprint: evidenceFingerprint(input),
   };
 }

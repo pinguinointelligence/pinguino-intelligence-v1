@@ -2,7 +2,7 @@
  * SCAN IMPORT 2.0 — Supabase adapters (staging development only; not wired to any UI).
  *
  * ONE exact-by-code authority for guests AND authenticated users (owner decision D8):
- * `resolve_exact_products_by_gtin_v1(p_gtin, p_symbology)` (migration 20260905090000) — exact only,
+ * `resolve_exact_products_by_gtin_v1(p_gtin, p_symbology)` (migration 20260905063617) — exact only,
  * read-only, bounded, validated server-side, public facts for guests, `ownership` fact for authenticated
  * callers. It runs as the caller's own JWT from the browser and from any server path, so client and
  * server can only differ by account visibility, and that difference is explicit in `ownership`.

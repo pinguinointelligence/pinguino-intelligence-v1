@@ -17,6 +17,7 @@ import {
   type ProductSemanticEvidence,
 } from './productRecognition';
 import { resolveProductWorkingValues } from './productWorkingValues';
+import { loadMapperKnowledgeRows } from './__dryrun__/mapperFixture';
 
 const evidence = (o: Partial<ProductSemanticEvidence> = {}): ProductSemanticEvidence => ({
   name: 'Produkt',
@@ -400,13 +401,48 @@ describe('working values — mass balance from a complete label', () => {
       },
       knowledge,
     );
-    // LIQUID band 0–0.8: half-width 0.4 at 100% share ≤ 0.5 tolerance → DERIVED
-    expect(liquid.fields.total_solids_percent.value).toBeCloseTo(0.1175 + 0.4, 3);
-    expect(liquid.fields.total_solids_percent.provenance).toMatchObject({
-      state: 'ESTIMATED',
-      basis: 'derived',
-    });
-    expect(liquid.missingEngineFields).toEqual([]);
+    // No Mapper rows at all → no calibrated band → the closure refuses (never a form guess)
+    expect(liquid.fields.total_solids_percent.value).toBeNull();
+    expect(liquid.trace.some((line) => line.includes('brak skalibrowanego pasma Mappera'))).toBe(
+      true,
+    );
+
+    // With the real Mapper the beverage cohort is calibrated: verified beverage rows
+    // carry a zero unnamed residual (p10 = p90 = 0), so the label closes itself.
+    const realKnowledge = buildMapperKnowledge(
+      loadMapperKnowledgeRows().rows,
+      fingerprintMapperRows(loadMapperKnowledgeRows().rows),
+    );
+    const liquidReal = resolveProductWorkingValues(
+      {
+        declared: {
+          fat_percent: 0,
+          protein_percent: 0,
+          carbohydrate_percent: 0,
+          total_sugars_percent: 0,
+          fiber_percent: 0,
+          salt_percent: 0.1175,
+        },
+        declaredConfidence: 0.9,
+        identity: {
+          name: 'Sport 002',
+          brand: 'Vitamin Well',
+          category: 'Bebida',
+          barcode: null,
+          semantic: drink,
+        },
+        technical: false,
+      },
+      realKnowledge,
+    );
+    // a verified beverage donor or the beverage cohort answers first (residual 0); the
+    // calibrated closure is the fallback behind them — the residual is always the Mapper's
+    expect(liquidReal.fields.total_solids_percent.value).toBeCloseTo(0.1175, 3);
+    expect(liquidReal.fields.total_solids_percent.provenance.state).toBe('ESTIMATED');
+    expect(['mapper_similar_profile', 'mapper_family_consensus', 'derived']).toContain(
+      liquidReal.fields.total_solids_percent.provenance.basis,
+    );
+    expect(liquidReal.missingEngineFields).toEqual([]);
 
     // the same rule for a base-role solid whose band (0.3–3) matters at ~50% share → stays UNKNOWN
     const solidBase = classifyProductSemantics(
