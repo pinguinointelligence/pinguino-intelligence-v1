@@ -10,6 +10,8 @@ import {
   createProductionSession,
   productionProgress,
 } from './productionSession';
+import { assessProductionRescue } from './productionRescue';
+import { confirmOwnerRescueLines, makeOwnerRescueSession } from './productionOwnerRescue.fixture';
 
 describe('Production correction decision accessibility', () => {
   let host: HTMLDivElement;
@@ -27,6 +29,103 @@ describe('Production correction decision accessibility', () => {
   afterEach(async () => {
     await act(async () => root.unmount());
     host.remove();
+  });
+
+  it('renders exact Owner Case 2 as a selectable 670 g remaining-plan correction', async () => {
+    const session = confirmOwnerRescueLines(makeOwnerRescueSession(), [
+      ['milk', 201],
+      ['cream', 125],
+      ['skimmed_milk', 50],
+      ['sucrose', 31],
+      ['dextrose', 77],
+      ['tara', 2.2],
+    ]);
+    const assessment = assessProductionRescue(session);
+    const correction = assessment.options.find((option) => option.id === 'keep_original_batch')!;
+    const selectRescueOption = vi.fn();
+    const applySelectedRescueOption = vi.fn();
+    const authorization = {
+      authorizationId: 'owner-case-2-authorization',
+      candidateFingerprint: 'e'.repeat(64),
+      runId: session.sessionId,
+      stableOptionId: 'keep_original_batch' as const,
+      expectedActualRevision: session.durableActualRevision,
+      expectedRescueRevision: session.durableRescueRevision,
+      authorizedAt: '2026-09-05T10:07:00.000Z',
+      expiresAt: '2099-09-05T10:12:00.000Z',
+      preview: {
+        title: correction.title,
+        explanation: correction.explanation,
+        finalMassG: correction.finalMassG,
+        scoreDisplay: correction.scoreDisplay,
+        instructions: correction.instructions,
+      },
+    };
+    const baseView = {
+      session,
+      progress: productionProgress(session),
+      toppingProgress: null,
+      rescue: assessment,
+      score: { score: 9, label: 'Świetnie dopasowana' },
+      plannedScore: { score: 10, label: 'Wyjątkowo dobrze dopasowana' },
+      prerequisite: null,
+      persistenceBusy: false,
+      persistenceError: null,
+      rescueOptionsCalculating: false,
+      selectedRescueOptionId: null,
+      recommendedRescueOptionId: 'keep_original_batch',
+      rescueOptionStates: {
+        keep_original_batch: {
+          status: 'available' as const,
+          authorization,
+          consumeIdempotencyKey: 'owner-case-2-consume',
+        },
+        enlarge_batch: { status: 'unavailable' as const, reason: 'Niedostępne.' },
+        restore_original_recipe: { status: 'unavailable' as const, reason: 'Niedostępne.' },
+        leave_as_is: { status: 'unavailable' as const, reason: 'Niedostępne.' },
+      },
+      selectRescueOption,
+      applySelectedRescueOption,
+    } as unknown as ProductionWorkspaceView;
+
+    await act(async () =>
+      root.render(
+        <ProductionCockpit
+          production={baseView}
+          onOpenPreview={vi.fn()}
+          onRecalculate={vi.fn()}
+          onReturnToRecipe={vi.fn()}
+        />,
+      ),
+    );
+
+    const choice = host.querySelector<HTMLButtonElement>(
+      '[data-testid="production-decision-keep_original_batch"]',
+    );
+    expect(choice?.disabled).toBe(false);
+    expect(choice?.textContent).toContain('Zachowaj 670 g');
+    expect(choice?.textContent).toContain('STRAWBERRIES');
+    expect(choice?.textContent).toContain('91.9 g');
+    expect(choice?.textContent).toContain('WATERMELON');
+    await act(async () => choice?.click());
+    expect(selectRescueOption).toHaveBeenCalledWith('keep_original_batch');
+
+    await act(async () =>
+      root.render(
+        <ProductionCockpit
+          production={{ ...baseView, selectedRescueOptionId: 'keep_original_batch' }}
+          onOpenPreview={vi.fn()}
+          onRecalculate={vi.fn()}
+          onReturnToRecipe={vi.fn()}
+        />,
+      ),
+    );
+    const apply = host.querySelector<HTMLButtonElement>(
+      '[data-testid="apply-selected-production-decision"]',
+    );
+    expect(apply?.disabled).toBe(false);
+    await act(async () => apply?.click());
+    expect(applySelectedRescueOption).toHaveBeenCalledTimes(1);
   });
 
   it('moves focus to the newly opened live decision panel', async () => {
@@ -339,6 +438,13 @@ describe('Production correction decision accessibility', () => {
       '[data-testid="production-decision-recovery"]',
     );
     expect(recovery?.textContent).toContain('Nie mamy bezpiecznej korekty dla tej partii');
+    const reasons = recovery?.querySelector<HTMLElement>(
+      '[data-testid="production-decision-recovery-reasons"]',
+    );
+    expect(reasons?.textContent).toContain(
+      'Niedostępne — potwierdzonych ilości nie można dopasować do 1000 g.',
+    );
+    expect(reasons?.textContent).toContain('Niedostępne — przekroczono twardy zakres laktozy.');
     const abort = recovery?.querySelector<HTMLButtonElement>(
       '[data-testid="production-abort-recovery"]',
     );
