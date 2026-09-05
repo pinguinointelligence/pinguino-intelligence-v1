@@ -21,3 +21,11 @@ export {
 } from './adapters/supabaseAdapters';
 export { createSupabaseDiscoveryPort } from './adapters/supabaseDiscoveryAdapter';
 export { fileToLabelImage, dataUrlToLabelImage, LABEL_IMAGE_TRANSFORMATIONS } from './labelImage';
+export {
+  createOpenFoodFactsEvidencePort,
+  evidenceFromProduct,
+  familyFromEvidence,
+  identityFromEvidence,
+  OPEN_FOOD_FACTS_PROVIDER,
+  type ExactWebIdentity,
+} from './adapters/openFoodFactsEvidence';

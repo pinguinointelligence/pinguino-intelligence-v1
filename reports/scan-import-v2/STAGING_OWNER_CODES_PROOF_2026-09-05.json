@@ -1,0 +1,46 @@
+{
+  "ranAt": "2026-09-05T09:05:45.686Z",
+  "qaAccount": "home@home.com",
+  "stagingUrlHost": "tunabqqrwabacxjcxxkz.supabase.co",
+  "cacao": {
+    "kind": "resolved_exact",
+    "ms": 1358,
+    "product": {
+      "name": "Cacao Puro",
+      "brand": "La Chocolatera",
+      "code": "PR-ING-007142"
+    }
+  },
+  "vitaminWell": {
+    "firstKind": "discovered_pending",
+    "firstMs": 1761,
+    "registry": {
+      "displayName": "Sport 002",
+      "brand": "Vitamin Well",
+      "quantity": null,
+      "family": "beverage",
+      "hasNutrition": true,
+      "hasIngredients": false
+    },
+    "finalizeKind": "discovered_pending",
+    "stillMissing": [],
+    "note": "not ready: MISSING_TOTAL_SOLIDS_PERCENT, MISSING_WATER_PERCENT, PRODUCT_SEMANTICS_UNRESOLVED, roleReadiness:REVIEW, recognition:NORMAL_INGREDIENT/BASE_ONLY",
+    "rescanKind": "discovered_pending"
+  },
+  "milka": {
+    "firstKind": "discovered_pending",
+    "firstMs": 1456,
+    "registry": {
+      "displayName": "Choco brownie",
+      "brand": "Milka",
+      "quantity": "150 g (6 * 25 g)",
+      "family": "cocoa_chocolate",
+      "hasNutrition": true,
+      "hasIngredients": true
+    },
+    "finalizeKind": "discovered_pending",
+    "stillMissing": [],
+    "note": "not ready: MISSING_TOTAL_SOLIDS_PERCENT, MISSING_WATER_PERCENT, PRODUCT_SEMANTICS_UNRESOLVED, UNRESOLVED_SWEETENING_FREEZING_PATH, roleReadiness:REVIEW, recognition:CHOCOLATE/BASE_ONLY",
+    "rescanKind": "discovered_pending"
+  }
+}

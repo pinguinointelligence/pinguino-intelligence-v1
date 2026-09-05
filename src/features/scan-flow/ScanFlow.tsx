@@ -5,10 +5,13 @@
  * („Skanuj produkt”, mode `catalog`). Rules (owner, 2026-09-05):
  *   - known product → recipe: that exact product goes into the open recipe; catalog: "already
  *     exists", no duplicate;
- *   - unknown product → Scan Import 2.0 discovery (internet evidence, then a label photograph);
+ *   - unknown product → exact-GTIN registry evidence FIRST (name + brand are used as they are, the
+ *     customer is not asked for a generic category when the code already identifies the product),
+ *     then Scan Import 2.0 discovery (label photograph) for what is still missing;
  *   - still missing ice-cream data → only the minimal plain fields the customer can read off the
- *     label; the answer is saved as a LOCAL USER PRODUCT, private to this account, never added to
- *     the global catalogue by itself.
+ *     label, prefilled from the registry where it knows them; the answer is saved as a LOCAL USER
+ *     PRODUCT, private to this account, never added to the global catalogue by itself.
+ * The customer always sees what the scanner is doing (state, guidance, progress, confirmation).
  * No technical parameter is ever shown. Mobile and web run the same code.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -19,21 +22,33 @@ import {
   createMemoryStore,
   createOfflineCache,
   fileToLabelImage,
+  identifyCode,
+  identityFromEvidence,
   runScanImportV2,
   type CustomerFamily,
   type DiscoverySession,
   type ExactCandidate,
+  type ExactWebIdentity,
+  type ExternalEvidence,
   type FinalizeInput,
   type LabelImage,
   type RequestContext,
   type ScanImportV2Result,
 } from '@/scan-import-v2';
 import { createScanImportV2AppPorts, getScanImportV2AccountId } from '@/services/scanImportV2';
-import { describeCaptureError, ScanCoreCapture, type CaptureStatus } from './scanCoreCapture';
+import {
+  describeCaptureError,
+  ScanCoreCapture,
+  type CaptureFrame,
+  type CaptureStatus,
+} from './scanCoreCapture';
 import {
   confirmationsFromFields,
   manualConfirmedScan,
   plainFieldsFor,
+  positionHint,
+  prefillFromIdentity,
+  scanFeedbackText,
   toResolvedScanProduct,
   type PlainField,
   type ResolvedScanProductLike,
@@ -100,9 +115,9 @@ type Phase =
 
 const STATUS_TEXT: Record<CaptureStatus, string> = {
   starting: 'Uruchamiam aparat…',
-  live: 'Pokaż kod kreskowy. Szukam kodu…',
-  reading: 'Widzę kod, odczytuję…',
-  confirmed: 'Kod odczytany.',
+  live: 'Szukam kodu…',
+  reading: 'Odczytuję kod…',
+  confirmed: 'Odczytano',
   stopped: '',
   unavailable: '',
 };
@@ -113,6 +128,10 @@ const btnPrimary = `${btn} bg-ink text-white disabled:opacity-40`;
 const btnSecondary = `${btn} border border-ink/15 bg-white text-ink`;
 const input =
   'pro-focus-ring min-h-11 w-full rounded-xl border border-ink/15 bg-white px-3 text-sm text-ink';
+
+function isExternalEvidence(v: unknown): v is ExternalEvidence {
+  return Boolean(v) && typeof v === 'object' && Array.isArray((v as { facts?: unknown }).facts);
+}
 
 function seedSession(
   sessionId: string,
@@ -153,12 +172,15 @@ async function downscaled(file: File, maxLongEdge = 1600): Promise<Blob> {
 
 export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProps) {
   const [phase, setPhase] = useState<Phase>({ kind: 'camera', status: 'starting', error: null });
+  const [frame, setFrame] = useState<CaptureFrame | null>(null);
   const [manual, setManual] = useState('');
   const [busy, setBusy] = useState(false);
   const [family, setFamily] = useState<CustomerFamily | null>(null);
   const [values, setValues] = useState<Record<string, string | boolean>>({});
+  const [recognized, setRecognized] = useState<ExactWebIdentity | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const codeRef = useRef<string | null>(null);
+  const labelTriedRef = useRef(false);
   const cache = useMemo(
     () =>
       createOfflineCache({
@@ -198,11 +220,31 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
             fromCache: r.provenance === 'local_cache',
           });
           return;
-        case 'needs_confirmation':
+        case 'needs_confirmation': {
           if (r.reason === 'family_confirmation' && r.sessionId) {
+            const next = session ?? seedSession(r.sessionId, r.identity, []);
+            const web = session ? null : identityFromEvidence(r.externalEvidence);
+            if (web) {
+              // the code already identifies the product: use it, and its family when the registry knows one
+              setRecognized(web);
+              setValues(prefillFromIdentity(web));
+              setFamily(web.family);
+              if (web.family) {
+                await finalize(
+                  next,
+                  {
+                    customerFamily: web.family,
+                    confirmations: { productFields: web.productFields },
+                  },
+                  ctx,
+                  code,
+                );
+                return;
+              }
+            }
             setPhase({
               kind: 'family',
-              session: session ?? seedSession(r.sessionId, r.identity, []),
+              session: next,
               options: (r.options as readonly CustomerFamily[] | undefined) ?? FAMILIES,
             });
             return;
@@ -219,17 +261,35 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
           }
           fail('Ten produkt wymaga jeszcze sprawdzenia. Spróbuj ponownie później.');
           return;
+        }
         case 'discovered_pending': {
           const next = seedSession(r.sessionId, r.identity, r.ledger.missingCritical);
           const noteText = r.note ?? null;
           const afterFinalize = session !== undefined;
           if (afterFinalize) {
-            // the authority answered: either it still needs the label, or it named plain facts
+            // the authority answered: plain facts it still needs, the label it still needs, or only
+            // technical readiness the customer cannot supply — then the product is reported, not looped
             const fields = plainFieldsFor(r.ledger.missingCritical, {
               needIdentity: /identity/.test(noteText ?? ''),
             });
             if (fields.length > 0) setPhase({ kind: 'fields', session: next, fields, note: null });
-            else setPhase({ kind: 'label', session: next, note: noteText });
+            else if (!labelTriedRef.current)
+              setPhase({ kind: 'label', session: next, note: recognized ? null : noteText });
+            else setPhase({ kind: 'fields', session: next, fields: [], note: null });
+            return;
+          }
+          const web = identityFromEvidence(r.externalEvidence);
+          if (web) {
+            // exact registry identity: no generic questions, go straight to the authority with it
+            setRecognized(web);
+            setValues(prefillFromIdentity(web));
+            setFamily(web.family);
+            await finalize(
+              next,
+              { customerFamily: web.family, confirmations: { productFields: web.productFields } },
+              ctx,
+              code,
+            );
             return;
           }
           if (r.next === 'finalize') {
@@ -288,11 +348,26 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
     async (scan: ConfirmedScan) => {
       if (!ports) return fail('Backend nie jest skonfigurowany.');
       codeRef.current = scan.value;
+      labelTriedRef.current = false;
       setBusy(true);
+      setRecognized(null);
       setPhase({ kind: 'resolving', code: scan.value });
       try {
         const accountId = await getScanImportV2AccountId();
         const ctx = contextFor(accountId);
+        // the exact-GTIN registry answers in about a second; the server research can take much longer —
+        // show the identity as soon as it is known (the memoised port makes this a single request)
+        const identity = identifyCode(scan);
+        if (identity.ok && ports.external && ctx.online) {
+          void ports.external
+            .research(identity.identity, ctx)
+            .then((ev) => {
+              if (codeRef.current !== scan.value) return;
+              const web = identityFromEvidence(isExternalEvidence(ev) ? ev : null);
+              if (web) setRecognized((current) => current ?? web);
+            })
+            .catch(() => undefined);
+        }
         const r = await runScanImportV2(scan, ctx, ports);
         await handleResult(r, scan.value, ctx);
       } catch {
@@ -321,10 +396,12 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
       );
       return;
     }
+    setFrame(null);
     const capture = new ScanCoreCapture({
       onConfirmed: (scan) => void resolveRef.current(scan),
       onStatus: (status) =>
         setPhase((p) => (p.kind === 'camera' && status !== 'stopped' ? { ...p, status } : p)),
+      onFrame: (f) => setFrame(f),
       onError: () =>
         setPhase((p) =>
           p.kind === 'camera'
@@ -343,9 +420,12 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
   }, [phase.kind]);
 
   const restart = () => {
+    labelTriedRef.current = false;
     setManual('');
     setValues({});
     setFamily(null);
+    setRecognized(null);
+    setFrame(null);
     setPhase({ kind: 'camera', status: 'starting', error: null });
   };
 
@@ -373,10 +453,16 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
       const ctx = contextFor(await getScanImportV2AccountId());
       const image = await fileToLabelImage(await downscaled(file), source);
       const r = await continueDiscovery(session, { type: 'label', images: [image] }, ctx, port);
+      labelTriedRef.current = true;
       if (r.kind === 'discovered_pending') {
         // the label was read: let the authority decide what is still missing (plain fields, not another photo)
         const next = seedSession(r.sessionId, r.identity, r.ledger.missingCritical);
-        await finalize(next, { customerFamily: family }, ctx, codeRef.current ?? '');
+        await finalize(
+          next,
+          { customerFamily: family, confirmations: confirmationsFromFields(values) },
+          ctx,
+          codeRef.current ?? '',
+        );
         return;
       }
       await handleResult(r, codeRef.current ?? '', ctx);
@@ -424,7 +510,12 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
   const enterManually = (session: DiscoverySession) =>
     withBusy(async () => {
       const ctx = contextFor(await getScanImportV2AccountId());
-      await finalize(session, { customerFamily: family }, ctx, codeRef.current ?? '');
+      await finalize(
+        session,
+        { customerFamily: family, confirmations: confirmationsFromFields(values) },
+        ctx,
+        codeRef.current ?? '',
+      );
     });
 
   const requestVerification = (session: DiscoverySession) =>
@@ -442,6 +533,14 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
       {p.brand ? <p className="text-xs text-stone-600">{p.brand}</p> : null}
     </div>
   );
+
+  const recognizedLine = recognized ? (
+    <p className="text-xs text-stone-600" data-testid="scan-flow-recognized">
+      Rozpoznano po kodzie: <span className="font-semibold text-ink">{recognized.displayName}</span>
+      {recognized.brand ? ` · ${recognized.brand}` : ''}
+      {recognized.quantity ? ` · ${recognized.quantity}` : ''}
+    </p>
+  ) : null;
 
   const addButton = (resolved: ResolvedScanProductLike, engineReady: boolean) =>
     mode === 'recipe' && onResolved ? (
@@ -468,6 +567,42 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
     </button>
   );
 
+  // live feedback over the camera image
+  const video = videoRef.current;
+  const position = frame ? positionHint(frame.roi, frame.sourceW, frame.sourceH) : null;
+  const feedback =
+    phase.kind === 'camera'
+      ? phase.error
+        ? phase.error
+        : phase.status === 'confirmed'
+          ? 'Odczytano'
+          : frame && phase.status !== 'starting'
+            ? scanFeedbackText({
+                state: frame.state,
+                guidance: frame.guidance,
+                timedOut: frame.timedOut,
+                position,
+              })
+            : STATUS_TEXT[phase.status]
+      : '';
+  let roiBox: { left: number; top: number; width: number; height: number } | null = null;
+  if (frame?.roi && video && video.videoWidth && video.videoHeight && video.clientWidth) {
+    const scale = Math.max(
+      video.clientWidth / video.videoWidth,
+      video.clientHeight / video.videoHeight,
+    );
+    const offX = (video.clientWidth - video.videoWidth * scale) / 2;
+    const offY = (video.clientHeight - video.videoHeight * scale) / 2;
+    roiBox = {
+      left: offX + frame.roi.x * scale,
+      top: offY + frame.roi.y * scale,
+      width: frame.roi.w * scale,
+      height: frame.roi.h * scale,
+    };
+  }
+  const success = phase.kind === 'camera' && phase.status === 'confirmed';
+  const engaged = frame ? frame.state !== 'SEARCHING' && frame.state !== 'LOST' : false;
+
   return (
     <section className="space-y-4" data-testid="scan-flow" data-scan-flow-mode={mode}>
       {phase.kind === 'camera' ? (
@@ -475,17 +610,61 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
           <p className="text-sm text-stone-700">
             {intro ?? 'Pokaż kod kreskowy produktu aparatowi.'}
           </p>
-          <video
-            ref={videoRef}
-            className="aspect-[4/3] w-full rounded-2xl bg-black object-cover"
-            muted
-            playsInline
-            autoPlay
+          <div
+            className="relative overflow-hidden rounded-2xl bg-black"
             hidden={phase.status === 'unavailable'}
-          />
-          <p className="text-xs text-stone-600" aria-live="polite">
-            {phase.error ?? STATUS_TEXT[phase.status]}
-          </p>
+            data-testid="scan-flow-camera"
+          >
+            <video
+              ref={videoRef}
+              className="aspect-[3/4] w-full object-cover"
+              muted
+              playsInline
+              autoPlay
+            />
+            {/* guide frame: where the code should be */}
+            <div
+              aria-hidden="true"
+              className={`pointer-events-none absolute left-[12%] top-[32%] h-[36%] w-[76%] rounded-xl border-2 ${
+                success ? 'border-emerald-400' : engaged ? 'border-amber-300' : 'border-white/70'
+              } ${engaged || success ? '' : 'border-dashed'}`}
+            />
+            {/* the code the engine is tracking */}
+            {roiBox ? (
+              <div
+                aria-hidden="true"
+                className={`pointer-events-none absolute rounded-md border-2 ${
+                  success ? 'border-emerald-400 bg-emerald-400/20' : 'border-amber-300'
+                }`}
+                style={roiBox}
+              />
+            ) : null}
+            <div
+              className={`absolute inset-x-0 bottom-0 px-3 py-2 text-center text-sm font-semibold ${
+                success ? 'bg-emerald-600 text-white' : 'bg-black/55 text-white'
+              }`}
+              aria-live="polite"
+              data-testid="scan-flow-feedback"
+            >
+              {success ? 'Odczytano ✓' : feedback}
+              {frame && frame.zoomLevel > 1 && !success ? (
+                <span className="ml-2 text-xs font-normal opacity-80">×{frame.zoomLevel}</span>
+              ) : null}
+            </div>
+            {frame && engaged && !success ? (
+              <div className="absolute inset-x-0 bottom-9 h-1 bg-white/25" aria-hidden="true">
+                <div
+                  className="h-1 bg-amber-300 transition-[width] duration-150"
+                  style={{ width: `${Math.round(frame.progress * 100)}%` }}
+                />
+              </div>
+            ) : null}
+          </div>
+          {phase.status === 'unavailable' ? (
+            <p className="text-xs text-stone-600" aria-live="polite">
+              {phase.error}
+            </p>
+          ) : null}
           <form
             className="flex gap-2"
             onSubmit={(event) => {
@@ -510,9 +689,12 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
       ) : null}
 
       {phase.kind === 'resolving' ? (
-        <p className="text-sm text-stone-700" aria-live="polite">
-          Sprawdzam produkt…
-        </p>
+        <div className="space-y-2" aria-live="polite">
+          <p className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-3 py-1 text-xs font-semibold text-white">
+            Odczytano ✓ <span className="font-mono font-normal">{phase.code}</span>
+          </p>
+          <p className="text-sm text-stone-700">Sprawdzam produkt…</p>
+        </div>
       ) : null}
 
       {phase.kind === 'known' ? (
@@ -552,9 +734,11 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
 
       {phase.kind === 'label' ? (
         <div className="space-y-3">
+          {recognizedLine}
           <p className="text-sm text-stone-700">
-            Nie znam jeszcze tego produktu. Zrób zdjęcie etykiety ze składem i tabelą wartości
-            odżywczych.
+            {recognized
+              ? 'Brakuje jeszcze danych z etykiety. Zrób zdjęcie składu i tabeli wartości odżywczych.'
+              : 'Nie znam jeszcze tego produktu. Zrób zdjęcie etykiety ze składem i tabelą wartości odżywczych.'}
           </p>
           {phase.note ? <p className="text-xs text-stone-600">{phase.note}</p> : null}
           <div className="flex flex-wrap gap-2">
@@ -608,7 +792,10 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
 
       {phase.kind === 'family' ? (
         <div className="space-y-3">
-          <p className="text-sm text-stone-700">Co to za produkt?</p>
+          {recognizedLine}
+          <p className="text-sm text-stone-700">
+            {recognized ? `Co to za produkt? (${recognized.displayName})` : 'Co to za produkt?'}
+          </p>
           <div className="flex flex-wrap gap-2">
             {phase.options.map((option) => (
               <button
@@ -633,8 +820,11 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
             void submitFields(phase.session, phase.fields);
           }}
         >
+          {recognizedLine}
           <p className="text-sm text-stone-700">
-            Uzupełnij brakujące dane z etykiety. Produkt zapiszemy prywatnie na Twoim koncie.
+            {recognized
+              ? 'Sprawdź dane z etykiety i uzupełnij brakujące. Produkt zapiszemy prywatnie na Twoim koncie.'
+              : 'Uzupełnij brakujące dane z etykiety. Produkt zapiszemy prywatnie na Twoim koncie.'}
           </p>
           {phase.note ? <p className="text-xs text-red-700">{phase.note}</p> : null}
           {phase.fields.map((field) => (
@@ -677,7 +867,7 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
               ) : (
                 <input
                   className={input}
-                  type={field.kind === 'number' ? 'text' : 'text'}
+                  type="text"
                   inputMode={field.kind === 'number' ? 'decimal' : 'text'}
                   value={typeof values[field.key] === 'string' ? String(values[field.key]) : ''}
                   onChange={(event) =>
@@ -689,8 +879,9 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
           ))}
           {phase.fields.length === 0 ? (
             <p className="text-xs text-stone-600">
-              Z etykiety nie da się uzupełnić brakujących danych. Możesz zgłosić produkt do
-              weryfikacji.
+              {recognized
+                ? 'Produkt rozpoznany, ale nie jest jeszcze gotowy do receptury — brakuje danych, których nie da się odczytać z etykiety. Zgłoś go do weryfikacji.'
+                : 'Z etykiety nie da się uzupełnić brakujących danych. Możesz zgłosić produkt do weryfikacji.'}
             </p>
           ) : null}
           <div className="flex flex-wrap gap-2">
@@ -699,6 +890,20 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
                 Zapisz jako mój produkt
               </button>
             ) : null}
+            <label className={btnSecondary}>
+              Zrób zdjęcie etykiety
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                capture="environment"
+                className="sr-only"
+                disabled={busy}
+                onChange={(event) => {
+                  const f = event.target.files?.[0];
+                  if (f) void sendLabel(phase.session, f, 'camera_manual');
+                }}
+              />
+            </label>
             <button
               type="button"
               className={btnSecondary}
@@ -716,6 +921,7 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
           <p className="text-sm font-semibold text-ink">
             Zapisano jako Twój produkt (prywatny, widoczny tylko na Twoim koncie).
           </p>
+          {recognizedLine}
           {productCard(phase.product)}
           {addButton(phase.resolved, phase.engineReady)}
           {againButton}
