@@ -14,6 +14,7 @@ import { APP_HEADER_CANVAS, APP_HEADER_ROW, APP_SHELL_MAX_WIDTH_CLASS } from './
 import { HomeProSwitch } from '@/features/home-creator/ui/HomeProSwitch';
 import { useHomeEntitlement } from '@/features/home-creator/useHomeEntitlement';
 import { useApplicationScaleAuthority } from './applicationScaleAuthority';
+import { AppHeaderAccountSlot } from './AppHeaderAccountSlot';
 
 /**
  * THE ONE canonical application shell.
@@ -216,18 +217,14 @@ export function AppShell({
           ) : null}
         </div>
 
-        {/* OWNER 2026-09-02: the login closes the row at the same inset the
+        {/* OWNER 2026-09-02: the account closes the row at the same inset the
             hamburger opens it, so the header reads as one symmetrical band on
             every route. It sits OUTSIDE the centred band on purpose — the band is
             absolutely positioned from `xl` up and would otherwise carry the login
-            inward with it. Presentation only for now: no session, no menu, no
-            navigation behind it. */}
-        <span
-          data-testid="app-header-login"
-          className="app-header-account-slot ml-auto hidden shrink-0 items-center rounded-full border border-[var(--g-line)] px-4 py-1.5 text-[12px] font-semibold whitespace-nowrap text-[var(--g-text-secondary)]"
-        >
-          Zaloguj
-        </span>
+            inward with it. It reads the exact same auth identity as the drawer:
+            a live account links to Konto, anonymous opens the canonical auth
+            modal. */}
+        <AppHeaderAccountSlot />
       </header>
       <main className={cn(contentClassName, viewportLock && 'pro-workbench-main-lock')}>
         {children}

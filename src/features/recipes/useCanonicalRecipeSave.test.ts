@@ -86,6 +86,27 @@ describe('handler invariants', () => {
     expect(SRC.includes('useUpdateRecipe')).toBe(false);
   });
 
+  it('Save cannot sign out, clear auth storage, reset account state or navigate to guest', () => {
+    const adapter = strip(
+      readFileSync(new URL('../../services/proCore/supabaseRecipes.ts', import.meta.url), 'utf8'),
+    );
+    for (const source of [SRC, adapter]) {
+      expect(source).not.toMatch(/auth\.signOut|\bsignOut\s*\(/);
+      expect(source).not.toMatch(
+        /localStorage\.(?:clear|removeItem)|sessionStorage\.(?:clear|removeItem)/,
+      );
+      expect(source).not.toContain('clearAccountScopedClientState');
+      expect(source).not.toMatch(/window\.location\.(?:assign|replace)|navigate\s*\(/);
+    }
+    // The backend adapter may prove identity; it may not mutate it.
+    expect(adapter).toContain('this.client.auth.getUser()');
+  });
+
+  it('the owner trace is opt-in and structurally excludes credentials', () => {
+    expect(SRC).toContain("get('owner-auth-trace') !== '1'");
+    expect(SRC).not.toMatch(/console\.info\([^\n]*(?:access_token|refresh_token|authorization)/i);
+  });
+
   it('reacts when server-authorized no-change PI restores the practical audit', () => {
     expect(SRC).toContain(
       'const practicalRecipeAudit = useRecipeStore((s) => s.practicalRecipeAudit);',
