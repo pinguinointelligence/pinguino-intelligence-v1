@@ -600,7 +600,10 @@ function certifiedMinimumLargerBatchCandidate(
   const behaviorSnapshots = session.plannedComposition.behaviorSnapshots ?? {};
   const mainItems = forecastInput.items
     .map((item, index) => ({ item, index, snapshot: behaviorSnapshots[item.id] }))
-    .filter(({ item }) => item.lock_type === 'main');
+    .filter(
+      ({ item }) =>
+        canonicalPlan.items.find((plannedItem) => plannedItem.id === item.id)?.lock_type === 'main',
+    );
   if (mainItems.length > 0) {
     if (
       mainItems.some(
@@ -695,11 +698,14 @@ function certifiedMinimumLargerBatchCandidate(
     row.absoluteGrams ? row.bound * 10 : row.bound,
   );
 
-  if (mainItems.length > 1) {
-    for (let left = 0; left < mainItems.length; left += 1) {
-      for (let right = left + 1; right < mainItems.length; right += 1) {
-        const leftMain = mainItems[left]!;
-        const rightMain = mainItems[right]!;
+  const ratioMainItems = mainItems.filter(
+    ({ item }) => lineById.get(item.id)?.confirmed !== true,
+  );
+  if (ratioMainItems.length > 1) {
+    for (let left = 0; left < ratioMainItems.length; left += 1) {
+      for (let right = left + 1; right < ratioMainItems.length; right += 1) {
+        const leftMain = ratioMainItems[left]!;
+        const rightMain = ratioMainItems[right]!;
         const leftWeight = leftMain.item.main_ratio_weight ?? 1;
         const rightWeight = rightMain.item.main_ratio_weight ?? 1;
         if (!(leftWeight > 0) || !(rightWeight > 0)) return null;
@@ -719,64 +725,142 @@ function certifiedMinimumLargerBatchCandidate(
     ),
     ...forecastInput.items.map((_, index) => index),
   ].filter((index, position, values) => values.indexOf(index) === position);
-  // The continuous lower bound can land inside a discrete stabilizer interval.
-  // Test exact executable masses in ascending 0.1 g order; therefore the first
-  // accepted vector is a certified smallest executable larger batch.
-  for (let targetTenths = firstTargetTenths; targetTenths <= ceilingTenths; targetTenths += 1) {
-    const integerRows = [...baseIntegerRows, totalRow, totalRow.map((value) => -value)];
-    const integerBounds = [...baseIntegerBounds, targetTenths, -targetTenths];
-    if (gelatoStabilizers && gelatoStabilizers.size > 0) {
-      const fixedBand = gelatoStabilizerWholeGramBand(targetTenths / 10);
-      const stabilizerRow = forecastInput.items.map((item) =>
-        gelatoStabilizers.has(item.id) ? 1 : 0,
-      );
-      integerRows.push(stabilizerRow, stabilizerRow.map((value) => -value));
-      integerBounds.push(fixedBand.maxGrams * 10, -fixedBand.minGrams * 10);
+  const stabilizerRow =
+    gelatoStabilizers && gelatoStabilizers.size > 0
+      ? forecastInput.items.map((item) => (gelatoStabilizers.has(item.id) ? 1 : 0))
+      : null;
+  const massIntervals: Array<{
+    firstTenths: number;
+    lastTenths: number;
+    stabilizerBand: ReturnType<typeof gelatoStabilizerWholeGramBand> | null;
+  }> = [];
+  if (!stabilizerRow) {
+    massIntervals.push({
+      firstTenths: firstTargetTenths,
+      lastTenths: ceilingTenths,
+      stabilizerBand: null,
+    });
+  } else {
+    // The whole-gram aggregate band is piecewise constant. Group its cheap
+    // arithmetic intervals first, then solve one exact integer MINIMUM per
+    // interval instead of launching branch-and-bound for every 0.1 g step.
+    let intervalStart = firstTargetTenths;
+    while (intervalStart <= ceilingTenths) {
+      const band = gelatoStabilizerWholeGramBand(intervalStart / 10);
+      let intervalEnd = intervalStart;
+      while (intervalEnd < ceilingTenths) {
+        const nextBand = gelatoStabilizerWholeGramBand((intervalEnd + 1) / 10);
+        if (
+          nextBand.minGrams !== band.minGrams ||
+          nextBand.maxGrams !== band.maxGrams
+        ) {
+          break;
+        }
+        intervalEnd += 1;
+      }
+      massIntervals.push({
+        firstTenths: intervalStart,
+        lastTenths: intervalEnd,
+        stabilizerBand: band,
+      });
+      intervalStart = intervalEnd + 1;
     }
+  }
 
+  const seedForSolution = (
+    solution: readonly number[],
+    targetTenths: number,
+  ): ProductionRescueCandidateSeed | null => {
+    const candidateInput: RecipeInput = {
+      ...forecastInput,
+      target_batch_grams: targetTenths / 10,
+      items: forecastInput.items.map((item, index) => ({
+        ...item,
+        planned_grams: solution[index]! / 10,
+        actual_grams: null,
+      })),
+    };
+    const audit = tenthGramProductionAudit(session, candidateInput);
+    if (!audit?.hardGatePassed) return null;
+    if (!preservesPhysicalReality(session, audit.executableInput)) return null;
+    if (!nativeSafe(audit.executableInput, audit.executableResult)) return null;
+    if (!terminallyAuthorized(audit.executableInput, session)) return null;
+
+    const actions: CorrectionAction[] = [];
+    for (const item of audit.executableInput.items) {
+      const before = forecastInput.items.find((candidate) => candidate.id === item.id);
+      if (!before) return null;
+      const beforeGrams = before.actual_grams ?? before.planned_grams;
+      const delta = item.planned_grams - beforeGrams;
+      if (Math.abs(delta) <= PRODUCTION_GRAMS_EPSILON) continue;
+      actions.push({
+        type: delta > 0 ? 'add' : 'reduce',
+        ingredient_id: item.ingredient.id,
+        ingredient_name: item.ingredient.name,
+        ingredient_category: item.ingredient.category,
+        grams: Math.abs(delta),
+        target_line_id: item.id,
+      });
+    }
+    return { input: audit.executableInput, actions, precision: 'tenth' };
+  };
+
+  for (const interval of massIntervals) {
+    const intervalRows = [
+      ...baseIntegerRows,
+      totalRow,
+      totalRow.map((value) => -value),
+    ];
+    const intervalBounds = [
+      ...baseIntegerBounds,
+      interval.lastTenths,
+      -interval.firstTenths,
+    ];
+    if (stabilizerRow && interval.stabilizerBand) {
+      intervalRows.push(stabilizerRow, stabilizerRow.map((value) => -value));
+      intervalBounds.push(
+        interval.stabilizerBand.maxGrams * 10,
+        -interval.stabilizerBand.minGrams * 10,
+      );
+    }
+    const minimum = solveIntegerLinearMaximum(
+      intervalRows,
+      intervalBounds,
+      totalRow.map((value) => -value),
+      PRODUCTION_RESCUE_INTEGER_NODE_BUDGET,
+    );
+    if (minimum.status !== 'optimal' || !minimum.solution) {
+      // Budget exhaustion cannot prove that a later interval is truly the
+      // minimum. Fail closed and leave the existing recovery paths untouched.
+      if (minimum.exhausted) return null;
+      continue;
+    }
+    const targetTenths = Math.round(
+      minimum.solution.reduce((sum, value) => sum + value, 0),
+    );
+    const minimumSeed = seedForSolution(minimum.solution, targetTenths);
+    if (minimumSeed) return minimumSeed;
+
+    // Necessary linear bounds normally make the minimum vector terminal. If a
+    // profile has an additional nonlinear gate, sample deterministic extreme
+    // points at that SAME proven-minimum mass; never skip to a larger mass and
+    // falsely call it the smallest.
+    const fixedRows = [...intervalRows, totalRow, totalRow.map((value) => -value)];
+    const fixedBounds = [...intervalBounds, targetTenths, -targetTenths];
     for (const objectiveIndex of objectiveOrder) {
       const objective = Array.from({ length: size }, () => 0);
       objective[objectiveIndex] = 1;
       const solved = solveIntegerLinearMaximum(
-        integerRows,
-        integerBounds,
+        fixedRows,
+        fixedBounds,
         objective,
         PRODUCTION_RESCUE_INTEGER_NODE_BUDGET,
       );
       if (solved.status !== 'optimal' || !solved.solution) continue;
-      const candidateInput: RecipeInput = {
-        ...forecastInput,
-        target_batch_grams: targetTenths / 10,
-        items: forecastInput.items.map((item, index) => ({
-          ...item,
-          planned_grams: solved.solution![index]! / 10,
-          actual_grams: null,
-        })),
-      };
-      const audit = tenthGramProductionAudit(session, candidateInput);
-      if (!audit?.hardGatePassed) continue;
-      if (!preservesPhysicalReality(session, audit.executableInput)) continue;
-      if (!nativeSafe(audit.executableInput, audit.executableResult)) continue;
-      if (!terminallyAuthorized(audit.executableInput, session)) continue;
-
-      const actions: CorrectionAction[] = [];
-      for (const item of audit.executableInput.items) {
-        const before = forecastInput.items.find((candidate) => candidate.id === item.id);
-        if (!before) return null;
-        const beforeGrams = before.actual_grams ?? before.planned_grams;
-        const delta = item.planned_grams - beforeGrams;
-        if (Math.abs(delta) <= PRODUCTION_GRAMS_EPSILON) continue;
-        actions.push({
-          type: delta > 0 ? 'add' : 'reduce',
-          ingredient_id: item.ingredient.id,
-          ingredient_name: item.ingredient.name,
-          ingredient_category: item.ingredient.category,
-          grams: Math.abs(delta),
-          target_line_id: item.id,
-        });
-      }
-      return { input: audit.executableInput, actions, precision: 'tenth' };
+      const seed = seedForSolution(solved.solution, targetTenths);
+      if (seed) return seed;
     }
+    return null;
   }
   return null;
 }

@@ -226,6 +226,9 @@ export interface IntegerLinearResult {
   value: number | null;
   solution: readonly number[] | null;
   nodes: number;
+  /** True means the node budget ended the proof; false means the explored
+   * integer region was exhausted and an unavailable result is infeasible. */
+  exhausted: boolean;
 }
 
 /** Hard deterministic computation budget for the exact whole-gram proof.
@@ -290,9 +293,9 @@ export const solveIntegerLinearMaximum = (
 
   visit([], []);
   if (exhausted || bestSolution === null || !Number.isFinite(bestValue)) {
-    return { status: 'unavailable', value: null, solution: null, nodes };
+    return { status: 'unavailable', value: null, solution: null, nodes, exhausted };
   }
-  return { status: 'optimal', value: bestValue, solution: bestSolution, nodes };
+  return { status: 'optimal', value: bestValue, solution: bestSolution, nodes, exhausted: false };
 };
 
 const componentPercent = (ingredient: EngineIngredient, metric: TargetMetric): number => {
@@ -672,7 +675,13 @@ export function mainTechnicalLinearUpperBound(input: {
   const continuous = Math.max(0, solved.value);
   const integer =
     input.certifyWholeGram === false
-      ? { status: 'unavailable' as const, value: null, solution: null, nodes: 0 }
+      ? {
+          status: 'unavailable' as const,
+          value: null,
+          solution: null,
+          nodes: 0,
+          exhausted: false,
+        }
       : solveIntegerLinearMaximum(rows, bounds, objective, input.integerNodeBudget);
   const activeRules = [
     ...new Set(

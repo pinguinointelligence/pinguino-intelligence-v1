@@ -7963,13 +7963,15 @@ const solveIntegerLinearMaximum = (baseRows, baseBounds, objective, maxNodes = M
 		status: "unavailable",
 		value: null,
 		solution: null,
-		nodes
+		nodes,
+		exhausted
 	};
 	return {
 		status: "optimal",
 		value: bestValue,
 		solution: bestSolution,
-		nodes
+		nodes,
+		exhausted: false
 	};
 };
 
@@ -8946,7 +8948,7 @@ function certifiedMinimumLargerBatchCandidate(session, forecastInput, lowerBound
 		item,
 		index,
 		snapshot: behaviorSnapshots[item.id]
-	})).filter(({ item }) => item.lock_type === "main");
+	})).filter(({ item }) => canonicalPlan.items.find((plannedItem) => plannedItem.id === item.id)?.lock_type === "main");
 	if (mainItems.length > 0) {
 		if (mainItems.some(({ snapshot }) => !snapshot || snapshot.mainEquivalentFactor === null || !(snapshot.mainEquivalentFactor > 0) || snapshot.ecoFloorPercent === null || snapshot.hardLimitPercent === null)) return null;
 		const floorPercent = Math.max(...mainItems.map(({ snapshot }) => snapshot.ecoFloorPercent));
@@ -8976,9 +8978,10 @@ function certifiedMinimumLargerBatchCandidate(session, forecastInput, lowerBound
 	if (firstTargetTenths > ceilingTenths) return null;
 	const baseIntegerRows = rows.map((row) => row.coefficients);
 	const baseIntegerBounds = rows.map((row) => row.absoluteGrams ? row.bound * 10 : row.bound);
-	if (mainItems.length > 1) for (let left = 0; left < mainItems.length; left += 1) for (let right = left + 1; right < mainItems.length; right += 1) {
-		const leftMain = mainItems[left];
-		const rightMain = mainItems[right];
+	const ratioMainItems = mainItems.filter(({ item }) => lineById.get(item.id)?.confirmed !== true);
+	if (ratioMainItems.length > 1) for (let left = 0; left < ratioMainItems.length; left += 1) for (let right = left + 1; right < ratioMainItems.length; right += 1) {
+		const leftMain = ratioMainItems[left];
+		const rightMain = ratioMainItems[right];
 		const leftWeight = leftMain.item.main_ratio_weight ?? 1;
 		const rightWeight = rightMain.item.main_ratio_weight ?? 1;
 		if (!(leftWeight > 0) || !(rightWeight > 0)) return null;
@@ -8990,63 +8993,109 @@ function certifiedMinimumLargerBatchCandidate(session, forecastInput, lowerBound
 		baseIntegerBounds.push(roundingBound, roundingBound);
 	}
 	const objectiveOrder = [...forecastInput.items.flatMap((item, index) => behaviorSnapshots[item.id]?.approvedLiquidDairyCarrier === true ? [index] : []), ...forecastInput.items.map((_, index) => index)].filter((index, position, values) => values.indexOf(index) === position);
-	for (let targetTenths = firstTargetTenths; targetTenths <= ceilingTenths; targetTenths += 1) {
-		const integerRows = [
+	const stabilizerRow = gelatoStabilizers && gelatoStabilizers.size > 0 ? forecastInput.items.map((item) => gelatoStabilizers.has(item.id) ? 1 : 0) : null;
+	const massIntervals = [];
+	if (!stabilizerRow) massIntervals.push({
+		firstTenths: firstTargetTenths,
+		lastTenths: ceilingTenths,
+		stabilizerBand: null
+	});
+	else {
+		let intervalStart = firstTargetTenths;
+		while (intervalStart <= ceilingTenths) {
+			const band = gelatoStabilizerWholeGramBand(intervalStart / 10);
+			let intervalEnd = intervalStart;
+			while (intervalEnd < ceilingTenths) {
+				const nextBand = gelatoStabilizerWholeGramBand((intervalEnd + 1) / 10);
+				if (nextBand.minGrams !== band.minGrams || nextBand.maxGrams !== band.maxGrams) break;
+				intervalEnd += 1;
+			}
+			massIntervals.push({
+				firstTenths: intervalStart,
+				lastTenths: intervalEnd,
+				stabilizerBand: band
+			});
+			intervalStart = intervalEnd + 1;
+		}
+	}
+	const seedForSolution = (solution, targetTenths) => {
+		const audit = tenthGramProductionAudit(session, {
+			...forecastInput,
+			target_batch_grams: targetTenths / 10,
+			items: forecastInput.items.map((item, index) => ({
+				...item,
+				planned_grams: solution[index] / 10,
+				actual_grams: null
+			}))
+		});
+		if (!audit?.hardGatePassed) return null;
+		if (!preservesPhysicalReality(session, audit.executableInput)) return null;
+		if (!nativeSafe(audit.executableInput, audit.executableResult)) return null;
+		if (!terminallyAuthorized(audit.executableInput, session)) return null;
+		const actions = [];
+		for (const item of audit.executableInput.items) {
+			const before = forecastInput.items.find((candidate) => candidate.id === item.id);
+			if (!before) return null;
+			const beforeGrams = before.actual_grams ?? before.planned_grams;
+			const delta = item.planned_grams - beforeGrams;
+			if (Math.abs(delta) <= 1e-6) continue;
+			actions.push({
+				type: delta > 0 ? "add" : "reduce",
+				ingredient_id: item.ingredient.id,
+				ingredient_name: item.ingredient.name,
+				ingredient_category: item.ingredient.category,
+				grams: Math.abs(delta),
+				target_line_id: item.id
+			});
+		}
+		return {
+			input: audit.executableInput,
+			actions,
+			precision: "tenth"
+		};
+	};
+	for (const interval of massIntervals) {
+		const intervalRows = [
 			...baseIntegerRows,
 			totalRow,
 			totalRow.map((value) => -value)
 		];
-		const integerBounds = [
+		const intervalBounds = [
 			...baseIntegerBounds,
+			interval.lastTenths,
+			-interval.firstTenths
+		];
+		if (stabilizerRow && interval.stabilizerBand) {
+			intervalRows.push(stabilizerRow, stabilizerRow.map((value) => -value));
+			intervalBounds.push(interval.stabilizerBand.maxGrams * 10, -interval.stabilizerBand.minGrams * 10);
+		}
+		const minimum = solveIntegerLinearMaximum(intervalRows, intervalBounds, totalRow.map((value) => -value), PRODUCTION_RESCUE_INTEGER_NODE_BUDGET);
+		if (minimum.status !== "optimal" || !minimum.solution) {
+			if (minimum.exhausted) return null;
+			continue;
+		}
+		const targetTenths = Math.round(minimum.solution.reduce((sum, value) => sum + value, 0));
+		const minimumSeed = seedForSolution(minimum.solution, targetTenths);
+		if (minimumSeed) return minimumSeed;
+		const fixedRows = [
+			...intervalRows,
+			totalRow,
+			totalRow.map((value) => -value)
+		];
+		const fixedBounds = [
+			...intervalBounds,
 			targetTenths,
 			-targetTenths
 		];
-		if (gelatoStabilizers && gelatoStabilizers.size > 0) {
-			const fixedBand = gelatoStabilizerWholeGramBand(targetTenths / 10);
-			const stabilizerRow = forecastInput.items.map((item) => gelatoStabilizers.has(item.id) ? 1 : 0);
-			integerRows.push(stabilizerRow, stabilizerRow.map((value) => -value));
-			integerBounds.push(fixedBand.maxGrams * 10, -fixedBand.minGrams * 10);
-		}
 		for (const objectiveIndex of objectiveOrder) {
 			const objective = Array.from({ length: size }, () => 0);
 			objective[objectiveIndex] = 1;
-			const solved = solveIntegerLinearMaximum(integerRows, integerBounds, objective, PRODUCTION_RESCUE_INTEGER_NODE_BUDGET);
+			const solved = solveIntegerLinearMaximum(fixedRows, fixedBounds, objective, PRODUCTION_RESCUE_INTEGER_NODE_BUDGET);
 			if (solved.status !== "optimal" || !solved.solution) continue;
-			const audit = tenthGramProductionAudit(session, {
-				...forecastInput,
-				target_batch_grams: targetTenths / 10,
-				items: forecastInput.items.map((item, index) => ({
-					...item,
-					planned_grams: solved.solution[index] / 10,
-					actual_grams: null
-				}))
-			});
-			if (!audit?.hardGatePassed) continue;
-			if (!preservesPhysicalReality(session, audit.executableInput)) continue;
-			if (!nativeSafe(audit.executableInput, audit.executableResult)) continue;
-			if (!terminallyAuthorized(audit.executableInput, session)) continue;
-			const actions = [];
-			for (const item of audit.executableInput.items) {
-				const before = forecastInput.items.find((candidate) => candidate.id === item.id);
-				if (!before) return null;
-				const beforeGrams = before.actual_grams ?? before.planned_grams;
-				const delta = item.planned_grams - beforeGrams;
-				if (Math.abs(delta) <= 1e-6) continue;
-				actions.push({
-					type: delta > 0 ? "add" : "reduce",
-					ingredient_id: item.ingredient.id,
-					ingredient_name: item.ingredient.name,
-					ingredient_category: item.ingredient.category,
-					grams: Math.abs(delta),
-					target_line_id: item.id
-				});
-			}
-			return {
-				input: audit.executableInput,
-				actions,
-				precision: "tenth"
-			};
+			const seed = seedForSolution(solved.solution, targetTenths);
+			if (seed) return seed;
 		}
+		return null;
 	}
 	return null;
 }
