@@ -355,7 +355,13 @@ export function HomeRecipeSection({
       .selectable;
 
   return (
-    <HomeSection id="recipe" onBack={onBack} fill={false} data-testid="home-section-recipe">
+    <HomeSection
+      id="recipe"
+      onBack={onBack}
+      fill={false}
+      productPickerWidthAnchor
+      data-testid="home-section-recipe"
+    >
       {/* §53: the proposed name is a plain editable field — no separate naming step. */}
       <input
         value={name}
