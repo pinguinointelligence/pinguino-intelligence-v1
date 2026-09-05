@@ -179,6 +179,206 @@ async function insertIgnoringDuplicate(db: DbClient, table: string, row: Row, co
  *  - the destination is only written when the session actually carries one;
  *  - re-delivery is a no-op, on top of the durable event-id uniqueness.
  */
+/** The Starter Pack SKU is the ONLY shop line that earns a commission today. */
+const STARTER_PACK_SKU = 'GEL-STARTER-PACK';
+
+/**
+ * STARTER PACK COMMISSION — owner-frozen 2026-09-02.
+ *
+ * A paid physical Starter Pack earns 9 EUR (standard) / 19 EUR (gold), ONCE.
+ * Everything that already governs a subscription commission governs this one:
+ * the same `referral_attributions` lock, the same self-referral refusal, the
+ * same month's `partner_tier_snapshots`, the same versioned `commission_rules`,
+ * the same `held` lifecycle and therefore the same reversal path — a refund
+ * finds this entry by payment intent exactly as it finds a subscription's.
+ *
+ * Three refusals are deliberate and produce NO row:
+ *
+ *  - a pack line that was not actually paid for. The guard is on the money,
+ *    not on a SKU: a free or fully discounted pack earns nothing, and reading
+ *    the amount means a future "Local" pack needs no new special case.
+ *  - ELITE. `partner_rate_profiles` has columns for home/pro × monthly/annual
+ *    and nothing for a pack, so there is no honest automatic rate. The seed
+ *    deliberately has no elite row, so this cannot be bypassed by adding code.
+ *  - no attribution — nobody referred this order.
+ */
+async function applyStarterPackCommission(
+  deps: DispatchDeps,
+  event: WebhookEventFacts,
+  orderId: string,
+  paymentIntentId: string | null,
+  paidAtUtcMs: number,
+): Promise<string | null> {
+  // Money first: what did the buyer actually pay for the pack itself?
+  const { data: itemRows, error: itemError } = await deps.db
+    .from('shop_order_items')
+    .select('sku, unit_price_cents, quantity')
+    .eq('order_id', orderId);
+  throwOnDbError(itemError, 'shop_order_items lookup');
+  const packLines = (itemRows ?? []).filter((row) => row.sku === STARTER_PACK_SKU);
+  if (packLines.length === 0) return null; // an ordinary ingredient order
+
+  // The commission is PER SOLD PACK, so the quantity is the multiplier and it
+  // comes from the order LINES — never inferred from the order total, which
+  // also carries other products, shipping and tax.
+  //
+  // A line priced at zero contributes no quantity: a free or fully discounted
+  // pack was not sold, so it earns nothing, and a mixed cart still earns on
+  // the packs that WERE paid for.
+  let qualifyingPacks = 0;
+  let packPaidCents = 0;
+  for (const row of packLines) {
+    const unit = typeof row.unit_price_cents === 'number' ? Math.max(0, row.unit_price_cents) : 0;
+    const qty = typeof row.quantity === 'number' ? Math.max(0, Math.trunc(row.quantity)) : 0;
+    if (unit <= 0 || qty <= 0) continue;
+    qualifyingPacks += qty;
+    packPaidCents += unit * qty;
+  }
+  if (qualifyingPacks <= 0 || packPaidCents <= 0) return 'skipped_starter_pack_not_paid';
+
+  const { data: orderRow, error: orderError } = await deps.db
+    .from('shop_orders')
+    .select('user_id')
+    .eq('id', orderId)
+    .maybeSingle();
+  throwOnDbError(orderError, 'shop_orders buyer lookup');
+  const buyerUserId = orderRow && typeof orderRow.user_id === 'string' ? orderRow.user_id : null;
+  if (!buyerUserId) return 'skipped_shop_order_has_no_user';
+
+  // SAME attribution authority as a subscription: an ACTIVE lock owns the
+  // buyer, otherwise the freshest in-window PENDING row is chosen. A pack does
+  // NOT lock a pending attribution — locking belongs to the subscription that
+  // the window was opened for; a pack must not consume it.
+  const { data: activeRows, error: activeError } = await deps.db
+    .from('referral_attributions')
+    .select('id, partner_id, user_id, status')
+    .eq('user_id', buyerUserId)
+    .eq('status', 'active');
+  throwOnDbError(activeError, 'referral_attributions active lookup (shop)');
+  let attribution = (activeRows ?? [])[0] ?? null;
+  if (!attribution) {
+    const { data: pendingRows, error: pendingError } = await deps.db
+      .from('referral_attributions')
+      .select('id, partner_id, user_id, method, status, window_expires_at, created_at')
+      .eq('user_id', buyerUserId)
+      .eq('status', 'pending');
+    throwOnDbError(pendingError, 'referral_attributions pending lookup (shop)');
+    const picked = pickAttributionToLock(
+      (pendingRows ?? []) as unknown as AttributionCandidate[],
+      paidAtUtcMs,
+    );
+    if (picked) attribution = (pendingRows ?? []).find((r) => r.id === picked.id) ?? null;
+  }
+  if (!attribution) return 'skipped_no_attribution';
+
+  const partnerId = typeof attribution.partner_id === 'string' ? attribution.partner_id : null;
+  const attributionId = typeof attribution.id === 'string' ? attribution.id : null;
+  if (!partnerId || !attributionId) throw new RetryableEffectError('attribution_row_incomplete');
+
+  // C6 self-referral: a partner may not earn on their own purchase.
+  const { data: partnerRow, error: partnerError } = await deps.db
+    .from('partners')
+    .select('user_id')
+    .eq('id', partnerId)
+    .maybeSingle();
+  throwOnDbError(partnerError, 'partners lookup (shop)');
+  if (partnerRow && partnerRow.user_id === buyerUserId) return 'skipped_self_referral';
+
+  // T6: the tier of the month the commission was EARNED in.
+  const month = commissionMonthDate(paidAtUtcMs);
+  const { data: snapshotRow, error: snapshotError } = await deps.db
+    .from('partner_tier_snapshots')
+    .select('tier')
+    .eq('partner_id', partnerId)
+    .eq('month', month)
+    .maybeSingle();
+  throwOnDbError(snapshotError, 'partner_tier_snapshots lookup (shop)');
+  const tier = snapshotRow && typeof snapshotRow.tier === 'string' ? snapshotRow.tier : null;
+  if (!tier) throw new RetryableEffectError(`tier_snapshot_missing:${month}`);
+
+  // ELITE — individual terms, and `partner_rate_profiles` has no pack column,
+  // so there is no honest automatic rate. It must NOT be guessed, and it must
+  // NOT vanish either: an elite pack sale is real money somebody has to settle.
+  //
+  // `user_notifications` is the EXISTING admin operational-signal channel —
+  // the same one STRIPE_WEBHOOK_FAILED and PARTNER_APPLICATION_SUBMITTED use,
+  // addressed by `admin_permission` rather than to a person. Its `dedupe_key`
+  // is UNIQUE, so a replayed webhook raises the signal once, not once per
+  // delivery. No commission row is written: the amount is a human decision.
+  if (tier === 'elite') {
+    const signal = await insertIgnoringDuplicate(
+      deps.db,
+      'user_notifications',
+      {
+        recipient_user_id: null,
+        admin_permission: 'PARTNER',
+        notification_type: 'AFFILIATE_ELITE_STARTER_PACK_MANUAL',
+        entity_type: 'shop_orders',
+        entity_id: orderId,
+        title: 'Elite: Zestaw Startowy do rozliczenia ręcznego',
+        body: `Partner Elite sprzedał ${qualifyingPacks} Zestaw(y) Startowy. Stawka Elite jest indywidualna — rozlicz ręcznie.`,
+        payload: {
+          partner_id: partnerId,
+          attribution_id: attributionId,
+          shop_order_id: orderId,
+          qualifying_packs: qualifyingPacks,
+          pack_paid_cents: packPaidCents,
+          stripe_payment_intent_id: paymentIntentId,
+          reason: 'elite_rate_is_individual_no_pack_column',
+        },
+        dedupe_key: `elite_starter_pack:${orderId}`,
+        is_test: !event.livemode,
+      } as unknown as Row,
+      'user_notifications insert (elite starter pack)',
+    );
+    return signal === 'duplicate'
+      ? 'skipped_elite_starter_pack_manual:already_signalled'
+      : 'skipped_elite_starter_pack_manual:signalled';
+  }
+
+  const { data: ruleRows, error: ruleError } = await deps.db
+    .from('commission_rules')
+    .select('version, amount_cents')
+    .eq('product', 'shop_starter_pack')
+    .eq('cadence', 'one_off')
+    .eq('tier', tier);
+  throwOnDbError(ruleError, 'commission_rules lookup (shop)');
+  const rule = pickLatestRuleVersion((ruleRows ?? []) as unknown as CommissionRuleRow[]);
+  if (!rule) throw new RetryableEffectError(`commission_rule_missing:shop_starter_pack/one_off/${tier}`);
+
+  const entry = buildCommissionEntryRow({
+    partnerId,
+    attributionId,
+    subscriptionCacheId: null,
+    stripeSubscriptionId: null,
+    stripeInvoiceId: null,
+    shopOrderId: orderId,
+    stripePaymentIntentId: paymentIntentId,
+    // No offer key: `offer_key` is a foreign key into the SUBSCRIPTION
+    // catalogue, and a shop SKU is not an offer there. The order this entry
+    // points at names the SKU, so nothing is lost.
+    offerKey: null,
+    product: 'shop_starter_pack',
+    commissionCadence: 'one_off',
+    tier,
+    ruleVersion: rule.version,
+    // One aggregated entry per order — the order is the idempotency key — but
+    // the AMOUNT is per pack.
+    amountCents: rule.amount_cents * qualifyingPacks,
+    earnedAtUtcMs: paidAtUtcMs,
+    livemode: event.livemode,
+  });
+  // The unique index on shop_order_id is what makes a replay a no-op — not a
+  // read-then-write check, which two concurrent deliveries could both pass.
+  const outcome = await insertIgnoringDuplicate(
+    deps.db,
+    'commission_entries',
+    entry as unknown as Row,
+    'commission_entries insert (shop)',
+  );
+  return outcome === 'duplicate' ? 'skipped_duplicate_shop_order_entry' : null;
+}
+
 async function applyShopOrderSettlement(
   deps: DispatchDeps,
   event: WebhookEventFacts,
@@ -215,7 +415,29 @@ async function applyShopOrderSettlement(
     },
   );
 
-  if (verdict.kind === 'refuse') return verdict.note;
+  if (verdict.kind === 'refuse') {
+    // An ALREADY-PAID order still has to reach the commission writer.
+    //
+    // Settlement refuses a replay because the money side is done — but the
+    // commission may NOT be: if the first delivery settled the order and then
+    // the commission failed (a missing tier snapshot, say), returning here
+    // would mean every redelivery refuses early and the partner is never paid
+    // for an order the customer paid for. The writer is keyed on the order and
+    // idempotent, so re-running it on a paid order is safe and self-healing.
+    if (verdict.note === 'shop_order_already_paid') {
+      const lateNote = await applyStarterPackCommission(
+        deps,
+        event,
+        shop.orderId,
+        shop.paymentIntentId ?? (current.stripe_payment_intent_id as string | null) ?? null,
+        Date.parse(String(current.paid_at ?? '')) || event.created * 1000,
+      );
+      // The refusal note still describes what happened to the ORDER, so it is
+      // kept unless the commission writer has something of its own to report.
+      return lateNote ?? verdict.note;
+    }
+    return verdict.note;
+  }
 
   if (verdict.kind === 'expire') {
     const now = new Date().toISOString();
@@ -254,7 +476,26 @@ async function applyShopOrderSettlement(
     .eq('id', shop.orderId)
     .eq('status', 'pending');
   throwOnDbError(error, 'shop_orders settle');
-  return null;
+
+  // Runs on EVERY delivery, not only the one that won the settle race: the
+  // loser of that race must still be able to book, and the unique index makes
+  // a second attempt harmless.
+  // EARNED-AT is the payment's own time, never wall-clock `now`: the tier
+  // snapshot is looked up by the month the commission was earned in, so a
+  // replay next month must still resolve the ORIGINAL month. Prefer the order's
+  // recorded paid_at; fall back to the Stripe event's timestamp, which is what
+  // the subscription path uses too.
+  const earnedAtUtcMs = current.paid_at
+    ? Date.parse(String(current.paid_at)) || event.created * 1000
+    : event.created * 1000;
+  const commissionNote = await applyStarterPackCommission(
+    deps,
+    event,
+    shop.orderId,
+    shop.paymentIntentId,
+    earnedAtUtcMs,
+  );
+  return commissionNote;
 }
 
 async function applyCheckoutCompletion(deps: DispatchDeps, event: WebhookEventFacts): Promise<string | null> {
