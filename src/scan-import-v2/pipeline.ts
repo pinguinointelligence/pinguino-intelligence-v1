@@ -188,8 +188,15 @@ export async function runScanImportV2(
     // authenticated + discovery available: the unknown half of the product flow starts here
     if (ctx.accountId !== null && ports.discovery) {
       try {
-        const d = await startDiscovery(identity, ctx, ports.discovery);
+        // exact-GTIN registry evidence runs alongside the server research: the strongest identity
+        // source for a code nobody in the catalogue knows, gathered before anyone is asked anything
+        const [d, ev] = await Promise.all([
+          startDiscovery(identity, ctx, ports.discovery),
+          research(identity, ctx, ports),
+        ]);
         if (d.kind === 'resolved_exact') return finish(identity, d.product, 'catalog', ctx, ports);
+        if (d.kind === 'discovered_pending' || d.kind === 'needs_confirmation')
+          return { ...d, externalEvidence: ev.externalEvidence };
         return d;
       } catch (error) {
         if (error instanceof Error && (error as { kind?: string }).kind === 'network')

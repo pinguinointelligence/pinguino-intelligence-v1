@@ -214,6 +214,12 @@ function applyCustomerCorrections(
     const evidenceKey = key === 'fibre' ? 'fiber' : key === 'energyKj' ? null : key;
     if (evidenceKey) confirmed.add(evidenceKey as ProductEvidenceField);
   }
+  // A name (and a brand, or an explicit "no brand") the customer typed or confirmed from an exact-GTIN
+  // registry record is customer-confirmed evidence, exactly like a typed nutrition value: the profile
+  // authority reads it as source 'user_confirmed'. Without this, a code-identified product could never
+  // clear PRODUCT_IDENTITY_REQUIRED (owner QA, 2026-09-05).
+  if (displayName) confirmed.add('identity');
+  if (brand || identityCorrection.explicitlyUnbranded === true) confirmed.add('brand');
   if (nutritionCorrection.basis !== undefined) {
     if (!['per_100g', 'per_100ml'].includes(String(nutritionCorrection.basis))) return null;
     nutrition.basis = nutritionCorrection.basis;
