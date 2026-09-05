@@ -89,7 +89,6 @@ export const educationCopy = {
         voice: 'Dobra konsystencja wynika z balansu całej receptury.',
         annotations: [
           { id: 'hard', title: 'Więcej lodu', detail: 'Zbyt twardo' },
-          { id: 'balanced', title: 'Właściwy balans', detail: 'Gładko i stabilnie' },
           { id: 'soft', title: 'Mniej lodu', detail: 'Zbyt miękko' },
         ],
       },
@@ -98,7 +97,11 @@ export const educationCopy = {
         body: 'Nadaje słodycz i pomaga decydować, jak miękkie będą lody po zamrożeniu. Różne cukry nie działają tak samo.',
         voice: 'Podobna słodycz nie zawsze oznacza tę samą miękkość.',
         annotations: [
-          { id: 'sucrose', title: 'Sacharoza', detail: 'Słodycz: średnia · miękkość: średnia' },
+          {
+            id: 'sucrose',
+            title: 'Cukier (sacharoza)',
+            detail: 'Słodycz: średnia · miękkość: średnia',
+          },
           { id: 'dextrose', title: 'Dekstroza', detail: 'Słodycz: niższa · miękkość: wysoka' },
           { id: 'fructose', title: 'Fruktoza', detail: 'Słodycz: wysoka · miękkość: wysoka' },
         ],
@@ -112,6 +115,7 @@ export const educationCopy = {
           { id: 'cream', title: 'Śmietanka', detail: 'Daje gładsze, pełniejsze odczucie' },
           { id: 'milk-powder', title: 'Mleko w proszku', detail: 'Buduje pełniejszą strukturę' },
           { id: 'inulin', title: 'Inulina', detail: 'Dodaje ciała bez większej słodyczy' },
+          { id: 'result', title: 'gellattissimo!', detail: 'Kremowy efekt całego balansu' },
         ],
       },
       flavour: {
@@ -178,7 +182,7 @@ export const educationCopy = {
       proEnding: {
         title: 'Profesjonalna produkcja',
         body: 'Efekt zależy zarówno od procesu, jak i od warunków serwowania lub ekspozycji.',
-        voice: 'Gellatti liczy dla realnej produkcji i warunków podania.',
+        voice: 'Produkujesz dla realnej produkcji i warunków podania',
         annotations: [
           { id: 'machine', title: 'Maszyna', detail: 'Proces mrożenia i napowietrzania' },
           { id: 'product', title: 'Gotowy produkt', detail: 'Struktura, którą chcesz uzyskać' },

@@ -58,8 +58,9 @@ describe('public pages use the approved destination language', () => {
     expect(source).not.toContain('min-h-40 w-full border-t border-ink/12');
   });
 
-  it('runs how-it-works as the responsive eight-step Tour, not the retired five-step rail', () => {
-    expect(page()).toContain('<KnowledgeTour audience={audience} />');
+  it('runs how-it-works as one responsive nine-step Tour, independent of shell mode', () => {
+    expect(page()).toContain('<KnowledgeTour />');
+    expect(page()).not.toContain('<KnowledgeTour audience=');
     expect(knowledgeTour()).toContain('knowledge-tour__progress');
     expect(knowledgeTour()).toContain('data-swipe-enabled="true"');
     expect(knowledgeTourStyles()).toContain('grid-template-rows: minmax(0, 1fr) auto');
