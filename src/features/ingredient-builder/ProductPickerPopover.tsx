@@ -31,6 +31,7 @@ import { iconButtonClasses } from '@/components/ui/buttonStyles';
 import { preserveServerProductRank } from '@/features/global-catalog/ranking';
 import { useGlobalCatalogPicker } from '@/features/global-catalog/useGlobalCatalogPicker';
 import type { CatalogProductSearchHit } from '@/features/global-catalog/contracts';
+import { mappedCatalogIngredient } from '@/features/global-catalog/catalogIngredient';
 import type { RecipeToppingIngredient } from '@/features/recipe-composition/labelTopping';
 import {
   snapshotServerResolvedProductBehavior,
@@ -79,6 +80,7 @@ import {
   uniqueCatalogProductCount,
 } from './productPickerCatalogPresentation';
 import {
+  catalogProductHasOwnEngineProfile,
   engineIngredientForCatalogSelection,
   filterCurrentMapperCatalogHits,
   resolveCurrentMapperCatalogSelection,
@@ -736,7 +738,32 @@ export function ProductPickerPopover({
     setAdding(true);
     try {
       let ingredient: RecipeToppingIngredient | null = option.local ?? null;
-      const selectionCatalog = option.catalog?.resolvedExactProduct ?? option.catalog;
+      const canonicalCatalog = option.catalog;
+      const resolvedExact =
+        canonicalCatalog?.entityKind === 'pi_base'
+          ? (canonicalCatalog.resolvedExactProduct ?? null)
+          : null;
+      if (
+        resolvedExact &&
+        (!canonicalCatalog ||
+          !canonicalCatalog.mappedIngredientId ||
+          resolvedExact.mappedIngredientId !== canonicalCatalog.mappedIngredientId)
+      ) {
+        setUnavailableNotice(
+          `${option.name} wymaga odświeżenia powiązania produktu przed dodaniem.`,
+        );
+        return;
+      }
+      // A country/default or CP-36 resolution owns the exact commercial
+      // relationship, but it does not invent a second scientific profile. If
+      // that exact SKU has no complete product-owned Engine profile, borrow the
+      // already-approved Mapper row for the same server-resolved canonical slot
+      // while retaining the exact SKU/version identity on the recipe line.
+      const selectionCatalog =
+        resolvedExact && !catalogProductHasOwnEngineProfile(resolvedExact)
+          ? canonicalCatalog
+          : (resolvedExact ?? canonicalCatalog);
+      const relationshipCatalog = resolvedExact ?? canonicalCatalog;
       if (!ingredient && option.catalog) {
         const resolvedSelection = await resolveCurrentMapperCatalogSelection(
           selectionCatalog!,
@@ -747,7 +774,10 @@ export function ProductPickerPopover({
           setUnavailableNotice(resolvedSelection.message);
           return;
         }
-        ingredient = engineIngredientForCatalogSelection(selectionCatalog!, resolvedSelection);
+        ingredient =
+          resolvedExact && resolvedSelection.kind === 'mapper'
+            ? mappedCatalogIngredient(resolvedExact, resolvedSelection.row)
+            : engineIngredientForCatalogSelection(selectionCatalog!, resolvedSelection);
       } else if (!ingredient) {
         ingredient = await getEngineApprovedIngredientById(option.id).then((row) =>
           row ? ingredientRowToEngineIngredient(row) : null,
@@ -768,13 +798,13 @@ export function ProductPickerPopover({
       }
       let behavior: ProductBehaviorSnapshot | undefined;
       if (ingredient && behaviorContext) {
-        const entity = selectionCatalog
-          ? selectionCatalog.entityKind === 'pi_base' && selectionCatalog.mappedIngredientId
-            ? { entityKind: 'mapper' as const, entityId: selectionCatalog.mappedIngredientId }
-            : selectionCatalog.currentVersionId
+        const entity = relationshipCatalog
+          ? relationshipCatalog.entityKind === 'pi_base' && relationshipCatalog.mappedIngredientId
+            ? { entityKind: 'mapper' as const, entityId: relationshipCatalog.mappedIngredientId }
+            : relationshipCatalog.currentVersionId
               ? {
                   entityKind: 'catalog_product_version' as const,
-                  entityId: selectionCatalog.currentVersionId,
+                  entityId: relationshipCatalog.currentVersionId,
                 }
               : null
           : {
@@ -839,13 +869,13 @@ export function ProductPickerPopover({
         }
         // Recent-use telemetry is private ranking metadata; an unavailable
         // backend must never turn a valid ingredient selection into an error.
-        const relation = selectionCatalog
+        const relation = relationshipCatalog
           ? {
-              entityKind: selectionCatalog.entityKind,
+              entityKind: relationshipCatalog.entityKind,
               id:
-                selectionCatalog.entityKind === 'pi_base'
-                  ? selectionCatalog.mappedIngredientId!
-                  : selectionCatalog.id,
+                relationshipCatalog.entityKind === 'pi_base'
+                  ? relationshipCatalog.mappedIngredientId!
+                  : relationshipCatalog.id,
             }
           : { entityKind: 'pi_base' as const, id: option.id.replace(/^mapper:/, '') };
         void markCatalogProductUsed(relation).catch(() => undefined);
