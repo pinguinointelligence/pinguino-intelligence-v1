@@ -124,16 +124,37 @@ describe('Owner 670 g Production Rescue served-flow authority', () => {
       machineCapacitySource: null,
     });
     expect(enlargement, diagnostic(session)).toBeDefined();
-    // 691.6167 g is the first single-limit lower bound. The full canonical
-    // recipe remains outside another hard range there; 711.2 g is the first
-    // executable 0.1 g vector that passes every authority.
-    expect(enlargement?.finalMassG).toBe(711.2);
+    // The complete served ProductBehavior envelope adds the 30% liquid-dairy
+    // carrier floor to the Engine ranges. Its continuous lower bound is
+    // 721.8468 g, so 721.9 g is the first executable 0.1 g vector that passes
+    // every frozen authority.
+    expect(enlargement?.finalMassG).toBeCloseTo(721.9, 8);
     expect(enlargement?.instructions).toEqual(
       expect.arrayContaining([
+        expect.objectContaining({ lineId: 'milk', kind: 'add', finalTargetGrams: 216.6 }),
         expect.objectContaining({ lineId: 'strawberries' }),
         expect.objectContaining({ lineId: 'watermelon' }),
+        expect.objectContaining({
+          lineId: 'dextrose',
+          kind: 'reduce_pending_plan',
+          finalTargetGrams: 55,
+        }),
       ]),
     );
+    expect(
+      Object.fromEntries(
+        enlargement!.candidateInput.items.map((item) => [item.id, item.planned_grams]),
+      ),
+    ).toEqual({
+      milk: 216.6,
+      cream: 125,
+      skimmed_milk: 55,
+      sucrose: 59.7,
+      dextrose: 55,
+      tara: 3,
+      strawberries: 103.8,
+      watermelon: 103.8,
+    });
     expect(productionContinuationPath(assessment)).toBe('authorized_correction');
   });
 
@@ -220,7 +241,11 @@ describe('Owner 670 g Production Rescue served-flow authority', () => {
       machineCapacitySource: null,
     });
     expect(enlargement, diagnostic(session)).toBeDefined();
-    expect(enlargement?.finalMassG).toBe(678.2);
+    expect(enlargement?.finalMassG).toBeCloseTo(683.9, 8);
+    expect(enlargement?.instructions).toEqual([
+      expect.objectContaining({ lineId: 'milk', kind: 'add', finalTargetGrams: 205.2 }),
+      expect.objectContaining({ lineId: 'sucrose', kind: 'add', finalTargetGrams: 34.7 }),
+    ]);
     expect(productionContinuationPath(assessment)).toBe('authorized_correction');
   });
 

@@ -5,6 +5,7 @@ import {
   effectiveMachineCapacityGrams,
   proposeBatchRecovery,
   proposeAutoFix,
+  technicalLinearIngredientFactors,
   type CorrectionAction,
   type CorrectionProposal,
   type RecipeInput,
@@ -20,10 +21,17 @@ import { recipeFitForInput } from '@/features/protein-gelato/proteinAuthority';
 import {
   rescaleBatchToTarget,
   verifyConstraintsPreserved,
+  gelatoStabilizerSystemApplies,
+  gelatoStabilizerSystemItems,
+  gelatoStabilizerWholeGramBand,
   type ConstraintSet,
   type IngredientConstraint,
 } from '@/features/recipe-constraints';
 import { isTemplateControlledStabilizer } from '@/features/formulation/stabilizerDosage';
+import {
+  LinearProgram,
+  solveIntegerLinearMaximum,
+} from '@/features/constraint-studio/mainTechnicalLinearBound';
 import type { ProductionRescueStableOptionId } from '@/features/pro-core/productionContracts';
 import {
   PRODUCTION_GRAMS_EPSILON,
@@ -39,7 +47,7 @@ export type ProductionRescueOptionId = ProductionRescueStableOptionId;
  * continue to identify the formulas and calibrated data; this stamp identifies
  * the option-selection and practicalization layer authorized by the server.
  */
-export const PRODUCTION_RESCUE_MODEL_VERSION = 'production-rescue-v8' as const;
+export const PRODUCTION_RESCUE_MODEL_VERSION = 'production-rescue-v9' as const;
 
 export interface ProductionRescueInstruction {
   lineId: string | null;
@@ -428,6 +436,350 @@ const productionIngredientExplicitlyUnavailable = (
     unavailable.has(item.ingredient.id) || unavailable.has(canonicalIngredientId(item.ingredient))
   );
 };
+
+interface ProductionRescueLinearRow {
+  coefficients: number[];
+  bound: number;
+  /** Absolute gram bounds scale by ten when the integer variables are tenths. */
+  absoluteGrams: boolean;
+}
+
+const PRODUCTION_RESCUE_INTEGER_NODE_BUDGET = 20_000;
+
+/**
+ * Build a necessary linear relaxation of the canonical Engine bands. This is
+ * candidate generation only: the exact 0.1 g vector is always re-run through
+ * calculateRecipe and the complete ProductBehavior terminal authority below.
+ */
+function certifiedMinimumLargerBatchCandidate(
+  session: ProductionSession,
+  forecastInput: RecipeInput,
+  lowerBoundG: number,
+  ceilingMassG: number,
+): ProductionRescueCandidateSeed | null {
+  if (!(ceilingMassG > lowerBoundG + PRODUCTION_GRAMS_EPSILON)) return null;
+  const canonicalPlan = currentCanonicalProductionPlan(session);
+  const size = forecastInput.items.length;
+  if (size === 0 || canonicalPlan.items.length !== size) return null;
+
+  const rows: ProductionRescueLinearRow[] = [];
+  const addAbsoluteUpper = (coefficients: number[], bound: number): void => {
+    if (Number.isFinite(bound) && coefficients.every(Number.isFinite)) {
+      rows.push({ coefficients, bound, absoluteGrams: true });
+    }
+  };
+  const addHomogeneousUpper = (coefficients: number[]): void => {
+    if (coefficients.every(Number.isFinite)) {
+      rows.push({ coefficients, bound: 0, absoluteGrams: false });
+    }
+  };
+  const addAbsoluteLower = (coefficients: number[], bound: number): void =>
+    addAbsoluteUpper(
+      coefficients.map((value) => -value),
+      -bound,
+    );
+  const addAbsoluteEquality = (coefficients: number[], value: number): void => {
+    addAbsoluteUpper(coefficients, value);
+    addAbsoluteLower(coefficients, value);
+  };
+  const addHomogeneousEquality = (coefficients: number[]): void => {
+    addHomogeneousUpper(coefficients);
+    addHomogeneousUpper(coefficients.map((value) => -value));
+  };
+  const unitRow = (index: number): number[] => {
+    const row = Array.from({ length: size }, () => 0);
+    row[index] = 1;
+    return row;
+  };
+
+  const lineById = new Map(session.lines.map((line) => [line.lineId, line] as const));
+  for (const [index, item] of forecastInput.items.entries()) {
+    const line = lineById.get(item.id);
+    if (!line) return null;
+    const physicalFloor = line.confirmed ? line.physicalAddedGrams : 0;
+    addAbsoluteLower(unitRow(index), physicalFloor);
+
+    if (productionIngredientExplicitlyUnavailable(forecastInput, item)) {
+      addAbsoluteEquality(unitRow(index), physicalFloor);
+      continue;
+    }
+
+    const source = sourceItemFor(session, item.id);
+    const persisted = persistedProductionConstraint(
+      source,
+      item,
+      canonicalPlan.target_batch_grams,
+    );
+    if (source?.lock_type === 'required') {
+      if (source.planned_grams + PRODUCTION_GRAMS_EPSILON < physicalFloor) return null;
+      addAbsoluteEquality(unitRow(index), source.planned_grams);
+    } else if (persisted?.mode === 'locked') {
+      if (persisted.grams + PRODUCTION_GRAMS_EPSILON < physicalFloor) return null;
+      addAbsoluteEquality(unitRow(index), persisted.grams);
+    } else if (persisted?.mode === 'range') {
+      if (persisted.maxGrams + PRODUCTION_GRAMS_EPSILON < physicalFloor) return null;
+      addAbsoluteLower(unitRow(index), Math.max(physicalFloor, persisted.minGrams));
+      addAbsoluteUpper(unitRow(index), persisted.maxGrams);
+    } else if (persisted?.mode === 'percent') {
+      const percentage = persisted.percent / 100;
+      const row = Array.from({ length: size }, () => -percentage);
+      row[index] = row[index]! + 1;
+      addHomogeneousEquality(row);
+    }
+  }
+
+  const totalRow = Array.from({ length: size }, () => 1);
+  addAbsoluteUpper(totalRow, ceilingMassG);
+  const machineCapacityG = effectiveMachineCapacityGrams(forecastInput);
+  if (machineCapacityG !== null) addAbsoluteUpper(totalRow, machineCapacityG);
+
+  const factors = forecastInput.items.map((item) =>
+    technicalLinearIngredientFactors(item.ingredient),
+  );
+  for (const indicator of calculateRecipe(forecastInput).indicators) {
+    const band = indicator.band;
+    if (!band || indicator.key === 'ice_fraction') continue;
+    let lower: number[] | null = null;
+    let upper: number[] | null = null;
+    if (indicator.key === 'pod') {
+      lower = factors.map((factor) => band.min / 100 - factor.podPointGramsPerGram);
+      upper = factors.map((factor) => factor.podPointGramsPerGram - band.max / 100);
+    } else if (indicator.key === 'npac') {
+      lower = factors.map(
+        (factor) =>
+          (band.min / 100) * (factor.waterPercent / 100) -
+          factor.npacPointGramsPerGram,
+      );
+      upper = factors.map(
+        (factor) =>
+          factor.npacPointGramsPerGram -
+          (band.max / 100) * (factor.waterPercent / 100),
+      );
+    } else if (indicator.key === 'protein_in_solids') {
+      lower = factors.map(
+        (factor) => (band.min / 100) * factor.solidsPercent - factor.proteinPercent,
+      );
+      upper = factors.map(
+        (factor) => factor.proteinPercent - (band.max / 100) * factor.solidsPercent,
+      );
+    } else if (indicator.key === 'lactose_sandiness_risk') {
+      lower = factors.map(
+        (factor) => (band.min / 100) * factor.waterPercent - factor.lactosePercent,
+      );
+      upper = factors.map(
+        (factor) => factor.lactosePercent - (band.max / 100) * factor.waterPercent,
+      );
+    } else {
+      const component = factors.map((factor) => {
+        switch (indicator.key) {
+          case 'water':
+            return factor.waterPercent;
+          case 'total_solids':
+            return factor.solidsPercent;
+          case 'fat':
+            return factor.fatPercent;
+          case 'aerating_protein':
+            return factor.proteinPercent;
+          case 'lactose':
+            return factor.lactosePercent;
+          case 'alcohol':
+            return factor.alcoholPercent;
+          default:
+            return null;
+        }
+      });
+      if (component.some((value) => value === null)) continue;
+      const values = component as number[];
+      lower = values.map((value) => band.min - value);
+      upper = values.map((value) => value - band.max);
+    }
+    addHomogeneousUpper(lower);
+    addHomogeneousUpper(upper);
+  }
+
+  const behaviorSnapshots = session.plannedComposition.behaviorSnapshots ?? {};
+  const mainItems = forecastInput.items
+    .map((item, index) => ({ item, index, snapshot: behaviorSnapshots[item.id] }))
+    .filter(({ item }) => item.lock_type === 'main');
+  if (mainItems.length > 0) {
+    if (
+      mainItems.some(
+        ({ snapshot }) =>
+          !snapshot ||
+          snapshot.mainEquivalentFactor === null ||
+          !(snapshot.mainEquivalentFactor > 0) ||
+          snapshot.ecoFloorPercent === null ||
+          snapshot.hardLimitPercent === null,
+      )
+    ) {
+      return null;
+    }
+    const floorPercent = Math.max(
+      ...mainItems.map(({ snapshot }) => snapshot!.ecoFloorPercent!),
+    );
+    const hardPercent = Math.min(
+      ...mainItems.map(({ snapshot }) => snapshot!.hardLimitPercent!),
+    );
+    const equivalent = Array.from({ length: size }, () => 0);
+    for (const { index, snapshot } of mainItems) {
+      equivalent[index] = snapshot!.mainEquivalentFactor!;
+    }
+    addHomogeneousUpper(
+      totalRow.map((value, index) => (floorPercent / 100) * value - equivalent[index]!),
+    );
+    addHomogeneousUpper(
+      totalRow.map((value, index) => equivalent[index]! - (hardPercent / 100) * value),
+    );
+
+    const carrierFloorPercent = Math.max(
+      0,
+      ...mainItems.flatMap(({ snapshot }) =>
+        snapshot!.requiresLiquidDairyCarrier && snapshot!.liquidDairyCarrierFloorPercent !== null
+          ? [snapshot!.liquidDairyCarrierFloorPercent]
+          : [],
+      ),
+    );
+    if (carrierFloorPercent > 0) {
+      const carrierIndices = new Set(
+        forecastInput.items.flatMap((item, index) =>
+          behaviorSnapshots[item.id]?.approvedLiquidDairyCarrier === true ? [index] : [],
+        ),
+      );
+      if (carrierIndices.size === 0) return null;
+      addHomogeneousUpper(
+        totalRow.map(
+          (value, index) =>
+            (carrierFloorPercent / 100) * value - (carrierIndices.has(index) ? 1 : 0),
+        ),
+      );
+    }
+  }
+
+  const gelatoStabilizers = gelatoStabilizerSystemApplies(forecastInput.category)
+    ? new Set(gelatoStabilizerSystemItems(forecastInput.items).map((item) => item.id))
+    : null;
+  if (gelatoStabilizers && gelatoStabilizers.size > 0) {
+    const stabilizerRow = forecastInput.items.map((item) =>
+      gelatoStabilizers.has(item.id) ? 1 : 0,
+    );
+    addHomogeneousUpper(
+      totalRow.map(
+        (value, index) =>
+          0.002 * value - stabilizerRow[index]!,
+      ),
+    );
+    addHomogeneousUpper(
+      totalRow.map(
+        (value, index) => stabilizerRow[index]! - 0.005 * value,
+      ),
+    );
+  }
+
+  const continuous = new LinearProgram(
+    rows.map((row) => row.coefficients),
+    rows.map((row) => row.bound),
+    Array.from({ length: size }, () => -1),
+  ).solve();
+  if (continuous.status !== 'optimal' || !Number.isFinite(continuous.value)) return null;
+
+  const continuousLowerBoundG = Math.max(0, -continuous.value);
+  const firstTargetTenths = Math.max(
+    Math.floor(lowerBoundG * 10 + PRODUCTION_GRAMS_EPSILON) + 1,
+    Math.ceil(continuousLowerBoundG * 10 - 1e-7),
+  );
+  const ceilingTenths = Math.floor(ceilingMassG * 10 + 1e-7);
+  if (firstTargetTenths > ceilingTenths) return null;
+
+  const baseIntegerRows = rows.map((row) => row.coefficients);
+  const baseIntegerBounds = rows.map((row) =>
+    row.absoluteGrams ? row.bound * 10 : row.bound,
+  );
+
+  if (mainItems.length > 1) {
+    for (let left = 0; left < mainItems.length; left += 1) {
+      for (let right = left + 1; right < mainItems.length; right += 1) {
+        const leftMain = mainItems[left]!;
+        const rightMain = mainItems[right]!;
+        const leftWeight = leftMain.item.main_ratio_weight ?? 1;
+        const rightWeight = rightMain.item.main_ratio_weight ?? 1;
+        if (!(leftWeight > 0) || !(rightWeight > 0)) return null;
+        const ratioRow = Array.from({ length: size }, () => 0);
+        ratioRow[leftMain.index] = rightWeight;
+        ratioRow[rightMain.index] = -leftWeight;
+        const roundingBound = Math.max(leftWeight, rightWeight);
+        baseIntegerRows.push(ratioRow, ratioRow.map((value) => -value));
+        baseIntegerBounds.push(roundingBound, roundingBound);
+      }
+    }
+  }
+
+  const objectiveOrder = [
+    ...forecastInput.items.flatMap((item, index) =>
+      behaviorSnapshots[item.id]?.approvedLiquidDairyCarrier === true ? [index] : [],
+    ),
+    ...forecastInput.items.map((_, index) => index),
+  ].filter((index, position, values) => values.indexOf(index) === position);
+  // The continuous lower bound can land inside a discrete stabilizer interval.
+  // Test exact executable masses in ascending 0.1 g order; therefore the first
+  // accepted vector is a certified smallest executable larger batch.
+  for (let targetTenths = firstTargetTenths; targetTenths <= ceilingTenths; targetTenths += 1) {
+    const integerRows = [...baseIntegerRows, totalRow, totalRow.map((value) => -value)];
+    const integerBounds = [...baseIntegerBounds, targetTenths, -targetTenths];
+    if (gelatoStabilizers && gelatoStabilizers.size > 0) {
+      const fixedBand = gelatoStabilizerWholeGramBand(targetTenths / 10);
+      const stabilizerRow = forecastInput.items.map((item) =>
+        gelatoStabilizers.has(item.id) ? 1 : 0,
+      );
+      integerRows.push(stabilizerRow, stabilizerRow.map((value) => -value));
+      integerBounds.push(fixedBand.maxGrams * 10, -fixedBand.minGrams * 10);
+    }
+
+    for (const objectiveIndex of objectiveOrder) {
+      const objective = Array.from({ length: size }, () => 0);
+      objective[objectiveIndex] = 1;
+      const solved = solveIntegerLinearMaximum(
+        integerRows,
+        integerBounds,
+        objective,
+        PRODUCTION_RESCUE_INTEGER_NODE_BUDGET,
+      );
+      if (solved.status !== 'optimal' || !solved.solution) continue;
+      const candidateInput: RecipeInput = {
+        ...forecastInput,
+        target_batch_grams: targetTenths / 10,
+        items: forecastInput.items.map((item, index) => ({
+          ...item,
+          planned_grams: solved.solution![index]! / 10,
+          actual_grams: null,
+        })),
+      };
+      const audit = tenthGramProductionAudit(session, candidateInput);
+      if (!audit?.hardGatePassed) continue;
+      if (!preservesPhysicalReality(session, audit.executableInput)) continue;
+      if (!nativeSafe(audit.executableInput, audit.executableResult)) continue;
+      if (!terminallyAuthorized(audit.executableInput, session)) continue;
+
+      const actions: CorrectionAction[] = [];
+      for (const item of audit.executableInput.items) {
+        const before = forecastInput.items.find((candidate) => candidate.id === item.id);
+        if (!before) return null;
+        const beforeGrams = before.actual_grams ?? before.planned_grams;
+        const delta = item.planned_grams - beforeGrams;
+        if (Math.abs(delta) <= PRODUCTION_GRAMS_EPSILON) continue;
+        actions.push({
+          type: delta > 0 ? 'add' : 'reduce',
+          ingredient_id: item.ingredient.id,
+          ingredient_name: item.ingredient.name,
+          ingredient_category: item.ingredient.category,
+          grams: Math.abs(delta),
+          target_line_id: item.id,
+        });
+      }
+      return { input: audit.executableInput, actions, precision: 'tenth' };
+    }
+  }
+  return null;
+}
 
 /**
  * Fixed-mass, existing-line search for the still-unconfirmed part of a batch.
@@ -1186,7 +1538,9 @@ function bestOption(
       solverProposalCount: proposed.redacted ? 0 : proposed.proposals.length,
       evaluatedCandidateCount: recovery?.trace.evaluatedCandidateCount ?? 0,
       generatedSafeCandidateCount:
-        solverCandidates.length + (recovery?.trace.hardSafeCandidateCount ?? 0),
+        seededCandidates.length +
+        solverCandidates.length +
+        (recovery?.trace.hardSafeCandidateCount ?? 0),
       acceptedCandidateCount: candidates.length,
       hardReasonSets: recovery?.trace.uniqueHardReasonSets ?? [],
       authorityIssueSets: [...authorityIssueSets.values()],
@@ -1203,6 +1557,20 @@ const emptyStrategyTrace = (): ProductionRescueStrategyTrace => ({
   hardReasonSets: [],
   authorityIssueSets: [],
   finalCandidateGrams: [],
+});
+
+const combinedStrategyTrace = (
+  left: ProductionRescueStrategyTrace,
+  right: ProductionRescueStrategyTrace,
+): ProductionRescueStrategyTrace => ({
+  solverProposalCount: left.solverProposalCount + right.solverProposalCount,
+  evaluatedCandidateCount: left.evaluatedCandidateCount + right.evaluatedCandidateCount,
+  generatedSafeCandidateCount:
+    left.generatedSafeCandidateCount + right.generatedSafeCandidateCount,
+  acceptedCandidateCount: left.acceptedCandidateCount + right.acceptedCandidateCount,
+  hardReasonSets: [...left.hardReasonSets, ...right.hardReasonSets],
+  authorityIssueSets: [...left.authorityIssueSets, ...right.authorityIssueSets],
+  finalCandidateGrams: [...left.finalCandidateGrams, ...right.finalCandidateGrams],
 });
 
 /**
@@ -1288,7 +1656,7 @@ export function assessProductionRescue(session: ProductionSession): ProductionRe
         currentTarget,
         searchCeilingMassG,
       );
-  const enlargeSearch = fixedTargetAvailable
+  let enlargeSearch = fixedTargetAvailable
     ? { option: null, trace: emptyStrategyTrace() }
     : bestOption(
         'enlarge_batch',
@@ -1303,6 +1671,32 @@ export function assessProductionRescue(session: ProductionSession): ProductionRe
         largerPendingRebalance ? [largerPendingRebalance] : [],
         recoveryMaxAdditionalMassG,
       );
+  if (!fixedTargetAvailable && enlargeSearch.option === null) {
+    const certifiedLargerBatch = certifiedMinimumLargerBatchCandidate(
+      session,
+      forecastInput,
+      Math.max(currentTarget, physicalConfirmedG),
+      searchCeilingMassG,
+    );
+    if (certifiedLargerBatch) {
+      const certifiedSearch = bestOption(
+        'enlarge_batch',
+        (mass) => `Zwiększ partię do ${formatBatchMassG(mass)} g`,
+        (mass) =>
+          `To najmniejsza większa partia, która zachowuje zawartość naczynia i pozwala bezpiecznie dokończyć pracę: ${formatBatchMassG(mass)} g.`,
+        session,
+        forecastInput,
+        'actual_batch',
+        (mass) => mass > Math.max(currentTarget, physicalConfirmedG) + PRODUCTION_GRAMS_EPSILON,
+        null,
+        [certifiedLargerBatch],
+      );
+      enlargeSearch = {
+        option: certifiedSearch.option,
+        trace: combinedStrategyTrace(enlargeSearch.trace, certifiedSearch.trace),
+      };
+    }
+  }
   if (enlargeSearch.option) options.push(enlargeSearch.option);
 
   if (restoreSearch.option) options.push(restoreSearch.option);

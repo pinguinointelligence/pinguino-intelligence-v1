@@ -18,12 +18,12 @@
     "engine": "0.4.0",
     "config": "0.7.0",
     "practicalRecipe": "pro-whole-gram-v1",
-    "productionRescue": "production-rescue-v8",
+    "productionRescue": "production-rescue-v9",
     "productionSessionSchema": 2
   },
   "bundle": {
-    "bytes": 373114,
-    "sha256": "3048d4d482b929945e079e3fc7c7820e4040b5c0cf74f2c641a635792aa46a71",
+    "bytes": 393489,
+    "sha256": "14744b62beaccd4f1c1fe8cf35faf758577307b0679f2ad6591a6166b42b0e0e",
     "externalImports": 0,
     "dynamicImports": 0
   },
@@ -137,8 +137,16 @@
       "sha256": "e84f73b943ed9f4675673f412e5e93b014d6e383229ee5db3df770408c220f4e"
     },
     {
+      "path": "src/engine/technicalLinearFactors.ts",
+      "sha256": "e5156496a809a18ad27ee9749fabf41d09e31d33e6f74f8af2e9f4d71ca5cc02"
+    },
+    {
       "path": "src/engine/userIntent.ts",
       "sha256": "aa86ddd3338e2c90e0e0169e1e18d2c7d498756ef5563f59e5fdf6b5c0bc37c7"
+    },
+    {
+      "path": "src/features/constraint-studio/mainTechnicalLinearBound.ts",
+      "sha256": "ae2ef6f01989aedec6795028d9302477809653ff4c00fd0df01c80dce514b0fd"
     },
     {
       "path": "src/features/formulation-strategy/strategy.ts",
@@ -198,7 +206,7 @@
     },
     {
       "path": "src/features/production-workspace/productionRescue.ts",
-      "sha256": "2488489d8a7416c7ad9abbcbcf0cf8ed9afd4af2aa8739cdc1f88f1151f2b986"
+      "sha256": "17191d87273113553bf0d64d57b89a373462fba47fdad88c0612d7dd8be5bf14"
     },
     {
       "path": "src/features/production-workspace/productionRescueAuthority.ts",
@@ -281,5 +289,5 @@
       "sha256": "a2207c9c4e9431daa728d6b03fe1b9c4a4a3ba3403a0c056f2808c0759a455c8"
     }
   ],
-  "sourceClosureSha256": "8094828a998349ec9db6e82669c4e4feca176de20d61090f99f5d8147befb331"
+  "sourceClosureSha256": "8075da8ec5cafcbe66e1e5a6b566fbc1cf16024be61368e6bb2f54a0009b37e1"
 }

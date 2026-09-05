@@ -85,7 +85,7 @@ const largestRemainderPairBounds = (
 };
 
 /** Deterministic two-phase simplex for max c·x subject to A·x ≤ b, x ≥ 0. */
-class LinearProgram {
+export class LinearProgram {
   private readonly m: number;
   private readonly n: number;
   private readonly basic: number[];
@@ -221,7 +221,7 @@ class LinearProgram {
   }
 }
 
-interface IntegerLinearResult {
+export interface IntegerLinearResult {
   status: 'optimal' | 'unavailable';
   value: number | null;
   solution: readonly number[] | null;
@@ -237,7 +237,7 @@ export const MAIN_TECHNICAL_INTEGER_NODE_BUDGET = 4096;
 /** Exact branch-and-bound over whole-gram line variables. The LP relaxation at
  * every node remains a safe upper bound; `optimal` is returned only after the
  * complete deterministic tree has been exhausted. */
-const solveIntegerLinearMaximum = (
+export const solveIntegerLinearMaximum = (
   baseRows: readonly number[][],
   baseBounds: readonly number[],
   objective: readonly number[],
