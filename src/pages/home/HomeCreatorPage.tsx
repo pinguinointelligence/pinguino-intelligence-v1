@@ -680,8 +680,27 @@ export function HomeCreatorPage() {
               resolveLabel="Dodaj do receptury"
               onResolved={(product) => {
                 setScanNotice(null);
-                void intentIngredients.addScannedProduct(product.id);
                 setScannerOpen(false);
+                // the outcome of the shared add door is reported, never swallowed (owner QA 2026-09-05)
+                void intentIngredients.addScannedProduct(product.id).then((outcome) => {
+                  const name = product.displayName;
+                  switch (outcome.status) {
+                    case 'unresolved':
+                    case 'unavailable':
+                      setScanNotice(
+                        `${name}: produkt jest zapisany, ale nie jest jeszcze gotowy do użycia w recepturze.`,
+                      );
+                      return;
+                    case 'duplicate':
+                      setScanNotice(`${name} jest już w recepturze.`);
+                      return;
+                    case 'needs_amount':
+                      setScanNotice(`${name} dodano do receptury — ustaw ilość.`);
+                      return;
+                    default:
+                      return;
+                  }
+                });
               }}
             />
           </div>
