@@ -18,7 +18,7 @@ Rules:
 - `RESOLVED_ON_STAGING` requires the normal merge, the exact staging deployment,
   and proof that no migration SQL was executed again.
 
-`NEXT_FREE_SOL_ID: SOL-050`
+`NEXT_FREE_SOL_ID: SOL-051`
 
 `NEXT_FREE_DESIGN_SUBPOINT: SOL-047.3`
 
@@ -54,7 +54,7 @@ Rules:
 - [ ] **SOL-028 · TODO — Protein Multi-Main przekracza watchdog.** Przypadek Protein z wieloma składnikami Main nie kończy obliczeń w wymaganym czasie.
 - [ ] **SOL-029 · TODO — otwarty Guide znika po zmianie desktop → tablet/mobile.** Problem dotyczy zachowania otwartego panelu podczas zmiany breakpointu, nie geometrii plansz.
 - [ ] **SOL-030 · TODO — draft Label pomija topping i finalną masę.** Draft korzysta tylko z bazy; dla bazy 1000 g i toppingu 25 g powinien przedstawiać produkt finalny 1025 g.
-- [ ] **SOL-031 · RESOLVED_IN_PR_AWAITING_MERGE — draft Label nie przedstawia znanych alergenów.** Bieżąca poprawka Owner QA po #208 zachowuje wszystkie znane deklaracje Base/Main/Topping/pozostałych składników nawet wtedy, gdy inny składnik ma `UNKNOWN`; ręczna końcowa linia receptury lub partii pozostaje najwyższym autorytetem. Jeden wspólny modal przed drukiem dla EU/UK/US/CA/AU-NZ/World pozwala uzupełnić dowolną część brakujących danych albo pominąć je bez usuwania znanej części. Pominięte wartości nie tworzą pustych wierszy, zer, `UNKNOWN` ani tekstu „bez alergenów”, a braki nie blokują podglądu, snapshotu, PDF ani wydruku. Główny ekran etykiety ogranicza się do nazwy, podglądu, dwóch kompaktowych wierszy oraz `Drukuj`/`Zmień`; bez zmian Scannera, Mappera, Product Registry ani Engine. Implementacja jest oparta na staging `eee9de7e`; testy lokalne i brama stagingowa są zielone, lecz merge, canonical deployment oraz Owner QA jeszcze nie nastąpiły. `OWNER ACCEPTED: NO`.
+- [x] **SOL-031 · RESOLVED_ON_STAGING — draft Label nie przedstawia znanych alergenów.** Bieżąca poprawka Owner QA po #208 zachowuje wszystkie znane deklaracje Base/Main/Topping/pozostałych składników nawet wtedy, gdy inny składnik ma `UNKNOWN`; ręczna końcowa linia receptury lub partii pozostaje najwyższym autorytetem. Jeden wspólny modal przed drukiem dla EU/UK/US/CA/AU-NZ/World pozwala uzupełnić dowolną część brakujących danych albo pominąć je bez usuwania znanej części. Pominięte wartości nie tworzą pustych wierszy, zer, `UNKNOWN` ani tekstu „bez alergenów”, a braki nie blokują podglądu, snapshotu, PDF ani wydruku. Główny ekran etykiety ogranicza się do nazwy, podglądu, dwóch kompaktowych wierszy oraz `Drukuj`/`Zmień`; bez zmian Scannera, Mappera, Product Registry ani Engine. Evidence: PR #216; head `73186e957858b91de2877928144a818ed8296fab`; merge i finalny staging SHA `5091cd866581f9d4993e7333c74e09328601cc02`; staging CI run `34060072184` PASS; canonical `staging.pinguinoai.com` zwraca HTTP 200 i wskazuje na deployment `dpl_6ZKwjNiZiLV7GQzT4iCzuHdJnuQq` o statusie READY. Staging Supabase `tunabqqrwabacxjcxxkz` zastosował wyłącznie migrację `20260906192729_nonblocking_label_print_snapshots.sql`; RPC `production_save_label_snapshot_v3` jest potwierdzone w wygenerowanych typach i zdalnym ledgerze. Produkcyjny `main` pozostał na `0a523544b79f3f1c6b0881b8605a639f5ac1b027`. `OWNER QA PENDING`; `OWNER ACCEPTED: NO`.
 - [ ] **SOL-032 · TODO — wyścig gotowości Produkcji Sorbet po Apply/Save.** Gotowość Produkcji może być oceniona przed ustabilizowaniem aktualnego stanu po Apply lub Save.
 - [ ] **SOL-033 · TODO — aktywny backend Scannera pochodzi częściowo z niezmergowanego PR #186.** Ledger migracji i aktywne funkcje zawierają elementy workstreamu `claude/scanner-complete`, których nie ma w scalonym stagingowym repo.
 - [x] **SOL-034 · RESOLVED_ON_STAGING — geometria Knowledge Tour w pełnym webie, mobile i embedded PRO została poprawiona przez #204 i zaakceptowana w Owner QA 2026-09-06.** Evidence: PR #204; merge SHA `6f71ac6a`; web PASS; mobile PASS; prawy podgląd dashboardu PASS; `OWNER ACCEPTED: YES`.
@@ -69,7 +69,7 @@ Rules:
 - [ ] **SOL-043 · TODO — klient widzi surowe statusy techniczne, np. `INGREDIENTS_EVIDENCE_REQUIRED`, `roleReadiness` i `recognition`.**
 - [ ] **SOL-044 · TODO — niejasny lifecycle prywatnego produktu oraz przejścia do wspólnego Product Registry; niezrozumiałe „Zgłoś do weryfikacji”.**
 - [ ] **SOL-045 · TODO — kamera komputerowa pokazuje kod zbyt rozmyty do odczytu.** Należy sprawdzić rzeczywistą rozdzielczość strumienia, autofocus i rozdzielczość klatki przekazywanej dekoderowi.
-- [ ] **SOL-046 · TODO — komunikat o brakującej cenie jest techniczny, za długi i wyświetlany podwójnie.** Evidence: Owner QA 2026-09-06, PRO Receptura, brak ceny dla toppingu `LIME · MASTER MARTINI VARIEGATO · AJ01AQ`. Obecnie klient widzi między innymi „Koszt częściowy — uzupełnij brakujące ceny składników. Brak ceny: LIME · Master Martini Variegato · AJ01AQ. Dokładny koszt za kg pozostaje niedostępny.” Docelowo przy jednej brakującej cenie należy pokazać dokładnie jeden krótki komunikat **„Wprowadź cenę dla [NAZWA].”**, a przy kilku **„Wprowadź ceny dla: [NAZWY].”**; w udokumentowanym przypadku treść ma brzmieć **„Wprowadź cenę dla LIME · MASTER MARTINI VARIEGATO · AJ01AQ.”** Nazwa musi pochodzić z aktualnej receptury, bez hardcode produktu. Nie pokazywać „koszt częściowy”, „dokładny koszt za kg pozostaje niedostępny” ani informacji technicznych; nie dublować komunikatu w dwóch miejscach prawego panelu; po uzupełnieniu wszystkich cen komunikat ma całkowicie zniknąć. Później sprawdzić widok zwinięty i rozwinięty oraz desktop/mobile. Nie zmieniać obliczania kosztów, zapisanej ceny użytkownika, działania „Moja cena”, Engine ani danych produktu.
+- [x] **SOL-046 · RESOLVED_ON_STAGING — komunikat o brakującej cenie jest techniczny, za długi i wyświetlany podwójnie.** Evidence: Owner QA 2026-09-06 na canonical `staging.pinguinoai.com`, staging SHA `f6778265b2bf8f302d446055417524c235eb1c84`. Potwierdzono jeden krótki komunikat wskazujący produkt bez ceny, bez technicznych i powielonych komunikatów; „Moja cena” działa; po wpisaniu i zapisaniu ceny komunikat znika; koszt partii zostaje przeliczony; matematyka kosztów nie została naruszona. `OWNER ACCEPTED: YES`. Historyczny zakres: brak ceny dla toppingu `LIME · MASTER MARTINI VARIEGATO · AJ01AQ`; docelowa treść **„Wprowadź cenę dla LIME · MASTER MARTINI VARIEGATO · AJ01AQ.”** Nazwa pochodzi z aktualnej receptury, bez hardcode produktu; obliczanie kosztów, zapisana cena użytkownika, Engine i dane produktu pozostają niezmienione.
 - [ ] **SOL-047 · TODO · DESIGN — końcowy, spójny przegląd wyglądu, układu i komunikacji wszystkich powierzchni klienta HOME i PRO.** Ten nadrzędny punkt jest realizowany jako przedostatni etap całego workstreamu. Kolejne uwagi dotyczące wyłącznie wyglądu, układu, odstępów, nazw widocznych dla klienta i responsywności otrzymują kolejne unikalne podpunkty `SOL-047.x`. Ostatnim etapem pozostaje pełny test końcowy wszystkich przepływów.
 
   1. **SOL-047.1 · TODO — wynik receptury w PRO.** Evidence: Owner QA 2026-09-06, PRO Receptura. Na zrzucie wynik `8` znajduje się w dolnym pasku, a docelowe miejsce jest wolną trzecią kolumną obok kalorii i kosztu. W fazie DESIGN usunąć cały obecny blok wyniku z dolnego paska receptury i przenieść go do prawego panelu. Kalorie (`kcal / 100 g`), koszt partii i wynik receptury mają tworzyć jeden uporządkowany rząd. Wynik nadal pokazuje liczbę w okręgu oraz wyłącznie jedno krótkie słowo; usunąć „Wynik aktualny”, „Bardzo dobrze dopasowana” i dodatkowe zdanie opisowe. Zamrożona reguła: wynik `10` → **„Bellissimo!”**. Pozostałe jednowyrazowe kandydaty to między innymi „Świetnie!”, „Dobrze!”, „Nieźle!” i „Popraw!”, ale przed implementacją należy odczytać istniejące przedziały oceny, przygotować mapowanie bez zmiany progów i przedstawić je Ownerowi do zatwierdzenia. Nie zmieniać sposobu obliczania wyniku, progów Engine, kolorów stanu, momentu aktualizacji ani danych receptury. Desktop: wynik jest trzecim elementem obok kalorii i kosztu. Tablet: elementy zachowują równy rytm i nie nachodzą na siebie. Mobile: elementy mogą przejść do kolejnego wiersza, ale wynik nie może wrócić do dolnego paska. Układ nie może skakać przy zmianie wyniku; liczba i komunikat pozostają czytelne; dostępność nie może opierać się wyłącznie na kolorze. Sprawdzić Gelato, Sorbet, Vegan i Protein. Jest to wyłącznie zmiana prezentacji i położenia.
@@ -78,6 +78,45 @@ Rules:
 
 - [ ] **SOL-048 · TODO — Scanner pokazuje mikrosekundowe, zmieniające się komunikaty i pozwala spóźnionym odpowiedziom nadpisywać aktualny stan.** Evidence: Owner QA 2026-09-06. Informacje zmieniają się tak szybko, że nie można ich przeczytać; przy nieruchomym produkcie komunikat czasami się stabilizuje, ale podczas normalnego skanowania UI wygląda, jakby „wariowało”, a obrazy lub stany przelatują w tle. Terminalny wynik nie jest odpowiednio zatrzaśnięty. Jest to błąd maszyny stanów i współbieżności, nie wyłącznie DESIGN.
 - [ ] **SOL-049 · TODO — nowy produkt rozpoznany po dokładnym EAN nie przechodzi pełnego enrichmentu i Mapper Rescue; kończy jako produkt prywatny albo automatycznie zgłoszony do weryfikacji.** Evidence: Owner QA 2026-09-06. Nestea Mango-Piña 330 ml, EAN `8411092721032`: nazwa została rozpoznana, lecz produkt zapisano wyłącznie jako prywatny, bez jasnej próby publikacji w Product Registry. Haribo Favoritos Original, EAN `842617014032`: dostępne były EAN, skład i tabela odżywcza, ale UI automatycznie pokazało „Zgłoszono do weryfikacji”; Owner nie uruchomił świadomie żadnego zgłoszenia ani nigdy nie zatwierdził automatycznego wysyłania produktu do ręcznej weryfikacji. Docelowa ścieżka: `dokładny EAN → źródła/dowody → Vision/OCR → Mapper Rescue → kanoniczne bramki → Product Registry`; jeżeli dowodów brakuje, pokazać konkretną prośbę o brakujące dane. Zakazane domyślne zakończenia to automatyczny prywatny produkt, automatyczne wysłanie do weryfikacji, „Damy znać” bez realnego i świadomie uruchomionego procesu oraz wiele prywatnych kopii tego samego EAN. SOL-044 pozostaje TODO: opisuje niejasny model lifecycle prywatny produkt → Product Registry, podczas gdy SOL-049 dokumentuje konkretną awarię wykonania pełnej ścieżki exact-EAN → enrichment → Mapper Rescue.
+- [ ] **SOL-050 · TODO — prywatne produkty niegotowe nie mają własnego miejsca, kompletnego edytora ani dobrowolnej ścieżki wysłania do weryfikacji.** Evidence: decyzja Ownera 2026-09-06.
+
+  Docelowy kontrakt:
+
+  1. W hamburger menu, w obszarze produktów, powstaje dodatkowa pozycja **Niegotowe**.
+  2. `Niegotowe` pokazuje wszystkie prywatne produkty użytkownika, którym brakuje danych technicznych wymaganych do użycia w recepturze.
+  3. Produkt niegotowy nie może znikać po zakończeniu skanowania ani prowadzić do martwego ekranu. Scanner zapisuje go w `Niegotowe`.
+  4. Po wejściu w produkt użytkownik widzi wszystkie znalezione dane i dostępne źródła, jednoznacznie wskazane brakujące pola, możliwość uzupełnienia braków i poprawienia istniejących danych, zapis zmian oraz przycisk `Wyślij do weryfikacji`.
+  5. Jako braki pokazujemy wyłącznie dane rzeczywiście potrzebne do uzyskania gotowości technicznej dla co najmniej jednej roli i użycia produktu w lodach.
+  6. Nie są brakami blokującymi: alergeny, cena, dane wymagane wyłącznie do publikacji w Product Registry ani inne informacje niewpływające na obliczenia i bezpieczeństwo techniczne receptury.
+  7. Po każdym zapisie system ponownie uruchamia istniejący Mapper Rescue oraz właściwy authority. Jeżeli danych nadal brakuje, produkt pozostaje w `Niegotowe`. Jeżeli profil uzyska `engineReady` i gotowość przynajmniej jednej roli, produkt automatycznie przechodzi do `Moje produkty`; gotowego produktu prywatnego można od razu używać w recepturze i produkcji. Ukończenie produktu nie wymaga wcześniejszej weryfikacji ani publikacji w Product Registry.
+  8. Dane wpisane przez użytkownika są jego danymi/override’em. Nie nadpisują bezpośrednio Mappera ani wspólnego Product Registry i nie niszczą oryginalnych dowodów źródłowych.
+  9. `Wyślij do weryfikacji` jest zawsze dobrowolne: użytkownik może wysłać produkt niekompletny albo w pełni uzupełniony; wysłanie nie jest wymagane do prywatnego używania gotowego produktu; nic nie może wysyłać się automatycznie; wysłanie nie oznacza automatycznego dodania do Product Registry. Produkt trafia do Product Registry dopiero po przejściu właściwego procesu weryfikacji.
+  10. Produkt wysłany do weryfikacji nie znika z konta i nie zostaje zablokowany. Użytkownik widzi prosty status `Wysłano do weryfikacji`.
+  11. Przycisk `Wyślij do weryfikacji` musi być dostępny zarówno przy produkcie w `Niegotowe`, jak i przy gotowym produkcie prywatnym w `Moje produkty`.
+  12. Edycja danych technicznych w tym przepływie jest dostępna dla produktów prywatnych znajdujących się w `Niegotowe`. Ten punkt nie wprowadza edytora wspólnych produktów z Product Registry.
+
+  Rozróżnienie:
+
+  - **Niegotowe** — prywatny produkt bez wystarczających danych do lodów.
+  - **Moje produkty** — prywatny produkt gotowy do użycia.
+  - **Product Registry** — zweryfikowany wspólny produkt dostępny wszystkim.
+
+  Kryteria akceptacyjne:
+
+  1. Nieudany lub niepełny skan tworzy widoczny wpis w `Niegotowe`.
+  2. Użytkownik może ponownie otworzyć produkt po wylogowaniu, zalogowaniu i odświeżeniu.
+  3. Wszystkie znalezione dane są widoczne.
+  4. Brakujące dane techniczne są przedstawione prostym językiem, bez surowych enumów.
+  5. Użytkownik może uzupełniać i poprawiać pola.
+  6. Zapis ponownie uruchamia Mapper Rescue.
+  7. Gotowy produkt przechodzi z `Niegotowe` do `Moje produkty`.
+  8. Gotowy prywatny produkt działa w pickerze, recepturze i produkcji.
+  9. Brak alergenów ani ceny nie zatrzymuje przejścia.
+  10. Wysłanie do weryfikacji działa przed i po uzupełnieniu.
+  11. Nic nie jest wysyłane automatycznie.
+  12. Weryfikacja nie blokuje dalszej edycji ani prywatnego użycia.
+  13. Nie powstają duplikaty tego samego produktu użytkownika.
+  14. Mapper, Engine i Product Registry nie są bezpośrednio nadpisywane danymi użytkownika.
 
 ## SOL-014 migration dependency checkpoint — 2026-09-06
 
@@ -145,6 +184,15 @@ This checkpoint extends the existing SOL-031; it does not allocate another SOL I
 - Evidence on staging base `eee9de7e`: 28 focused files / 360 tests passed;
   `verify:staging` passed owner/protected-path guards, 22 contract files / 215
   tests, typecheck, lint with zero errors and production build.
+- Merge/deployment evidence: PR #216 head `73186e957858b91de2877928144a818ed8296fab`
+  merged as final staging SHA `5091cd866581f9d4993e7333c74e09328601cc02`;
+  staging CI run `34060072184` passed all four jobs; canonical
+  `staging.pinguinoai.com` returns HTTP 200 from READY deployment
+  `dpl_6ZKwjNiZiLV7GQzT4iCzuHdJnuQq`.
+- Migration evidence: staging Supabase project `tunabqqrwabacxjcxxkz` applied only
+  `20260906192729_nonblocking_label_print_snapshots.sql`; RPC
+  `production_save_label_snapshot_v3` is present in generated types and the
+  remote migration ledger. Production was not touched.
 - Required Owner QA after merge: mobile and web layout; `Drukuj → uzupełnij / pomiń
 → podgląd systemowy → drukarka / powrót`; partial allergen continuity and omission
   of all unknown values for EU, UK, US, Canada, AU/NZ and World; refresh/reopen of
@@ -163,21 +211,27 @@ This checkpoint extends the existing SOL-031; it does not allocate another SOL I
 - SOL-047 and SOL-047.1: appended from the Owner DESIGN checkpoint of
   2026-09-06; DESIGN remains the penultimate workstream stage.
 - SOL-047.2, SOL-048, and SOL-049: appended from Scanner Owner QA 2026-09-06.
+- SOL-050: appended from the Owner decision of 2026-09-06 for incomplete private
+  products and voluntary verification.
 - Search of repository files, all Git refs, retained attachments, and retained task
-  checkpoints found no assigned main SOL ID above SOL-049. SOL-050 is therefore the
+  checkpoints found no assigned main SOL ID above SOL-050. SOL-051 is therefore the
   next free ID at this checkpoint.
 
 ## Status history
 
-| Date       | ID      | Previous status | New status                    | Evidence                                                                                                                                |
-| ---------- | ------- | --------------- | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-09-06 | SOL-020 | RETEST_REQUIRED | RESOLVED_LATER                | Later CACAO binding and role audit.                                                                                                     |
-| 2026-09-06 | SOL-022 | TODO            | RESOLVED_LATER                | PR #199 and served Label audit.                                                                                                         |
-| 2026-09-06 | SOL-023 | RETEST_REQUIRED | RESOLVED_LATER                | Later CACAO E2E and binding audit.                                                                                                      |
-| 2026-09-06 | SOL-014 | TODO            | RESOLVED                      | Incorrect report-only transition; PR #198 was still draft, unmerged, and undeployed. Retained here so the status history is not erased. |
-| 2026-09-06 | SOL-014 | RESOLVED        | RESOLVED_IN_PR_AWAITING_MERGE | Owner correction: PR #198 contains the technical repair, but staging does not.                                                          |
-| 2026-09-06 | SOL-034 | TODO            | RESOLVED_ON_STAGING           | PR #204; merge SHA `6f71ac6a`; web PASS; mobile PASS; prawy podgląd dashboardu PASS; `OWNER ACCEPTED: YES`.                             |
-| 2026-09-06 | SOL-031 | TODO            | RESOLVED_IN_PR_AWAITING_MERGE | PR #208; whole-recipe final line, non-blocking UNKNOWN, local Ustaw/Zmień persistence; staging `f6778265`; Owner QA pending.            |
+| Date       | ID      | Previous status               | New status                    | Evidence                                                                                                                                                                                                                                                                                                                   |
+| ---------- | ------- | ----------------------------- | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-09-06 | SOL-020 | RETEST_REQUIRED               | RESOLVED_LATER                | Later CACAO binding and role audit.                                                                                                                                                                                                                                                                                        |
+| 2026-09-06 | SOL-022 | TODO                          | RESOLVED_LATER                | PR #199 and served Label audit.                                                                                                                                                                                                                                                                                            |
+| 2026-09-06 | SOL-023 | RETEST_REQUIRED               | RESOLVED_LATER                | Later CACAO E2E and binding audit.                                                                                                                                                                                                                                                                                         |
+| 2026-09-06 | SOL-014 | TODO                          | RESOLVED                      | Incorrect report-only transition; PR #198 was still draft, unmerged, and undeployed. Retained here so the status history is not erased.                                                                                                                                                                                    |
+| 2026-09-06 | SOL-014 | RESOLVED                      | RESOLVED_IN_PR_AWAITING_MERGE | Owner correction: PR #198 contains the technical repair, but staging does not.                                                                                                                                                                                                                                             |
+| 2026-09-06 | SOL-034 | TODO                          | RESOLVED_ON_STAGING           | PR #204; merge SHA `6f71ac6a`; web PASS; mobile PASS; prawy podgląd dashboardu PASS; `OWNER ACCEPTED: YES`.                                                                                                                                                                                                                |
+| 2026-09-06 | SOL-031 | TODO                          | RESOLVED_IN_PR_AWAITING_MERGE | PR #208; whole-recipe final line, non-blocking UNKNOWN, local Ustaw/Zmień persistence; staging `f6778265`; Owner QA pending.                                                                                                                                                                                               |
+| 2026-09-06 | SOL-046 | TODO                          | RESOLVED_ON_STAGING           | Canonical `staging.pinguinoai.com`; staging SHA `f6778265b2bf8f302d446055417524c235eb1c84`; Owner QA potwierdził komunikat, zapis ceny i przeliczenie kosztu bez naruszenia matematyki; `OWNER ACCEPTED: YES`.                                                                                                             |
+| 2026-09-06 | SOL-031 | RESOLVED_IN_PR_AWAITING_MERGE | RESOLVED_ON_STAGING           | PR #208 merged as `cc141bbec4e23ef7bd4df9824fe13075b6ded26f`; confirmed ancestor of staging `ba9931e425e14e0aa53ccc3179a447bbcbdc55dc`; merge CI `34036953949` PASS; current-staging CI `34038500307` PASS; staging deployment Ready; `OWNER QA PENDING`; `OWNER ACCEPTED: NO`.                                            |
+| 2026-09-06 | SOL-031 | RESOLVED_ON_STAGING           | RESOLVED_IN_PR_AWAITING_MERGE | PR #216 extended the existing SOL-031 after #208; head `73186e957858b91de2877928144a818ed8296fab` on base `eee9de7ebd7abbc232fbc89bc45c10d7ed966fa6`; Owner QA pending.                                                                                                                                                    |
+| 2026-09-06 | SOL-031 | RESOLVED_IN_PR_AWAITING_MERGE | RESOLVED_ON_STAGING           | PR #216 merged as final staging SHA `5091cd866581f9d4993e7333c74e09328601cc02`; staging CI `34060072184` PASS; canonical deployment `dpl_6ZKwjNiZiLV7GQzT4iCzuHdJnuQq` READY and HTTP 200; migration `20260906192729_nonblocking_label_print_snapshots.sql` recorded on staging; `OWNER QA PENDING`; `OWNER ACCEPTED: NO`. |
 
 No other current status was changed during the 2026-09-06 ledger
 reconciliation or the staging-ledger checkpoint.
