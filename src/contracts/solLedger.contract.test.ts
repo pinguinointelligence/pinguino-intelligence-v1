@@ -11,21 +11,37 @@ import { describe, expect, it } from 'vitest';
 
 const LEDGER_PATH = resolve(process.cwd(), 'docs', 'qa', 'GELLATTI_SOL_LEDGER.md');
 const ledger = readFileSync(LEDGER_PATH, 'utf8');
-const entries = [...ledger.matchAll(/^- \[[ x]\] \*\*(SOL-(\d{3})) · ([A-Z_]+) —/gm)].map(
-  ([, id, number, status]) => ({ id, number: Number(number), status }),
-);
+const entries = [
+  ...ledger.matchAll(/^- \[[ x]\] \*\*(SOL-(\d{3})) · ([A-Z_]+)(?: · ([A-Z_]+))? —/gm),
+].map(([, id, number, status, category]) => ({
+  id,
+  number: Number(number),
+  status,
+  category,
+}));
+const designSubpoints = [
+  ...ledger.matchAll(/^\s+\d+\. \*\*(SOL-(\d{3})\.(\d+)) · ([A-Z_]+) —/gm),
+].map(([, id, parent, index, status]) => ({
+  id,
+  parent: Number(parent),
+  index: Number(index),
+  status,
+}));
 
 describe('Gellatti SOL ledger continuity', () => {
-  it('contains every append-only ID exactly once from SOL-001 through SOL-045', () => {
+  it('contains every append-only ID exactly once from SOL-001 through SOL-047', () => {
     expect(entries.map(({ number }) => number)).toEqual(
-      Array.from({ length: 45 }, (_, index) => index + 1),
+      Array.from({ length: 47 }, (_, index) => index + 1),
     );
-    expect(new Set(entries.map(({ id }) => id)).size).toBe(45);
+    expect(new Set(entries.map(({ id }) => id)).size).toBe(47);
+    expect(ledger).toContain(
+      'IDs are append-only and are never deleted, moved, renumbered, or reused.',
+    );
   });
 
-  it('reserves SOL-046 as the next free ID without assigning it', () => {
-    expect(ledger).toContain('`NEXT_FREE_SOL_ID: SOL-046`');
-    expect(entries.some(({ id }) => id === 'SOL-046')).toBe(false);
+  it('reserves SOL-048 as the next free main ID without assigning it', () => {
+    expect(ledger).toContain('`NEXT_FREE_SOL_ID: SOL-048`');
+    expect(entries.some(({ id }) => id === 'SOL-048')).toBe(false);
   });
 
   it('records no unrecovered gap after restoring SOL-034 through SOL-038', () => {
@@ -44,6 +60,16 @@ describe('Gellatti SOL ledger continuity', () => {
     );
   });
 
+  it('records the Owner-accepted SOL-034 resolution on staging', () => {
+    expect(entries.find(({ id }) => id === 'SOL-034')?.status).toBe('RESOLVED_ON_STAGING');
+    expect(ledger).toContain('PR #204');
+    expect(ledger).toContain('merge SHA `6f71ac6a`');
+    expect(ledger).toContain('web PASS');
+    expect(ledger).toContain('mobile PASS');
+    expect(ledger).toContain('prawy podgląd dashboardu PASS');
+    expect(ledger).toContain('OWNER ACCEPTED: YES');
+  });
+
   it('retains the confirmed SOL-039 through SOL-045 findings as TODO', () => {
     for (let number = 39; number <= 45; number += 1) {
       const id = `SOL-${String(number).padStart(3, '0')}`;
@@ -57,6 +83,28 @@ describe('Gellatti SOL ledger continuity', () => {
     expect(ledger).toContain('SOL-043 · TODO — klient widzi surowe statusy techniczne');
     expect(ledger).toContain('SOL-044 · TODO — niejasny lifecycle prywatnego produktu');
     expect(ledger).toContain('SOL-045 · TODO — kamera komputerowa pokazuje kod zbyt rozmyty');
+  });
+
+  it('appends the Owner QA SOL-046 price-message finding without claiming a fix', () => {
+    expect(entries.find(({ id }) => id === 'SOL-046')?.status).toBe('TODO');
+    expect(ledger).toContain(
+      'SOL-046 · TODO — komunikat o brakującej cenie jest techniczny, za długi i wyświetlany podwójnie',
+    );
+    expect(ledger).toContain('Wprowadź cenę dla LIME · MASTER MARTINI VARIEGATO · AJ01AQ.');
+    expect(ledger).toContain('Nazwa musi pochodzić z aktualnej receptury, bez hardcode produktu.');
+  });
+
+  it('keeps DESIGN as the penultimate workstream and numbers its subpoints independently', () => {
+    expect(entries.find(({ id }) => id === 'SOL-047')).toMatchObject({
+      status: 'TODO',
+      category: 'DESIGN',
+    });
+    expect(designSubpoints).toEqual([{ id: 'SOL-047.1', parent: 47, index: 1, status: 'TODO' }]);
+    expect(new Set(designSubpoints.map(({ id }) => id)).size).toBe(designSubpoints.length);
+    expect(ledger).toContain('`NEXT_FREE_DESIGN_SUBPOINT: SOL-047.2`');
+    expect(designSubpoints.some(({ id }) => id === 'SOL-047.2')).toBe(false);
+    expect(ledger).toContain('DESIGN subpoints are append-only');
+    expect(ledger).toMatch(/The final stage remains the full\s+end-to-end test of every flow\./);
   });
 
   it('records the proven PR #181 before PR #198 migration order', () => {

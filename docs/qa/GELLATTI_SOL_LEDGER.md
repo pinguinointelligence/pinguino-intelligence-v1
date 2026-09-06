@@ -8,13 +8,19 @@ Rules:
 
 - IDs are append-only and are never deleted, moved, renumbered, or reused.
 - A newly confirmed defect receives the next free ID at the end of this file.
+- DESIGN subpoints are append-only, uniquely numbered under their parent, and do
+  not consume or change the next main SOL ID.
+- DESIGN is the penultimate workstream stage. The final stage remains the full
+  end-to-end test of every flow.
 - A code change or a green test alone does not prove a staging resolution.
 - Status changes are appended to the history below; prior states are retained.
 - `RESOLVED_IN_PR_AWAITING_MERGE` means the repair exists only in an unmerged PR.
 - `RESOLVED_ON_STAGING` requires the normal merge, the exact staging deployment,
   and proof that no migration SQL was executed again.
 
-`NEXT_FREE_SOL_ID: SOL-046`
+`NEXT_FREE_SOL_ID: SOL-048`
+
+`NEXT_FREE_DESIGN_SUBPOINT: SOL-047.2`
 
 ## Current ledger
 
@@ -51,7 +57,7 @@ Rules:
 - [ ] **SOL-031 · TODO — draft Label nie przedstawia znanych alergenów.** Znane alergeny bazy i toppingu nie są prawidłowo przedstawiane w aktualnym draft Label.
 - [ ] **SOL-032 · TODO — wyścig gotowości Produkcji Sorbet po Apply/Save.** Gotowość Produkcji może być oceniona przed ustabilizowaniem aktualnego stanu po Apply lub Save.
 - [ ] **SOL-033 · TODO — aktywny backend Scannera pochodzi częściowo z niezmergowanego PR #186.** Ledger migracji i aktywne funkcje zawierają elementy workstreamu `claude/scanner-complete`, których nie ma w scalonym stagingowym repo.
-- [ ] **SOL-034 · TODO — Knowledge Tour ma niestabilną geometrię w embedded PRO i pełnej wersji webowej.** Krok, tytuł, obraz oraz teksty zmieniają pozycję między planszami, a w PRO przesuwa się również dolna nawigacja. PR #201 istnieje na stagingu, ale sam kod lub test nie zmieniają statusu bez osobnego staging proof zgodnego z ledgerem.
+- [x] **SOL-034 · RESOLVED_ON_STAGING — geometria Knowledge Tour w pełnym webie, mobile i embedded PRO została poprawiona przez #204 i zaakceptowana w Owner QA 2026-09-06.** Evidence: PR #204; merge SHA `6f71ac6a`; web PASS; mobile PASS; prawy podgląd dashboardu PASS; `OWNER ACCEPTED: YES`.
 - [ ] **SOL-035 · TODO — automatycznie generowany LOT jest błędnie pokazywany jako brakujący zamiast od razu pojawić się na etykiecie.**
 - [ ] **SOL-036 · TODO — nowa etykieta nie inicjalizuje i nie pokazuje dzisiejszej daty produkcji.**
 - [ ] **SOL-037 · TODO — etykieta jest błędnie blokowana przez wymóg potwierdzenia składników z Produkcji.**
@@ -63,6 +69,10 @@ Rules:
 - [ ] **SOL-043 · TODO — klient widzi surowe statusy techniczne, np. `INGREDIENTS_EVIDENCE_REQUIRED`, `roleReadiness` i `recognition`.**
 - [ ] **SOL-044 · TODO — niejasny lifecycle prywatnego produktu oraz przejścia do wspólnego Product Registry; niezrozumiałe „Zgłoś do weryfikacji”.**
 - [ ] **SOL-045 · TODO — kamera komputerowa pokazuje kod zbyt rozmyty do odczytu.** Należy sprawdzić rzeczywistą rozdzielczość strumienia, autofocus i rozdzielczość klatki przekazywanej dekoderowi.
+- [ ] **SOL-046 · TODO — komunikat o brakującej cenie jest techniczny, za długi i wyświetlany podwójnie.** Evidence: Owner QA 2026-09-06, PRO Receptura, brak ceny dla toppingu `LIME · MASTER MARTINI VARIEGATO · AJ01AQ`. Obecnie klient widzi między innymi „Koszt częściowy — uzupełnij brakujące ceny składników. Brak ceny: LIME · Master Martini Variegato · AJ01AQ. Dokładny koszt za kg pozostaje niedostępny.” Docelowo przy jednej brakującej cenie należy pokazać dokładnie jeden krótki komunikat **„Wprowadź cenę dla [NAZWA].”**, a przy kilku **„Wprowadź ceny dla: [NAZWY].”**; w udokumentowanym przypadku treść ma brzmieć **„Wprowadź cenę dla LIME · MASTER MARTINI VARIEGATO · AJ01AQ.”** Nazwa musi pochodzić z aktualnej receptury, bez hardcode produktu. Nie pokazywać „koszt częściowy”, „dokładny koszt za kg pozostaje niedostępny” ani informacji technicznych; nie dublować komunikatu w dwóch miejscach prawego panelu; po uzupełnieniu wszystkich cen komunikat ma całkowicie zniknąć. Później sprawdzić widok zwinięty i rozwinięty oraz desktop/mobile. Nie zmieniać obliczania kosztów, zapisanej ceny użytkownika, działania „Moja cena”, Engine ani danych produktu.
+- [ ] **SOL-047 · TODO · DESIGN — końcowy, spójny przegląd wyglądu i rozmieszczenia elementów PRO.** Ten nadrzędny punkt jest realizowany jako przedostatni etap całego workstreamu. Kolejne uwagi dotyczące wyłącznie wyglądu, układu, odstępów, nazw widocznych dla klienta i responsywności otrzymują kolejne unikalne podpunkty `SOL-047.x`. Ostatnim etapem pozostaje pełny test końcowy wszystkich przepływów.
+
+  1. **SOL-047.1 · TODO — wynik receptury.** Evidence: Owner QA 2026-09-06, PRO Receptura. Na zrzucie wynik `8` znajduje się w dolnym pasku, a docelowe miejsce jest wolną trzecią kolumną obok kalorii i kosztu. W fazie DESIGN usunąć cały obecny blok wyniku z dolnego paska receptury i przenieść go do prawego panelu. Kalorie (`kcal / 100 g`), koszt partii i wynik receptury mają tworzyć jeden uporządkowany rząd. Wynik nadal pokazuje liczbę w okręgu oraz wyłącznie jedno krótkie słowo; usunąć „Wynik aktualny”, „Bardzo dobrze dopasowana” i dodatkowe zdanie opisowe. Zamrożona reguła: wynik `10` → **„Bellissimo!”**. Pozostałe jednowyrazowe kandydaty to między innymi „Świetnie!”, „Dobrze!”, „Nieźle!” i „Popraw!”, ale przed implementacją należy odczytać istniejące przedziały oceny, przygotować mapowanie bez zmiany progów i przedstawić je Ownerowi do zatwierdzenia. Nie zmieniać sposobu obliczania wyniku, progów Engine, kolorów stanu, momentu aktualizacji ani danych receptury. Desktop: wynik jest trzecim elementem obok kalorii i kosztu. Tablet: elementy zachowują równy rytm i nie nachodzą na siebie. Mobile: elementy mogą przejść do kolejnego wiersza, ale wynik nie może wrócić do dolnego paska. Układ nie może skakać przy zmianie wyniku; liczba i komunikat pozostają czytelne; dostępność nie może opierać się wyłącznie na kolorze. Sprawdzić Gelato, Sorbet, Vegan i Protein. Jest to wyłącznie zmiana prezentacji i położenia.
 
 ## SOL-014 migration dependency checkpoint — 2026-09-06
 
@@ -117,11 +127,15 @@ is not repaired by this checkpoint.
 - SOL-001–SOL-014: original Solver ledger and append-only owner checkpoints.
 - SOL-015–SOL-024: PROVENANCE-001 audit checkpoint.
 - SOL-025–SOL-033: canonical ordering frozen after BASIC-PRO follow-up tests.
-- SOL-034: recovered verbatim from the GUIDE owner checkpoint.
+- SOL-034: recovered from the GUIDE owner checkpoint and resolved on staging by
+  PR #204 with Owner acceptance on 2026-09-06.
 - SOL-035–SOL-038: recovered verbatim from the LABEL owner checkpoint.
 - SOL-039–SOL-045: restored from the owner reconciliation checkpoint of 2026-09-06.
+- SOL-046: appended from Owner QA 2026-09-06 for PRO Receptura.
+- SOL-047 and SOL-047.1: appended from the Owner DESIGN checkpoint of
+  2026-09-06; DESIGN remains the penultimate workstream stage.
 - Search of repository files, all Git refs, retained attachments, and retained task
-  checkpoints found no assigned SOL ID above SOL-045. SOL-046 is therefore the
+  checkpoints found no assigned main SOL ID above SOL-047. SOL-048 is therefore the
   next free ID at this checkpoint.
 
 ## Status history
@@ -133,6 +147,7 @@ is not repaired by this checkpoint.
 | 2026-09-06 | SOL-023 | RETEST_REQUIRED | RESOLVED_LATER                | Later CACAO E2E and binding audit.                                                                                                      |
 | 2026-09-06 | SOL-014 | TODO            | RESOLVED                      | Incorrect report-only transition; PR #198 was still draft, unmerged, and undeployed. Retained here so the status history is not erased. |
 | 2026-09-06 | SOL-014 | RESOLVED        | RESOLVED_IN_PR_AWAITING_MERGE | Owner correction: PR #198 contains the technical repair, but staging does not.                                                          |
+| 2026-09-06 | SOL-034 | TODO            | RESOLVED_ON_STAGING           | PR #204; merge SHA `6f71ac6a`; web PASS; mobile PASS; prawy podgląd dashboardu PASS; `OWNER ACCEPTED: YES`.                             |
 
 No other current status was changed during the 2026-09-06 ledger
-reconciliation.
+reconciliation or the staging-ledger checkpoint.
