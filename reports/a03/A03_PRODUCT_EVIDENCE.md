@@ -109,60 +109,72 @@ ruleset              CONFIRMS type (carb 99.8 vs PI solids 99.803) but CANNOT be
   Leche entera Hacendado 1 L    Mercadona    EAN 8402001047251  ES  RETAILER OWN BRAND
   Lait frais entier Alsace Lait Alsace Lait  EAN 3262970109108  FR  manufacturer brand (regional)
 
-## Multi-country EAN signal (LEAD — needs official confirmation, not hard evidence yet)
-  5900820012434 (Laciate 3,5%) is recorded in Open Food Facts with countries_tags = en:philippines.
-  Poland is its home market, so the same EAN appears on at least two markets — and PH is one of the
-  18 rows in catalog_market_countries. AGGREGATOR source: must be confirmed on an official PH
-  retailer/importer page before it counts.
-  Contrast: 8402001047251 (Hacendado) returns HTTP 404 from Open Food Facts — consistent with a
-  retailer own brand that never leaves its chain.
+## EVIDENCE CLASSIFICATION
 
-## Philippines follow-up — LEAD NOT UPGRADED
-  koryaiko.com sells "LACIATE UHT Milk 3.5% 1L x 12 Bottles" at PHP 1,056/case, so the PRODUCT is
-  present on the PH market. But the page shows NO EAN and NO country of origin, and the seller
-  describes itself as official distributor of coffee machines, not of Laciate. Therefore:
-  PRODUCT PRESENCE IN PH = evidenced. SAME-EAN-ACROSS-MARKETS = still only an aggregator lead.
-  url https://koryaiko.com/product/laciate-uht-milk-3-5-1l-x-12-bottles/
+Every statement below is tagged. CONFIRMED means it follows DIRECTLY from a source I fetched.
+LEAD means a real signal that needs a better source. HYPOTHESIS means a reading of the data that
+this first pass does NOT yet support. Saturation has not been reached, so most structure is
+hypothesis.
 
-## STRUCTURAL FINDINGS (the main A03 result)
+### CONFIRMED — directly from the fetched source
 
-### F1 — B01 splits into TWO supply channels, and they behave oppositely
-  RETAIL DAIRY (milk, cream): bought in supermarkets, consumer EAN, sourced nationally.
-  PRODUCTION INGREDIENTS (dextrose, inulin, SMP, cream powder, fructose, dried egg yolk):
-  a few international bulk manufacturers -> national repackers -> consumer packs.
-  Evidence: BENEO makes chicory inulin in Oreye (BE) and Pemuco (CL) and reaches 80+ countries, while
-  the PL consumer inulin is repacked by Swojska Piwniczka and declares COUNTRY OF ORIGIN = BELGIA.
-  CONSEQUENCE: country work does NOT have the same cost in both channels. Retail dairy needs
-  per-country sourcing. Production ingredients share a handful of upstream sources worldwide, so the
-  saving in A05 will come from the upstream layer, not from EAN identity.
+C1  The five EANs above and their printed label panels, pack sizes and prices.
+C2  Country of origin as PRINTED: dextrose BELGIA, inulin BELGIA, skimmed milk powder POLSKA -
+    all three sold on the PL market by the same repacker.
+C3  Mlekovita's "Smietanka w proszku 42%" page describes a 25 kg sack, spray-dried from sweet
+    pasteurised NORMALISED cream, stated use "mainly as an additive for ice cream and confectionery",
+    and THAT PAGE publishes no EAN and no protein/lactose/moisture/solids/ash.
+C4  The Radix-Bis fructose 500 g page publishes no EAN, no ingredients and no origin.
+C5  The inulin 1 kg page does NOT declare FIBRE, although the product is a fibre.
+C6  The Mlekovita milk 3,2% page carries no ingredients list.
+C7  Open Food Facts returns HTTP 404 for EAN 8402001047251 (Hacendado) -> NO RECORD IN THAT ONE
+    SOURCE. Nothing more. It says nothing about where the product is or is not sold.
+C8  Laciate UHT 3.5% 1 L is offered for sale on the PH market (koryaiko.com, PHP 1,056 per case).
+    PRODUCT PRESENCE only: the page shows no EAN and no origin.
+C9  BENEO extracts chicory inulin at Oreye (Belgium) and Pemuco (Chile) - beneo.com.
+C10 PI-ING-000270 carries fat 0.8 / protein 35.7; the real PL skimmed milk powder is fat 1.5 /
+    protein 34.0. Same technological class, different composition.
 
-### F2 — Industrial production ingredients have NO consumer EAN
-  Mlekovita's cream powder 42% is a 25 kg sack sold by weight; its official page publishes no EAN.
-  D01 ("one exact PR identity per real EAN/SKU") therefore cannot cover the professional half of the
-  Starter Pack scope. Those products need an identity key that is NOT an EAN
-  (manufacturer + product code + pack size). Raised as a gap, not fixed here.
+### LEAD — real signal, insufficient source
 
-### F3 — market != origin, systematically, within ONE seller
-  Swojska Piwniczka: dextrose origin BELGIA, inulin origin BELGIA, skimmed milk powder origin POLSKA.
-  All three sold on the PL market by the same repacker. A02 is not an edge case; it is the norm in
-  this channel.
+L1  Same EAN across markets. Open Food Facts records 5900820012434 (Laciate) under
+    countries_tags = en:philippines, and PH is one of the 18 rows in catalog_market_countries.
+    The PH distributor page does not show an EAN, so SAME-EAN-ACROSS-MARKETS IS NOT PROVEN.
+    To close: an official PH importer or retailer page printing the barcode.
+L2  BENEO's "80+ countries" reach - trade press, not a primary BENEO statement I fetched.
+L3  Schwarz Group (Lidl + Kaufland) operating in 33 countries, ~14,500 stores - trade press and
+    Wikipedia, no primary Schwarz source fetched, and NO product-level evidence at all.
+L4  Inulin pack sizes at this supplier appear to be 250 g and 1 kg with no 500 g, which would not
+    match Starter Pack GEL-INU-500. Taken from search listings, not from a fetched category page.
 
-### F4 — own brand vs manufacturer brand decides multi-country potential
-  Hacendado (Mercadona own brand) EAN 8402001047251: not present in Open Food Facts at all.
-  Laciate (Mlekpol manufacturer brand) EAN 5900820012434: product evidenced on the PH market.
-  Retailer own brands do not travel; manufacturer brands do. Clusters (A05) must therefore be built on
-  MANUFACTURER brands, never on the apparent pan-European reach of a chain's own label.
+### HYPOTHESIS — NOT established by this pass
 
-### F5 — label gaps land exactly on the technically decisive field
-  inulin 1 kg: FIBRE not declared, on a fibre product.
-  fructose 500 g: no EAN, no ingredients, no origin, no kJ, no sugars.
-  Mlekovita milk 3,2%: no ingredients list on the manufacturer page.
-  This is the D03/D04/D08 workload made concrete: the missing facts are not decorative.
-
-### F6 — Starter Pack pack sizes are not always purchasable
-  GEL-INU-500 is a 500 g inulin. The PL supplier sells 250 g and 1 kg only. Local sourcing must be
-  allowed to differ in pack size, or the Starter Pack spec must tolerate it.
+H1  "B01 splits into two supply channels that behave oppositely" (retail dairy sourced nationally vs
+    production ingredients flowing from a few international bulk makers through national repackers).
+    Coherent with C2 and C9, but built on ONE repacker in ONE market.
+    To test: the same origin/repacker pattern in 2-3 further markets and categories.
+H2  "Industrial production ingredients have no consumer EAN." n = 1 (C3). One 25 kg sack proves
+    nothing about the class.
+    To test: sucrose, gums, dried egg yolk, whole milk powder and protein ingredients in industrial
+    formats, from at least two manufacturers each.
+H3  "D01 (one PR per EAN) cannot cover the professional half of the Starter Pack." Depends entirely
+    on H2. Withdrawn as a finding until H2 is tested. NOT raised as a ledger item yet.
+H4  "Retailer own brands do not travel; clusters must be built on manufacturer brands." C7 only shows
+    an absent OFF record, and C8 only shows one manufacturer-brand product on one foreign market.
+    This is the A05 question, not its answer.
+    To test: check own-brand EANs of a chain that genuinely operates in many countries (Lidl, Aldi,
+    Carrefour) against those chains' own national sites.
+H5  "Market != origin systematically." CONFIRMED for the three products in C2; the generalisation to
+    the channel is not.
+H6  "Label gaps land on the technically decisive field." CONFIRMED for the three products in
+    C4/C5/C6; whether it is a pattern needs a larger sample.
 
 ### NEW TECHNOLOGICAL CLASS CANDIDATES FOUND: NONE
-  All seven verified products fall inside existing classes and differ only by composition. The
-  classification ruleset survived first contact with real market data. C02 unchanged.
+All seven verified products fall inside existing classes and differ only by composition (C10 is the
+clearest case). The ruleset was not contradicted. With n = 7 this is consistency, not proof - C02
+stays unchanged either way, since a new class would be raised as a NEW candidate with full evidence.
+
+### A04 READINESS - HONEST STATE
+There is currently NO hard-confirmed EAN proven present in more than one country. A04 has eight EANs
+to work from and one open lead (L1) with a defined way to close it. The own-brand vs manufacturer-brand
+split that A05 would use is H4, a hypothesis, not an input.
