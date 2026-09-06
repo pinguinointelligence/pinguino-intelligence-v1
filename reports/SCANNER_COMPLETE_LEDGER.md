@@ -135,6 +135,19 @@ Read from the deployed authority, not from intention.
 | 20260906010242 | exact_gtin_resolver_role_readiness |
 | 20260906054555 | customer_product_final_within_save |
 
+### Registry alignment, checked 2026-09-06
+
+Every migration this workstream applied is registered under the version its repository file carries,
+and the files are byte-equal to the applied statements. Four registry rows for the same period have
+NO file in the repository — all four belong to other workstreams and none is touched here:
+
+| Registered version | Name | Owner |
+| --- | --- | --- |
+| 20260905103024 | base_only_nutrition_label_permission | BASE_ONLY nutrition workstream |
+| 20260905142334 | reclassify_base_only_nutrition_bindings | same |
+| 20260906003955 | mapper_lineage_current_binding | the repository has this file as `20260905150000_…` — the mismatch SOL-014 already tracks |
+| 20260906004154 | reclassify_stale_mapper_lineage_bindings | mapper-lineage workstream |
+
 ## Edge functions deployed to staging from this branch
 
 | Function | Version |
