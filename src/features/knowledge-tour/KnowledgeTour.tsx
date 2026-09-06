@@ -151,25 +151,33 @@ export function KnowledgeTour({ layout = 'page' }: { layout?: 'page' | 'embedded
       data-layout={layout}
       data-owner-asset={step.ownerAsset}
       data-swipe-enabled="true"
+      data-tour-slot="entry"
       onKeyDown={handleKeyDown}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
       <div className="knowledge-tour__stage">
         <div className="knowledge-tour__copy">
-          <p className="knowledge-tour__eyebrow">
-            {copy.navigation.step} {activeIndex + 1} {copy.navigation.of} {steps.length}
-          </p>
-          <h1 className="knowledge-tour__title" ref={titleRef} tabIndex={-1}>
-            {step.title}
-          </h1>
-          <p className="knowledge-tour__body">{step.body}</p>
-          <p className="knowledge-tour__voice">{step.voice}</p>
+          <div className="knowledge-tour__step-slot" data-tour-slot="step">
+            <p className="knowledge-tour__eyebrow">
+              {copy.navigation.step} {activeIndex + 1} {copy.navigation.of} {steps.length}
+            </p>
+          </div>
+          <div className="knowledge-tour__title-slot" data-tour-slot="title">
+            <h1 className="knowledge-tour__title" ref={titleRef} tabIndex={-1}>
+              {step.title}
+            </h1>
+          </div>
+          <div className="knowledge-tour__subtitle-slot" data-tour-slot="subtitle">
+            <p className="knowledge-tour__body">{step.body}</p>
+            <p className="knowledge-tour__voice">{step.voice}</p>
+          </div>
         </div>
 
         <div className="knowledge-tour__story">
           <figure
             className="knowledge-tour__artwork"
+            data-tour-slot="visual"
             style={{ '--tour-image-edge': step.edgeColor } as CSSProperties}
           >
             <img
@@ -180,11 +188,17 @@ export function KnowledgeTour({ layout = 'page' }: { layout?: 'page' | 'embedded
               height="941"
             />
           </figure>
-          <AnnotationRail step={step} />
+          <div className="knowledge-tour__captions-slot" data-tour-slot="captions">
+            <AnnotationRail step={step} />
+          </div>
         </div>
       </div>
 
-      <nav className="knowledge-tour__navigation" aria-label={copy.navigation.label}>
+      <nav
+        className="knowledge-tour__navigation"
+        data-tour-slot="navigation"
+        aria-label={copy.navigation.label}
+      >
         <button
           type="button"
           className="knowledge-tour__nav-button"
