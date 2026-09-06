@@ -28,20 +28,27 @@ describe('affiliate navigation', () => {
     expect(routerSource).toContain('<AffiliatePage />');
   });
 
-  it('Work With Us KEEPS its drawer entry — Affiliate is added beside it', () => {
+  it('B05 — Work With Us has LOST its drawer entry; Affiliate and Franchise remain', () => {
+    // This test previously pinned the opposite, noting that removing the entry
+    // "is a navigation decision of its own… until that is decided separately".
+    // The owner decided it on 2026-09-03: exactly two collaboration entries.
     for (const audience of ['guest', 'home', 'pro'] as const) {
-      // B05 (removing Work With Us from the drawer) is deliberately NOT done
-      // here: it is a navigation decision of its own, and Rewizja 1 is a page.
-      // Both items coexist until that is decided separately.
-      expect(visibleNavItems(audience).map((entry) => entry.id)).toContain('workWithUs');
+      const entries = visibleNavItems(audience).map((entry) => entry.id);
+      expect(entries).not.toContain('workWithUs');
+      expect(entries).toContain('affiliate');
+      expect(entries).toContain('franchise');
     }
-    expect(APP_NAV_ITEMS.some((entry) => entry.to === '/work-with-us')).toBe(true);
+    expect(APP_NAV_ITEMS.some((entry) => entry.to === '/work-with-us')).toBe(false);
     expect(APP_NAV_ITEMS.some((entry) => entry.to === '/affiliate')).toBe(true);
+    expect(APP_NAV_ITEMS.some((entry) => entry.to === '/franchise')).toBe(true);
   });
 
-  it('B06 — the Work With Us route still exists and still resolves', () => {
+  it('B06 — the Work With Us route still resolves, now as a redirect into Franchise', () => {
+    // The route is kept so old external links and bookmarks still land
+    // somewhere useful; it just stops being a competing product surface.
     expect(routerSource).toContain('path="/work-with-us"');
-    expect(routerSource).toContain('<WorkWithUsPage />');
+    expect(routerSource).not.toContain('<WorkWithUsPage />');
+    expect(routerSource).toContain('<LegacyDestinationRedirect pathname="/franchise" />');
   });
 
   it('B07 — Affiliate does not absorb the equipment lanes', () => {
