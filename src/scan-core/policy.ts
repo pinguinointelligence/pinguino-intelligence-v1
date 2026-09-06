@@ -153,32 +153,62 @@ export class PolicyState {
 
     if (!c) {
       this.noCandidateSince ??= f.tMs;
-      this.blurSince = null;
       const lost = f.tMs - this.lastCandidateAt > THRESHOLDS.lostMs;
       if (lost) this.lastCandidate = null;
       const cadence =
         f.workerDuty > THRESHOLDS.dutyBudget
           ? THRESHOLDS.rescueEveryN * 2
           : THRESHOLDS.rescueEveryN;
-      // a large candidate that just vanished together with sharpness = too close for this lens (D1/D2 12 cm)
+      /* SOL-045 (owner, 2026-09-06): "on the computer the camera sees the barcode but the image is
+         far too blurry to decode". A lens that cannot resolve the bars never produces a candidate,
+         and this branch used to feed no sharpness history at all — so the session median stayed
+         empty, the blur test below could never fire, and the customer was told to aim the code in
+         the frame, forever. The frame's own sharpness is part of the session's focus evidence
+         whether or not a candidate formed. */
+      this.pushSharp(f.sharpness);
       const med = this.sharpMedian();
+      const unsharp = med !== null && f.sharpness < THRESHOLDS.blurRel * med;
+      // a large candidate that just vanished together with sharpness = too close for this lens (D1/D2 12 cm)
       const tooClose =
         this.lastFill !== null &&
         this.lastFill > 0.3 &&
         f.tMs - this.lastCandidateAt <= 1500 &&
-        med !== null &&
-        f.sharpness < THRESHOLDS.blurRel * med;
+        unsharp;
+      if (unsharp) this.blurSince ??= f.tMs;
+      else this.blurSince = null;
+      // nothing to wait for on a fixed-focus lens: say it as soon as the blur is established
+      const blurPersistent =
+        this.blurSince !== null &&
+        (p.autofocus === false || f.tMs - this.blurSince > THRESHOLDS.blurGuidanceMs);
+      /* A camera that is ALWAYS out of focus defeats a relative sharpness test: every frame is
+         blurry, so the session median is blurry too and `unsharp` never fires. After the
+         no-candidate grace period the honest reading is that this lens cannot resolve the code at
+         this distance — the only lever the customer has is distance (fixed focus) or light. */
+      const searching = f.tMs - this.noCandidateSince > THRESHOLDS.noCandidateGuidanceMs;
+      const dark =
+        f.meanLuma < THRESHOLDS.darkMeanLuma || f.clippedRatio > THRESHOLDS.glareClipRatio;
       const guidance: Guidance = tooClose
         ? 'move_away'
-        : f.tMs - this.noCandidateSince > THRESHOLDS.noCandidateGuidanceMs
-          ? 'aim_in_frame'
-          : 'none';
+        : blurPersistent
+          ? p.autofocus === false
+            ? 'move_away'
+            : 'hold_steady'
+          : searching
+            ? dark
+              ? 'improve_light'
+              : p.autofocus === false
+                ? 'move_away'
+                : 'aim_in_frame'
+            : 'none';
       if (this.framesSinceRescue >= cadence) {
         this.framesSinceRescue = 0;
         return {
           ...base,
           path: 'RESCUE_FULL',
-          reason: `no candidate; scheduled full-frame pass on the MEDIUM plane every ${cadence} frames`,
+          sharpRel: med && med > 0 ? f.sharpness / med : null,
+          reason: blurPersistent
+            ? `no candidate and the frame is persistently unsharp; scheduled full-frame pass every ${cadence} frames`
+            : `no candidate; scheduled full-frame pass on the MEDIUM plane every ${cadence} frames`,
           roi: { x: 0, y: 0, w: planes.medium.w, h: planes.medium.h, plane: 'medium' },
           harder: true,
           guidance,
@@ -186,7 +216,12 @@ export class PolicyState {
       }
       return {
         ...base,
-        reason: tooClose ? 'no candidate after a large blurred one: too close' : 'no candidate',
+        sharpRel: med && med > 0 ? f.sharpness / med : null,
+        reason: tooClose
+          ? 'no candidate after a large blurred one: too close'
+          : blurPersistent
+            ? 'no candidate and the frame is persistently unsharp'
+            : 'no candidate',
         guidance,
       };
     }

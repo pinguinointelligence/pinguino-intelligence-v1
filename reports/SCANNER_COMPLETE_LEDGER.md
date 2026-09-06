@@ -37,6 +37,10 @@ New findings are appended at the end only; earlier numbers are never renumbered.
 | --- | --- | --- | --- |
 | SOL-039 | HOME's "Przelicz i popraw" was silent: the pipeline publishes its verdict in `recalculationTerminal` (the state PRO renders) and the HOME panel read only `preview`/`previewIssue`. The customer waited ~16 s and the screen said nothing. | FIX READY / NOT ON STAGING | `homeRecalculationVerdict.ts` + tests; served repro on the local preview build of this branch |
 | SOL-040 | HOME had no production stage at all: "Zróbmy to" set `preparationStarted` and nothing rendered — the journey stopped at the recipe. True on `origin/staging` too. The PRO production workspace exists but is a professional dashboard whose repository this build reports unavailable (PRO's own Production tab shows "coming soon"), and HOME's own preparation copy had never been wired. | FIX READY / NOT ON STAGING | `homePreparationSteps.ts` + `HomePreparationSection.tsx` + tests; served on the preview build: base lines in order, "Na koniec dodaj topping." before the add-ons, every step ticked → "Gotowe!" |
+| SOL-042 | The owner had to turn the tin so the digits pointed down before the code was read. Root cause investigated in the decode path: the locator is orientation-independent by construction (structure-tensor double angle), the engine transposes a vertically-read crop, and the lane confirms a real EAN-13 painted at 0°/90°/180°/270°, on a bottle (r≈1.6×) and on a tighter tin (r≈1.2×) — measured, all on the FIRST frame, including every curved+rotated combination. The orientation dependency is therefore NOT in the decoder; it is the image itself (SOL-045). The customer-facing hint after a measured time already exists ("Obróć produkt lub telefon, aby kod leżał poziomo"). | IN PROGRESS | `laneOrientation.test.ts` (9 scenes, all pass); curved+rotated probe run in this session |
+| SOL-043 | The customer read `not ready: INGREDIENTS_EVIDENCE_REQUIRED, roleReadiness:REVIEW, recognition:NORMAL_INGREDIENT/BASE_ONLY`. The served client rendered the pipeline's diagnostic `note` directly (`{phase.note}` in `ScanFlow.tsx` on `origin/staging`). | FIX READY / NOT ON STAGING | shared customer-voice filter extended (SCREAMING_SNAKE enums, readiness/recognition field names, a raw `not ready` line); every scan-flow sentence filtered; `customerVoice.contract.test.ts` pins the owner's exact sentence and scans every customer-surface file |
+| SOL-044 | The customer was offered "Zgłoś do weryfikacji" — Gellatti does not present its process as manual product verification. | FIX READY / NOT ON STAGING | the action and every "weryfikacja" sentence are gone from the scan flow; the private save is the honest action; the screens name the missing LABEL fields and say Gellatti re-checks the product itself. Lifecycle audit below. |
+| SOL-045 | On a desktop the camera sees the code but the image is far too blurry to decode, and the customer is told only to aim the code in the frame. Root cause: the no-candidate branch of the scan policy fed NO sharpness history, so the session median stayed empty and the blur test could never fire; and because sharpness is judged RELATIVE to that median, a camera that is always out of focus is never found blurry at all. | FIX READY / NOT ON STAGING | `policy.ts` no-candidate branch now feeds the sharpness history, reports `sharpRel`, and after the searching grace period names blur, distance or light; `blurWithoutCandidate.test.ts` (5 contracts). Measured image chain exposed as `CameraDiagnostics`. |
 
 ## Owner's own test — iPhone / Safari on `staging.pinguinoai.com`, 2026-09-06
 
@@ -97,6 +101,23 @@ is the intended behaviour. It also exposed SOL-042, SOL-043 and SOL-044 below.
    resolver and the finalize response.
 8. **A scanned add-on never reached the recipe.** HOME announced "add it yourself in the toppings
    section". It now takes the "Dodaj topping" picker's own door and lands as a TOPPING line.
+
+
+## SOL-044 — audit of the private product → Product Registry lifecycle
+
+Read from the deployed authority, not from intention.
+
+| Question | Answer, and where it is decided |
+| --- | --- |
+| What creates a private record? | `gellatti_upsert_customer_added_product_v1`. A ready product becomes `product_kind='customer_provisional'`, `visibility='internal'`; a not-ready one takes the private not-ready path (migration `20260905132215`). |
+| Is a global discovery record created? | Only if the customer explicitly submits one: `gellatti_submit_product_request_v1` writes to `product_add_requests`, an admin queue. Nothing in the scan flow calls it any more (SOL-044). |
+| What happens after photos / a complete label? | The same finalize runs again and the refresh branch supersedes the version **only when better** (`20260905234913` + the readiness rules). Identical or weaker facts change nothing. |
+| Is there deduplication by exact GTIN? | Yes, twice: the upsert takes an advisory lock on the EAN and first looks for an existing shared `PR-ING-%` commercial product on that EAN — when it finds one it only LINKS the customer (`user_product_relations`). This is exactly what the owner saw with Milka. |
+| Is there an automatic publication path into the shared registry? | **No.** No code path sets `visibility='shared'` or `product_kind='commercial_product'` on a customer product. The database agrees: 11 `customer_provisional` all `internal`, 28 `commercial_product` all `shared`, none account-owned. |
+| Who may publish? | Only the admin/canonical ingest paths, never the scanner. |
+| Can the product stay a private override? | Yes — that is its normal, terminal state. |
+| Does a second account reuse safe global evidence? | It resolves the same EAN, is linked in `customer_added_product_accounts`, and its facts may supersede only when better. `resolve_exact_products_by_gtin_v1` admits a `customer_provisional` row only for its creator or a linked account. |
+| Can one customer's data become everyone's data? | **No.** Shared-registry rows are a different `product_kind` and a different visibility, and nothing promotes across that line. |
 
 ## Migrations (staging registry ↔ repo, byte-equal)
 

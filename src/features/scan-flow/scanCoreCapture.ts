@@ -77,6 +77,33 @@ export interface ScanCoreCaptureHandlers {
   onStatus?: (status: CaptureStatus) => void;
   onFrame?: (frame: CaptureFrame) => void;
   onError?: (message: string) => void;
+  /** SOL-045: the measured image chain, for QA and the dev lab. Never customer-facing. */
+  onDiagnostics?: (diagnostics: CameraDiagnostics) => void;
+}
+
+/**
+ * SOL-045 (owner, 2026-09-06): "on the computer the camera sees the barcode but the image is far too
+ * blurry to decode". Before changing anything the whole chain has to be measurable: what was asked
+ * of `getUserMedia`, what the track actually delivered, what the <video> element carries, what size
+ * the DECODER is handed, and which capabilities the camera really exposes. Every field here is
+ * measured, none is assumed; no user-identifying device id is recorded.
+ */
+export interface CameraDiagnostics {
+  requested: { width: number; height: number; frameRate: number; facingMode: string | null };
+  /** which rung of the constraint ladder actually opened the camera (0 = the full request) */
+  rung: 0 | 1 | 2;
+  delivered: {
+    width: number | null;
+    height: number | null;
+    frameRate: number | null;
+    facingMode: string | null;
+  };
+  video: { width: number; height: number };
+  /** what the decoder is handed: the source frame capped by the tier's analysis long edge */
+  decoderInput: { width: number; height: number; longEdgeCap: number };
+  capabilities: { focusMode: readonly string[] | null; zoom: boolean; torch: boolean };
+  focusControl: FocusControl;
+  formFactor: FormFactor;
 }
 
 /** the engine's decision record, structurally (the engine module stays behind the worker) */
@@ -102,6 +129,67 @@ interface DecisionLike {
 const BUILD: string | null = import.meta.env.VITE_SCAN_LAB_BUILD ?? null;
 const ZOOM_STEP_FACTOR = 1.5;
 const STILL_MAX_EDGE = 1920;
+
+/** the analysis long edge the frame loop caps the decoder input at (its own default) */
+export const DECODER_LONG_EDGE_CAP = 1920;
+
+/**
+ * SOL-045 — the measured image chain, assembled from what the platform reports. Pure: everything it
+ * returns was read from the track, the element or the request; nothing is inferred.
+ */
+export function cameraDiagnostics(input: {
+  requested: { width: number; height: number; frameRate: number; facingMode?: string };
+  rung: 0 | 1 | 2;
+  track: MediaStreamTrack | null;
+  video: { videoWidth: number; videoHeight: number };
+  focusControl: FocusControl;
+  formFactor: FormFactor;
+  zoomMax: number | null;
+  torch: boolean;
+}): CameraDiagnostics {
+  const settings = (input.track?.getSettings?.() ?? {}) as Record<string, unknown>;
+  const caps = ((input.track as TrackCaps | null)?.getCapabilities?.() ?? null) as Record<
+    string,
+    unknown
+  > | null;
+  const focusModes = Array.isArray(caps?.['focusMode'])
+    ? (caps!['focusMode'] as string[]).filter((m): m is string => typeof m === 'string')
+    : null;
+  const vw = input.video.videoWidth || 0;
+  const vh = input.video.videoHeight || 0;
+  const long = Math.max(vw, vh);
+  const scale = long > DECODER_LONG_EDGE_CAP && long > 0 ? DECODER_LONG_EDGE_CAP / long : 1;
+  return {
+    requested: {
+      width: input.requested.width,
+      height: input.requested.height,
+      frameRate: input.requested.frameRate,
+      facingMode: input.requested.facingMode ?? null,
+    },
+    rung: input.rung,
+    delivered: {
+      width: typeof settings['width'] === 'number' ? (settings['width'] as number) : null,
+      height: typeof settings['height'] === 'number' ? (settings['height'] as number) : null,
+      frameRate:
+        typeof settings['frameRate'] === 'number' ? (settings['frameRate'] as number) : null,
+      facingMode:
+        typeof settings['facingMode'] === 'string' ? (settings['facingMode'] as string) : null,
+    },
+    video: { width: vw, height: vh },
+    decoderInput: {
+      width: Math.round((vw * scale) / 2) * 2,
+      height: Math.round((vh * scale) / 2) * 2,
+      longEdgeCap: DECODER_LONG_EDGE_CAP,
+    },
+    capabilities: {
+      focusMode: focusModes,
+      zoom: input.zoomMax !== null,
+      torch: input.torch,
+    },
+    focusControl: input.focusControl,
+    formFactor: input.formFactor,
+  };
+}
 
 export function detectFormFactor(): FormFactor {
   if (typeof navigator === 'undefined') return 'unknown';
@@ -180,12 +268,16 @@ export class ScanCoreCapture {
     this.done = false;
     this.formFactor = detectFormFactor();
     this.handlers.onStatus?.('starting');
-    const delivered = await this.camera.open(video, {
+    const formFactor = detectFormFactor();
+    // A laptop has no environment-facing camera; asking for one lets the browser pick any device it
+    // likes (SOL-045). The rear camera is requested only where one exists.
+    const requested = {
       width: 1920,
       height: 1080,
       frameRate: 30,
-      facingMode: 'environment',
-    });
+      ...(formFactor === 'mobile' ? { facingMode: 'environment' as const } : {}),
+    };
+    const delivered = await this.camera.open(video, requested);
     if (this.done) return;
     // focus first: continuous autofocus is requested when the camera exposes it at all
     this.focusControl = await probeFocus(this.camera.track);
@@ -242,6 +334,18 @@ export class ScanCoreCapture {
     this.loop = new FrameLoop({ video, client, path: 'auto' });
     this.loop.start();
     this.handlers.onStatus?.('live');
+    this.handlers.onDiagnostics?.(
+      cameraDiagnostics({
+        requested,
+        rung: this.camera.lastRung,
+        track: this.camera.track,
+        video,
+        focusControl: this.focusControl,
+        formFactor: this.formFactor,
+        zoomMax: this.zoomMax,
+        torch: this.torchAvailable,
+      }),
+    );
   }
 
   private sendCameraState(): void {
