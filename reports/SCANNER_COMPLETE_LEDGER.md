@@ -10,8 +10,8 @@ without reading any conversation.
 | --- | --- |
 | Branch | `claude/scanner-complete` |
 | PR | [#186](https://github.com/pinguinointelligence/pinguino-intelligence-v1/pull/186) — base `staging`, **DO NOT MERGE** until the owner accepts |
-| HEAD at last update | `437fc3c0` (updated after each checkpoint) |
-| `origin/staging` at last update | `f03038d0` — merged into this branch |
+| HEAD at last update | `b52df37c` |
+| `origin/staging` at last update | `f03038d0` — merged into this branch, 0 commits behind |
 | Supabase (staging) | `tunabqqrwabacxjcxxkz` |
 | Vercel project | `pinguino-staging` (`prj_6h8PDTCUrdDdXNzfEfjJNsVL5BcE`) |
 | Preview alias (SSO) | `pinguino-staging-git-987191-pinguinointelligence-7784s-projects.vercel.app` |
@@ -85,6 +85,21 @@ New findings are appended at the end only; earlier numbers are never renumbered.
 | product-scan-analyze | 26 (refresh option) |
 | product-scan-finalize | 39 |
 | intimport-enrich | 32 |
+
+## The customer journey, served end to end
+
+Measured on the built client of this branch (merged with `origin/staging`), signed in as
+`test1@test1.com`, one continuous run:
+
+| Step | Elapsed | What the customer sees |
+| --- | --- | --- |
+| scan a code | 4.0 s | "Znaleziono produkt." with the name and brand |
+| add it | 8.4 s | "Crunchy Sante Naturalne: dodano jako dodatek (topping)." and the line in the recipe |
+| recalculate | 12.0 s | "Nie ma czego poprawiać — receptura jest już dobrze ustawiona." |
+| make it | 13.2 s | the weighing list, 8 steps, add-ons after "Na koniec dodaj topping." |
+
+A warm known product resolves in 1.2–1.4 s; a product nobody has added yet takes the ask →
+research → save path (Lotus Biscoff: asked, added and saved ready in one pass).
 
 ## Served evidence
 
