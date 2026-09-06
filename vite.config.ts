@@ -1,11 +1,29 @@
+import { realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import { configDefaults } from 'vitest/config';
 
+/**
+ * A dependency tree reached through a symlink lives OUTSIDE the project root, and Vite's strict file
+ * server then refuses to load assets from it — a `@fontsource` `.woff?url` import fails with
+ * "Denied ID", and every test file that transitively imports it does not start at all. That is an
+ * environment fact, not a code failure, and it silently subtracted whole files from the suite
+ * (owner requirement 2026-09-06: no test file may fail to start). Allowing the REAL path of the
+ * dependency tree is a no-op wherever `node_modules` is a normal directory, CI included.
+ */
+const dependencyRoot = (() => {
+  try {
+    return realpathSync(fileURLToPath(new URL('./node_modules', import.meta.url)));
+  } catch {
+    return null;
+  }
+})();
+
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  server: { fs: { allow: dependencyRoot ? ['.', dependencyRoot] : ['.'] } },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
