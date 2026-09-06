@@ -53,7 +53,7 @@ describe('a scanned product enters through the typed-ingredient door', () => {
     // the exact building blocks ProductPickerPopover.addScannedProduct uses, in the same order
     for (const step of [
       "scannedProductRecipeTarget(hits, scanned, 'BASE')",
-      "resolveCurrentMapperCatalogSelection(hit, 'BASE'",
+      'resolveCurrentMapperCatalogSelection(hit, context, deps.loadCurrentRow)',
       'engineIngredientForCatalogSelection(hit, selection)',
       'resolveBehavior({',
       'snapshotServerResolvedProductBehavior({',
@@ -65,6 +65,32 @@ describe('a scanned product enters through the typed-ingredient door', () => {
     expect(HOME_PAGE).toContain(
       'handleAddIngredient(outcome.ingredient, outcome.behavior ?? undefined)',
     );
+  });
+
+  it('a scanned add-on lands as a topping line through the "Dodaj topping" door, not a notice', () => {
+    const door = readFileSync('src/features/home-creator/homeScannedCatalogProduct.ts', 'utf8');
+    const picker = readFileSync('src/features/ingredient-builder/ProductPickerPopover.tsx', 'utf8');
+    // base first, then the add-on target — the picker's own selection helper in TOPPING context
+    expect(door).toContain("scannedProductRecipeTarget(hits, scanned, 'TOPPING')");
+    // the ProductBehavior call is the picker's: the scope decides the module, nothing HOME-only
+    const moduleRule = "module: scope === 'BASE_FORMULATION' ? 'BASE_RECIPE' : 'TOPPING'";
+    expect(door).toContain(moduleRule);
+    expect(picker).toContain(moduleRule);
+    expect(door).toContain("requestedRole: 'STANDARD'");
+    // a label-only base article is an add-on, never a base ingredient
+    expect(door).toContain("context === 'BASE' && isCatalogLabelToppingIngredient(ingredient)");
+    // HOME adds the topping with the SAME handler the picker's onAdd uses, and shows the recipe
+    expect(HOME_PAGE).toContain(
+      'handleAddTopping(outcome.ingredient, outcome.behavior ?? undefined)',
+    );
+    expect(HOME_PAGE).toContain('onAddTopping={handleAddTopping}');
+    const toppingCase = HOME_PAGE.slice(
+      HOME_PAGE.indexOf("case 'topping':"),
+      HOME_PAGE.indexOf("case 'unavailable':"),
+    );
+    expect(toppingCase).toContain('revealRecipeAfterScan()');
+    // the old "go add it yourself" notice is gone
+    expect(HOME_PAGE).not.toContain('dodaj go w sekcji dodatków');
   });
 
   it('HOME hands the scanner nothing but catalogue ids', () => {

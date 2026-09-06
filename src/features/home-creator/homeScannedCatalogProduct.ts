@@ -14,13 +14,17 @@ import {
   engineIngredientForCatalogSelection,
   resolveCurrentMapperCatalogSelection,
   scannedProductRecipeTarget,
+  type MapperCatalogContext,
 } from '@/features/ingredient-builder/mapperOnlyCatalog';
 import {
   snapshotServerResolvedProductBehavior,
   type ProductBehaviorContext,
   type ProductBehaviorSnapshot,
 } from '@/features/product-intelligence';
-import { isCatalogLabelToppingIngredient } from '@/features/recipe-composition/labelTopping';
+import {
+  isCatalogLabelToppingIngredient,
+  type RecipeToppingIngredient,
+} from '@/features/recipe-composition/labelTopping';
 import { searchProducts } from '@/services/globalCatalog';
 import { getEngineApprovedIngredientById } from '@/services/ingredients';
 import {
@@ -41,8 +45,12 @@ export type HomeBehaviorContext = Omit<
 
 export type ScannedCatalogOutcome =
   | { kind: 'ingredient'; ingredient: EngineIngredient; behavior: ProductBehaviorSnapshot | null }
-  /** the product exists and is usable — as an add-on (topping), not in the base */
-  | { kind: 'topping_only' }
+  /** the product is usable as an add-on (topping) — the very line the "Dodaj topping" picker adds */
+  | {
+      kind: 'topping';
+      ingredient: RecipeToppingIngredient;
+      behavior: ProductBehaviorSnapshot | null;
+    }
   | { kind: 'unavailable'; message: string }
   | { kind: 'unresolved' };
 
@@ -57,6 +65,8 @@ const DEFAULT_DEPS: ScannedCatalogDeps = {
   loadCurrentRow: getEngineApprovedIngredientById,
   resolveBehavior: resolveProductBehaviorForSelection,
 };
+
+type ProcessScope = 'BASE_FORMULATION' | 'POST_PROCESS_ADDON';
 
 /** the catalogue rows the scanned identity may stand for, by barcode first, then by name */
 async function catalogHits(
@@ -76,19 +86,57 @@ async function catalogHits(
   return results.flat();
 }
 
-export async function hydrateScannedCatalogProduct(
-  scanned: ScannedCatalogIdentity,
-  behaviorContext: HomeBehaviorContext | null,
-  deps: ScannedCatalogDeps = DEFAULT_DEPS,
-): Promise<ScannedCatalogOutcome> {
-  const hits = await catalogHits(scanned, deps);
-  const hit = scannedProductRecipeTarget(hits, scanned, 'BASE');
-  if (!hit) {
-    return scannedProductRecipeTarget(hits, scanned, 'TOPPING')
-      ? { kind: 'topping_only' }
-      : { kind: 'unresolved' };
+/** the ProductBehavior authority for the hit in the scope the line will live in — the picker's call */
+async function resolveBehavior(
+  hit: CatalogProductSearchHit,
+  scope: ProcessScope,
+  behaviorContext: HomeBehaviorContext,
+  deps: ScannedCatalogDeps,
+): Promise<{ ok: true; behavior: ProductBehaviorSnapshot } | { ok: false; message: string }> {
+  const entity =
+    hit.entityKind === 'pi_base' && hit.mappedIngredientId
+      ? { entityKind: 'mapper' as const, entityId: hit.mappedIngredientId }
+      : hit.currentVersionId
+        ? { entityKind: 'catalog_product_version' as const, entityId: hit.currentVersionId }
+        : null;
+  if (!entity) return { ok: false, message: 'wymaga odświeżenia danych produktu przed dodaniem.' };
+  const resolved = await deps
+    .resolveBehavior({
+      entity,
+      context: {
+        ...behaviorContext,
+        processScope: scope,
+        requestedRole: 'STANDARD',
+        module: scope === 'BASE_FORMULATION' ? 'BASE_RECIPE' : 'TOPPING',
+      },
+    })
+    .catch(() => null);
+  if (!resolved || resolved.state === 'blocked') {
+    return {
+      ok: false,
+      message: resolved
+        ? productBehaviorBlockedMessage(resolved)
+        : 'nie udało się potwierdzić aktualnych danych produktu. Spróbuj ponownie.',
+    };
   }
-  const selection = await resolveCurrentMapperCatalogSelection(hit, 'BASE', deps.loadCurrentRow);
+  return {
+    ok: true,
+    behavior: snapshotServerResolvedProductBehavior({ lineId: '', processScope: scope, resolved }),
+  };
+}
+
+type HydratedHit =
+  | ScannedCatalogOutcome
+  /** the BASE selection yielded a label-only article — it can only ever be an add-on */
+  | { kind: 'label_only' };
+
+async function hydrateCatalogHit(
+  hit: CatalogProductSearchHit,
+  context: MapperCatalogContext,
+  behaviorContext: HomeBehaviorContext | null,
+  deps: ScannedCatalogDeps,
+): Promise<HydratedHit> {
+  const selection = await resolveCurrentMapperCatalogSelection(hit, context, deps.loadCurrentRow);
   if (!selection.ok) return { kind: 'unavailable', message: selection.message };
   const ingredient = engineIngredientForCatalogSelection(hit, selection);
   if (!ingredient) {
@@ -97,43 +145,47 @@ export async function hydrateScannedCatalogProduct(
       message: 'wymaga uzupełnienia danych produktu przed dodaniem do receptury.',
     };
   }
-  if (isCatalogLabelToppingIngredient(ingredient)) return { kind: 'topping_only' };
-
+  if (context === 'BASE' && isCatalogLabelToppingIngredient(ingredient))
+    return { kind: 'label_only' };
+  const scope: ProcessScope = context === 'BASE' ? 'BASE_FORMULATION' : 'POST_PROCESS_ADDON';
   let behavior: ProductBehaviorSnapshot | null = null;
   if (behaviorContext) {
-    const entity =
-      hit.entityKind === 'pi_base' && hit.mappedIngredientId
-        ? { entityKind: 'mapper' as const, entityId: hit.mappedIngredientId }
-        : hit.currentVersionId
-          ? { entityKind: 'catalog_product_version' as const, entityId: hit.currentVersionId }
-          : null;
-    if (!entity) {
-      return { kind: 'unavailable', message: 'wymaga odświeżenia danych produktu przed dodaniem.' };
-    }
-    const resolved = await deps
-      .resolveBehavior({
-        entity,
-        context: {
-          ...behaviorContext,
-          processScope: 'BASE_FORMULATION',
-          requestedRole: 'STANDARD',
-          module: 'BASE_RECIPE',
-        },
-      })
-      .catch(() => null);
-    if (!resolved || resolved.state === 'blocked') {
-      return {
-        kind: 'unavailable',
-        message: resolved
-          ? productBehaviorBlockedMessage(resolved)
-          : 'nie udało się potwierdzić aktualnych danych produktu. Spróbuj ponownie.',
-      };
-    }
-    behavior = snapshotServerResolvedProductBehavior({
-      lineId: '',
-      processScope: 'BASE_FORMULATION',
-      resolved,
-    });
+    const resolved = await resolveBehavior(hit, scope, behaviorContext, deps);
+    if (!resolved.ok) return { kind: 'unavailable', message: resolved.message };
+    behavior = resolved.behavior;
   }
-  return { kind: 'ingredient', ingredient, behavior };
+  return context === 'BASE'
+    ? { kind: 'ingredient', ingredient: ingredient as EngineIngredient, behavior }
+    : { kind: 'topping', ingredient, behavior };
+}
+
+/**
+ * Base first: a product the catalogue admits to the base becomes an ingredient line. Otherwise
+ * (or when its base selection is label-only) the product takes the add-on door — the same
+ * selection, profile and ProductBehavior call the "Dodaj topping" picker makes — and comes back
+ * as a topping line, so a scanned granola is IN the recipe, not merely announced.
+ */
+export async function hydrateScannedCatalogProduct(
+  scanned: ScannedCatalogIdentity,
+  behaviorContext: HomeBehaviorContext | null,
+  deps: ScannedCatalogDeps = DEFAULT_DEPS,
+): Promise<ScannedCatalogOutcome> {
+  const hits = await catalogHits(scanned, deps);
+  const baseHit = scannedProductRecipeTarget(hits, scanned, 'BASE');
+  if (baseHit) {
+    const outcome = await hydrateCatalogHit(baseHit, 'BASE', behaviorContext, deps);
+    if (outcome.kind !== 'label_only') return outcome;
+  }
+  const toppingHit = scannedProductRecipeTarget(hits, scanned, 'TOPPING');
+  if (toppingHit) {
+    const outcome = await hydrateCatalogHit(toppingHit, 'TOPPING', behaviorContext, deps);
+    if (outcome.kind !== 'label_only') return outcome;
+  }
+  return baseHit
+    ? {
+        kind: 'unavailable',
+        message:
+          'nadaje się tylko jako dodatek (topping), a katalog nie dopuszcza go jeszcze w tej roli.',
+      }
+    : { kind: 'unresolved' };
 }

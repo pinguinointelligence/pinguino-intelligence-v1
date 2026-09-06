@@ -347,6 +347,22 @@ export function HomeCreatorPage() {
     [addIngredientLine],
   );
 
+  /** §57: the existing Topping behaviour — no Crown, editable grams. Shared identically. */
+  const handleAddTopping = useCallback(
+    (ingredient: RecipeToppingIngredient, behavior?: ProductBehaviorSnapshot) => {
+      useRecipeStore.getState().addTopping(ingredient, 0);
+      const topping = useRecipeStore
+        .getState()
+        .toppings.find((line) => line.ingredient.id === ingredient.id);
+      if (topping && behavior) {
+        useRecipeStore
+          .getState()
+          .setProductBehaviorSnapshot(topping.id, { ...behavior, lineId: topping.id });
+      }
+    },
+    [],
+  );
+
   /** the profile|machine|amount answers a starter recipe was last generated (or adopted) for */
   const lastGeneratedFor = useRef<string | null>(null);
 
@@ -384,8 +400,14 @@ export function HomeCreatorPage() {
               : `${name}: dodano do receptury.`,
           );
           return;
-        case 'topping_only':
-          setScanNotice(`${name} nadaje się jako dodatek — dodaj go w sekcji dodatków (topping).`);
+        case 'topping':
+          handleAddTopping(outcome.ingredient, outcome.behavior ?? undefined);
+          revealRecipeAfterScan();
+          setScanNotice(
+            product.completedFromSimilar
+              ? `${name}: dodano jako dodatek (topping). Brakujące dane uzupełniliśmy na podstawie podobnych produktów.`
+              : `${name}: dodano jako dodatek (topping).`,
+          );
           return;
         case 'unavailable':
           setScanNotice(`${name}: ${outcome.message}`);
@@ -396,23 +418,7 @@ export function HomeCreatorPage() {
           );
       }
     },
-    [handleAddIngredient, revealRecipeAfterScan, scanBehaviorContext],
-  );
-
-  /** §57: the existing Topping behaviour — no Crown, editable grams. Shared identically. */
-  const handleAddTopping = useCallback(
-    (ingredient: RecipeToppingIngredient, behavior?: ProductBehaviorSnapshot) => {
-      useRecipeStore.getState().addTopping(ingredient, 0);
-      const topping = useRecipeStore
-        .getState()
-        .toppings.find((line) => line.ingredient.id === ingredient.id);
-      if (topping && behavior) {
-        useRecipeStore
-          .getState()
-          .setProductBehaviorSnapshot(topping.id, { ...behavior, lineId: topping.id });
-      }
-    },
-    [],
+    [handleAddIngredient, handleAddTopping, revealRecipeAfterScan, scanBehaviorContext],
   );
 
   useEffect(() => {
