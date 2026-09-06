@@ -1,5 +1,4 @@
 import type { MasterLabelData } from '../masterLabel';
-import { canadianFrenchAllergenName } from '../allergenTaxonomy';
 import {
   amountPerServing,
   assessCanadaFop,
@@ -13,7 +12,7 @@ import {
   roundCanadaProteinGrams,
 } from '../regulatoryNutrition';
 import {
-  allergenDisplayValues,
+  allergenStatementText,
   businessHtml,
   escapeHtml,
   ingredientDeclarationHtml,
@@ -74,7 +73,6 @@ export function renderCanadaLabel(data: MasterLabelData): string {
   const productFr = primaryText(data.productName, ['fr']);
   const commonEn = primaryText(data.legalProductName, ['en']);
   const commonFr = primaryText(data.legalProductName, ['fr']);
-  const allergensEn = allergenDisplayValues(data);
-  const allergensFr = allergensEn.map(canadianFrenchAllergenName);
-  return `<section class="market-renderer canada-renderer" data-regulatory-renderer="canada-nft-v2"><header class="identity bilingual"><div lang="en"><h1>${escapeHtml(productEn)}</h1><p>${escapeHtml(commonEn)}</p></div><div lang="fr"><h1>${escapeHtml(productFr)}</h1><p>${escapeHtml(commonFr)}</p></div>${canadaFopHtml(data)}</header><p class="ingredients" lang="en"><strong>Ingredients:</strong> ${ingredientDeclarationHtml(data, 'en')}</p><p class="ingredients" lang="fr"><strong>Ingrédients:</strong> ${ingredientDeclarationHtml(data, 'fr')}</p>${allergensEn.length ? `<p class="contains"><strong>Contains / Contient:</strong> ${escapeHtml(allergensEn.join(', '))} / ${escapeHtml(allergensFr.join(', '))}</p>` : ''}${renderCanadianNutritionFacts(data)}${netQuantityHtml(data, 'Net quantity / Quantité nette')}${traceabilityHtml(data, true)}${storageHtml(data, ['en', 'fr'], ['Storage', 'Conservation'])}${businessHtml(data, true)}</section>`;
+  const allergenStatement = allergenStatementText(data);
+  return `<section class="market-renderer canada-renderer" data-regulatory-renderer="canada-nft-v2"><header class="identity bilingual"><div lang="en"><h1>${escapeHtml(productEn)}</h1><p>${escapeHtml(commonEn)}</p></div><div lang="fr"><h1>${escapeHtml(productFr)}</h1><p>${escapeHtml(commonFr)}</p></div>${canadaFopHtml(data)}</header><p class="ingredients" lang="en"><strong>Ingredients:</strong> ${ingredientDeclarationHtml(data, 'en')}</p><p class="ingredients" lang="fr"><strong>Ingrédients:</strong> ${ingredientDeclarationHtml(data, 'fr')}</p><p class="allergens"><strong>Alergeny:</strong> ${escapeHtml(allergenStatement)}</p>${renderCanadianNutritionFacts(data)}${netQuantityHtml(data, 'Net quantity / Quantité nette')}${traceabilityHtml(data, true)}${storageHtml(data, ['en', 'fr'], ['Storage', 'Conservation'])}${businessHtml(data, true)}</section>`;
 }

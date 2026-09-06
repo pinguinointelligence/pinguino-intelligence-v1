@@ -59,10 +59,10 @@ const mockSave = {
   busy: false,
   error: null,
   clearError: () => {},
-  createNew: async () => true,
-  saveVersion: async () => true,
-  rename: async () => true,
-  archive: async () => true,
+  createNew: vi.fn(async () => true),
+  saveVersion: vi.fn(async () => true),
+  rename: vi.fn(async () => true),
+  archive: vi.fn(async () => true),
   practicalBlocked: false,
   practicalBlockMessage: null,
   practicalBlock: null,
@@ -224,6 +224,39 @@ describe('ProWorkbar (sticky top workbar)', () => {
     expect(w.status.clean).toBe('Zapisane');
     expect(html).toContain('Zapisane');
     expect(html).not.toContain('DO PRZEGLĄDU');
+  });
+
+  it('does not create a new immutable version for a no-op Save', async () => {
+    mockSave.saveVersion.mockClear();
+    mockState = {
+      ...mockState,
+      savedRecipeId: 'r1',
+      savedRecipeName: 'Pistacja Premium',
+      currentVersionNumber: 3,
+      dirty: false,
+    };
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const root = createRoot(host);
+    try {
+      await act(async () =>
+        root.render(
+          <MemoryRouter initialEntries={['/pro/recipe']}>
+            <Routes>
+              <Route path="/pro/:section" element={<ProWorkbar variant="bar" />} />
+            </Routes>
+          </MemoryRouter>,
+        ),
+      );
+      await act(async () => {
+        host.querySelector<HTMLButtonElement>('[data-testid="pro-workbar-save"]')!.click();
+        await Promise.resolve();
+      });
+      expect(mockSave.saveVersion).not.toHaveBeenCalled();
+    } finally {
+      await act(async () => root.unmount());
+      host.remove();
+    }
   });
 
   it('shows the compact recipe context (product · tier · serving · batch)', () => {

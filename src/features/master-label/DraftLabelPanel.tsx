@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
-import type { RecipeResult } from '@/engine';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router';
+import type { RecipeInput } from '@/engine';
+import { recipeCompositionFromState } from '@/features/recipe-composition/recipeCompositionPersistence';
 import {
   defaultAccountLabelProfile,
   resolveLabelRepository,
@@ -7,24 +9,49 @@ import {
   type LabelRepository,
 } from '@/services/labels/labelRepository';
 import { useAuthStore } from '@/stores/authStore';
+import { useRecipeStore } from '@/stores/recipeStore';
 import { DraftLabelCard } from './DraftLabelCard';
 import { buildDraftLabelPreview } from './draftLabelPreview';
+import {
+  createRecipeLabelDraft,
+  newRecipeLabelDraftId,
+  type RecipeLabelDraft,
+} from './labelDraftPersistence';
+import { labelSettingsReturn, readLabelSettingsRestore } from './labelSettingsNavigation';
+import type { MasterLabelData } from './masterLabel';
 
-/**
- * Loads the saved label profile and renders the workbench's DRAFT label.
- *
- * The profile is the only thing this needs that the workbench does not already
- * hold; everything else comes from the engine's current result. If no profile
- * has been saved yet there is nothing truthful to draw a label from, so the
- * caller's own fallback is rendered instead of a half-invented one.
- */
+/** Current-recipe label owner. Profile data is the only asynchronously loaded input. */
 export function DraftLabelPanel({
-  result,
+  recipeInput,
   productName,
   repository: suppliedRepository,
   fallback,
 }: {
-  result: RecipeResult;
+  recipeInput: RecipeInput;
+  productName?: string | null;
+  repository?: LabelRepository;
+  fallback: React.ReactNode;
+}) {
+  const draftContextSeq = useRecipeStore((state) => state.draftContextSeq);
+  const versionId = useRecipeStore((state) => state.currentVersionId);
+  return (
+    <DraftLabelPanelContext
+      key={`${draftContextSeq}:${versionId ?? 'working-copy'}`}
+      recipeInput={recipeInput}
+      productName={productName}
+      repository={suppliedRepository}
+      fallback={fallback}
+    />
+  );
+}
+
+function DraftLabelPanelContext({
+  recipeInput,
+  productName,
+  repository: suppliedRepository,
+  fallback,
+}: {
+  recipeInput: RecipeInput;
   productName?: string | null;
   repository?: LabelRepository;
   fallback: React.ReactNode;
@@ -34,11 +61,28 @@ export function DraftLabelPanel({
     [suppliedRepository],
   );
   const authOwnerId = useAuthStore((state) => state.user?.id ?? null);
+  const draftRevision = useRecipeStore((state) => state.draftRevision);
+  const versionId = useRecipeStore((state) => state.currentVersionId);
+  const versionNumber = useRecipeStore((state) => state.currentVersionNumber);
+  const storedDraft = useRecipeStore((state) => state.labelDraft);
+  const setLabelDraft = useRecipeStore((state) => state.setLabelDraft);
   const [profile, setProfile] = useState<AccountLabelProfile | null>(null);
   const [settled, setSettled] = useState(false);
   const [resolvedLogo, setResolvedLogo] = useState<{ path: string; url: string | null } | null>(
     null,
   );
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [createdDraft] = useState<RecipeLabelDraft>(() =>
+    createRecipeLabelDraft({ draftId: newRecipeLabelDraftId() }),
+  );
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const workingDraft = storedDraft ?? createdDraft;
+
+  useEffect(() => {
+    if (storedDraft === null) setLabelDraft(workingDraft, false);
+  }, [setLabelDraft, storedDraft, workingDraft]);
 
   useEffect(() => {
     let cancelled = false;
@@ -57,8 +101,6 @@ export function DraftLabelPanel({
   }, [repository]);
 
   const logoPath = profile?.logoPath ?? null;
-  /* Derived rather than stored, so dropping the logo never needs a synchronous
-     setState inside the effect — the same shape LabelWorkspace uses. */
   const logoUrl = logoPath && resolvedLogo?.path === logoPath ? resolvedLogo.url : null;
   useEffect(() => {
     let cancelled = false;
@@ -76,24 +118,85 @@ export function DraftLabelPanel({
     };
   }, [logoPath, repository]);
 
-  /* An account that has not saved a label profile yet still has a real one: the
-     documented default (the same `defaultAccountLabelProfile` LabelWorkspace
-     falls back to). Using it is not an invention — it is the profile that would
-     apply — and it keeps the preview available from the first recipe, which is
-     the point of the Owner's decision. The owner id only stamps an object that
-     is rendered and never persisted, so a signed-out reader still gets a draft
-     rather than an empty panel. */
-  const effectiveProfile =
-    profile ?? defaultAccountLabelProfile(authOwnerId ?? 'draft-preview');
+  const effectiveProfile = profile ?? defaultAccountLabelProfile(authOwnerId ?? 'draft-preview');
+  const composition = useMemo(() => {
+    void draftRevision;
+    return recipeCompositionFromState(useRecipeStore.getState());
+  }, [draftRevision]);
   const draft = useMemo(
     () =>
-      effectiveProfile
-        ? buildDraftLabelPreview({ profile: effectiveProfile, result, productName })
-        : null,
-    [effectiveProfile, result, productName],
+      buildDraftLabelPreview({
+        profile: effectiveProfile,
+        recipeInput,
+        composition,
+        productName,
+        draft: workingDraft,
+        recipeVersionId: versionId,
+        recipeVersionNumber: versionNumber,
+      }),
+    [
+      composition,
+      effectiveProfile,
+      productName,
+      recipeInput,
+      versionId,
+      versionNumber,
+      workingDraft,
+    ],
   );
+
+  useEffect(() => {
+    if (JSON.stringify(workingDraft.label) === JSON.stringify(draft.label)) return;
+    setLabelDraft({ ...workingDraft, label: draft.label }, false);
+  }, [draft.label, setLabelDraft, workingDraft]);
+
+  useEffect(() => {
+    const restore = readLabelSettingsRestore(location.state);
+    if (!restore) return;
+    const panel = rootRef.current?.closest<HTMLElement>('[role="tabpanel"]');
+    if (panel) panel.scrollTop = restore.scrollTop;
+  }, [location.state]);
+
+  const saveLabel = useCallback(
+    (label: MasterLabelData, confirmedField?: string) => {
+      setLabelDraft(
+        {
+          ...workingDraft,
+          productionDate: label.productionDate,
+          confirmedFields: confirmedField
+            ? [...new Set([...workingDraft.confirmedFields, confirmedField])]
+            : workingDraft.confirmedFields,
+          label,
+        },
+        true,
+      );
+    },
+    [setLabelDraft, workingDraft],
+  );
+
+  const openSettings = () => {
+    const panel = rootRef.current?.closest<HTMLElement>('[role="tabpanel"]');
+    navigate('/labels', {
+      state: {
+        labelSettingsReturn: labelSettingsReturn(
+          location.pathname,
+          location.search,
+          panel?.scrollTop ?? window.scrollY,
+        ),
+      },
+    });
+  };
 
   if (!settled) return null;
   if (!draft) return <>{fallback}</>;
-  return <DraftLabelCard draft={draft} logoUrl={logoUrl} />;
+  return (
+    <div ref={rootRef}>
+      <DraftLabelCard
+        draft={draft}
+        logoUrl={logoUrl}
+        onSave={saveLabel}
+        onOpenSettings={openSettings}
+      />
+    </div>
+  );
 }

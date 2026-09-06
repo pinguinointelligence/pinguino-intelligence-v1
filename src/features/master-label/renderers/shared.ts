@@ -1,5 +1,5 @@
 import type { MasterLabelData, MasterLabelIngredient, MultilingualText } from '../masterLabel';
-import { packageQuantityForDisplay } from '../masterLabel';
+import { labelAllergenStatement, packageQuantityForDisplay } from '../masterLabel';
 import {
   MARKET_ALLERGEN_RULES,
   marketAllergenDisplay,
@@ -96,15 +96,8 @@ export function ingredientDeclarationText(data: MasterLabelData, language: strin
     .join(', ');
 }
 
-export function allergenDisplayValues(data: MasterLabelData): string[] {
-  return [
-    ...new Set(
-      data.allergens.declared
-        .map((value) => marketAllergenDisplay(data.market, value))
-        .filter((value): value is string => Boolean(value)),
-    ),
-  ];
-}
+export const allergenStatementText = (data: MasterLabelData): string =>
+  labelAllergenStatement(data) ?? 'Alergeny nieustalone';
 
 export function allergenEmphasisTerms(data: MasterLabelData): string[] {
   const values = new Set<string>();
