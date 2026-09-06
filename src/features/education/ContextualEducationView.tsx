@@ -386,7 +386,7 @@ export function ContextualEducationView({
 
   return (
     <div
-      className="mx-auto min-h-full w-full max-w-none bg-[#f7f5f0] p-4 text-ink sm:p-5"
+      className="mx-auto min-h-full w-full max-w-none bg-[#f7f5f0] p-4 text-ink sm:p-5 lg:min-h-0"
       data-testid="profile-education-view"
     >
       <Button
