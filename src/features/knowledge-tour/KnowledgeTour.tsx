@@ -86,7 +86,7 @@ function AnnotationRail({ step }: { step: KnowledgeTourStep }) {
   );
 }
 
-export function KnowledgeTour() {
+export function KnowledgeTour({ layout = 'page' }: { layout?: 'page' | 'embedded' }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const steps = knowledgeTourSteps();
   const activeIndex = stepFromSearch(searchParams.get('step'));
@@ -148,6 +148,7 @@ export function KnowledgeTour() {
       className="knowledge-tour"
       data-testid="knowledge-tour"
       data-active-step={activeIndex + 1}
+      data-layout={layout}
       data-owner-asset={step.ownerAsset}
       data-swipe-enabled="true"
       onKeyDown={handleKeyDown}

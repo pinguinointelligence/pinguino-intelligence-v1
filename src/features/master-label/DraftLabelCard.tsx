@@ -1,12 +1,8 @@
-import { Link } from 'react-router';
 import { Card } from '@/components/ui/Card';
 import { buttonClasses } from '@/components/ui/buttonStyles';
 import { cn } from '@/lib/cn';
 import { marketProfile } from './marketProfiles';
-import {
-  DRAFT_LABEL_PENDING_LABEL,
-  type DraftLabelPreview,
-} from './draftLabelPreview';
+import { DRAFT_LABEL_PENDING_LABEL, type DraftLabelPreview } from './draftLabelPreview';
 
 /**
  * The workbench's DRAFT label — preview first, then what is still missing.
@@ -90,9 +86,7 @@ export function DraftLabelCard({
                     ['Tłuszcz', gram(nutrition.fat_g)],
                     [
                       'w tym kwasy nasycone',
-                      nutrition.saturated_fat_g === null
-                        ? '—'
-                        : gram(nutrition.saturated_fat_g),
+                      nutrition.saturated_fat_g === null ? '—' : gram(nutrition.saturated_fat_g),
                     ],
                     ['Węglowodany', gram(nutrition.carbohydrate_g)],
                     ['w tym cukry', gram(nutrition.sugars_g)],
@@ -159,7 +153,7 @@ export function DraftLabelCard({
       </div>
 
       {/* ── 3. ACTIONS ──────────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2" data-testid="draft-label-actions">
         <button
           type="button"
           disabled
@@ -168,13 +162,6 @@ export function DraftLabelCard({
         >
           Drukuj finalną etykietę
         </button>
-        <Link
-          to="/labels"
-          className={buttonClasses('ghost', 'sm')}
-          data-testid="label-settings-home-link"
-        >
-          Zmień ustawienia
-        </Link>
       </div>
     </div>
   );
