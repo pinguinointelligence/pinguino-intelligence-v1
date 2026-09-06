@@ -54,7 +54,7 @@ Rules:
 - [ ] **SOL-028 · TODO — Protein Multi-Main przekracza watchdog.** Przypadek Protein z wieloma składnikami Main nie kończy obliczeń w wymaganym czasie.
 - [ ] **SOL-029 · TODO — otwarty Guide znika po zmianie desktop → tablet/mobile.** Problem dotyczy zachowania otwartego panelu podczas zmiany breakpointu, nie geometrii plansz.
 - [ ] **SOL-030 · TODO — draft Label pomija topping i finalną masę.** Draft korzysta tylko z bazy; dla bazy 1000 g i toppingu 25 g powinien przedstawiać produkt finalny 1025 g.
-- [ ] **SOL-031 · TODO — draft Label nie przedstawia znanych alergenów.** Znane alergeny bazy i toppingu nie są prawidłowo przedstawiane w aktualnym draft Label.
+- [ ] **SOL-031 · RESOLVED_IN_PR_AWAITING_MERGE — draft Label nie przedstawia znanych alergenów.** PR #208 przekazuje istniejącą końcową linię dla całej receptury (Base/Main/Topping/pozostałe), pokazuje nieblokujące `Alergeny nieustalone` dla `UNKNOWN` i zapisuje jedną lokalną linię przez `Ustaw/Zmień`; bez zmian Scannera, Mappera, Product Registry ani Engine. Staging pozostaje na `f6778265`; Owner QA nie została jeszcze wykonana.
 - [ ] **SOL-032 · TODO — wyścig gotowości Produkcji Sorbet po Apply/Save.** Gotowość Produkcji może być oceniona przed ustabilizowaniem aktualnego stanu po Apply lub Save.
 - [ ] **SOL-033 · TODO — aktywny backend Scannera pochodzi częściowo z niezmergowanego PR #186.** Ledger migracji i aktywne funkcje zawierają elementy workstreamu `claude/scanner-complete`, których nie ma w scalonym stagingowym repo.
 - [x] **SOL-034 · RESOLVED_ON_STAGING — geometria Knowledge Tour w pełnym webie, mobile i embedded PRO została poprawiona przez #204 i zaakceptowana w Owner QA 2026-09-06.** Evidence: PR #204; merge SHA `6f71ac6a`; web PASS; mobile PASS; prawy podgląd dashboardu PASS; `OWNER ACCEPTED: YES`.
@@ -195,6 +195,7 @@ is not repaired by this checkpoint.
 | 2026-09-06 | SOL-014 | TODO            | RESOLVED                      | Incorrect report-only transition; PR #198 was still draft, unmerged, and undeployed. Retained here so the status history is not erased.                                                                        |
 | 2026-09-06 | SOL-014 | RESOLVED        | RESOLVED_IN_PR_AWAITING_MERGE | Owner correction: PR #198 contains the technical repair, but staging does not.                                                                                                                                 |
 | 2026-09-06 | SOL-034 | TODO            | RESOLVED_ON_STAGING           | PR #204; merge SHA `6f71ac6a`; web PASS; mobile PASS; prawy podgląd dashboardu PASS; `OWNER ACCEPTED: YES`.                                                                                                    |
+| 2026-09-06 | SOL-031 | TODO            | RESOLVED_IN_PR_AWAITING_MERGE | PR #208; whole-recipe final line, non-blocking UNKNOWN, local Ustaw/Zmień persistence; staging `f6778265`; Owner QA pending.                                                                                   |
 | 2026-09-06 | SOL-046 | TODO            | RESOLVED_ON_STAGING           | Canonical `staging.pinguinoai.com`; staging SHA `f6778265b2bf8f302d446055417524c235eb1c84`; Owner QA potwierdził komunikat, zapis ceny i przeliczenie kosztu bez naruszenia matematyki; `OWNER ACCEPTED: YES`. |
 
 No other current status was changed during the 2026-09-06 ledger

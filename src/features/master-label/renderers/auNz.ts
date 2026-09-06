@@ -1,6 +1,6 @@
 import type { MasterLabelData } from '../masterLabel';
 import {
-  allergenDisplayValues,
+  allergenStatementText,
   businessHtml,
   escapeHtml,
   ingredientDeclarationHtml,
@@ -39,7 +39,7 @@ export function renderFsanZNutritionPanel(data: MasterLabelData): string {
 export function renderAuNzLabel(data: MasterLabelData): string {
   const product = primaryText(data.productName, ['en']);
   const description = primaryText(data.legalProductName, ['en']);
-  const allergens = allergenDisplayValues(data);
+  const allergenStatement = allergenStatementText(data);
   const country = data.jurisdictionContext?.auNzCountry ?? 'unresolved';
-  return `<section class="market-renderer au-nz-renderer" data-regulatory-renderer="fsanz-nip-v2" data-country-context="${country}"><header class="identity"><h1>${escapeHtml(product)}</h1><p>${escapeHtml(description)}</p></header><p class="ingredients"><strong>Ingredients:</strong> ${ingredientDeclarationHtml(data, 'en')}</p>${allergens.length ? `<p class="contains peal"><strong>Contains: ${escapeHtml(allergens.join(', '))}</strong></p>` : ''}${renderFsanZNutritionPanel(data)}${netQuantityHtml(data)}${traceabilityHtml(data)}${storageHtml(data, ['en'])}${originHtml(data, ['en'])}${businessHtml(data)}</section>`;
+  return `<section class="market-renderer au-nz-renderer" data-regulatory-renderer="fsanz-nip-v2" data-country-context="${country}"><header class="identity"><h1>${escapeHtml(product)}</h1><p>${escapeHtml(description)}</p></header><p class="ingredients"><strong>Ingredients:</strong> ${ingredientDeclarationHtml(data, 'en')}</p><p class="allergens"><strong>Alergeny:</strong> ${escapeHtml(allergenStatement)}</p>${renderFsanZNutritionPanel(data)}${netQuantityHtml(data)}${traceabilityHtml(data)}${storageHtml(data, ['en'])}${originHtml(data, ['en'])}${businessHtml(data)}</section>`;
 }

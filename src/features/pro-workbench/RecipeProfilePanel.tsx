@@ -599,14 +599,14 @@ function SummaryPanel({
   onOpenProduction,
   initialLabelView,
   labelViewRequestKey,
-  result,
+  recipeInput,
   recipeName,
 }: {
   production?: ProductionWorkspaceView;
   onOpenProduction: () => void;
   initialLabelView: LabelWorkspaceView;
   labelViewRequestKey?: string;
-  result: RecipeResult;
+  recipeInput: RecipeInput;
   recipeName: string | null;
 }) {
   const completed = currentRecipeCompletionSnapshot(production);
@@ -628,22 +628,13 @@ function SummaryPanel({
     );
   }
 
-  /* OWNER DECISION (2026-08-30) — an explicit, approved divergence from the
-     older V2.1 `pro-label-draft` gate. Before Production completes the reader
-     now sees a LIVE DRAFT of the label they are making, with only the data that
-     is still missing listed underneath it, instead of a panel telling them to
-     go somewhere else. Nothing is fabricated: `buildMasterLabelData` and every
-     regulatory and nutrition calculation are untouched, and LOT, the production
-     date and the confirmed declaration are shown as outstanding. The final
-     print stays unavailable until a real completed run exists — at which point
-     the branch above takes over with the existing authority.
-
-     The gate below is still the fallback for the one case a draft cannot be
-     drawn truthfully: no saved label profile yet. */
+  /* OWNER DECISION (2026-09-06): the current recipe is a first-class label
+     source. It delegates composition, allergens and nutrition to frozen facts,
+     while a completed run still outranks it through the branch above. */
   return (
     <div className="pro-scroll-safe p-3 xl:p-0" data-testid="pro-context-summary">
       <DraftLabelPanel
-        result={result}
+        recipeInput={recipeInput}
         productName={recipeName}
         fallback={<LabelProfileMissingNotice onOpenProduction={onOpenProduction} />}
       />
@@ -659,8 +650,8 @@ function LabelProfileMissingNotice({ onOpenProduction }: { onOpenProduction: () 
           copy only; every Production → Label gate and calculation is untouched. */}
       <WorkflowNotice
         eyebrow="Etykieta"
-        title="Etykieta potrzebuje zakończonej partii"
-        description="Gdy zakończysz produkcję, pojawią się tu potwierdzone składniki, wartości odżywcze, koszt, baza techniczna i numer partii (LOT)."
+        title="Nie udało się zbudować projektu etykiety"
+        description="Sprawdź dane receptury lub wróć do Produkcji, aby odświeżyć jej źródła."
         variant="attention"
         emphasis="lead"
         stackAction
@@ -816,7 +807,7 @@ export function RecipeProfilePanel({
             onOpenProduction={() => onTabChange('production')}
             initialLabelView={initialLabelView}
             labelViewRequestKey={labelViewRequestKey}
-            result={result}
+            recipeInput={input}
             recipeName={savedRecipeName}
           />
         ) : null}

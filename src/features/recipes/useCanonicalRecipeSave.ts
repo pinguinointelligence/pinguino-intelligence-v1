@@ -48,6 +48,7 @@ import {
 import { validateRecipeBehaviorOnServer } from '@/services/productIntelligence';
 import { productionVersionFingerprint } from '@/features/production-workspace/productionReadinessState';
 import { SAVE_BLOCKER_MESSAGE_PL, type PracticalBlock } from '@/features/recipes/saveBlocker';
+import { attachRecipeLabelDraft } from '@/features/master-label/labelDraftPersistence';
 
 const TRACE = {
   engineVersion: ENGINE_VERSION,
@@ -96,9 +97,10 @@ const buildRecipeInputFromStore = (): RecipeInput => {
       }),
     ),
   );
+  const withLabelDraft = attachRecipeLabelDraft(withProfile, state.labelDraft);
   return practicalRecipeAuditMatchesInput(input, state.practicalRecipeAudit)
-    ? attachSavedPracticalRecipeAudit(withProfile, state.practicalRecipeAudit!)
-    : withProfile;
+    ? attachSavedPracticalRecipeAudit(withLabelDraft, state.practicalRecipeAudit!)
+    : withLabelDraft;
 };
 
 export type SaveBlockedReason = 'signin' | 'unavailable' | 'plan' | null;
