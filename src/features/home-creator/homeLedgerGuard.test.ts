@@ -13,6 +13,11 @@ import { describe, expect, it } from 'vitest';
 // @ts-expect-error — a plain .mjs guard script, deliberately not part of the app build
 import { decide, parseLedger } from '../../../scripts/guardHomeLedger.mjs';
 
+/** The guard is untyped .mjs on purpose; these are the shapes this test relies on. */
+type LedgerRow = { status: string; evidence: string };
+type ParseResult = { rows: Map<string, LedgerRow>; problems: string[] };
+const parse = parseLedger as (text: string) => ParseResult;
+
 const LEDGER = 'reports/GELLATTI_HOME_MASTER_CHECKLIST.md';
 const ledgerText = readFileSync(LEDGER, 'utf8');
 
@@ -102,7 +107,7 @@ describe('the guard refuses what it was built to refuse', () => {
 });
 
 describe('the guard reads the real ledger correctly', () => {
-  const { rows: parsed, problems } = parseLedger(ledgerText);
+  const { rows: parsed, problems } = parse(ledgerText);
 
   it('parses every requirement row at 17 columns with unique ids', () => {
     expect(parsed.size).toBe(211);
@@ -125,13 +130,13 @@ describe('the guard reads the real ledger correctly', () => {
     const cells = broken[i]!.split(/(?<!\\)\|/);
     cells[15] = ' ALMOST DONE ';
     broken[i] = cells.join('|');
-    const { problems: bad } = parseLedger(broken.join('\n'));
+    const { problems: bad } = parse(broken.join('\n'));
     expect(bad.some((p) => p.includes('ALMOST DONE'))).toBe(true);
   });
 
   it('refuses a duplicate requirement id', () => {
     const line = ledgerText.split('\n').find((l) => l.startsWith('| H-83-1 '))!;
-    const { problems: bad } = parseLedger(`${ledgerText}\n${line}`);
+    const { problems: bad } = parse(`${ledgerText}\n${line}`);
     expect(bad.some((p) => p.includes('duplicate requirement id H-83-1'))).toBe(true);
   });
 });
