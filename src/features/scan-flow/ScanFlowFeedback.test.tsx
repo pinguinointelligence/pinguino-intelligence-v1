@@ -8,6 +8,7 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CaptureFrame, CaptureStatus, ScanCoreCaptureHandlers } from './scanCoreCapture';
+import { MIN_DWELL_MS } from './scanFlowPresenter';
 
 vi.mock('@/services/scanImportV2', () => ({
   createScanImportV2AppPorts: () => null,
@@ -67,10 +68,20 @@ describe('ScanFlow — scanner feedback overlay', () => {
     };
     return mod.ScanCoreCapture.last!.handlers;
   };
+  /**
+   * SOL-048: a hint must stay long enough to be read, so the flow HOLDS a new sentence until the
+   * dwell has passed. The overlay is therefore asserted after the clock has moved — which is exactly
+   * what a customer experiences, and what this test used to skip past at frame rate.
+   */
   const emit = async (f: CaptureFrame) => {
     const h = await capture();
     await act(async () => {
       h.onFrame?.(f);
+    });
+    clock += MIN_DWELL_MS;
+    vi.setSystemTime(clock);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(MIN_DWELL_MS);
     });
   };
   const status = async (s: CaptureStatus) => {
@@ -80,8 +91,13 @@ describe('ScanFlow — scanner feedback overlay', () => {
     });
   };
 
+  let clock = 1_000_000;
+
   beforeEach(async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    clock = 1_000_000;
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(clock);
     host = document.createElement('div');
     document.body.append(host);
     root = createRoot(host);
@@ -95,6 +111,7 @@ describe('ScanFlow — scanner feedback overlay', () => {
   afterEach(async () => {
     await act(async () => root.unmount());
     host.remove();
+    vi.useRealTimers();
   });
 
   it('tells the customer what the engine sees and asks for the right move', async () => {

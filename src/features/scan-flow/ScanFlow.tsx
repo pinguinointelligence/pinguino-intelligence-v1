@@ -39,6 +39,15 @@ import {
 } from '@/scan-import-v2';
 import { createScanImportV2AppPorts, getScanImportV2AccountId } from '@/services/scanImportV2';
 import {
+  beginScan as beginPresentedScan,
+  createPresenter,
+  isCurrent as isCurrentScan,
+  nextTickAt,
+  present,
+  stageOfPhaseKind,
+  tick as tickPresenter,
+} from './scanFlowPresenter';
+import {
   cameraDiagnosticsReport,
   cameraQaRequested,
   describeCaptureError,
@@ -239,6 +248,13 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
    * decoder is actually handed instead of guessing from a blurred picture.
    */
   const [cameraDiag, setCameraDiag] = useState<CameraDiagnostics | null>(null);
+  /**
+   * SOL-048 — the two rules that stop the screen "going crazy": a sentence must stay long enough to
+   * be read, and an answer from a scan the customer has already left may not speak at all. The
+   * presenter is pure; the component only owns the timer that promotes a waiting line.
+   */
+  const presenterRef = useRef(createPresenter(Date.now()));
+  const [presentation, setPresentation] = useState(presenterRef.current.current);
   const [fallbackOffered, setFallbackOffered] = useState(false);
   const [stillNotice, setStillNotice] = useState<string | null>(null);
   const [manual, setManual] = useState('');
@@ -305,6 +321,44 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
       retry: 'lookup',
     });
 
+  /**
+   * SOL-048 — one sentence, published under the presenter's rules. A hint that arrives while the
+   * previous one is still being read waits its turn; an answer from a scan the customer has already
+   * left is dropped; a finished answer is never dragged backwards.
+   */
+  const publishLine = (generation: number, kind: string, line: string, engineReady?: boolean) => {
+    const r = present(presenterRef.current, {
+      generation,
+      stage: stageOfPhaseKind(kind, engineReady === undefined ? {} : { engineReady }),
+      line,
+      now: Date.now(),
+    });
+    presenterRef.current = r.state;
+    if (r.published || r.reason === 'queued') setPresentation({ ...r.state.current });
+  };
+
+  // SOL-048 — a line that had to wait is promoted when the current one has been readable. The
+  // presenter stays pure; this is the only clock in the arrangement.
+  useEffect(() => {
+    const at = nextTickAt(presenterRef.current);
+    if (at === null) return;
+    const timer = setTimeout(
+      () => {
+        presenterRef.current = tickPresenter(presenterRef.current, Date.now());
+        setPresentation({ ...presenterRef.current.current });
+      },
+      Math.max(0, at - Date.now()),
+    );
+    return () => clearTimeout(timer);
+  }, [presentation]);
+
+  /** a new scan: everything still in flight for the previous one stops being able to speak */
+  const beginScanGeneration = () => {
+    presenterRef.current = beginPresentedScan(presenterRef.current, Date.now());
+    setPresentation({ ...presenterRef.current.current });
+    return presenterRef.current.generation;
+  };
+
   /* ------------------------------------------------------------------------------------------ */
   /* results → phases                                                                            */
   /* ------------------------------------------------------------------------------------------ */
@@ -315,7 +369,11 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
       code: string,
       ctx: RequestContext,
       session?: DiscoverySession,
+      generation?: number,
     ) => {
+      // SOL-048: an answer belongs to the scan that asked for it. A label analysis or a finalize that
+      // lands after the customer has restarted, or scanned something else, must not repaint the screen.
+      if (generation !== undefined && !isCurrentScan(presenterRef.current, generation)) return;
       switch (r.kind) {
         case 'resolved_exact':
           setPhase({
@@ -563,10 +621,11 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
   ) {
     const port = ports?.discovery;
     if (!port) return lookupFailed();
+    const generation = presenterRef.current.generation;
     setPhase({ kind: 'resolving', code, step: 'complete' });
     try {
       const r = await continueDiscovery(session, { type: 'finalize', input: inputArg }, ctx, port);
-      await handleResult(r, code, ctx, session);
+      await handleResult(r, code, ctx, session, generation);
     } catch {
       // the authority could not be reached: the session and everything learnt stay; retry in place
       setPhase({
@@ -610,6 +669,7 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
           message: 'Backend nie jest skonfigurowany.',
           retry: 'restart',
         });
+      const generation = beginScanGeneration();
       codeRef.current = scan.value;
       scanRef.current = scan;
       labelTriedRef.current = false;
@@ -641,7 +701,7 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
         }
         const r = await runScanImportV2(scan, ctx, ports);
         if (codeRef.current !== scan.value) return; // a newer scan replaced this one
-        await handleResult(r, scan.value, ctx);
+        await handleResult(r, scan.value, ctx, undefined, generation);
       } catch {
         lookupFailed();
       } finally {
@@ -686,7 +746,10 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
         dwell = setTimeout(() => void resolveRef.current(scan), CONFIRM_DWELL_MS);
       },
       onStatus: (status) =>
-        setPhase((p) => (p.kind === 'camera' && status !== 'stopped' ? { ...p, status } : p)),
+        setPhase((p) =>
+          // an identical status is not a change: allocating a new phase re-rendered at frame rate
+          p.kind === 'camera' && status !== 'stopped' && p.status !== status ? { ...p, status } : p,
+        ),
       onDiagnostics: setCameraDiag,
       onFrame: (f) => {
         const now = Date.now();
@@ -698,6 +761,23 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
         if (blurred) blurredSinceRef.current ??= now;
         else blurredSinceRef.current = null;
         setFrame(f);
+        // SOL-048: the sentence is decided ONCE per frame and published under the dwell rule, instead
+        // of being re-derived on every render at camera rate
+        publishLine(
+          presenterRef.current.generation,
+          'camera',
+          scanFeedbackText({
+            state: f.state,
+            guidance: f.guidance,
+            timedOut: f.timedOut,
+            position: positionHint(f.roi, f.sourceW, f.sourceH),
+            sharpRel: f.sharpRel,
+            focusControl: f.focusControl,
+            formFactor: f.formFactor,
+            readingAxis: f.readingAxis,
+            trackedWithoutReadMs: trackedSinceRef.current ? now - trackedSinceRef.current : 0,
+          }),
+        );
         if (
           !fallbackOffered &&
           offerPhotoFallback({
@@ -733,6 +813,7 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
   }, [phase.kind === 'camera']);
 
   const restart = () => {
+    beginScanGeneration();
     labelTriedRef.current = false;
     refusedOnceRef.current = false;
     setManual('');
@@ -787,6 +868,7 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
 
   /** one analysis call for a batch of photographs — every photo in it succeeds or fails together */
   const analyzeBatch = async (session: DiscoverySession, batch: LabelPhoto[]) => {
+    const generation = presenterRef.current.generation;
     const port = ports?.discovery;
     if (!port || batch.length === 0) return;
     if (analysesUsedRef.current >= MAX_ANALYSES) {
@@ -832,7 +914,7 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
       );
       return;
     }
-    await handleResult(r, codeRef.current ?? '', ctx);
+    await handleResult(r, codeRef.current ?? '', ctx, undefined, generation);
   };
 
   /** every waiting photograph goes out in ONE call (the session's accurate retry) */
@@ -1110,25 +1192,15 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
 
   // live feedback over the camera image
   const video = videoRef.current;
-  const now = Date.now();
-  const position = frame ? positionHint(frame.roi, frame.sourceW, frame.sourceH) : null;
   const digitsView = frame ? maskedDigits(frame.digits) : null;
+  // SOL-048: the sentence is whatever the presenter has PUBLISHED — decided once per frame and held
+  // long enough to be read. An error and the pre-live status are immediate: neither is a live hint.
   const feedback =
     phase.kind === 'camera'
       ? phase.error
         ? phase.error
         : frame && phase.status !== 'starting'
-          ? scanFeedbackText({
-              state: frame.state,
-              guidance: frame.guidance,
-              timedOut: frame.timedOut,
-              position,
-              sharpRel: frame.sharpRel,
-              focusControl: frame.focusControl,
-              formFactor: frame.formFactor,
-              readingAxis: frame.readingAxis,
-              trackedWithoutReadMs: trackedSinceRef.current ? now - trackedSinceRef.current : 0,
-            })
+          ? presentation.line || STATUS_TEXT[phase.status]
           : STATUS_TEXT[phase.status]
       : '';
   let roiBox: { left: number; top: number; width: number; height: number } | null = null;

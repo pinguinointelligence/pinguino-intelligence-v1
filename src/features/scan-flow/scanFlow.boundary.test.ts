@@ -27,7 +27,7 @@ describe('scan flow boundary', () => {
     }
     for (const i of imports(FLOW))
       expect(i, i).toMatch(
-        /^(react|@\/scan-contract\/confirmedScan|@\/scan-import-v2|@\/services\/scanImportV2|\.\/scanCoreCapture|\.\/scanFlowLogic|\.\/reenrichment)$/,
+        /^(react|@\/scan-contract\/confirmedScan|@\/scan-import-v2|@\/services\/scanImportV2|\.\/scanCoreCapture|\.\/scanFlowLogic|\.\/scanFlowPresenter|\.\/reenrichment)$/,
       );
     expect(FLOW).toMatch(/runScanImportV2\(/);
     expect(FLOW).toMatch(/continueDiscovery\(/);
