@@ -16,16 +16,16 @@ const entries = [...ledger.matchAll(/^- \[[ x]\] \*\*(SOL-(\d{3})) · ([A-Z_]+) 
 );
 
 describe('Gellatti SOL ledger continuity', () => {
-  it('contains every append-only ID exactly once from SOL-001 through SOL-045', () => {
+  it('contains every append-only ID exactly once from SOL-001 through SOL-046', () => {
     expect(entries.map(({ number }) => number)).toEqual(
-      Array.from({ length: 45 }, (_, index) => index + 1),
+      Array.from({ length: 46 }, (_, index) => index + 1),
     );
-    expect(new Set(entries.map(({ id }) => id)).size).toBe(45);
+    expect(new Set(entries.map(({ id }) => id)).size).toBe(46);
   });
 
-  it('reserves SOL-046 as the next free ID without assigning it', () => {
-    expect(ledger).toContain('`NEXT_FREE_SOL_ID: SOL-046`');
-    expect(entries.some(({ id }) => id === 'SOL-046')).toBe(false);
+  it('reserves SOL-047 as the next free ID without assigning it', () => {
+    expect(ledger).toContain('`NEXT_FREE_SOL_ID: SOL-047`');
+    expect(entries.some(({ id }) => id === 'SOL-047')).toBe(false);
   });
 
   it('records no unrecovered gap after restoring SOL-034 through SOL-038', () => {
@@ -57,6 +57,15 @@ describe('Gellatti SOL ledger continuity', () => {
     expect(ledger).toContain('SOL-043 · TODO — klient widzi surowe statusy techniczne');
     expect(ledger).toContain('SOL-044 · TODO — niejasny lifecycle prywatnego produktu');
     expect(ledger).toContain('SOL-045 · TODO — kamera komputerowa pokazuje kod zbyt rozmyty');
+  });
+
+  it('appends the Owner QA SOL-046 price-message finding without claiming a fix', () => {
+    expect(entries.find(({ id }) => id === 'SOL-046')?.status).toBe('TODO');
+    expect(ledger).toContain(
+      'SOL-046 · TODO — komunikat o brakującej cenie jest techniczny, za długi i wyświetlany podwójnie',
+    );
+    expect(ledger).toContain('Wprowadź cenę dla LIME · MASTER MARTINI VARIEGATO · AJ01AQ.');
+    expect(ledger).toContain('Nazwa musi pochodzić z aktualnej receptury, bez hardcode produktu.');
   });
 
   it('records the proven PR #181 before PR #198 migration order', () => {

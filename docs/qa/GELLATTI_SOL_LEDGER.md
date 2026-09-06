@@ -14,7 +14,7 @@ Rules:
 - `RESOLVED_ON_STAGING` requires the normal merge, the exact staging deployment,
   and proof that no migration SQL was executed again.
 
-`NEXT_FREE_SOL_ID: SOL-046`
+`NEXT_FREE_SOL_ID: SOL-047`
 
 ## Current ledger
 
@@ -63,6 +63,7 @@ Rules:
 - [ ] **SOL-043 · TODO — klient widzi surowe statusy techniczne, np. `INGREDIENTS_EVIDENCE_REQUIRED`, `roleReadiness` i `recognition`.**
 - [ ] **SOL-044 · TODO — niejasny lifecycle prywatnego produktu oraz przejścia do wspólnego Product Registry; niezrozumiałe „Zgłoś do weryfikacji”.**
 - [ ] **SOL-045 · TODO — kamera komputerowa pokazuje kod zbyt rozmyty do odczytu.** Należy sprawdzić rzeczywistą rozdzielczość strumienia, autofocus i rozdzielczość klatki przekazywanej dekoderowi.
+- [ ] **SOL-046 · TODO — komunikat o brakującej cenie jest techniczny, za długi i wyświetlany podwójnie.** Evidence: Owner QA 2026-09-06, PRO Receptura, brak ceny dla toppingu `LIME · MASTER MARTINI VARIEGATO · AJ01AQ`. Obecnie klient widzi między innymi „Koszt częściowy — uzupełnij brakujące ceny składników. Brak ceny: LIME · Master Martini Variegato · AJ01AQ. Dokładny koszt za kg pozostaje niedostępny.” Docelowo przy jednej brakującej cenie należy pokazać dokładnie jeden krótki komunikat **„Wprowadź cenę dla [NAZWA].”**, a przy kilku **„Wprowadź ceny dla: [NAZWY].”**; w udokumentowanym przypadku treść ma brzmieć **„Wprowadź cenę dla LIME · MASTER MARTINI VARIEGATO · AJ01AQ.”** Nazwa musi pochodzić z aktualnej receptury, bez hardcode produktu. Nie pokazywać „koszt częściowy”, „dokładny koszt za kg pozostaje niedostępny” ani informacji technicznych; nie dublować komunikatu w dwóch miejscach prawego panelu; po uzupełnieniu wszystkich cen komunikat ma całkowicie zniknąć. Później sprawdzić widok zwinięty i rozwinięty oraz desktop/mobile. Nie zmieniać obliczania kosztów, zapisanej ceny użytkownika, działania „Moja cena”, Engine ani danych produktu.
 
 ## SOL-014 migration dependency checkpoint — 2026-09-06
 
@@ -120,8 +121,9 @@ is not repaired by this checkpoint.
 - SOL-034: recovered verbatim from the GUIDE owner checkpoint.
 - SOL-035–SOL-038: recovered verbatim from the LABEL owner checkpoint.
 - SOL-039–SOL-045: restored from the owner reconciliation checkpoint of 2026-09-06.
+- SOL-046: appended from Owner QA 2026-09-06 for PRO Receptura.
 - Search of repository files, all Git refs, retained attachments, and retained task
-  checkpoints found no assigned SOL ID above SOL-045. SOL-046 is therefore the
+  checkpoints found no assigned SOL ID above SOL-046. SOL-047 is therefore the
   next free ID at this checkpoint.
 
 ## Status history
