@@ -36,9 +36,16 @@
 --   3. the stored provenance row belongs to that SAME ingredient, so a foreign
 --      binding can never stand in for it;
 --   4. a CURRENT binding exists for that SAME ingredient;
---   5. that current binding carries the required permission.
+--   5. for BASE, that current binding carries `BASE_RECIPE`.
+--
+-- `BASE_RECIPE` is the ONLY `profile_permissions` conjunct any canonical
+-- acceptance predicate requires -- here and in `ingest_product_v1`. TOPPING
+-- states no permission requirement, so none is invented for it: its block
+-- requires a CURRENT binding for the same Mapper ingredient and nothing beyond.
+--
 -- A missing reference, a missing ingredient, incoherent provenance, a missing
--- current binding or a current binding without the permission all fail closed.
+-- current binding, or (for BASE) a current binding without `BASE_RECIPE`, all
+-- fail closed.
 
 select pg_advisory_xact_lock(hashtextextended('mapper-lineage-current-binding-v1',0));
 
@@ -46,8 +53,10 @@ do $patch_lineage$
 declare
   v_definition text;
   v_patched text;
-  v_old text;
-  v_new text;
+  v_base_old text;
+  v_base_new text;
+  v_topping_old text;
+  v_topping_new text;
   v_changed boolean := false;
 begin
   v_definition := pg_get_functiondef(
@@ -55,12 +64,8 @@ begin
   );
   v_patched := v_definition;
 
-  -- 1. BASE acceptance. Anchored on the BASE_RECIPE conjunct, which makes this
-  --    block unique against the topping block below.
-  if strpos(v_patched, $marker$authority_binding.mapper_ingredient_id=v_behavior_reference
-        and authority_binding.is_current
-        and coalesce((authority_binding.profile_permissions->>'BASE_RECIPE')::boolean,false)$marker$) > 0 then
-    v_old := $old$    and exists(
+  -- BASE acceptance. Its authority block keeps the BASE_RECIPE permission.
+  v_base_old := $old$    and exists(
       select 1 from public.mapper_product_behavior_bindings authority_binding
       where authority_binding.id::text=
           v_public_data#>>'{productIntelligence,productBehaviorAuthority,mapperBehaviorBindingId}'
@@ -68,7 +73,7 @@ begin
         and authority_binding.is_current
         and coalesce((authority_binding.profile_permissions->>'BASE_RECIPE')::boolean,false)
     );$old$;
-    v_new := $new$    and exists(
+  v_base_new := $new$    and exists(
       select 1 from public.mapper_basement referenced_ingredient
       where referenced_ingredient.ingredient_id=v_behavior_reference
         and referenced_ingredient.is_active
@@ -85,44 +90,55 @@ begin
         and authority_binding.is_current
         and coalesce((authority_binding.profile_permissions->>'BASE_RECIPE')::boolean,false)
     );$new$;
-    if strpos(v_patched, v_old) = 0 then
-      raise exception 'base lineage anchor drifted';
-    end if;
-    v_patched := replace(v_patched, v_old, v_new);
+
+  -- TOPPING acceptance. The canonical authority states no topping permission
+  -- requirement, so this block requires only a CURRENT binding for the same
+  -- Mapper ingredient.
+  v_topping_old := $old$    and exists(
+      select 1 from public.mapper_product_behavior_bindings authority_binding
+      where authority_binding.id::text=
+          v_public_data#>>'{productIntelligence,productBehaviorAuthority,mapperBehaviorBindingId}'
+        and authority_binding.mapper_ingredient_id=v_behavior_reference
+        and authority_binding.is_current
+    );$old$;
+  v_topping_new := $new$    and exists(
+      select 1 from public.mapper_basement referenced_ingredient
+      where referenced_ingredient.ingredient_id=v_behavior_reference
+        and referenced_ingredient.is_active
+    )
+    and exists(
+      select 1 from public.mapper_product_behavior_bindings provenance_binding
+      where provenance_binding.id::text=
+          v_public_data#>>'{productIntelligence,productBehaviorAuthority,mapperBehaviorBindingId}'
+        and provenance_binding.mapper_ingredient_id=v_behavior_reference
+    )
+    and exists(
+      select 1 from public.mapper_product_behavior_bindings authority_binding
+      where authority_binding.mapper_ingredient_id=v_behavior_reference
+        and authority_binding.is_current
+    );$new$;
+
+  -- Each block is decided on its EXACT predicate, never on a fragment the old
+  -- and new forms share: already published is a no-op, the exact old form is
+  -- replaced, and anything else is a real drift that fails closed. Re-running
+  -- this migration on an already-patched function therefore changes nothing
+  -- instead of raising.
+  if strpos(v_patched, v_base_new) > 0 then
+    null;
+  elsif strpos(v_patched, v_base_old) > 0 then
+    v_patched := replace(v_patched, v_base_old, v_base_new);
     v_changed := true;
+  else
+    raise exception 'base lineage anchor drifted';
   end if;
 
-  -- 2. TOPPING acceptance. Once the base block above is rewritten this is the
-  --    only remaining historical-id predicate, so the anchor is unambiguous.
-  if strpos(v_patched, $marker$authority_binding.id::text=$marker$) > 0 then
-    v_old := $old$    and exists(
-      select 1 from public.mapper_product_behavior_bindings authority_binding
-      where authority_binding.id::text=
-          v_public_data#>>'{productIntelligence,productBehaviorAuthority,mapperBehaviorBindingId}'
-        and authority_binding.mapper_ingredient_id=v_behavior_reference
-        and authority_binding.is_current
-    );$old$;
-    v_new := $new$    and exists(
-      select 1 from public.mapper_basement referenced_ingredient
-      where referenced_ingredient.ingredient_id=v_behavior_reference
-        and referenced_ingredient.is_active
-    )
-    and exists(
-      select 1 from public.mapper_product_behavior_bindings provenance_binding
-      where provenance_binding.id::text=
-          v_public_data#>>'{productIntelligence,productBehaviorAuthority,mapperBehaviorBindingId}'
-        and provenance_binding.mapper_ingredient_id=v_behavior_reference
-    )
-    and exists(
-      select 1 from public.mapper_product_behavior_bindings authority_binding
-      where authority_binding.mapper_ingredient_id=v_behavior_reference
-        and authority_binding.is_current
-    );$new$;
-    if strpos(v_patched, v_old) = 0 then
-      raise exception 'topping lineage anchor drifted';
-    end if;
-    v_patched := replace(v_patched, v_old, v_new);
+  if strpos(v_patched, v_topping_new) > 0 then
+    null;
+  elsif strpos(v_patched, v_topping_old) > 0 then
+    v_patched := replace(v_patched, v_topping_old, v_topping_new);
     v_changed := true;
+  else
+    raise exception 'topping lineage anchor drifted';
   end if;
 
   if v_changed then execute v_patched; end if;

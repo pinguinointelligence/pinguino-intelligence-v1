@@ -30,10 +30,10 @@ const migration = readFileSync(
   'utf8',
 );
 
-/** Only the `v_new := $new$ … $new$` bodies are the published predicate. */
-const PUBLISHED_BLOCKS = [...migration.matchAll(/v_new := \$new\$([\s\S]*?)\$new\$/g)].map(
-  (match) => match[1] ?? '',
-);
+/** Only the `v_*_new := $new$ … $new$` bodies are the published predicate. */
+const PUBLISHED_BLOCKS = [
+  ...migration.matchAll(/v_(?:base|topping)_new := \$new\$([\s\S]*?)\$new\$/g),
+].map((match) => match[1] ?? '');
 const PUBLISHED = PUBLISHED_BLOCKS.join('\n');
 
 /**
@@ -104,6 +104,27 @@ describe('GEL-P0-029 — published predicate', () => {
         'authority_binding.id::text=',
       );
     }
+  });
+
+  it('requires BASE_RECIPE on the base block only, and invents no topping permission', () => {
+    const [base = '', topping = ''] = PUBLISHED_BLOCKS;
+    // `BASE_RECIPE` is the only permission any canonical acceptance predicate
+    // states — here and in `ingest_product_v1`. Topping states none, so none is
+    // invented for it.
+    expect(base).toContain("profile_permissions->>'BASE_RECIPE'");
+    expect(topping).not.toContain('profile_permissions');
+  });
+
+  it('re-running the migration is a no-op instead of a false drift', () => {
+    // The old and new forms share fragments, so each block must be decided on
+    // its EXACT predicate: published → no-op, exact old → replace, else drift.
+    for (const variable of ['v_base_new', 'v_base_old', 'v_topping_new', 'v_topping_old']) {
+      expect(migration).toContain(`strpos(v_patched, ${variable})`);
+    }
+    expect(migration).toContain("raise exception 'base lineage anchor drifted'");
+    expect(migration).toContain("raise exception 'topping lineage anchor drifted'");
+    // A shared fragment must never be what decides a block.
+    expect(migration).not.toContain('$marker$');
   });
 });
 
