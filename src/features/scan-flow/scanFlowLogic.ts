@@ -194,12 +194,14 @@ export function plainFieldsFor(
   }
   if (codes.some((c) => /ingredients/.test(c)))
     add({ key: 'ingredientsText', label: 'Skład (z etykiety)', kind: 'textarea', required: true });
+  // OWNER RULING 2026-09-06: the allergen line is never demanded. It is offered when something asks
+  // for it, and an empty answer is UNKNOWN — never "no allergens", and never a reason to stop.
   if (codes.some((c) => /allergen/.test(c)))
     add({
       key: 'allergensText',
-      label: 'Alergeny (z etykiety, albo „brak”)',
+      label: 'Alergeny z etykiety (możesz pominąć)',
       kind: 'text',
-      required: true,
+      required: false,
     });
   const nutritionCodes = codes.filter((c) => /^nutrition[._-]/.test(c));
   if (nutritionCodes.length > 0) {

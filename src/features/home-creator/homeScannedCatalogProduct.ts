@@ -109,9 +109,6 @@ export function customerBlockedMessage(
   if (code === 'nutrition_facts_missing' || code === 'missing_technical_fields') {
     return 'wymaga uzupełnienia danych produktu przed dodaniem do receptury.';
   }
-  if (code === 'allergen_facts_missing') {
-    return 'wymaga podania alergenów, zanim trafi do receptury jako dodatek.';
-  }
   if (NOT_ADMITTED_CODES.has(code)) {
     return scope === 'BASE_FORMULATION'
       ? 'nie nadaje się do bazy tej receptury.'

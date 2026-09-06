@@ -369,30 +369,46 @@ describe('server-owned immutable ProductBehavior authority', () => {
     expect(authority.classificationReasonCodes).not.toContain('product_owned_profile_missing');
   });
 
-  it('grants TOPPING only with the label statements the catalogue classifier requires', () => {
-    // the canonical classifier (classify_catalog_product_behavior_v2) needs the ingredient list AND
-    // the allergen statement before TOPPING; the server authority says the same, naming the gap
-    const missingAllergens = validateProductBehaviorAuthority({
+  it('grants TOPPING on the ingredient declaration; the allergen line never gates it', () => {
+    // the canonical classifier needs the ingredient list — a post-process add-on is DECLARED on the
+    // label, not formulated — and names that one gap when it is absent
+    const missingIngredients = validateProductBehaviorAuthority({
       productProfile: productProfile({
         recognition: variegatoRecognition,
-        ingredientsEvidenceStatus: 'CONFIRMED',
-        allergenEvidenceStatus: 'NOT_CONFIRMED',
-      }),
-      behaviorRows: [behaviorRow()],
-    });
-    expect(missingAllergens.classificationOutcome).toBe('unknown_requires_review');
-    expect(missingAllergens.toppingEligible).toBe(false);
-    expect(missingAllergens.classificationReasonCodes).toEqual(['allergen_statement_required']);
-    const complete = validateProductBehaviorAuthority({
-      productProfile: productProfile({
-        recognition: variegatoRecognition,
-        ingredientsEvidenceStatus: 'CONFIRMED',
+        ingredientsEvidenceStatus: 'NOT_CONFIRMED',
         allergenEvidenceStatus: 'USER_CONFIRMED',
       }),
       behaviorRows: [behaviorRow()],
     });
-    expect(complete.classificationOutcome).toBe('classified');
-    expect(complete.toppingEligible).toBe(true);
+    expect(missingIngredients.classificationOutcome).toBe('unknown_requires_review');
+    expect(missingIngredients.toppingEligible).toBe(false);
+    expect(missingIngredients.classificationReasonCodes).toEqual([
+      'ingredients_statement_required',
+    ]);
+  });
+
+  it('OWNER RULING 2026-09-06 — an unknown allergen line blocks nothing, for any ingredient', () => {
+    // one channel, `allergensText`; absence is UNKNOWN, never "contains no allergens", and never a
+    // refusal — not for a Topping, not for Base, not for a Mapper row, not for a scanned article
+    for (const allergenEvidenceStatus of [
+      'NOT_CONFIRMED',
+      'CONFIRMED',
+      'USER_CONFIRMED',
+    ] as const) {
+      const authority = validateProductBehaviorAuthority({
+        productProfile: productProfile({
+          recognition: variegatoRecognition,
+          ingredientsEvidenceStatus: 'CONFIRMED',
+          allergenEvidenceStatus,
+        }),
+        behaviorRows: [behaviorRow()],
+      });
+      expect(authority.classificationOutcome, allergenEvidenceStatus).toBe('classified');
+      expect(authority.toppingEligible, allergenEvidenceStatus).toBe(true);
+      expect(authority.classificationReasonCodes, allergenEvidenceStatus).not.toContain(
+        'allergen_statement_required',
+      );
+    }
   });
 
   it('keeps the same topping-only role at the server authority boundary', () => {
