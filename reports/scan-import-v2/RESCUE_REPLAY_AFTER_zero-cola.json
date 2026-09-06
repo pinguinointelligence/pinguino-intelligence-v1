@@ -1,0 +1,810 @@
+{
+  "label": "zero-cola",
+  "gtin": "5449000131805",
+  "recognition": {
+    "deterministic": {
+      "archetype": "UNKNOWN",
+      "family": "unknown",
+      "form": "LIQUID",
+      "role": "NEITHER_REVIEW",
+      "modelRequired": true,
+      "modelReasonCodes": [
+        "ARCHETYPE_UNKNOWN",
+        "FAMILY_UNKNOWN"
+      ],
+      "compatibleMapperCategories": []
+    },
+    "final": {
+      "source": "CUSTOMER_CONFIRMED",
+      "archetype": "NORMAL_INGREDIENT",
+      "family": "beverage",
+      "form": "LIQUID",
+      "role": "BASE_ONLY",
+      "modelRequired": false,
+      "modelReasonCodes": [],
+      "compatibleMapperCategories": [
+        "beverage"
+      ],
+      "familyResolution": "RESOLVED"
+    }
+  },
+  "declaredNutritionBasis": "per_100ml",
+  "normalizationBasis": "GELLATTI_1ML_1G_NORMALIZATION",
+  "mapper": {
+    "candidatesBeforeFilter": [
+      "PI-ING-001876",
+      "PI-ING-001877",
+      "PI-ING-001878",
+      "PI-ING-001879",
+      "PI-ING-001894",
+      "PI-ING-001921",
+      "PI-ING-001944",
+      "PI-ING-001953",
+      "PI-ING-001955"
+    ],
+    "candidatesAfterFilter": [
+      "PI-ING-001876",
+      "PI-ING-001879",
+      "PI-ING-001944",
+      "PI-ING-001955",
+      "PI-ING-001877",
+      "PI-ING-001878",
+      "PI-ING-001894",
+      "PI-ING-001953",
+      "PI-ING-001921"
+    ],
+    "rejected": [],
+    "donor": "PI-ING-001876",
+    "similarity": 0.94,
+    "basis": "neighbour_set",
+    "estimatedFromMapperIds": [
+      "PI-ING-001876",
+      "PI-ING-001877",
+      "PI-ING-001878",
+      "PI-ING-001879",
+      "PI-ING-001894"
+    ],
+    "hintCategories": [],
+    "verified": {
+      "confidence": 0.94,
+      "basis": "neighbour_set",
+      "rejected": null,
+      "candidatesBeforeFilter": [
+        "PI-ING-001876",
+        "PI-ING-001877",
+        "PI-ING-001878",
+        "PI-ING-001879",
+        "PI-ING-001894"
+      ],
+      "candidatesAfterFilter": [
+        "PI-ING-001876",
+        "PI-ING-001879",
+        "PI-ING-001877",
+        "PI-ING-001878",
+        "PI-ING-001894"
+      ],
+      "rejectedCandidates": [],
+      "donorReference": "PI-ING-001876"
+    }
+  },
+  "fieldTruth": {
+    "water_percent": {
+      "value": 99.98,
+      "state": "ESTIMATED",
+      "basis": "derived",
+      "confidence": 0.9118,
+      "refs": [
+        "PI-ING-001876",
+        "PI-ING-001879",
+        "PI-ING-001877",
+        "PI-ING-001878",
+        "PI-ING-001894"
+      ]
+    },
+    "total_solids_percent": {
+      "value": 0.02,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.9118,
+      "refs": [
+        "PI-ING-001876",
+        "PI-ING-001879",
+        "PI-ING-001877",
+        "PI-ING-001878",
+        "PI-ING-001894"
+      ]
+    },
+    "fat_percent": {
+      "value": 0,
+      "state": "VERIFIED",
+      "basis": "user_confirmed",
+      "confidence": 0.95,
+      "refs": []
+    },
+    "protein_percent": {
+      "value": 0,
+      "state": "VERIFIED",
+      "basis": "user_confirmed",
+      "confidence": 0.95,
+      "refs": []
+    },
+    "carbohydrate_percent": {
+      "value": 0,
+      "state": "VERIFIED",
+      "basis": "user_confirmed",
+      "confidence": 0.95,
+      "refs": []
+    },
+    "total_sugars_percent": {
+      "value": 0,
+      "state": "VERIFIED",
+      "basis": "user_confirmed",
+      "confidence": 0.95,
+      "refs": []
+    },
+    "sucrose_percent": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.94,
+      "refs": [
+        "PI-ING-001876"
+      ]
+    },
+    "dextrose_percent": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.94,
+      "refs": [
+        "PI-ING-001876"
+      ]
+    },
+    "glucose_percent": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.94,
+      "refs": [
+        "PI-ING-001876"
+      ]
+    },
+    "fructose_percent": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.94,
+      "refs": [
+        "PI-ING-001876"
+      ]
+    },
+    "lactose_percent": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.94,
+      "refs": [
+        "PI-ING-001876"
+      ]
+    },
+    "polyol_percent": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.94,
+      "refs": [
+        "PI-ING-001876"
+      ]
+    },
+    "fiber_percent": {
+      "value": 0,
+      "state": "VERIFIED",
+      "basis": "user_confirmed",
+      "confidence": 0.95,
+      "refs": []
+    },
+    "salt_percent": {
+      "value": 0.02,
+      "state": "VERIFIED",
+      "basis": "user_confirmed",
+      "confidence": 0.95,
+      "refs": []
+    },
+    "alcohol_percent": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.94,
+      "refs": [
+        "PI-ING-001876"
+      ]
+    },
+    "kcal_per_100g": {
+      "value": 0.2,
+      "state": "VERIFIED",
+      "basis": "user_confirmed",
+      "confidence": 0.95,
+      "refs": []
+    },
+    "pod_value": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "derived",
+      "confidence": 0.94,
+      "refs": [
+        "PI-ING-001876"
+      ]
+    },
+    "pac_value": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "derived",
+      "confidence": 0.94,
+      "refs": [
+        "PI-ING-001876"
+      ]
+    }
+  },
+  "missingEngineFields": [],
+  "criticalPhysicsBlockers": [],
+  "sweetnessPath": {
+    "kind": "trivially_zero",
+    "resolved": true,
+    "reason": "Brak cukrow i polioli oraz brak semantycznej przeslanki alkoholu — moce sa zerowe · slodziki intensywne (acesulfame_k, aspartame) poza modelem POD Engine — moc zamrazajaca poprawna, slodycz odczuwana nieujeta (HIGH_INTENSITY_SWEETENER_POD_GAP)"
+  },
+  "readiness": "ESTIMATED_READY",
+  "engineUsable": true,
+  "productAccuracy": 94.8,
+  "roleReadiness": "BASE_READY",
+  "ready": true,
+  "blockers": [],
+  "profile": {
+    "authority": "PRODUCT_PROFILE_V1",
+    "validationMode": "server_recomputed_product_profile",
+    "articleIdentity": "PRODUCT_OWNED",
+    "origin": "CUSTOMER_ADDED",
+    "productAccuracy": 94.8,
+    "legacyEvidenceAccuracy": 81,
+    "productAccuracyAssessment": {
+      "authority": "PRODUCT_PRODUCTION_ACCURACY_V2",
+      "rawProductAccuracy": 94.8,
+      "productAccuracy": 94.8,
+      "criticalCapApplied": false,
+      "criticalCap": null,
+      "criticalBlockers": [],
+      "roleReadiness": "BASE_READY",
+      "baseEngineReady": true,
+      "components": {
+        "recognition": {
+          "earnedPoints": 7,
+          "availablePoints": 7
+        },
+        "nutrition": {
+          "earnedPoints": 45,
+          "availablePoints": 45
+        },
+        "enginePhysics": {
+          "earnedPoints": 21.8,
+          "availablePoints": 25
+        },
+        "ingredientsEvidence": {
+          "earnedPoints": 11,
+          "availablePoints": 13
+        },
+        "productBehavior": {
+          "earnedPoints": 8,
+          "availablePoints": 8
+        },
+        "ean": {
+          "earnedPoints": 2,
+          "availablePoints": 2
+        }
+      },
+      "metadataCompleteness": {
+        "score": 0,
+        "completed": 0,
+        "available": 3,
+        "fields": {
+          "manufacturer": false,
+          "country": false,
+          "package": false
+        }
+      },
+      "gellattiReadiness": {
+        "ready": true,
+        "status": "BASE_READY",
+        "blockers": [],
+        "issues": {
+          "missing": [],
+          "lowConfidence": [],
+          "conflicts": []
+        }
+      },
+      "fields": {
+        "identity": {
+          "availablePoints": 1,
+          "earnedPoints": 1,
+          "creditFactor": 1,
+          "state": "EVIDENCE",
+          "basis": "user_confirmed"
+        },
+        "fat_percent": {
+          "availablePoints": 9.4,
+          "earnedPoints": 9.4,
+          "creditFactor": 1,
+          "state": "VERIFIED",
+          "basis": "user_confirmed"
+        },
+        "protein_percent": {
+          "availablePoints": 9.4,
+          "earnedPoints": 9.4,
+          "creditFactor": 1,
+          "state": "VERIFIED",
+          "basis": "user_confirmed"
+        },
+        "carbohydrate_percent": {
+          "availablePoints": 9.4,
+          "earnedPoints": 9.4,
+          "creditFactor": 1,
+          "state": "VERIFIED",
+          "basis": "user_confirmed"
+        },
+        "total_sugars_percent": {
+          "availablePoints": 9.4,
+          "earnedPoints": 9.4,
+          "creditFactor": 1,
+          "state": "VERIFIED",
+          "basis": "user_confirmed"
+        },
+        "fiber_percent": {
+          "availablePoints": 4,
+          "earnedPoints": 4,
+          "creditFactor": 1,
+          "state": "VERIFIED",
+          "basis": "user_confirmed"
+        },
+        "salt_percent": {
+          "availablePoints": 5.4,
+          "earnedPoints": 5.4,
+          "creditFactor": 1,
+          "state": "VERIFIED",
+          "basis": "user_confirmed"
+        },
+        "kcal_per_100g": {
+          "availablePoints": 5,
+          "earnedPoints": 5,
+          "creditFactor": 1,
+          "state": "VERIFIED",
+          "basis": "user_confirmed"
+        },
+        "water_percent": {
+          "availablePoints": 3,
+          "earnedPoints": 2.4,
+          "creditFactor": 0.8,
+          "state": "ESTIMATED",
+          "basis": "derived"
+        },
+        "total_solids_percent": {
+          "availablePoints": 3,
+          "earnedPoints": 2.4,
+          "creditFactor": 0.8,
+          "state": "ESTIMATED",
+          "basis": "mapper_similar_profile"
+        },
+        "alcohol_percent": {
+          "availablePoints": 1,
+          "earnedPoints": 0.8,
+          "creditFactor": 0.8,
+          "state": "ESTIMATED",
+          "basis": "mapper_similar_profile"
+        },
+        "polyol_percent": {
+          "availablePoints": 1,
+          "earnedPoints": 0.8,
+          "creditFactor": 0.8,
+          "state": "ESTIMATED",
+          "basis": "mapper_similar_profile"
+        },
+        "ingredients": {
+          "availablePoints": 7,
+          "earnedPoints": 7,
+          "creditFactor": 1,
+          "state": "EVIDENCE",
+          "basis": "user_confirmed"
+        },
+        "allergens": {
+          "availablePoints": 2,
+          "earnedPoints": 0,
+          "creditFactor": 0,
+          "state": "UNKNOWN",
+          "basis": "none"
+        },
+        "barcode": {
+          "availablePoints": 2,
+          "earnedPoints": 2,
+          "creditFactor": 1,
+          "state": "EVIDENCE",
+          "basis": "label"
+        }
+      }
+    },
+    "evidence": {
+      "kind": "normal_food",
+      "fields": {
+        "identity": "user_confirmed",
+        "brand": "user_confirmed",
+        "ingredients": "user_confirmed",
+        "nutritionBasis": "user_confirmed",
+        "energyKcal": "user_confirmed",
+        "fat": "user_confirmed",
+        "carbohydrate": "user_confirmed",
+        "sugars": "user_confirmed",
+        "fiber": "user_confirmed",
+        "protein": "user_confirmed",
+        "salt": "user_confirmed",
+        "barcode": "label"
+      },
+      "validatedBarcode": true,
+      "exactCanonicalMatch": false,
+      "mapperFamilyMatch": true,
+      "materialConflicts": []
+    },
+    "evidenceProvenance": {},
+    "carbonation": {
+      "status": "UNKNOWN",
+      "evidence": [],
+      "decision": "NO_EXACT_ASSERTION"
+    },
+    "readiness": "ESTIMATED_READY",
+    "engineUsable": true,
+    "criticalReadiness": true,
+    "missingCritical": [],
+    "missingEngineFields": [],
+    "criticalPhysicsBlockers": [],
+    "sweetnessPath": {
+      "kind": "trivially_zero",
+      "resolved": true,
+      "reason": "Brak cukrow i polioli oraz brak semantycznej przeslanki alkoholu — moce sa zerowe · slodziki intensywne (acesulfame_k, aspartame) poza modelem POD Engine — moc zamrazajaca poprawna, slodycz odczuwana nieujeta (HIGH_INTENSITY_SWEETENER_POD_GAP)"
+    },
+    "allergenEvidenceStatus": "NOT_CONFIRMED",
+    "ingredientsEvidenceStatus": "USER_CONFIRMED",
+    "technicalComposition": {
+      "water": 99.98,
+      "totalSolids": 0.02,
+      "fat": 0,
+      "protein": 0,
+      "carbohydrate": 0,
+      "sugars": 0,
+      "sucrose": 0,
+      "dextrose": 0,
+      "glucose": 0,
+      "fructose": 0,
+      "lactose": 0,
+      "polyols": 0,
+      "fibre": 0,
+      "salt": 0.02,
+      "alcohol": 0,
+      "energyKcal": 0.2,
+      "podValue": 0,
+      "pacValue": 0
+    },
+    "fieldTruth": {
+      "water_percent": {
+        "value": 99.98,
+        "state": "ESTIMATED",
+        "basis": "derived",
+        "confidence": 0.9118,
+        "mapperReferences": [
+          "PI-ING-001876",
+          "PI-ING-001879",
+          "PI-ING-001877",
+          "PI-ING-001878",
+          "PI-ING-001894"
+        ],
+        "algorithmVersion": "mapper-first-v1",
+        "mapperFingerprint": "runtime-2089-30731bd0"
+      },
+      "total_solids_percent": {
+        "value": 0.02,
+        "state": "ESTIMATED",
+        "basis": "mapper_similar_profile",
+        "confidence": 0.9118,
+        "mapperReferences": [
+          "PI-ING-001876",
+          "PI-ING-001879",
+          "PI-ING-001877",
+          "PI-ING-001878",
+          "PI-ING-001894"
+        ],
+        "algorithmVersion": "mapper-first-v1",
+        "mapperFingerprint": "runtime-2089-30731bd0"
+      },
+      "fat_percent": {
+        "value": 0,
+        "state": "VERIFIED",
+        "basis": "user_confirmed",
+        "confidence": 0.95,
+        "mapperReferences": [],
+        "algorithmVersion": "mapper-first-v1",
+        "mapperFingerprint": ""
+      },
+      "protein_percent": {
+        "value": 0,
+        "state": "VERIFIED",
+        "basis": "user_confirmed",
+        "confidence": 0.95,
+        "mapperReferences": [],
+        "algorithmVersion": "mapper-first-v1",
+        "mapperFingerprint": ""
+      },
+      "carbohydrate_percent": {
+        "value": 0,
+        "state": "VERIFIED",
+        "basis": "user_confirmed",
+        "confidence": 0.95,
+        "mapperReferences": [],
+        "algorithmVersion": "mapper-first-v1",
+        "mapperFingerprint": ""
+      },
+      "total_sugars_percent": {
+        "value": 0,
+        "state": "VERIFIED",
+        "basis": "user_confirmed",
+        "confidence": 0.95,
+        "mapperReferences": [],
+        "algorithmVersion": "mapper-first-v1",
+        "mapperFingerprint": ""
+      },
+      "sucrose_percent": {
+        "value": 0,
+        "state": "ESTIMATED",
+        "basis": "mapper_similar_profile",
+        "confidence": 0.94,
+        "mapperReferences": [
+          "PI-ING-001876"
+        ],
+        "algorithmVersion": "mapper-first-v1",
+        "mapperFingerprint": "runtime-2089-30731bd0"
+      },
+      "dextrose_percent": {
+        "value": 0,
+        "state": "ESTIMATED",
+        "basis": "mapper_similar_profile",
+        "confidence": 0.94,
+        "mapperReferences": [
+          "PI-ING-001876"
+        ],
+        "algorithmVersion": "mapper-first-v1",
+        "mapperFingerprint": "runtime-2089-30731bd0"
+      },
+      "glucose_percent": {
+        "value": 0,
+        "state": "ESTIMATED",
+        "basis": "mapper_similar_profile",
+        "confidence": 0.94,
+        "mapperReferences": [
+          "PI-ING-001876"
+        ],
+        "algorithmVersion": "mapper-first-v1",
+        "mapperFingerprint": "runtime-2089-30731bd0"
+      },
+      "fructose_percent": {
+        "value": 0,
+        "state": "ESTIMATED",
+        "basis": "mapper_similar_profile",
+        "confidence": 0.94,
+        "mapperReferences": [
+          "PI-ING-001876"
+        ],
+        "algorithmVersion": "mapper-first-v1",
+        "mapperFingerprint": "runtime-2089-30731bd0"
+      },
+      "lactose_percent": {
+        "value": 0,
+        "state": "ESTIMATED",
+        "basis": "mapper_similar_profile",
+        "confidence": 0.94,
+        "mapperReferences": [
+          "PI-ING-001876"
+        ],
+        "algorithmVersion": "mapper-first-v1",
+        "mapperFingerprint": "runtime-2089-30731bd0"
+      },
+      "polyol_percent": {
+        "value": 0,
+        "state": "ESTIMATED",
+        "basis": "mapper_similar_profile",
+        "confidence": 0.94,
+        "mapperReferences": [
+          "PI-ING-001876"
+        ],
+        "algorithmVersion": "mapper-first-v1",
+        "mapperFingerprint": "runtime-2089-30731bd0"
+      },
+      "fiber_percent": {
+        "value": 0,
+        "state": "VERIFIED",
+        "basis": "user_confirmed",
+        "confidence": 0.95,
+        "mapperReferences": [],
+        "algorithmVersion": "mapper-first-v1",
+        "mapperFingerprint": ""
+      },
+      "salt_percent": {
+        "value": 0.02,
+        "state": "VERIFIED",
+        "basis": "user_confirmed",
+        "confidence": 0.95,
+        "mapperReferences": [],
+        "algorithmVersion": "mapper-first-v1",
+        "mapperFingerprint": ""
+      },
+      "alcohol_percent": {
+        "value": 0,
+        "state": "ESTIMATED",
+        "basis": "mapper_similar_profile",
+        "confidence": 0.94,
+        "mapperReferences": [
+          "PI-ING-001876"
+        ],
+        "algorithmVersion": "mapper-first-v1",
+        "mapperFingerprint": "runtime-2089-30731bd0"
+      },
+      "kcal_per_100g": {
+        "value": 0.2,
+        "state": "VERIFIED",
+        "basis": "user_confirmed",
+        "confidence": 0.95,
+        "mapperReferences": [],
+        "algorithmVersion": "mapper-first-v1",
+        "mapperFingerprint": ""
+      },
+      "pod_value": {
+        "value": 0,
+        "state": "ESTIMATED",
+        "basis": "derived",
+        "confidence": 0.94,
+        "mapperReferences": [
+          "PI-ING-001876"
+        ],
+        "algorithmVersion": "mapper-first-v1",
+        "mapperFingerprint": ""
+      },
+      "pac_value": {
+        "value": 0,
+        "state": "ESTIMATED",
+        "basis": "derived",
+        "confidence": 0.94,
+        "mapperReferences": [
+          "PI-ING-001876"
+        ],
+        "algorithmVersion": "mapper-first-v1",
+        "mapperFingerprint": ""
+      }
+    },
+    "estimatedFromMapperIds": [
+      "PI-ING-001876",
+      "PI-ING-001877",
+      "PI-ING-001878",
+      "PI-ING-001879",
+      "PI-ING-001894"
+    ],
+    "profileReferenceMapperIngredientId": "PI-ING-001876",
+    "mapperSimilarity": 0.94,
+    "mapperProfileBasis": "neighbour_set",
+    "mapperCandidatesBeforeFilter": [
+      "PI-ING-001876",
+      "PI-ING-001877",
+      "PI-ING-001878",
+      "PI-ING-001879",
+      "PI-ING-001894",
+      "PI-ING-001921",
+      "PI-ING-001944",
+      "PI-ING-001953",
+      "PI-ING-001955"
+    ],
+    "mapperCandidatesAfterFilter": [
+      "PI-ING-001876",
+      "PI-ING-001879",
+      "PI-ING-001944",
+      "PI-ING-001955",
+      "PI-ING-001877",
+      "PI-ING-001878",
+      "PI-ING-001894",
+      "PI-ING-001953",
+      "PI-ING-001921"
+    ],
+    "mapperRejectedCandidates": [],
+    "mapperSemanticHintCategories": [],
+    "mapperBehaviorReferenceBasis": "verified_numeric_donor",
+    "declaredNutritionBasis": null,
+    "normalizationBasis": null,
+    "mapperVerifiedMatch": {
+      "confidence": 0.94,
+      "basis": "neighbour_set",
+      "rejected": null,
+      "candidatesBeforeFilter": [
+        "PI-ING-001876",
+        "PI-ING-001877",
+        "PI-ING-001878",
+        "PI-ING-001879",
+        "PI-ING-001894"
+      ],
+      "candidatesAfterFilter": [
+        "PI-ING-001876",
+        "PI-ING-001879",
+        "PI-ING-001877",
+        "PI-ING-001878",
+        "PI-ING-001894"
+      ],
+      "rejectedCandidates": [],
+      "donorReference": "PI-ING-001876"
+    },
+    "mapperFingerprint": "runtime-2089-30731bd0",
+    "recognition": {
+      "authority": "PRODUCT_RECOGNITION_V2",
+      "classificationSource": "CUSTOMER_CONFIRMED",
+      "productArchetype": "NORMAL_INGREDIENT",
+      "ingredientFamily": "beverage",
+      "physicalForm": "LIQUID",
+      "intendedUsageRole": "BASE_ONLY",
+      "flavorDomain": "UNKNOWN",
+      "isProfessionalProduct": false,
+      "isTechnicalProduct": false,
+      "isDosageDependent": false,
+      "dosage": {
+        "semantics": "NONE",
+        "value": null,
+        "valueMax": null,
+        "unit": "UNKNOWN",
+        "basis": "UNKNOWN",
+        "normalizedMassPercent": null,
+        "normalizedMassPercentMax": null,
+        "normalizationBasis": null,
+        "densityResolved": false,
+        "evidence": null,
+        "reasonCodes": [
+          "DOSAGE_NOT_STATED"
+        ]
+      },
+      "manufacturerCategory": "Refresco de cola sin azúcar",
+      "manufacturerSubcategory": null,
+      "compatibleMapperCategories": [
+        "beverage"
+      ],
+      "forbiddenMapperCategories": [],
+      "confidence": 0.8,
+      "reasonCodes": [
+        "ARCHETYPE_UNKNOWN",
+        "ROLE_NEITHER_REVIEW",
+        "CONSUMER_OR_GENERAL_CONTEXT",
+        "NORMAL_PRODUCT",
+        "DOSAGE_NOT_STATED",
+        "CUSTOMER_FAMILY_BEVERAGE"
+      ],
+      "evidenceRefs": [
+        "name",
+        "category",
+        "ingredients",
+        "customerFamily"
+      ],
+      "modelRequired": false,
+      "modelReasonCodes": [],
+      "sweetening": {
+        "type": "mixed",
+        "sugarAgents": [
+          "sucrose"
+        ],
+        "polyols": [],
+        "highIntensitySweeteners": [
+          "acesulfame_k",
+          "aspartame"
+        ],
+        "sugarFreeClaim": true,
+        "starchyIngredients": false,
+        "ingredientsListed": true
+      },
+      "evidenceFingerprint": "recognition-v2-c1289c7c"
+    }
+  }
+}

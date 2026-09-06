@@ -680,7 +680,11 @@ Deno.serve(async (request) => {
   if (saveError || !saved) return json({ error: 'customer_product_persistence_failed' }, 503);
   return json({
     ...objectValue(saved),
-    engineUsable: ready ? profile.engineUsable : false,
+    // "usable" for the customer means usable in its ROLE: a ready add-on has engineUsable=false by
+    // design (no base physics needed) and is still recipe-ready as a topping
+    engineUsable: ready,
+    baseEngineUsable: ready ? profile.engineUsable : false,
+    roleReadiness,
     usableProductCreated: ready,
     privateNotReady: !ready,
     readiness: { ready, roleReady, criticalGaps },
