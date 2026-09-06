@@ -192,4 +192,19 @@ describe('responsive Knowledge Tour interactions', () => {
     expect(after).toEqual(before);
     expect(after).toHaveLength(5);
   });
+
+  it('stacks numbered mobile notes and reserves the same lower control runway for every step', () => {
+    const numbered = mount('/how-it-works?step=4');
+    expect(
+      [...numbered.querySelectorAll('.knowledge-tour__mobile-note-index')].map(
+        (index) => index.textContent,
+      ),
+    ).toEqual(['1', '2', '3', '4', '5']);
+
+    expect(css).toContain('--tour-captions-slot-size: 10rem;');
+    expect(css).toContain(
+      ".knowledge-tour__mobile-notes[data-visible='true'] {\n    display: grid;\n    margin-top: 0.65rem;\n    grid-template-columns: minmax(0, 1fr);",
+    );
+    expect(css).toContain('min-height: var(--tour-captions-slot-size);');
+  });
 });
