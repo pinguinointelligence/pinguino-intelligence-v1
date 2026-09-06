@@ -1,5 +1,6 @@
 import {
   calculateRecipe,
+  effectiveMachineCapacityGrams,
   type NutritionPer100g,
   type RecipeCosts,
   type RecipeInput,
@@ -139,6 +140,7 @@ export interface ProductionCompletionSnapshot {
   originalBatchTargetG: number;
   actualFinalMassG: number;
   machineCapacityG: number | null;
+  machineCapacitySource?: RecipeInput['machine_capacity_source'];
   servingTemperatureC: number;
   productionCompletedAt: string;
   /** Assigned once when the physical run is completed. Legacy snapshots use
@@ -263,6 +265,7 @@ export function productionSourceFingerprint(
     temperature: input.target_temperature_c,
     batch: input.target_batch_grams,
     machine: input.machine_capacity_grams,
+    machineSource: input.machine_capacity_source ?? null,
     items: input.items.map((item) => ({
       lineId: item.id,
       ingredientId: item.ingredient.canonical_ingredient_id ?? item.ingredient.id,
@@ -1041,7 +1044,8 @@ export function completeProductionSession(
       })),
     originalBatchTargetG: session.plannedInput.target_batch_grams,
     actualFinalMassG,
-    machineCapacityG: session.plannedInput.machine_capacity_grams,
+    machineCapacityG: effectiveMachineCapacityGrams(session.plannedInput),
+    machineCapacitySource: session.plannedInput.machine_capacity_source ?? null,
     servingTemperatureC: session.plannedInput.target_temperature_c,
     productionCompletedAt: completedAt,
     lotCode: productionLotCodeForRun(session.sessionId, completedAt),

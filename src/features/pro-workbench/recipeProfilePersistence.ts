@@ -10,6 +10,14 @@ import type {
 } from './recipeProfileStore';
 import { normalizeFormulationStrategy } from '@/features/formulation-strategy/strategy';
 import type { ProductDoseMeta } from '@/features/ingredient-builder/productDoseSuggestion';
+import {
+  HOME_ENGINE_TEMPERATURE_C,
+  MACHINE_CATALOG,
+  homeFormulationModuleForTechnology,
+  isHomeFormulationModuleId,
+  type MachineTechnology,
+  type HomeFormulationModuleId,
+} from '@/features/machine-catalog';
 
 const PROFILE_METADATA_KEY = 'pinguino_profile_v1' as const;
 
@@ -61,6 +69,7 @@ export function profileSnapshotFromState(
     machineId: state.machineId,
     machineLabel: state.machineLabel ?? copy.proMachine.professionalLabel,
     machineTechnology: state.machineTechnology,
+    homeFormulationModuleId: state.homeFormulationModuleId,
     servingModeId,
     targetTemperatureC: state.target_temperature_c,
     machineCapacityGrams: state.machine_capacity_grams,
@@ -77,10 +86,7 @@ const normalizedLegacyTargets = (value: unknown): DirectionTargets | null => {
     return null;
   }
   return Object.fromEntries(
-    axes.map((axis) => [
-      axis,
-      Math.max(-2, Math.min(2, Math.round(record[axis] as number))),
-    ]),
+    axes.map((axis) => [axis, Math.max(-2, Math.min(2, Math.round(record[axis] as number)))]),
   ) as unknown as DirectionTargets;
 };
 
@@ -88,9 +94,7 @@ const normalizedLegacyTargets = (value: unknown): DirectionTargets | null => {
 export function attachRecipeProfileMetadata(
   input: RecipeInput,
   settings: ProfileSettingsSnapshot,
-  ingredientUxByLineId: Readonly<
-    Record<string, PersistedIngredientUxMeta>
-  > = {},
+  ingredientUxByLineId: Readonly<Record<string, PersistedIngredientUxMeta>> = {},
 ): RecipeInput {
   return {
     ...input,
@@ -139,8 +143,41 @@ export function readRecipeProfileMetadata(input: RecipeInput): ProfileSettingsSn
         ? 'CUSTOM_MACHINE_BATCH'
         : 'MACHINE_DEFAULT'
       : 'PROFESSIONAL_USER_BATCH';
+  const catalogProfile =
+    typeof record.machineId === 'string'
+      ? (MACHINE_CATALOG.find((profile) => profile.id === record.machineId) ?? null)
+      : null;
+  const catalogTechnology = catalogProfile?.technology ?? null;
+  const machineTechnology = (record.machineTechnology ??
+    catalogTechnology) as MachineTechnology | null;
+  const expectedModuleId =
+    record.machineKind === 'home' && machineTechnology !== null
+      ? homeFormulationModuleForTechnology(machineTechnology)
+      : null;
+  const homeFormulationModuleId =
+    record.machineKind === 'home' ? (record.homeFormulationModuleId ?? expectedModuleId) : null;
+  if (
+    record.machineKind === 'home' &&
+    (!isHomeFormulationModuleId(homeFormulationModuleId) ||
+      homeFormulationModuleId !== expectedModuleId)
+  ) {
+    return null;
+  }
   return {
     ...(record as unknown as ProfileSettingsSnapshot),
+    machineTechnology,
+    homeFormulationModuleId: homeFormulationModuleId as HomeFormulationModuleId | null,
+    targetTemperatureC:
+      record.machineKind === 'home'
+        ? HOME_ENGINE_TEMPERATURE_C
+        : (record.targetTemperatureC as number),
+    // Historical Home metadata stored the soft recommendation in this Engine
+    // hard-capacity field. Re-resolve only direct gram authority from the
+    // catalog; custom/unknown legacy records stay honestly null.
+    machineCapacityGrams:
+      record.machineKind === 'home'
+        ? (catalogProfile?.capacity.hardMaximumBatchGrams ?? null)
+        : (record.machineCapacityGrams as number | null),
     batchSource,
     directionTargets: canonicalTargets,
     directionIntents: canonicalTargets,
@@ -211,11 +248,8 @@ const normalizedProductDose = (value: unknown): ProductDoseMeta | undefined => {
     groupId === null && row.suggestedPercent === null && row.suggestedTotalGrams === null;
   if (
     (row.provenance === 'AUTO_SUGGESTED' && !hasSuggestionEvidence) ||
-    ((row.provenance === 'NONE' || row.provenance === 'UNKNOWN') &&
-      !hasNoSuggestionEvidence) ||
-    (row.provenance === 'USER_SET' &&
-      !hasSuggestionEvidence &&
-      !hasNoSuggestionEvidence)
+    ((row.provenance === 'NONE' || row.provenance === 'UNKNOWN') && !hasNoSuggestionEvidence) ||
+    (row.provenance === 'USER_SET' && !hasSuggestionEvidence && !hasNoSuggestionEvidence)
   ) {
     return undefined;
   }

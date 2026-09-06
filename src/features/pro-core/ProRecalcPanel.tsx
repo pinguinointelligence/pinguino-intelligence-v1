@@ -60,6 +60,7 @@ import {
   refreshCurrentRecipeBehaviorWorkingCopy,
 } from '@/features/product-intelligence/refreshRecipeBehaviorWorkingCopy';
 import { useProCoreAccessStore } from '@/features/pro-core/proCoreAccessStore';
+import type { HomeFormulationModuleId } from '@/features/machine-catalog';
 
 const r = copy.proWorkbar.recalcPanel;
 const n = copy.proWorkbar.maxAmountNotice;
@@ -181,6 +182,7 @@ function RecalcDiagnosisView({
   input,
   constraints,
   servingModeId,
+  homeFormulationModuleId,
   onReturnToRecipe,
   onChooseOtherProduct,
   onCompleteProductData,
@@ -200,6 +202,7 @@ function RecalcDiagnosisView({
   input: RecipeInput;
   constraints: ConstraintSet;
   servingModeId: string | null;
+  homeFormulationModuleId: HomeFormulationModuleId | null;
   onReturnToRecipe: (lineId: string | null) => void;
   onChooseOtherProduct: () => void;
   onCompleteProductData: () => void;
@@ -443,7 +446,13 @@ function RecalcDiagnosisView({
     );
   }
 
-  const diagnosis = diagnoseRecalcFailure({ input, constraints, issue, servingModeId });
+  const diagnosis = diagnoseRecalcFailure({
+    input,
+    constraints,
+    issue,
+    servingModeId,
+    homeFormulationModuleId,
+  });
   const lockedRows = diagnosis.lockReport.filter((row) => !row.adjustable);
 
   return (
@@ -886,6 +895,7 @@ export function ProRecalcPanel({
   const directionTargetsActive = useRecipeStore((s) => s.direction_targets_active);
   const items = useRecipeStore((s) => s.items);
   const servingModeId = useRecipeStore((s) => s.servingModeId);
+  const homeFormulationModuleId = useRecipeStore((s) => s.homeFormulationModuleId);
 
   const currentInput = useMemo(
     () =>
@@ -1264,6 +1274,7 @@ export function ProRecalcPanel({
             input={currentInput}
             constraints={constraints}
             servingModeId={servingModeId}
+            homeFormulationModuleId={homeFormulationModuleId}
             onReturnToRecipe={returnToProductDose}
             onChooseOtherProduct={openBaseProductPicker}
             onCompleteProductData={goToProductData}

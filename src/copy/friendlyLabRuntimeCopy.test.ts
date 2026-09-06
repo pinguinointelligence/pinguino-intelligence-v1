@@ -77,7 +77,7 @@ describe('Gellatti Friendly Lab — material runtime copy', () => {
       'Gotowe. Receptura zapisana.',
       'Sprawdź korektę i zastosuj ją, jeśli Ci odpowiada.',
       'Wszystko gotowe do rozpoczęcia partii',
-      'Partia odbiega od planu',
+      'Możemy dostosować tę partię',
       'Gellattissimo! Partia gotowa.',
       'Gotowe. Etykieta czeka na druk.',
       'Nie mamy teraz połączenia. Sprawdź sieć i spróbuj ponownie.',

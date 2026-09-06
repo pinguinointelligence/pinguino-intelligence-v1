@@ -126,6 +126,7 @@ export function practicalRecipeInputFingerprint(input: RecipeInput): string {
     temperature: input.target_temperature_c,
     targetBatch: input.target_batch_grams,
     machineCapacity: input.machine_capacity_grams,
+    machineCapacitySource: input.machine_capacity_source ?? null,
     goals: input.goals ?? null,
     items: input.items.map((item) => ({
       lineId: item.id,

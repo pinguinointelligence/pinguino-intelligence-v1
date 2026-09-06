@@ -196,7 +196,11 @@ describe('strawberry-900 (owner failure) — bare scaling is never presented as 
 
   it('the natural Pro setting capacity == batch no longer structurally disables the solver', () => {
     const { input: rec, set } = strawberryLocked(900);
-    const withCapacity: RecipeInput = { ...rec, machine_capacity_grams: 1000 };
+    const withCapacity: RecipeInput = {
+      ...rec,
+      machine_capacity_grams: 1000,
+      machine_capacity_source: 'manual',
+    };
     const capped = buildOptimizePreview(withCapacity, set, 'now');
     const uncapped = buildOptimizePreview(rec, set, 'now');
     // Agent 1 §4: pre-fix, capacity==batch rejected EVERY add pre-restore and

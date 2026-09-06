@@ -78,9 +78,9 @@ describe('analyzeConstraintFeasibility — outcomes', () => {
     expect(bound.grams).toBeLessThan(220);
     expect(bound.grams).toBeGreaterThan(0);
     // convergence: the verified-violating neighbour sits within the window
-    expect(Math.abs(bound.verifiedViolatingAtGrams - bound.verifiedCleanAtGrams)).toBeLessThanOrEqual(
-      CONVERGENCE_GRAMS,
-    );
+    expect(
+      Math.abs(bound.verifiedViolatingAtGrams - bound.verifiedCleanAtGrams),
+    ).toBeLessThanOrEqual(CONVERGENCE_GRAMS);
     // INDEPENDENT engine re-verification of both sides (the §18.3 hard rule)
     expect(isCleanIndependently(input, SUCROSE, bound.verifiedCleanAtGrams)).toBe(true);
     expect(isCleanIndependently(input, SUCROSE, bound.verifiedViolatingAtGrams)).toBe(false);
@@ -141,7 +141,11 @@ describe('analyzeConstraintFeasibility — outcomes', () => {
     // capacity blocks the add-based escape; released, the real solver fully
     // fixes by reducing sucrose — so the GROUP is reported with per-line
     // unlock options and the solver's own verified change set as evidence.
-    const base: RecipeInput = { ...overSweetStarter(150), machine_capacity_grams: 1050 };
+    const base: RecipeInput = {
+      ...overSweetStarter(150),
+      machine_capacity_grams: 1050,
+      machine_capacity_source: 'manual',
+    };
     const analysis = analyzeConstraintFeasibility(base, {
       byLineId: {
         [SUCROSE]: { mode: 'range', minGrams: 149, maxGrams: 152 },
@@ -260,7 +264,11 @@ describe('analyzeConstraintFeasibility — hard rules', () => {
         },
       ],
       [
-        { ...overSweetStarter(150), machine_capacity_grams: 1050 },
+        {
+          ...overSweetStarter(150),
+          machine_capacity_grams: 1050,
+          machine_capacity_source: 'manual',
+        },
         {
           byLineId: {
             [SUCROSE]: { mode: 'range', minGrams: 149, maxGrams: 152 },

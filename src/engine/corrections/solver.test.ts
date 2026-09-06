@@ -2,12 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ALLOWED_ENGINE_FUNCTIONS } from '../__fixtures__/allowedEngineFunctions';
 import { calculateRecipe } from '../calculateRecipe';
 import * as engine from '../index';
-import type {
-  IngredientComponentProfile,
-  LockType,
-  RecipeInput,
-  RecipeItem,
-} from '../types';
+import type { IngredientComponentProfile, LockType, RecipeInput, RecipeItem } from '../types';
 import { selectTargetBand } from '../statuses';
 import { DEFAULT_CORRECTION_CANDIDATES, selectCandidates } from './candidates';
 import { applyTargetBandOverride, detectViolations, proposeCorrections } from './solver';
@@ -35,12 +30,61 @@ const ZERO: IngredientComponentProfile = {
   kcal_per_100g: 0,
 };
 
-const MILK = { water_percent: 87.5, solids_percent: 12.5, fat_percent: 3.5, protein_percent: 3.3, carbohydrate_percent: 4.8, sugar_percent: 4.8, lactose_percent: 4.8, salt_percent: 0.1, kcal_per_100g: 64 };
-const CREAM35 = { water_percent: 58.9, solids_percent: 41.1, fat_percent: 35, protein_percent: 2.2, carbohydrate_percent: 3.1, sugar_percent: 3.1, lactose_percent: 3.1, salt_percent: 0.1, kcal_per_100g: 337 };
-const SMP = { water_percent: 3.5, solids_percent: 96.5, fat_percent: 0.8, protein_percent: 35, carbohydrate_percent: 52, sugar_percent: 52, lactose_percent: 52, salt_percent: 1, kcal_per_100g: 360 };
-const SUCROSE = { solids_percent: 100, carbohydrate_percent: 100, sugar_percent: 100, sucrose_percent: 100, kcal_per_100g: 400 };
-const DEXTROSE = { water_percent: 8, solids_percent: 92, carbohydrate_percent: 92, sugar_percent: 92, dextrose_percent: 92, kcal_per_100g: 368 };
-const TARA = { water_percent: 12, solids_percent: 88, carbohydrate_percent: 80, fiber_percent: 80, kcal_per_100g: 200 };
+const MILK = {
+  water_percent: 87.5,
+  solids_percent: 12.5,
+  fat_percent: 3.5,
+  protein_percent: 3.3,
+  carbohydrate_percent: 4.8,
+  sugar_percent: 4.8,
+  lactose_percent: 4.8,
+  salt_percent: 0.1,
+  kcal_per_100g: 64,
+};
+const CREAM35 = {
+  water_percent: 58.9,
+  solids_percent: 41.1,
+  fat_percent: 35,
+  protein_percent: 2.2,
+  carbohydrate_percent: 3.1,
+  sugar_percent: 3.1,
+  lactose_percent: 3.1,
+  salt_percent: 0.1,
+  kcal_per_100g: 337,
+};
+const SMP = {
+  water_percent: 3.5,
+  solids_percent: 96.5,
+  fat_percent: 0.8,
+  protein_percent: 35,
+  carbohydrate_percent: 52,
+  sugar_percent: 52,
+  lactose_percent: 52,
+  salt_percent: 1,
+  kcal_per_100g: 360,
+};
+const SUCROSE = {
+  solids_percent: 100,
+  carbohydrate_percent: 100,
+  sugar_percent: 100,
+  sucrose_percent: 100,
+  kcal_per_100g: 400,
+};
+const DEXTROSE = {
+  water_percent: 8,
+  solids_percent: 92,
+  carbohydrate_percent: 92,
+  sugar_percent: 92,
+  dextrose_percent: 92,
+  kcal_per_100g: 368,
+};
+const TARA = {
+  water_percent: 12,
+  solids_percent: 88,
+  carbohydrate_percent: 80,
+  fiber_percent: 80,
+  kcal_per_100g: 200,
+};
 const JIM_BEAM = { water_percent: 60, alcohol_percent: 40, kcal_per_100g: 280 };
 
 interface ItemOptions {
@@ -149,7 +193,12 @@ const alcoholHighInput = (over: Partial<RecipeInput> = {}) =>
 describe('violation-specific suggestions', () => {
   it('POD too low suggests a sweetness correction with exact grams', () => {
     const proposals = pro(
-      proposeCorrections({ input: podLowInput(), context: 'planning', redact: false, focus: ['pod'] }),
+      proposeCorrections({
+        input: podLowInput(),
+        context: 'planning',
+        redact: false,
+        focus: ['pod'],
+      }),
     );
     expect(proposals.length).toBeGreaterThan(0);
     const first = proposals[0]!;
@@ -220,7 +269,12 @@ describe('violation-specific suggestions', () => {
 
   it('fat too low suggests a cream-type correction', () => {
     const proposals = pro(
-      proposeCorrections({ input: fatLowInput(), context: 'planning', redact: false, focus: ['fat'] }),
+      proposeCorrections({
+        input: fatLowInput(),
+        context: 'planning',
+        redact: false,
+        focus: ['fat'],
+      }),
     );
     const first = proposals[0]!;
     expect(first.kind).toBe('correction');
@@ -260,7 +314,10 @@ describe('violation-specific suggestions', () => {
     }
     // production scenario: the spirit is physically in the machine (actuals,
     // actual_batch context) and the dilution cannot fit → explicit tradeoff
-    const cappedInput = alcoholHighInput({ machine_capacity_grams: 1100 });
+    const cappedInput = alcoholHighInput({
+      machine_capacity_grams: 1100,
+      machine_capacity_source: 'manual',
+    });
     cappedInput.items = cappedInput.items.map((line) =>
       line.id === 'jim-beam' ? { ...line, actual_grams: 70 } : line,
     );
@@ -394,7 +451,10 @@ describe('locks, contexts and main-ingredient protection', () => {
   it('machine capacity is respected', () => {
     const result = pro(
       proposeCorrections({
-        input: mkInput(podLowInput().items, { machine_capacity_grams: 1050 }),
+        input: mkInput(podLowInput().items, {
+          machine_capacity_grams: 1050,
+          machine_capacity_source: 'manual',
+        }),
         context: 'planning',
         redact: false,
         focus: ['pod'],
@@ -476,7 +536,12 @@ describe('verification', () => {
 
   it('Pro exact grams are present and finite', () => {
     const proposals = pro(
-      proposeCorrections({ input: podLowInput(), context: 'planning', redact: false, focus: ['pod'] }),
+      proposeCorrections({
+        input: podLowInput(),
+        context: 'planning',
+        redact: false,
+        focus: ['pod'],
+      }),
     );
     for (const proposal of proposals) {
       for (const action of proposal.actions) {
@@ -495,7 +560,8 @@ describe('verification', () => {
 describe('strict demo redaction', () => {
   const deepCollectNumbers = (value: unknown, found: string[] = [], path = '$'): string[] => {
     if (typeof value === 'number') found.push(path);
-    else if (Array.isArray(value)) value.forEach((v, i) => deepCollectNumbers(v, found, `${path}[${i}]`));
+    else if (Array.isArray(value))
+      value.forEach((v, i) => deepCollectNumbers(v, found, `${path}[${i}]`));
     else if (value !== null && typeof value === 'object') {
       for (const [key, v] of Object.entries(value)) deepCollectNumbers(v, found, `${path}.${key}`);
     }
@@ -504,8 +570,18 @@ describe('strict demo redaction', () => {
 
   it('redacted demo proposals contain no grams, no names, no hidden numeric fields', () => {
     const input = podLowInput();
-    const proResult = proposeCorrections({ input, context: 'planning', redact: false, focus: ['pod'] });
-    const demoResult = proposeCorrections({ input, context: 'planning', redact: true, focus: ['pod'] });
+    const proResult = proposeCorrections({
+      input,
+      context: 'planning',
+      redact: false,
+      focus: ['pod'],
+    });
+    const demoResult = proposeCorrections({
+      input,
+      context: 'planning',
+      redact: true,
+      focus: ['pod'],
+    });
 
     if (!demoResult.redacted) throw new Error('expected a redacted result');
     expect(demoResult.proposals.length).toBeGreaterThan(0);
@@ -565,7 +641,7 @@ describe('targetBandOverride — preview-only solver target injection', () => {
     ...over,
   });
 
-  it('default behavior is unchanged: the engine\'s own band as an override equals the default result', () => {
+  it("default behavior is unchanged: the engine's own band as an override equals the default result", () => {
     const engineNpac = selectTargetBand('milk_gelato', -11)!.band.metrics.npac;
     const base = pro(proposeCorrections(req()));
     const identity = pro(proposeCorrections(req({ targetBandOverride: { npac: engineNpac } })));
@@ -576,7 +652,9 @@ describe('targetBandOverride — preview-only solver target injection', () => {
     const result = calculateRecipe(podLowInput());
     const npacValue = result.indicators.find((i) => i.key === 'npac')!.value!;
     const band = { min: npacValue + 6, max: npacValue + 10 };
-    const v = detectViolations(applyTargetBandOverride(result, { npac: band })).find((x) => x.metric === 'npac');
+    const v = detectViolations(applyTargetBandOverride(result, { npac: band })).find(
+      (x) => x.metric === 'npac',
+    );
     expect(v).toBeDefined();
     expect(v!.direction).toBe('low'); // recipe npac sits below the injected band
     expect(v!.band).toEqual(band);
@@ -587,7 +665,9 @@ describe('targetBandOverride — preview-only solver target injection', () => {
     const result = calculateRecipe(podLowInput());
     const npacValue = result.indicators.find((i) => i.key === 'npac')!.value!;
     const overridden = pro(
-      proposeCorrections(req({ targetBandOverride: { npac: { min: npacValue + 6, max: npacValue + 10 } } })),
+      proposeCorrections(
+        req({ targetBandOverride: { npac: { min: npacValue + 6, max: npacValue + 10 } } }),
+      ),
     );
     expect(JSON.stringify(overridden)).not.toBe(JSON.stringify(base));
     expect(overridden.some((p) => p.affected_metrics.includes('npac'))).toBe(true);
@@ -648,7 +728,10 @@ describe('CONFIG 0.6.0 - the DEFAULT solver is temperature-aware (no override an
   it('the same recipe at -11 is judged against the untouched [33,42] band', () => {
     const violation = npacViolationAt(-11);
     if (violation) expect(violation.band).toMatchObject({ min: 33, max: 42 });
-    expect(selectTargetBand('milk_gelato', -11)!.band.metrics.npac).toMatchObject({ min: 33, max: 42 });
+    expect(selectTargetBand('milk_gelato', -11)!.band.metrics.npac).toMatchObject({
+      min: 33,
+      max: 42,
+    });
   });
 
   it('the SAME recipe solves to DIFFERENT temperature targets by default (no override)', () => {
@@ -679,7 +762,12 @@ describe('CONFIG 0.6.0 - the DEFAULT solver is temperature-aware (no override an
 
   it('the Slice-14 override seam still works and equals the default when given the same band', () => {
     const input = mkInput(fatLowInput().items, { target_temperature_c: -13 });
-    const plain = proposeCorrections({ input, context: 'planning', redact: false, focus: ['npac'] });
+    const plain = proposeCorrections({
+      input,
+      context: 'planning',
+      redact: false,
+      focus: ['npac'],
+    });
     const overridden = proposeCorrections({
       input,
       context: 'planning',
@@ -749,16 +837,16 @@ describe('selectCandidates — dairy candidates never reach sorbet / vegan (lock
       'cream_30',
       'milk_3_5',
     ]);
-    expect(selectCandidates('ice_fraction', 'low', 'chocolate_gelato', 'balanced').map((c) => c.id)).toEqual([
-      'smp',
-      'cream_30',
-      'milk_3_5',
-    ]);
+    expect(
+      selectCandidates('ice_fraction', 'low', 'chocolate_gelato', 'balanced').map((c) => c.id),
+    ).toEqual(['smp', 'cream_30', 'milk_3_5']);
     // fruit_gelato allows water, but the solver consumes at most the first THREE
     // candidates per violation — the first three must stay the dairy set, so the
     // live fruit solve is byte-identical to before the gate.
     expect(
-      selectCandidates('npac', 'high', 'fruit_gelato', 'balanced').map((c) => c.id).slice(0, 3),
+      selectCandidates('npac', 'high', 'fruit_gelato', 'balanced')
+        .map((c) => c.id)
+        .slice(0, 3),
     ).toEqual(['smp', 'cream_30', 'milk_3_5']);
   });
 });

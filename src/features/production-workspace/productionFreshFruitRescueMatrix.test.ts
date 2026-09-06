@@ -206,6 +206,7 @@ const inputFor = (
     target_temperature_c: temperature,
     target_batch_grams: TARGET_G,
     machine_capacity_grams: machineCapacityG,
+    machine_capacity_source: 'manual',
     goals: {
       formulation_strategy: 'optimal',
       cost_priority: 'balanced',

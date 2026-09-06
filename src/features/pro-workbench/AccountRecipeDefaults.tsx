@@ -10,7 +10,10 @@ import { profileSnapshotFromState } from './recipeProfilePersistence';
 import { listUserRecipeDefaults, upsertUserRecipeDefault } from '@/services/userRecipeDefaults';
 import { VISIBLE_PRODUCT_TYPES, type VisibleProductType } from '@/features/studio/productType';
 import { temperatureForMode } from '@/features/customer-flow/servingMode';
-import { FORMULATION_STRATEGIES, type FormulationStrategy } from '@/features/formulation-strategy/strategy';
+import {
+  FORMULATION_STRATEGIES,
+  type FormulationStrategy,
+} from '@/features/formulation-strategy/strategy';
 import { copy } from '@/copy/en';
 import {
   MACHINE_CATALOG,
@@ -45,9 +48,7 @@ export function AccountRecipeDefaults() {
   const authenticatedOwner = useAuthStore((state) => state.user?.id ?? null);
   const owner = authenticatedOwner ?? (import.meta.env.DEV ? 'local-device' : null);
   const saveLocal = useRecipeProfileStore((state) => state.saveDefaults);
-  const replaceDefaultsForOwner = useRecipeProfileStore(
-    (state) => state.replaceDefaultsForOwner,
-  );
+  const replaceDefaultsForOwner = useRecipeProfileStore((state) => state.replaceDefaultsForOwner);
   const directions = useRecipeProfileStore((state) => state.directionIntents);
   const [product, setProduct] = useState<VisibleProductType>('gelato');
   const [draft, setDraft] = useState<ProfileSettingsSnapshot>(() => {
@@ -102,9 +103,15 @@ export function AccountRecipeDefaults() {
     <section className="py-6" data-testid="account-recipe-defaults">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold tracking-[0.06em] text-stone-600 uppercase">Domyślne ustawienia receptury</p>
-          <h2 className="mt-1 text-[15px] leading-[1.3] font-bold tracking-[-0.02em] text-[var(--g-ink)]">Nowa receptura · {productLabel}</h2>
-          <p className="mt-1 text-sm text-stone-600">Dotyczy tylko nowych receptur. Zapisane wersje pozostają bez zmian.</p>
+          <p className="text-xs font-semibold tracking-[0.06em] text-stone-600 uppercase">
+            Domyślne ustawienia receptury
+          </p>
+          <h2 className="mt-1 text-[15px] leading-[1.3] font-bold tracking-[-0.02em] text-[var(--g-ink)]">
+            Nowa receptura · {productLabel}
+          </h2>
+          <p className="mt-1 text-sm text-stone-600">
+            Dotyczy tylko nowych receptur. Zapisane wersje pozostają bez zmian.
+          </p>
         </div>
         <select
           className="h-11 rounded-[14px] border border-ink/12 bg-white px-3 text-sm text-ink"
@@ -113,9 +120,7 @@ export function AccountRecipeDefaults() {
           onChange={(event) => {
             const next = event.currentTarget.value as VisibleProductType;
             setProduct(next);
-            const stored = useRecipeProfileStore
-              .getState()
-              .defaultsFor(productKey(owner, next));
+            const stored = useRecipeProfileStore.getState().defaultsFor(productKey(owner, next));
             setDraft(
               stored
                 ? cloneSettings(stored)
@@ -131,7 +136,11 @@ export function AccountRecipeDefaults() {
             setStatus('idle');
           }}
         >
-          {VISIBLE_PRODUCT_TYPES.map((type) => <option key={type} value={type}>{copy.studio.goal.productTypes[type]}</option>)}
+          {VISIBLE_PRODUCT_TYPES.map((type) => (
+            <option key={type} value={type}>
+              {copy.studio.goal.productTypes[type]}
+            </option>
+          ))}
         </select>
       </div>
       <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -142,17 +151,26 @@ export function AccountRecipeDefaults() {
             value={draft.servingModeId}
             onChange={(event) => {
               const servingModeId = event.currentTarget.value;
-              patch({ servingModeId, targetTemperatureC: temperatureForMode(servingModeId) ?? draft.targetTemperatureC });
+              patch({
+                servingModeId,
+                targetTemperatureC: temperatureForMode(servingModeId) ?? draft.targetTemperatureC,
+              });
             }}
           >
-            {servings.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+            {servings.map(([id, label]) => (
+              <option key={id} value={id}>
+                {label}
+              </option>
+            ))}
           </select>
         </label>
         <label className="text-xs font-semibold text-stone-600">
           Maszyna / styl produkcji
           <select
             className="mt-1 h-11 w-full rounded-[14px] border border-ink/12 bg-white px-3 text-sm text-ink"
-            value={draft.machineKind === 'home' ? (draft.machineId ?? 'professional') : 'professional'}
+            value={
+              draft.machineKind === 'home' ? (draft.machineId ?? 'professional') : 'professional'
+            }
             onChange={(event) => {
               const value = event.currentTarget.value;
               if (value === 'professional') {
@@ -161,6 +179,7 @@ export function AccountRecipeDefaults() {
                   machineId: null,
                   machineLabel: copy.proMachine.professionalLabel,
                   machineTechnology: null,
+                  homeFormulationModuleId: null,
                   machineCapacityGrams: null,
                   targetBatchGrams: PROFESSIONAL_DEFAULT_BATCH_GRAMS,
                   batchSource: 'PROFESSIONAL_DEFAULT',
@@ -176,18 +195,20 @@ export function AccountRecipeDefaults() {
                 machineId: machine.id,
                 machineLabel: machineDisplayName(machine),
                 machineTechnology: machine.technology,
-                machineCapacityGrams: setup.recommendedBatchGrams,
+                homeFormulationModuleId: machine.homeFormulationModuleId,
+                machineCapacityGrams: setup.hardMaximumBatchGrams,
                 targetBatchGrams: setup.recommendedBatchGrams ?? draft.targetBatchGrams,
                 batchSource: 'MACHINE_DEFAULT',
                 servingModeId: setup.resolvedVisibleMode,
-                targetTemperatureC:
-                  temperatureForMode(setup.resolvedVisibleMode) ?? draft.targetTemperatureC,
+                targetTemperatureC: setup.engineTemperatureC,
               });
             }}
           >
             <option value="professional">{copy.proMachine.professionalLabel}</option>
             {activeHomeMachines.map((machine) => (
-              <option key={machine.id} value={machine.id}>{machineDisplayName(machine)}</option>
+              <option key={machine.id} value={machine.id}>
+                {machineDisplayName(machine)}
+              </option>
             ))}
           </select>
         </label>
@@ -212,17 +233,25 @@ export function AccountRecipeDefaults() {
           <select
             className="mt-1 h-11 w-full rounded-[14px] border border-ink/12 bg-white px-3 text-sm text-ink"
             value={draft.formulationStrategy ?? 'optimal'}
-            onChange={(event) => patch({ formulationStrategy: event.currentTarget.value as FormulationStrategy })}
+            onChange={(event) =>
+              patch({ formulationStrategy: event.currentTarget.value as FormulationStrategy })
+            }
           >
-            {FORMULATION_STRATEGIES.map((value) => <option key={value} value={value}>{value === 'optimal' ? 'OPTIMAL · Priorytet smaku.' : 'ECO · Priorytet kosztu.'}</option>)}
+            {FORMULATION_STRATEGIES.map((value) => (
+              <option key={value} value={value}>
+                {value === 'optimal' ? 'OPTIMAL · Priorytet smaku.' : 'ECO · Priorytet kosztu.'}
+              </option>
+            ))}
           </select>
         </label>
       </div>
       <div className="mt-4 grid gap-3 sm:grid-cols-2" aria-label="Domyślny kierunek receptury">
-        {([
-          ['sweetness', 'Słodycz'],
-          ['softness', 'Miękkość'],
-        ] as const).map(([axis, label]) => {
+        {(
+          [
+            ['sweetness', 'Słodycz'],
+            ['softness', 'Miękkość'],
+          ] as const
+        ).map(([axis, label]) => {
           const value = draft.directionIntents?.[axis] ?? draft.directionTargets[axis];
           return (
             <div key={axis} className="rounded-[16px] border border-ink/10 bg-white p-3">
@@ -296,9 +325,10 @@ export function AccountRecipeDefaults() {
           const settings = { ...draft, visibleProductType: product };
           setStatus('saving');
           void commitRecipeDefaultsAfterRemoteSave(
-            () => authenticatedOwner
-              ? upsertUserRecipeDefault(authenticatedOwner, product, settings)
-              : Promise.resolve(),
+            () =>
+              authenticatedOwner
+                ? upsertUserRecipeDefault(authenticatedOwner, product, settings)
+                : Promise.resolve(),
             () => saveLocal(productKey(owner, product), settings),
           )
             .then(() => {
@@ -310,9 +340,17 @@ export function AccountRecipeDefaults() {
         {status === 'saving' ? 'Zapisuję…' : 'Zapisz ustawienia domyślne'}
       </button>
       <p className="mt-2 min-h-5 text-xs text-stone-700" role="status" aria-live="polite">
-        {status === 'saved' ? '✓ Domyślne ustawienia zostały zapisane.' : status === 'saving' ? 'Trwa zapis ustawień…' : ''}
+        {status === 'saved'
+          ? '✓ Domyślne ustawienia zostały zapisane.'
+          : status === 'saving'
+            ? 'Trwa zapis ustawień…'
+            : ''}
       </p>
-      {status === 'error' ? <p role="alert" className="mt-2 text-xs text-status-error">Nie udało się zapisać. Spróbuj ponownie.</p> : null}
+      {status === 'error' ? (
+        <p role="alert" className="mt-2 text-xs text-status-error">
+          Nie udało się zapisać. Spróbuj ponownie.
+        </p>
+      ) : null}
     </section>
   );
 }

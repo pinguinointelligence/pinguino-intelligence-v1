@@ -37,7 +37,9 @@ export interface BatchRecoveryRequest {
   objective: BatchRecoveryObjective;
   fineStepG?: number;
   coarseStepG?: number;
-  maxAdditionalMassG?: number;
+  /** Product-layer proof ceiling. It must come from real capacity or a
+   * reachable dominating recipe vector, never from the current target alone. */
+  maxAdditionalMassG: number;
   /** Optional product-layer terminal gate for the exact candidate vector. */
   acceptCandidate?: (candidate: BatchRecoveryCandidate) => boolean;
 }
@@ -56,6 +58,24 @@ const effectiveGrams = (item: RecipeInput['items'][number]): number =>
 
 const totalMass = (input: RecipeInput): number =>
   input.items.reduce((sum, item) => sum + effectiveGrams(item), 0);
+
+const explicitlyUnavailableIngredientIds = (input: RecipeInput): ReadonlySet<string> =>
+  new Set([
+    ...(input.goals?.excluded_ingredient_ids ?? []),
+    ...(input.goals?.unavailable_main_ingredient_ids ?? []),
+  ]);
+
+const ingredientIsExplicitlyUnavailable = (
+  input: RecipeInput,
+  item: RecipeInput['items'][number],
+): boolean => {
+  const unavailable = explicitlyUnavailableIngredientIds(input);
+  return (
+    unavailable.has(item.ingredient.id) ||
+    (item.ingredient.canonical_ingredient_id !== undefined &&
+      unavailable.has(item.ingredient.canonical_ingredient_id))
+  );
+};
 
 const roundTo = (value: number, precision: number): number =>
   Math.round((value + Number.EPSILON) / precision) * precision;
@@ -80,6 +100,7 @@ const withLineAddition = (input: RecipeInput, lineId: string, additionG: number)
 const minimumRecoveryLines = (input: RecipeInput) =>
   input.items.filter(
     (item) =>
+      !ingredientIsExplicitlyUnavailable(input, item) &&
       item.lock_type !== 'main' &&
       item.lock_type !== 'grams' &&
       item.lock_type !== 'percent' &&
@@ -136,10 +157,10 @@ export function evaluateAdditiveRecoveryNeighborhood(
 
 function minimumSafeRecovery(request: BatchRecoveryRequest): BatchRecoveryResult {
   const fineStepG = Math.max(0.1, request.fineStepG ?? DEFAULT_FINE_STEP_G);
-  const coarseStepG = Math.max(fineStepG, request.coarseStepG ?? DEFAULT_COARSE_STEP_G);
-  const maxAdditionalMassG = Math.max(
-    coarseStepG,
-    request.maxAdditionalMassG ?? Math.min(500, Math.max(10, request.input.target_batch_grams / 2)),
+  const maxAdditionalMassG = Math.max(0, request.maxAdditionalMassG);
+  const coarseStepG = Math.max(
+    fineStepG,
+    Math.min(request.coarseStepG ?? DEFAULT_COARSE_STEP_G, maxAdditionalMassG),
   );
   const eligible = minimumRecoveryLines(request.input);
   const candidates: BatchRecoveryCandidate[] = [];
@@ -239,7 +260,11 @@ function minimumSafeRecovery(request: BatchRecoveryRequest): BatchRecoveryResult
 
 function restoreOriginalProfile(request: BatchRecoveryRequest): BatchRecoveryResult {
   const precision = Math.max(0.1, request.fineStepG ?? DEFAULT_FINE_STEP_G);
-  const coarseStepG = Math.max(precision, request.coarseStepG ?? DEFAULT_COARSE_STEP_G);
+  const maxAdditionalMassG = Math.max(0, request.maxAdditionalMassG);
+  const coarseStepG = Math.max(
+    precision,
+    Math.min(request.coarseStepG ?? DEFAULT_COARSE_STEP_G, maxAdditionalMassG),
+  );
   const currentById = new Map(request.input.items.map((item) => [item.id, item]));
   let scaleFactor = 1;
   for (const baseline of request.baselineInput.items) {
@@ -250,10 +275,6 @@ function restoreOriginalProfile(request: BatchRecoveryRequest): BatchRecoveryRes
   const baselineById = new Map(request.baselineInput.items.map((item) => [item.id, item]));
   const currentTotal = totalMass(request.input);
   const baselineTotal = totalMass(request.baselineInput);
-  const maxAdditionalMassG = Math.max(
-    coarseStepG,
-    request.maxAdditionalMassG ?? Math.min(500, Math.max(10, currentTotal / 2)),
-  );
   const reasonSets = new Map<string, CorrectionReasonCode[]>();
   const seenVectors = new Set<string>();
   let evaluatedCandidateCount = 0;
@@ -261,6 +282,7 @@ function restoreOriginalProfile(request: BatchRecoveryRequest): BatchRecoveryRes
 
   const candidateAtScale = (candidateScale: number): BatchRecoveryCandidate | null => {
     const actions: CorrectionAction[] = [];
+    let requiresUnavailableIngredient = false;
     const items = request.input.items.map((item) => {
       const baseline = baselineById.get(item.id);
       if (!baseline) return item;
@@ -270,11 +292,17 @@ function restoreOriginalProfile(request: BatchRecoveryRequest): BatchRecoveryRes
         roundTo(baseline.planned_grams * candidateScale, precision),
       );
       const additionG = targetGrams - currentGrams;
-      if (additionG > EPSILON) actions.push(actionFor(item, additionG));
+      if (additionG > EPSILON) {
+        if (ingredientIsExplicitlyUnavailable(request.input, item)) {
+          requiresUnavailableIngredient = true;
+        }
+        actions.push(actionFor(item, additionG));
+      }
       return item.actual_grams === null
         ? { ...item, planned_grams: targetGrams }
         : { ...item, actual_grams: targetGrams };
     });
+    if (requiresUnavailableIngredient) return null;
     const vectorKey = items.map((item) => effectiveGrams(item).toFixed(6)).join('|');
     if (seenVectors.has(vectorKey)) return null;
     seenVectors.add(vectorKey);

@@ -351,7 +351,7 @@ describe('Production correction decision accessibility', () => {
     expect(neutral?.getAttribute('data-decision-state')).toBe('available');
     expect(neutral?.textContent).not.toContain('✓ Wybrano');
     expect(selectedApply?.disabled).toBe(false);
-    expect(selectedApply?.textContent).toContain('Zastosuj minimalną korektę');
+    expect(selectedApply?.textContent).toContain('Zwiększ partię do 1100 g');
 
     await act(async () => selectedApply?.click());
     expect(applySelectedRescueOption).toHaveBeenCalledTimes(1);
@@ -405,19 +405,19 @@ describe('Production correction decision accessibility', () => {
       rescueOptionStates: {
         keep_original_batch: {
           status: 'unavailable',
-          reason: 'Niedostępne — potwierdzonych ilości nie można dopasować do 1000 g.',
+          reason: 'Żeby zachować zawartość naczynia, potrzebna jest większa partia.',
         },
         enlarge_batch: {
           status: 'unavailable',
-          reason: 'Niedostępne — Engine nie znalazł bezpiecznej większej partii.',
+          reason: 'Tej partii nie możemy bezpiecznie dostosować z dostępnych składników.',
         },
         restore_original_recipe: {
           status: 'unavailable',
-          reason: 'Niedostępne — nie można przywrócić proporcji.',
+          reason: 'Nie możemy teraz przywrócić wyjściowych proporcji.',
         },
         leave_as_is: {
           status: 'unavailable',
-          reason: 'Niedostępne — przekroczono twardy zakres laktozy.',
+          reason: 'Ta partia potrzebuje dalszego dostosowania.',
         },
       },
       cancelCurrentSession,
@@ -437,14 +437,17 @@ describe('Production correction decision accessibility', () => {
     const recovery = host.querySelector<HTMLElement>(
       '[data-testid="production-decision-recovery"]',
     );
-    expect(recovery?.textContent).toContain('Nie mamy bezpiecznej korekty dla tej partii');
+    expect(recovery?.textContent).toContain('Tej partii nie możemy teraz bezpiecznie dostosować');
     const reasons = recovery?.querySelector<HTMLElement>(
       '[data-testid="production-decision-recovery-reasons"]',
     );
     expect(reasons?.textContent).toContain(
-      'Niedostępne — potwierdzonych ilości nie można dopasować do 1000 g.',
+      'Żeby zachować zawartość naczynia, potrzebna jest większa partia.',
     );
-    expect(reasons?.textContent).toContain('Niedostępne — przekroczono twardy zakres laktozy.');
+    expect(reasons?.textContent).toContain('Ta partia potrzebuje dalszego dostosowania.');
+    expect(recovery?.textContent).not.toMatch(
+      /lakto|\bPAC\b|\bPOD\b|\bNPAC\b|water|solids|hard-bound|denominator|solver|Engine|ProductBehavior|twarde zakresy/i,
+    );
     const abort = recovery?.querySelector<HTMLButtonElement>(
       '[data-testid="production-abort-recovery"]',
     );

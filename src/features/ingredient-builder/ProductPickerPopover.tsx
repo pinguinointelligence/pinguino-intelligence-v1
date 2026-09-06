@@ -399,6 +399,24 @@ export function ProductPickerPopover({
         });
         return;
       }
+      const rawHomeContainer = triggerRef.current
+        ?.closest<HTMLElement>('[data-product-picker-width-anchor="home-content"]')
+        ?.getBoundingClientRect();
+      if (rawHomeContainer) {
+        const homeContainer = applicationViewportGeometry(rawHomeContainer, scale);
+        const viewport = applicationViewportSize(scale);
+        const gutter = 8;
+        const left = Math.max(gutter, homeContainer.left);
+        const right = Math.min(viewport.width - gutter, homeContainer.right);
+        setPosition({
+          desktop: true,
+          left,
+          top: gutter,
+          width: Math.max(0, right - left),
+          height: Math.max(0, viewport.height - gutter * 2),
+        });
+        return;
+      }
       const rawEditor = document
         .querySelector<HTMLElement>('[data-testid="workbench-editor-pane"]')
         ?.getBoundingClientRect();

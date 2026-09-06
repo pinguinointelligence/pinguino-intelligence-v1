@@ -443,7 +443,11 @@ describe('§17.1/§17.2 padlock', () => {
     // Machine capacity blocks the dilution ADD escape, so the genuine fix is
     // reducing sucrose (evidence pinned by the feasibility conflict test) —
     // exactly the move a lock must forbid and an unlock must re-allow.
-    loadRecipe({ ...overSweetStarter(150), machine_capacity_grams: 1050 });
+    loadRecipe({
+      ...overSweetStarter(150),
+      machine_capacity_grams: 1050,
+      machine_capacity_source: 'manual',
+    });
     useConstraintStudioStore.getState().toggleLock(SUCROSE);
 
     useConstraintStudioStore.getState().createOptimizePreview();

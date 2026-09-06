@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import type { RecipeInput } from '@/engine';
 import { ingredientRowToEngineIngredient } from '@/data/ingredients/ingredientMapper';
 import type { IngredientRow } from '@/data/ingredients/ingredientRow';
+import type { ProductBehaviorSnapshot } from '@/features/product-intelligence/contracts';
 import { parseCsv } from '@/lib/csv';
 import {
   confirmProductionLine,
@@ -73,7 +74,10 @@ export const OWNER_RESCUE_RECIPE: RecipeInput = {
   category: 'milk_gelato',
   target_temperature_c: -13,
   target_batch_grams: 670,
+  // Staging truth: the legacy recipe JSON contains 670 but no machine/manual
+  // provenance. Rescue must retain it for audit without treating it as a cap.
   machine_capacity_grams: 670,
+  machine_capacity_source: null,
   goals: {
     formulation_strategy: 'optimal',
     cost_priority: 'balanced',
@@ -83,6 +87,45 @@ export const OWNER_RESCUE_RECIPE: RecipeInput = {
     excluded_ingredient_ids: [],
     unavailable_main_ingredient_ids: [],
   },
+};
+
+/** Reproduces the frozen ProductBehavior authority persisted by the served
+ * Owner recipe. The generic test composition is intentionally permissive and
+ * previously made this fixture certify a smaller candidate that staging could
+ * never authorize. */
+const ownerRescueComposition = () => {
+  const composition = productionTestComposition(OWNER_RESCUE_RECIPE);
+  composition.behaviorSnapshots.milk = {
+    ...composition.behaviorSnapshots.milk!,
+    approvedLiquidDairyCarrier: true,
+  };
+  for (const [lineId, policy] of [
+    ['strawberries', ['berry', 'main-berry-fresh-dairy', 25]],
+    ['watermelon', ['fruit', 'main-fruit-fresh-dairy', 20]],
+  ] as const) {
+    composition.behaviorSnapshots[lineId] = {
+      ...composition.behaviorSnapshots[lineId]!,
+      familyId: 'fruit',
+      subfamilyId: policy[0],
+      formId: 'fresh',
+      mainCapability: 'MAIN_CAPABLE',
+      behaviorRole: 'MAIN_PROFILE_SPECIFIC',
+      mainClassification: 'MAIN_PROFILE_SPECIFIC',
+      mainAuthority: 'CALIBRATED',
+      mainCalibrationLevel: 'EXACT_PRODUCT',
+      mainPolicyId: policy[1],
+      mainPolicyVersion: '2',
+      mainBasis: 'FRUIT_EQUIVALENT',
+      mainEquivalentFactor: 1,
+      ecoFloorPercent: policy[2],
+      optimalCeilingPercent: 35,
+      hardLimitPercent: 45,
+      multiMainHardLimitPercent: null,
+      requiresLiquidDairyCarrier: true,
+      liquidDairyCarrierFloorPercent: 30,
+    } as ProductBehaviorSnapshot;
+  }
+  return composition;
 };
 
 export const makeOwnerRescueSession = (): ProductionSession =>
@@ -96,7 +139,7 @@ export const makeOwnerRescueSession = (): ProductionSession =>
       recipeName: 'Owner strawberry watermelon gelato',
     },
     plannedInput: OWNER_RESCUE_RECIPE,
-    plannedComposition: productionTestComposition(OWNER_RESCUE_RECIPE),
+    plannedComposition: ownerRescueComposition(),
     startedAt: '2026-09-05T10:00:00.000Z',
   });
 
