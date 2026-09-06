@@ -21,6 +21,10 @@ import {
 import type { ProductEvidenceField } from '../productEvidenceConfidence';
 import { classifyProductSemantics } from '../productRecognition';
 import { loadMapperKnowledgeRows } from './mapperFixture';
+import {
+  allergensFromIngredients,
+  looksLikeIngredientList,
+} from '../../../../supabase/functions/_shared/openFoodFactsLookup.ts';
 
 /** Real Mapper rows: the repo's immutable CSV (2089 rows) by default, or a live dump via env. */
 export function loadReplayRows(
@@ -224,9 +228,16 @@ export function scanResultFromLabelRow(row: LabelCorpusRow): {
     fieldsUsed.push(path);
     confirmed.push(field);
   }
-  if (row.ingredients) {
+  // the same gate and the same allergen reading the server applies to a registry record
+  const ingredients = looksLikeIngredientList(row.ingredients) ? row.ingredients : null;
+  if (ingredients) {
     fieldsUsed.push('ingredientsText');
     confirmed.push('ingredients');
+  }
+  const allergens = row.allergens ?? (ingredients ? allergensFromIngredients(ingredients) : null);
+  if (allergens) {
+    fieldsUsed.push('allergensText');
+    confirmed.push('allergens');
   }
   const technical = row.dosage || row.technicalParameters;
   return {
@@ -256,10 +267,10 @@ export function scanResultFromLabelRow(row: LabelCorpusRow): {
       evidence: [],
       nutrition,
       manufacturer: null,
-      allergensText: row.allergens,
+      allergensText: allergens,
       missingFields: [],
       schemaVersion: 'gellatti_product_scan_v1',
-      ingredientsText: row.ingredients,
+      ingredientsText: ingredients,
       mayContainAllergens: [],
       storageInstructions: null,
       productionDeclarations: {

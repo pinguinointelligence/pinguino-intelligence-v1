@@ -99,7 +99,7 @@ async function exactProductForBarcode(
   const { data } = await service
     .from('product_variants')
     .select(
-      'product_id,ean,products!inner(id,is_active,merged_into_product_id,product_name_display,brand,product_kind,canonical_verification_status,product_code,current_version_id)',
+      'product_id,ean,products!inner(id,is_active,merged_into_product_id,product_name_display,brand,product_kind,canonical_verification_status,product_code,current_version_id,current_behavior_binding_id)',
     )
     .in('ean', [...candidates])
     .eq('is_current', true)
@@ -133,6 +133,20 @@ async function exactProductForBarcode(
   const roleReady =
     behavior.classificationOutcome === 'classified' &&
     (behavior.baseRecipeEligible === true || behavior.toppingEligible === true);
+  // The catalogue decides usability from the CURRENT behaviour binding's module permission
+  // (BASE_RECIPE for a base article, TOPPING for an add-on). A version whose facts say "usable"
+  // while the binding refuses the module is NOT ready — such a product re-enters the rescue path.
+  let moduleReady = true;
+  if (product.product_kind !== 'mapper_reference' && product.current_behavior_binding_id) {
+    const { data: binding } = await service
+      .from('product_behavior_bindings')
+      .select('profile_permissions')
+      .eq('id', product.current_behavior_binding_id)
+      .maybeSingle();
+    const permissions = objectValue(binding?.profile_permissions);
+    const module = behavior.intendedUsageRole === 'TOPPING_ONLY' ? 'TOPPING' : 'BASE_RECIPE';
+    moduleReady = permissions[module] === true;
+  }
   return {
     ...product,
     product_accuracy: Number.isFinite(accuracy) ? accuracy : null,
@@ -141,8 +155,7 @@ async function exactProductForBarcode(
     // that role, even though its composition need not enter the base Engine.
     engine_ready:
       product.product_kind === 'mapper_reference' ||
-      intelligence.engineUsable === true ||
-      roleReady,
+      ((intelligence.engineUsable === true || roleReady) && moduleReady),
   };
 }
 

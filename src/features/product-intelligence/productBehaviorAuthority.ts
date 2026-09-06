@@ -78,6 +78,9 @@ export interface TrustedProductBehaviorAuthority {
 
 export interface ProductBehaviorProductProfile {
   engineUsable: boolean;
+  /** label statements the canonical catalogue classifier requires before TOPPING may be granted */
+  ingredientsEvidenceStatus?: 'USER_CONFIRMED' | 'CONFIRMED' | 'NOT_CONFIRMED';
+  allergenEvidenceStatus?: 'USER_CONFIRMED' | 'CONFIRMED' | 'NOT_CONFIRMED';
   /** Product-owned physics blockers produced by the shared PR/PM completion
    * authority. Their presence proves that a profile exists even when it must
    * remain fail-closed for Engine use. */
@@ -348,6 +351,24 @@ export function validateProductBehaviorAuthority(input: {
       outcome: 'unknown_requires_review',
       reasons: ['product_role_unresolved'],
     });
+  }
+  // The canonical catalogue classifier (classify_catalog_product_behavior_v2) grants TOPPING
+  // only to a product that carries its own label statement — the ingredient list AND the
+  // allergen statement: a post-process add-on is declared on the label, not formulated.
+  // Mirrored here so "ready" on the scanner is exactly what the catalogue will allow; the
+  // reason codes name the one plain fact the customer can still supply.
+  if (toppingRequested) {
+    const missing = [
+      ...(profile.ingredientsEvidenceStatus === 'NOT_CONFIRMED'
+        ? ['ingredients_statement_required']
+        : []),
+      ...(profile.allergenEvidenceStatus === 'NOT_CONFIRMED'
+        ? ['allergen_statement_required']
+        : []),
+    ];
+    if (missing.length > 0) {
+      return unresolvedAuthority({ profile, outcome: 'unknown_requires_review', reasons: missing });
+    }
   }
   const referenceId = profile.profileReferenceMapperIngredientId;
   if (!referenceId) {

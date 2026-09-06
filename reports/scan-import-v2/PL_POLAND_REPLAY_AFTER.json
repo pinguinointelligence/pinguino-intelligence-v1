@@ -1,29 +1,29 @@
 {
-  "generatedAt": "2026-09-05T23:22:06.772Z",
-  "tag": "G5",
+  "generatedAt": "2026-09-06T00:49:51.186Z",
+  "tag": "AFTER",
   "summary": {
     "rows": 170,
-    "ready": 100,
+    "ready": 93,
     "completeMacros": {
       "n": 129,
-      "ready": 87,
-      "ratePercent": 67.4
+      "ready": 81,
+      "ratePercent": 62.8
     },
     "completeWithIngredients": {
       "n": 94,
-      "ready": 87,
-      "ratePercent": 92.6
+      "ready": 81,
+      "ratePercent": 86.2
     },
     "ordinaryFoodCompleteLabel": {
       "n": 94,
-      "ready": 87,
-      "ratePercent": 92.6
+      "ready": 81,
+      "ratePercent": 86.2
     },
     "familyAsked": 21,
     "byCategory": {
       "Bakery & sweets": {
         "n": 28,
-        "ready": 19,
+        "ready": 18,
         "complete": 24,
         "completeReady": 17
       },
@@ -47,9 +47,9 @@
       },
       "Dairy": {
         "n": 63,
-        "ready": 49,
+        "ready": 44,
         "complete": 53,
-        "completeReady": 45
+        "completeReady": 40
       },
       "Fruit": {
         "n": 11,
@@ -59,9 +59,9 @@
       },
       "Nuts & pastes": {
         "n": 17,
-        "ready": 5,
+        "ready": 4,
         "complete": 11,
-        "completeReady": 5
+        "completeReady": 4
       },
       "Professional gelato products": {
         "n": 3,
@@ -95,8 +95,8 @@
       }
     },
     "blockerHistogram": {
-      "INGREDIENTS_EVIDENCE_REQUIRED": 53,
-      "UNRESOLVED_SWEETENING_FREEZING_PATH": 21,
+      "INGREDIENTS_EVIDENCE_REQUIRED": 60,
+      "UNRESOLVED_SWEETENING_FREEZING_PATH": 22,
       "MISSING_SALT_PERCENT": 7,
       "MISSING_TOTAL_SUGARS_PERCENT": 5,
       "NUTRITION_FACT_REQUIRED:salt_percent": 9,
@@ -647,10 +647,10 @@
       "familyResolution": "RESOLVED",
       "modelRequired": false,
       "modelReasonCodes": [],
-      "ready": true,
+      "ready": false,
       "readiness": "ESTIMATED_READY",
       "engineUsable": true,
-      "roleReadiness": "TOPPING_READY",
+      "roleReadiness": "REVIEW",
       "donor": "PI-ING-001560",
       "similarity": 0.916,
       "estimatedFields": [
@@ -673,7 +673,9 @@
         "pod_value",
         "pac_value"
       ],
-      "blockers": [],
+      "blockers": [
+        "INGREDIENTS_EVIDENCE_REQUIRED"
+      ],
       "missingEngineFields": [],
       "sweetness": {
         "kind": "stored",
@@ -3822,10 +3824,10 @@
       "familyResolution": "RESOLVED",
       "modelRequired": false,
       "modelReasonCodes": [],
-      "ready": true,
+      "ready": false,
       "readiness": "ESTIMATED_READY",
       "engineUsable": true,
-      "roleReadiness": "BASE_READY",
+      "roleReadiness": "REVIEW",
       "donor": "PI-ING-000171",
       "similarity": 0.94,
       "estimatedFields": [
@@ -3841,7 +3843,9 @@
         "sweetness_factor",
         "freezing_factor"
       ],
-      "blockers": [],
+      "blockers": [
+        "INGREDIENTS_EVIDENCE_REQUIRED"
+      ],
       "missingEngineFields": [],
       "sweetness": {
         "kind": "sugar_spectrum",
@@ -3864,10 +3868,10 @@
       "familyResolution": "RESOLVED",
       "modelRequired": false,
       "modelReasonCodes": [],
-      "ready": true,
-      "readiness": "ESTIMATED_READY",
-      "engineUsable": true,
-      "roleReadiness": "BASE_READY",
+      "ready": false,
+      "readiness": "REVIEW",
+      "engineUsable": false,
+      "roleReadiness": "REVIEW",
       "donor": "PI-ING-000227",
       "similarity": 0.94,
       "estimatedFields": [
@@ -3884,12 +3888,15 @@
         "sweetness_factor",
         "freezing_factor"
       ],
-      "blockers": [],
+      "blockers": [
+        "INGREDIENTS_EVIDENCE_REQUIRED",
+        "UNRESOLVED_SWEETENING_FREEZING_PATH"
+      ],
       "missingEngineFields": [],
       "sweetness": {
-        "kind": "sugar_spectrum",
-        "resolved": true,
-        "reason": "Widmo cukrow (uzupelnione (oszacowane)) pokrywa 9.3 z 9.3 g"
+        "kind": "unresolved",
+        "resolved": false,
+        "reason": "Pozostała niepewność jest istotna: POD Δmax 3.0724, NPAC Δmax 3.1451, tolerancja obliczeń 0.5"
       },
       "error": null
     },
@@ -4161,10 +4168,10 @@
       "familyResolution": "RESOLVED",
       "modelRequired": false,
       "modelReasonCodes": [],
-      "ready": true,
+      "ready": false,
       "readiness": "ESTIMATED_READY",
       "engineUsable": true,
-      "roleReadiness": "BASE_READY",
+      "roleReadiness": "REVIEW",
       "donor": "PI-ING-000176",
       "similarity": 0.94,
       "estimatedFields": [
@@ -4181,7 +4188,9 @@
         "sweetness_factor",
         "freezing_factor"
       ],
-      "blockers": [],
+      "blockers": [
+        "INGREDIENTS_EVIDENCE_REQUIRED"
+      ],
       "missingEngineFields": [],
       "sweetness": {
         "kind": "sugar_spectrum",
@@ -4299,10 +4308,10 @@
       "familyResolution": "RESOLVED",
       "modelRequired": false,
       "modelReasonCodes": [],
-      "ready": true,
+      "ready": false,
       "readiness": "ESTIMATED_READY",
       "engineUsable": true,
-      "roleReadiness": "BASE_READY",
+      "roleReadiness": "REVIEW",
       "donor": "PI-ING-000176",
       "similarity": 0.94,
       "estimatedFields": [
@@ -4319,7 +4328,9 @@
         "sweetness_factor",
         "freezing_factor"
       ],
-      "blockers": [],
+      "blockers": [
+        "INGREDIENTS_EVIDENCE_REQUIRED"
+      ],
       "missingEngineFields": [],
       "sweetness": {
         "kind": "sugar_spectrum",
@@ -4471,10 +4482,10 @@
       "familyResolution": "RESOLVED",
       "modelRequired": false,
       "modelReasonCodes": [],
-      "ready": true,
+      "ready": false,
       "readiness": "ESTIMATED_READY",
       "engineUsable": true,
-      "roleReadiness": "BASE_READY",
+      "roleReadiness": "REVIEW",
       "donor": "PI-ING-000547",
       "similarity": 0.94,
       "estimatedFields": [
@@ -4490,7 +4501,9 @@
         "sweetness_factor",
         "freezing_factor"
       ],
-      "blockers": [],
+      "blockers": [
+        "INGREDIENTS_EVIDENCE_REQUIRED"
+      ],
       "missingEngineFields": [],
       "sweetness": {
         "kind": "sugar_spectrum",
@@ -5570,10 +5583,10 @@
       "familyResolution": "RESOLVED",
       "modelRequired": false,
       "modelReasonCodes": [],
-      "ready": true,
+      "ready": false,
       "readiness": "ESTIMATED_READY",
       "engineUsable": true,
-      "roleReadiness": "BASE_READY",
+      "roleReadiness": "REVIEW",
       "donor": "PI-ING-001586",
       "similarity": 0.94,
       "estimatedFields": [
@@ -5587,7 +5600,9 @@
         "polyol_percent",
         "alcohol_percent"
       ],
-      "blockers": [],
+      "blockers": [
+        "INGREDIENTS_EVIDENCE_REQUIRED"
+      ],
       "missingEngineFields": [],
       "sweetness": {
         "kind": "sugar_spectrum",

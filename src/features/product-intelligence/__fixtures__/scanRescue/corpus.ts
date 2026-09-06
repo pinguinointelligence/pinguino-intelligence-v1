@@ -254,6 +254,7 @@ export const CORPUS: CorpusFixture[] = [
       {
         ingredientsText:
           'Harina de trigo, azúcar, aceite de palma, cacao desgrasado en polvo, jarabe de glucosa y fructosa, almidón de trigo, gasificantes, sal, emulgentes, aromas.',
+        allergensText: 'pszenica, soja; może zawierać mleko',
       },
     ),
     expect: {

@@ -369,6 +369,32 @@ describe('server-owned immutable ProductBehavior authority', () => {
     expect(authority.classificationReasonCodes).not.toContain('product_owned_profile_missing');
   });
 
+  it('grants TOPPING only with the label statements the catalogue classifier requires', () => {
+    // the canonical classifier (classify_catalog_product_behavior_v2) needs the ingredient list AND
+    // the allergen statement before TOPPING; the server authority says the same, naming the gap
+    const missingAllergens = validateProductBehaviorAuthority({
+      productProfile: productProfile({
+        recognition: variegatoRecognition,
+        ingredientsEvidenceStatus: 'CONFIRMED',
+        allergenEvidenceStatus: 'NOT_CONFIRMED',
+      }),
+      behaviorRows: [behaviorRow()],
+    });
+    expect(missingAllergens.classificationOutcome).toBe('unknown_requires_review');
+    expect(missingAllergens.toppingEligible).toBe(false);
+    expect(missingAllergens.classificationReasonCodes).toEqual(['allergen_statement_required']);
+    const complete = validateProductBehaviorAuthority({
+      productProfile: productProfile({
+        recognition: variegatoRecognition,
+        ingredientsEvidenceStatus: 'CONFIRMED',
+        allergenEvidenceStatus: 'USER_CONFIRMED',
+      }),
+      behaviorRows: [behaviorRow()],
+    });
+    expect(complete.classificationOutcome).toBe('classified');
+    expect(complete.toppingEligible).toBe(true);
+  });
+
   it('keeps the same topping-only role at the server authority boundary', () => {
     const authority = validateProductBehaviorAuthority({
       productProfile: productProfile({ recognition: variegatoRecognition }),

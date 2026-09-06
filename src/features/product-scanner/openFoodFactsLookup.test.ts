@@ -5,6 +5,8 @@
  */
 import { describe, expect, it } from 'vitest';
 import {
+  allergensFromIngredients,
+  looksLikeIngredientList,
   lookupFactsFromOpenFoodFactsProduct,
   lookupOpenFoodFactsFacts,
 } from '../../../supabase/functions/_shared/openFoodFactsLookup.ts';
@@ -135,5 +137,62 @@ describe('Open Food Facts exact-GTIN lookup', () => {
     );
     const invalid = await lookupOpenFoodFactsFacts('12ab', {});
     expect(invalid).toBeNull();
+  });
+});
+
+describe('registry ingredient quality and allergen reading', () => {
+  it('refuses a nutrition-table OCR posing as an ingredient list and keeps a real list', () => {
+    expect(
+      looksLikeIngredientList(
+        '100 g proizvoda:/ 1 oo g bF6dÜkÈttzturvërtïba:/ Energiasisaldus:/ Energijska vrednost : Rasvad/ millest küllastunud rasvhapped/ od tega nasičene 2,1 g',
+      ),
+    ).toBe(false);
+    expect(
+      looksLikeIngredientList('Energia 1004 kJ / 240 kcal, tłuszcz 12 g, węglowodany 31 g'),
+    ).toBe(false);
+    expect(
+      looksLikeIngredientList(
+        'płatki owsiane 45%, cukier, olej rzepakowy, orzechy laskowe 8%, miód, sól, aromat',
+      ),
+    ).toBe(true);
+    expect(looksLikeIngredientList('Składniki: mleko pasteryzowane, żywe kultury bakterii')).toBe(
+      true,
+    );
+    expect(looksLikeIngredientList('n/a')).toBe(false);
+  });
+
+  it('reads the EU allergens the ingredient list names, in the label market language', () => {
+    expect(
+      allergensFromIngredients(
+        'płatki owsiane 45%, cukier, olej rzepakowy, orzechy laskowe 8%, mleko w proszku, lecytyna sojowa, może zawierać sezam',
+      ),
+    ).toBe('mleko, gluten (jeczmien/zyto/owies), soja, orzechy, sezam');
+    expect(
+      allergensFromIngredients('sugar, cocoa butter, skimmed MILK powder, hazelnuts, wheat flour'),
+    ).toBe('mleko, gluten (pszenica), orzechy');
+    expect(allergensFromIngredients('woda, cukier, kwas cytrynowy, aromat')).toBeNull();
+    expect(allergensFromIngredients(null)).toBeNull();
+  });
+
+  it('a record with a garbage ingredient text yields no ingredients and no allergens; tags still win when present', () => {
+    const garbage = lookupFactsFromOpenFoodFactsProduct(
+      {
+        ...RECORD,
+        ingredients_text_pl: undefined,
+        ingredients_text:
+          '100 g proizvoda:/ Energiasisaldus:/ Rasvad 12 g / od tega nasičene 2,1 g',
+        allergens_tags: [],
+      },
+      '5900617002228',
+      'https://world.openfoodfacts.org/product/5900617002228',
+    );
+    expect(garbage.some((f) => f.field === 'ingredients')).toBe(false);
+    expect(garbage.some((f) => f.field === 'allergens')).toBe(false);
+    const derived = lookupFactsFromOpenFoodFactsProduct(
+      { ...RECORD, allergens_tags: [] },
+      '5903767004470',
+      'https://world.openfoodfacts.org/product/5903767004470',
+    );
+    expect(derived.find((f) => f.field === 'allergens')?.value).toBe('mleko');
   });
 });
