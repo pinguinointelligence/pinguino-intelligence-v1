@@ -62,13 +62,7 @@ export interface FacilityDefaults {
   registrationIds: string[];
   website?: string;
   operatorRole?:
-    | 'producer'
-    | 'manufacturer'
-    | 'packer'
-    | 'distributor'
-    | 'importer'
-    | 'dealer'
-    | 'supplier';
+    'producer' | 'manufacturer' | 'packer' | 'distributor' | 'importer' | 'dealer' | 'supplier';
   importerName?: string;
   importerAddress?: string;
   importerCountryCode?: string;
@@ -203,9 +197,7 @@ export interface MasterLabelData {
   alcoholByVolumePercent?: number | null;
   alcoholDeclarationReviewed?: boolean;
   alcoholDeclarationApplicability?:
-    | 'unresolved'
-    | 'not_applicable_non_beverage'
-    | 'required_beverage_over_1_2';
+    'unresolved' | 'not_applicable_non_beverage' | 'required_beverage_over_1_2';
   enabledOptionalFields: MasterLabelFieldId[];
   format: 'rectangle' | 'round';
   size: { widthMm: number; heightMm: number };
@@ -232,7 +224,7 @@ export interface MasterLabelData {
       xHeightMm: number;
     };
     printer: LabelPrinterSettings;
-    packageQuantity: LabelPackageQuantity;
+    packageQuantity: LabelPackageQuantity | null;
   } | null;
 }
 
@@ -511,6 +503,9 @@ function buildMasterLabelDataFromSource(
   const sourceAllergenStatements = ingredients.map(
     (item) => item.sourceAllergensText?.trim() ?? '',
   );
+  const knownSourceAllergenStatements = sourceAllergenStatements.filter(
+    (statement) => statement.length > 0 && !isUnavailableAllergenStatement(statement),
+  );
   const allergenComplete =
     ingredients.length > 0 &&
     sourceAllergenStatements.every(
@@ -522,9 +517,10 @@ function buildMasterLabelDataFromSource(
   const mayContain = [
     ...new Set([...declarationLines.values()].flatMap((item) => item.mayContain)),
   ].sort();
-  const labelStatements = allergenComplete
-    ? [[...new Set(sourceAllergenStatements)].join(' · ')]
-    : [];
+  const labelStatements =
+    knownSourceAllergenStatements.length > 0
+      ? [[...new Set(knownSourceAllergenStatements)].join(' · ')]
+      : [];
   const facility = { ...emptyFacility(), ...input.facilityDefaults };
   const sourceDate = source.date.slice(0, 10);
   const calculatedNutrition = source.finalLabelNutrition ?? source.finalNutrition;
@@ -749,8 +745,7 @@ export function normalizeMasterLabelData(value: MasterLabelData): MasterLabelDat
   };
   const regulatoryDefaults = defaultRegulatoryNutrition(nutritionSource, labelLanguages);
   const regulatoryNutrition = legacy.regulatoryNutrition as
-    | Partial<RegulatoryNutritionInputs>
-    | undefined;
+    Partial<RegulatoryNutritionInputs> | undefined;
   const size = legacy.size ?? { widthMm: 90, heightMm: 60 };
   const copies = legacy.copies ?? 1;
   return {
@@ -1137,7 +1132,7 @@ export function buildLabelPreflight(data: MasterLabelData): LabelPreflight {
     format: data.format,
     productName: labelText(data.productName),
     ingredientDeclarations: data.ingredients.map((ingredient) => labelText(ingredient.names)),
-    allergenStatement: labelAllergenStatement(data) ?? 'Alergeny nieustalone',
+    allergenStatement: labelAllergenStatement(data) ?? '',
     businessText: [data.operator.operatorName, data.operator.address].filter(Boolean).join(', '),
     storageText: labelText(data.storageInstructions),
     languageCount: data.labelLanguages.length,
@@ -1316,25 +1311,21 @@ export function buildLabelPreflight(data: MasterLabelData): LabelPreflight {
       label: 'Kontrola użytkownika',
       message: data.preflightAcknowledged
         ? 'Dane sprawdzone przed wydrukiem.'
-        : 'Zaznacz: Sprawdziłem dane etykiety przed wydrukiem.',
+        : 'Dane można uzupełnić lub świadomie pominąć przed wydrukiem.',
     },
   ];
   const missingCount = items.filter((item) => item.status === 'missing').length;
   const reviewCount = items.filter(
     (item) => item.status === 'review' || item.status === 'research',
   ).length;
-  const baseReady =
-    missingCount === 0 && reviewCount === 0 && data.preflightAcknowledged && profileReady;
-  const printReadiness: PrintReadiness = baseReady
-    ? data.market === 'WORLD'
-      ? 'PRINT_READY_UNIVERSAL'
-      : 'PRINT_READY_REGULATORY'
-    : 'NOT_READY';
+  const printReadiness: PrintReadiness =
+    data.market === 'WORLD' ? 'PRINT_READY_UNIVERSAL' : 'PRINT_READY_REGULATORY';
   return {
     items,
     missingCount,
     reviewCount,
-    readyForSystemPrint: baseReady,
+    // Owner rule: preflight items are disclosure and edit prompts, never a print gate.
+    readyForSystemPrint: true,
     regulatoryProfileVerified,
     printReadiness,
     geometry,

@@ -23,6 +23,119 @@ const label = createCompleteLabel('EU', {
 });
 
 describe('Master Label direct vector PDF', () => {
+  it.each(['EU', 'UK', 'US', 'CA', 'AU_NZ', 'WORLD'] as const)(
+    'prints an incomplete %s PDF with known allergens and without missing rows',
+    async (market) => {
+      const base = createCompleteLabel(market);
+      const incomplete = createCompleteLabel(market, {
+        allergens: {
+          status: 'incomplete',
+          declared: ['milk'],
+          mayContain: [],
+          labelStatements: ['Contains milk'],
+          reviewedByUser: false,
+        },
+        nutritionSource: { ...base.nutritionSource!, saturated_fat_g: null },
+        saturatedFatAuthority: {
+          status: 'missing',
+          sourceReferences: [],
+          missingIngredientNames: ['Unknown ingredient'],
+        },
+        preflightAcknowledged: false,
+      });
+      const drawText = vi.spyOn(PDFPage.prototype, 'drawText');
+      try {
+        await expect(composeMasterLabelPdf(incomplete)).resolves.toMatchObject({ pageCount: 1 });
+        const text = drawText.mock.calls.map(([value]) => value).join(' ');
+        expect(text).toContain('Contains milk');
+        expect(text).not.toContain('UNKNOWN');
+        expect(text).not.toContain('Alergeny nieustalone');
+        expect(text).not.toMatch(
+          /Of which saturates|Saturated Fat|- saturated|Saturated \/ saturés/,
+        );
+      } finally {
+        drawText.mockRestore();
+      }
+    },
+  );
+
+  it.each(['EU', 'UK', 'US', 'CA', 'AU_NZ', 'WORLD'] as const)(
+    'omits entirely unknown %s fields from the vector PDF',
+    async (market) => {
+      const base = createCompleteLabel(market);
+      const blankText = Object.fromEntries(base.labelLanguages.map((language) => [language, '']));
+      const incomplete = createCompleteLabel(market, {
+        productName: blankText,
+        legalProductName: blankText,
+        ingredients: base.ingredients.map((ingredient) => ({
+          ...ingredient,
+          names: blankText,
+          sourceAllergensText: 'UNKNOWN',
+        })),
+        allergens: {
+          status: 'incomplete',
+          declared: [],
+          mayContain: [],
+          labelStatements: [],
+          reviewedByUser: false,
+        },
+        nutritionSource: {
+          ...base.nutritionSource!,
+          saturated_fat_g: null,
+          sugars_g: null,
+        },
+        regulatoryNutrition: {
+          ...base.regulatoryNutrition,
+          energyKjPer100g: null,
+          servingDescription: {},
+          servingQuantityG: null,
+          servingVolumeMl: null,
+          servingsPerContainer: null,
+          transFatGPer100g: null,
+          cholesterolMgPer100g: null,
+          sodiumMgPer100g: null,
+          addedSugarsGPer100g: null,
+          vitaminDMcgPer100g: null,
+          calciumMgPer100g: null,
+          ironMgPer100g: null,
+          potassiumMgPer100g: null,
+        },
+        packageQuantity: null,
+        netQuantityG: null,
+        lotCode: '',
+        productionDate: '',
+        dateMark: { kind: 'unresolved', date: null, basis: 'none', reviewedByUser: false },
+        storageInstructions: blankText,
+        origin: blankText,
+        businessName: '',
+        operator: {
+          ...base.operator,
+          operatorName: '',
+          facilityName: '',
+          address: '',
+          countryCode: '',
+          importerName: '',
+          importerAddress: '',
+          importerCountryCode: '',
+          distributorName: '',
+          distributorAddress: '',
+          distributorCountryCode: '',
+        },
+      });
+      const drawText = vi.spyOn(PDFPage.prototype, 'drawText');
+      try {
+        await composeMasterLabelPdf(incomplete);
+        const text = drawText.mock.calls.map(([value]) => value).join(' ');
+        expect(text).not.toMatch(
+          /UNKNOWN|Alergeny nieustalone|Alergeny:|—|Of which saturates|Saturated Fat|- saturated|Saturated \/ saturés/,
+        );
+        expect(text).not.toMatch(/LOT:|Production:|Net quantity|NET CONTENTS/);
+      } finally {
+        drawText.mockRestore();
+      }
+    },
+  );
+
   it('uses deterministic immutable-snapshot naming and physical geometry', () => {
     expect(masterLabelPdfFilename(label)).toBe(
       'gellatti-label-lot-20260825-pdf-01-eu-104x152mm.pdf',

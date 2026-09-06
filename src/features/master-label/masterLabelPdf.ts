@@ -113,7 +113,7 @@ const usNetContentsText = (data: MasterLabelData): string => {
   if (quantity?.netVolumeMl && quantity.netVolumeMl > 0) {
     return `NET ${(quantity.netVolumeMl / 29.5735295625).toFixed(1)} FL OZ (${quantity.netVolumeMl.toFixed(0)} mL)`;
   }
-  return 'NET CONTENTS —';
+  return '';
 };
 
 const decodeDataUrl = (value: string): Uint8Array => {
@@ -262,18 +262,30 @@ function drawAllergenRichText(
 
 function nutritionRows(data: MasterLabelData): PdfNutritionRow[] {
   const source = data.nutritionSource;
-  if (!source || source.saturated_fat_g === null || source.sugars_g === null) return [];
+  if (!source) return [];
   if (data.market === 'EU' || data.market === 'UK' || data.market === 'WORLD') {
-    const rows: PdfNutritionRow[] = [
-      {
+    const rows: PdfNutritionRow[] = [];
+    if (
+      data.regulatoryNutrition.energyKjPer100g !== null &&
+      data.regulatoryNutrition.energyKjPer100g !== undefined
+    ) {
+      rows.push({
         label: 'Energy',
-        value: `${Math.round(data.regulatoryNutrition.energyKjPer100g ?? source.kcal * 4.184)} kJ / ${Math.round(source.kcal)} kcal`,
-      },
-      { label: 'Tłuszcz', value: `${source.fat_g.toFixed(1)} g` },
-      { label: 'Of which saturates', value: `${source.saturated_fat_g.toFixed(1)} g`, indent: 1 },
-      { label: 'Węglowodany', value: `${source.carbohydrate_g.toFixed(1)} g` },
-      { label: 'Of which sugars', value: `${source.sugars_g.toFixed(1)} g`, indent: 1 },
-    ];
+        value: `${Math.round(data.regulatoryNutrition.energyKjPer100g)} kJ / ${Math.round(source.kcal)} kcal`,
+      });
+    }
+    rows.push({ label: 'Tłuszcz', value: `${source.fat_g.toFixed(1)} g` });
+    if (source.saturated_fat_g !== null) {
+      rows.push({
+        label: 'Of which saturates',
+        value: `${source.saturated_fat_g.toFixed(1)} g`,
+        indent: 1,
+      });
+    }
+    rows.push({ label: 'Węglowodany', value: `${source.carbohydrate_g.toFixed(1)} g` });
+    if (source.sugars_g !== null) {
+      rows.push({ label: 'Of which sugars', value: `${source.sugars_g.toFixed(1)} g`, indent: 1 });
+    }
     if (source.fiber_g !== null)
       rows.push({ label: 'Błonnik', value: `${source.fiber_g.toFixed(1)} g` });
     rows.push({ label: 'Protein', value: `${source.protein_g.toFixed(1)} g` });
@@ -281,101 +293,143 @@ function nutritionRows(data: MasterLabelData): PdfNutritionRow[] {
     return rows;
   }
   const facts = data.regulatoryNutrition;
-  const serving = facts.servingQuantityG ?? 0;
-  const amount = (value: number | null | undefined): number =>
-    amountPerServing(value ?? null, serving) ?? 0;
+  const serving = facts.servingQuantityG;
   if (data.market === 'AU_NZ') {
     const values: Array<[string, number, string]> = [
-      ['Energy', facts.energyKjPer100g ?? 0, 'kJ'],
       ['Protein', source.protein_g, 'g'],
       ['Fat, total', source.fat_g, 'g'],
-      ['- saturated', source.saturated_fat_g, 'g'],
       ['Carbohydrate', source.carbohydrate_g, 'g'],
-      ['- sugars', source.sugars_g, 'g'],
-      ['Sodium', facts.sodiumMgPer100g ?? 0, 'mg'],
     ];
+    if (facts.energyKjPer100g !== null && facts.energyKjPer100g !== undefined) {
+      values.unshift(['Energy', facts.energyKjPer100g, 'kJ']);
+    }
+    if (source.saturated_fat_g !== null) {
+      values.splice(
+        values.findIndex(([label]) => label === 'Carbohydrate'),
+        0,
+        ['- saturated', source.saturated_fat_g, 'g'],
+      );
+    }
+    if (source.sugars_g !== null) values.push(['- sugars', source.sugars_g, 'g']);
+    if (facts.sodiumMgPer100g !== null && facts.sodiumMgPer100g !== undefined) {
+      values.push(['Sodium', facts.sodiumMgPer100g, 'mg']);
+    }
+    const hasServing = serving !== null && serving !== undefined && serving > 0;
     return values.map(([label, per100, unit]) => ({
       label,
-      value: `${((per100 * serving) / 100).toFixed(unit === 'g' ? 1 : 0)} ${unit}`,
-      containerValue: `${per100.toFixed(unit === 'g' ? 1 : 0)} ${unit}`,
+      value: `${(hasServing ? (per100 * serving) / 100 : per100).toFixed(unit === 'g' ? 1 : 0)} ${unit}`,
+      ...(hasServing ? { containerValue: `${per100.toFixed(unit === 'g' ? 1 : 0)} ${unit}` } : {}),
     }));
   }
   if (data.market === 'US') {
+    if (serving === null || serving === undefined || serving <= 0) return [];
     const build = (quantityG: number): PdfNutritionRow[] => {
-      const value = (nutrient: number | null | undefined): number =>
-        amountPerServing(nutrient ?? null, quantityG) ?? 0;
+      const value = (nutrient: number): number => amountPerServing(nutrient, quantityG) ?? 0;
       const fat = value(source.fat_g);
-      const sat = value(source.saturated_fat_g);
-      const trans = value(facts.transFatGPer100g);
-      const cholesterol = value(facts.cholesterolMgPer100g);
-      const sodium = value(facts.sodiumMgPer100g);
       const carbohydrate = value(source.carbohydrate_g);
-      const fibre = value(source.fiber_g);
-      const sugars = value(source.sugars_g);
-      const added = value(facts.addedSugarsGPer100g);
-      return [
+      const rows: PdfNutritionRow[] = [
         {
           label: 'Total Fat',
           value: `${roundUsFatGrams(fat)}g`,
           dv: `${percentDailyValue(fat, 78)}%`,
         },
-        {
+      ];
+      if (source.saturated_fat_g !== null) {
+        const sat = value(source.saturated_fat_g);
+        rows.push({
           label: 'Saturated Fat',
           value: `${roundUsFatGrams(sat)}g`,
           dv: `${percentDailyValue(sat, 20)}%`,
           indent: 1,
-        },
-        { label: 'Trans Fat', value: `${roundUsFatGrams(trans)}g`, indent: 1 },
-        {
+        });
+      }
+      if (facts.transFatGPer100g !== null) {
+        rows.push({
+          label: 'Trans Fat',
+          value: `${roundUsFatGrams(value(facts.transFatGPer100g))}g`,
+          indent: 1,
+        });
+      }
+      if (facts.cholesterolMgPer100g !== null) {
+        const cholesterol = value(facts.cholesterolMgPer100g);
+        rows.push({
           label: 'Cholesterol',
           value: `${roundUsCholesterolMg(cholesterol)}mg`,
           dv: `${percentDailyValue(cholesterol, 300)}%`,
-        },
-        {
+        });
+      }
+      if (facts.sodiumMgPer100g !== null) {
+        const sodium = value(facts.sodiumMgPer100g);
+        rows.push({
           label: 'Sodium',
           value: `${roundUsSodiumMg(sodium)}mg`,
           dv: `${percentDailyValue(sodium, 2300)}%`,
-        },
-        {
-          label: 'Total Carbohydrate',
-          value: `${roundUsWholeGram(carbohydrate)}g`,
-          dv: `${percentDailyValue(carbohydrate, 275)}%`,
-        },
-        {
+        });
+      }
+      rows.push({
+        label: 'Total Carbohydrate',
+        value: `${roundUsWholeGram(carbohydrate)}g`,
+        dv: `${percentDailyValue(carbohydrate, 275)}%`,
+      });
+      if (source.fiber_g !== null) {
+        const fibre = value(source.fiber_g);
+        rows.push({
           label: 'Dietary Fiber',
           value: `${roundUsWholeGram(fibre)}g`,
           dv: `${percentDailyValue(fibre, 28)}%`,
           indent: 1,
-        },
-        { label: 'Total Sugars', value: `${roundUsWholeGram(sugars)}g`, indent: 1 },
-        {
+        });
+      }
+      if (source.sugars_g !== null) {
+        rows.push({
+          label: 'Total Sugars',
+          value: `${roundUsWholeGram(value(source.sugars_g))}g`,
+          indent: 1,
+        });
+      }
+      if (facts.addedSugarsGPer100g !== null) {
+        const added = value(facts.addedSugarsGPer100g);
+        rows.push({
           label: 'Includes',
           value: `${roundUsWholeGram(added)}g Added Sugars`,
           dv: `${percentDailyValue(added, 50)}%`,
           indent: 2,
-        },
-        { label: 'Protein', value: `${roundUsWholeGram(value(source.protein_g))}g` },
-        {
+        });
+      }
+      rows.push({ label: 'Protein', value: `${roundUsWholeGram(value(source.protein_g))}g` });
+      if (facts.vitaminDMcgPer100g !== null) {
+        const vitaminD = value(facts.vitaminDMcgPer100g);
+        rows.push({
           label: 'Vitamin D',
-          value: `${roundUsVitaminDMcg(value(facts.vitaminDMcgPer100g))}mcg`,
-          dv: `${roundUsVitaminMineralPercentDv(value(facts.vitaminDMcgPer100g), 20)}%`,
-        },
-        {
+          value: `${roundUsVitaminDMcg(vitaminD)}mcg`,
+          dv: `${roundUsVitaminMineralPercentDv(vitaminD, 20)}%`,
+        });
+      }
+      if (facts.calciumMgPer100g !== null) {
+        const calcium = value(facts.calciumMgPer100g);
+        rows.push({
           label: 'Calcium',
-          value: `${roundUsCalciumMg(value(facts.calciumMgPer100g))}mg`,
-          dv: `${roundUsVitaminMineralPercentDv(value(facts.calciumMgPer100g), 1300)}%`,
-        },
-        {
+          value: `${roundUsCalciumMg(calcium)}mg`,
+          dv: `${roundUsVitaminMineralPercentDv(calcium, 1300)}%`,
+        });
+      }
+      if (facts.ironMgPer100g !== null) {
+        const iron = value(facts.ironMgPer100g);
+        rows.push({
           label: 'Iron',
-          value: `${roundUsIronMg(value(facts.ironMgPer100g))}mg`,
-          dv: `${roundUsVitaminMineralPercentDv(value(facts.ironMgPer100g), 18)}%`,
-        },
-        {
+          value: `${roundUsIronMg(iron)}mg`,
+          dv: `${roundUsVitaminMineralPercentDv(iron, 18)}%`,
+        });
+      }
+      if (facts.potassiumMgPer100g !== null) {
+        const potassium = value(facts.potassiumMgPer100g);
+        rows.push({
           label: 'Potassium',
-          value: `${roundUsPotassiumMg(value(facts.potassiumMgPer100g))}mg`,
-          dv: `${roundUsVitaminMineralPercentDv(value(facts.potassiumMgPer100g), 4700)}%`,
-        },
-      ];
+          value: `${roundUsPotassiumMg(potassium)}mg`,
+          dv: `${roundUsVitaminMineralPercentDv(potassium, 4700)}%`,
+        });
+      }
+      return rows;
     };
     const rows = build(serving);
     if (resolveUsFormatFamily(facts, data.packageQuantity?.netWeightG ?? null) === 'dual_column') {
@@ -388,66 +442,95 @@ function nutritionRows(data: MasterLabelData): PdfNutritionRow[] {
     }
     return rows;
   }
+  if (serving === null || serving === undefined || serving <= 0) return [];
+  const amount = (value: number | null | undefined): number =>
+    amountPerServing(value ?? null, serving) ?? 0;
   const fat = amount(source.fat_g);
-  const sat = amount(source.saturated_fat_g);
-  const trans = amount(facts.transFatGPer100g);
-  const sugars = amount(source.sugars_g);
-  const sodium = amount(facts.sodiumMgPer100g);
-  return [
+  const rows: PdfNutritionRow[] = [
     {
       label: 'Fat / Lipides',
       value: `${roundCanadaFatGrams(fat)} g`,
       dv: `${percentDailyValue(fat, 75)} %`,
     },
-    {
+  ];
+  if (source.saturated_fat_g !== null) {
+    const sat = amount(source.saturated_fat_g);
+    const trans = facts.transFatGPer100g === null ? null : amount(facts.transFatGPer100g);
+    rows.push({
       label: 'Saturated / saturés',
       value: `${roundCanadaFatGrams(sat)} g`,
-      dv: `${percentDailyValue(sat + trans, 20)} %`,
+      ...(trans === null ? {} : { dv: `${percentDailyValue(sat + trans, 20)} %` }),
       indent: 1,
-    },
-    { label: '+ Trans / trans', value: `${roundCanadaFatGrams(trans)} g`, indent: 1 },
-    { label: 'Carbohydrate / Glucides', value: `${Math.round(amount(source.carbohydrate_g))} g` },
-    {
+    });
+  }
+  if (facts.transFatGPer100g !== null) {
+    rows.push({
+      label: '+ Trans / trans',
+      value: `${roundCanadaFatGrams(amount(facts.transFatGPer100g))} g`,
+      indent: 1,
+    });
+  }
+  rows.push({
+    label: 'Carbohydrate / Glucides',
+    value: `${Math.round(amount(source.carbohydrate_g))} g`,
+  });
+  if (source.fiber_g !== null) {
+    rows.push({
       label: 'Fibre / Fibres',
       value: `${Math.round(amount(source.fiber_g))} g`,
       dv: `${percentDailyValue(amount(source.fiber_g), 28)} %`,
       indent: 1,
-    },
-    {
+    });
+  }
+  if (source.sugars_g !== null) {
+    const sugars = amount(source.sugars_g);
+    rows.push({
       label: 'Sugars / Sucres',
       value: `${Math.round(sugars)} g`,
       dv: `${percentDailyValue(sugars, 100)} %`,
       indent: 1,
-    },
-    {
-      label: 'Protein / Protéines',
-      value: `${roundCanadaProteinGrams(amount(source.protein_g))} g`,
-    },
-    {
+    });
+  }
+  rows.push({
+    label: 'Protein / Protéines',
+    value: `${roundCanadaProteinGrams(amount(source.protein_g))} g`,
+  });
+  if (facts.cholesterolMgPer100g !== null) {
+    rows.push({
       label: 'Cholesterol / Cholestérol',
       value: `${roundCanadaCholesterolMg(amount(facts.cholesterolMgPer100g))} mg`,
-    },
-    {
+    });
+  }
+  if (facts.sodiumMgPer100g !== null) {
+    const sodium = amount(facts.sodiumMgPer100g);
+    rows.push({
       label: 'Sodium',
       value: `${roundCanadaMg(sodium)} mg`,
       dv: `${percentDailyValue(sodium, 2300)} %`,
-    },
-    {
+    });
+  }
+  if (facts.potassiumMgPer100g !== null) {
+    rows.push({
       label: 'Potassium',
       value: `${roundCanadaPotassiumCalciumMg(amount(facts.potassiumMgPer100g))} mg`,
       dv: `${percentDailyValue(amount(facts.potassiumMgPer100g), 3400)} %`,
-    },
-    {
+    });
+  }
+  if (facts.calciumMgPer100g !== null) {
+    rows.push({
       label: 'Calcium',
       value: `${roundCanadaPotassiumCalciumMg(amount(facts.calciumMgPer100g))} mg`,
       dv: `${percentDailyValue(amount(facts.calciumMgPer100g), 1300)} %`,
-    },
-    {
+    });
+  }
+  if (facts.ironMgPer100g !== null) {
+    rows.push({
       label: 'Iron / Fer',
       value: `${roundCanadaIronMg(amount(facts.ironMgPer100g))} mg`,
       dv: `${percentDailyValue(amount(facts.ironMgPer100g), 18)} %`,
-    },
-  ];
+    });
+  }
+  return rows;
 }
 
 function drawNutrition(context: DrawContext, data: MasterLabelData): void {
@@ -458,13 +541,19 @@ function drawNutrition(context: DrawContext, data: MasterLabelData): void {
       ? resolveUsFormatFamily(data.regulatoryNutrition, data.packageQuantity?.netWeightG ?? null)
       : null;
   if (data.market === 'US' && (usFormat === 'linear' || usFormat === 'tabular')) {
-    const serving = data.regulatoryNutrition.servingQuantityG ?? 0;
+    const serving = data.regulatoryNutrition.servingQuantityG!;
     const servingText = textFor(data.regulatoryNutrition.servingDescription, 'en');
-    const servings = roundUsServingsPerContainer(
-      data.regulatoryNutrition.servingsPerContainer ?? 0,
-    );
+    const servingsValue = data.regulatoryNutrition.servingsPerContainer;
+    const servings =
+      servingsValue === null || servingsValue === undefined
+        ? null
+        : roundUsServingsPerContainer(servingsValue);
     const servingsLine =
-      servings === '1' ? '1 serving per container' : `About ${servings} servings per container`;
+      servings === null
+        ? ''
+        : servings === '1'
+          ? '1 serving per container'
+          : `About ${servings} servings per container`;
     const calories = roundUsCalories(
       amountPerServing(data.nutritionSource?.kcal ?? 0, serving) ?? 0,
     );
@@ -473,19 +562,27 @@ function drawNutrition(context: DrawContext, data: MasterLabelData): void {
     if (usFormat === 'linear') {
       const line = [
         servingsLine,
-        `Serving size ${servingText} (${Math.round(serving)}g)`,
+        `Serving size${servingText ? ` ${servingText}` : ''} (${Math.round(serving)}g)`,
         `Calories ${calories}`,
         ...rows.map(
           (row) => `${row.label} ${row.value}${row.dv === undefined ? '' : ` ${row.dv} DV`}`,
         ),
-      ].join(' · ');
+      ]
+        .filter(Boolean)
+        .join(' · ');
       drawWrapped(context, line, { size: 5.5, after: 1 });
       drawWrapped(context, '% DV = % Daily Value', { size: 5.5, after: 2 });
       return;
     }
     drawWrapped(
       context,
-      `${servingsLine} · Serving size ${servingText} (${Math.round(serving)}g) · Calories ${calories}`,
+      [
+        servingsLine,
+        `Serving size${servingText ? ` ${servingText}` : ''} (${Math.round(serving)}g)`,
+        `Calories ${calories}`,
+      ]
+        .filter(Boolean)
+        .join(' · '),
       { font: context.fonts.bold, size: 6, after: 1 },
     );
     drawRule(context, 0.7, 1);
@@ -534,24 +631,26 @@ function drawNutrition(context: DrawContext, data: MasterLabelData): void {
       size: data.market === 'US' ? 20 : 13,
       after: 1,
     });
-    const serving = data.regulatoryNutrition.servingQuantityG ?? 0;
+    const serving = data.regulatoryNutrition.servingQuantityG!;
     if (data.market === 'US') {
       const dual =
         resolveUsFormatFamily(
           data.regulatoryNutrition,
           data.packageQuantity?.netWeightG ?? null,
         ) === 'dual_column';
-      const servings = roundUsServingsPerContainer(
-        data.regulatoryNutrition.servingsPerContainer ?? 0,
-      );
+      const servingsValue = data.regulatoryNutrition.servingsPerContainer;
+      if (servingsValue !== null && servingsValue !== undefined) {
+        const servings = roundUsServingsPerContainer(servingsValue);
+        drawWrapped(
+          context,
+          servings === '1' ? '1 serving per container' : `About ${servings} servings per container`,
+          { size: 8 },
+        );
+      }
+      const servingText = textFor(data.regulatoryNutrition.servingDescription, 'en');
       drawWrapped(
         context,
-        servings === '1' ? '1 serving per container' : `About ${servings} servings per container`,
-        { size: 8 },
-      );
-      drawWrapped(
-        context,
-        `Serving size ${textFor(data.regulatoryNutrition.servingDescription, 'en')} (${Math.round(serving)}g)`,
+        `Serving size${servingText ? ` ${servingText}` : ''} (${Math.round(serving)}g)`,
         { font: context.fonts.bold, size: 8 },
       );
       drawRule(context, 2.2, 1);
@@ -578,11 +677,20 @@ function drawNutrition(context: DrawContext, data: MasterLabelData): void {
         { font: context.fonts.bold, size: 16 },
       );
     } else {
-      drawWrapped(
-        context,
-        `Per ${textFor(data.regulatoryNutrition.servingDescription, 'en')} (${Math.round(data.regulatoryNutrition.servingVolumeMl ?? 0)} mL) / pour ${textFor(data.regulatoryNutrition.servingDescription, 'fr')} (${Math.round(data.regulatoryNutrition.servingVolumeMl ?? 0)} mL)`,
-        { size: 7 },
-      );
+      const servingEn = textFor(data.regulatoryNutrition.servingDescription, 'en');
+      const servingFr = textFor(data.regulatoryNutrition.servingDescription, 'fr');
+      const servingVolume = data.regulatoryNutrition.servingVolumeMl;
+      const volumeText =
+        servingVolume === null || servingVolume === undefined
+          ? ''
+          : ` (${Math.round(servingVolume)} mL)`;
+      const servingLines = [
+        servingEn ? `Per ${servingEn}${volumeText}` : '',
+        servingFr ? `pour ${servingFr}${volumeText}` : '',
+      ].filter(Boolean);
+      if (servingLines.length > 0) {
+        drawWrapped(context, servingLines.join(' / '), { size: 7 });
+      }
       drawRule(context, 1.4, 1);
       drawWrapped(
         context,
@@ -602,24 +710,32 @@ function drawNutrition(context: DrawContext, data: MasterLabelData): void {
     drawRule(context, 1, 2);
     drawWrapped(context, title, { font: context.fonts.bold, size: context.baseFont + 1, after: 1 });
     if (data.market === 'AU_NZ') {
-      drawWrapped(
-        context,
-        `Servings per package: ${Math.round(data.regulatoryNutrition.servingsPerContainer ?? 0)} · Serving size: ${Math.round(data.regulatoryNutrition.servingQuantityG ?? 0)} g`,
-        { size: context.baseFont },
-      );
+      const serving = data.regulatoryNutrition.servingQuantityG;
+      const servings = data.regulatoryNutrition.servingsPerContainer;
+      const servingFacts = [
+        servings === null || servings === undefined
+          ? ''
+          : `Servings per package: ${Math.round(servings)}`,
+        serving === null || serving === undefined ? '' : `Serving size: ${Math.round(serving)} g`,
+      ].filter(Boolean);
+      if (servingFacts.length > 0) {
+        drawWrapped(context, servingFacts.join(' · '), { size: context.baseFont });
+      }
       const size = Math.max(5.5, context.baseFont - 0.5);
       const contentWidth = context.width - context.margin * 2;
-      const servingHeader = 'Avg qty per serving';
+      const servingHeader = serving && serving > 0 ? 'Avg qty per serving' : '';
       const per100Header = 'Avg qty per 100 g';
       const servingWidth = context.fonts.bold.widthOfTextAtSize(servingHeader, size);
       const per100Width = context.fonts.bold.widthOfTextAtSize(per100Header, size);
       assertPdfSpace(context, lineHeight(size) + 1);
-      context.page.drawText(servingHeader, {
-        x: context.margin + contentWidth * 0.7 - servingWidth - 3,
-        y: context.y - size,
-        size,
-        font: context.fonts.bold,
-      });
+      if (servingHeader) {
+        context.page.drawText(servingHeader, {
+          x: context.margin + contentWidth * 0.7 - servingWidth - 3,
+          y: context.y - size,
+          size,
+          font: context.fonts.bold,
+        });
+      }
       context.page.drawText(per100Header, {
         x: context.width - context.margin - per100Width,
         y: context.y - size,
@@ -785,50 +901,66 @@ async function drawLabelPage(
   const legal = primaryText(data.legalProductName, languages);
   if (data.market === 'CA') {
     for (const language of languages) {
-      drawWrapped(context, textFor(data.productName, language), {
-        font: context.fonts.bold,
-        size: Math.max(11, context.baseFont * 1.45),
-      });
-      drawWrapped(context, textFor(data.legalProductName, language), {
-        size: context.baseFont,
-        after: 1,
-      });
+      const languageProduct = textFor(data.productName, language);
+      const languageLegal = textFor(data.legalProductName, language);
+      if (languageProduct) {
+        drawWrapped(context, languageProduct, {
+          font: context.fonts.bold,
+          size: Math.max(11, context.baseFont * 1.45),
+        });
+      }
+      if (languageLegal) {
+        drawWrapped(context, languageLegal, { size: context.baseFont, after: 1 });
+      }
     }
   } else if (data.market === 'US') {
-    drawWrapped(context, legal || product, {
-      font: context.fonts.bold,
-      size: Math.max(13, context.baseFont * 1.7),
-    });
+    if (legal || product) {
+      drawWrapped(context, legal || product, {
+        font: context.fonts.bold,
+        size: Math.max(13, context.baseFont * 1.7),
+      });
+    }
     if (data.businessName)
       drawWrapped(context, data.businessName, { size: context.baseFont, after: 2 });
   } else {
-    drawWrapped(context, product, {
-      font: context.fonts.bold,
-      size: Math.max(13, context.baseFont * 1.7),
-    });
+    if (product) {
+      drawWrapped(context, product, {
+        font: context.fonts.bold,
+        size: Math.max(13, context.baseFont * 1.7),
+      });
+    }
     if (legal) drawWrapped(context, legal, { size: context.baseFont, after: 2 });
   }
   drawRule(context, data.market === 'US' ? 1.5 : 0.7, 3);
   for (const language of languages) {
-    drawAllergenRichText(
+    const declaration = ingredientDeclarationText(data, language);
+    if (declaration) {
+      drawAllergenRichText(
+        context,
+        language === 'fr' ? 'Ingrédients : ' : 'Ingredients: ',
+        declaration,
+        allergenEmphasisTerms(data),
+      );
+    }
+  }
+  const allergenStatement = allergenStatementText(data);
+  if (allergenStatement) {
+    drawWrapped(context, `Alergeny: ${allergenStatement}`, {
+      font: context.fonts.bold,
+      after: 2,
+    });
+  }
+  drawNutrition(context, data);
+  const packageQuantity = packageQuantityForDisplay(data);
+  if (packageQuantity !== '—') {
+    drawWrapped(
       context,
-      language === 'fr' ? 'Ingrédients : ' : 'Ingredients: ',
-      ingredientDeclarationText(data, language),
-      allergenEmphasisTerms(data),
+      data.market === 'US'
+        ? usNetContentsText(data)
+        : `${data.market === 'CA' ? 'Net quantity / Quantité nette' : 'Net quantity'}: ${packageQuantity}`,
+      { font: context.fonts.bold },
     );
   }
-  drawWrapped(context, `Alergeny: ${allergenStatementText(data)}`, {
-    font: context.fonts.bold,
-    after: 2,
-  });
-  drawNutrition(context, data);
-  drawWrapped(
-    context,
-    data.market === 'US'
-      ? usNetContentsText(data)
-      : `${data.market === 'CA' ? 'Net quantity / Quantité nette' : 'Net quantity'}: ${packageQuantityForDisplay(data)}`,
-    { font: context.fonts.bold },
-  );
   if (
     (data.market === 'EU' || data.market === 'UK') &&
     data.alcoholDeclarationApplicability === 'required_beverage_over_1_2' &&
@@ -838,7 +970,11 @@ async function drawLabelPage(
       font: context.fonts.bold,
     });
   }
-  drawWrapped(context, `LOT: ${data.lotCode} · Production: ${data.productionDate}`);
+  const traceability = [
+    data.lotCode.trim() ? `LOT: ${data.lotCode}` : '',
+    data.productionDate.trim() ? `Production: ${data.productionDate}` : '',
+  ].filter(Boolean);
+  if (traceability.length > 0) drawWrapped(context, traceability.join(' · '));
   if (data.dateMark.date) {
     drawWrapped(
       context,
@@ -935,9 +1071,6 @@ export async function composeMasterLabelPdf(
     import('@pdf-lib/fontkit'),
   ]);
   const preflight = buildLabelPreflight(data);
-  if (!options.draft && !options.calibration && !preflight.readyForSystemPrint) {
-    throw new Error('Master Label preflight is incomplete.');
-  }
   const geometry = masterLabelPdfGeometry(data);
   const pdf = await PDFDocument.create();
   pdf.registerFontkit(fontkitModule.default);
@@ -1099,10 +1232,6 @@ export async function downloadMasterLabelPdf(
   logoUrl?: string | null,
   options: MasterLabelPdfOptions = {},
 ): Promise<MasterLabelPdfArtifact> {
-  const preflight = buildLabelPreflight(data);
-  if (!options.draft && !options.calibration && !preflight.readyForSystemPrint) {
-    throw new Error('Master Label preflight is incomplete.');
-  }
   const outputLogoUrl = resolveMasterLabelLogoUrl(data, logoUrl);
   const [logo, machineCodes, canadaFop] = await Promise.all([
     outputLogoUrl && data.enabledOptionalFields.includes('logo')
