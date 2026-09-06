@@ -117,7 +117,6 @@ describe('canonical Gellatti Pro — menu (proofs 4–6, 17–18)', () => {
       // settings destination; Community remains the one public creator door.
       'community',
       'memberShop',
-      'workWithUs',
       'affiliate',
       'franchise',
     ]);
