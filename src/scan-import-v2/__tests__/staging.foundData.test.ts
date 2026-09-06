@@ -122,7 +122,7 @@ describe.skipIf(!RUN)('found data survives into the saved product, on real stagi
     // refresh: a linked customer product's exact answer is set aside so the sources run again
     const started = await startDiscovery(id.identity, ctx(), discovery, { refresh: true });
     let after = before;
-    let finalized: string | null = null;
+    let finalized: string;
     if (started.kind === 'discovered_pending') {
       const web = identityFromEvidence(started.externalEvidence);
       const r = await continueDiscovery(
