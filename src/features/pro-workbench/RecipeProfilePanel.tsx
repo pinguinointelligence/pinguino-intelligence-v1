@@ -733,10 +733,13 @@ export function RecipeProfilePanel({
     <div
       data-testid="pro-profile-panel"
       data-testid-shell="pro-intelligence-shell"
+      data-education-open={educationOpen ? 'true' : 'false'}
       /* GELLATTI V2.1: on the desktop workbench the display column is NOT a card —
          it is a transparent 520 px track holding the approved cards on a 10 px
          rhythm. The mobile cockpit sheet keeps its own white surface. */
-      className="right-pane min-h-full bg-white text-ink lg:flex lg:h-full lg:min-h-0 lg:flex-col lg:overflow-hidden lg:rounded-[10px] lg:border lg:border-ink/10 lg:shadow-pro-e0 xl:rounded-none xl:border-0 xl:bg-transparent xl:shadow-none"
+      className={`right-pane bg-white text-ink ${
+        educationOpen ? 'relative flex min-h-0 flex-col overflow-hidden' : 'min-h-full'
+      } lg:flex lg:h-full lg:min-h-0 lg:flex-col lg:overflow-hidden lg:rounded-[10px] lg:border lg:border-ink/10 lg:shadow-pro-e0 xl:rounded-none xl:border-0 xl:bg-transparent xl:shadow-none`}
     >
       {showTabs ? (
         <div className="sticky top-0 z-30 bg-white" data-testid="workbench-sticky-chrome">

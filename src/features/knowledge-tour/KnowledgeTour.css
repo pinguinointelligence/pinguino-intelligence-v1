@@ -1,5 +1,9 @@
 .knowledge-tour {
   --tour-accent: #e88419;
+  --tour-title-size: clamp(2.25rem, 4.2vw, 4.65rem);
+  --tour-title-slot-size: calc(var(--tour-title-size) * 3.92);
+  --tour-subtitle-slot-size: 12rem;
+  --tour-captions-slot-size: 6rem;
   container-name: knowledge-tour;
   container-type: inline-size;
   display: grid;
@@ -8,6 +12,12 @@
   overflow: hidden;
   background: #fff;
   color: var(--g-ink);
+}
+
+.knowledge-tour[data-layout='embedded'] {
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
 }
 
 .knowledge-tour__stage {
@@ -23,8 +33,25 @@
 }
 
 .knowledge-tour__copy {
+  display: grid;
   min-width: 0;
   max-width: 32rem;
+  grid-template-rows: auto auto auto;
+  align-content: start;
+}
+
+.knowledge-tour__step-slot {
+  min-height: 0.82rem;
+}
+
+.knowledge-tour__title-slot {
+  min-height: var(--tour-title-slot-size);
+  margin-top: 0.85rem;
+}
+
+.knowledge-tour__subtitle-slot {
+  min-height: var(--tour-subtitle-slot-size);
+  margin-top: 1.2rem;
 }
 
 .knowledge-tour__eyebrow {
@@ -37,8 +64,7 @@
 
 .knowledge-tour__title {
   max-width: 13ch;
-  margin-top: 0.85rem;
-  font-size: clamp(2.25rem, 4.2vw, 4.65rem);
+  font-size: var(--tour-title-size);
   font-weight: 720;
   letter-spacing: -0.055em;
   line-height: 0.98;
@@ -46,7 +72,6 @@
 
 .knowledge-tour__body {
   max-width: 29rem;
-  margin-top: 1.2rem;
   color: var(--g-text-secondary);
   font-size: clamp(0.98rem, 1.14vw, 1.16rem);
   line-height: 1.58;
@@ -64,9 +89,11 @@
 }
 
 .knowledge-tour__story {
+  display: grid;
   min-width: 0;
   width: 100%;
   max-width: min(72rem, 108.39dvh);
+  grid-template-rows: auto var(--tour-captions-slot-size);
   justify-self: center;
 }
 
@@ -138,6 +165,10 @@
   border-top: 1px solid var(--g-line);
 }
 
+.knowledge-tour__captions-slot {
+  min-height: var(--tour-captions-slot-size);
+}
+
 .knowledge-tour__annotation {
   position: absolute;
   top: 0;
@@ -187,6 +218,8 @@
 }
 
 .knowledge-tour__navigation {
+  position: relative;
+  z-index: 3;
   display: grid;
   width: min(100%, 1776px);
   margin: 0 auto;
@@ -213,6 +246,14 @@
 
 .knowledge-tour__nav-button:last-child {
   justify-self: end;
+}
+
+.knowledge-tour[data-layout='embedded'] .knowledge-tour__nav-button {
+  min-width: 2.75rem;
+}
+
+.knowledge-tour[data-layout='embedded'] .knowledge-tour__nav-button:last-child {
+  justify-content: flex-end;
 }
 
 .knowledge-tour__nav-button:disabled {
@@ -275,6 +316,14 @@
     max-width: 40rem;
   }
 
+  .knowledge-tour__title-slot {
+    min-height: calc(var(--tour-title-size) * 1.96);
+  }
+
+  .knowledge-tour__subtitle-slot {
+    min-height: 10rem;
+  }
+
   .knowledge-tour__title {
     max-width: 18ch;
   }
@@ -309,12 +358,17 @@
 
 @container knowledge-tour (max-width: 520px) {
   .knowledge-tour__stage {
+    --tour-title-size: clamp(2rem, 9.5vw, 2.8rem);
     padding-top: 1.25rem;
     gap: 0.95rem;
   }
 
-  .knowledge-tour__title {
-    font-size: clamp(2rem, 9.5vw, 2.8rem);
+  .knowledge-tour__title-slot {
+    min-height: calc(var(--tour-title-size) * 1.96);
+  }
+
+  .knowledge-tour__subtitle-slot {
+    min-height: calc(0.9rem * 1.58 * 4);
   }
 
   .knowledge-tour__body {
@@ -332,6 +386,10 @@
 
   .knowledge-tour__annotations {
     min-height: 5.5rem;
+  }
+
+  .knowledge-tour__captions-slot {
+    min-height: 10rem;
   }
 
   .knowledge-tour__annotations[data-compact-mobile='true'] {
@@ -415,8 +473,10 @@
   }
 
   .knowledge-tour[data-layout='embedded'] {
+    height: auto;
     grid-template-rows: auto auto;
     min-height: 0;
+    max-height: none;
     overflow: visible;
   }
 
@@ -428,6 +488,14 @@
 @media (max-width: 520px) {
   .knowledge-tour {
     min-height: calc(100svh - var(--pro-mobile-header-height));
+  }
+}
+
+@media (max-width: 69.999rem) {
+  [data-testid='pro-profile-panel'][data-education-open='true'] {
+    position: absolute;
+    inset: 0;
+    height: auto;
   }
 }
 
