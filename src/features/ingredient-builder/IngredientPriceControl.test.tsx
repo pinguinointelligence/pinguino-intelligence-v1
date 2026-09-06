@@ -79,7 +79,7 @@ describe('customer price input', () => {
     expect(html).not.toContain('Moja cena:');
   });
 
-  it('keeps missing price incomplete rather than presenting zero', () => {
+  it('keeps a missing price as a neutral placeholder rather than a repeated technical status', () => {
     const html = renderToStaticMarkup(
       <IngredientPriceCell
         view={view(
@@ -94,8 +94,26 @@ describe('customer price input', () => {
         )}
       />,
     );
-    expect(html).toContain('Koszt niepełny');
+    expect(html).not.toContain('Koszt niepełny');
+    expect(html).toContain('>—</span>');
     expect(html).not.toContain('0,00 €');
+  });
+
+  it('keeps the missing-price editor under Moja cena without a second missing-price message', () => {
+    const html = renderToStaticMarkup(
+      <CustomerPriceEditor
+        view={view({
+          pricePerKg: null,
+          source: 'missing',
+          mapperPricePerKg: null,
+          customerOverridePerKg: null,
+          overrideId: null,
+        })}
+      />,
+    );
+
+    expect(html).toContain('Moja cena');
+    expect(html).not.toContain('Brak ceny');
   });
 
   it('keeps the editor compact with save and true reset actions', () => {
