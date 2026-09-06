@@ -45,13 +45,10 @@ let mockState: MockRecipeState = {
 };
 
 vi.mock('@/stores/recipeStore', () => {
-  const useRecipeStore = Object.assign(
-    (sel: (s: MockRecipeState) => unknown) => sel(mockState),
-    {
-      getState: () => mockState,
-      subscribe: () => () => {},
-    },
-  );
+  const useRecipeStore = Object.assign((sel: (s: MockRecipeState) => unknown) => sel(mockState), {
+    getState: () => mockState,
+    subscribe: () => () => {},
+  });
   return { useRecipeStore };
 });
 
@@ -65,7 +62,14 @@ const render = (state: Partial<MockRecipeState> = {}) => {
 
 /** The four approved professional serving modes (owner: exactly these, no others). */
 const PRO_SERVING_IDS = ['fresh', 'temp_minus_11', 'temp_minus_12', 'temp_minus_13'] as const;
-const FORBIDDEN_MODE_IDS = ['ninja_gelato', 'ninja_swirl', 'temp_minus_14', 'temp_minus_18', 'witryna', 'custom'];
+const FORBIDDEN_MODE_IDS = [
+  'ninja_gelato',
+  'ninja_swirl',
+  'temp_minus_14',
+  'temp_minus_18',
+  'witryna',
+  'custom',
+];
 
 const activeHome = () => listActiveHomeMachines(MACHINE_CATALOG);
 const inactive = () => MACHINE_CATALOG.filter((p) => !activeHome().includes(p));
@@ -111,6 +115,7 @@ describe('S4 home machines (real registry, honest auto-config)', () => {
       const d = deriveMachineSetup(profile);
       expect(d.resolvedVisibleMode).not.toBeNull();
       expect(temperatureForMode(d.resolvedVisibleMode)).not.toBeNull();
+      expect(d.engineTemperatureC).toBe(-11);
     }
   });
 

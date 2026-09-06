@@ -8,8 +8,16 @@ import { assessSorbetStabilizerSystem } from '@/features/recipe-constraints';
 import { starterMilkBase } from '@/features/recipe-constraints/constraintFixtures';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
-import { MACHINE_CATALOG, listActiveHomeMachines } from '@/features/machine-catalog';
-import { machineDisplayName, machineOnboardingCopy } from '@/features/machine-onboarding';
+import {
+  MACHINE_CATALOG,
+  deriveMachineSetup,
+  listActiveHomeMachines,
+} from '@/features/machine-catalog';
+import {
+  machineDisplayName,
+  machineOnboardingCopy,
+  pluralCykle,
+} from '@/features/machine-onboarding';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import type { VisibleProductType } from '@/features/studio/productType';
@@ -444,9 +452,10 @@ describe('WorkbenchSettingsLine — over-capacity batch guidance', () => {
   /* A REAL catalog machine — an unknown id is its own hard conflict, which
      would mask whether this guidance blocks anything. */
   const homeMachine = listActiveHomeMachines(MACHINE_CATALOG)[0]!;
+  const homeRecommendation = deriveMachineSetup(homeMachine).recommendedBatchGrams!;
 
-  /** Select that machine with a 700 g recommendation and the given batch. */
-  const selectHomeMachine = async (batchGrams: number, capacityGrams = 700) => {
+  /** Select that catalog machine with the given total batch and no hard gram ceiling. */
+  const selectHomeMachine = async (batchGrams: number) => {
     await act(async () => {
       useRecipeStore.getState().setMachineSelection({
         kind: 'home',
@@ -455,7 +464,7 @@ describe('WorkbenchSettingsLine — over-capacity batch guidance', () => {
         label: machineDisplayName(homeMachine),
         temperatureC: -12,
         batchGrams,
-        capacityGrams,
+        hardCapacityGrams: null,
         batchSource: 'MACHINE_DEFAULT',
       });
     });
@@ -507,7 +516,7 @@ describe('WorkbenchSettingsLine — over-capacity batch guidance', () => {
     await selectHomeMachine(5_000);
 
     expect(useRecipeStore.getState().target_batch_grams).toBe(5_000);
-    expect(useRecipeStore.getState().machine_capacity_grams).toBe(700);
+    expect(useRecipeStore.getState().machine_capacity_grams).toBeNull();
     // No capping, and settings stay confirmable — the warning is advisory only.
     const confirm = host.querySelector(
       '[data-testid="profile-settings-confirm"]',
@@ -519,12 +528,12 @@ describe('WorkbenchSettingsLine — over-capacity batch guidance', () => {
   });
 
   it('stays silent at or below the recommendation, and for a Professional machine', async () => {
-    await selectHomeMachine(700);
+    await selectHomeMachine(homeRecommendation);
     expect(warning()).toBeNull();
     expect(host.querySelector('[data-testid="workbench-batch-custom-in-use"]')).toBeNull();
 
     // Below the recommendation is the subtle marker only — never the warning.
-    await selectHomeMachine(500);
+    await selectHomeMachine(homeRecommendation - 10);
     expect(warning()).toBeNull();
     expect(host.querySelector('[data-testid="workbench-batch-custom-in-use"]')?.textContent).toBe(
       machineOnboardingCopy.batch.customInUse,
@@ -539,7 +548,7 @@ describe('WorkbenchSettingsLine — over-capacity batch guidance', () => {
         label: 'Maszyna profesjonalna',
         temperatureC: -12,
         batchGrams: 5_000,
-        capacityGrams: null,
+        hardCapacityGrams: null,
       });
     });
     await render();
@@ -553,10 +562,14 @@ describe('WorkbenchSettingsLine — over-capacity batch guidance', () => {
 
     const plan = host.querySelector('[data-testid="workbench-batch-split-plan"]');
     expect(plan).not.toBeNull();
-    // 5000 g over a 700 g recommendation → 8 EVEN containers of 625 g,
-    // in the owner's verbatim split copy (§7.3).
-    expect(plan!.textContent).toContain(machineOnboardingCopy.split.message(8));
-    expect(plan!.textContent).toContain(machineOnboardingCopy.split.detail(8, '625'));
+    const containers = Math.ceil(5_000 / homeRecommendation);
+    const gramsPerContainer = (5_000 / containers).toLocaleString('pl-PL', {
+      maximumFractionDigits: 1,
+    });
+    expect(plan!.textContent).toContain(machineOnboardingCopy.split.message(containers));
+    expect(plan!.textContent).toContain(
+      machineOnboardingCopy.split.detail(containers, gramsPerContainer),
+    );
     expect(warning()).toBeNull();
     // Splitting is presentation only: the recipe batch is untouched.
     expect(useRecipeStore.getState().target_batch_grams).toBe(5_000);
@@ -577,7 +590,7 @@ describe('WorkbenchSettingsLine — over-capacity batch guidance', () => {
     await selectHomeMachine(5_000);
     await click('workbench-batch-restore-recommended');
 
-    expect(useRecipeStore.getState().target_batch_grams).toBe(700);
+    expect(useRecipeStore.getState().target_batch_grams).toBe(homeRecommendation);
     expect(warning()).toBeNull();
     expect(host.querySelector('[data-testid="workbench-batch-custom-in-use"]')).toBeNull();
   });
@@ -665,15 +678,17 @@ describe('WorkbenchSettingsLine — one editable batch field', () => {
   });
 
   it('keeps target and machine guidance as two separate readings', async () => {
+    const selectedMachine = listActiveHomeMachines(MACHINE_CATALOG)[0]!;
+    const recommendationGrams = deriveMachineSetup(selectedMachine).recommendedBatchGrams!;
     await act(async () => {
       useRecipeStore.getState().setMachineSelection({
         kind: 'home',
         servingModeId: 'temp_minus_12',
-        machineId: listActiveHomeMachines(MACHINE_CATALOG)[0]!.id,
+        machineId: selectedMachine.id,
         label: 'Home machine',
         temperatureC: -12,
         batchGrams: 5_000,
-        capacityGrams: 670,
+        hardCapacityGrams: null,
         batchSource: 'MACHINE_DEFAULT',
       });
     });
@@ -686,12 +701,15 @@ describe('WorkbenchSettingsLine — one editable batch field', () => {
       '5000',
     );
     // 2 — the machine reading, kept separate from the target.
-    const capacity = host.querySelector('[data-testid="home-machine-capacity"]')!;
-    expect(capacity.textContent).toContain('Zalecany wsad na cykl');
-    expect(capacity.textContent).toContain('670');
-    // Polish plural: 8 is the genitive „cykli", not „cykle" (2-4 only).
+    const recommendation = host.querySelector('[data-testid="home-machine-capacity"]')!;
+    expect(recommendation.textContent).toContain('Zalecany wsad na cykl');
+    expect(recommendation.textContent).toContain(String(recommendationGrams));
+    const containers = Math.ceil(5_000 / recommendationGrams);
+    const gramsPerContainer = (5_000 / containers).toLocaleString('pl-PL', {
+      maximumFractionDigits: 1,
+    });
     expect(host.querySelector('[data-testid="home-machine-cycles"]')!.textContent).toBe(
-      '8 cykli · 625 g / cykl',
+      `${containers} ${pluralCykle(containers)} · ${gramsPerContainer} g / cykl`,
     );
     // The batch is presentation-corrected, not re-authored.
     expect(useRecipeStore.getState().target_batch_grams).toBe(5_000);
@@ -722,7 +740,7 @@ describe('WorkbenchSettingsLine — one editable batch field', () => {
         label: machineDisplayName(setup),
         temperatureC: -12,
         batchGrams: 670,
-        capacityGrams: 670,
+        hardCapacityGrams: 670,
         batchSource: 'MACHINE_DEFAULT',
       });
     });

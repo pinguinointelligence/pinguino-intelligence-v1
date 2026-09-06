@@ -91,7 +91,8 @@ describe('final Pro visual system', () => {
     expect(panel).toContain('<ContextualEducationView');
     expect(education).not.toContain('ice-cockpit-bg.png');
     expect(education).not.toContain('education-ice-cockpit');
-    expect(education).toContain('contextual-learning-hub');
+    expect(education).toContain('<KnowledgeTour layout="embedded"');
+    expect(education).not.toContain('contextual-learning-hub');
   });
 
   it('uses one moderate rectangular corner contract while preserving functional circles', () => {
@@ -189,9 +190,9 @@ describe('one global menu and four local contexts', () => {
     expect(panel).not.toContain('navigate(');
   });
 
-  it('delegates Etykieta to the one completed-run LabelWorkspace authority', () => {
+  it('delegates Etykieta only to a completed snapshot of the current recipe', () => {
     const panel = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
-    expect(panel).toContain('production?.session?.completionSnapshot');
+    expect(panel).toContain('currentRecipeCompletionSnapshot(production)');
     expect(panel).toContain('snapshot={completed}');
     expect(panel).toContain('initialView={initialLabelView}');
     expect(panel).toContain('key={labelViewRequestKey ?? initialLabelView}');

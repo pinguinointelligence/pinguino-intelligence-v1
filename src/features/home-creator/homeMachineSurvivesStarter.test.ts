@@ -41,7 +41,7 @@ const applyMachine = (profile: HomeMachineProfile) => {
     machineTechnology: profile.technology,
     temperatureC,
     batchGrams: setup.recommendedBatchGrams,
-    capacityGrams: setup.recommendedBatchGrams,
+    hardCapacityGrams: setup.hardMaximumBatchGrams,
     batchSource: 'MACHINE_DEFAULT',
   });
   return setup;
@@ -84,9 +84,11 @@ describe('the HOME machine survives the first recipe generation', () => {
     expect(state.machineKind).toBe('home');
     expect(state.machineLabel).toBe(machineDisplayName(ninjaDeluxe));
     expect(state.machineId).toBe(ninjaDeluxe.id);
-    // §44: the batch and capacity come from the machine authority, not from HOME.
+    // §44: the soft batch comes from machine authority; no ml figure becomes hard grams.
     expect(state.target_batch_grams).toBe(setup.recommendedBatchGrams);
-    expect(state.machine_capacity_grams).toBe(setup.recommendedBatchGrams);
+    expect(state.machine_capacity_grams).toBeNull();
+    expect(state.homeFormulationModuleId).toBe('FROZEN_PINT');
+    expect(state.target_temperature_c).toBe(-11);
     // The starter still produced a real base — the machine did not replace it.
     expect(state.items.length).toBeGreaterThan(0);
   });

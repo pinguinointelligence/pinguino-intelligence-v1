@@ -6,9 +6,7 @@ import {
   type ReactNode,
   type TouchEvent as ReactTouchEvent,
 } from 'react';
-import { Link } from 'react-router';
 import { Button } from '@/components/ui/Button';
-import { buttonClasses } from '@/components/ui/buttonStyles';
 import { Card } from '@/components/ui/Card';
 import { DialogShell } from '@/components/ui/DialogShell';
 import { SectionLabel } from '@/components/shared/SectionLabel';
@@ -150,10 +148,9 @@ export function LabelWorkspace({
    * and every other persistent label setting.
    *
    * `'production'` (the PRO workbench `Etykieta` tab) removes the settings view
-   * from this instance entirely and sends the reader to `/labels` instead. The
-   * workbench tab is the CURRENT label plus the fields still missing for it —
-   * not a second settings screen. No settings code is deleted or copied; the
-   * same authority simply renders in one place.
+   * and settings entry point from this instance entirely. The hamburger's
+   * Etykiety destination remains the one home for persistent settings. The
+   * workbench tab is the CURRENT label plus the fields still missing for it.
    */
   settingsHome?: 'inline' | 'production';
 }) {
@@ -457,6 +454,71 @@ export function LabelWorkspace({
     }
     return nextReady;
   };
+  const printActions = (
+    <div className="flex flex-wrap gap-2" data-testid="label-print-actions">
+      {saved ? (
+        <Button variant="ghost" size="sm" disabled={busy} onClick={() => void startNewVersion()}>
+          Nowa wersja
+        </Button>
+      ) : settingsLiveHere ? (
+        <SettingsEntry onOpen={() => openView(labelDataReady ? 'settings' : 'data')} />
+      ) : null}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => printMasterLabel(label, logoUrl, { draft: true })}
+      >
+        Drukuj podgląd roboczy
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => printMasterLabel(label, null, { calibration: true })}
+      >
+        Druk testowy
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        disabled={pdfBusy}
+        onClick={() => void downloadPdf(!preflight?.readyForSystemPrint)}
+      >
+        {pdfBusy
+          ? 'Tworzę PDF…'
+          : preflight?.readyForSystemPrint
+            ? 'Pobierz PDF'
+            : 'Pobierz podgląd'}
+      </Button>
+      <Button
+        size="sm"
+        disabled={!preflight?.readyForSystemPrint}
+        onClick={() => printMasterLabel(label, logoUrl)}
+      >
+        Drukuj
+      </Button>
+    </div>
+  );
+  const printBlockedMessage = !preflight?.readyForSystemPrint ? (
+    <div
+      className="border-b border-ink/10 bg-[#f7f5f0] px-4 py-3"
+      role="status"
+      data-testid="label-print-blocked-message"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+        <span className="text-stone-700">
+          Do wydruku brakuje: {unresolved.length} {unresolved.length === 1 ? 'pozycja' : 'pozycji'}
+        </span>
+        <button
+          type="button"
+          className="font-semibold underline underline-offset-4"
+          onClick={() => openView(settingsLiveHere && labelDataReady ? 'settings' : 'data')}
+          disabled={Boolean(saved)}
+        >
+          {printBlockedReason}
+        </button>
+      </div>
+    </div>
+  ) : null;
 
   return (
     <div
@@ -495,81 +557,9 @@ export function LabelWorkspace({
                     Wybrany rynek wyznacza wymagane dane i układ wydruku
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {saved ? (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      disabled={busy}
-                      onClick={() => void startNewVersion()}
-                    >
-                      Nowa wersja
-                    </Button>
-                  ) : (
-                    <SettingsEntry
-                      settingsLiveHere={settingsLiveHere}
-                      onOpen={() => openView(labelDataReady ? 'settings' : 'data')}
-                    />
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => printMasterLabel(label, logoUrl, { draft: true })}
-                  >
-                    Drukuj podgląd roboczy
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => printMasterLabel(label, null, { calibration: true })}
-                  >
-                    Druk testowy
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={pdfBusy}
-                    onClick={() => void downloadPdf(!preflight?.readyForSystemPrint)}
-                  >
-                    {pdfBusy
-                      ? 'Tworzę PDF…'
-                      : preflight?.readyForSystemPrint
-                        ? 'Pobierz PDF'
-                        : 'Pobierz podgląd'}
-                  </Button>
-                  <Button
-                    size="sm"
-                    disabled={!preflight?.readyForSystemPrint}
-                    onClick={() => printMasterLabel(label, logoUrl)}
-                  >
-                    Drukuj
-                  </Button>
-                </div>
+                {settingsLiveHere ? printActions : null}
               </header>
-              {!preflight?.readyForSystemPrint ? (
-                <div
-                  className="border-b border-ink/10 bg-[#f7f5f0] px-4 py-3"
-                  role="status"
-                  data-testid="label-print-blocked-message"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-                    <span className="text-stone-700">
-                      Do wydruku brakuje: {unresolved.length}{' '}
-                      {unresolved.length === 1 ? 'pozycja' : 'pozycji'}
-                    </span>
-                    <button
-                      type="button"
-                      className="font-semibold underline underline-offset-4"
-                      onClick={() =>
-                        openView(settingsLiveHere && labelDataReady ? 'settings' : 'data')
-                      }
-                      disabled={Boolean(saved)}
-                    >
-                      {printBlockedReason}
-                    </button>
-                  </div>
-                </div>
-              ) : null}
+              {settingsLiveHere ? printBlockedMessage : null}
               <div className="border-b border-ink/10 bg-white px-4 py-3 text-[11px] text-stone-600">
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                   <strong className="text-ink">
@@ -595,6 +585,27 @@ export function LabelWorkspace({
                 <ConsumerLabelPreview label={label} logoUrl={logoUrl} />
               </div>
             </Card>
+
+            {!settingsLiveHere ? printBlockedMessage : null}
+            {stackMissingDataUnderLabel ? (
+              <div data-testid="label-missing-data-stack">
+                <CompactRunLabelEditor
+                  label={label}
+                  onSave={async (next) => {
+                    announceReadyTransition(next);
+                    setLabel(next);
+                  }}
+                />
+              </div>
+            ) : null}
+            {!settingsLiveHere ? (
+              <div
+                className="rounded-[18px] border border-ink/10 bg-white px-4 py-3"
+                data-testid="label-workbench-print-actions"
+              >
+                {printActions}
+              </div>
+            ) : null}
 
             <section className="grid gap-3 md:grid-cols-2" data-testid="label-internal-overview">
               <OverviewCard title="Koszt">
@@ -635,17 +646,6 @@ export function LabelWorkspace({
                 </Button>
               )}
             </div>
-            {stackMissingDataUnderLabel ? (
-              <div data-testid="label-missing-data-stack">
-                <CompactRunLabelEditor
-                  label={label}
-                  onSave={async (next) => {
-                    announceReadyTransition(next);
-                    setLabel(next);
-                  }}
-                />
-              </div>
-            ) : null}
           </>
         ) : visibleView === 'data' ? (
           <CompactRunLabelEditor
@@ -4884,32 +4884,14 @@ function PrinterSettingsFields({
  * The one settings entry point.
  *
  * OWNER DECISION (2026-08-30): label settings live ONLY under Produkcja →
- * Etykiety. Where they live, this opens them in place. Where they do not — the
- * PRO workbench `Etykieta` tab — it sends the reader to that one home instead
- * of rendering a second copy of the same screen.
+ * Etykiety. It is rendered only on that canonical settings surface; PRO →
+ * Etykieta contains no second settings view or settings entry point.
  */
-function SettingsEntry({
-  settingsLiveHere,
-  onOpen,
-}: {
-  settingsLiveHere: boolean;
-  onOpen: () => void;
-}) {
-  if (settingsLiveHere) {
-    return (
-      <Button variant="ghost" size="sm" onClick={onOpen}>
-        Ustawienia
-      </Button>
-    );
-  }
+function SettingsEntry({ onOpen }: { onOpen: () => void }) {
   return (
-    <Link
-      to="/labels"
-      className={cn(buttonClasses('ghost', 'sm'), 'shrink-0')}
-      data-testid="label-settings-home-link"
-    >
-      Zmień ustawienia
-    </Link>
+    <Button variant="ghost" size="sm" onClick={onOpen}>
+      Ustawienia
+    </Button>
   );
 }
 

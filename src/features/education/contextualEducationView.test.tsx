@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { MemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
 import { starterMilkBase } from '@/features/recipe-constraints/constraintFixtures';
 import { educationCopy } from '@/copy/education.pl';
@@ -10,42 +11,74 @@ import { processReasonText } from './processReasonText';
 const source = readFileSync(resolve(import.meta.dirname, 'ContextualEducationView.tsx'), 'utf8');
 
 describe('contextual education runtime surface', () => {
-  it('replaces the duplicate score tutorial with a recipe-learning hub', () => {
+  it('opens the canonical nine-step Knowledge Tour by default instead of the retired hub', () => {
     const html = renderToStaticMarkup(
-      <ContextualEducationView input={starterMilkBase()} audience="pro" onBack={() => {}} />,
+      <MemoryRouter initialEntries={['/pro']}>
+        <ContextualEducationView input={starterMilkBase()} audience="pro" onBack={() => {}} />
+      </MemoryRouter>,
     );
     expect(html).toContain('data-testid="profile-education-view"');
     expect(html).toContain('← Wróć do receptury');
-    expect(html.match(/data-testid="education-entry"/g)).toHaveLength(3);
-    expect(html).toContain('Twoja receptura w skrócie');
-    expect(html).toContain('Jak ją przygotować');
-    expect(html).toContain('Dowiedz się więcej');
-    expect(html).not.toContain('data-testid="contextual-card"');
-    expect(html).not.toContain('education-ice-cockpit');
-    expect(html).not.toContain('Wynik jakości');
-    expect(html).not.toMatch(/Dlaczego \d+\/10/);
-    expect(html).not.toMatch(/\b1\s*\/\s*3\b/);
+    expect(html).toContain('data-testid="knowledge-tour"');
+    expect(html).toContain('data-layout="embedded"');
+    expect(html).toContain('src="/guide/01.png"');
+    expect(html.match(/class="knowledge-tour__dot"/g)).toHaveLength(9);
+    expect(html).not.toContain('data-testid="contextual-learning-hub"');
+    expect(html).not.toContain('data-testid="education-entry"');
+    expect(html).not.toContain('Wiedza o recepturze');
   });
 
-  it('uses the same three-answer order for Home without a separate quiz path', () => {
+  it('uses the same canonical embedded tour for Home without a separate hub path', () => {
     const html = renderToStaticMarkup(
-      <ContextualEducationView input={starterMilkBase()} audience="home" onBack={() => {}} />,
+      <MemoryRouter initialEntries={['/home']}>
+        <ContextualEducationView input={starterMilkBase()} audience="home" onBack={() => {}} />
+      </MemoryRouter>,
     );
-    const summary = html.indexOf('Twoja receptura w skrócie');
-    const process = html.indexOf('Jak ją przygotować');
-    const advanced = html.indexOf('Dowiedz się więcej');
-    expect(summary).toBeGreaterThan(-1);
-    expect(process).toBeGreaterThan(summary);
-    expect(advanced).toBeGreaterThan(process);
-    expect(html.match(/data-testid="education-entry"/g)).toHaveLength(3);
+    expect(html).toContain('data-testid="knowledge-tour"');
+    expect(html).toContain('data-layout="embedded"');
+    expect(html.match(/class="knowledge-tour__dot"/g)).toHaveLength(9);
+    expect(html).not.toContain('data-testid="contextual-learning-hub"');
+  });
+
+  it('keeps the accepted mobile height while sizing the desktop right-panel surface to content', () => {
+    const html = renderToStaticMarkup(
+      <MemoryRouter initialEntries={['/pro']}>
+        <ContextualEducationView input={starterMilkBase()} audience="pro" onBack={() => {}} />
+      </MemoryRouter>,
+    );
+
+    expect(html).toContain('min-h-full');
+    expect(html).toContain('w-full');
+    expect(html).toContain('lg:min-h-0');
   });
 
   it('implements tap/click controls and no hover-only lesson path', () => {
-    expect(source).toContain('onClick={() => onOpen');
+    expect(source).toContain('onClick={onBack}');
+    expect(source).toContain('<KnowledgeTour layout="embedded"');
     expect(source).toContain('<details');
-    expect(source).toContain('min-h-16');
     expect(source).toContain('min-h-10');
     expect(source).not.toContain('onMouseEnter');
+  });
+
+  it('preserves every direct contextual lesson without routing through the tour', () => {
+    const renderLesson = (initialLesson: 'process' | 'machine' | 'ingredients' | 'sugar') =>
+      renderToStaticMarkup(
+        <ContextualEducationView
+          input={starterMilkBase()}
+          audience="pro"
+          initialLesson={initialLesson}
+          onBack={() => {}}
+        />,
+      );
+
+    for (const lesson of ['process', 'machine'] as const) {
+      const html = renderLesson(lesson);
+      expect(html).toContain('data-testid="process-knowledge"');
+      expect(html).not.toContain('data-testid="knowledge-tour"');
+    }
+
+    expect(renderLesson('ingredients')).toContain('data-testid="actual-recipe-knowledge"');
+    expect(renderLesson('sugar')).toContain('data-testid="advanced-recipe-knowledge"');
   });
 
   it('uses actual recipe facts and qualitative dots, not invented examples or bar profiles', () => {
