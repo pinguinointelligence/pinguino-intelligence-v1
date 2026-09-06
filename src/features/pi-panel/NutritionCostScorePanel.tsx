@@ -50,10 +50,7 @@ export function NutritionCostScorePanel({
   return (
     <Card
       padding="none"
-      className={cn(
-        'p-4',
-        embedded ? 'border-0 bg-transparent shadow-none' : 'pro-module',
-      )}
+      className={cn('p-4', embedded ? 'border-0 bg-transparent shadow-none' : 'pro-module')}
     >
       <SectionLabel>{m.title}</SectionLabel>
 
@@ -99,9 +96,6 @@ export function NutritionCostScorePanel({
               <Row label={m.serving70} value={costs.cost_per_serving_70g} unit="€" precision={2} />
               <Row label={m.serving80} value={costs.cost_per_serving_80g} unit="€" precision={2} />
             </div>
-            {!costs.complete ? (
-              <p className="mt-3 text-xs leading-relaxed text-ivory/60">{m.costIncomplete}</p>
-            ) : null}
           </>
         )}
       </div>

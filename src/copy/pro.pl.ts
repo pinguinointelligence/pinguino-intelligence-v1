@@ -20,10 +20,10 @@ export const proWorkbenchCopy = {
     serving60: 'Porcja 60 g',
     serving70: 'Porcja 70 g',
     serving80: 'Porcja 80 g',
-    costIncomplete: 'Koszt częściowy — uzupełnij brakujące ceny składników.',
     knownBatchCost: 'Znany koszt partii',
     missingPrice: (ingredientNames: readonly string[]) =>
-      `Brak ceny: ${ingredientNames.join(', ')}. Dokładny koszt za kg pozostaje niedostępny.`,
-    noPrices: 'Brak cen',
+      ingredientNames.length === 1
+        ? `Wprowadź cenę dla ${ingredientNames[0]}.`
+        : `Wprowadź ceny dla: ${ingredientNames.join(', ')}.`,
   },
 } as const;
