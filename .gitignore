@@ -45,3 +45,9 @@ Thumbs.db
 # Supabase local development
 supabase/.temp/
 supabase/.branches/
+
+# Regenerated scanner replay dumps. The default-tag run rewrites a byte-identical copy of the
+# BEFORE/AFTER evidence on every execution, and the Poland corpus dump is ~23 000 lines; the .md
+# summaries carry the conclusions. Only small, decisive evidence belongs in the repository.
+reports/scan-import-v2/RESCUE_REPLAY_replay_*.json
+reports/scan-import-v2/PL_POLAND_REPLAY_*.json
