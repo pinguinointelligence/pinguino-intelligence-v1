@@ -69,6 +69,7 @@ import {
   customerSentence,
   missingDataSentence,
   onlySemanticsMissing,
+  gapsFromNote,
   productFieldsNotInLedger,
   scanFeedbackText,
   toResolvedScanProduct,
@@ -485,7 +486,9 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
             // the authority answered: plain facts it still needs, or only technical readiness the
             // customer cannot supply — the product is then saved privately, never looped on photos
             refusedOnceRef.current = true;
-            const fields = plainFieldsFor(r.ledger.missingCritical, {
+            // the refusal's own reason is the question to put to the customer: a gap that travels
+            // only in the note (allergen_statement_required) must still become a field to fill
+            const fields = plainFieldsFor([...r.ledger.missingCritical, ...gapsFromNote(r.note)], {
               needIdentity: /identity/.test(r.note ?? ''),
             });
             if (fields.length > 0)

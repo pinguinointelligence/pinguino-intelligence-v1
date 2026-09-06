@@ -60,6 +60,26 @@ export function customerSentence(text: string | null | undefined): string | null
  * mapping the flow already asks with, so a code the mapping does not know produces the general
  * sentence rather than leaking itself.
  */
+/**
+ * The gaps a REFUSAL names, as codes the flow can ask the customer for.
+ *
+ * Owner QA 2026-09-06 (Haribo 8426617014032): the registry gave the name, the brand, the whole
+ * ingredient list and the whole nutrition table — everything except the allergen line. The authority
+ * refused with `allergen_statement_required`, but that reason travelled only in the diagnostic note
+ * while `missingCritical` stayed EMPTY, so the screen had nothing to ask for and the scan sat
+ * unfinished. The reason a refusal gives IS the question to put to the customer.
+ *
+ * The note is a diagnostic string and never reaches a screen; only the codes it names are used, and
+ * `plainFieldsFor` drops every code it cannot turn into a plain field.
+ */
+export function gapsFromNote(note: string | null | undefined): string[] {
+  if (!note) return [];
+  return note
+    .split(/[,\s]+/)
+    .map((token) => token.trim())
+    .filter((token) => token.length > 0 && /_|:/.test(token));
+}
+
 export function missingDataSentence(missingCritical: readonly string[]): string {
   const fields = plainFieldsFor(missingCritical);
   const named = fields

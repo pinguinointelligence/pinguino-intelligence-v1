@@ -4,6 +4,8 @@ import {
   productFieldsNotInLedger,
   confirmationsFromFields,
   manualConfirmedScan,
+  gapsFromNote,
+  missingDataSentence,
   plainFieldsFor,
   positionHint,
   prefillFromIdentity,
@@ -286,5 +288,36 @@ describe('SOL-045 — the hint addresses what the customer can actually move', (
     expect(scanFeedbackText(frame({ ...stuck, formFactor: 'mobile' }))).toBe(
       'Obróć produkt lub telefon, aby kod leżał poziomo',
     );
+  });
+});
+
+describe('a refusal names the question to put to the customer (SOL-049)', () => {
+  // the owner's Haribo: the registry gave everything except the allergen line, the authority refused
+  // with allergen_statement_required, and missingCritical was EMPTY — so nothing was ever asked
+  const HARIBO_NOTE =
+    'not ready: allergen_statement_required, roleReadiness:REVIEW, recognition:CONFECTIONERY/TOPPING_ONLY';
+
+  it('turns the refusal reason into the field that is actually missing', () => {
+    const fields = plainFieldsFor([...[], ...gapsFromNote(HARIBO_NOTE)]);
+    expect(fields.map((f) => f.key)).toContain('allergensText');
+    expect(fields.find((f) => f.key === 'allergensText')?.label).toMatch(/Alergeny/);
+  });
+
+  it('the customer sentence names it too, instead of a shrug', () => {
+    expect(missingDataSentence([...gapsFromNote(HARIBO_NOTE)])).toMatch(/Uzupełnij alergeny/);
+    // before the fix the empty list produced the "we will check it ourselves" shrug
+    expect(missingDataSentence([])).toMatch(/Gdy dojdą kolejne dane/);
+  });
+
+  it('carries a missing ingredient statement the same way', () => {
+    const fields = plainFieldsFor(gapsFromNote('not ready: ingredients_statement_required'));
+    expect(fields.map((f) => f.key)).toContain('ingredientsText');
+  });
+
+  it('never invents a field from prose, a readiness word or a recognition class', () => {
+    expect(plainFieldsFor(gapsFromNote('not ready: roleReadiness:REVIEW'))).toEqual([]);
+    expect(plainFieldsFor(gapsFromNote('recognition:CONFECTIONERY/TOPPING_ONLY'))).toEqual([]);
+    expect(gapsFromNote(null)).toEqual([]);
+    expect(gapsFromNote('wszystko w porządku')).toEqual([]);
   });
 });
