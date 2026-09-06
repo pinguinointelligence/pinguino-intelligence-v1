@@ -2,7 +2,7 @@ import { realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
-import { defineConfig } from 'vite';
+import { defineConfig, searchForWorkspaceRoot } from 'vite';
 import { configDefaults } from 'vitest/config';
 
 /**
@@ -23,7 +23,12 @@ const dependencyRoot = (() => {
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  server: { fs: { allow: dependencyRoot ? ['.', dependencyRoot] : ['.'] } },
+  server: {
+    fs: {
+      // ADDITIVE: Vite's own default root stays allowed, the symlinked tree is added to it
+      allow: [searchForWorkspaceRoot(process.cwd()), ...(dependencyRoot ? [dependencyRoot] : [])],
+    },
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
