@@ -224,6 +224,20 @@ never started — 84 tests silently missing from every run. `vite.config.ts` now
 the dependency tree to Vite's own workspace root. Before: 1044 files / 12 969 tests with 4 files
 dead. After: 1054 files / 13 290 tests with none dead.
 
+## Full suite at HEAD (2026-09-06)
+
+`npx vitest run` over the whole repository: **13 191 passed, 2 failed, 149 skipped (1 060 files)**.
+
+Both failures are load artefacts of a saturated machine, not regressions — each PASSES when run on
+its own immediately afterwards:
+
+| File | Under full load | Alone |
+| --- | --- | --- |
+| `proteinMultiMainPositive.test.ts` (four-Crown watchdog budget) | 22 820 ms vs a 15 000 ms budget | 21/21 pass |
+| `polandOwner731Pilot.dryrun.test.ts` | `failed to load ./ita.special-words` | 1/1 pass |
+
+Neither touches the scanner. CI, which runs on its own machine, is the authority.
+
 ## Open
 
 - Owner QA of the whole phone flow on the preview alias.
