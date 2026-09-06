@@ -50,9 +50,11 @@ import {
   type PrinterProfileId,
 } from './printerProfiles';
 import { assessCanadaFop } from './regulatoryNutrition';
-import { downloadMasterLabelPdf } from './masterLabelPdf';
 import { customerErrorMessage } from '@/copy/customerError';
 import { AllergenStatementControl } from './AllergenStatementControl';
+import { SaturatedFatControl } from './SaturatedFatControl';
+import { PrintMissingDataDialog } from './PrintMissingDataDialog';
+import { printMissingFields } from './printMissingData';
 
 const MARKET_CODES: readonly MarketProfileCode[] = MARKET_PROFILE_ORDER;
 export type LabelWorkspaceView = 'data' | 'settings' | 'label';
@@ -133,6 +135,7 @@ export function LabelWorkspace({
   profileOnly = false,
   repository: suppliedRepository,
   onSaved,
+  onOpenSettings,
   initialView = 'data',
   settingsHome = 'inline',
 }: {
@@ -142,6 +145,7 @@ export function LabelWorkspace({
   profileOnly?: boolean;
   repository?: LabelRepository;
   onSaved?: (snapshot: RunLabelSnapshot) => void;
+  onOpenSettings?: (runId: string) => void;
   initialView?: LabelWorkspaceView;
   /**
    * OWNER DECISION (2026-08-30) — label settings live in ONE place.
@@ -178,7 +182,7 @@ export function LabelWorkspace({
   );
   const swipeStart = useRef<{ x: number; y: number } | null>(null);
   const [busy, setBusy] = useState(true);
-  const [pdfBusy, setPdfBusy] = useState(false);
+  const [printMissingOpen, setPrintMissingOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resolvedLogo, setResolvedLogo] = useState<{
     path: string;
@@ -192,19 +196,17 @@ export function LabelWorkspace({
      is the settings-and-completion surface. In the workbench that would put a
      form in front of the thing the reader came to see, so the label stays on
      screen and the missing fields are stacked underneath it instead. */
-  const visibleView: LabelWorkspaceView = saved
-    ? 'label'
-    : !labelDataReady
-      ? settingsLiveHere
+  const visibleView: LabelWorkspaceView = settingsLiveHere
+    ? saved
+      ? 'label'
+      : !labelDataReady
         ? 'data'
-        : 'label'
-      : activeView;
-  /** The workbench stacks preview → missing data → actions in one flow. */
-  const stackMissingDataUnderLabel = !settingsLiveHere && !saved && !labelDataReady;
+        : activeView
+    : 'label';
 
   const openView = (next: LabelWorkspaceView) => {
     if (next === 'settings' && !settingsLiveHere) return;
-    if (next === visibleView || (next === 'settings' && saved)) return;
+    if (next === visibleView) return;
     if (next === 'label' && !saved && !labelDataReady) return;
     const order: readonly LabelWorkspaceView[] = ['data', 'label', 'settings'];
     setTransitionDirection(order.indexOf(next) > order.indexOf(visibleView) ? 'forward' : 'back');
@@ -240,9 +242,16 @@ export function LabelWorkspace({
         setProfile(nextProfile);
         setProfileWasPersisted(Boolean(existingProfile));
         setSnapshot(nextSnapshot ?? null);
-        setSaved(nextSaved);
+        const editingSavedVersion = Boolean(nextSaved && initialView === 'settings');
+        setSaved(editingSavedVersion ? null : nextSaved);
         setLabel(
-          nextSaved?.label ?? (nextSnapshot ? labelFromProfile(nextSnapshot, nextProfile) : null),
+          nextSaved
+            ? editingSavedVersion
+              ? { ...nextSaved.label, snapshotEvidence: null }
+              : nextSaved.label
+            : nextSnapshot
+              ? labelFromProfile(nextSnapshot, nextProfile)
+              : null,
         );
       } catch (caught) {
         if (!cancelled) {
@@ -256,7 +265,15 @@ export function LabelWorkspace({
     return () => {
       cancelled = true;
     };
-  }, [authOwnerId, profileOnly, repository, requestedRunId, savedSnapshotId, suppliedSnapshot]);
+  }, [
+    authOwnerId,
+    initialView,
+    profileOnly,
+    repository,
+    requestedRunId,
+    savedSnapshotId,
+    suppliedSnapshot,
+  ]);
 
   const activeLogoPath = label?.logoPath ?? profile?.logoPath ?? null;
   const logoUrl = activeLogoPath && resolvedLogo?.path === activeLogoPath ? resolvedLogo.url : null;
@@ -285,16 +302,21 @@ export function LabelWorkspace({
     return persisted;
   };
 
-  const saveRunSnapshot = async () => {
-    if (!label || !profile || !snapshot || saved) return;
+  const finalizeAndPrint = async (printableLabel: MasterLabelData) => {
+    if (!profile || !snapshot || busy) return;
     setBusy(true);
     setError(null);
     try {
-      if (!profileWasPersisted) await persistProfile(profile);
-      const frozen = await repository.saveRunLabelSnapshot(label);
-      setSaved(frozen);
-      setLabel(frozen.label);
-      onSaved?.(frozen);
+      let printable = printableLabel;
+      if (!saved || printableLabel !== label) {
+        if (!profileWasPersisted) await persistProfile(profile);
+        const frozen = await repository.saveRunLabelSnapshot(printableLabel);
+        setSaved(frozen);
+        setLabel(frozen.label);
+        onSaved?.(frozen);
+        printable = frozen.label;
+      }
+      printMasterLabel(printable, logoUrl);
     } catch (caught) {
       setError(customerErrorMessage(caught, 'labels', 'LABEL_SAVE_FAILED'));
     } finally {
@@ -302,36 +324,13 @@ export function LabelWorkspace({
     }
   };
 
-  const startNewVersion = async () => {
-    if (!snapshot || !profile || !saved) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const latestProfile = (await repository.getAccountProfile()) ?? profile;
-      setProfile(latestProfile);
-      setSaved(null);
-      setLabel(labelFromProfile(snapshot, latestProfile));
-      setSaveAsDefault(true);
-      setTransitionDirection('back');
-      setActiveView('data');
-    } catch (caught) {
-      setError(customerErrorMessage(caught, 'labels', 'LABEL_READ_FAILED'));
-    } finally {
-      setBusy(false);
+  const requestPrint = () => {
+    if (!label || busy) return;
+    if (printMissingFields(label).length > 0) {
+      setPrintMissingOpen(true);
+      return;
     }
-  };
-
-  const downloadPdf = async (draft: boolean) => {
-    if (!label || pdfBusy) return;
-    setPdfBusy(true);
-    setError(null);
-    try {
-      await downloadMasterLabelPdf(label, logoUrl, { draft });
-    } catch (caught) {
-      setError(customerErrorMessage(caught, 'labels', 'LABEL_READ_FAILED'));
-    } finally {
-      setPdfBusy(false);
-    }
+    void finalizeAndPrint(label);
   };
 
   const onTouchStart = (event: ReactTouchEvent<HTMLDivElement>) => {
@@ -444,12 +443,6 @@ export function LabelWorkspace({
   }
 
   const productName = primaryText(label.productName, label.labelLanguages);
-  const costs = snapshot.finalProduct.costs;
-  const activeMarket = marketProfile(label.market);
-  const unresolved = preflight?.items.filter((item) => item.status !== 'ready') ?? [];
-  const printBlockedReason =
-    unresolved[0]?.message ?? activeMarket.externalAssetRequirement ?? 'Uzupełnij wymagane dane.';
-  const percentages = snapshot.finalResult.percentages;
   const announceReadyTransition = (next: MasterLabelData) => {
     const nextReady = buildLabelPreflight(next).readyForSystemPrint;
     if (!labelDataReady && nextReady) {
@@ -458,70 +451,39 @@ export function LabelWorkspace({
     return nextReady;
   };
   const printActions = (
-    <div className="flex flex-wrap gap-2" data-testid="label-print-actions">
-      {saved ? (
-        <Button variant="ghost" size="sm" disabled={busy} onClick={() => void startNewVersion()}>
-          Nowa wersja
-        </Button>
-      ) : settingsLiveHere ? (
-        <SettingsEntry onOpen={() => openView(labelDataReady ? 'settings' : 'data')} />
-      ) : null}
+    <div
+      className="grid w-full grid-cols-[minmax(0,1fr)_auto] gap-2"
+      data-testid="label-print-actions"
+    >
       <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => printMasterLabel(label, logoUrl, { draft: true })}
+        className="min-h-12 w-full rounded-full"
+        disabled={busy}
+        onClick={requestPrint}
+        data-testid="label-print"
       >
-        Drukuj podgląd roboczy
+        {busy ? 'Przygotowuję…' : 'Drukuj'}
       </Button>
       <Button
         variant="ghost"
-        size="sm"
-        onClick={() => printMasterLabel(label, null, { calibration: true })}
+        className="min-h-11 rounded-full px-7"
+        disabled={!settingsLiveHere && !onOpenSettings}
+        onClick={() => {
+          if (settingsLiveHere) {
+            if (saved) {
+              setSaved(null);
+              setLabel({ ...label, snapshotEvidence: null });
+            }
+            openView('settings');
+            return;
+          }
+          onOpenSettings?.(snapshot.sessionId);
+        }}
+        data-testid="label-change"
       >
-        Druk testowy
-      </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        disabled={pdfBusy}
-        onClick={() => void downloadPdf(!preflight?.readyForSystemPrint)}
-      >
-        {pdfBusy
-          ? 'Tworzę PDF…'
-          : preflight?.readyForSystemPrint
-            ? 'Pobierz PDF'
-            : 'Pobierz podgląd'}
-      </Button>
-      <Button
-        size="sm"
-        disabled={!preflight?.readyForSystemPrint}
-        onClick={() => printMasterLabel(label, logoUrl)}
-      >
-        Drukuj
+        Zmień
       </Button>
     </div>
   );
-  const printBlockedMessage = !preflight?.readyForSystemPrint ? (
-    <div
-      className="border-b border-ink/10 bg-[#f7f5f0] px-4 py-3"
-      role="status"
-      data-testid="label-print-blocked-message"
-    >
-      <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-        <span className="text-stone-700">
-          Do wydruku brakuje: {unresolved.length} {unresolved.length === 1 ? 'pozycja' : 'pozycji'}
-        </span>
-        <button
-          type="button"
-          className="font-semibold underline underline-offset-4"
-          onClick={() => openView(settingsLiveHere && labelDataReady ? 'settings' : 'data')}
-          disabled={Boolean(saved)}
-        >
-          {printBlockedReason}
-        </button>
-      </div>
-    </div>
-  ) : null;
 
   return (
     <div
@@ -544,124 +506,52 @@ export function LabelWorkspace({
         {visibleView === 'label' ? (
           <>
             <Card padding="none" className="overflow-hidden rounded-[22px]">
-              <header className="flex flex-wrap items-start justify-between gap-4 border-b border-ink/10 p-4 sm:p-5">
-                <div>
-                  <SectionLabel>Etykieta produktu</SectionLabel>
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <h2 className="text-xl font-semibold text-ink">{productName}</h2>
-                    <span
-                      className="rounded-full border border-ink/10 bg-stone-50 px-2.5 py-1 text-xs font-semibold"
-                      data-testid="active-label-market"
-                    >
-                      {activeMarket.flag} {activeMarket.label}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-sm text-stone-500">
-                    Wybrany rynek wyznacza wymagane dane i układ wydruku
-                  </p>
-                </div>
-                {settingsLiveHere ? printActions : null}
+              <header className="border-b border-ink/10 p-4 sm:p-5">
+                <SectionLabel>Etykieta produktu</SectionLabel>
+                <h2 className="mt-2 text-xl font-semibold tracking-[-0.025em] text-ink">
+                  {productName}
+                </h2>
               </header>
-              {settingsLiveHere ? printBlockedMessage : null}
-              <div className="border-b border-ink/10 bg-white px-4 py-3 text-[11px] text-stone-600">
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                  <strong className="text-ink">
-                    {label.size.widthMm} × {label.size.heightMm} mm
-                  </strong>
-                  <span>
-                    {PRINTER_PROFILES[label.printer.profileId].manufacturer}{' '}
-                    {PRINTER_PROFILES[label.printer.profileId].model}
-                  </span>
-                  <span>{label.printer.dpi} dpi</span>
-                  <span>{label.printer.copies} kopii</span>
-                  <span>
-                    Czytelność {preflight?.geometry.baseFontPt.toFixed(2)} pt · wysokość znaków{' '}
-                    {preflight?.geometry.xHeightMm.toFixed(2)} mm
-                  </span>
-                </div>
-                <p className="mt-1 text-stone-500">
-                  Podgląd, PDF i wydruk zachowują ten sam układ i wymiary. PDF możesz przygotować
-                  bez podłączonej drukarki.
-                </p>
-              </div>
               <div className="overflow-x-auto p-4 sm:p-6" data-testid="consumer-print-boundary">
                 <ConsumerLabelPreview label={label} logoUrl={logoUrl} />
               </div>
-              <div className="border-t border-ink/10 p-4 sm:px-6">
-                <AllergenStatementControl
-                  label={label}
-                  onSave={async (next) => {
-                    if (saved) {
-                      setSaved(null);
-                      setLabel({ ...next, snapshotEvidence: null });
-                      setActiveView('label');
-                      return;
-                    }
-                    setLabel(next);
-                  }}
-                />
+              <div
+                className="border-t border-ink/10 px-4 sm:px-6"
+                data-testid="label-missing-data-stack"
+              >
+                <div className="divide-y divide-ink/10" data-testid="label-optional-rows">
+                  <AllergenStatementControl
+                    label={label}
+                    onSave={async (next) => {
+                      if (saved) {
+                        setSaved(null);
+                        setLabel({ ...next, snapshotEvidence: null });
+                        setActiveView('label');
+                        return;
+                      }
+                      setLabel(next);
+                    }}
+                  />
+                  <SaturatedFatControl
+                    label={label}
+                    onSave={async (next) => {
+                      if (saved) {
+                        setSaved(null);
+                        setLabel({ ...next, snapshotEvidence: null });
+                        setActiveView('label');
+                        return;
+                      }
+                      setLabel(next);
+                    }}
+                  />
+                </div>
               </div>
             </Card>
-
-            {!settingsLiveHere ? printBlockedMessage : null}
-            {stackMissingDataUnderLabel ? (
-              <div data-testid="label-missing-data-stack">
-                <CompactRunLabelEditor
-                  label={label}
-                  onSave={async (next) => {
-                    announceReadyTransition(next);
-                    setLabel(next);
-                  }}
-                />
-              </div>
-            ) : null}
-            {!settingsLiveHere ? (
-              <div
-                className="rounded-[18px] border border-ink/10 bg-white px-4 py-3"
-                data-testid="label-workbench-print-actions"
-              >
-                {printActions}
-              </div>
-            ) : null}
-
-            <section className="grid gap-3 md:grid-cols-2" data-testid="label-internal-overview">
-              <OverviewCard title="Koszt">
-                <dl className="space-y-2 text-xs">
-                  <OverviewMetric label="Cała partia" value={costs?.total_cost} unit="€" />
-                  <OverviewMetric label="1 kg" value={costs?.cost_per_kg} unit="€" />
-                  <OverviewMetric
-                    label="Porcja 60 g"
-                    value={costs?.cost_per_serving_60g}
-                    unit="€"
-                  />
-                </dl>
-                <p className="mt-3 text-[11px] text-stone-500">Dane wewnętrzne · poza wydrukiem</p>
-              </OverviewCard>
-              <OverviewCard title="Baza techniczna">
-                <dl className="space-y-2 text-xs">
-                  <OverviewMetric label="Woda" value={percentages.water_percent} unit="%" />
-                  <OverviewMetric label="Ciała stałe" value={percentages.solids_percent} unit="%" />
-                  <OverviewMetric label="Tłuszcz" value={percentages.fat_percent} unit="%" />
-                  <OverviewMetric label="Białko" value={percentages.protein_percent} unit="%" />
-                </dl>
-              </OverviewCard>
-            </section>
-
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-ink/10 bg-white px-4 py-3">
-              <p className="text-xs text-stone-600">
-                {saved
-                  ? `Etykieta partii zapisana · ${new Date(saved.createdAt).toLocaleString('pl-PL')}`
-                  : 'Finalny zapis zachowa rynek, treść, LOT i logo dla tej partii.'}
-              </p>
-              {saved ? null : (
-                <Button
-                  size="sm"
-                  onClick={() => void saveRunSnapshot()}
-                  disabled={busy || !preflight?.readyForSystemPrint}
-                >
-                  {busy ? 'Zapisywanie…' : 'Zapisz finalną etykietę'}
-                </Button>
-              )}
+            <div
+              className="sticky bottom-0 z-10 rounded-[18px] border border-ink/10 bg-white/95 px-3 py-3 backdrop-blur"
+              data-testid="label-workbench-print-actions"
+            >
+              {printActions}
             </div>
           </>
         ) : visibleView === 'data' ? (
@@ -702,9 +592,28 @@ export function LabelWorkspace({
             {error}
           </p>
         ) : null}
+        {printMissingOpen ? (
+          <PrintMissingDataDialog
+            label={label}
+            busy={busy}
+            onClose={() => setPrintMissingOpen(false)}
+            onSkip={async () => {
+              setPrintMissingOpen(false);
+              await finalizeAndPrint(label);
+            }}
+            onApply={async (next) => {
+              setPrintMissingOpen(false);
+              if (next !== label) {
+                setSaved(null);
+                setLabel({ ...next, snapshotEvidence: null });
+              }
+              await finalizeAndPrint(next);
+            }}
+          />
+        ) : null}
       </div>
 
-      {settingsLiveHere ? (
+      {settingsLiveHere && visibleView !== 'label' ? (
         <nav
           aria-label="Widoki workspace etykiety"
           className="sticky bottom-[var(--label-workspace-bottom-inset,0px)] z-20 flex min-h-11 items-center justify-center gap-2 border-t border-ink/8 bg-white/95 px-4 backdrop-blur"
@@ -730,7 +639,7 @@ export function LabelWorkspace({
                 Boolean(saved) && view !== 'label'
                   ? true
                   : (visibleView === 'data' && !labelDataReady && view !== 'data') ||
-                    (view === 'label' && visibleView !== 'label' && !labelDataReady)
+                    (view === 'label' && !labelDataReady)
               }
               onClick={() => openView(view)}
               className={cn(
@@ -753,34 +662,6 @@ export function LabelWorkspace({
         @keyframes labelWorkspaceInFromRight { from { opacity: .55; transform: translateX(22px); } to { opacity: 1; transform: translateX(0); } }
         @keyframes labelWorkspaceInFromLeft { from { opacity: .55; transform: translateX(-22px); } to { opacity: 1; transform: translateX(0); } }
       `}</style>
-    </div>
-  );
-}
-
-function OverviewCard({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <article className="min-w-0 rounded-[18px] border border-ink/10 bg-white p-4 shadow-pro-e0">
-      <h3 className="mb-3 text-sm font-semibold text-ink">{title}</h3>
-      {children}
-    </article>
-  );
-}
-
-function OverviewMetric({
-  label,
-  value,
-  unit,
-}: {
-  label: string;
-  value: number | null | undefined;
-  unit: string;
-}) {
-  return (
-    <div className="flex justify-between gap-3">
-      <dt className="text-stone-600">{label}</dt>
-      <dd className="font-mono tabular-nums">
-        {value == null ? '—' : `${value.toFixed(2)} ${unit}`}
-      </dd>
     </div>
   );
 }
@@ -1127,6 +1008,31 @@ export function CompactRunLabelSettings({
   showDraftData?: boolean;
 }) {
   const [draft, setDraft] = useState(label);
+  const finalMass = draft.actualBatchQuantityG ?? draft.netQuantityG ?? 0;
+  const initialPackageMass = draft.packageQuantity?.netWeightG ?? finalMass;
+  const [splitPackages, setSplitPackages] = useState(
+    Boolean(initialPackageMass > 0 && finalMass > 0 && initialPackageMass < finalMass),
+  );
+  const [packageCount, setPackageCount] = useState(
+    initialPackageMass > 0 && finalMass > 0
+      ? Math.max(1, Math.round(finalMass / initialPackageMass))
+      : 1,
+  );
+  const setPackageMass = (mass: number | null) =>
+    setDraft({
+      ...draft,
+      netQuantityG: mass,
+      packageQuantity: mass
+        ? {
+            value: mass,
+            unit: 'g',
+            netWeightG: mass,
+            netVolumeMl: draft.packageQuantity?.netVolumeMl ?? null,
+            source: splitPackages ? 'selected_fill' : 'measured_fill',
+            confirmedAt: new Date().toISOString(),
+          }
+        : null,
+    });
   const changeMarket = (market: MarketProfileCode) => {
     const nextProfile = marketProfile(market);
     const labelLanguages =
@@ -1168,14 +1074,14 @@ export function CompactRunLabelSettings({
           onClick={onClose}
           className="pro-focus-ring -ml-1 min-h-11 px-1 text-xs font-semibold text-stone-600 hover:text-ink"
         >
-          ← Etykieta
+          ← Wróć
         </button>
         <SectionLabel>Ustawienia etykiety</SectionLabel>
         <h2 className="mt-1 text-2xl font-semibold tracking-[-0.03em] text-ink">
           Profil, format i drukarka
         </h2>
         <p className="mt-1 text-sm text-stone-600">
-          Tylko konfiguracja. Brakujące dane produktu zawsze wracają do kroku 1.
+          Ustawienia rynku, opakowania i wydruku. Brakujące pola możesz uzupełnić przy drukowaniu.
         </p>
       </header>
 
@@ -1335,11 +1241,6 @@ export function CompactRunLabelSettings({
               Nowej Zelandii.
             </p>
           ) : null}
-          {draft.market === 'WORLD' ? (
-            <p className="mt-2 rounded-[10px] border border-[#9b5f55]/30 bg-[#fff7f5] px-3 py-2 text-xs font-semibold text-[#7e4037]">
-              ETYKIETA WEWNĘTRZNA / INFORMACYJNA · NIEZWERYFIKOWANA DO SPRZEDAŻY DETALICZNEJ
-            </p>
-          ) : null}
           <label className="mt-3 block text-xs font-medium text-stone-600">
             Języki etykiety · po przecinku
             <input
@@ -1414,6 +1315,54 @@ export function CompactRunLabelSettings({
           </details>
         </SettingsSection>
 
+        <SettingsSection title="Opakowanie i masa netto">
+          <label className="flex min-h-11 items-center gap-3 text-sm text-ink">
+            <input
+              type="checkbox"
+              checked={splitPackages}
+              onChange={(event) => {
+                const checked = event.currentTarget.checked;
+                setSplitPackages(checked);
+                if (!checked) {
+                  setPackageCount(1);
+                  setPackageMass(finalMass || null);
+                }
+              }}
+            />
+            Dzielę partię na kilka opakowań
+          </label>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <label className="text-xs font-medium text-stone-600">
+              Masa netto jednego opakowania · g
+              <input
+                type="number"
+                min={0.1}
+                step="any"
+                value={draft.packageQuantity?.netWeightG ?? ''}
+                onChange={(event) => setPackageMass(Number(event.currentTarget.value) || null)}
+                className={SETTINGS_INPUT_CLASS}
+              />
+            </label>
+            {splitPackages ? (
+              <label className="text-xs font-medium text-stone-600">
+                Liczba opakowań
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={packageCount}
+                  onChange={(event) => {
+                    const count = Math.max(1, Math.floor(Number(event.currentTarget.value) || 1));
+                    setPackageCount(count);
+                    setPackageMass(finalMass > 0 ? finalMass / count : null);
+                  }}
+                  className={SETTINGS_INPUT_CLASS}
+                />
+              </label>
+            ) : null}
+          </div>
+        </SettingsSection>
+
         {showSaveAsDefault ? (
           <label className="my-5 flex min-h-12 items-center gap-3 rounded-[12px] border border-ink/10 bg-stone-50 px-3 text-xs text-ink">
             <input
@@ -1429,7 +1378,7 @@ export function CompactRunLabelSettings({
 
       <footer className="sticky bottom-11 z-10 grid grid-cols-2 gap-2 border-t border-ink/10 bg-white/95 p-4 backdrop-blur sm:px-6">
         <Button variant="ghost" onClick={onClose}>
-          Wstecz
+          Wróć
         </Button>
         <Button data-testid="apply-label-settings" onClick={() => void onSave(draft)}>
           Zastosuj ustawienia
@@ -1907,13 +1856,6 @@ const EU_DESTINATIONS = [
   ['SK', 'Slovakia', 'sk'],
 ] as const;
 
-function missingCtaLabel(count: number): string {
-  if (count === 0) return 'Pokaż etykietę';
-  if (count === 1) return 'Uzupełnij 1 pole';
-  if (count >= 2 && count <= 4) return `Uzupełnij ${count} pola`;
-  return `Uzupełnij ${count} pól`;
-}
-
 type LabelFieldSave = (field: string, title: string) => Promise<void>;
 interface LabelFieldSaveState {
   save: LabelFieldSave;
@@ -2306,9 +2248,7 @@ export function CompactRunLabelEditor({
                           ukRegion: draft.jurisdictionContext?.ukRegion ?? 'unresolved',
                           auNzCountry: 'unresolved',
                           usSaleContext: event.currentTarget.value as
-                            | 'interstate_retail'
-                            | 'food_service'
-                            | 'unresolved',
+                            'interstate_retail' | 'food_service' | 'unresolved',
                         },
                       })
                     }
@@ -2503,21 +2443,12 @@ export function CompactRunLabelEditor({
         </div>
 
         <footer className="sticky bottom-11 z-10 border-t border-ink/10 bg-white/95 p-4 backdrop-blur sm:px-6">
-          {blockers.length > 0 ? (
-            <p
-              className="mb-2 text-center text-xs text-stone-600"
-              data-testid="label-cta-blocked-reason"
-            >
-              {blockers[0]?.message}
-            </p>
-          ) : null}
           <Button
             className="w-full"
             data-testid="show-label-preview"
-            disabled={blockers.length > 0}
             onClick={() => void onSave(printDraft)}
           >
-            {missingCtaLabel(blockers.length)}
+            Pokaż etykietę
           </Button>
         </footer>
       </Card>
@@ -2844,7 +2775,7 @@ function CompactMarketNutritionFields({
         Tylko pola, których nie ma w finalnych danych partii lub profilu rynku.
       </p>
       <div className="grid gap-3 sm:grid-cols-2">
-        {sourceMissing && saturatedFatAuthorityMissing ? (
+        {value.market !== 'WORLD' && sourceMissing && saturatedFatAuthorityMissing ? (
           <div className="grid gap-2 sm:col-span-2">
             {value.saturatedFatAuthority?.missingIngredientNames.length ? (
               <p className="text-[11px] leading-relaxed text-[#7a4a25]">
@@ -3345,9 +3276,7 @@ export function LegacyRunLabelEditor({
                       ukRegion: draft.jurisdictionContext?.ukRegion ?? 'unresolved',
                       auNzCountry: draft.jurisdictionContext?.auNzCountry ?? 'unresolved',
                       usSaleContext: event.currentTarget.value as
-                        | 'interstate_retail'
-                        | 'food_service'
-                        | 'unresolved',
+                        'interstate_retail' | 'food_service' | 'unresolved',
                     },
                   })
                 }
@@ -5136,21 +5065,6 @@ function PrinterSettingsFields({
         {profile.hardwareVerification}.
       </p>
     </fieldset>
-  );
-}
-
-/**
- * The one settings entry point.
- *
- * OWNER DECISION (2026-08-30): label settings live ONLY under Produkcja →
- * Etykiety. It is rendered only on that canonical settings surface; PRO →
- * Etykieta contains no second settings view or settings entry point.
- */
-function SettingsEntry({ onOpen }: { onOpen: () => void }) {
-  return (
-    <Button variant="ghost" size="sm" onClick={onOpen}>
-      Ustawienia
-    </Button>
   );
 }
 

@@ -51,6 +51,10 @@ import { resolveCostsRepository } from '@/features/pro-core/proCoreCostsRepo';
 import type { ProCorePersona } from '@/features/pro-core/proCoreCapabilities';
 import type { CockpitTab, ProContextTab } from '@/features/pro-workbench/RecipeProfilePanel';
 import type { LabelWorkspaceView } from '@/features/master-label/LabelWorkspace';
+import {
+  labelSettingsReturn,
+  readLabelSettingsRestore,
+} from '@/features/master-label/labelSettingsNavigation';
 import { DESKTOP_TAB_STRIP } from '@/features/shell/desktopTabAnchorContract';
 import { WorkbenchModuleTabs } from '@/features/pro-workbench/WorkbenchModuleTabs';
 import { ReviewBadge } from '@/features/design-review/ReviewBadge';
@@ -183,6 +187,8 @@ function RecipeWorkbench({
   onCloseRecalc,
   initialLabelView,
   labelViewRequestKey,
+  onOpenLabelSettings,
+  labelSettingsRestoreScrollTop,
 }: {
   activeTab: CockpitTab;
   onTabChange: (tab: CockpitTab) => void;
@@ -192,6 +198,8 @@ function RecipeWorkbench({
   onCloseRecalc: () => void;
   initialLabelView: LabelWorkspaceView;
   labelViewRequestKey: string;
+  onOpenLabelSettings: (runId: string, scrollTop: number) => void;
+  labelSettingsRestoreScrollTop?: number;
 }) {
   const draftContextSeq = useRecipeStore((state) => state.draftContextSeq);
   const [recipeSaveAttention, setRecipeSaveAttention] = useState(false);
@@ -212,6 +220,8 @@ function RecipeWorkbench({
             onOpenExistingPreview={onOpenExistingPreview}
             initialLabelView={initialLabelView}
             labelViewRequestKey={labelViewRequestKey}
+            onOpenLabelSettings={onOpenLabelSettings}
+            labelSettingsRestoreScrollTop={labelSettingsRestoreScrollTop}
           />
         </div>
       </SurfaceToneContext.Provider>
@@ -343,6 +353,7 @@ export function ProWorkspacePage() {
   const { section } = useParams<{ section?: string }>();
   const [searchParams] = useSearchParams();
   const workbenchReturnPath = workbenchOriginReturnPath(searchParams.get(WORKBENCH_ORIGIN_PARAM));
+  const labelSettingsRestore = readLabelSettingsRestore(location.state);
   const userId = useAuthStore((state) => state.user?.id ?? null);
   const ownerReviewGate = useRecipeStore((state) => state.ownerReviewGate);
   const [libraryHandoff, setLibraryHandoff] = useState<
@@ -574,6 +585,18 @@ export function ProWorkspacePage() {
                     searchParams.get('labelView') === 'settings' ? 'settings' : 'data'
                   }
                   labelViewRequestKey={location.key}
+                  labelSettingsRestoreScrollTop={labelSettingsRestore?.scrollTop}
+                  onOpenLabelSettings={(runId, scrollTop) =>
+                    navigate(`/labels?run=${encodeURIComponent(runId)}&labelView=settings`, {
+                      state: {
+                        labelSettingsReturn: labelSettingsReturn(
+                          location.pathname,
+                          location.search,
+                          scrollTop,
+                        ),
+                      },
+                    })
+                  }
                 />
               </>
             )}

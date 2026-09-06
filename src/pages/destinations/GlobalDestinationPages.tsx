@@ -49,7 +49,10 @@ import { FRANCHISE_FORMAT_LINKS, FRANCHISE_PAGE, FRANCHISE_SPLIT } from '@/copy/
 import { AppShell } from '@/features/shell/AppShell';
 import { KnowledgeTour } from '@/features/knowledge-tour/KnowledgeTour';
 import { useRecipeStore } from '@/stores/recipeStore';
-import { readLabelSettingsReturn } from '@/features/master-label/labelSettingsNavigation';
+import {
+  labelSettingsReturn,
+  readLabelSettingsReturn,
+} from '@/features/master-label/labelSettingsNavigation';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { recipeCompositionFromState } from '@/features/recipe-composition/recipeCompositionPersistence';
 import { buildDraftLabelPreview } from '@/features/master-label/draftLabelPreview';
@@ -401,6 +404,8 @@ const productionTabs: readonly { id: ProductionTab; label: string }[] = [
 
 export function ProductionHubPage() {
   const [params, setParams] = useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const requested = params.get('tab');
   const active: ProductionTab = productionTabs.some((tab) => tab.id === requested)
     ? (requested as ProductionTab)
@@ -649,7 +654,21 @@ export function ProductionHubPage() {
                   {/* Completed-batch VIEWER. Settings live on Etykiety
                       (`/labels`), so this instance points there rather than
                       opening a second copy of them. */}
-                  <LabelWorkspace snapshot={labelSnapshot} settingsHome="production" />
+                  <LabelWorkspace
+                    snapshot={labelSnapshot}
+                    settingsHome="production"
+                    onOpenSettings={(runId) =>
+                      navigate(`/labels?run=${encodeURIComponent(runId)}&labelView=settings`, {
+                        state: {
+                          labelSettingsReturn: labelSettingsReturn(
+                            location.pathname,
+                            location.search,
+                            window.scrollY,
+                          ),
+                        },
+                      })
+                    }
+                  />
                 </div>
               ) : (
                 <p className="mt-5 text-sm text-[var(--g-text-secondary)]">
@@ -851,6 +870,7 @@ export function LabelsHubPage() {
             runId={selectedRunId}
             savedSnapshotId={selectedSnapshotId}
             repository={repository}
+            initialView={params.get('labelView') === 'settings' ? 'settings' : 'label'}
             onSaved={(item) => {
               setHistory((current) => [
                 item,

@@ -511,17 +511,17 @@ describe('profile hierarchy and compact preflight', () => {
         expect(host.querySelector('[data-testid="draft-label-pending"]')).toBeNull();
         expect(draftCard?.textContent).toContain('LOT-');
         expect(draftCard?.textContent).not.toContain('Potwierdzone składniki z produkcji');
-        expect(host.querySelector('[data-testid="label-data-intake"]')).not.toBeNull();
+        expect(host.querySelector('[data-testid="label-data-intake"]')).toBeNull();
 
         const print = host.querySelector<HTMLButtonElement>('[data-testid="draft-label-print"]');
         expect(print).not.toBeNull();
-        expect(print?.disabled).toBe(true);
+        expect(print?.disabled).toBe(false);
 
         // Settings stay on the canonical destination; the main view exposes
         // only the explicit route action requested by the Owner.
         expect(host.querySelector('[data-testid="label-settings-home-link"]')).toBeNull();
         expect(host.textContent).not.toContain('Zmień ustawienia');
-        expect(host.textContent).toContain('ZMIEŃ');
+        expect(host.textContent).toContain('Zmień');
         expect(host.querySelector('[data-testid="label-consumer-preview"]')).not.toBeNull();
       }
 
