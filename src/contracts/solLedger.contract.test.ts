@@ -72,10 +72,11 @@ describe('Gellatti SOL ledger continuity', () => {
 
   it('records SOL-031 on staging without claiming Owner acceptance', () => {
     expect(entries.find(({ id }) => id === 'SOL-031')?.status).toBe('RESOLVED_ON_STAGING');
-    expect(ledger).toContain('PR #208');
-    expect(ledger).toContain('merge SHA `cc141bbec4e23ef7bd4df9824fe13075b6ded26f`');
-    expect(ledger).toContain('CI merge run `34036953949` PASS');
-    expect(ledger).toContain('CI aktualnego staging run `34038500307` PASS');
+    expect(ledger).toContain('PR #216');
+    expect(ledger).toContain('finalny staging SHA `5091cd866581f9d4993e7333c74e09328601cc02`');
+    expect(ledger).toContain('staging CI run `34060072184` PASS');
+    expect(ledger).toContain('deployment `dpl_6ZKwjNiZiLV7GQzT4iCzuHdJnuQq` o statusie READY');
+    expect(ledger).toContain('`20260906192729_nonblocking_label_print_snapshots.sql`');
     expect(ledger).toContain('`OWNER QA PENDING`');
     expect(ledger).toContain('`OWNER ACCEPTED: NO`');
   });
