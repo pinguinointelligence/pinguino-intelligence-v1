@@ -413,6 +413,16 @@
   .knowledge-tour {
     min-height: calc(100dvh - var(--pro-header-height));
   }
+
+  .knowledge-tour[data-layout='embedded'] {
+    grid-template-rows: auto auto;
+    min-height: 0;
+    overflow: visible;
+  }
+
+  .knowledge-tour[data-layout='embedded'] .knowledge-tour__stage {
+    overflow-y: visible;
+  }
 }
 
 @media (max-width: 520px) {

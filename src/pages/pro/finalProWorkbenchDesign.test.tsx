@@ -91,7 +91,8 @@ describe('final Pro visual system', () => {
     expect(panel).toContain('<ContextualEducationView');
     expect(education).not.toContain('ice-cockpit-bg.png');
     expect(education).not.toContain('education-ice-cockpit');
-    expect(education).toContain('contextual-learning-hub');
+    expect(education).toContain('<KnowledgeTour layout="embedded"');
+    expect(education).not.toContain('contextual-learning-hub');
   });
 
   it('uses one moderate rectangular corner contract while preserving functional circles', () => {
