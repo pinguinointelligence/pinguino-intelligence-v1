@@ -106,15 +106,15 @@ Legend for yes/no columns: `Y` = yes/required, `–` = no/not required, `?` = to
 | H-24-1 | Identity | Where existing Gellatti mapping already collapses several SKUs to one canonical identity, HOME uses that authority — no new equivalence layer | Y | Mapper canonical identity | – | – | – | – | – | – | – | Y | – | TODO | | |
 | H-25-1 | Intent | Multilingual + typo-tolerant intent (strawberry/truskawka/fresa/Erdbeere; whisky cola/whiskey & coke/whisky z colą; mojito/mochito/mojitto) | Partly | `polishFlavorSynonyms` | Y | `/` | intent parser | – | – | Y | Y | Y | Y | TESTED | | |
 | H-25-2 | Intent | Understanding only — everything resolves to real Gellatti identities before matching/formulation | – | – | Y | – | – | – | – | – | – | Y | Y | TESTED | | |
-| H-26-1 | Scanner | Cheap demo pre-check: no expensive Product Scanner analysis for non-paying users | Partly | `product-scanner/pipeline` | Y | `/` | `services/productScanner` | Y | – | Y | Y | Y | Y | WAITING | frozen by owner 2026-09-03; superseded by the external Scan Core programme | external Scan Core workstream; resumes only on explicit owner acceptance |
-| H-26-2 | Scanner | Free pre-scan may recognise obvious fresh produce, detect EAN, and check whether the EAN is already known | – | `barcodeDecoder`, `eanLookupEvidence` | Y | `/` | – | Y | – | Y | Y | Y | Y | WAITING | frozen by owner 2026-09-03; superseded by the external Scan Core programme | external Scan Core workstream; resumes only on explicit owner acceptance |
-| H-26-3 | Scanner | Free pre-scan must NOT run full OCR, internet research, nutrition evidence research, full catalog analysis or the costly Scanner flow | – | – | Y | – | – | Y | – | – | – | Y | Y | WAITING | frozen by owner 2026-09-03; superseded by the external Scan Core programme | external Scan Core workstream; resumes only on explicit owner acceptance |
-| H-27-1 | Scanner | Known EAN → use the existing identified product | Y | `intimportCanonicalLookup` | Y (wiring) | `/` | – | – | – | Y | Y | Y | Y | WAITING | frozen by owner 2026-09-03; superseded by the external Scan Core programme | external Scan Core workstream; resumes only on explicit owner acceptance |
-| H-27-2 | Scanner | Unknown EAN → HOME/PRO subscription gate before full analysis; no free lookup beyond "do we already know this EAN" | – | – | Y | `/` | – | Y | – | Y | Y | Y | Y | WAITING | frozen by owner 2026-09-03; superseded by the external Scan Core programme | external Scan Core workstream; resumes only on explicit owner acceptance |
-| H-28-1 | Scanner | Unknown EAN: pre-scan → paywall → purchase/login → automatically continue full Scanner with the SAME temporary image (no re-photograph) | – | `ocrIntakeStorage`, scanner session | Y | `/` | scanner continuation | Y | – | Y | Y | Y | Y | WAITING | frozen by owner 2026-09-03; superseded by the external Scan Core programme | external Scan Core workstream; resumes only on explicit owner acceptance |
-| H-28-2 | Scanner | Existing privacy/deletion lifecycle applies to the retained image afterwards | Y | `ocrIntakeEvidence` | – | – | – | – | – | – | – | Y | – | WAITING | frozen by owner 2026-09-03; superseded by the external Scan Core programme | external Scan Core workstream; resumes only on explicit owner acceptance |
-| H-29-1 | Scanner | Obvious fresh produce resolves cheaply; on low confidence ask "What is this? Apple / Pear / Search ingredient" | – | – | Y | `/` | – | – | – | Y | Y | Y | Y | WAITING | frozen by owner 2026-09-03; superseded by the external Scan Core programme | external Scan Core workstream; resumes only on explicit owner acceptance |
-| H-29-2 | Scanner | Never guess; never trigger the expensive Scanner merely to disambiguate simple produce | – | – | Y | – | – | – | – | – | – | Y | Y | WAITING | frozen by owner 2026-09-03; superseded by the external Scan Core programme | external Scan Core workstream; resumes only on explicit owner acceptance |
+| H-26-1 | Scanner | Cheap demo pre-check: no expensive Product Scanner analysis for non-paying users | Partly | `product-scanner/pipeline` | Y | `/` | `services/productScanner` | Y | – | Y | Y | Y | Y | TODO | no entitlement gate on scanner analysis found on `f03038d0`; the cost ladder is throttling, not a free/paid split |  |
+| H-26-2 | Scanner | Free pre-scan may recognise obvious fresh produce, detect EAN, and check whether the EAN is already known | – | `barcodeDecoder`, `eanLookupEvidence` | Y | `/` | – | Y | – | Y | Y | Y | Y | IMPLEMENTED | `liveScanCapabilities.ts` wires `lookupExactBarcode` (the "do we know this EAN" check); the FREE-tier scope is not separated |  |
+| H-26-3 | Scanner | Free pre-scan must NOT run full OCR, internet research, nutrition evidence research, full catalog analysis or the costly Scanner flow | – | – | Y | – | – | Y | – | – | – | Y | Y | TODO | no free-tier restriction exists; OCR/Vision are capped for cost, which is not the same requirement |  |
+| H-27-1 | Scanner | Known EAN → use the existing identified product | Y | `intimportCanonicalLookup` | Y (wiring) | `/` | – | – | – | Y | Y | Y | Y | SERVED VERIFIED | owner QA on canonical staging: Milka Choco Brownie recognised immediately as an existing product, no duplicate created. Served bundle on `f03038d0` carries the `61f4eab8` shared scan flow (verified: `Skanuj produkt`, `product-identify-live`, `VISION_RESOLVED` present) |  |
+| H-27-2 | Scanner | Unknown EAN → HOME/PRO subscription gate before full analysis; no free lookup beyond "do we already know this EAN" | – | – | Y | `/` | – | Y | – | Y | Y | Y | Y | TODO | paywall copy exists in `homeCreatorCopy.ts` but no scanner-side gate; owner QA reached full analysis and a private-product save with no subscription gate |  |
+| H-28-1 | Scanner | Unknown EAN: pre-scan → paywall → purchase/login → automatically continue full Scanner with the SAME temporary image (no re-photograph) | – | `ocrIntakeStorage`, scanner session | Y | `/` | scanner continuation | Y | – | Y | Y | Y | Y | TODO | no resume-after-purchase path retaining the same temporary image |  |
+| H-28-2 | Scanner | Existing privacy/deletion lifecycle applies to the retained image afterwards | Y | `ocrIntakeEvidence` | – | – | – | – | – | – | – | Y | – | IMPLEMENTED | retention consent boundary in `src/services/productScanner.ts` (~line 386); no served proof of the deletion lifecycle |  |
+| H-29-1 | Scanner | Obvious fresh produce resolves cheaply; on low confidence ask "What is this? Apple / Pear / Search ingredient" | – | – | Y | `/` | – | – | – | Y | Y | Y | Y | TODO | `whatIsThis` copy key exists in `homeCreatorCopy.ts` but is rendered nowhere — copy is not implementation |  |
+| H-29-2 | Scanner | Never guess; never trigger the expensive Scanner merely to disambiguate simple produce | – | – | Y | – | – | – | – | – | – | Y | Y | TESTED | `liveScanSession.test.ts` + `liveRecognition.test.ts` (behavioural, 42 cases passed on `f03038d0`): a valid barcode is never named without catalogue resolution, and the paid rung is throttled and hard-capped |  |
 | H-30-1 | Paywall | Product creation / full Scanner requires HOME or PRO subscription; after purchase the flow resumes exactly where it stopped | – | `billingCheckout` | Y | `/` | `subscriptionStore` | Y | – | Y | Y | Y | Y | TODO | | |
 | H-31-1 | Profile | A stated/implied profile (Gelato/Sorbet/Protein/Vegan) is not asked again and filters all matching | – | `ProductCategory` | Y | `/` | `recipeStore` | – | – | Y | Y | Y | Y | TESTED | | |
 | H-31-2 | Profile | Unknown profile → show the four choices | – | – | Y | `/` | – | – | – | Y | Y | Y | Y | TESTED | | |
@@ -320,46 +320,71 @@ browser verification is recorded as `IMPLEMENTED`, deliberately one rung lower.
 
 ## HOME-RECON-001 — ledger reconciliation (2026-09-03)
 
-Reconciled against `origin/staging` = **`c66c1d01`**. Ledger base before this pass:
+Reconciled against `origin/staging` = **`f03038d0`**. Ledger base before this pass:
 `0c5763a2` (2026-08-31) — the file had not been updated while later phases merged, so
 neither the 97% quoted in conversation nor the 36% read off the stale file was true.
-The first counted code existence; the second counted a file that did not know what had
-landed.
 
 **Active requirements: 210** (211 rows, of which one is `NOT APPLICABLE`).
 
 | Status | Count |
 | --- | --- |
-| TESTED | 78 |
-| SERVED VERIFIED | 3 |
-| IMPLEMENTED | 20 |
-| WAITING | 9 |
+| TESTED | 79 |
+| SERVED VERIFIED | 4 |
+| IMPLEMENTED | 22 |
 | IN PROGRESS | 2 |
 | BLOCKED | 1 |
-| TODO | 97 |
+| TODO | 102 |
 | NOT APPLICABLE (excluded) | 1 |
 
 ```
-PROGRESS                = (78 + 3) / 210 = 81/210 = 38.6%
-HOME EXCLUDING SCANNER  = (78 + 3) / 201 = 81/201 = 40.3%
-IMPLEMENTATION COVERAGE = (20 + 78 + 3) / 210 = 101/210 = 48.1%
+PROGRESS                = (79 + 4) / 210 = 83/210 = 39.5%
+IMPLEMENTATION COVERAGE = (22 + 79 + 4) / 210 = 105/210 = 50.0%
 ```
 
-Scanner is counted in the total ledger and excluded in the second figure. It is never
-counted as done.
+There is no longer a separate "excluding Scanner" figure, because **no Scanner row is
+`WAITING` any more.** See below.
+
+### The blanket Scanner freeze was wrong
+
+All nine Scanner rows were previously set to `WAITING_ON_EXTERNAL_SCAN_CORE` in one
+sweep. Re-checked individually, none of them is blocked by that workstream: every one is
+about the **cheap pre-check and paywall economics**, which is HOME's own work, not the
+recognition core.
+
+| ID | was | now | why |
+| --- | --- | --- | --- |
+| `H-26-1` | WAITING | TODO | no entitlement gate on scanner analysis exists |
+| `H-26-2` | WAITING | IMPLEMENTED | the "do we know this EAN" check is wired; the free/paid split is not |
+| `H-26-3` | WAITING | TODO | OCR/Vision are capped for cost — not the same as a free-tier restriction |
+| `H-27-1` | WAITING | **SERVED VERIFIED** | owner QA on canonical staging: a known product resolved immediately, no duplicate |
+| `H-27-2` | WAITING | TODO | paywall copy exists; no scanner-side gate fired during owner QA |
+| `H-28-1` | WAITING | TODO | no resume-after-purchase path keeping the same image |
+| `H-28-2` | WAITING | IMPLEMENTED | retention consent boundary exists; no served proof |
+| `H-29-1` | WAITING | TODO | the `whatIsThis` copy key is rendered nowhere |
+| `H-29-2` | WAITING | TESTED | behavioural: a barcode is never named without catalogue resolution |
+
+**PR #186 is OPEN, not merged**, and titled "DO NOT MERGE — owner review". It is therefore
+NOT attributed to staging. Proven, not assumed: three strings that exist only in #186's
+diff are absent from the served bundle, while the `61f4eab8` shared-flow markers are
+present. The owner's successful scans ran against merged, served code.
+
+### Scanner defects are tracked elsewhere — do not duplicate
+
+Orientation dependence, the missing rotation cue, raw technical statuses in the UI, the
+unclear private→PR product lifecycle and desktop camera blur are recorded in the
+**canonical SOL ledger (SOL-042 … SOL-045)** owned by a separate workstream. HOME depends
+on that ledger and must not restate those defects under its own numbering. A working read
+of an already-known product does not make the Scanner complete.
 
 ### What was NOT done in this pass, and why it matters
 
-Statuses were changed only where evidence exists. The 97 `TODO` rows were **not**
+Statuses were changed only where evidence exists. The remaining `TODO` rows were **not**
 individually re-verified; they were left at the status the ledger already carried, and
-spot checks on the artefacts they name (`GELLATTI_HOME_FINAL_ACCEPTANCE.md`, Top100
-seeds, the six acceptance-matrix test files) confirmed those are genuinely absent. Two
-rows previously marked `TODO` were wrong in the other direction — the documents exist —
-and are now `IMPLEMENTED`.
+spot checks on the artefacts they name confirmed those are genuinely absent.
 
 `TESTED` was assigned only where a **behavioural** test was run in this pass and passed.
-Tests that only read source text or assert a CSS class were rejected as evidence, which
-is why several rows with passing contract tests stay `IMPLEMENTED`.
+Tests that only read source text or assert a CSS class were rejected as evidence, which is
+why several rows with passing contract tests stay `IMPLEMENTED`.
 
 ### Structural findings
 
