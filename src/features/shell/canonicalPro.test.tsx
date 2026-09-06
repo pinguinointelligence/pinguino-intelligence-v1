@@ -107,11 +107,11 @@ describe('canonical Gellatti Pro — menu (proofs 4–6, 17–18)', () => {
       // for Guest, Home and Pro — never a workbench-local duplicate.
       'howItWorks',
       'production',
+      'labels',
       'products',
       'machine',
-      // OWNER AUTHORIZED (2026-08-29): the duplicate `Ustawienia etykiety`
-      // entry is gone; Community becomes the one door to the public creator
-      // surfaces. Label settings keep working inside Production/Label.
+      // OWNER DECISION (2026-09-06): `/labels` above is the one canonical
+      // settings destination; Community remains the one public creator door.
       'community',
       'memberShop',
       'workWithUs',

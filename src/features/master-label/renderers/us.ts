@@ -16,7 +16,7 @@ import {
   roundUsWholeGram,
 } from '../regulatoryNutrition';
 import {
-  allergenDisplayValues,
+  allergenStatementText,
   businessHtml,
   escapeHtml,
   ingredientDeclarationHtml,
@@ -203,6 +203,6 @@ export function renderFdaNutritionFacts(data: MasterLabelData): string {
 export function renderUsLabel(data: MasterLabelData): string {
   const product = primaryText(data.productName, ['en']);
   const identity = primaryText(data.legalProductName, ['en']);
-  const allergens = allergenDisplayValues(data);
-  return `<section class="market-renderer us-renderer" data-regulatory-renderer="fda-nutrition-facts-v2"><div class="principal-display-panel"><h1>${escapeHtml(identity || product)}</h1><p class="brand-name">${escapeHtml(data.businessName || product)}</p><strong class="us-net-contents">${escapeHtml(netContents(data))}</strong></div>${renderFdaNutritionFacts(data)}<p class="ingredients"><strong>Ingredients:</strong> ${ingredientDeclarationHtml(data, 'en')}</p>${allergens.length ? `<p class="contains"><strong>Contains:</strong> ${escapeHtml(allergens.join(', '))}</p>` : ''}${storageHtml(data, ['en'])}${traceabilityHtml(data)}${businessHtml(data)}</section>`;
+  const allergenStatement = allergenStatementText(data);
+  return `<section class="market-renderer us-renderer" data-regulatory-renderer="fda-nutrition-facts-v2"><div class="principal-display-panel"><h1>${escapeHtml(identity || product)}</h1><p class="brand-name">${escapeHtml(data.businessName || product)}</p><strong class="us-net-contents">${escapeHtml(netContents(data))}</strong></div>${renderFdaNutritionFacts(data)}<p class="ingredients"><strong>Ingredients:</strong> ${ingredientDeclarationHtml(data, 'en')}</p><p class="allergens"><strong>Alergeny:</strong> ${escapeHtml(allergenStatement)}</p>${storageHtml(data, ['en'])}${traceabilityHtml(data)}${businessHtml(data)}</section>`;
 }

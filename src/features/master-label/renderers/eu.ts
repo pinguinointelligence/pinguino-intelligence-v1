@@ -1,6 +1,6 @@
 import type { MasterLabelData } from '../masterLabel';
 import {
-  allergenDisplayValues,
+  allergenStatementText,
   businessHtml,
   escapeHtml,
   ingredientDeclarationHtml,
@@ -57,7 +57,7 @@ export function renderEuLabel(data: MasterLabelData): string {
   const languages = data.labelLanguages;
   const product = primaryText(data.productName, languages);
   const legalName = primaryText(data.legalProductName, languages);
-  const allergens = allergenDisplayValues(data);
+  const allergenStatement = allergenStatementText(data);
   const ingredientBlocks = languages
     .map(
       (language) =>
@@ -69,5 +69,5 @@ export function renderEuLabel(data: MasterLabelData): string {
     data.alcoholDeclarationReviewed
       ? `<div><span>Actual alcohol</span><strong>${data.alcoholByVolumePercent}% vol</strong></div>`
       : '';
-  return `<section class="market-renderer eu-renderer" data-regulatory-renderer="eu-label-v2" data-eu-destination="${escapeHtml(data.jurisdictionContext?.euDestinationCountryCode ?? '')}"><header class="identity"><h1>${escapeHtml(product)}</h1><p>${escapeHtml(legalName)}</p></header>${ingredientBlocks}${allergens.length ? `<p class="contains"><strong>Allergens:</strong> ${escapeHtml(allergens.join(', '))}</p>` : ''}${renderEuNutrition(data)}<div class="same-field-of-vision">${netQuantityHtml(data)}${alcohol}</div>${traceabilityHtml(data)}${storageHtml(data, languages)}${originHtml(data, languages)}${businessHtml(data)}</section>`;
+  return `<section class="market-renderer eu-renderer" data-regulatory-renderer="eu-label-v2" data-eu-destination="${escapeHtml(data.jurisdictionContext?.euDestinationCountryCode ?? '')}"><header class="identity"><h1>${escapeHtml(product)}</h1><p>${escapeHtml(legalName)}</p></header>${ingredientBlocks}<p class="allergens"><strong>Alergeny:</strong> ${escapeHtml(allergenStatement)}</p>${renderEuNutrition(data)}<div class="same-field-of-vision">${netQuantityHtml(data)}${alcohol}</div>${traceabilityHtml(data)}${storageHtml(data, languages)}${originHtml(data, languages)}${businessHtml(data)}</section>`;
 }

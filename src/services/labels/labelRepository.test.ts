@@ -204,7 +204,15 @@ describe('LabelRepository account and immutable history authority', () => {
     await repository.saveAccountProfile(profileA);
     const snapshotA = completedSnapshot('owner-a', 'run-a');
     await repository.freezeCompletedSnapshot(snapshotA);
-    const labelA = printReadyActualLabel(snapshotA, profileA, profileA.market, 'label-a');
+    const labelA = {
+      ...printReadyActualLabel(snapshotA, profileA, profileA.market, 'label-a'),
+      allergens: {
+        ...printReadyActualLabel(snapshotA, profileA, profileA.market, 'label-a').allergens,
+        status: 'complete' as const,
+        labelStatements: ['Zawiera: MLEKO. Może zawierać ORZECHY.'],
+        reviewedByUser: true,
+      },
+    };
     const savedA = await repository.saveRunLabelSnapshot(labelA);
 
     const profileB: AccountLabelProfile = {
@@ -227,6 +235,9 @@ describe('LabelRepository account and immutable history authority', () => {
         businessName: 'Business A',
         logoPath: 'owner-a/logo-a.png',
         lotCode: snapshotA.lotCode,
+        allergens: {
+          labelStatements: ['Zawiera: MLEKO. Może zawierać ORZECHY.'],
+        },
       },
       accountProfileSnapshot: { enabledOptionalFields: ['logo', 'origin'] },
     });
