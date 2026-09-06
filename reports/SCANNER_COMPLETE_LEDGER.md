@@ -78,6 +78,15 @@ The code was read, the product was recognised from it, the flow asked for a labe
 the label and saved the article as the customer's own private product, and said so. That whole path
 is the intended behaviour. It also exposed SOL-042, SOL-043 and SOL-044 below.
 
+**What that scan actually produced, read back from staging:** `CA-ING-007185` "Cola Zero" /
+Hacendado, `customer_provisional`, `visibility='internal'`, version 1, **ready = true,
+roleReadiness = BASE_READY, zero critical blockers**, linked to `home@home.com` alone. So the raw
+`not ready: …` line the owner read was an INTERMEDIATE state of the flow, before the label was
+read — the product it finally saved is usable in a recipe. The defect was the wording of a passing
+moment, not the outcome. Test 1's product is `CA-ING-007177` "Choco brownie" / Milka,
+`TOPPING_READY`, ready, created in an earlier session — which is why it resolved instantly and
+created no duplicate.
+
 ## Root causes found and fixed in this workstream
 
 1. **Found data was traded for an estimate.** `DECLARATION_SOURCES` in the customer profile adapter
