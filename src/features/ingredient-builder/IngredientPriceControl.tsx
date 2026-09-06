@@ -3,7 +3,6 @@ import type { EffectiveIngredientCost } from '@/features/pro-core/costContracts'
 import { currencyMark } from '@/features/pro-core/currencyMark';
 import { parseCustomerPriceText } from './customerPriceInput';
 import { HoverPreview } from '@/components/ui/HoverPreview';
-import { cn } from '@/lib/cn';
 import { useCustomerPriceDirtyStore } from './customerPriceDirtyStore';
 import { customerErrorMessage } from '@/copy/customerError';
 
@@ -68,15 +67,12 @@ export function IngredientPriceCell({ view }: { view: IngredientPriceView }) {
         </span>
       )}
       <span className="flex items-center justify-end gap-1 font-mono font-semibold tabular-nums text-[var(--g-ink)]">
-        {/* „Koszt niepełny" is a STATUS, not a number: it is the one label wider
-            than the reserved money column, so it takes the secondary size
-            instead of clipping mid-word or stealing the name's width. */}
-        <span
-          className={cn('whitespace-nowrap', lineCost === null ? 'text-[10px]' : 'text-[11px]')}
-        >
-          {lineCost === null
-            ? 'Koszt niepełny'
-            : `${money(lineCost)} ${currencyMark(cost.currency)}`}
+        {/* Missing-price guidance is consolidated once at recipe level. The row
+            remains a numeric readout and therefore uses the same neutral
+            placeholder as the unit price instead of exposing a technical
+            costing status for every affected ingredient. */}
+        <span className="whitespace-nowrap text-[11px]">
+          {lineCost === null ? '—' : `${money(lineCost)} ${currencyMark(cost.currency)}`}
         </span>
         {own && tooltipCopy ? (
           // The base price used to hide in a native `title`. It now travels in
@@ -280,7 +276,7 @@ export function CustomerPriceEditor({
             ? 'Moja cena'
             : view.cost.source === 'mapper_reference'
               ? 'Cena bazowa'
-              : 'Brak ceny'}
+              : 'Moja cena'}
         </p>
         <p className="shrink-0 font-mono text-[9px] leading-none tabular-nums text-stone-500">
           {own && base !== null
