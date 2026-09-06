@@ -114,12 +114,23 @@ const MACRO_FIELDS: Readonly<Record<string, WorkingNumericField>> = {
   salt: 'salt_percent',
 };
 
+/**
+ * OWNER RULE (2026-09-06): data FOUND in a source has precedence and is never replaced by an
+ * estimate. A registry record (verbatim label transcription with its URL), a retailer page or a
+ * cited web page is found data — it enters the profile as `product_declared` and the declaration
+ * confidence tiers (label 0.95 … web 0.6) carry the trust; only a value NO source states is
+ * completed from the most similar Mapper products. Before this rule every registry-known product
+ * on the automatic add path lost its whole nutrition table to a donor profile.
+ */
 const DECLARATION_SOURCES = new Set<EvidenceSource>([
   'label',
   'user_confirmed',
   'manufacturer',
   'source_file',
   'mapper_exact',
+  'barcode_registry',
+  'retailer',
+  'web_search',
 ]);
 
 export interface CustomerProductProfileProposal {
@@ -176,9 +187,8 @@ export function customerProductProfileProposal(input: {
       if (value === null || (key !== 'energyKcal' && value > 100)) continue;
       const evidenceField = (key === 'fibre' ? 'fiber' : key) as ProductEvidenceField;
       const source = evidenceSource(root, evidenceField, userConfirmed);
-      // A merged Scanner result may contain a lower-authority web fill beside
-      // direct label values. Keep it as evidence, but never promote it into a
-      // VERIFIED Engine declaration without declaration-grade provenance.
+      // a value without any provenance (no label, no source, no confirmation) is not a
+      // declaration; a found value keeps its own source tier (see DECLARATION_SOURCES)
       if (!source || !DECLARATION_SOURCES.has(source)) continue;
       declared[field] = value;
       declaredBasis[field] = userConfirmed.has(evidenceField)

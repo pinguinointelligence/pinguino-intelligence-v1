@@ -14,7 +14,7 @@ import { foldLatin, inferMapperFamily, type ProductFamilyId } from './mapperFami
 
 export const PRODUCT_RECOGNITION_VERSION = 'PRODUCT_RECOGNITION_V2' as const;
 /** Bumps the exact-evidence cache without changing the persisted V2 authority contract. */
-export const PRODUCT_RECOGNITION_CACHE_REVISION = 'SWEETENING_SIGNALS_FAMILY_FORM_V3' as const;
+export const PRODUCT_RECOGNITION_CACHE_REVISION = 'MULTILINGUAL_LABEL_CUES_V4' as const;
 
 export type ProductArchetype =
   | 'NORMAL_INGREDIENT'
@@ -745,14 +745,18 @@ const archetypeOf = (
   // confectionery signature (a filled biscuit, a wafer, a cake bar), whatever coined
   // name the front carries.
   const bakedConfectioneryIngredients =
-    /\b(bakery|sweets|slodycz\w*|ciast\w*|cookies?|biscuits?|kekse?)\b/.test(taxonomy) &&
-    /\b(mak[ai]\s+pszenn\w*|maka\b|wheat\s+flour|flour|weizenmehl|harina|farina)\b/.test(
+    /\b(bakery|sweets|slodycz\w*|ciast\w*|cookies?|biscuits?|kekse?|koek\w*|speculoos|speculaas|galleta\w*|biscotti|gateau\w*|patisserie|gebak|snack\w*)\b/.test(
+      taxonomy,
+    ) &&
+    /\b(mak[ai]\s+pszenn\w*|maka\b|wheat\s+flour|flour|weizenmehl|mehl|harina|farina|farine|bloem|farinha)\b/.test(
       ingredients,
     ) &&
-    /\b(sugar|zucker|cukier|azucar|zucchero|syrop\s+glukozow\w*|glucose\s+syrup)\b/.test(
+    /\b(sugar|zucker|cukier|azucar|zucchero|sucre|suiker|acucar|syrop\s+glukozow\w*|glucose\s+syrup|sirop\s+de\s+glucose|glucosestroop)\b/.test(
       ingredients,
     ) &&
-    /\b(tluszcz\w*|olej\w*|maslo|butter|fat|oil|palm\w*|shea|kakaow\w*)\b/.test(ingredients);
+    /\b(tluszcz\w*|olej\w*|maslo|butter|fat|oil|palm\w*|shea|kakaow\w*|huile\w*|olie|beurre|boter|burro|olio|aceite|mantequilla|manteca|margar\w*|graisse\w*|vet|grassi)\b/.test(
+      ingredients,
+    );
   const gummyConfectioneryIngredients =
     /\b(glucose syrup|glukosesirup|syrop glukozowy|jarabe de glucosa|sciroppo di glucosio)\b/.test(
       ingredients,
@@ -760,10 +764,10 @@ const archetypeOf = (
     /\b(sugar|zucker|cukier|azucar|zucchero)\b/.test(ingredients) &&
     /\b(gelatin|gelatine|gelatina|zelatyn\w*)\b/.test(ingredients);
   if (
-    /\b(baton\w*|wafer\w*|wafel\w*|wafl\w*|gofr\w*|waffle\w*|cookie\w*|biscuit\w*|brownie\w*|herbatnik\w*|ciastk\w*|ciasteczk\w*|praline bar|gumm(?:y|i)\w*|fruit gum\w*|candy\w*|candies\w*|zelk\w*|paczek|paczk\w*|donut\w*|doughnut\w*|drozdzowk\w*|rogalik\w*|croissant\w*|muffin\w*|precel\w*|precle|pretzel\w*|krakers\w*|cracker\w*|ptasie mleczko|pianki?\b|marshmallow\w*|chalw\w*|halva|sezamk\w*|krowk\w*|toffi|toffee|karmelk\w*|lizak\w*|lollipop\w*|draze|dragee\w*|pralin\w*|cukierk\w*|bonbon\w*|nugat|nougat|kolorowych skorupkach|batonik\w*)\b/.test(
+    /\b(baton\w*|wafer\w*|wafel\w*|wafl\w*|gofr\w*|waffle\w*|cookie\w*|biscuit\w*|brownie\w*|herbatnik\w*|ciastk\w*|ciasteczk\w*|praline bar|gumm(?:y|i)\w*|fruit gum\w*|candy\w*|candies\w*|zelk\w*|paczek|paczk\w*|donut\w*|doughnut\w*|drozdzowk\w*|rogalik\w*|croissant\w*|muffin\w*|precel\w*|precle|pretzel\w*|krakers\w*|cracker\w*|ptasie mleczko|pianki?\b|marshmallow\w*|chalw\w*|halva|sezamk\w*|krowk\w*|toffi|toffee|karmelk\w*|lizak\w*|lollipop\w*|draze|dragee\w*|pralin\w*|cukierk\w*|bonbon\w*|nugat|nougat|kolorowych skorupkach|batonik\w*|speculoos|speculaas|koek\w*|koekje\w*|galleta\w*|galletita\w*|biscotti|biscotto|bolacha\w*|gaufrette\w*|gaufre\w*|gateau\w*|kuchen|keks\w*|petit beurre|sable\w*|madeleine\w*|amaretti)\b/.test(
       confectioneryIdentity,
     ) ||
-    /\b(baton\w*|wafer\w*|wafel\w*|cookie\w*|biscuit\w*|brownie\w*|herbatnik\w*|ciastk\w*|praline|gumm(?:y|i)\w*|fruit gum\w*|candy\w*|candies\w*|zelk\w*)\b/.test(
+    /\b(baton\w*|wafer\w*|wafel\w*|cookie\w*|biscuit\w*|brownie\w*|herbatnik\w*|ciastk\w*|praline|gumm(?:y|i)\w*|fruit gum\w*|candy\w*|candies\w*|zelk\w*|speculoos|speculaas|koek\w*|galleta\w*|biscotti|gaufrette\w*|keks\w*)\b/.test(
       specificConfectionerySubcategory,
     ) ||
     gummyConfectioneryIngredients ||
@@ -920,7 +924,7 @@ const SUGAR_AGENT_CUES: readonly (readonly [RegExp, SweeteningAgent])[] = [
 ];
 
 const STARCHY_CUES =
-  /\b(mak[ai]\b|maka\s|flour|mehl|harina|farina|skrobi\w*|starch|starke|almidon|amido|owies|owsian\w*|oat\w*|hafer|platki\w*|flakes|ryz\w*|rice|reis|arroz|riso|kasz[ay]\b|kukurydz\w*|corn|mais|ziemniac\w*|potato|pszen\w*|wheat|weizen|zboz\w*|cereal\w*|chleb\w*|bread|bulk\w*|herbatnik\w*|ciastk\w*|biscuit\w*|cookie\w*|wafel\w*|wafer\w*)/;
+  /\b(mak[ai]\b|maka\s|flour|mehl|harina|farina|skrobi\w*|starch|starke|almidon|amido|owies|owsian\w*|oat\w*|hafer|platki\w*|flakes|ryz\w*|rice|reis|arroz|riso|kasz[ay]\b|kukurydz\w*|corn|mais|ziemniac\w*|potato|pszen\w*|wheat|weizen|zboz\w*|cereal\w*|chleb\w*|bread|bulk\w*|herbatnik\w*|ciastk\w*|biscuit\w*|cookie\w*|wafel\w*|wafer\w*|farine|bloem|farinha|koek\w*|galleta\w*|biscotti|speculoos|speculaas)/;
 
 const SUGAR_FREE_CLAIM =
   /\b(bez\s+cukru|bez\s+dodatku\s+cukru|sugar[\s-]*free|no\s+added\s+sugar|zero\s+cukru|0\s*%\s*cukru|ohne\s+zucker|zuckerfrei|sin\s+azucar|senza\s+zucchero|sans\s+sucre)\b|\bzero\b/;
@@ -1402,7 +1406,20 @@ export function validateProductSemanticModelOutput(
     'technicalParameters',
     'sourceUrls',
   ]);
-  const evidenceRefs = stringArray(raw.evidenceRefs, /^[A-Za-z][A-Za-z0-9]*$/);
+  const citedRefs = stringArray(raw.evidenceRefs, /^[A-Za-z][A-Za-z0-9]*$/);
+  // A ref to a field the evidence does not carry is an over-citation (the model names the dosage
+  // it looked for and found absent), not invented evidence: it is dropped, never counted. Every
+  // served classification was refused for exactly this before 2026-09-06. An unknown ref name, or
+  // no real ref at all, still refuses the answer.
+  const evidenceRefs =
+    citedRefs && citedRefs.every((ref) => allowedEvidenceRefs.has(ref))
+      ? citedRefs.filter((ref) =>
+          ref === 'sourceUrls'
+            ? evidence.sourceUrls.length > 0
+            : meaningful(evidence[ref as keyof Omit<ProductSemanticEvidence, 'sourceUrls'>]) !==
+              null,
+        )
+      : null;
   const mapperCategoryPattern = /^[a-z0-9_ -]{1,80}$/i;
   const compatible = stringArray(raw.compatibleMapperCategories, mapperCategoryPattern);
   const forbidden = stringArray(raw.forbiddenMapperCategories, mapperCategoryPattern);
@@ -1424,13 +1441,7 @@ export function validateProductSemanticModelOutput(
     raw.confidence > 1 ||
     !reasonCodes ||
     !evidenceRefs ||
-    evidenceRefs.some((ref) => {
-      if (!allowedEvidenceRefs.has(ref)) return true;
-      if (ref === 'sourceUrls') return evidence.sourceUrls.length === 0;
-      return (
-        meaningful(evidence[ref as keyof Omit<ProductSemanticEvidence, 'sourceUrls'>]) === null
-      );
-    }) ||
+    evidenceRefs.length === 0 ||
     !compatible ||
     !forbidden ||
     !(dosageValue === null || (typeof dosageValue === 'number' && Number.isFinite(dosageValue)))

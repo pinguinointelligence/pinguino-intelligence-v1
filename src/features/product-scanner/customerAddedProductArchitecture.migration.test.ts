@@ -112,8 +112,44 @@ describe('Scanner customer-added product authority', () => {
     expect(supersede).toContain('if v_improves then');
     // anchored on the refresh insert, never on the create branch (version 1 stays untouched)
     expect(supersede).toContain('provenance,facts_fingerprint,supersedes');
-    expect(supersede).not.toMatch(/(?:insert|update|delete|truncate)\s+(?:table\s+)?public\.mapper_basement/i);
+    expect(supersede).not.toMatch(
+      /(?:insert|update|delete|truncate)\s+(?:table\s+)?public\.mapper_basement/i,
+    );
     expect(supersede).not.toMatch(/next_product_code\(\)/);
+  });
+
+  it('publishes the canonical classification inside the customer save (no minute-long pending)', () => {
+    const files = readdirSync(resolve(process.cwd(), 'supabase/migrations')).filter((name) =>
+      name.endsWith('_customer_product_final_within_save.sql'),
+    );
+    expect(files).toHaveLength(1);
+    const final = read(`supabase/migrations/${files[0]}`);
+    // the ONE canonical worker gains an entity filter — no second classifier, no second queue
+    expect(final).toContain(
+      'public.process_product_behavior_reclassification_queue_v1(p_limit integer DEFAULT 100, p_entity_kind text DEFAULT NULL::text, p_entity_id text DEFAULT NULL::text)',
+    );
+    expect(final).toContain('and (p_entity_kind is null or q.entity_kind=p_entity_kind)');
+    expect(final).toContain('and (p_entity_id is null or q.entity_id=p_entity_id)');
+    expect(final).toContain(
+      'drop function public.process_product_behavior_reclassification_queue_v1(integer);',
+    );
+    // the replaced worker keeps its privileges (Supabase default-privileges trap)
+    expect(final).toMatch(
+      /revoke all on function public\.process_product_behavior_reclassification_queue_v1\(integer,text,text\)\s+from public,anon,authenticated;/,
+    );
+    // the customer upsert drains ITS product's rows before it returns, after every write
+    const drain = final.indexOf("10,'catalog_product_version',");
+    expect(drain).toBeGreaterThan(0);
+    expect(final.slice(drain)).toContain(
+      'select current_version_id::text from public.products where id=v_product_id',
+    );
+    expect(final.slice(drain)).toContain(
+      'select product_code into v_product_code from public.products where id=v_product_id;',
+    );
+    expect(final).not.toMatch(
+      /(?:insert|update|delete|truncate)\s+(?:table\s+)?public\.mapper_basement/i,
+    );
+    expect(final).not.toMatch(/classify_catalog_product_behavior_v2\(/);
   });
 
   it('uses native system capture and keeps desktop multi-upload/drop', () => {

@@ -15,7 +15,7 @@ import {
   loadReplayRows,
   replayFixture,
   type ReplayFixture as Fixture,
-} from './__dryrun__/scanRescueHarness';
+} from '@/scan-import-v2/__dryrun__/scanRescueHarness';
 import { CORPUS } from './__fixtures__/scanRescue/corpus';
 import milka from './__fixtures__/scanRescue/milkaBrownie.json';
 import vitaminWell from './__fixtures__/scanRescue/vitaminWell.json';

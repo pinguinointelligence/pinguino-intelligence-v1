@@ -20,6 +20,7 @@ import {
   snapshotServerResolvedProductBehavior,
   type ProductBehaviorContext,
   type ProductBehaviorSnapshot,
+  type ServerResolvedProductBehavior,
 } from '@/features/product-intelligence';
 import {
   isCatalogLabelToppingIngredient,
@@ -27,10 +28,7 @@ import {
 } from '@/features/recipe-composition/labelTopping';
 import { searchProducts } from '@/services/globalCatalog';
 import { getEngineApprovedIngredientById } from '@/services/ingredients';
-import {
-  productBehaviorBlockedMessage,
-  resolveProductBehaviorForSelection,
-} from '@/services/productIntelligence';
+import { resolveProductBehaviorForSelection } from '@/services/productIntelligence';
 
 export interface ScannedCatalogIdentity {
   id: string;
@@ -58,15 +56,69 @@ export interface ScannedCatalogDeps {
   searchProducts: typeof searchProducts;
   loadCurrentRow: typeof getEngineApprovedIngredientById;
   resolveBehavior: typeof resolveProductBehaviorForSelection;
+  sleep: (ms: number) => Promise<void>;
 }
 
 const DEFAULT_DEPS: ScannedCatalogDeps = {
   searchProducts,
   loadCurrentRow: getEngineApprovedIngredientById,
   resolveBehavior: resolveProductBehaviorForSelection,
+  sleep: (ms) => new Promise((resolve) => window.setTimeout(resolve, ms)),
 };
 
 type ProcessScope = 'BASE_FORMULATION' | 'POST_PROCESS_ADDON';
+
+/**
+ * The catalogue publishes a fresh product's canonical classification inside the save itself; this
+ * short wait only covers a classification another event queued at the same moment.
+ */
+const CLASSIFICATION_WAIT_ATTEMPTS = 5;
+const CLASSIFICATION_WAIT_MS = 1500;
+
+/** the gate's first block code: `classification_pending:<ids>…` → `classification_pending` */
+export function behaviorBlockCode(resolved: ServerResolvedProductBehavior): string {
+  const first = resolved.blockReasons?.[0] ?? '';
+  return first.split(':')[0] ?? '';
+}
+
+const NOT_ADMITTED_CODES = new Set([
+  'product_rejected',
+  'approved_for_base_false',
+  'approved_for_engines_false',
+  'profile_not_approved',
+  'main_policy_not_approved',
+  'module_permission_missing',
+  'module_not_eligible',
+]);
+
+/**
+ * What the customer reads when the catalogue will not let the product in. Never an internal id or
+ * a code (Gellatti customer-language rule); the PRO workbench keeps its own technical wording.
+ */
+export function customerBlockedMessage(
+  resolved: ServerResolvedProductBehavior,
+  scope: ProcessScope,
+): string {
+  const code = behaviorBlockCode(resolved);
+  if (code === 'classification_pending') {
+    return 'produkt jest zapisany, ale katalog jeszcze kończy jego klasyfikację. Dodaj go za chwilę z listy produktów.';
+  }
+  if (code === 'classification_failed') {
+    return 'produkt jest zapisany, ale katalog nie zdołał go sklasyfikować. Zeskanuj go ponownie.';
+  }
+  if (code === 'nutrition_facts_missing' || code === 'missing_technical_fields') {
+    return 'wymaga uzupełnienia danych produktu przed dodaniem do receptury.';
+  }
+  if (code === 'allergen_facts_missing') {
+    return 'wymaga podania alergenów, zanim trafi do receptury jako dodatek.';
+  }
+  if (NOT_ADMITTED_CODES.has(code)) {
+    return scope === 'BASE_FORMULATION'
+      ? 'nie nadaje się do bazy tej receptury.'
+      : 'nie nadaje się jako dodatek do tej receptury.';
+  }
+  return 'wymaga odświeżenia danych produktu przed dodaniem do receptury.';
+}
 
 /** the catalogue rows the scanned identity may stand for, by barcode first, then by name */
 async function catalogHits(
@@ -100,24 +152,27 @@ async function resolveBehavior(
         ? { entityKind: 'catalog_product_version' as const, entityId: hit.currentVersionId }
         : null;
   if (!entity) return { ok: false, message: 'wymaga odświeżenia danych produktu przed dodaniem.' };
-  const resolved = await deps
-    .resolveBehavior({
-      entity,
-      context: {
-        ...behaviorContext,
-        processScope: scope,
-        requestedRole: 'STANDARD',
-        module: scope === 'BASE_FORMULATION' ? 'BASE_RECIPE' : 'TOPPING',
-      },
-    })
-    .catch(() => null);
-  if (!resolved || resolved.state === 'blocked') {
+  const context: ProductBehaviorContext = {
+    ...behaviorContext,
+    processScope: scope,
+    requestedRole: 'STANDARD',
+    module: scope === 'BASE_FORMULATION' ? 'BASE_RECIPE' : 'TOPPING',
+  };
+  let resolved: ServerResolvedProductBehavior | null = null;
+  for (let attempt = 0; attempt < CLASSIFICATION_WAIT_ATTEMPTS; attempt += 1) {
+    resolved = await deps.resolveBehavior({ entity, context }).catch(() => null);
+    if (!resolved || resolved.state !== 'blocked') break;
+    if (behaviorBlockCode(resolved) !== 'classification_pending') break;
+    await deps.sleep(CLASSIFICATION_WAIT_MS);
+  }
+  if (!resolved) {
     return {
       ok: false,
-      message: resolved
-        ? productBehaviorBlockedMessage(resolved)
-        : 'nie udało się potwierdzić aktualnych danych produktu. Spróbuj ponownie.',
+      message: 'nie udało się potwierdzić aktualnych danych produktu. Spróbuj ponownie.',
     };
+  }
+  if (resolved.state === 'blocked') {
+    return { ok: false, message: customerBlockedMessage(resolved, scope) };
   }
   return {
     ok: true,

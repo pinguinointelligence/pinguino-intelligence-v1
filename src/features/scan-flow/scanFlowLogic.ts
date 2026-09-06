@@ -37,6 +37,14 @@ export function productFieldsNotInLedger(
   return out;
 }
 
+/**
+ * The authority holds every label fact and lacks only the product's KIND (family/archetype): a
+ * photo of the same label cannot help — the customer's family answer, or a private save, can.
+ */
+export function onlySemanticsMissing(missingCritical: readonly string[]): boolean {
+  return missingCritical.length > 0 && missingCritical.every((code) => /semantic/i.test(code));
+}
+
 export function manualConfirmedScan(input: string, now = Date.now()): ConfirmedScan | null {
   const digits = input.replace(/\D/g, '');
   const symbology =

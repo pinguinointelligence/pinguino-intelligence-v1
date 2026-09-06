@@ -154,6 +154,8 @@ export interface ProductWorkingValuesInput {
    * A manufacturer datasheet and a random blog do not declare equally.
    */
   declaredConfidence: number;
+  /** per-field declaration confidence (its own source tier); `declaredConfidence` is the fallback */
+  declaredConfidenceByField?: Partial<Record<WorkingNumericField, number>>;
   /** Identity for the Mapper pass. */
   identity: MapperInferenceInput;
   /**
@@ -449,7 +451,7 @@ export function resolveProductWorkingValues(
       knownField({
         value,
         state: 'VERIFIED',
-        confidence: input.declaredConfidence,
+        confidence: input.declaredConfidenceByField?.[field] ?? input.declaredConfidence,
         basis: input.declaredBasis?.[field] ?? 'product_declared',
         note: 'wartosc zadeklarowana przez produkt',
       }),
@@ -916,6 +918,12 @@ export function resolveProductWorkingValues(
   const leansOnProfile = confidenceFields.some(
     (field) => fields[field].provenance.state === 'ESTIMATED',
   );
+  // The engine-ready floor judges what the profile ESTIMATES. A value the product or a cited
+  // source declares is kept in its own tier (accuracy reports it) and never lowers readiness
+  // below what an estimate in its place would have earned — found data is not traded for a guess.
+  const estimatedConfidenceFields = confidenceFields.filter(
+    (field) => fields[field].provenance.state === 'ESTIMATED',
+  );
   const engineConfidence =
     missingRequired.length > 0
       ? null
@@ -923,7 +931,7 @@ export function resolveProductWorkingValues(
         ? Math.max(
             profileMatch.confidence,
             round4(
-              confidenceFields.reduce(
+              estimatedConfidenceFields.reduce(
                 (min, field) => Math.min(min, fields[field].provenance.confidence),
                 1,
               ),

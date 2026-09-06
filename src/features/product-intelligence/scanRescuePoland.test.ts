@@ -18,7 +18,7 @@ import {
   scanResultFromLabelRow,
   type LabelCorpusRow,
   type ReplayOutcome,
-} from './__dryrun__/scanRescueHarness';
+} from '@/scan-import-v2/__dryrun__/scanRescueHarness';
 import { ENGINE_COMPOSITION_FIELDS } from './productWorkingValues';
 import corpus from './__fixtures__/scanRescue/plPoland.json';
 

@@ -519,7 +519,7 @@ describe('La Chocolatera two-photo rounding and semantic handoff regression', ()
     }
   });
 
-  it('keeps a web-only macro as evidence without promoting it to a verified declaration', () => {
+  it('a web-found macro is a declaration in its own tier — found data is never replaced by an estimate', () => {
     const served = structuredClone(merged);
     served.barcodes = [{ value: '8410109108392', format: 'EAN_13' }];
     nutrition(served).fibre = 0;
@@ -551,11 +551,15 @@ describe('La Chocolatera two-photo rounding and semantic handoff regression', ()
         })
       : null;
 
-    expect(proposal?.declared.fiber_percent).toBeUndefined();
+    // OWNER RULE 2026-09-06: the value a cited web page states enters as `product_declared`
+    // (web tier confidence), it is not overwritten by a similar product's fibre
+    expect(proposal?.declared.fiber_percent).toBe(0);
+    expect(proposal?.declaredBasis.fiber_percent).toBe('product_declared');
     expect(proposal?.evidence.fields.fiber).toBe('web_search');
     expect(proposal?.declared.kcal_per_100g).toBe(375);
     expect(proposal?.declared.fat_percent).toBe(16);
-    expect(authority?.fieldTruth.fiber_percent?.state).toBe('ESTIMATED');
+    expect(authority?.fieldTruth.fiber_percent?.value).toBe(0);
+    expect(authority?.fieldTruth.fiber_percent?.state).not.toBe('ESTIMATED');
     expect(authority?.engineUsable).toBe(true);
     expect(authority?.criticalPhysicsBlockers).not.toContain('SELF_CONTRADICTORY_DECLARATION');
   });

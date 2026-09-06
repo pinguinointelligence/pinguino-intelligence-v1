@@ -14,6 +14,7 @@ import {
   type ProductEvidenceField,
   type EvidenceSource,
   declarationConfidenceOf,
+  declarationConfidenceByField,
 } from '../../../src/features/product-intelligence/productEvidenceConfidence.ts';
 import {
   resolveProductWorkingValues,
@@ -267,6 +268,29 @@ export function validateIntimportWholeProfileProposal(
  * existing shared policies. A Mapper id is retained as estimate provenance;
  * it never becomes this article's runtime identity.
  */
+
+/** the per-field declaration tiers, keyed by the working field each nutrition declaration feeds */
+function declaredConfidenceByWorkingField(
+  evidence: ProductEvidenceInput,
+): Partial<Record<WorkingNumericField, number>> {
+  const byField = declarationConfidenceByField(evidence);
+  const out: Partial<Record<WorkingNumericField, number>> = {};
+  const map: Partial<Record<keyof typeof byField, WorkingNumericField>> = {
+    energyKcal: 'kcal_per_100g',
+    fat: 'fat_percent',
+    protein: 'protein_percent',
+    carbohydrate: 'carbohydrate_percent',
+    sugars: 'total_sugars_percent',
+    fiber: 'fiber_percent',
+    salt: 'salt_percent',
+  };
+  for (const [field, confidence] of Object.entries(byField)) {
+    const working = map[field as keyof typeof byField];
+    if (working && typeof confidence === 'number') out[working] = confidence;
+  }
+  return out;
+}
+
 export function validateIntimportProductProfileProposal(
   input: IntimportProductProfileProposalInput,
 ): IntimportTrustedProductProfile | null {
@@ -311,6 +335,7 @@ export function validateIntimportProductProfileProposal(
         // included) keeps routing enrichment but never decides physics readiness
         declaredConfidence:
           declarationConfidenceOf(input.evidence) ?? evidenceAssessment.confidence / 100,
+        declaredConfidenceByField: declaredConfidenceByWorkingField(input.evidence),
         sourceCard: input.sourceCard ?? null,
         identity: {
           name: input.matchInput.name,

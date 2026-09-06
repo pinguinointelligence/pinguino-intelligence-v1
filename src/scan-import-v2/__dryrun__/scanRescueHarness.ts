@@ -9,22 +9,22 @@
  * Shared by the owner-product replay, the regression corpus and the Poland label corpus.
  */
 import { existsSync, readFileSync } from 'node:fs';
-import type { IntimportMapperAuthorityRow } from '../../../../supabase/functions/_shared/intimportWholeProfileAuthority.ts';
-import { validateIntimportProductProfileProposal } from '../../../../supabase/functions/_shared/intimportWholeProfileAuthority.ts';
-import { customerProductProfileProposal } from '../../../../supabase/functions/_shared/customerProductProfile.ts';
-import { productSemanticEvidenceFromScanResult } from '../../../../supabase/functions/_shared/productScanner.ts';
+import type { IntimportMapperAuthorityRow } from '../../../supabase/functions/_shared/intimportWholeProfileAuthority.ts';
+import { validateIntimportProductProfileProposal } from '../../../supabase/functions/_shared/intimportWholeProfileAuthority.ts';
+import { customerProductProfileProposal } from '../../../supabase/functions/_shared/customerProductProfile.ts';
+import { productSemanticEvidenceFromScanResult } from '../../../supabase/functions/_shared/productScanner.ts';
 import {
   applyCustomerProductFamily,
   resolveCustomerProductFamily,
   type CustomerProductFamilyChoice,
-} from '../../product-scanner/customerProductFamily';
-import type { ProductEvidenceField } from '../productEvidenceConfidence';
-import { classifyProductSemantics } from '../productRecognition';
-import { loadMapperKnowledgeRows } from './mapperFixture';
+} from '@/features/product-scanner/customerProductFamily';
+import type { ProductEvidenceField } from '@/features/product-intelligence/productEvidenceConfidence';
+import { classifyProductSemantics } from '@/features/product-intelligence/productRecognition';
+import { loadMapperKnowledgeRows } from '@/features/product-intelligence/__dryrun__/mapperFixture';
 import {
   allergensFromIngredients,
   looksLikeIngredientList,
-} from '../../../../supabase/functions/_shared/openFoodFactsLookup.ts';
+} from '../../../supabase/functions/_shared/openFoodFactsLookup.ts';
 
 /** Real Mapper rows: the repo's immutable CSV (2089 rows) by default, or a live dump via env. */
 export function loadReplayRows(

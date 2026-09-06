@@ -54,6 +54,7 @@ import {
   plainFieldsFor,
   positionHint,
   prefillFromIdentity,
+  onlySemanticsMissing,
   productFieldsNotInLedger,
   scanFeedbackText,
   toResolvedScanProduct,
@@ -422,6 +423,17 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
                 session: next,
                 fields,
                 notice: null,
+                canSavePrivate: true,
+              });
+            else if (onlySemanticsMissing(r.ledger.missingCritical) && !familyAnsweredRef.current)
+              // every label fact is known; only the product's kind is not — ask the customer, never a photo
+              setPhase({ kind: 'family', session: next, options: FAMILIES });
+            else if (onlySemanticsMissing(r.ledger.missingCritical))
+              setPhase({
+                kind: 'label',
+                session: next,
+                notice:
+                  'Nie udało się ustalić rodzaju tego produktu, więc nie trafi jeszcze do receptury. Możesz zapisać go prywatnie albo zgłosić do weryfikacji.',
                 canSavePrivate: true,
               });
             else if (!labelTriedRef.current)

@@ -189,13 +189,41 @@ export function declarationConfidenceOf(input: ProductEvidenceInput): number | n
     .filter((source): source is EvidenceSource => source !== null && source !== undefined)
     .map(sourceCredit);
   if (credits.length === 0) return null;
-  const weakest = Math.min(...credits);
-  // source credit → declared confidence: a read label still carries transcription risk
-  if (weakest >= 1) return 0.95;
-  if (weakest >= 0.95) return 0.92;
-  if (weakest >= 0.9) return 0.9;
-  if (weakest >= 0.6) return 0.75;
+  return declaredConfidenceForCredit(Math.min(...credits));
+}
+
+/** source credit → declared confidence: a read label still carries transcription risk */
+function declaredConfidenceForCredit(credit: number): number {
+  if (credit >= 1) return 0.95;
+  if (credit >= 0.95) return 0.92;
+  if (credit >= 0.9) return 0.9;
+  if (credit >= 0.6) return 0.75;
   return 0.6;
+}
+
+/**
+ * The same tiers, per declared nutrition field. A profile may carry a label-read fat beside a
+ * fibre found on a cited web page: each value keeps the confidence of ITS source, so one weaker
+ * source never discounts every other declaration (OWNER RULE 2026-09-06: found data is kept,
+ * in its own tier — it is never traded for an estimate).
+ */
+export function declarationConfidenceByField(
+  input: ProductEvidenceInput,
+): Partial<Record<ProductEvidenceField, number>> {
+  const out: Partial<Record<ProductEvidenceField, number>> = {};
+  for (const field of [
+    'fat',
+    'protein',
+    'carbohydrate',
+    'sugars',
+    'salt',
+    'fiber',
+    'energyKcal',
+  ] as const) {
+    const source = input.fields[field];
+    if (source) out[field] = declaredConfidenceForCredit(sourceCredit(source));
+  }
+  return out;
 }
 
 export interface ProductConfidenceAssessment {
