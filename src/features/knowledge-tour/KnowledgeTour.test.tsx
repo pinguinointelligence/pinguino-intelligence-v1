@@ -46,6 +46,11 @@ function swipe(surface: HTMLElement, startX: number, endX: number) {
 }
 
 describe('responsive Knowledge Tour interactions', () => {
+  it('keeps the global route on the unchanged page layout', () => {
+    const surface = mount('/how-it-works?step=1');
+    expect(surface.dataset.layout).toBe('page');
+  });
+
   it('renders the corrected Step 7 visual, normalized labels and nine real dots', () => {
     const surface = mount('/how-it-works?step=7');
     expect(surface.dataset.activeStep).toBe('7');

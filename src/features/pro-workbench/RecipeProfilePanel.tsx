@@ -39,6 +39,7 @@ import { friendlyLabRecipeJourneyState } from './friendlyLabRecipeJourney';
 import { CostSummaryIcon, NutritionSummaryIcon } from '@/components/icons/PinguinoIcons';
 import { proWorkbenchCopy } from '@/copy/pro.pl';
 import { currentRecipeCompletionSnapshot } from './currentRecipeLabelSnapshot';
+import { copy } from '@/copy/en';
 
 export type ProContextTab = 'recipe' | 'monitor' | 'production';
 export type CockpitTab = WorkbenchModuleTab;
@@ -535,7 +536,7 @@ function ProfileContent({
             </svg>
           </span>
           <span className="min-w-0 flex-1 truncate text-[15px] leading-[21px] font-semibold tracking-[-0.02em] text-[var(--g-ink)]">
-            Wiedza o recepturze
+            {copy.shell.items.howItWorks}
           </span>
           <svg
             aria-hidden
