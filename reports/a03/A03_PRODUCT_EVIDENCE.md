@@ -178,3 +178,112 @@ stays unchanged either way, since a new class would be raised as a NEW candidate
 There is currently NO hard-confirmed EAN proven present in more than one country. A04 has eight EANs
 to work from and one open lead (L1) with a defined way to close it. The own-brand vs manufacturer-brand
 split that A05 would use is H4, a hypothesis, not an input.
+
+# ============================================================================
+# A03 SATURATION CRITERION (defined 2026-09-05, before further research)
+# ============================================================================
+A03 may move from ACTIVE to DONE only when ALL of S1-S7 hold. Coverage is counted, not judged.
+
+S1 CATEGORY COVERAGE   each of the 13 B01 families: >= 3 CONFIRMED products from >= 2 independent
+                       manufacturers/repackers.
+S2 MARKET COVERAGE     >= 8 markets with >= 1 CONFIRMED product each.
+S3 CHANNEL COVERAGE    each family: >= 1 CONFIRMED retail-channel product AND >= 1 CONFIRMED
+                       professional/industrial product, or a documented absence of that channel.
+S4 EAN-PRESENCE TEST   >= 10 professional/industrial products checked for published EAN, so H2 is
+                       settled either way.
+S5 MULTI-COUNTRY TEST  >= 5 EANs each checked against >= 2 independent national sources, so A04 gets
+                       a real positive or negative.
+S6 OWN-BRAND TEST      >= 3 own brands of genuinely multi-country chains, each checked on >= 2 of
+                       that chain's national sites, so H4 is settled.
+S7 NEW-CLASS SWEEP     every CONFIRMED product classified against the ruleset; any candidate raised
+                       with full evidence as a NEW id.
+
+## COVERAGE AGAINST THE CRITERION (this pass)
+S1  0 / 13 families at threshold.  Confirmed products per family: milk 3, cream 1, skimmed milk
+    powder 1, whole milk powder 1, cream powder 1, dextrose 1, inulin 1, fructose 1,
+    sucrose 0, gums 0, dried egg yolk 0, plant drinks 0, protein ingredients 0.
+S2  3 / 8 markets (PL, ES, FR by CONFIRMED product; VN adds a confirmed sale of a PL product).
+S3  0 / 13 families have both channels confirmed.
+S4  3 / 10 checked (Mlekovita cream powder 42% - no EAN published; Radix-Bis fructose - none;
+    Swojska Piwniczka whole milk powder 1 kg - none, AND THIS ONE IS A RETAIL PRODUCT).
+S5  1 / 5 EANs cross-checked (5900820012434, positive).
+S6  0 / 3 own brands checked on national chain sites.
+S7  10 CONFIRMED products classified, 0 new candidates.
+ESTIMATED SATURATION: roughly 12%. A03 stays ACTIVE.
+
+# ============================================================================
+# PASS 2 EVIDENCE
+# ============================================================================
+
+### 8. Sữa tươi nguyên kem Laciate hộp 1L  — L1 CLOSED
+manufacturer/brand   Mlekpol / Laciate (manufacturer brand)
+market / channel     VIETNAM / suatuoi.com (specialist milk retailer)
+EAN                  5900820012434  — PRINTED AS TEXT ON THE PAGE
+pack                 1 L
+COUNTRY OF ORIGIN    Poland (stated), manufacturer Mlekpol (stated)
+price                29,100 VND per unit / 325,000 VND per 12-case
+label shown          275 kJ · protein 3.2 · fat 3.5 (sat 2.3) · carb 4.7 · sugars 4.7 · sodium 0.1 ·
+                     calcium 120 mg  — consistent with the Polish label
+url                  https://suatuoi.com/laciate/laciate-full-cream-1l
+source type          RETAILER (single source)
+CLASSIFICATION       **CONFIRMED** — the SAME EAN is evidenced on TWO markets: PL (home) and VN.
+                     This is the first hard multi-country EAN. Single-source; a second independent
+                     national source would strengthen it.
+
+### 9. Mleko w proszku pełne tłuste 1 kg
+manufacturer/brand   Swojska Piwniczka (repacker)
+market / channel     PL / own shop
+EAN                  **NOT PUBLISHED ON THE PAGE**
+pack                 1 kg · powder · price 31,99 zl
+COUNTRY OF ORIGIN    Polska
+ingredients          100% pelne mleko w proszku
+label                2085 kJ / 499 kcal · fat 26 (sat 18) · carb 38 · sugars 38 · protein 26 · salt 0.9
+NOT declared         fibre, EAN
+class (existing)     WHOLE MILK POWDER — PI-ING-000296 (fat 26 / protein 26): EXACT match on both
+url                  https://swojskapiwniczka.pl/pl/p/MLEKO-W-PROSZKU-PELNE-TLUSTE-1Kg-SWOJSKA-PIWNICZKA/36922
+source type          OFFICIAL_SHOP
+CLASSIFICATION       CONFIRMED product; and it CUTS AGAINST MY OWN H2 — see below.
+
+### 10. GS1 RESTRICTED CIRCULATION NUMBERS — a standards fact, not a market observation
+source               GS1 documentation, incl. "Summary of GS1 Prefixes 20 - 29 by GS1 Member
+                     Organisation" and the General Specifications change notes
+                     https://www.gs1.org/docs/barcodes/SummaryOfGS1MOPrefixes20-29.pdf
+                     https://www.gs1.org/docs/barcodes/GSCN-23-006-RCN.pdf
+what it says         GS1 Member Organisations may assign prefixes 02 and 20-29 for Restricted
+                     Circulation Numbers (RCN) "for use within a given geographic region or for use
+                     within a company". **These prefixes are NOT GLOBALLY UNIQUE.** Distribution of
+                     items marked this way is restricted to a region or a single company.
+observed instance    Pilos "Mleko UHT 1,5%" 1 L, store Lidl, country Poland, code **20820268** —
+                     8 digits, prefix 20. Other Lidl own-brand codes seen in the same source:
+                     20085964, 20782542. (Code format observed via Open Food Facts = AGGREGATOR;
+                     the GS1 RULE itself is CONFIRMED from the standards body.)
+CLASSIFICATION       GS1 rule: **CONFIRMED**. Own-brand use of RCNs: **LEAD** pending a direct check
+                     on a chain's own national site.
+
+# ============================================================================
+# CLASSIFICATION CHANGES FORCED BY PASS 2
+# ============================================================================
+
+H2 "industrial production ingredients have no consumer EAN" — **WEAKENED, close to refuted as
+   stated.** The Swojska Piwniczka WHOLE MILK POWDER 1 kg is a RETAIL consumer product and its page
+   also publishes no EAN, while the same shop's dextrose, inulin and skimmed milk powder pages do.
+   So the real variable is PAGE COMPLETENESS, not industrial vs retail. Restating the observation
+   correctly: "some product pages do not publish an EAN" — which says nothing about whether the
+   product carries one. I will stop writing "product has no EAN" and write "page does not publish
+   an EAN". S4 continues, but the hypothesis it was testing is already the wrong hypothesis.
+
+H4 "own brands do not travel / clusters must use manufacturer brands" — **still HYPOTHESIS**, but it
+   now has a mechanism worth testing rather than a single absent OFF record: own-brand items may be
+   numbered with RCNs that are not globally unique.
+
+NEW RISK (raised, not decided) — **RCN COLLISION RISK FOR D01 AND A04.**
+   D01 is "one exact PR identity per real EAN/SKU". That invariant currently holds on staging because
+   all 11 real EANs there are manufacturer-prefixed. If own-brand products enter the catalogue, their
+   codes may be RCNs, which the standards body states are not globally unique. Consequences:
+     - two different products in two countries could legitimately share one code;
+     - an EAN appearing in two markets would NOT prove the same product — it could be a collision,
+       which is a direct trap for the whole A04 overlap exercise;
+     - the Scanner path (E05) would resolve such a code ambiguously.
+   This is a deduction from a CONFIRMED standard, not a claim about our data. It needs an Owner
+   decision only if own-brand products are ever admitted; it is recorded here, not raised as a
+   checklist ID, and nothing is changed.
