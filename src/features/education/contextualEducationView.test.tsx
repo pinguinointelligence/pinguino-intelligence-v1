@@ -40,16 +40,20 @@ describe('contextual education runtime surface', () => {
     expect(html).not.toContain('data-testid="contextual-learning-hub"');
   });
 
-  it('keeps the accepted mobile height while sizing the desktop right-panel surface to content', () => {
+  it('reserves the available mobile panel height while sizing the desktop surface to content', () => {
     const html = renderToStaticMarkup(
       <MemoryRouter initialEntries={['/pro']}>
         <ContextualEducationView input={starterMilkBase()} audience="pro" onBack={() => {}} />
       </MemoryRouter>,
     );
 
-    expect(html).toContain('min-h-full');
+    expect(html).toContain('grid min-h-0');
+    expect(html).toContain('flex-1');
+    expect(html).toContain('grid-rows-[auto_minmax(0,1fr)]');
+    expect(html).toContain('data-tour-host-slot="back-entry"');
     expect(html).toContain('w-full');
-    expect(html).toContain('lg:min-h-0');
+    expect(html).toContain('bottom-[4.75rem]');
+    expect(html).toContain('min-[70rem]:grid-rows-[auto_auto]');
   });
 
   it('implements tap/click controls and no hover-only lesson path', () => {
