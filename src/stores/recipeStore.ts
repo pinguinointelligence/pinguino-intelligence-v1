@@ -106,6 +106,10 @@ import {
 import { buildRecipeInput, type RecipeInputState } from '@/features/studio/buildRecipeInput';
 import { classifyProfileTransition } from '@/features/pro-workbench/profileCompatibility';
 import {
+  readRecipeLabelDraft,
+  type RecipeLabelDraft,
+} from '@/features/master-label/labelDraftPersistence';
+import {
   MACHINE_CATALOG,
   HOME_ENGINE_TEMPERATURE_C,
   deriveMachineSetup,
@@ -332,6 +336,8 @@ export interface RecipeState {
   currentVersionId: string | null;
   /** ISO date of the current version (drives the `DD.MM.YYYY · vN` label; persisted). */
   currentVersionDate: string | null;
+  /** Current recipe's label working copy: stable LOT/date plus editable label data. */
+  labelDraft: RecipeLabelDraft | null;
   /**
    * Pro machine/serving selection context (S4). Drives the workbar context line + which visible
    * serving mode routes the recipe. It NEVER changes Engine math — the temperature it carries is
@@ -564,6 +570,8 @@ export interface RecipeState {
     versionId?: string | null,
     savedProductionFingerprint?: string | null,
   ) => void;
+  /** Label-only write. Derived refreshes do not dirty recipe content; user edits do. */
+  setLabelDraft: (draft: RecipeLabelDraft, markDirty?: boolean) => void;
   /** Record a server-authorized, whole-gram audit for an unchanged recipe.
    * This does not mutate the formulation or its saved/dirty identity. */
   acknowledgePracticalRecipeAudit: (audit: PracticalRecipeSavedAudit) => void;
@@ -1012,6 +1020,7 @@ const fromPreset = (preset: DemoPreset) => ({
   savedRecipeLatestVersionNumber: null,
   currentVersionId: null,
   currentVersionDate: null,
+  labelDraft: null,
   machineKind: null,
   servingModeId: null,
   machineId: null,
@@ -1270,6 +1279,7 @@ export function recipePersistPartialize(state: RecipeState) {
     currentVersionNumber: state.currentVersionNumber,
     currentVersionId: state.currentVersionId,
     currentVersionDate: state.currentVersionDate,
+    labelDraft: state.labelDraft,
     machineKind: state.machineKind,
     servingModeId: state.servingModeId,
     machineId: state.machineId,
@@ -2805,6 +2815,7 @@ export const useRecipeStore = create<RecipeState>()(
           savedRecipeLatestVersionNumber: link.latestVersionNumber ?? link.versionNumber ?? null,
           currentVersionId: link.versionId ?? null,
           currentVersionDate: link.versionDate ?? null,
+          labelDraft: readRecipeLabelDraft(input),
           dirty: false,
           practicalRecipeAudit,
           savedProductionFingerprint: null,
@@ -2860,6 +2871,11 @@ export const useRecipeStore = create<RecipeState>()(
           useRecipeProfileStore.getState().rebindDraftIdentity(savedIdentity);
         }
       },
+      setLabelDraft: (labelDraft, markDirty = true) =>
+        set((state) => ({
+          labelDraft: structuredClone(labelDraft),
+          dirty: markDirty ? true : state.dirty,
+        })),
       acknowledgePracticalRecipeAudit: (practicalRecipeAudit) =>
         set({ practicalRecipeAudit: structuredClone(practicalRecipeAudit) }),
       startNewRecipe: (requestedVisible) => {

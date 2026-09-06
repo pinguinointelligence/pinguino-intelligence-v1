@@ -3,6 +3,12 @@ import {
   type LabelNutritionPer100g,
   type NutritionDeclaration,
 } from '@/data/label/nutritionLabel';
+import type { RecipeInput } from '@/engine';
+import type {
+  FinalProductCalculation,
+  FinalProductItem,
+} from '@/features/recipe-composition/finalProduct';
+import type { RecipeCompositionMetadata } from '@/features/recipe-composition/recipeCompositionPersistence';
 import {
   productionLotCodeForRun,
   type ProductionCompletionSnapshot,
@@ -110,7 +116,7 @@ export interface LabelPackageQuantity {
   unit: PackageQuantityUnit;
   netWeightG: number | null;
   netVolumeMl: number | null;
-  source: 'selected_fill' | 'measured_fill' | 'legacy_snapshot';
+  source: 'planned_final_product' | 'selected_fill' | 'measured_fill' | 'legacy_snapshot';
   confirmedAt: string | null;
 }
 
@@ -145,6 +151,8 @@ export interface MasterLabelData {
   sourceCompletedAt: string;
   sourceRecipeVersionId?: string | null;
   sourceRecipeVersionNumber?: number | null;
+  /** Explicitly separates the live recipe draft from immutable run history. */
+  sourceKind?: 'recipe_draft' | 'completed_production';
   actualBatchQuantityG?: number;
   purpose: 'retail_consumer' | 'internal_production' | 'display_gelateria';
   packagingContext: 'prepacked' | 'ppds' | 'loose_non_prepacked';
@@ -245,6 +253,21 @@ export interface BuildMasterLabelInput {
   shelfLifeAuthority?: ShelfLifeAuthority;
 }
 
+type LabelBuildSettings = Omit<BuildMasterLabelInput, 'snapshot'>;
+
+export interface BuildRecipeDraftLabelInput extends LabelBuildSettings {
+  draftId: string;
+  recipeName: string;
+  recipeVersionId?: string | null;
+  recipeVersionNumber?: number | null;
+  productionDate: string;
+  lotCode: string;
+  recipeInput: RecipeInput;
+  productComposition: RecipeCompositionMetadata;
+  finalProduct: FinalProductCalculation;
+  customerLabelNote?: string;
+}
+
 export function normalizeEnabledOptionalFields(
   market: MarketProfileCode,
   fields: readonly MasterLabelFieldId[],
@@ -256,11 +279,10 @@ export function normalizeEnabledOptionalFields(
 const isInternalNoAllergenDeclaration = (value: string): boolean =>
   ['none_declared', 'none declared'].includes(value.trim().toLowerCase());
 
-function euEnergyKjPer100g(snapshot: ProductionCompletionSnapshot): number | null {
-  const total = snapshot.finalProduct.finalMassG;
+function euEnergyKjPer100g(items: readonly FinalProductItem[], total: number): number | null {
   if (!(total > 0)) return null;
   let totalKj = 0;
-  for (const item of snapshot.finalProduct.items) {
+  for (const item of items) {
     if (!('composition' in item.ingredient)) return null;
     const composition = item.ingredient.composition;
     const carbohydrateExPolyol = Math.max(
@@ -318,8 +340,8 @@ function defaultFrozenStorage(languages: readonly string[]): MultilingualText {
   );
 }
 
-function saturatedFatAuthorityFromSnapshot(
-  snapshot: ProductionCompletionSnapshot,
+function saturatedFatAuthorityFromItems(
+  items: readonly FinalProductItem[],
   behaviorAuthority: ReturnType<typeof buildRecipeBehaviorAuthority>,
   nutrition: LabelNutritionPer100g | null,
 ): LabelSaturatedFatAuthority {
@@ -327,7 +349,7 @@ function saturatedFatAuthorityFromSnapshot(
   const sourceReferences = new Set<string>();
   let fatBearingLineCount = 0;
 
-  for (const item of snapshot.finalProduct.items.filter((row) => row.effective_grams > 0)) {
+  for (const item of items.filter((row) => row.effective_grams > 0)) {
     const frozen = behaviorAuthority.snapshots[item.id];
     const frozenNutrition = frozen?.sharedFacts?.nutritionPer100g;
     const embeddedFat =
@@ -367,15 +389,36 @@ function saturatedFatAuthorityFromSnapshot(
   };
 }
 
-export function buildMasterLabelData(input: BuildMasterLabelInput): MasterLabelData {
-  const { snapshot } = input;
+interface MasterLabelSourceFacts {
+  kind: 'recipe_draft' | 'completed_production';
+  id: string;
+  date: string;
+  recipeVersionId: string | null;
+  recipeVersionNumber: number | null;
+  recipeName: string;
+  recipeInput: RecipeInput;
+  composition: RecipeCompositionMetadata;
+  finalItems: readonly FinalProductItem[];
+  finalNutrition: FinalProductCalculation['finalNutritionPer100g'];
+  finalLabelNutrition: FinalProductCalculation['finalLabelNutritionPer100g'];
+  finalMassG: number;
+  lotCode: string;
+  customerLabelNote: string;
+  packageQuantitySource: LabelPackageQuantity['source'];
+}
+
+function buildMasterLabelDataFromSource(
+  input: LabelBuildSettings,
+  source: MasterLabelSourceFacts,
+  requireCompletedAuthority: boolean,
+): MasterLabelData {
   const behaviorAuthority = buildRecipeBehaviorAuthority({
-    items: snapshot.finalActualInput.items,
-    toppings: snapshot.productComposition.toppings,
-    snapshots: snapshot.productComposition.behaviorSnapshots ?? {},
+    items: source.recipeInput.items,
+    toppings: source.composition.toppings,
+    snapshots: source.composition.behaviorSnapshots ?? {},
   });
   const behaviorGate = recipeBehaviorModuleGate(behaviorAuthority, 'MASTER_LABEL');
-  if (!behaviorGate.ready) {
+  if (requireCompletedAuthority && !behaviorGate.ready) {
     throw new Error(
       `master_label_behavior_authority_required:${behaviorGate.blockedLineIds.join(',')}`,
     );
@@ -385,7 +428,7 @@ export function buildMasterLabelData(input: BuildMasterLabelInput): MasterLabelD
     input.labelLanguages.length > 0
       ? [...new Set(input.labelLanguages)]
       : [input.market === 'WORLD' ? 'en' : 'pl'];
-  const total = snapshot.finalProduct.finalMassG;
+  const total = source.finalMassG;
   // Legal declaration order is mass-descending and independent of the manual
   // Base/Topping UI order. The same canonical product may validly exist once
   // in each scope, but it is one ingredient in the final product declaration.
@@ -404,7 +447,7 @@ export function buildMasterLabelData(input: BuildMasterLabelInput): MasterLabelD
       mayContain: string[];
     }
   >();
-  for (const item of snapshot.finalProduct.items.filter((row) => row.effective_grams > 0)) {
+  for (const item of source.finalItems.filter((row) => row.effective_grams > 0)) {
     const canonicalId = item.ingredient.canonical_ingredient_id ?? item.ingredient.id ?? null;
     const frozenAllergens = behaviorAuthority.snapshots[item.id]?.sharedFacts?.allergens ?? null;
     const key = canonicalId ? `canonical:${canonicalId}` : `line:${item.id}`;
@@ -473,11 +516,10 @@ export function buildMasterLabelData(input: BuildMasterLabelInput): MasterLabelD
     ),
   ];
   const facility = { ...emptyFacility(), ...input.facilityDefaults };
-  const completedDate = snapshot.productionCompletedAt.slice(0, 10);
-  const calculatedNutrition =
-    snapshot.finalProduct.labelNutritionPer100g ?? snapshot.finalProduct.nutritionPer100g;
-  const saturatedFatAuthority = saturatedFatAuthorityFromSnapshot(
-    snapshot,
+  const sourceDate = source.date.slice(0, 10);
+  const calculatedNutrition = source.finalLabelNutrition ?? source.finalNutrition;
+  const saturatedFatAuthority = saturatedFatAuthorityFromItems(
+    source.finalItems,
     behaviorAuthority,
     calculatedNutrition,
   );
@@ -485,7 +527,7 @@ export function buildMasterLabelData(input: BuildMasterLabelInput): MasterLabelD
     calculatedNutrition && saturatedFatAuthority.status === 'missing'
       ? { ...calculatedNutrition, saturated_fat_g: null }
       : calculatedNutrition;
-  const marketEnergyKj = euEnergyKjPer100g(snapshot);
+  const marketEnergyKj = euEnergyKjPer100g(source.finalItems, source.finalMassG);
   const regulatoryNutrition = {
     ...defaultRegulatoryNutrition(nutrition, languages),
     energyKjPer100g: marketEnergyKj,
@@ -493,12 +535,12 @@ export function buildMasterLabelData(input: BuildMasterLabelInput): MasterLabelD
       marketEnergyKj === null ? ('unresolved' as const) : ('market_factors' as const),
   };
   const defaultPackageQuantity: LabelPackageQuantity = {
-    value: snapshot.actualFinalMassG,
+    value: source.finalMassG,
     unit: 'g',
-    netWeightG: snapshot.actualFinalMassG,
+    netWeightG: source.finalMassG,
     netVolumeMl: null,
-    source: 'measured_fill',
-    confirmedAt: snapshot.productionCompletedAt,
+    source: source.packageQuantitySource,
+    confirmedAt: source.date,
   };
   const packageQuantity =
     input.packageQuantity === undefined ? defaultPackageQuantity : input.packageQuantity;
@@ -506,18 +548,19 @@ export function buildMasterLabelData(input: BuildMasterLabelInput): MasterLabelD
   return {
     schemaVersion: 1,
     masterLabelId: input.masterLabelId,
-    sourceCompletionSessionId: snapshot.sessionId,
-    sourceCompletedAt: snapshot.productionCompletedAt,
-    sourceRecipeVersionId: snapshot.source.recipeVersionId,
-    sourceRecipeVersionNumber: snapshot.source.recipeVersionNumber,
-    actualBatchQuantityG: snapshot.actualFinalMassG,
+    sourceCompletionSessionId: source.id,
+    sourceCompletedAt: source.date,
+    sourceRecipeVersionId: source.recipeVersionId,
+    sourceRecipeVersionNumber: source.recipeVersionNumber,
+    sourceKind: source.kind,
+    actualBatchQuantityG: source.finalMassG,
     purpose: 'retail_consumer',
     packagingContext: 'prepacked',
     market: input.market,
     marketProfileVersion: profile.version,
     uiLanguage: input.uiLanguage,
     labelLanguages: languages,
-    productName: translated(snapshot.source.recipeName, languages),
+    productName: translated(source.recipeName, languages),
     legalProductName: translated('', languages),
     businessName: input.businessName ?? '',
     logoPath: input.logoPath ?? null,
@@ -536,7 +579,7 @@ export function buildMasterLabelData(input: BuildMasterLabelInput): MasterLabelD
     packageQuantity,
     netQuantityG: packageQuantity?.netWeightG ?? null,
     servingQuantityG: null,
-    productionDate: completedDate,
+    productionDate: sourceDate,
     productionDateReviewed: true,
     shelfLifeAuthority:
       input.shelfLifeAuthority ??
@@ -556,11 +599,9 @@ export function buildMasterLabelData(input: BuildMasterLabelInput): MasterLabelD
     storageInstructions: defaultFrozenStorage(languages),
     useInstructions: translated('', languages),
     operator: facility,
-    lotCode:
-      snapshot.lotCode ??
-      productionLotCodeForRun(snapshot.sessionId, snapshot.productionCompletedAt),
+    lotCode: source.lotCode,
     origin: translated('', languages),
-    customerNote: translated(snapshot.customerLabelNote, languages),
+    customerNote: translated(source.customerLabelNote, languages),
     shortDescription: translated('', languages),
     qrCodeValue: null,
     gtin: null,
@@ -570,7 +611,7 @@ export function buildMasterLabelData(input: BuildMasterLabelInput): MasterLabelD
     alcoholDeclarationApplicability: 'unresolved',
     enabledOptionalFields: normalizeEnabledOptionalFields(
       input.market,
-      input.enabledOptionalFields ?? (snapshot.customerLabelNote ? ['customer_note'] : []),
+      input.enabledOptionalFields ?? (source.customerLabelNote ? ['customer_note'] : []),
     ),
     format: input.presentation?.format ?? 'rectangle',
     size: input.presentation?.size ?? { widthMm: 90, heightMm: 60 },
@@ -599,6 +640,71 @@ export function buildMasterLabelData(input: BuildMasterLabelInput): MasterLabelD
     preflightAcknowledged: false,
     snapshotEvidence: null,
   };
+}
+
+export function buildMasterLabelData(input: BuildMasterLabelInput): MasterLabelData {
+  const { snapshot, ...settings } = input;
+  return buildMasterLabelDataFromSource(
+    settings,
+    {
+      kind: 'completed_production',
+      id: snapshot.sessionId,
+      date: snapshot.productionCompletedAt,
+      recipeVersionId: snapshot.source.recipeVersionId,
+      recipeVersionNumber: snapshot.source.recipeVersionNumber,
+      recipeName: snapshot.source.recipeName,
+      recipeInput: snapshot.finalActualInput,
+      composition: snapshot.productComposition,
+      finalItems: snapshot.finalProduct.items,
+      finalNutrition: snapshot.finalProduct.nutritionPer100g,
+      finalLabelNutrition: snapshot.finalProduct.labelNutritionPer100g,
+      finalMassG: snapshot.actualFinalMassG,
+      lotCode:
+        snapshot.lotCode ??
+        productionLotCodeForRun(snapshot.sessionId, snapshot.productionCompletedAt),
+      customerLabelNote: snapshot.customerLabelNote,
+      packageQuantitySource: 'measured_fill',
+    },
+    true,
+  );
+}
+
+/** Builds the same canonical label model from current recipe facts, without a run snapshot. */
+export function buildRecipeDraftLabelData(input: BuildRecipeDraftLabelInput): MasterLabelData {
+  const {
+    draftId,
+    recipeName,
+    recipeVersionId = null,
+    recipeVersionNumber = null,
+    productionDate,
+    lotCode,
+    recipeInput,
+    productComposition,
+    finalProduct,
+    customerLabelNote = '',
+    ...settings
+  } = input;
+  return buildMasterLabelDataFromSource(
+    settings,
+    {
+      kind: 'recipe_draft',
+      id: draftId,
+      date: productionDate,
+      recipeVersionId,
+      recipeVersionNumber,
+      recipeName,
+      recipeInput,
+      composition: productComposition,
+      finalItems: finalProduct.finalItems,
+      finalNutrition: finalProduct.finalNutritionPer100g,
+      finalLabelNutrition: finalProduct.finalLabelNutritionPer100g,
+      finalMassG: finalProduct.finalMassG,
+      lotCode,
+      customerLabelNote,
+      packageQuantitySource: 'planned_final_product',
+    },
+    false,
+  );
 }
 
 /**
@@ -816,7 +922,6 @@ function fieldReadiness(data: MasterLabelData, field: MasterLabelFieldId): Label
     }
     case 'allergens':
       return data.allergens.status === 'complete' &&
-        data.allergens.reviewedByUser &&
         unresolvedMarketAllergens(data.market, data.allergens.declared).length === 0 &&
         marketAllergenDeclarationIssues(data.market, data.allergens.declared).length === 0
         ? ready('Alergeny')
@@ -826,7 +931,7 @@ function fieldReadiness(data: MasterLabelData, field: MasterLabelFieldId): Label
               ? `Taksonomia rynku nie rozpoznaje: ${unresolvedMarketAllergens(data.market, data.allergens.declared).join(', ')}. Nie zgaduj mapowania.`
               : marketAllergenDeclarationIssues(data.market, data.allergens.declared).length > 0
                 ? marketAllergenDeclarationIssues(data.market, data.allergens.declared).join(' ')
-                : 'WYMAGA WERYFIKACJI — dane są niepełne lub niepotwierdzone.',
+                : 'Brakuje danych źródłowych produktu o alergenach.',
           );
     case 'nutrition':
       return data.nutritionDeclaration

@@ -15,6 +15,7 @@ import {
   type NavGroupId,
 } from './appNav';
 import { AccountModeSwitcher } from './AccountModeSwitcher';
+import { labelSettingsReturn } from '@/features/master-label/labelSettingsNavigation';
 
 const s = copy.shell;
 const FOCUSABLE =
@@ -229,6 +230,18 @@ export function AppNavDrawer() {
                           <Link
                             key={item.id}
                             to={item.to}
+                            state={
+                              item.id === 'labels'
+                                ? {
+                                    labelSettingsReturn: labelSettingsReturn(
+                                      location.pathname,
+                                      location.search,
+                                      document.querySelector<HTMLElement>('[role="tabpanel"]')
+                                        ?.scrollTop ?? window.scrollY,
+                                    ),
+                                  }
+                                : undefined
+                            }
                             onClick={close}
                             aria-current={active ? 'page' : undefined}
                             data-testid={`app-nav-item-${item.id}`}

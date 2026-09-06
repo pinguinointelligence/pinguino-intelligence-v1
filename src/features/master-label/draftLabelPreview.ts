@@ -1,125 +1,191 @@
-import type { RecipeResult } from '@/engine';
-import type { NutritionPer100g } from '@/engine';
+import type { RecipeInput } from '@/engine';
+import { calculateFinalProduct } from '@/features/recipe-composition/finalProduct';
+import type { RecipeCompositionMetadata } from '@/features/recipe-composition/recipeCompositionPersistence';
+import {
+  buildRecipeBehaviorAuthority,
+  recipeBehaviorModuleGate,
+  recipeInputFromFrozenBehavior,
+  recipeToppingsFromFrozenBehavior,
+} from '@/features/product-intelligence';
 import type { AccountLabelProfile } from '@/services/labels/labelRepository';
-import type { MarketProfileCode } from './marketProfiles';
+import {
+  applyAutoLabelLayout,
+  buildLabelPreflight,
+  buildRecipeDraftLabelData,
+  type LabelPreflightItem,
+  type MasterLabelData,
+} from './masterLabel';
+import { marketProfile } from './marketProfiles';
+import type { RecipeLabelDraft } from './labelDraftPersistence';
 
-/**
- * The DRAFT label — what can be shown truthfully BEFORE Production completes.
- *
- * OWNER DECISION (2026-08-30), an explicit approved divergence from the older
- * V2.1 `pro-label-draft` gate: the workbench shows a live label preview from the
- * moment there is enough recipe data, instead of an empty "finish Production
- * first" panel.
- *
- * WHAT THIS IS NOT:
- *
- *   * It is NOT a second final-label authority. `buildMasterLabelData` remains
- *     the one authority for a real label and is not touched. Nothing here is
- *     used once Production completes — the workbench switches to that authority.
- *   * It does NOT fabricate a completion snapshot. Every field below is read
- *     from something that genuinely exists right now: the account's saved label
- *     profile, and the engine's own current result.
- *   * It performs NO regulatory or nutrition maths. `nutritionPer100g` is the
- *     engine's `nutrition_per_100g` passed through verbatim; ingredients are
- *     ordered by mass, which is an ordering of known numbers, not a legal
- *     determination.
- *
- * Anything that only a completed Production can supply — LOT, production date,
- * the confirmed ingredient declaration, the final nutrition authority — is
- * reported in `pending` so the UI can show it as MISSING. It is never invented.
- */
-
-/** One line of the draft ingredient list, ordered by mass. */
 export interface DraftLabelIngredient {
   readonly id: string;
   readonly name: string;
   readonly grams: number;
-  /** Share of the batch, for display only. Null when the batch has no mass. */
   readonly percent: number | null;
 }
 
-/**
- * Something a real label needs that only a completed Production can supply.
- * These are shown to the reader as outstanding, never filled with a guess.
- */
-export type DraftLabelPendingId =
-  | 'lot'
-  | 'production_date'
-  | 'confirmed_ingredients'
-  | 'final_nutrition';
+export type DraftLabelPendingId = LabelPreflightItem['field'];
 
 export interface DraftLabelPreview {
   readonly kind: 'draft';
-  readonly market: MarketProfileCode;
-  readonly labelLanguages: readonly string[];
-  readonly businessName: string;
-  readonly logoPath: string | null;
-  readonly operatorName: string;
-  readonly operatorAddress: string;
+  readonly label: MasterLabelData;
   readonly productName: string | null;
   readonly ingredients: readonly DraftLabelIngredient[];
-  /** The engine's own per-100 g figures, unchanged. Null when it has none. */
-  readonly nutritionPer100g: NutritionPer100g | null;
-  /** Planned batch mass. Not a net quantity — production has not run. */
-  readonly plannedBatchG: number | null;
-  /** What a final label still needs, and Production has not yet produced. */
+  readonly baseBatchG: number;
+  readonly finalProductG: number;
+  readonly plannedBatchG: number;
+  readonly allergenState: 'known' | 'confirmed_none' | 'missing';
+  readonly confirmedFields: readonly string[];
   readonly pending: readonly DraftLabelPendingId[];
+  readonly blockers: readonly LabelPreflightItem[];
+  readonly readyForPrint: boolean;
 }
 
-/** A draft is never printable as a final label. Kept next to the model so no
- *  caller has to re-derive the rule. */
-export const DRAFT_LABEL_IS_PRINTABLE = false;
+const primaryText = (value: Record<string, string>, languages: readonly string[]): string =>
+  languages.map((language) => value[language]).find((text) => text?.trim()) ?? '';
+
+/**
+ * Current recipe facts always replace persisted derived facts. Editable label
+ * choices survive reload/Save/Reopen, as do the draft-owned LOT and date.
+ */
+export function mergeRecipeDraftLabel(
+  systemLabel: MasterLabelData,
+  savedLabel: MasterLabelData | null,
+  draft: RecipeLabelDraft,
+): MasterLabelData {
+  if (!savedLabel) return systemLabel;
+  const productName = Object.values(savedLabel.productName).some((value) => value.trim())
+    ? savedLabel.productName
+    : systemLabel.productName;
+  const userSelectedPackage =
+    savedLabel.packageQuantity?.source !== 'planned_final_product'
+      ? savedLabel.packageQuantity
+      : systemLabel.packageQuantity;
+  return applyAutoLabelLayout({
+    ...systemLabel,
+    ...savedLabel,
+    masterLabelId: systemLabel.masterLabelId,
+    sourceCompletionSessionId: systemLabel.sourceCompletionSessionId,
+    sourceCompletedAt: systemLabel.sourceCompletedAt,
+    sourceRecipeVersionId: systemLabel.sourceRecipeVersionId,
+    sourceRecipeVersionNumber: systemLabel.sourceRecipeVersionNumber,
+    sourceKind: 'recipe_draft',
+    actualBatchQuantityG: systemLabel.actualBatchQuantityG,
+    productName,
+    ingredients: systemLabel.ingredients,
+    allergens: systemLabel.allergens,
+    nutritionSource: systemLabel.nutritionSource,
+    nutritionDeclaration: systemLabel.nutritionDeclaration,
+    saturatedFatAuthority: systemLabel.saturatedFatAuthority,
+    packageQuantity: userSelectedPackage,
+    netQuantityG: userSelectedPackage?.netWeightG ?? null,
+    productionDate: draft.productionDate,
+    productionDateReviewed: true,
+    lotCode: draft.lotCode,
+  });
+}
 
 export function buildDraftLabelPreview({
   profile,
-  result,
+  recipeInput,
+  composition,
   productName,
+  draft,
+  recipeVersionId = null,
+  recipeVersionNumber = null,
 }: {
   profile: AccountLabelProfile;
-  result: RecipeResult;
+  recipeInput: RecipeInput;
+  composition: RecipeCompositionMetadata;
   productName?: string | null;
+  draft: RecipeLabelDraft;
+  recipeVersionId?: string | null;
+  recipeVersionNumber?: number | null;
 }): DraftLabelPreview {
-  const totalG = result.total_batch_g > 0 ? result.total_batch_g : null;
-
-  const ingredients: DraftLabelIngredient[] = result.items
-    .map((item) => {
-      const grams = item.effective_grams;
-      return {
-        id: item.id,
-        name: item.ingredient.name,
-        grams,
-        percent: totalG === null ? null : (grams / totalG) * 100,
-      };
-    })
-    .filter((line) => line.grams > 0)
-    .sort((a, b) => b.grams - a.grams);
-
-  /* LOT, the production date and the CONFIRMED declaration exist only after a
-     run. The engine's nutrition is real and current, so it is only pending when
-     the engine itself has none. */
-  const pending: DraftLabelPendingId[] = ['lot', 'production_date', 'confirmed_ingredients'];
-  if (result.nutrition_per_100g === null) pending.push('final_nutrition');
+  const behaviorAuthority = buildRecipeBehaviorAuthority({
+    items: recipeInput.items,
+    toppings: composition.toppings,
+    snapshots: composition.behaviorSnapshots ?? {},
+  });
+  const labelGate = recipeBehaviorModuleGate(behaviorAuthority, 'MASTER_LABEL');
+  let factualInput = recipeInput;
+  let factualToppings = composition.toppings;
+  if (labelGate.ready) {
+    factualInput = recipeInputFromFrozenBehavior(recipeInput, behaviorAuthority, 'nutrition');
+    factualToppings = recipeToppingsFromFrozenBehavior(
+      composition.toppings,
+      behaviorAuthority,
+      'nutrition',
+    );
+  }
+  const finalProduct = calculateFinalProduct(factualInput, factualToppings, 'planning');
+  const requiredLanguages = marketProfile(profile.market).requiredLanguages;
+  const labelLanguages =
+    profile.market === 'WORLD'
+      ? profile.labelLanguages.length > 0
+        ? profile.labelLanguages
+        : ['en']
+      : [...new Set([...requiredLanguages, ...profile.labelLanguages])];
+  const systemLabel = applyAutoLabelLayout(
+    buildRecipeDraftLabelData({
+      masterLabelId: `master-label:${draft.draftId}`,
+      draftId: draft.draftId,
+      recipeName: productName?.trim() ?? '',
+      recipeVersionId,
+      recipeVersionNumber,
+      productionDate: draft.productionDate,
+      lotCode: draft.lotCode,
+      recipeInput: factualInput,
+      productComposition: { ...composition, toppings: factualToppings },
+      finalProduct,
+      market: profile.market,
+      uiLanguage: profile.uiLanguage,
+      labelLanguages,
+      facilityDefaults: profile.facilityDefaults,
+      shelfLifeAuthority: profile.shelfLifeAuthority,
+      businessName: profile.businessName,
+      logoPath: profile.logoPath,
+      enabledOptionalFields: profile.enabledOptionalFields,
+      presentation: {
+        format: profile.presentation.format,
+        size: {
+          widthMm: profile.presentation.widthMm,
+          heightMm: profile.presentation.heightMm,
+        },
+        copies: profile.presentation.copies,
+      },
+      printer: profile.presentation.printer,
+    }),
+  );
+  const label = mergeRecipeDraftLabel(systemLabel, draft.label, draft);
+  const preflight = buildLabelPreflight(label);
+  const blockers = preflight.items.filter((item) => item.status !== 'ready');
+  const declaredAllergens = [...label.allergens.declared, ...label.allergens.mayContain];
+  const allergenState =
+    label.allergens.status !== 'complete'
+      ? 'missing'
+      : declaredAllergens.length > 0
+        ? 'known'
+        : 'confirmed_none';
 
   return {
     kind: 'draft',
-    market: profile.market,
-    labelLanguages: profile.labelLanguages,
-    businessName: profile.businessName,
-    logoPath: profile.logoPath,
-    operatorName: profile.facilityDefaults.operatorName,
-    operatorAddress: profile.facilityDefaults.address,
-    productName: productName?.trim() ? productName.trim() : null,
-    ingredients,
-    nutritionPer100g: result.nutrition_per_100g,
-    plannedBatchG: totalG,
-    pending,
+    label,
+    productName: primaryText(label.productName, label.labelLanguages) || null,
+    ingredients: label.ingredients.map((item) => ({
+      id: item.lineId,
+      name: primaryText(item.names, label.labelLanguages),
+      grams: item.actualGrams,
+      percent: finalProduct.finalMassG > 0 ? item.percent : null,
+    })),
+    baseBatchG: finalProduct.baseMassG,
+    finalProductG: finalProduct.finalMassG,
+    plannedBatchG: finalProduct.finalMassG,
+    allergenState,
+    confirmedFields: draft.confirmedFields,
+    pending: blockers.map((item) => item.field),
+    blockers,
+    readyForPrint: preflight.readyForSystemPrint,
   };
 }
-
-/** The reader-facing name of each outstanding item. */
-export const DRAFT_LABEL_PENDING_LABEL: Record<DraftLabelPendingId, string> = {
-  lot: 'Numer partii (LOT)',
-  production_date: 'Data produkcji',
-  confirmed_ingredients: 'Potwierdzone składniki z produkcji',
-  final_nutrition: 'Wartości odżywcze',
-};

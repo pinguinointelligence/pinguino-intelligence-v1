@@ -190,13 +190,15 @@ describe('one global menu and four local contexts', () => {
     expect(panel).not.toContain('navigate(');
   });
 
-  it('delegates Etykieta only to a completed snapshot of the current recipe', () => {
+  it('uses a matching completed label first and otherwise the current recipe draft', () => {
     const panel = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
     expect(panel).toContain('currentRecipeCompletionSnapshot(production)');
     expect(panel).toContain('snapshot={completed}');
     expect(panel).toContain('initialView={initialLabelView}');
     expect(panel).toContain('key={labelViewRequestKey ?? initialLabelView}');
-    expect(panel).toContain('Etykieta potrzebuje zakończonej partii');
+    expect(panel).toContain('<DraftLabelPanel');
+    expect(panel).toContain('recipeInput={recipeInput}');
+    expect(panel).not.toContain('Etykieta potrzebuje zakończonej partii');
     expect(panel).toContain('<WorkflowNotice');
     expect(panel).toContain('variant="attention"');
     expect(panel).not.toContain('rounded-[20px] border border-ink/10 bg-[#fffdf8] p-5');

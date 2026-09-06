@@ -501,33 +501,28 @@ describe('profile hierarchy and compact preflight', () => {
         );
 
         await act(async () => root.render(panel('summary')));
-        /* OWNER DECISION (2026-08-30) — an explicit, approved divergence from
-           the older V2.1 §18 Label GATE. Before Production completes the reader
-           now sees a live DRAFT of the label rather than a panel telling them to
-           go elsewhere. The old gate's assertions are replaced by the contract
-           that supersedes them, not dropped:
-             · the draft is on screen,
-             · only genuinely outstanding data is listed,
-             · nothing that needs a completed run is invented,
-             · and the final print stays unavailable. */
+        /* OWNER DECISION (2026-09-06): automatic LOT/date and recipe facts are
+           rendered directly. Real blockers have controls; there is no passive
+           production-waiting list. */
         const draftCard = host.querySelector('[data-testid="draft-label-card"]');
         expect(draftCard).not.toBeNull();
         expect(host.querySelector('[data-testid="label-workspace-empty"]')).toBeNull();
 
-        const pending = host.querySelector('[data-testid="draft-label-pending"]');
-        expect(pending?.textContent).toContain('Numer partii (LOT)');
-        expect(pending?.textContent).toContain('Data produkcji');
-        expect(pending?.textContent).toContain('Potwierdzone składniki z produkcji');
+        expect(host.querySelector('[data-testid="draft-label-pending"]')).toBeNull();
+        expect(draftCard?.textContent).toContain('LOT-');
+        expect(draftCard?.textContent).not.toContain('Potwierdzone składniki z produkcji');
+        expect(host.querySelector('[data-testid="label-data-intake"]')).not.toBeNull();
 
         const print = host.querySelector<HTMLButtonElement>('[data-testid="draft-label-print"]');
         expect(print).not.toBeNull();
         expect(print?.disabled).toBe(true);
 
-        // Settings stay in the hamburger's canonical Etykiety destination and
-        // never reappear as a second entry point inside PRO → Etykieta.
+        // Settings stay on the canonical destination; the main view exposes
+        // only the explicit route action requested by the Owner.
         expect(host.querySelector('[data-testid="label-settings-home-link"]')).toBeNull();
         expect(host.textContent).not.toContain('Zmień ustawienia');
-        expect(host.querySelector('[data-testid="label-consumer-preview"]')).toBeNull();
+        expect(host.textContent).toContain('ZMIEŃ');
+        expect(host.querySelector('[data-testid="label-consumer-preview"]')).not.toBeNull();
       }
 
       const variants = [
