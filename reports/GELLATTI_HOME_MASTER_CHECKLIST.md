@@ -167,8 +167,8 @@ Legend for yes/no columns: `Y` = yes/required, `–` = no/not required, `?` = to
 | H-55-2 | Actions | Base and flavour ingredients are not functionally separated | – | – | Y | `/` | – | – | – | Y | Y | Y | Y | TODO | | |
 | H-56-1 | Actions | `Add ingredient` reuses the SAME Pro picker (search, filters, voice, scanner, catalogue, ProductBehavior) with a simpler HOME presentation | Y | `product-picker` | Y | `/` | `services/productPicker` | – | – | Y | Y | Y | Y | TODO | | |
 | H-57-1 | Actions | On the live recipe screen: "Want to add anything else?" → Add ingredient / Add topping-mix-in | – | – | Y | `/` | – | – | – | Y | Y | Y | Y | IMPLEMENTED | | |
-| H-57-2 | Actions | Topping uses the existing Topping behavior, has no Crown, and has editable grams | Y | `addTopping`, `ToppingRow` | Y | `/` | `recipeStore` | – | – | Y | Y | Y | Y | TODO | | |
-| H-58-1 | Actions | Only where genuinely ambiguous ask "How do you want to use it? Ingredient / Topping"; never ask unnecessarily | – | – | Y | `/` | – | – | – | Y | Y | Y | Y | TODO | | |
+| H-57-2 | Actions | Topping uses the existing Topping behavior, has no Crown, and has editable grams | Y | `addTopping`, `ToppingRow` | Y | `/` | `recipeStore` | – | – | Y | Y | Y | Y | TESTED | `homeToppingGrams.test.ts` (5 store cases) + `homeToppingAmount.runtime.test.tsx` (real control in jsdom: open the row menu, focus the spinbutton, type 25, blur to commit) — the store holds 25 g, the screen shows it, and the base lines are byte-identical before and after. DEFECT FIXED: the row committed through `setPlannedGrams`, which looks the line up in `state.items` and returns early, so every topping edit was silently dropped. | |
+| H-58-1 | Actions | Only where genuinely ambiguous ask "How do you want to use it? Ingredient / Topping"; never ask unnecessarily | – | – | Y | `/` | – | – | – | Y | Y | Y | Y | TESTED | `homeUsageRoleDecision.ts` + `.test.ts` (7 cases): the question is asked ONLY when the catalogue says a product is eligible for BOTH `BASE_RECIPE` and `TOPPING`; `TOPPING_ONLY`, base-only and topping-only are settled silently, and an unreadable snapshot defaults to ingredient rather than inventing a question. `homeUsagePrompt.runtime.test.tsx` (5 cases) renders the canonical `howToUse` / `asIngredient` / `asTopping` copy — which existed in both locales and had never been rendered — names the product, returns the real choice, closes on Escape and is a proper aria dialog. | |
 | H-59-1 | Score | After the first recipe the current Score is shown live using the existing authority; no new score calculation | Y | `recipe-score`, `pi-monitor` | Y (wiring) | `/` | – | – | – | Y | Y | Y | Y | TESTED | | |
 | H-60-1 | Recalculate | Where existing semantics require it, show `Przelicz i popraw` using the current Recalculate/Preview/Apply workflow | Y | `constraintStudioStore` | Y | `/` | – | – | – | Y | Y | Y | Y | TODO | | |
 | H-60-2 | Recalculate | Never auto-apply silently if PRO would not; show current Score + action; no verbose delta explanation | – | – | Y | `/` | – | – | – | Y | Y | Y | Y | TODO | | |
@@ -328,17 +328,17 @@ neither the 97% quoted in conversation nor the 36% read off the stale file was t
 
 | Status | Count |
 | --- | --- |
-| TESTED | 80 |
+| TESTED | 82 |
 | SERVED VERIFIED | 4 |
 | IMPLEMENTED | 22 |
 | IN PROGRESS | 1 |
 | BLOCKED | 1 |
-| TODO | 102 |
+| TODO | 100 |
 | NOT APPLICABLE (excluded) | 1 |
 
 ```
-PROGRESS                = (80 + 4) / 210 = 84/210 = 40.0%
-IMPLEMENTATION COVERAGE = (22 + 80 + 4) / 210 = 106/210 = 50.5%
+PROGRESS                = (82 + 4) / 210 = 86/210 = 41.0%
+IMPLEMENTATION COVERAGE = (22 + 82 + 4) / 210 = 108/210 = 51.4%
 ```
 
 There is no longer a separate "excluding Scanner" figure, because **no Scanner row is

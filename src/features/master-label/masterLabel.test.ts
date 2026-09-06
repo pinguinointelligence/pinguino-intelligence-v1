@@ -352,7 +352,8 @@ describe('Master Label — one actual-batch source model', () => {
       es: expect.stringContaining('-18'),
       en: expect.stringContaining('-18'),
     });
-    expect(actual.allergens.reviewedByUser).toBe(true);
+    expect(actual.allergens.reviewedByUser).toBe(false);
+    expect(actual.allergens.labelStatements).toEqual([]);
   });
 
   it('fails the label closed when a fat-bearing ingredient carries the Mapper zero placeholder', () => {
@@ -608,7 +609,7 @@ describe('Master Label — one actual-batch source model', () => {
     expect(first.lotCode).not.toBe('LOT —');
   });
 
-  it('blocks label construction when frozen canonical allergen evidence is missing', () => {
+  it('keeps label construction and print eligibility independent from a missing allergen line', () => {
     const snapshot = completedSnapshot();
     const firstId = snapshot.finalActualInput.items[0]!.id;
     const current = snapshot.productComposition.behaviorSnapshots![firstId]!;
@@ -616,15 +617,16 @@ describe('Master Label — one actual-batch source model', () => {
       ...current,
       sharedFacts: current.sharedFacts ? { ...current.sharedFacts, allergens: null } : null,
     };
-    expect(() =>
-      buildMasterLabelData({
-        masterLabelId: 'label-gap',
-        snapshot,
-        market: 'EU',
-        uiLanguage: 'pl',
-        labelLanguages: ['pl'],
-      }),
-    ).toThrow(`master_label_behavior_authority_required:${firstId}`);
+    const label = buildMasterLabelData({
+      masterLabelId: 'label-gap',
+      snapshot,
+      market: 'EU',
+      uiLanguage: 'pl',
+      labelLanguages: ['pl'],
+    });
+    expect(buildLabelPreflight(printable(label)).items).toContainEqual(
+      expect.objectContaining({ field: 'allergens', status: 'ready' }),
+    );
   });
 
   it('warns on required-field removal and supports explicit optional fields', () => {

@@ -71,6 +71,7 @@ describe('plan-aware global navigation', () => {
       'recipes',
       'howItWorks',
       'production',
+      'labels',
       'products',
       'scanProduct',
       'machine',
@@ -83,6 +84,7 @@ describe('plan-aware global navigation', () => {
     expect(ids('pro').filter((id) => !ids('home').includes(id))).toEqual([
       'proWorkspace',
       'production',
+      'labels',
     ]);
   });
 
@@ -100,15 +102,16 @@ describe('plan-aware global navigation', () => {
     expect(isGroupActive('product', loc('/pro/versions'), 'pro')).toBe(true);
   });
 
-  /* OWNER AUTHORIZED (2026-08-29, full-application acceptance): the duplicate
-     `Ustawienia etykiety` NAVIGATION entry is removed. Label settings keep
-     working in the Production/Label experience and in the workbench Summary
-     panel — only the second door into them is gone. */
-  it('carries no duplicate label-settings navigation entry', () => {
-    expect(APP_NAV_ITEMS.find((item) => item.id === 'labels')).toBeUndefined();
-    for (const audience of ['guest', 'home', 'pro'] as const) {
-      expect(ids(audience)).not.toContain('labels');
-    }
+  /* OWNER DECISION (2026-09-06): `/labels` is the one canonical settings
+     destination and returns to the exact origin; only Pro exposes it. */
+  it('carries one canonical Pro label-settings navigation entry', () => {
+    const labels = APP_NAV_ITEMS.filter((item) => item.id === 'labels');
+    expect(labels).toHaveLength(1);
+    expect(labels[0]?.to).toBe('/labels');
+    expect(labels[0]?.audiences).toEqual(['pro']);
+    expect(ids('guest')).not.toContain('labels');
+    expect(ids('home')).not.toContain('labels');
+    expect(ids('pro')).toContain('labels');
   });
 
   it('reaches Community and Top 100 from one Community destination', () => {
