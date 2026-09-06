@@ -10,8 +10,8 @@ without reading any conversation.
 | --- | --- |
 | Branch | `claude/scanner-complete` |
 | PR | [#186](https://github.com/pinguinointelligence/pinguino-intelligence-v1/pull/186) — base `staging`, **DO NOT MERGE** until the owner accepts |
-| HEAD at last update | `b52df37c` |
-| `origin/staging` at last update | `f03038d0` — merged into this branch, 0 commits behind |
+| HEAD at last update | `cbcbc8d4` |
+| `origin/staging` at last update | `6f71ac6a` — merged into this branch |
 | Supabase (staging) | `tunabqqrwabacxjcxxkz` |
 | Vercel project | `pinguino-staging` (`prj_6h8PDTCUrdDdXNzfEfjJNsVL5BcE`) |
 | Preview alias (SSO) | `pinguino-staging-git-987191-pinguinointelligence-7784s-projects.vercel.app` |
@@ -170,34 +170,24 @@ research → save path (Lotus Biscoff: asked, added and saved ready in one pass)
 - `reports/scan-import-v2/STAGING_TIMING_2026-09-05.json` — known product 1.2 s cold / 0.2 s warm;
   new product with a registry record 1.0 s research + 2.1 s finalize.
 
-## Tests
+## Tests and gates (branch, before the merge to staging)
 
-- `npm run build` (`tsc -b && vite build`) green.
-- Full suite 2026-09-06: **12 969 tests passed, 0 failed**, 149 skipped.
-  Four test FILES did not start: `LabelWorkspace.runtime`, `proProfilePreflightUx`,
-  `proRecipeStateRegression`, `ProWorkspacePage.libraryHandoff`. All four fail on the same line —
-  Vite denies loading `@fontsource/.../*.woff?url` because this worktree's `node_modules` is a
-  symlink into `pinguino-scan-core-phase-0`, outside the project root. None of the four files, and
-  nothing they import, is touched by this branch (`git diff origin/staging...HEAD` is empty for
-  each). It is an environment artefact of the shared `node_modules`, not a code failure; CI
-  installs its own dependencies and is the authority.
-- After merging `origin/staging`: home-creator / product-intelligence / product-scanner / scan-flow
-  / scan-import-v2 / owner-locked contracts — 1 975 passed, 0 failed.
-
-## Disk and cleanup (this session)
-
-| | |
+| Gate | Result |
 | --- | --- |
-| Free at the start of the final stage | 8.1 GiB |
-| Free at the end | 1.1 GiB |
-| Removed (mine, reproducible) | this worktree's `dist` (79 MB, rebuild with `npx vite build`) and `/tmp/vitest-final.log` |
-| Kept deliberately | `node_modules/.vite` (29 MB) — this worktree's `node_modules` is a SYMLINK into `pinguino-scan-core-phase-0`, shared with another session; its dep cache is not mine to clear while others may be building |
-| Nothing belonging to another session was touched | no sibling worktree, branch, cache or uncommitted change was removed |
+| `npm test -- --run` | **exit 0** — 1054 files (1031 passed, 23 skipped), 13 141 tests passed, 149 skipped, **0 failed, 0 files that did not start** |
+| `npm run typecheck` (`tsc -b`) | pass |
+| `npx eslint .` | 0 errors (7 pre-existing warnings) |
+| `npm run build` | pass |
+| `npm run guard:owner-locked` | OK — no accepted contract modified |
+| `npm run guard:protected-paths` | OK — no protected functional path touched |
+| `npm run test:contracts` (owner-locked) | 21 files, 206 tests, pass |
+| `git diff --check` | clean |
 
-**The disk is full for a reason outside this workstream.** `/System/Volumes/Data` is at 100 %
-(183 GiB used, ~1 GiB free). 66 of the ~140 sibling worktrees under `~/Developer` carry their own
-`node_modules`, roughly 700 MB each. Pruning them is the owner's call — this session deleted none of
-them. This worktree itself is 178 MB with `dist` removed.
+**The symlinked-dependency defect is fixed.** This worktree reaches its dependencies through a
+symlink, so Vite's strict file server refused a `@fontsource` `.woff?url` import and five test FILES
+never started — 84 tests silently missing from every run. `vite.config.ts` now ADDS the real path of
+the dependency tree to Vite's own workspace root. Before: 1044 files / 12 969 tests with 4 files
+dead. After: 1054 files / 13 290 tests with none dead.
 
 ## Open
 
