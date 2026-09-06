@@ -59,30 +59,12 @@ describe('it cannot run up a bill', () => {
   });
 });
 
-describe('the OCR engine is never downloaded speculatively', () => {
-  const CAPABILITIES = readFileSync('src/features/product-scanner/liveScanCapabilities.ts', 'utf8');
-  const SCANNER = readFileSync('src/features/product-scanner/LiveMultiScanner.tsx', 'utf8');
-
-  it('the engine is imported only inside the rung that uses it', () => {
-    // A static import here would pull multi-megabyte WASM and language data into the
-    // bundle, downloaded the moment the scanner opens — for a sweep that may only ever
-    // see barcodes.
-    expect(CAPABILITIES).not.toMatch(/^import \{[^}]*createLabelOcrSession/m);
-    expect(CAPABILITIES).toContain("import('@/features/ocr-intake/ocrEngine')");
-    // The type-only import carries no runtime cost.
-    expect(CAPABILITIES).toContain('import type { LabelOcrSession }');
-  });
-
-  it('the customer is never asked to turn OCR on', () => {
-    expect(SCANNER).not.toContain('enableOcr');
-    expect(CAPABILITIES).not.toContain('enableOcr');
-  });
-
-  it('and the session releases the engine when the camera closes', () => {
-    expect(CAPABILITIES).toContain('releaseLiveScanCapabilities');
-    expect(SCANNER).toContain('releaseLiveScanCapabilities');
-  });
-});
+/*
+  The OCR-speculation contracts lived on the deleted second scanner (`LiveMultiScanner` /
+  `liveScanCapabilities`). The ONE Canonical Scanner has no OCR rung at all — `scanCoreCapture`
+  imports nothing but the Scan Core baseline — which the scan-flow boundary test enforces
+  directly, so there is nothing left here to guard.
+*/
 
 describe('it reaches no further than its caller', () => {
   it('requires a signed-in caller', () => {

@@ -419,7 +419,7 @@ describe('owner matrix G–K and P: exact persistence boundaries', () => {
           label: machineDisplayName(machine),
           temperatureC: temperatureForMode(setup.resolvedVisibleMode!)!,
           batchGrams: setup.recommendedBatchGrams,
-          capacityGrams: setup.recommendedBatchGrams,
+          hardCapacityGrams: setup.hardMaximumBatchGrams,
         });
       },
     ],

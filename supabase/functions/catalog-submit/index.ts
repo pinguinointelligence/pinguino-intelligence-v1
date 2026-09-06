@@ -1119,7 +1119,22 @@ function serverManualProductProfileProposal(canonicalInput: Record<string, unkno
     fibre: 'fiber_percent',
     salt: 'salt_percent',
   };
-  if (nutrition.basis === 'per_100g') {
+  /* OWNER RULE (2026-08-25, frozen): Gellatti normalises 1 ml = 1 g, so a
+     per-100 ml panel is read into the g-based working fields NUMERICALLY 1:1.
+     No density is consulted and none is wanted.
+
+     This is the admin product-add-request path — the only incremental channel
+     that produces an engine-usable commercial product — so the per_100g-only
+     gate here is what kept every liquid dairy SKU out of the Engine. Milk and
+     cream are the dairy and fat carriers of every gelato base and are declared
+     per 100 ml across the EU.
+
+     `nutrition.basis` itself is carried through to the stored facts unchanged,
+     so the manufacturer's declaration stays distinguishable from the normalised
+     working values. A basis that is neither per-100 g nor per-100 ml is still
+     ignored: the rule converts ml to g, it does not license reading a per
+     portion or per serving panel as if it were per 100 g. */
+  if (nutrition.basis === 'per_100g' || nutrition.basis === 'per_100ml') {
     for (const [key, field] of Object.entries(macroMap)) {
       const value = nutrition[key];
       if (value === undefined || value === null) continue;
@@ -1705,37 +1720,6 @@ Deno.serve(async (request) => {
   const service = createClient(url, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
-  if (source === 'admin' && body.requireApprovalReady === true) {
-    const approvalFacts = objectValue(canonicalInput.facts);
-    const requestIdFromFacts =
-      typeof approvalFacts.productAddRequestId === 'string'
-        ? approvalFacts.productAddRequestId
-        : null;
-    const requestIdFromEvidence =
-      typeof suppliedEvidence.productAddRequestId === 'string'
-        ? suppliedEvidence.productAddRequestId
-        : null;
-    if (
-      canonicalInput.provenance !== 'product_add_request_admin_v1' ||
-      suppliedEvidence.approvedByAdmin !== true ||
-      !requestIdFromFacts ||
-      requestIdFromFacts !== requestIdFromEvidence ||
-      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-        requestIdFromFacts,
-      )
-    ) {
-      return json({ error: 'product_request_approval_binding_required' }, 409);
-    }
-    const { data: requestAuthority, error: requestAuthorityError } = await service
-      .from('product_add_requests')
-      .select('id,status')
-      .eq('id', requestIdFromFacts)
-      .in('status', ['SUBMITTED', 'ADMIN_REVIEW', 'NEEDS_INFO', 'RESUBMITTED'])
-      .maybeSingle();
-    if (requestAuthorityError || !requestAuthority) {
-      return json({ error: 'product_request_approval_binding_required' }, 409);
-    }
-  }
   const riskSecret = Deno.env.get('CATALOG_RISK_HMAC_SECRET');
   if (!riskSecret) return json({ error: 'catalog_risk_control_unavailable' }, 503);
   const riskChallengePassed = await verifyRiskChallenge({
@@ -1772,6 +1756,38 @@ Deno.serve(async (request) => {
   if (typeof body.productId === 'string') canonicalInput.productId = body.productId;
   if (body.operation === 'upsert' || body.operation === 'retire')
     canonicalInput.operation = body.operation;
+
+  if (source === 'admin' && body.requireApprovalReady === true) {
+    const approvalFacts = objectValue(canonicalInput.facts);
+    const requestIdFromFacts =
+      typeof approvalFacts.productAddRequestId === 'string'
+        ? approvalFacts.productAddRequestId
+        : null;
+    const requestIdFromEvidence =
+      typeof suppliedEvidence.productAddRequestId === 'string'
+        ? suppliedEvidence.productAddRequestId
+        : null;
+    if (
+      canonicalInput.provenance !== 'product_add_request_admin_v1' ||
+      suppliedEvidence.approvedByAdmin !== true ||
+      !requestIdFromFacts ||
+      requestIdFromFacts !== requestIdFromEvidence ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        requestIdFromFacts,
+      )
+    ) {
+      return json({ error: 'product_request_approval_binding_required' }, 409);
+    }
+    const { data: requestAuthority, error: requestAuthorityError } = await service
+      .from('product_add_requests')
+      .select('id,status')
+      .eq('id', requestIdFromFacts)
+      .in('status', ['SUBMITTED', 'ADMIN_REVIEW', 'NEEDS_INFO', 'RESUBMITTED'])
+      .maybeSingle();
+    if (requestAuthorityError || !requestAuthority) {
+      return json({ error: 'product_request_approval_binding_required' }, 409);
+    }
+  }
 
   const suppliedMapperDecision = objectValue(canonicalInput.mapperDecision);
   if (suppliedMapperDecision.authority === INTIMPORT_WHOLE_PROFILE_AUTHORITY) {
@@ -2014,6 +2030,20 @@ Deno.serve(async (request) => {
         engineUsable: serverProductProfileAuthority?.engineUsable ?? false,
         missingEngineFields: serverProductProfileAuthority?.missingEngineFields ?? [],
         criticalPhysicsBlockers: serverProductProfileAuthority?.criticalPhysicsBlockers ?? [],
+        productProfileDiagnostics: serverProductProfileAuthority
+          ? {
+              profileReferenceMapperIngredientId:
+                serverProductProfileAuthority.profileReferenceMapperIngredientId,
+              mapperSimilarity: serverProductProfileAuthority.mapperSimilarity,
+              mapperProfileBasis: serverProductProfileAuthority.mapperProfileBasis,
+              mapperCandidatesBeforeFilter:
+                serverProductProfileAuthority.mapperCandidatesBeforeFilter,
+              mapperCandidatesAfterFilter: serverProductProfileAuthority.mapperCandidatesAfterFilter,
+              mapperRejectedCandidates: serverProductProfileAuthority.mapperRejectedCandidates,
+              productAccuracyAssessment:
+                serverProductProfileAuthority.productAccuracyAssessment,
+            }
+          : null,
         productBehaviorAuthority: serverProductBehaviorAuthority,
       });
     }

@@ -162,8 +162,20 @@ const watermelonFixture = (
   items: [...structuralLines(), line('watermelon', IDS.watermelon, grams, role)],
 });
 
+/**
+ * The published Main envelope for the fixture's Watermelon.
+ *
+ * It is CATEGORY-AWARE on purpose. Staging publishes one policy per profile
+ * (`product_behavior_policy_versions`), and the sorbet fruit policy is 60/60/60
+ * where the dairy-gelato one is 20/35/45. Handing a SORBET recipe the dairy
+ * ceiling made the fixture claim a 60 % Main was over its hard limit — an
+ * artefact of the fixture, not of the recipe, and it fired the moment the
+ * Crown-OFF safety backstop started reading this envelope on the uncrowned
+ * path. See `mainSafetyProfileMatrix` for the published numbers.
+ */
 const snapshotsWithApprovedEnvelope = (input: RecipeInput) => {
   const snapshots = productBehaviorTestSnapshots(input);
+  const sorbet = input.category === 'sorbet';
   if (snapshots.watermelon)
     snapshots.watermelon = {
       ...snapshots.watermelon!,
@@ -172,11 +184,11 @@ const snapshotsWithApprovedEnvelope = (input: RecipeInput) => {
       mapperIngredientId: IDS.watermelon,
       verificationState: 'estimated',
       mainClassification: 'MAIN_PROFILE_SPECIFIC',
-      mainPolicyId: 'main-fruit-fresh-dairy',
-      mainPolicyVersion: 'v2',
-      ecoFloorPercent: 20,
-      optimalCeilingPercent: 35,
-      hardLimitPercent: 45,
+      mainPolicyId: sorbet ? 'main-sorbet-fruit-fresh' : 'main-fruit-fresh-dairy',
+      mainPolicyVersion: sorbet ? 'v1' : 'v2',
+      ecoFloorPercent: sorbet ? 60 : 20,
+      optimalCeilingPercent: sorbet ? 60 : 35,
+      hardLimitPercent: sorbet ? 60 : 45,
       mainEquivalentFactor: 1,
       mainBasis: 'FRUIT_EQUIVALENT',
     };

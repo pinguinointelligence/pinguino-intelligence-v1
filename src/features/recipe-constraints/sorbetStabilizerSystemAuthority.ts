@@ -1,5 +1,11 @@
 import type { ProductCategory, RecipeInput, RecipeItem } from '@/engine';
 import { resolveFunctionalRole } from '@/features/formulation/ingredientRoles';
+/* One result shape for both systems: the caller must not have to know which
+   authority answered in order to read the reason or the canonical limit. */
+import type {
+  ClampGelatoStabilizerComponentResult,
+  StabilizerClampReason,
+} from './gelatoStabilizerSystemAuthority';
 
 export const SORBET_STABILIZER_SYSTEM_POLICY = Object.freeze({
   policyId: 'gellatti-sorbet-stabilizer-system',
@@ -154,13 +160,13 @@ export function clampSorbetStabilizerComponentGrams(
   input: Pick<RecipeInput, 'category' | 'target_batch_grams' | 'items'>,
   lineId: string,
   requestedGrams: number,
-): { grams: number; clamped: boolean; messagePl: string | null } {
+): ClampGelatoStabilizerComponentResult {
   if (!sorbetStabilizerSystemApplies(input.category)) {
-    return { grams: requestedGrams, clamped: false, messagePl: null };
+    return { grams: requestedGrams, clamped: false, messagePl: null, reason: null, limitGrams: 0 };
   }
   const line = input.items.find((item) => item.id === lineId);
   if (!line || resolveFunctionalRole(line.ingredient) !== 'stabilizer') {
-    return { grams: requestedGrams, clamped: false, messagePl: null };
+    return { grams: requestedGrams, clamped: false, messagePl: null, reason: null, limitGrams: 0 };
   }
   const band = sorbetStabilizerWholeGramBand(input.target_batch_grams);
   const otherGrams = sorbetStabilizerSystemItems(input.items)
@@ -169,13 +175,18 @@ export function clampSorbetStabilizerComponentGrams(
   const maximumForLine = Math.max(0, Math.floor(band.maxGrams - otherGrams));
   const rounded = Math.max(0, Math.round(requestedGrams));
   const grams = Math.min(maximumForLine, rounded);
+  const clamped = !Object.is(grams, requestedGrams);
+  const reason: StabilizerClampReason =
+    requestedGrams > maximumForLine ? 'aggregate_limit' : clamped ? 'whole_gram' : null;
   return {
     grams,
-    clamped: !Object.is(grams, requestedGrams),
+    clamped,
+    reason,
+    limitGrams: band.maxGrams,
     messagePl:
-      requestedGrams > maximumForLine
+      reason === 'aggregate_limit'
         ? `Łączny limit systemu stabilizującego Sorbet wynosi ${band.maxGrams} g.`
-        : !Object.is(grams, requestedGrams)
+        : reason === 'whole_gram'
           ? 'Składniki systemu stabilizującego Sorbet muszą mieć pełne gramy.'
           : null,
   };

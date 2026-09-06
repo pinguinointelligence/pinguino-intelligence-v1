@@ -277,6 +277,12 @@ export interface RecipeInput {
   /** Always grams internally; liters are converted upstream via density config. */
   target_batch_grams: number;
   machine_capacity_grams: number | null;
+  /**
+   * Authority for a real machine limit. Legacy payloads may contain a numeric
+   * capacity with no provenance; that value is historical context, not a hard
+   * limit. Only an explicit machine selection or manual owner entry may bind.
+   */
+  machine_capacity_source?: 'machine' | 'manual' | null;
   goals?: RecipeGoals;
 }
 
@@ -397,10 +403,12 @@ export interface NutritionPer100g {
   alcohol_g: number;
 }
 
-/** Recipe cost state (cost stage). Unknown ingredient costs ⇒ incomplete: money
- * fields are null and the missing ingredient ids are listed — never a silently
- * false cost. */
+/** Recipe cost state (cost stage). Unknown ingredient costs ⇒ incomplete:
+ * exact total/per-unit fields are null, while `known_cost` and missing ids
+ * preserve the honest partial state — never a silently false cost. */
 export interface RecipeCosts {
+  /** Sum of every priced line, even while other line prices remain unknown. */
+  known_cost: number;
   total_cost: number | null;
   cost_per_kg: number | null;
   cost_per_serving_60g: number | null;

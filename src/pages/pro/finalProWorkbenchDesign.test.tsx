@@ -91,7 +91,8 @@ describe('final Pro visual system', () => {
     expect(panel).toContain('<ContextualEducationView');
     expect(education).not.toContain('ice-cockpit-bg.png');
     expect(education).not.toContain('education-ice-cockpit');
-    expect(education).toContain('contextual-learning-hub');
+    expect(education).toContain('<KnowledgeTour layout="embedded"');
+    expect(education).not.toContain('contextual-learning-hub');
   });
 
   it('uses one moderate rectangular corner contract while preserving functional circles', () => {
@@ -149,24 +150,23 @@ describe('one global menu and four local contexts', () => {
     // header parity lane made global — one control per meaning, one geometry per route.
     expect(page).not.toContain('data-testid="pro-plan-indicator"');
     expect(page).not.toContain('bg-[var(--g-graphite)] px-2.5 text-[9px]');
-    expect(page).toContain(
+    const shell = read('features', 'shell', 'AppShell.tsx');
+    expect(shell).toContain(
       "import { HomeProSwitch } from '@/features/home-creator/ui/HomeProSwitch'",
     );
-    // OWNER, 2026-09-02: the switch moved OUT of the workbar and into the shell's
-    // canonical `globalSwitch` slot. In the workbar it was conditional on
+    // OWNER, 2026-09-02: the switch moved OUT of the workbar and into AppShell.
+    // In the workbar it was conditional on
     // `workbench` — true only for a signed-in PRO on a workbench tab — so a
     // signed-out visitor saw no switch at all on /pro. Same component, same
     // `activeView`, now unconditional. The workbar must not render a second copy.
-    expect(page).toContain(
-      'globalSwitch={<HomeProSwitch entitlement={proEntitlement} activeView="pro" />}',
-    );
-    expect(page).not.toContain('<HomeProSwitch entitlement={entitlement} activeView="pro" />');
+    expect(shell).toContain('<HomeProSwitch entitlement={entitlement} activeView={activeView} />');
+    expect(page).not.toContain('<HomeProSwitch');
     // The trailing edge of column 1 is owned by the shell, for every route. The class
     // list lost its `hidden xl:flex` because the group is no longer a desktop-only copy
     // of a responsive pair — a CSS-hidden duplicate still reached the accessibility tree
     // (served 8dd11c9b). The guarantee this pins — the shell owning `ml-auto` at the
     // column edge — is unchanged.
-    expect(read('features', 'shell', 'AppShell.tsx')).toContain('ml-auto flex min-w-0 items-center');
+    expect(shell).toContain('pro-workbench-header-primary');
     for (const source of [workbar, ingredient, topping]) {
       expect(source).toContain("iconButtonClasses('xs')");
       expect(source).toContain('•••');
@@ -190,13 +190,15 @@ describe('one global menu and four local contexts', () => {
     expect(panel).not.toContain('navigate(');
   });
 
-  it('delegates Etykieta to the one completed-run LabelWorkspace authority', () => {
+  it('uses a matching completed label first and otherwise the current recipe draft', () => {
     const panel = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
-    expect(panel).toContain('production?.session?.completionSnapshot');
+    expect(panel).toContain('currentRecipeCompletionSnapshot(production)');
     expect(panel).toContain('snapshot={completed}');
     expect(panel).toContain('initialView={initialLabelView}');
     expect(panel).toContain('key={labelViewRequestKey ?? initialLabelView}');
-    expect(panel).toContain('Etykieta potrzebuje zakończonej partii');
+    expect(panel).toContain('<DraftLabelPanel');
+    expect(panel).toContain('recipeInput={recipeInput}');
+    expect(panel).not.toContain('Etykieta potrzebuje zakończonej partii');
     expect(panel).toContain('<WorkflowNotice');
     expect(panel).toContain('variant="attention"');
     expect(panel).not.toContain('rounded-[20px] border border-ink/10 bg-[#fffdf8] p-5');
@@ -209,7 +211,9 @@ describe('one global menu and four local contexts', () => {
 describe('recipe and production table modes', () => {
   it('normal recipe mode shows planned grams but no actual-production column', () => {
     const html = renderIngredients('recipe');
-    expect(html).toContain('Cena/kg');
+    expect(html).not.toContain('data-testid="recipe-table-header"');
+    expect(html).not.toContain('Cena/kg');
+    expect(html).toContain('aria-label="Składniki receptury"');
     expect(html).toContain('Zablokuj gramy');
     expect(html).toContain('Zablokuj % partii');
     expect(html).not.toContain('Faktycznie');
@@ -243,20 +247,20 @@ describe('recipe and production table modes', () => {
   it('uses one opaque, metadata-filtered picker for Base and Toppings without visible technical ids', () => {
     const picker = read('features', 'ingredient-builder', 'ProductPickerPopover.tsx');
     const builder = read('features', 'ingredient-builder', 'IngredientBuilder.tsx');
+    const discoveryCopy = read('copy', 'productDiscovery.ts');
     for (const label of [
-      'Wszystkie',
       'Ulubione',
-      'Świeże',
-      'Mleczne',
-      'Suche',
-      'Czekolada',
+      'Wszystkie',
       'Owoce',
+      'Mleczne',
       'Orzechy',
-      'Pasty',
+      'Czekolada',
+      'Techniczne',
     ]) {
-      expect(picker).toContain(`label: '${label}'`);
+      expect(discoveryCopy).toContain(`'${label}'`);
     }
-    expect(picker).toContain('matchesPickerFilter');
+    expect(picker).toContain('PRODUCT_DISCOVERY_TOP_FILTERS.map');
+    expect(picker).toContain('matchesProductDiscoveryFilter');
     expect(picker).not.toContain('Status danych ·');
     expect(picker).toContain('Pokaż status danych produktu:');
     expect(picker).toContain('data-testid="product-data-status-dialog"');
@@ -291,7 +295,8 @@ describe('profile semantics and readiness', () => {
     // End labels removed by the owner reference of 2026-09-03; the axis NAMES
     // are what the contract protects, and they are unchanged.
     for (const label of ['Słodycz', 'Twardość']) expect(panel).toContain(label);
-    expect(panel).toContain('const DETENTS = [-2, -1, 0, 1, 2] as const');
+    // Five marks, addressed by visual slot since Twardość is drawn mirrored.
+    expect(panel).toContain('const DETENTS = [-2, -1, 0, 1, 2] as const;');
     expect(panel).not.toContain('creaminess');
     expect(panel).not.toContain('intensity');
     expect(panel).not.toContain("['structure',");
@@ -360,14 +365,16 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
     const axes = read('features', 'pro-workbench', 'ProfileDirectionAxes.tsx');
     const summary = read('features', 'pi-panel', 'NutritionCostScorePanel.tsx');
     const proCopy = read('copy', 'pro.pl.ts');
-    expect(axes).toContain('const DETENTS = [-2, -1, 0, 1, 2] as const');
+    expect(axes).toContain('const DETENTS = [-2, -1, 0, 1, 2] as const;');
     expect(axes).toContain('role="radio"');
     expect(axes).toContain('aria-checked={position === detent}');
     expect(axes).toContain("event.key === 'ArrowRight'");
-    // The chosen position is now an orange THUMB on the rail; the numeral it
-    // used to contain became the readout beside the track (see
-    // directionDetentContrast.test.ts for the ratios that motivated the move).
-    expect(axes).toContain('size-4 rounded-full shadow-[0_0_0_3px_#fff]');
+    /* OWNER 2026-09-03: the chosen position is an orange thumb whose SIZE
+       varies with the detent — that size is now the primary statement of
+       direction, replacing the numeral entirely (see
+       directionDetentContrast.test.ts for what assistive tech gets instead). */
+    expect(axes).toContain('rounded-full shadow-[0_0_0_3px_#fff] transition-[left,width,height');
+    expect(axes).toContain('const thumbSize = sizeAt(thumbSizes, activeIndex);');
     expect(axes).not.toContain('Po zmianie:');
     expect(axes).not.toContain('Legenda kierunku');
     for (const label of ['Wartości odżywcze i koszt', 'Na 100 g', 'Węglowodany', 'Cała partia']) {
@@ -416,8 +423,8 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
     expect(panel).not.toContain('UserMonitorPro');
     expect(panel).not.toContain('OverallScoreCard');
     const preview = read('features', 'pro-core', 'ProRecalcPanel.tsx');
-    expect(preview).toContain('fixed inset-0');
-    expect(preview).toContain('role="dialog"');
+    expect(preview).toContain('<DialogShell');
+    expect(read('components', 'ui', 'DialogShell.tsx')).toContain('role="dialog"');
     expect(preview).toContain('effectiveAccess?.canAdmin === true');
     expect(preview).toContain('showTechnicalDetails={canViewTechnicalDetails}');
     expect(preview).toContain("'Sprawdź proponowaną korektę.'");
@@ -426,8 +433,8 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
   it('locks the desktop body and provides a mobile cockpit bottom sheet without horizontal scrolling', () => {
     const shell = read('features', 'shell', 'AppShell.tsx');
     const surface = read('features', 'studio', 'StudioEngineSurface.tsx');
-    expect(shell).toContain('xl:h-dvh');
-    expect(shell).toContain('xl:overflow-hidden');
+    expect(shell).toContain('pro-workbench-shell-lock');
+    expect(shell).toContain('pro-workbench-main-lock');
     expect(shell).toContain('DESKTOP_WORKBENCH_COLUMNS');
     // The workbench's global elements still sit in column 1 of the shared two-track
     // grid. The condition became unconditional when that grid was promoted to the
@@ -438,7 +445,7 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
     // the login keep the page's full width on EVERY route — measured 32 / 96 / 32
     // px identically on Shop and PRO — while HOME | PRO and the module strip stay
     // on the workbench column edge inside that band.
-    expect(shell).toContain('xl:col-start-1 xl:row-start-1');
+    expect(shell).toContain('pro-workbench-header-primary');
     expect(read('styles', 'theme-pro-light.css')).toContain(
       '@container right-pane (max-width: 420px)',
     );
@@ -460,7 +467,9 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
        430, 69 / 69 at 640 — with the hamburger and the switch hit-testing OK on
        all four PRO routes. The viewport-measured height must never come back. */
     expect(surface).toContain('top-[var(--pro-mobile-header-height)]');
-    expect(surface).not.toContain('fixed inset-x-0 top-0 bottom-[calc(var(--pro-bottom-nav-height)');
+    expect(surface).not.toContain(
+      'fixed inset-x-0 top-0 bottom-[calc(var(--pro-bottom-nav-height)',
+    );
     expect(surface).not.toContain('h-[min(92dvh,calc(100dvh-env(safe-area-inset-top)-0.5rem))]');
     // The sheet is a modal state and must keep an explicit way out.
     expect(surface).toContain('Zamknij kokpit');

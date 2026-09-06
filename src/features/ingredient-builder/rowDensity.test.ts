@@ -52,7 +52,21 @@ describe('D2/D4/D5 — compact V2.1 housings, unchanged typography', () => {
     );
     expect(control).toContain("compact && 'h-8'");
     expect(control).toContain("responsive && 'lg:h-8 lg:rounded-xl lg:shadow-none'");
-    expect(control).toContain("'h-8 w-[22px]'");
+    /* OWNER QA 2026-09-03: 30 px, was 22. The padlock sits in the pill's
+       rounded end and a 22 px segment left the glyph against the curve, so the
+       end read as clipped rather than round. HEIGHT is the density contract
+       this test protects and it is unchanged at 32 px — only the segment's
+       width moved, and only outward. */
+    expect(control).toContain("'h-8 w-[30px]'");
+    expect(control).not.toContain("'h-8 w-[22px]'");
+  });
+
+  it('keeps both table columns fixed while reserving the full lock cell inside the pill', () => {
+    expect(control).toContain("'size-11 lg:h-8 lg:w-[30px]'");
+    expect(control).toContain("'w-[142px] grid-cols-[28px_54px_28px_30px]'");
+    expect(control).toContain("'w-[150px] grid-cols-[28px_62px_28px_30px]'");
+    expect(control).toContain("widthPreset !== 'fluid' && 'shrink-0'");
+    expect(control).toContain('grid box-border min-w-0 max-w-full');
   });
 
   it('BOTH steppers actually request the compact density', () => {
@@ -97,8 +111,9 @@ describe('D6/D9/D10 — protected price column, name gets the rest', () => {
     expect(row.match(/^export const COMPACT_ROW_GRID =/gm)).toHaveLength(1);
   });
 
-  it('the incomplete-cost status cannot clip the money column', () => {
-    expect(price).toContain("lineCost === null ? 'text-[10px]' : 'text-[11px]'");
+  it('a missing line cost stays a numeric placeholder inside the money column', () => {
+    expect(price).toContain("lineCost === null ? '—'");
+    expect(price).not.toContain('Koszt niepełny');
     expect(price).toContain('whitespace-nowrap');
   });
 });
@@ -178,7 +193,9 @@ describe('D11 — the complete left Recipe workspace follows the row system', ()
     // `.btn-solid` — height 44px, padding 0 28px, border-radius 999px. It keeps
     // the family's 44 px height beside the rounded-xl pickers; the pill shape
     // is what marks it as the one primary in the band.
-    expect(intelligenceHeader).toContain('flex h-11 shrink-0 items-center justify-center rounded-full');
+    expect(intelligenceHeader).toContain(
+      'flex h-11 shrink-0 items-center justify-center rounded-full',
+    );
     expect(intelligenceHeader).toContain('px-7');
   });
 });

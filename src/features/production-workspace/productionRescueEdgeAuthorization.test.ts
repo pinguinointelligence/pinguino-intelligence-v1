@@ -15,6 +15,11 @@ import {
   type PersistTrustedAuthorizationInput,
   type TrustedRescueContext,
 } from '../../../supabase/functions/production-rescue-authorize/logic';
+import {
+  productionTestBehaviorSnapshots,
+  productionTestComposition,
+} from './productionTestComposition.fixture';
+import { OWNER_RESCUE_RECIPE } from './productionOwnerRescue.fixture';
 
 const OWNER = '11111111-1111-4111-8111-111111111111';
 const RUN = '22222222-2222-4222-8222-222222222222';
@@ -58,9 +63,11 @@ function context(): TrustedRescueContext {
     target_batch_grams: DEFAULT_PRESET.target_batch_grams,
     machine_capacity_grams: null,
   };
-  const behaviorSnapshots = Object.fromEntries(
-    recipeInput.items.map((item) => [item.id, { schemaVersion: 1, lineId: item.id }]),
-  );
+  // Was `{ schemaVersion: 1, lineId }` — a stub with no `moduleEligibility`, so
+  // the canonical terminal authority could not read module eligibility at all.
+  // Production always persists complete snapshots (see the owner specimen in
+  // `reports/production-rescue/OWNER_REPRO_2fc85403.md`).
+  const behaviorSnapshots = productionTestBehaviorSnapshots(recipeInput);
   const sucrose = recipeInput.items.find((item) =>
     item.ingredient.name.toLowerCase().includes('sucrose'),
   )!;
@@ -196,6 +203,53 @@ function stabilizerDeviationContext(actualStabilizerG = 3.1): TrustedRescueConte
   return source;
 }
 
+function ownerRescueContext(
+  actualByLineId: Readonly<Record<string, number>>,
+): TrustedRescueContext {
+  const source = context();
+  const recipeInput = structuredClone(OWNER_RESCUE_RECIPE);
+  source.recipeTitle = 'Owner strawberry watermelon gelato';
+  source.run.planned_batch_g = 670;
+  source.run.product_profile = recipeInput.category;
+  source.run.temperature_c = recipeInput.target_temperature_c;
+  source.version.recipe_input = recipeInput as unknown as Record<string, unknown>;
+  source.version.product_composition = productionTestComposition(recipeInput) as unknown as Record<
+    string,
+    unknown
+  >;
+  source.version.total_batch_g = 670;
+  source.version.product_profile = recipeInput.category;
+  source.version.temperature_c = recipeInput.target_temperature_c;
+  source.planned = recipeInput.items.map((item, position) => ({
+    line_id: item.id,
+    name: item.ingredient.name,
+    canonical_ingredient_id: item.ingredient.canonical_ingredient_id ?? item.ingredient.id,
+    planned_grams: item.planned_grams,
+    display_grams: item.planned_grams,
+    position,
+    process_scope: 'BASE_FORMULATION',
+    scope_position: position,
+  }));
+  const confirmed = recipeInput.items.filter((item) => actualByLineId[item.id] !== undefined);
+  source.actual = {
+    ...source.actual!,
+    actual_items: recipeInput.items.map((item) => {
+      const position = confirmed.findIndex((candidate) => candidate.id === item.id);
+      const actualGrams = actualByLineId[item.id] ?? null;
+      return {
+        id: item.id,
+        name: item.ingredient.name,
+        actualGrams,
+        confirmedAt:
+          position >= 0 ? `2026-09-05T10:${String(position + 1).padStart(2, '0')}:00.000Z` : null,
+        confirmationOrder: position >= 0 ? position + 1 : null,
+      };
+    }),
+    actual_total_mix_g: confirmed.reduce((sum, item) => sum + (actualByLineId[item.id] ?? 0), 0),
+  };
+  return source;
+}
+
 const dependencies = (
   source = context(),
   onPersist: (input: PersistTrustedAuthorizationInput) => void = () => undefined,
@@ -316,6 +370,125 @@ describe('trusted Production Rescue authorization', () => {
     );
   });
 
+  it('returns the exact irreducible lactose proof for Owner Case 1', async () => {
+    const source = ownerRescueContext({ milk: 201, cream: 125, skimmed_milk: 55 });
+    await expect(
+      authorizeTrustedProductionRescue(
+        OWNER,
+        request({ stableOptionId: 'keep_original_batch' }),
+        dependencies(source),
+      ),
+    ).rejects.toMatchObject({
+      code: 'stable_rescue_option_stale',
+      details: {
+        reason: 'confirmed_physical_floor_above_hard_limit',
+        diagnostics: {
+          physicalConfirmedG: 381,
+          forecastMassG: 675,
+          originalTargetG: 670,
+          machineCapacityG: null,
+          machineCapacitySource: null,
+          fixedTargetRebalance: expect.objectContaining({ candidateMassG: 670 }),
+          irreducibleConfirmedViolations: [
+            expect.objectContaining({
+              metric: 'lactose',
+              direction: 'high',
+              value: expect.closeTo(6.1935820896, 9),
+              max: 6,
+              basis: 'confirmed_physical_floor_at_target',
+            }),
+          ],
+        },
+      },
+    });
+  });
+
+  it('authorizes the exact 91.9 g + 91.9 g remaining plan for Owner Case 2', async () => {
+    const source = ownerRescueContext({
+      milk: 201,
+      cream: 125,
+      skimmed_milk: 50,
+      sucrose: 31,
+      dextrose: 77,
+      tara: 2.2,
+    });
+    const result = await authorizeTrustedProductionRescue(
+      OWNER,
+      request({ stableOptionId: 'keep_original_batch' }),
+      dependencies(source),
+    );
+
+    expect(result.preview.finalMassG).toBe(670);
+    expect(result.preview.instructions).toEqual([
+      expect.objectContaining({
+        lineId: 'strawberries',
+        kind: 'reduce_pending_plan',
+        finalTargetGrams: 91.9,
+      }),
+      expect.objectContaining({
+        lineId: 'watermelon',
+        kind: 'reduce_pending_plan',
+        finalTargetGrams: 91.9,
+      }),
+    ]);
+  });
+
+  it('authorizes a larger batch for Owner Case 3 when 670 g has no capacity source', async () => {
+    const source = ownerRescueContext({
+      milk: 201,
+      cream: 125,
+      skimmed_milk: 50,
+      sucrose: 31,
+      dextrose: 77,
+      tara: 2,
+      strawberries: 92,
+      watermelon: 98,
+    });
+    const result = await authorizeTrustedProductionRescue(
+      OWNER,
+      request({ stableOptionId: 'enlarge_batch' }),
+      dependencies(source),
+    );
+
+    expect(result.preview).toMatchObject({
+      finalMassG: 678.2,
+      title: 'Zwiększ partię do 678.2 g',
+    });
+  });
+
+  it('returns a physical capacity proof only when Owner Case 3 has explicit authority', async () => {
+    const source = ownerRescueContext({
+      milk: 201,
+      cream: 125,
+      skimmed_milk: 50,
+      sucrose: 31,
+      dextrose: 77,
+      tara: 2,
+      strawberries: 92,
+      watermelon: 98,
+    });
+    (source.version.recipe_input as Record<string, unknown>).machine_capacity_source = 'machine';
+
+    await expect(
+      authorizeTrustedProductionRescue(
+        OWNER,
+        request({ stableOptionId: 'enlarge_batch' }),
+        dependencies(source),
+      ),
+    ).rejects.toMatchObject({
+      code: 'stable_rescue_option_stale',
+      details: {
+        reason: 'machine_capacity_exceeded',
+        diagnostics: expect.objectContaining({
+          physicalConfirmedG: 676,
+          originalTargetG: 670,
+          machineCapacityG: 670,
+          machineCapacitySource: 'machine',
+        }),
+      },
+    });
+  });
+
   it('executes the canonical Engine option and persists only scale-supported 0.1 g values', async () => {
     let persisted: PersistTrustedAuthorizationInput | null = null;
     const result = await authorizeTrustedProductionRescue(
@@ -326,7 +499,7 @@ describe('trusted Production Rescue authorization', () => {
       }),
     );
     expect(result.preview.scoreDisplay).toBe('10/10');
-    expect(result.preview.finalMassG).toBe(1236.2);
+    expect(result.preview.finalMassG).toBe(1223);
     expect(result.candidateFingerprint).toMatch(/^[0-9a-f]{64}$/);
     expect(persisted).not.toBeNull();
     expect(persisted!.recipeInput.items).toSatisfy((items: unknown[]) =>
@@ -342,9 +515,7 @@ describe('trusted Production Rescue authorization', () => {
     expect(result.stableOptionId).toBe('enlarge_batch');
     // §16/§17 — the trusted preview names the exact verified batch, never a
     // generic direction and never a tidied-up round number.
-    expect(result.preview.title).toBe(
-      `Minimalna bezpieczna korekta · ${result.preview.finalMassG.toFixed(1)} g`,
-    );
+    expect(result.preview.title).toBe('Zwiększ partię do 1223 g');
   });
 
   it('rejects a no-longer-available stable option without storing authorization', async () => {
@@ -357,6 +528,12 @@ describe('trusted Production Rescue authorization', () => {
         stableOptionId: 'leave_as_is',
         reason: 'hard_safety_violations',
         violationMetrics: expect.arrayContaining([expect.any(String)]),
+        diagnostics: expect.objectContaining({
+          physicalConfirmedG: 180,
+          originalTargetG: 1_000,
+          machineCapacityG: null,
+          forecastViolationDetails: expect.any(Array),
+        }),
       },
     });
     expect(deps.persistAuthorization).not.toHaveBeenCalled();
@@ -437,7 +614,7 @@ describe('trusted Production Rescue authorization', () => {
       engineVersion: '0.4.0',
       configVersion: '0.7.0',
       practicalRecipeVersion: 'pro-whole-gram-v1',
-      rescueModelVersion: 'production-rescue-v4',
+      rescueModelVersion: 'production-rescue-v10',
       bundlerVersion: '1.0.3',
       ttlSeconds: 300,
     });
@@ -476,6 +653,51 @@ describe('trusted Production Rescue authorization', () => {
     const first = await authorizeTrustedProductionRescue(OWNER, request(), deps);
     const retry = await authorizeTrustedProductionRescue(OWNER, request(), deps);
     expect(retry).toEqual(first);
+  });
+
+  it('keeps the same proof after its rescue-preview audit event is appended', async () => {
+    let firstProof: PersistTrustedAuthorizationInput | null = null;
+    await authorizeTrustedProductionRescue(
+      OWNER,
+      request(),
+      dependencies(context(), (input) => {
+        firstProof = input;
+      }),
+    );
+
+    const auditedContext = context();
+    auditedContext.events.push({
+      id: '77777777-7777-4777-8777-777777777777',
+      event_type: 'rescue_previewed',
+      detail: firstProof!.safeMetadata.title,
+      amendment: {
+        authorizationId: AUTHORIZATION,
+        stableOptionId: firstProof!.stableOptionId,
+        candidateFingerprint: firstProof!.candidateFingerprint,
+        preview: firstProof!.safeMetadata,
+      },
+      created_by: OWNER,
+      created_at: '2026-08-19T00:02:00.000Z',
+    });
+
+    let retryProof: PersistTrustedAuthorizationInput | null = null;
+    await authorizeTrustedProductionRescue(
+      OWNER,
+      request(),
+      dependencies(auditedContext, (input) => {
+        retryProof = input;
+      }),
+    );
+
+    expect(retryProof).toMatchObject({
+      sourceFingerprint: firstProof!.sourceFingerprint,
+      candidateFingerprint: firstProof!.candidateFingerprint,
+      productBehaviorFingerprint: firstProof!.productBehaviorFingerprint,
+      requestFingerprint: firstProof!.requestFingerprint,
+      recipeInput: firstProof!.recipeInput,
+      productComposition: firstProof!.productComposition,
+      safeMetadata: firstProof!.safeMetadata,
+    });
   });
 });
 

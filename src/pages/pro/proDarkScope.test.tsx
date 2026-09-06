@@ -132,8 +132,7 @@ describe('Pro workspace — white precision scope', () => {
     expect(html).toContain('data-testid="workbench-intelligence-header"');
     expect(html).toContain('data-testid="workbench-editor-pane"');
     expect(html).toContain('data-testid="pro-monitor-panel"');
-    expect(html).toContain('xl:grid-cols-[minmax(0,1fr)_var(--g-side-width)]');
-    expect(html).toContain('xl:gap-[var(--g-split-gap)]');
+    expect(html).toContain('pro-workbench-columns');
   });
 
   it('keeps the two explicit five-detent choices and the review tools route', () => {
@@ -141,8 +140,14 @@ describe('Pro workspace — white precision scope', () => {
     expect(html).toContain('data-testid="profile-regulator-sweetness"');
     expect(html).toContain('data-testid="profile-regulator-softness"');
     expect(html.match(/role="radiogroup"/g)).toHaveLength(2);
-    expect(html).toContain('Słodycz: -2');
-    expect(html).toContain('Twardość: +2');
+    /* SUPERSEDED, owner 2026-09-03: the accessible name states the MEANING,
+       not the coordinate. "Słodycz: -2" named a number a screen-reader user
+       then had to interpret; the sentence is the same thing the ball's size
+       says to everyone else. Twardość follows the engine, where -2 is more
+       soft and +2 is more firm. */
+    expect(html).toContain('Słodycz: znacznie mniej słodkie');
+    expect(html).toContain('Twardość: znacznie bardziej twarde');
+    expect(html).not.toContain('Słodycz: -2');
     expect(html).not.toContain('profile-regulator-structure');
     expect(html).not.toContain('Wybrano:');
     expect(html).not.toContain('aria-label="Legenda kierunku"');

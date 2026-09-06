@@ -6,6 +6,7 @@ import {
   assessProductionRescue,
   hydrateProductionSessionFromRun,
   productionRescueCandidateFingerprint,
+  productionRescueTerminalAuthority,
   scaleRecipeVersion,
   scaledRecipeInput,
 } from '../_shared/generated/productionRescueEngine.bundle.mjs';
@@ -21,7 +22,10 @@ export const PRODUCTION_RESCUE_AUTHORIZATION_TTL_SECONDS = 300;
 const FRUCTOSE_CANONICAL_ID = 'PI-ING-000496';
 
 export type StableRescueOptionId =
-  'keep_original_batch' | 'enlarge_batch' | 'restore_original_recipe' | 'leave_as_is';
+  | 'keep_original_batch'
+  | 'enlarge_batch'
+  | 'restore_original_recipe'
+  | 'leave_as_is';
 
 export interface AuthorizeRescueRequest {
   runId: string;
@@ -327,6 +331,11 @@ export async function sha256Hex(value: string): Promise<string> {
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
+// Keep the Edge authority aligned with private.production_rescue_source_fingerprint_v1:
+// preview audit rows are evidence about an authorization, not mutable Production source input.
+const productionAuthorityEvents = (events: RawEventRow[]): RawEventRow[] =>
+  events.filter((event) => event.event_type !== 'rescue_previewed');
+
 function buildCanonicalSession(context: TrustedRescueContext, ownerUserId: string) {
   const { run, version } = context;
   if (run.owner_user_id !== ownerUserId || version.owner_user_id !== ownerUserId) {
@@ -453,7 +462,7 @@ function buildCanonicalSession(context: TrustedRescueContext, ownerUserId: strin
         : null,
     completedAt: run.completed_at,
     cancelledAt: run.cancelled_at,
-    events: context.events.map((event) => ({
+    events: productionAuthorityEvents(context.events).map((event) => ({
       eventId: event.id,
       type: event.event_type,
       at: event.created_at,
@@ -509,30 +518,44 @@ export async function authorizeTrustedProductionRescue(
       (sum: number, line: { physicalAddedGrams: number }) => sum + line.physicalAddedGrams,
       0,
     );
-    const reason =
-      request.stableOptionId === 'keep_original_batch'
-        ? physicalConfirmedG > session.plannedInput.target_batch_grams + 0.000001
-          ? 'physical_mass_above_original_target'
-          : 'no_safe_original_target_candidate'
-        : request.stableOptionId === 'enlarge_batch'
-          ? 'no_safe_larger_candidate'
-          : assessment.hardSafety.capacityExceeded
-            ? 'machine_capacity_exceeded'
-            : assessment.hardSafety.provisional
-              ? 'provisional_profile_not_hard_safe'
-              : assessment.hardSafety.violationMetrics.length > 0
-                ? 'hard_safety_violations'
-                : 'native_profile_not_hard_safe';
+    const machineCapacityG = assessment.diagnostics.machineCapacityG;
+    const physicalCapacityExceeded =
+      machineCapacityG !== null && physicalConfirmedG > machineCapacityG + 0.000001;
+    const confirmedFloorUnsafe = assessment.diagnostics.irreducibleConfirmedViolations.length > 0;
+    const reason = physicalCapacityExceeded
+      ? 'machine_capacity_exceeded'
+      : confirmedFloorUnsafe
+        ? 'confirmed_physical_floor_above_hard_limit'
+        : request.stableOptionId === 'keep_original_batch'
+          ? physicalConfirmedG > session.plannedInput.target_batch_grams + 0.000001
+            ? 'physical_mass_above_original_target'
+            : 'no_safe_original_target_candidate'
+          : request.stableOptionId === 'enlarge_batch'
+            ? 'no_safe_larger_candidate'
+            : assessment.hardSafety.capacityExceeded
+              ? 'machine_capacity_exceeded'
+              : assessment.hardSafety.provisional
+                ? 'provisional_profile_not_hard_safe'
+                : assessment.hardSafety.violationMetrics.length > 0
+                  ? 'hard_safety_violations'
+                  : 'native_profile_not_hard_safe';
     throw new RescueAuthorizationError('stable_rescue_option_stale', 409, {
       stableOptionId: request.stableOptionId,
       reason,
       violationMetrics: assessment.hardSafety.violationMetrics,
+      diagnostics: assessment.diagnostics,
     });
   }
   const candidate = option.candidateInput as unknown as Record<string, unknown> & {
     items: Array<Record<string, unknown>>;
     target_batch_grams: number;
   };
+  const terminalAuthority = productionRescueTerminalAuthority(option.candidateInput, session);
+  if (!terminalAuthority.valid) {
+    throw new RescueAuthorizationError('engine_candidate_terminal_authority_failed', 409, {
+      issueCodes: terminalAuthority.issues.map((issue: { code: string }) => issue.code),
+    });
+  }
   const isSupportedProductionMass = (value: unknown): boolean => {
     const grams = Number(value);
     return (
@@ -584,13 +607,15 @@ export async function authorizeTrustedProductionRescue(
     explanation: option.explanation,
     finalMassG: option.finalMassG,
     scoreDisplay: option.scoreDisplay,
-    instructions: option.instructions.map((instruction): SafeRescueInstruction => ({
-      lineId: instruction.lineId ?? null,
-      ingredientName: instruction.ingredientName,
-      kind: instruction.kind as SafeRescueInstruction['kind'],
-      grams: instruction.grams,
-      finalTargetGrams: instruction.finalTargetGrams,
-    })),
+    instructions: option.instructions.map(
+      (instruction): SafeRescueInstruction => ({
+        lineId: instruction.lineId ?? null,
+        ingredientName: instruction.ingredientName,
+        kind: instruction.kind as SafeRescueInstruction['kind'],
+        grams: instruction.grams,
+        finalTargetGrams: instruction.finalTargetGrams,
+      }),
+    ),
   };
   const productBehaviorFingerprint = await sha256Hex(stableCanonicalJson(productComposition));
   const sourceFingerprint = await sha256Hex(
@@ -599,7 +624,7 @@ export async function authorizeTrustedProductionRescue(
       version: context.version,
       planned: context.planned.slice().sort((left, right) => left.position - right.position),
       actual: context.actual,
-      events: context.events
+      events: productionAuthorityEvents(context.events)
         .slice()
         .sort(
           (left, right) =>

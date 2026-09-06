@@ -126,6 +126,10 @@ export interface CustomerProductProfileProposal {
   matchInput: ProfileMatchInput;
   declared: Partial<Record<WorkingNumericField, number>>;
   declaredBasis: Partial<Record<WorkingNumericField, 'product_declared' | 'user_confirmed'>>;
+  /** The manufacturer's own basis, preserved beside the normalised values. */
+  declaredNutritionBasis: 'per_100g' | 'per_100ml' | null;
+  /** How `declared` was produced from it. */
+  normalizationBasis: 'SOURCE_PER_100G' | 'GELLATTI_1ML_1G_NORMALIZATION' | null;
   evidence: ProductEvidenceInput;
   recognitionEvidence: ProductSemanticEvidence;
   trustedRecognition: ProductSemanticClassification;
@@ -155,7 +159,18 @@ export function customerProductProfileProposal(input: {
   const userConfirmed = new Set(input.userConfirmedFields ?? []);
   const declared: Partial<Record<WorkingNumericField, number>> = {};
   const declaredBasis: CustomerProductProfileProposal['declaredBasis'] = {};
-  if (nutrition.basis === 'per_100g') {
+  /* OWNER RULE (2026-08-25, frozen): Gellatti normalises 1 ml = 1 g, so a
+     per-100 ml panel is read into the g-based working fields 1:1. The density
+     spread between water, milk and cream is deliberately ignored and there is
+     no density input. Restricting this to per_100g excluded every liquid dairy
+     product — the dairy and fat carriers of every gelato base — because EU
+     liquid dairy is declared per 100 ml. `declaredNutritionBasis` below keeps
+     the manufacturer's own basis, so a normalised value stays distinguishable
+     from a genuine per-100 g declaration. Any OTHER basis (per portion, per
+     serving) is still refused: the rule converts ml to g, it does not license
+     reading a panel whose basis was never established. */
+  const basis = text(nutrition.basis);
+  if (basis === 'per_100g' || basis === 'per_100ml') {
     for (const [key, field] of Object.entries(MACRO_FIELDS)) {
       const value = finiteNumber(nutrition[key]);
       if (value === null || (key !== 'energyKcal' && value > 100)) continue;
@@ -222,6 +237,13 @@ export function customerProductProfileProposal(input: {
     },
     declared,
     declaredBasis,
+    declaredNutritionBasis: basis === 'per_100g' || basis === 'per_100ml' ? basis : null,
+    normalizationBasis:
+      basis === 'per_100ml'
+        ? 'GELLATTI_1ML_1G_NORMALIZATION'
+        : basis === 'per_100g'
+          ? 'SOURCE_PER_100G'
+          : null,
     evidence: {
       kind: input.recognition.isTechnicalProduct ? 'technical' : 'normal_food',
       fields,

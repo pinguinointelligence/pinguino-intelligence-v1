@@ -23,10 +23,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { findDemoIngredient } from '@/data/demoIngredients';
 import type { EngineIngredient } from '@/engine';
-import {
-  NINJA_CREAMI_DELUXE_NC502EU,
-  deriveMachineSetup,
-} from '@/features/machine-catalog';
+import { NINJA_CREAMI_DELUXE_NC502EU, deriveMachineSetup } from '@/features/machine-catalog';
 import {
   assessSorbetStabilizerSystem,
   evaluateRecipeConstraintAuthority,
@@ -80,9 +77,7 @@ const legalThousandGramSorbet = () => {
   // Make the draft sum exactly one batch, the way a customer balancing the
   // water line would.
   const water = state().items.find((item) => item.ingredient.id === 'water');
-  useRecipeStore
-    .getState()
-    .setPlannedGrams(water!.id, water!.planned_grams + (1000 - sum()));
+  useRecipeStore.getState().setPlannedGrams(water!.id, water!.planned_grams + (1000 - sum()));
 };
 
 describe('PC-02 — batch rescale keeps the Sorbet stabilizer system canonical', () => {
@@ -247,7 +242,7 @@ describe('PC-02 — batch rescale keeps the Sorbet stabilizer system canonical',
         label: 'Ninja CREAMi Deluxe',
         temperatureC: -11,
         batchGrams: setup.recommendedBatchGrams!,
-        capacityGrams: setup.recommendedBatchGrams!,
+        hardCapacityGrams: setup.hardMaximumBatchGrams,
         batchSource: 'MACHINE_DEFAULT',
       }),
     ).toEqual({ ok: true });
@@ -295,9 +290,7 @@ describe('PC-02 — batch rescale keeps the Sorbet stabilizer system canonical',
     expect(zeroed!.actual_grams).toBeNull();
     useRecipeStore.getState().setBatchGrams(1000);
     useRecipeStore.getState().setPlannedGrams(zeroed!.id, 2);
-    expect(
-      state().items.find((item) => item.id === zeroed!.id)!.planned_grams,
-    ).toBeGreaterThan(0);
+    expect(state().items.find((item) => item.id === zeroed!.id)!.planned_grams).toBeGreaterThan(0);
     expect(assessSorbetStabilizerSystem(input()).issues).toEqual([]);
   });
 

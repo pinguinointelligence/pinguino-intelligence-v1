@@ -37,6 +37,10 @@ import { useConstraintStudioStore } from '@/features/constraint-studio/constrain
 import { buildCurrentRecipeResultAuthority } from './currentRecipeResultAuthority';
 import { friendlyLabRecipeJourneyState } from './friendlyLabRecipeJourney';
 import { CostSummaryIcon, NutritionSummaryIcon } from '@/components/icons/PinguinoIcons';
+import { proWorkbenchCopy } from '@/copy/pro.pl';
+import { currentRecipeCompletionSnapshot } from './currentRecipeLabelSnapshot';
+import { copy } from '@/copy/en';
+import { missingCostIngredientNames } from './missingCostIngredientNames';
 
 export type ProContextTab = 'recipe' | 'monitor' | 'production';
 export type CockpitTab = WorkbenchModuleTab;
@@ -68,18 +72,20 @@ function CompactMetricRow({
   );
 }
 
-function NutritionCostProfileGrid({
+export function NutritionCostProfileGrid({
   result,
   nutritionReady,
   costReady,
   nutritionOverride,
   costsOverride,
+  costMissingNames = [],
 }: {
   result: RecipeResult;
   nutritionReady: boolean;
   costReady: boolean;
   nutritionOverride?: NutritionPer100g | ProductLabelNutritionPer100g | null;
   costsOverride?: RecipeCosts | null;
+  costMissingNames?: readonly string[];
 }) {
   const nutrition = nutritionReady
     ? nutritionOverride === undefined
@@ -91,6 +97,23 @@ function NutritionCostProfileGrid({
     value === null || value === undefined ? '—' : `${value.toFixed(precision)} g`;
   const euro = (value: number | null | undefined) =>
     value === null || value === undefined ? '—' : `${value.toFixed(2)} €`;
+  const partialCost = costs !== null && costs.complete === false;
+  const knownPartialCost = partialCost && costs.known_cost > 0;
+  const costReadout = partialCost
+    ? knownPartialCost
+      ? `${costs.known_cost.toFixed(2)} €`
+      : '—'
+    : costs?.cost_per_kg == null
+      ? '—'
+      : `${costs.cost_per_kg.toFixed(2)} €`;
+  const costReadoutLabel =
+    partialCost && knownPartialCost
+      ? proWorkbenchCopy.nutrition.knownBatchCost.toLocaleLowerCase('pl')
+      : 'za kg';
+  const missingPriceMessage =
+    partialCost && costMissingNames.length > 0
+      ? proWorkbenchCopy.nutrition.missingPrice(costMissingNames)
+      : null;
   return (
     /* OWNER FROZEN PRO VISUAL: the result opens the display column as a
        READOUT — the number leads at 22 px with its unit tucked in beside it,
@@ -147,14 +170,22 @@ function NutritionCostProfileGrid({
               </span>
               <span className="min-w-0">
                 <b className="block text-[30px] leading-none font-extrabold tracking-[-0.042em] tabular-nums text-[var(--g-ink)]">
-                  {costs?.cost_per_kg == null ? '—' : `${costs.cost_per_kg.toFixed(2)} €`}
+                  {costReadout}
                 </b>
                 <span className="mt-[7px] block text-[13px] leading-4 text-[var(--g-text-muted)]">
-                  za kg
+                  {costReadoutLabel}
                 </span>
               </span>
             </span>
           </span>
+          {missingPriceMessage ? (
+            <span
+              className="mt-4 block pl-[21px] text-[11px] leading-[17px] text-[var(--g-text-muted)]"
+              data-testid="profile-missing-price-message"
+            >
+              {missingPriceMessage}
+            </span>
+          ) : null}
           <span className="mt-[26px] flex min-w-0 items-start gap-3 pl-[21px] text-[15.5px] leading-[22px] font-medium tracking-[-0.02em] text-[var(--g-text-secondary)]">
             <svg
               aria-hidden
@@ -176,42 +207,53 @@ function NutritionCostProfileGrid({
           </span>
         </summary>
         <div className="profile-nutrition-details grid gap-x-8 gap-y-5 pt-4 min-[520px]:grid-cols-2">
-        <section className="min-w-0" data-testid="profile-nutrition-card">
-          <h3 className="mb-1.5 text-[9px] leading-[14px] font-semibold tracking-[0.08em] text-[var(--g-text-muted)] uppercase">
-            Wartości odżywcze
-          </h3>
-          <dl>
-            <CompactMetricRow
-              label="Energia"
-              value={nutrition ? `${nutrition.kcal.toFixed(0)} kcal` : '—'}
-            />
-            <CompactMetricRow label="Tłuszcz" value={grams(nutrition?.fat_g)} />
-            <CompactMetricRow
-              label="W tym kwasy nasycone"
-              value={grams(nutrition?.saturated_fat_g)}
-              muted
-            />
-            <CompactMetricRow label="Węglowodany" value={grams(nutrition?.carbohydrate_g)} />
-            <CompactMetricRow label="W tym cukry" value={grams(nutrition?.sugars_g)} muted />
-            <CompactMetricRow label="Białko" value={grams(nutrition?.protein_g)} />
-            <CompactMetricRow label="Sól" value={grams(nutrition?.salt_g, 2)} />
-            <CompactMetricRow label="Błonnik" value={grams(nutrition?.fiber_g)} />
-          </dl>
-        </section>
-        <section className="min-w-0" data-testid="profile-cost-card">
-          <h3 className="mb-1.5 text-[9px] leading-[14px] font-semibold tracking-[0.08em] text-[var(--g-text-muted)] uppercase">
-            Koszt
-          </h3>
-          <dl>
-            <CompactMetricRow label="Na 1 kg" value={euro(costs?.cost_per_kg)} />
-            <CompactMetricRow label="Cała partia" value={euro(costs?.total_cost)} />
-            <CompactMetricRow label="Porcja 60 g" value={euro(costs?.cost_per_serving_60g)} />
-            <CompactMetricRow label="Porcja 70 g" value={euro(costs?.cost_per_serving_70g)} />
-            <CompactMetricRow label="Porcja 80 g" value={euro(costs?.cost_per_serving_80g)} />
-          </dl>
-          <p className="mt-2 text-[10px] leading-[15px] text-[var(--g-text-muted)]">
-            Aktualizuj ceny w produktach
-          </p>
+          <section className="min-w-0" data-testid="profile-nutrition-card">
+            <h3 className="mb-1.5 text-[9px] leading-[14px] font-semibold tracking-[0.08em] text-[var(--g-text-muted)] uppercase">
+              Wartości odżywcze
+            </h3>
+            <dl>
+              <CompactMetricRow
+                label="Energia"
+                value={nutrition ? `${nutrition.kcal.toFixed(0)} kcal` : '—'}
+              />
+              <CompactMetricRow label="Tłuszcz" value={grams(nutrition?.fat_g)} />
+              <CompactMetricRow
+                label="W tym kwasy nasycone"
+                value={grams(nutrition?.saturated_fat_g)}
+                muted
+              />
+              <CompactMetricRow label="Węglowodany" value={grams(nutrition?.carbohydrate_g)} />
+              <CompactMetricRow label="W tym cukry" value={grams(nutrition?.sugars_g)} muted />
+              <CompactMetricRow label="Białko" value={grams(nutrition?.protein_g)} />
+              <CompactMetricRow label="Sól" value={grams(nutrition?.salt_g, 2)} />
+              <CompactMetricRow label="Błonnik" value={grams(nutrition?.fiber_g)} />
+            </dl>
+          </section>
+          <section className="min-w-0" data-testid="profile-cost-card">
+            <h3 className="mb-1.5 text-[9px] leading-[14px] font-semibold tracking-[0.08em] text-[var(--g-text-muted)] uppercase">
+              Koszt
+            </h3>
+            <dl>
+              {partialCost ? (
+                <CompactMetricRow
+                  label={proWorkbenchCopy.nutrition.knownBatchCost}
+                  value={knownPartialCost ? euro(costs.known_cost) : '—'}
+                />
+              ) : (
+                <>
+                  <CompactMetricRow label="Na 1 kg" value={euro(costs?.cost_per_kg)} />
+                  <CompactMetricRow label="Cała partia" value={euro(costs?.total_cost)} />
+                  <CompactMetricRow label="Porcja 60 g" value={euro(costs?.cost_per_serving_60g)} />
+                  <CompactMetricRow label="Porcja 70 g" value={euro(costs?.cost_per_serving_70g)} />
+                  <CompactMetricRow label="Porcja 80 g" value={euro(costs?.cost_per_serving_80g)} />
+                </>
+              )}
+            </dl>
+            {!partialCost ? (
+              <p className="mt-2 text-[10px] leading-[15px] text-[var(--g-text-muted)]">
+                Aktualizuj ceny w produktach
+              </p>
+            ) : null}
           </section>
         </div>
       </details>
@@ -404,6 +446,9 @@ function ProfileContent({
       'planning',
     );
   }, [customerPrices, finalCostReady, input, toppings]);
+  const costMissingNames = useMemo(() => {
+    return missingCostIngredientNames(finalCostProduct);
+  }, [finalCostProduct]);
   return (
     <div
       className="w-full min-w-0 p-3 xl:p-0"
@@ -444,6 +489,7 @@ function ProfileContent({
           costReady={finalCostReady}
           nutritionOverride={finalNutritionProduct?.finalLabelNutritionPer100g}
           costsOverride={finalCostProduct?.finalCosts}
+          costMissingNames={costMissingNames}
         />
         <ProfileDirectionAxes result={frozenNutritionResult} className="min-w-0" />
         <WorkbenchSettingsLine className="min-w-0" compact />
@@ -471,14 +517,19 @@ function ProfileContent({
         >
           <span className="grid size-[38px] shrink-0 place-items-center rounded-full border border-[var(--g-line)] text-[var(--g-ink)]">
             <svg aria-hidden width="18" height="18" viewBox="0 0 24 24" fill="none">
-              <g stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <g
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <path d="M12 6.6C10.4 5.2 8.4 4.6 5.4 4.6A1 1 0 0 0 4.4 5.6v11.1a1 1 0 0 0 1 1c3 0 5 .6 6.6 2 1.6-1.4 3.6-2 6.6-2a1 1 0 0 0 1-1V5.6a1 1 0 0 0-1-1c-3 0-5 .6-6.6 2Z" />
                 <path d="M12 6.6v13.1" />
               </g>
             </svg>
           </span>
           <span className="min-w-0 flex-1 truncate text-[15px] leading-[21px] font-semibold tracking-[-0.02em] text-[var(--g-ink)]">
-            Wiedza o recepturze
+            {copy.shell.items.howItWorks}
           </span>
           <svg
             aria-hidden
@@ -548,25 +599,25 @@ function SummaryPanel({
   onOpenProduction,
   initialLabelView,
   labelViewRequestKey,
-  result,
+  recipeInput,
   recipeName,
 }: {
   production?: ProductionWorkspaceView;
   onOpenProduction: () => void;
   initialLabelView: LabelWorkspaceView;
   labelViewRequestKey?: string;
-  result: RecipeResult;
+  recipeInput: RecipeInput;
   recipeName: string | null;
 }) {
-  const completed = production?.session?.completionSnapshot ?? null;
+  const completed = currentRecipeCompletionSnapshot(production);
   if (completed) {
     return (
       <div className="pro-scroll-safe" data-testid="pro-context-summary">
         {/* OWNER DECISION (2026-08-30): the workbench `Etykieta` tab is the
             CURRENT label plus the fields still missing for it — never a second
-            settings screen. `settingsHome="production"` removes the settings
-            view from this instance and points at Produkcja → Etykiety, which
-            owns every persistent label setting. */}
+            settings screen. `settingsHome="production"` removes settings and
+            their entry point from this instance; the hamburger's Etykiety
+            destination remains their only home. */}
         <LabelWorkspace
           key={labelViewRequestKey ?? initialLabelView}
           snapshot={completed}
@@ -577,22 +628,13 @@ function SummaryPanel({
     );
   }
 
-  /* OWNER DECISION (2026-08-30) — an explicit, approved divergence from the
-     older V2.1 `pro-label-draft` gate. Before Production completes the reader
-     now sees a LIVE DRAFT of the label they are making, with only the data that
-     is still missing listed underneath it, instead of a panel telling them to
-     go somewhere else. Nothing is fabricated: `buildMasterLabelData` and every
-     regulatory and nutrition calculation are untouched, and LOT, the production
-     date and the confirmed declaration are shown as outstanding. The final
-     print stays unavailable until a real completed run exists — at which point
-     the branch above takes over with the existing authority.
-
-     The gate below is still the fallback for the one case a draft cannot be
-     drawn truthfully: no saved label profile yet. */
+  /* OWNER DECISION (2026-09-06): the current recipe is a first-class label
+     source. It delegates composition, allergens and nutrition to frozen facts,
+     while a completed run still outranks it through the branch above. */
   return (
     <div className="pro-scroll-safe p-3 xl:p-0" data-testid="pro-context-summary">
       <DraftLabelPanel
-        result={result}
+        recipeInput={recipeInput}
         productName={recipeName}
         fallback={<LabelProfileMissingNotice onOpenProduction={onOpenProduction} />}
       />
@@ -608,8 +650,8 @@ function LabelProfileMissingNotice({ onOpenProduction }: { onOpenProduction: () 
           copy only; every Production → Label gate and calculation is untouched. */}
       <WorkflowNotice
         eyebrow="Etykieta"
-        title="Etykieta potrzebuje zakończonej partii"
-        description="Gdy zakończysz produkcję, pojawią się tu potwierdzone składniki, wartości odżywcze, koszt, baza techniczna i numer partii (LOT)."
+        title="Nie udało się zbudować projektu etykiety"
+        description="Sprawdź dane receptury lub wróć do Produkcji, aby odświeżyć jej źródła."
         variant="attention"
         emphasis="lead"
         stackAction
@@ -675,10 +717,13 @@ export function RecipeProfilePanel({
     <div
       data-testid="pro-profile-panel"
       data-testid-shell="pro-intelligence-shell"
+      data-education-open={educationOpen ? 'true' : 'false'}
       /* GELLATTI V2.1: on the desktop workbench the display column is NOT a card —
          it is a transparent 520 px track holding the approved cards on a 10 px
          rhythm. The mobile cockpit sheet keeps its own white surface. */
-      className="right-pane min-h-full bg-white text-ink lg:flex lg:h-full lg:min-h-0 lg:flex-col lg:overflow-hidden lg:rounded-[10px] lg:border lg:border-ink/10 lg:shadow-pro-e0 xl:rounded-none xl:border-0 xl:bg-transparent xl:shadow-none"
+      className={`right-pane bg-white text-ink ${
+        educationOpen ? 'relative flex min-h-0 flex-col overflow-hidden' : 'min-h-full'
+      } lg:flex lg:h-full lg:min-h-0 lg:flex-col lg:overflow-hidden lg:rounded-[10px] lg:border lg:border-ink/10 lg:shadow-pro-e0 xl:rounded-none xl:border-0 xl:bg-transparent xl:shadow-none`}
     >
       {showTabs ? (
         <div className="sticky top-0 z-30 bg-white" data-testid="workbench-sticky-chrome">
@@ -762,7 +807,7 @@ export function RecipeProfilePanel({
             onOpenProduction={() => onTabChange('production')}
             initialLabelView={initialLabelView}
             labelViewRequestKey={labelViewRequestKey}
-            result={result}
+            recipeInput={input}
             recipeName={savedRecipeName}
           />
         ) : null}

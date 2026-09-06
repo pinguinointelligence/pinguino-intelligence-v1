@@ -8,11 +8,12 @@
  * + „Monitor PI" are ALWAYS rendered in the workbar (not only at the page bottom).
  */
 import { readFileSync } from 'node:fs';
+import { MemoryRouter, Route, Routes } from 'react-router';
 import { join, resolve } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { createRoot } from 'react-dom/client';
 import { act } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { copy } from '@/copy/en';
 import {
   FRIENDLY_LAB_MOMENT_EVENT,
@@ -58,12 +59,13 @@ const mockSave = {
   busy: false,
   error: null,
   clearError: () => {},
-  createNew: async () => true,
-  saveVersion: async () => true,
-  rename: async () => true,
-  archive: async () => true,
+  createNew: vi.fn(async () => true),
+  saveVersion: vi.fn(async () => true),
+  rename: vi.fn(async () => true),
+  archive: vi.fn(async () => true),
   practicalBlocked: false,
   practicalBlockMessage: null,
+  practicalBlock: null,
 };
 
 vi.mock('@/stores/recipeStore', () => ({
@@ -82,12 +84,34 @@ vi.mock('@/features/constraint-studio/constraintStudioStore', () => ({
 const { ProWorkbar } = await import('./ProWorkbar');
 const w = copy.proWorkbar;
 
-const render = (state: Partial<MockRecipeState>, variant: 'bar' | 'panel' = 'bar') => {
+const render = (
+  state: Partial<MockRecipeState>,
+  variant: 'bar' | 'panel' = 'bar',
+  section = 'recipe',
+) => {
   mockState = { ...mockState, ...state };
-  return renderToStaticMarkup(<ProWorkbar variant={variant} />);
+  return renderToStaticMarkup(
+    <MemoryRouter initialEntries={[`/pro/${section}`]}>
+      <Routes>
+        <Route path="/pro/:section" element={<ProWorkbar variant={variant} />} />
+      </Routes>
+    </MemoryRouter>,
+  );
 };
 
 describe('ProWorkbar (sticky top workbar)', () => {
+  // OWNER 2026-09-03 — ••• → Wersje is the ORIGIN half of the contextual back.
+  it('keeps Wersje as an origin-aware in-app link inside the lazy portal', () => {
+    const source = readFileSync(resolve(import.meta.dirname, 'ProWorkbar.tsx'), 'utf8');
+    expect(source).toContain(
+      "withWorkbenchOrigin('/pro/versions', workbenchOriginForSection(section))",
+    );
+    expect(source).toContain('to={versionsHref}');
+    expect(source).toContain('data-testid="pro-workbar-versions-link"');
+    // A raw document link would reload the SPA and throw the draft away.
+    expect(source).not.toContain('<a\n          href="/pro/versions"');
+  });
+
   it('orders New, Save, compact menu, then right-aligned recipe status', () => {
     const html = render({ savedRecipeId: null, dirty: false });
     expect(html).toContain('data-testid="pro-workbar-new-recipe"');
@@ -119,18 +143,31 @@ describe('ProWorkbar (sticky top workbar)', () => {
     // The 34 px are reserved in EVERY state, so the tongue's arrival cannot
     // move kcal, cost, the left edge or anything below it.
     expect(html).toContain('relative pb-[34px]');
-    // Behind the card, not painted over it.
-    expect(html).toContain('z-0 inline-flex h-[58px]');
-    expect(html).toContain('relative z-[1]');
+    /* OWNER AUTHORITY 2026-09-03: three layers now share this band, and the
+       order between them is the contract. The rule and the two actions sit at
+       the bottom, the tongue slides out OVER the rule, and the card occludes
+       the tongue's top — so the tongue still reads as coming from behind the
+       card while the rule passes behind the tongue. */
+    expect(html).toContain('z-[1] inline-flex h-[58px]');
+    expect(html).toContain('relative z-[2]');
+    expect(html).toContain('absolute inset-x-0 bottom-0 z-0 flex h-[34px]');
     // Exactly one status node — the card must not duplicate it.
     expect(html.match(/data-testid="pro-workbar-status"/g)).toHaveLength(1);
-    // DOM order stays New → Save → name, so the canonical ordering contract
-    // still describes the panel even though the tongue is positioned.
+    /* SUPERSEDED, owner authority 2026-09-03. The panel used to render
+       New → Save → name to satisfy a canonical ordering contract written when
+       the actions stood ABOVE the card. The approved layout puts the card
+       first and the actions beneath it, so that order would now walk a
+       keyboard from the bottom-right control up to the name and back down to
+       the bottom-left. Source order follows the eye instead: the card's name,
+       then the two actions on the left of the band, then Save on its right.
+
+       The bar variant is untouched and still asserts New → Save → menu →
+       status in the test above; only the panel's own reading order moved. */
     const newAt = html.indexOf('data-testid="pro-workbar-new-recipe"');
     const saveAt = html.indexOf('data-testid="pro-workbar-save"');
     const nameAt = html.indexOf('data-testid="pro-workbar-name"');
+    expect(nameAt).toBeLessThan(newAt);
     expect(newAt).toBeLessThan(saveAt);
-    expect(saveAt).toBeLessThan(nameAt);
   });
 
   it('shows the tongue when there is something to save and hides it when clean', () => {
@@ -139,7 +176,12 @@ describe('ProWorkbar (sticky top workbar)', () => {
     expect(unnamed).not.toContain('pointer-events-none opacity-0');
 
     const clean = render(
-      { savedRecipeId: 'r1', savedRecipeName: 'Pistachio Dream', currentVersionNumber: 4, dirty: false },
+      {
+        savedRecipeId: 'r1',
+        savedRecipeName: 'Pistachio Dream',
+        currentVersionNumber: 4,
+        dirty: false,
+      },
       'panel',
     );
     expect(clean).toContain('data-recipe-identity-state="saved"');
@@ -147,7 +189,12 @@ describe('ProWorkbar (sticky top workbar)', () => {
     expect(clean).toContain('pointer-events-none opacity-0');
 
     const dirtyHtml = render(
-      { savedRecipeId: 'r1', savedRecipeName: 'Pistachio Dream', currentVersionNumber: 4, dirty: true },
+      {
+        savedRecipeId: 'r1',
+        savedRecipeName: 'Pistachio Dream',
+        currentVersionNumber: 4,
+        dirty: true,
+      },
       'panel',
     );
     expect(dirtyHtml).toContain('data-recipe-identity-state="dirty"');
@@ -176,9 +223,40 @@ describe('ProWorkbar (sticky top workbar)', () => {
     expect(html).toContain('Zapisz nową wersję');
     expect(w.status.clean).toBe('Zapisane');
     expect(html).toContain('Zapisane');
-    expect(html).toContain('v3');
-    expect(html).toContain('>Wersje</a>');
     expect(html).not.toContain('DO PRZEGLĄDU');
+  });
+
+  it('does not create a new immutable version for a no-op Save', async () => {
+    mockSave.saveVersion.mockClear();
+    mockState = {
+      ...mockState,
+      savedRecipeId: 'r1',
+      savedRecipeName: 'Pistacja Premium',
+      currentVersionNumber: 3,
+      dirty: false,
+    };
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const root = createRoot(host);
+    try {
+      await act(async () =>
+        root.render(
+          <MemoryRouter initialEntries={['/pro/recipe']}>
+            <Routes>
+              <Route path="/pro/:section" element={<ProWorkbar variant="bar" />} />
+            </Routes>
+          </MemoryRouter>,
+        ),
+      );
+      await act(async () => {
+        host.querySelector<HTMLButtonElement>('[data-testid="pro-workbar-save"]')!.click();
+        await Promise.resolve();
+      });
+      expect(mockSave.saveVersion).not.toHaveBeenCalled();
+    } finally {
+      await act(async () => root.unmount());
+      host.remove();
+    }
   });
 
   it('shows the compact recipe context (product · tier · serving · batch)', () => {
@@ -245,7 +323,15 @@ describe('ProWorkbar (sticky top workbar)', () => {
       moments.push((event as CustomEvent<FriendlyLabMomentEventDetail>).detail);
     window.addEventListener(FRIENDLY_LAB_MOMENT_EVENT, onMoment);
     try {
-      await act(async () => root.render(<ProWorkbar variant="panel" />));
+      await act(async () =>
+        root.render(
+          <MemoryRouter initialEntries={['/pro/recipe']}>
+            <Routes>
+              <Route path="/pro/:section" element={<ProWorkbar variant="panel" />} />
+            </Routes>
+          </MemoryRouter>,
+        ),
+      );
       const button = host.querySelector<HTMLButtonElement>('[data-testid="pro-workbar-save"]');
       expect(button).not.toBeNull();
       await act(async () => {
@@ -287,6 +373,155 @@ describe('ProWorkbar (sticky top workbar)', () => {
     expect(ingredientRow).toContain('bg-status-risky');
     expect(ingredientRow).toContain('data-testid={`row-estimated-${item.id}`}');
     expect(tokens).toContain('--color-status-risky: #9c8a55;');
+  });
+});
+
+describe('ProWorkbar recipe overflow popover', () => {
+  let host: HTMLDivElement;
+  let root: ReturnType<typeof createRoot>;
+
+  const rect = (left: number, top: number, width: number, height: number): DOMRect =>
+    ({
+      x: left,
+      y: top,
+      left,
+      top,
+      width,
+      height,
+      right: left + width,
+      bottom: top + height,
+      toJSON: () => ({}),
+    }) as DOMRect;
+
+  const trigger = () =>
+    host.querySelector('[data-testid="pro-workbar-menu-trigger"]') as HTMLButtonElement;
+  const popover = () =>
+    document.body.querySelector('[data-testid="pro-workbar-popover"]') as HTMLElement | null;
+
+  const open = async () => {
+    const button = trigger();
+    Object.defineProperty(button, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => rect(960, 220, 36, 36),
+    });
+    Object.defineProperty(
+      host.querySelector('[data-testid="pro-workbar"]')!,
+      'getBoundingClientRect',
+      {
+        configurable: true,
+        value: () => rect(920, 120, 500, 170),
+      },
+    );
+    await act(async () => button.click());
+  };
+
+  beforeEach(async () => {
+    (
+      globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
+    ).IS_REACT_ACT_ENVIRONMENT = true;
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1_440 });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 900 });
+    mockState = {
+      ...mockState,
+      savedRecipeId: 'popover-recipe',
+      savedRecipeName: 'Pistacja Premium',
+      currentVersionNumber: 3,
+      dirty: false,
+    };
+    host = document.createElement('div');
+    document.body.appendChild(host);
+    root = createRoot(host);
+    await act(async () =>
+      root.render(
+        <MemoryRouter initialEntries={['/pro/recipe']}>
+          <Routes>
+            <Route path="/pro/:section" element={<ProWorkbar variant="panel" />} />
+          </Routes>
+        </MemoryRouter>,
+      ),
+    );
+  });
+
+  afterEach(async () => {
+    await act(async () => root.unmount());
+    host.remove();
+    vi.useRealTimers();
+  });
+
+  it('opens as a viewport portal, aligned to the recipe card and above clipping workbench layers', async () => {
+    await open();
+    const panel = popover();
+    expect(panel).not.toBeNull();
+    expect(host.querySelector('[data-testid="pro-workbar-popover"]')).toBeNull();
+    expect(panel?.parentElement).toBe(document.body);
+    expect(panel?.getAttribute('data-popover-layer')).toBe('viewport-portal');
+    expect(panel?.className).toContain('fixed');
+    expect(panel?.className).toContain('z-[100]');
+    expect(panel?.style.width).toBe('500px');
+    expect(Number.parseFloat(panel?.style.left ?? '0')).toBeGreaterThanOrEqual(12);
+    expect(
+      Number.parseFloat(panel?.style.left ?? '0') + Number.parseFloat(panel?.style.width ?? '0'),
+    ).toBeLessThanOrEqual(window.innerWidth - 12);
+    expect(panel?.querySelector('[data-testid="pro-workbar-popover-close"]')).not.toBeNull();
+    expect(
+      panel?.querySelector('[data-testid="pro-workbar-versions-link"]')?.getAttribute('href'),
+    ).toBe('/pro/versions?from=recipe');
+    expect(panel?.textContent).toContain('v3');
+    expect(panel?.textContent).toContain('Wersje');
+  });
+
+  it('closes from the visible close button, outside click and Escape', async () => {
+    await open();
+    await act(async () =>
+      (
+        popover()?.querySelector('[data-testid="pro-workbar-popover-close"]') as HTMLButtonElement
+      ).click(),
+    );
+    expect(popover()).toBeNull();
+
+    await open();
+    await act(async () =>
+      document.body.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true })),
+    );
+    expect(popover()).toBeNull();
+
+    await open();
+    await act(async () =>
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })),
+    );
+    expect(popover()).toBeNull();
+  });
+
+  it('softly auto-dismisses after inactivity, pauses for hover/focus, and reopens cleanly', async () => {
+    vi.useFakeTimers();
+    await open();
+    const panel = popover()!;
+
+    await act(async () => {
+      panel.dispatchEvent(new MouseEvent('pointerover', { bubbles: true }));
+      await vi.advanceTimersByTimeAsync(6_000);
+    });
+    expect(popover(), 'hover must pause auto-dismiss').not.toBeNull();
+
+    const close = panel.querySelector(
+      '[data-testid="pro-workbar-popover-close"]',
+    ) as HTMLButtonElement;
+    await act(async () => close.focus());
+    await act(async () => {
+      panel.dispatchEvent(new MouseEvent('pointerout', { bubbles: true }));
+      await vi.advanceTimersByTimeAsync(6_000);
+    });
+    expect(popover(), 'focus inside must keep the popover open').not.toBeNull();
+
+    await act(async () => trigger().focus());
+    await act(async () => vi.advanceTimersByTimeAsync(4_500));
+    expect(popover()?.getAttribute('data-auto-dismiss-state')).toBe('fading');
+    await act(async () => vi.advanceTimersByTimeAsync(180));
+    expect(popover()).toBeNull();
+
+    await open();
+    expect(popover()).not.toBeNull();
+    expect(trigger().getAttribute('aria-expanded')).toBe('true');
   });
 });
 

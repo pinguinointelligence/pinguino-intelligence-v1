@@ -103,12 +103,18 @@ describe('canonical Gellatti Pro — menu (proofs 4–6, 17–18)', () => {
     expect(items.map((item) => item.id)).toEqual([
       'proWorkspace',
       'recipes',
+      // OWNER 2026-09-05: the educational Tour is one canonical destination
+      // for Guest, Home and Pro — never a workbench-local duplicate.
+      'howItWorks',
       'production',
+      'labels',
       'products',
+      // OWNER 2026-09-06: „Dodaj produkt" is the hamburger entry into the ONE Canonical Scanner.
+      // It is a destination page, not a contextual tool, and it exists for HOME and PRO alike.
+      'scanProduct',
       'machine',
-      // OWNER AUTHORIZED (2026-08-29): the duplicate `Ustawienia etykiety`
-      // entry is gone; Community becomes the one door to the public creator
-      // surfaces. Label settings keep working inside Production/Label.
+      // OWNER DECISION (2026-09-06): `/labels` above is the one canonical
+      // settings destination; Community remains the one public creator door.
       'community',
       'memberShop',
       'affiliate',
@@ -126,16 +132,17 @@ describe('canonical Gellatti Pro — menu (proofs 4–6, 17–18)', () => {
     // …and every shell renders AppNavDrawer: the canonical AppShell, and the customer bar.
     expect(read('features', 'shell', 'AppShell.tsx')).toContain('AppNavDrawer');
     expect(read('features', 'customer-shell', 'ui', 'CustomerMenu.tsx')).toContain('AppNavDrawer');
-    // Landing, flow and subscription mount the customer bar; authenticated destinations
-    // compose the same AppShell through DestinationSurface — one drawer everywhere.
+    // The public landing keeps the customer wrapper. Every application route,
+    // including /start and /subscription, mounts the same AppShell directly or
+    // through DestinationSurface — one drawer and one header everywhere.
     expect(read('pages', 'landing', 'LandingPage.tsx')).toContain('CustomerMenu');
-    expect(read('features', 'customer-shell', 'CustomerShellV1.tsx')).toContain('CustomerMenu');
+    expect(read('features', 'customer-shell', 'CustomerShellV1.tsx')).toContain('AppShell');
     // Maszyna moved onto the ONE authenticated shell (owner „global subpage
     // style unification", 2026-08-24): it is reached from the same drawer as
     // every other destination, so it must wear the same header — it previously
     // rendered the customer menu and put its hamburger somewhere else entirely.
     expect(read('pages', 'profile', 'MachineProfilePage.tsx')).toContain('DestinationSurface');
-    expect(read('pages', 'destinations', 'SubscriptionPage.tsx')).toContain('CustomerMenu');
+    expect(read('pages', 'destinations', 'SubscriptionPage.tsx')).toContain('AppShell');
     expect(read('pages', 'recipes', 'MyRecipesPage.tsx')).toContain('AppShell');
     expect(read('pages', 'pro', 'ProWorkspacePage.tsx')).toContain('AppShell');
     expect(read('components', 'shared', 'DestinationSurface.tsx')).toContain('AppShell');
@@ -178,8 +185,21 @@ describe('canonical PINGÜINO Pro — workbar (proofs 7–15)', () => {
     const name = html.indexOf('data-testid="pro-workbar-name"');
     const save = html.indexOf('data-testid="pro-workbar-save"');
     expect(name).toBeGreaterThan(-1);
-    expect(save).toBeLessThan(name);
+    expect(save).toBeGreaterThan(-1);
     expect(html).toContain('ZAPISZ');
+    /* The proof is ADJACENCY, and it still holds: Save shares the identity
+       card's own band and nothing comes between them. It used to be checked as
+       `save < name` in source, which was only ever a proxy — and a proxy that
+       broke when the owner moved the actions BELOW the card on 2026-09-03,
+       where Save must come last so a keyboard walks the band left to right.
+
+       Checked here as "no other section opens between the two", which is what
+       "directly beside" actually claims and what would really regress if Save
+       were ever banished to another part of the panel. */
+    const between = html.slice(Math.min(name, save), Math.max(name, save));
+    expect(between).not.toContain('data-testid="profile-direction-axes"');
+    expect(between).not.toContain('data-testid="workbench-settings-line"');
+    expect(between).not.toContain('data-testid="profile-nutrition-cost-summary"');
   });
 
   it('11. Monitor is visible in the top context tabs', () => {

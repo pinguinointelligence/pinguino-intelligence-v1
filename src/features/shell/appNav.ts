@@ -81,8 +81,8 @@ export const APP_NAV_ITEMS: readonly AppNavItem[] = [
     label: s.items.howItWorks,
     to: '/how-it-works',
     group: 'product',
-    order: 2,
-    audiences: ['guest'],
+    order: 1.5,
+    audiences: ['guest', 'home', 'pro'],
     isActive: exact('/how-it-works'),
   },
   {
@@ -142,6 +142,15 @@ export const APP_NAV_ITEMS: readonly AppNavItem[] = [
     isActive: productionDestination,
   },
   {
+    id: 'labels',
+    label: s.items.labels,
+    to: '/labels',
+    group: 'product',
+    order: 2.5,
+    audiences: ['pro'],
+    isActive: exact('/labels'),
+  },
+  {
     id: 'products',
     label: s.items.products,
     to: '/products',
@@ -149,6 +158,20 @@ export const APP_NAV_ITEMS: readonly AppNavItem[] = [
     order: 3,
     audiences: ['home', 'pro'],
     isActive: productsDestination,
+  },
+  {
+    /*
+      OWNER DECISION 2026-09-06 — the hamburger entry into the ONE Canonical Scanner. It is a
+      destination (a page), not a contextual action, so it belongs here: from the drawer the
+      customer scans to ADD A PRODUCT, and is never asked whether they want to add one.
+    */
+    id: 'scanProduct',
+    label: s.items.scanProduct,
+    to: '/products/scan',
+    group: 'product',
+    order: 3.5,
+    audiences: ['home', 'pro'],
+    isActive: pathOrNested('/products/scan'),
   },
   {
     id: 'machine',

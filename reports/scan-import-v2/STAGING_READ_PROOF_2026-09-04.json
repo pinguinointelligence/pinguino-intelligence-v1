@@ -1,0 +1,106 @@
+{
+  "stagingUrlHost": "tunabqqrwabacxjcxxkz.supabase.co",
+  "ranAt": "2026-09-04T21:53:28.006Z",
+  "qaAccount": "home@home.com",
+  "readOnly": true,
+  "linkCallsRecordedNotWritten": 4,
+  "results": {
+    "Hacendado": {
+      "found": true,
+      "kind": "resolved_exact",
+      "productId": "50c3d0e1-ca37-4891-a744-a3438d6b226a",
+      "productCode": "PR-ING-007173",
+      "displayName": "Leche líquida entera Hacendado",
+      "brand": "Hacendado",
+      "strength": "canonical_shared",
+      "entityKind": "commercial_product",
+      "country": "ES",
+      "mapperSlotId": null,
+      "behaviour": "classified",
+      "price": "missing",
+      "evidence": {
+        "status": "manual_unverified",
+        "provenance": "product_add_request_admin_v1",
+        "usableInBase": true,
+        "usableAsTopping": false,
+        "mainAllowed": false,
+        "blockedReason": null,
+        "lifecycleRejected": false,
+        "hasProductIntelligence": true,
+        "markets": [
+          "ES"
+        ]
+      },
+      "provenance": "catalog",
+      "confidence": 97,
+      "currentVersionId": "44d44d53-dea8-4daa-af69-bd1583ab7e9a"
+    },
+    "Łaciate": {
+      "found": true,
+      "kind": "resolved_exact",
+      "productId": "8fc7869c-f779-43c6-b5e6-c25a845f7c0e",
+      "productCode": "PR-ING-007172",
+      "displayName": "Mleko płynne Łaciate 3,5%",
+      "brand": "Łaciate",
+      "strength": "canonical_shared",
+      "entityKind": "commercial_product",
+      "country": "PL",
+      "mapperSlotId": null,
+      "behaviour": "classified",
+      "price": "missing",
+      "evidence": {
+        "status": "manual_unverified",
+        "provenance": "product_add_request_admin_v1",
+        "usableInBase": true,
+        "usableAsTopping": false,
+        "mainAllowed": false,
+        "blockedReason": null,
+        "lifecycleRejected": false,
+        "hasProductIntelligence": true,
+        "markets": [
+          "PL"
+        ]
+      },
+      "provenance": "catalog",
+      "confidence": 97,
+      "currentVersionId": "c71412dc-7818-4655-aa16-03e6dc018179"
+    },
+    "Alsace Lait": {
+      "found": true,
+      "kind": "resolved_exact",
+      "productId": "db21c569-6427-4457-b1ae-6952a48f75ac",
+      "productCode": "PR-ING-007174",
+      "displayName": "Lait liquide frais entier Alsace Lait",
+      "brand": "Alsace Lait",
+      "strength": "canonical_shared",
+      "entityKind": "commercial_product",
+      "country": "FR",
+      "mapperSlotId": null,
+      "behaviour": "classified",
+      "price": "missing",
+      "evidence": {
+        "status": "manual_unverified",
+        "provenance": "product_add_request_admin_v1",
+        "usableInBase": true,
+        "usableAsTopping": false,
+        "mainAllowed": false,
+        "blockedReason": null,
+        "lifecycleRejected": false,
+        "hasProductIntelligence": true,
+        "markets": [
+          "FR"
+        ]
+      },
+      "provenance": "catalog",
+      "confidence": 97,
+      "currentVersionId": "b31d1e9c-be54-41be-9eef-13fddf7691af"
+    }
+  },
+  "unknownCode": {
+    "ean": "4305615614434",
+    "kind": "unknown"
+  },
+  "guest": {
+    "kind": "unknown"
+  }
+}

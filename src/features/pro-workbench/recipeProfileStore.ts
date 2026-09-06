@@ -1,10 +1,11 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import type { SaveBlocker } from '@/features/recipes/saveBlocker';
 import type { ProductMode, RecipeDirectionTarget, RecipeDirectionTargets } from '@/engine';
 import type { VisibleProductType } from '@/features/studio/productType';
 import type { ProductDoseMeta } from '@/features/ingredient-builder/productDoseSuggestion';
 import type { RecipeBatchSource } from '@/stores/recipeStore';
-import type { MachineTechnology } from '@/features/machine-catalog';
+import type { HomeFormulationModuleId, MachineTechnology } from '@/features/machine-catalog';
 import {
   normalizeFormulationStrategy,
   type FormulationStrategy,
@@ -51,6 +52,7 @@ export interface ProfileSettingsSnapshot {
   machineId: string | null;
   machineLabel: string;
   machineTechnology?: MachineTechnology | null;
+  homeFormulationModuleId?: HomeFormulationModuleId | null;
   servingModeId: string;
   targetTemperatureC: number;
   machineCapacityGrams: number | null;
@@ -74,6 +76,7 @@ export function profileSettingsSignature(settings: ProfileSettingsSnapshot): str
     settings.machineKind,
     settings.machineId,
     settings.machineTechnology ?? null,
+    settings.homeFormulationModuleId ?? null,
     settings.servingModeId,
     settings.targetTemperatureC,
     settings.machineCapacityGrams,
@@ -114,6 +117,30 @@ export interface RecipeProfileState {
   confirmedContextSeq: number | null;
   calculatedRecipeAuthority: CalculatedRecipeAuthority | null;
   defaultsByOwner: Record<string, ProfileSettingsSnapshot>;
+  /**
+   * The PREFLIGHT refusal the recipe card is currently showing, or null.
+   *
+   * The save gate lives in `useCanonicalRecipeSave`, which only the workbar
+   * calls. Settings needs the same fact to show a matching warning without
+   * recomputing a second gate that can drift from the card. The blocker has no
+   * disclosure authority: only first-run setup may auto-open Settings. Scoped
+   * to the preflight refusal on purpose — sign-in and network errors do not
+   * belong on the Settings row. Deliberately transient: it is absent from the
+   * persist allow-list below, so a reload recomputes rather than restoring a
+   * stale refusal.
+   */
+  preflightBlocker: SaveBlocker | null;
+  setPreflightBlocker: (blocker: SaveBlocker | null) => void;
+  /**
+   * Whether the CURRENT settings have been confirmed for this draft.
+   *
+   * Settings owns this fact and publishes it; it is not a second save gate. The workbar
+   * needs it because unconfirmed settings outrank whatever the practical gate found —
+   * recalculating a draft whose settings are about to change is work the customer would
+   * immediately have to redo. Transient, like the blocker itself.
+   */
+  settingsConfirmed: boolean | null;
+  setSettingsConfirmed: (confirmed: boolean | null) => void;
   openDraft: (
     contextSeq: number,
     targets?: DirectionTargets,
@@ -197,6 +224,7 @@ export function mergeMachineAccountDefault(
     machineId: machine.machineId,
     machineLabel: machine.machineLabel,
     machineTechnology: machine.machineTechnology,
+    homeFormulationModuleId: machine.homeFormulationModuleId,
     machineCapacityGrams: machine.machineCapacityGrams,
     targetBatchGrams: machine.targetBatchGrams,
     batchSource: machine.batchSource,
@@ -247,6 +275,20 @@ export const useRecipeProfileStore = create<RecipeProfileState>()(
       confirmedContextSeq: null,
       calculatedRecipeAuthority: null,
       defaultsByOwner: {},
+      preflightBlocker: null,
+      settingsConfirmed: null,
+      setPreflightBlocker: (blocker) =>
+        set((state) =>
+          state.preflightBlocker?.kind === blocker?.kind &&
+          state.preflightBlocker?.message === blocker?.message
+            ? state
+            : { preflightBlocker: blocker },
+        ),
+
+      setSettingsConfirmed: (confirmed) =>
+        set((state) =>
+          state.settingsConfirmed === confirmed ? state : { settingsConfirmed: confirmed },
+        ),
 
       openDraft: (
         openedContextSeq,

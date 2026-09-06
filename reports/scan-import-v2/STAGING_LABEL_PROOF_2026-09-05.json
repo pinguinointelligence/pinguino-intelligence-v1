@@ -1,0 +1,717 @@
+{
+  "ranAt": "2026-09-04T23:36:16.125Z",
+  "qaAccount": "home@home.com",
+  "productCountryContext": "ES",
+  "candidates": {
+    "Milka Choco Mini Wafers": {
+      "ean": "7622201492786",
+      "photo": "milka-choco-mini-wafers_7622201492786.jpg",
+      "step1_exactOrDiscovery": {
+        "kind": "discovered_pending",
+        "stage": "evidence_collected",
+        "next": "label_photo",
+        "sessionId": "fbfa32e8-2293-45b6-afc2-04c77fbbf64f",
+        "identity": {
+          "name": null,
+          "brand": null
+        },
+        "factCount": 16,
+        "sources": [
+          "barcode",
+          "web_search"
+        ],
+        "conflicts": [],
+        "missingCritical": [
+          "product_identity",
+          "brand_or_unbranded"
+        ],
+        "evidenceError": null,
+        "note": null,
+        "facts": [
+          {
+            "field": "barcode",
+            "value": "7622201492786",
+            "source": "barcode",
+            "authority": "scan-core",
+            "confidence": "high",
+            "contributors": [
+              "barcode"
+            ]
+          },
+          {
+            "field": "symbology",
+            "value": "EAN-13",
+            "source": "barcode",
+            "authority": "scan-core",
+            "confidence": "high",
+            "contributors": [
+              "barcode"
+            ]
+          },
+          {
+            "field": "identity.countryOfOrigin",
+            "value": "Polónia",
+            "source": "web_search",
+            "authority": "intimport-enrich",
+            "confidence": "low",
+            "contributors": [
+              "web_search"
+            ]
+          },
+          {
+            "field": "ingredientsText",
+            "value": "Zucker, Weizenmehl, pflanzliche Fette (Palm, Palmkern, Shea), Kakaobutter, Süßmolkenpulver (aus Milch), Magermilchpulver, Kakaomasse, Butterreinfett, Emulgatoren (Sojalecithine, E476), Überzugsmittel (Gummi arabicum, Schellack), Rapsöl, Glukosesirup, Instantkaffee, Speisesalz, Backtriebmittel (Natrumcarbonate), Aroma, Säureregulator (Citronensäure).",
+            "source": "web_search",
+            "authority": "intimport-enrich",
+            "confidence": "low",
+            "contributors": [
+              "web_search"
+            ]
+          },
+          {
+            "field": "allergensText",
+            "value": "Kann Ei enthalten.",
+            "source": "web_search",
+            "authority": "intimport-enrich",
+            "confidence": "low",
+            "contributors": [
+              "web_search"
+            ]
+          },
+          {
+            "field": "nutrition.basis",
+            "value": "per_100g",
+            "source": "web_search",
+            "authority": "intimport-enrich",
+            "confidence": "low",
+            "contributors": [
+              "web_search"
+            ]
+          },
+          {
+            "field": "nutrition.energyKj",
+            "value": 2201,
+            "source": "web_search",
+            "authority": "intimport-enrich",
+            "confidence": "low",
+            "contributors": [
+              "web_search"
+            ]
+          },
+          {
+            "field": "nutrition.energyKcal",
+            "value": 527,
+            "source": "web_search",
+            "authority": "intimport-enrich",
+            "confidence": "low",
+            "contributors": [
+              "web_search"
+            ]
+          },
+          {
+            "field": "nutrition.fat",
+            "value": 29,
+            "source": "web_search",
+            "authority": "intimport-enrich",
+            "confidence": "low",
+            "contributors": [
+              "web_search"
+            ]
+          },
+          {
+            "field": "nutrition.saturatedFat",
+            "value": 17,
+            "source": "web_search",
+            "authority": "intimport-enrich",
+            "confidence": "low",
+            "contributors": [
+              "web_search"
+            ]
+          },
+          {
+            "field": "nutrition.carbohydrate",
+            "value": 59,
+            "source": "web_search",
+            "authority": "intimport-enrich",
+            "confidence": "low",
+            "contributors": [
+              "web_search"
+            ]
+          },
+          {
+            "field": "nutrition.sugars",
+            "value": 47,
+            "source": "web_search",
+            "authority": "intimport-enrich",
+            "confidence": "low",
+            "contributors": [
+              "web_search"
+            ]
+          },
+          {
+            "field": "nutrition.protein",
+            "value": 5.4,
+            "source": "web_search",
+            "authority": "intimport-enrich",
+            "confidence": "low",
+            "contributors": [
+              "web_search"
+            ]
+          },
+          {
+            "field": "nutrition.salt",
+            "value": 0.22,
+            "source": "web_search",
+            "authority": "intimport-enrich",
+            "confidence": "low",
+            "contributors": [
+              "web_search"
+            ]
+          },
+          {
+            "field": "nutrition.fibre",
+            "value": 1.2,
+            "source": "web_search",
+            "authority": "intimport-enrich",
+            "confidence": "low",
+            "contributors": [
+              "web_search"
+            ]
+          },
+          {
+            "field": "package.netQuantity",
+            "value": 110,
+            "source": "web_search",
+            "authority": "intimport-enrich",
+            "confidence": "low",
+            "contributors": [
+              "web_search"
+            ]
+          }
+        ],
+        "reusedFromPreviousRun": true
+      },
+      "classification": "UNKNOWN PRODUCT (lifecycle, session continued)",
+      "step3_finalize": {
+        "kind": "discovered_pending",
+        "stage": "code_known",
+        "next": "label_photo",
+        "sessionId": "fbfa32e8-2293-45b6-afc2-04c77fbbf64f",
+        "identity": {
+          "name": null,
+          "brand": null
+        },
+        "factCount": 2,
+        "sources": [
+          "barcode"
+        ],
+        "conflicts": [],
+        "missingCritical": [],
+        "note": "not ready: NUTRITION_FACT_REQUIRED:carbohydrate_percent, NUTRITION_FACT_REQUIRED:fat_percent, NUTRITION_FACT_REQUIRED:kcal_per_100g, NUTRITION_FACT_REQUIRED:protein_percent, NUTRITION_FACT_REQUIRED:salt_percent, NUTRITION_FACT_REQUIRED:total_sugars_percent, family_and_form_evidence_missing, roleReadiness:REVIEW, recognition:CONFECTIONERY/TOPPING_ONLY"
+      },
+      "step4_rescan": {
+        "kind": "discovered_pending",
+        "stage": "evidence_collected",
+        "next": "finalize",
+        "sessionId": "fbfa32e8-2293-45b6-afc2-04c77fbbf64f",
+        "identity": {
+          "name": "Milka Choco Mini Wafers",
+          "brand": "Milka"
+        },
+        "factCount": 18,
+        "sources": [
+          "barcode",
+          "web_search",
+          "label"
+        ],
+        "conflicts": [
+          {
+            "field": "identity.category",
+            "values": [
+              {
+                "value": "Bolachas Waffers",
+                "source": "label"
+              },
+              {
+                "value": "chocolate-coated wafer snack",
+                "source": "web_search"
+              }
+            ],
+            "retained": "label"
+          }
+        ],
+        "missingCritical": [],
+        "note": "research skipped: session_lookup_already_used"
+      },
+      "rescanSameIdentity": true,
+      "phase2": "done",
+      "step5_request": {
+        "kind": "discovery_requested",
+        "requestId": "c63c2935-2b50-4e40-8f6d-6c29485c3bf4",
+        "status": "SUBMITTED",
+        "stage": "evidence_collected"
+      },
+      "step6_newSessionRescan": {
+        "kind": "discovery_requested",
+        "requestId": "c63c2935-2b50-4e40-8f6d-6c29485c3bf4",
+        "status": "SUBMITTED",
+        "stage": "evidence_collected"
+      },
+      "requestContinuity": true
+    },
+    "HARIBO Favoritos Original": {
+      "ean": "8426617014032",
+      "photo": "haribo-favoritos_8426617014032.jpg",
+      "step1_exactOrDiscovery": {
+        "kind": "discovered_pending",
+        "stage": "evidence_collected",
+        "next": "label_photo",
+        "sessionId": "b7ff58e7-376d-4568-9f7b-10c619c722be",
+        "identity": {
+          "name": null,
+          "brand": null
+        },
+        "factCount": 13,
+        "sources": [
+          "barcode",
+          "web_search"
+        ],
+        "conflicts": [],
+        "missingCritical": [
+          "product_identity",
+          "brand_or_unbranded"
+        ],
+        "evidenceError": null,
+        "note": null,
+        "facts": [
+          {
+            "field": "barcode",
+            "value": "8426617014032",
+            "source": "barcode",
+            "authority": "scan-core",
+            "confidence": "high",
+            "contributors": [
+              "barcode"
+            ]
+          },
+          {
+            "field": "symbology",
+            "value": "EAN-13",
+            "source": "barcode",
+            "authority": "scan-core",
+            "confidence": "high",
+            "contributors": [
+              "barcode"
+            ]
+          },
+          {
+            "field": "ingredientsText",
+            "value": "CARAMELOS DE GOMA / Ingredientes: Jarabe de glucosa; azúcar; agua; zumo de frutas a partir de concentrado (5 %): limón, fresa, cereza, naranja, manzana, piña; humectante: jarabe de sorbitol; gelatina; dextrosa; acidulante: ácido cítrico; gelificante: pectina amidada; corrector de acidez: citrato trisódico; aroma; concentrados de frutas y plantas: grosella negra, baya de saúco, aronia, uva, rábano, cártamo, naranja, limón, mango, fruta de la pasión, espirulina, manzana; extracto de baya de saúco; jarabe de caramelo; colorante: curcumina; jarabe de azúcar invertido.",
+            "source": "web_search",
+            "authority": "intimport-enrich",
+            "confidence": "low",
+            "contributors": [
+              "web_search"
+            ]
+          },
+          {
+            "field": "allergensText",
+            "value": "Puede contener trazas de leche, trigo.",
+            "source": "web_search",
+            "authority": "intimport-enrich",
+            "confidence": "low",
+            "contributors": [
+              "web_search"
+            ]
+          },
+          {
+            "field": "nutrition.basis",
+            "value": "per_100g",
+            "source": "web_search",
+            "authority": "intimport-enrich",
+            "confidence": "low",
+            "contributors": [
+              "web_search"
+            ]
+          },
+          {
+            "field": "nutrition.energyKj",
+            "value": 1420,
+            "source": "web_search",
+            "authority": "intimport-enrich",
+            "confidence": "low",
+            "contributors": [
+              "web_search"
+            ]
+          },
+          {
+            "field": "nutrition.energyKcal",
+            "value": 334,
+            "source": "web_search",
+            "authority": "intimport-enrich",
+            "confidence": "low",
+            "contributors": [
+              "web_search"
+            ]
+          },
+          {
+            "field": "nutrition.fat",
+            "value": 0.5,
+            "source": "web_search",
+            "authority": "intimport-enrich",
+            "confidence": "low",
+            "contributors": [
+              "web_search"
+            ]
+          },
+          {
+            "field": "nutrition.saturatedFat",
+            "value": 0.1,
+            "source": "web_search",
+            "authority": "intimport-enrich",
+            "confidence": "low",
+            "contributors": [
+              "web_search"
+            ]
+          },
+          {
+            "field": "nutrition.carbohydrate",
+            "value": 80,
+            "source": "web_search",
+            "authority": "intimport-enrich",
+            "confidence": "low",
+            "contributors": [
+              "web_search"
+            ]
+          },
+          {
+            "field": "nutrition.sugars",
+            "value": 57,
+            "source": "web_search",
+            "authority": "intimport-enrich",
+            "confidence": "low",
+            "contributors": [
+              "web_search"
+            ]
+          },
+          {
+            "field": "nutrition.protein",
+            "value": 4.4,
+            "source": "web_search",
+            "authority": "intimport-enrich",
+            "confidence": "low",
+            "contributors": [
+              "web_search"
+            ]
+          },
+          {
+            "field": "nutrition.salt",
+            "value": 0.07,
+            "source": "web_search",
+            "authority": "intimport-enrich",
+            "confidence": "low",
+            "contributors": [
+              "web_search"
+            ]
+          }
+        ],
+        "reusedFromPreviousRun": true
+      },
+      "classification": "UNKNOWN PRODUCT (lifecycle, session continued)",
+      "step3_finalize": {
+        "kind": "discovered_pending",
+        "stage": "code_known",
+        "next": "label_photo",
+        "sessionId": "b7ff58e7-376d-4568-9f7b-10c619c722be",
+        "identity": {
+          "name": null,
+          "brand": null
+        },
+        "factCount": 2,
+        "sources": [
+          "barcode"
+        ],
+        "conflicts": [],
+        "missingCritical": [],
+        "note": "not ready: NUTRITION_FACT_REQUIRED:carbohydrate_percent, NUTRITION_FACT_REQUIRED:fat_percent, NUTRITION_FACT_REQUIRED:kcal_per_100g, NUTRITION_FACT_REQUIRED:protein_percent, NUTRITION_FACT_REQUIRED:salt_percent, NUTRITION_FACT_REQUIRED:total_sugars_percent, family_and_form_evidence_missing, roleReadiness:REVIEW, recognition:CONFECTIONERY/TOPPING_ONLY"
+      },
+      "step4_rescan": {
+        "kind": "discovered_pending",
+        "stage": "evidence_collected",
+        "next": "finalize",
+        "sessionId": "b7ff58e7-376d-4568-9f7b-10c619c722be",
+        "identity": {
+          "name": "HARIBO favoritos Original",
+          "brand": "HARIBO"
+        },
+        "factCount": 15,
+        "sources": [
+          "barcode",
+          "web_search",
+          "label"
+        ],
+        "conflicts": [],
+        "missingCritical": [],
+        "note": "research skipped: session_lookup_already_used"
+      },
+      "rescanSameIdentity": true,
+      "phase2": "done",
+      "step5_request": {
+        "kind": "discovery_requested",
+        "requestId": "2ce135f0-9224-457e-8248-03753fe52fc4",
+        "status": "SUBMITTED",
+        "stage": "evidence_collected"
+      },
+      "step6_newSessionRescan": {
+        "kind": "discovery_requested",
+        "requestId": "2ce135f0-9224-457e-8248-03753fe52fc4",
+        "status": "SUBMITTED",
+        "stage": "evidence_collected"
+      },
+      "requestContinuity": true
+    },
+    "Cabreiroá 50cl": {
+      "ean": "8411902004089",
+      "photo": "cabreiroa-50cl_8411902004089.jpg",
+      "step1_exactOrDiscovery": {
+        "kind": "discovered_pending",
+        "stage": "evidence_collected",
+        "next": "label_photo",
+        "sessionId": "cb28e7ac-1c38-4027-b02a-a5f27475504f",
+        "identity": {
+          "name": null,
+          "brand": null
+        },
+        "factCount": 4,
+        "sources": [
+          "barcode",
+          "web_search"
+        ],
+        "conflicts": [],
+        "missingCritical": [
+          "product_identity",
+          "brand_or_unbranded",
+          "ingredientsText",
+          "allergen_confirmation",
+          "nutrition_basis",
+          "nutrition_energyKcal",
+          "nutrition_fat",
+          "nutrition_carbohydrate",
+          "nutrition_protein",
+          "nutrition_salt"
+        ],
+        "evidenceError": null,
+        "note": null,
+        "facts": [
+          {
+            "field": "barcode",
+            "value": "8411902004089",
+            "source": "barcode",
+            "authority": "scan-core",
+            "confidence": "high",
+            "contributors": [
+              "barcode"
+            ]
+          },
+          {
+            "field": "symbology",
+            "value": "EAN-13",
+            "source": "barcode",
+            "authority": "scan-core",
+            "confidence": "high",
+            "contributors": [
+              "barcode"
+            ]
+          },
+          {
+            "field": "identity.countryOfOrigin",
+            "value": "Spain",
+            "source": "web_search",
+            "authority": "intimport-enrich",
+            "confidence": "low",
+            "contributors": [
+              "web_search"
+            ]
+          },
+          {
+            "field": "package.netQuantity",
+            "value": 500,
+            "source": "web_search",
+            "authority": "intimport-enrich",
+            "confidence": "low",
+            "contributors": [
+              "web_search"
+            ]
+          }
+        ],
+        "reusedFromPreviousRun": true
+      },
+      "classification": "UNKNOWN PRODUCT (lifecycle, session continued)",
+      "step3_finalize": {
+        "kind": "discovered_pending",
+        "stage": "code_known",
+        "next": "label_photo",
+        "sessionId": "cb28e7ac-1c38-4027-b02a-a5f27475504f",
+        "identity": {
+          "name": null,
+          "brand": null
+        },
+        "factCount": 2,
+        "sources": [
+          "barcode"
+        ],
+        "conflicts": [],
+        "missingCritical": [],
+        "note": "not ready: INGREDIENTS_EVIDENCE_REQUIRED, MISSING_CARBOHYDRATE_PERCENT, MISSING_FAT_PERCENT, MISSING_PROTEIN_PERCENT, MISSING_SALT_PERCENT, MISSING_TOTAL_SOLIDS_PERCENT, MISSING_TOTAL_SUGARS_PERCENT, MISSING_WATER_PERCENT, NUTRITION_FACT_REQUIRED:carbohydrate_percent, NUTRITION_FACT_REQUIRED:fat_percent, NUTRITION_FACT_REQUIRED:kcal_per_100g, NUTRITION_FACT_REQUIRED:protein_percent, NUTRITION_FACT_REQUIRED:salt_percent, NUTRITION_FACT_REQUIRED:total_sugars_percent, PRODUCT_SEMANTICS_UNRESOLVED, roleReadiness:REVIEW, recognition:NORMAL_INGREDIENT/BASE_ONLY"
+      },
+      "step4_rescan": {
+        "kind": "discovered_pending",
+        "stage": "evidence_collected",
+        "next": "label_photo",
+        "sessionId": "cb28e7ac-1c38-4027-b02a-a5f27475504f",
+        "identity": {
+          "name": "Agua mineral natural",
+          "brand": "CABREIROÁ"
+        },
+        "factCount": 6,
+        "sources": [
+          "barcode",
+          "web_search",
+          "label"
+        ],
+        "conflicts": [],
+        "missingCritical": [
+          "ingredientsText",
+          "allergen_confirmation",
+          "nutrition_basis",
+          "nutrition_energyKcal",
+          "nutrition_fat",
+          "nutrition_carbohydrate",
+          "nutrition_protein",
+          "nutrition_salt"
+        ],
+        "note": "research skipped: session_lookup_already_used"
+      },
+      "rescanSameIdentity": true,
+      "phase2": "done",
+      "step5_request": {
+        "kind": "discovery_requested",
+        "requestId": "58d93b61-95be-4202-8431-783ed628c3b0",
+        "status": "SUBMITTED",
+        "stage": "evidence_collected"
+      },
+      "step6_newSessionRescan": {
+        "kind": "discovery_requested",
+        "requestId": "58d93b61-95be-4202-8431-783ed628c3b0",
+        "status": "SUBMITTED",
+        "stage": "evidence_collected"
+      },
+      "requestContinuity": true
+    },
+    "Nestea can (green)": {
+      "ean": "8411092731130",
+      "photo": "nestea-can_8411092731130.jpg",
+      "step1_exactOrDiscovery": {
+        "kind": "discovered_pending",
+        "stage": "evidence_collected",
+        "next": "label_photo",
+        "sessionId": "bf99681d-5982-4360-aa3b-44c51fc2243f",
+        "identity": {
+          "name": null,
+          "brand": null
+        },
+        "factCount": 14,
+        "sources": [
+          "barcode",
+          "web_search"
+        ],
+        "conflicts": [],
+        "missingCritical": [
+          "product_identity",
+          "brand_or_unbranded"
+        ],
+        "note": null
+      },
+      "classification": "UNKNOWN PRODUCT (lifecycle, session continued)",
+      "step2_labelAnalysis": {
+        "kind": "discovered_pending",
+        "stage": "evidence_collected",
+        "next": "label_photo",
+        "sessionId": "bf99681d-5982-4360-aa3b-44c51fc2243f",
+        "identity": {
+          "name": null,
+          "brand": null
+        },
+        "factCount": 14,
+        "sources": [
+          "barcode",
+          "web_search"
+        ],
+        "conflicts": [],
+        "missingCritical": [
+          "product_identity",
+          "brand_or_unbranded"
+        ],
+        "note": null
+      },
+      "step3_finalize": {
+        "kind": "discovered_pending",
+        "stage": "code_known",
+        "next": "label_photo",
+        "sessionId": "bf99681d-5982-4360-aa3b-44c51fc2243f",
+        "identity": {
+          "name": null,
+          "brand": null
+        },
+        "factCount": 2,
+        "sources": [
+          "barcode"
+        ],
+        "conflicts": [],
+        "missingCritical": [
+          "product_identity",
+          "brand_or_unbranded"
+        ],
+        "note": "identity required: no trustworthy name/brand yet"
+      },
+      "step4_rescan": {
+        "kind": "discovered_pending",
+        "stage": "evidence_collected",
+        "next": "label_photo",
+        "sessionId": "bf99681d-5982-4360-aa3b-44c51fc2243f",
+        "identity": {
+          "name": null,
+          "brand": null
+        },
+        "factCount": 14,
+        "sources": [
+          "barcode",
+          "web_search"
+        ],
+        "conflicts": [],
+        "missingCritical": [
+          "product_identity",
+          "brand_or_unbranded"
+        ],
+        "note": "research skipped: session_lookup_already_used"
+      },
+      "rescanSameIdentity": true,
+      "phase2": "done",
+      "step5_request": {
+        "kind": "discovery_requested",
+        "requestId": "723cd9a5-f7bf-48ef-94e8-76d7080c9685",
+        "status": "SUBMITTED",
+        "stage": "evidence_collected"
+      },
+      "step6_newSessionRescan": {
+        "kind": "discovery_requested",
+        "requestId": "723cd9a5-f7bf-48ef-94e8-76d7080c9685",
+        "status": "SUBMITTED",
+        "stage": "evidence_collected"
+      },
+      "requestContinuity": true
+    }
+  },
+  "continuedSessionsFrom": "2026-09-04T23:33:12.164Z",
+  "phase2RanAt": "2026-09-04T23:42:52.865Z"
+}

@@ -9,6 +9,7 @@ import { buttonClasses } from '@/components/ui/buttonStyles';
 import { customerErrorMessage } from '@/copy/customerError';
 import { LEAD_TYPE_BY_ROUTE, LEAD_TYPE_LABEL, leadCopy as t } from '@/copy/workWithUsLead';
 import { submitBusinessLead, type BusinessLeadType } from '@/services/businessLeads';
+import { applicationViewportGeometry } from '@/features/shell/applicationScaleAuthority';
 
 const fieldClass = applicationFieldClasses('mt-1 text-sm');
 const labelClass = 'block text-[12px] font-semibold tracking-[-0.01em] text-[var(--g-ink)]';
@@ -111,7 +112,7 @@ export function LeadEnquirySection() {
     const align = () => {
       const node = anchorRef.current;
       if (node === null) return;
-      const top = node.getBoundingClientRect().top + window.scrollY;
+      const top = applicationViewportGeometry(node.getBoundingClientRect()).top + window.scrollY;
       if (top !== previousTop) {
         previousTop = top;
         settled = 0;
@@ -188,7 +189,11 @@ export function LeadEnquirySection() {
   if (submitted !== null) {
     return (
       <DestinationSection>
-        <div id="lead" ref={anchorRef} className="scroll-mt-28 rounded-[12px] border border-[var(--g-line)] bg-white p-[clamp(24px,3.4vw,44px)]">
+        <div
+          id="lead"
+          ref={anchorRef}
+          className="scroll-mt-28 rounded-[12px] border border-[var(--g-line)] bg-white p-[clamp(24px,3.4vw,44px)]"
+        >
           <h2 className="text-[clamp(20px,2.2vw,28px)] leading-[1.1] font-bold tracking-[-0.03em] text-[var(--g-ink)]">
             {t.successTitle}
           </h2>
@@ -218,7 +223,11 @@ export function LeadEnquirySection() {
 
   return (
     <DestinationSection>
-      <div id="lead" ref={anchorRef} className="scroll-mt-28 rounded-[12px] border border-[var(--g-line)] bg-white p-[clamp(24px,3.4vw,44px)]">
+      <div
+        id="lead"
+        ref={anchorRef}
+        className="scroll-mt-28 rounded-[12px] border border-[var(--g-line)] bg-white p-[clamp(24px,3.4vw,44px)]"
+      >
         <DestinationSectionHead eyebrow={t.eyebrow} title={t.title} helper={t.blurb} />
 
         <form className="mt-8 grid max-w-3xl gap-5 sm:grid-cols-2" onSubmit={onSubmit} noValidate>
@@ -239,7 +248,9 @@ export function LeadEnquirySection() {
               ))}
             </select>
             {fieldErrors.leadType !== undefined ? (
-              <span className="mt-1 block text-[12px] text-status-error">{fieldErrors.leadType}</span>
+              <span className="mt-1 block text-[12px] text-status-error">
+                {fieldErrors.leadType}
+              </span>
             ) : null}
           </label>
 
@@ -254,7 +265,9 @@ export function LeadEnquirySection() {
               onChange={(e) => setFullName(e.target.value)}
             />
             {fieldErrors.fullName !== undefined ? (
-              <span className="mt-1 block text-[12px] text-status-error">{fieldErrors.fullName}</span>
+              <span className="mt-1 block text-[12px] text-status-error">
+                {fieldErrors.fullName}
+              </span>
             ) : null}
           </label>
 

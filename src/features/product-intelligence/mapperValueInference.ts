@@ -1028,6 +1028,11 @@ export interface ProfileMatch {
   candidatesBeforeFilter: string[];
   candidatesAfterFilter: string[];
   rejectedCandidates: { ingredientId: string; reasonCodes: string[] }[];
+  /** One internally coherent row chosen from the accepted top cohort. When a
+   * product declares total sugars, a row whose verified named-sugar spectrum
+   * covers that total wins over a marginally closer row that cannot complete
+   * the Engine sweetening/freezing path. */
+  donorReference?: string | null;
 }
 
 /** The bar a profile must clear to supply working values. Owner's rule. */
@@ -1144,6 +1149,61 @@ function profileCompleteness(row: MapperKnowledgeRow): number {
   return present / wanted.length;
 }
 
+const SUGAR_SPECTRUM_PROFILE_FIELDS = [
+  'sucrose_percent',
+  'dextrose_percent',
+  'glucose_percent',
+  'fructose_percent',
+  'lactose_percent',
+] as const satisfies readonly (keyof MapperKnowledgeRow)[];
+
+function donorSugarSpectrumCoversDeclaredTotal(
+  row: MapperKnowledgeRow,
+  known: ProfileMatchInput['knownMacros'],
+): boolean | null {
+  const declaredTotal = numeric(known?.total_sugars_percent);
+  if (declaredTotal === null || declaredTotal <= 0) return null;
+  const values = SUGAR_SPECTRUM_PROFILE_FIELDS.map((field) => numeric(row[field]));
+  const knownValues = values.filter((value): value is number => value !== null);
+  if (knownValues.length === 0) return null;
+  return knownValues.reduce((total, value) => total + value, 0) + Number.EPSILON >= declaredTotal;
+}
+
+function mostCompleteProfileDonor(
+  rows: readonly MapperKnowledgeRow[],
+): MapperKnowledgeRow | null {
+  let best: MapperKnowledgeRow | null = null;
+  let bestCompleteness = -1;
+  for (const row of rows) {
+    const completeness = profileCompleteness(row);
+    if (completeness > bestCompleteness) {
+      bestCompleteness = completeness;
+      best = row;
+    }
+  }
+  return best;
+}
+
+function preferredProfileDonorReference(
+  rows: readonly MapperKnowledgeRow[],
+  known: ProfileMatchInput['knownMacros'],
+): string | null {
+  const defaultDonor = mostCompleteProfileDonor(rows);
+  if (!defaultDonor) return null;
+  if (
+    donorSugarSpectrumCoversDeclaredTotal(defaultDonor, known) !== false ||
+    familyOf(defaultDonor) !== 'dairy_liquid'
+  ) {
+    return defaultDonor.ingredient_id;
+  }
+  const sugarCompatible = rows.filter(
+    (row) =>
+      familyOf(row) === 'dairy_liquid' &&
+      donorSugarSpectrumCoversDeclaredTotal(row, known) === true,
+  );
+  return (mostCompleteProfileDonor(sugarCompatible) ?? defaultDonor).ingredient_id;
+}
+
 const familyOf = (row: MapperKnowledgeRow): ProductFamilyId | null => {
   const match = inferMapperFamily({
     name: row.ingredient_name_internal,
@@ -1209,6 +1269,7 @@ export function findProfileMatch(
     candidatesBeforeFilter: [],
     candidatesAfterFilter: [],
     rejectedCandidates: [],
+    donorReference: null,
   };
   const rejectedById = new Map<string, Set<string>>();
   const reject = (row: MapperKnowledgeRow, reasonCodes: readonly string[]) => {
@@ -1261,6 +1322,7 @@ export function findProfileMatch(
       candidatesBeforeFilter: [exact.ingredient_id],
       candidatesAfterFilter: [exact.ingredient_id],
       rejectedCandidates: [],
+      donorReference: exact.ingredient_id,
     };
   }
 
@@ -1295,6 +1357,7 @@ export function findProfileMatch(
         candidatesBeforeFilter: commodity.map((row) => row.ingredient_id),
         candidatesAfterFilter: compatible.map((row) => row.ingredient_id),
         rejectedCandidates: rejectedCandidates(),
+        donorReference: preferredProfileDonorReference(compatible, input.knownMacros),
       };
     }
   }
@@ -1429,6 +1492,7 @@ export function findProfileMatch(
   const best = scored[0]!;
   const set = scored.filter((entry) => entry.score >= best.score - 0.04).slice(0, 5);
   const rows = set.map((entry) => entry.row);
+  const donorReference = preferredProfileDonorReference(rows, input.knownMacros);
   const confidence = round4(
     set.reduce((total, entry) => total + entry.score, 0) / set.length +
       (set.length >= 3 ? 0.02 : 0),
@@ -1450,6 +1514,7 @@ export function findProfileMatch(
     candidatesBeforeFilter,
     candidatesAfterFilter: scored.map((entry) => entry.row.ingredient_id),
     rejectedCandidates: rejectedCandidates(),
+    donorReference,
   };
 }
 
@@ -1469,16 +1534,11 @@ export function findProfileMatch(
  * profile that actually exists.
  */
 export function profileDonor(match: ProfileMatch): MapperKnowledgeRow | null {
-  let best: MapperKnowledgeRow | null = null;
-  let bestCompleteness = -1;
-  for (const row of match.rows) {
-    const completeness = profileCompleteness(row);
-    if (completeness > bestCompleteness) {
-      bestCompleteness = completeness;
-      best = row;
-    }
-  }
-  return best;
+  const preferred = match.donorReference
+    ? match.rows.find((row) => row.ingredient_id === match.donorReference)
+    : null;
+  if (preferred) return preferred;
+  return mostCompleteProfileDonor(match.rows);
 }
 
 /**

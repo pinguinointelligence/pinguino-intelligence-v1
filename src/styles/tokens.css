@@ -158,7 +158,7 @@
   }
 }
 
-@media (min-width: 1280px) {
+@media (min-width: 60rem) {
   :root {
     --app-header-top-floor: 0px;
   }
@@ -214,4 +214,32 @@
   --g-monitor-row-height: 64px;
   --g-field-height: 46px;
   --g-stepper-height: 32px;
+}
+
+/* ── Canonical responsive PRO frame ──────────────────────────────────────
+   One accepted 1440 px desktop composition with no width-specific density
+   variants. The complete application is painted through one continuous scale
+   authority. 60rem = 960px is the true-mobile transition shared with
+   `proFrameGeometry.ts`. */
+:root {
+  --pro-desktop-min-width: 60rem;
+  --pro-frame-inline-gutter: 28.8px;
+  --pro-frame-max-width: 1280px;
+  --pro-frame-gap: 11.52px;
+  --pro-frame-right-width: 444px;
+  --pro-frame-left-min-width: 700px;
+  --pro-frame-block-padding: 10px;
+  --pro-row-height: 48px;
+  --pro-row-height-attention: 56px;
+  --pro-monitor-row-height: 60px;
+  --pro-row-drag-width: 20px;
+  /* OWNER LOCK GEOMETRY: each segmented control includes its 30 px lock cell.
+     The canonical row tracks preserve the controls' complete outer widths at
+     every desktop viewport; the whole application scale handles narrowing. */
+  --pro-row-percent-width: 142px;
+  --pro-row-grams-width: 150px;
+  --pro-row-price-width: 84px;
+  --pro-row-menu-width: 25px;
+  --pro-row-column-gap: 6px;
+  --pro-row-inline-padding: 9px;
 }

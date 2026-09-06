@@ -42,7 +42,7 @@ const reservedStarter = () => {
     label: 'Ninja CREAMi Deluxe',
     temperatureC: -11,
     batchGrams: BATCH,
-    capacityGrams: BATCH,
+    hardCapacityGrams: setup.hardMaximumBatchGrams,
     batchSource: 'MACHINE_DEFAULT',
   });
 };
@@ -71,9 +71,7 @@ const grantMainAuthority = (lineId: string) => {
 const addMain = (id: string, grams: number) => {
   const ingredient = sorbetMapperIngredient(id);
   useRecipeStore.getState().addIngredient(ingredient, grams);
-  const line = st().items.find(
-    (item) => item.ingredient.name === ingredient.name,
-  )!;
+  const line = st().items.find((item) => item.ingredient.name === ingredient.name)!;
   grantMainAuthority(line.id);
   return line;
 };

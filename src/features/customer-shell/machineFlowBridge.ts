@@ -20,10 +20,14 @@
  */
 import {
   selectServingMode,
+  setHomeMachineRoute,
   setBatchGrams,
   type CustomerFlowState,
 } from '@/features/customer-flow';
-import { effectiveDefaultBatchGrams, type MachinePreferenceRecord } from '@/features/machine-onboarding';
+import {
+  effectiveDefaultBatchGrams,
+  type MachinePreferenceRecord,
+} from '@/features/machine-onboarding';
 
 /**
  * Apply a saved machine to the flow: mode first, then the EFFECTIVE default
@@ -35,6 +39,11 @@ export function applyMachineRecordToFlow(
   record: MachinePreferenceRecord,
 ): CustomerFlowState {
   let next = selectServingMode(state, record.resolvedVisibleMode);
+  next = setHomeMachineRoute(
+    next,
+    record.resolvedHomeFormulationModuleId,
+    record.engineTemperatureC,
+  );
   const grams = effectiveDefaultBatchGrams(record);
   if (grams !== null) next = setBatchGrams(next, grams);
   return next;

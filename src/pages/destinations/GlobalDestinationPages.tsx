@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
 import { buttonClasses } from '@/components/ui/buttonStyles';
 import { applicationPrimaryClasses } from '@/components/ui/applicationControlStyles';
@@ -9,8 +9,12 @@ import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
 import { proCoreCapabilitiesFor } from '@/features/pro-core/proCoreCapabilities';
 import { useProductionSessionStore } from '@/features/production-workspace/productionSessionStore';
-import { LabelWorkspace } from '@/features/master-label/LabelWorkspace';
-import { resolveLabelRepository, type RunLabelSnapshot } from '@/services/labels/labelRepository';
+import { CompactRunLabelSettings, LabelWorkspace } from '@/features/master-label/LabelWorkspace';
+import {
+  defaultAccountLabelProfile,
+  resolveLabelRepository,
+  type RunLabelSnapshot,
+} from '@/services/labels/labelRepository';
 import { AccountRecipeDefaults } from '@/features/pro-workbench/AccountRecipeDefaults';
 import { AccountProductMarkets } from '@/features/global-catalog/AccountProductMarkets';
 import { GlobalCatalogSearchPanel } from '@/features/global-catalog/GlobalCatalogSearchPanel';
@@ -29,8 +33,6 @@ import {
 } from '@/components/shared/destinationEditorial';
 import { ShopCatalog } from '@/features/shop/ShopCatalog';
 import { ShopCartCount } from '@/features/shop/ShopCartCount';
-import { HomeProSwitch } from '@/features/home-creator/ui/HomeProSwitch';
-import { useHomeEntitlement } from '@/features/home-creator/useHomeEntitlement';
 import { ShopOrdersPanel } from '@/features/shop/ShopOrdersPanel';
 import { shopCopy } from '@/copy/shop';
 import { FranchiseInquiryForm } from '@/features/franchise/FranchiseInquiryForm';
@@ -44,6 +46,18 @@ import {
   franchiseSourceRouteFrom,
 } from '@/features/franchise/franchiseConcepts';
 import { FRANCHISE_FORMAT_LINKS, FRANCHISE_PAGE, FRANCHISE_SPLIT } from '@/copy/workWithUsLanes';
+import { AppShell } from '@/features/shell/AppShell';
+import { KnowledgeTour } from '@/features/knowledge-tour/KnowledgeTour';
+import { useRecipeStore } from '@/stores/recipeStore';
+import { readLabelSettingsReturn } from '@/features/master-label/labelSettingsNavigation';
+import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
+import { recipeCompositionFromState } from '@/features/recipe-composition/recipeCompositionPersistence';
+import { buildDraftLabelPreview } from '@/features/master-label/draftLabelPreview';
+import {
+  createRecipeLabelDraft,
+  newRecipeLabelDraftId,
+  type RecipeLabelDraft,
+} from '@/features/master-label/labelDraftPersistence';
 
 /** One panel for each account concern — same card as the rest of the product. */
 const ACCOUNT_PANEL =
@@ -53,48 +67,14 @@ const quietLink =
   'flex min-h-14 items-center justify-between border-b border-[var(--g-line)] py-3 text-sm text-ink transition-opacity hover:opacity-55';
 
 export function HowItWorksPage() {
-  const steps = ['Pomysł', 'Składniki', 'Gellatti', 'Receptura', 'Produkcja'];
   return (
-    <DestinationSurface
-      eyebrow="GELLATTI"
-      title="Jak to działa"
-      blurb="Jedna logiczna droga od pomysłu do receptury i bezpiecznej produkcji."
-    >
-      {/* The same numbered rail Współpraca uses for „Jak to działa" — one
-          pattern for one idea, rather than a second near-identical one. The
-          steps keep their existing labels; no explanatory copy is invented
-          here. */}
-      <DestinationSectionHead
-        eyebrow="Droga receptury"
-        title="Pięć kroków, od pomysłu do gotowej partii."
-      />
-      <ol className="grid border-y border-[var(--g-line)] sm:grid-cols-5">
-        {steps.map((step, index) => (
-          <li
-            key={step}
-            className="border-b border-[var(--g-line)] px-5 py-6 last:border-b-0 sm:border-r sm:border-b-0 sm:last:border-r-0"
-          >
-            <span className="font-mono text-[12px] text-[var(--g-text-muted)]">0{index + 1}</span>
-            <strong className="mt-3 block text-[14px] leading-[1.35] font-bold text-[var(--g-ink)]">
-              {step}
-            </strong>
-          </li>
-        ))}
-      </ol>
-      <div className="mt-8 flex flex-wrap gap-3">
-        <Link to="/start" className={buttonClasses('primary', 'md')}>
-          Wypróbuj Gellatti
-        </Link>
-        <Link to="/subscription" className={buttonClasses('ghost', 'md')}>
-          Porównaj Home i Pro
-        </Link>
-      </div>
-    </DestinationSurface>
+    <AppShell navigationPosition="trailing" contentClassName="bg-white">
+      <KnowledgeTour />
+    </AppShell>
   );
 }
 
 export function ShopPage() {
-  const entitlement = useHomeEntitlement();
   return (
     <DestinationSurface
       eyebrow={shopCopy.page.eyebrow}
@@ -110,7 +90,6 @@ export function ShopPage() {
          HOME as the current page while a visitor read a commercial page, which
          is the claim the owner ruled out for every global destination. Both
          segments stay visible; neither presents as current. */
-      headerActions={<HomeProSwitch entitlement={entitlement} activeView={null} />}
       bare
     >
       {/* SHOP C3 (owner approved 2026-08-31, product emphasis 2026-09-01).
@@ -691,6 +670,21 @@ export function LabelsHubPage() {
   const requestedRunId = params.get('run');
   const requestedSnapshotId = params.get('snapshot');
   const repository = useMemo(() => resolveLabelRepository(), []);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const labelDraft = useRecipeStore((state) => state.labelDraft);
+  const setLabelDraft = useRecipeStore((state) => state.setLabelDraft);
+  const labelDraftContext = useRecipeStore((state) => state.draftContextSeq);
+  const labelDraftRevision = useRecipeStore((state) => state.draftRevision);
+  const currentVersionId = useRecipeStore((state) => state.currentVersionId);
+  const currentVersionNumber = useRecipeStore((state) => state.currentVersionNumber);
+  const currentRecipeName = useRecipeStore((state) => state.savedRecipeName);
+  const ownerUserId = useAuthStore((state) => state.user?.id ?? 'label-settings-local');
+  const generatedDraft = useRef<{
+    context: number;
+    value: RecipeLabelDraft;
+  } | null>(null);
+  const [saveDraftAsDefault, setSaveDraftAsDefault] = useState(false);
   const session = useProductionSessionStore((state) => state.session);
   const activeSnapshot = session?.status === 'completed' ? session.completionSnapshot : null;
   const [history, setHistory] = useState<RunLabelSnapshot[]>([]);
@@ -708,6 +702,55 @@ export function LabelsHubPage() {
     };
   }, [repository]);
 
+  useEffect(() => {
+    let cancelled = false;
+    if (generatedDraft.current?.context !== labelDraftContext) {
+      generatedDraft.current = {
+        context: labelDraftContext,
+        value:
+          labelDraft ??
+          createRecipeLabelDraft({
+            draftId: `${newRecipeLabelDraftId()}-${currentVersionId ?? labelDraftContext}`,
+          }),
+      };
+    }
+    const seed = labelDraft ?? generatedDraft.current.value;
+    void repository
+      .getAccountProfile()
+      .then((savedProfile) => {
+        if (cancelled) return;
+        const state = useRecipeStore.getState();
+        const activeDraft = state.labelDraft ?? seed;
+        const input = buildRecipeInput(state);
+        const preview = buildDraftLabelPreview({
+          profile: savedProfile ?? defaultAccountLabelProfile(ownerUserId),
+          recipeInput: input,
+          composition: recipeCompositionFromState(state),
+          productName: currentRecipeName,
+          draft: activeDraft,
+          recipeVersionId: currentVersionId,
+          recipeVersionNumber: currentVersionNumber,
+        });
+        if (JSON.stringify(activeDraft.label) !== JSON.stringify(preview.label)) {
+          setLabelDraft({ ...activeDraft, label: preview.label }, false);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    currentRecipeName,
+    currentVersionId,
+    currentVersionNumber,
+    labelDraft,
+    labelDraftContext,
+    labelDraftRevision,
+    ownerUserId,
+    repository,
+    setLabelDraft,
+  ]);
+
   const selectedActive =
     activeSnapshot && (!requestedRunId || requestedRunId === activeSnapshot.sessionId)
       ? activeSnapshot
@@ -724,6 +767,14 @@ export function LabelsHubPage() {
   const selectedSnapshotId =
     requestedHistoryItem?.snapshotId ??
     (!requestedRunId && !selectedActive ? (history[0]?.snapshotId ?? null) : null);
+  const labelSettingsReturn = readLabelSettingsReturn(location.state) ?? {
+    to: '/pro/recipe?panel=summary',
+    scrollTop: 0,
+  };
+  const returnToOrigin = () =>
+    navigate(labelSettingsReturn.to, {
+      state: { labelSettingsRestore: labelSettingsReturn },
+    });
 
   return (
     <DestinationSurface
@@ -731,17 +782,37 @@ export function LabelsHubPage() {
       title="Etykiety"
       blurb="Profil konta i etykiety zakończonych partii — w jednym, spójnym miejscu."
       contextLabel="Ustawienia etykiety"
-      /* OWNER DECISION (2026-08-30): this page is the one home for persistent
-         label settings, so it owes the reader a way back to the recipe they
-         came from. `/pro/recipe` is the existing workbench route — no new
-         navigation authority is introduced. */
       actions={
-        <Link to="/pro/recipe" className={buttonClasses('ghost', 'sm')}>
-          Wróć do receptury
-        </Link>
+        <button type="button" onClick={returnToOrigin} className={buttonClasses('ghost', 'sm')}>
+          ← Wróć
+        </button>
       }
     >
       <LabelWorkspace profileOnly repository={repository} />
+
+      {labelDraft?.label ? (
+        <section className="mt-10 border-t border-[var(--g-line)] pt-8">
+          <CompactRunLabelSettings
+            label={labelDraft.label}
+            saveAsDefault={saveDraftAsDefault}
+            onSaveAsDefaultChange={setSaveDraftAsDefault}
+            showSaveAsDefault={false}
+            showDraftData
+            onClose={returnToOrigin}
+            onSave={async (label) => {
+              setLabelDraft(
+                {
+                  ...labelDraft,
+                  productionDate: label.productionDate,
+                  label,
+                },
+                true,
+              );
+              returnToOrigin();
+            }}
+          />
+        </section>
+      ) : null}
 
       <section className="mt-10 border-t border-[var(--g-line)] pt-8">
         <div className="flex flex-wrap items-end justify-between gap-4">

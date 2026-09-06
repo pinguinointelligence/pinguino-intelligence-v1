@@ -16,11 +16,12 @@ import type { ProductBehaviorSnapshot } from '@/features/product-intelligence/co
 import { productRecommendedDosagePl } from '@/features/product-intelligence/productDosageAuthority';
 import { decideAddAmount } from '@/features/home-creator/homeAddAmountDecision';
 import { HomeAmountPrompt } from '@/features/home-creator/ui/HomeAmountPrompt';
+import { HomeUsagePrompt } from '@/features/home-creator/ui/HomeUsagePrompt';
+import { decideUsageRole } from '@/features/home-creator/homeUsageRoleDecision';
 import { useNavigate } from 'react-router';
 import { AppShell } from '@/features/shell/AppShell';
 import { deriveMachineSetup, type HomeMachineProfile } from '@/features/machine-catalog';
 import { machineDisplayName } from '@/features/machine-onboarding/machineViews';
-import { temperatureForMode } from '@/features/customer-flow/servingMode';
 import { useRecipeStore } from '@/stores/recipeStore';
 import {
   DEFAULT_NEW_RECIPE_SERVING_MODE,
@@ -30,14 +31,11 @@ import {
 import { homeCreatorCopy } from '@/features/home-creator/homeCreatorCopy';
 import { homeCustomerNotice } from '@/features/home-creator/homeCustomerNotice';
 import { useHomeDraftStore } from '@/features/home-creator/homeDraftStore';
-import {
-  useHomeEntitlement,
-  useCanSeeExactGrams,
-} from '@/features/home-creator/useHomeEntitlement';
+import { useCanSeeExactGrams } from '@/features/home-creator/useHomeEntitlement';
 import { useHomeFlow } from '@/features/home-creator/useHomeFlow';
 import { useHomeRecipeResult } from '@/features/home-creator/useHomeRecipeResult';
 import { useHomeIntentIngredients } from '@/features/home-creator/useHomeIntentIngredients';
-import { LiveMultiScanner } from '@/features/product-scanner/LiveMultiScanner';
+import { ScanFlow } from '@/features/scan-flow/ScanFlow';
 import { HomeMatchGate } from '@/features/home-creator/matching/HomeMatchGate';
 import {
   NO_MATCH,
@@ -63,7 +61,6 @@ import {
   type HomeSweetness,
 } from '@/features/home-creator/homeSweetness';
 import type { HomeStage } from '@/features/home-creator/homeStageFlow';
-import { HomeProSwitch } from '@/features/home-creator/ui/HomeProSwitch';
 import { HomeIntentSection } from '@/features/home-creator/ui/HomeIntentSection';
 import { HomeProfileSection } from '@/features/home-creator/ui/HomeProfileSection';
 import { HomeMachineSection } from '@/features/home-creator/ui/HomeMachineSection';
@@ -79,7 +76,6 @@ function useScrollToStage() {
 }
 
 export function HomeCreatorPage() {
-  const entitlement = useHomeEntitlement();
   const canSeeGrams = useCanSeeExactGrams();
   const scrollToStage = useScrollToStage();
 
@@ -228,17 +224,17 @@ export function HomeCreatorPage() {
     (selected: HomeMachineProfile) => {
       const setup = deriveMachineSetup(selected, visibleProductTypeFor(draft.profile ?? 'gelato'));
       const mode = setup.resolvedVisibleMode;
-      const temperatureC = mode ? temperatureForMode(mode) : null;
-      if (mode === null || temperatureC === null) return null;
+      if (mode === null) return null;
       useRecipeStore.getState().setMachineSelection({
         kind: 'home',
         servingModeId: mode,
         machineId: selected.id,
         label: machineDisplayName(selected),
         machineTechnology: selected.technology,
-        temperatureC,
+        homeFormulationModuleId: selected.homeFormulationModuleId,
+        temperatureC: setup.engineTemperatureC,
         batchGrams: setup.recommendedBatchGrams,
-        capacityGrams: setup.recommendedBatchGrams,
+        hardCapacityGrams: setup.hardMaximumBatchGrams,
         batchSource: 'MACHINE_DEFAULT',
       });
       return setup;
@@ -298,6 +294,16 @@ export function HomeCreatorPage() {
     ],
   );
 
+  /**
+   * §58 — the picked product waiting for the customer to say how they meant to use it.
+   * Only reached for a product the catalogue says is genuinely BOTH; everything it can
+   * settle is settled silently by `decideUsageRole`.
+   */
+  const [pendingUsage, setPendingUsage] = useState<{
+    ingredient: EngineIngredient;
+    behavior: ProductBehaviorSnapshot | null;
+  } | null>(null);
+
   /** The picked product waiting for its confirmed amount. No line exists yet. */
   const [pendingAdd, setPendingAdd] = useState<{
     ingredient: EngineIngredient;
@@ -326,8 +332,34 @@ export function HomeCreatorPage() {
    * the add controls beside the recipe list both land here, so the §B decision cannot
    * apply on one surface and not the other.
    */
+  const handleAddTopping = useCallback(
+    (ingredient: RecipeToppingIngredient, behavior?: ProductBehaviorSnapshot) => {
+      useRecipeStore.getState().addTopping(ingredient, 0);
+      const topping = useRecipeStore
+        .getState()
+        .toppings.find((line) => line.ingredient.id === ingredient.id);
+      if (topping && behavior) {
+        useRecipeStore
+          .getState()
+          .setProductBehaviorSnapshot(topping.id, { ...behavior, lineId: topping.id });
+      }
+    },
+    [],
+  );
+
   const handleAddIngredient = useCallback(
     (ingredient: EngineIngredient, behavior?: ProductBehaviorSnapshot) => {
+      // §58 FIRST: a product that is genuinely both has to be placed before it can be
+      // measured — the amount question means something different for a topping.
+      const usage = decideUsageRole(behavior ?? null);
+      if (usage.kind === 'ask') {
+        setPendingUsage({ ingredient, behavior: behavior ?? null });
+        return;
+      }
+      if (usage.role === 'topping') {
+        handleAddTopping(ingredient as unknown as RecipeToppingIngredient, behavior);
+        return;
+      }
       const decision = decideAddAmount(behavior ?? null, productRecommendedDosagePl);
       if (decision.kind === 'unresolved_authority') {
         // Owner ruling §6: never guess. The picker already refuses a product it cannot
@@ -345,24 +377,10 @@ export function HomeCreatorPage() {
       }
       addIngredientLine(ingredient, behavior ?? null, 0);
     },
-    [addIngredientLine],
+    [addIngredientLine, handleAddTopping],
   );
 
   /** §57: the existing Topping behaviour — no Crown, editable grams. Shared identically. */
-  const handleAddTopping = useCallback(
-    (ingredient: RecipeToppingIngredient, behavior?: ProductBehaviorSnapshot) => {
-      useRecipeStore.getState().addTopping(ingredient, 0);
-      const topping = useRecipeStore
-        .getState()
-        .toppings.find((line) => line.ingredient.id === ingredient.id);
-      if (topping && behavior) {
-        useRecipeStore
-          .getState()
-          .setProductBehaviorSnapshot(topping.id, { ...behavior, lineId: topping.id });
-      }
-    },
-    [],
-  );
 
   const lastGeneratedFor = useRef<string | null>(null);
   useEffect(() => {
@@ -421,12 +439,7 @@ export function HomeCreatorPage() {
     .join(' · ');
 
   return (
-    <AppShell
-      navigationPosition="trailing"
-      stickyHeader
-      globalSwitch={<HomeProSwitch entitlement={entitlement} activeView="home" />}
-      contentClassName="pb-24"
-    >
+    <AppShell navigationPosition="trailing" stickyHeader contentClassName="pb-24">
       <div data-testid="home-creator">
         {flow.stages.includes('intent') ? (
           <HomeIntentSection
@@ -514,8 +527,7 @@ export function HomeCreatorPage() {
                 visibleProductTypeFor(draft.profile ?? 'gelato'),
               );
               const mode = setup.resolvedVisibleMode;
-              const temperatureC = mode ? temperatureForMode(mode) : null;
-              if (mode === null || temperatureC === null) return;
+              if (mode === null) return;
               setMachine(selected);
               setForceMachineStage(false);
               setAmount(defaultHomeAmount(setup.recommendedBatchGrams));
@@ -525,9 +537,10 @@ export function HomeCreatorPage() {
                 machineId: selected.id,
                 label: machineDisplayName(selected),
                 machineTechnology: selected.technology,
-                temperatureC,
+                homeFormulationModuleId: selected.homeFormulationModuleId,
+                temperatureC: setup.engineTemperatureC,
                 batchGrams: setup.recommendedBatchGrams,
-                capacityGrams: setup.recommendedBatchGrams,
+                hardCapacityGrams: setup.hardMaximumBatchGrams,
                 batchSource: 'MACHINE_DEFAULT',
               });
             }}
@@ -653,6 +666,34 @@ export function HomeCreatorPage() {
       ) : null}
 
       {/* §B: asked BEFORE the line exists, so a refusal costs the customer nothing. */}
+      {pendingUsage ? (
+        <HomeUsagePrompt
+          productName={pendingUsage.ingredient.name}
+          onCancel={() => setPendingUsage(null)}
+          onChoose={(role) => {
+            const { ingredient, behavior } = pendingUsage;
+            setPendingUsage(null);
+            if (role === 'topping') {
+              handleAddTopping(
+                ingredient as unknown as RecipeToppingIngredient,
+                behavior ?? undefined,
+              );
+              return;
+            }
+            // The amount question still applies to an ingredient, exactly as it does
+            // for a product that never needed the usage question at all.
+            const decision = decideAddAmount(behavior, productRecommendedDosagePl);
+            if (decision.kind === 'ask_amount') {
+              setPendingAdd({ ingredient, behavior, recommendedDose: decision.recommendedDose });
+              return;
+            }
+            if (decision.kind === 'unresolved_authority') return;
+            // The SAME line-creation path a product that never needed the question takes.
+            addIngredientLine(ingredient, behavior, 0);
+          }}
+        />
+      ) : null}
+
       {pendingAdd ? (
         <HomeAmountPrompt
           productName={pendingAdd.ingredient.name}
@@ -670,29 +711,44 @@ export function HomeCreatorPage() {
         {result ? 'yes' : 'no'}
       </span>
 
+      {/*
+        OWNER DECISION 2026-09-06 — ONE CANONICAL SCANNER. HOME mounts the same component the recipe
+        picker and the products page mount, with the same pipeline; only the entry context and the
+        return action differ. A signed-out visitor scanning in the demo may FIND a product but never
+        create one, so the entry says so and the scanner spends nothing on them.
+      */}
       {scannerOpen ? (
-        <div className="fixed inset-0 z-50 bg-white">
-          <LiveMultiScanner
-            onClose={() => setScannerOpen(false)}
-            onAddToRecipe={(products) => {
-              setScanNotice(null);
-              // The SAME door a typed ingredient uses. The scanner supplies identities;
-              // every rule about what they may do in a recipe stays where it lives.
-              for (const product of products)
-                void intentIngredients.addScannedProduct(product.identityKey);
-            }}
-            onNeedsDeepScan={(products) => {
-              // NEVER navigate away. The customer has a recipe half-built on this page;
-              // one unknown product is not a reason to lose it. The scanner completes
-              // such a product in a nested step and hands it back resolved, so all that
-              // is left here is to say plainly what did not make it in.
-              setScanNotice(
-                products.length === 1
-                  ? 'Jeden produkt czeka na uzupełnienie — znajdziesz go w skanerze.'
-                  : `${products.length} produkty czekają na uzupełnienie — znajdziesz je w skanerze.`,
-              );
-            }}
-          />
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-white p-4">
+          <div className="mx-auto max-w-lg space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold text-ink">Skanuj produkt</h2>
+              <button
+                type="button"
+                className="pro-focus-ring rounded-full border border-ink/15 px-3 py-1 text-xs font-semibold text-ink"
+                onClick={() => setScannerOpen(false)}
+              >
+                Zamknij
+              </button>
+            </div>
+            <ScanFlow
+              mode="recipe"
+              entryContext={userId === null ? 'guest_demo' : 'recipe_ingredient'}
+              onResolved={(product) => {
+                setScanNotice(null);
+                setScannerOpen(false);
+                // The SAME door a typed ingredient uses. The scanner supplies the identity;
+                // every rule about what it may do in a recipe stays where it lives.
+                void intentIngredients.addScannedProduct(product.id);
+              }}
+              onReturn={() => setScannerOpen(false)}
+              onChoosePlan={(plan) => {
+                setScannerOpen(false);
+                navigate(plan === 'pro' ? '/subscription?plan=pro' : '/subscription?plan=home');
+              }}
+              resolveLabel="Dodaj do receptury"
+              intro="Pokaż kod kreskowy produktu aparatowi. Znaleziony lub zapisany produkt wraca prosto do tej receptury."
+            />
+          </div>
         </div>
       ) : null}
     </AppShell>

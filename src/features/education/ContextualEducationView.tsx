@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useRef } from 'react';
 import type { RecipeInput } from '@/engine';
 import { Button } from '@/components/ui/Button';
 import { educationCopy as copy } from '@/copy/education.pl';
+import { KnowledgeTour } from '@/features/knowledge-tour/KnowledgeTour';
 import {
   FRESH_GELATO_EDUCATION,
   machineEducationById,
@@ -100,57 +101,6 @@ function RelativeDots({ value, label }: { value: number; label: string }) {
         />
       ))}
     </span>
-  );
-}
-
-function KnowledgeHome({ onOpen }: { onOpen: (view: KnowledgeView) => void }) {
-  const entries: readonly { id: KnowledgeView; title: string; note: string }[] = [
-    {
-      id: 'summary',
-      title: 'Twoja receptura w skrócie',
-      note: 'Najważniejsze fakty o składnikach, które są teraz w recepturze.',
-    },
-    {
-      id: 'process',
-      title: 'Jak ją przygotować',
-      note: 'Proces dla wybranego profilu i maszyny — bez ponownego wybierania urządzenia.',
-    },
-    {
-      id: 'advanced',
-      title: 'Dowiedz się więcej',
-      note: 'Woda, cukry, tłuszcz i inne tematy istotne dla tej mieszanki.',
-    },
-  ];
-  return (
-    <div data-testid="contextual-learning-hub">
-      <p className="text-[10px] font-semibold tracking-[0.1em] text-stone-500 uppercase">
-        Wiedza o recepturze
-      </p>
-      <h1 className="mt-1 text-xl font-semibold leading-tight tracking-tight text-ink">
-        Odpowiedź najpierw. Szczegóły wtedy, gdy ich potrzebujesz.
-      </h1>
-      <div className="mt-4 divide-y divide-ink/10 border-y border-ink/10">
-        {entries.map((entry) => (
-          <button
-            key={entry.id}
-            type="button"
-            onClick={() => onOpen(entry.id)}
-            className="pro-focus-ring flex min-h-16 w-full items-center justify-between gap-4 px-1 py-3 text-left"
-            data-testid="education-entry"
-          >
-            <span>
-              <strong className="block text-sm text-ink">{entry.title}</strong>
-              <span className="mt-0.5 block text-xs leading-relaxed text-stone-600">
-                {entry.note}
-              </span>
-            </span>
-            <span aria-hidden className="text-lg text-stone-400">
-              ›
-            </span>
-          </button>
-        ))}
-      </div>
-    </div>
   );
 }
 
@@ -381,27 +331,46 @@ export function ContextualEducationView({
 }) {
   void audience;
   const initialView = initialViewForLesson(initialLesson);
-  const [active, setActive] = useState<KnowledgeView | null>(initialView);
-  const directInitialLesson = initialLesson !== undefined && active === initialView;
+  const embeddedTour = initialLesson === undefined;
+  const viewRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!embeddedTour || !viewRef.current) return;
+    let ancestor = viewRef.current.parentElement;
+    while (ancestor && ancestor !== document.body) {
+      const overflowY = window.getComputedStyle(ancestor).overflowY;
+      if (overflowY === 'auto' || overflowY === 'scroll') {
+        ancestor.scrollTop = 0;
+        break;
+      }
+      ancestor = ancestor.parentElement;
+    }
+  }, [embeddedTour]);
 
   return (
     <div
-      className="mx-auto min-h-full w-full max-w-none bg-[#f7f5f0] p-4 text-ink sm:p-5"
+      ref={viewRef}
+      className={
+        embeddedTour
+          ? 'contextual-education-view--tour absolute inset-x-0 top-0 bottom-[4.75rem] mx-auto grid min-h-0 max-h-full w-full max-w-none flex-1 grid-rows-[auto_minmax(0,1fr)] overflow-hidden bg-white text-ink min-[70rem]:static min-[70rem]:inset-auto min-[70rem]:grid-rows-[auto_auto] min-[70rem]:overflow-visible'
+          : 'mx-auto min-h-full w-full max-w-none bg-[#f7f5f0] p-4 text-ink sm:p-5 lg:min-h-0'
+      }
+      data-education-mode={embeddedTour ? 'knowledge-tour' : 'contextual-lesson'}
       data-testid="profile-education-view"
     >
-      <Button
-        variant="ghost"
-        size="sm"
-        className="mb-4"
-        onClick={active === null || directInitialLesson ? onBack : () => setActive(null)}
+      <div
+        className={embeddedTour ? 'px-4 pt-4 sm:px-5 sm:pt-5' : ''}
+        data-tour-host-slot={embeddedTour ? 'back-entry' : undefined}
       >
-        {active === null || directInitialLesson ? copy.backToRecipe : copy.backToHub}
-      </Button>
-      {active === null ? (
-        <KnowledgeHome onOpen={setActive} />
-      ) : active === 'summary' ? (
+        <Button variant="ghost" size="sm" className={embeddedTour ? '' : 'mb-4'} onClick={onBack}>
+          {copy.backToRecipe}
+        </Button>
+      </div>
+      {embeddedTour ? (
+        <KnowledgeTour layout="embedded" />
+      ) : initialView === 'summary' ? (
         <RecipeSummary input={input} />
-      ) : active === 'process' ? (
+      ) : initialView === 'process' ? (
         <ProcessKnowledge
           input={input}
           machineId={machineId}

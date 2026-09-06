@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { GellattiNotice } from '@/components/ui/GellattiNotice';
 import { MetricValue } from '@/components/shared/MetricValue';
 import { SectionLabel } from '@/components/shared/SectionLabel';
 import { Card } from '@/components/ui/Card';
@@ -33,7 +34,6 @@ import {
 import { effectiveLineCost } from '@/features/pro-core/costing';
 import {
   IngredientRow,
-  ROW_GRID,
   type IngredientRowActions,
   type IngredientTableMode,
   type ProductionRowActions,
@@ -41,6 +41,7 @@ import {
 import {
   ProductPickerPopover,
   type ProductPickerHandoff,
+  type ProductPickerReplaceInvocation,
   type ProductPickerRouteRequest,
 } from './ProductPickerPopover';
 import { ToppingRow } from './ToppingRow';
@@ -82,39 +83,12 @@ import { type ProductDoseMeta } from './productDoseSuggestion';
 import { clampOwnerStabilizerComponentGrams } from '@/features/recipe-constraints';
 import { LegacyRecipeReferenceNotice } from './LegacyRecipeReferenceNotice';
 import { WorkflowNotice } from '@/components/shared/WorkflowNotice';
+import {
+  canonicalReplaceContext,
+  type ProductDiscoveryReplaceContext,
+} from './canonicalProductDiscovery';
 
 const b = copy.studio.builder;
-const headCell = 'text-xs font-medium tracking-[0.04em] text-ivory/70 uppercase';
-
-/**
- * OWNER FROZEN LEGEND, 2026-09-01.
- *
- * Each label aligns to the TEXT it names, not to its own grid track. The accepted QA
- * method is a text-range/glyph measurement, never an outer element box — the two
- * disagree by exactly the padding, which is what made earlier attempts read as green
- * while looking wrong.
- *
- *   1 Składnik → the ingredient-name glyphs. They start after the 28 px category icon
- *                plus its 8 px gap, so the label carries the same 36 px (`pl-9`).
- *   2 %        → the CENTRE of the percent control, so the label sits over the thing
- *   3 Ilość    → the CENTRE of the gram control, likewise.
- *   4 Cena/kg  → the right edge of the cost VALUE, which is right-aligned in its track.
- *
- * The frozen authority draws this label as KOSZT. It is NOT renamed here: the label
- * is pinned as `Cena/kg` by the accepted design contract
- * (`finalProWorkbenchDesign.test.tsx`) and by `copy.studio.builder.ingredientTable
- * .columns.price`. Renaming it is a COPY decision, not geometry, and it is reported
- * for the owner rather than taken here.
- */
-const HEAD_CELL_ALIGN: readonly string[] = [
-  '',
-  'pl-9',
-  'text-center',
-  'text-center',
-  'text-right',
-  '',
-];
-
 /**
  * Items come from the Engine result; edits return to the canonical recipe store.
  * Recipe-only row metadata never enters RecipeInput or Engine mathematics.
@@ -163,6 +137,7 @@ export function IngredientBuilder({
   }, [customerOwnerUserId, loadCustomerPrices]);
 
   const addIngredient = useRecipeStore((state) => state.addIngredient);
+  const replaceIngredient = useRecipeStore((state) => state.replaceIngredient);
   const addTopping = useRecipeStore((state) => state.addTopping);
   const setProductBehaviorSnapshot = useRecipeStore((state) => state.setProductBehaviorSnapshot);
   const behaviorProfile = useRecipeStore((state) => state.category);
@@ -180,9 +155,31 @@ export function IngredientBuilder({
   const draggedBaseId = useRef<string | null>(null);
   const draggedToppingId = useRef<string | null>(null);
   const [pickerNotice, setPickerNotice] = useState<string | null>(null);
+  /* OWNER QA 2026-09-03: reaching the stabilizer ceiling is an EVENT, not a
+     condition, so it is told once in a dialog rather than parked as a banner
+     above the table for the rest of the session.
+
+     `acknowledgedStabilizerLimit` holds the ceiling the owner has already been
+     told about, so a render — or a second press against the same wall — cannot
+     reopen it. It is cleared as soon as a stabilizer edit lands WITHOUT hitting
+     the ceiling, which is exactly "reduce, then hit it again". A batch or
+     profile change moves the canonical ceiling to a different number, so the
+     comparison fails and the new limit is announced on its own. */
+  const [stabilizerLimitGrams, setStabilizerLimitGrams] = useState<number | null>(null);
+  /* A REF, not state. Two presses can land in one React batch — a held key, or
+     a fast double-tap — and a state read from the handler's closure would still
+     be the pre-batch value, so the second press would consult a stale
+     acknowledgement and stay silent when it should speak. The ref is always
+     current at the moment the press is handled. */
+  const acknowledgedStabilizerLimit = useRef<number | null>(null);
   const [reorderNotice, setReorderNotice] = useState('');
   const [pickerHandoff, setPickerHandoff] = useState<ProductPickerHandoff | null>(null);
   const pickerHandoffKey = useRef(0);
+  const [replaceRequest, setReplaceRequest] = useState<{
+    lineId: string;
+    invocation: ProductPickerReplaceInvocation;
+  } | null>(null);
+  const replaceRequestKey = useRef(0);
   const library = useIngredientLibrary({ demo });
   const { lockFor, wrapActions } = useLineLockControls();
   const legacyReferenceIssues = compositionMigrationAmbiguities.filter((issue) =>
@@ -247,6 +244,20 @@ export function IngredientBuilder({
       clearLineMeta(lineId);
     },
   });
+  /* The SAME gate the click path applies, evaluated once per row so the
+     control can show that it is closed. `productBehaviorIsManaged` is false
+     for an unresolved workspace, so nothing changes signed-out or on the demo
+     preset — this only speaks where the gate actually governs. */
+  const editRefusalFor = (item: EffectiveRecipeItem): string | null => {
+    const snapshots = useRecipeStore.getState().productBehaviorSnapshots;
+    if (!productBehaviorIsManaged(snapshots)) return null;
+    const required = productBehaviorRequiredLineIds({ items: [item] });
+    if (required.length === 0) return null;
+    const gate = productBehaviorModuleGate(snapshots, 'BASE_RECIPE', required);
+    if (gate.ready) return null;
+    return gate.reason ?? 'Dane tego produktu wymagają ponownego zatwierdzenia.';
+  };
+
   const coreActions: IngredientRowActions = {
     ...lockAwareCoreActions,
     setPlannedGrams: (lineId, grams) => {
@@ -281,7 +292,17 @@ export function IngredientBuilder({
       const draft = selectCanonicalDraft();
       const aggregate = clampOwnerStabilizerComponentGrams(draft.input, lineId, requestedGrams);
       lockAwareCoreActions.setPlannedGrams(lineId, aggregate.grams);
-      if (aggregate.messagePl) setPickerNotice(aggregate.messagePl);
+      if (aggregate.reason === 'aggregate_limit') {
+        // The ceiling: a dialog, once per limit event. Never a banner.
+        if (acknowledgedStabilizerLimit.current !== aggregate.limitGrams) {
+          setStabilizerLimitGrams(aggregate.limitGrams);
+        }
+      } else {
+        // Anything below the ceiling re-arms the announcement, so hitting it
+        // again after reducing informs the owner again.
+        acknowledgedStabilizerLimit.current = null;
+        if (aggregate.messagePl) setPickerNotice(aggregate.messagePl);
+      }
       markDoseUserSet(lineId);
     },
   };
@@ -404,6 +425,13 @@ export function IngredientBuilder({
       });
       setPickerNotice(null);
     },
+    requestReplace: (lineId, context: ProductDiscoveryReplaceContext) => {
+      replaceRequestKey.current += 1;
+      setReplaceRequest({
+        lineId,
+        invocation: { key: replaceRequestKey.current, context },
+      });
+    },
     moveUp: (lineId) => {
       moveBaseItem(lineId, -1);
       setReorderNotice(baseReorderNotice(lineId, 'Przesunięto wyżej'));
@@ -455,26 +483,7 @@ export function IngredientBuilder({
         Plan i Odchylenie są widoczne tylko wtedy, gdy faktyczna ilość różni się od planu. W polu
         Faktycznie możesz zmniejszyć, zwiększyć, wpisać gramy i potwierdzić wartość.
       </div>
-    ) : (
-      /* The legend is a TABLE legend: it only means anything once ROW_GRID has
-         columns, which happens at `md`. Below that the grid is one column, so
-         it rendered visually stacked — „Składnik / % / Ilość / Cena/kg" down
-         the phone, four lines of header above a list that needs none. It stays
-         in the accessibility tree at every width; only the sighted mobile
-         rendering is suppressed, and the desktop alignment the legend exists
-         for is untouched. */
-      <div
-        className={`${ROW_GRID} px-3 py-2 sr-only md:not-sr-only`}
-        data-testid="recipe-table-header"
-      >
-        {/* Six tracks (V2.1): the leading one belongs to the drag handle. */}
-        {['', 'Składnik', '%', 'Ilość', 'Cena/kg', ''].map((label, index) => (
-          <span key={`${label}-${index}`} className={`${headCell} ${HEAD_CELL_ALIGN[index] ?? ''}`}>
-            {label || '\u00a0'}
-          </span>
-        ))}
-      </div>
-    );
+    ) : null;
 
   // One unambiguous meaning: this row was genuinely changed by the latest
   // Recalculate before/after pair. It is session-only and never participates in
@@ -628,7 +637,19 @@ export function IngredientBuilder({
         lock={lockFor(item)}
         compact={layout === 'workbench'}
         mode={mode}
-        meta={{ ...storedMeta, unavailable: storedMeta.unavailable || unavailableFromDraft }}
+        meta={{
+          ...storedMeta,
+          unavailable: storedMeta.unavailable || unavailableFromDraft,
+          editRefusal: editRefusalFor(item),
+          replaceContext:
+            mode === 'recipe'
+              ? canonicalReplaceContext({
+                  displayName: item.ingredient.name,
+                  category: item.ingredient.category,
+                  productForm: item.ingredient.source_subcategory,
+                })
+              : null,
+        }}
         priceView={mode === 'recipe' ? priceView : undefined}
         productionLine={productionLine}
         productionActions={productionActions}
@@ -750,6 +771,32 @@ export function IngredientBuilder({
     return { focusLineId: existing.id };
   };
 
+  const replaceSelectedBaseIngredient = (
+    ingredient: Parameters<typeof replaceIngredient>[1],
+    behavior?: ProductBehaviorSnapshot,
+  ) => {
+    if (!replaceRequest) return addIngredientAndResolveRequiredRole(ingredient, behavior);
+    const result = replaceIngredient(replaceRequest.lineId, ingredient, behavior);
+    if (result.status === 'duplicate') {
+      setPickerNotice(
+        `${ingredient.name} już znajduje się w Bazie. Nie utworzono duplikatu i przeniesiono fokus do istniejącego wiersza.`,
+      );
+      return { focusLineId: result.lineId };
+    }
+    if (result.status !== 'replaced') {
+      setPickerNotice('Nie udało się zamienić produktu. Odśwież recepturę i spróbuj ponownie.');
+      return { focusLineId: replaceRequest.lineId };
+    }
+    setDoseMeta(result.lineId, {
+      provenance: 'UNKNOWN',
+      groupId: null,
+      suggestedPercent: null,
+      suggestedTotalGrams: null,
+    });
+    setPickerNotice(null);
+    return { focusLineId: result.lineId };
+  };
+
   const addOrFocusTopping = (
     ingredient: Parameters<typeof addTopping>[0],
     behavior?: ProductBehaviorSnapshot,
@@ -806,7 +853,9 @@ export function IngredientBuilder({
         mode: behaviorMode,
       }}
       onPreflightDuplicate={preflightDuplicateBaseIngredient}
-      onAdd={addIngredientAndResolveRequiredRole}
+      onAdd={replaceRequest ? replaceSelectedBaseIngredient : addIngredientAndResolveRequiredRole}
+      replaceInvocation={replaceRequest?.invocation ?? null}
+      onClose={() => setReplaceRequest(null)}
       handoff={pickerHandoff?.scope === 'BASE_FORMULATION' ? pickerHandoff : null}
       onRouteToScope={routeProductPicker}
     />
@@ -953,6 +1002,27 @@ export function IngredientBuilder({
               testId="product-picker-notice"
             />
           ) : null}
+          {stabilizerLimitGrams !== null ? (
+            /* Informative, not an error: the amount was applied, it simply
+               stopped at the ceiling. No engine or constraint vocabulary.
+               Moved onto the ONE shared Gellatti notice shell (owner
+               2026-09-03) so it is centered and carries the same headline,
+               body and acknowledgement geometry as every other simple notice.
+               It stays `informational`: reaching a ceiling is a fact, not an
+               alarm, and orange is reserved for notices the user must
+               register. */
+            <GellattiNotice
+              testId="stabilizer-limit-dialog"
+              primaryTestId="stabilizer-limit-ok"
+              title="Limit stabilizatora osiągnięty"
+              body={`Dla tej partii maksymalna ilość systemu stabilizującego to ${stabilizerLimitGrams} g.`}
+              primaryLabel="OK"
+              onPrimary={() => {
+                acknowledgedStabilizerLimit.current = stabilizerLimitGrams;
+                setStabilizerLimitGrams(null);
+              }}
+            />
+          ) : null}
           <p
             className="sr-only"
             role="status"
@@ -998,8 +1068,15 @@ export function IngredientBuilder({
           <p className="shrink-0 px-4 pt-4 text-sm leading-relaxed text-ivory/60">{b.empty}</p>
         ) : (
           <>
-            {items.length > 0 ? <div className="shrink-0">{header}</div> : null}
-            <div className="min-h-0 flex-1 overflow-y-auto" data-testid="ingredient-rows-scroll">
+            {items.length > 0 && mode === 'production' ? (
+              <div className="shrink-0">{header}</div>
+            ) : null}
+            <div
+              className="min-h-0 flex-1 overflow-y-auto"
+              role="region"
+              aria-label="Składniki receptury"
+              data-testid="ingredient-rows-scroll"
+            >
               <div>
                 {infeasibleNotice}
                 {items.length > 0 ? (
@@ -1040,7 +1117,7 @@ export function IngredientBuilder({
                         // The SAME dock is pinned above the mobile preview bar below
                         // the workbench breakpoint, so it is never shown twice.
                         <div
-                          className="ml-auto hidden min-w-0 xl:block"
+                          className="pro-workbench-action-dock ml-auto hidden min-w-0"
                           data-testid="ingredient-action-slot"
                         >
                           {recipeActionDock}
@@ -1093,7 +1170,7 @@ export function IngredientBuilder({
       ) : (
         <>
           <div className="mt-5 divide-y divide-ivory/10">
-            {header}
+            {mode === 'production' ? header : null}
             {infeasibleNotice}
             {rows}
             {productionTopUpSection}

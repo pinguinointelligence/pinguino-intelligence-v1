@@ -68,7 +68,7 @@ export function migrateProductionSessionStore(
   persisted: unknown,
   version: number,
 ): ProductionSessionStoreState {
-  if (version >= 8) return persisted as ProductionSessionStoreState;
+  if (version >= 9) return persisted as ProductionSessionStoreState;
   const state = persisted as {
     session?: ProductionSession | null;
     archivedSessions?: ProductionSession[];
@@ -85,7 +85,9 @@ export function migrateProductionSessionStore(
       degassingAcknowledged?: boolean;
       degassingAcknowledgedAt?: string | null;
       carbonatedProductIds?: string[];
+      supersededRescue?: ProductionSession['supersededRescue'];
       lastDeviationDecision?: ProductionSession['lastDeviationDecision'];
+      invalidDurableRescue?: ProductionSession['invalidDurableRescue'];
       topUpTasks?: ProductionSession['topUpTasks'];
     };
     const plannedComposition =
@@ -113,7 +115,9 @@ export function migrateProductionSessionStore(
       degassingAcknowledged: legacy.degassingAcknowledged ?? false,
       degassingAcknowledgedAt: legacy.degassingAcknowledgedAt ?? null,
       carbonatedProductIds: legacy.carbonatedProductIds ?? [],
+      supersededRescue: legacy.supersededRescue ?? null,
       lastDeviationDecision: legacy.lastDeviationDecision ?? null,
+      invalidDurableRescue: legacy.invalidDurableRescue ?? null,
       topUpTasks:
         legacy.topUpTasks ??
         legacyTopUpLines.map((line) => ({
@@ -247,7 +251,7 @@ export const useProductionSessionStore = create<ProductionSessionStoreState>()(
     }),
     {
       name: 'pinguino-production-session',
-      version: 8,
+      version: 9,
       migrate: migrateProductionSessionStore,
       partialize: (state) => ({
         session: state.session,

@@ -96,21 +96,38 @@ describe('Direction readability — the reported value', () => {
      detent. If the owner ever wants the numeral back on screen, restore the
      ternary AND the ratio loop that used to live in this file. */
   it('still reports the value to assistive tech on every detent', () => {
-    expect(axes).toContain('aria-label={`${label}: ${sign(detent)}`}');
+    /* OWNER 2026-09-03: the numeral is gone from the NAME too, because it was
+       never the thing a screen-reader user needed — "Słodycz: -2" told them
+       the coordinate, not the meaning. The sentence says what the ball's size
+       says to everyone else, so both channels now carry the same statement. */
+    /* Indexed by the CANONICAL value, never by the slot: Twardość is drawn
+       firm-left, so a slot-indexed name would announce the mirror image of
+       what was actually stored. */
+    expect(axes).toContain("aria-label={`${label}: ${PHRASES[axisKey][detent] ?? ''}`}");
     expect(axes).toContain('aria-checked={position === detent}');
-    expect(axes).toContain('const sign =');
+    expect(axes).toContain('const PHRASES');
+    // Five phrases per direction, so every detent is named, and the neutral one
+    // is not silently shared with a signed one.
+    for (const phrase of ['mniej słodkie', 'bardziej słodkie', 'średnio']) {
+      expect(axes).toContain(phrase);
+    }
+    expect(axes).not.toMatch(/aria-label=\{`\$\{label\}: \$\{sign/);
   });
 
   it('encodes the position in more than colour alone', () => {
     // Thumb POSITION and fill WIDTH both carry it, so the reading survives a
     // viewer who cannot separate the orange from the rail.
-    // The helper is now parameterised by the axis's detent set, so a profile
-    // whose authority publishes three targets (Protein ice-fraction hardness)
-    // renders three real positions on the same geometry. The contract is
-    // unchanged in substance: the thumb's position is still derived from the
-    // VALUE, not from colour alone.
-    expect(axes).toContain('style={{ left: detentAt(position) }}');
+    /* Both branches of this contract survive the merge. The thumb's place is
+       still derived from the VALUE — now through the visual index the value
+       occupies, which is what lets a mirrored axis and a three-position axis
+       share one geometry — and the fill still spans centre to choice. */
+    expect(axes).toContain('left: visualLeft(activeIndex, count)');
+    expect(axes).toContain('const activeIndex = indexOfDetent(position);');
     expect(axes).toContain('style={{ left: fillLeft, width: fillWidth }}');
+    /* And now by SIZE as well: the mark grows or shrinks with the detent, so
+       the reading survives a viewer who cannot separate the orange from the
+       rail AND one who cannot judge a small horizontal offset. */
+    expect(axes).toContain('const thumbSize = sizeAt(thumbSizes, activeIndex);');
   });
 
   /* With the numerals gone the MARK is the only thing reporting the position,

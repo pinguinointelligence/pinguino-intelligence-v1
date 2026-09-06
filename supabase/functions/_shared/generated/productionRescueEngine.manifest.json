@@ -9,6 +9,7 @@
   "exportedRuntime": [
     "assessProductionRescue",
     "productionRescueCandidateFingerprint",
+    "productionRescueTerminalAuthority",
     "hydrateProductionSessionFromRun",
     "scaleRecipeVersion",
     "scaledRecipeInput"
@@ -17,12 +18,12 @@
     "engine": "0.4.0",
     "config": "0.7.0",
     "practicalRecipe": "pro-whole-gram-v1",
-    "productionRescue": "production-rescue-v4",
+    "productionRescue": "production-rescue-v10",
     "productionSessionSchema": 2
   },
   "bundle": {
-    "bytes": 345388,
-    "sha256": "2602cb4743af909300741a4c3941318c2127781bf548cb62e9021fefebafede6",
+    "bytes": 401650,
+    "sha256": "5d55dd99cf79a0e556610de75922626d6f3dd0bce49d59201b19655f0f1ef6a7",
     "externalImports": 0,
     "dynamicImports": 0
   },
@@ -41,7 +42,7 @@
     },
     {
       "path": "src/engine/calculateRecipe.ts",
-      "sha256": "b4910d6453b865c435b27ac1bd1de4033dcc61b652383e9051428c14268ed2b5"
+      "sha256": "ae3d8b1180c045c180e01872896aa06d5cdd85ad4367ff19bcf6cee6b3e521ec"
     },
     {
       "path": "src/engine/composition.ts",
@@ -77,7 +78,7 @@
     },
     {
       "path": "src/engine/corrections/apply.ts",
-      "sha256": "6562744a1ad546b97536fdf956a4109779f9177b04b52a72529f428196cdebb6"
+      "sha256": "4cbe45231e6f897b637e17f4d7c7d990c8178385049ec2948e6e11f06fda3cdb"
     },
     {
       "path": "src/engine/corrections/candidates.ts",
@@ -85,7 +86,7 @@
     },
     {
       "path": "src/engine/corrections/recovery.ts",
-      "sha256": "2f02fbac908929ab4c3b2100c03343f98074d679662f97b9570c403997e850c1"
+      "sha256": "845dc4cc9fefcc93e2a9cf122f69bb92983d80c164107de89d646802e51d8b23"
     },
     {
       "path": "src/engine/corrections/redact.ts",
@@ -93,7 +94,7 @@
     },
     {
       "path": "src/engine/corrections/solver.ts",
-      "sha256": "8fe9dd6915ed789fdbd3ef2a2c9309a3c839bdbe4f1ffa7e128b9fdeadc0df64"
+      "sha256": "b8590d8d947b7e8956c8adbd3c6e4cffcaaa2fa1ec2e5f88a01d0e08bb755562"
     },
     {
       "path": "src/engine/corrections/verify.ts",
@@ -101,11 +102,15 @@
     },
     {
       "path": "src/engine/cost.ts",
-      "sha256": "0783a91bee213457e5e3373c0f6a8f12434b3ceef3ee496a53880e1a82a023c0"
+      "sha256": "343b1bb0f589a4c5d41b5bcba3f9fdb78f9156727cf07091d5179d72b380ee1e"
     },
     {
       "path": "src/engine/iceFraction.ts",
       "sha256": "de6ade2ea5a2e6ad966398ece78dcf008419e1df2e57dcd6bd2ec18d19f53da1"
+    },
+    {
+      "path": "src/engine/machineCapacity.ts",
+      "sha256": "dd762a6033f40ec48267e3125175d36368c74728bf23b589e8779186f148a302"
     },
     {
       "path": "src/engine/nutrition.ts",
@@ -132,8 +137,16 @@
       "sha256": "e84f73b943ed9f4675673f412e5e93b014d6e383229ee5db3df770408c220f4e"
     },
     {
+      "path": "src/engine/technicalLinearFactors.ts",
+      "sha256": "e5156496a809a18ad27ee9749fabf41d09e31d33e6f74f8af2e9f4d71ca5cc02"
+    },
+    {
       "path": "src/engine/userIntent.ts",
       "sha256": "aa86ddd3338e2c90e0e0169e1e18d2c7d498756ef5563f59e5fdf6b5c0bc37c7"
+    },
+    {
+      "path": "src/features/constraint-studio/mainTechnicalLinearBound.ts",
+      "sha256": "a7a52200b6c2b6edea10f164e6506d5be6d99d68dc2b84e265500873f90ca36b"
     },
     {
       "path": "src/features/formulation-strategy/strategy.ts",
@@ -161,7 +174,7 @@
     },
     {
       "path": "src/features/practical-recipe/practicalRecipe.ts",
-      "sha256": "16c62f7a2088518fa248f5a5894f9575e76536cd661221c67c244012c8033090"
+      "sha256": "179e7ed7bfa89a951500f4d0afccf56a0e44ad5a4f04eb1d4b89d1c544c907c3"
     },
     {
       "path": "src/features/pro-core/recipeScaling.ts",
@@ -193,11 +206,15 @@
     },
     {
       "path": "src/features/production-workspace/productionRescue.ts",
-      "sha256": "195711a87f87052223c74309a7c31cefbbcaa06e8954efa7562451746e698e63"
+      "sha256": "d06144657233929177c7c485cd657b565a447f2f30d117b1f3fe87a05d388e2b"
+    },
+    {
+      "path": "src/features/production-workspace/productionRescueAuthority.ts",
+      "sha256": "d8524652b23b22e8ce92a8a0faaa42e18386909969908d83a88f7dec7c9af22e"
     },
     {
       "path": "src/features/production-workspace/productionSession.ts",
-      "sha256": "99d47957d6d2b9b9ce3c2ec0a6a67b2b29ed98e2c7d0fdc75597cdbc270d9da3"
+      "sha256": "a17859911857bc95c478bdeb48f0492a2427a93941a83f7f5fff16a933a8f621"
     },
     {
       "path": "src/features/protein-gelato/proteinAuthority.ts",
@@ -225,7 +242,7 @@
     },
     {
       "path": "src/features/recipe-composition/finalProduct.ts",
-      "sha256": "a48cc291d2281d1aac4f5eeded7d7ac40420ddb79c71ddb570ad0447c3e98cae"
+      "sha256": "a64c9f8e00479ff4c8176399c003423c55144b46015b1ff8a094c15c15dfb9e8"
     },
     {
       "path": "src/features/recipe-composition/labelTopping.ts",
@@ -241,7 +258,7 @@
     },
     {
       "path": "src/features/recipe-constraints/gelatoStabilizerSystemAuthority.ts",
-      "sha256": "a55ae86604460ec0b54cfbbfa391d2581a66ad4ea0c8eea65795143596c28d83"
+      "sha256": "194d10cb551fcedcdfc9bd71146eb95946d77723eccab5722c11ccb4f37e19bf"
     },
     {
       "path": "src/features/recipe-constraints/recipeConstraintAuthority.ts",
@@ -249,7 +266,7 @@
     },
     {
       "path": "src/features/recipe-constraints/sorbetStabilizerSystemAuthority.ts",
-      "sha256": "2ec0ba3dad8d937f466920a391589fe970b6b9e649723f7924e200fade55bb40"
+      "sha256": "ae8aac4759390a4d1e68b1a45a15f9e926927ba56a1b7bf2ab8d7760af810e9e"
     },
     {
       "path": "src/features/recipe-direction/recipeDirectionAssessment.ts",
@@ -272,5 +289,5 @@
       "sha256": "a2207c9c4e9431daa728d6b03fe1b9c4a4a3ba3403a0c056f2808c0759a455c8"
     }
   ],
-  "sourceClosureSha256": "9adba52c83679a0babec69a56ed2dce4f1bcb013c95bd7426f219b7c2b3f7a3e"
+  "sourceClosureSha256": "c4a6bb92435aabd60b0bfa4b20dcfc93d2ada493e2cc71659c50eaac8d95caee"
 }

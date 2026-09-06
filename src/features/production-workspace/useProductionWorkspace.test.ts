@@ -237,17 +237,112 @@ describe('trusted Production Rescue authorization basis', () => {
     );
   });
 
-  it('explains unavailable choices with the exact original target and hard metrics', () => {
+  it('keeps technical Rescue diagnostics internal and returns solution-first customer copy', () => {
     const hardSafetyError = new ProductionRescueOptionUnavailableError(
       'stable_rescue_option_stale',
       'hard_safety_violations',
       ['lactose_sandiness_risk', 'lactose'],
     );
     expect(rescueOptionUnavailableMessage('keep_original_batch', 1_000, hardSafetyError)).toBe(
-      'Niedostępne — potwierdzonych ilości nie można już dopasować do partii 1000 g.',
+      'Żeby zachować to, co już jest w naczyniu, potrzebna jest większa partia.',
     );
     expect(rescueOptionUnavailableMessage('leave_as_is', 1_000, hardSafetyError)).toBe(
-      'Niedostępne — przekroczone twarde zakresy: Ryzyko piaszczystości, Laktoza.',
+      'Tej partii nie możemy już bezpiecznie dostosować z dostępnych składników.',
+    );
+
+    const irreducibleOwnerError = new ProductionRescueOptionUnavailableError(
+      'stable_rescue_option_stale',
+      'confirmed_physical_floor_above_hard_limit',
+      ['lactose'],
+      {
+        physicalConfirmedG: 381,
+        forecastMassG: 675,
+        originalTargetG: 670,
+        machineCapacityG: 670,
+        forecastViolationDetails: [],
+        fixedTargetRebalance: {
+          candidateMassG: 670,
+          violationDetails: [
+            { metric: 'lactose', direction: 'high', value: 6.193582, min: 4, max: 6 },
+          ],
+        },
+        irreducibleConfirmedViolations: [
+          { metric: 'lactose', direction: 'high', value: 6.193582, min: 4, max: 6 },
+        ],
+      },
+    );
+    expect(rescueOptionUnavailableMessage('keep_original_batch', 670, irreducibleOwnerError)).toBe(
+      'Żeby zachować to, co już jest w naczyniu, potrzebna jest większa partia.',
+    );
+
+    const lowFixedTargetError = new ProductionRescueOptionUnavailableError(
+      'stable_rescue_option_stale',
+      'no_safe_original_target_candidate',
+      ['npac'],
+      {
+        physicalConfirmedG: 443,
+        forecastMassG: 675,
+        originalTargetG: 670,
+        machineCapacityG: 670,
+        forecastViolationDetails: [],
+        fixedTargetRebalance: {
+          candidateMassG: 670,
+          violationDetails: [{ metric: 'npac', direction: 'low', value: 47.179, min: 55, max: 70 }],
+        },
+        irreducibleConfirmedViolations: [],
+      },
+    );
+    expect(rescueOptionUnavailableMessage('keep_original_batch', 670, lowFixedTargetError)).toBe(
+      'Żeby zachować to, co już jest w naczyniu, potrzebna jest większa partia.',
+    );
+
+    const highFixedTargetError = new ProductionRescueOptionUnavailableError(
+      'stable_rescue_option_stale',
+      'no_safe_original_target_candidate',
+      ['lactose'],
+      {
+        physicalConfirmedG: 381,
+        forecastMassG: 675,
+        originalTargetG: 670,
+        machineCapacityG: 670,
+        forecastViolationDetails: [],
+        fixedTargetRebalance: {
+          candidateMassG: 670,
+          violationDetails: [
+            { metric: 'lactose', direction: 'high', value: 6.194, min: 4, max: 6 },
+          ],
+        },
+        irreducibleConfirmedViolations: [],
+      },
+    );
+    expect(rescueOptionUnavailableMessage('keep_original_batch', 670, highFixedTargetError)).toBe(
+      'Żeby zachować to, co już jest w naczyniu, potrzebna jest większa partia.',
+    );
+
+    const capacityOwnerError = new ProductionRescueOptionUnavailableError(
+      'stable_rescue_option_stale',
+      'machine_capacity_exceeded',
+      [],
+      {
+        physicalConfirmedG: 676,
+        forecastMassG: 676,
+        originalTargetG: 670,
+        machineCapacityG: 670,
+        forecastViolationDetails: [],
+        fixedTargetRebalance: null,
+        irreducibleConfirmedViolations: [],
+      },
+    );
+    expect(rescueOptionUnavailableMessage('leave_as_is', 670, capacityOwnerError)).toBe(
+      'Ta partia potrzebuje większej pojemności, żeby zachować właściwy balans.',
+    );
+    const visibleCopy = [
+      rescueOptionUnavailableMessage('keep_original_batch', 670, irreducibleOwnerError),
+      rescueOptionUnavailableMessage('keep_original_batch', 670, lowFixedTargetError),
+      rescueOptionUnavailableMessage('leave_as_is', 1_000, hardSafetyError),
+    ].join(' ');
+    expect(visibleCopy).not.toMatch(
+      /lakto|\bPAC\b|\bPOD\b|\bNPAC\b|water|solids|hard-bound|denominator|solver|Engine|ProductBehavior|twarde zakresy/i,
     );
   });
 

@@ -438,7 +438,11 @@ export const GOLDEN_RECIPES: readonly GoldenRecipe[] = [
             line('dextrose', QA_COMPOSITIONS.dextrose, 40),
             line('tara', QA_COMPOSITIONS.tara, 5),
           ],
-          { category: 'fruit_gelato', machine_capacity_grams: 1050 },
+          {
+            category: 'fruit_gelato',
+            machine_capacity_grams: 1050,
+            machine_capacity_source: 'manual',
+          },
         ),
         context: 'planning',
         focus: ['water'],

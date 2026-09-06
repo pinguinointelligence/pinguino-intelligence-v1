@@ -438,6 +438,61 @@ describe('LabelWorkspace unified actual-run surface', () => {
     expect((button('Drukuj') as HTMLButtonElement | undefined)?.disabled).toBe(false);
   });
 
+  it('sets one recipe-wide line, returns to the same label and reopens it from the run snapshot', async () => {
+    const repository = await renderWorkspace('data');
+    await completeRequiredLabelData();
+    await act(async () => button('Pokaż etykietę')!.click());
+
+    expect(host.textContent).toContain('Alergeny nieustalone');
+    expect((button('Drukuj') as HTMLButtonElement).disabled).toBe(false);
+    await act(async () =>
+      host.querySelector<HTMLButtonElement>('[data-testid="label-allergens-set"]')!.click(),
+    );
+    expect(host.querySelectorAll('[data-testid="label-allergens-settings"] input')).toHaveLength(1);
+    await act(async () =>
+      host.querySelector<HTMLButtonElement>('[data-testid="label-allergens-back"]')!.click(),
+    );
+    expect(host.textContent).toContain('Alergeny nieustalone');
+
+    await act(async () =>
+      host.querySelector<HTMLButtonElement>('[data-testid="label-allergens-set"]')!.click(),
+    );
+    const input = host.querySelector<HTMLInputElement>('[data-testid="label-allergens-input"]')!;
+    await act(async () => setInputValue(input, 'Zawiera: MLEKO. Może zawierać ORZECHY.'));
+    await act(async () => {
+      host.querySelector<HTMLButtonElement>('[data-testid="label-allergens-save"]')!.click();
+      await Promise.resolve();
+    });
+    expect(host.textContent).toContain('Alergeny: Zawiera: MLEKO. Może zawierać ORZECHY.');
+    expect(host.querySelector('[data-testid="label-allergens-change"]')?.textContent).toBe('Zmień');
+
+    await act(async () => {
+      button('Zapisz finalną etykietę')!.click();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(
+      (await repository.getRunLabelSnapshot('run-label-workspace'))?.label.allergens
+        .labelStatements,
+    ).toEqual(['Zawiera: MLEKO. Może zawierać ORZECHY.']);
+
+    await act(async () => root.unmount());
+    root = createRoot(host);
+    await act(async () => {
+      root.render(
+        <LabelWorkspace
+          snapshot={completedSnapshot()}
+          repository={repository}
+          initialView="label"
+        />,
+      );
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(host.textContent).toContain('Alergeny: Zawiera: MLEKO. Może zawierać ORZECHY.');
+    expect(host.querySelector('[data-testid="label-allergens-change"]')?.textContent).toBe('Zmień');
+  });
+
   it('opens the complete Settings state inside the same three-step workspace', async () => {
     await renderWorkspace('settings');
     expect(host.querySelector('[data-active-label-view="data"]')).not.toBeNull();
@@ -739,6 +794,8 @@ describe('LabelWorkspace unified actual-run surface', () => {
     await renderWorkspace('label', { settingsHome: 'production' });
     expect(dot('settings')).toBeNull();
     expect(host.querySelector('[data-testid="label-workspace"]')).not.toBeNull();
+    expect(host.querySelector('[data-testid="label-settings-home-link"]')).toBeNull();
+    expect(button('Ustawienia')).toBeUndefined();
   });
 
   it('keeps the three-view switcher at home and none in the workbench', async () => {
@@ -758,6 +815,22 @@ describe('LabelWorkspace unified actual-run surface', () => {
     expect(host.querySelector('[data-active-label-view="label"]')).not.toBeNull();
     // …and the fields still missing for it sit underneath.
     expect(host.querySelector('[data-testid="label-missing-data-stack"]')).not.toBeNull();
+  });
+
+  it('orders the PRO label as preview, missing data, then print actions', async () => {
+    await renderWorkspace('data', { settingsHome: 'production' });
+    const preview = host.querySelector('[data-testid="consumer-print-boundary"]')!;
+    const missing = host.querySelector('[data-testid="label-missing-data-stack"]')!;
+    const actions = host.querySelector('[data-testid="label-workbench-print-actions"]')!;
+
+    expect(
+      preview.compareDocumentPosition(missing) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      missing.compareDocumentPosition(actions) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(actions.textContent).toContain('Drukuj podgląd roboczy');
+    expect(actions.textContent).toContain('Drukuj');
   });
 
   it('still opens an incomplete label on its data view at home', async () => {

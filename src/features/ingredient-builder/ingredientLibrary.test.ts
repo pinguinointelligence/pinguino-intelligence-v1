@@ -94,17 +94,22 @@ const chocolateRow: IngredientRow = {
 };
 
 describe('shouldFetchLibrary', () => {
-  it('only enables the query for Pro users off the demo route', () => {
+  it('enables the shared live catalog for Home and Pro, but never for Demo', () => {
     expect(shouldFetchLibrary({ isPro: true, demo: false })).toBe(true);
     expect(shouldFetchLibrary({ isPro: true, demo: true })).toBe(false); // /demo never fetches
-    expect(shouldFetchLibrary({ isPro: false, demo: false })).toBe(false);
+    expect(shouldFetchLibrary({ isPro: false, demo: false })).toBe(true); // HOME parity
     expect(shouldFetchLibrary({ isPro: false, demo: true })).toBe(false);
   });
 });
 
 describe('selectIngredientLibrary', () => {
   it('uses the demo catalog on the demo route even when Pro rows exist', () => {
-    const lib = selectIngredientLibrary({ demo: true, isPro: true, rows: [sampleRow], isError: false });
+    const lib = selectIngredientLibrary({
+      demo: true,
+      isPro: true,
+      rows: [sampleRow],
+      isError: false,
+    });
     expect(lib.source).toBe('demo');
     expect(lib.status).toBe('demo');
     expect(lib.ingredients).toBe(DEMO_INGREDIENTS);
@@ -112,20 +117,35 @@ describe('selectIngredientLibrary', () => {
   });
 
   it('uses the demo catalog for free / anon (not Pro)', () => {
-    const lib = selectIngredientLibrary({ demo: false, isPro: false, rows: undefined, isError: false });
+    const lib = selectIngredientLibrary({
+      demo: false,
+      isPro: false,
+      rows: undefined,
+      isError: false,
+    });
     expect(lib.source).toBe('demo');
     expect(lib.ingredients).toBe(DEMO_INGREDIENTS);
   });
 
   it('shows a loading state for Pro while fetching — no demo flash', () => {
-    const lib = selectIngredientLibrary({ demo: false, isPro: true, rows: undefined, isError: false });
+    const lib = selectIngredientLibrary({
+      demo: false,
+      isPro: true,
+      rows: undefined,
+      isError: false,
+    });
     expect(lib.status).toBe('loading');
     expect(lib.source).toBe('pi_base');
     expect(lib.ingredients).toHaveLength(0);
   });
 
   it('fails closed without demo products on a Pro fetch error', () => {
-    const lib = selectIngredientLibrary({ demo: false, isPro: true, rows: undefined, isError: true });
+    const lib = selectIngredientLibrary({
+      demo: false,
+      isPro: true,
+      rows: undefined,
+      isError: true,
+    });
     expect(lib.status).toBe('fallback');
     expect(lib.source).toBe('pi_base');
     expect(lib.ingredients).toEqual([]);
@@ -139,7 +159,12 @@ describe('selectIngredientLibrary', () => {
   });
 
   it('returns mapped PI Base ingredients for Pro when rows are present', () => {
-    const lib = selectIngredientLibrary({ demo: false, isPro: true, rows: [sampleRow], isError: false });
+    const lib = selectIngredientLibrary({
+      demo: false,
+      isPro: true,
+      rows: [sampleRow],
+      isError: false,
+    });
     expect(lib.status).toBe('ready');
     expect(lib.source).toBe('pi_base');
     expect(lib.ingredients).toHaveLength(1);
@@ -172,11 +197,18 @@ describe('search index', () => {
   });
 
   it('builds a demo index from name, id and category', () => {
-    const demoLib = selectIngredientLibrary({ demo: false, isPro: false, rows: undefined, isError: false });
+    const demoLib = selectIngredientLibrary({
+      demo: false,
+      isPro: false,
+      rows: undefined,
+      isError: false,
+    });
     expect(demoLib.searchIndex.size).toBe(DEMO_INGREDIENTS.length);
     // Haystack is NORMALIZED (owner P0): "Milk 3.5 %" → "milk 3 5"; the words are all present.
     expect(demoLib.searchIndex.get('milk_3_5')).toContain('milk 3 5');
-    expect(filterIngredients(demoLib.ingredients, 'milk', demoLib.searchIndex).length).toBeGreaterThan(0);
+    expect(
+      filterIngredients(demoLib.ingredients, 'milk', demoLib.searchIndex).length,
+    ).toBeGreaterThan(0);
   });
 });
 
@@ -187,7 +219,8 @@ describe('filterIngredients', () => {
     rows: [sampleRow, chocolateRow],
     isError: false,
   });
-  const run = (q: string) => filterIngredients(lib.ingredients, q, lib.searchIndex).map((i) => i.id);
+  const run = (q: string) =>
+    filterIngredients(lib.ingredients, q, lib.searchIndex).map((i) => i.id);
 
   it('returns all ingredients for an empty query', () => {
     expect(run('')).toEqual(['PI-ING-000010', 'PI-ING-000020']);

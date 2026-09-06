@@ -265,12 +265,14 @@ describe('Product Recognition V2 — deterministic semantic authority', () => {
       normalizedMassPercent: 4,
       normalizationBasis: 'SOURCE_PERCENT',
     });
+    // OWNER RULE (frozen 2026-08-25): 1 ml = 1 g against a 1000 g base, so
+    // ml/L normalises exactly like g/L. The raw declaration survives beside it.
     expect(parseProductDosage('20 ml/L')).toMatchObject({
       value: 20,
       unit: 'ML_PER_L',
-      normalizedMassPercent: null,
-      normalizationBasis: null,
-      reasonCodes: ['DOSAGE_ML_PER_L_REQUIRES_REVIEW'],
+      normalizedMassPercent: 2,
+      normalizationBasis: 'GELLATTI_1ML_1G_NORMALIZATION',
+      reasonCodes: ['DOSAGE_ML_PER_L_NORMALIZED_GELLATTI_1ML_1G'],
     });
   });
 

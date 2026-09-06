@@ -29,6 +29,7 @@ vi.mock('@/features/global-catalog/useGlobalCatalogPicker', () => ({
       preferredRetailers: [],
       defaultScope: 'global',
     },
+    searchIsSettled: true,
     isSettled: true,
     isFetching: false,
     isError: false,
@@ -45,6 +46,8 @@ vi.mock('@/services/productCapabilityReanalysis', () => ({
 
 vi.mock('@/services/globalCatalog', () => ({
   markCatalogProductUsed: vi.fn().mockResolvedValue(undefined),
+  searchProducts: vi.fn().mockResolvedValue([]),
+  setUserPreferredExactProductForSlot: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('@/services/ingredients', () => ({

@@ -209,7 +209,7 @@ describe('Pro executable validation', () => {
     expect([...useIngredientChangeStore.getState().changedByLastRecalculation]).toEqual([]);
   });
 
-  it('has one blocked terminal state with exact missing-price evidence in ECO', () => {
+  it('keeps a technically clean ECO recipe successful when costing is incomplete', () => {
     const input = structuredClone(starterMilkBase());
     input.goals = { ...input.goals, formulation_strategy: 'eco' };
     input.items[0] = {
@@ -222,12 +222,10 @@ describe('Pro executable validation', () => {
     useConstraintStudioStore.getState().createOptimizePreview();
 
     expect(useConstraintStudioStore.getState().previewIssue).toMatchObject({
-      code: 'missing_prices',
-      ingredientNames: [input.items[0]!.ingredient.name],
+      code: 'already_clean',
     });
     expect(useConstraintStudioStore.getState().recalculationTerminal).toEqual({
-      state: 'BLOCKED_WITH_EXACT_ACTION',
-      code: 'missing_prices',
+      state: 'NO_CHANGE_NEEDED',
     });
     expect(useConstraintStudioStore.getState().history).toEqual([]);
   });
@@ -445,7 +443,11 @@ describe('§17.1/§17.2 padlock', () => {
     // Machine capacity blocks the dilution ADD escape, so the genuine fix is
     // reducing sucrose (evidence pinned by the feasibility conflict test) —
     // exactly the move a lock must forbid and an unlock must re-allow.
-    loadRecipe({ ...overSweetStarter(150), machine_capacity_grams: 1050 });
+    loadRecipe({
+      ...overSweetStarter(150),
+      machine_capacity_grams: 1050,
+      machine_capacity_source: 'manual',
+    });
     useConstraintStudioStore.getState().toggleLock(SUCROSE);
 
     useConstraintStudioStore.getState().createOptimizePreview();

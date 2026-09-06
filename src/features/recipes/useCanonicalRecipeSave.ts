@@ -47,11 +47,23 @@ import {
 } from '@/features/product-intelligence';
 import { validateRecipeBehaviorOnServer } from '@/services/productIntelligence';
 import { productionVersionFingerprint } from '@/features/production-workspace/productionReadinessState';
+import { SAVE_BLOCKER_MESSAGE_PL, type PracticalBlock } from '@/features/recipes/saveBlocker';
+import { attachRecipeLabelDraft } from '@/features/master-label/labelDraftPersistence';
 
 const TRACE = {
   engineVersion: ENGINE_VERSION,
   configVersion: CONFIG_VERSION,
   mapperDatasetVersion: null,
+};
+
+/**
+ * Opt-in served trace for `?owner-auth-trace=1`. Payloads are deliberately
+ * structural: no token, user id, email, recipe id/name, request body or header.
+ */
+const traceOwnerSave = (stage: string, detail: Record<string, unknown>): void => {
+  if (typeof window === 'undefined') return;
+  if (new URLSearchParams(window.location.search).get('owner-auth-trace') !== '1') return;
+  console.info('[owner-save-trace]', { stage, ...detail });
 };
 
 /** The DEFAULT payload source: the Pro recipe-store draft (`/pro` behaviour, unchanged). */
@@ -85,9 +97,10 @@ const buildRecipeInputFromStore = (): RecipeInput => {
       }),
     ),
   );
+  const withLabelDraft = attachRecipeLabelDraft(withProfile, state.labelDraft);
   return practicalRecipeAuditMatchesInput(input, state.practicalRecipeAudit)
-    ? attachSavedPracticalRecipeAudit(withProfile, state.practicalRecipeAudit!)
-    : withProfile;
+    ? attachSavedPracticalRecipeAudit(withLabelDraft, state.practicalRecipeAudit!)
+    : withLabelDraft;
 };
 
 export type SaveBlockedReason = 'signin' | 'unavailable' | 'plan' | null;
@@ -165,6 +178,11 @@ export interface CanonicalRecipeSave {
   /** Pro-only execution gate. Home supplies its own payload and is untouched. */
   practicalBlocked: boolean;
   practicalBlockMessage: string | null;
+  /**
+   * WHAT kind of refusal this is. The surface needs it to point at the ONE control that
+   * answers the blocker — a message alone can only be printed, never routed.
+   */
+  practicalBlock: PracticalBlock | null;
   /** Create a NEW recipe aggregate + immutable v1 with this name (+ optional first-version note). */
   createNew: (title: string, note?: string) => Promise<boolean>;
   /** Append a new immutable version to the currently-linked recipe (+ optional change note). */
@@ -213,7 +231,7 @@ export function useCanonicalRecipeSave(
     void draftRevision;
     // Explicit payloads belong to Home/other surfaces. This reconstruction is
     // deliberately Pro-only and must not change their accepted save contract.
-    if (options.buildInput !== undefined) return { blocked: false, message: null };
+    if (options.buildInput !== undefined) return { blocked: false, kind: null, message: null };
     const input = buildRecipeInputFromStore();
     const state = useRecipeStore.getState();
     const composition = recipeCompositionFromState(state);
@@ -228,6 +246,7 @@ export function useCanonicalRecipeSave(
     if (!behaviorGate.ready) {
       return {
         blocked: true,
+        kind: 'PRODUCT_DATA_REQUIRED' as const,
         message: productBehaviorSaveGateMessage(state.newRecipeStarterKey !== null),
       };
     }
@@ -236,23 +255,27 @@ export function useCanonicalRecipeSave(
       practicalRecipeAudit,
     );
     if (!restoredVerified) {
+      // The draft has moved away from the audit that verified it. What the customer has
+      // to do is press one button, so that is all the sentence says.
       return {
         blocked: true,
-        message:
-          'Jeszcze jeden krok. Otwórz podgląd i zastosuj zweryfikowaną recepturę przed zapisem.',
+        kind: 'RECALCULATION_REQUIRED' as const,
+        message: SAVE_BLOCKER_MESSAGE_PL.RECALCULATION_REQUIRED,
       };
     }
     const result = practicalizeRecipeCandidate(input, constraints);
-    if (!result.ok) return { blocked: true, message: result.messagePl };
+    // A real refusal from the engine, carrying its own reason. No control on this screen
+    // answers it, so it must not point at one.
+    if (!result.ok) return { blocked: true, kind: 'REFUSED' as const, message: result.messagePl };
     const exactAsWritten =
       practicalRecipeInputFingerprint(result.audit.executableInput) ===
       practicalRecipeInputFingerprint(input);
     return exactAsWritten
-      ? { blocked: false, message: null }
+      ? { blocked: false, kind: null, message: null }
       : {
           blocked: true,
-          message:
-            'Jeszcze jeden krok. Otwórz podgląd i zastosuj zweryfikowaną recepturę z pełnymi gramaturami przed zapisem.',
+          kind: 'APPLY_REQUIRED' as const,
+          message: SAVE_BLOCKER_MESSAGE_PL.APPLY_REQUIRED,
         };
   }, [constraints, draftRevision, options.buildInput, practicalRecipeAudit]);
 
@@ -311,16 +334,31 @@ export function useCanonicalRecipeSave(
     fn: () => Promise<string | null>,
     requirePracticalRecipe = false,
   ): Promise<boolean> => {
-    if (blocked !== null || !repository) return false;
+    traceOwnerSave('run:start', {
+      authProjected: authed,
+      authUserPresent: Boolean(authUserId),
+      canSaveRecipe: caps.canSaveRecipe,
+      blocked,
+      linkedRecipePresent: Boolean(savedRecipeId),
+      draftRevision,
+      route: typeof window === 'undefined' ? null : window.location.pathname,
+    });
+    if (blocked !== null || !repository) {
+      traceOwnerSave('run:blocked', { blocked });
+      return false;
+    }
     if (requirePracticalRecipe && practicalGate.blocked) {
       setError(practicalGate.message);
+      traceOwnerSave('run:practical-blocked', { kind: practicalGate.kind });
       return false;
     }
     setBusy(true);
     setError(null);
     try {
       const linkedId = await fn();
+      traceOwnerSave('run:persisted', { linkedRecipePresent: Boolean(linkedId) });
       await invalidate(linkedId);
+      traceOwnerSave('run:complete', { queryInvalidationComplete: true });
       return true;
     } catch (caught) {
       const customerMessage = canonicalRecipeSaveErrorMessage(caught);
@@ -331,6 +369,12 @@ export function useCanonicalRecipeSave(
         );
       }
       setError(customerMessage);
+      traceOwnerSave('run:failed', {
+        failureType:
+          caught instanceof Error && PRODUCT_BEHAVIOR_SCOPE_MISMATCH.test(caught.message)
+            ? 'product-behavior-scope'
+            : 'repository-or-validation',
+      });
       return false;
     } finally {
       setBusy(false);
@@ -344,6 +388,10 @@ export function useCanonicalRecipeSave(
     clearError: () => setError(null),
     practicalBlocked: practicalGate.blocked,
     practicalBlockMessage: practicalGate.message,
+    practicalBlock:
+      practicalGate.blocked && practicalGate.kind !== null && practicalGate.message !== null
+        ? ({ kind: practicalGate.kind, message: practicalGate.message } satisfies PracticalBlock)
+        : null,
     createNew: (title, note) =>
       run(async () => {
         const recipeInput = buildInput();
@@ -352,6 +400,7 @@ export function useCanonicalRecipeSave(
             ? recipeCompositionFromState(useRecipeStore.getState())
             : null;
         await validateCurrentBehavior(recipeInput, productComposition);
+        traceOwnerSave('create:behavior-validated', { ready: true });
         const { recipe, version } = await repository!.createRecipe({
           ownerUserId: ownerId,
           title: title.trim(),
@@ -362,6 +411,11 @@ export function useCanonicalRecipeSave(
           source: 'manual',
           by: ownerId,
           capabilities: caps,
+        });
+        traceOwnerSave('create:repository-success', {
+          recipeIdPresent: Boolean(recipe.recipeId),
+          versionIdPresent: Boolean(version.versionId),
+          versionNumber: version.versionNumber,
         });
         if (linkStoreDraft) {
           markSaved(
@@ -387,6 +441,7 @@ export function useCanonicalRecipeSave(
             ? recipeCompositionFromState(useRecipeStore.getState())
             : null;
         await validateCurrentBehavior(recipeInput, productComposition);
+        traceOwnerSave('version:behavior-validated', { ready: true });
         const version = await repository!.saveNewVersion(
           savedRecipeId,
           recipeInput,
@@ -397,6 +452,10 @@ export function useCanonicalRecipeSave(
           },
           productComposition,
         );
+        traceOwnerSave('version:repository-success', {
+          versionIdPresent: Boolean(version.versionId),
+          versionNumber: version.versionNumber,
+        });
         if (linkStoreDraft) {
           markSaved(
             savedRecipeId,

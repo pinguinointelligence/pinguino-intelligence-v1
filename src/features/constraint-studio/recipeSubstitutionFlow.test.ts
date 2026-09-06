@@ -46,10 +46,9 @@ const mapperCell = (value: string, column: string): string | number | boolean | 
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : value;
 };
-const MAPPER_ROWS = mapperGrid
-  .slice(1)
-  .map(
-    (row) => ({
+const MAPPER_ROWS = mapperGrid.slice(1).map(
+  (row) =>
+    ({
       ...Object.fromEntries(
         mapperHeader.map((name, index) => [name, mapperCell(row[index] ?? '', name)]),
       ),
@@ -57,7 +56,7 @@ const MAPPER_ROWS = mapperGrid
       // Production queries already filter `is_active = true`.
       is_active: true,
     }) as unknown as IngredientRow,
-  );
+);
 
 const candidateFor = (lineId: string): SubstituteCandidate => {
   const candidate = verifiedRecipeSubstituteCandidates(
@@ -151,23 +150,28 @@ const select = (lineId: string, candidate: SubstituteCandidate, confirmMain = fa
     { productBehaviorSnapshots: initialSnapshots },
   );
   const proposalSnapshots = raw.ok
-    ? Object.fromEntries(raw.preview.proposedInput.items.map((item) => [
-        item.id,
-        initialSnapshots[item.id] ?? behaviorSnapshot(
+    ? Object.fromEntries(
+        raw.preview.proposedInput.items.map((item) => [
           item.id,
-          canonicalIngredientId(item.ingredient),
-          item.lock_type === 'main',
-        ),
-      ]))
+          initialSnapshots[item.id] ??
+            behaviorSnapshot(
+              item.id,
+              canonicalIngredientId(item.ingredient),
+              item.lock_type === 'main',
+            ),
+        ]),
+      )
     : initialSnapshots;
-  useConstraintStudioStore.getState().createSubstitutionPreview(
-    lineId,
-    candidate.ingredient!,
-    candidate.authorization!,
-    replacement,
-    confirmMain,
-    proposalSnapshots,
-  );
+  useConstraintStudioStore
+    .getState()
+    .createSubstitutionPreview(
+      lineId,
+      candidate.ingredient!,
+      candidate.authorization!,
+      replacement,
+      confirmMain,
+      proposalSnapshots,
+    );
 };
 
 beforeEach(() => {
@@ -188,29 +192,38 @@ beforeEach(() => {
   });
   useConstraintStudioStore.getState().resetForTests();
   for (const item of DEFAULT_PRESET.items) {
-    const grams = item.ingredient.id === 'milk_3_5'
-      ? item.planned_grams - 350
-      : item.planned_grams;
+    const grams = item.ingredient.id === 'milk_3_5' ? item.planned_grams - 350 : item.planned_grams;
     if (grams > 0) useRecipeStore.getState().addIngredient(item.ingredient, grams);
   }
   useRecipeStore.getState().addIngredient(strawberry, 350);
   for (const item of useRecipeStore.getState().items) {
-    useRecipeStore.getState().setProductBehaviorSnapshot(
-      item.id,
-      behaviorSnapshot(
+    useRecipeStore
+      .getState()
+      .setProductBehaviorSnapshot(
         item.id,
-        item.ingredient.canonical_ingredient_id ?? item.ingredient.id,
-        item.ingredient.name.includes('STRAWBERRIES'),
-      ),
-    );
+        behaviorSnapshot(
+          item.id,
+          item.ingredient.canonical_ingredient_id ?? item.ingredient.id,
+          item.ingredient.name.includes('STRAWBERRIES'),
+        ),
+      );
   }
   expect(Object.keys(useRecipeStore.getState().productBehaviorSnapshots).sort()).toEqual(
-    useRecipeStore.getState().items.map((item) => item.id).sort(),
+    useRecipeStore
+      .getState()
+      .items.map((item) => item.id)
+      .sort(),
   );
-  expect(Object.fromEntries(Object.entries(useRecipeStore.getState().productBehaviorSnapshots)
-    .map(([id, snapshot]) => [id, snapshot?.moduleEligibility.BASE_RECIPE]))).toEqual(
-      Object.fromEntries(useRecipeStore.getState().items.map((item) => [item.id, 'eligible'])),
-    );
+  expect(
+    Object.fromEntries(
+      Object.entries(useRecipeStore.getState().productBehaviorSnapshots).map(([id, snapshot]) => [
+        id,
+        snapshot?.moduleEligibility.BASE_RECIPE,
+      ]),
+    ),
+  ).toEqual(
+    Object.fromEntries(useRecipeStore.getState().items.map((item) => [item.id, 'eligible'])),
+  );
 });
 
 describe('normal recipe substitution → Preview → Apply', () => {
@@ -223,10 +236,9 @@ describe('normal recipe substitution → Preview → Apply', () => {
 
     select(line.id, candidate);
     const preview = useConstraintStudioStore.getState().preview;
-    expect(
-      preview?.kind,
-      JSON.stringify(useConstraintStudioStore.getState().previewIssue),
-    ).toBe('substitution');
+    expect(preview?.kind, JSON.stringify(useConstraintStudioStore.getState().previewIssue)).toBe(
+      'substitution',
+    );
     expect(
       useRecipeStore.getState().items.find((item) => item.id === line.id)?.ingredient
         .canonical_ingredient_id,
@@ -238,17 +250,17 @@ describe('normal recipe substitution → Preview → Apply', () => {
       useRecipeStore.getState().items.find((item) => item.id === line.id)?.ingredient
         .canonical_ingredient_id,
     ).toBe(candidate.id);
-    expect(
-      useRecipeStore.getState().productBehaviorSnapshots[line.id]?.mapperIngredientId,
-    ).toBe(candidate.id);
+    expect(useRecipeStore.getState().productBehaviorSnapshots[line.id]?.mapperIngredientId).toBe(
+      candidate.id,
+    );
     useConstraintStudioStore.getState().undoLastApply();
     expect(
       useRecipeStore.getState().items.find((item) => item.id === line.id)?.ingredient
         .canonical_ingredient_id,
     ).toBe(originalId);
-    expect(
-      useRecipeStore.getState().productBehaviorSnapshots[line.id]?.productVersionId,
-    ).toBe(originalBehaviorVersion);
+    expect(useRecipeStore.getState().productBehaviorSnapshots[line.id]?.productVersionId).toBe(
+      originalBehaviorVersion,
+    );
   });
 
   it('requires explicit Main identity consent and blocks a preview whose session consent is removed', () => {
@@ -273,6 +285,36 @@ describe('normal recipe substitution → Preview → Apply', () => {
       useRecipeStore.getState().items.find((item) => item.id === line.id)?.ingredient
         .canonical_ingredient_id,
     ).toBe(line.ingredient.canonical_ingredient_id);
+  });
+
+  it('replaces a consented Main identity without retaining metadata for the old product', () => {
+    const line = useRecipeStore
+      .getState()
+      .items.find((item) => item.ingredient.name.includes('STRAWBERRIES'))!;
+    useRecipeStore.getState().setMainIngredient(line.id);
+    const originalCanonicalId = line.ingredient.canonical_ingredient_id ?? line.ingredient.id;
+    const candidate = candidateFor(line.id);
+
+    select(line.id, candidate, true);
+    expect(useConstraintStudioStore.getState().preview?.substitution).toMatchObject({
+      changesMainIdentity: true,
+      fromCanonicalId: originalCanonicalId,
+      toCanonicalId: candidate.id,
+    });
+    useConstraintStudioStore.getState().applyPreview();
+
+    expect(useConstraintStudioStore.getState().blocked).toBeNull();
+    const replaced = useRecipeStore.getState().items.find((item) => item.id === line.id)!;
+    expect(replaced).toMatchObject({ lock_type: 'main', main_ratio_weight: 1 });
+    expect(replaced.ingredient.canonical_ingredient_id).toBe(candidate.id);
+    expect(
+      useRecipeStore
+        .getState()
+        .items.some(
+          (item) =>
+            (item.ingredient.canonical_ingredient_id ?? item.ingredient.id) === originalCanonicalId,
+        ),
+    ).toBe(false);
   });
 
   it('rejects a duplicate canonical identity before Preview', () => {

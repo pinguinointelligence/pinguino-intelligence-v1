@@ -618,12 +618,10 @@ describe('§6 ECO resolves Water through the owner price, not through Mapper', (
     expect(engineIngredient(IDS.water).cost_per_kg).toBeNull();
   });
 
-  it('reports missing_prices honestly when no owner price is supplied', () => {
+  it('keeps missing Water price out of the technical Preview result', () => {
     const result = buildOptimizePreview(withWater(), NO_CONSTRAINTS, AT);
-    expect(result.ok).toBe(false);
-    if (result.ok) return;
-    expect(result.code).toBe('missing_prices');
-    expect((result as { lineIds?: string[] }).lineIds).toContain('l:water');
+    if (!result.ok) expect((result as { code: string }).code).not.toBe('missing_prices');
+    expect(calculateRecipe(withWater()).costs).toMatchObject({ complete: false });
   });
 
   it('prices the ECO draft through the owner MOJA CENA overlay instead', () => {

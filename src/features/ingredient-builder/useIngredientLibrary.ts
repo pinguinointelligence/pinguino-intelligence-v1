@@ -6,8 +6,8 @@
  * WHOLE MILK, PINEAPPLE/STRAWBERRIES Fresh Fruit). Searching now hits the live
  * backend per settled query (`useIngredientSearch`).
  *
- * Owner/private products are not a recipe-catalog source. Demo / non-Pro keep
- * the local preview catalog; authenticated Pro uses only current Mapper search.
+ * HOME and PRO share the live product-catalog search; Demo keeps the local
+ * preview catalogue. Exact owned products remain governed by the catalog RPC.
  */
 import { useAccess } from '@/access/useAccess';
 import { isIngredientBackendConfigured } from '@/services/ingredients';
@@ -23,7 +23,7 @@ export function useIngredientLibrary({ demo }: { demo: boolean }): IngredientLib
   const enabled = shouldFetchLibrary({ isPro, demo });
 
   const base = !enabled
-    ? selectIngredientLibrary({ demo, isPro, rows: undefined, isError: false }) // demo / non-Pro preview catalog
+    ? selectIngredientLibrary({ demo, isPro, rows: undefined, isError: false }) // Demo preview catalog
     : isIngredientBackendConfigured()
       ? serverSearchLibrary() // canonical Pro: live per-query backend search
       : selectIngredientLibrary({ demo, isPro, rows: [], isError: false }); // backend not configured → honest fallback

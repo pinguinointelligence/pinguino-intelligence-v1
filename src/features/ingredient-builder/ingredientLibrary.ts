@@ -3,10 +3,9 @@
  * data access — just decision + shaping functions so everything is testable in
  * node without a DOM.
  *
- * The picker shows the PI Base library only for PI Pro members on /studio; every
- * other case (demo route, non-Pro, error, empty, not-yet-loaded) resolves to the
- * local demo catalog. Real access enforcement is the database RLS; these checks
- * are UX only (avoid needless fetches, no demo flash for Pro users).
+ * HOME and PRO use the same live catalogue search. The demo route remains on
+ * its intentionally small local catalogue. Real access enforcement is the
+ * database RLS; this check only selects the correct picker transport.
  */
 import { DEMO_INGREDIENTS } from '@/data/demoIngredients';
 import { ingredientRowToEngineIngredient } from '@/data/ingredients/ingredientMapper';
@@ -47,9 +46,9 @@ const NO_PRODUCTS = {
   productProvenance: new Map() as ReadonlyMap<string, ProductLibraryProvenance>,
 };
 
-/** Whether the PI Base query should run. Pro + not the demo route. */
-export function shouldFetchLibrary({ isPro, demo }: { isPro: boolean; demo: boolean }): boolean {
-  return isPro && !demo;
+/** Whether the live product query should run. HOME + PRO, never Demo. */
+export function shouldFetchLibrary({ demo }: { isPro: boolean; demo: boolean }): boolean {
+  return !demo;
 }
 
 /** Demo ingredients can only be searched by what they carry: name, id, category.
@@ -81,8 +80,14 @@ function demoLibrary(status: LibraryStatus): IngredientLibrary {
   const nameIndex = new Map(DEMO_INGREDIENTS.map((i) => [i.id, normalizeSearchText(i.name)]));
   const formIndex = new Map(DEMO_INGREDIENTS.map((i) => [i.id, i.category]));
   return {
-    ingredients: DEMO_INGREDIENTS, searchIndex, nameIndex, formIndex,
-    source: 'demo', status, serverSearch: false, ...NO_PRODUCTS,
+    ingredients: DEMO_INGREDIENTS,
+    searchIndex,
+    nameIndex,
+    formIndex,
+    source: 'demo',
+    status,
+    serverSearch: false,
+    ...NO_PRODUCTS,
   };
 }
 
@@ -93,8 +98,14 @@ function demoLibrary(status: LibraryStatus): IngredientLibrary {
  */
 export function serverSearchLibrary(): IngredientLibrary {
   return {
-    ingredients: [], searchIndex: new Map(), nameIndex: new Map(), formIndex: new Map(),
-    source: 'pi_base', status: 'ready', serverSearch: true, ...NO_PRODUCTS,
+    ingredients: [],
+    searchIndex: new Map(),
+    nameIndex: new Map(),
+    formIndex: new Map(),
+    source: 'pi_base',
+    status: 'ready',
+    serverSearch: true,
+    ...NO_PRODUCTS,
   };
 }
 
@@ -103,8 +114,14 @@ export function serverSearchLibrary(): IngredientLibrary {
  * the authenticated production catalog. */
 export function unavailableMapperLibrary(): IngredientLibrary {
   return {
-    ingredients: [], searchIndex: new Map(), nameIndex: new Map(), formIndex: new Map(),
-    source: 'pi_base', status: 'fallback', serverSearch: false, ...NO_PRODUCTS,
+    ingredients: [],
+    searchIndex: new Map(),
+    nameIndex: new Map(),
+    formIndex: new Map(),
+    source: 'pi_base',
+    status: 'fallback',
+    serverSearch: false,
+    ...NO_PRODUCTS,
   };
 }
 
@@ -132,8 +149,14 @@ export function selectIngredientLibrary({
   if (rows === undefined) {
     // Pro, fetching — show a loading state, never a demo flash.
     return {
-      ingredients: [], searchIndex: new Map(), nameIndex: new Map(), formIndex: new Map(),
-      source: 'pi_base', status: 'loading', serverSearch: false, ...NO_PRODUCTS,
+      ingredients: [],
+      searchIndex: new Map(),
+      nameIndex: new Map(),
+      formIndex: new Map(),
+      source: 'pi_base',
+      status: 'loading',
+      serverSearch: false,
+      ...NO_PRODUCTS,
     };
   }
   if (rows.length === 0) {
@@ -149,12 +172,21 @@ export function selectIngredientLibrary({
     const ingredient = ingredientRowToEngineIngredient(row);
     ingredients.push(ingredient);
     searchIndex.set(ingredient.id, rowSearchText(row, ingredient.category));
-    nameIndex.set(ingredient.id, normalizeSearchText(`${row.ingredient_name_display} ${row.ingredient_name_internal}`));
+    nameIndex.set(
+      ingredient.id,
+      normalizeSearchText(`${row.ingredient_name_display} ${row.ingredient_name_internal}`),
+    );
     formIndex.set(ingredient.id, row.ingredient_subcategory ?? '');
   }
   return {
-    ingredients, searchIndex, nameIndex, formIndex,
-    source: 'pi_base', status: 'ready', serverSearch: false, ...NO_PRODUCTS,
+    ingredients,
+    searchIndex,
+    nameIndex,
+    formIndex,
+    source: 'pi_base',
+    status: 'ready',
+    serverSearch: false,
+    ...NO_PRODUCTS,
   };
 }
 

@@ -1,0 +1,108 @@
+{
+  "ranAt": "2026-09-04T22:37:18.614Z",
+  "qaAccount": "home@home.com",
+  "gtin": "4305615614434",
+  "started": {
+    "kind": "discovery_requested"
+  },
+  "runs": [
+    {
+      "run": 1,
+      "ranAt": "2026-09-04T22:35Z",
+      "result": "research + finalize refusal + request PASS; rescan continuity assertion failed on a wrong read-model key (adapter fixed)"
+    },
+    {
+      "run": 2,
+      "ranAt": "2026-09-04T22:37:18.614Z",
+      "result": "11/11 PASS — rescan found the open request → discovery_requested (continuity across sessions)"
+    }
+  ],
+  "stagingFactsFromDatabase": {
+    "scanSession": {
+      "id": "ed9d0d48-a09b-4905-911f-66a2cf4e4753",
+      "state": "analyzed",
+      "barcode": "4305615614434",
+      "visionCalls": 0,
+      "overlayState": "SCAN_DRAFT",
+      "identity": {
+        "displayName": null,
+        "brand": null,
+        "category": "Nahrungsergänzungmittel",
+        "countryOfOrigin": "Deutschland"
+      },
+      "missingCriticalFields": [
+        "product_identity",
+        "brand_or_unbranded"
+      ],
+      "externalSources": [
+        {
+          "sourceType": "web_search",
+          "title": "altapharma Magnesium + Calcium + D3 Brausetabletten",
+          "url": "https://www.rossmann.de/de/gesundheit-altapharma-magnesium--calcium--d3-brausetabletten/p/4305615614434",
+          "fieldsUsed": [
+            "identity.category",
+            "claims",
+            "package.netQuantity",
+            "manufacturer",
+            "identity.countryOfOrigin"
+          ]
+        },
+        {
+          "sourceType": "web_search",
+          "title": "Altapharma Magnesium + calcium + D3 - Bruistabletten - vegan",
+          "url": "https://bol.com/be/nl/p/altapharma-magnesium-calcium-d3-bruistabletten-vegan/9300000011452521/",
+          "fieldsUsed": [
+            "ingredientsText",
+            "allergensText",
+            "productionDeclarations.dosageText"
+          ]
+        },
+        {
+          "sourceType": "web_search",
+          "title": "Altapharma, Magnesium + Calcium +D3",
+          "url": "https://fddb.info/db/en/food/altapharma_magnesium_calcium_d3_1462359/index.html",
+          "fieldsUsed": [
+            "nutrition.basis",
+            "nutrition.energyKj",
+            "nutrition.energyKcal",
+            "nutrition.fat",
+            "nutrition.carbohydrate",
+            "nutrition.sugars",
+            "nutrition.fibre",
+            "nutrition.protein",
+            "nutrition.salt"
+          ]
+        }
+      ]
+    },
+    "productRowsForCode": 0,
+    "productRequest": {
+      "id": "bdfe233d-361f-404b-b6f4-a2b86f6e106e",
+      "requestNumber": 32,
+      "status": "SUBMITTED",
+      "source": "SCANNER",
+      "detectedEan": "4305615614434",
+      "productName": null,
+      "brand": null,
+      "marketCountryCode": "PL",
+      "scanSessionId": "ed9d0d48-a09b-4905-911f-66a2cf4e4753",
+      "scannerProvenance": {
+        "authority": "SCAN_IMPORT_V2_DISCOVERY_V1",
+        "keys": [
+          "scanCore",
+          "authority",
+          "conflicts",
+          "sourceUrls"
+        ]
+      },
+      "extractedDataKeys": [
+        "barcodes",
+        "identity",
+        "nutrition",
+        "allergensText",
+        "ingredientsText"
+      ]
+    }
+  },
+  "reading": "A genuinely unknown code (a German supplement, not a food) went through the real authorities: bounded exact-source research found three web sources with per-field provenance; the identity is NOT trusted from the web alone (displayName null, missing product_identity/brand_or_unbranded), finalize without a profile refused honestly, no product row was created, and a durable discovery request (#32) with Scan Import 2.0 provenance now carries the identity across sessions. Market country PL came from the QA context, the origin evidence says Deutschland — the two facts stay separate."
+}

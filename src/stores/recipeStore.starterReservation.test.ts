@@ -65,7 +65,7 @@ const newSorbetThenMachine = (profile: (typeof MACHINE_CATALOG)[number]) => {
     label: machineDisplayName(profile),
     temperatureC: -11,
     batchGrams: setup.recommendedBatchGrams!,
-    capacityGrams: setup.recommendedBatchGrams!,
+    hardCapacityGrams: setup.hardMaximumBatchGrams,
     batchSource: 'MACHINE_DEFAULT',
   });
   return { before, result, batch: setup.recommendedBatchGrams! };
@@ -85,9 +85,7 @@ describe('an incomplete starter keeps its Main reservation across a batch resize
     const reservation = st().target_batch_grams - sum();
     expect(reservation).toBeGreaterThan(0);
     expect(sum() + reservation).toBeCloseTo(batch, 6);
-    expect(Math.abs(reservation / batch - (1 - supportShare))).toBeLessThanOrEqual(
-      SHARE_TOLERANCE,
-    );
+    expect(Math.abs(reservation / batch - (1 - supportShare))).toBeLessThanOrEqual(SHARE_TOLERANCE);
 
     // INULIN stays inside the DERIVED owner band — never a literal figure.
     const band = ownerInulinGramBand(batch);
@@ -153,7 +151,7 @@ describe('an incomplete starter keeps its Main reservation across a batch resize
         label: 'Ninja CREAMi Deluxe',
         temperatureC: -11,
         batchGrams: setup.recommendedBatchGrams,
-        capacityGrams: setup.recommendedBatchGrams,
+        hardCapacityGrams: setup.hardMaximumBatchGrams,
         batchSource: 'MACHINE_DEFAULT',
       });
       // A complete recipe still fills its new batch exactly.

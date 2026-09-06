@@ -67,11 +67,13 @@ describe('opening screen — honest for every persona', () => {
   });
 
   it('the frozen Demo screen differs from Home/Pro ONLY by the persona plumbing', () => {
-    // Neutralize the two intentional persona artifacts (trace + DEV selector
-    // option state); everything else must be byte-identical — the persona wiring
-    // alone can never alter the redacted Demo opening surface.
+    // AppShell intentionally projects persona into global navigation (logo
+    // destination and entitlement links). Compare the route-local opening
+    // surface inside <main>; its only intentional persona artifacts remain the
+    // trace and DEV selector option state.
     const neutralize = (html: string) =>
       html
+        .slice(html.indexOf('<main'))
         .replace(/data-persona="[a-z]+"/g, 'data-persona="X"')
         // The DEV selector's controlled <select> marks the current persona's
         // <option> as selected in static markup; normalize it away.

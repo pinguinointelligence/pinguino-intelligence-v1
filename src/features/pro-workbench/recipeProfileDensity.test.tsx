@@ -27,18 +27,40 @@ describe('Recipe profile visual density contract', () => {
        detents, radiogroup and arrow keys are all still asserted elsewhere. */
     expect(axes).not.toContain('xl:min-h-[66px]');
     expect(axes).not.toContain('absolute inset-x-0 top-[11px] h-1 rounded-full');
-    // Same 0/25/50/75/100 spacing, now expressed through the shared span
-    // helper: atSpan(detent, 2) === ((detent + 2) / 4) * 100. A three-position
-    // axis reuses the identical end-to-end geometry with span 1.
-    expect(axes).toContain('`${((detent + span) / (span * 2)) * 100}%`');
+    /* MERGED CONTRACT. Two things landed on this control in parallel and both
+       are asserted here.
+
+       From staging: the geometry is parameterised by the axis's own detent set,
+       so a profile whose proven authority publishes three targets (Protein
+       ice-fraction hardness) renders three REAL positions instead of five where
+       -2 would equal -1. Nothing invents a level.
+
+       From the owner's 2026-09-03 direction: the marks are a SIZE RAMP rather
+       than five identical dots, and Twardość is mirrored in PRESENTATION only —
+       the largest ball sits leftmost and still writes the positive canonical
+       value the engine reads as firmer. The ramp is SAMPLED across whatever
+       count the authority publishes, which is what makes the two compatible. */
     expect(axes).toContain('const DETENTS = [-2, -1, 0, 1, 2] as const;');
-    expect(axes).toContain('top-[9.5px] -ml-[3.5px] size-[7px] rounded-full bg-[var(--g-rail-track)]');
+    expect(axes).toContain('const DETENTS_THREE = [-1, 0, 1] as const;');
+    expect(axes).toContain('`${(index / Math.max(1, count - 1)) * 100}%`');
+    expect(axes).toMatch(/const DOT_RAMP = \[5, 6\.5, 8, 9\.5, 11\]/);
+    expect(axes).toMatch(/const THUMB_RAMP = \[13, 14\.5, 16, 17\.5, 19\]/);
+    expect(axes).toContain('const sampleRamp = (ramp: readonly number[], count: number)');
+    expect(axes).toContain('const visual = reversed ? [...detents].reverse() : [...detents];');
+    expect(axes).toContain("reversed={axis === 'softness'}");
     // The fill runs centre → position, never end → position.
-    expect(axes).toContain("const fillLeft = position >= 0 ? '50%' : detentAt(position);");
-    // Fill still spans centre → position; the divisor is now the axis's own
-    // span so a three-position rail fills half-widths instead of quarters.
-    expect(axes).toContain('const fillWidth = `${(Math.abs(position) / (span * 2)) * 100}%`;');
-    expect(axes).toContain('top-[5px] -ml-2 size-4 rounded-full shadow-[0_0_0_3px_#fff]');
+    expect(axes).toContain(
+      'const fillLeft = visualLeft(Math.min(activeIndex, centreIndex), count);',
+    );
+    /* The RAIL connects the marks, and is rendered FIRST so the fill, the
+       neutral ring and the thumb all paint over it. */
+    const railAt = axes.indexOf(
+      'absolute inset-x-0 top-[11.5px] h-[3px] rounded-full bg-[var(--g-line)]',
+    );
+    expect(railAt).toBeGreaterThan(-1);
+    expect(railAt).toBeLessThan(axes.indexOf('style={{ left: fillLeft, width: fillWidth }}'));
+    expect(railAt).toBeLessThan(axes.indexOf('left: visualLeft(activeIndex, count)'));
+    expect(axes).toContain('rounded-full shadow-[0_0_0_3px_#fff] transition-[left,width,height');
     // A 26 px target on a 16 px mark: the thing you press is bigger than the
     // thing you see, which is the opposite of the old 28 px numeral button.
     expect(axes).toContain('-ml-[13px] size-[26px]');
@@ -80,19 +102,18 @@ describe('Recipe profile visual density contract', () => {
   it('lays Settings out as ONE three-row, two-column grid of 46 px fields', () => {
     const settings = read('WorkbenchSettingsLine.tsx');
     const theme = read('../../styles/theme-pro-light.css');
+    const visualSystem = read('../../styles/gellatti-v2-1.css');
 
     // Six cells in the approved reading order: confirmation/type, then
     // machine/serving, then batch/mode. Batch and Tryb are ordinary cells of
     // the same grid — never a separate three-row sub-grid pinned to row 1.
     expect(settings).toContain('profile-settings-grid grid grid-cols-2 items-stretch gap-2');
-    // Was 2 — batch card + strategy card. The batch card is removed with its
-    // field (owner authority 2026-09-02), so the mode card is the only one left.
-    expect(settings.match(/data-settings-final-card=/g)).toHaveLength(1);
-    expect(settings.match(/data-settings-label=/g)).toHaveLength(1);
-    expect(settings.match(/data-settings-control=/g)).toHaveLength(1);
-    // SUPERSEDED, owner authority 2026-09-02 (final Settings contract): the
-    // order-5 cell was the target-batch card and is removed with the field.
-    expect(settings).not.toContain('order-5');
+    // Batch and mode are both accepted cells again (owner regression restore
+    // 2026-09-04), with one target control and no duplicate Base readout.
+    expect(settings.match(/data-settings-final-card=/g)).toHaveLength(2);
+    expect(settings.match(/data-settings-label=/g)).toHaveLength(2);
+    expect(settings.match(/data-settings-control=/g)).toHaveLength(2);
+    expect(settings).toContain('order-5');
     // SUPERSEDED, owner authority 2026-09-02 (approved desktop PDF §5): the
     // sixth cell was the duplicated `Baza receptury` readout and is REMOVED.
     // The grid is now the four approved fields plus the batch row; nothing may
@@ -113,6 +134,9 @@ describe('Recipe profile visual density contract', () => {
     expect(settings).toContain('bg-[var(--g-graphite)] px-5');
     expect(settings).toContain('data-testid="profile-settings-save-default"');
     expect(settings.includes('bg-[#f58a07] px-3 text-xs font-semibold text-white')).toBe(false);
+    expect(visualSystem).toContain("[data-testid='profile-settings-confirm']");
+    expect(visualSystem).toContain('border-radius: 9999px !important;');
+    expect(visualSystem).not.toContain('border-radius: 8px !important;');
     /* OWNER AUTHORITY 2026-09-03: Settings is a BOX whose label is notched
        into its own top border — the same make as DOSTOSUJ RECEPTURĘ above and
        WIEDZA below. It was a band (eyebrow + hairline) wrapped around a second

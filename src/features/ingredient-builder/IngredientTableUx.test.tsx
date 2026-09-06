@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -125,12 +126,21 @@ describe('legacy duplicate repair detection', () => {
 describe('Recipe ingredient table — quiet primary surface', () => {
   beforeEach(() => useIngredientTableUxStore.getState().reset());
 
-  it('shows exactly the requested primary headers without Role or Availability columns', () => {
+  it('starts with the first ingredient and never renders the removed visible legend row', () => {
     const html = renderBuilder();
-    const header = html.match(/data-testid="recipe-table-header"[\s\S]*?<\/div>/)?.[0] ?? '';
-    for (const label of ['Składnik', '%', 'Ilość', 'Cena/kg']) expect(header).toContain(label);
-    expect(header).not.toContain('Rola');
-    expect(header).not.toContain('Dostępność');
+    expect(html).not.toContain('data-testid="recipe-table-header"');
+    expect(html).toContain('role="region" aria-label="Składniki receptury"');
+
+    const rowsStart = html.indexOf('data-testid="ingredient-rows-scroll"');
+    const firstIngredient = html.indexOf(baseItem.ingredient.name, rowsStart);
+    const total = html.indexOf('data-testid="base-mass-total"', rowsStart);
+    expect(rowsStart).toBeGreaterThan(-1);
+    expect(firstIngredient).toBeGreaterThan(rowsStart);
+    expect(firstIngredient).toBeLessThan(total);
+
+    const source = readFileSync(new URL('./IngredientBuilder.tsx', import.meta.url), 'utf8');
+    expect(source).not.toContain("['', 'Składnik', '%', 'Ilość', 'Cena/kg', '']");
+    expect(source).not.toContain('md:not-sr-only');
   });
 
   it('exposes active range bounds to the direct grams control', () => {

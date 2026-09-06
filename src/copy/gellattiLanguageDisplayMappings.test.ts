@@ -45,7 +45,10 @@ describe('Gellatti Language V1 display-only mappings', () => {
       ],
     ];
     for (const [contract, display] of cases) expect(scaleMessagePl(contract)).toBe(display);
-    const source = readFileSync(new URL('../features/pro-core/recipeScaling.ts', import.meta.url), 'utf8');
+    const source = readFileSync(
+      new URL('../features/pro-core/recipeScaling.ts', import.meta.url),
+      'utf8',
+    );
     for (const [contract] of cases) expect(source).toContain(contract);
   });
 
@@ -76,6 +79,9 @@ describe('Gellatti Language V1 display-only mappings', () => {
   });
 
   it('maps Production Rescue protocol failures at the presentation boundary', () => {
+    expect(productionRescueErrorMessagePl(new Error('engine_bundle_mismatch'))).toBe(
+      'Korekta partii jest chwilowo niedostępna — wersja obliczeń na serwerze nie jest zgodna z aplikacją.',
+    );
     expect(
       productionRescueErrorMessagePl(new Error('Production Rescue authorization failed.')),
     ).toBe('Nie udało się potwierdzić dostępu do korekty partii.');
