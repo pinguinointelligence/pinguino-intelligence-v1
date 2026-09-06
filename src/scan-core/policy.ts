@@ -25,6 +25,17 @@ export type Guidance =
 export const THRESHOLDS = {
   /** table 4: < 0.5 × session median → 13–15 % success; ≥ 1.0 → 66–71 % */
   blurRel: 0.5,
+  /*
+    SOL-045 — an ABSOLUTE floor beside the relative one. The blur test was purely relative to a
+    running median of the CURRENT session, so a session that is out of focus from its very first
+    frame drives its own median down; every later frame then scores about 1.0x that median, the
+    relative test never fires, and the customer is never told the picture is blurred. That is a
+    self-adjusting check that cannot fail — exactly the desktop symptom the owner reported.
+
+    The number is the laplacian variance of an in-focus 320-px sample; below it a frame is blurred
+    no matter what the rest of the session looked like.
+  */
+  blurAbs: 55,
   /** table 3: native cheap 0 % above fill 0.5, 42 % at 0.35–0.5; harder-with-downscale 40 % → decode close codes on the MEDIUM plane */
   largeFill: 0.35,
   /** table 2: ≤ 1.5 px modules → 27 % success and 15 % wrong reads; 2 px → 69 % / 0.35 % */
@@ -153,6 +164,13 @@ export class PolicyState {
 
     if (!c) {
       this.noCandidateSince ??= f.tMs;
+      /*
+        SOL-045 — the sharpness history is fed here too. It used to be pushed ONLY on frames that
+        produced a candidate, and a blurred frame is precisely the frame that produces none (the
+        localizer needs edges). So the statistic was built from a self-selected sample of the
+        sharpest frames in the session, and the blurriest evidence never reached it.
+      */
+      this.pushSharp(f.sharpness);
       this.blurSince = null;
       const lost = f.tMs - this.lastCandidateAt > THRESHOLDS.lostMs;
       if (lost) this.lastCandidate = null;
@@ -217,25 +235,37 @@ export class PolicyState {
           ? 'improve_light'
           : 'none';
 
-    if (sharpRel !== null && sharpRel < THRESHOLDS.blurRel) {
+    const blurred =
+      (sharpRel !== null && sharpRel < THRESHOLDS.blurRel) || f.sharpness < THRESHOLDS.blurAbs;
+    if (blurred) {
       this.blurSince ??= f.tMs;
+      /*
+        SOL-045 — "no continuous autofocus" must include the case where the browser does not SAY.
+        `autofocus` is read from capabilities.focusMode, and desktop Chrome and Safari expose
+        neither capability nor setting, so the value is null — never `false`. The branch that exists
+        precisely to help a fixed-focus camera was therefore unreachable on every desktop, which is
+        where fixed focus actually lives. A desktop that will not tell us is treated as fixed focus.
+      */
+      const noAutofocus =
+        p.autofocus === false || (p.autofocus === null && p.formFactor === 'desktop');
       // without autofocus there is nothing to wait for: guide at once (design §10)
-      const persistent =
-        p.autofocus === false || f.tMs - this.blurSince > THRESHOLDS.blurGuidanceMs;
+      const persistent = noAutofocus || f.tMs - this.blurSince > THRESHOLDS.blurGuidanceMs;
       let guidance: Guidance = 'none';
       if (persistent)
-        guidance =
-          p.autofocus === false
-            ? c.fill > 0.3
-              ? 'move_away'
-              : 'move_closer'
-            : c.fill > 0.3
-              ? 'move_away'
-              : 'hold_steady';
+        guidance = noAutofocus
+          ? c.fill > 0.3
+            ? 'move_away'
+            : 'move_closer'
+          : c.fill > 0.3
+            ? 'move_away'
+            : 'hold_steady';
       return {
         ...out,
         path: 'SKIP_BLUR',
-        reason: `sharpness ${sharpRel.toFixed(2)}× median < ${THRESHOLDS.blurRel} (table 4)`,
+        reason:
+          sharpRel !== null && sharpRel < THRESHOLDS.blurRel
+            ? `sharpness ${sharpRel.toFixed(2)}× median < ${THRESHOLDS.blurRel} (table 4)`
+            : `sharpness ${f.sharpness.toFixed(0)} < absolute floor ${THRESHOLDS.blurAbs} (SOL-045)`,
         guidance,
       };
     }

@@ -218,6 +218,16 @@ const STATE_TEXT: Record<ScanState, string> = {
   COMPLETE: 'Odczytano',
   LOST: 'Zgubiłem kod — pokaż go ponownie',
 };
+/*
+  SOL-045. Every hint used to be phrased as an instruction to move the CAMERA — „Przesuń telefon w
+  lewo", „Unieś telefon wyżej". On a phone that is right: the hand holding the camera is the hand
+  that moves. On a computer the camera is bolted to the lid and the customer moves the PRODUCT, so
+  the very same sentence reads backwards — which is the „góra jak dół" half of what the owner
+  reported. Nothing in the image is inverted vertically; the instruction was.
+
+  So there are two voices for one set of hints, chosen by form factor. The DIRECTION is identical in
+  both: only the noun and the verb change.
+*/
 const GUIDANCE_TEXT: Record<Exclude<ScanGuidance, 'none'>, string> = {
   hold_steady: 'Trzymaj telefon nieruchomo',
   move_closer: 'Przybliż telefon do kodu',
@@ -226,11 +236,25 @@ const GUIDANCE_TEXT: Record<Exclude<ScanGuidance, 'none'>, string> = {
   improve_light: 'Potrzeba więcej światła',
   camera_inadequate: 'Ten aparat nie odczyta tego kodu — wpisz kod ręcznie',
 };
+const GUIDANCE_TEXT_FIXED_CAMERA: Record<Exclude<ScanGuidance, 'none'>, string> = {
+  hold_steady: 'Trzymaj produkt nieruchomo',
+  move_closer: 'Przysuń produkt bliżej kamery',
+  move_away: 'Odsuń produkt od kamery',
+  aim_in_frame: 'Ustaw kod w ramce',
+  improve_light: 'Potrzeba więcej światła',
+  camera_inadequate: 'Ta kamera nie odczyta tego kodu — wpisz kod ręcznie',
+};
 const POSITION_TEXT: Record<NonNullable<PositionHint>, string> = {
   left: 'Przesuń telefon w lewo',
   right: 'Przesuń telefon w prawo',
   up: 'Unieś telefon wyżej',
   down: 'Opuść telefon niżej',
+};
+const POSITION_TEXT_FIXED_CAMERA: Record<NonNullable<PositionHint>, string> = {
+  left: 'Przesuń produkt w lewo',
+  right: 'Przesuń produkt w prawo',
+  up: 'Przesuń produkt wyżej',
+  down: 'Przesuń produkt niżej',
 };
 
 /** where the code sits in the frame → which way to move the phone to centre it */
@@ -255,13 +279,19 @@ export function scanFeedbackText(frame: {
   guidance: ScanGuidance;
   timedOut: boolean;
   position: PositionHint;
+  /** true when the camera cannot move — a laptop or desktop webcam, where the PRODUCT moves */
+  fixedCamera?: boolean;
 }): string {
+  const guidanceText = frame.fixedCamera ? GUIDANCE_TEXT_FIXED_CAMERA : GUIDANCE_TEXT;
+  const positionText = frame.fixedCamera ? POSITION_TEXT_FIXED_CAMERA : POSITION_TEXT;
   if (frame.state === 'COMPLETE') return STATE_TEXT.COMPLETE;
   if (frame.timedOut) return 'Nie udało się potwierdzić kodu — spróbuj bliżej albo pod innym kątem';
   if (frame.guidance !== 'none' && frame.guidance !== 'hold_steady')
-    return GUIDANCE_TEXT[frame.guidance];
-  if (frame.position && frame.state !== 'HOLD') return POSITION_TEXT[frame.position];
-  if (frame.guidance === 'hold_steady') return GUIDANCE_TEXT.hold_steady;
+    return guidanceText[frame.guidance];
+  if (frame.position && frame.state !== 'HOLD') return positionText[frame.position];
+  if (frame.guidance === 'hold_steady') return guidanceText.hold_steady;
+  // SOL-045: with no candidate at all the customer gets a neutral instruction, not a bare state
+  if (frame.fixedCamera && frame.state === 'SEARCHING') return 'Umieść kod w ramce';
   return STATE_TEXT[frame.state];
 }
 

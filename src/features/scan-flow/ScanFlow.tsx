@@ -500,6 +500,14 @@ export function ScanFlow({
     window.location.assign(plan === 'pro' ? '/subscription?plan=pro' : '/subscription?plan=home');
   };
 
+  /*
+    SOL-045. On a computer the browser delivers the USER-facing camera (there is no environment one),
+    and an un-mirrored front camera is the view another person has of you: the product moves the
+    wrong way. The PREVIEW is mirrored so movement reads naturally — left is left, up is up. The
+    DECODER is never mirrored: it reads the raw frame, and a mirrored barcode would not decode.
+  */
+  const [mirrorPreview, setMirrorPreview] = useState(false);
+
   const [resumedCode, setResumedCode] = useState<string | null>(null);
   useEffect(() => {
     if (entry === 'guest_demo') return;
@@ -537,6 +545,7 @@ export function ScanFlow({
       onStatus: (status) =>
         setPhase((p) => (p.kind === 'camera' && status !== 'stopped' ? { ...p, status } : p)),
       onFrame: (f) => setFrame(f),
+      onMirror: (m) => setMirrorPreview(m),
       onError: () =>
         setPhase((p) =>
           p.kind === 'camera'
@@ -717,6 +726,8 @@ export function ScanFlow({
                 guidance: frame.guidance,
                 timedOut: frame.timedOut,
                 position,
+                // a camera the customer cannot pick up: the PRODUCT is what moves
+                fixedCamera: mirrorPreview,
               })
             : STATUS_TEXT[phase.status]
       : '';
@@ -757,13 +768,22 @@ export function ScanFlow({
             {intro ?? 'Pokaż kod kreskowy produktu aparatowi.'}
           </p>
           <div
-            className="relative overflow-hidden rounded-2xl bg-black"
+            /*
+              SOL-045: the camera block had no max-width and a hard-coded PORTRAIT 3:4 aspect, so on
+              the products destination it stretched to the full 1280 px canvas — a 1280x1706 video,
+              taller than any desktop screen, with object-cover throwing ~58% of a 16:9 webcam frame
+              out of view while the decoder analysed the whole uncropped frame. The customer aimed
+              inside a box that meant nothing to the engine.
+            */
+            className="relative mx-auto w-full max-w-[420px] overflow-hidden rounded-2xl bg-black"
             hidden={phase.status === 'unavailable'}
             data-testid="scan-flow-camera"
+            data-mirrored={mirrorPreview ? 'true' : 'false'}
           >
             <video
               ref={videoRef}
-              className="aspect-[3/4] w-full object-cover"
+              className="aspect-[3/4] w-full object-cover sm:aspect-video"
+              style={mirrorPreview ? { transform: 'scaleX(-1)' } : undefined}
               muted
               playsInline
               autoPlay
@@ -777,13 +797,25 @@ export function ScanFlow({
             />
             {/* the code the engine is tracking */}
             {roiBox ? (
+              /*
+                The engine reports the code's position in RAW frame coordinates. When the preview is
+                mirrored the picture no longer matches those coordinates, so the overlay LAYER is
+                mirrored with it — flipping the layer, not the box, is what moves the box's POSITION
+                to the other side. Otherwise the one element that says "the code is HERE" would point
+                at the opposite edge of the screen.
+              */
               <div
                 aria-hidden="true"
-                className={`pointer-events-none absolute rounded-md border-2 ${
-                  success ? 'border-emerald-400 bg-emerald-400/20' : 'border-amber-300'
-                }`}
-                style={roiBox}
-              />
+                className="pointer-events-none absolute inset-0"
+                style={mirrorPreview ? { transform: 'scaleX(-1)' } : undefined}
+              >
+                <div
+                  className={`absolute rounded-md border-2 ${
+                    success ? 'border-emerald-400 bg-emerald-400/20' : 'border-amber-300'
+                  }`}
+                  style={roiBox}
+                />
+              </div>
             ) : null}
             <div
               className={`absolute inset-x-0 bottom-0 px-3 py-2 text-center text-sm font-semibold ${
