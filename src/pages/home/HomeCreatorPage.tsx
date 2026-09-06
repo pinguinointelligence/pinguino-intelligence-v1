@@ -66,6 +66,7 @@ import type { HomeStage } from '@/features/home-creator/homeStageFlow';
 import { HomeIntentSection } from '@/features/home-creator/ui/HomeIntentSection';
 import { HomeProfileSection } from '@/features/home-creator/ui/HomeProfileSection';
 import { HomeMachineSection } from '@/features/home-creator/ui/HomeMachineSection';
+import { HomePreparationSection } from '@/features/home-creator/ui/HomePreparationSection';
 import { HomeRecipeSection } from '@/features/home-creator/ui/HomeRecipeSection';
 
 /** Smooth movement to the next section — the only "navigation" HOME has (§83). */
@@ -667,10 +668,23 @@ export function HomeCreatorPage() {
             // The canonical handler owns the reason; HOME only has to show it, filtered
             // into customer language the same way every other HOME notice is.
             saveNotice={homeCustomerNotice(recipeSave.error)}
-            onLetsMakeIt={() => useHomeDraftStore.getState().startPreparation()}
+            onLetsMakeIt={() => {
+              useHomeDraftStore.getState().startPreparation();
+              window.setTimeout(() => scrollToStage('preparation'), 60);
+            }}
             onShare={() => undefined}
             canShare={false}
             onBack={flow.backFrom('recipe') ? () => scrollToStage(flow.backFrom('recipe')!) : null}
+          />
+        ) : null}
+
+        {/* SOL-040: the journey's last stage — the customer weighs the recipe out. */}
+        {flow.stages.includes('preparation') ? (
+          <HomePreparationSection
+            items={recipe.items}
+            toppings={recipe.toppings}
+            canSeeGrams={canSeeGrams}
+            onBack={() => scrollToStage('recipe')}
           />
         ) : null}
       </div>

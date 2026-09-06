@@ -36,6 +36,7 @@ New findings are appended at the end only; earlier numbers are never renumbered.
 | # | Finding | Status | Evidence |
 | --- | --- | --- | --- |
 | SOL-039 | HOME's "Przelicz i popraw" was silent: the pipeline publishes its verdict in `recalculationTerminal` (the state PRO renders) and the HOME panel read only `preview`/`previewIssue`. The customer waited ~16 s and the screen said nothing. | FIX READY / NOT ON STAGING | `homeRecalculationVerdict.ts` + tests; served repro on the local preview build of this branch |
+| SOL-040 | HOME had no production stage at all: "Zróbmy to" set `preparationStarted` and nothing rendered — the journey stopped at the recipe. True on `origin/staging` too. The PRO production workspace exists but is a professional dashboard whose repository this build reports unavailable (PRO's own Production tab shows "coming soon"), and HOME's own preparation copy had never been wired. | FIX READY / NOT ON STAGING | `homePreparationSteps.ts` + `HomePreparationSection.tsx` + tests; served on the preview build: base lines in order, "Na koniec dodaj topping." before the add-ons, every step ticked → "Gotowe!" |
 
 ## Root causes found and fixed in this workstream
 
