@@ -28,6 +28,7 @@ import type { ResolvedScanProductLike as ResolvedScanProduct } from '@/features/
 import { ScanFlow } from '@/features/scan-flow/ScanFlow';
 import { useAuthStore } from '@/stores/authStore';
 import { cn } from '@/lib/cn';
+import { customerSafeNotice } from '@/copy/customerSafeNotice';
 import { iconButtonClasses } from '@/components/ui/buttonStyles';
 import { preserveServerProductRank } from '@/features/global-catalog/ranking';
 import { useGlobalCatalogPicker } from '@/features/global-catalog/useGlobalCatalogPicker';
@@ -165,6 +166,10 @@ const pickerCategoryLabel = (option: PickerOption): string => {
   return CATEGORY_LABELS[category.toLocaleLowerCase('en-US')] ?? category.replaceAll('_', ' ');
 };
 
+/** the calm sentence any picker mount falls back to when a refusal names implementation detail */
+const defaultCustomerNotice = (text: string): string | null =>
+  customerSafeNotice(text, 'Nie możemy teraz potwierdzić danych tego produktu.');
+
 const publicPickerUnavailableReason = (option: PickerOption, scope: ProductPickerScope): string => {
   if (option.catalog?.entityKind === 'commercial_product') {
     return `${option.name} nie ma jeszcze kompletnego własnego profilu produktu. Uzupełnij brakujące dane i spróbuj ponownie.`;
@@ -280,7 +285,15 @@ export function ProductPickerPopover({
    */
   const setUnavailableNotice = useCallback(
     (text: string | null) =>
-      setUnavailableNoticeText(text === null ? null : (sanitizeNotice?.(text) ?? text)),
+      setUnavailableNoticeText(
+        text === null
+          ? null
+          : // OWNER QA 2026-09-06: sanitising was OPT-IN and only HOME opted in, so the same
+            // refusal was calm on one screen and raw — module names and two bare UUIDs — on the
+            // other. This component is one shared surface, so it is calm BY DEFAULT; a mount may
+            // still pass its own wording, but silence is no longer the leaky choice.
+            (sanitizeNotice ?? defaultCustomerNotice)(text),
+      ),
     [sanitizeNotice],
   );
   const [informationOption, setInformationOption] = useState<PickerOption | null>(null);
