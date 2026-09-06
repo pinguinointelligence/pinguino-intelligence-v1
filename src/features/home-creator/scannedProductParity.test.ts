@@ -15,7 +15,7 @@ import { describe, expect, it } from 'vitest';
 
 const HOOK = readFileSync('src/features/home-creator/useHomeIntentIngredients.ts', 'utf8');
 const HOME_PAGE = readFileSync('src/pages/home/HomeCreatorPage.tsx', 'utf8');
-const SCANNER = readFileSync('src/features/product-scanner/LiveMultiScanner.tsx', 'utf8');
+const SCANNER = readFileSync('src/features/scan-flow/ScanFlow.tsx', 'utf8');
 
 describe('a scanned product enters through the typed-ingredient door', () => {
   it('both entry points delegate to one add', () => {
@@ -36,17 +36,25 @@ describe('a scanned product enters through the typed-ingredient door', () => {
       HOOK.indexOf('const addResolvedChip'),
     );
     expect(add).toContain('hydrateIngredient(productId)');
-    expect(add).toContain('store.addIngredient(ingredient, 0)');
+    /* The amount is CARRIED, not hard-coded. It used to be `addIngredient(ingredient, 0)`,
+       which is where HOME's 0 g rows came from: a confirmed amount had nowhere to go. */
+    expect(add).toContain('store.addIngredient(ingredient, grams)');
     // §49: the crown is ASKED of the existing authority, never decided here.
     expect(add).toContain('setMainIngredient(added.lineId)');
+    /* And a topping goes to the topping collection instead — uncrowned, because the
+       Crown is a Main concept and a topping is not a Main. Ignoring the role is what put
+       a stated topping in the base wearing a Crown while its chip still read TOPPING. */
+    expect(add).toContain("if (role === 'topping')");
+    expect(add).toContain('store.addTopping(');
   });
 
   it('HOME hands the scanner nothing but catalogue ids', () => {
+    // ONE Canonical Scanner: HOME mounts the same component every other entry mounts.
     const handler = HOME_PAGE.slice(
-      HOME_PAGE.indexOf('onAddToRecipe={'),
-      HOME_PAGE.indexOf('onNeedsDeepScan={'),
+      HOME_PAGE.indexOf('onResolved={'),
+      HOME_PAGE.indexOf('onReturn={'),
     );
-    expect(handler).toContain('addScannedProduct(product.identityKey)');
+    expect(handler).toContain('addScannedProduct(product.id)');
     // No grams, no roles, no engine call: the scanner does no formulation.
     expect(handler).not.toMatch(/planned_grams|setLockType|rebuild|engine/i);
   });
@@ -58,15 +66,20 @@ describe('a scanned product enters through the typed-ingredient door', () => {
 });
 
 describe('an unknown product never reaches a recipe', () => {
-  it('only catalogue-resolved products are handed over', () => {
-    const handoff = readFileSync('src/features/product-scanner/liveScanHandoff.ts', 'utf8');
-    expect(handoff).toContain("product.acceptance === 'confirmed'");
-    expect(handoff).toContain("product.acceptance === 'needs_resolution'");
+  it('only an engine-ready product can be handed over', () => {
+    // The add button IS the gate: a product the engine cannot use is never offered to a recipe.
+    expect(SCANNER).toMatch(/disabled=\{!engineReady \|\| busy\}/);
+    expect(SCANNER).toContain(
+      'Ten produkt nie ma jeszcze wszystkich danych potrzebnych do receptury.',
+    );
   });
 
   it('and HOME never navigates away from a half-built recipe because of one', () => {
-    const handler = HOME_PAGE.slice(HOME_PAGE.indexOf('onNeedsDeepScan={'));
-    const block = handler.slice(0, handler.indexOf('/>'));
+    // The unknown half is completed INSIDE the scanner, over the recipe, so the draft survives.
+    const block = HOME_PAGE.slice(
+      HOME_PAGE.indexOf('<ScanFlow'),
+      HOME_PAGE.indexOf('onChoosePlan={'),
+    );
     expect(block).not.toContain('navigate(');
   });
 });

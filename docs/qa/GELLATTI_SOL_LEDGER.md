@@ -54,7 +54,7 @@ Rules:
 - [ ] **SOL-028 · TODO — Protein Multi-Main przekracza watchdog.** Przypadek Protein z wieloma składnikami Main nie kończy obliczeń w wymaganym czasie.
 - [ ] **SOL-029 · TODO — otwarty Guide znika po zmianie desktop → tablet/mobile.** Problem dotyczy zachowania otwartego panelu podczas zmiany breakpointu, nie geometrii plansz.
 - [ ] **SOL-030 · TODO — draft Label pomija topping i finalną masę.** Draft korzysta tylko z bazy; dla bazy 1000 g i toppingu 25 g powinien przedstawiać produkt finalny 1025 g.
-- [x] **SOL-031 · RESOLVED_ON_STAGING — draft Label nie przedstawia znanych alergenów.** PR #208 przekazuje istniejącą końcową linię dla całej receptury (Base/Main/Topping/pozostałe), pokazuje nieblokujące `Alergeny nieustalone` dla `UNKNOWN` i zapisuje jedną lokalną linię przez `Ustaw/Zmień`; bez zmian Scannera, Mappera, Product Registry ani Engine. Evidence: PR #208; merge SHA `cc141bbec4e23ef7bd4df9824fe13075b6ded26f`; merge jest potwierdzonym przodkiem aktualnego staging SHA `ba9931e425e14e0aa53ccc3179a447bbcbdc55dc`; CI merge run `34036953949` PASS; CI aktualnego staging run `34038500307` PASS; canonical `staging.pinguinoai.com` wskazuje na deployment `dpl_5ZnFLMQok5szoyQW7vhpST1pSJwr` o statusie Ready. `OWNER QA PENDING`; `OWNER ACCEPTED: NO`.
+- [ ] **SOL-031 · RESOLVED_IN_PR_AWAITING_MERGE — draft Label nie przedstawia znanych alergenów.** Bieżąca poprawka Owner QA po #208 zachowuje wszystkie znane deklaracje Base/Main/Topping/pozostałych składników nawet wtedy, gdy inny składnik ma `UNKNOWN`; ręczna końcowa linia receptury lub partii pozostaje najwyższym autorytetem. Jeden wspólny modal przed drukiem dla EU/UK/US/CA/AU-NZ/World pozwala uzupełnić dowolną część brakujących danych albo pominąć je bez usuwania znanej części. Pominięte wartości nie tworzą pustych wierszy, zer, `UNKNOWN` ani tekstu „bez alergenów”, a braki nie blokują podglądu, snapshotu, PDF ani wydruku. Główny ekran etykiety ogranicza się do nazwy, podglądu, dwóch kompaktowych wierszy oraz `Drukuj`/`Zmień`; bez zmian Scannera, Mappera, Product Registry ani Engine. Implementacja jest oparta na staging `eee9de7e`; testy lokalne i brama stagingowa są zielone, lecz merge, canonical deployment oraz Owner QA jeszcze nie nastąpiły. `OWNER ACCEPTED: NO`.
 - [ ] **SOL-032 · TODO — wyścig gotowości Produkcji Sorbet po Apply/Save.** Gotowość Produkcji może być oceniona przed ustabilizowaniem aktualnego stanu po Apply lub Save.
 - [ ] **SOL-033 · TODO — aktywny backend Scannera pochodzi częściowo z niezmergowanego PR #186.** Ledger migracji i aktywne funkcje zawierają elementy workstreamu `claude/scanner-complete`, których nie ma w scalonym stagingowym repo.
 - [x] **SOL-034 · RESOLVED_ON_STAGING — geometria Knowledge Tour w pełnym webie, mobile i embedded PRO została poprawiona przez #204 i zaakceptowana w Owner QA 2026-09-06.** Evidence: PR #204; merge SHA `6f71ac6a`; web PASS; mobile PASS; prawy podgląd dashboardu PASS; `OWNER ACCEPTED: YES`.
@@ -165,6 +165,29 @@ the canonical queue and classifier and asserts the NUTRITION/PRODUCTION
 relationship introduced by #181. Green CI on #198 does not replace that database
 ordering requirement. The wider remote-only Scanner history remains SOL-033 and
 is not repaired by this checkpoint.
+
+## SOL-031 Owner QA correction checkpoint — 2026-09-06
+
+This checkpoint extends the existing SOL-031; it does not allocate another SOL ID.
+
+- Before: one `UNKNOWN` ingredient could suppress known allergen statements from
+  other recipe roles, and market preflight could block preview/PDF/print.
+- After: known statements survive through preview, snapshot, every renderer and
+  direct PDF; the shared print dialog is prefilled with that known text and a skip
+  preserves it. When no statement is known, skipping omits the complete allergen
+  row.
+- Scope: `masterLabel.ts`, the shared print-missing-data dialog and controls,
+  `LabelWorkspace.tsx`, `DraftLabelCard.tsx`, the six market renderers, direct PDF,
+  label snapshot repository/RPC v3, navigation return handling, focused tests and
+  the GEL-P0-033 owner-locked contract. Scanner, Mapper, Product Registry and
+  Engine were not changed.
+- Evidence on staging base `eee9de7e`: 28 focused files / 360 tests passed;
+  `verify:staging` passed owner/protected-path guards, 22 contract files / 215
+  tests, typecheck, lint with zero errors and production build.
+- Required Owner QA after merge: mobile and web layout; `Drukuj → uzupełnij / pomiń
+→ podgląd systemowy → drukarka / powrót`; partial allergen continuity and omission
+  of all unknown values for EU, UK, US, Canada, AU/NZ and World; refresh/reopen of
+  the saved batch snapshot. `OWNER ACCEPTED: NO`.
 
 ## Recovery provenance
 

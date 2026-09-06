@@ -18,20 +18,16 @@ export function AllergenStatementControl({
   if (!editing) {
     return (
       <section
-        className="flex flex-wrap items-center justify-between gap-3 rounded-[14px] border border-ink/10 bg-stone-50 p-3"
+        className="flex min-h-11 items-center justify-between gap-3 py-2"
         data-testid="label-allergens-row"
       >
-        <div>
-          <p className="text-sm font-semibold text-ink">
-            {statement ? `Alergeny: ${statement}` : 'Alergeny nieustalone'}
-          </p>
-          <p className="mt-0.5 text-xs text-stone-500">
-            Informacje o alergenach ustala producent żywności.
-          </p>
-        </div>
+        <p className="min-w-0 text-xs leading-5 text-stone-700">
+          {statement ? `Alergeny: ${statement}` : 'Alergeny nieustalone'}
+        </p>
         <Button
           variant="ghost"
           size="sm"
+          className="min-h-9 shrink-0 rounded-full px-3"
           data-testid={statement ? 'label-allergens-change' : 'label-allergens-set'}
           onClick={() => {
             setValue(statement ?? '');
@@ -65,10 +61,7 @@ export function AllergenStatementControl({
   };
 
   return (
-    <section
-      className="rounded-[16px] border border-ink/10 bg-white p-4"
-      data-testid="label-allergens-settings"
-    >
+    <section className="py-3" data-testid="label-allergens-settings">
       <div className="flex items-center justify-between gap-3">
         <h3 className="text-sm font-semibold text-ink">Ustawienia etykiety</h3>
         <button

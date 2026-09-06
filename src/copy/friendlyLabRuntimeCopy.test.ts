@@ -9,7 +9,7 @@ const read = (...segments: string[]): string =>
 const MATERIAL_SURFACES = [
   ['components', 'shared', 'friendlyLabMoment.ts'],
   ['features', 'customer-shell', 'customerShellCopy.ts'],
-  ['features', 'product-scanner', 'LiveProductScanner.tsx'],
+  ['features', 'scan-flow', 'ScanFlow.tsx'],
   ['features', 'product-scanner', 'scannerErrors.ts'],
   ['features', 'ingredient-builder', 'IngredientPicker.tsx'],
   ['features', 'ingredient-builder', 'ServerIngredientPicker.tsx'],
@@ -69,7 +69,9 @@ describe('Gellatti Friendly Lab — material runtime copy', () => {
   it('uses Human → Truth → Next Step on the mandatory served-proof surfaces', () => {
     const expected = [
       'Jeszcze nie widzę smaku. Dodaj go poniżej i ruszamy dalej.',
-      'Produkt dodany do Twojego katalogu.',
+      // ONE Canonical Scanner: the second scanner said „Produkt dodany do Twojego katalogu.";
+      // the canonical flow says the same outcome more precisely, and it is the one that ships.
+      'Zapisano jako Twój produkt (prywatny, widoczny tylko na Twoim koncie).',
       'Jeszcze jeden krok. Potwierdź ustawienia, a potem przeliczymy recepturę.',
       'Liczymy balans receptury…',
       'Sprawdź proponowaną korektę.',

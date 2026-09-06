@@ -3,7 +3,7 @@
  *
  * A current recipe draft is a real label source. It owns a stable automatic LOT
  * and local production day, uses the final-product composition (Base + Topping),
- * and is printable once the ordinary label preflight has no genuine blockers.
+ * and remains printable while unknown editable fields are disclosed at print time.
  * It is still not a Production snapshot and can never displace #199 authority.
  */
 import { describe, expect, it } from 'vitest';
@@ -226,12 +226,81 @@ describe('draft label preview', () => {
     });
     expect(unknown.label.allergens.labelStatements).toEqual([]);
     expect(unknown.pending).not.toContain('allergens');
-    expect(buildMasterLabelPrintHtml(unknown.label, null, { preview: true })).toContain(
-      'Alergeny nieustalone',
+    expect(buildMasterLabelPrintHtml(unknown.label, null, { preview: true })).not.toContain(
+      'Alergeny:',
     );
     expect(
       buildMasterLabelPrintHtml(unknown.label, null, { preview: true }).toLowerCase(),
     ).not.toContain('bez alergen');
+  });
+
+  it.each([
+    {
+      name: 'Base known + Main UNKNOWN',
+      known: { base: 'Zawiera mleko' },
+      expected: ['Zawiera mleko'],
+    },
+    {
+      name: 'Main known + Topping UNKNOWN',
+      known: { main: 'Zawiera pistacje' },
+      expected: ['Zawiera pistacje'],
+    },
+    {
+      name: 'Topping known + Base UNKNOWN',
+      known: { topping: 'Zawiera owies (gluten)' },
+      expected: ['Zawiera owies (gluten)'],
+    },
+    {
+      name: 'several known declarations + one UNKNOWN',
+      known: { base: 'Zawiera mleko', main: 'Zawiera pistacje' },
+      expected: ['Zawiera mleko', 'Zawiera pistacje'],
+    },
+  ])('preserves known allergen text when $name', ({ known, expected }) => {
+    const mixedInput: RecipeInput = {
+      ...input,
+      items: input.items.map((item, index) =>
+        index === 0 ? { ...item, lock_type: 'main' as const } : item,
+      ),
+    };
+    const snapshots = structuredClone(behaviorSnapshots);
+    for (const [lineId, snapshot] of Object.entries(snapshots)) {
+      snapshot.sharedFacts!.allergens = {
+        ingredientsText: lineId,
+        allergensText: 'UNKNOWN',
+        declared: [],
+        mayContain: [],
+        evidenceVersion: `allergens:unknown:${lineId}`,
+      };
+    }
+    const setKnown = (lineId: string, statement: string) => {
+      snapshots[lineId]!.sharedFacts!.allergens = {
+        ingredientsText: lineId,
+        allergensText: statement,
+        declared: statement.includes('pistacje') ? ['tree_nuts: pistachio'] : ['milk'],
+        mayContain: [],
+        evidenceVersion: `allergens:known:${lineId}`,
+      };
+    };
+    if (known.base) setKnown(mixedInput.items[1]!.id, known.base);
+    if (known.main) setKnown(mixedInput.items[0]!.id, known.main);
+    if (known.topping) setKnown(topping.id, known.topping);
+
+    const preview = buildDraftLabelPreview({
+      profile: profile(),
+      recipeInput: mixedInput,
+      composition: { ...composition, behaviorSnapshots: snapshots },
+      draft: labelDraft(),
+    });
+    expect(preview.label.allergens.status).toBe('incomplete');
+    for (const statement of expected) {
+      expect(preview.label.allergens.labelStatements.join(' · ')).toContain(statement);
+      expect(buildMasterLabelPrintHtml(preview.label, null, { preview: true })).toContain(
+        statement,
+      );
+    }
+    expect(buildMasterLabelPrintHtml(preview.label, null, { preview: true })).not.toContain(
+      'UNKNOWN',
+    );
   });
 
   it('prints the exact LOT and production date shown by the preview', () => {

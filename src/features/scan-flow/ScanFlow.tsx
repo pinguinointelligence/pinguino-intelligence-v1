@@ -44,7 +44,11 @@ import {
 } from './scanCoreCapture';
 import {
   confirmationsFromFields,
+  entryContextOf,
+  isRecipeEntry,
   manualConfirmedScan,
+  rememberGuestCode,
+  takeGuestCode,
   plainFieldsFor,
   positionHint,
   prefillFromIdentity,
@@ -52,6 +56,7 @@ import {
   toResolvedScanProduct,
   type PlainField,
   type ResolvedScanProductLike,
+  type ScanEntryContext,
 } from './scanFlowLogic';
 
 /** the dedicated exact-identity authority once its migration is deployed (staging: yes); otherwise the interim path */
@@ -83,8 +88,14 @@ const FAMILY_LABEL: Record<CustomerFamily, string> = {
 
 export interface ScanFlowProps {
   mode: 'recipe' | 'catalog';
+  /** where the customer came from. Defaults from `mode` so existing call sites keep working. */
+  entryContext?: ScanEntryContext;
   /** recipe mode: the exact product the recipe should receive (the picker's existing add path) */
   onResolved?: (product: ResolvedScanProductLike) => void;
+  /** the return action: "Nie" in a recipe, "Wróć do demo" for a guest */
+  onReturn?: () => void;
+  /** a guest chose a plan from the offer screen */
+  onChoosePlan?: (plan: 'home' | 'pro') => void;
   resolveLabel?: string;
   intro?: string;
 }
@@ -100,6 +111,18 @@ type Phase =
       fromCache: boolean;
     }
   | { kind: 'guest' }
+  /** a guest scanned a code nobody has yet: the one screen where HOME and PRO are the answer */
+  | { kind: 'guest_offer' }
+  /** a recipe entry met an unknown code: exactly one question, Tak / Nie */
+  | {
+      kind: 'ask_add';
+      session: DiscoverySession;
+      code: string;
+      /** everything the continuation needs, so "Tak" resumes THIS scan — no second camera run */
+      web: ExactWebIdentity | null;
+      next: 'finalize' | 'analyze_label' | null;
+      note: string | null;
+    }
   | { kind: 'offline' }
   | { kind: 'label'; session: DiscoverySession; note: string | null }
   | { kind: 'family'; session: DiscoverySession; options: readonly CustomerFamily[] }
@@ -170,7 +193,16 @@ async function downscaled(file: File, maxLongEdge = 1600): Promise<Blob> {
   }
 }
 
-export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProps) {
+export function ScanFlow({
+  mode,
+  entryContext,
+  onResolved,
+  onReturn,
+  onChoosePlan,
+  resolveLabel,
+  intro,
+}: ScanFlowProps) {
+  const entry = entryContextOf(mode, entryContext);
   const [phase, setPhase] = useState<Phase>({ kind: 'camera', status: 'starting', error: null });
   const [frame, setFrame] = useState<CaptureFrame | null>(null);
   const [manual, setManual] = useState('');
@@ -180,6 +212,8 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
   const [recognized, setRecognized] = useState<ExactWebIdentity | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const codeRef = useRef<string | null>(null);
+  /** the customer answered "Tak" for THIS scan: the question is asked once, never again mid-scan */
+  const addConfirmedRef = useRef(false);
   const labelTriedRef = useRef(false);
   const cache = useMemo(
     () =>
@@ -266,6 +300,29 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
           const next = seedSession(r.sessionId, r.identity, r.ledger.missingCritical);
           const noteText = r.note ?? null;
           const afterFinalize = session !== undefined;
+          if (!afterFinalize) {
+            // A guest may FIND a product, never create one: no OCR, no enrichment, no Rescue, no
+            // private save, no verification. An unknown code is the one screen that says why HOME
+            // and PRO are worth having.
+            if (entry === 'guest_demo') {
+              rememberGuestCode(code);
+              setPhase({ kind: 'guest_offer' });
+              return;
+            }
+            // A recipe entry asks exactly one question. "Dodaj produkt" never asks it: the customer
+            // already answered it by choosing that menu item.
+            if (isRecipeEntry(entry) && !addConfirmedRef.current) {
+              setPhase({
+                kind: 'ask_add',
+                session: next,
+                code,
+                web: identityFromEvidence(r.externalEvidence),
+                next: r.next === 'finalize' ? 'finalize' : 'analyze_label',
+                note: noteText,
+              });
+              return;
+            }
+          }
           if (afterFinalize) {
             // the authority answered: plain facts it still needs, the label it still needs, or only
             // technical readiness the customer cannot supply — then the product is reported, not looped
@@ -278,25 +335,14 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
             else setPhase({ kind: 'fields', session: next, fields: [], note: null });
             return;
           }
-          const web = identityFromEvidence(r.externalEvidence);
-          if (web) {
-            // exact registry identity: no generic questions, go straight to the authority with it
-            setRecognized(web);
-            setValues(prefillFromIdentity(web));
-            setFamily(web.family);
-            await finalize(
-              next,
-              { customerFamily: web.family, confirmations: { productFields: web.productFields } },
-              ctx,
-              code,
-            );
-            return;
-          }
-          if (r.next === 'finalize') {
-            await finalize(next, { customerFamily: family }, ctx, code);
-            return;
-          }
-          setPhase({ kind: 'label', session: next, note: noteText });
+          await continueUnknownRef.current(
+            next,
+            identityFromEvidence(r.externalEvidence),
+            r.next === 'finalize' ? 'finalize' : 'analyze_label',
+            noteText,
+            ctx,
+            code,
+          );
           return;
         }
         case 'discovered_exact':
@@ -314,6 +360,14 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
           fail('Kilka produktów ma ten sam kod. Wybierz właściwy w wyszukiwarce produktów.');
           return;
         case 'unknown':
+          // Nobody signed in: the pipeline cannot start discovery, so an unknown code ends here.
+          // For a demo visitor that is not a failure — it is the ONE screen that says why HOME and
+          // PRO are worth having. No question, no technical reason, no missing fields.
+          if (entry === 'guest_demo') {
+            rememberGuestCode(code);
+            setPhase({ kind: 'guest_offer' });
+            return;
+          }
           if (ctx.accountId === null) setPhase({ kind: 'guest' });
           else fail('Nie udało się rozpoznać tego produktu. Spróbuj jeszcze raz.');
           return;
@@ -344,11 +398,48 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
     await handleResult(r, code, ctx, session);
   }
 
+  /**
+   * What happens to a code nobody knows yet. It is ONE function so the automatic path
+   * ("Dodaj produkt") and the answer to the recipe question ("Tak") cannot drift apart: the same
+   * session, the same photos, the same authority call.
+   */
+  const continueUnknown = async (
+    session: DiscoverySession,
+    web: ExactWebIdentity | null,
+    nextStep: 'finalize' | 'analyze_label' | null,
+    note: string | null,
+    ctx: RequestContext,
+    code: string,
+  ) => {
+    if (web) {
+      // exact registry identity: no generic questions, go straight to the authority with it
+      setRecognized(web);
+      setValues(prefillFromIdentity(web));
+      setFamily(web.family);
+      await finalize(
+        session,
+        { customerFamily: web.family, confirmations: { productFields: web.productFields } },
+        ctx,
+        code,
+      );
+      return;
+    }
+    if (nextStep === 'finalize') {
+      await finalize(session, { customerFamily: family }, ctx, code);
+      return;
+    }
+    setPhase({ kind: 'label', session, note });
+  };
+  const continueUnknownRef = useRef(continueUnknown);
+  continueUnknownRef.current = continueUnknown;
+
   const resolve = useCallback(
     async (scan: ConfirmedScan) => {
       if (!ports) return fail('Backend nie jest skonfigurowany.');
       codeRef.current = scan.value;
       labelTriedRef.current = false;
+      // a new scan asks the question again; the previous answer belonged to the previous product
+      addConfirmedRef.current = false;
       setBusy(true);
       setRecognized(null);
       setPhase({ kind: 'resolving', code: scan.value });
@@ -358,7 +449,9 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
         // the exact-GTIN registry answers in about a second; the server research can take much longer —
         // show the identity as soon as it is known (the memoised port makes this a single request)
         const identity = identifyCode(scan);
-        if (identity.ok && ports.external && ctx.online) {
+        // a guest is never researched: they may FIND a product, and nothing is spent on one they
+        // cannot create (owner, 2026-09-06)
+        if (identity.ok && ports.external && ctx.online && entry !== 'guest_demo') {
           void ports.external
             .research(identity.identity, ctx)
             .then((ev) => {
@@ -368,7 +461,13 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
             })
             .catch(() => undefined);
         }
-        const r = await runScanImportV2(scan, ctx, ports);
+        // the same pipeline for everyone; a guest simply has no external research port, so no web
+        // call, no OCR and no enrichment is spent on a product they cannot create
+        const r = await runScanImportV2(
+          scan,
+          ctx,
+          entry === 'guest_demo' ? { ...ports, external: null } : ports,
+        );
         await handleResult(r, scan.value, ctx);
       } catch {
         fail('Nie udało się sprawdzić produktu. Spróbuj ponownie.');
@@ -376,10 +475,46 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
         setBusy(false);
       }
     },
-    [ports, handleResult],
+    [ports, handleResult, entry],
   );
   const resolveRef = useRef(resolve);
   resolveRef.current = resolve;
+
+  /*
+    A visitor who scanned in the demo, chose a plan and signed in must not scan the same box twice.
+    So the code they read is OFFERED here — prefilled, named, one tap away — and never resolved
+    behind their back. That distinction is the whole safety of this feature: the customer may have
+    opened the scanner for a completely different product, and on a shared browser the person
+    holding the phone may not even be the person who scanned. A guest entry never picks it up;
+    that would loop them straight back to the offer they just left.
+  */
+  /*
+    The guest offer is the ONE conversion screen in the flow, so its buttons must work from EVERY
+    entry — not only from the mount that happened to pass a handler. A caller that wants to stay in
+    the SPA passes `onChoosePlan`; otherwise the flow navigates itself. `window.location` needs no
+    router context, which matters because this component is mounted from a portal inside the picker
+    as well as from a page.
+  */
+  const choosePlan = (plan: 'home' | 'pro') => {
+    if (onChoosePlan) return onChoosePlan(plan);
+    window.location.assign(plan === 'pro' ? '/subscription?plan=pro' : '/subscription?plan=home');
+  };
+
+  const [resumedCode, setResumedCode] = useState<string | null>(null);
+  useEffect(() => {
+    if (entry === 'guest_demo') return;
+    // `takeGuestCode` CONSUMES the stored code, so reading it is a side effect and belongs in an
+    // effect — not in a render-phase initializer, which StrictMode may invoke twice and swallow the
+    // value in. Setting state from it is therefore deliberate and runs exactly once per mount.
+    /* eslint-disable react-hooks/set-state-in-effect */
+    const pending = takeGuestCode();
+    if (pending && manualConfirmedScan(pending)) {
+      setManual(pending);
+      setResumedCode(pending);
+    }
+    /* eslint-enable react-hooks/set-state-in-effect */
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (phase.kind !== 'camera') return;
@@ -601,6 +736,17 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
     };
   }
   const success = phase.kind === 'camera' && phase.status === 'confirmed';
+  /*
+    The customer is told BEFORE any photo action that the picture leaves their phone, and what does
+    NOT. It used to be said only on the deleted second scanner; it belongs on whichever surface
+    actually uploads — and there are two of them, so it is one fragment rendered in both.
+  */
+  const photoPrivacyNote = (
+    <p className="text-xs text-stone-600">
+      Zdjęcie zostanie przesłane do analizy etykiety. Twoje ceny, dostawcy, notatki i stan
+      magazynowy pozostają prywatne.
+    </p>
+  );
   const engaged = frame ? frame.state !== 'SEARCHING' && frame.state !== 'LOST' : false;
 
   return (
@@ -665,10 +811,17 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
               {phase.error}
             </p>
           ) : null}
+          {resumedCode ? (
+            <p className="text-xs text-stone-600" data-testid="scan-flow-resumed-code">
+              Zaczęliśmy już skan kodu {resumedCode}. Naciśnij „Sprawdź", żeby go dokończyć — albo
+              zeskanuj inny produkt.
+            </p>
+          ) : null}
           <form
             className="flex gap-2"
             onSubmit={(event) => {
               event.preventDefault();
+              setResumedCode(null);
               submitManual();
             }}
           >
@@ -679,7 +832,10 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
               placeholder="Wpisz kod z opakowania"
               aria-label="Kod kreskowy z opakowania"
               value={manual}
-              onChange={(event) => setManual(event.target.value)}
+              onChange={(event) => {
+                setManual(event.target.value);
+                setResumedCode(null);
+              }}
             />
             <button type="submit" className={btnSecondary} disabled={busy || !manual.trim()}>
               Sprawdź
@@ -722,6 +878,92 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
         </div>
       ) : null}
 
+      {/*
+        A guest scanned a code nobody has yet. Nothing technical is shown — no missing fields, no
+        readiness, no Product Registry — because none of it is the customer's problem here. This is
+        simply where HOME and PRO are worth having.
+      */}
+      {phase.kind === 'guest_offer' ? (
+        <div className="space-y-3" data-testid="scan-flow-guest-offer">
+          <p className="text-sm font-semibold text-ink">Tego produktu jeszcze nie mamy.</p>
+          <p className="text-sm text-stone-700">
+            W HOME lub PRO możesz dodać własny produkt jednym skanem.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className={btnPrimary}
+              data-testid="scan-flow-choose-home"
+              onClick={() => choosePlan('home')}
+            >
+              Wybierz HOME
+            </button>
+            <button
+              type="button"
+              className={btnPrimary}
+              data-testid="scan-flow-choose-pro"
+              onClick={() => choosePlan('pro')}
+            >
+              Wybierz PRO
+            </button>
+            <button
+              type="button"
+              className={btnSecondary}
+              data-testid="scan-flow-back-to-demo"
+              onClick={() => onReturn?.()}
+            >
+              Wróć do demo
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {/*
+        The one question a recipe entry asks. "Nie" returns exactly where the customer was adding
+        from; "Tak" continues THIS scan — same session, same photos, no second camera run.
+      */}
+      {phase.kind === 'ask_add' ? (
+        <div className="space-y-3" data-testid="scan-flow-ask-add">
+          {recognizedLine}
+          <p className="text-sm text-stone-700">
+            Nie mamy jeszcze tego produktu. Czy chcesz go dodać?
+          </p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className={btnPrimary}
+              disabled={busy}
+              data-testid="scan-flow-ask-add-yes"
+              onClick={() =>
+                void withBusy(async () => {
+                  addConfirmedRef.current = true;
+                  const ctx = contextFor(await getScanImportV2AccountId());
+                  await continueUnknownRef.current(
+                    phase.session,
+                    phase.web,
+                    phase.next,
+                    phase.note,
+                    ctx,
+                    phase.code,
+                  );
+                })
+              }
+            >
+              Tak
+            </button>
+            <button
+              type="button"
+              className={btnSecondary}
+              disabled={busy}
+              data-testid="scan-flow-ask-add-no"
+              onClick={() => onReturn?.()}
+            >
+              Nie
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       {phase.kind === 'offline' ? (
         <div className="space-y-3">
           <p className="text-sm text-stone-700">
@@ -741,6 +983,7 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
               : 'Nie znam jeszcze tego produktu. Zrób zdjęcie etykiety ze składem i tabelą wartości odżywczych.'}
           </p>
           {phase.note ? <p className="text-xs text-stone-600">{phase.note}</p> : null}
+          {photoPrivacyNote}
           <div className="flex flex-wrap gap-2">
             <label className={btnPrimary}>
               Zrób zdjęcie
@@ -884,6 +1127,7 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
                 : 'Z etykiety nie da się uzupełnić brakujących danych. Możesz zgłosić produkt do weryfikacji.'}
             </p>
           ) : null}
+          {photoPrivacyNote}
           <div className="flex flex-wrap gap-2">
             {phase.fields.length > 0 ? (
               <button type="submit" className={btnPrimary} disabled={busy}>

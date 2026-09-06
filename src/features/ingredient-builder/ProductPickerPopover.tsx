@@ -23,8 +23,10 @@ import {
   searchProducts,
   setUserPreferredExactProductForSlot,
 } from '@/services/globalCatalog';
-import type { ResolvedScanProduct } from '@/features/product-scanner/LiveProductScanner';
+// ONE Canonical Scanner: the resolved-product shape belongs to the flow that produces it.
+import type { ResolvedScanProductLike as ResolvedScanProduct } from '@/features/scan-flow/scanFlowLogic';
 import { ScanFlow } from '@/features/scan-flow/ScanFlow';
+import { useAuthStore } from '@/stores/authStore';
 import { cn } from '@/lib/cn';
 import { iconButtonClasses } from '@/components/ui/buttonStyles';
 import { preserveServerProductRank } from '@/features/global-catalog/ranking';
@@ -287,6 +289,9 @@ export function ProductPickerPopover({
   const [activeSubfilter, setActiveSubfilter] = useState<ProductDiscoverySubfilter>('all');
   const [activeFamily, setActiveFamily] = useState<ProductDiscoveryReplaceFamily>(null);
   const [scanning, setScanning] = useState(false);
+  // Seventh entry: a signed-out visitor in the HOME or PRO demo uses the SAME scanner. They may
+  // find an existing product; they are never asked to add one, and nothing is spent on them.
+  const signedIn = useAuthStore((state) => state.user?.id ?? null) !== null;
   const [scrollThumb, setScrollThumb] = useState({ top: 0, height: 50, visible: false });
   const [position, setPosition] = useState<PickerPosition | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -1331,7 +1336,15 @@ export function ProductPickerPopover({
                     <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
                       <ScanFlow
                         mode="recipe"
+                        entryContext={
+                          !signedIn
+                            ? 'guest_demo'
+                            : scope === 'BASE_FORMULATION'
+                              ? 'recipe_ingredient'
+                              : 'recipe_topping'
+                        }
                         onResolved={(resolved) => void addScannedProduct(resolved)}
+                        onReturn={() => setScanning(false)}
                         resolveLabel={
                           activeIntent === 'REPLACE'
                             ? 'Zamień produkt'

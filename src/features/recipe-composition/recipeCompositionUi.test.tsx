@@ -227,9 +227,11 @@ describe('Base/Topping owner entry points', () => {
     expect(summary).toContain('snapshot={completed}');
     expect(summary).toContain('initialView={initialLabelView}');
     expect(summary).not.toContain('summary-final-nutrition-cost');
-    expect(labels).toContain('title="Baza techniczna"');
-    expect(labels).toContain('data-testid="label-internal-overview"');
-    expect(labels).toContain('snapshot.finalResult.percentages');
+    expect(labels).not.toContain('title="Baza techniczna"');
+    expect(labels).not.toContain('data-testid="label-internal-overview"');
+    expect(labels).not.toContain('snapshot.finalResult.percentages');
+    expect(labels).toContain('data-testid="label-print"');
+    expect(labels).toContain('data-testid="label-change"');
     const monitor = read('features', 'pro-workbench', 'MonitorPanelContent.tsx');
     const production = read('features', 'production-workspace', 'ProductionCockpit.tsx');
     expect(monitor).toContain('<CatalogVerificationBadge');

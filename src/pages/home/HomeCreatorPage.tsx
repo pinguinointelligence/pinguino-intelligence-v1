@@ -35,7 +35,7 @@ import { useCanSeeExactGrams } from '@/features/home-creator/useHomeEntitlement'
 import { useHomeFlow } from '@/features/home-creator/useHomeFlow';
 import { useHomeRecipeResult } from '@/features/home-creator/useHomeRecipeResult';
 import { useHomeIntentIngredients } from '@/features/home-creator/useHomeIntentIngredients';
-import { LiveMultiScanner } from '@/features/product-scanner/LiveMultiScanner';
+import { ScanFlow } from '@/features/scan-flow/ScanFlow';
 import { HomeMatchGate } from '@/features/home-creator/matching/HomeMatchGate';
 import {
   NO_MATCH,
@@ -61,6 +61,7 @@ import {
   type HomeSweetness,
 } from '@/features/home-creator/homeSweetness';
 import type { HomeStage } from '@/features/home-creator/homeStageFlow';
+import { resolveIdea } from '@/features/home-creator/homeIdeaResolution';
 import { HomeIntentSection } from '@/features/home-creator/ui/HomeIntentSection';
 import { HomeProfileSection } from '@/features/home-creator/ui/HomeProfileSection';
 import { HomeMachineSection } from '@/features/home-creator/ui/HomeMachineSection';
@@ -318,11 +319,18 @@ export function HomeCreatorPage() {
   const addIngredientLine = useCallback(
     (ingredient: EngineIngredient, behavior: ProductBehaviorSnapshot | null, grams: number) => {
       const added = useRecipeStore.getState().addIngredient(ingredient, grams);
-      if (added.status !== 'duplicate' && behavior) {
+      if (added.status === 'duplicate') return;
+      if (behavior) {
         useRecipeStore
           .getState()
           .setProductBehaviorSnapshot(added.lineId, { ...behavior, lineId: added.lineId });
       }
+      // Owner QA 2026-09-06: „wszystkie składniki dodane przez Dodaj składnik
+      // automatycznie dostają koronę". This path never asked, while the intent-chip
+      // path did — so the same product arrived crowned or bare depending only on how
+      // it was added. Ask the SAME canonical authority here; it refuses on its own for
+      // a product Main cannot carry, so this offers the crown rather than forcing it.
+      useRecipeStore.getState().setMainIngredient(added.lineId);
     },
     [],
   );
@@ -459,11 +467,24 @@ export function HomeCreatorPage() {
                 } finally {
                   setResolving(false);
                 }
-              })();
-              window.setTimeout(() => {
-                const next = draft.profile === null ? 'profile' : 'machine';
+                // Owner QA 2026-09-06: this scroll used to sit OUTSIDE this async
+                // block on a 60 ms timer, so it fired while identity resolution was
+                // still in flight — carrying the customer down to the profile and
+                // machine questions before they had chosen their products, and
+                // leaving the product choice behind them at the top of the page.
+                //
+                // The flow may only advance once every element of the idea has a
+                // concrete product (§84). `resolveIdea` is the single authority for
+                // what "resolved" means; the amount gap it also reports belongs to a
+                // later step, so only the product gap holds the flow here.
+                const chips = useHomeDraftStore.getState().chips;
+                const needsProductChoice = resolveIdea(chips).unresolved.some((element) =>
+                  element.gaps.includes('product'),
+                );
+                if (needsProductChoice) return;
+                const next = useHomeDraftStore.getState().profile === null ? 'profile' : 'machine';
                 scrollToStage(next);
-              }, 60);
+              })();
             }}
             resolving={resolving}
             onChooseIdentity={(chip, candidate) => {
@@ -711,29 +732,44 @@ export function HomeCreatorPage() {
         {result ? 'yes' : 'no'}
       </span>
 
+      {/*
+        OWNER DECISION 2026-09-06 — ONE CANONICAL SCANNER. HOME mounts the same component the recipe
+        picker and the products page mount, with the same pipeline; only the entry context and the
+        return action differ. A signed-out visitor scanning in the demo may FIND a product but never
+        create one, so the entry says so and the scanner spends nothing on them.
+      */}
       {scannerOpen ? (
-        <div className="fixed inset-0 z-50 bg-white">
-          <LiveMultiScanner
-            onClose={() => setScannerOpen(false)}
-            onAddToRecipe={(products) => {
-              setScanNotice(null);
-              // The SAME door a typed ingredient uses. The scanner supplies identities;
-              // every rule about what they may do in a recipe stays where it lives.
-              for (const product of products)
-                void intentIngredients.addScannedProduct(product.identityKey);
-            }}
-            onNeedsDeepScan={(products) => {
-              // NEVER navigate away. The customer has a recipe half-built on this page;
-              // one unknown product is not a reason to lose it. The scanner completes
-              // such a product in a nested step and hands it back resolved, so all that
-              // is left here is to say plainly what did not make it in.
-              setScanNotice(
-                products.length === 1
-                  ? 'Jeden produkt czeka na uzupełnienie — znajdziesz go w skanerze.'
-                  : `${products.length} produkty czekają na uzupełnienie — znajdziesz je w skanerze.`,
-              );
-            }}
-          />
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-white p-4">
+          <div className="mx-auto max-w-lg space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold text-ink">Skanuj produkt</h2>
+              <button
+                type="button"
+                className="pro-focus-ring rounded-full border border-ink/15 px-3 py-1 text-xs font-semibold text-ink"
+                onClick={() => setScannerOpen(false)}
+              >
+                Zamknij
+              </button>
+            </div>
+            <ScanFlow
+              mode="recipe"
+              entryContext={userId === null ? 'guest_demo' : 'recipe_ingredient'}
+              onResolved={(product) => {
+                setScanNotice(null);
+                setScannerOpen(false);
+                // The SAME door a typed ingredient uses. The scanner supplies the identity;
+                // every rule about what it may do in a recipe stays where it lives.
+                void intentIngredients.addScannedProduct(product.id);
+              }}
+              onReturn={() => setScannerOpen(false)}
+              onChoosePlan={(plan) => {
+                setScannerOpen(false);
+                navigate(plan === 'pro' ? '/subscription?plan=pro' : '/subscription?plan=home');
+              }}
+              resolveLabel="Dodaj do receptury"
+              intro="Pokaż kod kreskowy produktu aparatowi. Znaleziony lub zapisany produkt wraca prosto do tej receptury."
+            />
+          </div>
         </div>
       ) : null}
     </AppShell>

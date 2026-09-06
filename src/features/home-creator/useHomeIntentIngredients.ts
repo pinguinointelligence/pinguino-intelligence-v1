@@ -19,6 +19,7 @@
 import { useCallback, useRef } from 'react';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { useHomeDraftStore, type IntentChip } from './homeDraftStore';
+import type { IntentRole } from './homeIntentParsing';
 import { hydrateIngredient, resolveChipTerm } from './homeIntentResolutionService';
 
 export interface IntentIngredientOutcome {
@@ -84,21 +85,46 @@ export function useHomeIntentIngredients() {
    * than silently shipping a zero-gram ingredient.
    */
   const addByProductId = useCallback(
-    async (key: string, productId: string): Promise<IntentIngredientOutcome> => {
+    async (
+      key: string,
+      productId: string,
+      /**
+       * What the customer said this product IS. A chip that said „topping" must land in
+       * the topping collection, and a chip that did not must not be pushed into it.
+       * Ignoring this is what put a Main in the topping list and a topping under the
+       * Crown — the chip and the recipe row disagreed because they were reading
+       * different things.
+       */
+      role: IntentRole = 'ingredient',
+      /** Confirmed amount. A line is never created at 0 g; see below. */
+      grams = 0,
+    ): Promise<IntentIngredientOutcome> => {
       if (handled.current.has(key)) return { chipId: key, status: 'duplicate' };
       handled.current.add(key);
 
       const ingredient = await hydrateIngredient(productId);
       if (ingredient === null) return { chipId: key, status: 'unresolved' };
 
+      if (role === 'topping') {
+        const store = useRecipeStore.getState();
+        const already = store.toppings.some((line) => line.ingredient.id === ingredient.id);
+        if (already) return { chipId: key, status: 'duplicate' };
+        // A topping is never crowned: the Crown is a Main concept and a topping is not
+        // a Main. `addTopping` is the collection's own authority.
+        store.addTopping(ingredient as never, grams);
+        return { chipId: key, status: grams > 0 ? 'added' : 'needs_amount' };
+      }
+
       const store = useRecipeStore.getState();
-      const added = store.addIngredient(ingredient, 0);
+      const added = store.addIngredient(ingredient, grams);
       if (added.status === 'duplicate') return { chipId: key, status: 'duplicate' };
 
       // §49: ASK the existing authority. It refuses an ineligible product on its own.
       useRecipeStore.getState().setMainIngredient(added.lineId);
       const line = useRecipeStore.getState().items.find((item) => item.id === added.lineId);
-      if (line?.lock_type === 'main') return { chipId: key, status: 'crowned' };
+      if (line?.lock_type === 'main') {
+        return { chipId: key, status: line.planned_grams > 0 ? 'crowned' : 'needs_amount' };
+      }
       return {
         chipId: key,
         status: line && line.planned_grams > 0 ? 'added' : 'needs_amount',
@@ -108,9 +134,11 @@ export function useHomeIntentIngredients() {
   );
 
   const addResolvedChip = useCallback(
-    async (chip: IntentChip): Promise<IntentIngredientOutcome> => {
+    async (chip: IntentChip, grams = 0): Promise<IntentIngredientOutcome> => {
       if (chip.productId === null) return { chipId: chip.id, status: 'unresolved' };
-      return await addByProductId(chip.id, chip.productId);
+      // The chip's own role travels with it, so the row the customer ends up looking at
+      // says the same thing the chip said.
+      return await addByProductId(chip.id, chip.productId, chip.role ?? 'ingredient', grams);
     },
     [addByProductId],
   );

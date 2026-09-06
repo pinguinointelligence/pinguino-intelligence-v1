@@ -160,6 +160,20 @@ export const APP_NAV_ITEMS: readonly AppNavItem[] = [
     isActive: productsDestination,
   },
   {
+    /*
+      OWNER DECISION 2026-09-06 — the hamburger entry into the ONE Canonical Scanner. It is a
+      destination (a page), not a contextual action, so it belongs here: from the drawer the
+      customer scans to ADD A PRODUCT, and is never asked whether they want to add one.
+    */
+    id: 'scanProduct',
+    label: s.items.scanProduct,
+    to: '/products/scan',
+    group: 'product',
+    order: 3.5,
+    audiences: ['home', 'pro'],
+    isActive: pathOrNested('/products/scan'),
+  },
+  {
     id: 'machine',
     label: s.items.machine,
     to: '/machine',
@@ -186,21 +200,19 @@ export const APP_NAV_ITEMS: readonly AppNavItem[] = [
     audiences: ['guest', 'home', 'pro'],
     isActive: communityDestination,
   },
-  {
-    id: 'workWithUs',
-    label: s.items.workWithUs,
-    to: '/work-with-us',
-    group: 'ecosystem',
-    order: 2,
-    audiences: ['guest', 'home', 'pro'],
-    isActive: exact('/work-with-us'),
-  },
+  // COLLABORATION IA (owner decision 2026-09-03): exactly TWO user-facing
+  // entries. "Współpraca" / Work With Us is retired as a category — it was a
+  // third door onto the same business conversation, and every operating format
+  // it led to (maszyny, wózek, przyczepa, punkt) is a concept INSIDE Franchise,
+  // not a top-level system. /work-with-us now redirects into Franchise, so the
+  // enquiry form, its source attribution and its subject preselection are all
+  // preserved; only the duplicate entry point is gone.
   {
     id: 'affiliate',
     label: s.items.affiliate,
     to: '/affiliate',
     group: 'ecosystem',
-    order: 3,
+    order: 2,
     audiences: ['guest', 'home', 'pro'],
     isActive: exact('/affiliate'),
   },
@@ -209,9 +221,11 @@ export const APP_NAV_ITEMS: readonly AppNavItem[] = [
     label: s.items.franchise,
     to: '/franchise',
     group: 'ecosystem',
-    order: 4,
+    order: 3,
+    // Franchise owns the detail routes, so the entry stays marked current while
+    // the visitor reads any one of them.
     audiences: ['guest', 'home', 'pro'],
-    isActive: exact('/franchise'),
+    isActive: anyOf('/franchise', '/work-with-us', '/machines', '/mobile', '/trailer'),
   },
 ];
 
