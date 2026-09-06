@@ -16,6 +16,7 @@ import type {
 } from '../contracts';
 import type {
   DiscoveryPort,
+  ResearchOptions,
   DiscoverySession,
   DiscoveryStage,
   FactLedger,
@@ -157,6 +158,7 @@ export async function startDiscovery(
   identity: CodeIdentity,
   ctx: RequestContext,
   port: DiscoveryPort,
+  options?: ResearchOptions,
 ): Promise<DiscoveryResult> {
   const own = await port.findOwnRequest(identity, ctx);
   if (own && !own.approvedProductId) {
@@ -171,7 +173,7 @@ export async function startDiscovery(
       engineReady: false,
     };
   }
-  const r = await port.research(identity, ctx);
+  const r = await port.research(identity, ctx, options);
   if (r.kind === 'existing_product')
     return {
       kind: 'resolved_exact',

@@ -204,9 +204,18 @@ export interface OwnRequest {
 }
 
 /** Every method delegates to an EXISTING authority; the port only shapes requests and responses. */
+/** research options: `refresh` sets a linked customer product's exact answer aside and re-runs the sources */
+export interface ResearchOptions {
+  refresh?: boolean;
+}
+
 export interface DiscoveryPort {
   /** scan-session `ean_lookup`: server exact lookup, else one bounded exact-source research */
-  research(identity: CodeIdentity, ctx: RequestContext): Promise<ResearchOutcome>;
+  research(
+    identity: CodeIdentity,
+    ctx: RequestContext,
+    options?: ResearchOptions,
+  ): Promise<ResearchOutcome>;
   /** scan-session `analyze`: label photographs as evidence, merged server-side by source rank */
   analyzeLabel(
     session: DiscoverySession,

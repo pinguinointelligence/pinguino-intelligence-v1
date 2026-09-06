@@ -218,6 +218,10 @@ Deno.serve(async (request) => {
    * asked to turn the package around.
    */
   const mode = body.mode === 'ean_lookup' ? 'ean_lookup' : 'analyze';
+  // OWNER RULE 2026-09-06 (found data is never traded for an estimate): a linked customer product
+  // may be REFRESHED on request — the exact answer is set aside and the normal source → semantic →
+  // Mapper path runs again; finalize's refresh branch then supersedes the version only when better.
+  const refresh = mode === 'ean_lookup' && body.refresh === true;
   if (!sessionId || images.length > maxImages || (mode === 'analyze' && images.length < 1))
     return json({ error: 'invalid_scan_session' }, 400);
   let totalEncodedBytes = 0;
@@ -258,7 +262,11 @@ Deno.serve(async (request) => {
   }
   const barcode = establishedBarcode ?? incomingBarcode;
   const exactCandidate = await exactProductForBarcode(service, barcode, auth.user.id);
-  const exact = shouldContinueRescue(exactCandidate) ? null : exactCandidate;
+  const exact =
+    shouldContinueRescue(exactCandidate) ||
+    (refresh && exactCandidate?.product_kind === 'customer_provisional')
+      ? null
+      : exactCandidate;
   if (!existingSession) {
     const { error: insertSessionError } = await service.from('product_scan_sessions').insert({
       id: sessionId,

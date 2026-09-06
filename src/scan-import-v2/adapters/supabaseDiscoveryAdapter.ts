@@ -4,12 +4,13 @@
  * product-request lifecycle (`gellatti_submit_product_request_v1`, `gellatti_my_product_requests_v1`).
  * Request/response shapes mirror `src/services/productScanner.ts` exactly; nothing legacy is modified.
  */
-import type { CodeIdentity, ExactCandidate } from '../contracts';
+import type { CodeIdentity, ExactCandidate, RequestContext } from '../contracts';
 import { NetworkError } from '../contracts';
 import type {
   AnalyzeOutcome,
   DiscoveryPort,
   DiscoverySession,
+  ResearchOptions,
   FactLedger,
   FinalizeOutcome,
   OwnRequest,
@@ -178,13 +179,18 @@ export function createSupabaseDiscoveryPort(
     return s;
   };
 
-  const research = async (identity: CodeIdentity): Promise<ResearchOutcome> => {
+  const research = async (
+    identity: CodeIdentity,
+    _ctx?: RequestContext,
+    options?: ResearchOptions,
+  ): Promise<ResearchOutcome> => {
     const s = sessionFor(identity);
     const d = await invoke('product-scan-analyze', {
       sessionId: s.sessionId,
       mode: 'ean_lookup',
       images: [],
       barcode: legacyBarcode(identity),
+      ...(options?.refresh ? { refresh: true } : {}),
     });
     if (d['kind'] === 'existing_product')
       return { kind: 'existing_product', product: exactFromServer(obj(d['product']), identity) };
