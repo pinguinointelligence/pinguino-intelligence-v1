@@ -20,10 +20,14 @@ import {
 import { cn } from '@/lib/cn';
 import { homeCreatorCopy } from '../homeCreatorCopy';
 import { homeCustomerNotice } from '../homeCustomerNotice';
+import { homeRecalculationVerdict } from '../homeRecalculationVerdict';
 
 export function HomeRecalculate() {
   const preview = useConstraintStudioStore((state) => state.preview);
   const previewIssue = useConstraintStudioStore((state) => state.previewIssue);
+  // the pipeline's own verdict — the state PRO renders. Without it a recalculation that stages no
+  // preview (nothing to improve, a refusal, a timeout) left HOME silent after a long wait.
+  const recalculationTerminal = useConstraintStudioStore((state) => state.recalculationTerminal);
   const cancelPreview = useConstraintStudioStore((state) => state.cancelPreview);
   const [busy, setBusy] = useState(false);
 
@@ -34,11 +38,12 @@ export function HomeRecalculate() {
   // diagnosis view and can name ProductBehavior, the Mapper or a snapshot. HOME shows
   // it only when it is customer language; otherwise the calm sentence. The verdict is
   // untouched — a refusal is still a refusal.
-  const issueMessage = homeCustomerNotice(
-    previewIssue && 'messagePl' in previewIssue && typeof previewIssue.messagePl === 'string'
-      ? previewIssue.messagePl
-      : null,
-  );
+  const issueMessage =
+    homeCustomerNotice(
+      previewIssue && 'messagePl' in previewIssue && typeof previewIssue.messagePl === 'string'
+        ? previewIssue.messagePl
+        : null,
+    ) ?? homeRecalculationVerdict(recalculationTerminal);
 
   const run = async () => {
     setBusy(true);

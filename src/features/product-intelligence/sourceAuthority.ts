@@ -133,11 +133,13 @@ export function domainMatchesEntity(
   const name = normalizeName(entity);
   if (!domain || name.length < 4) return false;
   const label = domain.split('.')[0] ?? '';
-  const normalizedLabel = normalizeName(label);
+  const normalizedLabel = normalizeName(label).replace(/\s+/g, '');
   if (normalizedLabel.length < 4) return false;
-  // Match either direction: "comprital" vs "compritalpolska", but never a
-  // 3-letter coincidence.
-  return normalizedLabel.includes(name) || name.includes(normalizedLabel);
+  // Domains carry no spaces: "Vitamin Well" owns vitaminwell.com. Match either
+  // direction on the space-free forms ("comprital" vs "compritalpolska"), but
+  // never a 3-letter coincidence.
+  const compact = name.replace(/\s+/g, '');
+  return normalizedLabel.includes(compact) || compact.includes(normalizedLabel);
 }
 
 const includesAny = (domain: string, needles: readonly string[]): boolean =>
@@ -179,9 +181,7 @@ const TIER: Readonly<Record<SourceAuthorityClass, SourceEvidenceTier>> = Object.
  * Classify one source. An owner-provided URL is NEVER promoted to manufacturer
  * authority on the strength of existing at all — it must actually look official.
  */
-export function classifySourceAuthority(
-  input: SourceAuthorityInput,
-): SourceAuthorityAssessment {
+export function classifySourceAuthority(input: SourceAuthorityInput): SourceAuthorityAssessment {
   const domain = sourceDomain(input.url);
   const reasons: string[] = [];
 
@@ -202,11 +202,21 @@ export function classifySourceAuthority(
 
   if (official && isPdf) {
     reasons.push('dokument PDF w oficjalnej domenie producenta/marki');
-    return { authority: 'OFFICIAL_TECHNICAL_PDF', evidenceSource: TIER.OFFICIAL_TECHNICAL_PDF, domain, reasons };
+    return {
+      authority: 'OFFICIAL_TECHNICAL_PDF',
+      evidenceSource: TIER.OFFICIAL_TECHNICAL_PDF,
+      domain,
+      reasons,
+    };
   }
   if (matchesManufacturer) {
     reasons.push(`domena zgodna z producentem (${domain})`);
-    return { authority: 'OFFICIAL_MANUFACTURER', evidenceSource: TIER.OFFICIAL_MANUFACTURER, domain, reasons };
+    return {
+      authority: 'OFFICIAL_MANUFACTURER',
+      evidenceSource: TIER.OFFICIAL_MANUFACTURER,
+      domain,
+      reasons,
+    };
   }
   if (matchesBrand) {
     reasons.push(`domena zgodna z marką (${domain})`);
@@ -237,7 +247,12 @@ export function classifySourceAuthority(
       };
     }
     reasons.push('rozpoznany sprzedawca detaliczny');
-    return { authority: 'AUTHORITATIVE_RETAILER', evidenceSource: TIER.AUTHORITATIVE_RETAILER, domain, reasons };
+    return {
+      authority: 'AUTHORITATIVE_RETAILER',
+      evidenceSource: TIER.AUTHORITATIVE_RETAILER,
+      domain,
+      reasons,
+    };
   }
   if (isPdf && includesAny(domain, TECHNICAL_DOCUMENT_HOSTS)) {
     // A PDF on an unverified CDN is a document, but not provably the maker's.
@@ -247,7 +262,12 @@ export function classifySourceAuthority(
   if (input.ownerProvided) {
     // The decisive rule: supplied by the owner, but not recognizably official.
     reasons.push('adres podany przez właściciela, bez potwierdzenia oficjalności domeny');
-    return { authority: 'OWNER_PROVIDED_SOURCE', evidenceSource: TIER.OWNER_PROVIDED_SOURCE, domain, reasons };
+    return {
+      authority: 'OWNER_PROVIDED_SOURCE',
+      evidenceSource: TIER.OWNER_PROVIDED_SOURCE,
+      domain,
+      reasons,
+    };
   }
   if (includesAny(domain, NON_OFFICIAL_HINTS)) {
     reasons.push('blog/forum/serwis społecznościowy — najniższa wiarygodność');

@@ -1,13 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import type { ExactCandidate } from '@/scan-import-v2';
 import {
+  productFieldsNotInLedger,
   confirmationsFromFields,
   manualConfirmedScan,
+  gapsFromNote,
+  missingDataSentence,
   plainFieldsFor,
   positionHint,
   prefillFromIdentity,
   scanFeedbackText,
   toResolvedScanProduct,
+  type FeedbackInput,
 } from './scanFlowLogic';
 
 describe('scan flow — pure rules', () => {
@@ -47,6 +51,7 @@ describe('scan flow — pure rules', () => {
       status: 'verified',
       engineReady: true,
       barcode: '8402001047251',
+      completedFromSimilar: false,
     });
     expect(
       toResolvedScanProduct(
@@ -64,6 +69,34 @@ describe('scan flow — pure rules', () => {
     ).toMatchObject({
       entityKind: 'pi_base',
       status: 'pi_base',
+    });
+  });
+
+  it('registry facts are prefilled only where the server session has no fact of its own', () => {
+    const fields = {
+      identity: { displayName: 'Jogurt', brand: 'Fruvita' },
+      nutrition: { basis: 'per_100g', fat: 3 },
+      ingredientsText: 'mleko',
+      allergensText: 'mleko',
+    };
+    const serverHasAll = {
+      facts: [
+        { field: 'identity.displayName', source: 'barcode_registry' },
+        { field: 'nutrition.fat', source: 'barcode_registry' },
+        { field: 'ingredientsText', source: 'barcode_registry' },
+        { field: 'allergensText', source: 'barcode_registry' },
+      ],
+    };
+    expect(productFieldsNotInLedger(fields, serverHasAll)).toEqual({});
+    const serverHasNothing = { facts: [{ field: 'barcode', source: 'barcode' }] };
+    expect(productFieldsNotInLedger(fields, serverHasNothing)).toEqual(fields);
+    const serverHasIdentityOnly = {
+      facts: [{ field: 'identity.displayName', source: 'manufacturer' }],
+    };
+    expect(productFieldsNotInLedger(fields, serverHasIdentityOnly)).toEqual({
+      nutrition: fields.nutrition,
+      ingredientsText: 'mleko',
+      allergensText: 'mleko',
     });
   });
 
@@ -205,5 +238,86 @@ describe('scan flow — pure rules', () => {
       ingredientsText: 'Azúcar, HUEVO',
       allergensText: 'eggs, gluten',
     });
+  });
+});
+
+describe('SOL-045 — the hint addresses what the customer can actually move', () => {
+  const frame = (over: Partial<FeedbackInput> = {}): FeedbackInput => ({
+    state: 'FOUND',
+    guidance: 'none',
+    timedOut: false,
+    position: null,
+    ...over,
+  });
+
+  it('on a computer the PRODUCT moves, never the camera', () => {
+    // the owner's own wording, 2026-09-06: a laptop lens is bolted to the screen
+    expect(scanFeedbackText(frame({ guidance: 'move_away', formFactor: 'desktop' }))).toBe(
+      'Odsuń kod od kamery',
+    );
+    expect(scanFeedbackText(frame({ guidance: 'move_closer', formFactor: 'desktop' }))).toBe(
+      'Przybliż kod',
+    );
+    expect(scanFeedbackText(frame({ guidance: 'improve_light', formFactor: 'desktop' }))).toBe(
+      'Dodaj więcej światła',
+    );
+    expect(scanFeedbackText(frame({ guidance: 'hold_steady', formFactor: 'desktop' }))).toBe(
+      'Przytrzymaj nieruchomo',
+    );
+    expect(scanFeedbackText(frame({ position: 'left', formFactor: 'desktop' }))).toBe(
+      'Przesuń kod w lewo',
+    );
+  });
+
+  it('in the hand the phone moves — the existing wording is untouched', () => {
+    expect(scanFeedbackText(frame({ guidance: 'move_away', formFactor: 'mobile' }))).toBe(
+      'Odsuń telefon od kodu',
+    );
+    expect(scanFeedbackText(frame({ position: 'left', formFactor: 'mobile' }))).toBe(
+      'Przesuń telefon w lewo',
+    );
+    // an unknown form factor keeps the historic phone voice rather than guessing
+    expect(scanFeedbackText(frame({ guidance: 'move_away' }))).toBe('Odsuń telefon od kodu');
+  });
+
+  it('a code read along the vertical axis asks to turn only what the customer holds', () => {
+    const stuck = { readingAxis: 'vertical' as const, trackedWithoutReadMs: 2000 };
+    expect(scanFeedbackText(frame({ ...stuck, formFactor: 'desktop' }))).toBe(
+      'Obróć produkt, aby kod leżał poziomo',
+    );
+    expect(scanFeedbackText(frame({ ...stuck, formFactor: 'mobile' }))).toBe(
+      'Obróć produkt lub telefon, aby kod leżał poziomo',
+    );
+  });
+});
+
+describe('a refusal names the question to put to the customer (SOL-049)', () => {
+  // the owner's Haribo: the registry gave everything except the allergen line, the authority refused
+  // with allergen_statement_required, and missingCritical was EMPTY — so nothing was ever asked
+  const HARIBO_NOTE =
+    'not ready: allergen_statement_required, roleReadiness:REVIEW, recognition:CONFECTIONERY/TOPPING_ONLY';
+
+  it('turns the refusal reason into the field that is actually missing', () => {
+    const fields = plainFieldsFor([...[], ...gapsFromNote(HARIBO_NOTE)]);
+    expect(fields.map((f) => f.key)).toContain('allergensText');
+    expect(fields.find((f) => f.key === 'allergensText')?.label).toMatch(/Alergeny/);
+  });
+
+  it('the customer sentence names it too, instead of a shrug', () => {
+    expect(missingDataSentence([...gapsFromNote(HARIBO_NOTE)])).toMatch(/Uzupełnij alergeny/);
+    // before the fix the empty list produced the "we will check it ourselves" shrug
+    expect(missingDataSentence([])).toMatch(/Gdy dojdą kolejne dane/);
+  });
+
+  it('carries a missing ingredient statement the same way', () => {
+    const fields = plainFieldsFor(gapsFromNote('not ready: ingredients_statement_required'));
+    expect(fields.map((f) => f.key)).toContain('ingredientsText');
+  });
+
+  it('never invents a field from prose, a readiness word or a recognition class', () => {
+    expect(plainFieldsFor(gapsFromNote('not ready: roleReadiness:REVIEW'))).toEqual([]);
+    expect(plainFieldsFor(gapsFromNote('recognition:CONFECTIONERY/TOPPING_ONLY'))).toEqual([]);
+    expect(gapsFromNote(null)).toEqual([]);
+    expect(gapsFromNote('wszystko w porządku')).toEqual([]);
   });
 });

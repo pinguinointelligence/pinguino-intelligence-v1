@@ -1115,6 +1115,20 @@ export function productSemanticEvidenceFromScanResult(value: unknown): ProductSe
  * extra once the call is made and they carry identity, but nothing here can invent a
  * product name: a new product's identity is read from its own front label.
  */
+/** identity fields the lookup asks for only when the session has no trustworthy name yet */
+export const EAN_LOOKUP_IDENTITY_FIELDS = ['productName', 'brand'] as const;
+
+/** the label essentials: with these present a further web search buys nothing the kitchen waits for */
+export const EAN_LOOKUP_ESSENTIAL_FIELDS = [
+  'ingredients',
+  'nutritionBasis',
+  'fat',
+  'carbohydrate',
+  'sugars',
+  'protein',
+  'salt',
+] as const;
+
 export const EAN_LOOKUP_FIELDS = [
   'productCategory',
   'productDescription',
@@ -1226,7 +1240,13 @@ export function scanResultFromLookupFacts(
     const field = String(fact.field ?? '');
     const raw = typeof fact.value === 'string' ? fact.value.trim() : '';
     if (!raw) continue;
-    if (field === 'ingredients' && !ingredientsText) {
+    if ((field === 'productName' || field === 'identity.displayName') && !identity.displayName) {
+      identity.displayName = raw;
+      remember(fact, 'identity.displayName');
+    } else if ((field === 'brand' || field === 'identity.brand') && !identity.brand) {
+      identity.brand = raw;
+      remember(fact, 'identity.brand');
+    } else if (field === 'ingredients' && !ingredientsText) {
       ingredientsText = raw;
       remember(fact, 'ingredientsText');
     } else if (field === 'allergens' && !allergensText) {

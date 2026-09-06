@@ -16,6 +16,7 @@ import type {
 } from '../contracts';
 import type {
   DiscoveryPort,
+  ResearchOptions,
   DiscoverySession,
   DiscoveryStage,
   FactLedger,
@@ -75,22 +76,44 @@ function pending(
   };
 }
 
+function nonEmpty(v: string | null | undefined): string | null {
+  return typeof v === 'string' && v.trim().length > 0 ? v.trim() : null;
+}
+
+/** the identity the customer confirmed in the finalize input (registry-prefilled or typed) */
+function confirmedIdentity(
+  input: FinalizeInput,
+): { displayName?: string | null; brand?: string | null } | null {
+  const fields = input.confirmations?.productFields as
+    | { identity?: { displayName?: string | null; brand?: string | null } }
+    | undefined;
+  return fields?.identity ?? null;
+}
+
 export function discoveredExact(
   identity: CodeIdentity,
   ledger: FactLedger,
   created: {
     productId: string;
     productCode: string | null;
+    displayName?: string | null;
+    brand?: string | null;
     engineUsable: boolean;
     existing: boolean;
+    completedFromSimilar?: boolean;
   },
   sessionId: string,
+  confirmed?: { displayName?: string | null; brand?: string | null } | null,
 ): Extract<ScanImportV2Result, { kind: 'discovered_exact' }> {
   const product: ExactCandidate = {
     productId: created.productId,
     productCode: created.productCode,
-    displayName: ledger.identity.name ?? identity.value,
-    brand: ledger.identity.brand,
+    displayName:
+      nonEmpty(created.displayName) ??
+      nonEmpty(confirmed?.displayName) ??
+      nonEmpty(ledger.identity.name) ??
+      identity.value,
+    brand: nonEmpty(created.brand) ?? nonEmpty(confirmed?.brand) ?? ledger.identity.brand,
     ean: identity.canonicalGtin13,
     strength: 'provisional_linked',
     entityKind: 'customer_provisional',
@@ -98,7 +121,11 @@ export function discoveredExact(
     mapperSlotId: null,
     country: null,
     currentVersionId: null,
-    evidence: { createdThroughFinalize: true, existing: created.existing },
+    evidence: {
+      createdThroughFinalize: true,
+      existing: created.existing,
+      completedFromSimilar: created.completedFromSimilar === true,
+    },
   };
   const stage: DiscoveryStage = created.engineUsable
     ? 'engine_ready'
@@ -131,21 +158,13 @@ export async function startDiscovery(
   identity: CodeIdentity,
   ctx: RequestContext,
   port: DiscoveryPort,
+  options?: ResearchOptions,
 ): Promise<DiscoveryResult> {
-  const own = await port.findOwnRequest(identity, ctx);
-  if (own && !own.approvedProductId) {
-    return {
-      kind: 'discovery_requested',
-      identity,
-      requestId: own.requestId,
-      status: own.status,
-      stage: 'evidence_collected',
-      ledger: buildLedger(identity, null, [], { recordedAt: ctx.now }),
-      canonical: false,
-      engineReady: false,
-    };
-  }
-  const r = await port.research(identity, ctx);
+  // SOL-049 (owner QA 2026-09-06): an open product request is HISTORY, never the answer to a scan.
+  // Asking `findOwnRequest` first meant one request — the owner's Haribo, submitted days earlier —
+  // replayed a "reported for verification" screen on every later scan of that code, with no new
+  // record created and no way for the customer to reach the product. A scan always runs the sources.
+  const r = await port.research(identity, ctx, options);
   if (r.kind === 'existing_product')
     return {
       kind: 'resolved_exact',
@@ -175,6 +194,11 @@ export async function continueDiscovery(
 ): Promise<DiscoveryResult> {
   if (action.type === 'label') {
     const a = await port.analyzeLabel(session, action.images, ctx);
+    if (a.kind === 'failed')
+      return {
+        ...pending(session),
+        labelError: { reason: a.reason, retryAfterMs: a.retryAfterMs, detail: a.detail ?? null },
+      };
     if (a.kind === 'existing_product')
       return {
         kind: 'resolved_exact',
@@ -228,7 +252,16 @@ export async function continueDiscovery(
   const f = await port.finalize(session, action.input, ctx);
   switch (f.kind) {
     case 'created':
-      return discoveredExact(session.identity, ledger, f, session.sessionId);
+      return {
+        ...discoveredExact(
+          session.identity,
+          ledger,
+          f,
+          session.sessionId,
+          confirmedIdentity(action.input),
+        ),
+        privateNotReady: f.privateNotReady === true,
+      };
     case 'family_confirmation_required':
       return {
         kind: 'needs_confirmation',

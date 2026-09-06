@@ -13,6 +13,8 @@ import {
   type ProductEvidenceInput,
   type ProductEvidenceField,
   type EvidenceSource,
+  declarationConfidenceOf,
+  declarationConfidenceByField,
 } from '../../../src/features/product-intelligence/productEvidenceConfidence.ts';
 import {
   resolveProductWorkingValues,
@@ -118,6 +120,25 @@ export interface IntimportTrustedProductProfile {
   mapperCandidatesBeforeFilter: string[];
   mapperCandidatesAfterFilter: string[];
   mapperRejectedCandidates: { ingredientId: string; reasonCodes: string[] }[];
+  /** Mapper categories the broad semantic probe suggested when Recognition named none (audit). */
+  mapperSemanticHintCategories?: string[];
+  /** Where the ProductBehavior reference row came from: the verified numeric donor, or
+   * (no donor) the closest Mapper row of the same recognised kind — behaviour only. */
+  mapperBehaviorReferenceBasis?: 'verified_numeric_donor' | 'semantic_kind_reference' | null;
+  /** The manufacturer's declared nutrition basis, kept beside the normalised values. */
+  declaredNutritionBasis?: 'per_100g' | 'per_100ml' | null;
+  /** 1 ml = 1 g (owner-frozen) when the label declared per 100 ml; otherwise source per 100 g. */
+  normalizationBasis?: 'SOURCE_PER_100G' | 'GELLATTI_1ML_1G_NORMALIZATION' | null;
+  /** The VERIFIED-donor match on its own (audit): what the numeric authority saw and decided. */
+  mapperVerifiedMatch?: {
+    confidence: number;
+    basis: string;
+    rejected: string | null;
+    candidatesBeforeFilter: string[];
+    candidatesAfterFilter: string[];
+    rejectedCandidates: { ingredientId: string; reasonCodes: string[] }[];
+    donorReference: string | null;
+  };
   mapperFingerprint: string;
   recognition: ProductSemanticClassification | null;
 }
@@ -158,6 +179,8 @@ export interface IntimportProductProfileProposalInput {
    * browser-supplied final profile has no authority at this boundary. */
   proposedTechnicalComposition?: Record<string, unknown>;
   rows: readonly IntimportMapperAuthorityRow[];
+  declaredNutritionBasis?: 'per_100g' | 'per_100ml' | null;
+  normalizationBasis?: 'SOURCE_PER_100G' | 'GELLATTI_1ML_1G_NORMALIZATION' | null;
 }
 
 const TECHNICAL_KEYS: Readonly<Record<WorkingNumericField, string>> = Object.freeze({
@@ -245,6 +268,29 @@ export function validateIntimportWholeProfileProposal(
  * existing shared policies. A Mapper id is retained as estimate provenance;
  * it never becomes this article's runtime identity.
  */
+
+/** the per-field declaration tiers, keyed by the working field each nutrition declaration feeds */
+function declaredConfidenceByWorkingField(
+  evidence: ProductEvidenceInput,
+): Partial<Record<WorkingNumericField, number>> {
+  const byField = declarationConfidenceByField(evidence);
+  const out: Partial<Record<WorkingNumericField, number>> = {};
+  const map: Partial<Record<keyof typeof byField, WorkingNumericField>> = {
+    energyKcal: 'kcal_per_100g',
+    fat: 'fat_percent',
+    protein: 'protein_percent',
+    carbohydrate: 'carbohydrate_percent',
+    sugars: 'total_sugars_percent',
+    fiber: 'fiber_percent',
+    salt: 'salt_percent',
+  };
+  for (const [field, confidence] of Object.entries(byField)) {
+    const working = map[field as keyof typeof byField];
+    if (working && typeof confidence === 'number') out[working] = confidence;
+  }
+  return out;
+}
+
 export function validateIntimportProductProfileProposal(
   input: IntimportProductProfileProposalInput,
 ): IntimportTrustedProductProfile | null {
@@ -259,6 +305,18 @@ export function validateIntimportProductProfileProposal(
     input.trustedRecognition.evidenceFingerprint === deterministicRecognition.evidenceFingerprint
       ? input.trustedRecognition
       : deterministicRecognition;
+  // Candidate discovery and numeric authority are deliberately separate. All
+  // active Mapper rows may explain what kind of product was considered and why
+  // it was rejected, but only the verified/Engine-approved subset below is
+  // allowed to lend a single number to the product-owned profile.
+  const broadKnowledge = buildMapperKnowledge(
+    input.rows.filter((row) => row.is_active !== false),
+    mapperFingerprint,
+  );
+  const broadSemanticMatch = findProfileMatch(
+    { ...input.matchInput, semantic: recognition },
+    broadKnowledge,
+  );
   // Only verified, Engine-approved Mapper rows may contribute estimates. The
   // browser's proposed ID is deliberately ignored: the server recomputes the
   // donor from canonical facts, and a stale/wrong hint must degrade to the
@@ -268,26 +326,63 @@ export function validateIntimportProductProfileProposal(
     mapperFingerprint,
   );
   const evidenceAssessment = assessProductConfidence(input.evidence);
-  const resolved = resolveProductWorkingValues(
-    {
-      declared: input.declared,
-      declaredBasis: input.declaredBasis,
-      declaredConfidence: evidenceAssessment.confidence / 100,
-      sourceCard: input.sourceCard ?? null,
-      identity: {
-        name: input.matchInput.name,
-        variant: input.matchInput.variant,
-        brand: input.matchInput.brand,
-        category: input.matchInput.category,
-        subcategory: input.matchInput.subcategory,
-        barcode: input.matchInput.barcode,
-        semantic: recognition,
+  const resolveWith = (semantic: ProductSemanticClassification | null) =>
+    resolveProductWorkingValues(
+      {
+        declared: input.declared,
+        declaredBasis: input.declaredBasis,
+        // the declaration's own source tier; the aggregate evidence score (metadata
+        // included) keeps routing enrichment but never decides physics readiness
+        declaredConfidence:
+          declarationConfidenceOf(input.evidence) ?? evidenceAssessment.confidence / 100,
+        declaredConfidenceByField: declaredConfidenceByWorkingField(input.evidence),
+        sourceCard: input.sourceCard ?? null,
+        identity: {
+          name: input.matchInput.name,
+          variant: input.matchInput.variant,
+          brand: input.matchInput.brand,
+          category: input.matchInput.category,
+          subcategory: input.matchInput.subcategory,
+          barcode: input.matchInput.barcode,
+          semantic,
+        },
+        technical: recognition?.isTechnicalProduct ?? input.matchInput.technical === true,
+        technicalAuthority: false,
       },
-      technical: recognition?.isTechnicalProduct ?? input.matchInput.technical === true,
-      technicalAuthority: false,
-    },
-    knowledge,
-  );
+      knowledge,
+    );
+  const isAccepted = (match: ReturnType<typeof findProfileMatch> | null) =>
+    match !== null &&
+    match.confidence >= PROFILE_MATCH_FLOOR &&
+    match.rejected === null &&
+    match.basis !== 'none';
+  // Pass 1: exactly the recognized semantics. Pass 2 (only when pass 1 found no
+  // trusted donor and Recognition named no Mapper categories): the categories of
+  // the rows the broad semantic probe accepted become the candidate hint. The
+  // probe may include Estimated rows — they explain WHAT the product is; the
+  // verified subset still decides every number.
+  let resolved = resolveWith(recognition);
+  const mapperSemanticHintCategories: string[] = [];
+  if (
+    recognition &&
+    recognition.compatibleMapperCategories.length === 0 &&
+    !isAccepted(resolved.profileMatch) &&
+    broadSemanticMatch.confidence >= PROFILE_MATCH_FLOOR &&
+    broadSemanticMatch.rejected === null
+  ) {
+    for (const row of broadSemanticMatch.rows) {
+      const category = (row.ingredient_category ?? '').trim().toLowerCase().replace(/\s+/g, '_');
+      if (category && !mapperSemanticHintCategories.includes(category))
+        mapperSemanticHintCategories.push(category);
+    }
+    if (mapperSemanticHintCategories.length > 0) {
+      const hinted = resolveWith({
+        ...recognition,
+        compatibleMapperCategories: mapperSemanticHintCategories.slice(0, 4),
+      });
+      if (isAccepted(hinted.profileMatch)) resolved = hinted;
+    }
+  }
 
   const acceptedMatch =
     resolved.profileMatch &&
@@ -302,15 +397,7 @@ export function validateIntimportProductProfileProposal(
   // enter `fieldTruth` or `technicalComposition`. BASE products deliberately
   // retain the Verified-only completion rule above.
   const toppingBehaviorMatch =
-    !acceptedMatch && recognition?.intendedUsageRole === 'TOPPING_ONLY'
-      ? findProfileMatch(
-          { ...input.matchInput, semantic: recognition },
-          buildMapperKnowledge(
-            input.rows.filter((row) => row.is_active !== false),
-            mapperFingerprint,
-          ),
-        )
-      : null;
+    !acceptedMatch && recognition?.intendedUsageRole === 'TOPPING_ONLY' ? broadSemanticMatch : null;
   const acceptedBehaviorMatch =
     toppingBehaviorMatch &&
     toppingBehaviorMatch.confidence >= PROFILE_MATCH_FLOOR &&
@@ -318,7 +405,37 @@ export function validateIntimportProductProfileProposal(
     toppingBehaviorMatch.basis !== 'none'
       ? toppingBehaviorMatch
       : null;
-  const referenceMatch = acceptedMatch ?? acceptedBehaviorMatch;
+  // No numeric donor at all: the product's KIND is still established and the Mapper
+  // holds rows of that kind. Behaviour (family/form/module permissions) is borrowed
+  // from the closest row of the same kind — matched without the macro filter, so a
+  // sweetened yoghurt still binds to a yoghurt. BASE roles may only borrow from a
+  // verified, Engine-approved row; toppings from any active one. Its numbers never
+  // enter fieldTruth; the basis is recorded on the profile.
+  const baseRoleRequested = recognition?.intendedUsageRole !== 'TOPPING_ONLY';
+  const kindReferenceMatch =
+    !acceptedMatch &&
+    !acceptedBehaviorMatch &&
+    recognition &&
+    recognition.ingredientFamily !== 'unknown'
+      ? findProfileMatch(
+          { ...input.matchInput, knownMacros: undefined, semantic: recognition },
+          baseRoleRequested ? knowledge : broadKnowledge,
+        )
+      : null;
+  const acceptedKindReference =
+    kindReferenceMatch &&
+    kindReferenceMatch.confidence >= PROFILE_MATCH_FLOOR &&
+    kindReferenceMatch.rejected === null &&
+    kindReferenceMatch.basis !== 'none'
+      ? kindReferenceMatch
+      : null;
+  const referenceMatch = acceptedMatch ?? acceptedBehaviorMatch ?? acceptedKindReference;
+  const mapperBehaviorReferenceBasis: IntimportTrustedProductProfile['mapperBehaviorReferenceBasis'] =
+    acceptedMatch
+      ? 'verified_numeric_donor'
+      : acceptedBehaviorMatch || acceptedKindReference
+        ? 'semantic_kind_reference'
+        : null;
   const acceptedProfileReference = referenceMatch ? profileDonor(referenceMatch) : null;
 
   const technicalComposition: Record<string, number> = {};
@@ -401,24 +518,30 @@ export function validateIntimportProductProfileProposal(
     mapperSimilarity: referenceMatch?.confidence ?? null,
     mapperProfileBasis:
       referenceMatch && referenceMatch.basis !== 'none' ? referenceMatch.basis : null,
-    mapperCandidatesBeforeFilter: [
-      ...(referenceMatch?.candidatesBeforeFilter ??
-        resolved.profileMatch?.candidatesBeforeFilter ??
-        []),
-    ],
-    mapperCandidatesAfterFilter: [
-      ...(referenceMatch?.candidatesAfterFilter ??
-        resolved.profileMatch?.candidatesAfterFilter ??
-        []),
-    ],
-    mapperRejectedCandidates: (
-      referenceMatch?.rejectedCandidates ??
-      resolved.profileMatch?.rejectedCandidates ??
-      []
-    ).map((candidate) => ({
+    mapperCandidatesBeforeFilter: [...broadSemanticMatch.candidatesBeforeFilter],
+    mapperCandidatesAfterFilter: [...broadSemanticMatch.candidatesAfterFilter],
+    mapperRejectedCandidates: broadSemanticMatch.rejectedCandidates.map((candidate) => ({
       ingredientId: candidate.ingredientId,
       reasonCodes: [...candidate.reasonCodes],
     })),
+    mapperSemanticHintCategories: [...mapperSemanticHintCategories],
+    mapperBehaviorReferenceBasis,
+    declaredNutritionBasis: input.declaredNutritionBasis ?? null,
+    normalizationBasis: input.normalizationBasis ?? null,
+    mapperVerifiedMatch: resolved.profileMatch
+      ? {
+          confidence: resolved.profileMatch.confidence,
+          basis: resolved.profileMatch.basis,
+          rejected: resolved.profileMatch.rejected,
+          candidatesBeforeFilter: [...resolved.profileMatch.candidatesBeforeFilter],
+          candidatesAfterFilter: [...resolved.profileMatch.candidatesAfterFilter],
+          rejectedCandidates: resolved.profileMatch.rejectedCandidates.map((candidate) => ({
+            ingredientId: candidate.ingredientId,
+            reasonCodes: [...candidate.reasonCodes],
+          })),
+          donorReference: resolved.profileMatch.donorReference ?? null,
+        }
+      : undefined,
     mapperFingerprint,
     recognition,
   };

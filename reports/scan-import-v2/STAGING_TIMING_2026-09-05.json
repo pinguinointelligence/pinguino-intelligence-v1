@@ -1,0 +1,92 @@
+{
+  "ranAt": "2026-09-05T23:40:46.870Z",
+  "steps": [
+    {
+      "label": "known.cold",
+      "ms": 1165
+    },
+    {
+      "label": "known.warm",
+      "ms": 201
+    },
+    {
+      "label": "new.research",
+      "ms": 976
+    },
+    {
+      "label": "new.finalize",
+      "ms": 2139
+    },
+    {
+      "label": "new.rescan",
+      "ms": 1140
+    }
+  ],
+  "known": {
+    "code": "7340222800464",
+    "cold": {
+      "kind": "resolved_exact",
+      "ms": 1165
+    },
+    "warm": {
+      "kind": "resolved_exact",
+      "ms": 201
+    }
+  },
+  "new": {
+    "candidates": [
+      "3245678047125",
+      "5900617002228",
+      "20005825"
+    ],
+    "chosen": "3245678047125",
+    "probeKind": "unknown",
+    "code": "3245678047125",
+    "research": {
+      "kind": "discovered_pending",
+      "ms": 976
+    },
+    "ledger": {
+      "sources": [
+        "barcode",
+        "barcode_registry"
+      ],
+      "facts": [
+        "barcode@barcode",
+        "symbology@barcode",
+        "identity.displayName@barcode_registry",
+        "identity.brand@barcode_registry",
+        "ingredientsText@barcode_registry",
+        "nutrition.basis@barcode_registry",
+        "nutrition.energyKj@barcode_registry",
+        "nutrition.energyKcal@barcode_registry",
+        "nutrition.fat@barcode_registry",
+        "nutrition.saturatedFat@barcode_registry",
+        "nutrition.carbohydrate@barcode_registry",
+        "nutrition.sugars@barcode_registry",
+        "nutrition.protein@barcode_registry",
+        "nutrition.salt@barcode_registry",
+        "nutrition.fibre@barcode_registry",
+        "package.netQuantity@barcode_registry"
+      ],
+      "missingCritical": [],
+      "next": "label_photo"
+    },
+    "finalize": {
+      "kind": "discovered_exact",
+      "ms": 2139,
+      "engineReady": true,
+      "product": {
+        "code": "CA-ING-007179",
+        "name": "90% noir Absolu"
+      },
+      "note": null,
+      "missing": null
+    },
+    "customerVisibleMs": 3115,
+    "rescan": {
+      "kind": "resolved_exact",
+      "ms": 1140
+    }
+  }
+}

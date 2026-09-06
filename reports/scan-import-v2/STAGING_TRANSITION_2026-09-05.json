@@ -1,0 +1,108 @@
+{
+  "ranAt": "2026-09-05T23:56:22.841Z",
+  "code": "5900531001710",
+  "accounts": [
+    "home@home.com",
+    "test1@test1.com"
+  ],
+  "s1": {
+    "kind": "discovered_exact",
+    "engineReady": true,
+    "product": "CA-ING-007180",
+    "version": {
+      "product_id": "3746d3f6-9519-49d9-bfec-f2d89df04dfd",
+      "product_code": "CA-ING-007180",
+      "display_name": "Jogurt naturalny QA",
+      "brand": "Gellatti QA",
+      "matched_gtin": "5900531001710",
+      "matched_from": "products",
+      "product_kind": "customer_provisional",
+      "entity_kind": "customer_provisional",
+      "visibility": "internal",
+      "ownership": "own",
+      "current_version_id": "1e23a912-baf4-43a2-8c5b-d3ec98cdf140",
+      "verification_status": "manual_unverified",
+      "product_country": null,
+      "markets": [
+        "GLOBAL"
+      ],
+      "mapper_ingredient_id": null,
+      "engine_usable": true,
+      "lifecycle_rejected": false
+    }
+  },
+  "s3": {
+    "firstKind": "unknown",
+    "created": {
+      "kind": "discovered_exact",
+      "product": "CA-ING-007180"
+    },
+    "before": {
+      "product_id": "3746d3f6-9519-49d9-bfec-f2d89df04dfd",
+      "product_code": "CA-ING-007180",
+      "display_name": "Jogurt naturalny QA",
+      "brand": "Gellatti QA",
+      "matched_gtin": "5900531001710",
+      "matched_from": "products",
+      "product_kind": "customer_provisional",
+      "entity_kind": "customer_provisional",
+      "visibility": "internal",
+      "ownership": "own",
+      "current_version_id": "1e23a912-baf4-43a2-8c5b-d3ec98cdf140",
+      "verification_status": "manual_unverified",
+      "product_country": null,
+      "markets": [
+        "GLOBAL"
+      ],
+      "mapper_ingredient_id": null,
+      "engine_usable": true,
+      "lifecycle_rejected": false
+    },
+    "afterA": {
+      "product_id": "3746d3f6-9519-49d9-bfec-f2d89df04dfd",
+      "product_code": "CA-ING-007180",
+      "display_name": "Jogurt naturalny QA",
+      "brand": "Gellatti QA",
+      "matched_gtin": "5900531001710",
+      "matched_from": "products",
+      "product_kind": "customer_provisional",
+      "entity_kind": "customer_provisional",
+      "visibility": "internal",
+      "ownership": "own",
+      "current_version_id": "2c480382-5dd9-406e-99b0-215e06ae69db",
+      "verification_status": "manual_unverified",
+      "product_country": null,
+      "markets": [
+        "GLOBAL"
+      ],
+      "mapper_ingredient_id": null,
+      "engine_usable": true,
+      "lifecycle_rejected": false
+    },
+    "asB": {
+      "product_id": "3746d3f6-9519-49d9-bfec-f2d89df04dfd",
+      "product_code": "CA-ING-007180",
+      "display_name": "Jogurt naturalny QA",
+      "brand": "Gellatti QA",
+      "matched_gtin": "5900531001710",
+      "matched_from": "products",
+      "product_kind": "customer_provisional",
+      "entity_kind": "customer_provisional",
+      "visibility": "internal",
+      "ownership": "linked",
+      "current_version_id": "2c480382-5dd9-406e-99b0-215e06ae69db",
+      "verification_status": "manual_unverified",
+      "product_country": null,
+      "markets": [
+        "GLOBAL"
+      ],
+      "mapper_ingredient_id": null,
+      "engine_usable": true,
+      "lifecycle_rejected": false
+    }
+  },
+  "s4": {
+    "kind": "resolved_exact",
+    "engineReady": true
+  }
+}

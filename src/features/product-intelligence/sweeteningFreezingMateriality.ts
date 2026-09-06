@@ -72,8 +72,28 @@ const coefficientBounds = (values: readonly number[]): { min: number; max: numbe
 
 const sugarPodBounds = coefficientBounds(Object.values(sugarPodCoefficient));
 const sugarPacBounds = coefficientBounds(Object.values(sugarPacCoefficient));
-const polyolPodBounds = coefficientBounds(Object.values(COEFFICIENTS.polyols).map((x) => x.pod));
-const polyolPacBounds = coefficientBounds(Object.values(COEFFICIENTS.polyols).map((x) => x.pac));
+const allPolyolPodBounds = coefficientBounds(Object.values(COEFFICIENTS.polyols).map((x) => x.pod));
+const allPolyolPacBounds = coefficientBounds(Object.values(COEFFICIENTS.polyols).map((x) => x.pac));
+
+/**
+ * When the label NAMES the polyols, the coefficient uncertainty shrinks to those
+ * polyols (a maltitol chocolate is not judged against erythritol's freezing power).
+ * Polyols outside the Engine table keep the full table's spread.
+ */
+const polyolBoundsFor = (
+  semantic: ProductSemanticClassification | null | undefined,
+): { pod: { min: number; max: number }; pac: { min: number; max: number } } => {
+  const named = (semantic?.sweetening?.polyols ?? []).filter(
+    (name): name is keyof typeof COEFFICIENTS.polyols => name in COEFFICIENTS.polyols,
+  );
+  if (named.length === 0 || (semantic?.sweetening?.polyols ?? []).includes('other')) {
+    return { pod: allPolyolPodBounds, pac: allPolyolPacBounds };
+  }
+  return {
+    pod: coefficientBounds(named.map((name) => COEFFICIENTS.polyols[name].pod)),
+    pac: coefficientBounds(named.map((name) => COEFFICIENTS.polyols[name].pac)),
+  };
+};
 
 const familyCategories = (
   family: ProductSemanticFamily | null | undefined,
@@ -93,6 +113,9 @@ const familyCategories = (
     case 'liquid_vegetable_oil':
       return ['vegan_gelato'];
     case 'fruit':
+    case 'beverage':
+      // A soft/functional drink enters a recipe the way a fruit base does: as the
+      // water-rich body of a sorbet.
       return ['sorbet'];
     case 'nut':
     case 'nut_paste':
@@ -133,6 +156,19 @@ function maximumShare(fields: ProductFieldTruthMap, band: TargetBand): number {
   return Math.max(0, Math.min(1, share));
 }
 
+/**
+ * Largest admissible recipe share of this product across the Engine bands its
+ * kind can enter. Shared with the mass-balance closure so that an unnamed-solids
+ * uncertainty is judged by the SAME share model as the sweetening uncertainty.
+ */
+export function maximumRecipeShareFor(
+  fields: ProductFieldTruthMap,
+  semantic: ProductSemanticClassification | null | undefined,
+): number {
+  const bands = relevantBands(semantic);
+  return round4(bands.reduce((best, band) => Math.max(best, maximumShare(fields, band)), 0));
+}
+
 function iceSlope(category: ProductCategory, temperatureC: number): number | null {
   const rows = resolveIceAnchorRows(ICE_ANCHOR_ROWS, category);
   const exact = rows.find((row) => row.temperature_c === temperatureC);
@@ -162,12 +198,9 @@ export function assessSweeteningFreezingMateriality(input: {
   let knownPac = 0;
   for (const field of sugarFields) {
     const truth = fields[field];
-    if (
-      !finite(truth.value) ||
-      (truth.provenance.state !== 'VERIFIED' && truth.provenance.basis !== 'mapper_similar_profile')
-    ) {
-      continue;
-    }
+    // Every attributed component counts: verified, transferred from a compatible
+    // profile, or assigned by the declared-remainder rule (its provenance says so).
+    if (!finite(truth.value) || truth.provenance.state === 'UNKNOWN') continue;
     attributedNamedSugar += truth.value;
     knownPod += truth.value * sugarPodCoefficient[field];
     knownPac += truth.value * sugarPacCoefficient[field];
@@ -175,11 +208,15 @@ export function assessSweeteningFreezingMateriality(input: {
   const unresolvedSugarPercent = Math.max(0, totalSugars - attributedNamedSugar);
 
   const declaredPolyol = fields.polyol_percent.value;
+  // Polyols the label names (or a sugar-substitute kind) without an amount: the
+  // non-sugar carbohydrate bounds them.
+  const polyolsNamed = (semantic?.sweetening?.polyols?.length ?? 0) > 0;
   const possibleUnstatedPolyol =
-    declaredPolyol === null && semantic?.ingredientFamily === 'other_sugar'
+    declaredPolyol === null && (polyolsNamed || semantic?.ingredientFamily === 'other_sugar')
       ? Math.max(0, (fields.carbohydrate_percent.value ?? 0) - totalSugars)
       : 0;
   const unresolvedPolyolPercent = Math.max(0, declaredPolyol ?? possibleUnstatedPolyol);
+  const polyolBounds = polyolBoundsFor(semantic);
   const alcoholAuthorityUnresolved =
     fields.alcohol_percent.value === null && materialAlcoholFamily(semantic);
 
@@ -190,21 +227,21 @@ export function assessSweeteningFreezingMateriality(input: {
   const podLow =
     knownPod +
     unresolvedSugarPercent * sugarPodBounds.min +
-    unresolvedPolyolPercent * polyolPodBounds.min;
+    unresolvedPolyolPercent * polyolBounds.pod.min;
   const podHigh =
     knownPod +
     unresolvedSugarPercent * sugarPodBounds.max +
-    unresolvedPolyolPercent * polyolPodBounds.max;
+    unresolvedPolyolPercent * polyolBounds.pod.max;
   const alcoholUncertaintyHigh = alcoholAuthorityUnresolved ? 100 * COEFFICIENTS.npac.alcohol : 0;
   const pacLow =
     knownPac +
     unresolvedSugarPercent * sugarPacBounds.min +
-    unresolvedPolyolPercent * polyolPacBounds.min +
+    unresolvedPolyolPercent * polyolBounds.pac.min +
     netFixedPac;
   const pacHigh =
     knownPac +
     unresolvedSugarPercent * sugarPacBounds.max +
-    unresolvedPolyolPercent * polyolPacBounds.max +
+    unresolvedPolyolPercent * polyolBounds.pac.max +
     netFixedPac +
     alcoholUncertaintyHigh;
 

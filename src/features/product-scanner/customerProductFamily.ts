@@ -5,6 +5,10 @@ import type {
   ProductSemanticClassification,
   ProductSemanticFamily,
 } from '../product-intelligence/productRecognition';
+import {
+  dosageGovernsArchetype,
+  mapperCategoriesForSemantics,
+} from '../product-intelligence/productRecognition.ts';
 
 export type CustomerProductFamilyChoice =
   | 'dairy'
@@ -80,7 +84,7 @@ const FAMILY_DEFAULTS: Readonly<Partial<Record<CustomerProductFamilyChoice, Fami
     role: 'BASE_ONLY',
   },
   beverage: {
-    family: 'plant_beverage',
+    family: 'beverage',
     archetype: 'NORMAL_INGREDIENT',
     form: 'LIQUID',
     role: 'BASE_ONLY',
@@ -117,9 +121,21 @@ export function applyCustomerProductFamily(
     classification.intendedUsageRole === 'NEITHER_REVIEW' && defaults.role
       ? defaults.role
       : classification.intendedUsageRole;
-  const modelReasonCodes = classification.modelReasonCodes.filter(
-    (reason) => reason !== 'FAMILY_UNKNOWN',
-  );
+  // The customer's answer resolves whole dimensions (family, and through the
+  // defaults archetype/form/role). The model flag must describe what is STILL
+  // unknown afterwards — keeping the pre-answer codes left every confirmed
+  // product "semantics unresolved" forever, which blocked ProductBehavior and
+  // Engine readiness regardless of how complete its physics were.
+  const modelReasonCodes = [
+    ...(productArchetype === 'UNKNOWN' ? ['ARCHETYPE_UNKNOWN'] : []),
+    ...(physicalForm === 'UNKNOWN' && productArchetype !== 'NORMAL_INGREDIENT'
+      ? ['FORM_UNKNOWN']
+      : []),
+    ...(intendedUsageRole === 'NEITHER_REVIEW' ? ['ROLE_UNKNOWN'] : []),
+    ...(classification.dosage.semantics === 'UNKNOWN' && dosageGovernsArchetype(productArchetype)
+      ? ['DOSAGE_SEMANTICS_UNKNOWN']
+      : []),
+  ];
   return {
     ...classification,
     classificationSource: 'CUSTOMER_CONFIRMED',
@@ -127,7 +143,9 @@ export function applyCustomerProductFamily(
     productArchetype,
     physicalForm,
     intendedUsageRole,
-    compatibleMapperCategories: [],
+    // The confirmed kind opens exactly the Mapper categories that kind lives in;
+    // an empty list here left the matcher with no candidate pool at all.
+    compatibleMapperCategories: mapperCategoriesForSemantics(defaults.family, productArchetype),
     reasonCodes: [...classification.reasonCodes, `CUSTOMER_FAMILY_${choice.toUpperCase()}`],
     evidenceRefs: [...new Set([...classification.evidenceRefs, 'customerFamily'])],
     modelRequired: modelReasonCodes.length > 0,

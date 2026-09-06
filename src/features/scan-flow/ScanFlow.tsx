@@ -1,18 +1,18 @@
 /**
  * SCAN FLOW — the one shared flow of the application: camera → Scan Core → EAN/GTIN → Scan Import 2.0.
  *
- * Entered from HOME and PRO („Dodaj składnik → Skanuj”, mode `recipe`) and from Produkty
- * („Skanuj produkt”, mode `catalog`). Rules (owner, 2026-09-05):
- *   - known product → recipe: that exact product goes into the open recipe; catalog: "already
- *     exists", no duplicate;
- *   - unknown product → exact-GTIN registry evidence FIRST (name + brand are used as they are, the
- *     customer is not asked for a generic category when the code already identifies the product),
- *     then Scan Import 2.0 discovery (label photograph) for what is still missing;
- *   - still missing ice-cream data → only the minimal plain fields the customer can read off the
- *     label, prefilled from the registry where it knows them; the answer is saved as a LOCAL USER
- *     PRODUCT, private to this account, never added to the global catalogue by itself.
- * The customer always sees what the scanner is doing (state, guidance, progress, confirmation).
- * No technical parameter is ever shown. Mobile and web run the same code.
+ * Entered from HOME and PRO („Dodaj składnik → Skanuj”, mode `recipe`), from the HOME creator's own
+ * scan button, and from Produkty („Skanuj produkt”, mode `catalog`). Owner contract (2026-09-05):
+ *   - known product → recipe: that exact product goes into the open recipe; catalog: "already exists";
+ *   - unknown product → exact-GTIN registry evidence FIRST (name + brand used as they are, no generic
+ *     category question), then label photographs (as many as needed, evidence is additive), then only
+ *     the ordinary facts a customer can read off a package;
+ *   - a decoded GTIN and everything learnt about it are never lost to a generic error: one failed
+ *     source or one failed photograph is reported in place, with a retry, while the identity stays;
+ *   - a product the authority cannot yet make recipe-ready is still SAVED PRIVATELY (engine-ready
+ *     false), never globally, never as a country default;
+ *   - the customer sees what the scanner does (state, guidance, digits read so far, confirmation) and
+ *     never an internal code.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ConfirmedScan } from '@/scan-contract/confirmedScan';
@@ -25,6 +25,8 @@ import {
   identifyCode,
   identityFromEvidence,
   runScanImportV2,
+  startDiscovery,
+  type CodeIdentity,
   type CustomerFamily,
   type DiscoverySession,
   type ExactCandidate,
@@ -37,17 +39,38 @@ import {
 } from '@/scan-import-v2';
 import { createScanImportV2AppPorts, getScanImportV2AccountId } from '@/services/scanImportV2';
 import {
+  beginScan as beginPresentedScan,
+  createPresenter,
+  isCurrent as isCurrentScan,
+  nextTickAt,
+  present,
+  stageOfPhaseKind,
+  tick as tickPresenter,
+} from './scanFlowPresenter';
+import {
+  cameraDiagnosticsReport,
+  cameraQaRequested,
   describeCaptureError,
   ScanCoreCapture,
+  type CameraDiagnostics,
   type CaptureFrame,
   type CaptureStatus,
 } from './scanCoreCapture';
+import { reenrichOwnProvisional } from './reenrichment';
 import {
   confirmationsFromFields,
+  ledgerIdentity,
   manualConfirmedScan,
+  maskedDigits,
+  offerPhotoFallback,
   plainFieldsFor,
   positionHint,
   prefillFromIdentity,
+  customerSentence,
+  missingDataSentence,
+  onlySemanticsMissing,
+  gapsFromNote,
+  productFieldsNotInLedger,
   scanFeedbackText,
   toResolvedScanProduct,
   type PlainField,
@@ -57,6 +80,8 @@ import {
 /** the dedicated exact-identity authority once its migration is deployed (staging: yes); otherwise the interim path */
 const EXACT_AUTHORITY =
   import.meta.env.VITE_SCAN_IMPORT_GTIN_RPC === '1' ? 'gtin_rpc' : 'search_rpc';
+/** the customer must perceive the successful scan before the lookup replaces it */
+const CONFIRM_DWELL_MS = 700;
 
 const FAMILIES: readonly CustomerFamily[] = [
   'dairy',
@@ -89,9 +114,27 @@ export interface ScanFlowProps {
   intro?: string;
 }
 
+export interface LabelPhoto {
+  id: string;
+  file: File;
+  source: LabelImage['source'];
+  status: 'pending' | 'analyzing' | 'done' | 'failed';
+  /** plain-language reason when failed */
+  error: string | null;
+}
+
 type Phase =
   | { kind: 'camera'; status: CaptureStatus; error: string | null }
-  | { kind: 'resolving'; code: string }
+  | { kind: 'confirmed'; code: string }
+  | { kind: 'resolving'; code: string; step?: 'lookup' | 'research' | 'complete' }
+  /** nobody knows this code yet: the customer decides whether to add the product */
+  | {
+      kind: 'ask_add';
+      identity: CodeIdentity;
+      code: string;
+      web: ExactWebIdentity | null;
+      evidence: ExternalEvidence | null;
+    }
   | {
       kind: 'known';
       product: ExactCandidate;
@@ -101,17 +144,28 @@ type Phase =
     }
   | { kind: 'guest' }
   | { kind: 'offline' }
-  | { kind: 'label'; session: DiscoverySession; note: string | null }
+  | { kind: 'label'; session: DiscoverySession; notice: string | null; canSavePrivate: boolean }
   | { kind: 'family'; session: DiscoverySession; options: readonly CustomerFamily[] }
-  | { kind: 'fields'; session: DiscoverySession; fields: PlainField[]; note: string | null }
+  | {
+      kind: 'fields';
+      session: DiscoverySession;
+      fields: PlainField[];
+      notice: string | null;
+      canSavePrivate: boolean;
+    }
   | {
       kind: 'saved';
       product: ExactCandidate;
       resolved: ResolvedScanProductLike;
       engineReady: boolean;
+      privateNotReady: boolean;
+      /** what the customer still has to supply, so the screen can say it in their own words */
+      missingCritical?: readonly string[];
+      /** recipe mode: the product the customer asked to add went straight into the recipe */
+      added?: boolean;
     }
   | { kind: 'requested' }
-  | { kind: 'error'; message: string };
+  | { kind: 'error'; message: string; retry: 'lookup' | 'restart' };
 
 const STATUS_TEXT: Record<CaptureStatus, string> = {
   starting: 'Uruchamiam aparat…',
@@ -122,10 +176,21 @@ const STATUS_TEXT: Record<CaptureStatus, string> = {
   unavailable: '',
 };
 
+const LABEL_FAILURE_TEXT: Record<string, string> = {
+  burst: 'Za dużo analiz w krótkim czasie — spróbuj ponownie za minutę.',
+  vision_limit:
+    'Limit odczytów zdjęć dla tego skanu został wyczerpany — uzupełnij dane ręcznie lub zapisz produkt prywatnie.',
+  asset_conflict: 'To zdjęcie było już wysłane — dodaj inne ujęcie.',
+  asset_metadata: 'Nie udało się przesłać tego zdjęcia — spróbuj ponownie lub dodaj inne ujęcie.',
+  network: 'Brak połączenia — zdjęcie zostanie odczytane po ponowieniu.',
+  provider: 'Odczyt etykiet jest chwilowo niedostępny — spróbuj za chwilę.',
+  other: 'Nie udało się odczytać tego zdjęcia — spróbuj ponownie lub dodaj inne.',
+};
+
 const btn =
   'pro-focus-ring inline-flex min-h-11 items-center justify-center rounded-full px-4 text-xs font-semibold';
 const btnPrimary = `${btn} bg-ink text-white disabled:opacity-40`;
-const btnSecondary = `${btn} border border-ink/15 bg-white text-ink`;
+const btnSecondary = `${btn} border border-ink/15 bg-white text-ink disabled:opacity-40`;
 const input =
   'pro-focus-ring min-h-11 w-full rounded-xl border border-ink/15 bg-white px-3 text-sm text-ink';
 
@@ -170,17 +235,64 @@ async function downscaled(file: File, maxLongEdge = 1600): Promise<Blob> {
   }
 }
 
+const newId = () =>
+  typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random()}`;
+
 export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProps) {
   const [phase, setPhase] = useState<Phase>({ kind: 'camera', status: 'starting', error: null });
   const [frame, setFrame] = useState<CaptureFrame | null>(null);
+  /**
+   * SOL-045 — the measured image chain. It is NEVER customer UI: it renders only when the QA flag is
+   * explicitly in the address (`?camera=diag`), so the owner can read on their own machine what the
+   * decoder is actually handed instead of guessing from a blurred picture.
+   */
+  const [cameraDiag, setCameraDiag] = useState<CameraDiagnostics | null>(null);
+  /**
+   * SOL-048 — the two rules that stop the screen "going crazy": a sentence must stay long enough to
+   * be read, and an answer from a scan the customer has already left may not speak at all. The
+   * presenter is pure; the component only owns the timer that promotes a waiting line.
+   */
+  const presenterRef = useRef(createPresenter(Date.now()));
+  const [presentation, setPresentation] = useState(presenterRef.current.current);
+  const [fallbackOffered, setFallbackOffered] = useState(false);
+  const [stillNotice, setStillNotice] = useState<string | null>(null);
   const [manual, setManual] = useState('');
   const [busy, setBusy] = useState(false);
   const [family, setFamily] = useState<CustomerFamily | null>(null);
   const [values, setValues] = useState<Record<string, string | boolean>>({});
   const [recognized, setRecognized] = useState<ExactWebIdentity | null>(null);
+  const [researched, setResearched] = useState<{
+    displayName: string;
+    brand: string | null;
+  } | null>(null);
+  const [photos, setPhotos] = useState<LabelPhoto[]>([]);
+  /** mirror of `photos` for the analysis queue, which runs outside React's render cycle */
+  const photosRef = useRef<LabelPhoto[]>([]);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const captureRef = useRef<ScanCoreCapture | null>(null);
   const codeRef = useRef<string | null>(null);
+  const scanRef = useRef<ConfirmedScan | null>(null);
   const labelTriedRef = useRef(false);
+  const refusedOnceRef = useRef(false);
+  /** the customer already answered the family question in this session — never ask it twice */
+  const familyAnsweredRef = useRef(false);
+  /** one automatic re-enrichment attempt per scan of an own private not-ready product */
+  const reenrichedRef = useRef(false);
+  /** recipe mode: the product the customer asked to add is handed to the recipe exactly once */
+  const autoAddedRef = useRef(false);
+  const familyRef = useRef<CustomerFamily | null>(null);
+  const valuesRef = useRef<Record<string, string | boolean>>({});
+  const trackedSinceRef = useRef<number | null>(null);
+  const blurredSinceRef = useRef<number | null>(null);
+  const queueRef = useRef<Promise<void>>(Promise.resolve());
+  /** label analyses the authority accepted in this scan (it allows two per scan session) */
+  const analysesUsedRef = useRef(0);
+  const analysisInFlightRef = useRef(false);
+  familyRef.current = family;
+  valuesRef.current = values;
+
   const cache = useMemo(
     () =>
       createOfflineCache({
@@ -199,9 +311,58 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
     online: typeof navigator === 'undefined' ? true : navigator.onLine,
     surface: 'PRO',
     now: Date.now(),
+    // an unknown code is never researched behind the customer's back: they are asked first
+    discovery: 'ask',
   });
 
-  const fail = (message: string) => setPhase({ kind: 'error', message });
+  const lookupFailed = () =>
+    setPhase({
+      kind: 'error',
+      message: 'Nie udało się połączyć z serwerem. Kod został zachowany — spróbuj ponownie.',
+      retry: 'lookup',
+    });
+
+  /**
+   * SOL-048 — one sentence, published under the presenter's rules. A hint that arrives while the
+   * previous one is still being read waits its turn; an answer from a scan the customer has already
+   * left is dropped; a finished answer is never dragged backwards.
+   */
+  const publishLine = (generation: number, kind: string, line: string, engineReady?: boolean) => {
+    const r = present(presenterRef.current, {
+      generation,
+      stage: stageOfPhaseKind(kind, engineReady === undefined ? {} : { engineReady }),
+      line,
+      now: Date.now(),
+    });
+    presenterRef.current = r.state;
+    if (r.published || r.reason === 'queued') setPresentation({ ...r.state.current });
+  };
+
+  // SOL-048 — a line that had to wait is promoted when the current one has been readable. The
+  // presenter stays pure; this is the only clock in the arrangement.
+  useEffect(() => {
+    const at = nextTickAt(presenterRef.current);
+    if (at === null) return;
+    const timer = setTimeout(
+      () => {
+        presenterRef.current = tickPresenter(presenterRef.current, Date.now());
+        setPresentation({ ...presenterRef.current.current });
+      },
+      Math.max(0, at - Date.now()),
+    );
+    return () => clearTimeout(timer);
+  }, [presentation]);
+
+  /** a new scan: everything still in flight for the previous one stops being able to speak */
+  const beginScanGeneration = () => {
+    presenterRef.current = beginPresentedScan(presenterRef.current, Date.now());
+    setPresentation({ ...presenterRef.current.current });
+    return presenterRef.current.generation;
+  };
+
+  /* ------------------------------------------------------------------------------------------ */
+  /* results → phases                                                                            */
+  /* ------------------------------------------------------------------------------------------ */
 
   const handleResult = useCallback(
     async (
@@ -209,7 +370,11 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
       code: string,
       ctx: RequestContext,
       session?: DiscoverySession,
+      generation?: number,
     ) => {
+      // SOL-048: an answer belongs to the scan that asked for it. A label analysis or a finalize that
+      // lands after the customer has restarted, or scanned something else, must not repaint the screen.
+      if (generation !== undefined && !isCurrentScan(presenterRef.current, generation)) return;
       switch (r.kind) {
         case 'resolved_exact':
           setPhase({
@@ -221,11 +386,31 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
           });
           return;
         case 'needs_confirmation': {
+          if (r.reason === 'family_confirmation' && r.sessionId && familyAnsweredRef.current) {
+            // the authority could not map the answer ("Inne") to a recipe family: the product cannot become
+            // recipe-ready here, but it is never lost — plain fields, then a private save
+            refusedOnceRef.current = true;
+            const next = session ?? seedSession(r.sessionId, r.identity, []);
+            const fields = plainFieldsFor(next.missingCritical, {
+              needIdentity: !(researched ?? recognized),
+            });
+            setPhase(
+              fields.length > 0
+                ? { kind: 'fields', session: next, fields, notice: null, canSavePrivate: true }
+                : {
+                    kind: 'label',
+                    session: next,
+                    notice:
+                      'Tego rodzaju produktu nie użyjemy jeszcze w recepturze. Możesz zapisać go u siebie — sprawdzimy go ponownie, gdy dojdą dane.',
+                    canSavePrivate: true,
+                  },
+            );
+            return;
+          }
           if (r.reason === 'family_confirmation' && r.sessionId) {
             const next = session ?? seedSession(r.sessionId, r.identity, []);
             const web = session ? null : identityFromEvidence(r.externalEvidence);
             if (web) {
-              // the code already identifies the product: use it, and its family when the registry knows one
               setRecognized(web);
               setValues(prefillFromIdentity(web));
               setFamily(web.family);
@@ -250,6 +435,31 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
             return;
           }
           if (r.product) {
+            // An exact product this account holds privately but not recipe-ready: the SAME automatic
+            // enrichment a new product gets runs once more (sources → recognition → reference
+            // completion → readiness), silently. Ready → the superseded product is shown as saved and
+            // usable; still not ready → the known product is shown exactly as before. Never a question.
+            if (
+              ports &&
+              r.product.entityKind === 'customer_provisional' &&
+              !r.product.engineReady &&
+              ctx.accountId !== null &&
+              !reenrichedRef.current
+            ) {
+              reenrichedRef.current = true;
+              setPhase({ kind: 'resolving', code });
+              const upgraded = await reenrichOwnProvisional({
+                identity: r.identity,
+                ctx,
+                ports,
+                familyHint: familyRef.current,
+              }).catch(() => null);
+              if (codeRef.current !== code) return;
+              if (upgraded && upgraded.kind === 'discovered_exact' && upgraded.engineReady) {
+                await handleResult(upgraded, code, ctx);
+                return;
+              }
+            }
             setPhase({
               kind: 'known',
               product: r.product,
@@ -259,98 +469,222 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
             });
             return;
           }
-          fail('Ten produkt wymaga jeszcze sprawdzenia. Spróbuj ponownie później.');
+          setPhase({
+            kind: 'label',
+            session: session ?? seedSession(r.sessionId ?? '', r.identity, []),
+            notice: 'Ten produkt wymaga jeszcze sprawdzenia. Dodaj zdjęcie etykiety.',
+            canSavePrivate: false,
+          });
           return;
         }
         case 'discovered_pending': {
           const next = seedSession(r.sessionId, r.identity, r.ledger.missingCritical);
-          const noteText = r.note ?? null;
+          const fromLedger = ledgerIdentity(r.ledger);
+          if (fromLedger) setResearched(fromLedger);
           const afterFinalize = session !== undefined;
           if (afterFinalize) {
-            // the authority answered: plain facts it still needs, the label it still needs, or only
-            // technical readiness the customer cannot supply — then the product is reported, not looped
-            const fields = plainFieldsFor(r.ledger.missingCritical, {
-              needIdentity: /identity/.test(noteText ?? ''),
+            // the authority answered: plain facts it still needs, or only technical readiness the
+            // customer cannot supply — the product is then saved privately, never looped on photos
+            refusedOnceRef.current = true;
+            // the refusal's own reason is the question to put to the customer: a gap that travels
+            // only in the note (allergen_statement_required) must still become a field to fill
+            const fields = plainFieldsFor([...r.ledger.missingCritical, ...gapsFromNote(r.note)], {
+              needIdentity: /identity/.test(r.note ?? ''),
             });
-            if (fields.length > 0) setPhase({ kind: 'fields', session: next, fields, note: null });
+            if (fields.length > 0)
+              setPhase({
+                kind: 'fields',
+                session: next,
+                fields,
+                notice: null,
+                canSavePrivate: true,
+              });
+            else if (onlySemanticsMissing(r.ledger.missingCritical) && !familyAnsweredRef.current)
+              // every label fact is known; only the product's kind is not — ask the customer, never a photo
+              setPhase({ kind: 'family', session: next, options: FAMILIES });
+            else if (onlySemanticsMissing(r.ledger.missingCritical))
+              setPhase({
+                kind: 'label',
+                session: next,
+                notice:
+                  'Nie udało się ustalić rodzaju tego produktu, więc nie trafi jeszcze do receptury. Możesz zapisać go u siebie i wrócić do niego później.',
+                canSavePrivate: true,
+              });
             else if (!labelTriedRef.current)
-              setPhase({ kind: 'label', session: next, note: recognized ? null : noteText });
-            else setPhase({ kind: 'fields', session: next, fields: [], note: null });
+              setPhase({
+                kind: 'label',
+                session: next,
+                notice:
+                  'Do użycia w recepturze brakuje jeszcze danych z etykiety — zrób zdjęcie składu i tabeli wartości odżywczych.',
+                canSavePrivate: true,
+              });
+            else
+              setPhase({
+                kind: 'label',
+                session: next,
+                notice:
+                  'Odczytaliśmy etykietę i zapisaliśmy dane. Do receptury brakuje jeszcze paru wartości — zapisz produkt u siebie, sprawdzimy go ponownie, gdy dojdą.',
+                canSavePrivate: true,
+              });
             return;
           }
           const web = identityFromEvidence(r.externalEvidence);
           if (web) {
-            // exact registry identity: no generic questions, go straight to the authority with it
             setRecognized(web);
             setValues(prefillFromIdentity(web));
             setFamily(web.family);
             await finalize(
               next,
-              { customerFamily: web.family, confirmations: { productFields: web.productFields } },
+              {
+                customerFamily: web.family,
+                confirmations: {
+                  productFields: productFieldsNotInLedger(web.productFields, r.ledger),
+                },
+              },
               ctx,
               code,
             );
             return;
           }
           if (r.next === 'finalize') {
-            await finalize(next, { customerFamily: family }, ctx, code);
+            await finalize(next, { customerFamily: familyRef.current }, ctx, code);
             return;
           }
-          setPhase({ kind: 'label', session: next, note: noteText });
+          setPhase({ kind: 'label', session: next, notice: null, canSavePrivate: false });
           return;
         }
-        case 'discovered_exact':
+        case 'discovered_exact': {
+          const resolved = toResolvedScanProduct(r.product, r.engineReady, code);
+          // the customer asked to add this product: a ready one goes straight into the recipe (once)
+          const added = mode === 'recipe' && !!onResolved && r.engineReady && !autoAddedRef.current;
+          if (added) {
+            autoAddedRef.current = true;
+            onResolved!(resolved);
+          }
           setPhase({
             kind: 'saved',
             product: r.product,
-            resolved: toResolvedScanProduct(r.product, r.engineReady, code),
+            resolved,
             engineReady: r.engineReady,
+            privateNotReady: r.privateNotReady === true || !r.engineReady,
+            missingCritical: r.readiness?.missingCritical ?? session?.missingCritical ?? [],
+            added,
           });
           return;
+        }
         case 'discovery_requested':
           setPhase({ kind: 'requested' });
           return;
         case 'ambiguous':
-          fail('Kilka produktów ma ten sam kod. Wybierz właściwy w wyszukiwarce produktów.');
+          setPhase({
+            kind: 'error',
+            message: 'Kilka produktów ma ten sam kod. Wybierz właściwy w wyszukiwarce produktów.',
+            retry: 'restart',
+          });
           return;
         case 'unknown':
           if (ctx.accountId === null) setPhase({ kind: 'guest' });
-          else fail('Nie udało się rozpoznać tego produktu. Spróbuj jeszcze raz.');
+          else if (r.next === 'add_product') {
+            const web = identityFromEvidence(r.externalEvidence);
+            if (web) setRecognized((current) => current ?? web);
+            setPhase({
+              kind: 'ask_add',
+              identity: r.identity,
+              code,
+              web,
+              evidence: r.externalEvidence,
+            });
+          } else lookupFailed();
           return;
         case 'invalid_code':
-          fail('To nie wygląda na poprawny kod kreskowy. Spróbuj jeszcze raz.');
+          setPhase({
+            kind: 'error',
+            message: 'To nie wygląda na poprawny kod kreskowy. Spróbuj jeszcze raz.',
+            retry: 'restart',
+          });
           return;
         case 'offline':
           setPhase({ kind: 'offline' });
           return;
+        case 'failed':
         default:
-          fail('Nie udało się sprawdzić produktu. Spróbuj ponownie.');
+          lookupFailed();
       }
     },
-    // finalize is a per-render closure over the same ports/ctx; listing it would only re-create this callback
+    // finalize is a per-render closure over the same ports; listing it would only re-create this callback
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [family],
+    [],
   );
 
   async function finalize(
     session: DiscoverySession,
-    input: FinalizeInput,
+    inputArg: FinalizeInput,
     ctx: RequestContext,
     code: string,
   ) {
     const port = ports?.discovery;
-    if (!port) return fail('Backend nie jest skonfigurowany.');
-    const r = await continueDiscovery(session, { type: 'finalize', input }, ctx, port);
-    await handleResult(r, code, ctx, session);
+    if (!port) return lookupFailed();
+    const generation = presenterRef.current.generation;
+    setPhase({ kind: 'resolving', code, step: 'complete' });
+    try {
+      const r = await continueDiscovery(session, { type: 'finalize', input: inputArg }, ctx, port);
+      await handleResult(r, code, ctx, session, generation);
+    } catch {
+      // the authority could not be reached: the session and everything learnt stay; retry in place
+      setPhase({
+        kind: 'label',
+        session,
+        notice:
+          'Nie udało się zapisać produktu — sprawdź połączenie i spróbuj ponownie. Zdjęcia i dane zostały zachowane.',
+        canSavePrivate: refusedOnceRef.current,
+      });
+    }
   }
+
+  /** the customer said "add it": server research (registry → web) → completion → save → recipe */
+  const addUnknownProduct = async (ask: Extract<Phase, { kind: 'ask_add' }>) => {
+    const port = ports?.discovery;
+    if (!port) return lookupFailed();
+    setBusy(true);
+    setPhase({ kind: 'resolving', code: ask.code, step: 'research' });
+    try {
+      const ctx = contextFor(await getScanImportV2AccountId());
+      const r = await startDiscovery(ask.identity, ctx, port);
+      if (codeRef.current !== ask.code) return;
+      // the device's registry answer travels with the server result, exactly as the pipeline does
+      await handleResult(
+        r.kind === 'discovered_pending' ? { ...r, externalEvidence: ask.evidence } : r,
+        ask.code,
+        ctx,
+      );
+    } catch {
+      lookupFailed();
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const resolve = useCallback(
     async (scan: ConfirmedScan) => {
-      if (!ports) return fail('Backend nie jest skonfigurowany.');
+      if (!ports)
+        return setPhase({
+          kind: 'error',
+          message: 'Backend nie jest skonfigurowany.',
+          retry: 'restart',
+        });
+      const generation = beginScanGeneration();
       codeRef.current = scan.value;
+      scanRef.current = scan;
       labelTriedRef.current = false;
+      refusedOnceRef.current = false;
+      familyAnsweredRef.current = false;
+      reenrichedRef.current = false;
+      autoAddedRef.current = false;
+      analysesUsedRef.current = 0;
+      analysisInFlightRef.current = false;
       setBusy(true);
-      setRecognized(null);
+      setPhotos([]);
+      setResearched(null);
       setPhase({ kind: 'resolving', code: scan.value });
       try {
         const accountId = await getScanImportV2AccountId();
@@ -369,9 +703,10 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
             .catch(() => undefined);
         }
         const r = await runScanImportV2(scan, ctx, ports);
-        await handleResult(r, scan.value, ctx);
+        if (codeRef.current !== scan.value) return; // a newer scan replaced this one
+        await handleResult(r, scan.value, ctx, undefined, generation);
       } catch {
-        fail('Nie udało się sprawdzić produktu. Spróbuj ponownie.');
+        lookupFailed();
       } finally {
         setBusy(false);
       }
@@ -380,6 +715,10 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
   );
   const resolveRef = useRef(resolve);
   resolveRef.current = resolve;
+
+  /* ------------------------------------------------------------------------------------------ */
+  /* camera                                                                                      */
+  /* ------------------------------------------------------------------------------------------ */
 
   useEffect(() => {
     if (phase.kind !== 'camera') return;
@@ -397,11 +736,62 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
       return;
     }
     setFrame(null);
+    setFallbackOffered(false);
+    setStillNotice(null);
+    trackedSinceRef.current = null;
+    blurredSinceRef.current = null;
+    let dwell: ReturnType<typeof setTimeout> | null = null;
     const capture = new ScanCoreCapture({
-      onConfirmed: (scan) => void resolveRef.current(scan),
+      onConfirmed: (scan) => {
+        // the customer must see the success before the lookup takes the screen
+        setRecognized(null);
+        setPhase({ kind: 'confirmed', code: scan.value });
+        dwell = setTimeout(() => void resolveRef.current(scan), CONFIRM_DWELL_MS);
+      },
       onStatus: (status) =>
-        setPhase((p) => (p.kind === 'camera' && status !== 'stopped' ? { ...p, status } : p)),
-      onFrame: (f) => setFrame(f),
+        setPhase((p) =>
+          // an identical status is not a change: allocating a new phase re-rendered at frame rate
+          p.kind === 'camera' && status !== 'stopped' && p.status !== status ? { ...p, status } : p,
+        ),
+      onDiagnostics: setCameraDiag,
+      onFrame: (f) => {
+        const now = Date.now();
+        const tracked = f.state !== 'SEARCHING' && f.state !== 'LOST';
+        if (tracked) trackedSinceRef.current ??= now;
+        else trackedSinceRef.current = null;
+        if (f.digits && f.digits.reads > 0) trackedSinceRef.current = now; // a read resets the clock
+        const blurred = typeof f.sharpRel === 'number' && f.sharpRel < 0.5;
+        if (blurred) blurredSinceRef.current ??= now;
+        else blurredSinceRef.current = null;
+        setFrame(f);
+        // SOL-048: the sentence is decided ONCE per frame and published under the dwell rule, instead
+        // of being re-derived on every render at camera rate
+        publishLine(
+          presenterRef.current.generation,
+          'camera',
+          scanFeedbackText({
+            state: f.state,
+            guidance: f.guidance,
+            timedOut: f.timedOut,
+            position: positionHint(f.roi, f.sourceW, f.sourceH),
+            sharpRel: f.sharpRel,
+            focusControl: f.focusControl,
+            formFactor: f.formFactor,
+            readingAxis: f.readingAxis,
+            trackedWithoutReadMs: trackedSinceRef.current ? now - trackedSinceRef.current : 0,
+          }),
+        );
+        if (
+          !fallbackOffered &&
+          offerPhotoFallback({
+            blurredForMs: blurredSinceRef.current ? now - blurredSinceRef.current : 0,
+            trackedWithoutReadMs: trackedSinceRef.current ? now - trackedSinceRef.current : 0,
+            focusControl: f.focusControl,
+            formFactor: f.formFactor,
+          })
+        )
+          setFallbackOffered(true);
+      },
       onError: () =>
         setPhase((p) =>
           p.kind === 'camera'
@@ -409,6 +799,7 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
             : p,
         ),
     });
+    captureRef.current = capture;
     capture.start(video).catch((error: unknown) => {
       setPhase((p) =>
         p.kind === 'camera'
@@ -416,116 +807,255 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
           : p,
       );
     });
-    return () => capture.stop();
-  }, [phase.kind]);
+    return () => {
+      if (dwell) clearTimeout(dwell);
+      capture.stop();
+      captureRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase.kind === 'camera']);
 
   const restart = () => {
+    beginScanGeneration();
     labelTriedRef.current = false;
+    refusedOnceRef.current = false;
     setManual('');
     setValues({});
     setFamily(null);
     setRecognized(null);
+    setResearched(null);
+    setPhotos([]);
     setFrame(null);
     setPhase({ kind: 'camera', status: 'starting', error: null });
   };
 
+  const retryLookup = () => {
+    const scan = scanRef.current;
+    if (scan) void resolve(scan);
+    else restart();
+  };
+
   const submitManual = () => {
     const scan = manualConfirmedScan(manual);
-    if (!scan) return fail('Kod powinien mieć 8, 12 lub 13 cyfr.');
+    if (!scan)
+      return setPhase({
+        kind: 'error',
+        message: 'Kod powinien mieć 8, 12 lub 13 cyfr.',
+        retry: 'restart',
+      });
     void resolve(scan);
   };
 
-  const withBusy = async (work: () => Promise<void>) => {
+  const decodeStill = async (file: File) => {
+    const capture = captureRef.current;
+    if (!capture) return;
+    setStillNotice('Odczytuję kod ze zdjęcia…');
+    const ok = await capture.decodeStill(file).catch(() => false);
+    if (!ok)
+      setStillNotice(
+        'Nie udało się odczytać kodu z tego zdjęcia — zrób ostrzejsze ujęcie kodu albo wpisz cyfry.',
+      );
+  };
+
+  /* ------------------------------------------------------------------------------------------ */
+  /* discovery steps (label photographs are additive; a failed one is retried alone)             */
+  /* ------------------------------------------------------------------------------------------ */
+
+  const setPhoto = (id: string, patch: Partial<LabelPhoto>) => {
+    photosRef.current = photosRef.current.map((p) => (p.id === id ? { ...p, ...patch } : p));
+    setPhotos((list) => list.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+  };
+
+  const MAX_ANALYSES = 2; // the analysis authority: one fast call + one accurate retry per scan session
+  const MAX_BATCH = 3; // images per accurate call (the authority takes up to four per call)
+
+  /** one analysis call for a batch of photographs — every photo in it succeeds or fails together */
+  const analyzeBatch = async (session: DiscoverySession, batch: LabelPhoto[]) => {
+    const generation = presenterRef.current.generation;
+    const port = ports?.discovery;
+    if (!port || batch.length === 0) return;
+    if (analysesUsedRef.current >= MAX_ANALYSES) {
+      for (const p of batch)
+        setPhoto(p.id, { status: 'failed', error: LABEL_FAILURE_TEXT['vision_limit']! });
+      return;
+    }
+    analysisInFlightRef.current = true;
+    for (const p of batch) setPhoto(p.id, { status: 'analyzing', error: null });
+    const ctx = contextFor(await getScanImportV2AccountId());
+    let r: ScanImportV2Result;
+    try {
+      const images: LabelImage[] = [];
+      for (const p of batch)
+        images.push(await fileToLabelImage(await downscaled(p.file), p.source));
+      r = await continueDiscovery(session, { type: 'label', images }, ctx, port);
+    } catch {
+      analysisInFlightRef.current = false;
+      for (const p of batch)
+        setPhoto(p.id, { status: 'failed', error: LABEL_FAILURE_TEXT['network']! });
+      return;
+    }
+    analysisInFlightRef.current = false;
+    if (r.kind === 'discovered_pending' && r.labelError) {
+      const error = LABEL_FAILURE_TEXT[r.labelError.reason] ?? LABEL_FAILURE_TEXT['other']!;
+      for (const p of batch) setPhoto(p.id, { status: 'failed', error });
+      return;
+    }
+    analysesUsedRef.current += 1;
+    for (const p of batch) setPhoto(p.id, { status: 'done', error: null });
+    labelTriedRef.current = true;
+    if (r.kind === 'discovered_pending') {
+      // the label was read: the authority decides what is still missing
+      const next = seedSession(r.sessionId, r.identity, r.ledger.missingCritical);
+      await finalize(
+        next,
+        {
+          customerFamily: familyRef.current,
+          confirmations: confirmationsFromFields(valuesRef.current),
+        },
+        ctx,
+        codeRef.current ?? '',
+      );
+      return;
+    }
+    await handleResult(r, codeRef.current ?? '', ctx, undefined, generation);
+  };
+
+  /** every waiting photograph goes out in ONE call (the session's accurate retry) */
+  const analyzePending = (session: DiscoverySession) => {
+    queueRef.current = queueRef.current
+      .then(() => {
+        const waiting = photosRef.current.filter((p) => p.status === 'pending').slice(0, MAX_BATCH);
+        return analyzeBatch(session, waiting);
+      })
+      .catch(() => undefined);
+  };
+
+  const addPhoto = (session: DiscoverySession, file: File, source: LabelImage['source']) => {
+    const photo: LabelPhoto = { id: newId(), file, source, status: 'pending', error: null };
+    photosRef.current = [...photosRef.current, photo];
+    setPhotos((list) => [...list, photo]);
+    if (analysesUsedRef.current === 0 && !analysisInFlightRef.current) {
+      // the first photograph is read at once
+      queueRef.current = queueRef.current
+        .then(() => analyzeBatch(session, [photo]))
+        .catch(() => undefined);
+      return;
+    }
+    if (analysesUsedRef.current >= MAX_ANALYSES) {
+      setPhoto(photo.id, { status: 'failed', error: LABEL_FAILURE_TEXT['vision_limit']! });
+      return;
+    }
+    // later photographs wait and go out together — the customer decides when
+  };
+
+  const retryPhoto = (session: DiscoverySession, id: string) => {
+    setPhoto(id, { status: 'pending', error: null });
+    analyzePending(session);
+  };
+
+  const withBusy = async (work: () => Promise<void>, onError: () => void) => {
     setBusy(true);
     try {
       await work();
     } catch {
-      fail('Coś poszło nie tak. Spróbuj ponownie.');
+      onError();
     } finally {
       setBusy(false);
     }
   };
 
-  const sendLabel = (session: DiscoverySession, file: File, source: LabelImage['source']) =>
-    withBusy(async () => {
-      const port = ports?.discovery;
-      if (!port) return fail('Backend nie jest skonfigurowany.');
-      const ctx = contextFor(await getScanImportV2AccountId());
-      const image = await fileToLabelImage(await downscaled(file), source);
-      const r = await continueDiscovery(session, { type: 'label', images: [image] }, ctx, port);
-      labelTriedRef.current = true;
-      if (r.kind === 'discovered_pending') {
-        // the label was read: let the authority decide what is still missing (plain fields, not another photo)
-        const next = seedSession(r.sessionId, r.identity, r.ledger.missingCritical);
+  const chooseFamily = (session: DiscoverySession, choice: CustomerFamily) =>
+    withBusy(
+      async () => {
+        setFamily(choice);
+        familyAnsweredRef.current = true;
+        const ctx = contextFor(await getScanImportV2AccountId());
         await finalize(
-          next,
-          { customerFamily: family, confirmations: confirmationsFromFields(values) },
+          session,
+          { customerFamily: choice, confirmations: confirmationsFromFields(valuesRef.current) },
           ctx,
           codeRef.current ?? '',
         );
-        return;
-      }
-      await handleResult(r, codeRef.current ?? '', ctx);
-    });
-
-  const chooseFamily = (session: DiscoverySession, choice: CustomerFamily) =>
-    withBusy(async () => {
-      setFamily(choice);
-      const ctx = contextFor(await getScanImportV2AccountId());
-      await finalize(
-        session,
-        { customerFamily: choice, confirmations: confirmationsFromFields(values) },
-        ctx,
-        codeRef.current ?? '',
-      );
-    });
+      },
+      () =>
+        setPhase({
+          kind: 'family',
+          session,
+          options: FAMILIES,
+        }),
+    );
 
   const submitFields = (session: DiscoverySession, fields: PlainField[]) =>
-    withBusy(async () => {
-      const missing = fields.filter((f) => {
-        if (!f.required) return false;
-        if (f.key === 'displayName' || f.key === 'brand') return false;
-        const v = values[f.key];
-        return typeof v !== 'string' || v.trim() === '';
-      });
-      if (missing.length > 0) {
+    withBusy(
+      async () => {
+        const missing = fields.filter((f) => {
+          if (!f.required) return false;
+          if (f.key === 'displayName' || f.key === 'brand') return false;
+          const v = valuesRef.current[f.key];
+          return typeof v !== 'string' || v.trim() === '';
+        });
+        if (missing.length > 0) {
+          setPhase({
+            kind: 'fields',
+            session,
+            fields,
+            notice: `Uzupełnij: ${missing.map((f) => f.label).join(', ')}.`,
+            canSavePrivate: refusedOnceRef.current,
+          });
+          return;
+        }
+        const ctx = contextFor(await getScanImportV2AccountId());
+        await finalize(
+          session,
+          {
+            customerFamily: familyRef.current,
+            confirmations: confirmationsFromFields(valuesRef.current),
+          },
+          ctx,
+          codeRef.current ?? '',
+        );
+      },
+      () =>
         setPhase({
           kind: 'fields',
           session,
           fields,
-          note: `Uzupełnij: ${missing.map((f) => f.label).join(', ')}.`,
-        });
-        return;
-      }
-      const ctx = contextFor(await getScanImportV2AccountId());
-      await finalize(
-        session,
-        { customerFamily: family, confirmations: confirmationsFromFields(values) },
-        ctx,
-        codeRef.current ?? '',
-      );
-    });
+          notice: 'Nie udało się zapisać — spróbuj ponownie. Wpisane dane zostały zachowane.',
+          canSavePrivate: refusedOnceRef.current,
+        }),
+    );
 
-  /** no usable photograph: ask the authority now and let the customer type what is missing */
-  const enterManually = (session: DiscoverySession) =>
-    withBusy(async () => {
-      const ctx = contextFor(await getScanImportV2AccountId());
-      await finalize(
-        session,
-        { customerFamily: family, confirmations: confirmationsFromFields(values) },
-        ctx,
-        codeRef.current ?? '',
-      );
-    });
+  /** owner contract: the exact product is kept privately even when not recipe-ready */
+  const savePrivately = (session: DiscoverySession) =>
+    withBusy(
+      async () => {
+        const ctx = contextFor(await getScanImportV2AccountId());
+        await finalize(
+          session,
+          {
+            customerFamily: familyRef.current ?? 'other',
+            confirmations: {
+              ...confirmationsFromFields(valuesRef.current),
+              packageEvidenceExhausted: true,
+            },
+            savePrivateNotReady: true,
+          },
+          ctx,
+          codeRef.current ?? '',
+        );
+      },
+      () =>
+        setPhase({
+          kind: 'label',
+          session,
+          notice: 'Nie udało się zapisać — spróbuj ponownie. Dane zostały zachowane.',
+          canSavePrivate: true,
+        }),
+    );
 
-  const requestVerification = (session: DiscoverySession) =>
-    withBusy(async () => {
-      const port = ports?.discovery;
-      if (!port) return fail('Backend nie jest skonfigurowany.');
-      const ctx = contextFor(await getScanImportV2AccountId());
-      const r = await continueDiscovery(session, { type: 'request' }, ctx, port);
-      await handleResult(r, codeRef.current ?? '', ctx);
-    });
+  /* ------------------------------------------------------------------------------------------ */
+  /* view pieces                                                                                 */
+  /* ------------------------------------------------------------------------------------------ */
 
   const productCard = (p: ExactCandidate) => (
     <div className="rounded-2xl border border-ink/10 bg-white p-4">
@@ -539,6 +1069,16 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
       Rozpoznano po kodzie: <span className="font-semibold text-ink">{recognized.displayName}</span>
       {recognized.brand ? ` · ${recognized.brand}` : ''}
       {recognized.quantity ? ` · ${recognized.quantity}` : ''}
+    </p>
+  ) : researched ? (
+    <p className="text-xs text-stone-600" data-testid="scan-flow-recognized">
+      Rozpoznano: <span className="font-semibold text-ink">{researched.displayName}</span>
+      {researched.brand ? ` · ${researched.brand}` : ''}
+      {codeRef.current ? ` · ${codeRef.current}` : ''}
+    </p>
+  ) : codeRef.current && phase.kind !== 'camera' && phase.kind !== 'confirmed' ? (
+    <p className="text-xs text-stone-600" data-testid="scan-flow-code">
+      Kod: <span className="font-mono">{codeRef.current}</span>
     </p>
   ) : null;
 
@@ -567,23 +1107,104 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
     </button>
   );
 
+  const photoInput = (
+    session: DiscoverySession,
+    label: string,
+    source: LabelImage['source'],
+    primary: boolean,
+    capture: boolean,
+  ) => (
+    <label className={primary ? btnPrimary : btnSecondary}>
+      {label}
+      <input
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        {...(capture ? { capture: 'environment' as const } : {})}
+        className="sr-only"
+        disabled={busy}
+        onChange={(event) => {
+          const f = event.target.files?.[0];
+          event.target.value = '';
+          if (f) addPhoto(session, f, source);
+        }}
+      />
+    </label>
+  );
+
+  const waitingCount = photos.filter((p) => p.status === 'pending').length;
+  const readWaitingButton = (session: DiscoverySession) =>
+    waitingCount > 0 && analysesUsedRef.current > 0 && analysesUsedRef.current < MAX_ANALYSES ? (
+      <div className="flex flex-wrap items-center gap-2 text-xs text-stone-700">
+        <button
+          type="button"
+          className={btnPrimary}
+          disabled={busy}
+          onClick={() => analyzePending(session)}
+          data-testid="scan-flow-read-waiting"
+        >
+          Odczytaj dodane zdjęcia ({Math.min(waitingCount, MAX_BATCH)})
+        </button>
+        <span>Możesz dodać do {MAX_BATCH} zdjęć i odczytać je razem.</span>
+      </div>
+    ) : waitingCount > 0 && analysesUsedRef.current >= MAX_ANALYSES ? (
+      <p className="text-xs text-stone-700">{LABEL_FAILURE_TEXT['vision_limit']}</p>
+    ) : null;
+
+  const photoList = (session: DiscoverySession) =>
+    photos.length > 0 ? (
+      <ul className="space-y-1" data-testid="scan-flow-photos">
+        {photos.map((p, i) => (
+          <li key={p.id} className="flex flex-wrap items-center gap-2 text-xs text-stone-700">
+            <span className="font-semibold">Zdjęcie {i + 1}:</span>
+            <span>
+              {p.status === 'pending'
+                ? 'czeka'
+                : p.status === 'analyzing'
+                  ? 'odczytuję…'
+                  : p.status === 'done'
+                    ? 'odczytane ✓'
+                    : (p.error ?? 'nie udało się')}
+            </span>
+            {p.status === 'failed' ? (
+              <button
+                type="button"
+                className="pro-focus-ring rounded-full border border-ink/15 bg-white px-3 py-1 text-xs font-semibold text-ink"
+                disabled={busy}
+                onClick={() => retryPhoto(session, p.id)}
+              >
+                Ponów to zdjęcie
+              </button>
+            ) : null}
+          </li>
+        ))}
+        <li>{readWaitingButton(session)}</li>
+      </ul>
+    ) : null;
+
+  const privateSaveButton = (session: DiscoverySession) => (
+    <button
+      type="button"
+      className={btnPrimary}
+      disabled={busy}
+      onClick={() => void savePrivately(session)}
+      data-testid="scan-flow-save-private"
+    >
+      Zapisz prywatnie
+    </button>
+  );
+
   // live feedback over the camera image
   const video = videoRef.current;
-  const position = frame ? positionHint(frame.roi, frame.sourceW, frame.sourceH) : null;
+  const digitsView = frame ? maskedDigits(frame.digits) : null;
+  // SOL-048: the sentence is whatever the presenter has PUBLISHED — decided once per frame and held
+  // long enough to be read. An error and the pre-live status are immediate: neither is a live hint.
   const feedback =
     phase.kind === 'camera'
       ? phase.error
         ? phase.error
-        : phase.status === 'confirmed'
-          ? 'Odczytano'
-          : frame && phase.status !== 'starting'
-            ? scanFeedbackText({
-                state: frame.state,
-                guidance: frame.guidance,
-                timedOut: frame.timedOut,
-                position,
-              })
-            : STATUS_TEXT[phase.status]
+        : frame && phase.status !== 'starting'
+          ? presentation.line || STATUS_TEXT[phase.status]
+          : STATUS_TEXT[phase.status]
       : '';
   let roiBox: { left: number; top: number; width: number; height: number } | null = null;
   if (frame?.roi && video && video.videoWidth && video.videoHeight && video.clientWidth) {
@@ -600,19 +1221,20 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
       height: frame.roi.h * scale,
     };
   }
-  const success = phase.kind === 'camera' && phase.status === 'confirmed';
   const engaged = frame ? frame.state !== 'SEARCHING' && frame.state !== 'LOST' : false;
+  const showCamera = phase.kind === 'camera' || phase.kind === 'confirmed';
+  const success = phase.kind === 'confirmed';
 
   return (
     <section className="space-y-4" data-testid="scan-flow" data-scan-flow-mode={mode}>
-      {phase.kind === 'camera' ? (
+      {showCamera ? (
         <div className="space-y-3">
           <p className="text-sm text-stone-700">
             {intro ?? 'Pokaż kod kreskowy produktu aparatowi.'}
           </p>
           <div
             className="relative overflow-hidden rounded-2xl bg-black"
-            hidden={phase.status === 'unavailable'}
+            hidden={phase.kind === 'camera' && phase.status === 'unavailable'}
             data-testid="scan-flow-camera"
           >
             <video
@@ -630,14 +1252,21 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
               } ${engaged || success ? '' : 'border-dashed'}`}
             />
             {/* the code the engine is tracking */}
-            {roiBox ? (
+            {roiBox && !success ? (
               <div
                 aria-hidden="true"
-                className={`pointer-events-none absolute rounded-md border-2 ${
-                  success ? 'border-emerald-400 bg-emerald-400/20' : 'border-amber-300'
-                }`}
+                className="pointer-events-none absolute rounded-md border-2 border-amber-300"
                 style={roiBox}
               />
+            ) : null}
+            {/* digits the decoder has actually read so far */}
+            {digitsView && !success ? (
+              <div
+                className="absolute inset-x-0 top-2 text-center font-mono text-base tracking-[0.2em] text-white drop-shadow"
+                data-testid="scan-flow-digits"
+              >
+                {digitsView.text}
+              </div>
             ) : null}
             <div
               className={`absolute inset-x-0 bottom-0 px-3 py-2 text-center text-sm font-semibold ${
@@ -646,7 +1275,16 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
               aria-live="polite"
               data-testid="scan-flow-feedback"
             >
-              {success ? 'Odczytano ✓' : feedback}
+              {success ? (
+                <>
+                  Odczytano ✓{' '}
+                  <span className="font-mono font-normal">
+                    {phase.kind === 'confirmed' ? phase.code : ''}
+                  </span>
+                </>
+              ) : (
+                feedback
+              )}
               {frame && frame.zoomLevel > 1 && !success ? (
                 <span className="ml-2 text-xs font-normal opacity-80">×{frame.zoomLevel}</span>
               ) : null}
@@ -660,31 +1298,67 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
               </div>
             ) : null}
           </div>
-          {phase.status === 'unavailable' ? (
+          {phase.kind === 'camera' && phase.status === 'unavailable' ? (
             <p className="text-xs text-stone-600" aria-live="polite">
               {phase.error}
             </p>
           ) : null}
-          <form
-            className="flex gap-2"
-            onSubmit={(event) => {
-              event.preventDefault();
-              submitManual();
-            }}
-          >
-            <input
-              className={input}
-              inputMode="numeric"
-              autoComplete="off"
-              placeholder="Wpisz kod z opakowania"
-              aria-label="Kod kreskowy z opakowania"
-              value={manual}
-              onChange={(event) => setManual(event.target.value)}
-            />
-            <button type="submit" className={btnSecondary} disabled={busy || !manual.trim()}>
-              Sprawdź
-            </button>
-          </form>
+          {phase.kind === 'camera' && (fallbackOffered || phase.status === 'unavailable') ? (
+            <div className="flex flex-wrap items-center gap-2" data-testid="scan-flow-still">
+              {phase.status !== 'unavailable' ? (
+                <label className={btnSecondary}>
+                  Zrób zdjęcie kodu
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    capture="environment"
+                    className="sr-only"
+                    onChange={(event) => {
+                      const f = event.target.files?.[0];
+                      event.target.value = '';
+                      if (f) void decodeStill(f);
+                    }}
+                  />
+                </label>
+              ) : null}
+              {stillNotice ? <span className="text-xs text-stone-600">{stillNotice}</span> : null}
+              {!stillNotice && frame && frame.focusControl !== 'continuous' ? (
+                <span className="text-xs text-stone-600">
+                  Jeśli kamera nie łapie ostrości, zrób zdjęcie kodu.
+                </span>
+              ) : null}
+            </div>
+          ) : null}
+          {cameraDiag && cameraQaRequested() ? (
+            <pre
+              data-testid="scan-camera-diagnostics"
+              className="overflow-x-auto rounded-lg bg-stone-900 p-3 text-[11px] leading-relaxed text-stone-100"
+            >
+              {cameraDiagnosticsReport(cameraDiag)}
+            </pre>
+          ) : null}
+          {phase.kind === 'camera' ? (
+            <form
+              className="flex gap-2"
+              onSubmit={(event) => {
+                event.preventDefault();
+                submitManual();
+              }}
+            >
+              <input
+                className={input}
+                inputMode="numeric"
+                autoComplete="off"
+                placeholder="Wpisz kod z opakowania"
+                aria-label="Kod kreskowy z opakowania"
+                value={manual}
+                onChange={(event) => setManual(event.target.value)}
+              />
+              <button type="submit" className={btnSecondary} disabled={busy || !manual.trim()}>
+                Sprawdź
+              </button>
+            </form>
+          ) : null}
         </div>
       ) : null}
 
@@ -693,7 +1367,41 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
           <p className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-3 py-1 text-xs font-semibold text-white">
             Odczytano ✓ <span className="font-mono font-normal">{phase.code}</span>
           </p>
-          <p className="text-sm text-stone-700">Sprawdzam produkt…</p>
+          {recognizedLine}
+          <p className="text-sm text-stone-700" data-testid="scan-flow-progress">
+            {phase.step === 'research'
+              ? 'Szukamy danych produktu w internecie…'
+              : phase.step === 'complete'
+                ? 'Uzupełniamy brakujące dane na podstawie podobnych produktów i zapisujemy…'
+                : 'Sprawdzam produkt…'}
+          </p>
+        </div>
+      ) : null}
+
+      {phase.kind === 'ask_add' ? (
+        <div className="space-y-3" data-testid="scan-flow-ask-add">
+          {recognizedLine}
+          <p className="text-sm font-semibold text-ink">
+            {phase.web
+              ? 'Tego produktu nie ma jeszcze w Twoich produktach.'
+              : 'Nie znamy jeszcze tego produktu.'}
+          </p>
+          <p className="text-xs text-stone-600">
+            Dodać go? Sprawdzimy jego dane w internecie, a brakujące uzupełnimy na podstawie
+            podobnych produktów
+            {mode === 'recipe' ? ' i dodamy go do receptury.' : '.'}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className={btnPrimary}
+              disabled={busy}
+              onClick={() => void addUnknownProduct(phase)}
+            >
+              Dodaj produkt
+            </button>
+            {againButton}
+          </div>
         </div>
       ) : null}
 
@@ -708,6 +1416,12 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
           {phase.fromCache ? (
             <p className="text-xs text-stone-600">Rozpoznano z pamięci urządzenia (offline).</p>
           ) : null}
+          {!phase.engineReady ? (
+            <p className="text-xs text-stone-600" data-testid="scan-flow-known-incomplete">
+              Ten produkt jest u Ciebie zapisany, ale nie mamy jeszcze kompletu danych, żeby użyć go
+              w recepturze.
+            </p>
+          ) : null}
           {addButton(phase.resolved, phase.engineReady)}
           {againButton}
         </div>
@@ -715,6 +1429,7 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
 
       {phase.kind === 'guest' ? (
         <div className="space-y-3">
+          {recognizedLine}
           <p className="text-sm text-stone-700">
             Nie znam tego produktu. Zaloguj się, aby go rozpoznać i zapisać na swoim koncie.
           </p>
@@ -724,10 +1439,14 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
 
       {phase.kind === 'offline' ? (
         <div className="space-y-3">
+          {recognizedLine}
           <p className="text-sm text-stone-700">
             Brak połączenia. Znane produkty działają offline; nowy produkt rozpoznamy po odzyskaniu
             sieci.
           </p>
+          <button type="button" className={btnSecondary} onClick={retryLookup} disabled={busy}>
+            Spróbuj ponownie
+          </button>
           {againButton}
         </div>
       ) : null}
@@ -736,57 +1455,41 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
         <div className="space-y-3">
           {recognizedLine}
           <p className="text-sm text-stone-700">
-            {recognized
-              ? 'Brakuje jeszcze danych z etykiety. Zrób zdjęcie składu i tabeli wartości odżywczych.'
-              : 'Nie znam jeszcze tego produktu. Zrób zdjęcie etykiety ze składem i tabelą wartości odżywczych.'}
+            {customerSentence(phase.notice) ??
+              (recognized
+                ? 'Brakuje jeszcze danych z etykiety. Zrób zdjęcia składu i tabeli wartości odżywczych — możesz dodać kilka zdjęć.'
+                : 'Nie znam jeszcze tego produktu. Zrób zdjęcia etykiety: przód opakowania, skład i tabelę wartości odżywczych.')}
           </p>
-          {phase.note ? <p className="text-xs text-stone-600">{phase.note}</p> : null}
+          {photoList(phase.session)}
           <div className="flex flex-wrap gap-2">
-            <label className={btnPrimary}>
-              Zrób zdjęcie
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                capture="environment"
-                className="sr-only"
-                disabled={busy}
-                onChange={(event) => {
-                  const f = event.target.files?.[0];
-                  if (f) void sendLabel(phase.session, f, 'camera_manual');
-                }}
-              />
-            </label>
-            <label className={btnSecondary}>
-              Dodaj zdjęcie
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                className="sr-only"
-                disabled={busy}
-                onChange={(event) => {
-                  const f = event.target.files?.[0];
-                  if (f) void sendLabel(phase.session, f, 'gallery');
-                }}
-              />
-            </label>
+            {photoInput(
+              phase.session,
+              photos.length ? 'Dodaj kolejne zdjęcie' : 'Zrób zdjęcie',
+              'camera_manual',
+              true,
+              true,
+            )}
+            {photoInput(phase.session, 'Z galerii', 'gallery', false, false)}
             <button
               type="button"
               className={btnSecondary}
               disabled={busy}
-              onClick={() => void enterManually(phase.session)}
+              onClick={() =>
+                setPhase({
+                  kind: 'fields',
+                  session: phase.session,
+                  fields: plainFieldsFor(phase.session.missingCritical, {
+                    needIdentity: !recognized,
+                  }),
+                  notice: null,
+                  canSavePrivate: phase.canSavePrivate,
+                })
+              }
             >
               Wpiszę dane ręcznie
             </button>
-            <button
-              type="button"
-              className={btnSecondary}
-              disabled={busy}
-              onClick={() => void requestVerification(phase.session)}
-            >
-              Zgłoś do weryfikacji
-            </button>
+            {phase.canSavePrivate ? privateSaveButton(phase.session) : null}
           </div>
-          {busy ? <p className="text-xs text-stone-600">Odczytuję etykietę…</p> : null}
         </div>
       ) : null}
 
@@ -824,9 +1527,12 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
           <p className="text-sm text-stone-700">
             {recognized
               ? 'Sprawdź dane z etykiety i uzupełnij brakujące. Produkt zapiszemy prywatnie na Twoim koncie.'
-              : 'Uzupełnij brakujące dane z etykiety. Produkt zapiszemy prywatnie na Twoim koncie.'}
+              : 'Uzupełnij dane z etykiety. Produkt zapiszemy prywatnie na Twoim koncie.'}
           </p>
-          {phase.note ? <p className="text-xs text-red-700">{phase.note}</p> : null}
+          {customerSentence(phase.notice) ? (
+            <p className="text-xs text-red-700">{customerSentence(phase.notice)}</p>
+          ) : null}
+          {photoList(phase.session)}
           {phase.fields.map((field) => (
             <label key={field.key} className="block text-xs text-stone-700">
               <span className="mb-1 block font-semibold">
@@ -879,9 +1585,8 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
           ))}
           {phase.fields.length === 0 ? (
             <p className="text-xs text-stone-600">
-              {recognized
-                ? 'Produkt rozpoznany, ale nie jest jeszcze gotowy do receptury — brakuje danych, których nie da się odczytać z etykiety. Zgłoś go do weryfikacji.'
-                : 'Z etykiety nie da się uzupełnić brakujących danych. Możesz zgłosić produkt do weryfikacji.'}
+              Odczytaliśmy etykietę i zapisaliśmy dane. Zapisz produkt u siebie — gdy dojdą kolejne
+              dane, sam sprawdzimy, do czego można go użyć.
             </p>
           ) : null}
           <div className="flex flex-wrap gap-2">
@@ -890,48 +1595,52 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
                 Zapisz jako mój produkt
               </button>
             ) : null}
-            <label className={btnSecondary}>
-              Zrób zdjęcie etykiety
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                capture="environment"
-                className="sr-only"
-                disabled={busy}
-                onChange={(event) => {
-                  const f = event.target.files?.[0];
-                  if (f) void sendLabel(phase.session, f, 'camera_manual');
-                }}
-              />
-            </label>
-            <button
-              type="button"
-              className={btnSecondary}
-              disabled={busy}
-              onClick={() => void requestVerification(phase.session)}
-            >
-              Zgłoś do weryfikacji
-            </button>
+            {phase.canSavePrivate ? privateSaveButton(phase.session) : null}
+            {photoInput(phase.session, 'Zrób zdjęcie etykiety', 'camera_manual', false, true)}
           </div>
         </form>
       ) : null}
 
       {phase.kind === 'saved' ? (
         <div className="space-y-3">
-          <p className="text-sm font-semibold text-ink">
-            Zapisano jako Twój produkt (prywatny, widoczny tylko na Twoim koncie).
+          <p className="text-sm font-semibold text-ink" data-testid="scan-flow-saved">
+            {phase.added
+              ? phase.resolved.completedFromSimilar
+                ? 'Produkt dodany. Brakujące dane uzupełniliśmy na podstawie podobnych produktów.'
+                : 'Produkt dodany do receptury.'
+              : phase.privateNotReady
+                ? 'Produkt zapisany prywatnie.'
+                : 'Produkt zapisany i gotowy do receptury.'}
           </p>
           {recognizedLine}
           {productCard(phase.product)}
-          {addButton(phase.resolved, phase.engineReady)}
+          {/*
+            SOL-049: the ready save is NOT a private copy. `customer_added_products` is unique on the
+            normalised EAN and the upsert takes an advisory lock on that code, so this is the ONE entry
+            for this barcode; another account scanning it is linked to the same product. Saying
+            "visible only on your account" described the opposite of what the database did.
+          */}
+          {phase.privateNotReady ? null : (
+            <p className="text-xs text-stone-600" data-testid="scan-flow-registry">
+              Ten kod kreskowy ma u nas jeden produkt — nie tworzymy duplikatów.
+            </p>
+          )}
+          {phase.privateNotReady ? (
+            <p className="text-xs text-stone-600" data-testid="scan-flow-private-missing">
+              {missingDataSentence(phase.missingCritical ?? [])}
+            </p>
+          ) : null}
+          {phase.added ? null : addButton(phase.resolved, phase.engineReady)}
           {againButton}
         </div>
       ) : null}
 
       {phase.kind === 'requested' ? (
         <div className="space-y-3">
+          {recognizedLine}
           <p className="text-sm text-stone-700">
-            Zgłoszono do weryfikacji. Damy znać, gdy produkt będzie gotowy.
+            Ten produkt jest już u Ciebie zapisany. Zeskanuj go ponownie — sprawdzimy, czy da się go
+            już użyć w recepturze.
           </p>
           {againButton}
         </div>
@@ -939,10 +1648,18 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
 
       {phase.kind === 'error' ? (
         <div className="space-y-3">
+          {recognizedLine}
           <p className="text-sm text-red-700">{phase.message}</p>
-          <button type="button" className={btnSecondary} onClick={restart}>
-            Spróbuj ponownie
-          </button>
+          <div className="flex flex-wrap gap-2">
+            {phase.retry === 'lookup' ? (
+              <button type="button" className={btnPrimary} onClick={retryLookup} disabled={busy}>
+                Spróbuj ponownie
+              </button>
+            ) : null}
+            <button type="button" className={btnSecondary} onClick={restart} disabled={busy}>
+              Skanuj ponownie
+            </button>
+          </div>
         </div>
       ) : null}
     </section>

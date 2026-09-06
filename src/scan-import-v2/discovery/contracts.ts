@@ -129,6 +129,8 @@ export type CustomerFamily =
 
 export interface FinalizeInput {
   customerFamily?: CustomerFamily | null;
+  /** owner contract (2026-09-05): persist the exact product PRIVATELY even when it is not recipe-ready */
+  savePrivateNotReady?: boolean;
   confirmations?: {
     packageEvidenceExhausted?: boolean;
     notOnLabelFields?: string[];
@@ -151,17 +153,40 @@ export type ResearchOutcome =
     }
   | { kind: 'skipped'; session: DiscoverySession; reason: string };
 
+export type LabelFailureReason =
+  | 'burst'
+  | 'vision_limit'
+  | 'asset_conflict'
+  | 'asset_metadata'
+  | 'network'
+  | 'provider'
+  | 'other';
+
 export type AnalyzeOutcome =
   | { kind: 'existing_product'; product: ExactCandidate }
-  | { kind: 'analyzed'; session: DiscoverySession };
+  | { kind: 'analyzed'; session: DiscoverySession }
+  /** this image could not be analysed; the session and every earlier photograph's evidence stay intact */
+  | {
+      kind: 'failed';
+      reason: LabelFailureReason;
+      retryAfterMs: number | null;
+      detail: string | null;
+    };
 
 export type FinalizeOutcome =
   | {
       kind: 'created';
       productId: string;
       productCode: string | null;
+      /** the persisted identity as the authority saved it (never the bare code) */
+      displayName?: string | null;
+      brand?: string | null;
+      /** saved privately although not recipe-ready */
+      privateNotReady?: boolean;
       engineUsable: boolean;
       existing: boolean;
+      /** at least one working value came from similar Mapper products (never the label's own facts) */
+      completedFromSimilar?: boolean;
     }
   | { kind: 'family_confirmation_required'; options: readonly CustomerFamily[] }
   | { kind: 'not_ready'; missingCritical: readonly string[]; reasons: readonly string[] }
@@ -179,9 +204,18 @@ export interface OwnRequest {
 }
 
 /** Every method delegates to an EXISTING authority; the port only shapes requests and responses. */
+/** research options: `refresh` sets a linked customer product's exact answer aside and re-runs the sources */
+export interface ResearchOptions {
+  refresh?: boolean;
+}
+
 export interface DiscoveryPort {
   /** scan-session `ean_lookup`: server exact lookup, else one bounded exact-source research */
-  research(identity: CodeIdentity, ctx: RequestContext): Promise<ResearchOutcome>;
+  research(
+    identity: CodeIdentity,
+    ctx: RequestContext,
+    options?: ResearchOptions,
+  ): Promise<ResearchOutcome>;
   /** scan-session `analyze`: label photographs as evidence, merged server-side by source rank */
   analyzeLabel(
     session: DiscoverySession,
@@ -201,6 +235,10 @@ export interface DiscoveryPort {
     session: DiscoverySession | null,
     ctx: RequestContext,
   ): Promise<RequestOutcome>;
-  /** continuity: an open request of this account for the same code */
+  /**
+   * An open request of this account for the same code. DIAGNOSTIC ONLY (SOL-049): it must never
+   * short-circuit a scan — a request the customer made days ago is history, and replaying it as a
+   * "reported" screen hides the product they are holding right now.
+   */
   findOwnRequest(identity: CodeIdentity, ctx: RequestContext): Promise<OwnRequest | null>;
 }

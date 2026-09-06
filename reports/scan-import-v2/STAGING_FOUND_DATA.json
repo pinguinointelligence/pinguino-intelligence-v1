@@ -1,0 +1,57 @@
+{
+  "ranAt": "2026-09-06T07:51:55.251Z",
+  "5903767004470": {
+    "before": {
+      "productCode": "CA-ING-007183",
+      "version": 2,
+      "versionId": "be80b2b8-6861-4fd4-b8f1-dc757672fb6e",
+      "fat": "2.5/VERIFIED/product_declared",
+      "protein": "3.3/VERIFIED/product_declared",
+      "carbohydrate": "15.3/VERIFIED/product_declared",
+      "sugars": "14.9/VERIFIED/product_declared",
+      "lactose": "14.9/ESTIMATED/derived",
+      "ready": true,
+      "accuracy": 96
+    },
+    "finalized": "discovered_exact",
+    "after": {
+      "productCode": "CA-ING-007183",
+      "version": 2,
+      "versionId": "be80b2b8-6861-4fd4-b8f1-dc757672fb6e",
+      "fat": "2.5/VERIFIED/product_declared",
+      "protein": "3.3/VERIFIED/product_declared",
+      "carbohydrate": "15.3/VERIFIED/product_declared",
+      "sugars": "14.9/VERIFIED/product_declared",
+      "lactose": "14.9/ESTIMATED/derived",
+      "ready": true,
+      "accuracy": 96
+    }
+  },
+  "3245678047125": {
+    "before": {
+      "productCode": "CA-ING-007179",
+      "version": 2,
+      "versionId": "efeee81d-3f00-4dcd-83ab-8d14de18a6fb",
+      "fat": "54/VERIFIED/product_declared",
+      "protein": "12/VERIFIED/product_declared",
+      "carbohydrate": "16/VERIFIED/product_declared",
+      "sugars": "10/VERIFIED/product_declared",
+      "lactose": "0/ESTIMATED/mapper_similar_profile",
+      "ready": true,
+      "accuracy": 96.8
+    },
+    "finalized": "discovered_exact",
+    "after": {
+      "productCode": "CA-ING-007179",
+      "version": 2,
+      "versionId": "efeee81d-3f00-4dcd-83ab-8d14de18a6fb",
+      "fat": "54/VERIFIED/product_declared",
+      "protein": "12/VERIFIED/product_declared",
+      "carbohydrate": "16/VERIFIED/product_declared",
+      "sugars": "10/VERIFIED/product_declared",
+      "lactose": "0/ESTIMATED/mapper_similar_profile",
+      "ready": true,
+      "accuracy": 96.8
+    }
+  }
+}

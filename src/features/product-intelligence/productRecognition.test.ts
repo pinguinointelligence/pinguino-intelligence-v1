@@ -211,6 +211,51 @@ describe('Product Recognition V2 — deterministic semantic authority', () => {
     expect(result.intendedUsageRole).toBe('BASE_ONLY');
   });
 
+  it('classifies a general functional beverage without turning it into plant milk', () => {
+    const result = classifyProductSemantics(
+      evidence({
+        name: 'Sport 002',
+        brand: 'Vitamin Well',
+        category: 'Bebida refrescante con vitaminas y minerales',
+        description: 'Bebida sin gas con vitaminas y minerales.',
+      }),
+    );
+
+    expect(result).toMatchObject({
+      classificationSource: 'DETERMINISTIC',
+      productArchetype: 'NORMAL_INGREDIENT',
+      ingredientFamily: 'beverage',
+      physicalForm: 'LIQUID',
+      intendedUsageRole: 'BASE_ONLY',
+      modelRequired: false,
+    });
+    expect(result.compatibleMapperCategories).toEqual(['beverage']);
+  });
+
+  it('recognizes a packaged brownie as confectionery/inclusion rather than base chocolate', () => {
+    const result = classifyProductSemantics(
+      evidence({
+        name: 'Choco brownie',
+        brand: 'Milka',
+        category: 'Brownies',
+        ingredients: 'sugar, wheat flour, cocoa butter, cocoa mass, milk powder',
+      }),
+    );
+
+    expect(result).toMatchObject({
+      productArchetype: 'CONFECTIONERY',
+      ingredientFamily: 'confectionery',
+      physicalForm: 'SOLID',
+      intendedUsageRole: 'TOPPING_ONLY',
+      modelRequired: false,
+    });
+    expect(result.compatibleMapperCategories).toEqual([
+      'inclusion',
+      'bakery_inclusion',
+      'confectionery_inclusion',
+    ]);
+  });
+
   it('normalizes manufacturer g/L against the final 1000 g Gellatti base rule', () => {
     for (const [raw, value, percent] of [
       ['3 g/L', 3, 0.3],
@@ -751,5 +796,61 @@ describe('Product Recognition V2 — Mapper semantic hard contradictions', () =>
         }),
       ]),
     );
+  });
+});
+
+describe('semantic model output — evidence refs (served 2026-09-06)', () => {
+  const lotus = evidence({
+    name: 'Lotus biscoff',
+    brand: 'Biscoff',
+    manufacturer: null,
+    gtin: '5410126006049',
+    productType: 'consumer_scanner',
+    category: 'sinterklaasproducten / speculaas / speculoos',
+    ingredients:
+      'Farine de blé, sucre, huiles végétales (huile de palme, huile de colza), sirop de sucre candi, poudre à lever, farine de soja, sel, cannelle.',
+    nutrition:
+      '{"basis":"per_100g","energyKcal":484,"fat":19,"carbohydrate":72.6,"sugars":38.1,"protein":4.9,"salt":0.92}',
+    sourceUrls: ['https://world.openfoodfacts.org/product/5410126006049'],
+  });
+  const answer = {
+    productArchetype: 'INCLUSION',
+    ingredientFamily: 'confectionery',
+    physicalForm: 'SOLID',
+    intendedUsageRole: 'NEITHER_REVIEW',
+    flavorDomain: 'UNKNOWN',
+    professional: false,
+    technical: false,
+    dosageDependent: false,
+    dosage: { semantics: 'NONE', value: null, unit: 'UNKNOWN', basis: 'UNKNOWN' },
+    compatibleMapperCategories: ['INCLUSION', 'CONFECTIONERY'],
+    forbiddenMapperCategories: ['STABILIZER', 'EMULSIFIER'],
+    confidence: 0.94,
+    reasonCodes: ['CONSUMER_PACKAGED_BISCUIT', 'NO_DOSAGE'],
+    evidenceRefs: ['name', 'brand', 'productType', 'category', 'ingredients', 'dosage'],
+  };
+
+  it('a ref to a field the evidence does not carry (the absent dosage) is dropped, not fatal', () => {
+    // the exact answer the served model gave for Lotus Biscoff, refused before the fix
+    const accepted = validateProductSemanticModelOutput(lotus, answer);
+    expect(accepted).not.toBeNull();
+    expect(accepted?.ingredientFamily).toBe('confectionery');
+  });
+
+  it('an unknown ref name, or no real ref at all, still refuses the answer', () => {
+    expect(
+      validateProductSemanticModelOutput(lotus, { ...answer, evidenceRefs: ['name', 'vibes'] }),
+    ).toBeNull();
+    expect(
+      validateProductSemanticModelOutput(lotus, { ...answer, evidenceRefs: ['dosage'] }),
+    ).toBeNull();
+  });
+
+  it('a speculoos biscuit with a French label is a confectionery inclusion without the model', () => {
+    const deterministic = classifyProductSemantics(lotus);
+    expect(deterministic.productArchetype).toBe('CONFECTIONERY');
+    expect(deterministic.ingredientFamily).toBe('confectionery');
+    expect(deterministic.intendedUsageRole).toBe('TOPPING_ONLY');
+    expect(deterministic.modelRequired).toBe(false);
   });
 });

@@ -29,6 +29,14 @@ import { homeCreatorCopy } from './homeCreatorCopy';
  * that reads as an internal report even though the individual words are ordinary.
  */
 const INTERNAL_VOCABULARY: readonly RegExp[] = [
+  /* SOL-043 (owner iPhone test, 2026-09-06): the served scanner printed
+     `not ready: INGREDIENTS_EVIDENCE_REQUIRED, roleReadiness:REVIEW,
+     recognition:NORMAL_INGREDIENT/BASE_ONLY` straight onto a customer screen. An Engine or
+     ProductBehavior enum is never customer copy — not its name, not its value, not its shape. */
+  /\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b/,
+  /\b(?:roleReadiness|engineUsable|compositionReadiness|productAccuracy|gellattiReadiness|criticalGaps|missingCritical|intendedUsageRole|productArchetype|ingredientFamily|physicalForm)\b/,
+  /\brecognition\s*:/i,
+  /\bnot ready\b/i,
   /productbehavior/i,
   /\bmapper\b/i,
   /snapshot/i,

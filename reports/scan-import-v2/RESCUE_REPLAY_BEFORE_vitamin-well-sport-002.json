@@ -1,0 +1,743 @@
+{
+  "label": "vitamin-well-sport-002",
+  "gtin": "7340222800464",
+  "recognition": {
+    "deterministic": {
+      "archetype": "NORMAL_INGREDIENT",
+      "family": "beverage",
+      "form": "LIQUID",
+      "role": "BASE_ONLY",
+      "modelRequired": false,
+      "modelReasonCodes": [],
+      "compatibleMapperCategories": [
+        "beverage"
+      ]
+    },
+    "final": {
+      "source": "DETERMINISTIC",
+      "archetype": "NORMAL_INGREDIENT",
+      "family": "beverage",
+      "form": "LIQUID",
+      "role": "BASE_ONLY",
+      "modelRequired": false,
+      "modelReasonCodes": [],
+      "compatibleMapperCategories": [
+        "beverage"
+      ],
+      "familyResolution": "RESOLVED"
+    }
+  },
+  "mapper": {
+    "candidatesBeforeFilter": [
+      "PI-ING-001564",
+      "PI-ING-001565",
+      "PI-ING-001566",
+      "PI-ING-001587",
+      "PI-ING-001591",
+      "PI-ING-001785",
+      "PI-ING-001786",
+      "PI-ING-001787",
+      "PI-ING-001788",
+      "PI-ING-001789",
+      "PI-ING-001790",
+      "PI-ING-001791",
+      "PI-ING-001792",
+      "PI-ING-001793",
+      "PI-ING-001794",
+      "PI-ING-001795",
+      "PI-ING-001796",
+      "PI-ING-001797",
+      "PI-ING-001798",
+      "PI-ING-001799",
+      "PI-ING-001800",
+      "PI-ING-001801",
+      "PI-ING-001802",
+      "PI-ING-001803",
+      "PI-ING-001804",
+      "PI-ING-001805",
+      "PI-ING-001806",
+      "PI-ING-001807",
+      "PI-ING-001808",
+      "PI-ING-001809",
+      "PI-ING-001810",
+      "PI-ING-001811",
+      "PI-ING-001812",
+      "PI-ING-001813",
+      "PI-ING-001814",
+      "PI-ING-001815",
+      "PI-ING-001816",
+      "PI-ING-001817",
+      "PI-ING-001818",
+      "PI-ING-001819",
+      "PI-ING-001820",
+      "PI-ING-001821",
+      "PI-ING-001822",
+      "PI-ING-001823",
+      "PI-ING-001824",
+      "PI-ING-001825",
+      "PI-ING-001826",
+      "PI-ING-001827",
+      "PI-ING-001828",
+      "PI-ING-001829",
+      "PI-ING-001830",
+      "PI-ING-001831",
+      "PI-ING-001832",
+      "PI-ING-001833",
+      "PI-ING-001834",
+      "PI-ING-001835",
+      "PI-ING-001836",
+      "PI-ING-001872",
+      "PI-ING-001873",
+      "PI-ING-001874",
+      "PI-ING-001875",
+      "PI-ING-001876",
+      "PI-ING-001877",
+      "PI-ING-001878",
+      "PI-ING-001879",
+      "PI-ING-001880",
+      "PI-ING-001881",
+      "PI-ING-001882",
+      "PI-ING-001883",
+      "PI-ING-001884",
+      "PI-ING-001885",
+      "PI-ING-001886",
+      "PI-ING-001887",
+      "PI-ING-001888",
+      "PI-ING-001889",
+      "PI-ING-001890",
+      "PI-ING-001891",
+      "PI-ING-001892",
+      "PI-ING-001893",
+      "PI-ING-001894",
+      "PI-ING-001895",
+      "PI-ING-001896",
+      "PI-ING-001897",
+      "PI-ING-001898",
+      "PI-ING-001899",
+      "PI-ING-001900",
+      "PI-ING-001901",
+      "PI-ING-001902",
+      "PI-ING-001903",
+      "PI-ING-001904",
+      "PI-ING-001905",
+      "PI-ING-001906",
+      "PI-ING-001907",
+      "PI-ING-001908",
+      "PI-ING-001909",
+      "PI-ING-001910",
+      "PI-ING-001911",
+      "PI-ING-001912",
+      "PI-ING-001913",
+      "PI-ING-001914",
+      "PI-ING-001915",
+      "PI-ING-001916",
+      "PI-ING-001917",
+      "PI-ING-001918",
+      "PI-ING-001919",
+      "PI-ING-001920",
+      "PI-ING-001921",
+      "PI-ING-001922",
+      "PI-ING-001923",
+      "PI-ING-001924",
+      "PI-ING-001925",
+      "PI-ING-001926",
+      "PI-ING-001927",
+      "PI-ING-001928",
+      "PI-ING-001929",
+      "PI-ING-001930",
+      "PI-ING-001931",
+      "PI-ING-001932",
+      "PI-ING-001933",
+      "PI-ING-001934",
+      "PI-ING-001935",
+      "PI-ING-001936",
+      "PI-ING-001937",
+      "PI-ING-001938",
+      "PI-ING-001939",
+      "PI-ING-001940",
+      "PI-ING-001941",
+      "PI-ING-001942",
+      "PI-ING-001943",
+      "PI-ING-001944",
+      "PI-ING-001945",
+      "PI-ING-001946",
+      "PI-ING-001947",
+      "PI-ING-001948",
+      "PI-ING-001949",
+      "PI-ING-001950",
+      "PI-ING-001951",
+      "PI-ING-001952",
+      "PI-ING-001953",
+      "PI-ING-001954",
+      "PI-ING-001955",
+      "PI-ING-001956",
+      "PI-ING-001957",
+      "PI-ING-001958",
+      "PI-ING-001959",
+      "PI-ING-001960",
+      "PI-ING-001961",
+      "PI-ING-001962",
+      "PI-ING-001963",
+      "PI-ING-001964",
+      "PI-ING-001965",
+      "PI-ING-001966",
+      "PI-ING-001967",
+      "PI-ING-001968",
+      "PI-ING-001969",
+      "PI-ING-001970",
+      "PI-ING-001971",
+      "PI-ING-001972",
+      "PI-ING-001973",
+      "PI-ING-002077",
+      "PI-ING-002078",
+      "PI-ING-002079",
+      "PI-ING-002080",
+      "PI-ING-002081",
+      "PI-ING-002082",
+      "PI-ING-002083",
+      "PI-ING-002084",
+      "PI-ING-002085",
+      "PI-ING-002086",
+      "PI-ING-002087",
+      "PI-ING-002088",
+      "PI-ING-002089",
+      "PI-ING-002090",
+      "PI-ING-002091",
+      "PI-ING-002092",
+      "PI-ING-002093",
+      "PI-ING-002094",
+      "PI-ING-002095",
+      "PI-ING-002096",
+      "PI-ING-002097",
+      "PI-ING-002098",
+      "PI-ING-002099",
+      "PI-ING-002100",
+      "PI-ING-002101",
+      "PI-ING-002102",
+      "PI-ING-002103",
+      "PI-ING-002104",
+      "PI-ING-002105",
+      "PI-ING-002106",
+      "PI-ING-002107",
+      "PI-ING-002109",
+      "PI-ING-002110",
+      "PI-ING-002112"
+    ],
+    "candidatesAfterFilter": [
+      "PI-ING-001785",
+      "PI-ING-001786",
+      "PI-ING-001788",
+      "PI-ING-001795",
+      "PI-ING-001797",
+      "PI-ING-001799",
+      "PI-ING-001801",
+      "PI-ING-001921",
+      "PI-ING-001922",
+      "PI-ING-001923",
+      "PI-ING-001924",
+      "PI-ING-001925",
+      "PI-ING-001926",
+      "PI-ING-001927",
+      "PI-ING-001928",
+      "PI-ING-001943",
+      "PI-ING-001971",
+      "PI-ING-001973",
+      "PI-ING-001894",
+      "PI-ING-001953",
+      "PI-ING-001808",
+      "PI-ING-001835",
+      "PI-ING-001836",
+      "PI-ING-001876",
+      "PI-ING-001879",
+      "PI-ING-001880",
+      "PI-ING-001891",
+      "PI-ING-001944",
+      "PI-ING-001955",
+      "PI-ING-001833",
+      "PI-ING-001877",
+      "PI-ING-001878",
+      "PI-ING-001907",
+      "PI-ING-001936",
+      "PI-ING-001937",
+      "PI-ING-001938",
+      "PI-ING-001939",
+      "PI-ING-001940",
+      "PI-ING-001941",
+      "PI-ING-001942",
+      "PI-ING-001969",
+      "PI-ING-001821",
+      "PI-ING-001822",
+      "PI-ING-001823",
+      "PI-ING-001824",
+      "PI-ING-002077",
+      "PI-ING-002078",
+      "PI-ING-002079",
+      "PI-ING-002080",
+      "PI-ING-002081",
+      "PI-ING-002082",
+      "PI-ING-002083",
+      "PI-ING-002084",
+      "PI-ING-002085",
+      "PI-ING-002086",
+      "PI-ING-002087",
+      "PI-ING-001910",
+      "PI-ING-001911",
+      "PI-ING-001912",
+      "PI-ING-001892",
+      "PI-ING-001883",
+      "PI-ING-001885",
+      "PI-ING-001886",
+      "PI-ING-001890",
+      "PI-ING-001934",
+      "PI-ING-001954",
+      "PI-ING-001898",
+      "PI-ING-001908",
+      "PI-ING-001909",
+      "PI-ING-002112",
+      "PI-ING-001965",
+      "PI-ING-001966",
+      "PI-ING-001967",
+      "PI-ING-001968",
+      "PI-ING-001816",
+      "PI-ING-001827",
+      "PI-ING-001826",
+      "PI-ING-001810",
+      "PI-ING-002101",
+      "PI-ING-001825",
+      "PI-ING-001812",
+      "PI-ING-001828",
+      "PI-ING-001900",
+      "PI-ING-001901",
+      "PI-ING-002100",
+      "PI-ING-001832",
+      "PI-ING-001830",
+      "PI-ING-001829",
+      "PI-ING-001932",
+      "PI-ING-001903",
+      "PI-ING-001959",
+      "PI-ING-001815",
+      "PI-ING-001905",
+      "PI-ING-001906",
+      "PI-ING-001895",
+      "PI-ING-001896",
+      "PI-ING-001813",
+      "PI-ING-001814",
+      "PI-ING-001818",
+      "PI-ING-001819",
+      "PI-ING-001820",
+      "PI-ING-001831",
+      "PI-ING-001834",
+      "PI-ING-001899",
+      "PI-ING-001929",
+      "PI-ING-001930",
+      "PI-ING-001931",
+      "PI-ING-001902",
+      "PI-ING-001904",
+      "PI-ING-001960",
+      "PI-ING-002096",
+      "PI-ING-001564",
+      "PI-ING-001787",
+      "PI-ING-001789",
+      "PI-ING-001790",
+      "PI-ING-001792",
+      "PI-ING-001793",
+      "PI-ING-001794",
+      "PI-ING-001796",
+      "PI-ING-001798",
+      "PI-ING-001800",
+      "PI-ING-001802",
+      "PI-ING-001803",
+      "PI-ING-001804",
+      "PI-ING-001805",
+      "PI-ING-001806",
+      "PI-ING-001872",
+      "PI-ING-001874",
+      "PI-ING-001875",
+      "PI-ING-001881",
+      "PI-ING-001882",
+      "PI-ING-001807",
+      "PI-ING-002104",
+      "PI-ING-002105",
+      "PI-ING-001897",
+      "PI-ING-001935",
+      "PI-ING-001945",
+      "PI-ING-001946",
+      "PI-ING-001920",
+      "PI-ING-001933",
+      "PI-ING-002097",
+      "PI-ING-001809",
+      "PI-ING-001811",
+      "PI-ING-001956",
+      "PI-ING-001957",
+      "PI-ING-001958",
+      "PI-ING-002107",
+      "PI-ING-001873",
+      "PI-ING-001893",
+      "PI-ING-002099",
+      "PI-ING-002106",
+      "PI-ING-001887",
+      "PI-ING-001888",
+      "PI-ING-001889",
+      "PI-ING-001947",
+      "PI-ING-001948",
+      "PI-ING-001949",
+      "PI-ING-001950",
+      "PI-ING-001951",
+      "PI-ING-001952",
+      "PI-ING-001884",
+      "PI-ING-001970",
+      "PI-ING-001972"
+    ],
+    "rejected": [
+      {
+        "ingredientId": "PI-ING-001565",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-001566",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-001587",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-001591",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-001791",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-001817",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-001913",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-001914",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-001915",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-001916",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-001917",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-001918",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-001919",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-001961",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-001962",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-001963",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-001964",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-002088",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-002089",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-002090",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-002091",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-002092",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-002093",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-002094",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-002095",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-002098",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-002102",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-002103",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-002109",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION"
+        ]
+      },
+      {
+        "ingredientId": "PI-ING-002110",
+        "reasonCodes": [
+          "SEMANTIC_FAMILY_CONTRADICTION"
+        ]
+      }
+    ],
+    "donor": "PI-ING-001785",
+    "similarity": 0.94,
+    "basis": "neighbour_set",
+    "estimatedFromMapperIds": [
+      "PI-ING-001785"
+    ]
+  },
+  "fieldTruth": {
+    "water_percent": {
+      "value": 99.9,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.94,
+      "refs": [
+        "PI-ING-001785"
+      ]
+    },
+    "total_solids_percent": {
+      "value": 0.1,
+      "state": "ESTIMATED",
+      "basis": "derived",
+      "confidence": 0.94,
+      "refs": [
+        "PI-ING-001785"
+      ]
+    },
+    "fat_percent": {
+      "value": 0,
+      "state": "VERIFIED",
+      "basis": "user_confirmed",
+      "confidence": 0.758,
+      "refs": []
+    },
+    "protein_percent": {
+      "value": 0,
+      "state": "VERIFIED",
+      "basis": "user_confirmed",
+      "confidence": 0.758,
+      "refs": []
+    },
+    "carbohydrate_percent": {
+      "value": 0,
+      "state": "VERIFIED",
+      "basis": "user_confirmed",
+      "confidence": 0.758,
+      "refs": []
+    },
+    "total_sugars_percent": {
+      "value": 0,
+      "state": "VERIFIED",
+      "basis": "user_confirmed",
+      "confidence": 0.758,
+      "refs": []
+    },
+    "sucrose_percent": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.94,
+      "refs": [
+        "PI-ING-001785"
+      ]
+    },
+    "dextrose_percent": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.94,
+      "refs": [
+        "PI-ING-001785"
+      ]
+    },
+    "glucose_percent": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.94,
+      "refs": [
+        "PI-ING-001785"
+      ]
+    },
+    "fructose_percent": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.94,
+      "refs": [
+        "PI-ING-001785"
+      ]
+    },
+    "lactose_percent": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.94,
+      "refs": [
+        "PI-ING-001785"
+      ]
+    },
+    "polyol_percent": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.94,
+      "refs": [
+        "PI-ING-001785"
+      ]
+    },
+    "fiber_percent": {
+      "value": 0,
+      "state": "VERIFIED",
+      "basis": "user_confirmed",
+      "confidence": 0.758,
+      "refs": []
+    },
+    "salt_percent": {
+      "value": 0.1175,
+      "state": "VERIFIED",
+      "basis": "user_confirmed",
+      "confidence": 0.758,
+      "refs": []
+    },
+    "alcohol_percent": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.94,
+      "refs": [
+        "PI-ING-001785"
+      ]
+    },
+    "kcal_per_100g": {
+      "value": 1.2,
+      "state": "VERIFIED",
+      "basis": "user_confirmed",
+      "confidence": 0.758,
+      "refs": []
+    },
+    "pod_value": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.94,
+      "refs": [
+        "PI-ING-001785"
+      ]
+    },
+    "pac_value": {
+      "value": 0,
+      "state": "ESTIMATED",
+      "basis": "mapper_similar_profile",
+      "confidence": 0.94,
+      "refs": [
+        "PI-ING-001785"
+      ]
+    }
+  },
+  "missingEngineFields": [],
+  "criticalPhysicsBlockers": [],
+  "sweetnessPath": {
+    "kind": "trivially_zero",
+    "resolved": true,
+    "reason": "Brak cukrow i polioli oraz brak semantycznej przeslanki alkoholu — moce sa zerowe"
+  },
+  "readiness": "ESTIMATED_READY",
+  "engineUsable": true,
+  "productAccuracy": 87.8,
+  "roleReadiness": "BASE_READY",
+  "ready": true,
+  "blockers": []
+}

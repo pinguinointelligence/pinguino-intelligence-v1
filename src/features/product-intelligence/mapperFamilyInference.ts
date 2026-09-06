@@ -29,6 +29,7 @@ export type ProductFamilyId =
   | 'emulsifier'
   | 'fibre_inulin'
   | 'starch'
+  | 'beverage'
   | 'plant_beverage'
   | 'dairy_liquid'
   | 'fruit'
@@ -101,7 +102,7 @@ const FAMILY_RULES: readonly FamilyRule[] = [
     family: 'nut_paste',
     technical: false,
     pattern:
-      /\b(hazelnut|almond|pistachio|cashew|walnut|peanut|macadamia|pecan)\b[^,;]{0,16}\b(paste|butter|praline|pasta)\b|\bpasta\s*(?:z\s+)?(orzechow|migdalow|pistacjow)/i,
+      /\b(hazelnut|almond|pistachio|cashew|walnut|peanut|macadamia|pecan)\b[^,;]{0,16}\b(paste|butter|praline|pasta)\b|\b(pasta|krem|maslo)\s*(?:z\s+)?(orzech\w*|migdal\w*|pistacj\w*|nerkowc\w*|arachidow\w*)/i,
     categories: ['nut', 'flavor_paste'],
   },
   {
@@ -114,7 +115,8 @@ const FAMILY_RULES: readonly FamilyRule[] = [
   {
     family: 'sugar_sucrose',
     technical: false,
-    pattern: /\b(sucrose|saccharose|table\s*sugar|cukier\s*(bialy|krysztal)|sacharoz)\b/i,
+    pattern:
+      /\b(sucrose|saccharose|table\s*sugar|cukier\s*(bialy|krysztal|wanilin\w*|puder|trzcinow\w*|brazow\w*)|vanilla\s*sugar|vanill(?:e|in)zucker|icing\s*sugar|powdered\s*sugar|cane\s*sugar|brown\s*sugar|sacharoz)\b/i,
     categories: ['sweetener'],
   },
   {
@@ -155,9 +157,20 @@ const FAMILY_RULES: readonly FamilyRule[] = [
     categories: ['beverage'],
   },
   {
+    // "Milk chocolate", "white chocolate", "dark chocolate" (and their Polish,
+    // Spanish, German, Italian, French names) are chocolate: the dairy word is
+    // the variety, not the kind. Must precede the generic dairy word rule.
+    family: 'chocolate',
+    technical: false,
+    pattern:
+      /\b(milk|white|dark|bitter|ruby)\s+chocolate\b|\bczekolad\w*\s+(mleczn|bial|gorzk|deserow)\w*|\bchocolate\s+(con\s+leche|negro|blanco|amargo)\b|\b(milch|weisse?|weiss|zartbitter|dunkle)\s*schokolade\b|\bcioccolato\s+(al\s+latte|bianco|fondente)\b|\bchocolat\s+(au\s+lait|blanc|noir)\b/i,
+    categories: ['chocolate', 'cocoa', 'cacao'],
+  },
+  {
     family: 'dairy_liquid',
     technical: false,
-    pattern: /\b(milk|cream|smietan|smietan|mleko)\b/i,
+    pattern:
+      /\b(milk|cream|smietan|smietank[aie]|mleko|jogurt\w*|yog(?:h)?urt\w*|joghurt|kefir|skyr|maslank\w*|buttermilk|twarog\w*|quark|serek\w*|cheese|kase|mascarpone|ricotta)\b/i,
     categories: ['dairy'],
   },
   {
@@ -209,7 +222,11 @@ const CATEGORY_RULES: readonly CategoryRule[] = [
   { family: 'chocolate', technical: false, category: /chocolate|cocoa|cacao/ },
   { family: 'nut_paste', technical: false, category: /\bnut/ },
   { family: 'fruit', technical: false, category: /\bfruit\b/ },
-  { family: 'plant_beverage', technical: false, category: /beverage/ },
+  {
+    family: 'beverage',
+    technical: false,
+    category: /beverage|\bdrink\b|bebida|boisson|napoj/,
+  },
   { family: 'dairy_liquid', technical: false, category: /\bdairy\b/ },
   { family: 'sugar_sucrose', technical: false, category: /sweetener/ },
   { family: 'alcohol', technical: false, category: /alcohol/ },

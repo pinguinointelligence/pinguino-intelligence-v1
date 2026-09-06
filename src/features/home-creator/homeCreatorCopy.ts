@@ -111,6 +111,13 @@ export interface HomeCreatorCopy {
     readonly shareWithCommunity: string;
     readonly letsMakeIt: string;
     readonly recalculate: string;
+    /** what the customer reads after a recalculation that changes nothing or cannot proceed */
+    readonly recalcNoChange: string;
+    readonly recalcBestAchievable: string;
+    readonly recalcConfirmSettings: string;
+    readonly recalcLocked: string;
+    readonly recalcNeedsGrams: string;
+    readonly recalcNeedsProductData: string;
     readonly maskedGrams: string;
     readonly maskedGramsLabel: string;
     /** What HOME says when product authority cannot be confirmed (OWNER FROZEN). */
@@ -264,6 +271,15 @@ const homeCreatorCopyPl: HomeCreatorCopy = {
     shareWithCommunity: 'Pokaż w Community',
     letsMakeIt: 'Zróbmy to',
     recalculate: 'Przelicz i popraw',
+    recalcNoChange: 'Nie ma czego poprawiać — receptura jest już dobrze ustawiona.',
+    recalcBestAchievable:
+      'To najlepsze, co da się osiągnąć przy tych ustawieniach. Zostawiamy recepturę bez zmian.',
+    recalcConfirmSettings: 'Potwierdź ustawienia receptury, a potem przelicz ponownie.',
+    recalcLocked:
+      'Przy zablokowanych ilościach nie da się tego poprawić. Odblokuj coś i przelicz ponownie.',
+    recalcNeedsGrams: 'Podaj ilość dla dodanych produktów, wtedy przeliczymy recepturę.',
+    recalcNeedsProductData:
+      'Jednemu ze składników brakuje danych produktu. Uzupełnij je i przelicz ponownie.',
     maskedGrams: '••• g',
     maskedGramsLabel: 'Gramatura ukryta — dostępna w planie HOME lub PRO',
     unresolvedProduct: 'Nie możemy teraz potwierdzić danych jednego ze składników.',
@@ -411,6 +427,14 @@ const homeCreatorCopyEn: HomeCreatorCopy = {
     shareWithCommunity: 'Share with Community',
     letsMakeIt: "Let's make it",
     recalculate: 'Recalculate and fix',
+    recalcNoChange: 'Nothing to fix — your recipe is already well set.',
+    recalcBestAchievable:
+      'This is the best achievable with these settings. Your recipe stays as it is.',
+    recalcConfirmSettings: 'Confirm the recipe settings, then recalculate.',
+    recalcLocked: 'With the amounts locked this cannot be improved. Unlock one and recalculate.',
+    recalcNeedsGrams: 'Set an amount for the products you added and we will recalculate.',
+    recalcNeedsProductData:
+      'One ingredient is missing its product data. Complete it and recalculate.',
     maskedGrams: '••• g',
     maskedGramsLabel: 'Amount hidden — available on the HOME or PRO plan',
     unresolvedProduct: "We can't confirm one of the ingredients right now.",

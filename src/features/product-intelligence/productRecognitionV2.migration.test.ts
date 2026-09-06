@@ -31,6 +31,9 @@ describe('Product Recognition V2 server boundary', () => {
     expect(edge).toContain('PRODUCT_RECOGNITION_MODEL_SCHEMA');
     expect(edge).toContain('validateProductSemanticModelOutput');
     expect(edge).toContain('AbortSignal.timeout(30_000)');
+    expect(edge.indexOf("body.action === 'semantic_classification'")).toBeLessThan(
+      edge.indexOf("INTIMPORT_WEB_ENRICHMENT_ENABLED"),
+    );
   });
 
   it('caches by exact evidence and enforces a server-side import cap', () => {
@@ -46,6 +49,14 @@ describe('Product Recognition V2 server boundary', () => {
     expect(migration).toContain("return 'CAP_REACHED'");
     expect(edge).toContain('intimport_semantic_call_cap_reached');
     expect(edge).toContain('semantic_attempt_not_repeated');
+  });
+
+  it('records whether scanner semantic AI was required, attempted, accepted, or unavailable', () => {
+    expect(productScanFinalize).toContain('semanticModelAudit');
+    expect(productScanFinalize).toContain("outcome: 'not_required'");
+    expect(productScanFinalize).toContain("outcome: 'accepted'");
+    expect(productScanFinalize).toContain("outcome: 'unavailable'");
+    expect(productScanFinalize).toContain('classificationModel: semanticModelAudit');
   });
 
   it('server-recomputes semantics instead of trusting the browser verdict', () => {

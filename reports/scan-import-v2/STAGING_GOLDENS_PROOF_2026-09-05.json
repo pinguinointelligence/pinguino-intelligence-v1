@@ -1,0 +1,91 @@
+{
+  "ranAt": "2026-09-05T14:01:01.131Z",
+  "qaAccount": "home@home.com",
+  "stagingUrlHost": "tunabqqrwabacxjcxxkz.supabase.co",
+  "g1": {
+    "kind": "resolved_exact",
+    "ms": 1387,
+    "name": "Cacao Puro"
+  },
+  "g2": {
+    "code": "7340222800464",
+    "firstKind": "needs_confirmation",
+    "product": {
+      "code": "CA-ING-007176",
+      "name": "Sport 002",
+      "brand": "Vitamin Well",
+      "engineReady": false
+    },
+    "rescanKind": "needs_confirmation",
+    "rescanProduct": {
+      "code": "CA-ING-007176",
+      "name": "Sport 002",
+      "brand": "Vitamin Well",
+      "engineReady": false
+    }
+  },
+  "g3": {
+    "code": "7622210669315",
+    "firstKind": "needs_confirmation",
+    "product": {
+      "code": "CA-ING-007177",
+      "name": "Choco brownie",
+      "brand": "Milka",
+      "engineReady": false
+    },
+    "rescanKind": "needs_confirmation",
+    "rescanProduct": {
+      "code": "CA-ING-007177",
+      "name": "Choco brownie",
+      "brand": "Milka",
+      "engineReady": false
+    }
+  },
+  "g4": {
+    "code": "5909876543213",
+    "firstKind": "needs_confirmation",
+    "product": {
+      "code": "CA-ING-007178",
+      "name": "Test product (unknown GTIN golden)"
+    },
+    "rescanKind": "needs_confirmation",
+    "rescanProduct": {
+      "code": "CA-ING-007178",
+      "name": "Test product (unknown GTIN golden)"
+    }
+  },
+  "g5": {
+    "account": "test1@test1.com",
+    "skipped": {
+      "8411902004089": "SCAN_G5_SKIP",
+      "8426617014032": "SCAN_G5_SKIP",
+      "8411092731130": "SCAN_G5_SKIP"
+    },
+    "code": "7622201492786",
+    "firstKind": "discovered_pending",
+    "photo1": {
+      "kind": "discovered_pending",
+      "missing": [],
+      "labelError": null,
+      "identity": {
+        "name": "Milka Choco Mini Wafers",
+        "brand": "Milka"
+      },
+      "facts": 13
+    },
+    "photo2": {
+      "kind": "discovered_pending",
+      "missing": [],
+      "labelError": null,
+      "facts": 13
+    },
+    "photo3": {
+      "kind": "discovered_pending",
+      "labelError": {
+        "reason": "asset_metadata",
+        "retryAfterMs": null,
+        "detail": "product-scan-analyze: scan_asset_metadata_failed"
+      }
+    }
+  }
+}

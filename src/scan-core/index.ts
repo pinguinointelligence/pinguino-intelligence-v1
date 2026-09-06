@@ -24,7 +24,13 @@ export {
   type BarcodeFormat,
   type BarcodeEvidenceSummary,
 } from './observation';
-export { mergeCollinear, type RawCandidate, type MergedCandidate } from './candidates';
+export {
+  mergeCollinear,
+  axisBoundaryMargin,
+  AXIS,
+  type RawCandidate,
+  type MergedCandidate,
+} from './candidates';
 export {
   Tracker,
   Track,
@@ -57,6 +63,10 @@ export {
 } from './tiers';
 export {
   ScanCoreEngine,
+  readingAxisOf,
+  axisEstimate,
+  swapRoiAboutCentre,
+  AXIS_PROBE,
   type EngineFrameInput,
   type EngineOptions,
   type DecodeRequest,

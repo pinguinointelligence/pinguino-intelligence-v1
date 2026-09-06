@@ -13,6 +13,7 @@ import type {
   RequestOutcome,
   ResearchOutcome,
   ScanResultLike,
+  LabelFailureReason,
 } from '../discovery/contracts';
 
 const CRITICAL = ['identity.displayName', 'nutrition.energyKcal', 'ingredientsText'] as const;
@@ -62,6 +63,10 @@ export class FakeDiscovery implements DiscoveryPort {
   >();
   requests = new Map<string, OwnRequest>();
   calls: string[] = [];
+  /** the next label analysis fails with this reason (once), leaving the session untouched */
+  failNextLabel: LabelFailureReason | null = null;
+  /** family choices this authority cannot map — it would ask again (older finalize behaviour) */
+  unmappableFamilies = new Set<string>();
 
   private session(identity: CodeIdentity): DiscoverySession {
     let s = this.sessions.get(identity.canonicalGtin13);
@@ -134,6 +139,16 @@ export class FakeDiscovery implements DiscoveryPort {
     images: readonly LabelImage[],
   ): Promise<AnalyzeOutcome> {
     this.calls.push(`analyze:${session.identity.canonicalGtin13}:${images.length}`);
+    if (this.failNextLabel) {
+      const reason = this.failNextLabel;
+      this.failNextLabel = null;
+      return {
+        kind: 'failed',
+        reason,
+        retryAfterMs: reason === 'burst' ? 60_000 : null,
+        detail: reason,
+      };
+    }
     const s = this.session(session.identity);
     const l = this.label.get(session.identity.canonicalGtin13) ?? {};
     const prior = s.result ?? {};
@@ -218,7 +233,10 @@ export class FakeDiscovery implements DiscoveryPort {
       s.missingCritical = missingOf(s.result);
     }
     if (!s.result?.identity?.displayName) return { kind: 'identity_required' };
-    if (!input.customerFamily)
+    if (
+      (!input.customerFamily || this.unmappableFamilies.has(input.customerFamily)) &&
+      !input.savePrivateNotReady
+    )
       return {
         kind: 'family_confirmation_required',
         options: [
@@ -232,14 +250,39 @@ export class FakeDiscovery implements DiscoveryPort {
         ] satisfies CustomerFamily[],
       };
     const missing = missingOf(s.result);
+    if (missing.length > 0 && input.savePrivateNotReady === true) {
+      // owner contract: the exact product is kept privately, not recipe-ready
+      const gtin = session.identity.canonicalGtin13;
+      const existing = this.created.get(gtin);
+      const created = existing ?? {
+        productId: `CA-${gtin}`,
+        productCode: `CA-ING-${gtin.slice(-6)}`,
+        engineUsable: false,
+      };
+      this.created.set(gtin, created);
+      return {
+        kind: 'created',
+        ...created,
+        engineUsable: false,
+        privateNotReady: true,
+        existing: Boolean(existing),
+      };
+    }
     if (missing.length > 0)
       return { kind: 'not_ready', missingCritical: missing, reasons: ['critical_fields_missing'] };
     const gtin = session.identity.canonicalGtin13;
     const existing = this.created.get(gtin);
     if (existing) return { kind: 'created', ...existing, existing: true };
+    const confirmedIdentity = (
+      input.confirmations?.productFields as
+        | { identity?: { displayName?: string | null; brand?: string | null } }
+        | undefined
+    )?.identity;
     const created = {
       productId: `CA-${gtin}`,
       productCode: `CA-ING-${gtin.slice(-6)}`,
+      displayName: confirmedIdentity?.displayName ?? null,
+      brand: confirmedIdentity?.brand ?? null,
       engineUsable: this.authorityEngineUsable.get(`CA-${gtin}`) ?? false,
     };
     this.created.set(gtin, created);

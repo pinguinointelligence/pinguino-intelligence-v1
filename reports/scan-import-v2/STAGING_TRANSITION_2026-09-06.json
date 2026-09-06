@@ -1,0 +1,83 @@
+{
+  "ranAt": "2026-09-06T00:11:41.436Z",
+  "code": "5900512902388",
+  "accounts": [
+    "home@home.com",
+    "test1@test1.com"
+  ],
+  "s1": {
+    "skipped": "already a product on staging — the transition was demonstrated in an earlier run",
+    "product": "CA-ING-007181"
+  },
+  "s3b": {
+    "account": "pro@pro.com",
+    "outcome": "discovered_exact",
+    "before": {
+      "product_id": "f8aa13e9-8cd8-4c9a-a09e-f4b5667e0f4c",
+      "product_code": "CA-ING-007181",
+      "display_name": "Masło ekstra 82%",
+      "brand": null,
+      "matched_gtin": "5900512902388",
+      "matched_from": "products",
+      "product_kind": "customer_provisional",
+      "entity_kind": "customer_provisional",
+      "visibility": "internal",
+      "ownership": "own",
+      "current_version_id": "805c0529-329d-4643-86c6-4613584181eb",
+      "verification_status": "manual_unverified",
+      "product_country": "Polska",
+      "markets": [
+        "GLOBAL"
+      ],
+      "mapper_ingredient_id": null,
+      "engine_usable": true,
+      "lifecycle_rejected": false
+    },
+    "after": {
+      "product_id": "f8aa13e9-8cd8-4c9a-a09e-f4b5667e0f4c",
+      "product_code": "CA-ING-007181",
+      "display_name": "Masło ekstra 82%",
+      "brand": null,
+      "matched_gtin": "5900512902388",
+      "matched_from": "products",
+      "product_kind": "customer_provisional",
+      "entity_kind": "customer_provisional",
+      "visibility": "internal",
+      "ownership": "own",
+      "current_version_id": "805c0529-329d-4643-86c6-4613584181eb",
+      "verification_status": "manual_unverified",
+      "product_country": "Polska",
+      "markets": [
+        "GLOBAL"
+      ],
+      "mapper_ingredient_id": null,
+      "engine_usable": true,
+      "lifecycle_rejected": false
+    },
+    "asC": {
+      "product_id": "f8aa13e9-8cd8-4c9a-a09e-f4b5667e0f4c",
+      "product_code": "CA-ING-007181",
+      "display_name": "Masło ekstra 82%",
+      "brand": null,
+      "matched_gtin": "5900512902388",
+      "matched_from": "products",
+      "product_kind": "customer_provisional",
+      "entity_kind": "customer_provisional",
+      "visibility": "internal",
+      "ownership": "linked",
+      "current_version_id": "805c0529-329d-4643-86c6-4613584181eb",
+      "verification_status": "manual_unverified",
+      "product_country": "Polska",
+      "markets": [
+        "GLOBAL"
+      ],
+      "mapper_ingredient_id": null,
+      "engine_usable": true,
+      "lifecycle_rejected": false
+    }
+  },
+  "s4": {
+    "kind": "resolved_exact",
+    "engineReady": true
+  }
+}

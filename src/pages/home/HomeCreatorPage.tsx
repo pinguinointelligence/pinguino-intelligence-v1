@@ -33,7 +33,10 @@ import { useCanSeeExactGrams } from '@/features/home-creator/useHomeEntitlement'
 import { useHomeFlow } from '@/features/home-creator/useHomeFlow';
 import { useHomeRecipeResult } from '@/features/home-creator/useHomeRecipeResult';
 import { useHomeIntentIngredients } from '@/features/home-creator/useHomeIntentIngredients';
-import { LiveMultiScanner } from '@/features/product-scanner/LiveMultiScanner';
+import { useHomeBehaviorContext } from '@/features/home-creator/useHomeBehaviorContext';
+import { hydrateScannedCatalogProduct } from '@/features/home-creator/homeScannedCatalogProduct';
+import type { ResolvedScanProductLike } from '@/features/scan-flow/scanFlowLogic';
+import { ScanFlow } from '@/features/scan-flow/ScanFlow';
 import { HomeMatchGate } from '@/features/home-creator/matching/HomeMatchGate';
 import {
   NO_MATCH,
@@ -62,6 +65,7 @@ import type { HomeStage } from '@/features/home-creator/homeStageFlow';
 import { HomeIntentSection } from '@/features/home-creator/ui/HomeIntentSection';
 import { HomeProfileSection } from '@/features/home-creator/ui/HomeProfileSection';
 import { HomeMachineSection } from '@/features/home-creator/ui/HomeMachineSection';
+import { HomePreparationSection } from '@/features/home-creator/ui/HomePreparationSection';
 import { HomeRecipeSection } from '@/features/home-creator/ui/HomeRecipeSection';
 
 /** Smooth movement to the next section — the only "navigation" HOME has (§83). */
@@ -92,6 +96,7 @@ export function HomeCreatorPage() {
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scanNotice, setScanNotice] = useState<string | null>(null);
   const intentIngredients = useHomeIntentIngredients();
+  const scanBehaviorContext = useHomeBehaviorContext();
   // §56: the SAME library the Pro builder feeds its picker. Demo/free get the local
   // preview catalogue, an authenticated paid session gets live Mapper search — HOME
   // does not widen or narrow what Pro can see.
@@ -358,7 +363,64 @@ export function HomeCreatorPage() {
     [],
   );
 
+  /** the profile|machine|amount answers a starter recipe was last generated (or adopted) for */
   const lastGeneratedFor = useRef<string | null>(null);
+
+  /**
+   * A product scanned before any recipe exists lands in the recipe the customer now owns: the
+   * recipe stage opens on the live store (the same precedent as adopting a derived recipe) and
+   * no starter is generated over it for these answers — the scanned line would be wiped.
+   */
+  const revealRecipeAfterScan = useCallback(() => {
+    if (useHomeDraftStore.getState().recipeReady) return;
+    useHomeDraftStore.getState().markRecipeReady(true);
+    lastGeneratedFor.current = `${draft.profile}|${machine?.id ?? 'none'}|${amount?.totalGrams ?? 0}`;
+    window.setTimeout(() => scrollToStage('recipe'), 60);
+  }, [draft.profile, machine, amount, scrollToStage]);
+
+  /**
+   * A scanned catalogue product (the customer's own or a shared commercial one) takes the SAME
+   * door the picker takes: catalogue selection → own profile → ProductBehavior → the add handler
+   * above. The outcome is always reported to the customer in plain words.
+   */
+  const addScannedCatalogProduct = useCallback(
+    async (product: ResolvedScanProductLike) => {
+      const name = product.displayName;
+      const outcome = await hydrateScannedCatalogProduct(
+        { id: product.id, barcode: product.barcode, displayName: name },
+        scanBehaviorContext,
+      );
+      switch (outcome.kind) {
+        case 'ingredient':
+          handleAddIngredient(outcome.ingredient, outcome.behavior ?? undefined);
+          revealRecipeAfterScan();
+          setScanNotice(
+            product.completedFromSimilar
+              ? `${name}: produkt dodany. Brakujące dane uzupełniliśmy na podstawie podobnych produktów.`
+              : `${name}: dodano do receptury.`,
+          );
+          return;
+        case 'topping':
+          handleAddTopping(outcome.ingredient, outcome.behavior ?? undefined);
+          revealRecipeAfterScan();
+          setScanNotice(
+            product.completedFromSimilar
+              ? `${name}: dodano jako dodatek (topping). Brakujące dane uzupełniliśmy na podstawie podobnych produktów.`
+              : `${name}: dodano jako dodatek (topping).`,
+          );
+          return;
+        case 'unavailable':
+          setScanNotice(`${name}: ${outcome.message}`);
+          return;
+        default:
+          setScanNotice(
+            `${name}: produkt jest zapisany, ale nie jest jeszcze gotowy do użycia w recepturze.`,
+          );
+      }
+    },
+    [handleAddIngredient, handleAddTopping, revealRecipeAfterScan, scanBehaviorContext],
+  );
+
   useEffect(() => {
     // Generate once, when every required answer is in — never on every render.
     //
@@ -605,10 +667,23 @@ export function HomeCreatorPage() {
             // The canonical handler owns the reason; HOME only has to show it, filtered
             // into customer language the same way every other HOME notice is.
             saveNotice={homeCustomerNotice(recipeSave.error)}
-            onLetsMakeIt={() => useHomeDraftStore.getState().startPreparation()}
+            onLetsMakeIt={() => {
+              useHomeDraftStore.getState().startPreparation();
+              window.setTimeout(() => scrollToStage('preparation'), 60);
+            }}
             onShare={() => undefined}
             canShare={false}
             onBack={flow.backFrom('recipe') ? () => scrollToStage(flow.backFrom('recipe')!) : null}
+          />
+        ) : null}
+
+        {/* SOL-040: the journey's last stage — the customer weighs the recipe out. */}
+        {flow.stages.includes('preparation') ? (
+          <HomePreparationSection
+            items={recipe.items}
+            toppings={recipe.toppings}
+            canSeeGrams={canSeeGrams}
+            onBack={() => scrollToStage('recipe')}
           />
         ) : null}
       </div>
@@ -660,28 +735,61 @@ export function HomeCreatorPage() {
       </span>
 
       {scannerOpen ? (
-        <div className="fixed inset-0 z-50 bg-white">
-          <LiveMultiScanner
-            onClose={() => setScannerOpen(false)}
-            onAddToRecipe={(products) => {
-              setScanNotice(null);
-              // The SAME door a typed ingredient uses. The scanner supplies identities;
-              // every rule about what they may do in a recipe stays where it lives.
-              for (const product of products)
-                void intentIngredients.addScannedProduct(product.identityKey);
-            }}
-            onNeedsDeepScan={(products) => {
-              // NEVER navigate away. The customer has a recipe half-built on this page;
-              // one unknown product is not a reason to lose it. The scanner completes
-              // such a product in a nested step and hands it back resolved, so all that
-              // is left here is to say plainly what did not make it in.
-              setScanNotice(
-                products.length === 1
-                  ? 'Jeden produkt czeka na uzupełnienie — znajdziesz go w skanerze.'
-                  : `${products.length} produkty czekają na uzupełnienie — znajdziesz je w skanerze.`,
-              );
-            }}
-          />
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-white p-4">
+          <div className="mx-auto max-w-lg space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold text-ink">Skanuj produkt</h2>
+              <button
+                type="button"
+                className="pro-focus-ring min-h-11 rounded-full border border-ink/15 bg-white px-4 text-xs font-semibold text-ink"
+                onClick={() => setScannerOpen(false)}
+              >
+                Zamknij
+              </button>
+            </div>
+            {/* ONE shared scanner (camera → Scan Core → EAN → Scan Import 2.0); the product goes in
+                through the SAME door a typed ingredient uses. */}
+            <ScanFlow
+              mode="recipe"
+              resolveLabel="Dodaj do receptury"
+              onResolved={(product) => {
+                setScanNotice(null);
+                setScannerOpen(false);
+                // a catalogue product (own or shared) takes the picker's door; a Mapper row the typed door
+                if (product.entityKind !== 'pi_base') {
+                  void addScannedCatalogProduct(product);
+                  return;
+                }
+                // the outcome of the shared add door is reported, never swallowed (owner QA 2026-09-05)
+                void intentIngredients.addScannedProduct(product.id).then((outcome) => {
+                  const name = product.displayName;
+                  switch (outcome.status) {
+                    case 'unresolved':
+                    case 'unavailable':
+                      setScanNotice(
+                        `${name}: produkt jest zapisany, ale nie jest jeszcze gotowy do użycia w recepturze.`,
+                      );
+                      return;
+                    case 'duplicate':
+                      setScanNotice(`${name} jest już w recepturze.`);
+                      return;
+                    case 'needs_amount':
+                      revealRecipeAfterScan();
+                      setScanNotice(`${name} dodano do receptury — ustaw ilość.`);
+                      return;
+                    default:
+                      revealRecipeAfterScan();
+                      setScanNotice(
+                        product.completedFromSimilar
+                          ? `${name}: produkt dodany. Brakujące dane uzupełniliśmy na podstawie podobnych produktów.`
+                          : `${name}: dodano do receptury.`,
+                      );
+                      return;
+                  }
+                });
+              }}
+            />
+          </div>
         </div>
       ) : null}
     </AppShell>
