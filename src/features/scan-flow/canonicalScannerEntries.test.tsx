@@ -278,20 +278,49 @@ describe('the seven entries into the one Canonical Scanner', () => {
       expect(Object.keys(sessionStorage).length).toBe(1);
     });
 
-    it('and the signed-in scanner picks that code up once, then forgets it', async () => {
+    it('the signed-in scanner OFFERS that code once — it never spends a scan on its own', async () => {
+      await mount({ mode: 'recipe', entryContext: 'guest_demo', onResolved: vi.fn() });
+      await typeCode(UNKNOWN);
+      await act(async () => root.unmount());
+
+      fakes().state.accountId = 'user-1';
+      fakes().discovery.calls.length = 0;
+      root = createRoot(host);
+      await mount({ mode: 'catalog', entryContext: 'add_product' });
+      await flush();
+
+      // taken from storage exactly once, so a third scanner never sees it again
+      expect(sessionStorage.getItem('gellatti.scan.guestCode')).toBeNull();
+      // offered, not resolved: the customer may have opened this for a different product entirely,
+      // and on a shared browser may not even be the person who scanned it
+      expect(testid('scan-flow-resumed-code')?.textContent).toContain(UNKNOWN);
+      expect(fakes().discovery.calls).toEqual([]);
+      const input = host.querySelector<HTMLInputElement>(
+        'input[aria-label="Kod kreskowy z opakowania"]',
+      )!;
+      expect(input.value).toBe(UNKNOWN);
+
+      // one tap finishes it — no second scan of the box
+      await act(async () => button('Sprawdź')!.click());
+      await flush();
+      await flush();
+      expect(testid('scan-flow-resumed-code')).toBeNull();
+      expect(fakes().discovery.sessions.has(UNKNOWN)).toBe(true);
+    });
+
+    it('and a customer who came to scan something else is never hijacked', async () => {
       await mount({ mode: 'recipe', entryContext: 'guest_demo', onResolved: vi.fn() });
       await typeCode(UNKNOWN);
       await act(async () => root.unmount());
 
       fakes().state.accountId = 'user-1';
       root = createRoot(host);
-      await mount({ mode: 'catalog', entryContext: 'add_product' });
+      await mount({ mode: 'recipe', entryContext: 'recipe_ingredient', onResolved: vi.fn() });
       await flush();
-      await flush();
-      expect(sessionStorage.getItem('gellatti.scan.guestCode')).toBeNull();
-      expect(text()).not.toContain('Wpisz kod z opakowania');
-      // the same code went on, without the customer showing the box a second time
-      expect(fakes().discovery.sessions.has(UNKNOWN)).toBe(true);
+      // they type the code they actually came for; the offer gets out of the way
+      await typeCode(KNOWN);
+      expect(text()).toContain('Hacendado');
+      expect(text()).not.toContain(UNKNOWN);
     });
   });
 });

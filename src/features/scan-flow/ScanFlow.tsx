@@ -482,15 +482,37 @@ export function ScanFlow({
 
   /*
     A visitor who scanned in the demo, chose a plan and signed in must not scan the same box twice.
-    The code they read is picked up here, once, and the flow continues exactly as if the camera had
-    just confirmed it. A guest entry never picks it up — that would loop them back to the offer.
+    So the code they read is OFFERED here — prefilled, named, one tap away — and never resolved
+    behind their back. That distinction is the whole safety of this feature: the customer may have
+    opened the scanner for a completely different product, and on a shared browser the person
+    holding the phone may not even be the person who scanned. A guest entry never picks it up;
+    that would loop them straight back to the offer they just left.
   */
+  /*
+    The guest offer is the ONE conversion screen in the flow, so its buttons must work from EVERY
+    entry — not only from the mount that happened to pass a handler. A caller that wants to stay in
+    the SPA passes `onChoosePlan`; otherwise the flow navigates itself. `window.location` needs no
+    router context, which matters because this component is mounted from a portal inside the picker
+    as well as from a page.
+  */
+  const choosePlan = (plan: 'home' | 'pro') => {
+    if (onChoosePlan) return onChoosePlan(plan);
+    window.location.assign(plan === 'pro' ? '/subscription?plan=pro' : '/subscription?plan=home');
+  };
+
+  const [resumedCode, setResumedCode] = useState<string | null>(null);
   useEffect(() => {
     if (entry === 'guest_demo') return;
+    // `takeGuestCode` CONSUMES the stored code, so reading it is a side effect and belongs in an
+    // effect — not in a render-phase initializer, which StrictMode may invoke twice and swallow the
+    // value in. Setting state from it is therefore deliberate and runs exactly once per mount.
+    /* eslint-disable react-hooks/set-state-in-effect */
     const pending = takeGuestCode();
-    if (!pending) return;
-    const scan = manualConfirmedScan(pending);
-    if (scan) void resolveRef.current(scan);
+    if (pending && manualConfirmedScan(pending)) {
+      setManual(pending);
+      setResumedCode(pending);
+    }
+    /* eslint-enable react-hooks/set-state-in-effect */
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -714,6 +736,17 @@ export function ScanFlow({
     };
   }
   const success = phase.kind === 'camera' && phase.status === 'confirmed';
+  /*
+    The customer is told BEFORE any photo action that the picture leaves their phone, and what does
+    NOT. It used to be said only on the deleted second scanner; it belongs on whichever surface
+    actually uploads — and there are two of them, so it is one fragment rendered in both.
+  */
+  const photoPrivacyNote = (
+    <p className="text-xs text-stone-600">
+      Zdjęcie zostanie przesłane do analizy etykiety. Twoje ceny, dostawcy, notatki i stan
+      magazynowy pozostają prywatne.
+    </p>
+  );
   const engaged = frame ? frame.state !== 'SEARCHING' && frame.state !== 'LOST' : false;
 
   return (
@@ -778,10 +811,17 @@ export function ScanFlow({
               {phase.error}
             </p>
           ) : null}
+          {resumedCode ? (
+            <p className="text-xs text-stone-600" data-testid="scan-flow-resumed-code">
+              Zaczęliśmy już skan kodu {resumedCode}. Naciśnij „Sprawdź", żeby go dokończyć — albo
+              zeskanuj inny produkt.
+            </p>
+          ) : null}
           <form
             className="flex gap-2"
             onSubmit={(event) => {
               event.preventDefault();
+              setResumedCode(null);
               submitManual();
             }}
           >
@@ -792,7 +832,10 @@ export function ScanFlow({
               placeholder="Wpisz kod z opakowania"
               aria-label="Kod kreskowy z opakowania"
               value={manual}
-              onChange={(event) => setManual(event.target.value)}
+              onChange={(event) => {
+                setManual(event.target.value);
+                setResumedCode(null);
+              }}
             />
             <button type="submit" className={btnSecondary} disabled={busy || !manual.trim()}>
               Sprawdź
@@ -851,7 +894,7 @@ export function ScanFlow({
               type="button"
               className={btnPrimary}
               data-testid="scan-flow-choose-home"
-              onClick={() => onChoosePlan?.('home')}
+              onClick={() => choosePlan('home')}
             >
               Wybierz HOME
             </button>
@@ -859,7 +902,7 @@ export function ScanFlow({
               type="button"
               className={btnPrimary}
               data-testid="scan-flow-choose-pro"
-              onClick={() => onChoosePlan?.('pro')}
+              onClick={() => choosePlan('pro')}
             >
               Wybierz PRO
             </button>
@@ -940,6 +983,7 @@ export function ScanFlow({
               : 'Nie znam jeszcze tego produktu. Zrób zdjęcie etykiety ze składem i tabelą wartości odżywczych.'}
           </p>
           {phase.note ? <p className="text-xs text-stone-600">{phase.note}</p> : null}
+          {photoPrivacyNote}
           <div className="flex flex-wrap gap-2">
             <label className={btnPrimary}>
               Zrób zdjęcie
@@ -1083,6 +1127,7 @@ export function ScanFlow({
                 : 'Z etykiety nie da się uzupełnić brakujących danych. Możesz zgłosić produkt do weryfikacji.'}
             </p>
           ) : null}
+          {photoPrivacyNote}
           <div className="flex flex-wrap gap-2">
             {phase.fields.length > 0 ? (
               <button type="submit" className={btnPrimary} disabled={busy}>
