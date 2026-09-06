@@ -97,7 +97,9 @@ describe('Unknown product — one lifecycle, one identity (state journey)', () =
       'scan #2 (new session)',
       await runScanImportV2(scan(GTIN), ctx({ now: 2_000 }), p),
     );
-    expect(rescan1).toMatchObject({ kind: 'discovery_requested', requestId: `REQ-${GTIN}` });
+    // SOL-049: the request stays durable, the rescan still gives the customer the product flow
+    expect(d.requests.get(GTIN)).toMatchObject({ requestId: `REQ-${GTIN}` });
+    expect(rescan1.kind).toBe('discovered_pending');
     // 3. label evidence attached to the same identity; conflicts retained visibly
     const s2 = d.sessions.get(GTIN) ?? session;
     await d.research(s2.identity, ctx({ now: 2_100 })); // the session carries the earlier research
@@ -193,7 +195,7 @@ describe('Unknown product — one lifecycle, one identity (state journey)', () =
     expect(trail.map((t) => t.kind)).toEqual([
       'discovered_pending',
       'discovery_requested',
-      'discovery_requested',
+      'discovered_pending',
       'discovered_pending',
       'needs_confirmation',
       'discovered_exact',

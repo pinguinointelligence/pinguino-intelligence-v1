@@ -235,6 +235,10 @@ export interface DiscoveryPort {
     session: DiscoverySession | null,
     ctx: RequestContext,
   ): Promise<RequestOutcome>;
-  /** continuity: an open request of this account for the same code */
+  /**
+   * An open request of this account for the same code. DIAGNOSTIC ONLY (SOL-049): it must never
+   * short-circuit a scan — a request the customer made days ago is history, and replaying it as a
+   * "reported" screen hides the product they are holding right now.
+   */
   findOwnRequest(identity: CodeIdentity, ctx: RequestContext): Promise<OwnRequest | null>;
 }

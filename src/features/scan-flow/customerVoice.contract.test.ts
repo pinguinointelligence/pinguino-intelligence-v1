@@ -110,4 +110,13 @@ describe('SOL-043 — raw internal statuses never reach a customer surface', () 
     expect(flow).not.toMatch(/\{phase\.notice\}/);
     expect(flow).toMatch(/customerSentence\(phase\.notice\)/);
   });
+
+  it('no customer surface promises a message that no process sends (owner rule)', () => {
+    // "Damy znać, gdy produkt będzie gotowy" was shown to the owner on 2026-09-06; nothing in the
+    // system sends such a notification, so the sentence may not exist on a customer screen at all
+    for (const file of customerFiles()) {
+      const text = readFileSync(file, 'utf8');
+      expect(text, file).not.toMatch(/Damy znać|Powiadomimy|Poinformujemy/i);
+    }
+  });
 });

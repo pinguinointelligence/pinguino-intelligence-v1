@@ -1535,10 +1535,21 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
                 : 'Produkt dodany do receptury.'
               : phase.privateNotReady
                 ? 'Produkt zapisany prywatnie.'
-                : 'Zapisano jako Twój produkt (prywatny, widoczny tylko na Twoim koncie).'}
+                : 'Produkt zapisany i gotowy do receptury.'}
           </p>
           {recognizedLine}
           {productCard(phase.product)}
+          {/*
+            SOL-049: the ready save is NOT a private copy. `customer_added_products` is unique on the
+            normalised EAN and the upsert takes an advisory lock on that code, so this is the ONE entry
+            for this barcode; another account scanning it is linked to the same product. Saying
+            "visible only on your account" described the opposite of what the database did.
+          */}
+          {phase.privateNotReady ? null : (
+            <p className="text-xs text-stone-600" data-testid="scan-flow-registry">
+              Ten kod kreskowy ma u nas jeden produkt — nie tworzymy duplikatów.
+            </p>
+          )}
           {phase.privateNotReady ? (
             <p className="text-xs text-stone-600" data-testid="scan-flow-private-missing">
               {missingDataSentence(phase.missingCritical ?? [])}
@@ -1553,7 +1564,8 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
         <div className="space-y-3">
           {recognizedLine}
           <p className="text-sm text-stone-700">
-            Ten produkt jest już u Ciebie zapisany. Damy znać, gdy będzie gotowy do receptury.
+            Ten produkt jest już u Ciebie zapisany. Zeskanuj go ponownie — sprawdzimy, czy da się go
+            już użyć w recepturze.
           </p>
           {againButton}
         </div>

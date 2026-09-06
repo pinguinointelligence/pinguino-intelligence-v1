@@ -480,7 +480,10 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     // no family question, no photos, no fields: the product came back ready and saved
     expect(text()).not.toContain('Co to za produkt?');
     expect(text()).not.toContain('weryfikacj');
-    expect(text()).toContain('Zapisano jako Twój produkt');
+    expect(text()).toContain('Produkt zapisany i gotowy do receptury');
+    // SOL-049: a ready save is the ONE entry for that barcode, never a private copy
+    expect(text()).toContain('nie tworzymy duplikatów');
+    expect(text()).not.toContain('widoczny tylko na Twoim koncie');
     expect(discovery.calls.filter((c) => c.startsWith(`finalize:${CODE}`)).length).toBe(1);
   });
 

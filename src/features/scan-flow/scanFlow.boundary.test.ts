@@ -88,4 +88,23 @@ describe('scan flow boundary', () => {
     expect(FLOW).toMatch(/Ponów to zdjęcie/);
     expect(FLOW).toMatch(/decodeStill\(/);
   });
+
+  it('SOL-049 — a ready save is never called private-only, and no screen promises a message', () => {
+    // the owner's Nestea: the READY product got the STRONGER privacy claim, which is the opposite of
+    // what the database did — `customer_added_products` is unique on the normalised EAN
+    expect(FLOW).not.toMatch(/prywatny, widoczny tylko na Twoim koncie/);
+    expect(FLOW).toMatch(/Produkt zapisany i gotowy do receptury/);
+    expect(FLOW).toMatch(/nie tworzymy duplikatów/);
+    // nothing sends a notification, so nothing may promise one
+    expect(FLOW).not.toMatch(/Damy znać|Powiadomimy|Poinformujemy/i);
+  });
+
+  it('SOL-049 — an open product request never short-circuits a scan', () => {
+    const discovery = readFileSync('src/scan-import-v2/discovery/discovery.ts', 'utf8');
+    const start = discovery.slice(discovery.indexOf('export async function startDiscovery'));
+    const body = start.slice(0, start.indexOf('\nexport '));
+    // the comment naming the defect may stay; the CALL may not
+    expect(body).not.toMatch(/port\.findOwnRequest\(/);
+    expect(body).toMatch(/port\.research\(/);
+  });
 });

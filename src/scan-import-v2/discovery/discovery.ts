@@ -160,19 +160,10 @@ export async function startDiscovery(
   port: DiscoveryPort,
   options?: ResearchOptions,
 ): Promise<DiscoveryResult> {
-  const own = await port.findOwnRequest(identity, ctx);
-  if (own && !own.approvedProductId) {
-    return {
-      kind: 'discovery_requested',
-      identity,
-      requestId: own.requestId,
-      status: own.status,
-      stage: 'evidence_collected',
-      ledger: buildLedger(identity, null, [], { recordedAt: ctx.now }),
-      canonical: false,
-      engineReady: false,
-    };
-  }
+  // SOL-049 (owner QA 2026-09-06): an open product request is HISTORY, never the answer to a scan.
+  // Asking `findOwnRequest` first meant one request — the owner's Haribo, submitted days earlier —
+  // replayed a "reported for verification" screen on every later scan of that code, with no new
+  // record created and no way for the customer to reach the product. A scan always runs the sources.
   const r = await port.research(identity, ctx, options);
   if (r.kind === 'existing_product')
     return {

@@ -228,7 +228,7 @@ describe('Unknown product flow — discovery lifecycle (owner acceptance matrix)
     expect(d.created.size).toBe(1);
     expect(d.calls.filter((c) => c.startsWith('research')).length).toBe(1);
   });
-  it('DURABLE DISCOVERY CANDIDATE: a product request keeps the identity across sessions/browsers; canonical = false, engine usable = false', async () => {
+  it('A DURABLE DISCOVERY CANDIDATE IS HISTORY, NOT AN ANSWER: the request survives, the scan still runs (SOL-049)', async () => {
     const { d, p } = setup({ provider: true });
     await runScanImportV2(scan(GTIN), ctx(), p);
     const req = await continueDiscovery(
@@ -248,8 +248,23 @@ describe('Unknown product flow — discovery lifecycle (owner acceptance matrix)
     const d2 = d; // new browser session: fresh pipeline call, same account
     d2.sessions.clear();
     const again = await runScanImportV2(scan(GTIN), ctx({ now: 5 }), p);
-    expect(again).toMatchObject({ kind: 'discovery_requested', requestId: `REQ-${GTIN}` });
-    expect(d.calls.filter((c) => c.startsWith('research')).length).toBe(1);
+    // the request is still there — it is a durable candidate, and it keeps its identity …
+    expect(d.requests.get(GTIN)).toMatchObject({ requestId: `REQ-${GTIN}`, status: 'SUBMITTED' });
+    // … but the customer standing in front of the product gets the product flow, not a replay of it
+    expect(again.kind).toBe('discovered_pending');
+    expect(d.calls.filter((c) => c.startsWith('research')).length).toBe(2);
+  });
+
+  it('SOL-049 — an OPEN request from an earlier day never shows a "reported" screen', async () => {
+    // the owner's Haribo: a request submitted on 2026-09-04 made every later scan of that code
+    // replay "Zgłoszono do weryfikacji", with no new record and no way to reach the product
+    for (const status of ['SUBMITTED', 'NEEDS_INFO', 'IN_REVIEW'] as const) {
+      const { d, p } = setup({ provider: true });
+      d.requests.set(GTIN, { requestId: `REQ-${GTIN}`, status, approvedProductId: null });
+      const r = await runScanImportV2(scan(GTIN), ctx(), p);
+      expect(r.kind, status).toBe('discovered_pending');
+      expect(d.calls.filter((c) => c.startsWith('research')).length, status).toBe(1);
+    }
   });
   it('EXTERNAL PROVIDER FINDS THE UNKNOWN GTIN: still not canonical, still not a product, still not Engine-ready', async () => {
     const { d, p } = setup({ provider: true });
