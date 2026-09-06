@@ -9,7 +9,7 @@ const item = (id: string, name: string, grams: number): RecipeItem =>
     ingredient: { id: `ing-${id}`, name } as RecipeItem['ingredient'],
     planned_grams: grams,
     actual_grams: null,
-    lock_type: 'none',
+    lock_type: 'unlocked',
   }) as RecipeItem;
 
 const topping = (id: string, name: string, grams: number): RecipeToppingItem =>

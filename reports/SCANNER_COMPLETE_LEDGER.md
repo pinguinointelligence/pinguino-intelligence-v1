@@ -10,8 +10,8 @@ without reading any conversation.
 | --- | --- |
 | Branch | `claude/scanner-complete` |
 | PR | [#186](https://github.com/pinguinointelligence/pinguino-intelligence-v1/pull/186) — base `staging`, **DO NOT MERGE** until the owner accepts |
-| HEAD at last update | `6fba5f03` |
-| `origin/staging` at last update | `c66c1d01` |
+| HEAD at last update | `437fc3c0` (updated after each checkpoint) |
+| `origin/staging` at last update | `f03038d0` — merged into this branch |
 | Supabase (staging) | `tunabqqrwabacxjcxxkz` |
 | Vercel project | `pinguino-staging` (`prj_6h8PDTCUrdDdXNzfEfjJNsVL5BcE`) |
 | Preview alias (SSO) | `pinguino-staging-git-987191-pinguinointelligence-7784s-projects.vercel.app` |
@@ -101,9 +101,16 @@ New findings are appended at the end only; earlier numbers are never renumbered.
 ## Tests
 
 - `npm run build` (`tsc -b && vite build`) green.
-- product-intelligence / product-scanner / scan-flow / scan-import-v2 suites green.
-- Full suite last run 2026-09-06: 2 failures, both since fixed (the web-fibre regression re-pinned,
-  the studio boundary guard satisfied by moving the rescue harness out of the guarded tree).
+- Full suite 2026-09-06: **12 969 tests passed, 0 failed**, 149 skipped.
+  Four test FILES did not start: `LabelWorkspace.runtime`, `proProfilePreflightUx`,
+  `proRecipeStateRegression`, `ProWorkspacePage.libraryHandoff`. All four fail on the same line —
+  Vite denies loading `@fontsource/.../*.woff?url` because this worktree's `node_modules` is a
+  symlink into `pinguino-scan-core-phase-0`, outside the project root. None of the four files, and
+  nothing they import, is touched by this branch (`git diff origin/staging...HEAD` is empty for
+  each). It is an environment artefact of the shared `node_modules`, not a code failure; CI
+  installs its own dependencies and is the authority.
+- After merging `origin/staging`: home-creator / product-intelligence / product-scanner / scan-flow
+  / scan-import-v2 / owner-locked contracts — 1 975 passed, 0 failed.
 
 ## Open
 
