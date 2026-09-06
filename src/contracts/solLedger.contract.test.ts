@@ -29,19 +29,19 @@ const designSubpoints = [
 }));
 
 describe('Gellatti SOL ledger continuity', () => {
-  it('contains every append-only ID exactly once from SOL-001 through SOL-049', () => {
+  it('contains every append-only ID exactly once from SOL-001 through SOL-050', () => {
     expect(entries.map(({ number }) => number)).toEqual(
-      Array.from({ length: 49 }, (_, index) => index + 1),
+      Array.from({ length: 50 }, (_, index) => index + 1),
     );
-    expect(new Set(entries.map(({ id }) => id)).size).toBe(49);
+    expect(new Set(entries.map(({ id }) => id)).size).toBe(50);
     expect(ledger).toContain(
       'IDs are append-only and are never deleted, moved, renumbered, or reused.',
     );
   });
 
-  it('reserves SOL-050 as the next free main ID without assigning it', () => {
-    expect(ledger).toContain('`NEXT_FREE_SOL_ID: SOL-050`');
-    expect(entries.some(({ id }) => id === 'SOL-050')).toBe(false);
+  it('reserves SOL-051 as the next free main ID without assigning it', () => {
+    expect(ledger).toContain('`NEXT_FREE_SOL_ID: SOL-051`');
+    expect(entries.some(({ id }) => id === 'SOL-051')).toBe(false);
   });
 
   it('records no unrecovered gap after restoring SOL-034 through SOL-038', () => {
@@ -138,6 +138,23 @@ describe('Gellatti SOL ledger continuity', () => {
       const id = `SOL-${String(number).padStart(3, '0')}`;
       expect(entries.find((entry) => entry.id === id)?.status).toBe('TODO');
     }
+  });
+
+  it('appends the Owner-defined incomplete private-product lifecycle as SOL-050', () => {
+    expect(entries.find(({ id }) => id === 'SOL-050')?.status).toBe('TODO');
+    expect(ledger).toContain(
+      'SOL-050 · TODO — prywatne produkty niegotowe nie mają własnego miejsca, kompletnego edytora ani dobrowolnej ścieżki wysłania do weryfikacji',
+    );
+    expect(ledger).toContain('Evidence: decyzja Ownera 2026-09-06.');
+    expect(ledger).toContain('**Niegotowe**');
+    expect(ledger).toContain('**Moje produkty**');
+    expect(ledger).toContain('**Product Registry**');
+    expect(ledger).toContain('`Wyślij do weryfikacji` jest zawsze dobrowolne');
+    expect(ledger).toContain('nic nie może wysyłać się automatycznie');
+    expect(ledger).toContain('profil uzyska `engineReady` i gotowość przynajmniej jednej roli');
+    expect(ledger).toContain('Mapper, Engine i Product Registry nie są bezpośrednio nadpisywane');
+    expect(ledger).toContain('Brak alergenów ani ceny nie zatrzymuje przejścia.');
+    expect(ledger).toContain('Nie powstają duplikaty tego samego produktu użytkownika.');
   });
 
   it('records the proven PR #181 before PR #198 migration order', () => {

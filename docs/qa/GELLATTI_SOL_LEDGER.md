@@ -18,7 +18,7 @@ Rules:
 - `RESOLVED_ON_STAGING` requires the normal merge, the exact staging deployment,
   and proof that no migration SQL was executed again.
 
-`NEXT_FREE_SOL_ID: SOL-050`
+`NEXT_FREE_SOL_ID: SOL-051`
 
 `NEXT_FREE_DESIGN_SUBPOINT: SOL-047.3`
 
@@ -78,6 +78,45 @@ Rules:
 
 - [ ] **SOL-048 · TODO — Scanner pokazuje mikrosekundowe, zmieniające się komunikaty i pozwala spóźnionym odpowiedziom nadpisywać aktualny stan.** Evidence: Owner QA 2026-09-06. Informacje zmieniają się tak szybko, że nie można ich przeczytać; przy nieruchomym produkcie komunikat czasami się stabilizuje, ale podczas normalnego skanowania UI wygląda, jakby „wariowało”, a obrazy lub stany przelatują w tle. Terminalny wynik nie jest odpowiednio zatrzaśnięty. Jest to błąd maszyny stanów i współbieżności, nie wyłącznie DESIGN.
 - [ ] **SOL-049 · TODO — nowy produkt rozpoznany po dokładnym EAN nie przechodzi pełnego enrichmentu i Mapper Rescue; kończy jako produkt prywatny albo automatycznie zgłoszony do weryfikacji.** Evidence: Owner QA 2026-09-06. Nestea Mango-Piña 330 ml, EAN `8411092721032`: nazwa została rozpoznana, lecz produkt zapisano wyłącznie jako prywatny, bez jasnej próby publikacji w Product Registry. Haribo Favoritos Original, EAN `842617014032`: dostępne były EAN, skład i tabela odżywcza, ale UI automatycznie pokazało „Zgłoszono do weryfikacji”; Owner nie uruchomił świadomie żadnego zgłoszenia ani nigdy nie zatwierdził automatycznego wysyłania produktu do ręcznej weryfikacji. Docelowa ścieżka: `dokładny EAN → źródła/dowody → Vision/OCR → Mapper Rescue → kanoniczne bramki → Product Registry`; jeżeli dowodów brakuje, pokazać konkretną prośbę o brakujące dane. Zakazane domyślne zakończenia to automatyczny prywatny produkt, automatyczne wysłanie do weryfikacji, „Damy znać” bez realnego i świadomie uruchomionego procesu oraz wiele prywatnych kopii tego samego EAN. SOL-044 pozostaje TODO: opisuje niejasny model lifecycle prywatny produkt → Product Registry, podczas gdy SOL-049 dokumentuje konkretną awarię wykonania pełnej ścieżki exact-EAN → enrichment → Mapper Rescue.
+- [ ] **SOL-050 · TODO — prywatne produkty niegotowe nie mają własnego miejsca, kompletnego edytora ani dobrowolnej ścieżki wysłania do weryfikacji.** Evidence: decyzja Ownera 2026-09-06.
+
+  Docelowy kontrakt:
+
+  1. W hamburger menu, w obszarze produktów, powstaje dodatkowa pozycja **Niegotowe**.
+  2. `Niegotowe` pokazuje wszystkie prywatne produkty użytkownika, którym brakuje danych technicznych wymaganych do użycia w recepturze.
+  3. Produkt niegotowy nie może znikać po zakończeniu skanowania ani prowadzić do martwego ekranu. Scanner zapisuje go w `Niegotowe`.
+  4. Po wejściu w produkt użytkownik widzi wszystkie znalezione dane i dostępne źródła, jednoznacznie wskazane brakujące pola, możliwość uzupełnienia braków i poprawienia istniejących danych, zapis zmian oraz przycisk `Wyślij do weryfikacji`.
+  5. Jako braki pokazujemy wyłącznie dane rzeczywiście potrzebne do uzyskania gotowości technicznej dla co najmniej jednej roli i użycia produktu w lodach.
+  6. Nie są brakami blokującymi: alergeny, cena, dane wymagane wyłącznie do publikacji w Product Registry ani inne informacje niewpływające na obliczenia i bezpieczeństwo techniczne receptury.
+  7. Po każdym zapisie system ponownie uruchamia istniejący Mapper Rescue oraz właściwy authority. Jeżeli danych nadal brakuje, produkt pozostaje w `Niegotowe`. Jeżeli profil uzyska `engineReady` i gotowość przynajmniej jednej roli, produkt automatycznie przechodzi do `Moje produkty`; gotowego produktu prywatnego można od razu używać w recepturze i produkcji. Ukończenie produktu nie wymaga wcześniejszej weryfikacji ani publikacji w Product Registry.
+  8. Dane wpisane przez użytkownika są jego danymi/override’em. Nie nadpisują bezpośrednio Mappera ani wspólnego Product Registry i nie niszczą oryginalnych dowodów źródłowych.
+  9. `Wyślij do weryfikacji` jest zawsze dobrowolne: użytkownik może wysłać produkt niekompletny albo w pełni uzupełniony; wysłanie nie jest wymagane do prywatnego używania gotowego produktu; nic nie może wysyłać się automatycznie; wysłanie nie oznacza automatycznego dodania do Product Registry. Produkt trafia do Product Registry dopiero po przejściu właściwego procesu weryfikacji.
+  10. Produkt wysłany do weryfikacji nie znika z konta i nie zostaje zablokowany. Użytkownik widzi prosty status `Wysłano do weryfikacji`.
+  11. Przycisk `Wyślij do weryfikacji` musi być dostępny zarówno przy produkcie w `Niegotowe`, jak i przy gotowym produkcie prywatnym w `Moje produkty`.
+  12. Edycja danych technicznych w tym przepływie jest dostępna dla produktów prywatnych znajdujących się w `Niegotowe`. Ten punkt nie wprowadza edytora wspólnych produktów z Product Registry.
+
+  Rozróżnienie:
+
+  - **Niegotowe** — prywatny produkt bez wystarczających danych do lodów.
+  - **Moje produkty** — prywatny produkt gotowy do użycia.
+  - **Product Registry** — zweryfikowany wspólny produkt dostępny wszystkim.
+
+  Kryteria akceptacyjne:
+
+  1. Nieudany lub niepełny skan tworzy widoczny wpis w `Niegotowe`.
+  2. Użytkownik może ponownie otworzyć produkt po wylogowaniu, zalogowaniu i odświeżeniu.
+  3. Wszystkie znalezione dane są widoczne.
+  4. Brakujące dane techniczne są przedstawione prostym językiem, bez surowych enumów.
+  5. Użytkownik może uzupełniać i poprawiać pola.
+  6. Zapis ponownie uruchamia Mapper Rescue.
+  7. Gotowy produkt przechodzi z `Niegotowe` do `Moje produkty`.
+  8. Gotowy prywatny produkt działa w pickerze, recepturze i produkcji.
+  9. Brak alergenów ani ceny nie zatrzymuje przejścia.
+  10. Wysłanie do weryfikacji działa przed i po uzupełnieniu.
+  11. Nic nie jest wysyłane automatycznie.
+  12. Weryfikacja nie blokuje dalszej edycji ani prywatnego użycia.
+  13. Nie powstają duplikaty tego samego produktu użytkownika.
+  14. Mapper, Engine i Product Registry nie są bezpośrednio nadpisywane danymi użytkownika.
 
 ## SOL-014 migration dependency checkpoint — 2026-09-06
 
@@ -140,8 +179,10 @@ is not repaired by this checkpoint.
 - SOL-047 and SOL-047.1: appended from the Owner DESIGN checkpoint of
   2026-09-06; DESIGN remains the penultimate workstream stage.
 - SOL-047.2, SOL-048, and SOL-049: appended from Scanner Owner QA 2026-09-06.
+- SOL-050: appended from the Owner decision of 2026-09-06 for incomplete private
+  products and voluntary verification.
 - Search of repository files, all Git refs, retained attachments, and retained task
-  checkpoints found no assigned main SOL ID above SOL-049. SOL-050 is therefore the
+  checkpoints found no assigned main SOL ID above SOL-050. SOL-051 is therefore the
   next free ID at this checkpoint.
 
 ## Status history
