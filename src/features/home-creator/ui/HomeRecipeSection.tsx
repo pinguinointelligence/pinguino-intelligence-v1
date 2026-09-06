@@ -69,6 +69,7 @@ function HomeRowAmount({
   onBlocked,
   editing,
   onDone,
+  commit,
 }: {
   lineId: string;
   name: string;
@@ -78,6 +79,15 @@ function HomeRowAmount({
   onBlocked: () => void;
   editing: boolean;
   onDone: () => void;
+  /**
+   * Which authority owns this row's grams.
+   *
+   * A recipe line and a topping live in DIFFERENT collections, and the store has a
+   * separate action for each. The control used to call `setPlannedGrams` for both; that
+   * action looks the line up in `state.items` and returns early when it is not there, so
+   * every topping edit was silently dropped. The row knows what it is — so the row says.
+   */
+  commit: (grams: number) => void;
 }) {
   // The amount as the customer last saw it when the editor opened. Any difference is
   // what "changed" means here, and it is the only thing the orange emphasis reacts to.
@@ -126,7 +136,7 @@ function HomeRowAmount({
           testId={`home-grams-${lineId}`}
           widthPreset="grams"
           density="responsive"
-          onChange={(next) => useRecipeStore.getState().setPlannedGrams(lineId, next)}
+          onChange={commit}
           {...(canSeeGrams
             ? {}
             : {
@@ -425,6 +435,7 @@ export function HomeRecipeSection({
               onBlocked={onGramsBlocked}
               editing={editingLineId === item.id}
               onDone={() => setEditingLineId(null)}
+              commit={(next) => useRecipeStore.getState().setPlannedGrams(item.id, next)}
             />
             <RowMenu
               lineId={item.id}
@@ -465,6 +476,7 @@ export function HomeRecipeSection({
               onBlocked={onGramsBlocked}
               editing={editingLineId === topping.id}
               onDone={() => setEditingLineId(null)}
+              commit={(next) => useRecipeStore.getState().setToppingGrams(topping.id, next)}
             />
             <RowMenu
               lineId={topping.id}

@@ -167,7 +167,7 @@ Legend for yes/no columns: `Y` = yes/required, `–` = no/not required, `?` = to
 | H-55-2 | Actions | Base and flavour ingredients are not functionally separated | – | – | Y | `/` | – | – | – | Y | Y | Y | Y | TODO | | |
 | H-56-1 | Actions | `Add ingredient` reuses the SAME Pro picker (search, filters, voice, scanner, catalogue, ProductBehavior) with a simpler HOME presentation | Y | `product-picker` | Y | `/` | `services/productPicker` | – | – | Y | Y | Y | Y | TODO | | |
 | H-57-1 | Actions | On the live recipe screen: "Want to add anything else?" → Add ingredient / Add topping-mix-in | – | – | Y | `/` | – | – | – | Y | Y | Y | Y | IMPLEMENTED | | |
-| H-57-2 | Actions | Topping uses the existing Topping behavior, has no Crown, and has editable grams | Y | `addTopping`, `ToppingRow` | Y | `/` | `recipeStore` | – | – | Y | Y | Y | Y | TODO | | |
+| H-57-2 | Actions | Topping uses the existing Topping behavior, has no Crown, and has editable grams | Y | `addTopping`, `ToppingRow` | Y | `/` | `recipeStore` | – | – | Y | Y | Y | Y | TESTED | `homeToppingGrams.test.ts` (5 behavioural cases, passed): a topping amount commits through `setToppingGrams`, `setPlannedGrams` is proven a no-op for a topping id, recipe lines are untouched, a negative amount is refused, and a topping carries no `lock_type` (no Crown). DEFECT FIXED: the HOME row called `setPlannedGrams` for every row; that action looks the line up in `state.items` and returns early, so every topping edit was silently dropped. The row now names its own authority. | |
 | H-58-1 | Actions | Only where genuinely ambiguous ask "How do you want to use it? Ingredient / Topping"; never ask unnecessarily | – | – | Y | `/` | – | – | – | Y | Y | Y | Y | TODO | | |
 | H-59-1 | Score | After the first recipe the current Score is shown live using the existing authority; no new score calculation | Y | `recipe-score`, `pi-monitor` | Y (wiring) | `/` | – | – | – | Y | Y | Y | Y | TESTED | | |
 | H-60-1 | Recalculate | Where existing semantics require it, show `Przelicz i popraw` using the current Recalculate/Preview/Apply workflow | Y | `constraintStudioStore` | Y | `/` | – | – | – | Y | Y | Y | Y | TODO | | |
@@ -328,17 +328,17 @@ neither the 97% quoted in conversation nor the 36% read off the stale file was t
 
 | Status | Count |
 | --- | --- |
-| TESTED | 80 |
+| TESTED | 81 |
 | SERVED VERIFIED | 4 |
 | IMPLEMENTED | 22 |
 | IN PROGRESS | 1 |
 | BLOCKED | 1 |
-| TODO | 102 |
+| TODO | 101 |
 | NOT APPLICABLE (excluded) | 1 |
 
 ```
-PROGRESS                = (80 + 4) / 210 = 84/210 = 40.0%
-IMPLEMENTATION COVERAGE = (22 + 80 + 4) / 210 = 106/210 = 50.5%
+PROGRESS                = (81 + 4) / 210 = 85/210 = 40.5%
+IMPLEMENTATION COVERAGE = (22 + 81 + 4) / 210 = 107/210 = 51.0%
 ```
 
 There is no longer a separate "excluding Scanner" figure, because **no Scanner row is
