@@ -75,10 +75,12 @@ authorization to execute SQL.
 - PR #198 before reconciliation: OPEN draft, API base SHA
   `c66c1d011a8f5cd5d16005aaa012b775a3a29776`, head SHA
   `d6825f5046f376d9de97942ac6884e026d0f1da1`, behind staging.
-- PR #198 after the read-only reconciliation checkpoint: OPEN draft, API base
-  SHA `f03038d06efc41325a715cdd66ded2cc1e1d835b`, head SHA
-  `561aa9c0c098a79be705700751c5993b36b282b8`; no merge or staging deployment
-  has occurred.
+- PR #198 after merging current staging and committing the first read-only
+  reconciliation snapshot: OPEN draft, API base SHA
+  `f03038d06efc41325a715cdd66ded2cc1e1d835b`; that snapshot was commit
+  `561aa9c0c098a79be705700751c5993b36b282b8`. Later ledger-only checkpoint
+  commits may advance the PR head without changing this dependency finding. No
+  merge or staging deployment has occurred.
 
 | Operation                             | Applied remote version                                    | Repository state at checkpoint                                                                                                     | Reconciliation required before merge                                           |
 | ------------------------------------- | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
