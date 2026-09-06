@@ -104,6 +104,14 @@ export interface CameraDiagnostics {
   capabilities: { focusMode: readonly string[] | null; zoom: boolean; torch: boolean };
   focusControl: FocusControl;
   formFactor: FormFactor;
+  /**
+   * WHICH physical camera answered, and how many the machine offers. The label is the hardware's own
+   * model name ("FaceTime HD Camera"), never a device id — a laptop that silently picked the wrong
+   * lens is the difference between a readable code and the owner's blurred screen.
+   */
+  camera: { label: string | null; videoInputs: number | null };
+  /** the preview's CSS box. The decoder reads the SOURCE frame; this proves the two are not confused. */
+  preview: { cssWidth: number; cssHeight: number };
 }
 
 /** the engine's decision record, structurally (the engine module stays behind the worker) */
@@ -146,6 +154,8 @@ export function cameraDiagnostics(input: {
   formFactor: FormFactor;
   zoomMax: number | null;
   torch: boolean;
+  videoInputs?: number | null;
+  preview?: { cssWidth: number; cssHeight: number };
 }): CameraDiagnostics {
   const settings = (input.track?.getSettings?.() ?? {}) as Record<string, unknown>;
   const caps = ((input.track as TrackCaps | null)?.getCapabilities?.() ?? null) as Record<
@@ -188,7 +198,61 @@ export function cameraDiagnostics(input: {
     },
     focusControl: input.focusControl,
     formFactor: input.formFactor,
+    camera: {
+      label: typeof input.track?.label === 'string' && input.track.label ? input.track.label : null,
+      videoInputs: input.videoInputs ?? null,
+    },
+    preview: {
+      cssWidth: Math.round(input.preview?.cssWidth ?? 0),
+      cssHeight: Math.round(input.preview?.cssHeight ?? 0),
+    },
   };
+}
+
+/**
+ * SOL-045 — is the QA read-out asked for? It is opt-in through the address (`?camera=diag`) and never
+ * shown otherwise: these are engineering numbers, not something a customer should ever read.
+ */
+export function cameraQaRequested(search?: string): boolean {
+  const query = search ?? (typeof window !== 'undefined' ? window.location.search : '');
+  return new URLSearchParams(query).get('camera') === 'diag';
+}
+
+/** the measured chain as one readable block: request -> track -> element -> decoder -> capabilities */
+export function cameraDiagnosticsReport(d: CameraDiagnostics): string {
+  const size = (w: number | null, h: number | null) =>
+    w && h ? `${w}x${h}` : w || h ? `${w ?? '?'}x${h ?? '?'}` : 'nieznane';
+  return [
+    `urzadzenie      ${d.formFactor}`,
+    `kamera          ${d.camera.label ?? 'bez nazwy'}${
+      d.camera.videoInputs !== null ? ` (dostepnych: ${d.camera.videoInputs})` : ''
+    }`,
+    `zadano          ${size(d.requested.width, d.requested.height)} @${d.requested.frameRate} fps` +
+      `${d.requested.facingMode ? ` facingMode=${d.requested.facingMode}` : ' bez facingMode'}`,
+    `otwarto szczebel ${d.rung} ${d.rung === 0 ? '(pelne zadanie)' : d.rung === 1 ? '(sam facingMode)' : '(cokolwiek)'}`,
+    `track dal       ${size(d.delivered.width, d.delivered.height)} @${d.delivered.frameRate ?? '?'} fps` +
+      `${d.delivered.facingMode ? ` facingMode=${d.delivered.facingMode}` : ''}`,
+    `<video>         ${size(d.video.width, d.video.height)}`,
+    `podglad CSS     ${size(d.preview.cssWidth, d.preview.cssHeight)}`,
+    `dekoder dostaje ${size(d.decoderInput.width, d.decoderInput.height)} (limit dluzszego boku ${d.decoderInput.longEdgeCap})`,
+    `ostrosc         ${d.focusControl}${
+      d.capabilities.focusMode
+        ? ` focusMode=[${d.capabilities.focusMode.join(', ')}]`
+        : ' brak focusMode'
+    }`,
+    `zoom / latarka  ${d.capabilities.zoom ? 'tak' : 'nie'} / ${d.capabilities.torch ? 'tak' : 'nie'}`,
+  ].join('\n');
+}
+
+/** how many cameras the machine offers — the count alone, no labels and no ids are collected here */
+export async function countVideoInputs(): Promise<number | null> {
+  try {
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.enumerateDevices) return null;
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    return devices.filter((d) => d.kind === 'videoinput').length;
+  } catch {
+    return null;
+  }
 }
 
 export function detectFormFactor(): FormFactor {
@@ -334,6 +398,12 @@ export class ScanCoreCapture {
     this.loop = new FrameLoop({ video, client, path: 'auto' });
     this.loop.start();
     this.handlers.onStatus?.('live');
+    // the measurement is published once the camera is live: the device count is asked for last so a
+    // slow enumerateDevices never delays the preview the customer is waiting for
+    const box =
+      typeof video.getBoundingClientRect === 'function' ? video.getBoundingClientRect() : null;
+    const videoInputs = await countVideoInputs();
+    if (this.done) return;
     this.handlers.onDiagnostics?.(
       cameraDiagnostics({
         requested,
@@ -344,6 +414,8 @@ export class ScanCoreCapture {
         formFactor: this.formFactor,
         zoomMax: this.zoomMax,
         torch: this.torchAvailable,
+        videoInputs,
+        preview: { cssWidth: box?.width ?? 0, cssHeight: box?.height ?? 0 },
       }),
     );
   }

@@ -39,8 +39,11 @@ import {
 } from '@/scan-import-v2';
 import { createScanImportV2AppPorts, getScanImportV2AccountId } from '@/services/scanImportV2';
 import {
+  cameraDiagnosticsReport,
+  cameraQaRequested,
   describeCaptureError,
   ScanCoreCapture,
+  type CameraDiagnostics,
   type CaptureFrame,
   type CaptureStatus,
 } from './scanCoreCapture';
@@ -230,6 +233,12 @@ const newId = () =>
 export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProps) {
   const [phase, setPhase] = useState<Phase>({ kind: 'camera', status: 'starting', error: null });
   const [frame, setFrame] = useState<CaptureFrame | null>(null);
+  /**
+   * SOL-045 — the measured image chain. It is NEVER customer UI: it renders only when the QA flag is
+   * explicitly in the address (`?camera=diag`), so the owner can read on their own machine what the
+   * decoder is actually handed instead of guessing from a blurred picture.
+   */
+  const [cameraDiag, setCameraDiag] = useState<CameraDiagnostics | null>(null);
   const [fallbackOffered, setFallbackOffered] = useState(false);
   const [stillNotice, setStillNotice] = useState<string | null>(null);
   const [manual, setManual] = useState('');
@@ -678,6 +687,7 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
       },
       onStatus: (status) =>
         setPhase((p) => (p.kind === 'camera' && status !== 'stopped' ? { ...p, status } : p)),
+      onDiagnostics: setCameraDiag,
       onFrame: (f) => {
         const now = Date.now();
         const tracked = f.state !== 'SEARCHING' && f.state !== 'LOST';
@@ -1243,6 +1253,14 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
                 </span>
               ) : null}
             </div>
+          ) : null}
+          {cameraDiag && cameraQaRequested() ? (
+            <pre
+              data-testid="scan-camera-diagnostics"
+              className="overflow-x-auto rounded-lg bg-stone-900 p-3 text-[11px] leading-relaxed text-stone-100"
+            >
+              {cameraDiagnosticsReport(cameraDiag)}
+            </pre>
           ) : null}
           {phase.kind === 'camera' ? (
             <form

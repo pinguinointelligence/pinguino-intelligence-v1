@@ -9,6 +9,7 @@ import {
   prefillFromIdentity,
   scanFeedbackText,
   toResolvedScanProduct,
+  type FeedbackInput,
 } from './scanFlowLogic';
 
 describe('scan flow — pure rules', () => {
@@ -235,5 +236,55 @@ describe('scan flow — pure rules', () => {
       ingredientsText: 'Azúcar, HUEVO',
       allergensText: 'eggs, gluten',
     });
+  });
+});
+
+describe('SOL-045 — the hint addresses what the customer can actually move', () => {
+  const frame = (over: Partial<FeedbackInput> = {}): FeedbackInput => ({
+    state: 'FOUND',
+    guidance: 'none',
+    timedOut: false,
+    position: null,
+    ...over,
+  });
+
+  it('on a computer the PRODUCT moves, never the camera', () => {
+    // the owner's own wording, 2026-09-06: a laptop lens is bolted to the screen
+    expect(scanFeedbackText(frame({ guidance: 'move_away', formFactor: 'desktop' }))).toBe(
+      'Odsuń kod od kamery',
+    );
+    expect(scanFeedbackText(frame({ guidance: 'move_closer', formFactor: 'desktop' }))).toBe(
+      'Przybliż kod',
+    );
+    expect(scanFeedbackText(frame({ guidance: 'improve_light', formFactor: 'desktop' }))).toBe(
+      'Dodaj więcej światła',
+    );
+    expect(scanFeedbackText(frame({ guidance: 'hold_steady', formFactor: 'desktop' }))).toBe(
+      'Przytrzymaj nieruchomo',
+    );
+    expect(scanFeedbackText(frame({ position: 'left', formFactor: 'desktop' }))).toBe(
+      'Przesuń kod w lewo',
+    );
+  });
+
+  it('in the hand the phone moves — the existing wording is untouched', () => {
+    expect(scanFeedbackText(frame({ guidance: 'move_away', formFactor: 'mobile' }))).toBe(
+      'Odsuń telefon od kodu',
+    );
+    expect(scanFeedbackText(frame({ position: 'left', formFactor: 'mobile' }))).toBe(
+      'Przesuń telefon w lewo',
+    );
+    // an unknown form factor keeps the historic phone voice rather than guessing
+    expect(scanFeedbackText(frame({ guidance: 'move_away' }))).toBe('Odsuń telefon od kodu');
+  });
+
+  it('a code read along the vertical axis asks to turn only what the customer holds', () => {
+    const stuck = { readingAxis: 'vertical' as const, trackedWithoutReadMs: 2000 };
+    expect(scanFeedbackText(frame({ ...stuck, formFactor: 'desktop' }))).toBe(
+      'Obróć produkt, aby kod leżał poziomo',
+    );
+    expect(scanFeedbackText(frame({ ...stuck, formFactor: 'mobile' }))).toBe(
+      'Obróć produkt lub telefon, aby kod leżał poziomo',
+    );
   });
 });

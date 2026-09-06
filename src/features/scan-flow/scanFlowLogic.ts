@@ -280,6 +280,11 @@ const STATE_TEXT: Record<ScanState, string> = {
   COMPLETE: 'Odczytano',
   LOST: 'Zgubiłem kod — pokaż go ponownie',
 };
+/**
+ * SOL-045 (owner, 2026-09-06): on a computer the camera does not move — the CUSTOMER moves the
+ * product. Telling them to "move the phone closer" is an instruction they cannot follow, so every
+ * hint exists in both voices and the form factor picks one. The wording is the owner's own.
+ */
 const GUIDANCE_TEXT: Record<Exclude<ScanGuidance, 'none'>, string> = {
   hold_steady: 'Trzymaj telefon nieruchomo',
   move_closer: 'Przybliż telefon do kodu',
@@ -288,12 +293,32 @@ const GUIDANCE_TEXT: Record<Exclude<ScanGuidance, 'none'>, string> = {
   improve_light: 'Potrzeba więcej światła',
   camera_inadequate: 'Ten aparat nie odczyta tego kodu — wpisz kod ręcznie',
 };
+const GUIDANCE_TEXT_DESKTOP: Record<Exclude<ScanGuidance, 'none'>, string> = {
+  hold_steady: 'Przytrzymaj nieruchomo',
+  move_closer: 'Przybliż kod',
+  move_away: 'Odsuń kod od kamery',
+  aim_in_frame: 'Ustaw kod w ramce',
+  improve_light: 'Dodaj więcej światła',
+  camera_inadequate: 'Ta kamera nie odczyta tego kodu — wpisz kod ręcznie',
+};
 const POSITION_TEXT: Record<NonNullable<PositionHint>, string> = {
   left: 'Przesuń telefon w lewo',
   right: 'Przesuń telefon w prawo',
   up: 'Unieś telefon wyżej',
   down: 'Opuść telefon niżej',
 };
+const POSITION_TEXT_DESKTOP: Record<NonNullable<PositionHint>, string> = {
+  left: 'Przesuń kod w lewo',
+  right: 'Przesuń kod w prawo',
+  up: 'Unieś kod wyżej',
+  down: 'Opuść kod niżej',
+};
+
+/** the hint vocabulary for the surface the customer is actually holding */
+const guidanceTextFor = (formFactor: FeedbackInput['formFactor']) =>
+  formFactor === 'desktop' ? GUIDANCE_TEXT_DESKTOP : GUIDANCE_TEXT;
+const positionTextFor = (formFactor: FeedbackInput['formFactor']) =>
+  formFactor === 'desktop' ? POSITION_TEXT_DESKTOP : POSITION_TEXT;
 
 /** where the code sits in the frame → which way to move the phone to centre it */
 export function positionHint(
@@ -353,11 +378,14 @@ export function scanFeedbackText(frame: FeedbackInput): string {
     (frame.trackedWithoutReadMs ?? 0) > 1500 &&
     frame.state !== 'HOLD'
   )
-    return 'Obróć produkt lub telefon, aby kod leżał poziomo';
+    return frame.formFactor === 'desktop'
+      ? 'Obróć produkt, aby kod leżał poziomo'
+      : 'Obróć produkt lub telefon, aby kod leżał poziomo';
   if (frame.guidance !== 'none' && frame.guidance !== 'hold_steady')
-    return GUIDANCE_TEXT[frame.guidance];
-  if (frame.position && frame.state !== 'HOLD') return POSITION_TEXT[frame.position];
-  if (frame.guidance === 'hold_steady') return GUIDANCE_TEXT.hold_steady;
+    return guidanceTextFor(frame.formFactor)[frame.guidance];
+  if (frame.position && frame.state !== 'HOLD')
+    return positionTextFor(frame.formFactor)[frame.position];
+  if (frame.guidance === 'hold_steady') return guidanceTextFor(frame.formFactor).hold_steady;
   return STATE_TEXT[frame.state];
 }
 
