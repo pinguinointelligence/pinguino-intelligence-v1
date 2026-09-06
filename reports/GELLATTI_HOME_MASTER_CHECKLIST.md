@@ -58,7 +58,7 @@ Legend for yes/no columns: `Y` = yes/required, `–` = no/not required, `?` = to
 | H-04-2 | Git | Every batch: staging → feature branch → tests → owner-locked contracts → protected-path gate → typecheck/lint/build → push → PR → green → merge → deploy → served QA | – | `verify:staging` | Y | – | – | – | – | – | – | Y | Y | TODO | | |
 | H-04-3 | Git | Never push directly to staging; no `--admin` bypass; no force-push | – | branch protection | – | – | – | – | – | – | – | – | – | TODO | | |
 | H-06-1 | Process | `reports/GELLATTI_HOME_MASTER_CHECKLIST.md` exists with one row per requirement, all 17 columns | – | – | Y | – | – | – | – | – | – | – | – | TESTED | structural validation on `c66c1d01`: 211 rows x 17 columns, 211 unique IDs, 0 duplicates | |
-| H-06-2 | Process | Checklist updated after every phase | – | – | Y | – | – | – | – | – | – | – | – | IN PROGRESS | NOT maintained: last content update `0c5763a2` 2026-08-31 while later phases merged; HOME-RECON-001 is the correction | |
+| H-06-2 | Process | Checklist updated after every phase | – | – | Y | – | – | – | – | – | – | – | – | TESTED | `scripts/guardHomeLedger.mjs` + `homeLedgerGuard.test.ts` (10 behavioural cases, all passed): HOME change with no row moved -> FAIL; HOME change + whitespace/timestamp only -> FAIL; non-HOME change -> PASS; HOME change + real status/evidence move -> PASS; token exemption -> FAIL; 211 rows parsed at 17 columns with unique IDs; escaped `[HOME\|PRO]` handled; illegal status and duplicate ID both reported. Wired into CI as "HOME ledger update gate". | |
 | H-07-1 | Process | `reports/GELLATTI_HOME_REQUIREMENT_TRACEABILITY.md` maps every ID → source files, tests, served proof, status | – | – | Y | – | – | – | – | – | – | – | – | IMPLEMENTED | `reports/GELLATTI_HOME_REQUIREMENT_TRACEABILITY.md` present (65 lines); completeness vs every ID not re-verified | |
 | H-08-1 | Mobile | Mobile-first; primary viewport 390×844 | – | V2.1 tokens, `shellGeometry` | Y | `/` | – | – | – | Y | Y | Y | Y | IMPLEMENTED | `src/features/shell/shellGeometry.ts` (module present; no behavioural viewport test run) | |
 | H-08-2 | Mobile | Verify 360 px, 375 px, larger modern phones, desktop 1440×900 | – | – | Y | `/` | – | – | – | Y | Y | – | Y | TODO | | |
@@ -328,17 +328,17 @@ neither the 97% quoted in conversation nor the 36% read off the stale file was t
 
 | Status | Count |
 | --- | --- |
-| TESTED | 79 |
+| TESTED | 80 |
 | SERVED VERIFIED | 4 |
 | IMPLEMENTED | 22 |
-| IN PROGRESS | 2 |
+| IN PROGRESS | 1 |
 | BLOCKED | 1 |
 | TODO | 102 |
 | NOT APPLICABLE (excluded) | 1 |
 
 ```
-PROGRESS                = (79 + 4) / 210 = 83/210 = 39.5%
-IMPLEMENTATION COVERAGE = (22 + 79 + 4) / 210 = 105/210 = 50.0%
+PROGRESS                = (80 + 4) / 210 = 84/210 = 40.0%
+IMPLEMENTATION COVERAGE = (22 + 80 + 4) / 210 = 106/210 = 50.5%
 ```
 
 There is no longer a separate "excluding Scanner" figure, because **no Scanner row is
