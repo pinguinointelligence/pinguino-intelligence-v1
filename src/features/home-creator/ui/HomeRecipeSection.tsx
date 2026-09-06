@@ -31,7 +31,7 @@ import { ProductPickerPopover } from '@/features/ingredient-builder/ProductPicke
 import type { IngredientLibrary } from '@/features/ingredient-builder/ingredientLibrary';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence/contracts';
 import type { RecipeMatchScorePresentation } from '@/features/recipe-score';
-import { DirectNumberControl } from '@/features/ingredient-builder/DirectNumberControl';
+import { HomeChangeAmountDialog } from './HomeChangeAmountDialog';
 import { resolveMainCapability } from '@/features/product-intelligence/mainCapability';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { useHomeBehaviorContext } from '../useHomeBehaviorContext';
@@ -62,108 +62,34 @@ const SWEETNESS_LABEL: Readonly<Record<HomeSweetness, string>> = {
  */
 function HomeRowAmount({
   lineId,
-  name,
   grams,
   locked,
   canSeeGrams,
-  onBlocked,
-  editing,
-  onDone,
-  commit,
 }: {
   lineId: string;
-  name: string;
   grams: number;
   locked: boolean;
   canSeeGrams: boolean;
-  onBlocked: () => void;
-  editing: boolean;
-  onDone: () => void;
-  /**
-   * Which authority owns this row's grams.
-   *
-   * A recipe line and a topping live in DIFFERENT collections, and the store has a
-   * separate action for each. The control used to call `setPlannedGrams` for both; that
-   * action looks the line up in `state.items` and returns early when it is not there, so
-   * every topping edit was silently dropped. The row knows what it is — so the row says.
-   */
-  commit: (grams: number) => void;
 }) {
-  // The amount as the customer last saw it when the editor opened. Any difference is
-  // what "changed" means here, and it is the only thing the orange emphasis reacts to.
-  const [openedAt, setOpenedAt] = useState<number | null>(null);
-  if (editing && openedAt === null) setOpenedAt(grams);
-  if (!editing && openedAt !== null) setOpenedAt(null);
-  const changed = editing && openedAt !== null && openedAt !== grams;
-
-  if (!editing) {
-    return (
-      <span
-        className={cn(
-          'shrink-0 font-mono text-[15px] tabular-nums',
-          locked && 'underline decoration-dotted underline-offset-4',
-        )}
-        // The editor renders this number with `decimals={0}`; the readout has to agree,
-        // or a line reads „87.10000000000001 g" the moment it is not being edited.
-        data-testid={`home-amount-${lineId}`}
-        data-locked={locked ? 'true' : undefined}
-        style={{ color: 'var(--g-ink)' }}
-        // A locked amount is worth knowing about, but not worth a second button.
-        title={locked ? homeCreatorCopy.recipe.lockLabel : undefined}
-      >
-        {canSeeGrams ? Math.round(grams) : homeCreatorCopy.recipe.maskedGramsValue}{' '}
-        {homeCreatorCopy.recipe.grams}
-      </span>
-    );
-  }
-
+  // Owner QA 2026-09-06: the row is ALWAYS the readout. Editing used to replace this
+  // span with the stepper, which grew the row and shifted the list and the buttons
+  // beneath it. The editor now opens as an overlay dialog, so opening it moves nothing.
   return (
-    <span className="flex shrink-0 items-center gap-2">
-      <span
-        className={cn('rounded-2xl', changed && 'ring-2')}
-        // Canonical orange, restrained: a ring on the control that changed, not an alert.
-        style={changed ? { boxShadow: '0 0 0 2px var(--g-orange)' } : undefined}
-        data-testid={`home-amount-editor-${lineId}`}
-        data-changed={changed ? 'true' : undefined}
-      >
-        <DirectNumberControl
-          value={grams}
-          step={1}
-          min={0}
-          decimals={0}
-          suffix={homeCreatorCopy.recipe.grams}
-          ariaLabel={`${name} — ${homeCreatorCopy.recipe.gramsFieldLabel}`}
-          testId={`home-grams-${lineId}`}
-          widthPreset="grams"
-          density="responsive"
-          onChange={commit}
-          {...(canSeeGrams
-            ? {}
-            : {
-                maskedValue: homeCreatorCopy.recipe.maskedGramsValue,
-                maskedLabel: homeCreatorCopy.recipe.maskedGramsLabel,
-                onMaskedInteract: onBlocked,
-              })}
-          lockSegment={{
-            pressed: locked,
-            ariaLabel: `${name} — ${homeCreatorCopy.recipe.lockLabel}`,
-            title: homeCreatorCopy.recipe.lockLabel,
-            suffix: 'g',
-            testId: `home-lock-${lineId}`,
-            onToggle: () =>
-              useRecipeStore.getState().setLockType(lineId, locked ? 'unlocked' : 'grams'),
-          }}
-        />
-      </span>
-      <button
-        type="button"
-        onClick={onDone}
-        data-testid={`home-amount-done-${lineId}`}
-        className="min-h-[44px] shrink-0 rounded-full px-3 text-[13px] focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
-        style={{ color: 'var(--g-text-secondary)' }}
-      >
-        {homeCreatorCopy.recipe.doneAmount}
-      </button>
+    <span
+      className={cn(
+        'shrink-0 font-mono text-[15px] tabular-nums',
+        locked && 'underline decoration-dotted underline-offset-4',
+      )}
+      // The dialog renders this number with `decimals={0}`; the readout has to agree,
+      // or a line reads „87.10000000000001 g" the moment it is not being edited.
+      data-testid={`home-amount-${lineId}`}
+      data-locked={locked ? 'true' : undefined}
+      style={{ color: 'var(--g-ink)' }}
+      // A locked amount is worth knowing about, but not worth a second button.
+      title={locked ? homeCreatorCopy.recipe.lockLabel : undefined}
+    >
+      {canSeeGrams ? Math.round(grams) : homeCreatorCopy.recipe.maskedGramsValue}{' '}
+      {homeCreatorCopy.recipe.grams}
     </span>
   );
 }
@@ -356,6 +282,45 @@ export function HomeRecipeSection({
   } = useHomeBehaviorContext();
   // Only one amount is ever being changed at a time; the rest of the recipe stays calm.
   const [editingLineId, setEditingLineId] = useState<string | null>(null);
+
+  /**
+   * Which row „Zmień ilość" opened, resolved to the authority that owns its grams.
+   * A recipe line and a topping live in DIFFERENT store collections with DIFFERENT
+   * actions, so the descriptor carries the commit rather than the dialog guessing.
+   */
+  const editingItem =
+    editingLineId === null
+      ? null
+      : (() => {
+          const item = items.find((line) => line.id === editingLineId);
+          if (item) {
+            return {
+              name: item.ingredient.name,
+              grams: item.planned_grams,
+              locked: item.lock_type === 'grams',
+              onToggleLock: () =>
+                useRecipeStore
+                  .getState()
+                  .setLockType(item.id, item.lock_type === 'grams' ? 'unlocked' : 'grams'),
+              commit: (next: number) =>
+                useRecipeStore.getState().setPlannedGrams(item.id, next),
+            };
+          }
+          const topping = toppings.find((line) => line.id === editingLineId);
+          if (topping) {
+            // A topping has no lock — rendering a dead lock segment would be worse
+            // than omitting it.
+            return {
+              name: topping.ingredient.name,
+              grams: topping.planned_grams,
+              locked: false,
+              onToggleLock: undefined,
+              commit: (next: number) =>
+                useRecipeStore.getState().setToppingGrams(topping.id, next),
+            };
+          }
+          return null;
+        })();
   // CANONICAL authority, read straight from the store — HOME derives no Main rule of
   // its own. A line with no resolved snapshot is not selectable, which is the existing
   // fail-closed answer.
@@ -428,14 +393,9 @@ export function HomeRecipeSection({
             ) : null}
             <HomeRowAmount
               lineId={item.id}
-              name={item.ingredient.name}
               grams={item.planned_grams}
               locked={item.lock_type === 'grams'}
               canSeeGrams={canSeeGrams}
-              onBlocked={onGramsBlocked}
-              editing={editingLineId === item.id}
-              onDone={() => setEditingLineId(null)}
-              commit={(next) => useRecipeStore.getState().setPlannedGrams(item.id, next)}
             />
             <RowMenu
               lineId={item.id}
@@ -469,14 +429,9 @@ export function HomeRecipeSection({
             </span>
             <HomeRowAmount
               lineId={topping.id}
-              name={topping.ingredient.name}
               grams={topping.planned_grams}
               locked={false}
               canSeeGrams={canSeeGrams}
-              onBlocked={onGramsBlocked}
-              editing={editingLineId === topping.id}
-              onDone={() => setEditingLineId(null)}
-              commit={(next) => useRecipeStore.getState().setToppingGrams(topping.id, next)}
             />
             <RowMenu
               lineId={topping.id}
@@ -487,6 +442,26 @@ export function HomeRecipeSection({
           </li>
         ))}
       </ul>
+
+      {/* ONE dialog for the whole list, summoned by „Zmień ilość". It overlays the
+          page instead of expanding a row, so the list and the buttons never move.
+          Each collection commits through ITS OWN store action — a topping is not in
+          `state.items`, so `setPlannedGrams` would silently drop the edit (#207). */}
+      {editingItem ? (
+        <HomeChangeAmountDialog
+          name={editingItem.name}
+          grams={editingItem.grams}
+          canSeeGrams={canSeeGrams}
+          locked={editingItem.locked}
+          onToggleLock={editingItem.onToggleLock}
+          onBlocked={onGramsBlocked}
+          onCancel={() => setEditingLineId(null)}
+          onConfirm={(next) => {
+            editingItem.commit(next);
+            setEditingLineId(null);
+          }}
+        />
+      ) : null}
 
       {/* OWNER CORRECTION (HOME-UX-ADD-INGREDIENT, 2026-08-31): after the first
           ingredient it was not obvious how to add another. The add controls existed,
