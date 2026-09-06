@@ -319,11 +319,18 @@ export function HomeCreatorPage() {
   const addIngredientLine = useCallback(
     (ingredient: EngineIngredient, behavior: ProductBehaviorSnapshot | null, grams: number) => {
       const added = useRecipeStore.getState().addIngredient(ingredient, grams);
-      if (added.status !== 'duplicate' && behavior) {
+      if (added.status === 'duplicate') return;
+      if (behavior) {
         useRecipeStore
           .getState()
           .setProductBehaviorSnapshot(added.lineId, { ...behavior, lineId: added.lineId });
       }
+      // Owner QA 2026-09-06: „wszystkie składniki dodane przez Dodaj składnik
+      // automatycznie dostają koronę". This path never asked, while the intent-chip
+      // path did — so the same product arrived crowned or bare depending only on how
+      // it was added. Ask the SAME canonical authority here; it refuses on its own for
+      // a product Main cannot carry, so this offers the crown rather than forcing it.
+      useRecipeStore.getState().setMainIngredient(added.lineId);
     },
     [],
   );
