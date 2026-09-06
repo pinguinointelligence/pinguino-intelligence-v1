@@ -70,13 +70,15 @@ const topping = {
 };
 
 const behaviorSnapshots = productBehaviorTestSnapshots(input, [topping]);
-behaviorSnapshots[input.items[0]!.id]!.sharedFacts!.allergens = {
-  ingredientsText: input.items[0]!.ingredient.name,
-  allergensText: 'Zawiera mleko',
-  declared: ['milk'],
-  mayContain: [],
-  evidenceVersion: 'allergens:milk:v1',
-};
+for (const item of input.items) {
+  behaviorSnapshots[item.id]!.sharedFacts!.allergens = {
+    ingredientsText: item.ingredient.name,
+    allergensText: 'Zawiera mleko',
+    declared: ['milk'],
+    mayContain: [],
+    evidenceVersion: `allergens:milk:${item.id}:v1`,
+  };
+}
 behaviorSnapshots[topping.id]!.sharedFacts!.allergens = {
   ingredientsText: topping.ingredient.ingredients_text,
   allergensText: topping.ingredient.allergens_text,
@@ -153,13 +155,47 @@ describe('draft label preview', () => {
 
   it('renders known Base and Topping allergens from frozen product facts', () => {
     const preview = draft();
-    expect(preview.label.allergens.declared).toEqual(
-      expect.arrayContaining(['milk', 'gluten_wheat']),
-    );
-    expect(preview.allergenState).toBe('known');
+    expect(preview.label.allergens.labelStatements).toEqual([
+      'Zawiera mleko · Zawiera owies (gluten)',
+    ]);
+    expect(preview.pending).not.toContain('allergens');
   });
 
-  it('distinguishes missing allergen facts from a confirmed empty declaration', () => {
+  it('uses the resolved line from every Base ingredient when there is no Topping', () => {
+    const preview = buildDraftLabelPreview({
+      profile: profile(),
+      recipeInput: input,
+      composition: { ...composition, toppings: [] },
+      draft: labelDraft(),
+    });
+    expect(preview.label.allergens.labelStatements).toEqual(['Zawiera mleko']);
+  });
+
+  it('uses the same whole-recipe authority when a recipe ingredient is Main', () => {
+    const mainInput: RecipeInput = {
+      ...input,
+      items: input.items.map((item, index) =>
+        index === 0 ? { ...item, lock_type: 'main' as const } : item,
+      ),
+    };
+    const mainSnapshots = structuredClone(behaviorSnapshots);
+    mainSnapshots[mainInput.items[0]!.id]!.sharedFacts!.allergens = {
+      ...mainSnapshots[mainInput.items[0]!.id]!.sharedFacts!.allergens!,
+      allergensText: 'Zawiera pistacje',
+      declared: ['tree_nuts: pistachio'],
+    };
+    const preview = buildDraftLabelPreview({
+      profile: profile(),
+      recipeInput: mainInput,
+      composition: { ...composition, behaviorSnapshots: mainSnapshots },
+      draft: labelDraft(),
+    });
+    expect(preview.label.allergens.labelStatements).toEqual([
+      'Zawiera pistacje · Zawiera mleko · Zawiera owies (gluten)',
+    ]);
+  });
+
+  it('treats a missing or UNKNOWN source line as non-blocking and never as allergen-free', () => {
     const incompleteSnapshots = structuredClone(behaviorSnapshots);
     delete (incompleteSnapshots[input.items[0]!.id]!.sharedFacts as { allergens?: unknown })
       .allergens;
@@ -169,28 +205,33 @@ describe('draft label preview', () => {
       composition: { ...composition, behaviorSnapshots: incompleteSnapshots },
       draft: labelDraft(),
     });
-    expect(incomplete.allergenState).toBe('missing');
     expect(incomplete.label.allergens.status).toBe('incomplete');
+    expect(incomplete.pending).not.toContain('allergens');
 
-    const confirmedNoneSnapshots = structuredClone(behaviorSnapshots);
-    for (const [lineId, snapshot] of Object.entries(confirmedNoneSnapshots)) {
+    const unknownSnapshots = structuredClone(behaviorSnapshots);
+    for (const [lineId, snapshot] of Object.entries(unknownSnapshots)) {
       (snapshot.sharedFacts as { allergens?: unknown }).allergens = {
         ingredientsText: lineId,
-        allergensText: 'none_declared',
+        allergensText: 'UNKNOWN',
         declared: [],
         mayContain: [],
-        evidenceVersion: `allergens:none:${snapshot.productVersionId}`,
+        evidenceVersion: `allergens:unknown:${snapshot.productVersionId}`,
       };
     }
-    const confirmedNone = buildDraftLabelPreview({
+    const unknown = buildDraftLabelPreview({
       profile: profile(),
       recipeInput: input,
-      composition: { ...composition, behaviorSnapshots: confirmedNoneSnapshots },
+      composition: { ...composition, behaviorSnapshots: unknownSnapshots },
       draft: labelDraft(),
     });
-    expect(confirmedNone.allergenState).toBe('confirmed_none');
-    expect(confirmedNone.label.allergens.status).toBe('complete');
-    expect(confirmedNone.label.allergens.declared).toEqual([]);
+    expect(unknown.label.allergens.labelStatements).toEqual([]);
+    expect(unknown.pending).not.toContain('allergens');
+    expect(buildMasterLabelPrintHtml(unknown.label, null, { preview: true })).toContain(
+      'Alergeny nieustalone',
+    );
+    expect(
+      buildMasterLabelPrintHtml(unknown.label, null, { preview: true }).toLowerCase(),
+    ).not.toContain('bez alergen');
   });
 
   it('prints the exact LOT and production date shown by the preview', () => {
@@ -214,10 +255,15 @@ describe('draft label preview', () => {
     });
     const savedDraft = {
       ...initialDraft,
-      confirmedFields: ['legal_product_name'],
+      confirmedFields: ['legal_product_name', 'allergens'],
       label: {
         ...initial.label,
         legalProductName: { pl: 'Lody pistacjowe' },
+        allergens: {
+          ...initial.label.allergens,
+          labelStatements: ['Alergeny: MLEKO, ORZECHY PISTACJOWE'],
+          reviewedByUser: true,
+        },
       },
     };
     const reopenedDraft = readRecipeLabelDraft(attachRecipeLabelDraft(input, savedDraft))!;
@@ -235,9 +281,9 @@ describe('draft label preview', () => {
     expect(reopened.baseBatchG).toBe(1000);
     expect(reopened.finalProductG).toBe(1025);
     expect(reopened.ingredients.some((line) => line.name.includes('Płatki owsiane'))).toBe(true);
-    expect(reopened.label.allergens.declared).toEqual(
-      expect.arrayContaining(['milk', 'gluten_wheat']),
-    );
+    expect(reopened.label.allergens.labelStatements).toEqual([
+      'Alergeny: MLEKO, ORZECHY PISTACJOWE',
+    ]);
   });
 
   it('lists the final-product ingredients ordered by mass', () => {

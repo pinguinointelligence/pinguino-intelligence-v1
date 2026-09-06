@@ -12,6 +12,8 @@ const draftModel = readCode('features', 'master-label', 'draftLabelPreview.ts');
 const draftPersistence = readCode('features', 'master-label', 'labelDraftPersistence.ts');
 const draftCard = readCode('features', 'master-label', 'DraftLabelCard.tsx');
 const workspace = readCode('features', 'master-label', 'LabelWorkspace.tsx');
+const allergenControl = readCode('features', 'master-label', 'AllergenStatementControl.tsx');
+const masterLabel = readCode('features', 'master-label', 'masterLabel.ts');
 const nav = readCode('features', 'shell', 'appNav.ts');
 const labelsPage = readCode('pages', 'destinations', 'GlobalDestinationPages.tsx');
 
@@ -52,5 +54,15 @@ describe('GEL-P0-033 — actionable data, settings and print', () => {
   it('offers production date in settings', () => {
     expect(workspace).toContain('data-testid="label-production-date-setting"');
     expect(workspace).toContain('value={draft.productionDate}');
+  });
+
+  it('keeps SOL-031 as one local, non-blocking final allergen statement', () => {
+    expect(draftModel).not.toContain('allergenState');
+    expect(allergenControl).toContain('Alergeny nieustalone');
+    expect(allergenControl).toContain('Informacje o alergenach ustala producent żywności.');
+    expect(allergenControl).toContain('Ustaw');
+    expect(allergenControl).toContain('Zmień');
+    expect(allergenControl).toContain('Wróć');
+    expect(masterLabel).toContain("case 'allergens':\n      return ready('Alergeny')");
   });
 });

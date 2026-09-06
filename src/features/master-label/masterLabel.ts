@@ -28,7 +28,6 @@ import {
   PRACTICAL_LABEL_SIZES,
   smallestValidLabelSize,
 } from './labelGeometry';
-import { marketAllergenDeclarationIssues, unresolvedMarketAllergens } from './allergenTaxonomy';
 import { normalizeConfirmedGtin } from './machineCodes';
 import { isEuMemberStateCode, responsibleBusinessDetails } from './businessAuthority';
 import {
@@ -276,8 +275,16 @@ export function normalizeEnabledOptionalFields(
   return [...new Set(fields.filter((field) => allowed.includes(field)))];
 }
 
-const isInternalNoAllergenDeclaration = (value: string): boolean =>
-  ['none_declared', 'none declared'].includes(value.trim().toLowerCase());
+const isUnavailableAllergenStatement = (value: string): boolean =>
+  ['unknown', 'none_declared', 'none declared'].includes(value.trim().toLowerCase());
+
+/** One existing label channel; UNKNOWN is rendered as an explicit non-blocking UI state. */
+export function labelAllergenStatement(data: Pick<MasterLabelData, 'allergens'>): string | null {
+  const statements = data.allergens.labelStatements
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0 && !isUnavailableAllergenStatement(value));
+  return statements.length > 0 ? [...new Set(statements)].join(' · ') : null;
+}
 
 function euEnergyKjPer100g(items: readonly FinalProductItem[], total: number): number | null {
   if (!(total > 0)) return null;
@@ -417,7 +424,9 @@ function buildMasterLabelDataFromSource(
     toppings: source.composition.toppings,
     snapshots: source.composition.behaviorSnapshots ?? {},
   });
-  const behaviorGate = recipeBehaviorModuleGate(behaviorAuthority, 'MASTER_LABEL');
+  // Allergens are an optional pass-through line for Label. Nutrition authority
+  // still has to be frozen; a missing allergen line must not stop construction.
+  const behaviorGate = recipeBehaviorModuleGate(behaviorAuthority, 'NUTRITION');
   if (requireCompletedAuthority && !behaviorGate.ready) {
     throw new Error(
       `master_label_behavior_authority_required:${behaviorGate.blockedLineIds.join(',')}`,
@@ -499,22 +508,23 @@ function buildMasterLabelDataFromSource(
         sourceAllergensText: item.sourceAllergensText,
       };
     });
+  const sourceAllergenStatements = ingredients.map(
+    (item) => item.sourceAllergensText?.trim() ?? '',
+  );
   const allergenComplete =
     ingredients.length > 0 &&
-    ingredients.every((item) => item.allergenEvidenceStatus === 'verified');
+    sourceAllergenStatements.every(
+      (statement) => statement.length > 0 && !isUnavailableAllergenStatement(statement),
+    );
   const declared = [
     ...new Set([...declarationLines.values()].flatMap((item) => item.declared)),
   ].sort();
   const mayContain = [
     ...new Set([...declarationLines.values()].flatMap((item) => item.mayContain)),
   ].sort();
-  const labelStatements = [
-    ...new Set(
-      ingredients
-        .map((item) => item.sourceAllergensText?.trim())
-        .filter((item): item is string => Boolean(item) && !isInternalNoAllergenDeclaration(item!)),
-    ),
-  ];
+  const labelStatements = allergenComplete
+    ? [[...new Set(sourceAllergenStatements)].join(' · ')]
+    : [];
   const facility = { ...emptyFacility(), ...input.facilityDefaults };
   const sourceDate = source.date.slice(0, 10);
   const calculatedNutrition = source.finalLabelNutrition ?? source.finalNutrition;
@@ -921,18 +931,7 @@ function fieldReadiness(data: MasterLabelData, field: MasterLabelFieldId): Label
           );
     }
     case 'allergens':
-      return data.allergens.status === 'complete' &&
-        unresolvedMarketAllergens(data.market, data.allergens.declared).length === 0 &&
-        marketAllergenDeclarationIssues(data.market, data.allergens.declared).length === 0
-        ? ready('Alergeny')
-        : missing(
-            'Alergeny',
-            unresolvedMarketAllergens(data.market, data.allergens.declared).length > 0
-              ? `Taksonomia rynku nie rozpoznaje: ${unresolvedMarketAllergens(data.market, data.allergens.declared).join(', ')}. Nie zgaduj mapowania.`
-              : marketAllergenDeclarationIssues(data.market, data.allergens.declared).length > 0
-                ? marketAllergenDeclarationIssues(data.market, data.allergens.declared).join(' ')
-                : 'Brakuje danych źródłowych produktu o alergenach.',
-          );
+      return ready('Alergeny');
     case 'nutrition':
       return data.nutritionDeclaration
         ? ready('Wartości odżywcze')
@@ -1138,7 +1137,7 @@ export function buildLabelPreflight(data: MasterLabelData): LabelPreflight {
     format: data.format,
     productName: labelText(data.productName),
     ingredientDeclarations: data.ingredients.map((ingredient) => labelText(ingredient.names)),
-    allergenStatement: [...data.allergens.declared, ...data.allergens.mayContain].join(', '),
+    allergenStatement: labelAllergenStatement(data) ?? 'Alergeny nieustalone',
     businessText: [data.operator.operatorName, data.operator.address].filter(Boolean).join(', '),
     storageText: labelText(data.storageInstructions),
     languageCount: data.labelLanguages.length,

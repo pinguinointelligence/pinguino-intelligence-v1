@@ -40,9 +40,13 @@ const cases: GoldenCase[] = [
     id: 'eu-nut',
     market: 'EU',
     label: createCompleteLabel('EU', {
-      allergens: { ...createCompleteLabel('EU').allergens, declared: ['milk', 'tree_nuts'] },
+      allergens: {
+        ...createCompleteLabel('EU').allergens,
+        declared: ['milk', 'tree_nuts'],
+        labelStatements: ['Zawiera mleko i orzechy'],
+      },
     }),
-    markers: ['Allergens:', 'nuts'],
+    markers: ['Alergeny:', 'orzechy'],
   },
   {
     id: 'eu-multi-allergen',
@@ -51,6 +55,7 @@ const cases: GoldenCase[] = [
       allergens: {
         ...createCompleteLabel('EU').allergens,
         declared: ['milk', 'eggs', 'soy', 'peanuts', 'sesame'],
+        labelStatements: ['Zawiera: milk, eggs, soy, peanuts, sesame'],
       },
     }),
     markers: ['eggs', 'sesame'],
@@ -71,7 +76,7 @@ const cases: GoldenCase[] = [
     id: 'uk-ppds',
     market: 'UK',
     label: createCompleteLabel('UK', { packagingContext: 'ppds' }),
-    markers: ['PPDS · full ingredients', 'Contains:'],
+    markers: ['PPDS · full ingredients', 'Alergeny:'],
   },
   {
     id: 'us-dairy',
@@ -89,9 +94,13 @@ const cases: GoldenCase[] = [
     id: 'us-sesame',
     market: 'US',
     label: createCompleteLabel('US', {
-      allergens: { ...createCompleteLabel('US').allergens, declared: ['milk', 'sesame'] },
+      allergens: {
+        ...createCompleteLabel('US').allergens,
+        declared: ['milk', 'sesame'],
+        labelStatements: ['Contains: milk, sesame'],
+      },
     }),
-    markers: ['Contains:', 'sesame'],
+    markers: ['Alergeny:', 'Contains: milk, sesame'],
   },
   {
     id: 'us-long-business',
@@ -146,9 +155,13 @@ const cases: GoldenCase[] = [
     id: 'au-nz-peal',
     market: 'AU_NZ',
     label: createCompleteLabel('AU_NZ', {
-      allergens: { ...createCompleteLabel('AU_NZ').allergens, declared: ['milk', 'sesame'] },
+      allergens: {
+        ...createCompleteLabel('AU_NZ').allergens,
+        declared: ['milk', 'sesame'],
+        labelStatements: ['Contains: milk, sesame'],
+      },
     }),
-    markers: ['contains peal', 'Contains: milk, sesame'],
+    markers: ['Alergeny:', 'Contains: milk, sesame'],
   },
   {
     id: 'au-nz-long-nip',

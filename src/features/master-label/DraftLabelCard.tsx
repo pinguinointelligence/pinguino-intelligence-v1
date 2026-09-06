@@ -5,6 +5,7 @@ import type { DraftLabelPreview } from './draftLabelPreview';
 import { CompactRunLabelEditor } from './LabelWorkspace';
 import type { MasterLabelData } from './masterLabel';
 import { printMasterLabel } from './masterLabelPrint';
+import { AllergenStatementControl } from './AllergenStatementControl';
 
 /** Preview, actionable blockers and the only two bottom actions for a recipe draft. */
 export function DraftLabelCard({
@@ -36,7 +37,13 @@ export function DraftLabelCard({
           </div>
         </header>
         <ConsumerLabelPreview label={draft.label} logoUrl={logoUrl} />
-        <dl className="mt-4 grid grid-cols-2 gap-2 rounded-[14px] bg-stone-50 p-3 text-xs sm:grid-cols-3">
+        <div className="mt-4">
+          <AllergenStatementControl
+            label={draft.label}
+            onSave={async (label) => onSave(label, 'allergens')}
+          />
+        </div>
+        <dl className="mt-4 grid grid-cols-2 gap-2 rounded-[14px] bg-stone-50 p-3 text-xs">
           <div>
             <dt className="text-stone-500">Baza techniczna</dt>
             <dd className="mt-0.5 font-semibold tabular-nums text-ink">{draft.baseBatchG} g</dd>
@@ -45,23 +52,13 @@ export function DraftLabelCard({
             <dt className="text-stone-500">Produkt finalny</dt>
             <dd className="mt-0.5 font-semibold tabular-nums text-ink">{draft.finalProductG} g</dd>
           </div>
-          <div>
-            <dt className="text-stone-500">Alergeny</dt>
-            <dd className="mt-0.5 font-semibold text-ink">
-              {draft.allergenState === 'known'
-                ? 'Znane z danych produktu'
-                : draft.allergenState === 'confirmed_none'
-                  ? 'Brak w potwierdzonych danych'
-                  : 'Brak danych źródłowych'}
-            </dd>
-          </div>
         </dl>
       </Card>
 
-      {draft.blockers.length > 0 || draft.confirmedFields.length > 0 ? (
+      {draft.blockers.length > 0 || draft.confirmedFields.some((field) => field !== 'allergens') ? (
         <CompactRunLabelEditor
           label={draft.label}
-          initialConfirmedFields={draft.confirmedFields}
+          initialConfirmedFields={draft.confirmedFields.filter((field) => field !== 'allergens')}
           onSave={async (label, confirmedField) => onSave(label, confirmedField)}
         />
       ) : null}

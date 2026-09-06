@@ -52,6 +52,7 @@ import {
 import { assessCanadaFop } from './regulatoryNutrition';
 import { downloadMasterLabelPdf } from './masterLabelPdf';
 import { customerErrorMessage } from '@/copy/customerError';
+import { AllergenStatementControl } from './AllergenStatementControl';
 
 const MARKET_CODES: readonly MarketProfileCode[] = MARKET_PROFILE_ORDER;
 export type LabelWorkspaceView = 'data' | 'settings' | 'label';
@@ -585,6 +586,20 @@ export function LabelWorkspace({
               </div>
               <div className="overflow-x-auto p-4 sm:p-6" data-testid="consumer-print-boundary">
                 <ConsumerLabelPreview label={label} logoUrl={logoUrl} />
+              </div>
+              <div className="border-t border-ink/10 p-4 sm:px-6">
+                <AllergenStatementControl
+                  label={label}
+                  onSave={async (next) => {
+                    if (saved) {
+                      setSaved(null);
+                      setLabel({ ...next, snapshotEvidence: null });
+                      setActiveView('label');
+                      return;
+                    }
+                    setLabel(next);
+                  }}
+                />
               </div>
             </Card>
 
@@ -2420,14 +2435,6 @@ export function CompactRunLabelEditor({
               )}
             </MissingDataCard>
           ) : null}
-          {showField('allergens') ? (
-            <MissingDataCard field="allergens" title="Alergeny">
-              <p className="text-xs leading-relaxed text-[#7e4037]">
-                Brakuje danych źródłowych produktu o alergenach. Uzupełnij produkt; tego pola nie
-                można zastąpić ręcznym potwierdzeniem ani zgadywaniem braku alergenów.
-              </p>
-            </MissingDataCard>
-          ) : null}
           {showField('nutrition') ? (
             <MissingDataCard field="nutrition" title="Wartości odżywcze">
               <p className="text-xs text-[#7e4037]">
@@ -2530,7 +2537,6 @@ function MissingDataCard({
   const fieldSave = useContext(LabelFieldSaveContext);
   const sourceOwned = [
     'ingredients',
-    'allergens',
     'nutrition',
     'market_nutrition',
     'canada_fop',

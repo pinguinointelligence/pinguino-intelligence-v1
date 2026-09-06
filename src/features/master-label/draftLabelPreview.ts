@@ -35,7 +35,6 @@ export interface DraftLabelPreview {
   readonly baseBatchG: number;
   readonly finalProductG: number;
   readonly plannedBatchG: number;
-  readonly allergenState: 'known' | 'confirmed_none' | 'missing';
   readonly confirmedFields: readonly string[];
   readonly pending: readonly DraftLabelPendingId[];
   readonly blockers: readonly LabelPreflightItem[];
@@ -74,7 +73,14 @@ export function mergeRecipeDraftLabel(
     actualBatchQuantityG: systemLabel.actualBatchQuantityG,
     productName,
     ingredients: systemLabel.ingredients,
-    allergens: systemLabel.allergens,
+    allergens: draft.confirmedFields.includes('allergens')
+      ? {
+          ...systemLabel.allergens,
+          status: 'complete',
+          labelStatements: savedLabel.allergens.labelStatements,
+          reviewedByUser: true,
+        }
+      : systemLabel.allergens,
     nutritionSource: systemLabel.nutritionSource,
     nutritionDeclaration: systemLabel.nutritionDeclaration,
     saturatedFatAuthority: systemLabel.saturatedFatAuthority,
@@ -161,14 +167,6 @@ export function buildDraftLabelPreview({
   const label = mergeRecipeDraftLabel(systemLabel, draft.label, draft);
   const preflight = buildLabelPreflight(label);
   const blockers = preflight.items.filter((item) => item.status !== 'ready');
-  const declaredAllergens = [...label.allergens.declared, ...label.allergens.mayContain];
-  const allergenState =
-    label.allergens.status !== 'complete'
-      ? 'missing'
-      : declaredAllergens.length > 0
-        ? 'known'
-        : 'confirmed_none';
-
   return {
     kind: 'draft',
     label,
@@ -182,7 +180,6 @@ export function buildDraftLabelPreview({
     baseBatchG: finalProduct.baseMassG,
     finalProductG: finalProduct.finalMassG,
     plannedBatchG: finalProduct.finalMassG,
-    allergenState,
     confirmedFields: draft.confirmedFields,
     pending: blockers.map((item) => item.field),
     blockers,

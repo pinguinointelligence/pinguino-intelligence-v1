@@ -51,7 +51,6 @@ const preview = (incomplete = false): DraftLabelPreview => {
     baseBatchG: 1000,
     finalProductG: 1025,
     plannedBatchG: 1025,
-    allergenState: incomplete ? 'missing' : 'known',
     confirmedFields: [],
     pending: blockers.map((item) => item.field),
     blockers,
@@ -101,7 +100,8 @@ describe('DraftLabelCard', () => {
     expect(host.textContent).toContain('Baza techniczna');
     expect(host.textContent).toContain('1000 g');
     expect(host.textContent).toContain('1025 g');
-    expect(host.textContent).toContain('Znane z danych produktu');
+    expect(host.textContent).toContain('Alergeny: milk');
+    expect(host.querySelector('[data-testid="label-allergens-change"]')?.textContent).toBe('Zmień');
     const print = host.querySelector<HTMLButtonElement>('[data-testid="draft-label-print"]')!;
     expect(print.disabled).toBe(false);
     const change = host.querySelector<HTMLButtonElement>('[data-testid="draft-label-change"]')!;
@@ -122,7 +122,7 @@ describe('DraftLabelCard', () => {
     expect(input.matches(':disabled')).toBe(false);
   });
 
-  it('shows actionable fields and never offers a manual no-allergen confirmation', async () => {
+  it('shows UNKNOWN as a direct non-blocking label row instead of passive missing data', async () => {
     const onSave = vi.fn(async () => undefined);
     await renderCard(preview(true), onSave);
     const legal = host.querySelector<HTMLElement>('[data-label-field="legal_product_name"]')!;
@@ -151,11 +151,9 @@ describe('DraftLabelCard', () => {
     expect(
       acknowledgement.querySelector('[data-testid="label-field-change-acknowledgement"]'),
     ).not.toBeNull();
-    expect(host.textContent).toContain('Brakuje danych źródłowych produktu o alergenach');
-    expect(host.textContent).not.toContain('brak zadeklarowanych alergenów');
-    expect(host.querySelector('[data-testid="label-field-confirm-allergens"]')).toBeNull();
-    expect(
-      host.querySelector<HTMLButtonElement>('[data-testid="draft-label-print"]')?.disabled,
-    ).toBe(true);
+    expect(host.textContent).toContain('Alergeny nieustalone');
+    expect(host.textContent).not.toContain('Brakuje danych źródłowych produktu o alergenach');
+    expect(host.textContent?.toLowerCase()).not.toContain('bez alergenów');
+    expect(host.querySelector('[data-testid="label-allergens-set"]')?.textContent).toBe('Ustaw');
   });
 });
