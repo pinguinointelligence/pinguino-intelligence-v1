@@ -368,6 +368,7 @@ export const copy = {
       production: 'Produkcja',
       labels: 'Ustawienia etykiety',
       products: 'Produkty',
+      scanProduct: 'Dodaj produkt',
       machine: 'Maszyna',
       community: 'Community',
       workWithUs: 'Współpraca',

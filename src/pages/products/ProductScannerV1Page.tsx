@@ -50,7 +50,7 @@ export function ProductScannerV1Page() {
       >
         ← Produkty
       </Link>
-      <ScanFlow mode="catalog" />
+      <ScanFlow mode="catalog" entryContext="add_product" />
     </DestinationSurface>
   );
 }
