@@ -13,6 +13,10 @@ import type {
   RequestContext,
 } from '../contracts';
 import type { CustomerFamily } from '../discovery/contracts';
+import {
+  allergensFromIngredients,
+  looksLikeIngredientList,
+} from '@/features/product-intelligence/labelStatements';
 
 export const OPEN_FOOD_FACTS_PROVIDER = 'openfoodfacts';
 
@@ -104,21 +108,28 @@ export function evidenceFromProduct(
     ? (product['food_groups_tags'] as unknown[]).filter((t): t is string => typeof t === 'string')
     : [];
   add('category.foodGroups', groups.length ? groups.join(';') : null);
-  add(
-    'ingredientsText',
-    firstStr(product, [
-      'ingredients_text',
-      'ingredients_text_es',
-      'ingredients_text_en',
-      'ingredients_text_pl',
-    ]),
-  );
+  // the same gate the server applies: a text that is not an ingredient list is not evidence
+  const ingredientsText = firstStr(product, [
+    'ingredients_text',
+    'ingredients_text_es',
+    'ingredients_text_en',
+    'ingredients_text_pl',
+  ]);
+  const ingredientsUsable = looksLikeIngredientList(ingredientsText);
+  add('ingredientsText', ingredientsUsable ? ingredientsText : null);
   const allergens = Array.isArray(product['allergens_tags'])
     ? (product['allergens_tags'] as unknown[])
         .filter((t): t is string => typeof t === 'string')
         .map((t) => t.replace(/^[a-z]{2}:/, '').replace(/-/g, ' '))
     : [];
-  add('allergensText', allergens.length ? allergens.join(', ') : null);
+  add(
+    'allergensText',
+    allergens.length
+      ? allergens.join(', ')
+      : ingredientsUsable
+        ? allergensFromIngredients(ingredientsText)
+        : null,
+  );
   const n = (product['nutriments'] ?? {}) as Obj;
   for (const { off, field } of NUTRIMENTS) {
     const v = n[off];
