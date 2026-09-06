@@ -365,3 +365,73 @@ CorrectionFamily value. Any future collapse to MILK POWDER must FIRST make lever
 optimizationFlowRouter composition-aware (low fat / high protein), because that family is the lever
 for increase_aerating_protein, increase_solids, decrease_water and decrease_npac, and a merged family
 could otherwise hand the optimizer a 26%-fat powder against a HARD fat gate.
+
+## LEDGER CORRECTION (Owner, 2026-09-05)
+
+B02-B06 are GLOBAL REAL-WORLD DISCOVERY tasks and return to ACTIVE. The dimension audit above is NOT
+their completion; it is recorded as the TECHNOLOGICAL CLASSIFICATION RULESET that B02-B06 and C01-C03
+apply. Real-world discovery still depends on A03. Accepted DONE baseline: 9/36.
+
+## CREAM POWDER DECISION TEST — ANSWER: YES, ABSORBED (no new family)
+
+QUESTION: can CREAM POWDER be safely represented as PI/family = MILK POWDER + exact PR composition?
+
+EVIDENCE 1 - nothing in the engine reads it as a class. `PI-ING-000260` and the toolbox id
+  `cream_powder_42` appear in exactly two files: starterPackRescuePalette.ts and
+  canonicalToolboxCompositions.ts. No gate, router, CorrectionFamily or production authority
+  references cream powder. There is no `cream_powder` family - and no `milk_powder` family either.
+
+EVIDENCE 2 - the palette treats it IDENTICALLY to skimmed milk powder, in both places it appears:
+    eligibility  - PI-ING-001645, PI-ING-000270 and PI-ING-000260 are equally `profile_incompatible`
+                   for sorbet and vegan_gelato
+    seed grams   - the same three all seed at target_batch_grams * 0.01
+  Note the third member is DRIED EGG YOLK, which is not a milk powder at all. So the grouping is not
+  evidence of a powder family; it is a "dry animal-origin solids seeded at 1%" heuristic.
+
+EVIDENCE 3 - no process difference. mapper_process_metadata for PI-ING-000260, 000270, 000296 and
+  001645 is identical: process_decision UNKNOWN, heat_sensitive false, verification_status unknown.
+
+EVIDENCE 4 - the difference is entirely composition the engine already reads:
+    SMP          fat 0.8  protein 35.7  solids 89.68
+    cream powder fat 42   protein 20    solids 100
+
+CONCLUSION: CREAM POWDER does NOT earn a distinct technological type. It is absorbed, exactly like
+whole vs skimmed.
+
+TWO THINGS TO CARRY TO C04, NEITHER DECIDED HERE:
+  (a) NAMING. A family literally called MILK POWDER misdescribes spray-dried cream. The honest options
+      are to name the family DAIRY POWDER, or to keep MILK POWDER and accept the stretch. Owner call.
+  (b) The lever-routing precondition gets STRONGER, not weaker. A merged powder family would span
+      0.8% fat (SMP) to 42% fat (cream powder) - a wider spread than the 26% whole-powder case.
+      Composition-aware lever selection in optimizationFlowRouter is a hard precondition for any
+      collapse, because that family is the lever for increase_aerating_protein, increase_solids,
+      decrease_water and decrease_npac against a HARD fat gate.
+
+## C01 / C02 / C03 — CLOSED ON THE CLASSIFICATION RULESET
+
+C01 - every technological variant dimension in the frozen B01 scope compared against existing PI:
+      fat%, lactose-free, process, aerating protein, dairy identity, syrup DE, plant source,
+      whey vs milk protein, individual gums. Source: engine gates, CorrectionFamily, pac.ts,
+      composition.ts, ProductBehavior, mapper_process_metadata.
+
+C02 - FINAL CANDIDATE LIST:
+      GENUINE: SOY DRINK (neutral). `soy_drink` is already an engine CorrectionFamily; oat, rice and
+      almond peers are neutral; soy exists only as four frozen brand rows on which the vegan toolbox
+      currently depends.
+      WITHDRAWN: MILK 3.6% (composition), CREAM POWDER 42% (composition), CREAM POWDER as a family
+      (absorbed - test above), INULIN (already exists twice), CARRAGEENAN (no authority references it),
+      EMULSIFIER (all 25 rows are commercial blends; no standalone emulsifier is referenced).
+
+C03 - decision test applied and evidenced for every candidate: milk, cream, milk powder, cream powder,
+      soy drink, inulin, carrageenan, emulsifier. One survives.
+
+CAVEAT RECORDED: these close on the classification RULESET, not on world data. B02-B06 real-world
+discovery can add PR instances freely; it can only change C02 by surfacing a genuinely NEW
+technological class, which would be raised as a NEW checklist ID rather than silently altering C02.
+
+## UNRESOLVED FOR C04 (do not collapse yet)
+
+GLUCOSE SYRUP vs MALTODEXTRIN. Ranges overlap - maltodextrin reaches DE 30.5 while glucose syrup
+starts at DE 22.5 - so the existing split does not follow the standard DE-20 boundary. Whether this is
+one starch-hydrolysate continuum or two technological types needs separate classification proof.
+Not collapsed, not asserted.
