@@ -151,6 +151,20 @@ export const APP_NAV_ITEMS: readonly AppNavItem[] = [
     isActive: productsDestination,
   },
   {
+    /*
+      OWNER DECISION 2026-09-06 — the hamburger entry into the ONE Canonical Scanner. It is a
+      destination (a page), not a contextual action, so it belongs here: from the drawer the
+      customer scans to ADD A PRODUCT, and is never asked whether they want to add one.
+    */
+    id: 'scanProduct',
+    label: s.items.scanProduct,
+    to: '/products/scan',
+    group: 'product',
+    order: 3.5,
+    audiences: ['home', 'pro'],
+    isActive: pathOrNested('/products/scan'),
+  },
+  {
     id: 'machine',
     label: s.items.machine,
     to: '/machine',

@@ -60,12 +60,14 @@ describe('Gellatti Visual System V2', () => {
   });
 
   it('implements outcome-context-next-step Scanner success and normal entry', () => {
-    const scanner = read('features', 'product-scanner', 'LiveProductScanner.tsx');
-    expect(scanner).toContain('Produkt dodany do Twojego katalogu.');
-    expect(scanner).toContain('Co dalej?');
-    expect(scanner).toContain('Użyj w recepturze');
-    expect(scanner).toContain('Zeskanuj następny');
-    expect(scanner).toContain('Umieść kod i etykietę w kadrze');
+    // ONE Canonical Scanner (owner decision 2026-09-06): the second scanner component is gone,
+    // so the same outcome-then-next-step shape is asserted where it now lives.
+    const scanner = read('features', 'scan-flow', 'ScanFlow.tsx');
+    expect(scanner).toContain(
+      'Zapisano jako Twój produkt (prywatny, widoczny tylko na Twoim koncie).',
+    );
+    expect(scanner).toContain('Skanuj kolejny');
+    expect(scanner).toContain('Pokaż kod kreskowy');
   });
 
   it('uses human UI typography and reserves mono for product data', () => {

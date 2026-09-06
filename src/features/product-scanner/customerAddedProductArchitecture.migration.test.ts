@@ -13,7 +13,6 @@ const relationRlsMigration = read(
 const finalize = read('supabase/functions/product-scan-finalize/index.ts');
 const analyze = read('supabase/functions/product-scan-analyze/index.ts');
 const service = read('src/services/productScanner.ts');
-const ui = read('src/features/product-scanner/LiveProductScanner.tsx');
 
 describe('Scanner customer-added product authority', () => {
   it('requires one valid exact EAN and never allocates PM', () => {
@@ -71,26 +70,7 @@ describe('Scanner customer-added product authority', () => {
     expect(analyze).toContain('exactProductForBarcode(service, barcode, auth.user.id)');
   });
 
-  it('uses native system capture and keeps desktop multi-upload/drop', () => {
-    expect(ui).toContain('capture="environment"');
-    expect(ui).toContain('accept={PRODUCT_SCAN_ACCEPT}');
-    expect(ui).toContain('multiple');
-    expect(ui).toContain("addFiles([...event.dataTransfer.files], 'drop')");
-    expect(ui).not.toContain('navigator.mediaDevices.getUserMedia');
-    expect(ui).not.toContain('<video');
-  });
-
-  it('keeps technical declarations in autonomous evidence instead of a customer form', () => {
-    expect(ui).toContain('productFieldsFromScanResult');
-    expect(ui).not.toContain('Alkohol ABV');
-    expect(ui).not.toContain('Masa kakaowa');
-    expect(ui).not.toContain('patchReview');
-  });
-
   it('keeps autonomous evidence server-owned instead of relabelling it as customer-confirmed', () => {
-    expect(ui).toContain('productFieldsFromScanResult');
-    expect(ui).not.toContain('nutritionForConfirmation');
-    expect(ui).not.toContain('productionDeclarations: Object.fromEntries');
     expect(finalize).toContain('userConfirmedFields: corrections.confirmedEvidenceFields');
   });
 

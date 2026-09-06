@@ -33,7 +33,7 @@ import { useCanSeeExactGrams } from '@/features/home-creator/useHomeEntitlement'
 import { useHomeFlow } from '@/features/home-creator/useHomeFlow';
 import { useHomeRecipeResult } from '@/features/home-creator/useHomeRecipeResult';
 import { useHomeIntentIngredients } from '@/features/home-creator/useHomeIntentIngredients';
-import { LiveMultiScanner } from '@/features/product-scanner/LiveMultiScanner';
+import { ScanFlow } from '@/features/scan-flow/ScanFlow';
 import { HomeMatchGate } from '@/features/home-creator/matching/HomeMatchGate';
 import {
   NO_MATCH,
@@ -659,29 +659,44 @@ export function HomeCreatorPage() {
         {result ? 'yes' : 'no'}
       </span>
 
+      {/*
+        OWNER DECISION 2026-09-06 — ONE CANONICAL SCANNER. HOME mounts the same component the recipe
+        picker and the products page mount, with the same pipeline; only the entry context and the
+        return action differ. A signed-out visitor scanning in the demo may FIND a product but never
+        create one, so the entry says so and the scanner spends nothing on them.
+      */}
       {scannerOpen ? (
-        <div className="fixed inset-0 z-50 bg-white">
-          <LiveMultiScanner
-            onClose={() => setScannerOpen(false)}
-            onAddToRecipe={(products) => {
-              setScanNotice(null);
-              // The SAME door a typed ingredient uses. The scanner supplies identities;
-              // every rule about what they may do in a recipe stays where it lives.
-              for (const product of products)
-                void intentIngredients.addScannedProduct(product.identityKey);
-            }}
-            onNeedsDeepScan={(products) => {
-              // NEVER navigate away. The customer has a recipe half-built on this page;
-              // one unknown product is not a reason to lose it. The scanner completes
-              // such a product in a nested step and hands it back resolved, so all that
-              // is left here is to say plainly what did not make it in.
-              setScanNotice(
-                products.length === 1
-                  ? 'Jeden produkt czeka na uzupełnienie — znajdziesz go w skanerze.'
-                  : `${products.length} produkty czekają na uzupełnienie — znajdziesz je w skanerze.`,
-              );
-            }}
-          />
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-white p-4">
+          <div className="mx-auto max-w-lg space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold text-ink">Skanuj produkt</h2>
+              <button
+                type="button"
+                className="pro-focus-ring rounded-full border border-ink/15 px-3 py-1 text-xs font-semibold text-ink"
+                onClick={() => setScannerOpen(false)}
+              >
+                Zamknij
+              </button>
+            </div>
+            <ScanFlow
+              mode="recipe"
+              entryContext={userId === null ? 'guest_demo' : 'recipe_ingredient'}
+              onResolved={(product) => {
+                setScanNotice(null);
+                setScannerOpen(false);
+                // The SAME door a typed ingredient uses. The scanner supplies the identity;
+                // every rule about what it may do in a recipe stays where it lives.
+                void intentIngredients.addScannedProduct(product.id);
+              }}
+              onReturn={() => setScannerOpen(false)}
+              onChoosePlan={(plan) => {
+                setScannerOpen(false);
+                navigate(plan === 'pro' ? '/subscription?plan=pro' : '/subscription?plan=home');
+              }}
+              resolveLabel="Dodaj do receptury"
+              intro="Pokaż kod kreskowy produktu aparatowi. Znaleziony lub zapisany produkt wraca prosto do tej receptury."
+            />
+          </div>
         </div>
       ) : null}
     </AppShell>

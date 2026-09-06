@@ -1,9 +1,15 @@
 /**
- * Boundary of the shared scan flow (owner rules, 2026-09-05): ONE flow — camera → Scan Core →
- * EAN/GTIN → Scan Import 2.0 — mounted from HOME/PRO „Dodaj składnik → Skanuj” and from
- * Produkty → „Skanuj produkt”; no second scanner, no second decoder, no technical field shown.
+ * Boundary of the ONE Canonical Scanner (owner decision 2026-09-06).
+ *
+ * There is exactly one scan flow in the whole system — camera → Scan Core → EAN/GTIN →
+ * Scan Import 2.0 — and every entry mounts THIS component with the same pipeline. Only two things
+ * differ between entries: the `entryContext` passed in and the return action. The seven entries are
+ * the hamburger's „Dodaj produkt" (HOME and PRO), the recipe's „Dodaj składnik → Skanuj" and
+ * „Dodaj topping → Skanuj" (HOME and PRO), and the signed-out demo.
+ *
+ * No second scanner, no second decoder, no second state machine, no technical field shown.
  */
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -14,6 +20,9 @@ const CAPTURE = read('scanCoreCapture.ts');
 const LOGIC = read('scanFlowLogic.ts');
 const POPOVER = read('../ingredient-builder/ProductPickerPopover.tsx');
 const CATALOG_PAGE = read('../../pages/products/ProductScannerV1Page.tsx');
+const HOME_CREATOR = read('../../pages/home/HomeCreatorPage.tsx');
+const NAV = read('../shell/appNav.ts');
+const SRC = join(here, '../..');
 
 const imports = (src: string) => [...src.matchAll(/from '([^']+)'/g)].map((m) => m[1]);
 
@@ -61,10 +70,60 @@ describe('scan flow boundary', () => {
     expect(FLOW).toMatch(/Zgłoś do weryfikacji/);
   });
 
-  it('is the flow behind HOME/PRO „Dodaj składnik → Skanuj” and Produkty → „Skanuj produkt”', () => {
+  it('is the flow behind every entry — recipe, topping, the products page and HOME', () => {
     expect(POPOVER).toMatch(/<ScanFlow\s+mode="recipe"/);
-    expect(POPOVER).not.toMatch(/<LiveProductScanner/);
-    expect(CATALOG_PAGE).toMatch(/<ScanFlow mode="catalog"/);
-    expect(CATALOG_PAGE).not.toMatch(/<LiveProductScanner/);
+    expect(POPOVER).toMatch(/'recipe_ingredient'/);
+    expect(POPOVER).toMatch(/'recipe_topping'/);
+    expect(POPOVER).toMatch(/!signedIn\s*\n?\s*\? 'guest_demo'/);
+    expect(CATALOG_PAGE).toMatch(/<ScanFlow mode="catalog" entryContext="add_product"/);
+    expect(HOME_CREATOR).toMatch(/<ScanFlow\s/);
+    expect(HOME_CREATOR).toMatch(
+      /entryContext=\{userId === null \? 'guest_demo' : 'recipe_ingredient'\}/,
+    );
+    for (const src of [POPOVER, CATALOG_PAGE, HOME_CREATOR])
+      expect(src).not.toMatch(/LiveProductScanner|LiveMultiScanner/);
+  });
+
+  it('the hamburger opens it too, and never asks whether to add a product', () => {
+    expect(NAV).toMatch(/id: 'scanProduct'/);
+    expect(NAV).toMatch(/to: '\/products\/scan'/);
+    expect(NAV).toMatch(/audiences: \['home', 'pro'\]/);
+    // "Dodaj produkt" already IS the answer to the question, so the flow must not ask it again.
+    expect(FLOW).toMatch(/isRecipeEntry\(entry\) && !addConfirmedRef\.current/);
+  });
+
+  it("asks the recipe question in exactly the owner's words, with a real way out", () => {
+    expect(FLOW).toContain('Nie mamy jeszcze tego produktu. Czy chcesz go dodać?');
+    expect(FLOW).toMatch(/data-testid="scan-flow-ask-add-yes"/);
+    expect(FLOW).toMatch(/data-testid="scan-flow-ask-add-no"/);
+    // "Tak" continues THIS scan: the same session, the same photos, no second camera run.
+    expect(FLOW).toMatch(/continueUnknownRef\.current\(/);
+  });
+
+  it('spends nothing on a signed-out visitor and offers them the plans instead', () => {
+    expect(FLOW).toContain('Tego produktu jeszcze nie mamy.');
+    expect(FLOW).toContain('W HOME lub PRO możesz dodać własny produkt jednym skanem.');
+    expect(FLOW).toMatch(/data-testid="scan-flow-choose-home"/);
+    expect(FLOW).toMatch(/data-testid="scan-flow-choose-pro"/);
+    expect(FLOW).toMatch(/data-testid="scan-flow-back-to-demo"/);
+    // no research, no label analysis, no private save, no verification for a guest
+    expect(FLOW).toMatch(/entry !== 'guest_demo'/);
+    expect(FLOW).toMatch(/\{ \.\.\.ports, external: null \}/);
+  });
+
+  it('is the ONLY component in the app that opens a camera', () => {
+    const walk = (dir: string): string[] =>
+      readdirSync(dir).flatMap((name) => {
+        const full = join(dir, name);
+        if (statSync(full).isDirectory()) return name === 'node_modules' ? [] : walk(full);
+        return /\.tsx?$/.test(name) && !/\.test\./.test(name) ? [full] : [];
+      });
+    const openers = walk(SRC).filter((f) =>
+      /navigator\.mediaDevices\.getUserMedia/.test(readFileSync(f, 'utf8')),
+    );
+    // exactly one: the Scan Core camera session the canonical flow drives
+    expect(openers.map((f) => f.slice(SRC.length + 1)).sort()).toEqual([
+      'scan-lab/baseline/camera/cameraSession.ts',
+    ]);
   });
 });
