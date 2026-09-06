@@ -85,13 +85,16 @@ describe('Gellatti SOL ledger continuity', () => {
     expect(ledger).toContain('SOL-045 · TODO — kamera komputerowa pokazuje kod zbyt rozmyty');
   });
 
-  it('appends the Owner QA SOL-046 price-message finding without claiming a fix', () => {
-    expect(entries.find(({ id }) => id === 'SOL-046')?.status).toBe('TODO');
+  it('records the Owner-accepted SOL-046 resolution on canonical staging', () => {
+    expect(entries.find(({ id }) => id === 'SOL-046')?.status).toBe('RESOLVED_ON_STAGING');
     expect(ledger).toContain(
-      'SOL-046 · TODO — komunikat o brakującej cenie jest techniczny, za długi i wyświetlany podwójnie',
+      'SOL-046 · RESOLVED_ON_STAGING — komunikat o brakującej cenie jest techniczny, za długi i wyświetlany podwójnie',
     );
     expect(ledger).toContain('Wprowadź cenę dla LIME · MASTER MARTINI VARIEGATO · AJ01AQ.');
-    expect(ledger).toContain('Nazwa musi pochodzić z aktualnej receptury, bez hardcode produktu.');
+    expect(ledger).toContain('Nazwa pochodzi z aktualnej receptury, bez hardcode produktu');
+    expect(ledger).toContain('staging SHA `f6778265b2bf8f302d446055417524c235eb1c84`');
+    expect(ledger).toContain('matematyka kosztów nie została naruszona');
+    expect(ledger).toContain('`OWNER ACCEPTED: YES`');
   });
 
   it('keeps the HOME and PRO DESIGN review penultimate and numbers subpoints independently', () => {
