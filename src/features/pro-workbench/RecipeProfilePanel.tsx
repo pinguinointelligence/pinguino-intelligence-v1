@@ -38,6 +38,7 @@ import { buildCurrentRecipeResultAuthority } from './currentRecipeResultAuthorit
 import { friendlyLabRecipeJourneyState } from './friendlyLabRecipeJourney';
 import { CostSummaryIcon, NutritionSummaryIcon } from '@/components/icons/PinguinoIcons';
 import { proWorkbenchCopy } from '@/copy/pro.pl';
+import { currentRecipeCompletionSnapshot } from './currentRecipeLabelSnapshot';
 
 export type ProContextTab = 'recipe' | 'monitor' | 'production';
 export type CockpitTab = WorkbenchModuleTab;
@@ -614,15 +615,15 @@ function SummaryPanel({
   result: RecipeResult;
   recipeName: string | null;
 }) {
-  const completed = production?.session?.completionSnapshot ?? null;
+  const completed = currentRecipeCompletionSnapshot(production);
   if (completed) {
     return (
       <div className="pro-scroll-safe" data-testid="pro-context-summary">
         {/* OWNER DECISION (2026-08-30): the workbench `Etykieta` tab is the
             CURRENT label plus the fields still missing for it — never a second
-            settings screen. `settingsHome="production"` removes the settings
-            view from this instance and points at Produkcja → Etykiety, which
-            owns every persistent label setting. */}
+            settings screen. `settingsHome="production"` removes settings and
+            their entry point from this instance; the hamburger's Etykiety
+            destination remains their only home. */}
         <LabelWorkspace
           key={labelViewRequestKey ?? initialLabelView}
           snapshot={completed}

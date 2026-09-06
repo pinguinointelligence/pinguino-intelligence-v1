@@ -523,10 +523,10 @@ describe('profile hierarchy and compact preflight', () => {
         expect(print).not.toBeNull();
         expect(print?.disabled).toBe(true);
 
-        // Settings never live in the workbench — they are one link away.
-        expect(
-          host.querySelector('[data-testid="label-settings-home-link"]')?.getAttribute('href'),
-        ).toBe('/labels');
+        // Settings stay in the hamburger's canonical Etykiety destination and
+        // never reappear as a second entry point inside PRO → Etykieta.
+        expect(host.querySelector('[data-testid="label-settings-home-link"]')).toBeNull();
+        expect(host.textContent).not.toContain('Zmień ustawienia');
         expect(host.querySelector('[data-testid="label-consumer-preview"]')).toBeNull();
       }
 
