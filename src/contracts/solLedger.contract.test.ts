@@ -29,19 +29,19 @@ const designSubpoints = [
 }));
 
 describe('Gellatti SOL ledger continuity', () => {
-  it('contains every append-only ID exactly once from SOL-001 through SOL-047', () => {
+  it('contains every append-only ID exactly once from SOL-001 through SOL-049', () => {
     expect(entries.map(({ number }) => number)).toEqual(
-      Array.from({ length: 47 }, (_, index) => index + 1),
+      Array.from({ length: 49 }, (_, index) => index + 1),
     );
-    expect(new Set(entries.map(({ id }) => id)).size).toBe(47);
+    expect(new Set(entries.map(({ id }) => id)).size).toBe(49);
     expect(ledger).toContain(
       'IDs are append-only and are never deleted, moved, renumbered, or reused.',
     );
   });
 
-  it('reserves SOL-048 as the next free main ID without assigning it', () => {
-    expect(ledger).toContain('`NEXT_FREE_SOL_ID: SOL-048`');
-    expect(entries.some(({ id }) => id === 'SOL-048')).toBe(false);
+  it('reserves SOL-050 as the next free main ID without assigning it', () => {
+    expect(ledger).toContain('`NEXT_FREE_SOL_ID: SOL-050`');
+    expect(entries.some(({ id }) => id === 'SOL-050')).toBe(false);
   });
 
   it('records no unrecovered gap after restoring SOL-034 through SOL-038', () => {
@@ -94,17 +94,50 @@ describe('Gellatti SOL ledger continuity', () => {
     expect(ledger).toContain('Nazwa musi pochodzić z aktualnej receptury, bez hardcode produktu.');
   });
 
-  it('keeps DESIGN as the penultimate workstream and numbers its subpoints independently', () => {
+  it('keeps the HOME and PRO DESIGN review penultimate and numbers subpoints independently', () => {
     expect(entries.find(({ id }) => id === 'SOL-047')).toMatchObject({
       status: 'TODO',
       category: 'DESIGN',
     });
-    expect(designSubpoints).toEqual([{ id: 'SOL-047.1', parent: 47, index: 1, status: 'TODO' }]);
+    expect(ledger).toContain(
+      'SOL-047 · TODO · DESIGN — końcowy, spójny przegląd wyglądu, układu i komunikacji wszystkich powierzchni klienta HOME i PRO',
+    );
+    expect(designSubpoints).toEqual([
+      { id: 'SOL-047.1', parent: 47, index: 1, status: 'TODO' },
+      { id: 'SOL-047.2', parent: 47, index: 2, status: 'TODO' },
+    ]);
     expect(new Set(designSubpoints.map(({ id }) => id)).size).toBe(designSubpoints.length);
-    expect(ledger).toContain('`NEXT_FREE_DESIGN_SUBPOINT: SOL-047.2`');
-    expect(designSubpoints.some(({ id }) => id === 'SOL-047.2')).toBe(false);
+    expect(ledger).toContain('SOL-047.1 · TODO — wynik receptury w PRO');
+    expect(ledger).toContain(
+      'SOL-047.2 · TODO — ekran Scannera HOME odbiega od zaakceptowanego języka wizualnego HOME',
+    );
+    expect(ledger).toContain('`NEXT_FREE_DESIGN_SUBPOINT: SOL-047.3`');
+    expect(designSubpoints.some(({ id }) => id === 'SOL-047.3')).toBe(false);
     expect(ledger).toContain('DESIGN subpoints are append-only');
     expect(ledger).toMatch(/The final stage remains the full\s+end-to-end test of every flow\./);
+  });
+
+  it('appends the two Scanner Owner QA findings without claiming either is fixed', () => {
+    expect(entries.find(({ id }) => id === 'SOL-048')?.status).toBe('TODO');
+    expect(entries.find(({ id }) => id === 'SOL-049')?.status).toBe('TODO');
+    expect(ledger).toContain(
+      'SOL-048 · TODO — Scanner pokazuje mikrosekundowe, zmieniające się komunikaty i pozwala spóźnionym odpowiedziom nadpisywać aktualny stan',
+    );
+    expect(ledger).toContain(
+      'SOL-049 · TODO — nowy produkt rozpoznany po dokładnym EAN nie przechodzi pełnego enrichmentu i Mapper Rescue; kończy jako produkt prywatny albo automatycznie zgłoszony do weryfikacji',
+    );
+    expect(ledger).toContain('EAN `8411092721032`');
+    expect(ledger).toContain('EAN `842617014032`');
+    expect(ledger).toContain(
+      'dokładny EAN → źródła/dowody → Vision/OCR → Mapper Rescue → kanoniczne bramki → Product Registry',
+    );
+  });
+
+  it('retains unresolved Scanner findings as TODO pending merge and physical Owner QA', () => {
+    for (const number of [24, 39, 40, 42, 43, 44, 45]) {
+      const id = `SOL-${String(number).padStart(3, '0')}`;
+      expect(entries.find((entry) => entry.id === id)?.status).toBe('TODO');
+    }
   });
 
   it('records the proven PR #181 before PR #198 migration order', () => {
