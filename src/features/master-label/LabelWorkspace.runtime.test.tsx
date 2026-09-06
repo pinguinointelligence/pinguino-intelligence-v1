@@ -739,6 +739,8 @@ describe('LabelWorkspace unified actual-run surface', () => {
     await renderWorkspace('label', { settingsHome: 'production' });
     expect(dot('settings')).toBeNull();
     expect(host.querySelector('[data-testid="label-workspace"]')).not.toBeNull();
+    expect(host.querySelector('[data-testid="label-settings-home-link"]')).toBeNull();
+    expect(button('Ustawienia')).toBeUndefined();
   });
 
   it('keeps the three-view switcher at home and none in the workbench', async () => {
@@ -758,6 +760,22 @@ describe('LabelWorkspace unified actual-run surface', () => {
     expect(host.querySelector('[data-active-label-view="label"]')).not.toBeNull();
     // …and the fields still missing for it sit underneath.
     expect(host.querySelector('[data-testid="label-missing-data-stack"]')).not.toBeNull();
+  });
+
+  it('orders the PRO label as preview, missing data, then print actions', async () => {
+    await renderWorkspace('data', { settingsHome: 'production' });
+    const preview = host.querySelector('[data-testid="consumer-print-boundary"]')!;
+    const missing = host.querySelector('[data-testid="label-missing-data-stack"]')!;
+    const actions = host.querySelector('[data-testid="label-workbench-print-actions"]')!;
+
+    expect(
+      preview.compareDocumentPosition(missing) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      missing.compareDocumentPosition(actions) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(actions.textContent).toContain('Drukuj podgląd roboczy');
+    expect(actions.textContent).toContain('Drukuj');
   });
 
   it('still opens an incomplete label on its data view at home', async () => {
