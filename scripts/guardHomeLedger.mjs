@@ -27,6 +27,7 @@
  *   node scripts/guardHomeLedger.mjs [--base <ref>] [--report-only]
  */
 import { execFileSync } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
 
 const LEDGER = 'reports/GELLATTI_HOME_MASTER_CHECKLIST.md';
 const EXEMPT_TRAILER = 'HOME-Ledger-Exempt:';
@@ -76,7 +77,10 @@ export function parseLedger(text) {
   const problems = [];
   for (const [index, line] of text.split('\n').entries()) {
     if (!ROW.test(line)) continue;
-    const fields = line.split(SPLIT_CELLS).map((c) => c.trim()).slice(1, -1);
+    const fields = line
+      .split(SPLIT_CELLS)
+      .map((c) => c.trim())
+      .slice(1, -1);
     const id = fields[0];
     const lineNo = index + 1;
     if (fields.length !== 17) {
@@ -104,6 +108,32 @@ const show = (ref, path) => {
     return null;
   }
 };
+
+/**
+ * The decision itself, with no git and no filesystem in it.
+ *
+ * Kept pure precisely so the guard's behaviour can be PROVEN in CI rather than
+ * demonstrated once by hand. `guardHomeLedger.test.ts` drives every branch below.
+ */
+export function decide({ homeTouched, rowsBefore, rowsAfter, exemptionReason }) {
+  if (homeTouched.length === 0) return { ok: true, reason: 'no-home-change' };
+  if (exemptionReason !== null && exemptionReason !== undefined) {
+    return exemptionReason.trim().length < 12
+      ? { ok: false, reason: 'exemption-too-thin' }
+      : { ok: true, reason: 'exempted' };
+  }
+  const moved = [];
+  for (const [id, now] of rowsAfter) {
+    const was = rowsBefore.get(id);
+    if (!was) moved.push(`${id}: new row (${now.status})`);
+    else if (was.status !== now.status || was.evidence !== now.evidence) {
+      moved.push(`${id}: ${was.status} -> ${now.status}`);
+    }
+  }
+  return moved.length === 0
+    ? { ok: false, reason: 'no-requirement-row-moved', moved }
+    : { ok: true, reason: 'ledger-updated', moved };
+}
 
 function main() {
   const base = resolveBase();
@@ -140,31 +170,24 @@ function main() {
   const exemption = git('log', '--format=%B', `${base}..HEAD`)
     .split('\n')
     .find((l) => l.trim().startsWith(EXEMPT_TRAILER));
-  if (exemption) {
-    const reason = exemption.slice(exemption.indexOf(EXEMPT_TRAILER) + EXEMPT_TRAILER.length).trim();
-    if (reason.length < 12) {
-      console.error(`${EXEMPT_TRAILER} needs a real reason, not "${reason}".`);
-      process.exit(1);
-    }
-    console.log(`HOME ledger guard: exempted — ${reason}`);
-    return;
-  }
+  const exemptionReason = exemption
+    ? exemption.slice(exemption.indexOf(EXEMPT_TRAILER) + EXEMPT_TRAILER.length).trim()
+    : null;
 
   const before = show(base, LEDGER);
   const rowsBefore = before === null ? new Map() : parseLedger(before).rows;
 
-  // A SUBSTANTIVE change is a row whose status or evidence moved, or a new row.
-  // Whitespace, reflow, a bumped date and an added prose paragraph all leave this empty.
-  const moved = [];
-  for (const [id, now] of rowsAfter) {
-    const was = rowsBefore.get(id);
-    if (!was) moved.push(`${id}: new row (${now.status})`);
-    else if (was.status !== now.status || was.evidence !== now.evidence) {
-      moved.push(`${id}: ${was.status} -> ${now.status}`);
-    }
-  }
+  const verdict = decide({ homeTouched, rowsBefore, rowsAfter, exemptionReason });
 
-  if (moved.length === 0) {
+  if (verdict.reason === 'exemption-too-thin') {
+    console.error(`${EXEMPT_TRAILER} needs a real reason, not "${exemptionReason}".`);
+    process.exit(1);
+  }
+  if (verdict.reason === 'exempted') {
+    console.log(`HOME ledger guard: exempted — ${exemptionReason}`);
+    return;
+  }
+  if (!verdict.ok) {
     console.error('HOME FUNCTIONAL CHANGE WITHOUT A LEDGER UPDATE\n');
     console.error('These files change what HOME does:\n');
     for (const f of homeTouched) console.error(`  ${f}`);
@@ -178,10 +201,15 @@ function main() {
     return;
   }
 
+  const moved = verdict.moved ?? [];
   console.log(
     `HOME ledger guard: ${homeTouched.length} HOME file(s) changed, ${moved.length} requirement row(s) moved.`,
   );
   for (const m of moved.slice(0, 12)) console.log(`  ${m}`);
 }
 
-main();
+// Only when RUN, never when imported: the test drives `decide` and `parseLedger`
+// directly, and a guard that executed on import would run git inside the test process.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main();
+}
