@@ -9,6 +9,7 @@ import { proCoreCapabilitiesFor } from '@/features/pro-core/proCoreCapabilities'
 import { MobileDesignReviewEntry } from '@/features/design-review/ReviewOverlay';
 import {
   NAV_GROUP_ORDER,
+  activeNavId,
   isGroupActive,
   navigationAudience,
   visibleNavItems,
@@ -54,6 +55,7 @@ export function AppNavDrawer() {
   const items = visibleNavItems(audience);
   const workspaceItem = items.find((item) => item.workspaceHome);
   const loc = { pathname: location.pathname, search: location.search };
+  const currentNavId = activeNavId(loc, audience);
   const planLabel =
     audience === 'pro' ? s.account.planPro : audience === 'home' ? s.account.planHome : null;
   // An authenticated Admin may intentionally have no Home/Pro entitlement, so
@@ -225,7 +227,10 @@ export function AppNavDrawer() {
                   >
                     <div className="space-y-0.5">
                       {groupItems.map((item) => {
-                        const active = item.isActive(loc);
+                        // ONE current page. `isActive` is per-item and several items can match a
+                        // nested path (/products/scan matches both „Produkty" and „Dodaj produkt");
+                        // `activeNavId` is the existing authority that picks the most specific one.
+                        const active = item.id === currentNavId;
                         return (
                           <Link
                             key={item.id}
