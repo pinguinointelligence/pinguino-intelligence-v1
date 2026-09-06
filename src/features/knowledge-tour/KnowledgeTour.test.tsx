@@ -1,9 +1,16 @@
 /** @vitest-environment jsdom */
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { KnowledgeTour } from './KnowledgeTour';
+
+const css = readFileSync(
+  resolve(process.cwd(), 'src/features/knowledge-tour/KnowledgeTour.css'),
+  'utf8',
+);
 
 let host: HTMLDivElement;
 let root: Root;
@@ -30,6 +37,17 @@ function mount(path = '/how-it-works?step=1') {
   return host.querySelector<HTMLElement>('[data-testid="knowledge-tour"]')!;
 }
 
+function mountLayout(layout: 'page' | 'embedded', path = '/how-it-works?step=1') {
+  act(() => {
+    root.render(
+      <MemoryRouter initialEntries={[path]}>
+        <KnowledgeTour layout={layout} />
+      </MemoryRouter>,
+    );
+  });
+  return host.querySelector<HTMLElement>('[data-testid="knowledge-tour"]')!;
+}
+
 function swipe(surface: HTMLElement, startX: number, endX: number) {
   const start = new Event('touchstart', { bubbles: true });
   Object.defineProperty(start, 'changedTouches', {
@@ -46,9 +64,34 @@ function swipe(surface: HTMLElement, startX: number, endX: number) {
 }
 
 describe('responsive Knowledge Tour interactions', () => {
+  it.each(['page', 'embedded'] as const)(
+    'exposes the shared SOL-034 geometry slots in the %s layout',
+    (layout) => {
+      const surface = mountLayout(layout);
+      expect(surface.dataset.tourSlot).toBe('entry');
+      expect(
+        [...surface.querySelectorAll<HTMLElement>('[data-tour-slot]')].map(
+          (slot) => slot.dataset.tourSlot,
+        ),
+      ).toEqual(['step', 'title', 'subtitle', 'visual', 'captions', 'navigation']);
+    },
+  );
+
   it('keeps the global route on the unchanged page layout', () => {
     const surface = mount('/how-it-works?step=1');
     expect(surface.dataset.layout).toBe('page');
+  });
+
+  it('preserves the accepted page-arrow and progress layout around the stable slots', () => {
+    expect(css).toContain('grid-template-columns: minmax(5.5rem, 1fr) auto minmax(5.5rem, 1fr);');
+    expect(css).toContain(
+      'padding: 0.82rem var(--pro-mobile-gutter) max(0.82rem, env(safe-area-inset-bottom));',
+    );
+    expect(css).toContain('.knowledge-tour__nav-button:last-child {\n  justify-self: end;');
+    expect(css).toContain('min-height: 2.75rem;');
+    expect(css).toContain(
+      ".knowledge-tour[data-layout='embedded'] .knowledge-tour__nav-button {\n  min-width: 2.75rem;",
+    );
   });
 
   it('renders the corrected Step 7 visual, normalized labels and nine real dots', () => {
