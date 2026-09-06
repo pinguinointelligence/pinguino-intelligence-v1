@@ -792,10 +792,13 @@ export function ScanFlow({
               aria-live="polite"
               data-testid="scan-flow-feedback"
             >
+              {/*
+                The raw device zoom factor used to be printed here as „×10". It is a diagnostic
+                number, it means nothing to a customer, and by the time it appeared the camera had
+                already zoomed itself past the point of reading anything. Both the number and the
+                zoom that produced it are gone (owner ruling 2026-09-06).
+              */}
               {success ? 'Odczytano ✓' : feedback}
-              {frame && frame.zoomLevel > 1 && !success ? (
-                <span className="ml-2 text-xs font-normal opacity-80">×{frame.zoomLevel}</span>
-              ) : null}
             </div>
             {frame && engaged && !success ? (
               <div className="absolute inset-x-0 bottom-9 h-1 bg-white/25" aria-hidden="true">

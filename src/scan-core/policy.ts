@@ -256,12 +256,17 @@ export class PolicyState {
         THRESHOLDS.marginNarrow,
         'medium',
       );
+      // SOL-042: the close-up path is exactly where a customer holding a can to the lens lands, and
+      // it was the ONE path with no escalation at all — `harder: false` unconditionally, so zxing's
+      // own rotation ladder was never reached however many times the read missed. It now gets the
+      // same two-miss rung NATIVE_ROI already has.
+      const harderMedium = !unstable && this.missesOnStable >= 2;
       return {
         ...out,
         path: 'LOW_MEDIUM',
-        reason: `fill ${c.fill.toFixed(2)} ≥ ${THRESHOLDS.largeFill}: module ${(moduleNative / planes.medium.factor).toFixed(1)} px on MEDIUM (table 3)`,
+        reason: `fill ${c.fill.toFixed(2)} ≥ ${THRESHOLDS.largeFill}: module ${(moduleNative / planes.medium.factor).toFixed(1)} px on MEDIUM${harderMedium ? ', harder after 2 misses' : ''} (table 3)`,
         roi,
-        harder: false,
+        harder: harderMedium,
         guidance: light,
       };
     }
@@ -304,6 +309,21 @@ export class PolicyState {
     };
   }
 
+  /**
+   * SOL-042. The decode crop must be the candidate's box PROJECTED onto the image axes, not its
+   * width pasted onto X and its height onto Y.
+   *
+   * `widthPx` is the code's length along its OWN reading axis and `heightPx` its bar height. Using
+   * them as x/y extents is only correct while that axis happens to be horizontal. For a code held
+   * vertically the box came out transposed — a short, wide slice ACROSS the middle of a tall code —
+   * so the crop handed to the decoder contained bars but neither guard pattern. Nothing downstream
+   * could recover from that: no decoder option, no rotation, no rescue. It is why turning the can
+   * until the digits sat at the bottom "fixed" scanning — that is the act of bringing the reading
+   * axis back to horizontal, and it is why the failure has a period of 90 degrees, not 180.
+   *
+   * The projection below is exactly the one `candidateBox` in quality.ts already uses, and it is a
+   * no-op at 0 degrees (cos=1, sin=0), so a horizontal code crops byte-identically to before.
+   */
   private cropOn(
     c: Candidate,
     factor: number,
@@ -314,12 +334,15 @@ export class PolicyState {
   ): Roi {
     const w = c.widthPx / factor;
     const h = Math.max(c.heightPx / factor, w * 0.25);
-    const mx = w * margin;
-    const my = h * margin;
-    const x0 = Math.max(0, Math.floor(c.cx / factor - w / 2 - mx));
-    const y0 = Math.max(0, Math.floor(c.cy / factor - h / 2 - my));
-    const x1 = Math.min(planeW, Math.ceil(c.cx / factor + w / 2 + mx));
-    const y1 = Math.min(planeH, Math.ceil(c.cy / factor + h / 2 + my));
+    const rad = (c.angleDeg * Math.PI) / 180;
+    const hw = (Math.abs(Math.cos(rad)) * w + Math.abs(Math.sin(rad)) * h) / 2;
+    const hh = (Math.abs(Math.sin(rad)) * w + Math.abs(Math.cos(rad)) * h) / 2;
+    const mx = hw * 2 * margin;
+    const my = hh * 2 * margin;
+    const x0 = Math.max(0, Math.floor(c.cx / factor - hw - mx));
+    const y0 = Math.max(0, Math.floor(c.cy / factor - hh - my));
+    const x1 = Math.min(planeW, Math.ceil(c.cx / factor + hw + mx));
+    const y1 = Math.min(planeH, Math.ceil(c.cy / factor + hh + my));
     return { x: x0, y: y0, w: Math.max(0, x1 - x0), h: Math.max(0, y1 - y0), plane };
   }
 }
