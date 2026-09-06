@@ -433,7 +433,43 @@ const round4 = (value: number): number => Math.round(value * 1e4) / 1e4;
  * itself. `preferStronger` would enforce that anyway; doing it in this order
  * makes the intent legible at the call site too.
  */
+/**
+ * Found data is never traded for an estimate — but found data of a WEAKER tier that contradicts
+ * the stronger declarations (a web page's "0 g fibre" against the label's own energy) is not
+ * kept either: the strongest sources decide, the contradicting weaker values are dropped and
+ * those fields are estimated. If the strong sources contradict themselves, the contradiction
+ * stands and the product stays in REVIEW.
+ */
 export function resolveProductWorkingValues(
+  input: ProductWorkingValuesInput,
+  knowledge: MapperKnowledge,
+): ProductWorkingValues {
+  const first = resolveProductWorkingValuesOnce(input, knowledge);
+  if (!first.contradictedByDeclaration) return first;
+  const tier = (field: WorkingNumericField): number =>
+    input.declaredConfidenceByField?.[field] ?? input.declaredConfidence;
+  const declaredFields = WORKING_NUMERIC_FIELDS.filter(
+    (field) => numeric(input.declared[field]) !== null,
+  );
+  if (declaredFields.length === 0) return first;
+  const top = Math.max(...declaredFields.map(tier));
+  const weaker = declaredFields.filter((field) => tier(field) < top);
+  if (weaker.length === 0) return first;
+  const declared = { ...input.declared };
+  const declaredBasis = { ...(input.declaredBasis ?? {}) };
+  for (const field of weaker) {
+    delete declared[field];
+    delete declaredBasis[field];
+  }
+  const retry = resolveProductWorkingValuesOnce({ ...input, declared, declaredBasis }, knowledge);
+  if (retry.contradictedByDeclaration) return first;
+  retry.trace.push(
+    `weaker-tier declarations contradicted the stronger ones and were estimated instead: ${weaker.join(', ')}`,
+  );
+  return retry;
+}
+
+function resolveProductWorkingValuesOnce(
   input: ProductWorkingValuesInput,
   knowledge: MapperKnowledge,
 ): ProductWorkingValues {
