@@ -38,6 +38,42 @@ New findings are appended at the end only; earlier numbers are never renumbered.
 | SOL-039 | HOME's "Przelicz i popraw" was silent: the pipeline publishes its verdict in `recalculationTerminal` (the state PRO renders) and the HOME panel read only `preview`/`previewIssue`. The customer waited ~16 s and the screen said nothing. | FIX READY / NOT ON STAGING | `homeRecalculationVerdict.ts` + tests; served repro on the local preview build of this branch |
 | SOL-040 | HOME had no production stage at all: "Zróbmy to" set `preparationStarted` and nothing rendered — the journey stopped at the recipe. True on `origin/staging` too. The PRO production workspace exists but is a professional dashboard whose repository this build reports unavailable (PRO's own Production tab shows "coming soon"), and HOME's own preparation copy had never been wired. | FIX READY / NOT ON STAGING | `homePreparationSteps.ts` + `HomePreparationSection.tsx` + tests; served on the preview build: base lines in order, "Na koniec dodaj topping." before the add-ons, every step ticked → "Gotowe!" |
 
+## Owner's own test — iPhone / Safari on `staging.pinguinoai.com`, 2026-09-06
+
+**What the canonical staging actually served during that test.** The custom domain is aliased to the
+`target: production` deployment built from branch `staging`, NOT from this PR. At the time of the
+test that was `dpl_4KxzivMCDzFNhxg8MqwAsaw67p6g` (staging `c66c1d01`), replaced at 10:17 by
+`dpl_FXyFo74s2Cx89iVqgKhmxKpwpb26` (staging `f03038d0`); the served bundle today is
+`assets/index-BDgr2_cZ.js`. Proof that this bundle does NOT contain #186's client, taken from the
+served file itself:
+
+| String | In the served canonical bundle |
+| --- | --- |
+| `Nie ma czego poprawiać` (SOL-039 fix) | 0 |
+| `dodano jako dodatek` (scanned add-on → recipe) | 0 |
+| `home-section-preparation` (SOL-040 fix) | 0 |
+| `Zgłoś do weryfikacji` (what the owner saw) | 3 |
+| `INGREDIENTS_EVIDENCE_REQUIRED` (what the owner saw) | 1 |
+| `not ready:` (the raw line) | 1 |
+
+**Therefore the owner's test proves the BACKEND and the pre-#186 client, not this branch.** Every
+Edge Function, migration and RPC it exercised is the one deployed from this workstream; the screens
+it exposed are the ones #186 replaces. The same cases are repeated on the canonical deployment after
+the merge.
+
+### Test 1 — Milka `Choco brownie` — `OWNER OBSERVED PASS`
+
+Found in a fraction of a second, the UI said the product already exists, no duplicate was created.
+This is the shared-registry path working as designed: `gellatti_upsert_customer_added_product_v1`
+looks for an existing `PR-ING-%` shared commercial product on the same EAN and, when it finds one,
+only links the customer to it (`user_product_relations`) instead of creating a second article.
+
+### Test 2 — `Cola Zero` / Hacendado / GTIN `8402001042911` — partial pass, three defects
+
+The code was read, the product was recognised from it, the flow asked for a label photograph, read
+the label and saved the article as the customer's own private product, and said so. That whole path
+is the intended behaviour. It also exposed SOL-042, SOL-043 and SOL-044 below.
+
 ## Root causes found and fixed in this workstream
 
 1. **Found data was traded for an estimate.** `DECLARATION_SOURCES` in the customer profile adapter

@@ -301,9 +301,11 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     expect(text()).toContain('Sport 002');
     expect(text()).toContain('Vitamin Well');
     expect(text()).not.toContain('Co to za produkt?');
-    // the fake authority did not mark it engine-usable: kept privately, honest about recipe readiness
+    // the fake authority did not mark it engine-usable: kept privately, and the screen says in the
+    // customer's own words what is still needed — never "verification" (SOL-044)
     expect(text()).toContain('Produkt zapisany prywatnie');
-    expect(text()).toContain('wymaga jeszcze weryfikacji');
+    expect(text()).toContain('zapisany u Ciebie');
+    expect(text()).not.toContain('weryfikacj');
   });
 
   it('a registry identity whose family nobody can tell asks it once, with the product name shown', async () => {
@@ -477,7 +479,7 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     expect(text()).toContain('Sport 002');
     // no family question, no photos, no fields: the product came back ready and saved
     expect(text()).not.toContain('Co to za produkt?');
-    expect(text()).not.toContain('wymaga jeszcze weryfikacji');
+    expect(text()).not.toContain('weryfikacj');
     expect(text()).toContain('Zapisano jako Twój produkt');
     expect(discovery.calls.filter((c) => c.startsWith(`finalize:${CODE}`)).length).toBe(1);
   });
@@ -529,7 +531,8 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     });
     await flush();
     expect(text()).toContain('Produkt zapisany prywatnie');
-    expect(text()).toContain('wymaga jeszcze weryfikacji');
+    expect(text()).toContain('zapisany u Ciebie');
+    expect(text()).not.toContain('weryfikacj');
     expect(discovery.created.get(CODE)).toMatchObject({ engineUsable: false });
     expect(button('Dodaj do receptury')).toBeNull(); // catalogue mode; and never recipe-eligible
   });

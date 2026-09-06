@@ -7,6 +7,7 @@
  *     technical parameter — and the customer's answers become the finalize confirmations.
  */
 import type { ConfirmedScan } from '@/scan-contract/confirmedScan';
+import { homeCustomerNotice } from '@/features/home-creator/homeCustomerNotice';
 import type { ExactCandidate, ExactWebIdentity, FinalizeInput } from '@/scan-import-v2';
 import type { ScanExactProduct } from '@/services/productScanner';
 
@@ -43,6 +44,35 @@ export function productFieldsNotInLedger(
  */
 export function onlySemanticsMissing(missingCritical: readonly string[]): boolean {
   return missingCritical.length > 0 && missingCritical.every((code) => /semantic/i.test(code));
+}
+
+/**
+ * SOL-043 — every sentence the scanner shows a customer passes the SHARED customer-voice filter
+ * (the one HOME already uses). An Engine/ProductBehavior enum, a raw status line or an internal
+ * name becomes the calm sentence instead; a verdict is never changed, only its wording.
+ */
+export function customerSentence(text: string | null | undefined): string | null {
+  return homeCustomerNotice(text);
+}
+
+/**
+ * What the customer still has to supply, in their own words. Built from the SAME plain-field
+ * mapping the flow already asks with, so a code the mapping does not know produces the general
+ * sentence rather than leaking itself.
+ */
+export function missingDataSentence(missingCritical: readonly string[]): string {
+  const fields = plainFieldsFor(missingCritical);
+  const named = fields
+    .filter((field) => field.key !== 'basis' && field.key !== 'unbranded')
+    .map((field) => field.label.replace(/\s*\(.*?\)\s*$/, '').toLowerCase());
+  const unique = [...new Set(named)];
+  if (unique.length === 0)
+    return 'Produkt jest zapisany u Ciebie. Gdy dojdą kolejne dane, sami sprawdzimy, do czego można go użyć.';
+  const list =
+    unique.length === 1
+      ? unique[0]
+      : `${unique.slice(0, -1).join(', ')} i ${unique[unique.length - 1]}`;
+  return `Produkt jest zapisany u Ciebie. Uzupełnij ${list}, aby użyć go w recepturze.`;
 }
 
 export function manualConfirmedScan(input: string, now = Date.now()): ConfirmedScan | null {

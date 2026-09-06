@@ -60,7 +60,11 @@ describe('scan flow boundary', () => {
     expect(FLOW).toMatch(/nie tworzymy duplikatu/);
     expect(FLOW).toMatch(/prywatn/);
     expect(FLOW).toMatch(/disabled=\{!engineReady \|\| busy\}/);
-    expect(FLOW).toMatch(/Zgłoś do weryfikacji/);
+    // SOL-044 (owner iPhone test, 2026-09-06): Gellatti does not present its process to the
+    // customer as a manual product verification. The private save is the honest action.
+    expect(FLOW).not.toMatch(/Zgłoś do weryfikacji/);
+    expect(FLOW).not.toMatch(/weryfikacj/i);
+    expect(FLOW).toMatch(/data-testid="scan-flow-save-private"/);
   });
 
   it('is the flow behind HOME/PRO „Dodaj składnik → Skanuj” and Produkty → „Skanuj produkt”', () => {

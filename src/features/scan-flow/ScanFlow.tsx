@@ -54,6 +54,8 @@ import {
   plainFieldsFor,
   positionHint,
   prefillFromIdentity,
+  customerSentence,
+  missingDataSentence,
   onlySemanticsMissing,
   productFieldsNotInLedger,
   scanFeedbackText,
@@ -144,6 +146,8 @@ type Phase =
       resolved: ResolvedScanProductLike;
       engineReady: boolean;
       privateNotReady: boolean;
+      /** what the customer still has to supply, so the screen can say it in their own words */
+      missingCritical?: readonly string[];
       /** recipe mode: the product the customer asked to add went straight into the recipe */
       added?: boolean;
     }
@@ -329,7 +333,7 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
                     kind: 'label',
                     session: next,
                     notice:
-                      'Ten rodzaj produktu wymaga jeszcze weryfikacji przed użyciem w recepturze — możesz zapisać go prywatnie.',
+                      'Tego rodzaju produktu nie użyjemy jeszcze w recepturze. Możesz zapisać go u siebie — sprawdzimy go ponownie, gdy dojdą dane.',
                     canSavePrivate: true,
                   },
             );
@@ -433,7 +437,7 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
                 kind: 'label',
                 session: next,
                 notice:
-                  'Nie udało się ustalić rodzaju tego produktu, więc nie trafi jeszcze do receptury. Możesz zapisać go prywatnie albo zgłosić do weryfikacji.',
+                  'Nie udało się ustalić rodzaju tego produktu, więc nie trafi jeszcze do receptury. Możesz zapisać go u siebie i wrócić do niego później.',
                 canSavePrivate: true,
               });
             else if (!labelTriedRef.current)
@@ -449,7 +453,7 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
                 kind: 'label',
                 session: next,
                 notice:
-                  'Odczytaliśmy etykietę. Część parametrów technicznych wymaga jeszcze weryfikacji przed użyciem w recepturze — produkt możesz zapisać prywatnie.',
+                  'Odczytaliśmy etykietę i zapisaliśmy dane. Do receptury brakuje jeszcze paru wartości — zapisz produkt u siebie, sprawdzimy go ponownie, gdy dojdą.',
                 canSavePrivate: true,
               });
             return;
@@ -493,6 +497,7 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
             resolved,
             engineReady: r.engineReady,
             privateNotReady: r.privateNotReady === true || !r.engineReady,
+            missingCritical: r.readiness?.missingCritical ?? session?.missingCritical ?? [],
             added,
           });
           return;
@@ -953,24 +958,6 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
         }),
     );
 
-  const requestVerification = (session: DiscoverySession) =>
-    withBusy(
-      async () => {
-        const port = ports?.discovery;
-        if (!port) return;
-        const ctx = contextFor(await getScanImportV2AccountId());
-        const r = await continueDiscovery(session, { type: 'request' }, ctx, port);
-        await handleResult(r, codeRef.current ?? '', ctx);
-      },
-      () =>
-        setPhase({
-          kind: 'label',
-          session,
-          notice: 'Nie udało się wysłać zgłoszenia — spróbuj ponownie.',
-          canSavePrivate: refusedOnceRef.current,
-        }),
-    );
-
   /* ------------------------------------------------------------------------------------------ */
   /* view pieces                                                                                 */
   /* ------------------------------------------------------------------------------------------ */
@@ -1337,8 +1324,9 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
             <p className="text-xs text-stone-600">Rozpoznano z pamięci urządzenia (offline).</p>
           ) : null}
           {!phase.engineReady ? (
-            <p className="text-xs text-stone-600">
-              Produkt jest zapisany. Do użycia w recepturze wymaga jeszcze weryfikacji.
+            <p className="text-xs text-stone-600" data-testid="scan-flow-known-incomplete">
+              Ten produkt jest u Ciebie zapisany, ale nie mamy jeszcze kompletu danych, żeby użyć go
+              w recepturze.
             </p>
           ) : null}
           {addButton(phase.resolved, phase.engineReady)}
@@ -1374,7 +1362,7 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
         <div className="space-y-3">
           {recognizedLine}
           <p className="text-sm text-stone-700">
-            {phase.notice ??
+            {customerSentence(phase.notice) ??
               (recognized
                 ? 'Brakuje jeszcze danych z etykiety. Zrób zdjęcia składu i tabeli wartości odżywczych — możesz dodać kilka zdjęć.'
                 : 'Nie znam jeszcze tego produktu. Zrób zdjęcia etykiety: przód opakowania, skład i tabelę wartości odżywczych.')}
@@ -1408,14 +1396,6 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
               Wpiszę dane ręcznie
             </button>
             {phase.canSavePrivate ? privateSaveButton(phase.session) : null}
-            <button
-              type="button"
-              className={btnSecondary}
-              disabled={busy}
-              onClick={() => void requestVerification(phase.session)}
-            >
-              Zgłoś do weryfikacji
-            </button>
           </div>
         </div>
       ) : null}
@@ -1456,7 +1436,9 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
               ? 'Sprawdź dane z etykiety i uzupełnij brakujące. Produkt zapiszemy prywatnie na Twoim koncie.'
               : 'Uzupełnij dane z etykiety. Produkt zapiszemy prywatnie na Twoim koncie.'}
           </p>
-          {phase.notice ? <p className="text-xs text-red-700">{phase.notice}</p> : null}
+          {customerSentence(phase.notice) ? (
+            <p className="text-xs text-red-700">{customerSentence(phase.notice)}</p>
+          ) : null}
           {photoList(phase.session)}
           {phase.fields.map((field) => (
             <label key={field.key} className="block text-xs text-stone-700">
@@ -1510,9 +1492,8 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
           ))}
           {phase.fields.length === 0 ? (
             <p className="text-xs text-stone-600">
-              Rozpoznaliśmy produkt i zapisaliśmy dane z etykiety. Część parametrów technicznych
-              wymaga jeszcze weryfikacji przed użyciem w recepturze — produkt możesz zapisać
-              prywatnie.
+              Odczytaliśmy etykietę i zapisaliśmy dane. Zapisz produkt u siebie — gdy dojdą kolejne
+              dane, sam sprawdzimy, do czego można go użyć.
             </p>
           ) : null}
           <div className="flex flex-wrap gap-2">
@@ -1523,14 +1504,6 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
             ) : null}
             {phase.canSavePrivate ? privateSaveButton(phase.session) : null}
             {photoInput(phase.session, 'Zrób zdjęcie etykiety', 'camera_manual', false, true)}
-            <button
-              type="button"
-              className={btnSecondary}
-              disabled={busy}
-              onClick={() => void requestVerification(phase.session)}
-            >
-              Zgłoś do weryfikacji
-            </button>
           </div>
         </form>
       ) : null}
@@ -1549,8 +1522,8 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
           {recognizedLine}
           {productCard(phase.product)}
           {phase.privateNotReady ? (
-            <p className="text-xs text-stone-600">
-              Produkt jest zapisany. Do użycia w recepturze wymaga jeszcze weryfikacji.
+            <p className="text-xs text-stone-600" data-testid="scan-flow-private-missing">
+              {missingDataSentence(phase.missingCritical ?? [])}
             </p>
           ) : null}
           {phase.added ? null : addButton(phase.resolved, phase.engineReady)}
@@ -1562,7 +1535,7 @@ export function ScanFlow({ mode, onResolved, resolveLabel, intro }: ScanFlowProp
         <div className="space-y-3">
           {recognizedLine}
           <p className="text-sm text-stone-700">
-            Zgłoszono do weryfikacji. Damy znać, gdy produkt będzie gotowy.
+            Ten produkt jest już u Ciebie zapisany. Damy znać, gdy będzie gotowy do receptury.
           </p>
           {againButton}
         </div>
