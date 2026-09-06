@@ -98,10 +98,12 @@ export {
 } from './sorbetStabilizerSystemAuthority';
 
 export { planSorbetStabilizerSystemRescale } from './sorbetStabilizerRescaleProjection';
+export { planOwnerStabilizerSystemRescale } from './ownerStabilizerRescaleProjection';
 
 export {
   assessOwnerStabilizerSystem,
   clampOwnerStabilizerComponentGrams,
   ownerStabilizerSystemApplies,
   ownerStabilizerSystemItems,
+  ownerStabilizerWholeGramBand,
 } from './ownerStabilizerSystemAuthority';
