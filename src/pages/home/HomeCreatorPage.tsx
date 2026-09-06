@@ -347,6 +347,21 @@ export function HomeCreatorPage() {
     [addIngredientLine],
   );
 
+  /** the profile|machine|amount answers a starter recipe was last generated (or adopted) for */
+  const lastGeneratedFor = useRef<string | null>(null);
+
+  /**
+   * A product scanned before any recipe exists lands in the recipe the customer now owns: the
+   * recipe stage opens on the live store (the same precedent as adopting a derived recipe) and
+   * no starter is generated over it for these answers — the scanned line would be wiped.
+   */
+  const revealRecipeAfterScan = useCallback(() => {
+    if (useHomeDraftStore.getState().recipeReady) return;
+    useHomeDraftStore.getState().markRecipeReady(true);
+    lastGeneratedFor.current = `${draft.profile}|${machine?.id ?? 'none'}|${amount?.totalGrams ?? 0}`;
+    window.setTimeout(() => scrollToStage('recipe'), 60);
+  }, [draft.profile, machine, amount, scrollToStage]);
+
   /**
    * A scanned catalogue product (the customer's own or a shared commercial one) takes the SAME
    * door the picker takes: catalogue selection → own profile → ProductBehavior → the add handler
@@ -362,6 +377,7 @@ export function HomeCreatorPage() {
       switch (outcome.kind) {
         case 'ingredient':
           handleAddIngredient(outcome.ingredient, outcome.behavior ?? undefined);
+          revealRecipeAfterScan();
           setScanNotice(
             product.completedFromSimilar
               ? `${name}: produkt dodany. Brakujące dane uzupełniliśmy na podstawie podobnych produktów.`
@@ -380,7 +396,7 @@ export function HomeCreatorPage() {
           );
       }
     },
-    [handleAddIngredient, scanBehaviorContext],
+    [handleAddIngredient, revealRecipeAfterScan, scanBehaviorContext],
   );
 
   /** §57: the existing Topping behaviour — no Crown, editable grams. Shared identically. */
@@ -399,7 +415,6 @@ export function HomeCreatorPage() {
     [],
   );
 
-  const lastGeneratedFor = useRef<string | null>(null);
   useEffect(() => {
     // Generate once, when every required answer is in — never on every render.
     //
@@ -740,9 +755,11 @@ export function HomeCreatorPage() {
                       setScanNotice(`${name} jest już w recepturze.`);
                       return;
                     case 'needs_amount':
+                      revealRecipeAfterScan();
                       setScanNotice(`${name} dodano do receptury — ustaw ilość.`);
                       return;
                     default:
+                      revealRecipeAfterScan();
                       setScanNotice(
                         product.completedFromSimilar
                           ? `${name}: produkt dodany. Brakujące dane uzupełniliśmy na podstawie podobnych produktów.`
