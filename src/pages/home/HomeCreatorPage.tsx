@@ -34,6 +34,9 @@ import { useCanSeeExactGrams } from '@/features/home-creator/useHomeEntitlement'
 import { useHomeFlow } from '@/features/home-creator/useHomeFlow';
 import { useHomeRecipeResult } from '@/features/home-creator/useHomeRecipeResult';
 import { useHomeIntentIngredients } from '@/features/home-creator/useHomeIntentIngredients';
+import { useHomeBehaviorContext } from '@/features/home-creator/useHomeBehaviorContext';
+import { hydrateScannedCatalogProduct } from '@/features/home-creator/homeScannedCatalogProduct';
+import type { ResolvedScanProductLike } from '@/features/scan-flow/scanFlowLogic';
 import { ScanFlow } from '@/features/scan-flow/ScanFlow';
 import { HomeMatchGate } from '@/features/home-creator/matching/HomeMatchGate';
 import {
@@ -93,6 +96,7 @@ export function HomeCreatorPage() {
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scanNotice, setScanNotice] = useState<string | null>(null);
   const intentIngredients = useHomeIntentIngredients();
+  const scanBehaviorContext = useHomeBehaviorContext();
   // §56: the SAME library the Pro builder feeds its picker. Demo/free get the local
   // preview catalogue, an authenticated paid session gets live Mapper search — HOME
   // does not widen or narrow what Pro can see.
@@ -341,6 +345,42 @@ export function HomeCreatorPage() {
       addIngredientLine(ingredient, behavior ?? null, 0);
     },
     [addIngredientLine],
+  );
+
+  /**
+   * A scanned catalogue product (the customer's own or a shared commercial one) takes the SAME
+   * door the picker takes: catalogue selection → own profile → ProductBehavior → the add handler
+   * above. The outcome is always reported to the customer in plain words.
+   */
+  const addScannedCatalogProduct = useCallback(
+    async (product: ResolvedScanProductLike) => {
+      const name = product.displayName;
+      const outcome = await hydrateScannedCatalogProduct(
+        { id: product.id, barcode: product.barcode, displayName: name },
+        scanBehaviorContext,
+      );
+      switch (outcome.kind) {
+        case 'ingredient':
+          handleAddIngredient(outcome.ingredient, outcome.behavior ?? undefined);
+          setScanNotice(
+            product.completedFromSimilar
+              ? `${name}: produkt dodany. Brakujące dane uzupełniliśmy na podstawie podobnych produktów.`
+              : `${name}: dodano do receptury.`,
+          );
+          return;
+        case 'topping_only':
+          setScanNotice(`${name} nadaje się jako dodatek — dodaj go w sekcji dodatków (topping).`);
+          return;
+        case 'unavailable':
+          setScanNotice(`${name}: ${outcome.message}`);
+          return;
+        default:
+          setScanNotice(
+            `${name}: produkt jest zapisany, ale nie jest jeszcze gotowy do użycia w recepturze.`,
+          );
+      }
+    },
+    [handleAddIngredient, scanBehaviorContext],
   );
 
   /** §57: the existing Topping behaviour — no Crown, editable grams. Shared identically. */
@@ -681,6 +721,11 @@ export function HomeCreatorPage() {
               onResolved={(product) => {
                 setScanNotice(null);
                 setScannerOpen(false);
+                // a catalogue product (own or shared) takes the picker's door; a Mapper row the typed door
+                if (product.entityKind !== 'pi_base') {
+                  void addScannedCatalogProduct(product);
+                  return;
+                }
                 // the outcome of the shared add door is reported, never swallowed (owner QA 2026-09-05)
                 void intentIngredients.addScannedProduct(product.id).then((outcome) => {
                   const name = product.displayName;

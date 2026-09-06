@@ -48,6 +48,25 @@ describe('a scanned product enters through the typed-ingredient door', () => {
     expect(add).toContain('setMainIngredient(added.lineId)');
   });
 
+  it('a scanned catalogue product takes the PRO picker door, never a HOME-only hydration', () => {
+    const door = readFileSync('src/features/home-creator/homeScannedCatalogProduct.ts', 'utf8');
+    // the exact building blocks ProductPickerPopover.addScannedProduct uses, in the same order
+    for (const step of [
+      "scannedProductRecipeTarget(hits, scanned, 'BASE')",
+      "resolveCurrentMapperCatalogSelection(hit, 'BASE'",
+      'engineIngredientForCatalogSelection(hit, selection)',
+      'resolveBehavior({',
+      'snapshotServerResolvedProductBehavior({',
+    ])
+      expect(door).toContain(step);
+    // HOME routes by kind: Mapper rows through the typed door, everything else through this one
+    expect(HOME_SCANNER_BLOCK).toContain("product.entityKind !== 'pi_base'");
+    expect(HOME_SCANNER_BLOCK).toContain('addScannedCatalogProduct(product)');
+    expect(HOME_PAGE).toContain(
+      'handleAddIngredient(outcome.ingredient, outcome.behavior ?? undefined)',
+    );
+  });
+
   it('HOME hands the scanner nothing but catalogue ids', () => {
     expect(HOME_SCANNER_BLOCK).toContain('mode="recipe"');
     expect(HOME_SCANNER_BLOCK).toContain('addScannedProduct(product.id)');
