@@ -50,7 +50,8 @@ vi.mock('./scanCoreCapture', () => ({
   describeCaptureError: () => 'no camera',
 }));
 
-import { ScanFlow, entryContextOf, isRecipeEntry, type ScanEntryContext } from './ScanFlow';
+import { ScanFlow } from './ScanFlow';
+import { entryContextOf, isRecipeEntry, type ScanEntryContext } from './scanFlowLogic';
 
 const fakes = () =>
   (globalThis as Record<string, unknown>)['__entryFakes'] as {

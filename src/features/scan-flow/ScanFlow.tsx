@@ -44,7 +44,11 @@ import {
 } from './scanCoreCapture';
 import {
   confirmationsFromFields,
+  entryContextOf,
+  isRecipeEntry,
   manualConfirmedScan,
+  rememberGuestCode,
+  takeGuestCode,
   plainFieldsFor,
   positionHint,
   prefillFromIdentity,
@@ -52,6 +56,7 @@ import {
   toResolvedScanProduct,
   type PlainField,
   type ResolvedScanProductLike,
+  type ScanEntryContext,
 } from './scanFlowLogic';
 
 /** the dedicated exact-identity authority once its migration is deployed (staging: yes); otherwise the interim path */
@@ -81,33 +86,6 @@ const FAMILY_LABEL: Record<CustomerFamily, string> = {
   other: 'Inne',
 };
 
-/**
- * OWNER DECISION 2026-09-06 — ONE CANONICAL SCANNER IN THE WHOLE SYSTEM.
- *
- * There is no separate HOME, PRO, ingredient or product scanner: every entry mounts THIS component
- * and runs THIS pipeline — the same camera, the same EAN recognition, the same sources, the same
- * completion from similar products, the same readiness rules, the same messages, the same save.
- * Only two things differ,
- * and they are the whole of this contract: WHERE the customer came from, and WHERE they go back to.
- *
- *  - `add_product`     the hamburger's "Dodaj produkt". The customer already said they want to add
- *                      one, so an unknown code is never answered with "do you want to add it?" —
- *                      the full recognition and Rescue simply run.
- *  - `recipe_*`        a recipe's "Dodaj składnik" / "Dodaj topping". An unknown code asks exactly
- *                      one question, and "Nie" returns to the place the customer was adding from.
- *                      "Tak" continues with the SAME scan and the SAME photos — the camera is never
- *                      restarted, because it is the same scan.
- *  - `guest_demo`      nobody is signed in. A guest may FIND an existing product; they may not
- *                      create one, so no OCR, no enrichment, no Rescue, no private save and no
- *                      verification is started for them — an unknown code is where HOME and PRO are
- *                      worth paying for.
- */
-export type ScanEntryContext =
-  | 'add_product'
-  | 'recipe_ingredient'
-  | 'recipe_topping'
-  | 'guest_demo';
-
 export interface ScanFlowProps {
   mode: 'recipe' | 'catalog';
   /** where the customer came from. Defaults from `mode` so existing call sites keep working. */
@@ -120,46 +98,6 @@ export interface ScanFlowProps {
   onChoosePlan?: (plan: 'home' | 'pro') => void;
   resolveLabel?: string;
   intro?: string;
-}
-
-/**
- * The one thing a guest's scan is allowed to leave behind: the code they read.
- *
- * Not their photos, not evidence, not a product — only the digits, in sessionStorage, so that
- * choosing HOME or PRO does not cost them a second scan. It is cleared the moment it is used, and
- * every access is guarded: a browser that refuses storage simply loses the convenience.
- */
-const GUEST_CODE_KEY = 'gellatti.scan.guestCode';
-
-export function rememberGuestCode(code: string): void {
-  try {
-    sessionStorage.setItem(GUEST_CODE_KEY, code);
-  } catch {
-    /* storage refused: the customer scans again, nothing else changes */
-  }
-}
-
-export function takeGuestCode(): string | null {
-  try {
-    const code = sessionStorage.getItem(GUEST_CODE_KEY);
-    if (code) sessionStorage.removeItem(GUEST_CODE_KEY);
-    return code && /^\d{8,14}$/.test(code) ? code : null;
-  } catch {
-    return null;
-  }
-}
-
-/** an entry that came from a recipe: the one place the add question belongs */
-export function isRecipeEntry(entry: ScanEntryContext): boolean {
-  return entry === 'recipe_ingredient' || entry === 'recipe_topping';
-}
-
-/** the entry a call site means when it only says `mode` */
-export function entryContextOf(
-  mode: ScanFlowProps['mode'],
-  entryContext: ScanEntryContext | undefined,
-): ScanEntryContext {
-  return entryContext ?? (mode === 'catalog' ? 'add_product' : 'recipe_ingredient');
 }
 
 type Phase =
@@ -537,7 +475,7 @@ export function ScanFlow({
         setBusy(false);
       }
     },
-    [ports, handleResult],
+    [ports, handleResult, entry],
   );
   const resolveRef = useRef(resolve);
   resolveRef.current = resolve;

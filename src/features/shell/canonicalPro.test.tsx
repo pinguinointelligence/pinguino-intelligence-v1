@@ -108,6 +108,9 @@ describe('canonical Gellatti Pro — menu (proofs 4–6, 17–18)', () => {
       'howItWorks',
       'production',
       'products',
+      // OWNER 2026-09-06: „Dodaj produkt" is the hamburger entry into the ONE Canonical Scanner.
+      // It is a destination page, not a contextual tool, and it exists for HOME and PRO alike.
+      'scanProduct',
       'machine',
       // OWNER AUTHORIZED (2026-08-29): the duplicate `Ustawienia etykiety`
       // entry is gone; Community becomes the one door to the public creator
