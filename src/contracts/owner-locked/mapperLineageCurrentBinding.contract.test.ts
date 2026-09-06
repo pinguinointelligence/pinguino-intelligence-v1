@@ -26,7 +26,7 @@ import { SRC_ROOT } from './sourceContract';
 
 const REPO_ROOT = resolve(SRC_ROOT, '..');
 const migration = readFileSync(
-  join(REPO_ROOT, 'supabase', 'migrations', '20260905150000_mapper_lineage_current_binding.sql'),
+  join(REPO_ROOT, 'supabase', 'migrations', '20260906003955_mapper_lineage_current_binding.sql'),
   'utf8',
 );
 

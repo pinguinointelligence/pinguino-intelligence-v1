@@ -90,6 +90,12 @@ Status legend — **LOCKED**: served, tested, owner-approved, guarded.
 
 ---
 
+## Applied migration identity addendum
+
+| ID | Contract | Applied staging versions | Regression contract | Status |
+| --- | --- | --- | --- | --- |
+| SOL-014 | Mapper-lineage migration identity matches the staging ledger; neither operation may be published under a second timestamp or executed again. The accepted ProductBehavior behaviour from GEL-P0-028/GEL-P0-029 is unchanged. | `20260906003955_mapper_lineage_current_binding`, `20260906004154_reclassify_stale_mapper_lineage_bindings` | `migrationLedgerAlignment.contract.test.ts`; `mapperLineageCurrentBinding.contract.test.ts` | Guarded in PR #198; owner acceptance pending |
+
 ## Historical regressions these contracts exist to prevent
 
 | Date       | Commit     | Stated purpose                                                  | What it actually did                                                                                                                                                                                                                                                                                                                                                                       | Now caught by                                                                                           |
