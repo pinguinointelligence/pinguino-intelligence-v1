@@ -100,8 +100,8 @@ import { resolveFunctionalRole } from '@/features/formulation/ingredientRoles';
 import {
   clampOwnerStabilizerComponentGrams,
   evaluateRecipeConstraintAuthority,
-  planSorbetStabilizerSystemRescale,
-  sorbetStabilizerSystemItems,
+  ownerStabilizerSystemItems,
+  planOwnerStabilizerSystemRescale,
 } from '@/features/recipe-constraints';
 import { buildRecipeInput, type RecipeInputState } from '@/features/studio/buildRecipeInput';
 import { classifyProfileTransition } from '@/features/pro-workbench/profileCompatibility';
@@ -212,8 +212,7 @@ export type BatchResizeResult =
   | { readonly ok: false; readonly conflict: BatchResizeConflict };
 
 export type BatchResizeWriteResult =
-  | { readonly ok: true }
-  | { readonly ok: false; readonly conflict: BatchResizeConflict };
+  { readonly ok: true } | { readonly ok: false; readonly conflict: BatchResizeConflict };
 
 export interface RecipeState {
   mode: ProductMode;
@@ -894,10 +893,11 @@ export const resizeRecipeBatch = (
 };
 
 /**
- * PC-02 — project the owner-approved Sorbet stabilizer system onto the band the
- * NEW batch derives, then let this same resize authority reconcile everything
- * else around it. The percentage limit lives in the stabilizer authority and is
- * never restated here.
+ * PC-02 / SOL-041 — project the existing stabilizer system through the
+ * authority of the selected formulation family, then let this same resize
+ * authority reconcile everything else around it. Gelato and Sorbet keep their
+ * distinct published bands; Vegan and Protein keep their own presence-only,
+ * template-held dose contract. No range is restated or borrowed here.
  *
  * The projection is skipped — leaving today's behaviour untouched — when any
  * component of the system is not the resize's to move: physically weighed,
@@ -924,7 +924,7 @@ const rescaleWithOwnerStabilizerSystem = (
     reservedMainGrams > 0 &&
     Math.abs(draftSum + reservedMainGrams - state.target_batch_grams) <=
       BATCH_RESIZE_TOLERANCE_GRAMS;
-  const components = sorbetStabilizerSystemItems(resized);
+  const components = ownerStabilizerSystemItems(resized);
   if (components.length === 0) return resized;
   const adjustable = components.every(
     (item) =>
@@ -936,7 +936,7 @@ const rescaleWithOwnerStabilizerSystem = (
   );
   if (!adjustable) return resized;
 
-  const plan = planSorbetStabilizerSystemRescale(
+  const plan = planOwnerStabilizerSystemRescale(
     buildRecipeInput(state),
     buildRecipeInput({ ...state, items: resized, target_batch_grams: nextBatchGrams }),
   );
@@ -979,9 +979,7 @@ const fromPreset = (preset: DemoPreset) => ({
   batchResizeConflict: null as BatchResizeConflict | null,
   machine_capacity_grams: preset.machine_capacity_grams,
   machine_capacity_source: (preset.machine_capacity_grams === null ? null : 'manual') as
-    | 'machine'
-    | 'manual'
-    | null,
+    'machine' | 'manual' | null,
   flavor_intensity: preset.flavor_intensity,
   cost_priority: preset.cost_priority,
   direction_targets: { ...DEFAULT_DIRECTION_TARGETS },
@@ -1491,13 +1489,10 @@ export const useRecipeStore = create<RecipeState>()(
           set({ batchResizeConflict: resized.conflict });
           return { ok: false, conflict: resized.conflict };
         }
-        // PC-02 — the owner-approved Sorbet stabilizer system is capped at a
-        // PERCENTAGE of the batch that rounds inward to whole grams, so one
-        // proportional factor cannot carry it: a legal 5 g system at 1000 g
-        // arrived at 670 g (Ninja CREAMi Deluxe) as 1.34 g + 2.01 g — fractional,
-        // and above the 3 g ceiling that batch derives. The canonical authority
-        // projects the system onto the new band; no limit is restated here, and
-        // the ordinary lines absorb the difference through this same resize.
+        // PC-02 / SOL-041 — one proportional factor produces a fractional
+        // stabilizer hold at many real batch sizes. The selected profile's
+        // authority canonicalizes that one role; ordinary lines absorb only
+        // the rounding residual through this same resize.
         const projected = rescaleWithOwnerStabilizerSystem(
           state,
           resized.items,

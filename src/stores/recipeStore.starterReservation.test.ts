@@ -15,7 +15,9 @@
  *
  *     sum(lines) + missingMainMassGrams === target batch
  *
- * Complete recipes (`missingMainMassGrams === 0`) keep the old semantics exactly.
+ * Complete recipes (`missingMainMassGrams === 0`) still fill the batch exactly.
+ * SOL-041 permits only the stabilizer role to move onto its executable whole-
+ * gram hold; the relative mathematics of every ordinary line stays unchanged.
  * The discriminator is the reservation, never `productType === 'sorbet'`.
  */
 import { describe, expect, it } from 'vitest';
@@ -132,15 +134,19 @@ describe('an incomplete starter keeps its Main reservation across a batch resize
     });
   });
 
-  it('4. a COMPLETE starter is untouched — the discriminator is the reservation', () => {
-    // Gelato/Vegan/Protein starters already sum to the batch, so the old
-    // fill-the-batch semantics must survive byte-for-byte.
+  it('4. a COMPLETE starter still fills its batch — the discriminator is the reservation', () => {
+    // Gelato/Vegan/Protein starters already sum to the batch. They still fill
+    // it exactly; SOL-041 changes only the stabilizer representation to whole
+    // grams, while ordinary lines preserve their mutual proportions.
     for (const product of ['gelato', 'vegan', 'protein'] as const) {
       useRecipeStore.getState().startNewRecipe(product);
       const beforeBatch = st().target_batch_grams;
       const beforeSum = sum();
       expect(beforeSum).toBeCloseTo(beforeBatch, 6);
-      const beforeRatios = ratios();
+      const ordinaryBefore = st()
+        .items.filter((item) => !isStabilizer(item))
+        .map((item) => ({ id: item.id, grams: item.planned_grams }));
+      const ordinaryBeforeTotal = ordinaryBefore.reduce((total, item) => total + item.grams, 0);
 
       const setup = deriveMachineSetup(NINJA_CREAMI_DELUXE_NC502EU, product);
       if (setup.resolvedVisibleMode === null || setup.recommendedBatchGrams === null) continue;
@@ -156,9 +162,23 @@ describe('an incomplete starter keeps its Main reservation across a batch resize
       });
       // A complete recipe still fills its new batch exactly.
       expect(sum()).toBeCloseTo(setup.recommendedBatchGrams, 6);
-      ratios().forEach((share, index) => {
-        expect(share).toBeCloseTo(beforeRatios[index]!, 6);
+      const ordinaryAfter = st().items.filter((item) => !isStabilizer(item));
+      const ordinaryAfterTotal = ordinaryAfter.reduce(
+        (total, item) => total + item.planned_grams,
+        0,
+      );
+      ordinaryAfter.forEach((item, index) => {
+        expect(item.id).toBe(ordinaryBefore[index]!.id);
+        expect(item.planned_grams / ordinaryAfterTotal).toBeCloseTo(
+          ordinaryBefore[index]!.grams / ordinaryBeforeTotal,
+          10,
+        );
       });
+      expect(
+        st()
+          .items.filter(isStabilizer)
+          .every((item) => Number.isInteger(item.planned_grams)),
+      ).toBe(true);
       expect(ownerInulinPolicyIssues(buildRecipeInput(st()))).toEqual([]);
     }
   });
