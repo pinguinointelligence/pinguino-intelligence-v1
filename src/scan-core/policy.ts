@@ -63,6 +63,14 @@ export interface FrameSignals {
   frameIndex: number;
   tMs: number;
   candidate: Candidate | null;
+  /**
+   * Dimensions of the plane the worker actually holds this frame. The profile's own sourceW/H come from
+   * `track.getSettings()`, which on a portrait phone reports the sensor's LANDSCAPE dimensions while the
+   * frames arrive portrait — clamping an ROI against the transposed pair floored the crop to nothing
+   * (owner QA 2026-09-06). Defaults to the profile when the caller has nothing better.
+   */
+  sourceW?: number;
+  sourceH?: number;
   /** Laplacian variance of the frame (or candidate region) on the LOW plane */
   sharpness: number;
   meanLuma: number;
@@ -135,7 +143,10 @@ export class PolicyState {
 
   decide(f: FrameSignals): Decision {
     const p = this.profile;
-    const planes = planeSizes(p);
+    // the frame in hand, never the (possibly transposed) profile settings
+    const sourceW = f.sourceW && f.sourceW > 0 ? f.sourceW : p.sourceW;
+    const sourceH = f.sourceH && f.sourceH > 0 ? f.sourceH : p.sourceH;
+    const planes = planeSizes({ sourceW, sourceH });
     const c = f.candidate;
     const base: Decision = {
       path: 'SKIP_NO_CANDIDATE',
@@ -143,7 +154,7 @@ export class PolicyState {
       roi: null,
       harder: false,
       fill: c ? c.fill : null,
-      moduleNative: c ? moduleNativePx(c.fill, p.sourceW) : null,
+      moduleNative: c ? moduleNativePx(c.fill, sourceW) : null,
       sharpRel: null,
       stab: null,
       guidance: 'none',
@@ -233,7 +244,7 @@ export class PolicyState {
       const lc = this.lastCandidate;
       stab =
         Math.abs(c.widthPx - lc.widthPx) / Math.max(1, c.widthPx) +
-        Math.hypot(c.cx - lc.cx, c.cy - lc.cy) / Math.max(1, p.sourceW);
+        Math.hypot(c.cx - lc.cx, c.cy - lc.cy) / Math.max(1, sourceW);
     }
     this.lastCandidate = c;
     this.lastCandidateAt = f.tMs;
@@ -242,7 +253,7 @@ export class PolicyState {
     this.pushSharp(f.sharpness);
     const med = this.sharpMedian();
     const sharpRel = med && med > 0 ? f.sharpness / med : null;
-    const moduleNative = moduleNativePx(c.fill, p.sourceW);
+    const moduleNative = moduleNativePx(c.fill, sourceW);
     const out: Decision = { ...base, sharpRel, stab, moduleNative };
 
     const light: Guidance =
@@ -291,19 +302,24 @@ export class PolicyState {
         THRESHOLDS.marginNarrow,
         'medium',
       );
+      /* A close code used to return harder:false UNCONDITIONALLY, so it could never reach zxing's own
+         rotation/inversion retry however long it was tracked without a read — the customer holding a
+         turned tin right up to the lens got the cheapest possible pass, forever. Same bounded rung as
+         NATIVE_ROI below: only after two misses on a stable candidate, and any hit resets it. */
+      const harder = !unstable && this.missesOnStable >= 2;
       return {
         ...out,
         path: 'LOW_MEDIUM',
-        reason: `fill ${c.fill.toFixed(2)} ≥ ${THRESHOLDS.largeFill}: module ${(moduleNative / planes.medium.factor).toFixed(1)} px on MEDIUM (table 3)`,
+        reason: `fill ${c.fill.toFixed(2)} ≥ ${THRESHOLDS.largeFill}: module ${(moduleNative / planes.medium.factor).toFixed(1)} px on MEDIUM${harder ? ', harder after 2 misses' : ''} (table 3)`,
         roi,
-        harder: false,
+        harder,
         guidance: light,
       };
     }
 
     if (moduleNative < THRESHOLDS.farModulePx) {
       this.farSince ??= f.tMs;
-      const roi = this.cropOn(c, 1, p.sourceW, p.sourceH, THRESHOLDS.marginWide, 'native');
+      const roi = this.cropOn(c, 1, sourceW, sourceH, THRESHOLDS.marginWide, 'native');
       const canZoom = !unstable && this.zoomApproved && (p.zoomMax ?? 1) >= 2 && !f.zoomApplied;
       const tooLong = f.tMs - this.farSince > THRESHOLDS.inadequateAfterMs;
       return {
@@ -327,7 +343,7 @@ export class PolicyState {
     this.farSince = null;
     const margin =
       c.fill < THRESHOLDS.wideMarginBelowFill ? THRESHOLDS.marginWide : THRESHOLDS.marginNarrow;
-    const roi = this.cropOn(c, 1, p.sourceW, p.sourceH, margin, 'native');
+    const roi = this.cropOn(c, 1, sourceW, sourceH, margin, 'native');
     const harder = !unstable && this.missesOnStable >= 2;
     return {
       ...out,
@@ -339,6 +355,16 @@ export class PolicyState {
     };
   }
 
+  /**
+   * Axis-aligned crop that CONTAINS the candidate at its actual angle.
+   *
+   * This used to put `widthPx` on x and `heightPx` on y with no reference to `angleDeg` — a box shaped for
+   * a horizontal code, whatever the code was doing. A code at 90° was therefore never inside its own ROI
+   * (the engine papered over that one case by swapping the box about its centre afterwards), and a code at
+   * 45° was inside neither the box nor the swapped box: the diagonal tin the owner had to turn by hand
+   * (QA 2026-09-06). Projecting the rotated box onto the plane axes — the same projection `candidateBox`
+   * in quality.ts already uses — covers every angle, and is identical to the old box at 0°.
+   */
   private cropOn(
     c: Candidate,
     factor: number,
@@ -349,12 +375,19 @@ export class PolicyState {
   ): Roi {
     const w = c.widthPx / factor;
     const h = Math.max(c.heightPx / factor, w * 0.25);
-    const mx = w * margin;
-    const my = h * margin;
-    const x0 = Math.max(0, Math.floor(c.cx / factor - w / 2 - mx));
-    const y0 = Math.max(0, Math.floor(c.cy / factor - h / 2 - my));
-    const x1 = Math.min(planeW, Math.ceil(c.cx / factor + w / 2 + mx));
-    const y1 = Math.min(planeH, Math.ceil(c.cy / factor + h / 2 + my));
-    return { x: x0, y: y0, w: Math.max(0, x1 - x0), h: Math.max(0, y1 - y0), plane };
+    const rad = (c.angleDeg * Math.PI) / 180;
+    const hw = (Math.abs(Math.cos(rad)) * w + Math.abs(Math.sin(rad)) * h) / 2;
+    const hh = (Math.abs(Math.sin(rad)) * w + Math.abs(Math.cos(rad)) * h) / 2;
+    // margins keep their old meaning: a share of the extent on that axis (2·hw === w at 0°)
+    const mx = 2 * hw * margin;
+    const my = 2 * hh * margin;
+    // a centre outside the plane would otherwise fold the box inside out (x1 < x0 → w = 0)
+    const cx = Math.min(Math.max(c.cx / factor, 0), planeW);
+    const cy = Math.min(Math.max(c.cy / factor, 0), planeH);
+    const x0 = Math.max(0, Math.floor(cx - hw - mx));
+    const y0 = Math.max(0, Math.floor(cy - hh - my));
+    const x1 = Math.min(planeW, Math.ceil(cx + hw + mx));
+    const y1 = Math.min(planeH, Math.ceil(cy + hh + my));
+    return { x: x0, y: y0, w: Math.max(1, x1 - x0), h: Math.max(1, y1 - y0), plane };
   }
 }

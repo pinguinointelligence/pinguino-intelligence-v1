@@ -5,6 +5,7 @@
 import {
   ScanCoreEngine,
   budgetFor,
+  planeSizes,
   type CameraProfile,
   type DecodeRequest,
   type DecodeResultItem,
@@ -39,6 +40,8 @@ export class ScanCoreLane {
   private turned: Uint8Array | undefined;
   private rect: Uint8Array | undefined;
   private busyWindow: Array<{ t: number; ms: number }> = [];
+  /** identity of the crop currently in `this.crop`, so two axis attempts on one ROI copy the pixels once */
+  private cropKey = '';
 
   setProfile(
     profile: CameraProfile,
@@ -123,12 +126,18 @@ export class ScanCoreLane {
     });
     const decodes: DecodeOutcome[] = [];
     let observation: ScanObservation | null = null;
+    /* The MEDIUM plane's downscale factor is 1 below a 960-px long edge (profile.planeSizes) — this lane
+       hardcoded 2, so on a small webcam every 'medium' ROI, which the policy sized in FULL-resolution
+       coordinates, was indexed into a half-size plane: the crop landed in the wrong coordinate system by
+       2×. Ask for the factor instead of assuming it. */
+    const mediumFactor = planeSizes({ sourceW: width, sourceH: height }).medium.factor;
+    this.cropKey = '';
     for (const req of requests) {
       let plane = luma;
       let pw = width;
       let ph = height;
-      if (req.roi.plane === 'medium') {
-        const m = downscaleLuminance(luma, width, height, 2, this.medium);
+      if (req.roi.plane === 'medium' && mediumFactor > 1) {
+        const m = downscaleLuminance(luma, width, height, mediumFactor, this.medium);
         this.medium = m.data;
         plane = m.data;
         pw = m.width;
@@ -158,59 +167,68 @@ export class ScanCoreLane {
         outcome.durationMs += region.durationMs;
         for (const r of outcome.results) r.quad = null;
       } else {
-        const x0 = Math.max(0, Math.min(pw - 1, req.roi.x));
-        const y0 = Math.max(0, Math.min(ph - 1, req.roi.y));
-        const w = Math.max(1, Math.min(pw - x0, req.roi.w));
-        const h = Math.max(1, Math.min(ph - y0, req.roi.h));
-        if (w * h === pw * ph && x0 === 0 && y0 === 0) {
-          outcome = await dec.decodeLuma(
-            plane,
-            pw,
-            ph,
-            req.source === 'rescue' ? 'core_rescue' : 'core_medium',
-            opts,
-          );
-        } else {
+        // whole pixels: a fractional ROI would be truncated inside subarray() and shift the crop a part-row
+        const x0 = Math.max(0, Math.min(pw - 1, Math.floor(req.roi.x)));
+        const y0 = Math.max(0, Math.min(ph - 1, Math.floor(req.roi.y)));
+        const w = Math.max(1, Math.min(pw - x0, Math.floor(req.roi.w)));
+        const h = Math.max(1, Math.min(ph - y0, Math.floor(req.roi.h)));
+        const full = w * h === pw * ph && x0 === 0 && y0 === 0;
+        let source = plane;
+        if (!full) {
           const size = w * h;
+          // the two axis attempts share one ROI: copy the pixels once, then transpose in place of a re-crop
+          const key = `${req.roi.plane}:${x0}:${y0}:${w}:${h}`;
           const out = this.crop && this.crop.length === size ? this.crop : new Uint8Array(size);
           this.crop = out;
-          for (let y = 0; y < h; y += 1)
-            out.set(plane.subarray((y0 + y) * pw + x0, (y0 + y) * pw + x0 + w), y * w);
-          let decodeBuf = out;
-          let dw = w;
-          let dh = h;
-          if (req.rotate90) {
-            // vertical reading axis: rotate the crop 90° clockwise (lossless) so the decoder scans along the code
-            const t =
-              this.turned && this.turned.length === size ? this.turned : new Uint8Array(size);
-            this.turned = t;
+          if (this.cropKey !== key) {
             for (let y = 0; y < h; y += 1)
-              for (let x = 0; x < w; x += 1) t[x * h + (h - 1 - y)] = out[y * w + x]!;
-            decodeBuf = t;
-            dw = h;
-            dh = w;
+              out.set(plane.subarray((y0 + y) * pw + x0, (y0 + y) * pw + x0 + w), y * w);
+            this.cropKey = key;
           }
-          outcome = await dec.decodeLuma(
-            decodeBuf,
-            dw,
-            dh,
-            req.source === 'medium' ? 'core_medium' : 'core_native',
-            opts,
-          );
-          const scale = req.roi.plane === 'medium' ? 2 : 1;
-          for (const r of outcome.results) {
-            if (!r.quad) continue;
-            for (const pt of r.quad.points) {
-              if (req.rotate90) {
-                // back from the rotated crop: x' = h-1-y, y' = x
-                const ox = pt.y;
-                const oy = h - 1 - pt.x;
-                pt.x = ox;
-                pt.y = oy;
-              }
-              pt.x = (pt.x + x0) * scale;
-              pt.y = (pt.y + y0) * scale;
+          source = out;
+        }
+        let decodeBuf = source;
+        let dw = w;
+        let dh = h;
+        if (req.rotate90) {
+          /* Vertical reading axis: rotate 90° clockwise (lossless) so the decoder scans ALONG the code.
+             The full-plane shortcut used to ignore rotate90 entirely, which is what left RESCUE_FULL —
+             the one pass that runs when nothing is located at all — unable to read a turned code. */
+          const size = w * h;
+          const t = this.turned && this.turned.length === size ? this.turned : new Uint8Array(size);
+          this.turned = t;
+          for (let y = 0; y < h; y += 1)
+            for (let x = 0; x < w; x += 1) t[x * h + (h - 1 - y)] = source[y * w + x]!;
+          decodeBuf = t;
+          dw = h;
+          dh = w;
+        }
+        outcome = await dec.decodeLuma(
+          decodeBuf,
+          dw,
+          dh,
+          full
+            ? req.source === 'rescue'
+              ? 'core_rescue'
+              : 'core_medium'
+            : req.source === 'medium'
+              ? 'core_medium'
+              : 'core_native',
+          opts,
+        );
+        const scale = req.roi.plane === 'medium' ? mediumFactor : 1;
+        for (const r of outcome.results) {
+          if (!r.quad) continue;
+          for (const pt of r.quad.points) {
+            if (req.rotate90) {
+              // back from the rotated crop: x' = h-1-y, y' = x
+              const ox = pt.y;
+              const oy = h - 1 - pt.x;
+              pt.x = ox;
+              pt.y = oy;
             }
+            pt.x = (pt.x + x0) * scale;
+            pt.y = (pt.y + y0) * scale;
           }
         }
       }
@@ -228,6 +246,8 @@ export class ScanCoreLane {
         frameIndex,
         tMs: tCapture,
         source: req.source,
+        // tells the engine WHICH axis attempt read, so it can latch and stop the other one
+        rotate90: req.rotate90,
         items,
       });
       if (obs && !observation) observation = obs;

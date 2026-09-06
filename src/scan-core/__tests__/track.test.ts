@@ -7,6 +7,7 @@ const cand = (cx: number, cy: number, w = 300, angle = 0): MergedCandidate => ({
   widthPx: w,
   heightPx: w * 0.3,
   angleDeg: angle,
+  axisConfidence: 1,
   cx,
   cy,
   pieces: 1,

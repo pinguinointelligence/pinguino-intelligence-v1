@@ -15,7 +15,15 @@ export interface MergedCandidate {
   fill: number;
   widthPx: number;
   heightPx: number;
+  /** evidence-weighted consensus orientation of the group (degrees; 0 = bars vertical, reads left→right) */
   angleDeg: number;
+  /**
+   * 0..1 — how safely `angleDeg` picks a READING AXIS (owner QA 2026-09-06). Two independent doubts are
+   * folded in: how much the fragments AGREE (weighted by their bar-texture mass) and how far the consensus
+   * sits from the 45°/135° boundary at which the axis flips. A tin held diagonally scores near 0, and the
+   * engine then ATTEMPTS both axes instead of betting on one.
+   */
+  axisConfidence: number;
   cx: number;
   cy: number;
   pieces: number;
@@ -23,6 +31,43 @@ export interface MergedCandidate {
 }
 
 const MERGE = { angleTolDeg: 12, gapFactor: 0.6, lateralFactor: 0.8 } as const;
+
+export const AXIS = {
+  /** within this many degrees of the 45°/135° boundary the axis is a coin flip whatever the fragments agree on */
+  boundaryMarginDeg: 15,
+  /** at or above this the engine may attempt a single axis; below it, both */
+  confidentAt: 0.6,
+} as const;
+
+/**
+ * Axial (mod 180°) evidence-weighted mean and its resultant length. Orientation is an AXIS, not a
+ * direction, so the statistics are done on the doubled angle: 179° and 1° are 2° apart, not 178°.
+ */
+function consensusAngle(group: ReadonlyArray<{ c: RawCandidate }>): { deg: number; agree: number } {
+  let sx = 0;
+  let sy = 0;
+  let wsum = 0;
+  for (const g of group) {
+    // weight by bar-texture mass, so a faint one-block fragment cannot outvote the code itself
+    const w = Math.max(1e-6, Math.abs(g.c.score) * Math.max(1, g.c.blockCount));
+    const t = (2 * g.c.orientationDeg * Math.PI) / 180;
+    sx += w * Math.cos(t);
+    sy += w * Math.sin(t);
+    wsum += w;
+  }
+  if (wsum <= 0) return { deg: group[0]?.c.orientationDeg ?? 0, agree: 0 };
+  return {
+    deg: (Math.atan2(sy, sx) * 180) / Math.PI / 2,
+    agree: Math.min(1, Math.hypot(sx, sy) / wsum),
+  };
+}
+
+/** How far `angleDeg` is from the axis boundary, as a 0..1 factor over AXIS.boundaryMarginDeg. */
+export function axisBoundaryMargin(angleDeg: number): number {
+  const a = ((angleDeg % 180) + 180) % 180;
+  const d = Math.min(Math.abs(a - 45), Math.abs(a - 135));
+  return Math.max(0, Math.min(1, d / AXIS.boundaryMarginDeg));
+}
 
 function axisOf(c: RawCandidate): {
   ux: number;
@@ -93,11 +138,17 @@ export function mergeCollinear(
     }
     const len = maxU - minU;
     const mid = (minU + maxU) / 2;
+    /* The group's extent stays measured along the ANCHOR axis (unchanged geometry), but the reported
+       orientation is the consensus of every fragment weighted by its bar evidence: the anchor is only
+       whichever fragment came first, and letting it name the reading axis for the whole code turned a
+       ±12° accident into a wrong axis whenever the code sat near the 45° boundary. */
+    const consensus = consensusAngle(group);
     out.push({
       fill: len / sourceW,
       widthPx: len,
       heightPx: height,
-      angleDeg: it.c.orientationDeg,
+      angleDeg: consensus.deg,
+      axisConfidence: consensus.agree * axisBoundaryMargin(consensus.deg),
       cx: it.a.cx + it.a.ux * mid,
       cy: it.a.cy + it.a.uy * mid,
       pieces: group.length,
