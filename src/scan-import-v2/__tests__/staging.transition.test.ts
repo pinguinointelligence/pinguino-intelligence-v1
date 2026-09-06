@@ -11,7 +11,7 @@
  * version (no churn). A rescan resolves the exact product, usable.
  * Writes reports/scan-import-v2/STAGING_TRANSITION_<date>.json.
  */
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { beforeAll, describe, expect, it } from 'vitest';
@@ -21,6 +21,7 @@ import type { ExternalEvidence, RequestContext } from '../contracts';
 import { continueDiscovery, startDiscovery } from '../discovery/discovery';
 import type { DiscoveryPort, DiscoverySession } from '../discovery/contracts';
 import { identifyCode } from '../codeIdentity';
+import { fileToLabelImage } from '../labelImage';
 import { createMemoryStore } from '../offline/persistentStore';
 import { runScanImportV2 } from '../pipeline';
 import { scan } from './codeIdentity.test';
@@ -37,39 +38,69 @@ interface Account {
 }
 const report: Record<string, unknown> = { ranAt: new Date().toISOString() };
 
+/**
+ * The controlled product: a real GTIN whose registry record carries a name but NO nutrition table and no
+ * brand (the first save can only be private/not-ready, with the honest unbranded identity). Given per run
+ * through SCAN_TRANSITION_CODE; default: the registry's bare "butter" record. A code already turned into a
+ * ready product on staging cannot demonstrate the transition again — S1 then records that honestly.
+ */
+const controlledCode = (): string => CODE;
+
+/** the label as the customer reads it from the pack of the controlled product (per code) */
+const LABEL_FACTS_BY_CODE: Record<string, Record<string, unknown>> = {
+  // registry record "butter", no brand, no nutrition, no ingredients — the honest unbranded identity
+  '5900512902388': {
+    identity: { displayName: 'Masło ekstra 82%', explicitlyUnbranded: true },
+    nutrition: {
+      basis: 'per_100g',
+      energyKcal: 740,
+      fat: 82,
+      carbohydrate: 0.7,
+      sugars: 0.7,
+      protein: 0.7,
+      salt: 0.02,
+    },
+    ingredientsText: 'śmietanka pasteryzowana (z mleka)',
+    allergensText: 'mleko',
+  },
+  // Piątnica Serek śmietankowy z ziołami 135 g — registry: name + brand only
+  '5900531001710': {
+    identity: { displayName: 'Serek śmietankowy z ziołami', brand: 'Piątnica' },
+    nutrition: {
+      basis: 'per_100g',
+      energyKcal: 254,
+      fat: 24,
+      carbohydrate: 3.5,
+      sugars: 3.5,
+      protein: 6,
+      salt: 0.9,
+    },
+    ingredientsText: 'śmietanka pasteryzowana, mleko, sól, zioła 1%, kultury bakterii mlekowych',
+    allergensText: 'mleko',
+  },
+};
 const gtinCheck = (body12: string): string => {
   let sum = 0;
   for (let i = 0; i < 12; i++) sum += Number(body12[i]) * (i % 2 === 0 ? 1 : 3);
   return String((10 - (sum % 10)) % 10);
 };
 /**
- * The controlled product: a real GTIN whose registry record carries NO nutrition table (the first save can
- * only be private/not-ready), given per run through SCAN_TRANSITION_CODE. A code already turned into a
- * ready product on staging cannot demonstrate the transition again — S1/S2 then record that honestly.
- * The synthetic fallback (prefix 200) has no record anywhere: the flow then needs a label photograph,
- * which this harness cannot take.
+ * Default: a fresh restricted-circulation code (prefix 200) per run — no registry record, no web page, so
+ * the ONLY evidence is what the customer photographs. The front-of-pack photo carries the name and the
+ * brand and nothing else: the first save can only be private/not-ready. SCAN_TRANSITION_CODE overrides
+ * with a real code (then the registry/web decide what S1 finds, honestly recorded).
  */
-const controlledCode = (): string => {
-  const given = process.env['SCAN_TRANSITION_CODE'];
-  if (given && /^\d{13}$/.test(given)) return given;
-  const body = `200${String(Date.now()).slice(-9)}`;
-  return `${body}${gtinCheck(body)}`;
-};
-
-const LABEL_FACTS = {
-  identity: { displayName: 'Jogurt naturalny QA', brand: 'Gellatti QA' },
-  nutrition: {
-    basis: 'per_100g',
-    energyKcal: 61,
-    fat: 3,
-    carbohydrate: 4.7,
-    sugars: 4.7,
-    protein: 4.2,
-    salt: 0.13,
-  },
-  ingredientsText: 'mleko pasteryzowane, żywe kultury bakterii jogurtowych',
-  allergensText: 'mleko',
-};
+const CODE =
+  process.env['SCAN_TRANSITION_CODE'] ??
+  (() => {
+    const body = `200${String(Date.now()).slice(-9)}`;
+    return `${body}${gtinCheck(body)}`;
+  })();
+const LABEL_FACTS = LABEL_FACTS_BY_CODE[CODE] ?? LABEL_FACTS_BY_CODE['5900512902388']!;
+/** the front-of-pack photograph (identity only) — rendered fixture, see reports for its provenance */
+const FRONT_LABEL_PHOTO =
+  process.env['SCAN_TRANSITION_LABEL_PHOTO'] ??
+  '/private/tmp/claude-501/-Users-tomaszboro22-Developer/e85acd18-60cf-44d8-8054-1bced55d6252/scratchpad/qa-label-front.png';
 
 async function signedIn(email: string, password: string): Promise<Account> {
   const client = createClient(process.env['SUPABASE_URL']!, process.env['SUPABASE_ANON_KEY']!, {
@@ -146,15 +177,37 @@ describe.skipIf(!RUN)('NOT_READY → ESTIMATED_READY on a controlled product, re
     const id = identifyCode(scan(code));
     if (!id.ok) throw new Error('code');
     const started = await startDiscovery(id.identity, a.ctx(), a.discovery);
+    if (started.kind === 'resolved_exact') {
+      report['s1'] = {
+        skipped: 'already a product on staging — the transition was demonstrated in an earlier run',
+        product: started.product.productCode,
+      };
+      return;
+    }
     expect(started.kind, JSON.stringify(started).slice(0, 300)).toBe('discovered_pending');
     if (started.kind !== 'discovered_pending') return;
+    let session = sessionOf(started);
+    const registryOrWebKnowsIt = started.ledger.facts.some((f) => f.source !== 'barcode');
+    if (!registryOrWebKnowsIt) {
+      // nobody knows the code: the customer photographs the front of the pack (name + brand only)
+      expect(existsSync(FRONT_LABEL_PHOTO), `label photo ${FRONT_LABEL_PHOTO}`).toBe(true);
+      const image = await fileToLabelImage(
+        new Blob([readFileSync(FRONT_LABEL_PHOTO)], { type: 'image/png' }),
+        'camera_manual',
+      );
+      const analyzed = await a.discovery.analyzeLabel(session, [image], a.ctx());
+      report['s1photo'] = { kind: analyzed.kind };
+      expect(analyzed.kind, JSON.stringify(analyzed).slice(0, 300)).toBe('analyzed');
+      if (analyzed.kind !== 'analyzed') return;
+      session = analyzed.session;
+    }
     const r = await continueDiscovery(
-      sessionOf(started),
+      session,
       {
         type: 'finalize',
         input: {
           customerFamily: 'dairy',
-          confirmations: { productFields: { identity: LABEL_FACTS.identity } },
+          confirmations: { productFields: { identity: LABEL_FACTS['identity'] } },
           savePrivateNotReady: true,
         },
       },
@@ -215,22 +268,22 @@ describe.skipIf(!RUN)('NOT_READY → ESTIMATED_READY on a controlled product, re
     const id = identifyCode(scan(code));
     if (!id.ok) throw new Error('code');
     const started = await startDiscovery(id.identity, b.ctx(), b.discovery);
-    let created: unknown = null;
-    if (started.kind === 'discovered_pending') {
-      const r = await continueDiscovery(
-        sessionOf(started),
-        {
-          type: 'finalize',
-          input: { customerFamily: 'dairy', confirmations: { productFields: LABEL_FACTS } },
-        },
-        b.ctx(),
-        b.discovery,
-      );
-      created = {
-        kind: r.kind,
-        product: r.kind === 'discovered_exact' ? r.product.productCode : null,
-      };
-    } else created = { kind: started.kind };
+    // the SAME label facts the first account confirmed: identical truth must not become a new version
+    const created =
+      started.kind === 'discovered_pending'
+        ? await continueDiscovery(
+            sessionOf(started),
+            {
+              type: 'finalize',
+              input: { customerFamily: 'dairy', confirmations: { productFields: LABEL_FACTS } },
+            },
+            b.ctx(),
+            b.discovery,
+          ).then((r) => ({
+            kind: r.kind,
+            product: r.kind === 'discovered_exact' ? r.product.productCode : null,
+          }))
+        : { kind: started.kind };
     const afterA = await currentVersion(a, code);
     const asB = await currentVersion(b, code);
     report['s3'] = { ...(report['s3'] as object), created, before, afterA, asB };
@@ -238,7 +291,39 @@ describe.skipIf(!RUN)('NOT_READY → ESTIMATED_READY on a controlled product, re
       before?.product_code,
     );
     expect(asB?.ownership).toBe('linked');
+    // the second account confirmed the same label facts the first one did: the version stays
     expect(afterA?.current_version_id, 'identical facts must not create a new version').toBe(
+      before?.current_version_id,
+    );
+  }, 120_000);
+
+  it('S3b a third account with facts identical to the current version: linked, no new version', async () => {
+    const c = await signedIn(
+      process.env['QA_EMAIL_THIRD'] ?? 'pro@pro.com',
+      process.env['QA_PASSWORD_THIRD'] ?? process.env['QA_PASSWORD']!,
+    );
+    const before = await currentVersion(a, code);
+    const id = identifyCode(scan(code));
+    if (!id.ok) throw new Error('code');
+    const started = await startDiscovery(id.identity, c.ctx(), c.discovery);
+    const outcome =
+      started.kind === 'discovered_pending'
+        ? await continueDiscovery(
+            sessionOf(started),
+            {
+              type: 'finalize',
+              input: { customerFamily: 'dairy', confirmations: { productFields: LABEL_FACTS } },
+            },
+            c.ctx(),
+            c.discovery,
+          ).then((r) => r.kind)
+        : started.kind;
+    const after = await currentVersion(a, code);
+    const asC = await currentVersion(c, code);
+    report['s3b'] = { account: c.email, outcome, before, after, asC };
+    expect(asC?.product_code).toBe(before?.product_code);
+    expect(asC?.ownership).toBe('linked');
+    expect(after?.current_version_id, 'identical facts must not create a new version').toBe(
       before?.current_version_id,
     );
   }, 120_000);
