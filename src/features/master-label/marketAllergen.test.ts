@@ -22,7 +22,7 @@ describe('market-specific allergen authority', () => {
     ]);
   });
 
-  it('requires and renders the specific FDA source for fish, crustaceans and tree nuts', () => {
+  it('keeps taxonomy validation separate while rendering the existing final line verbatim', () => {
     expect(marketAllergenDeclarationIssues('US', ['tree_nuts'])).toHaveLength(1);
     expect(marketAllergenDeclarationIssues('US', ['tree_nuts: almond'])).toEqual([]);
     expect(unresolvedMarketAllergens('US', ['tree_nuts: almond'])).toEqual([]);
@@ -32,10 +32,11 @@ describe('market-specific allergen authority', () => {
         allergens: {
           ...createCompleteLabel('US').allergens,
           declared: ['milk', 'tree_nuts: almond'],
+          labelStatements: ['Contains milk and almond'],
         },
       }),
     );
-    expect(html).toContain('Contains:</strong> milk, almond');
+    expect(html).toContain('Alergeny:</strong> Contains milk and almond');
   });
 
   it('emphasises only confirmed allergen terms and prints QUID only when triggered', () => {
@@ -60,10 +61,10 @@ describe('market-specific allergen authority', () => {
     expect(html).not.toContain('Sugar (40%)');
   });
 
-  it('keeps FSANZ PEAL Contains bold and adjacent to the ingredient declaration', () => {
+  it('keeps the one final statement adjacent to the ingredient declaration', () => {
     const html = renderMarketLabelHtml(createCompleteLabel('AU_NZ'));
-    expect(html).toContain('class="contains peal"');
-    expect(html.indexOf('class="contains peal"')).toBeGreaterThan(html.indexOf('Ingredients:'));
-    expect(html).toContain('<strong>Contains: milk</strong>');
+    expect(html).toContain('class="allergens"');
+    expect(html.indexOf('class="allergens"')).toBeGreaterThan(html.indexOf('Ingredients:'));
+    expect(html).toContain('<strong>Alergeny:</strong> milk');
   });
 });

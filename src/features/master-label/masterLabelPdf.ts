@@ -29,7 +29,7 @@ import {
   resolveUsFormatFamily,
 } from './regulatoryNutrition';
 import {
-  allergenDisplayValues,
+  allergenStatementText,
   allergenEmphasisTerms,
   ingredientDeclarationText,
   primaryText,
@@ -37,7 +37,6 @@ import {
 } from './renderers/shared';
 import { normalizeConfirmedGtin } from './machineCodes';
 import { responsibleBusinessDetails } from './businessAuthority';
-import { canadianFrenchAllergenName } from './allergenTaxonomy';
 import { resolveMasterLabelLogoUrl } from './labelBrand';
 import { WORLD_INFORMATIONAL_WARNING_LINES } from './worldUniversal';
 
@@ -818,21 +817,10 @@ async function drawLabelPage(
       allergenEmphasisTerms(data),
     );
   }
-  const allergens = allergenDisplayValues(data);
-  if (allergens.length > 0) {
-    const allergenStatement =
-      data.market === 'CA'
-        ? `${allergens.join(', ')} / ${allergens.map(canadianFrenchAllergenName).join(', ')}`
-        : allergens.join(', ');
-    drawWrapped(
-      context,
-      `${data.market === 'CA' ? 'Contains / Contient' : 'Contains'}: ${allergenStatement}`,
-      {
-        font: context.fonts.bold,
-        after: 2,
-      },
-    );
-  }
+  drawWrapped(context, `Alergeny: ${allergenStatementText(data)}`, {
+    font: context.fonts.bold,
+    after: 2,
+  });
   drawNutrition(context, data);
   drawWrapped(
     context,

@@ -351,6 +351,12 @@ export function ProWorkbar({
       }
       return;
     }
+    // A clean working copy is not a new immutable recipe version. This also
+    // keeps a Label-only Save/Reopen check from manufacturing a no-op version.
+    if (!dirty && title === (savedRecipeName ?? '')) {
+      setNameDraft(null);
+      return;
+    }
     if (title !== (savedRecipeName ?? '')) {
       const renamed = await save.rename(title);
       if (!renamed) return;

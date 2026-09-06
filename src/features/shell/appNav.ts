@@ -142,6 +142,15 @@ export const APP_NAV_ITEMS: readonly AppNavItem[] = [
     isActive: productionDestination,
   },
   {
+    id: 'labels',
+    label: s.items.labels,
+    to: '/labels',
+    group: 'product',
+    order: 2.5,
+    audiences: ['pro'],
+    isActive: exact('/labels'),
+  },
+  {
     id: 'products',
     label: s.items.products,
     to: '/products',
