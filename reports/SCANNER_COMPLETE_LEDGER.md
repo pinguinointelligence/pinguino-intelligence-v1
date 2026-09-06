@@ -127,6 +127,21 @@ research → save path (Lotus Biscoff: asked, added and saved ready in one pass)
 - After merging `origin/staging`: home-creator / product-intelligence / product-scanner / scan-flow
   / scan-import-v2 / owner-locked contracts — 1 975 passed, 0 failed.
 
+## Disk and cleanup (this session)
+
+| | |
+| --- | --- |
+| Free at the start of the final stage | 8.1 GiB |
+| Free at the end | 1.1 GiB |
+| Removed (mine, reproducible) | this worktree's `dist` (79 MB, rebuild with `npx vite build`) and `/tmp/vitest-final.log` |
+| Kept deliberately | `node_modules/.vite` (29 MB) — this worktree's `node_modules` is a SYMLINK into `pinguino-scan-core-phase-0`, shared with another session; its dep cache is not mine to clear while others may be building |
+| Nothing belonging to another session was touched | no sibling worktree, branch, cache or uncommitted change was removed |
+
+**The disk is full for a reason outside this workstream.** `/System/Volumes/Data` is at 100 %
+(183 GiB used, ~1 GiB free). 66 of the ~140 sibling worktrees under `~/Developer` carry their own
+`node_modules`, roughly 700 MB each. Pruning them is the owner's call — this session deleted none of
+them. This worktree itself is 178 MB with `dist` removed.
+
 ## Open
 
 - Owner QA of the whole phone flow on the preview alias.
