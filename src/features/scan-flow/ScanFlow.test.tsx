@@ -71,6 +71,18 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     });
     await flush();
   };
+  /**
+   * A recipe entry asks exactly one question before an unknown product is created (owner,
+   * 2026-09-06). Answering "Tak" continues THE SAME scan — no second camera run, no second research.
+   */
+  const answerAddYes = async () => {
+    expect(text()).toContain('Nie mamy jeszcze tego produktu. Czy chcesz go dodać?');
+    await act(async () => {
+      button('Tak')!.click();
+    });
+    await flush();
+    await flush();
+  };
 
   beforeEach(() => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
@@ -131,6 +143,7 @@ describe('ScanFlow (jsdom, fake ports)', () => {
       );
     });
     await typeCode(UNKNOWN);
+    await answerAddYes();
     // internet evidence collected, the label is still needed
     expect(text()).toContain('Zrób zdjęcie etykiety');
     expect(discovery.calls).toContain(`research:${UNKNOWN}`);
@@ -226,6 +239,7 @@ describe('ScanFlow (jsdom, fake ports)', () => {
       );
     });
     await typeCode(MILKA);
+    await answerAddYes();
     await flush();
     expect(text()).toContain('Rozpoznano po kodzie');
     expect(text()).toContain('Choco brownie');
