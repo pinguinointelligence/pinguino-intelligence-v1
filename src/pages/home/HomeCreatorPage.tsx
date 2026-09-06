@@ -16,6 +16,8 @@ import type { ProductBehaviorSnapshot } from '@/features/product-intelligence/co
 import { productRecommendedDosagePl } from '@/features/product-intelligence/productDosageAuthority';
 import { decideAddAmount } from '@/features/home-creator/homeAddAmountDecision';
 import { HomeAmountPrompt } from '@/features/home-creator/ui/HomeAmountPrompt';
+import { HomeUsagePrompt } from '@/features/home-creator/ui/HomeUsagePrompt';
+import { decideUsageRole } from '@/features/home-creator/homeUsageRoleDecision';
 import { useNavigate } from 'react-router';
 import { AppShell } from '@/features/shell/AppShell';
 import { deriveMachineSetup, type HomeMachineProfile } from '@/features/machine-catalog';
@@ -292,6 +294,16 @@ export function HomeCreatorPage() {
     ],
   );
 
+  /**
+   * §58 — the picked product waiting for the customer to say how they meant to use it.
+   * Only reached for a product the catalogue says is genuinely BOTH; everything it can
+   * settle is settled silently by `decideUsageRole`.
+   */
+  const [pendingUsage, setPendingUsage] = useState<{
+    ingredient: EngineIngredient;
+    behavior: ProductBehaviorSnapshot | null;
+  } | null>(null);
+
   /** The picked product waiting for its confirmed amount. No line exists yet. */
   const [pendingAdd, setPendingAdd] = useState<{
     ingredient: EngineIngredient;
@@ -320,8 +332,34 @@ export function HomeCreatorPage() {
    * the add controls beside the recipe list both land here, so the §B decision cannot
    * apply on one surface and not the other.
    */
+  const handleAddTopping = useCallback(
+    (ingredient: RecipeToppingIngredient, behavior?: ProductBehaviorSnapshot) => {
+      useRecipeStore.getState().addTopping(ingredient, 0);
+      const topping = useRecipeStore
+        .getState()
+        .toppings.find((line) => line.ingredient.id === ingredient.id);
+      if (topping && behavior) {
+        useRecipeStore
+          .getState()
+          .setProductBehaviorSnapshot(topping.id, { ...behavior, lineId: topping.id });
+      }
+    },
+    [],
+  );
+
   const handleAddIngredient = useCallback(
     (ingredient: EngineIngredient, behavior?: ProductBehaviorSnapshot) => {
+      // §58 FIRST: a product that is genuinely both has to be placed before it can be
+      // measured — the amount question means something different for a topping.
+      const usage = decideUsageRole(behavior ?? null);
+      if (usage.kind === 'ask') {
+        setPendingUsage({ ingredient, behavior: behavior ?? null });
+        return;
+      }
+      if (usage.role === 'topping') {
+        handleAddTopping(ingredient as unknown as RecipeToppingIngredient, behavior);
+        return;
+      }
       const decision = decideAddAmount(behavior ?? null, productRecommendedDosagePl);
       if (decision.kind === 'unresolved_authority') {
         // Owner ruling §6: never guess. The picker already refuses a product it cannot
@@ -339,24 +377,10 @@ export function HomeCreatorPage() {
       }
       addIngredientLine(ingredient, behavior ?? null, 0);
     },
-    [addIngredientLine],
+    [addIngredientLine, handleAddTopping],
   );
 
   /** §57: the existing Topping behaviour — no Crown, editable grams. Shared identically. */
-  const handleAddTopping = useCallback(
-    (ingredient: RecipeToppingIngredient, behavior?: ProductBehaviorSnapshot) => {
-      useRecipeStore.getState().addTopping(ingredient, 0);
-      const topping = useRecipeStore
-        .getState()
-        .toppings.find((line) => line.ingredient.id === ingredient.id);
-      if (topping && behavior) {
-        useRecipeStore
-          .getState()
-          .setProductBehaviorSnapshot(topping.id, { ...behavior, lineId: topping.id });
-      }
-    },
-    [],
-  );
 
   const lastGeneratedFor = useRef<string | null>(null);
   useEffect(() => {
@@ -642,6 +666,34 @@ export function HomeCreatorPage() {
       ) : null}
 
       {/* §B: asked BEFORE the line exists, so a refusal costs the customer nothing. */}
+      {pendingUsage ? (
+        <HomeUsagePrompt
+          productName={pendingUsage.ingredient.name}
+          onCancel={() => setPendingUsage(null)}
+          onChoose={(role) => {
+            const { ingredient, behavior } = pendingUsage;
+            setPendingUsage(null);
+            if (role === 'topping') {
+              handleAddTopping(
+                ingredient as unknown as RecipeToppingIngredient,
+                behavior ?? undefined,
+              );
+              return;
+            }
+            // The amount question still applies to an ingredient, exactly as it does
+            // for a product that never needed the usage question at all.
+            const decision = decideAddAmount(behavior, productRecommendedDosagePl);
+            if (decision.kind === 'ask_amount') {
+              setPendingAdd({ ingredient, behavior, recommendedDose: decision.recommendedDose });
+              return;
+            }
+            if (decision.kind === 'unresolved_authority') return;
+            // The SAME line-creation path a product that never needed the question takes.
+            addIngredientLine(ingredient, behavior, 0);
+          }}
+        />
+      ) : null}
+
       {pendingAdd ? (
         <HomeAmountPrompt
           productName={pendingAdd.ingredient.name}
