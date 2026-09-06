@@ -70,6 +70,16 @@ describe('Gellatti SOL ledger continuity', () => {
     expect(ledger).toContain('OWNER ACCEPTED: YES');
   });
 
+  it('records SOL-031 on staging without claiming Owner acceptance', () => {
+    expect(entries.find(({ id }) => id === 'SOL-031')?.status).toBe('RESOLVED_ON_STAGING');
+    expect(ledger).toContain('PR #208');
+    expect(ledger).toContain('merge SHA `cc141bbec4e23ef7bd4df9824fe13075b6ded26f`');
+    expect(ledger).toContain('CI merge run `34036953949` PASS');
+    expect(ledger).toContain('CI aktualnego staging run `34038500307` PASS');
+    expect(ledger).toContain('`OWNER QA PENDING`');
+    expect(ledger).toContain('`OWNER ACCEPTED: NO`');
+  });
+
   it('retains the confirmed SOL-039 through SOL-045 findings as TODO', () => {
     for (let number = 39; number <= 45; number += 1) {
       const id = `SOL-${String(number).padStart(3, '0')}`;
