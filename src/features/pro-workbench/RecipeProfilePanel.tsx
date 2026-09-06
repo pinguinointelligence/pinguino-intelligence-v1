@@ -40,6 +40,7 @@ import { CostSummaryIcon, NutritionSummaryIcon } from '@/components/icons/Pingui
 import { proWorkbenchCopy } from '@/copy/pro.pl';
 import { currentRecipeCompletionSnapshot } from './currentRecipeLabelSnapshot';
 import { copy } from '@/copy/en';
+import { missingCostIngredientNames } from './missingCostIngredientNames';
 
 export type ProContextTab = 'recipe' | 'monitor' | 'production';
 export type CockpitTab = WorkbenchModuleTab;
@@ -105,11 +106,14 @@ export function NutritionCostProfileGrid({
     : costs?.cost_per_kg == null
       ? '—'
       : `${costs.cost_per_kg.toFixed(2)} €`;
-  const costReadoutLabel = partialCost
-    ? knownPartialCost
+  const costReadoutLabel =
+    partialCost && knownPartialCost
       ? proWorkbenchCopy.nutrition.knownBatchCost.toLocaleLowerCase('pl')
-      : proWorkbenchCopy.nutrition.noPrices.toLocaleLowerCase('pl')
-    : 'za kg';
+      : 'za kg';
+  const missingPriceMessage =
+    partialCost && costMissingNames.length > 0
+      ? proWorkbenchCopy.nutrition.missingPrice(costMissingNames)
+      : null;
   return (
     /* OWNER FROZEN PRO VISUAL: the result opens the display column as a
        READOUT — the number leads at 22 px with its unit tucked in beside it,
@@ -174,15 +178,12 @@ export function NutritionCostProfileGrid({
               </span>
             </span>
           </span>
-          {partialCost ? (
+          {missingPriceMessage ? (
             <span
               className="mt-4 block pl-[21px] text-[11px] leading-[17px] text-[var(--g-text-muted)]"
-              data-testid="profile-partial-cost-summary"
+              data-testid="profile-missing-price-message"
             >
-              {proWorkbenchCopy.nutrition.costIncomplete}{' '}
-              {costMissingNames.length > 0
-                ? proWorkbenchCopy.nutrition.missingPrice(costMissingNames)
-                : null}
+              {missingPriceMessage}
             </span>
           ) : null}
           <span className="mt-[26px] flex min-w-0 items-start gap-3 pl-[21px] text-[15.5px] leading-[22px] font-medium tracking-[-0.02em] text-[var(--g-text-secondary)]">
@@ -248,11 +249,11 @@ export function NutritionCostProfileGrid({
                 </>
               )}
             </dl>
-            <p className="mt-2 text-[10px] leading-[15px] text-[var(--g-text-muted)]">
-              {partialCost && costMissingNames.length > 0
-                ? proWorkbenchCopy.nutrition.missingPrice(costMissingNames)
-                : 'Aktualizuj ceny w produktach'}
-            </p>
+            {!partialCost ? (
+              <p className="mt-2 text-[10px] leading-[15px] text-[var(--g-text-muted)]">
+                Aktualizuj ceny w produktach
+              </p>
+            ) : null}
           </section>
         </div>
       </details>
@@ -446,15 +447,7 @@ function ProfileContent({
     );
   }, [customerPrices, finalCostReady, input, toppings]);
   const costMissingNames = useMemo(() => {
-    const missingIds = new Set(finalCostProduct?.finalCosts?.missing_cost_ingredient_ids ?? []);
-    if (missingIds.size === 0) return [];
-    const namesById = new Map(
-      (finalCostProduct?.finalItems ?? []).map((item) => [
-        item.ingredient.id,
-        item.ingredient.name,
-      ]),
-    );
-    return [...missingIds].map((id) => namesById.get(id) ?? id);
+    return missingCostIngredientNames(finalCostProduct);
   }, [finalCostProduct]);
   return (
     <div

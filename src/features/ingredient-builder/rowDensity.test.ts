@@ -111,8 +111,9 @@ describe('D6/D9/D10 — protected price column, name gets the rest', () => {
     expect(row.match(/^export const COMPACT_ROW_GRID =/gm)).toHaveLength(1);
   });
 
-  it('the incomplete-cost status cannot clip the money column', () => {
-    expect(price).toContain("lineCost === null ? 'text-[10px]' : 'text-[11px]'");
+  it('a missing line cost stays a numeric placeholder inside the money column', () => {
+    expect(price).toContain("lineCost === null ? '—'");
+    expect(price).not.toContain('Koszt niepełny');
     expect(price).toContain('whitespace-nowrap');
   });
 });
@@ -192,7 +193,9 @@ describe('D11 — the complete left Recipe workspace follows the row system', ()
     // `.btn-solid` — height 44px, padding 0 28px, border-radius 999px. It keeps
     // the family's 44 px height beside the rounded-xl pickers; the pill shape
     // is what marks it as the one primary in the band.
-    expect(intelligenceHeader).toContain('flex h-11 shrink-0 items-center justify-center rounded-full');
+    expect(intelligenceHeader).toContain(
+      'flex h-11 shrink-0 items-center justify-center rounded-full',
+    );
     expect(intelligenceHeader).toContain('px-7');
   });
 });
