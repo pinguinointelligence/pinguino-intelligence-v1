@@ -109,8 +109,11 @@ export type RecognitionCarryForward = {
  * ADDS a fact gets a WORSE verdict than one who adds nothing, which is what happened to Vitamin
  * Well. So a fresh UNRESOLVED classification never replaces a stored RESOLVED one.
  *
- * It is not a cache of a verdict: a fresh RESOLVED classification always wins, and the carried
- * value is stamped so the trace says plainly where it came from.
+ * It is not a cache of a verdict. A fresh RESOLVED classification always wins, and so does a fresh
+ * classification that has settled on a DIFFERENT ingredient family — if the scan's understanding of
+ * what the product IS has moved (the customer corrected their family answer, the label turned out to
+ * say something else), the old verdict is stale and must not be resurrected. The carried value is
+ * stamped so the trace says plainly where it came from.
  */
 export function carryForwardRecognition(input: {
   fresh: Record<string, unknown>;
@@ -119,6 +122,13 @@ export function carryForwardRecognition(input: {
   const { fresh, persisted } = input;
   if (recognitionIsResolved(fresh)) return { recognition: fresh, carriedForward: false };
   if (!persisted || !recognitionIsResolved(persisted))
+    return { recognition: fresh, carriedForward: false };
+  const freshFamily = fresh.ingredientFamily;
+  if (
+    typeof freshFamily === 'string' &&
+    freshFamily !== 'unknown' &&
+    freshFamily !== persisted.ingredientFamily
+  )
     return { recognition: fresh, carriedForward: false };
   return {
     recognition: { ...persisted, carriedForwardFromScan: true },

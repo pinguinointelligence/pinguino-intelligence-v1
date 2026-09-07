@@ -116,6 +116,25 @@ describe('a resolution the scan already reached is not thrown away', () => {
     expect(carried.recognition.ingredientFamily).toBe('dairy_liquid');
   });
 
+  it('a customer who CORRECTS the family is not overruled by the old verdict', () => {
+    // the scan's understanding of what the product IS has moved; the old resolution is stale
+    const corrected = resolved({
+      ingredientFamily: 'dairy_liquid',
+      classificationSource: 'CUSTOMER_CONFIRMED',
+      // still unresolved on another axis, so without this rule the old verdict would win
+      modelRequired: true,
+      modelReasonCodes: ['DOSAGE_SEMANTICS_UNKNOWN'],
+    });
+    const carried = carryForwardRecognition({ fresh: corrected, persisted: resolved() });
+    expect(carried.carriedForward).toBe(false);
+    expect(carried.recognition.ingredientFamily).toBe('dairy_liquid');
+    // an unresolved family is not a correction — Vitamin Well still gets its resolution back
+    const unknownFamily = resolved({ ingredientFamily: 'unknown', modelRequired: true });
+    expect(
+      carryForwardRecognition({ fresh: unknownFamily, persisted: resolved() }).carriedForward,
+    ).toBe(true);
+  });
+
   it('with nothing to carry, the fresh verdict stands — no invention', () => {
     expect(carryForwardRecognition({ fresh: vitaminWellFallback, persisted: null })).toEqual({
       recognition: vitaminWellFallback,
