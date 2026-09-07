@@ -5,10 +5,9 @@ import { ConsumerLabelPreview } from './ConsumerLabelPreview';
 import type { DraftLabelPreview } from './draftLabelPreview';
 import type { MasterLabelData } from './masterLabel';
 import { printMasterLabel } from './masterLabelPrint';
-import { AllergenStatementControl } from './AllergenStatementControl';
-import { SaturatedFatControl } from './SaturatedFatControl';
 import { PrintMissingDataDialog } from './PrintMissingDataDialog';
 import { printMissingFields } from './printMissingData';
+import { buildLabelPreflight } from './masterLabel';
 
 /** Preview, actionable blockers and the only two bottom actions for a recipe draft. */
 export function DraftLabelCard({
@@ -23,12 +22,28 @@ export function DraftLabelCard({
   onOpenSettings: () => void;
 }) {
   const [printMissingOpen, setPrintMissingOpen] = useState(false);
+  const [printError, setPrintError] = useState<string | null>(null);
+  const performPrint = async (label: MasterLabelData) => {
+    setPrintError(null);
+    try {
+      await printMasterLabel(label, logoUrl);
+    } catch (caught) {
+      setPrintError(
+        caught instanceof Error ? caught.message : 'Nie udało się przygotować wydruku.',
+      );
+    }
+  };
   const requestPrint = () => {
+    const geometry = buildLabelPreflight(draft.label).geometry;
+    if (!geometry.fits) {
+      setPrintError(`${geometry.reason}. Zmień rozmiar w ustawieniach.`);
+      return;
+    }
     if (printMissingFields(draft.label).length > 0) {
       setPrintMissingOpen(true);
       return;
     }
-    printMasterLabel(draft.label, logoUrl);
+    void performPrint(draft.label);
   };
   return (
     <div className="space-y-3" data-testid="draft-label-card">
@@ -48,16 +63,6 @@ export function DraftLabelCard({
           </div>
         </header>
         <ConsumerLabelPreview label={draft.label} logoUrl={logoUrl} />
-        <div className="mt-4 divide-y divide-ink/10 border-t border-ink/10">
-          <AllergenStatementControl
-            label={draft.label}
-            onSave={async (label) => onSave(label, 'allergens')}
-          />
-          <SaturatedFatControl
-            label={draft.label}
-            onSave={async (label) => onSave(label, 'market_nutrition')}
-          />
-        </div>
       </Card>
 
       <div
@@ -77,9 +82,14 @@ export function DraftLabelCard({
           onClick={onOpenSettings}
           data-testid="draft-label-change"
         >
-          Zmień
+          Zmień ustawienia
         </Button>
       </div>
+      {printError ? (
+        <p className="text-sm text-status-error" role="alert">
+          {printError}
+        </p>
+      ) : null}
       {printMissingOpen ? (
         <PrintMissingDataDialog
           label={draft.label}
@@ -87,12 +97,12 @@ export function DraftLabelCard({
           onClose={() => setPrintMissingOpen(false)}
           onSkip={async () => {
             setPrintMissingOpen(false);
-            printMasterLabel(draft.label, logoUrl);
+            await performPrint(draft.label);
           }}
           onApply={async (label) => {
             setPrintMissingOpen(false);
             if (label !== draft.label) onSave(label, 'print_missing');
-            printMasterLabel(label, logoUrl);
+            await performPrint(label);
           }}
         />
       ) : null}

@@ -5,6 +5,7 @@ import { renderEuLabel } from './eu';
 import { renderUkLabel } from './uk';
 import { renderUsLabel } from './us';
 import { renderWorldLabel } from './world';
+import { sanitizeLabelForOutput } from '../printMissingData';
 
 export interface MarketLabelRenderer {
   market: MasterLabelData['market'];
@@ -24,5 +25,6 @@ export const MARKET_LABEL_RENDERERS: Readonly<
 });
 
 export function renderMarketLabelHtml(data: MasterLabelData): string {
-  return MARKET_LABEL_RENDERERS[data.market].renderHtml(data);
+  const printable = sanitizeLabelForOutput(data);
+  return MARKET_LABEL_RENDERERS[printable.market].renderHtml(printable);
 }

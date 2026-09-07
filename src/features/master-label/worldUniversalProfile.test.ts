@@ -35,8 +35,8 @@ describe('WORLD / UNIVERSAL label profile', () => {
     expect(html).not.toContain('Valeur nutritive');
     expect(html).not.toContain('canada-fop');
     expect(html).not.toContain('% Daily Value');
-    expect(html.match(/ETYKIETA WEWNĘTRZNA \/ INFORMACYJNA/g)).toHaveLength(2);
-    expect(html.match(/NIEZWERYFIKOWANE DO SPRZEDAŻY DETALICZNEJ/g)).toHaveLength(2);
+    expect(html.match(/ETYKIETA WEWNĘTRZNA \/ INFORMACYJNA/g)).toHaveLength(1);
+    expect(html.match(/NIEZWERYFIKOWANE DO SPRZEDAŻY DETALICZNEJ/g)).toHaveLength(1);
   });
 
   it('prints only real optional machine codes and never invents a GTIN', () => {

@@ -44,6 +44,13 @@ const NONBLOCKING_LABEL_SQL = readFileSync(
   ),
   'utf8',
 );
+const INFORMATIONAL_LABEL_SQL = readFileSync(
+  resolve(
+    import.meta.dirname,
+    '../../../supabase/migrations/20260907003704_allow_informational_label_snapshots.sql',
+  ),
+  'utf8',
+);
 
 describe('Production / Label closeout migration', () => {
   it('extends the one append-only Production history with every required event', () => {
@@ -201,5 +208,21 @@ describe('Owner non-blocking Label snapshot migration', () => {
     expect(NONBLOCKING_LABEL_SQL).toContain(
       "coalesce(p_master_label->'packageQuantity', 'null'::jsonb)",
     );
+  });
+});
+
+describe('Owner informational snapshot readiness migration', () => {
+  it('allows an informational snapshot for every market but never labels it regulatory-ready', () => {
+    expect(INFORMATIONAL_LABEL_SQL).toContain(
+      "v_market not in ('EU','UK','US','CA','AU_NZ','WORLD')",
+    );
+    expect(INFORMATIONAL_LABEL_SQL).toContain("v_readiness = 'PRINT_READY_REGULATORY'");
+    expect(INFORMATIONAL_LABEL_SQL).toContain("v_purpose <> 'retail_consumer'");
+    expect(INFORMATIONAL_LABEL_SQL).toContain("v_readiness = 'PRINT_READY_UNIVERSAL'");
+    expect(INFORMATIONAL_LABEL_SQL).toContain("v_purpose = 'retail_consumer'");
+    expect(INFORMATIONAL_LABEL_SQL).toContain(
+      'Label ingredients must come from the completed ACTUAL batch',
+    );
+    expect(INFORMATIONAL_LABEL_SQL).toContain('assert_production_pro_entitlement_v1');
   });
 });

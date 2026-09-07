@@ -1,4 +1,5 @@
 import type { RecipeInput } from '@/engine';
+import { buildNutritionDeclaration } from '@/data/label/nutritionLabel';
 import { calculateFinalProduct } from '@/features/recipe-composition/finalProduct';
 import type { RecipeCompositionMetadata } from '@/features/recipe-composition/recipeCompositionPersistence';
 import {
@@ -9,7 +10,6 @@ import {
 } from '@/features/product-intelligence';
 import type { AccountLabelProfile } from '@/services/labels/labelRepository';
 import {
-  applyAutoLabelLayout,
   buildLabelPreflight,
   buildRecipeDraftLabelData,
   type LabelPreflightItem,
@@ -61,7 +61,25 @@ export function mergeRecipeDraftLabel(
     savedLabel.packageQuantity?.source !== 'planned_final_product'
       ? savedLabel.packageQuantity
       : systemLabel.packageQuantity;
-  return applyAutoLabelLayout({
+  const manualAllergens =
+    savedLabel.allergens.reviewedByUser &&
+    savedLabel.allergens.labelStatements.some((value) => value.trim());
+  const savedSaturated = savedLabel.nutritionSource?.saturated_fat_g;
+  const systemFat = systemLabel.nutritionSource?.fat_g;
+  const manualSaturated =
+    savedLabel.saturatedFatAuthority?.status === 'manual_final_value' &&
+    savedSaturated !== null &&
+    savedSaturated !== undefined &&
+    Number.isFinite(savedSaturated) &&
+    savedSaturated > 0 &&
+    systemFat !== null &&
+    systemFat !== undefined &&
+    savedSaturated <= systemFat;
+  const nutritionSource =
+    manualSaturated && systemLabel.nutritionSource
+      ? { ...systemLabel.nutritionSource, saturated_fat_g: savedSaturated }
+      : systemLabel.nutritionSource;
+  return {
     ...systemLabel,
     ...savedLabel,
     masterLabelId: systemLabel.masterLabelId,
@@ -73,23 +91,29 @@ export function mergeRecipeDraftLabel(
     actualBatchQuantityG: systemLabel.actualBatchQuantityG,
     productName,
     ingredients: systemLabel.ingredients,
-    allergens: draft.confirmedFields.includes('allergens')
-      ? {
-          ...systemLabel.allergens,
-          status: 'complete',
-          labelStatements: savedLabel.allergens.labelStatements,
-          reviewedByUser: true,
-        }
-      : systemLabel.allergens,
-    nutritionSource: systemLabel.nutritionSource,
-    nutritionDeclaration: systemLabel.nutritionDeclaration,
-    saturatedFatAuthority: systemLabel.saturatedFatAuthority,
+    allergens:
+      manualAllergens || draft.confirmedFields.includes('allergens')
+        ? {
+            ...systemLabel.allergens,
+            status: 'complete',
+            labelStatements: savedLabel.allergens.labelStatements,
+            reviewedByUser: true,
+          }
+        : systemLabel.allergens,
+    nutritionSource,
+    nutritionDeclaration: manualSaturated
+      ? buildNutritionDeclaration(nutritionSource)
+      : systemLabel.nutritionDeclaration,
+    saturatedFatAuthority: manualSaturated
+      ? savedLabel.saturatedFatAuthority
+      : systemLabel.saturatedFatAuthority,
     packageQuantity: userSelectedPackage,
     netQuantityG: userSelectedPackage?.netWeightG ?? null,
     productionDate: draft.productionDate,
     productionDateReviewed: true,
     lotCode: draft.lotCode,
-  });
+    layoutMode: 'manual',
+  };
 }
 
 export function buildDraftLabelPreview({
@@ -133,8 +157,8 @@ export function buildDraftLabelPreview({
         ? profile.labelLanguages
         : ['en']
       : [...new Set([...requiredLanguages, ...profile.labelLanguages])];
-  const systemLabel = applyAutoLabelLayout(
-    buildRecipeDraftLabelData({
+  const systemLabel = {
+    ...buildRecipeDraftLabelData({
       masterLabelId: `master-label:${draft.draftId}`,
       draftId: draft.draftId,
       recipeName: productName?.trim() ?? '',
@@ -163,7 +187,8 @@ export function buildDraftLabelPreview({
       },
       printer: profile.presentation.printer,
     }),
-  );
+    layoutMode: 'manual' as const,
+  };
   const label = mergeRecipeDraftLabel(systemLabel, draft.label, draft);
   const preflight = buildLabelPreflight(label);
   const blockers = preflight.items.filter((item) => item.status !== 'ready');

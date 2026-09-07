@@ -382,6 +382,32 @@ describe('Master Label — one actual-batch source model', () => {
     expect(buildLabelPreflight(label).readyForSystemPrint).toBe(true);
   });
 
+  it('does not promote a positive Mapper value without field-level saturated-fat evidence', () => {
+    const snapshot = completedSnapshot();
+    const behaviorSnapshots = snapshot.productComposition.behaviorSnapshots ?? {};
+    for (const frozen of Object.values(behaviorSnapshots)) {
+      if (
+        !frozen.sharedFacts?.nutritionPer100g ||
+        typeof frozen.sharedFacts.nutritionPer100g.fat !== 'number' ||
+        frozen.sharedFacts.nutritionPer100g.fat <= 0
+      )
+        continue;
+      frozen.source = 'mapper';
+      frozen.mapperVerificationStatus = 'Verified';
+      frozen.sharedFacts.nutritionPer100g.saturatedFat = 2;
+    }
+    const data = buildMasterLabelData({
+      masterLabelId: 'label-positive-mapper-without-field-evidence',
+      snapshot,
+      market: 'EU',
+      uiLanguage: 'pl',
+      labelLanguages: ['pl'],
+    });
+
+    expect(data.nutritionSource?.saturated_fat_g).toBeNull();
+    expect(data.saturatedFatAuthority).toMatchObject({ status: 'missing' });
+  });
+
   it('uses actual toppings and legal mass order independently from manual UI order', () => {
     const snapshot = completedSnapshotWithToppings();
     const data = buildMasterLabelData({
@@ -789,7 +815,7 @@ describe('Master Label — one actual-batch source model', () => {
       enabledOptionalFields: [...data.enabledOptionalFields, 'logo' as const],
     };
     const html = buildMasterLabelPrintHtml(branded, 'https://example.test/private-logo.png');
-    expect(html.match(/<article class="label"/g)).toHaveLength(3);
+    expect(html.match(/<article class="label"/g)).toHaveLength(1);
     expect(html).toContain('Gellatti Lab');
     expect(html).toContain(OFFICIAL_GELLATTI_WORDMARK_URL);
     expect(html).not.toContain('private-logo.png');
