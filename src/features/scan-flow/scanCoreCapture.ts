@@ -53,6 +53,8 @@ export interface CaptureFrame {
 export interface ScanCoreCaptureHandlers {
   onConfirmed: (scan: ConfirmedScan) => void;
   onStatus?: (status: CaptureStatus) => void;
+  /** true when the delivered camera faces the customer, so the PREVIEW (never the decoder) mirrors */
+  onMirror?: (mirrored: boolean) => void;
   onFrame?: (frame: CaptureFrame) => void;
   onError?: (message: string) => void;
 }
@@ -75,7 +77,6 @@ interface DecisionLike {
 }
 
 const BUILD: string | null = import.meta.env.VITE_SCAN_LAB_BUILD ?? null;
-const ZOOM_STEP_FACTOR = 1.5;
 
 function formFactor(): 'mobile' | 'desktop' | 'unknown' {
   if (typeof navigator === 'undefined') return 'unknown';
@@ -110,6 +111,15 @@ export class ScanCoreCapture {
   private acting = false;
   private lastFrameEmit = 0;
   private lastFrameKey = '';
+  /**
+   * SOL-045. `open()` asks for `facingMode: 'environment'` as an IDEAL, not `exact` — correct, so a
+   * laptop still gets a camera at all. But a laptop has no environment camera, so the browser
+   * silently delivers the USER-facing one, and nothing mirrored it. An un-mirrored front camera is
+   * the view another person has of you: move the product left and it travels right across the
+   * screen. That is the "lustrzany i odwrócony" the owner reported — not a rotation, and not a bug
+   * in the decoder, which never sees the preview's CSS at all.
+   */
+  private facingUser = false;
 
   constructor(private readonly handlers: ScanCoreCaptureHandlers) {}
 
@@ -132,6 +142,11 @@ export class ScanCoreCapture {
       facingMode: 'environment',
     });
     if (this.done) return;
+    this.facingUser =
+      delivered.facingMode === 'user' ||
+      (delivered.facingMode === null &&
+        /front|face|facetime|webcam|integrated/i.test(delivered.label ?? ''));
+    this.handlers.onMirror?.(this.facingUser);
     // zoom + torch capability probe (apply, read back, restore) — the same probe the harness ran
     let zoomMax: number | null = null;
     let torch = false;
@@ -146,6 +161,18 @@ export class ScanCoreCapture {
     if (this.done) return;
     this.zoomMax = zoomMax !== null && zoomMax > 1 ? zoomMax : null;
     this.torchAvailable = torch;
+    /*
+      OWNER RULING 2026-09-06: every entry starts from the SAME natural setting. `zoomLevel` used to
+      be a monotone accumulator that nothing ever reset — not on a lost track, not on a new scan, not
+      on success, not in stop() — so a level reached in one scan was the multiplier for the next.
+      The camera is now explicitly returned to 1× when a session starts, and there is no code left
+      anywhere that raises it.
+    */
+    this.zoomLevel = 1;
+    if (this.zoomMax !== null) {
+      const settled = await this.camera.setZoom(1);
+      if (settled !== null) this.zoomLevel = settled;
+    }
     const client = new DecodeClient({
       plan: { mode: 'scancore', maxDecodeWidth: 0 },
       onResult: (evidence) => this.onEvidence(evidence as { decision?: unknown }),
@@ -230,15 +257,7 @@ export class ScanCoreCapture {
     if (action === 'none' || this.acting || this.done) return;
     this.acting = true;
     try {
-      if (action === 'zoom_step' && this.zoomMax !== null && this.zoomLevel < this.zoomMax) {
-        const target = Math.min(
-          this.zoomMax,
-          Math.round(this.zoomLevel * ZOOM_STEP_FACTOR * 10) / 10,
-        );
-        const applied = await this.camera.setZoom(target);
-        if (applied !== null) this.zoomLevel = applied;
-        this.sendCameraState();
-      } else if (action === 'torch_on' && this.torchAvailable && !this.torchOn) {
+      if (action === 'torch_on' && this.torchAvailable && !this.torchOn) {
         this.torchOn = await this.camera.setTorch(true);
         this.sendCameraState();
       }

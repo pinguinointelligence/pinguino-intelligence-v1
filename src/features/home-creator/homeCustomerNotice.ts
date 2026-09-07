@@ -18,7 +18,10 @@
  * allowlist of known-good sentences: a new pipeline refusal that mentions the Mapper is
  * then calm by default, instead of leaking until someone notices.
  */
+import { customerSafeNotice, exposesInternals } from '@/copy/customerSafeNotice';
 import { homeCreatorCopy } from './homeCreatorCopy';
+
+export { exposesInternals };
 
 /**
  * Implementation vocabulary that must never reach a HOME screen. Matched
@@ -28,36 +31,9 @@ import { homeCreatorCopy } from './homeCreatorCopy';
  * („aktualnej authority produktu", „Brakująca warstwa: walidacja serwerowa") — phrasing
  * that reads as an internal report even though the individual words are ordinary.
  */
-const INTERNAL_VOCABULARY: readonly RegExp[] = [
-  /productbehavior/i,
-  /\bmapper\b/i,
-  /snapshot/i,
-  /\bbinding\b/i,
-  /\bauthority\b/i,
-  /\bwarstwa\b/i,
-  /walidacja serwerowa/i,
-  /fingerprint/i,
-  /taxonomy/i,
-  /\bentity\b/i,
-  /\bmodu[łl]\b/i,
-  /\bwersja\s+[\w-]*\d/i,
-  /PI-ING-\d+/i,
-  /\b[a-z]+(?:_[a-z]+){2,}\b/,
-  /\bRPC\b/,
-];
+/* The list itself now lives in `@/copy/customerSafeNotice`, so every customer surface
+   shares one denylist instead of each screen remembering to opt in. */
 
-/** Does this sentence expose how the system is built? */
-export function exposesInternals(text: string): boolean {
-  return INTERNAL_VOCABULARY.some((pattern) => pattern.test(text));
-}
-
-/**
- * The sentence HOME may show. `null` in, `null` out — silence is preserved, because a
- * screen with no refusal must not gain one.
- */
 export function homeCustomerNotice(text: string | null | undefined): string | null {
-  if (text === null || text === undefined) return null;
-  const trimmed = text.trim();
-  if (trimmed === '') return null;
-  return exposesInternals(trimmed) ? homeCreatorCopy.recipe.unresolvedProduct : trimmed;
+  return customerSafeNotice(text, homeCreatorCopy.recipe.unresolvedProduct);
 }
