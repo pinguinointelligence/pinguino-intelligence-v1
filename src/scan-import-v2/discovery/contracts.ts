@@ -147,14 +147,23 @@ export interface FinalizeInput {
   expectedAssessmentHash?: string | null;
 }
 
+/**
+ * `notice` is the SERVER's own plain-Polish sentence about what the lookup did — ready to show.
+ * It exists because the alternative was inventing one on the client from `evidenceError` and
+ * `reason`, both of which are internal tokens: the flow rendered „research skipped:
+ * session_lookup_already_used" and the customer-copy gate replaced it with a generic sentence, so
+ * a lookup that had a specific, knowable outcome told the customer nothing (owner defect
+ * 2026-09-07, EAN 8480000804693). `null` means there is nothing to say, and silence is preserved.
+ */
 export type ResearchOutcome =
   | { kind: 'existing_product'; product: ExactCandidate }
   | {
       kind: 'researched';
       session: DiscoverySession;
       evidenceError: 'provider_timeout' | 'provider_failed' | 'provider_unavailable' | null;
+      notice?: string | null;
     }
-  | { kind: 'skipped'; session: DiscoverySession; reason: string };
+  | { kind: 'skipped'; session: DiscoverySession; reason: string; notice?: string | null };
 
 export type AnalyzeOutcome =
   | { kind: 'existing_product'; product: ExactCandidate }
