@@ -225,6 +225,8 @@ export function createSupabaseDiscoveryPort(
           customerFamily: input.customerFamily ?? null,
           confirmations: input.confirmations ?? {},
           privateOverlay: input.privateOverlay ?? {},
+          // binding when present: the save may persist only the verdict the customer was shown
+          expectedAssessmentHash: input.expectedAssessmentHash ?? null,
         });
       } catch (error) {
         const m = error instanceof Error ? error.message : '';
@@ -249,6 +251,9 @@ export function createSupabaseDiscoveryPort(
               'other',
             ],
           };
+        case 'scan_assessment_stale':
+          // the verdict moved between the screen and the save; the customer repeats, nothing is written
+          return { kind: 'assessment_stale' };
         case 'customer_product_not_ready': {
           // the profile/ProductBehaviour authorities refused an Engine product; carry WHY (never invent readiness)
           const assessment = obj(
@@ -276,7 +281,10 @@ export function createSupabaseDiscoveryPort(
               : Array.isArray(assessment['missingCritical'])
                 ? (assessment['missingCritical'] as string[])
                 : [],
+            // DIAGNOSTIC ONLY — never rendered to a customer (see FinalizeOutcome)
             reasons: reasons.length > 0 ? reasons : ['customer_product_not_ready'],
+            assessmentHash:
+              typeof d['assessmentHash'] === 'string' ? (d['assessmentHash'] as string) : null,
           };
         }
         case 'profile_preview':
@@ -286,6 +294,8 @@ export function createSupabaseDiscoveryPort(
               ? (d['criticalGaps'] as string[])
               : [],
             reasons: ['profile_preview'],
+            assessmentHash:
+              typeof d['assessmentHash'] === 'string' ? (d['assessmentHash'] as string) : null,
           };
         default: {
           // the RPC decided the route from the canonical profile; never re-derive it here

@@ -5,6 +5,14 @@ import {
 } from '../_shared/productScanner.ts';
 import { customerProductProfileProposal } from '../_shared/customerProductProfile.ts';
 import {
+  SCAN_ASSESSMENT_VERSION,
+  carryForwardRecognition,
+  mergeConfirmedEvidenceFields,
+  readPersistedScanEvidence,
+  recognitionIsResolved,
+  scanAssessmentSnapshot,
+} from '../_shared/scanAssessment.ts';
+import {
   finalizeProductProductionAccuracy,
   validateIntimportProductProfileProposal,
   type IntimportMapperAuthorityRow,
@@ -359,7 +367,7 @@ Deno.serve(async (request) => {
   } catch {
     return json({ error: 'invalid_json' }, 400);
   }
-/*
+  /*
     OWNER CONTRACT 2026-09-07 — three actions, not two.
 
     'preview'          — dry run, nothing is written.
@@ -404,17 +412,40 @@ Deno.serve(async (request) => {
   if (session.state === 'finalized' && session.exact_product_id) {
     const { data: product } = await service
       .from('products')
-      .select('id,product_code,product_name_display,brand')
+      .select('id,product_code,product_name_display,brand,current_version_id')
       .eq('id', session.exact_product_id)
       .maybeSingle();
+    /*
+      A REPEATED FINALIZE MUST REPORT WHAT WAS SAVED. This branch used to answer usable-and-created
+      unconditionally, so pressing save twice on an UNVERIFIED product turned it into a usable one in
+      the client's eyes and re-enabled the recipe button the routing verdict had just refused.
+      Readiness is read back from the saved version through the SAME predicate
+      `gellatti_my_unverified_products_v1` uses — never re-derived here.
+    */
+    const { data: version } = product?.current_version_id
+      ? await service
+          .from('product_versions')
+          .select('facts')
+          .eq('id', product.current_version_id)
+          .maybeSingle()
+      : { data: null };
+    const savedIntelligence = objectValue(
+      objectValue(objectValue(version).facts).productIntelligence,
+    );
+    const savedReady =
+      objectValue(objectValue(savedIntelligence.productAccuracyAssessment).gellattiReadiness)
+        .ready === true;
+    const savedCode = typeof product?.product_code === 'string' ? product.product_code : null;
     return json({
       kind: 'idempotent',
       productId: product?.id ?? session.exact_product_id,
-      productCode: product?.product_code ?? null,
+      productCode: savedCode,
       displayName: product?.product_name_display ?? null,
       brand: product?.brand ?? null,
-      engineUsable: true,
-      usableProductCreated: true,
+      route: savedCode?.startsWith('PR-ING-') ? 'PR' : savedReady ? 'PM_READY' : 'PM_UNVERIFIED',
+      productionReady: savedReady,
+      engineUsable: savedReady,
+      usableProductCreated: savedReady,
     });
   }
   if (session.state !== 'analyzed') return json({ error: 'scan_not_ready_for_creation' }, 409);
@@ -427,6 +458,24 @@ Deno.serve(async (request) => {
   if (!corrections) return json({ error: 'invalid_user_confirmed_product_fields' }, 400);
   if (!corrections.barcode) return json({ error: 'customer_product_valid_ean_required' }, 409);
 
+  /*
+    A SCAN ACCUMULATES; ONE REQUEST NEVER SUBTRACTS FROM IT.
+
+    `applyCustomerCorrections` can only see the confirmations THIS request carries, and the
+    completion form only ever shows what is still missing — so every later round legitimately
+    carries fewer fields than the one before it. The corrected result is written back onto the
+    session, so on the next call the customer's VALUES are still there while their PROVENANCE is
+    gone, and every field they typed comes back as `mapper_similar_profile/ESTIMATED`. Reproduced
+    against the deployed function on one session: 90 → 73.4 → 90, driven by nothing but whether the
+    request repeated the answers, with `INGREDIENTS_EVIDENCE_REQUIRED` raised for an ingredient text
+    that was sitting on the session. 73.4 is the number the owner's Cola Zero was saved with.
+  */
+  const persistedScan = readPersistedScanEvidence(session.validation_json);
+  const confirmedEvidenceFields = mergeConfirmedEvidenceFields(
+    persistedScan.confirmedFields,
+    corrections.confirmedEvidenceFields,
+  );
+
   const recognitionEvidence = productSemanticEvidenceFromScanResult(corrections.result);
   let recognition = await serverSemanticClassification({
     url,
@@ -438,11 +487,23 @@ Deno.serve(async (request) => {
   const familyChoice = FAMILY_CHOICES.has(body.customerFamily as CustomerProductFamilyChoice)
     ? (body.customerFamily as CustomerProductFamilyChoice)
     : null;
-  let familyResolution = resolveCustomerProductFamily(recognition);
-  if (familyResolution.status !== 'RESOLVED' && familyChoice) {
+  if (resolveCustomerProductFamily(recognition).status !== 'RESOLVED' && familyChoice)
     recognition = applyCustomerProductFamily(recognition, familyChoice);
-    familyResolution = resolveCustomerProductFamily(recognition);
-  }
+  /*
+    The same rule for the semantic verdict. `serverSemanticClassification` re-runs on every call and
+    its model answer is cached under a hash of the MUTATING evidence — so the moment the customer
+    adds a fact the fingerprint moves, the cache misses, and a model that does not answer leaves the
+    deterministic `REVIEW_REQUIRED`. `modelRequired === true` is a hard gate in BOTH authorities, so
+    a resolution the scan had already reached silently became `PRODUCT_SEMANTICS_UNRESOLVED`: that
+    is Vitamin Well's 87.8/ready → 71.9/not ready. A fresh RESOLVED classification still wins; only
+    an unresolved one is refused the right to erase what the scan already knows.
+  */
+  const carriedRecognition = carryForwardRecognition({
+    fresh: recognition as unknown as Record<string, unknown>,
+    persisted: persistedScan.recognition,
+  });
+  recognition = carriedRecognition.recognition as unknown as ProductSemanticClassification;
+  const familyResolution = resolveCustomerProductFamily(recognition);
 
   const validation = {
     ...objectValue(session.validation_json),
@@ -450,6 +511,13 @@ Deno.serve(async (request) => {
     packageEvidenceExhausted: objectValue(body.confirmations).packageEvidenceExhausted === true,
     customerFamily: familyChoice,
     recognition,
+    // what this scan has established, carried to every later call in it
+    scanEvidence: {
+      confirmedFields: confirmedEvidenceFields,
+      recognition: recognitionIsResolved(recognition)
+        ? recognition
+        : (persistedScan.recognition ?? null),
+    },
   };
   const persistedAt = new Date().toISOString();
   const { data: persisted, error: persistError } = await service
@@ -481,7 +549,7 @@ Deno.serve(async (request) => {
     scanResult: corrections.result,
     recognitionEvidence,
     recognition,
-    userConfirmedFields: corrections.confirmedEvidenceFields,
+    userConfirmedFields: confirmedEvidenceFields,
   });
   if (!proposal) return json({ error: 'customer_product_identity_required' }, 409);
 
@@ -517,8 +585,25 @@ Deno.serve(async (request) => {
   const roleReady = roleReadiness === 'BASE_READY' || roleReadiness === 'TOPPING_READY';
   const ready = profile.productAccuracyAssessment.gellattiReadiness.ready;
   const criticalGaps = [...profile.productAccuracyAssessment.criticalBlockers];
+  /*
+    THE FINAL ASSESSMENT SNAPSHOT — one scan, one versioned verdict. Preview shows it, Finalize
+    saves it and routing classifies it, and its hash is what proves the three were the same thing.
+  */
+  const assessment = await scanAssessmentSnapshot({
+    sessionId,
+    barcode: corrections.barcode,
+    result: corrections.result,
+    confirmedFields: confirmedEvidenceFields,
+    recognition: recognition as unknown as Record<string, unknown>,
+    recognitionCarriedForward: carriedRecognition.carriedForward,
+    behavior: behavior as unknown as Record<string, unknown>,
+    profile: profile as unknown as Record<string, unknown>,
+  });
   const preview = {
     kind: 'profile_preview',
+    assessmentVersion: SCAN_ASSESSMENT_VERSION,
+    assessmentHash: assessment.assessmentHash,
+    assessment,
     barcode: corrections.barcode,
     recognition,
     familyResolution,
@@ -580,7 +665,7 @@ Deno.serve(async (request) => {
   const { error: traceError } = await service
     .from('product_scan_sessions')
     .update({
-      validation_json: { ...validation, autonomousTrace: trace },
+      validation_json: { ...validation, autonomousTrace: trace, finalAssessment: assessment },
       updated_at: new Date().toISOString(),
     })
     .eq('id', sessionId)
@@ -588,6 +673,15 @@ Deno.serve(async (request) => {
     .eq('state', 'analyzed');
   if (traceError) return json({ error: 'scanner_trace_persistence_failed' }, 503);
   if (action === 'preview') return json(preview);
+  /*
+    A SAVE MAY ONLY SAVE THE VERDICT THE CUSTOMER WAS SHOWN. The client sends back the hash of the
+    assessment it is acting on; if what this run produced is a different verdict, the save stops
+    rather than quietly persisting a product the customer never saw. It is optional so an older
+    client is refused nothing — but the moment it is sent, it is binding.
+  */
+  const expectedAssessmentHash = text(body.expectedAssessmentHash, 128);
+  if (expectedAssessmentHash && expectedAssessmentHash !== assessment.assessmentHash)
+    return json({ ...preview, kind: 'scan_assessment_stale' }, 409);
   // the completion form is offered first; only an explicit save_unverified persists an unready one
   if (!ready && action !== 'save_unverified')
     return json({ ...preview, kind: 'customer_product_not_ready' }, 409);
@@ -631,5 +725,9 @@ Deno.serve(async (request) => {
     controlledCatalog: false,
     recognition,
     mapper: preview.mapper,
+    // the verdict that was saved — the same object Preview returned, by hash
+    assessmentVersion: SCAN_ASSESSMENT_VERSION,
+    assessmentHash: assessment.assessmentHash,
+    assessment,
   });
 });

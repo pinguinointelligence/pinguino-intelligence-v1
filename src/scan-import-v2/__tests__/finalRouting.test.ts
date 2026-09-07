@@ -15,6 +15,8 @@
  * two gates with the same arithmetic the SQL does — so the harness cannot drift from the server
  * without one of these going red.
  */
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { continueDiscovery } from '../discovery/discovery';
 import { runScanImportV2 } from '../pipeline';
@@ -162,5 +164,70 @@ describe('the two gates decide, and only at the end', () => {
     }
     const { d: unready } = await route({ ready: true, missing: true }, true);
     expect(unready.created.get(GTIN)!.productCode ?? '').not.toMatch(/CA-ING/);
+  });
+});
+
+/**
+ * OWNER CONTRACT §8 — routing CLASSIFIES a finished verdict. It may not touch the profile, the
+ * confidence or the readiness, and per-user PM identity is the database's, so these last points are
+ * asserted where they actually live: in the SQL that was applied to staging.
+ */
+describe('routing classifies; it never re-decides', () => {
+  const MIGRATION = readFileSync(
+    join(
+      import.meta.dirname,
+      '..',
+      '..',
+      '..',
+      'supabase/migrations/20260907030000_scanner_final_pr_pm_routing.sql',
+    ),
+    'utf8',
+  );
+
+  it('reads readiness and confidence from the profile it was handed — it computes neither', () => {
+    // both inputs are read out of the SAME canonical profile the pipeline produced
+    expect(MIGRATION).toContain(
+      "v_ready:=coalesce((p_product_profile#>>''{productAccuracyAssessment,gellattiReadiness,ready}'')::boolean,false)",
+    );
+    expect(MIGRATION).toContain(
+      "v_conf:=coalesce((p_product_profile->>''productAccuracy'')::numeric,0)",
+    );
+    // and the route is a pure case over them
+    expect(MIGRATION).toContain("v_route:=case when v_ready and v_conf>85 then ''PR''");
+    // nothing recomputes accuracy or keeps a second list of required fields
+    expect(MIGRATION).not.toMatch(/v_conf\s*:=\s*(?!coalesce\(\(p_product_profile)/);
+    expect(MIGRATION).toContain('nothing is recomputed here and no second list of required fields');
+  });
+
+  it('the saved profile is the profile that was assessed — routing writes no field of it', () => {
+    // the only thing routing sets is the ARTICLE PREFIX guc, the owner, kind and visibility
+    expect(MIGRATION).toContain(
+      "set_config(''app.product_article_origin'',case when v_route=''PR'' then ''PR'' else ''PM'' end,true)",
+    );
+    expect(MIGRATION).not.toMatch(/p_product_profile\s*(?:=|:=)\s*[^=]/);
+    expect(MIGRATION).not.toMatch(/jsonb_set\(p_product_profile/);
+  });
+
+  it('an existing PM of THIS user is updated, never duplicated', () => {
+    expect(MIGRATION).toContain('customer_added_products_ean_owner_key');
+    expect(MIGRATION).toContain(
+      'on public.customer_added_products (normalized_ean, coalesce(owner_user_id',
+    );
+    // the pending row is looked up per owner for a PM, and globally for a shared PR
+    expect(MIGRATION).toContain('and owner_user_id is not distinct from');
+    expect(MIGRATION).toContain(
+      "(case when v_route=''PR'' then null else p_actor_user_id end) for update;",
+    );
+  });
+
+  it("another account's PM is not visible, and gets its own private identity", () => {
+    // the read policy demands the caller BE the owner, on top of the link row
+    expect(MIGRATION).toContain('products_customer_added_linked_read');
+    expect(MIGRATION).toContain('(owning_account_id is null or owning_account_id = auth.uid())');
+    // and a PM is created owned + account_private, so the privacy CHECK can hold it to that
+    expect(MIGRATION).toContain(
+      "case when v_route=''PR'' then ''shared'' else ''account_private'' end",
+    );
+    expect(MIGRATION).toContain("case when v_route=''PR'' then null else p_actor_user_id end");
   });
 });

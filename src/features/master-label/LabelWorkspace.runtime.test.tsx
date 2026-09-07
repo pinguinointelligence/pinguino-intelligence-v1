@@ -655,7 +655,9 @@ describe('LabelWorkspace unified actual-run surface', () => {
     expect(editor?.textContent).toContain('Zapisz jako moje ustawienie domyślne');
     expect(editor?.textContent).not.toContain('Kopie');
     expect(editor?.textContent).toContain('Szerokość (mm)');
-    expect(editor?.querySelector('[data-testid="label-settings-preview"]')).not.toBeNull();
+    const settingsPreview = editor?.querySelector('[data-testid="label-settings-preview"]');
+    expect(settingsPreview).not.toBeNull();
+    expect(settingsPreview?.getAttribute('class')).toContain('min-w-0');
     expect(editor?.textContent).not.toContain('Nr partii · nadawany automatycznie');
     expect(editor?.textContent).not.toContain('Energia według zasad rynku');
     expect(editor?.textContent).not.toContain('Uzupełnij wymagane pola');

@@ -140,6 +140,11 @@ export interface FinalizeInput {
     supplier?: string | null;
     notes?: string | null;
   };
+  /**
+   * The hash of the assessment the customer is acting on. Sent only when nothing has been typed
+   * since it was received: a save may persist ONLY the verdict that was shown.
+   */
+  expectedAssessmentHash?: string | null;
 }
 
 export type ResearchOutcome =
@@ -178,9 +183,23 @@ export type FinalizeOutcome =
       productionReady: boolean;
     }
   | { kind: 'family_confirmation_required'; options: readonly CustomerFamily[] }
-  | { kind: 'not_ready'; missingCritical: readonly string[]; reasons: readonly string[] }
+  /**
+   * `reasons` is DIAGNOSTIC. It carries the authority's own vocabulary — `INGREDIENTS_EVIDENCE_REQUIRED`,
+   * `roleReadiness:REVIEW`, `recognition:NORMAL_INGREDIENT/BASE_ONLY` — and the owner was shown all
+   * of it on a phone. It exists for logs, tests and the admin panels; a customer-facing renderer
+   * must never print it. What the customer reads is composed from `missingCritical` in plain Polish.
+   */
+  | {
+      kind: 'not_ready';
+      missingCritical: readonly string[];
+      reasons: readonly string[];
+      /** hash of the assessment this verdict belongs to; sent back on save so the two cannot differ */
+      assessmentHash?: string | null;
+    }
   | { kind: 'profile_rejected'; reason: string }
-  | { kind: 'identity_required' };
+  | { kind: 'identity_required' }
+  /** the save was asked to persist a verdict the customer had not been shown; ask them to repeat it */
+  | { kind: 'assessment_stale' };
 
 export type RequestOutcome =
   | { kind: 'product_request'; requestId: string; status: string }
