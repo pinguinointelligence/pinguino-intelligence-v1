@@ -1,10 +1,11 @@
-import type {
-  ProductArchetype,
-  ProductIntendedUsageRole,
-  ProductPhysicalForm,
-  ProductSemanticClassification,
-  ProductSemanticFamily,
-} from '../product-intelligence/productRecognition';
+import {
+  mapperCategoriesFor,
+  type ProductArchetype,
+  type ProductIntendedUsageRole,
+  type ProductPhysicalForm,
+  type ProductSemanticClassification,
+  type ProductSemanticFamily,
+} from '../product-intelligence/productRecognition.ts';
 
 export type CustomerProductFamilyChoice =
   | 'dairy'
@@ -117,8 +118,33 @@ export function applyCustomerProductFamily(
     classification.intendedUsageRole === 'NEITHER_REVIEW' && defaults.role
       ? defaults.role
       : classification.intendedUsageRole;
+  /*
+    A REASON CODE NAMES ONE FIELD, SO ONLY THAT FIELD MAY RETIRE IT.
+
+    This used to strip 'FAMILY_UNKNOWN' and nothing else, so codes naming fields the merge had
+    JUST resolved survived the merge that resolved them. On the owner's phone (staging,
+    2026-09-07 18:08 UTC, EAN 7340222800464) the customer answered "beverage", the defaults set
+    productArchetype NORMAL_INGREDIENT and physicalForm LIQUID — and the persisted recognition
+    still carried ["ARCHETYPE_UNKNOWN", "FORM_UNKNOWN"], two statements that were no longer true.
+    `modelRequired` is derived from that list and is a hard gate in BOTH
+    productProductionAccuracy (PRODUCT_SEMANTICS_UNRESOLVED) and productBehaviorAuthority
+    (unknown_requires_review), so the product was blocked and the customer was asked to
+    photograph a label whose answer the flow was already holding.
+
+    The rule is therefore per-field and has no exceptions: a code is dropped when ITS OWN field is
+    no longer unknown after the merge, and any code this table does not name survives untouched —
+    DOSAGE_SEMANTICS_UNKNOWN is a real uncertainty a family answer cannot settle, and a family
+    whose defaults leave the form or the role open (fruit, sweetener, technical) still needs the
+    model for exactly the dimension it left open.
+  */
+  const stillUnknownAfterMerge: Readonly<Record<string, boolean>> = {
+    FAMILY_UNKNOWN: defaults.family === 'unknown',
+    ARCHETYPE_UNKNOWN: productArchetype === 'UNKNOWN',
+    FORM_UNKNOWN: physicalForm === 'UNKNOWN',
+    ROLE_UNKNOWN: intendedUsageRole === 'NEITHER_REVIEW',
+  };
   const modelReasonCodes = classification.modelReasonCodes.filter(
-    (reason) => reason !== 'FAMILY_UNKNOWN',
+    (reason) => stillUnknownAfterMerge[reason] ?? true,
   );
   return {
     ...classification,
@@ -128,11 +154,13 @@ export function applyCustomerProductFamily(
     physicalForm,
     intendedUsageRole,
     /*
-      This used to be emptied. The customer's answer NARROWS what the product is; it cannot make
-      the Mapper's compatible-category list unknown. Blanking it left the Mapper with no cohort to
-      match against, so a product the flow had just identified as a drink could match nothing.
+      Recomputed from the RESOLVED identity, never carried over. The list is a function of family
+      and archetype, and this merge changes both — carrying the old value forward kept the EMPTY
+      list a family of 'unknown' produces, so a product the flow had just been told is a drink
+      still reached the Mapper with no cohort to match against. The mapping itself is not
+      duplicated here; it is the one in productRecognition.
     */
-    compatibleMapperCategories: classification.compatibleMapperCategories,
+    compatibleMapperCategories: mapperCategoriesFor(defaults.family, productArchetype),
     reasonCodes: [...classification.reasonCodes, `CUSTOMER_FAMILY_${choice.toUpperCase()}`],
     evidenceRefs: [...new Set([...classification.evidenceRefs, 'customerFamily'])],
     modelRequired: modelReasonCodes.length > 0,
