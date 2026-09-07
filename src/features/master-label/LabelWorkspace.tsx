@@ -51,10 +51,9 @@ import {
 } from './printerProfiles';
 import { assessCanadaFop } from './regulatoryNutrition';
 import { customerErrorMessage } from '@/copy/customerError';
-import { AllergenStatementControl } from './AllergenStatementControl';
-import { SaturatedFatControl } from './SaturatedFatControl';
 import { PrintMissingDataDialog } from './PrintMissingDataDialog';
-import { printMissingFields } from './printMissingData';
+import { printMissingFields, printReadinessForLabel } from './printMissingData';
+import { MissingLabelDataSettings } from './MissingLabelDataFields';
 
 const MARKET_CODES: readonly MarketProfileCode[] = MARKET_PROFILE_ORDER;
 export type LabelWorkspaceView = 'data' | 'settings' | 'label';
@@ -86,8 +85,18 @@ function profileFromLabel(
       format: label.format,
       widthMm: label.size.widthMm,
       heightMm: label.size.heightMm,
-      copies: label.copies,
-      printer: label.printer,
+      copies: 1,
+      printer: normalizePrinterSettings({ ...label.printer, copies: 1 }),
+      basicSizes: {
+        rectangle:
+          label.format === 'rectangle'
+            ? { widthMm: label.size.widthMm, heightMm: label.size.heightMm }
+            : profile.presentation.basicSizes.rectangle,
+        round:
+          label.format === 'round'
+            ? { diameterMm: label.size.widthMm }
+            : profile.presentation.basicSizes.round,
+      },
     },
   };
 }
@@ -103,8 +112,8 @@ function labelFromProfile(
         ? profile.labelLanguages
         : ['en']
       : [...new Set([...requiredLanguages, ...profile.labelLanguages])];
-  return applyAutoLabelLayout(
-    buildMasterLabelData({
+  return {
+    ...buildMasterLabelData({
       masterLabelId: `master-label:${snapshot.sessionId}`,
       snapshot,
       market: profile.market,
@@ -121,11 +130,12 @@ function labelFromProfile(
           widthMm: profile.presentation.widthMm,
           heightMm: profile.presentation.heightMm,
         },
-        copies: profile.presentation.copies,
+        copies: 1,
       },
-      printer: profile.presentation.printer,
+      printer: normalizePrinterSettings({ ...profile.presentation.printer, copies: 1 }),
     }),
-  );
+    layoutMode: 'manual',
+  };
 }
 
 export function LabelWorkspace({
@@ -316,7 +326,7 @@ export function LabelWorkspace({
         onSaved?.(frozen);
         printable = frozen.label;
       }
-      printMasterLabel(printable, logoUrl);
+      await printMasterLabel(printable, logoUrl);
     } catch (caught) {
       setError(customerErrorMessage(caught, 'labels', 'LABEL_SAVE_FAILED'));
     } finally {
@@ -326,6 +336,11 @@ export function LabelWorkspace({
 
   const requestPrint = () => {
     if (!label || busy) return;
+    const geometry = buildLabelPreflight(label).geometry;
+    if (!geometry.fits) {
+      setError(`${geometry.reason}. Zmień szerokość, wysokość albo średnicę w ustawieniach.`);
+      return;
+    }
     if (printMissingFields(label).length > 0) {
       setPrintMissingOpen(true);
       return;
@@ -480,7 +495,7 @@ export function LabelWorkspace({
         }}
         data-testid="label-change"
       >
-        Zmień
+        Zmień ustawienia
       </Button>
     </div>
   );
@@ -511,40 +526,15 @@ export function LabelWorkspace({
                 <h2 className="mt-2 text-xl font-semibold tracking-[-0.025em] text-ink">
                   {productName}
                 </h2>
+                <p className="mt-1 text-xs text-stone-500">
+                  {marketProfile(label.market).label} ·{' '}
+                  {printReadinessForLabel(label) === 'PRINT_READY_REGULATORY'
+                    ? 'dane kompletne'
+                    : 'etykieta wewnętrzna / informacyjna'}
+                </p>
               </header>
               <div className="overflow-x-auto p-4 sm:p-6" data-testid="consumer-print-boundary">
                 <ConsumerLabelPreview label={label} logoUrl={logoUrl} />
-              </div>
-              <div
-                className="border-t border-ink/10 px-4 sm:px-6"
-                data-testid="label-missing-data-stack"
-              >
-                <div className="divide-y divide-ink/10" data-testid="label-optional-rows">
-                  <AllergenStatementControl
-                    label={label}
-                    onSave={async (next) => {
-                      if (saved) {
-                        setSaved(null);
-                        setLabel({ ...next, snapshotEvidence: null });
-                        setActiveView('label');
-                        return;
-                      }
-                      setLabel(next);
-                    }}
-                  />
-                  <SaturatedFatControl
-                    label={label}
-                    onSave={async (next) => {
-                      if (saved) {
-                        setSaved(null);
-                        setLabel({ ...next, snapshotEvidence: null });
-                        setActiveView('label');
-                        return;
-                      }
-                      setLabel(next);
-                    }}
-                  />
-                </div>
               </div>
             </Card>
             <div
@@ -567,6 +557,8 @@ export function LabelWorkspace({
         ) : (
           <CompactRunLabelSettings
             label={label}
+            logoUrl={logoUrl}
+            basicSizes={profile.presentation.basicSizes}
             saveAsDefault={saveAsDefault}
             onSaveAsDefaultChange={setSaveAsDefault}
             onClose={() => openView('label')}
@@ -576,7 +568,10 @@ export function LabelWorkspace({
               try {
                 if (saveAsDefault) await persistProfile(profileFromLabel(profile, next));
                 const nextReady = announceReadyTransition(next);
-                setLabel(next);
+                const frozen = await repository.saveRunLabelSnapshot(next);
+                setSaved(frozen);
+                setLabel(frozen.label);
+                onSaved?.(frozen);
                 setTransitionDirection('forward');
                 setActiveView(nextReady ? 'label' : 'data');
               } catch (caught) {
@@ -938,41 +933,57 @@ function ProfileEditor({
         enabled={draft.enabledOptionalFields}
         onChange={(enabledOptionalFields) => setDraft({ ...draft, enabledOptionalFields })}
       />
-      <PresentationFields
-        format={draft.presentation.format}
-        widthMm={draft.presentation.widthMm}
-        heightMm={draft.presentation.heightMm}
-        copies={draft.presentation.copies}
-        onChange={(presentation) =>
-          setDraft({
-            ...draft,
-            presentation: {
-              ...presentation,
-              printer: normalizePrinterSettings({
-                ...draft.presentation.printer,
-                widthMm: presentation.widthMm,
-                heightMm: presentation.heightMm,
-                copies: presentation.copies,
-              }),
-            },
-          })
-        }
-      />
-      <PrinterSettingsFields
-        value={draft.presentation.printer}
-        onChange={(printer) =>
-          setDraft({
-            ...draft,
-            presentation: {
-              ...draft.presentation,
-              widthMm: printer.widthMm,
-              heightMm: printer.heightMm,
-              copies: printer.copies,
-              printer,
-            },
-          })
-        }
-      />
+      <div className="mt-4 rounded-[12px] border border-[var(--g-line)] bg-white p-[18px]">
+        <p className="mb-3 text-[14px] font-bold text-[var(--g-ink)]">Basic · kształt i rozmiar</p>
+        <BasicSizeFields
+          format={draft.presentation.format}
+          widthMm={draft.presentation.widthMm}
+          heightMm={draft.presentation.heightMm}
+          initialSizes={draft.presentation.basicSizes}
+          onChange={({ format, widthMm, heightMm }) =>
+            setDraft({
+              ...draft,
+              presentation: {
+                format,
+                widthMm,
+                heightMm,
+                copies: 1,
+                basicSizes: {
+                  rectangle:
+                    format === 'rectangle'
+                      ? { widthMm, heightMm }
+                      : draft.presentation.basicSizes.rectangle,
+                  round:
+                    format === 'round'
+                      ? { diameterMm: widthMm }
+                      : draft.presentation.basicSizes.round,
+                },
+                printer: normalizePrinterSettings({
+                  ...draft.presentation.printer,
+                  formatMode: 'custom',
+                  presetId: null,
+                  widthMm,
+                  heightMm,
+                  copies: 1,
+                }),
+              },
+            })
+          }
+        />
+        <CompactPrinterFields
+          value={draft.presentation.printer}
+          onChange={(printer) =>
+            setDraft({
+              ...draft,
+              presentation: {
+                ...draft.presentation,
+                copies: 1,
+                printer: normalizePrinterSettings({ ...printer, copies: 1 }),
+              },
+            })
+          }
+        />
+      </div>
       <div className="mt-5 grid grid-cols-2 gap-2">
         <Button variant="ghost" onClick={onClose}>
           Anuluj
@@ -992,6 +1003,8 @@ const QUICK_PRINTER_IDS: readonly PrinterProfileId[] = [
 
 export function CompactRunLabelSettings({
   label,
+  logoUrl = null,
+  basicSizes,
   saveAsDefault,
   onSaveAsDefaultChange,
   onClose,
@@ -1000,6 +1013,8 @@ export function CompactRunLabelSettings({
   showDraftData = false,
 }: {
   label: MasterLabelData;
+  logoUrl?: string | null;
+  basicSizes?: AccountLabelProfile['presentation']['basicSizes'];
   saveAsDefault: boolean;
   onSaveAsDefaultChange: (value: boolean) => void;
   onClose: () => void;
@@ -1008,6 +1023,7 @@ export function CompactRunLabelSettings({
   showDraftData?: boolean;
 }) {
   const [draft, setDraft] = useState(label);
+  const draftGeometry = useMemo(() => buildLabelPreflight(draft).geometry, [draft]);
   const finalMass = draft.actualBatchQuantityG ?? draft.netQuantityG ?? 0;
   const initialPackageMass = draft.packageQuantity?.netWeightG ?? finalMass;
   const [splitPackages, setSplitPackages] = useState(
@@ -1039,33 +1055,32 @@ export function CompactRunLabelSettings({
       market === 'WORLD'
         ? ['en']
         : [...new Set([...nextProfile.requiredLanguages, ...draft.labelLanguages])];
-    setDraft(
-      applyAutoLabelLayout({
-        ...draft,
-        market,
-        marketProfileVersion: nextProfile.version,
-        labelLanguages,
-        enabledOptionalFields: normalizeEnabledOptionalFields(market, draft.enabledOptionalFields),
-        jurisdictionContext: {
-          euDestinationCountryCode:
-            market === 'EU' ? (draft.jurisdictionContext?.euDestinationCountryCode ?? '') : '',
-          ukRegion:
-            market === 'UK' ? (draft.jurisdictionContext?.ukRegion ?? 'unresolved') : 'unresolved',
-          auNzCountry: 'unresolved',
-          usSaleContext:
-            market === 'US'
-              ? (draft.jurisdictionContext?.usSaleContext ?? 'unresolved')
-              : 'unresolved',
-        },
-        preflightAcknowledged: false,
-      }),
-    );
+    setDraft({
+      ...draft,
+      market,
+      marketProfileVersion: nextProfile.version,
+      labelLanguages,
+      enabledOptionalFields: normalizeEnabledOptionalFields(market, draft.enabledOptionalFields),
+      jurisdictionContext: {
+        euDestinationCountryCode:
+          market === 'EU' ? (draft.jurisdictionContext?.euDestinationCountryCode ?? '') : '',
+        ukRegion:
+          market === 'UK' ? (draft.jurisdictionContext?.ukRegion ?? 'unresolved') : 'unresolved',
+        auNzCountry: 'unresolved',
+        usSaleContext:
+          market === 'US'
+            ? (draft.jurisdictionContext?.usSaleContext ?? 'unresolved')
+            : 'unresolved',
+      },
+      preflightAcknowledged: false,
+      layoutMode: 'manual',
+    });
   };
 
   return (
     <Card
       padding="none"
-      className="mx-auto max-w-3xl overflow-hidden rounded-[22px] border-ink/10 shadow-pro-e1"
+      className="mx-auto max-w-6xl overflow-hidden rounded-[22px] border-ink/10 shadow-pro-e1"
       data-testid="label-settings-view"
     >
       <header className="border-b border-ink/10 bg-white px-4 py-5 sm:px-6">
@@ -1085,298 +1100,339 @@ export function CompactRunLabelSettings({
         </p>
       </header>
 
-      <div className="px-4 sm:px-6">
-        {showDraftData ? (
-          <SettingsSection title="Dane etykiety">
-            <div className="grid gap-3 sm:grid-cols-2">
-              {draft.labelLanguages.map((language) => (
-                <label key={`product-${language}`} className="text-xs font-medium text-stone-600">
-                  Nazwa produktu · {language.toUpperCase()}
+      <div className="grid items-start gap-6 px-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.9fr)]">
+        <aside
+          className="order-1 py-5 lg:sticky lg:top-4 lg:order-2"
+          data-testid="label-settings-preview"
+        >
+          <ConsumerLabelPreview label={draft} logoUrl={logoUrl} />
+        </aside>
+        <div className="order-2 min-w-0 lg:order-1">
+          {showDraftData ? (
+            <SettingsSection title="Dane etykiety">
+              <div className="grid gap-3 sm:grid-cols-2">
+                {draft.labelLanguages.map((language) => (
+                  <label key={`product-${language}`} className="text-xs font-medium text-stone-600">
+                    Nazwa produktu · {language.toUpperCase()}
+                    <input
+                      value={draft.productName[language] ?? ''}
+                      onChange={(event) =>
+                        setDraft({
+                          ...draft,
+                          productName: {
+                            ...draft.productName,
+                            [language]: event.currentTarget.value,
+                          },
+                        })
+                      }
+                      className={SETTINGS_INPUT_CLASS}
+                    />
+                  </label>
+                ))}
+                {draft.labelLanguages.map((language) => (
+                  <label key={`legal-${language}`} className="text-xs font-medium text-stone-600">
+                    Nazwa prawna · {language.toUpperCase()}
+                    <input
+                      value={draft.legalProductName[language] ?? ''}
+                      onChange={(event) =>
+                        setDraft({
+                          ...draft,
+                          legalProductName: {
+                            ...draft.legalProductName,
+                            [language]: event.currentTarget.value,
+                          },
+                        })
+                      }
+                      className={SETTINGS_INPUT_CLASS}
+                    />
+                  </label>
+                ))}
+                <label className="text-xs font-medium text-stone-600">
+                  Data produkcji
                   <input
-                    value={draft.productName[language] ?? ''}
+                    type="date"
+                    data-testid="label-production-date-setting"
+                    value={draft.productionDate}
                     onChange={(event) =>
                       setDraft({
                         ...draft,
-                        productName: {
-                          ...draft.productName,
-                          [language]: event.currentTarget.value,
+                        productionDate: event.currentTarget.value,
+                        productionDateReviewed: Boolean(event.currentTarget.value),
+                      })
+                    }
+                    className={SETTINGS_INPUT_CLASS}
+                  />
+                </label>
+                <label className="text-xs font-medium text-stone-600">
+                  LOT · nadawany automatycznie
+                  <input readOnly value={draft.lotCode} className={SETTINGS_INPUT_CLASS} />
+                </label>
+                <label className="text-xs font-medium text-stone-600">
+                  Operator / producent
+                  <input
+                    value={draft.operator.operatorName}
+                    onChange={(event) =>
+                      setDraft({
+                        ...draft,
+                        operator: { ...draft.operator, operatorName: event.currentTarget.value },
+                      })
+                    }
+                    className={SETTINGS_INPUT_CLASS}
+                  />
+                </label>
+                <label className="text-xs font-medium text-stone-600">
+                  Adres operatora
+                  <input
+                    value={draft.operator.address}
+                    onChange={(event) =>
+                      setDraft({
+                        ...draft,
+                        operator: { ...draft.operator, address: event.currentTarget.value },
+                      })
+                    }
+                    className={SETTINGS_INPUT_CLASS}
+                  />
+                </label>
+                <label className="text-xs font-medium text-stone-600">
+                  Najlepiej spożyć przed
+                  <input
+                    type="date"
+                    value={draft.dateMark.date ?? ''}
+                    onChange={(event) =>
+                      setDraft({
+                        ...draft,
+                        dateMark: {
+                          kind: 'best_before',
+                          date: event.currentTarget.value || null,
+                          basis: 'manual',
+                          reviewedByUser: Boolean(event.currentTarget.value),
+                        },
+                        shelfLifeAuthority: {
+                          policyId: null,
+                          authority: 'Business-confirmed manual date',
+                          method: 'manual_date',
+                          shelfLifeDays: null,
+                          reviewedByUser: Boolean(event.currentTarget.value),
                         },
                       })
                     }
                     className={SETTINGS_INPUT_CLASS}
                   />
                 </label>
-              ))}
-              {draft.labelLanguages.map((language) => (
-                <label key={`legal-${language}`} className="text-xs font-medium text-stone-600">
-                  Nazwa prawna · {language.toUpperCase()}
-                  <input
-                    value={draft.legalProductName[language] ?? ''}
-                    onChange={(event) =>
-                      setDraft({
-                        ...draft,
-                        legalProductName: {
-                          ...draft.legalProductName,
-                          [language]: event.currentTarget.value,
-                        },
-                      })
-                    }
-                    className={SETTINGS_INPUT_CLASS}
-                  />
-                </label>
-              ))}
-              <label className="text-xs font-medium text-stone-600">
-                Data produkcji
-                <input
-                  type="date"
-                  data-testid="label-production-date-setting"
-                  value={draft.productionDate}
-                  onChange={(event) =>
-                    setDraft({
-                      ...draft,
-                      productionDate: event.currentTarget.value,
-                      productionDateReviewed: Boolean(event.currentTarget.value),
-                    })
-                  }
-                  className={SETTINGS_INPUT_CLASS}
-                />
-              </label>
-              <label className="text-xs font-medium text-stone-600">
-                LOT · nadawany automatycznie
-                <input readOnly value={draft.lotCode} className={SETTINGS_INPUT_CLASS} />
-              </label>
-              <label className="text-xs font-medium text-stone-600">
-                Operator / producent
-                <input
-                  value={draft.operator.operatorName}
-                  onChange={(event) =>
-                    setDraft({
-                      ...draft,
-                      operator: { ...draft.operator, operatorName: event.currentTarget.value },
-                    })
-                  }
-                  className={SETTINGS_INPUT_CLASS}
-                />
-              </label>
-              <label className="text-xs font-medium text-stone-600">
-                Adres operatora
-                <input
-                  value={draft.operator.address}
-                  onChange={(event) =>
-                    setDraft({
-                      ...draft,
-                      operator: { ...draft.operator, address: event.currentTarget.value },
-                    })
-                  }
-                  className={SETTINGS_INPUT_CLASS}
-                />
-              </label>
-              <label className="text-xs font-medium text-stone-600">
-                Najlepiej spożyć przed
-                <input
-                  type="date"
-                  value={draft.dateMark.date ?? ''}
-                  onChange={(event) =>
-                    setDraft({
-                      ...draft,
-                      dateMark: {
-                        kind: 'best_before',
-                        date: event.currentTarget.value || null,
-                        basis: 'manual',
-                        reviewedByUser: Boolean(event.currentTarget.value),
-                      },
-                      shelfLifeAuthority: {
-                        policyId: null,
-                        authority: 'Business-confirmed manual date',
-                        method: 'manual_date',
-                        shelfLifeDays: null,
-                        reviewedByUser: Boolean(event.currentTarget.value),
-                      },
-                    })
-                  }
-                  className={SETTINGS_INPUT_CLASS}
-                />
-              </label>
-              {draft.labelLanguages.map((language) => (
-                <label key={`storage-${language}`} className="text-xs font-medium text-stone-600">
-                  Przechowywanie · {language.toUpperCase()}
-                  <input
-                    value={draft.storageInstructions[language] ?? ''}
-                    onChange={(event) =>
-                      setDraft({
-                        ...draft,
-                        storageInstructions: {
-                          ...draft.storageInstructions,
-                          [language]: event.currentTarget.value,
-                        },
-                      })
-                    }
-                    className={SETTINGS_INPUT_CLASS}
-                  />
-                </label>
-              ))}
-            </div>
-          </SettingsSection>
-        ) : null}
-        <SettingsSection title="Rynek i język">
-          <label className="block text-xs font-medium text-stone-600">
-            Rynek sprzedaży
-            <select
-              data-testid="label-market-select"
-              value={draft.market}
-              onChange={(event) => changeMarket(event.currentTarget.value as MarketProfileCode)}
-              className={SETTINGS_INPUT_CLASS}
-            >
-              {MARKET_CODES.map((code) => (
-                <option key={code} value={code}>
-                  {MARKET_PROFILES[code].label}
-                  {code === 'WORLD' ? ' — tylko informacyjnie' : ''}
-                </option>
-              ))}
-            </select>
-          </label>
-          {draft.market === 'AU_NZ' ? (
-            <p className="mt-2 text-xs text-stone-600" data-testid="au-nz-shared-profile-note">
-              Jeden wspólny profil. Automatycznie stosuje bezpieczny zestaw wymagań Australii i
-              Nowej Zelandii.
-            </p>
+                {draft.labelLanguages.map((language) => (
+                  <label key={`storage-${language}`} className="text-xs font-medium text-stone-600">
+                    Przechowywanie · {language.toUpperCase()}
+                    <input
+                      value={draft.storageInstructions[language] ?? ''}
+                      onChange={(event) =>
+                        setDraft({
+                          ...draft,
+                          storageInstructions: {
+                            ...draft.storageInstructions,
+                            [language]: event.currentTarget.value,
+                          },
+                        })
+                      }
+                      className={SETTINGS_INPUT_CLASS}
+                    />
+                  </label>
+                ))}
+              </div>
+            </SettingsSection>
           ) : null}
-          <label className="mt-3 block text-xs font-medium text-stone-600">
-            Języki etykiety · po przecinku
-            <input
-              value={draft.labelLanguages.join(', ')}
-              onChange={(event) => {
-                const parsed = event.currentTarget.value
-                  .split(',')
-                  .map((value) => value.trim())
-                  .filter(Boolean);
-                const required = marketProfile(draft.market).requiredLanguages;
-                setDraft({
-                  ...draft,
-                  labelLanguages: [...new Set([...required, ...(parsed.length ? parsed : ['en'])])],
-                  preflightAcknowledged: false,
-                });
-              }}
-              className={SETTINGS_INPUT_CLASS}
-            />
-          </label>
-        </SettingsSection>
-
-        <SettingsSection title="Drukarka i format">
-          <button
-            type="button"
-            className={cn(
-              'pro-focus-ring min-h-11 rounded-[10px] border px-3 text-xs font-semibold',
-              draft.layoutMode === 'auto'
-                ? 'border-ink bg-ink text-white'
-                : 'border-ink/15 bg-white text-ink',
-            )}
-            onClick={() => setDraft(applyAutoLabelLayout(draft))}
-          >
-            Format: Auto
-          </button>
-          <CompactPrinterFields
-            value={draft.printer}
-            onChange={(printer) =>
-              setDraft({
-                ...draft,
-                printer,
-                size: { widthMm: printer.widthMm, heightMm: printer.heightMm },
-                copies: printer.copies,
-              })
-            }
-          />
-          <details className="mt-3 rounded-[12px] border border-ink/10 bg-white p-3">
-            <summary className="cursor-pointer text-xs font-semibold text-ink">
-              Własny rozmiar i ustawienia zaawansowane
-            </summary>
-            <PresentationFields
-              format={draft.format}
-              widthMm={draft.size.widthMm}
-              heightMm={draft.size.heightMm}
-              copies={draft.copies}
-              onChange={(presentation) =>
-                setDraft({
-                  ...draft,
-                  layoutMode: 'manual',
-                  format: presentation.format,
-                  size: { widthMm: presentation.widthMm, heightMm: presentation.heightMm },
-                  copies: presentation.copies,
-                  printer: normalizePrinterSettings({
-                    ...draft.printer,
-                    formatMode: 'custom',
-                    widthMm: presentation.widthMm,
-                    heightMm: presentation.heightMm,
-                    copies: presentation.copies,
-                  }),
-                })
-              }
-            />
-          </details>
-        </SettingsSection>
-
-        <SettingsSection title="Opakowanie i masa netto">
-          <label className="flex min-h-11 items-center gap-3 text-sm text-ink">
-            <input
-              type="checkbox"
-              checked={splitPackages}
-              onChange={(event) => {
-                const checked = event.currentTarget.checked;
-                setSplitPackages(checked);
-                if (!checked) {
-                  setPackageCount(1);
-                  setPackageMass(finalMass || null);
-                }
-              }}
-            />
-            Dzielę partię na kilka opakowań
-          </label>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <label className="text-xs font-medium text-stone-600">
-              Masa netto jednego opakowania · g
+          <SettingsSection title="Rynek i język">
+            <label className="block text-xs font-medium text-stone-600">
+              Rynek sprzedaży
+              <select
+                data-testid="label-market-select"
+                value={draft.market}
+                onChange={(event) => changeMarket(event.currentTarget.value as MarketProfileCode)}
+                className={SETTINGS_INPUT_CLASS}
+              >
+                {MARKET_CODES.map((code) => (
+                  <option key={code} value={code}>
+                    {MARKET_PROFILES[code].label}
+                    {code === 'WORLD' ? ' — tylko informacyjnie' : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {draft.market === 'AU_NZ' ? (
+              <p className="mt-2 text-xs text-stone-600" data-testid="au-nz-shared-profile-note">
+                Jeden wspólny profil. Automatycznie stosuje bezpieczny zestaw wymagań Australii i
+                Nowej Zelandii.
+              </p>
+            ) : null}
+            <label className="mt-3 block text-xs font-medium text-stone-600">
+              Języki etykiety · po przecinku
               <input
-                type="number"
-                min={0.1}
-                step="any"
-                value={draft.packageQuantity?.netWeightG ?? ''}
-                onChange={(event) => setPackageMass(Number(event.currentTarget.value) || null)}
+                value={draft.labelLanguages.join(', ')}
+                onChange={(event) => {
+                  const parsed = event.currentTarget.value
+                    .split(',')
+                    .map((value) => value.trim())
+                    .filter(Boolean);
+                  const required = marketProfile(draft.market).requiredLanguages;
+                  setDraft({
+                    ...draft,
+                    labelLanguages: [
+                      ...new Set([...required, ...(parsed.length ? parsed : ['en'])]),
+                    ],
+                    preflightAcknowledged: false,
+                  });
+                }}
                 className={SETTINGS_INPUT_CLASS}
               />
             </label>
-            {splitPackages ? (
+          </SettingsSection>
+
+          <SettingsSection title="Basic · kształt i rozmiar">
+            <BasicSizeFields
+              format={draft.format}
+              widthMm={draft.size.widthMm}
+              heightMm={draft.size.heightMm}
+              initialSizes={basicSizes}
+              onChange={({ format, widthMm, heightMm }) =>
+                setDraft({
+                  ...draft,
+                  layoutMode: 'manual',
+                  format,
+                  size: { widthMm, heightMm },
+                  printer: normalizePrinterSettings({
+                    ...draft.printer,
+                    formatMode: 'custom',
+                    presetId: null,
+                    widthMm,
+                    heightMm,
+                    copies: 1,
+                  }),
+                  copies: 1,
+                })
+              }
+            />
+            {!draftGeometry.fits ? (
+              <p
+                className="mt-3 rounded-[10px] border border-status-error/30 bg-status-error/5 p-3 text-xs leading-relaxed text-status-error"
+                role="alert"
+                data-testid="label-size-warning"
+              >
+                {draftGeometry.reason}. Zwiększ wymiar etykiety albo zmniejsz margines.
+              </p>
+            ) : null}
+            <CompactPrinterFields
+              value={draft.printer}
+              onChange={(printer) =>
+                setDraft({
+                  ...draft,
+                  printer: normalizePrinterSettings({ ...printer, copies: 1 }),
+                  size: { widthMm: printer.widthMm, heightMm: printer.heightMm },
+                  copies: 1,
+                })
+              }
+            />
+            <details className="mt-3 rounded-[12px] border border-ink/10 bg-white p-3">
+              <summary className="cursor-pointer text-xs font-semibold text-ink">
+                Ustawienia zaawansowane
+              </summary>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <label className="text-xs font-medium text-stone-600">
+                  Margines (mm)
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.1"
+                    value={draft.printer.marginMm}
+                    onChange={(event) =>
+                      setDraft({
+                        ...draft,
+                        printer: normalizePrinterSettings({
+                          ...draft.printer,
+                          marginMm: Number(event.currentTarget.value),
+                        }),
+                      })
+                    }
+                    className={SETTINGS_INPUT_CLASS}
+                  />
+                </label>
+                <label className="text-xs font-medium text-stone-600">
+                  Rozdzielczość (dpi)
+                  <input readOnly value={draft.printer.dpi} className={SETTINGS_INPUT_CLASS} />
+                </label>
+              </div>
+            </details>
+          </SettingsSection>
+
+          <SettingsSection title="Brakujące dane tej etykiety">
+            <MissingLabelDataSettings
+              key={`${draft.masterLabelId}:${draft.market}`}
+              label={draft}
+              onChange={setDraft}
+            />
+          </SettingsSection>
+
+          <SettingsSection title="Opakowanie i masa netto">
+            <label className="flex min-h-11 items-center gap-3 text-sm text-ink">
+              <input
+                type="checkbox"
+                checked={splitPackages}
+                onChange={(event) => {
+                  const checked = event.currentTarget.checked;
+                  setSplitPackages(checked);
+                  if (!checked) {
+                    setPackageCount(1);
+                    setPackageMass(finalMass || null);
+                  }
+                }}
+              />
+              Dzielę partię na kilka opakowań
+            </label>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <label className="text-xs font-medium text-stone-600">
-                Liczba opakowań
+                Masa netto jednego opakowania · g
                 <input
                   type="number"
-                  min={1}
-                  step={1}
-                  value={packageCount}
-                  onChange={(event) => {
-                    const count = Math.max(1, Math.floor(Number(event.currentTarget.value) || 1));
-                    setPackageCount(count);
-                    setPackageMass(finalMass > 0 ? finalMass / count : null);
-                  }}
+                  min={0.1}
+                  step="any"
+                  value={draft.packageQuantity?.netWeightG ?? ''}
+                  onChange={(event) => setPackageMass(Number(event.currentTarget.value) || null)}
                   className={SETTINGS_INPUT_CLASS}
                 />
               </label>
-            ) : null}
-          </div>
-        </SettingsSection>
+              {splitPackages ? (
+                <label className="text-xs font-medium text-stone-600">
+                  Liczba opakowań
+                  <input
+                    type="number"
+                    min={1}
+                    step={1}
+                    value={packageCount}
+                    onChange={(event) => {
+                      const count = Math.max(1, Math.floor(Number(event.currentTarget.value) || 1));
+                      setPackageCount(count);
+                      setPackageMass(finalMass > 0 ? finalMass / count : null);
+                    }}
+                    className={SETTINGS_INPUT_CLASS}
+                  />
+                </label>
+              ) : null}
+            </div>
+          </SettingsSection>
 
-        {showSaveAsDefault ? (
-          <label className="my-5 flex min-h-12 items-center gap-3 rounded-[12px] border border-ink/10 bg-stone-50 px-3 text-xs text-ink">
-            <input
-              type="checkbox"
-              className="size-5 accent-ink"
-              checked={saveAsDefault}
-              onChange={(event) => onSaveAsDefaultChange(event.currentTarget.checked)}
-            />
-            Zapamiętaj jako domyślne dla następnych etykiet.
-          </label>
-        ) : null}
+          {showSaveAsDefault ? (
+            <label className="my-5 flex min-h-12 items-center gap-3 rounded-[12px] border border-ink/10 bg-stone-50 px-3 text-xs text-ink">
+              <input
+                type="checkbox"
+                className="size-5 accent-ink"
+                checked={saveAsDefault}
+                onChange={(event) => onSaveAsDefaultChange(event.currentTarget.checked)}
+              />
+              Zapisz jako moje ustawienie domyślne
+            </label>
+          ) : null}
+        </div>
       </div>
 
-      <footer className="sticky bottom-11 z-10 grid grid-cols-2 gap-2 border-t border-ink/10 bg-white/95 p-4 backdrop-blur sm:px-6">
+      <footer className="grid grid-cols-2 gap-2 border-t border-ink/10 bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-6">
         <Button variant="ghost" onClick={onClose}>
           Wróć
         </Button>
@@ -1385,6 +1441,110 @@ export function CompactRunLabelSettings({
         </Button>
       </footer>
     </Card>
+  );
+}
+
+function BasicSizeFields({
+  format,
+  widthMm,
+  heightMm,
+  initialSizes,
+  onChange,
+}: {
+  format: MasterLabelData['format'];
+  widthMm: number;
+  heightMm: number;
+  initialSizes?: AccountLabelProfile['presentation']['basicSizes'];
+  onChange: (value: {
+    format: MasterLabelData['format'];
+    widthMm: number;
+    heightMm: number;
+  }) => void;
+}) {
+  const sizes = useRef({
+    rectangle:
+      format === 'rectangle'
+        ? { widthMm, heightMm }
+        : (initialSizes?.rectangle ?? { widthMm: 102, heightMm: 152 }),
+    round:
+      format === 'round' ? { diameterMm: widthMm } : (initialSizes?.round ?? { diameterMm: 70 }),
+  });
+  const changeRectangle = (next: Partial<{ widthMm: number; heightMm: number }>) => {
+    sizes.current.rectangle = { ...sizes.current.rectangle, ...next };
+    onChange({ format: 'rectangle', ...sizes.current.rectangle });
+  };
+  const changeRound = (diameterMm: number) => {
+    sizes.current.round = { diameterMm };
+    onChange({ format: 'round', widthMm: diameterMm, heightMm: diameterMm });
+  };
+  return (
+    <div data-testid="label-basic-size">
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          className={cn(
+            'pro-focus-ring min-h-11 rounded-[10px] border px-3 text-xs font-semibold',
+            format === 'rectangle'
+              ? 'border-ink bg-ink text-white'
+              : 'border-ink/15 bg-white text-ink',
+          )}
+          onClick={() => onChange({ format: 'rectangle', ...sizes.current.rectangle })}
+        >
+          Prostokątna
+        </button>
+        <button
+          type="button"
+          className={cn(
+            'pro-focus-ring min-h-11 rounded-[10px] border px-3 text-xs font-semibold',
+            format === 'round' ? 'border-ink bg-ink text-white' : 'border-ink/15 bg-white text-ink',
+          )}
+          onClick={() => changeRound(sizes.current.round.diameterMm)}
+        >
+          Okrągła
+        </button>
+      </div>
+      {format === 'round' ? (
+        <label className="mt-3 block text-xs font-medium text-stone-600">
+          Średnica (mm)
+          <input
+            type="number"
+            min={20}
+            step="0.1"
+            value={widthMm}
+            onChange={(event) => changeRound(Number(event.currentTarget.value))}
+            className={SETTINGS_INPUT_CLASS}
+            data-testid="label-basic-diameter"
+          />
+        </label>
+      ) : (
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <label className="text-xs font-medium text-stone-600">
+            Szerokość (mm)
+            <input
+              type="number"
+              min={20}
+              step="0.1"
+              value={widthMm}
+              onChange={(event) => changeRectangle({ widthMm: Number(event.currentTarget.value) })}
+              className={SETTINGS_INPUT_CLASS}
+              data-testid="label-basic-width"
+            />
+          </label>
+          <label className="text-xs font-medium text-stone-600">
+            Wysokość (mm)
+            <input
+              type="number"
+              min={20}
+              step="0.1"
+              value={heightMm}
+              onChange={(event) => changeRectangle({ heightMm: Number(event.currentTarget.value) })}
+              className={SETTINGS_INPUT_CLASS}
+              data-testid="label-basic-height"
+            />
+          </label>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -1401,6 +1561,7 @@ function CompactPrinterFields({
       normalizePrinterSettings({
         ...value,
         profileId,
+        copies: 1,
         connection: profile.supportedConnections.includes(value.connection)
           ? value.connection
           : profile.supportedConnections[0],
@@ -1408,7 +1569,6 @@ function CompactPrinterFields({
       }),
     );
   };
-  const profile = PRINTER_PROFILES[value.profileId];
   return (
     <div className="mt-4 grid gap-3 sm:grid-cols-2">
       <label className="text-xs font-medium text-stone-600">
@@ -1429,38 +1589,6 @@ function CompactPrinterFields({
             </option>
           ))}
           <option value="more">Więcej drukarek…</option>
-        </select>
-      </label>
-      <label className="text-xs font-medium text-stone-600">
-        Format
-        <select
-          value={value.presetId ?? 'auto'}
-          onChange={(event) => {
-            const preset = profile.sizePresets.find(
-              (candidate) => candidate.id === event.currentTarget.value,
-            );
-            onChange(
-              normalizePrinterSettings(
-                preset
-                  ? {
-                      ...value,
-                      widthMm: preset.widthMm,
-                      heightMm: preset.heightMm,
-                      formatMode: 'preset',
-                      presetId: preset.id,
-                    }
-                  : { ...value, formatMode: 'auto', presetId: null },
-              ),
-            );
-          }}
-          className={SETTINGS_INPUT_CLASS}
-        >
-          <option value="auto">Auto</option>
-          {profile.sizePresets.map((preset) => (
-            <option key={preset.id} value={preset.id}>
-              {preset.label}
-            </option>
-          ))}
         </select>
       </label>
       <details className="sm:col-span-2 rounded-[10px] border border-ink/10 p-3">
@@ -2248,7 +2376,9 @@ export function CompactRunLabelEditor({
                           ukRegion: draft.jurisdictionContext?.ukRegion ?? 'unresolved',
                           auNzCountry: 'unresolved',
                           usSaleContext: event.currentTarget.value as
-                            'interstate_retail' | 'food_service' | 'unresolved',
+                            | 'interstate_retail'
+                            | 'food_service'
+                            | 'unresolved',
                         },
                       })
                     }
@@ -3276,7 +3406,9 @@ export function LegacyRunLabelEditor({
                       ukRegion: draft.jurisdictionContext?.ukRegion ?? 'unresolved',
                       auNzCountry: draft.jurisdictionContext?.auNzCountry ?? 'unresolved',
                       usSaleContext: event.currentTarget.value as
-                        'interstate_retail' | 'food_service' | 'unresolved',
+                        | 'interstate_retail'
+                        | 'food_service'
+                        | 'unresolved',
                     },
                   })
                 }
