@@ -225,10 +225,9 @@ price                29,100 VND per unit / 325,000 VND per 12-case
 label shown          275 kJ · protein 3.2 · fat 3.5 (sat 2.3) · carb 4.7 · sugars 4.7 · sodium 0.1 ·
                      calcium 120 mg  — consistent with the Polish label
 url                  https://suatuoi.com/laciate/laciate-full-cream-1l
-source type          RETAILER (single source)
-CLASSIFICATION       **CONFIRMED** — the SAME EAN is evidenced on TWO markets: PL (home) and VN.
-                     This is the first hard multi-country EAN. Single-source; a second independent
-                     national source would strengthen it.
+source type          RETAILER (one source)
+CLASSIFICATION       **CORRECTED — see the split below.** My previous wording said CONFIRMED on two
+                     markets while also saying single source. Those cannot both be true.
 
 ### 9. Mleko w proszku pełne tłuste 1 kg
 manufacturer/brand   Swojska Piwniczka (repacker)
@@ -287,3 +286,42 @@ NEW RISK (raised, not decided) — **RCN COLLISION RISK FOR D01 AND A04.**
    This is a deduction from a CONFIRMED standard, not a claim about our data. It needs an Owner
    decision only if own-brand products are ever admitted; it is recorded here, not raised as a
    checklist ID, and nothing is changed.
+
+# ============================================================================
+# L1 CORRECTION — EVIDENCE SPLIT PER MARKET (no fact changed, status lowered)
+# ============================================================================
+The claim under test: "EAN 5900820012434 is the same product on two markets."
+
+VN SIDE — CONFIRMED
+  source        https://suatuoi.com/laciate/laciate-full-cream-1l   (fetched 2026-09-05, by me)
+  EAN visible   YES — "5900820012434" printed as text on the page
+  sale proof    listed for sale in Vietnam, 29,100 VND per unit / 325,000 VND per 12-case
+  states        origin Poland, manufacturer Mlekpol; panel 275 kJ, protein 3.2, fat 3.5 (sat 2.3),
+                carb 4.7, sugars 4.7, sodium 0.1, calcium 120 mg
+  source class  RETAILER, single
+
+PL SIDE — NOT INDEPENDENTLY CONFIRMED BY ME
+  EAN visible   I have NOT fetched any Polish source showing this EAN. I never opened
+                mlekpol.com.pl for it.
+  what exists   (a) the staging seed script scripts/seed-staging-canonical-country-milk.mjs lists
+                    mlekpol.com.pl and apothikiseven.com as its sources — project-internal record,
+                    authored by another lane, not verified by me;
+                (b) an Open Food Facts record — AGGREGATOR.
+  sale proof    none fetched by me for the PL market at this EAN.
+
+RESULTING STATUS
+  "EAN 5900820012434 sold in Vietnam, origin Poland"            -> CONFIRMED (one source)
+  "the SAME EAN is on the Polish-market pack"                   -> **LEAD**, not confirmed
+  "the same EAN is evidenced on two markets"                    -> **LEAD**, DOWNGRADED from
+                                                                   CONFIRMED. The contradiction is
+                                                                   removed by lowering the status,
+                                                                   not by rewording it.
+  To close: fetch mlekpol.com.pl (or another official PL source) and read the EAN off the Polish
+  pack. Until then A04 has ZERO confirmed multi-country EANs, exactly as before this pass.
+
+S5 COUNTER CORRECTED: 0 / 5 EANs cross-checked against >= 2 independent national sources.
+  (Previously written as 1 / 5. That was the same overstatement.)
+
+AGGREGATE SATURATION FIGURE WITHDRAWN. The "roughly 12%" line has no formula behind it — S1-S7 are
+different kinds of test with no defined weighting, so no single percentage is meaningful. Only the
+S1-S7 matrix is reported from here on.
