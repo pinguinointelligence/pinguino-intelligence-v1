@@ -102,15 +102,23 @@ describe('the edge function confirms the code itself', () => {
   });
 
   it('resolves each page once per invocation', () => {
-    expect(edgeSource).toContain('const confirmationCache = createPageEanConfirmationCache()');
-    expect(edgeSource).toMatch(/new Set\(\s*factRows/);
+    /*
+      The dedupe moved into `confirmPagesForFacts`, which is now shared by the fresh answer and the
+      cache read — that sharing is the point, so the pin follows it rather than the old inline site.
+    */
+    expect(edgeSource).toContain('const cache = createPageEanConfirmationCache()');
+    expect(edgeSource).toMatch(/new Set\(\s*rows/);
     expect(edgeSource).toContain('MAX_CONFIRMED_PAGES');
+    expect(edgeSource).toContain('await confirmPagesForFacts(factRows,');
+    expect(edgeSource).toContain('await confirmPagesForFacts(cachedRows,');
   });
 
   it('records the method and the moment on every fact', () => {
-    expect(edgeSource).toContain('sourceEanConfirmationMethod: confirmed.confirmation?.method');
-    expect(edgeSource).toContain('sourceEanConfirmedAt: confirmed.confirmation?.confirmedAt');
-    expect(edgeSource).toContain('sourceStatedEan: confirmed.statedEan');
+    // `classifyFactSource` now returns the confirmation alongside the class, so one value
+    // carries both and the two can no longer drift apart.
+    expect(edgeSource).toContain('sourceEanConfirmationMethod: authority.confirmation?.method');
+    expect(edgeSource).toContain('sourceEanConfirmedAt: authority.confirmation?.confirmedAt');
+    expect(edgeSource).toContain('sourceStatedEan: authority.statedEan');
   });
 
   it('still classifies authority server-side from the real URL', () => {

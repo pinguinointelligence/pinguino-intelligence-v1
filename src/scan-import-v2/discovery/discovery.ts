@@ -169,8 +169,15 @@ export async function startDiscovery(
       importSkipped: null,
       needsConfirmation: false,
     } as DiscoveryResult;
-  if (r.kind === 'skipped') return pending(r.session, null, `research skipped: ${r.reason}`);
-  return pending(r.session, r.evidenceError);
+  /*
+    The note the customer reads about the external sources. It is the SERVER's sentence or
+    nothing: `r.reason` and `r.evidenceError` are internal tokens, and composing a note out of
+    them is what produced „research skipped: session_lookup_already_used" on a phone — a string
+    the customer-copy gate could only replace with a generic sentence, so a lookup with a
+    specific outcome explained nothing (owner defect 2026-09-07, EAN 8480000804693).
+  */
+  if (r.kind === 'skipped') return pending(r.session, null, r.notice ?? null);
+  return pending(r.session, r.evidenceError, r.notice ?? null);
 }
 
 export async function continueDiscovery(
