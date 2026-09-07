@@ -29,6 +29,7 @@ import {
 } from '../../../src/features/product-intelligence/mapperFamilyInference.ts';
 import { isValidGtin } from '../../../src/features/global-catalog/normalization.ts';
 import { classifySourceAuthority } from '../_shared/sourceAuthority.ts';
+import { storedServerEanConfirmationHolds } from '../_shared/pageEanConfirmation.ts';
 import type { CarbonationEvidence } from '../../../src/data/products/carbonation.ts';
 import {
   validateProductBehaviorAuthority,
@@ -930,6 +931,19 @@ async function trustedIntimportEvidence(input: {
           brand: researchIdentity.brand,
           manufacturer: researchIdentity.manufacturer,
           ownerProvided: false,
+          /*
+            The exact-EAN confirmation intimport-enrich established SERVER-SIDE, replayed here
+            from the service-role ledger row it wrote. Without it this re-derivation could not
+            reproduce a promoted class and would void the whole submission — and simply believing
+            the stored method would make the check circular, so `storedServerEanConfirmationHolds`
+            also requires the stored evidence to still name the product being submitted.
+          */
+          exactEanConfirmedOnPage: storedServerEanConfirmationHolds({
+            method: fact.sourceEanConfirmationMethod,
+            statedEan: typeof fact.sourceStatedEan === 'string' ? fact.sourceStatedEan : null,
+            url: factSourceUrl,
+            gtin: researchIdentity.barcode,
+          }),
         });
         if (
           authority.authority === 'UNKNOWN' ||

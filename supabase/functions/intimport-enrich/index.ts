@@ -1,5 +1,12 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
 import { classifySourceAuthority } from '../_shared/sourceAuthority.ts';
+import {
+  confirmEanOnPage,
+  createPageEanConfirmationCache,
+  normalizeGtin,
+  resolveSourceEanConfirmation,
+  type PageEanConfirmation,
+} from '../_shared/pageEanConfirmation.ts';
 import { sha256Text, stableJson } from '../_shared/productScanner.ts';
 import {
   PRODUCT_RECOGNITION_MODEL_SCHEMA,
@@ -678,35 +685,69 @@ Deno.serve(async (request) => {
     }
   }
 
+  const factRows = (Array.isArray(parsed.facts) ? parsed.facts : []).map(objectValue);
+
+  /*
+    SERVER-SIDE EXACT-EAN CONFIRMATION.
+
+    The schema asks the model for `sourceStatedEan`, and the owner's real sessions of 2026-09-07
+    show what that is worth: across EIGHT external sources in two scans the model returned the
+    printed code ONCE. Whether a language model copies a number off a page is not a property of
+    the evidence, so the server now determines it — it opens the page itself and looks.
+
+    Every page is fetched at most once per invocation, and the distinct pages are resolved together
+    so a slow host costs one timeout for the whole call rather than one each. The fetch is bounded
+    and every failure is silent: an unreachable page simply yields no confirmation.
+
+    `identity` carries the scanned code as `barcode`, never `gtin` (#237). Reading the wrong name
+    produced '' on every call, so the comparison never ran and EVERY source came back OTHER_WEB —
+    including pages that had correctly reported the exact code. TypeScript cannot see it: `identity`
+    is an untyped object literal, so a missing property is `undefined`, not an error.
+  */
+  const scannedEan = normalizeGtin(identity.barcode);
+  const MAX_CONFIRMED_PAGES = 6;
+  const confirmationCache = createPageEanConfirmationCache();
+  const confirmationByUrl = new Map<string, PageEanConfirmation | null>();
+  if (scannedEan.length >= 8) {
+    const pages = [
+      ...new Set(
+        factRows
+          .map((row) => (typeof row.sourceUrl === 'string' ? row.sourceUrl : ''))
+          .filter((url) => /^https?:\/\//i.test(url)),
+      ),
+    ].slice(0, MAX_CONFIRMED_PAGES);
+    const confirmations = await Promise.all(
+      pages.map((page) =>
+        confirmEanOnPage({ url: page, gtin: scannedEan, cache: confirmationCache }),
+      ),
+    );
+    pages.forEach((page, index) => confirmationByUrl.set(page, confirmations[index] ?? null));
+  }
+
   // Authority is decided HERE, from the actual URL — never from the model's own
   // claim about what kind of source it used.
-  const facts = (Array.isArray(parsed.facts) ? parsed.facts : []).flatMap((item) => {
-    const row = objectValue(item);
+  const facts = factRows.flatMap((row) => {
     const field = String(row.field ?? '');
     const value = typeof row.value === 'string' ? row.value.trim() : '';
     const sourceUrl = typeof row.sourceUrl === 'string' ? row.sourceUrl : '';
     if (!RESEARCHABLE.has(field) || value === '' || !requestedFields.includes(field)) return [];
     /*
-      The page's own barcode claim, compared HERE against the code that was scanned. The model
-      reports what it read; the server decides what that is worth.
+      What the SERVER read on that page outranks what the model said about it. A model claim that
+      matches the scanned code is recorded as `model_reported` and corroborates; it never promotes,
+      so a page the server could not fetch and could not confirm stays exactly where it was.
     */
-    const statedEan =
-      typeof row.sourceStatedEan === 'string' ? row.sourceStatedEan.replace(/\D/g, '') : '';
-    /*
-      `identity` here carries the scanned code as `barcode`, not `gtin`. Reading the wrong name
-      silently produced '' on every call, so `scannedEan.length >= 8` was never true, the
-      comparison below never ran, and EVERY source was classified OTHER_WEB — including pages that
-      had correctly reported the exact code. TypeScript cannot see it: `identity` is an untyped
-      object literal, so the missing property is `undefined`, not an error.
-    */
-    const scannedEan = String(identity.barcode ?? '').replace(/\D/g, '');
+    const confirmed = resolveSourceEanConfirmation({
+      serverConfirmation: confirmationByUrl.get(sourceUrl) ?? null,
+      modelStatedEan: typeof row.sourceStatedEan === 'string' ? row.sourceStatedEan : null,
+      scannedGtin: scannedEan,
+      url: sourceUrl,
+    });
     const authority = classifySourceAuthority({
       url: sourceUrl,
       brand: identity.brand,
       manufacturer: identity.manufacturer,
       ownerProvided: false,
-      exactEanConfirmedOnPage:
-        statedEan.length >= 8 && scannedEan.length >= 8 && statedEan === scannedEan,
+      exactEanConfirmedOnPage: confirmed.exactEanConfirmedOnPage,
     });
     if (authority.authority === 'UNKNOWN') return [];
     return [
@@ -717,9 +758,13 @@ Deno.serve(async (request) => {
         sourceDomain: authority.domain,
         sourceTitle: sourceByUrl.get(sourceUrl)?.title ?? null,
         sourceAuthorityClass: authority.authority,
-        // The page's own claim, carried unjudged. The server compares it downstream.
-        sourceStatedEan:
-          typeof row.sourceStatedEan === 'string' ? row.sourceStatedEan.replace(/\D/g, '') : '',
+        // The barcode this page states: the server's own reading when it has one, the model's
+        // claim otherwise — carried unjudged, exactly as before.
+        sourceStatedEan: confirmed.statedEan,
+        // HOW and WHEN it was established, so a later reader can tell a server confirmation from
+        // the model's word instead of having to trust both equally.
+        sourceEanConfirmationMethod: confirmed.confirmation?.method ?? null,
+        sourceEanConfirmedAt: confirmed.confirmation?.confirmedAt ?? null,
         evidenceSource: authority.evidenceSource,
         retrievedAt: new Date().toISOString(),
       },

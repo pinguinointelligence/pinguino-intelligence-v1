@@ -64,7 +64,13 @@ describe('a page that names the scanned code speaks for that product', () => {
       resolve(process.cwd(), 'supabase/functions/intimport-enrich/index.ts'),
       'utf8',
     );
-    expect(enrich).toContain("String(identity.barcode ?? '')");
+    /*
+      The NAME is what this pins, not the expression around it. It was written as
+      `String(identity.barcode ?? '')`; the server-side confirmation now normalizes the same
+      property through `normalizeGtin`. Matching the property rather than one spelling of the
+      normalizer keeps the contract exactly as strong while surviving that kind of change.
+    */
+    expect(enrich).toMatch(/const scannedEan = \w+\(identity\.barcode\b/);
     expect(enrich).not.toContain('identity.gtin');
   });
 });
