@@ -866,8 +866,6 @@ Deno.serve(async (request) => {
     is an untyped object literal, so a missing property is `undefined`, not an error.
   */
   const scannedEan = normalizeGtin(identity.barcode);
-  const MAX_CONFIRMED_PAGES = 6;
-  const confirmationCache = createPageEanConfirmationCache();
   const pageEvidence = await confirmPagesForFacts(factRows, scannedEan);
 
   // Authority is decided HERE, from the actual URL — never from the model's own
