@@ -2,7 +2,7 @@
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MemoryRouter } from 'react-router';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { calculateRecipe, type RecipeInput } from '@/engine';
 import { DEFAULT_PRESET } from '@/data/demoPresets';
 import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
@@ -22,6 +22,7 @@ import {
 import { useAuthStore } from '@/stores/authStore';
 import { LabelWorkspace } from './LabelWorkspace';
 import { COMPLETE_LABEL_NUTRITION, createCompleteLabel } from './masterLabelTestFixture';
+import { marketProfile, type MarketProfileCode } from './marketProfiles';
 import {
   FRIENDLY_LAB_MOMENT_EVENT,
   type FriendlyLabMomentEventDetail,
@@ -88,6 +89,30 @@ function completedSnapshot() {
   };
 }
 
+function incompletePrintSnapshot() {
+  const snapshot = completedSnapshot();
+  const frozen = Object.values(snapshot.productComposition.behaviorSnapshots ?? {});
+  frozen.forEach((item, index) => {
+    item.sharedFacts!.allergens = {
+      ingredientsText: `Ingredient ${index + 1}`,
+      allergensText: index === 0 ? 'Contains milk' : 'UNKNOWN',
+      declared: index === 0 ? ['milk'] : [],
+      mayContain: [],
+      evidenceVersion: `allergens:print-dialog:${index}`,
+    };
+  });
+  return {
+    ...snapshot,
+    finalProduct: {
+      ...snapshot.finalProduct,
+      labelNutritionPer100g: {
+        ...COMPLETE_LABEL_NUTRITION,
+        saturated_fat_g: null,
+      },
+    },
+  };
+}
+
 describe('LabelWorkspace unified actual-run surface', () => {
   let host: HTMLDivElement;
   let root: ReturnType<typeof createRoot>;
@@ -114,6 +139,7 @@ describe('LabelWorkspace unified actual-run surface', () => {
 
   afterEach(async () => {
     await act(async () => root.unmount());
+    vi.restoreAllMocks();
     window.removeEventListener(FRIENDLY_LAB_MOMENT_EVENT, onMoment);
     host.remove();
   });
@@ -124,6 +150,7 @@ describe('LabelWorkspace unified actual-run surface', () => {
       snapshot?: ReturnType<typeof completedSnapshot>;
       profileOverrides?: Partial<AccountLabelProfile>;
       settingsHome?: 'inline' | 'production';
+      onOpenSettings?: (runId: string) => void;
     } = {},
   ) {
     const repository = inMemoryLabelRepository('owner-label-workspace');
@@ -152,6 +179,7 @@ describe('LabelWorkspace unified actual-run surface', () => {
             repository={repository}
             initialView={initialView}
             {...(options.settingsHome ? { settingsHome: options.settingsHome } : {})}
+            {...(options.onOpenSettings ? { onOpenSettings: options.onOpenSettings } : {})}
           />
         </MemoryRouter>,
       );
@@ -270,12 +298,12 @@ describe('LabelWorkspace unified actual-run surface', () => {
     expect(wholeBatch?.value).toBe(String(completedSnapshot().actualFinalMassG));
     expect(intake.textContent).toContain('Cała partia = jedno opakowanie');
     expect(intake.textContent).toContain('Dzielę na kilka opakowań');
-    expect(continueButton.disabled).toBe(true);
-    expect(continueButton.textContent).toMatch(/^Uzupełnij \d+ p/);
+    expect(continueButton.disabled).toBe(false);
+    expect(continueButton.textContent).toBe('Pokaż etykietę');
     expect(
       workspace.querySelector<HTMLButtonElement>('[data-testid="label-workspace-dot-settings"]')
         ?.disabled,
-    ).toBe(true);
+    ).toBe(false);
 
     await completeRequiredLabelData();
 
@@ -286,31 +314,113 @@ describe('LabelWorkspace unified actual-run surface', () => {
 
     expect(workspace.getAttribute('data-active-label-view')).toBe('label');
     expect(workspace.querySelector('[data-testid="label-consumer-preview"]')).not.toBeNull();
-    expect(button('Ustawienia')).not.toBeUndefined();
-    expect(button('Pobierz PDF')).not.toBeUndefined();
+    expect(workspace.querySelector('[data-testid="label-change"]')?.textContent).toBe('Zmień');
+    expect(button('Pobierz PDF')).toBeUndefined();
     expect((button('Drukuj') as HTMLButtonElement).disabled).toBe(false);
     expect(workspace.querySelector('[data-testid="label-print-blocked-message"]')).toBeNull();
     expect(workspace.querySelector('[data-testid="label-print-ready-message"]')).toBeNull();
-    expect(moments).toHaveLength(1);
-    expect(moments[0]).toMatchObject({ kind: 'label-ready' });
-    expect(
-      workspace.querySelector<HTMLButtonElement>('[data-testid="label-workspace-dot-label"]')
-        ?.disabled,
-    ).toBe(false);
+    expect(workspace.querySelector('[data-testid="label-workspace-dots"]')).toBeNull();
+    expect(moments).toHaveLength(0);
+    expect(workspace.querySelector('[data-testid="label-workspace-dot-label"]')).toBeNull();
 
-    await act(async () => button('Ustawienia')!.click());
+    await act(async () =>
+      workspace.querySelector<HTMLButtonElement>('[data-testid="label-change"]')!.click(),
+    );
     const settings = workspace.querySelector('[data-testid="label-settings-view"]')!;
     expect(workspace.getAttribute('data-active-label-view')).toBe('settings');
     expect(settings.textContent).not.toContain('Uzupełnij wymagane pola');
     expect(settings.querySelector('[data-label-field]')).toBeNull();
     expect(settings.textContent).toContain('Profil, format i drukarka');
     expect(button('Zastosuj ustawienia')).not.toBeUndefined();
-    await act(async () => button('Wstecz')!.click());
+    await act(async () => button('Wróć')!.click());
     expect(workspace.getAttribute('data-active-label-view')).toBe('label');
     expect(workspace.querySelector('[data-testid="label-consumer-preview"]')).not.toBeNull();
   });
 
-  it('collects a missing saturated-fat source value in Step 1 for the WORLD profile', async () => {
+  it('edits optional World saturated fat from one compact row without a source field', async () => {
+    const snapshot = completedSnapshot();
+    const snapshotWithoutSaturatedFat = {
+      ...snapshot,
+      finalProduct: {
+        ...snapshot.finalProduct,
+        labelNutritionPer100g: {
+          ...COMPLETE_LABEL_NUTRITION,
+          saturated_fat_g: null,
+        },
+      },
+    };
+    const repository = await renderWorkspace('data', {
+      snapshot: snapshotWithoutSaturatedFat,
+      settingsHome: 'production',
+      profileOverrides: {
+        market: 'WORLD',
+        uiLanguage: 'en',
+        labelLanguages: ['en'],
+      },
+    });
+
+    expect(host.querySelector('[data-testid="label-data-intake"]')).toBeNull();
+    expect(host.textContent).toContain('Tłuszcze nasycone nieustalone');
+    expect(host.textContent).not.toContain('Źródło potwierdzenia');
+    expect(host.querySelector<HTMLButtonElement>('[data-testid="label-print"]')?.disabled).toBe(
+      false,
+    );
+    await act(async () =>
+      host.querySelector<HTMLButtonElement>('[data-testid="label-saturated-fat-set"]')!.click(),
+    );
+    const input = host.querySelector<HTMLInputElement>(
+      '[data-testid="label-saturated-fat-input"]',
+    )!;
+    await act(async () => setInputValue(input, '3.4'));
+    await act(async () => {
+      host.querySelector<HTMLButtonElement>('[data-testid="label-saturated-fat-save"]')!.click();
+      await Promise.resolve();
+    });
+    expect(host.textContent).toContain('Tłuszcze nasycone: 3,4 g / 100 g');
+
+    vi.spyOn(window, 'open').mockReturnValue(null);
+    vi.spyOn(window, 'print').mockImplementation(() => undefined);
+    await act(async () => {
+      host.querySelector<HTMLButtonElement>('[data-testid="label-print"]')!.click();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(document.querySelector('[data-testid="label-print-missing-dialog"]')).not.toBeNull();
+    await act(async () => {
+      document
+        .querySelector<HTMLButtonElement>('[data-testid="label-print-missing-skip"]')!
+        .click();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(
+      (await repository.getRunLabelSnapshot('run-label-workspace'))?.label.nutritionSource
+        ?.saturated_fat_g,
+    ).toBe(3.4);
+
+    await act(async () => root.unmount());
+    root = createRoot(host);
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <LabelWorkspace
+            snapshot={snapshotWithoutSaturatedFat}
+            repository={repository}
+            initialView="label"
+            settingsHome="production"
+          />
+        </MemoryRouter>,
+      );
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(host.textContent).toContain('Tłuszcze nasycone: 3,4 g / 100 g');
+    expect(host.querySelector('[data-testid="label-saturated-fat-change"]')?.textContent).toBe(
+      'Zmień',
+    );
+  });
+
+  it('never revives the World saturated-fat evidence workflow when another nutrition field is missing', async () => {
     const snapshot = completedSnapshot();
     await renderWorkspace('data', {
       snapshot: {
@@ -320,6 +430,7 @@ describe('LabelWorkspace unified actual-run surface', () => {
           labelNutritionPer100g: {
             ...COMPLETE_LABEL_NUTRITION,
             saturated_fat_g: null,
+            sugars_g: null,
           },
         },
       },
@@ -330,39 +441,125 @@ describe('LabelWorkspace unified actual-run surface', () => {
       },
     });
 
-    await completeRequiredLabelData();
-
     const intake = host.querySelector('[data-testid="label-data-intake"]')!;
-    const sourceInput = intake.querySelector<HTMLInputElement>(
-      '[data-label-nutrition-source="saturated_fat_g"]',
-    )!;
-    const authorityInput = intake.querySelector<HTMLInputElement>(
-      '[data-label-nutrition-authority="saturated_fat_source"]',
-    )!;
-    const continueButton = intake.querySelector<HTMLButtonElement>(
-      '[data-testid="show-label-preview"]',
-    )!;
+    expect(intake.textContent).toContain('Cukry · g / 100 g');
+    expect(intake.textContent).not.toContain('Źródło potwierdzenia');
+    expect(intake.textContent).not.toContain('Brak potwierdzonych danych składników');
+    expect(intake.textContent).not.toContain('raport laboratorium');
+  });
 
-    expect(sourceInput).not.toBeNull();
-    expect(authorityInput).not.toBeNull();
-    expect(sourceInput.disabled).toBe(false);
-    expect(continueButton.disabled).toBe(true);
-    expect(intake.textContent).toContain('Tylko pola, których nie ma');
+  it.each(['EU', 'UK', 'US', 'CA', 'AU_NZ', 'WORLD'] as const)(
+    '%s opens one non-blocking missing-data dialog and preserves known allergens when skipped',
+    async (market) => {
+      const repository = await renderWorkspace('label', {
+        snapshot: incompletePrintSnapshot(),
+        settingsHome: 'production',
+        profileOverrides: {
+          market,
+          uiLanguage: 'en',
+          labelLanguages:
+            marketProfile(market as MarketProfileCode).requiredLanguages.length > 0
+              ? [...marketProfile(market as MarketProfileCode).requiredLanguages]
+              : ['en'],
+        },
+      });
+      const print = host.querySelector<HTMLButtonElement>('[data-testid="label-print"]')!;
+      expect(print.disabled).toBe(false);
 
-    await act(async () => setInputValue(sourceInput, '3.4'));
+      await act(async () => print.click());
+      const dialog = document.querySelector('[data-testid="label-print-missing-dialog"]')!;
+      expect(dialog).not.toBeNull();
+      expect(dialog.querySelector('[data-testid="label-print-missing-allergens"]')).not.toBeNull();
+      expect(
+        dialog.querySelector<HTMLInputElement>('[data-testid="label-print-missing-allergens"]')
+          ?.value,
+      ).toContain('Contains milk');
+      expect(
+        dialog.querySelector('[data-testid="label-print-missing-saturated_fat_g"]'),
+      ).not.toBeNull();
+      expect(dialog.textContent).toContain('Uzupełnij i pokaż podgląd');
+      expect(dialog.textContent).toContain('Drukuj bez uzupełniania');
+      expect(dialog.textContent).toContain('Wróć');
 
-    expect(sourceInput.disabled).toBe(false);
-    expect(continueButton.disabled).toBe(true);
+      await act(async () =>
+        dialog
+          .querySelector<HTMLButtonElement>('[data-testid="label-print-missing-back"]')!
+          .click(),
+      );
+      expect(document.querySelector('[data-testid="label-print-missing-dialog"]')).toBeNull();
+      expect(await repository.getRunLabelSnapshot('run-label-workspace')).toBeNull();
 
+      vi.spyOn(window, 'open').mockReturnValue(null);
+      vi.spyOn(window, 'print').mockImplementation(() => undefined);
+      await act(async () => print.click());
+      await act(async () => {
+        document
+          .querySelector<HTMLButtonElement>('[data-testid="label-print-missing-skip"]')!
+          .click();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      const saved = await repository.getRunLabelSnapshot('run-label-workspace');
+      expect(saved?.label.allergens.labelStatements.join(' · ')).toContain('Contains milk');
+      expect(saved?.label.nutritionSource?.saturated_fat_g).toBeNull();
+      expect(window.open).toHaveBeenCalled();
+    },
+  );
+
+  it('applies only edited dialog values, prints them and preserves them after reopening', async () => {
+    const snapshot = incompletePrintSnapshot();
+    const repository = await renderWorkspace('label', {
+      snapshot,
+      settingsHome: 'production',
+      profileOverrides: { market: 'EU', uiLanguage: 'pl', labelLanguages: ['pl'] },
+    });
+    vi.spyOn(window, 'open').mockReturnValue(null);
+    vi.spyOn(window, 'print').mockImplementation(() => undefined);
     await act(async () =>
-      setInputValue(authorityInput, 'Supplier specification MILK-CREAM-2026-08'),
+      host.querySelector<HTMLButtonElement>('[data-testid="label-print"]')!.click(),
     );
+    const allergen = document.querySelector<HTMLInputElement>(
+      '[data-testid="label-print-missing-allergens"]',
+    )!;
+    const saturated = document.querySelector<HTMLInputElement>(
+      '[data-testid="label-print-missing-saturated_fat_g"]',
+    )!;
+    await act(async () => {
+      setInputValue(allergen, 'Contains milk. May contain pistachios.');
+      setInputValue(saturated, '3.2');
+    });
+    await act(async () => {
+      document
+        .querySelector<HTMLButtonElement>('[data-testid="label-print-missing-apply"]')!
+        .click();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    const saved = await repository.getRunLabelSnapshot('run-label-workspace');
+    expect(saved?.label.allergens.labelStatements).toEqual([
+      'Contains milk. May contain pistachios.',
+    ]);
+    expect(saved?.label.nutritionSource?.saturated_fat_g).toBe(3.2);
 
-    expect(continueButton.disabled).toBe(false);
-    await act(async () => continueButton.click());
-    expect(host.querySelector('[data-testid="label-consumer-preview"]')?.textContent).toContain(
-      '3.4 g',
-    );
+    await act(async () => root.unmount());
+    root = createRoot(host);
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <LabelWorkspace
+            snapshot={snapshot}
+            repository={repository}
+            initialView="label"
+            settingsHome="production"
+            onOpenSettings={() => undefined}
+          />
+        </MemoryRouter>,
+      );
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(host.textContent).toContain('Contains milk. May contain pistachios.');
+    expect(host.textContent).toContain('Tłuszcze nasycone: 3,2 g / 100 g');
   });
 
   it('serves one AU/NZ superset intake with no country split and required origin', async () => {
@@ -386,22 +583,19 @@ describe('LabelWorkspace unified actual-run surface', () => {
     ).toBe(String(completedSnapshot().actualFinalMassG));
   });
 
-  it('shows one market-driven preview with ACTUAL overview outside the print boundary', async () => {
+  it('shows one market-driven preview without duplicated internal overview', async () => {
     await renderWorkspace();
-    await completeRequiredLabelData();
-    await act(async () => button('Pokaż etykietę')!.click());
     expect(host.querySelector('[data-workspace-mode="run"]')).not.toBeNull();
     expect(host.textContent).toContain('Gelato faktyczne');
     expect(host.textContent).toContain('Gellatti Laboratory');
     expect(host.textContent).toContain('Net quantity');
     expect(host.textContent).toContain('Ingredients');
     expect(host.textContent).toContain('Nutrition declaration');
-    expect(host.textContent).toContain('Koszt');
-    expect(host.textContent).toContain('Baza techniczna');
+    expect(host.textContent).not.toContain('Koszt');
+    expect(host.textContent).not.toContain('Baza techniczna');
     expect(host.querySelector('[data-testid="label-print-blocked-message"]')).toBeNull();
     expect(host.querySelector('[data-testid="label-print-ready-message"]')).toBeNull();
-    expect(moments).toHaveLength(1);
-    expect(moments[0]).toMatchObject({ kind: 'label-ready' });
+    expect(moments).toHaveLength(0);
     expect(
       host.querySelector('[data-testid="label-consumer-preview"]')?.getAttribute('data-market'),
     ).toBe('EU');
@@ -428,13 +622,9 @@ describe('LabelWorkspace unified actual-run surface', () => {
     expect(
       host.querySelector('[data-testid="consumer-print-boundary"]')?.textContent,
     ).not.toContain('Koszt');
-    const internal = host.querySelector('[data-testid="label-internal-overview"]');
-    expect(internal?.textContent).toContain('Koszt');
-    expect(internal?.textContent).toContain('Baza techniczna');
-    expect(internal?.textContent).not.toContain('Składniki');
-    expect(internal?.textContent).not.toContain('Wartości odżywcze');
+    expect(host.querySelector('[data-testid="label-internal-overview"]')).toBeNull();
     expect(host.textContent).not.toContain('none_declared');
-    expect(button('Pobierz PDF')).not.toBeUndefined();
+    expect(button('Pobierz PDF')).toBeUndefined();
     expect((button('Drukuj') as HTMLButtonElement | undefined)?.disabled).toBe(false);
   });
 
@@ -466,8 +656,10 @@ describe('LabelWorkspace unified actual-run surface', () => {
     expect(host.textContent).toContain('Alergeny: Zawiera: MLEKO. Może zawierać ORZECHY.');
     expect(host.querySelector('[data-testid="label-allergens-change"]')?.textContent).toBe('Zmień');
 
+    vi.spyOn(window, 'open').mockReturnValue(null);
+    vi.spyOn(window, 'print').mockImplementation(() => undefined);
     await act(async () => {
-      button('Zapisz finalną etykietę')!.click();
+      host.querySelector<HTMLButtonElement>('[data-testid="label-print"]')!.click();
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -495,10 +687,6 @@ describe('LabelWorkspace unified actual-run surface', () => {
 
   it('opens the complete Settings state inside the same three-step workspace', async () => {
     await renderWorkspace('settings');
-    expect(host.querySelector('[data-active-label-view="data"]')).not.toBeNull();
-    await completeRequiredLabelData();
-    await act(async () => button('Pokaż etykietę')!.click());
-    await act(async () => button('Ustawienia')!.click());
     expect(host.querySelector('[data-active-label-view="settings"]')).not.toBeNull();
     expect(host.querySelector('[data-testid="label-workspace"]')?.getAttribute('data-run-id')).toBe(
       'run-label-workspace',
@@ -540,20 +728,14 @@ describe('LabelWorkspace unified actual-run surface', () => {
     expect(apply.disabled).toBe(false);
     expect(market.value).toBe('UK');
     await act(async () => apply.click());
-    expect(host.querySelector('[data-active-label-view="data"]')).not.toBeNull();
+    expect(host.querySelector('[data-active-label-view="label"]')).not.toBeNull();
     expect(
-      host.querySelector('[data-testid="label-data-intake"]')?.getAttribute('data-label-market'),
+      host.querySelector('[data-testid="label-consumer-preview"]')?.getAttribute('data-market'),
     ).toBe('UK');
-    expect(
-      host.querySelector<HTMLButtonElement>('[data-testid="label-workspace-dot-label"]')?.disabled,
-    ).toBe(true);
   });
 
   it('keeps Step 3 configuration-only and does not persist an unapplied market change', async () => {
     const repository = await renderWorkspace('settings');
-    await completeRequiredLabelData();
-    await act(async () => button('Pokaż etykietę')!.click());
-    await act(async () => button('Ustawienia')!.click());
 
     const editor = host.querySelector('[data-testid="label-settings-view"]')!;
     expect(editor.querySelector('[data-label-field]')).toBeNull();
@@ -563,7 +745,7 @@ describe('LabelWorkspace unified actual-run surface', () => {
     await act(async () => setSelectValue(market, 'WORLD'));
     expect(market.value).toBe('WORLD');
     expect((await repository.getAccountProfile())?.market).toBe('EU');
-    await act(async () => button('Wstecz')!.click());
+    await act(async () => button('Wróć')!.click());
     expect(host.querySelector('[data-active-label-view="label"]')).not.toBeNull();
     expect((await repository.getAccountProfile())?.market).toBe('EU');
   });
@@ -574,7 +756,7 @@ describe('LabelWorkspace unified actual-run surface', () => {
     const missingFields = () => settings.querySelectorAll('[data-missing-required="true"]');
 
     expect(settings.querySelector('[data-testid="show-label-preview"]')?.textContent).toBe(
-      'Uzupełnij 5 pól',
+      'Pokaż etykietę',
     );
     expect(missingFields()).toHaveLength(5);
     expect(
@@ -640,34 +822,14 @@ describe('LabelWorkspace unified actual-run surface', () => {
       await Promise.resolve();
     });
 
-    let settings = host.querySelector('[data-testid="label-data-intake"]')!;
-    const acknowledgement = [
-      ...settings.querySelectorAll<HTMLInputElement>('input[type="checkbox"]'),
-    ].find((input) => input.parentElement?.textContent?.includes('Sprawdziłem dane etykiety'))!;
-    await act(async () => acknowledgement.click());
-
-    const showLabel = button('Pokaż etykietę') as HTMLButtonElement;
-    expect([...settings.querySelectorAll('[data-missing-required="true"]')]).toHaveLength(0);
-    expect(showLabel.disabled).toBe(false);
-    await act(async () => {
-      showLabel.click();
-      await Promise.resolve();
-    });
-
     const workspace = host.querySelector('[data-testid="label-workspace"]')!;
-    expect(workspace.getAttribute('data-active-label-view')).toBe('label');
-    expect(workspace.querySelector('[data-testid="label-consumer-preview"]')).not.toBeNull();
-    expect(workspace.querySelector('[data-testid="label-print-ready-message"]')).toBeNull();
-    expect(moments).toHaveLength(1);
-    expect(moments[0]).toMatchObject({ kind: 'label-ready' });
-    expect(button('Pobierz PDF')).not.toBeUndefined();
-    expect((button('Drukuj') as HTMLButtonElement).disabled).toBe(false);
-
-    await act(async () => button('Ustawienia')!.click());
-    settings = host.querySelector('[data-testid="label-settings-view"]')!;
+    expect(workspace.getAttribute('data-active-label-view')).toBe('settings');
+    const settings = host.querySelector('[data-testid="label-settings-view"]')!;
     expect(settings.querySelector('[data-label-field]')).toBeNull();
     expect(settings.textContent).toContain('Profil, format i drukarka');
+    expect(settings.textContent).toContain('Opakowanie i masa netto');
     expect(settings.textContent).not.toContain('Uzupełnij wymagane pola');
+    expect(settings.textContent).not.toContain('Sprawdziłem dane etykiety przed wydrukiem');
     const labelStep = workspace.querySelector<HTMLButtonElement>(
       '[data-testid="label-workspace-dot-label"]',
     )!;
@@ -676,53 +838,33 @@ describe('LabelWorkspace unified actual-run surface', () => {
     expect(workspace.getAttribute('data-active-label-view')).toBe('label');
   });
 
-  it('uses accessible dots and returns an incomplete deep link to required data', async () => {
+  it('keeps the main label free of navigation dots and opens Settings through Zmień', async () => {
     await renderWorkspace();
-    const settingsDot = host.querySelector<HTMLButtonElement>(
-      '[data-testid="label-workspace-dot-settings"]',
-    )!;
-    expect(settingsDot.getAttribute('aria-current')).toBeNull();
-    expect(settingsDot.disabled).toBe(true);
-    await act(async () => settingsDot.click());
-    expect(host.querySelector('[data-active-label-view="data"]')).not.toBeNull();
-    expect(
-      host.querySelector('[data-testid="label-data-intake"]')?.getAttribute('data-label-market'),
-    ).toBe('EU');
-    expect(
-      host.querySelector<HTMLButtonElement>('[data-testid="label-workspace-dot-settings"]')
-        ?.disabled,
-    ).toBe(true);
+    expect(host.querySelector('[data-testid="label-workspace-dots"]')).toBeNull();
+    await act(async () =>
+      host.querySelector<HTMLButtonElement>('[data-testid="label-change"]')!.click(),
+    );
+    expect(host.querySelector('[data-active-label-view="settings"]')).not.toBeNull();
   });
 
-  it('guards an incomplete Settings deep link and preserves mobile form interaction', async () => {
+  it('allows a Settings deep link and preserves mobile form interaction', async () => {
     await renderWorkspace('settings');
     const workspace = host.querySelector('[data-testid="label-workspace"]')!;
-    expect(workspace.getAttribute('data-active-label-view')).toBe('data');
-    expect(workspace.querySelector('[data-testid="label-data-intake"]')?.textContent).toContain(
-      'Unia Europejska',
-    );
+    expect(workspace.getAttribute('data-active-label-view')).toBe('settings');
 
-    await swipe(workspace, 260, 130);
-    expect(workspace.getAttribute('data-active-label-view')).toBe('data');
-    await swipe(workspace, 80, 170);
-    expect(workspace.getAttribute('data-active-label-view')).toBe('data');
-
-    const settingsInput = workspace.querySelector<HTMLInputElement>(
-      '[data-testid="label-data-intake"] input',
+    const settingsInput = workspace.querySelector<HTMLSelectElement>(
+      '[data-testid="label-market-select"]',
     )!;
     await swipe(settingsInput, 90, 200);
-    expect(workspace.getAttribute('data-active-label-view')).toBe('data');
-
-    await completeRequiredLabelData();
-    await act(async () => button('Pokaż etykietę')!.click());
-    await act(async () => button('Ustawienia')!.click());
+    expect(workspace.getAttribute('data-active-label-view')).toBe('settings');
+    await swipe(workspace, 260, 130);
     expect(workspace.getAttribute('data-active-label-view')).toBe('settings');
     expect(
       workspace.querySelector('[data-testid="label-settings-view"] [data-label-field]'),
     ).toBeNull();
   });
 
-  it('starts a new version from the current profile without rewriting the selected snapshot', async () => {
+  it('opens a saved run as a new settings revision without rewriting the selected snapshot', async () => {
     const base = inMemoryLabelRepository('owner-label-workspace');
     await base.saveAccountProfile({
       ...defaultAccountLabelProfile('owner-label-workspace'),
@@ -755,23 +897,17 @@ describe('LabelWorkspace unified actual-run surface', () => {
     };
 
     await act(async () => {
-      root.render(<LabelWorkspace snapshot={actual} repository={repository} />);
+      root.render(
+        <LabelWorkspace snapshot={actual} repository={repository} initialView="settings" />,
+      );
       await Promise.resolve();
       await Promise.resolve();
     });
 
-    expect(host.textContent).toContain('Unia Europejska');
-    expect(button('Nowa wersja')).not.toBeUndefined();
-    await act(async () => {
-      button('Nowa wersja')!.click();
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-
-    expect(host.querySelector('[data-active-label-view="data"]')).not.toBeNull();
+    expect(host.querySelector('[data-active-label-view="settings"]')).not.toBeNull();
     expect(
-      host.querySelector('[data-testid="label-data-intake"]')?.getAttribute('data-label-market'),
-    ).toBe('WORLD');
+      host.querySelector<HTMLSelectElement>('[data-testid="label-market-select"]')?.value,
+    ).toBe('EU');
     expect(immutable.label.market).toBe('EU');
     expect(immutable.version).toBe(1);
   });
@@ -784,9 +920,13 @@ describe('LabelWorkspace unified actual-run surface', () => {
   const dot = (view: 'data' | 'label' | 'settings') =>
     host.querySelector(`[data-testid="label-workspace-dot-${view}"]`);
 
-  it('Produkcja → Etykiety keeps the settings view — it is the canonical home', async () => {
+  it('Produkcja → Etykiety keeps Settings behind the canonical Zmień action', async () => {
     await renderWorkspace('label');
-    expect(dot('settings')).not.toBeNull();
+    expect(dot('settings')).toBeNull();
+    await act(async () =>
+      host.querySelector<HTMLButtonElement>('[data-testid="label-change"]')!.click(),
+    );
+    expect(host.querySelector('[data-active-label-view="settings"]')).not.toBeNull();
     expect(host.querySelector('[data-testid="label-settings-home-link"]')).toBeNull();
   });
 
@@ -798,9 +938,9 @@ describe('LabelWorkspace unified actual-run surface', () => {
     expect(button('Ustawienia')).toBeUndefined();
   });
 
-  it('keeps the three-view switcher at home and none in the workbench', async () => {
+  it('keeps the label screen free of a competing view switcher everywhere', async () => {
     await renderWorkspace('label');
-    expect(host.querySelectorAll('[data-testid^="label-workspace-dot-"]')).toHaveLength(3);
+    expect(host.querySelectorAll('[data-testid^="label-workspace-dot-"]')).toHaveLength(0);
 
     // The workbench is ONE stacked flow — preview, then whatever is still
     // missing for it — so a view switcher there would only offer a second way
@@ -829,8 +969,67 @@ describe('LabelWorkspace unified actual-run surface', () => {
     expect(
       missing.compareDocumentPosition(actions) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
-    expect(actions.textContent).toContain('Drukuj podgląd roboczy');
-    expect(actions.textContent).toContain('Drukuj');
+    expect([...actions.querySelectorAll('button')].map((item) => item.textContent?.trim())).toEqual(
+      ['Drukuj', 'Zmień'],
+    );
+  });
+
+  it('shows the accepted compact World label surface and keeps both optional gaps printable', async () => {
+    const onOpenSettings = vi.fn();
+    const snapshot = completedSnapshot();
+    for (const frozen of Object.values(snapshot.productComposition.behaviorSnapshots ?? {})) {
+      if (
+        (frozen.sharedFacts?.nutritionPer100g?.fat ?? 0) > 0 &&
+        frozen.sharedFacts?.nutritionPer100g
+      ) {
+        frozen.source = 'mapper';
+        frozen.sharedFacts.nutritionPer100g.saturatedFat = 0;
+      }
+    }
+    await renderWorkspace('data', {
+      snapshot,
+      settingsHome: 'production',
+      onOpenSettings,
+      profileOverrides: {
+        market: 'WORLD',
+        uiLanguage: 'en',
+        labelLanguages: ['en'],
+        enabledOptionalFields: [],
+      },
+    });
+
+    const workspace = host.querySelector('[data-testid="label-workspace"]')!;
+    const preview = workspace.querySelector('[data-testid="consumer-print-boundary"]')!;
+    const optional = workspace.querySelector('[data-testid="label-optional-rows"]')!;
+    const actions = workspace.querySelector('[data-testid="label-workbench-print-actions"]')!;
+    expect(workspace.getAttribute('data-active-label-view')).toBe('label');
+    expect(
+      preview.compareDocumentPosition(optional) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      optional.compareDocumentPosition(actions) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(workspace.querySelector('[data-testid="label-market-indicator"]')).toBeNull();
+    expect(
+      workspace.querySelector('[data-testid="label-missing-data-stack"] [data-label-field]'),
+    ).toBeNull();
+    expect(workspace.querySelector('[data-testid="label-internal-overview"]')).toBeNull();
+    expect(workspace.querySelector('[data-testid="label-print-blocked-message"]')).toBeNull();
+    expect(workspace.textContent).not.toContain('102 × 152 mm');
+    expect(workspace.textContent).not.toContain('Dokończ etykietę');
+    expect(workspace.textContent).not.toContain('Ostatnie potwierdzenie');
+    expect(optional.textContent).toContain('Alergeny nieustalone');
+    expect(optional.textContent).toContain('Tłuszcze nasycone nieustalone');
+    expect([...actions.querySelectorAll('button')].map((item) => item.textContent?.trim())).toEqual(
+      ['Drukuj', 'Zmień'],
+    );
+    expect(actions.querySelector<HTMLButtonElement>('[data-testid="label-print"]')?.disabled).toBe(
+      false,
+    );
+    await act(async () =>
+      actions.querySelector<HTMLButtonElement>('[data-testid="label-change"]')!.click(),
+    );
+    expect(onOpenSettings).toHaveBeenCalledWith('run-label-workspace');
   });
 
   it('still opens an incomplete label on its data view at home', async () => {

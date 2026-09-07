@@ -81,9 +81,7 @@ describe('§31 — profile detection', () => {
 
 describe('§20 — a whole spoken sentence is the same input as typed words', () => {
   it('extracts profile, ingredients and role from one natural sentence', () => {
-    const parsed = parseIntent(
-      'I want mango sorbet with raspberries and white chocolate pieces',
-    );
+    const parsed = parseIntent('I want mango sorbet with raspberries and white chocolate pieces');
     expect(parsed.profile).toBe('sorbet');
     const found = parsed.terms.map((t) => t.concept);
     expect(found).toContain('mango');
@@ -119,5 +117,46 @@ describe('§22 — understanding is not identity resolution', () => {
   it('never returns a duplicate concept for one utterance', () => {
     const found = concepts('chocolate czekolada chocolate');
     expect(found.filter((c) => c === 'chocolate')).toHaveLength(1);
+  });
+});
+
+/**
+ * OWNER QA 2026-09-06 — „banan, czekoladowy topping".
+ *
+ * The role was read from the WHOLE utterance and stamped onto every term, so the word
+ * `topping` said about the chocolate also made the banana a topping. Downstream that put
+ * a Main into the topping collection and a topping under the Crown.
+ */
+describe('a role belongs to the product it was said about', () => {
+  it('the owner scenario: only the chocolate is a topping', () => {
+    const { terms } = parseIntent('banan, czekoladowy topping');
+    const banana = terms.find((t) => t.normalized.startsWith('banan'));
+    const chocolate = terms.find((t) => t.normalized.startsWith('czekolad'));
+    expect(banana, 'the banana survived parsing').toBeDefined();
+    expect(chocolate, 'the chocolate survived parsing').toBeDefined();
+    expect(banana!.role, 'the banana was never called a topping').toBeNull();
+    expect(chocolate!.role).toBe('topping');
+  });
+
+  it('splits on the separators a person actually uses', () => {
+    for (const text of [
+      'banan i czekoladowy topping',
+      'banan oraz czekoladowy topping',
+      'banan; czekoladowy topping',
+    ]) {
+      const { terms } = parseIntent(text);
+      expect(terms.find((t) => t.normalized.startsWith('banan'))?.role, text).toBeNull();
+      expect(terms.find((t) => t.normalized.startsWith('czekolad'))?.role, text).toBe('topping');
+    }
+  });
+
+  it('still marks a single-item utterance', () => {
+    const { terms } = parseIntent('czekoladowy topping');
+    expect(terms.every((t) => t.role === 'topping')).toBe(true);
+  });
+
+  it('marks nothing when no role was stated', () => {
+    const { terms } = parseIntent('banan, czekolada');
+    expect(terms.every((t) => t.role === null)).toBe(true);
   });
 });

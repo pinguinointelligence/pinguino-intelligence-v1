@@ -5,6 +5,7 @@ import { marketProfile, type MarketProfileCode } from './marketProfiles';
 import { buildMasterLabelPrintHtml } from './masterLabelPrint';
 import { normalizePrinterSettings } from './printerProfiles';
 import type { RegulatoryNutritionInputs } from './regulatoryNutrition';
+import { renderMarketLabelHtml } from './renderers';
 
 const nutrition: LabelNutritionPer100g = {
   kcal: 220,
@@ -195,8 +196,123 @@ function label(
 }
 
 describe('market-specific golden label structures', () => {
+  it.each(['EU', 'UK', 'US', 'CA', 'AU_NZ', 'WORLD'] as const)(
+    '%s keeps known allergens and omits unknown allergen and saturated-fat output',
+    (market) => {
+      const complete = label(market);
+      const data = label(market, {
+        allergens: {
+          status: 'incomplete',
+          declared: ['milk'],
+          mayContain: [],
+          labelStatements: ['Contains milk'],
+          reviewedByUser: false,
+        },
+        nutritionSource: {
+          ...complete.nutritionSource!,
+          saturated_fat_g: null,
+        },
+        saturatedFatAuthority: {
+          status: 'missing',
+          sourceReferences: [],
+          missingIngredientNames: ['Unknown topping'],
+        },
+        preflightAcknowledged: false,
+      });
+
+      expect(buildLabelPreflight(data).readyForSystemPrint).toBe(true);
+      const html = buildMasterLabelPrintHtml(data);
+      expect(html).toContain('Contains milk');
+      expect(html).not.toContain('UNKNOWN');
+      expect(html).not.toContain('Alergeny nieustalone');
+      expect(html).not.toMatch(/of which saturates|Saturated Fat|- saturated|Saturated \/ saturés/);
+      expect(html).not.toContain('—');
+    },
+  );
+
+  it.each(['EU', 'UK', 'US', 'CA', 'AU_NZ', 'WORLD'] as const)(
+    '%s omits entirely unknown editable values without placeholder rows',
+    (market) => {
+      const base = label(market);
+      const blankText = Object.fromEntries(base.labelLanguages.map((language) => [language, '']));
+      const data: MasterLabelData = {
+        ...base,
+        productName: blankText,
+        legalProductName: blankText,
+        ingredients: base.ingredients.map((ingredient) => ({
+          ...ingredient,
+          names: blankText,
+          sourceAllergensText: 'UNKNOWN',
+        })),
+        allergens: {
+          status: 'incomplete',
+          declared: [],
+          mayContain: [],
+          labelStatements: [],
+          reviewedByUser: false,
+        },
+        nutritionSource: {
+          ...base.nutritionSource!,
+          saturated_fat_g: null,
+          sugars_g: null,
+        },
+        regulatoryNutrition: {
+          ...base.regulatoryNutrition,
+          energyKjPer100g: null,
+          servingDescription: {},
+          servingQuantityG: null,
+          servingVolumeMl: null,
+          servingsPerContainer: null,
+          transFatGPer100g: null,
+          cholesterolMgPer100g: null,
+          sodiumMgPer100g: null,
+          addedSugarsGPer100g: null,
+          vitaminDMcgPer100g: null,
+          calciumMgPer100g: null,
+          ironMgPer100g: null,
+          potassiumMgPer100g: null,
+        },
+        packageQuantity: null,
+        netQuantityG: null,
+        lotCode: '',
+        productionDate: '',
+        dateMark: { kind: 'unresolved', date: null, basis: 'none', reviewedByUser: false },
+        storageInstructions: blankText,
+        origin: blankText,
+        businessName: '',
+        operator: {
+          ...base.operator,
+          operatorName: '',
+          facilityName: '',
+          address: '',
+          countryCode: '',
+          importerName: '',
+          importerAddress: '',
+          importerCountryCode: '',
+          distributorName: '',
+          distributorAddress: '',
+          distributorCountryCode: '',
+        },
+        jurisdictionContext: {
+          euDestinationCountryCode: '',
+          ukRegion: 'unresolved',
+          auNzCountry: 'unresolved',
+          usSaleContext: 'unresolved',
+        },
+      };
+
+      const html = renderMarketLabelHtml(data);
+      const visible = html.replace(/<[^>]+>/g, ' ');
+      expect(visible).not.toMatch(/UNKNOWN|Alergeny nieustalone|brak danych|—/i);
+      expect(html).not.toMatch(/<h1>\s*<\/h1>|class="ingredients"|class="allergens"/);
+      expect(html).not.toContain('class="net-quantity"');
+      expect(html).not.toContain('class="traceability"');
+      expect(html).not.toMatch(/Saturated Fat|saturated|saturés|of which sugars|- sugars/i);
+    },
+  );
+
   it.each(['EU', 'UK', 'US', 'AU_NZ', 'WORLD'] as const)(
-    '%s fails closed before retail print at a clipped geometry',
+    '%s reports clipped geometry without blocking the owner print decision',
     (market) => {
       const data = label(market);
       const clipped = {
@@ -208,9 +324,8 @@ describe('market-specific golden label structures', () => {
       expect(buildLabelPreflight(clipped).items).toContainEqual(
         expect.objectContaining({ field: 'geometry', status: 'missing' }),
       );
-      expect(() => buildMasterLabelPrintHtml(clipped)).toThrow(
-        'Master Label preflight is incomplete.',
-      );
+      expect(buildLabelPreflight(clipped).readyForSystemPrint).toBe(true);
+      expect(() => buildMasterLabelPrintHtml(clipped)).not.toThrow();
     },
   );
 
@@ -297,7 +412,7 @@ describe('market-specific golden label structures', () => {
     expect(html).toMatch(/<td>[^<]+<\/td><td>[^<]+<\/td>/);
   });
 
-  it('keeps Canada externally blocked while preserving the bilingual NFT/FOP renderer', () => {
+  it('keeps the Canadian bilingual NFT/FOP renderer printable with unresolved evidence', () => {
     const withOfficialAsset = label('CA', {
       regulatoryNutrition: regulatoryFacts(['en', 'fr'], {
         canadaFopAssetId: 'approved-health-canada-high-sat-sugar',
@@ -305,10 +420,8 @@ describe('market-specific golden label structures', () => {
     });
     const preflight = buildLabelPreflight(withOfficialAsset);
     expect(preflight.regulatoryProfileVerified).toBe(false);
-    expect(() => buildMasterLabelPrintHtml(withOfficialAsset)).toThrow(
-      'Master Label preflight is incomplete.',
-    );
-    const html = buildMasterLabelPrintHtml(withOfficialAsset, null, { draft: true });
+    expect(preflight.readyForSystemPrint).toBe(true);
+    const html = buildMasterLabelPrintHtml(withOfficialAsset);
     expect(html).toContain('Nutrition Facts<br><span>Valeur nutritive</span>');
     expect(html).toContain('Ingredients:');
     expect(html).toContain('Ingrédients:');

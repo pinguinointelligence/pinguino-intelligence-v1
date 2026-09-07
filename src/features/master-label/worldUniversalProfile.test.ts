@@ -56,12 +56,14 @@ describe('WORLD / UNIVERSAL label profile', () => {
     expect(html).toContain('GEL-MILK-001');
   });
 
-  it('fails closed when the selected package fill is absent even though batch mass exists', () => {
+  it('omits an absent package fill without blocking the owner print decision', () => {
     const label = createCompleteLabel('WORLD', { packageQuantity: null, netQuantityG: null });
     const preflight = buildLabelPreflight(label);
-    expect(preflight.printReadiness).toBe('NOT_READY');
+    expect(preflight.printReadiness).toBe('PRINT_READY_UNIVERSAL');
+    expect(preflight.readyForSystemPrint).toBe(true);
     expect(preflight.items).toContainEqual(
       expect.objectContaining({ field: 'net_quantity', status: 'missing' }),
     );
+    expect(buildMasterLabelPrintHtml(label)).not.toContain('Net weight');
   });
 });

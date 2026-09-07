@@ -170,7 +170,7 @@ describe('software printer profile verification', () => {
   );
 
   it.each(Object.keys(PRINTER_PROFILES) as Array<keyof typeof PRINTER_PROFILES>)(
-    'either prints or explicitly rejects representative retail content on %s',
+    'prints representative retail content and reports geometry diagnostics on %s',
     (profileId) => {
       const profile = PRINTER_PROFILES[profileId];
       const preset = [...profile.sizePresets].sort(
@@ -199,9 +199,9 @@ describe('software printer profile verification', () => {
         expect(preflight.items).toContainEqual(
           expect.objectContaining({ field: 'geometry', status: 'missing' }),
         );
-        expect(() =>
-          buildMasterLabelPrintHtml({ ...data, businessName: base.businessName }),
-        ).toThrow('Master Label preflight is incomplete.');
+        const html = buildMasterLabelPrintHtml({ ...data, businessName: base.businessName });
+        expect(html).toContain(`width:${preset.widthMm}mm`);
+        expect(html).toContain(`height:${preset.heightMm}mm`);
       }
     },
   );

@@ -133,6 +133,8 @@ export function StudioEngineSurface({
   recipeSaveAttention = false,
   initialLabelView = 'data',
   labelViewRequestKey,
+  onOpenLabelSettings,
+  labelSettingsRestoreScrollTop,
 }: {
   forceDemo?: boolean;
   /** The Przelicz z PI overlay (Preview → Zastosuj/Anuluj → Cofnij), host-wired. */
@@ -148,6 +150,8 @@ export function StudioEngineSurface({
   recipeSaveAttention?: boolean;
   initialLabelView?: LabelWorkspaceView;
   labelViewRequestKey?: string;
+  onOpenLabelSettings?: (runId: string, scrollTop: number) => void;
+  labelSettingsRestoreScrollTop?: number;
 }) {
   const setPlan = useSessionStore((state) => state.setPlan);
   const loadPreset = useRecipeStore((state) => state.loadPreset);
@@ -478,6 +482,8 @@ export function StudioEngineSurface({
               onRecalculate={onRecalculate ?? (() => undefined)}
               initialLabelView={initialLabelView}
               labelViewRequestKey={labelViewRequestKey}
+              onOpenLabelSettings={onOpenLabelSettings}
+              labelSettingsRestoreScrollTop={labelSettingsRestoreScrollTop}
             />
           </aside>
         </div>
@@ -568,6 +574,8 @@ export function StudioEngineSurface({
                   onRecalculate={onRecalculate ?? (() => undefined)}
                   initialLabelView={initialLabelView}
                   labelViewRequestKey={labelViewRequestKey}
+                  onOpenLabelSettings={onOpenLabelSettings}
+                  labelSettingsRestoreScrollTop={labelSettingsRestoreScrollTop}
                 />
               </div>
             </section>
