@@ -29,19 +29,19 @@ const designSubpoints = [
 }));
 
 describe('Gellatti SOL ledger continuity', () => {
-  it('contains every append-only ID exactly once from SOL-001 through SOL-049', () => {
+  it('contains every append-only ID exactly once from SOL-001 through SOL-050', () => {
     expect(entries.map(({ number }) => number)).toEqual(
-      Array.from({ length: 49 }, (_, index) => index + 1),
+      Array.from({ length: 50 }, (_, index) => index + 1),
     );
-    expect(new Set(entries.map(({ id }) => id)).size).toBe(49);
+    expect(new Set(entries.map(({ id }) => id)).size).toBe(50);
     expect(ledger).toContain(
       'IDs are append-only and are never deleted, moved, renumbered, or reused.',
     );
   });
 
-  it('reserves SOL-050 as the next free main ID without assigning it', () => {
-    expect(ledger).toContain('`NEXT_FREE_SOL_ID: SOL-050`');
-    expect(entries.some(({ id }) => id === 'SOL-050')).toBe(false);
+  it('reserves SOL-051 as the next free main ID without assigning it', () => {
+    expect(ledger).toContain('`NEXT_FREE_SOL_ID: SOL-051`');
+    expect(entries.some(({ id }) => id === 'SOL-051')).toBe(false);
   });
 
   it('records no unrecovered gap after restoring SOL-034 through SOL-038', () => {
@@ -70,6 +70,17 @@ describe('Gellatti SOL ledger continuity', () => {
     expect(ledger).toContain('OWNER ACCEPTED: YES');
   });
 
+  it('records SOL-031 on staging without claiming Owner acceptance', () => {
+    expect(entries.find(({ id }) => id === 'SOL-031')?.status).toBe('RESOLVED_ON_STAGING');
+    expect(ledger).toContain('PR #216');
+    expect(ledger).toContain('finalny staging SHA `5091cd866581f9d4993e7333c74e09328601cc02`');
+    expect(ledger).toContain('staging CI run `34060072184` PASS');
+    expect(ledger).toContain('deployment `dpl_6ZKwjNiZiLV7GQzT4iCzuHdJnuQq` o statusie READY');
+    expect(ledger).toContain('`20260906192729_nonblocking_label_print_snapshots.sql`');
+    expect(ledger).toContain('`OWNER QA PENDING`');
+    expect(ledger).toContain('`OWNER ACCEPTED: NO`');
+  });
+
   it('retains the confirmed SOL-039 through SOL-045 findings as TODO', () => {
     for (let number = 39; number <= 45; number += 1) {
       const id = `SOL-${String(number).padStart(3, '0')}`;
@@ -85,13 +96,16 @@ describe('Gellatti SOL ledger continuity', () => {
     expect(ledger).toContain('SOL-045 · TODO — kamera komputerowa pokazuje kod zbyt rozmyty');
   });
 
-  it('appends the Owner QA SOL-046 price-message finding without claiming a fix', () => {
-    expect(entries.find(({ id }) => id === 'SOL-046')?.status).toBe('TODO');
+  it('records the Owner-accepted SOL-046 resolution on canonical staging', () => {
+    expect(entries.find(({ id }) => id === 'SOL-046')?.status).toBe('RESOLVED_ON_STAGING');
     expect(ledger).toContain(
-      'SOL-046 · TODO — komunikat o brakującej cenie jest techniczny, za długi i wyświetlany podwójnie',
+      'SOL-046 · RESOLVED_ON_STAGING — komunikat o brakującej cenie jest techniczny, za długi i wyświetlany podwójnie',
     );
     expect(ledger).toContain('Wprowadź cenę dla LIME · MASTER MARTINI VARIEGATO · AJ01AQ.');
-    expect(ledger).toContain('Nazwa musi pochodzić z aktualnej receptury, bez hardcode produktu.');
+    expect(ledger).toContain('Nazwa pochodzi z aktualnej receptury, bez hardcode produktu');
+    expect(ledger).toContain('staging SHA `f6778265b2bf8f302d446055417524c235eb1c84`');
+    expect(ledger).toContain('matematyka kosztów nie została naruszona');
+    expect(ledger).toContain('`OWNER ACCEPTED: YES`');
   });
 
   it('keeps the HOME and PRO DESIGN review penultimate and numbers subpoints independently', () => {
@@ -138,6 +152,23 @@ describe('Gellatti SOL ledger continuity', () => {
       const id = `SOL-${String(number).padStart(3, '0')}`;
       expect(entries.find((entry) => entry.id === id)?.status).toBe('TODO');
     }
+  });
+
+  it('appends the Owner-defined incomplete private-product lifecycle as SOL-050', () => {
+    expect(entries.find(({ id }) => id === 'SOL-050')?.status).toBe('TODO');
+    expect(ledger).toContain(
+      'SOL-050 · TODO — prywatne produkty niegotowe nie mają własnego miejsca, kompletnego edytora ani dobrowolnej ścieżki wysłania do weryfikacji',
+    );
+    expect(ledger).toContain('Evidence: decyzja Ownera 2026-09-06.');
+    expect(ledger).toContain('**Niegotowe**');
+    expect(ledger).toContain('**Moje produkty**');
+    expect(ledger).toContain('**Product Registry**');
+    expect(ledger).toContain('`Wyślij do weryfikacji` jest zawsze dobrowolne');
+    expect(ledger).toContain('nic nie może wysyłać się automatycznie');
+    expect(ledger).toContain('profil uzyska `engineReady` i gotowość przynajmniej jednej roli');
+    expect(ledger).toContain('Mapper, Engine i Product Registry nie są bezpośrednio nadpisywane');
+    expect(ledger).toContain('Brak alergenów ani ceny nie zatrzymuje przejścia.');
+    expect(ledger).toContain('Nie powstają duplikaty tego samego produktu użytkownika.');
   });
 
   it('records the proven PR #181 before PR #198 migration order', () => {

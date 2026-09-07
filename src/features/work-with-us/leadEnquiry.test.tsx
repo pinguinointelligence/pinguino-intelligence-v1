@@ -281,12 +281,19 @@ describe('the lane CTAs reach the anchor', () => {
     const source = readFileSync('src/pages/destinations/LanePage.tsx', 'utf8');
     // The dead form took a page's CTA to a bare "#lead" that nothing rendered.
     expect(source).not.toContain('"/work-with-us#lead"');
-    expect(source).toContain('`/work-with-us?from=${encodeURIComponent(pathname)}#lead`');
+    // Owner decision 2026-09-03: the ONE enquiry surface moved to Franchise,
+    // the umbrella these formats belong to. /work-with-us survives only as a
+    // redirect for old external links, so no in-app CTA may target it.
+    expect(source).not.toContain('/work-with-us?from=');
+    expect(source).toContain('`/franchise?from=${encodeURIComponent(pathname)}#lead`');
     expect(source.match(/to=\{leadHref\}/g)).toHaveLength(3);
   });
 
-  it('the gateway actually renders the section the CTAs point at', () => {
-    const gateway = readFileSync('src/pages/destinations/WorkWithUsPage.tsx', 'utf8');
-    expect(gateway).toContain('<LeadEnquirySection />');
+  it('Franchise renders the one enquiry the CTAs point at', () => {
+    const page = readFileSync('src/pages/destinations/GlobalDestinationPages.tsx', 'utf8');
+    // Exactly one enquiry form, carrying the #lead anchor every CTA targets.
+    expect(page).toContain('id="lead"');
+    expect(page).toContain('<FranchiseInquiryForm');
+    expect(page).not.toContain('<LeadEnquirySection');
   });
 });

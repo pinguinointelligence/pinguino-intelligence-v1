@@ -258,9 +258,15 @@ export class CameraSession {
     try {
       await track.applyConstraints({ advanced: [{ zoom: target } as MediaTrackConstraintSet] });
       const after = (track.getSettings() as Record<string, unknown>)['zoom'];
-      // restore
-      if (typeof before === 'number')
-        await track.applyConstraints({ advanced: [{ zoom: before } as MediaTrackConstraintSet] });
+      // Restore UNCONDITIONALLY. The restore used to sit inside `typeof before === 'number'`, and
+      // iOS Safari reports no `zoom` in getSettings() until one has been set — so on the very first
+      // probe `before` was undefined, the guard skipped the restore, and the probe's own target was
+      // left applied to the live stream before the customer had scanned anything.
+      await track.applyConstraints({
+        advanced: [
+          { zoom: typeof before === 'number' ? before : cap.min } as MediaTrackConstraintSet,
+        ],
+      });
       return {
         supported: true,
         range: { min: cap.min, max: cap.max, step: cap.step },

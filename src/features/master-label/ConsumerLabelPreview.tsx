@@ -1,5 +1,4 @@
 import type { MasterLabelData } from './masterLabel';
-import { printReadinessLabelPl } from './labelPresentation';
 import { buildLabelPreflight } from './masterLabel';
 import { marketProfile } from './marketProfiles';
 import { buildMasterLabelPrintHtml } from './masterLabelPrint';
@@ -21,15 +20,6 @@ export function ConsumerLabelPreview({
       style={{ width: `${label.size.widthMm}mm` }}
       data-testid="label-consumer-preview-sizer"
     >
-      <div className="mb-2 flex items-center justify-between gap-4 text-[11px] text-stone-500">
-        <span data-testid="label-market-indicator">{profile.label}</span>
-        <span>{printReadinessLabelPl(preflight.printReadiness)}</span>
-      </div>
-      {label.market === 'WORLD' ? (
-        <p className="mb-3 max-w-xl text-xs text-stone-500">
-          Uniwersalna etykieta informacyjna — bez profilu prawnego konkretnego kraju.
-        </p>
-      ) : null}
       <article
         className="relative w-full overflow-hidden bg-white text-ink shadow-[0_18px_60px_rgba(36,33,28,0.08)]"
         style={{

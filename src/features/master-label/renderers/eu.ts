@@ -1,6 +1,6 @@
 import type { MasterLabelData } from '../masterLabel';
 import {
-  allergenStatementText,
+  allergenStatementHtml,
   businessHtml,
   escapeHtml,
   ingredientDeclarationHtml,
@@ -27,21 +27,18 @@ export function renderEuNutrition(data: MasterLabelData): string {
   const nutrition = data.nutritionSource;
   if (!nutrition) return '';
   const energyKj = data.regulatoryNutrition.energyKjPer100g;
-  const rows: Array<[string, string, boolean]> = [
-    [
-      'Energy',
-      `${energyKj === null || energyKj === undefined ? '—' : Math.round(energyKj)} kJ / ${Math.round(nutrition.kcal)} kcal`,
-      false,
-    ],
-    ['Fat', euGram(nutrition.fat_g), false],
-    [
-      'of which saturates',
-      nutrition.saturated_fat_g === null ? '—' : euGram(nutrition.saturated_fat_g),
-      true,
-    ],
-    ['Carbohydrate', euGram(nutrition.carbohydrate_g), false],
-    ['of which sugars', nutrition.sugars_g === null ? '—' : euGram(nutrition.sugars_g), true],
-  ];
+  const rows: Array<[string, string, boolean]> = [];
+  if (energyKj !== null && energyKj !== undefined) {
+    rows.push(['Energy', `${Math.round(energyKj)} kJ / ${Math.round(nutrition.kcal)} kcal`, false]);
+  }
+  rows.push(['Fat', euGram(nutrition.fat_g), false]);
+  if (nutrition.saturated_fat_g !== null) {
+    rows.push(['of which saturates', euGram(nutrition.saturated_fat_g), true]);
+  }
+  rows.push(['Carbohydrate', euGram(nutrition.carbohydrate_g), false]);
+  if (nutrition.sugars_g !== null) {
+    rows.push(['of which sugars', euGram(nutrition.sugars_g), true]);
+  }
   if (nutrition.fiber_g !== null) rows.push(['Fibre', euGram(nutrition.fiber_g), false]);
   rows.push(['Protein', euGram(nutrition.protein_g), false]);
   rows.push(['Salt', euSalt(nutrition.salt_g), false]);
@@ -57,17 +54,23 @@ export function renderEuLabel(data: MasterLabelData): string {
   const languages = data.labelLanguages;
   const product = primaryText(data.productName, languages);
   const legalName = primaryText(data.legalProductName, languages);
-  const allergenStatement = allergenStatementText(data);
   const ingredientBlocks = languages
-    .map(
-      (language) =>
-        `<p class="ingredients" lang="${escapeHtml(language)}"><strong>Ingredients:</strong> ${ingredientDeclarationHtml(data, language)}</p>`,
-    )
+    .map((language) => {
+      const declaration = ingredientDeclarationHtml(data, language);
+      return declaration
+        ? `<p class="ingredients" lang="${escapeHtml(language)}"><strong>Ingredients:</strong> ${declaration}</p>`
+        : '';
+    })
     .join('');
   const alcohol =
     data.alcoholDeclarationApplicability === 'required_beverage_over_1_2' &&
     data.alcoholDeclarationReviewed
       ? `<div><span>Actual alcohol</span><strong>${data.alcoholByVolumePercent}% vol</strong></div>`
       : '';
-  return `<section class="market-renderer eu-renderer" data-regulatory-renderer="eu-label-v2" data-eu-destination="${escapeHtml(data.jurisdictionContext?.euDestinationCountryCode ?? '')}"><header class="identity"><h1>${escapeHtml(product)}</h1><p>${escapeHtml(legalName)}</p></header>${ingredientBlocks}<p class="allergens"><strong>Alergeny:</strong> ${escapeHtml(allergenStatement)}</p>${renderEuNutrition(data)}<div class="same-field-of-vision">${netQuantityHtml(data)}${alcohol}</div>${traceabilityHtml(data)}${storageHtml(data, languages)}${originHtml(data, languages)}${businessHtml(data)}</section>`;
+  const quantityAndAlcohol = `${netQuantityHtml(data)}${alcohol}`;
+  const identity =
+    product || legalName
+      ? `<header class="identity">${product ? `<h1>${escapeHtml(product)}</h1>` : ''}${legalName ? `<p>${escapeHtml(legalName)}</p>` : ''}</header>`
+      : '';
+  return `<section class="market-renderer eu-renderer" data-regulatory-renderer="eu-label-v2" data-eu-destination="${escapeHtml(data.jurisdictionContext?.euDestinationCountryCode ?? '')}">${identity}${ingredientBlocks}${allergenStatementHtml(data)}${renderEuNutrition(data)}${quantityAndAlcohol ? `<div class="same-field-of-vision">${quantityAndAlcohol}</div>` : ''}${traceabilityHtml(data)}${storageHtml(data, languages)}${originHtml(data, languages)}${businessHtml(data)}</section>`;
 }

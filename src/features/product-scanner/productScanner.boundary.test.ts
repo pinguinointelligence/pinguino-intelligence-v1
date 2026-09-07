@@ -174,5 +174,20 @@ describe('Product Scanner server/client/security boundary', () => {
     expect(service).not.toContain('validateIntimportProductProfileProposal');
   });
 
-  it('shows the upload privacy contract before the one-photo actions', () => {});
+  it('shows the upload privacy contract before the photo actions', () => {
+    // The disclosure follows the camera. Since 2026-09-06 exactly one surface uploads a photo,
+    // so the contract is asserted there — it must never become a promise nobody makes.
+    const flow = read('src/features/scan-flow/ScanFlow.tsx');
+    expect(flow).toContain('Zdjęcie zostanie przesłane do analizy etykiety');
+    // JSX wraps the sentence, so assert the two halves it is actually split into
+    expect(flow).toContain('ceny, dostawcy, notatki i stan');
+    expect(flow).toContain('magazynowy pozostają prywatne');
+    // every surface that can upload a photo renders the disclosure first
+    const uploads = [...flow.matchAll(/void sendLabel\(/g)].length;
+    expect(uploads).toBeGreaterThan(0);
+    expect([...flow.matchAll(/\{photoPrivacyNote\}/g)].length).toBe(2);
+    for (const m of flow.matchAll(/\{photoPrivacyNote\}/g))
+      expect(flow.indexOf('void sendLabel(', m.index)).toBeGreaterThan(m.index);
+    expect(flow).not.toContain('privacyAccepted');
+  });
 });

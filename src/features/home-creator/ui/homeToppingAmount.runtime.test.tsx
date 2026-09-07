@@ -109,41 +109,77 @@ const renderSection = async () => {
   );
 };
 
+const openEditorForToppingRow = async (id: string) => {
+  const menus = host.querySelectorAll<HTMLButtonElement>('[data-testid="home-row-menu"]');
+  // the topping row is the last one on screen
+  await act(async () => menus[menus.length - 1]!.click());
+  const change = host.querySelector<HTMLButtonElement>(
+    `[data-testid="home-row-change-amount-${id}"]`,
+  );
+  expect(change, 'the topping row offers "Zmień ilość"').not.toBeNull();
+  await act(async () => change!.click());
+  const dialog = host.querySelector('[data-testid="home-change-amount"]');
+  expect(dialog, 'the amount dialog is on screen').not.toBeNull();
+  const input =
+    dialog!.querySelector<HTMLInputElement>(
+      '[data-testid="home-change-amount-grams"] [role="spinbutton"]',
+    ) ??
+    dialog!.querySelector<HTMLInputElement>('[role="spinbutton"]') ??
+    null;
+  expect(input, 'the amount control is on screen for the topping').not.toBeNull();
+  return input!;
+};
+
 describe('a customer edits a topping amount', () => {
   it('shows the new value and stores it, leaving the recipe lines alone', async () => {
     const id = topping().id;
     const before = lineGrams();
     await renderSection();
 
-    // 1. open the editor from the row's own menu, as a customer would
-    const menus = host.querySelectorAll<HTMLButtonElement>('[data-testid="home-row-menu"]');
-    // the topping row is the last one on screen
-    await act(async () => menus[menus.length - 1]!.click());
-    const change = host.querySelector<HTMLButtonElement>(
-      `[data-testid="home-row-change-amount-${id}"]`,
+    const input = await openEditorForToppingRow(id);
+    await act(async () => input.focus());
+    await act(async () => type(input, '25'));
+    await act(async () => input.blur());
+
+    // The dialog holds a DRAFT — nothing reaches the store until „Gotowe".
+    expect(topping().planned_grams).not.toBe(25);
+
+    const confirm = host.querySelector<HTMLButtonElement>(
+      '[data-testid="home-change-amount-confirm"]',
     );
-    expect(change, 'the topping row offers "Zmień ilość"').not.toBeNull();
-    await act(async () => change!.click());
+    expect(confirm, '„Gotowe" is offered').not.toBeNull();
+    await act(async () => confirm!.click());
 
-    // 2. type a new amount into the real control, the way the repo's own control test
-    //    does: the spinbutton input, focused, then a genuine blur to commit.
-    const editor = host.querySelector(`[data-testid="home-amount-editor-${id}"]`);
-    const input = editor?.querySelector<HTMLInputElement>('[role="spinbutton"]') ?? null;
-    expect(input, 'the amount control is on screen for the topping').not.toBeNull();
-    await act(async () => input!.focus());
-    await act(async () => type(input!, '25'));
-    await act(async () => input!.blur());
-
-    // 3. the store holds it
+    // #207: a topping commits through `setToppingGrams`, not `setPlannedGrams`.
     expect(topping().planned_grams).toBe(25);
 
-    // 4. the screen says it — re-render from the store, as HOME does
+    // the screen says it — re-render from the store, as HOME does
     await renderSection();
-    const shown = host.querySelector(`[data-testid="home-amount-editor-${id}"]`)?.textContent ?? '';
-    const readout = host.textContent ?? '';
-    expect(`${shown}${readout}`).toContain('25');
+    expect(host.textContent ?? '').toContain('25');
 
-    // 5. and nothing in the base moved
+    // and nothing in the base moved
     expect(lineGrams()).toEqual(before);
+  });
+
+  it('changes nothing when the customer cancels', async () => {
+    const id = topping().id;
+    const before = topping().planned_grams;
+    const baseBefore = lineGrams();
+    await renderSection();
+
+    const input = await openEditorForToppingRow(id);
+    await act(async () => input.focus());
+    await act(async () => type(input, '99'));
+    await act(async () => input.blur());
+
+    const cancel = host.querySelector<HTMLButtonElement>(
+      '[data-testid="home-change-amount-cancel"]',
+    );
+    expect(cancel, '„Anuluj" is offered').not.toBeNull();
+    await act(async () => cancel!.click());
+
+    expect(topping().planned_grams).toBe(before);
+    expect(lineGrams()).toEqual(baseBefore);
+    expect(host.querySelector('[data-testid="home-change-amount"]')).toBeNull();
   });
 });

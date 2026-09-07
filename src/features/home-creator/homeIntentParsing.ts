@@ -348,43 +348,70 @@ const STOP_WORDS = new Set([
  * and white chocolate pieces" is the same input as three typed words, which is exactly
  * what §19 asks for.
  */
+/**
+ * Split an utterance into the things it is actually listing.
+ *
+ * „banan, czekoladowy topping" is TWO requests, and the word `topping` belongs to the
+ * second one only. Reading the role from the whole sentence made every element a
+ * topping — the banana included — which is how a Main ended up in the topping
+ * collection and a topping ended up wearing the Crown.
+ *
+ * Segments split on the separators a person actually uses when listing: a comma, a
+ * semicolon, „i", „oraz", „plus", „and", „with", „z". Everything inside one segment
+ * shares that segment's stated role, and nothing outside it does.
+ */
+const SEGMENT_SPLIT = /\s*(?:,|;|\band\b|\boraz\b|\bplus\b|\bwith\b|\bi\b|\bz\b)\s*/;
+
+export function intentSegments(text: string): readonly string[] {
+  return text
+    .split(SEGMENT_SPLIT)
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
 export function parseIntent(text: string): ParsedIntent {
-  const normalized = normalizeIntentText(text);
   const profile = detectProfile(text);
-  const statedRole = detectStatedRole(text);
-  if (!normalized) return { terms: [], profile };
+  if (!normalizeIntentText(text)) return { terms: [], profile };
 
   const terms: IntentTerm[] = [];
   const seen = new Set<string>();
-  let remaining = normalized;
 
-  // Phrases first — longest wins, so compound concepts survive tokenisation.
-  for (const [phrase, concept] of PHRASE_ENTRIES) {
-    if (remaining.includes(phrase) && !seen.has(concept)) {
-      seen.add(concept);
-      terms.push({ raw: phrase, normalized: phrase, concept, role: statedRole, fuzzy: false });
-      remaining = remaining.replace(phrase, ' ');
+  /* Each segment carries its OWN role. A term never inherits a word that was said
+     about a different product. */
+  for (const segment of intentSegments(text)) {
+    const normalized = normalizeIntentText(segment);
+    if (!normalized) continue;
+    const statedRole = detectStatedRole(segment);
+    let remaining = normalized;
+
+    // Phrases first — longest wins, so compound concepts survive tokenisation.
+    for (const [phrase, concept] of PHRASE_ENTRIES) {
+      if (remaining.includes(phrase) && !seen.has(concept)) {
+        seen.add(concept);
+        terms.push({ raw: phrase, normalized: phrase, concept, role: statedRole, fuzzy: false });
+        remaining = remaining.replace(phrase, ' ');
+      }
     }
-  }
 
-  for (const token of remaining.split(' ').filter(Boolean)) {
-    if (STOP_WORDS.has(token) || token.length < 3) continue;
-    // A profile word is the profile, not an ingredient.
-    if (Object.values(PROFILE_WORDS).some((words) => words.includes(token))) continue;
-    if (TOPPING_WORDS.includes(token)) continue;
+    for (const token of remaining.split(' ').filter(Boolean)) {
+      if (STOP_WORDS.has(token) || token.length < 3) continue;
+      // A profile word is the profile, not an ingredient.
+      if (Object.values(PROFILE_WORDS).some((words) => words.includes(token))) continue;
+      if (TOPPING_WORDS.includes(token)) continue;
 
-    const exact = TOKEN_INDEX.get(token) ?? null;
-    const concept = exact ?? fuzzyConcept(token);
-    const key = concept ?? `raw:${token}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    terms.push({
-      raw: token,
-      normalized: token,
-      concept,
-      role: statedRole,
-      fuzzy: exact === null && concept !== null,
-    });
+      const exact = TOKEN_INDEX.get(token) ?? null;
+      const concept = exact ?? fuzzyConcept(token);
+      const key = concept ?? `raw:${token}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      terms.push({
+        raw: token,
+        normalized: token,
+        concept,
+        role: statedRole,
+        fuzzy: exact === null && concept !== null,
+      });
+    }
   }
 
   return { terms, profile };

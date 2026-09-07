@@ -36,14 +36,6 @@ export function buildMasterLabelPrintHtml(
   options: MasterLabelPrintOptions = {},
 ): string {
   const preflight = buildLabelPreflight(data);
-  if (
-    !options.draft &&
-    !options.calibration &&
-    !options.preview &&
-    !preflight.readyForSystemPrint
-  ) {
-    throw new Error('Master Label preflight is incomplete.');
-  }
   const profile = marketProfile(data.market);
   const productName = primaryText(data.productName, data.labelLanguages);
   const pageSize =

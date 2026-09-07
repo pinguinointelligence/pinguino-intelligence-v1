@@ -22,6 +22,7 @@ import type { CatalogLabelToppingIngredient } from '@/features/recipe-compositio
 import type { RecipeToppingItem } from '@/features/recipe-composition/recipeCompositionPersistence';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
 import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
+import { createCompleteLabel } from './masterLabelTestFixture';
 
 function behaviorSnapshots(
   input: RecipeInput,
@@ -356,7 +357,7 @@ describe('Master Label — one actual-batch source model', () => {
     expect(actual.allergens.labelStatements).toEqual([]);
   });
 
-  it('fails the label closed when a fat-bearing ingredient carries the Mapper zero placeholder', () => {
+  it('keeps the Mapper saturated-fat placeholder unknown without blocking World print', () => {
     const snapshot = completedSnapshot();
     for (const frozen of Object.values(snapshot.productComposition.behaviorSnapshots ?? {})) {
       frozen.source = 'mapper';
@@ -376,12 +377,9 @@ describe('Master Label — one actual-batch source model', () => {
       missingIngredientNames: expect.arrayContaining([expect.stringMatching(/milk|cream/i)]),
     });
     expect(buildLabelPreflight(label).items).toContainEqual(
-      expect.objectContaining({
-        field: 'market_nutrition',
-        status: 'missing',
-        message: expect.stringContaining('autorytatywnych'),
-      }),
+      expect.objectContaining({ field: 'market_nutrition', status: 'missing' }),
     );
+    expect(buildLabelPreflight(label).readyForSystemPrint).toBe(true);
   });
 
   it('uses actual toppings and legal mass order independently from manual UI order', () => {
@@ -701,7 +699,7 @@ describe('Master Label — one actual-batch source model', () => {
     expect(JSON.stringify(data)).not.toContain('Never print me.');
   });
 
-  it('blocks system print for a research/unavailable market before final output', () => {
+  it('keeps print available when the market profile still has unresolved data', () => {
     const base = printable(build());
     const data: MasterLabelData = {
       ...base,
@@ -710,9 +708,32 @@ describe('Master Label — one actual-batch source model', () => {
       labelLanguages: ['en', 'fr'],
     };
     const preflight = buildLabelPreflight(data);
-    expect(preflight.readyForSystemPrint).toBe(false);
+    expect(preflight.readyForSystemPrint).toBe(true);
     expect(preflight.regulatoryProfileVerified).toBe(false);
-    expect(() => buildMasterLabelPrintHtml(data)).toThrow('Master Label preflight is incomplete.');
+    expect(() => buildMasterLabelPrintHtml(data)).not.toThrow();
+  });
+
+  it('keeps missing saturated fat and acknowledgement optional for World final print', () => {
+    const base = createCompleteLabel('WORLD');
+    const data = createCompleteLabel('WORLD', {
+      nutritionSource: { ...base.nutritionSource!, saturated_fat_g: null },
+      saturatedFatAuthority: {
+        status: 'missing',
+        sourceReferences: [],
+        missingIngredientNames: ['Milk'],
+      },
+      preflightAcknowledged: false,
+    });
+
+    const preflight = buildLabelPreflight(data);
+    expect(preflight.readyForSystemPrint).toBe(true);
+    expect(preflight.items).toContainEqual(
+      expect.objectContaining({ field: 'market_nutrition', status: 'missing' }),
+    );
+    expect(preflight.items).toContainEqual(
+      expect.objectContaining({ field: 'acknowledgement', status: 'review' }),
+    );
+    expect(buildMasterLabelPrintHtml(data)).not.toContain('of which saturates');
   });
 
   it('hydrates legacy immutable snapshots with fail-closed regulatory and printer defaults', () => {
@@ -753,7 +774,7 @@ describe('Master Label — one actual-batch source model', () => {
     expect(normalized.nutritionSource?.saturated_fat_g).toBeNull();
     expect(normalized.saturatedFatAuthority).toMatchObject({ status: 'missing' });
     expect(() => buildLabelPreflight(normalized)).not.toThrow();
-    expect(buildLabelPreflight(normalized).readyForSystemPrint).toBe(false);
+    expect(buildLabelPreflight(normalized).readyForSystemPrint).toBe(true);
   });
 
   it('prints N safe copies only when the verified market preflight is complete', () => {

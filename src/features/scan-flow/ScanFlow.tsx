@@ -97,6 +97,8 @@ export interface ScanFlowProps {
   /** a guest chose a plan from the offer screen */
   onChoosePlan?: (plan: 'home' | 'pro') => void;
   resolveLabel?: string;
+  /** a saved code the customer chose to finish, from Produkty -> Niezweryfikowane */
+  initialCode?: string | null;
   intro?: string;
 }
 
@@ -200,6 +202,7 @@ export function ScanFlow({
   onReturn,
   onChoosePlan,
   resolveLabel,
+  initialCode,
   intro,
 }: ScanFlowProps) {
   const entry = entryContextOf(mode, entryContext);
@@ -391,10 +394,20 @@ export function ScanFlow({
     input: FinalizeInput,
     ctx: RequestContext,
     code: string,
+    /**
+     * The customer has seen what is missing and chose to save anyway / finish later. The product is
+     * then kept as PM UNVERIFIED instead of being discarded. Never set on its own path.
+     */
+    unverified = false,
   ) {
     const port = ports?.discovery;
     if (!port) return fail('Backend nie jest skonfigurowany.');
-    const r = await continueDiscovery(session, { type: 'finalize', input }, ctx, port);
+    const r = await continueDiscovery(
+      session,
+      { type: unverified ? 'finalize_unverified' : 'finalize', input },
+      ctx,
+      port,
+    );
     await handleResult(r, code, ctx, session);
   }
 
@@ -482,15 +495,54 @@ export function ScanFlow({
 
   /*
     A visitor who scanned in the demo, chose a plan and signed in must not scan the same box twice.
-    The code they read is picked up here, once, and the flow continues exactly as if the camera had
-    just confirmed it. A guest entry never picks it up — that would loop them back to the offer.
+    So the code they read is OFFERED here — prefilled, named, one tap away — and never resolved
+    behind their back. That distinction is the whole safety of this feature: the customer may have
+    opened the scanner for a completely different product, and on a shared browser the person
+    holding the phone may not even be the person who scanned. A guest entry never picks it up;
+    that would loop them straight back to the offer they just left.
   */
+  /*
+    The guest offer is the ONE conversion screen in the flow, so its buttons must work from EVERY
+    entry — not only from the mount that happened to pass a handler. A caller that wants to stay in
+    the SPA passes `onChoosePlan`; otherwise the flow navigates itself. `window.location` needs no
+    router context, which matters because this component is mounted from a portal inside the picker
+    as well as from a page.
+  */
+  const choosePlan = (plan: 'home' | 'pro') => {
+    if (onChoosePlan) return onChoosePlan(plan);
+    window.location.assign(plan === 'pro' ? '/subscription?plan=pro' : '/subscription?plan=home');
+  };
+
+  /*
+    SOL-045. On a computer the browser delivers the USER-facing camera (there is no environment one),
+    and an un-mirrored front camera is the view another person has of you: the product moves the
+    wrong way. The PREVIEW is mirrored so movement reads naturally — left is left, up is up. The
+    DECODER is never mirrored: it reads the raw frame, and a mirrored barcode would not decode.
+  */
+  const [mirrorPreview, setMirrorPreview] = useState(false);
+
+  const [resumedCode, setResumedCode] = useState<string | null>(null);
   useEffect(() => {
+    // A code handed in by the Niezweryfikowane list is resolved straight away: the customer has
+    // already chosen this product, so there is nothing to offer them a second time.
+    if (initialCode) {
+      const chosen = manualConfirmedScan(initialCode);
+      if (chosen) {
+        void resolveRef.current(chosen);
+        return;
+      }
+    }
     if (entry === 'guest_demo') return;
+    // `takeGuestCode` CONSUMES the stored code, so reading it is a side effect and belongs in an
+    // effect — not in a render-phase initializer, which StrictMode may invoke twice and swallow the
+    // value in. Setting state from it is therefore deliberate and runs exactly once per mount.
+    /* eslint-disable react-hooks/set-state-in-effect */
     const pending = takeGuestCode();
-    if (!pending) return;
-    const scan = manualConfirmedScan(pending);
-    if (scan) void resolveRef.current(scan);
+    if (pending && manualConfirmedScan(pending)) {
+      setManual(pending);
+      setResumedCode(pending);
+    }
+    /* eslint-enable react-hooks/set-state-in-effect */
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -515,6 +567,7 @@ export function ScanFlow({
       onStatus: (status) =>
         setPhase((p) => (p.kind === 'camera' && status !== 'stopped' ? { ...p, status } : p)),
       onFrame: (f) => setFrame(f),
+      onMirror: (m) => setMirrorPreview(m),
       onError: () =>
         setPhase((p) =>
           p.kind === 'camera'
@@ -619,6 +672,24 @@ export function ScanFlow({
       );
     });
 
+  /**
+   * OWNER CONTRACT 2026-09-07 — the customer saw what is missing and chose to save anyway. Whatever
+   * the pipeline did find is kept as a private, UNVERIFIED product instead of being discarded, and
+   * it appears under Produkty → Niezweryfikowane where they can finish it later. This is the only
+   * path that persists an unverified product: nothing does it automatically.
+   */
+  const saveUnverified = (session: DiscoverySession) =>
+    withBusy(async () => {
+      const ctx = contextFor(await getScanImportV2AccountId());
+      await finalize(
+        session,
+        { customerFamily: family, confirmations: confirmationsFromFields(values) },
+        ctx,
+        codeRef.current ?? '',
+        true,
+      );
+    });
+
   /** no usable photograph: ask the authority now and let the customer type what is missing */
   const enterManually = (session: DiscoverySession) =>
     withBusy(async () => {
@@ -695,6 +766,8 @@ export function ScanFlow({
                 guidance: frame.guidance,
                 timedOut: frame.timedOut,
                 position,
+                // a camera the customer cannot pick up: the PRODUCT is what moves
+                fixedCamera: mirrorPreview,
               })
             : STATUS_TEXT[phase.status]
       : '';
@@ -714,6 +787,17 @@ export function ScanFlow({
     };
   }
   const success = phase.kind === 'camera' && phase.status === 'confirmed';
+  /*
+    The customer is told BEFORE any photo action that the picture leaves their phone, and what does
+    NOT. It used to be said only on the deleted second scanner; it belongs on whichever surface
+    actually uploads — and there are two of them, so it is one fragment rendered in both.
+  */
+  const photoPrivacyNote = (
+    <p className="text-xs text-stone-600">
+      Zdjęcie zostanie przesłane do analizy etykiety. Twoje ceny, dostawcy, notatki i stan
+      magazynowy pozostają prywatne.
+    </p>
+  );
   const engaged = frame ? frame.state !== 'SEARCHING' && frame.state !== 'LOST' : false;
 
   return (
@@ -724,13 +808,22 @@ export function ScanFlow({
             {intro ?? 'Pokaż kod kreskowy produktu aparatowi.'}
           </p>
           <div
-            className="relative overflow-hidden rounded-2xl bg-black"
+            /*
+              SOL-045: the camera block had no max-width and a hard-coded PORTRAIT 3:4 aspect, so on
+              the products destination it stretched to the full 1280 px canvas — a 1280x1706 video,
+              taller than any desktop screen, with object-cover throwing ~58% of a 16:9 webcam frame
+              out of view while the decoder analysed the whole uncropped frame. The customer aimed
+              inside a box that meant nothing to the engine.
+            */
+            className="relative mx-auto w-full max-w-[420px] overflow-hidden rounded-2xl bg-black"
             hidden={phase.status === 'unavailable'}
             data-testid="scan-flow-camera"
+            data-mirrored={mirrorPreview ? 'true' : 'false'}
           >
             <video
               ref={videoRef}
-              className="aspect-[3/4] w-full object-cover"
+              className="aspect-[3/4] w-full object-cover sm:aspect-video"
+              style={mirrorPreview ? { transform: 'scaleX(-1)' } : undefined}
               muted
               playsInline
               autoPlay
@@ -744,13 +837,25 @@ export function ScanFlow({
             />
             {/* the code the engine is tracking */}
             {roiBox ? (
+              /*
+                The engine reports the code's position in RAW frame coordinates. When the preview is
+                mirrored the picture no longer matches those coordinates, so the overlay LAYER is
+                mirrored with it — flipping the layer, not the box, is what moves the box's POSITION
+                to the other side. Otherwise the one element that says "the code is HERE" would point
+                at the opposite edge of the screen.
+              */
               <div
                 aria-hidden="true"
-                className={`pointer-events-none absolute rounded-md border-2 ${
-                  success ? 'border-emerald-400 bg-emerald-400/20' : 'border-amber-300'
-                }`}
-                style={roiBox}
-              />
+                className="pointer-events-none absolute inset-0"
+                style={mirrorPreview ? { transform: 'scaleX(-1)' } : undefined}
+              >
+                <div
+                  className={`absolute rounded-md border-2 ${
+                    success ? 'border-emerald-400 bg-emerald-400/20' : 'border-amber-300'
+                  }`}
+                  style={roiBox}
+                />
+              </div>
             ) : null}
             <div
               className={`absolute inset-x-0 bottom-0 px-3 py-2 text-center text-sm font-semibold ${
@@ -759,10 +864,13 @@ export function ScanFlow({
               aria-live="polite"
               data-testid="scan-flow-feedback"
             >
+              {/*
+                The raw device zoom factor used to be printed here as „×10". It is a diagnostic
+                number, it means nothing to a customer, and by the time it appeared the camera had
+                already zoomed itself past the point of reading anything. Both the number and the
+                zoom that produced it are gone (owner ruling 2026-09-06).
+              */}
               {success ? 'Odczytano ✓' : feedback}
-              {frame && frame.zoomLevel > 1 && !success ? (
-                <span className="ml-2 text-xs font-normal opacity-80">×{frame.zoomLevel}</span>
-              ) : null}
             </div>
             {frame && engaged && !success ? (
               <div className="absolute inset-x-0 bottom-9 h-1 bg-white/25" aria-hidden="true">
@@ -778,10 +886,17 @@ export function ScanFlow({
               {phase.error}
             </p>
           ) : null}
+          {resumedCode ? (
+            <p className="text-xs text-stone-600" data-testid="scan-flow-resumed-code">
+              Zaczęliśmy już skan kodu {resumedCode}. Naciśnij „Sprawdź", żeby go dokończyć — albo
+              zeskanuj inny produkt.
+            </p>
+          ) : null}
           <form
             className="flex gap-2"
             onSubmit={(event) => {
               event.preventDefault();
+              setResumedCode(null);
               submitManual();
             }}
           >
@@ -792,7 +907,10 @@ export function ScanFlow({
               placeholder="Wpisz kod z opakowania"
               aria-label="Kod kreskowy z opakowania"
               value={manual}
-              onChange={(event) => setManual(event.target.value)}
+              onChange={(event) => {
+                setManual(event.target.value);
+                setResumedCode(null);
+              }}
             />
             <button type="submit" className={btnSecondary} disabled={busy || !manual.trim()}>
               Sprawdź
@@ -851,7 +969,7 @@ export function ScanFlow({
               type="button"
               className={btnPrimary}
               data-testid="scan-flow-choose-home"
-              onClick={() => onChoosePlan?.('home')}
+              onClick={() => choosePlan('home')}
             >
               Wybierz HOME
             </button>
@@ -859,7 +977,7 @@ export function ScanFlow({
               type="button"
               className={btnPrimary}
               data-testid="scan-flow-choose-pro"
-              onClick={() => onChoosePlan?.('pro')}
+              onClick={() => choosePlan('pro')}
             >
               Wybierz PRO
             </button>
@@ -940,6 +1058,7 @@ export function ScanFlow({
               : 'Nie znam jeszcze tego produktu. Zrób zdjęcie etykiety ze składem i tabelą wartości odżywczych.'}
           </p>
           {phase.note ? <p className="text-xs text-stone-600">{phase.note}</p> : null}
+          {photoPrivacyNote}
           <div className="flex flex-wrap gap-2">
             <label className={btnPrimary}>
               Zrób zdjęcie
@@ -1083,12 +1202,27 @@ export function ScanFlow({
                 : 'Z etykiety nie da się uzupełnić brakujących danych. Możesz zgłosić produkt do weryfikacji.'}
             </p>
           ) : null}
+          {photoPrivacyNote}
           <div className="flex flex-wrap gap-2">
             {phase.fields.length > 0 ? (
               <button type="submit" className={btnPrimary} disabled={busy}>
                 Zapisz jako mój produkt
               </button>
             ) : null}
+            {/*
+              The customer may not have the pack in front of them, or may simply not want to type.
+              Their scan is not thrown away: what we did find is kept privately and listed under
+              Produkty → Niezweryfikowane, where they can finish it whenever they like.
+            */}
+            <button
+              type="button"
+              className={btnSecondary}
+              disabled={busy}
+              onClick={() => void saveUnverified(phase.session)}
+              data-testid="scan-flow-save-unverified"
+            >
+              Zapisz i uzupełnij później
+            </button>
             <label className={btnSecondary}>
               Zrób zdjęcie etykiety
               <input

@@ -174,6 +174,21 @@ export const APP_NAV_ITEMS: readonly AppNavItem[] = [
     isActive: pathOrNested('/products/scan'),
   },
   {
+    /*
+      OWNER CONTRACT 2026-09-07 — Produkty → Niezweryfikowane. A private product the pipeline could
+      not make production-ready after the FULL rescue is not thrown away and is not silently
+      "saved": it is listed here, with what is missing in plain language, and the same completion
+      form the scanner uses. When it becomes ready it leaves this list by itself.
+    */
+    id: 'unverifiedProducts',
+    label: s.items.unverifiedProducts,
+    to: '/products?filter=unverified',
+    group: 'product',
+    order: 3.6,
+    audiences: ['home', 'pro'],
+    isActive: (loc) => loc.pathname === '/products' && loc.search.includes('filter=unverified'),
+  },
+  {
     id: 'machine',
     label: s.items.machine,
     to: '/machine',
@@ -200,21 +215,19 @@ export const APP_NAV_ITEMS: readonly AppNavItem[] = [
     audiences: ['guest', 'home', 'pro'],
     isActive: communityDestination,
   },
-  {
-    id: 'workWithUs',
-    label: s.items.workWithUs,
-    to: '/work-with-us',
-    group: 'ecosystem',
-    order: 2,
-    audiences: ['guest', 'home', 'pro'],
-    isActive: exact('/work-with-us'),
-  },
+  // COLLABORATION IA (owner decision 2026-09-03): exactly TWO user-facing
+  // entries. "Współpraca" / Work With Us is retired as a category — it was a
+  // third door onto the same business conversation, and every operating format
+  // it led to (maszyny, wózek, przyczepa, punkt) is a concept INSIDE Franchise,
+  // not a top-level system. /work-with-us now redirects into Franchise, so the
+  // enquiry form, its source attribution and its subject preselection are all
+  // preserved; only the duplicate entry point is gone.
   {
     id: 'affiliate',
     label: s.items.affiliate,
     to: '/affiliate',
     group: 'ecosystem',
-    order: 3,
+    order: 2,
     audiences: ['guest', 'home', 'pro'],
     isActive: exact('/affiliate'),
   },
@@ -223,9 +236,11 @@ export const APP_NAV_ITEMS: readonly AppNavItem[] = [
     label: s.items.franchise,
     to: '/franchise',
     group: 'ecosystem',
-    order: 4,
+    order: 3,
+    // Franchise owns the detail routes, so the entry stays marked current while
+    // the visitor reads any one of them.
     audiences: ['guest', 'home', 'pro'],
-    isActive: exact('/franchise'),
+    isActive: anyOf('/franchise', '/work-with-us', '/machines', '/mobile', '/trailer'),
   },
 ];
 
