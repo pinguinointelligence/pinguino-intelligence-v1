@@ -90,8 +90,11 @@ describe('source provenance bridge', () => {
     // where it shows.
     expect(one?.declared.total_sugars_percent).toBeCloseTo(5.5, 4);
     expect(two?.declared.total_sugars_percent).toBe(0);
-    expect(one?.declaredNutritionBasis).toBe('per_100ml');
+    // Both real sessions declare per_100g; the sugars above are what separates the two articles.
+    expect(one?.declaredNutritionBasis).toBe('per_100g');
     expect(two?.declaredNutritionBasis).toBe('per_100g');
+    expect(one?.declared.kcal_per_100g).toBeCloseTo(23, 4);
+    expect(two?.declared.kcal_per_100g).toBeCloseTo(1.2, 4);
   });
 
   it('marks nothing as user-entered when the customer entered nothing', () => {

@@ -127,7 +127,12 @@ export function applyCustomerProductFamily(
     productArchetype,
     physicalForm,
     intendedUsageRole,
-    compatibleMapperCategories: [],
+    /*
+      This used to be emptied. The customer's answer NARROWS what the product is; it cannot make
+      the Mapper's compatible-category list unknown. Blanking it left the Mapper with no cohort to
+      match against, so a product the flow had just identified as a drink could match nothing.
+    */
+    compatibleMapperCategories: classification.compatibleMapperCategories,
     reasonCodes: [...classification.reasonCodes, `CUSTOMER_FAMILY_${choice.toUpperCase()}`],
     evidenceRefs: [...new Set([...classification.evidenceRefs, 'customerFamily'])],
     modelRequired: modelReasonCodes.length > 0,

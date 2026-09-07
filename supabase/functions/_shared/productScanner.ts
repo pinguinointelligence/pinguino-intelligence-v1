@@ -1212,6 +1212,8 @@ export function scanResultFromLookupFacts(
         photographed label still outranks any page.
       */
       sourceAuthorityClass: string | null;
+      /** The barcode printed on that page, as the page stated it. Judged by the server, not here. */
+      sourceStatedEan: string | null;
     }
   >();
   let ingredientsText: string | null = null;
@@ -1235,6 +1237,10 @@ export function scanResultFromLookupFacts(
         title: typeof fact.sourceTitle === 'string' ? fact.sourceTitle : null,
         fieldsUsed: [field],
         sourceAuthorityClass: authority.length > 0 ? authority : null,
+        sourceStatedEan:
+          typeof fact.sourceStatedEan === 'string' && fact.sourceStatedEan.trim() !== ''
+            ? fact.sourceStatedEan.replace(/\D/g, '')
+            : null,
       });
   };
 

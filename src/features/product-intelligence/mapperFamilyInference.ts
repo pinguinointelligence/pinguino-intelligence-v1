@@ -209,7 +209,19 @@ const CATEGORY_RULES: readonly CategoryRule[] = [
   { family: 'chocolate', technical: false, category: /chocolate|cocoa|cacao/ },
   { family: 'nut_paste', technical: false, category: /\bnut/ },
   { family: 'fruit', technical: false, category: /\bfruit\b/ },
-  { family: 'plant_beverage', technical: false, category: /beverage/ },
+  /*
+    The category vocabulary a real source uses for a drink is almost never the word "beverage".
+    Open Food Facts said "sports drink" for one of the owner's two products and
+    "beverages and beverages preparations / beverages" for the other, so one matched and its
+    sibling did not — the same shelf, classified two different ways, purely on wording. These are
+    the ordinary words for a drink in the languages the scanner meets; none of them names a brand
+    or a product.
+  */
+  {
+    family: 'plant_beverage',
+    technical: false,
+    category: /beverage|\bdrinks?\b|bebida|refresco|boisson|getr(a|ä)nk|napoj|napój/,
+  },
   { family: 'dairy_liquid', technical: false, category: /\bdairy\b/ },
   { family: 'sugar_sucrose', technical: false, category: /sweetener/ },
   { family: 'alcohol', technical: false, category: /alcohol/ },
