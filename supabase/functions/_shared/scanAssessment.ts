@@ -247,7 +247,9 @@ export async function scanAssessmentSnapshot(
     absorb, and a customer who typed nothing would have their save refused as "stale". So the
     provenance stamp travels in the snapshot, where the trace can read it, and stays out of the hash.
   */
-  const { carriedForwardFromScan: _carried, ...hashedClassification } = input.recognition;
+  const hashedClassification = Object.fromEntries(
+    Object.entries(input.recognition).filter(([key]) => key !== 'carriedForwardFromScan'),
+  );
   const assessmentHash = await sha256Hex(
     stableJson({ ...payload, classification: hashedClassification }),
   );
