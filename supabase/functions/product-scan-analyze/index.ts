@@ -12,6 +12,7 @@ import {
   validateServerResult,
   webCallsInResponse,
 } from '../_shared/productScanner.ts';
+import { resolveCanonicalEanIdentity } from '../../../src/features/product-scanner/canonicalEanIdentity.ts';
 import { requestedLabelFields } from '../../../src/features/product-scanner/labelAnalysisRequest.ts';
 // Deno loads these by relative path: the `.ts` extension is REQUIRED on a value import or the
 // deploy fails, and nothing in CI can see it.
@@ -94,7 +95,8 @@ const mimeMatchesBytes = (mime: string, bytes: Uint8Array) => {
 };
 
 async function exactProductForBarcode(
-  service: ReturnType<typeof createClient>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  service: ReturnType<typeof createClient<any>>,
   barcode: string | null,
   actorUserId: string,
 ) {
@@ -114,25 +116,71 @@ async function exactProductForBarcode(
     .limit(1)
     .maybeSingle();
   const related = data?.products as unknown;
-  const product = Array.isArray(related) ? objectValue(related[0]) : objectValue(related);
-  if (product?.is_active !== true || product.merged_into_product_id !== null) return null;
-  // A pending CA is central by EAN but remains account-private. Only an
-  // already-linked customer may use the zero-cost exact path. Another customer
-  // must finish the normal evidence/finalize flow, whose one-EAN transaction
-  // adds their account relation and increments distinct_customer_count.
+  const variantProduct = Array.isArray(related) ? objectValue(related[0]) : objectValue(related);
+
+  /*
+    THE VARIANT ROW IS THE ADDRESS, NOT THE ANSWER.
+
+    `product_variants_ean_uniq` is unique on `ean` regardless of `is_current`, so an EAN has
+    exactly one variant row and it can only ever address ONE product. On 2026-09-07 that row
+    still addressed home@home.com's private PM-ING-007193 (73.4, REVIEW) while the shared
+    PR-ING-007197 (94.12, BASE_READY) existed with no address at all — so its owner kept being
+    handed the worse record and every other account fell through to the full path.
+
+    So the row is read, and then the CANONICAL identity for the code is resolved from the products
+    themselves. This is a defensive fallback, not a second authority: once the variant has been
+    re-pointed (`canonicalize_ean_identity_v1`, called just below and by the finalize RPC) both
+    agree, and this lookup costs one extra indexed read on a code that has a shared product.
+  */
+  const { data: sameEan } = await service
+    .from('products')
+    .select(
+      'id,is_active,merged_into_product_id,product_name_display,brand,product_kind,visibility,owner_user_id,canonical_verification_status,product_code,current_version_id',
+    )
+    .in('barcode_normalized', [...candidates])
+    .eq('is_active', true);
+  const rows = (Array.isArray(sameEan) ? sameEan : []).map(objectValue);
+  const candidateRows = rows.length > 0 ? rows : variantProduct?.id ? [variantProduct] : [];
+  const resolution = resolveCanonicalEanIdentity(
+    candidateRows as never,
+    actorUserId,
+    typeof variantProduct?.id === 'string' ? variantProduct.id : null,
+  );
+  if (!resolution.canonical) return null;
+  const product: Record<string, unknown> = objectValue(
+    rows.find((row) => row.id === resolution.canonical?.id) ??
+      (resolution.canonical as unknown as Record<string, unknown>),
+  );
+  if (product?.is_active !== true || (product.merged_into_product_id ?? null) !== null) return null;
+
+  // A private row that is nobody's overlay yet: only its own account may take the zero-cost path.
+  // Another customer must finish the normal flow, whose one-EAN transaction adds their relation.
   if (product.product_kind === 'customer_provisional') {
     const { data: linked } = await service
       .from('customer_added_product_accounts')
       .select('product_id')
-      .eq('product_id', product.id)
+      .eq('product_id', String(product.id))
       .eq('user_id', actorUserId)
       .maybeSingle();
     if (!linked) return null;
   }
+
+  /*
+    Self-healing, and the reason this cannot silently rot again: whenever the address disagrees
+    with the identity, move it. Serialised on the EAN inside the RPC, so two accounts scanning at
+    the same moment cannot both move it or produce two shared products. Failure is not fatal — the
+    resolution above already returned the right product to this caller.
+  */
+  if (resolution.variantNeedsRepoint) {
+    await service.rpc('canonicalize_ean_identity_v1', { p_ean: digits }).then(
+      () => undefined,
+      () => undefined,
+    );
+  }
   const { data: currentVersion } = await service
     .from('product_versions')
     .select('facts')
-    .eq('id', product.current_version_id)
+    .eq('id', String(product.current_version_id))
     .maybeSingle();
   const facts = objectValue(currentVersion?.facts);
   const intelligence = objectValue(facts.productIntelligence);
@@ -141,7 +189,7 @@ async function exactProductForBarcode(
   const roleReady =
     behavior.classificationOutcome === 'classified' &&
     (behavior.baseRecipeEligible === true || behavior.toppingEligible === true);
-  return {
+  const answer: Record<string, unknown> = {
     ...product,
     /*
       The evidence this product was built from, kept so a rescan can RE-EVALUATE it without
@@ -149,6 +197,14 @@ async function exactProductForBarcode(
       frozen here, so the derivation can be re-run for free (§ rescanEvaluation.ts).
     */
     stored_facts: facts,
+    /*
+      The caller's OWN private row for this code, carried separately so their prices, suppliers,
+      notes and stock stay theirs and stay reachable — while the product identity everyone sees is
+      the shared one. Null for every other account, by construction: it is only ever populated
+      from a row whose `owner_user_id` is the caller.
+    */
+    private_overlay_product_id: resolution.privateOverlay?.id ?? null,
+    private_overlay_product_code: resolution.privateOverlay?.product_code ?? null,
     product_accuracy: Number.isFinite(accuracy) ? accuracy : null,
     // Historical response name: this is canonical role usability, not only
     // BASE physics. A TOPPING_ONLY article is ready when ProductBehavior grants
@@ -158,6 +214,7 @@ async function exactProductForBarcode(
       intelligence.engineUsable === true ||
       roleReady,
   };
+  return answer;
 }
 
 /**
@@ -566,7 +623,9 @@ Deno.serve(async (request) => {
     });
   }
 
-  const assetRows = [];
+  // Pre-existing implicit any[], surfaced once this file was actually type-checked: `npm run
+  // build` never reaches supabase/functions (root tsconfig is `files: []` + refs over src).
+  const assetRows: Record<string, unknown>[] = [];
   try {
     for (const image of images) {
       const binary = atob(String(image.base64));
