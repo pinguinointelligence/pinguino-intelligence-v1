@@ -1197,7 +1197,22 @@ export function scanResultFromLookupFacts(
   const packageValue: Record<string, unknown> = {};
   const bySource = new Map<
     string,
-    { sourceType: string; url: string | null; title: string | null; fieldsUsed: string[] }
+    {
+      sourceType: string;
+      url: string | null;
+      title: string | null;
+      fieldsUsed: string[];
+      /*
+        The server's own verdict on the source, from classifySourceAuthority in
+        intimport-enrich. It used to be read one line below, collapsed into the coarse
+        `sourceType`, and dropped. The accuracy scorer then refused every web-sourced field for
+        lacking exactly this proof: AUTHORITATIVE_RETAILER became the string 'retailer' and was
+        rejected because nothing could show it had been authoritative. Carrying it costs nothing
+        and never promotes a web fact to label rank -- these rows stay out of `evidence`, so a
+        photographed label still outranks any page.
+      */
+      sourceAuthorityClass: string | null;
+    }
   >();
   let ingredientsText: string | null = null;
   let allergensText: string | null = null;
@@ -1219,6 +1234,7 @@ export function scanResultFromLookupFacts(
         url: url && /^https:\/\//i.test(url) ? url : null,
         title: typeof fact.sourceTitle === 'string' ? fact.sourceTitle : null,
         fieldsUsed: [field],
+        sourceAuthorityClass: authority.length > 0 ? authority : null,
       });
   };
 
