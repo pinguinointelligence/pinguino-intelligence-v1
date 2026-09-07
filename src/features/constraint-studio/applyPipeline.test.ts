@@ -101,7 +101,7 @@ describe('buildOptimizePreview (§12.4 → §19.1)', () => {
     expect(result).toMatchObject({ ok: false, code: 'already_clean' });
   });
 
-  it('reports exact missing ECO prices instead of a zero-run solver failure', () => {
+  it('treats missing ECO prices as costing incompleteness, never as a technical refusal', () => {
     const input = structuredClone(starterMilkBase());
     input.goals = { ...input.goals, formulation_strategy: 'eco' };
     input.items[0] = {
@@ -109,14 +109,33 @@ describe('buildOptimizePreview (§12.4 → §19.1)', () => {
       ingredient: { ...input.items[0]!.ingredient, cost_per_kg: null, cost_currency: null },
     };
     const result = buildOptimizePreview(input, NO_CONSTRAINTS, 'now');
-    expect(result).toMatchObject({
-      ok: false,
-      code: 'missing_prices',
-      lineIds: [input.items[0]!.id],
-    });
-    if (!result.ok && result.code === 'missing_prices') {
-      expect(result.ingredientNames).toContain(input.items[0]!.ingredient.name);
-    }
+    expect(result).toMatchObject({ ok: false, code: 'already_clean' });
+  });
+
+  it('keeps Preview and Apply technical success when a Base ingredient price is missing', () => {
+    const input = structuredClone(starterMilkBase());
+    input.goals = { ...input.goals, formulation_strategy: 'eco' };
+    input.items[0] = {
+      ...input.items[0]!,
+      ingredient: { ...input.items[0]!.ingredient, cost_per_kg: null, cost_currency: null },
+    };
+    const built = buildBatchRescalePreview(input, NO_CONSTRAINTS, 1_200, 'now');
+    expect(built.ok).toBe(true);
+    if (!built.ok) return;
+
+    const applied = commitPreview(
+      input,
+      NO_CONSTRAINTS,
+      built.preview,
+      'now',
+      'apply-with-partial-cost',
+    );
+    expect(applied.ok).toBe(true);
+    if (!applied.ok) return;
+    const result = calculateRecipe(applied.verified.input);
+    expect(detectViolations(result)).toEqual([]);
+    expect(result.costs).toMatchObject({ complete: false, total_cost: null });
+    expect(result.costs?.known_cost).toBeGreaterThan(0);
   });
 
   it('returns NO_CHANGE for a technically clean ECO recipe when no cheaper safe move exists', () => {

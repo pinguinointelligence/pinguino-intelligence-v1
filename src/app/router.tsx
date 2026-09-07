@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes, useLocation, useParams } from 'react-router';
 import { legacyDestinationRedirectTo } from './redirectState';
 import { NotFoundPage } from '@/pages/NotFoundPage';
@@ -5,6 +6,7 @@ import { MapperBatch6Page } from '@/pages/dev/MapperBatch6Page';
 import { MapperReviewPage } from '@/pages/dev/MapperReviewPage';
 import { MapperStatusPage } from '@/pages/dev/MapperStatusPage';
 import { MapperSmokePage } from '@/pages/dev/MapperSmokePage';
+import { ScanImportV2LabPage } from '@/pages/dev/ScanImportV2LabPage';
 import { EnrichmentPreviewPage } from '@/pages/dev/EnrichmentPreviewPage';
 import { SnapshotAuditPage } from '@/pages/dev/SnapshotAuditPage';
 import { StudioPickerProofPage } from '@/pages/dev/StudioPickerProofPage';
@@ -40,7 +42,6 @@ import { SharedRecipePage } from '@/pages/community/SharedRecipePage';
 import { TopHundredPage } from '@/pages/community/TopHundredPage';
 import {
   APIPage,
-  AccountSettingsPage,
   FranchisePage,
   HowItWorksPage,
   LabelsHubPage,
@@ -55,8 +56,10 @@ import {
   ShopPage,
   SubscriptionPage,
   TrailerPage,
-  WorkWithUsPage,
+  AffiliatePage,
 } from '@/pages/destinations';
+import { LocalStarterPackPage } from '@/pages/shop/LocalStarterPackPage';
+import { AccountWorkspacePage } from '@/pages/account/AccountWorkspacePage';
 
 /** The canonical PINGÜINO Pro recipe editor path — the ONE professional workspace (owner P0). */
 export const PRO_RECIPE_PATH = '/pro/recipe';
@@ -105,6 +108,18 @@ export function PublicRecipeOrPartnerRoute() {
   return handle?.startsWith('@') ? <PublicRecipeRoute /> : <PartnerPublicRoute />;
 }
 
+/**
+ * SCAN CORE PHASE 0 — isolated measurement harness (reports/scan-core-phase-0/PHASE0_CHECKLIST.md A3).
+ * Built ONLY when VITE_SCAN_LAB_BASELINE=1: the flag is inlined at build time, so with it unset the
+ * lazy chunk is dead code and never ships. Never linked from the UI.
+ */
+const SCAN_LAB_BASELINE_ENABLED = import.meta.env.VITE_SCAN_LAB_BASELINE === '1';
+const ScanLabBaselinePage = SCAN_LAB_BASELINE_ENABLED
+  ? lazy(() =>
+      import('@/scan-lab/baseline/ui/BaselinePage').then((m) => ({ default: m.BaselinePage })),
+    )
+  : null;
+
 export function AppRoutes() {
   return (
     <Routes>
@@ -116,6 +131,10 @@ export function AppRoutes() {
       <Route path="/home" element={<RoleAwareEntryRoute entry="home" />} />
       <Route path="/how-it-works" element={<HowItWorksPage />} />
       <Route path="/shop" element={<ShopPage />} />
+      {/* The 0 EUR Local pack is its own ROUTE so the intent survives auth and
+          refresh — see `LocalStarterPackPage`. */}
+      <Route path="/shop/local-starter-pack" element={<LocalStarterPackPage />} />
+      <Route path="/affiliate" element={<AffiliatePage />} />
       <Route path="/franchise" element={<FranchisePage />} />
       {/* The three Work With Us lanes that had no route. The gateway links to
           all four, and §27 forbids a card that only looks functional. */}
@@ -226,13 +245,28 @@ export function AppRoutes() {
       <Route path="/products" element={<ProductsHubPage />} />
       <Route path="/production" element={<ProductionHubPage />} />
       <Route path="/labels" element={<LabelsHubPage />} />
-      <Route path="/account" element={<AccountSettingsPage />} />
+      {/* Sectioned account. `?section=` + `?order=` is what makes
+          "Pokaż moje zamówienie" land on the ORDER and survive a refresh. */}
+      <Route path="/account" element={<AccountWorkspacePage />} />
       <Route path="/machine" element={<MachineProfilePage />} />
       <Route path="/label" element={<LegacyDestinationRedirect pathname="/labels" />} />
 
       {/* Existing destination functions preserved, but no longer promoted as global menu items. */}
       <Route path="/api" element={<APIPage />} />
-      <Route path="/work-with-us" element={<WorkWithUsPage />} />
+      {/* COLLABORATION IA (owner decision 2026-09-03): Affiliate and Franchise
+          are the only two user-facing collaboration entries. Work With Us was a
+          third door onto the same conversation, so it folds into Franchise
+          rather than staying a competing surface.
+
+          The redirect preserves search AND hash, which is load-bearing: every
+          lane CTA points at `/work-with-us?from=%2Ftrailer#lead`, and that
+          `from` is what selects the enquiry subject and becomes the lead's
+          source_route. Dropping either would silently cost a click and the
+          attribution of where the question started. */}
+      <Route
+        path="/work-with-us"
+        element={<LegacyDestinationRedirect pathname="/franchise" />}
+      />
       <Route path="/subscription" element={<SubscriptionPage />} />
       <Route
         path="/create-ingredient"
@@ -257,6 +291,16 @@ export function AppRoutes() {
         element={<LegacyDestinationRedirect pathname="/products/scan" />}
       />
       {import.meta.env.DEV && <Route path="/products/scan/legacy" element={<ProductScanPage />} />}
+      {ScanLabBaselinePage && (
+        <Route
+          path="/scan-lab/baseline"
+          element={
+            <Suspense fallback={null}>
+              <ScanLabBaselinePage />
+            </Suspense>
+          }
+        />
+      )}
 
       {/* Legacy customer-shell preview path → the flow's new canonical /start. */}
       <Route path="/customer-v1" element={<LegacyDestinationRedirect pathname="/start" />} />
@@ -265,6 +309,10 @@ export function AppRoutes() {
           In production import.meta.env.DEV is false, so the route is never created and
           MapperSmokePage is dead-code-eliminated from the bundle. */}
       {import.meta.env.DEV && <Route path="/dev/mapper-smoke" element={<MapperSmokePage />} />}
+      {/* Scan Import 2.0 QA harness: dev, or staging with VITE_SCAN_IMPORT_LAB=1. Never HOME. */}
+      {(import.meta.env.DEV || import.meta.env.VITE_SCAN_IMPORT_LAB === '1') && (
+        <Route path="/dev/scan-import-v2" element={<ScanImportV2LabPage />} />
+      )}
       {import.meta.env.DEV && <Route path="/dev/mapper-batch-6" element={<MapperBatch6Page />} />}
       {import.meta.env.DEV && <Route path="/dev/mapper-review" element={<MapperReviewPage />} />}
       {import.meta.env.DEV && <Route path="/dev/mapper-status" element={<MapperStatusPage />} />}

@@ -1085,7 +1085,7 @@ const classifyRefusal = (
   // classified later as UI_STATE_REGRESSION, so no actual bug is hidden here.
   if (spec.expectation === 'authority_blocked') return 'AUTHORITY_BLOCKED';
   if (
-    /missing_prices|substitution_invalid|main_ingredient_unavailable|vegan_ingredient_conflict|missing_required_role/.test(
+    /substitution_invalid|main_ingredient_unavailable|vegan_ingredient_conflict|missing_required_role/.test(
       built.code,
     )
   ) {

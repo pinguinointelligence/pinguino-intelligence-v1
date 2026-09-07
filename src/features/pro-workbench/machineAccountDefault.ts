@@ -16,7 +16,6 @@
  * `WorkbenchSettingsLine.selectHome`. No machine and no gram figure is written
  * here.
  */
-import { temperatureForMode } from '@/features/customer-flow/servingMode';
 import { deriveMachineSetup } from '@/features/machine-catalog';
 import type { MachinePreferenceRecord } from '@/features/machine-onboarding/preferenceContracts';
 import {
@@ -39,7 +38,8 @@ import {
  *
  * A customer who typed their own „Mój domyślny wsad" gets that number for every
  * product; everyone else gets Gellatti's recommendation FOR THIS PRODUCT.
- * Capacity stays a machine fact and is always the derived recommendation.
+ * The recommended batch chooses how much a new recipe starts with. The hard
+ * gram capacity remains a separate machine fact and may honestly be unknown.
  *
  * Direction is deliberately neutral: a machine preference says which machine
  * and how much, never how sweet.
@@ -52,8 +52,6 @@ export function machineAccountDefaultSnapshot(
   if (profile === null) return null;
   const setup = deriveMachineSetup(profile, visibleProductType);
   if (setup.resolvedVisibleMode === null) return null;
-  const targetTemperatureC = temperatureForMode(setup.resolvedVisibleMode);
-  if (targetTemperatureC === null) return null;
   /* The customer's own „Mój domyślny wsad" wins for every product, because it
      is a number they typed. Otherwise the recommendation for THIS product wins
      — NOT the one frozen into the record, which was derived for the product
@@ -66,28 +64,24 @@ export function machineAccountDefaultSnapshot(
      ilość") — so the typed batch is the ONLY number there is. Requiring a
      recommendation here sent every custom machine back to Professional. */
   const targetBatchGrams = record.userDefaultBatchGrams ?? setup.recommendedBatchGrams;
-  if (
-    targetBatchGrams === null ||
-    !Number.isFinite(targetBatchGrams) ||
-    targetBatchGrams <= 0
-  ) {
+  if (targetBatchGrams === null || !Number.isFinite(targetBatchGrams) || targetBatchGrams <= 0) {
     return null;
   }
   return {
     visibleProductType,
     mode: 'classic',
     targetBatchGrams,
-    batchSource:
-      record.selection.kind === 'custom' ? 'CUSTOM_MACHINE_BATCH' : 'MACHINE_DEFAULT',
+    batchSource: record.selection.kind === 'custom' ? 'CUSTOM_MACHINE_BATCH' : 'MACHINE_DEFAULT',
     machineKind: 'home',
     machineId: profile.id,
     machineLabel: machineDisplayName(profile),
     machineTechnology: profile.technology,
+    homeFormulationModuleId: profile.homeFormulationModuleId,
     servingModeId: setup.resolvedVisibleMode,
-    targetTemperatureC,
+    targetTemperatureC: setup.engineTemperatureC,
     // Capacity stays a MACHINE fact and may honestly be unknown for a custom
     // machine; the studio already renders a null capacity without inventing one.
-    machineCapacityGrams: setup.recommendedBatchGrams,
+    machineCapacityGrams: setup.hardMaximumBatchGrams,
     directionTargets: DEFAULT_DIRECTION_TARGETS,
     directionIntents: DEFAULT_DIRECTION_INTENTS,
   };
@@ -122,6 +116,7 @@ export function professionalAccountDefault(authority: {
     machineId: null,
     machineLabel: copy.proMachine.professionalLabel,
     machineTechnology: null,
+    homeFormulationModuleId: null,
     servingModeId: authority.servingModeId,
     targetTemperatureC: authority.targetTemperatureC,
     machineCapacityGrams: null,

@@ -133,6 +133,8 @@ export function StudioEngineSurface({
   recipeSaveAttention = false,
   initialLabelView = 'data',
   labelViewRequestKey,
+  onOpenLabelSettings,
+  labelSettingsRestoreScrollTop,
 }: {
   forceDemo?: boolean;
   /** The Przelicz z PI overlay (Preview → Zastosuj/Anuluj → Cofnij), host-wired. */
@@ -148,6 +150,8 @@ export function StudioEngineSurface({
   recipeSaveAttention?: boolean;
   initialLabelView?: LabelWorkspaceView;
   labelViewRequestKey?: string;
+  onOpenLabelSettings?: (runId: string, scrollTop: number) => void;
+  labelSettingsRestoreScrollTop?: number;
 }) {
   const setPlan = useSessionStore((state) => state.setPlan);
   const loadPreset = useRecipeStore((state) => state.loadPreset);
@@ -408,7 +412,7 @@ export function StudioEngineSurface({
       {/* ── ONE-SCREEN WORKBENCH — fills the remaining viewport height on desktop; every
           edit-loop control lives INSIDE this section (owner zero-page-scroll rule). ── */}
       <section
-        className="flex min-h-0 flex-col pb-[calc(var(--pro-bottom-nav-height)+4.75rem+env(safe-area-inset-bottom))] xl:flex-1 xl:overflow-hidden xl:pb-0"
+        className="pro-workbench-surface flex min-h-0 flex-col pb-[calc(var(--pro-bottom-nav-height)+4.75rem+env(safe-area-inset-bottom))]"
         data-testid="pro-workbench"
       >
         {activeTab === 'production' && production.session ? (
@@ -418,7 +422,7 @@ export function StudioEngineSurface({
         <div
           /* ONE split, shared verbatim with the shell header row, so the module
              tab strip above the display column cannot drift (owner §8). */
-          className={`min-h-0 flex-1 xl:grid xl:h-full xl:pt-3 xl:pb-3 ${DESKTOP_WORKBENCH_COLUMNS}`}
+          className={`pro-workbench-body-grid min-h-0 flex-1 ${DESKTOP_WORKBENCH_COLUMNS}`}
         >
           <span
             aria-hidden
@@ -430,10 +434,7 @@ export function StudioEngineSurface({
               data-testid="workbench-divider-handle"
             />
           </span>
-          <div
-            className="min-h-0 xl:flex xl:min-w-0 xl:flex-col xl:overflow-hidden xl:rounded-[10px] xl:border xl:border-ink/10 xl:bg-white xl:shadow-pro-e0"
-            data-testid="workbench-editor-pane"
-          >
+          <div className="pro-workbench-editor-track min-h-0" data-testid="workbench-editor-pane">
             {/* Owner v1.4 §7: an immutable snapshot opened from the library's WERSJA selector must
                 announce itself before any of its grams are read as the current recipe. */}
             <HistoricalVersionNotice />
@@ -462,7 +463,7 @@ export function StudioEngineSurface({
               change (useStudioResult), ONE predictable internal scroll surface (B6).
               Mobile reaches the SAME content through the Monitor bottom sheet. */}
           <aside
-            className="hidden min-h-0 xl:block xl:min-w-0 xl:overflow-hidden"
+            className="pro-workbench-right-track hidden min-h-0"
             data-testid="pro-monitor-panel"
             aria-label={copy.proWorkbench.profile.title}
           >
@@ -481,6 +482,8 @@ export function StudioEngineSurface({
               onRecalculate={onRecalculate ?? (() => undefined)}
               initialLabelView={initialLabelView}
               labelViewRequestKey={labelViewRequestKey}
+              onOpenLabelSettings={onOpenLabelSettings}
+              labelSettingsRestoreScrollTop={labelSettingsRestoreScrollTop}
             />
           </aside>
         </div>
@@ -492,7 +495,7 @@ export function StudioEngineSurface({
             formal calculation state is never more than a thumb away, and the
             whole stack respects `env(safe-area-inset-bottom)`. */}
         <div
-          className="fixed inset-x-0 bottom-0 z-[60] xl:hidden"
+          className="pro-workbench-mobile-only fixed inset-x-0 bottom-0 z-[60]"
           data-testid="mobile-cockpit-trigger"
         >
           {mobileRecipeActionDock ? (
@@ -513,7 +516,15 @@ export function StudioEngineSurface({
         </div>
         {mobileCockpitOpen && mobileViewport ? (
           <div
-            className="fixed inset-x-0 top-0 bottom-[calc(var(--pro-bottom-nav-height)+env(safe-area-inset-bottom))] z-50 xl:hidden"
+            /* OWNER 2026-09-03: the sheet starts BELOW the global header, not at
+               `top-0`. On a phone Monitor and Produkcja open this cockpit as soon
+               as you visit them — it is how those modules are presented, not a
+               stray modal — and at `top-0` it covered the header at z-50, so the
+               hamburger and HOME | PRO were unreachable on those two routes. The
+               backdrop is inset with it, so the header is neither dimmed nor
+               swallowed. `--pro-mobile-header-height` is the canonical offset:
+               65 px on a phone, 69 px from `sm`, both measured live. */
+            className="pro-workbench-mobile-only fixed inset-x-0 top-[var(--pro-mobile-header-height)] bottom-[calc(var(--pro-bottom-nav-height)+env(safe-area-inset-bottom))] z-50"
             data-testid="mobile-cockpit-sheet"
           >
             <button
@@ -528,7 +539,11 @@ export function StudioEngineSurface({
               role="dialog"
               aria-modal="true"
               aria-labelledby="mobile-cockpit-title"
-              className="absolute inset-x-0 bottom-0 flex h-[min(92dvh,calc(100dvh-env(safe-area-inset-top)-0.5rem))] max-h-full flex-col overflow-hidden rounded-t-[22px] border-t border-ink/10 bg-white shadow-pro-e3 [overscroll-behavior:contain]"
+              /* The panel filled 92dvh measured from the VIEWPORT, which is what
+                 pushed it up over the header. It now fills its own container,
+                 which already starts below the header, so the height follows the
+                 offset instead of competing with it. */
+              className="absolute inset-x-0 bottom-0 flex h-full max-h-full flex-col overflow-hidden rounded-t-[22px] border-t border-ink/10 bg-white shadow-pro-e3 [overscroll-behavior:contain]"
             >
               <div className="relative z-40 flex shrink-0 items-center justify-between border-b border-ink/10 bg-white px-4 py-3">
                 <h2 id="mobile-cockpit-title" className="text-sm font-semibold text-ink">
@@ -543,7 +558,7 @@ export function StudioEngineSurface({
                   ×
                 </button>
               </div>
-              <div className="min-h-0 flex-1 overflow-y-auto [--label-workspace-bottom-inset:4.75rem]">
+              <div className="relative min-h-0 flex-1 overflow-y-auto [--label-workspace-bottom-inset:4.75rem]">
                 <RecipeProfilePanel
                   activeTab={activeTab}
                   onTabChange={onTabChange}
@@ -559,6 +574,8 @@ export function StudioEngineSurface({
                   onRecalculate={onRecalculate ?? (() => undefined)}
                   initialLabelView={initialLabelView}
                   labelViewRequestKey={labelViewRequestKey}
+                  onOpenLabelSettings={onOpenLabelSettings}
+                  labelSettingsRestoreScrollTop={labelSettingsRestoreScrollTop}
                 />
               </div>
             </section>

@@ -31,7 +31,7 @@ yes/no columns.
 | Plans | `src/access/plans.ts` — `AccessTier = demo \| free \| pro`; **Home- and Pro-priced subscriptions BOTH resolve to `pro`** (`planFromSubscription` is price-id-agnostic). `EffectiveAccess.canHome/canPro/canAdmin` from `proCoreAccessStore`. |
 | Community | `supabase/migrations/20260823140000_community_creators_sharing_v1.sql` + 5 follow-ups: `creator_profiles`, `community_publications`, `recipe_lineage` (**with `root_publication_id` + `root_creator_user_id`**), `recipe_share_links`, `recipe_ratings`, `publication_metrics`, `ranking_snapshots`, `community_reports`. `src/services/community.ts` (519 lines). Ranking = `RANKING_WEIGHTS_V1` (makers/makes/remixes/users + rating modifier). |
 | Community gaps | **No `Like`** (only star `recipe_ratings`). **No publication Favourite** (`global_catalog_favorites` is for PRODUCTS). **No liked-by list.** `gellatti_publication_card_v1.based_on` resolves the **PARENT** publication, not the **ROOT** — prompt §38 requires the ORIGINAL creator. **No comments anywhere** (matches §89). |
-| Scanner | `src/features/product-scanner` — `LiveProductScanner`, `barcode*`, `pipeline.ts`, `liveEvidenceQuota`, `customerAddedProducts`. Full analysis is quota'd; **no cheap free pre-scan tier**. |
+| Scanner | `src/features/product-scanner` — `LiveProductScanner`, `barcode*`, `pipeline.ts`, `liveEvidenceQuota`, `customerAddedProducts`. Full analysis is quota'd; **no cheap free pre-scan tier**. *(Superseded 2026-09-06: the UI half of this module is deleted. The ONE Canonical Scanner is `src/features/scan-flow/ScanFlow`; only the shared pure modules — `barcode`, `contracts`, `pipeline`, `scanRouting`, `scannerErrors` — and the edge functions remain here.)* |
 | Production | `src/features/production-workspace` — the Production authority (steps, TARA, deviation, Rescue). |
 | Partner | `src/features/partner`, `src/services/partner.ts`, `partnerShareAttribution.ts` (commercial attribution deliberately separate from lineage). |
 | Admin | `src/pages/admin/AdminWorkspacePage.tsx` + `AdminRouteGuard`. |
@@ -49,25 +49,25 @@ Legend for yes/no columns: `Y` = yes/required, `–` = no/not required, `?` = to
 | H-01-1 | Architecture | HOME is not a second application — no `HomeEngine`/`HomeSolver`/`HomeRecipe`/`HomeCrown`/`HomeProductBehavior`/`HomeMachineAuthority`/`HomeProductionAuthority` | – | `recipeStore`, `constraintStudioStore`, `@/engine` | Y (guard) | – | – | – | – | Y | Y | Y | – | TESTED | boundary test forbidding those symbols | |
 | H-01-2 | Architecture | HOME and PRO are presentation layers over the SAME live state (one `RecipeInput`) | – | `recipeStore` | Y | `/`, `/pro/*` | `recipeStore` | – | – | Y | Y | Y | Y | TESTED | | |
 | H-01-3 | Architecture | HOME reuses Engine, Solver, Product Catalog, Mapper identities, ProductBehavior, Main/Crown, Multi-Main, manual grams, Recalculate/Preview/Apply/Undo, Direction, Machine, batch, toppings, Rescue, Production, persistence, immutable versions, Community attribution/lineage | Y (all) | listed authorities | – (wiring only) | – | all | – | – | Y | Y | Y | Y | TODO | | |
-| H-02-1 | Authority | Functional authority = newest `origin/staging`; visual = Gellatti V2.1 + Design Book; language = FINAL_SAFE locale | Y | `src/copy`, V2.1 tokens | – | – | – | – | – | Y | Y | – | – | TODO | worktree from `423a76fc` | |
+| H-02-1 | Authority | Functional authority = newest `origin/staging`; visual = Gellatti V2.1 + Design Book; language = FINAL_SAFE locale | Y | `src/copy`, V2.1 tokens | – | – | – | – | – | Y | Y | Y | – | IMPLEMENTED | **Owner QA 2026-09-06 / SOL-043, fixed 2026-09-07.** The customer-language denylist that keeps implementation vocabulary („Mapper”, „ProductBehavior”, „BASE_RECIPE”, bare UUIDs, raw statuses) off a HOME screen lived in `features/home-creator/homeCustomerNotice.ts` and was reachable only through an OPT-IN `sanitizeNotice` prop — which only HOME's two mounts passed. `ProductPickerPopover` is ONE component shared by HOME and PRO, so the same refusal was calm on a HOME screen and raw on a PRO one, and the owner was served „Dla produkt <uuid> · wersja <uuid> · Mapper brak · moduł BASE_RECIPE brakuje aktualnego ProductBehavior binding.” The list now lives in `src/copy/customerSafeNotice.ts`, is applied by the picker BY DEFAULT, and HOME keeps its own wording by passing `homeCustomerNotice`. An opt-in denylist protects the screens someone remembered and leaves the next one exposed. Two of the owner's own examples — `INGREDIENTS_EVIDENCE_REQUIRED` and `roleReadiness` — were not on the list at all; it now also catches bare UUIDs, any SCREAMING_SNAKE code and camelCase status keys. Contract: `src/copy/customerSafeNotice.test.ts` (8 cases, including the owner's sentence verbatim). | |
 | H-02-2 | Authority | OWNER-LOCKED functionality unchanged unless this prompt authorises presentation/orchestration integration | Y | `src/contracts/owner-locked` | – | – | – | – | – | – | – | Y | – | TESTED | `npm run guard:owner-locked` green | |
 | H-03-1 | Safety | STAGING ONLY — never touch `origin/main`, prod deployment, prod Supabase, real Stripe, real customer data, prod secrets | – | – | – | – | – | – | – | – | – | – | – | TODO | `git log origin/main` unchanged at close | |
 | H-03-2 | Safety | Stripe TEST MODE only | Y | existing test keys | – | – | `billing` | – | – | – | – | – | Y | TODO | | |
 | H-03-3 | DB | Every migration additive, forward-only, staging-only, RLS-safe, non-destructive, documented; no historical migration deleted/rewritten | – | `supabase/migrations` | Y | – | – | Y | – | – | – | Y | Y | TESTED | | |
-| H-04-1 | Git | Dedicated clean worktree + branch `claude/home-creator-v1`, not shared with other sessions | – | – | Y | – | – | – | – | – | – | – | – | IMPLEMENTED | `~/Developer/pinguino-home-creator` @ `423a76fc` | |
+| H-04-1 | Git | Dedicated clean worktree + branch `claude/home-creator-v1`, not shared with other sessions | – | – | Y | – | – | – | – | – | – | – | – | IMPLEMENTED | dedicated worktrees per lane held; branch name differs from the original `claude/home-creator-v1` plan | |
 | H-04-2 | Git | Every batch: staging → feature branch → tests → owner-locked contracts → protected-path gate → typecheck/lint/build → push → PR → green → merge → deploy → served QA | – | `verify:staging` | Y | – | – | – | – | – | – | Y | Y | TODO | | |
 | H-04-3 | Git | Never push directly to staging; no `--admin` bypass; no force-push | – | branch protection | – | – | – | – | – | – | – | – | – | TODO | | |
-| H-06-1 | Process | `reports/GELLATTI_HOME_MASTER_CHECKLIST.md` exists with one row per requirement, all 17 columns | – | – | Y | – | – | – | – | – | – | – | – | IMPLEMENTED | this file | |
-| H-06-2 | Process | Checklist updated after every phase | – | – | Y | – | – | – | – | – | – | – | – | IN PROGRESS | | |
-| H-07-1 | Process | `reports/GELLATTI_HOME_REQUIREMENT_TRACEABILITY.md` maps every ID → source files, tests, served proof, status | – | – | Y | – | – | – | – | – | – | – | – | TODO | | |
-| H-08-1 | Mobile | Mobile-first; primary viewport 390×844 | – | V2.1 tokens, `shellGeometry` | Y | `/` | – | – | – | Y | Y | Y | Y | IMPLEMENTED | | |
+| H-06-1 | Process | `reports/GELLATTI_HOME_MASTER_CHECKLIST.md` exists with one row per requirement, all 17 columns | – | – | Y | – | – | – | – | – | – | – | – | TESTED | structural validation on `c66c1d01`: 211 rows x 17 columns, 211 unique IDs, 0 duplicates | |
+| H-06-2 | Process | Checklist updated after every phase | – | – | Y | – | – | – | – | – | – | – | – | TESTED | `scripts/guardHomeLedger.mjs` + `homeLedgerGuard.test.ts` (10 behavioural cases, all passed): HOME change with no row moved -> FAIL; HOME change + whitespace/timestamp only -> FAIL; non-HOME change -> PASS; HOME change + real status/evidence move -> PASS; token exemption -> FAIL; 211 rows parsed at 17 columns with unique IDs; escaped `[HOME\|PRO]` handled; illegal status and duplicate ID both reported. Wired into CI as "HOME ledger update gate". | |
+| H-07-1 | Process | `reports/GELLATTI_HOME_REQUIREMENT_TRACEABILITY.md` maps every ID → source files, tests, served proof, status | – | – | Y | – | – | – | – | – | – | – | – | IMPLEMENTED | `reports/GELLATTI_HOME_REQUIREMENT_TRACEABILITY.md` present (65 lines); completeness vs every ID not re-verified | |
+| H-08-1 | Mobile | Mobile-first; primary viewport 390×844 | – | V2.1 tokens, `shellGeometry` | Y | `/` | – | – | – | Y | Y | Y | Y | IMPLEMENTED | `src/features/shell/shellGeometry.ts` (module present; no behavioural viewport test run) | |
 | H-08-2 | Mobile | Verify 360 px, 375 px, larger modern phones, desktop 1440×900 | – | – | Y | `/` | – | – | – | Y | Y | – | Y | TODO | | |
 | H-08-3 | Mobile | No horizontal overflow anywhere; no clipped required action | – | – | Y | `/` | – | – | – | Y | Y | Y | Y | TODO | | |
 | H-08-4 | Mobile | Desktop is the wider version of mobile — not a compressed Pro Workbench | – | – | Y | `/` | – | – | – | Y | Y | – | Y | TODO | | |
-| H-09-1 | Routing | Public root `/` opens directly into HOME Creator (no marketing landing before the product) | Y (landing today) | `RoleAwareEntryRoute` | Y | `/` | `roleAwareEntry.ts` | – | – | Y | Y | Y | Y | IMPLEMENTED | | |
+| H-09-1 | Routing | Public root `/` opens directly into HOME Creator (no marketing landing before the product) | Y (landing today) | `RoleAwareEntryRoute` | Y | `/` | `roleAwareEntry.ts` | – | – | Y | Y | Y | Y | IMPLEMENTED | `src/features/auth/RoleAwareEntryRoute.tsx` (its tests cover role routing, NOT "/ opens HOME Creator") | |
 | H-09-2 | Routing | Community feed, Shop, Partner, Franchise, About, Pricing, Recipes index are NOT on the creator canvas — reachable via hamburger only | Y (nav) | `AppNavDrawer`, `navConfig` | Y | `/` | – | – | – | Y | Y | Y | Y | TODO | | |
-| H-10-1 | Header | Fixed/sticky header: `GELLATTI · [HOME\|PRO] · Sign in/Account · ☰` | Partly | `TopNav`, `AppShell` | Y | all | – | – | – | Y | Y | Y | Y | IMPLEMENTED | | |
-| H-10-2 | Header | Hamburger opens the LEFT-side drawer (existing owner decision) | Y | `AppNavDrawer` | – | all | – | – | – | Y | Y | Y | Y | IMPLEMENTED | | |
+| H-10-1 | Header | Fixed/sticky header: `GELLATTI · [HOME\|PRO] · Sign in/Account · ☰` | Partly | `TopNav`, `AppShell` | Y | all | – | – | – | Y | Y | Y | Y | IMPLEMENTED | `src/features/shell/TopNav.tsx`, `src/features/shell/AppShell.tsx` | |
+| H-10-2 | Header | Hamburger opens the LEFT-side drawer (existing owner decision) | Y | `AppNavDrawer` | – | all | – | – | – | Y | Y | Y | Y | IMPLEMENTED | `src/features/shell/AppNavDrawer.tsx` | |
 | H-10-3 | Header | Sign in is discreet, near account/menu; login is never forced at entry | – | `authStore` | Y | `/` | `authStore` | – | – | Y | Y | Y | Y | TODO | | |
 | H-10-4 | Header | Header remains stable while HOME progresses through stages | – | – | Y | `/` | – | – | – | Y | Y | Y | Y | IMPLEMENTED | | |
 | H-11-1 | Plan UI | Anonymous / signed-in-without-plan: show `[HOME\|PRO]`, both explorable as demo | – | `useAccess`, `EffectiveAccess` | Y | `/`, `/pro/*` | `proCoreAccessStore` | – | – | Y | Y | Y | Y | TESTED | | |
@@ -95,8 +95,8 @@ Legend for yes/no columns: `Y` = yes/required, `–` = no/not required, `?` = to
 | H-17-3 | Intent | No preset Banana/Mango/Chocolate tiles; any idea may be described | – | – | Y | `/` | – | – | – | Y | Y | Y | Y | TESTED | | |
 | H-18-1 | Intent | Before the first recipe exists there is NO Score, NO live Recalculate, NO live recipe edits | – | – | Y | `/` | – | – | – | Y | Y | Y | Y | TESTED | | |
 | H-18-2 | Intent | Resolved intent renders as removable chips (`Banana ×`, `Oreo ×`, `Peanut butter ×`) | – | `FlavorChip` | Y | `/` | intent store | – | – | Y | Y | Y | Y | TESTED | | |
-| H-18-3 | Intent | CTA `Create my recipe` starts product resolution → recipe matching → Top100 matching → profile if needed → machine if needed → first generation | – | – | Y | `/` | – | – | – | Y | Y | Y | Y | TODO | | |
-| H-19-1 | Intent | Text, voice and scanner are three input methods into ONE intent — no separate journeys | – | – | Y | `/` | – | – | – | Y | Y | Y | Y | TESTED | | |
+| H-18-3 | Intent | CTA `Create my recipe` starts product resolution → recipe matching → Top100 matching → profile if needed → machine if needed → first generation | – | – | Y | `/` | – | – | – | Y | Y | Y | Y | IMPLEMENTED | `homeIntentParsing.ts` per-segment role, `useHomeIntentIngredients.ts` role-aware materialization, `homeIdeaResolution.ts` gate wired in `HomeCreatorPage.tsx` onSubmit; `homeIdeaAdvanceGate.test.ts` (8), `homeIntentMaterialization.test.tsx` (5), `homeIdeaResolution.test.ts` (10), `homeIntentParsing.test.ts` (20) | |
+| H-19-1 | Intent | Text, voice and scanner are three input methods into ONE intent — no separate journeys | Y | `ScanFlow`, `useHomeIntentIngredients` | Y | `/` | `intentIngredients` | – | – | Y | Y | Y | Y | TESTED | **ONE Canonical Scanner (owner decision 2026-09-06, `claude/canonical-scanner`).** HOME no longer mounts a scanner of its own: `HomeCreatorPage` renders the SAME `ScanFlow` the recipe picker and the products page render, and a resolved product enters through `addScannedProduct` — the typed-ingredient door. The second implementation (`LiveMultiScanner`/`LiveProductScanner` + 19 private modules) is deleted, and `scanFlow.boundary.test.ts` now asserts that exactly ONE file in `src` opens a camera. `scannedProductParity.test.ts` (6) + `canonicalScannerEntries.test.tsx` (14) green. |  |
 | H-20-1 | Voice | Voice accepts complete natural sentences and extracts profile + ingredient concepts + role when clearly stated | – | Web Speech API | Y | `/` | intent parser | – | – | Y | Y | Y | Y | TESTED | | |
 | H-20-2 | Voice | Chips shown for correction; no separate transcript page | – | – | Y | `/` | – | – | – | Y | Y | Y | Y | TESTED | | |
 | H-21-1 | Intent | Several items may be added in sequence in any combination of text/voice/scan and are treated as one intention before `Create my recipe` | – | – | Y | `/` | – | – | – | Y | Y | Y | Y | TESTED | | |
@@ -106,15 +106,15 @@ Legend for yes/no columns: `Y` = yes/required, `–` = no/not required, `?` = to
 | H-24-1 | Identity | Where existing Gellatti mapping already collapses several SKUs to one canonical identity, HOME uses that authority — no new equivalence layer | Y | Mapper canonical identity | – | – | – | – | – | – | – | Y | – | TODO | | |
 | H-25-1 | Intent | Multilingual + typo-tolerant intent (strawberry/truskawka/fresa/Erdbeere; whisky cola/whiskey & coke/whisky z colą; mojito/mochito/mojitto) | Partly | `polishFlavorSynonyms` | Y | `/` | intent parser | – | – | Y | Y | Y | Y | TESTED | | |
 | H-25-2 | Intent | Understanding only — everything resolves to real Gellatti identities before matching/formulation | – | – | Y | – | – | – | – | – | – | Y | Y | TESTED | | |
-| H-26-1 | Scanner | Cheap demo pre-check: no expensive Product Scanner analysis for non-paying users | Partly | `product-scanner/pipeline` | Y | `/` | `services/productScanner` | Y | – | Y | Y | Y | Y | TODO | | |
-| H-26-2 | Scanner | Free pre-scan may recognise obvious fresh produce, detect EAN, and check whether the EAN is already known | – | `barcodeDecoder`, `eanLookupEvidence` | Y | `/` | – | Y | – | Y | Y | Y | Y | TODO | | |
-| H-26-3 | Scanner | Free pre-scan must NOT run full OCR, internet research, nutrition evidence research, full catalog analysis or the costly Scanner flow | – | – | Y | – | – | Y | – | – | – | Y | Y | TODO | | |
-| H-27-1 | Scanner | Known EAN → use the existing identified product | Y | `intimportCanonicalLookup` | Y (wiring) | `/` | – | – | – | Y | Y | Y | Y | TODO | | |
-| H-27-2 | Scanner | Unknown EAN → HOME/PRO subscription gate before full analysis; no free lookup beyond "do we already know this EAN" | – | – | Y | `/` | – | Y | – | Y | Y | Y | Y | TODO | | |
-| H-28-1 | Scanner | Unknown EAN: pre-scan → paywall → purchase/login → automatically continue full Scanner with the SAME temporary image (no re-photograph) | – | `ocrIntakeStorage`, scanner session | Y | `/` | scanner continuation | Y | – | Y | Y | Y | Y | TODO | | |
-| H-28-2 | Scanner | Existing privacy/deletion lifecycle applies to the retained image afterwards | Y | `ocrIntakeEvidence` | – | – | – | – | – | – | – | Y | – | TODO | | |
-| H-29-1 | Scanner | Obvious fresh produce resolves cheaply; on low confidence ask "What is this? Apple / Pear / Search ingredient" | – | – | Y | `/` | – | – | – | Y | Y | Y | Y | TODO | | |
-| H-29-2 | Scanner | Never guess; never trigger the expensive Scanner merely to disambiguate simple produce | – | – | Y | – | – | – | – | – | – | Y | Y | TODO | | |
+| H-26-1 | Scanner | Cheap demo pre-check: no expensive Product Scanner analysis for non-paying users | Partly | `product-scanner/pipeline` | Y | `/` | `services/productScanner` | Y | – | Y | Y | Y | Y | TODO | no entitlement gate on scanner analysis found on `f03038d0`; the cost ladder is throttling, not a free/paid split |  |
+| H-26-2 | Scanner | Free pre-scan may recognise obvious fresh produce, detect EAN, and check whether the EAN is already known | – | `barcodeDecoder`, `eanLookupEvidence` | Y | `/` | – | Y | – | Y | Y | Y | Y | IMPLEMENTED | `liveScanCapabilities.ts` wires `lookupExactBarcode` (the "do we know this EAN" check); the FREE-tier scope is not separated |  |
+| H-26-3 | Scanner | Free pre-scan must NOT run full OCR, internet research, nutrition evidence research, full catalog analysis or the costly Scanner flow | – | – | Y | – | – | Y | – | – | – | Y | Y | TODO | no free-tier restriction exists; OCR/Vision are capped for cost, which is not the same requirement |  |
+| H-27-1 | Scanner | Known EAN → use the existing identified product | Y | `intimportCanonicalLookup` | Y (wiring) | `/` | – | – | – | Y | Y | Y | Y | SERVED VERIFIED | **Owner served QA 2026-09-06** on canonical `staging.pinguinoai.com` (staging `f03038d0`, served bundle 7 583 244 B): Milka Choco Brownie recognised almost immediately, the app pointed at the EXISTING product and created no duplicate. Scope of this proof is this row only — it says nothing about any other Scanner behaviour. |  |
+| H-27-2 | Scanner | Unknown EAN → HOME/PRO subscription gate before full analysis; no free lookup beyond "do we already know this EAN" | – | – | Y | `/` | – | Y | – | Y | Y | Y | Y | TODO | paywall copy exists in `homeCreatorCopy.ts` but no scanner-side gate; owner QA reached full analysis and a private-product save with no subscription gate |  |
+| H-28-1 | Scanner | Unknown EAN: pre-scan → paywall → purchase/login → automatically continue full Scanner with the SAME temporary image (no re-photograph) | Partly | `ScanFlow` `guest_demo` entry | Y | `/` | scanner continuation | Y | – | Y | Y | Y | Y | IN PROGRESS | **Half of this row shipped 2026-09-06.** A signed-out visitor who scans an unknown code now sees the plan offer (HOME / PRO / Wróć do demo) and the CODE they read is kept in `sessionStorage`; the signed-in scanner picks it up once and continues without a second scan (`canonicalScannerEntries.test.tsx`, 2 cases). The IMAGE is deliberately NOT retained — the owner's rule is that no guest photo is stored without consent, and a guest never reaches the label step at all. Still TODO: resume after PURCHASE (not just sign-in), and the image-retention half if the owner ever wants it with consent. |  |
+| H-28-2 | Scanner | Existing privacy/deletion lifecycle applies to the retained image afterwards | Y | `ocrIntakeEvidence` | – | – | – | – | – | – | – | Y | – | IMPLEMENTED | retention consent boundary in `src/services/productScanner.ts` (~line 386); no served proof of the deletion lifecycle |  |
+| H-29-1 | Scanner | Obvious fresh produce resolves cheaply; on low confidence ask "What is this? Apple / Pear / Search ingredient" | – | – | Y | `/` | – | – | – | Y | Y | Y | Y | TODO | `whatIsThis` copy key exists in `homeCreatorCopy.ts` but is rendered nowhere — copy is not implementation |  |
+| H-29-2 | Scanner | Never guess; never trigger the expensive Scanner merely to disambiguate simple produce | – | – | Y | – | – | – | – | – | – | Y | Y | TESTED | Re-anchored 2026-09-06: the cited `liveScanSession.test.ts` / `liveRecognition.test.ts` belonged to the deleted second scanner. The claim now rests on the canonical flow: `ScanFlow.test.tsx` + `canonicalScannerEntries.test.tsx` (a valid code is never named without catalogue resolution) and `scanFlow.boundary.test.ts` (one decoder, one pipeline). A guest triggers NO paid rung at all — no research, no label analysis (`canonicalScannerEntries.test.tsx`). |  |
 | H-30-1 | Paywall | Product creation / full Scanner requires HOME or PRO subscription; after purchase the flow resumes exactly where it stopped | – | `billingCheckout` | Y | `/` | `subscriptionStore` | Y | – | Y | Y | Y | Y | TODO | | |
 | H-31-1 | Profile | A stated/implied profile (Gelato/Sorbet/Protein/Vegan) is not asked again and filters all matching | – | `ProductCategory` | Y | `/` | `recipeStore` | – | – | Y | Y | Y | Y | TESTED | | |
 | H-31-2 | Profile | Unknown profile → show the four choices | – | – | Y | `/` | – | – | – | Y | Y | Y | Y | TESTED | | |
@@ -140,20 +140,20 @@ Legend for yes/no columns: `Y` = yes/required, `–` = no/not required, `?` = to
 | H-38-4 | Lineage | Becoming the original DNA creator requires `Create my own` | – | – | Y | – | – | – | Y | – | – | Y | Y | TODO | | |
 | H-39-1 | Lineage | Lineage survives any later edit; it is never severed because many ingredients changed | Y (stamped once) | `resolveLineage` | – | – | – | Y | Y | – | – | Y | Y | SERVED VERIFIED | | |
 | H-40-1 | Matching | Profile filter applies to both the official library and Community Top 100 (e.g. "Mojito Sorbet" → only Sorbet) | – | – | Y | `/` | – | Y | Y | Y | Y | Y | Y | TESTED | | |
-| H-41-1 | Create | `Create my own` uses the resolved intent ingredients | – | `intentRecipeDraft` | Y | `/` | `recipeStore` | – | – | Y | Y | Y | Y | IMPLEMENTED | | |
+| H-41-1 | Create | `Create my own` uses the resolved intent ingredients | – | `intentRecipeDraft` | Y | `/` | `recipeStore` | – | – | Y | Y | Y | Y | IMPLEMENTED | `src/features/studioFlow/intentRecipeDraft.ts` | |
 | H-41-2 | Create | Known profile → skip the profile step; unknown → "How do you want to make it?" (Gelato/Sorbet/Protein/Vegan) | – | – | Y | `/` | – | – | – | Y | Y | Y | Y | TESTED | | |
 | H-41-3 | Create | Desktop supplementary text may use hover; mobile must not depend on hover | – | – | Y | `/` | – | – | – | Y | Y | Y | Y | TESTED | | |
-| H-42-1 | Machine | A saved Home machine is used automatically and never asked again; shown as `Ninja CREAMi Deluxe · 1 container` + `Change` | Y | `machinePreference` service | Y | `/` | `services/machinePreference` | – | – | Y | Y | Y | Y | IMPLEMENTED | | |
+| H-42-1 | Machine | A saved Home machine is used automatically and never asked again; shown as `Ninja CREAMi Deluxe · 1 container` + `Change` | Y | `machinePreference` service | Y | `/` | `services/machinePreference` | – | – | Y | Y | Y | Y | TESTED | `homeStageFlow.test.ts` -> "drops the machine stage when a saved machine exists - never asks twice" (behavioural, passed on `c66c1d01`) | |
 | H-42-2 | Machine | Anonymous preference stored locally and adopted into the account after signup | Y (local store) | `localStorageMachinePreferenceStore` | Y | `/` | – | Y | – | Y | Y | Y | Y | TODO | | |
 | H-43-1 | Machine | HOME chooser offers supported Home machines + `Other machine`; never Professional | – | `machineCatalogData` | Y | `/` | – | – | – | Y | Y | Y | Y | TESTED | | |
-| H-43-2 | Machine | `Other machine` asks only what the current machine flow needs, primarily capacity | Y | `machineOnboarding` | – | `/` | – | – | – | Y | Y | Y | Y | IMPLEMENTED | | |
+| H-43-2 | Machine | `Other machine` asks only what the current machine flow needs, primarily capacity | Y | `machineOnboarding` | – | `/` | – | – | – | Y | Y | Y | Y | IMPLEMENTED | `src/features/machine-catalog/machineOnboarding.ts` | |
 | H-44-1 | Machine | Machine+profile batch uses the existing canonical authority; no new batch values | Y | `homeBatchRule`, `machineRecipeBatchMatrix` | – | – | `recipeStore` | – | – | – | – | Y | Y | TESTED | | |
 | H-45-1 | Amount | Container-first amount control `− 1 container +`, starting at one container; canonical grams from the current authority | Partly | `BatchSelector`, `recommendedBatchGramsOf` | Y | `/` | `recipeStore.setBatchGrams` | – | – | Y | Y | Y | Y | TESTED | | |
 | H-46-1 | Amount | Manual exact total grams (e.g. `1850 g`) is kept exactly and shown with existing capacity guidance `1850 g · 3 containers` | Y | `deriveBatchGuidance` | Y | `/` | – | – | – | Y | Y | Y | Y | TESTED | | |
 | H-46-2 | Amount | Selecting 2 containers afterwards returns to the canonical 2-container amount | – | – | Y | `/` | – | – | – | Y | Y | Y | Y | TESTED | | |
 | H-47-1 | Machine | Changing the machine inside a recipe affects only that recipe; the account default is unchanged | Y (recipe-scoped) | `recipeStore.setMachineSelection` | Y | `/` | – | – | – | Y | Y | Y | Y | TODO | | |
 | H-47-2 | Machine | A saved recipe remembers its recipe-specific machine; a new recipe uses the account default again | Y | `userRecipeDefaults` | – | – | – | – | – | – | – | Y | Y | TODO | | |
-| H-48-1 | Generation | The first recipe builds a full base automatically — the user is never asked to choose milk/sugar/stabiliser first | Y | `intentRecipeDraft` STARTER_TEMPLATES, Engine | Y | `/` | `recipeStore` | – | – | Y | Y | Y | Y | IMPLEMENTED | | |
+| H-48-1 | Generation | The first recipe builds a full base automatically — the user is never asked to choose milk/sugar/stabiliser first | Y | `intentRecipeDraft` STARTER_TEMPLATES, Engine | Y | `/` | `recipeStore` | – | – | Y | Y | Y | Y | IMPLEMENTED | `src/features/studioFlow/intentRecipeDraft.ts` | |
 | H-49-1 | Crown | A Crown-eligible user-added product turns Crown on automatically per the current PRO authority | Y | `canonical module eligibility`, `setMainIngredient` | Y | `/` | `recipeStore` | – | – | Y | Y | Y | Y | TESTED | | |
 | H-49-2 | Crown | If the current system does not allow Crown it is not bypassed; no new classification | – | – | – | – | – | – | – | – | – | Y | Y | TESTED | | |
 | H-50-1 | Crown | Crown and Multi-Main behave exactly as today; manual gram edits use existing semantics; Crown off/on where allowed | Y | `recipeStore` | – | `/` | – | – | – | Y | Y | Y | Y | TODO | | |
@@ -162,13 +162,13 @@ Legend for yes/no columns: `Y` = yes/required, `–` = no/not required, `?` = to
 | H-52-2 | Display | HOME hides: percentages, PI-ING, product IDs, POD/PAC/NPAC, solids, kcal, cost, supplier data, regulatory data | – | – | Y | `/` | – | – | – | Y | Y | Y | Y | IMPLEMENTED | | |
 | H-53-1 | Naming | A natural recipe name is proposed automatically and is immediately editable; no separate naming step | – | – | Y | `/` | `recipeStore` | – | – | Y | Y | Y | Y | TESTED | | |
 | H-54-1 | Display | Ingredient row shows only name, grams, Crown where applicable, Topping marker | – | – | Y | `/` | – | – | – | Y | Y | Y | Y | IMPLEMENTED | | |
-| H-54-2 | Display | Demo shows `🔒 ••• g` — never a fake value | Y (redaction) | `demoSafeRecipe`, `plans.ts` | Y | `/` | – | – | – | Y | Y | Y | Y | IMPLEMENTED | | |
-| H-55-1 | Actions | Every ingredient has a `⋯` menu: Remove, Find substitute where supported, "I don't have this ingredient" | Y (Pro) | `createSubstitutionPreview`, `markIngredientUnavailable` | Y | `/` | `constraintStudioStore` | – | – | Y | Y | Y | Y | IMPLEMENTED | | |
+| H-54-2 | Display | Demo shows `🔒 ••• g` — never a fake value | Y (redaction) | `demoSafeRecipe`, `plans.ts` | Y | `/` | – | – | – | Y | Y | Y | Y | IMPLEMENTED | `src/features/community/domain/demoSafeRecipe.ts`, `src/access/plans.ts` | |
+| H-55-1 | Actions | Every ingredient has a `⋯` menu: Remove, Find substitute where supported, "I don't have this ingredient" | Y (Pro) | `createSubstitutionPreview`, `markIngredientUnavailable` | Y | `/` | `constraintStudioStore` | – | – | Y | Y | Y | Y | IMPLEMENTED | `constraintStudioStore.createSubstitutionPreview`, `IngredientRow.tsx` | |
 | H-55-2 | Actions | Base and flavour ingredients are not functionally separated | – | – | Y | `/` | – | – | – | Y | Y | Y | Y | TODO | | |
 | H-56-1 | Actions | `Add ingredient` reuses the SAME Pro picker (search, filters, voice, scanner, catalogue, ProductBehavior) with a simpler HOME presentation | Y | `product-picker` | Y | `/` | `services/productPicker` | – | – | Y | Y | Y | Y | TODO | | |
 | H-57-1 | Actions | On the live recipe screen: "Want to add anything else?" → Add ingredient / Add topping-mix-in | – | – | Y | `/` | – | – | – | Y | Y | Y | Y | IMPLEMENTED | | |
-| H-57-2 | Actions | Topping uses the existing Topping behavior, has no Crown, and has editable grams | Y | `addTopping`, `ToppingRow` | Y | `/` | `recipeStore` | – | – | Y | Y | Y | Y | TODO | | |
-| H-58-1 | Actions | Only where genuinely ambiguous ask "How do you want to use it? Ingredient / Topping"; never ask unnecessarily | – | – | Y | `/` | – | – | – | Y | Y | Y | Y | TODO | | |
+| H-57-2 | Actions | Topping uses the existing Topping behavior, has no Crown, and has editable grams | Y | `addTopping`, `ToppingRow` | Y | `/` | `recipeStore` | – | – | Y | Y | Y | Y | TESTED | `homeToppingGrams.test.ts` (5 store cases) + `homeToppingAmount.runtime.test.tsx` (real control in jsdom: open the row menu, focus the spinbutton, type 25, blur to commit) — the store holds 25 g, the screen shows it, and the base lines are byte-identical before and after. DEFECT FIXED: the row committed through `setPlannedGrams`, which looks the line up in `state.items` and returns early, so every topping edit was silently dropped. | |
+| H-58-1 | Actions | Only where genuinely ambiguous ask "How do you want to use it? Ingredient / Topping"; never ask unnecessarily | – | – | Y | `/` | – | – | – | Y | Y | Y | Y | TESTED | `homeUsageRoleDecision.ts` + `.test.ts` (7 cases): the question is asked ONLY when the catalogue says a product is eligible for BOTH `BASE_RECIPE` and `TOPPING`; `TOPPING_ONLY`, base-only and topping-only are settled silently, and an unreadable snapshot defaults to ingredient rather than inventing a question. `homeUsagePrompt.runtime.test.tsx` (5 cases) renders the canonical `howToUse` / `asIngredient` / `asTopping` copy — which existed in both locales and had never been rendered — names the product, returns the real choice, closes on Escape and is a proper aria dialog. | |
 | H-59-1 | Score | After the first recipe the current Score is shown live using the existing authority; no new score calculation | Y | `recipe-score`, `pi-monitor` | Y (wiring) | `/` | – | – | – | Y | Y | Y | Y | TESTED | | |
 | H-60-1 | Recalculate | Where existing semantics require it, show `Przelicz i popraw` using the current Recalculate/Preview/Apply workflow | Y | `constraintStudioStore` | Y | `/` | – | – | – | Y | Y | Y | Y | TODO | | |
 | H-60-2 | Recalculate | Never auto-apply silently if PRO would not; show current Score + action; no verbose delta explanation | – | – | Y | `/` | – | – | – | Y | Y | Y | Y | TODO | | |
@@ -184,7 +184,7 @@ Legend for yes/no columns: `Y` = yes/required, `–` = no/not required, `?` = to
 | H-68-1 | Rescue | Provide `I added too much` → "How much does the scale show now?" using the existing Rescue; no new solver | Y | Production Rescue | Y | `/` | – | – | – | Y | Y | Y | Y | TODO | | |
 | H-69-1 | Production | Topping preparation shows a general instruction at the correct later stage; no per-topping science invention | – | – | Y | `/` | – | – | – | Y | Y | Y | Y | TODO | | |
 | H-70-1 | Scope | Post-production Too hard/Too soft feedback flow is NOT implemented (owner rejected) | – | – | – | – | – | – | – | – | – | – | – | NOT APPLICABLE | owner rejection recorded | |
-| H-71-1 | Demo | Anonymous/free users can explore HOME and PRO with all exact grams hidden; Score stays visible | Y (redaction) | `plans.ts`, `demoSafeRecipe` | Y | `/`, `/pro/*` | – | – | – | Y | Y | Y | Y | IMPLEMENTED | | |
+| H-71-1 | Demo | Anonymous/free users can explore HOME and PRO with all exact grams hidden; Score stays visible | Y (redaction) | `plans.ts`, `demoSafeRecipe` | Y | `/`, `/pro/*` | – | – | – | Y | Y | Y | Y | IMPLEMENTED | `src/access/plans.ts`, `src/features/community/domain/demoSafeRecipe.ts` | |
 | H-72-1 | Paywall | Paid HOME actions: reveal grams, precise gram edit, Save, Let's make it, Add own product | – | – | Y | `/` | `subscriptionStore` | – | – | Y | Y | Y | Y | TODO | | |
 | H-72-2 | Paywall | The HOME paywall offers a plan choice: HOME or PRO | – | `SubscriptionPage` | Y | `/subscription` | `services/billing` | Y | – | Y | Y | Y | Y | TODO | | |
 | H-73-1 | Paywall | PRO demo is view-only; navigation allowed; any edit/action raises the PRO paywall ONLY (never a HOME offer for a PRO-only action) | – | – | Y | `/pro/*` | – | – | – | Y | Y | Y | Y | TODO | | |
@@ -198,7 +198,7 @@ Legend for yes/no columns: `Y` = yes/required, `–` = no/not required, `?` = to
 | H-81-1 | Routing | HOME subscriber opens a saved recipe in HOME; PRO subscriber in the currently selected view; demo in the current demo view with grams masked — same recipe, no copy | – | `loadRecipeInput` | Y | `/recipes` | `services/recipes` | – | – | Y | Y | Y | Y | TODO | | |
 | H-82-1 | UX | Sequential calm screen-like sections — not a dashboard, not one overloaded screen; header fixed | – | – | Y | `/` | – | – | – | Y | Y | Y | Y | TESTED | | |
 | H-82-2 | UX | Each stage normally feels like one screen but may grow; NO nested scroll areas; NOT forced to 100vh; a long ingredient list extends the document naturally | – | – | Y | `/` | – | – | – | Y | Y | Y | Y | TESTED | | |
-| H-83-1 | UX | Stage flow: intent → recipe selection if needed → profile if needed → machine if needed → live recipe → preparation after Let's make it | – | – | Y | `/` | stage machine | – | – | Y | Y | Y | Y | IMPLEMENTED | | |
+| H-83-1 | UX | Stage flow: intent → recipe selection if needed → profile if needed → machine if needed → live recipe → preparation after Let's make it | – | – | Y | `/` | stage machine | – | – | Y | Y | Y | Y | TESTED | `homeStageFlow.test.ts` -> stage sequencing incl. profile/match/machine gating (behavioural, 5 cases passed on `c66c1d01`) | |
 | H-83-2 | UX | After a CTA smoothly move to the next section; from the second stage provide a subtle Back; the user may scroll back naturally | – | – | Y | `/` | – | – | – | Y | Y | Y | Y | IMPLEMENTED | | |
 | H-83-3 | UX | No dots, no `1/7` stepper, no separate navigation menu | – | – | Y | `/` | – | – | – | Y | Y | Y | Y | TESTED | | |
 | H-84-1 | UX | Required unanswered stages cannot be skipped; forward motion comes only from an explicit CTA; completed sections may be revisited | – | – | Y | `/` | – | – | – | Y | Y | Y | Y | TESTED | | |
@@ -238,23 +238,23 @@ Legend for yes/no columns: `Y` = yes/required, `–` = no/not required, `?` = to
 | H-105-3 | QA accounts | No passwords/secrets committed to the repository; a local/staging QA credential manifest lives outside source control and the account list is given to the Owner in the final report | – | – | Y | – | – | – | – | – | – | Y | – | TODO | manifest path + `.gitignore` proof | |
 | H-106-1 | QA matrix | Verify plan matrix: ANONYMOUS (HOME+PRO demo, masked), FREE (demo + like/favourite allowed), HOME (full HOME, no PRO in header), PRO (both, default PRO), PRO-preferred-HOME (login starts HOME) | – | – | Y | `/`, `/pro/*` | – | – | – | Y | Y | Y | Y | TODO | | |
 | H-107-1 | QA DNA | Maria→Tomek→Anna: B and C both publicly read "Based on original recipe by Maria"; `View original` opens Maria's A; internal history may keep the full chain | – | – | Y | `/community` | – | Y | Y | Y | Y | Y | Y | SERVED VERIFIED | | |
-| H-107-2 | QA DNA | Repeat once with an official Gellatti recipe → user variation → "Based on original recipe by Gellatti" | – | – | Y | – | – | Y | Y | Y | Y | Y | Y | BLOCKED — AUTH | | |
+| H-107-2 | QA DNA | Repeat once with an official Gellatti recipe → user variation → "Based on original recipe by Gellatti" | – | – | Y | – | – | Y | Y | Y | Y | Y | Y | BLOCKED | | B1 - needs an authenticated staging save path; unblocks when a QA account can complete a signed-in save end to end |
 | H-108-1 | QA Partner | Publish while not Partner → no attribution; activate Partner via the legitimate staging flow; issue code/link; create future attributed activity; attribution starts only from activation/code time; earlier activity is not retroactive; no invented commission rates | – | `partnerShareAttribution` | Y | `/partner` | `services/partner` | Y | Y | – | – | Y | Y | TODO | | |
 | H-109-1 | QA social | Multiple QA users Like, Favourite, remove Like, remove Favourite, refresh, verify persistence, no duplicates, liked-by list, open profiles; no comments | – | – | Y | `/community` | – | Y | Y | Y | Y | Y | Y | TODO | | |
-| H-110-1 | QA Top100 | With 50 seeded publications verify all eligible ranking states; HOME search inspects ONLY Top100; several Community matches → highest-ranked exact match only; existing ranking authority, no second formula | – | `ranking.ts` | Y | `/top100` | – | Y | Y | Y | Y | Y | Y | TODO | | |
-| H-111-1 | Tests | Automated matching acceptance matrix: exact official only, multiple official, official+Community, Community only, no match, strict all-ingredient rejection, extra ingredient accepted+labelled, profile filter, explicit topping role, multilingual synonym, typo, ambiguous SKU resolution, existing canonical mapping, Community highest-rank, Create my own | – | – | Y | – | – | – | Y | – | – | Y | – | TODO | | |
-| H-112-1 | Tests | Machine acceptance across every supported Home machine: saved-preference skip, anonymous local preference, profile-specific batch, one container, multiple containers, manual amount, capacity guidance, recipe-only machine change, saved recipe's own machine, Professional recipe viewed in HOME without reset; no machine-science rework | – | – | Y | – | – | – | – | Y | Y | Y | Y | TODO | | |
-| H-113-1 | Tests | Recipe interaction acceptance: live Score, manual grams, Crown auto-enable, non-eligible Crown not bypassed, Crown off/on, Multi-Main, add/remove ingredient, substitute, missing ingredient, add topping, topping grams, sweetness, hidden Hardness preserved, Recalculate/Preview/Apply, name edit, Save/version, unsaved Let's make it | – | – | Y | – | – | – | – | Y | Y | Y | Y | TODO | | |
-| H-114-1 | Tests | Preparation acceptance for ≥1 valid recipe per profile: HOME preparation, same underlying Production, step continuity, TARA, process requirements, machine instructions, topping step, Rescue, completion; LOT/Label never exposed to HOME | – | – | Y | – | – | – | – | Y | Y | Y | Y | TODO | | |
-| H-115-1 | Tests | Demo/paywall acceptance from HOME demo and PRO demo; HOME paid action → HOME+PRO choice; PRO-only action → PRO-only purchase; after entitlement the same draft and same screen | – | – | Y | – | – | – | – | Y | Y | Y | Y | TODO | | |
-| H-116-1 | Tests | Anonymous continuity acceptance: refresh, close/reopen, HOME↔PRO, machine persistence, Continue card, new-recipe replacement confirmation, login adoption, purchase adoption, scanner image continuation | – | – | Y | – | – | – | – | Y | Y | Y | Y | TODO | | |
-| H-117-1 | Docs | `reports/GELLATTI_HOME_ROUTE_STATE_INVENTORY.md` lists all current and new routes/states incl. public HOME, PRO demo, HOME recipe, HOME preparation, account, plan selection, scanner gates, recipe popup, Community, profiles, liked-by modal, Admin connected pages, error/empty/loading states | – | – | Y | – | – | – | – | – | – | – | – | TODO | | |
+| H-110-1 | QA Top100 | With 50 seeded publications verify all eligible ranking states; HOME search inspects ONLY Top100; several Community matches → highest-ranked exact match only; existing ranking authority, no second formula | – | `ranking.ts` | Y | `/top100` | – | Y | Y | Y | Y | Y | Y | TODO | no Top100 seed artefacts tracked; only QA screenshots exist | |
+| H-111-1 | Tests | Automated matching acceptance matrix: exact official only, multiple official, official+Community, Community only, no match, strict all-ingredient rejection, extra ingredient accepted+labelled, profile filter, explicit topping role, multilingual synonym, typo, ambiguous SKU resolution, existing canonical mapping, Community highest-rank, Create my own | – | – | Y | – | – | – | Y | – | – | Y | – | TODO | no acceptance-matrix test file tracked on `c66c1d01` | |
+| H-112-1 | Tests | Machine acceptance across every supported Home machine: saved-preference skip, anonymous local preference, profile-specific batch, one container, multiple containers, manual amount, capacity guidance, recipe-only machine change, saved recipe's own machine, Professional recipe viewed in HOME without reset; no machine-science rework | – | – | Y | – | – | – | – | Y | Y | Y | Y | TODO | no acceptance-matrix test file tracked on `c66c1d01` | |
+| H-113-1 | Tests | Recipe interaction acceptance: live Score, manual grams, Crown auto-enable, non-eligible Crown not bypassed, Crown off/on, Multi-Main, add/remove ingredient, substitute, missing ingredient, add topping, topping grams, sweetness, hidden Hardness preserved, Recalculate/Preview/Apply, name edit, Save/version, unsaved Let's make it | – | – | Y | – | – | – | – | Y | Y | Y | Y | TODO | no acceptance-matrix test file tracked on `c66c1d01` | |
+| H-114-1 | Tests | Preparation acceptance for ≥1 valid recipe per profile: HOME preparation, same underlying Production, step continuity, TARA, process requirements, machine instructions, topping step, Rescue, completion; LOT/Label never exposed to HOME | – | – | Y | – | – | – | – | Y | Y | Y | Y | TODO | no acceptance-matrix test file tracked on `c66c1d01` | |
+| H-115-1 | Tests | Demo/paywall acceptance from HOME demo and PRO demo; HOME paid action → HOME+PRO choice; PRO-only action → PRO-only purchase; after entitlement the same draft and same screen | – | – | Y | – | – | – | – | Y | Y | Y | Y | TODO | no acceptance-matrix test file tracked on `c66c1d01` | |
+| H-116-1 | Tests | Anonymous continuity acceptance: refresh, close/reopen, HOME↔PRO, machine persistence, Continue card, new-recipe replacement confirmation, login adoption, purchase adoption, scanner image continuation | – | – | Y | – | – | – | – | Y | Y | Y | Y | TODO | no acceptance-matrix test file tracked on `c66c1d01` | |
+| H-117-1 | Docs | `reports/GELLATTI_HOME_ROUTE_STATE_INVENTORY.md` lists all current and new routes/states incl. public HOME, PRO demo, HOME recipe, HOME preparation, account, plan selection, scanner gates, recipe popup, Community, profiles, liked-by modal, Admin connected pages, error/empty/loading states | – | – | Y | – | – | – | – | – | – | – | – | IMPLEMENTED | `reports/GELLATTI_HOME_ROUTE_STATE_INVENTORY.md` present (75 lines); completeness vs every route not re-verified | |
 | H-118-1 | Process | Work in the 10 coherent phases; multiple protected PRs allowed; do not wait between phases | – | – | Y | – | – | – | – | – | – | – | – | IN PROGRESS | | |
 | H-119-1 | Tests | Heavy E2E/seed/matrix tooling behind explicit commands (`home:e2e`, `home:seed-community`, `home:acceptance`) and NOT inside ordinary `npm test` | – | `vitest.acceptance.config.ts` pattern | Y | – | `package.json` | – | – | – | – | Y | – | TESTED | | |
 | H-120-1 | Tests | Before every merge run owner-locked contracts, protected-path gate, route tests, locale tests, plan/auth tests, typecheck, lint, build, `git diff --check`; never weaken existing tests | – | `verify:staging` | Y | – | – | – | – | – | – | Y | – | TESTED | | |
 | H-121-1 | Served QA | Every merged phase verified on `staging.pinguinoai.com` (not only localhost) at 390×844 and 1440×900 with screenshots and state evidence | – | Browser pane | Y | – | – | – | – | Y | Y | – | Y | TODO | | |
 | H-122-1 | Process | After implementation re-review EVERY row: run the test, run served QA, attach evidence, mark SERVED VERIFIED or BLOCKED with the exact reason; never claim PASS without evidence; never silently omit blocked points | – | – | Y | – | – | – | – | – | – | – | – | TODO | | |
-| H-123-1 | Docs | `reports/GELLATTI_HOME_FINAL_ACCEPTANCE.md` with the full required summary (SHA, deployment IDs, bundle, routes, states, every flow, blockers) | – | – | Y | – | – | – | – | – | – | – | – | TODO | | |
+| H-123-1 | Docs | `reports/GELLATTI_HOME_FINAL_ACCEPTANCE.md` with the full required summary (SHA, deployment IDs, bundle, routes, states, every flow, blockers) | – | – | Y | – | – | – | – | – | – | – | – | TODO | `reports/GELLATTI_HOME_FINAL_ACCEPTANCE.md` ABSENT on `c66c1d01` | |
 | H-124-1 | Docs | Final report in the prescribed format | – | – | Y | – | – | – | – | – | – | – | – | TODO | | |
 | H-125-1 | Process | Do not declare completion early — completion requires all 8 listed conditions | – | – | – | – | – | – | – | – | – | – | – | TODO | | |
 
@@ -317,6 +317,82 @@ browser verification is recorded as `IMPLEMENTED`, deliberately one rung lower.
   wired to their authorities.
 
 ---
+
+## HOME-RECON-001 — ledger reconciliation (2026-09-03)
+
+Reconciled against `origin/staging` = **`f03038d0`**. Ledger base before this pass:
+`0c5763a2` (2026-08-31) — the file had not been updated while later phases merged, so
+neither the 97% quoted in conversation nor the 36% read off the stale file was true.
+
+**Active requirements: 210** (211 rows, of which one is `NOT APPLICABLE`).
+
+| Status | Count |
+| --- | --- |
+| TESTED | 82 |
+| SERVED VERIFIED | 4 |
+| IMPLEMENTED | 22 |
+| IN PROGRESS | 1 |
+| BLOCKED | 1 |
+| TODO | 100 |
+| NOT APPLICABLE (excluded) | 1 |
+
+```
+PROGRESS                = (82 + 4) / 210 = 86/210 = 41.0%
+IMPLEMENTATION COVERAGE = (22 + 82 + 4) / 210 = 108/210 = 51.4%
+```
+
+There is no longer a separate "excluding Scanner" figure, because **no Scanner row is
+`WAITING` any more.** See below.
+
+### The blanket Scanner freeze was wrong
+
+All nine Scanner rows were previously set to `WAITING_ON_EXTERNAL_SCAN_CORE` in one
+sweep. Re-checked individually, none of them is blocked by that workstream: every one is
+about the **cheap pre-check and paywall economics**, which is HOME's own work, not the
+recognition core.
+
+| ID | was | now | why |
+| --- | --- | --- | --- |
+| `H-26-1` | WAITING | TODO | no entitlement gate on scanner analysis exists |
+| `H-26-2` | WAITING | IMPLEMENTED | the "do we know this EAN" check is wired; the free/paid split is not |
+| `H-26-3` | WAITING | TODO | OCR/Vision are capped for cost — not the same as a free-tier restriction |
+| `H-27-1` | WAITING | **SERVED VERIFIED** | owner QA on canonical staging: a known product resolved immediately, no duplicate |
+| `H-27-2` | WAITING | TODO | paywall copy exists; no scanner-side gate fired during owner QA |
+| `H-28-1` | WAITING | TODO | no resume-after-purchase path keeping the same image |
+| `H-28-2` | WAITING | IMPLEMENTED | retention consent boundary exists; no served proof |
+| `H-29-1` | WAITING | TODO | the `whatIsThis` copy key is rendered nowhere |
+| `H-29-2` | WAITING | TESTED | behavioural: a barcode is never named without catalogue resolution |
+
+**PR #186 is OPEN, not merged**, and titled "DO NOT MERGE — owner review". It is therefore
+NOT attributed to staging. Proven, not assumed: three strings that exist only in #186's
+diff are absent from the served bundle, while the `61f4eab8` shared-flow markers are
+present. The owner's successful scans ran against merged, served code.
+
+### Scanner defects are tracked elsewhere — do not duplicate
+
+Orientation dependence, the missing rotation cue, raw technical statuses in the UI, the
+unclear private→PR product lifecycle and desktop camera blur are recorded in the
+**canonical SOL ledger (SOL-042 … SOL-045)** owned by a separate workstream. HOME depends
+on that ledger and must not restate those defects under its own numbering. A working read
+of an already-known product does not make the Scanner complete.
+
+### What was NOT done in this pass, and why it matters
+
+Statuses were changed only where evidence exists. The remaining `TODO` rows were **not**
+individually re-verified; they were left at the status the ledger already carried, and
+spot checks on the artefacts they name confirmed those are genuinely absent.
+
+`TESTED` was assigned only where a **behavioural** test was run in this pass and passed.
+Tests that only read source text or assert a CSS class were rejected as evidence, which is
+why several rows with passing contract tests stay `IMPLEMENTED`.
+
+### Structural findings
+
+- The four rows previously reported as "column-shifted" (`H-10-1`, `H-11-1`, `H-11-4`,
+  `H-12-2`) are **not malformed**. They contain a legal escaped pipe (`[HOME\|PRO]`)
+  inside a cell; a naive split on `|` shifted the fields. All 211 rows carry exactly 17
+  columns and 211 unique IDs. No duplicates. Nothing needed repairing in the file.
+- The count question is settled: **211 requirement rows, 210 active.**
 
 ## 3. Blockers discovered during verification
 
@@ -485,3 +561,13 @@ Reproduced on **two independent runs** (`499a3967-…`, then `1cd7a015-…`).
 | SHARE-01 | Share RPCs do not carry `product_composition` | Out of scope; a share is a different entitled read |
 | DATA-01 | 2 version-less `saved_recipes` rows on `home@home.com` from the 2026-08-30 DNA seed | Pre-existing seed artefacts, not caused by this work |
 | COPY-01 | The cap refusal says „Twoja receptura pozostała bez zmian. Spróbuj ponownie." without naming the cap | Copy change — forbidden by the visual-scope rule in this task |
+
+### B3 — the ledger stopped being maintained (found by HOME-RECON-001)
+
+`H-06-2` requires the checklist to be updated after every phase. Its last content update
+was `0c5763a2` on 2026-08-31, while phases continued to merge through 2026-09-03. The
+consequence was not cosmetic: progress was reported from conversation instead of from the
+ledger, and two different wrong numbers (97% and 36%) were quoted to the owner on the same
+day. Confirmed by `git log -1 -- reports/GELLATTI_HOME_MASTER_CHECKLIST.md` against the
+merge history of `origin/staging`. NOT fixed here beyond this reconciliation — the row
+stays `IN PROGRESS` until a phase closes with the ledger updated in the same PR.

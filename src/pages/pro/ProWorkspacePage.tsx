@@ -51,9 +51,11 @@ import { resolveCostsRepository } from '@/features/pro-core/proCoreCostsRepo';
 import type { ProCorePersona } from '@/features/pro-core/proCoreCapabilities';
 import type { CockpitTab, ProContextTab } from '@/features/pro-workbench/RecipeProfilePanel';
 import type { LabelWorkspaceView } from '@/features/master-label/LabelWorkspace';
+import {
+  labelSettingsReturn,
+  readLabelSettingsRestore,
+} from '@/features/master-label/labelSettingsNavigation';
 import { DESKTOP_TAB_STRIP } from '@/features/shell/desktopTabAnchorContract';
-import { HomeProSwitch } from '@/features/home-creator/ui/HomeProSwitch';
-import { useHomeEntitlement } from '@/features/home-creator/useHomeEntitlement';
 import { WorkbenchModuleTabs } from '@/features/pro-workbench/WorkbenchModuleTabs';
 import { ReviewBadge } from '@/features/design-review/ReviewBadge';
 import { OfficialProLogo } from '@/components/shared/OfficialProLogo';
@@ -66,8 +68,10 @@ import {
   APP_PAGE_BLOCK,
   APP_PAGE_MEASURE,
   APP_PAGE_WORKSPACE,
+  PRO_WORKBENCH_FRAME_CLASS,
 } from '@/features/shell/shellGeometry';
 import { cockpitTabFromRoute, routeForCockpitTab } from './workbenchRoute';
+import { WORKBENCH_ORIGIN_PARAM, workbenchOriginReturnPath } from './workbenchOrigin';
 import {
   ExecutableRecipeHandoffError,
   openExecutableRecipeTemplate,
@@ -142,9 +146,8 @@ function ProTopActions({ persona }: { persona: ProCorePersona }) {
       {/* The switch used to be rendered HERE, which made it conditional on
           `workbench` — true only for a signed-in PRO on a workbench tab. A
           signed-out visitor therefore saw no switch at all on /pro, breaking the
-          frozen contract. It now lives in the shell's `globalSwitch` slot, which
-          renders on every route unconditionally, so the workbar must not render a
-          second copy. */}
+          frozen contract. AppShell now owns and renders it once on every route,
+          so the workbar must not render a second copy. */}
     </div>
   );
 }
@@ -161,7 +164,7 @@ function ProWorkbenchHeaderChrome({
       /* OWNER OVERRIDE §8 — the strip belongs to the RIGHT display column, not
          to the viewport. `DESKTOP_TAB_STRIP` pins its box to that column, so
          switching Receptura → Monitor → Produkcja → Etykieta moves it 0 px. */
-      className={`hidden min-w-0 xl:block ${DESKTOP_TAB_STRIP}`}
+      className={`pro-workbench-header-section-nav min-w-0 ${DESKTOP_TAB_STRIP}`}
       data-testid="pro-global-workbench-chrome"
     >
       <WorkbenchModuleTabs
@@ -184,6 +187,8 @@ function RecipeWorkbench({
   onCloseRecalc,
   initialLabelView,
   labelViewRequestKey,
+  onOpenLabelSettings,
+  labelSettingsRestoreScrollTop,
 }: {
   activeTab: CockpitTab;
   onTabChange: (tab: CockpitTab) => void;
@@ -193,6 +198,8 @@ function RecipeWorkbench({
   onCloseRecalc: () => void;
   initialLabelView: LabelWorkspaceView;
   labelViewRequestKey: string;
+  onOpenLabelSettings: (runId: string, scrollTop: number) => void;
+  labelSettingsRestoreScrollTop?: number;
 }) {
   const draftContextSeq = useRecipeStore((state) => state.draftContextSeq);
   const [recipeSaveAttention, setRecipeSaveAttention] = useState(false);
@@ -213,6 +220,8 @@ function RecipeWorkbench({
             onOpenExistingPreview={onOpenExistingPreview}
             initialLabelView={initialLabelView}
             labelViewRequestKey={labelViewRequestKey}
+            onOpenLabelSettings={onOpenLabelSettings}
+            labelSettingsRestoreScrollTop={labelSettingsRestoreScrollTop}
           />
         </div>
       </SurfaceToneContext.Provider>
@@ -337,13 +346,14 @@ function SectionPanel({ tab, persona }: { tab: TabId; persona: ProCorePersona })
 export function ProWorkspacePage() {
   /* Unconditional, above every early return: the canonical switch renders on
      /pro for EVERY audience, so its entitlement must not sit behind a guard. */
-  const proEntitlement = useHomeEntitlement();
   const [recalcOpen, setRecalcOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const persona = useProCorePersona();
   const { section } = useParams<{ section?: string }>();
   const [searchParams] = useSearchParams();
+  const workbenchReturnPath = workbenchOriginReturnPath(searchParams.get(WORKBENCH_ORIGIN_PARAM));
+  const labelSettingsRestore = readLabelSettingsRestore(location.state);
   const userId = useAuthStore((state) => state.user?.id ?? null);
   const ownerReviewGate = useRecipeStore((state) => state.ownerReviewGate);
   const [libraryHandoff, setLibraryHandoff] = useState<
@@ -480,11 +490,15 @@ export function ProWorkspacePage() {
     // White precision workspace: presentation-only token remap. The same components,
     // values, content, actions and below-fold review zone remain intact.
     <div
-      className={`pro-studio-radius-system theme-pro-light${workbench ? ' gellatti-pro-workbench xl:h-dvh' : ''}`}
+      className={`pro-studio-radius-system theme-pro-light${workbench ? ' gellatti-pro-workbench' : ''}`}
       data-testid="pro-light-scope"
     >
       <AppShell
         viewportLock={workbench}
+        /* In workbench mode the header must share the workbench's cap, or the
+           module strip — right-aligned inside the header — lands beside the
+           display column instead of on it. Measured before this line existed:
+           the strip sat 54 px right of the column at 1440 and 149 px at 2368. */
         maxWidthClass="max-w-[1776px]"
         brand={<OfficialProLogo />}
         /* FROZEN GLOBAL CONTRACT (owner, 2026-09-02): PRO renders the SAME
@@ -493,7 +507,6 @@ export function ProWorkspacePage() {
            difference: PRO presents as the current view, HOME as the other one.
            It closes the work column beside `ProTopActions`; the module strip
            keeps the right display column untouched. */
-        globalSwitch={<HomeProSwitch entitlement={proEntitlement} activeView="pro" />}
         workbenchChrome={
           workbench ? (
             <ProWorkbenchHeaderChrome activeTab={activeCockpitTab} onTabChange={changeCockpitTab} />
@@ -530,7 +543,7 @@ export function ProWorkspacePage() {
           // ONE-SCREEN workbench (recipe + monitor): no page heading, no tab row — the
           // viewport belongs to the edit loop; every destination lives in the hamburger.
           <div
-            className="xl:mx-auto xl:flex xl:h-full xl:min-h-0 xl:w-[calc(100%-var(--pro-page-gutter))] xl:max-w-[1776px] xl:flex-col"
+            className={`${PRO_WORKBENCH_FRAME_CLASS} pro-workbench-body-frame`}
             data-testid={`pro-panel-${activeTab}`}
           >
             {activeLibraryHandoff.state === 'loading' ? (
@@ -572,6 +585,18 @@ export function ProWorkspacePage() {
                     searchParams.get('labelView') === 'settings' ? 'settings' : 'data'
                   }
                   labelViewRequestKey={location.key}
+                  labelSettingsRestoreScrollTop={labelSettingsRestore?.scrollTop}
+                  onOpenLabelSettings={(runId, scrollTop) =>
+                    navigate(`/labels?run=${encodeURIComponent(runId)}&labelView=settings`, {
+                      state: {
+                        labelSettingsReturn: labelSettingsReturn(
+                          location.pathname,
+                          location.search,
+                          scrollTop,
+                        ),
+                      },
+                    })
+                  }
                 />
               </>
             )}
@@ -581,6 +606,21 @@ export function ProWorkspacePage() {
           <>
             <div className={`${APP_PAGE_WORKSPACE} pt-8`}>
               <div className={APP_PAGE_MEASURE}>
+                {/* OWNER 2026-09-03: contextual back. It exists ONLY when this
+                    page was opened from the workbench (`?from=<section>`), and
+                    it returns to that exact section. Reached from the global
+                    hamburger there is no origin and no control — a back button
+                    implying a workbench the user never came from would be a
+                    lie. See `workbenchOrigin.ts`. */}
+                {workbenchReturnPath ? (
+                  <Link
+                    to={workbenchReturnPath}
+                    data-testid="pro-section-back"
+                    className="pro-focus-ring mb-3 -ml-1 inline-flex items-center gap-1.5 rounded-full px-1 py-0.5 text-xs font-semibold text-stone-600 transition-colors hover:text-ink"
+                  >
+                    <span aria-hidden>←</span> Wróć
+                  </Link>
+                ) : null}
                 <PageHeading eyebrow={w.eyebrow} title={`${w.title} — ${w.tabs[activeTab]}`} />
               </div>
             </div>

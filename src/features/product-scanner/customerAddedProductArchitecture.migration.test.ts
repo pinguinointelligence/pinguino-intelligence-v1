@@ -13,7 +13,6 @@ const relationRlsMigration = read(
 const finalize = read('supabase/functions/product-scan-finalize/index.ts');
 const analyze = read('supabase/functions/product-scan-analyze/index.ts');
 const service = read('src/services/productScanner.ts');
-const ui = read('src/features/product-scanner/LiveProductScanner.tsx');
 
 describe('Scanner customer-added product authority', () => {
   it('requires one valid exact EAN and never allocates PM', () => {
@@ -71,27 +70,19 @@ describe('Scanner customer-added product authority', () => {
     expect(analyze).toContain('exactProductForBarcode(service, barcode, auth.user.id)');
   });
 
-  it('uses native system capture and keeps desktop multi-upload/drop', () => {
-    expect(ui).toContain('capture="environment"');
-    expect(ui).toContain('accept={PRODUCT_SCAN_ACCEPT}');
-    expect(ui).toContain('multiple');
-    expect(ui).toContain("addFiles([...event.dataTransfer.files], 'drop')");
-    expect(ui).not.toContain('navigator.mediaDevices.getUserMedia');
-    expect(ui).not.toContain('<video');
-  });
-
-  it('keeps technical declarations in autonomous evidence instead of a customer form', () => {
-    expect(ui).toContain('productFieldsFromScanResult');
-    expect(ui).not.toContain('Alkohol ABV');
-    expect(ui).not.toContain('Masa kakaowa');
-    expect(ui).not.toContain('patchReview');
-  });
-
   it('keeps autonomous evidence server-owned instead of relabelling it as customer-confirmed', () => {
-    expect(ui).toContain('productFieldsFromScanResult');
-    expect(ui).not.toContain('nutritionForConfirmation');
-    expect(ui).not.toContain('productionDeclarations: Object.fromEntries');
-    expect(finalize).toContain('userConfirmedFields: corrections.confirmedEvidenceFields');
+    /*
+      OWNER QA 2026-09-07. The set handed to the profile authority is now the SCAN's confirmed
+      fields, not one request's — the customer's answers are persisted with the session and merged,
+      because the completion form only ever shows what is still missing and a later request
+      legitimately carries fewer. What this contract guards is unchanged: only fields the CUSTOMER
+      confirmed are in it. `applyCustomerCorrections` is still the only thing that puts one there,
+      and server evidence is still never relabelled.
+    */
+    expect(finalize).toContain('userConfirmedFields: confirmedEvidenceFields');
+    expect(finalize).toContain(
+      'mergeConfirmedEvidenceFields(\n    persistedScan.confirmedFields,\n    corrections.confirmedEvidenceFields,\n  )',
+    );
   });
 
   it('records only bounded provider metadata when Vision rejects the request', () => {

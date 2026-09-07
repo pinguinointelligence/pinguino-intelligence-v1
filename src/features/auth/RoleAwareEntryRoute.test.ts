@@ -39,9 +39,31 @@ describe('role-aware login and ordinary entry routing', () => {
 
   it('sends Pro to the existing canonical Pro recipe workspace, never Admin', () => {
     const pro = access({ canPro: true, exactGrams: true, professionalScaling: true });
-    for (const entry of ['root', 'start', 'home'] as const) {
+    // SUPERSEDED for `home` — 2026-09-02. `home` was in this list, which meant a PRO
+    // subscriber could not reach HOME by ANY route: the always-visible HOME segment
+    // (owner §11B) navigates there and was bounced straight back. Confirmed served.
+    for (const entry of ['root', 'start'] as const) {
       expect(destination(entry, pro)).toBe('/pro/recipe');
     }
+  });
+
+  it('lets a PRO subscriber reach HOME, because `/home` asks for it explicitly', () => {
+    const pro = access({ canPro: true, exactGrams: true, professionalScaling: true });
+    // The account default answers the AMBIGUOUS entries; it must not override a
+    // customer who explicitly asked for HOME.
+    expect(destination('home', pro)).toBeNull();
+    expect(
+      roleAwareEntryDestination({
+        entry: 'home',
+        authStatus: 'authed',
+        effectiveAccess: access({ canPro: true, exactGrams: true, professionalScaling: true }),
+        defaultExperience: 'pro',
+      }),
+    ).toBeNull();
+  });
+
+  it('still sends an Admin to Admin even when HOME is asked for explicitly', () => {
+    expect(destination('home', access({ canAdmin: true }))).toBe(ADMIN_OVERVIEW_PATH);
   });
 
   /**

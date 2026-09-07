@@ -186,9 +186,8 @@ describe.each([['1366×768'], ['1440×900'], ['1920×1080']])(
     it(`body never scrolls during normal editing — ${label}`, () => {
       const html = renderAt('/pro/recipe');
       // The shell root locks to the viewport on desktop; main is the one scroll surface.
-      expect(html).toContain('xl:h-dvh');
-      expect(html).toContain('xl:overflow-hidden');
-      expect(html).toContain('xl:overflow-hidden');
+      expect(html).toContain('pro-workbench-shell-lock');
+      expect(html).toContain('pro-workbench-main-lock');
       // The viewport region fills main exactly; the split consumes the space left by the
       // workbar instead of relying on a brittle viewport subtraction.
       expect(html).toContain('data-testid="pro-viewport-region"');
@@ -229,7 +228,10 @@ describe('the 10-step no-scroll flow — every edit-loop control inside the view
     inViewport('data-testid="workbench-product-type"');
     inViewport('data-testid="workbench-strategy"');
     inViewport('data-testid="workbench-serving"');
-    inViewport('data-testid="workbench-batch"');
+    // SUPERSEDED, owner authority 2026-09-02 (final Settings contract): the
+    // target-batch field is removed from Settings and must not be recreated
+    // anywhere, so there is nothing left to keep in the viewport. The other
+    // controls in this list still carry the contract.
     inViewport('data-testid="ingredient-rows-scroll"');
     inViewport('data-testid="ingredient-add-slot"');
     inViewport('data-testid="ingredient-action-slot"');
@@ -412,12 +414,20 @@ describe('recalculation overlay', () => {
 
   it('renders as a fixed compact dialog (520–720 px), with Zastosuj/Anuluj inside', () => {
     const src = read('features', 'pro-core', 'ProRecalcPanel.tsx');
-    expect(src).toContain('data-testid="pro-recalc-overlay"');
-    expect(src).toContain('fixed inset-0');
-    expect(src).toContain('w-[min(680px,calc(100vw-1.5rem))]'); // compact desktop, safe mobile gutter
-    expect(src).toContain('role="dialog"');
+    const dialog = read('components', 'ui', 'DialogShell.tsx');
+    expect(src).toContain('testId="pro-recalc-overlay"');
+    expect(src).toContain('<DialogShell');
+    expect(dialog).toContain('fixed inset-0');
+    // The width is no longer typed here. `size="wide"` is the canonical 680 px
+    // member of the shell's size family — still inside this test's 520–720
+    // band, but stated once in `DialogShell` instead of competing with the
+    // shell's own `w-[min(520px,94vw)]` through `panelClassName`.
+    expect(src).toContain('size="wide"');
+    expect(dialog).toContain("wide: 'sm:w-[min(680px,94vw)]'");
+    expect(dialog).toContain("wide: 'w-[min(680px,94vw)]'");
+    expect(dialog).toContain('role="dialog"');
     // Apply closes the overlay ONLY on success (blocked apply keeps the honest notice).
-    expect(src).toContain('after.preview === null && after.blocked === null');
+    expect(src).toContain('after.postApplyNotice === null');
     expect(src).toContain('applyPreviewWithServerAuthority');
     expect(src).not.toContain('store.applyPreview()');
   });
@@ -478,7 +488,7 @@ describe('no unrelated module removal across the split surface files', () => {
     expect(actionBar).toContain('excludedIngredientIds');
     expect(actionBar).toContain('machine_capacity_source: machineCapacitySource');
     // Desktop aside + mobile sheet are intentional responsive variants.
-    expect(surface).toContain('xl:hidden');
+    expect(surface).toContain('pro-workbench-mobile-only');
     expect(surface).toContain('hidden min-h-0');
   });
 

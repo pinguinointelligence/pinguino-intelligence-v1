@@ -70,6 +70,7 @@ describe('computeRecipeCosts', () => {
     const items = effective(makeItem('known', 2, 500), makeItem('unknown', null, 500));
     const costs = computeRecipeCosts(items, 1000);
     expect(costs.complete).toBe(false);
+    expect(costs.known_cost).toBeCloseTo(1, 10);
     expect(costs.total_cost).toBeNull();
     expect(costs.cost_per_kg).toBeNull();
     expect(costs.cost_per_serving_60g).toBeNull();

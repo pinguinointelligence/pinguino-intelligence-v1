@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { act } from 'react';
+import { MemoryRouter, Route, Routes } from 'react-router';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -62,14 +63,23 @@ describe('ProWorkbar new-recipe confirmation', () => {
   let root: ReturnType<typeof createRoot>;
 
   beforeEach(async () => {
-    (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean })
-      .IS_REACT_ACT_ENVIRONMENT = true;
+    (
+      globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
+    ).IS_REACT_ACT_ENVIRONMENT = true;
     mocks.hasUnsaved.mockReset();
     mocks.start.mockReset();
     host = document.createElement('div');
     document.body.append(host);
     root = createRoot(host);
-    await act(async () => root.render(<ProWorkbar />));
+    await act(async () =>
+      root.render(
+        <MemoryRouter initialEntries={['/pro/recipe']}>
+          <Routes>
+            <Route path="/pro/:section" element={<ProWorkbar />} />
+          </Routes>
+        </MemoryRouter>,
+      ),
+    );
   });
 
   afterEach(async () => {
@@ -89,7 +99,7 @@ describe('ProWorkbar new-recipe confirmation', () => {
 
     expect(mocks.start).toHaveBeenCalledTimes(1);
     expect(mocks.start).toHaveBeenCalledWith('gelato');
-    expect(host.querySelector('[role="dialog"]')).toBeNull();
+    expect(document.body.querySelector('[role="dialog"]')).toBeNull();
   });
 
   it('shows the exact confirmation copy and cancels or confirms an unsaved draft', async () => {
@@ -97,17 +107,21 @@ describe('ProWorkbar new-recipe confirmation', () => {
 
     await click(host.querySelector('[data-testid="pro-workbar-new-recipe"]'));
     expect(mocks.start).not.toHaveBeenCalled();
-    expect(host.textContent).toContain('Rozpocząć nową recepturę?');
-    expect(host.textContent).toContain(
+    expect(document.body.textContent).toContain('Rozpocząć nową recepturę?');
+    expect(document.body.textContent).toContain(
       'Niezapisane zmiany w bieżącej recepturze zostaną usunięte.',
     );
 
-    await click(Array.from(host.querySelectorAll('button')).find((button) => button.textContent === 'Anuluj') ?? null);
-    expect(host.querySelector('[role="dialog"]')).toBeNull();
+    await click(
+      Array.from(document.body.querySelectorAll('button')).find(
+        (button) => button.textContent === 'Anuluj',
+      ) ?? null,
+    );
+    expect(document.body.querySelector('[role="dialog"]')).toBeNull();
     expect(mocks.start).not.toHaveBeenCalled();
 
     await click(host.querySelector('[data-testid="pro-workbar-new-recipe"]'));
-    await click(host.querySelector('[data-testid="confirm-new-recipe"]'));
+    await click(document.body.querySelector('[data-testid="confirm-new-recipe"]'));
     expect(mocks.start).toHaveBeenCalledTimes(1);
   });
 });

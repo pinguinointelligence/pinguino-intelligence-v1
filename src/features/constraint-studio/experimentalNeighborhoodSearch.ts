@@ -35,6 +35,11 @@ import {
   normalizeFormulationStrategy,
   type FormulationStrategy,
 } from '@/features/formulation-strategy/strategy';
+import {
+  isActiveHomeFormulationPreference,
+  type HomeFormulationModuleId,
+} from '@/features/machine-catalog';
+import { evaluateHomeFormulationPreference } from './homeFormulationPreference';
 
 const EPSILON = 1e-9;
 /** Direction severity is normalized by target-band half-width. Differences
@@ -58,6 +63,8 @@ export interface ExperimentalSearchOptions {
   effectivePriceOverrides?: CustomerPriceIndex;
   /** Optional read-only ProductBehavior/stage authority supplied by a harness. */
   externalHardGate?: (candidate: RecipeInput) => boolean;
+  /** Machine default, ranked below hard safety, explicit Direction and Crown. */
+  homeFormulationModuleId?: HomeFormulationModuleId | null;
 }
 
 export interface ExperimentalCandidateMeasure {
@@ -67,6 +74,8 @@ export interface ExperimentalCandidateMeasure {
   explicitTargetViolationCount: number;
   explicitTargetSeverityPoints: number;
   crownGrams: number;
+  homeModulePreferenceDistance: number | null;
+  homeModuleTargetNpac: number | null;
   absoluteTotalMovementGrams: number;
   normalizedDistanceFromUser: number;
   maximumSingleLineDeltaGrams: number;
@@ -164,7 +173,10 @@ export function evaluateExperimentalCandidate(
   baseline: RecipeInput,
   candidate: RecipeInput,
   set: ConstraintSet,
-  options: Pick<ExperimentalSearchOptions, 'externalHardGate' | 'effectivePriceOverrides'> = {},
+  options: Pick<
+    ExperimentalSearchOptions,
+    'externalHardGate' | 'effectivePriceOverrides' | 'homeFormulationModuleId'
+  > = {},
 ): ExperimentalCandidateMeasure {
   const pricedCandidate = applyEffectiveCustomerPrices(
     candidate,
@@ -204,6 +216,9 @@ export function evaluateExperimentalCandidate(
     hardRolePresencePreserved(baseline, candidate) &&
     (options.externalHardGate?.(candidate) ?? true);
   const cost = result.costs?.complete === true ? result.costs.cost_per_kg : null;
+  const homePreference = options.homeFormulationModuleId
+    ? evaluateHomeFormulationPreference(candidate, options.homeFormulationModuleId, result)
+    : null;
   return {
     structurallyAdmissible,
     hardViolationCount: nativeViolations.length + profileViolationCount,
@@ -216,6 +231,8 @@ export function evaluateExperimentalCandidate(
       0,
     ),
     crownGrams,
+    homeModulePreferenceDistance: homePreference?.distance ?? null,
+    homeModuleTargetNpac: homePreference?.targetNpac ?? null,
     ...vectorDiagnostics(baseline, candidate),
     optimalSecondaryScore: result.scores?.overall ?? null,
     ecoSecondaryCostPerKg: cost,
@@ -251,6 +268,10 @@ export function compareExperimentalCandidateMeasures(
   // Crown is an explicit user request and therefore precedes proximity.
   compared = compareNumber(right.crownGrams, left.crownGrams);
   if (compared !== 0) return compared;
+  if (left.homeModulePreferenceDistance !== null && right.homeModulePreferenceDistance !== null) {
+    compared = compareNumber(left.homeModulePreferenceDistance, right.homeModulePreferenceDistance);
+    if (compared !== 0) return compared;
+  }
   compared = compareNumber(left.normalizedDistanceFromUser, right.normalizedDistanceFromUser);
   if (compared !== 0) return compared;
   if (strategy === 'eco') {
@@ -382,7 +403,8 @@ export function experimentalNeighborhoodSearch(
     initial.structurallyAdmissible &&
     initial.hardViolationCount === 0 &&
     !hasExplicitDirection &&
-    mainIntent.length === 0
+    mainIntent.length === 0 &&
+    !isActiveHomeFormulationPreference(options.homeFormulationModuleId)
   ) {
     return { status: 'no_change', input: baseline, measure: initial, diagnostics: diagnostics() };
   }

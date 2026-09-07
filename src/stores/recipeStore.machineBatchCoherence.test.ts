@@ -48,7 +48,7 @@ const select = (profile: HomeMachineProfile) => {
     label: machineDisplayName(profile),
     temperatureC: profile.resolvedVisibleMode === 'ninja_gelato' ? -13 : -11,
     batchGrams: setup.recommendedBatchGrams,
-    capacityGrams: setup.recommendedBatchGrams,
+    hardCapacityGrams: setup.hardMaximumBatchGrams,
     batchSource: 'MACHINE_DEFAULT',
   });
 };
@@ -101,14 +101,14 @@ describe('canonical machine/manual batch coherence', () => {
       [MOULINEX_FREEZI_MJ803AF0, 950],
       [SAGE_SMART_SCOOP_BCI600, 950],
       [MAGIMIX_GELATO_EXPERT, 950],
-      [CUISINART_ICE100E, 1430],
+      [CUISINART_ICE100E, 950],
       [KITCHENAID_5KSMICM, 1330],
       [CUISINART_ICE21E, 1330],
-      [CUISINART_ICE30BCE, 1900],
+      [CUISINART_ICE30BCE, 1430],
     ] as const) {
       expect(select(profile)).toEqual({ ok: true });
       expectCoherent(grams, 'MACHINE_DEFAULT');
-      expect(useRecipeStore.getState().machine_capacity_grams).toBe(grams);
+      expect(useRecipeStore.getState().machine_capacity_grams).toBeNull();
     }
   });
 
@@ -159,10 +159,10 @@ describe('canonical machine/manual batch coherence', () => {
 
   it('keeps machine working batch fixed and derives three informational cycles for 1000 g', () => {
     select(NINJA_CREAMI_NC302EU);
-    expect(useRecipeStore.getState().machine_capacity_grams).toBe(450);
+    expect(useRecipeStore.getState().machine_capacity_grams).toBeNull();
     expect(useRecipeStore.getState().setBatchGrams(1000)).toEqual({ ok: true });
     expectCoherent(1000, 'USER_OVERRIDE');
-    expect(useRecipeStore.getState().machine_capacity_grams).toBe(450);
+    expect(useRecipeStore.getState().machine_capacity_grams).toBeNull();
     expect(planContainerSplit(1000, 450)).toEqual({
       containers: 3,
       gramsPerContainer: 333.3,
@@ -179,7 +179,7 @@ describe('canonical machine/manual batch coherence', () => {
       label: 'Własna maszyna',
       temperatureC: -11,
       batchGrams: null,
-      capacityGrams: null,
+      hardCapacityGrams: null,
       machineTechnology: 'compressor',
     });
     expect(selected).toEqual({ ok: true });
@@ -194,7 +194,7 @@ describe('canonical machine/manual batch coherence', () => {
       { ok: true },
     );
     expectCoherent(700, 'CUSTOM_MACHINE_BATCH');
-    expect(useRecipeStore.getState().machine_capacity_grams).toBe(700);
+    expect(useRecipeStore.getState().machine_capacity_grams).toBeNull();
 
     const persisted = JSON.parse(
       JSON.stringify(recipePersistPartialize(useRecipeStore.getState())),
@@ -213,7 +213,7 @@ describe('canonical machine/manual batch coherence', () => {
       machineId: 'custom-unspecified',
       machineLabel: 'Własna maszyna',
       machineTechnology: 'compressor',
-      machine_capacity_grams: 700,
+      machine_capacity_grams: null,
     });
     expect(
       machineEducationForSelection(

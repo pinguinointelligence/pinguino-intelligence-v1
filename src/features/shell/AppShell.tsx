@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Link } from 'react-router';
+import { Link, useLocation } from 'react-router';
 import { OfficialProLogo } from '@/components/shared/OfficialProLogo';
 import { copy } from '@/copy/en';
 import { DesignReviewOverlay } from '@/features/design-review/ReviewOverlay';
@@ -10,7 +10,11 @@ import { useAuthStore } from '@/stores/authStore';
 import { AppNavDrawer } from './AppNavDrawer';
 import { navigationAudience } from './appNav';
 import { DESKTOP_WORKBENCH_COLUMNS } from './desktopTabAnchorContract';
-import { APP_HEADER_ROW, APP_SHELL_MAX_WIDTH_CLASS } from './shellGeometry';
+import { APP_HEADER_CANVAS, APP_HEADER_ROW, APP_SHELL_MAX_WIDTH_CLASS } from './shellGeometry';
+import { HomeProSwitch } from '@/features/home-creator/ui/HomeProSwitch';
+import { useHomeEntitlement } from '@/features/home-creator/useHomeEntitlement';
+import { useApplicationScaleAuthority } from './applicationScaleAuthority';
+import { AppHeaderAccountSlot } from './AppHeaderAccountSlot';
 
 /**
  * THE ONE canonical application shell.
@@ -27,13 +31,14 @@ import { APP_HEADER_ROW, APP_SHELL_MAX_WIDTH_CLASS } from './shellGeometry';
  * TRAILING PLAN BADGE placement; the drawer never moves side, because a control
  * that opens a panel away from itself reads as two unrelated things.
  *
- * An optional `actions` slot holds PAGE-specific controls (e.g. „Zapisz
- * recepturę") — never global navigation. Page content is the children; a page
- * may render its own technical body inside while still wearing this one header.
+ * `AppShell` owns the single HOME | PRO switch and derives its active state
+ * from the route. An optional `actions` slot holds PAGE-specific controls
+ * (e.g. „Zapisz recepturę") — never global navigation. Page content is the
+ * children; a page may render its own technical body inside while still
+ * wearing this one header.
  */
 export function AppShell({
   actions,
-  globalSwitch,
   brand,
   workbenchChrome,
   children,
@@ -44,19 +49,6 @@ export function AppShell({
   stickyHeader = false,
 }: {
   actions?: ReactNode;
-  /**
-   * THE canonical HOME | PRO switch, and nothing else.
-   *
-   * FROZEN GLOBAL CONTRACT (owner, 2026-09-02): every global product surface
-   * renders hamburger + official wordmark + HOME | PRO. The switch had been
-   * arriving through `actions`, which the workbench branch places inline and the
-   * mobile branch hides — so PRO rendered none at all. It now has its own slot,
-   * closing the work column on EVERY route including the workbench, so it cannot
-   * disappear on one surface again.
-   *
-   * `actions` stays what it always was: PAGE controls.
-   */
-  globalSwitch?: ReactNode;
   /** Optional page-owned lockup. The shared Gellatti wordmark is the default. */
   brand?: ReactNode;
   /** Route-controlled intelligence status and module tabs for the Pro workbench. */
@@ -80,7 +72,10 @@ export function AppShell({
    */
   stickyHeader?: boolean;
 }) {
+  useApplicationScaleAuthority();
   const persona = useProCorePersona();
+  const location = useLocation();
+  const entitlement = useHomeEntitlement();
   const capabilities = proCoreCapabilitiesFor(persona);
   const authStatus = useAuthStore((state) => state.status);
   const devMemberPreview = import.meta.env.DEV && persona !== 'demo';
@@ -90,13 +85,18 @@ export function AppShell({
     canUseProductionMode: capabilities.canUseProductionMode,
   });
   const brandDestination = audience === 'pro' ? '/pro/recipe' : audience === 'home' ? '/home' : '/';
+  const activeView = location.pathname.startsWith('/pro')
+    ? 'pro'
+    : location.pathname === '/' || location.pathname === '/home' || location.pathname === '/start'
+      ? 'home'
+      : null;
 
   return (
     <div
       className={cn(
         'gellatti-application pro-studio-radius-system theme-pro-light min-h-screen bg-paper text-ink',
         navigationPosition === 'trailing' && 'gellatti-destination-shell',
-        viewportLock && 'xl:flex xl:h-dvh xl:min-h-0 xl:flex-col xl:overflow-hidden',
+        viewportLock && 'pro-workbench-shell-lock',
       )}
     >
       <header
@@ -110,7 +110,13 @@ export function AppShell({
              the viewport (`h-dvh`, no page scroll) — correct for the workbench, wrong
              for HOME's long sequential document. Geometry is shared; scroll behaviour
              stays each page's own. */
-          `xl:grid ${DESKTOP_WORKBENCH_COLUMNS}`,
+          /* OWNER 2026-09-02 (option A): the two-track grid moved OFF the header row
+             and into the centred band below. The row itself is the page's full
+             width on every route, so the hamburger, the wordmark and the login sit
+             on the same pixels everywhere — 32 / 96 / 32 px, measured identically
+             on Shop and PRO — instead of being dragged inward by whatever canvas
+             the surface beneath happens to use. */
+          'app-shell-header-row',
           stickyHeader && 'sticky top-0 z-40 bg-paper',
         )}
         /* The notch inset stays at every width; its FLOOR is a token so the
@@ -125,7 +131,12 @@ export function AppShell({
         <div
           className={cn(
             'flex min-w-0 items-center gap-3 sm:gap-5',
-            'xl:col-start-1 xl:row-start-1',
+            // Owner, mobile: the header row is `justify-between` with a single child on
+            // a phone, so this slot was content-width and `ml-auto` stopped 74 px short
+            // of the edge. Growing it below `sm` lets the switch reach the right gutter.
+            // Deliberately NOT applied from `sm` up — the desktop header keeps the
+            // geometry it was frozen with.
+            'max-sm:flex-1',
           )}
         >
           <AppNavDrawer />
@@ -139,8 +150,17 @@ export function AppShell({
           {/* The workbench's page actions carry `flex-1`, which used to consume the
               header row's free space and drag the switch 135 px off the column edge.
               Containing them here keeps that growth inside their own box, so the
-              switch still closes the column. Their internal layout is unchanged. */}
-          {viewportLock ? <div className="flex min-w-0 items-center">{actions}</div> : null}
+              switch still closes the column. Their internal layout is unchanged.
+
+              `hidden xl:flex`, not a bare `flex`: below the workbench breakpoint every
+              child of `ProTopActions` is itself hidden, so this box rendered at zero
+              width — but a zero-width FLEX ITEM still takes a gap. Served staging
+              measured the authenticated workbench's switch exactly one gap right of
+              every destination's: +12 px at 390 (`gap-3`) and +20 px at 768
+              (`sm:gap-5`). Removing the empty item removes the gap with it. */}
+          {actions ? (
+            <div className="pro-workbench-desktop-only min-w-0 items-center">{actions}</div>
+          ) : null}
           {/* The TRAILING EDGE of the work column — never the viewport edge — so the
               switch keeps one global x whether or not the right display column is
               occupied. Rendered on EVERY route, workbench included: the workbench
@@ -156,18 +176,57 @@ export function AppShell({
               still occupies the accessibility tree: served measurement on 8dd11c9b
               found a zero-width tablist, so a screen reader met two HOME and two PRO
               tabs. Visual exclusivity is not exclusivity. */}
-          <div className="ml-auto flex items-center gap-2 sm:gap-3">
-            {/* Page actions first, the switch LAST: HOME | PRO closes the work
-                column, so nothing may sit between it and the column edge. */}
-            {!viewportLock ? actions : null}
-            {globalSwitch}
-          </div>
         </div>
-        {viewportLock ? workbenchChrome : null}
+
+        {/* HOME | PRO stays on the WORKBENCH's column edge — the same x on Shop,
+            HOME and every destination, not each page's own trailing edge. That
+            edge exists inside the shared, centred frame; the two-track grid also
+            keeps the module strip on the display column.
+
+            `contents` below the structural breakpoint, an absolutely centred grid
+            above it — ONE instance of the switch either way. Rendering a second copy and
+            hiding it with `xl:hidden` is exactly the trap the note above
+            describes: a CSS-hidden control still sits in the accessibility tree.
+
+            `pointer-events-none` on the band with `pointer-events-auto` on its own
+            controls: the band spans the row, and without this it would sit over
+            the hamburger and the login and swallow their clicks. */}
+        <div className={cn('contents', APP_HEADER_CANVAS, DESKTOP_WORKBENCH_COLUMNS)}>
+          <div className="pro-workbench-header-primary pointer-events-auto ml-auto flex min-w-0 items-center gap-2 sm:gap-3">
+            <HomeProSwitch entitlement={entitlement} activeView={activeView} />
+          </div>
+          {/* OWNER QA 2026-09-03 — REGRESSION FIX. The header canvas is
+              `pointer-events-none` so the transparent band cannot swallow
+              clicks meant for the page beneath it; every real control inside it
+              has to opt back in. The HOME | PRO group did. The module tab strip
+              never did, so Receptura / Monitor / Produkcja / Etykieta rendered
+              perfectly and were completely dead to the mouse — measured:
+              `pointer-events: none`, and `elementFromPoint` on each tab's own
+              centre returned the HEADER, not the tab.
+
+              Opting in here rather than inside the strip keeps the rule where
+              the canvas is declared: anything placed on this canvas is inert
+              until this file says otherwise. */}
+          {viewportLock ? (
+            <div
+              className="pro-workbench-header-chrome pointer-events-auto contents"
+              data-testid="app-header-workbench-chrome"
+            >
+              {workbenchChrome}
+            </div>
+          ) : null}
+        </div>
+
+        {/* OWNER 2026-09-02: the account closes the row at the same inset the
+            hamburger opens it, so the header reads as one symmetrical band on
+            every route. It sits OUTSIDE the centred band on purpose — the band is
+            absolutely positioned from `xl` up and would otherwise carry the login
+            inward with it. It reads the exact same auth identity as the drawer:
+            a live account links to Konto, anonymous opens the canonical auth
+            modal. */}
+        <AppHeaderAccountSlot />
       </header>
-      <main
-        className={cn(contentClassName, viewportLock && 'xl:min-h-0 xl:flex-1 xl:overflow-hidden')}
-      >
+      <main className={cn(contentClassName, viewportLock && 'pro-workbench-main-lock')}>
         {children}
       </main>
     </div>

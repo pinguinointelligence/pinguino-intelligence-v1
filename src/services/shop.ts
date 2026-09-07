@@ -67,9 +67,20 @@ export interface ShopOrderItem {
   isPreorder: boolean;
 }
 
+/** How an order is fulfilled. A parcel and a PDF answer different questions. */
+export type ShopOrderType = 'PHYSICAL' | 'LOCAL_STARTER_PACK';
+
 export interface ShopOrder {
   id: string;
   orderNumber: string;
+  orderType: ShopOrderType;
+  /** Set only for LOCAL_STARTER_PACK. */
+  localPackCountry: string | null;
+  /** Whether a snapshot exists to regenerate the PDF from. */
+  localPackReady: boolean;
+  /** Delivery state of the notification mail, from `email_jobs`. Never a
+   *  second stored copy, and never shown to the customer as a raw code. */
+  localPackEmailStatus: string | null;
   status: ShopOrderStatus;
   fulfillmentStatus: ShopFulfillmentStatus;
   containsPreorder: boolean;
@@ -111,10 +122,18 @@ export async function startShopCheckout(input: {
   items: readonly ShopCheckoutLine[];
   successUrl: string;
   cancelUrl: string;
+  /** The country chosen in the Shop. The function resolves ITS rate server-side
+   *  — this names a destination, never a price. */
+  countryIso2: string;
 }): Promise<{ url: string; orderId: string; orderNumber: string }> {
   if (!supabase) return unavailable();
   const { data, error } = await supabase.functions.invoke('shop-checkout', {
-    body: { items: input.items, successUrl: input.successUrl, cancelUrl: input.cancelUrl },
+    body: {
+      items: input.items,
+      successUrl: input.successUrl,
+      cancelUrl: input.cancelUrl,
+      countryIso2: input.countryIso2,
+    },
   });
   if (error) {
     const detail = await error.context?.text?.().catch(() => null);
@@ -211,6 +230,10 @@ export interface PaymentReference {
 }
 
 export interface AdminShopOrder extends ShopOrder {
+  /** From the shipping authority. Null when no cost is recorded — margin is
+   *  shown only where a cost genuinely exists, never inferred. */
+  carrier?: string | null;
+  carrierCostCents?: number | null;
   email: string;
   userId: string | null;
   cancelledAt: string | null;

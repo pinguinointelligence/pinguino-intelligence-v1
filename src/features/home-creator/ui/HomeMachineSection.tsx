@@ -33,6 +33,7 @@ export function HomeMachineSection({
   recommendedBatchGrams,
   onSelectMachine,
   onOtherMachine,
+  onCancelChange,
   onAmountChange,
   onChangeMachine,
   onDone,
@@ -43,6 +44,12 @@ export function HomeMachineSection({
   recommendedBatchGrams: number | null;
   onSelectMachine: (machine: HomeMachineProfile) => void;
   onOtherMachine: () => void;
+  /**
+   * Leave the chooser without changing anything. Offered only when there IS a machine
+   * to go back to — a first-time choice has no previous state to restore, so it stays
+   * a plain question.
+   */
+  onCancelChange?: () => void;
   onAmountChange: (amount: HomeAmount) => void;
   onChangeMachine: () => void;
   onDone: () => void;
@@ -98,6 +105,19 @@ export function HomeMachineSection({
               </span>
             </button>
           </div>
+          {/* Served: „Zmień" opened this list with no way out, so the only exit was to
+              pick something. A change the customer started must also be abandonable. */}
+          {onCancelChange && view.label !== null ? (
+            <button
+              type="button"
+              onClick={onCancelChange}
+              data-testid="home-machine-cancel-change"
+              className="mt-3 min-h-[44px] rounded-full border px-4 text-[13px] focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
+              style={{ borderColor: 'var(--g-line)', color: 'var(--g-ink)' }}
+            >
+              {homeCreatorCopy.draft.cancel}
+            </button>
+          ) : null}
         </>
       ) : (
         <>

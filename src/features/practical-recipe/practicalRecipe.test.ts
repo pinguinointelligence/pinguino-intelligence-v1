@@ -188,21 +188,55 @@ describe('Pro practical whole-gram recipe', () => {
     expect(result.audit.executableTotalGrams).toBe(1000);
   });
 
-  it('blocks a Multi-Main ratio that has no adjacent whole-gram representation', () => {
+  it('uses the canonical whole-gram Main allocation when adjacent rounding cannot preserve the ratio', () => {
     const exact = structuredClone(ownerSameInputRecipe());
     const milk = exact.items.find((item) => item.id === 'owner:milk_3_5')!;
     const cream = exact.items.find((item) => item.id === 'owner:cream_30')!;
-    const inulin = exact.items.find((item) => item.id === 'owner:inulin')!;
     milk.lock_type = 'main';
     cream.lock_type = 'main';
+    cream.ingredient = {
+      ...milk.ingredient,
+      id: 'owner:second-milk-main',
+      canonical_ingredient_id: 'owner:second-milk-main',
+      name: 'Drugie mleko Main',
+    };
+    milk.main_ratio_weight = 1;
+    cream.main_ratio_weight = 1;
     milk.planned_grams = 100.2;
-    cream.planned_grams = 141.7;
-    inulin.planned_grams = 547.1;
+    cream.planned_grams = 634.8;
 
     const result = practicalizeRecipeCandidate(exact, NONE);
+    expect(result.ok, result.ok ? '' : `${result.code}: ${result.messagePl}`).toBe(true);
+    if (!result.ok) return;
+    expect(
+      result.audit.executableInput.items
+        .filter((item) => item.lock_type === 'main')
+        .map((item) => item.planned_grams),
+    ).toEqual([368, 367]);
+    expect(result.audit.executableTotalGrams).toBe(1000);
+  });
+
+  it('still refuses a genuinely impossible Main allocation that would zero a Crown line', () => {
+    const exact = structuredClone(ownerSameInputRecipe());
+    const milk = exact.items.find((item) => item.id === 'owner:milk_3_5')!;
+    const cream = exact.items.find((item) => item.id === 'owner:cream_30')!;
+    milk.lock_type = 'main';
+    cream.lock_type = 'main';
+    milk.main_ratio_weight = 1;
+    cream.main_ratio_weight = 1;
+    milk.planned_grams = 600;
+    cream.planned_grams = 135;
+
+    const result = practicalizeRecipeCandidate(exact, {
+      byLineId: {
+        [milk.id]: { mode: 'locked', grams: 735 },
+        [cream.id]: { mode: 'range', minGrams: 0, maxGrams: 0 },
+      },
+    });
     expect(result).toMatchObject({
       ok: false,
       code: 'main_ratio_not_whole_gram_representable',
+      lineIds: [milk.id, cream.id],
     });
   });
 

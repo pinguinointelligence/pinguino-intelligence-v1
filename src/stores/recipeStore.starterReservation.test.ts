@@ -15,11 +15,14 @@
  *
  *     sum(lines) + missingMainMassGrams === target batch
  *
- * Complete recipes (`missingMainMassGrams === 0`) keep the old semantics exactly.
+ * Complete recipes (`missingMainMassGrams === 0`) still fill the batch exactly.
+ * SOL-041 permits only the stabilizer role to move onto its executable whole-
+ * gram hold; the relative mathematics of every ordinary line stays unchanged.
  * The discriminator is the reservation, never `productType === 'sorbet'`.
  */
 import { describe, expect, it } from 'vitest';
 import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
+import { findDemoIngredient } from '@/data/demoIngredients';
 import {
   NINJA_CREAMI_DELUXE_NC502EU,
   MACHINE_CATALOG,
@@ -52,6 +55,12 @@ const isStabilizer = (item: { ingredient: unknown }) =>
  *  defect turned ~40 % into 100 %. A whole-gram stabilizer pin moves it by well
  *  under a percentage point at any batch size. */
 const SHARE_TOLERANCE = 0.01;
+const STRAWBERRIES = {
+  ...findDemoIngredient('raspberry')!,
+  id: 'PI-ING-001553',
+  canonical_ingredient_id: 'PI-ING-001553',
+  name: 'STRAWBERRIES · Fresh Fruit',
+};
 
 /** The customer's real route: a new Sorbet, then they pick their machine. */
 const newSorbetThenMachine = (profile: (typeof MACHINE_CATALOG)[number]) => {
@@ -65,7 +74,7 @@ const newSorbetThenMachine = (profile: (typeof MACHINE_CATALOG)[number]) => {
     label: machineDisplayName(profile),
     temperatureC: -11,
     batchGrams: setup.recommendedBatchGrams!,
-    capacityGrams: setup.recommendedBatchGrams!,
+    hardCapacityGrams: setup.hardMaximumBatchGrams,
     batchSource: 'MACHINE_DEFAULT',
   });
   return { before, result, batch: setup.recommendedBatchGrams! };
@@ -85,9 +94,7 @@ describe('an incomplete starter keeps its Main reservation across a batch resize
     const reservation = st().target_batch_grams - sum();
     expect(reservation).toBeGreaterThan(0);
     expect(sum() + reservation).toBeCloseTo(batch, 6);
-    expect(Math.abs(reservation / batch - (1 - supportShare))).toBeLessThanOrEqual(
-      SHARE_TOLERANCE,
-    );
+    expect(Math.abs(reservation / batch - (1 - supportShare))).toBeLessThanOrEqual(SHARE_TOLERANCE);
 
     // INULIN stays inside the DERIVED owner band — never a literal figure.
     const band = ownerInulinGramBand(batch);
@@ -134,15 +141,19 @@ describe('an incomplete starter keeps its Main reservation across a batch resize
     });
   });
 
-  it('4. a COMPLETE starter is untouched — the discriminator is the reservation', () => {
-    // Gelato/Vegan/Protein starters already sum to the batch, so the old
-    // fill-the-batch semantics must survive byte-for-byte.
+  it('4. a COMPLETE starter still fills its batch — the discriminator is the reservation', () => {
+    // Gelato/Vegan/Protein starters already sum to the batch. They still fill
+    // it exactly; SOL-041 changes only the stabilizer representation to whole
+    // grams, while ordinary lines preserve their mutual proportions.
     for (const product of ['gelato', 'vegan', 'protein'] as const) {
       useRecipeStore.getState().startNewRecipe(product);
       const beforeBatch = st().target_batch_grams;
       const beforeSum = sum();
       expect(beforeSum).toBeCloseTo(beforeBatch, 6);
-      const beforeRatios = ratios();
+      const ordinaryBefore = st()
+        .items.filter((item) => !isStabilizer(item))
+        .map((item) => ({ id: item.id, grams: item.planned_grams }));
+      const ordinaryBeforeTotal = ordinaryBefore.reduce((total, item) => total + item.grams, 0);
 
       const setup = deriveMachineSetup(NINJA_CREAMI_DELUXE_NC502EU, product);
       if (setup.resolvedVisibleMode === null || setup.recommendedBatchGrams === null) continue;
@@ -153,14 +164,28 @@ describe('an incomplete starter keeps its Main reservation across a batch resize
         label: 'Ninja CREAMi Deluxe',
         temperatureC: -11,
         batchGrams: setup.recommendedBatchGrams,
-        capacityGrams: setup.recommendedBatchGrams,
+        hardCapacityGrams: setup.hardMaximumBatchGrams,
         batchSource: 'MACHINE_DEFAULT',
       });
       // A complete recipe still fills its new batch exactly.
       expect(sum()).toBeCloseTo(setup.recommendedBatchGrams, 6);
-      ratios().forEach((share, index) => {
-        expect(share).toBeCloseTo(beforeRatios[index]!, 6);
+      const ordinaryAfter = st().items.filter((item) => !isStabilizer(item));
+      const ordinaryAfterTotal = ordinaryAfter.reduce(
+        (total, item) => total + item.planned_grams,
+        0,
+      );
+      ordinaryAfter.forEach((item, index) => {
+        expect(item.id).toBe(ordinaryBefore[index]!.id);
+        expect(item.planned_grams / ordinaryAfterTotal).toBeCloseTo(
+          ordinaryBefore[index]!.grams / ordinaryBeforeTotal,
+          10,
+        );
       });
+      expect(
+        st()
+          .items.filter(isStabilizer)
+          .every((item) => Number.isInteger(item.planned_grams)),
+      ).toBe(true);
       expect(ownerInulinPolicyIssues(buildRecipeInput(st()))).toEqual([]);
     }
   });
@@ -201,5 +226,29 @@ describe('an incomplete starter keeps its Main reservation across a batch resize
     const fruit = st().items[0]!.ingredient;
     void fruit;
     expect(sum() + reservation).toBeCloseTo(batch, 6);
+  });
+
+  it('BASIC4V1: 670 g Sorbet starter returns byte-exactly to its 1000 g contract before Main arrives', () => {
+    newSorbetThenMachine(NINJA_CREAMI_DELUXE_NC502EU);
+
+    const result = st().setMachineSelection({
+      kind: 'professional',
+      servingModeId: 'minus11',
+      machineId: null,
+      label: 'Professional',
+      temperatureC: -11,
+      batchGrams: 1_000,
+      hardCapacityGrams: null,
+      batchSource: 'PROFESSIONAL_USER_BATCH',
+    });
+
+    expect(result).toEqual({ ok: true });
+    expect(sum()).toBeCloseTo(400, 12);
+    expect(st().starterReservedMainGrams).toBeCloseTo(600, 12);
+    expect(sum() + st().starterReservedMainGrams).toBeCloseTo(1_000, 12);
+
+    st().addIngredient(STRAWBERRIES, 600);
+    expect(sum()).toBeCloseTo(1_000, 12);
+    expect(600 / sum()).toBeCloseTo(0.6, 12);
   });
 });

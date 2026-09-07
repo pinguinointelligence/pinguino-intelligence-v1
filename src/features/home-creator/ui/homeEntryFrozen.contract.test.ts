@@ -6,8 +6,16 @@
  *
  * Re-frozen 2026-09-02 (owner §4): the composer is the ONLY refinement surface. The
  * separate „Składnik" / „Topping" picker row is permanently removed; once at least one
- * idea chip exists the same field asks „Jeszcze coś?", marked by the canonical orange
- * status dot. Powiedz and Zeskanuj do not move.
+ * idea chip exists the same field asks for more, marked by the canonical orange status
+ * dot. Powiedz and Zeskanuj do not move.
+ *
+ * ── COPY SUPERSEDED BY OWNER — 2026-09-02 (later the same day) ───────────────────
+ *   „Jeszcze coś?"            → „Coś jeszcze dodajemy?"
+ *   „Stwórz swoją recepturę"  → „Zamień pomysł w recepturę"
+ * The flow it describes is unchanged; HOME now says plainly that it turns the
+ * customer's idea into a recipe. The dot also gained a real text line so it centres ON
+ * the prompt instead of 8 px above it.
+ * ─────────────────────────────────────────────────────────────────────────────────
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
@@ -24,8 +32,8 @@ describe('frozen copy', () => {
     expect(homeCreatorCopy.intent.headline).toBe('Stwórz własne lody. Jak profesjonalista.');
     expect(homeCreatorCopy.intent.question).toBe('Jakie lody robimy dzisiaj?');
     expect(homeCreatorCopy.intent.placeholder).toBe('Napisz, co chcesz zrobić…');
-    expect(homeCreatorCopy.intent.cta).toBe('Stwórz swoją recepturę');
-    expect(homeCreatorCopy.intent.anythingElse).toBe('Jeszcze coś?');
+    expect(homeCreatorCopy.intent.cta).toBe('Zamień pomysł w recepturę');
+    expect(homeCreatorCopy.intent.anythingElse).toBe('Coś jeszcze dodajemy?');
   });
 
   it('keeps Powiedz and Zeskanuj as the other two composer inputs', () => {
@@ -81,6 +89,16 @@ describe('frozen structure — one composer, two states', () => {
     }
   });
 
+  it('gives the dot a real text line so it sits ON the prompt, not above it', () => {
+    // A box holding only a 6 px dot is 6 px tall and centred 8 px high (owner, served).
+    const dotBox = intent.slice(
+      intent.indexOf('<span className="flex items-center py-2.5'),
+      intent.indexOf('<textarea'),
+    );
+    expect(dotBox).toContain('leading-snug');
+    expect(dotBox).toContain('\u200b');
+  });
+
   it('reserves the dot slot in both states instead of unmounting it', () => {
     // `invisible` keeps the box; `display:none`/conditional render would move the field
     // by the dot's width the moment the first idea lands.
@@ -100,6 +118,11 @@ describe('frozen hierarchy — the dot is the canonical accent', () => {
       intent.indexOf('<textarea'),
     );
     expect(dot).toContain('aria-hidden');
+  });
+
+  it('keeps the desktop CTA restrained and centred, full width on mobile', () => {
+    expect(intent).toContain("'sm:mx-auto sm:max-w-[360px]'");
+    expect(intent).toContain('w-full');
   });
 
   it('keeps the primary CTA last', () => {

@@ -173,6 +173,36 @@ describe('LabelRepository account and immutable history authority', () => {
     expect(reloaded?.market).toBe('US');
   });
 
+  it('persists separate Basic rectangle and round dimensions for the owner', async () => {
+    const repository = inMemoryLabelRepository('owner-a');
+    const profile = defaultAccountLabelProfile('owner-a');
+    await repository.saveAccountProfile({
+      ...profile,
+      presentation: {
+        ...profile.presentation,
+        format: 'round',
+        widthMm: 73,
+        heightMm: 73,
+        copies: 1,
+        basicSizes: {
+          rectangle: { widthMm: 111, heightMm: 149 },
+          round: { diameterMm: 73 },
+        },
+      },
+    });
+
+    expect((await repository.getAccountProfile())?.presentation).toMatchObject({
+      format: 'round',
+      widthMm: 73,
+      heightMm: 73,
+      copies: 1,
+      basicSizes: {
+        rectangle: { widthMm: 111, heightMm: 149 },
+        round: { diameterMm: 73 },
+      },
+    });
+  });
+
   it('keeps completed snapshots owner-scoped, cloned and immutable', async () => {
     const ownerA = inMemoryLabelRepository('owner-a');
     const ownerB = inMemoryLabelRepository('owner-b');
@@ -204,7 +234,15 @@ describe('LabelRepository account and immutable history authority', () => {
     await repository.saveAccountProfile(profileA);
     const snapshotA = completedSnapshot('owner-a', 'run-a');
     await repository.freezeCompletedSnapshot(snapshotA);
-    const labelA = printReadyActualLabel(snapshotA, profileA, profileA.market, 'label-a');
+    const labelA = {
+      ...printReadyActualLabel(snapshotA, profileA, profileA.market, 'label-a'),
+      allergens: {
+        ...printReadyActualLabel(snapshotA, profileA, profileA.market, 'label-a').allergens,
+        status: 'complete' as const,
+        labelStatements: ['Zawiera: MLEKO. Może zawierać ORZECHY.'],
+        reviewedByUser: true,
+      },
+    };
     const savedA = await repository.saveRunLabelSnapshot(labelA);
 
     const profileB: AccountLabelProfile = {
@@ -227,6 +265,9 @@ describe('LabelRepository account and immutable history authority', () => {
         businessName: 'Business A',
         logoPath: 'owner-a/logo-a.png',
         lotCode: snapshotA.lotCode,
+        allergens: {
+          labelStatements: ['Zawiera: MLEKO. Może zawierać ORZECHY.'],
+        },
       },
       accountProfileSnapshot: { enabledOptionalFields: ['logo', 'origin'] },
     });
@@ -245,5 +286,82 @@ describe('LabelRepository account and immutable history authority', () => {
     );
     expect((await repository.getRunLabelSnapshot('run-a'))?.version).toBe(2);
     expect(await inMemoryLabelRepository('owner-b').listRunLabelSnapshots()).toEqual([]);
+  });
+
+  it.each(['EU', 'UK', 'US', 'CA', 'AU_NZ', 'WORLD'] as const)(
+    'persists incomplete editable data and known partial allergens for %s',
+    async (market) => {
+      const repository = inMemoryLabelRepository('owner-a');
+      const profile = {
+        ...defaultAccountLabelProfile('owner-a'),
+        market,
+      };
+      await repository.saveAccountProfile(profile);
+      const actual = completedSnapshot('owner-a', `run-${market}`);
+      await repository.freezeCompletedSnapshot(actual);
+      const complete = printReadyActualLabel(actual, profile, market, `label-${market}`);
+      const label: MasterLabelData = {
+        ...complete,
+        packageQuantity: null,
+        netQuantityG: null,
+        allergens: {
+          ...complete.allergens,
+          status: 'incomplete',
+          labelStatements: ['Contains milk'],
+          reviewedByUser: false,
+        },
+        nutritionSource: complete.nutritionSource
+          ? { ...complete.nutritionSource, saturated_fat_g: null }
+          : null,
+      };
+
+      const saved = await repository.saveRunLabelSnapshot(label);
+
+      expect(saved.label.allergens.labelStatements).toEqual(['Contains milk']);
+      expect(saved.label.packageQuantity).toBeNull();
+      expect(saved.label.snapshotEvidence).toMatchObject({
+        printReadiness: 'PRINT_READY_UNIVERSAL',
+        packageQuantity: null,
+      });
+      expect((await repository.getRunLabelSnapshot(actual.sessionId))?.label).toEqual(saved.label);
+    },
+  );
+
+  it('persists a valid manual final saturated-fat value and rejects an impossible value', async () => {
+    const repository = inMemoryLabelRepository('owner-a');
+    const profile = { ...defaultAccountLabelProfile('owner-a'), market: 'EU' as const };
+    await repository.saveAccountProfile(profile);
+    const actual = completedSnapshot('owner-a', 'run-manual-saturated-fat');
+    await repository.freezeCompletedSnapshot(actual);
+    const complete = printReadyActualLabel(actual, profile, 'EU', 'label-manual-saturated-fat');
+    const nutrition = { ...complete.nutritionSource!, fat_g: 5.1, saturated_fat_g: 3.2 };
+    const valid = await repository.saveRunLabelSnapshot({
+      ...complete,
+      nutritionSource: nutrition,
+      nutritionDeclaration: buildNutritionDeclaration(nutrition),
+      saturatedFatAuthority: {
+        status: 'manual_final_value',
+        sourceReferences: ['manual:label_saturated_fat'],
+        missingIngredientNames: [],
+      },
+    });
+    expect(
+      (await repository.getRunLabelSnapshotById(valid.snapshotId))?.label.nutritionSource
+        ?.saturated_fat_g,
+    ).toBe(3.2);
+
+    const impossibleNutrition = { ...nutrition, saturated_fat_g: 11 };
+    await expect(
+      repository.saveRunLabelSnapshot({
+        ...complete,
+        nutritionSource: impossibleNutrition,
+        nutritionDeclaration: buildNutritionDeclaration(impossibleNutrition),
+        saturatedFatAuthority: {
+          status: 'manual_final_value',
+          sourceReferences: ['manual:label_saturated_fat'],
+          missingIngredientNames: [],
+        },
+      }),
+    ).rejects.toThrow('Tłuszcze nasycone nie mogą być większe niż tłuszcz całkowity (5,1 g).');
   });
 });

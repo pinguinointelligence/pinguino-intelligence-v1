@@ -1,6 +1,11 @@
 import { useId, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from '@/lib/cn';
+import {
+  applicationViewportGeometry,
+  applicationViewportSize,
+  currentApplicationScale,
+} from '@/features/shell/applicationScaleAuthority';
 
 /**
  * A passive hover/focus preview of text that the layout had to truncate.
@@ -55,14 +60,16 @@ export function HoverPreview({
   const id = useId();
 
   const show = (element: HTMLElement) => {
-    const rect = element.getBoundingClientRect();
-    const placeAbove = window.innerHeight - rect.bottom < 120 && rect.top > 120;
+    const scale = currentApplicationScale();
+    const rect = applicationViewportGeometry(element.getBoundingClientRect(), scale);
+    const viewport = applicationViewportSize(scale);
+    const placeAbove = viewport.height - rect.bottom < 120 && rect.top > 120;
     const vertical = placeAbove
-      ? { bottom: Math.max(8, window.innerHeight - rect.top + 6) }
+      ? { bottom: Math.max(8, viewport.height - rect.top + 6) }
       : { top: rect.bottom + 6 };
     setAnchor(
       align === 'end'
-        ? { right: Math.max(8, window.innerWidth - rect.right), ...vertical }
+        ? { right: Math.max(8, viewport.width - rect.right), ...vertical }
         : { left: Math.max(8, rect.left), ...vertical },
     );
   };

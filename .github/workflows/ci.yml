@@ -44,6 +44,11 @@ jobs:
       - name: Protected functional path diff gate
         run: node scripts/guardProtectedPaths.mjs --base "origin/${{ github.base_ref || 'staging' }}"
 
+      # A HOME phase cannot close with its ledger left behind. The guard compares PARSED
+      # requirement rows, so a whitespace, date or prose edit reads as no edit at all.
+      - name: HOME ledger update gate
+        run: node scripts/guardHomeLedger.mjs --base "origin/${{ github.base_ref || 'staging' }}"
+
       # The accepted behaviour itself.
       - name: Owner-locked regression contracts
         run: npm run test:contracts
@@ -78,6 +83,12 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
+      - name: Independent label PDF render and box verification
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y poppler-utils
+          LABEL_PDF_QA_DIR="$RUNNER_TEMP/label-pdf-qa" npx vitest run src/features/master-label/masterLabelPdfArtifact.test.ts
+          node scripts/verifyLabelPdfArtifacts.mjs "$RUNNER_TEMP/label-pdf-qa"
       - run: npm run build
 
   # Solver-heavy CORRECTNESS contracts. Corrected 2026-08-30 — the previous comment

@@ -37,6 +37,10 @@ import { useConstraintStudioStore } from '@/features/constraint-studio/constrain
 import { buildCurrentRecipeResultAuthority } from './currentRecipeResultAuthority';
 import { friendlyLabRecipeJourneyState } from './friendlyLabRecipeJourney';
 import { CostSummaryIcon, NutritionSummaryIcon } from '@/components/icons/PinguinoIcons';
+import { proWorkbenchCopy } from '@/copy/pro.pl';
+import { currentRecipeCompletionSnapshot } from './currentRecipeLabelSnapshot';
+import { copy } from '@/copy/en';
+import { missingCostIngredientNames } from './missingCostIngredientNames';
 
 export type ProContextTab = 'recipe' | 'monitor' | 'production';
 export type CockpitTab = WorkbenchModuleTab;
@@ -68,18 +72,20 @@ function CompactMetricRow({
   );
 }
 
-function NutritionCostProfileGrid({
+export function NutritionCostProfileGrid({
   result,
   nutritionReady,
   costReady,
   nutritionOverride,
   costsOverride,
+  costMissingNames = [],
 }: {
   result: RecipeResult;
   nutritionReady: boolean;
   costReady: boolean;
   nutritionOverride?: NutritionPer100g | ProductLabelNutritionPer100g | null;
   costsOverride?: RecipeCosts | null;
+  costMissingNames?: readonly string[];
 }) {
   const nutrition = nutritionReady
     ? nutritionOverride === undefined
@@ -91,60 +97,103 @@ function NutritionCostProfileGrid({
     value === null || value === undefined ? '—' : `${value.toFixed(precision)} g`;
   const euro = (value: number | null | undefined) =>
     value === null || value === undefined ? '—' : `${value.toFixed(2)} €`;
+  const partialCost = costs !== null && costs.complete === false;
+  const knownPartialCost = partialCost && costs.known_cost > 0;
+  const costReadout = partialCost
+    ? knownPartialCost
+      ? `${costs.known_cost.toFixed(2)} €`
+      : '—'
+    : costs?.cost_per_kg == null
+      ? '—'
+      : `${costs.cost_per_kg.toFixed(2)} €`;
+  const costReadoutLabel =
+    partialCost && knownPartialCost
+      ? proWorkbenchCopy.nutrition.knownBatchCost.toLocaleLowerCase('pl')
+      : 'za kg';
+  const missingPriceMessage =
+    partialCost && costMissingNames.length > 0
+      ? proWorkbenchCopy.nutrition.missingPrice(costMissingNames)
+      : null;
   return (
     /* OWNER FROZEN PRO VISUAL: the result opens the display column as a
        READOUT — the number leads at 22 px with its unit tucked in beside it,
        and the label sits underneath. The old card put a 14 px value behind an
        icon and a shadow; here the figure you came for is the largest thing in
        the column. The breakdown stays exactly as expandable as it was. */
-    <section className="min-w-0 border-b border-[var(--g-line)] pb-5">
-      <div className="mb-[13px] flex items-center gap-2.5">
-        {/* WYNIK is the label whose glyph box lands on the panel's rounded,
-            clipped corner — the reason the shared 2 px eyebrow inset exists.
-            The rule and its full reasoning live in `gellatti-v2-1.css` under
-            `[data-band-eyebrow]`, so all five band labels move together. */}
-        <h3
-          data-band-eyebrow
-          className="shrink-0 text-[10px] leading-[14px] font-semibold tracking-[0.16em] text-[var(--g-text-muted)] uppercase"
-        >
-          Wynik
-        </h3>
-        <span aria-hidden className="h-px flex-1 bg-[var(--g-line)]" />
-      </div>
+    <section className="min-w-0 pb-3">
+      {/* OWNER AUTHORITY 2026-09-03 (approved desktop reference). There is NO
+          eyebrow above the figures. The numbers are the loudest thing in the
+          column and need no one to announce them; a "WYNIK" label above a
+          30 px figure only pushed the reading down by a row. The section keeps
+          its accessible name below, on the summary.
+
+          The extra 12 px under this section is the one uneven gap in the
+          column, and it is deliberate: the readout is a READING, the three
+          boxes below are INSTRUMENTS. Everything else is spaced on one 26 px
+          step, so the single larger gap reads as the seam between the two
+          kinds of thing rather than as drift. */}
       <details className="group min-w-0" data-testid="profile-nutrition-cost-summary">
-        <summary className="pro-focus-ring grid cursor-pointer list-none grid-cols-2 overflow-hidden rounded-xl border border-[var(--g-line)] bg-[var(--g-ivory)] [&::-webkit-details-marker]:hidden">
-          <span className="min-w-0 px-4 py-[15px]">
-            <b className="block text-[22px] leading-[1.1] font-semibold tracking-[-0.04em] tabular-nums text-[var(--g-ink)]">
-              {nutrition ? `${nutrition.kcal.toFixed(0)}` : '—'}
-              <u className="text-[11px] font-medium tracking-normal text-[var(--g-text-muted)] no-underline">
-                {' kcal / 100 g'}
-              </u>
-            </b>
-            <span className="mt-1 flex items-center gap-1.5 text-[11px] leading-[16px] font-medium text-[var(--g-text-muted)]">
-              <NutritionSummaryIcon tone="current" className="size-3.5 shrink-0" />
-              <span className="truncate">Wartości odżywcze</span>
+        {/* OWNER AUTHORITY 2026-09-02 (approved desktop PDF, §4). The result was
+            a bordered two-cell box on ivory — a container competing with the
+            numbers inside it. It is now a READOUT on the column ground: a quiet
+            icon in a ring, the figure at 30 px as the largest thing in the
+            band, its unit underneath, and a single hairline separating the two
+            measures. Explicitly NOT another card. The breakdown stays exactly
+            as expandable as it was, and the expand line is the only chrome. */}
+        <summary
+          className="pro-focus-ring cursor-pointer list-none [&::-webkit-details-marker]:hidden"
+          data-result-presentation="readout"
+        >
+          {/* 9.5 px so the 40 px ring is CENTRED on the same vertical axis as
+              the 17 px chevron below it (21 + 17/2 = 29.5 = 9.5 + 40/2).
+              Aligning their left edges instead pushes the ring right of the
+              chevron; this number is derived from the ring size, so it moves
+              whenever the ring does. */}
+          <span className="flex min-w-0 items-center pl-[9.5px]">
+            <span className="flex min-w-0 shrink-0 items-center gap-[14px]">
+              <span className="grid size-10 shrink-0 place-items-center rounded-full border border-[var(--g-line)] text-[var(--g-ink)]">
+                <NutritionSummaryIcon tone="current" className="size-[18px] shrink-0" />
+              </span>
+              <span className="min-w-0">
+                <b className="block text-[30px] leading-none font-extrabold tracking-[-0.042em] tabular-nums text-[var(--g-ink)]">
+                  {nutrition ? nutrition.kcal.toFixed(0) : '—'}
+                </b>
+                <span className="mt-[7px] block text-[13px] leading-4 text-[var(--g-text-muted)]">
+                  kcal / 100 g
+                </span>
+              </span>
+            </span>
+            <span aria-hidden className="mx-[18px] w-px shrink-0 self-stretch bg-[var(--g-line)]" />
+            <span className="flex min-w-0 shrink-0 items-center gap-[14px]">
+              <span className="grid size-10 shrink-0 place-items-center rounded-full border border-[var(--g-line)] text-[var(--g-ink)]">
+                <CostSummaryIcon tone="current" className="size-[18px] shrink-0" />
+              </span>
+              <span className="min-w-0">
+                <b className="block text-[30px] leading-none font-extrabold tracking-[-0.042em] tabular-nums text-[var(--g-ink)]">
+                  {costReadout}
+                </b>
+                <span className="mt-[7px] block text-[13px] leading-4 text-[var(--g-text-muted)]">
+                  {costReadoutLabel}
+                </span>
+              </span>
             </span>
           </span>
-          <span className="min-w-0 border-l border-[var(--g-line)] px-4 py-[15px]">
-            <b className="block text-[22px] leading-[1.1] font-semibold tracking-[-0.04em] tabular-nums text-[var(--g-ink)]">
-              {costs?.cost_per_kg == null ? '—' : `${costs.cost_per_kg.toFixed(2)}`}
-              <u className="text-[11px] font-medium tracking-normal text-[var(--g-text-muted)] no-underline">
-                {costs?.cost_per_kg == null ? ' / kg' : ' € / kg'}
-              </u>
-            </b>
-            <span className="mt-1 flex items-center gap-1.5 text-[11px] leading-[16px] font-medium text-[var(--g-text-muted)]">
-              <CostSummaryIcon tone="current" className="size-3.5 shrink-0" />
-              <span className="truncate">Koszt receptury</span>
+          {missingPriceMessage ? (
+            <span
+              className="mt-4 block pl-[21px] text-[11px] leading-[17px] text-[var(--g-text-muted)]"
+              data-testid="profile-missing-price-message"
+            >
+              {missingPriceMessage}
             </span>
-          </span>
-          <span className="col-span-2 flex items-center gap-2 border-t border-[var(--g-line)] px-4 py-2.5 text-[11.5px] leading-[16px] font-medium text-[var(--g-text-secondary)]">
+          ) : null}
+          <span className="mt-[26px] flex min-w-0 items-start gap-3 pl-[21px] text-[15.5px] leading-[22px] font-medium tracking-[-0.02em] text-[var(--g-text-secondary)]">
             <svg
               aria-hidden
-              width="13"
-              height="13"
+              width="17"
+              height="17"
               viewBox="0 0 24 24"
               fill="none"
-              className="shrink-0 transition-transform group-open:rotate-180"
+              className="mt-[3px] shrink-0 text-[var(--g-text-muted)] transition-transform group-open:rotate-180"
             >
               <path
                 d="M6 9l6 6 6-6"
@@ -154,46 +203,57 @@ function NutritionCostProfileGrid({
                 strokeLinejoin="round"
               />
             </svg>
-            Rozwiń pełny rozkład składników i kosztów
+            <span className="min-w-0">Rozwiń rozkład składników i kosztów</span>
           </span>
         </summary>
         <div className="profile-nutrition-details grid gap-x-8 gap-y-5 pt-4 min-[520px]:grid-cols-2">
-        <section className="min-w-0" data-testid="profile-nutrition-card">
-          <h3 className="mb-1.5 text-[9px] leading-[14px] font-semibold tracking-[0.08em] text-[var(--g-text-muted)] uppercase">
-            Wartości odżywcze
-          </h3>
-          <dl>
-            <CompactMetricRow
-              label="Energia"
-              value={nutrition ? `${nutrition.kcal.toFixed(0)} kcal` : '—'}
-            />
-            <CompactMetricRow label="Tłuszcz" value={grams(nutrition?.fat_g)} />
-            <CompactMetricRow
-              label="W tym kwasy nasycone"
-              value={grams(nutrition?.saturated_fat_g)}
-              muted
-            />
-            <CompactMetricRow label="Węglowodany" value={grams(nutrition?.carbohydrate_g)} />
-            <CompactMetricRow label="W tym cukry" value={grams(nutrition?.sugars_g)} muted />
-            <CompactMetricRow label="Białko" value={grams(nutrition?.protein_g)} />
-            <CompactMetricRow label="Sól" value={grams(nutrition?.salt_g, 2)} />
-            <CompactMetricRow label="Błonnik" value={grams(nutrition?.fiber_g)} />
-          </dl>
-        </section>
-        <section className="min-w-0" data-testid="profile-cost-card">
-          <h3 className="mb-1.5 text-[9px] leading-[14px] font-semibold tracking-[0.08em] text-[var(--g-text-muted)] uppercase">
-            Koszt
-          </h3>
-          <dl>
-            <CompactMetricRow label="Na 1 kg" value={euro(costs?.cost_per_kg)} />
-            <CompactMetricRow label="Cała partia" value={euro(costs?.total_cost)} />
-            <CompactMetricRow label="Porcja 60 g" value={euro(costs?.cost_per_serving_60g)} />
-            <CompactMetricRow label="Porcja 70 g" value={euro(costs?.cost_per_serving_70g)} />
-            <CompactMetricRow label="Porcja 80 g" value={euro(costs?.cost_per_serving_80g)} />
-          </dl>
-          <p className="mt-2 text-[10px] leading-[15px] text-[var(--g-text-muted)]">
-            Aktualizuj ceny w produktach
-          </p>
+          <section className="min-w-0" data-testid="profile-nutrition-card">
+            <h3 className="mb-1.5 text-[9px] leading-[14px] font-semibold tracking-[0.08em] text-[var(--g-text-muted)] uppercase">
+              Wartości odżywcze
+            </h3>
+            <dl>
+              <CompactMetricRow
+                label="Energia"
+                value={nutrition ? `${nutrition.kcal.toFixed(0)} kcal` : '—'}
+              />
+              <CompactMetricRow label="Tłuszcz" value={grams(nutrition?.fat_g)} />
+              <CompactMetricRow
+                label="W tym kwasy nasycone"
+                value={grams(nutrition?.saturated_fat_g)}
+                muted
+              />
+              <CompactMetricRow label="Węglowodany" value={grams(nutrition?.carbohydrate_g)} />
+              <CompactMetricRow label="W tym cukry" value={grams(nutrition?.sugars_g)} muted />
+              <CompactMetricRow label="Białko" value={grams(nutrition?.protein_g)} />
+              <CompactMetricRow label="Sól" value={grams(nutrition?.salt_g, 2)} />
+              <CompactMetricRow label="Błonnik" value={grams(nutrition?.fiber_g)} />
+            </dl>
+          </section>
+          <section className="min-w-0" data-testid="profile-cost-card">
+            <h3 className="mb-1.5 text-[9px] leading-[14px] font-semibold tracking-[0.08em] text-[var(--g-text-muted)] uppercase">
+              Koszt
+            </h3>
+            <dl>
+              {partialCost ? (
+                <CompactMetricRow
+                  label={proWorkbenchCopy.nutrition.knownBatchCost}
+                  value={knownPartialCost ? euro(costs.known_cost) : '—'}
+                />
+              ) : (
+                <>
+                  <CompactMetricRow label="Na 1 kg" value={euro(costs?.cost_per_kg)} />
+                  <CompactMetricRow label="Cała partia" value={euro(costs?.total_cost)} />
+                  <CompactMetricRow label="Porcja 60 g" value={euro(costs?.cost_per_serving_60g)} />
+                  <CompactMetricRow label="Porcja 70 g" value={euro(costs?.cost_per_serving_70g)} />
+                  <CompactMetricRow label="Porcja 80 g" value={euro(costs?.cost_per_serving_80g)} />
+                </>
+              )}
+            </dl>
+            {!partialCost ? (
+              <p className="mt-2 text-[10px] leading-[15px] text-[var(--g-text-muted)]">
+                Aktualizuj ceny w produktach
+              </p>
+            ) : null}
           </section>
         </div>
       </details>
@@ -386,6 +446,9 @@ function ProfileContent({
       'planning',
     );
   }, [customerPrices, finalCostReady, input, toppings]);
+  const costMissingNames = useMemo(() => {
+    return missingCostIngredientNames(finalCostProduct);
+  }, [finalCostProduct]);
   return (
     <div
       className="w-full min-w-0 p-3 xl:p-0"
@@ -407,53 +470,66 @@ function ProfileContent({
           variant="neutral"
         />
       ) : null}
-      {/* OWNER FROZEN PRO VISUAL: the display column opens with WYNIK, then the
-          controls that move it, then settings, then the recipe. The cards are
-          gone, so the rhythm between bands — not a border — is what separates
-          them; the gap has to carry the work the boxes used to do. */}
+      {/* OWNER AUTHORITY 2026-09-02 (approved desktop PDF, §2). The display
+          column now opens with the recipe's IDENTITY, then the result it
+          produced, then the controls that move that result, then the settings
+          behind it. RECEPTURA used to sit fourth of five — the user read the
+          numbers before knowing whose numbers they were. The cards are gone, so
+          the rhythm between bands, not a border, is what separates them. */}
       <div
-        className="grid min-w-0 items-start gap-5 xl:gap-[18px]"
+        className="grid min-w-0 items-start gap-[26px]"
         data-testid="profile-desktop-grid"
         data-profile-layout="stacked"
+        data-profile-band-order="recipe,result,direction,settings"
       >
+        {recipeBar ? <div className="min-w-0">{recipeBar}</div> : null}
         <NutritionCostProfileGrid
           result={frozenNutritionResult}
           nutritionReady={finalNutritionReady}
           costReady={finalCostReady}
           nutritionOverride={finalNutritionProduct?.finalLabelNutritionPer100g}
           costsOverride={finalCostProduct?.finalCosts}
+          costMissingNames={costMissingNames}
         />
         <ProfileDirectionAxes result={frozenNutritionResult} className="min-w-0" />
-        <WorkbenchSettingsLine actualBatchG={result.total_batch_g} className="min-w-0" compact />
-        {recipeBar ? <div className="min-w-0">{recipeBar}</div> : null}
+        <WorkbenchSettingsLine className="min-w-0" compact />
       </div>
-      {/* OWNER FROZEN PRO VISUAL: WIEDZA is a BAND like every other section —
-          its own eyebrow closed by a hairline, then one quiet row. It used to
-          be a 58 px bordered card with a permanent orange chevron, which spent
-          the accent colour on a link that is never urgent. */}
-      <section className="mt-5">
-        <div className="mb-[13px] flex items-center gap-2.5">
-          <h3
-            data-band-eyebrow
-            className="shrink-0 text-[10px] leading-[14px] font-semibold tracking-[0.16em] text-[var(--g-text-muted)] uppercase"
-          >
-            Wiedza
-          </h3>
-          <span aria-hidden className="h-px flex-1 bg-[var(--g-line)]" />
-        </div>
+      {/* OWNER AUTHORITY 2026-09-03 (approved desktop reference): WIEDZA is the
+          third BOX of the same make as DOSTOSUJ RECEPTURĘ and USTAWIENIA — a
+          notched legend, one row, an icon in a ring on the left and a chevron
+          on the right. It matches USTAWIENIA exactly because the two are the
+          same kind of thing: a way in, not a reading.
+
+          The explanatory second line is gone. The reference carries one line,
+          and the row's own words already say what is behind it. */}
+      <section className="pro-legend-box mt-[26px] px-5 py-7">
+        <h3
+          data-band-legend
+          className="text-[10px] leading-[14px] font-semibold tracking-[0.16em] text-[var(--g-text-muted)] uppercase"
+        >
+          Wiedza
+        </h3>
         <button
           type="button"
           onClick={onOpenEducation}
-          className="pro-focus-ring flex min-h-11 w-full items-center gap-3 bg-transparent text-left"
+          className="pro-focus-ring flex w-full min-w-0 items-center gap-4 bg-transparent text-left"
           data-testid="profile-learning-entry"
         >
-          <span className="min-w-0 flex-1">
-            <span className="block text-[13.5px] leading-[19px] font-semibold tracking-[-0.015em] text-[var(--g-ink)]">
-              Wiedza o recepturze
-            </span>
-            <span className="mt-0.5 block truncate text-[11.5px] leading-[16px] font-normal text-[var(--g-text-muted)]">
-              Dlaczego taki wynik i jak przygotować recepturę?
-            </span>
+          <span className="grid size-[38px] shrink-0 place-items-center rounded-full border border-[var(--g-line)] text-[var(--g-ink)]">
+            <svg aria-hidden width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <g
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M12 6.6C10.4 5.2 8.4 4.6 5.4 4.6A1 1 0 0 0 4.4 5.6v11.1a1 1 0 0 0 1 1c3 0 5 .6 6.6 2 1.6-1.4 3.6-2 6.6-2a1 1 0 0 0 1-1V5.6a1 1 0 0 0-1-1c-3 0-5 .6-6.6 2Z" />
+                <path d="M12 6.6v13.1" />
+              </g>
+            </svg>
+          </span>
+          <span className="min-w-0 flex-1 truncate text-[15px] leading-[21px] font-semibold tracking-[-0.02em] text-[var(--g-ink)]">
+            {copy.shell.items.howItWorks}
           </span>
           <svg
             aria-hidden
@@ -523,51 +599,45 @@ function SummaryPanel({
   onOpenProduction,
   initialLabelView,
   labelViewRequestKey,
-  result,
+  recipeInput,
   recipeName,
+  onOpenSettings,
 }: {
   production?: ProductionWorkspaceView;
   onOpenProduction: () => void;
   initialLabelView: LabelWorkspaceView;
   labelViewRequestKey?: string;
-  result: RecipeResult;
+  recipeInput: RecipeInput;
   recipeName: string | null;
+  onOpenSettings?: (runId: string) => void;
 }) {
-  const completed = production?.session?.completionSnapshot ?? null;
+  const completed = currentRecipeCompletionSnapshot(production);
   if (completed) {
     return (
       <div className="pro-scroll-safe" data-testid="pro-context-summary">
         {/* OWNER DECISION (2026-08-30): the workbench `Etykieta` tab is the
             CURRENT label plus the fields still missing for it — never a second
-            settings screen. `settingsHome="production"` removes the settings
-            view from this instance and points at Produkcja → Etykiety, which
-            owns every persistent label setting. */}
+            settings screen. `settingsHome="production"` removes settings and
+            their entry point from this instance; the hamburger's Etykiety
+            destination remains their only home. */}
         <LabelWorkspace
           key={labelViewRequestKey ?? initialLabelView}
           snapshot={completed}
           initialView={initialLabelView}
           settingsHome="production"
+          onOpenSettings={onOpenSettings}
         />
       </div>
     );
   }
 
-  /* OWNER DECISION (2026-08-30) — an explicit, approved divergence from the
-     older V2.1 `pro-label-draft` gate. Before Production completes the reader
-     now sees a LIVE DRAFT of the label they are making, with only the data that
-     is still missing listed underneath it, instead of a panel telling them to
-     go somewhere else. Nothing is fabricated: `buildMasterLabelData` and every
-     regulatory and nutrition calculation are untouched, and LOT, the production
-     date and the confirmed declaration are shown as outstanding. The final
-     print stays unavailable until a real completed run exists — at which point
-     the branch above takes over with the existing authority.
-
-     The gate below is still the fallback for the one case a draft cannot be
-     drawn truthfully: no saved label profile yet. */
+  /* OWNER DECISION (2026-09-06): the current recipe is a first-class label
+     source. It delegates composition, allergens and nutrition to frozen facts,
+     while a completed run still outranks it through the branch above. */
   return (
     <div className="pro-scroll-safe p-3 xl:p-0" data-testid="pro-context-summary">
       <DraftLabelPanel
-        result={result}
+        recipeInput={recipeInput}
         productName={recipeName}
         fallback={<LabelProfileMissingNotice onOpenProduction={onOpenProduction} />}
       />
@@ -583,8 +653,8 @@ function LabelProfileMissingNotice({ onOpenProduction }: { onOpenProduction: () 
           copy only; every Production → Label gate and calculation is untouched. */}
       <WorkflowNotice
         eyebrow="Etykieta"
-        title="Etykieta potrzebuje zakończonej partii"
-        description="Gdy zakończysz produkcję, pojawią się tu potwierdzone składniki, wartości odżywcze, koszt, baza techniczna i numer partii (LOT)."
+        title="Nie udało się zbudować projektu etykiety"
+        description="Sprawdź dane receptury lub wróć do Produkcji, aby odświeżyć jej źródła."
         variant="attention"
         emphasis="lead"
         stackAction
@@ -614,6 +684,8 @@ export function RecipeProfilePanel({
   onRecalculate,
   initialLabelView = 'data',
   labelViewRequestKey,
+  onOpenLabelSettings,
+  labelSettingsRestoreScrollTop,
 }: {
   activeTab: CockpitTab;
   onTabChange: (tab: CockpitTab) => void;
@@ -629,6 +701,8 @@ export function RecipeProfilePanel({
   onRecalculate: () => void;
   initialLabelView?: LabelWorkspaceView;
   labelViewRequestKey?: string;
+  onOpenLabelSettings?: (runId: string, scrollTop: number) => void;
+  labelSettingsRestoreScrollTop?: number;
 }) {
   const [educationOpen, setEducationOpen] = useState(false);
   const tabPanelRef = useRef<HTMLDivElement>(null);
@@ -638,6 +712,10 @@ export function RecipeProfilePanel({
   useEffect(() => {
     if (tabPanelRef.current) tabPanelRef.current.scrollTop = 0;
   }, [activeTab, educationOpen]);
+  useEffect(() => {
+    if (labelSettingsRestoreScrollTop === undefined || !tabPanelRef.current) return;
+    tabPanelRef.current.scrollTop = labelSettingsRestoreScrollTop;
+  }, [labelSettingsRestoreScrollTop]);
   useEffect(() => {
     const openLearning = () => {
       onTabChange('profile');
@@ -650,10 +728,13 @@ export function RecipeProfilePanel({
     <div
       data-testid="pro-profile-panel"
       data-testid-shell="pro-intelligence-shell"
+      data-education-open={educationOpen ? 'true' : 'false'}
       /* GELLATTI V2.1: on the desktop workbench the display column is NOT a card —
          it is a transparent 520 px track holding the approved cards on a 10 px
          rhythm. The mobile cockpit sheet keeps its own white surface. */
-      className="right-pane min-h-full bg-white text-ink lg:flex lg:h-full lg:min-h-0 lg:flex-col lg:overflow-hidden lg:rounded-[10px] lg:border lg:border-ink/10 lg:shadow-pro-e0 xl:rounded-none xl:border-0 xl:bg-transparent xl:shadow-none"
+      className={`right-pane bg-white text-ink ${
+        educationOpen ? 'relative flex min-h-0 flex-col overflow-hidden' : 'min-h-full'
+      } lg:flex lg:h-full lg:min-h-0 lg:flex-col lg:overflow-hidden lg:rounded-[10px] lg:border lg:border-ink/10 lg:shadow-pro-e0 xl:rounded-none xl:border-0 xl:bg-transparent xl:shadow-none`}
     >
       {showTabs ? (
         <div className="sticky top-0 z-30 bg-white" data-testid="workbench-sticky-chrome">
@@ -675,10 +756,23 @@ export function RecipeProfilePanel({
         role="tabpanel"
         aria-labelledby={`${idPrefix}-${activeTab}-tab-control`}
         tabIndex={0}
-        /* The approved display column is a full 520 px: a permanently reserved
-           scrollbar gutter would inset every card by ~15 px and break the 1:1
-           geometry, so the gutter is claimed only when a scrollbar exists. */
-        className="intelligence-tabpanel-scroll lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overflow-x-hidden lg:[scrollbar-gutter:stable] xl:[scrollbar-gutter:auto]"
+        /* DESKTOP-CB-01 (cross-browser phase, 2026-09-02). The `xl:auto` override
+           here rested on a premise that is wrong for OVERLAY scrollbars:
+           `scrollbar-gutter: stable` reserves nothing when the platform's
+           scrollbar does not participate in layout, so on macOS it cost
+           nothing to begin with. What `auto` actually bought was an
+           INSTABILITY on every classic-scrollbar platform — Windows, Linux, and
+           macOS set to "always show scroll bars". Measured in Chrome at the
+           approved 500 px track: content is 485 px at 1440x900 (the panel
+           scrolls) but 500 px at 1440x2200 and 1920x1080 (it does not), so the
+           column's usable width — and with it the settings grid, the truncation
+           points and the figure divider — moved with the WINDOW HEIGHT.
+
+           `stable` at every breakpoint makes the inset constant where a classic
+           scrollbar exists and remains a no-op where it does not. The reviewed
+           1440x900 visual is byte-identical either way: it measured 485 px
+           before this change and 485 px after. */
+        className="intelligence-tabpanel-scroll lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overflow-x-hidden lg:[scrollbar-gutter:stable]"
       >
         {activeTab === 'profile' && educationOpen ? (
           <ContextualEducationView
@@ -724,8 +818,13 @@ export function RecipeProfilePanel({
             onOpenProduction={() => onTabChange('production')}
             initialLabelView={initialLabelView}
             labelViewRequestKey={labelViewRequestKey}
-            result={result}
+            recipeInput={input}
             recipeName={savedRecipeName}
+            onOpenSettings={
+              onOpenLabelSettings
+                ? (runId) => onOpenLabelSettings(runId, tabPanelRef.current?.scrollTop ?? 0)
+                : undefined
+            }
           />
         ) : null}
       </div>

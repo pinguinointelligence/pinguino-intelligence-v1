@@ -170,8 +170,11 @@ describe('§8 — no profile moves away from its requested Direction target', ()
     for (const level of LEVELS) {
       const input = draft('protein', -11, level);
       const bands = requestedDirectionBands(input);
-      expect(bands).toHaveLength(1);
-      expect(bands[0]!.band).toEqual(
+      // Protein now carries TWO requested bands: sweetness (pod) and hardness
+      // (ice_fraction, restored 2026-09-03). Both must be scored against the
+      // REQUESTED band, which is what this contract exists to prove.
+      expect(bands.map((entry) => entry.axis).sort()).toEqual(['softness', 'sweetness']);
+      expect(bands.find((entry) => entry.axis === 'sweetness')!.band).toEqual(
         buildRecipeDirectionPlan(input).axes.find((a) => a.axis === 'sweetness')!.targetBand,
       );
     }

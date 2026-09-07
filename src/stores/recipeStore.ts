@@ -56,7 +56,11 @@ import {
   normalizeFormulationStrategy,
   type FormulationStrategy,
 } from '@/features/formulation-strategy/strategy';
+import type { ConstraintSet } from '@/features/recipe-constraints';
 import {
+  attachPracticalRecipeAudit,
+  practicalRecipeInputFingerprint,
+  practicalizeRecipeCandidate,
   readPracticalRecipeAudit,
   type PracticalRecipeSavedAudit,
   unusedZeroGramLineIds,
@@ -96,17 +100,20 @@ import { resolveFunctionalRole } from '@/features/formulation/ingredientRoles';
 import {
   clampOwnerStabilizerComponentGrams,
   evaluateRecipeConstraintAuthority,
-  planSorbetStabilizerSystemRescale,
-  sorbetStabilizerSystemItems,
+  ownerStabilizerSystemItems,
+  planOwnerStabilizerSystemRescale,
 } from '@/features/recipe-constraints';
-import {
-  buildRecipeInput,
-  type RecipeInputState,
-} from '@/features/studio/buildRecipeInput';
+import { buildRecipeInput, type RecipeInputState } from '@/features/studio/buildRecipeInput';
 import { classifyProfileTransition } from '@/features/pro-workbench/profileCompatibility';
 import {
+  readRecipeLabelDraft,
+  type RecipeLabelDraft,
+} from '@/features/master-label/labelDraftPersistence';
+import {
   MACHINE_CATALOG,
+  HOME_ENGINE_TEMPERATURE_C,
   deriveMachineSetup,
+  type HomeFormulationModuleId,
   type MachineTechnology,
 } from '@/features/machine-catalog';
 
@@ -172,6 +179,12 @@ export type AddIngredientResult =
   | { status: 'added'; lineId: string; canonicalId: string }
   | { status: 'duplicate'; lineId: string; canonicalId: string };
 
+export type ReplaceIngredientResult =
+  | { status: 'replaced'; lineId: string; canonicalId: string }
+  | { status: 'duplicate'; lineId: string; canonicalId: string }
+  | { status: 'missing'; lineId: string }
+  | { status: 'invalid_behavior'; lineId: string };
+
 export type RecipeBatchSource =
   | 'MACHINE_DEFAULT'
   | 'USER_OVERRIDE'
@@ -183,6 +196,7 @@ export type RecipeBatchSource =
 export const PROFESSIONAL_DEFAULT_BATCH_GRAMS = DEFAULT_NEW_RECIPE_BATCH_G;
 
 export const BATCH_RESIZE_TOLERANCE_GRAMS = 0.1;
+const BATCH_RESIZE_IDEMPOTENCE_EPSILON_GRAMS = 1e-9;
 
 export type BatchResizeConflictReason =
   | 'invalid_target'
@@ -203,8 +217,7 @@ export type BatchResizeResult =
   | { readonly ok: false; readonly conflict: BatchResizeConflict };
 
 export type BatchResizeWriteResult =
-  | { readonly ok: true }
-  | { readonly ok: false; readonly conflict: BatchResizeConflict };
+  { readonly ok: true } | { readonly ok: false; readonly conflict: BatchResizeConflict };
 
 export interface RecipeState {
   mode: ProductMode;
@@ -323,6 +336,8 @@ export interface RecipeState {
   currentVersionId: string | null;
   /** ISO date of the current version (drives the `DD.MM.YYYY · vN` label; persisted). */
   currentVersionDate: string | null;
+  /** Current recipe's label working copy: stable LOT/date plus editable label data. */
+  labelDraft: RecipeLabelDraft | null;
   /**
    * Pro machine/serving selection context (S4). Drives the workbar context line + which visible
    * serving mode routes the recipe. It NEVER changes Engine math — the temperature it carries is
@@ -338,11 +353,25 @@ export interface RecipeState {
   machineLabel: string | null;
   /** Custom-machine Production routing; canonical catalog machines can re-resolve by id. */
   machineTechnology: MachineTechnology | null;
+  /** Persisted brand-neutral Home formulation preference; null for Pro/direct routes. */
+  homeFormulationModuleId: HomeFormulationModuleId | null;
   /** Unsaved-changes flag: true after any edit, false after a load or a successful save. */
   dirty: boolean;
   /** Verified whole-gram provenance restored from a saved recipe/version. It
    * never grants Apply consent; every consumer matches its material fingerprint. */
   practicalRecipeAudit: PracticalRecipeSavedAudit | null;
+  /**
+   * Record that the CURRENT draft is executable exactly as written.
+   *
+   * A preview that finds nothing to change has verified the recipe, but has nothing to
+   * apply — and an apply is the only thing that used to write an audit. So the save gate
+   * kept asking for a recalculation that had just happened.
+   *
+   * This is not a way of marking a recipe verified: it runs the SAME practicalization the
+   * gate runs and records the result only when it comes back byte-identical to the draft
+   * on screen. If anything at all would change, nothing is recorded.
+   */
+  verifyPracticalAsWritten: (constraints: ConstraintSet) => boolean;
   /** Exact immutable recipe-version identity last persisted for Production.
    * Kept separate from `dirty` and from the current technical calculation. */
   savedProductionFingerprint: string | null;
@@ -427,6 +456,14 @@ export interface RecipeState {
    * dirty the draft, refresh product data or invalidate Preview/Undo state.
    */
   addIngredient: (ingredient: EngineIngredient, grams?: number) => AddIngredientResult;
+  /** Replace one Base row in place. The line id, amount and explicit locks are
+   * retained; selecting a canonical identity already present elsewhere is a
+   * strict no-op rather than a duplicate-producing add. */
+  replaceIngredient: (
+    lineId: string,
+    ingredient: EngineIngredient,
+    behavior?: ProductBehaviorSnapshot,
+  ) => ReplaceIngredientResult;
   addTopping: (ingredient: RecipeToppingIngredient, grams?: number) => void;
   removeTopping: (lineId: string) => void;
   setToppingGrams: (lineId: string, grams: number) => void;
@@ -533,6 +570,8 @@ export interface RecipeState {
     versionId?: string | null,
     savedProductionFingerprint?: string | null,
   ) => void;
+  /** Label-only write. Derived refreshes do not dirty recipe content; user edits do. */
+  setLabelDraft: (draft: RecipeLabelDraft, markDirty?: boolean) => void;
   /** Record a server-authorized, whole-gram audit for an unchanged recipe.
    * This does not mutate the formulation or its saved/dirty identity. */
   acknowledgePracticalRecipeAudit: (audit: PracticalRecipeSavedAudit) => void;
@@ -544,8 +583,12 @@ export interface RecipeState {
     label: string;
     temperatureC: number;
     machineTechnology?: MachineTechnology | null;
+    homeFormulationModuleId?: HomeFormulationModuleId | null;
     batchGrams?: number | null;
-    /** Home machines only: the machine's real usable capacity in grams. */
+    /** Home machines only: documented hard gram ceiling; recommendations never enter here. */
+    hardCapacityGrams?: number | null;
+    /** @deprecated Legacy call-site field. It is intentionally ignored because
+     * historical callers passed the soft recommendation here. */
     capacityGrams?: number | null;
     /** Explicit batch authority when this selection also changes the batch. */
     batchSource?: RecipeBatchSource;
@@ -679,14 +722,11 @@ const nextStarterReservation = (
   activeReservedGrams: number,
   lineSumAfter: number,
   nextBatchGrams: number,
-): number =>
-  activeReservedGrams > 0 ? Math.max(0, nextBatchGrams - lineSumAfter) : 0;
+): number => (activeReservedGrams > 0 ? Math.max(0, nextBatchGrams - lineSumAfter) : 0);
 
 /** A row the batch resize must not move: physically weighed, or pinned in grams. */
 const isBatchFixedLine = (item: RecipeItem): boolean =>
-  item.actual_grams !== null ||
-  item.grams_constraint !== undefined ||
-  item.lock_type === 'grams';
+  item.actual_grams !== null || item.grams_constraint !== undefined || item.lock_type === 'grams';
 
 /**
  * The ONE recipe-batch resize authority used by both machine selection and
@@ -746,6 +786,34 @@ export const resizeRecipeBatch = (
   const lineTargetGrams = reservationHolds
     ? (nextBatchGrams * currentSum) / (currentSum + reservedMainGrams)
     : nextBatchGrams;
+  const alreadySatisfiesTarget =
+    Math.abs(currentSum - lineTargetGrams) <= BATCH_RESIZE_IDEMPOTENCE_EPSILON_GRAMS &&
+    items.every((item) => {
+      const instructedPercent = percentByLineId?.[item.id] ?? item.percent_constraint?.percent;
+      if (
+        instructedPercent !== undefined &&
+        (!Number.isFinite(instructedPercent) || instructedPercent < 0 || instructedPercent > 100)
+      ) {
+        return false;
+      }
+      const percentSatisfied =
+        instructedPercent === undefined ||
+        Math.abs(item.planned_grams - (nextBatchGrams * instructedPercent) / 100) <=
+          BATCH_RESIZE_IDEMPOTENCE_EPSILON_GRAMS;
+      const rangeSatisfied =
+        item.range_constraint === undefined ||
+        (item.planned_grams >=
+          item.range_constraint.min_grams - BATCH_RESIZE_TOLERANCE_GRAMS &&
+          item.planned_grams <=
+            item.range_constraint.max_grams + BATCH_RESIZE_TOLERANCE_GRAMS);
+      return percentSatisfied && rangeSatisfied;
+    });
+  // A repeated request for an already-satisfied batch is a byte-exact no-op.
+  // Re-running the proportional division at factor ~1 otherwise perturbs
+  // ordinary rows by IEEE-754 dust and breaks Preview/Apply fingerprints.
+  // The epsilon is numerical only: material mismatches (including the served
+  // +1.5 g Sorbet drift) continue through full reconciliation.
+  if (alreadySatisfiesTarget) return { ok: true, items: [...items] };
   const percentById = new Map<string, number>();
   const fixedIds = new Set<string>();
   const flexibleIds = new Set<string>();
@@ -862,10 +930,11 @@ export const resizeRecipeBatch = (
 };
 
 /**
- * PC-02 — project the owner-approved Sorbet stabilizer system onto the band the
- * NEW batch derives, then let this same resize authority reconcile everything
- * else around it. The percentage limit lives in the stabilizer authority and is
- * never restated here.
+ * PC-02 / SOL-041 — project the existing stabilizer system through the
+ * authority of the selected formulation family, then let this same resize
+ * authority reconcile everything else around it. Gelato and Sorbet keep their
+ * distinct published bands; Vegan and Protein keep their own presence-only,
+ * template-held dose contract. No range is restated or borrowed here.
  *
  * The projection is skipped — leaving today's behaviour untouched — when any
  * component of the system is not the resize's to move: physically weighed,
@@ -881,18 +950,8 @@ const rescaleWithOwnerStabilizerSystem = (
   resized: RecipeItem[],
   nextBatchGrams: number,
   percentByLineId?: Readonly<Record<string, number>>,
-  reservedMainGrams = 0,
 ): RecipeItem[] => {
-  // The reservation is honoured here only if it is still TRUE of the incoming
-  // draft — exactly the test the outer resize applies. Re-deriving it from the
-  // pinned vector without this guard would resurrect a stale starter
-  // reservation on a draft the customer has since completed.
-  const draftSum = state.items.reduce((total, item) => total + item.planned_grams, 0);
-  const honoursReservation =
-    reservedMainGrams > 0 &&
-    Math.abs(draftSum + reservedMainGrams - state.target_batch_grams) <=
-      BATCH_RESIZE_TOLERANCE_GRAMS;
-  const components = sorbetStabilizerSystemItems(resized);
+  const components = ownerStabilizerSystemItems(resized);
   if (components.length === 0) return resized;
   const adjustable = components.every(
     (item) =>
@@ -904,33 +963,29 @@ const rescaleWithOwnerStabilizerSystem = (
   );
   if (!adjustable) return resized;
 
-  const plan = planSorbetStabilizerSystemRescale(
+  const plan = planOwnerStabilizerSystemRescale(
     buildRecipeInput(state),
     buildRecipeInput({ ...state, items: resized, target_batch_grams: nextBatchGrams }),
   );
   if (plan === null) return resized;
 
-  const pinnedItems = state.items.map((item) =>
+  // `resized` already owns the exact mass that the outer batch authority gave
+  // the lines (for an incomplete starter, this excludes the reserved Main).
+  // Project the stabilizer inside THAT mass. Rebuilding from `state.items` and
+  // deriving a new reservation after pinning moved a gram or two from Main to
+  // support on every round trip (1000 → 670 → 1000), producing the served
+  // 1001.5 g / 59.9 % Sorbet regression once the 600 g Main arrived.
+  const lineTargetGrams = resized.reduce((total, item) => total + item.planned_grams, 0);
+  const pinnedItems = resized.map((item) =>
     plan.has(item.id) ? { ...item, planned_grams: plan.get(item.id)! } : item,
   );
   const reconciled = resizeRecipeBatch(
     pinnedItems,
-    state.target_batch_grams,
     nextBatchGrams,
+    lineTargetGrams,
     percentByLineId,
     new Set(plan.keys()),
-    // The stabilizer projection reconciles the SAME draft, so it inherits the
-    // same Main reservation; dropping it would re-inflate the support vector
-    // the outer resize just protected. Pinning the stabilizer to whole grams
-    // moves a gram or two, so the reservation is re-read off the pinned vector
-    // the way it is defined everywhere else — whatever the lines do not hold.
-    honoursReservation
-      ? Math.max(
-          0,
-          state.target_batch_grams -
-            pinnedItems.reduce((total, item) => total + item.planned_grams, 0),
-        )
-      : 0,
+    0,
   );
   return reconciled.ok ? reconciled.items : resized;
 };
@@ -947,9 +1002,7 @@ const fromPreset = (preset: DemoPreset) => ({
   batchResizeConflict: null as BatchResizeConflict | null,
   machine_capacity_grams: preset.machine_capacity_grams,
   machine_capacity_source: (preset.machine_capacity_grams === null ? null : 'manual') as
-    | 'machine'
-    | 'manual'
-    | null,
+    'machine' | 'manual' | null,
   flavor_intensity: preset.flavor_intensity,
   cost_priority: preset.cost_priority,
   direction_targets: { ...DEFAULT_DIRECTION_TARGETS },
@@ -980,11 +1033,13 @@ const fromPreset = (preset: DemoPreset) => ({
   savedRecipeLatestVersionNumber: null,
   currentVersionId: null,
   currentVersionDate: null,
+  labelDraft: null,
   machineKind: null,
   servingModeId: null,
   machineId: null,
   machineLabel: null,
   machineTechnology: null,
+  homeFormulationModuleId: null,
   dirty: false,
   practicalRecipeAudit: null,
   savedProductionFingerprint: null,
@@ -1134,6 +1189,7 @@ const profileFields = (
   machineId: profile.machineId,
   machineLabel: profile.machineLabel,
   machineTechnology: profile.machineTechnology ?? null,
+  homeFormulationModuleId: profile.homeFormulationModuleId ?? null,
   direction_targets: { ...profile.directionTargets },
   // Owner P1-A: the neutral (0) selection is the CLEAN-MIDDLE INTENT, not the
   // absence of one. Gating activation on "some axis != 0" made Sweetness 0 opt
@@ -1236,11 +1292,13 @@ export function recipePersistPartialize(state: RecipeState) {
     currentVersionNumber: state.currentVersionNumber,
     currentVersionId: state.currentVersionId,
     currentVersionDate: state.currentVersionDate,
+    labelDraft: state.labelDraft,
     machineKind: state.machineKind,
     servingModeId: state.servingModeId,
     machineId: state.machineId,
     machineLabel: state.machineLabel,
     machineTechnology: state.machineTechnology,
+    homeFormulationModuleId: state.homeFormulationModuleId,
     dirty: state.dirty,
     practicalRecipeAudit: state.practicalRecipeAudit,
     savedProductionFingerprint: state.savedProductionFingerprint,
@@ -1390,8 +1448,8 @@ export const useRecipeStore = create<RecipeState>()(
               resized.items,
               machineDefault,
             ),
-            machine_capacity_grams: machineDefault,
-            machine_capacity_source: 'machine' as const,
+            machine_capacity_grams: state.machine_capacity_grams,
+            machine_capacity_source: state.machine_capacity_source,
             batch_source: 'MACHINE_DEFAULT' as const,
             batchResizeConflict: null,
           };
@@ -1403,7 +1461,13 @@ export const useRecipeStore = create<RecipeState>()(
           // A manual serving-mode choice keeps a professional machine route but clears a Home
           // route (a Home machine's mode is fixed by the machine — owner P0 route integrity).
           ...(state.machineKind === 'home'
-            ? { machineKind: null, machineId: null, machineLabel: null, machineTechnology: null }
+            ? {
+                machineKind: null,
+                machineId: null,
+                machineLabel: null,
+                machineTechnology: null,
+                homeFormulationModuleId: null,
+              }
             : {}),
           productBehaviorSnapshots: requireProductBehaviorRevalidation(
             state.productBehaviorSnapshots,
@@ -1422,6 +1486,7 @@ export const useRecipeStore = create<RecipeState>()(
           machineId: null,
           machineLabel: null,
           machineTechnology: null,
+          homeFormulationModuleId: null,
           // A MACHINE-derived capacity cannot outlive the machine context it
           // came from; an explicit manual entry survives (owner Phase 8).
           machine_capacity_grams:
@@ -1449,22 +1514,17 @@ export const useRecipeStore = create<RecipeState>()(
           set({ batchResizeConflict: resized.conflict });
           return { ok: false, conflict: resized.conflict };
         }
-        // PC-02 — the owner-approved Sorbet stabilizer system is capped at a
-        // PERCENTAGE of the batch that rounds inward to whole grams, so one
-        // proportional factor cannot carry it: a legal 5 g system at 1000 g
-        // arrived at 670 g (Ninja CREAMi Deluxe) as 1.34 g + 2.01 g — fractional,
-        // and above the 3 g ceiling that batch derives. The canonical authority
-        // projects the system onto the new band; no limit is restated here, and
-        // the ordinary lines absorb the difference through this same resize.
+        // PC-02 / SOL-041 — one proportional factor produces a fractional
+        // stabilizer hold at many real batch sizes. The selected profile's
+        // authority canonicalizes that one role; ordinary lines absorb only
+        // the rounding residual through this same resize.
         const projected = rescaleWithOwnerStabilizerSystem(
           state,
           resized.items,
           target_batch_grams,
           percentByLineId,
-          reservedMainGrams,
         );
         const batchSource = source ?? manualBatchSourceForState(state);
-        const customBatch = batchSource === 'CUSTOM_MACHINE_BATCH';
         set({
           target_batch_grams,
           items: projected,
@@ -1475,12 +1535,6 @@ export const useRecipeStore = create<RecipeState>()(
           ),
           batch_source: batchSource,
           batchResizeConflict: null,
-          ...(customBatch
-            ? {
-                machine_capacity_grams: target_batch_grams,
-                machine_capacity_source: 'machine' as const,
-              }
-            : {}),
           dirty: true,
           draftRevision: state.draftRevision + 1,
         });
@@ -1746,6 +1800,64 @@ export const useRecipeStore = create<RecipeState>()(
           };
         });
         return { status: 'added', lineId: added.id, canonicalId };
+      },
+
+      replaceIngredient: (lineId, ingredient, behavior) => {
+        const current = get();
+        const target = current.items.find((item) => item.id === lineId);
+        if (!target) return { status: 'missing', lineId };
+        if (behavior && behavior.processScope !== 'BASE_FORMULATION') {
+          return { status: 'invalid_behavior', lineId };
+        }
+        const canonicalId = canonicalIngredientId(ingredient);
+        const duplicate = orderedBaseItems(current.items, current.baseOrder).find(
+          (item) => item.id !== lineId && canonicalIngredientId(item.ingredient) === canonicalId,
+        );
+        if (duplicate) {
+          return { status: 'duplicate', lineId: duplicate.id, canonicalId };
+        }
+
+        const normalized = normalizeIngredientIdentity(ingredient);
+        set((state) => {
+          const items = state.items.map((item) =>
+            item.id === lineId ? { ...item, ingredient: normalized } : item,
+          );
+          const productBehaviorSnapshots = { ...state.productBehaviorSnapshots };
+          if (behavior) {
+            productBehaviorSnapshots[lineId] = preserveOwnerReviewGate(state.ownerReviewGate, {
+              ...behavior,
+              lineId,
+            });
+          } else {
+            delete productBehaviorSnapshots[lineId];
+          }
+          return {
+            items,
+            productBehaviorSnapshots,
+            compositionMigrationAmbiguities: state.compositionMigrationAmbiguities.filter(
+              (ambiguity) => ambiguity.lineId !== lineId,
+            ),
+            starterReservedMainGrams: reservationAfterMainCheck({
+              items,
+              productBehaviorSnapshots,
+              starterReservedMainGrams: state.starterReservedMainGrams,
+            }),
+            ...(state.visibleProductType === 'gelato'
+              ? { category: gelatoInternalCategory(items) }
+              : {}),
+            // Explicit replacement is also an explicit selection of the new
+            // identity, so a stale exclusion for that identity cannot survive.
+            excludedIngredientIds: state.excludedIngredientIds.filter(
+              (id) => canonicalIngredientIdFromSourceId(id) !== canonicalId,
+            ),
+            unavailableMainIngredientIds: state.unavailableMainIngredientIds.filter(
+              (id) => canonicalIngredientIdFromSourceId(id) !== canonicalId,
+            ),
+            dirty: true,
+            draftRevision: state.draftRevision + 1,
+          };
+        });
+        return { status: 'replaced', lineId, canonicalId };
       },
 
       addTopping: (ingredient, grams = 0) =>
@@ -2433,6 +2545,28 @@ export const useRecipeStore = create<RecipeState>()(
           // typed after the seed, or an amount that existed before the crown,
           // is preserved exactly. No gram stack, no history.
           const autoSeeded = state.crownAutoSeededLineIds.includes(lineId);
+          const returnedAutoSeedToZero =
+            roleChanged &&
+            autoSeeded &&
+            state.items.some(
+              (item) =>
+                item.id === lineId &&
+                item.lock_type === 'main' &&
+                crownOffPlannedGrams(item.planned_grams, autoSeeded) === 0,
+            );
+          const productBehaviorSnapshots = requireProductBehaviorLineRevalidation(
+            state.productBehaviorSnapshots,
+            lineId,
+          );
+          if (returnedAutoSeedToZero) {
+            // A zero-gram Standard line is deliberately outside the PB-required
+            // set. Leaving its role-transition snapshot as REVALIDATION_REQUIRED
+            // creates a deadlock: PI cannot validate a zero line and the stale
+            // snapshot hides the Crown trigger. Forget only this now-inapplicable
+            // Main-context snapshot. Re-crowning seeds 1 g, makes the line PB
+            // required again, and the normal managed pass resolves fresh facts.
+            delete productBehaviorSnapshots[lineId];
+          }
           return {
             items: state.items.map((item) => {
               if (item.id !== lineId || item.lock_type !== 'main') return item;
@@ -2455,10 +2589,7 @@ export const useRecipeStore = create<RecipeState>()(
             crownAutoSeededLineIds: clearCrownAutoSeeded(state.crownAutoSeededLineIds, lineId),
             ...(roleChanged
               ? {
-                  productBehaviorSnapshots: requireProductBehaviorLineRevalidation(
-                    state.productBehaviorSnapshots,
-                    lineId,
-                  ),
+                  productBehaviorSnapshots,
                   practicalRecipeAudit: null,
                   savedProductionFingerprint: null,
                 }
@@ -2503,6 +2634,26 @@ export const useRecipeStore = create<RecipeState>()(
           .getState()
           .openDraft(opened.draftContextSeq, DEFAULT_DIRECTION_TARGETS);
       },
+      verifyPracticalAsWritten: (constraints) => {
+        const input = buildRecipeInput(get());
+        const result = practicalizeRecipeCandidate(input, constraints);
+        if (!result.ok) return false;
+        // Byte-identical, or nothing is recorded: a recipe that would still change is
+        // not a verified recipe, however encouraging the preview sounded.
+        if (
+          practicalRecipeInputFingerprint(result.audit.executableInput) !==
+          practicalRecipeInputFingerprint(input)
+        ) {
+          return false;
+        }
+        const audit = readPracticalRecipeAudit(
+          attachPracticalRecipeAudit(result.audit.executableInput, input, new Date().toISOString()),
+        );
+        if (audit === null) return false;
+        set({ practicalRecipeAudit: audit });
+        return true;
+      },
+
       loadRecipeInput: (input, link = {}) => {
         useIngredientTableUxStore.getState().reset();
         const metadata = readRecipeProfileMetadata(input);
@@ -2607,13 +2758,13 @@ export const useRecipeStore = create<RecipeState>()(
                 batch_source: resolvedBatch?.batchSource ?? ('PROFESSIONAL_USER_BATCH' as const),
                 batchResizeConflict: null,
                 machine_capacity_grams: input.machine_capacity_grams,
-                machine_capacity_source:
-                  input.machine_capacity_grams === null ? null : ('manual' as const),
+                machine_capacity_source: input.machine_capacity_source ?? null,
                 machineKind: null,
                 servingModeId: null,
                 machineId: null,
                 machineLabel: null,
                 machineTechnology: null,
+                homeFormulationModuleId: null,
               }),
           formulation_strategy: normalizeFormulationStrategy(
             // Account defaults may configure machine/batch/profile context,
@@ -2673,6 +2824,7 @@ export const useRecipeStore = create<RecipeState>()(
           savedRecipeLatestVersionNumber: link.latestVersionNumber ?? link.versionNumber ?? null,
           currentVersionId: link.versionId ?? null,
           currentVersionDate: link.versionDate ?? null,
+          labelDraft: readRecipeLabelDraft(input),
           dirty: false,
           practicalRecipeAudit,
           savedProductionFingerprint: null,
@@ -2728,6 +2880,11 @@ export const useRecipeStore = create<RecipeState>()(
           useRecipeProfileStore.getState().rebindDraftIdentity(savedIdentity);
         }
       },
+      setLabelDraft: (labelDraft, markDirty = true) =>
+        set((state) => ({
+          labelDraft: structuredClone(labelDraft),
+          dirty: markDirty ? true : state.dirty,
+        })),
       acknowledgePracticalRecipeAudit: (practicalRecipeAudit) =>
         set({ practicalRecipeAudit: structuredClone(practicalRecipeAudit) }),
       startNewRecipe: (requestedVisible) => {
@@ -2813,6 +2970,7 @@ export const useRecipeStore = create<RecipeState>()(
           machineId: defaults?.machineId ?? null,
           machineLabel: defaults?.machineLabel ?? null,
           machineTechnology: defaults?.machineTechnology ?? null,
+          homeFormulationModuleId: defaults?.homeFormulationModuleId ?? null,
           dirty: false,
           draftRevision: state.draftRevision + 1,
           draftContextSeq: state.draftContextSeq + 1,
@@ -2881,7 +3039,7 @@ export const useRecipeStore = create<RecipeState>()(
             unavailableMainIngredientIds: [],
             activePresetId: null,
             newRecipeStarterTemplateId: starter.templateId,
-          starterReservedMainGrams: Math.max(0, starter.metrics.missingMainMassGrams),
+            starterReservedMainGrams: Math.max(0, starter.metrics.missingMainMassGrams),
             newRecipeStarterKey: {
               visibleProductType: starter.visibleProductType,
               servingModeId: starter.servingModeId,
@@ -2901,6 +3059,7 @@ export const useRecipeStore = create<RecipeState>()(
                   machineId: state.machineId,
                   machineLabel: state.machineLabel,
                   machineTechnology: state.machineTechnology,
+                  homeFormulationModuleId: state.homeFormulationModuleId,
                   machine_capacity_grams: state.machine_capacity_grams,
                   machine_capacity_source: state.machine_capacity_source,
                   batch_source: state.batch_source,
@@ -2912,6 +3071,7 @@ export const useRecipeStore = create<RecipeState>()(
                   machineId: null,
                   machineLabel: null,
                   machineTechnology: null,
+                  homeFormulationModuleId: null,
                   machine_capacity_grams: null,
                   machine_capacity_source: null,
                   batch_source:
@@ -2985,7 +3145,6 @@ export const useRecipeStore = create<RecipeState>()(
                 resized.items,
                 targetBatchGrams,
                 undefined,
-                reservedMainGrams,
               );
         const batchSource =
           sel.batchGrams == null
@@ -3011,8 +3170,15 @@ export const useRecipeStore = create<RecipeState>()(
                 MACHINE_CATALOG.find((profile) => profile.id === sel.machineId)?.technology ??
                 null)
               : null,
+          homeFormulationModuleId:
+            sel.kind === 'home'
+              ? (sel.homeFormulationModuleId ??
+                MACHINE_CATALOG.find((profile) => profile.id === sel.machineId)
+                  ?.homeFormulationModuleId ??
+                null)
+              : null,
           // Route to the existing supported cell — no Engine change, just the temperature input.
-          target_temperature_c: sel.temperatureC,
+          target_temperature_c: sel.kind === 'home' ? HOME_ENGINE_TEMPERATURE_C : sel.temperatureC,
           target_batch_grams: targetBatchGrams,
           items: projectedItems,
           starterReservedMainGrams: nextStarterReservation(
@@ -3022,9 +3188,9 @@ export const useRecipeStore = create<RecipeState>()(
           ),
           batch_source: batchSource,
           batchResizeConflict: null,
-          machine_capacity_grams: sel.kind === 'home' ? (sel.capacityGrams ?? null) : null,
+          machine_capacity_grams: sel.kind === 'home' ? (sel.hardCapacityGrams ?? null) : null,
           machine_capacity_source:
-            sel.kind === 'home' && sel.capacityGrams != null ? 'machine' : null,
+            sel.kind === 'home' && sel.hardCapacityGrams != null ? 'machine' : null,
           productBehaviorSnapshots: requireProductBehaviorRevalidation(
             current.productBehaviorSnapshots,
           ),

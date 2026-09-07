@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { AdminShopRevenuePanel } from './AdminShopRevenuePanel';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/cn';
@@ -21,7 +22,8 @@ import { AdminShopOrderCard } from './AdminShopOrderCard';
 import { shopOrderQueue, shopOrderQueueCounts, type ShopOrderQueue } from './shopOrderQueue';
 
 const field = 'pro-focus-ring min-h-11 w-full border border-[var(--g-line)] bg-white px-3 text-sm';
-const th = 'border-b border-[var(--g-line)] px-3 py-2.5 text-left font-semibold text-[var(--g-text-secondary)]';
+const th =
+  'border-b border-[var(--g-line)] px-3 py-2.5 text-left font-semibold text-[var(--g-text-secondary)]';
 const td = 'border-b border-[var(--g-line-quiet)] px-3 py-3 align-top text-[var(--g-ink)]';
 
 const AVAILABILITY: readonly ShopAvailability[] = ['in_stock', 'preorder', 'out_of_stock'];
@@ -201,15 +203,23 @@ export function AdminShopSection() {
     <>
       <header className="border-b border-[var(--g-line)] pb-6">
         <SectionLabel>Sprzedaż</SectionLabel>
-        <h1 className="mt-2 text-[25px] leading-[1.08] font-[750] tracking-[-0.04em] text-[var(--g-ink)] sm:text-[30px]">Sklep</h1>
+        <h1 className="mt-2 text-[25px] leading-[1.08] font-[750] tracking-[-0.04em] text-[var(--g-ink)] sm:text-[30px]">
+          Sklep
+        </h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--g-text-secondary)]">
           Artykuły odsyłają do istniejących produktów kanonicznych — sklep nigdy nie tworzy
           duplikatu składnika. Cena, dostępność i termin realizacji są edytowalne tutaj.
         </p>
       </header>
 
+      {/* N: the Shop reads on its own. Subscription metrics keep their own
+          section — neither business is a component of the other. */}
+      <AdminShopRevenuePanel />
+
       {save.isError ? (
-        <p className="mt-4 text-sm text-status-error">{customerErrorMessage(save.error, 'admin')}</p>
+        <p className="mt-4 text-sm text-status-error">
+          {customerErrorMessage(save.error, 'admin')}
+        </p>
       ) : null}
 
       <section className="mt-7">
@@ -249,9 +259,7 @@ export function AdminShopSection() {
 
       <section className="mt-10">
         <SectionLabel>{shopCopy.admin.ordersTitle}</SectionLabel>
-        {orders.isLoading ? (
-          <ApplicationState kind="loading" title="Wczytuję zamówienia…" />
-        ) : null}
+        {orders.isLoading ? <ApplicationState kind="loading" title="Wczytuję zamówienia…" /> : null}
         {orders.isError ? (
           <ApplicationState kind="error" title="Nie udało się wczytać zamówień." />
         ) : null}

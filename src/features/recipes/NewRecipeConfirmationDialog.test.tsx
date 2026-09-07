@@ -10,8 +10,9 @@ describe('NewRecipeConfirmationDialog', () => {
   let root: ReturnType<typeof createRoot>;
 
   beforeEach(() => {
-    (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean })
-      .IS_REACT_ACT_ENVIRONMENT = true;
+    (
+      globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
+    ).IS_REACT_ACT_ENVIRONMENT = true;
     host = document.createElement('div');
     document.body.append(host);
     root = createRoot(host);
@@ -37,13 +38,17 @@ describe('NewRecipeConfirmationDialog', () => {
       );
     });
 
-    expect(host.textContent).toContain('Zmiana typu produktu wymaga przebudowy składników.');
-    expect(host.textContent).toContain('Przebuduj');
-    expect(host.textContent).toContain('Anuluj');
-    expect(host.querySelector('[aria-describedby]')).toBeNull();
+    expect(document.body.textContent).toContain(
+      'Zmiana typu produktu wymaga przebudowy składników.',
+    );
+    expect(document.body.textContent).toContain('Przebuduj');
+    expect(document.body.textContent).toContain('Anuluj');
+    expect(document.body.querySelector('[aria-describedby]')).toBeNull();
 
     await act(async () => {
-      (host.querySelector('[data-testid="confirm-new-recipe"]') as HTMLButtonElement).click();
+      (
+        document.body.querySelector('[data-testid="confirm-new-recipe"]') as HTMLButtonElement
+      ).click();
     });
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });
@@ -54,27 +59,36 @@ describe('NewRecipeConfirmationDialog', () => {
     trigger.focus();
     const onCancel = vi.fn();
     await act(async () => {
-      root.render(
-        <NewRecipeConfirmationDialog open onCancel={onCancel} onConfirm={() => {}} />,
-      );
+      root.render(<NewRecipeConfirmationDialog open onCancel={onCancel} onConfirm={() => {}} />);
     });
 
-    const buttons = Array.from(host.querySelectorAll('button'));
+    const buttons = Array.from(document.body.querySelectorAll('button'));
     const cancel = buttons.find((button) => button.textContent === 'Anuluj')!;
-    const confirm = host.querySelector('[data-testid="confirm-new-recipe"]') as HTMLButtonElement;
+    const close = buttons.find(
+      (button) => button.getAttribute('aria-label') === 'Zamknij komunikat',
+    )!;
+    const confirm = document.body.querySelector(
+      '[data-testid="confirm-new-recipe"]',
+    ) as HTMLButtonElement;
     expect(document.activeElement).toBe(cancel);
 
     confirm.focus();
     confirm.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
-    expect(document.activeElement).toBe(cancel);
+    expect(document.activeElement).toBe(close);
 
-    cancel.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true }));
+    close.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true }),
+    );
     expect(document.activeElement).toBe(confirm);
 
     confirm.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     expect(onCancel).toHaveBeenCalledTimes(1);
 
-    await act(async () => root.render(<NewRecipeConfirmationDialog open={false} onCancel={onCancel} onConfirm={() => {}} />));
+    await act(async () =>
+      root.render(
+        <NewRecipeConfirmationDialog open={false} onCancel={onCancel} onConfirm={() => {}} />,
+      ),
+    );
     expect(document.activeElement).toBe(trigger);
     trigger.remove();
   });

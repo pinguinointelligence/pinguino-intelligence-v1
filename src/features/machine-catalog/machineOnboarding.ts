@@ -25,6 +25,7 @@ import {
   visibleModeForTechnology,
   type HomeSupportedTechnology,
 } from './technologyMode';
+import { homeFormulationModuleForTechnology } from './homeFormulationModule';
 
 /* ------------------------------------------------------------------ */
 /* §8.2 — starter tiles                                                */
@@ -311,6 +312,14 @@ export function buildCustomMachineProfile(input: CustomMachineInput): CustomMach
   const brand = input.brand?.trim() ?? '';
   const model = input.model?.trim() ?? '';
   const preFreezeTarget = PRE_FREEZE_BY_TECHNOLOGY[technology];
+  const homeFormulationModuleId = homeFormulationModuleForTechnology(technology);
+  if (homeFormulationModuleId === null) {
+    return {
+      outcome: 'unsupported_for_home',
+      technology: 'continuous_soft_serve',
+      reasonCode: 'continuous_soft_serve_not_home_supported',
+    };
+  }
 
   const profile: HomeMachineProfile = {
     id: `custom-${customIdSlug(brand, model)}`,
@@ -319,6 +328,7 @@ export function buildCustomMachineProfile(input: CustomMachineInput): CustomMach
     modelCodes: model.length > 0 ? [model] : [],
     market: input.market,
     technology,
+    homeFormulationModuleId,
     resolvedVisibleMode: resolution.visibleMode,
     capacity: {
       vesselCapacityMl,
@@ -326,9 +336,15 @@ export function buildCustomMachineProfile(input: CustomMachineInput): CustomMach
       workingCapacityMl: null,
       minimumBatchMl: null,
       maximumBatchMl: null,
+      hardMaximumBatchGrams: null,
+      trueHardMaximumDocumented: input.hasMaxFillLine === true,
       defaultBatchMl: null,
       finishedProductCapacityMl: null,
       maxFillDefinedByManufacturer: input.hasMaxFillLine === true,
+      maxFillRules:
+        input.hasMaxFillLine === true
+          ? [{ kind: 'marked_line', scope: 'user-declared vessel' }]
+          : undefined,
     },
     requiresPreFreeze: preFreezeTarget !== 'none',
     preFreezeTarget,

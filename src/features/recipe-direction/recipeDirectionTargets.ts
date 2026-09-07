@@ -10,6 +10,10 @@ import {
   type TargetRange,
 } from '@/engine';
 import { getTemperatureRegulatorSettingsOrNull, type ProductProfile } from '@/spine';
+import {
+  proteinHardnessApplies,
+  proteinHardnessBandForTarget,
+} from '@/features/protein-gelato/proteinHardnessAuthority';
 
 export const DEFAULT_RECIPE_DIRECTION_TARGETS: RecipeDirectionTargets = Object.freeze({
   sweetness: 0,
@@ -287,7 +291,40 @@ function computeRecipeDirectionPlan(input: RecipeInput): RecipeDirectionPlan {
     });
   }
 
-  if (regulator?.npac?.cleanCenter && softnessOperational) {
+  // PROTEIN HARDNESS — restored through the canonical Protein ICE-FRACTION
+  // authority (owner decision 2026-09-03, option A). The NPAC statement above is
+  // unchanged and still true: Protein NPAC-based hardness stays unsupported.
+  // This branch never touches NPAC — it resolves the profile's OWN approved ice
+  // band through the existing texture semantics, and exposes the THREE positions
+  // that authority actually supports rather than five look-alike ones.
+  if (proteinHardnessApplies(input.category, input.target_temperature_c)) {
+    const proteinBand = proteinHardnessBandForTarget(
+      input.target_temperature_c,
+      targets.softness,
+    );
+    if (proteinBand) {
+      if (enabled) bands.ice_fraction = proteinBand;
+      axes.push({
+        axis: 'softness',
+        target: targets.softness,
+        status: 'working',
+        metric: 'ice_fraction',
+        targetBand: proteinBand,
+        targetCenter: null,
+        reason: null,
+      });
+    } else {
+      axes.push({
+        axis: 'softness',
+        target: targets.softness,
+        status: 'blocked_data',
+        metric: 'ice_fraction',
+        targetBand: null,
+        targetCenter: null,
+        reason: 'Brak zatwierdzonego zakresu lodu dla tego profilu i temperatury.',
+      });
+    }
+  } else if (regulator?.npac?.cleanCenter && softnessOperational) {
     const sorbetTemperature = input.target_temperature_c as -11 | -12 | -13;
     const targetCenter =
       profile === 'sorbet'

@@ -39,12 +39,19 @@ const EXPECTED_SOURCE_CLOSURE = [
   'src/engine/corrections/verify.ts',
   'src/engine/cost.ts',
   'src/engine/iceFraction.ts',
+  // REVIEWED 2026-09-05 (capacity provenance). Pure authority projection:
+  // legacy numeric values without machine/manual provenance are not limits.
+  'src/engine/machineCapacity.ts',
   'src/engine/nutrition.ts',
   'src/engine/pac.ts',
   'src/engine/pod.ts',
   'src/engine/scoring.ts',
   'src/engine/statuses.ts',
   'src/engine/sorbetFreezingPhysics.ts',
+  // REVIEWED 2026-09-05 (minimum larger-batch Rescue). Pure projections of
+  // the canonical Engine composition factors used to build necessary linear
+  // bounds. They neither add nor relax any scientific limit.
+  'src/engine/technicalLinearFactors.ts',
   // REVIEWED 2026-08-23 (owner USER INTENT / SOFT-HOLD). Pure arithmetic over
   // two existing RecipeItem sidecars — no IO, no network, no dataset, no
   // ingredient knowledge. Reachable from `corrections/verify.ts`, which needs
@@ -59,6 +66,11 @@ const EXPECTED_SOURCE_CLOSURE = [
   'src/features/formulation/stabilizerDosage.ts',
   'src/features/formulation/veganProfileConstraints.ts',
   'src/features/formulation/violationBands.ts',
+  // REVIEWED 2026-09-05 (minimum larger-batch Rescue). Only the deterministic
+  // no-IO simplex and exact integer branch-and-bound are retained by the
+  // generated bundle; every result is still revalidated by Engine and frozen
+  // ProductBehavior before it can be authorized.
+  'src/features/constraint-studio/mainTechnicalLinearBound.ts',
   'src/features/practical-recipe/practicalRecipe.ts',
   'src/features/pro-core/recipeScaling.ts',
   // GLOBAL MAIN AUTHORITY v1.4 (reviewed 2026-08-23): operational Rescue must
@@ -75,10 +87,12 @@ const EXPECTED_SOURCE_CLOSURE = [
   'src/features/product-intelligence/productBehaviorResolver.ts',
   'src/features/product-intelligence/recipeBehaviorAuthority.ts',
   'src/features/production-workspace/productionRescue.ts',
+  'src/features/production-workspace/productionRescueAuthority.ts',
   'src/features/production-workspace/productionSession.ts',
   'src/features/protein-gelato/proteinAuthority.ts',
   'src/features/protein-gelato/proteinBehavior.ts',
   'src/features/protein-gelato/proteinQualification.ts',
+  'src/features/protein-gelato/proteinHardnessAuthority.ts',
   'src/features/protein-gelato/proteinScienceAuthority.ts',
   'src/features/protein-gelato/proteinStructureQuality.ts',
   'src/features/recipe-composition/finalProduct.ts',
@@ -104,7 +118,7 @@ const sources = {
 };
 
 const virtualSource = [
-  `export { assessProductionRescue, productionRescueCandidateFingerprint, PRODUCTION_RESCUE_MODEL_VERSION } from ${JSON.stringify(sources.rescue)};`,
+  `export { assessProductionRescue, productionRescueCandidateFingerprint, productionRescueTerminalAuthority, PRODUCTION_RESCUE_MODEL_VERSION } from ${JSON.stringify(sources.rescue)};`,
   `export { hydrateProductionSessionFromRun } from ${JSON.stringify(sources.session)};`,
   `export { scaleRecipeVersion, scaledRecipeInput } from ${JSON.stringify(sources.scaling)};`,
   `export { ENGINE_VERSION, CONFIG_VERSION } from ${JSON.stringify(sources.engineVersion)};`,
@@ -202,6 +216,7 @@ const manifest = {
   exportedRuntime: [
     'assessProductionRescue',
     'productionRescueCandidateFingerprint',
+    'productionRescueTerminalAuthority',
     'hydrateProductionSessionFromRun',
     'scaleRecipeVersion',
     'scaledRecipeInput',

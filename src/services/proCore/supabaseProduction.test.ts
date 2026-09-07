@@ -16,6 +16,8 @@ import { productionCapabilitiesFor } from '@/features/pro-core/proCoreCapabiliti
 import {
   isProductionRescueAuthorizationRefreshError,
   isProductionRescueOptionUnavailableError,
+  productionRescueErrorMessagePl,
+  productionRescueOptionUnavailableDiagnostics,
   productionRescueOptionUnavailableDetails,
   supabaseProductionRepository,
 } from './supabaseProduction';
@@ -1216,6 +1218,24 @@ describe('supabaseProduction — atomic served start, Rescue, and completion', (
       stableOptionId: 'leave_as_is',
       reason: 'hard_safety_violations',
       violationMetrics: ['lactose_sandiness_risk', 'lactose'],
+      diagnostics: {
+        physicalConfirmedG: 381,
+        forecastMassG: 675,
+        originalTargetG: 670,
+        machineCapacityG: 670,
+        forecastViolationDetails: [
+          { metric: 'lactose', direction: 'high', value: 6.1477, min: 4, max: 6 },
+        ],
+        fixedTargetRebalance: {
+          candidateMassG: 670,
+          violationDetails: [
+            { metric: 'lactose', direction: 'high', value: 6.1936, min: 4, max: 6 },
+          ],
+        },
+        irreducibleConfirmedViolations: [
+          { metric: 'lactose', direction: 'high', value: 6.1936, min: 4, max: 6 },
+        ],
+      },
     };
 
     try {
@@ -1233,7 +1253,50 @@ describe('supabaseProduction — atomic served start, Rescue, and completion', (
         reasonCode: 'hard_safety_violations',
         violationMetrics: ['lactose_sandiness_risk', 'lactose'],
       });
+      expect(productionRescueOptionUnavailableDiagnostics(error)).toMatchObject({
+        physicalConfirmedG: 381,
+        forecastMassG: 675,
+        originalTargetG: 670,
+        machineCapacityG: 670,
+        fixedTargetRebalance: { candidateMassG: 670 },
+        irreducibleConfirmedViolations: [
+          { metric: 'lactose', direction: 'high', value: 6.1936, min: 4, max: 6 },
+        ],
+      });
     }
+  });
+
+  it('preserves an Edge bundle mismatch as a deterministic fail-closed reason', async () => {
+    const repo = repoFor(store);
+    const run = await repo.startRun({
+      ownerUserId: U1,
+      version: makeVersion('ver-1'),
+      target: { kind: 'weight_g', grams: 1000 },
+      capabilities: PRO,
+      by: U1,
+      meta: { thermalMode: 'HEAT_CAPABLE' },
+    });
+    store.functionErrorPayloads['production-rescue-authorize'] = {
+      error: 'engine_bundle_mismatch',
+      expectedEngineBundleSha256: 'a'.repeat(64),
+      actualEngineBundleSha256: 'b'.repeat(64),
+    };
+
+    try {
+      await repo.authorizeRescue({
+        runId: run.runId,
+        stableOptionId: 'enlarge_batch',
+        expectedActualRevision: 0,
+        expectedRescueRevision: 0,
+        idempotencyKey: 'bundle-mismatch',
+      });
+      throw new Error('expected Production Rescue bundle mismatch');
+    } catch (error) {
+      expect(productionRescueErrorMessagePl(error)).toBe(
+        'Korekta partii jest chwilowo niedostępna — wersja obliczeń na serwerze nie jest zgodna z aplikacją.',
+      );
+    }
+    expect(store.rpcCalls.some((call) => call.name.includes('consume_rescue'))).toBe(false);
   });
 
   it('classifies served expiry as requiring a fresh Rescue Preview', async () => {

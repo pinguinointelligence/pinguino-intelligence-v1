@@ -23,6 +23,7 @@ import {
   type IngredientRowMeta,
   type SubstituteCandidate,
 } from './ingredientTableUx';
+import type { ProductDiscoveryReplaceContext } from './canonicalProductDiscovery';
 import { DialogShell } from '@/components/ui/DialogShell';
 import { HoverPreview } from '@/components/ui/HoverPreview';
 import { DirectNumberControl } from './DirectNumberControl';
@@ -90,6 +91,7 @@ export interface IngredientRowActions {
     candidate: SubstituteCandidate,
     mainIdentityConfirmed: boolean,
   ) => void | Promise<void>;
+  requestReplace?: (lineId: string, context: ProductDiscoveryReplaceContext) => void;
   /** Retained store capability; Recipe mode intentionally no longer calls it. */
   markIngredientUnavailable?: (lineId: string) => void;
   moveUp?: (lineId: string) => void;
@@ -510,6 +512,10 @@ function RecipeRow({
   const required = meta.required || item.lock_type === 'required';
   const rangeLocked = lock?.state === 'range' || item.range_constraint !== undefined;
   const gramsLocked = !rangeLocked && (lock?.state === 'locked' || item.lock_type === 'grams');
+  /* The ProductBehavior gate, read at RENDER rather than only on click. See
+     `IngredientRowMeta.editRefusal`: the refusal was already correct, it was
+     just invisible until you pressed a button that then did nothing. */
+  const editRefusal = meta.editRefusal ?? null;
   const estimated = !item.ingredient.is_verified || item.ingredient.confidence_score < 90;
   const missingAmount = meta.dose.provenance === 'UNKNOWN' && item.planned_grams <= 0;
   const displayQuantity = item.planned_grams;
@@ -552,6 +558,13 @@ function RecipeRow({
       .finally(() => setSubstitutesLoading(false));
   };
 
+  const openReplace = () => {
+    const context = meta.replaceContext;
+    if (!context || !actions.requestReplace) return;
+    closeLineMenus();
+    actions.requestReplace(item.id, context);
+  };
+
   // ONE presentation model. Desktop and mobile render this exact compact panel;
   // every callback below remains the existing Recipe-row authority.
   const articlePanelContent = (
@@ -568,85 +581,88 @@ function RecipeRow({
         data-control-height="44"
       >
         <span className="flex min-w-0 items-center gap-2.5">
-        <ArticleActionButton
-          label="Przesuń wyżej"
-          icon="up"
-          disabled={!canMoveUp}
-          onClick={() => actions.moveUp?.(item.id)}
-        />
-        <ArticleActionButton
-          label="Przesuń niżej"
-          icon="down"
-          disabled={!canMoveDown}
-          onClick={() => actions.moveDown?.(item.id)}
-        />
-        <div
-          /* The paired control has to be sized, not just capped: in a flex row
+          {actions.requestReplace && meta.replaceContext ? (
+            <ArticleActionButton label="Zamień produkt" icon="swap" onClick={openReplace} />
+          ) : null}
+          <ArticleActionButton
+            label="Przesuń wyżej"
+            icon="up"
+            disabled={!canMoveUp}
+            onClick={() => actions.moveUp?.(item.id)}
+          />
+          <ArticleActionButton
+            label="Przesuń niżej"
+            icon="down"
+            disabled={!canMoveDown}
+            onClick={() => actions.moveDown?.(item.id)}
+          />
+          <div
+            /* The paired control has to be sized, not just capped: in a flex row
              `min-w-0` let the crown collapse to 14 px — a real target squeezed
              out by its own sibling. 92 px gives the crown 64 px beside the
              28 px role-info segment, both at the 44 px touch height. */
-          className="grid h-11 w-[92px] shrink-0 grid-cols-[minmax(0,1fr)_28px] overflow-hidden rounded-full border border-gold/22 bg-white"
-          data-testid="article-panel-role-control"
-          data-control-height="44"
-        >
-          <HoverPreview
-            text={isMain ? 'Usuń rolę główną' : mainUnavailableReason || 'Ustaw jako główny'}
-            maxWidthPx={240}
-            className="flex min-w-0"
+            className="grid h-11 w-[92px] shrink-0 grid-cols-[minmax(0,1fr)_28px] overflow-hidden rounded-full border border-gold/22 bg-white"
+            data-testid="article-panel-role-control"
+            data-control-height="44"
           >
-            {isMain ? (
-              <MainRoleBadge
-                testId={`article-panel-main-${item.id}`}
-                ariaLabel="Usuń rolę główną"
-                title="Usuń rolę główną"
-                variant="article"
-                onClick={() => setRole('standard')}
-              />
-            ) : (
-              <MainRoleTrigger
-                testId={`article-panel-main-${item.id}`}
-                ariaLabel="Ustaw jako główny"
-                title={mainUnavailableReason || 'Ustaw jako główny'}
-                variant="article"
-                disabled={Boolean(mainUnavailableReason)}
-                onClick={() => setRole('main')}
-              />
-            )}
-          </HoverPreview>
-          <HoverPreview
-            text="Rola składnika. Możesz oznaczyć składnik jako główny."
-            maxWidthPx={260}
-            className="grid h-11 shrink-0 place-items-center border-l border-gold/16 bg-education-ivory/35 text-[9px] font-semibold text-stone-500 transition-colors hover:bg-education-ivory/70"
-          >
-            <button
-              type="button"
-              aria-label="Informacja o roli składnika"
-              onClick={() => setIngredientModalView('data')}
-              className="pro-focus-ring grid h-full w-full place-items-center"
+            <HoverPreview
+              text={isMain ? 'Usuń rolę główną' : mainUnavailableReason || 'Ustaw jako główny'}
+              maxWidthPx={240}
+              className="flex min-w-0"
             >
-              <span
-                aria-hidden
-                className="grid size-3.5 place-items-center rounded-full border border-ink/12 bg-white"
+              {isMain ? (
+                <MainRoleBadge
+                  testId={`article-panel-main-${item.id}`}
+                  ariaLabel="Usuń rolę główną"
+                  title="Usuń rolę główną"
+                  variant="article"
+                  onClick={() => setRole('standard')}
+                />
+              ) : (
+                <MainRoleTrigger
+                  testId={`article-panel-main-${item.id}`}
+                  ariaLabel="Ustaw jako główny"
+                  title={mainUnavailableReason || 'Ustaw jako główny'}
+                  variant="article"
+                  disabled={Boolean(mainUnavailableReason)}
+                  onClick={() => setRole('main')}
+                />
+              )}
+            </HoverPreview>
+            <HoverPreview
+              text="Rola składnika. Możesz oznaczyć składnik jako główny."
+              maxWidthPx={260}
+              className="grid h-11 shrink-0 place-items-center border-l border-gold/16 bg-education-ivory/35 text-[9px] font-semibold text-stone-500 transition-colors hover:bg-education-ivory/70"
+            >
+              <button
+                type="button"
+                aria-label="Informacja o roli składnika"
+                onClick={() => setIngredientModalView('data')}
+                className="pro-focus-ring grid h-full w-full place-items-center"
               >
-                ?
-              </span>
-            </button>
-          </HoverPreview>
-        </div>
+                <span
+                  aria-hidden
+                  className="grid size-3.5 place-items-center rounded-full border border-ink/12 bg-white"
+                >
+                  ?
+                </span>
+              </button>
+            </HoverPreview>
+          </div>
         </span>
         <span className="flex min-w-0 items-center gap-2.5">
-        <ArticleActionButton
-          label={meta.unavailable ? 'Oznacz jako dostępny' : 'Oznacz jako niedostępny'}
-          icon="availability"
-          selected={meta.unavailable}
-          onClick={() => actions.setIngredientUnavailable?.(item.id, !meta.unavailable)}
-        />
-        <ArticleActionButton label="Znajdź zamiennik" icon="swap" onClick={openSubstitute} />
-        <ArticleActionButton
-          label="Dane składnika"
-          icon="info"
-          onClick={() => setIngredientModalView('data')}
-        />
+          <ArticleActionButton
+            label={meta.unavailable ? 'Oznacz jako dostępny' : 'Oznacz jako niedostępny'}
+            icon="availability"
+            selected={meta.unavailable}
+            onClick={() => actions.setIngredientUnavailable?.(item.id, !meta.unavailable)}
+          />
+          <ArticleActionButton label="Znajdź zamiennik" icon="swap" onClick={openSubstitute} />
+          <ArticleActionButton
+            label="Dane składnika"
+            icon="info"
+            onClick={() => setIngredientModalView('data')}
+          />
         </span>
       </div>
 
@@ -687,7 +703,7 @@ function RecipeRow({
           scannable (§7). The breakpoint is `lg`, not `md`: between 768 and
           1024 px the five-column table can only fit by truncating ingredient
           names, which is exactly the squeeze §5 forbids. */}
-      <div className="lg:hidden">
+      <div className="pro-ingredient-row-mobile lg:hidden">
         <MobileIngredientLine
           item={item}
           percent={share}
@@ -704,14 +720,15 @@ function RecipeRow({
       </div>
 
       {/* WIDE (lg+) — the accepted Production table row, unchanged. */}
-      <div className="hidden lg:block">
+      <div className="pro-ingredient-row-desktop hidden lg:block">
         <div
-          className={compact ? COMPACT_ROW_GRID : ROW_GRID}
+          className={cn('group/row', compact ? COMPACT_ROW_GRID : ROW_GRID)}
           onDragOver={(event) => event.preventDefault()}
           onDrop={(event) => {
             event.preventDefault();
             onDrop?.(item.id);
           }}
+          data-gellatti-row="ingredient"
           data-scope="BASE_FORMULATION"
         >
           {/* The drag handle is its own grid track (V2.1): every product icon
@@ -720,10 +737,30 @@ function RecipeRow({
             aria-hidden
             draggable
             onDragStart={() => onDragStart?.(item.id)}
-            className="inline-grid size-11 shrink-0 cursor-grab select-none place-items-center text-[12px] leading-none text-[var(--g-drag)] active:cursor-grabbing md:size-[22px]"
+            className="inline-grid size-11 shrink-0 cursor-grab select-none place-items-center leading-none active:cursor-grabbing md:size-[22px]"
             title="Przeciągnij, aby zmienić kolejność"
           >
-            ⠿
+            {/* OWNER DECISION 2026-09-02 (variant C). This was the single glyph
+                `⠿` in `--g-drag` (#aaa59d) — 2.45:1 on white, BELOW the 3:1
+                floor for non-text UI, and a glyph cannot mark one of its own
+                dots. Six real dots in `--g-text-muted` measure 4.72:1, so the
+                handle is visible from the contrast alone; the accent lights the
+                middle pair only under the pointer, teaching the affordance at
+                the moment of intent without spending the accent — which carries
+                DECISION here (focus, unsaved, confirm) — on furniture that is
+                present in every row. Nothing depends on hover: without a
+                pointer the dots still clear the threshold. */}
+            <span className="grid grid-cols-2 gap-[3px]">
+              {[0, 1, 2, 3, 4, 5].map((dot) => (
+                <span
+                  key={dot}
+                  className={cn(
+                    'size-[3px] rounded-full bg-[var(--g-text-muted)] transition-colors',
+                    (dot === 2 || dot === 3) && 'group-hover/row:bg-[#f58a07]',
+                  )}
+                />
+              ))}
+            </span>
           </span>
 
           <div className="min-w-0">
@@ -783,7 +820,7 @@ function RecipeRow({
               ) : null}
               {processReminder ? (
                 <span
-                  className="hidden min-w-0 flex-1 items-center gap-2 xl:flex"
+                  className="pro-workbench-desktop-only min-w-0 flex-1 items-center gap-2"
                   data-testid="production-inline-process-reminder"
                 >
                   <span className="min-w-0">
@@ -831,6 +868,17 @@ function RecipeRow({
                 ) : null}
               </span>
             </span>
+            {editRefusal ? (
+              /* Beside the name, not in a banner at the top of the table: the
+                 refusal is about THIS line's amount, and a message two hundred
+                 pixels away is why a closed control read as a broken one. */
+              <span
+                className="mt-1 block text-xs font-medium text-[var(--g-attention-ink)]"
+                data-testid={`row-edit-refusal-${item.id}`}
+              >
+                {editRefusal}
+              </span>
+            ) : null}
             {meta.unavailable ? (
               <span className="mt-1 flex items-center gap-2 text-xs font-semibold text-status-error">
                 {t.recipe.unavailableStatus}
@@ -880,7 +928,8 @@ function RecipeRow({
                   !actions.setPlannedPercent ||
                   Boolean(lock?.plannedDisabled) ||
                   gramsLocked ||
-                  Boolean(lock?.percentLocked)
+                  Boolean(lock?.percentLocked) ||
+                  editRefusal !== null
                 }
                 onChange={(percent) => actions.setPlannedPercent?.(item.id, percent)}
                 testId={`row-percent-control-${item.id}`}
@@ -914,7 +963,10 @@ function RecipeRow({
                 suffix={unit}
                 ariaLabel={`${item.ingredient.name} — ilość w ${unit}`}
                 disabled={
-                  Boolean(lock?.plannedDisabled) || gramsLocked || Boolean(lock?.percentLocked)
+                  Boolean(lock?.plannedDisabled) ||
+                  gramsLocked ||
+                  Boolean(lock?.percentLocked) ||
+                  editRefusal !== null
                 }
                 onChange={(next) => actions.setPlannedGrams(item.id, Math.max(0, next))}
                 testId={`row-grams-control-${item.id}`}
@@ -955,7 +1007,21 @@ function RecipeRow({
               }}
               className={iconButtonClasses('xs')}
             >
-              •••
+              {/* The button shell stays exactly as contracted — it is the
+                  affordance. Only the `•••` text glyph becomes three real dots,
+                  so the middle one can take the accent on row hover, the same
+                  language as the drag handle. */}
+              <span aria-hidden className="flex items-center gap-[2.5px]">
+                {[0, 1, 2].map((dot) => (
+                  <span
+                    key={dot}
+                    className={cn(
+                      'size-[3px] rounded-full bg-current transition-colors',
+                      dot === 1 && 'group-hover/row:bg-[#f58a07]',
+                    )}
+                  />
+                ))}
+              </span>
             </button>
             {rowMenuOpen ? (
               <DialogShell
@@ -966,7 +1032,12 @@ function RecipeRow({
                 }
                 testId={`row-menu-${item.id}`}
                 placement="responsive"
-                panelClassName="sm:!min-h-[290px] sm:!w-[min(500px,calc(100vw-32px))] sm:!rounded-[14px] sm:!p-0"
+                // Its `!w-[min(500px,…)]` used `!important`, so unlike the
+                // other overrides it really did paint. `default` (520) is the
+                // nearest canonical member, so the row menu keeps essentially
+                // the width it had while stating it once instead of forcing it.
+                size="default"
+                panelClassName="sm:min-h-[290px] sm:p-0"
                 onClose={() => closeLineMenus()}
               >
                 <div id={`row-menu-dialog-${item.id}`} data-ingredient-modal-shell="true">
@@ -1401,6 +1472,7 @@ export function IngredientRow({
       data-production-active={mode === 'production' && productionActive ? 'true' : undefined}
       data-changed={mode === 'recipe' && changed ? 'true' : undefined}
       data-unavailable={mode === 'recipe' && meta.unavailable ? 'true' : undefined}
+      data-edit-refused={mode === 'recipe' && meta.editRefusal ? 'true' : undefined}
       data-line-id={item.id}
       data-customer-role={mode === 'recipe' ? customerRoleFor(item.lock_type, meta) : undefined}
       tabIndex={-1}

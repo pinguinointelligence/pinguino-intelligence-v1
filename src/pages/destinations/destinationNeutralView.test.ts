@@ -5,9 +5,9 @@
  * were inside HOME while they read a commercial page. Work With Us was already
  * neutral; the Shop was not.
  *
- * This reads the destination sources rather than rendering, because the defect
- * is a claim made at a call site: only HOME itself and the PRO workbench may
- * name a view. Everything reached through the destination shell stays neutral.
+ * The shell now derives the active segment from the route. Destination call
+ * sites stay neutral by construction: none can provide or offset its own
+ * switch, while HOME and PRO are named centrally from `location.pathname`.
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
@@ -23,7 +23,6 @@ const DESTINATION_SOURCES = [
   'src/pages/destinations/LanePage.tsx',
   'src/pages/destinations/WorkWithUsPage.tsx',
   'src/components/shared/DestinationSurface.tsx',
-  'src/components/shared/DestinationHomeProSwitch.tsx',
 ];
 
 describe('global destinations never claim a view is active', () => {
@@ -34,17 +33,21 @@ describe('global destinations never claim a view is active', () => {
     expect(code).not.toMatch(/activeView\s*=\s*\{\s*["']home["']\s*\}/);
   });
 
-  it('the Shop hands the switch a neutral view', () => {
-    // The exact call site that served HOME as active.
-    expect(codeOf('src/pages/destinations/GlobalDestinationPages.tsx')).toContain(
-      'activeView={null}',
-    );
+  it('lets no destination render or configure a route-local switch', () => {
+    for (const path of DESTINATION_SOURCES) {
+      const code = codeOf(path);
+      expect(code).not.toContain('HomeProSwitch');
+      expect(code).not.toContain('activeView=');
+    }
   });
 
-  it('still lets HOME and the PRO workbench name their own view', () => {
-    // Neutrality is for destinations. The real pages must keep saying where you are,
-    // or this rule would quietly erase the switch's only job.
-    expect(codeOf('src/pages/home/HomeCreatorPage.tsx')).toMatch(/activeView\s*=\s*["']home["']/);
-    expect(codeOf('src/pages/pro/ProWorkspacePage.tsx')).toMatch(/activeView\s*=\s*["']pro["']/);
+  it('derives HOME, PRO and neutral states exactly once in AppShell', () => {
+    const shell = codeOf('src/features/shell/AppShell.tsx');
+    expect(shell.match(/<HomeProSwitch\s/g) ?? []).toHaveLength(1);
+    expect(shell).toContain("location.pathname.startsWith('/pro')");
+    expect(shell).toContain("location.pathname === '/home'");
+    expect(shell).toContain(': null');
+    expect(codeOf('src/pages/home/HomeCreatorPage.tsx')).not.toContain('activeView=');
+    expect(codeOf('src/pages/pro/ProWorkspacePage.tsx')).not.toContain('activeView=');
   });
 });

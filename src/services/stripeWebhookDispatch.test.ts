@@ -60,7 +60,19 @@ class FakeDb implements DbClient {
    * overrides this.
    */
   rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: null }> =
-    async () => ({ data: [], error: null });
+    async (fn) => {
+      // The refer-a-friend RPCs answer with a typed decision object, never a
+      // row set. Defaulting them to "this customer has no user referral" keeps
+      // the fake faithful to the contract dispatch.ts reads; a test that wants
+      // a reward overrides this.
+      if (fn === 'gellatti_record_referral_reward_v1') {
+        return { data: { ok: false, reason: 'no_referral_attribution' }, error: null };
+      }
+      if (fn === 'gellatti_reverse_referral_reward_v1') {
+        return { data: { ok: false, reason: 'no_reward_for_invoice' }, error: null };
+      }
+      return { data: [], error: null };
+    };
 
   seed(table: string, row: Row): Row {
     const rows = this.tables.get(table) ?? [];

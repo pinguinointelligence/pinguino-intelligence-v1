@@ -14,8 +14,6 @@ export function previewIssueMessagePl(issue: PreviewIssue): string {
       return issue.messagePl;
     case 'practicalization_blocked':
       return issue.messagePl;
-    case 'missing_prices':
-      return copy.previewIssue.missingPrices(issue.ingredientNames);
     case 'no_proposal':
       /* PC-01. `no_proposal` covers two situations that read very differently
        * to a customer. The ordinary one really is „no correction was possible

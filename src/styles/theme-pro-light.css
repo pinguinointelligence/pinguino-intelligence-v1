@@ -136,6 +136,49 @@ body:has(details[open] [data-testid^='row-menu-']) [data-testid='design-review-o
   color: var(--color-attention);
 }
 
+/* The SAME change marker, drawn all the way round.
+
+   A gram field wears it as an inset rail on one edge, because what changed is
+   one cell in a row. When the recipe card refuses to save, what needs the
+   owner's attention is the whole Settings module, so the marker closes into a
+   ring: identical colour and identical 4% tint, 2 px of edge (1 px border plus
+   1 px inset ring) to match the rail's weight.
+
+   The legend is notched into that border and paints the column's ground behind
+   itself to cut the line. On a tinted box that ground is no longer plain white,
+   so `--pro-legend-ground` is re-pointed at the composite the box actually
+   resolves to — otherwise a white notch sits over the tint at the top left. */
+.pro-legend-box.settings-preflight-blocked {
+  /* Two classes on purpose. `.pro-legend-box` sets `border` as a SHORTHAND, so
+     a single-class rule here is the same specificity and loses on stylesheet
+     order — the ring landed but the border stayed line-grey. Measured, not
+     guessed: the box reported `border-top-color: rgb(222,217,208)`.
+
+     The tint is mixed with #fff rather than with `transparent`. The one-edge
+     marker rides over whatever ground a row happens to have; this box only
+     ever sits on the white display column, and an opaque mix resolves to the
+     exact colour the legend has to paint behind itself to cut the border. */
+  border-color: var(--color-attention);
+  box-shadow: inset 0 0 0 1px var(--color-attention);
+  background-color: color-mix(in srgb, var(--color-attention) 4%, #fff);
+  --pro-legend-ground: color-mix(in srgb, var(--color-attention) 4%, #fff);
+}
+
+.pro-legend-box.settings-preflight-blocked > [data-band-legend] {
+  color: var(--color-attention);
+}
+
+/* The SAME attention language as the Settings box, worn by a button instead of a module.
+   Orange, never red: red is how this app says something is WRONG, and nothing here is
+   wrong — the customer simply has one thing left to press. The inner ring is drawn inset
+   so it cannot shift the control's geometry, and the halo outside it is the same hue at
+   low opacity, so the mark reads at a glance without competing with the label. */
+.pro-action-attention {
+  box-shadow:
+    inset 0 0 0 1px var(--color-attention),
+    0 0 0 3px color-mix(in srgb, var(--color-attention) 22%, transparent);
+}
+
 .pro-module {
   border: 1px solid var(--color-pro-line);
   border-radius: 0.875rem;
@@ -165,27 +208,39 @@ body:has(details[open] [data-testid^='row-menu-']) [data-testid='design-review-o
   box-shadow: var(--shadow-pro-e3);
 }
 
-.pro-focus-ring:focus-visible {
-  outline: 2px solid var(--color-gellatti-orange);
-  outline-offset: 3px;
+/* One focus authority for the Pro surface.
+ *
+ * Browser :focus-visible heuristics can promote an already pointer-focused
+ * control when a modifier key is pressed. The document modality authority
+ * therefore owns visibility: pointer input clears the indicator, modifier-only
+ * keys leave it unchanged, and genuine keyboard navigation enables it. Tailwind
+ * ring variables are neutralised so a component cannot reintroduce the old
+ * orange rectangle alongside this restrained graphite outline. */
+.theme-pro-light :where(button, a, input, select, textarea, summary, [tabindex]):focus {
+  outline: none !important;
+  --tw-ring-color: transparent !important;
+  --tw-ring-offset-shadow: 0 0 #0000 !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
 }
 
-.theme-pro-light .bg-pro-graphite.pro-focus-ring:focus-visible,
-.theme-pro-light
-  [data-testid='pro-recalc-panel']
-  :where(button, a, input, select, summary):focus-visible {
-  outline-color: var(--color-gellatti-orange);
+html[data-gellatti-input-modality='keyboard']
+  .theme-pro-light
+  :where(button, a, input, select, textarea, summary, [tabindex]):focus {
+  outline: 2px solid #4b4d52 !important;
+  outline-offset: 2px !important;
+}
+
+html[data-gellatti-input-modality='keyboard']
+  .theme-pro-light
+  :where(.bg-pro-graphite, [data-testid='pro-recalc-panel'])
+  :where(button, a, input, select, textarea, summary, [tabindex]):focus {
+  outline-color: #d7d4cd !important;
 }
 
 .pro-scroll-safe {
   min-width: 0;
   max-width: 100%;
   overflow-wrap: anywhere;
-}
-
-.theme-pro-light :where(button, a, input, select, summary):focus-visible {
-  outline: 2px solid var(--color-gellatti-orange);
-  outline-offset: 2px;
 }
 
 /* GELLATTI V2.1 §13 — Batch and Tryb are ordinary cells of the ONE Settings

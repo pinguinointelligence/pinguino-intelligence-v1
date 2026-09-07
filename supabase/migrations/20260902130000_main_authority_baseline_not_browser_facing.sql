@@ -1,0 +1,22 @@
+-- SECURITY — an ad-hoc snapshot table was reachable by anonymous callers.
+-- Owner-approved 2026-09-02.
+--
+-- `_main_authority_baseline_20260823` is a manual backup taken around the 2026-08-23
+-- Global Main authority work. No migration created it and nothing in the application
+-- reads it, so it never appeared in any review — yet it carried ALL for `anon` and
+-- `authenticated` with row-level security switched OFF. Unlike the 16 other tables where
+-- a browser role holds DML, there was no policy layer behind the grant: RLS enabled with
+-- zero policies denies by default, RLS disabled does not.
+--
+-- Anonymous SELECT was confirmed live (HTTP 200, 2088 rows). The columns are taxonomy
+-- only — mapper id, family/subfamily/form, behavior role, main eligibility and policy
+-- status — so no cost, supplier or PAC/POD was exposed. The write privilege was the real
+-- problem, and it is what this removes.
+--
+-- PRIVILEGES ONLY. The snapshot's data is deliberately untouched: it is a backup, and
+-- deleting a backup to secure it would be the wrong trade.
+--
+-- Applied to the shared project as migration
+-- `main_authority_baseline_not_browser_facing`.
+
+revoke all on public._main_authority_baseline_20260823 from anon, authenticated, public;

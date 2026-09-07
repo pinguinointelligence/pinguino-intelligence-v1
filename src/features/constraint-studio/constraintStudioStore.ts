@@ -560,6 +560,38 @@ export interface ConstraintStudioState {
   constraints: ConstraintSet;
   preview: ConstraintPreview | null;
   previewIssue: PreviewIssue | null;
+  /**
+   * OWNER 2026-09-03 — the ONE informational result of an automatic Crown-OFF
+   * Main correction. It is published only AFTER the correction has already been
+   * applied through the canonical door, so it never asks for a second action:
+   * the recipe on screen is already the corrected one. Session-only, never
+   * persisted, and cleared by the acknowledgement (no lingering banner).
+   */
+  crownOffCorrectionNotice: {
+    ingredientName: string;
+    requestedGrams: number;
+    safeMaximumGrams: number;
+  } | null;
+  /**
+   * TRUE while an automatic Crown-OFF correction is completing.
+   *
+   * ONE click produced FOUR visible dialogs, measured on served staging:
+   * WORKING 680x117 (t+70 ms) -> PREVIEW_READY 680x347 (t+1259) -> applied/undo
+   * 680x169 (t+1464) -> the notice 520x255 (t+1981). The two middle ones are
+   * implementation steps of a single operation — the pipeline stages a Preview
+   * and then commits it through the canonical door — but the panel reads the
+   * same store the pipeline is mutating, so each intermediate step painted as
+   * its own window.
+   *
+   * This flag is raised in the SAME synchronous tick as the Preview is staged,
+   * so React batches the two updates and PREVIEW_READY never reaches the
+   * screen; it stays raised across the commit so the applied/undo state does
+   * not either. The panel keeps showing the progress state it already had.
+   * Nothing is hidden after the fact — the intermediate states are never
+   * presented in the first place.
+   */
+  correctionInFlight: boolean;
+  acknowledgeCrownOffCorrection: () => void;
   /** Session-only; never persisted. Bound to exact base + Main identity swap. */
   substitutionConsent: SubstitutionConsent | null;
   substitutionAuthorization: SubstitutionSessionAuthorization | null;
@@ -583,6 +615,14 @@ export interface ConstraintStudioState {
   starterPackRescuePending: boolean;
   directionConsent: DirectionBestAchievableConsent | null;
   blocked: BlockedApply | null;
+  /** A successful canonical recipe write whose secondary consumers could not
+   * all be republished. This is deliberately not `blocked`: the recipe and
+   * Apply history already changed, so customer copy must never say that the
+   * change was not applied. Session-only and acknowledgement-only. */
+  postApplyNotice: {
+    state: 'APPLIED_WITH_INCOMPLETE_CONSUMERS';
+    messagePl: string;
+  } | null;
   /** Terminal Apply lifecycle state; true only while server/Worker validation runs. */
   applyPending: boolean;
   feasibility: ConstraintFeasibilityAnalysis | null;
@@ -663,6 +703,7 @@ export interface ConstraintStudioState {
   runFeasibility: () => void;
   clearFeasibility: () => void;
   dismissBlocked: () => void;
+  acknowledgePostApplyNotice: () => void;
   markProCoreRecipe: (recipeId: string, versionNumber: number) => void;
 
   /** Test seam — fresh session state. */
@@ -673,6 +714,8 @@ const INITIAL = {
   constraints: { byLineId: {} } as ConstraintSet,
   preview: null,
   previewIssue: null,
+  crownOffCorrectionNotice: null as ConstraintStudioState['crownOffCorrectionNotice'],
+  correctionInFlight: false,
   substitutionConsent: null,
   substitutionAuthorization: null,
   proposalProductBehaviorAuthorization: null,
@@ -685,6 +728,7 @@ const INITIAL = {
   starterPackRescuePending: false,
   directionConsent: null,
   blocked: null,
+  postApplyNotice: null as ConstraintStudioState['postApplyNotice'],
   applyPending: false,
   feasibility: null,
   history: [] as AppliedChangeRecord[],
@@ -698,6 +742,15 @@ const INITIAL = {
 const CLEAR_STAGED = {
   preview: null,
   previewIssue: null,
+  crownOffCorrectionNotice: null,
+  // `correctionInFlight` is deliberately NOT here. This object clears staged
+  // CONTENT, and the recipe-store subscriber below spreads it on any Base
+  // technical change — which is exactly what the automatic correction's own
+  // commit is. Keeping the flag here cleared it in the middle of the operation
+  // it exists to span, so the panel dropped its suppression and painted the
+  // applied/undo window for ~480 ms before the notice. It is FLOW state: it is
+  // raised where the correction starts and lowered on every one of that
+  // operation's exits (below), plus a new run and cancelPreview.
   substitutionConsent: null,
   substitutionAuthorization: null,
   proposalProductBehaviorAuthorization: null,
@@ -711,6 +764,7 @@ const CLEAR_STAGED = {
   directionConsent: null,
   feasibility: null,
   blocked: null,
+  postApplyNotice: null,
   applyPending: false,
   recalculationTerminal: null,
 };
@@ -1191,6 +1245,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           recipeState.ownerReviewGate?.technicalOnlyMainLineIds ?? [];
         const proposedAuthority = proposalSnapshots ?? snapshots;
         const optimizeOptions = {
+          homeFormulationModuleId: recipeState.homeFormulationModuleId,
           excludedIngredientIds: draft.excludedIngredientIds,
           unavailableMainIngredientIds: draft.unavailableMainIngredientIds,
           effectivePriceOverrides: useCustomerPriceStore.getState().overridesByCanonicalId,
@@ -1318,6 +1373,13 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
         } else {
           if (result.code === 'already_clean' || result.code === 'best_safe_result') {
             establishCurrentRecipeCalculation();
+          }
+          if (result.code === 'already_clean') {
+            /* Nothing to apply, so closing the modal has to be enough: the recipe was
+               just checked and found correct. The recipe store owns the write and does
+               the verification itself — this feature may not reach into it directly, and
+               that boundary is exactly what keeps recipe writes atomic and guarded. */
+            useRecipeStore.getState().verifyPracticalAsWritten(get().constraints);
           }
           set({
             preview: null,
@@ -1772,6 +1834,9 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
         clearRecalculationMarker();
         set({
           preview: null,
+          // Cancelling ends the automatic correction too, so its flow flag must
+          // come down or the panel would keep suppressing the real surface.
+          correctionInFlight: false,
           directionBestCandidate: null,
           starterPackRescueReport: null,
           starterPackRescuePending: false,
@@ -2024,7 +2089,11 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
 
       clearFeasibility: () => set({ feasibility: null }),
 
+      acknowledgeCrownOffCorrection: () => set({ crownOffCorrectionNotice: null }),
+
       dismissBlocked: () => set({ blocked: null }),
+
+      acknowledgePostApplyNotice: () => set({ postApplyNotice: null }),
 
       markProCoreRecipe: (recipeId, versionNumber) =>
         set({ proCoreRecipeId: recipeId, lastSavedVersion: versionNumber }),
@@ -2490,11 +2559,11 @@ async function currentRecipeResultAuthorityReady(input: {
       };
     }
 
-    const validations = await Promise.all(
+    const baseValidations = await Promise.all(
       CURRENT_RECIPE_RESULT_MODULES.map((module: ProductBehaviorModule) =>
         validateRecipeBehaviorOnServer({
           recipe: input.recipe,
-          toppings: input.toppings,
+          toppings: [],
           snapshots: resolved.snapshots,
           module,
           accountId,
@@ -2502,6 +2571,27 @@ async function currentRecipeResultAuthorityReady(input: {
         }),
       ),
     );
+    // A post-process addon has one canonical execution context: TOPPING. It
+    // contributes its frozen nutrition/cost facts to the combined local
+    // result below, but sending that same line through MONITOR/NUTRITION/COST/
+    // SUMMARY server contexts makes an otherwise current Apply look stale.
+    // This mirrors the Preview/Apply authority split above: Base validates in
+    // Base modules, positive toppings validate once through TOPPING authority.
+    const toppingRequired = productBehaviorRequiredLineIds({
+      items: [],
+      toppings: input.toppings,
+    });
+    const toppingValidation =
+      toppingRequired.length === 0
+        ? { ready: true, module: 'TOPPING' as const, staleLineIds: [] as string[], lines: [] }
+        : await validateRecipeBehaviorOnServer({
+            recipe: { ...input.recipe, items: [] },
+            toppings: input.toppings,
+            snapshots: resolved.snapshots,
+            module: 'TOPPING',
+            accountId,
+          });
+    const validations = [...baseValidations, toppingValidation];
     const staleLineIds = [
       ...new Set(validations.flatMap((validation) => validation.staleLineIds)),
     ].sort();
@@ -2967,6 +3057,12 @@ export async function createOptimizePreviewWithServerAuthority(
   // with a new result.
   const ownedGeneration = generation ?? beginPiRecalculation();
   if (!isCurrentPiRun(ownedGeneration)) return;
+  // A new run owns the surface: no earlier correction may still be suppressing
+  // it. This is also what releases a flag left raised by a run that was
+  // superseded mid-commit, so the panel can never be stuck on progress.
+  if (useConstraintStudioStore.getState().correctionInFlight) {
+    useConstraintStudioStore.setState({ correctionInFlight: false });
+  }
   const draft = selectCanonicalDraft();
   const missingProductDose = missingProductDosePreviewIssue(draft.input);
   if (missingProductDose) {
@@ -3049,6 +3145,7 @@ export async function createOptimizePreviewWithServerAuthority(
   }
   const optimizeCreatedAt = nowIso();
   const optimizeOptions = {
+    homeFormulationModuleId: recipeState.homeFormulationModuleId,
     excludedIngredientIds: draft.excludedIngredientIds,
     unavailableMainIngredientIds: draft.unavailableMainIngredientIds,
     effectivePriceOverrides: useCustomerPriceStore.getState().overridesByCanonicalId,
@@ -3156,6 +3253,50 @@ export async function createOptimizePreviewWithServerAuthority(
     ...computation,
     createdAt: optimizeCreatedAt,
   });
+  // OWNER 2026-09-03 — ONE deterministic correction must feel like ONE action.
+  // The user asked for an impossible amount; the capped Crown authority already
+  // proved the highest safe one and the staged Preview already contains it.
+  // Making them read a change list and press Zastosuj to accept a result that
+  // is not in dispute is work for nothing. So the SAME canonical Apply door
+  // runs here — nothing is committed that a manual Zastosuj would not have
+  // committed, and every trust check still runs — and the user is left with the
+  // corrected recipe plus one informational notice.
+  const staged = useConstraintStudioStore.getState().preview;
+  const correction = staged?.crownOffMainCorrection;
+  if (
+    staged &&
+    correction &&
+    correction.requestPreserved === false &&
+    staged.diagnosticOnly !== true &&
+    isCurrentPiRun(ownedGeneration) &&
+    useRecipeStore.getState().draftRevision === draft.revision
+  ) {
+    // SYNCHRONOUS with the Preview publish above — no await between them — so
+    // React batches both into one render and `PREVIEW_READY` never paints. The
+    // first `await` below is the earliest the browser can show anything, and by
+    // then the panel already knows to keep showing progress instead.
+    useConstraintStudioStore.setState({ correctionInFlight: true });
+    await applyPreviewWithServerAuthority();
+    if (!isCurrentPiRun(ownedGeneration)) return;
+    const after = useConstraintStudioStore.getState();
+    // Only an accepted commit earns the "we already fixed it" sentence. If the
+    // door refused, the existing blocked/preview surface stays exactly as it is
+    // — and the flag has to come down, or that surface would stay suppressed.
+    if (after.preview === null && after.blocked === null) {
+      useConstraintStudioStore.setState({
+        crownOffCorrectionNotice: {
+          ingredientName: correction.ingredientName,
+          requestedGrams: correction.requestedGrams,
+          safeMaximumGrams: correction.selectedGrams,
+        },
+        correctionInFlight: false,
+        recalculationTerminal: null,
+      });
+    } else {
+      useConstraintStudioStore.setState({ correctionInFlight: false });
+    }
+    return;
+  }
   if (fallbackReport !== null) {
     useConstraintStudioStore.setState({
       directionFallbackReport: fallbackReport,
@@ -3342,8 +3483,7 @@ export async function runPiRecalculationWithTerminal(
       useConstraintStudioStore.setState({
         recalculationTerminal: {
           state: 'ERROR',
-          messagePl:
-            'Przeliczenie zakończyło się bez wyniku. Wróć do receptury i spróbuj ponownie',
+          messagePl: 'Przeliczenie zakończyło się bez wyniku. Wróć do receptury i spróbuj ponownie',
         },
       });
     }
@@ -3711,12 +3851,18 @@ export async function applyPreviewWithServerAuthority(
       : currentSnapshots;
   const revision = draft.revision;
   const technicalOnlyMainLineIds = recipeAtStart.ownerReviewGate?.technicalOnlyMainLineIds ?? [];
-  useConstraintStudioStore.setState({ applyPending: true, blocked: null });
+  useConstraintStudioStore.setState({
+    applyPending: true,
+    blocked: null,
+    postApplyNotice: null,
+  });
+  let technicalApplyCommitted = false;
 
   const publishStale = (): void => {
     useConstraintStudioStore.setState({
       preview: null,
       applyPending: false,
+      postApplyNotice: null,
       blocked: {
         code: 'stale_preview',
         messagePl:
@@ -3774,6 +3920,7 @@ export async function applyPreviewWithServerAuthority(
         constraints: draft.constraints,
         createdAt: preview.createdAt,
         options: {
+          homeFormulationModuleId: recipeAtStart.homeFormulationModuleId,
           excludedIngredientIds: draft.excludedIngredientIds,
           unavailableMainIngredientIds: draft.unavailableMainIngredientIds,
           effectivePriceOverrides: useCustomerPriceStore.getState().overridesByCanonicalId,
@@ -3817,6 +3964,7 @@ export async function applyPreviewWithServerAuthority(
     ) {
       return;
     }
+    technicalApplyCommitted = true;
 
     const appliedDraft = selectCanonicalDraft();
     const appliedRevision = appliedDraft.revision;
@@ -3843,10 +3991,11 @@ export async function applyPreviewWithServerAuthority(
     if (!currentResult.ready) {
       useConstraintStudioStore.setState({
         applyPending: false,
-        blocked: {
-          code: 'apply_validation_failed',
+        blocked: null,
+        postApplyNotice: {
+          state: 'APPLIED_WITH_INCOMPLETE_CONSUMERS',
           messagePl:
-            'Zmiany zostały zastosowane, ale bieżący wynik nie przeszedł pełnej walidacji Monitor / wartości odżywcze / koszt. Uruchom Przelicz ponownie.',
+            'Receptura została zmieniona, ale Monitor, wartości odżywcze lub koszt nie zostały w pełni odświeżone. Uruchom Przelicz ponownie.',
         },
       });
       return;
@@ -3872,18 +4021,35 @@ export async function applyPreviewWithServerAuthority(
     // promotion. These calls store no duplicate numbers; the UI recomputes from
     // the same canonical input/frozen facts through its normal selectors.
     establishCurrentRecipeCalculation();
-    useConstraintStudioStore.setState({ applyPending: false, blocked: null });
+    useConstraintStudioStore.setState({
+      applyPending: false,
+      blocked: null,
+      postApplyNotice: null,
+    });
   } catch {
     const current = useConstraintStudioStore.getState();
     if (current.preview !== preview && !current.applyPending) return;
-    useConstraintStudioStore.setState({
-      applyPending: false,
-      blocked: {
-        code: 'apply_validation_failed',
-        messagePl:
-          'Nie można zastosować zmian: ponowna weryfikacja podglądu nie została zakończona. Utwórz nowy podgląd.',
-      },
-    });
+    useConstraintStudioStore.setState(
+      technicalApplyCommitted
+        ? {
+            applyPending: false,
+            blocked: null,
+            postApplyNotice: {
+              state: 'APPLIED_WITH_INCOMPLETE_CONSUMERS',
+              messagePl:
+                'Receptura została zmieniona, ale jej bieżące wyniki nie zostały w pełni odświeżone. Uruchom Przelicz ponownie.',
+            },
+          }
+        : {
+            applyPending: false,
+            postApplyNotice: null,
+            blocked: {
+              code: 'apply_validation_failed',
+              messagePl:
+                'Nie można zastosować zmian: ponowna weryfikacja podglądu nie została zakończona. Utwórz nowy podgląd.',
+            },
+          },
+    );
   } finally {
     const current = useConstraintStudioStore.getState();
     if (current.preview === preview && current.applyPending) {

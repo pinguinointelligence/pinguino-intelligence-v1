@@ -75,6 +75,12 @@ describe('canonical Pro header contract', () => {
     const header = read('features', 'pro-workbench', 'WorkbenchIntelligenceHeader.tsx');
     const dock = read('features', 'pro-workbench', 'WorkbenchRecipeActionDock.tsx');
     const logo = read('components', 'shared', 'OfficialProLogo.tsx');
+    // In workbench mode the header shares the workbench cap so the module strip
+    // stays on the display column; other PRO surfaces keep the 1776 page width.
+    // SUPERSEDED, owner 2026-09-02 (option A). The header keeps the page's full
+    // width on EVERY route again — the 1440 cap it briefly carried is now on the
+    // centred band inside it, not on the row, so the hamburger, the wordmark and
+    // the login measure 32 / 96 / 32 px identically on Shop and PRO.
     expect(page).toContain('maxWidthClass="max-w-[1776px]"');
     expect(page).toContain('brand={<OfficialProLogo />}');
     expect(page).not.toContain('data-testid="pro-top-score"');
@@ -329,9 +335,13 @@ describe('profile hierarchy and compact preflight', () => {
       // The technical base remains live when only Nutrition is unavailable.
       expect(surface('score').textContent).toContain('Wynik aktualny');
       expect(surface('score').querySelector('[data-testid="workbench-score-ring"]')).not.toBeNull();
-      expect(surface('profile').textContent).toContain('— kcal / 100 g');
+      // SUPERSEDED, owner authority 2026-09-02 (approved desktop PDF §4). The
+      // result is a readout, so the figure and its unit are separate elements
+      // and textContent no longer glues them with a space. The DATA assertion
+      // is unchanged — an empty result still reads „—" above „kcal / 100 g".
+      expect(surface('profile').textContent).toContain('—kcal / 100 g');
       expect(surface('profile').textContent).toContain(
-        `${calculateFinalProduct(input).finalCosts?.cost_per_kg?.toFixed(2)} € / kg`,
+        `${calculateFinalProduct(input).finalCosts?.cost_per_kg?.toFixed(2)} €za kg`,
       );
       expect(
         surface('monitor').querySelector('[data-testid="monitor-live-summary"]'),
@@ -351,10 +361,10 @@ describe('profile hierarchy and compact preflight', () => {
       ).toBe(String(monitorScoreView(result, input).match.score));
       const expectedFinal = calculateFinalProduct(input);
       expect(surface('profile').textContent).toContain(
-        `${expectedFinal.finalLabelNutritionPer100g?.kcal.toFixed(0)} kcal / 100 g`,
+        `${expectedFinal.finalLabelNutritionPer100g?.kcal.toFixed(0)}kcal / 100 g`,
       );
       expect(surface('profile').textContent).toContain(
-        `${expectedFinal.finalCosts?.cost_per_kg?.toFixed(2)} € / kg`,
+        `${expectedFinal.finalCosts?.cost_per_kg?.toFixed(2)} €za kg`,
       );
       expect(
         surface('monitor').querySelector('[data-testid="monitor-live-summary"]'),
@@ -380,10 +390,10 @@ describe('profile hierarchy and compact preflight', () => {
           ?.getAttribute('data-current-result-state'),
       ).toBe('STALE');
       expect(surface('profile').textContent).toContain(
-        `${expectedFinal.finalLabelNutritionPer100g?.kcal.toFixed(0)} kcal / 100 g`,
+        `${expectedFinal.finalLabelNutritionPer100g?.kcal.toFixed(0)}kcal / 100 g`,
       );
       expect(surface('profile').textContent).toContain(
-        `${expectedFinal.finalCosts?.cost_per_kg?.toFixed(2)} € / kg`,
+        `${expectedFinal.finalCosts?.cost_per_kg?.toFixed(2)} €za kg`,
       );
       expect(
         surface('monitor').querySelector('[data-testid="monitor-live-summary"]'),
@@ -484,40 +494,34 @@ describe('profile hierarchy and compact preflight', () => {
         const expectedNutrition = expectedFinal.finalLabelNutritionPer100g;
         const recipeSummary = host.querySelector('[data-testid="profile-nutrition-cost-summary"]');
         expect(recipeSummary?.textContent).toContain(
-          `${expectedNutrition?.kcal.toFixed(0)} kcal / 100 g`,
+          `${expectedNutrition?.kcal.toFixed(0)}kcal / 100 g`,
         );
         expect(recipeSummary?.textContent).toContain(
-          `${expectedFinal.finalCosts?.cost_per_kg?.toFixed(2)} € / kg`,
+          `${expectedFinal.finalCosts?.cost_per_kg?.toFixed(2)} €za kg`,
         );
 
         await act(async () => root.render(panel('summary')));
-        /* OWNER DECISION (2026-08-30) — an explicit, approved divergence from
-           the older V2.1 §18 Label GATE. Before Production completes the reader
-           now sees a live DRAFT of the label rather than a panel telling them to
-           go elsewhere. The old gate's assertions are replaced by the contract
-           that supersedes them, not dropped:
-             · the draft is on screen,
-             · only genuinely outstanding data is listed,
-             · nothing that needs a completed run is invented,
-             · and the final print stays unavailable. */
+        /* OWNER DECISION (2026-09-06): automatic LOT/date and recipe facts are
+           rendered directly. Real blockers have controls; there is no passive
+           production-waiting list. */
         const draftCard = host.querySelector('[data-testid="draft-label-card"]');
         expect(draftCard).not.toBeNull();
         expect(host.querySelector('[data-testid="label-workspace-empty"]')).toBeNull();
 
-        const pending = host.querySelector('[data-testid="draft-label-pending"]');
-        expect(pending?.textContent).toContain('Numer partii (LOT)');
-        expect(pending?.textContent).toContain('Data produkcji');
-        expect(pending?.textContent).toContain('Potwierdzone składniki z produkcji');
+        expect(host.querySelector('[data-testid="draft-label-pending"]')).toBeNull();
+        expect(draftCard?.textContent).toContain('LOT-');
+        expect(draftCard?.textContent).not.toContain('Potwierdzone składniki z produkcji');
+        expect(host.querySelector('[data-testid="label-data-intake"]')).toBeNull();
 
         const print = host.querySelector<HTMLButtonElement>('[data-testid="draft-label-print"]');
         expect(print).not.toBeNull();
-        expect(print?.disabled).toBe(true);
+        expect(print?.disabled).toBe(false);
 
-        // Settings never live in the workbench — they are one link away.
-        expect(
-          host.querySelector('[data-testid="label-settings-home-link"]')?.getAttribute('href'),
-        ).toBe('/labels');
-        expect(host.querySelector('[data-testid="label-consumer-preview"]')).toBeNull();
+        // Settings stay on the canonical destination; the superseding Label
+        // close-out names the explicit main-view route "Zmień ustawienia".
+        expect(host.querySelector('[data-testid="label-settings-home-link"]')).toBeNull();
+        expect(host.textContent).toContain('Zmień ustawienia');
+        expect(host.querySelector('[data-testid="label-consumer-preview"]')).not.toBeNull();
       }
 
       const variants = [
@@ -590,17 +594,17 @@ describe('profile hierarchy and compact preflight', () => {
         expect(summary, variant.name).not.toBeNull();
         if (variant.nutritionVisible) {
           expect(summary?.textContent, variant.name).toContain(
-            `${expected.finalLabelNutritionPer100g?.kcal.toFixed(0)} kcal / 100 g`,
+            `${expected.finalLabelNutritionPer100g?.kcal.toFixed(0)}kcal / 100 g`,
           );
         } else {
-          expect(summary?.textContent, variant.name).toContain('— kcal / 100 g');
+          expect(summary?.textContent, variant.name).toContain('—kcal / 100 g');
         }
         if (variant.costVisible) {
           expect(summary?.textContent, variant.name).toContain(
-            `${expected.finalCosts?.cost_per_kg?.toFixed(2)} € / kg`,
+            `${expected.finalCosts?.cost_per_kg?.toFixed(2)} €za kg`,
           );
         } else {
-          expect(summary?.textContent, variant.name).toContain('— / kg');
+          expect(summary?.textContent, variant.name).toContain('—za kg');
         }
 
         await act(async () => root.render(panel('monitor')));
@@ -641,7 +645,7 @@ describe('profile hierarchy and compact preflight', () => {
   it('uses one inset shell and one desktop body scroller for every cockpit tab', () => {
     const panel = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
     const surface = read('features', 'studio', 'StudioEngineSurface.tsx');
-    expect(surface).toContain('xl:flex xl:min-w-0 xl:flex-col xl:overflow-hidden');
+    expect(surface).toContain('pro-workbench-editor-track');
     expect(panel).toContain('lg:rounded-[10px]');
     expect(panel).toContain('lg:shadow-pro-e0');
     expect(panel).toContain('lg:flex-1 lg:overflow-y-auto');
@@ -657,7 +661,7 @@ describe('profile hierarchy and compact preflight', () => {
     const confirmationAt = card.indexOf('data-settings-cell="confirmation"');
     const machineAt = card.indexOf('workbench-machine');
     const conditionalAt = card.indexOf('machine-conditional-settings');
-    const batchAt = card.indexOf('workbench-batch');
+    const batchAt = card.indexOf('<TargetBatchControl');
     const strategyAt = card.indexOf('workbench-strategy');
     expect(productAt).toBeGreaterThan(-1);
     // OWNER FROZEN PRO VISUAL: the confirmation left the grid for the band
@@ -668,9 +672,14 @@ describe('profile hierarchy and compact preflight', () => {
     expect(conditionalAt).toBeGreaterThan(machineAt);
     expect(batchAt).toBeGreaterThan(conditionalAt);
     expect(strategyAt).toBeGreaterThan(batchAt);
-    // The frozen 2x3 reading order: type | serving / machine | mode / batch | base.
+    // Owner regression restore 2026-09-04: the approved model again includes
+    // the editable target batch after the machine/serving row.
     expect(card).toContain("compact && 'order-1'");
-    expect(card).toContain("compact ? 'order-2'");
+    expect(card).toContain('relative order-2 min-w-0');
+    expect(card).toContain("compact ? 'order-3'");
+    expect(card).toContain("compact && 'order-4'");
+    expect(card).toContain('order-5');
+    expect(card).not.toContain('profile-settings-base-readout order-6');
     expect(card).not.toContain('workbench-quality');
     expect(card).not.toContain('Więcej ustawień');
     expect(card).not.toContain('setCostPriority');
@@ -680,28 +689,36 @@ describe('profile hierarchy and compact preflight', () => {
   it('contains one confirmation action and conditional professional/home contexts', () => {
     const card = read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx');
     expect(card).toContain('data-testid="profile-settings-confirm"');
-    expect(card.match(/Potwierdź ustawienia/g)).toHaveLength(1);
+    // Renamed and relocated by owner authority 2026-09-02 (§8): confirmation
+    // lives INSIDE expanded Settings, to the right of the permanent
+    // „Zapisz jako domyślne", and reads „Potwierdź zmiany".
+    expect(card.match(/data-testid="profile-settings-confirm"/g)).toHaveLength(1);
+    expect(card).toContain('data-testid="profile-settings-save-default"');
     expect(card).toContain('testid="workbench-serving"');
     expect(card).toContain('data-testid="home-machine-capacity"');
     expect(card).toContain('Zalecany wsad na cykl');
     expect(card).toContain('data-testid="profile-batch-combined"');
+    expect(card).toContain('aria-label="Docelowa partia"');
+    expect(card).toContain('data-testid="workbench-batch-decrement"');
+    expect(card).toContain('data-testid="workbench-batch-increment"');
     expect(card).toContain('data-testid="settings-grid-status"');
     expect(card).not.toContain('data-testid="settings-header-status"');
-    // The confirmation is the BAND's action now, so it sits ahead of the grid
-    // in source. It is still exactly one control with both of its testids.
+    // The collapsed band row carries the confirmation STATUS and is the way
+    // into the settings, so it still precedes the grid in source.
     expect(card.indexOf('data-settings-cell="confirmation"')).toBeLessThan(
       card.indexOf('data-settings-cell="product-type"'),
     );
     expect(card).toContain("compact && 'order-1'");
-    expect(card).toContain("compact ? 'order-2'");
+    expect(card).toContain("compact ? 'order-3'");
     expect(card.indexOf('data-settings-cell="product-type"')).toBeLessThan(
       card.indexOf('data-settings-cell="machine"'),
     );
-    expect(card).toContain('Baza lodowa bez toppingu');
+    expect(card).toContain('Ilość bazy lodowej do przygotowania');
     expect(card).not.toContain('BAZA LODOWA BEZ TOPPINGU');
-    expect(card).toContain("compactSelect, 'w-16'");
+    expect(card).not.toContain("compactSelect, 'w-16'");
     expect(card).not.toContain('2xl:h-[63px]');
     expect(card).not.toContain('Ustaw jako domyślne');
+    expect(card).toContain('inline-flex h-11 items-center justify-center rounded-full');
     expect(read('features', 'pro-workbench', 'AccountRecipeDefaults.tsx')).toContain(
       'Domyślne ustawienia receptury',
     );
@@ -730,7 +747,7 @@ describe('profile hierarchy and compact preflight', () => {
       label: 'Maszyna profesjonalna',
       temperatureC: -12,
     });
-    const professional = renderToStaticMarkup(<WorkbenchSettingsLine actualBatchG={900} />);
+    const professional = renderToStaticMarkup(<WorkbenchSettingsLine />);
     expect(professional).toContain('data-testid="workbench-serving"');
 
     const home = listActiveHomeMachines(MACHINE_CATALOG)[0]!;
@@ -743,7 +760,7 @@ describe('profile hierarchy and compact preflight', () => {
       label: machineDisplayName(home),
       temperatureC: temperature!,
       batchGrams: setup.recommendedBatchGrams,
-      capacityGrams: setup.recommendedBatchGrams,
+      hardCapacityGrams: setup.hardMaximumBatchGrams,
     });
     expect(useRecipeStore.getState().machineKind).toBe('home');
     expect(showsProfessionalServing(useRecipeStore.getState().machineKind)).toBe(false);
@@ -782,6 +799,8 @@ describe('preflight and recipe-specific persistence', () => {
     expect(attached.target_batch_grams).toBe(input.target_batch_grams);
     expect(readRecipeProfileMetadata(attached)).toEqual({
       ...settings(),
+      machineTechnology: null,
+      homeFormulationModuleId: null,
       directionTargets: { ...DEFAULT_DIRECTION_TARGETS, sweetness: -2, softness: 2 },
       directionIntents: { ...DEFAULT_DIRECTION_TARGETS, sweetness: -2, softness: 2 },
       ingredientUxByLineId: { [input.items[0]!.id]: { role: 'addition', required: true } },
@@ -934,17 +953,222 @@ describe('preflight and recipe-specific persistence', () => {
   });
 });
 
+describe('Direction explains itself, and agrees with the engine', () => {
+  const axes = read('features', 'pro-workbench', 'ProfileDirectionAxes.tsx');
+  const engine = read('features', 'recipe-direction', 'recipeDirectionTargets.ts');
+  const v21 = read('styles', 'gellatti-v2-1.css');
+
+  it('ramps the mark by size instead of printing a number', () => {
+    expect(axes).toMatch(/const DOT_RAMP = \[5, 6\.5, 8, 9\.5, 11\]/);
+    expect(axes).toMatch(/const THUMB_RAMP = \[13, 14\.5, 16, 17\.5, 19\]/);
+    // Sized by SLOT, so the ball grows across the screen rather than along the
+    // number line — the two differ on a mirrored axis.
+    /* Sampled across the axis's own count, which is what lets a three-position
+       profile share the ramp without inventing a level it cannot deliver. */
+    expect(axes).toContain('const sampleRamp = (ramp: readonly number[], count: number)');
+    // No +1 / -2 anywhere in the control any more, in any form.
+    expect(axes).not.toContain('const sign =');
+    expect(axes).not.toMatch(/\+\$\{detent\}/);
+  });
+
+  it('mirrors Twardość in PRESENTATION ONLY, never in what it stores', () => {
+    /* The load-bearing one. The engine's sign is frozen and says so itself:
+       canonical -2 is MORE SOFT, +2 is MORE FIRM. The owner wants firm on the
+       LEFT. Both are satisfied by mirroring the slot map, so the leftmost mark
+       WRITES +2 while the solver keeps reading exactly the number it always
+       did. Nothing here may be "simplified" into flipping the stored value. */
+    expect(engine).toContain('-2 = more soft (higher NPAC), +2 = more firm (lower NPAC)');
+    expect(axes).toContain("reversed={axis === 'softness'}");
+    expect(axes).toContain('const visual = reversed ? [...detents].reverse() : [...detents];');
+    expect(axes).toContain('const indexOfDetent = (detent: DirectionIntent) =>');
+    // Firm left, soft right — the owner's approved reading order.
+    expect(axes).toContain("['bardziej twarde', 'bardziej miękkie']");
+    expect(axes).not.toContain("['bardziej miękkie', 'bardziej twarde']");
+    /* Spoken names stay canonical: index 0 of the softness table is -2, and -2
+       is SOFT. If this ever flips, the control announces its own mirror. */
+    const soft = axes.indexOf('znacznie bardziej miękkie');
+    const firm = axes.indexOf('znacznie bardziej twarde');
+    expect(soft).toBeGreaterThan(-1);
+    expect(soft).toBeLessThan(firm);
+    expect(axes).toContain('PHRASES[axisKey][detent]');
+  });
+
+  it('walks the arrow keys across the SCREEN, not along the number line', () => {
+    // On a mirrored axis ArrowLeft must reach the mark to the left, which is
+    // canonical +2. Stepping the stored value instead would send the keyboard
+    // the opposite way from the eye.
+    expect(axes).toContain('const clamped = Math.max(0, Math.min(count - 1, next));');
+    expect(axes).toContain('if (target !== undefined) onSet(target);');
+    expect(axes).not.toContain('onSet(Math.max(-span, position - 1)');
+    expect(axes).not.toContain('onSet(Math.min(span, position + 1)');
+  });
+
+  it('tells the reader the column continues, since the scrollbar is hidden', () => {
+    /* Expanding the breakdown pushes WIEDZA below the fold. It stays reachable
+       — measured at 1440x820, 143 px of scroll brings it fully into view — but
+       from 1536 px up `index.css` deliberately hides the scrollbar, so nothing
+       said so and the section read as deleted.
+
+       Four background layers and no scroll listener: two `local` layers scroll
+       with the content and paint the ground, two `scroll` layers stay at the
+       scroller's edges and paint a shadow. At either end the ground covers the
+       shadow; in between it shows. */
+    expect(v21).toMatch(/\.intelligence-tabpanel-scroll \{[\s\S]*?no-repeat local/);
+    expect(v21).toMatch(/\.intelligence-tabpanel-scroll \{[\s\S]*?no-repeat\s+scroll/);
+    expect((v21.match(/--pro-scroll-ground/g) ?? []).length).toBe(2);
+  });
+});
+
+describe('Settings onboarding attention stays separate from save refusal', () => {
+  const settings = read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx');
+  const workbar = read('features', 'pro-core', 'ProWorkbar.tsx');
+  const store = read('features', 'pro-workbench', 'recipeProfileStore.ts');
+  const theme = read('styles', 'theme-pro-light.css');
+
+  it('carries the refusal through ONE authority, not a second copy of the gate', () => {
+    // The gate lives in useCanonicalRecipeSave and only the workbar calls it.
+    // Settings reads what the card renders rather than recomputing it, so the
+    // two can never disagree about whether the recipe is refusing to save.
+    expect(workbar).toContain('setPreflightBlocker(blocker)');
+    expect(workbar).toContain('resolveSaveBlocker({ practical: save.practicalBlock');
+    expect(settings).toContain('useRecipeProfileStore((state) => state.preflightBlocker)');
+    expect(settings).not.toContain('practicalRecipeAuditMatchesInput');
+    // Transient: absent from the persist allow-list, so a reload recomputes it
+    // instead of restoring a refusal the draft may no longer earn.
+    expect(store).not.toContain('preflightBlocker: state.preflightBlocker');
+    expect(store).not.toContain('settingsConfirmed: state.settingsConfirmed');
+  });
+
+  it('auto-opens only for a draft with no confirmed Settings baseline', () => {
+    expect(settings).toContain('const initialSettingsAttentionRequired =');
+    expect(settings).toContain('confirmedDraftIdentity !== activeDraftIdentity');
+    expect(settings).toContain('const open = manualExpanded || initialSettingsAttentionRequired;');
+    expect(settings).not.toContain('manualExpanded || preflightBlocked');
+    expect(settings).not.toContain('manualExpanded || settingsBlocked');
+    expect(settings).not.toContain('openedByBlocker');
+    expect(settings).toContain("data-settings-surface={open ? 'expanded' : 'collapsed'}");
+  });
+
+  it('keeps a typed save refusal visible without giving it disclosure authority', () => {
+    expect(settings).toContain("const preflightBlocked = preflightBlocker?.action === 'settings';");
+    expect(settings).toContain("data-preflight-blocked={preflightBlocked ? 'true' : undefined}");
+    expect(settings).toContain("'settings-preflight-blocked'");
+  });
+
+  it('wears the SAME attention marker a changed gram field wears, closed into a ring', () => {
+    expect(settings).toContain("'settings-preflight-blocked'");
+    // Same colour and same 4% tint as `.ingredient-line-changed`; the only
+    // difference is that it goes all the way round, because here the whole
+    // module is what needs attention rather than one cell in a row.
+    expect(theme).toMatch(/\.ingredient-line-changed \{[^}]*var\(--color-attention\)/);
+    expect(theme).toMatch(
+      /\.pro-legend-box\.settings-preflight-blocked \{[\s\S]*?border-color: var\(--color-attention\)/,
+    );
+    expect(theme).toMatch(
+      /\.pro-legend-box\.settings-preflight-blocked \{[\s\S]*?color-mix\(in srgb, var\(--color-attention\) 4%/,
+    );
+    // Two classes, or the border shorthand on .pro-legend-box wins on order.
+    expect(theme).not.toMatch(/^\.settings-preflight-blocked \{/m);
+  });
+
+  it('never lets a sign-in prompt or a network error pull Settings open', () => {
+    // Neither is something Settings can resolve; only the preflight refusal is.
+    expect(workbar).not.toContain('setPreflightBlocker(save.error');
+    expect(workbar).not.toContain('setPreflightBlocker(blockedMsg');
+  });
+});
+
+describe('OWNER CORRECTION · one blocker, one next action', () => {
+  const settings = read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx');
+  const header = read('features', 'pro-workbench', 'WorkbenchIntelligenceHeader.tsx');
+  const blocker = read('features', 'recipes', 'saveBlocker.ts');
+  const gate = read('features', 'recipes', 'useCanonicalRecipeSave.ts');
+  const theme = read('styles', 'theme-pro-light.css');
+
+  it('says what to press, not what the pipeline does', () => {
+    expect(blocker).toContain("RECALCULATION_REQUIRED: 'Przelicz recepturę, aby zapisać.'");
+    expect(blocker).toContain(
+      "SETTINGS_CONFIRMATION_REQUIRED: 'Potwierdź ustawienia, aby zapisać.'",
+    );
+    // The old sentence described our Preview/Apply pipeline to a customer who only
+    // needed to know which button to press.
+    expect(gate).not.toContain('Otwórz podgląd i zastosuj zweryfikowaną recepturę');
+  });
+
+  it('Settings opens ONLY for the blocker Settings answers', () => {
+    expect(settings).toContain("preflightBlocker?.action === 'settings'");
+    // A recalculation must not pull open a module that is already „Zatwierdzone".
+    expect(settings).not.toContain('preflightBlocker !== null');
+  });
+
+  it('the recalculation blocker highlights Przelicz instead', () => {
+    expect(header).toContain("preflightBlocker?.action === 'recalculate'");
+    expect(header).toContain("recalcAttention && 'pro-action-attention'");
+  });
+
+  it('the attention marker is orange, never red', () => {
+    // Red is how this app says something is WRONG. Nothing here is wrong — the customer
+    // simply has one thing left to press.
+    expect(theme).toMatch(/\.pro-action-attention \{[\s\S]*?var\(--color-attention\)/);
+    expect(theme).not.toMatch(/\.pro-action-attention \{[\s\S]*?status-error/);
+  });
+
+  it('a blocker no control answers points at nothing at all', () => {
+    // Missing product data and an engine refusal are not button problems; highlighting
+    // one would send the customer to press something that cannot help them.
+    expect(blocker).toContain('PRODUCT_DATA_REQUIRED: null');
+    expect(blocker).toContain('REFUSED: null');
+  });
+
+  it('settings outrank the practical gate, because they are upstream of it', () => {
+    expect(blocker).toContain('if (input.settingsConfirmed === false)');
+  });
+});
+
+describe('settings confirmation lifecycle', () => {
+  const settings = read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx');
+
+  it('the FIRST-EVER confirmation establishes the defaults, and only that one', () => {
+    expect(settings).toContain('const confirmAndSeedDefaults');
+    expect(settings).toContain('if (alreadyEstablished) return;');
+    // Later confirmations are for the recipe in front of you; only „Zapisz jako
+    // domyślne" may rewrite what every future recipe starts from.
+    expect(settings).toContain('const saveAsDefault');
+  });
+
+  it('collapses after confirmation without coupling disclosure to the blocker', () => {
+    expect(settings).toContain('const open = manualExpanded || initialSettingsAttentionRequired;');
+    expect(settings).not.toContain('openedByBlocker');
+    expect(settings).toMatch(
+      /const confirmAndSeedDefaults = \(\) => \{[\s\S]*?setManualExpanded\(false\);[\s\S]*?confirmSettings/,
+    );
+    expect(settings).not.toContain('if (settingsBlocked) {');
+  });
+
+  it('publishes its own fact and concludes nothing about Save', () => {
+    expect(settings).toContain(
+      'setSettingsConfirmed(activeDraftIdentity === null ? null : confirmed)',
+    );
+    expect(settings).not.toContain('practicalizeRecipeCandidate');
+  });
+});
+
 describe('five-detent direction language', () => {
   it('renders only the two approved five-detent customer controls', () => {
     const axes = read('features', 'pro-workbench', 'ProfileDirectionAxes.tsx');
     expect(axes).toContain("['sweetness'");
     expect(axes).toContain("['softness'");
-    expect(axes).toContain('[-2, -1, 0, 1, 2]');
+    // Five marks, now addressed by visual slot rather than by a value list.
+    // Five real positions by default; three where the authority publishes three.
+    expect(axes).toContain('const DETENTS = [-2, -1, 0, 1, 2] as const;');
+    expect(axes).toContain('const DETENTS_THREE = [-1, 0, 1] as const;');
     expect(axes).not.toContain('Wybrano:');
-    expect(axes).toContain('Mniej słodkie');
-    expect(axes).toContain('Bardziej słodkie');
-    expect(axes).toContain('Bardziej miękkie');
-    expect(axes).toContain('Bardziej twarde');
+    /* OWNER AUTHORITY 2026-09-03: the approved reference carries NO end labels
+       under the track — the axis is one row, its name and its instrument. The
+       direction each end means is carried by the axis name plus the thumb's
+       position, the way every other bipolar control in the app does it. */
+    expect(axes).not.toContain('Mniej słodkie');
+    expect(axes).not.toContain('Bardziej twarde');
     expect(axes).toContain('profile-regulator-');
     expect(axes).toContain('role="radiogroup"');
     expect(axes).toContain('role="radio"');

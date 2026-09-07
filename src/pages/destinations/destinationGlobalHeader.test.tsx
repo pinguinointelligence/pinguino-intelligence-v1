@@ -2,11 +2,10 @@
 /**
  * WORK WITH US — the destination surface consumes the GLOBAL header.
  *
- * Written after a clean git merge produced a silently broken header: #68 added
- * `actions={<DestinationHomeProSwitch />}` while #77 added `actions={headerActions}`
- * to the SAME `AppShell` call. Neither side conflicted textually, so the merge
- * succeeded; in JSX the later prop wins, so every Work With Us route shipped with
- * no HOME | PRO switch at all.
+ * Written after a clean git merge produced a silently broken header: a route-local
+ * destination switch competed with a page-owned header action on the SAME
+ * `AppShell` call. AppShell is now the only HOME | PRO render authority, so no
+ * destination can reintroduce that parallel path.
  *
  * Typecheck, build and eslint were all green on that file — a duplicate JSX prop
  * is not an error in this repo's lint config. Only rendering catches it, which is
@@ -34,7 +33,7 @@ afterEach(() => {
 const mountSurface = () => {
   act(() => {
     root.render(
-      <MemoryRouter>
+      <MemoryRouter initialEntries={['/work-with-us']}>
         <DestinationSurface eyebrow="Współpraca" title="Maszyny" blurb="Test" bare>
           <p>lane body</p>
         </DestinationSurface>

@@ -125,6 +125,18 @@ export interface WebhookEventFacts {
 }
 
 /** Thrown when the effect cannot be applied YET — the retry worker re-runs it. */
+/**
+ * A refusal that RETRYING CANNOT FIX. Two identities for one Stripe customer
+ * is a fact about the data, not a transient condition, so it must not be
+ * parked as retryable — it needs a human.
+ */
+export class EffectConflictError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'EffectConflictError';
+  }
+}
+
 export class RetryableEffectError extends Error {
   constructor(message: string) {
     super(message);
@@ -260,10 +272,99 @@ async function applyCheckoutCompletion(deps: DispatchDeps, event: WebhookEventFa
   return null;
 }
 
+/** A Stripe metadata value is only usable as a user id if it IS one. */
+const asUserId = (value: unknown): string | null =>
+  typeof value === 'string' &&
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value.trim())
+    ? value.trim().toLowerCase()
+    : null;
+
+/**
+ * WHO owns this subscription, without depending on event ORDER.
+ *
+ * `checkout.session.completed` and `customer.subscription.created` are
+ * delivered ~50 ms apart and processed concurrently, so this writer used to
+ * lose a coin flip: it needed the `billing_customers` mapping that checkout
+ * writes, and threw `customer_not_mapped_yet` when it ran first. That failure
+ * parked the event in `received` for a retry worker that DOES NOT EXIST, so a
+ * lost race stranded the payment for ever. GROW-010 caught it on PRO annual;
+ * nothing about it was PRO-annual specific.
+ *
+ * `create-checkout-session` already stamps the closed correlation payload onto
+ * `subscription_data.metadata`, so the answer is inside the object this writer
+ * ALREADY refetches from Stripe. The mapping stays canonical where it exists;
+ * the metadata is a strictly-validated fallback, never an override:
+ *
+ *  - the mapping wins whenever it exists;
+ *  - a mapping that disagrees with the metadata FAILS CLOSED — two identities
+ *    for one customer is never something to guess past;
+ *  - the value must be a real UUID, and it arrives on the Stripe-signed event;
+ *  - a missing or malformed id keeps the original retryable refusal, so an
+ *    unknown user is still never invented;
+ *  - the mapping is then written back conflict-safely, which is what makes the
+ *    NEXT event in the race healthy instead of merely this one.
+ *
+ * Correlation only. Plan authority stays the price → catalog lookup in the
+ * caller; `pi_offer_key` never decides what anybody is entitled to.
+ */
+async function resolveSubscriptionUserId(
+  deps: DispatchDeps,
+  snapshot: { customerId: string | null; metadataUserId: string | null },
+): Promise<string> {
+  const customerId = snapshot.customerId as string;
+  const { data: mappingRow, error: mappingError } = await deps.db
+    .from('billing_customers')
+    .select('user_id')
+    .eq('stripe_customer_id', customerId)
+    .maybeSingle();
+  throwOnDbError(mappingError, 'billing_customers lookup');
+  const mapped = mappingRow && typeof mappingRow.user_id === 'string' ? mappingRow.user_id : null;
+  const claimed = asUserId(snapshot.metadataUserId);
+
+  if (mapped) {
+    if (claimed && claimed !== mapped.toLowerCase()) {
+      throw new EffectConflictError(`customer_user_conflict:${customerId}`);
+    }
+    return mapped;
+  }
+  if (!claimed) throw new RetryableEffectError('customer_not_mapped_yet');
+
+  // Heal the mapping so every LATER event is healthy too. ignoreDuplicates
+  // keeps a mapping written concurrently by checkout completion authoritative:
+  // this write never clobbers, it only fills a gap.
+  const { error: healError } = await deps.db
+    .from('billing_customers')
+    .upsert(
+      { user_id: claimed, stripe_customer_id: customerId } as unknown as Row,
+      { onConflict: 'stripe_customer_id', ignoreDuplicates: true },
+    );
+  if (healError) {
+    // Losing this race is success, not failure — it means the mapping exists
+    // now. Re-read decides, so a genuine conflict is still caught.
+    const { data: recheck } = await deps.db
+      .from('billing_customers')
+      .select('user_id')
+      .eq('stripe_customer_id', customerId)
+      .maybeSingle();
+    const settled = recheck && typeof recheck.user_id === 'string' ? recheck.user_id : null;
+    if (!settled) throw new RetryableEffectError('customer_not_mapped_yet');
+    if (settled.toLowerCase() !== claimed) {
+      throw new EffectConflictError(`customer_user_conflict:${customerId}`);
+    }
+    return settled;
+  }
+  return claimed;
+}
+
 // ── subscription state sync → customer_subscriptions + entitlement mirror ────
 
-async function applySubscriptionSync(deps: DispatchDeps, event: WebhookEventFacts): Promise<string | null> {
-  const objectId = typeof event.object.id === 'string' ? event.object.id : null;
+async function applySubscriptionSync(
+  deps: DispatchDeps,
+  event: WebhookEventFacts,
+  overrideSubscriptionId?: string,
+): Promise<string | null> {
+  const objectId =
+    overrideSubscriptionId ?? (typeof event.object.id === 'string' ? event.object.id : null);
   if (!objectId) return 'skipped_no_subscription_id';
   // requiresRefetch intent: payload snapshots can arrive out of order — the
   // refetched object is always current (latest-wins by construction).
@@ -281,17 +382,8 @@ async function applySubscriptionSync(deps: DispatchDeps, event: WebhookEventFact
   if (!offerRow) return `skipped_unknown_price:${snapshot.priceId}`;
   const offer = offerRow as unknown as CatalogOffer;
 
-  // The user mapping is written by checkout completion; until it lands this
-  // event is retryable (the same self-healing race the v1 webhook documents).
   if (!snapshot.customerId) return 'skipped_no_customer_reference';
-  const { data: mappingRow, error: mappingError } = await deps.db
-    .from('billing_customers')
-    .select('user_id')
-    .eq('stripe_customer_id', snapshot.customerId)
-    .maybeSingle();
-  throwOnDbError(mappingError, 'billing_customers lookup');
-  const userId = mappingRow && typeof mappingRow.user_id === 'string' ? mappingRow.user_id : null;
-  if (!userId) throw new RetryableEffectError('customer_not_mapped_yet');
+  const userId = await resolveSubscriptionUserId(deps, snapshot);
 
   const row = buildCustomerSubscriptionRow({
     eventType: event.type,
@@ -396,15 +488,29 @@ async function applyCommissionablePayment(deps: DispatchDeps, event: WebhookEven
     .eq('stripe_subscription_id', invoice.subscriptionId)
     .maybeSingle();
   throwOnDbError(cacheError, 'customer_subscriptions lookup');
-  if (!cacheRow) {
-    // The subscription_state_sync writer has not landed yet (out-of-order
-    // delivery) — retry; NEVER invent an offer resolution here.
+  let cache = cacheRow;
+  if (!cache) {
+    // The subscription writer has not landed yet. Retrying here meant nothing:
+    // a retryable failure parks the event for a worker that does not exist, so
+    // the invoice stranded with the payment already taken. Still NEVER invent
+    // an offer resolution — run the SAME subscription-sync authority for this
+    // subscription id and re-read. One writer, one catalog lookup.
+    await applySubscriptionSync(deps, event, invoice.subscriptionId);
+    const { data: healedRow, error: healedError } = await deps.db
+      .from('customer_subscriptions')
+      .select('id, user_id, offer_key, product')
+      .eq('stripe_subscription_id', invoice.subscriptionId)
+      .maybeSingle();
+    throwOnDbError(healedError, 'customer_subscriptions re-read');
+    cache = healedRow;
+  }
+  if (!cache) {
     throw new RetryableEffectError('subscription_cache_missing_for_invoice');
   }
-  const cacheId = typeof cacheRow.id === 'string' ? cacheRow.id : null;
-  const customerUserId = typeof cacheRow.user_id === 'string' ? cacheRow.user_id : null;
-  const offerKey = typeof cacheRow.offer_key === 'string' ? cacheRow.offer_key : null;
-  const product = typeof cacheRow.product === 'string' ? cacheRow.product : null;
+  const cacheId = typeof cache.id === 'string' ? cache.id : null;
+  const customerUserId = typeof cache.user_id === 'string' ? cache.user_id : null;
+  const offerKey = typeof cache.offer_key === 'string' ? cache.offer_key : null;
+  const product = typeof cache.product === 'string' ? cache.product : null;
   if (!cacheId || !customerUserId || !offerKey || !product) {
     throw new RetryableEffectError('subscription_cache_incomplete');
   }
@@ -654,11 +760,13 @@ async function applyInvoiceVoidReversal(deps: DispatchDeps, event: WebhookEventF
   const objectId = typeof event.object.id === 'string' ? event.object.id : null;
   if (!objectId) return 'skipped_no_invoice_id';
   const invoice = extractInvoiceSnapshot(await deps.refetch('invoice', objectId));
+  const rewardNote = await reverseReferralRewardForInvoice(deps, invoice.id, event.type);
   const entry = await findEntryByInvoiceOrPaymentIntent(deps, invoice.id, invoice.paymentIntentId);
   // Ledger effect is "full reversal appended IF an entry exists" — no entry,
-  // no effect; the (nonexistent) invoice mirror is an honest no-op.
-  if (!entry) return 'skipped_no_commission_entry_for_invoice';
-  return appendReversal(deps, entry, {
+  // no effect; the (nonexistent) invoice mirror is an honest no-op. The
+  // referral reward is a separate ledger and is reversed either way.
+  if (!entry) return rewardNote ?? 'skipped_no_commission_entry_for_invoice';
+  const commissionNote = await appendReversal(deps, entry, {
     refundedGrossCents: null, // full reversal of whatever is un-reversed
     grossCents: Math.max(invoice.amountPaidCents, 1),
     kind: 'refund_reversal',
@@ -669,6 +777,7 @@ async function applyInvoiceVoidReversal(deps: DispatchDeps, event: WebhookEventF
       eventCreated: event.created,
     }),
   });
+  return [commissionNote, rewardNote].filter(Boolean).join('; ') || null;
 }
 
 // ── charge.refunded / refund.* → proportional reversal ───────────────────────
@@ -680,10 +789,11 @@ async function applyOneRefund(
   event: WebhookEventFacts,
 ): Promise<string | null> {
   if (refund.status !== 'succeeded') return `skipped_refund_not_succeeded:${refund.id}`;
+  const rewardNote = await reverseReferralRewardForInvoice(deps, charge.invoiceId, event.type);
   const entry = await findEntryByInvoiceOrPaymentIntent(deps, charge.invoiceId, charge.paymentIntentId);
-  if (!entry) return 'skipped_no_commission_entry_for_refund';
-  if (charge.amountCents <= 0) return 'skipped_zero_gross_charge';
-  return appendReversal(deps, entry, {
+  if (!entry) return rewardNote ?? 'skipped_no_commission_entry_for_refund';
+  if (charge.amountCents <= 0) return rewardNote ?? 'skipped_zero_gross_charge';
+  const commissionNote = await appendReversal(deps, entry, {
     refundedGrossCents: refund.amountCents,
     grossCents: charge.amountCents,
     kind: 'refund_reversal',
@@ -696,6 +806,7 @@ async function applyOneRefund(
       eventCreated: event.created,
     }),
   });
+  return [commissionNote, rewardNote].filter(Boolean).join('; ') || null;
 }
 
 async function applyRefundReversal(deps: DispatchDeps, event: WebhookEventFacts): Promise<string | null> {
@@ -734,9 +845,12 @@ async function applyDisputeLifecycle(deps: DispatchDeps, event: WebhookEventFact
   const dispute = extractDisputeSnapshot(await deps.refetch('dispute', objectId));
   if (!dispute.chargeId) return 'skipped_dispute_without_charge';
   const charge = extractChargeSnapshot(await deps.refetch('charge', dispute.chargeId));
+  // A lost dispute invalidates the purchase exactly as a refund does, so the
+  // referral reward is reversed on the same evidence.
+  const rewardNote = await reverseReferralRewardForInvoice(deps, charge.invoiceId, event.type);
   const entry = await findEntryByInvoiceOrPaymentIntent(deps, charge.invoiceId, charge.paymentIntentId);
-  if (!entry) return 'skipped_no_commission_entry_for_dispute';
-  return appendReversal(deps, entry, {
+  if (!entry) return rewardNote ?? 'skipped_no_commission_entry_for_dispute';
+  const commissionNote = await appendReversal(deps, entry, {
     refundedGrossCents: null, // R5: dispute lost → full remaining reversal
     grossCents: Math.max(charge.amountCents, 1),
     kind: 'dispute_reversal',
@@ -747,6 +861,7 @@ async function applyDisputeLifecycle(deps: DispatchDeps, event: WebhookEventFact
       eventCreated: event.created,
     }),
   });
+  return [commissionNote, rewardNote].filter(Boolean).join('; ') || null;
 }
 
 // ── account.updated → partners status mirror ─────────────────────────────────
@@ -767,6 +882,104 @@ async function applyConnectAccountStatus(deps: DispatchDeps, event: WebhookEvent
     .eq('stripe_connect_account_id', account.id);
   throwOnDbError(error, 'partners status mirror update');
   return null;
+}
+
+// ── invoice.paid → REFER-A-FRIEND reward (a SEPARATE lane from commission) ──
+
+/**
+ * The regular-user reward lane. It runs BESIDE `applyCommissionablePayment`,
+ * never inside it: the commission path returns early on
+ * `skipped_no_attribution`, and "no partner owns this customer" is exactly the
+ * case where a user referral CAN earn. Folding the two together would make the
+ * reward unreachable in the only situation it applies to.
+ *
+ * All qualification lives in `gellatti_record_referral_reward_v1` — first
+ * purchase only, one reward per invoice, self-referral impossible, and the
+ * partner lane winning any conversion it already owns. This function's whole
+ * job is to hand the database the facts and record what it decided.
+ *
+ * It can never create money: the RPC writes `referral_rewards` and
+ * `entitlements`, and touches no commission or payout table.
+ */
+async function applyReferralReward(deps: DispatchDeps, event: WebhookEventFacts): Promise<string | null> {
+  const objectId = typeof event.object.id === 'string' ? event.object.id : null;
+  if (!objectId) return null;
+  const invoice = extractInvoiceSnapshot(await deps.refetch('invoice', objectId));
+
+  // F7: the SAME paid-and-positive gate the commission lane uses. A failed,
+  // void, unpaid or zero-value invoice earns nothing here either.
+  const eligibility = decideCommissionEligibility(invoice);
+  if (!eligibility.eligible) return null;
+  if (!invoice.subscriptionId) return null;
+
+  const { data: cacheRow, error: cacheError } = await deps.db
+    .from('customer_subscriptions')
+    .select('user_id, offer_key, product')
+    .eq('stripe_subscription_id', invoice.subscriptionId)
+    .maybeSingle();
+  throwOnDbError(cacheError, 'customer_subscriptions lookup for referral reward');
+  if (!cacheRow) throw new RetryableEffectError('subscription_cache_missing_for_referral_reward');
+
+  const userId = typeof cacheRow.user_id === 'string' ? cacheRow.user_id : null;
+  const offerKey = typeof cacheRow.offer_key === 'string' ? cacheRow.offer_key : null;
+  const product = typeof cacheRow.product === 'string' ? cacheRow.product : null;
+  if (!userId || !offerKey || !product) throw new RetryableEffectError('subscription_cache_incomplete');
+
+  // Cadence comes from the SAME catalogue column the commission lane reads, so
+  // "annual" means one thing in this product: a 15-month initial period is an
+  // annual reward exactly as it is an annual commission.
+  const { data: catalogRow, error: catalogError } = await deps.db
+    .from('billing_price_catalog')
+    .select('commission_cadence')
+    .eq('offer_key', offerKey)
+    .maybeSingle();
+  throwOnDbError(catalogError, 'billing_price_catalog cadence lookup for referral reward');
+  const cadence =
+    catalogRow && typeof catalogRow.commission_cadence === 'string' ? catalogRow.commission_cadence : null;
+  if (!cadence) throw new RetryableEffectError('offer_missing_commission_cadence');
+
+  const { data, error } = await deps.db.rpc('gellatti_record_referral_reward_v1', {
+    p_referred_user_id: userId,
+    p_stripe_subscription_id: invoice.subscriptionId,
+    p_stripe_invoice_id: invoice.id,
+    p_product: product,
+    p_cadence: cadence,
+    p_livemode: event.livemode,
+  });
+  if (error) throw new RetryableEffectError(`referral_reward_rpc_failed:${error.code ?? 'unknown'}`);
+
+  const result = (data ?? {}) as { ok?: unknown; reason?: unknown; bonusDays?: unknown };
+  if (result.ok === true) return `referral_reward_earned:${String(result.bonusDays ?? '')}d`;
+
+  // NOTE DISCIPLINE. Most payments in this product have no user referral at
+  // all, and every invoice.paid arrives twice (invoice.paid and
+  // invoice.payment_succeeded share the object scope). Annotating those two
+  // cases would put a line on nearly every payment that says nothing, and
+  // would drown the refusals that DO mean something — above all
+  // `partner_attribution_wins`, which is the one place the two lanes meet.
+  const reason = typeof result.reason === 'string' ? result.reason : null;
+  if (reason === 'no_referral_attribution' || reason === 'duplicate_invoice') return null;
+  return reason ? `referral_reward_skipped:${reason}` : null;
+}
+
+/**
+ * F7/F9: a refunded, voided or disputed invoice invalidates the qualifying
+ * purchase, so the reward is reversed. Access already granted is NOT clawed
+ * back — the RPC only flips the ledger row, and the bank absorbs it.
+ */
+async function reverseReferralRewardForInvoice(
+  deps: DispatchDeps,
+  invoiceId: string | null,
+  reason: string,
+): Promise<string | null> {
+  if (!invoiceId) return null;
+  const { data, error } = await deps.db.rpc('gellatti_reverse_referral_reward_v1', {
+    p_stripe_invoice_id: invoiceId,
+    p_reason: reason,
+  });
+  if (error) throw new RetryableEffectError(`referral_reversal_rpc_failed:${error.code ?? 'unknown'}`);
+  const result = (data ?? {}) as { ok?: unknown; reason?: unknown };
+  return result.ok === true ? 'referral_reward_reversed' : null;
 }
 
 // ── the dispatcher ────────────────────────────────────────────────────────────
@@ -793,8 +1006,14 @@ export async function applyEventEffects(deps: DispatchDeps, event: WebhookEventF
       return { note: await applyShopOrderSettlement(deps, event) };
     case 'subscription_state_sync':
       return { note: await applySubscriptionSync(deps, event) };
-    case 'commissionable_payment':
-      return { note: await applyCommissionablePayment(deps, event) };
+    case 'commissionable_payment': {
+      // Two INDEPENDENT lanes on one payment: at most one of them ever
+      // produces value, and the database — not this switch — decides which.
+      const commission = await applyCommissionablePayment(deps, event);
+      const reward = await applyReferralReward(deps, event);
+      const notes = [commission, reward].filter((note): note is string => Boolean(note));
+      return { note: notes.length > 0 ? notes.join('; ') : null };
+    }
     case 'invoice_voided':
     case 'invoice_uncollectible':
       return { note: await applyInvoiceVoidReversal(deps, event) };

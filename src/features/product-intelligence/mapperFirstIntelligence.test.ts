@@ -10,6 +10,7 @@ import {
   buildMapperKnowledge,
   fieldConsensus,
   fingerprintMapperRows,
+  findProfileMatch,
   macroConditionedCohort,
   moistureCohortProfile,
   MOISTURE_COHORT_RULES,
@@ -20,6 +21,7 @@ import {
   MAX_TOKEN_DOCUMENT_SHARE,
   MIN_FAMILY_COHORT,
   MIN_TOKEN_DISCARD_COUNT,
+  profileDonor,
   type MapperKnowledgeRow,
 } from './mapperValueInference';
 import {
@@ -461,6 +463,62 @@ describe('nearest-neighbour cohorts', () => {
 
   it('produces no cohort when nothing in the Mapper shares a token', () => {
     expect(similarCohort({ name: 'Kurkuma mielona ekologiczna' }, knowledge).rows).toEqual([]);
+  });
+});
+
+describe('whole-profile donor material compatibility', () => {
+  const milk = (id: string, fat: number, protein: number, lactose: number) =>
+    mapperRow({
+      ingredient_id: id,
+      ingredient_name_internal: `Whole milk ${fat}%`,
+      ingredient_category: 'dairy',
+      ingredient_subcategory: 'milk',
+      water_percent: 88.7,
+      total_solids_percent: 11.3,
+      fat_percent: fat,
+      protein_percent: protein,
+      carbohydrate_percent: lactose,
+      total_sugars_percent: lactose,
+      sucrose_percent: 0,
+      dextrose_percent: 0,
+      glucose_percent: 0,
+      fructose_percent: 0,
+      lactose_percent: lactose,
+      polyol_percent: 0,
+      fiber_percent: 0,
+      salt_percent: 0.12,
+      alcohol_percent: 0,
+      kcal_per_100g: 65,
+      pod_value: 0.75,
+      pac_value: 5.28,
+    });
+
+  it('prefers a top-cohort donor whose named sugar spectrum covers the declared total', () => {
+    const closerButIncomplete = milk('PI-MILK-46', 3.6, 3.4, 4.6);
+    const compatible35 = milk('PI-MILK-47-A', 3.5, 3.2, 4.7);
+    const compatible32 = milk('PI-MILK-47-B', 3.2, 3.2, 4.7);
+    const knowledge = buildMapperKnowledge(
+      [closerButIncomplete, compatible35, compatible32],
+      FINGERPRINT,
+    );
+    const match = findProfileMatch(
+      {
+        name: 'Lait liquide frais entier',
+        category: 'dairy',
+        knownMacros: {
+          fat_percent: 3.6,
+          protein_percent: 3.4,
+          carbohydrate_percent: 4.7,
+          total_sugars_percent: 4.7,
+        },
+      },
+      knowledge,
+    );
+
+    expect(match.confidence).toBeGreaterThanOrEqual(0.85);
+    expect(match.rows[0]?.ingredient_id).toBe('PI-MILK-46');
+    expect(profileDonor(match)?.ingredient_id).toBe('PI-MILK-47-A');
+    expect(profileDonor(match)?.lactose_percent).toBe(4.7);
   });
 });
 

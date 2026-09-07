@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { cn } from '@/lib/cn';
 import {
   applicationPrimaryClasses,
@@ -8,7 +8,13 @@ import { shopAvailabilityLabelPl, shopCopy as c, shopGrams, shopMoney } from '@/
 import type { ShopProduct } from '@/services/shop';
 import { SHOP_STARTER_SHOTS, type ShopShotId } from './shopStarterShots';
 import { shopProductName } from './shopProductName';
-import { SHOP_SHIPPING_FLAT_CENTS } from './shopShipping';
+import { ShopCountrySelector } from './ShopCountrySelector';
+import {
+  selectedShopCountry,
+  selectedStarterPackMode,
+  useShopCountryStore,
+} from './shopCountryStore';
+import { getShippingRate, type ShopShippingRate } from '@/services/shopCountries';
 
 /**
  * THE ONE featured offer — Shop C3, owner approved 2026-08-31, with the
@@ -29,12 +35,42 @@ export function ShopStarterOffer({
   product,
   inCart,
   onAdd,
+  onLocalPack,
 }: {
   product: ShopProduct;
   inCart: boolean;
   onAdd: () => void;
+  /** Starts the 0 EUR Local pack flow. Auth is handled by the caller. */
+  onLocalPack: () => void;
 }) {
   const [shot, setShot] = useState<ShopShotId>('front');
+  /* The offer is a function of WHERE. `mode` selects which experience renders;
+     `shippingRate` is resolved from the authority for the chosen country and is
+     null whenever no enabled rate exists — never a fallback constant. */
+  const mode = useShopCountryStore(selectedStarterPackMode);
+  const country = useShopCountryStore(selectedShopCountry);
+  /* Rates are CACHED BY COUNTRY and the visible rate is DERIVED, not mirrored.
+     Setting state synchronously in the effect to clear a stale rate would
+     cascade a render and, worse, briefly show one country's price under
+     another's name. Switching back to a country already resolved costs no
+     request at all. */
+  const [ratesByCountry, setRatesByCountry] = useState<Record<string, ShopShippingRate | null>>({});
+  useEffect(() => {
+    if (!country?.physicalAvailable) return;
+    const iso2 = country.iso2;
+    let cancelled = false;
+    void getShippingRate(iso2)
+      .then((rate) => {
+        if (!cancelled) setRatesByCountry((prev) => ({ ...prev, [iso2]: rate }));
+      })
+      .catch(() => {
+        if (!cancelled) setRatesByCountry((prev) => ({ ...prev, [iso2]: null }));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [country]);
+  const shippingRate = country?.physicalAvailable ? (ratesByCountry[country.iso2] ?? null) : null;
   const primary = SHOP_STARTER_SHOTS.find((s) => s.id === shot) ?? SHOP_STARTER_SHOTS[0]!;
   /* The strip only ever offers what is NOT on display. */
   const alternates = SHOP_STARTER_SHOTS.filter((s) => s.id !== primary.id);
@@ -114,63 +150,126 @@ export function ShopStarterOffer({
         </div>
 
         <p className="mt-3 max-w-[44ch] text-[14.5px] leading-relaxed text-[var(--g-text-secondary)] md:mt-5 md:text-[15.5px]">
-          {c.starterPack.offerLede}
+          {mode === 'local' ? c.localPack.body : c.starterPack.offerLede}
         </p>
 
-        {/* Both purchase conditions, read before the money. Orange marks the
-            made-to-order state and nothing else. */}
-        <div className="mt-3 border-l-2 border-[var(--g-orange)] pl-[11px] md:mt-5 md:pl-[13px]">
-          <p
-            className={cn(
-              'flex items-center gap-2.5 text-[13px] font-semibold md:text-[13.5px]',
-              preorder ? 'text-[var(--g-attention-ink)]' : 'text-[var(--g-ink)]',
-            )}
-            data-testid="shop-starter-availability"
-          >
-            {preorder ? (
-              <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-[var(--g-orange)]" />
-            ) : null}
-            {shopAvailabilityLabelPl(product.availability, product.leadTimeWeeks)}
-          </p>
-          <p className="mt-1 ml-4 text-[13px] text-[var(--g-text-secondary)]">
-            {c.starterPack.offerShipping.replace(
-              '{amount}',
-              shopMoney(SHOP_SHIPPING_FLAT_CENTS, product.currency),
-            )}
-          </p>
-        </div>
+        {/* The question sits BEFORE the money, because it decides which money
+            is shown. Asking it in checkout would mean quoting a price and then
+            taking it away. */}
+        <ShopCountrySelector className="mt-4 md:mt-[22px]" />
 
-        {/* The money: clear, never the dominant graphic object. */}
-        <div className="mt-3 flex flex-wrap items-baseline gap-3.5 md:mt-5">
-          <span className="font-mono text-[29px] font-semibold tracking-[-0.01em] tabular-nums md:text-[30px]">
-            {shopMoney(product.priceCents, product.currency)}
-          </span>
-          {perKg ? (
-            <span className="font-mono text-[12.5px] text-[var(--g-text-secondary)] tabular-nums">
-              {perKg} {c.product.perKg}
-            </span>
-          ) : null}
-        </div>
+        {/* PHYSICAL — the pack ships. Conditions, then money, then the action.
+            Unchanged from the approved C3 offer; the country question above it
+            is what decides whether this branch renders at all. */}
+        {mode === 'physical' ? (
+          <>
+            <div className="mt-3 border-l-2 border-[var(--g-orange)] pl-[11px] md:mt-5 md:pl-[13px]">
+              <p
+                className={cn(
+                  'flex items-center gap-2.5 text-[13px] font-semibold md:text-[13.5px]',
+                  preorder ? 'text-[var(--g-attention-ink)]' : 'text-[var(--g-ink)]',
+                )}
+                data-testid="shop-starter-availability"
+              >
+                {preorder ? (
+                  <span
+                    aria-hidden
+                    className="size-1.5 shrink-0 rounded-full bg-[var(--g-orange)]"
+                  />
+                ) : null}
+                {shopAvailabilityLabelPl(product.availability, product.leadTimeWeeks)}
+              </p>
+              {/* A RESOLVED rate or nothing. Printing a constant would be a
+                  promise checkout might not keep. */}
+              {shippingRate ? (
+                <p className="mt-1 ml-4 text-[13px] text-[var(--g-text-secondary)]">
+                  {c.starterPack.offerShipping.replace(
+                    '{amount}',
+                    shopMoney(shippingRate.priceCents, shippingRate.currency),
+                  )}
+                </p>
+              ) : null}
+            </div>
 
-        <div className="mt-3.5 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:gap-5 md:mt-[22px]">
-          <button
-            type="button"
-            onClick={onAdd}
-            disabled={soldOut}
-            className={applicationPrimaryClasses(
-              cn(
-                'min-h-[46px] px-7 text-[14px]',
-                'disabled:cursor-not-allowed disabled:border-[var(--g-line-strong)] disabled:bg-[var(--g-line-quiet)] disabled:text-[var(--g-lock)] disabled:opacity-100',
-              ),
-            )}
-            data-testid={`shop-add-${product.sku}`}
-          >
-            {inCart ? c.product.added : c.product.add}
-          </button>
-          <a href="#shop-contents" className={applicationQuietClasses('text-[13px]')}>
-            {c.starterPack.contentsCta}
-          </a>
-        </div>
+            <div className="mt-3 flex flex-wrap items-baseline gap-3.5 md:mt-5">
+              <span
+                className="font-mono text-[29px] font-semibold tracking-[-0.01em] tabular-nums md:text-[30px]"
+                data-testid="shop-starter-price"
+              >
+                {shopMoney(product.priceCents, product.currency)}
+              </span>
+              {perKg ? (
+                <span className="font-mono text-[12.5px] text-[var(--g-text-secondary)] tabular-nums">
+                  {perKg} {c.product.perKg}
+                </span>
+              ) : null}
+            </div>
+
+            <div className="mt-3.5 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:gap-5 md:mt-[22px]">
+              <button
+                type="button"
+                onClick={onAdd}
+                disabled={soldOut}
+                className={applicationPrimaryClasses(
+                  cn(
+                    'min-h-[46px] px-7 text-[14px]',
+                    'disabled:cursor-not-allowed disabled:border-[var(--g-line-strong)] disabled:bg-[var(--g-line-quiet)] disabled:text-[var(--g-lock)] disabled:opacity-100',
+                  ),
+                )}
+                data-testid={`shop-add-${product.sku}`}
+              >
+                {inCart ? c.product.added : c.product.add}
+              </button>
+              <a href="#shop-contents" className={applicationQuietClasses('text-[13px]')}>
+                {c.starterPack.contentsCta}
+              </a>
+            </div>
+          </>
+        ) : null}
+
+        {/* LOCAL — the same seven components, sourced where the customer is.
+            This is an OFFER, not a fallback: it keeps the product's own money
+            treatment (ink on white, never graphite) so 0 EUR reads as a real
+            price rather than an absence. */}
+        {mode === 'local' ? (
+          <>
+            <div className="mt-3 border-l-2 border-[var(--g-orange)] pl-[11px] md:mt-5 md:pl-[13px]">
+              <p
+                className="text-[13px] font-semibold text-[var(--g-ink)] md:text-[13.5px]"
+                data-testid="shop-local-name"
+              >
+                {c.localPack.name}
+              </p>
+              <p className="mt-1 text-[13px] text-[var(--g-text-secondary)]">{c.localPack.lede}</p>
+            </div>
+
+            <div className="mt-3 flex flex-wrap items-baseline gap-3.5 md:mt-5">
+              <span
+                className="font-mono text-[29px] font-semibold tracking-[-0.01em] tabular-nums md:text-[30px]"
+                data-testid="shop-local-price"
+              >
+                {c.localPack.price}
+              </span>
+              <span className="font-mono text-[12.5px] text-[var(--g-text-secondary)]">
+                {country?.name}
+              </span>
+            </div>
+
+            <div className="mt-3.5 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:gap-5 md:mt-[22px]">
+              <button
+                type="button"
+                onClick={onLocalPack}
+                className={applicationPrimaryClasses('min-h-[46px] px-7 text-[14px]')}
+                data-testid="shop-local-cta"
+              >
+                {c.localPack.cta}
+              </button>
+              <a href="#shop-contents" className={applicationQuietClasses('text-[13px]')}>
+                {c.starterPack.contentsCta}
+              </a>
+            </div>
+          </>
+        ) : null}
       </div>
     </section>
   );

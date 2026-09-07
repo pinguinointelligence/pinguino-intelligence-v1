@@ -68,13 +68,14 @@ describe('canonical machine registry cross-surface parity', () => {
     );
   });
 
-  it('Sage machine id + batch survive saved metadata and resolve in Production', () => {
+  it('Sage machine id + recommended batch survive while legacy pseudo-capacity is cleared', () => {
     const input: RecipeInput = {
       mode: 'classic',
       category: 'milk_gelato',
       target_temperature_c: -11,
       target_batch_grams: 950,
       machine_capacity_grams: 950,
+      machine_capacity_source: 'machine',
       items: [],
     };
     const persisted = attachRecipeProfileMetadata(input, {
@@ -96,7 +97,7 @@ describe('canonical machine registry cross-surface parity', () => {
       machineId: SAGE_SMART_SCOOP_BCI600.id,
       machineLabel: 'Sage Smart Scoop',
       targetBatchGrams: 950,
-      machineCapacityGrams: 950,
+      machineCapacityGrams: null,
     });
     expect(machineEducationById(reopened!.machineId)?.sourceMachineId).toBe(
       SAGE_SMART_SCOOP_BCI600.id,

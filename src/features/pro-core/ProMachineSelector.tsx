@@ -94,8 +94,6 @@ export function ProMachineSelector() {
   const selectHome = (profile: HomeMachineProfile) => {
     const d = deriveMachineSetup(profile, visibleProductType);
     if (d.resolvedVisibleMode == null) return;
-    const temp = temperatureForMode(d.resolvedVisibleMode);
-    if (temp == null) return;
     setSavedDefault(false);
     setMachineSelection({
       kind: 'home',
@@ -103,11 +101,12 @@ export function ProMachineSelector() {
       machineId: profile.id,
       label: machineDisplayName(profile),
       machineTechnology: profile.technology,
-      temperatureC: temp,
+      homeFormulationModuleId: profile.homeFormulationModuleId,
+      temperatureC: d.engineTemperatureC,
       batchGrams: d.recommendedBatchGrams,
-      // OWNER CURRENT-DRAFT P0 (Phase 8): the Home machine's own usable
-      // capacity is the ONLY machine-derived capacity that may limit a batch.
-      capacityGrams: d.recommendedBatchGrams,
+      // Only documented hard gram authority may limit the Engine batch. The
+      // separate operating recommendation remains advisory and splittable.
+      hardCapacityGrams: d.hardMaximumBatchGrams,
       batchSource: 'MACHINE_DEFAULT',
     });
     if (setAsDefault) {
@@ -128,17 +127,16 @@ export function ProMachineSelector() {
     const batchGrams = effectiveDefaultBatchGrams(completion.record);
     const servingModeId = completion.derivation.resolvedVisibleMode;
     if (batchGrams === null || servingModeId === null) return;
-    const temperatureC = temperatureForMode(servingModeId);
-    if (temperatureC === null) return;
     setMachineSelection({
       kind: 'home',
       servingModeId,
       machineId: completion.profile.id,
       label: machineDisplayName(completion.profile),
       machineTechnology: completion.profile.technology,
-      temperatureC,
+      homeFormulationModuleId: completion.profile.homeFormulationModuleId,
+      temperatureC: completion.derivation.engineTemperatureC,
       batchGrams,
-      capacityGrams: batchGrams,
+      hardCapacityGrams: completion.derivation.hardMaximumBatchGrams,
       batchSource: 'CUSTOM_MACHINE_BATCH',
     });
     if (setAsDefault) {

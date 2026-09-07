@@ -4,35 +4,22 @@ import { describe, expect, it } from 'vitest';
 
 const read = (path: string) => readFileSync(resolve(process.cwd(), path), 'utf8');
 
+/*
+  ONE CANONICAL SCANNER (owner decision 2026-09-06). The second scanner UI
+  (`LiveProductScanner` / `LiveMultiScanner` and its private modules) is gone: it was a
+  duplicate implementation with its own state machine, decoder, messages and — after the
+  allergen ruling — its own contradicting rule. Assertions that described only that UI are
+  removed with it. Everything below is about the SERVER side, which both entries always
+  shared and which the canonical flow still calls.
+*/
 describe('Product Scanner server/client/security boundary', () => {
-  // The scanning UI is one component entered from two places — the standalone page and
-  // the recipe's „Dodaj składnik" (§37) — so the client boundary is both files together.
-  const ui = [
-    read('src/pages/products/ProductScannerV1Page.tsx'),
-    read('src/features/product-scanner/LiveProductScanner.tsx'),
-  ].join('\n');
   const service = read('src/services/productScanner.ts');
   const analyze = read('supabase/functions/product-scan-analyze/index.ts');
   const finalize = read('supabase/functions/product-scan-finalize/index.ts');
   const migration = read('supabase/migrations/20260821120000_product_scanner_v1.sql');
 
-  it('offers one native capture session across camera/upload/drop/paste with local barcode detection', () => {
-    expect(ui).toContain('capture="environment"');
-    expect(ui).toContain('accept={PRODUCT_SCAN_ACCEPT}');
-    expect(ui).toContain('multiple');
-    expect(ui).toContain("void addFiles(files, 'paste')");
-    expect(ui).toContain("void addFiles([...event.dataTransfer.files], 'drop')");
-    expect(ui).toContain('getSharedBarcodeDecoder');
-    expect(ui).toContain('Zrób zdjęcie');
-    expect(ui).toContain('Dodaj zdjęcie');
-    expect(ui).not.toContain('navigator.mediaDevices.getUserMedia');
-    expect(ui).not.toContain('<video');
-    expect(ui).not.toMatch(/MediaRecorder|RTCPeerConnection|webrtc/i);
-  });
-
   it('keeps the OpenAI key and model choice server-only', () => {
     expect(service).not.toMatch(/OPENAI_API_KEY|api\.openai\.com|gpt-5/i);
-    expect(ui).not.toMatch(/OPENAI_API_KEY|api\.openai\.com|gpt-5/i);
     expect(analyze).toContain("Deno.env.get('OPENAI_API_KEY')");
     expect(analyze).toContain("Deno.env.get('OPENAI_PROJECT_ID')");
     expect(analyze).toContain("'gpt-5.6-luna'");
@@ -98,13 +85,15 @@ describe('Product Scanner server/client/security boundary', () => {
     expect(migration).toContain("v_plan='basic' and v_lifetime>=5 and v_day>=1");
     expect(migration).toContain("status=case when p_created then 'consumed' else 'released' end");
     expect(finalize).not.toContain('reserve_product_scan_creation_v1');
-    expect(finalize).toContain('usableProductCreated: true');
+    // #219 made this the routing verdict, and 2026-09-07 made the idempotent replay report what was
+    // actually SAVED — a repeated save of an UNVERIFIED product must not claim a usable one.
+    expect(finalize).toContain("usableProductCreated: savedRow.route !== 'PM_UNVERIFIED'");
+    expect(finalize).toContain('usableProductCreated: savedReady');
     expect(migration).toContain('from public.account_profiles where user_id=p_actor_user_id');
     expect(migration).toContain("v_timezone:='UTC'");
   });
 
   it('limits the default session to four images and two paid vision calls', () => {
-    expect(ui).toContain('const MAX_IMAGES = 4');
     expect(analyze).toContain("numberEnv('PRODUCT_SCANNER_MAX_IMAGES', 4)");
     expect(analyze).toContain('PRODUCT_SCANNER_MAX_VISION_CALLS');
     expect(analyze).toContain('PRODUCT_SCANNER_MAX_WEB_CALLS');
@@ -125,8 +114,6 @@ describe('Product Scanner server/client/security boundary', () => {
   });
 
   it('never converts exhausted package evidence into a synthetic allergen fact', () => {
-    expect(ui).toContain('packageEvidenceExhausted: true');
-    expect(ui).toContain('retryablePackageFields');
     expect(finalize).toContain('packageEvidenceExhausted');
     expect(finalize).not.toContain('no allergens');
     expect(finalize).not.toContain('brak alergenów');
@@ -163,25 +150,19 @@ describe('Product Scanner server/client/security boundary', () => {
     // `allowWeb: true` used to be sent on EVERY ordinary scan, held back only by a flag
     // whose default was ON. The client no longer sends it and the server no longer reads it.
     expect(service).not.toContain('allowWeb');
-    expect(ui).not.toContain('allowWeb');
     expect(analyze).toContain("Deno.env.get('PRODUCT_SCANNER_WEB_SEARCH_ENABLED') === 'true'");
     expect(analyze).not.toContain('body.allowWeb === true');
   });
 
-  it('feeds uploaded photos through the very same session and pipeline', () => {
-    expect(ui).toContain("void addFiles(files, 'paste')");
-    expect(ui).toContain("addFiles([...event.dataTransfer.files], 'drop')");
-    expect(ui).toContain("void addFiles(files, 'gallery')");
-    // One analyse path, one finalize path — there is no second ingestion pipeline.
-    expect(ui.match(/analyzeProductImages\(/g)?.length).toBe(1);
-    expect(ui.match(/finalizeProductScan\(/g)?.length).toBe(2);
+  it('feeds every photo through the ONE canonical pipeline', () => {
+    // One analyse path, one finalize path, one adapter — there is no second ingestion pipeline.
+    const adapter = read('src/scan-import-v2/adapters/supabaseDiscoveryAdapter.ts');
+    expect(adapter).toContain("invoke('product-scan-analyze'");
+    expect(adapter).toContain("invoke('product-scan-finalize'");
+    expect(analyze).toContain('mergeProductScanResults');
   });
 
   it('sends the canonical unresolved fields and permits one targeted re-read of the same good photo', () => {
-    expect(ui).toContain('retryablePackageFields');
-    expect(ui).toContain('INITIAL_MISSING_FIELDS');
-    expect(ui).toContain('nextAutonomousScanAction');
-    expect(ui).toContain('visionCalls: activeAnalysis?.usage.visionCalls ?? 0');
     expect(service).toContain('missingFields: string[]');
     expect(analyze).toContain('Requested missing fields only:');
   });
@@ -189,17 +170,27 @@ describe('Product Scanner server/client/security boundary', () => {
   it('creates one customer-added product through shared profile authority and lets exact GTIN reuse win', () => {
     expect(finalize).toContain("'gellatti_upsert_customer_added_product_v1'");
     expect(finalize).toContain('normalizeValidatedBarcode');
-    expect(finalize).toContain('usableProductCreated: true');
+    expect(finalize).toContain("usableProductCreated: savedRow.route !== 'PM_UNVERIFIED'");
     expect(finalize).not.toContain("service.rpc('ingest_product_v1'");
     expect(finalize).toContain('validateIntimportProductProfileProposal');
     expect(finalize).toContain('validateProductBehaviorAuthority');
     expect(service).not.toContain('validateIntimportProductProfileProposal');
   });
 
-  it('shows the upload privacy contract before the one-photo actions', () => {
-    expect(ui).toContain('Zdjęcie zostanie przesłane do analizy etykiety');
-    expect(ui).toContain('ceny, dostawcy, notatki i stan magazynowy pozostają prywatne');
-    expect(ui.indexOf('Zdjęcie zostanie przesłane')).toBeLessThan(ui.indexOf('Zrób zdjęcie'));
-    expect(ui).not.toContain('privacyAccepted');
+  it('shows the upload privacy contract before the photo actions', () => {
+    // The disclosure follows the camera. Since 2026-09-06 exactly one surface uploads a photo,
+    // so the contract is asserted there — it must never become a promise nobody makes.
+    const flow = read('src/features/scan-flow/ScanFlow.tsx');
+    expect(flow).toContain('Zdjęcie zostanie przesłane do analizy etykiety');
+    // JSX wraps the sentence, so assert the two halves it is actually split into
+    expect(flow).toContain('ceny, dostawcy, notatki i stan');
+    expect(flow).toContain('magazynowy pozostają prywatne');
+    // every surface that can upload a photo renders the disclosure first
+    const uploads = [...flow.matchAll(/void sendLabel\(/g)].length;
+    expect(uploads).toBeGreaterThan(0);
+    expect([...flow.matchAll(/\{photoPrivacyNote\}/g)].length).toBe(2);
+    for (const m of flow.matchAll(/\{photoPrivacyNote\}/g))
+      expect(flow.indexOf('void sendLabel(', m.index)).toBeGreaterThan(m.index);
+    expect(flow).not.toContain('privacyAccepted');
   });
 });

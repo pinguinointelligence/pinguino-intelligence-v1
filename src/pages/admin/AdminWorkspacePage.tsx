@@ -10,6 +10,7 @@ import { cn } from '@/lib/cn';
 import { customerErrorMessage } from '@/copy/customerError';
 import { ADMIN_TABLE, ADMIN_TD, ADMIN_TH } from '@/features/admin/adminUi';
 import { AdminCatalogSection } from '@/features/admin/AdminCatalogSection';
+import { AdminStarterCountriesSection } from '@/features/admin/AdminStarterCountriesSection';
 import { AdminShopSection } from '@/features/admin/AdminShopSection';
 import { AdminFranchiseLeadsSection } from '@/features/admin/AdminFranchiseLeadsSection';
 import { AdminEmailJobsSection } from '@/features/admin/AdminEmailJobsSection';
@@ -44,6 +45,7 @@ const NAV = [
   ['users', 'Użytkownicy'],
   ['revenue', 'Subskrypcje i przychód'],
   ['shop', 'Sklep i zamówienia'],
+  ['starter-countries', 'Zestaw Startowy — kraje'],
   ['partners', 'Partnerzy'],
   ['community', 'Community i treści'],
   ['franchise', 'Zapytania Franchise'],
@@ -115,6 +117,7 @@ function AdminSection({ section }: { section: Section }) {
   if (section === 'users') return <AdminUsersSection />;
   if (section === 'revenue') return <Directory section="FINANCE" />;
   if (section === 'shop') return <AdminShopSection />;
+  if (section === 'starter-countries') return <AdminStarterCountriesSection />;
   if (section === 'partners') return <AdminPartnersSection />;
   if (section === 'community') return <AdminCommunitySection />;
   if (section === 'franchise') return <AdminFranchiseLeadsSection />;

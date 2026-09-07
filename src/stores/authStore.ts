@@ -36,6 +36,7 @@ interface AuthState {
 }
 
 let initialized = false;
+let authProjectionRevision = 0;
 
 export const useAuthStore = create<AuthState>((set) => ({
   status: 'loading',
@@ -49,8 +50,32 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({ status: 'anon' });
       return;
     }
-    void getCurrentUser().then((user) => set({ user, status: user ? 'authed' : 'anon' }));
-    onAuthChange((user) => set({ user, status: user ? 'authed' : 'anon' }));
+    const snapshotRevision = authProjectionRevision;
+    void getCurrentUser()
+      .then((user) => {
+        // The auth event stream may deliver INITIAL_SESSION/SIGNED_IN before this promise
+        // settles. A late snapshot must never overwrite that newer event with
+        // a false guest projection.
+        if (authProjectionRevision !== snapshotRevision) return;
+        set({ user, status: user ? 'authed' : 'anon' });
+      })
+      .catch(() => {
+        // A session read/refresh error is not a SIGNED_OUT event. Preserve the
+        // current projection and let the auth event stream settle identity.
+      });
+    onAuthChange((event, user) => {
+      authProjectionRevision += 1;
+      if (user) {
+        set({ user, status: 'authed' });
+        return;
+      }
+      // Only explicit/initial no-session events establish anonymous identity.
+      // A malformed/transient TOKEN_REFRESHED callback with no session cannot
+      // wipe account state or entitlement on its own.
+      if (event === 'SIGNED_OUT' || event === 'INITIAL_SESSION') {
+        set({ user: null, status: 'anon' });
+      }
+    });
   },
 
   signIn: (email, password) => serviceSignIn(email, password),
@@ -61,3 +86,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ user: null, status: 'anon' });
   },
 }));
+
+/** Test-only reset for the module-level one-shot bootstrap. */
+export function __resetAuthStoreForTests(): void {
+  initialized = false;
+  authProjectionRevision = 0;
+  useAuthStore.setState({ status: 'loading', user: null, available: isAuthAvailable });
+}

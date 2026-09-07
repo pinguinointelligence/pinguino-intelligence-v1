@@ -25,8 +25,9 @@ describe('Recipes Hub new-recipe guard', () => {
   let root: ReturnType<typeof createRoot>;
 
   beforeEach(async () => {
-    (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean })
-      .IS_REACT_ACT_ENVIRONMENT = true;
+    (
+      globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
+    ).IS_REACT_ACT_ENVIRONMENT = true;
     mocks.hasUnsaved.mockReset();
     mocks.start.mockReset();
     host = document.createElement('div');
@@ -62,13 +63,17 @@ describe('Recipes Hub new-recipe guard', () => {
 
     await click(newRecipe ?? null);
     expect(mocks.start).not.toHaveBeenCalled();
-    expect(host.textContent).toContain('Rozpocząć nową recepturę?');
+    expect(document.body.textContent).toContain('Rozpocząć nową recepturę?');
 
-    await click(Array.from(host.querySelectorAll('button')).find((button) => button.textContent === 'Anuluj') ?? null);
+    await click(
+      Array.from(document.body.querySelectorAll('button')).find(
+        (button) => button.textContent === 'Anuluj',
+      ) ?? null,
+    );
     expect(mocks.start).not.toHaveBeenCalled();
 
     await click(newRecipe ?? null);
-    await click(host.querySelector('[data-testid="confirm-new-recipe"]'));
+    await click(document.body.querySelector('[data-testid="confirm-new-recipe"]'));
     expect(mocks.start).toHaveBeenCalledTimes(1);
     expect(mocks.start).toHaveBeenCalledWith('gelato');
   });

@@ -149,6 +149,7 @@ Deno.serve(async (req) => {
 
     let note: string | null = null;
     let failureMessage: string | null = null;
+    let terminalFailure = false;
     try {
       const result = await applyEventEffects(
         { db: admin as unknown as DbClient, refetch },
@@ -164,6 +165,10 @@ Deno.serve(async (req) => {
     } catch (dispatchError) {
       failureMessage =
         dispatchError instanceof Error ? dispatchError.message : 'dispatch_failed';
+      // A conflict is a fact about the data, not a transient condition, so it
+      // must stay `failed` for a human instead of cycling back to `received`.
+      terminalFailure =
+        dispatchError instanceof Error && dispatchError.name === 'EffectConflictError';
     }
 
     if (failureMessage === null) {
@@ -196,7 +201,7 @@ Deno.serve(async (req) => {
         .update({ state: 'failed', attempts, last_error: failureMessage })
         .eq('event_id', event.id)
         .eq('state', 'processing');
-      if (!failError && decideFailureFollowup(attempts) === 'retryable') {
+      if (!failError && !terminalFailure && decideFailureFollowup(attempts) === 'retryable') {
         await admin
           .from('stripe_webhook_events')
           // The durable schema models a retryable event as `received`; there

@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { calculateRecipe, type RecipeInput } from '@/engine';
 import { GOLDEN_RECIPES } from '@/engine/__fixtures__/goldenRecipes';
-import { temperatureForMode } from '@/features/customer-flow/servingMode';
 import { machineEducationById } from '@/features/education';
 import { INTERNET_PROTEIN_RECIPES } from '@/features/protein-gelato/__fixtures__/internetProteinRecipes';
 import {
@@ -90,8 +89,6 @@ describe('all predefined Home machines × four accepted recipe controls', () => 
         expect(setup.recommendedBatchGrams).not.toBeNull();
         expect(setup.resolvedVisibleMode).not.toBeNull();
         const batchGrams = setup.recommendedBatchGrams!;
-        const temperatureC = temperatureForMode(setup.resolvedVisibleMode!);
-        expect(temperatureC).not.toBeNull();
 
         expect(
           useRecipeStore.getState().setMachineSelection({
@@ -100,9 +97,10 @@ describe('all predefined Home machines × four accepted recipe controls', () => 
             machineId: profile.id,
             label: machineDisplayName(profile),
             machineTechnology: profile.technology,
-            temperatureC: temperatureC!,
+            homeFormulationModuleId: profile.homeFormulationModuleId,
+            temperatureC: setup.engineTemperatureC,
             batchGrams,
-            capacityGrams: batchGrams,
+            hardCapacityGrams: setup.hardMaximumBatchGrams,
             batchSource: 'MACHINE_DEFAULT',
           }),
         ).toEqual({ ok: true });
@@ -115,7 +113,9 @@ describe('all predefined Home machines × four accepted recipe controls', () => 
           BATCH_RESIZE_TOLERANCE_GRAMS,
         );
         expect(state.batch_source).toBe('MACHINE_DEFAULT');
-        expect(state.machine_capacity_grams).toBe(batchGrams);
+        expect(state.machine_capacity_grams).toBeNull();
+        expect(state.target_temperature_c).toBe(-11);
+        expect(state.homeFormulationModuleId).toBe(profile.homeFormulationModuleId);
         expect(state.batchResizeConflict).toBeNull();
         expect(Object.fromEntries(state.items.map((item) => [item.id, item.lock_type]))).toEqual(
           originalLocks,

@@ -109,6 +109,7 @@ export type ProductDosageUnit =
 
 export type ProductDosageNormalizationBasis =
   | 'GELLATTI_BASE_1000G'
+  | 'GELLATTI_1ML_1G_NORMALIZATION'
   | 'SOURCE_G_PER_KG_1000G'
   | 'SOURCE_G_PER_10_KG_10000G'
   | 'SOURCE_PERCENT';
@@ -551,18 +552,25 @@ export function parseProductDosage(value: string | null | undefined): ProductDos
   }
   const milliliters = dosageSyntax.match(/(\d+(?:[.,]\d+)?)\s*ml\s*\/\s*l\b/);
   if (milliliters) {
+    /* OWNER RULE (2026-08-25, frozen): 1 ml = 1 g and 1 L of Gellatti base is
+       1000 g, so ml/L normalises exactly like g/L — 20 ml/L is 2%. This branch
+       previously held out for a density that Gellatti has decided not to model,
+       leaving every ml/L dosage permanently unnormalised and in review. The raw
+       `value` and `unit: 'ML_PER_L'` are still preserved beside the normalised
+       percentage, so the manufacturer's own declaration is never lost. */
+    const parsedMl = dosageNumber(milliliters[1]!);
     return {
       semantics: 'FIXED',
-      value: dosageNumber(milliliters[1]!),
+      value: parsedMl,
       valueMax: null,
       unit: 'ML_PER_L',
       basis: dosageBasis(text),
-      normalizedMassPercent: null,
+      normalizedMassPercent: normalizedPercent(parsedMl, 10),
       normalizedMassPercentMax: null,
-      normalizationBasis: null,
-      densityResolved: false,
+      normalizationBasis: 'GELLATTI_1ML_1G_NORMALIZATION',
+      densityResolved: true,
       evidence: raw,
-      reasonCodes: ['DOSAGE_ML_PER_L_REQUIRES_REVIEW'],
+      reasonCodes: ['DOSAGE_ML_PER_L_NORMALIZED_GELLATTI_1ML_1G'],
     };
   }
   const percent = dosageSyntax.match(/(\d+(?:[.,]\d+)?)\s*%/);

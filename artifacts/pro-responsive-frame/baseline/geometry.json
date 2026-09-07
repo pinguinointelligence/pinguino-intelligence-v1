@@ -1,0 +1,850 @@
+{
+  "generatedAt": "2026-09-03T21:57:06.727Z",
+  "url": "http://127.0.0.1:5177/pro/recipe",
+  "fixture": {
+    "route": "/pro/recipe",
+    "baseRows": 6
+  },
+  "viewports": [
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080,
+        "dpr": 1
+      },
+      "density": "UNDECLARED",
+      "structuralMode": "DESKTOP",
+      "outerFrame": {
+        "left": 319.98,
+        "right": 1600,
+        "top": 82,
+        "bottom": 1080,
+        "width": 1280.02,
+        "height": 998,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "header": {
+        "left": 72,
+        "right": 1848,
+        "top": 0,
+        "bottom": 82,
+        "width": 1776,
+        "height": 82,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "leftTrack": {
+        "left": 319.98,
+        "right": 1144.91,
+        "top": 92.66,
+        "bottom": 1069.34,
+        "width": 824.92,
+        "height": 976.69,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "rightTrack": {
+        "left": 1155.56,
+        "right": 1600,
+        "top": 92.66,
+        "bottom": 1069.34,
+        "width": 444.44,
+        "height": 976.69,
+        "display": "block",
+        "visibility": "visible"
+      },
+      "sectionNavigationTrack": {
+        "left": 1155.56,
+        "right": 1600,
+        "top": 4.06,
+        "bottom": 76.94,
+        "width": 444.44,
+        "height": 72.88,
+        "display": "grid",
+        "visibility": "visible"
+      },
+      "bottomNavigation": {
+        "left": 0,
+        "right": 0,
+        "top": 0,
+        "bottom": 0,
+        "width": 0,
+        "height": 0,
+        "display": "none",
+        "visibility": "visible"
+      },
+      "bottomNavigationVisible": false,
+      "leftGutter": 319.98,
+      "rightGutter": 320,
+      "gutterDelta": 0.02,
+      "headerBodyRightTrackLeftDelta": 0,
+      "headerBodyRightTrackWidthDelta": 0,
+      "ingredientRowsVisible": 0,
+      "ingredientTableClipped": false,
+      "document": {
+        "scrollWidth": 1920,
+        "clientWidth": 1920,
+        "scrollHeight": 1080,
+        "clientHeight": 1080
+      },
+      "screenshot": "1920x1080.png"
+    },
+    {
+      "viewport": {
+        "width": 1728,
+        "height": 1117,
+        "dpr": 1
+      },
+      "density": "UNDECLARED",
+      "structuralMode": "DESKTOP",
+      "outerFrame": {
+        "left": 223.98,
+        "right": 1504,
+        "top": 82,
+        "bottom": 1117,
+        "width": 1280.02,
+        "height": 1035,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "header": {
+        "left": 32,
+        "right": 1696,
+        "top": 0,
+        "bottom": 82,
+        "width": 1664,
+        "height": 82,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "leftTrack": {
+        "left": 223.98,
+        "right": 1048.91,
+        "top": 92.66,
+        "bottom": 1106.34,
+        "width": 824.92,
+        "height": 1013.69,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "rightTrack": {
+        "left": 1059.56,
+        "right": 1504,
+        "top": 92.66,
+        "bottom": 1106.34,
+        "width": 444.44,
+        "height": 1013.69,
+        "display": "block",
+        "visibility": "visible"
+      },
+      "sectionNavigationTrack": {
+        "left": 1059.56,
+        "right": 1504,
+        "top": 4.06,
+        "bottom": 76.94,
+        "width": 444.44,
+        "height": 72.88,
+        "display": "grid",
+        "visibility": "visible"
+      },
+      "bottomNavigation": {
+        "left": 0,
+        "right": 0,
+        "top": 0,
+        "bottom": 0,
+        "width": 0,
+        "height": 0,
+        "display": "none",
+        "visibility": "visible"
+      },
+      "bottomNavigationVisible": false,
+      "leftGutter": 223.98,
+      "rightGutter": 224,
+      "gutterDelta": 0.02,
+      "headerBodyRightTrackLeftDelta": 0,
+      "headerBodyRightTrackWidthDelta": 0,
+      "ingredientRowsVisible": 0,
+      "ingredientTableClipped": false,
+      "document": {
+        "scrollWidth": 1728,
+        "clientWidth": 1728,
+        "scrollHeight": 1117,
+        "clientHeight": 1117
+      },
+      "screenshot": "1728x1117.png"
+    },
+    {
+      "viewport": {
+        "width": 1600,
+        "height": 900,
+        "dpr": 1
+      },
+      "density": "UNDECLARED",
+      "structuralMode": "DESKTOP",
+      "outerFrame": {
+        "left": 159.98,
+        "right": 1440,
+        "top": 82,
+        "bottom": 900,
+        "width": 1280.02,
+        "height": 818,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "header": {
+        "left": 32,
+        "right": 1568,
+        "top": 0,
+        "bottom": 82,
+        "width": 1536,
+        "height": 82,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "leftTrack": {
+        "left": 159.98,
+        "right": 984.91,
+        "top": 92.66,
+        "bottom": 889.34,
+        "width": 824.92,
+        "height": 796.69,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "rightTrack": {
+        "left": 995.56,
+        "right": 1440,
+        "top": 92.66,
+        "bottom": 889.34,
+        "width": 444.44,
+        "height": 796.69,
+        "display": "block",
+        "visibility": "visible"
+      },
+      "sectionNavigationTrack": {
+        "left": 995.56,
+        "right": 1440,
+        "top": 4.06,
+        "bottom": 76.94,
+        "width": 444.44,
+        "height": 72.88,
+        "display": "grid",
+        "visibility": "visible"
+      },
+      "bottomNavigation": {
+        "left": 0,
+        "right": 0,
+        "top": 0,
+        "bottom": 0,
+        "width": 0,
+        "height": 0,
+        "display": "none",
+        "visibility": "visible"
+      },
+      "bottomNavigationVisible": false,
+      "leftGutter": 159.98,
+      "rightGutter": 160,
+      "gutterDelta": 0.02,
+      "headerBodyRightTrackLeftDelta": 0,
+      "headerBodyRightTrackWidthDelta": 0,
+      "ingredientRowsVisible": 0,
+      "ingredientTableClipped": false,
+      "document": {
+        "scrollWidth": 1600,
+        "clientWidth": 1600,
+        "scrollHeight": 900,
+        "clientHeight": 900
+      },
+      "screenshot": "1600x900.png"
+    },
+    {
+      "viewport": {
+        "width": 1536,
+        "height": 864,
+        "dpr": 1
+      },
+      "density": "UNDECLARED",
+      "structuralMode": "DESKTOP",
+      "outerFrame": {
+        "left": 127.98,
+        "right": 1408,
+        "top": 82,
+        "bottom": 864,
+        "width": 1280.02,
+        "height": 782,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "header": {
+        "left": 30.72,
+        "right": 1505.27,
+        "top": 0,
+        "bottom": 82,
+        "width": 1474.55,
+        "height": 82,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "leftTrack": {
+        "left": 127.98,
+        "right": 952.91,
+        "top": 92.66,
+        "bottom": 853.34,
+        "width": 824.92,
+        "height": 760.69,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "rightTrack": {
+        "left": 963.56,
+        "right": 1408,
+        "top": 92.66,
+        "bottom": 853.34,
+        "width": 444.44,
+        "height": 760.69,
+        "display": "block",
+        "visibility": "visible"
+      },
+      "sectionNavigationTrack": {
+        "left": 963.56,
+        "right": 1408,
+        "top": 4.06,
+        "bottom": 76.94,
+        "width": 444.44,
+        "height": 72.88,
+        "display": "grid",
+        "visibility": "visible"
+      },
+      "bottomNavigation": {
+        "left": 0,
+        "right": 0,
+        "top": 0,
+        "bottom": 0,
+        "width": 0,
+        "height": 0,
+        "display": "none",
+        "visibility": "visible"
+      },
+      "bottomNavigationVisible": false,
+      "leftGutter": 127.98,
+      "rightGutter": 128,
+      "gutterDelta": 0.02,
+      "headerBodyRightTrackLeftDelta": 0,
+      "headerBodyRightTrackWidthDelta": 0,
+      "ingredientRowsVisible": 0,
+      "ingredientTableClipped": false,
+      "document": {
+        "scrollWidth": 1536,
+        "clientWidth": 1536,
+        "scrollHeight": 864,
+        "clientHeight": 864
+      },
+      "screenshot": "1536x864.png"
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900,
+        "dpr": 1
+      },
+      "density": "UNDECLARED",
+      "structuralMode": "DESKTOP",
+      "outerFrame": {
+        "left": 79.98,
+        "right": 1360,
+        "top": 82,
+        "bottom": 900,
+        "width": 1280.02,
+        "height": 818,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "header": {
+        "left": 28.8,
+        "right": 1411.19,
+        "top": 0,
+        "bottom": 82,
+        "width": 1382.39,
+        "height": 82,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "leftTrack": {
+        "left": 79.98,
+        "right": 904.91,
+        "top": 92.66,
+        "bottom": 889.34,
+        "width": 824.92,
+        "height": 796.69,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "rightTrack": {
+        "left": 915.56,
+        "right": 1360,
+        "top": 92.66,
+        "bottom": 889.34,
+        "width": 444.44,
+        "height": 796.69,
+        "display": "block",
+        "visibility": "visible"
+      },
+      "sectionNavigationTrack": {
+        "left": 915.56,
+        "right": 1163.66,
+        "top": 4.06,
+        "bottom": 76.94,
+        "width": 248.09,
+        "height": 72.88,
+        "display": "grid",
+        "visibility": "visible"
+      },
+      "bottomNavigation": {
+        "left": 0,
+        "right": 0,
+        "top": 0,
+        "bottom": 0,
+        "width": 0,
+        "height": 0,
+        "display": "none",
+        "visibility": "visible"
+      },
+      "bottomNavigationVisible": false,
+      "leftGutter": 79.98,
+      "rightGutter": 80,
+      "gutterDelta": 0.02,
+      "headerBodyRightTrackLeftDelta": 0,
+      "headerBodyRightTrackWidthDelta": 196.35,
+      "ingredientRowsVisible": 0,
+      "ingredientTableClipped": false,
+      "document": {
+        "scrollWidth": 1440,
+        "clientWidth": 1440,
+        "scrollHeight": 900,
+        "clientHeight": 900
+      },
+      "screenshot": "1440x900.png"
+    },
+    {
+      "viewport": {
+        "width": 1366,
+        "height": 768,
+        "dpr": 1
+      },
+      "density": "UNDECLARED",
+      "structuralMode": "DESKTOP",
+      "outerFrame": {
+        "left": 42.98,
+        "right": 1323,
+        "top": 82,
+        "bottom": 768,
+        "width": 1280.02,
+        "height": 686,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "header": {
+        "left": 27.31,
+        "right": 1338.67,
+        "top": 0,
+        "bottom": 82,
+        "width": 1311.36,
+        "height": 82,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "leftTrack": {
+        "left": 42.98,
+        "right": 873.88,
+        "top": 92.66,
+        "bottom": 757.34,
+        "width": 830.89,
+        "height": 664.69,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "rightTrack": {
+        "left": 884.53,
+        "right": 1323,
+        "top": 92.66,
+        "bottom": 757.34,
+        "width": 438.47,
+        "height": 664.69,
+        "display": "block",
+        "visibility": "visible"
+      },
+      "sectionNavigationTrack": {
+        "left": 875.91,
+        "right": 1124,
+        "top": 4.06,
+        "bottom": 76.94,
+        "width": 248.09,
+        "height": 72.88,
+        "display": "grid",
+        "visibility": "visible"
+      },
+      "bottomNavigation": {
+        "left": 0,
+        "right": 0,
+        "top": 0,
+        "bottom": 0,
+        "width": 0,
+        "height": 0,
+        "display": "none",
+        "visibility": "visible"
+      },
+      "bottomNavigationVisible": false,
+      "leftGutter": 42.98,
+      "rightGutter": 43,
+      "gutterDelta": 0.02,
+      "headerBodyRightTrackLeftDelta": 8.62,
+      "headerBodyRightTrackWidthDelta": 190.38,
+      "ingredientRowsVisible": 0,
+      "ingredientTableClipped": false,
+      "document": {
+        "scrollWidth": 1366,
+        "clientWidth": 1366,
+        "scrollHeight": 768,
+        "clientHeight": 768
+      },
+      "screenshot": "1366x768.png"
+    },
+    {
+      "viewport": {
+        "width": 1280,
+        "height": 800,
+        "dpr": 1
+      },
+      "density": "UNDECLARED",
+      "structuralMode": "DESKTOP",
+      "outerFrame": {
+        "left": 22.75,
+        "right": 1257.23,
+        "top": 82,
+        "bottom": 800,
+        "width": 1234.48,
+        "height": 718,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "header": {
+        "left": 25.59,
+        "right": 1254.39,
+        "top": 0,
+        "bottom": 82,
+        "width": 1228.8,
+        "height": 82,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "leftTrack": {
+        "left": 22.75,
+        "right": 835.72,
+        "top": 92.66,
+        "bottom": 789.34,
+        "width": 812.97,
+        "height": 696.69,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "rightTrack": {
+        "left": 846.38,
+        "right": 1257.23,
+        "top": 92.66,
+        "bottom": 789.34,
+        "width": 410.86,
+        "height": 696.69,
+        "display": "block",
+        "visibility": "visible"
+      },
+      "sectionNavigationTrack": {
+        "left": 820.77,
+        "right": 1068.86,
+        "top": 4.06,
+        "bottom": 76.94,
+        "width": 248.09,
+        "height": 72.88,
+        "display": "grid",
+        "visibility": "visible"
+      },
+      "bottomNavigation": {
+        "left": 0,
+        "right": 0,
+        "top": 0,
+        "bottom": 0,
+        "width": 0,
+        "height": 0,
+        "display": "none",
+        "visibility": "visible"
+      },
+      "bottomNavigationVisible": false,
+      "leftGutter": 22.75,
+      "rightGutter": 22.77,
+      "gutterDelta": 0.02,
+      "headerBodyRightTrackLeftDelta": 25.61,
+      "headerBodyRightTrackWidthDelta": 162.77,
+      "ingredientRowsVisible": 0,
+      "ingredientTableClipped": false,
+      "document": {
+        "scrollWidth": 1280,
+        "clientWidth": 1280,
+        "scrollHeight": 800,
+        "clientHeight": 800
+      },
+      "screenshot": "1280x800.png"
+    },
+    {
+      "viewport": {
+        "width": 1200,
+        "height": 800,
+        "dpr": 1
+      },
+      "density": "UNDECLARED",
+      "structuralMode": "TABLET",
+      "outerFrame": {
+        "left": 0,
+        "right": 1200,
+        "top": 69,
+        "bottom": 765,
+        "width": 1200,
+        "height": 696,
+        "display": "block",
+        "visibility": "visible"
+      },
+      "header": {
+        "left": 0,
+        "right": 1200,
+        "top": 0,
+        "bottom": 69,
+        "width": 1200,
+        "height": 69,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "leftTrack": {
+        "left": 0,
+        "right": 1200,
+        "top": 69,
+        "bottom": 633,
+        "width": 1200,
+        "height": 564,
+        "display": "block",
+        "visibility": "visible"
+      },
+      "rightTrack": {
+        "left": 0,
+        "right": 0,
+        "top": 0,
+        "bottom": 0,
+        "width": 0,
+        "height": 0,
+        "display": "none",
+        "visibility": "visible"
+      },
+      "sectionNavigationTrack": {
+        "left": 0,
+        "right": 0,
+        "top": 0,
+        "bottom": 0,
+        "width": 0,
+        "height": 0,
+        "display": "grid",
+        "visibility": "visible"
+      },
+      "bottomNavigation": {
+        "left": 0,
+        "right": 1200,
+        "top": 682,
+        "bottom": 800,
+        "width": 1200,
+        "height": 118,
+        "display": "block",
+        "visibility": "visible"
+      },
+      "bottomNavigationVisible": true,
+      "leftGutter": 0,
+      "rightGutter": 0,
+      "gutterDelta": 0,
+      "headerBodyRightTrackLeftDelta": 0,
+      "headerBodyRightTrackWidthDelta": 0,
+      "ingredientRowsVisible": 0,
+      "ingredientTableClipped": false,
+      "document": {
+        "scrollWidth": 1200,
+        "clientWidth": 1200,
+        "scrollHeight": 800,
+        "clientHeight": 800
+      },
+      "screenshot": "1200x800.png"
+    },
+    {
+      "viewport": {
+        "width": 1024,
+        "height": 768,
+        "dpr": 1
+      },
+      "density": "UNDECLARED",
+      "structuralMode": "TABLET",
+      "outerFrame": {
+        "left": 0,
+        "right": 1024,
+        "top": 69,
+        "bottom": 765,
+        "width": 1024,
+        "height": 696,
+        "display": "block",
+        "visibility": "visible"
+      },
+      "header": {
+        "left": 0,
+        "right": 1024,
+        "top": 0,
+        "bottom": 69,
+        "width": 1024,
+        "height": 69,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "leftTrack": {
+        "left": 0,
+        "right": 1024,
+        "top": 69,
+        "bottom": 633,
+        "width": 1024,
+        "height": 564,
+        "display": "block",
+        "visibility": "visible"
+      },
+      "rightTrack": {
+        "left": 0,
+        "right": 0,
+        "top": 0,
+        "bottom": 0,
+        "width": 0,
+        "height": 0,
+        "display": "none",
+        "visibility": "visible"
+      },
+      "sectionNavigationTrack": {
+        "left": 0,
+        "right": 0,
+        "top": 0,
+        "bottom": 0,
+        "width": 0,
+        "height": 0,
+        "display": "grid",
+        "visibility": "visible"
+      },
+      "bottomNavigation": {
+        "left": 0,
+        "right": 1024,
+        "top": 650,
+        "bottom": 768,
+        "width": 1024,
+        "height": 118,
+        "display": "block",
+        "visibility": "visible"
+      },
+      "bottomNavigationVisible": true,
+      "leftGutter": 0,
+      "rightGutter": 0,
+      "gutterDelta": 0,
+      "headerBodyRightTrackLeftDelta": 0,
+      "headerBodyRightTrackWidthDelta": 0,
+      "ingredientRowsVisible": 0,
+      "ingredientTableClipped": false,
+      "document": {
+        "scrollWidth": 1024,
+        "clientWidth": 1024,
+        "scrollHeight": 768,
+        "clientHeight": 768
+      },
+      "screenshot": "1024x768.png"
+    },
+    {
+      "viewport": {
+        "width": 768,
+        "height": 900,
+        "dpr": 1
+      },
+      "density": "UNDECLARED",
+      "structuralMode": "TABLET",
+      "outerFrame": {
+        "left": 0,
+        "right": 753,
+        "top": 69,
+        "bottom": 825,
+        "width": 753,
+        "height": 756,
+        "display": "block",
+        "visibility": "visible"
+      },
+      "header": {
+        "left": 0,
+        "right": 753,
+        "top": 0,
+        "bottom": 69,
+        "width": 753,
+        "height": 69,
+        "display": "flex",
+        "visibility": "visible"
+      },
+      "leftTrack": {
+        "left": 0,
+        "right": 753,
+        "top": 69,
+        "bottom": 693,
+        "width": 753,
+        "height": 624,
+        "display": "block",
+        "visibility": "visible"
+      },
+      "rightTrack": {
+        "left": 0,
+        "right": 0,
+        "top": 0,
+        "bottom": 0,
+        "width": 0,
+        "height": 0,
+        "display": "none",
+        "visibility": "visible"
+      },
+      "sectionNavigationTrack": {
+        "left": 0,
+        "right": 0,
+        "top": 0,
+        "bottom": 0,
+        "width": 0,
+        "height": 0,
+        "display": "grid",
+        "visibility": "visible"
+      },
+      "bottomNavigation": {
+        "left": 0,
+        "right": 753,
+        "top": 767,
+        "bottom": 885,
+        "width": 753,
+        "height": 118,
+        "display": "block",
+        "visibility": "visible"
+      },
+      "bottomNavigationVisible": true,
+      "leftGutter": 0,
+      "rightGutter": 15,
+      "gutterDelta": 15,
+      "headerBodyRightTrackLeftDelta": 0,
+      "headerBodyRightTrackWidthDelta": 0,
+      "ingredientRowsVisible": 0,
+      "ingredientTableClipped": false,
+      "document": {
+        "scrollWidth": 775,
+        "clientWidth": 753,
+        "scrollHeight": 900,
+        "clientHeight": 885
+      },
+      "screenshot": "768x900.png"
+    }
+  ]
+}

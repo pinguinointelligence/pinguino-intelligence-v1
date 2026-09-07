@@ -469,7 +469,7 @@ describe('machine context and the science freeze (tests 19–20)', () => {
       label: 'Home machine',
       temperatureC: -11,
       batchGrams: TARGET,
-      capacityGrams: 500,
+      hardCapacityGrams: 500,
     });
     const home = buildRecipeInput(useRecipeStore.getState());
     expect(home.machine_capacity_grams).toBe(500);

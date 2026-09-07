@@ -139,12 +139,26 @@
   --pro-workbench-header-height: 90px;
   /* Mobile preview navigation bar (Receptura/Monitor/Produkcja/Etykieta). */
   --pro-bottom-nav-height: 3.5rem;
+  /* CANONICAL HEADER OFFSET below the workbench breakpoint (owner, 2026-09-03).
+     The global header is content-driven — a 44 px control inside `py-2`, and
+     `sm:py-3` from 640 up — so it measures 65 px on a phone and 69 px from the
+     `sm` breakpoint. Anything that overlays the page on mobile starts HERE, so
+     the hamburger and HOME | PRO stay reachable underneath it. Measured live at
+     360 / 390 / 430 / 640 / 768 / 1024. */
+  --pro-mobile-header-height: 65px;
 }
 
 /* The notch inset still applies at every width; only its floor is dropped where
    the header's height is fixed. On a device with a real inset the value simply
    wins the `max()` as before. */
-@media (min-width: 1280px) {
+@media (min-width: 40rem) {
+  :root {
+    /* `sm:py-3` adds 4 px to the same 44 px control. */
+    --pro-mobile-header-height: 69px;
+  }
+}
+
+@media (min-width: 60rem) {
   :root {
     --app-header-top-floor: 0px;
   }
@@ -185,7 +199,13 @@
   /* Workbench geometry — the preview's own numbers at the 1440 px reference. */
   --g-gutter: 12px;
   --g-split-gap: 12px;
-  --g-side-width: clamp(370px, 36.111vw, 520px);
+  /* OWNER GEOMETRY DECISION 2026-09-02: the approved desktop authority at 1440
+     is a 500 px right column. 36.111vw reaches 520 px there, so the CEILING is
+     what was wrong — not the ratio. Lowering it to 500 pins the authority at
+     1440 and above while every narrower viewport keeps scaling on the same
+     36.111vw as before; the change bites only from 1384.6 px up, where the
+     ratio would otherwise have overshot the approved width. */
+  --g-side-width: clamp(370px, 36.111vw, 500px);
   --g-workbench-header: 90px;
   --g-card-radius: 10px;
   --g-control-radius: 9px;
@@ -194,4 +214,32 @@
   --g-monitor-row-height: 64px;
   --g-field-height: 46px;
   --g-stepper-height: 32px;
+}
+
+/* ── Canonical responsive PRO frame ──────────────────────────────────────
+   One accepted 1440 px desktop composition with no width-specific density
+   variants. The complete application is painted through one continuous scale
+   authority. 60rem = 960px is the true-mobile transition shared with
+   `proFrameGeometry.ts`. */
+:root {
+  --pro-desktop-min-width: 60rem;
+  --pro-frame-inline-gutter: 28.8px;
+  --pro-frame-max-width: 1280px;
+  --pro-frame-gap: 11.52px;
+  --pro-frame-right-width: 444px;
+  --pro-frame-left-min-width: 700px;
+  --pro-frame-block-padding: 10px;
+  --pro-row-height: 48px;
+  --pro-row-height-attention: 56px;
+  --pro-monitor-row-height: 60px;
+  --pro-row-drag-width: 20px;
+  /* OWNER LOCK GEOMETRY: each segmented control includes its 30 px lock cell.
+     The canonical row tracks preserve the controls' complete outer widths at
+     every desktop viewport; the whole application scale handles narrowing. */
+  --pro-row-percent-width: 142px;
+  --pro-row-grams-width: 150px;
+  --pro-row-price-width: 84px;
+  --pro-row-menu-width: 25px;
+  --pro-row-column-gap: 6px;
+  --pro-row-inline-padding: 9px;
 }

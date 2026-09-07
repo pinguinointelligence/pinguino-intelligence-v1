@@ -302,7 +302,9 @@ export function regulatoryNutritionReadiness(
 ): RegulatoryNutritionReadiness {
   const missing: string[] = [];
   if (!nutrition) return { ready: false, missing: ['Brak finalnych danych Nutrition.'] };
-  if (nutrition.saturated_fat_g === null) missing.push('Brak tłuszczów nasyconych.');
+  if (nutrition.saturated_fat_g === null) {
+    missing.push('Brak tłuszczów nasyconych.');
+  }
   if (nutrition.sugars_g === null) missing.push('Brak cukrów.');
   if (
     (market === 'EU' || market === 'UK' || market === 'AU_NZ') &&

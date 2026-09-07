@@ -15,14 +15,20 @@ describe('responsive Pro workbench structure', () => {
     // so every authenticated screen measures from the Production master.
     const geometry = read('features', 'shell', 'shellGeometry.ts');
 
+    // OWNER 2026-09-02: the workbench now renders inside Shop's canvas, so in
+    // workbench mode the header shares that cap — otherwise the module strip,
+    // right-aligned in the header, lands beside the display column instead of
+    // on it (measured: 54 px off at 1440, 149 px at 2368). Every other PRO
+    // surface keeps the 1776 px page width.
+    // SUPERSEDED, owner 2026-09-02 (option A). The header keeps the page's full
+    // width on EVERY route again — the 1440 cap it briefly carried is now on the
+    // centred band inside it, not on the row, so the hamburger, the wordmark and
+    // the login measure 32 / 96 / 32 px identically on Shop and PRO.
     expect(page).toContain('maxWidthClass="max-w-[1776px]"');
     expect(page).toContain('max-w-[1776px]');
-    // The mode mark is the canonical switch (owner frozen 2026-09-01), pinned to the
-    // trailing edge of the WORK column rather than a page-private badge.
-    expect(page).toContain(
-      'globalSwitch={<HomeProSwitch entitlement={proEntitlement} activeView="pro" />}',
-    );
-    expect(page).toContain('xl:w-[calc(100%-var(--pro-page-gutter))]');
+    // The mode mark is owned once by AppShell. PRO supplies only its section-nav slot.
+    expect(shell).toContain('<HomeProSwitch entitlement={entitlement} activeView={activeView} />');
+    expect(page).toContain('PRO_WORKBENCH_FRAME_CLASS');
     // V2.1 §8: the strip is anchored by the ONE shared display-column recipe.
     expect(page).toContain('DESKTOP_TAB_STRIP');
     expect(geometry).toContain('xl:w-[calc(100%-var(--pro-page-gutter))]');
@@ -33,7 +39,7 @@ describe('responsive Pro workbench structure', () => {
     // display track is an explicit length so the tab strip cannot drift.
     expect(shell).toContain('DESKTOP_WORKBENCH_COLUMNS');
     expect(surface).toContain('DESKTOP_WORKBENCH_COLUMNS');
-    expect(surface).toContain('xl:grid xl:h-full');
+    expect(surface).toContain('pro-workbench-body-grid');
     expect(surface).not.toContain('pro-workbench-body-max');
     expect(surface).not.toContain('xl:flex-none');
     expect(surface).not.toContain('2xl:w-[1761px]');
@@ -61,7 +67,7 @@ describe('responsive Pro workbench structure', () => {
     expect(picker).toContain('const top = Math.max(84, editor.top)');
     expect(picker).toContain('width: editor.width');
     expect(picker).toContain('height,');
-    expect(picker).toContain("window.matchMedia('(min-width: 1280px)')");
+    expect(picker).toContain('window.matchMedia(PRO_DESKTOP_MEDIA_QUERY)');
     expect(picker).toContain(
       "data-picker-position={anchored ? 'anchored' : 'keyboard-safe-sheet'}",
     );

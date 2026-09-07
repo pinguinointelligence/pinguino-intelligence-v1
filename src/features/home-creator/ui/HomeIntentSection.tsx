@@ -115,6 +115,12 @@ export function HomeIntentSection({
               className={cn('size-1.5 rounded-full', !hasIdea && 'invisible')}
               style={{ background: 'var(--g-orange)' }}
             />
+            {/* A box containing only a 6 px dot is 6 px tall, so it centred 8 px ABOVE
+                the prompt and read as a floating mark (owner, served). The zero-width
+                space gives this box a real text line of the field's own size and
+                leading, so the dot now centres on the prompt's first line and the two
+                read as one sentence. */}
+            <span aria-hidden>{'​'}</span>
           </span>
           <textarea
             id={fieldId}
@@ -122,7 +128,13 @@ export function HomeIntentSection({
             value={value}
             onChange={(event) => setValue(event.target.value)}
             onKeyDown={(event) => {
-              if (event.key === 'Enter' && !event.shiftKey) {
+              // `key` is the normal identity, but some keyboards and input drivers send
+              // the commit key with an empty `key` name; `code` still identifies it.
+              // While an IME is composing, Enter confirms the composition and must not
+              // commit the idea underneath it.
+              const enter =
+                event.key === 'Enter' || event.code === 'Enter' || event.code === 'NumpadEnter';
+              if (enter && !event.shiftKey && !event.nativeEvent.isComposing) {
                 event.preventDefault();
                 commitTyped();
               }
@@ -246,7 +258,11 @@ export function HomeIntentSection({
         disabled={chips.length === 0 && value.trim() === ''}
         data-testid="home-intent-cta"
         className={cn(
-          'mt-8 inline-flex min-h-[52px] w-full items-center justify-center rounded-full px-6 text-[15px] font-semibold transition-opacity',
+          // OWNER 2026-09-02: full width on mobile is an easy thumb target; on desktop
+          // the same bar dominated the whole screen, so it settles to a restrained
+          // centred button. A max-width, not a hardcoded viewport position.
+          'mt-8 flex min-h-[52px] w-full items-center justify-center rounded-full px-6 text-[15px] font-semibold transition-opacity',
+          'sm:mx-auto sm:max-w-[360px]',
           'focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40 disabled:cursor-not-allowed disabled:opacity-35',
         )}
         style={{ background: 'var(--g-ink)', color: '#ffffff' }}
@@ -261,11 +277,18 @@ export function HomeIntentSection({
         >
           {homeCreatorCopy.intent.resolving}
         </p>
-      ) : chips.length === 0 ? (
-        <p className="mt-3 text-center text-[12px]" style={{ color: 'var(--g-text-muted)' }}>
+      ) : hasIdea || value.trim() !== '' ? null : (
+        /* OWNER SERVED QA: the hint used to depend on chips alone, so someone who had
+           just typed „bananowy sorbet" was still told to add an ingredient. It answers
+           the question the screen is actually in — nothing described yet. */
+        <p
+          className="mt-3 text-center text-[12px]"
+          data-testid="home-intent-empty-hint"
+          style={{ color: 'var(--g-text-muted)' }}
+        >
           {homeCreatorCopy.intent.emptyHint}
         </p>
-      ) : null}
+      )}
     </HomeSection>
   );
 }

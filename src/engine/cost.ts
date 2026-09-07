@@ -2,9 +2,10 @@
  * Cost — recipe total, per kg and per serving (masterplan §12.10).
  *
  * Honesty rule: an ingredient with cost_per_kg === null is UNKNOWN — the recipe
- * cost becomes the incomplete state (complete: false, all money fields null,
- * missing ingredient ids listed). A missing cost is never silently treated as
- * 0; an explicit 0 means genuinely free (e.g. water). Currency-agnostic.
+ * cost becomes the incomplete state (complete: false, exact total/per-unit
+ * fields null, missing ingredient ids listed). `known_cost` still preserves
+ * the priced-line subtotal. A missing cost is never silently treated as 0; an
+ * explicit 0 means genuinely free (e.g. water). Currency-agnostic.
  *
  * Pure, deterministic, non-mutating.
  */
@@ -37,6 +38,7 @@ export function computeRecipeCosts(
     cost_per_kg !== null ? (cost_per_kg * grams) / 1000 : null;
 
   const costs: RecipeCosts = {
+    known_cost: total,
     total_cost,
     cost_per_kg,
     cost_per_serving_60g: serving(STANDARD_SERVINGS_G[0]),

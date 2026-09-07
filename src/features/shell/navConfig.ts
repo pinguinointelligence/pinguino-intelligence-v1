@@ -162,40 +162,11 @@ export const NAV_ITEMS: readonly NavItem[] = [
       },
     ],
   },
-  {
-    id: 'work',
-    label: nav.items.work,
-    to: '/work-with-us',
-    size: 'panel',
-    layout: 'offers',
-    blurb: nav.work.blurb,
-    groups: [
-      {
-        title: nav.work.offers.app.title,
-        body: nav.work.offers.app.body,
-        image: true,
-        links: [{ label: nav.learnMore, to: '/work-with-us' }],
-      },
-      {
-        title: nav.work.offers.machinesApp.title,
-        body: nav.work.offers.machinesApp.body,
-        image: true,
-        links: [{ label: nav.learnMore, to: '/work-with-us' }],
-      },
-      {
-        title: nav.work.offers.machineMixtures.title,
-        body: nav.work.offers.machineMixtures.body,
-        image: true,
-        links: [{ label: nav.learnMore, to: '/work-with-us' }],
-      },
-      {
-        title: nav.work.offers.ingredients.title,
-        body: nav.work.offers.ingredients.body,
-        image: true,
-        links: [{ label: nav.learnMore, to: '/work-with-us' }],
-      },
-    ],
-  },
+  // COLLABORATION IA (owner decision 2026-09-03): "Współpraca" is retired as a
+  // category. Affiliate and Franchise are the only two user-facing
+  // collaboration entries, and both live in the app nav; every operating format
+  // this panel used to advertise is a concept inside Franchise. The
+  // /work-with-us route now redirects there, so nothing it linked to is lost.
   {
     id: 'subscription',
     label: nav.items.subscription,
@@ -242,7 +213,6 @@ export const NAV_PLACEHOLDER_ROUTES = [
   '/calculator',
   '/label',
   '/api',
-  '/work-with-us',
   '/subscription',
   '/create-ingredient',
 ] as const;

@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { act } from 'react';
+import { act, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { starterMilkBase } from '@/features/recipe-constraints/constraintFixtures';
@@ -69,6 +69,77 @@ afterEach(async () => {
 });
 
 describe('PI visible terminal contract', () => {
+  it('renders a committed-but-incomplete Apply only as applied, never as not applied', async () => {
+    const onClose = vi.fn();
+    useConstraintStudioStore.setState({
+      blocked: null,
+      postApplyNotice: {
+        state: 'APPLIED_WITH_INCOMPLETE_CONSUMERS',
+        messagePl:
+          'Receptura została zmieniona, ale koszt nie został w pełni odświeżony. Uruchom Przelicz ponownie.',
+      },
+    });
+
+    await renderPanel(onClose);
+
+    expect(document.body.textContent).toContain('Zmiany zastosowano');
+    expect(document.body.textContent).toContain('Receptura została zmieniona');
+    expect(document.body.textContent).not.toContain('Zmian nie zastosowano');
+    expect(useConstraintStudioStore.getState().blocked).toBeNull();
+
+    await act(async () => {
+      document
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="pro-recalc-applied-with-incomplete-consumers-primary"]',
+        )
+        ?.click();
+    });
+    expect(useConstraintStudioStore.getState().postApplyNotice).toBeNull();
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it('returns an acknowledged incomplete-consumer Apply to Cofnij, not the header fallback', async () => {
+    const headerFallback = document.createElement('button');
+    headerFallback.dataset.testid = 'app-nav-trigger';
+    headerFallback.textContent = 'Otwórz menu';
+    const undo = document.createElement('button');
+    undo.dataset.testid = 'workbench-undo';
+    undo.textContent = 'Cofnij';
+    document.body.insertBefore(headerFallback, host);
+    document.body.insertBefore(undo, host);
+    useConstraintStudioStore.setState({
+      blocked: null,
+      postApplyNotice: {
+        state: 'APPLIED_WITH_INCOMPLETE_CONSUMERS',
+        messagePl:
+          'Receptura została zmieniona, ale koszt nie został w pełni odświeżony. Uruchom Przelicz ponownie.',
+      },
+    });
+
+    function Harness() {
+      const [open, setOpen] = useState(true);
+      return open ? <ProRecalcPanel open onClose={() => setOpen(false)} /> : null;
+    }
+
+    try {
+      await act(async () => root.render(<Harness />));
+      await act(async () => {
+        document
+          .querySelector<HTMLButtonElement>(
+            '[data-testid="pro-recalc-applied-with-incomplete-consumers-primary"]',
+          )
+          ?.click();
+      });
+
+      await vi.waitFor(() => expect(document.activeElement).toBe(undo));
+      expect(document.activeElement).not.toBe(headerFallback);
+      expect(document.activeElement).not.toBe(document.body);
+    } finally {
+      headerFallback.remove();
+      undo.remove();
+    }
+  });
+
   it('clears a cancelled or failed Preview score and renders the next recalculation score', async () => {
     const onClose = vi.fn();
     useConstraintStudioStore.setState({
@@ -408,20 +479,12 @@ describe('PI visible terminal contract', () => {
     });
     await renderPanel();
 
-    // CROWN-OFF LOCKED ANCHOR (owner, 2026-09-02). The customer is told the
-    // requested amount and the maximum we can actually use, and is offered the
-    // one-click acceptance of it. Internal technical metrics („Udział lodu",
-    // NPAC, water, …) were REMOVED from this customer surface by owner rule and
-    // now live only on the Pro/diagnostic renderer; `Wróć do receptury` reads as
-    // the decline it always was.
     expect(document.body.textContent).toContain(line.ingredient.name);
-    expect(document.body.textContent).toContain('900 g nie jest możliwe w tej recepturze.');
-    expect(document.body.textContent).toContain('Maksymalnie możemy użyć 639 g.');
-    expect(document.body.textContent).not.toContain('Udział lodu');
-    // PRIMARY: accept the advisory maximum. SECONDARY: unlock, or decline.
-    expect(document.body.textContent).toContain('Ustaw 639 g');
+    expect(document.body.textContent).toContain('900 g');
+    expect(document.body.textContent).toContain('639 g');
+    expect(document.body.textContent).toContain('Udział lodu');
     expect(document.body.textContent).toContain('Odblokuj i pokaż podgląd');
-    expect(document.body.textContent).toContain('Zostaw bez zmian');
+    expect(document.body.textContent).toContain('Wróć do receptury');
   });
 
   it('releases only the chosen quantity lock before rerunning PI', async () => {

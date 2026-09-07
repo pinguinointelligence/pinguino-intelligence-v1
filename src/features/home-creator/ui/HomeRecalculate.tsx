@@ -19,6 +19,7 @@ import {
 } from '@/features/constraint-studio/constraintStudioStore';
 import { cn } from '@/lib/cn';
 import { homeCreatorCopy } from '../homeCreatorCopy';
+import { homeCustomerNotice } from '../homeCustomerNotice';
 
 export function HomeRecalculate() {
   const preview = useConstraintStudioStore((state) => state.preview);
@@ -29,10 +30,15 @@ export function HomeRecalculate() {
   // Only some PreviewIssue variants carry a ready customer sentence. Narrowing on the
   // field rather than switching on every code keeps HOME from drifting out of step
   // when the pipeline gains a new refusal reason.
-  const issueMessage =
+  // OWNER SERVED QA 2026-09-02: the pipeline's own sentence is written for the PRO
+  // diagnosis view and can name ProductBehavior, the Mapper or a snapshot. HOME shows
+  // it only when it is customer language; otherwise the calm sentence. The verdict is
+  // untouched — a refusal is still a refusal.
+  const issueMessage = homeCustomerNotice(
     previewIssue && 'messagePl' in previewIssue && typeof previewIssue.messagePl === 'string'
       ? previewIssue.messagePl
-      : null;
+      : null,
+  );
 
   const run = async () => {
     setBusy(true);

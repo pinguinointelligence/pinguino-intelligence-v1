@@ -189,7 +189,12 @@ describe('Direction operational acceptance matrix', () => {
             goals: planningInput.goals,
           };
           expect(axisPlan.targetBand).not.toBeNull();
-          expect(axis === 'sweetness' ? plan.bands.pod : plan.bands.npac).toBeDefined();
+          // The band is published under the axis's OWN metric. Protein
+          // hardness resolves through ice_fraction, every other operational
+          // hardness axis through npac; sweetness is pod everywhere.
+          expect(
+            (plan.bands as Record<string, unknown>)[axisPlan.metric ?? ''],
+          ).toBeDefined();
           const built = buildOptimizePreview(
             input,
             EMPTY,
@@ -242,6 +247,21 @@ describe('Direction operational acceptance matrix', () => {
                   practicalization: built.preview.practicalization,
                 }),
               );
+            }
+            // A Direction move that would break the PROFILE'S OWN CLAIM is a
+            // truthful diagnostic, not a failure. This fixture asks for 20 %
+            // protein; Protein hardness moves ice fraction by adding dextrose,
+            // which dilutes protein, so the claim residual is the correct
+            // answer FOR THIS DRAFT. Applicability of Protein hardness on a real
+            // Protein starter is proven separately, at every position and
+            // temperature, in `proteinHardnessAuthority.test.ts`.
+            const claimResidual =
+              built.preview.diagnosticOnly === true &&
+              built.preview.diagnosticReason === 'protein_claim_residual';
+            if (claimResidual) {
+              expect(category).toBe('protein_gelato');
+              expect(axis).toBe('softness');
+              return;
             }
             expect(built.preview.diagnosticOnly).toBe(false);
             expect(nativeResidual).toEqual([]);

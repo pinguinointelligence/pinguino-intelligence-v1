@@ -29,6 +29,35 @@ export interface ShopCopy {
     readonly lede: string;
     readonly note: string;
   };
+  /**
+   * WHERE ARE YOU STARTING? — one product, two fulfilment modes.
+   *
+   * The country question is not a shipping form field; it is the thing that
+   * decides which offer the customer sees. When a pack cannot ship, the answer
+   * is a better offer rather than the word "unavailable".
+   */
+  readonly country: {
+    readonly question: string;
+    readonly helper: string;
+    readonly placeholder: string;
+    readonly change: string;
+    readonly shipsHere: string;
+    readonly localHere: string;
+    readonly noneHere: string;
+    readonly noneHelper: string;
+  };
+  readonly localPack: {
+    readonly name: string;
+    readonly price: string;
+    readonly lede: string;
+    readonly body: string;
+    readonly cta: string;
+    readonly ctaSignedOut: string;
+    readonly listTitle: string;
+    readonly listHelper: string;
+    readonly buy: string;
+    readonly countryLabel: string;
+  };
   readonly starterPack: {
     readonly kicker: string;
     readonly body: string;
@@ -133,6 +162,11 @@ export interface ShopCopy {
     readonly filterAll: string;
   };
   readonly orders: {
+    readonly createdNotice: string;
+    readonly viewPdf: string;
+    readonly pdfReady: string;
+    readonly pdfPending: string;
+    readonly pdfFailed: string;
     readonly title: string;
     readonly empty: string;
     readonly number: string;
@@ -196,6 +230,32 @@ export const shopCopyPl: ShopCopy = {
       'Pierwszy zestaw składników Gellatti — siedem pozycji w proporcjach dobranych pod ' +
       'pierwsze receptury.',
     note: 'Wysyłka kurierem {shipping} · 2–5 dni roboczych. Kwota końcowa przy płatności.',
+  },
+  country: {
+    question: 'Gdzie zaczynasz?',
+    helper: 'Wybierz kraj — pokażemy Ci właściwą wersję zestawu.',
+    placeholder: 'Wybierz kraj',
+    change: 'Zmień',
+    shipsHere: 'Wysyłamy tutaj',
+    localHere: 'Dostępne lokalnie',
+    noneHere: 'Jeszcze nie w Twoim kraju',
+    noneHelper:
+      'Nie wysyłamy tu jeszcze zestawu i nie mamy kompletnej listy lokalnych zamienników. ' +
+      'Pracujemy nad tym.',
+  },
+  localPack: {
+    name: 'Lokalny Zestaw Startowy',
+    price: '0 €',
+    lede: 'Wszystko, czego potrzebujesz — dostępne lokalnie.',
+    body:
+      'Pokażemy Ci dokładnie, co kupić w Twoim kraju, żebyś mógł zacząć z Gellatti ' +
+      'bez czekania na przesyłkę z zagranicy.',
+    cta: 'Odbierz swój Lokalny Zestaw Startowy',
+    ctaSignedOut: 'Zaloguj się i odbierz zestaw',
+    listTitle: 'Twoja lista zakupów',
+    listHelper: 'Te same składniki co w zestawie — u lokalnych dostawców.',
+    buy: 'Kup',
+    countryLabel: 'Kraj',
   },
   starterPack: {
     kicker: 'Zestaw startowy',
@@ -316,6 +376,11 @@ export const shopCopyPl: ShopCopy = {
     filterAll: 'Wszystkie',
   },
   orders: {
+    createdNotice: 'Zamówienie utworzone. Poniżej znajdziesz swoje zamówienie.',
+    viewPdf: 'Otwórz listę zakupów (PDF)',
+    pdfReady: 'Gotowa',
+    pdfPending: 'Przygotowujemy',
+    pdfFailed: 'Nie udało się otworzyć listy. Spróbuj ponownie.',
     title: 'Zamówienia',
     empty: 'Nie masz jeszcze zamówień.',
     number: 'Numer',
@@ -377,6 +442,32 @@ export const shopCopyEn: ShopCopy = {
     title: 'Gellatti Starter Pack',
     lede: 'The first Gellatti ingredient set — seven items in the proportions a first batch needs.',
     note: 'Courier shipping {shipping} · 2–5 business days. The amount shown is the amount charged.',
+  },
+  country: {
+    question: 'Where are you starting?',
+    helper: 'Pick your country — we will show you the right version of the pack.',
+    placeholder: 'Choose your country',
+    change: 'Change',
+    shipsHere: 'We ship here',
+    localHere: 'Available locally',
+    noneHere: 'Not in your country yet',
+    noneHelper:
+      'We do not ship the pack here yet, and we do not have a complete list of local ' +
+      'alternatives. We are working on it.',
+  },
+  localPack: {
+    name: 'Local Starter Pack',
+    price: '0 €',
+    lede: 'Everything you need, available locally.',
+    body:
+      'We will show you exactly what to buy in your country, so you can start with ' +
+      'Gellatti without waiting for international shipping.',
+    cta: 'Get my Local Starter Pack',
+    ctaSignedOut: 'Sign in to get your pack',
+    listTitle: 'Your shopping list',
+    listHelper: 'The same ingredients as the pack — from local suppliers.',
+    buy: 'Buy',
+    countryLabel: 'Country',
   },
   starterPack: {
     kicker: 'Starter pack',
@@ -491,6 +582,11 @@ export const shopCopyEn: ShopCopy = {
     filterAll: 'All',
   },
   orders: {
+    createdNotice: 'Order created. You will find it below.',
+    viewPdf: 'Open shopping list (PDF)',
+    pdfReady: 'Ready',
+    pdfPending: 'Preparing',
+    pdfFailed: 'Could not open the list. Try again.',
     title: 'Orders',
     empty: 'You have no orders yet.',
     number: 'Number',

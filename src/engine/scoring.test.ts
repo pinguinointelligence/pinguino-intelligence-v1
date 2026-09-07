@@ -4,7 +4,12 @@ import { resolveEffectiveItems } from './composition';
 import { MODES } from './config/modes';
 import { NEUTRAL_FLAVOR_SCORE, STABILITY_HEADROOM } from './config/scoring';
 import * as engine from './index';
-import { computeCostScore, computeFlavorScore, computeScores, computeTechnicalScore } from './scoring';
+import {
+  computeCostScore,
+  computeFlavorScore,
+  computeScores,
+  computeTechnicalScore,
+} from './scoring';
 import type {
   EngineIngredient,
   Indicator,
@@ -86,6 +91,7 @@ const itemsWithMain = (mainGrams: number, totalGrams: number) =>
   ]);
 
 const completeCosts = (costPerKg: number): RecipeCosts => ({
+  known_cost: costPerKg,
   total_cost: costPerKg,
   cost_per_kg: costPerKg,
   cost_per_serving_60g: (costPerKg * 60) / 1000,

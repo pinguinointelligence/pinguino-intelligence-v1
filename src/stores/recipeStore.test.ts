@@ -89,6 +89,53 @@ describe('recipePersistPartialize', () => {
   });
 });
 
+describe('saved machine-capacity authority', () => {
+  it('does not promote an unprovenanced legacy number to a manual hard limit', () => {
+    const prior = useRecipeStore.getState();
+    try {
+      const recipe = ownerSameInputRecipe();
+      useRecipeStore.getState().loadRecipeInput({
+        ...recipe,
+        machine_capacity_grams: 670,
+      });
+
+      expect(useRecipeStore.getState()).toMatchObject({
+        machine_capacity_grams: 670,
+        machine_capacity_source: null,
+      });
+      expect(buildRecipeInput(useRecipeStore.getState())).toMatchObject({
+        machine_capacity_grams: null,
+        machine_capacity_source: null,
+      });
+    } finally {
+      useRecipeStore.setState(prior, true);
+    }
+  });
+
+  it('preserves an explicit saved manual capacity source', () => {
+    const prior = useRecipeStore.getState();
+    try {
+      const recipe = ownerSameInputRecipe();
+      useRecipeStore.getState().loadRecipeInput({
+        ...recipe,
+        machine_capacity_grams: 670,
+        machine_capacity_source: 'manual',
+      });
+
+      expect(useRecipeStore.getState()).toMatchObject({
+        machine_capacity_grams: 670,
+        machine_capacity_source: 'manual',
+      });
+      expect(buildRecipeInput(useRecipeStore.getState())).toMatchObject({
+        machine_capacity_grams: 670,
+        machine_capacity_source: 'manual',
+      });
+    } finally {
+      useRecipeStore.setState(prior, true);
+    }
+  });
+});
+
 describe('profile/base routing authority', () => {
   it('heals an old persisted enum-only switch from the starter base authority', () => {
     useRecipeStore.getState().startNewRecipe('gelato');

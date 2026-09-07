@@ -9,12 +9,14 @@ import { proCoreCapabilitiesFor } from '@/features/pro-core/proCoreCapabilities'
 import { MobileDesignReviewEntry } from '@/features/design-review/ReviewOverlay';
 import {
   NAV_GROUP_ORDER,
+  activeNavId,
   isGroupActive,
   navigationAudience,
   visibleNavItems,
   type NavGroupId,
 } from './appNav';
 import { AccountModeSwitcher } from './AccountModeSwitcher';
+import { labelSettingsReturn } from '@/features/master-label/labelSettingsNavigation';
 
 const s = copy.shell;
 const FOCUSABLE =
@@ -53,6 +55,7 @@ export function AppNavDrawer() {
   const items = visibleNavItems(audience);
   const workspaceItem = items.find((item) => item.workspaceHome);
   const loc = { pathname: location.pathname, search: location.search };
+  const currentNavId = activeNavId(loc, audience);
   const planLabel =
     audience === 'pro' ? s.account.planPro : audience === 'home' ? s.account.planHome : null;
   // An authenticated Admin may intentionally have no Home/Pro entitlement, so
@@ -66,6 +69,14 @@ export function AppNavDrawer() {
     const body = document.body;
     const prevOverflow = body.style.overflow;
     body.style.overflow = 'hidden';
+    /* One flag on the body, read by ONE css rule, so the page's own bottom
+       chrome steps aside instead of showing through a 60% scrim. Raising the
+       drawer above it stopped the click-through, but the strip stayed legible
+       underneath — two navigations on screen at once, which is exactly what
+       the owner refused. Not route-specific: the flag says "a modal shell
+       surface owns the screen", and the rule that answers it lives with the
+       bottom chrome's own styles. */
+    body.dataset.appDrawer = 'open';
     const trigger = triggerRef.current;
     const focusables = () =>
       panelRef.current ? Array.from(panelRef.current.querySelectorAll<HTMLElement>(FOCUSABLE)) : [];
@@ -93,6 +104,7 @@ export function AppNavDrawer() {
     return () => {
       document.removeEventListener('keydown', onKey);
       body.style.overflow = prevOverflow;
+      delete body.dataset.appDrawer;
       trigger?.focus();
     };
   }, [open]);
@@ -123,7 +135,23 @@ export function AppNavDrawer() {
       </button>
 
       {open ? (
-        <div className="fixed inset-0 z-50">
+        /* OWNER QA 2026-09-03 — the drawer is the app's TOP layer.
+
+           At z-50 it was below the mobile cockpit strip, which is `z-[60]`, so
+           an open menu still had Receptura / Monitor / Produkcja / Etykieta and
+           the sticky "Przelicz" bar sitting on top of it — two navigations on
+           screen at once, and the bottom one still clickable straight through
+           the scrim.
+
+           The order this file now fixes, bottom to top:
+             z-40  in-page chrome
+             z-50  mobile cockpit sheet
+             z-[60] mobile bottom nav + sticky recalc bar
+             z-[70] THIS drawer
+           Nothing route-specific: one number, above everything the shell can
+           put on screen. The scrim and the body scroll lock were already
+           correct and are untouched — they simply had nothing to stand on. */
+        <div className="fixed inset-0 z-[70]" data-testid="app-nav-drawer-layer">
           <button
             type="button"
             aria-label={s.closeMenu}
@@ -199,11 +227,26 @@ export function AppNavDrawer() {
                   >
                     <div className="space-y-0.5">
                       {groupItems.map((item) => {
-                        const active = item.isActive(loc);
+                        // ONE current page. `isActive` is per-item and several items can match a
+                        // nested path (/products/scan matches both „Produkty" and „Dodaj produkt");
+                        // `activeNavId` is the existing authority that picks the most specific one.
+                        const active = item.id === currentNavId;
                         return (
                           <Link
                             key={item.id}
                             to={item.to}
+                            state={
+                              item.id === 'labels'
+                                ? {
+                                    labelSettingsReturn: labelSettingsReturn(
+                                      location.pathname,
+                                      location.search,
+                                      document.querySelector<HTMLElement>('[role="tabpanel"]')
+                                        ?.scrollTop ?? window.scrollY,
+                                    ),
+                                  }
+                                : undefined
+                            }
                             onClick={close}
                             aria-current={active ? 'page' : undefined}
                             data-testid={`app-nav-item-${item.id}`}

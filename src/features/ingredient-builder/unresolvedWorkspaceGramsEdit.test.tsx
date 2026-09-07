@@ -115,10 +115,26 @@ describe('grams editing on an unresolved product-behavior workspace', () => {
 
     incrementGrams(container, MILK);
 
+    // The refusal itself is unchanged and still absolute.
     expect(plannedGrams(MILK)).toBe(before);
-    expect(notice(container)).toBe(
-      `Brak zatwierdzonego uprawnienia BASE_RECIPE dla: ${MILK}.`,
+
+    /* SUPERSEDED, owner QA 2026-09-03. This used to assert the refusal as a
+       NOTICE at the top of the table, which only appeared AFTER pressing a
+       stepper that looked entirely operable and did nothing — the "dead +/-"
+       the owner reported on signed-in staging. The gate now also closes the
+       control and says why beside the line it governs, so there is no longer a
+       press to answer: the top notice is correctly absent because the button
+       can no longer be operated. */
+    expect(notice(container)).toBeNull();
+    const row = container.querySelector(`[data-line-id="${MILK}"]`);
+    expect(row?.getAttribute('data-edit-refused')).toBe('true');
+    const reason = container.querySelector(`[data-testid="row-edit-refusal-${MILK}"]`);
+    expect(reason?.textContent).toBe(`Brak zatwierdzonego uprawnienia BASE_RECIPE dla: ${MILK}.`);
+    // ...and the control shows that it is closed rather than pretending.
+    const stepper = container.querySelector<HTMLButtonElement>(
+      `[data-testid="row-grams-control-${MILK}"] button[aria-label$="zwiększ"]`,
     );
+    expect(stepper?.disabled).toBe(true);
     act(() => root.unmount());
     container.remove();
   });

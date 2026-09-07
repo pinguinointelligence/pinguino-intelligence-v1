@@ -29,7 +29,10 @@ describe('§62 — viewing projects, it never writes', () => {
     // A PRO recipe at +2 displays as "sweeter"; tapping "sweeter" must be a no-op,
     // otherwise merely looking at HOME would flatten +2 to +1.
     expect(projectSweetnessForDisplay(2)).toBe('sweeter');
-    expect(tapChangesStoredValue(2, 'sweeter')).toBe(true);
+    // Was asserted `true`, which contradicted this test's own name and comment
+    // and pinned the defect: the guard let the tap through and +2 became +1.
+    expect(tapChangesStoredValue(2, 'sweeter')).toBe(false);
+    expect(tapChangesStoredValue(-2, 'less')).toBe(false);
     // …and when it DOES write, it writes the exact HOME value with no ±2 memory.
     expect(sweetnessValueForTap('sweeter')).toBe(1);
   });

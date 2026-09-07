@@ -3,6 +3,7 @@ import {
   EMPTY_PRODUCT_DOSE_META,
   type ProductDoseMeta,
 } from './productDoseSuggestion';
+import type { ProductDiscoveryReplaceContext } from './canonicalProductDiscovery';
 
 /** Customer vocabulary only. Engine lock enums are deliberately not exposed here. */
 export type IngredientCustomerRole = 'standard' | 'addition';
@@ -15,6 +16,24 @@ export interface IngredientRowMeta {
   /** Picker-time suggestion ownership. It is product-layer UI state only and
    * never participates in Engine math or creates an invisible lock. */
   dose: ProductDoseMeta;
+  /**
+   * Why this line's amount cannot be edited right now, in the customer's words,
+   * or null when it can.
+   *
+   * OWNER QA 2026-09-03. The ProductBehavior gate already refused these edits —
+   * correctly, it is a safety boundary — but it refused them at CLICK time and
+   * answered with a notice at the top of the table. From the row's point of
+   * view the steppers looked entirely operable and did nothing, which is the
+   * "dead +/-" the owner reported. Evaluating the SAME gate at render lets the
+   * control show that it is closed and say why, next to the number it governs.
+   *
+   * Not a second authority: the value is produced by `productBehaviorModuleGate`
+   * exactly as the click path produces it.
+   */
+  editRefusal?: string | null;
+  /** Context for the explicit row-level Replace invocation. This is derived
+   * from the current ingredient and never persisted as product authority. */
+  replaceContext?: ProductDiscoveryReplaceContext | null;
 }
 
 export interface SubstituteCandidate {

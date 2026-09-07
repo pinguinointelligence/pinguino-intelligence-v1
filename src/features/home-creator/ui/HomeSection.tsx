@@ -19,6 +19,7 @@ export function HomeSection({
   onBack,
   className,
   fill = true,
+  productPickerWidthAnchor = false,
   'data-testid': testId,
 }: {
   id: string;
@@ -28,12 +29,19 @@ export function HomeSection({
   className?: string;
   /** Give the section a comfortable minimum height; long content still grows. */
   fill?: boolean;
+  /**
+   * The recipe section is the HOME picker's horizontal layout authority. The
+   * picker is portalled to `body`, so it cannot inherit this width through CSS;
+   * the trigger resolves this explicit ancestor and mirrors its live rectangle.
+   */
+  productPickerWidthAnchor?: boolean;
   'data-testid'?: string;
 }) {
   return (
     <section
       id={id}
       data-testid={testId ?? `home-section-${id}`}
+      data-product-picker-width-anchor={productPickerWidthAnchor ? 'home-content' : undefined}
       className={cn(
         'mx-auto w-full max-w-[560px] scroll-mt-20 px-5 py-10 sm:px-6 lg:max-w-[720px] lg:py-16',
         fill && 'min-h-[calc(100svh-var(--home-header-height,64px))]',

@@ -17,6 +17,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { assertSaturatedFatWasNotInvented } from './lib/ingredientSourceGuards.mjs';
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(SCRIPT_DIR, '..');
@@ -127,6 +128,8 @@ const headers = parsed[0];
 const dataRows = parsed
   .slice(1)
   .filter((r) => !(r.length === 1 && r[0] === '') && r.some((c) => c !== ''));
+
+assertSaturatedFatWasNotInvented(headers, dataRows);
 
 const seen = new Set();
 for (const r of dataRows) {
