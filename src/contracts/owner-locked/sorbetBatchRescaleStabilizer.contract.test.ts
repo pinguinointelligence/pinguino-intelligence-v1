@@ -57,7 +57,10 @@ const recipe = (
 
 /** What one proportional factor produces — the state PC-02 must not keep. */
 const proportional = (batch: number, next: number, grams: readonly number[]) =>
-  recipe(next, grams.map((value) => (value * next) / batch));
+  recipe(
+    next,
+    grams.map((value) => (value * next) / batch),
+  );
 
 const planned = (batch: number, next: number, grams: readonly number[]) => {
   const plan = planSorbetStabilizerSystemRescale(
@@ -114,10 +117,10 @@ describe('OWNER-LOCKED — batch rescale keeps the Sorbet stabilizer system cano
   it('5. it declines to act where it has no authority', () => {
     // Not a Sorbet: the Gelato system has its own policy and is out of scope.
     expect(
-      planSorbetStabilizerSystemRescale(
-        recipe(1_000, [2, 3], 'milk_gelato'),
-        { ...proportional(1_000, 670, [2, 3]), category: 'milk_gelato' as const },
-      ),
+      planSorbetStabilizerSystemRescale(recipe(1_000, [2, 3], 'milk_gelato'), {
+        ...proportional(1_000, 670, [2, 3]),
+        category: 'milk_gelato' as const,
+      }),
     ).toBeNull();
     // A Sorbet carrying no stabilizer line is left exactly as it is.
     expect(planSorbetStabilizerSystemRescale(recipe(1_000, []), recipe(670, []))).toBeNull();
@@ -145,16 +148,24 @@ describe('OWNER-LOCKED — batch rescale keeps the Sorbet stabilizer system cano
        repair has no business enlarging that closure. It owns no limit of its
        own — every number still comes from the authority it imports. */
     const projection = readFileSync(
-      'src/features/recipe-constraints/sorbetStabilizerRescaleProjection.ts',
+      'src/features/recipe-constraints/ownerStabilizerRescaleProjection.ts',
       'utf8',
     );
-    expect(projection).toContain('sorbetStabilizerWholeGramBand');
-    expect(projection).toContain("from './sorbetStabilizerSystemAuthority'");
+    expect(projection).toContain('stabilizerSystemAuthorityFor');
+    expect(projection).toContain("from './ownerStabilizerSystemAuthority'");
     // Only the whole-gram arithmetic may carry numerals; no percentage and no
     // gram ceiling may be restated here.
     const code = projection.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
     expect(code).not.toMatch(/\b0\.[0-9]+\b/);
     expect(code.match(/\b[2-9][0-9]*\b/g) ?? []).toEqual([]);
+
+    const sorbetEntry = readFileSync(
+      'src/features/recipe-constraints/sorbetStabilizerRescaleProjection.ts',
+      'utf8',
+    );
+    expect(sorbetEntry).toContain('sorbetStabilizerSystemApplies');
+    expect(sorbetEntry).toContain('planOwnerStabilizerSystemRescale');
+    expect(sorbetEntry).toContain("from './sorbetStabilizerSystemAuthority'");
 
     const store = readFileSync('src/stores/recipeStore.ts', 'utf8');
     const helper = store.slice(
@@ -162,7 +173,7 @@ describe('OWNER-LOCKED — batch rescale keeps the Sorbet stabilizer system cano
       store.indexOf('/** Snapshot of a preset as fresh store state'),
     );
     const helperCode = helper.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
-    expect(helperCode).toContain('planSorbetStabilizerSystemRescale');
+    expect(helperCode).toContain('planOwnerStabilizerSystemRescale');
     // `0` is an emptiness check, never a limit; any other numeral would be one.
     expect(helperCode.match(/\b[1-9][0-9]*\b/g) ?? []).toEqual([]);
   });

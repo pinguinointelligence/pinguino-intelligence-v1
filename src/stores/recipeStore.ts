@@ -100,8 +100,8 @@ import { resolveFunctionalRole } from '@/features/formulation/ingredientRoles';
 import {
   clampOwnerStabilizerComponentGrams,
   evaluateRecipeConstraintAuthority,
-  planSorbetStabilizerSystemRescale,
-  sorbetStabilizerSystemItems,
+  ownerStabilizerSystemItems,
+  planOwnerStabilizerSystemRescale,
 } from '@/features/recipe-constraints';
 import { buildRecipeInput, type RecipeInputState } from '@/features/studio/buildRecipeInput';
 import { classifyProfileTransition } from '@/features/pro-workbench/profileCompatibility';
@@ -196,6 +196,7 @@ export type RecipeBatchSource =
 export const PROFESSIONAL_DEFAULT_BATCH_GRAMS = DEFAULT_NEW_RECIPE_BATCH_G;
 
 export const BATCH_RESIZE_TOLERANCE_GRAMS = 0.1;
+const BATCH_RESIZE_IDEMPOTENCE_EPSILON_GRAMS = 1e-9;
 
 export type BatchResizeConflictReason =
   | 'invalid_target'
@@ -216,8 +217,7 @@ export type BatchResizeResult =
   | { readonly ok: false; readonly conflict: BatchResizeConflict };
 
 export type BatchResizeWriteResult =
-  | { readonly ok: true }
-  | { readonly ok: false; readonly conflict: BatchResizeConflict };
+  { readonly ok: true } | { readonly ok: false; readonly conflict: BatchResizeConflict };
 
 export interface RecipeState {
   mode: ProductMode;
@@ -786,6 +786,34 @@ export const resizeRecipeBatch = (
   const lineTargetGrams = reservationHolds
     ? (nextBatchGrams * currentSum) / (currentSum + reservedMainGrams)
     : nextBatchGrams;
+  const alreadySatisfiesTarget =
+    Math.abs(currentSum - lineTargetGrams) <= BATCH_RESIZE_IDEMPOTENCE_EPSILON_GRAMS &&
+    items.every((item) => {
+      const instructedPercent = percentByLineId?.[item.id] ?? item.percent_constraint?.percent;
+      if (
+        instructedPercent !== undefined &&
+        (!Number.isFinite(instructedPercent) || instructedPercent < 0 || instructedPercent > 100)
+      ) {
+        return false;
+      }
+      const percentSatisfied =
+        instructedPercent === undefined ||
+        Math.abs(item.planned_grams - (nextBatchGrams * instructedPercent) / 100) <=
+          BATCH_RESIZE_IDEMPOTENCE_EPSILON_GRAMS;
+      const rangeSatisfied =
+        item.range_constraint === undefined ||
+        (item.planned_grams >=
+          item.range_constraint.min_grams - BATCH_RESIZE_TOLERANCE_GRAMS &&
+          item.planned_grams <=
+            item.range_constraint.max_grams + BATCH_RESIZE_TOLERANCE_GRAMS);
+      return percentSatisfied && rangeSatisfied;
+    });
+  // A repeated request for an already-satisfied batch is a byte-exact no-op.
+  // Re-running the proportional division at factor ~1 otherwise perturbs
+  // ordinary rows by IEEE-754 dust and breaks Preview/Apply fingerprints.
+  // The epsilon is numerical only: material mismatches (including the served
+  // +1.5 g Sorbet drift) continue through full reconciliation.
+  if (alreadySatisfiesTarget) return { ok: true, items: [...items] };
   const percentById = new Map<string, number>();
   const fixedIds = new Set<string>();
   const flexibleIds = new Set<string>();
@@ -902,10 +930,11 @@ export const resizeRecipeBatch = (
 };
 
 /**
- * PC-02 — project the owner-approved Sorbet stabilizer system onto the band the
- * NEW batch derives, then let this same resize authority reconcile everything
- * else around it. The percentage limit lives in the stabilizer authority and is
- * never restated here.
+ * PC-02 / SOL-041 — project the existing stabilizer system through the
+ * authority of the selected formulation family, then let this same resize
+ * authority reconcile everything else around it. Gelato and Sorbet keep their
+ * distinct published bands; Vegan and Protein keep their own presence-only,
+ * template-held dose contract. No range is restated or borrowed here.
  *
  * The projection is skipped — leaving today's behaviour untouched — when any
  * component of the system is not the resize's to move: physically weighed,
@@ -921,18 +950,8 @@ const rescaleWithOwnerStabilizerSystem = (
   resized: RecipeItem[],
   nextBatchGrams: number,
   percentByLineId?: Readonly<Record<string, number>>,
-  reservedMainGrams = 0,
 ): RecipeItem[] => {
-  // The reservation is honoured here only if it is still TRUE of the incoming
-  // draft — exactly the test the outer resize applies. Re-deriving it from the
-  // pinned vector without this guard would resurrect a stale starter
-  // reservation on a draft the customer has since completed.
-  const draftSum = state.items.reduce((total, item) => total + item.planned_grams, 0);
-  const honoursReservation =
-    reservedMainGrams > 0 &&
-    Math.abs(draftSum + reservedMainGrams - state.target_batch_grams) <=
-      BATCH_RESIZE_TOLERANCE_GRAMS;
-  const components = sorbetStabilizerSystemItems(resized);
+  const components = ownerStabilizerSystemItems(resized);
   if (components.length === 0) return resized;
   const adjustable = components.every(
     (item) =>
@@ -944,33 +963,29 @@ const rescaleWithOwnerStabilizerSystem = (
   );
   if (!adjustable) return resized;
 
-  const plan = planSorbetStabilizerSystemRescale(
+  const plan = planOwnerStabilizerSystemRescale(
     buildRecipeInput(state),
     buildRecipeInput({ ...state, items: resized, target_batch_grams: nextBatchGrams }),
   );
   if (plan === null) return resized;
 
-  const pinnedItems = state.items.map((item) =>
+  // `resized` already owns the exact mass that the outer batch authority gave
+  // the lines (for an incomplete starter, this excludes the reserved Main).
+  // Project the stabilizer inside THAT mass. Rebuilding from `state.items` and
+  // deriving a new reservation after pinning moved a gram or two from Main to
+  // support on every round trip (1000 → 670 → 1000), producing the served
+  // 1001.5 g / 59.9 % Sorbet regression once the 600 g Main arrived.
+  const lineTargetGrams = resized.reduce((total, item) => total + item.planned_grams, 0);
+  const pinnedItems = resized.map((item) =>
     plan.has(item.id) ? { ...item, planned_grams: plan.get(item.id)! } : item,
   );
   const reconciled = resizeRecipeBatch(
     pinnedItems,
-    state.target_batch_grams,
     nextBatchGrams,
+    lineTargetGrams,
     percentByLineId,
     new Set(plan.keys()),
-    // The stabilizer projection reconciles the SAME draft, so it inherits the
-    // same Main reservation; dropping it would re-inflate the support vector
-    // the outer resize just protected. Pinning the stabilizer to whole grams
-    // moves a gram or two, so the reservation is re-read off the pinned vector
-    // the way it is defined everywhere else — whatever the lines do not hold.
-    honoursReservation
-      ? Math.max(
-          0,
-          state.target_batch_grams -
-            pinnedItems.reduce((total, item) => total + item.planned_grams, 0),
-        )
-      : 0,
+    0,
   );
   return reconciled.ok ? reconciled.items : resized;
 };
@@ -987,9 +1002,7 @@ const fromPreset = (preset: DemoPreset) => ({
   batchResizeConflict: null as BatchResizeConflict | null,
   machine_capacity_grams: preset.machine_capacity_grams,
   machine_capacity_source: (preset.machine_capacity_grams === null ? null : 'manual') as
-    | 'machine'
-    | 'manual'
-    | null,
+    'machine' | 'manual' | null,
   flavor_intensity: preset.flavor_intensity,
   cost_priority: preset.cost_priority,
   direction_targets: { ...DEFAULT_DIRECTION_TARGETS },
@@ -1501,19 +1514,15 @@ export const useRecipeStore = create<RecipeState>()(
           set({ batchResizeConflict: resized.conflict });
           return { ok: false, conflict: resized.conflict };
         }
-        // PC-02 — the owner-approved Sorbet stabilizer system is capped at a
-        // PERCENTAGE of the batch that rounds inward to whole grams, so one
-        // proportional factor cannot carry it: a legal 5 g system at 1000 g
-        // arrived at 670 g (Ninja CREAMi Deluxe) as 1.34 g + 2.01 g — fractional,
-        // and above the 3 g ceiling that batch derives. The canonical authority
-        // projects the system onto the new band; no limit is restated here, and
-        // the ordinary lines absorb the difference through this same resize.
+        // PC-02 / SOL-041 — one proportional factor produces a fractional
+        // stabilizer hold at many real batch sizes. The selected profile's
+        // authority canonicalizes that one role; ordinary lines absorb only
+        // the rounding residual through this same resize.
         const projected = rescaleWithOwnerStabilizerSystem(
           state,
           resized.items,
           target_batch_grams,
           percentByLineId,
-          reservedMainGrams,
         );
         const batchSource = source ?? manualBatchSourceForState(state);
         set({
@@ -3136,7 +3145,6 @@ export const useRecipeStore = create<RecipeState>()(
                 resized.items,
                 targetBatchGrams,
                 undefined,
-                reservedMainGrams,
               );
         const batchSource =
           sel.batchGrams == null
