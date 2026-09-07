@@ -885,7 +885,12 @@ const roleOf = (archetype: ProductArchetype, all: string): ProductIntendedUsageR
   return 'BASE_ONLY';
 };
 
-const mapperCategoriesFor = (
+/**
+ * The single mapping from a resolved semantic identity to the Mapper cohorts it may match.
+ * Exported so that anything which RESOLVES a family later in the flow — the customer's own
+ * family answer, for one — recomputes this list here instead of carrying a second table.
+ */
+export const mapperCategoriesFor = (
   family: ProductSemanticFamily,
   archetype: ProductArchetype,
 ): string[] => {
