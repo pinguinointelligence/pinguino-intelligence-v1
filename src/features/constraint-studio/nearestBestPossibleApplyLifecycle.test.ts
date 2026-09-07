@@ -8,6 +8,7 @@ import {
 import { findDemoIngredient } from '@/data/demoIngredients';
 import { buildCanonicalNewRecipeStarter } from '@/features/recipes/newRecipeStarter';
 import { starterMilkBase } from '@/features/recipe-constraints/constraintFixtures';
+import type { RecipeToppingItem } from '@/features/recipe-composition/recipeCompositionPersistence';
 import {
   buildRecipeBehaviorAuthority,
   recipeInputFromFrozenBehavior,
@@ -42,13 +43,14 @@ const currentResultResolution = vi.hoisted(() => ({
   blocked: false,
   incomplete: false,
   rejectToppingsOutsideToppingModule: false,
+  useServedToppingAuthority: false,
   release: null as null | (() => void),
 }));
 
 vi.mock('@/services/productIntelligence', () => ({
   resolveRecipeProposalBehaviorSnapshots: async (input: {
     recipe: RecipeInput;
-    toppings?: readonly [];
+    toppings?: readonly RecipeToppingItem[];
     snapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>;
     module?: string;
   }) => {
@@ -68,10 +70,23 @@ vi.mock('@/services/productIntelligence', () => ({
           unresolvedLineIds: [input.recipe.items[0]!.id],
         };
       }
-      return {
-        snapshots: productBehaviorTestSnapshots(input.recipe, input.toppings),
-        unresolvedLineIds: [],
-      };
+      const snapshots = productBehaviorTestSnapshots(input.recipe, input.toppings);
+      if (currentResultResolution.useServedToppingAuthority) {
+        for (const topping of input.toppings ?? []) {
+          snapshots[topping.id] = {
+            ...snapshots[topping.id]!,
+            moduleEligibility: {
+              ...snapshots[topping.id]!.moduleEligibility,
+              MONITOR: 'blocked',
+              TOPPING: 'eligible',
+              NUTRITION: 'eligible',
+              COST: 'eligible',
+              SUMMARY: 'label_only',
+            },
+          };
+        }
+      }
+      return { snapshots, unresolvedLineIds: [] };
     }
     return {
       snapshots: Object.fromEntries(
@@ -215,6 +230,7 @@ beforeEach(() => {
   currentResultResolution.blocked = false;
   currentResultResolution.incomplete = false;
   currentResultResolution.rejectToppingsOutsideToppingModule = false;
+  currentResultResolution.useServedToppingAuthority = false;
   currentResultResolution.release = null;
   useRecipeStore.getState().resetToDemo();
   useRecipeProfileStore.getState().resetForTests();
@@ -378,6 +394,7 @@ describe('NEAREST / BEST-POSSIBLE Preview → Apply lifecycle', () => {
       const built: SuccessfulBuild = { ok: true, preview: displayed };
       const beforeApply = JSON.stringify(selectCanonicalDraft().input);
       currentResultResolution.rejectToppingsOutsideToppingModule = true;
+      currentResultResolution.useServedToppingAuthority = true;
 
       await applyPreviewWithServerAuthority(immediateRuntime(built));
 
