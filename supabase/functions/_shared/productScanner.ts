@@ -1,4 +1,8 @@
 import type { SourceAuthorityClass } from '../../../src/features/product-intelligence/sourceAuthority.ts';
+import {
+  isEanConfirmationMethod,
+  type EanConfirmationMethod,
+} from '../../../src/features/product-intelligence/pageEanConfirmation.ts';
 import type { ProductSemanticEvidence } from '../../../src/features/product-intelligence/productRecognition.ts';
 
 export const PRODUCT_SCAN_SCHEMA_VERSION = 'gellatti_product_scan_v1';
@@ -1214,6 +1218,16 @@ export function scanResultFromLookupFacts(
       sourceAuthorityClass: string | null;
       /** The barcode printed on that page, as the page stated it. Judged by the server, not here. */
       sourceStatedEan: string | null;
+      /*
+        HOW that barcode was established: `json_ld` / `microdata` / `page_text` / `url` mean the
+        SERVER opened the page and read it, `model_reported` means only the research model said so.
+        Without this the two are indistinguishable downstream, which is precisely the confusion the
+        server-side confirmation exists to end — the model returned the printed code on ONE of the
+        owner's eight external sources on 2026-09-07.
+      */
+      sourceEanConfirmationMethod: EanConfirmationMethod | null;
+      /** When that confirmation was established. */
+      sourceEanConfirmedAt: string | null;
     }
   >();
   let ingredientsText: string | null = null;
@@ -1240,6 +1254,15 @@ export function scanResultFromLookupFacts(
         sourceStatedEan:
           typeof fact.sourceStatedEan === 'string' && fact.sourceStatedEan.trim() !== ''
             ? fact.sourceStatedEan.replace(/\D/g, '')
+            : null,
+        // Only a method the server can actually issue survives; anything else is dropped rather
+        // than carried as an unrecognized string that a later reader might treat as proof.
+        sourceEanConfirmationMethod: isEanConfirmationMethod(fact.sourceEanConfirmationMethod)
+          ? fact.sourceEanConfirmationMethod
+          : null,
+        sourceEanConfirmedAt:
+          typeof fact.sourceEanConfirmedAt === 'string' && fact.sourceEanConfirmedAt.trim() !== ''
+            ? fact.sourceEanConfirmedAt
             : null,
       });
   };
