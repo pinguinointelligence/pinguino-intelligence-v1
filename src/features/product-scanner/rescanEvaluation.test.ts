@@ -37,8 +37,53 @@ describe('rescan of a known code', () => {
       });
     });
 
-    it('leaves a shared registry product alone — there is nothing to promote', () => {
-      expect(rescanReevaluationPlan({ productKind: 'commercial_product' }).reevaluate).toBe(false);
+    /*
+      REVERSED 2026-09-08, and the reason is a measurement.
+
+      This asserted that a shared product is never re-evaluated because "there is nothing to
+      promote" — true of the ROUTE, false of the DATA. PR-ING-007197 was written at 94.12 while
+      PM-ING-007193, the same article, sat at 73.4, and every classifier fix that landed on
+      2026-09-07 could reach neither: one is shared, the other is not the caller's.
+
+      A shared product is now re-evaluated when an authority version has moved, and left alone
+      when nothing has. The route is untouched; only staleness is addressed.
+    */
+    const VERSIONS = {
+      evidence: 'e1',
+      sourceClassifier: 'c1',
+      mapper: 'm1',
+      assessor: 'a1',
+    } as const;
+
+    it('re-evaluates a shared registry product when an authority version moved', () => {
+      expect(
+        rescanReevaluationPlan({
+          productKind: 'commercial_product',
+          storedVersions: { ...VERSIONS, sourceClassifier: 'c0' },
+          currentVersions: VERSIONS,
+        }),
+      ).toMatchObject({ reevaluate: true, reason: 'shared_product_authority_version_changed' });
+    });
+
+    it('leaves a shared registry product alone when nothing moved', () => {
+      expect(
+        rescanReevaluationPlan({
+          productKind: 'commercial_product',
+          storedVersions: VERSIONS,
+          currentVersions: VERSIONS,
+        }),
+      ).toEqual({ reevaluate: false, reason: 'shared_product_already_current' });
+    });
+
+    it('re-evaluates a shared product that predates version stamping', () => {
+      // The population that most needs it: scored before any version was recorded.
+      expect(
+        rescanReevaluationPlan({
+          productKind: 'commercial_product',
+          storedVersions: null,
+          currentVersions: VERSIONS,
+        }).reevaluate,
+      ).toBe(true);
     });
 
     it('never re-evaluates a Mapper reference, which is not a customer product', () => {
@@ -163,7 +208,7 @@ describe('rescan of a known code', () => {
 
   describe('promotion happens on the SAME product id', () => {
     const promotion = () =>
-      read('supabase/migrations/20260907190000_scanner_rescan_reevaluation.sql');
+      read('supabase/migrations/20260907220750_scanner_rescan_reevaluation.sql');
     const routing = () =>
       read('supabase/migrations/20260907030000_scanner_final_pr_pm_routing.sql');
 

@@ -143,7 +143,7 @@ describe('what an EAN lookup owes the customer', () => {
 
   describe('the release RPC cannot hand back money that was spent', () => {
     const migration = () =>
-      read('supabase/migrations/20260907190000_scanner_rescan_reevaluation.sql');
+      read('supabase/migrations/20260907220750_scanner_rescan_reevaluation.sql');
 
     it('exists, and is server-only', () => {
       expect(migration()).toContain(

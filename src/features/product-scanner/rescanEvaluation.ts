@@ -41,28 +41,114 @@ export interface RescanReevaluationPlan {
   /** Why, in one internal token. Diagnostics only — never customer copy. */
   reason:
     | 'private_product_may_be_promoted'
-    | 'already_shared_registry_product'
+    | 'shared_product_authority_version_changed'
+    | 'shared_product_already_current'
     | 'mapper_reference_not_a_customer_product'
     | 'unknown_product_kind';
+  /**
+   * The authority versions this re-evaluation is being run AT, recorded on the result so a later
+   * reader can tell which classifier produced a score rather than guessing from a timestamp.
+   */
+  authorityVersions?: AuthorityVersions;
 }
 
 /**
  * `exactProductForBarcode` has already established that a `customer_provisional` row belongs to
  * the caller (an unlinked account never reaches the exact path at all), so the kind alone decides.
  */
+/**
+ * The four authorities whose output a stored score depends on. When any of them moves, a product
+ * scored under the old one is stale — and that, rather than the clock, is what earns a re-run.
+ */
+export interface AuthorityVersions {
+  evidence: string;
+  sourceClassifier: string;
+  mapper: string;
+  assessor: string;
+}
+
+export const authorityVersionsEqual = (
+  a: Partial<AuthorityVersions> | null | undefined,
+  b: Partial<AuthorityVersions> | null | undefined,
+): boolean =>
+  !!a &&
+  !!b &&
+  a.evidence === b.evidence &&
+  a.sourceClassifier === b.sourceClassifier &&
+  a.mapper === b.mapper &&
+  a.assessor === b.assessor;
+
+/*
+  WHY A SHARED PRODUCT USED TO BE FROZEN, AND WHY THAT WAS WRONG.
+
+  This returned `false` for `commercial_product` with the reasoning that "a shared PR is already
+  the strongest thing an EAN can be". That confuses the ROUTE with the DATA. PR is indeed the top
+  route — but 87.8 is not the top score, and a product saved before a classifier fix keeps its old
+  number for ever, because the only path that could improve it is the one being declined here.
+
+  Measured: PR-ING-007197 was written at 94.12 while PM-ING-007193, the same article, sat at 73.4;
+  and every fix landed on 2026-09-07 — the EAN provenance bridge, the cache re-classification, the
+  raw-HTML confirmation — could reach neither, because neither is `customer_provisional`.
+
+  So a shared product IS re-evaluated, under three conditions that keep it honest:
+    - only when one of the four authority versions has actually moved, so an unchanged rescan stays
+      the instant, free answer it is today;
+    - only from stored evidence — nothing is re-acquired and no provider is called;
+    - and the caller applies it monotonically: a re-run may raise a score, never lower one.
+*/
 export function rescanReevaluationPlan(input: {
   productKind: ExactProductKind | null | undefined;
+  /** Versions the stored product version was produced under, when it recorded them. */
+  storedVersions?: Partial<AuthorityVersions> | null;
+  /** Versions this deployment would produce now. */
+  currentVersions?: AuthorityVersions | null;
 }): RescanReevaluationPlan {
   switch (input.productKind) {
     case 'customer_provisional':
       return { reevaluate: true, reason: 'private_product_may_be_promoted' };
-    case 'commercial_product':
-      return { reevaluate: false, reason: 'already_shared_registry_product' };
+    case 'commercial_product': {
+      // No version information at all means the product predates version stamping, which is
+      // exactly the population that needs the re-run most.
+      const current = input.currentVersions ?? null;
+      const unchanged =
+        current !== null && authorityVersionsEqual(input.storedVersions ?? null, current);
+      return unchanged
+        ? { reevaluate: false, reason: 'shared_product_already_current' }
+        : {
+            reevaluate: true,
+            reason: 'shared_product_authority_version_changed',
+            ...(current ? { authorityVersions: current } : {}),
+          };
+    }
     case 'mapper_reference':
       return { reevaluate: false, reason: 'mapper_reference_not_a_customer_product' };
     default:
       return { reevaluate: false, reason: 'unknown_product_kind' };
   }
+}
+
+/**
+ * MONOTONIC. A re-derivation that came out worse is discarded, not written: a classifier change
+ * must never be able to take readiness or accuracy away from a product that already earned it.
+ * Provenance counts too — a source that was promoted may not be quietly demoted by a later run
+ * that could not reach the page.
+ */
+export function acceptReevaluation(input: {
+  storedAccuracy: number | null | undefined;
+  nextAccuracy: number | null | undefined;
+  storedReadiness?: string | null;
+  nextReadiness?: string | null;
+}): { accept: boolean; reason: string } {
+  const stored = Number(input.storedAccuracy);
+  const next = Number(input.nextAccuracy);
+  if (!Number.isFinite(next)) return { accept: false, reason: 'no_new_score' };
+  if (!Number.isFinite(stored)) return { accept: true, reason: 'no_stored_score' };
+  if (input.storedReadiness === 'BASE_READY' && input.nextReadiness !== 'BASE_READY') {
+    return { accept: false, reason: 'would_lose_base_ready' };
+  }
+  if (next < stored) return { accept: false, reason: 'would_lower_accuracy' };
+  if (next === stored) return { accept: false, reason: 'no_improvement' };
+  return { accept: true, reason: 'improves_accuracy' };
 }
 
 /**
