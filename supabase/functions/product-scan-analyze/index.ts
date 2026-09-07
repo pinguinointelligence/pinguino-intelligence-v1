@@ -13,6 +13,16 @@ import {
   webCallsInResponse,
 } from '../_shared/productScanner.ts';
 import { requestedLabelFields } from '../../../src/features/product-scanner/labelAnalysisRequest.ts';
+// Deno loads these by relative path: the `.ts` extension is REQUIRED on a value import or the
+// deploy fails, and nothing in CI can see it.
+import {
+  rescanReevaluationPlan,
+  scanResultFromStoredFacts,
+} from '../../../src/features/product-scanner/rescanEvaluation.ts';
+import {
+  eanLookupVerdict,
+  lookupSkippedNoticePl,
+} from '../../../src/features/product-scanner/eanLookupOutcome.ts';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -133,6 +143,12 @@ async function exactProductForBarcode(
     (behavior.baseRecipeEligible === true || behavior.toppingEligible === true);
   return {
     ...product,
+    /*
+      The evidence this product was built from, kept so a rescan can RE-EVALUATE it without
+      re-acquiring anything. The label was already read and the source already asked; both are
+      frozen here, so the derivation can be re-run for free (§ rescanEvaluation.ts).
+    */
+    stored_facts: facts,
     product_accuracy: Number.isFinite(accuracy) ? accuracy : null,
     // Historical response name: this is canonical role usability, not only
     // BASE physics. A TOPPING_ONLY article is ready when ProductBehavior grants
@@ -142,6 +158,54 @@ async function exactProductForBarcode(
       intelligence.engineUsable === true ||
       roleReady,
   };
+}
+
+/**
+ * RE-EVALUATE the caller's own private product, through the ONE authority that already decides
+ * this. No rule is duplicated here: `product-scan-finalize` re-derives recognition, the Mapper,
+ * the rescue, the behaviour and the readiness from the session this function has just re-seeded,
+ * and `gellatti_upsert_customer_added_product_v1` applies the single routing rule
+ * (`v_ready and v_conf>85 -> PR`) to the result. When that verdict is PR on a product that
+ * already exists as this customer's PM, the RPC promotes THAT row — same product id, no second
+ * row for the EAN.
+ *
+ * Nothing paid runs on this path: no photograph is read, no source is called, and the semantic
+ * classifier finalize may consult is keyed by evidence fingerprint, so a product whose evidence
+ * has not changed reads its stored verdict instead of buying a new one.
+ *
+ * Any refusal is a legitimate answer — a product that is not production-ready simply stays a PM —
+ * so a failure here leaves the stored row untouched and the rescan answers exactly as before.
+ */
+async function reevaluateOwnPrivateProduct(input: {
+  url: string;
+  anonKey: string;
+  authorization: string;
+  sessionId: string;
+}): Promise<boolean> {
+  try {
+    const response = await fetch(`${input.url}/functions/v1/product-scan-finalize`, {
+      method: 'POST',
+      headers: {
+        Authorization: input.authorization,
+        apikey: input.anonKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'finalize',
+        sessionId: input.sessionId,
+        idempotencyKey: `product-scan-rescan-${input.sessionId}`,
+        confirmations: {},
+        privateOverlay: {},
+      }),
+    });
+    if (!response.ok) return false;
+    const payload = objectValue(await response.json());
+    // Only a real save reports a route. `customer_product_not_ready`, a stale assessment and a
+    // family question all arrive without one and mean "nothing to promote yet".
+    return typeof payload.route === 'string';
+  } catch {
+    return false;
+  }
 }
 
 Deno.serve(async (request) => {
@@ -272,25 +336,70 @@ Deno.serve(async (request) => {
   if (mode === 'ean_lookup') {
     // An exact canonical product answers the scan outright: no model, no source call,
     // no allowance. This is the cheap path a rescan of a known package must take (§16).
-    if (exact)
+    if (exact) {
+      /*
+        RESCAN RE-EVALUATION (owner contract 2026-09-07). Answering from the stored row is right
+        and stays free. What was wrong is that it was the WHOLE answer: a product saved earlier
+        with weaker evidence was handed back unchanged for ever, because the evaluation that
+        could promote it was never reached again.
+
+        So for the caller's OWN private product the session is re-seeded from the evidence that
+        product was built from — reused verbatim, nothing re-acquired — and the normal finalize
+        authority re-derives the verdict on today's Mapper, rescue and classification. A shared
+        PR and a Mapper reference skip this entirely: neither has anything to promote.
+      */
+      const plan = rescanReevaluationPlan({ productKind: exact.product_kind as string });
+      const storedResult = plan.reevaluate ? scanResultFromStoredFacts(exact.stored_facts) : null;
+      let current = exact;
+      if (storedResult) {
+        const seeded = mergeProductScanResults(storedResult, {}, barcode);
+        const seededValidation = validateServerResult(seeded, []);
+        const { error: seedError } = await service.rpc('complete_product_scan_ean_lookup_v1', {
+          p_actor_user_id: auth.user.id,
+          p_session_id: sessionId,
+          p_result: seeded,
+          p_validation: {
+            missingCriticalFields: seededValidation.missingCriticalFields,
+            highRiskAuthorityRequired: seededValidation.highRiskAuthorityRequired,
+          },
+          p_overlay_state: seededValidation.overlayState,
+          // The evidence is REUSED, not bought again. A rescan still costs nothing.
+          p_cost_usd: 0,
+        });
+        if (!seedError) {
+          const promoted = await reevaluateOwnPrivateProduct({
+            url,
+            anonKey,
+            authorization,
+            sessionId,
+          });
+          // Read the row back only when something was actually saved, so the answer carries the
+          // PR article code and the readiness the promotion has just granted.
+          if (promoted)
+            current = (await exactProductForBarcode(service, barcode, auth.user.id)) ?? exact;
+        }
+      }
       return json({
         sessionId,
         kind: 'existing_product',
+        reevaluated: storedResult !== null,
         product: {
-          id: exact.id,
-          displayName: exact.product_name_display,
-          brand: exact.brand ?? null,
-          entityKind: exact.product_kind === 'mapper_reference' ? 'pi_base' : 'commercial_product',
+          id: current.id,
+          displayName: current.product_name_display,
+          brand: current.brand ?? null,
+          entityKind:
+            current.product_kind === 'mapper_reference' ? 'pi_base' : 'commercial_product',
           status:
-            exact.product_kind === 'mapper_reference'
+            current.product_kind === 'mapper_reference'
               ? 'pi_base'
-              : exact.canonical_verification_status,
-          productCode: exact.product_code ?? null,
-          productAccuracy: exact.product_accuracy,
-          engineReady: exact.engine_ready,
+              : current.canonical_verification_status,
+          productCode: current.product_code ?? null,
+          productAccuracy: current.product_accuracy,
+          engineReady: current.engine_ready,
         },
         usage: { visionCalls: 0, webCalls: 0, estimatedCostUsd: 0 },
       });
+    }
     if (!barcode) return json({ error: 'lookup_requires_barcode' }, 400);
     const { data: lookupReservation, error: lookupReserveError } = await service.rpc(
       'reserve_product_scan_ean_lookup_v1',
@@ -301,10 +410,13 @@ Deno.serve(async (request) => {
     if (lookupReserved.allowed !== true) {
       // A refused lookup is not a failure of the scan. The session keeps whatever it
       // has and the flow continues locally (§24).
+      const skippedReason = String(lookupReserved.reason ?? 'session_lookup_already_used');
       return json({
         sessionId,
         kind: 'ean_lookup',
-        skipped: String(lookupReserved.reason ?? 'session_lookup_already_used'),
+        skipped: skippedReason,
+        retryable: false,
+        notice: lookupSkippedNoticePl(skippedReason),
         result: existingSession?.result_json ?? null,
         overlayState: existingSession?.overlay_state ?? null,
         missingCriticalFields:
@@ -364,9 +476,33 @@ Deno.serve(async (request) => {
       providerError = 'lookup_provider_unavailable';
     }
     const lookupResult = providerError ? null : scanResultFromLookupFacts(facts);
-    const merged = lookupResult
-      ? mergeProductScanResults(existingSession?.result_json ?? null, lookupResult, barcode)
-      : null;
+    const verdict = eanLookupVerdict({
+      providerAnswered: providerError === null,
+      resultSurvived: lookupResult !== null,
+      providerWebCalls,
+    });
+    /*
+      A LOOKUP THAT RESOLVES NOTHING MUST STILL LEAVE A SESSION THE FLOW CAN USE (owner defect
+      2026-09-07, session b414f3e6, EAN 8480000804693). `scanResultFromLookupFacts` returns null
+      as soon as no external source survives, so a provider that honestly answered "this code is
+      in no public source" produced no result, skipped the completion RPC entirely, and left the
+      session in `collecting`. The next step of the flow finalizes, finalize accepts only
+      `analyzed`, and its 409 carries no `kind` — so the discovery adapter rethrows it and the
+      customer reads a generic failure about a lookup that had in fact answered clearly.
+
+      The answer "nothing" is a RESULT. It is persisted like one: the authoritative barcode with
+      no other field, which is exactly what is true, and which leaves the session `analyzed` with
+      every critical field listed as missing so the flow asks for the label. A provider that never
+      answered is different — there is nothing to persist, and the allowance is given back below.
+    */
+    const merged =
+      verdict.outcome === 'provider_unavailable'
+        ? null
+        : mergeProductScanResults(
+            existingSession?.result_json ?? null,
+            lookupResult ?? {},
+            barcode,
+          );
     const { data: priorAssets } = await service
       .from('product_scan_assets')
       .select('id')
@@ -395,11 +531,30 @@ Deno.serve(async (request) => {
       );
       if (lookupCompleteError) return json({ error: 'scanner_result_persistence_failed' }, 503);
     }
+    /*
+      GIVE AN UNSPENT ALLOWANCE BACK. `reserve_product_scan_ean_lookup_v1` increments web_calls
+      BEFORE the provider is called and refuses at `web_calls >= 1`, so a provider that never
+      answered used to spend the session's only lookup on nothing — and the retry button, which
+      reuses the same session id for the life of the mount, could never succeed. Releasing is
+      restricted to the case where nothing was billed, and the RPC checks that independently
+      against the session, its external sources and the provider's own usage ledger.
+    */
+    if (verdict.releaseReservation) {
+      await service.rpc('release_product_scan_ean_lookup_v1', {
+        p_actor_user_id: auth.user.id,
+        p_session_id: sessionId,
+      });
+    }
     return json({
       sessionId,
       kind: 'ean_lookup',
-      resolvedNothing: merged === null,
-      providerUnavailable: providerError !== null,
+      outcome: verdict.outcome,
+      resolvedNothing: verdict.outcome === 'resolved_nothing',
+      providerUnavailable: verdict.outcome === 'provider_unavailable',
+      /** Whether pressing "try again" on THIS session can produce a different answer. */
+      retryable: verdict.retryable,
+      /** Plain Polish, ready to show: what happened, and what resolves it. */
+      notice: verdict.noticePl,
       result: merged ?? existingSession?.result_json ?? null,
       overlayState: lookupValidation?.overlayState ?? null,
       missingCriticalFields: lookupValidation?.missingCriticalFields ?? [],

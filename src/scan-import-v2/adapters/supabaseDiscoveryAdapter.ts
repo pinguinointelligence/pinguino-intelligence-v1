@@ -190,12 +190,17 @@ export function createSupabaseDiscoveryPort(
       if (d['kind'] === 'existing_product')
         return { kind: 'existing_product', product: exactFromServer(obj(d['product']), identity) };
       applySession(s, d);
+      // The server composes the sentence, because only the server knows whether the sources were
+      // asked and answered nothing or were never reached at all.
+      const notice =
+        typeof d['notice'] === 'string' && d['notice'] ? (d['notice'] as string) : null;
       if (typeof d['skipped'] === 'string')
-        return { kind: 'skipped', session: s, reason: d['skipped'] as string };
+        return { kind: 'skipped', session: s, reason: d['skipped'] as string, notice };
       return {
         kind: 'researched',
         session: s,
         evidenceError: d['providerUnavailable'] === true ? 'provider_unavailable' : null,
+        notice,
       };
     },
     async analyzeLabel(session, images): Promise<AnalyzeOutcome> {
