@@ -152,7 +152,9 @@ describe('Unknown product flow — discovery lifecycle (owner acceptance matrix)
         d,
       ),
     );
-    expect(r.note).toContain('not ready');
+    // OWNER QA 2026-09-07: the codes stay, but in `diagnostics` — `note` is a customer screen
+    expect(r.diagnostics).toBeDefined();
+    expect(r.note).toBeNull();
     expect(r.ledger.missingCritical).toEqual(
       expect.arrayContaining(['nutrition.energyKcal', 'ingredientsText']),
     );

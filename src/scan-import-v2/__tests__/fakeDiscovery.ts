@@ -200,6 +200,7 @@ export class FakeDiscovery implements DiscoveryPort {
     saveUnverified?: boolean,
   ): Promise<FinalizeOutcome> {
     this.calls.push(`finalize:${session.identity.canonicalGtin13}`);
+    this.finalizeInputs.push(input);
     const s = this.session(session.identity);
     // customer-entered plain fields (finalize confirmations.productFields), as the server's corrections apply them
     const pf = (input.confirmations?.productFields ?? {}) as Record<string, unknown>;
@@ -248,7 +249,14 @@ export class FakeDiscovery implements DiscoveryPort {
     const missing = missingOf(s.result);
     // the completion form is offered first; only an explicit save_unverified persists an unready one
     if (missing.length > 0 && saveUnverified !== true)
-      return { kind: 'not_ready', missingCritical: missing, reasons: ['critical_fields_missing'] };
+      return {
+        kind: 'not_ready',
+        missingCritical: this.notReadyMissing.get(session.identity.canonicalGtin13) ?? missing,
+        reasons: this.notReadyReasons.get(session.identity.canonicalGtin13) ?? [
+          'critical_fields_missing',
+        ],
+        assessmentHash: this.assessmentHash.get(session.identity.canonicalGtin13) ?? null,
+      };
     const gtin = session.identity.canonicalGtin13;
     const existing = this.created.get(gtin);
     if (existing) return { kind: 'created', ...existing, existing: true };
@@ -282,6 +290,17 @@ export class FakeDiscovery implements DiscoveryPort {
 
   /** test seam: the final confidence the pipeline would report for this GTIN */
   readonly confidence = new Map<string, number>();
+  /**
+   * test seams for the refusal the SERVER actually returns. `reasons` is the authority's own
+   * vocabulary (`INGREDIENTS_EVIDENCE_REQUIRED`, `roleReadiness:REVIEW`, …) — the owner read all of
+   * it on a phone — and `missingCritical` may hold codes that map to no plain field at all, which is
+   * exactly the state that put the refusal on screen.
+   */
+  readonly notReadyReasons = new Map<string, readonly string[]>();
+  readonly notReadyMissing = new Map<string, readonly string[]>();
+  readonly assessmentHash = new Map<string, string>();
+  /** every finalize request, so a test can prove an answer was not dropped between two calls */
+  readonly finalizeInputs: FinalizeInput[] = [];
   async submitRequest(
     identity: CodeIdentity,
     ledger: FactLedger,

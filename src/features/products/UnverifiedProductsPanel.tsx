@@ -105,7 +105,8 @@ export function UnverifiedProductsPanel() {
             </p>
             {row.ean ? (
               <Link
-                to={`/products/scan?code=${encodeURIComponent(row.ean)}`}
+                /* carry the list this came from, so „← Produkty" returns to the same filter */
+                to={`/products/scan?code=${encodeURIComponent(row.ean)}&from=unverified`}
                 className={`${buttonClasses('primary', 'sm')} mt-3 inline-flex`}
                 data-testid="unverified-complete"
               >

@@ -85,7 +85,10 @@ describe('Product Scanner server/client/security boundary', () => {
     expect(migration).toContain("v_plan='basic' and v_lifetime>=5 and v_day>=1");
     expect(migration).toContain("status=case when p_created then 'consumed' else 'released' end");
     expect(finalize).not.toContain('reserve_product_scan_creation_v1');
-    expect(finalize).toContain('usableProductCreated: true');
+    // #219 made this the routing verdict, and 2026-09-07 made the idempotent replay report what was
+    // actually SAVED — a repeated save of an UNVERIFIED product must not claim a usable one.
+    expect(finalize).toContain("usableProductCreated: savedRow.route !== 'PM_UNVERIFIED'");
+    expect(finalize).toContain('usableProductCreated: savedReady');
     expect(migration).toContain('from public.account_profiles where user_id=p_actor_user_id');
     expect(migration).toContain("v_timezone:='UTC'");
   });
@@ -167,7 +170,7 @@ describe('Product Scanner server/client/security boundary', () => {
   it('creates one customer-added product through shared profile authority and lets exact GTIN reuse win', () => {
     expect(finalize).toContain("'gellatti_upsert_customer_added_product_v1'");
     expect(finalize).toContain('normalizeValidatedBarcode');
-    expect(finalize).toContain('usableProductCreated: true');
+    expect(finalize).toContain("usableProductCreated: savedRow.route !== 'PM_UNVERIFIED'");
     expect(finalize).not.toContain("service.rpc('ingest_product_v1'");
     expect(finalize).toContain('validateIntimportProductProfileProposal');
     expect(finalize).toContain('validateProductBehaviorAuthority');
