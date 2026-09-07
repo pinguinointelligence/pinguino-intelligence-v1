@@ -590,6 +590,34 @@ export function parseProductDosage(value: string | null | undefined): ProductDos
       reasonCodes: ['DOSAGE_PERCENT_EXACT'],
     };
   }
+  /*
+    A dose is a quantity. Text that states none is not an unresolved dosage — it states no
+    dosage, and saying UNKNOWN about it is simply untrue. A ready-to-drink bottle carries
+    "Número de raciones por envase: 1; Modo de empleo: Servir bien fría": a serving suggestion,
+    with a number that has no unit behind it. Read as UNKNOWN it raised
+    DOSAGE_SEMANTICS_UNKNOWN, which kept modelRequired true, which is a hard gate in both
+    productProductionAccuracy and productBehaviorAuthority — a product blocked for not answering
+    a question its label was never asked.
+
+    UNKNOWN is kept for text that DOES carry a quantity this parser could not place, because
+    there the uncertainty is real.
+  */
+  const carriesADose = /\d+(?:[.,]\d+)?\s*(?:%|g|kg|mg|ml|l)\b/.test(dosageSyntax);
+  if (!carriesADose) {
+    return {
+      semantics: 'NONE',
+      value: null,
+      valueMax: null,
+      unit: 'UNKNOWN',
+      basis: 'UNKNOWN',
+      normalizedMassPercent: null,
+      normalizedMassPercentMax: null,
+      normalizationBasis: null,
+      densityResolved: false,
+      evidence: raw,
+      reasonCodes: ['DOSAGE_NOT_STATED'],
+    };
+  }
   return {
     semantics: 'UNKNOWN',
     value: null,
@@ -881,6 +909,13 @@ const mapperCategoriesFor = (
     stabilizer_hydrocolloid: ['stabilizer'],
     emulsifier: ['emulsifier', 'stabilizer'],
     alcohol: ['alcohol'],
+    /*
+      The two liquid families had no entry at all, so a product the classifier had already
+      recognised as a drink still reached the Mapper with an EMPTY compatible-category list and
+      could match no cohort. The recognition was right and simply never travelled.
+    */
+    plant_beverage: ['beverage'],
+    dairy_liquid: ['dairy'],
   };
   return map[family] ?? [];
 };
@@ -915,7 +950,18 @@ export function classifyProductSemantics(
     inferredFamily,
   );
   const ingredientFamily = semanticFamilyOf(productArchetype, inferredFamily);
-  const physicalForm = formOf(identity, category, subcategory, description, productArchetype);
+  /*
+    A family that is liquid by definition settles the form. Without this a drink kept
+    physicalForm UNKNOWN, which raised FORM_UNKNOWN, which kept modelRequired true, which is a
+    hard gate in both productProductionAccuracy and productBehaviorAuthority. The text never says
+    "liquid" on a bottle of water; the family already does.
+  */
+  const LIQUID_BY_FAMILY: readonly ProductSemanticFamily[] = ['plant_beverage', 'dairy_liquid'];
+  const detectedForm = formOf(identity, category, subcategory, description, productArchetype);
+  const physicalForm: ProductPhysicalForm =
+    detectedForm === 'UNKNOWN' && LIQUID_BY_FAMILY.includes(ingredientFamily)
+      ? 'LIQUID'
+      : detectedForm;
   const dosage = parseProductDosage(input.dosage);
   const intendedUsageRole = roleOf(productArchetype, all);
   const flavorDomain = flavorDomainOf(all, productArchetype);

@@ -139,7 +139,14 @@ export interface ProductWorkingValuesInput {
   declared: Partial<Record<WorkingNumericField, number | null>>;
   /** Per-field declaration provenance. Scanner/manual completion uses
    * `user_confirmed`; import/label declarations keep `product_declared`. */
-  declaredBasis?: Partial<Record<WorkingNumericField, 'product_declared' | 'user_confirmed'>>;
+  /*
+    `derived` is here for a value computed from this product's OWN exact declaration — the sugar
+    spectrum closed from an exact total and a single named caloric sugar. It ranks below
+    product_declared, which is right: it is arithmetic on a declaration, not a declaration.
+  */
+  declaredBasis?: Partial<
+    Record<WorkingNumericField, 'product_declared' | 'user_confirmed' | 'derived'>
+  >;
   /**
    * Confidence the declaration earns from its source (§9 source authority).
    * A manufacturer datasheet and a random blog do not declare equally.

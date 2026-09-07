@@ -140,7 +140,7 @@ export interface IntimportProductProfileProposalInput {
   proposedMapperIngredientId: string | null;
   matchInput: ProfileMatchInput;
   declared: Partial<Record<WorkingNumericField, number | null>>;
-  declaredBasis?: Partial<Record<WorkingNumericField, 'product_declared' | 'user_confirmed'>>;
+  declaredBasis?: Partial<Record<WorkingNumericField, 'product_declared' | 'user_confirmed' | 'derived'>>;
   /** Exact source-card facts rebuilt by the server from validated enrichment
    * ledger receipts. Never accepted directly from a browser proposal. */
   sourceCard?: CardContribution | null;
