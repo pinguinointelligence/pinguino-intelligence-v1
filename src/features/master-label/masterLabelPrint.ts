@@ -8,6 +8,7 @@ import { PRINTER_PROFILES } from './printerProfiles';
 import { renderMarketLabelHtml } from './renderers';
 import { escapeHtml, primaryText } from './renderers/shared';
 import { resolveMasterLabelLogoUrl } from './labelBrand';
+import { prepareLabelForOutput, printReadinessForLabel } from './printMissingData';
 
 export interface MasterLabelPrintOptions {
   draft?: boolean;
@@ -35,35 +36,38 @@ export function buildMasterLabelPrintHtml(
   logoUrl?: string | null,
   options: MasterLabelPrintOptions = {},
 ): string {
-  const preflight = buildLabelPreflight(data);
-  const profile = marketProfile(data.market);
-  const productName = primaryText(data.productName, data.labelLanguages);
-  const pageSize =
-    data.printer.profileId === 'system_a4_letter'
-      ? 'A4'
-      : `${data.size.widthMm}mm ${data.size.heightMm}mm`;
+  const printable = prepareLabelForOutput(data);
+  const preflight = buildLabelPreflight(printable);
+  const profile = marketProfile(printable.market);
+  const productName = primaryText(printable.productName, printable.labelLanguages);
+  const pageSize = `${printable.size.widthMm}mm ${printable.size.heightMm}mm`;
   const watermark = options.draft
     ? '<div class="draft-watermark" aria-label="Draft - not for sale">DRAFT<br>NIE DO SPRZEDAŻY</div>'
     : '';
-  const outputLogoUrl = resolveMasterLabelLogoUrl(data, logoUrl);
+  const outputLogoUrl = resolveMasterLabelLogoUrl(printable, logoUrl);
   const logo =
-    outputLogoUrl && data.enabledOptionalFields.includes('logo')
+    outputLogoUrl && printable.enabledOptionalFields.includes('logo')
       ? `<img class="label-logo" src="${escapeHtml(outputLogoUrl)}" alt="">`
       : '';
+  const informationalBanner =
+    printable.market !== 'WORLD' && printable.purpose === 'internal_production'
+      ? '<p class="world-information-warning">ETYKIETA WEWNĘTRZNA / INFORMACYJNA<br>NIEZWERYFIKOWANE DO SPRZEDAŻY DETALICZNEJ</p>'
+      : '';
   const body = options.calibration
-    ? calibrationLabel(data)
-    : `<article class="label" data-market-layout="${profile.consumerLayout}" data-renderer-version="${profile.rendererVersion}" data-readiness="${preflight.printReadiness}" data-packaging-context="${data.packagingContext}">${watermark}${logo}${renderMarketLabelHtml(data)}</article>`;
-  const copies = Array.from(
-    { length: options.calibration || options.preview ? 1 : Math.max(1, data.printer.copies) },
-    () => body,
-  ).join('');
-  return `<!doctype html><html data-label-document="${options.preview ? 'preview' : options.calibration ? 'calibration' : options.draft ? 'draft' : 'print'}"><head><meta charset="utf-8"><title>${escapeHtml(options.calibration ? 'Druk testowy' : productName)}</title>${printCss(data, preflight.geometry.baseFontPt, pageSize)}${marketPrintCss(data)}</head><body><main class="sheet">${copies}</main></body></html>`;
+    ? calibrationLabel(printable)
+    : `<article class="label" data-market-layout="${profile.consumerLayout}" data-renderer-version="${profile.rendererVersion}" data-readiness="${printReadinessForLabel(printable)}" data-packaging-context="${printable.packagingContext}">${watermark}${informationalBanner}${logo}${renderMarketLabelHtml(printable)}</article>`;
+  const exactPageCss = `<style>@page{size:${pageSize};margin:0}html,body,.sheet{width:${printable.size.widthMm}mm;height:${printable.size.heightMm}mm;margin:0;padding:0;overflow:hidden}.sheet{display:block}.label{width:100%;height:100%;margin:0}</style>`;
+  return `<!doctype html><html data-label-document="${options.preview ? 'preview' : options.calibration ? 'calibration' : options.draft ? 'draft' : 'print'}"><head><meta charset="utf-8"><title>${escapeHtml(options.calibration ? 'Druk testowy' : productName)}</title>${printCss(printable, preflight.geometry.baseFontPt, pageSize)}${exactPageCss}${marketPrintCss(printable)}</head><body><main class="sheet">${body}</main></body></html>`;
 }
 
 export function printMasterLabel(
   data: MasterLabelData,
   logoUrl?: string | null,
   options?: MasterLabelPrintOptions,
-): void {
-  printLabelHtml(buildMasterLabelPrintHtml(data, logoUrl, options));
+): Promise<void> {
+  const geometry = buildLabelPreflight(prepareLabelForOutput(data)).geometry;
+  if (!geometry.fits) {
+    throw new Error(`${geometry.reason}. Zmień szerokość, wysokość albo średnicę w ustawieniach.`);
+  }
+  return printLabelHtml(buildMasterLabelPrintHtml(data, logoUrl, options));
 }

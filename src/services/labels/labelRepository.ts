@@ -15,6 +15,11 @@ import {
 } from '@/features/master-label/marketProfiles';
 import type { ProductionCompletionSnapshot } from '@/features/production-workspace/productionSession';
 import {
+  assertSaturatedFatInvariant,
+  prepareLabelForOutput,
+  printReadinessForLabel,
+} from '@/features/master-label/printMissingData';
+import {
   normalizePrinterSettings,
   type LabelPrinterSettings,
 } from '@/features/master-label/printerProfiles';
@@ -43,6 +48,10 @@ export interface AccountLabelProfile {
     heightMm: number;
     copies: number;
     printer: LabelPrinterSettings;
+    basicSizes: {
+      rectangle: { widthMm: number; heightMm: number };
+      round: { diameterMm: number };
+    };
   };
   updatedAt: string;
 }
@@ -111,8 +120,8 @@ export function defaultAccountLabelProfile(
     },
     presentation: {
       format: 'rectangle',
-      widthMm: 90,
-      heightMm: 60,
+      widthMm: 102,
+      heightMm: 152,
       copies: 1,
       printer: {
         profileId: 'system_a4_letter',
@@ -120,9 +129,13 @@ export function defaultAccountLabelProfile(
         dpi: 300,
         orientation: 'portrait',
         marginMm: 2,
-        widthMm: 90,
-        heightMm: 60,
+        widthMm: 102,
+        heightMm: 152,
         copies: 1,
+      },
+      basicSizes: {
+        rectangle: { widthMm: 102, heightMm: 152 },
+        round: { diameterMm: 70 },
       },
     },
     updatedAt: now,
@@ -173,6 +186,16 @@ const mapProfile = (row: ProfileRow): AccountLabelProfile => {
     },
     presentation: {
       ...presentation,
+      basicSizes: {
+        rectangle: {
+          ...fallback.presentation.basicSizes.rectangle,
+          ...(row.presentation?.basicSizes?.rectangle ?? {}),
+        },
+        round: {
+          ...fallback.presentation.basicSizes.round,
+          ...(row.presentation?.basicSizes?.round ?? {}),
+        },
+      },
       printer: normalizePrinterSettings({
         ...fallback.presentation.printer,
         ...(row.presentation?.printer ?? {}),
@@ -317,11 +340,12 @@ export function supabaseLabelRepository(client: SupabaseClient): LabelRepository
     },
 
     async saveRunLabelSnapshot(label) {
+      assertSaturatedFatInvariant(label);
+      label = prepareLabelForOutput(label);
       const owner = await requireUserId();
       const preflight = buildLabelPreflight(label);
       const profile = marketProfile(label.market);
-      const printReadiness =
-        label.market === 'WORLD' ? 'PRINT_READY_UNIVERSAL' : 'PRINT_READY_REGULATORY';
+      const printReadiness = printReadinessForLabel(label);
       const frozenLabel: MasterLabelData = {
         ...label,
         snapshotEvidence: {
@@ -443,6 +467,8 @@ export function inMemoryLabelRepository(ownerUserId = 'owner-review-local'): Lab
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
         .map(cloneValue),
     saveRunLabelSnapshot: async (label) => {
+      assertSaturatedFatInvariant(label);
+      label = prepareLabelForOutput(label);
       const key = memoryRunKey(ownerUserId, label.sourceCompletionSessionId);
       const completed = memoryCompleted.get(key);
       if (!completed) {
@@ -457,8 +483,7 @@ export function inMemoryLabelRepository(ownerUserId = 'owner-review-local'): Lab
       }
       const preflight = buildLabelPreflight(label);
       const profile = memoryProfiles.get(ownerUserId) ?? defaultAccountLabelProfile(ownerUserId);
-      const printReadiness =
-        label.market === 'WORLD' ? 'PRINT_READY_UNIVERSAL' : 'PRINT_READY_REGULATORY';
+      const printReadiness = printReadinessForLabel(label);
       const frozenLabel: MasterLabelData = {
         ...cloneValue(label),
         snapshotEvidence: {
