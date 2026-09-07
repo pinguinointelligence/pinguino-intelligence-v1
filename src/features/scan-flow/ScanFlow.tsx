@@ -97,6 +97,8 @@ export interface ScanFlowProps {
   /** a guest chose a plan from the offer screen */
   onChoosePlan?: (plan: 'home' | 'pro') => void;
   resolveLabel?: string;
+  /** a saved code the customer chose to finish, from Produkty -> Niezweryfikowane */
+  initialCode?: string | null;
   intro?: string;
 }
 
@@ -200,6 +202,7 @@ export function ScanFlow({
   onReturn,
   onChoosePlan,
   resolveLabel,
+  initialCode,
   intro,
 }: ScanFlowProps) {
   const entry = entryContextOf(mode, entryContext);
@@ -391,10 +394,20 @@ export function ScanFlow({
     input: FinalizeInput,
     ctx: RequestContext,
     code: string,
+    /**
+     * The customer has seen what is missing and chose to save anyway / finish later. The product is
+     * then kept as PM UNVERIFIED instead of being discarded. Never set on its own path.
+     */
+    unverified = false,
   ) {
     const port = ports?.discovery;
     if (!port) return fail('Backend nie jest skonfigurowany.');
-    const r = await continueDiscovery(session, { type: 'finalize', input }, ctx, port);
+    const r = await continueDiscovery(
+      session,
+      { type: unverified ? 'finalize_unverified' : 'finalize', input },
+      ctx,
+      port,
+    );
     await handleResult(r, code, ctx, session);
   }
 
@@ -510,6 +523,15 @@ export function ScanFlow({
 
   const [resumedCode, setResumedCode] = useState<string | null>(null);
   useEffect(() => {
+    // A code handed in by the Niezweryfikowane list is resolved straight away: the customer has
+    // already chosen this product, so there is nothing to offer them a second time.
+    if (initialCode) {
+      const chosen = manualConfirmedScan(initialCode);
+      if (chosen) {
+        void resolveRef.current(chosen);
+        return;
+      }
+    }
     if (entry === 'guest_demo') return;
     // `takeGuestCode` CONSUMES the stored code, so reading it is a side effect and belongs in an
     // effect — not in a render-phase initializer, which StrictMode may invoke twice and swallow the
@@ -647,6 +669,24 @@ export function ScanFlow({
         { customerFamily: family, confirmations: confirmationsFromFields(values) },
         ctx,
         codeRef.current ?? '',
+      );
+    });
+
+  /**
+   * OWNER CONTRACT 2026-09-07 — the customer saw what is missing and chose to save anyway. Whatever
+   * the pipeline did find is kept as a private, UNVERIFIED product instead of being discarded, and
+   * it appears under Produkty → Niezweryfikowane where they can finish it later. This is the only
+   * path that persists an unverified product: nothing does it automatically.
+   */
+  const saveUnverified = (session: DiscoverySession) =>
+    withBusy(async () => {
+      const ctx = contextFor(await getScanImportV2AccountId());
+      await finalize(
+        session,
+        { customerFamily: family, confirmations: confirmationsFromFields(values) },
+        ctx,
+        codeRef.current ?? '',
+        true,
       );
     });
 
@@ -1169,6 +1209,20 @@ export function ScanFlow({
                 Zapisz jako mój produkt
               </button>
             ) : null}
+            {/*
+              The customer may not have the pack in front of them, or may simply not want to type.
+              Their scan is not thrown away: what we did find is kept privately and listed under
+              Produkty → Niezweryfikowane, where they can finish it whenever they like.
+            */}
+            <button
+              type="button"
+              className={btnSecondary}
+              disabled={busy}
+              onClick={() => void saveUnverified(phase.session)}
+              data-testid="scan-flow-save-unverified"
+            >
+              Zapisz i uzupełnij później
+            </button>
             <label className={btnSecondary}>
               Zrób zdjęcie etykiety
               <input

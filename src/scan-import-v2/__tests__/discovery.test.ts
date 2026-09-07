@@ -175,7 +175,7 @@ describe('Unknown product flow — discovery lifecycle (owner acceptance matrix)
       canonical: false,
       stage: 'behaviour_bound',
       product: {
-        productId: `CA-${GTIN}`,
+        productId: `PM-${GTIN}`,
         entityKind: 'customer_provisional',
         strength: 'provisional_linked',
         displayName: 'Orbit Peppermint',

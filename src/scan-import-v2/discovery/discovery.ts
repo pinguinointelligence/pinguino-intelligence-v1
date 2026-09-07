@@ -40,6 +40,12 @@ export type DiscoveryResult = Extract<
 export type DiscoveryAction =
   | { type: 'label'; images: readonly LabelImage[] }
   | { type: 'finalize'; input: FinalizeInput }
+  /**
+   * OWNER CONTRACT 2026-09-07 — the customer has SEEN the completion form and chose to save
+   * anyway (or to finish later). The product is persisted as PM UNVERIFIED rather than thrown
+   * away. Nothing takes this path on its own: an unverified product is never auto-saved.
+   */
+  | { type: 'finalize_unverified'; input: FinalizeInput }
   | { type: 'request' };
 
 function pending(
@@ -225,7 +231,7 @@ export async function continueDiscovery(
       engineReady: false,
     };
   }
-  const f = await port.finalize(session, action.input, ctx);
+  const f = await port.finalize(session, action.input, ctx, action.type === 'finalize_unverified');
   switch (f.kind) {
     case 'created':
       return discoveredExact(session.identity, ledger, f, session.sessionId);

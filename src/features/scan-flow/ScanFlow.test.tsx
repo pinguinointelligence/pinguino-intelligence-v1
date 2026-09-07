@@ -135,7 +135,7 @@ describe('ScanFlow (jsdom, fake ports)', () => {
       sourceType: 'manufacturer',
     });
     discovery.label.set(UNKNOWN, { energyKcal: 300 }); // the label gives energy but no ingredients
-    discovery.authorityEngineUsable.set(`CA-${UNKNOWN}`, true);
+    discovery.authorityEngineUsable.set(UNKNOWN, true);
     const onResolved = vi.fn();
     await act(async () => {
       root.render(
@@ -176,13 +176,13 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     await flush();
     // saved as the customer's private product, then handed to the recipe
     expect(text()).toContain('Zapisano jako Twój produkt');
-    expect(discovery.created.get(UNKNOWN)).toMatchObject({ productId: `CA-${UNKNOWN}` });
+    expect(discovery.created.get(UNKNOWN)).toMatchObject({ productId: `PR-${UNKNOWN}` });
     await act(async () => {
       button('Dodaj do receptury')!.click();
     });
     expect(onResolved).toHaveBeenCalledTimes(1);
     expect(onResolved.mock.calls[0]![0]).toMatchObject({
-      id: `CA-${UNKNOWN}`,
+      id: `PR-${UNKNOWN}`,
       barcode: UNKNOWN,
       engineReady: true,
     });
@@ -231,7 +231,7 @@ describe('ScanFlow (jsdom, fake ports)', () => {
         { field: 'nutrition.fat', value: '27', sourceUrl: 'u', authority: 'barcode_registry' },
       ],
     });
-    discovery.authorityEngineUsable.set(`CA-${MILKA}`, true);
+    discovery.authorityEngineUsable.set(MILKA, true);
     const onResolved = vi.fn();
     await act(async () => {
       root.render(
@@ -248,11 +248,11 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     expect(text()).not.toContain('Zrób zdjęcie etykiety ze składem');
     expect(text()).toContain('Zapisano jako Twój produkt');
     expect(discovery.calls.filter((c) => c.startsWith(`analyze:${MILKA}`))).toHaveLength(0);
-    expect(discovery.created.get(MILKA)).toMatchObject({ productId: `CA-${MILKA}` });
+    expect(discovery.created.get(MILKA)).toMatchObject({ productId: `PR-${MILKA}` });
     await act(async () => {
       button('Dodaj do receptury')!.click();
     });
-    expect(onResolved.mock.calls[0]![0]).toMatchObject({ id: `CA-${MILKA}`, barcode: MILKA });
+    expect(onResolved.mock.calls[0]![0]).toMatchObject({ id: `PR-${MILKA}`, barcode: MILKA });
   });
 
   it('owner case 7340222800464: Vitamin Well Sport 002 is identified and saved as a beverage, no question', async () => {
