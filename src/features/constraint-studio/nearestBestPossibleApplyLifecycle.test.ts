@@ -107,6 +107,7 @@ const LIME_TOPPING = {
   id: 'PI-ING-001640',
   canonical_ingredient_id: 'PI-ING-001640',
   name: 'LIME · Fresh Fruit',
+  cost_per_kg: 10,
 };
 
 const directedMilkWithHeldMain = (
@@ -164,8 +165,8 @@ const canonicalProfileInput = (
 ): RecipeInput => {
   const directions = {
     gelato: { sweetness: -2 as const, softness: -1 as const },
-    vegan: { sweetness: -2 as const, softness: 0 as const },
-    protein: { sweetness: -2 as const, softness: -2 as const },
+    vegan: { sweetness: -1 as const, softness: 1 as const },
+    protein: { sweetness: 2 as const, softness: 1 as const },
   }[visibleProductType];
   const starter = buildCanonicalNewRecipeStarter({
     visibleProductType,
@@ -179,7 +180,10 @@ const canonicalProfileInput = (
     target_temperature_c: -11,
     target_batch_grams: 1_000,
     machine_capacity_grams: null,
-    items: starter.items,
+    items: starter.items.map((item) => ({
+      ...item,
+      ingredient: { ...item.ingredient, cost_per_kg: item.ingredient.cost_per_kg ?? 10 },
+    })),
     goals: {
       formulation_strategy: 'optimal',
       direction_targets_active: true,
@@ -319,12 +323,15 @@ const expectSuccessfulApply = (displayed: ConstraintPreview, expectedScore: numb
   expect(state.history[0]?.before.presentation?.preview.directionAssessment?.score).toBe(
     expectedScore,
   );
-  expect(useRecipeProfileStore.getState().awaitingRecalculation).toBe(false);
+  expect(
+    useRecipeProfileStore.getState().awaitingRecalculation,
+    JSON.stringify({ postApplyNotice: state.postApplyNotice, blocked: state.blocked }),
+  ).toBe(false);
   const currentInput = selectCanonicalDraft().input;
   const recipeState = useRecipeStore.getState();
   const currentAuthority = buildCurrentRecipeResultAuthority({
     recipe: currentInput,
-    toppings: recipeState.toppings,
+    toppings: [],
     snapshots: recipeState.productBehaviorSnapshots,
     draftRevision: recipeState.draftRevision,
     awaitingRecalculation: useRecipeProfileStore.getState().awaitingRecalculation,
@@ -336,6 +343,15 @@ const expectSuccessfulApply = (displayed: ConstraintPreview, expectedScore: numb
     recipeFingerprint: currentAuthority.recipeFingerprint,
     behaviorFingerprint: currentAuthority.behaviorFingerprint,
   });
+  const combinedAuthority = buildCurrentRecipeResultAuthority({
+    recipe: currentInput,
+    toppings: recipeState.toppings,
+    snapshots: recipeState.productBehaviorSnapshots,
+    draftRevision: recipeState.draftRevision,
+    awaitingRecalculation: useRecipeProfileStore.getState().awaitingRecalculation,
+    loading: state.applyPending,
+  });
+  expect(combinedAuthority.ready).toBe(true);
   const behaviorAuthority = buildRecipeBehaviorAuthority({
     items: currentInput.items,
     toppings: recipeState.toppings,
@@ -360,6 +376,7 @@ describe('NEAREST / BEST-POSSIBLE Preview → Apply lifecycle', () => {
     async (visibleProductType) => {
       const displayed = stageProfilePreviewWithLime(visibleProductType);
       const built: SuccessfulBuild = { ok: true, preview: displayed };
+      const beforeApply = JSON.stringify(selectCanonicalDraft().input);
       currentResultResolution.rejectToppingsOutsideToppingModule = true;
 
       await applyPreviewWithServerAuthority(immediateRuntime(built));
@@ -373,6 +390,32 @@ describe('NEAREST / BEST-POSSIBLE Preview → Apply lifecycle', () => {
       expect(toppings).toHaveLength(1);
       expect(toppings[0]).toMatchObject({ planned_grams: 25 });
       expect(calculateFinalProduct(recipe, toppings).finalMassG).toBe(1_025);
+
+      const appliedState = JSON.stringify(selectCanonicalDraft().input);
+      const secondPreview = buildOptimizePreview(
+        selectCanonicalDraft().input,
+        selectCanonicalDraft().constraints,
+        AT,
+        { requirePracticalPreview: true },
+      );
+      if (secondPreview.ok) {
+        expect(vector(secondPreview.preview.proposedInput)).toEqual(workingVector());
+      } else {
+        expect(secondPreview).toMatchObject({ code: 'already_clean' });
+      }
+
+      await applyPreviewWithServerAuthority(immediateRuntime(built));
+      expect(JSON.stringify(selectCanonicalDraft().input)).toBe(appliedState);
+      expect(useConstraintStudioStore.getState().history).toHaveLength(1);
+
+      useConstraintStudioStore.getState().undoLastApply();
+      await vi.waitFor(() =>
+        expect(useConstraintStudioStore.getState().recalculationTerminal?.state).not.toBe(
+          'WORKING',
+        ),
+      );
+      expect(JSON.stringify(selectCanonicalDraft().input)).toBe(beforeApply);
+      expect(useConstraintStudioStore.getState().history).toHaveLength(0);
     },
     60_000,
   );

@@ -196,6 +196,7 @@ export type RecipeBatchSource =
 export const PROFESSIONAL_DEFAULT_BATCH_GRAMS = DEFAULT_NEW_RECIPE_BATCH_G;
 
 export const BATCH_RESIZE_TOLERANCE_GRAMS = 0.1;
+const BATCH_RESIZE_IDEMPOTENCE_EPSILON_GRAMS = 1e-9;
 
 export type BatchResizeConflictReason =
   | 'invalid_target'
@@ -785,6 +786,34 @@ export const resizeRecipeBatch = (
   const lineTargetGrams = reservationHolds
     ? (nextBatchGrams * currentSum) / (currentSum + reservedMainGrams)
     : nextBatchGrams;
+  const alreadySatisfiesTarget =
+    Math.abs(currentSum - lineTargetGrams) <= BATCH_RESIZE_IDEMPOTENCE_EPSILON_GRAMS &&
+    items.every((item) => {
+      const instructedPercent = percentByLineId?.[item.id] ?? item.percent_constraint?.percent;
+      if (
+        instructedPercent !== undefined &&
+        (!Number.isFinite(instructedPercent) || instructedPercent < 0 || instructedPercent > 100)
+      ) {
+        return false;
+      }
+      const percentSatisfied =
+        instructedPercent === undefined ||
+        Math.abs(item.planned_grams - (nextBatchGrams * instructedPercent) / 100) <=
+          BATCH_RESIZE_IDEMPOTENCE_EPSILON_GRAMS;
+      const rangeSatisfied =
+        item.range_constraint === undefined ||
+        (item.planned_grams >=
+          item.range_constraint.min_grams - BATCH_RESIZE_TOLERANCE_GRAMS &&
+          item.planned_grams <=
+            item.range_constraint.max_grams + BATCH_RESIZE_TOLERANCE_GRAMS);
+      return percentSatisfied && rangeSatisfied;
+    });
+  // A repeated request for an already-satisfied batch is a byte-exact no-op.
+  // Re-running the proportional division at factor ~1 otherwise perturbs
+  // ordinary rows by IEEE-754 dust and breaks Preview/Apply fingerprints.
+  // The epsilon is numerical only: material mismatches (including the served
+  // +1.5 g Sorbet drift) continue through full reconciliation.
+  if (alreadySatisfiesTarget) return { ok: true, items: [...items] };
   const percentById = new Map<string, number>();
   const fixedIds = new Set<string>();
   const flexibleIds = new Set<string>();
@@ -921,17 +950,7 @@ const rescaleWithOwnerStabilizerSystem = (
   resized: RecipeItem[],
   nextBatchGrams: number,
   percentByLineId?: Readonly<Record<string, number>>,
-  reservedMainGrams = 0,
 ): RecipeItem[] => {
-  // The reservation is honoured here only if it is still TRUE of the incoming
-  // draft — exactly the test the outer resize applies. Re-deriving it from the
-  // pinned vector without this guard would resurrect a stale starter
-  // reservation on a draft the customer has since completed.
-  const draftSum = state.items.reduce((total, item) => total + item.planned_grams, 0);
-  const honoursReservation =
-    reservedMainGrams > 0 &&
-    Math.abs(draftSum + reservedMainGrams - state.target_batch_grams) <=
-      BATCH_RESIZE_TOLERANCE_GRAMS;
   const components = ownerStabilizerSystemItems(resized);
   if (components.length === 0) return resized;
   const adjustable = components.every(
@@ -950,27 +969,23 @@ const rescaleWithOwnerStabilizerSystem = (
   );
   if (plan === null) return resized;
 
-  const pinnedItems = state.items.map((item) =>
+  // `resized` already owns the exact mass that the outer batch authority gave
+  // the lines (for an incomplete starter, this excludes the reserved Main).
+  // Project the stabilizer inside THAT mass. Rebuilding from `state.items` and
+  // deriving a new reservation after pinning moved a gram or two from Main to
+  // support on every round trip (1000 → 670 → 1000), producing the served
+  // 1001.5 g / 59.9 % Sorbet regression once the 600 g Main arrived.
+  const lineTargetGrams = resized.reduce((total, item) => total + item.planned_grams, 0);
+  const pinnedItems = resized.map((item) =>
     plan.has(item.id) ? { ...item, planned_grams: plan.get(item.id)! } : item,
   );
   const reconciled = resizeRecipeBatch(
     pinnedItems,
-    state.target_batch_grams,
     nextBatchGrams,
+    lineTargetGrams,
     percentByLineId,
     new Set(plan.keys()),
-    // The stabilizer projection reconciles the SAME draft, so it inherits the
-    // same Main reservation; dropping it would re-inflate the support vector
-    // the outer resize just protected. Pinning the stabilizer to whole grams
-    // moves a gram or two, so the reservation is re-read off the pinned vector
-    // the way it is defined everywhere else — whatever the lines do not hold.
-    honoursReservation
-      ? Math.max(
-          0,
-          state.target_batch_grams -
-            pinnedItems.reduce((total, item) => total + item.planned_grams, 0),
-        )
-      : 0,
+    0,
   );
   return reconciled.ok ? reconciled.items : resized;
 };
@@ -1508,7 +1523,6 @@ export const useRecipeStore = create<RecipeState>()(
           resized.items,
           target_batch_grams,
           percentByLineId,
-          reservedMainGrams,
         );
         const batchSource = source ?? manualBatchSourceForState(state);
         set({
@@ -3131,7 +3145,6 @@ export const useRecipeStore = create<RecipeState>()(
                 resized.items,
                 targetBatchGrams,
                 undefined,
-                reservedMainGrams,
               );
         const batchSource =
           sel.batchGrams == null

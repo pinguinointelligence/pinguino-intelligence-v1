@@ -1,7 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { RecipeInput } from '@/engine';
+import { findDemoIngredient } from '@/data/demoIngredients';
+import type { RecipeInput, RecipeItem } from '@/engine';
 import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
-import { recipeCompositionFromState } from '@/features/recipe-composition/recipeCompositionPersistence';
+import { calculateFinalProduct } from '@/features/recipe-composition/finalProduct';
+import {
+  recipeCompositionFromState,
+  type RecipeToppingItem,
+} from '@/features/recipe-composition/recipeCompositionPersistence';
 import { buildCanonicalNewRecipeStarter } from '@/features/recipes/newRecipeStarter';
 import type { VisibleProductType } from '@/features/studio/productType';
 import { buildCurrentRecipeResultAuthority } from '@/features/pro-workbench/currentRecipeResultAuthority';
@@ -37,8 +42,27 @@ const input = (batch: number): RecipeInput =>
 
 const nativeStarterInput = (visibleProductType: VisibleProductType): RecipeInput => {
   const starter = buildCanonicalNewRecipeStarter({ visibleProductType, servingModeId: 'fresh' });
+  const items =
+    visibleProductType === 'sorbet'
+      ? [
+          ...starter.items,
+          {
+            id: 'basic4v1-strawberries-main',
+            ingredient: {
+              ...findDemoIngredient('raspberry')!,
+              id: 'PI-ING-001553',
+              canonical_ingredient_id: 'PI-ING-001553',
+              name: 'STRAWBERRIES · Fresh Fruit',
+            },
+            planned_grams: 600,
+            actual_grams: null,
+            lock_type: 'main',
+            user_intent_anchor_grams: 600,
+          } satisfies RecipeItem,
+        ]
+      : starter.items;
   return {
-    items: starter.items,
+    items,
     mode: 'classic',
     category: starter.category,
     target_temperature_c: starter.targetTemperatureC,
@@ -47,6 +71,20 @@ const nativeStarterInput = (visibleProductType: VisibleProductType): RecipeInput
     goals: { formulation_strategy: starter.formulationStrategy },
   };
 };
+
+const basic4v1LimeTopping = (): RecipeToppingItem => ({
+  id: 'basic4v1-lime-topping',
+  ingredient: {
+    ...findDemoIngredient('raspberry')!,
+    id: 'PI-ING-001640',
+    canonical_ingredient_id: 'PI-ING-001640',
+    name: 'LIME · Fresh Fruit',
+  },
+  planned_grams: 25,
+  actual_grams: null,
+  process_scope: 'POST_PROCESS_ADDON',
+  addon_sort_order: 0,
+});
 
 afterEach(() => __resetDevRecipesRepository());
 
@@ -74,15 +112,22 @@ describe('resolveRecipesRepository — DEV local-mode availability', () => {
   });
 
   it.each(['gelato', 'sorbet', 'vegan', 'protein'] as const)(
-    'round-trips a fresh %s Save/Reopen with one Base-scoped PB snapshot per saved line',
+    'BASIC4V1 %s: Save/Reopen preserves the 1000 g Base + 25 g Topping authority',
     async (profile) => {
       const recipeInput = nativeStarterInput(profile);
-      const snapshots = productBehaviorTestSnapshots(recipeInput);
+      const toppings = [basic4v1LimeTopping()];
+      const snapshots = productBehaviorTestSnapshots(recipeInput, toppings);
       const productComposition = recipeCompositionFromState({
         items: recipeInput.items,
         baseOrder: recipeInput.items.map((item) => item.id),
+        toppings,
         productBehaviorSnapshots: snapshots,
       });
+      expect(recipeInput.items.reduce((sum, line) => sum + line.planned_grams, 0)).toBeCloseTo(
+        1_000,
+        12,
+      );
+      expect(calculateFinalProduct(recipeInput, toppings).finalMassG).toBe(1_025);
       const { repository } = resolveRecipesRepository();
       const created = await repository!.createRecipe({
         ownerUserId: 'u1',
@@ -100,7 +145,7 @@ describe('resolveRecipesRepository — DEV local-mode availability', () => {
         reopened?.recipeInput.items.map(({ id, planned_grams }) => ({ id, planned_grams })),
       ).toEqual(recipeInput.items.map(({ id, planned_grams }) => ({ id, planned_grams })));
       expect(Object.keys(reopened?.productComposition?.behaviorSnapshots ?? {}).sort()).toEqual(
-        recipeInput.items.map((line) => line.id).sort(),
+        [...recipeInput.items.map((line) => line.id), toppings[0]!.id].sort(),
       );
       for (const line of reopened?.recipeInput.items ?? []) {
         expect(reopened?.productComposition?.behaviorSnapshots?.[line.id]).toMatchObject({
@@ -109,6 +154,11 @@ describe('resolveRecipesRepository — DEV local-mode availability', () => {
           behaviorBindingVersion: 'test-v1',
         });
       }
+      expect(reopened?.productComposition?.toppings).toEqual(toppings);
+      expect(calculateFinalProduct(
+        reopened!.recipeInput,
+        reopened!.productComposition!.toppings,
+      ).finalMassG).toBe(1_025);
       const beforeAuthority = buildCurrentRecipeResultAuthority({
         recipe: recipeInput,
         toppings: productComposition.toppings,
@@ -129,6 +179,7 @@ describe('resolveRecipesRepository — DEV local-mode availability', () => {
       expect(reopenedAuthority.recipeFingerprint).toBe(beforeAuthority.recipeFingerprint);
       expect(reopenedAuthority.behaviorFingerprint).toBe(beforeAuthority.behaviorFingerprint);
       expect(reopenedAuthority.resultReference).toBe(beforeAuthority.resultReference);
+      expect(await repository!.getVersions(created.recipe.recipeId)).toHaveLength(1);
       if (profile === 'vegan') {
         expect(
           reopened?.productComposition?.behaviorSnapshots?.['new-recipe-2-PI-ING-000163'],

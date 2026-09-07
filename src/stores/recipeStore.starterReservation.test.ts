@@ -243,12 +243,12 @@ describe('an incomplete starter keeps its Main reservation across a batch resize
     });
 
     expect(result).toEqual({ ok: true });
-    expect(sum()).toBe(400);
-    expect(st().starterReservedMainGrams).toBe(600);
-    expect(sum() + st().starterReservedMainGrams).toBe(1_000);
+    expect(sum()).toBeCloseTo(400, 12);
+    expect(st().starterReservedMainGrams).toBeCloseTo(600, 12);
+    expect(sum() + st().starterReservedMainGrams).toBeCloseTo(1_000, 12);
 
     st().addIngredient(STRAWBERRIES, 600);
-    expect(sum()).toBe(1_000);
-    expect(600 / sum()).toBe(0.6);
+    expect(sum()).toBeCloseTo(1_000, 12);
+    expect(600 / sum()).toBeCloseTo(0.6, 12);
   });
 });
