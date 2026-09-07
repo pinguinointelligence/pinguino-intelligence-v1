@@ -36,6 +36,7 @@ import {
   type ScanImportV2Result,
 } from '@/scan-import-v2';
 import { createScanImportV2AppPorts, getScanImportV2AccountId } from '@/services/scanImportV2';
+import { customerSafeNotice } from '@/copy/customerSafeNotice';
 import {
   describeCaptureError,
   ScanCoreCapture,
@@ -154,6 +155,20 @@ const btnSecondary = `${btn} border border-ink/15 bg-white text-ink`;
 const input =
   'pro-focus-ring min-h-11 w-full rounded-xl border border-ink/15 bg-white px-3 text-sm text-ink';
 
+/**
+ * MANDATORY at every customer-facing render of a pipeline sentence — not an opt-in prop.
+ *
+ * OWNER QA 2026-09-07. The scanner printed the authority's refusal verbatim on a phone:
+ * „not ready: INGREDIENTS_EVIDENCE_REQUIRED, PRODUCT_SEMANTICS_UNRESOLVED, roleReadiness:REVIEW,
+ * recognition:NORMAL_INGREDIENT/BASE_ONLY". The sentence is composed upstream now, but the denylist
+ * stays applied HERE as well: a note is a string from the pipeline, and the next one nobody has
+ * written yet must be calm by default rather than leak until someone notices.
+ */
+const CALM_SCAN_NOTICE =
+  'Brakuje jeszcze danych z etykiety. Dodaj zdjęcie składu i tabeli wartości odżywczych albo wpisz dane ręcznie.';
+const safeNote = (note: string | null | undefined): string | null =>
+  customerSafeNotice(note, CALM_SCAN_NOTICE);
+
 function isExternalEvidence(v: unknown): v is ExternalEvidence {
   return Boolean(v) && typeof v === 'object' && Array.isArray((v as { facts?: unknown }).facts);
 }
@@ -218,6 +233,20 @@ export function ScanFlow({
   /** the customer answered "Tak" for THIS scan: the question is asked once, never again mid-scan */
   const addConfirmedRef = useRef(false);
   const labelTriedRef = useRef(false);
+  /*
+    ONE VERDICT PER SCAN. The server returns the hash of the assessment behind every screen; a save
+    sends it back so it can only persist the verdict the customer actually saw. It is sent ONLY when
+    nothing has been typed since — new answers legitimately produce a new assessment, and holding a
+    stale hash over them would refuse the customer's own work.
+  */
+  const assessmentHashRef = useRef<string | null>(null);
+  const assessmentValuesRef = useRef<Record<string, string | boolean>>({});
+  const valuesRef = useRef<Record<string, string | boolean>>({});
+  valuesRef.current = values;
+  const bindingAssessmentHash = () =>
+    assessmentHashRef.current !== null && assessmentValuesRef.current === valuesRef.current
+      ? assessmentHashRef.current
+      : null;
   const cache = useMemo(
     () =>
       createOfflineCache({
@@ -302,6 +331,16 @@ export function ScanFlow({
         case 'discovered_pending': {
           const next = seedSession(r.sessionId, r.identity, r.ledger.missingCritical);
           const noteText = r.note ?? null;
+          /*
+            The authority's own codes arrive in `diagnostics` and are never rendered. What the flow
+            still needs from them is one bit — "is the identity itself missing" — which used to be
+            read out of the customer sentence with /identity/. Reading a rendered sentence for
+            control flow is what tied the two together in the first place.
+          */
+          const diagnostics = r.diagnostics ?? [];
+          // the verdict the customer is being shown; a save may persist only this one
+          assessmentHashRef.current = r.assessmentHash ?? null;
+          assessmentValuesRef.current = valuesRef.current;
           const afterFinalize = session !== undefined;
           if (!afterFinalize) {
             // A guest may FIND a product, never create one: no OCR, no enrichment, no Rescue, no
@@ -330,7 +369,7 @@ export function ScanFlow({
             // the authority answered: plain facts it still needs, the label it still needs, or only
             // technical readiness the customer cannot supply — then the product is reported, not looped
             const fields = plainFieldsFor(r.ledger.missingCritical, {
-              needIdentity: /identity/.test(noteText ?? ''),
+              needIdentity: diagnostics.some((code) => /identity/i.test(code)),
             });
             if (fields.length > 0) setPhase({ kind: 'fields', session: next, fields, note: null });
             else if (!labelTriedRef.current)
@@ -404,7 +443,11 @@ export function ScanFlow({
     if (!port) return fail('Backend nie jest skonfigurowany.');
     const r = await continueDiscovery(
       session,
-      { type: unverified ? 'finalize_unverified' : 'finalize', input },
+      {
+        type: unverified ? 'finalize_unverified' : 'finalize',
+        // binding only while the customer has typed nothing since the assessment was shown
+        input: { ...input, expectedAssessmentHash: bindingAssessmentHash() },
+      },
       ctx,
       port,
     );
@@ -1057,7 +1100,9 @@ export function ScanFlow({
               ? 'Brakuje jeszcze danych z etykiety. Zrób zdjęcie składu i tabeli wartości odżywczych.'
               : 'Nie znam jeszcze tego produktu. Zrób zdjęcie etykiety ze składem i tabelą wartości odżywczych.'}
           </p>
-          {phase.note ? <p className="text-xs text-stone-600">{phase.note}</p> : null}
+          {safeNote(phase.note) ? (
+            <p className="text-xs text-stone-600">{safeNote(phase.note)}</p>
+          ) : null}
           {photoPrivacyNote}
           <div className="flex flex-wrap gap-2">
             <label className={btnPrimary}>
@@ -1144,7 +1189,9 @@ export function ScanFlow({
               ? 'Sprawdź dane z etykiety i uzupełnij brakujące. Produkt zapiszemy prywatnie na Twoim koncie.'
               : 'Uzupełnij brakujące dane z etykiety. Produkt zapiszemy prywatnie na Twoim koncie.'}
           </p>
-          {phase.note ? <p className="text-xs text-red-700">{phase.note}</p> : null}
+          {safeNote(phase.note) ? (
+            <p className="text-xs text-red-700">{safeNote(phase.note)}</p>
+          ) : null}
           {phase.fields.map((field) => (
             <label key={field.key} className="block text-xs text-stone-700">
               <span className="mb-1 block font-semibold">

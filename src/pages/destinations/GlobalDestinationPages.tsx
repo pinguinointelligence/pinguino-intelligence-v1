@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router';
 import { UnverifiedProductsPanel } from '@/features/products/UnverifiedProductsPanel';
+import { MyProductsPanel } from '@/features/products/MyProductsPanel';
+import { ProductsFilterTabs } from '@/features/products/ProductsFilterTabs';
+import { productFilterFromParam } from '@/features/products/productsFilter';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
 import { buttonClasses } from '@/components/ui/buttonStyles';
 import { applicationPrimaryClasses } from '@/components/ui/applicationControlStyles';
@@ -341,8 +344,13 @@ export function FranchisePage() {
 
 export function ProductsHubPage() {
   const [productsParams] = useSearchParams();
-  // Produkty → Niezweryfikowane (owner contract 2026-09-07)
-  const unverifiedOnly = productsParams.get('filter') === 'unverified';
+  /*
+    OWNER CORRECTION 2026-09-07 — the product area has ONE hamburger entry. „Skanuj produkt" is this
+    page's action (in `actions` below) and Wszystkie / Moje produkty / Niezweryfikowane are this
+    page's filters, not drawer destinations. `?filter=` is unchanged, so „Uzupełnij dane" and every
+    saved link still land on the right list.
+  */
+  const productFilter = productFilterFromParam(productsParams.get('filter'));
   const persona = useProCorePersona();
   const capabilities = proCoreCapabilitiesFor(persona);
   const canAdmin = useProCoreAccessStore((state) => state.effectiveAccess?.canAdmin === true);
@@ -387,13 +395,21 @@ export function ProductsHubPage() {
         />
       ) : (
         <>
-          {unverifiedOnly ? (
+          <ProductsFilterTabs />
+          {productFilter === 'unverified' ? (
             <>
               <p className="mb-4 max-w-xl text-sm text-[var(--g-text-secondary)]">
                 Produkty, którym brakuje jeszcze danych potrzebnych do receptury. Są widoczne tylko
                 dla Ciebie. Uzupełnij je, kiedy chcesz — znikną stąd same, gdy będą gotowe.
               </p>
               <UnverifiedProductsPanel />
+            </>
+          ) : productFilter === 'mine' ? (
+            <>
+              <p className="mb-4 max-w-xl text-sm text-[var(--g-text-secondary)]">
+                Produkty zapisane na Twoim koncie. Widzisz je tylko Ty.
+              </p>
+              <MyProductsPanel />
             </>
           ) : (
             <GlobalCatalogSearchPanel />
