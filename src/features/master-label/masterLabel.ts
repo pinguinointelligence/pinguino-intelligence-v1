@@ -62,7 +62,13 @@ export interface FacilityDefaults {
   registrationIds: string[];
   website?: string;
   operatorRole?:
-    'producer' | 'manufacturer' | 'packer' | 'distributor' | 'importer' | 'dealer' | 'supplier';
+    | 'producer'
+    | 'manufacturer'
+    | 'packer'
+    | 'distributor'
+    | 'importer'
+    | 'dealer'
+    | 'supplier';
   importerName?: string;
   importerAddress?: string;
   importerCountryCode?: string;
@@ -197,7 +203,9 @@ export interface MasterLabelData {
   alcoholByVolumePercent?: number | null;
   alcoholDeclarationReviewed?: boolean;
   alcoholDeclarationApplicability?:
-    'unresolved' | 'not_applicable_non_beverage' | 'required_beverage_over_1_2';
+    | 'unresolved'
+    | 'not_applicable_non_beverage'
+    | 'required_beverage_over_1_2';
   enabledOptionalFields: MasterLabelFieldId[];
   format: 'rectangle' | 'round';
   size: { widthMm: number; heightMm: number };
@@ -358,9 +366,12 @@ function saturatedFatAuthorityFromItems(
     fatBearingLineCount += 1;
 
     const saturatedFat = frozenNutrition?.saturatedFat;
-    const isMapperPlaceholder =
-      frozen?.source === 'mapper' && saturatedFat === 0 && typeof fat === 'number' && fat > 0;
-    if (saturatedFat === null || saturatedFat === undefined || isMapperPlaceholder) {
+    // Current Mapper metadata is product-level only. The audit found no
+    // field-level saturated-fat evidence, including for positive/"Verified"
+    // rows, so Mapper values stay unavailable to the label until the
+    // Owner-reviewed manifest supplies exact field provenance.
+    const mapperWithoutFieldEvidence = frozen?.source === 'mapper';
+    if (saturatedFat === null || saturatedFat === undefined || mapperWithoutFieldEvidence) {
       missingIngredientNames.add(item.ingredient.name);
       continue;
     }
@@ -732,20 +743,38 @@ export function normalizeMasterLabelData(value: MasterLabelData): MasterLabelDat
       : [market === 'WORLD' ? 'en' : 'pl'];
   const storedNutritionSource = legacy.nutritionSource ?? null;
   const storedSaturatedFatAuthority = legacy.saturatedFatAuthority;
+  const storedSaturated = storedNutritionSource?.saturated_fat_g;
+  const storedSaturatedHasAuthority =
+    storedSaturatedFatAuthority?.status !== undefined &&
+    storedSaturatedFatAuthority.status !== 'missing' &&
+    storedSaturatedFatAuthority.sourceReferences.some((reference) => reference.trim().length > 0);
+  const storedSaturatedIsPrintable =
+    storedNutritionSource !== null &&
+    storedSaturated !== null &&
+    storedSaturated !== undefined &&
+    Number.isFinite(storedSaturated) &&
+    storedSaturated > 0 &&
+    storedSaturated <= storedNutritionSource.fat_g &&
+    storedSaturatedHasAuthority;
   const nutritionSource =
-    storedNutritionSource &&
-    !storedSaturatedFatAuthority &&
-    storedNutritionSource.saturated_fat_g === 0
+    storedNutritionSource && !storedSaturatedIsPrintable
       ? { ...storedNutritionSource, saturated_fat_g: null }
       : storedNutritionSource;
-  const saturatedFatAuthority: LabelSaturatedFatAuthority = storedSaturatedFatAuthority ?? {
-    status: 'missing',
-    sourceReferences: [],
-    missingIngredientNames: [],
-  };
+  const saturatedFatAuthority: LabelSaturatedFatAuthority = storedSaturatedIsPrintable
+    ? (storedSaturatedFatAuthority ?? {
+        status: 'missing',
+        sourceReferences: [],
+        missingIngredientNames: [],
+      })
+    : {
+        status: 'missing',
+        sourceReferences: [],
+        missingIngredientNames: storedSaturatedFatAuthority?.missingIngredientNames ?? [],
+      };
   const regulatoryDefaults = defaultRegulatoryNutrition(nutritionSource, labelLanguages);
   const regulatoryNutrition = legacy.regulatoryNutrition as
-    Partial<RegulatoryNutritionInputs> | undefined;
+    | Partial<RegulatoryNutritionInputs>
+    | undefined;
   const size = legacy.size ?? { widthMm: 90, heightMm: 60 };
   const copies = legacy.copies ?? 1;
   return {
@@ -1086,6 +1115,9 @@ export function buildLabelPreflight(data: MasterLabelData): LabelPreflight {
     if (
       data.nutritionSource?.saturated_fat_g !== null &&
       data.nutritionSource?.saturated_fat_g !== undefined &&
+      Number.isFinite(data.nutritionSource.saturated_fat_g) &&
+      data.nutritionSource.saturated_fat_g > 0 &&
+      data.nutritionSource.saturated_fat_g <= data.nutritionSource.fat_g &&
       authority &&
       authority.status !== 'missing' &&
       authority.sourceReferences.some((reference) => reference.trim().length > 0)
@@ -1319,7 +1351,9 @@ export function buildLabelPreflight(data: MasterLabelData): LabelPreflight {
     (item) => item.status === 'review' || item.status === 'research',
   ).length;
   const printReadiness: PrintReadiness =
-    data.market === 'WORLD' ? 'PRINT_READY_UNIVERSAL' : 'PRINT_READY_REGULATORY';
+    data.market === 'WORLD' || !retail || missingCount > 0
+      ? 'PRINT_READY_UNIVERSAL'
+      : 'PRINT_READY_REGULATORY';
   return {
     items,
     missingCount,

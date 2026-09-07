@@ -17,6 +17,16 @@ audit must be able to prove still survives. It is maintained together with:
 
 Origin: `reports/GELLATTI_REGRESSION_PROVENANCE_AUDIT_2026-08-29.md`.
 
+## Owner supersession — GEL-P0-032 (2026-09-07)
+
+The Owner's full Label close-out explicitly supersedes only the presentation clause that placed
+outstanding-data controls under the label on the main PRO surface. The locked current-recipe,
+version and fingerprint authority remains unchanged. The accepted main-surface order is now the
+complete label preview followed by exactly `Drukuj` and `Zmień ustawienia`; the one shared
+missing-data editor appears in Label Settings and in the centered pre-print dialog. This change is
+authorized by the Owner request recorded with the implementation commit trailer
+`Owner-Locked-Change-Approved: GEL-P0-032` and does not constitute `OWNER ACCEPTED` for the new UI.
+
 > ### ⚠ CI ACTIVATION IS STILL PENDING (2026-08-29)
 >
 > The contracts, both guards and the ledger are live on `staging`, and

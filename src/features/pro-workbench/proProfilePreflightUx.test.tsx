@@ -517,11 +517,10 @@ describe('profile hierarchy and compact preflight', () => {
         expect(print).not.toBeNull();
         expect(print?.disabled).toBe(false);
 
-        // Settings stay on the canonical destination; the main view exposes
-        // only the explicit route action requested by the Owner.
+        // Settings stay on the canonical destination; the superseding Label
+        // close-out names the explicit main-view route "Zmień ustawienia".
         expect(host.querySelector('[data-testid="label-settings-home-link"]')).toBeNull();
-        expect(host.textContent).not.toContain('Zmień ustawienia');
-        expect(host.textContent).toContain('Zmień');
+        expect(host.textContent).toContain('Zmień ustawienia');
         expect(host.querySelector('[data-testid="label-consumer-preview"]')).not.toBeNull();
       }
 

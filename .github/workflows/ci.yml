@@ -83,6 +83,12 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
+      - name: Independent label PDF render and box verification
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y poppler-utils
+          LABEL_PDF_QA_DIR="$RUNNER_TEMP/label-pdf-qa" npx vitest run src/features/master-label/masterLabelPdfArtifact.test.ts
+          node scripts/verifyLabelPdfArtifacts.mjs "$RUNNER_TEMP/label-pdf-qa"
       - run: npm run build
 
   # Solver-heavy CORRECTNESS contracts. Corrected 2026-08-30 — the previous comment

@@ -39,6 +39,7 @@ import { normalizeConfirmedGtin } from './machineCodes';
 import { responsibleBusinessDetails } from './businessAuthority';
 import { resolveMasterLabelLogoUrl } from './labelBrand';
 import { WORLD_INFORMATIONAL_WARNING_LINES } from './worldUniversal';
+import { prepareLabelForOutput } from './printMissingData';
 
 const POINTS_PER_MM = 72 / 25.4;
 const MAX_RASTER_DPI = 600;
@@ -139,7 +140,7 @@ export function masterLabelPdfGeometry(data: MasterLabelData): {
     widthPoints: mmToPoints(data.size.widthMm),
     heightPoints: mmToPoints(data.size.heightMm),
     rasterDpi: Math.min(MAX_RASTER_DPI, Math.max(203, data.printer.dpi)),
-    copies: Math.max(1, Math.floor(data.printer.copies ?? data.copies)),
+    copies: 1,
   };
 }
 
@@ -846,15 +847,26 @@ async function drawLabelPage(
   pdf: import('pdf-lib').PDFDocument,
   options: MasterLabelPdfOptions,
 ): Promise<void> {
-  context.page.drawRectangle({
-    x: 0.5,
-    y: 0.5,
-    width: context.width - 1,
-    height: context.height - 1,
-    color: context.colors.white,
-    borderColor: context.colors.black,
-    borderWidth: 0.7,
-  });
+  if (data.format === 'round') {
+    context.page.drawCircle({
+      x: context.width / 2,
+      y: context.height / 2,
+      size: Math.min(context.width, context.height) / 2 - 0.5,
+      color: context.colors.white,
+      borderColor: context.colors.black,
+      borderWidth: 0.7,
+    });
+  } else {
+    context.page.drawRectangle({
+      x: 0.5,
+      y: 0.5,
+      width: context.width - 1,
+      height: context.height - 1,
+      color: context.colors.white,
+      borderColor: context.colors.black,
+      borderWidth: 0.7,
+    });
+  }
   if (options.draft) {
     context.page.drawText('DRAFT · NIE DO SPRZEDAŻY', {
       x: context.margin,
@@ -874,6 +886,18 @@ async function drawLabelPage(
     drawWrapped(context, WORLD_INFORMATIONAL_WARNING_LINES[1], {
       font: context.fonts.bold,
       size: Math.max(7, context.baseFont),
+      after: 2,
+    });
+    drawRule(context, 1, 3);
+  } else if (data.purpose === 'internal_production') {
+    drawRule(context, 1, 2);
+    drawWrapped(context, 'ETYKIETA WEWNĘTRZNA / INFORMACYJNA', {
+      font: context.fonts.bold,
+      size: Math.max(7, context.baseFont),
+    });
+    drawWrapped(context, 'NIEZWERYFIKOWANE DO SPRZEDAŻY DETALICZNEJ', {
+      font: context.fonts.bold,
+      size: Math.max(6, context.baseFont - 0.5),
       after: 2,
     });
     drawRule(context, 1, 3);
@@ -1066,6 +1090,7 @@ export async function composeMasterLabelPdf(
   _legacyRasterBytes?: Uint8Array | null,
   options: MasterLabelPdfOptions = {},
 ): Promise<MasterLabelPdfArtifact> {
+  data = prepareLabelForOutput(data);
   const [{ PDFDocument, rgb }, fontkitModule] = await Promise.all([
     import('pdf-lib'),
     import('@pdf-lib/fontkit'),
@@ -1096,9 +1121,13 @@ export async function composeMasterLabelPdf(
   pdf.setCreationDate(frozenDate);
   pdf.setModificationDate(frozenDate);
 
-  const copies = options.calibration ? 1 : geometry.copies;
+  // One canonical PDF contains one physical label. Copies belong to the native
+  // print dialog and must never create extra pages in the downloaded artifact.
+  const copies = 1;
   for (let copy = 0; copy < copies; copy += 1) {
     const page = pdf.addPage([geometry.widthPoints, geometry.heightPoints]);
+    page.setMediaBox(0, 0, geometry.widthPoints, geometry.heightPoints);
+    page.setCropBox(0, 0, geometry.widthPoints, geometry.heightPoints);
     // PDF pages are conceptually transparent. Explicit paper white prevents
     // thermal/preview renderers that flatten transparency to black from
     // producing an unreadable black page.
@@ -1109,13 +1138,19 @@ export async function composeMasterLabelPdf(
       height: geometry.heightPoints,
       color: rgb(1, 1, 1),
     });
+    const requestedMarginMm = Math.max(2, data.printer.marginMm + 1);
+    const roundSafeInsetMm =
+      data.format === 'round'
+        ? (Math.min(data.size.widthMm, data.size.heightMm) * (1 - 1 / Math.sqrt(2))) / 2
+        : 0;
+    const contentMargin = mmToPoints(Math.max(requestedMarginMm, roundSafeInsetMm));
     const context: DrawContext = {
       page,
       fonts: { regular, bold },
       width: geometry.widthPoints,
       height: geometry.heightPoints,
-      margin: mmToPoints(Math.max(2, data.printer.marginMm + 1)),
-      y: geometry.heightPoints - mmToPoints(Math.max(2, data.printer.marginMm + 1)),
+      margin: contentMargin,
+      y: geometry.heightPoints - contentMargin,
       baseFont: preflight.geometry.baseFontPt,
       colors: { black: rgb(0, 0, 0), white: rgb(1, 1, 1) },
     };
