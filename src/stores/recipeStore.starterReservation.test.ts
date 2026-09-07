@@ -22,6 +22,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
+import { findDemoIngredient } from '@/data/demoIngredients';
 import {
   NINJA_CREAMI_DELUXE_NC502EU,
   MACHINE_CATALOG,
@@ -54,6 +55,12 @@ const isStabilizer = (item: { ingredient: unknown }) =>
  *  defect turned ~40 % into 100 %. A whole-gram stabilizer pin moves it by well
  *  under a percentage point at any batch size. */
 const SHARE_TOLERANCE = 0.01;
+const STRAWBERRIES = {
+  ...findDemoIngredient('raspberry')!,
+  id: 'PI-ING-001553',
+  canonical_ingredient_id: 'PI-ING-001553',
+  name: 'STRAWBERRIES · Fresh Fruit',
+};
 
 /** The customer's real route: a new Sorbet, then they pick their machine. */
 const newSorbetThenMachine = (profile: (typeof MACHINE_CATALOG)[number]) => {
@@ -219,5 +226,29 @@ describe('an incomplete starter keeps its Main reservation across a batch resize
     const fruit = st().items[0]!.ingredient;
     void fruit;
     expect(sum() + reservation).toBeCloseTo(batch, 6);
+  });
+
+  it('BASIC4V1: 670 g Sorbet starter returns byte-exactly to its 1000 g contract before Main arrives', () => {
+    newSorbetThenMachine(NINJA_CREAMI_DELUXE_NC502EU);
+
+    const result = st().setMachineSelection({
+      kind: 'professional',
+      servingModeId: 'minus11',
+      machineId: null,
+      label: 'Professional',
+      temperatureC: -11,
+      batchGrams: 1_000,
+      hardCapacityGrams: null,
+      batchSource: 'PROFESSIONAL_USER_BATCH',
+    });
+
+    expect(result).toEqual({ ok: true });
+    expect(sum()).toBe(400);
+    expect(st().starterReservedMainGrams).toBe(600);
+    expect(sum() + st().starterReservedMainGrams).toBe(1_000);
+
+    st().addIngredient(STRAWBERRIES, 600);
+    expect(sum()).toBe(1_000);
+    expect(600 / sum()).toBe(0.6);
   });
 });
