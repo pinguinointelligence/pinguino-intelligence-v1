@@ -115,12 +115,21 @@ const ENRICHMENT_SCHEMA = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['field', 'value', 'sourceUrl'],
+        required: ['field', 'value', 'sourceUrl', 'sourceStatedEan'],
         properties: {
           field: { type: 'string' },
           /** Verbatim from the source. Never inferred, never paraphrased into a claim. */
           value: { type: 'string' },
           sourceUrl: { type: 'string' },
+          /*
+            The barcode PRINTED ON THAT PAGE, verbatim, or "" when the page shows none. It is the
+            page's own claim about which article it describes, and the SERVER — never the model —
+            decides what it is worth by comparing it to the code that was scanned. Without it a
+            retailer page can only be trusted by its domain, and a domain proves the seller is
+            real, never that the page is the right article: the way two sibling products with
+            adjacent EANs contaminate each other.
+          */
+          sourceStatedEan: { type: 'string' },
         },
       },
     },
@@ -142,6 +151,10 @@ Rules:
   nutrition value from a similar product, never reconstruct an EAN.
 - Every fact must cite the exact sourceUrl it came from, and that URL must be one you
   actually consulted.
+- For every fact also report sourceStatedEan: the barcode PRINTED ON THAT PAGE, copied
+  character for character. If the page shows no barcode, use an empty string. Never derive it
+  from the request, from the URL or from another page — an empty string is always better than a
+  code you did not read there.
 - If you cannot find a field from a source you trust, put it in notFound. An honest
   "not found" is always better than a plausible guess.
 - Never state how confident you are. Confidence is computed elsewhere from the evidence.`;
@@ -673,11 +686,20 @@ Deno.serve(async (request) => {
     const value = typeof row.value === 'string' ? row.value.trim() : '';
     const sourceUrl = typeof row.sourceUrl === 'string' ? row.sourceUrl : '';
     if (!RESEARCHABLE.has(field) || value === '' || !requestedFields.includes(field)) return [];
+    /*
+      The page's own barcode claim, compared HERE against the code that was scanned. The model
+      reports what it read; the server decides what that is worth.
+    */
+    const statedEan =
+      typeof row.sourceStatedEan === 'string' ? row.sourceStatedEan.replace(/\D/g, '') : '';
+    const scannedEan = String(identity.gtin ?? '').replace(/\D/g, '');
     const authority = classifySourceAuthority({
       url: sourceUrl,
       brand: identity.brand,
       manufacturer: identity.manufacturer,
       ownerProvided: false,
+      exactEanConfirmedOnPage:
+        statedEan.length >= 8 && scannedEan.length >= 8 && statedEan === scannedEan,
     });
     if (authority.authority === 'UNKNOWN') return [];
     return [
@@ -688,6 +710,9 @@ Deno.serve(async (request) => {
         sourceDomain: authority.domain,
         sourceTitle: sourceByUrl.get(sourceUrl)?.title ?? null,
         sourceAuthorityClass: authority.authority,
+        // The page's own claim, carried unjudged. The server compares it downstream.
+        sourceStatedEan:
+          typeof row.sourceStatedEan === 'string' ? row.sourceStatedEan.replace(/\D/g, '') : '',
         evidenceSource: authority.evidenceSource,
         retrievedAt: new Date().toISOString(),
       },

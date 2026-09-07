@@ -118,9 +118,23 @@ function exactEanBackedAuthority(
   if (!row) return null;
   const authority = typeof row.sourceAuthorityClass === 'string' ? row.sourceAuthorityClass : '';
   if (!SERVER_TRUSTED_AUTHORITY.has(authority)) return null;
-  const url = typeof row.url === 'string' ? row.url.replace(/\D/g, '') : '';
+  /*
+    Two ways a page can be shown to describe the scanned article, both compared HERE, on the
+    server, never asserted by the caller:
+      - the GTIN appears in the page's own URL (how a registry record is addressed), or
+      - the page printed that GTIN and the enrichment reported it verbatim.
+    A retailer page addressed by an internal article number — El Corte Inglés, La Tienda en Casa
+    and most grocers — can only ever pass the second way, which is why it exists.
+  */
   const gtins = scannedGtins(root);
-  if (gtins.length === 0 || !gtins.some((gtin) => url.includes(gtin))) return null;
+  if (gtins.length === 0) return null;
+  const url = typeof row.url === 'string' ? row.url.replace(/\D/g, '') : '';
+  const statedEan =
+    typeof row.sourceStatedEan === 'string' ? row.sourceStatedEan.replace(/\D/g, '') : '';
+  const namesTheScannedArticle = gtins.some(
+    (gtin) => url.includes(gtin) || (statedEan.length >= 8 && statedEan === gtin),
+  );
+  if (!namesTheScannedArticle) return null;
   return { authority, row };
 }
 
@@ -169,6 +183,49 @@ const DECLARATION_SOURCES = new Set<EvidenceSource>([
   'mapper_exact',
 ]);
 
+
+/*
+  SINGLE CALORIC SUGAR SOURCE CLOSURE.
+
+  An exact nutrition table says how much sugar a product contains; the Engine needs to know WHICH
+  sugars, because POD and PAC come from the spectrum and an unknown spectrum contributes zero.
+  When the table is exact and the ingredient list names exactly ONE caloric sugar, the spectrum is
+  not a guess — it is arithmetic: that one sugar accounts for all of it.
+
+  The rule refuses far more often than it fires. Two candidate sugars, an ambiguous word, a
+  negation ("sin azúcar"), a source conflict, or provenance that is not exact-EAN confirmed for
+  BOTH the table and the list — any of these and it declines, leaving the existing unresolved
+  path and the rescue that follows it untouched. It never invents a quantity: it only names the
+  sugar the label already declared, and its provenance is `derived`, never `user_confirmed` —
+  the customer typed nothing.
+*/
+const SUCROSE_TERMS =
+  /\b(sugar|sucrose|saccharose|azucar|sacarosa|zucker|saccarosio|zucchero|cukier|sucre|sucr[eo]s)\b/;
+
+/** Any OTHER caloric sugar. One of these present and the closure is not entitled to fire. */
+const OTHER_CALORIC_SUGARS =
+  /\b(glucose|glukoz\w*|dextrose|dekstroz\w*|fructose|fruktoz\w*|lactose|laktoz\w*|maltose|maltoz\w*|maltodextrin\w*|maltodekstryn\w*|invert\w*|honey|miel|mi[oó]d|molasses|melas\w*|agave|jarabe|syrup|syrop|treacle|corn\s*syrup|juice|zumo|sok\b|concentrate|concentrado|koncentrat)\b/;
+
+/** A sugar-free claim contradicts the whole premise; never read the word inside it as a sugar. */
+const SUGAR_NEGATED =
+  /\b(sin\s+azucar|sugar[\s-]*free|zero\s+sugar|bez\s+cukru|ohne\s+zucker|senza\s+zuccheri)\b/;
+
+function singleCaloricSugarClosure(
+  ingredientsText: string | null,
+  totalSugars: number | null,
+): number | null {
+  if (totalSugars === null || totalSugars <= 0) return null;
+  const text = ingredientsText
+    ?.toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  if (!text) return null;
+  if (SUGAR_NEGATED.test(text)) return null;
+  if (OTHER_CALORIC_SUGARS.test(text)) return null;
+  if (!SUCROSE_TERMS.test(text)) return null;
+  return totalSugars;
+}
+
 export interface CustomerEvidenceProvenance {
   source: EvidenceSource;
   sourceUrl: string | null;
@@ -182,7 +239,7 @@ export interface CustomerEvidenceProvenance {
 export interface CustomerProductProfileProposal {
   matchInput: ProfileMatchInput;
   declared: Partial<Record<WorkingNumericField, number>>;
-  declaredBasis: Partial<Record<WorkingNumericField, 'product_declared' | 'user_confirmed'>>;
+  declaredBasis: Partial<Record<WorkingNumericField, 'product_declared' | 'user_confirmed' | 'derived'>>;
   /** The manufacturer's own basis, preserved beside the normalised values. */
   declaredNutritionBasis: 'per_100g' | 'per_100ml' | null;
   /** How `declared` was produced from it. */
@@ -259,6 +316,27 @@ export function customerProductProfileProposal(input: {
         : 'product_declared';
     }
   }
+  /*
+    The spectrum closes only when BOTH the table and the ingredient list are backed by a page the
+    server matched to the scanned code, and the scan carries no conflict. Anything less and the
+    product keeps its unresolved path.
+  */
+  const sugarsAreExact = declaredBasis.total_sugars_percent !== undefined;
+  const tableConfirmed = exactEanBackedAuthority(root, SCAN_FIELD_PATHS.sugars ?? []) !== null;
+  const listConfirmed = exactEanBackedAuthority(root, SCAN_FIELD_PATHS.ingredients ?? []) !== null;
+  const noConflicts = (Array.isArray(root.conflicts) ? root.conflicts : []).length === 0;
+  if (sugarsAreExact && tableConfirmed && listConfirmed && noConflicts) {
+    const sucrose = singleCaloricSugarClosure(
+      text(root.ingredientsText),
+      declared.total_sugars_percent ?? null,
+    );
+    if (sucrose !== null) {
+      declared.sucrose_percent = sucrose;
+      // Computed from this product's own declaration. Not the customer's word, not a Mapper guess.
+      declaredBasis.sucrose_percent = 'derived';
+    }
+  }
+
   const abv = finiteNumber(declarations.alcoholAbv);
   if (abv !== null && abv <= 100) {
     declared.alcohol_percent = abv;
