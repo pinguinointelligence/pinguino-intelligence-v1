@@ -25,18 +25,31 @@ export type EanConfirmationMethod =
   | 'json_ld'
   | 'microdata'
   | 'page_text'
+  | 'raw_html'
   | 'url'
+  | 'server_enrichment_unfetchable'
   | 'model_reported';
 
 /**
  * The methods the SERVER established for itself, strongest-evidence-first in the order they are
  * attempted. `model_reported` is deliberately absent: this list is what may promote a source.
+ *
+ * `raw_html` is last of the page readings and was added after a measurement, not a hunch. Probing
+ * the eight sources behind the owner's two test EANs found the code present on `aecoctrade.es`
+ * for BOTH products — and in neither case in JSON-LD, microdata or visible text. It sits in a
+ * `<script>` state blob, which the four earlier methods deliberately skip. Skipping it left
+ * `7340222800464` with no confirmable source at all while its code was sitting in bytes the
+ * server had already downloaded.
+ *
+ * `server_enrichment_unfetchable` is not a page reading. See `resolveSourceEanConfirmation`.
  */
 export const SERVER_EAN_CONFIRMATION_METHODS: readonly EanConfirmationMethod[] = Object.freeze([
   'url',
   'json_ld',
   'microdata',
   'page_text',
+  'raw_html',
+  'server_enrichment_unfetchable',
 ]);
 
 export const EAN_CONFIRMATION_METHODS: readonly EanConfirmationMethod[] = Object.freeze([
@@ -340,9 +353,93 @@ export function pageTextNamesGtin(html: string, gtin: string): boolean {
 }
 
 /**
+ * THE LAST PAGE READING: the bytes as delivered, `<script>` bodies included.
+ *
+ * No JavaScript is executed and nothing is evaluated — this is a text scan of what was already
+ * downloaded, held to the same digit-boundary and GTIN-validity rules as every other method, so a
+ * code embedded in a longer number still cannot match.
+ *
+ * It is last because it is the weakest reading: a hydration blob may carry codes for products the
+ * page merely links to, where `json_ld` can tell a product from its `isRelatedTo` neighbours. That
+ * is an acceptable floor here — the exact scanned GTIN appearing in the page's own bytes means the
+ * page names that product, and this page was chosen by research as a source FOR that product.
+ *
+ * Known limit, stated rather than hidden: a `7`-escaped code inside a JSON string is not
+ * found. Unescaping arbitrary blobs would mean parsing them, which is the thing this avoids.
+ */
+export function rawHtmlNamesGtin(html: string, gtin: string): boolean {
+  const bytes = html
+    // A comment is not delivered content; excluding it costs nothing and removes a whole class of
+    // stale codes left behind in markup.
+    .replace(/<!--[\s\S]*?-->/g, ' ')
+    .replace(THIN_ENTITIES, ' ')
+    .replace(INVISIBLE_ENTITIES, '');
+  return textNamesGtin(bytes, gtin);
+}
+
+/**
+ * Collect every GTIN this page declares as ITS OWN product identity — the same walk as
+ * `jsonLdNamesGtin`, so `isRelatedTo` and its siblings are skipped in exactly the same way.
+ */
+function jsonLdProductGtins(value: unknown, insideProduct: boolean, depth: number): string[] {
+  if (depth > MAX_JSON_DEPTH) return [];
+  if (Array.isArray(value)) {
+    return value.flatMap((entry) => jsonLdProductGtins(entry, insideProduct, depth + 1));
+  }
+  if (!isRecord(value)) return [];
+  const product = insideProduct || typeIsProduct(value['@type']);
+  const found: string[] = [];
+  for (const [key, entry] of Object.entries(value)) {
+    const name = key.toLowerCase();
+    if (OTHER_PRODUCT_RELATIONS.has(name)) continue;
+    if (product && PRODUCT_GTIN_KEYS.has(name)) {
+      for (const candidate of Array.isArray(entry) ? entry : [entry]) {
+        const digits = normalizeGtin(candidate);
+        if (digits.length >= MIN_GTIN_LENGTH && digits.length <= MAX_GTIN_LENGTH) {
+          found.push(digits);
+        }
+      }
+    }
+    found.push(...jsonLdProductGtins(entry, product, depth + 1));
+  }
+  return found;
+}
+
+/**
+ * THE ONE GUARD `raw_html` CANNOT DO WITHOUT.
+ *
+ * Sport 001 and Sport 002 are shelf neighbours, and retailers list them on each other's pages. A
+ * scan of the raw bytes cannot tell "this page IS the article" from "this page MENTIONS it", so on
+ * its own it would happily confirm `7340222800457` against a page whose structured data says, in
+ * as many words, that it is about `7340222800464`.
+ *
+ * When the page states its own product identity and that identity is a different article, the raw
+ * reading is refused. When it declares nothing — the ordinary case for the hydration blobs this
+ * method exists to read — there is nothing to contradict and the reading stands.
+ */
+export function declaresADifferentProduct(html: string, gtin: string): boolean {
+  const wanted = normalizeGtin(gtin);
+  if (wanted.length < MIN_GTIN_LENGTH) return false;
+  const declared: string[] = [];
+  for (const match of html.matchAll(JSON_LD_BLOCK)) {
+    const raw = unwrapJsonLd(match[1] ?? '');
+    if (raw === '') continue;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      continue;
+    }
+    declared.push(...jsonLdProductGtins(parsed, false, 0));
+  }
+  if (declared.length === 0) return false;
+  return !declared.some((candidate) => gtinDigitsMatch(candidate, wanted));
+}
+
+/**
  * The whole page scan, in the order the owner's decision fixes: structured data first, because a
- * declared `gtin13` is the page stating its identity, and only then the text a human would read.
- * Returns the method that hit, or null.
+ * declared `gtin13` is the page stating its identity, then the text a human would read, and only
+ * then the raw bytes. Returns the method that hit, or null.
  */
 export function findGtinInHtml(html: string, gtin: string): EanConfirmationMethod | null {
   const normalized = normalizeGtin(gtin);
@@ -350,6 +447,9 @@ export function findGtinInHtml(html: string, gtin: string): EanConfirmationMetho
   if (jsonLdNamesGtinInHtml(html, normalized)) return 'json_ld';
   if (microdataNamesGtin(html, normalized)) return 'microdata';
   if (pageTextNamesGtin(html, normalized)) return 'page_text';
+  if (!declaresADifferentProduct(html, normalized) && rawHtmlNamesGtin(html, normalized)) {
+    return 'raw_html';
+  }
   return null;
 }
 
@@ -374,6 +474,58 @@ export const DEFAULT_PAGE_FETCH_LIMITS: PageFetchLimits = Object.freeze({
 export type PageFetcher = (url: string, init: RequestInit) => Promise<Response>;
 
 const REDIRECT_STATUS = new Set([301, 302, 303, 307, 308]);
+
+/*
+  SSRF. This module turns a URL chosen by a research model into a fetch made from inside our own
+  infrastructure — the classic shape of a server-side request forgery. The protocol check alone is
+  not enough: `http://169.254.169.254/` is perfectly valid http.
+
+  Every hop is checked, not just the first, because a redirect is a second attacker-chosen address.
+
+  Honest limit: this refuses ADDRESSES, and a hostname that resolves to a private IP (DNS
+  rebinding) still passes. Refusing that needs resolution before connect, which the edge runtime
+  does not expose. The bounded reader, the omitted credentials and the text-only content type keep
+  the value of such a request close to nil, and it is written down here rather than implied.
+*/
+const BLOCKED_HOST_NAMES = /^(?:localhost|.*\.localhost|.*\.internal|.*\.local|.*\.home\.arpa)$/i;
+
+export function isPubliclyRoutableHost(hostname: string): boolean {
+  const host = hostname
+    .trim()
+    .toLowerCase()
+    .replace(/^\[|\]$/g, '');
+  if (host === '' || BLOCKED_HOST_NAMES.test(host)) return false;
+
+  const ipv4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
+  if (ipv4) {
+    const [a, b] = ipv4.slice(1, 3).map(Number) as [number, number];
+    if (ipv4.slice(1).some((part) => Number(part) > 255)) return false;
+    if (a === 0 || a === 10 || a === 127) return false; // this network, private, loopback
+    if (a === 169 && b === 254) return false; // link-local, and 169.254.169.254 metadata
+    if (a === 172 && b >= 16 && b <= 31) return false; // private
+    if (a === 192 && b === 168) return false; // private
+    if (a === 100 && b >= 64 && b <= 127) return false; // carrier-grade NAT
+    if (a === 192 && b === 0) return false; // IETF protocol assignments / 192.0.0.0-192.0.2.255
+    if (a >= 224) return false; // multicast and reserved, including 255.255.255.255
+    return true;
+  }
+
+  // A bare number or a partial dotted form is a valid IPv4 spelling to most resolvers
+  // (`http://2130706433/` is 127.0.0.1). Anything numeric that is not a full dotted quad is out.
+  if (/^[0-9]+$/.test(host) || /^[0-9.]+$/.test(host)) return false;
+
+  if (host.includes(':')) {
+    // IPv6. Refuse loopback (::1), unspecified (::), unique-local (fc00::/7) and link-local
+    // (fe80::/10). IPv4-mapped forms are re-checked as IPv4.
+    if (host === '::' || host === '::1') return false;
+    const mapped = /^::ffff:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/i.exec(host);
+    if (mapped) return isPubliclyRoutableHost(mapped[1]!);
+    if (/^f[cd][0-9a-f]{2}:/i.test(host)) return false;
+    if (/^fe[89ab][0-9a-f]:/i.test(host)) return false;
+    return true;
+  }
+  return true;
+}
 
 /** Anything that is not text cannot state a barcode in a form this module reads. */
 const READABLE_CONTENT_TYPE = /(?:^|\s)(?:text\/|application\/(?:xhtml\+xml|ld\+json|json))/i;
@@ -419,15 +571,48 @@ export async function fetchPageForEanConfirmation(
   url: string,
   options: { fetchImpl?: PageFetcher; limits?: Partial<PageFetchLimits> } = {},
 ): Promise<string | null> {
+  return (await readPageForEanConfirmation(url, options)).html;
+}
+
+/**
+ * WHY A REFUSAL IS NOT THE SAME AS AN ABSENCE.
+ *
+ * `fetchPageForEanConfirmation` answers `null` for a page that would not load AND for a page that
+ * loaded and said nothing — and those two mean opposite things. A page the server READ and which
+ * does not carry the code is evidence against; a page the server was FORBIDDEN to read is no
+ * evidence at all, and must not be treated as a denial.
+ *
+ * This matters in production, not in theory. Of the eight sources behind the owner's two test
+ * EANs, the two that actually carry ingredient data — `latiendaencasa.es` and `elcorteingles.es` —
+ * both answer a server fetch with `HTTP 403 Access Denied`. Collapsing that into "no code here"
+ * would have silently withdrawn the only working source for `7340222800457`.
+ */
+export interface PageReadResult {
+  html: string | null;
+  /** True when the server never got to see the page: blocked, unreachable, refused, timed out. */
+  unreadable: boolean;
+  status: number | null;
+}
+
+export async function readPageForEanConfirmation(
+  url: string,
+  options: { fetchImpl?: PageFetcher; limits?: Partial<PageFetchLimits> } = {},
+): Promise<PageReadResult> {
+  const refused = (status: number | null = null): PageReadResult => ({
+    html: null,
+    unreadable: true,
+    status,
+  });
   const limits = { ...DEFAULT_PAGE_FETCH_LIMITS, ...options.limits };
   const fetchImpl = options.fetchImpl ?? ((target, init) => fetch(target, init));
   let current: URL;
   try {
     current = new URL(url);
   } catch {
-    return null;
+    return refused();
   }
-  if (!/^https?:$/.test(current.protocol)) return null;
+  if (!/^https?:$/.test(current.protocol)) return refused();
+  if (!isPubliclyRoutableHost(current.hostname)) return refused();
 
   try {
     for (let hop = 0; hop <= limits.maxRedirects; hop += 1) {
@@ -446,28 +631,34 @@ export async function fetchPageForEanConfirmation(
       });
       if (REDIRECT_STATUS.has(response.status)) {
         const location = response.headers.get('location');
-        if (!location) return null;
+        if (!location) return refused(response.status);
         let next: URL;
         try {
           next = new URL(location, current);
         } catch {
-          return null;
+          return refused(response.status);
         }
-        // A redirect to anything that is not http(s) — data:, file:, javascript: — is refused.
-        if (!/^https?:$/.test(next.protocol)) return null;
+        // A redirect is a second attacker-chosen address, so both checks run again on every hop.
+        if (!/^https?:$/.test(next.protocol)) return refused(response.status);
+        if (!isPubliclyRoutableHost(next.hostname)) return refused(response.status);
         current = next;
         continue;
       }
-      if (!response.ok) return null;
+      if (!response.ok) return refused(response.status);
       const contentType = response.headers.get('content-type');
-      if (contentType && !READABLE_CONTENT_TYPE.test(contentType)) return null;
-      return await readBounded(response, limits.maxBytes);
+      if (contentType && !READABLE_CONTENT_TYPE.test(contentType)) return refused(response.status);
+      // Read, and therefore answerable: an absent code here really is an absence.
+      return {
+        html: await readBounded(response, limits.maxBytes),
+        unreadable: false,
+        status: response.status,
+      };
     }
   } catch {
-    return null;
+    return refused();
   }
   // More redirects than allowed.
-  return null;
+  return refused();
 }
 
 /* ── the confirmation itself ──────────────────────────────────────────────── */
@@ -476,7 +667,7 @@ export async function fetchPageForEanConfirmation(
  * Per (url, gtin), for ONE enrich invocation. Holds the in-flight promise, so several facts citing
  * the same page fetch it once even when they are resolved concurrently.
  */
-export type PageEanConfirmationCache = Map<string, Promise<PageEanConfirmation | null>>;
+export type PageEanConfirmationCache = Map<string, Promise<PageEanConfirmationOutcome>>;
 
 export const createPageEanConfirmationCache = (): PageEanConfirmationCache => new Map();
 
@@ -494,31 +685,55 @@ export interface ConfirmEanOnPageInput {
  * Does this page name the scanned article? Answered by the server, from the page — the URL first
  * because it costs no request at all, then the fetched document.
  */
-export async function confirmEanOnPage(
+export interface PageEanConfirmationOutcome {
+  confirmation: PageEanConfirmation | null;
+  /**
+   * True when the server never got to SEE the page. Carried on the RESULT rather than in a
+   * module-level map: an edge function isolate is reused across requests, so per-URL state parked
+   * outside the call would leak between customers and grow without bound.
+   */
+  unreadable: boolean;
+}
+
+export async function confirmEanOnPageDetailed(
   input: ConfirmEanOnPageInput,
-): Promise<PageEanConfirmation | null> {
+): Promise<PageEanConfirmationOutcome> {
   const gtin = normalizeGtin(input.gtin);
   const url = typeof input.url === 'string' ? input.url.trim() : '';
-  if (gtin.length < MIN_GTIN_LENGTH || url === '') return null;
+  if (gtin.length < MIN_GTIN_LENGTH || url === '') {
+    return { confirmation: null, unreadable: false };
+  }
 
-  const key = `${url}\u0000${gtin}`;
+  const key = `${url}|${gtin}`;
   const cached = input.cache?.get(key);
   if (cached) return await cached;
 
-  const run = (async (): Promise<PageEanConfirmation | null> => {
+  const run = (async (): Promise<PageEanConfirmationOutcome> => {
     const at = (input.now ?? (() => new Date()))().toISOString();
-    if (urlNamesGtin(url, gtin)) return { method: 'url', gtin, url, confirmedAt: at };
-    const html = await fetchPageForEanConfirmation(url, {
+    if (urlNamesGtin(url, gtin)) {
+      return { confirmation: { method: 'url', gtin, url, confirmedAt: at }, unreadable: false };
+    }
+    const read = await readPageForEanConfirmation(url, {
       ...(input.fetchImpl ? { fetchImpl: input.fetchImpl } : {}),
       ...(input.limits ? { limits: input.limits } : {}),
     });
-    if (html === null) return null;
-    const method = findGtinInHtml(html, gtin);
-    return method ? { method, gtin, url, confirmedAt: at } : null;
+    if (read.html === null) return { confirmation: null, unreadable: read.unreadable };
+    const method = findGtinInHtml(read.html, gtin);
+    return {
+      confirmation: method ? { method, gtin, url, confirmedAt: at } : null,
+      unreadable: false,
+    };
   })();
 
   input.cache?.set(key, run);
   return await run;
+}
+
+/** The same question, for callers that only need the answer and not why it is missing. */
+export async function confirmEanOnPage(
+  input: ConfirmEanOnPageInput,
+): Promise<PageEanConfirmation | null> {
+  return (await confirmEanOnPageDetailed(input)).confirmation;
 }
 
 /* ── precedence: what the server read outranks what the model said ────────── */
@@ -530,6 +745,12 @@ export interface SourceEanConfirmationInput {
   modelStatedEan?: string | null;
   /** The code that was actually scanned. */
   scannedGtin?: string | null;
+  /**
+   * True when the server never got to SEE the page (403, unreachable, timed out, refused address)
+   * — as opposed to having read it and found no code. Only the former lets a matching
+   * server-enrichment barcode stand in as auxiliary confirmation.
+   */
+  pageUnreadable?: boolean;
   url?: string | null;
   now?: () => Date;
 }
@@ -571,11 +792,45 @@ export function resolveSourceEanConfirmation(
       statedEan: server.method === 'url' ? stated : server.gtin,
     };
   }
-  if (
+
+  const statedMatchesScanned =
     scanned.length >= MIN_GTIN_LENGTH &&
     stated.length >= MIN_GTIN_LENGTH &&
-    gtinDigitsMatch(stated, scanned)
-  ) {
+    gtinDigitsMatch(stated, scanned);
+
+  /*
+    THE PAGE NOBODY IS ALLOWED TO READ.
+
+    `latiendaencasa.es` and `elcorteingles.es` — the only two of eight sources that carry the
+    ingredient text the score depends on — answer a server fetch with `HTTP 403 Access Denied`.
+    Bot protection is not a statement about the product. Refusing to credit them would withdraw
+    working evidence for a reason that has nothing to do with evidence.
+
+    So when the server could not READ the page, and the barcode reported for it matches the scanned
+    code exactly, that is kept as auxiliary confirmation and DOES promote. The narrowness is the
+    whole point:
+
+      - it applies ONLY when the page was unreadable. A page the server read and which does not
+        name the code is an absence, and stays `model_reported` with no promotion;
+      - `modelStatedEan` must reach here from the server's OWN enrichment call. A value that came
+        in on a client request is never passed to this function — `intimport-enrich` reads it from
+        the provider's response, and nothing on the request body can reach it;
+      - a mismatched or missing code promotes nothing, unreadable or not.
+  */
+  if (input.pageUnreadable === true && statedMatchesScanned) {
+    return {
+      confirmation: {
+        method: 'server_enrichment_unfetchable',
+        gtin: stated,
+        url: input.url ?? null,
+        confirmedAt: (input.now ?? (() => new Date()))().toISOString(),
+      },
+      exactEanConfirmedOnPage: true,
+      statedEan: stated,
+    };
+  }
+
+  if (statedMatchesScanned) {
     return {
       confirmation: {
         method: 'model_reported',
@@ -583,12 +838,48 @@ export function resolveSourceEanConfirmation(
         url: input.url ?? null,
         confirmedAt: (input.now ?? (() => new Date()))().toISOString(),
       },
-      // The model's word corroborates; it never promotes.
+      // The page was readable and did not name the code. The model's word corroborates; it never
+      // promotes on its own.
       exactEanConfirmedOnPage: false,
       statedEan: stated,
     };
   }
   return { confirmation: null, exactEanConfirmedOnPage: false, statedEan: stated };
+}
+
+/**
+ * EVIDENCE DOES NOT GO BACKWARDS.
+ *
+ * A second look at the same page can be weaker than the first for reasons that say nothing about
+ * the product: the retailer started returning 403, the fetch timed out, the research model stopped
+ * quoting the barcode. None of that unmakes a code the server once read there.
+ *
+ * So a stored confirmation is only replaced by a STRICTLY stronger one, ranked by how the code was
+ * established. Equal strength keeps the earlier record, because the first reading is the one with
+ * a `confirmedAt` that already means something.
+ */
+const CONFIRMATION_STRENGTH: Readonly<Record<EanConfirmationMethod, number>> = Object.freeze({
+  json_ld: 6,
+  microdata: 5,
+  page_text: 4,
+  raw_html: 3,
+  url: 3,
+  server_enrichment_unfetchable: 2,
+  model_reported: 1,
+});
+
+export function strongerEanConfirmation(
+  prior: PageEanConfirmation | null,
+  next: PageEanConfirmation | null,
+): PageEanConfirmation | null {
+  if (!prior) return next;
+  if (!next) return prior;
+  // A confirmation for a different code is not a downgrade of this one; it is about another
+  // product entirely, and the record we hold for THIS code stands.
+  if (!gtinDigitsMatch(next.gtin, prior.gtin)) return prior;
+  const priorRank = CONFIRMATION_STRENGTH[prior.method] ?? 0;
+  const nextRank = CONFIRMATION_STRENGTH[next.method] ?? 0;
+  return nextRank > priorRank ? next : prior;
 }
 
 /**

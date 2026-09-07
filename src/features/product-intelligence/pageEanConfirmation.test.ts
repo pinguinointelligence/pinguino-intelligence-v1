@@ -19,6 +19,7 @@ import {
   createPageEanConfirmationCache,
   fetchPageForEanConfirmation,
   findGtinInHtml,
+  jsonLdNamesGtinInHtml,
   gtinDigitsMatch,
   isEanConfirmationMethod,
   isServerEanConfirmation,
@@ -169,11 +170,18 @@ describe('a page about a different product', () => {
     expect(findGtinInHtml(html, SPORT_002)).toBe('json_ld');
   });
 
-  it('does not confirm a gtin declared outside any product', () => {
+  it('does not confirm a gtin declared outside any product AS json_ld', () => {
     const html = `<script type="application/ld+json">
       {"@context":"https://schema.org","@type":"WebPage","gtin13":"${SPORT_001}"}
     </script>`;
-    expect(findGtinInHtml(html, SPORT_001)).toBeNull();
+    // Still not a product declaration, so `json_ld` refuses it.
+    expect(jsonLdNamesGtinInHtml(html, SPORT_001)).toBe(false);
+    /*
+      It IS, however, the exact code sitting in the page's own bytes with nothing contradicting it,
+      and since the owner's decision of 2026-09-07 the raw reading is additive rather than a last
+      resort. So the page confirms — one rung lower, and the method says which rung.
+    */
+    expect(findGtinInHtml(html, SPORT_001)).toBe('raw_html');
   });
 });
 
@@ -214,8 +222,21 @@ describe('a page the server cannot use', () => {
     ).toBeNull();
   });
 
-  it('ignores code that only appears inside a script or a comment', () => {
-    expect(findGtinInHtml(`<script>var x="${SPORT_001}";</script>`, SPORT_001)).toBeNull();
+  it('reads a code inside a script, and still ignores one left in a comment', () => {
+    /*
+      REVERSED DELIBERATELY on 2026-09-07, and this is the measurement that reversed it.
+
+      Probing all eight sources behind the owner's two test articles found the exact code on
+      `aecoctrade.es` for BOTH — and in neither case in JSON-LD, microdata or visible text. It sits
+      in a `<script>` hydration blob. With script bodies skipped, `7340222800464` had no
+      confirmable source anywhere, while its code was in bytes the server had already downloaded.
+
+      Nothing is executed to read it: this is a text scan of the delivered response, under the same
+      digit-boundary and GTIN-length rules as every other method.
+
+      A comment stays excluded. It is not delivered content, and excluding it costs nothing.
+    */
+    expect(findGtinInHtml(`<script>var x="${SPORT_001}";</script>`, SPORT_001)).toBe('raw_html');
     expect(findGtinInHtml(`<!-- ${SPORT_001} -->`, SPORT_001)).toBeNull();
   });
 });
@@ -482,16 +503,40 @@ describe('the model’s word never produces AUTHORITATIVE_RETAILER', () => {
 /* ── the vocabulary itself ────────────────────────────────────────────────── */
 
 describe('the confirmation vocabulary', () => {
-  it('names exactly the five methods, and only four of them are the server’s', () => {
+  it('names every method, and only the server\u2019s own may promote', () => {
     expect([...EAN_CONFIRMATION_METHODS].sort()).toEqual(
-      ['json_ld', 'microdata', 'model_reported', 'page_text', 'url'].sort(),
+      [
+        'json_ld',
+        'microdata',
+        'model_reported',
+        'page_text',
+        'raw_html',
+        'server_enrichment_unfetchable',
+        'url',
+      ].sort(),
     );
-    expect([...SERVER_EAN_CONFIRMATION_METHODS]).not.toContain('model_reported');
-    for (const method of SERVER_EAN_CONFIRMATION_METHODS) {
-      expect(isServerEanConfirmation(method)).toBe(true);
-    }
-  });
+    /*
+      `raw_html` and `server_enrichment_unfetchable` joined the server list on 2026-09-07. Both are
+      established BY THE SERVER — one by reading the delivered bytes, the other by matching the
+      code the server's own enrichment call reported for a page it was forbidden to fetch. Neither
+      can be supplied by a client, which is the property this list actually guards.
 
+      `model_reported` remains the only method outside it: the model's unverified word.
+    */
+    expect([...SERVER_EAN_CONFIRMATION_METHODS].sort()).toEqual(
+      [
+        'json_ld',
+        'microdata',
+        'page_text',
+        'raw_html',
+        'server_enrichment_unfetchable',
+        'url',
+      ].sort(),
+    );
+    expect(isServerEanConfirmation('model_reported')).toBe(false);
+    expect(isServerEanConfirmation('raw_html')).toBe(true);
+    expect(isServerEanConfirmation('server_enrichment_unfetchable')).toBe(true);
+  });
   it('refuses a method nothing in this repository can issue', () => {
     for (const forged of ['trusted', 'MODEL_REPORTED', '', null, undefined, 7]) {
       expect(isEanConfirmationMethod(forged)).toBe(false);

@@ -1,7 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
 import { classifySourceAuthority } from '../_shared/sourceAuthority.ts';
 import {
-  confirmEanOnPage,
+  confirmEanOnPageDetailed,
   createPageEanConfirmationCache,
   normalizeGtin,
   resolveSourceEanConfirmation,
@@ -708,6 +708,13 @@ Deno.serve(async (request) => {
   const MAX_CONFIRMED_PAGES = 6;
   const confirmationCache = createPageEanConfirmationCache();
   const confirmationByUrl = new Map<string, PageEanConfirmation | null>();
+  /*
+    Which pages the server was FORBIDDEN to read, as opposed to read and found silent. The two
+    retailers that actually carry ingredient text for the owner's test articles —
+    latiendaencasa.es and elcorteingles.es — both answer a server fetch with HTTP 403. Treating
+    that as "no code here" would withdraw the only working source for 7340222800457.
+  */
+  const unreadableUrls = new Set<string>();
   if (scannedEan.length >= 8) {
     const pages = [
       ...new Set(
@@ -716,12 +723,16 @@ Deno.serve(async (request) => {
           .filter((url) => /^https?:\/\//i.test(url)),
       ),
     ].slice(0, MAX_CONFIRMED_PAGES);
-    const confirmations = await Promise.all(
+    const outcomes = await Promise.all(
       pages.map((page) =>
-        confirmEanOnPage({ url: page, gtin: scannedEan, cache: confirmationCache }),
+        confirmEanOnPageDetailed({ url: page, gtin: scannedEan, cache: confirmationCache }),
       ),
     );
-    pages.forEach((page, index) => confirmationByUrl.set(page, confirmations[index] ?? null));
+    pages.forEach((page, index) => {
+      const outcome = outcomes[index];
+      confirmationByUrl.set(page, outcome?.confirmation ?? null);
+      if (outcome?.unreadable) unreadableUrls.add(page);
+    });
   }
 
   // Authority is decided HERE, from the actual URL — never from the model's own
@@ -732,14 +743,23 @@ Deno.serve(async (request) => {
     const sourceUrl = typeof row.sourceUrl === 'string' ? row.sourceUrl : '';
     if (!RESEARCHABLE.has(field) || value === '' || !requestedFields.includes(field)) return [];
     /*
-      What the SERVER read on that page outranks what the model said about it. A model claim that
-      matches the scanned code is recorded as `model_reported` and corroborates; it never promotes,
-      so a page the server could not fetch and could not confirm stays exactly where it was.
+      What the SERVER read on that page outranks everything else. Below that, the two failures are
+      not the same: a page the server READ which does not name the code leaves a matching model
+      claim as `model_reported`, corroborating but never promoting; a page the server was REFUSED
+      lets that same matching claim stand as auxiliary confirmation, because a 403 is a statement
+      about bot policy and not about the product.
     */
     const confirmed = resolveSourceEanConfirmation({
       serverConfirmation: confirmationByUrl.get(sourceUrl) ?? null,
+      /*
+        `row` is the PROVIDER's answer to our own research call, parsed from the model response a
+        few lines above — it is not, and can never be, anything the client sent us. The request
+        body is read once, into `identity` and `requestedFields`; no path exists from it to here.
+        That is what makes a matching code on an unfetchable page admissible as auxiliary evidence.
+      */
       modelStatedEan: typeof row.sourceStatedEan === 'string' ? row.sourceStatedEan : null,
       scannedGtin: scannedEan,
+      pageUnreadable: unreadableUrls.has(sourceUrl),
       url: sourceUrl,
     });
     const authority = classifySourceAuthority({
