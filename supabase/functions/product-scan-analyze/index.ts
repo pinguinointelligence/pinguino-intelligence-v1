@@ -12,6 +12,7 @@ import {
   validateServerResult,
   webCallsInResponse,
 } from '../_shared/productScanner.ts';
+import { requestedLabelFields } from '../../../src/features/product-scanner/labelAnalysisRequest.ts';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -173,13 +174,23 @@ Deno.serve(async (request) => {
       ? body.sessionId
       : null;
   const images = Array.isArray(body.images) ? body.images.map(objectValue) : [];
-  const suppliedMissingFields = Array.isArray(body.missingFields) ? body.missingFields : null;
-  const requestedMissingFields = suppliedMissingFields
-    ? suppliedMissingFields.filter(
-        (field): field is string => typeof field === 'string' && SCANNER_MISSING_FIELDS.has(field),
-      )
-    : [...SCANNER_MISSING_FIELDS];
-  if (suppliedMissingFields && requestedMissingFields.length !== suppliedMissingFields.length) {
+  /*
+    The client sends `missingFields: [...session.missingCritical]`. Once web discovery started
+    filling every field the readiness check tracks, that array arrived EMPTY — and an empty array
+    is still an array, so it was read as a wish list of length zero and the prompt below told the
+    model "Requested missing fields only: none. Analyze only those unresolved fields". The model
+    complied: HTTP 200, one vision call spent, `evidence: []`, no row in
+    product_scan_field_evidence, and the score identical before and after the photograph
+    (owner run 2026-09-07, Sport 001 session 6b8f1040 asset b9d15efc: 77.9 -> 77.9).
+
+    Absent and empty now mean the same thing — read the whole label. Narrowing requires naming
+    fields, which is what a follow-up photo for one missing field already does.
+  */
+  const { fields: requestedMissingFields, rejected: invalidMissingFields } = requestedLabelFields(
+    body.missingFields as readonly unknown[] | null | undefined,
+    SCANNER_MISSING_FIELDS,
+  );
+  if (invalidMissingFields) {
     return json({ error: 'invalid_missing_fields' }, 400);
   }
   const maxImages = Math.floor(numberEnv('PRODUCT_SCANNER_MAX_IMAGES', 4));

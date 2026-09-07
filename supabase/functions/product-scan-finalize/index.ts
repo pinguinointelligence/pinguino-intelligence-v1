@@ -563,6 +563,14 @@ Deno.serve(async (request) => {
       declared: proposal.declared,
       declaredBasis: proposal.declaredBasis,
       evidence: proposal.evidence,
+      /*
+        The scan path never filled this, so productProductionAccuracy's web-source test —
+        `trustedWebAuthority(input.evidenceProvenance?.[field]?.sourceAuthorityClass)` — always
+        read undefined and scored 0. It is built by the server from the class
+        classifySourceAuthority assigned, and only for a page whose URL names the scanned GTIN;
+        nothing a browser sends can reach it.
+      */
+      evidenceProvenance: proposal.evidenceProvenance,
       recognitionEvidence: proposal.recognitionEvidence,
       trustedRecognition: proposal.trustedRecognition,
       rows: await loadMapperRows(service),
