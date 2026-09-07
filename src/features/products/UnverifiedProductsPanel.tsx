@@ -12,16 +12,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { buttonClasses } from '@/components/ui/buttonStyles';
-import { supabase } from '@/lib/supabase/client';
-
-type UnverifiedProduct = {
-  productId: string;
-  ean: string | null;
-  name: string | null;
-  brand: string | null;
-  savedAt: string | null;
-  missing: readonly string[];
-};
+import { fetchMyUnverifiedProducts, type UnverifiedProduct } from '@/services/unverifiedProducts';
 
 /**
  * The pipeline names a missing fact with its own key. The customer reads a thing, not a key — and
@@ -56,21 +47,11 @@ export function UnverifiedProductsPanel() {
   useEffect(() => {
     let live = true;
     void (async () => {
-      try {
-        if (!supabase) {
-          if (live) setFailed(true);
-          return;
-        }
-        const { data, error } = await supabase.rpc('gellatti_my_unverified_products_v1');
-        if (!live) return;
-        if (error) {
-          setFailed(true);
-          return;
-        }
-        setRows(Array.isArray(data) ? (data as UnverifiedProduct[]) : []);
-      } catch {
-        if (live) setFailed(true);
-      }
+      const rows = await fetchMyUnverifiedProducts();
+      if (!live) return;
+      // `null` is "we could not ask", which is not the same as "you have none"
+      if (rows === null) setFailed(true);
+      else setRows(rows);
     })();
     return () => {
       live = false;
