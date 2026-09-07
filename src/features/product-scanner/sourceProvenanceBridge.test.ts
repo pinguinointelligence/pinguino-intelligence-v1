@@ -31,7 +31,7 @@ const propose = (scanResult: { barcodes: Array<{ value: string }> }) =>
   customerProductProfileProposal({
     scanResult,
     recognition,
-    recognitionEvidence: { gtin: scanResult.barcodes[0].value } as never,
+    recognitionEvidence: { gtin: scanResult.barcodes[0]?.value ?? null } as never,
   });
 
 describe('source provenance bridge', () => {
