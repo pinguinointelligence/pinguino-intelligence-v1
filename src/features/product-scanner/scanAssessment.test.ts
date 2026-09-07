@@ -203,6 +203,24 @@ describe('the snapshot is the verdict, and its hash is the proof', () => {
     expect(b.assessmentHash).toBe(a.assessmentHash);
   });
 
+  it('the hash covers the verdict, not how it was reached', async () => {
+    /*
+      Whether a classification was carried forward depends on whether the model answered THIS time —
+      the very nondeterminism the carry-forward exists to absorb. If it moved the hash, a customer
+      who typed nothing would have their save refused as stale.
+    */
+    const fresh = await scanAssessmentSnapshot(input);
+    const carried = await scanAssessmentSnapshot({
+      ...input,
+      recognition: { ...input.recognition, carriedForwardFromScan: true },
+      recognitionCarriedForward: true,
+    });
+    expect(carried.assessmentHash).toBe(fresh.assessmentHash);
+    // and the trace still says plainly where it came from
+    expect(carried.classificationCarriedForward).toBe(true);
+    expect(fresh.classificationCarriedForward).toBe(false);
+  });
+
   it('every fact that could change the product changes the hash', async () => {
     const base = await scanAssessmentSnapshot(input);
     const variants = [

@@ -229,7 +229,6 @@ export async function scanAssessmentSnapshot(
     },
     semanticFamily: stringOrNull(input.recognition.ingredientFamily),
     classification: input.recognition,
-    classificationCarriedForward: input.recognitionCarriedForward,
     behavior: input.behavior,
     mapperDonorId: stringOrNull(objectValue(input.profile).profileReferenceMapperIngredientId),
     missingFields: stringList(objectValue(readiness.issues).missing),
@@ -239,5 +238,22 @@ export async function scanAssessmentSnapshot(
     finalConfidence: typeof accuracy === 'number' ? accuracy : null,
     engineUsable: objectValue(input.profile).engineUsable === true,
   };
-  return { ...payload, assessmentHash: await sha256Hex(stableJson(payload)) };
+  /*
+    THE HASH COVERS THE VERDICT, NOT HOW IT WAS REACHED.
+
+    `carriedForwardFromScan` records that this classification came from an earlier call in the same
+    scan, and whether it did depends on something outside the verdict — whether the model answered
+    this time. Hashing it would make the hash flip for exactly the reason the carry-forward exists to
+    absorb, and a customer who typed nothing would have their save refused as "stale". So the
+    provenance stamp travels in the snapshot, where the trace can read it, and stays out of the hash.
+  */
+  const { carriedForwardFromScan: _carried, ...hashedClassification } = input.recognition;
+  const assessmentHash = await sha256Hex(
+    stableJson({ ...payload, classification: hashedClassification }),
+  );
+  return {
+    ...payload,
+    classificationCarriedForward: input.recognitionCarriedForward,
+    assessmentHash,
+  };
 }
