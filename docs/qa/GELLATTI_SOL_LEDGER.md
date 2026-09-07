@@ -18,7 +18,7 @@ Rules:
 - `RESOLVED_ON_STAGING` requires the normal merge, the exact staging deployment,
   and proof that no migration SQL was executed again.
 
-`NEXT_FREE_SOL_ID: SOL-051`
+`NEXT_FREE_SOL_ID: SOL-052`
 
 > Rekonsyliacja Owner QA 2026-09-06/07: cztery zgłoszone defekty Scannera oraz audyt Product
 > Registry mieszczą się w istniejących wpisach SOL-042, SOL-043, SOL-044, SOL-045 i SOL-049 —
@@ -125,6 +125,27 @@ Rules:
   13. Nie powstają duplikaty tego samego produktu użytkownika.
   14. Mapper, Engine i Product Registry nie są bezpośrednio nadpisywane danymi użytkownika.
 
+- [ ] **SOL-051 · TODO — produkt WANILIA ma nieprawidłową nazwę pochodzącą z Mappera.** Produkt lub składnik waniliowy jest wyświetlany z błędną pisownią, na przykład `VANILIA`. Należy ustalić konkretny rekord `PI-ING`, wszystkie jego aliasy oraz miejsce, z którego błędna nazwa trafia do aplikacji.
+
+  Oczekiwane nazwy:
+
+  - polski: `WANILIA`;
+  - angielski: `VANILLA`;
+  - `VANILIA` nie może być wyświetlane jako nazwa kanoniczna.
+
+  Zakres późniejszej naprawy:
+
+  1. znaleźć dokładny rekord lub rekordy wanilii w Mapperze;
+  2. sprawdzić nazwę kanoniczną, tłumaczenia, aliasy i duplikaty;
+  3. ustalić, czy błąd pochodzi z Mappera, importu, lokalizacji czy warstwy prezentacji;
+  4. poprawić nazwę w jednym kanonicznym źródle, a nie maskować literówki wyłącznie w UI;
+  5. nie zmieniać kompozycji, parametrów technologicznych, ID ani zachowania Engine;
+  6. sprawdzić HOME i PRO: wyszukiwarkę składników, picker, recepturę, zapis i ponowne otwarcie, listę składników oraz etykietę;
+  7. potwierdzić, że poprawka nie tworzy drugiego produktu ani nie rozłącza istniejących receptur;
+  8. dodać test zabraniający kanonicznego napisu `VANILIA`.
+
+  `SOL-051 STATUS: TODO`; `OWNER ACCEPTED: NO`.
+
 ## SOL-014 migration dependency checkpoint — 2026-09-06
 
 This is a read-only reconciliation checkpoint, not a migration plan and not an
@@ -220,8 +241,10 @@ This checkpoint extends the existing SOL-031; it does not allocate another SOL I
 - SOL-047.2, SOL-048, and SOL-049: appended from Scanner Owner QA 2026-09-06.
 - SOL-050: appended from the Owner decision of 2026-09-06 for incomplete private
   products and voluntary verification.
+- SOL-051: appended from the Owner finding of 2026-09-07 for the canonical
+  Polish and English vanilla names.
 - Search of repository files, all Git refs, retained attachments, and retained task
-  checkpoints found no assigned main SOL ID above SOL-050. SOL-051 is therefore the
+  checkpoints found no assigned main SOL ID above SOL-051. SOL-052 is therefore the
   next free ID at this checkpoint.
 
 ## Status history
