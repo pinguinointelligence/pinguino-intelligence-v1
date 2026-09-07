@@ -208,7 +208,7 @@ describe('rescan of a known code', () => {
 
   describe('promotion happens on the SAME product id', () => {
     const promotion = () =>
-      read('supabase/migrations/20260907190000_scanner_rescan_reevaluation.sql');
+      read('supabase/migrations/20260907220750_scanner_rescan_reevaluation.sql');
     const routing = () =>
       read('supabase/migrations/20260907030000_scanner_final_pr_pm_routing.sql');
 
