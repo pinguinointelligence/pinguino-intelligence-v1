@@ -363,7 +363,8 @@ describe('process and dosage are informational only', () => {
     const maxIndex = columns.indexOf('recommended_dosage_percent_max');
     const tara = rows.find((entry) => entry.startsWith('PI-ING-000492,'))!.split(',');
     expect([tara[minIndex], tara[maxIndex]]).toEqual(['0.2', '1']);
-    expect(rows.filter((entry) => entry.startsWith('PI-ING-')).length).toBe(2_089);
+    // 2089 -> 2147 with the owner's 2026-09-07 release; the dosage columns above are untouched by it.
+    expect(rows.filter((entry) => entry.startsWith('PI-ING-')).length).toBe(2_147);
   });
 
   it('14. Engine mathematics unrelated to process and dosage is unchanged', () => {
@@ -376,7 +377,9 @@ describe('process and dosage are informational only', () => {
     expect(detectViolations(result)).toEqual(detectViolations(calculateRecipe(input)));
     expect(
       evaluateRecipeConstraintAuthority({ recipe: input, snapshots: withProcess }).result,
-    ).toEqual(evaluateRecipeConstraintAuthority({ recipe: input, snapshots: withoutProcess }).result);
+    ).toEqual(
+      evaluateRecipeConstraintAuthority({ recipe: input, snapshots: withoutProcess }).result,
+    );
   });
 });
 

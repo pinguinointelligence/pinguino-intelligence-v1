@@ -1,5 +1,5 @@
 {
-  "mapperFingerprint": "057375cd60cefe613892ff1d9f8f7eda880ff0eb06732f9229051fc37d8deca7",
+  "mapperFingerprint": "5047d9ca645bb2c1e2e930201ab9e82b08a04dc1e48e3263e7ba61930a5da1f5",
   "rules": {
     "minRows": 8,
     "maxMad": 4,
@@ -112,6 +112,19 @@
       "reason": "rozrzut MAD 9.8783 przekracza 4"
     },
     {
+      "cohort": "sweetener",
+      "n": 99,
+      "median": 5,
+      "mad": 4.5,
+      "iqr": 19.25,
+      "p10": 0.5,
+      "p90": 28.76,
+      "min": 0,
+      "max": 77.89,
+      "narrow": false,
+      "reason": "rozrzut MAD 4.5 przekracza 4"
+    },
+    {
       "cohort": "confectionery_inclusion",
       "n": 77,
       "median": 3.46,
@@ -136,19 +149,6 @@
       "max": 78.5,
       "narrow": false,
       "reason": "rozrzut MAD 4.48 przekracza 4"
-    },
-    {
-      "cohort": "sweetener",
-      "n": 43,
-      "median": 5,
-      "mad": 5,
-      "iqr": 21.72,
-      "p10": 0.018,
-      "p90": 31.9,
-      "min": 0,
-      "max": 77.89,
-      "narrow": false,
-      "reason": "rozrzut MAD 5 przekracza 4"
     },
     {
       "cohort": "vegetable",
@@ -230,12 +230,12 @@
     },
     {
       "cohort": "fiber",
-      "n": 13,
-      "median": 2.19,
-      "mad": 2.19,
-      "iqr": 4,
-      "p10": 0.192,
-      "p90": 10.36,
+      "n": 15,
+      "median": 3.9,
+      "mad": 2.9,
+      "iqr": 6,
+      "p10": 0.384,
+      "p90": 19.28,
       "min": 0,
       "max": 29.4,
       "narrow": true,
@@ -1089,6 +1089,32 @@
       "reason": "rozrzut MAD 9.5285 przekracza 4"
     },
     {
+      "cohort": "sweetener|glucose_syrup_dry",
+      "n": 10,
+      "median": 5,
+      "mad": 0,
+      "iqr": 0,
+      "p10": 4.946,
+      "p90": 5,
+      "min": 4.46,
+      "max": 5,
+      "narrow": true,
+      "reason": "kohorta waska fizycznie"
+    },
+    {
+      "cohort": "sweetener|high_intensity_sweetener",
+      "n": 10,
+      "median": 1,
+      "mad": 0,
+      "iqr": 0,
+      "p10": 1,
+      "p90": 1.4,
+      "min": 1,
+      "max": 5,
+      "narrow": true,
+      "reason": "kohorta waska fizycznie"
+    },
+    {
       "cohort": "beverage|mixer_soft_drink",
       "n": 10,
       "median": 91.08,
@@ -1111,6 +1137,19 @@
       "p90": 11.224,
       "min": 2.73,
       "max": 12.2,
+      "narrow": true,
+      "reason": "kohorta waska fizycznie"
+    },
+    {
+      "cohort": "sweetener|maltodextrin",
+      "n": 9,
+      "median": 5,
+      "mad": 0,
+      "iqr": 0,
+      "p10": 4.892,
+      "p90": 5,
+      "min": 4.46,
+      "max": 5,
       "narrow": true,
       "reason": "kohorta waska fizycznie"
     },
@@ -1219,6 +1258,19 @@
       "reason": "za malo wierszy (7 < 8)"
     },
     {
+      "cohort": "sweetener|polyol_sweetener",
+      "n": 7,
+      "median": 1,
+      "mad": 1,
+      "iqr": 1.4,
+      "p10": 0.12,
+      "p90": 2,
+      "min": 0,
+      "max": 2,
+      "narrow": false,
+      "reason": "za malo wierszy (7 < 8)"
+    },
+    {
       "cohort": "flavor_powder|flavored_ice_cream_powder_mix",
       "n": 7,
       "median": 2.27,
@@ -1323,28 +1375,15 @@
       "reason": "za malo wierszy (6 < 8)"
     },
     {
-      "cohort": "sweetener|glucose_syrup_dry",
+      "cohort": "sweetener|glucose_syrup_liquid",
       "n": 6,
-      "median": 5,
-      "mad": 0,
-      "iqr": 18.75,
-      "p10": 5,
-      "p90": 30,
-      "min": 5,
-      "max": 30,
-      "narrow": false,
-      "reason": "za malo wierszy (6 < 8)"
-    },
-    {
-      "cohort": "sweetener|maltodextrin",
-      "n": 6,
-      "median": 5,
-      "mad": 0,
-      "iqr": 0.405,
-      "p10": 4.46,
-      "p90": 5,
-      "min": 4.46,
-      "max": 5,
+      "median": 20.5,
+      "mad": 0.5,
+      "iqr": 1,
+      "p10": 18.5,
+      "p90": 21,
+      "min": 17,
+      "max": 21,
       "narrow": false,
       "reason": "za malo wierszy (6 < 8)"
     },
@@ -1386,49 +1425,10 @@
       "max": 92.7917,
       "narrow": false,
       "reason": "za malo wierszy (6 < 8)"
-    },
-    {
-      "cohort": "beverage|fruit_juice",
-      "n": 6,
-      "median": 90.19,
-      "mad": 0.3,
-      "iqr": 0.75,
-      "p10": 89.49,
-      "p90": 90.49,
-      "min": 89.49,
-      "max": 90.49,
-      "narrow": false,
-      "reason": "za malo wierszy (6 < 8)"
-    },
-    {
-      "cohort": "stabilizer|emulsifier_blend",
-      "n": 5,
-      "median": 3,
-      "mad": 2,
-      "iqr": 5,
-      "p10": 0,
-      "p90": 5,
-      "min": 0,
-      "max": 5,
-      "narrow": false,
-      "reason": "za malo wierszy (5 < 8)"
-    },
-    {
-      "cohort": "flavor_paste|coffee_dessert_paste",
-      "n": 5,
-      "median": 38.56,
-      "mad": 2.692,
-      "iqr": 6.784,
-      "p10": 16.792,
-      "p90": 40.8968,
-      "min": 5.6,
-      "max": 41.252,
-      "narrow": false,
-      "reason": "za malo wierszy (5 < 8)"
     }
   ],
-  "acceptedCount": 38,
-  "rejectedCount": 470,
+  "acceptedCount": 41,
+  "rejectedCount": 500,
   "acceptedCohorts": [
     "base_mix",
     "beverage",
@@ -1462,8 +1462,11 @@
     "beverage|soft_drink",
     "flavor_syrup|cordial_syrup",
     "alcohol|vodka",
+    "sweetener|glucose_syrup_dry",
+    "sweetener|high_intensity_sweetener",
     "beverage|mixer_soft_drink",
     "base_mix|mascarpone_powdered_ice_cream_mix",
+    "sweetener|maltodextrin",
     "bakery_inclusion|cookie_pieces",
     "confectionery_inclusion|potato_crisp_inclusion",
     "alcohol|whiskey",
@@ -1495,16 +1498,16 @@
       "iqr": 21.847
     },
     {
+      "cohort": "sweetener",
+      "n": 99,
+      "mad": 4.5,
+      "iqr": 19.25
+    },
+    {
       "cohort": "stabilizer",
       "n": 50,
       "mad": 4.48,
       "iqr": 8.475
-    },
-    {
-      "cohort": "sweetener",
-      "n": 43,
-      "mad": 5,
-      "iqr": 21.72
     },
     {
       "cohort": "specialty",

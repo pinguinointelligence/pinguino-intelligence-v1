@@ -64,13 +64,69 @@ const auditValue = (row: string[], key: string): string =>
   row[runtimeAuditIndex.get(key)!]?.trim() ?? '';
 
 describe('Mapper runtime usability contract', () => {
-  it('keeps the owner-approved 2089 baseline and classifies every row deterministically', () => {
+  /*
+    THE 2147 RELEASE, WITH ITS TWO CAPABILITY MOVEMENTS NAMED.
+
+    The owner published 2089 -> 2147 on 2026-09-07. The 58 new ingredients are the visible part;
+    the part worth pinning is what moved on ingredients that were already there:
+
+      +7  approved_for_base/engines FALSE -> TRUE, "Blocked" -> "Verified / Global Reference"
+          ERYTHRITOL, GLYCERIN, XYLITOL, MALTITOL, STEVIA, SUCRALOSE, SORBITOL.
+      -12 "Verified" -> "PI Calculated / Global DE Reference", approved_for_base still TRUE
+          seven GLUCOSE SYRUP DRY and five MALTODEXTRIN rows.
+
+    `mapperBaseSelectable` reads `approved_for_base`, so it counts 2076 + 58 + 7 = 2141 and does
+    not see the -12 at all. `verifiedPrefix()` in productBehaviorAuthority.ts reads the status, so
+    it DOES see them and now refuses twelve ordinary gelato base ingredients. The two gates
+    disagree; that disagreement is data, not code, and belongs to the owner.
+  */
+  it('carries the owner-approved 2147 release and classifies every row deterministically', () => {
     expect(createHash('sha256').update(source).digest('hex').toUpperCase()).toBe(
-      '057375CD60CEFE613892FF1D9F8F7EDA880FF0EB06732F9229051FC37D8DECA7',
+      '5047D9CA645BB2C1E2E930201AB9E82B08A04DC1E48E3263E7BA61930A5DA1F5',
     );
-    expect(rows).toHaveLength(2089);
-    expect(rows.filter(mapperBaseSelectable)).toHaveLength(2076);
-    expect(rows.filter(mapperTechnicallyCalculable)).toHaveLength(2075);
+    expect(rows).toHaveLength(2147);
+    expect(rows.filter(mapperBaseSelectable)).toHaveLength(2141);
+    expect(rows.filter(mapperTechnicallyCalculable)).toHaveLength(2140);
+  });
+
+  it('names the twelve ingredients the release withdrew from the "Verified" BASE gate', () => {
+    // Not a rule, a record: if a later release restores them this fails and someone has to say so.
+    const withdrawn = [
+      'PI-ING-000495',
+      'PI-ING-000497',
+      'PI-ING-000498',
+      'PI-ING-000499',
+      'PI-ING-000500',
+      'PI-ING-000501',
+      'PI-ING-000506',
+      'PI-ING-000507',
+      'PI-ING-000508',
+      'PI-ING-000509',
+      'PI-ING-000511',
+      'PI-ING-000512',
+    ];
+    for (const id of withdrawn) {
+      const row = rows.find((entry) => entry.ingredient_id === id)!;
+      expect(row.verification_status).toBe('PI Calculated / Global DE Reference');
+      // Still approved for Base by the flag — which is exactly why the two gates disagree.
+      expect(row.approved_for_base).toBe(true);
+      expect(mapperBaseSelectable(row)).toBe(true);
+    }
+    const unblocked = [
+      'PI-ING-001372',
+      'PI-ING-001376',
+      'PI-ING-001382',
+      'PI-ING-001385',
+      'PI-ING-001424',
+      'PI-ING-001427',
+      'PI-ING-001466',
+    ];
+    for (const id of unblocked) {
+      const row = rows.find((entry) => entry.ingredient_id === id)!;
+      expect(row.verification_status).toBe('Verified / Global Reference');
+      expect(row.approved_for_base).toBe(true);
+      expect(row.approved_for_engines).toBe(true);
+    }
   });
 
   it('treats Estimated and Needs Label Review as presentation, never eligibility', () => {
@@ -118,7 +174,14 @@ describe('Mapper runtime usability contract', () => {
     expect(mapperEngineMissingFields(exception)).toEqual(['pod_value', 'pac_value']);
   });
 
-  it('publishes exactly one complete runtime classification for all 2089 rows', () => {
+  /*
+    The audit covers 2089 of 2147. Process metadata and the ProductBehavior classification are
+    per-ingredient judgements that cannot be derived from a Mapper row, and neither exists for the
+    58 new ingredients — so the audit reports them in MAPPER_RUNTIME_USABILITY_NOT_AUDITED.csv
+    instead of counting them. The +7 unblocked sweeteners ARE in the cohort, which is why the two
+    counts below moved by exactly 7.
+  */
+  it('publishes exactly one complete runtime classification for every ingredient it can speak for', () => {
     expect(runtimeAuditRecords).toHaveLength(2089);
     expect(new Set(runtimeAuditRecords.map((row) => auditValue(row, 'ingredient_id'))).size).toBe(
       2089,
@@ -146,13 +209,31 @@ describe('Mapper runtime usability contract', () => {
     }
     expect(
       runtimeAuditRecords.filter((row) => auditValue(row, 'selectable_after') === 'TRUE'),
-    ).toHaveLength(2076);
+    ).toHaveLength(2083);
     expect(
       runtimeAuditRecords.filter((row) => auditValue(row, 'pi_calculable_after') === 'TRUE'),
-    ).toHaveLength(2075);
+    ).toHaveLength(2082);
   });
 
-  it('rejects a 2089-row authenticated export when runtime authority fields drift', () => {
+  it('names every ingredient it cannot speak for, rather than leaving it out silently', () => {
+    const notAudited = parseCsv(
+      readFileSync(
+        resolve(process.cwd(), 'reports/MAPPER_RUNTIME_USABILITY_NOT_AUDITED.csv'),
+        'utf8',
+      ),
+    );
+    const [, ...pending] = notAudited;
+    // 2147 in the Mapper, 2089 classified, and the difference must be accounted for by name.
+    expect(pending).toHaveLength(2147 - 2089);
+    const auditedIds = new Set(runtimeAuditRecords.map((row) => auditValue(row, 'ingredient_id')));
+    const pendingIds = new Set(pending.map((row) => row[0]!));
+    expect(auditedIds.size + pendingIds.size).toBe(2147);
+    for (const row of rows)
+      expect(auditedIds.has(row.ingredient_id) || pendingIds.has(row.ingredient_id)).toBe(true);
+    for (const row of pending) expect(row[4]).toContain('no_product_behavior_classification');
+  });
+
+  it('rejects a full-size authenticated export when runtime authority fields drift', () => {
     const directory = mkdtempSync(join(tmpdir(), 'mapper-authority-drift-'));
     const authorityPath = join(directory, 'authority.json');
     try {

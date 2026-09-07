@@ -1,0 +1,59 @@
+ingredient_id,ingredient_name_display,verification_status,approved_for_base,missing_evidence
+PI-ING-002115,GLUCOSE SYRUP DRY · DE20–25 · Sweetener · Dry,PI Calculated / Global DE Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002116,GLUCOSE SYRUP DRY · DE25–30 · Sweetener · Dry,PI Calculated / Global DE Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002117,GLUCOSE SYRUP DRY · DE30–32 · Sweetener · Dry,PI Calculated / Global DE Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002118,MALTODEXTRIN · DE10–13 · Sweetener · Dry,PI Calculated / Global DE Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002119,MALTODEXTRIN · DE15–18 · Sweetener · Dry,PI Calculated / Global DE Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002120,MALTODEXTRIN · DE17–20 · Sweetener · Dry,PI Calculated / Global DE Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002121,MALTODEXTRIN · DE9–11 · Sweetener · Dry,PI Calculated / Global DE Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002122,LIQUID GLUCOSE SYRUP · GENERIC · 79% SOLIDS,PI Calculated / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002123,ALLULOSE (D-PSICOSE) · Sweetener · Dry,PI Calculated / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002124,D-TAGATOSE · Sweetener · Dry,PI Calculated / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002125,ISOMALTULOSE · Sweetener · Dry,PI Calculated / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002126,MALTOSE · Sweetener · Dry,PI Calculated / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002127,MANNITOL · Sweetener · Polyol,Verified / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002128,ISOMALT · Sweetener · Polyol,PI Calculated / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002129,LACTITOL · Sweetener · Polyol,PI Calculated / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002130,SORBITOL SYRUP · 70% SOLIDS · Sweetener,PI Calculated / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002131,MALTITOL SYRUP · 75% SOLIDS · Sweetener,PI Calculated / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002132,POLYGLYCITOL SYRUP (HSH) · 75% SOLIDS · Sweetener,PI Calculated / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002133,ACESULFAME K · Sweetener · High Intensity,PI Calculated / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002134,ASPARTAME · Sweetener · High Intensity,PI Calculated / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002135,SODIUM SACCHARIN · Sweetener · High Intensity,PI Calculated / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002136,SODIUM CYCLAMATE · Sweetener · High Intensity,Verified / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002137,NEOTAME · Sweetener · High Intensity,PI Calculated / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002138,ADVANTAME · Sweetener · High Intensity,PI Calculated / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002139,MONK FRUIT EXTRACT (LUO HAN GUO / MOGROSIDES) · High Intensity,PI Calculated / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002140,THAUMATIN · Sweet Protein · High Intensity,PI Calculated / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002141,NEOHESPERIDIN DC (NHDC) · Sweetener · High Intensity,PI Calculated / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002142,ASPARTAME–ACESULFAME SALT · E962 · High Intensity,PI Calculated / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002143,ALITAME · Sweetener · High Intensity,PI Calculated / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002144,BROWN SUGAR · Sweetener · Dry,PI Calculated / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002145,COCONUT SUGAR · Sweetener · Dry,Verified / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002146,AGAVE SYRUP (AGAVE NECTAR) · Sweetener · Liquid,Verified / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002147,DATE SYRUP · Sweetener · Liquid,Verified / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002148,CANE MOLASSES · Sweetener · Liquid,Verified / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002149,BROWN RICE SYRUP · DE28 · Sweetener · Liquid,PI Calculated / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002150,BROWN RICE SYRUP · DE42 · Sweetener · Liquid,PI Calculated / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002151,BROWN RICE SYRUP · DE60 · Sweetener · Liquid,PI Calculated / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002152,BARLEY MALT SYRUP / MALT EXTRACT · Sweetener · Liquid,PI Calculated / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002153,NON-CENTRIFUGAL CANE SUGAR (PANELA / JAGGERY) · Dry,PI Calculated / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002154,PALM SUGAR · Sweetener · Dry,PI Calculated / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002155,RAW CANE SUGAR (DEMERARA / TURBINADO) · Sweetener · Dry,PI Calculated / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002156,ICING / POWDERED SUGAR · Sweetener · Dry,PI Calculated / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002157,HIGH-FRUCTOSE CORN SYRUP · HFCS55 · Liquid,Verified / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002158,HIGH-FRUCTOSE CORN SYRUP · HFCS90 · Liquid,Verified / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002159,CANE SYRUP · Sweetener · Liquid,PI Calculated / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002160,YACON CONCENTRATE · ~89% SOLIDS · Sweetener / FOS · Liquid,Verified / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002161,MAPLE SUGAR · Sweetener · Dry,PI Calculated / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002162,YACON SYRUP · ~72% SOLIDS · Sweetener / FOS · Liquid,PI Calculated / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002163,DEXTROSE ANHYDROUS · Sweetener · Dry,PI Calculated / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002164,TREHALOSE ANHYDROUS · Sweetener · Dry,PI Calculated / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002165,LIQUID SUCROSE · 67.5° BRIX · Sweetener,PI Calculated / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002166,FRUCTOSE SOLUTION · 77% SOLIDS · Sweetener,PI Calculated / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002167,LIQUID GLUCOSE SYRUP · DE38 · 83% SOLIDS,PI Calculated / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002168,LIQUID GLUCOSE SYRUP · DE42 · 80% SOLIDS,PI Calculated / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002169,LIQUID GLUCOSE SYRUP · DE47 · 79% SOLIDS,PI Calculated / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002170,LIQUID GLUCOSE SYRUP · DE60 · 80% SOLIDS,PI Calculated / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002171,OLIGOFRUCTOSE (FOS) · P95 · 95% SOLIDS · Powder,PI Calculated / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
+PI-ING-002172,OLIGOFRUCTOSE (FOS) · L95 · 75% SOLIDS · Syrup,PI Calculated / Global Reference,TRUE,no_process_metadata;no_product_behavior_classification
