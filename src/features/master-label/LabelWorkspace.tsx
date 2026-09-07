@@ -1102,7 +1102,7 @@ export function CompactRunLabelSettings({
 
       <div className="grid items-start gap-6 px-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.9fr)]">
         <aside
-          className="order-1 py-5 lg:sticky lg:top-4 lg:order-2"
+          className="order-1 min-w-0 py-5 lg:sticky lg:top-4 lg:order-2"
           data-testid="label-settings-preview"
         >
           <ConsumerLabelPreview label={draft} logoUrl={logoUrl} />
