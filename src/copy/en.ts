@@ -369,6 +369,7 @@ export const copy = {
       labels: 'Ustawienia etykiety',
       products: 'Produkty',
       scanProduct: 'Dodaj produkt',
+      unverifiedProducts: 'Niezweryfikowane',
       machine: 'Maszyna',
       community: 'Community',
       workWithUs: 'Współpraca',

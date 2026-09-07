@@ -359,7 +359,24 @@ Deno.serve(async (request) => {
   } catch {
     return json({ error: 'invalid_json' }, 400);
   }
-  const action = body.action === 'preview' ? 'preview' : 'finalize';
+/*
+    OWNER CONTRACT 2026-09-07 — three actions, not two.
+
+    'preview'          — dry run, nothing is written.
+    'finalize'         — the normal save. A product that is not production-ready still stops here
+                         with 409 `customer_product_not_ready`, because the customer must first be
+                         OFFERED the completion form; that refusal is what opens it.
+    'save_unverified'  — the customer skipped or abandoned that form, or the data is still missing
+                         after the whole rescue. The product is then persisted as PM UNVERIFIED
+                         instead of being thrown away. It is a DELIBERATE customer action: nothing
+                         auto-saves an unverified product behind their back.
+  */
+  const action =
+    body.action === 'preview'
+      ? 'preview'
+      : body.action === 'save_unverified'
+        ? 'save_unverified'
+        : 'finalize';
   const sessionId = text(body.sessionId, 64);
   const idempotencyKey = text(body.idempotencyKey, 160);
   if (
@@ -571,7 +588,9 @@ Deno.serve(async (request) => {
     .eq('state', 'analyzed');
   if (traceError) return json({ error: 'scanner_trace_persistence_failed' }, 503);
   if (action === 'preview') return json(preview);
-  if (!ready) return json({ ...preview, kind: 'customer_product_not_ready' }, 409);
+  // the completion form is offered first; only an explicit save_unverified persists an unready one
+  if (!ready && action !== 'save_unverified')
+    return json({ ...preview, kind: 'customer_product_not_ready' }, 409);
 
   const privateOverlay = objectValue(body.privateOverlay);
   if (
@@ -596,10 +615,12 @@ Deno.serve(async (request) => {
     },
   );
   if (saveError || !saved) return json({ error: 'customer_product_persistence_failed' }, 503);
+  const savedRow = objectValue(saved);
   return json({
-    ...objectValue(saved),
+    ...savedRow,
     engineUsable: profile.engineUsable,
-    usableProductCreated: true,
+    // `route` is PR | PM_READY | PM_UNVERIFIED, decided by the RPC from this same profile
+    usableProductCreated: savedRow.route !== 'PM_UNVERIFIED',
     controlledCatalog: false,
     recognition,
     mapper: preview.mapper,

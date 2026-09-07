@@ -1,4 +1,4 @@
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { ScanFlow } from '@/features/scan-flow/ScanFlow';
 import { useAuthStore } from '@/stores/authStore';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
@@ -13,6 +13,13 @@ import { applicationPrimaryClasses } from '@/components/ui/applicationControlSty
  * customer and saved as a private local product.
  */
 export function ProductScannerV1Page() {
+  /*
+    Uzupelnij dane from Produkty -> Niezweryfikowane arrives here with the saved code, so the
+    customer re-enters THE SAME completion form the scanner already shows: one form, one
+    authority, no second editor (owner contract 2026-09-07).
+  */
+  const [scanParams] = useSearchParams();
+  const initialCode = scanParams.get('code');
   const authStatus = useAuthStore((state) => state.status);
   const openAuthModal = useAuthModalStore((state) => state.open);
 
@@ -50,7 +57,7 @@ export function ProductScannerV1Page() {
       >
         ← Produkty
       </Link>
-      <ScanFlow mode="catalog" entryContext="add_product" />
+      <ScanFlow mode="catalog" entryContext="add_product" initialCode={initialCode} />
     </DestinationSurface>
   );
 }

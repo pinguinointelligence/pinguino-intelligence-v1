@@ -16,6 +16,7 @@ import type {
   RequestOutcome,
   ResearchOutcome,
   ScanResultLike,
+  FinalRoute,
 } from '../discovery/contracts';
 
 export interface FunctionsClientLike {
@@ -213,12 +214,12 @@ export function createSupabaseDiscoveryPort(
         };
       return { kind: 'analyzed', session: applySession(s, d) };
     },
-    async finalize(session, input, ctx): Promise<FinalizeOutcome> {
+    async finalize(session, input, ctx, saveUnverified): Promise<FinalizeOutcome> {
       const s = adopt(session);
       let d: Record<string, unknown>;
       try {
         d = await invoke('product-scan-finalize', {
-          action: 'finalize',
+          action: saveUnverified === true ? 'save_unverified' : 'finalize',
           sessionId: s.sessionId,
           idempotencyKey: `scan-import-v2:${ctx.accountId}:${session.identity.canonicalGtin13}:finalize`,
           customerFamily: input.customerFamily ?? null,
@@ -286,14 +287,30 @@ export function createSupabaseDiscoveryPort(
               : [],
             reasons: ['profile_preview'],
           };
-        default:
+        default: {
+          // the RPC decided the route from the canonical profile; never re-derive it here
+          const code = typeof d['productCode'] === 'string' ? (d['productCode'] as string) : null;
+          const route: FinalRoute =
+            d['route'] === 'PR' || d['route'] === 'PM_READY' || d['route'] === 'PM_UNVERIFIED'
+              ? (d['route'] as FinalRoute)
+              : // an existing shared product reused by EAN reports no route of its own
+                code?.startsWith('PR-ING-')
+                ? 'PR'
+                : d['engineUsable'] === true
+                  ? 'PM_READY'
+                  : 'PM_UNVERIFIED';
           return {
             kind: 'created',
             productId: String(d['productId'] ?? ''),
-            productCode: typeof d['productCode'] === 'string' ? (d['productCode'] as string) : null,
+            productCode: code,
             engineUsable: d['engineUsable'] === true,
             existing: d['kind'] !== 'customer_added_product',
+            route,
+            finalConfidence:
+              typeof d['finalConfidence'] === 'number' ? (d['finalConfidence'] as number) : null,
+            productionReady: d['productionReady'] === true,
           };
+        }
       }
     },
     async submitRequest(identity, ledger, session, ctx): Promise<RequestOutcome> {

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router';
+import { UnverifiedProductsPanel } from '@/features/products/UnverifiedProductsPanel';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
 import { buttonClasses } from '@/components/ui/buttonStyles';
 import { applicationPrimaryClasses } from '@/components/ui/applicationControlStyles';
@@ -334,13 +335,14 @@ export function FranchisePage() {
           />
         </div>
       </DestinationSection>
-
-
     </DestinationSurface>
   );
 }
 
 export function ProductsHubPage() {
+  const [productsParams] = useSearchParams();
+  // Produkty → Niezweryfikowane (owner contract 2026-09-07)
+  const unverifiedOnly = productsParams.get('filter') === 'unverified';
   const persona = useProCorePersona();
   const capabilities = proCoreCapabilitiesFor(persona);
   const canAdmin = useProCoreAccessStore((state) => state.effectiveAccess?.canAdmin === true);
@@ -385,7 +387,17 @@ export function ProductsHubPage() {
         />
       ) : (
         <>
-          <GlobalCatalogSearchPanel />
+          {unverifiedOnly ? (
+            <>
+              <p className="mb-4 max-w-xl text-sm text-[var(--g-text-secondary)]">
+                Produkty, którym brakuje jeszcze danych potrzebnych do receptury. Są widoczne tylko
+                dla Ciebie. Uzupełnij je, kiedy chcesz — znikną stąd same, gdy będą gotowe.
+              </p>
+              <UnverifiedProductsPanel />
+            </>
+          ) : (
+            <GlobalCatalogSearchPanel />
+          )}
           <p className="mt-8 max-w-xl text-xs leading-relaxed text-[var(--g-text-secondary)]">
             Twoja cena, dostawca, notatki i stan magazynowy pozostają prywatne.
           </p>

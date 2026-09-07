@@ -161,12 +161,17 @@ describe('Supabase discovery adapter (stub) — mirrors the legacy scan-session 
       idempotencyKey: 'scan-import-v2:user-1:4305615614434:finalize',
       customerFamily: 'other',
     });
+    // OWNER CONTRACT 2026-09-07: the server names the route; the adapter never re-derives it.
+    // A stub row with no `route` and engineUsable false falls back to PM_UNVERIFIED.
     expect(f).toEqual({
       kind: 'created',
       productId: 'CA-1',
       productCode: 'CA-ING-1',
       engineUsable: false,
       existing: false,
+      route: 'PM_UNVERIFIED',
+      finalConfidence: null,
+      productionReady: false,
     });
   });
   it('finalize: family_confirmation_required / not_ready / idempotent are mapped; no engine readiness is invented', async () => {

@@ -174,6 +174,21 @@ export const APP_NAV_ITEMS: readonly AppNavItem[] = [
     isActive: pathOrNested('/products/scan'),
   },
   {
+    /*
+      OWNER CONTRACT 2026-09-07 — Produkty → Niezweryfikowane. A private product the pipeline could
+      not make production-ready after the FULL rescue is not thrown away and is not silently
+      "saved": it is listed here, with what is missing in plain language, and the same completion
+      form the scanner uses. When it becomes ready it leaves this list by itself.
+    */
+    id: 'unverifiedProducts',
+    label: s.items.unverifiedProducts,
+    to: '/products?filter=unverified',
+    group: 'product',
+    order: 3.6,
+    audiences: ['home', 'pro'],
+    isActive: (loc) => loc.pathname === '/products' && loc.search.includes('filter=unverified'),
+  },
+  {
     id: 'machine',
     label: s.items.machine,
     to: '/machine',
