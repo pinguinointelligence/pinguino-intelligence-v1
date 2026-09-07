@@ -90,7 +90,8 @@ describe('a cached source verdict is re-derived, never replayed', () => {
       cache read that skipped this would leave every previously scanned product frozen at its first
       score. Reading pages costs HTTP; it never costs a provider call.
     */
-    expect(enrich).toContain('await confirmPagesForFacts(cachedRows,');
+    // Formatting-insensitive: prettier may wrap the call across lines.
+    expect(enrich).toMatch(/await confirmPagesForFacts\(\s*cachedRows\s*,/);
     /*
       And the classifier must still read the property that actually holds the scanned code. Pinned
       by NAME rather than by one spelling: the read is now `normalizeGtin(identity.barcode)`, and

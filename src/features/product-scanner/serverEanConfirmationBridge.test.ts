@@ -109,8 +109,9 @@ describe('the edge function confirms the code itself', () => {
     expect(edgeSource).toContain('const cache = createPageEanConfirmationCache()');
     expect(edgeSource).toMatch(/new Set\(\s*rows/);
     expect(edgeSource).toContain('MAX_CONFIRMED_PAGES');
-    expect(edgeSource).toContain('await confirmPagesForFacts(factRows,');
-    expect(edgeSource).toContain('await confirmPagesForFacts(cachedRows,');
+    // Formatting-insensitive: prettier may wrap either call across lines.
+    expect(edgeSource).toMatch(/await confirmPagesForFacts\(\s*factRows\s*,/);
+    expect(edgeSource).toMatch(/await confirmPagesForFacts\(\s*cachedRows\s*,/);
   });
 
   it('records the method and the moment on every fact', () => {
