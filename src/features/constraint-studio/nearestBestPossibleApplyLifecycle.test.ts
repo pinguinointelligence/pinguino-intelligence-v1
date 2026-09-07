@@ -5,7 +5,10 @@ import {
   type RecipeDirectionTarget,
   type RecipeInput,
 } from '@/engine';
+import { findDemoIngredient } from '@/data/demoIngredients';
+import { buildCanonicalNewRecipeStarter } from '@/features/recipes/newRecipeStarter';
 import { starterMilkBase } from '@/features/recipe-constraints/constraintFixtures';
+import type { RecipeToppingItem } from '@/features/recipe-composition/recipeCompositionPersistence';
 import {
   buildRecipeBehaviorAuthority,
   recipeInputFromFrozenBehavior,
@@ -39,13 +42,15 @@ vi.setConfig({ testTimeout: 60_000 });
 const currentResultResolution = vi.hoisted(() => ({
   blocked: false,
   incomplete: false,
+  rejectToppingsOutsideToppingModule: false,
+  useServedToppingAuthority: false,
   release: null as null | (() => void),
 }));
 
 vi.mock('@/services/productIntelligence', () => ({
   resolveRecipeProposalBehaviorSnapshots: async (input: {
     recipe: RecipeInput;
-    toppings?: readonly [];
+    toppings?: readonly RecipeToppingItem[];
     snapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>;
     module?: string;
   }) => {
@@ -65,10 +70,23 @@ vi.mock('@/services/productIntelligence', () => ({
           unresolvedLineIds: [input.recipe.items[0]!.id],
         };
       }
-      return {
-        snapshots: productBehaviorTestSnapshots(input.recipe, input.toppings),
-        unresolvedLineIds: [],
-      };
+      const snapshots = productBehaviorTestSnapshots(input.recipe, input.toppings);
+      if (currentResultResolution.useServedToppingAuthority) {
+        for (const topping of input.toppings ?? []) {
+          snapshots[topping.id] = {
+            ...snapshots[topping.id]!,
+            moduleEligibility: {
+              ...snapshots[topping.id]!.moduleEligibility,
+              MONITOR: 'blocked',
+              TOPPING: 'eligible',
+              NUTRITION: 'eligible',
+              COST: 'eligible',
+              SUMMARY: 'label_only',
+            },
+          };
+        }
+      }
+      return { snapshots, unresolvedLineIds: [] };
     }
     return {
       snapshots: Object.fromEntries(
@@ -77,16 +95,35 @@ vi.mock('@/services/productIntelligence', () => ({
       unresolvedLineIds: [],
     };
   },
-  validateRecipeBehaviorOnServer: async (input: { module: string }) => ({
-    ready: true,
-    module: input.module,
-    staleLineIds: [],
-    lines: [],
-  }),
+  validateRecipeBehaviorOnServer: async (input: {
+    module: string;
+    toppings?: readonly { id: string; planned_grams: number }[];
+  }) => {
+    const staleLineIds =
+      currentResultResolution.rejectToppingsOutsideToppingModule &&
+      input.module !== 'TOPPING'
+        ? (input.toppings ?? [])
+            .filter((topping) => topping.planned_grams > 0)
+            .map((topping) => topping.id)
+        : [];
+    return {
+      ready: staleLineIds.length === 0,
+      module: input.module,
+      staleLineIds,
+      lines: staleLineIds.map((lineId) => ({ lineId, reasons: ['context_mismatch'] })),
+    };
+  },
 }));
 
 const AT = '2026-08-26T12:00:00.000Z';
 type SuccessfulBuild = Extract<BuildPreviewResult, { ok: true }>;
+const LIME_TOPPING = {
+  ...findDemoIngredient('raspberry')!,
+  id: 'PI-ING-001640',
+  canonical_ingredient_id: 'PI-ING-001640',
+  name: 'LIME · Fresh Fruit',
+  cost_per_kg: 10,
+};
 
 const directedMilkWithHeldMain = (
   sweetness: RecipeDirectionTarget,
@@ -138,6 +175,38 @@ let score10: SuccessfulBuild;
 let score9NoSolution: BuildPreviewResult;
 let score8NoSolution: BuildPreviewResult;
 
+const canonicalProfileInput = (
+  visibleProductType: 'gelato' | 'vegan' | 'protein',
+): RecipeInput => {
+  const directions = {
+    gelato: { sweetness: -2 as const, softness: -1 as const },
+    vegan: { sweetness: -1 as const, softness: 1 as const },
+    protein: { sweetness: 2 as const, softness: 1 as const },
+  }[visibleProductType];
+  const starter = buildCanonicalNewRecipeStarter({
+    visibleProductType,
+    servingModeId: 'temp_minus_11',
+    formulationStrategy: 'optimal',
+    targetBatchGrams: 1_000,
+  });
+  return {
+    mode: 'classic',
+    category: starter.category,
+    target_temperature_c: -11,
+    target_batch_grams: 1_000,
+    machine_capacity_grams: null,
+    items: starter.items.map((item) => ({
+      ...item,
+      ingredient: { ...item.ingredient, cost_per_kg: item.ingredient.cost_per_kg ?? 10 },
+    })),
+    goals: {
+      formulation_strategy: 'optimal',
+      direction_targets_active: true,
+      direction_targets: { ...directions, creaminess: 0, flavor: 0 },
+    },
+  };
+};
+
 beforeAll(() => {
   // Three real canonical candidates are built once. Apply receives the same
   // result through the Worker seam, just as the served UI does.
@@ -160,6 +229,8 @@ beforeAll(() => {
 beforeEach(() => {
   currentResultResolution.blocked = false;
   currentResultResolution.incomplete = false;
+  currentResultResolution.rejectToppingsOutsideToppingModule = false;
+  currentResultResolution.useServedToppingAuthority = false;
   currentResultResolution.release = null;
   useRecipeStore.getState().resetToDemo();
   useRecipeProfileStore.getState().resetForTests();
@@ -211,6 +282,30 @@ const stagePreview = (built: SuccessfulBuild, acceptNearest: boolean): Constrain
   return preview;
 };
 
+const stageProfilePreviewWithLime = (
+  visibleProductType: 'gelato' | 'vegan' | 'protein',
+): ConstraintPreview => {
+  useRecipeStore.getState().loadRecipeInput(canonicalProfileInput(visibleProductType));
+  useConstraintStudioStore.getState().resetForTests();
+  useRecipeProfileStore.getState().markRecalculationRequired();
+  useRecipeStore.getState().addTopping(LIME_TOPPING, 25);
+  const draft = selectCanonicalDraft();
+  const built = buildOptimizePreview(draft.input, draft.constraints, AT, {
+    requirePracticalPreview: true,
+  });
+  expect(built.ok, built.ok ? undefined : JSON.stringify(built)).toBe(true);
+  const preview = withCurrentRevision((built as SuccessfulBuild).preview);
+  expect(preview.directionAssessment).toMatchObject({ score: 10, reached: true });
+  useConstraintStudioStore.setState({
+    preview,
+    directionBestCandidate: null,
+    directionConsent: null,
+    blocked: null,
+    recalculationTerminal: { state: 'PREVIEW_READY' },
+  });
+  return preview;
+};
+
 const immediateRuntime = (built: SuccessfulBuild): ApplyPreviewRuntime => ({
   runOptimizePreview: async (): Promise<OptimizePreviewComputation> => ({
     result: structuredClone(built),
@@ -244,12 +339,15 @@ const expectSuccessfulApply = (displayed: ConstraintPreview, expectedScore: numb
   expect(state.history[0]?.before.presentation?.preview.directionAssessment?.score).toBe(
     expectedScore,
   );
-  expect(useRecipeProfileStore.getState().awaitingRecalculation).toBe(false);
+  expect(
+    useRecipeProfileStore.getState().awaitingRecalculation,
+    JSON.stringify({ postApplyNotice: state.postApplyNotice, blocked: state.blocked }),
+  ).toBe(false);
   const currentInput = selectCanonicalDraft().input;
   const recipeState = useRecipeStore.getState();
   const currentAuthority = buildCurrentRecipeResultAuthority({
     recipe: currentInput,
-    toppings: recipeState.toppings,
+    toppings: [],
     snapshots: recipeState.productBehaviorSnapshots,
     draftRevision: recipeState.draftRevision,
     awaitingRecalculation: useRecipeProfileStore.getState().awaitingRecalculation,
@@ -261,6 +359,15 @@ const expectSuccessfulApply = (displayed: ConstraintPreview, expectedScore: numb
     recipeFingerprint: currentAuthority.recipeFingerprint,
     behaviorFingerprint: currentAuthority.behaviorFingerprint,
   });
+  const combinedAuthority = buildCurrentRecipeResultAuthority({
+    recipe: currentInput,
+    toppings: recipeState.toppings,
+    snapshots: recipeState.productBehaviorSnapshots,
+    draftRevision: recipeState.draftRevision,
+    awaitingRecalculation: useRecipeProfileStore.getState().awaitingRecalculation,
+    loading: state.applyPending,
+  });
+  expect(combinedAuthority.ready).toBe(true);
   const behaviorAuthority = buildRecipeBehaviorAuthority({
     items: currentInput.items,
     toppings: recipeState.toppings,
@@ -280,6 +387,56 @@ const expectSuccessfulApply = (displayed: ConstraintPreview, expectedScore: numb
 };
 
 describe('NEAREST / BEST-POSSIBLE Preview → Apply lifecycle', () => {
+  it.each(['gelato', 'vegan', 'protein'] as const)(
+    'BASIC4V1 %s: a positive 25 g topping is validated by TOPPING authority after 10/10 Apply',
+    async (visibleProductType) => {
+      const displayed = stageProfilePreviewWithLime(visibleProductType);
+      const built: SuccessfulBuild = { ok: true, preview: displayed };
+      const beforeApply = JSON.stringify(selectCanonicalDraft().input);
+      currentResultResolution.rejectToppingsOutsideToppingModule = true;
+      currentResultResolution.useServedToppingAuthority = true;
+
+      await applyPreviewWithServerAuthority(immediateRuntime(built));
+
+      expectSuccessfulApply(displayed, 10);
+      expect(useConstraintStudioStore.getState().postApplyNotice).toBeNull();
+      expect(useRecipeProfileStore.getState().awaitingRecalculation).toBe(false);
+      const recipe = selectCanonicalDraft().input;
+      const toppings = useRecipeStore.getState().toppings;
+      expect(recipe.items.reduce((sum, item) => sum + item.planned_grams, 0)).toBe(1_000);
+      expect(toppings).toHaveLength(1);
+      expect(toppings[0]).toMatchObject({ planned_grams: 25 });
+      expect(calculateFinalProduct(recipe, toppings).finalMassG).toBe(1_025);
+
+      const appliedState = JSON.stringify(selectCanonicalDraft().input);
+      const secondPreview = buildOptimizePreview(
+        selectCanonicalDraft().input,
+        selectCanonicalDraft().constraints,
+        AT,
+        { requirePracticalPreview: true },
+      );
+      if (secondPreview.ok) {
+        expect(vector(secondPreview.preview.proposedInput)).toEqual(workingVector());
+      } else {
+        expect(secondPreview).toMatchObject({ code: 'already_clean' });
+      }
+
+      await applyPreviewWithServerAuthority(immediateRuntime(built));
+      expect(JSON.stringify(selectCanonicalDraft().input)).toBe(appliedState);
+      expect(useConstraintStudioStore.getState().history).toHaveLength(1);
+
+      useConstraintStudioStore.getState().undoLastApply();
+      await vi.waitFor(() =>
+        expect(useConstraintStudioStore.getState().recalculationTerminal?.state).not.toBe(
+          'WORKING',
+        ),
+      );
+      expect(JSON.stringify(selectCanonicalDraft().input)).toBe(beforeApply);
+      expect(useConstraintStudioStore.getState().history).toHaveLength(0);
+    },
+    60_000,
+  );
+
   it('A. applies a normal 10/10 Preview through the same terminal lifecycle', async () => {
     const displayed = stagePreview(score10, false);
     const before = workingVector();

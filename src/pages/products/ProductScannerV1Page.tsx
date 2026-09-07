@@ -1,9 +1,10 @@
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { ScanFlow } from '@/features/scan-flow/ScanFlow';
 import { useAuthStore } from '@/stores/authStore';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
 import { applicationPrimaryClasses } from '@/components/ui/applicationControlStyles';
+import { productsReturnPath } from '@/features/products/productsFilter';
 
 /**
  * The standalone scanner destination (Produkty → „Skanuj produkt”). The scanning itself is the
@@ -13,6 +14,19 @@ import { applicationPrimaryClasses } from '@/components/ui/applicationControlSty
  * customer and saved as a private local product.
  */
 export function ProductScannerV1Page() {
+  /*
+    Uzupelnij dane from Produkty -> Niezweryfikowane arrives here with the saved code, so the
+    customer re-enters THE SAME completion form the scanner already shows: one form, one
+    authority, no second editor (owner contract 2026-09-07).
+  */
+  const [scanParams] = useSearchParams();
+  const initialCode = scanParams.get('code');
+  /*
+    OWNER CORRECTION 2026-09-07 — „Skanuj produkt" is an action ON the products page, so leaving it
+    must return to the LIST the customer came from. `?from=` names that list; without it the back
+    link dropped a customer who was completing an unverified product onto the whole catalogue.
+  */
+  const backTo = productsReturnPath(scanParams.get('from'));
   const authStatus = useAuthStore((state) => state.status);
   const openAuthModal = useAuthModalStore((state) => state.open);
 
@@ -45,12 +59,12 @@ export function ProductScannerV1Page() {
       blurb="Pokaż kod kreskowy aparatowi. Znany produkt pokażemy od razu; nowy rozpoznamy i zapiszemy jako Twój."
     >
       <Link
-        to="/products"
+        to={backTo}
         className="pro-focus-ring mb-4 inline-flex min-h-9 items-center text-xs font-semibold text-stone-600 hover:text-ink max-sm:min-h-11"
       >
         ← Produkty
       </Link>
-      <ScanFlow mode="catalog" entryContext="add_product" />
+      <ScanFlow mode="catalog" entryContext="add_product" initialCode={initialCode} />
     </DestinationSurface>
   );
 }

@@ -34,7 +34,10 @@ describe('scan flow boundary', () => {
     }
     for (const i of imports(FLOW))
       expect(i, i).toMatch(
-        /^(react|@\/scan-contract\/confirmedScan|@\/scan-import-v2|@\/services\/scanImportV2|\.\/scanCoreCapture|\.\/scanFlowLogic)$/,
+        // `@/copy/customerSafeNotice` is a pure denylist over strings — no backend, no state. It is
+        // listed deliberately: after SOL-043 the sanitiser must be applied BY DEFAULT at every
+        // customer-facing render, and this flow is one of them.
+        /^(react|@\/scan-contract\/confirmedScan|@\/scan-import-v2|@\/services\/scanImportV2|@\/copy\/customerSafeNotice|\.\/scanCoreCapture|\.\/scanFlowLogic)$/,
       );
     expect(FLOW).toMatch(/runScanImportV2\(/);
     expect(FLOW).toMatch(/continueDiscovery\(/);
@@ -87,11 +90,17 @@ describe('scan flow boundary', () => {
       expect(src).not.toMatch(/LiveProductScanner|LiveMultiScanner/);
   });
 
-  it('the hamburger opens it too, and never asks whether to add a product', () => {
-    expect(NAV).toMatch(/id: 'scanProduct'/);
-    expect(NAV).toMatch(/to: '\/products\/scan'/);
-    expect(NAV).toMatch(/audiences: \['home', 'pro'\]/);
-    // "Dodaj produkt" already IS the answer to the question, so the flow must not ask it again.
+  it('the products page opens it, and it never asks whether to add a product', () => {
+    /*
+      OWNER CORRECTION 2026-09-07. „Skanuj produkt" was promoted to the hamburger as a destination
+      of its own alongside „Produkty" and „Niezweryfikowane" — three entries for one area. It is an
+      ACTION on the products page, so that is where it lives; `/products/scan` is unchanged and the
+      drawer contract is `productsNavigationContract.test.tsx`.
+    */
+    expect(NAV).not.toMatch(/id: 'scanProduct'/);
+    expect(NAV).not.toMatch(/id: 'unverifiedProducts'/);
+    expect(read('../../pages/destinations/GlobalDestinationPages.tsx')).toContain('Skanuj produkt');
+    // „Dodaj produkt" already IS the answer to the question, so the flow must not ask it again.
     expect(FLOW).toMatch(/isRecipeEntry\(entry\) && !addConfirmedRef\.current/);
   });
 

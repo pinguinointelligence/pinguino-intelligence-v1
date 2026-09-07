@@ -1,10 +1,6 @@
 import type { RecipeInput } from '@/engine';
-import {
-  assessSorbetStabilizerSystem,
-  sorbetStabilizerSystemApplies,
-  sorbetStabilizerSystemItems,
-  sorbetStabilizerWholeGramBand,
-} from './sorbetStabilizerSystemAuthority';
+import { sorbetStabilizerSystemApplies } from './sorbetStabilizerSystemAuthority';
+import { planOwnerStabilizerSystemRescale } from './ownerStabilizerRescaleProjection';
 
 /**
  * Project an EXISTING Sorbet stabilizer system onto the whole-gram band of a
@@ -41,48 +37,5 @@ export function planSorbetStabilizerSystemRescale(
   scaled: Pick<RecipeInput, 'category' | 'target_batch_grams' | 'items'>,
 ): ReadonlyMap<string, number> | null {
   if (!sorbetStabilizerSystemApplies(scaled.category)) return null;
-  const components = sorbetStabilizerSystemItems(scaled.items);
-  if (components.length === 0) return null;
-  const band = sorbetStabilizerWholeGramBand(scaled.target_batch_grams);
-
-  const weights = components.map((item) =>
-    Number.isFinite(item.planned_grams) ? Math.max(0, item.planned_grams) : 0,
-  );
-  const weightTotal = weights.reduce((sum, weight) => sum + weight, 0);
-
-  // The system already carried its own minimum, so keeping it legal is a
-  // correction; inflating one that never did would be an invention.
-  const before = assessSorbetStabilizerSystem(source);
-  const heldMinimum =
-    before.applicable && before.present && before.band !== null
-      ? before.totalGrams >= before.band.minGrams
-      : false;
-
-  let totalGrams = Math.min(Math.round(weightTotal), band.maxGrams);
-  if (heldMinimum) totalGrams = Math.max(totalGrams, band.minGrams);
-  totalGrams = Math.max(0, Math.min(totalGrams, band.maxGrams));
-
-  const shares =
-    weightTotal > 0
-      ? weights.map((weight) => (totalGrams * weight) / weightTotal)
-      : weights.map(() => totalGrams / components.length);
-  const grams = shares.map((share) => Math.floor(share));
-  let remainder = totalGrams - grams.reduce((sum, value) => sum + value, 0);
-  const byLargestRemainder = shares
-    .map((share, index) => ({
-      index,
-      fraction: share - Math.floor(share),
-      weight: weights[index]!,
-      id: components[index]!.id,
-    }))
-    .sort(
-      (a, b) => b.fraction - a.fraction || b.weight - a.weight || a.id.localeCompare(b.id),
-    );
-  for (const entry of byLargestRemainder) {
-    if (remainder <= 0) break;
-    grams[entry.index] = grams[entry.index]! + 1;
-    remainder -= 1;
-  }
-
-  return new Map(components.map((item, index) => [item.id, grams[index]!]));
+  return planOwnerStabilizerSystemRescale(source, scaled);
 }

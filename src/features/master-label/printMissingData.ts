@@ -1,5 +1,10 @@
 import { buildNutritionDeclaration } from '@/data/label/nutritionLabel';
-import { labelAllergenStatement, type MasterLabelData, type MultilingualText } from './masterLabel';
+import {
+  buildLabelPreflight,
+  labelAllergenStatement,
+  type MasterLabelData,
+  type MultilingualText,
+} from './masterLabel';
 import { marketProfile } from './marketProfiles';
 
 export interface PrintMissingField {
@@ -8,8 +13,25 @@ export interface PrintMissingField {
   kind: 'text' | 'number' | 'date' | 'select';
   value: string;
   help?: string;
+  unit?: string;
+  reason: string;
+  source: string;
+  skippable: true;
   options?: readonly { value: string; label: string }[];
 }
+
+export type PrintMissingValues = Readonly<Record<string, string>>;
+export type PrintMissingErrors = Readonly<Record<string, string>>;
+
+const field = (
+  value: Omit<PrintMissingField, 'reason' | 'source' | 'skippable'> &
+    Partial<Pick<PrintMissingField, 'reason' | 'source'>>,
+): PrintMissingField => ({
+  ...value,
+  reason: value.reason ?? 'To pole jest wymagane przez aktywny renderer rynku.',
+  source: value.source ?? 'Brak wiarygodnej wartości w aktualnym drafcie etykiety.',
+  skippable: true,
+});
 
 const hasText = (value: string | null | undefined): boolean => Boolean(value?.trim());
 
@@ -20,7 +42,7 @@ const addNumber = (
   value: number | null | undefined,
 ) => {
   if (value === null || value === undefined || !Number.isFinite(value)) {
-    fields.push({ id, label, kind: 'number', value: '' });
+    fields.push(field({ id, label, kind: 'number', value: '' }));
   }
 };
 
@@ -33,12 +55,14 @@ const addLanguageText = (
 ) => {
   for (const language of languages) {
     if (!hasText(value?.[language])) {
-      fields.push({
-        id: `${prefix}:${language}`,
-        label: `${label} · ${language.toUpperCase()}`,
-        kind: 'text',
-        value: '',
-      });
+      fields.push(
+        field({
+          id: `${prefix}:${language}`,
+          label: `${label} · ${language.toUpperCase()}`,
+          kind: 'text',
+          value: '',
+        }),
+      );
     }
   }
 };
@@ -50,24 +74,49 @@ export function printMissingFields(label: MasterLabelData): PrintMissingField[] 
   const requires = (field: (typeof requiredFields)[number]) => requiredFields.includes(field);
   const knownAllergens = labelAllergenStatement(label) ?? '';
   if (requires('allergens') && label.allergens.status === 'incomplete') {
-    fields.push({
-      id: 'allergens',
-      label: 'Alergeny',
-      kind: 'text',
-      value: knownAllergens,
-      help: knownAllergens
-        ? 'Zachowaliśmy znaną część deklaracji. Dla części składników nadal brakuje danych.'
-        : 'Dla składników nie znaleziono końcowej deklaracji alergenów.',
-    });
+    fields.push(
+      field({
+        id: 'allergens',
+        label: 'Alergeny',
+        kind: 'text',
+        value: knownAllergens,
+        help: knownAllergens
+          ? 'Zachowaliśmy znaną część deklaracji. Dla części składników nadal brakuje danych.'
+          : 'Dla składników nie znaleziono końcowej deklaracji alergenów.',
+        reason: 'Deklaracja alergenów jest wymagana przez aktywny renderer.',
+        source: knownAllergens
+          ? 'Znana część deklaracji z aktualnej receptury lub partii.'
+          : 'Brak końcowej deklaracji w aktualnej recepturze lub partii.',
+      }),
+    );
   }
 
   if (requires('nutrition') && label.nutritionSource) {
-    addNumber(
-      fields,
-      'saturated_fat_g',
-      'Tłuszcze nasycone · g / 100 g',
-      label.nutritionSource.saturated_fat_g,
-    );
+    const saturated = label.nutritionSource.saturated_fat_g;
+    const saturatedAuthority = label.saturatedFatAuthority;
+    const hasSaturatedAuthority =
+      saturatedAuthority?.status !== undefined &&
+      saturatedAuthority.status !== 'missing' &&
+      saturatedAuthority.sourceReferences.some((reference) => reference.trim().length > 0);
+    if (
+      saturated === null ||
+      saturated === undefined ||
+      !Number.isFinite(saturated) ||
+      saturated <= 0 ||
+      !hasSaturatedAuthority
+    ) {
+      fields.push(
+        field({
+          id: 'saturated_fat_g',
+          label: 'Tłuszcze nasycone',
+          kind: 'number',
+          value: '',
+          unit: 'g / 100 g',
+          reason: 'Aktywny renderer wymaga tej wartości w tabeli żywieniowej.',
+          source: 'Brak dodatniej, wiarygodnej wartości końcowej.',
+        }),
+      );
+    }
     addNumber(fields, 'sugars_g', 'Cukry · g / 100 g', label.nutritionSource.sugars_g);
   }
 
@@ -100,23 +149,27 @@ export function printMissingFields(label: MasterLabelData): PrintMissingField[] 
   }
 
   if (requires('operator') && !hasText(label.operator.operatorName)) {
-    fields.push({ id: 'operator_name', label: 'Nazwa operatora', kind: 'text', value: '' });
+    fields.push(field({ id: 'operator_name', label: 'Nazwa operatora', kind: 'text', value: '' }));
   }
   if (requires('operator') && !hasText(label.operator.address)) {
-    fields.push({ id: 'operator_address', label: 'Adres operatora', kind: 'text', value: '' });
+    fields.push(
+      field({ id: 'operator_address', label: 'Adres operatora', kind: 'text', value: '' }),
+    );
   }
   if (requires('operator') && !hasText(label.operator.countryCode)) {
-    fields.push({ id: 'operator_country', label: 'Kod kraju operatora', kind: 'text', value: '' });
+    fields.push(
+      field({ id: 'operator_country', label: 'Kod kraju operatora', kind: 'text', value: '' }),
+    );
   }
 
   if (requires('lot') && !hasText(label.lotCode)) {
-    fields.push({ id: 'lot', label: 'LOT', kind: 'text', value: '' });
+    fields.push(field({ id: 'lot', label: 'LOT', kind: 'text', value: '' }));
   }
   if (requires('production_date') && !hasText(label.productionDate)) {
-    fields.push({ id: 'production_date', label: 'Data produkcji', kind: 'date', value: '' });
+    fields.push(field({ id: 'production_date', label: 'Data produkcji', kind: 'date', value: '' }));
   }
   if (requires('date_mark') && !label.dateMark.date) {
-    fields.push({ id: 'date_mark', label: 'Data trwałości', kind: 'date', value: '' });
+    fields.push(field({ id: 'date_mark', label: 'Data trwałości', kind: 'date', value: '' }));
   }
 
   const packageQuantity = label.packageQuantity;
@@ -173,36 +226,42 @@ export function printMissingFields(label: MasterLabelData): PrintMissingField[] 
     addLanguageText(fields, 'origin', 'Pochodzenie', label.origin, ['en']);
   }
   if (label.market === 'EU' && !hasText(label.jurisdictionContext?.euDestinationCountryCode)) {
-    fields.push({
-      id: 'eu_destination',
-      label: 'Kod kraju docelowego UE',
-      kind: 'text',
-      value: '',
-    });
+    fields.push(
+      field({
+        id: 'eu_destination',
+        label: 'Kod kraju docelowego UE',
+        kind: 'text',
+        value: '',
+      }),
+    );
   }
   if (label.market === 'UK' && label.jurisdictionContext?.ukRegion === 'unresolved') {
-    fields.push({
-      id: 'uk_region',
-      label: 'Rynek UK',
-      kind: 'select',
-      value: '',
-      options: [
-        { value: 'GB', label: 'Wielka Brytania' },
-        { value: 'NI', label: 'Irlandia Północna' },
-      ],
-    });
+    fields.push(
+      field({
+        id: 'uk_region',
+        label: 'Rynek UK',
+        kind: 'select',
+        value: '',
+        options: [
+          { value: 'GB', label: 'Wielka Brytania' },
+          { value: 'NI', label: 'Irlandia Północna' },
+        ],
+      }),
+    );
   }
   if (label.market === 'US' && label.jurisdictionContext?.usSaleContext === 'unresolved') {
-    fields.push({
-      id: 'us_sale_context',
-      label: 'Kontekst sprzedaży USA',
-      kind: 'select',
-      value: '',
-      options: [
-        { value: 'interstate_retail', label: 'Sprzedaż detaliczna' },
-        { value: 'food_service', label: 'Food service' },
-      ],
-    });
+    fields.push(
+      field({
+        id: 'us_sale_context',
+        label: 'Kontekst sprzedaży USA',
+        kind: 'select',
+        value: '',
+        options: [
+          { value: 'interstate_retail', label: 'Sprzedaż detaliczna' },
+          { value: 'food_service', label: 'Food service' },
+        ],
+      }),
+    );
   }
   if (
     label.alcoholDeclarationApplicability === 'required_beverage_over_1_2' &&
@@ -246,7 +305,13 @@ export function applyPrintMissingValues(
           reviewedByUser: true,
         },
       };
-    } else if (id === 'saturated_fat_g' && next.nutritionSource && numeric !== null) {
+    } else if (
+      id === 'saturated_fat_g' &&
+      next.nutritionSource &&
+      numeric !== null &&
+      numeric > 0 &&
+      numeric <= next.nutritionSource.fat_g
+    ) {
       const nutritionSource = { ...next.nutritionSource, saturated_fat_g: numeric };
       next = {
         ...next,
@@ -389,4 +454,88 @@ export function applyPrintMissingValues(
     }
   }
   return next;
+}
+
+export function saturatedFatValidationMessage(
+  label: MasterLabelData,
+  rawValue: string,
+): string | null {
+  if (!rawValue.trim()) return null;
+  const saturated = numberValue(rawValue);
+  const totalFat = label.nutritionSource?.fat_g;
+  if (saturated === null)
+    return 'Wpisz prawidłową wartość nie mniejszą niż 0 albo pozostaw pole puste.';
+  if (
+    totalFat !== null &&
+    totalFat !== undefined &&
+    Number.isFinite(totalFat) &&
+    saturated > totalFat
+  ) {
+    return `Tłuszcze nasycone nie mogą być większe niż tłuszcz całkowity (${totalFat
+      .toFixed(1)
+      .replace('.', ',')} g). Popraw wartość albo pozostaw pole puste.`;
+  }
+  return null;
+}
+
+/** Snapshot boundary: an impossible manual value must never be silently persisted. */
+export function assertSaturatedFatInvariant(label: MasterLabelData): void {
+  const saturated = label.nutritionSource?.saturated_fat_g;
+  if (saturated === null || saturated === undefined || saturated <= 0) return;
+  const message = saturatedFatValidationMessage(label, String(saturated));
+  if (message) throw new Error(message);
+}
+
+export function validatePrintMissingValues(
+  label: MasterLabelData,
+  values: PrintMissingValues,
+  dirtyFields: ReadonlySet<string>,
+): PrintMissingErrors {
+  const errors: Record<string, string> = {};
+  if (dirtyFields.has('saturated_fat_g')) {
+    const error = saturatedFatValidationMessage(label, values.saturated_fat_g ?? '');
+    if (error) errors.saturated_fat_g = error;
+  }
+  return errors;
+}
+
+/** Values that are absent, zero, non-finite or physiologically impossible never reach a renderer. */
+export function sanitizeLabelForOutput(label: MasterLabelData): MasterLabelData {
+  const nutrition = label.nutritionSource;
+  if (!nutrition) return label;
+  const saturated = nutrition.saturated_fat_g;
+  const authority = label.saturatedFatAuthority;
+  const printable =
+    saturated !== null &&
+    saturated !== undefined &&
+    Number.isFinite(saturated) &&
+    saturated > 0 &&
+    saturated <= nutrition.fat_g &&
+    authority?.status !== undefined &&
+    authority.status !== 'missing' &&
+    authority.sourceReferences.some((reference) => reference.trim().length > 0);
+  if (printable) return label;
+  const nutritionSource = { ...nutrition, saturated_fat_g: null };
+  return {
+    ...label,
+    nutritionSource,
+    nutritionDeclaration: buildNutritionDeclaration(nutritionSource),
+  };
+}
+
+export function printReadinessForLabel(
+  label: MasterLabelData,
+): 'PRINT_READY_UNIVERSAL' | 'PRINT_READY_REGULATORY' {
+  return buildLabelPreflight(sanitizeLabelForOutput(label)).printReadiness ===
+    'PRINT_READY_REGULATORY'
+    ? 'PRINT_READY_REGULATORY'
+    : 'PRINT_READY_UNIVERSAL';
+}
+
+export function prepareLabelForOutput(label: MasterLabelData): MasterLabelData {
+  const sanitized = sanitizeLabelForOutput(label);
+  const informational = printReadinessForLabel(sanitized) !== 'PRINT_READY_REGULATORY';
+  return informational && sanitized.purpose === 'retail_consumer'
+    ? { ...sanitized, purpose: 'internal_production' }
+    : sanitized;
 }

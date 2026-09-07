@@ -178,7 +178,18 @@ export type ScanImportV2Result =
       ledger: import('./discovery/contracts').FactLedger;
       next: 'label_photo' | 'finalize';
       evidenceError: 'provider_timeout' | 'provider_failed' | 'provider_unavailable' | null;
+      /**
+       * CUSTOMER LANGUAGE ONLY. This field is rendered on a phone. It used to be built by joining
+       * the authority's own refusal codes — the owner read
+       * „not ready: INGREDIENTS_EVIDENCE_REQUIRED, PRODUCT_SEMANTICS_UNRESOLVED, roleReadiness:REVIEW,
+       * recognition:NORMAL_INGREDIENT/BASE_ONLY" on their screen. The technical text now lives in
+       * `diagnostics`, which nothing customer-facing may print.
+       */
       note: string | null;
+      /** the authority's own vocabulary: logs, tests, admin panels. NEVER a customer screen. */
+      diagnostics?: readonly string[];
+      /** the assessment this pending verdict belongs to, so a later save cannot persist a different one */
+      assessmentHash?: string | null;
       engineReady: false;
       canonical: false;
       /** exact-GTIN registry evidence gathered alongside discovery (null = none / provider unavailable) */

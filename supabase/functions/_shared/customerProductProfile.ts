@@ -67,14 +67,61 @@ function hasDirectLabelEvidence(root: JsonObject, paths: readonly string[]): boo
   );
 }
 
-function externalEvidenceSource(root: JsonObject, paths: readonly string[]): EvidenceSource | null {
+function externalRowForField(root: JsonObject, paths: readonly string[]): JsonObject | null {
   for (const row of externalRows(root)) {
     const fields = Array.isArray(row.fieldsUsed)
       ? row.fieldsUsed.filter((field): field is string => typeof field === 'string')
       : [];
-    if (paths.some((path) => fields.includes(path))) return sourceForExternalType(row.sourceType);
+    if (paths.some((path) => fields.includes(path))) return row;
   }
   return null;
+}
+
+function externalEvidenceSource(root: JsonObject, paths: readonly string[]): EvidenceSource | null {
+  const row = externalRowForField(root, paths);
+  return row ? sourceForExternalType(row.sourceType) : null;
+}
+
+/*
+  PROVENANCE BRIDGE, consumer side (owner decision 2026-09-07).
+
+  `sourceAuthorityClass` is assigned by classifySourceAuthority inside intimport-enrich and now
+  survives into the externalSources row. These two helpers are the only readers, and both refuse
+  anything the CLIENT could have written: the class is only ever believed together with a URL
+  that carries the scanned GTIN, so a page the customer's device could name cannot promote
+  itself.
+*/
+const SERVER_TRUSTED_AUTHORITY = new Set([
+  'OFFICIAL_MANUFACTURER',
+  'OFFICIAL_BRAND',
+  'OFFICIAL_PRIVATE_LABEL',
+  'OFFICIAL_TECHNICAL_PDF',
+  'STRUCTURED_PRODUCT_DATABASE',
+  'AUTHORITATIVE_RETAILER',
+]);
+
+const scannedGtins = (root: JsonObject): string[] =>
+  (Array.isArray(root.barcodes) ? root.barcodes.map(objectValue) : [])
+    .map((entry) => (typeof entry.value === 'string' ? entry.value.replace(/\D/g, '') : ''))
+    .filter((value) => value.length >= 8);
+
+/**
+ * A source speaks for THIS product only when the page it came from names the code that was
+ * scanned. Domain reputation alone is not identity: `AUTHORITATIVE_RETAILER` proves the seller is
+ * real, never that the page is the right article.
+ */
+function exactEanBackedAuthority(
+  root: JsonObject,
+  paths: readonly string[],
+): { authority: string; row: JsonObject } | null {
+  const row = externalRowForField(root, paths);
+  if (!row) return null;
+  const authority = typeof row.sourceAuthorityClass === 'string' ? row.sourceAuthorityClass : '';
+  if (!SERVER_TRUSTED_AUTHORITY.has(authority)) return null;
+  const url = typeof row.url === 'string' ? row.url.replace(/\D/g, '') : '';
+  const gtins = scannedGtins(root);
+  if (gtins.length === 0 || !gtins.some((gtin) => url.includes(gtin))) return null;
+  return { authority, row };
 }
 
 const pathValue = (root: JsonObject, path: string): unknown =>
@@ -122,6 +169,16 @@ const DECLARATION_SOURCES = new Set<EvidenceSource>([
   'mapper_exact',
 ]);
 
+export interface CustomerEvidenceProvenance {
+  source: EvidenceSource;
+  sourceUrl: string | null;
+  sourceDomain: string | null;
+  sourceTitle: string | null;
+  sourceAuthorityClass: string | null;
+  retrievedAt: string | null;
+  evidenceReceipt: string | null;
+}
+
 export interface CustomerProductProfileProposal {
   matchInput: ProfileMatchInput;
   declared: Partial<Record<WorkingNumericField, number>>;
@@ -131,6 +188,8 @@ export interface CustomerProductProfileProposal {
   /** How `declared` was produced from it. */
   normalizationBasis: 'SOURCE_PER_100G' | 'GELLATTI_1ML_1G_NORMALIZATION' | null;
   evidence: ProductEvidenceInput;
+  /** Server-assigned source authority per field, for pages that name the scanned GTIN. */
+  evidenceProvenance: Partial<Record<ProductEvidenceField, CustomerEvidenceProvenance>>;
   recognitionEvidence: ProductSemanticEvidence;
   trustedRecognition: ProductSemanticClassification;
 }
@@ -179,7 +238,21 @@ export function customerProductProfileProposal(input: {
       // A merged Scanner result may contain a lower-authority web fill beside
       // direct label values. Keep it as evidence, but never promote it into a
       // VERIFIED Engine declaration without declaration-grade provenance.
-      if (!source || !DECLARATION_SOURCES.has(source)) continue;
+      /*
+        DECLARATION_SOURCES used to be the whole test, and it lists none of the web classes. A
+        nutrition panel resolved from the barcode's own registry record was therefore never a
+        declaration: on Sport 001 the Mapper's similar-profile estimate stood in at credit 0.8,
+        and on Sport 002 — sugar-free, so its published macros are legitimately 0 — nothing stood
+        in at all and the product scored MISSING_CARBOHYDRATE_PERCENT with the value sitting in
+        result_json. A registry or retailer page that names the scanned GTIN is now admitted on
+        the same footing, and only then.
+      */
+      if (
+        !source ||
+        (!DECLARATION_SOURCES.has(source) &&
+          exactEanBackedAuthority(root, SCAN_FIELD_PATHS[evidenceField] ?? []) === null)
+      )
+        continue;
       declared[field] = value;
       declaredBasis[field] = userConfirmed.has(evidenceField)
         ? 'user_confirmed'
@@ -195,9 +268,28 @@ export function customerProductProfileProposal(input: {
   }
 
   const fields: ProductEvidenceInput['fields'] = {};
+  /*
+    What productProductionAccuracy asks for when a field's source is `web_search` or `retailer`:
+    `evidenceProvenance[field].sourceAuthorityClass`. Nothing on the scan path ever filled it, so
+    the answer was always undefined and the credit always 0 — the ingredients text read off El
+    Corte Inglés scored 0/7 while sitting in result_json. It is filled here from the class the
+    server assigned, and only for a page that names the scanned GTIN.
+  */
+  const evidenceProvenance: Partial<Record<ProductEvidenceField, CustomerEvidenceProvenance>> = {};
   for (const field of Object.keys(SCAN_FIELD_PATHS) as ProductEvidenceField[]) {
     const source = evidenceSource(root, field, userConfirmed);
     if (source) fields[field] = source;
+    const backed = exactEanBackedAuthority(root, SCAN_FIELD_PATHS[field] ?? []);
+    if (backed && source)
+      evidenceProvenance[field] = {
+        source,
+        sourceUrl: typeof backed.row.url === 'string' ? backed.row.url : null,
+        sourceDomain: null,
+        sourceTitle: typeof backed.row.title === 'string' ? backed.row.title : null,
+        sourceAuthorityClass: backed.authority,
+        retrievedAt: null,
+        evidenceReceipt: null,
+      };
   }
   // A locally checksum-validated GTIN is exact package evidence even when the
   // barcode decoder did not emit a Vision evidence rectangle.
@@ -252,6 +344,7 @@ export function customerProductProfileProposal(input: {
       mapperFamilyMatch: input.recognition.ingredientFamily !== 'unknown',
       materialConflicts: unresolvedConflicts,
     },
+    evidenceProvenance,
     recognitionEvidence: input.recognitionEvidence,
     trustedRecognition: input.recognition,
   };

@@ -29,19 +29,19 @@ const designSubpoints = [
 }));
 
 describe('Gellatti SOL ledger continuity', () => {
-  it('contains every append-only ID exactly once from SOL-001 through SOL-050', () => {
+  it('contains every append-only ID exactly once from SOL-001 through SOL-051', () => {
     expect(entries.map(({ number }) => number)).toEqual(
-      Array.from({ length: 50 }, (_, index) => index + 1),
+      Array.from({ length: 51 }, (_, index) => index + 1),
     );
-    expect(new Set(entries.map(({ id }) => id)).size).toBe(50);
+    expect(new Set(entries.map(({ id }) => id)).size).toBe(51);
     expect(ledger).toContain(
       'IDs are append-only and are never deleted, moved, renumbered, or reused.',
     );
   });
 
-  it('reserves SOL-051 as the next free main ID without assigning it', () => {
-    expect(ledger).toContain('`NEXT_FREE_SOL_ID: SOL-051`');
-    expect(entries.some(({ id }) => id === 'SOL-051')).toBe(false);
+  it('reserves SOL-052 as the next free main ID without assigning it', () => {
+    expect(ledger).toContain('`NEXT_FREE_SOL_ID: SOL-052`');
+    expect(entries.some(({ id }) => id === 'SOL-052')).toBe(false);
   });
 
   it('records no unrecovered gap after restoring SOL-034 through SOL-038', () => {
@@ -77,6 +77,22 @@ describe('Gellatti SOL ledger continuity', () => {
     expect(ledger).toContain('staging CI run `34060072184` PASS');
     expect(ledger).toContain('deployment `dpl_6ZKwjNiZiLV7GQzT4iCzuHdJnuQq` o statusie READY');
     expect(ledger).toContain('`20260906192729_nonblocking_label_print_snapshots.sql`');
+    expect(ledger).toContain('`OWNER QA PENDING`');
+    expect(ledger).toContain('`OWNER ACCEPTED: NO`');
+  });
+
+  it('records the final SOL-031 label close-out without claiming Owner acceptance', () => {
+    expect(entries.find(({ id }) => id === 'SOL-031')?.status).toBe('RESOLVED_ON_STAGING');
+    expect(ledger).toContain('PR #221 merge `a59757c18c4c587854e490a163b477322710e511`');
+    expect(ledger).toContain('PR #224 merge `4bb77ad6bd3c535f5e626dddcf46da89609e6eb1`');
+    expect(ledger).toContain('PR #225 merge `54883d31307d5f2a0d229834e35870691e18aba3`');
+    expect(ledger).toContain('final staging SHA `54883d31307d5f2a0d229834e35870691e18aba3`');
+    expect(ledger).toContain('deployment `6311619156`');
+    expect(ledger).toContain('post-merge staging CI `34137756717`');
+    expect(ledger).toContain('33/33 PASS');
+    expect(ledger).toContain('262 PASS, 1 skipped');
+    expect(ledger).toContain('`0e4c073cf1649ccdb17876620ed65733e9d7ec2a50f9a3813febde702319da39`');
+    expect(ledger).toContain('all entries are `PENDING_OWNER_REVIEW`');
     expect(ledger).toContain('`OWNER QA PENDING`');
     expect(ledger).toContain('`OWNER ACCEPTED: NO`');
   });
@@ -169,6 +185,23 @@ describe('Gellatti SOL ledger continuity', () => {
     expect(ledger).toContain('Mapper, Engine i Product Registry nie są bezpośrednio nadpisywane');
     expect(ledger).toContain('Brak alergenów ani ceny nie zatrzymuje przejścia.');
     expect(ledger).toContain('Nie powstają duplikaty tego samego produktu użytkownika.');
+  });
+
+  it('appends the canonical vanilla-name defect as SOL-051 without claiming a fix', () => {
+    expect(entries.find(({ id }) => id === 'SOL-051')?.status).toBe('TODO');
+    expect(ledger).toContain(
+      'SOL-051 · TODO — produkt WANILIA ma nieprawidłową nazwę pochodzącą z Mappera',
+    );
+    expect(ledger).toContain('polski: `WANILIA`');
+    expect(ledger).toContain('angielski: `VANILLA`');
+    expect(ledger).toContain('`VANILIA` nie może być wyświetlane jako nazwa kanoniczna');
+    expect(ledger).toContain('znaleźć dokładny rekord lub rekordy wanilii w Mapperze');
+    expect(ledger).toContain(
+      'nie zmieniać kompozycji, parametrów technologicznych, ID ani zachowania Engine',
+    );
+    expect(ledger).toContain('potwierdzić, że poprawka nie tworzy drugiego produktu');
+    expect(ledger).toContain('dodać test zabraniający kanonicznego napisu `VANILIA`');
+    expect(ledger).toContain('`OWNER ACCEPTED: NO`');
   });
 
   it('records the proven PR #181 before PR #198 migration order', () => {

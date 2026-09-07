@@ -31,7 +31,11 @@ import { execFileSync } from 'node:child_process';
 const LOCKED_ROOT = 'src/contracts/owner-locked/';
 const APPROVAL_TRAILER = 'Owner-Locked-Change-Approved:';
 
-const git = (...args) => execFileSync('git', args, { encoding: 'utf8' }).trim();
+const git = (...args) =>
+  // Sibling guards already do this. Without it the approval-trailer read below dies with
+  // spawnSync ENOBUFS on a release-sized range: 1332 commits of `--format=%B` is over 1 MB,
+  // so the guard failed the 2026-09-07 production release for its history's SIZE, not its content.
+  execFileSync('git', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }).trim();
 
 /** Resolves the ref this change should be judged against. */
 function resolveBase() {

@@ -140,6 +140,11 @@ export interface FinalizeInput {
     supplier?: string | null;
     notes?: string | null;
   };
+  /**
+   * The hash of the assessment the customer is acting on. Sent only when nothing has been typed
+   * since it was received: a save may persist ONLY the verdict that was shown.
+   */
+  expectedAssessmentHash?: string | null;
 }
 
 export type ResearchOutcome =
@@ -155,6 +160,17 @@ export type AnalyzeOutcome =
   | { kind: 'existing_product'; product: ExactCandidate }
   | { kind: 'analyzed'; session: DiscoverySession };
 
+/**
+ * OWNER CONTRACT 2026-09-07. The final routing decision, taken once at the end of the automatic
+ * path (enrichment -> Product Registry lookup -> Mapper Rescue -> classification -> behaviour ->
+ * readiness) from the canonical profile that path produced:
+ *
+ *   PR             confidence > 85 AND productionReady   -> shared Product Registry, immediately
+ *   PM_READY       productionReady, confidence <= 85     -> private, usable in a recipe
+ *   PM_UNVERIFIED  not productionReady after the rescue  -> private, listed under Niezweryfikowane
+ */
+export type FinalRoute = 'PR' | 'PM_READY' | 'PM_UNVERIFIED';
+
 export type FinalizeOutcome =
   | {
       kind: 'created';
@@ -162,11 +178,28 @@ export type FinalizeOutcome =
       productCode: string | null;
       engineUsable: boolean;
       existing: boolean;
+      route: FinalRoute;
+      finalConfidence: number | null;
+      productionReady: boolean;
     }
   | { kind: 'family_confirmation_required'; options: readonly CustomerFamily[] }
-  | { kind: 'not_ready'; missingCritical: readonly string[]; reasons: readonly string[] }
+  /**
+   * `reasons` is DIAGNOSTIC. It carries the authority's own vocabulary — `INGREDIENTS_EVIDENCE_REQUIRED`,
+   * `roleReadiness:REVIEW`, `recognition:NORMAL_INGREDIENT/BASE_ONLY` — and the owner was shown all
+   * of it on a phone. It exists for logs, tests and the admin panels; a customer-facing renderer
+   * must never print it. What the customer reads is composed from `missingCritical` in plain Polish.
+   */
+  | {
+      kind: 'not_ready';
+      missingCritical: readonly string[];
+      reasons: readonly string[];
+      /** hash of the assessment this verdict belongs to; sent back on save so the two cannot differ */
+      assessmentHash?: string | null;
+    }
   | { kind: 'profile_rejected'; reason: string }
-  | { kind: 'identity_required' };
+  | { kind: 'identity_required' }
+  /** the save was asked to persist a verdict the customer had not been shown; ask them to repeat it */
+  | { kind: 'assessment_stale' };
 
 export type RequestOutcome =
   | { kind: 'product_request'; requestId: string; status: string }
@@ -193,6 +226,11 @@ export interface DiscoveryPort {
     session: DiscoverySession,
     input: FinalizeInput,
     ctx: RequestContext,
+    /**
+     * true only when the customer has SEEN the completion form and chosen to save anyway. Nothing
+     * persists an unverified product without that deliberate act.
+     */
+    saveUnverified?: boolean,
   ): Promise<FinalizeOutcome>;
   /** durable discovery candidate: product request pending admin verification (canonical = false) */
   submitRequest(

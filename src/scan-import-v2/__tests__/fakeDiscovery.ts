@@ -13,6 +13,7 @@ import type {
   RequestOutcome,
   ResearchOutcome,
   ScanResultLike,
+  FinalRoute,
 } from '../discovery/contracts';
 
 const CRITICAL = ['identity.displayName', 'nutrition.energyKcal', 'ingredientsText'] as const;
@@ -54,11 +55,19 @@ export class FakeDiscovery implements DiscoveryPort {
   providerError: 'provider_timeout' | 'provider_failed' | 'provider_unavailable' | null = null;
   label = new Map<string, LabelFacts>();
   /** the canonical ProductBehaviour authority's verdict per created product (never invented here) */
+  /** keyed by GTIN: does the pipeline report this product production-ready? */
   authorityEngineUsable = new Map<string, boolean>();
   sessions = new Map<string, DiscoverySession>();
   created = new Map<
     string,
-    { productId: string; productCode: string | null; engineUsable: boolean }
+    {
+      productId: string;
+      productCode: string | null;
+      engineUsable: boolean;
+      route: FinalRoute;
+      finalConfidence: number | null;
+      productionReady: boolean;
+    }
   >();
   requests = new Map<string, OwnRequest>();
   calls: string[] = [];
@@ -184,8 +193,14 @@ export class FakeDiscovery implements DiscoveryPort {
     s.recordedAt = this.clock + 1;
     return { kind: 'analyzed', session: s };
   }
-  async finalize(session: DiscoverySession, input: FinalizeInput): Promise<FinalizeOutcome> {
+  async finalize(
+    session: DiscoverySession,
+    input: FinalizeInput,
+    _ctx?: unknown,
+    saveUnverified?: boolean,
+  ): Promise<FinalizeOutcome> {
     this.calls.push(`finalize:${session.identity.canonicalGtin13}`);
+    this.finalizeInputs.push(input);
     const s = this.session(session.identity);
     // customer-entered plain fields (finalize confirmations.productFields), as the server's corrections apply them
     const pf = (input.confirmations?.productFields ?? {}) as Record<string, unknown>;
@@ -232,19 +247,60 @@ export class FakeDiscovery implements DiscoveryPort {
         ] satisfies CustomerFamily[],
       };
     const missing = missingOf(s.result);
-    if (missing.length > 0)
-      return { kind: 'not_ready', missingCritical: missing, reasons: ['critical_fields_missing'] };
+    // the completion form is offered first; only an explicit save_unverified persists an unready one
+    if (missing.length > 0 && saveUnverified !== true)
+      return {
+        kind: 'not_ready',
+        missingCritical: this.notReadyMissing.get(session.identity.canonicalGtin13) ?? missing,
+        reasons: this.notReadyReasons.get(session.identity.canonicalGtin13) ?? [
+          'critical_fields_missing',
+        ],
+        assessmentHash: this.assessmentHash.get(session.identity.canonicalGtin13) ?? null,
+      };
     const gtin = session.identity.canonicalGtin13;
     const existing = this.created.get(gtin);
     if (existing) return { kind: 'created', ...existing, existing: true };
+
+    /*
+      OWNER CONTRACT 2026-09-07 — the same two gates the RPC applies, so the harness cannot drift
+      from the server:  confidence > 85 AND productionReady -> PR, else PM. 85.00 is not above 85.
+    */
+    // productionReady keeps the pre-existing seam (`authorityEngineUsable`, default false) so the
+    // legacy lifecycle tests are unchanged; a test opts in to a ready product exactly as before.
+    const productionReady = missing.length === 0 && (this.authorityEngineUsable.get(gtin) ?? false);
+    const finalConfidence = this.confidence.get(gtin) ?? (productionReady ? 90 : 40);
+    const route: FinalRoute =
+      productionReady && finalConfidence > 85
+        ? 'PR'
+        : productionReady
+          ? 'PM_READY'
+          : 'PM_UNVERIFIED';
+    const prefix = route === 'PR' ? 'PR' : 'PM';
     const created = {
-      productId: `CA-${gtin}`,
-      productCode: `CA-ING-${gtin.slice(-6)}`,
-      engineUsable: this.authorityEngineUsable.get(`CA-${gtin}`) ?? false,
+      productId: `${prefix}-${gtin}`,
+      productCode: `${prefix}-ING-${gtin.slice(-6)}`,
+      engineUsable: productionReady,
+      route,
+      finalConfidence,
+      productionReady,
     };
     this.created.set(gtin, created);
     return { kind: 'created', ...created, existing: false };
   }
+
+  /** test seam: the final confidence the pipeline would report for this GTIN */
+  readonly confidence = new Map<string, number>();
+  /**
+   * test seams for the refusal the SERVER actually returns. `reasons` is the authority's own
+   * vocabulary (`INGREDIENTS_EVIDENCE_REQUIRED`, `roleReadiness:REVIEW`, …) — the owner read all of
+   * it on a phone — and `missingCritical` may hold codes that map to no plain field at all, which is
+   * exactly the state that put the refusal on screen.
+   */
+  readonly notReadyReasons = new Map<string, readonly string[]>();
+  readonly notReadyMissing = new Map<string, readonly string[]>();
+  readonly assessmentHash = new Map<string, string>();
+  /** every finalize request, so a test can prove an answer was not dropped between two calls */
+  readonly finalizeInputs: FinalizeInput[] = [];
   async submitRequest(
     identity: CodeIdentity,
     ledger: FactLedger,

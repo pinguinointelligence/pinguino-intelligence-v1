@@ -54,7 +54,6 @@ export const STATE = {
   /** persistent blocker after this long in the same blocking guidance */
   blockerMs: 1000,
   darkLuma: 60,
-  maxZoomSteps: 2,
   /** PROVISIONAL — needs probe evidence: READING/HOLD without a confirmation for this long raises a blocker */
   readingTimeoutMs: 4000,
 } as const;
@@ -65,7 +64,6 @@ export class TargetStateMachine {
   private candidateFrames = 0;
   private stateSince = 0;
   private trackId: string | null = null;
-  private zoomSteps = 0;
   private torchTried = false;
   private refocusTried = false;
   private guidanceSince: { code: Guidance; tMs: number } | null = null;
@@ -99,7 +97,6 @@ export class TargetStateMachine {
 
   private rearm(): void {
     this.readingSince = null;
-    this.zoomSteps = 0;
     this.torchTried = false;
     this.refocusTried = false;
     this.guidanceSince = null;
@@ -136,24 +133,27 @@ export class TargetStateMachine {
     else desired = this.state === 'SEARCHING' ? 'SEARCHING' : this.state;
     this.transition(desired, inp.tMs);
 
-    // automatic actions before guidance (audit: FOUND > 1.5 s → zoom step; dark → torch), throttled
+    // automatic actions before guidance (dark → torch only; the zoom ladder is gone), throttled
     let action: CameraAction = 'none';
-    const inFoundTooLong =
-      this.state === 'FOUND' && inp.tMs - this.stateSince > STATE.foundEscalateMs;
     const canAct = inp.tMs - this.lastActionAt > 700;
     if (canAct && p && this.state !== 'COMPLETE') {
       if (inp.meanLuma < STATE.darkLuma && inp.torchAvailable && !inp.torchOn && !this.torchTried) {
         action = 'torch_on';
         this.torchTried = true;
-      } else if (
-        inp.guidance === 'move_closer' &&
-        inp.zoomAvailable &&
-        inp.zoomApproved &&
-        this.zoomSteps < STATE.maxZoomSteps &&
-        (inFoundTooLong || this.state === 'READING')
-      ) {
-        action = 'zoom_step';
-        this.zoomSteps += 1;
+        /*
+          OWNER RULING 2026-09-06: the camera starts at a natural, safe setting and NEVER zooms
+          itself in with time. The automatic zoom ladder is removed, not merely capped.
+
+          Why capping was not enough: `maxZoomSteps` was a per-TRACK-IDENTITY budget, and
+          `rearm()` zeroes `zoomSteps` whenever the primary track id changes — which track.ts does
+          for any code that drops out of tracking for more than 500 ms. So every re-acquisition of
+          the SAME can granted two more steps, and because `ScanCoreCapture.zoomLevel` multiplies
+          the previous device value and nothing ever sets it back to 1, the ladder compounded:
+          ×1.5 → ×2.3 → ×3.5 → ×5.3 → ×8 → ×10, until the hardware clamped. At ×10 the code no
+          longer fits in the frame at all, which is why scanning became impossible rather than
+          easier. Guidance now asks the customer to move, which they can undo; a zoom they never
+          asked for, they cannot.
+        */
       } else if (
         inp.guidance === 'hold_steady' &&
         inp.refocusAvailable &&
@@ -174,13 +174,8 @@ export class TargetStateMachine {
       this.readingSince !== null && inp.tMs - this.readingSince > STATE.readingTimeoutMs;
     let guidance: Guidance = action !== 'none' ? 'none' : inp.guidance;
     if (timedOut && guidance === 'none') guidance = 'hold_steady';
-    if (
-      guidance === 'move_closer' &&
-      inp.zoomAvailable &&
-      inp.zoomApproved &&
-      this.zoomSteps < STATE.maxZoomSteps
-    )
-      guidance = 'none';
+    // (the old suppression of 'move_closer' while a zoom step was pending went with the ladder:
+    //  there is no pending zoom any more, so the customer is simply told to move closer)
     if (this.state === 'COMPLETE') guidance = 'none';
     let blocker = timedOut;
     if (guidance !== 'none' && guidance !== 'hold_steady') {

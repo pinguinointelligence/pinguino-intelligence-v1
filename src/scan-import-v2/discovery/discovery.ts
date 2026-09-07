@@ -40,6 +40,12 @@ export type DiscoveryResult = Extract<
 export type DiscoveryAction =
   | { type: 'label'; images: readonly LabelImage[] }
   | { type: 'finalize'; input: FinalizeInput }
+  /**
+   * OWNER CONTRACT 2026-09-07 — the customer has SEEN the completion form and chose to save
+   * anyway (or to finish later). The product is persisted as PM UNVERIFIED rather than thrown
+   * away. Nothing takes this path on its own: an unverified product is never auto-saved.
+   */
+  | { type: 'finalize_unverified'; input: FinalizeInput }
   | { type: 'request' };
 
 function pending(
@@ -225,7 +231,7 @@ export async function continueDiscovery(
       engineReady: false,
     };
   }
-  const f = await port.finalize(session, action.input, ctx);
+  const f = await port.finalize(session, action.input, ctx, action.type === 'finalize_unverified');
   switch (f.kind) {
     case 'created':
       return discoveredExact(session.identity, ledger, f, session.sessionId);
@@ -241,17 +247,38 @@ export async function continueDiscovery(
         options: f.options,
       };
     case 'not_ready':
+      /*
+        OWNER QA 2026-09-07. `note` used to be `not ready: ${f.reasons.join(', ')}` and `reasons`
+        holds the authority's own vocabulary, so a phone screen read
+        „not ready: INGREDIENTS_EVIDENCE_REQUIRED, PRODUCT_SEMANTICS_UNRESOLVED, roleReadiness:REVIEW,
+        recognition:NORMAL_INGREDIENT/BASE_ONLY". The refusal is unchanged and every code is still
+        carried — in `diagnostics`, which no customer renderer reads. What is missing is said in
+        plain Polish from `missingCritical`, by the screen that asks for it.
+      */
       return {
         ...pending({ ...session, missingCritical: f.missingCritical }),
-        note: `not ready: ${f.reasons.join(', ')}`,
+        note: null,
+        diagnostics: f.reasons,
+        assessmentHash: f.assessmentHash ?? null,
+      };
+    case 'assessment_stale':
+      return {
+        ...pending(session),
+        note: 'Dane produktu zmieniły się w trakcie zapisu. Spróbuj jeszcze raz.',
+        diagnostics: ['scan_assessment_stale'],
       };
     case 'profile_rejected':
-      return { ...pending(session), note: `profile rejected by the authority: ${f.reason}` };
+      return {
+        ...pending(session),
+        note: null,
+        diagnostics: ['profile_rejected', f.reason],
+      };
     case 'identity_required':
       return {
         ...pending(session),
         next: 'label_photo',
-        note: 'identity required: no trustworthy name/brand yet',
+        note: null,
+        diagnostics: ['identity_required'],
       };
   }
 }

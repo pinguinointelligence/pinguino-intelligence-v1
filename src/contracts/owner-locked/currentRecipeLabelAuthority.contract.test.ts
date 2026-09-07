@@ -1,9 +1,11 @@
 /**
  * GEL-P0-032 The PRO label belongs only to the current recipe.
  *
- * The workbench always renders the accepted flow: label first, outstanding
- * data directly below it, then print actions. Persistent label settings stay
- * on their canonical `/labels` screen and never reappear inside PRO → Etykieta.
+ * The workbench always renders the accepted flow: label first, then the two
+ * print/settings actions. Missing-data editing is intentionally absent from
+ * the main surface and is shared by Settings and the pre-print dialog.
+ * Persistent label settings stay on their canonical `/labels` screen and
+ * never reappear inside PRO → Etykieta.
  * A completed Production snapshot may replace the live draft only when its
  * recipe id, recipe version and source fingerprint all match the current
  * recipe; changing recipes or recipe content falls back to the current draft.
@@ -40,13 +42,14 @@ describe('GEL-P0-032 — the label belongs to the current recipe', () => {
 });
 
 describe('GEL-P0-032 — PRO keeps the accepted label flow', () => {
-  it('renders the label, then missing data, then the workbench print actions', () => {
+  it('renders the label, then only the workbench actions on the main surface', () => {
     const label = workspace.indexOf('data-testid="consumer-print-boundary"');
-    const missing = workspace.indexOf('data-testid="label-missing-data-stack"');
     const actions = workspace.indexOf('data-testid="label-workbench-print-actions"');
     expect(label).toBeGreaterThan(-1);
-    expect(missing).toBeGreaterThan(label);
-    expect(actions).toBeGreaterThan(missing);
+    expect(actions).toBeGreaterThan(label);
+    expect(workspace).not.toContain('data-testid="label-missing-data-stack"');
+    expect(workspace).toContain('<MissingLabelDataSettings');
+    expect(workspace).toContain('<PrintMissingDataDialog');
   });
 
   it('keeps settings out of both pre- and post-production PRO label surfaces', () => {

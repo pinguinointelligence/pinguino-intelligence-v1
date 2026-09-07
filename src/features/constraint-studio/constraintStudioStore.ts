@@ -2559,11 +2559,11 @@ async function currentRecipeResultAuthorityReady(input: {
       };
     }
 
-    const validations = await Promise.all(
+    const baseValidations = await Promise.all(
       CURRENT_RECIPE_RESULT_MODULES.map((module: ProductBehaviorModule) =>
         validateRecipeBehaviorOnServer({
           recipe: input.recipe,
-          toppings: input.toppings,
+          toppings: [],
           snapshots: resolved.snapshots,
           module,
           accountId,
@@ -2571,6 +2571,27 @@ async function currentRecipeResultAuthorityReady(input: {
         }),
       ),
     );
+    // A post-process addon has one canonical execution context: TOPPING. It
+    // contributes its frozen nutrition/cost facts to the combined local
+    // result below, but sending that same line through MONITOR/NUTRITION/COST/
+    // SUMMARY server contexts makes an otherwise current Apply look stale.
+    // This mirrors the Preview/Apply authority split above: Base validates in
+    // Base modules, positive toppings validate once through TOPPING authority.
+    const toppingRequired = productBehaviorRequiredLineIds({
+      items: [],
+      toppings: input.toppings,
+    });
+    const toppingValidation =
+      toppingRequired.length === 0
+        ? { ready: true, module: 'TOPPING' as const, staleLineIds: [] as string[], lines: [] }
+        : await validateRecipeBehaviorOnServer({
+            recipe: { ...input.recipe, items: [] },
+            toppings: input.toppings,
+            snapshots: resolved.snapshots,
+            module: 'TOPPING',
+            accountId,
+          });
+    const validations = [...baseValidations, toppingValidation];
     const staleLineIds = [
       ...new Set(validations.flatMap((validation) => validation.staleLineIds)),
     ].sort();
