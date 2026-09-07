@@ -415,8 +415,30 @@ export function labelPhotoRequest(missingCritical: readonly string[]): string {
   if (parts.length === 0)
     return 'Brakuje jeszcze danych z etykiety. Zrób zdjęcie składu i tabeli wartości odżywczych.';
   const list =
-    parts.length === 1
-      ? parts[0]
-      : `${parts.slice(0, -1).join(', ')} i ${parts[parts.length - 1]}`;
+    parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(', ')} i ${parts[parts.length - 1]}`;
   return `Brakuje ${list}. Zrób zdjęcie tej części etykiety.`;
+}
+
+/*
+  WHAT THE CUSTOMER IS TOLD THEY JUST SAVED.
+
+  The saved screen said "Zapisano jako Twój produkt (prywatny, widoczny tylko na Twoim koncie)"
+  for every outcome. That sentence was false for the common one. A scan that reaches the PR route
+  writes a SHARED registry row — `product_kind: commercial_product`, `visibility: shared`,
+  `owner_user_id: null` — and the customer was told it was visible to nobody but them. Owner scan
+  of 2026-09-07 21:16 produced exactly that: PR-ING-007196, shared, and the private sentence.
+
+  The article code is NOT the signal to read. On the live catalogue 15 `PM-` products are
+  `commercial_product` / `shared` and only ONE is `account_private`, so keying the promise on the
+  prefix would restate the same lie with extra steps. `entityKind` is what actually distinguishes
+  them: `customer_provisional` is the customer's own private row, and nothing else is.
+*/
+export function savedProductNotice(product: {
+  entityKind?: string | null;
+  productCode?: string | null;
+}): string {
+  if (product.entityKind === 'customer_provisional') {
+    return 'Zapisano jako Twój produkt (prywatny, widoczny tylko na Twoim koncie).';
+  }
+  return 'Zapisano w katalogu produktów. Twoje ceny, dostawcy, notatki i stan magazynowy pozostają prywatne.';
 }

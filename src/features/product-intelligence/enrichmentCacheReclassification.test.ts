@@ -82,16 +82,34 @@ describe('a cached source verdict is re-derived, never replayed', () => {
     expect(calls.length).toBeGreaterThanOrEqual(3); // definition + fresh path + cache path
     expect(enrich).toMatch(/function classifyFactSource\(/);
     // The cache branch must actually rewrite what it returns, not pass the row through.
-    expect(enrich).toContain('cachedResult.facts = cachedResult.facts.map(');
-    // And the classifier must still read the property that actually holds the scanned code.
-    expect(enrich).toContain("String(identity.barcode ?? '')");
-    expect(enrich).not.toContain('identity.gtin');
+    expect(enrich).toContain('cachedResult.facts = cachedRows.map(');
+    /*
+      And it must gather the SAME page evidence a fresh answer does. Two of the confirmation
+      methods cannot be derived from a stored row at all — `raw_html` needs the page's bytes, and
+      `server_enrichment_unfetchable` needs to know the page is still refusing to be read — so a
+      cache read that skipped this would leave every previously scanned product frozen at its first
+      score. Reading pages costs HTTP; it never costs a provider call.
+    */
+    // Formatting-insensitive: prettier may wrap the call across lines.
+    expect(enrich).toMatch(/await confirmPagesForFacts\(\s*cachedRows\s*,/);
+    /*
+      And the classifier must still read the property that actually holds the scanned code. Pinned
+      by NAME rather than by one spelling: the read is now `normalizeGtin(identity.barcode)`, and
+      what matters is that it is `barcode` and not some other property of an untyped literal.
+    */
+    expect(enrich).toMatch(/normalizeGtin\(identity\.barcode\)/);
+    expect(enrich).not.toMatch(/identity\.gtin\b/);
   });
 
   it('re-derives rather than invalidating, so a cache hit still costs nothing', () => {
     // `calls: 0` on the cache branch is the paid-call contract; re-deriving must not disturb it.
-    const branch = enrich.slice(enrich.indexOf('if (cached?.result_json)'));
-    expect(branch.slice(0, 2600)).toContain('calls: 0');
-    expect(branch.slice(0, 2600)).toContain('cacheHit: true');
+    const branch = enrich.slice(
+      enrich.indexOf('if (cached?.result_json)'),
+      enrich.indexOf('const askedFor ='),
+    );
+    expect(branch).toContain('calls: 0');
+    expect(branch).toContain('cacheHit: true');
+    // Nothing on this path may reach the provider.
+    expect(branch).not.toContain('fetch(`${openAiBase}');
   });
 });
