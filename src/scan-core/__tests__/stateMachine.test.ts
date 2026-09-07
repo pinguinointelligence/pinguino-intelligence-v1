@@ -138,7 +138,7 @@ describe('TargetStateMachine', () => {
     // and it stays 'none' for the action however long the same candidate is held, at any age
     for (const tMs of [2000, 2800, 3600, 4800, 9000, 20000]) {
       tr.update(60 + tMs, tMs, [cand(540, 960, 120)]);
-      out = sm.step(
+      const held = sm.step(
         base({
           tMs,
           frameIndex: 60 + tMs,
@@ -146,7 +146,8 @@ describe('TargetStateMachine', () => {
           guidance: 'move_closer',
         }),
       );
-      expect(out.action, `action at ${tMs} ms`).toBe('none');
+      expect(held.action, `action at ${tMs} ms`).toBe('none');
+      out = held;
     }
     // the persistent blocker still arrives, so the customer is never left guessing
     expect(out.blocker).toBe(true);
@@ -158,12 +159,12 @@ describe('TargetStateMachine', () => {
     // re-arm, so a code repeatedly lost and re-found must still never trigger a camera action.
     const tr = new Tracker();
     const sm = new TargetStateMachine();
-    let out = sm.step(base({}));
+    sm.step(base({}));
     for (let round = 0; round < 8; round += 1) {
       const t0 = round * 4000;
       for (let i = 0; i < 6; i += 1) {
         tr.update(round * 100 + i, t0 + i * 33, [cand(540, 960, 120)]);
-        out = sm.step(
+        const out = sm.step(
           base({
             tMs: t0 + i * 33,
             frameIndex: round * 100 + i,
@@ -175,9 +176,11 @@ describe('TargetStateMachine', () => {
       }
       // lose it for well over the tracker's 500 ms, which used to mint a fresh id and a fresh budget
       tr.update(round * 100 + 50, t0 + 2000, []);
-      out = sm.step(
-        base({ tMs: t0 + 2000, frameIndex: round * 100 + 50, primary: null, guidance: 'none' }),
-      );
+      expect(
+        sm.step(
+          base({ tMs: t0 + 2000, frameIndex: round * 100 + 50, primary: null, guidance: 'none' }),
+        ).action,
+      ).toBe('none');
     }
   });
 
