@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { productSemanticEvidenceFromScanResult } from '../../../supabase/functions/_shared/productScanner';
 import {
-  finalizeProductProductionAccuracy,
   validateIntimportProductProfileProposal,
   type IntimportMapperAuthorityRow,
 } from '../../../supabase/functions/_shared/intimportWholeProfileAuthority';
