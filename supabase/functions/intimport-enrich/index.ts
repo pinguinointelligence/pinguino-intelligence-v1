@@ -48,6 +48,41 @@ const numberEnv = (name: string, fallback: number): number => {
   return Number.isFinite(value) && value >= 0 ? value : fallback;
 };
 
+/*
+  ONE PLACE THAT DECIDES WHAT A SOURCE IS WORTH.
+
+  Authority is decided from the actual URL and from the barcode the page itself states — never
+  from the model's own claim about what kind of source it used. The page reports what it read; the
+  server compares it against the code that was scanned and draws the conclusion.
+
+  This lives in a named function because it has TWO callers: once when facts are built from a
+  fresh provider answer, and once when they are read back out of the cache. Inlining it in the
+  first was how a corrected classifier failed to reach any product that had been looked up before.
+
+  `identity` carries the scanned code as `barcode`. An earlier version read a different property
+  name off the same object; it silently produced '', so the length guard below was never
+  satisfied, the comparison never ran, and every source on earth came back OTHER_WEB — including
+  pages that had reported the exact code correctly. TypeScript cannot catch that: `identity` is an
+  untyped object literal, so a misspelled property is `undefined` rather than an error. Hence
+  `exactEanSourceAuthority.test.ts` pins the property name at source level.
+*/
+function classifyFactSource(
+  sourceUrl: string,
+  statedEanRaw: unknown,
+  identity: { brand: string | null; manufacturer: string | null; barcode: string | null },
+) {
+  const statedEan = typeof statedEanRaw === 'string' ? statedEanRaw.replace(/\D/g, '') : '';
+  const scannedEan = String(identity.barcode ?? '').replace(/\D/g, '');
+  return classifySourceAuthority({
+    url: sourceUrl,
+    brand: identity.brand,
+    manufacturer: identity.manufacturer,
+    ownerProvided: false,
+    exactEanConfirmedOnPage:
+      statedEan.length >= 8 && scannedEan.length >= 8 && statedEan === scannedEan,
+  });
+}
+
 /** Fields the caller may ask about. Anything else is refused. */
 /**
  * The provider does not honour `max_tool_calls`: a single response was observed
@@ -565,8 +600,44 @@ Deno.serve(async (request) => {
     .eq('idempotency_key', idempotencyKey)
     .maybeSingle();
   if (cached?.result_json) {
+    /*
+      THE CACHE HOLDS EVIDENCE, NOT VERDICTS.
+
+      This row stores the facts with `sourceAuthorityClass` already stamped on them, and the cache
+      key is `sha256(identity + fields + researchStep)` — it carries nothing about the code that
+      did the stamping. So a classifier fix could never reach an identity that had been looked up
+      once: the wrong verdict was replayed forever, for free, with no provider call to notice.
+
+      That is not hypothetical. Cache row 18:50:57Z for `7340222800457` holds 14 facts whose
+      `sourceStatedEan` is exactly the scanned code and whose class is `OTHER_WEB` on every one —
+      the wrong-property-name bug frozen in place. Rescanning replayed it verbatim, so the
+      deployed fix looked like it had not worked.
+
+      Re-deriving the verdict on read fixes that without invalidating anything: the inputs
+      (`sourceUrl`, `sourceStatedEan`) are all in the row, the identity is in this request, and
+      `classifySourceAuthority` is pure. No provider call, no cost, and the next classifier change
+      lands on old evidence too. Bumping a cache revision instead would have been the expensive
+      answer — it would re-buy three web searches for every product ever scanned.
+    */
+    const cachedResult = { ...(cached.result_json as Record<string, unknown>) };
+    if (Array.isArray(cachedResult.facts)) {
+      cachedResult.facts = cachedResult.facts.map((item) => {
+        const fact = objectValue(item);
+        const sourceUrl = typeof fact.sourceUrl === 'string' ? fact.sourceUrl : '';
+        if (!sourceUrl) return fact;
+        const verdict = classifyFactSource(sourceUrl, fact.sourceStatedEan, identity);
+        // An UNKNOWN verdict drops the fact when facts are built; keep the cached row as it is
+        // rather than silently changing what a stored result contains.
+        if (verdict.authority === 'UNKNOWN') return fact;
+        return {
+          ...fact,
+          sourceAuthorityClass: verdict.authority,
+          evidenceSource: verdict.evidenceSource,
+        };
+      });
+    }
     return json({
-      ...(cached.result_json as Record<string, unknown>),
+      ...cachedResult,
       evidenceReceipt: idempotencyKey,
       cacheHit: true,
       calls: 0,
@@ -686,28 +757,7 @@ Deno.serve(async (request) => {
     const value = typeof row.value === 'string' ? row.value.trim() : '';
     const sourceUrl = typeof row.sourceUrl === 'string' ? row.sourceUrl : '';
     if (!RESEARCHABLE.has(field) || value === '' || !requestedFields.includes(field)) return [];
-    /*
-      The page's own barcode claim, compared HERE against the code that was scanned. The model
-      reports what it read; the server decides what that is worth.
-    */
-    const statedEan =
-      typeof row.sourceStatedEan === 'string' ? row.sourceStatedEan.replace(/\D/g, '') : '';
-    /*
-      `identity` here carries the scanned code as `barcode`, not `gtin`. Reading the wrong name
-      silently produced '' on every call, so `scannedEan.length >= 8` was never true, the
-      comparison below never ran, and EVERY source was classified OTHER_WEB — including pages that
-      had correctly reported the exact code. TypeScript cannot see it: `identity` is an untyped
-      object literal, so the missing property is `undefined`, not an error.
-    */
-    const scannedEan = String(identity.barcode ?? '').replace(/\D/g, '');
-    const authority = classifySourceAuthority({
-      url: sourceUrl,
-      brand: identity.brand,
-      manufacturer: identity.manufacturer,
-      ownerProvided: false,
-      exactEanConfirmedOnPage:
-        statedEan.length >= 8 && scannedEan.length >= 8 && statedEan === scannedEan,
-    });
+    const authority = classifyFactSource(sourceUrl, row.sourceStatedEan, identity);
     if (authority.authority === 'UNKNOWN') return [];
     return [
       {
