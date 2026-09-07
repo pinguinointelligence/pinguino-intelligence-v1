@@ -52,6 +52,7 @@ import {
   takeGuestCode,
   labelPhotoRequest,
   plainFieldsFor,
+  savedProductNotice,
   positionHint,
   prefillFromIdentity,
   scanFeedbackText,
@@ -1299,9 +1300,7 @@ export function ScanFlow({
 
       {phase.kind === 'saved' ? (
         <div className="space-y-3">
-          <p className="text-sm font-semibold text-ink">
-            Zapisano jako Twój produkt (prywatny, widoczny tylko na Twoim koncie).
-          </p>
+          <p className="text-sm font-semibold text-ink">{savedProductNotice(phase.product)}</p>
           {recognizedLine}
           {productCard(phase.product)}
           {addButton(phase.resolved, phase.engineReady)}
