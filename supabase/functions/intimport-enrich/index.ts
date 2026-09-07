@@ -692,7 +692,14 @@ Deno.serve(async (request) => {
     */
     const statedEan =
       typeof row.sourceStatedEan === 'string' ? row.sourceStatedEan.replace(/\D/g, '') : '';
-    const scannedEan = String(identity.gtin ?? '').replace(/\D/g, '');
+    /*
+      `identity` here carries the scanned code as `barcode`, not `gtin`. Reading the wrong name
+      silently produced '' on every call, so `scannedEan.length >= 8` was never true, the
+      comparison below never ran, and EVERY source was classified OTHER_WEB — including pages that
+      had correctly reported the exact code. TypeScript cannot see it: `identity` is an untyped
+      object literal, so the missing property is `undefined`, not an error.
+    */
+    const scannedEan = String(identity.barcode ?? '').replace(/\D/g, '');
     const authority = classifySourceAuthority({
       url: sourceUrl,
       brand: identity.brand,
