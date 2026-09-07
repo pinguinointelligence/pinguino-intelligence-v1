@@ -573,10 +573,13 @@ describe('LabelWorkspace unified actual-run surface', () => {
     ).toBe('eu_declaration');
     expect(
       host.querySelector('[data-testid="label-consumer-preview-sizer"]')?.getAttribute('class'),
-    ).toContain('max-w-full');
-    expect(
-      host.querySelector('[data-testid="label-consumer-preview"]')?.getAttribute('style'),
-    ).toContain('aspect-ratio: 102 / 152');
+    ).toContain('overflow-hidden');
+    const previewStyle = host
+      .querySelector('[data-testid="label-consumer-preview"]')
+      ?.getAttribute('style');
+    expect(previewStyle).toContain('width: 385.511811');
+    expect(previewStyle).toContain('height: 574.488188');
+    expect(previewStyle).toContain('transform: scale(1)');
     const exactPreview = host.querySelector<HTMLIFrameElement>(
       '[data-testid="label-print-document-preview"]',
     );
