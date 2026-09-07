@@ -117,8 +117,27 @@ export function applyCustomerProductFamily(
     classification.intendedUsageRole === 'NEITHER_REVIEW' && defaults.role
       ? defaults.role
       : classification.intendedUsageRole;
+  /*
+    A model reason code names a field the model could not resolve. The lines above resolve up to
+    four of them from the family defaults — family, archetype, form, role — but only
+    FAMILY_UNKNOWN used to be dropped, so a code went on claiming a field was unknown that had just
+    been filled in. `modelRequired` is derived from this list, and it is a hard gate in BOTH
+    productProductionAccuracy (PRODUCT_SEMANTICS_UNRESOLVED) and productBehaviorAuthority
+    (unknown_requires_review). The customer answered, and the product stayed unresolved: that is the
+    productBehavior 8 -> 4 the owner measured on Cola Zero (94.12 -> 90.0).
+
+    A code is dropped only when its OWN field is no longer unknown, so a family whose defaults leave
+    the form or the role open — `fruit`, `sweetener`, `technical` — still keeps its code and still
+    requires the model. Nothing here changes the confidence arithmetic or either authority.
+  */
+  const resolvedByThisAnswer: Readonly<Record<string, boolean>> = {
+    FAMILY_UNKNOWN: true,
+    ARCHETYPE_UNKNOWN: productArchetype !== 'UNKNOWN',
+    FORM_UNKNOWN: physicalForm !== 'UNKNOWN',
+    ROLE_UNKNOWN: intendedUsageRole !== 'NEITHER_REVIEW',
+  };
   const modelReasonCodes = classification.modelReasonCodes.filter(
-    (reason) => reason !== 'FAMILY_UNKNOWN',
+    (reason) => resolvedByThisAnswer[reason] !== true,
   );
   return {
     ...classification,
