@@ -19,7 +19,12 @@ import { fetchMyUnverifiedProducts, type UnverifiedProduct } from '@/services/un
  * an unknown key becomes a neutral phrase rather than leaking the key itself.
  */
 const MISSING_LABEL: Record<string, string> = {
+  // the RPC returns the key the pipeline used; these are the ones it actually emits
+  ingredients: 'skład z etykiety',
   ingredientsText: 'skład z etykiety',
+  allergens: 'alergeny z etykiety',
+  nutrition: 'wartości odżywcze',
+  name: 'nazwa produktu',
   allergensText: 'alergeny z etykiety',
   product_identity: 'nazwa produktu',
   brand_or_unbranded: 'marka',

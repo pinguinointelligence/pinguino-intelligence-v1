@@ -618,7 +618,14 @@ Deno.serve(async (request) => {
   const savedRow = objectValue(saved);
   return json({
     ...savedRow,
-    engineUsable: profile.engineUsable,
+    /*
+      `engineUsable` is what the client turns into the recipe button's enabled state, so it must be
+      the ROUTING verdict, not `profile.engineUsable`. The profile flag can be true on a product the
+      pipeline has just declared not production-ready — and reporting that would put an enabled
+      "Dodaj do receptury" in front of a product the add path will refuse, which is exactly the
+      falsely-active button the owner rejected.
+    */
+    engineUsable: savedRow.productionReady === true,
     // `route` is PR | PM_READY | PM_UNVERIFIED, decided by the RPC from this same profile
     usableProductCreated: savedRow.route !== 'PM_UNVERIFIED',
     controlledCatalog: false,
