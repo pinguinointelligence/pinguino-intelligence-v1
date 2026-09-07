@@ -50,6 +50,7 @@ import {
   manualConfirmedScan,
   rememberGuestCode,
   takeGuestCode,
+  labelPhotoRequest,
   plainFieldsFor,
   positionHint,
   prefillFromIdentity,
@@ -1097,7 +1098,7 @@ export function ScanFlow({
           {recognizedLine}
           <p className="text-sm text-stone-700">
             {recognized
-              ? 'Brakuje jeszcze danych z etykiety. Zrób zdjęcie składu i tabeli wartości odżywczych.'
+              ? labelPhotoRequest(phase.session.missingCritical)
               : 'Nie znam jeszcze tego produktu. Zrób zdjęcie etykiety ze składem i tabelą wartości odżywczych.'}
           </p>
           {safeNote(phase.note) ? (
