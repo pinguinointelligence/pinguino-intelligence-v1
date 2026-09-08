@@ -192,7 +192,7 @@ export function confirmationsFromFields(
     if (n !== null) declarations[key] = n;
   }
   if (Object.keys(declarations).length > 0) productFields['productionDeclarations'] = declarations;
-  return { productFields };
+  return { evidenceOrigin: 'customer_action', productFields };
 }
 
 /* ---------------------------------------------------------------------------------------------- */
@@ -332,10 +332,7 @@ export function prefillFromIdentity(web: ExactWebIdentity): Record<string, strin
  *                      worth paying for.
  */
 export type ScanEntryContext =
-  | 'add_product'
-  | 'recipe_ingredient'
-  | 'recipe_topping'
-  | 'guest_demo';
+  'add_product' | 'recipe_ingredient' | 'recipe_topping' | 'guest_demo';
 
 /** an entry that came from a recipe: the one place the add question belongs */
 export function isRecipeEntry(entry: ScanEntryContext): boolean {

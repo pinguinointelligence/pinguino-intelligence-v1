@@ -185,6 +185,9 @@ export async function runScanImportV2(
   if (resolution.kind === 'ambiguous')
     return { kind: 'ambiguous', identity, candidates: resolution.candidates };
   if (resolution.kind === 'none') {
+    // Online exact authority says this identity is no longer usable (including quarantine). A
+    // prior offline answer must not survive that verdict and reappear on the next disconnected scan.
+    await ports.offlineCache.invalidate(ctx.accountId, identity.canonicalGtin13);
     // authenticated + discovery available: the unknown half of the product flow starts here
     if (ctx.accountId !== null && ports.discovery) {
       try {
@@ -212,5 +215,10 @@ export async function runScanImportV2(
     const ev = await research(identity, ctx, ports);
     return { kind: 'unknown', identity, next: 'analyze_label', ...ev };
   }
+  await ports.offlineCache.invalidateIfStale(
+    ctx.accountId,
+    identity.canonicalGtin13,
+    resolution.product.currentVersionId ?? null,
+  );
   return finish(identity, resolution.product, resolution.provenance, ctx, ports);
 }

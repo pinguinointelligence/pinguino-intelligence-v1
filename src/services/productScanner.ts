@@ -309,6 +309,7 @@ export async function finalizeProductScan(input: {
     | 'other'
     | null;
   confirmations?: {
+    evidenceOrigin?: 'customer_action';
     packageEvidenceExhausted?: boolean;
     /** Historical caller fields remain accepted at the service boundary. */
     noAdditionalAllergenStatementVisible?: boolean;
@@ -326,6 +327,13 @@ export async function finalizeProductScan(input: {
       productionDeclarations?: Record<string, number | string | null>;
       nutritionBasis?: 'per_100g' | 'per_100ml' | null;
     };
+  };
+  automaticEvidence?: {
+    source: 'barcode_registry';
+    exactGtin: string;
+    sourceUrl: string | null;
+    queriedAt: number;
+    productFields: Record<string, unknown>;
   };
   privateOverlay: {
     price?: number | null;
@@ -362,11 +370,7 @@ export async function finalizeProductScan(input: {
 }
 
 export type ProductRequestEvidenceKind =
-  | 'FRONT_PHOTO'
-  | 'BARCODE_PHOTO'
-  | 'INGREDIENTS_PHOTO'
-  | 'NUTRITION_PHOTO'
-  | 'OTHER';
+  'FRONT_PHOTO' | 'BARCODE_PHOTO' | 'INGREDIENTS_PHOTO' | 'NUTRITION_PHOTO' | 'OTHER';
 
 const requestEvidenceKind = (view: ScanEvidenceKind | null): ProductRequestEvidenceKind => {
   if (view === 'identity') return 'FRONT_PHOTO';

@@ -228,6 +228,7 @@ export function createSupabaseDiscoveryPort(
           sessionId: s.sessionId,
           idempotencyKey: `scan-import-v2:${ctx.accountId}:${session.identity.canonicalGtin13}:finalize`,
           customerFamily: input.customerFamily ?? null,
+          automaticEvidence: input.automaticEvidence ?? null,
           confirmations: input.confirmations ?? {},
           privateOverlay: input.privateOverlay ?? {},
           // binding when present: the save may persist only the verdict the customer was shown

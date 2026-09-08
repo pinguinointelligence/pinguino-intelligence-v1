@@ -316,6 +316,47 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     expect(text()).toContain('Zapisano jako Twój produkt');
   });
 
+  it('SOL-052: brand-only registry identity routes to front-label completion and is not finalized', async () => {
+    const { discovery, registry } = fakes();
+    const code = '7350042718481';
+    const finalizeCount = discovery.finalizeInputs.length;
+    registry.set(code, {
+      provider: 'openfoodfacts',
+      queriedAt: 1,
+      query: code,
+      confidence: 0.9,
+      facts: [
+        {
+          field: 'identity.displayName',
+          value: 'Vitamin well',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'identity.brand',
+          value: 'Vitamin Well AB',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'nutrition.energyKcal',
+          value: '17',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+      ],
+    });
+    await act(async () => {
+      root.render(<ScanFlow mode="catalog" />);
+    });
+    await typeCode(code);
+    await flush();
+    expect(text()).toContain('Brakuje dokładnej nazwy wariantu');
+    expect(text()).toContain('Zrób zdjęcie przodu opakowania');
+    expect(discovery.finalizeInputs).toHaveLength(finalizeCount);
+    expect(discovery.created.has(code)).toBe(false);
+  });
+
   it('a registry identity whose family nobody can tell asks it once, with the product name shown', async () => {
     const { registry } = fakes();
     const CODE = '5449000000996';

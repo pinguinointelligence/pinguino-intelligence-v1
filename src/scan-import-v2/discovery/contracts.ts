@@ -80,11 +80,9 @@ export interface ScanResultLike {
   allergensText?: string | null;
   package?: Record<string, unknown> | null;
   evidence?:
-    | { field: string; source: string; confidence?: string | null; assetId?: string }[]
-    | null;
+    { field: string; source: string; confidence?: string | null; assetId?: string }[] | null;
   externalSources?:
-    | { sourceType: string; url: string | null; title: string | null; fieldsUsed: string[] }[]
-    | null;
+    { sourceType: string; url: string | null; title: string | null; fieldsUsed: string[] }[] | null;
   conflicts?:
     | {
         field: string;
@@ -129,7 +127,17 @@ export type CustomerFamily =
 
 export interface FinalizeInput {
   customerFamily?: CustomerFamily | null;
+  /** Automatic exact-registry evidence. Kept outside confirmations by construction. */
+  automaticEvidence?: {
+    source: 'barcode_registry';
+    exactGtin: string;
+    sourceUrl: string | null;
+    queriedAt: number;
+    productFields: Record<string, unknown>;
+  };
   confirmations?: {
+    /** Only the form submitter may issue this marker. Missing/legacy input is not confirmation. */
+    evidenceOrigin?: 'customer_action';
     packageEvidenceExhausted?: boolean;
     notOnLabelFields?: string[];
     productFields?: Record<string, unknown>;
