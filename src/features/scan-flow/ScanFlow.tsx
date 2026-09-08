@@ -50,7 +50,9 @@ import {
   manualConfirmedScan,
   rememberGuestCode,
   takeGuestCode,
+  labelPhotoRequest,
   plainFieldsFor,
+  savedProductNotice,
   positionHint,
   prefillFromIdentity,
   scanFeedbackText,
@@ -1097,7 +1099,7 @@ export function ScanFlow({
           {recognizedLine}
           <p className="text-sm text-stone-700">
             {recognized
-              ? 'Brakuje jeszcze danych z etykiety. Zrób zdjęcie składu i tabeli wartości odżywczych.'
+              ? labelPhotoRequest(phase.session.missingCritical)
               : 'Nie znam jeszcze tego produktu. Zrób zdjęcie etykiety ze składem i tabelą wartości odżywczych.'}
           </p>
           {safeNote(phase.note) ? (
@@ -1298,9 +1300,7 @@ export function ScanFlow({
 
       {phase.kind === 'saved' ? (
         <div className="space-y-3">
-          <p className="text-sm font-semibold text-ink">
-            Zapisano jako Twój produkt (prywatny, widoczny tylko na Twoim koncie).
-          </p>
+          <p className="text-sm font-semibold text-ink">{savedProductNotice(phase.product)}</p>
           {recognizedLine}
           {productCard(phase.product)}
           {addButton(phase.resolved, phase.engineReady)}
