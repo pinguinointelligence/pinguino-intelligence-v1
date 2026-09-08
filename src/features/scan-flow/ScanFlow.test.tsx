@@ -136,6 +136,7 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     });
     discovery.label.set(UNKNOWN, { energyKcal: 300 }); // the label gives energy but no ingredients
     discovery.authorityEngineUsable.set(UNKNOWN, true);
+    discovery.confidence.set(UNKNOWN, 85); // ready, but not above the shared-PR threshold
     const onResolved = vi.fn();
     await act(async () => {
       root.render(
@@ -176,13 +177,16 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     await flush();
     // saved as the customer's private product, then handed to the recipe
     expect(text()).toContain('Zapisano jako Twój produkt');
-    expect(discovery.created.get(UNKNOWN)).toMatchObject({ productId: `PR-${UNKNOWN}` });
+    expect(discovery.created.get(UNKNOWN)).toMatchObject({
+      productId: `PM-${UNKNOWN}`,
+      route: 'PM_READY',
+    });
     await act(async () => {
       button('Dodaj do receptury')!.click();
     });
     expect(onResolved).toHaveBeenCalledTimes(1);
     expect(onResolved.mock.calls[0]![0]).toMatchObject({
-      id: `PR-${UNKNOWN}`,
+      id: `PM-${UNKNOWN}`,
       barcode: UNKNOWN,
       engineReady: true,
     });
@@ -246,9 +250,13 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     expect(text()).toContain('Milka');
     expect(text()).not.toContain('Co to za produkt?');
     expect(text()).not.toContain('Zrób zdjęcie etykiety ze składem');
-    expect(text()).toContain('Zapisano jako Twój produkt');
+    expect(text()).toContain('Zapisano w katalogu produktów');
+    expect(text()).not.toContain('widoczny tylko na Twoim koncie');
     expect(discovery.calls.filter((c) => c.startsWith(`analyze:${MILKA}`))).toHaveLength(0);
-    expect(discovery.created.get(MILKA)).toMatchObject({ productId: `PR-${MILKA}` });
+    expect(discovery.created.get(MILKA)).toMatchObject({
+      productId: `PR-${MILKA}`,
+      route: 'PR',
+    });
     await act(async () => {
       button('Dodaj do receptury')!.click();
     });

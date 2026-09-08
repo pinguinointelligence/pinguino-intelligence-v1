@@ -19,6 +19,7 @@ import type {
   DiscoverySession,
   DiscoveryStage,
   FactLedger,
+  FinalRoute,
   FinalizeInput,
   LabelImage,
 } from './contracts';
@@ -89,22 +90,28 @@ export function discoveredExact(
     productCode: string | null;
     engineUsable: boolean;
     existing: boolean;
+    route: FinalRoute;
   },
   sessionId: string,
 ): Extract<ScanImportV2Result, { kind: 'discovered_exact' }> {
+  const canonical = created.route === 'PR';
   const product: ExactCandidate = {
     productId: created.productId,
     productCode: created.productCode,
     displayName: ledger.identity.name ?? identity.value,
     brand: ledger.identity.brand,
     ean: identity.canonicalGtin13,
-    strength: 'provisional_linked',
-    entityKind: 'customer_provisional',
+    strength: canonical ? 'canonical_shared' : 'provisional_linked',
+    entityKind: canonical ? 'commercial_product' : 'customer_provisional',
     engineReady: created.engineUsable,
     mapperSlotId: null,
     country: null,
     currentVersionId: null,
-    evidence: { createdThroughFinalize: true, existing: created.existing },
+    evidence: {
+      createdThroughFinalize: true,
+      existing: created.existing,
+      finalRoute: created.route,
+    },
   };
   const stage: DiscoveryStage = created.engineUsable
     ? 'engine_ready'
@@ -122,7 +129,7 @@ export function discoveredExact(
     behaviour: created.engineUsable
       ? { outcome: 'classified', bindingId: null }
       : { outcome: 'unknown_requires_review', bindingId: null },
-    canonical: false,
+    canonical,
     readiness: {
       engineReady: created.engineUsable,
       missingCritical: ledger.missingCritical,

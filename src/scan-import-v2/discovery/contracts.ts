@@ -3,8 +3,8 @@
  *
  * After Scan Core confirms a code that the exact authority does not know, the product is NOT a dead
  * end. Discovery orchestrates the EXISTING authorities — the scan-session analysis (label evidence,
- * exact-source research), the finalize/profile/ProductBehaviour authorities (customer-provisional
- * product creation) and the product-request lifecycle (durable discovery candidate pending admin
+ * exact-source research), the finalize/profile/ProductBehaviour authorities (shared PR or private
+ * PM creation) and the product-request lifecycle (durable discovery candidate pending admin
  * verification) — and keeps every fact with its provenance and every conflict visible. It never
  * invents technical values, never assigns ProductBehaviour, never creates a Mapper row.
  */
@@ -230,7 +230,7 @@ export interface DiscoveryPort {
     images: readonly LabelImage[],
     ctx: RequestContext,
   ): Promise<AnalyzeOutcome>;
-  /** finalize: profile + ProductBehaviour authorities → customer-provisional exact SKU (never engine-ready by fiat) */
+  /** finalize: profile + ProductBehaviour authorities → explicit shared-PR or private-PM route */
   finalize(
     session: DiscoverySession,
     input: FinalizeInput,
