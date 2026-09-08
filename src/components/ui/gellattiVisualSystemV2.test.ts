@@ -63,9 +63,18 @@ describe('Gellatti Visual System V2', () => {
     // ONE Canonical Scanner (owner decision 2026-09-06): the second scanner component is gone,
     // so the same outcome-then-next-step shape is asserted where it now lives.
     const scanner = read('features', 'scan-flow', 'ScanFlow.tsx');
-    expect(scanner).toContain(
+    /*
+      The outcome sentence moved into `scanFlowLogic` when it stopped being one fixed string: a PR
+      scan publishes a shared row, and calling that "widoczny tylko na Twoim koncie" was false. The
+      shape this test guards — outcome, then next step — is unchanged, so the assertion follows the
+      sentence rather than pinning the component to a promise it can no longer honestly make.
+    */
+    const logic = read('features', 'scan-flow', 'scanFlowLogic.ts');
+    expect(scanner).toContain('savedProductNotice(phase.product)');
+    expect(logic).toContain(
       'Zapisano jako Twój produkt (prywatny, widoczny tylko na Twoim koncie).',
     );
+    expect(logic).toContain('Zapisano w katalogu produktów.');
     expect(scanner).toContain('Skanuj kolejny');
     expect(scanner).toContain('Pokaż kod kreskowy');
   });

@@ -92,11 +92,19 @@ async function route(
 
 describe('the two gates decide, and only at the end', () => {
   it('>85 and production-ready → a shared PR-ING, with no duplicate to clean up later', async () => {
-    const { d } = await route({ ready: true, confidence: 85.01 });
+    const { r, d } = await route({ ready: true, confidence: 85.01 });
     const created = d.created.get(GTIN)!;
     expect(created.route).toBe('PR');
     expect(created.productCode).toMatch(/^PR-ING-/);
     expect(created.productionReady).toBe(true);
+    expect(r).toMatchObject({
+      kind: 'discovered_exact',
+      canonical: true,
+      product: {
+        entityKind: 'commercial_product',
+        strength: 'canonical_shared',
+      },
+    });
   });
 
   it('100% and production-ready → PR-ING', async () => {
@@ -105,12 +113,20 @@ describe('the two gates decide, and only at the end', () => {
   });
 
   it('EXACTLY 85.00 is not above 85 → PM-ING READY, not PR', async () => {
-    const { d } = await route({ ready: true, confidence: 85 });
+    const { r, d } = await route({ ready: true, confidence: 85 });
     const created = d.created.get(GTIN)!;
     expect(created.route).toBe('PM_READY');
     expect(created.productCode).toMatch(/^PM-ING-/);
     // and it is still usable: a private product with enough data works in a recipe
     expect(created.engineUsable).toBe(true);
+    expect(r).toMatchObject({
+      kind: 'discovered_exact',
+      canonical: false,
+      product: {
+        entityKind: 'customer_provisional',
+        strength: 'provisional_linked',
+      },
+    });
   });
 
   it('below 85 but production-ready → PM-ING READY, usable privately', async () => {

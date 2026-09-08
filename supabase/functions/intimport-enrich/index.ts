@@ -1,5 +1,15 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
 import { classifySourceAuthority } from '../_shared/sourceAuthority.ts';
+import {
+  confirmEanOnPageDetailed,
+  createPageEanConfirmationCache,
+  isEanConfirmationMethod,
+  isServerEanConfirmation,
+  normalizeGtin,
+  resolveSourceEanConfirmation,
+  strongerEanConfirmation,
+  type PageEanConfirmation,
+} from '../_shared/pageEanConfirmation.ts';
 import { sha256Text, stableJson } from '../_shared/productScanner.ts';
 import {
   PRODUCT_RECOGNITION_MODEL_SCHEMA,
@@ -47,6 +57,88 @@ const numberEnv = (name: string, fallback: number): number => {
   const value = Number(Deno.env.get(name));
   return Number.isFinite(value) && value >= 0 ? value : fallback;
 };
+
+/*
+  ONE PLACE THAT DECIDES WHAT A SOURCE IS WORTH.
+
+  Authority is decided from the actual URL and from the barcode the page itself states — never
+  from the model's own claim about what kind of source it used. The page reports what it read; the
+  server compares it against the code that was scanned and draws the conclusion.
+
+  This lives in a named function because it has TWO callers: once when facts are built from a
+  fresh provider answer, and once when they are read back out of the cache. Inlining it in the
+  first was how a corrected classifier failed to reach any product that had been looked up before.
+
+  `identity` carries the scanned code as `barcode`. An earlier version read a different property
+  name off the same object; it silently produced '', so the length guard below was never
+  satisfied, the comparison never ran, and every source on earth came back OTHER_WEB — including
+  pages that had reported the exact code correctly. TypeScript cannot catch that: `identity` is an
+  untyped object literal, so a misspelled property is `undefined` rather than an error. Hence
+  `exactEanSourceAuthority.test.ts` pins the property name at source level.
+*/
+interface FactSourceEvidence {
+  /** What the server read on the page itself, when it could reach one. */
+  serverConfirmation: PageEanConfirmation | null;
+  /** True when the server was REFUSED the page, as opposed to reading a page without the code. */
+  pageUnreadable: boolean;
+}
+
+function classifyFactSource(
+  sourceUrl: string,
+  statedEanRaw: unknown,
+  identity: { brand: string | null; manufacturer: string | null; barcode: string | null },
+  evidence: FactSourceEvidence = { serverConfirmation: null, pageUnreadable: false },
+) {
+  const confirmed = resolveSourceEanConfirmation({
+    serverConfirmation: evidence.serverConfirmation,
+    modelStatedEan: typeof statedEanRaw === 'string' ? statedEanRaw : null,
+    scannedGtin: normalizeGtin(identity.barcode),
+    pageUnreadable: evidence.pageUnreadable,
+    url: sourceUrl,
+  });
+  return {
+    ...classifySourceAuthority({
+      url: sourceUrl,
+      brand: identity.brand,
+      manufacturer: identity.manufacturer,
+      ownerProvided: false,
+      exactEanConfirmedOnPage: confirmed.exactEanConfirmedOnPage,
+    }),
+    confirmation: confirmed.confirmation,
+    statedEan: confirmed.statedEan,
+  };
+}
+
+/**
+ * Read every page a set of facts cites, once, and report what the server found and what it was
+ * refused. Costs HTTP, never a provider call — which is why the CACHE path may run it too.
+ */
+async function confirmPagesForFacts(
+  rows: readonly Record<string, unknown>[],
+  scannedEan: string,
+): Promise<Map<string, FactSourceEvidence>> {
+  const evidence = new Map<string, FactSourceEvidence>();
+  if (scannedEan.length < 8) return evidence;
+  const MAX_CONFIRMED_PAGES = 6;
+  const cache = createPageEanConfirmationCache();
+  const pages = [
+    ...new Set(
+      rows
+        .map((row) => (typeof row.sourceUrl === 'string' ? row.sourceUrl : ''))
+        .filter((url) => /^https?:\/\//i.test(url)),
+    ),
+  ].slice(0, MAX_CONFIRMED_PAGES);
+  const outcomes = await Promise.all(
+    pages.map((page) => confirmEanOnPageDetailed({ url: page, gtin: scannedEan, cache })),
+  );
+  pages.forEach((page, index) =>
+    evidence.set(page, {
+      serverConfirmation: outcomes[index]?.confirmation ?? null,
+      pageUnreadable: outcomes[index]?.unreadable === true,
+    }),
+  );
+  return evidence;
+}
 
 /** Fields the caller may ask about. Anything else is refused. */
 /**
@@ -565,8 +657,84 @@ Deno.serve(async (request) => {
     .eq('idempotency_key', idempotencyKey)
     .maybeSingle();
   if (cached?.result_json) {
+    /*
+      THE CACHE HOLDS EVIDENCE, NOT VERDICTS.
+
+      This row stores the facts with `sourceAuthorityClass` already stamped on them, and the cache
+      key is `sha256(identity + fields + researchStep)` — it carries nothing about the code that
+      did the stamping. So a classifier fix could never reach an identity that had been looked up
+      once: the wrong verdict was replayed forever, for free, with no provider call to notice.
+
+      That is not hypothetical. Cache row 18:50:57Z for `7340222800457` holds 14 facts whose
+      `sourceStatedEan` is exactly the scanned code and whose class is `OTHER_WEB` on every one —
+      the wrong-property-name bug frozen in place. Rescanning replayed it verbatim, so the
+      deployed fix looked like it had not worked.
+
+      Re-deriving the verdict on read fixes that without invalidating anything, and it runs the
+      SAME path as a fresh answer — including reading the cited pages. That costs HTTP and never a
+      provider call, which is exactly the distinction that matters here: the expensive thing is the
+      research call, and it is not repeated. Bumping a cache revision instead would have re-bought
+      three web searches for every product ever scanned.
+
+      Reading the pages is not optional on this path. Two of the confirmation methods cannot be
+      derived from a stored row at all — `raw_html` needs the page's bytes, and
+      `server_enrichment_unfetchable` needs to know the page is STILL refusing to be read. Skipping
+      them here would leave every cached product stuck at whatever it scored the first time.
+    */
+    const cachedResult = { ...(cached.result_json as Record<string, unknown>) };
+    if (Array.isArray(cachedResult.facts)) {
+      const cachedRows = cachedResult.facts.map(objectValue);
+      const cachedEvidence = await confirmPagesForFacts(
+        cachedRows,
+        normalizeGtin(identity.barcode),
+      );
+      cachedResult.facts = cachedRows.map((fact) => {
+        const sourceUrl = typeof fact.sourceUrl === 'string' ? fact.sourceUrl : '';
+        if (!sourceUrl) return fact;
+        const verdict = classifyFactSource(
+          sourceUrl,
+          fact.sourceStatedEan,
+          identity,
+          cachedEvidence.get(sourceUrl) ?? { serverConfirmation: null, pageUnreadable: false },
+        );
+        // An UNKNOWN verdict drops the fact when facts are built; keep the cached row as it is
+        // rather than silently changing what a stored result contains.
+        if (verdict.authority === 'UNKNOWN') return fact;
+        /*
+          Evidence does not go backwards. A page that answered today with less than it did before —
+          a fresh 403, a timeout, a rewritten template — must not unmake a code the server already
+          read, so the stored confirmation is only replaced by a strictly stronger one.
+        */
+        const priorConfirmation = isEanConfirmationMethod(fact.sourceEanConfirmationMethod)
+          ? {
+              method: fact.sourceEanConfirmationMethod,
+              gtin: normalizeGtin(fact.sourceStatedEan),
+              url: sourceUrl,
+              confirmedAt:
+                typeof fact.sourceEanConfirmedAt === 'string' ? fact.sourceEanConfirmedAt : '',
+            }
+          : null;
+        const kept = strongerEanConfirmation(priorConfirmation, verdict.confirmation);
+        const promoted = isServerEanConfirmation(kept?.method)
+          ? classifySourceAuthority({
+              url: sourceUrl,
+              brand: identity.brand,
+              manufacturer: identity.manufacturer,
+              ownerProvided: false,
+              exactEanConfirmedOnPage: true,
+            })
+          : verdict;
+        return {
+          ...fact,
+          sourceAuthorityClass: promoted.authority,
+          evidenceSource: promoted.evidenceSource,
+          sourceEanConfirmationMethod: kept?.method ?? null,
+          sourceEanConfirmedAt: kept?.confirmedAt ?? null,
+        };
+      });
+    }
     return json({
-      ...(cached.result_json as Record<string, unknown>),
+      ...cachedResult,
       evidenceReceipt: idempotencyKey,
       cacheHit: true,
       calls: 0,
@@ -678,29 +846,47 @@ Deno.serve(async (request) => {
     }
   }
 
+  const factRows = (Array.isArray(parsed.facts) ? parsed.facts : []).map(objectValue);
+
+  /*
+    SERVER-SIDE EXACT-EAN CONFIRMATION.
+
+    The schema asks the model for `sourceStatedEan`, and the owner's real sessions of 2026-09-07
+    show what that is worth: across EIGHT external sources in two scans the model returned the
+    printed code ONCE. Whether a language model copies a number off a page is not a property of
+    the evidence, so the server now determines it — it opens the page itself and looks.
+
+    Every page is fetched at most once per invocation, and the distinct pages are resolved together
+    so a slow host costs one timeout for the whole call rather than one each. The fetch is bounded
+    and every failure is silent: an unreachable page simply yields no confirmation.
+
+    `identity` carries the scanned code as `barcode`, never `gtin` (#237). Reading the wrong name
+    produced '' on every call, so the comparison never ran and EVERY source came back OTHER_WEB —
+    including pages that had correctly reported the exact code. TypeScript cannot see it: `identity`
+    is an untyped object literal, so a missing property is `undefined`, not an error.
+  */
+  const scannedEan = normalizeGtin(identity.barcode);
+  const pageEvidence = await confirmPagesForFacts(factRows, scannedEan);
+
   // Authority is decided HERE, from the actual URL — never from the model's own
   // claim about what kind of source it used.
-  const facts = (Array.isArray(parsed.facts) ? parsed.facts : []).flatMap((item) => {
-    const row = objectValue(item);
+  const facts = factRows.flatMap((row) => {
     const field = String(row.field ?? '');
     const value = typeof row.value === 'string' ? row.value.trim() : '';
     const sourceUrl = typeof row.sourceUrl === 'string' ? row.sourceUrl : '';
     if (!RESEARCHABLE.has(field) || value === '' || !requestedFields.includes(field)) return [];
     /*
-      The page's own barcode claim, compared HERE against the code that was scanned. The model
-      reports what it read; the server decides what that is worth.
+      What the SERVER read on that page outranks everything else. Below that, the two failures are
+      not the same: a page the server READ which does not name the code leaves a matching model
+      claim corroborating but not promoting; a page the server was REFUSED lets that same claim
+      stand as auxiliary confirmation, because a 403 is a statement about bot policy, not product.
     */
-    const statedEan =
-      typeof row.sourceStatedEan === 'string' ? row.sourceStatedEan.replace(/\D/g, '') : '';
-    const scannedEan = String(identity.gtin ?? '').replace(/\D/g, '');
-    const authority = classifySourceAuthority({
-      url: sourceUrl,
-      brand: identity.brand,
-      manufacturer: identity.manufacturer,
-      ownerProvided: false,
-      exactEanConfirmedOnPage:
-        statedEan.length >= 8 && scannedEan.length >= 8 && statedEan === scannedEan,
-    });
+    const authority = classifyFactSource(
+      sourceUrl,
+      row.sourceStatedEan,
+      identity,
+      pageEvidence.get(sourceUrl) ?? { serverConfirmation: null, pageUnreadable: false },
+    );
     if (authority.authority === 'UNKNOWN') return [];
     return [
       {
@@ -710,9 +896,13 @@ Deno.serve(async (request) => {
         sourceDomain: authority.domain,
         sourceTitle: sourceByUrl.get(sourceUrl)?.title ?? null,
         sourceAuthorityClass: authority.authority,
-        // The page's own claim, carried unjudged. The server compares it downstream.
-        sourceStatedEan:
-          typeof row.sourceStatedEan === 'string' ? row.sourceStatedEan.replace(/\D/g, '') : '',
+        // The barcode this page states: the server's own reading when it has one, the model's
+        // claim otherwise — carried unjudged, exactly as before.
+        sourceStatedEan: authority.statedEan,
+        // HOW and WHEN it was established, so a later reader can tell a server confirmation from
+        // the model's word instead of having to trust both equally.
+        sourceEanConfirmationMethod: authority.confirmation?.method ?? null,
+        sourceEanConfirmedAt: authority.confirmation?.confirmedAt ?? null,
         evidenceSource: authority.evidenceSource,
         retrievedAt: new Date().toISOString(),
       },

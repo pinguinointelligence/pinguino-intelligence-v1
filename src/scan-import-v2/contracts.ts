@@ -196,7 +196,7 @@ export type ScanImportV2Result =
       externalEvidence?: ExternalEvidence | null;
     }
   | {
-      /** a NEW exact SKU created through the finalize/profile/ProductBehaviour authorities (customer-provisional) */
+      /** an exact SKU persisted by the final authority as either shared PR or private PM */
       kind: 'discovered_exact';
       identity: CodeIdentity;
       sessionId: string;
@@ -205,7 +205,7 @@ export type ScanImportV2Result =
       ledger: import('./discovery/contracts').FactLedger;
       engineReady: boolean;
       behaviour: { outcome: BehaviourOutcome; bindingId: string | null };
-      canonical: false;
+      canonical: boolean;
       readiness: { engineReady: boolean; missingCritical: readonly string[]; note: string | null };
     }
   | {
