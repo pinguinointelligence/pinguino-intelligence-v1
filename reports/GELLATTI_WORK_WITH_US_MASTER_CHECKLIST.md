@@ -130,6 +130,32 @@ Copy authority: `src/copy/cooperation.ts` (PL + EN, `resolveCooperationCopy`). N
 | A-GATE-06 | Gateway | Legacy anchors/links to the removed cards redirect, nothing 404s | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | `w.offers.*` copy has downstream consumers | Grep consumers before deleting |
 | A-GATE-07 | Gateway | Desktop + mobile served QA of the gateway | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | After A-GATE-01..06 |
 
+### A-IA — Collaboration information architecture (owner decision 2026-09-03)
+
+Supersedes the A-GATE rows above: there is no Work With Us gateway any more. Those rows stay
+visible and ⚪ because they were never built, not because they were done — they describe a surface
+the owner has since retired. Nothing is renamed or deleted.
+
+| ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | PR/SHA | Problem / Why | Next Action |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| A-IA-01 | Nav | Hamburger exposes exactly TWO collaboration entries: Affiliate and Franchise | 🟢 | ✅ | ✅ | ⬜ | 🔓 | `70e1e423` (#142) | — | Owner QA |
+| A-IA-02 | Nav | Work With Us removed from app nav AND desktop mega menu | 🟢 | ✅ | ✅ | ⬜ | 🔓 | `70e1e423` (#142) | — | Owner QA |
+| A-IA-03 | Nav | No top-level entry for Machines / Mobile / Trailer; they are concepts inside Franchise | 🟢 | ✅ | ✅ | ⬜ | 🔓 | `70e1e423` (#142) | — | Owner QA |
+| A-IA-04 | Routing | `/work-with-us` redirects to `/franchise`, preserving search AND hash | 🟢 | ✅ | ✅ | ⬜ | 🔓 | `70e1e423` (#142) | — | Owner QA |
+| A-IA-05 | Enquiry | ONE Franchise enquiry: FranchiseInquiryForm → franchise_inquiries → AdminFranchiseLeadsSection | 🟢 | ✅ | ✅ | ⬜ | 🔓 | `70e1e423` (#142) | Legacy LeadEnquirySection unmounted; `business_leads` kept read-only (3 rows) | Owner QA |
+| A-IA-06 | Enquiry | Entry source preserved: `?from=` preselects concept and is recorded as source_route | 🟢 | ✅ | ✅ | ⬜ | 🔓 | `70e1e423` (#142) | — | Owner QA |
+| A-IA-07 | DB | `franchise_inquiries.source_route` column + RPC allowlist applied | 🟢 | ✅ | ✅ | ⬜ | 🔓 | migration `20260903140000`, applied 2026-09-06 | Deploy does NOT auto-apply migrations — this was dead until applied by hand | Owner QA |
+| A-IA-08 | QA | Served desktop 1440 + mobile 390 | 🟢 | ✅ | ✅ | ⬜ | 🔓 | `70e1e423` deployment `dpl_Bm42Crm6kqnZVyxxpD5b9w7N7Kym` | — | Owner QA |
+| A-IA-09 | Formats | Trailer / Mobile / Machines reachable FROM Franchise, from the same LANES source | 🟢 | ✅ | ✅ | ⬜ | 🔓 | `70e1e423` (#142) | — | Owner QA |
+| A-IA-10 | Concepts | `/machines` maps to no concept — equipment is not one of the 4 approved formats | 🟡 | ✅ | ✅ | ⬜ | 🔓 | `70e1e423` (#142) | Distinguished by source_route only. Making machines a 5th concept is a canonical contract change | **OWNER DECISION** |
+
+### A-DEF — Defects found while working, not caused by this workstream
+
+| ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | PR/SHA | Problem / Why | Next Action |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| A-DEF-01 | Layout | Global 15px horizontal overflow on every page (app shell, `100vw` + scrollbar) | ⚪ | ⬜ | ✅ | ⬜ | 🔓 | observed on `70e1e423` | Reproduced identically on `/franchise`, `/affiliate` AND `/shop` — pre-existing, NOT from the IA change. 390 is clean (0) | Fix in its own PR; do not attach to Franchise |
+| A-DEF-02 | Ops | Staging and production share ONE Supabase project `tunabqqrwabacxjcxxkz` | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | verified 2026-09-06 | Any migration or QA row lands in the database production reads. Confirmed while applying A-IA-07 | **OWNER DECISION** — split projects or accept |
+
 ### B — Partner public landing (§5) · CHECKPOINT B
 
 | ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | PR/SHA | Problem / Why | Next Action |
