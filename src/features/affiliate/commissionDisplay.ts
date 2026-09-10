@@ -2,7 +2,7 @@
  * E-REV-03 / D-LINK-04 — what a partner is shown about a commission.
  *
  * The commissions table rendered `String(row.status)`, `String(row.product)`,
- * `String(row.cadence)` and the raw Stripe invoice id straight into the page.
+ * `String(row.cadence)` and the raw payment-provider invoice id straight into the page.
  * So a partner read `held`, `eligible`, `home`, `one_off` and `in_1Abc…` —
  * internal contract values and a raw code, which is exactly what E-REV-03
  * forbids.
