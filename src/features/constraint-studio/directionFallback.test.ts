@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { RecipeDirectionTarget, RecipeInput } from '@/engine';
+import { calculateRecipe, type RecipeDirectionTarget, type RecipeInput } from '@/engine';
 import { starterMilkBase } from '@/features/recipe-constraints/constraintFixtures';
+import { assessRecipeDirection } from '@/features/recipe-direction/recipeDirectionAssessment';
 import type { BuildPreviewResult, ConstraintPreview } from './applyPipeline';
 import {
   buildDirectionFallback,
@@ -129,6 +130,57 @@ describe('bounded adjacent Direction fallback', () => {
     ]);
     expect(input.items).toEqual(before.items);
     expect(input.target_batch_grams).toBe(before.target_batch_grams);
+  });
+
+  it('for Vegan relaxes only the missed axis and preserves an axis already achieved', () => {
+    const base: RecipeInput = { ...starterMilkBase(), category: 'vegan_gelato' };
+    const reachedLevel = (axis: 'sweetness' | 'softness'): RecipeDirectionTarget => {
+      const levels = [-2, -1, 0, 1, 2] as const;
+      const match = levels.find((level) => {
+        const input: RecipeInput = {
+          ...base,
+          goals: {
+            ...base.goals,
+            direction_targets_active: true,
+            direction_targets: {
+              sweetness: axis === 'sweetness' ? level : 0,
+              softness: axis === 'softness' ? level : 0,
+              creaminess: 0,
+              flavor: 0,
+            },
+          },
+        };
+        return assessRecipeDirection(input, calculateRecipe(input)).residuals.find(
+          (residual) => residual.axis === axis,
+        )?.reached;
+      });
+      expect(match).toBeDefined();
+      return match!;
+    };
+    const achievedSweetness = reachedLevel('sweetness');
+    const currentSoftness = reachedLevel('softness');
+    const requestedSoftness: RecipeDirectionTarget = currentSoftness === 2 ? -2 : 2;
+    const input: RecipeInput = {
+      ...base,
+      goals: {
+        ...base.goals,
+        direction_targets_active: true,
+        direction_targets: {
+          sweetness: achievedSweetness,
+          softness: requestedSoftness,
+          creaminess: 0,
+          flavor: 0,
+        },
+      },
+    };
+
+    const sequence = directionFallbackTargetSequence(input);
+
+    expect(sequence.length).toBeGreaterThan(0);
+    expect(sequence.every((targets) => targets.sweetness === achievedSweetness)).toBe(true);
+    expect(sequence[0]!.softness).toBe(
+      requestedSoftness > 0 ? requestedSoftness - 1 : requestedSoftness + 1,
+    );
   });
 
   it('runs only after exact current-ingredient Direction is genuinely unreached', () => {
