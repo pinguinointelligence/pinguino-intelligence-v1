@@ -435,3 +435,114 @@ GLUCOSE SYRUP vs MALTODEXTRIN. Ranges overlap - maltodextrin reaches DE 30.5 whi
 starts at DE 22.5 - so the existing split does not follow the standard DE-20 boundary. Whether this is
 one starch-hydrolysate continuum or two technological types needs separate classification proof.
 Not collapsed, not asserted.
+
+# ============================================================================
+# OWNER DECISIONS 2026-09-10 — SHOP / GLOBAL BASE / PDF 0€ (recorded)
+# ============================================================================
+D-1  Mapper authority for ALL Shop / country-product / PDF work = FINAL_FROZEN 2541
+     (Desktop/MAPPER/history/GELLATTI_MAPPER_2541_GC75_FINAL_FROZEN_2026-09-09.xlsx, SHA-256 6db7fbe0…374e002b;
+     Desktop/MAPPER/mapper_basement.csv field-identical, 0 / 157 542 differences). The live shared
+     mapper_basement (2147) is NOT the authority. SHOP: no Supabase writes, no 2147→2541 sync, no migrations,
+     no shared-row edits. The 2147 drift is an integration-handoff item owned by the FINAL 2541 integration.
+D-2  PI identity = stable PI-ING ID. A display-name difference never remaps a PI. The final BAZA refreshes
+     Mapper-derived names/facts from 2541 by ID. Exact PR facts override PI facts where the routing contract says so.
+D-3  C04 resolved FOR SHOP. Existing 2541 PI (incl. percentage/form/grade variants) are grandfathered; their
+     existence is not permission to create more. New brand / EAN / package / SKU → PR-ING → best valid EXISTING
+     canonical PI → exact PR facts preserved. No existing PI safely fits → REVIEW_REQUIRED → future
+     NEW PR/PI-ING INGESTION CONTRACT. SHOP never creates a PI.
+D-4  PI-ING-000260, PI-ING-002242 and the soy-drink variants stay as found. GELATO routing uses ONLY the PI
+     identities selected by the accepted GELATO base. No base expansion.
+D-5  Active routing denominator = 75 markets. Blockers/counters previously based on 249 are recalculated on 75.
+     RECEPTURY keeps its internal ISO/world index; not rewritten here.
+D-6  The 5 locally missing SA10 artifacts are NOT a SHOP blocker. SHOP does not reconstruct SA10, implement
+     SA-11, or modify Search/parser architecture.
+D-7  BAZA GELATO v7 = WORKING, NOT FINAL. Allowed now: coverage analysis, exact product / EAN / official-source
+     verification, routing evidence, URL collection, evidence classes, PDF 0€ data architecture, gap list.
+     Not allowed: calling v7 final, final PDF, final PR IDs, Mapper edits, DB routing writes. On the final BAZA:
+     deterministic v7 → final reconciliation that preserves verified evidence.
+D-8  Sucrose (ordinary white sugar) = GLOBAL PI. No branded PR. PDF uses the local consumer term. No EAN invented.
+D-9  Sorbet / Vegan / Protein bases are outside the current GELATO scope. The architecture must accept them later
+     without inventing formulas or PI selections.
+D-10 PDF 0€ links store URL, market, product, EAN evidence, evidence date, source type and CONFIRMED / LEAD /
+     HYPOTHESIS; BRAK when nothing verified. No silent substitution. Final PDF only after the final BAZA is accepted.
+D-11 Live-drift finding preserved (live 2147 vs authority 2541) as an integration handoff only; never used to
+     overwrite FINAL_FROZEN data.
+D-12 Continue all safe work; only final-BAZA-dependent sub-steps wait.
+Finding recorded 2026-09-10: BAZA v7 sheet 06_ZRODLA cites "mapper_basement(10).csv — Aktualny Mapper Basement
+2147" as its Mapper source. v7 was built on the live 2147 state, which is why some v7 names differ from 2541.
+
+# ============================================================================
+# MASTER CHECKLIST — FULL 36 (checkpoint 2026-09-10, after owner decisions)
+# COUNTER TYPE: owner-accepted master items (NOT an implementation counter)
+# ============================================================================
+PHASE A
+[x] A01 Global country/market ledger — SPEC/DECISION ACCEPTED · IMPLEMENTATION NOT STARTED · REVERIFICATION REQUIRED.
+        DEP: —  LINKS: Country authority / Shop. NOTE: ISO ledger = vocabulary; commercial scope = accepted 75 (D-5).
+[x] A02 MARKET ≠ ORIGIN. DEP: A01. LINKS: PR identity/provenance. EVIDENCE: countryOfOrigin vs markets[]; PL/BE
+        dextrose; BAZA v7 carries 'Pochodzenie' separately from 'Kraje użycia'.
+[~] A03 Retailers/manufacturers by market — RE-BASED to 75 markets × GELATO (D-5, D-7). Saturation criterion v2 below.
+        DEP: A01. LINKS: Product Catalog / Shop.
+[~] A04 Exact EAN overlap across countries — 0 CONFIRMED multi-country EANs; v7 multi-country candidates listed in
+        reports/a03/baza_v7_multicountry_eans.csv for verification. DEP: A03. LINKS: PR dedup / Shop / Country Product.
+[~] A05 Evidence-based market/product clusters — research question; no cluster model frozen. DEP: A04.
+PHASE B
+[x] B01 Base-product family scope — NOTE: active base = GELATO, 6 PI (000236, 000180, 000270, 000514, 000494,
+        000492); Sorbet/Vegan/Protein outside current scope (D-9). DEP: A01.
+[~] B02 Milk variants — ruleset recorded; v7 supplies real MILK products for 75 markets. DEP: A03, B01.
+[~] B03 Cream / milk powder / cream powder — v7 CREAM + SMP. DEP: A03, B01.
+[~] B04 Sugars — v7 DEXTROSE; sucrose = global PI (D-8). DEP: A03, B01.
+[~] B05 Inulin / stabilizers / gums — v7 TARA. DEP: A03, B01.
+[!] B06 Plant bases / protein (Vegan/Protein) — BLOCKED: those base packages are not supplied and must not be
+        invented (D-9). Status changed ACTIVE→BLOCKED on 2026-09-10 with this blocker; nothing deleted.
+PHASE C
+[x] C01 Variants vs existing PI — closed on the classification ruleset.
+[x] C02 Missing PI candidate list — closed on the ruleset.
+[x] C03 Technological-meaning proof — closed on the ruleset.
+[x] C04 OWNER REVIEW of PI candidates — RESOLVED FOR SHOP by owner decision 2026-09-10 (D-3, D-4): no new PI
+        from SHOP; PR → best existing PI; else REVIEW_REQUIRED → future ingestion contract.
+[!] C05 Controlled addition of approved neutral PI — BLOCKED / OUT OF SHOP: owned by the future NEW PR/PI-ING
+        INGESTION CONTRACT and Mapper maintenance. SHOP never creates PI (D-3).
+PHASE D
+[x] D01 One exact PR per real EAN — invariant verified on staging sample; re-verify after global PR population.
+        RISK kept: GS1 RCN prefixes are not globally unique.
+[~] D02 PR stores identity + origin + markets — v7 columns assessed offline.
+[~] D03 Manufacturer/label/retailer source facts — verification of v7 sources in progress.
+[x] D04 Per-field VERIFIED/DERIVED/ESTIMATED/UNKNOWN truth — capability verified.
+[x] D05 Raw basis preserved + normalized values — capability verified.
+[~] D06 Bind PR to correct PI — for SHOP: best EXISTING PI by stable ID (D-2, D-3); v7 bindings checked vs 2541.
+[~] D07 Engine readiness of required base PR — requires the app/Engine runtime; offline pre-checks only in SHOP.
+[~] D08 Missing requirements for every NOT READY PR — compiling from v7 WYMAGA_* statuses (moved TODO→ACTIVE).
+PHASE E
+[x] E01 Country defaults use the existing Product Country authority.
+[x] E02 USER_PREFERRED precedence preserved.
+[~] E03 Picker exposes neutral PI names — not advanced by SHOP research (picker lane).
+[~] E04 Exact brand/PR via details/search — not advanced by SHOP research.
+[~] E05 Scan resolves PR → PI → country/user flow — not advanced by SHOP research (scanner lane).
+PHASE F
+[~] F01 Shop references the same approved PR — defined in reports/a03/PDF0_DATA_ARCHITECTURE.md (moved TODO→ACTIVE).
+[~] F02 Supplier / URL / market availability — link collection (D-10).
+[~] F03 PDF 0€ per country/cluster — data architecture prepared; final PDF waits for the final BAZA (D-7, D-10).
+[ ] F04 Cluster countries with identical production sets — DEP: A05.
+[!] F05 GELATO country base (terminal-valid) — BLOCKED by owner instruction.
+[!] F06 SORBET/VEGAN/PROTEIN country bases — BLOCKED by owner instruction and D-9.
+PHASE G
+[x] G01 Mapper count reconciliation (2088 vs 2089) — DONE as accepted. NOTE 2026-09-10: authority is now
+        FINAL_FROZEN 2541 (D-1); live 2147 = integration handoff (D-11).
+
+TALLY: DONE 13 · ACTIVE 18 · BLOCKED 4 · TODO 1 = 36.
+MASTER PROGRESS: 13 / 36 = 36.1 %  (C04 moved to DONE on the owner's explicit instruction of 2026-09-10).
+
+# ============================================================================
+# A03 SATURATION CRITERION v2 (re-based 2026-09-10; v1 kept above, superseded)
+# ============================================================================
+Scope: 75 markets × GELATO roles. Roles needing an exact PR: MILK, CREAM, SMP, DEXTROSE, TARA (5 × 75 = 375 cells).
+SUCROSE = global PI (75 cells, generic local term, no PR) — counted separately.
+S1' CELL CLASSIFICATION  375/375 PR cells carry a status: HAVE-VERIFIED / LEAD / MISSING / UNAVAILABLE.
+S2' MARKET COMPLETENESS  75/75 markets have a status for every role. (Replaces v1 "S2 ≥ 8 markets"; the old "3/8"
+                         is NOT converted to "3/75" — it measured research breadth, which the v7 dataset supersedes.)
+S3' EVIDENCE QUALITY     customer-visible cells = CONFIRMED only; counts of CONFIRMED / LEAD / HYPOTHESIS / BRAK.
+S4' EAN INTEGRITY        100 % of v7 EANs checksum-validated or flagged; RCN-range codes flagged; numeric-stored cells
+                         checked for leading-zero loss.
+S5' MULTI-COUNTRY PROOF  every EAN claimed in > 1 market has an independent official source per market (A04).
+S6' OWN-BRAND CHECK      retailer own-brand SKUs identified and never shared across markets without per-market proof.
+S7' CLASS DISCIPLINE     every product bound to an existing PI or marked REVIEW_REQUIRED; zero new PI (D-3).
