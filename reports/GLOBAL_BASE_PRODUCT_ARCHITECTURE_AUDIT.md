@@ -908,3 +908,21 @@ S5' MULTI-COUNTRY PROOF   NOT MET  7/33 working-Excel multi-market EANs confirme
 S6' OWN-BRAND CHECK       PARTIAL  unchanged; own-brand listings without a GTIN (CZ Valknut, GR NoCarb) cannot prove identity by GTIN.
 S7' CLASS DISCIPLINE      MET      only existing 2541 PIs; 0 new PI.
 # END CHECKPOINT (e)
+
+# OWNER DECISIONS 2026-09-10 (f) — FINAL BEFORE PAUSE (recorded)
+# ============================================================================
+D-36 Matinfo / national product register: may confirm identifier_confirmed = YES, exact_product_identity_confirmed = YES
+     and market_binding_confirmed = YES, but does NOT by itself prove local_availability_confirmed. NO milk and NO cream
+     (Matinfo) therefore stay NOT CONFIRMED_LOCAL until actual availability/purchase evidence exists. Supersedes the
+     checkpoint (e) wording "register proves identity only / pending decision".
+D-37 Own-brand without GTIN: a GTIN is not mandatory for exact identity. For a genuine retailer/store own-brand product,
+     exact identity may be confirmed without a GTIN when the first-party listing unambiguously proves the own brand/seller,
+     the exact product name, the variant, the pack/size, the local listing, and the SKU/article ID where available. No EAN is
+     ever invented; identifier_confirmed stays NO when no GTIN exists.
+D-38 PAUSE: no product search; no application, Mapper, Engine or database change; wait for the Owner's complete
+     75-country Excel.
+Applied: register evidence rows carry identifier / exact identity / binding = YES and local availability = NO; working-Excel
+CONFIRMED_LOCAL stays 111/375. The v9 rows CZ (Valknut) and GR (NoCarb) are marked D-37-eligible; their assessment waits
+for the Owner-Excel verification. The reconciler treats a missing GTIN as a D-37 identity check rather than an error;
+checksum failures and store-internal codes remain issues.
+# ============================================================================

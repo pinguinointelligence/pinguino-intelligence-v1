@@ -102,8 +102,9 @@ def main():
             s2 = ('OK' if re.fullmatch(r'PR-ING-\d{6}', r['pr_ing']) else 'PENDING_ASSIGNMENT' if ('AUTO' in r['pr_ing'].upper() or not r['pr_ing']) else 'MALFORMED')
         else: s2 = 'N/A_GLOBAL_PI'
         if s2 == 'MALFORMED': issues.append('PR:' + s2)
-        t = id_type(r['ean']); s3 = t
-        if role in EXACT_PR_ROLES and not t.startswith('GTIN'): issues.append('EAN:' + t)
+        t = id_type(r['ean']); s3 = t; checks = []
+        if role in EXACT_PR_ROLES and t == 'NONE': checks.append('IDENTITY_WITHOUT_GTIN: prove by a first-party own-brand listing (D-37); never invent an EAN')
+        elif role in EXACT_PR_ROLES and not t.startswith('GTIN'): issues.append('EAN:' + t)
         if role in EXACT_PR_ROLES and not (r['product'] and (r['brand'] or not found.get('brand'))): issues.append('IDENTITY:BRAND_OR_PRODUCT_MISSING')
         s4 = verify_urls(r) if (a.verify_urls and role in EXACT_PR_ROLES) else 'NOT_RUN'
         if s4 not in ('NOT_RUN', 'EAN_ON_MARKET_PAGE') and role in EXACT_PR_ROLES: issues.append('MARKET:' + s4)
@@ -121,8 +122,8 @@ def main():
         diff = ('NEW_ROW' if a.baseline and not b else '') or ('SAME_PRODUCT' if same else 'CHANGED_VS_BASELINE' if b else '')
         out.append(dict(market=r['market'], role=role, owner_status=r.get('status', ''), grams_owner=r['grams'], pi_ing=r['pi_ing'], pi_name_2541=pi['ingredient_name_display'] if pi else '',
                         s1_pi=s1, pr_ing=r['pr_ing'], s2_pr=s2, brand=r['brand'], product=r['product'], pack=r['pack'], ean=digits(r['ean']), s3_identifier=s3,
-                        s4_market=s4, s5_source=s5, s6_technical=s6, s7_role_vs_2541=s7, verdict=('OK' if not issues else 'ISSUES'), issues=';'.join(issues),
-                        s9_action=('NONE' if not issues else 'REPORT_BACK_TO_OWNER (no substitution, D-26)'), vs_baseline=diff))
+                        s4_market=s4, s5_source=s5, s6_technical=s6, s7_role_vs_2541=s7, verdict=('ISSUES' if issues else 'CHECKS_REQUIRED' if checks else 'OK'), issues=';'.join(issues), checks_required=';'.join(checks),
+                        s9_action=('REPORT_BACK_TO_OWNER (no substitution, D-26)' if issues else 'VERIFY_OWN_BRAND_IDENTITY (D-37)' if checks else 'NONE'), vs_baseline=diff))
     with open(a.out, 'w', newline='', encoding='utf-8') as fh:
         w = csv.DictWriter(fh, fieldnames=list(out[0])); w.writeheader(); w.writerows(out)
     print(f'sheet {sheet!r}: {len(out)} rows · markets {len({o["market"] for o in out})} · columns found {sorted(k for k, v in found.items() if v)}')

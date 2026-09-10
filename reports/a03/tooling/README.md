@@ -115,3 +115,18 @@ python3 reports/a03/tooling/identity_match.py --ean 8055728540170 \
   --brand SaporePuro --name "Tara Gum" --pack "50 g" \
   --binding-url "https://bakingwarehouse.com/products/tara-gum-50gr-saporepuro" --binding-quote "香港本地消費滿1000港元免運費"
 ```
+
+## Rules update — owner decisions D-36, D-37
+- **Product registers** (Matinfo etc.) may confirm the identifier, exact identity and market binding. They never prove local
+  availability on their own; that needs an actual availability or purchase page (D-36).
+- **Own-brand products without a GTIN.** Exact identity may be confirmed from a first-party own-brand listing that
+  unambiguously shows all of the following (D-37):
+  - the own brand / seller;
+  - the exact product name;
+  - the variant;
+  - the pack/size;
+  - the local listing;
+  - the SKU/article ID, where one exists.
+
+  `identifier_confirmed` stays NO when no GTIN exists; an EAN is never invented. The reconciler reports such rows as
+  `CHECKS_REQUIRED`, not as errors.
