@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useParams } from 'react-router';
 import { copy } from '@/copy/en';
@@ -419,6 +428,31 @@ export function ProWorkbar({
    *  tones inside it have to follow that ground rather than the page's. */
   const onGraphite = identityState !== 'unnamed';
 
+  /* PRO MOBILE UX v2 · A6 — below the workbench breakpoint the recipe name
+     WRAPS: a long name grows the card to two, three or more lines, and what sits
+     below it (Nowa receptura, •••, ZAPISZ) moves down with the card, instead of
+     the name being cut to one line to make the layout fit. The switch is CSS,
+     never a viewport read; desktop keeps its approved single-line input. */
+  const nameAreaRef = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const area = nameAreaRef.current;
+    if (!area) return;
+    let active = true;
+    const fit = () => {
+      if (!active) return;
+      area.style.height = '0px';
+      area.style.height = `${area.scrollHeight}px`;
+    };
+    fit();
+    // A web font arriving after the first fit re-breaks the lines.
+    void document.fonts?.ready.then(fit);
+    window.addEventListener('resize', fit);
+    return () => {
+      active = false;
+      window.removeEventListener('resize', fit);
+    };
+  }, [name, identityState]);
+
   /* Publish the typed preflight refusal so Settings can show the matching
      warning. It deliberately does not control disclosure state. Only the panel
      variant publishes: compact variants render where no Settings module exists
@@ -554,6 +588,12 @@ export function ProWorkbar({
               {/* The title IS the name input in both states: renaming a saved
                   recipe stays exactly where it was, and there is never a second
                   field competing for the same value. */}
+              {/* A6 — two PRESENTATIONS of the one name field, switched by CSS
+                  at the workbench breakpoint: the approved single-line input on
+                  desktop, a wrapping field on a phone or tablet. Both write the
+                  same draft through the same handler and only one is ever
+                  displayed, so there is still never a second field competing
+                  for the value. */}
               <input
                 value={name}
                 placeholder={w.namePlaceholder}
@@ -564,6 +604,32 @@ export function ProWorkbar({
                 data-testid="pro-workbar-name"
                 className={cn(
                   'w-full min-w-0 truncate border-0 bg-transparent p-0 leading-[1.05] font-extrabold tracking-[-0.04em] focus:outline-none',
+                  identityState === 'unnamed'
+                    ? 'text-[22px] text-[var(--g-ink)] placeholder:font-semibold placeholder:text-[var(--g-text-muted)]'
+                    : 'text-[28px] text-white placeholder:text-white/40',
+                  'max-[60rem]:hidden',
+                )}
+              />
+              <textarea
+                ref={nameAreaRef}
+                rows={1}
+                value={name}
+                placeholder={w.namePlaceholder}
+                aria-label={w.nameLabel}
+                enterKeyHint="done"
+                onChange={(event) => {
+                  setNameDraft(event.currentTarget.value.replace(/\s*[\r\n]+\s*/g, ' '));
+                  if (nameError) setNameError(null);
+                }}
+                onKeyDown={(event) => {
+                  // A recipe name is one line: Enter finishes it, never breaks it.
+                  if (event.key !== 'Enter') return;
+                  event.preventDefault();
+                  event.currentTarget.blur();
+                }}
+                data-testid="pro-workbar-name-wrap"
+                className={cn(
+                  'block w-full min-w-0 resize-none overflow-hidden border-0 bg-transparent p-0 leading-[1.05] font-extrabold tracking-[-0.04em] break-words focus:outline-none min-[60rem]:hidden',
                   identityState === 'unnamed'
                     ? 'text-[22px] text-[var(--g-ink)] placeholder:font-semibold placeholder:text-[var(--g-text-muted)]'
                     : 'text-[28px] text-white placeholder:text-white/40',
