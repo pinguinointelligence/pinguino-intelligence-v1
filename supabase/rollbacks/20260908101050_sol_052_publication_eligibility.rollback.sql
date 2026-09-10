@@ -119,6 +119,14 @@ begin
     '    (p.visibility = ''shared'' and p.product_kind = ''commercial_product''' || E'\n' ||
     '      and coalesce(p.canonical_verification_status, '''') <> ''blocked'')';
   if position(v_new in v_def) = 0 then raise exception 'sol052_rollback_exact_anchor_missing'; end if;
+  v_def := replace(v_def, v_new, v_old);
+
+  v_new :=
+    '    or (v_uid is not null and p.visibility <> ''shared''' || E'\n' ||
+    '      and (p.owning_account_id = v_uid or p.created_by = v_uid))';
+  v_old :=
+    '    or (v_uid is not null and (p.owning_account_id = v_uid or p.created_by = v_uid))';
+  if position(v_new in v_def) = 0 then raise exception 'sol052_rollback_exact_private_scope_anchor_missing'; end if;
   execute replace(v_def, v_new, v_old);
 end;
 $rollback_exact_resolver$;
