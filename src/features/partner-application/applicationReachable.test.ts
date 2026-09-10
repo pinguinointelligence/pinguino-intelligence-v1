@@ -39,8 +39,11 @@ describe('the Affiliate application form has a reachable home', () => {
   });
 
   it('an applicant who needs to act is shown the form, not a link', () => {
-    // more_information_needed and rejected both mean "act now". Sending them to
-    // another page to find a form is how the form got lost in the first place.
-    expect(partnerPage).toMatch(/applicationStatus !== 'submitted'[\s\S]{0,160}PartnerApplicationPanel/);
+    // Every non-partner state reaches the panel, and the panel — not a second
+    // hand-written gate — decides whether the form shows (C-APP-07). Sending an
+    // applicant elsewhere to find a form is how the form got lost before.
+    expect(partnerPage).toMatch(/partner_not_active[\s\S]{0,900}<PartnerApplicationPanel \/>/);
+    const panel = readFileSync(new URL('./PartnerApplicationPanel.tsx', import.meta.url), 'utf8');
+    expect(panel).toContain('applicationSurface(');
   });
 });
