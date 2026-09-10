@@ -15,6 +15,7 @@ import { recipeTechnicalFit } from '@/features/recipe-score';
 import { PublishToCommunityDialog } from '@/features/community/ui/PublishToCommunityDialog';
 import { useCreatorProfile } from '@/features/community/useCreatorProfile';
 import { refreshCurrentRecipeBehaviorWorkingCopy } from '@/features/product-intelligence/refreshRecipeBehaviorWorkingCopy';
+import { ProWorkbar } from '@/features/pro-core/ProWorkbar';
 
 const formatPhysicalMassG = (value: number): string =>
   Number.isInteger(value) ? value.toFixed(0) : value.toFixed(3).replace(/\.?0+$/, '');
@@ -295,6 +296,44 @@ export function ProductionCockpit({
       </div>
     </DialogShell>
   ) : null;
+  /* OWNER §19 — a recipe that has no name yet is not a Production problem.
+   *
+   * `saved_version_required` used to be told the way every other blocker is
+   * told: an amber „Wymaga receptury wykonawczej" card, the sentence
+   * „Zapisz wersję wykonawczą", and a button that ejected the user out of
+   * Produkcja into Receptura to do one thing and walk back. Nothing about that
+   * was a refusal — the recipe is ready; it just has no name.
+   *
+   * So the SAME component the Receptura tab shows is mounted here instead. Not
+   * a copy of its look: `<ProWorkbar variant="panel" />` itself, so the box, the
+   * name field, the „Niezapisane" status, the ZAPISZ tongue, the geometry and
+   * the colours cannot drift apart, and the moment it saves, the prerequisite
+   * is gone and Produkcja continues where the user is already standing. */
+  if (prerequisite?.code === 'saved_version_required' && !completedRecordVisible) {
+    return (
+      <>
+        <section
+          className="m-3"
+          data-testid="production-save-recipe-inline"
+          data-prerequisite={prerequisite.code}
+        >
+          <p className="text-sm font-semibold text-ink" data-testid="production-save-recipe-title">
+            Zapisz nazwę receptury
+          </p>
+          <div className="mt-4">
+            <ProWorkbar variant="panel" />
+          </div>
+          {production.persistenceError ? (
+            <p className="mt-3 text-xs leading-relaxed text-status-error" role="alert">
+              {production.persistenceError}
+            </p>
+          ) : null}
+        </section>
+        {archiveSessionDialog}
+      </>
+    );
+  }
+
   if (prerequisite && !completedRecordVisible) {
     return (
       <>
@@ -517,21 +556,36 @@ export function ProductionCockpit({
             >
               Przejdź do etykiety
             </button>
+            {/* OWNER §21 — after a finished run this control starts another run of
+                the SAME recipe from the SAME source (`startNewSession` reuses
+                `production.source`), so „Rozpocznij partię" was describing the
+                mechanism rather than the intention. The word „partia" leaves the
+                customer's language here; what they are being asked is simply
+                whether they want to make it again. The pre-production start
+                control is a different question and keeps its own wording. */}
             <button
               type="button"
               onClick={prerequisite ? prerequisiteAction : () => void production.startNewSession()}
               disabled={prerequisiteActionBusy}
               aria-busy={prerequisiteActionBusy}
               className={cn(buttonClasses('ghost', 'md'), 'w-full sm:w-auto')}
+              data-testid="production-repeat-recipe"
             >
-              {prerequisite ? prerequisiteActionLabel : 'Rozpocznij partię'}
+              {prerequisite ? prerequisiteActionLabel : 'POWTÓRZ'}
             </button>
           </div>
           {prerequisite ? (
             <p className="mt-2 text-xs leading-relaxed text-stone-700" role="status">
               {prerequisite.message}
             </p>
-          ) : null}
+          ) : (
+            <p
+              className="mt-2 text-xs leading-relaxed text-stone-700"
+              data-testid="production-repeat-question"
+            >
+              Chcesz powtórzyć?
+            </p>
+          )}
           {canPublishCompletion && !communityCardDismissed ? (
             <aside
               className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-ink/8 pt-3"
