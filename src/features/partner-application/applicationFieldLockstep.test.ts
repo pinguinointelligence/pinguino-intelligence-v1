@@ -30,14 +30,21 @@ const migration = readFileSync(
 const draftKeys = (): string[] => {
   const block = panel.match(/useState<PartnerApplicationDraft>\(\{([\s\S]*?)\}\)/);
   expect(block, 'the draft initialiser must be findable').toBeTruthy();
-  return [...block![1].matchAll(/^\s*([a-zA-Z]+)\s*:/gm)].map((m) => m[1]);
+  const inner = block?.[1] ?? '';
+  return [...inner.matchAll(/^\s*([a-zA-Z]+)\s*:/gm)]
+    .map((m) => m[1])
+    .filter((key): key is string => typeof key === 'string');
 };
 
 /** The keys the writer is willing to store, plus the aliases it accepts. */
 const writerAccepts = (): Set<string> => {
   const keys = new Set<string>();
-  for (const m of migration.matchAll(/p_application->>?'([a-zA-Z]+)'/g)) keys.add(m[1]);
-  for (const m of migration.matchAll(/^\s*'([a-zA-Z]+)',/gm)) keys.add(m[1]);
+  for (const m of migration.matchAll(/p_application->>?'([a-zA-Z]+)'/g)) {
+    if (m[1]) keys.add(m[1]);
+  }
+  for (const m of migration.matchAll(/^\s*'([a-zA-Z]+)',/gm)) {
+    if (m[1]) keys.add(m[1]);
+  }
   return keys;
 };
 
