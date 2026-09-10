@@ -136,7 +136,7 @@ export interface FinalizeInput {
     productFields: Record<string, unknown>;
   };
   confirmations?: {
-    /** Only the form submitter may issue this marker. Missing/legacy input is not confirmation. */
+    /** In the explicit V2 contract, only the form submitter may issue this marker. */
     evidenceOrigin?: 'customer_action';
     packageEvidenceExhausted?: boolean;
     notOnLabelFields?: string[];

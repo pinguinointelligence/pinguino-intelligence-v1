@@ -107,6 +107,21 @@ describe('PRODUCT_PUBLICATION_IDENTITY_V1', () => {
     ).toBe(false);
   });
 
+  it('preserves the older flat product_versions.facts identity shape', () => {
+    expect(
+      publicationIdentityEligibilityFromStoredProductFacts({
+        displayName: 'Mleko Polskie 3,2% tł. (pasteryzowane), 1 l',
+        brand: 'Mlekovita',
+      }).eligible,
+    ).toBe(true);
+    expect(
+      publicationIdentityEligibilityFromStoredProductFacts({
+        displayName: 'Śmietanka Polska 30% UHT, 330 ml',
+        brand: 'Mlekovita',
+      }).eligible,
+    ).toBe(true);
+  });
+
   it('reuses the backend-stamped field provenance on the next exact-EAN scan', () => {
     const stored = {
       identity: { displayName: 'Vitamin Well Refresh Lemon Kiwi', brand: 'Vitamin Well' },

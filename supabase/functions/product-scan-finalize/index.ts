@@ -33,6 +33,7 @@ import {
 } from '../../../src/features/product-scanner/customerProductFamily.ts';
 import type { ProductEvidenceField } from '../../../src/features/product-intelligence/productEvidenceConfidence.ts';
 import { publicationIdentityEligibilityFromScanResult } from '../../../src/features/product-scanner/productPublicationEligibility.ts';
+import { resolveProductScanFinalizeContract } from '../../../src/features/product-scanner/productScanFinalizeContract.ts';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -211,7 +212,7 @@ function applyCustomerCorrections(
   original: unknown,
   value: unknown,
   sessionBarcode: unknown,
-  evidenceOrigin: unknown,
+  customerAction: boolean,
 ): AppliedCorrections | null {
   const result = structuredClone(objectValue(original));
   const correction = objectValue(value);
@@ -242,7 +243,6 @@ function applyCustomerCorrections(
     'fibre',
   ];
   const confirmed = new Set<ProductEvidenceField>();
-  const customerAction = evidenceOrigin === 'customer_action';
   for (const key of nutritionKeys) {
     if (nutritionCorrection[key] === undefined || nutritionCorrection[key] === '') continue;
     const parsed = finite(nutritionCorrection[key], key.startsWith('energy') ? 10_000 : 100);
@@ -581,18 +581,21 @@ Deno.serve(async (request) => {
   }
   if (session.state !== 'analyzed') return json({ error: 'scan_not_ready_for_creation' }, 409);
 
+  const contract = resolveProductScanFinalizeContract(body);
+  if (contract.mode === 'unsupported')
+    return json({ error: 'unsupported_finalize_contract_version' }, 400);
   const automaticResult = applyAutomaticEvidence(
     session.result_json,
-    body.automaticEvidence,
+    contract.automaticEvidence,
     session.barcode,
   );
   if (!automaticResult) return json({ error: 'invalid_automatic_product_evidence' }, 400);
   const confirmationEnvelope = objectValue(body.confirmations);
   const corrections = applyCustomerCorrections(
     automaticResult,
-    confirmationEnvelope.productFields,
+    contract.customerProductFields,
     session.barcode,
-    confirmationEnvelope.evidenceOrigin,
+    contract.customerAction,
   );
   if (!corrections) return json({ error: 'invalid_user_confirmed_product_fields' }, 400);
   if (!corrections.barcode) return json({ error: 'customer_product_valid_ean_required' }, 409);
@@ -870,6 +873,8 @@ Deno.serve(async (request) => {
       p_private_overlay: privateOverlay,
     },
   );
+  if (saveError?.message.includes('shared_product_requires_separate_correction'))
+    return json({ error: 'shared_product_requires_separate_correction' }, 409);
   if (saveError || !saved) return json({ error: 'customer_product_persistence_failed' }, 503);
   const savedRow = objectValue(saved);
   return json({

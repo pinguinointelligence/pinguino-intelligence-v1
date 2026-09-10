@@ -294,11 +294,16 @@ function publicationIdentityInputFromRoot(
 ): ProductPublicationIdentityInput {
   const identity = objectValue(root.identity);
   return {
-    displayName: stringValue(identity.displayName) ?? stringValue(identity.originalName),
-    brand: stringValue(identity.brand),
+    displayName:
+      stringValue(identity.displayName) ??
+      stringValue(identity.originalName) ??
+      stringValue(root.displayName) ??
+      stringValue(root.originalName),
+    brand: stringValue(identity.brand) ?? stringValue(root.brand),
     manufacturer: stringValue(root.manufacturer),
-    variant: stringValue(identity.variant),
-    productType: stringValue(identity.category),
+    variant: stringValue(identity.variant) ?? stringValue(root.variant),
+    productType:
+      stringValue(identity.category) ?? stringValue(root.productType) ?? stringValue(root.category),
     fieldProvenance,
   };
 }

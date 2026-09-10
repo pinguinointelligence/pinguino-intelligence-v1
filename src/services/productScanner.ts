@@ -14,6 +14,7 @@ import type {
 import type { CarbonationStatus } from '@/data/products/carbonation';
 import type { PreparedProductScanAsset } from '@/features/product-scanner/contracts';
 import type { ScanEvidenceKind } from '@/features/product-scanner/evidenceState';
+import { withProductScanFinalizeV2Contract } from '@/features/product-scanner/productScanFinalizeContract';
 
 const UNAVAILABLE = 'Skaner produktu nie jest dostępny w tej konfiguracji.';
 
@@ -343,7 +344,9 @@ export async function finalizeProductScan(input: {
   };
 }): Promise<Record<string, unknown>> {
   if (!supabase) throw new Error(UNAVAILABLE);
-  const { data, error } = await supabase.functions.invoke('product-scan-finalize', { body: input });
+  const { data, error } = await supabase.functions.invoke('product-scan-finalize', {
+    body: withProductScanFinalizeV2Contract(input as unknown as Record<string, unknown>),
+  });
   if (error) {
     // THE owner leak: this branch used to be `throw new Error(error.message)`, and for a
     // FunctionsHttpError that message is literally „Edge Function returned a non-2xx status code".
