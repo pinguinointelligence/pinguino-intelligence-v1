@@ -630,6 +630,14 @@ export const copy = {
       title: 'Profil receptury',
       axesTitle: 'Osie jakości',
       axisControlPending: 'Sterowanie kierunkiem osi pojawi się wkrótce.',
+      /** PRO MOBILE UX v2 · A7 — why a „Dostosuj recepturę" regulator is unavailable.
+       * Keyed by the Direction plan's own status; customer language only. */
+      axisUnavailable: {
+        blocked_science: 'Niedostępne dla tego rodzaju lodów: brak jeszcze zweryfikowanych danych.',
+        blocked_data: 'Niedostępne przy tej temperaturze serwowania: brak zatwierdzonego zakresu.',
+        blocked_runtime: 'Ta regulacja pojawi się wkrótce.',
+        unknown: 'Ta regulacja jest niedostępna dla tej receptury.',
+      },
       tutorialTitle: 'Jak poprawić dopasowanie',
       settingsTitle: 'Ustawienia',
       actualBatch: 'Aktualna partia',
