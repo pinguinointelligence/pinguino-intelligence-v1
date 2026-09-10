@@ -60,12 +60,12 @@ COMMISSION ENGINE                H01-H22 ⚪  backend exists; no Stripe TEST eve
 AFFILIATE DASHBOARD              I01-I14 ⚪
 PAYOUT / SETTLEMENT              J01-J08 ⚪  kill switch stays OFF (checkpoint §4)
 
-REFER-A-FRIEND — REGULAR USER                                               13/22
-K01 🔴 "Poleć Gellatti" in /account — **NO UI EXISTS.** Commit `0cc90b3a` added copy,
-       rules, service and tests and NOT ONE .tsx. Nothing in src/ imports `@/copy/referral`
-       or `@/services/referral` (verified 2026-09-10 on staging f05ae455): zero UI consumers.
-       Nothing was deleted — the panel was never built. A customer cannot reach this
-       programme at all.               K02 🟢 Code GPQPBPM6, mint idempotent
+REFER-A-FRIEND — REGULAR USER                                               16/22
+K01 🟢 "Poleć Gellatti" in /account — BUILT (#248) and SERVED-PROVEN 2026-09-10 on
+       staging 305d086c: /account?section=referral renders a real minted code GVLN474V and
+       link https://staging.pinguinoai.com/?ref=GVLN474V. Desktop + 390 (overflow 0).
+       Was 🔴: commit 0cc90b3a shipped copy/rules/service/tests and NOT ONE .tsx, so the
+       backend banked days nobody could see.  K02 🟢 Code GPQPBPM6, mint idempotent
 K03 🟢 Separate from Affiliate — copy guard bans money words; links out to /affiliate
 K04 🟢 Monthly = +7 days (live)             K05 🟢 Annual = +30 days (live)
 K06 🟢 HOME referrer temp PRO — 7 d auto-activated, ends 2026-09-09 (live)
@@ -79,12 +79,13 @@ K12 🟢 No duplicate — duplicate_invoice AND first_purchase_already_rewarded 
 K13 🟢 Failed payment -> no reward — unpaid + zero-value never reach the recorder
 K14 🟢 Refund/void reverses — live reversal, bank 30 -> 0; dispute path tested
 K15 🟢 Self-referral refused (live)
-K16 🔴 Status visible (reversed shown struck) — depends on K01; no surface renders it
-K17 🔴 Earned days visible                   — depends on K01; no surface renders it
-K18 🔴 Remaining bank visible                — depends on K01; no surface renders it
-       K16-K18 were 🟢 on the strength of the DB and copy existing. The reward IS earned and
-       banked correctly (K04/K05/K08/K12/K14 stay 🟢, all DB-proven); it is simply invisible
-       to the customer who earned it.
+K16 🟡 Status visible (reversed shown struck) — the RewardRow renders earned/reversed and
+       strikes a reversal through; unit-tested. NOT served-proven: the QA account has no
+       reversed reward, so no live row exists to show. Needs a real reversal to close.
+K17 🟢 Earned days visible    — SERVED 305d086c: "ZDOBYTE DNI PRO" renders from the RPC
+K18 🟢 Remaining bank visible — SERVED 305d086c: "BANK DNI PRO" + the banked-while-PRO help
+       Rules render the canonical 7/30 from REFERRAL_BONUS_DAYS, and the separation line
+       "To nie jest program Affiliate" plus the link out are both live.
 K19 🔴 Monthly HOME served proof             K20 🔴 Monthly PRO served proof
 K21 🔴 Annual HOME served proof              K22 🔴 Annual PRO served proof
        BLOCKED: no Stripe CLI, no signing secret, and I must not enter card numbers
