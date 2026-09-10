@@ -216,6 +216,15 @@ begin
     '    and coalesce(p.canonical_verification_status, '''') <> ''blocked'' and (' || E'\n' ||
     '    (p.visibility = ''shared'' and p.product_kind = ''commercial_product''' || E'\n' ||
     '      and public.product_publication_identity_eligible_v1(pv.facts))');
+
+  -- Creator/owner access belongs to private products only. Without this scope, the creator of an
+  -- ineligible shared PR can bypass the publication gate through the legacy ownership branch.
+  v_old :=
+    '    or (v_uid is not null and (p.owning_account_id = v_uid or p.created_by = v_uid))';
+  if position(v_old in v_def) = 0 then raise exception 'sol052_exact_private_scope_anchor_missing'; end if;
+  v_def := replace(v_def, v_old,
+    '    or (v_uid is not null and p.visibility <> ''shared''' || E'\n' ||
+    '      and (p.owning_account_id = v_uid or p.created_by = v_uid))');
   execute v_def;
 end;
 $patch_exact_resolver$;
