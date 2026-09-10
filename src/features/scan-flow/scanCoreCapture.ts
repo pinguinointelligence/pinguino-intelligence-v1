@@ -86,6 +86,17 @@ function formFactor(): 'mobile' | 'desktop' | 'unknown' {
     : 'desktop';
 }
 
+export function desktopResolutionWarning(delivered: {
+  width: number;
+  height: number;
+}): string | null {
+  const longEdge = Math.max(delivered.width, delivered.height);
+  const shortEdge = Math.min(delivered.width, delivered.height);
+  return longEdge < 1280 || shortEdge < 720
+    ? 'Kamera udostępniła tylko niską rozdzielczość. Ustaw kod blisko kamery albo wpisz go ręcznie.'
+    : null;
+}
+
 /** Plain-language reasons the camera could not start (permission, no device, insecure context). */
 export function describeCaptureError(error: unknown): string {
   const name = error instanceof Error ? error.name : '';
@@ -142,25 +153,20 @@ export class ScanCoreCapture {
       facingMode: 'environment',
     });
     if (this.done) return;
+    const captureFactor = formFactor();
+    const deliveredLongEdge = Math.max(delivered.width, delivered.height);
+    if (captureFactor === 'desktop') {
+      const warning = desktopResolutionWarning(delivered);
+      if (warning) this.handlers.onError?.(warning);
+    }
     this.facingUser =
       delivered.facingMode === 'user' ||
       (delivered.facingMode === null &&
         /front|face|facetime|webcam|integrated/i.test(delivered.label ?? ''));
     this.handlers.onMirror?.(this.facingUser);
-    // zoom + torch capability probe (apply, read back, restore) — the same probe the harness ran
-    let zoomMax: number | null = null;
-    let torch = false;
-    try {
-      const controls = await this.camera.probeControls();
-      zoomMax =
-        controls.zoom.supported && controls.zoom.ok ? (controls.zoom.range?.max ?? null) : null;
-      torch = controls.torch.supported && controls.torch.ok;
-    } catch {
-      /* controls stay unknown: the engine then guides the customer instead of zooming */
-    }
-    if (this.done) return;
-    this.zoomMax = zoomMax !== null && zoomMax > 1 ? zoomMax : null;
-    this.torchAvailable = torch;
+    // The customer scanner never probes zoom upward. Capabilities are read without moving the lens.
+    this.zoomMax = null;
+    this.torchAvailable = this.camera.supportsTorch();
     /*
       OWNER RULING 2026-09-06: every entry starts from the SAME natural setting. `zoomLevel` used to
       be a monotone accumulator that nothing ever reset — not on a lost track, not on a new scan, not
@@ -169,10 +175,8 @@ export class ScanCoreCapture {
       anywhere that raises it.
     */
     this.zoomLevel = 1;
-    if (this.zoomMax !== null) {
-      const settled = await this.camera.setZoom(1);
-      if (settled !== null) this.zoomLevel = settled;
-    }
+    const settled = await this.camera.setZoom(1);
+    if (settled !== null) this.zoomLevel = settled;
     const client = new DecodeClient({
       plan: { mode: 'scancore', maxDecodeWidth: 0 },
       onResult: (evidence) => this.onEvidence(evidence as { decision?: unknown }),
@@ -187,7 +191,7 @@ export class ScanCoreCapture {
     }
     client.sendProfile(
       {
-        formFactor: formFactor(),
+        formFactor: captureFactor,
         sourceW: delivered.width,
         sourceH: delivered.height,
         fps: delivered.frameRate,
@@ -201,7 +205,12 @@ export class ScanCoreCapture {
       this.zoomMax !== null && this.zoomMax >= 2,
     );
     this.sendCameraState();
-    this.loop = new FrameLoop({ video, client, path: 'auto' });
+    this.loop = new FrameLoop({
+      video,
+      client,
+      path: 'auto',
+      analysisLongEdge: captureFactor === 'desktop' ? deliveredLongEdge : undefined,
+    });
     this.loop.start();
     this.handlers.onStatus?.('live');
   }

@@ -150,6 +150,8 @@ async function confirmPagesForFacts(
 const WORST_CASE_SEARCHES_PER_CALL = 3;
 
 const RESEARCHABLE = new Set([
+  'productName',
+  'brand',
   'ingredients',
   'allergens',
   // The Scanner's exact-GTIN lookup asks for the basis explicitly: nutrition numbers
@@ -203,7 +205,7 @@ const ENRICHMENT_SCHEMA = {
     },
     facts: {
       type: 'array',
-      maxItems: 20,
+      maxItems: 24,
       items: {
         type: 'object',
         additionalProperties: false,
@@ -226,7 +228,7 @@ const ENRICHMENT_SCHEMA = {
       },
     },
     /** Fields the model looked for and genuinely could not find. */
-    notFound: { type: 'array', maxItems: 20, items: { type: 'string' } },
+    notFound: { type: 'array', maxItems: 24, items: { type: 'string' } },
   },
 } as const;
 
