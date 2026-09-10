@@ -30,7 +30,7 @@ const migration = readFileSync(
 
 const rollback = readFileSync(
   new URL(
-    '../../../supabase/rollback/20260910180000_partner_application_lifecycle_email.rollback.sql',
+    '../../../supabase/rollbacks/20260910180000_partner_application_lifecycle_email.rollback.sql',
     import.meta.url,
   ),
   'utf8',
