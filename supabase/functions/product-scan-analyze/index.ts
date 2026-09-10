@@ -24,6 +24,7 @@ import {
   eanLookupVerdict,
   lookupSkippedNoticePl,
 } from '../../../src/features/product-scanner/eanLookupOutcome.ts';
+import { publicationIdentityEligibilityFromStoredProductFacts } from '../../../src/features/product-scanner/productPublicationEligibility.ts';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -109,7 +110,7 @@ async function exactProductForBarcode(
   const { data } = await service
     .from('product_variants')
     .select(
-      'product_id,ean,products!inner(id,is_active,merged_into_product_id,product_name_display,brand,product_kind,canonical_verification_status,product_code,current_version_id)',
+      'product_id,ean,products!inner(id,is_active,merged_into_product_id,product_name_display,brand,product_kind,visibility,owner_user_id,canonical_verification_status,product_code,current_version_id)',
     )
     .in('ean', [...candidates])
     .eq('is_current', true)
@@ -141,14 +142,41 @@ async function exactProductForBarcode(
     .eq('is_active', true);
   const rows = (Array.isArray(sameEan) ? sameEan : []).map(objectValue);
   const candidateRows = rows.length > 0 ? rows : variantProduct?.id ? [variantProduct] : [];
+  const versionIds = [
+    ...new Set(
+      candidateRows
+        .map((row) => (typeof row.current_version_id === 'string' ? row.current_version_id : null))
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
+  const factsByVersion = new Map<string, Record<string, unknown>>();
+  if (versionIds.length > 0) {
+    const { data: currentVersions } = await service
+      .from('product_versions')
+      .select('id,facts')
+      .in('id', versionIds);
+    for (const version of Array.isArray(currentVersions) ? currentVersions.map(objectValue) : []) {
+      if (typeof version.id === 'string')
+        factsByVersion.set(version.id, objectValue(version.facts));
+    }
+  }
+  const eligibleCandidateRows = candidateRows.map((row) => {
+    if (row.product_kind !== 'commercial_product' || row.visibility !== 'shared') return row;
+    const facts = factsByVersion.get(String(row.current_version_id)) ?? {};
+    return {
+      ...row,
+      publication_identity_eligible:
+        publicationIdentityEligibilityFromStoredProductFacts(facts).eligible,
+    };
+  });
   const resolution = resolveCanonicalEanIdentity(
-    candidateRows as never,
+    eligibleCandidateRows as never,
     actorUserId,
     typeof variantProduct?.id === 'string' ? variantProduct.id : null,
   );
   if (!resolution.canonical) return null;
   const product: Record<string, unknown> = objectValue(
-    rows.find((row) => row.id === resolution.canonical?.id) ??
+    eligibleCandidateRows.find((row) => row.id === resolution.canonical?.id) ??
       (resolution.canonical as unknown as Record<string, unknown>),
   );
   if (product?.is_active !== true || (product.merged_into_product_id ?? null) !== null) return null;
@@ -165,11 +193,19 @@ async function exactProductForBarcode(
     if (!linked) return null;
   }
 
+  const facts = factsByVersion.get(String(product.current_version_id)) ?? {};
+  if (product.canonical_verification_status === 'blocked') return null;
+  if (
+    product.product_kind === 'commercial_product' &&
+    product.visibility === 'shared' &&
+    product.publication_identity_eligible !== true
+  )
+    return null;
+
   /*
-    Self-healing, and the reason this cannot silently rot again: whenever the address disagrees
-    with the identity, move it. Serialised on the EAN inside the RPC, so two accounts scanning at
-    the same moment cannot both move it or produce two shared products. Failure is not fatal — the
-    resolution above already returned the right product to this caller.
+    Self-healing runs only after the candidate passed the publication boundary. A blocked or
+    generic shared record must never become the canonical address merely because its EAN row is
+    stale. The SQL RPC repeats this eligibility check under the EAN lock.
   */
   if (resolution.variantNeedsRepoint) {
     await service.rpc('canonicalize_ean_identity_v1', { p_ean: digits }).then(
@@ -177,12 +213,6 @@ async function exactProductForBarcode(
       () => undefined,
     );
   }
-  const { data: currentVersion } = await service
-    .from('product_versions')
-    .select('facts')
-    .eq('id', String(product.current_version_id))
-    .maybeSingle();
-  const facts = objectValue(currentVersion?.facts);
   const intelligence = objectValue(facts.productIntelligence);
   const behavior = objectValue(intelligence.productBehaviorAuthority);
   const accuracy = Number(facts.productAccuracy);

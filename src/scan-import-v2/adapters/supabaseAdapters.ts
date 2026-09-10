@@ -69,6 +69,7 @@ function asRows(data: unknown): SearchRow[] {
 }
 
 export function candidateFromRow(row: SearchRow, keys: readonly string[]): ExactCandidate | null {
+  if (row.status === 'blocked') return null;
   const eans = Array.isArray(row.eans) ? row.eans : [];
   const ean = eans.find((e) => keys.includes(e));
   if (!ean) return null; // the RPC also matches names/aliases; only an exact EAN hit is an identity
@@ -234,6 +235,8 @@ export function createSupabaseV2Ports(
                 : null;
         const out = new Map<string, ExactCandidate>();
         for (const row of await resolveExact(gtin, symbology ?? 'EAN-13')) {
+          // SQL is authoritative, but a stale resolver deployment must not leak quarantine either.
+          if (row.verification_status === 'blocked') continue;
           gtinRowsById.set(row.product_id, row);
           if (!out.has(row.product_id)) out.set(row.product_id, candidateFromGtinRow(row));
         }
@@ -406,12 +409,6 @@ export interface OfflineCacheOptions {
 
 export function createOfflineCache(options: OfflineCacheOptions = {}): OfflineCachePort & {
   size(): Promise<number>;
-  /** invalidates an entry whose version pointer no longer matches the authority (stale identity guard) */
-  invalidateIfStale(
-    accountId: string | null,
-    canonicalGtin13: string,
-    currentVersionId: string | null,
-  ): Promise<boolean>;
 } {
   const now = options.now ?? (() => Date.now());
   const ttl = options.ttlMs ?? OFFLINE_CACHE_TTL_MS;
@@ -451,6 +448,12 @@ export function createOfflineCache(options: OfflineCacheOptions = {}): OfflineCa
         accountId,
       };
       await store.set(key(accountId, gtin13), JSON.stringify(stored));
+    },
+    async invalidate(accountId, canonicalGtin13) {
+      const hit = await read(accountId, canonicalGtin13);
+      if (!hit) return false;
+      await store.delete(key(accountId, canonicalGtin13));
+      return true;
     },
     async invalidateIfStale(accountId, canonicalGtin13, currentVersionId) {
       const hit = await read(accountId, canonicalGtin13);

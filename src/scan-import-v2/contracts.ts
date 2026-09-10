@@ -111,6 +111,14 @@ export interface OfflineCacheEntry {
 export interface OfflineCachePort {
   get(accountId: string | null, canonicalGtin13: string): Promise<OfflineCacheEntry | null>;
   put(accountId: string | null, entry: OfflineCacheEntry): Promise<void>;
+  /** Drop an authority-rejected/quarantined identity immediately. */
+  invalidate(accountId: string | null, canonicalGtin13: string): Promise<boolean>;
+  /** Drop an older immutable version before replacing it with the authority's current result. */
+  invalidateIfStale(
+    accountId: string | null,
+    canonicalGtin13: string,
+    currentVersionId: string | null,
+  ): Promise<boolean>;
 }
 export interface PricePort {
   /** the per-user overlay price; missing is a costing state, never a failure (audit §12) */
@@ -135,11 +143,7 @@ export interface ScanImportV2Ports {
 }
 
 export type ResolutionProvenance =
-  | 'catalog'
-  | 'local_cache'
-  | 'user_preferred'
-  | 'country_default'
-  | 'country_fallback';
+  'catalog' | 'local_cache' | 'user_preferred' | 'country_default' | 'country_fallback';
 
 export type ScanImportV2Result =
   | {

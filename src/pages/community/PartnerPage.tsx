@@ -3,12 +3,20 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
 import { ApplicationState } from '@/components/shared/ApplicationState';
+import { PartnerApplicationPanel } from '@/features/partner-application/PartnerApplicationPanel';
 import { Button } from '@/components/ui/Button';
 import {
   applicationCompactClasses,
   applicationSecondaryClasses,
 } from '@/components/ui/applicationControlStyles';
 import { customerErrorMessage } from '@/copy/customerError';
+import {
+  commissionAmountLabel,
+  commissionCadenceLabel,
+  commissionProductLabel,
+  commissionStatusCopy,
+  payoutStatusCopy,
+} from '@/features/affiliate/commissionDisplay';
 import { cn } from '@/lib/cn';
 import {
   createPartnerContentLink,
@@ -404,7 +412,7 @@ function Earnings({ data }: { data: PartnerWorkspace }) {
         <table className="w-full min-w-[760px] text-left text-xs">
           <thead>
             <tr className="border-y border-ink/15 bg-stone-50">
-              {['Data', 'Plan', 'Cykl', 'Status', 'Kwota', 'Środowisko', 'Invoice'].map((h) => (
+              {['Data', 'Plan', 'Cykl', 'Status', 'Kwota', 'Środowisko'].map((h) => (
                 <th key={h} className="px-3 py-3">
                   {h}
                 </th>
@@ -417,14 +425,17 @@ function Earnings({ data }: { data: PartnerWorkspace }) {
                 <td className="px-3 py-4">
                   {new Date(String(row.earnedAt)).toLocaleDateString('pl-PL')}
                 </td>
-                <td className="px-3 py-4">{String(row.product)}</td>
-                <td className="px-3 py-4">{String(row.cadence)}</td>
-                <td className="px-3 py-4">{String(row.status)}</td>
+                <td className="px-3 py-4">{commissionProductLabel(row.product)}</td>
+                <td className="px-3 py-4">{commissionCadenceLabel(row.cadence)}</td>
+                <td className="px-3 py-4" title={commissionStatusCopy(row.status).help}>
+                  {commissionStatusCopy(row.status).label}
+                </td>
                 <td className="px-3 py-4 tabular-nums">
-                  {money(row.amountCents, String(row.currency ?? 'EUR'))}
+                  {commissionAmountLabel(row.amountCents, row.status, (cents) =>
+                    money(cents, String(row.currency ?? 'EUR')),
+                  )}
                 </td>
                 <td className="px-3 py-4">{row.livemode ? 'LIVE' : 'TEST'}</td>
-                <td className="px-3 py-4 font-mono text-[10px]">{String(row.invoiceId ?? '—')}</td>
               </tr>
             ))}
           </tbody>
@@ -471,7 +482,9 @@ function Payouts({ data }: { data: PartnerWorkspace }) {
             </div>
             <div>
               <span className="text-[10px] uppercase text-stone-500">Status</span>
-              <p className="mt-1 text-sm">{String(row.status)}</p>
+              <p className="mt-1 text-sm" title={payoutStatusCopy(row.status).help}>
+                {payoutStatusCopy(row.status).label}
+              </p>
             </div>
             <div>
               <span className="text-[10px] uppercase text-stone-500">Przeniesienie</span>
@@ -719,27 +732,33 @@ export function PartnerPage() {
                         ? 'Poprzednie zgłoszenie zostało rozpatrzone odmownie. Możesz wysłać nowe.'
                         : 'Panel Partner otwiera się po zatwierdzeniu zgłoszenia. Zajmuje to kilka pól.'
               }
+              /* The application form now lives HERE rather than behind a link.
+                 It used to point at `/work-with-us#partner-application`, and the
+                 collaboration IA change (#142) turned that route into a redirect
+                 to Franchise — so "Wyślij zgłoszenie" sent an Affiliate
+                 applicant to the franchise page and the form became unreachable,
+                 because WorkWithUsPage was the only surface that rendered it.
+
+                 Putting it on this page is also the right shape: /partner is
+                 already the authenticated Affiliate workspace and already owns
+                 every application state, so the form and its status stop living
+                 on two different surfaces. */
               action={
                 applicationStatus === 'submitted' ? (
                   <Link to="/community" className={applicationSecondaryClasses()}>
                     Zobacz Community
                   </Link>
-                ) : (
-                  <Link
-                    to="/work-with-us#partner-application"
-                    className={applicationSecondaryClasses()}
-                  >
-                    {applicationStatus === 'more_information_needed' ||
-                    applicationStatus === 'rejected'
-                      ? 'Uzupełnij zgłoszenie'
-                      : 'Wyślij zgłoszenie'}
-                  </Link>
-                )
+                ) : null
               }
             />
           ) : (
             content
           )}
+          {data && !data.ok && applicationStatus !== 'submitted' ? (
+            <div className="mt-6" id="partner-application">
+              <PartnerApplicationPanel />
+            </div>
+          ) : null}
         </main>
       </div>
     </DestinationSurface>

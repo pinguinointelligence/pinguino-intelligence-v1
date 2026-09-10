@@ -50,6 +50,9 @@ export function PartnerApplicationPanel() {
     platforms: [],
     audience: '',
     country: '',
+    languages: '',
+    audienceSize: '',
+    consent: false,
     note: '',
     proposedSlug: '',
   });
@@ -126,7 +129,8 @@ export function PartnerApplicationPanel() {
   }
 
   const rejected = status === 'rejected';
-  const canSubmit = draft.displayName.trim() !== '' && draft.primaryLink.trim() !== '';
+  const canSubmit =
+    draft.displayName.trim() !== '' && draft.primaryLink.trim() !== '' && draft.consent === true;
 
   return (
     <form
@@ -223,6 +227,32 @@ export function PartnerApplicationPanel() {
             placeholder={c.form.countryPlaceholder}
           />
         </label>
+        <label className="flex flex-col gap-1.5">
+          <span className={label}>{c.form.languages}</span>
+          <input
+            value={draft.languages}
+            onChange={(event) => set('languages', event.currentTarget.value)}
+            className={applicationFieldClasses()}
+            placeholder={c.form.languagesPlaceholder}
+          />
+        </label>
+        {/* C-APP-03: a BAND, not an exact follower count. The tier decision only
+            needs an order of magnitude, so asking for the precise number would
+            collect more personal data than the decision uses. */}
+        <label className="flex flex-col gap-1.5">
+          <span className={label}>{c.form.audienceSize}</span>
+          <select
+            value={draft.audienceSize}
+            onChange={(event) => set('audienceSize', event.currentTarget.value)}
+            className={applicationFieldClasses()}
+          >
+            {c.form.audienceSizeOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
         <label className="flex flex-col gap-1.5 sm:col-span-2">
           <span className={label}>{c.form.note}</span>
           <textarea
@@ -232,6 +262,30 @@ export function PartnerApplicationPanel() {
             className={applicationFieldClasses('resize-y')}
             placeholder={c.form.notePlaceholder}
           />
+        </label>
+        {/* C-APP-02: the applicant may suggest their own code. It was already in
+            the draft and in the RPC, but no field ever rendered it, so nobody
+            could actually suggest one. */}
+        <label className="flex flex-col gap-1.5 sm:col-span-2">
+          <span className={label}>{c.form.proposedSlug}</span>
+          <input
+            value={draft.proposedSlug}
+            onChange={(event) => set('proposedSlug', event.currentTarget.value)}
+            className={applicationFieldClasses()}
+            placeholder={c.form.proposedSlugPlaceholder}
+          />
+        </label>
+        {/* Consent is REQUIRED and gates submit, so it can never be a
+            pre-ticked formality the applicant did not actually give. */}
+        <label className="flex items-start gap-2.5 sm:col-span-2">
+          <input
+            type="checkbox"
+            checked={draft.consent === true}
+            onChange={(event) => set('consent', event.currentTarget.checked)}
+            className="mt-0.5 size-4 flex-none accent-[var(--g-orange)]"
+            data-testid="application-consent"
+          />
+          <span className="text-[12.5px] leading-relaxed text-stone-600">{c.form.consent}</span>
         </label>
       </div>
 

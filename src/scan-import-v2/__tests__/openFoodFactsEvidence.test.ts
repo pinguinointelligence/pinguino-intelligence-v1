@@ -19,6 +19,7 @@ const VITAMIN_WELL = {
   brands: 'Vitamin Well',
   serving_size: '1 bottle (500 ml)',
   categories_tags: [],
+  nutrition_data_per: '100ml',
   nutriments: {
     'energy-kcal_100g': 1.2,
     fat_100g: 0,
@@ -26,6 +27,20 @@ const VITAMIN_WELL = {
     sugars_100g: 0,
     proteins_100g: 0,
     salt_100g: 0.1175,
+  },
+};
+const GENERIC_VITAMIN_WELL = {
+  code: '7350042718481',
+  product_name: 'Vitamin well',
+  brands: 'Vitamin Well AB',
+  categories_tags: ['en:non-alcoholic-beverages'],
+  nutriments: {
+    'energy-kcal_100g': 17,
+    fat_100g: 0,
+    carbohydrates_100g: 4.2,
+    sugars_100g: 4.2,
+    proteins_100g: 0,
+    salt_100g: 0,
   },
 };
 const MILKA = {
@@ -44,6 +59,7 @@ const MILKA = {
   pnns_groups_2: 'Biscuits and cakes',
   ingredients_text_es: 'Azúcar, HUEVO, grasa de palma, harina de TRIGO, pasta de cacao',
   allergens_tags: ['en:eggs', 'en:gluten', 'en:milk', 'en:soybeans'],
+  nutrition_data_per: '100g',
   nutriments: {
     'energy-kcal_100g': 467.5,
     fat_100g: 27,
@@ -134,7 +150,28 @@ describe('exact-GTIN registry evidence', () => {
     expect(web.family).toBe('beverage');
     expect(web.productFields).toMatchObject({
       identity: { displayName: 'Sport 002', brand: 'Vitamin Well' },
-      nutrition: { energyKcal: 1.2, fat: 0, basis: 'per_100g' },
+      nutrition: { energyKcal: 1.2, fat: 0, basis: 'per_100ml' },
+    });
+  });
+
+  it('SOL-052: a brand-only OFF name is not an exact-SKU identity and an absent basis stays absent', () => {
+    const web = identityFromEvidence(
+      evidenceFromProduct(GENERIC_VITAMIN_WELL, '7350042718481', 1, 'u'),
+    )! as typeof identityFromEvidence extends (...args: never[]) => infer R
+      ? NonNullable<R> & {
+          publicationEligibility: { eligible: boolean; reasonCodes: string[] };
+          automaticEvidence: { source: string; exactGtin: string };
+        }
+      : never;
+
+    expect(web.publicationEligibility).toMatchObject({
+      eligible: false,
+      reasonCodes: expect.arrayContaining(['NAME_EQUALS_BRAND_OR_MANUFACTURER']),
+    });
+    expect((web.productFields['nutrition'] as Record<string, unknown>)['basis']).toBeUndefined();
+    expect(web.automaticEvidence).toMatchObject({
+      source: 'barcode_registry',
+      exactGtin: '7350042718481',
     });
   });
 
@@ -148,6 +185,7 @@ describe('exact-GTIN registry evidence', () => {
     expect(web.productFields).toMatchObject({
       ingredientsText: MILKA.ingredients_text_es,
       allergensText: 'eggs, gluten, milk, soybeans',
+      package: { netQuantity: 150, unit: 'g', netQuantityText: '150 g (6 * 25 g)' },
       nutrition: {
         energyKcal: 467.5,
         fat: 27,

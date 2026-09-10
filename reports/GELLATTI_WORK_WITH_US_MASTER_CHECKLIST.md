@@ -130,26 +130,52 @@ Copy authority: `src/copy/cooperation.ts` (PL + EN, `resolveCooperationCopy`). N
 | A-GATE-06 | Gateway | Legacy anchors/links to the removed cards redirect, nothing 404s | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | `w.offers.*` copy has downstream consumers | Grep consumers before deleting |
 | A-GATE-07 | Gateway | Desktop + mobile served QA of the gateway | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | After A-GATE-01..06 |
 
+### A-IA — Collaboration information architecture (owner decision 2026-09-03)
+
+Supersedes the A-GATE rows above: there is no Work With Us gateway any more. Those rows stay
+visible and ⚪ because they were never built, not because they were done — they describe a surface
+the owner has since retired. Nothing is renamed or deleted.
+
+| ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | PR/SHA | Problem / Why | Next Action |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| A-IA-01 | Nav | Hamburger exposes exactly TWO collaboration entries: Affiliate and Franchise | 🟢 | ✅ | ✅ | ⬜ | 🔓 | `70e1e423` (#142) | — | Owner QA |
+| A-IA-02 | Nav | Work With Us removed from app nav AND desktop mega menu | 🟢 | ✅ | ✅ | ⬜ | 🔓 | `70e1e423` (#142) | — | Owner QA |
+| A-IA-03 | Nav | No top-level entry for Machines / Mobile / Trailer; they are concepts inside Franchise | 🟢 | ✅ | ✅ | ⬜ | 🔓 | `70e1e423` (#142) | — | Owner QA |
+| A-IA-04 | Routing | `/work-with-us` redirects to `/franchise`, preserving search AND hash | 🟢 | ✅ | ✅ | ⬜ | 🔓 | `70e1e423` (#142) | — | Owner QA |
+| A-IA-05 | Enquiry | ONE Franchise enquiry: FranchiseInquiryForm → franchise_inquiries → AdminFranchiseLeadsSection | 🟢 | ✅ | ✅ | ⬜ | 🔓 | `70e1e423` (#142) | Legacy LeadEnquirySection unmounted; `business_leads` kept read-only (3 rows) | Owner QA |
+| A-IA-06 | Enquiry | Entry source preserved: `?from=` preselects concept and is recorded as source_route | 🟢 | ✅ | ✅ | ⬜ | 🔓 | `70e1e423` (#142) | — | Owner QA |
+| A-IA-07 | DB | `franchise_inquiries.source_route` column + RPC allowlist applied | 🟢 | ✅ | ✅ | ⬜ | 🔓 | migration `20260903140000`, applied 2026-09-06 | Deploy does NOT auto-apply migrations — this was dead until applied by hand | Owner QA |
+| A-IA-08 | QA | Served desktop 1440 + mobile 390 | 🟢 | ✅ | ✅ | ⬜ | 🔓 | `70e1e423` deployment `dpl_Bm42Crm6kqnZVyxxpD5b9w7N7Kym` | — | Owner QA |
+| A-IA-09 | Formats | Trailer / Mobile / Machines reachable FROM Franchise, from the same LANES source | 🟢 | ✅ | ✅ | ⬜ | 🔓 | `70e1e423` (#142) | — | Owner QA |
+| A-IA-10 | Concepts | `/machines` maps to no concept — equipment is not one of the 4 approved formats | 🟡 | ✅ | ✅ | ⬜ | 🔓 | `70e1e423` (#142) | Distinguished by source_route only. Making machines a 5th concept is a canonical contract change | **OWNER DECISION** |
+
+### A-DEF — Defects found while working, not caused by this workstream
+
+| ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | PR/SHA | Problem / Why | Next Action |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| A-DEF-01 | Layout | Global 15px horizontal overflow on every page (app shell, `100vw` + scrollbar) | ⚪ | ⬜ | ✅ | ⬜ | 🔓 | observed on `70e1e423` | Reproduced identically on `/franchise`, `/affiliate` AND `/shop` — pre-existing, NOT from the IA change. 390 is clean (0) | Fix in its own PR; do not attach to Franchise |
+| A-DEF-02 | Ops | Staging and production share ONE Supabase project `tunabqqrwabacxjcxxkz` | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | verified 2026-09-06 | Any migration or QA row lands in the database production reads. Confirmed while applying A-IA-07 | **OWNER DECISION** — split projects or accept |
+
 ### B — Partner public landing (§5) · CHECKPOINT B
 
 | ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | PR/SHA | Problem / Why | Next Action |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| B-LAND-01 | Partner landing | Public landing at **`/partner-program`**; `/partner` stays the authenticated dashboard | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | **Route CONFIRMED by owner correction §4** — no longer an open decision | Implement the route |
-| B-LAND-02 | Partner landing | Answers within seconds: who it's for · how they earn · **revenue is recurring** · own codes/links · dashboard visibility · volume raises level | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Copy + layout |
-| B-LAND-03 | Partner landing | Core message "Polecasz raz. Możesz zarabiać również przy kolejnych odnowieniach." | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Copy row |
-| B-LAND-04 | Partner landing | "Twój kod. Twój link. Dowolny kanał." + "Budujesz bazę klientów…" + "Wyniki, prowizje i przyszłe wypłaty…" | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Copy rows |
-| B-LAND-05 | Partner landing | **Public landing MUST NOT show exact commission rates** — enforced by an automated test, not just review | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Highest-risk copy leak in this workstream | Write guard test first |
-| B-LAND-06 | Partner landing | Permitted public claims only: recurring · Standard→Gold · Gold from 100 · individual conditions possible · automatic payouts · codes/links · campaign tracking · approved Partner gets Home+Pro · annual benefit where billing allows | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Copy + guard test |
-| B-LAND-07 | Partner landing | Small CTA for non-creators → normal-user referral (§20) | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Depends on J rows | After J-REF-* |
-| B-LAND-08 | Partner landing | Desktop + mobile served QA, signed out and signed in | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | After B-LAND-01..07 |
+| B-LAND-01 | Partner landing | Public landing at **`/partner-program`**; `/partner` stays the authenticated dashboard | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | **Route CONFIRMED by owner correction §4** — no longer an open decision | Implement the route · **SUPERSEDED BY /affiliate** (owner decision 2026-09-10) — Public landing at `/partner-program` was never built and will not be. `/affiliate` is the canonical public surface. |
+| B-LAND-02 | Partner landing | Answers within seconds: who it's for · how they earn · **revenue is recurring** · own codes/links · dashboard visibility · volume raises level | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Copy + layout · **SUPERSEDED BY /affiliate** (owner decision 2026-09-10) — `/affiliate` answers these within seconds; C01-C16 in the growth ledger are 🟢 and served-verified. |
+| B-LAND-03 | Partner landing | Core message "Polecasz raz. Możesz zarabiać również przy kolejnych odnowieniach." | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Copy row · **SUPERSEDED BY /affiliate** (owner decision 2026-09-10) — Superseded wording. `/affiliate` carries the owner-accepted recurring-earnings message. |
+| B-LAND-04 | Partner landing | "Twój kod. Twój link. Dowolny kanał." + "Budujesz bazę klientów…" + "Wyniki, prowizje i przyszłe wypłaty…" | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Copy rows · **SUPERSEDED BY /affiliate** (owner decision 2026-09-10) — Superseded wording. Equivalent meaning lives in the accepted `/affiliate` copy. |
+| B-LAND-05 | Partner landing | **Public landing MUST NOT show exact commission rates** — enforced by an automated test, not just review | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Highest-risk copy leak in this workstream | Write guard test first · **SUPERSEDED BY /affiliate** (owner decision 2026-09-10) — **DIRECTLY REVERSED.** This forbade public rates and demanded a test enforcing it. On 2026-09-03 the owner FROZE the rates as public (STANDARD 9 €, GOLD 19 €, Starter Pack 59 €) and accepted `/affiliate`, which shows the full table. The later decision governs; no such test may be written. |
+| B-LAND-06 | Partner landing | Permitted public claims only: recurring · Standard→Gold · Gold from 100 · individual conditions possible · automatic payouts · codes/links · campaign tracking · approved Partner gets Home+Pro · annual benefit where billing allows | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Copy + guard test · **SUPERSEDED BY /affiliate** (owner decision 2026-09-10) — Superseded. The permitted-claims list is now the frozen `/affiliate` copy plus the D01-D07 copy guards. |
+| B-LAND-07 | Partner landing | Small CTA for non-creators → normal-user referral (§20) | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Depends on J rows | After J-REF-* · **SUPERSEDED BY /affiliate** (owner decision 2026-09-10) — Superseded as written (it targeted the Partner landing). The Affiliate→Referral link is still wanted and is tracked on the K01 referral UI work, which must exist first. |
+| B-LAND-08 | Partner landing | Desktop + mobile served QA, signed out and signed in | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | After B-LAND-01..07 · **SUPERSEDED BY /affiliate** (owner decision 2026-09-10) — Superseded. Served QA of `/affiliate` is C15/C16, 🟢 at 1440 and 390. |
 
 ### C — Partner application + status (§6, §7) · CHECKPOINT B
 
 | ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | PR/SHA | Problem / Why | Next Action |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | C-APP-01 | Application | Flow: landing → sign in/create account → verified identity → application → confirmation → status | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | `PartnerApplicationPanel` + `gellatti_submit_partner_application_v1` exist; the *flow* around them does not | Wire to new landing |
-| C-APP-02 | Application | Captures: public/creator name, country, languages, description, audience/topic, platform selection, platform URLs, site/blog/newsletter, audience size, promotion plan, code suggestions, consent | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Current panel captures a subset; `application_data` is jsonb so no migration needed | Extend form |
-| C-APP-03 | Application | Asks for no unnecessary private information | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Review at C-APP-02 |
+| C-APP-02 | Application | Captures: public/creator name, country, languages, description, audience/topic, platform selection, platform URLs, site/blog/newsletter, audience size, promotion plan, code suggestions, consent | 🟢 | ✅ | ✅ | ⬜ | 🔓 | — | Current panel captures a subset; `application_data` is jsonb so no migration needed | Extend form · **DONE.** Added languages, audience-size BAND, consent and the proposed-code field; `otherLinks` now names site/blog/newsletter explicitly. `proposedSlug` was in the draft and the RPC but NO input ever rendered it — nobody could suggest a code. Both locales. Guarded by `applicationPrivacy.test.ts` |
+| C-APP-03 | Application | Asks for no unnecessary private information | 🟢 | ✅ | ✅ | ⬜ | 🔓 | — | — | Review at C-APP-02 · **DONE as a guard, not a promise.** `applicationPrivacy.test.ts` refuses eight categories — birth date, postal address, phone, PESEL/NIP/VAT/tax id, identity document, IBAN/bank, income, gender/age — across BOTH the form and both locales. Audience size is a band, never an exact count. Payout identity stays with Stripe Connect; this form must not become a second home for it |
 | C-APP-04 | Application | Duplicate active applications impossible for one account | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | `partner_applications_open_uniq` partial unique index already enforces this | Add regression test |
 | C-APP-05 | Application | Customer-facing statuses RECEIVED / UNDER REVIEW / MORE INFORMATION NEEDED / APPROVED / REJECTED / SUSPENDED / TERMINATED | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | `b5963d85` | Migration adds `more_information_needed`. **It also fixed a latent bug**: the landed `request_information` action wrote `in_review`, which the CHECK rejects, so that admin action had never worked | Wire the status into the applicant-facing UI |
 | C-APP-06 | Application | Customer copy never exposes internal state names | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | `b5963d85` | `partnerApplicationStatus.ts` pairs each contract value with customer copy; a guard test forbids any raw value, snake_case or SQL vocabulary in a customer string | — |
@@ -174,7 +200,7 @@ Copy authority: `src/copy/cooperation.ts` (PL + EN, `resolveCooperationCopy`). N
 | D-LINK-01 | Campaign links | Partner may create many trackable links (not limited by the 3 codes) | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | `partner_content_links` + `createPartnerContentLink` + `LinkGenerator` exist | Served-verify |
 | D-LINK-02 | Campaign links | All links resolve to immutable `partner_id` | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | `PartnerPublicRoute` + `partner-link-resolve` | Regression test |
 | D-LINK-03 | Campaign links | Aggregate clicks / signups / paid conversions / active subs / per-campaign performance | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | Workspace RPC returns clicks + signups; paid conversions and active counts unverified | Verify RPC completeness |
-| D-LINK-04 | Campaign links | No customer PII exposed anywhere in partner-visible data | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Write PII guard test over the RPC payload |
+| D-LINK-04 | Campaign links | No customer PII exposed anywhere in partner-visible data | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | — | — | Write PII guard test over the RPC payload · **DONE.** Audit of `gellatti_partner_workspace_v1`: everything customer-side is an AGGREGATE — `paidCustomers` is a count, `uniqueVisitors` counts distinct SALTED hashes, no name/email/user_id is returned. The leak was on the render side, now fixed and guarded by `partnerVisibleData.test.ts` |
 | D-ATTR-01 | Attribution | 30-day window · explicit code overrides unconverted passive · locked on first paid · one owner per payment · self-referral rejected | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | `attribution.ts` A1–A8 + `referral_attributions` unique indexes | Re-run tests as evidence |
 
 ### E — Commission, tiers, hold, reversals (§10–§13) · CHECKPOINT E
@@ -196,7 +222,7 @@ Copy authority: `src/copy/cooperation.ts` (PL + EN, `resolveCooperationCopy`). N
 | E-HOLD-02 | Hold | Dashboard shows earned / held / eligible date / eligible / batched / transfer / payout / reversed | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | Workspace RPC returns commission status + payouts; the 8 distinct states are not all surfaced | UI work in H |
 | E-REV-01 | Reversals | Full refund → full reversal; partial → proportional; cap; append-only; dispute lost/won | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | `refundAdjustments.ts` R1–R6 | Re-run tests |
 | E-REV-02 | Reversals | Post-payout reversal → negative balance offset against future eligible | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | `payoutNetting.ts` P3 | Regression test |
-| E-REV-03 | Reversals | Customer copy e.g. "Zwrot płatności · −€4.99", never raw codes, no PII | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Display map + guard test |
+| E-REV-03 | Reversals | Customer copy e.g. "Zwrot płatności · −€4.99", never raw codes, no PII | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | — | — | Display map + guard test · **DONE.** The commissions table printed raw contract values AND the raw Stripe invoice id. Invoice id REMOVED (not masked — it identifies a customer invoice and means nothing to a partner). Status/product/cadence now go through an exhaustive display map, same shape as C-APP-06. Reversal reads `Zwrot płatności · −€4.99`. A SECOND raw render was found in the payouts list by the guard test — `skipped_negative_balance` was shown verbatim; all 7 payout states now have copy |
 
 ### F — Stripe Connect + payouts (§14) · CHECKPOINT E
 
@@ -367,7 +393,7 @@ Copy authority: `src/copy/cooperation.ts` (PL + EN, `resolveCooperationCopy`). N
 | P-LEAD-03 | Leads | Statuses NEW / CONTACTED / QUALIFIED / QUOTED / WON / LOST | 🟢 | ✅ | ✅ | ⬜ | 🔓 | this run | All six, asserted identical in SQL and TS. A legacy `closed` row maps to `qualified` rather than `lost`, because `lost` would assert an outcome nobody recorded | `20260831203500_business_leads.sql` NOT applied — pending in this lane |
 | P-LEAD-04 | Leads | Admin: see all, filter by type/status, open details, see configuration, add notes, update status, audit history | 🟢 | ✅ | ✅ | ⬜ | 🔓 | this run | `AdminBusinessLeadsSection` — filter by path, humanised configurator answers, inline notes, status moves, expandable history. A settled lead offers no forward move, so reopening is deliberate | Served QA after migration |
 | P-LEAD-05 | Leads | Customer gets submission confirmation | 🟢 | ✅ | ✅ | ⬜ | 🔓 | — | — | Verify per route |
-| P-LEAD-06 | Leads | Admin notified at `info@gellatti.com` via the canonical notification system | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | **UNBLOCKED by owner correction §1–§3.** Subjects must use the §2 taxonomy | After EMAIL-01..06 |
+| P-LEAD-06 | Leads | Admin notified at `info@gellatti.com` via the canonical notification system | 🟢 | ✅ | ✅ | ⬜ | 🔓 | migration `20260910140000`, applied+verified 2026-09-10 | — | **UNBLOCKED by owner correction §1–§3.** Subjects must use the §2 taxonomy | After EMAIL-01..06 · **DONE.** Queued through the canonical `gellatti_enqueue_email_v1` (owns idempotency), subject_key `franchiseInquiryNew` from the existing closed taxonomy, area FRANCHISE, recipient info@gellatti.com. Verified live both ways: staging origin → `[STAGING]` label + environment staging; gellatti.com origin → production, no label. Environment is CLASSIFIED server-side from the caller origin, not claimed, because prod and staging share one DB. Enqueue failure cannot roll back the lead. QA rows removed. |
 
 ### Q — Asset manifest (§33, owner correction §§15–18 + the owner's 23-asset render list) · **IMMEDIATE PRIORITY**
 
@@ -498,8 +524,8 @@ Writing no GRANT does not produce a table with no grants.
 | ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | Evidence | Notes | Next |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | DB-ACL-01 | DB security | **`public` schema default privileges vs financial tables** — decide whether the project-wide default should keep granting ALL on every new table to `anon`/`authenticated` | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | live `pg_default_acl` | **Not changed by this workstream, by owner instruction.** Changing global default privileges has system-wide consequences and needs its own forensic. Every new table in every future workstream inherits this until it is addressed | Owner schedules the forensic |
-| DB-ACL-02 | DB security | Least-privilege forensic — **`commission_entries`** | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | live ACL `anon=arwdDxtm, authenticated=arwdDxtm` | Consumer inventory required before any revoke: direct client reads/writes · RPC · SECURITY DEFINER · Edge Function/service-role · Admin · webhook/reconciliation. Classify each privilege NEEDED / NOT NEEDED / UNKNOWN | Forensic, then a proposed migration |
-| DB-ACL-03 | DB security | Least-privilege forensic — **`commission_rules`** | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | same ACL | as DB-ACL-02 | Forensic |
+| DB-ACL-02 | DB security | Least-privilege forensic — **`commission_entries`** | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | **FORENSIC DONE 2026-09-10.** ACL `anon=arwdDxtm, authenticated=arwdDxtm` confirmed; RLS on, every policy SELECT-only, so DML is default-denied and TRUNCATE is unreachable via PostgREST. Consumer inventory: ZERO `src/` consumers; dashboard uses SECURITY DEFINER `gellatti_partner_workspace_v1`; edge fns use service_role. Revoke is safe. Migration `20260910120000` **READY / NOT APPLIED — production-shared DB** (owner decision 2026-09-10; no grant changes until a separate safe deployment decision) | Consumer inventory required before any revoke: direct client reads/writes · RPC · SECURITY DEFINER · Edge Function/service-role · Admin · webhook/reconciliation. Classify each privilege NEEDED / NOT NEEDED / UNKNOWN | Forensic, then a proposed migration |
+| DB-ACL-03 | DB security | Least-privilege forensic — **`commission_rules`** | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | **FORENSIC DONE 2026-09-10.** Same ACL; RLS on with **ZERO policies**, so nothing may read it through the API at all. Same inventory as DB-ACL-02. Covered by migration `20260910120000` — **READY / NOT APPLIED — production-shared DB** (owner decision 2026-09-10) | as DB-ACL-02 | Forensic |
 | DB-ACL-04 | DB security | Least-privilege forensic — **`partners`** | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | same ACL | as DB-ACL-02 | Forensic |
 | DB-ACL-05 | DB security | Least-privilege forensic — **`partner_codes`** | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | same ACL | as DB-ACL-02 | Forensic |
 | DB-ACL-06 | DB security | Least-privilege forensic — **`partner_tier_snapshots`** | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | same ACL | as DB-ACL-02 | Forensic |

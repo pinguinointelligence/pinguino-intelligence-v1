@@ -121,6 +121,7 @@ describe('scan flow — pure rules', () => {
       salt: '',
       alcoholAbv: '',
     });
+    expect(c.evidenceOrigin).toBe('customer_action');
     expect(c.productFields).toEqual({
       identity: { displayName: 'Choco Wafers', brand: 'Milka' },
       ingredientsText: 'cukier, mąka',
@@ -192,6 +193,28 @@ describe('scan flow — pure rules', () => {
         nutrition: { energyKcal: 467.5, fat: 27, basis: 'per_100g' },
         ingredientsText: 'Azúcar, HUEVO',
         allergensText: 'eggs, gluten',
+      },
+      automaticEvidence: {
+        source: 'barcode_registry',
+        exactGtin: '7622210669315',
+        sourceUrl: 'u',
+        queriedAt: 1,
+        productFields: {},
+      },
+      publicationEligibility: {
+        version: 'PRODUCT_PUBLICATION_IDENTITY_V1',
+        eligible: true,
+        exactSkuIdentity: true,
+        normalized: {
+          displayName: 'choco brownie',
+          brand: 'milka',
+          manufacturer: '',
+          variant: '',
+          productType: '',
+        },
+        distinguishingTokens: ['choco', 'brownie'],
+        reasonCodes: [],
+        fieldProvenance: {},
       },
       hasNutrition: true,
       hasIngredients: true,

@@ -119,6 +119,12 @@ describe('finalizeProductScan — the owner Cacao Puro failure', () => {
       error: null,
     });
     await expect(finalizeProductScan(FINALIZE_INPUT)).resolves.toMatchObject({ kind: 'created' });
+    expect(invoke).toHaveBeenCalledWith(
+      'product-scan-finalize',
+      expect.objectContaining({
+        body: expect.objectContaining({ contractVersion: 'PRODUCT_SCAN_FINALIZE_V2' }),
+      }),
+    );
   });
 });
 

@@ -291,7 +291,8 @@ describe('the deployed handler is wired to all of it', () => {
     expect(outbound).toHaveLength(1);
     expect(FINALIZE).toContain('functions/v1/intimport-enrich');
     expect(FINALIZE).not.toContain('product-scan-analyze');
-    expect(FINALIZE).not.toContain('openfoodfacts');
+    // A local hostname/provenance check is allowed; a second registry API request is not.
+    expect(FINALIZE).not.toContain('/api/v2/product/');
   });
 
   it('a repeated finalize reports what was SAVED, not a hard-coded success', () => {
