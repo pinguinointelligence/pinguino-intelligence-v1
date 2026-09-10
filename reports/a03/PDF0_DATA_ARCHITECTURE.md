@@ -64,3 +64,18 @@ Primary join key (market_iso2, role, EAN); fallback (market_iso2, role, proposal
   MARKET_PAGE_WITHOUT_EAN, SHIPPING_POLICY_PAGE_ONLY, PAGE_WITHOUT_EAN, SOURCE_NOT_READABLE, NO_SOURCE_URL, NO_EAN_IN_V7.
 - Mapping to D-10 classes: EAN_ON_MARKET_PAGE → CONFIRMED; any other class with a source → LEAD; NO_SOURCE_URL → HYPOTHESIS;
   NO_EAN_IN_V7 → BRAK. Working values for v7: reports/a03/a04_ean_verification_v7.csv.
+
+## STABILIZER slot (owner update 2026-09-10 c — supersedes "role = TARA")
+The stabilizer position is a functional slot, not one ingredient. One row per market:
+functional_slot=STABILIZER · stabilizer_type (TARA | GUAR | LBG | STABILIZER_BLEND | OTHER_EXISTING_APPROVED_STABILIZER) ·
+selected_pi_ing (an EXISTING FINAL 2541 PI — never a new one) · selected_pr_ing (AUTO PO AKCEPTACJI until the final BAZA) ·
+selected_product_name · brand · pack · ean_gtin · market_iso2 · url_product / url_purchase · availability_evidence
+(verification_class, page_market, market_by, evidence_method, evidence_utc) · technical_doc_url · evidence_class_slot ·
+engine_readiness · processing_readiness · final_use_status.
+- evidence_class_slot ∈ CONFIRMED_LOCAL_TARA · CONFIRMED_LOCAL_ALTERNATIVE · LOCAL_ALTERNATIVE_PENDING_TECHNICAL_READINESS ·
+  VERIFIED_CROSS_BORDER_FALLBACK · LEAD · BRAK. A proven local alternative is LOCAL_ALTERNATIVE_PENDING_TECHNICAL_READINESS
+  until Engine/Processing clear it; only then CONFIRMED_LOCAL_ALTERNATIVE.
+- final_use_status for an alternative = CANDIDATE_PENDING_TECHNICAL_READINESS until cleared; never FINAL BASE READY.
+- SHOP stores no dosage. Grams in the customer PDF come only from the accepted country-base calculation, which must have
+  been computed with the same stabilizer_type and PI as the product the PDF names (D-18).
+- Customer-visible rule: the PDF shows the selected product; a local safe product outranks cross-border TARA.

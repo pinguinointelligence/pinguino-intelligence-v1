@@ -159,3 +159,8 @@ v7 writes the Polish "Biały cukier krystaliczny — 100% cukier" in all 75 rows
 - a04_browser_evidence_v7.json — rendered-DOM checks
 - d08_missing_requirements_v7.csv — 375 PR cells with v7 requirement + A04 evidence class
 - sucrose_local_terms_75.csv — sucrose term per market
+
+## Superseded wording (owner update 2026-09-10 c)
+TARA is no longer a mandatory product per market (D-13). Read every TARA statement above as the STABILIZER slot /
+best safe local verified product. The TARA evidence in this file stays as recorded; the stabilizer search continues
+in stabilizer_slot_75_v7.csv.

@@ -626,3 +626,44 @@ A03 stays ACTIVE (S3', S5' not met). L1 unchanged: Vietnam CONFIRMED · Poland L
 RCN stays a risk only for D01 / A04 / E05.
 
 # ============================================================================
+
+# OWNER UPDATE 2026-09-10 (c) — SHOP / PDF 0€ / STABILIZER ROUTING (recorded)
+# ============================================================================
+D-13 TARA is no longer a mandatory exact product in every market. Requirement: FUNCTIONAL SLOT = STABILIZER with an
+     exact, explicit PI/PR selection per market.
+D-14 Search order per market: (1) local verified TARA → (2) local alternative stabilizer already in FINAL 2541 —
+     preferred: TARA, GUAR, LBG, the existing verified GELLATTI stabilizer blend/premix; another existing stabilizer PI
+     only if technically appropriate → (3) local commercial gelato stabilizer / premix, identified exactly and mapped
+     safely → (4) VERIFIED_CROSS_BORDER_FALLBACK → (5) BRAK / REVIEW_REQUIRED.
+D-15 Stabilizers are not gram-for-gram substitutes. SHOP delivers discovery, exact identity, EAN/SKU, availability,
+     market evidence, purchase URL, manufacturer/supplier data and technical-document discovery. SHOP never sets a
+     dosage. An alternative stays CANDIDATE_PENDING_TECHNICAL_READINESS until Engine/Processing clear it; it is never
+     called FINAL BASE READY.
+D-16 Data model for the position: functional_slot = STABILIZER, with selected_pi_ing, selected_pr_ing,
+     selected_product_name, stabilizer_type (TARA | GUAR | LBG | STABILIZER_BLEND | OTHER_EXISTING_APPROVED_STABILIZER),
+     EAN/SKU, market, source URL, availability evidence, technical-document URL, evidence class, Engine readiness,
+     Processing readiness, final-use status. Types are never collapsed into one ingredient identity.
+D-17 Stabilizer evidence classes: CONFIRMED_LOCAL_TARA · CONFIRMED_LOCAL_ALTERNATIVE ·
+     LOCAL_ALTERNATIVE_PENDING_TECHNICAL_READINESS · VERIFIED_CROSS_BORDER_FALLBACK · LEAD · BRAK.
+     PENDING_TECHNICAL_READINESS never counts as production-ready coverage.
+D-18 PDF 0€: the easiest safe LOCAL product outranks cross-border TARA, even when it uses another accepted stabilizer
+     PI. The PDF names the product actually selected; it never says TARA when the country base was calculated with
+     GUAR / LBG / a blend, or the reverse. Final grams come from the accepted country-base calculation, not from SHOP.
+D-19 TARA research is preserved. The search branches: TARA → local alternatives → verified premix → cross-border.
+D-20 Identity from FINAL 2541. New product / brand / EAN → new PR candidate → existing PI. No safe existing PI →
+     NEW PR/PI-ING INGESTION CONTRACT. SHOP never creates a PI; no Mapper change; no shared-Supabase mutation.
+D-21 Continue in parallel: CORE cells, US gaps, DEXTROSE, STABILIZER alternatives, label/product facts, purchase
+     links, multilingual sucrose terms, A04/A05. Final PDF still waits for the final accepted BAZA.
+
+SUPERSEDED WORDING (annotation only; nothing above is rewritten)
+Wherever earlier text in this file or in reports/a03/ treats TARA as the mandatory GELATO country ingredient —
+the A03 saturation criterion v2 role list "MILK, CREAM, SMP, DEXTROSE, TARA (5 × 75 = 375 cells)", checklist line B05
+"v7 TARA", the saturation-matrix lines that count TARA, A04_EAN_VERIFICATION.md ("TARA: 0 CONFIRMED …", "TARA
+open cells"), PDF0_DATA_ARCHITECTURE.md role lists and the TARA rows of d08_missing_requirements_v7.csv — read it as
+STABILIZER SLOT / BEST SAFE LOCAL VERIFIED PRODUCT (D-13 … D-19). The TARA evidence itself stays as recorded.
+
+A03 SATURATION CRITERION v2.1 (amends v2 for D-13; v2 kept above)
+The fifth PR role is the STABILIZER slot (5 × 75 = 375 cells unchanged). A STABILIZER cell counts as covered only when
+CONFIRMED_LOCAL_TARA, or CONFIRMED_LOCAL_ALTERNATIVE after Engine/Processing clearance. PENDING_TECHNICAL_READINESS,
+VERIFIED_CROSS_BORDER_FALLBACK, LEAD and BRAK are reported separately and never counted as production-ready.
+# ============================================================================
