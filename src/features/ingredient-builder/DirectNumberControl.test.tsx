@@ -129,6 +129,41 @@ describe('DirectNumberControl', () => {
     expect(html).not.toContain('>%</button>');
   });
 
+  it('renders a closed high-contrast lock and an open neutral unlock as distinct states', () => {
+    const renderLock = (pressed: boolean) =>
+      renderToStaticMarkup(
+        <DirectNumberControl
+          value={130}
+          step={1}
+          decimals={0}
+          suffix="g"
+          ariaLabel="Cream — ilość w g"
+          onChange={() => {}}
+          testId={`grams-${pressed ? 'locked' : 'unlocked'}`}
+          widthPreset="grams"
+          density="compact"
+          lockSegment={{
+            pressed,
+            ariaLabel: pressed ? 'Odblokuj gramy' : 'Zablokuj gramy',
+            title: pressed ? 'Gramy zablokowane' : 'Gramy odblokowane',
+            suffix: 'g',
+            onToggle: () => {},
+            testId: `grams-lock-${pressed ? 'locked' : 'unlocked'}`,
+          }}
+        />,
+      );
+
+    const locked = renderLock(true);
+    const unlocked = renderLock(false);
+    expect(locked).toContain('data-lock-visual-state="locked"');
+    expect(locked).toContain('data-lock-glyph="locked"');
+    expect(locked).toContain('bg-ink text-white');
+    expect(unlocked).toContain('data-lock-visual-state="unlocked"');
+    expect(unlocked).toContain('data-lock-glyph="unlocked"');
+    expect(unlocked).toContain('bg-white text-stone-600');
+    expect(unlocked).not.toContain('data-lock-glyph="locked"');
+  });
+
   it('keeps the accepted 30px lock cell fully inside both compact fixed-width controls', () => {
     const renderLocked = (widthPreset: 'percent' | 'grams') =>
       renderToStaticMarkup(

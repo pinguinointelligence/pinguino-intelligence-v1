@@ -147,6 +147,7 @@ export function ConstraintPreviewCard({
   // Poured actuals put the recipe in production reality — the planned-batch
   // residual is only meaningful for a purely planned recipe.
   const hasActuals = preview.proposedInput.items.some((item) => item.actual_grams !== null);
+  const sourceBatchMismatch = !hasActuals && Math.abs(beforeBatch - targetBatch) > 0.1;
   const residualExceeded = !hasActuals && Math.abs(afterBatch - targetBatch) > 0.1;
   const canonicalDuplicates = findCanonicalDuplicateIngredients(preview.proposedInput);
   const integrityDiagnostic = residualExceeded || canonicalDuplicates.length > 0;
@@ -186,15 +187,17 @@ export function ConstraintPreviewCard({
   ] as const;
   const score = preview.directionAssessment?.active ? preview.directionAssessment.score : null;
   const requiresSourceValidation = preview.formulation?.templateStatus === 'reference_derived';
-  const summaryMessage = diagnostic
-    ? 'Ta propozycja wymaga ponownej walidacji.'
-    : requiresSourceValidation
-      ? 'Dane profilu wymagają ponownej walidacji.'
-      : preview.directionAssessment?.reached
-        ? 'Receptura spełnia wybrany profil.'
-        : changedLines.length > 0
-          ? 'Sprawdź korektę i zastosuj ją, jeśli Ci odpowiada.'
-          : 'Receptura nie wymaga zmian.';
+  const summaryMessage = sourceBatchMismatch
+    ? copy.preview.batchTargetMismatch(formatGramsPl(beforeBatch), formatGramsPl(targetBatch))
+    : diagnostic
+      ? 'Ta propozycja wymaga ponownej walidacji.'
+      : requiresSourceValidation
+        ? 'Dane profilu wymagają ponownej walidacji.'
+        : preview.directionAssessment?.reached
+          ? 'Receptura spełnia wybrany profil.'
+          : changedLines.length > 0
+            ? 'Sprawdź korektę i zastosuj ją, jeśli Ci odpowiada.'
+            : 'Receptura nie wymaga zmian.';
   const mainCount = preview.proposedInput.items.filter((item) => item.lock_type === 'main').length;
 
   return (
@@ -245,7 +248,12 @@ export function ConstraintPreviewCard({
       >
         {score !== null ? <ScoreRing score={score} testId="preview-score" /> : null}
         <div className="min-w-0">
-          <p className="text-sm font-medium leading-snug text-black">{summaryMessage}</p>
+          <p
+            className="text-sm font-medium leading-snug text-black"
+            data-testid={sourceBatchMismatch ? 'preview-target-mismatch' : undefined}
+          >
+            {summaryMessage}
+          </p>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             <span className="rounded-full border border-black/10 bg-white/80 px-2 py-0.5 text-[11px] font-medium text-black/65">
               {changesLabel(changedLines.length)}

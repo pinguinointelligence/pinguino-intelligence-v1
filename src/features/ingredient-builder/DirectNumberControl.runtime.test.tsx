@@ -66,6 +66,49 @@ describe('DirectNumberControl integrated lock runtime', () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
+  it('keeps the lock segment on the native keyboard activation path', async () => {
+    const onToggle = vi.fn();
+    await act(async () => {
+      root.render(
+        <DirectNumberControl
+          value={130}
+          step={1}
+          decimals={0}
+          suffix="g"
+          ariaLabel="Cream — ilość w g"
+          onChange={() => undefined}
+          testId="keyboard-grams"
+          widthPreset="grams"
+          lockSegment={{
+            pressed: false,
+            ariaLabel: 'Zablokuj gramy',
+            title: 'Gramy odblokowane',
+            suffix: 'g',
+            onToggle,
+            testId: 'keyboard-grams-toggle',
+          }}
+        />,
+      );
+    });
+
+    const lock = host.querySelector<HTMLButtonElement>('[data-testid="keyboard-grams-toggle"]')!;
+    lock.focus();
+    expect(document.activeElement).toBe(lock);
+    expect(lock.type).toBe('button');
+    const enter = new KeyboardEvent('keydown', {
+      key: 'Enter',
+      bubbles: true,
+      cancelable: true,
+    });
+    expect(lock.dispatchEvent(enter)).toBe(true);
+    expect(enter.defaultPrevented).toBe(false);
+
+    // jsdom does not synthesize the browser's click from Enter; invoke the native
+    // activation it would emit after proving the component did not intercept it.
+    await act(async () => lock.click());
+    expect(onToggle).toHaveBeenCalledOnce();
+  });
+
   it('publishes each valid topping draft before blur so sibling views cannot stay stale', async () => {
     const onChange = vi.fn();
     await act(async () => {
