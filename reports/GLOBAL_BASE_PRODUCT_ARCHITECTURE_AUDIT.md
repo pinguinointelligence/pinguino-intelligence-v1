@@ -667,3 +667,119 @@ The fifth PR role is the STABILIZER slot (5 × 75 = 375 cells unchanged). A STAB
 CONFIRMED_LOCAL_TARA, or CONFIRMED_LOCAL_ALTERNATIVE after Engine/Processing clearance. PENDING_TECHNICAL_READINESS,
 VERIFIED_CROSS_BORDER_FALLBACK, LEAD and BRAK are reported separately and never counted as production-ready.
 # ============================================================================
+
+# OWNER SCOPE CORRECTION 2026-09-10 (d) — STOP INDEPENDENT COUNTRY-BASE PRODUCT SELECTION (recorded)
+# ============================================================================
+D-22 The Owner is preparing the COMPLETE authoritative Excel with the intended GELATO base/product selections for all
+     75 markets. BAZA v7/v9 = WORKING / INCOMPLETE / NOT AUTHORITATIVE FOR MISSING COUNTRIES. The forthcoming Owner
+     Excel = the authoritative country-base input.
+D-23 Stop independent discovery whose purpose is to choose the milk, cream, SMP, dextrose or stabilizer for a market,
+     or to build a replacement country-base product set.
+D-24 Research already collected is preserved and labelled RESEARCH_LEAD / VERIFIED_PRODUCT_EVIDENCE /
+     VERIFIED_MARKET_EVIDENCE where justified. It is never promoted to the country-base selection unless it matches,
+     or is explicitly accepted against, the Owner's final Excel (example: the EU dextrose products found on 2026-09-10
+     are evidence/candidates, not the country dextrose selection).
+D-25 Until the Excel arrives only selection-independent work continues: PDF 0€ data architecture; evidence schema;
+     EAN/GTIN verification tooling; identifier typing; market/locale structure; source/evidence quality rules;
+     consumer-language terms (ordinary white sugar); reusable link/evidence capture; reconciliation tooling (Owner Excel
+     vs Mapper 2541); the 75-market verification checklist; preparation of the Engine 10/10 validation pipeline.
+     Evidence for products ALREADY present in the working Excel may be verified; no discovery budget is spent on
+     filling missing selections.
+D-26 When the Owner Excel arrives, for every market and selected product: (1) exact PI-ING, (2) exact PR-ING where
+     applicable, (3) brand/product/EAN/SKU, (4) market availability, (5) source/evidence, (6) technical readiness,
+     (7) reconciliation against FINAL_FROZEN 2541, (8) only genuine gaps/errors, (9) a selection that cannot be verified
+     is reported back — never silently replaced. Only then is an alternative chosen. STABILIZER: the D-14 fallback
+     hierarchy applies only when the Owner-selected stabilizer cannot be verified/used — never pre-emptively.
+D-27 Final country validation: exact country products → actual PI/PR facts → Engine/Solver → score 10/10 → freeze
+     exact country grams → versioned country recipe/base. No country base is FINAL before 10/10.
+Consequences (recorded, nothing deleted):
+- The stabilizer-slot and CORE-gap research of checkpoint (c) is reclassified as research evidence. None of its
+  candidates is a selection; "best candidate" fields are evidence rankings only.
+- Research candidates never count toward A03 coverage. Only products listed in the working Excel that are verified count
+  as working evidence, and even those stay pending the Owner Excel.
+- The research agents still doing discovery were stopped when this correction arrived; partial results are kept.
+# ============================================================================
+
+# CHECKPOINT 2026-09-10 (d) — owner scope correction applied (D-22..D-27)
+# ============================================================================
+# MASTER CHECKLIST — FULL 36 (checkpoint 2026-09-10 d, after the owner scope correction)
+# COUNTER TYPE: owner-accepted master items (NOT an implementation counter)
+# ============================================================================
+PHASE A
+[x] A01 Global country/market ledger — SPEC/DECISION ACCEPTED · IMPLEMENTATION NOT STARTED · REVERIFICATION REQUIRED.
+        DEP: —  LINKS: Country authority / Shop. NOTE: ISO ledger = vocabulary; commercial scope = accepted 75 (D-5).
+[x] A02 MARKET ≠ ORIGIN. DEP: A01. LINKS: PR identity/provenance. EVIDENCE: countryOfOrigin vs markets[]; PL/BE
+        dextrose; BAZA v7 carries 'Pochodzenie' separately from 'Kraje użycia'.
+[~] A03 Retailers/manufacturers by market — D-22/D-23: discovery for missing selections STOPPED; the Owner's complete Excel is the
+        selection authority. Working-Excel products with market evidence: 125/375 (CORE 52/100). Research kept as evidence
+        (118 products) and never counted as coverage. DEP: A01, Owner Excel.
+[~] A04 Exact EAN overlap across countries — working-Excel products: 7/33 multi-market EANs confirmed in ≥ 2 markets (unchanged);
+        research evidence shows 3 more (evidence only). RCN never a cross-market identity. DEP: A03.
+[~] A05 Evidence-based market/product clusters — shared-EAN graph on working-Excel evidence: CZ-HR-HU-RO-SI-SK · DK-NO-SE · EE-LT-LV ·
+        BE-NL · GB-IE; candidate view only, no cluster frozen. DEP: A04.
+PHASE B
+[x] B01 Base-product family scope — NOTE: active base = GELATO, 6 PI (000236, 000180, 000270, 000514, 000494,
+        000492); Sorbet/Vegan/Protein outside current scope (D-9). DEP: A01.
+[~] B02 Milk variants — ruleset recorded; working-Excel MILK with market evidence 41/75; selection awaits the Owner Excel
+        (D-22). DEP: A03, B01.
+[~] B03 Cream / milk powder / cream powder — working-Excel CREAM 33/75, SMP 32/75 with market evidence;
+        selection awaits the Owner Excel (D-22). DEP: A03, B01.
+[~] B04 Sugars — working-Excel DEXTROSE 19/75 with market evidence; research dextrose kept as evidence only.
+        Sucrose (D-8): retailer-printed local term for 28 markets + SA10 phrase for 44; 3 without evidence. DEP: A03, B01.
+[~] B05 Inulin / stabilizers / gums — STABILIZER slot (D-13); per D-26 the fallback hierarchy runs only if the Owner-selected
+        stabilizer fails. Research evidence kept (34 stabilizer products with verified market evidence); 71 existing PIs catalogued.
+        DEP: A03, B01.
+[!] B06 Plant bases / protein (Vegan/Protein) — BLOCKED: those base packages are not supplied and must not be
+        invented (D-9). Status changed ACTIVE→BLOCKED on 2026-09-10 with this blocker; nothing deleted.
+PHASE C
+[x] C01 Variants vs existing PI — closed on the classification ruleset.
+[x] C02 Missing PI candidate list — closed on the ruleset.
+[x] C03 Technological-meaning proof — closed on the ruleset.
+[x] C04 OWNER REVIEW of PI candidates — RESOLVED FOR SHOP by owner decision 2026-09-10 (D-3, D-4): no new PI
+        from SHOP; PR → best existing PI; else REVIEW_REQUIRED → future ingestion contract.
+[!] C05 Controlled addition of approved neutral PI — BLOCKED / OUT OF SHOP: owned by the future NEW PR/PI-ING
+        INGESTION CONTRACT and Mapper maintenance. SHOP never creates PI (D-3).
+PHASE D
+[x] D01 One exact PR per real EAN — invariant verified on staging sample; re-verify after global PR population.
+        RISK kept: GS1 RCN prefixes are not globally unique.
+[~] D02 PR stores identity + origin + markets — v7 columns assessed offline.
+[~] D03 Manufacturer/label/retailer source facts — label-fact presence recorded (d03_label_facts_presence_v7.csv); EAN/market
+        evidence tooling in reports/a03/tooling.
+[x] D04 Per-field VERIFIED/DERIVED/ESTIMATED/UNKNOWN truth — capability verified.
+[x] D05 Raw basis preserved + normalized values — capability verified.
+[~] D06 Bind PR to correct PI — the reconciler checks role ↔ PI against 2541: working v7 450/450 consistent, v9 75/75; 0 new PI.
+[~] D07 Engine readiness of required base PR — requires the app/Engine runtime; offline pre-checks only in SHOP.
+[~] D08 Missing requirements for every NOT READY PR — working-Excel list in d08_missing_requirements_v7.csv; the final gap list =
+        REPORT_BACK rows of the reconciler on the Owner Excel (D-26).
+PHASE E
+[x] E01 Country defaults use the existing Product Country authority.
+[x] E02 USER_PREFERRED precedence preserved.
+[~] E03 Picker exposes neutral PI names — not advanced by SHOP research (picker lane).
+[~] E04 Exact brand/PR via details/search — not advanced by SHOP research.
+[~] E05 Scan resolves PR → PI → country/user flow — not advanced by SHOP research (scanner lane).
+PHASE F
+[~] F01 Shop references the same approved PR — PDF 0€ row model with selection authority, evidence labels and identifier typing;
+        pdf0_working_rows_v7.csv holds working-Excel products only.
+[~] F02 Supplier / URL / market availability — reusable evidence tooling (verifier, quote checker, identifier typing) in
+        reports/a03/tooling; product URL + evidence per row in pdf0_working_rows_v7.csv (D-10).
+[~] F03 PDF 0€ per country/cluster — waits for the Owner Excel, the final BAZA and Engine 10/10 (D-22, D-27); pipeline prepared in
+        ENGINE_10_10_VALIDATION_PIPELINE.md.
+[ ] F04 Cluster countries with identical production sets — DEP: A05.
+[!] F05 GELATO country base (terminal-valid) — BLOCKED by owner instruction; D-27: no country base is FINAL before Engine 10/10.
+[!] F06 SORBET/VEGAN/PROTEIN country bases — BLOCKED by owner instruction and D-9.
+PHASE G
+[x] G01 Mapper count reconciliation (2088 vs 2089) — DONE as accepted. NOTE 2026-09-10: authority is now
+        FINAL_FROZEN 2541 (D-1); live 2147 = integration handoff (D-11).
+
+TALLY: DONE 13 · ACTIVE 18 · BLOCKED 4 · TODO 1 = 36.
+MASTER PROGRESS: 13 / 36 = 36.1 %  (no status changes; notes updated for A03 A04 A05 B02 B03 B04 B05 D03 D06 D08 F01 F02 F03 F05).
+
+A03 SATURATION MATRIX v2.1 — values at checkpoint (d) (research never counted; no aggregate %)
+S1' CELL CLASSIFICATION   MET      375/375 working-Excel PR/slot cells carry a class.
+S2' MARKET COMPLETENESS   MET      75/75 markets have a class for every role.
+S3' EVIDENCE QUALITY      NOT MET  working-Excel products with market evidence 125/375 (CORE 52/100).
+S4' EAN INTEGRITY         MET      v7 295/295 checksum OK; research identifiers typed (GTIN-13 (EAN-13) 56, GTIN-12 (UPC-A) 12, CHECKSUM_FAIL 2, GTIN-14 2, GTIN-8 1, RCN_STORE_INTERNAL (not globally unique) 1, NOT_A_GTIN_LENGTH 1).
+S5' MULTI-COUNTRY PROOF   NOT MET  7/33 working-Excel multi-market EANs confirmed in ≥ 2 markets.
+S6' OWN-BRAND CHECK       PARTIAL  unchanged.
+S7' CLASS DISCIPLINE      MET      only existing 2541 PIs; 0 new PI; reconciler role↔PI v7 450/450, v9 75/75.
+# END CHECKPOINT (d)

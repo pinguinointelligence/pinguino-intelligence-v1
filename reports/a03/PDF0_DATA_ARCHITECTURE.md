@@ -79,3 +79,20 @@ engine_readiness · processing_readiness · final_use_status.
 - SHOP stores no dosage. Grams in the customer PDF come only from the accepted country-base calculation, which must have
   been computed with the same stabilizer_type and PI as the product the PDF names (D-18).
 - Customer-visible rule: the PDF shows the selected product; a local safe product outranks cross-border TARA.
+
+## Selection authority and evidence labels (owner scope correction 2026-09-10 d — D-22..D-27)
+- selection_authority — who decided the product in a row. The Owner's complete Excel is the only authority for
+  country-base products (D-22). Until it arrives, rows carry the working-Excel (v7/v9) product, marked
+  "WORKING EXCEL (incomplete) — awaiting Owner complete Excel". SHOP research never fills a row (D-23, D-24).
+- evidence_label — for research that is not an Owner selection: VERIFIED_MARKET_EVIDENCE (exact EAN as data on a
+  manufacturer/retailer page serving that market) · VERIFIED_PRODUCT_EVIDENCE (exact EAN as data on a manufacturer/
+  retailer page; market not proven) · RESEARCH_LEAD. Stored in research_evidence_catalogue.csv with
+  selection_status = NOT_SELECTED_AWAITING_OWNER_EXCEL.
+- identifier_type — every EAN/SKU is typed before it can serve as a product identity (tooling/identifiers.py):
+  GTIN-8 / GTIN-12 (UPC-A) / GTIN-13 / GTIN-14 with a valid checksum; RCN_STORE_INTERNAL (GS1 restricted circulation —
+  store-internal, never a cross-market identity); ISBN / ISSN / COUPON (not food products); CHECKSUM_FAIL; NONE.
+- Owner-Excel reconciliation (D-26) — tooling/reconcile_owner_excel.py gives each row s1..s9 results and a verdict; an
+  unverifiable selection is REPORT_BACK_TO_OWNER, never replaced. The STABILIZER fallback hierarchy (D-14) is used only
+  after an Owner-selected stabilizer fails verification.
+- final_grams — only after Engine/Solver reaches the required 10/10 on the exact country products and the grams are
+  frozen into a versioned country base (D-27). Working grams are the canonical base, shown for reference only.

@@ -1,0 +1,377 @@
+{
+"AU": {
+"en": "Australia",
+"pl": "Australia",
+"priority": "★★★★★"
+},
+"AT": {
+"en": "Austria",
+"pl": "Austria",
+"priority": "★★★★★"
+},
+"BE": {
+"en": "Belgium",
+"pl": "Belgia",
+"priority": "★★★★★"
+},
+"DK": {
+"en": "Denmark",
+"pl": "Dania",
+"priority": "★★★★★"
+},
+"FI": {
+"en": "Finland",
+"pl": "Finlandia",
+"priority": "★★★★★"
+},
+"FR": {
+"en": "France",
+"pl": "Francja",
+"priority": "★★★★★"
+},
+"ES": {
+"en": "Spain",
+"pl": "Hiszpania",
+"priority": "★★★★★"
+},
+"NL": {
+"en": "Netherlands",
+"pl": "Holandia",
+"priority": "★★★★★"
+},
+"IE": {
+"en": "Ireland",
+"pl": "Irlandia",
+"priority": "★★★★★"
+},
+"CA": {
+"en": "Canada",
+"pl": "Kanada",
+"priority": "★★★★★"
+},
+"DE": {
+"en": "Germany",
+"pl": "Niemcy",
+"priority": "★★★★★"
+},
+"NO": {
+"en": "Norway",
+"pl": "Norwegia",
+"priority": "★★★★★"
+},
+"NZ": {
+"en": "New Zealand",
+"pl": "Nowa Zelandia",
+"priority": "★★★★★"
+},
+"PL": {
+"en": "Poland",
+"pl": "Polska",
+"priority": "★★★★★"
+},
+"PT": {
+"en": "Portugal",
+"pl": "Portugalia",
+"priority": "★★★★★"
+},
+"US": {
+"en": "United States",
+"pl": "Stany Zjednoczone",
+"priority": "★★★★★"
+},
+"CH": {
+"en": "Switzerland",
+"pl": "Szwajcaria",
+"priority": "★★★★★"
+},
+"SE": {
+"en": "Sweden",
+"pl": "Szwecja",
+"priority": "★★★★★"
+},
+"GB": {
+"en": "United Kingdom",
+"pl": "Wielka Brytania",
+"priority": "★★★★★"
+},
+"IT": {
+"en": "Italy",
+"pl": "Włochy",
+"priority": "★★★★★"
+},
+"DZ": {
+"en": "Algeria",
+"pl": "Algieria",
+"priority": "★★★★"
+},
+"SA": {
+"en": "Saudi Arabia",
+"pl": "Arabia Saudyjska",
+"priority": "★★★★"
+},
+"AR": {
+"en": "Argentina",
+"pl": "Argentyna",
+"priority": "★★★★"
+},
+"BH": {
+"en": "Bahrain",
+"pl": "Bahrajn",
+"priority": "★★★★"
+},
+"BD": {
+"en": "Bangladesh",
+"pl": "Bangladesz",
+"priority": "★★★★"
+},
+"BR": {
+"en": "Brazil",
+"pl": "Brazylia",
+"priority": "★★★★"
+},
+"BG": {
+"en": "Bulgaria",
+"pl": "Bułgaria",
+"priority": "★★★★"
+},
+"CL": {
+"en": "Chile",
+"pl": "Chile",
+"priority": "★★★★"
+},
+"CN": {
+"en": "China",
+"pl": "Chiny",
+"priority": "★★★★"
+},
+"HR": {
+"en": "Croatia",
+"pl": "Chorwacja",
+"priority": "★★★★"
+},
+"CY": {
+"en": "Cyprus",
+"pl": "Cypr",
+"priority": "★★★★"
+},
+"CZ": {
+"en": "Czechia",
+"pl": "Czechy",
+"priority": "★★★★"
+},
+"DO": {
+"en": "Dominican Republic",
+"pl": "Dominikana",
+"priority": "★★★★"
+},
+"EG": {
+"en": "Egypt",
+"pl": "Egipt",
+"priority": "★★★★"
+},
+"EE": {
+"en": "Estonia",
+"pl": "Estonia",
+"priority": "★★★★"
+},
+"PH": {
+"en": "Philippines",
+"pl": "Filipiny",
+"priority": "★★★★"
+},
+"GH": {
+"en": "Ghana",
+"pl": "Ghana",
+"priority": "★★★★"
+},
+"GR": {
+"en": "Greece",
+"pl": "Grecja",
+"priority": "★★★★"
+},
+"IN": {
+"en": "India",
+"pl": "Indie",
+"priority": "★★★★"
+},
+"ID": {
+"en": "Indonesia",
+"pl": "Indonezja",
+"priority": "★★★★"
+},
+"IS": {
+"en": "Iceland",
+"pl": "Islandia",
+"priority": "★★★★"
+},
+"IL": {
+"en": "Israel",
+"pl": "Izrael",
+"priority": "★★★★"
+},
+"JP": {
+"en": "Japan",
+"pl": "Japonia",
+"priority": "★★★★"
+},
+"QA": {
+"en": "Qatar",
+"pl": "Katar",
+"priority": "★★★★"
+},
+"KE": {
+"en": "Kenya",
+"pl": "Kenia",
+"priority": "★★★★"
+},
+"CO": {
+"en": "Colombia",
+"pl": "Kolumbia",
+"priority": "★★★★"
+},
+"KR": {
+"en": "South Korea",
+"pl": "Korea Południowa",
+"priority": "★★★★"
+},
+"CR": {
+"en": "Costa Rica",
+"pl": "Kostaryka",
+"priority": "★★★★"
+},
+"KW": {
+"en": "Kuwait",
+"pl": "Kuwejt",
+"priority": "★★★★"
+},
+"LT": {
+"en": "Lithuania",
+"pl": "Litwa",
+"priority": "★★★★"
+},
+"LU": {
+"en": "Luxembourg",
+"pl": "Luksemburg",
+"priority": "★★★★"
+},
+"LV": {
+"en": "Latvia",
+"pl": "Łotwa",
+"priority": "★★★★"
+},
+"MY": {
+"en": "Malaysia",
+"pl": "Malezja",
+"priority": "★★★★"
+},
+"MT": {
+"en": "Malta",
+"pl": "Malta",
+"priority": "★★★★"
+},
+"MA": {
+"en": "Morocco",
+"pl": "Maroko",
+"priority": "★★★★"
+},
+"MX": {
+"en": "Mexico",
+"pl": "Meksyk",
+"priority": "★★★★"
+},
+"NG": {
+"en": "Nigeria",
+"pl": "Nigeria",
+"priority": "★★★★"
+},
+"OM": {
+"en": "Oman",
+"pl": "Oman",
+"priority": "★★★★"
+},
+"PK": {
+"en": "Pakistan",
+"pl": "Pakistan",
+"priority": "★★★★"
+},
+"PA": {
+"en": "Panama",
+"pl": "Panama",
+"priority": "★★★★"
+},
+"ZA": {
+"en": "South Africa",
+"pl": "Republika Południowej Afryki",
+"priority": "★★★★"
+},
+"RO": {
+"en": "Romania",
+"pl": "Rumunia",
+"priority": "★★★★"
+},
+"SG": {
+"en": "Singapore",
+"pl": "Singapur",
+"priority": "★★★★"
+},
+"SK": {
+"en": "Slovakia",
+"pl": "Słowacja",
+"priority": "★★★★"
+},
+"SI": {
+"en": "Slovenia",
+"pl": "Słowenia",
+"priority": "★★★★"
+},
+"HK": {
+"en": "Hong Kong SAR China",
+"pl": "SRA Hongkong (Chiny)",
+"priority": "★★★★"
+},
+"LK": {
+"en": "Sri Lanka",
+"pl": "Sri Lanka",
+"priority": "★★★★"
+},
+"TH": {
+"en": "Thailand",
+"pl": "Tajlandia",
+"priority": "★★★★"
+},
+"TW": {
+"en": "Taiwan",
+"pl": "Tajwan",
+"priority": "★★★★"
+},
+"TN": {
+"en": "Tunisia",
+"pl": "Tunezja",
+"priority": "★★★★"
+},
+"TR": {
+"en": "Türkiye",
+"pl": "Turcja",
+"priority": "★★★★"
+},
+"UY": {
+"en": "Uruguay",
+"pl": "Urugwaj",
+"priority": "★★★★"
+},
+"HU": {
+"en": "Hungary",
+"pl": "Węgry",
+"priority": "★★★★"
+},
+"VN": {
+"en": "Vietnam",
+"pl": "Wietnam",
+"priority": "★★★★"
+},
+"AE": {
+"en": "United Arab Emirates",
+"pl": "Zjednoczone Emiraty Arabskie",
+"priority": "★★★★"
+}
+}
