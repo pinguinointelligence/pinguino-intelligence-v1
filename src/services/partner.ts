@@ -254,6 +254,16 @@ export interface PartnerApplicationDraft {
   platforms: string[];
   audience?: string;
   country?: string;
+  /** C-APP-02: which languages the creator publishes in. */
+  languages?: string;
+  /**
+   * C-APP-02 with C-APP-03: a BAND, never an exact follower count. The tier
+   * decision only needs an order of magnitude, and an exact number is more
+   * personal data than the decision requires.
+   */
+  audienceSize?: string;
+  /** C-APP-02: explicit consent to process the application. */
+  consent?: boolean;
   note?: string;
   proposedSlug?: string;
 }
