@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
 import { buttonClasses } from '@/components/ui/buttonStyles';
 import { cn } from '@/lib/cn';
@@ -655,6 +656,33 @@ function ApplyBand() {
             {c.apply.signInCta}
           </a>
         </div>
+      </div>
+
+      {/* The bridge to the OTHER programme (B-LAND-07's live remnant).
+          Affiliate pays money; "Poleć Gellatti" pays PRO days. A visitor who is
+          not a creator reached the end of this page and had nowhere to go — the
+          programme that actually fits them was unreachable from here.
+
+          Deliberately quiet and BELOW the application: it must not compete with
+          the CTA above it, and the two programmes must never read as one. */}
+      <div
+        className="mt-4 flex flex-col gap-3 rounded-[20px] border border-[var(--g-line)] px-7 py-6 sm:px-10 lg:flex-row lg:items-center lg:gap-8"
+        data-testid="affiliate-referral-bridge"
+      >
+        <div>
+          <h3 className="text-[16px] leading-[1.25] font-bold tracking-[-0.02em] text-[var(--g-ink)]">
+            {c.referralBridge.title}
+          </h3>
+          <p className="mt-1.5 max-w-[58ch] text-[13.5px] leading-relaxed text-[var(--g-text-secondary)]">
+            {c.referralBridge.body}
+          </p>
+        </div>
+        <Link
+          to="/account?section=referral"
+          className={cn(buttonClasses('ghost', 'sm'), 'flex-none lg:ml-auto')}
+        >
+          {c.referralBridge.cta}
+        </Link>
       </div>
     </section>
   );
