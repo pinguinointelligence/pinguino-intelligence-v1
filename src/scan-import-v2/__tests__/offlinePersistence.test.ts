@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   createOfflineCache,
   createSupabaseV2Ports,
@@ -140,6 +140,37 @@ describe('Persistent offline cache (Web Storage backend, reload-safe)', () => {
     });
     expect((await c.get('user-1', '8402001047251'))?.candidate.currentVersionId).toBe('v2');
     expect(await c.size()).toBe(1);
+  });
+  it('invokes the stale-version guard on an authoritative online hit', async () => {
+    const c = createOfflineCache({ store: createMemoryStore() });
+    const invalidateIfStale = vi.spyOn(c, 'invalidateIfStale');
+    await runScanImportV2(scan('8402001047251'), ctx(), {
+      ...createSupabaseV2Ports(client([gtinRow({ current_version_id: 'v2' })])),
+      ...base(c),
+    });
+    expect(invalidateIfStale).toHaveBeenCalledWith('user-1', '8402001047251', 'v2');
+  });
+  it('evicts an earlier exact answer when online authority later quarantines or removes it', async () => {
+    const c = createOfflineCache({ store: createMemoryStore() });
+    await runScanImportV2(scan('8402001047251'), ctx(), {
+      ...createSupabaseV2Ports(client([gtinRow()])),
+      ...base(c),
+    });
+    expect(await c.size()).toBe(1);
+
+    expect(
+      await runScanImportV2(scan('8402001047251'), ctx(), {
+        ...createSupabaseV2Ports(client([])),
+        ...base(c),
+      }),
+    ).toMatchObject({ kind: 'unknown' });
+    expect(await c.size()).toBe(0);
+    expect(
+      await runScanImportV2(scan('8402001047251'), ctx({ online: false }), {
+        ...createSupabaseV2Ports(client([])),
+        ...base(c),
+      }),
+    ).toMatchObject({ kind: 'offline', knownLocally: false });
   });
   it("account separation and guest separation: one account's entry is invisible to another account and to guests; no private leak", async () => {
     const storage = fakeStorage();

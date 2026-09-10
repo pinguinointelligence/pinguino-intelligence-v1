@@ -399,6 +399,21 @@ describe('D8 — guest-safe exact resolver adapter (resolve_exact_products_by_gt
     ).toMatchObject({ kind: 'invalid_code', reason: 'checksum' });
     expect(client.calls).toEqual(['resolve_exact_products_by_gtin_v1:4305615614434']);
   });
+  it('defensively rejects a quarantined GTIN row even if a stale RPC returns it', async () => {
+    const client = gtinStub(
+      {
+        anon: [gtinRow({ verification_status: 'blocked' })],
+        user: [gtinRow({ verification_status: 'blocked' })],
+      },
+      'user',
+    );
+    expect(
+      await runScanImportV2(scan('8402001047251'), ctx(), {
+        ...createSupabaseV2Ports(client),
+        ...base(),
+      }),
+    ).toMatchObject({ kind: 'unknown' });
+  });
   it('a private/account-only twin is returned to its owner as own strength and never to a guest', async () => {
     const twin = gtinRow({
       product_id: 'priv',

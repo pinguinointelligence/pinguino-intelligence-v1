@@ -28,6 +28,9 @@ export interface EanProductRow {
   owner_user_id?: string | null;
   is_active?: boolean | null;
   merged_into_product_id?: string | null;
+  canonical_verification_status?: string | null;
+  /** Computed from current immutable facts by the caller when available. */
+  publication_identity_eligible?: boolean | null;
 }
 
 export interface CanonicalEanResolution {
@@ -52,7 +55,11 @@ const usable = (row: EanProductRow): boolean =>
  * customer product and is handled by the caller's own earlier branch, so it is not considered here.
  */
 export const isSharedCanonical = (row: EanProductRow): boolean =>
-  usable(row) && row.product_kind === 'commercial_product' && row.visibility === 'shared';
+  usable(row) &&
+  row.canonical_verification_status !== 'blocked' &&
+  row.publication_identity_eligible !== false &&
+  row.product_kind === 'commercial_product' &&
+  row.visibility === 'shared';
 
 export const isPrivateProvisional = (row: EanProductRow): boolean =>
   usable(row) && row.product_kind === 'customer_provisional';

@@ -92,11 +92,7 @@ export interface ProductionAccuracyFieldResult extends ProductionAccuracyCompone
 }
 
 export type ProductProductionRoleReadiness =
-  | 'BASE_READY'
-  | 'TOPPING_READY'
-  | 'REVIEW'
-  | 'BLOCKED'
-  | 'CONFLICT';
+  'BASE_READY' | 'TOPPING_READY' | 'REVIEW' | 'BLOCKED' | 'CONFLICT';
 
 export interface ProductMetadataCompletenessAssessment {
   /** Internal catalogue/commercial completeness. It never affects Product
@@ -428,13 +424,22 @@ export function assessProductProductionAccuracy(
       ? input.behavior.toppingEligible
       : input.behavior.baseRecipeEligible &&
         (role !== 'BASE_AND_TOPPING' || input.behavior.toppingEligible));
+  // A binding can be mechanically classified while still declaring that its family/form or Main
+  // policy is unknown. It may remain usable under the existing readiness authority, but it is not
+  // entitled to the full ProductBehavior confidence used by shared-publication routing.
+  const weakBehaviorAuthority = input.behavior.classificationReasonCodes.some((reason) =>
+    /UNKNOWN_REQUIRES_EVIDENCE|family_and_form_evidence_missing|MAIN_BLOCKED_POLICY|BLOCKED_DATA/i.test(
+      reason,
+    ),
+  );
   const behaviorWithheldOnlyByPhysics =
     input.behavior.classificationOutcome === 'unknown_requires_review' &&
     input.behavior.classificationReasonCodes.length > 0 &&
     input.behavior.classificationReasonCodes.every((reason) =>
       input.criticalPhysicsBlockers.includes(reason),
     );
-  componentEarned.productBehavior += acceptedForRole || behaviorWithheldOnlyByPhysics ? 4 : 0;
+  componentEarned.productBehavior +=
+    (acceptedForRole || behaviorWithheldOnlyByPhysics) && !weakBehaviorAuthority ? 4 : 0;
   const dosageRequired =
     recognition?.isTechnicalProduct === true || recognition?.isDosageDependent === true;
   const dosage = input.behavior.dosageInterpretation ?? recognition?.dosage ?? null;

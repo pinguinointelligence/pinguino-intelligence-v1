@@ -157,6 +157,7 @@ describe('Supabase discovery adapter (stub) — mirrors the legacy scan-session 
     const f = await port.finalize(session, { customerFamily: 'other', privateOverlay: {} }, ctx());
     expect(c.calls[1]?.body).toMatchObject({
       action: 'finalize',
+      contractVersion: 'PRODUCT_SCAN_FINALIZE_V2',
       sessionId: 'S1',
       idempotencyKey: 'scan-import-v2:user-1:4305615614434:finalize',
       customerFamily: 'other',
@@ -205,6 +206,51 @@ describe('Supabase discovery adapter (stub) — mirrors the legacy scan-session 
         engineUsable: true,
       }).finalize(session, { customerFamily: 'other' }, ctx()),
     ).toMatchObject({ kind: 'created', productId: 'CA-1', engineUsable: true, existing: true });
+  });
+  it('finalize V2 carries exact registry facts to both the new and deployed legacy backend shapes', async () => {
+    const c = client({
+      'product-scan-finalize': {
+        kind: 'customer_added_product',
+        productId: 'P1',
+        productCode: 'PR-ING-1',
+        route: 'PR',
+        productionReady: true,
+      },
+    });
+    const identity = id('7350042718481');
+    const session = {
+      sessionId: 'S',
+      identity,
+      result: null,
+      overlayState: null,
+      missingCritical: [],
+      usage: { visionCalls: 0, webCalls: 0 },
+    };
+    await createSupabaseDiscoveryPort(c).finalize(
+      session,
+      {
+        customerFamily: 'beverage',
+        automaticEvidence: {
+          source: 'barcode_registry',
+          exactGtin: '7350042718481',
+          sourceUrl: 'https://world.openfoodfacts.org/product/7350042718481',
+          queriedAt: 1,
+          productFields: {
+            identity: { displayName: 'Vitamin Well Refresh', brand: 'Vitamin Well' },
+          },
+        },
+      },
+      ctx(),
+    );
+    expect(c.calls[0]?.body).toMatchObject({
+      contractVersion: 'PRODUCT_SCAN_FINALIZE_V2',
+      automaticEvidence: { exactGtin: '7350042718481' },
+      confirmations: {
+        productFields: {
+          identity: { displayName: 'Vitamin Well Refresh', brand: 'Vitamin Well' },
+        },
+      },
+    });
   });
   it('product request carries the ledger as the legacy result shape with V2 provenance; own open requests are found by code', async () => {
     const c = client(

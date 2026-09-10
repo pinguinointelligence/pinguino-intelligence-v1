@@ -26,6 +26,8 @@ export type ScannerErrorCode =
   | 'save_failed'
   /** The product is not yet in a state the save contract accepts. */
   | 'save_not_ready'
+  /** A shared catalogue row exists but must be corrected by the separate catalogue workflow. */
+  | 'catalog_correction_pending'
   /** A limit was reached (vision calls, cost ceiling, product quota). */
   | 'quota_reached'
   /** Sign-in / ownership. */
@@ -48,12 +50,13 @@ export interface ScannerError {
 const COPY: Record<ScannerErrorCode, string> = {
   analysis_failed:
     'Hmm, nie udało się pewnie odczytać etykiety. Dodaj wyraźniejsze zdjęcie i spróbuj ponownie.',
-  analysis_incomplete:
-    'Brakuje jednego potwierdzenia. Dodaj wskazane ujęcie i ponów analizę.',
+  analysis_incomplete: 'Brakuje jednego potwierdzenia. Dodaj wskazane ujęcie i ponów analizę.',
   save_failed:
     'Analiza jest bezpieczna na ekranie, ale produktu nie zapisaliśmy. Spróbuj ponownie za chwilę.',
   save_not_ready:
     'Jeszcze jeden krok. Potwierdź brakujące informacje, a produkt będzie można zapisać.',
+  catalog_correction_pending:
+    'Ten produkt wymaga korekty w katalogu. Nie utworzyliśmy nowego ani nie zmieniliśmy istniejącego produktu.',
   quota_reached: 'Limit analiz lub zapisów został wykorzystany. Spróbuj ponownie później.',
   auth_required: 'Zaloguj się ponownie, aby dokończyć skanowanie produktu.',
   connection: 'Nie mamy teraz połączenia. Sprawdź sieć i spróbuj ponownie.',
@@ -106,6 +109,10 @@ const SERVER_CODES: Record<string, ScannerErrorCode> = {
   scanner_overlay_finalize_failed: 'save_failed',
   invalid_finalize_request: 'save_failed',
   invalid_json: 'save_failed',
+  invalid_automatic_product_evidence: 'save_failed',
+  invalid_user_confirmed_product_fields: 'save_failed',
+  unsupported_finalize_contract_version: 'unavailable',
+  shared_product_requires_separate_correction: 'catalog_correction_pending',
 };
 
 /** The safe copy a stage falls back to when nothing more specific is known. */

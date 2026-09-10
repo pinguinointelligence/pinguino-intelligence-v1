@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
 import {
+  mergeProductScanResults,
   normalizeValidatedBarcode,
   productSemanticEvidenceFromScanResult,
 } from '../_shared/productScanner.ts';
@@ -31,6 +32,8 @@ import {
   type CustomerProductFamilyChoice,
 } from '../../../src/features/product-scanner/customerProductFamily.ts';
 import type { ProductEvidenceField } from '../../../src/features/product-intelligence/productEvidenceConfidence.ts';
+import { publicationIdentityEligibilityFromScanResult } from '../../../src/features/product-scanner/productPublicationEligibility.ts';
+import { resolveProductScanFinalizeContract } from '../../../src/features/product-scanner/productScanFinalizeContract.ts';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -50,7 +53,10 @@ const text = (value: unknown, limit = 10_000): string | null =>
   typeof value === 'string' && value.trim() ? value.trim().slice(0, limit) : null;
 const finite = (value: unknown, max = 1000): number | null =>
   typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= max ? value : null;
-type ServiceClient = ReturnType<typeof createClient>;
+// The generated Database schema is not available in the Edge bundle, so the
+// Supabase client must retain its library-provided untyped database generics.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ServiceClient = ReturnType<typeof createClient<any, 'public', any>>;
 
 const MAPPER_AUTHORITY_COLUMNS = [
   'ingredient_id',
@@ -173,6 +179,28 @@ const FAMILY_CHOICES = new Set<CustomerProductFamilyChoice>([
   'technical',
   'other',
 ]);
+const PRODUCT_EVIDENCE_FIELDS = new Set<ProductEvidenceField>([
+  'identity',
+  'brand',
+  'manufacturer',
+  'variant',
+  'netQuantity',
+  'ingredients',
+  'allergens',
+  'nutritionBasis',
+  'energyKcal',
+  'fat',
+  'carbohydrate',
+  'sugars',
+  'fiber',
+  'protein',
+  'salt',
+  'barcode',
+  'countryOfOrigin',
+  'dosage',
+  'technicalParameters',
+  'technicalSource',
+]);
 
 type AppliedCorrections = {
   result: Record<string, unknown>;
@@ -184,6 +212,7 @@ function applyCustomerCorrections(
   original: unknown,
   value: unknown,
   sessionBarcode: unknown,
+  customerAction: boolean,
 ): AppliedCorrections | null {
   const result = structuredClone(objectValue(original));
   const correction = objectValue(value);
@@ -220,22 +249,17 @@ function applyCustomerCorrections(
     if (parsed === null) return null;
     nutrition[key] = parsed;
     const evidenceKey = key === 'fibre' ? 'fiber' : key === 'energyKj' ? null : key;
-    if (evidenceKey) confirmed.add(evidenceKey as ProductEvidenceField);
+    if (customerAction && evidenceKey) confirmed.add(evidenceKey as ProductEvidenceField);
   }
-  // A name (and a brand, or an explicit "no brand") the customer typed or confirmed from an exact-GTIN
-  // registry record is customer-confirmed evidence, exactly like a typed nutrition value: the profile
-  // authority reads it as source 'user_confirmed'. Without this, a code-identified product could never
-  // clear PRODUCT_IDENTITY_REQUIRED (owner QA, 2026-09-05).
-  if (displayName) confirmed.add('identity');
-  if (brand || identityCorrection.explicitlyUnbranded === true) confirmed.add('brand');
+  // Only a name (and a brand, or explicit "no brand") submitted by the customer form may become
+  // customer-confirmed. Automatic exact-GTIN facts use the separate external-source ledger below.
+  if (customerAction && displayName) confirmed.add('identity');
+  if (customerAction && (brand || identityCorrection.explicitlyUnbranded === true))
+    confirmed.add('brand');
   if (nutritionCorrection.basis !== undefined) {
     if (!['per_100g', 'per_100ml'].includes(String(nutritionCorrection.basis))) return null;
     nutrition.basis = nutritionCorrection.basis;
-    confirmed.add('nutritionBasis');
-  }
-  if (Object.keys(nutritionCorrection).length > 0 && !nutrition.basis) {
-    nutrition.basis = 'per_100g';
-    confirmed.add('nutritionBasis');
+    if (customerAction) confirmed.add('nutritionBasis');
   }
   if (
     typeof nutrition.sugars === 'number' &&
@@ -253,7 +277,7 @@ function applyCustomerCorrections(
     const supplied = text(correction[key], 20_000);
     if (!supplied) return null;
     result[key] = supplied;
-    confirmed.add(field);
+    if (customerAction) confirmed.add(field);
   }
 
   const declarations = { ...objectValue(result.productionDeclarations) };
@@ -269,7 +293,7 @@ function applyCustomerCorrections(
     const parsed = finite(declarationCorrection[key], 100);
     if (parsed === null) return null;
     declarations[key] = parsed;
-    confirmed.add('technicalParameters');
+    if (customerAction) confirmed.add('technicalParameters');
   }
   for (const key of [
     'concentrationText',
@@ -281,7 +305,7 @@ function applyCustomerCorrections(
     const supplied = text(declarationCorrection[key], 5000);
     if (!supplied) return null;
     declarations[key] = supplied;
-    confirmed.add(key === 'dosageText' ? 'dosage' : 'technicalParameters');
+    if (customerAction) confirmed.add(key === 'dosageText' ? 'dosage' : 'technicalParameters');
   }
   result.productionDeclarations = declarations;
 
@@ -293,9 +317,116 @@ function applyCustomerCorrections(
     const format = barcode.length === 8 ? 'EAN_8' : barcode.length === 12 ? 'UPC_A' : 'EAN_13';
     const previous = Array.isArray(result.barcodes) ? result.barcodes.slice(1) : [];
     result.barcodes = [{ value: barcode, format }, ...previous];
-    confirmed.add('barcode');
+    if (customerAction && correction.barcode !== undefined) confirmed.add('barcode');
   }
   return { result, confirmedEvidenceFields: [...confirmed], barcode };
+}
+
+function setPathIfMissing(root: Record<string, unknown>, path: string, value: unknown): boolean {
+  if (value === null || value === undefined || value === '') return false;
+  const parts = path.split('.');
+  let cursor = root;
+  for (const part of parts.slice(0, -1)) {
+    const next = objectValue(cursor[part]);
+    cursor[part] = next;
+    cursor = next;
+  }
+  const key = parts.at(-1)!;
+  if (cursor[key] !== null && cursor[key] !== undefined && cursor[key] !== '') return false;
+  cursor[key] = value;
+  return true;
+}
+
+function isTrustedExactRegistryUrl(value: string, barcode: string): boolean {
+  try {
+    const source = new URL(value);
+    return (
+      source.protocol === 'https:' &&
+      source.hostname === 'world.openfoodfacts.org' &&
+      source.pathname === `/product/${barcode}`
+    );
+  } catch {
+    return false;
+  }
+}
+
+/** Automatic OFF/registry facts are exact-source evidence, never customer confirmations. */
+function applyAutomaticEvidence(
+  original: unknown,
+  value: unknown,
+  sessionBarcode: unknown,
+): Record<string, unknown> | null {
+  const bundle = objectValue(value);
+  if (Object.keys(bundle).length === 0) return structuredClone(objectValue(original));
+  if (bundle.source !== 'barcode_registry') return null;
+  const barcode = normalizeValidatedBarcode(sessionBarcode);
+  const exactGtin = normalizeValidatedBarcode(bundle.exactGtin);
+  const sourceUrl = text(bundle.sourceUrl, 2000);
+  if (
+    !barcode ||
+    exactGtin !== barcode ||
+    !sourceUrl ||
+    !isTrustedExactRegistryUrl(sourceUrl, barcode)
+  )
+    return null;
+
+  const fields = objectValue(bundle.productFields);
+  const identity = objectValue(fields.identity);
+  const nutrition = objectValue(fields.nutrition);
+  const packageValue = objectValue(fields.package);
+  const result = mergeProductScanResults(original, {}, barcode);
+  const fieldsUsed: string[] = [];
+  const fill = (path: string, supplied: unknown) => {
+    if (setPathIfMissing(result, path, supplied)) fieldsUsed.push(path);
+  };
+  fill('identity.displayName', text(identity.displayName, 300));
+  fill('identity.brand', text(identity.brand, 200));
+  fill('identity.variant', text(identity.variant, 300));
+  fill('identity.category', text(identity.category, 300));
+  const netQuantity = finite(packageValue.netQuantity, 1_000_000);
+  const quantityUnit = text(packageValue.unit, 10)?.toLowerCase() ?? null;
+  const quantityText = text(packageValue.netQuantityText, 500);
+  if (netQuantity !== null && ['kg', 'g', 'ml', 'l'].includes(quantityUnit ?? '')) {
+    fill('package.netQuantity', netQuantity);
+    fill('package.unit', quantityUnit);
+    fill('package.netQuantityText', quantityText);
+  }
+  for (const key of [
+    'energyKj',
+    'energyKcal',
+    'fat',
+    'saturatedFat',
+    'carbohydrate',
+    'sugars',
+    'protein',
+    'salt',
+    'fibre',
+  ]) {
+    const parsed = finite(nutrition[key], key.startsWith('energy') ? 10_000 : 100);
+    if (parsed !== null) fill(`nutrition.${key}`, parsed);
+  }
+  if (nutrition.basis === 'per_100g' || nutrition.basis === 'per_100ml')
+    fill('nutrition.basis', nutrition.basis);
+  fill('ingredientsText', text(fields.ingredientsText, 20_000));
+  fill('allergensText', text(fields.allergensText, 20_000));
+
+  const existingSources = Array.isArray(result.externalSources) ? result.externalSources : [];
+  result.externalSources = [
+    ...existingSources,
+    {
+      sourceType: 'barcode_registry',
+      url: sourceUrl,
+      title: null,
+      fieldsUsed,
+      sourceAuthorityClass: 'STRUCTURED_PRODUCT_DATABASE',
+      sourceStatedEan: barcode,
+      sourceEanConfirmationMethod: 'url',
+      sourceEanConfirmedAt: new Date(
+        typeof bundle.queriedAt === 'number' ? bundle.queriedAt : Date.now(),
+      ).toISOString(),
+    },
+  ];
+  return result;
 }
 
 async function serverSemanticClassification(input: {
@@ -450,10 +581,21 @@ Deno.serve(async (request) => {
   }
   if (session.state !== 'analyzed') return json({ error: 'scan_not_ready_for_creation' }, 409);
 
-  const corrections = applyCustomerCorrections(
+  const contract = resolveProductScanFinalizeContract(body);
+  if (contract.mode === 'unsupported')
+    return json({ error: 'unsupported_finalize_contract_version' }, 400);
+  const automaticResult = applyAutomaticEvidence(
     session.result_json,
-    objectValue(body.confirmations).productFields,
+    contract.automaticEvidence,
     session.barcode,
+  );
+  if (!automaticResult) return json({ error: 'invalid_automatic_product_evidence' }, 400);
+  const confirmationEnvelope = objectValue(body.confirmations);
+  const corrections = applyCustomerCorrections(
+    automaticResult,
+    contract.customerProductFields,
+    session.barcode,
+    contract.customerAction,
   );
   if (!corrections) return json({ error: 'invalid_user_confirmed_product_fields' }, 400);
   if (!corrections.barcode) return json({ error: 'customer_product_valid_ean_required' }, 409);
@@ -474,7 +616,14 @@ Deno.serve(async (request) => {
   const confirmedEvidenceFields = mergeConfirmedEvidenceFields(
     persistedScan.confirmedFields,
     corrections.confirmedEvidenceFields,
+  ).filter((field): field is ProductEvidenceField =>
+    PRODUCT_EVIDENCE_FIELDS.has(field as ProductEvidenceField),
   );
+  const publicationEligibility = publicationIdentityEligibilityFromScanResult(
+    corrections.result,
+    confirmedEvidenceFields,
+  );
+  corrections.result.publicationEligibility = publicationEligibility;
 
   const recognitionEvidence = productSemanticEvidenceFromScanResult(corrections.result);
   let recognition = await serverSemanticClassification({
@@ -508,7 +657,7 @@ Deno.serve(async (request) => {
   const validation = {
     ...objectValue(session.validation_json),
     customerProductFlow: 'CUSTOMER_ADDED_PRODUCT_V1',
-    packageEvidenceExhausted: objectValue(body.confirmations).packageEvidenceExhausted === true,
+    packageEvidenceExhausted: confirmationEnvelope.packageEvidenceExhausted === true,
     customerFamily: familyChoice,
     recognition,
     // what this scan has established, carried to every later call in it
@@ -566,9 +715,9 @@ Deno.serve(async (request) => {
       /*
         The scan path never filled this, so productProductionAccuracy's web-source test —
         `trustedWebAuthority(input.evidenceProvenance?.[field]?.sourceAuthorityClass)` — always
-        read undefined and scored 0. It is built by the server from the class
-        classifySourceAuthority assigned, and only for a page whose URL names the scanned GTIN;
-        nothing a browser sends can reach it.
+        read undefined and scored 0. The finalizer now builds it only through
+        `applyAutomaticEvidence`, after matching the session GTIN and the exact-source URL. This
+        provenance still cannot bypass the independent name-quality gate below or the SQL gate.
       */
       evidenceProvenance: proposal.evidenceProvenance,
       recognitionEvidence: proposal.recognitionEvidence,
@@ -632,6 +781,7 @@ Deno.serve(async (request) => {
     engineUsable: profile.engineUsable,
     ready,
     criticalGaps,
+    publicationEligibility,
   };
   const trace = {
     authority: 'AUTONOMOUS_PRODUCT_SCANNER_V1',
@@ -668,12 +818,19 @@ Deno.serve(async (request) => {
       roleReady,
       ready,
       criticalGaps,
+      publicationEligibility,
     },
   };
   const { error: traceError } = await service
     .from('product_scan_sessions')
     .update({
-      validation_json: { ...validation, autonomousTrace: trace, finalAssessment: assessment },
+      validation_json: {
+        ...validation,
+        missingCriticalFields: criticalGaps,
+        autonomousTrace: trace,
+        finalAssessment: assessment,
+      },
+      overlay_state: ready ? 'PENDING_PUBLICATION' : 'SCAN_DRAFT',
       updated_at: new Date().toISOString(),
     })
     .eq('id', sessionId)
@@ -716,6 +873,8 @@ Deno.serve(async (request) => {
       p_private_overlay: privateOverlay,
     },
   );
+  if (saveError?.message.includes('shared_product_requires_separate_correction'))
+    return json({ error: 'shared_product_requires_separate_correction' }, 409);
   if (saveError || !saved) return json({ error: 'customer_product_persistence_failed' }, 503);
   const savedRow = objectValue(saved);
   return json({

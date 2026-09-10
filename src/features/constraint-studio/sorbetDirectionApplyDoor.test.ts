@@ -9,6 +9,7 @@ import {
 } from '@/features/recipe-constraints/__fixtures__/sorbetAuthorityFixture';
 import { evaluateFreezingStabilityStatus } from '@/features/recipe-constraints/freezingStabilityStatus';
 import { buildCanonicalNewRecipeStarter } from '@/features/recipes/newRecipeStarter';
+import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { useCustomerPriceStore } from '@/stores/customerPriceStore';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { buildOptimizePreview, workingStateFingerprint } from './applyPipeline';
@@ -96,6 +97,28 @@ const servedSorbet = (direction: Direction): RecipeInput => {
   };
 };
 
+/** Exact 1000 g vector observed in the served SOL-041 closure QA. The test
+ * starts here and reaches 670 g only through recipeStore's role-aware resize;
+ * it never manufactures the already-practicalized 402 g Main state. */
+const servedSol041RescaleSorbet = (): RecipeInput => {
+  const input = servedSorbet({});
+  const gramsByLineId: Readonly<Record<string, number>> = {
+    'new-recipe-1-water': 145,
+    'new-recipe-2-sucrose': 77.7,
+    'new-recipe-3-dextrose': 124,
+    'new-recipe-4-inulin': 49.3,
+    'new-recipe-5-tara_gum': 4,
+    'line-strawberry': 600,
+  };
+  return {
+    ...input,
+    items: input.items.map((item) => ({
+      ...item,
+      planned_grams: gramsByLineId[item.id] ?? item.planned_grams,
+    })),
+  };
+};
+
 const servedTwoCrownSorbet = (): RecipeInput => {
   const input = servedSorbet({});
   const strawberry = input.items.find((item) => item.id === 'line-strawberry')!;
@@ -157,9 +180,7 @@ const servedSnapshots = (input: RecipeInput): Record<string, ProductBehaviorSnap
   return snapshots;
 };
 
-const servedTwoCrownSnapshots = (
-  input: RecipeInput,
-): Record<string, ProductBehaviorSnapshot> => {
+const servedTwoCrownSnapshots = (input: RecipeInput): Record<string, ProductBehaviorSnapshot> => {
   const snapshots = servedSnapshots(input);
   const banana = snapshots['line-banana'];
   if (!banana) throw new Error('Served two-Crown fixture is missing Banana authority');
@@ -194,6 +215,8 @@ const load = (input: RecipeInput) => {
 
 const grams = () =>
   useRecipeStore.getState().items.map((item) => [item.id, item.planned_grams] as const);
+const displayedGrams = () =>
+  grams().map(([lineId, value]) => [lineId, Math.round(value * 10) / 10] as const);
 
 describe('Apply door — Sorbet exact Direction keeps the Main group byte-exact (served regression)', () => {
   beforeEach(() => {
@@ -295,6 +318,73 @@ describe('Apply door — Sorbet exact Direction keeps the Main group byte-exact 
       calculationState: 'CURRENT',
     });
     expect(freezing.status, freezing.reasons.join(', ')).toBe('GOOD');
+  });
+
+  it('applies the practicalized Main after the served role-aware 1000 → 670 rescale and keeps the round-trip deterministic', () => {
+    load(servedSol041RescaleSorbet());
+    const source = structuredClone(displayedGrams());
+    expect(source.map(([, value]) => value)).toEqual([145, 77.7, 124, 49.3, 4, 600]);
+
+    expect(useRecipeStore.getState().setBatchGrams(670)).toEqual({ ok: true });
+    const first670Displayed = structuredClone(displayedGrams());
+    expect(first670Displayed.map(([, value]) => value)).toEqual([97.1, 52, 83, 33, 3, 401.8]);
+    const first670Input = buildRecipeInput(useRecipeStore.getState());
+    const first670Main = first670Input.items.find((item) => item.id === 'line-strawberry')!;
+    const first670Stabilizer = first670Input.items.find(
+      (item) => item.id === 'new-recipe-5-tara_gum',
+    )!;
+    expect(first670Input.items.reduce((sum, item) => sum + item.planned_grams, 0)).toBeCloseTo(
+      670,
+      10,
+    );
+    expect(first670Main.planned_grams).toBeCloseTo(401.8, 1);
+    expect(Number.isInteger(first670Main.planned_grams)).toBe(false);
+    expect(first670Stabilizer.planned_grams).toBe(3);
+
+    expect(useRecipeStore.getState().setBatchGrams(1_000)).toEqual({ ok: true });
+    expect(displayedGrams()).toEqual(source);
+    expect(useRecipeStore.getState().setBatchGrams(670)).toEqual({ ok: true });
+    expect(displayedGrams()).toEqual(first670Displayed);
+    const beforeApply = structuredClone(grams());
+
+    useConstraintStudioStore.getState().createOptimizePreview();
+    if (
+      useConstraintStudioStore.getState().preview === null &&
+      useConstraintStudioStore.getState().directionBestCandidate !== null
+    ) {
+      useConstraintStudioStore.getState().acceptBestDirectionCandidate();
+    }
+    const preview = useConstraintStudioStore.getState().preview;
+    expect(
+      preview,
+      JSON.stringify(useConstraintStudioStore.getState().previewIssue),
+    ).not.toBeNull();
+    expect(preview?.practicalization?.status).toBe('ready');
+    if (!preview || preview.practicalization?.status !== 'ready') return;
+
+    const exactMain = preview.practicalization.audit.exactInput.items.find(
+      (item) => item.id === 'line-strawberry',
+    )!;
+    const practicalMain = preview.proposedInput.items.find(
+      (item) => item.id === 'line-strawberry',
+    )!;
+    expect(exactMain.planned_grams).toBeCloseTo(first670Main.planned_grams, 12);
+    expect(practicalMain.planned_grams).toBe(402);
+
+    const claimedByteExactMain = preview.mainHeldByExactDirection;
+    useConstraintStudioStore.getState().applyPreview();
+    const applied = useConstraintStudioStore.getState();
+    expect(applied.blocked, applied.blocked?.messagePl).toBeNull();
+    expect(claimedByteExactMain).toBeUndefined();
+    expect(applied.history).toHaveLength(1);
+    expect(applied.history[0]?.practicalization?.lines).toEqual(
+      preview.practicalization.audit.lines,
+    );
+    expect(grams().reduce((sum, [, value]) => sum + value, 0)).toBe(670);
+    expect(grams().find(([lineId]) => lineId === 'new-recipe-5-tara_gum')?.[1]).toBe(3);
+
+    useConstraintStudioStore.getState().undoLastApply();
+    expect(grams()).toEqual(beforeApply);
   });
 
   it('refuses a forged held-Main flag whose Main grams moved or whose vector the exact path does not reproduce', () => {
