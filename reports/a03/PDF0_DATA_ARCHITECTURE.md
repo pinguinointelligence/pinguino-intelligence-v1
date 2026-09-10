@@ -53,3 +53,14 @@ powder, dextrose); it does not create parallel product records.
 ## v7 → final reconciliation (deterministic, prepared now)
 Primary join key (market_iso2, role, EAN); fallback (market_iso2, role, proposal key). Output: unchanged / changed
 / added / removed rows, with every previously verified evidence record carried forward. Research is not restarted.
+
+## Evidence fields (added 2026-09-10 after the A04 run)
+- evidence_method — RAW_HTML (curl, SHA-256 of the fetched page kept in a04_fetch_log_v7.csv) or BROWSER_DOM (rendered page in the
+  in-app browser; no stored page — the matched context string and UTC time are kept instead). Re-verify both before a final PDF.
+- market_by — how the page's market was decided: CCTLD, PATH_LOCALE, SUBDOMAIN_LOCALE, ADDRESS_COUNTRY or CURRENCY.
+- source_type — DIRECT (manufacturer or retailer), MARKETPLACE or AGGREGATOR. Only DIRECT can confirm.
+- verification_class — EAN_ON_MARKET_PAGE (the only class that yields CONFIRMED), EAN_ON_GENERIC_TLD_PAGE, EAN_ON_FOREIGN_MARKET_PAGE,
+  EAN_ON_MARKETPLACE_MARKET_PAGE, EAN_ON_AGGREGATOR, EAN_ONLY_ECHOED_FROM_URL_OR_QUERY, EAN_EMBEDDED_IN_RETAILER_CODE,
+  MARKET_PAGE_WITHOUT_EAN, SHIPPING_POLICY_PAGE_ONLY, PAGE_WITHOUT_EAN, SOURCE_NOT_READABLE, NO_SOURCE_URL, NO_EAN_IN_V7.
+- Mapping to D-10 classes: EAN_ON_MARKET_PAGE → CONFIRMED; any other class with a source → LEAD; NO_SOURCE_URL → HYPOTHESIS;
+  NO_EAN_IN_V7 → BRAK. Working values for v7: reports/a03/a04_ean_verification_v7.csv.

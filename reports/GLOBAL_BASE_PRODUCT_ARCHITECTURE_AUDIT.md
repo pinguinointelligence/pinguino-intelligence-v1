@@ -546,3 +546,83 @@ S4' EAN INTEGRITY        100 % of v7 EANs checksum-validated or flagged; RCN-ran
 S5' MULTI-COUNTRY PROOF  every EAN claimed in > 1 market has an independent official source per market (A04).
 S6' OWN-BRAND CHECK      retailer own-brand SKUs identified and never shared across markets without per-market proof.
 S7' CLASS DISCIPLINE     every product bound to an existing PI or marked REVIEW_REQUIRED; zero new PI (D-3).
+
+
+# MASTER CHECKLIST — FULL 36 (checkpoint 2026-09-10 b, after the A04/F02 evidence run)
+# COUNTER TYPE: owner-accepted master items (NOT an implementation counter)
+# ============================================================================
+PHASE A
+[x] A01 Global country/market ledger — SPEC/DECISION ACCEPTED · IMPLEMENTATION NOT STARTED · REVERIFICATION REQUIRED.
+        DEP: —  LINKS: Country authority / Shop. NOTE: ISO ledger = vocabulary; commercial scope = accepted 75 (D-5).
+[x] A02 MARKET ≠ ORIGIN. DEP: A01. LINKS: PR identity/provenance. EVIDENCE: countryOfOrigin vs markets[]; PL/BE
+        dextrose; BAZA v7 carries 'Pochodzenie' separately from 'Kraje użycia'.
+[~] A03 Retailers/manufacturers by market — 75 × GELATO. Evidence run: 375/375 PR cells classified — CONFIRMED 122
+        (CORE 49/100) · LEAD 173 · BRAK 80. S3' and S5' not met → stays ACTIVE. DEP: A01.
+        LINKS: Product Catalog / Shop. FILE: reports/a03/A04_EAN_VERIFICATION.md.
+[~] A04 Exact EAN overlap across countries — 7 of 33 v7 multi-market EANs CONFIRMED in ≥ 2 markets; 12 in one
+        market; 14 in none. RCN codes never a cross-market identity. DEP: A03. LINKS: PR dedup / Shop / Country Product.
+[~] A05 Evidence-based market/product clusters — research question; no cluster model frozen. DEP: A04.
+PHASE B
+[x] B01 Base-product family scope — NOTE: active base = GELATO, 6 PI (000236, 000180, 000270, 000514, 000494,
+        000492); Sorbet/Vegan/Protein outside current scope (D-9). DEP: A01.
+[~] B02 Milk variants — ruleset recorded; v7 supplies real MILK products for 75 markets. DEP: A03, B01.
+[~] B03 Cream / milk powder / cream powder — v7 CREAM + SMP. DEP: A03, B01.
+[~] B04 Sugars — DEXTROSE: 19 CONFIRMED · 9 LEAD · 47 BRAK. Sucrose = global PI (D-8): SA10 everyday
+        phrase for 44/75 markets, technical name only for 31. DEP: A03, B01.
+[~] B05 Inulin / stabilizers / gums — v7 TARA. DEP: A03, B01.
+[!] B06 Plant bases / protein (Vegan/Protein) — BLOCKED: those base packages are not supplied and must not be
+        invented (D-9). Status changed ACTIVE→BLOCKED on 2026-09-10 with this blocker; nothing deleted.
+PHASE C
+[x] C01 Variants vs existing PI — closed on the classification ruleset.
+[x] C02 Missing PI candidate list — closed on the ruleset.
+[x] C03 Technological-meaning proof — closed on the ruleset.
+[x] C04 OWNER REVIEW of PI candidates — RESOLVED FOR SHOP by owner decision 2026-09-10 (D-3, D-4): no new PI
+        from SHOP; PR → best existing PI; else REVIEW_REQUIRED → future ingestion contract.
+[!] C05 Controlled addition of approved neutral PI — BLOCKED / OUT OF SHOP: owned by the future NEW PR/PI-ING
+        INGESTION CONTRACT and Mapper maintenance. SHOP never creates PI (D-3).
+PHASE D
+[x] D01 One exact PR per real EAN — invariant verified on staging sample; re-verify after global PR population.
+        RISK kept: GS1 RCN prefixes are not globally unique.
+[~] D02 PR stores identity + origin + markets — v7 columns assessed offline.
+[~] D03 Manufacturer/label/retailer source facts — EAN × market evidence done for all 375 PR cells; label composition and
+        nutrition not verified in this run.
+[x] D04 Per-field VERIFIED/DERIVED/ESTIMATED/UNKNOWN truth — capability verified.
+[x] D05 Raw basis preserved + normalized values — capability verified.
+[~] D06 Bind PR to correct PI — 375/375 v7 PR cells bound to the 6 existing 2541 PI; 0 new PI; 000236/000270 display
+        names refresh by stable ID in the final BAZA (D-2).
+[~] D07 Engine readiness of required base PR — requires the app/Engine runtime; offline pre-checks only in SHOP.
+[~] D08 Missing requirements for every NOT READY PR — compiled: reports/a03/d08_missing_requirements_v7.csv (374 NOT READY
+        + 1 READY per v7), joined with the A04 evidence class per cell.
+PHASE E
+[x] E01 Country defaults use the existing Product Country authority.
+[x] E02 USER_PREFERRED precedence preserved.
+[~] E03 Picker exposes neutral PI names — not advanced by SHOP research (picker lane).
+[~] E04 Exact brand/PR via details/search — not advanced by SHOP research.
+[~] E05 Scan resolves PR → PI → country/user flow — not advanced by SHOP research (scanner lane).
+PHASE F
+[~] F01 Shop references the same approved PR — reports/a03/PDF0_DATA_ARCHITECTURE.md; evidence fields added after the A04 run.
+[~] F02 Supplier / URL / market availability — 838 v7 URLs fetched + 46 browser checks; per-cell best URL, source type,
+        page market, method and evidence time in reports/a03/a04_ean_verification_v7.csv (D-10).
+[~] F03 PDF 0€ per country/cluster — data architecture + working evidence ready; final PDF waits for the final BAZA (D-7, D-10).
+[ ] F04 Cluster countries with identical production sets — DEP: A05.
+[!] F05 GELATO country base (terminal-valid) — BLOCKED by owner instruction.
+[!] F06 SORBET/VEGAN/PROTEIN country bases — BLOCKED by owner instruction and D-9.
+PHASE G
+[x] G01 Mapper count reconciliation (2088 vs 2089) — DONE as accepted. NOTE 2026-09-10: authority is now
+        FINAL_FROZEN 2541 (D-1); live 2147 = integration handoff (D-11).
+
+TALLY: DONE 13 · ACTIVE 18 · BLOCKED 4 · TODO 1 = 36.
+MASTER PROGRESS: 13 / 36 = 36.1 %  (no status changes at this checkpoint; text updated for A03 A04 B04 D03 D06 D08 F01 F02 F03).
+
+# A03 SATURATION MATRIX v2 — values at checkpoint 2026-09-10 b (criterion defined above; no aggregate %)
+S1' CELL CLASSIFICATION   MET      375/375 PR cells carry an evidence class (CONFIRMED 122 · LEAD 173 · BRAK 80 · HYPOTHESIS 0).
+S2' MARKET COMPLETENESS   MET      75/75 markets have a class for every PR role.
+S3' EVIDENCE QUALITY      NOT MET  customer-visible (CONFIRMED) today: 122/375 PR cells, CORE 49/100; 19 markets have none.
+S4' EAN INTEGRITY         MET      295/295 v7 EAN cells pass GTIN mod-10; 0 numeric-stored; 2 RCN-range codes flagged (TH).
+S5' MULTI-COUNTRY PROOF   NOT MET  7/33 multi-market EANs CONFIRMED in ≥ 2 markets; 12 in one; 14 in none.
+S6' OWN-BRAND CHECK       PARTIAL  21 retailer-owned-brand cells identified (reviewer token list); every shared one needs per-market proof.
+S7' CLASS DISCIPLINE      MET      375/375 bound to existing 2541 PI; 0 new PI; 2 display-name refreshes pending by ID.
+A03 stays ACTIVE (S3', S5' not met). L1 unchanged: Vietnam CONFIRMED · Poland LEAD · same EAN in two markets LEAD.
+RCN stays a risk only for D01 / A04 / E05.
+
+# ============================================================================
