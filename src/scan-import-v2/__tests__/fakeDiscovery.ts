@@ -202,16 +202,29 @@ export class FakeDiscovery implements DiscoveryPort {
     this.calls.push(`finalize:${session.identity.canonicalGtin13}`);
     this.finalizeInputs.push(input);
     const s = this.session(session.identity);
-    // customer-entered plain fields (finalize confirmations.productFields), as the server's corrections apply them
+    // Exact-registry evidence fills gaps first; it is deliberately separate from user confirmation.
+    const automatic = (input.automaticEvidence?.productFields ?? {}) as Record<string, unknown>;
     const pf = (input.confirmations?.productFields ?? {}) as Record<string, unknown>;
+    const automaticIdentity = (automatic['identity'] ?? {}) as Record<string, unknown>;
+    const automaticNutrition = (automatic['nutrition'] ?? {}) as Record<string, unknown>;
     const pfIdentity = (pf['identity'] ?? {}) as Record<string, unknown>;
     const pfNutrition = (pf['nutrition'] ?? {}) as Record<string, unknown>;
-    if (Object.keys(pf).length > 0) {
+    if (Object.keys(automatic).length > 0 || Object.keys(pf).length > 0) {
       const prior = s.result ?? {};
+      const priorNutrition = prior.nutrition ?? {};
+      const missingAutomaticNutrition = Object.fromEntries(
+        Object.entries(automaticNutrition).filter(([key]) => priorNutrition[key] == null),
+      );
       s.result = {
         ...prior,
         identity: {
           ...(prior.identity ?? {}),
+          ...(!prior.identity?.displayName && typeof automaticIdentity['displayName'] === 'string'
+            ? { displayName: automaticIdentity['displayName'] as string }
+            : {}),
+          ...(!prior.identity?.brand && typeof automaticIdentity['brand'] === 'string'
+            ? { brand: automaticIdentity['brand'] as string }
+            : {}),
           ...(typeof pfIdentity['displayName'] === 'string'
             ? { displayName: pfIdentity['displayName'] as string }
             : {}),
@@ -220,7 +233,8 @@ export class FakeDiscovery implements DiscoveryPort {
             : {}),
         },
         nutrition: {
-          ...(prior.nutrition ?? {}),
+          ...priorNutrition,
+          ...missingAutomaticNutrition,
           ...(typeof pfNutrition['energyKcal'] === 'number'
             ? { energyKcal: pfNutrition['energyKcal'] as number }
             : {}),
@@ -228,7 +242,10 @@ export class FakeDiscovery implements DiscoveryPort {
         ingredientsText:
           typeof pf['ingredientsText'] === 'string'
             ? (pf['ingredientsText'] as string)
-            : (prior.ingredientsText ?? null),
+            : (prior.ingredientsText ??
+              (typeof automatic['ingredientsText'] === 'string'
+                ? (automatic['ingredientsText'] as string)
+                : null)),
       };
       s.missingCritical = missingOf(s.result);
     }
