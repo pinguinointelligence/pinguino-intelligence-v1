@@ -37,8 +37,13 @@
 -- changes no policy, no row, and not the project-wide default privileges —
 -- DB-ACL-01 stays untouched by owner instruction.
 --
--- NOTE FOR WHOEVER APPLIES THIS: staging and production share ONE Supabase
--- project (A-DEF-02), so applying it takes effect for production too.
+-- ############################################################################
+-- STATUS: READY / NOT APPLIED — production-shared DB
+-- Owner decision 2026-09-10: do NOT apply this yet. Staging and production share
+-- ONE Supabase project (A-DEF-02), so applying it changes production's database.
+-- No grant may change until a separate, safe deployment decision is taken.
+-- This file is kept prepared, with its forensic, for that moment.
+-- ############################################################################
 
 revoke all on table
   public.commission_entries,
