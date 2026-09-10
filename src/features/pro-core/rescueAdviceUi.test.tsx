@@ -90,6 +90,39 @@ describe('rescue ingredient advice UI (simulation-proven, never auto-add)', () =
     expect(html).not.toContain('fruktoz');
     expect(renderToStaticMarkup(<RescueAdviceHint advice={null} />)).toBe('');
   });
+
+  it('uses nearest language for Sorbet only with a complete whole-gram proof', () => {
+    const proven = {
+      ...candidate(),
+      proposedInput: { ...candidate().proposedInput, category: 'sorbet' },
+      practicalization: {
+        status: 'ready',
+        audit: { sorbetDirectionResolution: { status: 'PROVEN_NEAREST' } },
+      },
+    } as unknown as ConstraintPreview;
+    const html = renderToStaticMarkup(
+      <DirectionBestDecision candidate={proven} onAccept={vi.fn()} onBack={vi.fn()} />,
+    );
+    expect(html).toContain('Najbliższy możliwy poziom');
+    expect(html).toContain('data-testid="direction-best-accept"');
+  });
+
+  it('marks an unproven Sorbet search unresolved and does not offer nearest acceptance', () => {
+    const unresolved = {
+      ...candidate(),
+      proposedInput: { ...candidate().proposedInput, category: 'sorbet' },
+      practicalization: {
+        status: 'ready',
+        audit: { sorbetDirectionResolution: { status: 'SEARCH_FAILED' } },
+      },
+    } as unknown as ConstraintPreview;
+    const html = renderToStaticMarkup(
+      <DirectionBestDecision candidate={unresolved} onAccept={vi.fn()} onBack={vi.fn()} />,
+    );
+    expect(html).toContain('Nie udało się potwierdzić najlepszego wyniku');
+    expect(html).not.toContain('Najbliższy możliwy poziom');
+    expect(html).not.toContain('data-testid="direction-best-accept"');
+  });
 });
 
 describe('Starter Pack Direction Rescue decision UI', () => {
@@ -262,6 +295,14 @@ describe('final simple Direction fallback UX', () => {
     expect(html).toContain('Najbliższy możliwy poziom to 0.');
     expect(html).toContain('Ustaw 0');
     expect(html).toContain('Spróbuj inaczej');
+  });
+
+  it('does not call a Sorbet fallback nearest when the whole-gram proof is missing', () => {
+    const unproven = { ...fallback(-1), sorbetNearestProven: false };
+    const html = renderDecision(unproven);
+    expect(html).toContain('Sprawdzony alternatywny poziom to -1.');
+    expect(html).not.toContain('Najbliższy możliwy poziom');
+    expect(html).not.toContain('Nie da się osiągnąć');
   });
 
   it('shows an achieved alternative as a proposal without naming internal search or ingredients', () => {

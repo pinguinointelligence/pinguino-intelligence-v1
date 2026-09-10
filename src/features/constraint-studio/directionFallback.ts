@@ -26,6 +26,8 @@ export interface DirectionFallbackReport {
   attempts: DirectionFallbackAttempt[];
   best: DirectionFallbackAttempt | null;
   totalRuntimeMs: number;
+  /** Sorbet only: the original candidate carried a complete global lattice proof. */
+  sorbetNearestProven?: boolean;
 }
 
 export interface DirectionFallbackBuildInput {
@@ -114,8 +116,20 @@ export function buildDirectionFallback(
 ): DirectionFallbackReport {
   const started = nowMs();
   const requestedTargets = normalizeRecipeDirectionTargets(request.input.goals?.direction_targets);
+  const sorbetNearestProven =
+    request.input.category === 'sorbet'
+      ? request.normalResult.preview?.practicalization?.status === 'ready' &&
+        request.normalResult.preview.practicalization.audit.sorbetDirectionResolution?.status ===
+          'PROVEN_NEAREST'
+      : undefined;
   if (!shouldRunDirectionFallback(request.input, request.normalResult)) {
-    return { requestedTargets, attempts: [], best: null, totalRuntimeMs: nowMs() - started };
+    return {
+      requestedTargets,
+      attempts: [],
+      best: null,
+      totalRuntimeMs: nowMs() - started,
+      ...(sorbetNearestProven === undefined ? {} : { sorbetNearestProven }),
+    };
   }
 
   const attempts: DirectionFallbackAttempt[] = [];
@@ -155,5 +169,11 @@ export function buildDirectionFallback(
       break;
     }
   }
-  return { requestedTargets, attempts, best, totalRuntimeMs: nowMs() - started };
+  return {
+    requestedTargets,
+    attempts,
+    best,
+    totalRuntimeMs: nowMs() - started,
+    ...(sorbetNearestProven === undefined ? {} : { sorbetNearestProven }),
+  };
 }
