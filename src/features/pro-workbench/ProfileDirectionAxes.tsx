@@ -9,6 +9,7 @@ import {
   projectProteinHardnessForDisplay,
   proteinHardnessSelectionChangesStored,
 } from '@/features/protein-gelato/proteinHardnessAuthority';
+import { directionAxisUnavailableReason } from './directionAxisReason';
 import type { AdjustableAxisId, DirectionIntent } from './recipeProfileStore';
 
 const DETENTS = [-2, -1, 0, 1, 2] as const;
@@ -47,8 +48,7 @@ const sampleRamp = (ramp: readonly number[], count: number): number[] =>
   );
 
 /** `left:` for a VISUAL index — the same end-to-end geometry at any count. */
-const visualLeft = (index: number, count: number) =>
-  `${(index / Math.max(1, count - 1)) * 100}%`;
+const visualLeft = (index: number, count: number) => `${(index / Math.max(1, count - 1)) * 100}%`;
 
 /* Screen readers never saw the ball, so they used to get the numeral. They now
    get the sentence — indexed by the CANONICAL value, never by the visual slot,
@@ -80,6 +80,7 @@ function RegulatorRow({
   endLabels,
   onSet,
   disabled,
+  reason,
   detents = DETENTS,
 }: {
   id: string;
@@ -91,6 +92,8 @@ function RegulatorRow({
   endLabels: readonly [string, string];
   onSet: (value: DirectionIntent) => void;
   disabled?: boolean;
+  /** A7 — shown under the track, and announced with it, whenever the regulator is unavailable. */
+  reason?: string;
   /** The positions this axis can actually deliver. Defaults to the five-step
    *  rail; a profile whose authority publishes three targets passes three. */
   detents?: readonly DirectionIntent[];
@@ -155,6 +158,7 @@ function RegulatorRow({
           role="radiogroup"
           aria-label={label}
           aria-disabled={disabled || undefined}
+          aria-describedby={reason ? `profile-regulator-${id}-reason` : undefined}
           onKeyDown={(event) => {
             if (disabled) return;
             /* Arrows move ON SCREEN, not along the number line: on a mirrored
@@ -262,7 +266,7 @@ function RegulatorRow({
               style={{ left: visualLeft(index, count) }}
               /* A 26 px target centred on each dot — the mark is small, the
                  thing you press is not. */
-              className="pro-focus-ring absolute top-0 -ml-[13px] size-[26px] rounded-full bg-transparent"
+              className="gellatti-touch-control pro-focus-ring absolute top-0 -ml-[13px] size-[26px] rounded-full bg-transparent"
             />
           ))}
         </div>
@@ -277,6 +281,15 @@ function RegulatorRow({
           <span className="min-w-0 truncate">{endLabels[0]}</span>
           <span className="min-w-0 truncate text-right">{endLabels[1]}</span>
         </div>
+        {reason ? (
+          <p
+            id={`profile-regulator-${id}-reason`}
+            data-testid={`profile-regulator-${id}-reason`}
+            className="mt-2 text-[12px] leading-4 text-[var(--g-text-muted)]"
+          >
+            {reason}
+          </p>
+        ) : null}
       </div>
     </article>
   );
@@ -369,6 +382,11 @@ export function ProfileDirectionAxes({
                 set(axis, PROTEIN_HARDNESS_TARGET_VALUE[step]);
               }}
               disabled={status?.status !== 'working'}
+              reason={
+                status?.status === 'working'
+                  ? undefined
+                  : directionAxisUnavailableReason(status?.status)
+              }
             />
           );
         })}
