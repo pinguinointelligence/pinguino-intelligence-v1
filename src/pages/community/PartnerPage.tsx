@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
 import { ApplicationState } from '@/components/shared/ApplicationState';
+import { PartnerApplicationPanel } from '@/features/partner-application/PartnerApplicationPanel';
 import { Button } from '@/components/ui/Button';
 import {
   applicationCompactClasses,
@@ -731,27 +732,33 @@ export function PartnerPage() {
                         ? 'Poprzednie zgłoszenie zostało rozpatrzone odmownie. Możesz wysłać nowe.'
                         : 'Panel Partner otwiera się po zatwierdzeniu zgłoszenia. Zajmuje to kilka pól.'
               }
+              /* The application form now lives HERE rather than behind a link.
+                 It used to point at `/work-with-us#partner-application`, and the
+                 collaboration IA change (#142) turned that route into a redirect
+                 to Franchise — so "Wyślij zgłoszenie" sent an Affiliate
+                 applicant to the franchise page and the form became unreachable,
+                 because WorkWithUsPage was the only surface that rendered it.
+
+                 Putting it on this page is also the right shape: /partner is
+                 already the authenticated Affiliate workspace and already owns
+                 every application state, so the form and its status stop living
+                 on two different surfaces. */
               action={
                 applicationStatus === 'submitted' ? (
                   <Link to="/community" className={applicationSecondaryClasses()}>
                     Zobacz Community
                   </Link>
-                ) : (
-                  <Link
-                    to="/work-with-us#partner-application"
-                    className={applicationSecondaryClasses()}
-                  >
-                    {applicationStatus === 'more_information_needed' ||
-                    applicationStatus === 'rejected'
-                      ? 'Uzupełnij zgłoszenie'
-                      : 'Wyślij zgłoszenie'}
-                  </Link>
-                )
+                ) : null
               }
             />
           ) : (
             content
           )}
+          {data && !data.ok && applicationStatus !== 'submitted' ? (
+            <div className="mt-6" id="partner-application">
+              <PartnerApplicationPanel />
+            </div>
+          ) : null}
         </main>
       </div>
     </DestinationSurface>
