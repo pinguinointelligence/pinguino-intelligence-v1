@@ -724,22 +724,33 @@ describe('LabelWorkspace unified actual-run surface', () => {
     expect(host.textContent).toContain('of which saturates3.2 g');
   });
 
-  it('keeps separate Basic rectangle and round dimensions without presets or Auto', async () => {
+  /* OWNER §36 (2026-09-10) — this used to prove that the Basic picker kept
+     rectangle and round dimensions apart while the customer toggled between
+     them. Round is no longer offered anywhere a customer can reach it, so the
+     toggle it drove does not exist. What survives from the old assertion is the
+     part that still matters: Basic edits dimensions directly, with no presets
+     and no Auto, and the value the customer typed is the value that stays. */
+  it('Basic edits rectangle dimensions directly, and offers no round format', async () => {
     await renderWorkspace('settings');
     const editor = host.querySelector('[data-testid="label-settings-view"]')!;
     expect(editor.textContent).not.toContain('Format: Auto');
     expect(editor.textContent).not.toContain('70 × 50 mm');
+    expect(button('Okrągła')).toBeUndefined();
+    expect(button('Prostokątna')).toBeUndefined();
+    expect(editor.querySelector('[data-testid="label-basic-diameter"]')).toBeNull();
+
     const width = editor.querySelector<HTMLInputElement>('[data-testid="label-basic-width"]')!;
     await act(async () => setInputValue(width, '111'));
-    await act(async () => button('Okrągła')!.click());
-    const diameter = editor.querySelector<HTMLInputElement>(
-      '[data-testid="label-basic-diameter"]',
-    )!;
-    await act(async () => setInputValue(diameter, '73'));
-    await act(async () => button('Prostokątna')!.click());
     expect(editor.querySelector<HTMLInputElement>('[data-testid="label-basic-width"]')?.value).toBe(
       '111',
     );
+
+    const format = editor.querySelector<HTMLSelectElement>(
+      '[data-testid="label-presentation-format"]',
+    );
+    if (format) {
+      expect([...format.options].map((option) => option.value)).toEqual(['rectangle']);
+    }
   });
 
   it('keeps Step 3 configuration-only and does not persist an unapplied market change', async () => {
