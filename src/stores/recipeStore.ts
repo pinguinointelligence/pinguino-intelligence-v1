@@ -656,6 +656,17 @@ const moveWithin = <T extends { id: string }>(
 const ENGINE_KEPT_LOCKS: ReadonlySet<LockType> = new Set(['main', 'already_added', 'required']);
 
 /**
+ * Protein's Main Crown is pure priority metadata. In particular, crowning a
+ * zero-gram Protein line must not increase a complete machine-sized batch by
+ * the generic 1 g role seed. The other profiles retain their accepted
+ * auto-seed lifecycle; this exception is deliberately scoped to Protein.
+ */
+const crownAutoSeedAllowedForProfile = (state: {
+  visibleProductType: VisibleProductType;
+  category: ProductCategory;
+}): boolean => state.visibleProductType !== 'protein' && state.category !== 'protein_gelato';
+
+/**
  * Has the required Main role been RESOLVED?
  *
  * `starterReservedMainGrams` says one thing only — "the required Main role is
@@ -2351,11 +2362,14 @@ export const useRecipeStore = create<RecipeState>()(
           const current = state.items.find((item) => item.id === lineId);
           // OWNER P0 — the crown contract belongs to the role transition, not
           // to one button. This lower-level write reaches the same Main role,
-          // so it seeds and restores exactly like the Crown toggle.
+          // including Protein's mass-neutral exception.
           const wasAutoSeeded = state.crownAutoSeededLineIds.includes(lineId);
           const crownedNow = lockType === 'main' && current?.lock_type !== 'main';
           const uncrownedNow = lockType !== 'main' && current?.lock_type === 'main';
-          const seed = crownedNow ? crownOnPlannedGrams(current?.planned_grams ?? 0) : null;
+          const seed =
+            crownedNow && crownAutoSeedAllowedForProfile(state)
+              ? crownOnPlannedGrams(current?.planned_grams ?? 0)
+              : null;
           const items = state.items.map((item) =>
             item.id === lineId
               ? (() => {
@@ -2489,12 +2503,14 @@ export const useRecipeStore = create<RecipeState>()(
           if (mainBehaviorBlockReason(state.productBehaviorSnapshots[lineId], snapshotRequired))
             return {};
           const roleChanged = current.lock_type !== 'main';
-          // OWNER P0 — Crown at 0 g. The crown is a role, not an amount, but a
-          // crowned line must hold a real positive mass: a 0 g line is not a
-          // ProductBehavior required line, so nothing ever revalidates the
-          // role transition and every later grams edit is refused. Seed one
-          // ordinary gram and remember that WE seeded it.
-          const seed = roleChanged ? crownOnPlannedGrams(current.planned_grams) : null;
+          // The accepted non-Protein lifecycle seeds a positive gram so its
+          // role transition enters the ProductBehavior revalidation pass.
+          // Protein is deliberately excluded: its Crown is mass-neutral
+          // priority metadata, including at 0 g.
+          const seed =
+            roleChanged && crownAutoSeedAllowedForProfile(state)
+              ? crownOnPlannedGrams(current.planned_grams)
+              : null;
           const items = state.items.map((item) => {
             if (item.id !== lineId) return item;
             const next = {
@@ -2522,10 +2538,17 @@ export const useRecipeStore = create<RecipeState>()(
                 : clearCrownAutoSeeded(state.crownAutoSeededLineIds, lineId),
             ...(roleChanged
               ? {
-                  productBehaviorSnapshots: requireProductBehaviorLineRevalidation(
-                    state.productBehaviorSnapshots,
-                    lineId,
-                  ),
+                  // A zero-gram Protein Crown changes priority only. Keeping
+                  // the current Base snapshot lets the professional enter the
+                  // first real amount; the normal current-recipe authority
+                  // then resolves that positive Main line in its Main context.
+                  productBehaviorSnapshots:
+                    current.planned_grams > 0 || seed !== null
+                      ? requireProductBehaviorLineRevalidation(
+                          state.productBehaviorSnapshots,
+                          lineId,
+                        )
+                      : state.productBehaviorSnapshots,
                   practicalRecipeAudit: null,
                   savedProductionFingerprint: null,
                 }
