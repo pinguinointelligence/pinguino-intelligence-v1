@@ -58,6 +58,8 @@ describe('SOL-052 publication boundary across client, Edge and SQL', () => {
     expect(migration).toContain('search_products_v1');
     expect(migration).toContain("canonical_verification_status, '''') <> ''blocked''");
     expect(migration).toContain('existing PR');
+    expect(migration).toContain("v_uid is not null and p.visibility <> ''shared''");
+    expect(rollback).toContain('sol052_rollback_exact_private_scope_anchor_missing');
     expect(analyze.indexOf('const eligibleCandidateRows')).toBeLessThan(
       analyze.indexOf("service.rpc('canonicalize_ean_identity_v1'"),
     );

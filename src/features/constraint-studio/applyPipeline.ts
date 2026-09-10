@@ -457,10 +457,7 @@ export function directionTargetFingerprint(input: RecipeInput): string {
  * produce the optimisation wording by construction.
  */
 export type PreviewOutcome =
-  | 'batch_rescale'
-  | 'engine_optimization'
-  | 'batch_rescale_and_optimization'
-  | 'no_verified_change';
+  'batch_rescale' | 'engine_optimization' | 'batch_rescale_and_optimization' | 'no_verified_change';
 
 export interface PreviewOutcomeClassification {
   outcome: PreviewOutcome;
@@ -785,9 +782,11 @@ export interface ConstraintPreview {
   crownOffMainCorrection?: CrownOffMainTargetProof;
   /**
    * Sorbet exact five-step Direction: the closed-form projection moved only
-   * the canonical adjustable roles and kept every Main line byte-exact, so no
-   * Main frontier proof exists for this proposal. The Apply door re-derives
-   * the same exact candidate from the trusted draft instead.
+   * the canonical adjustable roles and the final executable proposal kept
+   * every Main line byte-exact, so no Main frontier proof exists for this
+   * proposal. When whole-gram practicalization changes a fractional Main, this
+   * flag is omitted; the verified practicalization audit proves that distinct
+   * exact-to-executable transformation instead.
    */
   mainHeldByExactDirection?: boolean;
   /** Owner 2026-08-22: which Sorbet Direction candidate generator produced the
@@ -2831,6 +2830,35 @@ const mainGroupLinesByteIdentical = (base: RecipeInput, proposed: RecipeInput): 
       Object.is(next.planned_grams, current.planned_grams)
     );
   });
+};
+
+type ExactDirectionMainProofKind = 'byte_exact' | 'practicalized';
+
+/**
+ * Exact Direction has two honest Main outcomes:
+ * - the executable candidate is byte-identical to the trusted Main group; or
+ * - the exact candidate is byte-identical and the already trustlessly
+ *   re-derived practicalization audit owns the exact-to-whole-gram change.
+ *
+ * This is deliberately not a tolerance. Any change outside the practicalizer's
+ * complete audit remains on the ordinary Main-objective proof path.
+ */
+const exactDirectionMainProofKind = (
+  base: RecipeInput,
+  preview: ConstraintPreview,
+): ExactDirectionMainProofKind | null => {
+  if (preview.kind !== 'optimize' || preview.directionCandidateSource === undefined) return null;
+  if (preview.mainHeldByExactDirection === true) {
+    return mainGroupLinesByteIdentical(base, preview.proposedInput) ? 'byte_exact' : null;
+  }
+  if (
+    preview.practicalization?.status === 'ready' &&
+    mainGroupLinesByteIdentical(base, preview.practicalization.audit.exactInput) &&
+    !mainGroupLinesByteIdentical(base, preview.proposedInput)
+  ) {
+    return 'practicalized';
+  }
+  return null;
 };
 
 const requiredLineContractViolations = (before: RecipeInput, after: RecipeInput): string[] => {
@@ -6415,11 +6443,13 @@ function buildSorbetDirectionCandidatePreview(params: {
       preview.autoBalance = { batchRescaled, solverRounds: 0 };
       preview.hardResidualMetrics = [];
       preview.diagnosticOnly = false;
-      // Both generators keep Main, optional Inulin and stabilizer byte-exact
-      // (see sorbetDirectionProjection / sorbetNearestDirectionSearch); the
-      // Apply door verifies exactly that and re-derives the candidate.
-      preview.mainHeldByExactDirection = true;
       preview.directionCandidateSource = generator.source;
+      // Both generators keep Main byte-exact in their exact candidate. Claim
+      // byte identity on the executable Preview only when practicalization did
+      // not round Main; otherwise its verified audit is the explicit proof.
+      if (mainGroupLinesByteIdentical(input, preview.proposedInput)) {
+        preview.mainHeldByExactDirection = true;
+      }
       return mainSafePreview(input, preview, options.productBehaviorSnapshots);
     }
   }
@@ -8936,8 +8966,7 @@ export type BlockedApply =
     };
 
 export type CommitPreviewResult =
-  | { ok: true; verified: VerifiedApply }
-  | ({ ok: false } & BlockedApply);
+  { ok: true; verified: VerifiedApply } | ({ ok: false } & BlockedApply);
 
 function productBehaviorIdentityViolation(
   input: RecipeInput,
@@ -10120,21 +10149,15 @@ export class VerifiedApply {
       mainIdentityBase,
       currentConstraints,
     );
-    // Sorbet exact five-step Direction (served QA 2026-08-22): the closed-form
-    // projection moves only the canonical adjustable roles and keeps every Main
-    // line byte-exact, so there is no Main frontier to certify — the Main
-    // maximisation frontier treats an unreached exact Direction target as a
-    // hard gate and could never issue a proof for an honest nearest-achievable
-    // Preview. The door instead requires the byte-exact Main group AND a
-    // deterministic reproduction of the same exact candidate from the trusted
-    // current draft. Any other optimize Preview keeps the full proof contract.
-    const mainHeldByExactDirection =
-      preview.kind === 'optimize' &&
-      preview.mainHeldByExactDirection === true &&
-      mainGroupLinesByteIdentical(mainIdentityBase, preview.proposedInput);
+    // Sorbet exact five-step Direction (served QA 2026-08-22 / SOL-041): there
+    // is no Main frontier to certify when the Direction candidate keeps Main.
+    // The proof is either byte-exact at the executable boundary or the already
+    // re-derived PracticalRecipeAudit from an exact byte-held Main to its
+    // whole-gram executable value. Both still require a deterministic rebuild.
+    const exactDirectionMainProof = exactDirectionMainProofKind(mainIdentityBase, preview);
     const requiresMainProof =
-      preview.kind === 'optimize' && adjustableMainIntent && !mainHeldByExactDirection;
-    if (mainHeldByExactDirection && adjustableMainIntent) {
+      preview.kind === 'optimize' && adjustableMainIntent && exactDirectionMainProof === null;
+    if (exactDirectionMainProof !== null && adjustableMainIntent) {
       const rebuilt =
         verifiedOptimizeRebuild ??
         buildOptimizePreview(current, currentConstraints, preview.createdAt, {
@@ -10148,9 +10171,13 @@ export class VerifiedApply {
           productBehaviorSnapshots: currentProductBehaviorSnapshots,
           technicalOnlyMainLineIds,
         });
+      const rebuiltExactDirectionMainProof = rebuilt.ok
+        ? exactDirectionMainProofKind(mainIdentityBase, rebuilt.preview)
+        : null;
       const rebuiltMatches =
         rebuilt.ok &&
-        rebuilt.preview.mainHeldByExactDirection === true &&
+        rebuiltExactDirectionMainProof === exactDirectionMainProof &&
+        rebuilt.preview.directionCandidateSource === preview.directionCandidateSource &&
         workingStateFingerprint(rebuilt.preview.proposedInput, rebuilt.preview.nextConstraints) ===
           workingStateFingerprint(preview.proposedInput, preview.nextConstraints);
       if (!rebuiltMatches) {

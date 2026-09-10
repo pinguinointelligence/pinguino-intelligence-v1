@@ -57,12 +57,16 @@ $body$;
 
 create function public.resolve_exact_products_by_gtin_v1(p_gtin text, p_scope text)
 returns jsonb language plpgsql stable as $body$
+declare
+  v_uid uuid := null;
 begin
   perform 1 from public.products p left join public.product_versions pv on pv.id=p.current_version_id
   where p.is_active and p.merged_into_product_id is null and (
     (p.visibility = 'shared' and p.product_kind = 'commercial_product'
       and coalesce(p.canonical_verification_status, '') <> 'blocked')
-    or p.visibility <> 'shared');
+    or p.product_kind = 'mapper_reference'
+    or (v_uid is not null and (p.owning_account_id = v_uid or p.created_by = v_uid))
+    or (v_uid is not null and p.product_kind = 'customer_provisional'));
   return '{}'::jsonb;
 end;
 $body$;
@@ -131,6 +135,8 @@ try {
     if (!afterFirstApply[index]?.includes(marker))
       throw new Error(`forward marker missing: ${marker}`);
   });
+  if (!afterFirstApply[1]?.includes("v_uid is not null and p.visibility <> 'shared'"))
+    throw new Error('exact resolver still lets shared rows bypass eligibility through ownership');
 
   // A second application must be a no-op, not an anchor failure.
   await db.exec(migration);
