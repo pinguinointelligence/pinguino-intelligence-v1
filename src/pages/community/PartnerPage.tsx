@@ -23,6 +23,11 @@ import {
   linkMetrics,
   partnerCodeStatusCopy,
 } from '@/features/affiliate/codeLinkDisplay';
+import {
+  partnerStatusCopy,
+  partnerTierCopy,
+  profileModerationCopy,
+} from '@/features/affiliate/partnerAccountDisplay';
 import { cn } from '@/lib/cn';
 import {
   createPartnerContentLink,
@@ -645,7 +650,10 @@ function Profile({ data }: { data: PartnerWorkspace }) {
           />
         </label>
         <p className="mt-2 text-xs text-stone-500">
-          Status profilu: {profile?.moderationStatus ?? '—'}
+          Status profilu:{' '}
+          <span title={profileModerationCopy(profile?.moderationStatus).help}>
+            {profileModerationCopy(profile?.moderationStatus).label}
+          </span>
         </p>
       </div>
       {save.isError || logo.isError ? (
@@ -667,8 +675,8 @@ function Settings({ data }: { data: PartnerWorkspace }) {
       <dl className="mt-6 divide-y divide-ink/10 border-y border-ink/10">
         {[
           ['ID Partnera', data.partner?.id],
-          ['Status', data.partner?.status],
-          ['Tier', data.partner?.tier],
+          ['Status', partnerStatusCopy(data.partner?.status).label],
+          ['Tier', partnerTierCopy(data.partner?.tier).label],
           ['Publiczny identyfikator', data.profile?.slug],
           ['Home + Pro', 'Bez opłat podczas aktywnego statusu Partner'],
         ].map(([label, value]) => (

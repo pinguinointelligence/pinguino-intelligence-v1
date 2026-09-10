@@ -54,7 +54,11 @@ export const CONTENT_LINK_STATUS_COPY: Readonly<Record<ContentLinkStatus, Status
 
 const UNKNOWN: StatusCopy = Object.freeze({ label: '—', help: '' });
 
-const lookup = <K extends string>(
+/**
+ * Copy for a database value, or a dash — never the raw value. Shared by every
+ * display map on /partner.
+ */
+export const statusCopyOf = <K extends string>(
   table: Readonly<Record<K, StatusCopy>>,
   value: unknown,
 ): StatusCopy =>
@@ -63,10 +67,10 @@ const lookup = <K extends string>(
     : UNKNOWN;
 
 export const partnerCodeStatusCopy = (value: unknown): StatusCopy =>
-  lookup(PARTNER_CODE_STATUS_COPY, value);
+  statusCopyOf(PARTNER_CODE_STATUS_COPY, value);
 
 export const contentLinkStatusCopy = (value: unknown): StatusCopy =>
-  lookup(CONTENT_LINK_STATUS_COPY, value);
+  statusCopyOf(CONTENT_LINK_STATUS_COPY, value);
 
 /** A count the RPC actually returned, or null — never an invented zero. */
 export const countOrNull = (value: unknown): number | null =>
