@@ -14,7 +14,7 @@
  * and Score 6 served.
  *
  * Source of truth: docs/ingredients/validation/mapper_basement.csv
- * Mapper SHA-256 at generation: 057375cd60cefe613892ff1d9f8f7eda880ff0eb06732f9229051fc37d8deca7
+ * Mapper SHA-256 at generation: 5047d9ca645bb2c1e2e930201ab9e82b08a04dc1e48e3263e7ba61930a5da1f5
  *
  * The Mapper base is never written by this file or its generator.
  */
@@ -36,7 +36,7 @@ export interface CanonicalToolboxComposition {
 
 /** Mapper SHA-256 this file was generated from. */
 export const CANONICAL_TOOLBOX_MAPPER_SHA256 =
-  '057375cd60cefe613892ff1d9f8f7eda880ff0eb06732f9229051fc37d8deca7';
+  '5047d9ca645bb2c1e2e930201ab9e82b08a04dc1e48e3263e7ba61930a5da1f5';
 
 export const CANONICAL_TOOLBOX_COMPOSITIONS: readonly CanonicalToolboxComposition[] = [
   {
@@ -73,28 +73,28 @@ export const CANONICAL_TOOLBOX_COMPOSITIONS: readonly CanonicalToolboxCompositio
   {
     "toolboxId": "dextrose",
     "mapperId": "PI-ING-000494",
-    "displayName": "DEXTROSE · Sweetener · Dry",
+    "displayName": "DEXTROSE MONOHYDRATE · Sweetener · Dry",
     "composition": {
-      "water_percent": 8,
-      "solids_percent": 92,
+      "water_percent": 9.1,
+      "solids_percent": 90.9,
       "fat_percent": 0,
       "protein_percent": 0,
-      "carbohydrate_percent": 92,
-      "sugar_percent": 92,
+      "carbohydrate_percent": 90.9,
+      "sugar_percent": 90.9,
       "sucrose_percent": 0,
       "glucose_percent": 0,
-      "dextrose_percent": 92,
+      "dextrose_percent": 90.9,
       "fructose_percent": 0,
       "lactose_percent": 0,
       "polyol_percent": 0,
       "fiber_percent": 0,
       "salt_percent": 0,
       "alcohol_percent": 0,
-      "kcal_per_100g": 368,
+      "kcal_per_100g": 364,
       "saturated_fat_percent": 0
     },
-    "pod_value": 70.84,
-    "pac_value": 174.8,
+    "pod_value": 72.7,
+    "pac_value": 172.7,
     "de_value": null,
     "cost_per_kg": 2.8,
     "cost_currency": "EUR",

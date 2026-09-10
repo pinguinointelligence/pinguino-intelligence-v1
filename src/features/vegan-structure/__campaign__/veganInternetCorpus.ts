@@ -57,12 +57,11 @@ const PISTACHIO = 'PI-ING-000413';
 const HAZELNUT = 'PI-ING-000415';
 const PEANUT = 'PI-ING-000412';
 const ALMOND_PASTE = 'PI-ING-001040';
-// PI-ING-000333 (Stella vanilla paste) declares lactose 5 % despite vegan=TRUE and
-// is therefore a VEGAN_CONFLICT that the engine correctly fails closed on. The
-// corpus uses the lactose-free Pi-NUTS vanilla; the conflicting article is
-// exercised deliberately as a fail-closed case in the fallback suite.
+// The corpus uses the lactose-free Pi-NUTS vanilla. A current lactose-bearing
+// vegan=TRUE article is exercised deliberately as a fail-closed case in the
+// fallback suite.
 const VANILLA = 'PI-ING-000334';
-export const VEGAN_CONFLICT_VANILLA_ARTICLE = 'PI-ING-000333';
+export const VEGAN_CONFLICT_LACTOSE_ARTICLE = 'PI-ING-000045';
 const PEA_PROTEIN = 'PI-ING-000451';
 const RICE_PROTEIN = 'PI-ING-000452';
 

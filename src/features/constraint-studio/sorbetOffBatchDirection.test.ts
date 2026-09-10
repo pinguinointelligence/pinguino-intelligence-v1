@@ -159,7 +159,7 @@ describe('PC-03 — an off-batch Sorbet draft still reaches the exact projection
     // The customer-reachable route: a complete Sorbet, then one ordinary edit
     // or added ingredient, which the store does NOT re-budget. Everything about
     // it is legal except the batch sum.
-    const input = completeDraft(-2, -1, 1);
+    const input = completeDraft(-1, -1, 1);
     expect(plannedSum(input)).toBeCloseTo(TARGET + 1, 6);
     expect(Math.abs(plannedSum(input) - TARGET)).toBeGreaterThan(0.1);
     expect(input.items.filter((item) => item.lock_type === 'main')).toHaveLength(1);
@@ -169,7 +169,7 @@ describe('PC-03 — an off-batch Sorbet draft still reaches the exact projection
   }, SOLVER_TIMEOUT_MS);
 
   it('1. an off-batch draft publishes a violation-free proposal on the target batch', () => {
-    const result = preview(completeDraft(-2, -1, 1));
+    const result = preview(completeDraft(-1, -1, 1));
     expect(result.ok ? 'OK' : (result as { code: string }).code).not.toBe('unsafe_proposal');
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -188,7 +188,7 @@ describe('PC-03 — an off-batch Sorbet draft still reaches the exact projection
        closed-form projection and fell through to the general search. This pins
        the route itself, so the repair cannot silently regress into "the slow
        path happened to succeed". */
-    const result = preview(completeDraft(-2, -1, 1));
+    const result = preview(completeDraft(-1, -1, 1));
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.preview.directionCandidateSource).toBe('sorbet_exact_projection');
@@ -198,7 +198,7 @@ describe('PC-03 — an off-batch Sorbet draft still reaches the exact projection
   }, SOLVER_TIMEOUT_MS);
 
   it('2. the crowned Main survives the reconciliation, positive', () => {
-    const result = preview(completeDraft(-2, -1, 1));
+    const result = preview(completeDraft(-1, -1, 1));
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     const crowned = result.preview.proposedInput.items.filter((item) => item.lock_type === 'main');
@@ -236,7 +236,7 @@ describe('PC-03 — an off-batch Sorbet draft still reaches the exact projection
   it.each([0.1, 1, 30, -1, -30])(
     '3. a %s g batch delta alone never forces the unsafe terminal',
     (delta) => {
-      const input = completeDraft(-2, -1, delta);
+      const input = completeDraft(-1, -1, delta);
       expect(Math.abs(plannedSum(input) - TARGET)).toBeGreaterThan(0.1);
       // Eligibility, not publishability: the terminal is only asserted when a
       // safe improving candidate genuinely exists for this draft.
@@ -254,7 +254,7 @@ describe('PC-03 — an off-batch Sorbet draft still reaches the exact projection
   );
 
   it('4. the on-batch draft is unchanged', () => {
-    const input = completeDraft(-2, -1);
+    const input = completeDraft(-1, -1);
     expect(plannedSum(input)).toBeCloseTo(TARGET, 6);
     const result = preview(input);
     expect(result.ok).toBe(true);
@@ -265,7 +265,7 @@ describe('PC-03 — an off-batch Sorbet draft still reaches the exact projection
 
   it('5. a physically weighed line still keeps the projection closed', () => {
     // `actual_grams` remains an eligibility condition — untouched by this fix.
-    const base = completeDraft(-2, -1, 1);
+    const base = completeDraft(-1, -1, 1);
     const weighed: RecipeInput = {
       ...base,
       items: base.items.map((item, index) =>
@@ -303,7 +303,7 @@ describe('PC-03 — an off-batch Sorbet draft still reaches the exact projection
   it('7. a canonical gram lock stays authoritative on an off-batch draft', () => {
     // A lock reaches the pipeline through the ConstraintSet — that is the
     // authority `verifyConstraintsPreserved` consults on every candidate.
-    const base = completeDraft(-2, -1, 1);
+    const base = completeDraft(-1, -1, 1);
     const sucrose = base.items.find((item) =>
       item.ingredient.name.toUpperCase().includes('SUCROSE'),
     )!;
@@ -318,7 +318,7 @@ describe('PC-03 — an off-batch Sorbet draft still reaches the exact projection
   }, SOLVER_TIMEOUT_MS);
 
   it('8. the projection still refuses a non-Sorbet and an inactive Direction', () => {
-    const offBatch = completeDraft(-2, -1, 1);
+    const offBatch = completeDraft(-1, -1, 1);
     expect(
       projectSorbetExactDirectionCandidate({ ...offBatch, category: 'milk_gelato' }),
     ).toBeNull();

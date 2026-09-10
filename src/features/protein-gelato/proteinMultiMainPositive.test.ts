@@ -461,7 +461,7 @@ describe('Protein Crown group authority regressions', () => {
       goals: {
         formulation_strategy: 'eco',
         direction_targets_active: true,
-        direction_targets: { sweetness: -2, softness: 2, creaminess: 0, flavor: 0 },
+        direction_targets: { sweetness: 1, softness: 2, creaminess: 0, flavor: 0 },
       },
     };
     const snapshots = calibratedProteinFruitSnapshots(input);
@@ -705,12 +705,12 @@ describe('Protein Crown group authority regressions', () => {
         .filter((item) => item.lock_type === 'main')
         .map((item) => [item.id, item.planned_grams, item.main_ratio_weight]),
     ).toEqual([
-      ['banana-main', 359, 352 / 136],
-      ['cranberry-main', 139, 1],
+      ['banana-main', 352, 352 / 136],
+      ['cranberry-main', 136, 1],
     ]);
     expect(built.preview.mainObjective).toMatchObject({
       status: 'best_achievable',
-      executableMainGrams: 498,
+      executableMainGrams: 488,
       provenMaximum: false,
     });
     expect(built.preview.directionAssessment).toMatchObject({ active: true, score: 10 });

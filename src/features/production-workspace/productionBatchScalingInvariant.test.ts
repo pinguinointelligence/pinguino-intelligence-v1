@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { calculateRecipe, detectViolations, type RecipeInput, type RecipeResult } from '@/engine';
 import { recipeFitForInput } from '@/features/protein-gelato/proteinAuthority';
 import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
+import { withHistoricalMapper2089Dextrose } from '@/features/product-intelligence/historicalMapper2089.fixture';
 import { sorbetMapperIngredient } from '@/features/recipe-constraints/__fixtures__/sorbetAuthorityFixture';
 import {
   applyVerifiedRescueInput,
@@ -53,7 +54,7 @@ const ownerInput = (): RecipeInput => ({
   },
   items: OWNER_PLAN.map(([id, mapperId, plannedGrams]) => ({
     id,
-    ingredient: sorbetMapperIngredient(mapperId),
+    ingredient: withHistoricalMapper2089Dextrose(sorbetMapperIngredient(mapperId)),
     planned_grams: plannedGrams,
     actual_grams: null,
     lock_type: 'unlocked' as const,
@@ -104,7 +105,7 @@ const p0RescueScoreInput = (): RecipeInput => ({
   },
   items: P0_RESCUE_SCORE_PLAN.map(([id, mapperId, plannedGrams]) => ({
     id,
-    ingredient: sorbetMapperIngredient(mapperId),
+    ingredient: withHistoricalMapper2089Dextrose(sorbetMapperIngredient(mapperId)),
     planned_grams: plannedGrams,
     actual_grams: null,
     lock_type: 'unlocked' as const,

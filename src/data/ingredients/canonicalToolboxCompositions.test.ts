@@ -117,14 +117,15 @@ describe('§6 — the starter resolves the SAME authority the runtime materializ
     },
   );
 
-  it('reproduces the metrics measured on served staging for Protein', () => {
-    // Captured from https://staging.pinguinoai.com on 2026-08-23 against the
-    // deployed starter. Before the authority fix the offline numbers were
-    // different (Score 10 vs a served Score 6), which is the defect this pins.
+  it('reproduces the Mapper-backed Protein starter metrics', () => {
+    // The baseline was first captured from served staging on 2026-08-23. The
+    // 2026-09-07 Mapper correction to PI-ING-000494 legitimately moves POD and
+    // NPAC while protein stays unchanged; these are the exact regenerated
+    // authority results that served staging must reproduce.
     const SERVED = [
-      { serving: 'temp_minus_11' as const, pod: 14.33, npac: 39.0, protein: 9.525 },
-      { serving: 'temp_minus_12' as const, pod: 15.1, npac: 44.8, protein: 8.312 },
-      { serving: 'temp_minus_13' as const, pod: 14.69, npac: 51.0, protein: 9.773 },
+      { serving: 'temp_minus_11' as const, pod: 14.499764, npac: 38.640664, protein: 9.525 },
+      { serving: 'temp_minus_12' as const, pod: 15.29988, npac: 44.379622, protein: 8.312 },
+      { serving: 'temp_minus_13' as const, pod: 14.93452, npac: 50.43313, protein: 9.773 },
     ];
     for (const expectation of SERVED) {
       const starter = buildCanonicalNewRecipeStarter({
@@ -143,8 +144,8 @@ describe('§6 — the starter resolves the SAME authority the runtime materializ
         goals: { flavor_intensity: 'balanced', cost_priority: 'balanced', formulation_strategy: 'optimal' },
       };
       const result = calculateRecipe(input);
-      expect(result.pod_points!).toBeCloseTo(expectation.pod, 2);
-      expect(result.npac_points!).toBeCloseTo(expectation.npac, 2);
+      expect(result.pod_points!).toBeCloseTo(expectation.pod, 5);
+      expect(result.npac_points!).toBeCloseTo(expectation.npac, 5);
       expect(result.percentages.protein_percent).toBeCloseTo(expectation.protein, 3);
     }
   });

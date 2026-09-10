@@ -28,6 +28,12 @@ jobs:
           cache: npm
       - run: npm ci
 
+      # Mapper is the source of truth for every toolbox-bound product. A CSV
+      # change cannot land while the frontend generator still carries facts
+      # from another Mapper revision.
+      - name: Canonical toolbox compositions match Mapper
+        run: npm run toolbox:compositions:check
+
       # No stray conflict markers or whitespace damage — cheap, catches a
       # botched conflict resolution before anything else runs.
       - name: Whitespace and conflict-marker check

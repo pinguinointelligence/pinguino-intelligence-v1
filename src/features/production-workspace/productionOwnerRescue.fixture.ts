@@ -4,6 +4,7 @@ import type { RecipeInput } from '@/engine';
 import { ingredientRowToEngineIngredient } from '@/data/ingredients/ingredientMapper';
 import type { IngredientRow } from '@/data/ingredients/ingredientRow';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence/contracts';
+import { withHistoricalMapper2089Dextrose } from '@/features/product-intelligence/historicalMapper2089.fixture';
 import { parseCsv } from '@/lib/csv';
 import {
   confirmProductionLine,
@@ -50,7 +51,7 @@ const mapperIngredient = (ingredientId: string) => {
       return [field, raw];
     }),
   ) as unknown as IngredientRow;
-  return ingredientRowToEngineIngredient(row);
+  return withHistoricalMapper2089Dextrose(ingredientRowToEngineIngredient(row));
 };
 
 export const OWNER_RESCUE_RECIPE: RecipeInput = {

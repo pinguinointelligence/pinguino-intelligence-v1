@@ -53,7 +53,7 @@ describe('internet protein recipe corpus', () => {
   it('is generated from the SAME Mapper base as the canonical toolbox authority', () => {
     expect(INTERNET_CORPUS_MAPPER_SHA256).toBe(CANONICAL_TOOLBOX_MAPPER_SHA256);
     expect(INTERNET_CORPUS_MAPPER_SHA256).toBe(
-      '057375cd60cefe613892ff1d9f8f7eda880ff0eb06732f9229051fc37d8deca7',
+      '5047d9ca645bb2c1e2e930201ab9e82b08a04dc1e48e3263e7ba61930a5da1f5',
     );
   });
 

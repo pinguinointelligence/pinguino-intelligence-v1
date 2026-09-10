@@ -9,7 +9,7 @@ import { carbonationProfileFromPublicData } from '@/data/products/carbonation';
 
 /** Immutable source pin for the current PI catalog. */
 export const CURRENT_MAPPER_CATALOG_CACHE_KEY =
-  'mapper:v1.0:sha256:057375cd60cefe613892ff1d9f8f7eda880ff0eb06732f9229051fc37d8deca7';
+  'mapper:v1.0:sha256:5047d9ca645bb2c1e2e930201ab9e82b08a04dc1e48e3263e7ba61930a5da1f5';
 
 export const MAPPER_ONLY_CATALOG_ERROR =
   'Produkt nie ma aktualnego kompletnego profilu technicznego. Odśwież katalog i spróbuj ponownie.';

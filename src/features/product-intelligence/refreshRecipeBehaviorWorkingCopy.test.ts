@@ -103,7 +103,9 @@ const currentSnapshots = (recipe: RecipeInput) => {
           temperatureC: recipe.target_temperature_c,
           mode: 'eco' as const,
           processScope: 'BASE_FORMULATION' as const,
-          requestedRole: snapshot.lineId.startsWith('main-') ? ('MAIN' as const) : ('STANDARD' as const),
+          requestedRole: snapshot.lineId.startsWith('main-')
+            ? ('MAIN' as const)
+            : ('STANDARD' as const),
           module: 'ECO' as const,
         },
       },
@@ -122,25 +124,33 @@ describe('ProductBehavior historical snapshot refresh', () => {
 
     const resolveSnapshots = vi.fn(async (input: ResolveInput) => {
       expect(Object.values(input.snapshots)).toHaveLength(3);
-      expect(Object.values(input.snapshots).every(
-        (snapshot) => snapshot?.resolutionState === 'REVALIDATION_REQUIRED',
-      )).toBe(true);
+      expect(
+        Object.values(input.snapshots).every(
+          (snapshot) => snapshot?.resolutionState === 'REVALIDATION_REQUIRED',
+        ),
+      ).toBe(true);
       return { snapshots: structuredClone(current), unresolvedLineIds: [] };
     });
     const validate = vi.fn(async (input: ValidateInput) => ({
-      ready: Object.values(input.snapshots).every(
-        (snapshot) => snapshot?.factsFingerprint.startsWith('current-facts-'),
+      ready: Object.values(input.snapshots).every((snapshot) =>
+        snapshot?.factsFingerprint.startsWith('current-facts-'),
       ),
       module: input.module,
       staleLineIds: [],
-      lines: input.recipe.items.map((item) => ({ lineId: item.id, state: 'ready' as const, reasons: [] })),
+      lines: input.recipe.items.map((item) => ({
+        lineId: item.id,
+        state: 'ready' as const,
+        reasons: [],
+      })),
     }));
 
     // This is the exact old-version failure being repaired: its frozen facts
     // are historical and cannot pass the current terminal authority gate.
-    expect(Object.values(oldSnapshots).every(
-      (snapshot) => snapshot.factsFingerprint.startsWith('current-facts-'),
-    )).toBe(false);
+    expect(
+      Object.values(oldSnapshots).every((snapshot) =>
+        snapshot.factsFingerprint.startsWith('current-facts-'),
+      ),
+    ).toBe(false);
 
     const result = await buildRefreshedRecipeBehaviorWorkingCopy(
       {
@@ -156,29 +166,39 @@ describe('ProductBehavior historical snapshot refresh', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(validate).toHaveBeenCalledOnce();
-    expect(result.recipe.items.map((item) => ({
-      id: item.id,
-      grams: item.planned_grams,
-      actual: item.actual_grams,
-      lock: item.lock_type,
-      ratio: item.main_ratio_weight,
-      gramsConstraint: item.grams_constraint,
-      productionStep: item.production_step,
-      notes: item.notes,
-    }))).toEqual(oldRecipe.items.map((item) => ({
-      id: item.id,
-      grams: item.planned_grams,
-      actual: item.actual_grams,
-      lock: item.lock_type,
-      ratio: item.main_ratio_weight,
-      gramsConstraint: item.grams_constraint,
-      productionStep: item.production_step,
-      notes: item.notes,
-    })));
-    expect(result.recipe.items.every((item) => canonicalIngredientId(item.ingredient).startsWith('PI-ING-'))).toBe(true);
-    expect(Object.values(result.snapshots).every(
-      (snapshot) => snapshot.factsFingerprint.startsWith('current-facts-'),
-    )).toBe(true);
+    expect(
+      result.recipe.items.map((item) => ({
+        id: item.id,
+        grams: item.planned_grams,
+        actual: item.actual_grams,
+        lock: item.lock_type,
+        ratio: item.main_ratio_weight,
+        gramsConstraint: item.grams_constraint,
+        productionStep: item.production_step,
+        notes: item.notes,
+      })),
+    ).toEqual(
+      oldRecipe.items.map((item) => ({
+        id: item.id,
+        grams: item.planned_grams,
+        actual: item.actual_grams,
+        lock: item.lock_type,
+        ratio: item.main_ratio_weight,
+        gramsConstraint: item.grams_constraint,
+        productionStep: item.production_step,
+        notes: item.notes,
+      })),
+    );
+    expect(
+      result.recipe.items.every((item) =>
+        canonicalIngredientId(item.ingredient).startsWith('PI-ING-'),
+      ),
+    ).toBe(true);
+    expect(
+      Object.values(result.snapshots).every((snapshot) =>
+        snapshot.factsFingerprint.startsWith('current-facts-'),
+      ),
+    ).toBe(true);
     expect(oldRecipe).toEqual(immutableHistoricalRecipe);
     expect(oldSnapshots).toEqual(immutableHistoricalSnapshots);
   });
@@ -199,7 +219,13 @@ describe('ProductBehavior historical snapshot refresh', () => {
       ok: false,
       code: 'current_authority_unresolved',
       lineIds: ['main-b'],
-      issues: [{ lineId: 'main-b', lineName: 'PI-ING-000102', reasons: ['behavior_snapshot_missing_or_unresolved'] }],
+      issues: [
+        {
+          lineId: 'main-b',
+          lineName: 'PI-ING-000102',
+          reasons: ['behavior_snapshot_missing_or_unresolved'],
+        },
+      ],
     });
     expect(validate).not.toHaveBeenCalled();
   });
@@ -207,12 +233,19 @@ describe('ProductBehavior historical snapshot refresh', () => {
   it('is deterministic when refreshed authority is resolved again', async () => {
     const recipe = historicalRecipe();
     const current = currentSnapshots(recipe);
-    const resolveSnapshots = vi.fn(async () => ({ snapshots: structuredClone(current), unresolvedLineIds: [] }));
+    const resolveSnapshots = vi.fn(async () => ({
+      snapshots: structuredClone(current),
+      unresolvedLineIds: [],
+    }));
     const validate = vi.fn(async (input: ValidateInput) => ({
       ready: true,
       module: input.module,
       staleLineIds: [],
-      lines: input.recipe.items.map((item) => ({ lineId: item.id, state: 'ready' as const, reasons: [] })),
+      lines: input.recipe.items.map((item) => ({
+        lineId: item.id,
+        state: 'ready' as const,
+        reasons: [],
+      })),
     }));
     const first = await buildRefreshedRecipeBehaviorWorkingCopy(
       { recipe, toppings: [], snapshots: current, accountId: 'qa-user' },
@@ -228,12 +261,26 @@ describe('ProductBehavior historical snapshot refresh', () => {
   });
 
   it('offers refresh only for stale/snapshot lifecycle reasons, not missing product science', () => {
-    expect(productBehaviorIssuesSupportWorkingCopyRefresh([
-      { lineId: 'a', lineName: 'A', reasons: ['facts_fingerprint_stale:details'] },
-      { lineId: 'b', lineName: 'B', reasons: ['behavior_binding_version_stale'] },
-    ])).toBe(true);
-    expect(productBehaviorIssuesSupportWorkingCopyRefresh([
-      { lineId: 'a', lineName: 'A', reasons: ['missing_technical_fields'] },
-    ])).toBe(false);
+    expect(
+      productBehaviorIssuesSupportWorkingCopyRefresh([
+        { lineId: 'a', lineName: 'A', reasons: ['facts_fingerprint_stale:details'] },
+        { lineId: 'b', lineName: 'B', reasons: ['behavior_binding_version_stale'] },
+      ]),
+    ).toBe(true);
+    expect(
+      productBehaviorIssuesSupportWorkingCopyRefresh([
+        { lineId: 'a', lineName: 'A', reasons: ['missing_technical_fields'] },
+      ]),
+    ).toBe(false);
+    expect(
+      productBehaviorIssuesSupportWorkingCopyRefresh([
+        {
+          lineId: 'proposal-a',
+          lineName: 'Proposed A',
+          reasons: ['facts_fingerprint_stale'],
+          scope: 'proposed_only',
+        },
+      ]),
+    ).toBe(false);
   });
 });

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { calculateRecipe, detectViolations, type RecipeInput } from '@/engine';
 import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
+import { withHistoricalMapper2089Dextrose } from '@/features/product-intelligence/historicalMapper2089.fixture';
 import { sorbetMapperIngredient } from '@/features/recipe-constraints/__fixtures__/sorbetAuthorityFixture';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
@@ -31,7 +32,7 @@ const servedTomatoRecipe = (): RecipeInput => ({
   machine_capacity_grams: null,
   items: SERVED_LINES.map(([id, mapperId, grams]) => ({
     id,
-    ingredient: sorbetMapperIngredient(mapperId),
+    ingredient: withHistoricalMapper2089Dextrose(sorbetMapperIngredient(mapperId)),
     planned_grams: grams,
     actual_grams: null,
     lock_type: 'unlocked',

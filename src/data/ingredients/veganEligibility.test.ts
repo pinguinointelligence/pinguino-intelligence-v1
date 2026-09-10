@@ -213,28 +213,32 @@ describe('Vegan eligibility — fail closed', () => {
       if (status === 'VEGAN_CONFLICT')
         conflicts.push(`${at(row, 'ingredient_id')}:${at(row, 'ingredient_name_display')}`);
     }
-    expect(rows).toHaveLength(2089);
+    expect(rows).toHaveLength(2147);
     expect(counts).toEqual({
-      VEGAN_VERIFIED: 1276,
-      VEGAN_FALSE: 784,
-      VEGAN_UNKNOWN: 11,
-      VEGAN_CONFLICT: 18,
+      VEGAN_VERIFIED: 1341,
+      VEGAN_FALSE: 785,
+      VEGAN_UNKNOWN: 4,
+      VEGAN_CONFLICT: 17,
     });
-    expect(conflicts.map((entry) => entry.split(':')[0])).toEqual(
-      expect.arrayContaining([
-        'PI-ING-000045',
-        'PI-ING-000333',
-        'PI-ING-000606',
-        'PI-ING-000804',
-        'PI-ING-000856',
-        'PI-ING-001439',
-        'PI-ING-001441',
-        'PI-ING-001733',
-        'PI-ING-001778',
-        'PI-ING-002012',
-        'PI-ING-002014',
-      ]),
-    );
-    expect(conflicts).toHaveLength(18);
+    expect(conflicts.map((entry) => entry.split(':')[0])).toEqual([
+      'PI-ING-000045',
+      'PI-ING-000243',
+      'PI-ING-000606',
+      'PI-ING-000804',
+      'PI-ING-000856',
+      'PI-ING-001439',
+      'PI-ING-001441',
+      'PI-ING-001733',
+      'PI-ING-001738',
+      'PI-ING-001778',
+      'PI-ING-002012',
+      'PI-ING-002013',
+      'PI-ING-002014',
+      'PI-ING-002015',
+      'PI-ING-002016',
+      'PI-ING-002017',
+      'PI-ING-002098',
+    ]);
+    expect(conflicts).toHaveLength(17);
   });
 });

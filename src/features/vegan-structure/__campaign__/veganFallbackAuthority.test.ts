@@ -3,10 +3,7 @@
  * PHASE 5 — UNKNOWN / PARTIAL / FALLBACK authority.
  *
  * A vegan=TRUE Mapper row that also carries animal composition evidence is a
- * CONFLICT, and must fail closed rather than be promoted to VERIFIED. Ten such
- * lactose-bearing rows exist in the current base; the Stella vanilla paste
- * (lactose 5 %) is the one the corpus originally reached for, which is exactly
- * how it was found.
+ * CONFLICT, and must fail closed rather than be promoted to VERIFIED.
  */
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -18,7 +15,7 @@ import type { IngredientRow } from '@/data/ingredients/ingredientRow';
 import { veganRecipeEligibilityIssues } from '@/data/ingredients/veganEligibility';
 import { buildOptimizePreview } from '@/features/constraint-studio/applyPipeline';
 import { veganBehaviorForIngredient, veganEnhancementLevel } from '../veganBehaviorRuntime';
-import { VEGAN_CONFLICT_VANILLA_ARTICLE } from './veganInternetCorpus';
+import { VEGAN_CONFLICT_LACTOSE_ARTICLE } from './veganInternetCorpus';
 import type { RecipeInput } from '@/engine';
 
 const TRI = new Set(['vegan', 'dairy_free', 'gluten_free', 'contains_alcohol']);
@@ -47,7 +44,7 @@ const rowOf = (id: string) => rows.find((r) => r.ingredient_id === id)!;
 
 describe('UNKNOWN / PARTIAL / FALLBACK authority', () => {
   it('a vegan=TRUE row carrying lactose is a CONFLICT, never VERIFIED', () => {
-    const row = rowOf(VEGAN_CONFLICT_VANILLA_ARTICLE);
+    const row = rowOf(VEGAN_CONFLICT_LACTOSE_ARTICLE);
     expect(row.vegan).toBe('true');
     expect(Number(row.lactose_percent)).toBeGreaterThan(0);
     const assessment = assessMapperVeganEligibility(row);
@@ -66,7 +63,7 @@ describe('UNKNOWN / PARTIAL / FALLBACK authority', () => {
   });
 
   it('the pipeline refuses a Vegan recipe containing a CONFLICT article', () => {
-    const conflict = ingredientRowToEngineIngredient(rowOf(VEGAN_CONFLICT_VANILLA_ARTICLE));
+    const conflict = ingredientRowToEngineIngredient(rowOf(VEGAN_CONFLICT_LACTOSE_ARTICLE));
     const oat = ingredientRowToEngineIngredient(rowOf('PI-ING-001565'));
     const sucrose = ingredientRowToEngineIngredient(rowOf('PI-ING-000514'));
     const tara = ingredientRowToEngineIngredient(rowOf('PI-ING-000492'));

@@ -12,12 +12,16 @@ import { useRecipeStore } from '@/stores/recipeStore';
 import type { ProductBehaviorModule, ProductBehaviorSnapshot } from './contracts';
 import { productBehaviorRequiredLineIds } from './productBehaviorAccess';
 import { productBehaviorSnapshotFingerprint } from './productBehaviorResolver';
-import { buildRecipeBehaviorAuthority, recipeInputFromFrozenBehavior } from './recipeBehaviorAuthority';
+import {
+  buildRecipeBehaviorAuthority,
+  recipeInputFromFrozenBehavior,
+} from './recipeBehaviorAuthority';
 
 export interface RefreshableProductBehaviorIssue {
   lineId: string;
   lineName: string;
   reasons: string[];
+  scope?: 'current_recipe' | 'proposed_only';
 }
 
 const REFRESHABLE_SNAPSHOT_REASON_CODES = new Set([
@@ -42,8 +46,10 @@ const REFRESHABLE_SNAPSHOT_REASON_CODES = new Set([
 export function productBehaviorIssuesSupportWorkingCopyRefresh(
   issues: readonly RefreshableProductBehaviorIssue[],
 ): boolean {
-  const reasons = issues.flatMap((issue) => issue.reasons);
+  const currentIssues = issues.filter((issue) => issue.scope !== 'proposed_only');
+  const reasons = currentIssues.flatMap((issue) => issue.reasons);
   return (
+    currentIssues.length > 0 &&
     reasons.length > 0 &&
     reasons.every((reason) => REFRESHABLE_SNAPSHOT_REASON_CODES.has(reason.split(':')[0] ?? reason))
   );
@@ -226,7 +232,11 @@ export type RefreshCurrentRecipeBehaviorWorkingCopyResult =
   | Exclude<RefreshRecipeBehaviorWorkingCopyResult, { ok: true }>
   | {
       ok: false;
-      code: 'authentication_required' | 'saved_version_required' | 'recipe_changed' | 'working_copy_write_failed';
+      code:
+        | 'authentication_required'
+        | 'saved_version_required'
+        | 'recipe_changed'
+        | 'working_copy_write_failed';
       lineIds: string[];
       issues: RefreshableProductBehaviorIssue[];
     };
@@ -271,7 +281,8 @@ export async function refreshCurrentRecipeBehaviorWorkingCopy(): Promise<Refresh
     latest.currentVersionId === captured.sourceVersionId &&
     latest.draftContextSeq === captured.draftContextSeq &&
     latest.draftRevision === captured.draftRevision &&
-    productBehaviorSnapshotFingerprint(latest.productBehaviorSnapshots) === captured.snapshotFingerprint;
+    productBehaviorSnapshotFingerprint(latest.productBehaviorSnapshots) ===
+      captured.snapshotFingerprint;
   if (!stillCurrent) {
     return { ok: false, code: 'recipe_changed', lineIds: [], issues: [] };
   }

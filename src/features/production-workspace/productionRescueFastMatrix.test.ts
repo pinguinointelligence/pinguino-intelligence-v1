@@ -6,10 +6,7 @@ import {
   type RecipeInput,
 } from '@/engine';
 import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
-import {
-  sorbetMapperIngredient,
-  sorbetMultiMainBase,
-} from '@/features/recipe-constraints/__fixtures__/sorbetAuthorityFixture';
+import { sorbetMultiMainBase } from '@/features/recipe-constraints/__fixtures__/sorbetAuthorityFixture';
 import { buildCanonicalNewRecipeStarter } from '@/features/recipes/newRecipeStarter';
 import {
   applyVerifiedRescueInput,
@@ -34,36 +31,15 @@ import { productionTestComposition } from './productionTestComposition.fixture';
 
 type FastProfileId = 'gelato' | 'sorbet' | 'vegan' | 'protein';
 
-const gelatoInput = (): RecipeInput => ({
-  mode: 'classic',
-  category: 'milk_gelato',
-  target_temperature_c: -11,
-  target_batch_grams: 1_000,
-  machine_capacity_grams: 1_200,
-  machine_capacity_source: 'manual',
-  goals: { formulation_strategy: 'optimal' },
-  items: [
-    ['milk', 'PI-ING-000236', 584, 'unlocked'],
-    ['cream', 'PI-ING-000180', 98, 'unlocked'],
-    ['smp', 'PI-ING-000270', 56, 'unlocked'],
-    ['sucrose', 'PI-ING-000514', 59, 'unlocked'],
-    ['dextrose', 'PI-ING-000494', 64, 'unlocked'],
-    ['tara', 'PI-ING-000492', 3, 'unlocked'],
-    ['fructose', 'PI-ING-000496', 5, 'unlocked'],
-    ['banana', 'PI-ING-000345', 131, 'main'],
-  ].map(([id, mapperId, grams, lockType]) => ({
-    id: String(id),
-    ingredient: sorbetMapperIngredient(String(mapperId)),
-    planned_grams: Number(grams),
-    actual_grams: null,
-    lock_type: lockType as 'unlocked' | 'main',
-  })),
-});
-
-const starterInput = (profile: 'vegan' | 'protein'): RecipeInput => {
+const starterInput = (profile: 'gelato' | 'vegan' | 'protein'): RecipeInput => {
   const starter = buildCanonicalNewRecipeStarter({
     visibleProductType: profile,
-    servingModeId: profile === 'protein' ? 'temp_minus_12' : 'temp_minus_13',
+    servingModeId:
+      profile === 'gelato'
+        ? 'temp_minus_11'
+        : profile === 'protein'
+          ? 'temp_minus_12'
+          : 'temp_minus_13',
     formulationStrategy: 'optimal',
     targetBatchGrams: 1_000,
   });
@@ -93,7 +69,7 @@ const directed = (
 });
 
 const PROFILES: ReadonlyArray<{ id: FastProfileId; input: RecipeInput }> = [
-  { id: 'gelato', input: gelatoInput() },
+  { id: 'gelato', input: starterInput('gelato') },
   {
     id: 'sorbet',
     input: {

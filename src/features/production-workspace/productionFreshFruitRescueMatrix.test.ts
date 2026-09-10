@@ -7,6 +7,7 @@ import { ingredientRowToEngineIngredient } from '@/data/ingredients/ingredientMa
 import type { IngredientRow } from '@/data/ingredients/ingredientRow';
 import { parseCsv } from '@/lib/csv';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence/contracts';
+import { withHistoricalMapper2089Recipe } from '@/features/product-intelligence/historicalMapper2089.fixture';
 import {
   practicalizeRecipeCandidate,
   practicalRecipeInputFingerprint,
@@ -489,7 +490,9 @@ describe('Production Rescue canonical fresh-fruit matrix', () => {
 
   it('replays the exact served Strawberry 217 g → 206 g facts as a one-line +11 g restore', () => {
     const strawberry = FRESH_FRUITS.find((fruit) => fruit.ingredientId === 'PI-ING-001553')!;
-    const plannedInput = inputFor(strawberry, 217, -13, 670, [201, 85, 41, 54, 54, 16, 2]);
+    const plannedInput = withHistoricalMapper2089Recipe(
+      inputFor(strawberry, 217, -13, 670, [201, 85, 41, 54, 54, 16, 2]),
+    );
     const session = sessionWithFruitDeviation(strawberry, plannedInput, -11);
     expect(assessProductionHardSafety(plannedInput, calculateRecipe(plannedInput)).safe).toBe(true);
     expect(productionRescueTerminalAuthority(plannedInput, session).valid).toBe(true);

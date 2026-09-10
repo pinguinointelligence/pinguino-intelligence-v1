@@ -153,6 +153,8 @@ import {
   productBehaviorModuleGate,
   productBehaviorRequiredLineIds,
   productBehaviorSnapshotFingerprint,
+  buildRecipeBehaviorAuthority,
+  recipeInputFromFrozenBehavior,
   resolveMainCapability,
   verifyMainEnvelope,
   type MainEnvelopeViolation,
@@ -1566,6 +1568,7 @@ export type BuildPreviewResult =
         lineId: string;
         lineName: string;
         reasons: string[];
+        scope?: 'current_recipe' | 'proposed_only';
       }>;
     }
   | {
@@ -2024,6 +2027,44 @@ const finishPreview = (
     createdAt,
   };
 };
+
+/** Recomputes every derived Preview field after ProductBehavior replaced facts
+ * on proposal-only rows. Solver provenance remains attached, while Engine
+ * totals, practicalization, diffs and diagnostics are rebuilt from the exact
+ * authoritative candidate that will be shown and applied. */
+export function rebuildPreviewWithAuthoritativeProposedInput(
+  result: BuildPreviewResult,
+  baseInput: RecipeInput,
+  baseSet: ConstraintSet,
+  proposedInput: RecipeInput,
+  productBehaviorSnapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>,
+): BuildPreviewResult {
+  if (!result.ok) return result;
+  const rebuilt = finishPreview(
+    result.preview.kind,
+    result.preview.titlePl,
+    baseInput,
+    baseSet,
+    proposedInput,
+    result.preview.nextConstraints,
+    result.preview.violationsBefore,
+    result.preview.explanation,
+    result.preview.createdAt,
+  );
+  const hardResidualMetrics =
+    rebuilt.residualMetricDiagnostics
+      ?.filter((entry) => entry.status === 'hard_block')
+      .map((entry) => entry.metric) ?? [];
+  const preview = {
+    ...result.preview,
+    ...rebuilt,
+    hardResidualMetrics,
+    ...(hardResidualMetrics.length > 0
+      ? { diagnosticOnly: true as const, diagnosticReason: 'hard_residual' as const }
+      : {}),
+  };
+  return mainSafePreview(baseInput, preview, productBehaviorSnapshots);
+}
 
 /** WHY a solver round produced no admissible move (owner P0 NIGHTLY FAILURE 2 —
  * a fixed point is distinguished from a missing candidate and from a
@@ -3034,7 +3075,6 @@ const polishPracticalDirectionPreview = (
 ): ConstraintPreview => {
   if (
     !hasActiveExactDirectionObjective(input) ||
-    recipeDirectionViolations(preview.proposedInput).length === 0 ||
     captureMainIngredientIntent(input).length > 0 ||
     preview.formulation !== undefined ||
     preview.diagnosticOnly === true ||
@@ -9112,6 +9152,7 @@ function ingredientIdentityIntegrityViolations(
   preview: ConstraintPreview,
   authorizedRemovalLineId?: string,
   omittedUnusedLineIds: ReadonlySet<string> = new Set(),
+  authorizedProposalSnapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>> = {},
 ): string[] {
   const proposedByLineId = new Map(preview.proposedInput.items.map((item) => [item.id, item]));
   const currentIds = new Set(current.items.map((item) => item.id));
@@ -9143,7 +9184,8 @@ function ingredientIdentityIntegrityViolations(
       preview.starterPackRescue?.lineId === added.id &&
       preview.starterPackRescue.mapperId === canonicalIngredientId(added.ingredient) &&
       isExactStarterPackRescueIngredient(preview.starterPackRescue.mapperId, added.ingredient);
-    const exactApproved = approvedFormulationToolboxIngredients(added.ingredient.id).some(
+    const approvedIngredients = approvedFormulationToolboxIngredients(added.ingredient.id);
+    const exactApproved = approvedIngredients.some(
       (approved) =>
         canonicalIngredientId(approved) === canonicalIngredientId(added.ingredient) &&
         (substitutionIngredientFingerprint(approved) ===
@@ -9151,7 +9193,35 @@ function ingredientIdentityIntegrityViolations(
           substitutionIngredientFingerprint(normalizeIngredientIdentity(approved)) ===
             substitutionIngredientFingerprint(added.ingredient)),
     );
-    if (!exactApproved && !exactStarterPackRescue)
+    const snapshot = authorizedProposalSnapshots[added.id];
+    const stableProductId = canonicalIngredientId(added.ingredient);
+    const approvedStableIdentity = approvedIngredients.some(
+      (approved) => canonicalIngredientId(approved) === stableProductId,
+    );
+    const exactAuthoritativeFacts = (() => {
+      if (
+        !approvedStableIdentity ||
+        snapshot?.resolutionState !== 'RESOLVED' ||
+        snapshot.processScope !== 'BASE_FORMULATION' ||
+        snapshot.mapperIngredientId !== stableProductId ||
+        snapshot.sharedFacts?.technicalComposition == null
+      ) {
+        return false;
+      }
+      const oneLineRecipe = { ...preview.proposedInput, items: [added] };
+      const authority = buildRecipeBehaviorAuthority({
+        items: oneLineRecipe.items,
+        snapshots: { [added.id]: snapshot },
+      });
+      const projected = recipeInputFromFrozenBehavior(oneLineRecipe, authority, 'technical');
+      const authoritativeIngredient = projected.items[0]?.ingredient;
+      return (
+        authoritativeIngredient !== undefined &&
+        substitutionIngredientFingerprint(authoritativeIngredient) ===
+          substitutionIngredientFingerprint(added.ingredient)
+      );
+    })();
+    if (!exactApproved && !exactStarterPackRescue && !exactAuthoritativeFacts)
       violations.push(added.ingredient.name || added.id);
   }
 
@@ -9470,6 +9540,7 @@ export class VerifiedApply {
       preview,
       authorizedRemovalLineId,
       omittedUnusedLineIds,
+      proposalAuthorization?.snapshots ?? {},
     );
     if (identityViolations.length > 0) {
       return {

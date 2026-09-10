@@ -13,6 +13,7 @@ import { assessProteinQualification, requiredProteinPercentFor } from './protein
 import { overrunProxyAtProteinPercent } from './proteinStructureQuality';
 import { proteinContentLabelPl, formatProteinPercentPl } from './proteinReadout';
 import { PROTEIN_CONCENTRATION_EVIDENCE, PROTEIN_QUALIFICATION } from './proteinScienceAuthority';
+import { parseCsv } from '@/lib/csv';
 
 /**
  * PROTEIN ENGINE v2 — the owner's binding invariants, pinned.
@@ -363,14 +364,16 @@ describe('the overrun proxy reproduces the measured AFR 2022 series', () => {
 });
 
 describe('§40.14 — the Mapper base matches owner authority', () => {
-  it('holds exactly 2089 rows at the recorded hash', () => {
+  it('holds exactly 2147 rows at the recorded hash', () => {
     const raw = readFileSync(
       resolve(process.cwd(), 'docs/ingredients/validation/mapper_basement.csv'),
     );
-    const rows = raw.toString('utf8').trim().split('\n').length - 1;
-    expect(rows).toBe(2089);
+    const rows = parseCsv(raw.toString('utf8'))
+      .slice(1)
+      .filter((row) => row.some(Boolean));
+    expect(rows).toHaveLength(2147);
     expect(createHash('sha256').update(raw).digest('hex')).toBe(
-      '057375cd60cefe613892ff1d9f8f7eda880ff0eb06732f9229051fc37d8deca7',
+      '5047d9ca645bb2c1e2e930201ab9e82b08a04dc1e48e3263e7ba61930a5da1f5',
     );
   });
 });

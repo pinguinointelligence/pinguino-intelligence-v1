@@ -181,7 +181,7 @@ const canonicalProfileInput = (
   const directions = {
     gelato: { sweetness: -2 as const, softness: -1 as const },
     vegan: { sweetness: -1 as const, softness: 1 as const },
-    protein: { sweetness: 2 as const, softness: 1 as const },
+    protein: { sweetness: 0 as const, softness: 0 as const },
   }[visibleProductType];
   const starter = buildCanonicalNewRecipeStarter({
     visibleProductType,

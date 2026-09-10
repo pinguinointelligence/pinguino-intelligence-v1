@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULT_PRESET } from '@/data/demoPresets';
 import type { RecipeInput } from '@/engine';
 import { sorbetMapperIngredient } from '@/features/recipe-constraints/__fixtures__/sorbetAuthorityFixture';
+import { withHistoricalMapper2089Dextrose } from '@/features/product-intelligence/historicalMapper2089.fixture';
 import { assessProductionRescue as assessCanonical } from './productionRescue';
 import { productionTestComposition } from './productionTestComposition.fixture';
 import {
@@ -91,7 +92,7 @@ const exactP0DextroseDeviation = () => {
     },
     items: rows.map(([id, mapperId, plannedGrams]) => ({
       id,
-      ingredient: sorbetMapperIngredient(mapperId),
+      ingredient: withHistoricalMapper2089Dextrose(sorbetMapperIngredient(mapperId)),
       planned_grams: plannedGrams,
       actual_grams: null,
       lock_type: 'unlocked' as const,

@@ -699,6 +699,30 @@ describe('PI visible terminal contract', () => {
     expect(document.body.textContent).not.toContain('Wybierz inny produkt');
     expect(document.body.textContent).not.toContain('Uzupełnij dane produktu');
   });
+
+  it('never presents a proposed-only stale ingredient as an ingredient of the historical recipe', async () => {
+    const authorityIssues = [
+      {
+        lineId: 'formulation-dextrose',
+        lineName: 'DEXTROSE · Sweetener · Dry',
+        reasons: ['facts_fingerprint_stale'],
+        scope: 'proposed_only' as const,
+      },
+    ];
+    useConstraintStudioStore.setState({
+      previewIssue: serverBehaviorPreviewIssue(authorityIssues),
+      recalculationTerminal: productBehaviorTerminal(authorityIssues),
+    });
+    await renderPanel();
+
+    expect(document.body.textContent).toContain('Dane proponowanego składnika');
+    expect(document.body.textContent).toContain('przeliczenie ponownie');
+    expect(document.body.textContent).not.toContain('Dane produktów w tej wersji są nieaktualne');
+    expect(document.body.textContent).not.toContain('Historyczna wersja');
+    expect(document.body.textContent).not.toContain(
+      'Utwórz nową wersję z aktualnymi danymi produktów',
+    );
+  });
 });
 
 describe('technical authority terminal classification', () => {

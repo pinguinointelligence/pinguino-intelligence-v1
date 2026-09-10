@@ -89,7 +89,7 @@ const proteinRelevant = ingredients.filter(
 
 describe('derived ProteinBehavior coverage over the canonical Mapper base', () => {
   it('classifies every row deterministically and never throws', () => {
-    expect(ingredients.length).toBe(2089);
+    expect(ingredients.length).toBe(2147);
     for (const ingredient of ingredients) {
       const first = deriveProteinBehavior(ingredient);
       const second = deriveProteinBehavior(ingredient);
@@ -110,9 +110,8 @@ describe('derived ProteinBehavior coverage over the canonical Mapper base', () =
       if (behavior.fatPerProteinGram !== null) fatKnown += 1;
     }
 
-    // ash_percent is present as a COLUMN but carries no information anywhere in
-    // the base — every non-null cell is 0. Recorded here so the audit report
-    // never claims mineral differentiation that the data cannot support.
+    // Mapper 2147 introduces 17 non-zero ash measurements. Pin the census here;
+    // ProteinBehavior still does not infer mineral-differentiated behaviour.
     const ashValues = rows
       .map((row) => (row as unknown as Record<string, number | null>).ash_percent)
       .filter((value): value is number => value !== null && value !== undefined);
@@ -135,9 +134,8 @@ describe('derived ProteinBehavior coverage over the canonical Mapper base', () =
       ),
     );
 
-    // The audit's own hard finding: ash carries zero information, so no
-    // mineral-differentiated protein behaviour may be claimed.
-    expect(ashNonZero).toBe(0);
+    expect(ashValues).toHaveLength(1413);
+    expect(ashNonZero).toBe(17);
     // Composition-derived fields are always available for a protein source.
     expect(lactoseKnown).toBe(proteinRelevant.length);
     expect(fatKnown).toBe(proteinRelevant.length);

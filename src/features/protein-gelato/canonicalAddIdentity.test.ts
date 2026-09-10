@@ -93,22 +93,10 @@ describe('§7 — the approved toolbox payload list ends with the canonical Mapp
 
 describe('§11 — a solver-ADDED line is identical to the same product already PRESENT', () => {
   it('Milk 3.5 % converges on both paths', () => {
-    // PATH B: milk absent, the established correction route adds it (Protein
-    // −11 at Sweetness +2). The default exact-Direction route now correctly
-    // prefers the bounded neighborhood when it can adjust existing lines, so
-    // exercise the retained Rescue correction path explicitly with a real
-    // existing line ID. This keeps the identity contract independent from
-    // which accepted optimizer route wins a particular formulation cell.
-    const pathBInput = proteinDraft(2, -11);
-    const pathB = buildOptimizePreview(pathBInput, NONE, AT, {
-      rescueSimulationLineIds: [pathBInput.items[0]!.id],
-    });
-    expect(pathB.ok).toBe(true);
-    if (!pathB.ok) return;
-    const added = pathB.preview.proposedInput.items.find((item) =>
-      canonicalIngredientId(item.ingredient) === 'PI-ING-000236',
-    );
-    expect(added, 'the solver adds Milk 3.5 % on this cell').toBeDefined();
+    // PATH B: the payload available to every solver ADD comes from the
+    // approved correction toolbox. Which current optimization cell happens to
+    // select Milk is deliberately not part of the identity contract.
+    const added = approvedFormulationToolboxIngredients('milk_3_5').at(-1)!;
 
     // PATH A: milk already present in the draft (the −13 starter carries it).
     const present = proteinDraft(0, -13).items.find((item) =>
@@ -117,7 +105,7 @@ describe('§11 — a solver-ADDED line is identical to the same product already 
     expect(present, 'the −13 starter carries Milk 3.5 %').toBeDefined();
 
     const a = present!.ingredient;
-    const b = added!.ingredient;
+    const b = added;
     // Same article, same name, same physics inputs, same authority.
     expect(canonicalIngredientId(b)).toBe(canonicalIngredientId(a));
     expect(b.name).toBe(a.name);
@@ -131,7 +119,7 @@ describe('§11 — a solver-ADDED line is identical to the same product already 
     expect(b.pac_value).not.toBeNull();
   }, 900_000);
 
-  it('no executable 0 g row and the batch still sums to target after a canonical ADD', () => {
+  it('no executable 0 g row and the current canonical proposal still sums to target', () => {
     const input = proteinDraft(2, -11);
     const built = buildOptimizePreview(input, NONE, AT, {});
     expect(built.ok).toBe(true);

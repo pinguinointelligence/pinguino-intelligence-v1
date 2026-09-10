@@ -304,6 +304,72 @@ export function recipeInputFromFrozenBehavior(
   };
 }
 
+/**
+ * Re-materializes only lines introduced by a proposal from the exact
+ * ProductBehavior snapshots resolved for those occurrences.
+ *
+ * Product identity is the stable Mapper id. `RecipeItem.id` is used solely to
+ * decide whether this occurrence already belongs to the visible recipe and to
+ * select its per-occurrence snapshot. Names and array positions deliberately
+ * do not participate. Existing recipe lines are never projected here: an
+ * immutable historical recipe keeps its frozen facts and remains owned by the
+ * separate working-copy refresh flow.
+ */
+export function materializeProposedOnlyRecipeInput(input: {
+  currentRecipe: RecipeInput;
+  proposedRecipe: RecipeInput;
+  snapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>;
+}): { recipe: RecipeInput; proposedOnlyLineIds: string[]; refreshedLineIds: string[] } {
+  const currentLineIds = new Set(input.currentRecipe.items.map((item) => item.id));
+  const proposedOnlyLineIds = input.proposedRecipe.items
+    .filter((item) => !currentLineIds.has(item.id))
+    .map((item) => item.id)
+    .sort();
+  const eligible = new Set(
+    input.proposedRecipe.items
+      .filter((item) => {
+        if (currentLineIds.has(item.id)) return false;
+        const snapshot = input.snapshots[item.id];
+        const stableProductId = item.ingredient.canonical_ingredient_id ?? item.ingredient.id;
+        return (
+          snapshot?.lineId === item.id &&
+          snapshot.resolutionState === 'RESOLVED' &&
+          snapshot.processScope === 'BASE_FORMULATION' &&
+          snapshot.mapperIngredientId === stableProductId
+        );
+      })
+      .map((item) => item.id),
+  );
+  if (eligible.size === 0) {
+    return {
+      recipe: input.proposedRecipe,
+      proposedOnlyLineIds,
+      refreshedLineIds: [],
+    };
+  }
+
+  const authority = buildRecipeBehaviorAuthority({
+    items: input.proposedRecipe.items,
+    snapshots: Object.fromEntries(
+      Object.entries(input.snapshots).filter(([lineId]) => eligible.has(lineId)),
+    ),
+  });
+  const recipe = recipeInputFromFrozenBehavior(input.proposedRecipe, authority, 'technical');
+  const beforeByLineId = new Map(
+    input.proposedRecipe.items.map((item) => [item.id, item.ingredient] as const),
+  );
+  const refreshedLineIds = recipe.items
+    .filter(
+      (item) =>
+        eligible.has(item.id) &&
+        JSON.stringify(item.ingredient) !== JSON.stringify(beforeByLineId.get(item.id)),
+    )
+    .map((item) => item.id)
+    .sort();
+
+  return { recipe, proposedOnlyLineIds, refreshedLineIds };
+}
+
 /** Projects POST_PROCESS_ADDON rows from the same immutable version facts used
  * by Base consumers. This prevents Summary/Production/Master Label from
  * accepting a valid snapshot while calculating from a mutable topping object. */

@@ -18,9 +18,11 @@ const readonlyAssertion = resolve(
   '20260810165300_mapper_process_metadata_readonly_assertion.sql',
 );
 const expectedSha = '44fd5302c7a2372bb69ba5abc592edd27f41e96c5de00ac2ca45ade1903ad6d6';
+const expectedMapperSha = '5047d9ca645bb2c1e2e930201ab9e82b08a04dc1e48e3263e7ba61930a5da1f5';
+const expectedPendingSha = 'b968389b20d44f838e0c4cd611b9bd9875688f89c4dab5877802173ea229d563';
 
 describe('Owner-approved Mapper process companion', () => {
-  it('matches the exact source hash, 22-column shape, counts and Mapper 2089 identities', () => {
+  it('pins the 2089 process cohort and exact 58-ID pending delta against Mapper 2147', () => {
     const output = execFileSync(process.execPath, [script, '--check'], {
       cwd: root,
       encoding: 'utf8',
@@ -38,9 +40,12 @@ describe('Owner-approved Mapper process companion', () => {
         HEAT_REQUIRED_FOR_BOTH: 0,
         UNKNOWN: 1389,
       },
-      mapperRowCount: 2089,
-      mapperUniqueIngredientIds: 2089,
-      alignmentDifferences: 0,
+      mapperHash: expectedMapperSha,
+      mapperRowCount: 2147,
+      mapperUniqueIngredientIds: 2147,
+      alignmentDifferences: 58,
+      pendingRuntimeAuthorityHash: expectedPendingSha,
+      mapperNotYetClassified: 58,
       outputPath: null,
     });
   });

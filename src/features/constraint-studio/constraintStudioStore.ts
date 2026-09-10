@@ -50,6 +50,7 @@ import {
 import { missingProductDoseMessage } from '@/features/ingredient-builder/productDoseSuggestion';
 import {
   buildRecipeBehaviorAuthority,
+  materializeProposedOnlyRecipeInput,
   recipeInputFromFrozenBehavior,
   recipeToppingsFromFrozenBehavior,
   productBehaviorSnapshotFingerprint,
@@ -128,6 +129,7 @@ import {
   buildDirectionFallbackCandidatePreview,
   buildDirectionFallbackInput,
   buildOptimizePreview,
+  rebuildPreviewWithAuthoritativeProposedInput,
   buildStarterPackRescueCandidatePreview,
   buildStarterPackRescueSimulationInput,
   buildSubstitutionPreview,
@@ -2156,6 +2158,9 @@ export interface ProductBehaviorAuthorityIssue {
   lineId: string;
   lineName: string;
   reasons: string[];
+  /** The occurrence belongs to the visible recipe or exists only in the
+   * candidate being checked. Omitted legacy callers mean current recipe. */
+  scope?: 'current_recipe' | 'proposed_only';
 }
 
 const productBehaviorReasonPl = (reason: string): string => {
@@ -2315,7 +2320,17 @@ const productBehaviorLayerPl = (reason: string): string => {
 export const productBehaviorTerminal = (
   issues: readonly ProductBehaviorAuthorityIssue[],
 ): RecalculationTerminalState => {
-  const reasons = issues.flatMap((issue) => issue.reasons);
+  const currentIssues = issues.filter((issue) => issue.scope !== 'proposed_only');
+  if (issues.length > 0 && currentIssues.length === 0) {
+    return {
+      state: 'BLOCKED_WITH_EXACT_ACTION',
+      code: 'product_behavior_invalid',
+      messagePl:
+        'Dane proponowanego składnika zostały zaktualizowane. Uruchom przeliczenie ponownie.',
+      action: 'return_to_recipe',
+    };
+  }
+  const reasons = currentIssues.flatMap((issue) => issue.reasons);
   if (
     reasons.length > 0 &&
     reasons.every((reason) => reason === 'behavior_server_validation_unavailable')
@@ -2335,13 +2350,15 @@ export const productBehaviorTerminal = (
   return {
     state: mapperMissing ? 'MAPPER_BINDING_REQUIRED' : 'PRODUCT_DATA_REQUIRED',
     code: 'product_behavior_invalid',
-    lineIds: [...new Set(issues.map((issue) => issue.lineId))],
+    lineIds: [...new Set(currentIssues.map((issue) => issue.lineId))],
   };
 };
 
 export function serverBehaviorPreviewIssue(
   issues: readonly ProductBehaviorAuthorityIssue[],
 ): Extract<BuildPreviewResult, { ok: false; code: 'product_behavior_invalid' }> {
+  const proposedOnly =
+    issues.length > 0 && issues.every((issue) => issue.scope === 'proposed_only');
   const names = [...new Set(issues.map((issue) => issue.lineName))];
   const layers = [...new Set(issues.flatMap((issue) => issue.reasons.map(productBehaviorLayerPl)))];
   const detail = issues
@@ -2366,13 +2383,15 @@ export function serverBehaviorPreviewIssue(
       issue.reasons.length > 0 &&
       issue.reasons.every((reason) => reason === 'behavior_server_validation_unavailable'),
   );
-  const messagePl = recipeChanged
-    ? `Receptura zmieniła się podczas sprawdzania. Brakująca warstwa: bieżąca wersja receptury. ${action}`
-    : priceOnly
-      ? `Prywatna cena produktu wymaga odświeżenia. Brakująca warstwa: aktualna cena. ${detail}. ${action}`
-      : serverUnavailable
-        ? `Nie udało się potwierdzić aktualnego powiązania technicznego dla: ${names.join(', ')}. Brakująca warstwa: walidacja serwerowa. ${action}`
-        : `Produkt nie spełnia jeszcze bieżącej bramki technicznej:\n${names.join(', ')}.\nWarstwa: ${layers.join(', ')}. ${detail}. ${action}`;
+  const messagePl = proposedOnly
+    ? `Dane proponowanego składnika zostały zaktualizowane (${names.join(', ')}), ale nie udało się bezpiecznie przebudować podglądu. Uruchom przeliczenie ponownie. Bieżąca receptura pozostała bez zmian.`
+    : recipeChanged
+      ? `Receptura zmieniła się podczas sprawdzania. Brakująca warstwa: bieżąca wersja receptury. ${action}`
+      : priceOnly
+        ? `Prywatna cena produktu wymaga odświeżenia. Brakująca warstwa: aktualna cena. ${detail}. ${action}`
+        : serverUnavailable
+          ? `Nie udało się potwierdzić aktualnego powiązania technicznego dla: ${names.join(', ')}. Brakująca warstwa: walidacja serwerowa. ${action}`
+          : `Produkt nie spełnia jeszcze bieżącej bramki technicznej:\n${names.join(', ')}.\nWarstwa: ${layers.join(', ')}. ${detail}. ${action}`;
   return {
     ok: false,
     code: 'product_behavior_invalid',
@@ -2380,6 +2399,7 @@ export function serverBehaviorPreviewIssue(
       lineId: issue.lineId,
       lineName: issue.lineName,
       reasons: [...issue.reasons],
+      ...(issue.scope ? { scope: issue.scope } : {}),
     })),
     violations: [
       {
@@ -2394,11 +2414,21 @@ export function serverBehaviorPreviewIssue(
 
 async function currentRecipeAuthorityReady(input: {
   recipe: RecipeInput;
+  /** When supplied, only line occurrences absent from this immutable visible
+   * recipe may be projected from freshly resolved ProductBehavior facts. */
+  currentRecipe?: RecipeInput;
+  rematerializeProposedOnly?: boolean;
   toppings: readonly RecipeToppingItem[];
   snapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>;
   technicalOnlyMainLineIds?: readonly string[];
 }): Promise<
-  | { ready: true; snapshots: Record<string, ProductBehaviorSnapshot> }
+  | {
+      ready: true;
+      snapshots: Record<string, ProductBehaviorSnapshot>;
+      recipe: RecipeInput;
+      proposedOnlyLineIds: string[];
+      refreshedLineIds: string[];
+    }
   | { ready: false; issues: ProductBehaviorAuthorityIssue[] }
 > {
   const baseRequired = productBehaviorRequiredLineIds({ items: input.recipe.items });
@@ -2407,6 +2437,13 @@ async function currentRecipeAuthorityReady(input: {
     toppings: input.toppings,
   });
   const required = [...new Set([...baseRequired, ...toppingRequired])].sort();
+  const currentLineIds = new Set(input.currentRecipe?.items.map((item) => item.id) ?? []);
+  const currentOccurrenceIds = new Set([
+    ...currentLineIds,
+    ...input.toppings.map((item) => item.id),
+  ]);
+  const scopeFor = (lineId: string): ProductBehaviorAuthorityIssue['scope'] =>
+    input.currentRecipe && !currentOccurrenceIds.has(lineId) ? 'proposed_only' : 'current_recipe';
   if (required.length === 0) {
     return {
       ready: true,
@@ -2415,6 +2452,9 @@ async function currentRecipeAuthorityReady(input: {
           .filter((entry): entry is [string, ProductBehaviorSnapshot] => entry[1] !== undefined)
           .map(([lineId, snapshot]) => [lineId, structuredClone(snapshot)]),
       ),
+      recipe: input.recipe,
+      proposedOnlyLineIds: [],
+      refreshedLineIds: [],
     };
   }
   try {
@@ -2442,15 +2482,34 @@ async function currentRecipeAuthorityReady(input: {
             input.toppings.find((item) => item.id === lineId)?.ingredient.name ??
             lineId,
           reasons: ['behavior_snapshot_missing_or_unresolved'],
+          scope: scopeFor(lineId),
         })),
       };
     }
+    const materialized =
+      input.currentRecipe && input.rematerializeProposedOnly !== false
+        ? materializeProposedOnlyRecipeInput({
+            currentRecipe: input.currentRecipe,
+            proposedRecipe: input.recipe,
+            snapshots: resolved.snapshots,
+          })
+        : {
+            recipe: input.recipe,
+            proposedOnlyLineIds: input.currentRecipe
+              ? input.recipe.items
+                  .filter((item) => !currentLineIds.has(item.id))
+                  .map((item) => item.id)
+                  .sort()
+              : [],
+            refreshedLineIds: [] as string[],
+          };
+    const validationRecipe = materialized.recipe;
     const accountId = useAuthStore.getState().user?.id ?? null;
     const baseValidation =
       baseRequired.length === 0
         ? { ready: true, staleLineIds: [] as string[], lines: [] as const }
         : await validateRecipeBehaviorOnServer({
-            recipe: input.recipe,
+            recipe: validationRecipe,
             snapshots: resolved.snapshots,
             module,
             accountId,
@@ -2460,7 +2519,7 @@ async function currentRecipeAuthorityReady(input: {
       toppingRequired.length === 0
         ? { ready: true, staleLineIds: [] as string[], lines: [] as const }
         : await validateRecipeBehaviorOnServer({
-            recipe: { ...input.recipe, items: [] },
+            recipe: { ...validationRecipe, items: [] },
             toppings: input.toppings,
             snapshots: resolved.snapshots,
             module: 'TOPPING',
@@ -2471,18 +2530,25 @@ async function currentRecipeAuthorityReady(input: {
     ].sort();
     const validationLines = [...baseValidation.lines, ...toppingValidation.lines];
     return baseValidation.ready && toppingValidation.ready && staleLineIds.length === 0
-      ? { ready: true, snapshots: resolved.snapshots }
+      ? {
+          ready: true,
+          snapshots: resolved.snapshots,
+          recipe: validationRecipe,
+          proposedOnlyLineIds: materialized.proposedOnlyLineIds,
+          refreshedLineIds: materialized.refreshedLineIds,
+        }
       : {
           ready: false,
           issues: staleLineIds.map((lineId) => ({
             lineId,
             lineName:
-              input.recipe.items.find((item) => item.id === lineId)?.ingredient.name ??
+              validationRecipe.items.find((item) => item.id === lineId)?.ingredient.name ??
               input.toppings.find((item) => item.id === lineId)?.ingredient.name ??
               lineId,
             reasons: validationLines.find((line) => line.lineId === lineId)?.reasons ?? [
               'behavior_snapshot_missing_or_unresolved',
             ],
+            scope: scopeFor(lineId),
           })),
         };
   } catch {
@@ -2495,6 +2561,7 @@ async function currentRecipeAuthorityReady(input: {
           input.toppings.find((item) => item.id === lineId)?.ingredient.name ??
           lineId,
         reasons: ['behavior_server_validation_unavailable'],
+        scope: scopeFor(lineId),
       })),
     };
   }
@@ -3164,20 +3231,12 @@ export async function createOptimizePreviewWithServerAuthority(
     },
     signal,
   );
-  const rawProposal = computation.result;
-  const fallbackReport = await computeDirectionFallbackWithServerAuthority({
-    generation: ownedGeneration,
-    signal,
-    draft,
-    normalResult: rawProposal,
-    createdAt: optimizeCreatedAt,
-    baseSnapshots: validation.snapshots,
-    technicalOnlyMainLineIds,
-  });
+  let proposalResult = computation.result;
   let proposedSnapshots: Record<string, ProductBehaviorSnapshot> | undefined;
-  if (rawProposal.ok) {
-    const proposedAuthority = await currentRecipeAuthorityReady({
-      recipe: rawProposal.preview.proposedInput,
+  if (proposalResult.ok) {
+    let proposedAuthority = await currentRecipeAuthorityReady({
+      recipe: proposalResult.preview.proposedInput,
+      currentRecipe: draft.input,
       toppings: recipeState.toppings,
       snapshots: validation.snapshots,
       technicalOnlyMainLineIds,
@@ -3192,9 +3251,41 @@ export async function createOptimizePreviewWithServerAuthority(
       });
       return;
     }
+    if (proposedAuthority.refreshedLineIds.length > 0) {
+      proposalResult = rebuildPreviewWithAuthoritativeProposedInput(
+        proposalResult,
+        draft.input,
+        draft.constraints,
+        proposedAuthority.recipe,
+        proposedAuthority.snapshots,
+      );
+      if (proposalResult.ok) {
+        // One retry only: the proposal now carries the server-resolved facts.
+        // This pass does not project again; it validates the exact Preview
+        // candidate after practicalization and any whole-gram repair.
+        proposedAuthority = await currentRecipeAuthorityReady({
+          recipe: proposalResult.preview.proposedInput,
+          currentRecipe: draft.input,
+          rematerializeProposedOnly: false,
+          toppings: recipeState.toppings,
+          snapshots: proposedAuthority.snapshots,
+          technicalOnlyMainLineIds,
+        });
+        if (!isCurrentPiRun(ownedGeneration)) return;
+        if (!proposedAuthority.ready) {
+          useConstraintStudioStore.setState({
+            history: [],
+            ...CLEAR_STAGED,
+            previewIssue: serverBehaviorPreviewIssue(proposedAuthority.issues),
+            recalculationTerminal: productBehaviorTerminal(proposedAuthority.issues),
+          });
+          return;
+        }
+      }
+    }
     proposedSnapshots = proposedAuthority.snapshots;
   } else {
-    const lockRecovery = impossibleConstraintLockRecovery(rawProposal, draft.input);
+    const lockRecovery = impossibleConstraintLockRecovery(proposalResult, draft.input);
     const recoveredProposal = lockRecovery
       ? buildSuggestedFixPreview(draft.input, draft.constraints, lockRecovery.fix, nowIso())
       : null;
@@ -3241,6 +3332,15 @@ export async function createOptimizePreviewWithServerAuthority(
       }
     }
   }
+  const fallbackReport = await computeDirectionFallbackWithServerAuthority({
+    generation: ownedGeneration,
+    signal,
+    draft,
+    normalResult: proposalResult,
+    createdAt: optimizeCreatedAt,
+    baseSnapshots: validation.snapshots,
+    technicalOnlyMainLineIds,
+  });
   if (
     !isCurrentPiRun(ownedGeneration) ||
     useRecipeStore.getState().draftRevision !== draft.revision
@@ -3251,6 +3351,7 @@ export async function createOptimizePreviewWithServerAuthority(
   if (!isCurrentPiRun(ownedGeneration)) return;
   useConstraintStudioStore.getState().createOptimizePreview(proposedSnapshots, {
     ...computation,
+    result: proposalResult,
     createdAt: optimizeCreatedAt,
   });
   // OWNER 2026-09-03 — ONE deterministic correction must feel like ONE action.

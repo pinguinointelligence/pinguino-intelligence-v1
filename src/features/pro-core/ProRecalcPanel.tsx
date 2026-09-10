@@ -290,6 +290,10 @@ function RecalcDiagnosisView({
   const productBehaviorRefreshable =
     issue.code === 'product_behavior_invalid' &&
     productBehaviorIssuesSupportWorkingCopyRefresh(issue.productBehaviorIssues ?? []);
+  const currentRecipeProductBehaviorIssues =
+    issue.code === 'product_behavior_invalid'
+      ? (issue.productBehaviorIssues ?? []).filter((entry) => entry.scope !== 'proposed_only')
+      : [];
   const productBehaviorNeedsProductActions =
     issue.code === 'product_behavior_invalid' &&
     !productBehaviorRefreshable &&
@@ -313,7 +317,7 @@ function RecalcDiagnosisView({
             </p>
             <p className="text-xs leading-relaxed text-ivory/70">
               Dotyczy:{' '}
-              {[...new Set(issue.productBehaviorIssues?.map((entry) => entry.lineName) ?? [])].join(
+              {[...new Set(currentRecipeProductBehaviorIssues.map((entry) => entry.lineName))].join(
                 ', ',
               )}
               . Historyczna wersja pozostanie bez zmian.

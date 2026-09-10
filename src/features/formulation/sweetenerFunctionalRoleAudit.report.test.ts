@@ -166,13 +166,13 @@ describe('sweetener functional-role audit', () => {
     expect(rows.length).toBeGreaterThan(0);
   });
 
-  it('pins the defect: before the fix no ordinary Mapper sweetener was sucrose', () => {
+  it('pins the residual-role defect against the current high-intensity sweetener row', () => {
     const sugarRows = AUDIT.filter((row) => row.engineCategory === 'sugar');
     const sucroseBefore = sugarRows.filter((row) => row.before === 'sweetener_sucrose');
-    // The ONE row that reached the role did so because its stored PAC is 0 —
-    // an artificial high-intensity sweetener, not a sucrose sweetener.
-    expect(sucroseBefore.map((row) => row.id)).toEqual(['PI-ING-001427']);
-    expect(sucroseBefore[0]!.rawPac).toBe(0);
+    // The ONE row that reaches the role has negligible normalized PAC —
+    // a high-intensity sweet protein, not a sucrose sweetener.
+    expect(sucroseBefore.map((row) => row.id)).toEqual(['PI-ING-002140']);
+    expect(sucroseBefore[0]!.rawPac).toBe(0.3);
   });
 
   it('after the fix the sucrose role is held only by sucrose-dominant rows', () => {

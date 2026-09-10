@@ -68,9 +68,9 @@ describe('Production Rescue — served Sorbet Edge budget regression', () => {
     expect(input.machine_capacity_source).toBeNull();
     expect(enlarge?.finalMassG).toBe(1_000.5);
     expect(enlarge?.candidateInput.items.map((item) => [item.id, item.planned_grams])).toEqual([
-      ['new-recipe-1-water', 287.2],
-      ['new-recipe-2-sucrose', 54.1],
-      ['new-recipe-3-dextrose', 55.9],
+      ['new-recipe-1-water', 286.6],
+      ['new-recipe-2-sucrose', 54],
+      ['new-recipe-3-dextrose', 56.6],
       ['new-recipe-4-inulin', 0],
       ['new-recipe-5-tara_gum', 3],
       ['main-mango', 600.3],

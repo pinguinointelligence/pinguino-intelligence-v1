@@ -159,20 +159,20 @@ const row = (overrides: Partial<IngredientRow> = {}): IngredientRow => ({
 });
 
 describe('Mapper-only product catalog', () => {
-  it('A/B derives the exact current/selectable census from the owner-approved 2,089-row Mapper', () => {
+  it('A/B derives the exact current/selectable census from the owner-approved 2,147-row Mapper', () => {
     const mapper = parseCsv(
       readFileSync(
         resolve(process.cwd(), 'docs/ingredients/validation/mapper_basement.csv'),
         'utf8',
       ),
     );
-    expect(mapper).toHaveLength(2089);
-    expect(new Set(mapper.map((entry) => entry.ingredient_id)).size).toBe(2089);
+    expect(mapper).toHaveLength(2147);
+    expect(new Set(mapper.map((entry) => entry.ingredient_id)).size).toBe(2147);
     expect(
       mapper.filter((entry) => entry.approved_for_base?.toLowerCase() === 'true'),
-    ).toHaveLength(2076);
+    ).toHaveLength(2141);
     expect(CURRENT_MAPPER_CATALOG_CACHE_KEY).toContain(
-      '057375cd60cefe613892ff1d9f8f7eda880ff0eb06732f9229051fc37d8deca7',
+      '5047d9ca645bb2c1e2e930201ab9e82b08a04dc1e48e3263e7ba61930a5da1f5',
     );
   });
 

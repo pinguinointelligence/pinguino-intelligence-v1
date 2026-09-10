@@ -44,9 +44,9 @@ describe('owner-authorized canonical Gellatti Stabilizer row', () => {
     expect(migration).not.toContain('drop trigger canonical_product');
   });
 
-  it('expands Mapper 2088 → 2089 with exactly one new identity', () => {
-    expect(records).toHaveLength(2_089);
-    expect(new Set(records.map((record) => value(record, 'ingredient_id'))).size).toBe(2_089);
+  it('keeps the accepted Gellatti identity unique in current Mapper 2147', () => {
+    expect(records).toHaveLength(2_147);
+    expect(new Set(records.map((record) => value(record, 'ingredient_id'))).size).toBe(2_147);
     expect(
       records.filter((record) => value(record, 'ingredient_id') === GELLATTI_STABILIZER_MAPPER_ID),
     ).toHaveLength(1);
@@ -57,7 +57,7 @@ describe('owner-authorized canonical Gellatti Stabilizer row', () => {
     ).toHaveLength(1);
   });
 
-  it('keeps every accepted-base row logically byte-identical and in the same order', () => {
+  it('preserves every historical identity and its relative order across the Mapper release', () => {
     const oldSource = execFileSync('git', ['show', `${BASE_SHA}:${MAPPER_PATH}`], {
       cwd: process.cwd(),
       encoding: 'utf8',
@@ -67,7 +67,11 @@ describe('owner-authorized canonical Gellatti Stabilizer row', () => {
     const [oldHeader = [], ...oldRecords] = parseCsv(oldSource);
     expect(oldHeader).toEqual(header);
     expect(oldRecords).toHaveLength(2_088);
-    expect(records.slice(0, 2_088)).toEqual(oldRecords);
+    const historicalIds = oldRecords.map((record) => value(record, 'ingredient_id'));
+    const historicalSet = new Set(historicalIds);
+    expect(
+      records.map((record) => value(record, 'ingredient_id')).filter((id) => historicalSet.has(id)),
+    ).toEqual(historicalIds);
   });
 
   it('stores the exact identity, weighted technical facts, provenance, allergens and no shared price', () => {

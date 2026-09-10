@@ -7,6 +7,10 @@ import XLSX from 'xlsx';
 export const PROCESS_DATASET_VERSION = '2026-08-28-process-v2';
 export const PROCESS_DATASET_SHA256 =
   '44fd5302c7a2372bb69ba5abc592edd27f41e96c5de00ac2ca45ade1903ad6d6';
+export const CURRENT_MAPPER_SHA256 =
+  '5047d9ca645bb2c1e2e930201ab9e82b08a04dc1e48e3263e7ba61930a5da1f5';
+export const PENDING_RUNTIME_AUTHORITY_SHA256 =
+  'b968389b20d44f838e0c4cd611b9bd9875688f89c4dab5877802173ea229d563';
 
 export const PROCESS_HEADERS = [
   'ingredient_id',
@@ -55,7 +59,11 @@ const sha256 = (path) =>
 const sameOrderedValues = (left, right) =>
   left.length === right.length && left.every((value, index) => value === right[index]);
 
-export function validateProcessMetadataDataset(processPath, mapperPath) {
+export function validateProcessMetadataDataset(
+  processPath,
+  mapperPath,
+  pendingRuntimeAuthorityPath = resolve('reports/MAPPER_RUNTIME_USABILITY_NOT_AUDITED.csv'),
+) {
   const sourceHash = sha256(processPath);
   if (sourceHash !== PROCESS_DATASET_SHA256) {
     throw new Error(`Unexpected process source SHA-256: ${sourceHash}`);
@@ -86,19 +94,61 @@ export function validateProcessMetadataDataset(processPath, mapperPath) {
     }
   }
 
+  const mapperHash = sha256(mapperPath);
+  if (mapperHash !== CURRENT_MAPPER_SHA256) {
+    throw new Error(`Unexpected current Mapper SHA-256: ${mapperHash}`);
+  }
+
   const mapperRows = parseCsv(mapperPath);
   const mapperIds = mapperRows.map((row) => String(row.ingredient_id).trim());
   const mapperSet = new Set(mapperIds);
   const processOnly = [...uniqueIds].filter((id) => !mapperSet.has(id));
   const mapperOnly = [...mapperSet].filter((id) => !uniqueIds.has(id));
-  if (mapperRows.length !== 2089 || mapperSet.size !== 2089) {
+  if (mapperRows.length !== 2147 || mapperSet.size !== 2147) {
     throw new Error(
-      `Mapper identity shape is not 2089/2089: ${mapperRows.length}/${mapperSet.size}`,
+      `Current Mapper identity shape is not 2147/2147: ${mapperRows.length}/${mapperSet.size}`,
     );
   }
-  if (processOnly.length > 0 || mapperOnly.length > 0) {
+  if (processOnly.length > 0) {
     throw new Error(
-      `Process/Mapper identity mismatch: process-only=${processOnly.length}, mapper-only=${mapperOnly.length}`,
+      `Process companion contains identities absent from current Mapper: ${processOnly.join(',')}`,
+    );
+  }
+
+  const pendingHash = sha256(pendingRuntimeAuthorityPath);
+  if (pendingHash !== PENDING_RUNTIME_AUTHORITY_SHA256) {
+    throw new Error(`Unexpected pending runtime authority SHA-256: ${pendingHash}`);
+  }
+  const pendingRows = parseCsv(pendingRuntimeAuthorityPath);
+  const pendingHeaders = Object.keys(pendingRows[0] ?? {});
+  const expectedPendingHeaders = [
+    'ingredient_id',
+    'ingredient_name_display',
+    'verification_status',
+    'approved_for_base',
+    'missing_evidence',
+  ];
+  if (!sameOrderedValues(pendingHeaders, expectedPendingHeaders)) {
+    throw new Error(`Unexpected pending runtime authority columns: ${pendingHeaders.join(',')}`);
+  }
+  const pendingIds = pendingRows.map((row) => String(row.ingredient_id).trim());
+  const pendingSet = new Set(pendingIds);
+  if (pendingRows.length !== 58 || pendingSet.size !== 58 || pendingIds.some((id) => !id)) {
+    throw new Error(
+      `Pending runtime authority identity shape is not 58/58: ${pendingRows.length}/${pendingSet.size}`,
+    );
+  }
+  const pendingEvidenceIsExact = pendingRows.every(
+    (row) =>
+      String(row.missing_evidence).trim() ===
+      'no_process_metadata;no_product_behavior_classification',
+  );
+  if (!pendingEvidenceIsExact) {
+    throw new Error('Pending runtime authority contains an unexpected evidence state');
+  }
+  if (!sameOrderedValues(mapperOnly, pendingIds)) {
+    throw new Error(
+      `Current Mapper/process delta does not equal the approved pending ledger: mapper-only=${mapperOnly.length}, pending=${pendingIds.length}`,
     );
   }
 
@@ -111,9 +161,12 @@ export function validateProcessMetadataDataset(processPath, mapperPath) {
       uniqueIngredientIds: uniqueIds.size,
       blankIngredientIds: blankIds.length,
       statusCounts: counts,
+      mapperHash,
       mapperRowCount: mapperRows.length,
       mapperUniqueIngredientIds: mapperSet.size,
       alignmentDifferences: processOnly.length + mapperOnly.length,
+      pendingRuntimeAuthorityHash: pendingHash,
+      mapperNotYetClassified: mapperOnly.length,
     },
   };
 }

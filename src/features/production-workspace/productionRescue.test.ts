@@ -24,6 +24,7 @@ import {
 } from './productionSession';
 import { recipeFitForInput } from '@/features/protein-gelato/proteinAuthority';
 import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
+import { withHistoricalMapper2089Dextrose } from '@/features/product-intelligence/historicalMapper2089.fixture';
 import { productionTestComposition } from './productionTestComposition.fixture';
 import { assessProductionHardSafety, assessProductionRescue } from './productionRescue';
 
@@ -58,7 +59,7 @@ const ownerScenario = (formulationStrategy: 'optimal' | 'eco' = 'optimal'): Reci
     formulationStrategy,
     targetBatchGrams: 1_000,
   });
-  const grams = [480, 318, 48, 105, 46, 3] as const;
+  const grams = [478, 319, 48, 106, 46, 3] as const;
   return {
     items: starter.items.map((item, index) => ({
       ...item,
@@ -148,7 +149,7 @@ const exactOwnerEightLineInput = (): RecipeInput => {
   return {
     items: rows.map(([id, ingredientId, grams]) => ({
       id,
-      ingredient: verifiedMapperIngredient(ingredientId),
+      ingredient: withHistoricalMapper2089Dextrose(verifiedMapperIngredient(ingredientId)),
       planned_grams: grams,
       actual_grams: null,
       lock_type: id === 'banana' ? ('main' as const) : ('unlocked' as const),
@@ -217,7 +218,7 @@ const exactP0DeviationInput = (): RecipeInput => {
   return {
     items: rows.map(([id, ingredientId, grams]) => ({
       id,
-      ingredient: verifiedMapperIngredient(ingredientId),
+      ingredient: withHistoricalMapper2089Dextrose(verifiedMapperIngredient(ingredientId)),
       planned_grams: grams,
       actual_grams: null,
       lock_type: 'unlocked' as const,
