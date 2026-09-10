@@ -108,10 +108,10 @@ describe('canonical Gellatti Pro — menu (proofs 4–6, 17–18)', () => {
       'howItWorks',
       'production',
       'labels',
+      // OWNER CORRECTION 2026-09-07: the product area is ONE entry. „Skanuj produkt" is an action
+      // on this page and „Niezweryfikowane" is a filter of its list — neither is a destination, and
+      // promoting them duplicated the same area twice in the drawer.
       'products',
-      // OWNER 2026-09-06: „Dodaj produkt" is the hamburger entry into the ONE Canonical Scanner.
-      // It is a destination page, not a contextual tool, and it exists for HOME and PRO alike.
-      'scanProduct',
       'machine',
       // OWNER DECISION (2026-09-06): `/labels` above is the one canonical
       // settings destination; Community remains the one public creator door.

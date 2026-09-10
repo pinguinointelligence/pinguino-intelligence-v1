@@ -16,6 +16,7 @@ import type {
   RequestOutcome,
   ResearchOutcome,
   ScanResultLike,
+  FinalRoute,
 } from '../discovery/contracts';
 
 export interface FunctionsClientLike {
@@ -189,12 +190,17 @@ export function createSupabaseDiscoveryPort(
       if (d['kind'] === 'existing_product')
         return { kind: 'existing_product', product: exactFromServer(obj(d['product']), identity) };
       applySession(s, d);
+      // The server composes the sentence, because only the server knows whether the sources were
+      // asked and answered nothing or were never reached at all.
+      const notice =
+        typeof d['notice'] === 'string' && d['notice'] ? (d['notice'] as string) : null;
       if (typeof d['skipped'] === 'string')
-        return { kind: 'skipped', session: s, reason: d['skipped'] as string };
+        return { kind: 'skipped', session: s, reason: d['skipped'] as string, notice };
       return {
         kind: 'researched',
         session: s,
         evidenceError: d['providerUnavailable'] === true ? 'provider_unavailable' : null,
+        notice,
       };
     },
     async analyzeLabel(session, images): Promise<AnalyzeOutcome> {
@@ -213,17 +219,19 @@ export function createSupabaseDiscoveryPort(
         };
       return { kind: 'analyzed', session: applySession(s, d) };
     },
-    async finalize(session, input, ctx): Promise<FinalizeOutcome> {
+    async finalize(session, input, ctx, saveUnverified): Promise<FinalizeOutcome> {
       const s = adopt(session);
       let d: Record<string, unknown>;
       try {
         d = await invoke('product-scan-finalize', {
-          action: 'finalize',
+          action: saveUnverified === true ? 'save_unverified' : 'finalize',
           sessionId: s.sessionId,
           idempotencyKey: `scan-import-v2:${ctx.accountId}:${session.identity.canonicalGtin13}:finalize`,
           customerFamily: input.customerFamily ?? null,
           confirmations: input.confirmations ?? {},
           privateOverlay: input.privateOverlay ?? {},
+          // binding when present: the save may persist only the verdict the customer was shown
+          expectedAssessmentHash: input.expectedAssessmentHash ?? null,
         });
       } catch (error) {
         const m = error instanceof Error ? error.message : '';
@@ -248,6 +256,9 @@ export function createSupabaseDiscoveryPort(
               'other',
             ],
           };
+        case 'scan_assessment_stale':
+          // the verdict moved between the screen and the save; the customer repeats, nothing is written
+          return { kind: 'assessment_stale' };
         case 'customer_product_not_ready': {
           // the profile/ProductBehaviour authorities refused an Engine product; carry WHY (never invent readiness)
           const assessment = obj(
@@ -275,7 +286,10 @@ export function createSupabaseDiscoveryPort(
               : Array.isArray(assessment['missingCritical'])
                 ? (assessment['missingCritical'] as string[])
                 : [],
+            // DIAGNOSTIC ONLY — never rendered to a customer (see FinalizeOutcome)
             reasons: reasons.length > 0 ? reasons : ['customer_product_not_ready'],
+            assessmentHash:
+              typeof d['assessmentHash'] === 'string' ? (d['assessmentHash'] as string) : null,
           };
         }
         case 'profile_preview':
@@ -285,15 +299,33 @@ export function createSupabaseDiscoveryPort(
               ? (d['criticalGaps'] as string[])
               : [],
             reasons: ['profile_preview'],
+            assessmentHash:
+              typeof d['assessmentHash'] === 'string' ? (d['assessmentHash'] as string) : null,
           };
-        default:
+        default: {
+          // the RPC decided the route from the canonical profile; never re-derive it here
+          const code = typeof d['productCode'] === 'string' ? (d['productCode'] as string) : null;
+          const route: FinalRoute =
+            d['route'] === 'PR' || d['route'] === 'PM_READY' || d['route'] === 'PM_UNVERIFIED'
+              ? (d['route'] as FinalRoute)
+              : // an existing shared product reused by EAN reports no route of its own
+                code?.startsWith('PR-ING-')
+                ? 'PR'
+                : d['engineUsable'] === true
+                  ? 'PM_READY'
+                  : 'PM_UNVERIFIED';
           return {
             kind: 'created',
             productId: String(d['productId'] ?? ''),
-            productCode: typeof d['productCode'] === 'string' ? (d['productCode'] as string) : null,
+            productCode: code,
             engineUsable: d['engineUsable'] === true,
             existing: d['kind'] !== 'customer_added_product',
+            route,
+            finalConfidence:
+              typeof d['finalConfidence'] === 'number' ? (d['finalConfidence'] as number) : null,
+            productionReady: d['productionReady'] === true,
           };
+        }
       }
     },
     async submitRequest(identity, ledger, session, ctx): Promise<RequestOutcome> {

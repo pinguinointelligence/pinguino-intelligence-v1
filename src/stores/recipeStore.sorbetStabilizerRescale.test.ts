@@ -34,6 +34,7 @@ import {
   isOmittableUnusedLine,
   unusedZeroGramLineIds,
 } from '@/features/practical-recipe/practicalRecipe';
+import { resolveFunctionalRole } from '@/features/formulation/ingredientRoles';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { useRecipeStore } from './recipeStore';
 
@@ -161,16 +162,27 @@ describe('PC-02 — batch rescale keeps the Sorbet stabilizer system canonical',
     });
   });
 
-  it('6. non-Sorbet batch rescaling is unchanged', () => {
+  it('6. Gelato uses its own stabilizer authority while ordinary ratios stay unchanged', () => {
     useRecipeStore.getState().startNewRecipe('gelato');
     const before = state().items.map((item) => ({ id: item.id, grams: item.planned_grams }));
-    const currentSum = before.reduce((total, item) => total + item.grams, 0);
+    const stabilizerIds = new Set(
+      state()
+        .items.filter((item) => resolveFunctionalRole(item.ingredient) === 'stabilizer')
+        .map((item) => item.id),
+    );
+    const ordinaryBefore = before.filter((item) => !stabilizerIds.has(item.id));
+    const ordinaryBeforeTotal = ordinaryBefore.reduce((total, item) => total + item.grams, 0);
 
     useRecipeStore.getState().setBatchGrams(670);
-    const factor = 670 / currentSum;
-    state().items.forEach((item, index) => {
-      expect(item.id).toBe(before[index]!.id);
-      expect(item.planned_grams).toBeCloseTo(before[index]!.grams * factor, 6);
+    expect(stabilizers().every((item) => Number.isInteger(item.planned_grams))).toBe(true);
+    const ordinaryAfter = state().items.filter((item) => !stabilizerIds.has(item.id));
+    const ordinaryAfterTotal = ordinaryAfter.reduce((total, item) => total + item.planned_grams, 0);
+    ordinaryAfter.forEach((item, index) => {
+      expect(item.id).toBe(ordinaryBefore[index]!.id);
+      expect(item.planned_grams / ordinaryAfterTotal).toBeCloseTo(
+        ordinaryBefore[index]!.grams / ordinaryBeforeTotal,
+        10,
+      );
     });
     expect(sum()).toBeCloseTo(670, 6);
   });

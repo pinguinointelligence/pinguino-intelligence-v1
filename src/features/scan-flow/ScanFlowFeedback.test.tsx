@@ -111,7 +111,9 @@ describe('ScanFlow — scanner feedback overlay', () => {
     expect(feedback()).toContain('Przesuń telefon w lewo');
     await emit(frame({ state: 'HOLD', guidance: 'hold_steady', progress: 0.8, zoomLevel: 1.5 }));
     expect(feedback()).toContain('Trzymaj telefon nieruchomo');
-    expect(feedback()).toContain('×1.5');
+    // OWNER RULING 2026-09-06: the raw device zoom factor is never shown to a customer, and the
+    // camera no longer zooms itself, so there is no ×N to print at all.
+    expect(feedback()).not.toMatch(/×\s*\d/);
     await emit(frame({ state: 'READING', guidance: 'none', progress: 0.6, timedOut: true }));
     expect(feedback()).toMatch(/spróbuj bliżej/);
     await emit(frame({ state: 'LOST', guidance: 'none', progress: 0 }));

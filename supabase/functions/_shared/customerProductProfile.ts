@@ -67,14 +67,75 @@ function hasDirectLabelEvidence(root: JsonObject, paths: readonly string[]): boo
   );
 }
 
-function externalEvidenceSource(root: JsonObject, paths: readonly string[]): EvidenceSource | null {
+function externalRowForField(root: JsonObject, paths: readonly string[]): JsonObject | null {
   for (const row of externalRows(root)) {
     const fields = Array.isArray(row.fieldsUsed)
       ? row.fieldsUsed.filter((field): field is string => typeof field === 'string')
       : [];
-    if (paths.some((path) => fields.includes(path))) return sourceForExternalType(row.sourceType);
+    if (paths.some((path) => fields.includes(path))) return row;
   }
   return null;
+}
+
+function externalEvidenceSource(root: JsonObject, paths: readonly string[]): EvidenceSource | null {
+  const row = externalRowForField(root, paths);
+  return row ? sourceForExternalType(row.sourceType) : null;
+}
+
+/*
+  PROVENANCE BRIDGE, consumer side (owner decision 2026-09-07).
+
+  `sourceAuthorityClass` is assigned by classifySourceAuthority inside intimport-enrich and now
+  survives into the externalSources row. These two helpers are the only readers, and both refuse
+  anything the CLIENT could have written: the class is only ever believed together with a URL
+  that carries the scanned GTIN, so a page the customer's device could name cannot promote
+  itself.
+*/
+const SERVER_TRUSTED_AUTHORITY = new Set([
+  'OFFICIAL_MANUFACTURER',
+  'OFFICIAL_BRAND',
+  'OFFICIAL_PRIVATE_LABEL',
+  'OFFICIAL_TECHNICAL_PDF',
+  'STRUCTURED_PRODUCT_DATABASE',
+  'AUTHORITATIVE_RETAILER',
+]);
+
+const scannedGtins = (root: JsonObject): string[] =>
+  (Array.isArray(root.barcodes) ? root.barcodes.map(objectValue) : [])
+    .map((entry) => (typeof entry.value === 'string' ? entry.value.replace(/\D/g, '') : ''))
+    .filter((value) => value.length >= 8);
+
+/**
+ * A source speaks for THIS product only when the page it came from names the code that was
+ * scanned. Domain reputation alone is not identity: `AUTHORITATIVE_RETAILER` proves the seller is
+ * real, never that the page is the right article.
+ */
+function exactEanBackedAuthority(
+  root: JsonObject,
+  paths: readonly string[],
+): { authority: string; row: JsonObject } | null {
+  const row = externalRowForField(root, paths);
+  if (!row) return null;
+  const authority = typeof row.sourceAuthorityClass === 'string' ? row.sourceAuthorityClass : '';
+  if (!SERVER_TRUSTED_AUTHORITY.has(authority)) return null;
+  /*
+    Two ways a page can be shown to describe the scanned article, both compared HERE, on the
+    server, never asserted by the caller:
+      - the GTIN appears in the page's own URL (how a registry record is addressed), or
+      - the page printed that GTIN and the enrichment reported it verbatim.
+    A retailer page addressed by an internal article number — El Corte Inglés, La Tienda en Casa
+    and most grocers — can only ever pass the second way, which is why it exists.
+  */
+  const gtins = scannedGtins(root);
+  if (gtins.length === 0) return null;
+  const url = typeof row.url === 'string' ? row.url.replace(/\D/g, '') : '';
+  const statedEan =
+    typeof row.sourceStatedEan === 'string' ? row.sourceStatedEan.replace(/\D/g, '') : '';
+  const namesTheScannedArticle = gtins.some(
+    (gtin) => url.includes(gtin) || (statedEan.length >= 8 && statedEan === gtin),
+  );
+  if (!namesTheScannedArticle) return null;
+  return { authority, row };
 }
 
 const pathValue = (root: JsonObject, path: string): unknown =>
@@ -122,15 +183,70 @@ const DECLARATION_SOURCES = new Set<EvidenceSource>([
   'mapper_exact',
 ]);
 
+
+/*
+  SINGLE CALORIC SUGAR SOURCE CLOSURE.
+
+  An exact nutrition table says how much sugar a product contains; the Engine needs to know WHICH
+  sugars, because POD and PAC come from the spectrum and an unknown spectrum contributes zero.
+  When the table is exact and the ingredient list names exactly ONE caloric sugar, the spectrum is
+  not a guess — it is arithmetic: that one sugar accounts for all of it.
+
+  The rule refuses far more often than it fires. Two candidate sugars, an ambiguous word, a
+  negation ("sin azúcar"), a source conflict, or provenance that is not exact-EAN confirmed for
+  BOTH the table and the list — any of these and it declines, leaving the existing unresolved
+  path and the rescue that follows it untouched. It never invents a quantity: it only names the
+  sugar the label already declared, and its provenance is `derived`, never `user_confirmed` —
+  the customer typed nothing.
+*/
+const SUCROSE_TERMS =
+  /\b(sugar|sucrose|saccharose|azucar|sacarosa|zucker|saccarosio|zucchero|cukier|sucre|sucr[eo]s)\b/;
+
+/** Any OTHER caloric sugar. One of these present and the closure is not entitled to fire. */
+const OTHER_CALORIC_SUGARS =
+  /\b(glucose|glukoz\w*|dextrose|dekstroz\w*|fructose|fruktoz\w*|lactose|laktoz\w*|maltose|maltoz\w*|maltodextrin\w*|maltodekstryn\w*|invert\w*|honey|miel|mi[oó]d|molasses|melas\w*|agave|jarabe|syrup|syrop|treacle|corn\s*syrup|juice|zumo|sok\b|concentrate|concentrado|koncentrat)\b/;
+
+/** A sugar-free claim contradicts the whole premise; never read the word inside it as a sugar. */
+const SUGAR_NEGATED =
+  /\b(sin\s+azucar|sugar[\s-]*free|zero\s+sugar|bez\s+cukru|ohne\s+zucker|senza\s+zuccheri)\b/;
+
+function singleCaloricSugarClosure(
+  ingredientsText: string | null,
+  totalSugars: number | null,
+): number | null {
+  if (totalSugars === null || totalSugars <= 0) return null;
+  const text = ingredientsText
+    ?.toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  if (!text) return null;
+  if (SUGAR_NEGATED.test(text)) return null;
+  if (OTHER_CALORIC_SUGARS.test(text)) return null;
+  if (!SUCROSE_TERMS.test(text)) return null;
+  return totalSugars;
+}
+
+export interface CustomerEvidenceProvenance {
+  source: EvidenceSource;
+  sourceUrl: string | null;
+  sourceDomain: string | null;
+  sourceTitle: string | null;
+  sourceAuthorityClass: string | null;
+  retrievedAt: string | null;
+  evidenceReceipt: string | null;
+}
+
 export interface CustomerProductProfileProposal {
   matchInput: ProfileMatchInput;
   declared: Partial<Record<WorkingNumericField, number>>;
-  declaredBasis: Partial<Record<WorkingNumericField, 'product_declared' | 'user_confirmed'>>;
+  declaredBasis: Partial<Record<WorkingNumericField, 'product_declared' | 'user_confirmed' | 'derived'>>;
   /** The manufacturer's own basis, preserved beside the normalised values. */
   declaredNutritionBasis: 'per_100g' | 'per_100ml' | null;
   /** How `declared` was produced from it. */
   normalizationBasis: 'SOURCE_PER_100G' | 'GELLATTI_1ML_1G_NORMALIZATION' | null;
   evidence: ProductEvidenceInput;
+  /** Server-assigned source authority per field, for pages that name the scanned GTIN. */
+  evidenceProvenance: Partial<Record<ProductEvidenceField, CustomerEvidenceProvenance>>;
   recognitionEvidence: ProductSemanticEvidence;
   trustedRecognition: ProductSemanticClassification;
 }
@@ -179,13 +295,48 @@ export function customerProductProfileProposal(input: {
       // A merged Scanner result may contain a lower-authority web fill beside
       // direct label values. Keep it as evidence, but never promote it into a
       // VERIFIED Engine declaration without declaration-grade provenance.
-      if (!source || !DECLARATION_SOURCES.has(source)) continue;
+      /*
+        DECLARATION_SOURCES used to be the whole test, and it lists none of the web classes. A
+        nutrition panel resolved from the barcode's own registry record was therefore never a
+        declaration: on Sport 001 the Mapper's similar-profile estimate stood in at credit 0.8,
+        and on Sport 002 — sugar-free, so its published macros are legitimately 0 — nothing stood
+        in at all and the product scored MISSING_CARBOHYDRATE_PERCENT with the value sitting in
+        result_json. A registry or retailer page that names the scanned GTIN is now admitted on
+        the same footing, and only then.
+      */
+      if (
+        !source ||
+        (!DECLARATION_SOURCES.has(source) &&
+          exactEanBackedAuthority(root, SCAN_FIELD_PATHS[evidenceField] ?? []) === null)
+      )
+        continue;
       declared[field] = value;
       declaredBasis[field] = userConfirmed.has(evidenceField)
         ? 'user_confirmed'
         : 'product_declared';
     }
   }
+  /*
+    The spectrum closes only when BOTH the table and the ingredient list are backed by a page the
+    server matched to the scanned code, and the scan carries no conflict. Anything less and the
+    product keeps its unresolved path.
+  */
+  const sugarsAreExact = declaredBasis.total_sugars_percent !== undefined;
+  const tableConfirmed = exactEanBackedAuthority(root, SCAN_FIELD_PATHS.sugars ?? []) !== null;
+  const listConfirmed = exactEanBackedAuthority(root, SCAN_FIELD_PATHS.ingredients ?? []) !== null;
+  const noConflicts = (Array.isArray(root.conflicts) ? root.conflicts : []).length === 0;
+  if (sugarsAreExact && tableConfirmed && listConfirmed && noConflicts) {
+    const sucrose = singleCaloricSugarClosure(
+      text(root.ingredientsText),
+      declared.total_sugars_percent ?? null,
+    );
+    if (sucrose !== null) {
+      declared.sucrose_percent = sucrose;
+      // Computed from this product's own declaration. Not the customer's word, not a Mapper guess.
+      declaredBasis.sucrose_percent = 'derived';
+    }
+  }
+
   const abv = finiteNumber(declarations.alcoholAbv);
   if (abv !== null && abv <= 100) {
     declared.alcohol_percent = abv;
@@ -195,9 +346,28 @@ export function customerProductProfileProposal(input: {
   }
 
   const fields: ProductEvidenceInput['fields'] = {};
+  /*
+    What productProductionAccuracy asks for when a field's source is `web_search` or `retailer`:
+    `evidenceProvenance[field].sourceAuthorityClass`. Nothing on the scan path ever filled it, so
+    the answer was always undefined and the credit always 0 — the ingredients text read off El
+    Corte Inglés scored 0/7 while sitting in result_json. It is filled here from the class the
+    server assigned, and only for a page that names the scanned GTIN.
+  */
+  const evidenceProvenance: Partial<Record<ProductEvidenceField, CustomerEvidenceProvenance>> = {};
   for (const field of Object.keys(SCAN_FIELD_PATHS) as ProductEvidenceField[]) {
     const source = evidenceSource(root, field, userConfirmed);
     if (source) fields[field] = source;
+    const backed = exactEanBackedAuthority(root, SCAN_FIELD_PATHS[field] ?? []);
+    if (backed && source)
+      evidenceProvenance[field] = {
+        source,
+        sourceUrl: typeof backed.row.url === 'string' ? backed.row.url : null,
+        sourceDomain: null,
+        sourceTitle: typeof backed.row.title === 'string' ? backed.row.title : null,
+        sourceAuthorityClass: backed.authority,
+        retrievedAt: null,
+        evidenceReceipt: null,
+      };
   }
   // A locally checksum-validated GTIN is exact package evidence even when the
   // barcode decoder did not emit a Vision evidence rectangle.
@@ -252,6 +422,7 @@ export function customerProductProfileProposal(input: {
       mapperFamilyMatch: input.recognition.ingredientFamily !== 'unknown',
       materialConflicts: unresolvedConflicts,
     },
+    evidenceProvenance,
     recognitionEvidence: input.recognitionEvidence,
     trustedRecognition: input.recognition,
   };

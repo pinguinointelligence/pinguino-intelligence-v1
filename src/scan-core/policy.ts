@@ -25,6 +25,17 @@ export type Guidance =
 export const THRESHOLDS = {
   /** table 4: < 0.5 × session median → 13–15 % success; ≥ 1.0 → 66–71 % */
   blurRel: 0.5,
+  /*
+    SOL-045 — an ABSOLUTE floor beside the relative one. The blur test was purely relative to a
+    running median of the CURRENT session, so a session that is out of focus from its very first
+    frame drives its own median down; every later frame then scores about 1.0x that median, the
+    relative test never fires, and the customer is never told the picture is blurred. That is a
+    self-adjusting check that cannot fail — exactly the desktop symptom the owner reported.
+
+    The number is the laplacian variance of an in-focus 320-px sample; below it a frame is blurred
+    no matter what the rest of the session looked like.
+  */
+  blurAbs: 55,
   /** table 3: native cheap 0 % above fill 0.5, 42 % at 0.35–0.5; harder-with-downscale 40 % → decode close codes on the MEDIUM plane */
   largeFill: 0.35,
   /** table 2: ≤ 1.5 px modules → 27 % success and 15 % wrong reads; 2 px → 69 % / 0.35 % */
@@ -153,6 +164,13 @@ export class PolicyState {
 
     if (!c) {
       this.noCandidateSince ??= f.tMs;
+      /*
+        SOL-045 — the sharpness history is fed here too. It used to be pushed ONLY on frames that
+        produced a candidate, and a blurred frame is precisely the frame that produces none (the
+        localizer needs edges). So the statistic was built from a self-selected sample of the
+        sharpest frames in the session, and the blurriest evidence never reached it.
+      */
+      this.pushSharp(f.sharpness);
       this.blurSince = null;
       const lost = f.tMs - this.lastCandidateAt > THRESHOLDS.lostMs;
       if (lost) this.lastCandidate = null;
@@ -217,25 +235,37 @@ export class PolicyState {
           ? 'improve_light'
           : 'none';
 
-    if (sharpRel !== null && sharpRel < THRESHOLDS.blurRel) {
+    const blurred =
+      (sharpRel !== null && sharpRel < THRESHOLDS.blurRel) || f.sharpness < THRESHOLDS.blurAbs;
+    if (blurred) {
       this.blurSince ??= f.tMs;
+      /*
+        SOL-045 — "no continuous autofocus" must include the case where the browser does not SAY.
+        `autofocus` is read from capabilities.focusMode, and desktop Chrome and Safari expose
+        neither capability nor setting, so the value is null — never `false`. The branch that exists
+        precisely to help a fixed-focus camera was therefore unreachable on every desktop, which is
+        where fixed focus actually lives. A desktop that will not tell us is treated as fixed focus.
+      */
+      const noAutofocus =
+        p.autofocus === false || (p.autofocus === null && p.formFactor === 'desktop');
       // without autofocus there is nothing to wait for: guide at once (design §10)
-      const persistent =
-        p.autofocus === false || f.tMs - this.blurSince > THRESHOLDS.blurGuidanceMs;
+      const persistent = noAutofocus || f.tMs - this.blurSince > THRESHOLDS.blurGuidanceMs;
       let guidance: Guidance = 'none';
       if (persistent)
-        guidance =
-          p.autofocus === false
-            ? c.fill > 0.3
-              ? 'move_away'
-              : 'move_closer'
-            : c.fill > 0.3
-              ? 'move_away'
-              : 'hold_steady';
+        guidance = noAutofocus
+          ? c.fill > 0.3
+            ? 'move_away'
+            : 'move_closer'
+          : c.fill > 0.3
+            ? 'move_away'
+            : 'hold_steady';
       return {
         ...out,
         path: 'SKIP_BLUR',
-        reason: `sharpness ${sharpRel.toFixed(2)}× median < ${THRESHOLDS.blurRel} (table 4)`,
+        reason:
+          sharpRel !== null && sharpRel < THRESHOLDS.blurRel
+            ? `sharpness ${sharpRel.toFixed(2)}× median < ${THRESHOLDS.blurRel} (table 4)`
+            : `sharpness ${f.sharpness.toFixed(0)} < absolute floor ${THRESHOLDS.blurAbs} (SOL-045)`,
         guidance,
       };
     }
@@ -256,12 +286,17 @@ export class PolicyState {
         THRESHOLDS.marginNarrow,
         'medium',
       );
+      // SOL-042: the close-up path is exactly where a customer holding a can to the lens lands, and
+      // it was the ONE path with no escalation at all — `harder: false` unconditionally, so zxing's
+      // own rotation ladder was never reached however many times the read missed. It now gets the
+      // same two-miss rung NATIVE_ROI already has.
+      const harderMedium = !unstable && this.missesOnStable >= 2;
       return {
         ...out,
         path: 'LOW_MEDIUM',
-        reason: `fill ${c.fill.toFixed(2)} ≥ ${THRESHOLDS.largeFill}: module ${(moduleNative / planes.medium.factor).toFixed(1)} px on MEDIUM (table 3)`,
+        reason: `fill ${c.fill.toFixed(2)} ≥ ${THRESHOLDS.largeFill}: module ${(moduleNative / planes.medium.factor).toFixed(1)} px on MEDIUM${harderMedium ? ', harder after 2 misses' : ''} (table 3)`,
         roi,
-        harder: false,
+        harder: harderMedium,
         guidance: light,
       };
     }
@@ -304,6 +339,21 @@ export class PolicyState {
     };
   }
 
+  /**
+   * SOL-042. The decode crop must be the candidate's box PROJECTED onto the image axes, not its
+   * width pasted onto X and its height onto Y.
+   *
+   * `widthPx` is the code's length along its OWN reading axis and `heightPx` its bar height. Using
+   * them as x/y extents is only correct while that axis happens to be horizontal. For a code held
+   * vertically the box came out transposed — a short, wide slice ACROSS the middle of a tall code —
+   * so the crop handed to the decoder contained bars but neither guard pattern. Nothing downstream
+   * could recover from that: no decoder option, no rotation, no rescue. It is why turning the can
+   * until the digits sat at the bottom "fixed" scanning — that is the act of bringing the reading
+   * axis back to horizontal, and it is why the failure has a period of 90 degrees, not 180.
+   *
+   * The projection below is exactly the one `candidateBox` in quality.ts already uses, and it is a
+   * no-op at 0 degrees (cos=1, sin=0), so a horizontal code crops byte-identically to before.
+   */
   private cropOn(
     c: Candidate,
     factor: number,
@@ -314,12 +364,15 @@ export class PolicyState {
   ): Roi {
     const w = c.widthPx / factor;
     const h = Math.max(c.heightPx / factor, w * 0.25);
-    const mx = w * margin;
-    const my = h * margin;
-    const x0 = Math.max(0, Math.floor(c.cx / factor - w / 2 - mx));
-    const y0 = Math.max(0, Math.floor(c.cy / factor - h / 2 - my));
-    const x1 = Math.min(planeW, Math.ceil(c.cx / factor + w / 2 + mx));
-    const y1 = Math.min(planeH, Math.ceil(c.cy / factor + h / 2 + my));
+    const rad = (c.angleDeg * Math.PI) / 180;
+    const hw = (Math.abs(Math.cos(rad)) * w + Math.abs(Math.sin(rad)) * h) / 2;
+    const hh = (Math.abs(Math.sin(rad)) * w + Math.abs(Math.cos(rad)) * h) / 2;
+    const mx = hw * 2 * margin;
+    const my = hh * 2 * margin;
+    const x0 = Math.max(0, Math.floor(c.cx / factor - hw - mx));
+    const y0 = Math.max(0, Math.floor(c.cy / factor - hh - my));
+    const x1 = Math.min(planeW, Math.ceil(c.cx / factor + hw + mx));
+    const y1 = Math.min(planeH, Math.ceil(c.cy / factor + hh + my));
     return { x: x0, y: y0, w: Math.max(0, x1 - x0), h: Math.max(0, y1 - y0), plane };
   }
 }

@@ -56,9 +56,12 @@ describe('AllergenStatementControl', () => {
     await act(async () => root.render(<Harness initial={label} onSave={onSave} />));
 
     expect(host.textContent).toContain('Alergeny nieustalone');
-    expect(host.textContent).toContain('Informacje o alergenach ustala producent żywności.');
+    expect(host.textContent).not.toContain('Informacje o alergenach ustala producent żywności.');
     const setButton = host.querySelector<HTMLButtonElement>('[data-testid="label-allergens-set"]')!;
     expect(setButton.textContent).toBe('Ustaw');
+    expect(host.querySelector('[data-testid="label-allergens-row"]')?.className).not.toContain(
+      'rounded',
+    );
     await act(async () => setButton.click());
 
     const input = host.querySelector<HTMLInputElement>('[data-testid="label-allergens-input"]')!;

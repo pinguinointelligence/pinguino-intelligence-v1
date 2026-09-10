@@ -97,11 +97,10 @@ describe('DraftLabelCard', () => {
     const { onOpenSettings } = await renderCard(preview());
     expect(host.textContent).toContain('LOT-20260906-LABELDRAFT');
     expect(host.textContent).toContain('2026-09-06');
-    expect(host.textContent).toContain('Baza techniczna');
-    expect(host.textContent).toContain('1000 g');
+    expect(host.textContent).not.toContain('Baza techniczna');
     expect(host.textContent).toContain('1025 g');
     expect(host.textContent).toContain('Alergeny: milk');
-    expect(host.querySelector('[data-testid="label-allergens-change"]')?.textContent).toBe('Zmień');
+    expect(host.querySelector('[data-testid="label-allergens-change"]')).toBeNull();
     const print = host.querySelector<HTMLButtonElement>('[data-testid="draft-label-print"]')!;
     expect(print.disabled).toBe(false);
     const change = host.querySelector<HTMLButtonElement>('[data-testid="draft-label-change"]')!;
@@ -109,51 +108,38 @@ describe('DraftLabelCard', () => {
     expect(onOpenSettings).toHaveBeenCalledTimes(1);
   });
 
-  it('restores the confirmed inline state and enables it only after Zmień', async () => {
+  it('keeps audit fields off the main card and exposes only Drukuj and Zmień ustawienia', async () => {
     const restored = preview(true);
     await renderCard({ ...restored, confirmedFields: ['legal_product_name'] });
-    const legal = host.querySelector<HTMLElement>('[data-label-field="legal_product_name"]')!;
-    const input = legal.querySelector<HTMLInputElement>('input')!;
-    expect(input.matches(':disabled')).toBe(true);
-    const change = legal.querySelector<HTMLButtonElement>(
-      '[data-testid="label-field-change-legal_product_name"]',
-    )!;
-    await act(async () => change.click());
-    expect(input.matches(':disabled')).toBe(false);
+    expect(host.querySelector('[data-label-field="legal_product_name"]')).toBeNull();
+    expect(host.querySelector('[data-label-field="acknowledgement"]')).toBeNull();
+    expect(host.textContent).not.toContain('Ostatnie potwierdzenie');
+    expect(host.textContent).not.toContain('Źródło potwierdzenia');
+    expect(
+      [...host.querySelectorAll('[data-testid="draft-label-actions"] button')].map((button) =>
+        button.textContent?.trim(),
+      ),
+    ).toEqual(['Drukuj', 'Zmień ustawienia']);
   });
 
-  it('shows UNKNOWN as a direct non-blocking label row instead of passive missing data', async () => {
+  it('keeps UNKNOWN off the main card and offers the shared non-blocking print dialog', async () => {
     const onSave = vi.fn(async () => undefined);
     await renderCard(preview(true), onSave);
-    const legal = host.querySelector<HTMLElement>('[data-label-field="legal_product_name"]')!;
-    expect(legal).not.toBeNull();
-    expect(
-      legal.querySelector('[data-testid="label-field-confirm-legal_product_name"]'),
-    ).not.toBeNull();
-    const acknowledgement = host.querySelector<HTMLElement>(
-      '[data-label-field="acknowledgement"]',
-    )!;
-    const acknowledgementCheckbox = acknowledgement.querySelector<HTMLInputElement>('input')!;
-    await act(async () => {
-      acknowledgementCheckbox.click();
-    });
-    expect(acknowledgementCheckbox.checked).toBe(true);
-    const confirm = acknowledgement.querySelector<HTMLButtonElement>(
-      '[data-testid="label-field-confirm-acknowledgement"]',
-    )!;
-    await act(async () => {
-      confirm.click();
-      await Promise.resolve();
-    });
-    expect(onSave).toHaveBeenCalledWith(expect.any(Object), 'acknowledgement');
-    expect(host.querySelector('[data-testid="label-field-saved-acknowledgement"]')).not.toBeNull();
-    expect(acknowledgement.querySelector('fieldset')?.hasAttribute('disabled')).toBe(true);
-    expect(
-      acknowledgement.querySelector('[data-testid="label-field-change-acknowledgement"]'),
-    ).not.toBeNull();
-    expect(host.textContent).toContain('Alergeny nieustalone');
+    expect(host.textContent).not.toContain('Alergeny nieustalone');
     expect(host.textContent).not.toContain('Brakuje danych źródłowych produktu o alergenach');
     expect(host.textContent?.toLowerCase()).not.toContain('bez alergenów');
-    expect(host.querySelector('[data-testid="label-allergens-set"]')?.textContent).toBe('Ustaw');
+    expect(host.querySelector('[data-testid="label-allergens-set"]')).toBeNull();
+    await act(async () =>
+      host.querySelector<HTMLButtonElement>('[data-testid="draft-label-print"]')!.click(),
+    );
+    expect(document.querySelector('[data-testid="label-print-missing-dialog"]')).not.toBeNull();
+    expect(
+      document.querySelector<HTMLInputElement>('[data-testid="label-print-missing-allergens"]')
+        ?.value,
+    ).toBe('');
+    expect(document.body.textContent).toContain('Drukuj bez uzupełniania');
+    expect(document.body.textContent).toContain(
+      'Nieuzupełnione informacje nie pojawią się na etykiecie.',
+    );
   });
 });

@@ -205,9 +205,12 @@ describe('required market golden-output cases', () => {
     expect(html).not.toContain('market-specific data required');
   });
 
-  it('keeps every Canada golden externally blocked until the official package is installed', () => {
+  it('keeps every Canada golden printable but informational without an official package asset', () => {
     for (const testCase of cases.filter((candidate) => candidate.market === 'CA')) {
-      expect(buildLabelPreflight(testCase.label).printReadiness, testCase.id).toBe('NOT_READY');
+      expect(buildLabelPreflight(testCase.label).readyForSystemPrint, testCase.id).toBe(true);
+      expect(buildLabelPreflight(testCase.label).printReadiness, testCase.id).toBe(
+        'PRINT_READY_UNIVERSAL',
+      );
       expect(renderMarketLabelHtml(testCase.label)).not.toContain('official-authority-asset');
     }
   });

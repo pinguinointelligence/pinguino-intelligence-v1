@@ -71,7 +71,18 @@ describe('Scanner customer-added product authority', () => {
   });
 
   it('keeps autonomous evidence server-owned instead of relabelling it as customer-confirmed', () => {
-    expect(finalize).toContain('userConfirmedFields: corrections.confirmedEvidenceFields');
+    /*
+      OWNER QA 2026-09-07. The set handed to the profile authority is now the SCAN's confirmed
+      fields, not one request's — the customer's answers are persisted with the session and merged,
+      because the completion form only ever shows what is still missing and a later request
+      legitimately carries fewer. What this contract guards is unchanged: only fields the CUSTOMER
+      confirmed are in it. `applyCustomerCorrections` is still the only thing that puts one there,
+      and server evidence is still never relabelled.
+    */
+    expect(finalize).toContain('userConfirmedFields: confirmedEvidenceFields');
+    expect(finalize).toContain(
+      'mergeConfirmedEvidenceFields(\n    persistedScan.confirmedFields,\n    corrections.confirmedEvidenceFields,\n  )',
+    );
   });
 
   it('records only bounded provider metadata when Vision rejects the request', () => {

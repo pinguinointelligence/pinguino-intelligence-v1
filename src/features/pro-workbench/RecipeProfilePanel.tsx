@@ -601,6 +601,7 @@ function SummaryPanel({
   labelViewRequestKey,
   recipeInput,
   recipeName,
+  onOpenSettings,
 }: {
   production?: ProductionWorkspaceView;
   onOpenProduction: () => void;
@@ -608,6 +609,7 @@ function SummaryPanel({
   labelViewRequestKey?: string;
   recipeInput: RecipeInput;
   recipeName: string | null;
+  onOpenSettings?: (runId: string) => void;
 }) {
   const completed = currentRecipeCompletionSnapshot(production);
   if (completed) {
@@ -623,6 +625,7 @@ function SummaryPanel({
           snapshot={completed}
           initialView={initialLabelView}
           settingsHome="production"
+          onOpenSettings={onOpenSettings}
         />
       </div>
     );
@@ -681,6 +684,8 @@ export function RecipeProfilePanel({
   onRecalculate,
   initialLabelView = 'data',
   labelViewRequestKey,
+  onOpenLabelSettings,
+  labelSettingsRestoreScrollTop,
 }: {
   activeTab: CockpitTab;
   onTabChange: (tab: CockpitTab) => void;
@@ -696,6 +701,8 @@ export function RecipeProfilePanel({
   onRecalculate: () => void;
   initialLabelView?: LabelWorkspaceView;
   labelViewRequestKey?: string;
+  onOpenLabelSettings?: (runId: string, scrollTop: number) => void;
+  labelSettingsRestoreScrollTop?: number;
 }) {
   const [educationOpen, setEducationOpen] = useState(false);
   const tabPanelRef = useRef<HTMLDivElement>(null);
@@ -705,6 +712,10 @@ export function RecipeProfilePanel({
   useEffect(() => {
     if (tabPanelRef.current) tabPanelRef.current.scrollTop = 0;
   }, [activeTab, educationOpen]);
+  useEffect(() => {
+    if (labelSettingsRestoreScrollTop === undefined || !tabPanelRef.current) return;
+    tabPanelRef.current.scrollTop = labelSettingsRestoreScrollTop;
+  }, [labelSettingsRestoreScrollTop]);
   useEffect(() => {
     const openLearning = () => {
       onTabChange('profile');
@@ -809,6 +820,11 @@ export function RecipeProfilePanel({
             labelViewRequestKey={labelViewRequestKey}
             recipeInput={input}
             recipeName={savedRecipeName}
+            onOpenSettings={
+              onOpenLabelSettings
+                ? (runId) => onOpenLabelSettings(runId, tabPanelRef.current?.scrollTop ?? 0)
+                : undefined
+            }
           />
         ) : null}
       </div>

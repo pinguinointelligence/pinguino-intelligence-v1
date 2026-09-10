@@ -159,20 +159,17 @@ export const APP_NAV_ITEMS: readonly AppNavItem[] = [
     audiences: ['home', 'pro'],
     isActive: productsDestination,
   },
-  {
-    /*
-      OWNER DECISION 2026-09-06 — the hamburger entry into the ONE Canonical Scanner. It is a
-      destination (a page), not a contextual action, so it belongs here: from the drawer the
-      customer scans to ADD A PRODUCT, and is never asked whether they want to add one.
-    */
-    id: 'scanProduct',
-    label: s.items.scanProduct,
-    to: '/products/scan',
-    group: 'product',
-    order: 3.5,
-    audiences: ['home', 'pro'],
-    isActive: pathOrNested('/products/scan'),
-  },
+  /*
+    OWNER CORRECTION 2026-09-07 — THE PRODUCT AREA HAS ONE HAMBURGER ENTRY: „Produkty".
+
+    Two more were added on top of it — „Dodaj produkt" (order 3.5) and „Niezweryfikowane"
+    (order 3.6) — and both duplicated the same area from the drawer. „Skanuj produkt" is an ACTION
+    on the products page, and „Niezweryfikowane" is a FILTER of the products list; neither is a
+    destination of its own. Both were removed from the drawer and now live inside `/products`,
+    where the URLs they used (`/products/scan`, `/products?filter=unverified`) still work exactly as
+    before — so „Uzupełnij dane" and any saved link keep working. `appNav.test.ts` holds the
+    contract that the product group is one item.
+  */
   {
     id: 'machine',
     label: s.items.machine,

@@ -1,36 +1,47 @@
 /**
  * HOME INGREDIENT ROW.
  *
- * ── SUPERSEDED BY OWNER — 2026-09-02 ─────────────────────────────────────────────
- * The previous contract (owner-locked 2026-08-31) required EVERY row to carry the
- * final editing control at all times:
+ * ── SUPERSEDED BY OWNER — 2026-08-31 ─────────────────────────────────────────────
+ * The original contract required EVERY row to carry the final editing control at all
+ * times:
  *
  *     ingredient | [ − ] [ grams/value ] [ + ] [ CLOSED lock ] [ ⋯ ]
  *
  * It was implemented and green. Served, six ingredients meant six permanent editors
- * and the recipe read as a control panel, so the owner replaced it. The evidence for
- * the old contract is not deleted — it is recorded here as history.
+ * and the recipe read as a control panel, so the owner replaced it.
+ *
+ * ── SUPERSEDED BY OWNER — 2026-09-06 ─────────────────────────────────────────────
+ * Its replacement summoned the SAME control INTO THE ROW. Served, the owner reported:
+ * „cały wiersz zamienia się w edytor i przesuwa układ". It was also a correctness
+ * defect — the in-row control committed on every keystroke, so „Anuluj" had nothing
+ * left to cancel, and the orange „changed" ring that compared against the opening
+ * value existed only because the store had already been written.
+ *
+ * Neither piece of evidence is deleted; both are recorded here as history.
  * ─────────────────────────────────────────────────────────────────────────────────
  *
- * CURRENT CONTRACT (owner 2026-09-02) — the default row is a readout:
+ * CURRENT CONTRACT (owner 2026-09-06) — the row is ALWAYS a readout:
  *
  *     ingredient | Crown (only where Main is allowed) | 84 g | [ ⋯ ]
  *
- * The steppers and the padlock are summoned by „Zmień ilość" and are the SAME shared
- * PRO `DirectNumberControl`. Nothing about lock, masking, Main or mutation semantics
- * changed — only how long a control stays on screen.
+ * „Zmień ilość" opens a stable overlay dialog holding the SAME shared PRO
+ * `DirectNumberControl` — minus, field, plus, padlock, masking — plus „Gotowe" and
+ * „Anuluj". The value is a DRAFT: nothing reaches the store until it is confirmed, so
+ * cancelling is a genuine no-op. Opening it moves nothing on the page.
+ *
+ * Unchanged across all three: the row is a readout by default, the editor is the
+ * canonical PRO control rather than a HOME lookalike, and each collection commits
+ * through ITS OWN store action (#207).
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const row = readFileSync('src/features/home-creator/ui/HomeRecipeSection.tsx', 'utf8');
 const control = readFileSync('src/features/ingredient-builder/DirectNumberControl.tsx', 'utf8');
+const dialog = readFileSync('src/features/home-creator/ui/HomeChangeAmountDialog.tsx', 'utf8');
 
-/** The default row renders from here down to the editing branch. */
-const defaultRow = row.slice(
-  row.indexOf('if (!editing) {'),
-  row.indexOf('return (\n    <span className="flex shrink-0 items-center gap-2">'),
-);
+/** The row component — now the readout and nothing else. */
+const defaultRow = row.slice(row.indexOf('function HomeRowAmount({'), row.indexOf('/**\n * Crown'));
 
 describe('the default row carries no permanent editor', () => {
   it('renders a plain readout, not a control', () => {
@@ -63,15 +74,38 @@ describe('the default row carries no permanent editor', () => {
 
 describe('the amount editor is the shared PRO control, summoned not resident', () => {
   it('opens only for the line being edited', () => {
-    expect(row).toContain('editing={editingLineId === item.id}');
     expect(row).toContain(
       'const [editingLineId, setEditingLineId] = useState<string | null>(null)',
     );
+    expect(row).toContain('{editingItem ? (');
+    expect(row).toContain('<HomeChangeAmountDialog');
+  });
+
+  it('overlays instead of expanding the row, so the list never shifts', () => {
+    // The defect the owner reported: editing changed the row's own layout.
+    expect(defaultRow).not.toContain('DirectNumberControl');
+    expect(defaultRow).not.toContain('editing');
+    expect(dialog).toContain("className=\"fixed inset-0 z-[95] grid place-items-center");
+  });
+
+  it('holds the value as a draft, so Anuluj is a genuine no-op', () => {
+    expect(dialog).toContain('const [draft, setDraft] = useState(grams);');
+    expect(dialog).toContain('onChange={setDraft}');
+    // The ONLY paths that reach the caller's commit.
+    expect(dialog).toContain('onClick={() => onConfirm(draft)}');
+    expect(dialog).toContain("if (event.key === 'Enter') onConfirm(draft);");
+    expect(dialog).toContain("if (event.key === 'Escape') onCancel();");
+  });
+
+  it('offers the owner-specified affordances and no invented copy', () => {
+    expect(dialog).toContain('homeCreatorCopy.recipe.doneAmount');
+    expect(dialog).toContain('homeCreatorCopy.recipe.askAmountCancel');
+    expect(dialog).toContain('homeCreatorCopy.recipe.changeAmount');
   });
 
   it('reuses DirectNumberControl rather than a HOME lookalike', () => {
-    expect(row).toContain('DirectNumberControl');
-    expect(row).toContain("from '@/features/ingredient-builder/DirectNumberControl'");
+    expect(dialog).toContain('DirectNumberControl');
+    expect(dialog).toContain("from '@/features/ingredient-builder/DirectNumberControl'");
   });
 
   it('routes every mutation through canonical store authority', () => {
@@ -80,21 +114,20 @@ describe('the amount editor is the shared PRO control, summoned not resident', (
        control called `setPlannedGrams` for both — which looks the line up in
        `state.items` and returns early when it is not there, so every topping edit was
        silently dropped. The row now names its own authority. */
-    expect(row).toContain('onChange={commit}');
     expect(row).toContain('setPlannedGrams(item.id, next)');
     expect(row).toContain('setToppingGrams(topping.id, next)');
-    expect(row).toContain('setLockType(lineId,');
+    expect(row).toContain('setLockType(item.id,');
   });
 
   it('keeps the padlock and the masking props on the summoned control', () => {
-    expect(row).toContain('lockSegment={{');
-    expect(row).toContain('maskedValue: homeCreatorCopy.recipe.maskedGramsValue');
-    expect(row).toContain('onMaskedInteract: onBlocked');
+    expect(dialog).toContain('lockSegment: {');
+    expect(dialog).toContain('maskedValue: homeCreatorCopy.recipe.maskedGramsValue');
+    expect(dialog).toContain('onMaskedInteract: onBlocked');
   });
 
-  it('uses the canonical orange for the changed state and invents no new style', () => {
-    expect(row).toContain("boxShadow: '0 0 0 2px var(--g-orange)'");
-    expect(row).not.toContain('#f58a07');
+  it('omits the padlock for a topping, which has no lock to offer', () => {
+    expect(dialog).toContain('{...(onToggleLock');
+    expect(row).toContain('onToggleLock: undefined,');
   });
 
   it('adds no HOME-specific arithmetic', () => {

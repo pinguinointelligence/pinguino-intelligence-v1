@@ -1,11 +1,13 @@
+import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { ConsumerLabelPreview } from './ConsumerLabelPreview';
 import type { DraftLabelPreview } from './draftLabelPreview';
-import { CompactRunLabelEditor } from './LabelWorkspace';
 import type { MasterLabelData } from './masterLabel';
 import { printMasterLabel } from './masterLabelPrint';
-import { AllergenStatementControl } from './AllergenStatementControl';
+import { PrintMissingDataDialog } from './PrintMissingDataDialog';
+import { printMissingFields } from './printMissingData';
+import { buildLabelPreflight } from './masterLabel';
 
 /** Preview, actionable blockers and the only two bottom actions for a recipe draft. */
 export function DraftLabelCard({
@@ -19,6 +21,30 @@ export function DraftLabelCard({
   onSave: (label: MasterLabelData, confirmedField?: string) => void;
   onOpenSettings: () => void;
 }) {
+  const [printMissingOpen, setPrintMissingOpen] = useState(false);
+  const [printError, setPrintError] = useState<string | null>(null);
+  const performPrint = async (label: MasterLabelData) => {
+    setPrintError(null);
+    try {
+      await printMasterLabel(label, logoUrl);
+    } catch (caught) {
+      setPrintError(
+        caught instanceof Error ? caught.message : 'Nie udało się przygotować wydruku.',
+      );
+    }
+  };
+  const requestPrint = () => {
+    const geometry = buildLabelPreflight(draft.label).geometry;
+    if (!geometry.fits) {
+      setPrintError(`${geometry.reason}. Zmień rozmiar w ustawieniach.`);
+      return;
+    }
+    if (printMissingFields(draft.label).length > 0) {
+      setPrintMissingOpen(true);
+      return;
+    }
+    void performPrint(draft.label);
+  };
   return (
     <div className="space-y-3" data-testid="draft-label-card">
       <Card padding="none" className="overflow-hidden rounded-[22px] border-ink/10 p-4 sm:p-5">
@@ -37,31 +63,7 @@ export function DraftLabelCard({
           </div>
         </header>
         <ConsumerLabelPreview label={draft.label} logoUrl={logoUrl} />
-        <div className="mt-4">
-          <AllergenStatementControl
-            label={draft.label}
-            onSave={async (label) => onSave(label, 'allergens')}
-          />
-        </div>
-        <dl className="mt-4 grid grid-cols-2 gap-2 rounded-[14px] bg-stone-50 p-3 text-xs">
-          <div>
-            <dt className="text-stone-500">Baza techniczna</dt>
-            <dd className="mt-0.5 font-semibold tabular-nums text-ink">{draft.baseBatchG} g</dd>
-          </div>
-          <div>
-            <dt className="text-stone-500">Produkt finalny</dt>
-            <dd className="mt-0.5 font-semibold tabular-nums text-ink">{draft.finalProductG} g</dd>
-          </div>
-        </dl>
       </Card>
-
-      {draft.blockers.length > 0 || draft.confirmedFields.some((field) => field !== 'allergens') ? (
-        <CompactRunLabelEditor
-          label={draft.label}
-          initialConfirmedFields={draft.confirmedFields.filter((field) => field !== 'allergens')}
-          onSave={async (label, confirmedField) => onSave(label, confirmedField)}
-        />
-      ) : null}
 
       <div
         className="sticky bottom-0 z-10 grid grid-cols-1 gap-2 border-t border-ink/10 bg-white/95 py-3 backdrop-blur sm:grid-cols-[minmax(0,1fr)_auto]"
@@ -69,11 +71,10 @@ export function DraftLabelCard({
       >
         <Button
           className="min-h-12 w-full rounded-full"
-          disabled={!draft.readyForPrint}
-          onClick={() => printMasterLabel(draft.label, logoUrl)}
+          onClick={requestPrint}
           data-testid="draft-label-print"
         >
-          Drukuj finalną etykietę
+          Drukuj
         </Button>
         <Button
           variant="ghost"
@@ -81,17 +82,30 @@ export function DraftLabelCard({
           onClick={onOpenSettings}
           data-testid="draft-label-change"
         >
-          ZMIEŃ
+          Zmień ustawienia
         </Button>
-        {!draft.readyForPrint && draft.blockers[0] ? (
-          <p
-            className="px-2 text-center text-xs text-stone-600 sm:col-span-2"
-            data-testid="draft-label-blocker"
-          >
-            {draft.blockers[0].message}
-          </p>
-        ) : null}
       </div>
+      {printError ? (
+        <p className="text-sm text-status-error" role="alert">
+          {printError}
+        </p>
+      ) : null}
+      {printMissingOpen ? (
+        <PrintMissingDataDialog
+          label={draft.label}
+          busy={false}
+          onClose={() => setPrintMissingOpen(false)}
+          onSkip={async () => {
+            setPrintMissingOpen(false);
+            await performPrint(draft.label);
+          }}
+          onApply={async (label) => {
+            setPrintMissingOpen(false);
+            if (label !== draft.label) onSave(label, 'print_missing');
+            await performPrint(label);
+          }}
+        />
+      ) : null}
     </div>
   );
 }

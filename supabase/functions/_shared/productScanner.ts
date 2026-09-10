@@ -1,4 +1,8 @@
 import type { SourceAuthorityClass } from '../../../src/features/product-intelligence/sourceAuthority.ts';
+import {
+  isEanConfirmationMethod,
+  type EanConfirmationMethod,
+} from '../../../src/features/product-intelligence/pageEanConfirmation.ts';
 import type { ProductSemanticEvidence } from '../../../src/features/product-intelligence/productRecognition.ts';
 
 export const PRODUCT_SCAN_SCHEMA_VERSION = 'gellatti_product_scan_v1';
@@ -1197,7 +1201,34 @@ export function scanResultFromLookupFacts(
   const packageValue: Record<string, unknown> = {};
   const bySource = new Map<
     string,
-    { sourceType: string; url: string | null; title: string | null; fieldsUsed: string[] }
+    {
+      sourceType: string;
+      url: string | null;
+      title: string | null;
+      fieldsUsed: string[];
+      /*
+        The server's own verdict on the source, from classifySourceAuthority in
+        intimport-enrich. It used to be read one line below, collapsed into the coarse
+        `sourceType`, and dropped. The accuracy scorer then refused every web-sourced field for
+        lacking exactly this proof: AUTHORITATIVE_RETAILER became the string 'retailer' and was
+        rejected because nothing could show it had been authoritative. Carrying it costs nothing
+        and never promotes a web fact to label rank -- these rows stay out of `evidence`, so a
+        photographed label still outranks any page.
+      */
+      sourceAuthorityClass: string | null;
+      /** The barcode printed on that page, as the page stated it. Judged by the server, not here. */
+      sourceStatedEan: string | null;
+      /*
+        HOW that barcode was established: `json_ld` / `microdata` / `page_text` / `url` mean the
+        SERVER opened the page and read it, `model_reported` means only the research model said so.
+        Without this the two are indistinguishable downstream, which is precisely the confusion the
+        server-side confirmation exists to end — the model returned the printed code on ONE of the
+        owner's eight external sources on 2026-09-07.
+      */
+      sourceEanConfirmationMethod: EanConfirmationMethod | null;
+      /** When that confirmation was established. */
+      sourceEanConfirmedAt: string | null;
+    }
   >();
   let ingredientsText: string | null = null;
   let allergensText: string | null = null;
@@ -1219,6 +1250,20 @@ export function scanResultFromLookupFacts(
         url: url && /^https:\/\//i.test(url) ? url : null,
         title: typeof fact.sourceTitle === 'string' ? fact.sourceTitle : null,
         fieldsUsed: [field],
+        sourceAuthorityClass: authority.length > 0 ? authority : null,
+        sourceStatedEan:
+          typeof fact.sourceStatedEan === 'string' && fact.sourceStatedEan.trim() !== ''
+            ? fact.sourceStatedEan.replace(/\D/g, '')
+            : null,
+        // Only a method the server can actually issue survives; anything else is dropped rather
+        // than carried as an unrecognized string that a later reader might treat as proof.
+        sourceEanConfirmationMethod: isEanConfirmationMethod(fact.sourceEanConfirmationMethod)
+          ? fact.sourceEanConfirmationMethod
+          : null,
+        sourceEanConfirmedAt:
+          typeof fact.sourceEanConfirmedAt === 'string' && fact.sourceEanConfirmedAt.trim() !== ''
+            ? fact.sourceEanConfirmedAt
+            : null,
       });
   };
 

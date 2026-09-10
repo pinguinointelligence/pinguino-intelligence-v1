@@ -98,10 +98,18 @@ export {
 } from './sorbetStabilizerSystemAuthority';
 
 export { planSorbetStabilizerSystemRescale } from './sorbetStabilizerRescaleProjection';
+export { planOwnerStabilizerSystemRescale } from './ownerStabilizerRescaleProjection';
 
 export {
+  PROTEIN_STABILIZER_SYSTEM_AUTHORITY,
+  VEGAN_STABILIZER_SYSTEM_AUTHORITY,
   assessOwnerStabilizerSystem,
   clampOwnerStabilizerComponentGrams,
   ownerStabilizerSystemApplies,
   ownerStabilizerSystemItems,
+  stabilizerSystemAuthorityFor,
+  type OwnerStabilizerSystemAssessment,
+  type OwnerStabilizerWholeGramBand,
+  type StabilizerEngineRole,
+  type StabilizerSystemAuthorityContract,
 } from './ownerStabilizerSystemAuthority';

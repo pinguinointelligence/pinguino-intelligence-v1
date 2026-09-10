@@ -37,6 +37,20 @@ const FINAL_LABEL_SQL = readFileSync(
   ),
   'utf8',
 );
+const NONBLOCKING_LABEL_SQL = readFileSync(
+  resolve(
+    import.meta.dirname,
+    '../../../supabase/migrations/20260906192729_nonblocking_label_print_snapshots.sql',
+  ),
+  'utf8',
+);
+const INFORMATIONAL_LABEL_SQL = readFileSync(
+  resolve(
+    import.meta.dirname,
+    '../../../supabase/migrations/20260907003704_allow_informational_label_snapshots.sql',
+  ),
+  'utf8',
+);
 
 describe('Production / Label closeout migration', () => {
   it('extends the one append-only Production history with every required event', () => {
@@ -161,5 +175,54 @@ describe('Production / Label closeout migration', () => {
       'Label ingredients must come from the completed ACTUAL batch',
     );
     expect(FINAL_LABEL_SQL).not.toContain('mapper_basement');
+  });
+});
+
+describe('Owner non-blocking Label snapshot migration', () => {
+  it('supersedes the content-gated RPC without weakening run or account authority', () => {
+    expect(NONBLOCKING_LABEL_SQL).toContain('production_save_label_snapshot_v3');
+    expect(NONBLOCKING_LABEL_SQL).toContain('assert_production_pro_entitlement_v1');
+    expect(NONBLOCKING_LABEL_SQL).toContain('owned completed Production snapshot required');
+    expect(NONBLOCKING_LABEL_SQL).toContain(
+      'Label ingredients must come from the completed ACTUAL batch',
+    );
+    expect(NONBLOCKING_LABEL_SQL).toContain("'sha256'");
+    expect(NONBLOCKING_LABEL_SQL).toContain(
+      'revoke execute on function public.production_save_label_snapshot_v2',
+    );
+    expect(NONBLOCKING_LABEL_SQL).toContain('from public, anon, authenticated, service_role');
+    expect(NONBLOCKING_LABEL_SQL).toContain('to authenticated');
+  });
+
+  it('does not revive package, FOP or missing-content print gates', () => {
+    expect(NONBLOCKING_LABEL_SQL).not.toContain('batch mass is not package fill');
+    expect(NONBLOCKING_LABEL_SQL).not.toContain(
+      'Canadian ice cream/frozen dessert package quantity must be confirmed by volume',
+    );
+    expect(NONBLOCKING_LABEL_SQL).not.toContain(
+      'Complete Canadian FOP assessment data is required',
+    );
+    expect(NONBLOCKING_LABEL_SQL).not.toContain(
+      'Official Health Canada FOP asset package authority is required',
+    );
+    expect(NONBLOCKING_LABEL_SQL).toContain(
+      "coalesce(p_master_label->'packageQuantity', 'null'::jsonb)",
+    );
+  });
+});
+
+describe('Owner informational snapshot readiness migration', () => {
+  it('allows an informational snapshot for every market but never labels it regulatory-ready', () => {
+    expect(INFORMATIONAL_LABEL_SQL).toContain(
+      "v_market not in ('EU','UK','US','CA','AU_NZ','WORLD')",
+    );
+    expect(INFORMATIONAL_LABEL_SQL).toContain("v_readiness = 'PRINT_READY_REGULATORY'");
+    expect(INFORMATIONAL_LABEL_SQL).toContain("v_purpose <> 'retail_consumer'");
+    expect(INFORMATIONAL_LABEL_SQL).toContain("v_readiness = 'PRINT_READY_UNIVERSAL'");
+    expect(INFORMATIONAL_LABEL_SQL).toContain("v_purpose = 'retail_consumer'");
+    expect(INFORMATIONAL_LABEL_SQL).toContain(
+      'Label ingredients must come from the completed ACTUAL batch',
+    );
+    expect(INFORMATIONAL_LABEL_SQL).toContain('assert_production_pro_entitlement_v1');
   });
 });

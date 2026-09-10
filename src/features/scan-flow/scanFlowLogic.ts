@@ -218,6 +218,16 @@ const STATE_TEXT: Record<ScanState, string> = {
   COMPLETE: 'Odczytano',
   LOST: 'Zgubiłem kod — pokaż go ponownie',
 };
+/*
+  SOL-045. Every hint used to be phrased as an instruction to move the CAMERA — „Przesuń telefon w
+  lewo", „Unieś telefon wyżej". On a phone that is right: the hand holding the camera is the hand
+  that moves. On a computer the camera is bolted to the lid and the customer moves the PRODUCT, so
+  the very same sentence reads backwards — which is the „góra jak dół" half of what the owner
+  reported. Nothing in the image is inverted vertically; the instruction was.
+
+  So there are two voices for one set of hints, chosen by form factor. The DIRECTION is identical in
+  both: only the noun and the verb change.
+*/
 const GUIDANCE_TEXT: Record<Exclude<ScanGuidance, 'none'>, string> = {
   hold_steady: 'Trzymaj telefon nieruchomo',
   move_closer: 'Przybliż telefon do kodu',
@@ -226,11 +236,25 @@ const GUIDANCE_TEXT: Record<Exclude<ScanGuidance, 'none'>, string> = {
   improve_light: 'Potrzeba więcej światła',
   camera_inadequate: 'Ten aparat nie odczyta tego kodu — wpisz kod ręcznie',
 };
+const GUIDANCE_TEXT_FIXED_CAMERA: Record<Exclude<ScanGuidance, 'none'>, string> = {
+  hold_steady: 'Trzymaj produkt nieruchomo',
+  move_closer: 'Przysuń produkt bliżej kamery',
+  move_away: 'Odsuń produkt od kamery',
+  aim_in_frame: 'Ustaw kod w ramce',
+  improve_light: 'Potrzeba więcej światła',
+  camera_inadequate: 'Ta kamera nie odczyta tego kodu — wpisz kod ręcznie',
+};
 const POSITION_TEXT: Record<NonNullable<PositionHint>, string> = {
   left: 'Przesuń telefon w lewo',
   right: 'Przesuń telefon w prawo',
   up: 'Unieś telefon wyżej',
   down: 'Opuść telefon niżej',
+};
+const POSITION_TEXT_FIXED_CAMERA: Record<NonNullable<PositionHint>, string> = {
+  left: 'Przesuń produkt w lewo',
+  right: 'Przesuń produkt w prawo',
+  up: 'Przesuń produkt wyżej',
+  down: 'Przesuń produkt niżej',
 };
 
 /** where the code sits in the frame → which way to move the phone to centre it */
@@ -255,13 +279,19 @@ export function scanFeedbackText(frame: {
   guidance: ScanGuidance;
   timedOut: boolean;
   position: PositionHint;
+  /** true when the camera cannot move — a laptop or desktop webcam, where the PRODUCT moves */
+  fixedCamera?: boolean;
 }): string {
+  const guidanceText = frame.fixedCamera ? GUIDANCE_TEXT_FIXED_CAMERA : GUIDANCE_TEXT;
+  const positionText = frame.fixedCamera ? POSITION_TEXT_FIXED_CAMERA : POSITION_TEXT;
   if (frame.state === 'COMPLETE') return STATE_TEXT.COMPLETE;
   if (frame.timedOut) return 'Nie udało się potwierdzić kodu — spróbuj bliżej albo pod innym kątem';
   if (frame.guidance !== 'none' && frame.guidance !== 'hold_steady')
-    return GUIDANCE_TEXT[frame.guidance];
-  if (frame.position && frame.state !== 'HOLD') return POSITION_TEXT[frame.position];
-  if (frame.guidance === 'hold_steady') return GUIDANCE_TEXT.hold_steady;
+    return guidanceText[frame.guidance];
+  if (frame.position && frame.state !== 'HOLD') return positionText[frame.position];
+  if (frame.guidance === 'hold_steady') return guidanceText.hold_steady;
+  // SOL-045: with no candidate at all the customer gets a neutral instruction, not a bare state
+  if (frame.fixedCamera && frame.state === 'SEARCHING') return 'Umieść kod w ramce';
   return STATE_TEXT[frame.state];
 }
 
@@ -345,4 +375,70 @@ export function takeGuestCode(): string | null {
   } catch {
     return null;
   }
+}
+
+/*
+  WHAT THE PHOTOGRAPH IS ACTUALLY FOR.
+
+  The label screen used to say the same sentence whatever was missing: "Zrób zdjęcie składu i
+  tabeli wartości odżywczych". The owner scanned a Queso fresco whose only outstanding field was
+  the BRAND — everything else had been read — and was told to photograph the ingredients and the
+  nutrition table. Asking for data the app already holds is how a customer concludes the scanner
+  did not work.
+
+  This turns the same `missingCritical` the form already uses into the sentence, so the request
+  matches the gap. It never invents a field: with nothing named it falls back to the general ask.
+*/
+export function labelPhotoRequest(missingCritical: readonly string[]): string {
+  const codes = missingCritical.map((c) => c.toLowerCase());
+  const wants = {
+    ingredients: codes.some((c) => /ingredients/.test(c)),
+    nutrition: codes.some((c) => /^nutrition[._-]/.test(c)),
+    allergens: codes.some((c) => /allergen/.test(c)),
+    // `evidence_identity.brand` carries the word "identity" and is NOT a name gap, so the name
+    // patterns are anchored to the name itself rather than to the container they sit in.
+    identity: codes.some((c) => /product_identity|display_?name|(^|[._-])name$/.test(c)),
+    brand: codes.some((c) => /brand/.test(c)),
+  };
+  const parts: string[] = [];
+  if (wants.ingredients) parts.push('składu');
+  if (wants.nutrition) parts.push('tabeli wartości odżywczych');
+  if (wants.allergens) parts.push('oznaczenia alergenów');
+  if (parts.length === 0 && (wants.identity || wants.brand)) {
+    // The front of the pack carries the name and the maker; the ingredient panel does not.
+    return wants.identity && wants.brand
+      ? 'Brakuje nazwy produktu i marki. Zrób zdjęcie przodu opakowania.'
+      : wants.identity
+        ? 'Brakuje nazwy produktu. Zrób zdjęcie przodu opakowania.'
+        : 'Brakuje marki. Zrób zdjęcie przodu opakowania.';
+  }
+  if (parts.length === 0)
+    return 'Brakuje jeszcze danych z etykiety. Zrób zdjęcie składu i tabeli wartości odżywczych.';
+  const list =
+    parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(', ')} i ${parts[parts.length - 1]}`;
+  return `Brakuje ${list}. Zrób zdjęcie tej części etykiety.`;
+}
+
+/*
+  WHAT THE CUSTOMER IS TOLD THEY JUST SAVED.
+
+  The saved screen said "Zapisano jako Twój produkt (prywatny, widoczny tylko na Twoim koncie)"
+  for every outcome. That sentence was false for the common one. A scan that reaches the PR route
+  writes a SHARED registry row — `product_kind: commercial_product`, `visibility: shared`,
+  `owner_user_id: null` — and the customer was told it was visible to nobody but them. Owner scan
+  of 2026-09-07 21:16 produced exactly that: PR-ING-007196, shared, and the private sentence.
+
+  The article code is NOT the signal to read. On the live catalogue 15 `PM-` products are
+  `commercial_product` / `shared` and only ONE is `account_private`, so keying the promise on the
+  prefix would restate the same lie with extra steps. `entityKind` is what actually distinguishes
+  them: `customer_provisional` is the customer's own private row, and nothing else is.
+*/
+export function savedProductNotice(product: {
+  entityKind?: string | null;
+  productCode?: string | null;
+}): string {
+  if (product.entityKind === 'customer_provisional') {
+    return 'Zapisano jako Twój produkt (prywatny, widoczny tylko na Twoim koncie).';
+  }
+  return 'Zapisano w katalogu produktów. Twoje ceny, dostawcy, notatki i stan magazynowy pozostają prywatne.';
 }

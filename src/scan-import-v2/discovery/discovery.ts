@@ -19,6 +19,7 @@ import type {
   DiscoverySession,
   DiscoveryStage,
   FactLedger,
+  FinalRoute,
   FinalizeInput,
   LabelImage,
 } from './contracts';
@@ -40,6 +41,12 @@ export type DiscoveryResult = Extract<
 export type DiscoveryAction =
   | { type: 'label'; images: readonly LabelImage[] }
   | { type: 'finalize'; input: FinalizeInput }
+  /**
+   * OWNER CONTRACT 2026-09-07 — the customer has SEEN the completion form and chose to save
+   * anyway (or to finish later). The product is persisted as PM UNVERIFIED rather than thrown
+   * away. Nothing takes this path on its own: an unverified product is never auto-saved.
+   */
+  | { type: 'finalize_unverified'; input: FinalizeInput }
   | { type: 'request' };
 
 function pending(
@@ -83,22 +90,28 @@ export function discoveredExact(
     productCode: string | null;
     engineUsable: boolean;
     existing: boolean;
+    route: FinalRoute;
   },
   sessionId: string,
 ): Extract<ScanImportV2Result, { kind: 'discovered_exact' }> {
+  const canonical = created.route === 'PR';
   const product: ExactCandidate = {
     productId: created.productId,
     productCode: created.productCode,
     displayName: ledger.identity.name ?? identity.value,
     brand: ledger.identity.brand,
     ean: identity.canonicalGtin13,
-    strength: 'provisional_linked',
-    entityKind: 'customer_provisional',
+    strength: canonical ? 'canonical_shared' : 'provisional_linked',
+    entityKind: canonical ? 'commercial_product' : 'customer_provisional',
     engineReady: created.engineUsable,
     mapperSlotId: null,
     country: null,
     currentVersionId: null,
-    evidence: { createdThroughFinalize: true, existing: created.existing },
+    evidence: {
+      createdThroughFinalize: true,
+      existing: created.existing,
+      finalRoute: created.route,
+    },
   };
   const stage: DiscoveryStage = created.engineUsable
     ? 'engine_ready'
@@ -116,7 +129,7 @@ export function discoveredExact(
     behaviour: created.engineUsable
       ? { outcome: 'classified', bindingId: null }
       : { outcome: 'unknown_requires_review', bindingId: null },
-    canonical: false,
+    canonical,
     readiness: {
       engineReady: created.engineUsable,
       missingCritical: ledger.missingCritical,
@@ -163,8 +176,15 @@ export async function startDiscovery(
       importSkipped: null,
       needsConfirmation: false,
     } as DiscoveryResult;
-  if (r.kind === 'skipped') return pending(r.session, null, `research skipped: ${r.reason}`);
-  return pending(r.session, r.evidenceError);
+  /*
+    The note the customer reads about the external sources. It is the SERVER's sentence or
+    nothing: `r.reason` and `r.evidenceError` are internal tokens, and composing a note out of
+    them is what produced „research skipped: session_lookup_already_used" on a phone — a string
+    the customer-copy gate could only replace with a generic sentence, so a lookup with a
+    specific outcome explained nothing (owner defect 2026-09-07, EAN 8480000804693).
+  */
+  if (r.kind === 'skipped') return pending(r.session, null, r.notice ?? null);
+  return pending(r.session, r.evidenceError, r.notice ?? null);
 }
 
 export async function continueDiscovery(
@@ -225,7 +245,7 @@ export async function continueDiscovery(
       engineReady: false,
     };
   }
-  const f = await port.finalize(session, action.input, ctx);
+  const f = await port.finalize(session, action.input, ctx, action.type === 'finalize_unverified');
   switch (f.kind) {
     case 'created':
       return discoveredExact(session.identity, ledger, f, session.sessionId);
@@ -241,17 +261,38 @@ export async function continueDiscovery(
         options: f.options,
       };
     case 'not_ready':
+      /*
+        OWNER QA 2026-09-07. `note` used to be `not ready: ${f.reasons.join(', ')}` and `reasons`
+        holds the authority's own vocabulary, so a phone screen read
+        „not ready: INGREDIENTS_EVIDENCE_REQUIRED, PRODUCT_SEMANTICS_UNRESOLVED, roleReadiness:REVIEW,
+        recognition:NORMAL_INGREDIENT/BASE_ONLY". The refusal is unchanged and every code is still
+        carried — in `diagnostics`, which no customer renderer reads. What is missing is said in
+        plain Polish from `missingCritical`, by the screen that asks for it.
+      */
       return {
         ...pending({ ...session, missingCritical: f.missingCritical }),
-        note: `not ready: ${f.reasons.join(', ')}`,
+        note: null,
+        diagnostics: f.reasons,
+        assessmentHash: f.assessmentHash ?? null,
+      };
+    case 'assessment_stale':
+      return {
+        ...pending(session),
+        note: 'Dane produktu zmieniły się w trakcie zapisu. Spróbuj jeszcze raz.',
+        diagnostics: ['scan_assessment_stale'],
       };
     case 'profile_rejected':
-      return { ...pending(session), note: `profile rejected by the authority: ${f.reason}` };
+      return {
+        ...pending(session),
+        note: null,
+        diagnostics: ['profile_rejected', f.reason],
+      };
     case 'identity_required':
       return {
         ...pending(session),
         next: 'label_photo',
-        note: 'identity required: no trustworthy name/brand yet',
+        note: null,
+        diagnostics: ['identity_required'],
       };
   }
 }

@@ -36,6 +36,7 @@ import {
   type ScanImportV2Result,
 } from '@/scan-import-v2';
 import { createScanImportV2AppPorts, getScanImportV2AccountId } from '@/services/scanImportV2';
+import { customerSafeNotice } from '@/copy/customerSafeNotice';
 import {
   describeCaptureError,
   ScanCoreCapture,
@@ -49,7 +50,9 @@ import {
   manualConfirmedScan,
   rememberGuestCode,
   takeGuestCode,
+  labelPhotoRequest,
   plainFieldsFor,
+  savedProductNotice,
   positionHint,
   prefillFromIdentity,
   scanFeedbackText,
@@ -97,6 +100,8 @@ export interface ScanFlowProps {
   /** a guest chose a plan from the offer screen */
   onChoosePlan?: (plan: 'home' | 'pro') => void;
   resolveLabel?: string;
+  /** a saved code the customer chose to finish, from Produkty -> Niezweryfikowane */
+  initialCode?: string | null;
   intro?: string;
 }
 
@@ -152,6 +157,20 @@ const btnSecondary = `${btn} border border-ink/15 bg-white text-ink`;
 const input =
   'pro-focus-ring min-h-11 w-full rounded-xl border border-ink/15 bg-white px-3 text-sm text-ink';
 
+/**
+ * MANDATORY at every customer-facing render of a pipeline sentence — not an opt-in prop.
+ *
+ * OWNER QA 2026-09-07. The scanner printed the authority's refusal verbatim on a phone:
+ * „not ready: INGREDIENTS_EVIDENCE_REQUIRED, PRODUCT_SEMANTICS_UNRESOLVED, roleReadiness:REVIEW,
+ * recognition:NORMAL_INGREDIENT/BASE_ONLY". The sentence is composed upstream now, but the denylist
+ * stays applied HERE as well: a note is a string from the pipeline, and the next one nobody has
+ * written yet must be calm by default rather than leak until someone notices.
+ */
+const CALM_SCAN_NOTICE =
+  'Brakuje jeszcze danych z etykiety. Dodaj zdjęcie składu i tabeli wartości odżywczych albo wpisz dane ręcznie.';
+const safeNote = (note: string | null | undefined): string | null =>
+  customerSafeNotice(note, CALM_SCAN_NOTICE);
+
 function isExternalEvidence(v: unknown): v is ExternalEvidence {
   return Boolean(v) && typeof v === 'object' && Array.isArray((v as { facts?: unknown }).facts);
 }
@@ -200,6 +219,7 @@ export function ScanFlow({
   onReturn,
   onChoosePlan,
   resolveLabel,
+  initialCode,
   intro,
 }: ScanFlowProps) {
   const entry = entryContextOf(mode, entryContext);
@@ -215,6 +235,20 @@ export function ScanFlow({
   /** the customer answered "Tak" for THIS scan: the question is asked once, never again mid-scan */
   const addConfirmedRef = useRef(false);
   const labelTriedRef = useRef(false);
+  /*
+    ONE VERDICT PER SCAN. The server returns the hash of the assessment behind every screen; a save
+    sends it back so it can only persist the verdict the customer actually saw. It is sent ONLY when
+    nothing has been typed since — new answers legitimately produce a new assessment, and holding a
+    stale hash over them would refuse the customer's own work.
+  */
+  const assessmentHashRef = useRef<string | null>(null);
+  const assessmentValuesRef = useRef<Record<string, string | boolean>>({});
+  const valuesRef = useRef<Record<string, string | boolean>>({});
+  valuesRef.current = values;
+  const bindingAssessmentHash = () =>
+    assessmentHashRef.current !== null && assessmentValuesRef.current === valuesRef.current
+      ? assessmentHashRef.current
+      : null;
   const cache = useMemo(
     () =>
       createOfflineCache({
@@ -299,6 +333,16 @@ export function ScanFlow({
         case 'discovered_pending': {
           const next = seedSession(r.sessionId, r.identity, r.ledger.missingCritical);
           const noteText = r.note ?? null;
+          /*
+            The authority's own codes arrive in `diagnostics` and are never rendered. What the flow
+            still needs from them is one bit — "is the identity itself missing" — which used to be
+            read out of the customer sentence with /identity/. Reading a rendered sentence for
+            control flow is what tied the two together in the first place.
+          */
+          const diagnostics = r.diagnostics ?? [];
+          // the verdict the customer is being shown; a save may persist only this one
+          assessmentHashRef.current = r.assessmentHash ?? null;
+          assessmentValuesRef.current = valuesRef.current;
           const afterFinalize = session !== undefined;
           if (!afterFinalize) {
             // A guest may FIND a product, never create one: no OCR, no enrichment, no Rescue, no
@@ -327,7 +371,7 @@ export function ScanFlow({
             // the authority answered: plain facts it still needs, the label it still needs, or only
             // technical readiness the customer cannot supply — then the product is reported, not looped
             const fields = plainFieldsFor(r.ledger.missingCritical, {
-              needIdentity: /identity/.test(noteText ?? ''),
+              needIdentity: diagnostics.some((code) => /identity/i.test(code)),
             });
             if (fields.length > 0) setPhase({ kind: 'fields', session: next, fields, note: null });
             else if (!labelTriedRef.current)
@@ -391,10 +435,24 @@ export function ScanFlow({
     input: FinalizeInput,
     ctx: RequestContext,
     code: string,
+    /**
+     * The customer has seen what is missing and chose to save anyway / finish later. The product is
+     * then kept as PM UNVERIFIED instead of being discarded. Never set on its own path.
+     */
+    unverified = false,
   ) {
     const port = ports?.discovery;
     if (!port) return fail('Backend nie jest skonfigurowany.');
-    const r = await continueDiscovery(session, { type: 'finalize', input }, ctx, port);
+    const r = await continueDiscovery(
+      session,
+      {
+        type: unverified ? 'finalize_unverified' : 'finalize',
+        // binding only while the customer has typed nothing since the assessment was shown
+        input: { ...input, expectedAssessmentHash: bindingAssessmentHash() },
+      },
+      ctx,
+      port,
+    );
     await handleResult(r, code, ctx, session);
   }
 
@@ -500,8 +558,25 @@ export function ScanFlow({
     window.location.assign(plan === 'pro' ? '/subscription?plan=pro' : '/subscription?plan=home');
   };
 
+  /*
+    SOL-045. On a computer the browser delivers the USER-facing camera (there is no environment one),
+    and an un-mirrored front camera is the view another person has of you: the product moves the
+    wrong way. The PREVIEW is mirrored so movement reads naturally — left is left, up is up. The
+    DECODER is never mirrored: it reads the raw frame, and a mirrored barcode would not decode.
+  */
+  const [mirrorPreview, setMirrorPreview] = useState(false);
+
   const [resumedCode, setResumedCode] = useState<string | null>(null);
   useEffect(() => {
+    // A code handed in by the Niezweryfikowane list is resolved straight away: the customer has
+    // already chosen this product, so there is nothing to offer them a second time.
+    if (initialCode) {
+      const chosen = manualConfirmedScan(initialCode);
+      if (chosen) {
+        void resolveRef.current(chosen);
+        return;
+      }
+    }
     if (entry === 'guest_demo') return;
     // `takeGuestCode` CONSUMES the stored code, so reading it is a side effect and belongs in an
     // effect — not in a render-phase initializer, which StrictMode may invoke twice and swallow the
@@ -537,6 +612,7 @@ export function ScanFlow({
       onStatus: (status) =>
         setPhase((p) => (p.kind === 'camera' && status !== 'stopped' ? { ...p, status } : p)),
       onFrame: (f) => setFrame(f),
+      onMirror: (m) => setMirrorPreview(m),
       onError: () =>
         setPhase((p) =>
           p.kind === 'camera'
@@ -641,6 +717,24 @@ export function ScanFlow({
       );
     });
 
+  /**
+   * OWNER CONTRACT 2026-09-07 — the customer saw what is missing and chose to save anyway. Whatever
+   * the pipeline did find is kept as a private, UNVERIFIED product instead of being discarded, and
+   * it appears under Produkty → Niezweryfikowane where they can finish it later. This is the only
+   * path that persists an unverified product: nothing does it automatically.
+   */
+  const saveUnverified = (session: DiscoverySession) =>
+    withBusy(async () => {
+      const ctx = contextFor(await getScanImportV2AccountId());
+      await finalize(
+        session,
+        { customerFamily: family, confirmations: confirmationsFromFields(values) },
+        ctx,
+        codeRef.current ?? '',
+        true,
+      );
+    });
+
   /** no usable photograph: ask the authority now and let the customer type what is missing */
   const enterManually = (session: DiscoverySession) =>
     withBusy(async () => {
@@ -717,6 +811,8 @@ export function ScanFlow({
                 guidance: frame.guidance,
                 timedOut: frame.timedOut,
                 position,
+                // a camera the customer cannot pick up: the PRODUCT is what moves
+                fixedCamera: mirrorPreview,
               })
             : STATUS_TEXT[phase.status]
       : '';
@@ -757,13 +853,22 @@ export function ScanFlow({
             {intro ?? 'Pokaż kod kreskowy produktu aparatowi.'}
           </p>
           <div
-            className="relative overflow-hidden rounded-2xl bg-black"
+            /*
+              SOL-045: the camera block had no max-width and a hard-coded PORTRAIT 3:4 aspect, so on
+              the products destination it stretched to the full 1280 px canvas — a 1280x1706 video,
+              taller than any desktop screen, with object-cover throwing ~58% of a 16:9 webcam frame
+              out of view while the decoder analysed the whole uncropped frame. The customer aimed
+              inside a box that meant nothing to the engine.
+            */
+            className="relative mx-auto w-full max-w-[420px] overflow-hidden rounded-2xl bg-black"
             hidden={phase.status === 'unavailable'}
             data-testid="scan-flow-camera"
+            data-mirrored={mirrorPreview ? 'true' : 'false'}
           >
             <video
               ref={videoRef}
-              className="aspect-[3/4] w-full object-cover"
+              className="aspect-[3/4] w-full object-cover sm:aspect-video"
+              style={mirrorPreview ? { transform: 'scaleX(-1)' } : undefined}
               muted
               playsInline
               autoPlay
@@ -777,13 +882,25 @@ export function ScanFlow({
             />
             {/* the code the engine is tracking */}
             {roiBox ? (
+              /*
+                The engine reports the code's position in RAW frame coordinates. When the preview is
+                mirrored the picture no longer matches those coordinates, so the overlay LAYER is
+                mirrored with it — flipping the layer, not the box, is what moves the box's POSITION
+                to the other side. Otherwise the one element that says "the code is HERE" would point
+                at the opposite edge of the screen.
+              */
               <div
                 aria-hidden="true"
-                className={`pointer-events-none absolute rounded-md border-2 ${
-                  success ? 'border-emerald-400 bg-emerald-400/20' : 'border-amber-300'
-                }`}
-                style={roiBox}
-              />
+                className="pointer-events-none absolute inset-0"
+                style={mirrorPreview ? { transform: 'scaleX(-1)' } : undefined}
+              >
+                <div
+                  className={`absolute rounded-md border-2 ${
+                    success ? 'border-emerald-400 bg-emerald-400/20' : 'border-amber-300'
+                  }`}
+                  style={roiBox}
+                />
+              </div>
             ) : null}
             <div
               className={`absolute inset-x-0 bottom-0 px-3 py-2 text-center text-sm font-semibold ${
@@ -792,10 +909,13 @@ export function ScanFlow({
               aria-live="polite"
               data-testid="scan-flow-feedback"
             >
+              {/*
+                The raw device zoom factor used to be printed here as „×10". It is a diagnostic
+                number, it means nothing to a customer, and by the time it appeared the camera had
+                already zoomed itself past the point of reading anything. Both the number and the
+                zoom that produced it are gone (owner ruling 2026-09-06).
+              */}
               {success ? 'Odczytano ✓' : feedback}
-              {frame && frame.zoomLevel > 1 && !success ? (
-                <span className="ml-2 text-xs font-normal opacity-80">×{frame.zoomLevel}</span>
-              ) : null}
             </div>
             {frame && engaged && !success ? (
               <div className="absolute inset-x-0 bottom-9 h-1 bg-white/25" aria-hidden="true">
@@ -979,10 +1099,12 @@ export function ScanFlow({
           {recognizedLine}
           <p className="text-sm text-stone-700">
             {recognized
-              ? 'Brakuje jeszcze danych z etykiety. Zrób zdjęcie składu i tabeli wartości odżywczych.'
+              ? labelPhotoRequest(phase.session.missingCritical)
               : 'Nie znam jeszcze tego produktu. Zrób zdjęcie etykiety ze składem i tabelą wartości odżywczych.'}
           </p>
-          {phase.note ? <p className="text-xs text-stone-600">{phase.note}</p> : null}
+          {safeNote(phase.note) ? (
+            <p className="text-xs text-stone-600">{safeNote(phase.note)}</p>
+          ) : null}
           {photoPrivacyNote}
           <div className="flex flex-wrap gap-2">
             <label className={btnPrimary}>
@@ -1069,7 +1191,9 @@ export function ScanFlow({
               ? 'Sprawdź dane z etykiety i uzupełnij brakujące. Produkt zapiszemy prywatnie na Twoim koncie.'
               : 'Uzupełnij brakujące dane z etykiety. Produkt zapiszemy prywatnie na Twoim koncie.'}
           </p>
-          {phase.note ? <p className="text-xs text-red-700">{phase.note}</p> : null}
+          {safeNote(phase.note) ? (
+            <p className="text-xs text-red-700">{safeNote(phase.note)}</p>
+          ) : null}
           {phase.fields.map((field) => (
             <label key={field.key} className="block text-xs text-stone-700">
               <span className="mb-1 block font-semibold">
@@ -1134,6 +1258,20 @@ export function ScanFlow({
                 Zapisz jako mój produkt
               </button>
             ) : null}
+            {/*
+              The customer may not have the pack in front of them, or may simply not want to type.
+              Their scan is not thrown away: what we did find is kept privately and listed under
+              Produkty → Niezweryfikowane, where they can finish it whenever they like.
+            */}
+            <button
+              type="button"
+              className={btnSecondary}
+              disabled={busy}
+              onClick={() => void saveUnverified(phase.session)}
+              data-testid="scan-flow-save-unverified"
+            >
+              Zapisz i uzupełnij później
+            </button>
             <label className={btnSecondary}>
               Zrób zdjęcie etykiety
               <input
@@ -1162,9 +1300,7 @@ export function ScanFlow({
 
       {phase.kind === 'saved' ? (
         <div className="space-y-3">
-          <p className="text-sm font-semibold text-ink">
-            Zapisano jako Twój produkt (prywatny, widoczny tylko na Twoim koncie).
-          </p>
+          <p className="text-sm font-semibold text-ink">{savedProductNotice(phase.product)}</p>
           {recognizedLine}
           {productCard(phase.product)}
           {addButton(phase.resolved, phase.engineReady)}

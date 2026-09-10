@@ -177,6 +177,7 @@ describe('one global menu and four local contexts', () => {
 
   it('renders Profile, Monitor, Production and Summary as contextual controls', () => {
     const panel = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
+    const page = read('pages', 'pro', 'ProWorkspacePage.tsx');
     const tabs = read('features', 'pro-workbench', 'WorkbenchModuleTabs.tsx');
     for (const label of ['Receptura', 'Monitor', 'Produkcja', 'Etykieta']) {
       expect(tabs).toContain(`label: '${label}'`);
@@ -187,7 +188,11 @@ describe('one global menu and four local contexts', () => {
     expect(tabs).toContain("variant === 'bottom'");
     expect(tabs).toContain('onCollapse?.()');
     expect(panel).toContain('setEducationOpen(true)');
-    expect(panel).not.toContain('navigate(');
+    expect(panel).not.toContain('useNavigate');
+    expect(page).toContain(
+      'navigate(`/labels?run=${encodeURIComponent(runId)}&labelView=settings`',
+    );
+    expect(page).toContain('labelSettingsReturn(');
   });
 
   it('uses a matching completed label first and otherwise the current recipe draft', () => {

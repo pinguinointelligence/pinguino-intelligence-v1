@@ -61,6 +61,7 @@ import {
   type HomeSweetness,
 } from '@/features/home-creator/homeSweetness';
 import type { HomeStage } from '@/features/home-creator/homeStageFlow';
+import { resolveIdea } from '@/features/home-creator/homeIdeaResolution';
 import { HomeIntentSection } from '@/features/home-creator/ui/HomeIntentSection';
 import { HomeProfileSection } from '@/features/home-creator/ui/HomeProfileSection';
 import { HomeMachineSection } from '@/features/home-creator/ui/HomeMachineSection';
@@ -318,11 +319,18 @@ export function HomeCreatorPage() {
   const addIngredientLine = useCallback(
     (ingredient: EngineIngredient, behavior: ProductBehaviorSnapshot | null, grams: number) => {
       const added = useRecipeStore.getState().addIngredient(ingredient, grams);
-      if (added.status !== 'duplicate' && behavior) {
+      if (added.status === 'duplicate') return;
+      if (behavior) {
         useRecipeStore
           .getState()
           .setProductBehaviorSnapshot(added.lineId, { ...behavior, lineId: added.lineId });
       }
+      // Owner QA 2026-09-06: „wszystkie składniki dodane przez Dodaj składnik
+      // automatycznie dostają koronę". This path never asked, while the intent-chip
+      // path did — so the same product arrived crowned or bare depending only on how
+      // it was added. Ask the SAME canonical authority here; it refuses on its own for
+      // a product Main cannot carry, so this offers the crown rather than forcing it.
+      useRecipeStore.getState().setMainIngredient(added.lineId);
     },
     [],
   );
@@ -459,11 +467,24 @@ export function HomeCreatorPage() {
                 } finally {
                   setResolving(false);
                 }
-              })();
-              window.setTimeout(() => {
-                const next = draft.profile === null ? 'profile' : 'machine';
+                // Owner QA 2026-09-06: this scroll used to sit OUTSIDE this async
+                // block on a 60 ms timer, so it fired while identity resolution was
+                // still in flight — carrying the customer down to the profile and
+                // machine questions before they had chosen their products, and
+                // leaving the product choice behind them at the top of the page.
+                //
+                // The flow may only advance once every element of the idea has a
+                // concrete product (§84). `resolveIdea` is the single authority for
+                // what "resolved" means; the amount gap it also reports belongs to a
+                // later step, so only the product gap holds the flow here.
+                const chips = useHomeDraftStore.getState().chips;
+                const needsProductChoice = resolveIdea(chips).unresolved.some((element) =>
+                  element.gaps.includes('product'),
+                );
+                if (needsProductChoice) return;
+                const next = useHomeDraftStore.getState().profile === null ? 'profile' : 'machine';
                 scrollToStage(next);
-              }, 60);
+              })();
             }}
             resolving={resolving}
             onChooseIdentity={(chip, candidate) => {

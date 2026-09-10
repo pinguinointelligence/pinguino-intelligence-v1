@@ -36,9 +36,16 @@ describe('a scanned product enters through the typed-ingredient door', () => {
       HOOK.indexOf('const addResolvedChip'),
     );
     expect(add).toContain('hydrateIngredient(productId)');
-    expect(add).toContain('store.addIngredient(ingredient, 0)');
+    /* The amount is CARRIED, not hard-coded. It used to be `addIngredient(ingredient, 0)`,
+       which is where HOME's 0 g rows came from: a confirmed amount had nowhere to go. */
+    expect(add).toContain('store.addIngredient(ingredient, grams)');
     // §49: the crown is ASKED of the existing authority, never decided here.
     expect(add).toContain('setMainIngredient(added.lineId)');
+    /* And a topping goes to the topping collection instead — uncrowned, because the
+       Crown is a Main concept and a topping is not a Main. Ignoring the role is what put
+       a stated topping in the base wearing a Crown while its chip still read TOPPING. */
+    expect(add).toContain("if (role === 'topping')");
+    expect(add).toContain('store.addTopping(');
   });
 
   it('HOME hands the scanner nothing but catalogue ids', () => {

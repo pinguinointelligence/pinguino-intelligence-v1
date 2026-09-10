@@ -1,7 +1,7 @@
 import type { MasterLabelData } from '../masterLabel';
 import { gtinBarcodeSvg, lotBarcodeSvg, normalizeConfirmedGtin, qrCodeSvg } from '../machineCodes';
 import {
-  allergenStatementText,
+  allergenStatementHtml,
   businessHtml,
   escapeHtml,
   ingredientDeclarationHtml,
@@ -17,7 +17,7 @@ const neutralGram = (value: number): string => `${value.toFixed(1)} g`;
 
 export function renderWorldNutrition(data: MasterLabelData): string {
   const nutrition = data.nutritionSource;
-  if (!nutrition || nutrition.saturated_fat_g === null || nutrition.sugars_g === null) return '';
+  if (!nutrition || nutrition.sugars_g === null) return '';
   const rows: Array<[string, string, boolean]> = [
     [
       'Energy',
@@ -25,10 +25,14 @@ export function renderWorldNutrition(data: MasterLabelData): string {
       false,
     ],
     ['Fat', neutralGram(nutrition.fat_g), false],
-    ['of which saturates', neutralGram(nutrition.saturated_fat_g), true],
     ['Carbohydrate', neutralGram(nutrition.carbohydrate_g), false],
-    ['of which sugars', neutralGram(nutrition.sugars_g), true],
   ];
+  if (nutrition.saturated_fat_g !== null) {
+    rows.splice(2, 0, ['of which saturates', neutralGram(nutrition.saturated_fat_g), true]);
+  }
+  if (nutrition.sugars_g !== null) {
+    rows.push(['of which sugars', neutralGram(nutrition.sugars_g), true]);
+  }
   if (nutrition.fiber_g !== null) rows.push(['Fibre', neutralGram(nutrition.fiber_g), false]);
   rows.push(['Protein', neutralGram(nutrition.protein_g), false]);
   rows.push(['Salt', `${nutrition.salt_g.toFixed(2)} g`, false]);
@@ -61,10 +65,14 @@ export function renderWorldLabel(data: MasterLabelData): string {
   const languages = data.labelLanguages.length > 0 ? data.labelLanguages : ['en'];
   const product = primaryText(data.productName, languages);
   const description = primaryText(data.shortDescription ?? {}, languages);
-  const allergenStatement = allergenStatementText(data);
   const optionalDescription =
     data.enabledOptionalFields.includes('short_description') && description
       ? `<p class="short-description">${escapeHtml(description)}</p>`
       : '';
-  return `<section class="market-renderer world-renderer" data-universal-profile="informational" data-regulatory-renderer="world-neutral-v1">${worldInformationalWarningHtml()}<header class="identity"><h1>${escapeHtml(product)}</h1>${optionalDescription}</header><p class="ingredients"><strong>Ingredients:</strong> ${ingredientDeclarationHtml(data, languages[0] ?? 'en')}</p><p class="allergens"><strong>Alergeny:</strong> ${escapeHtml(allergenStatement)}</p>${renderWorldNutrition(data)}${netQuantityHtml(data, 'Net weight')}${traceabilityHtml(data)}${storageHtml(data, languages)}${originHtml(data, languages)}${businessHtml(data)}${data.enabledOptionalFields.includes('internal_article_id') && data.internalArticleId ? `<p class="article-id">Article ID: ${escapeHtml(data.internalArticleId)}</p>` : ''}${machineCodesHtml(data)}</section>`;
+  const ingredients = ingredientDeclarationHtml(data, languages[0] ?? 'en');
+  const identity =
+    product || optionalDescription
+      ? `<header class="identity">${product ? `<h1>${escapeHtml(product)}</h1>` : ''}${optionalDescription}</header>`
+      : '';
+  return `<section class="market-renderer world-renderer" data-universal-profile="informational" data-regulatory-renderer="world-neutral-v1">${worldInformationalWarningHtml()}${identity}${ingredients ? `<p class="ingredients"><strong>Ingredients:</strong> ${ingredients}</p>` : ''}${allergenStatementHtml(data)}${renderWorldNutrition(data)}${netQuantityHtml(data, 'Net weight')}${traceabilityHtml(data)}${storageHtml(data, languages)}${originHtml(data, languages)}${businessHtml(data)}${data.enabledOptionalFields.includes('internal_article_id') && data.internalArticleId ? `<p class="article-id">Article ID: ${escapeHtml(data.internalArticleId)}</p>` : ''}${machineCodesHtml(data)}</section>`;
 }

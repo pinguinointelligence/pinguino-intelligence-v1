@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router';
+import { UnverifiedProductsPanel } from '@/features/products/UnverifiedProductsPanel';
+import { MyProductsPanel } from '@/features/products/MyProductsPanel';
+import { ProductsFilterTabs } from '@/features/products/ProductsFilterTabs';
+import { productFilterFromParam } from '@/features/products/productsFilter';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
 import { buttonClasses } from '@/components/ui/buttonStyles';
 import { applicationPrimaryClasses } from '@/components/ui/applicationControlStyles';
@@ -49,7 +53,10 @@ import { FRANCHISE_FORMAT_LINKS, FRANCHISE_PAGE, FRANCHISE_SPLIT } from '@/copy/
 import { AppShell } from '@/features/shell/AppShell';
 import { KnowledgeTour } from '@/features/knowledge-tour/KnowledgeTour';
 import { useRecipeStore } from '@/stores/recipeStore';
-import { readLabelSettingsReturn } from '@/features/master-label/labelSettingsNavigation';
+import {
+  labelSettingsReturn,
+  readLabelSettingsReturn,
+} from '@/features/master-label/labelSettingsNavigation';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { recipeCompositionFromState } from '@/features/recipe-composition/recipeCompositionPersistence';
 import { buildDraftLabelPreview } from '@/features/master-label/draftLabelPreview';
@@ -331,13 +338,19 @@ export function FranchisePage() {
           />
         </div>
       </DestinationSection>
-
-
     </DestinationSurface>
   );
 }
 
 export function ProductsHubPage() {
+  const [productsParams] = useSearchParams();
+  /*
+    OWNER CORRECTION 2026-09-07 — the product area has ONE hamburger entry. „Skanuj produkt" is this
+    page's action (in `actions` below) and Wszystkie / Moje produkty / Niezweryfikowane are this
+    page's filters, not drawer destinations. `?filter=` is unchanged, so „Uzupełnij dane" and every
+    saved link still land on the right list.
+  */
+  const productFilter = productFilterFromParam(productsParams.get('filter'));
   const persona = useProCorePersona();
   const capabilities = proCoreCapabilitiesFor(persona);
   const canAdmin = useProCoreAccessStore((state) => state.effectiveAccess?.canAdmin === true);
@@ -382,7 +395,25 @@ export function ProductsHubPage() {
         />
       ) : (
         <>
-          <GlobalCatalogSearchPanel />
+          <ProductsFilterTabs />
+          {productFilter === 'unverified' ? (
+            <>
+              <p className="mb-4 max-w-xl text-sm text-[var(--g-text-secondary)]">
+                Produkty, którym brakuje jeszcze danych potrzebnych do receptury. Są widoczne tylko
+                dla Ciebie. Uzupełnij je, kiedy chcesz — znikną stąd same, gdy będą gotowe.
+              </p>
+              <UnverifiedProductsPanel />
+            </>
+          ) : productFilter === 'mine' ? (
+            <>
+              <p className="mb-4 max-w-xl text-sm text-[var(--g-text-secondary)]">
+                Produkty zapisane na Twoim koncie. Widzisz je tylko Ty.
+              </p>
+              <MyProductsPanel />
+            </>
+          ) : (
+            <GlobalCatalogSearchPanel />
+          )}
           <p className="mt-8 max-w-xl text-xs leading-relaxed text-[var(--g-text-secondary)]">
             Twoja cena, dostawca, notatki i stan magazynowy pozostają prywatne.
           </p>
@@ -401,6 +432,8 @@ const productionTabs: readonly { id: ProductionTab; label: string }[] = [
 
 export function ProductionHubPage() {
   const [params, setParams] = useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const requested = params.get('tab');
   const active: ProductionTab = productionTabs.some((tab) => tab.id === requested)
     ? (requested as ProductionTab)
@@ -649,7 +682,21 @@ export function ProductionHubPage() {
                   {/* Completed-batch VIEWER. Settings live on Etykiety
                       (`/labels`), so this instance points there rather than
                       opening a second copy of them. */}
-                  <LabelWorkspace snapshot={labelSnapshot} settingsHome="production" />
+                  <LabelWorkspace
+                    snapshot={labelSnapshot}
+                    settingsHome="production"
+                    onOpenSettings={(runId) =>
+                      navigate(`/labels?run=${encodeURIComponent(runId)}&labelView=settings`, {
+                        state: {
+                          labelSettingsReturn: labelSettingsReturn(
+                            location.pathname,
+                            location.search,
+                            window.scrollY,
+                          ),
+                        },
+                      })
+                    }
+                  />
                 </div>
               ) : (
                 <p className="mt-5 text-sm text-[var(--g-text-secondary)]">
@@ -851,6 +898,7 @@ export function LabelsHubPage() {
             runId={selectedRunId}
             savedSnapshotId={selectedSnapshotId}
             repository={repository}
+            initialView={params.get('labelView') === 'settings' ? 'settings' : 'label'}
             onSaved={(item) => {
               setHistory((current) => [
                 item,
