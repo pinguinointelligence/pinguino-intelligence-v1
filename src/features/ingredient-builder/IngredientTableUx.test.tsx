@@ -212,7 +212,7 @@ describe('Recipe ingredient table — quiet primary surface', () => {
     expect(eligible).not.toContain(`data-testid="row-main-badge-${baseItem.id}"`);
   });
 
-  it('keeps the estimated-data dot and eligible Crown trigger independently visible', () => {
+  it('shows no badge beside the icon of an estimated product, and keeps the eligible Crown trigger', () => {
     const estimated = renderRow({
       ...baseItem,
       ingredient: {
@@ -222,7 +222,8 @@ describe('Recipe ingredient table — quiet primary surface', () => {
       },
     });
 
-    expect(estimated).toContain(`data-testid="row-estimated-${baseItem.id}"`);
+    // PRO MOBILE UX v2 · A10 (owner decision): the estimated-data dot is gone.
+    expect(estimated).not.toContain('row-estimated-');
     expect(estimated).toContain(`data-testid="row-main-trigger-${baseItem.id}"`);
     expect(estimated).toContain(`data-testid="row-mobile-main-trigger-${baseItem.id}"`);
   });
@@ -310,14 +311,16 @@ describe('Recipe ingredient table — quiet primary surface', () => {
     expect(html).not.toContain('data-testid="ingredient-data-dialog"');
   });
 
-  it('shows only a small amber indicator when ingredient data is estimated', () => {
+  it('puts no unexplained badge on the recipe line when ingredient data is estimated (A10)', () => {
     const estimated = {
       ...baseItem,
       ingredient: { ...baseItem.ingredient, is_verified: false, confidence_score: 82 },
     };
     const html = renderRow(estimated);
-    expect(html).toContain(`data-testid="row-estimated-${baseItem.id}"`);
-    expect(html).toContain('Część danych składnika jest szacowana.');
+    // A10 (owner decision): no dot and no hover-only hint on the line; the product
+    // data view states it in words („Częściowo szacowane").
+    expect(html).not.toContain('row-estimated-');
+    expect(html).not.toContain('Część danych składnika jest szacowana.');
   });
 
   it('keeps Production actuals accessible without restoring the old visual status noise', () => {

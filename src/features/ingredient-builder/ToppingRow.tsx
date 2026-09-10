@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { cn } from '@/lib/cn';
 import { iconButtonClasses } from '@/components/ui/buttonStyles';
 import type { RecipeToppingItem } from '@/features/recipe-composition/recipeCompositionPersistence';
@@ -54,6 +54,9 @@ export function ToppingRow({
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
+  const menuTriggerRef = useRef<HTMLButtonElement>(null);
+  /** ONE way into the topping options: the ••• and, on a touch device, the whole row (A8). */
+  const openToppingMenu = () => setMenuOpen(true);
   const catalogLabel = isCatalogLabelToppingIngredient(item.ingredient) ? item.ingredient : null;
   return (
     <div
@@ -103,8 +106,19 @@ export function ToppingRow({
         </button>
       </div>
 
-      <div className="hidden lg:block">
-        <div className={compact ? COMPACT_ROW_GRID : ROW_GRID}>
+      <div className="gellatti-row-touch-surface hidden lg:block">
+        {/* A8 — on a touch device the whole topping row opens its options, like
+            the recipe rows; a mouse never sees this surface and ••• stays the
+            keyboard path. */}
+        <button
+          type="button"
+          tabIndex={-1}
+          aria-hidden="true"
+          onClick={openToppingMenu}
+          className="gellatti-row-touch-target transition-colors active:bg-[var(--g-ivory)]"
+          data-testid={`topping-touch-target-${item.id}`}
+        />
+        <div className={cn('gellatti-row-touch-content', compact ? COMPACT_ROW_GRID : ROW_GRID)}>
           {/* Same six-track row as the base list (V2.1): the drag handle owns the
               leading track so toppings and ingredients share one column axis. */}
           <span
@@ -174,7 +188,8 @@ export function ToppingRow({
               aria-label={`Opcje toppingu ${item.ingredient.name}`}
               aria-haspopup="dialog"
               aria-expanded={menuOpen}
-              onClick={() => setMenuOpen(true)}
+              ref={menuTriggerRef}
+              onClick={openToppingMenu}
             >
               •••
             </button>
@@ -186,6 +201,7 @@ export function ToppingRow({
         <DialogShell
           label={`Opcje toppingu ${item.ingredient.name}`}
           testId={`topping-menu-${item.id}`}
+          returnFocus={() => menuTriggerRef.current}
           onClose={() => setMenuOpen(false)}
         >
           <div className="flex items-center justify-between gap-3">
