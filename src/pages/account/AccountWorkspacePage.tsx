@@ -9,6 +9,7 @@ import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { AccountProductMarkets } from '@/features/global-catalog/AccountProductMarkets';
 import { HomeInviteRedemption } from '@/features/account/HomeInviteRedemption';
 import { ProductRequestAccountSections } from '@/features/product-requests/ProductRequestAccountSections';
+import { ReferralPanel } from '@/features/referral/ReferralPanel';
 import { AccountRecipeDefaults } from '@/features/pro-workbench/AccountRecipeDefaults';
 import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
 import { ShopOrdersPanel } from '@/features/shop/ShopOrdersPanel';
@@ -39,6 +40,9 @@ const SECTIONS = [
   { id: 'orders', label: 'Zamówienia' },
   { id: 'products', label: 'Produkty i zgłoszenia' },
   { id: 'recipe', label: 'Ustawienia receptury' },
+  // K01: the referral programme had a live backend and no surface at all, so
+  // the days a user earned were invisible and nobody could start a referral.
+  { id: 'referral', label: 'Poleć Gellatti' },
 ] as const;
 
 type SectionId = (typeof SECTIONS)[number]['id'];
@@ -182,6 +186,12 @@ export function AccountWorkspacePage() {
             ) : null}
             <ShopOrdersPanel focusOrderId={focusOrderId} />
           </section>
+        ) : null}
+
+        {active === 'referral' ? (
+          <div className={PANEL}>
+            <ReferralPanel />
+          </div>
         ) : null}
 
         {active === 'products' ? (
