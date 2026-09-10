@@ -200,7 +200,7 @@ the owner has since retired. Nothing is renamed or deleted.
 | D-LINK-01 | Campaign links | Partner may create many trackable links (not limited by the 3 codes) | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | `partner_content_links` + `createPartnerContentLink` + `LinkGenerator` exist | Served-verify |
 | D-LINK-02 | Campaign links | All links resolve to immutable `partner_id` | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | `PartnerPublicRoute` + `partner-link-resolve` | Regression test |
 | D-LINK-03 | Campaign links | Aggregate clicks / signups / paid conversions / active subs / per-campaign performance | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | Workspace RPC returns clicks + signups; paid conversions and active counts unverified | Verify RPC completeness |
-| D-LINK-04 | Campaign links | No customer PII exposed anywhere in partner-visible data | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Write PII guard test over the RPC payload |
+| D-LINK-04 | Campaign links | No customer PII exposed anywhere in partner-visible data | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | — | — | Write PII guard test over the RPC payload · **DONE.** Audit of `gellatti_partner_workspace_v1`: everything customer-side is an AGGREGATE — `paidCustomers` is a count, `uniqueVisitors` counts distinct SALTED hashes, no name/email/user_id is returned. The leak was on the render side, now fixed and guarded by `partnerVisibleData.test.ts` |
 | D-ATTR-01 | Attribution | 30-day window · explicit code overrides unconverted passive · locked on first paid · one owner per payment · self-referral rejected | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | `attribution.ts` A1–A8 + `referral_attributions` unique indexes | Re-run tests as evidence |
 
 ### E — Commission, tiers, hold, reversals (§10–§13) · CHECKPOINT E
@@ -222,7 +222,7 @@ the owner has since retired. Nothing is renamed or deleted.
 | E-HOLD-02 | Hold | Dashboard shows earned / held / eligible date / eligible / batched / transfer / payout / reversed | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | Workspace RPC returns commission status + payouts; the 8 distinct states are not all surfaced | UI work in H |
 | E-REV-01 | Reversals | Full refund → full reversal; partial → proportional; cap; append-only; dispute lost/won | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | `refundAdjustments.ts` R1–R6 | Re-run tests |
 | E-REV-02 | Reversals | Post-payout reversal → negative balance offset against future eligible | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | `payoutNetting.ts` P3 | Regression test |
-| E-REV-03 | Reversals | Customer copy e.g. "Zwrot płatności · −€4.99", never raw codes, no PII | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Display map + guard test |
+| E-REV-03 | Reversals | Customer copy e.g. "Zwrot płatności · −€4.99", never raw codes, no PII | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | — | — | Display map + guard test · **DONE.** The commissions table printed raw contract values AND the raw Stripe invoice id. Invoice id REMOVED (not masked — it identifies a customer invoice and means nothing to a partner). Status/product/cadence now go through an exhaustive display map, same shape as C-APP-06. Reversal reads `Zwrot płatności · −€4.99`. A SECOND raw render was found in the payouts list by the guard test — `skipped_negative_balance` was shown verbatim; all 7 payout states now have copy |
 
 ### F — Stripe Connect + payouts (§14) · CHECKPOINT E
 

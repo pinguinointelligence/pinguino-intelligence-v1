@@ -9,6 +9,13 @@ import {
   applicationSecondaryClasses,
 } from '@/components/ui/applicationControlStyles';
 import { customerErrorMessage } from '@/copy/customerError';
+import {
+  commissionAmountLabel,
+  commissionCadenceLabel,
+  commissionProductLabel,
+  commissionStatusCopy,
+  payoutStatusCopy,
+} from '@/features/affiliate/commissionDisplay';
 import { cn } from '@/lib/cn';
 import {
   createPartnerContentLink,
@@ -404,7 +411,7 @@ function Earnings({ data }: { data: PartnerWorkspace }) {
         <table className="w-full min-w-[760px] text-left text-xs">
           <thead>
             <tr className="border-y border-ink/15 bg-stone-50">
-              {['Data', 'Plan', 'Cykl', 'Status', 'Kwota', 'Środowisko', 'Invoice'].map((h) => (
+              {['Data', 'Plan', 'Cykl', 'Status', 'Kwota', 'Środowisko'].map((h) => (
                 <th key={h} className="px-3 py-3">
                   {h}
                 </th>
@@ -417,14 +424,17 @@ function Earnings({ data }: { data: PartnerWorkspace }) {
                 <td className="px-3 py-4">
                   {new Date(String(row.earnedAt)).toLocaleDateString('pl-PL')}
                 </td>
-                <td className="px-3 py-4">{String(row.product)}</td>
-                <td className="px-3 py-4">{String(row.cadence)}</td>
-                <td className="px-3 py-4">{String(row.status)}</td>
+                <td className="px-3 py-4">{commissionProductLabel(row.product)}</td>
+                <td className="px-3 py-4">{commissionCadenceLabel(row.cadence)}</td>
+                <td className="px-3 py-4" title={commissionStatusCopy(row.status).help}>
+                  {commissionStatusCopy(row.status).label}
+                </td>
                 <td className="px-3 py-4 tabular-nums">
-                  {money(row.amountCents, String(row.currency ?? 'EUR'))}
+                  {commissionAmountLabel(row.amountCents, row.status, (cents) =>
+                    money(cents, String(row.currency ?? 'EUR')),
+                  )}
                 </td>
                 <td className="px-3 py-4">{row.livemode ? 'LIVE' : 'TEST'}</td>
-                <td className="px-3 py-4 font-mono text-[10px]">{String(row.invoiceId ?? '—')}</td>
               </tr>
             ))}
           </tbody>
@@ -471,7 +481,9 @@ function Payouts({ data }: { data: PartnerWorkspace }) {
             </div>
             <div>
               <span className="text-[10px] uppercase text-stone-500">Status</span>
-              <p className="mt-1 text-sm">{String(row.status)}</p>
+              <p className="mt-1 text-sm" title={payoutStatusCopy(row.status).help}>
+                {payoutStatusCopy(row.status).label}
+              </p>
             </div>
             <div>
               <span className="text-[10px] uppercase text-stone-500">Przeniesienie</span>
