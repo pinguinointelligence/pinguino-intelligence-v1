@@ -20,7 +20,7 @@ const panel = readFileSync(new URL('./PartnerApplicationPanel.tsx', import.meta.
 
 const migration = readFileSync(
   new URL(
-    '../../../supabase/migrations/20260910160000_partner_application_stop_dropping_answers.sql',
+    '../../../supabase/migrations/20260910044111_partner_application_stop_dropping_answers.sql',
     import.meta.url,
   ),
   'utf8',
