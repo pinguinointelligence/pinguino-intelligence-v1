@@ -17,6 +17,12 @@ import {
   commissionStatusCopy,
   payoutStatusCopy,
 } from '@/features/affiliate/commissionDisplay';
+import {
+  contentLinkStatusCopy,
+  countOrNull,
+  linkMetrics,
+  partnerCodeStatusCopy,
+} from '@/features/affiliate/codeLinkDisplay';
 import { cn } from '@/lib/cn';
 import {
   createPartnerContentLink,
@@ -124,6 +130,8 @@ function Codes({ data }: { data: PartnerWorkspace }) {
   const queryClient = useQueryClient();
   const codes = data.codes ?? [];
   const active = codes.filter((code) => code.status === 'active');
+  // D-LINK-03: a column only once the RPC returns it (migration 20260910200000 — READY, not applied).
+  const showActive = codes.some((item) => countOrNull(item.activeSubscriptions) !== null);
   const [code, setCode] = useState('');
   const [label, setLabel] = useState('');
   const mutation = useMutation({
@@ -198,6 +206,7 @@ function Codes({ data }: { data: PartnerWorkspace }) {
                 'Unikalni',
                 'Rejestracje',
                 'Klienci',
+                ...(showActive ? ['Aktywne subskrypcje'] : []),
                 'Przychód brutto',
                 'Zwroty',
                 'Prowizja oczekująca',
@@ -213,7 +222,12 @@ function Codes({ data }: { data: PartnerWorkspace }) {
           </thead>
           <tbody>
             {codes.map((item) => (
-              <CodeRow key={item.id} item={item} onArchive={() => archive.mutate(item.id)} />
+              <CodeRow
+                key={item.id}
+                item={item}
+                onArchive={() => archive.mutate(item.id)}
+                showActive={showActive}
+              />
             ))}
           </tbody>
         </table>
@@ -222,7 +236,15 @@ function Codes({ data }: { data: PartnerWorkspace }) {
   );
 }
 
-function CodeRow({ item, onArchive }: { item: PartnerCodeAnalytics; onArchive: () => void }) {
+function CodeRow({
+  item,
+  onArchive,
+  showActive,
+}: {
+  item: PartnerCodeAnalytics;
+  onArchive: () => void;
+  showActive: boolean;
+}) {
   return (
     <tr className="border-b border-ink/10">
       <td className="px-3 py-4">
@@ -231,11 +253,16 @@ function CodeRow({ item, onArchive }: { item: PartnerCodeAnalytics; onArchive: (
           {item.label ?? 'Bez etykiety'}
         </span>
       </td>
-      <td className="px-3 py-4">{item.status}</td>
+      <td className="px-3 py-4" title={partnerCodeStatusCopy(item.status).help}>
+        {partnerCodeStatusCopy(item.status).label}
+      </td>
       <td className="px-3 py-4 tabular-nums">{item.clickCount}</td>
       <td className="px-3 py-4 tabular-nums">{item.uniqueVisitors}</td>
       <td className="px-3 py-4 tabular-nums">{item.signups}</td>
       <td className="px-3 py-4 tabular-nums">{item.paidCustomers}</td>
+      {showActive ? (
+        <td className="px-3 py-4 tabular-nums">{countOrNull(item.activeSubscriptions) ?? '—'}</td>
+      ) : null}
       <td className="px-3 py-4 tabular-nums">{money(item.grossAttributedRevenueCents)}</td>
       <td className="px-3 py-4 tabular-nums">{money(item.refundCommissionCents)}</td>
       <td className="px-3 py-4 tabular-nums">{money(item.pendingCommissionCents)}</td>
@@ -387,9 +414,22 @@ function ContentLinks({ data }: { data: PartnerWorkspace }) {
                   {href} → {String(link.destinationPath)}
                 </p>
               </div>
-              <div className="text-right text-xs text-stone-600">
-                {String(link.status)} · {String(link.clickCount)} kliknięć
-              </div>
+              {/* D-LINK-03: per-campaign performance — every number the RPC
+                  returned, in the codes table's own words; the status as copy. */}
+              <dl className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-stone-600 md:justify-end">
+                <div title={contentLinkStatusCopy(link.status).help}>
+                  <dt className="sr-only">Status</dt>
+                  <dd className="font-semibold text-ink">
+                    {contentLinkStatusCopy(link.status).label}
+                  </dd>
+                </div>
+                {linkMetrics(link).map((metric) => (
+                  <div key={metric.label} className="flex gap-1">
+                    <dt>{metric.label}:</dt>
+                    <dd className="tabular-nums">{metric.value}</dd>
+                  </div>
+                ))}
+              </dl>
             </article>
           );
         })}
