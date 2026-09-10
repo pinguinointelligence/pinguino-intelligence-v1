@@ -361,4 +361,42 @@ describe('one production-oriented Product Accuracy authority', () => {
     );
     expect(withUnrelatedWebReceipt.productAccuracy).toBe(withoutWeb.productAccuracy);
   });
+
+  it.each([
+    ['unknown_requires_review', ['UNKNOWN_REQUIRES_EVIDENCE']],
+    ['classified', ['family_and_form_evidence_missing']],
+    ['classified', ['MAIN_BLOCKED_POLICY', 'BLOCKED_DATA']],
+  ] as const)(
+    'SOL-052: %s / %s cannot receive full ProductBehavior publication credit',
+    (classificationOutcome, classificationReasonCodes) => {
+      const result = assessProductProductionAccuracy(
+        baseInput({
+          behavior: {
+            ...baseInput().behavior,
+            classificationOutcome,
+            classificationReasonCodes,
+          },
+        }),
+      );
+      expect(result.components.productBehavior.earnedPoints).toBeLessThan(
+        result.components.productBehavior.availablePoints,
+      );
+    },
+  );
+
+  it('SOL-052: BLOCKED_DATA cannot regain full behavior credit through the physics exception', () => {
+    const result = assessProductProductionAccuracy(
+      baseInput({
+        behavior: {
+          ...baseInput().behavior,
+          classificationOutcome: 'unknown_requires_review',
+          classificationReasonCodes: ['BLOCKED_DATA'],
+        },
+        criticalPhysicsBlockers: ['BLOCKED_DATA'],
+      }),
+    );
+    expect(result.components.productBehavior.earnedPoints).toBeLessThan(
+      result.components.productBehavior.availablePoints,
+    );
+  });
 });

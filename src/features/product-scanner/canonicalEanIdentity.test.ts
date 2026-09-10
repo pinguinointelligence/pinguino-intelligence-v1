@@ -98,6 +98,28 @@ describe('one exact EAN resolves to one canonical product, for every account', (
     expect(seen.canonical?.id).toBe('pr-7197');
   });
 
+  it('SOL-052: never treats a blocked/quarantined shared row as the exact product', () => {
+    const quarantined = {
+      ...PR,
+      canonical_verification_status: 'blocked',
+    } as EanProductRow & { canonical_verification_status: string };
+    const seen = resolveCanonicalEanIdentity([quarantined], PRO, quarantined.id);
+    expect(seen.canonical).toBeNull();
+    expect(seen.reason).toBe('no_product');
+  });
+
+  it("falls back to the caller's own PM when the shared identity is non-publishable", () => {
+    const generic = {
+      ...PR,
+      canonical_verification_status: 'verified',
+      publication_identity_eligible: false,
+    };
+    const seen = resolveCanonicalEanIdentity([PM, generic], HOME, generic.id);
+    expect(seen.canonical?.id).toBe(PM.id);
+    expect(seen.reason).toBe('own_private_product_only');
+    expect(seen.variantNeedsRepoint).toBe(false);
+  });
+
   it('does not silently pick between two shared rows for one EAN', () => {
     const second: EanProductRow = { ...PR, id: 'pr-dupe', product_code: 'PR-ING-009999' };
     expect(conflictingSharedProducts([PM, PR, second])).toHaveLength(2);

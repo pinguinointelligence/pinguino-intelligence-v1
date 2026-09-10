@@ -297,12 +297,20 @@ export function ScanFlow({
               setRecognized(web);
               setValues(prefillFromIdentity(web));
               setFamily(web.family);
+              if (!web.publicationEligibility.eligible) {
+                setPhase({
+                  kind: 'label',
+                  session: next,
+                  note: 'Brakuje dokładnej nazwy wariantu. Zrób zdjęcie przodu opakowania.',
+                });
+                return;
+              }
               if (web.family) {
                 await finalize(
                   next,
                   {
                     customerFamily: web.family,
-                    confirmations: { productFields: web.productFields },
+                    automaticEvidence: web.automaticEvidence,
                   },
                   ctx,
                   code,
@@ -470,13 +478,21 @@ export function ScanFlow({
     code: string,
   ) => {
     if (web) {
-      // exact registry identity: no generic questions, go straight to the authority with it
+      // Registry data may prefill the flow, but a brand/family-only title is not an exact SKU.
       setRecognized(web);
       setValues(prefillFromIdentity(web));
       setFamily(web.family);
+      if (!web.publicationEligibility.eligible) {
+        setPhase({
+          kind: 'label',
+          session,
+          note: 'Brakuje dokładnej nazwy wariantu. Zrób zdjęcie przodu opakowania.',
+        });
+        return;
+      }
       await finalize(
         session,
-        { customerFamily: web.family, confirmations: { productFields: web.productFields } },
+        { customerFamily: web.family, automaticEvidence: web.automaticEvidence },
         ctx,
         code,
       );
@@ -668,12 +684,7 @@ export function ScanFlow({
       if (r.kind === 'discovered_pending') {
         // the label was read: let the authority decide what is still missing (plain fields, not another photo)
         const next = seedSession(r.sessionId, r.identity, r.ledger.missingCritical);
-        await finalize(
-          next,
-          { customerFamily: family, confirmations: confirmationsFromFields(values) },
-          ctx,
-          codeRef.current ?? '',
-        );
+        await finalize(next, { customerFamily: family }, ctx, codeRef.current ?? '');
         return;
       }
       await handleResult(r, codeRef.current ?? '', ctx);
@@ -683,12 +694,7 @@ export function ScanFlow({
     withBusy(async () => {
       setFamily(choice);
       const ctx = contextFor(await getScanImportV2AccountId());
-      await finalize(
-        session,
-        { customerFamily: choice, confirmations: confirmationsFromFields(values) },
-        ctx,
-        codeRef.current ?? '',
-      );
+      await finalize(session, { customerFamily: choice }, ctx, codeRef.current ?? '');
     });
 
   const submitFields = (session: DiscoverySession, fields: PlainField[]) =>
@@ -739,12 +745,7 @@ export function ScanFlow({
   const enterManually = (session: DiscoverySession) =>
     withBusy(async () => {
       const ctx = contextFor(await getScanImportV2AccountId());
-      await finalize(
-        session,
-        { customerFamily: family, confirmations: confirmationsFromFields(values) },
-        ctx,
-        codeRef.current ?? '',
-      );
+      await finalize(session, { customerFamily: family }, ctx, codeRef.current ?? '');
     });
 
   const requestVerification = (session: DiscoverySession) =>

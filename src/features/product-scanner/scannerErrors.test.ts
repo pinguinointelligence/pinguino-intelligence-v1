@@ -136,4 +136,14 @@ describe('scannerErrors — categories the user can act on', () => {
         .code,
     ).toBe('connection');
   });
+
+  it('keeps a separate catalogue correction out of the generic retry loop', () => {
+    const error = classifyScannerError({
+      stage: 'save',
+      serverCode: 'shared_product_requires_separate_correction',
+    });
+    expect(error.code).toBe('catalog_correction_pending');
+    expect(error.messagePl).toContain('korekty w katalogu');
+    expect(error.analysisRetained).toBe(true);
+  });
 });

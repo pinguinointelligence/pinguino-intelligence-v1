@@ -6,6 +6,7 @@
  */
 import type { CodeIdentity, ExactCandidate } from '../contracts';
 import { NetworkError } from '../contracts';
+import { withProductScanFinalizeV2Contract } from '../../features/product-scanner/productScanFinalizeContract';
 import type {
   AnalyzeOutcome,
   DiscoveryPort,
@@ -223,16 +224,18 @@ export function createSupabaseDiscoveryPort(
       const s = adopt(session);
       let d: Record<string, unknown>;
       try {
-        d = await invoke('product-scan-finalize', {
+        const finalizeBody = withProductScanFinalizeV2Contract({
           action: saveUnverified === true ? 'save_unverified' : 'finalize',
           sessionId: s.sessionId,
           idempotencyKey: `scan-import-v2:${ctx.accountId}:${session.identity.canonicalGtin13}:finalize`,
           customerFamily: input.customerFamily ?? null,
+          automaticEvidence: input.automaticEvidence ?? null,
           confirmations: input.confirmations ?? {},
           privateOverlay: input.privateOverlay ?? {},
           // binding when present: the save may persist only the verdict the customer was shown
           expectedAssessmentHash: input.expectedAssessmentHash ?? null,
         });
+        d = await invoke('product-scan-finalize', finalizeBody);
       } catch (error) {
         const m = error instanceof Error ? error.message : '';
         if (/customer_product_profile_rejected|customer_product_profile_unavailable/.test(m))
