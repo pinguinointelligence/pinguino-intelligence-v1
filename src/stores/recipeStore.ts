@@ -3214,9 +3214,12 @@ export const useRecipeStore = create<RecipeState>()(
           machine_capacity_grams: sel.kind === 'home' ? (sel.hardCapacityGrams ?? null) : null,
           machine_capacity_source:
             sel.kind === 'home' && sel.hardCapacityGrams != null ? 'machine' : null,
-          productBehaviorSnapshots: requireProductBehaviorRevalidation(
-            current.productBehaviorSnapshots,
-          ),
+          // A machine transition changes recipe context, not the selected
+          // products. Keep their immutable PI/PR identity current here. The
+          // recalculation boundary below remains responsible for refreshing a
+          // snapshot whose resolutionContext no longer matches the routed
+          // temperature; eagerly invalidating it here falsely classifies the
+          // current recipe as historical/unresolved.
           dirty: true,
           draftRevision: current.draftRevision + 1,
         }));
