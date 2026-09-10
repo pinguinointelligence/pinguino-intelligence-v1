@@ -166,6 +166,11 @@ describe('Recipe profile visual density contract', () => {
 
     expect(surface).toContain('data-testid="mobile-cockpit-sheet"');
     expect(surface.match(/<RecipeProfilePanel/g)).toHaveLength(2);
-    expect(surface).toContain("setMobileCockpitState({ activeTab: 'profile', open: true })");
+    // PRO MOBILE UX v2 · A3 — the settings request opens the Recipe module in
+    // the sheet, carrying the module it leaves so the route transition cannot
+    // revert it on its way.
+    expect(surface).toContain(
+      "optimisticMobileCockpitState({ activeTab: 'profile', open: true }, current.activeTab)",
+    );
   });
 });

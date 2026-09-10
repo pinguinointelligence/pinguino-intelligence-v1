@@ -37,8 +37,91 @@
 
 .theme-pro-light [data-testid='ingredient-rows-scroll'],
 .theme-pro-light [data-testid='pro-monitor-panel'] {
-  overscroll-behavior: contain;
   scrollbar-width: thin;
+}
+
+/* PRO MOBILE UX v2 · A1 — ONE scroll owner per layout.
+   From 60rem the workbench is locked to the viewport and these two panes are
+   its inner scroll surfaces, so reaching the end of one must not drag the page.
+   Below 60rem the DOCUMENT scrolls and the ingredient pane simply grows with its
+   rows. Left there as an `overflow-y: auto` box with `overscroll-behavior:
+   contain`, it still stopped every one-finger swipe that started on a row from
+   reaching the page: containment belongs to the scroll CONTAINER, whether or
+   not it has anything to scroll, and on a phone that pane holds everything
+   between the header and the bottom bar. */
+@media (min-width: 60rem) {
+  .theme-pro-light [data-testid='ingredient-rows-scroll'],
+  .theme-pro-light [data-testid='pro-monitor-panel'] {
+    overscroll-behavior: contain;
+  }
+}
+
+@media not all and (min-width: 60rem) {
+  .theme-pro-light [data-testid='ingredient-rows-scroll'] {
+    overflow-y: visible;
+  }
+}
+
+/* PRO MOBILE UX v2 · A9 — a long press on something the customer PRESSES must
+   not start text selection or the iOS callout: holding − / + to repeat, resting
+   a thumb on a recipe line, the module bar, a Direction position. Opt-in per
+   control and never global, so labels, readouts and notes stay selectable. */
+.gellatti-touch-control {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* PRO MOBILE UX v2 · A8 — on a TOUCH device the whole product row opens its
+   panel, in every layout. Below 960px the collapsed line already is one tap
+   target. From 960px — a touch tablet — the desktop row keeps its inline
+   controls and its ••• affordance and gains a tap surface UNDER them: a tap on
+   the name, the icon or empty space falls through to it, while steppers,
+   inputs, the crown, the lock and ••• keep their own taps. A mouse or trackpad
+   (fine pointer) never sees the surface, so the desktop row is unchanged, and
+   the keyboard path stays the ••• button.
+
+   No z-index anywhere: the surface and the row grid are both positioned with
+   z-index auto, so the grid — later in the document — paints above the surface
+   without creating a stacking context that could trap a row's own tooltip. */
+.gellatti-row-touch-target {
+  display: none;
+}
+
+@media (pointer: coarse) {
+  .pro-ingredient-row-desktop,
+  .gellatti-row-touch-surface {
+    position: relative;
+  }
+
+  .gellatti-row-touch-target {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .gellatti-row-touch-content {
+    position: relative;
+    pointer-events: none;
+  }
+
+  .gellatti-row-touch-content
+    :is(
+      button,
+      a[href],
+      input,
+      select,
+      textarea,
+      label,
+      [role='button'],
+      [role='spinbutton'],
+      [draggable='true'],
+      [tabindex]:not([tabindex='-1'])
+    ) {
+    pointer-events: auto;
+  }
 }
 
 .theme-pro-light [data-testid='workbench-editor-pane'] {

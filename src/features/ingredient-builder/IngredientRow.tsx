@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { copy } from '@/copy/en';
 import type { EffectiveRecipeItem, LockType } from '@/engine';
 import { cn } from '@/lib/cn';
@@ -503,6 +503,13 @@ function RecipeRow({
     setMobileSheetOpen(false);
     setIngredientModalView('actions');
   };
+  /** ONE way into the desktop row's product panel: the ••• and, on a touch
+   *  device, the whole row (A8) call this same action. */
+  const openRowMenu = () => {
+    setIngredientModalView('actions');
+    setRowMenuOpen(true);
+  };
+  const rowMenuTriggerRef = useRef<HTMLButtonElement>(null);
   const [loadedSubstitutes, setLoadedSubstitutes] =
     useState<readonly SubstituteCandidate[]>(substituteCandidates);
   const [substitutesLoading, setSubstitutesLoading] = useState(false);
@@ -516,7 +523,6 @@ function RecipeRow({
      `IngredientRowMeta.editRefusal`: the refusal was already correct, it was
      just invisible until you pressed a button that then did nothing. */
   const editRefusal = meta.editRefusal ?? null;
-  const estimated = !item.ingredient.is_verified || item.ingredient.confidence_score < 90;
   const missingAmount = meta.dose.provenance === 'UNKNOWN' && item.planned_grams <= 0;
   const displayQuantity = item.planned_grams;
   const baseCost = priceView?.cost ?? effectiveCostForIngredient(item.ingredient, {});
@@ -710,7 +716,6 @@ function RecipeRow({
           isMain={isMain}
           required={required}
           unavailable={meta.unavailable}
-          estimated={estimated}
           changed={changed}
           missingAmount={missingAmount}
           mainUnavailableReason={mainUnavailableReason}
@@ -721,8 +726,23 @@ function RecipeRow({
 
       {/* WIDE (lg+) — the accepted Production table row, unchanged. */}
       <div className="pro-ingredient-row-desktop hidden lg:block">
+        {/* A8 — on a TOUCH device (coarse pointer) the whole row opens the same
+            product panel as •••, also in the ≥ 960 px layout. CSS shows this
+            surface only for a coarse pointer, painted UNDER the row's own
+            content; a mouse never sees it, and the keyboard path stays •••. */}
+        <button
+          type="button"
+          tabIndex={-1}
+          aria-hidden="true"
+          onClick={openRowMenu}
+          className="gellatti-row-touch-target transition-colors active:bg-[var(--g-ivory)]"
+          data-testid={`row-touch-target-${item.id}`}
+        />
         <div
-          className={cn('group/row', compact ? COMPACT_ROW_GRID : ROW_GRID)}
+          className={cn(
+            'group/row gellatti-row-touch-content',
+            compact ? COMPACT_ROW_GRID : ROW_GRID,
+          )}
           onDragOver={(event) => event.preventDefault()}
           onDrop={(event) => {
             event.preventDefault();
@@ -771,14 +791,6 @@ function RecipeRow({
                     category: item.ingredient.category,
                   })}
                 />
-                {estimated ? (
-                  <span
-                    aria-label={t.data.estimatedHint}
-                    title={t.data.estimatedHint}
-                    className="absolute -right-0.5 -bottom-0.5 size-2 rounded-full border border-white bg-status-risky"
-                    data-testid={`row-estimated-${item.id}`}
-                  />
-                ) : null}
               </span>
               {/* Truncation is visual only — the full name stays in the DOM for
                   assistive technology, and the hover preview serves the mouse.
@@ -1001,10 +1013,8 @@ function RecipeRow({
               aria-haspopup="dialog"
               aria-expanded={rowMenuOpen}
               aria-controls={`row-menu-dialog-${item.id}`}
-              onClick={() => {
-                setIngredientModalView('actions');
-                setRowMenuOpen(true);
-              }}
+              ref={rowMenuTriggerRef}
+              onClick={openRowMenu}
               className={iconButtonClasses('xs')}
             >
               {/* The button shell stays exactly as contracted — it is the
@@ -1038,6 +1048,8 @@ function RecipeRow({
                 // the width it had while stating it once instead of forcing it.
                 size="default"
                 panelClassName="sm:min-h-[290px] sm:p-0"
+                // A8: a panel opened from the row surface hands focus back to •••.
+                returnFocus={() => rowMenuTriggerRef.current}
                 onClose={() => closeLineMenus()}
               >
                 <div id={`row-menu-dialog-${item.id}`} data-ingredient-modal-shell="true">

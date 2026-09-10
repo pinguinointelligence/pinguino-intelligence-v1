@@ -142,7 +142,6 @@ export function MobileIngredientLine({
   isMain,
   required,
   unavailable,
-  estimated,
   changed,
   missingAmount,
   mainUnavailableReason,
@@ -154,7 +153,6 @@ export function MobileIngredientLine({
   isMain: boolean;
   required: boolean;
   unavailable: boolean;
-  estimated: boolean;
   changed: boolean;
   missingAmount: boolean;
   mainUnavailableReason?: string | null;
@@ -166,7 +164,7 @@ export function MobileIngredientLine({
       data-testid={`row-mobile-line-${item.id}`}
       data-changed={changed ? 'true' : undefined}
       className={cn(
-        'relative grid min-h-14 w-full grid-cols-[minmax(0,1fr)_62px_62px_64px] items-center gap-x-2 text-left',
+        'gellatti-touch-control relative grid min-h-14 w-full grid-cols-[minmax(0,1fr)_62px_62px_64px] items-center gap-x-2 text-left',
       )}
     >
       <button
@@ -180,14 +178,6 @@ export function MobileIngredientLine({
           <IngredientCategoryIcon
             symbol={ingredientCategorySymbolFor({ category: item.ingredient.category })}
           />
-          {estimated ? (
-            <span
-              aria-label={t.data.estimatedHint}
-              title={t.data.estimatedHint}
-              className="absolute -right-0.5 -bottom-0.5 size-2 rounded-full border border-white bg-status-risky"
-              data-testid={`row-estimated-${item.id}`}
-            />
-          ) : null}
         </span>
         {/* The approved mobile line carries the product NAME only — its
             qualifier belongs to the one detail sheet (owner §19/§20). */}

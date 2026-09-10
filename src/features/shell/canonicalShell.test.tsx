@@ -74,7 +74,11 @@ describe('canonical application shell', () => {
     expect(drawer.includes("side === 'left'")).toBe(false);
     expect(destination).toContain('navigationPosition="trailing"');
     expect(drawer).toContain("event.key === 'Escape'");
-    expect(drawer).toContain("body.style.overflow = 'hidden'");
+    // PRO MOBILE UX v2 · A1 — through the ONE counted page lock.
+    expect(drawer).toContain('lockBodyScroll()');
+    expect(read('components', 'ui', 'bodyScrollLock.ts')).toContain(
+      "document.body.style.overflow = 'hidden'",
+    );
     expect(drawer).toContain('aria-modal="true"');
   });
 
