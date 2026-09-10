@@ -316,7 +316,7 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     expect(text()).toContain('Zapisano jako Twój produkt');
   });
 
-  it('SOL-052: brand-only registry identity routes to front-label completion and is not finalized', async () => {
+  it('SOL-052: publication-ineligible internet facts are still applied and only real gaps are shown', async () => {
     const { discovery, registry } = fakes();
     const code = '7350042718481';
     const finalizeCount = discovery.finalizeInputs.length;
@@ -344,6 +344,12 @@ describe('ScanFlow (jsdom, fake ports)', () => {
           sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
           authority: 'barcode_registry',
         },
+        {
+          field: 'category.tags',
+          value: 'en:beverages',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
       ],
     });
     await act(async () => {
@@ -351,9 +357,23 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     });
     await typeCode(code);
     await flush();
-    expect(text()).toContain('Brakuje dokładnej nazwy wariantu');
-    expect(text()).toContain('Zrób zdjęcie przodu opakowania');
-    expect(discovery.finalizeInputs).toHaveLength(finalizeCount);
+    expect(text()).toContain('Skład (z etykiety)');
+    expect(text()).not.toContain('Brakuje dokładnej nazwy wariantu');
+    expect(text()).not.toContain('Nazwa produktu (z etykiety)');
+    expect(text()).not.toContain('Energia (kcal)');
+    expect(discovery.finalizeInputs).toHaveLength(finalizeCount + 1);
+    expect(discovery.finalizeInputs.at(-1)).toMatchObject({
+      customerFamily: 'beverage',
+      automaticEvidence: {
+        source: 'barcode_registry',
+        exactGtin: code,
+        productFields: {
+          identity: { displayName: 'Vitamin well', brand: 'Vitamin Well AB' },
+          nutrition: { energyKcal: 17 },
+        },
+      },
+    });
+    expect(discovery.finalizeInputs.at(-1)?.confirmations).toBeUndefined();
     expect(discovery.created.has(code)).toBe(false);
   });
 

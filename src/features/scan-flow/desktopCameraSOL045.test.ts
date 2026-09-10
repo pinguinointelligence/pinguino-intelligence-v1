@@ -19,6 +19,7 @@ import { describe, expect, it } from 'vitest';
 import { PolicyState, THRESHOLDS, type Candidate, type FrameSignals } from '@/scan-core/policy';
 import type { CameraProfile } from '@/scan-core/profile';
 import { scanFeedbackText } from './scanFlowLogic';
+import { buildConstraints } from '@/scan-lab/baseline/camera/cameraSession';
 
 const FLOW = readFileSync('src/features/scan-flow/ScanFlow.tsx', 'utf8');
 const CAPTURE = readFileSync('src/features/scan-flow/scanCoreCapture.ts', 'utf8');
@@ -93,6 +94,48 @@ describe('the preview is a window, not the whole screen', () => {
   it('is bounded and stops forcing a portrait box onto a landscape webcam', () => {
     expect(FLOW).toMatch(/max-w-\[420px\]/);
     expect(FLOW).toMatch(/aspect-\[3\/4\] w-full object-cover sm:aspect-video/);
+  });
+});
+
+describe('the desktop decoder receives useful pixels', () => {
+  it('keeps the requested resolution on every camera fallback rung', () => {
+    const requested = {
+      width: 1920,
+      height: 1080,
+      frameRate: 30,
+      facingMode: 'environment' as const,
+    };
+    for (const rung of [0, 1, 2] as const) {
+      const video = buildConstraints(requested, rung).video;
+      expect(video).not.toBe(true);
+      expect(video).toMatchObject({ width: { ideal: 1920 }, height: { ideal: 1080 } });
+    }
+  });
+
+  it('uses the full delivered desktop long edge for analysis', () => {
+    expect(CAPTURE).toContain(
+      "analysisLongEdge: captureFactor === 'desktop' ? deliveredLongEdge : undefined",
+    );
+  });
+
+  it('warns instead of silently accepting a useless low-resolution desktop stream', () => {
+    expect(CAPTURE).toContain("if (captureFactor === 'desktop')");
+    expect(CAPTURE).toContain('desktopResolutionWarning(delivered)');
+    expect(CAPTURE).toContain('Kamera udostępniła tylko niską rozdzielczość');
+  });
+
+  it('rescues the visible desktop guide as a native-resolution ROI', () => {
+    const policy = new PolicyState(PROFILE({ sourceW: 1920, sourceH: 1080 }));
+    let out = policy.decide(signals({ candidate: null }));
+    for (let i = 1; i < THRESHOLDS.rescueEveryN; i += 1)
+      out = policy.decide(signals({ frameIndex: i, tMs: i * 33, candidate: null }));
+    expect(out.path).toBe('RESCUE_FULL');
+    expect(out.roi).toEqual({ x: 230, y: 345, w: 1460, h: 390, plane: 'native' });
+  });
+
+  it('never probes upward zoom in the customer scanner', () => {
+    expect(CAPTURE).not.toContain('this.camera.probeControls()');
+    expect(CAPTURE).toContain('await this.camera.setZoom(1)');
   });
 });
 

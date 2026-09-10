@@ -78,14 +78,47 @@ const labelResult = (overrides: Record<string, unknown> = {}) => ({
 });
 
 describe('the exact GTIN source fills gaps and never overwrites a label', () => {
-  it('asks only for fields a scan can use, and never for the product name', () => {
+  it('asks for every usable exact-product field, including name and brand', () => {
+    expect([...EAN_LOOKUP_FIELDS]).toContain('productName');
+    expect([...EAN_LOOKUP_FIELDS]).toContain('brand');
     expect([...EAN_LOOKUP_FIELDS]).toContain('ingredients');
     expect([...EAN_LOOKUP_FIELDS]).toContain('nutritionBasis');
     expect([...EAN_LOOKUP_FIELDS]).toContain('productCategory');
     expect([...EAN_LOOKUP_FIELDS]).toContain('productDescription');
-    // Identity is read from the package the owner is holding, never guessed from a page.
+    // The lookup is pinned to the scanned GTIN; publication eligibility remains a separate gate.
     expect([...EAN_LOOKUP_FIELDS]).not.toContain('name');
-    expect([...EAN_LOOKUP_FIELDS]).not.toContain('brand');
+  });
+
+  it('maps exact internet identity for 8411092721032 without customer confirmation', () => {
+    const result = scanResultFromLookupFacts([
+      fact('productName', 'NESTEA Mango-Piña'),
+      fact('brand', 'Nestlé'),
+      fact('manufacturer', 'Nestlé España, S.A.'),
+      fact('netQuantity', '330 ml'),
+      fact('nutritionBasis', 'na 100 ml'),
+      fact('energyKcal', '19 kcal'),
+      fact('ingredients', 'Woda, cukier, sok mango i ananas'),
+    ])!;
+    expect(result.identity).toMatchObject({
+      displayName: 'NESTEA Mango-Piña',
+      originalName: 'NESTEA Mango-Piña',
+      brand: 'Nestlé',
+    });
+    expect(result.manufacturer).toBe('Nestlé España, S.A.');
+    expect(result.package).toMatchObject({ netQuantity: 330, unit: 'ml' });
+    expect(result.nutrition).toMatchObject({ basis: 'per_100ml', energyKcal: 19 });
+    expect(result.externalSources).toEqual([
+      expect.objectContaining({
+        fieldsUsed: expect.arrayContaining([
+          'identity.displayName',
+          'identity.brand',
+          'manufacturer',
+          'package.netQuantity',
+          'nutrition.energyKcal',
+          'ingredientsText',
+        ]),
+      }),
+    ]);
   });
 
   it('turns verbatim facts into scan fields with their source attached', () => {
@@ -99,9 +132,7 @@ describe('the exact GTIN source fills gaps and never overwrites a label', () => 
       fact('netQuantity', '330 ml'),
     ])!;
     expect(result.ingredientsText).toBe('Woda, barwnik: karmel E150d, kwas fosforowy');
-    expect((result.identity as Record<string, unknown>).category).toBe(
-      'Napoje gazowane bez cukru',
-    );
+    expect((result.identity as Record<string, unknown>).category).toBe('Napoje gazowane bez cukru');
     expect(result.claims).toEqual(['Napój gazowany o smaku coli bez cukru.']);
     expect((result.nutrition as Record<string, unknown>).basis).toBe('per_100ml');
     expect((result.nutrition as Record<string, unknown>).energyKcal).toBe(0.2);
