@@ -1,7 +1,7 @@
 # GELLATTI v2.2 — overnight session, 2026-09-10
 
 **Branch** `claude/gellatti-v22-safe` · **Worktree** `~/Developer/pinguino-v22-safe`
-**Base** `origin/staging` @ `b3baf256` · **HEAD** `4b045865` · 6 commits, local only.
+**Base** `origin/staging` @ `b3baf256` · **HEAD** see §9 · local only. **PARKED.**
 **No push. No PR. No merge. No production deploy. No migration applied.**
 
 ---
@@ -127,14 +127,16 @@ instead of a refusal. Pinned twice — the app-wide contract passes again, and
 
 | Gate | Result |
 | --- | --- |
-| New targeted tests | **88** across 10 new files, all passing |
+| New targeted tests | **112** across 12 new files, all passing |
 | HOME + pages/home + copy | 55 files / **567** passed |
 | production-workspace + pro-core + pro-workbench + copy | 103 files / **1402** passed |
 | community + pages/community | 23 files / **311** passed |
 | master-label + destinations + production-workspace | 72 files / **1132** passed, 1 skipped |
 | shell + tutorial + home-creator | 53 files / **603** passed |
-| Full suite (first run) | 1090 files / **13473 passed, 1 FAILED** — `scanFlow.boundary.test.ts`, the ONE-camera rule, broken by my own `HomeVisionCapture`. Fixed in `4b045865`. |
-| Full suite (after the fix) | **1090 files: 1065 passed, 25 skipped · 13605 tests: 13476 passed, 129 skipped, 0 FAILED** (605 s). One benign stderr line, `failed to load ./ita.special-words`, is pre-existing OCR-fixture noise on a passing run. |
+| Full suite, run 1 | 1090 files / **13473 passed, 1 FAILED** — `scanFlow.boundary.test.ts`, the ONE-camera rule, broken by my own `HomeVisionCapture`. Fixed in `4b045865`. |
+| Full suite, run 2 | **1090 files: 1065 passed, 25 skipped · 13476 passed, 129 skipped, 0 FAILED** (605 s). |
+| Full suite, run 3 (owner gate) | 1092 files / **13501 passed, 1 FAILED** — `studioBoundary.test.ts`: a doc comment in `publicationDraft.ts` named the data client. Fixed in `4f7a2740`. |
+| **Full suite, FINAL** | **1092 files: 1067 passed, 25 skipped · 13631 tests: 13502 passed, 129 skipped, 0 FAILED** (601 s). The lone stderr line `failed to load ./ita.special-words` is pre-existing OCR-fixture noise on a fully passing run. |
 | `npm run typecheck` (`tsc -b`) | clean |
 | `npx eslint .` | **0 errors**, 8 warnings — all pre-existing, none in a file I touched |
 | `npm run build` | built in 5.37 s |
@@ -144,79 +146,92 @@ instead of a refusal. Pinned twice — the app-wide contract passes again, and
 
 **These are unit and jsdom runtime tests. None of them is an E2E test, and none is called one.** The served checks below were run by hand against a local dev server, not by an automated browser suite.
 
-## 4. VISUAL / UX QA — actually rendered, not read
+## 4. FINAL COMPOSER VISUAL MATRIX (owner gate §6) — real browser, local dev server
 
-| Check | Evidence |
-| --- | --- |
-| Composer, resting | one field, four icons inside, `Wpisz składnik lub smak…`, no CTA, no hint |
-| Composer, keyboard focus | `modality=keyboard`, field `outline-style: none`, wrapper `box-shadow: rgba(75,77,82,.22) 0 0 0 3px`, border `#4b4d52` |
-| Layout stability | composer 128 px before and after focus / type / Tab / Shift+Tab / blur / refocus |
-| CTA | absent with text unparsed in the field; present after the first chip; label „Zamień pomysł w recepturę" |
-| Mobile 375 × 812 | composer, chips and CTA all fit; no horizontal overflow |
-| Tutorial | auto-start on first visit; 3 steps; each spotlight measured equal to its anchor's box + 8 px; „Gotowe" on the last; menu entry restarts a seen tutorial |
-| AI Vision entry | opens full-screen, drives the shared `CameraSession`, and degrades honestly to „Nie mamy dostępu do aparatu…" when the pane blocks the camera. Close / shutter / reticle all present. **The success path was NOT exercised — no real camera.** |
-| Label / PRO surfaces | **not** served-checked this session — covered by unit + contract tests only |
+Driven in the Browser pane against `http://localhost:5231`, reading computed styles and the live
+DOM after each step. **These are hand-driven browser checks, not an E2E suite** — the repo has no
+E2E infrastructure and nothing here is called one.
 
-## 5. FULL MASTER CHECKLIST — 1 → 41
+| | Check | Result |
+| --- | --- | --- |
+| **A** | empty state | placeholder `Wpisz składnik lub smak…` ✓ · CTA absent ✓ · hint absent ✓ · no `Powiedz` / `Zeskanuj` text anywhere in the body ✓ · microphone, scanner, AI ✨ and send arrow all `contains()`-verified INSIDE `home-composer` ✓ |
+| **B** | desktop tooltips | mic `Powiedz, co chcesz zrobić` · scanner `Zeskanuj produkt` · AI ✨ `Rozpoznaj owoc ze zdjęcia` · arrow `Dodaj` — all four read back from the rendered `title` attributes, each with its own `aria-label`. *The native tooltip bubble is browser chrome and cannot be captured in a screenshot; the attribute that produces it is verified.* |
+| **C** | `banan` + Enter | exactly **1** chip (`TWÓJ POMYSŁ \| banan`) ✓ · field cleared ✓ · placeholder → `Coś jeszcze dodajemy?` ✓ · `Zamień pomysł w recepturę` appears ✓ |
+| **D** | second ingredient + arrow | identical to Enter: **2** chips (`banan \| czekolada`) ✓ · field cleared ✓ · CTA still present ✓ · arrow returns to disabled on an empty field ✓ |
+| **E** | remove all base chips | after the first removal CTA stays (one base chip left) ✓ · after all removed: chip block gone, **CTA gone**, placeholder back to `Wpisz składnik lub smak…`, no hint ✓ |
+| **F** | focus matrix | click · type · Tab · Shift+Tab · Shift alone · select-all · mouse selection · blur → refocus · delete all — in **every** state the field computes `outline-style: none` and `box-shadow: none`, and the composer stays **506 × 128 px**. Keyboard focus paints on the rounded wrapper: `border-color rgb(75,77,82)` + `box-shadow rgba(75,77,82,.22) 0 0 0 3px`. **No black rectangular outline in any state.** |
 
-Statuses: ✅ DONE · 🧪 IMPLEMENTED / WAITING OWNER QA · 🟨 IN PROGRESS · ⏸ DEFERRED / WAITING · ⛔ BLOCKED · ⬜ TODO · 👁 OWNER VERIFIED · ⏭ SUPERSEDED
-**Nothing is marked 👁 OWNER VERIFIED. The owner has verified nothing in this session.**
+Two harness artefacts, recorded so they are not mistaken for product defects:
+- the pane's `Return` key sends `key: "" , code: ""` — an unnamed event no real keyboard produces. `Enter` is sent correctly and commits. The handler already tolerates a missing `key` by reading `code`; here both were empty.
+- one D attempt appeared to fail until a screenshot showed my click had landed below the field after the layout grew — the text never reached the input. Re-run against the element reference: passes.
+
+Also verified in the browser this round:
+- **§20 swap icon** — the app's `swap` glyph rendered at 8× is unmistakably **two opposite arrows**, not a refresh. **No change made.**
+- **AI Vision entry** — opens full-screen, drives the shared `CameraSession`, and degrades honestly to „Nie mamy dostępu do aparatu…" when the pane blocks the camera. Close / shutter / reticle present. **Success path not exercised — no real camera.**
+- **Not served-checked:** PRO save box, Labels, Share. Unit and contract tests only.
+
+## 5. FULL MASTER CHECKLIST — 1 → 41 (+ §P)
+
+Statuses, per the owner's 2026-09-10 rule: **a green test is not Owner Verified.**
+✅ DONE · 🎨 IMPLEMENTED + VISUAL QA (I looked at it rendered) · 🧪 IMPLEMENTED / WAITING OWNER QA (tests only, screen never viewed) · 🟨 IN PROGRESS (another session) · ⏸ DEFERRED / WAITING · ⛔ BLOCKED · ⬜ TODO · 👁 OWNER VERIFIED
+
+**👁 OWNER VERIFIED count: 0. The owner has seen nothing on served UI in this session.**
 
 | ID | Status | Name | Current state / note |
 | --- | --- | --- | --- |
-| 1 | ⏸ | Central Search / Concept Resolver | **Decision, not an implementation.** Waiting on final MAPPER / SEARCH (D-01). No local morphology built; `compoundStem` untouched; no second HOME dictionary created. |
-| 2 | ⏸ | HOME automatic product choice | **Decision, not an implementation.** `homeDefaultProducts.ts` not developed further; `HomeIdentityChoice` left exactly as it was. Waiting on the shared ranking (D-03). |
-| 3 | 🟨 | HOME AUTO priority | **Owned by PACKAGE 2A, another live session.** Implemented there on `claude/package-2a-priority-crowns` (`recipe-priority/priorityMode.ts`). Not duplicated here. |
-| 4 | 🟨 | AUTO → MANUAL | PACKAGE 2A (`pressCrown` one-way transition). Not duplicated. |
+| 1 | ⏸ | Central Search / Concept Resolver | **Decision, not an implementation.** Waiting on final MAPPER / SEARCH (D-01). No local morphology built; `compoundStem` untouched. |
+| 2 | ⏸ | HOME automatic product choice | **Decision, not an implementation.** `homeDefaultProducts.ts` not developed; `HomeIdentityChoice` untouched. Waiting on the shared ranking (D-03). |
+| 3 | 🟨 | HOME AUTO priority | PACKAGE 2A, live elsewhere. Not duplicated. |
+| 4 | 🟨 | AUTO → MANUAL | PACKAGE 2A. Not duplicated. |
 | 5 | 🟨 | Multiple crowns | PACKAGE 2A. Not duplicated. |
-| 6 | 🟨 | PRO uncrown residue bug | PACKAGE 2A — root cause is `setStandardIngredient` writing `user_intent_anchor_grams` on crown-off. Not duplicated. |
-| 7 | 🟨 | Crown never creates 1 g | PACKAGE 2A — `crownAutoSeed.ts` deleted there. Not duplicated. |
-| 8 | 🟨 | HOME auto recalc | PACKAGE 2A (`useHomeAutoRecalculation`). Not duplicated. |
+| 6 | 🟨 | PRO uncrown residue bug | PACKAGE 2A. Not duplicated. |
+| 7 | 🟨 | Crown never creates 1 g | PACKAGE 2A. Not duplicated. |
+| 8 | 🟨 | HOME auto recalc | PACKAGE 2A. Not duplicated. |
 | 9 | 🟨 | Grams without crown | PACKAGE 2A. Not duplicated. |
-| 10 | 🟨 | TOPPING outside the base, 5 %, MANUAL amount | PACKAGE 2A (`toppingAmountAuthority.ts`). Not duplicated. |
-| 11 | ⏸ | Chosen product never changes itself | **Decision recorded.** Enforcing it end-to-end needs the final resolver (D-01/D-03). The Vision path already obeys it: the CATALOGUE names the product, never the model. |
-| 12 | ⏸ | Scan → chip survives generation | Belongs to the **parked** Package 1. Not ported, per instruction. |
-| 13 | ⏸ | Matching full-screen UX | Waiting on resolver + recipe library (D-05). Nothing built. |
+| 10 | 🟨 | TOPPING outside the base, 5 %, MANUAL amount | PACKAGE 2A. Not duplicated. |
+| 11 | ⏸ | Chosen product never changes itself | Decision recorded. End-to-end enforcement needs the final resolver (D-01/D-03). The Vision path already obeys it: the CATALOGUE names the product, never the model. |
+| 12 | ⏸ | Scan → chip survives generation | Parked Package 1. Not ported, per instruction. |
+| 13 | ⏸ | Matching full-screen UX | Waiting on resolver + recipe library (D-05). |
 | 14 | ⏸ | 177 recipes + country PI | Waiting on final Mapper / recipe data (D-06, D-07). |
-| 15 | ⏸ | 10/10 across the library | Waiting on D-06/D-07 (D-08). No display score was touched. |
-| 16 | ⬜ | `ROBIMY` = a real Production session | **Not started — conflict.** The control lives in `HomeRecipeSection.tsx`, which PACKAGE 2A is editing right now. Audit note: PRO's Production authority (`useProductionWorkspace`, `productionSession`) is the one to reuse; no second engine exists to delete. |
-| 17 | ⬜ | Actual grams UI `247 g +7 g` + orange | **Not started — same file conflict as §16.** PRO already has `ProductionActualControl` and the planned/actual/delta split in `productionSession`; this is a presentation reuse, not new data. |
-| 18 | ⬜ | Rescue dead end (`Dokończ tak, jak jest`) | **Not started.** `leave_as_is` EXISTS (`productionSession.ts:92`, `useProductionWorkspace.ts:205`) and is already evaluated as an option, so the bug is in reachability/presentation, not in a missing strategy. Needs a reproduction before code. |
-| 19 | ✅ | Unsaved recipe in Produkcja | **Done** — `<ProWorkbar variant="panel" />` reused 1:1, proved byte-identical. `4baffd53`. |
-| 20 | ⛔ | PRO swap icon | **Blocked — the premise does not reproduce.** The only swap/exchange action in the app (`ArticleActionIcon.swap`, `ingredient-builder/IngredientRow.tsx:107`) is ALREADY two opposite arrows, not a refresh. No circular-arrow icon exists on any swap action. Needs the owner's screenshot. See Owner Decision 3. |
-| 21 | ✅ | After production — `Chcesz powtórzyć?` / `POWTÓRZ` | **Done**, premise verified first. `4baffd53`. |
-| 22 | 🧪 | Private share visible to a logged-out recipient | **Already held; audited, not re-built.** `SharedRecipePage` resolves the share for an anonymous visitor, shows the Demo projection (grams absent by construction), and carries the token through sign-in via `withContinuation`. No hard login wall exists. Not re-tested this session. |
-| 23 | 🧪 | Photo in a private share | **Authority + assets done** (`358708dd`); the share page now always renders a picture. Rules 1–2 cannot fire until the payload carries a photo field — needs a DB column (D-14). |
-| 24 | ⏸ | Community requires the user's OWN photo | **Rule implemented and tested** (`communityPhotoAccepted`); **deliberately not enforced yet.** The publish dialog today offers our own `/recipes/FL-*.webp` renders as the picture, which is exactly what §24 forbids — but enforcing the rule with no upload path would replace a wrong picture with a dead end. Needs a storage bucket (D-15). |
-| 25 | ⏸ | `Opublikuj później` / `WAITING_FOR_PHOTO` | **Not started — needs a migration** on a Supabase shared with production (D-16 / Owner Decision 1). |
-| 26 | ⬜ | HOME autosave + name at the end | **Not started — conflict.** The draft store already persists (`homeDraftStore.ts:105`), so autosave largely exists; the closing „Jak nazwiesz swoją recepturę?" screen lives in 2A's file. |
-| 27 | ✅ | One central composer field | **Done.** `71f85278`. Served. |
-| 28 | ✅ | Main CTA appears only after a base idea | **Done.** `71f85278`. Served. |
-| 29 | ✅ | Interactive first-run tutorial | **Infrastructure done and served** (`af4d6162`): spotlight, dim, Dalej/Wstecz/Pomiń, counter, auto-scroll, „Uruchom samouczek ponownie". Steps A–D live today; E–H are authored and appear automatically as their sections render. §29G's ingredient-settings step has no anchor yet — see Owner Decision 4. |
-| 30 | ✅ | AI ✨ = fruit only | **Done** on the real `product-identify-live` backend. Tooltip and copy promise fruit and nothing wider; a test asserts it. `71f85278`. |
-| 31 | ✅ | Full-screen AI Vision | **Done** — viewfinder, reticle, thumb-zone controls, shutter-triggers-recognition, one honest refusal. `71f85278`. Camera hardware not exercised in this session. |
-| 32 | ⏸ | ONE shared scanner | **Deferred (D-12).** Scanner routes landed on staging on 2026-09-08 (`#243`) and scanner artefacts sit in the main checkout; not touched. |
+| 15 | ⏸ | 10/10 across the library | Waiting on D-06/D-07 (D-08). No displayed score touched. |
+| 16 | ⬜ | `ROBIMY` = a real Production session | Not started — the control lives in `HomeRecipeSection.tsx`, PACKAGE 2A's live file. Audit: reuse `useProductionWorkspace` / `productionSession`; no second engine exists to delete. |
+| 17 | ⬜ | Actual grams `247 g +7 g` + orange | Not started — same file conflict. PRO already has `ProductionActualControl` and the planned/actual/delta split; this is presentation reuse, not new data. |
+| 18 | ⬜ | Rescue dead end (`Dokończ tak, jak jest`) | Not started. `leave_as_is` EXISTS and is already evaluated, so the defect is reachability/presentation. Needs a reproduction before code. |
+| 19 | 🧪 | Unsaved recipe in Produkcja | Implemented; `ProWorkbar variant="panel"` reused and proved **byte-identical** to the Receptura tab's. **Screen never viewed rendered → WAITING OWNER QA.** |
+| 20 | ⛔ | PRO swap icon | **WAITING SERVED QA / NO CHANGE — CURRENT RENDER IS CORRECT.** The app's `swap` glyph rendered at 8× in the browser is two opposite arrows, not a refresh. No circular-arrow icon exists on any swap action. Nothing changed; needs the owner's screenshot to identify another place. |
+| 21 | 🧪 | After production — `Chcesz powtórzyć?` / `POWTÓRZ` | Implemented; premise verified first (it restarts the SAME source). The FIRST-run `Rozpocznij partię` is a different context and is **deliberately untouched**, held by a test. **Screen never viewed → WAITING OWNER QA.** |
+| 22 | 🧪 | Private share visible to a logged-out recipient | Already held; audited, not rebuilt or re-tested. No hard login wall; Demo projection has no gram field; token survives sign-in. **WAITING OWNER QA.** |
+| 23 | 🧪 | Photo in a private share | Authority + four branded assets done; the share page always renders a picture. Rules 1–2 need a photo field on the payload (D-14). **Screen never viewed → WAITING OWNER QA.** |
+| 24 | ⏸ | Community requires the maker's OWN photo | **Decision closed by owner.** Rule implemented twice — pure (`communityPhotoAccepted`, `canPublishDraft`) and in SQL (`gellatti_community_photo_is_own_v1`). **Not enforced in the live dialog**, per the owner's instruction not to turn the working path into a dead end. Waiting on D-15. |
+| 25 | ⏸ | `Opublikuj później` / `WAITING_FOR_PHOTO` | **Migration, data model, code and tests PREPARED.** `20260910060000_community_waiting_for_photo.sql` is additive, transactional, with a rollback, and **has not been run anywhere**. Nothing is wired — a test asserts `services/community.ts` calls neither new RPC. Waiting on D-16. |
+| 26 | ⬜ | HOME autosave + name at the end | Not started — conflict. The draft store already persists; the closing „Jak nazwiesz swoją recepturę?" lives in 2A's file. |
+| 27 | 🎨 | One central composer field | **Implemented + VISUAL QA** — gate A, B, C, D above. |
+| 28 | 🎨 | Main CTA appears only after a base idea | **Implemented + VISUAL QA** — gate A, C, E above. |
+| 29 | 🎨 | Interactive first-run tutorial | **Implemented + VISUAL QA** — auto-start, 3 live steps each spotlighting the measured anchor, „Gotowe", menu restart. Steps E–H appear as their sections render. §29G ingredient-settings anchor: **DEFERRED UNTIL PACKAGE 2A INTEGRATION.** |
+| 30 | 🎨 | AI ✨ = fruit only | **Implemented + VISUAL QA** for the entry and copy; the recogniser is real (`product-identify-live`) but **not exercised** — see §31. |
+| 31 | 🎨 / ⏸ | Full-screen AI Vision | **UI + canonical `CameraSession` + integration boundary = IMPLEMENTED + VISUAL QA** (opens, reticle, thumb-zone controls, honest refusal when the camera is blocked). **Recognition round-trip = DEFERRED/BLOCKED on a real device** — no camera and no paid call exercised. No fake backend was written. |
+| 32 | ⏸ | ONE shared scanner | Deferred (D-12). Related: the fruit camera was corrected to drive the ONE canonical `CameraSession` after the repo's own boundary guard caught it. |
 | 33 | ⏸ | Full-screen scanner UX | Deferred with §32. |
-| 34 | ⏸ | Desktop scanner root-cause fix | Deferred with §32. Prior evidence exists in `reports/` and in the scan-core worktrees; no new audit run. |
+| 34 | ⏸ | Desktop scanner root-cause fix | Deferred with §32. |
 | 35 | ⏸ | Processing HOT / COLD | Waiting on `GELLATTI_PROCESSING_RULES_v1.xlsx` (D-09). Nothing hardcoded. |
-| 36 | ✅ | Rectangular labels only | **Done** — choice removed everywhere a customer can reach; round renderers kept so the archive still draws. `b8055814`. |
-| 37 | 🧪 | Label main screen = preview + two actions | **Already held; audited and pinned.** Drukuj + Zmień ustawienia, preview-first. The „auto-fill everything we know" half is NOT verified — that is a data-completeness claim across markets (D-17). |
-| 38 | ✅ | Expiry date never blocks the preview | **Verified and pinned.** The missing-data list is consulted in exactly ONE place — `requestPrint` — and `PrintMissingDataDialog` collects „Data trwałości" and prints from there without routing to settings. `b8055814`. |
+| 36 | 🧪 | Rectangular labels only | Implemented; the choice is gone everywhere a customer reaches, the round renderers stay so the archive still draws. **Screen never viewed → WAITING OWNER QA.** |
+| 37 | 🧪 | Label main screen = preview + two actions | Already held; audited and pinned. The „auto-fills everything it knows" half is **not** verified (D-17). **WAITING OWNER QA.** |
+| 38 | 🧪 | Expiry date never blocks the preview | Verified in code and pinned: the missing-data list is consulted in exactly ONE place, and the small window collects „Data trwałości" and prints from there. **Screen never viewed → WAITING OWNER QA.** |
 | 39 | ⏸ | Label layout / market compliance engine | Waiting on a verified compliance dataset (D-10). No law guessed. |
-| 40 | ✅ | „Historia etykiet" + LOT/name search | **Done.** `b8055814`. Not served-checked. |
-| 41 | ✅ | Composer must not draw an inner black frame | **Done, root cause proven by counterfactual in the browser.** `71f85278`. |
-| P-1…P-7 | ⏸ | Unreviewed client-test items (§P) | Untouched by design: tutorial „Mniej lodu" art, „Cukier robi dwie rzeczy", SHOP order, annual plans, Affinity grouping, sticky full header, AI language-intent layer. Awaiting owner review (D-13). |
+| 40 | 🧪 | „Historia etykiet" + LOT/name search | Implemented. **Screen never viewed → WAITING OWNER QA.** |
+| 41 | 🎨 | Composer must not draw an inner black frame | **Implemented + VISUAL QA** — gate F, nine states, plus the counterfactual that proved the root cause. |
+| P-1…P-7 | ⏸ | Unreviewed client-test items (§P) | Untouched by design. Awaiting owner review (D-13). |
 
 ### Totals
 
 | | |
 | --- | --- |
-| Points tracked | **48** (41 numbered + 7 §P items) |
-| ✅ DONE | **10** — 19, 21, 27, 28, 29, 30, 31, 36, 38, 40, 41 *(11 rows; §29 counted once)* |
-| 🧪 IMPLEMENTED / WAITING OWNER QA | **3** — 22, 23, 37 |
-| 🟨 IN PROGRESS (another session) | **8** — 3, 4, 5, 6, 7, 8, 9, 10 |
-| ⏸ DEFERRED / WAITING | **19** — 1, 2, 11, 12, 13, 14, 15, 24, 25, 32, 33, 34, 35, 39, P-1…P-7 |
-| ⛔ BLOCKED | **1** — 20 |
+| Points tracked | **48** (41 numbered + 7 §P) |
+| 🎨 IMPLEMENTED + VISUAL QA | **6** — 27, 28, 29, 30, 31 (UI half), 41 |
+| 🧪 IMPLEMENTED / WAITING OWNER QA | **8** — 19, 21, 22, 23, 36, 37, 38, 40 |
+| 🟨 IN PROGRESS (PACKAGE 2A) | **8** — 3–10 |
+| ⏸ DEFERRED / WAITING | **19** — 1, 2, 11, 12, 13, 14, 15, 24, 25, 31 (backend half), 32, 33, 34, 35, 39, P-1…P-7 |
+| ⛔ BLOCKED | **1** — 20 (no change made; current render correct) |
 | ⬜ TODO | **4** — 16, 17, 18, 26 |
 | 👁 OWNER VERIFIED | **0** |
 
@@ -244,23 +259,36 @@ Statuses: ✅ DONE · 🧪 IMPLEMENTED / WAITING OWNER QA · 🟨 IN PROGRESS ·
 
 ## 7. OWNER DECISIONS REQUIRED
 
-**1 — Migrations against a Supabase shared with production.** §23 (photo field), §24 (photo bucket) and §25 (`Opublikuj później`) all need schema. Memory records that staging and production share one Supabase.
+**CLOSED BY OWNER 2026-09-10** — decisions 1, 2, 3 and 4 below were answered; the resolutions are
+recorded inline. Only decision 5 is still open.
+
+**1 — Migrations against a Supabase shared with production.** → **ANSWERED: prepare, do not apply.**
+The `WAITING_FOR_PHOTO` migration, model, code and tests are written and committed; the migration has
+been run nowhere. Original framing: §23 (photo field), §24 (photo bucket) and §25 (`Opublikuj później`) all need schema. Memory records that staging and production share one Supabase.
 · A: I write the additive migrations and someone applies them after review. · B: I write and apply them on staging myself. · C: they wait for a separate staging database.
 **Recommendation: A.** Additive and forward-only is low risk, but "staging-only" is not true here, and applying schema to production data is not a call I should make unattended. **Impact:** §23 rules 1–2, §24 enforcement and all of §25 stay blocked until this is answered.
 
-**2 — Community publishing is currently in the state §24 forbids.** The publish dialog defaults to and offers OUR library renders as the community photo. I did not remove it, because with no upload path that turns a wrong picture into a dead end.
+**2 — Community publishing is currently in the state §24 forbids.** → **ANSWERED: leave the working
+path alone (option A).** The rule is now stated in two places that cannot be bypassed once the
+migration lands — the pure model and the SQL predicate — and the live dialog is untouched. Original
+framing: The publish dialog defaults to and offers OUR library renders as the community photo. I did not remove it, because with no upload path that turns a wrong picture into a dead end.
 · A: leave it until the upload exists (today's state). · B: block publishing now, honouring §24 immediately, and accept that nobody can publish until D-15 lands.
 **Recommendation: A**, with D-15 prioritised. **Impact:** B stops Community publication outright.
 
-**3 — §20 swap icon: I cannot find the icon described.** The only swap action in the app already draws two opposite arrows; there is no circular/refresh icon on any swap action anywhere.
+**3 — §20 swap icon.** → **ANSWERED: no change if the current render is correct.** Verified in the
+browser at 8×: the glyph is two opposite arrows. **Nothing was changed.** Status
+`WAITING SERVED QA / NO CHANGE IF CURRENT RENDER CORRECT`. Original framing: The only swap action in the app already draws two opposite arrows; there is no circular/refresh icon on any swap action anywhere.
 · A: send the screenshot and the screen it is on. · B: I change nothing.
 **Recommendation: A.** **Impact:** §20 stays ⛔ until then.
 
-**4 — §29G ingredient-settings tutorial step has no anchor.** The step is authored and drops itself cleanly, but the panel it should spotlight carries no `data-testid`, and adding one means editing `HomeRecipeSection.tsx` — PACKAGE 2A's live file.
+**4 — §29G ingredient-settings tutorial step has no anchor.** → **ANSWERED: do not touch PACKAGE 2A
+files.** Status `DEFERRED UNTIL PACKAGE 2A INTEGRATION`; the step drops itself cleanly until then.
+Original framing: The step is authored and drops itself cleanly, but the panel it should spotlight carries no `data-testid`, and adding one means editing `HomeRecipeSection.tsx` — PACKAGE 2A's live file.
 · A: I add the anchor after 2A lands. · B: 2A adds it as part of its own work.
 **Recommendation: A.** **Impact:** the tutorial teaches the crown only when this lands.
 
-**5 — §21 first-run start control.** „Rozpocznij partię" still names the FIRST production run (only the repeat CTA changed). §21 says „partia" should leave the customer's language generally, but gave replacement wording only for the repeat.
+**5 — §21 first-run start control.** → **STILL OPEN**, and the owner has confirmed the first run is a
+different context, so `Rozpocznij partię` stays there for now. Original framing: „Rozpocznij partię" still names the FIRST production run (only the repeat CTA changed). §21 says „partia" should leave the customer's language generally, but gave replacement wording only for the repeat.
 · A: leave it. · B: rename it to owner-supplied wording.
 **Recommendation: A** until the owner supplies the words — inventing them would be guessing.
 
@@ -273,24 +301,32 @@ Statuses: ✅ DONE · 🧪 IMPLEMENTED / WAITING OWNER QA · 🟨 IN PROGRESS ·
 - **`homeCreatorCopy.ts` is shared with PACKAGE 2A.** No conflict today (`git merge-tree` clean), but both branches touch the file; whichever lands second should re-run the HOME suite.
 - **Frozen-copy contract changed.** `homeEntryFrozen.contract.test.ts` was updated to the new §27 placeholder. That is the owner's own re-freeze, recorded in the file, but it is a frozen contract that moved.
 - **`data-tutorial-measured`** was added to the overlay for served verification. It is deliberate and documented, not debug residue.
-- **I broke an architectural boundary and the repo caught it, not me.** The one-camera rule was violated for five commits and only surfaced on the full suite. Anything I built tonight that has no such guard has not had that check.
+- **I broke two architectural boundaries and the repo caught both, not me.** The ONE-camera rule (`scanFlow.boundary`) and the data-client-name rule (`studioBoundary`) each survived several commits and only surfaced on a full-suite run. Anything I built that has no such guard has not had that check.
+- **The `WAITING_FOR_PHOTO` migration has never been executed** — not on staging, not anywhere. Its only verification is a static scan of its own SQL. Applying it will need a real dry run.
 
-## 9. GIT
+## 9. GIT — PARKED
 
 ```
-branch  claude/gellatti-v22-safe
-base    b3baf256  (origin/staging)
-head    4b045865
+branch  claude/gellatti-v22-safe          PARKED — no further development
+base    b3baf256  (origin/staging at session start; staging has since moved to 496266f7)
+head    4f7a2740
 
-4b045865  fix(home): the fruit camera must not be a second camera (§32)
-af4d6162  feat(tutorial): a first-run tutorial that teaches at the real component (§29)
-b8055814  feat(labels): rectangular only, history you can search, and the expiry asked at print (§36/§38/§40)
-358708dd  feat(share): one image authority, four branded profile cards (§23/§24/SAFE-5)
-4baffd53  feat(pro): save the recipe where you are standing, and ask to repeat in words (§19/§21)
-71f85278  feat(home): one composer, four doors, and one focus indicator (§27/§28/§30/§41)
+4f7a2740 fix(community): keep a data-client name out of feature prose (studioBoundary)
+6df97715 feat(community): „Opublikuj później" prepared — migration, model and tests, NOT applied (§24/§25)
+4c16c0fe docs: session report — GELLATTI v2.2 overnight, 2026-09-10
+4b045865 fix(home): the fruit camera must not be a second camera (§32)
+af4d6162 feat(tutorial): a first-run tutorial that teaches at the real component (§29)
+b8055814 feat(labels): rectangular only, history you can search, and the expiry asked at print (§36/§38/§40)
+358708dd feat(share): one image authority, four branded profile cards (§23/§24/SAFE-5)
+4baffd53 feat(pro): save the recipe where you are standing, and ask to repeat in words (§19/§21)
+71f85278 feat(home): one composer, four doors, and one focus indicator (§27/§28/§30/§41)
 
-38 files changed, 2949 insertions(+), 130 deletions(-)
+43 files changed, 3821 insertions(+), 130 deletions(-)
 git status: clean
 ```
 
-**Not pushed. No PR. Not merged. Not deployed. No migration written or applied.**
+**0 push · 0 PR · 0 merge · 0 production deploy · 0 migration executed.**
+`git branch -r --contains HEAD` is empty — nothing from this branch exists on any remote.
+Parked Package 1 (`a841d573`) untouched and still on no remote. `origin/main` untouched.
+Zero merge conflicts against current `origin/staging`, against PACKAGE 2A's head, and against the
+parked branch. This branch needs a rebase before it lands.
