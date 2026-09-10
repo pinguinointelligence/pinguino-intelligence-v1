@@ -49,6 +49,17 @@ export interface CooperationCopy {
     readonly audiencePlaceholder: string;
     readonly country: string;
     readonly countryPlaceholder: string;
+    /** C-APP-02: which languages the creator publishes in. */
+    readonly languages: string;
+    readonly languagesPlaceholder: string;
+    /** C-APP-02/03: a BAND, never an exact follower count. */
+    readonly audienceSize: string;
+    readonly audienceSizeOptions: readonly { readonly value: string; readonly label: string }[];
+    /** C-APP-02: the code the creator would like, if they have a preference. */
+    readonly proposedSlug: string;
+    readonly proposedSlugPlaceholder: string;
+    /** C-APP-02: explicit consent to process the application. */
+    readonly consent: string;
     readonly note: string;
     readonly notePlaceholder: string;
     readonly submit: string;
@@ -142,13 +153,27 @@ export const cooperationCopyPl: CooperationCopy = {
     account: 'Konto Gellatti',
     primaryLink: 'Główny link',
     primaryLinkPlaceholder: 'https://instagram.com/twoj-profil',
-    otherLinks: 'Inne linki',
+    otherLinks: 'Strona, blog, newsletter, inne linki',
     otherLinksPlaceholder: 'Oddziel przecinkami',
     platforms: 'Platformy',
     audience: 'Publiczność',
     audiencePlaceholder: 'Np. 12 tys. obserwujących, tematyka deserowa',
     country: 'Kraj',
     countryPlaceholder: 'Polska',
+    languages: 'Języki',
+    languagesPlaceholder: 'W jakich językach publikujesz',
+    audienceSize: 'Wielkość publiczności',
+    audienceSizeOptions: [
+      { value: '', label: 'Wybierz' },
+      { value: 'under_1k', label: 'poniżej 1 tys.' },
+      { value: '1k_10k', label: '1–10 tys.' },
+      { value: '10k_50k', label: '10–50 tys.' },
+      { value: '50k_200k', label: '50–200 tys.' },
+      { value: 'over_200k', label: 'powyżej 200 tys.' },
+    ],
+    proposedSlug: 'Proponowany kod (opcjonalnie)',
+    proposedSlugPlaceholder: 'Np. TWOJANAZWA',
+    consent: 'Zgadzam się na przetwarzanie tych danych w celu rozpatrzenia zgłoszenia.',
     note: 'Co chcesz robić z Gellatti',
     notePlaceholder: 'Krótko: jaki materiał planujesz i dla kogo.',
     submit: 'Wyślij zgłoszenie',
@@ -242,13 +267,27 @@ export const cooperationCopyEn: CooperationCopy = {
     account: 'Gellatti account',
     primaryLink: 'Main link',
     primaryLinkPlaceholder: 'https://instagram.com/your-profile',
-    otherLinks: 'Other links',
+    otherLinks: 'Site, blog, newsletter, other links',
     otherLinksPlaceholder: 'Separate with commas',
     platforms: 'Platforms',
     audience: 'Audience',
     audiencePlaceholder: 'e.g. 12k followers, dessert content',
     country: 'Country',
     countryPlaceholder: 'Poland',
+    languages: 'Languages',
+    languagesPlaceholder: 'Which languages you publish in',
+    audienceSize: 'Audience size',
+    audienceSizeOptions: [
+      { value: '', label: 'Select' },
+      { value: 'under_1k', label: 'under 1k' },
+      { value: '1k_10k', label: '1–10k' },
+      { value: '10k_50k', label: '10–50k' },
+      { value: '50k_200k', label: '50–200k' },
+      { value: 'over_200k', label: 'over 200k' },
+    ],
+    proposedSlug: 'Preferred code (optional)',
+    proposedSlugPlaceholder: 'e.g. YOURNAME',
+    consent: 'I agree to this information being processed to review my application.',
     note: 'What you want to do with Gellatti',
     notePlaceholder: 'Briefly: what you plan to make, and for whom.',
     submit: 'Send application',

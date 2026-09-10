@@ -146,6 +146,16 @@ export interface AffiliateCopy {
       readonly body: string;
     }[];
   };
+  /**
+   * The quiet bridge to the OTHER programme. Affiliate pays money; "Poleć
+   * Gellatti" pays PRO days. Someone who is not a creator lands here and, until
+   * now, had no way to find the one that actually fits them.
+   */
+  readonly referralBridge: {
+    readonly title: string;
+    readonly body: string;
+    readonly cta: string;
+  };
   /** Section 6 — application. */
   readonly apply: {
     readonly eyebrow: string;
@@ -318,6 +328,11 @@ export const affiliateCopyPl: AffiliateCopy = {
       },
     ],
   },
+  referralBridge: {
+    title: 'Nie tworzysz treści?',
+    body: 'Możesz po prostu polecić Gellatti znajomym. Za ich pierwszą opłaconą subskrypcję dopisujemy Ci dni Gellatti PRO — bez zgłoszenia i bez prowizji.',
+    cta: 'Zobacz Poleć Gellatti',
+  },
   apply: {
     eyebrow: 'Zgłoszenie',
     title: 'Dołącz do programu Affiliate.',
@@ -487,6 +502,11 @@ export const affiliateCopyEn: AffiliateCopy = {
         body: 'Results, assigned customers and commission are visible as they happen.',
       },
     ],
+  },
+  referralBridge: {
+    title: 'Not a creator?',
+    body: 'You can simply recommend Gellatti to friends. Their first paid subscription earns you Gellatti PRO days — no application, no commission.',
+    cta: 'See Refer a Friend',
   },
   apply: {
     eyebrow: 'Application',

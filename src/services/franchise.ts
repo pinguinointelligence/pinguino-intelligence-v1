@@ -42,8 +42,16 @@ export async function submitFranchiseInquiry(
   draft: FranchiseInquiryDraft,
 ): Promise<{ id: string; status: FranchiseInquiryStatus }> {
   if (!supabase) return unavailable();
+  // The origin is added HERE rather than by each caller, so no submission path
+  // can forget it. The RPC does not trust it as a claim: it classifies the
+  // origin itself, and only uses the result to label the admin email's subject.
+  // Staging and production share one database, so this is the only signal the
+  // server has about which app is calling.
   const { data, error } = await supabase.rpc('gellatti_submit_franchise_inquiry_v1', {
-    p_inquiry: draft,
+    p_inquiry: {
+      ...draft,
+      origin: typeof window === 'undefined' ? '' : window.location.origin,
+    },
   });
   if (error) throw new Error(error.message);
   return data as { id: string; status: FranchiseInquiryStatus };
