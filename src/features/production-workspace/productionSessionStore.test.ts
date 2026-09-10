@@ -1,7 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { RecipeInput } from '@/engine';
 import { DEFAULT_PRESET } from '@/data/demoPresets';
-import { migrateProductionSessionStore, useProductionSessionStore } from './productionSessionStore';
+import {
+  migrateProductionSessionStore,
+  productionSessionAddressKey,
+  productionSessionForAddress,
+  useProductionSessionStore,
+} from './productionSessionStore';
 
 const recipe = (): RecipeInput => ({
   items: DEFAULT_PRESET.items.map((item) => ({ ...item, actual_grams: null })),
@@ -48,6 +53,9 @@ describe('production session store', () => {
     expect(useProductionSessionStore.getState().session?.ownerUserId).toBe('owner-a');
     useProductionSessionStore.getState().clear();
     expect(useProductionSessionStore.getState().session).toBeNull();
+    expect(useProductionSessionStore.getState().sessionsById).toEqual({});
+    expect(useProductionSessionStore.getState().selectedSessionIdByAddress).toEqual({});
+    expect(useProductionSessionStore.getState().activeAddressKey).toBeNull();
   });
 
   it('restores one server-authoritative run without archiving the same local identity', () => {
@@ -63,7 +71,7 @@ describe('production session store', () => {
     expect(useProductionSessionStore.getState().archivedSessions).toHaveLength(0);
   });
 
-  it('starts a different owner session only after an explicit start action', () => {
+  it('keeps parallel runs indexed by UUID without locally archiving the prior run', () => {
     start();
     useProductionSessionStore.getState().startNewSession({
       ownerUserId: 'owner-b',
@@ -82,8 +90,11 @@ describe('production session store', () => {
       sessionId: 'run-b',
       ownerUserId: 'owner-b',
     });
-    expect(useProductionSessionStore.getState().archivedSessions).toHaveLength(1);
-    expect(useProductionSessionStore.getState().archivedSessions[0]?.sessionId).toBe('run-a');
+    expect(useProductionSessionStore.getState().archivedSessions).toHaveLength(0);
+    expect(Object.keys(useProductionSessionStore.getState().sessionsById).sort()).toEqual([
+      'run-a',
+      'run-b',
+    ]);
   });
 
   it('archives a stale session without destroying its frozen physical record', () => {
@@ -123,14 +134,10 @@ describe('production session store', () => {
       Partial<Pick<typeof current, 'durableRescueRevision' | 'durableActualRevision'>>;
     delete legacy.durableRescueRevision;
     delete legacy.durableActualRevision;
-    const migrated = migrateProductionSessionStore(
-      { session: legacy, archivedSessions: [] },
-      4,
-    ) as {
-      session: typeof current;
-    };
+    const migrated = migrateProductionSessionStore({ session: legacy, archivedSessions: [] }, 4);
 
-    expect(migrated.session).toMatchObject({
+    expect(migrated.session).toBeNull();
+    expect(migrated.sessionsById[current.sessionId]).toMatchObject({
       durableRescueRevision: 0,
       durableActualRevision: 0,
     });
@@ -151,12 +158,10 @@ describe('production session store', () => {
     legacy.degassingAcknowledgedAt = '2026-08-25T09:00:00.000Z';
     legacy.carbonatedProductIds = ['carbonated-product-1'];
 
-    const migrated = migrateProductionSessionStore(
-      { session: legacy, archivedSessions: [] },
-      6,
-    ) as { session: typeof current };
+    const migrated = migrateProductionSessionStore({ session: legacy, archivedSessions: [] }, 6);
 
-    expect(migrated.session).toMatchObject({
+    expect(migrated.session).toBeNull();
+    expect(migrated.sessionsById[current.sessionId]).toMatchObject({
       lastDeviationDecision: null,
       degassingRequired: true,
       degassingAcknowledged: true,
@@ -164,10 +169,161 @@ describe('production session store', () => {
       carbonatedProductIds: ['carbonated-product-1'],
     });
     expect(
-      [...migrated.session.lines, ...migrated.session.addonLines].every(
-        (line) => line.draftActualEdited === false,
-      ),
+      [
+        ...migrated.sessionsById[current.sessionId]!.lines,
+        ...migrated.sessionsById[current.sessionId]!.addonLines,
+      ].every((line) => line.draftActualEdited === false),
     ).toBe(true);
+  });
+
+  it('ignores a legacy singleton when the open recipe/version address is different', () => {
+    start();
+    const state = useProductionSessionStore.getState();
+
+    expect(
+      productionSessionForAddress(state, {
+        ownerUserId: 'owner-a',
+        recipeId: 'recipe-b',
+        recipeVersionId: 'version-b',
+      }),
+    ).toBeNull();
+    expect(state.sessionsById['run-a']).toEqual(state.session);
+  });
+
+  it('switches C01 ↔ C02 by exact address and preserves both run UUIDs', () => {
+    start();
+    const runA = useProductionSessionStore.getState().session!;
+    useProductionSessionStore.getState().startNewSession({
+      ownerUserId: 'owner-a',
+      source: {
+        recipeId: 'recipe-c02',
+        recipeVersionId: 'version-c02',
+        recipeVersionNumber: 1,
+        recipeName: 'C02',
+      },
+      plannedInput: recipe(),
+      now: '2026-09-08T11:00:00.000Z',
+      sessionId: 'run-b',
+    });
+    const runB = useProductionSessionStore.getState().session!;
+
+    useProductionSessionStore.getState().activateSessionForAddress({
+      ownerUserId: 'owner-a',
+      recipeId: 'recipe-a',
+      recipeVersionId: 'version-a',
+    });
+    expect(useProductionSessionStore.getState().session).toEqual(runA);
+
+    useProductionSessionStore.getState().activateSessionForAddress({
+      ownerUserId: 'owner-a',
+      recipeId: 'recipe-c02',
+      recipeVersionId: 'version-c02',
+    });
+    expect(useProductionSessionStore.getState().session).toEqual(runB);
+    expect(useProductionSessionStore.getState().archivedSessions).toEqual([]);
+  });
+
+  it('rehydrates two tabs from the same persisted index without swapping C01 and C02', () => {
+    start();
+    const runA = useProductionSessionStore.getState().session!;
+    useProductionSessionStore.getState().startNewSession({
+      ownerUserId: 'owner-a',
+      source: {
+        recipeId: 'recipe-c02',
+        recipeVersionId: 'version-c02',
+        recipeVersionNumber: 1,
+        recipeName: 'C02',
+      },
+      plannedInput: recipe(),
+      now: '2026-09-08T11:00:00.000Z',
+      sessionId: 'run-b',
+    });
+    const runB = useProductionSessionStore.getState().session!;
+    const persisted = {
+      session: null,
+      activeAddressKey: null,
+      sessionsById: structuredClone(useProductionSessionStore.getState().sessionsById),
+      selectedSessionIdByAddress: structuredClone(
+        useProductionSessionStore.getState().selectedSessionIdByAddress,
+      ),
+    };
+
+    expect(
+      productionSessionForAddress(persisted, {
+        ownerUserId: 'owner-a',
+        recipeId: 'recipe-a',
+        recipeVersionId: 'version-a',
+      }),
+    ).toEqual(runA);
+    expect(
+      productionSessionForAddress(persisted, {
+        ownerUserId: 'owner-a',
+        recipeId: 'recipe-c02',
+        recipeVersionId: 'version-c02',
+      }),
+    ).toEqual(runB);
+  });
+
+  it('discards a late C01 recovery after C02 became the active projection', () => {
+    start();
+    const runABefore = structuredClone(useProductionSessionStore.getState().session!);
+    const lateRunA = {
+      ...runABefore,
+      internalProductionNote: 'late C01 response',
+    };
+    useProductionSessionStore.getState().startNewSession({
+      ownerUserId: 'owner-a',
+      source: {
+        recipeId: 'recipe-c02',
+        recipeVersionId: 'version-c02',
+        recipeVersionNumber: 1,
+        recipeName: 'C02',
+      },
+      plannedInput: recipe(),
+      now: '2026-09-08T11:00:00.000Z',
+      sessionId: 'run-b',
+    });
+    const runB = useProductionSessionStore.getState().session!;
+
+    useProductionSessionStore.getState().restoreDurableSession(lateRunA, {
+      ownerUserId: 'owner-a',
+      recipeId: 'recipe-a',
+      recipeVersionId: 'version-a',
+    });
+
+    expect(useProductionSessionStore.getState().session).toEqual(runB);
+    expect(useProductionSessionStore.getState().sessionsById['run-a']).toEqual(runABefore);
+  });
+
+  it('does not repopulate the cleared account projection from a late response', () => {
+    start();
+    const lateRun = structuredClone(useProductionSessionStore.getState().session!);
+    const address = {
+      ownerUserId: 'owner-a',
+      recipeId: 'recipe-a',
+      recipeVersionId: 'version-a',
+    };
+
+    useProductionSessionStore.getState().clear();
+    useProductionSessionStore.getState().restoreDurableSession(lateRun, address);
+
+    expect(useProductionSessionStore.getState().session).toBeNull();
+    expect(useProductionSessionStore.getState().sessionsById).toEqual({});
+  });
+
+  it('migrates the v9 singleton into an exact address pointer without activating it', () => {
+    start();
+    const legacy = structuredClone(useProductionSessionStore.getState().session!);
+    const migrated = migrateProductionSessionStore({ session: legacy, archivedSessions: [] }, 9);
+    const address = {
+      ownerUserId: 'owner-a',
+      recipeId: 'recipe-a',
+      recipeVersionId: 'version-a',
+    };
+
+    expect(migrated.session).toBeNull();
+    expect(migrated.sessionsById).toEqual({ 'run-a': legacy });
+    expect(migrated.selectedSessionIdByAddress[productionSessionAddressKey(address)]).toBe('run-a');
   });
 
   it('does not expose a browser action that can apply a local Rescue candidate', () => {

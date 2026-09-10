@@ -28,7 +28,12 @@ import {
   PRODUCTION_GRAMS_EPSILON,
   type ProductionSession,
 } from './productionSession';
-import { useProductionSessionStore } from './productionSessionStore';
+import {
+  productionSessionAddressKey,
+  productionSessionForAddress,
+  useProductionSessionStore,
+  type ProductionSessionAddress,
+} from './productionSessionStore';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import { useCustomerPriceStore } from '@/stores/customerPriceStore';
 import {
@@ -327,6 +332,20 @@ export const shouldHydrateDurableProductionRecovery = (
   relation: DurableProductionRecoveryRelation,
 ): boolean => relation !== 'missing_remote';
 
+/**
+ * When historical data contains more than one in-progress run for one exact
+ * recipe version, recovery is explicit and stable: newest creation wins, then
+ * the lexicographically greater UUID breaks an equal-timestamp tie. No sibling
+ * run is transitioned, archived, completed, or otherwise mutated.
+ */
+export const selectProductionRunForRecipeVersion = (
+  runs: readonly ProductionRun[],
+): ProductionRun | null =>
+  [...runs].sort((left, right) => {
+    const created = right.createdAt.localeCompare(left.createdAt);
+    return created !== 0 ? created : right.runId.localeCompare(left.runId);
+  })[0] ?? null;
+
 export const productionSourceForRecipe = (
   recipe: Pick<
     RecipeState,
@@ -428,11 +447,12 @@ export function useProductionWorkspace(enabled: boolean) {
   const ownerUserId = useAuthStore((state) =>
     state.status === 'authed' ? (state.user?.id ?? null) : null,
   );
-  const session = useProductionSessionStore((state) => state.session);
-  const setDraftActual = useProductionSessionStore((state) => state.setDraftActual);
-  const archiveCurrentSession = useProductionSessionStore((state) => state.archiveCurrentSession);
-  const replaceSession = useProductionSessionStore((state) => state.replaceSession);
-  const restoreDurableSession = useProductionSessionStore((state) => state.restoreDurableSession);
+  const productionSessionState = useProductionSessionStore();
+  const setDraftActual = productionSessionState.setDraftActual;
+  const archiveCurrentSession = productionSessionState.archiveCurrentSession;
+  const activateSessionForAddress = productionSessionState.activateSessionForAddress;
+  const replaceSession = productionSessionState.replaceSession;
+  const restoreDurableSession = productionSessionState.restoreDurableSession;
   const constraints = useConstraintStudioStore((state) => state.constraints);
   const preview = useConstraintStudioStore((state) => state.preview);
   const recalculationTerminal = useConstraintStudioStore((state) => state.recalculationTerminal);
@@ -453,6 +473,7 @@ export function useProductionWorkspace(enabled: boolean) {
     busy: boolean;
     error: string | null;
   }>({ busy: false, error: null });
+  const sessionStartInFlightRef = useRef(false);
   const [persistence, setPersistence] = useState<{
     busy: boolean;
     error: string | null;
@@ -493,11 +514,6 @@ export function useProductionWorkspace(enabled: boolean) {
   const [preStartDegassingAcknowledgementKey, setPreStartDegassingAcknowledgementKey] = useState<
     string | null
   >(null);
-  const sessionRef = useRef(session);
-  useEffect(() => {
-    sessionRef.current = session;
-  }, [session]);
-
   useEffect(() => {
     if (rescueAuthorization.status !== 'preview') return;
     const expiresAtMs = Date.parse(rescueAuthorization.authorization.expiresAt);
@@ -602,7 +618,27 @@ export function useProductionWorkspace(enabled: boolean) {
     () => productionSourceForRecipe(recipe, recipeLifecycle === 'READY'),
     [recipe, recipeLifecycle],
   );
-  const recoveryKey = `${ownerUserId ?? 'anon'}:${source.recipeVersionId ?? 'unsaved'}`;
+  const sessionAddress = useMemo<ProductionSessionAddress>(
+    () => ({
+      ownerUserId,
+      recipeId: source.recipeId,
+      recipeVersionId: source.recipeVersionId,
+    }),
+    [ownerUserId, source.recipeId, source.recipeVersionId],
+  );
+  const sessionAddressKey = useMemo(
+    () => productionSessionAddressKey(sessionAddress),
+    [sessionAddress],
+  );
+  const session = productionSessionForAddress(productionSessionState, sessionAddress);
+  const sessionRef = useRef(session);
+  useEffect(() => {
+    sessionRef.current = session;
+  }, [session]);
+  useEffect(() => {
+    activateSessionForAddress(sessionAddress);
+  }, [activateSessionForAddress, sessionAddress, sessionAddressKey]);
+  const recoveryKey = sessionAddressKey;
   const currentSourceFingerprint = useMemo(
     () => productionSourceFingerprint(plannedInput, plannedComposition),
     [plannedComposition, plannedInput],
@@ -661,7 +697,10 @@ export function useProductionWorkspace(enabled: boolean) {
     const reconcile = async () => {
       setRecovery({ key: recoveryKey, busy: true, error: null, orphanedLocal: false });
       try {
-        const localSession = sessionRef.current;
+        const localSession = productionSessionForAddress(
+          useProductionSessionStore.getState(),
+          sessionAddress,
+        );
         let remote = localSession
           ? await repositoryState.repository!.getRun(localSession.sessionId, ownerUserId)
           : null;
@@ -675,22 +714,24 @@ export function useProductionWorkspace(enabled: boolean) {
             sort: 'newest',
             limit: 2,
           });
-          if (active.items.length > 1) {
-            throw new Error('Multiple active Production runs require owner review.');
-          }
-          remote = active.items[0] ?? null;
+          remote = selectProductionRunForRecipeVersion(active.items);
         }
-        if (cancelled || !remote) return;
+        if (
+          cancelled ||
+          !remote ||
+          useProductionSessionStore.getState().activeAddressKey !== sessionAddressKey
+        )
+          return;
         if (remote.status === 'cancelled') {
           if (localSession?.sessionId === remote.runId) archiveCurrentSession();
           return;
         }
-        if (remote.recipeVersionId !== source.recipeVersionId) {
-          // A local session may still be attached to the version that created
-          // it while the operator is viewing a newer saved version. Keep that
-          // frozen session intact so stale-source handling can offer the
-          // explicit archive flow. Hydrating it with the current input would
-          // silently relabel historical Production as the newer recipe.
+        if (
+          remote.recipeId !== source.recipeId ||
+          remote.recipeVersionId !== source.recipeVersionId
+        ) {
+          // A server response for another recipe can arrive after navigation.
+          // It stays untouched and cannot replace the active tab projection.
           return;
         }
         const recoveryRelation = durableProductionRecoveryRelation(localSession, remote);
@@ -705,6 +746,7 @@ export function useProductionWorkspace(enabled: boolean) {
             localSession && remote.status !== 'completed'
               ? mergePendingProductionDrafts(hydrated, localSession)
               : hydrated,
+            sessionAddress,
           );
         }
       } catch (caught) {
@@ -737,6 +779,8 @@ export function useProductionWorkspace(enabled: boolean) {
     reconcileRevision,
     repositoryState.repository,
     restoreDurableSession,
+    sessionAddress,
+    sessionAddressKey,
     session?.sessionId,
     session?.status,
     session?.rescueAddedItems.length,
@@ -1712,7 +1756,17 @@ export function useProductionWorkspace(enabled: boolean) {
       }
     },
     startNewSession: async () => {
-      if (!canStartProduction || sessionStart.busy) return;
+      if (!canStartProduction || sessionStart.busy || sessionStartInFlightRef.current) return;
+      sessionStartInFlightRef.current = true;
+      const requestedAddressKey = sessionAddressKey;
+      const requestStillOwnsProjection = () => {
+        const auth = useAuthStore.getState();
+        const currentOwner = auth.status === 'authed' ? (auth.user?.id ?? null) : null;
+        return (
+          currentOwner === ownerUserId &&
+          useProductionSessionStore.getState().activeAddressKey === requestedAddressKey
+        );
+      };
       setSessionStart({ busy: true, error: null });
       try {
         const localAuthority = evaluateRecipeConstraintAuthority({
@@ -1758,6 +1812,10 @@ export function useProductionWorkspace(enabled: boolean) {
             return;
           }
         }
+        // Validation belongs to the recipe/account that initiated START. A
+        // navigation or account switch while it was in flight must not start
+        // or later project a run for the previous context.
+        if (!requestStillOwnsProjection()) return;
         if (
           !repositoryState.repository ||
           !source.recipeId ||
@@ -1803,6 +1861,7 @@ export function useProductionWorkspace(enabled: boolean) {
           carbonatedProducts.length > 0
             ? await repositoryState.repository.acknowledgeDegassing(heatAcknowledgedRun.runId)
             : heatAcknowledgedRun;
+        if (!requestStillOwnsProjection()) return;
         restoreDurableSession(
           hydrateProductionSessionFromRun(
             acknowledgedRun,
@@ -1810,6 +1869,7 @@ export function useProductionWorkspace(enabled: boolean) {
             plannedInput,
             plannedComposition,
           ),
+          sessionAddress,
         );
         setPreStartHeatAcknowledgementKey(null);
         setPreStartDegassingAcknowledgementKey(null);
@@ -1821,6 +1881,7 @@ export function useProductionWorkspace(enabled: boolean) {
         setReconcileRevision((current) => current + 1);
         return;
       } finally {
+        sessionStartInFlightRef.current = false;
         setSessionStart((current) => ({ ...current, busy: false }));
       }
     },
