@@ -12,7 +12,11 @@ import { buildCanonicalNewRecipeStarter } from '@/features/recipes/newRecipeStar
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { useCustomerPriceStore } from '@/stores/customerPriceStore';
 import { useRecipeStore } from '@/stores/recipeStore';
-import { buildOptimizePreview, workingStateFingerprint } from './applyPipeline';
+import {
+  buildOptimizePreview,
+  directionTargetFingerprint,
+  workingStateFingerprint,
+} from './applyPipeline';
 import { useConstraintStudioStore } from './constraintStudioStore';
 
 /**
@@ -266,27 +270,30 @@ describe('Apply door — Sorbet exact Direction keeps the Main group byte-exact 
     );
   }, 120_000);
 
-  it('applies the accepted nearest-achievable softness −1 Preview (Main 600 g held, Dobra afterwards)', () => {
+  it('applies the whole-gram-achieved softness −1 Preview directly (Main 600 g held, Dobra afterwards)', () => {
     const input = servedSorbet({ softness: -1 });
     load(input);
 
     useConstraintStudioStore.getState().createOptimizePreview();
     const staged = useConstraintStudioStore.getState();
-    // The exact projection cannot reach the target; the surface asks for consent first.
-    expect(staged.preview).toBeNull();
-    const candidate = staged.directionBestCandidate;
-    expect(candidate, JSON.stringify(staged.previewIssue)).not.toBeNull();
-    expect(candidate?.mainHeldByExactDirection).toBe(true);
-    expect(candidate?.directionAssessment?.active).toBe(true);
-    expect(candidate?.directionAssessment?.reached).toBe(false);
+    const preview = staged.preview;
+    expect(preview, JSON.stringify(staged.previewIssue)).not.toBeNull();
+    expect(staged.directionBestCandidate).toBeNull();
+    expect(staged.directionConsent).toBeNull();
+    expect(preview?.mainHeldByExactDirection).toBe(true);
+    expect(preview?.directionAssessment?.active).toBe(true);
+    expect(preview?.directionAssessment?.reached).toBe(true);
+    expect(preview?.practicalization?.status).toBe('ready');
+    if (!preview || preview.practicalization?.status !== 'ready') return;
+    expect(preview.practicalization.audit.sorbetDirectionResolution?.status).toBe('ACHIEVED');
     // Main byte-exact, only the canonical adjustable roles moved.
-    expect(
-      candidate!.proposedInput.items.find((item) => item.id === 'line-strawberry'),
-    ).toMatchObject({
-      planned_grams: 600,
-      lock_type: 'main',
-    });
-    expect(candidate!.proposedInput.items.map((item) => [item.id, item.planned_grams])).toEqual([
+    expect(preview.proposedInput.items.find((item) => item.id === 'line-strawberry')).toMatchObject(
+      {
+        planned_grams: 600,
+        lock_type: 'main',
+      },
+    );
+    expect(preview.proposedInput.items.map((item) => [item.id, item.planned_grams])).toEqual([
       ['new-recipe-1-water', 156],
       ['new-recipe-2-sucrose', 80],
       ['new-recipe-3-dextrose', 105],
@@ -295,8 +302,6 @@ describe('Apply door — Sorbet exact Direction keeps the Main group byte-exact 
       ['line-strawberry', 600],
     ]);
 
-    useConstraintStudioStore.getState().acceptBestDirectionCandidate();
-    expect(useConstraintStudioStore.getState().preview).not.toBeNull();
     useConstraintStudioStore.getState().applyPreview();
     const after = useConstraintStudioStore.getState();
     expect(after.blocked, after.blocked?.messagePl).toBeNull();
@@ -391,17 +396,9 @@ describe('Apply door — Sorbet exact Direction keeps the Main group byte-exact 
     const input = servedSorbet({ softness: -1 });
     load(input);
     useConstraintStudioStore.getState().createOptimizePreview();
-    useConstraintStudioStore.getState().acceptBestDirectionCandidate();
     const honest = useConstraintStudioStore.getState().preview!;
-    const consent = useConstraintStudioStore.getState().directionConsent!;
     expect(honest.mainHeldByExactDirection).toBe(true);
-    expect(consent).not.toBeNull();
-    // Keep the surface-level Direction consent consistent with each forged
-    // vector so the refusal below is the door's own Main-identity verdict.
-    const forgedConsent = (preview: typeof honest) => ({
-      ...consent,
-      candidateFingerprint: workingStateFingerprint(preview.proposedInput, preview.nextConstraints),
-    });
+    expect(useConstraintStudioStore.getState().directionConsent).toBeNull();
 
     // (a) Main grams moved under the held flag → byte-identity check refuses.
     const movedMain = structuredClone(honest);
@@ -414,7 +411,7 @@ describe('Apply door — Sorbet exact Direction keeps the Main group byte-exact 
     );
     useConstraintStudioStore.setState({
       preview: movedMain,
-      directionConsent: forgedConsent(movedMain),
+      directionConsent: null,
     });
     useConstraintStudioStore.getState().applyPreview();
     // The exact 60 % Sorbet Main envelope refuses the moved Main before the
@@ -436,7 +433,14 @@ describe('Apply door — Sorbet exact Direction keeps the Main group byte-exact 
     );
     useConstraintStudioStore.setState({
       preview: forgedVector,
-      directionConsent: forgedConsent(forgedVector),
+      directionConsent: {
+        baseFingerprint: forgedVector.baseFingerprint,
+        targetFingerprint: directionTargetFingerprint(input),
+        candidateFingerprint: workingStateFingerprint(
+          forgedVector.proposedInput,
+          forgedVector.nextConstraints,
+        ),
+      },
       blocked: null,
     });
     useConstraintStudioStore.getState().applyPreview();

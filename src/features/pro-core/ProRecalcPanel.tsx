@@ -598,6 +598,7 @@ export function DirectionFallbackDecision({
   const requestedLevel = formatDirectionLevel(changedAxis ? requested[changedAxis] : 0);
   const fallbackLevel =
     changedAxis && fallback ? formatDirectionLevel(fallback[changedAxis]) : null;
+  const canClaimNearest = fallbackReport.sorbetNearestProven !== false;
   const surface = 'space-y-3 rounded-md border border-nonprod/50 bg-nonprod/[0.06] px-4 py-4';
   const primary = 'min-h-11 rounded-lg bg-ivory px-4 py-2.5 text-sm font-medium text-shell';
   const secondary =
@@ -631,11 +632,15 @@ export function DirectionFallbackDecision({
         <div className={surface} data-testid="direction-fallback-final">
           <div>
             <p className="text-sm font-medium text-ivory">
-              Poziomu {requestedLevel} nie da się osiągnąć dla tej receptury
+              {canClaimNearest
+                ? `Poziomu ${requestedLevel} nie da się osiągnąć dla tej receptury`
+                : `Nie udało się potwierdzić poziomu ${requestedLevel}`}
             </p>
             <p className="mt-1 text-xs text-ivory/70">
               {fallbackLevel
-                ? `Najbliższy bezpieczny poziom to ${fallbackLevel}.`
+                ? canClaimNearest
+                  ? `Najbliższy bezpieczny poziom to ${fallbackLevel}.`
+                  : `Sprawdzony alternatywny poziom to ${fallbackLevel}.`
                 : 'Z obecną recepturą nie ma bezpiecznego wariantu.'}
             </p>
           </div>
@@ -684,12 +689,16 @@ export function DirectionFallbackDecision({
       <div>
         <p className="text-sm font-medium text-ivory">
           {fallbackLevel
-            ? `Nie da się osiągnąć poziomu ${requestedLevel}`
+            ? canClaimNearest
+              ? `Nie da się osiągnąć poziomu ${requestedLevel}`
+              : `Nie udało się potwierdzić poziomu ${requestedLevel}`
             : 'Nie udało się osiągnąć wybranego poziomu'}
         </p>
         <p className="mt-1 text-xs text-ivory/70">
           {fallbackLevel
-            ? `Najbliższy możliwy poziom to ${fallbackLevel}.`
+            ? canClaimNearest
+              ? `Najbliższy możliwy poziom to ${fallbackLevel}.`
+              : `Sprawdzony alternatywny poziom to ${fallbackLevel}.`
             : 'Z obecną recepturą nie ma bezpiecznego wariantu.'}
         </p>
       </div>
@@ -783,6 +792,13 @@ export function DirectionBestDecision({
   onOpenStarterPackRescue?: () => void;
 }) {
   const assessment = candidate.directionAssessment;
+  const sorbetResolution =
+    candidate.practicalization?.status === 'ready'
+      ? candidate.practicalization.audit.sorbetDirectionResolution
+      : undefined;
+  const isSorbet = candidate.proposedInput.category === 'sorbet';
+  const provenNearest = isSorbet && sorbetResolution?.status === 'PROVEN_NEAREST';
+  const searchFailed = isSorbet && sorbetResolution?.status !== 'PROVEN_NEAREST';
   const labels: Record<string, string> = {
     sweetness: 'Słodycz',
     softness: 'Miękkość',
@@ -796,10 +812,26 @@ export function DirectionBestDecision({
       data-testid="direction-best-decision"
     >
       <div>
-        <p className="text-sm font-medium text-ivory">Nie mogę osiągnąć dokładnie wybranego celu</p>
-        <p className="mt-1 text-xs text-ivory/70">
-          Najbliższy poprawny wynik: {assessment?.score ?? 9}/10
+        <p className="text-sm font-medium text-ivory">
+          {provenNearest
+            ? 'Najbliższy możliwy poziom'
+            : searchFailed
+              ? 'Nie udało się potwierdzić najlepszego wyniku'
+              : 'Nie mogę osiągnąć dokładnie wybranego celu'}
         </p>
+        {provenNearest ? (
+          <p className="mt-1 text-xs text-ivory/70">
+            Wynik potwierdzony w pełnych gramach: {assessment?.score ?? 9}/10
+          </p>
+        ) : searchFailed ? (
+          <p className="mt-1 text-xs text-ivory/70">
+            Wyszukiwanie nie zakończyło pełnego dowodu. Receptura pozostała nierozstrzygnięta.
+          </p>
+        ) : (
+          <p className="mt-1 text-xs text-ivory/70">
+            Najbliższy poprawny wynik: {assessment?.score ?? 9}/10
+          </p>
+        )}
       </div>
       {missed.length > 0 ? (
         <div className="space-y-1" data-testid="direction-best-residuals">
@@ -822,18 +854,20 @@ export function DirectionBestDecision({
         <RescueAdviceHint advice={rescueAdvice} onAddIngredient={onAddRescueIngredient} />
       ) : null}
       <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={onAccept}
-          data-testid="direction-best-accept"
-          className={
-            starterPackRescueReport?.best
-              ? 'min-h-11 rounded-lg border border-ivory/20 px-4 py-2.5 text-sm font-medium text-ivory'
-              : 'min-h-11 rounded-lg bg-ivory px-4 py-2.5 text-sm font-medium text-shell'
-          }
-        >
-          Przelicz najlepiej możliwie
-        </button>
+        {!searchFailed ? (
+          <button
+            type="button"
+            onClick={onAccept}
+            data-testid="direction-best-accept"
+            className={
+              starterPackRescueReport?.best
+                ? 'min-h-11 rounded-lg border border-ivory/20 px-4 py-2.5 text-sm font-medium text-ivory'
+                : 'min-h-11 rounded-lg bg-ivory px-4 py-2.5 text-sm font-medium text-shell'
+            }
+          >
+            Przelicz najlepiej możliwie
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={onBack}

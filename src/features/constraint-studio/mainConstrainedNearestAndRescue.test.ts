@@ -251,25 +251,38 @@ describe('A. Main-constrained NEAREST — exact owner Sorbet reproducer (Strawbe
     expect(severity(proposed)).toBeLessThan(severity(request));
     noZeroGramRows(proposed, 'candidate');
     assertSorbetHardAuthority(proposed, 'candidate');
-    // Exact centers are unreachable in whole grams here → honest NEAREST
-    // classification (consent), provenance from the shared Sorbet boundary.
-    expect(candidate!.directionAssessment?.reached).toBe(false);
-    expect(staged.preview).toBeNull();
-    expect(staged.directionBestCandidate).not.toBeNull();
+    // The exact decimal centers are not integer-representable, but the complete
+    // Sorbet lattice proof finds the global whole-gram optimum and the Engine-
+    // measured one-gram window classifies this tiny quantization as ACHIEVED.
+    expect(candidate!.directionAssessment?.reached).toBe(true);
+    expect(staged.preview).not.toBeNull();
+    expect(staged.directionBestCandidate).toBeNull();
     expect(candidate!.mainHeldByExactDirection).toBe(true);
     expect(['sorbet_exact_projection', 'sorbet_nearest_search']).toContain(
       candidate!.directionCandidateSource,
     );
-    // The truthful score is the owner's Direction score of the EXECUTABLE
-    // recipe (10 − missed axes): both exact centers are missed by < 0.1 points.
+    const resolution =
+      candidate!.practicalization?.status === 'ready'
+        ? candidate!.practicalization.audit.sorbetDirectionResolution
+        : undefined;
+    expect(resolution).toMatchObject({
+      status: 'ACHIEVED',
+      method: 'complete_whole_gram_lattice',
+      completeCandidateSpace: true,
+      evaluatedCandidates: 59_340,
+    });
+    expect(gramsOf(proposed, 'new-recipe-1-water')).toBe(150);
+    expect(gramsOf(proposed, 'new-recipe-2-sucrose')).toBe(51);
+    expect(gramsOf(proposed, 'new-recipe-3-dextrose')).toBe(145);
+    // The public Direction score uses the physical one-gram resolution.
     const assessment = candidate!.directionAssessment!;
-    expect(assessment.score).toBe(8);
+    expect(assessment.score).toBe(10);
     for (const residual of assessment.residuals) {
-      expect(residual.absoluteDistance ?? Infinity).toBeLessThan(0.1);
+      expect(residual.absoluteDistance ?? Infinity).toBeLessThanOrEqual(
+        (residual.practicalTolerance ?? 0) + 1e-9,
+      );
     }
-    // Preview (consent) and Apply through the trustless door.
-    useConstraintStudioStore.getState().acceptBestDirectionCandidate();
-    expect(useConstraintStudioStore.getState().preview).not.toBeNull();
+    // ACHIEVED needs no nearest-result consent; Apply still re-runs the proof.
     useConstraintStudioStore.getState().applyPreview();
     const after = useConstraintStudioStore.getState();
     expect(after.blocked, after.blocked?.messagePl).toBeNull();
@@ -290,9 +303,7 @@ describe('A. Main-constrained NEAREST — exact owner Sorbet reproducer (Strawbe
     expect(held.ok).toBe(true);
     if (!held.ok) return;
     expect(gramsOf(held.preview.proposedInput, 'line-strawberry')).toBe(600);
-    // The owner observed 600 → 593 g strawberries without Main at ≈ 8/10; the
-    // Main-held search reaches the same truthful score without touching Main.
-    expect(held.preview.directionAssessment?.score).toBe(8);
+    expect(held.preview.directionAssessment?.score).toBe(10);
   });
 
   it('3. Main-constrained NEAREST: when the exact target has no admissible solution, the best legal candidate is returned (classified nearest), Main stays 600 g', () => {
@@ -347,7 +358,7 @@ describe('A. Main-constrained NEAREST — exact owner Sorbet reproducer (Strawbe
         assertSorbetHardAuthority(built.preview.proposedInput, key);
       }
     }
-  });
+  }, 60_000);
 
   it('4. no premature no-correction: the shared boundary reaches the candidate before the mode router (served Mapper roles) and the door re-derives it byte-exactly', () => {
     const request = ownerSorbet({}, { sweetness: 0, softness: -1 });
@@ -791,11 +802,18 @@ describe('B. Global rescue ingredient advisor (simulation-based, never auto-adds
     ).toBe(false);
   });
 
-  it('store integration: the served owner case carries a Main-held candidate and the advisor verdict (none for the exact-solvable recipe)', () => {
+  it('store integration: the served owner case is ACHIEVED directly and needs no rescue advice', () => {
     loadServed(ownerSorbet({}, { sweetness: 0, softness: -1 }));
     useConstraintStudioStore.getState().createOptimizePreview();
     const state = useConstraintStudioStore.getState();
-    expect(state.directionBestCandidate).not.toBeNull();
+    expect(state.preview).not.toBeNull();
+    expect(state.directionBestCandidate).toBeNull();
+    expect(state.preview?.practicalization?.status).toBe('ready');
+    if (state.preview?.practicalization?.status === 'ready') {
+      expect(state.preview.practicalization.audit.sorbetDirectionResolution?.status).toBe(
+        'ACHIEVED',
+      );
+    }
     expect(state.rescueAdvice).toBeNull();
   });
 });

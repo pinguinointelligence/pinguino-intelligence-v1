@@ -21,6 +21,12 @@ import {
   OWNER_INULIN_POLICY,
 } from '@/features/product-intelligence/ownerInulinPolicy';
 import { classifyViolationBands } from '@/features/formulation/violationBands';
+import { assessRecipeDirection } from '@/features/recipe-direction/recipeDirectionAssessment';
+import {
+  polishSorbetWholeGramDirectionCandidate,
+  sorbetProjectionRole,
+  type SorbetWholeGramSearchFailure,
+} from '@/features/recipe-direction/sorbetNearestDirectionSearch';
 
 export const PRACTICAL_RECIPE_MODEL_VERSION = 'pro-whole-gram-v1';
 export const PRACTICAL_RECIPE_METADATA_KEY = 'pinguino_practical_v1' as const;
@@ -75,6 +81,31 @@ export interface PracticalRecipeAudit {
   exactHardMetrics: string[];
   executableHardMetrics: string[];
   hardGatePassed: boolean;
+  /** Active Sorbet Direction only: complete integer-lattice publication proof. */
+  sorbetDirectionResolution?: SorbetDirectionResolutionProof;
+}
+
+export interface SorbetDirectionResolutionProof {
+  status: 'ACHIEVED' | 'PROVEN_NEAREST' | 'SEARCH_FAILED';
+  method: 'complete_whole_gram_lattice';
+  completeCandidateSpace: boolean;
+  evaluatedCandidates: number;
+  legalCandidates: number;
+  adjustableLineIds: string[];
+  initialExecutableInput: RecipeInput;
+  measure: { missedAxes: number; totalResidual: number } | null;
+  practicalWindows: Array<{
+    axis: 'sweetness' | 'softness' | 'creaminess' | 'flavor';
+    metric: string;
+    tolerance: number;
+    residual: number;
+  }>;
+  failureReason?: SorbetWholeGramSearchFailure;
+}
+
+export interface PracticalRecipeOptions {
+  /** Only the Direction pipeline/Apply recheck may request this Sorbet proof. */
+  sorbetDirectionPolish?: boolean;
 }
 
 export type PracticalRecipeResult =
@@ -586,6 +617,7 @@ export function practicalizeRecipeCandidate(
    * validate against the executable recipe's own target.
    */
   terminalAuthorityTargetBatchGrams: number = exactInput.target_batch_grams,
+  options: PracticalRecipeOptions = {},
 ): PracticalRecipeResult {
   const exact = cloneInput(exactInput);
   const exactResult = calculateRecipe(exact);
@@ -830,7 +862,7 @@ export function practicalizeRecipeCandidate(
   // Main identity, stabilizer contracts and the batch total are unchanged —
   // only the explicit 0 g rows disappear (absence ≠ explicit 0 g row).
   const omittedLineIds = new Set(unusedZeroGramLineIds(executable, set));
-  const executableInput: RecipeInput =
+  let executableInput: RecipeInput =
     omittedLineIds.size === 0
       ? executable
       : { ...executable, items: executable.items.filter((item) => !omittedLineIds.has(item.id)) };
@@ -880,7 +912,75 @@ export function practicalizeRecipeCandidate(
       executableHardMetrics,
     );
   }
-  const executableById = new Map(executable.items.map((item) => [item.id, item] as const));
+  const initialExecutableInput = executableInput;
+  let sorbetDirectionResolution: SorbetDirectionResolutionProof | undefined;
+  if (
+    options.sorbetDirectionPolish === true &&
+    exact.category === 'sorbet' &&
+    exact.goals?.direction_targets_active === true
+  ) {
+    const polished = polishSorbetWholeGramDirectionCandidate({
+      exactInput: exact,
+      initialExecutable: initialExecutableInput,
+      isAdjustable: (item) =>
+        sorbetProjectionRole(item) !== null && protectionFor(exact, set, item) === 'editable',
+      isLegal: (candidate, result) =>
+        candidate.items.every(
+          (item) => Number.isInteger(item.planned_grams) && item.planned_grams > 0,
+        ) &&
+        Math.abs(totalPlanned(candidate) - exact.target_batch_grams) <= INTEGER_EPSILON &&
+        detectViolations(result).length === 0 &&
+        !result.warnings.some((warning) => warning.severity === 'critical') &&
+        verifyConstraintsPreserved(set, candidate).ok &&
+        verifyMainIngredientIdentity(exact, candidate, set.byLineId).ok &&
+        internalStabilizerProfileIssues(candidate).length === 0 &&
+        ownerInulinPolicyIssues(candidate).length === 0,
+    });
+    if (polished.status === 'proven') {
+      executableInput = polished.candidate;
+      executable = polished.candidate;
+      executableResult = calculateRecipe(executableInput);
+      executableHardMetrics = classifyViolationBands(executableInput).hardMetrics;
+      const assessment = assessRecipeDirection(executableInput, executableResult);
+      sorbetDirectionResolution = {
+        status: assessment.reached ? 'ACHIEVED' : 'PROVEN_NEAREST',
+        method: 'complete_whole_gram_lattice',
+        completeCandidateSpace: true,
+        evaluatedCandidates: polished.evaluatedCandidates,
+        legalCandidates: polished.legalCandidates,
+        adjustableLineIds: polished.adjustableLineIds,
+        initialExecutableInput,
+        measure: polished.measure,
+        practicalWindows: assessment.residuals.map((residual) => ({
+          axis: residual.axis,
+          metric: residual.metric,
+          tolerance: residual.practicalTolerance ?? 0,
+          residual: residual.absoluteDistance ?? Number.POSITIVE_INFINITY,
+        })),
+      };
+    } else {
+      const assessment = assessRecipeDirection(executableInput, executableResult);
+      sorbetDirectionResolution = {
+        status: 'SEARCH_FAILED',
+        method: 'complete_whole_gram_lattice',
+        completeCandidateSpace: false,
+        evaluatedCandidates: polished.evaluatedCandidates,
+        legalCandidates: polished.legalCandidates,
+        adjustableLineIds: polished.adjustableLineIds,
+        initialExecutableInput,
+        measure: null,
+        practicalWindows: assessment.residuals.map((residual) => ({
+          axis: residual.axis,
+          metric: residual.metric,
+          tolerance: residual.practicalTolerance ?? 0,
+          residual: residual.absoluteDistance ?? Number.POSITIVE_INFINITY,
+        })),
+        failureReason: polished.reason,
+      };
+    }
+  }
+  const finalExecutableTotalGrams = totalPlanned(executableInput);
+  const executableById = new Map(executableInput.items.map((item) => [item.id, item] as const));
   const reconciledById = new Map(reconciled.input.items.map((item) => [item.id, item] as const));
 
   return {
@@ -890,8 +990,7 @@ export function practicalizeRecipeCandidate(
       exactInput: exact,
       exactResult,
       executableInput,
-      executableResult:
-        omittedLineIds.size === 0 ? executableResult : calculateRecipe(executableInput),
+      executableResult,
       lines: exact.items.map((item) => {
         const practical = executableById.get(item.id)?.planned_grams ?? 0;
         return {
@@ -908,12 +1007,13 @@ export function practicalizeRecipeCandidate(
       }),
       targetBatchGrams: exact.target_batch_grams,
       exactTotalGrams: totalPlanned(exact),
-      executableTotalGrams,
+      executableTotalGrams: finalExecutableTotalGrams,
       residualBeforeReconciliationGrams: reconciled.residualBefore,
-      residualAfterReconciliationGrams: exact.target_batch_grams - executableTotalGrams,
+      residualAfterReconciliationGrams: exact.target_batch_grams - finalExecutableTotalGrams,
       exactHardMetrics,
       executableHardMetrics,
       hardGatePassed: executableHardMetrics.length === 0,
+      ...(sorbetDirectionResolution ? { sorbetDirectionResolution } : {}),
     },
   };
 }

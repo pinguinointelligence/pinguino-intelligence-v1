@@ -1839,6 +1839,7 @@ const finishPreview = (
   violationsBefore: number,
   explanation: ConstraintExplanationEntry[],
   createdAt: string,
+  options: { sorbetDirectionPolish?: boolean } = {},
 ): ConstraintPreview => {
   const beforeResult = calculateRecipe(baseInput);
   // Protein Engine v2: EVERY preview route converges here, so this is the one
@@ -1853,6 +1854,8 @@ const finishPreview = (
     proposedInput,
     nextConstraints,
     flavourHeldLineIds(proposedInput),
+    proposedInput.target_batch_grams,
+    { sorbetDirectionPolish: options.sorbetDirectionPolish === true },
   );
   let executableInput = practical.ok ? practical.audit.executableInput : proposedInput;
   // Owner P1-A: recover a Direction target the whole-gram rounding lost.
@@ -1867,6 +1870,8 @@ const finishPreview = (
         repaired,
         nextConstraints,
         flavourHeldLineIds(repaired),
+        repaired.target_batch_grams,
+        { sorbetDirectionPolish: options.sorbetDirectionPolish === true },
       );
       if (repracticalized.ok) {
         const repairedExecutable = repracticalized.audit.executableInput;
@@ -6427,6 +6432,7 @@ function buildSorbetDirectionCandidatePreview(params: {
       violationsBefore,
       [],
       createdAt,
+      { sorbetDirectionPolish: true },
     );
     const executableResult = calculateRecipe(preview.proposedInput);
     const afterDirection = recipeDirectionViolations(preview.proposedInput);
@@ -9431,6 +9437,8 @@ export class VerifiedApply {
         audit.exactInput,
         verifiedNextConstraints,
         flavourHeldLineIds(audit.exactInput),
+        audit.exactInput.target_batch_grams,
+        { sorbetDirectionPolish: audit.sorbetDirectionResolution !== undefined },
       );
       if (
         !rederived.ok ||
