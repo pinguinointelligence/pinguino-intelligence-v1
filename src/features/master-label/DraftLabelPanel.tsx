@@ -5,7 +5,6 @@ import { recipeCompositionFromState } from '@/features/recipe-composition/recipe
 import {
   defaultAccountLabelProfile,
   resolveLabelRepository,
-  type AccountLabelProfile,
   type LabelRepository,
 } from '@/services/labels/labelRepository';
 import { useAuthStore } from '@/stores/authStore';
@@ -19,6 +18,10 @@ import {
 } from './labelDraftPersistence';
 import { labelSettingsReturn, readLabelSettingsRestore } from './labelSettingsNavigation';
 import type { MasterLabelData } from './masterLabel';
+import {
+  accountLabelProfileSharingKey,
+  useSharedAccountLabelProfile,
+} from './sharedAccountLabelProfile';
 
 /** Current-recipe label owner. Profile data is the only asynchronously loaded input. */
 export function DraftLabelPanel({
@@ -66,8 +69,16 @@ function DraftLabelPanelContext({
   const versionNumber = useRecipeStore((state) => state.currentVersionNumber);
   const storedDraft = useRecipeStore((state) => state.labelDraft);
   const setLabelDraft = useRecipeStore((state) => state.setLabelDraft);
-  const [profile, setProfile] = useState<AccountLabelProfile | null>(null);
-  const [settled, setSettled] = useState(false);
+  /* PRO MOBILE UX v2 · A4 — every mounted copy reads ONE profile. Below 960 px
+     the Etykieta tab is mounted twice (desktop column + mobile sheet). With a
+     load per copy, one copy could hold the saved market while the other still
+     held the default; each then derived different forced label fields and
+     overwrote the other's `labelDraft` until React threw #185 and the whole app
+     showed its error screen. */
+  const { profile, settled } = useSharedAccountLabelProfile(
+    repository,
+    accountLabelProfileSharingKey(suppliedRepository),
+  );
   const [resolvedLogo, setResolvedLogo] = useState<{ path: string; url: string | null } | null>(
     null,
   );
@@ -83,22 +94,6 @@ function DraftLabelPanelContext({
   useEffect(() => {
     if (storedDraft === null) setLabelDraft(workingDraft, false);
   }, [setLabelDraft, storedDraft, workingDraft]);
-
-  useEffect(() => {
-    let cancelled = false;
-    void repository
-      .getAccountProfile()
-      .then((next) => {
-        if (!cancelled) setProfile(next);
-      })
-      .catch(() => undefined)
-      .finally(() => {
-        if (!cancelled) setSettled(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [repository]);
 
   const logoPath = profile?.logoPath ?? null;
   const logoUrl = logoPath && resolvedLogo?.path === logoPath ? resolvedLogo.url : null;
