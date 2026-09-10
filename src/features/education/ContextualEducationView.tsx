@@ -352,7 +352,7 @@ export function ContextualEducationView({
       ref={viewRef}
       className={
         embeddedTour
-          ? 'contextual-education-view--tour absolute inset-x-0 top-0 bottom-[4.75rem] mx-auto grid min-h-0 max-h-full w-full max-w-none flex-1 grid-rows-[auto_minmax(0,1fr)] overflow-hidden bg-white text-ink min-[70rem]:static min-[70rem]:inset-auto min-[70rem]:grid-rows-[auto_auto] min-[70rem]:overflow-visible'
+          ? 'contextual-education-view--tour absolute inset-x-0 top-0 bottom-[var(--pro-bottom-chrome-overlap,4.75rem)] mx-auto grid min-h-0 max-h-full w-full max-w-none flex-1 grid-rows-[auto_minmax(0,1fr)] overflow-hidden bg-white text-ink min-[70rem]:static min-[70rem]:inset-auto min-[70rem]:grid-rows-[auto_auto] min-[70rem]:overflow-visible'
           : 'mx-auto min-h-full w-full max-w-none bg-[#f7f5f0] p-4 text-ink sm:p-5 lg:min-h-0'
       }
       data-education-mode={embeddedTour ? 'knowledge-tour' : 'contextual-lesson'}

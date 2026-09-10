@@ -156,7 +156,11 @@ describe('mobile ingredient editing sheet', () => {
     expect(dialog).toContain('env(safe-area-inset-bottom)');
     expect(dialog).toContain('aria-modal="true"');
     expect(dialog).toContain("event.key === 'Escape'");
-    expect(dialog).toContain("body.style.overflow = 'hidden'");
+    // PRO MOBILE UX v2 · A1 — through the ONE counted page lock.
+    expect(dialog).toContain('lockBodyScroll()');
+    expect(read('components', 'ui', 'bodyScrollLock.ts')).toContain(
+      "document.body.style.overflow = 'hidden'",
+    );
     // ToppingRow and IngredientRow must keep using that one primitive.
     expect(read('features', 'ingredient-builder', 'IngredientRow.tsx')).toContain(
       "import { DialogShell } from '@/components/ui/DialogShell'",
@@ -241,13 +245,18 @@ describe('mobile preview navigation', () => {
   it('never covers the bar it is toggled from, and respects the safe area', () => {
     const labelWorkspace = read('features', 'master-label', 'LabelWorkspace.tsx');
     expect(tabs).toContain('pb-[env(safe-area-inset-bottom)]');
+    // PRO MOBILE UX v2 · A2 — the sheet and the document reserve the MEASURED
+    // bottom stack (strip + module bar + safe area). The old estimates remain
+    // only as fallbacks for the frame before the first measurement.
     expect(surface).toContain(
-      'bottom-[calc(var(--pro-bottom-nav-height)+env(safe-area-inset-bottom))]',
+      'bottom-[var(--pro-mobile-bottom-stack-height,calc(var(--pro-bottom-nav-height)+env(safe-area-inset-bottom)))]',
     );
     expect(surface).toContain(
-      'pb-[calc(var(--pro-bottom-nav-height)+4.75rem+env(safe-area-inset-bottom))]',
+      'pb-[var(--pro-mobile-bottom-stack-height,calc(var(--pro-bottom-nav-height)+4.75rem+env(safe-area-inset-bottom)))]',
     );
-    expect(surface).toContain('[--label-workspace-bottom-inset:4.75rem]');
+    expect(surface).toContain('usePublishedBottomStackHeight(bottomStackRef, workbenchRef)');
+    expect(surface).toContain('[--pro-bottom-chrome-overlap:0px]');
+    expect(surface).not.toContain('[--label-workspace-bottom-inset:4.75rem]');
     expect(labelWorkspace).toContain('bottom-[var(--label-workspace-bottom-inset,0px)]');
   });
 
