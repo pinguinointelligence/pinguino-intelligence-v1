@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { LiveIdentifyResponse } from '@/services/productScanner';
 import {
@@ -73,5 +74,24 @@ describe('§30 — AI Vision v1 accepts fruit the catalogue can name, and nothin
       kind: 'recognised',
       names: ['BANAN'],
     });
+  });
+});
+
+describe('§32 — the fruit camera is not a second camera', () => {
+  const capture = readFileSync('src/features/home-creator/ui/HomeVisionCapture.tsx', 'utf8');
+
+  it('drives the ONE canonical camera session, and opens no stream of its own', () => {
+    expect(capture).toContain(
+      "import { CameraSession } from '@/scan-lab/baseline/camera/cameraSession'",
+    );
+    expect(capture).toContain('new CameraSession()');
+    // The app-wide rule is held by `scanFlow.boundary.test.ts`; this pins the
+    // one screen that most easily forgets it.
+    expect(capture).not.toMatch(/getUserMedia\s*\(/);
+    expect(capture).not.toMatch(/new\s+ImageCapture\s*\(/);
+  });
+
+  it('stops the shared session on the way out, so the light never stays on', () => {
+    expect(capture).toContain('sessionRef.current?.stop()');
   });
 });

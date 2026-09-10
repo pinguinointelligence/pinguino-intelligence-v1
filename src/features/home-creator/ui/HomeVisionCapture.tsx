@@ -15,6 +15,16 @@ import { cn } from '@/lib/cn';
 import { homeCreatorCopy } from '../homeCreatorCopy';
 import { decideVisionOutcome } from '../homeVisionRecognition';
 import { identifyLiveFrame, type LiveIdentifyResponse } from '@/services/productScanner';
+import { CameraSession } from '@/scan-lab/baseline/camera/cameraSession';
+
+/**
+ * ONE CAMERA (§32). This screen does NOT open a stream of its own: it drives the
+ * same `CameraSession` the canonical scan flow drives — which is also why it
+ * inherits that session's three-rung open (exact request → facing only →
+ * anything), instead of a single `getUserMedia` that fails outright on a device
+ * that cannot honour the constraints. `scanFlow.boundary.test.ts` holds the rule
+ * that exactly one file in the application acquires a camera.
+ */
 
 /** The camera frame handed to the recogniser. JPEG keeps a fruit legible at a fraction of PNG. */
 const CAPTURE_MIME = 'image/jpeg';
@@ -57,44 +67,43 @@ export function HomeVisionCapture({
   onRecognised: (names: readonly string[]) => void;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
+  const sessionRef = useRef<CameraSession | null>(null);
   const [phase, setPhase] = useState<Phase>('starting');
   const [facing, setFacing] = useState<'environment' | 'user'>('environment');
   const [canSwitch, setCanSwitch] = useState(false);
   const session = useRef(sessionId());
 
   const stop = useCallback(() => {
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-    streamRef.current = null;
+    sessionRef.current?.stop();
+    sessionRef.current = null;
   }, []);
 
   useEffect(() => {
     let cancelled = false;
-    const media = navigator.mediaDevices;
     void (async () => {
       try {
         // A browser (or an insecure context) with no camera API is the same
         // outcome as a refused permission: we say so, we do not pretend.
-        if (!media?.getUserMedia) throw new Error('no_camera_api');
-        const stream = await media.getUserMedia({
-          video: { facingMode: facing, width: { ideal: 1920 }, height: { ideal: 1080 } },
-          audio: false,
+        const video = videoRef.current;
+        if (!CameraSession.isSupported() || !video) throw new Error('no_camera');
+        const session = new CameraSession();
+        await session.open(video, {
+          width: 1920,
+          height: 1080,
+          frameRate: 30,
+          facingMode: facing,
         });
         if (cancelled) {
-          stream.getTracks().forEach((track) => track.stop());
+          session.stop();
           return;
         }
-        streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          await videoRef.current.play().catch(() => undefined);
-        }
+        sessionRef.current = session;
         setPhase('live');
         // A switch control that cannot switch anything is clutter, so it only
         // appears where a second camera really exists (§31).
-        const devices = await media.enumerateDevices().catch(() => []);
+        const devices = await navigator.mediaDevices.enumerateDevices().catch(() => []);
         if (!cancelled) {
-          setCanSwitch(devices.filter((d) => d.kind === 'videoinput').length > 1);
+          setCanSwitch(devices.filter((device) => device.kind === 'videoinput').length > 1);
         }
       } catch {
         if (!cancelled) setPhase('denied');
