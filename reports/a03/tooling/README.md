@@ -77,3 +77,41 @@ python3 reports/a03/tooling/reconcile_owner_excel.py OWNER.xlsx --baseline "BAZA
 
 Cached pages and verdicts go to `$GELLATTI_EVIDENCE_DIR` (default `~/.cache/gellatti-evidence`); raw pages never go into git.
 The verifier fetches with DNS over HTTPS because the local line intercepts some hosts.
+
+## Rules update — owner decisions 2026-09-10 (D-29 … D-31)
+
+**CONFIRMED_LOCAL needs two independent facts, reported as separate fields:** `identifier_confirmed`,
+`exact_product_identity_confirmed` (with `identity_basis`), `market_binding_confirmed` (with `market_binding_signal`) and
+`local_availability_confirmed`. The last one is true only when identity and binding are both true.
+
+**Identity has two routes:**
+- the exact GTIN on the local page (`verify_ean_market.py`);
+- the exact GTIN on an authoritative manufacturer/retailer page plus an unambiguous match of brand, name, pack, and any
+  variant/formulation tokens to the local listing (`identity_match.py`).
+
+A local listing that offers several pack sizes, or shows a different GTIN, is not a match. When a page has several GTINs
+(variants), the pack must sit next to our GTIN in the page's own data. Name similarity alone never confirms.
+
+**Market binding** comes from any of these:
+- country domain;
+- country-specific path;
+- locale subdomain;
+- one seller address;
+- an owner-approved host declaration;
+- an exact quote from the seller's own site stating delivery to, or a store in, that country (`--binding-quote`).
+
+**What never binds a market:**
+- **Currency** is a supporting signal only (D-31).
+- **A generic `.com`** binds to the US only with an explicit US signal (D-30).
+- **National/industry product registers** (e.g. Norway's Matinfo) are source type `PRODUCT_REGISTER`: they prove identity,
+  but not availability.
+
+**Identity-match example:**
+
+```bash
+python3 reports/a03/tooling/identity_match.py --ean 8055728540170 \
+  --source-url "https://saporepuro.myshopify.com/products/<product>" \
+  --local-url "https://bakingwarehouse.com/products/tara-gum-50gr-saporepuro" --market HK \
+  --brand SaporePuro --name "Tara Gum" --pack "50 g" \
+  --binding-url "https://bakingwarehouse.com/products/tara-gum-50gr-saporepuro" --binding-quote "香港本地消費滿1000港元免運費"
+```

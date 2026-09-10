@@ -2,10 +2,12 @@
 """Deterministic EAN x market page verifier (A04 rules, stdlib only).
 usage: verify_ean_market.py URL EAN ISO2 [--agent NAME] [--slot ROLE] [--shipping-url URL]
 EAN '-' = page facts only (title, page market, stabilizer signals, ingredients, technical-doc links).
-CONFIRMED only when a DIRECT page serving ISO2 carries the exact EAN as a data token (not inside a URL, not a
-search echo, not glued into a retailer code). Page market: ccTLD > locale path > locale subdomain > single
-addressCountry > single-market currency (never EUR/USD, never egress ES, never Shopify-converted) > host
-declaration table (evidence URL required). Prints one JSON object and stores it in $GELLATTI_EVIDENCE_DIR/verify/ (default ~/.cache/gellatti-evidence)."""
+Owner rules D-29..D-31: CONFIRMED_LOCAL needs (A) exact product identity and (B) market binding. On a single page:
+identity = the exact EAN as a data token on a DIRECT (manufacturer/retailer) page — not inside a URL, not a search echo,
+not glued into a retailer code; binding = country domain, country path, locale subdomain, one seller addressCountry, or an
+owner-approved host declaration. Currency is reported as a supporting signal only and NEVER binds (D-31); a generic
+.com needs an explicit US signal to bind to the US (D-30). Identity from ANOTHER authoritative page plus an attribute
+match to the local listing is checked by identity_match.py. Prints one JSON object and stores it in $GELLATTI_EVIDENCE_DIR/verify/ (default ~/.cache/gellatti-evidence)."""
 import sys, os, re, json, hashlib, subprocess, shutil, time, argparse
 from urllib.parse import urlparse, urljoin
 BASE=os.path.dirname(os.path.abspath(__file__))
@@ -18,11 +20,13 @@ HOSTDECL=json.load(open(_HD)) if os.path.exists(_HD) else {}
 # Egress country of the machine running the checks: its currency is never used to attribute a page (a shop may
 # geo-convert prices). Set GELLATTI_EGRESS_CC (e.g. ES); check with: curl -s https://www.cloudflare.com/cdn-cgi/trace
 EGRESS=os.environ.get('GELLATTI_EGRESS_CC','').upper()
+BINDING={'CCTLD','PATH_LOCALE','SUBDOMAIN_LOCALE','ADDRESS_COUNTRY','HOST_DECLARATION'}   # D-29 B; currency never binds (D-31)
 GENERIC={'com','net','org','shop','store','co','io','eu','info','biz','me','tv','ai','app','online','global','asia','link','market','coop'}
 LANG={'en','fr','de','es','it','pt','nl','pl','sv','da','nb','no','fi','cs','sk','hu','ro','bg','hr','sl','el','et','lv','lt','tr','ar','he','ja','ko','zh','th','vi','id','ms'}
 A3={'USA':'US','GBR':'GB','DEU':'DE','FRA':'FR','ESP':'ES','ITA':'IT','NLD':'NL','BEL':'BE','AUT':'AT','CHE':'CH','PRT':'PT','POL':'PL','IRL':'IE','SWE':'SE','NOR':'NO','DNK':'DK','FIN':'FI','AUS':'AU','NZL':'NZ','CAN':'CA'}
 CUR_MARKET={'AED':'AE','ARS':'AR','AUD':'AU','BDT':'BD','BGN':'BG','BHD':'BH','BRL':'BR','CAD':'CA','CHF':'CH','CLP':'CL','CNY':'CN','COP':'CO','CRC':'CR','CZK':'CZ','DKK':'DK','DOP':'DO','DZD':'DZ','EGP':'EG','GBP':'GB','GHS':'GH','HKD':'HK','HUF':'HU','IDR':'ID','ILS':'IL','INR':'IN','ISK':'IS','JPY':'JP','KES':'KE','KRW':'KR','KWD':'KW','LKR':'LK','MAD':'MA','MXN':'MX','MYR':'MY','NGN':'NG','NOK':'NO','NZD':'NZ','OMR':'OM','PHP':'PH','PKR':'PK','PLN':'PL','QAR':'QA','RON':'RO','SAR':'SA','SEK':'SE','SGD':'SG','THB':'TH','TND':'TN','TRY':'TR','TWD':'TW','UYU':'UY','VND':'VN','ZAR':'ZA'}
 AGGREGATOR=('openfoodfacts.','barcodelookup','upcitemdb','go-upc','ean-search','eandata','buycott','chompthis','cijene.hr','supercompare','pricerunner','idealo','ceneo','heureka','arukereso','kelkoo','pricespy','prisjakt','google.','chp.co.il','zap.co.il','skroutz.','bestprice.gr','compari.ro','pazaruvaj.','shopmania.','kieskeurig.','tweakers.net','glami.')
+REGISTRY=('matinfo.no','dabas.com','validoo.','synkka.','gs1.','foodrepo.')   # national/industry product registers: identity yes, market binding not by themselves
 MARKETPLACE=('amazon.','ebay.','allegro.','trendyol.','hktvmall.','noon.com','jumia.','lazada.','shopee.','tokopedia.','coupang.','rakuten.','mercadolibre.','mercadolivre.','aliexpress.','etsy.','wolt.com','hungerstation.','talabat.','glovoapp.','walmart.com/ip/seller','temu.','shein.')
 UA='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36'
 SIGNALS={'TARA':r'\btara\b|\bE\s?417\b|tarakernmehl|semi di tara|gomma di tara|goma (de )?tara|gomme (de )?tara|guma tara',
@@ -74,13 +78,14 @@ def page_market(eff,h):
         cur=currencies(h)
         if not any(x.startswith('CONVERTED') for x in cur):
             cm={CUR_MARKET[x] for x in cur if x in CUR_MARKET and CUR_MARKET[x]!=EGRESS}
-            if len(cm)==1: return cm.pop(),'CURRENCY'
+            if len(cm)==1: return cm.pop(),'CURRENCY_ONLY'
     base=host[4:] if host.startswith('www.') else host
     if base in HOSTDECL: return HOSTDECL[base]['market'],'HOST_DECLARATION'
     return None,'GENERIC_TLD'
 def source_type(url):
     s=url.lower()
     if any(a in s for a in AGGREGATOR): return 'AGGREGATOR'
+    if any(g in s for g in REGISTRY): return 'PRODUCT_REGISTER'
     if any(m in s for m in MARKETPLACE): return 'MARKETPLACE'
     return 'DIRECT'
 def variants(e):
@@ -142,15 +147,21 @@ def main():
         n,echo,emb,ctx=hits(h,e); r.update(clean_hits=n,echo_hits=echo,embedded_hits=emb,ean_context=ctx)
         if n>0:
             if src=='AGGREGATOR': vc='EAN_ON_AGGREGATOR'
-            elif mk==iso and src=='DIRECT': vc='EAN_ON_MARKET_PAGE'
-            elif mk==iso: vc='EAN_ON_MARKETPLACE_MARKET_PAGE'
+            elif src=='PRODUCT_REGISTER': vc='EAN_ON_PRODUCT_REGISTER'
+            elif mk==iso and how in BINDING: vc='EAN_ON_MARKET_PAGE' if src=='DIRECT' else 'EAN_ON_MARKETPLACE_MARKET_PAGE'
+            elif mk==iso and how=='CURRENCY_ONLY': vc='EAN_ON_PAGE_BOUND_ONLY_BY_CURRENCY'
             elif mk is None: vc='EAN_ON_GENERIC_TLD_PAGE'
             else: vc='EAN_ON_FOREIGN_MARKET_PAGE'
         elif echo: vc='EAN_ONLY_ECHOED_FROM_URL_OR_QUERY'
         elif emb: vc='EAN_EMBEDDED_IN_RETAILER_CODE'
-        elif mk==iso: vc='MARKET_PAGE_WITHOUT_EAN'
+        elif mk==iso and how in BINDING: vc='MARKET_PAGE_WITHOUT_EAN'
         else: vc='PAGE_WITHOUT_EAN'
     r['verification_class']=vc; r['evidence_class']='CONFIRMED' if vc=='EAN_ON_MARKET_PAGE' else ('PAGE_FACTS' if vc=='PAGE_FACTS_ONLY' else 'LEAD')
+    bound=bool(ok) and mk==iso and how in BINDING
+    ident=bool(e) and bool(ok) and r.get('clean_hits',0)>0 and src in ('DIRECT','PRODUCT_REGISTER')
+    r.update(market_binding_signal=(how if mk==iso else ('NONE' if mk is None else 'OTHER_MARKET:'+mk)), market_binding_confirmed=bound,
+             identifier_confirmed=ident, exact_product_identity_confirmed=ident, local_availability_confirmed=ident and bound and src=='DIRECT',
+             identity_basis=('GTIN_ON_THIS_PAGE' if ident else 'NOT_PROVEN_ON_THIS_PAGE (identity_match.py: GTIN on another source + attribute match)'))
     r['needs_browser']=code in('403','429','503','000','ERR') or (code=='200' and size<=2000)
     if a.shipping_url:
         sc,seff,_,sh,_,ssz=fetch(a.shipping_url); sv=visible(sh) if sc=='200' else ''

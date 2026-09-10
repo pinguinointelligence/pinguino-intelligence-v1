@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "gellatti/country-validation-manifest/v1",
+  "title": "GELLATTI country-base validation manifest (D-27 / D-33)",
+  "description": "One manifest per market and base profile. SHOP prepares the structure only; the Engine/Recipe validation workstream fills engine_run and freeze after the Owner Excel is reconciled. A base is FINAL only when acceptance == '10/10' (all required bands/gates of the profile in range in the production Solver/Constraint Studio) and it has been frozen.",
+  "type": "object",
+  "required": ["market_iso2", "profile", "locale_variants", "owner_excel", "mapper", "products", "grams", "status"],
+  "properties": {
+    "market_iso2": { "type": "string", "pattern": "^[A-Z]{2}$" },
+    "profile": { "type": "string", "enum": ["GELATO"], "description": "Active base profile (D-9: Sorbet/Vegan/Protein out of the current scope)." },
+    "locale_variants": { "type": "array", "items": { "type": "string" }, "minItems": 1, "description": "All supported locales of the market (D-32); none is forced as the only PDF language." },
+    "market_default_locale": { "type": ["string", "null"], "description": "Explicit market default locale; null while not set (D-32)." },
+    "owner_excel": {
+      "type": "object", "required": ["file", "sha256", "sheet"],
+      "properties": { "file": { "type": "string" }, "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }, "sheet": { "type": "string" }, "row_refs": { "type": "array", "items": { "type": "string" } } }
+    },
+    "mapper": {
+      "type": "object", "required": ["file", "sha256"],
+      "properties": { "file": { "type": "string" }, "sha256": { "const": "6db7fbe0d284a8ff1aa23d1da74f32da48a3f33b16604fa40f75a195374e002b", "description": "FINAL_FROZEN Mapper 2541 (D-1)." } }
+    },
+    "products": {
+      "type": "array", "minItems": 6,
+      "items": {
+        "type": "object",
+        "required": ["functional_slot", "pi_ing", "product_mode", "reconciliation"],
+        "properties": {
+          "functional_slot": { "enum": ["MILK", "CREAM", "SMP", "SUCROSE", "DEXTROSE", "STABILIZER"] },
+          "stabilizer_type": { "enum": ["TARA", "GUAR", "LBG", "STABILIZER_BLEND", "OTHER_EXISTING_APPROVED_STABILIZER", null] },
+          "pi_ing": { "type": "string", "pattern": "^PI-ING-\\d{6}$" },
+          "pr_ing": { "type": ["string", "null"], "pattern": "^PR-ING-\\d{6}$" },
+          "product_mode": { "enum": ["EXACT_PR", "GLOBAL_PI_GENERIC"], "description": "SUCROSE = GLOBAL_PI_GENERIC (D-8)." },
+          "brand": { "type": ["string", "null"] },
+          "product_name": { "type": ["string", "null"] },
+          "pack": { "type": ["string", "null"] },
+          "ean_gtin": { "type": ["string", "null"], "pattern": "^\\d{8,14}$" },
+          "identifier_type": { "type": ["string", "null"], "description": "tooling/identifiers.py id_type()." },
+          "consumer_terms": { "type": "object", "additionalProperties": { "type": "string" }, "description": "SUCROSE only: locale → approved consumer term (D-32)." },
+          "evidence": {
+            "type": "object",
+            "description": "D-29 two-fact model.",
+            "properties": {
+              "identifier_confirmed": { "type": "boolean" },
+              "exact_product_identity_confirmed": { "type": "boolean" },
+              "identity_basis": { "enum": ["GTIN_ON_LOCAL_PAGE", "GTIN_ON_SOURCE + ATTRIBUTE_MATCH", "NOT_PROVEN"] },
+              "market_binding_confirmed": { "type": "boolean" },
+              "market_binding_signal": { "type": "string" },
+              "local_availability_confirmed": { "type": "boolean" },
+              "urls": { "type": "array", "items": { "type": "string" } },
+              "checked_utc": { "type": "string" }
+            }
+          },
+          "facts_per_100g": {
+            "type": "object",
+            "description": "Engine IngredientComponentProfile fields, per 100 g (1 ml = 1 g normalization, owner-frozen; raw basis kept separately).",
+            "properties": {
+              "water_percent": { "type": "number" }, "solids_percent": { "type": "number" }, "fat_percent": { "type": "number" },
+              "saturated_fat_percent": { "type": ["number", "null"] }, "protein_percent": { "type": "number" }, "carbohydrate_percent": { "type": "number" },
+              "sugar_percent": { "type": "number" }, "sucrose_percent": { "type": "number" }, "glucose_percent": { "type": "number" },
+              "dextrose_percent": { "type": "number" }, "fructose_percent": { "type": "number" }, "lactose_percent": { "type": "number" },
+              "polyol_percent": { "type": "number" }, "fiber_percent": { "type": "number" }, "salt_percent": { "type": "number" },
+              "alcohol_percent": { "type": "number" }, "kcal_per_100g": { "type": "number" }
+            }
+          },
+          "facts_raw_basis": { "enum": ["per_100g", "per_100ml", null] },
+          "fact_truth": { "type": "object", "additionalProperties": { "enum": ["VERIFIED", "DERIVED", "ESTIMATED", "UNKNOWN"] } },
+          "reconciliation": {
+            "type": "object",
+            "description": "tooling/reconcile_owner_excel.py s1..s9; any REPORT_BACK stops this market (no substitution, D-26).",
+            "properties": { "verdict": { "enum": ["OK", "ISSUES"] }, "issues": { "type": "array", "items": { "type": "string" } }, "action": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "grams": {
+      "type": "array",
+      "items": { "type": "object", "required": ["functional_slot", "grams_owner_excel"], "properties": { "functional_slot": { "type": "string" }, "grams_owner_excel": { "type": "number" } } },
+      "description": "Starting grams from the Owner Excel — inputs, not results."
+    },
+    "engine_run": {
+      "type": ["object", "null"],
+      "description": "Filled by the Engine/Recipe validation workstream only (D-33).",
+      "properties": {
+        "engine_version": { "type": "string" }, "config_version": { "type": "string" },
+        "solver_stop_reason": { "type": "string", "description": "Must be all_bands_in_range for acceptance." },
+        "required_bands": { "type": "array", "items": { "type": "object", "properties": { "key": { "type": "string" }, "status": { "type": "string" }, "value": { "type": "number" }, "band": { "type": "string" } } } },
+        "warnings": { "type": "array", "items": { "type": "string" } },
+        "acceptance": { "enum": ["10/10", "NOT_ACCEPTED"] }
+      }
+    },
+    "freeze": {
+      "type": ["object", "null"],
+      "properties": {
+        "frozen": { "type": "boolean" }, "version": { "type": "string" }, "frozen_utc": { "type": "string" },
+        "frozen_grams": { "type": "array", "items": { "type": "object", "properties": { "functional_slot": { "type": "string" }, "grams": { "type": "number" } } } },
+        "input_hashes": { "type": "object", "additionalProperties": { "type": "string" } }
+      }
+    },
+    "status": { "enum": ["PENDING_OWNER_EXCEL", "RECONCILING", "REPORTED_BACK", "READY_FOR_ENGINE", "ENGINE_NOT_ACCEPTED", "ACCEPTED_10_10", "FROZEN"] }
+  }
+}

@@ -96,3 +96,19 @@ engine_readiness · processing_readiness · final_use_status.
   after an Owner-selected stabilizer fails verification.
 - final_grams — only after Engine/Solver reaches the required 10/10 on the exact country products and the grams are
   frozen into a versioned country base (D-27). Working grams are the canonical base, shown for reference only.
+
+## CONFIRMED_LOCAL two-fact model, market binding, locale routing (owner decisions 2026-09-10 e — D-29..D-33)
+- CONFIRMED_LOCAL = (A) exact product identity AND (B) market binding, kept as separate fields:
+  identifier_confirmed · exact_product_identity_confirmed (+ identity_basis: GTIN_ON_LOCAL_PAGE | GTIN_ON_SOURCE +
+  ATTRIBUTE_MATCH | NOT_PROVEN) · market_binding_confirmed (+ market_binding_signal) · local_availability_confirmed = A ∧ B.
+- Identity path 2 (tooling/identity_match.py): the exact GTIN on an authoritative manufacturer/retailer page plus an
+  unambiguous match of brand, name, variant, pack and formulation to the local listing. A listing that offers several pack
+  sizes, or carries a different GTIN, is not a match. Name similarity alone never confirms.
+- Binding signals: country domain, country-specific path, locale subdomain, local legal entity/store (seller address),
+  explicit country selector or delivery to the country, owner-approved host declaration. Currency is a supporting signal only
+  and never binds (D-31). A generic .com binds to the US only with an explicit US signal (D-30).
+- Sucrose rows carry the approved consumer term per locale (sucrose_consumer_terms_approved.csv); JP = グラニュー糖 (D-32).
+- Locale: rows are keyed MARKET + LOCALE. Routing = user/account/session locale when supported → explicit market default
+  locale → alternate variants preserved; a multilingual market may have several static PDF variants (D-32).
+- Engine acceptance for any frozen base = the production Solver/Constraint Studio 10/10 state (D-33); see
+  validation/country_validation_manifest.schema.json.

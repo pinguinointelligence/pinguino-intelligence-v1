@@ -64,3 +64,12 @@ not a new score. SHOP defines no scoring.
    not in `reports/`.
 3. `RecipeInput` notes that liters are converted "via density config"; the label normalization above uses the
    owner-frozen 1 ml = 1 g rule. Confirm the two never meet on ingredient facts.
+
+## Owner decision D-33 (2026-09-10) — resolves the open points above
+- **10/10** = the real production Solver/Constraint Studio acceptance state: every required band/gate of the profile is in
+  range. It is not any separate internal 0–100 metric.
+- **Harness ownership:** SHOP does not implement or modify the Engine harness. It prepares only the schema, input contract,
+  expected output, country validation manifest and test-case structure (`validation/`). The Engine/Recipe validation
+  workstream implements it after the Owner Excel is reconciled.
+- **Final chain:** exact country product set → exact PI/PR facts → exact country grams → actual profile Engine/Solver →
+  all required bands in range → UI/result acceptance 10/10 → only then freeze the country-base/recipe materialization.

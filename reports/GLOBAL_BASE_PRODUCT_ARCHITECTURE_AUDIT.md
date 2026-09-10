@@ -783,3 +783,128 @@ S5' MULTI-COUNTRY PROOF   NOT MET  7/33 working-Excel multi-market EANs confirme
 S6' OWN-BRAND CHECK       PARTIAL  unchanged.
 S7' CLASS DISCIPLINE      MET      only existing 2541 PIs; 0 new PI; reconciler role↔PI v7 450/450, v9 75/75.
 # END CHECKPOINT (d)
+
+# OWNER DECISIONS 2026-09-10 (e) — SHOP / 75-MARKET BASE PREPARATION (recorded)
+# ============================================================================
+D-28 Checkpoint (d) accepted. No independent country-base selection; no filling of missing milk/cream/SMP/dextrose/
+     stabilizer slots; research stays evidence only; no new product discovery until the complete Owner Excel arrives.
+     The Owner Excel is not requested again. When supplied it is treated as the authoritative intended input,
+     reconciled, verified, and every genuine issue reported — no silent substitution.
+D-29 CONFIRMED_LOCAL = two independently satisfied facts.
+     A. EXACT PRODUCT IDENTITY — the exact GTIN/EAN/UPC on the local page, OR the exact GTIN on another
+        authoritative/reliable source PLUS an unambiguous match of brand, product name, variant, package/size and
+        (where relevant) formulation to the local listing.
+     B. MARKET BINDING — local country retailer/domain, explicit country selector, explicit delivery to the country,
+        local legal entity/store, country-specific product page/path, or another direct, credible binding signal.
+     A local page without an EAN is not automatically LEAD: it is CONFIRMED_LOCAL only when identity is proven
+     independently and the listing ties unambiguously to that exact product. Name similarity alone never confirms.
+     Separate fields: exact_product_identity_confirmed · identifier_confirmed · market_binding_confirmed ·
+     local_availability_confirmed.
+D-30 US: a generic .com domain alone is not US confirmation. US is CONFIRMED only when the exact product is also tied to
+     the US (explicit US shipping, US-only/store statement, US country selector, US legal/store entity, US-specific
+     path/catalog, a listing clearly serving US customers). Otherwise LEAD.
+D-31 Currency alone is not market binding. The 12 currency-only cells stay LEAD until additional binding evidence exists.
+D-32 Sucrose consumer words: the 28 terms with direct local-shop evidence are approved. Japan uses グラニュー糖 for the
+     generic sucrose / plain granulated white sugar slot; 上白糖 is a different commercial sugar style and never stands in
+     for it. Multilingual markets keep every supported locale variant; no single permanent PDF language is forced.
+     Routing = MARKET + LOCALE: (1) user/account/session locale when supported, (2) otherwise the explicit market
+     default locale, (3) alternate locale versions preserved. The static PDF set may carry several locale variants.
+D-33 Engine 10/10 = the real production Solver/Constraint Studio acceptance state in which all required bands/gates of
+     the profile are satisfied — not any internal 0–100 metric. Final country validation: exact country product set →
+     exact PI/PR facts → exact country grams → actual profile Engine/Solver → all required bands in range → UI/result
+     acceptance 10/10 → only then freeze the country base. SHOP does not implement or modify the Engine harness; it may
+     prepare schema, input contract, expected output, country validation manifest and test-case structure. The
+     implementation belongs to the Engine/Recipe validation workstream after the Owner Excel is reconciled.
+D-34 v9 TARA_LOCAL_CONFIRMED ≠ exact product + EAN + market confirmed. The original v9 evidence is preserved; the 15 rows
+     are classified separately into local_availability_evidence, exact_product_identity_evidence, identifier_evidence
+     and market_binding_evidence. No historical rewrite; no replacement.
+D-35 Keep the reconciliation tooling, evidence tooling, identifier typing, locale structure, 75-market checklist and the
+     10/10 specification, then PAUSE country-product work until the Owner Excel arrives. No app code, Mapper, Engine or
+     Supabase change; no merge/deploy.
+Consequences (recorded): currency-only confirmations become LEAD in the working evidence (the original A04 class is kept in
+its own column); counters are recomputed; the verifier stops treating currency as market binding; the two-fact fields
+are added to the tooling and the evidence files.
+# ============================================================================
+
+# CHECKPOINT 2026-09-10 (e) — owner decisions D-28..D-35 applied; country-product work paused
+# ============================================================================
+# MASTER CHECKLIST — FULL 36 (checkpoint 2026-09-10 e, owner decisions D-28..D-35 applied)
+# COUNTER TYPE: owner-accepted master items (NOT an implementation counter)
+# ============================================================================
+PHASE A
+[x] A01 Global country/market ledger — SPEC/DECISION ACCEPTED · IMPLEMENTATION NOT STARTED · REVERIFICATION REQUIRED.
+        DEP: —  LINKS: Country authority / Shop. NOTE: ISO ledger = vocabulary; commercial scope = accepted 75 (D-5).
+[x] A02 MARKET ≠ ORIGIN. DEP: A01. LINKS: PR identity/provenance. EVIDENCE: countryOfOrigin vs markets[]; PL/BE
+        dextrose; BAZA v7 carries 'Pochodzenie' separately from 'Kraje użycia'.
+[~] A03 Retailers/manufacturers by market — CONFIRMED_LOCAL = identity ∧ binding (D-29). Working-Excel products: 111/375
+        (CORE 50/100); 12 currency-only cells now LEAD (D-31). Research kept as evidence only. Country-product work PAUSED
+        until the Owner Excel (D-35). DEP: A01, Owner Excel.
+[~] A04 Exact EAN overlap across countries — working Excel: 7/33 multi-market EANs confirmed in ≥ 2 markets (all bound by
+        country domains); research evidence shows 3 more (evidence only). RCN never a cross-market identity. DEP: A03.
+[~] A05 Evidence-based market/product clusters — shared-EAN graph on working-Excel evidence: CZ-HR-HU-RO-SI-SK · DK-NO-SE · EE-LT-LV ·
+        BE-NL · GB-IE; candidate view only, no cluster frozen. DEP: A04.
+PHASE B
+[x] B01 Base-product family scope — NOTE: active base = GELATO, 6 PI (000236, 000180, 000270, 000514, 000494,
+        000492); Sorbet/Vegan/Protein outside current scope (D-9). DEP: A01.
+[~] B02 Milk variants — working-Excel MILK CONFIRMED_LOCAL 34/75; selection awaits the Owner Excel (D-22). DEP: A03, B01.
+[~] B03 Cream / milk powder / cream powder — working-Excel CREAM 29/75, SMP 29/75 CONFIRMED_LOCAL; selection awaits
+        the Owner Excel (D-22). DEP: A03, B01.
+[~] B04 Sugars — working-Excel DEXTROSE CONFIRMED_LOCAL 19/75. Sucrose: 28 consumer terms approved (D-32), JP = グラニュー糖;
+        multilingual markets keep every locale variant (MARKET + LOCALE). DEP: A03, B01.
+[~] B05 Inulin / stabilizers / gums — STABILIZER slot (D-13); fallback only if the Owner-selected stabilizer fails (D-26). v9 TARA
+        split (D-34): CONFIRMED_LOCAL 2/15 (IT, HK); the rest are reported back. DEP: A03, B01.
+[!] B06 Plant bases / protein (Vegan/Protein) — BLOCKED: those base packages are not supplied and must not be
+        invented (D-9). Status changed ACTIVE→BLOCKED on 2026-09-10 with this blocker; nothing deleted.
+PHASE C
+[x] C01 Variants vs existing PI — closed on the classification ruleset.
+[x] C02 Missing PI candidate list — closed on the ruleset.
+[x] C03 Technological-meaning proof — closed on the ruleset.
+[x] C04 OWNER REVIEW of PI candidates — RESOLVED FOR SHOP by owner decision 2026-09-10 (D-3, D-4): no new PI
+        from SHOP; PR → best existing PI; else REVIEW_REQUIRED → future ingestion contract.
+[!] C05 Controlled addition of approved neutral PI — BLOCKED / OUT OF SHOP: owned by the future NEW PR/PI-ING
+        INGESTION CONTRACT and Mapper maintenance. SHOP never creates PI (D-3).
+PHASE D
+[x] D01 One exact PR per real EAN — invariant verified on staging sample; re-verify after global PR population.
+        RISK kept: GS1 RCN prefixes are not globally unique.
+[~] D02 PR stores identity + origin + markets — v7 columns assessed offline.
+[~] D03 Manufacturer/label/retailer source facts — the four evidence fields are on every evidence row; label-fact presence recorded;
+        national product registers prove identity only.
+[x] D04 Per-field VERIFIED/DERIVED/ESTIMATED/UNKNOWN truth — capability verified.
+[x] D05 Raw basis preserved + normalized values — capability verified.
+[~] D06 Bind PR to correct PI — the reconciler checks role ↔ PI against 2541: working v7 450/450 consistent, v9 75/75; 0 new PI.
+[~] D07 Engine readiness of required base PR — requires the app/Engine runtime; offline pre-checks only in SHOP.
+[~] D08 Missing requirements for every NOT READY PR — working-Excel list in d08_missing_requirements_v7.csv; the final gap list =
+        REPORT_BACK rows of the reconciler on the Owner Excel (D-26).
+PHASE E
+[x] E01 Country defaults use the existing Product Country authority.
+[x] E02 USER_PREFERRED precedence preserved.
+[~] E03 Picker exposes neutral PI names — not advanced by SHOP research (picker lane).
+[~] E04 Exact brand/PR via details/search — not advanced by SHOP research.
+[~] E05 Scan resolves PR → PI → country/user flow — not advanced by SHOP research (scanner lane).
+PHASE F
+[~] F01 Shop references the same approved PR — row model with the four evidence fields and MARKET + LOCALE keys;
+        pdf0_working_rows_v7.csv holds working-Excel products only.
+[~] F02 Supplier / URL / market availability — tooling: verifier (four fields; currency never binds), identity_match.py
+        (GTIN on an authoritative page + attribute match), quote checker, reconciler (D-10, D-29..D-31).
+[~] F03 PDF 0€ per country/cluster — validation manifest schema + template and test-case structure prepared (D-33); final PDF waits
+        for the Owner Excel, the final BAZA and production 10/10.
+[ ] F04 Cluster countries with identical production sets — DEP: A05.
+[!] F05 GELATO country base (terminal-valid) — BLOCKED by owner instruction; FINAL only after production Solver/Constraint Studio
+        10/10 — every required band/gate in range (D-27, D-33).
+[!] F06 SORBET/VEGAN/PROTEIN country bases — BLOCKED by owner instruction and D-9.
+PHASE G
+[x] G01 Mapper count reconciliation (2088 vs 2089) — DONE as accepted. NOTE 2026-09-10: authority is now
+        FINAL_FROZEN 2541 (D-1); live 2147 = integration handoff (D-11).
+
+TALLY: DONE 13 · ACTIVE 18 · BLOCKED 4 · TODO 1 = 36.
+MASTER PROGRESS: 13 / 36 = 36.1 %  (no status changes; notes updated for A03 A04 B02 B03 B04 B05 D03 F01 F02 F03 F05).
+
+A03 SATURATION MATRIX v2.1 — values at checkpoint (e) (research never counted; no aggregate %)
+S1' CELL CLASSIFICATION   MET      375/375 working-Excel PR/slot cells carry a class and the four evidence fields.
+S2' MARKET COMPLETENESS   MET      75/75 markets.
+S3' EVIDENCE QUALITY      NOT MET  CONFIRMED_LOCAL 111/375 (CORE 50/100) after D-31 (12 currency-only cells → LEAD).
+S4' EAN INTEGRITY         MET      v7 295/295 checksum OK; identifiers typed; RCN never an identity.
+S5' MULTI-COUNTRY PROOF   NOT MET  7/33 working-Excel multi-market EANs confirmed in ≥ 2 markets.
+S6' OWN-BRAND CHECK       PARTIAL  unchanged; own-brand listings without a GTIN (CZ Valknut, GR NoCarb) cannot prove identity by GTIN.
+S7' CLASS DISCIPLINE      MET      only existing 2541 PIs; 0 new PI.
+# END CHECKPOINT (e)
