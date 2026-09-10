@@ -166,7 +166,7 @@ export function MobileIngredientLine({
       data-testid={`row-mobile-line-${item.id}`}
       data-changed={changed ? 'true' : undefined}
       className={cn(
-        'relative grid min-h-14 w-full grid-cols-[minmax(0,1fr)_62px_62px_64px] items-center gap-x-2 text-left',
+        'gellatti-touch-control relative grid min-h-14 w-full grid-cols-[minmax(0,1fr)_62px_62px_64px] items-center gap-x-2 text-left',
       )}
     >
       <button

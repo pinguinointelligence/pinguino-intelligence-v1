@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { copy } from '@/copy/en';
+import { lockBodyScroll } from '@/components/ui/bodyScrollLock';
+import { usePublishedBottomStackHeight } from '@/features/studio/bottomStackHeight';
+import { revealWithinScrollContainer } from '@/features/studio/revealWithinScrollContainer';
 import { DESKTOP_WORKBENCH_COLUMNS } from '@/features/shell/desktopTabAnchorContract';
 import { useAccess } from '@/access/useAccess';
 import { useSessionStore } from '@/stores/sessionStore';
@@ -34,8 +37,11 @@ import {
   collapsedMobileCockpitRoute,
   MOBILE_COCKPIT_QUERY,
   nextMobileCockpitState,
+  optimisticMobileCockpitState,
+  reconcileMobileCockpitRoute,
   shouldActivateMobileCockpitModal,
   shouldRevealProductionWeighingOnNarrowViewport,
+  type MobileCockpitState,
 } from '@/features/studio/mobileCockpitModal';
 
 const { studio } = copy;
@@ -186,19 +192,24 @@ export function StudioEngineSurface({
    * route-sync below only fires for an EXTERNAL change — a deep link or the
    * back button — where „open" genuinely does follow the route.
    */
-  const [mobileCockpitState, setMobileCockpitState] = useState({
+  const [mobileCockpitState, setMobileCockpitState] = useState<MobileCockpitState<CockpitTab>>({
     activeTab,
     open: activeTab !== 'profile',
   });
-  if (mobileCockpitState.activeTab !== activeTab) {
-    setMobileCockpitState({ activeTab, open: activeTab !== 'profile' });
+  // A3 — an intent stated just before navigating survives the render in which
+  // React Router 7 has not delivered its route yet; only a genuinely external
+  // route change re-derives the state (see reconcileMobileCockpitRoute).
+  const routeReconciled = reconcileMobileCockpitRoute(mobileCockpitState, activeTab, 'profile');
+  if (routeReconciled) {
+    setMobileCockpitState(routeReconciled);
   }
   const mobileCockpitOpen = mobileCockpitState.open;
   /** One selector for the bottom bar: open, collapse, or switch. */
   const selectMobileModule = (tab: CockpitTab) => {
     const next = nextMobileCockpitState(mobileCockpitState, tab);
-    setMobileCockpitState(next);
-    if (next.open && tab !== activeTab) onTabChange(tab);
+    const navigates = next.open && tab !== activeTab;
+    setMobileCockpitState(navigates ? optimisticMobileCockpitState(next, activeTab) : next);
+    if (navigates) onTabChange(tab);
   };
   // Collapsing is also a ROUTE change for the non-default modules, so „what is
   // open" stays visible in the address bar and survives refresh/back.
@@ -220,6 +231,14 @@ export function StudioEngineSurface({
   const [mobileViewport, setMobileViewport] = useState(false);
   const cockpitTriggerRef = useRef<HTMLButtonElement | null>(null);
   const cockpitPanelRef = useRef<HTMLElement | null>(null);
+  /** The desktop column's copy of the cockpit (A3 reveals inside the copy you can see). */
+  const desktopCockpitRef = useRef<HTMLElement | null>(null);
+  const workbenchRef = useRef<HTMLElement | null>(null);
+  const bottomStackRef = useRef<HTMLDivElement | null>(null);
+  usePublishedBottomStackHeight(bottomStackRef, workbenchRef);
+  /** A3 — every „Otwórz ustawienia" request is revealed exactly once. */
+  const [settingsRevealRequest, setSettingsRevealRequest] = useState(0);
+  const handledSettingsRevealRef = useRef(0);
   const previousProductionSessionIdRef = useRef(production.session?.sessionId ?? null);
   const focusProductionAfterCollapseRef = useRef(false);
 
@@ -234,11 +253,16 @@ export function StudioEngineSurface({
 
   useEffect(() => {
     const showProfileSettings = () => {
-      onTabChange('profile');
-      setMobileCockpitState({ activeTab: 'profile', open: true });
-      queueMicrotask(() =>
-        document.querySelector<HTMLElement>('[data-testid="workbench-settings-line"]')?.focus(),
+      // The intent first, carrying the module it leaves, then the route.
+      setMobileCockpitState((current) =>
+        optimisticMobileCockpitState({ activeTab: 'profile', open: true }, current.activeTab),
       );
+      onTabChange('profile');
+      // A3 — the reveal runs once the sheet has mounted (effect below), inside
+      // the copy the customer can SEE. A document-wide lookup one microtask
+      // later found the hidden desktop column's copy first on a phone, so the
+      // sheet opened on the recipe name instead of on the settings.
+      setSettingsRevealRequest((request) => request + 1);
     };
     window.addEventListener('pinguino:profile-settings-required', showProfileSettings);
     return () =>
@@ -326,15 +350,15 @@ export function StudioEngineSurface({
 
   useEffect(() => {
     if (!shouldActivateMobileCockpitModal(mobileCockpitOpen, mobileViewport)) return;
-    const body = document.body;
-    const previousOverflow = body.style.overflow;
     const trigger = cockpitTriggerRef.current;
     const focusables = () =>
       cockpitPanelRef.current
         ? Array.from(cockpitPanelRef.current.querySelectorAll<HTMLElement>(FOCUSABLE))
         : [];
 
-    body.style.overflow = 'hidden';
+    // One shared, counted page lock (A1). A dialog still open inside this sheet
+    // when the recipe context remounts used to restore its saved `hidden` last.
+    const releaseScroll = lockBodyScroll();
     focusables()[0]?.focus();
 
     const onKey = (e: KeyboardEvent) => {
@@ -361,10 +385,29 @@ export function StudioEngineSurface({
     document.addEventListener('keydown', onKey);
     return () => {
       document.removeEventListener('keydown', onKey);
-      body.style.overflow = previousOverflow;
+      releaseScroll();
       if (!focusProductionAfterCollapseRef.current) trigger?.focus();
     };
   }, [activeTab, mobileCockpitOpen, mobileViewport]);
+
+  // A3 — land ON the settings. Declared after the modal effect so that, in the
+  // commit that opens the sheet, the sheet's own first focus happens first and
+  // this reveal has the last word. A request is revealed once: reopening
+  // Receptura later does not jump to the settings again.
+  // Exactly the condition under which the sheet, not the column, hosts the
+  // cockpit — the same expression that mounts the sheet further down.
+  const sheetHostsCockpit = mobileCockpitOpen && mobileViewport;
+  useEffect(() => {
+    if (settingsRevealRequest === handledSettingsRevealRef.current) return;
+    const container = sheetHostsCockpit ? cockpitPanelRef.current : desktopCockpitRef.current;
+    if (!container) return;
+    handledSettingsRevealRef.current = settingsRevealRequest;
+    return revealWithinScrollContainer({
+      container,
+      selector: '[data-testid="workbench-settings-line"]',
+      onSettled: (target) => target.focus({ preventScroll: true }),
+    });
+  }, [settingsRevealRequest, sheetHostsCockpit]);
 
   // ONE recipe action dock (score / „Przelicz" + the action bar). It is placed
   // in the editor toolbar on the workbench breakpoint and in the mobile bottom
@@ -412,7 +455,11 @@ export function StudioEngineSurface({
       {/* ── ONE-SCREEN WORKBENCH — fills the remaining viewport height on desktop; every
           edit-loop control lives INSIDE this section (owner zero-page-scroll rule). ── */}
       <section
-        className="pro-workbench-surface flex min-h-0 flex-col pb-[calc(var(--pro-bottom-nav-height)+4.75rem+env(safe-area-inset-bottom))]"
+        ref={workbenchRef}
+        /* A2 — the document reserves exactly the MEASURED bottom stack (strip +
+           module bar + safe area). The old estimate is only the fallback for
+           the frame before the first measurement. */
+        className="pro-workbench-surface flex min-h-0 flex-col pb-[var(--pro-mobile-bottom-stack-height,calc(var(--pro-bottom-nav-height)+4.75rem+env(safe-area-inset-bottom)))]"
         data-testid="pro-workbench"
       >
         {activeTab === 'production' && production.session ? (
@@ -463,6 +510,7 @@ export function StudioEngineSurface({
               change (useStudioResult), ONE predictable internal scroll surface (B6).
               Mobile reaches the SAME content through the Monitor bottom sheet. */}
           <aside
+            ref={desktopCockpitRef}
             className="pro-workbench-right-track hidden min-h-0"
             data-testid="pro-monitor-panel"
             aria-label={copy.proWorkbench.profile.title}
@@ -495,11 +543,12 @@ export function StudioEngineSurface({
             formal calculation state is never more than a thumb away, and the
             whole stack respects `env(safe-area-inset-bottom)`. */}
         <div
+          ref={bottomStackRef}
           className="pro-workbench-mobile-only fixed inset-x-0 bottom-0 z-[60]"
           data-testid="mobile-cockpit-trigger"
         >
           {mobileRecipeActionDock ? (
-            <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-t border-ink/10 bg-white px-[var(--pro-mobile-gutter)] py-2">
+            <div className="gellatti-touch-control flex min-w-0 flex-wrap items-center justify-between gap-2 border-t border-ink/10 bg-white px-[var(--pro-mobile-gutter)] py-2">
               {mobileRecipeActionDock}
             </div>
           ) : null}
@@ -524,7 +573,11 @@ export function StudioEngineSurface({
                backdrop is inset with it, so the header is neither dimmed nor
                swallowed. `--pro-mobile-header-height` is the canonical offset:
                65 px on a phone, 69 px from `sm`, both measured live. */
-            className="pro-workbench-mobile-only fixed inset-x-0 top-[var(--pro-mobile-header-height)] bottom-[calc(var(--pro-bottom-nav-height)+env(safe-area-inset-bottom))] z-50"
+            className="pro-workbench-mobile-only fixed inset-x-0 top-[var(--pro-mobile-header-height)] bottom-[var(--pro-mobile-bottom-stack-height,calc(var(--pro-bottom-nav-height)+env(safe-area-inset-bottom)))] z-50"
+            /* A2 — and it ENDS at the top of the measured bottom stack. It used
+               to end at the top of the module bar only, so the score / „Przelicz"
+               strip covered its last 62 px (served, 375 × 812), including the
+               Etykieta print bar that sticks to the sheet's bottom edge. */
             data-testid="mobile-cockpit-sheet"
           >
             <button
@@ -558,7 +611,11 @@ export function StudioEngineSurface({
                   ×
                 </button>
               </div>
-              <div className="relative min-h-0 flex-1 overflow-y-auto [--label-workspace-bottom-inset:4.75rem]">
+              <div
+                /* A2 — nothing of the bottom stack overlaps this box any more, so
+                   the insets that compensated for it are zero in here. */
+                className="relative min-h-0 flex-1 overflow-y-auto [--pro-bottom-chrome-overlap:0px]"
+              >
                 <RecipeProfilePanel
                   activeTab={activeTab}
                   onTabChange={onTabChange}

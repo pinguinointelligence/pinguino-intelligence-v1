@@ -74,7 +74,7 @@ export function ToppingRow({
           onClick={() => setMobileSheetOpen(true)}
           data-testid={`topping-mobile-line-${item.id}`}
           aria-label={`${item.ingredient.name} — otwórz edycję toppingu`}
-          className="pro-focus-ring grid min-h-14 w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 text-left transition-colors active:bg-[var(--g-ivory)]"
+          className="gellatti-touch-control pro-focus-ring grid min-h-14 w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 text-left transition-colors active:bg-[var(--g-ivory)]"
         >
           <span className="flex min-w-0 items-center gap-2">
             <span

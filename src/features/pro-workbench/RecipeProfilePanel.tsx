@@ -799,6 +799,11 @@ export function RecipeProfilePanel({
               corrections={corrections}
               input={input}
               onOpenProfile={() => onTabChange('profile')}
+              // A3: the SAME request „Otwórz ustawienia" sends — it opens the
+              // recipe module and lands on its settings, on a phone included.
+              onOpenSettings={() =>
+                window.dispatchEvent(new CustomEvent('pinguino:profile-settings-required'))
+              }
               production={production}
             />
           </div>

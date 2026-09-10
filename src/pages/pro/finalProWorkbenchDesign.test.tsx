@@ -517,7 +517,12 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
     );
     expect(surface).toContain("e.key === 'Escape'");
     expect(surface).toContain("e.key !== 'Tab'");
-    expect(surface).toContain("body.style.overflow = 'hidden'");
+    // PRO MOBILE UX v2 · A1 — the page lock is the ONE counted primitive every
+    // modal surface shares, so no closing order can leave the page locked.
+    expect(surface).toContain('lockBodyScroll()');
+    expect(read('components', 'ui', 'bodyScrollLock.ts')).toContain(
+      "document.body.style.overflow = 'hidden'",
+    );
   });
 
   it('uses pink only through explicit readiness states with accessible limitations', () => {

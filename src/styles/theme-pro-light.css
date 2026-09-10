@@ -37,8 +37,39 @@
 
 .theme-pro-light [data-testid='ingredient-rows-scroll'],
 .theme-pro-light [data-testid='pro-monitor-panel'] {
-  overscroll-behavior: contain;
   scrollbar-width: thin;
+}
+
+/* PRO MOBILE UX v2 · A1 — ONE scroll owner per layout.
+   From 60rem the workbench is locked to the viewport and these two panes are
+   its inner scroll surfaces, so reaching the end of one must not drag the page.
+   Below 60rem the DOCUMENT scrolls and the ingredient pane simply grows with its
+   rows. Left there as an `overflow-y: auto` box with `overscroll-behavior:
+   contain`, it still stopped every one-finger swipe that started on a row from
+   reaching the page: containment belongs to the scroll CONTAINER, whether or
+   not it has anything to scroll, and on a phone that pane holds everything
+   between the header and the bottom bar. */
+@media (min-width: 60rem) {
+  .theme-pro-light [data-testid='ingredient-rows-scroll'],
+  .theme-pro-light [data-testid='pro-monitor-panel'] {
+    overscroll-behavior: contain;
+  }
+}
+
+@media not all and (min-width: 60rem) {
+  .theme-pro-light [data-testid='ingredient-rows-scroll'] {
+    overflow-y: visible;
+  }
+}
+
+/* PRO MOBILE UX v2 · A9 — a long press on something the customer PRESSES must
+   not start text selection or the iOS callout: holding − / + to repeat, resting
+   a thumb on a recipe line, the module bar, a Direction position. Opt-in per
+   control and never global, so labels, readouts and notes stay selectable. */
+.gellatti-touch-control {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .theme-pro-light [data-testid='workbench-editor-pane'] {

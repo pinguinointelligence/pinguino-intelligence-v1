@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router';
 import { cn } from '@/lib/cn';
+import { lockBodyScroll } from '@/components/ui/bodyScrollLock';
 import { copy } from '@/copy/en';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { useAuthStore } from '@/stores/authStore';
@@ -67,8 +68,8 @@ export function AppNavDrawer() {
   useEffect(() => {
     if (!open) return;
     const body = document.body;
-    const prevOverflow = body.style.overflow;
-    body.style.overflow = 'hidden';
+    // One shared, counted page lock (PRO MOBILE UX v2 · A1).
+    const releaseScroll = lockBodyScroll();
     /* One flag on the body, read by ONE css rule, so the page's own bottom
        chrome steps aside instead of showing through a 60% scrim. Raising the
        drawer above it stopped the click-through, but the strip stayed legible
@@ -103,7 +104,7 @@ export function AppNavDrawer() {
     document.addEventListener('keydown', onKey);
     return () => {
       document.removeEventListener('keydown', onKey);
-      body.style.overflow = prevOverflow;
+      releaseScroll();
       delete body.dataset.appDrawer;
       trigger?.focus();
     };
