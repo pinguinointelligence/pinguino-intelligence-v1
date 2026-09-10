@@ -78,6 +78,44 @@ describe('Unknown product flow — discovery lifecycle (owner acceptance matrix)
     expect(r.sessionId).toBe(`sess-${GTIN}`);
     expect(r.canonical).toBe(false);
   });
+  it('complete internet evidence proceeds to finalize without demanding a label photo', async () => {
+    const { d, p } = setup();
+    d.research = async (identity) => ({
+      kind: 'researched',
+      evidenceError: null,
+      session: {
+        sessionId: `sess-${identity.canonicalGtin13}`,
+        identity,
+        result: {
+          identity: { displayName: 'NESTEA Mango-Piña', brand: 'Nestlé' },
+          nutrition: { energyKcal: 19 },
+          ingredientsText: 'woda, cukier, sok mango i ananas',
+          evidence: [],
+          externalSources: [
+            {
+              sourceType: 'retailer',
+              url: 'https://example.test/nestea',
+              title: 'NESTEA Mango-Piña 330 ml',
+              fieldsUsed: [
+                'identity.displayName',
+                'identity.brand',
+                'nutrition.energyKcal',
+                'ingredientsText',
+              ],
+            },
+          ],
+          conflicts: [],
+        },
+        overlayState: 'SCAN_DRAFT',
+        missingCritical: [],
+        usage: { visionCalls: 0, webCalls: 1 },
+      },
+    });
+    const r = pendingOf(await runScanImportV2(scan('8411092721032'), ctx(), p));
+    expect(r.next).toBe('finalize');
+    expect(r.ledger.missingCritical).toEqual([]);
+    expect(r.ledger.facts.map((fact) => fact.source)).not.toContain('user_confirmed');
+  });
   it('UNKNOWN + LABEL EVIDENCE: label facts join the same session and identity; stage becomes evidence_collected', async () => {
     const { d, p } = setup({ provider: true, label: true });
     const first = pendingOf(await runScanImportV2(scan(GTIN), ctx(), p));

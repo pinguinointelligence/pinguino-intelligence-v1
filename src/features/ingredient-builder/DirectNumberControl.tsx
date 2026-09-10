@@ -316,7 +316,8 @@ export function DirectNumberControl({
             nudge(direction);
           }}
           className={cn(
-            'row-start-1 grid place-items-center font-light text-ink transition-colors hover:bg-stone-100 focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#f58a07] disabled:cursor-not-allowed disabled:text-stone-400',
+            // A9: holding − / + repeats; the press must not select the glyph.
+            'gellatti-touch-control row-start-1 grid place-items-center font-light text-ink transition-colors hover:bg-stone-100 focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#f58a07] disabled:cursor-not-allowed disabled:text-stone-400',
             segment,
             compact ? 'text-base' : responsive ? 'text-xl lg:text-base' : 'text-xl',
             direction > 0 && 'col-start-3',

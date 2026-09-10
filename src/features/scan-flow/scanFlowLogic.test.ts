@@ -137,6 +137,21 @@ describe('scan flow — pure rules', () => {
     });
   });
 
+  it('never relabels registry-prefilled values as customer-confirmed when they were not requested', () => {
+    const values = {
+      displayName: 'NESTEA Mango-Piña',
+      brand: 'Nestlé',
+      ingredientsText: 'woda, cukier, sok mango i ananas',
+      basis: 'per_100ml',
+      energyKcal: '19',
+      salt: '0.01',
+    };
+    expect(confirmationsFromFields(values, ['salt']).productFields).toEqual({
+      nutrition: { salt: 0.01, basis: 'per_100ml' },
+    });
+    expect(confirmationsFromFields(values, []).productFields).toEqual({});
+  });
+
   it('the customer always reads what the scanner is doing: guidance > position > state', () => {
     const base = {
       state: 'SEARCHING' as const,

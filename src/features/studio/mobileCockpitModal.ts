@@ -14,6 +14,12 @@ export function shouldActivateMobileCockpitModal(open: boolean, mobileViewport: 
 export interface MobileCockpitState<Tab extends string = string> {
   activeTab: Tab;
   open: boolean;
+  /**
+   * Set when this state was chosen OPTIMISTICALLY just before navigating away
+   * from this route: React Router 7 delivers the new location in a transition,
+   * so for a render or two the route still names where we came from.
+   */
+  awaitingRouteFrom?: Tab | null;
 }
 
 /**
@@ -32,6 +38,42 @@ export function nextMobileCockpitState<Tab extends string>(
 ): MobileCockpitState<Tab> {
   if (current.open && tapped === current.activeTab) return { activeTab: tapped, open: false };
   return { activeTab: tapped, open: true };
+}
+
+/** The state to set just before navigating from `routeTab` to `next.activeTab`. */
+export function optimisticMobileCockpitState<Tab extends string>(
+  next: MobileCockpitState<Tab>,
+  routeTab: Tab,
+): MobileCockpitState<Tab> {
+  return next.activeTab === routeTab
+    ? { activeTab: next.activeTab, open: next.open }
+    : { activeTab: next.activeTab, open: next.open, awaitingRouteFrom: routeTab };
+}
+
+/**
+ * The state to adopt for the current route, or null when nothing changes.
+ *
+ * PRO MOBILE UX v2 · A3. A module states its intent before it navigates, but
+ * React Router 7 delivers the route later, in a transition. Treating the
+ * in-between render as an external route change reverted the intent: tapping
+ * Receptura from an open Monitor, or „Otwórz ustawienia" sent from any open
+ * module, closed the sheet instead of opening the recipe module. Only a route
+ * that is neither the one we left nor the one we asked for is an external
+ * change (a deep link, the back button), and only that one re-derives the
+ * state from the route — exactly as before.
+ */
+export function reconcileMobileCockpitRoute<Tab extends string>(
+  state: MobileCockpitState<Tab>,
+  routeTab: Tab,
+  defaultTab: Tab,
+): MobileCockpitState<Tab> | null {
+  if (state.activeTab === routeTab) {
+    return state.awaitingRouteFrom == null
+      ? null
+      : { activeTab: state.activeTab, open: state.open };
+  }
+  if (state.awaitingRouteFrom != null && state.awaitingRouteFrom === routeTab) return null;
+  return { activeTab: routeTab, open: routeTab !== defaultTab };
 }
 
 /**

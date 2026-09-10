@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from '@/lib/cn';
 import { isTopmostDialogShell, openDialogCount, registerDialogShell } from './dialogShellRegistry';
+import { lockBodyScroll } from './bodyScrollLock';
 
 /**
  * THE one modal primitive for PINGÜINO Pro line-level dialogs.
@@ -171,8 +172,9 @@ export function DialogShell({
       (node) => !dialogRef.current?.contains(node),
     );
     const previousIndex = previousFocus ? focusBeforeOpen.indexOf(previousFocus) : -1;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    // One shared, counted page lock (A1): the page unlocks when the LAST modal
+    // surface closes, whatever order they close in.
+    const releaseScroll = lockBodyScroll();
     const focusable = () => focusableWithin(dialogRef.current);
     const initialFocus = initialFocusTestId
       ? focusable().find((node) => node.dataset.testid === initialFocusTestId)
@@ -203,7 +205,7 @@ export function DialogShell({
     document.addEventListener('keydown', onKeyDown);
     return () => {
       document.removeEventListener('keydown', onKeyDown);
-      document.body.style.overflow = previousOverflow;
+      releaseScroll();
       const ownedFocus = isTopmostRef.current;
       if (!ownedFocus) return;
       const hadUnderlyingDialog = hadUnderlyingDialogRef.current;

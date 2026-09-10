@@ -123,7 +123,7 @@ export function WorkbenchModuleTabs({
             className={cn(
               'pro-focus-ring min-w-0 px-2 text-[11px] font-semibold transition-colors',
               bottom
-                ? 'flex min-h-[var(--pro-bottom-nav-height)] flex-col items-center justify-center gap-1 border-t-2 py-1'
+                ? 'gellatti-touch-control flex min-h-[var(--pro-bottom-nav-height)] flex-col items-center justify-center gap-1 border-t-2 py-1'
                 : 'min-h-12 border-b-2 py-2',
               // The approved header tab is UNDERLINE ONLY: the preview carries no
               // filled or boxed active state, so the orange rule on the header

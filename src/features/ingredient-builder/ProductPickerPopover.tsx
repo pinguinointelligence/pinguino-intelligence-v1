@@ -30,6 +30,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { cn } from '@/lib/cn';
 import { customerSafeNotice } from '@/copy/customerSafeNotice';
 import { iconButtonClasses } from '@/components/ui/buttonStyles';
+import { lockBodyScroll } from '@/components/ui/bodyScrollLock';
 import { preserveServerProductRank } from '@/features/global-catalog/ranking';
 import { useGlobalCatalogPicker } from '@/features/global-catalog/useGlobalCatalogPicker';
 import type { CatalogProductSearchHit } from '@/features/global-catalog/contracts';
@@ -674,11 +675,8 @@ export function ProductPickerPopover({
 
   useEffect(() => {
     if (!open || typeof document === 'undefined') return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
+    // One shared, counted page lock (PRO MOBILE UX v2 · A1).
+    return lockBodyScroll();
   }, [open]);
 
   useEffect(() => {

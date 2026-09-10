@@ -370,8 +370,9 @@ describe('ProWorkbar (sticky top workbar)', () => {
     expect(source).toContain('w.status[statusKey]');
     expect(source.match(/data-testid="pro-workbar-status"/g)).toHaveLength(1);
     expect(source).toContain("? 'text-status-risky'");
-    expect(ingredientRow).toContain('bg-status-risky');
-    expect(ingredientRow).toContain('data-testid={`row-estimated-${item.id}`}');
+    // PRO MOBILE UX v2 · A10 (owner decision): the row icon carries no
+    // estimated-data dot any more; the data view states it in words.
+    expect(ingredientRow).not.toContain('row-estimated-');
     expect(tokens).toContain('--color-status-risky: #9c8a55;');
   });
 });
