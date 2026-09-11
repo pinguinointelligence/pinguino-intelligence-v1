@@ -344,8 +344,11 @@ describe('interactive recalculation preview — PRO', () => {
     const failed = useConstraintStudioStore.getState();
     expect(optimizeOverride.next).toBeNull();
     expect(failed.preview).toBeNull();
-    expect(failed.previewIssue?.code).toBe('product_behavior_invalid');
-    expect(failed.previewIssue?.messagePl).toContain('Propozycja Gellatti została odrzucona');
+    const issue = failed.previewIssue;
+    if (issue?.code !== 'product_behavior_invalid') {
+      throw new Error(`expected the bound ProductBehavior refusal, got ${issue?.code}`);
+    }
+    expect(issue.messagePl).toContain('Propozycja Gellatti została odrzucona');
     const relaxation = relaxationOf(failed.lockConflict?.diagnosis);
     expect(relaxation.blockers.map((blocker) => blocker.code)).toContain('main_below_floor');
     expect(relaxation.changes.map((change) => change.lineId).sort()).toEqual([
