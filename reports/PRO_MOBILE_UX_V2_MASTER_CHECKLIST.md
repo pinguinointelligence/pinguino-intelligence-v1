@@ -4,13 +4,75 @@ One persistent checklist for BOTH workstreams. Every checkpoint lists every item
 individually. Legend: ⬜ NOT_STARTED · 🟨 ACTIVE · ⏸ WAITING_OWNER · ⛔ BLOCKED ·
 🧪 IMPLEMENTED_TESTED · ✅ ACCEPTED · ↔ RECONCILIATION_REQUIRED · ➖ NOT_APPLICABLE
 
-- Branch / worktree: `claude/pro-mobile-ux-v2-a` · `~/Developer/pinguino-pro-mobile-ux-v2`
-- Base: `origin/staging` `d9507eed` (2026-09-10 14:00, #256) = served staging
-  `dpl_DLHTExYJqGzM5xYr8aTU798nLszn`. Current staging is `53d7f3cb` (#257 SOL-052: two
-  migrations, a script, a scanner test; #258 SOL-041: `applyPipeline.ts` + its Sorbet test)
-  — no file shared with this branch.
-- **Execution gate:** Workstream B starts ONLY after A's full A1–A11 final ledger AND
-  the owner's exact words `OWNER APPROVAL — START WORKSTREAM B`.
+- Workstream A: branch `claude/pro-mobile-ux-v2-a`, landed as PR #259 → staging `ca3343d4`
+  (deployment `dpl_6tAqR9HcEJqtPbtoPBBhexoztfwD`). **Owner accepted and closed A.**
+- Workstream B: branch `claude/pro-mobile-ux-v2-b` from staging `ca3343d4`, merged with
+  current staging `846f2886` before its PR, worktree `~/Developer/pinguino-pro-mobile-ux-v2`.
+- **Execution gate:** satisfied — the owner started B explicitly („OWNER START — PRO MOBILE
+  UX v2 / WORKSTREAM B", 2026-09-10) after accepting A.
+
+## Checkpoint 4 — 2026-09-11 · Workstream B implemented, waiting for the owner's test
+
+### Workstream A — technical stabilization
+
+| #   | Item                                  | State       |
+| --- | ------------------------------------- | ----------- |
+| A1  | Single-finger mobile scroll           | ✅ ACCEPTED |
+| A2  | Bottom nav / safe area / scroll end   | ✅ ACCEPTED |
+| A3  | Settings navigation anchor            | ✅ ACCEPTED |
+| A4  | Mobile Label crash                    | ✅ ACCEPTED |
+| A5  | Duplicate double-arrow control        | ✅ ACCEPTED |
+| A6  | Responsive recipe name                | ✅ ACCEPTED |
+| A7  | Gelato hardness control               | ✅ ACCEPTED |
+| A8  | Product card touch target             | ✅ ACCEPTED |
+| A9  | Accidental text selection             | ✅ ACCEPTED |
+| A10 | Unexplained fruit dot                 | ✅ ACCEPTED |
+| A11 | Scroll / overlay stability regression | ✅ ACCEPTED |
+
+### Workstream B — guided mobile flow
+
+| #   | Item                                       | State                 | Outcome                                                                                                                                               |
+| --- | ------------------------------------------ | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| B0  | Pre-start reconciliation                   | 🧪 IMPLEMENTED_TESTED | staging = A merge `ca3343d4`; #158 (lock glyph) and PACKAGE 2A share no B file; v2.2 SAFE (since integrated, #271) uses the same ProWorkbar save card |
+| B1  | Target mobile information architecture     | 🧪 IMPLEMENTED_TESTED | four-module bottom bar kept; the dashboard belongs to Receptura; one next step at a time                                                              |
+| B2  | Recipe dashboard as collapsible top sheet  | 🧪 IMPLEMENTED_TESTED | the dashboard hangs from the header and lifts into a sticky recipe bar (name · profile · stage) that brings it back                                   |
+| B3  | Profile-first new recipe flow              | 🧪 IMPLEMENTED_TESTED | a new unconfirmed recipe opens on its settings once; confirming reveals the ingredients from above; a stored default skips it                         |
+| B4  | Profile settings step navigation           | 🧪 IMPLEMENTED_TESTED | Krok n z 3 with back / forward and a progress rule, first run only; the desktop grid is unchanged                                                     |
+| B5  | Target batch mass visual distinction       | 🧪 IMPLEMENTED_TESTED | whole-batch card beside the current total, mismatch explained; target kept in the collapsed row; no mass mathematics changed                          |
+| B6  | Stateful primary CTA                       | 🧪 IMPLEMENTED_TESTED | settings → Przelicz → Zapisz recepturę → Przejdź do Monitora → Przejdź do Produkcji, from published facts only; PRO stays manual                      |
+| B7  | Recipe save integration                    | 🧪 IMPLEMENTED_TESTED | „Zapisz recepturę" reveals the one existing name/save card; no second save system                                                                     |
+| B8  | Remove redundant generic re-confirmation   | 🧪 IMPLEMENTED_TESTED | a Przelicz refused only for settings resumes after confirmation; a clean reopened saved version is not asked again; safety gates untouched            |
+| B9  | Guided module transitions                  | 🧪 IMPLEMENTED_TESTED | View Transitions on the existing sheet: drop / lift / rise / sink / forward / back, ≤ 260 ms, off for reduced motion                                  |
+| B10 | Product panel hierarchy                    | 🧪 IMPLEMENTED_TESTED | „Moja cena" folded until asked for in the product sheet; removing is its own row; every control kept                                                  |
+| B11 | Product panel context / translucency       | 🧪 IMPLEMENTED_TESTED | the product sheet is the one translucent dialog tone; the edited line is marked and followed by its `recipe_line_id`                                  |
+| B12 | Visual language consolidation              | 🧪 IMPLEMENTED_TESTED | every new surface uses the existing tokens (graphite pills, 9 px radius, legend boxes, ivory) — no third language                                     |
+| B13 | Tutorial reconciliation — no second system | 🧪 IMPLEMENTED_TESTED | reconciled with the one tutorial (v2.2 §29, #271): B adds none and no hold-to-confirm; it anchors only HOME, so it never auto-starts over B3 on PRO   |
+| B14 | Performance / mobile image loading         | 🧪 IMPLEMENTED_TESTED | the ≈1.7 MB tour PNGs ship as WebP (≈20–130 KB) at 960 / 1672 w, keyed per step, next step prefetched                                                 |
+
+Completion: **A 11/11 accepted (100 %)** · **B 15/15 resolved (100 %)** — all 15 implemented +
+tested; 0/15 owner-accepted · **total 26/26 resolved (100 %)**.
+
+Gates on `5f2a62b9` (local): owner-locked guard OK · protected-paths — 2 semantic changes
+(IngredientRow, IngredientLineControls) acknowledged by `Protected-Change:` trailers ·
+owner-locked contracts 22 files / 215 tests ✅ · eslint `--max-warnings 0` on every changed file ✅.
+The PR's first CI run failed at typecheck: the new `spatialTransition.test.ts` typed its View
+Transitions stub against the DOM lib's required, overloaded `startViewTransition` (5 errors;
+vitest does not typecheck, so it had run green). Fixed with a standalone stub type. On the head
+merged with current staging (`846f2886`; conflict-free, no shared file) B's 12 test files
+(7 new + 5 updated) pass 126/126. Merge gate: the PR's CI — contracts, typecheck, lint, full
+suite, build, solver-contracts, direction-rescue.
+
+Staging kept moving while the PR waited (strict up-to-date: nine merges by `a61446aa`); every
+merge was conflict-free and shared no file with B, and CI was green on four of those heads.
+Merging v2.2 SAFE (#271) tripped B13's contract, which had pinned „no tutorial exists" —
+stricter than the owner's rule. It now pins the rule itself: one tutorial, B adds none, and
+that tutorial (anchored only on HOME) never auto-starts on the PRO workbench.
+
+Owner test on staging (the acceptance scenarios): new recipe on a phone opens its settings
+from the top → Krok 1–3 → confirm lifts them into the recipe bar → Przelicz → Zapisz recepturę
+→ Przejdź do Monitora → Przejdź do Produkcji; reopen a saved recipe (no second confirmation);
+product sheet (Moja cena folded, removing apart, the edited line marked); desktop ≥ 960 px
+unchanged. Real finger gestures and the transitions' feel need a real phone.
 
 ## Checkpoint 3 — 2026-09-10 · owner review round (A8 + A10)
 

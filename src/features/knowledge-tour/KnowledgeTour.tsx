@@ -6,6 +6,16 @@ import './KnowledgeTour.css';
 
 const STEP_COUNT = 9;
 const SWIPE_DISTANCE_PX = 56;
+/** B14 — the artwork spans a phone's width, and about the stage's right half beside the copy. */
+const TOUR_IMAGE_SIZES = '(max-width: 60rem) 100vw, 56vw';
+const TOUR_IMAGE_WIDTHS = [960, 1672] as const;
+
+/** `/guide/01.png` → its WebP renditions, `/guide/01-960.webp 960w, /guide/01-1672.webp 1672w`. */
+function tourImageSrcSet(png: string): string {
+  return TOUR_IMAGE_WIDTHS.map(
+    (width) => `${png.replace(/\.png$/, `-${width}.webp`)} ${width}w`,
+  ).join(', ');
+}
 
 function stepFromSearch(rawStep: string | null): number {
   const parsed = Number.parseInt(rawStep ?? '', 10);
@@ -108,6 +118,17 @@ export function KnowledgeTour({ layout = 'page' }: { layout?: 'page' | 'embedded
     titleRef.current?.focus({ preventScroll: true });
   }, [activeIndex]);
 
+  // B14 — the NEXT picture is fetched while this one is read, so „Dalej" never
+  // waits on a download. One image ahead only; nothing else is preloaded.
+  useEffect(() => {
+    const next = knowledgeTourSteps()[activeIndex + 1];
+    if (!next) return;
+    const image = new Image();
+    image.decoding = 'async';
+    image.sizes = TOUR_IMAGE_SIZES;
+    image.srcset = tourImageSrcSet(next.image);
+  }, [activeIndex]);
+
   const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (event.key === 'ArrowLeft' && activeIndex > 0) {
       event.preventDefault();
@@ -180,13 +201,26 @@ export function KnowledgeTour({ layout = 'page' }: { layout?: 'page' | 'embedded
             data-tour-slot="visual"
             style={{ '--tour-image-edge': step.edgeColor } as CSSProperties}
           >
-            <img
-              src={step.image}
-              alt={`${copy.imageAltPrefix} ${step.title}`}
-              draggable={false}
-              width="1672"
-              height="941"
-            />
+            {/* PRO MOBILE UX v2 · B14 — keyed by step, so a new step's words never
+                sit over the previous picture while its own one loads, and the
+                picture comes as WebP (≈20–130 KB instead of a ≈1.7 MB PNG) at the
+                width the viewport needs. The PNG stays the fallback. */}
+            <picture key={step.id}>
+              <source
+                type="image/webp"
+                srcSet={tourImageSrcSet(step.image)}
+                sizes={TOUR_IMAGE_SIZES}
+              />
+              <img
+                src={step.image}
+                alt={`${copy.imageAltPrefix} ${step.title}`}
+                draggable={false}
+                width="1672"
+                height="941"
+                decoding="async"
+                fetchPriority="high"
+              />
+            </picture>
           </figure>
           <div className="knowledge-tour__captions-slot" data-tour-slot="captions">
             <AnnotationRail step={step} />

@@ -15,6 +15,68 @@ import { WorkbenchScoreDisplay } from './WorkbenchScoreDisplay';
 import { buildCurrentRecipeResultAuthority } from './currentRecipeResultAuthority';
 import { friendlyLabRecipeJourneyState } from './friendlyLabRecipeJourney';
 import { unfilledUserSuppliedRoles } from '@/features/formulation/formulate';
+import { copy } from '@/copy/en';
+import type { MobileNextStep } from './mobileNextStep';
+
+/** PRO MOBILE UX v2 · B6 — the phone strip's one next step. Only the phone dock receives it. */
+export interface MobileFlowStep {
+  next: MobileNextStep | null;
+  onNext: (step: MobileNextStep) => void;
+}
+
+function MobileNextStepAction({
+  step,
+  onNext,
+}: {
+  step: MobileNextStep;
+  onNext: (step: MobileNextStep) => void;
+}) {
+  const text = copy.proWorkbench.mobileFlow[step];
+  // Orange states a CONDITION (settings still to confirm); graphite offers the action.
+  const condition = step === 'settings';
+  return (
+    <>
+      <span
+        className={cn(
+          'flex min-w-0 shrink items-center gap-2 text-[11px] leading-tight',
+          condition ? 'text-[var(--g-attention-ink)]' : 'text-[var(--g-text-secondary)]',
+        )}
+        data-testid="pro-mobile-next-step-cue"
+      >
+        {condition ? (
+          <i aria-hidden className="size-1.5 shrink-0 rounded-full bg-[#f58a07]" />
+        ) : (
+          <svg
+            aria-hidden
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            className="shrink-0"
+          >
+            <path
+              d="M4 12.5l5.5 5.5L20 7"
+              stroke="currentColor"
+              strokeWidth="2.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        )}
+        <span className="truncate">{text.cue}</span>
+      </span>
+      <button
+        type="button"
+        onClick={() => onNext(step)}
+        data-testid="pro-mobile-next-step"
+        data-next-step={step}
+        className="pro-focus-ring flex h-11 shrink-0 items-center justify-center rounded-full bg-[var(--g-graphite)] px-5 text-sm font-semibold whitespace-nowrap text-white"
+      >
+        {text.action}
+      </button>
+    </>
+  );
+}
 
 export function WorkbenchIntelligenceHeader({
   result,
@@ -22,12 +84,15 @@ export function WorkbenchIntelligenceHeader({
   onOpenLearning,
   onRecalculate,
   variant = 'panel',
+  mobileFlow,
 }: {
   result: RecipeResult;
   input: RecipeInput;
   onOpenLearning?: () => void;
   onRecalculate?: () => void;
   variant?: 'panel' | 'global' | 'dock';
+  /** PRO MOBILE UX v2 · B6 — phone dock only: the ONE state-driven next step. */
+  mobileFlow?: MobileFlowStep;
 }) {
   const match = monitorScoreView(result, input).match;
   const snapshots = useRecipeStore((state) => state.productBehaviorSnapshots);
@@ -224,7 +289,12 @@ export function WorkbenchIntelligenceHeader({
             onOpenLearning={onOpenLearning}
           />
         ) : null}
-        {pending || recalculateNeeded ? (
+        {/* PRO MOBILE UX v2 · B6 — on the phone ONE next step leads: unconfirmed
+            settings first (Przelicz would refuse until they are confirmed), then
+            the recalculation authority below, then save / Monitor / Produkcja. */}
+        {mobileFlow?.next === 'settings' ? (
+          <MobileNextStepAction step="settings" onNext={mobileFlow.onNext} />
+        ) : pending || recalculateNeeded ? (
           <>
             {/* OWNER FROZEN PRO VISUAL. The reason the action is asking moves OUT of the
                 button and stands beside it, carried by an orange dot and the attention
@@ -260,6 +330,8 @@ export function WorkbenchIntelligenceHeader({
               {working ? 'Przeliczanie…' : 'Przelicz'}
             </button>
           </>
+        ) : mobileFlow?.next ? (
+          <MobileNextStepAction step={mobileFlow.next} onNext={mobileFlow.onNext} />
         ) : null}
       </div>
     );

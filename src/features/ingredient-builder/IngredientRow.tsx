@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { copy } from '@/copy/en';
 import type { EffectiveRecipeItem, LockType } from '@/engine';
 import { cn } from '@/lib/cn';
@@ -498,11 +498,31 @@ function RecipeRow({
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
   const [ingredientModalView, setIngredientModalView] = useState<'actions' | 'data'>('actions');
   const [dialog, setDialog] = useState<'substitute' | 'required' | 'required-confirm' | null>(null);
+  /** PRO MOBILE UX v2 · B10 — „Moja cena" opens only when asked for (product sheet). */
+  const [priceOpen, setPriceOpen] = useState(false);
   const closeLineMenus = () => {
     setRowMenuOpen(false);
     setMobileSheetOpen(false);
     setIngredientModalView('actions');
+    setPriceOpen(false);
   };
+  /* PRO MOBILE UX v2 · B11 — while this line's sheet is open the list keeps the
+     line in view above it, and follows it when „Przesuń wyżej / niżej" moves it,
+     so the controls and the row they act on are never apart. Same line identity,
+     no second state: the row is found by its own `recipe_line_id` test id. */
+  const followedLineTopRef = useRef<number | null>(null);
+  useLayoutEffect(() => {
+    if (!mobileSheetOpen) {
+      followedLineTopRef.current = null;
+      return;
+    }
+    const line = document.querySelector<HTMLElement>(`[data-testid="row-mobile-line-${item.id}"]`);
+    if (!line || typeof line.scrollIntoView !== 'function') return;
+    const top = line.offsetTop;
+    if (followedLineTopRef.current === top) return;
+    followedLineTopRef.current = top;
+    line.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  });
   /** ONE way into the desktop row's product panel: the ••• and, on a touch
    *  device, the whole row (A8) call this same action. */
   const openRowMenu = () => {
@@ -682,22 +702,54 @@ function RecipeRow({
         </div>
       ) : null}
 
-      <div className="mt-2.5">
-        <CustomerPriceEditor
-          view={priceView}
-          lineId={item.id}
-          variant="article"
-          footerAction={
-            <button
-              type="button"
-              aria-label={t.remove.action}
-              onClick={requestRemove}
-              className="pro-focus-ring h-9 shrink-0 rounded-[8px] border border-status-error/35 bg-status-error/[0.06] px-3 text-[10px] font-semibold text-status-error transition-colors hover:border-status-error/50 hover:bg-status-error/[0.1]"
-            >
-              {t.remove.action}
-            </button>
-          }
-        />
+      {/* PRO MOBILE UX v2 · B10 — the everyday controls lead and „Moja cena" is
+          SECONDARY: in the product sheet (the collapsed line's panel, below `lg`)
+          it is one row until asked for; the desktop ••• dialog keeps its editor
+          open. Removing the ingredient no longer hides inside the price editor,
+          so it stays in reach whichever way that row is folded. */}
+      <div
+        className="gellatti-price-secondary mt-2.5"
+        data-price-open={priceOpen ? 'true' : 'false'}
+        data-testid={`article-price-secondary-${item.id}`}
+      >
+        <button
+          type="button"
+          onClick={() => setPriceOpen((wasOpen) => !wasOpen)}
+          aria-expanded={priceOpen}
+          data-testid={`article-price-toggle-${item.id}`}
+          className="pro-focus-ring flex min-h-11 w-full items-center justify-between gap-3 rounded-[10px] border border-ink/10 bg-white/70 px-3 text-left text-[12px] font-semibold text-[var(--g-text-secondary)] lg:hidden"
+        >
+          <span>{copy.proWorkbench.pricePanel.toggle}</span>
+          <svg
+            aria-hidden
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            className={cn('shrink-0 transition-transform', priceOpen && 'rotate-180')}
+          >
+            <path
+              d="M6 9l6 6 6-6"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+        <div className="gellatti-price-secondary__body">
+          <CustomerPriceEditor view={priceView} lineId={item.id} variant="article" />
+        </div>
+      </div>
+      <div className="mt-2.5 flex justify-end">
+        <button
+          type="button"
+          aria-label={t.remove.action}
+          onClick={requestRemove}
+          className="pro-focus-ring h-9 shrink-0 rounded-[8px] border border-status-error/35 bg-status-error/[0.06] px-3 text-[10px] font-semibold text-status-error transition-colors hover:border-status-error/50 hover:bg-status-error/[0.1]"
+        >
+          {t.remove.action}
+        </button>
       </div>
     </div>
   );
@@ -711,6 +763,7 @@ function RecipeRow({
           names, which is exactly the squeeze §5 forbids. */}
       <div className="pro-ingredient-row-mobile lg:hidden">
         <MobileIngredientLine
+          editing={mobileSheetOpen}
           item={item}
           percent={share}
           isMain={isMain}

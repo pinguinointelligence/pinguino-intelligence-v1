@@ -111,7 +111,7 @@ export function DialogShell({
    * staging both times. Selecting one complete treatment here means there is
    * only ever one declaration per property, so nothing can be outranked.
    */
-  tone?: 'default' | 'attention';
+  tone?: 'default' | 'attention' | 'context';
   /**
    * The panel's canonical WIDTH. There are TWO members, on purpose.
    *
@@ -284,7 +284,13 @@ export function DialogShell({
   const overlay = (
     <div
       className={cn(
-        'fixed inset-0 z-[70] bg-black/45',
+        // PRO MOBILE UX v2 · B11 — the `context` tone is the one TRANSLUCENT
+        // treatment: a lighter scrim and a milky panel, so the recipe a sheet
+        // belongs to stays partly visible behind it. Every other dialog keeps
+        // the standard scrim. One declaration per property, chosen here.
+        tone === 'context'
+          ? 'fixed inset-0 z-[70] bg-black/20'
+          : 'fixed inset-0 z-[70] bg-black/45',
         // ONE overlay reads as active at a time. A shell that is no longer the
         // topmost keeps its own state but stops painting a second scrim and
         // stops taking pointer events, so a flow that briefly holds two shells
@@ -319,7 +325,8 @@ export function DialogShell({
         data-dialog-state={panelState}
         data-terminal-state={panelState}
         className={cn(
-          'relative overflow-y-auto border bg-white text-ink [overscroll-behavior:contain]',
+          'relative overflow-y-auto border text-ink [overscroll-behavior:contain]',
+          tone === 'context' ? 'bg-white/[0.92] backdrop-blur-md' : 'bg-white',
           // EXACTLY ONE border colour and EXACTLY ONE box-shadow, chosen here.
           // The attention treatment keeps the same elevation and adds the warm
           // ring as part of the SAME shadow value, so it cannot be replaced by

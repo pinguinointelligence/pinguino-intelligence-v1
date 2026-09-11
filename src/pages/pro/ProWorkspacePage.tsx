@@ -203,6 +203,31 @@ function RecipeWorkbench({
 }) {
   const draftContextSeq = useRecipeStore((state) => state.draftContextSeq);
   const [recipeSaveAttention, setRecipeSaveAttention] = useState(false);
+  /* PRO MOBILE UX v2 · B8 — a recalculation refused ONLY because the settings
+     were unconfirmed resumes by itself the moment they are confirmed: the
+     customer already asked for it, so „Otwórz ustawienia" → „Potwierdź zmiany"
+     must not end in a second press of Przelicz. Every real gate still runs
+     inside the resumed recalculation; a new recipe context drops the request. */
+  const settingsConfirmed = useRecipeProfileStore((state) => state.settingsConfirmed);
+  const refusedForSettings = useConstraintStudioStore(
+    (state) => state.recalculationTerminal?.state === 'SETTINGS_CONFIRMATION_REQUIRED',
+  );
+  const resumeRecalculationRef = useRef(onRecalculate);
+  const resumePendingRef = useRef(false);
+  useEffect(() => {
+    resumeRecalculationRef.current = onRecalculate;
+  });
+  useEffect(() => {
+    resumePendingRef.current = false;
+  }, [draftContextSeq]);
+  useEffect(() => {
+    if (refusedForSettings) resumePendingRef.current = true;
+  }, [refusedForSettings]);
+  useEffect(() => {
+    if (settingsConfirmed !== true || !resumePendingRef.current) return;
+    resumePendingRef.current = false;
+    resumeRecalculationRef.current();
+  }, [refusedForSettings, settingsConfirmed]);
   return (
     <div className="flex h-full min-h-0 flex-col" data-testid="pro-viewport-region">
       <SurfaceToneContext.Provider value="paper">
