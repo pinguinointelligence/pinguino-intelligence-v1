@@ -450,7 +450,7 @@ neutral placeholders are development-only.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | S-SEC-01 | Security | Server authoritative: never trust client rate / tier / commission / payout status / partner identity | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | No write grants to `authenticated` on any financial table | Preserve; test each new RPC |
 | S-SEC-02 | Security | Idempotency · audit · unique constraints · Stripe verification · immutable ledger | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | All present | Preserve |
-| S-SEC-03 | Security | Partner sees only own permitted data; never customer name/email/card/recipes/PII | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | RLS is correct; the workspace RPC payload needs an explicit PII audit | PII guard test |
+| S-SEC-03 | Security | Partner sees only own permitted data; never customer name/email/card/recipes/PII | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | `claude/hdash-earnings-overview` | D-LINK-04 guarded the render side; this guards the **payload** over the latest `gellatti_partner_workspace_v1`: the partner is the caller's own row and every list is scoped to it; every returned key is on an allowlist; no key names a person, contact, account or payment method; customer-side numbers are counts (`workspacePayload.contract.test.ts`). **Finding (DB, not changed):** two provider identifiers reach the browser though nothing renders them — a commission's Stripe `invoiceId` and a payout's `failureReason` | Owner: drop `invoiceId` / `failureReason` from the payload in the next workspace migration |
 | S-SEC-04 | Security | Admin permissions explicit | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | `AdminRouteGuard` + admin RPCs | Preserve |
 
 ### T — Testing + served QA (§36, §37)
