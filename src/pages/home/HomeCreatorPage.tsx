@@ -129,10 +129,13 @@ export function HomeCreatorPage() {
    * line. Ask it with the same HOME question the picker path uses; the answer goes
    * through `addIngredientLine`, HOME's one Base-line door.
    */
-  const askAmountFor = useCallback((outcome: IntentIngredientOutcome) => {
-    if (outcome.status !== 'needs_amount' || !outcome.ingredient) return;
-    setPendingAdd({ ingredient: outcome.ingredient, behavior: null, recommendedDose: null });
-  }, [setPendingAdd]);
+  const askAmountFor = useCallback(
+    (outcome: IntentIngredientOutcome) => {
+      if (outcome.status !== 'needs_amount' || !outcome.ingredient) return;
+      setPendingAdd({ ingredient: outcome.ingredient, behavior: null, recommendedDose: null });
+    },
+    [setPendingAdd],
+  );
   // §56: the SAME library the Pro builder feeds its picker. Demo/free get the local
   // preview catalogue, an authenticated paid session gets live Mapper search — HOME
   // does not widen or narrow what Pro can see.
