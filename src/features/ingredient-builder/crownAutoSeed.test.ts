@@ -114,7 +114,11 @@ describe('OWNER P0 — Crown toggle at 0 g', () => {
 
     useRecipeStore.getState().setStandardIngredient(id);
     expect(grams(id)).toBe(0);
-    expect(useRecipeStore.getState().productBehaviorSnapshots[id]).toBeUndefined();
+    // Owner brief 2026-09-11: the line keeps the authority it holds. A deleted
+    // snapshot left a 0 g line whose every grams write was refused.
+    expect(useRecipeStore.getState().productBehaviorSnapshots[id]?.resolutionState).toBe(
+      'RESOLVED',
+    );
 
     useRecipeStore.getState().setMainIngredient(id);
     expect(useRecipeStore.getState().items.find((item) => item.id === id)).toMatchObject({
