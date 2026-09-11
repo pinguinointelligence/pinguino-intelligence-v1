@@ -96,22 +96,17 @@ export function buildConstraints(
   requested: RequestedVideo,
   rung: 0 | 1 | 2,
 ): MediaStreamConstraints {
-  if (rung === 2) return { video: true, audio: false };
-  if (rung === 1) {
-    return {
-      video: requested.deviceId
-        ? { deviceId: { exact: requested.deviceId } }
-        : { facingMode: requested.facingMode ?? 'environment' },
-      audio: false,
-    };
-  }
   const video: MediaTrackConstraints = {
     width: { ideal: requested.width },
     height: { ideal: requested.height },
-    frameRate: { ideal: requested.frameRate },
   };
-  if (requested.deviceId) video.deviceId = { exact: requested.deviceId };
-  else video.facingMode = { ideal: requested.facingMode ?? 'environment' };
+  if (rung < 2) video.frameRate = { ideal: requested.frameRate };
+  if (rung === 0) {
+    if (requested.deviceId) video.deviceId = { exact: requested.deviceId };
+    else video.facingMode = { ideal: requested.facingMode ?? 'environment' };
+  } else if (rung === 1 && requested.deviceId) {
+    video.deviceId = { exact: requested.deviceId };
+  }
   return { video, audio: false };
 }
 
@@ -132,7 +127,7 @@ export class CameraSession {
     return typeof nav.mediaDevices?.getUserMedia === 'function';
   }
 
-  /** Opens the camera walking three rungs (exact request → facing only → anything). */
+  /** Opens the camera while relaxing lens/fps selection, never the requested pixel size. */
   async open(video: HTMLVideoElement, requested: RequestedVideo): Promise<DeliveredVideo> {
     this.stop();
     this.video = video;
@@ -153,15 +148,16 @@ export class CameraSession {
     if (!stream) throw lastError ?? new Error('getUserMedia failed');
     const openMs = performance.now() - t0;
     this.stream = stream;
+    const track = this.track as TrackWithCaps | null;
+    const capabilities = track?.getCapabilities ? track.getCapabilities() : null;
+    await this.promoteResolution(track, capabilities, requested);
     video.setAttribute('playsinline', 'true');
     video.playsInline = true;
     video.muted = true;
     video.autoplay = true;
     video.srcObject = stream;
     const firstFrameMs = await this.awaitFirstFrame(video, t0);
-    const track = this.track as TrackWithCaps | null;
     const settings = track?.getSettings() ?? {};
-    const capabilities = track?.getCapabilities ? track.getCapabilities() : null;
     const supported = navigator.mediaDevices.getSupportedConstraints() as unknown as Record<
       string,
       boolean
@@ -188,6 +184,34 @@ export class CameraSession {
       firstFrameMs,
     };
     return this.delivered;
+  }
+
+  /** Ask the selected physical camera for its highest exposed mode; ideals cannot kill the stream. */
+  private async promoteResolution(
+    track: MediaStreamTrack | null,
+    capabilities: MediaTrackCapabilities | null,
+    requested: RequestedVideo,
+  ): Promise<void> {
+    if (!track || !capabilities) return;
+    const width = capabilities.width?.max;
+    const height = capabilities.height?.max;
+    if (typeof width !== 'number' || typeof height !== 'number') return;
+    try {
+      await track.applyConstraints({
+        width: { ideal: width },
+        height: { ideal: height },
+        frameRate: { ideal: requested.frameRate },
+      });
+    } catch {
+      // The original HD request remains active; an incompatible max-width/max-height pair is harmless.
+    }
+  }
+
+  /** Read-only capability check for the live customer scanner (no zoom/torch probe side effects). */
+  supportsTorch(): boolean {
+    const track = this.track as TrackWithCaps | null;
+    const capabilities = track?.getCapabilities ? track.getCapabilities() : null;
+    return (capabilities as Record<string, unknown> | null)?.['torch'] === true;
   }
 
   private awaitFirstFrame(video: HTMLVideoElement, t0: number): Promise<number | null> {
