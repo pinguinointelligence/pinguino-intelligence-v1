@@ -28,9 +28,36 @@ import {
   useConstraintStudioStore,
 } from './constraintStudioStore';
 import { lockRelaxationInstructions, type LockConflictDiagnosis } from './lockRelaxation';
+import {
+  computeOptimizePreviewResult,
+  type OptimizePreviewComputation,
+  type OptimizePreviewComputationRequest,
+} from './optimizePreviewComputation';
 import { mergePreviewInstructions } from './previewInstructions';
 
 vi.setConfig({ testTimeout: 180_000 });
+
+/** One-shot replacement for the NEXT canonical Worker solve; otherwise the real runtime. */
+const optimizeOverride = vi.hoisted(() => ({
+  next: null as
+    | null
+    | ((request: OptimizePreviewComputationRequest) => OptimizePreviewComputation),
+}));
+
+vi.mock('./optimizePreviewRuntime', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./optimizePreviewRuntime')>();
+  return {
+    ...actual,
+    runOptimizePreviewOffMainThread: (
+      ...args: Parameters<typeof actual.runOptimizePreviewOffMainThread>
+    ) => {
+      const override = optimizeOverride.next;
+      if (override === null) return actual.runOptimizePreviewOffMainThread(...args);
+      optimizeOverride.next = null;
+      return Promise.resolve(override(args[0]));
+    },
+  };
+});
 
 vi.mock('@/services/productIntelligence', () => ({
   resolveRecipeProposalBehaviorSnapshots: async (input: {
@@ -280,6 +307,65 @@ describe('interactive recalculation preview — PRO', () => {
       strawberry: { mode: 'locked', grams: 100 },
       cranberry: { mode: 'locked', grams: 130 },
     });
+  });
+
+  it('served shape (staging a7478aa7): a candidate that only the ProductBehavior binding rejects on the Main floor still opens the conflict — never a dead end', async () => {
+    loadOwner(ownerFruitRecipe({ batch: 600 }), ['strawberry', 'cranberry']);
+    const loadedItems = structuredClone(useRecipeStore.getState().items);
+    // Served staging returned exactly this: the canonical solve came back OK
+    // with the Crown line untouched, and only the binding inside
+    // createOptimizePreview refused it („Grupa Main ma 0.1%; wymagane minimum
+    // to 20.0%"). A genuine OK Preview whose proposal is the customer's own
+    // locked recipe reproduces that shape without inventing a solver result.
+    optimizeOverride.next = (request) => {
+      const free = computeOptimizePreviewResult({
+        ...request,
+        input: {
+          ...request.input,
+          items: request.input.items.map((item) => {
+            if (item.lock_type !== 'grams') return item;
+            const unlocked = { ...item, lock_type: 'unlocked' as const };
+            delete unlocked.grams_constraint;
+            return unlocked;
+          }),
+        },
+        constraints: { byLineId: {} },
+      });
+      if (!free.ok) throw new Error(`expected a solvable free recipe, got ${free.code}`);
+      return {
+        result: {
+          ...free,
+          preview: { ...free.preview, proposedInput: structuredClone(request.input) },
+        },
+        rescueAdvice: null,
+      };
+    };
+    await runPiRecalculationWithTerminal();
+    const failed = useConstraintStudioStore.getState();
+    expect(optimizeOverride.next).toBeNull();
+    expect(failed.preview).toBeNull();
+    expect(failed.previewIssue?.code).toBe('product_behavior_invalid');
+    expect(failed.previewIssue?.messagePl).toContain('Propozycja Gellatti została odrzucona');
+    const relaxation = relaxationOf(failed.lockConflict?.diagnosis);
+    expect(relaxation.blockers.map((blocker) => blocker.code)).toContain('main_below_floor');
+    expect(relaxation.changes.map((change) => change.lineId).sort()).toEqual([
+      'cranberry',
+      'strawberry',
+    ]);
+    expect(useRecipeStore.getState().items).toEqual(loadedItems);
+    const before = recipeSnapshot();
+
+    // „Użyj propozycji": the real canonical flow re-solves with those amounts.
+    await runInteractiveRecalculationWithTerminal(
+      mergePreviewInstructions(
+        failed.lockConflict!.sessionInstructions,
+        lockRelaxationInstructions(relaxation),
+      ),
+    );
+    const staged = useConstraintStudioStore.getState();
+    expect(staged.recalculationTerminal?.state).toBe('PREVIEW_READY');
+    expect(staged.lockConflict).toBeNull();
+    expect(recipeSnapshot()).toEqual(before);
   });
 
   it('fixture 5: the customer overrides the proposal inside the conflict — same session, updated gap, recipe untouched', async () => {
