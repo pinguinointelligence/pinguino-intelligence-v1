@@ -108,7 +108,10 @@ function CrownControl({ lineId, isMain, name }: { lineId: string; isMain: boolea
       aria-pressed={isMain}
       aria-label={`${name} — ${homeCreatorCopy.recipe.crown}`}
       data-testid={`home-crown-${lineId}`}
-      onClick={() => useRecipeStore.getState().setLockType(lineId, isMain ? 'unlocked' : 'main')}
+      /* HOME surface: HOME's own Crown rules apply here and never reach PRO. */
+      onClick={() =>
+        useRecipeStore.getState().setLockType(lineId, isMain ? 'unlocked' : 'main', 'home')
+      }
       className={cn(
         'inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-[11px] font-semibold tracking-[0.06em] transition-colors',
         'focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40',
