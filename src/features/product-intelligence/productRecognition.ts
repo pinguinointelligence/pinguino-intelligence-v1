@@ -838,6 +838,15 @@ const formOf = (
     archetype === 'CONFECTIONERY'
   )
     return 'SOLID';
+  // An explicit form qualifier attached to a chocolate/couverture identity is
+  // product semantics, not storage wording. Keep it ahead of family defaults so
+  // a dairy word inside "milk chocolate" cannot manufacture a liquid form.
+  if (
+    archetype === 'CHOCOLATE' &&
+    /\b(dry|dried|suchy|sucha|suche|secco|sec|trocken)\b/.test(`${identity} ${subcategory}`)
+  ) {
+    return 'DRY';
+  }
   if (archetype === 'STABILIZER' || archetype === 'EMULSIFIER' || archetype === 'BASE_MIX') {
     return /\b(liquid|plyn)\b/.test(all) ? 'LIQUID' : 'POWDER';
   }
