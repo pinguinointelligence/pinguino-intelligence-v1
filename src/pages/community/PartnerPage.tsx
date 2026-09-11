@@ -7,6 +7,7 @@ import { PartnerApplicationPanel } from '@/features/partner-application/PartnerA
 import { Button } from '@/components/ui/Button';
 import { applicationCompactClasses } from '@/components/ui/applicationControlStyles';
 import { customerErrorMessage } from '@/copy/customerError';
+import { CopyValueButton } from '@/features/affiliate/CopyValueButton';
 import {
   commissionAmountLabel,
   commissionCadenceLabel,
@@ -38,6 +39,7 @@ import {
   type PartnerWorkspace,
 } from '@/services/partner';
 import { earningsSummary } from '@/features/affiliate/earningsSummary';
+import { PartnerFirstSteps } from '@/features/affiliate/PartnerFirstSteps';
 
 const sections = [
   ['overview', 'Podsumowanie'],
@@ -89,6 +91,8 @@ function Overview({ data }: { data: PartnerWorkspace }) {
         title="Podsumowanie Partnera"
         detail="Ruch, konwersje i rozliczenia pochodzą z zapisanej historii poleceń, prowizji i wypłat. Twórca i Partner pozostają osobnymi rolami."
       />
+      {/* G-WEL: a new partner is guided first; the guide steps aside once done. */}
+      <PartnerFirstSteps data={data} />
       {/* H-DASH-02: money first — earned this month, still in the refund window,
           ready for the next settlement. Labels are the ledger's own copy. */}
       <dl
@@ -280,6 +284,7 @@ function Codes({ data }: { data: PartnerWorkspace }) {
                 item={item}
                 onArchive={() => archive.mutate(item.id)}
                 showActive={showActive}
+                publicPath={data.profile ? `/${data.profile.slug}/${item.slug}` : null}
               />
             ))}
           </tbody>
@@ -293,10 +298,13 @@ function CodeRow({
   item,
   onArchive,
   showActive,
+  publicPath,
 }: {
   item: PartnerCodeAnalytics;
   onArchive: () => void;
   showActive: boolean;
+  /** The code's own public URL path; null until the partner has a public profile. */
+  publicPath: string | null;
 }) {
   return (
     <tr className="border-b border-ink/10">
@@ -305,6 +313,21 @@ function CodeRow({
         <span className="mt-1 block text-[10px] text-stone-500">
           {item.label ?? 'Bez etykiety'}
         </span>
+        {/* H-DASH-06: a current code's public link, and one click to copy either. */}
+        {item.status === 'active' ? (
+          <span className="mt-1 flex flex-wrap items-center gap-x-3">
+            {publicPath ? (
+              <span className="font-mono text-[10px] text-stone-500">{publicPath}</span>
+            ) : null}
+            <CopyValueButton value={item.code} label="Kopiuj kod" />
+            {publicPath ? (
+              <CopyValueButton
+                value={() => `${window.location.origin}${publicPath}`}
+                label="Kopiuj link"
+              />
+            ) : null}
+          </span>
+        ) : null}
       </td>
       <td className="px-3 py-4" title={partnerCodeStatusCopy(item.status).help}>
         {partnerCodeStatusCopy(item.status).label}
@@ -432,6 +455,7 @@ function LinkGenerator({ data }: { data: PartnerWorkspace }) {
           <a href={created} className="mt-1 block break-all font-mono text-sm text-ink underline">
             {created}
           </a>
+          <CopyValueButton value={created} label="Kopiuj link" />
         </div>
       ) : null}
       {mutation.isError ? (
@@ -466,6 +490,12 @@ function ContentLinks({ data }: { data: PartnerWorkspace }) {
                 <p className="mt-1 font-mono text-[10px] text-stone-500">
                   {href} → {String(link.destinationPath)}
                 </p>
+                {href !== '#' ? (
+                  <CopyValueButton
+                    value={() => `${window.location.origin}${href}`}
+                    label="Kopiuj link"
+                  />
+                ) : null}
               </div>
               {/* D-LINK-03: per-campaign performance — every number the RPC
                   returned, in the codes table's own words; the status as copy. */}
