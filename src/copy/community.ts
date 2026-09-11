@@ -139,7 +139,7 @@ export interface CommunityCopy {
 export const communityCopyPl: CommunityCopy = {
   nav: {
     myRecipes: 'Moje receptury',
-    sharedWithMe: 'Udostępnione mi',
+    sharedWithMe: 'Udostępnione',
     community: 'Community',
     top100: 'TOP 100',
     received: 'Otrzymane',
@@ -271,7 +271,7 @@ export const communityCopyPl: CommunityCopy = {
 export const communityCopyEn: CommunityCopy = {
   nav: {
     myRecipes: 'Moje receptury',
-    sharedWithMe: 'Udostępnione mi',
+    sharedWithMe: 'Udostępnione',
     community: 'Community',
     top100: 'TOP 100',
     received: 'Received',

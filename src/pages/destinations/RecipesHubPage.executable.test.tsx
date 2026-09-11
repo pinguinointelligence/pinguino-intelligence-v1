@@ -100,7 +100,13 @@ describe('Recipes Hub executable Owner Review projection', () => {
       );
     });
     expect(host.textContent).not.toContain('Fantasy');
-    await clickByText('Lost & Legendary');
+    expect(host.querySelector('[data-testid^="recipes-owner-tile-"]')).toBeNull();
+    const official = host.querySelector<HTMLAnchorElement>(
+      '[data-testid="official-collection-card-lost_legendary"]',
+    );
+    expect(official).not.toBeNull();
+    await act(async () => official!.click());
+    expect(host.querySelector('[data-testid="official-collection-lost_legendary"]')).not.toBeNull();
     expect(host.querySelector('[data-testid^="executable-template-"]')).toBeNull();
     expect(host.textContent).not.toContain('OWNER_REVIEW_EDITABLE');
   });
