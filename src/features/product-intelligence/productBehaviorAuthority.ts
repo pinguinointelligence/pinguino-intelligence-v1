@@ -4,6 +4,7 @@ import type {
   ProductIntendedUsageRole,
   ProductSemanticClassification,
 } from './productRecognition.ts';
+import type { ProductEvidenceInput } from './productEvidenceConfidence.ts';
 
 export const PRODUCT_BEHAVIOR_AUTHORITY = 'PRODUCT_BEHAVIOR_V1' as const;
 
@@ -83,8 +84,13 @@ export interface ProductBehaviorProductProfile {
    * authority. Their presence proves that a profile exists even when it must
    * remain fail-closed for Engine use. */
   criticalPhysicsBlockers?: readonly string[];
-  evidence: { kind: 'normal_food' | 'technical' };
+  evidence: ProductEvidenceInput;
   profileReferenceMapperIngredientId: string | null;
+  profileReferenceAuthority?:
+    | 'WHOLE_PROFILE'
+    | 'SEMANTIC_BEHAVIOR_REFERENCE'
+    | 'RECOGNITION_SEMANTIC_AUTHORITY'
+    | null;
   mapperFingerprint: string;
   /** Server-recomputed Recognition V2 semantics. Optional only for historical
    * product versions, which retain their previous BASE_ONLY behavior. */
@@ -148,6 +154,35 @@ export function supportsSemanticBehaviorReference(
   );
 }
 
+/** A numeric Mapper donor is not semantic evidence for an exact retail SKU.
+ * When that donor is legitimately absent, a TOPPING_ONLY product may retain
+ * its own Recognition family/form/role only under this stricter exact-product
+ * gate. This path grants no Base or Engine capability. */
+export function supportsStandaloneToppingSemanticAuthority(input: {
+  recognition: ProductSemanticClassification | null | undefined;
+  evidence: ProductEvidenceInput | null | undefined;
+}): boolean {
+  const { recognition, evidence } = input;
+  const exactProductIdentity =
+    evidence !== null &&
+    evidence !== undefined &&
+    (evidence.validatedBarcode || evidence.exactCanonicalMatch) &&
+    evidence.fields.identity !== undefined &&
+    evidence.fields.identity !== 'mapper_family' &&
+    evidence.fields.barcode !== undefined;
+  return (
+    recognition?.intendedUsageRole === 'TOPPING_ONLY' &&
+    recognition.isTechnicalProduct === false &&
+    supportsSemanticBehaviorReference(recognition) &&
+    exactProductIdentity &&
+    evidence?.kind === 'normal_food' &&
+    evidence.materialConflicts.length === 0
+  );
+}
+
+const exactMapperIdentityContradicted = (match: ProfileMatch | null): boolean =>
+  match?.rejected === 'GTIN identity conflicts with exact semantic evidence';
+
 /** Read-only pre-ingest classification. It promises only that the selected
  * immutable Mapper profile is eligible to serve as semantic evidence. The
  * server repeats this decision against the current behavior binding. */
@@ -156,6 +191,7 @@ export function classifyProspectiveProductBehavior(input: {
   engineUsable: boolean;
   profileMatch: ProfileMatch | null;
   recognition?: ProductSemanticClassification | null;
+  evidence?: ProductEvidenceInput | null;
   criticalPhysicsBlockers?: readonly string[];
 }): ProspectiveProductBehaviorAuthority {
   const intendedUsageRole = input.recognition?.intendedUsageRole ?? 'BASE_ONLY';
@@ -215,6 +251,25 @@ export function classifyProspectiveProductBehavior(input: {
   }
   const match = input.profileMatch;
   const semanticReference = supportsSemanticBehaviorReference(input.recognition);
+  const standaloneToppingAuthority =
+    supportsStandaloneToppingSemanticAuthority({
+      recognition: input.recognition,
+      evidence: input.evidence,
+    }) && !exactMapperIdentityContradicted(match);
+  if (
+    standaloneToppingAuthority &&
+    (!match || match.rejected !== null || match.basis === 'none' || !profileDonor(match))
+  ) {
+    return {
+      classificationOutcome: 'classified',
+      baseRecipeEligible: false,
+      toppingEligible: true,
+      intendedUsageRole,
+      dosageInterpretation,
+      referenceMapperIngredientId: null,
+      classificationReasonCodes: [],
+    };
+  }
   if (
     !match ||
     (match.confidence < PROFILE_MATCH_FLOOR && !semanticReference) ||
@@ -352,6 +407,51 @@ function unresolvedAuthority(input: {
   return result;
 }
 
+/** Product-owned semantic behavior for an exact, conflict-free TOPPING_ONLY
+ * article. It intentionally has no Mapper binding and exposes only the
+ * post-process permission proven by Recognition. */
+function standaloneToppingAuthority(
+  profile: ProductBehaviorProductProfile,
+): TrustedProductBehaviorAuthority {
+  const recognition = profile.recognition!;
+  const semanticContext = semanticTaxonomyContext(recognition);
+  const result: TrustedProductBehaviorAuthority = {
+    authority: PRODUCT_BEHAVIOR_AUTHORITY,
+    validationMode: 'server_recomputed_product_behavior',
+    articleIdentity: 'PRODUCT_OWNED',
+    classificationOutcome: 'classified',
+    baseRecipeEligible: false,
+    toppingEligible: true,
+    intendedUsageRole: 'TOPPING_ONLY',
+    dosageInterpretation: recognition.dosage,
+    referenceMapperIngredientId: null,
+    runtimeMapperIngredientId: null,
+    mapperBehaviorBindingId: null,
+    mapperBehaviorClassifierVersion: null,
+    mapperDatasetVersion: null,
+    taxonomyVersionId: 'pinguino-product-taxonomy-v1',
+    familyId: semanticContext.familyId,
+    subfamilyId: null,
+    formId: semanticContext.formId,
+    mainEligibility: 'TOPPING_ONLY',
+    veganEligibility: 'unknown',
+    proteinBehavior: 'unknown',
+    approvedLiquidDairyCarrier: false,
+    profilePermissions: { ...restrictedPermissions(), TOPPING: true },
+    processBehavior: { decision: 'POST_PROCESS' },
+    behaviorRole: 'TOPPING_ONLY',
+    mainPolicyStatus: 'NOT_APPLICABLE',
+    profileApplicability: {
+      POST_PROCESS_ADDON: 'eligible_from_exact_product_recognition',
+    },
+    classificationReasonCodes: [],
+    mapperFingerprint: profile.mapperFingerprint,
+    behaviorFingerprint: '',
+  };
+  result.behaviorFingerprint = fingerprint(result);
+  return result;
+}
+
 /** Server-only final authority. It copies taxonomy/process semantics from the
  * current Mapper behavior binding but explicitly publishes no runtime Mapper
  * identity and no numerical composition. */
@@ -404,6 +504,15 @@ export function validateProductBehaviorAuthority(input: {
   }
   const referenceId = profile.profileReferenceMapperIngredientId;
   if (!referenceId) {
+    if (
+      profile.profileReferenceAuthority === 'RECOGNITION_SEMANTIC_AUTHORITY' &&
+      supportsStandaloneToppingSemanticAuthority({
+        recognition,
+        evidence: profile.evidence,
+      })
+    ) {
+      return standaloneToppingAuthority(profile);
+    }
     return unresolvedAuthority({
       profile,
       outcome: 'unknown_requires_review',
