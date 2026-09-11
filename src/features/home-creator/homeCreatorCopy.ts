@@ -25,6 +25,14 @@ export interface HomeCreatorCopy {
     readonly inputLabel: string;
     readonly addByVoice: string;
     readonly addByScan: string;
+    /** §30 — AI Vision v1 recognises FRUIT and says so; it promises nothing else. */
+    readonly addByVision: string;
+    readonly sendIdea: string;
+    /** §27 — desktop tooltips for the four controls that live inside the field. */
+    readonly voiceTooltip: string;
+    readonly scanTooltip: string;
+    readonly visionTooltip: string;
+    readonly sendTooltip: string;
     readonly listening: string;
     readonly voiceUnavailable: string;
     readonly chipsLabel: string;
@@ -34,6 +42,16 @@ export interface HomeCreatorCopy {
     readonly cta: string;
     readonly emptyHint: string;
     readonly resolving: string;
+  };
+  /** §30–§31 — the full-screen fruit camera. Fruit only, and it says so. */
+  readonly vision: {
+    readonly prompt: string;
+    readonly thinking: string;
+    readonly unsure: string;
+    readonly cameraUnavailable: string;
+    readonly shutter: string;
+    readonly close: string;
+    readonly switchCamera: string;
   };
   readonly identity: {
     readonly whichProduct: string;
@@ -176,10 +194,16 @@ const homeCreatorCopyPl: HomeCreatorCopy = {
   intent: {
     headline: 'Stwórz własne lody. Jak profesjonalista.',
     question: 'Jakie lody robimy dzisiaj?',
-    placeholder: 'Napisz, co chcesz zrobić…',
+    placeholder: 'Wpisz składnik lub smak…',
     inputLabel: 'Opisz swój pomysł na lody',
     addByVoice: 'Powiedz',
     addByScan: 'Zeskanuj',
+    addByVision: 'Rozpoznaj owoc',
+    sendIdea: 'Dodaj',
+    voiceTooltip: 'Powiedz, co chcesz zrobić',
+    scanTooltip: 'Zeskanuj produkt',
+    visionTooltip: 'Rozpoznaj owoc ze zdjęcia',
+    sendTooltip: 'Dodaj',
     listening: 'Słucham…',
     voiceUnavailable: 'Ta przeglądarka nie obsługuje mowy. Napisz albo zeskanuj.',
     chipsLabel: 'Twój pomysł',
@@ -188,6 +212,15 @@ const homeCreatorCopyPl: HomeCreatorCopy = {
     cta: 'Zamień pomysł w recepturę',
     emptyHint: 'Dodaj przynajmniej jeden składnik albo smak.',
     resolving: 'Sprawdzam produkty…',
+  },
+  vision: {
+    prompt: 'Zrób zdjęcie owocu, który chcesz dodać',
+    thinking: 'Sprawdzam, co to za owoc…',
+    unsure: 'Nie udało się pewnie rozpoznać owocu. Spróbuj ponownie.',
+    cameraUnavailable: 'Nie mamy dostępu do aparatu. Sprawdź uprawnienia w przeglądarce.',
+    shutter: 'Zrób zdjęcie',
+    close: 'Zamknij',
+    switchCamera: 'Przełącz aparat',
   },
   identity: {
     whichProduct: 'Który to produkt?',
@@ -323,10 +356,16 @@ const homeCreatorCopyEn: HomeCreatorCopy = {
   intent: {
     headline: 'Create your own ice cream recipe. Like a pro.',
     question: 'What flavour are we making today?',
-    placeholder: 'Tell us what you want to make…',
+    placeholder: 'Type an ingredient or a flavour…',
     inputLabel: 'Describe your ice cream idea',
     addByVoice: 'Speak',
     addByScan: 'Scan',
+    addByVision: 'Recognise fruit',
+    sendIdea: 'Add',
+    voiceTooltip: 'Say what you want to make',
+    scanTooltip: 'Scan a product',
+    visionTooltip: 'Recognise fruit from a photo',
+    sendTooltip: 'Add',
     listening: 'Listening…',
     voiceUnavailable: 'This browser has no speech input. Type or scan instead.',
     chipsLabel: 'Your idea',
@@ -335,6 +374,15 @@ const homeCreatorCopyEn: HomeCreatorCopy = {
     cta: 'Turn the idea into a recipe',
     emptyHint: 'Add at least one ingredient or flavour.',
     resolving: 'Checking products…',
+  },
+  vision: {
+    prompt: 'Take a photo of the fruit you want to add',
+    thinking: 'Checking which fruit this is…',
+    unsure: "We couldn't recognise the fruit with confidence. Please try again.",
+    cameraUnavailable: 'We have no access to the camera. Check your browser permissions.',
+    shutter: 'Take a photo',
+    close: 'Close',
+    switchCamera: 'Switch camera',
   },
   identity: {
     whichProduct: 'Which product is it?',

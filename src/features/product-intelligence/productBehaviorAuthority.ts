@@ -97,6 +97,27 @@ const TECHNICAL_REASON = 'technical_or_dosage_product';
 const verifiedPrefix = (value: string | null | undefined): boolean =>
   value?.trim().toLocaleLowerCase('en-US').startsWith('verified') === true;
 
+/**
+ * A Mapper row may lend taxonomy/behavior without lending its numeric profile.
+ * This is intentionally based on resolved Recognition semantics, not on a lower
+ * numerical proxy threshold: the row has already passed the hard family/form/
+ * role compatibility gate in `findProfileMatch`, and its numbers never enter
+ * the product-owned composition through this path.
+ */
+export function supportsSemanticBehaviorReference(
+  recognition: ProductSemanticClassification | null | undefined,
+): boolean {
+  return (
+    recognition !== null &&
+    recognition !== undefined &&
+    recognition.modelRequired === false &&
+    recognition.confidence >= 0.85 &&
+    recognition.ingredientFamily !== 'unknown' &&
+    recognition.physicalForm !== 'UNKNOWN' &&
+    recognition.intendedUsageRole !== 'NEITHER_REVIEW'
+  );
+}
+
 /** Read-only pre-ingest classification. It promises only that the selected
  * immutable Mapper profile is eligible to serve as semantic evidence. The
  * server repeats this decision against the current behavior binding. */
@@ -163,9 +184,10 @@ export function classifyProspectiveProductBehavior(input: {
     };
   }
   const match = input.profileMatch;
+  const semanticReference = supportsSemanticBehaviorReference(input.recognition);
   if (
     !match ||
-    match.confidence < PROFILE_MATCH_FLOOR ||
+    (match.confidence < PROFILE_MATCH_FLOOR && !semanticReference) ||
     match.rejected !== null ||
     match.basis === 'none'
   ) {

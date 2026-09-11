@@ -14,6 +14,7 @@ import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
 import { proCoreCapabilitiesFor } from '@/features/pro-core/proCoreCapabilities';
 import { useProductionSessionStore } from '@/features/production-workspace/productionSessionStore';
 import { CompactRunLabelSettings, LabelWorkspace } from '@/features/master-label/LabelWorkspace';
+import { filterLabelHistory } from '@/features/master-label/labelHistorySearch';
 import {
   defaultAccountLabelProfile,
   resolveLabelRepository,
@@ -735,6 +736,14 @@ export function LabelsHubPage() {
   const session = useProductionSessionStore((state) => state.session);
   const activeSnapshot = session?.status === 'completed' ? session.completionSnapshot : null;
   const [history, setHistory] = useState<RunLabelSnapshot[]>([]);
+  /* §40 — one plain field over the records this user already has. No AI, no
+     Mapper, no network: those answer a different question and would make a
+     local lookup slow, chargeable and occasionally wrong. */
+  const [historyQuery, setHistoryQuery] = useState('');
+  const visibleHistory = useMemo(
+    () => filterLabelHistory(history, historyQuery),
+    [history, historyQuery],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -864,34 +873,57 @@ export function LabelsHubPage() {
       <section className="mt-10 border-t border-[var(--g-line)] pt-8">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h2 className="text-xl font-semibold text-ink">Etykieta zakończonej partii</h2>
+            {/* §40 — the section is called what it is. „Zakończone partie" was
+                the mechanism that produced these labels, not the thing the
+                reader came here to find. */}
+            <h2 className="text-xl font-semibold text-ink">Historia etykiet</h2>
             <p className="mt-1 text-sm text-[var(--g-text-secondary)]">
               Dane etykiety pochodzą wyłącznie z zatwierdzonego wyniku tej partii
             </p>
           </div>
           {history.length > 0 ? (
-            <nav
-              aria-label="Historia etykiet"
-              className="flex max-w-full gap-2 overflow-x-auto pb-1"
-            >
-              {history.map((item) => (
-                <Link
-                  key={item.snapshotId}
-                  to={`/labels?run=${encodeURIComponent(item.runId)}&snapshot=${encodeURIComponent(item.snapshotId)}`}
-                  className={cn(
-                    buttonClasses(
-                      item.snapshotId === selectedSnapshotId ? 'primary' : 'ghost',
-                      'sm',
-                    ),
-                    'min-h-11 shrink-0',
-                  )}
-                >
-                  {new Date(item.createdAt).toLocaleDateString('pl-PL')} · v{item.version}
-                </Link>
-              ))}
-            </nav>
+            <label className="min-w-[15rem] flex-1 sm:max-w-xs">
+              <span className="sr-only">Szukaj po nazwie lub numerze LOT</span>
+              <input
+                type="search"
+                value={historyQuery}
+                onChange={(event) => setHistoryQuery(event.currentTarget.value)}
+                placeholder="Szukaj po nazwie lub numerze LOT"
+                data-testid="label-history-search"
+                className="pro-focus-ring min-h-11 w-full rounded-[10px] border border-[var(--g-line)] bg-white px-3 text-sm text-ink"
+              />
+            </label>
           ) : null}
         </div>
+        {history.length > 0 ? (
+          <nav
+            aria-label="Historia etykiet"
+            className="mt-4 flex max-w-full gap-2 overflow-x-auto pb-1"
+            data-testid="label-history-list"
+          >
+            {visibleHistory.map((item) => (
+              <Link
+                key={item.snapshotId}
+                to={`/labels?run=${encodeURIComponent(item.runId)}&snapshot=${encodeURIComponent(item.snapshotId)}`}
+                className={cn(
+                  buttonClasses(item.snapshotId === selectedSnapshotId ? 'primary' : 'ghost', 'sm'),
+                  'min-h-11 shrink-0',
+                )}
+              >
+                {new Date(item.createdAt).toLocaleDateString('pl-PL')} · v{item.version}
+              </Link>
+            ))}
+          </nav>
+        ) : null}
+        {history.length > 0 && visibleHistory.length === 0 ? (
+          <p
+            className="mt-4 text-sm text-[var(--g-text-secondary)]"
+            role="status"
+            data-testid="label-history-empty"
+          >
+            Nie znaleźliśmy etykiety o tej nazwie ani z tym numerem LOT.
+          </p>
+        ) : null}
         <div className="mt-6">
           <LabelWorkspace
             snapshot={selectedActive}

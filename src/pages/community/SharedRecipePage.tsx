@@ -15,6 +15,7 @@ import { UseRecipeActions } from '@/features/community/ui/UseRecipeActions';
 import { useAsyncResource } from '@/features/community/ui/useAsyncResource';
 import { useDocumentMetadata } from '@/features/community/ui/useDocumentMetadata';
 import { directShareMetadata } from '@/features/community/domain/shareUrls';
+import { resolveRecipeImage } from '@/features/community/domain/recipeImageAuthority';
 import { unlockBenefits } from '@/features/community/domain/unlockBenefits';
 import { withContinuation } from '@/features/community/domain/shareContinuation';
 import {
@@ -97,10 +98,35 @@ export function SharedRecipePage() {
 
   const entitled = state.entitlement === 'full';
 
+  /* §23 — a shared recipe always shows a picture, and the customer is never
+     asked to choose one. The order of preference and the asset mapping live in
+     ONE place (`recipeImageAuthority`), so replacing the branded files later is
+     a change to four files on disk and to nothing here.
+
+     The share payload carries no photograph field yet — `SharePreview` has no
+     `image_url` and `saved_recipes` has no image column — so today every own
+     recipe resolves to its branded profile card, which is exactly the owner's
+     third rule. The first two rules are wired and tested; they light up the
+     moment the payload carries the field. */
+  const image = resolveRecipeImage({ profile: state.recipe.category ?? null });
+
   return (
     <DestinationSurface eyebrow={copy.roles.sharedBy} title={state.title}>
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="flex flex-col gap-8">
+          <img
+            src={image.url}
+            alt=""
+            /* Decorative: the recipe is named by the heading right above it, so
+               a screen reader that also announced the picture would say the
+               same thing twice. */
+            aria-hidden
+            data-testid="shared-recipe-image"
+            data-image-origin={image.origin}
+            className="aspect-[4/3] w-full rounded-2xl object-cover"
+            loading="lazy"
+          />
+
           <AttributionByline
             creatorDisplayName={state.created_by.display_name}
             creatorHandle={state.created_by.handle}
