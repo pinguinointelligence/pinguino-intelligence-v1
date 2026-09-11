@@ -74,7 +74,7 @@ export const HOME_TUTORIAL_STEPS: readonly TutorialStep[] = [
     title: 'Receptura',
     // Package 2A closure (2026-09-11): 2A's HOME auto-recalc never reached staging;
     // the accepted HOME recalculation is the „Przelicz i popraw" preview (#287).
-    body: 'Tu jest Twoja receptura. „Przelicz i popraw" dopasuje gramy i pokaże każdą zmianę, zanim ją zastosujesz.',
+    body: 'Tu jest Twoja receptura. „Przelicz i popraw” dopasuje gramy i pokaże każdą zmianę, zanim ją zastosujesz.',
   },
   {
     id: 'ingredient-settings',
