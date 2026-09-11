@@ -25,6 +25,7 @@ import {
   type ConstraintSet,
   type IngredientConstraint,
 } from '@/features/recipe-constraints';
+import { withoutCrownBootstrap } from '@/features/formulation/crownBootstrapProvenance';
 
 export interface PreviewLineInstruction {
   readonly lineId: string;
@@ -125,7 +126,12 @@ export function applyPreviewInstructions(
         delete next.user_target_grams;
         return next;
       });
-      edited = { ...items[index]!, planned_grams: grams, user_target_grams: grams };
+      // A typed amount is never the PRO Crown bootstrap, whatever its value.
+      edited = withoutCrownBootstrap({
+        ...items[index]!,
+        planned_grams: grams,
+        user_target_grams: grams,
+      });
       if (grams > 0) edited.user_intent_anchor_grams = grams;
       else delete edited.user_intent_anchor_grams;
     }
@@ -133,7 +139,7 @@ export function applyPreviewInstructions(
     // 2. The padlock.
     if (instruction.locked) {
       edited = {
-        ...withoutQuantitySidecars(edited),
+        ...withoutCrownBootstrap(withoutQuantitySidecars(edited)),
         lock_type: ENGINE_KEPT_LOCKS.has(edited.lock_type) ? edited.lock_type : 'grams',
         grams_constraint: { grams: edited.planned_grams },
       };

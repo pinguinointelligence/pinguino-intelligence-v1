@@ -113,6 +113,7 @@ import {
 } from '@/features/formulation/formulate';
 import { resolveFunctionalRole, type FunctionalRole } from '@/features/formulation/ingredientRoles';
 import { flavourHeldLineIds } from '@/features/formulation/flavourMutationAuthority';
+import { isCrownBootstrapLine } from '@/features/formulation/crownBootstrapProvenance';
 import {
   buildUserIntentBaseline,
   MATERIAL_USER_INTENT_DRIFT,
@@ -1063,6 +1064,15 @@ const isConstrained = (set: ConstraintSet, lineId: string): boolean => {
   const constraint = set.byLineId[lineId];
   return constraint !== undefined && constraint.mode !== 'ai';
 };
+
+/**
+ * PRO CROWN BOOTSTRAP (owner 2026-09-11): an untouched Crown seed carries no
+ * quantity authority, so no exact-Direction path may hold it — the Main search
+ * sizes it. A real lock on the line (its sidecar or a §17 constraint) always
+ * wins, and the decision is provenance, never the gram value.
+ */
+const hasUntouchedCrownBootstrap = (input: RecipeInput, set: ConstraintSet): boolean =>
+  input.items.some((item) => isCrownBootstrapLine(item) && !isConstrained(set, item.id));
 
 /**
  * CANONICAL INGREDIENT IDENTITY (owner P0 — recalc duplication): the merge key
@@ -4150,6 +4160,10 @@ function maximizeMainTechnicalObjective(
 ): { input: RecipeInput; proof: MainFlavourObjectiveProof | null } {
   const presentationInput = identityInput;
   const contractInput = identityInput;
+  // PRO CROWN BOOTSTRAP (owner 2026-09-11): while the Main group still holds an
+  // untouched Crown seed it has not been sized yet. The exact Direction
+  // objective ranks the finished recipe afterwards; it must not veto sizing it.
+  const crownBootstrapGroup = hasUntouchedCrownBootstrap(contractInput, set);
   const behaviorMode =
     normalizeFormulationStrategy(
       contractInput.goals?.formulation_strategy ?? contractInput.mode,
@@ -4447,9 +4461,11 @@ function maximizeMainTechnicalObjective(
     const technicalRules = [
       ...new Set([
         ...violations.map((violation) => violation.metric),
-        ...recipeDirectionViolations(executable).map(
-          (violation) => `direction:${violation.metric}`,
-        ),
+        ...(crownBootstrapGroup
+          ? []
+          : recipeDirectionViolations(executable).map(
+              (violation) => `direction:${violation.metric}`,
+            )),
         ...criticalWarnings,
         ...(protein.applicable && !protein.qualification.qualified ? ['protein_claim'] : []),
         ...veganIssues,
@@ -7611,7 +7627,10 @@ function buildOptimizePreviewWithDirection(
     input.category === 'sorbet' &&
     hasActiveExactDirectionObjective(input) &&
     !input.items.some((item) => item.actual_grams !== null) &&
-    !(sorbetDraftOffBatch && sorbetMainLineCount !== 1)
+    !(sorbetDraftOffBatch && sorbetMainLineCount !== 1) &&
+    // This projection keeps every Main byte-exact; an untouched PRO Crown
+    // bootstrap is sized by the certified Main frontier instead.
+    !hasUntouchedCrownBootstrap(input, set)
   ) {
     const preConstrained = applyConstraintsToRecipe(input, set);
     if (preConstrained.ok) {
