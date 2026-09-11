@@ -250,6 +250,30 @@ const solverHolds = (input: RecipeInput, set: ConstraintSet): ConstraintSet =>
     withOwnerInulinPolicyHold(input, withTemplateControlledStabilizerLocks(input, set)),
   );
 
+/**
+ * Main search consumes the existing flavour-mutation authority as the
+ * one-sided interval it actually defines: a secondary flavour may give mass
+ * back, but it may never receive more than the owner supplied. Explicit user
+ * constraints remain stronger and are never widened or replaced.
+ */
+const withSecondaryFlavourDecreaseOnlyBounds = (
+  input: RecipeInput,
+  set: ConstraintSet,
+  lineIds: ReadonlySet<string>,
+): ConstraintSet => {
+  const byLineId: Record<string, IngredientConstraint> = { ...set.byLineId };
+  for (const item of input.items) {
+    if (!lineIds.has(item.id)) continue;
+    const existing = byLineId[item.id];
+    if (existing?.mode === 'locked' || existing?.mode === 'percent') continue;
+    byLineId[item.id] =
+      existing?.mode === 'range'
+        ? { ...existing, maxGrams: Math.min(existing.maxGrams, item.planned_grams) }
+        : { mode: 'range', minGrams: 1, maxGrams: item.planned_grams };
+  }
+  return { byLineId };
+};
+
 /** Build-only commercial inputs. They rank ECO candidates in memory and are
  * deliberately absent from RecipeInput, Preview payloads and saved versions. */
 export interface OptimizePreviewOptions extends FormulationOptions {
@@ -4219,6 +4243,12 @@ function maximizeMainTechnicalObjective(
   }
 
   const excluded = new Set(options.excludedIngredientIds ?? []);
+  const heldFlavourLineIds = flavourHeldLineIds(contractInput);
+  const heldFlavourUpperBounds = new Map(
+    contractInput.items
+      .filter((item) => heldFlavourLineIds.has(item.id))
+      .map((item) => [item.id, item.planned_grams] as const),
+  );
   const requiredLineIds = productBehaviorRequiredLineIds({ items: contractInput.items });
   const behaviorModule = behaviorMode === 'eco' ? 'ECO' : 'OPTIMAL';
   const managedBehavior = Object.keys(options.productBehaviorSnapshots ?? {}).length > 0;
@@ -4243,6 +4273,20 @@ function maximizeMainTechnicalObjective(
     }
     const executable = practical.audit.executableInput;
     const executableMainGrams = mainGroupTotal(contractInput, executable);
+    const raisedSecondaryFlavours = executable.items.filter((item) => {
+      const upperBound = heldFlavourUpperBounds.get(item.id);
+      return upperBound !== undefined && item.planned_grams > upperBound + MAIN_OBJECTIVE_EPSILON_G;
+    });
+    if (raisedSecondaryFlavours.length > 0) {
+      return {
+        ok: false,
+        mainGrams: requestedMainGrams,
+        reason: 'batch_or_constraints',
+        rules: raisedSecondaryFlavours.map(
+          (item) => `secondary_flavour_above_authority:${item.id}`,
+        ),
+      };
+    }
     const constraintCheck = verifyConstraintsPreserved(set, executable);
     if (!constraintCheck.ok) {
       return {
@@ -4384,28 +4428,29 @@ function maximizeMainTechnicalObjective(
         ),
       },
     };
-    // FLAVOUR MUTATION AUTHORITY (owner P1-B): the Main frontier re-solves a
-    // linear relaxation in which every non-Main line is a free variable, so a
-    // secondary flavour accent is otherwise just mass to allocate — this is the
-    // route that turned a 30 g lemon-juice accent into 188 g while water
-    // collapsed to 1 g. Pin the accents for the solver exactly as the Main
-    // allocation is pinned. Only `solverSet` is constrained, so the preview's
-    // user-facing lock counters keep reporting the user's own locks.
-    const heldFlavourLineIds = flavourHeldLineIds(identityInput);
-    const solverSet = solverHolds(staged, {
-      byLineId: {
-        ...candidateSet.byLineId,
-        ...Object.fromEntries(
-          staged.items
-            .filter((item) => heldFlavourLineIds.has(item.id))
-            .map((item) => [item.id, { mode: 'locked', grams: item.planned_grams }] as const),
-        ),
-      },
-    });
-    const candidates: RecipeInput[] = seedCandidates.filter(
-      (candidate) =>
-        Math.abs(mainGroupTotal(contractInput, candidate) - allocation.allocatedMainTotal) <=
-        MAIN_OBJECTIVE_EPSILON_G,
+    // FLAVOUR MUTATION AUTHORITY (owner P1-B): a secondary flavour accent is
+    // bounded above by the amount the owner supplied. It is not equality-held:
+    // Main search may reduce it when that is required to reach a legal Main
+    // floor. Real user locks/percent/ranges remain stronger and unchanged.
+    const solverSet = solverHolds(
+      staged,
+      withSecondaryFlavourDecreaseOnlyBounds(
+        contractInput,
+        candidateSet,
+        heldFlavourLineIds,
+      ),
+    );
+    const candidates: RecipeInput[] =
+      Math.abs(plannedSum(staged) - identityInput.target_batch_grams) <=
+      MAIN_OBJECTIVE_EPSILON_G
+        ? [staged]
+        : [];
+    candidates.push(
+      ...seedCandidates.filter(
+        (candidate) =>
+          Math.abs(mainGroupTotal(contractInput, candidate) - allocation.allocatedMainTotal) <=
+          MAIN_OBJECTIVE_EPSILON_G,
+      ),
     );
     // Re-solve the complete linear relaxation for this exact Main allocation.
     // Reusing only the maximum-bound vector would miss technically valid lower
@@ -4437,14 +4482,11 @@ function maximizeMainTechnicalObjective(
       candidates.push({
         ...staged,
         items: staged.items.map((item, index) =>
-          mainByLineId.has(item.id) || heldFlavourLineIds.has(item.id)
-            ? item
-            : { ...item, planned_grams: solution[index]! },
+          mainByLineId.has(item.id) ? item : { ...item, planned_grams: solution[index]! },
         ),
       });
       const optionsByIndex = staged.items.map((item, index): readonly number[] => {
-        if (mainByLineId.has(item.id) || heldFlavourLineIds.has(item.id))
-          return [item.planned_grams];
+        if (mainByLineId.has(item.id)) return [item.planned_grams];
         const value = Math.max(0, solution[index]!);
         const floor = Math.floor(value + MAIN_OBJECTIVE_EPSILON_G);
         const ceil = Math.ceil(value - MAIN_OBJECTIVE_EPSILON_G);
@@ -6762,8 +6804,108 @@ export function buildOptimizePreview(
   if (!result.ok) return result;
   const snapshots = options.productBehaviorSnapshots ?? {};
   if (Object.keys(snapshots).length === 0) return result;
-  // Crown ON owns its own envelope; this closes only the uncrowned hole.
-  if (captureMainIngredientIntent(result.preview.proposedInput).length > 0) return result;
+  const proposedMains = captureMainIngredientIntent(result.preview.proposedInput);
+  if (proposedMains.length > 0) {
+    // Exact Sorbet Direction owns its own already-verified projection and does
+    // not carry a Main-objective proof. This backstop is intentionally scoped
+    // to the Main search/fallback path that produced the invalid Owner result.
+    if (result.preview.mainObjective === undefined) return result;
+    // A failed Main sweep may retain `presentationInput` for diagnostics, but
+    // that vector is not a proposal when it misses immutable Main quantity
+    // authority. Fail closed here at the public Preview boundary, using the
+    // existing constraint/no-proposal vocabulary rather than letting Product
+    // Behavior reject an apparently successful Preview later.
+    const crownVerdict = verifyMainEnvelope({
+      recipe: result.preview.proposedInput,
+      snapshots,
+      mode:
+        normalizeFormulationStrategy(input.goals?.formulation_strategy ?? input.mode) === 'eco'
+          ? 'eco'
+          : 'optimal',
+      enforceFloor: true,
+      technicalOnlyMainLineIds: options.technicalOnlyMainLineIds,
+    });
+    if (crownVerdict.ok) return result;
+    const quantityViolations = crownVerdict.violations.filter(
+      (violation) =>
+        violation.code === 'main_below_floor' ||
+        violation.code === 'main_above_hard_limit' ||
+        violation.code === 'liquid_dairy_carrier_below_floor',
+    );
+    // This seam closes only the invalid quantity-vector fallback. Other Main
+    // eligibility failures retain their existing owning path (notably the
+    // accepted managed Protein flow whose test snapshots are STANDARD_ONLY).
+    if (quantityViolations.length === 0) return result;
+
+    const constrainedMains = captureMainIngredientIntent(input).filter((main) => {
+      const constraint = set.byLineId[main.lineId];
+      return constraint !== undefined && constraint.mode !== 'ai';
+    });
+    if (constrainedMains.length > 0) {
+      return {
+        ok: false,
+        code: 'main_ratio_conflict',
+        lineIds: constrainedMains.map((main) => main.lineId),
+        ingredientNames: constrainedMains.map((main) => main.ingredientName),
+        messagePl:
+          `Blokady lub zakresy składników Głównych ` +
+          `(${constrainedMains.map((main) => main.ingredientName).join(', ')}) ` +
+          `nie pozwalają osiągnąć zatwierdzonego minimum Main. Gellatti nie zmieniło receptury.`,
+      };
+    }
+
+    const flavourLineIds = flavourHeldLineIds(input);
+    const flavourConflict = dominantHeldConstraint(input, set);
+    if (flavourConflict !== null && flavourLineIds.has(flavourConflict.lineId)) {
+      const iteration = result.preview.iteration ?? {
+        solverInvocations: 0,
+        draftVectorSearches: 0,
+        candidateVector: [],
+        draftPlannedSumGrams: plannedSum(input),
+        draftLineGrams: input.items.map((item) => ({
+          lineId: item.id,
+          ingredientId: canonicalIngredientId(item.ingredient),
+          grams: item.planned_grams,
+        })),
+        startPlannedSumGrams: plannedSum(input),
+        targetBatchGrams: input.target_batch_grams,
+        rounds: [],
+        stopReason: 'fixed_point_no_proposal' as const,
+        stopDetail: null,
+        capped: false,
+        attemptedMoves: [],
+      };
+      return {
+        ok: false,
+        code: 'impossible_under_constraints',
+        conflict: flavourConflict,
+        hardViolatedMetrics: [],
+        residualViolatedMetrics: quantityViolations.map((violation) => violation.code),
+        capReached: iteration.capped,
+        nearestFeasibleGrams: null,
+        alternativeProductType: null,
+        solverInvocations: iteration.solverInvocations,
+        iteration,
+        templateId: result.preview.formulation?.templateId ?? 'none',
+        templateStatus: result.preview.formulation?.templateStatus ?? 'approved',
+      };
+    }
+
+    return {
+      ok: false,
+      code: 'no_proposal',
+      violatedMetrics: [
+        ...new Set([
+          ...quantityViolations.map((violation) => violation.code),
+          ...(result.preview.mainObjective?.limitingTechnicalRules ?? []),
+        ]),
+      ],
+      solverInvocations:
+        result.preview.iteration?.solverInvocations ?? result.preview.mainObjective?.attempts ?? 0,
+      iteration: result.preview.iteration,
+    };
+  }
+  // Crown OFF backstop.
   const verdict = verifyMainEnvelope({
     recipe: result.preview.proposedInput,
     snapshots,
