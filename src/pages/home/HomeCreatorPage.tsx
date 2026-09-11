@@ -35,6 +35,7 @@ import { useCanSeeExactGrams } from '@/features/home-creator/useHomeEntitlement'
 import { useHomeFlow } from '@/features/home-creator/useHomeFlow';
 import { useHomeRecipeResult } from '@/features/home-creator/useHomeRecipeResult';
 import { useHomeIntentIngredients } from '@/features/home-creator/useHomeIntentIngredients';
+import { useLegacyRecipeBehaviorRevalidation } from '@/features/product-intelligence';
 import { ScanFlow } from '@/features/scan-flow/ScanFlow';
 import { HomeMatchGate } from '@/features/home-creator/matching/HomeMatchGate';
 import {
@@ -77,6 +78,11 @@ function useScrollToStage() {
 }
 
 export function HomeCreatorPage() {
+  // HOME authority closure (owner 2026-09-11): the same managed ProductBehavior
+  // pass PRO runs. A product added here, the starter lines and chip lines get
+  // usable BASE_RECIPE authority without a HOME recalculation — authority only,
+  // never a full-recipe write, and a product the server refuses stays blocked.
+  useLegacyRecipeBehaviorRevalidation();
   const canSeeGrams = useCanSeeExactGrams();
   const scrollToStage = useScrollToStage();
 

@@ -47,6 +47,10 @@ import {
   markCrownAutoSeeded,
 } from '@/features/ingredient-builder/crownAutoSeed';
 import {
+  withCrownBootstrap,
+  withoutCrownBootstrap,
+} from '@/features/formulation/crownBootstrapProvenance';
+import {
   DEFAULT_DIRECTION_TARGETS,
   savedRecipeProfileDraftIdentity,
   type ProfileSettingsSnapshot,
@@ -1671,8 +1675,16 @@ export const useRecipeStore = create<RecipeState>()(
         const priorBatch = prior.target_batch_grams;
         const priorDirectionTargets = prior.direction_targets;
         const priorDirectionActive = prior.direction_targets_active;
+        // PRO Crown bootstrap provenance: once the written amount differs from
+        // the draft's, the bootstrap has been sized and no longer carries.
+        const priorPlanned = new Map(priorItems.map((item) => [item.id, item.planned_grams]));
         const nextItems = sortedBaseItems(
-          input.items.map((item) => normalizeRecipeItemIdentity({ ...item })),
+          input.items.map((item) => {
+            const normalized = normalizeRecipeItemIdentity({ ...item });
+            return priorPlanned.get(item.id) === item.planned_grams
+              ? normalized
+              : withoutCrownBootstrap(normalized);
+          }),
         );
         const nextToppings = priorToppings;
         const nextBaseOrder = orderedBaseItems(nextItems, priorBaseOrder).map((item) => item.id);
@@ -2273,6 +2285,8 @@ export const useRecipeStore = create<RecipeState>()(
             if (item.id !== lineId) return next;
             next.planned_grams = targetGrams;
             next.user_target_grams = targetGrams;
+            // An explicit amount is the user's, whatever its value.
+            delete next.amount_provenance;
             if (targetGrams > 0) next.user_intent_anchor_grams = targetGrams;
             else delete next.user_intent_anchor_grams;
             return next;
@@ -2326,7 +2340,7 @@ export const useRecipeStore = create<RecipeState>()(
                 ? clampOwnerStabilizerComponentGrams(buildRecipeInput(state), item.id, requested)
                     .grams
                 : requested;
-            return { ...item, planned_grams: planned };
+            return withoutCrownBootstrap({ ...item, planned_grams: planned });
           });
           const proposed = buildRecipeInput({ ...state, items: proposedItems });
           const required = productBehaviorRequiredLineIds({ items: proposed.items });
@@ -2400,7 +2414,15 @@ export const useRecipeStore = create<RecipeState>()(
                       ? crownOffPlannedGrams(item.planned_grams, wasAutoSeeded)
                       : item.planned_grams;
                   if (planned_grams === 0) delete withoutRange.user_intent_anchor_grams;
-                  return { ...withoutRange, lock_type: lockType, planned_grams };
+                  // Only PRO's own 0 g seed is a bootstrap; re-asserting an
+                  // existing crown keeps it, and any other role or lock ends it.
+                  const provenanced =
+                    seed?.autoSeeded && surface === 'pro'
+                      ? withCrownBootstrap(withoutRange)
+                      : lockType === 'main' && !crownedNow
+                        ? withoutRange
+                        : withoutCrownBootstrap(withoutRange);
+                  return { ...provenanced, lock_type: lockType, planned_grams };
                 })()
               : item,
           );
@@ -2424,6 +2446,7 @@ export const useRecipeStore = create<RecipeState>()(
             const next = { ...item };
             delete next.range_constraint;
             delete next.grams_constraint;
+            delete next.amount_provenance;
             if (percent === null) {
               delete next.percent_constraint;
               return {
@@ -2452,6 +2475,7 @@ export const useRecipeStore = create<RecipeState>()(
             const next = { ...item };
             delete next.range_constraint;
             delete next.percent_constraint;
+            delete next.amount_provenance;
             if (grams === null) {
               delete next.grams_constraint;
               return {
@@ -2480,6 +2504,7 @@ export const useRecipeStore = create<RecipeState>()(
                   const withoutPercent = { ...item };
                   delete withoutPercent.percent_constraint;
                   delete withoutPercent.grams_constraint;
+                  delete withoutPercent.amount_provenance;
                   return {
                     ...withoutPercent,
                     lock_type: ENGINE_KEPT_LOCKS.has(item.lock_type)
@@ -2537,7 +2562,14 @@ export const useRecipeStore = create<RecipeState>()(
               ...(seed ? { planned_grams: seed.plannedGrams } : {}),
             };
             delete next.user_intent_anchor_grams;
-            return next;
+            // PRO Crown bootstrap provenance (owner 2026-09-11): the gram PRO
+            // seeds onto an empty line is a bootstrap the Main search sizes,
+            // never an exact amount. Positive grams, HOME's Crown and a
+            // re-asserted crown claim nothing new.
+            if (!seed) return next;
+            return seed.autoSeeded && surface === 'pro'
+              ? withCrownBootstrap(next)
+              : withoutCrownBootstrap(next);
           });
           const crowned = equalCrownSeedWeights(items);
           return {
@@ -2609,6 +2641,7 @@ export const useRecipeStore = create<RecipeState>()(
               if (item.id !== lineId || item.lock_type !== 'main') return item;
               const next = { ...item };
               delete next.main_ratio_weight;
+              delete next.amount_provenance;
               const planned_grams = crownOffPlannedGrams(item.planned_grams, autoSeeded);
               if (planned_grams === 0) delete next.user_intent_anchor_grams;
               return {
