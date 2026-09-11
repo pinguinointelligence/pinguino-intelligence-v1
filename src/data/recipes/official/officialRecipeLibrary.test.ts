@@ -20,7 +20,7 @@ const manifest = JSON.parse(readFileSync(here('officialRecipeLibrary.manifest.js
 const generatedSource = readFileSync(here('officialRecipeLibrary.generated.ts'), 'utf8');
 const lines = OFFICIAL_RECIPES.flatMap((recipe) => recipe.lines);
 const byNumber = (number: number) => OFFICIAL_RECIPES.find((recipe) => recipe.number === number)!;
-const countBy = <T,>(values: readonly T[]) =>
+const countBy = <T>(values: readonly T[]) =>
   values.reduce<Record<string, number>>((acc, value) => {
     acc[String(value)] = (acc[String(value)] ?? 0) + 1;
     return acc;
@@ -86,8 +86,14 @@ describe('official recipe import audit (§25)', () => {
     expect(mapped).toHaveLength(1458);
     expect(brak).toHaveLength(52);
     expect(brak.filter((line) => line.identity.kind === 'dynamic_main')).toHaveLength(3);
-    expect(OFFICIAL_RECIPES.filter((recipe) => recipe.lines.some((l) => l.identity.kind !== 'mapped'))).toHaveLength(41);
-    const pis = new Set(mapped.map((line) => (line.identity.kind === 'mapped' ? line.identity.mapperIngredientId : '')));
+    expect(
+      OFFICIAL_RECIPES.filter((recipe) => recipe.lines.some((l) => l.identity.kind !== 'mapped')),
+    ).toHaveLength(41);
+    const pis = new Set(
+      mapped.map((line) =>
+        line.identity.kind === 'mapped' ? line.identity.mapperIngredientId : '',
+      ),
+    );
     expect(pis.size).toBe(113);
     expect(manifest.counts).toMatchObject({
       recipes: 177,
@@ -117,7 +123,10 @@ describe('official recipe import audit (§25)', () => {
 
   it('references only PIs that the repository Mapper projection also holds', () => {
     const grid = parseCsv(
-      readFileSync(resolve(process.cwd(), 'docs/ingredients/validation/mapper_basement.csv'), 'utf8'),
+      readFileSync(
+        resolve(process.cwd(), 'docs/ingredients/validation/mapper_basement.csv'),
+        'utf8',
+      ),
     );
     const idIndex = grid[0]!.indexOf('ingredient_id');
     const repoIds = new Set(grid.slice(1).map((row) => row[idIndex]));
@@ -155,9 +164,9 @@ describe('official recipe import audit (§25)', () => {
     for (const recipe of degassing) {
       expect(recipe.processNotice).toContain('Odgazuj napój przed użyciem.');
     }
-    expect(OFFICIAL_RECIPES.filter((recipe) => recipe.processNotice === null).map((r) => r.number)).toEqual([
-      156, 158, 160,
-    ]);
+    expect(
+      OFFICIAL_RECIPES.filter((recipe) => recipe.processNotice === null).map((r) => r.number),
+    ).toEqual([156, 158, 160]);
     expect(
       OFFICIAL_RECIPES.filter((recipe) =>
         recipe.processNotice?.startsWith('Tara — składnik podlega obróbce cieplnej.'),
@@ -170,7 +179,9 @@ describe('official recipe import audit (§25)', () => {
 
   it('never carries the workbook’s historical Exact Mapper name into the runtime module', () => {
     // The header comment documents the rule; the data itself must not carry the column.
-    const data = generatedSource.slice(generatedSource.indexOf('export const OFFICIAL_RECIPE_SOURCE:'));
+    const data = generatedSource.slice(
+      generatedSource.indexOf('export const OFFICIAL_RECIPE_SOURCE:'),
+    );
     expect(data).not.toContain('Exact Mapper name');
     expect(data).not.toContain('historicalMapperName');
     for (const entry of manifest.nameDrift.entries as { historicalNames: string[] }[]) {
@@ -197,9 +208,13 @@ describe('canonical name reconciliation (§26)', () => {
     expect(manifest.nameDrift.lines).toBe(634);
     expect(manifest.nameDrift.pi).toBe(16);
     for (const [pi, [historical, current]] of Object.entries(examples)) {
-      const entry = (manifest.nameDrift.entries as { pi: string; historicalNames: string[]; currentName: string }[]).find(
-        (candidate) => candidate.pi === pi,
-      );
+      const entry = (
+        manifest.nameDrift.entries as {
+          pi: string;
+          historicalNames: string[];
+          currentName: string;
+        }[]
+      ).find((candidate) => candidate.pi === pi);
       expect(entry, pi).toBeDefined();
       expect(entry!.historicalNames).toEqual([historical]);
       expect(entry!.currentName).toBe(current);
@@ -239,9 +254,9 @@ describe('BRAK stays unresolved (§27)', () => {
   });
 
   it('lets the 136 recipes without BRAK or a scaffold Main be used', () => {
-    expect(OFFICIAL_RECIPES.filter((recipe) => officialRecipeUseState(recipe).kind === 'ready')).toHaveLength(
-      177 - 41,
-    );
+    expect(
+      OFFICIAL_RECIPES.filter((recipe) => officialRecipeUseState(recipe).kind === 'ready'),
+    ).toHaveLength(177 - 41);
   });
 });
 
@@ -252,22 +267,23 @@ describe('Technical Bases (§28)', () => {
     [172, 'tech-gelato-11', 'VERIFIED_EXISTING', 'gelato', 'temp_minus_11'],
     [175, 'tech-vegan-11-v2', 'CORRECTION_TO_ENGINE', 'vegan', 'temp_minus_11'],
     [177, 'tech-vegan-13', 'VERIFIED_EXISTING', 'vegan', 'temp_minus_13'],
-  ] as const)('GEL-%i keeps its identity, collection, image and status', (number, id, status, type, mode) => {
-    const recipe = byNumber(number);
-    expect(recipe).toMatchObject({
-      recipeId: id,
-      collection: 'technical_bases',
-      productType: 'Technical Base',
-      sourceStatus: status,
-    });
-    expect(officialRecipeImage(recipe).detail).toBe(
-      `/recipes/official/GEL-${number}-960.webp`,
-    );
-    expect(officialRecipeWorkingProfile(recipe)).toEqual({
-      visibleProductType: type,
-      servingModeId: mode,
-    });
-  });
+  ] as const)(
+    'GEL-%i keeps its identity, collection, image and status',
+    (number, id, status, type, mode) => {
+      const recipe = byNumber(number);
+      expect(recipe).toMatchObject({
+        recipeId: id,
+        collection: 'technical_bases',
+        productType: 'Technical Base',
+        sourceStatus: status,
+      });
+      expect(officialRecipeImage(recipe).detail).toBe(`/recipes/official/GEL-${number}-960.webp`);
+      expect(officialRecipeWorkingProfile(recipe)).toEqual({
+        visibleProductType: type,
+        servingModeId: mode,
+      });
+    },
+  );
 
   it('keeps the Sorbet scaffold Main dynamic, never a missing product (169/170/171)', () => {
     for (const number of [169, 170, 171]) {

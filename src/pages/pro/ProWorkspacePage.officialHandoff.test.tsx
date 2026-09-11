@@ -50,8 +50,9 @@ describe('Pro official recipe URL lifecycle', () => {
   let root: ReturnType<typeof createRoot>;
 
   beforeEach(() => {
-    (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT =
-      true;
+    (
+      globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
+    ).IS_REACT_ACT_ENVIRONMENT = true;
     mocks.openOfficial.mockReset();
     mocks.openExecutable.mockReset();
     Object.defineProperty(window, 'matchMedia', {
@@ -104,7 +105,10 @@ describe('Pro official recipe URL lifecycle', () => {
 
   it('opens the working copy once, consumes the URL and says the original is unchanged', async () => {
     mocks.openOfficial.mockResolvedValue({
-      recipe: { name: 'Ciemna czekolada', processNotice: 'Tara — składnik podlega obróbce cieplnej.' },
+      recipe: {
+        name: 'Ciemna czekolada',
+        processNotice: 'Tara — składnik podlega obróbce cieplnej.',
+      },
       lines: [{ marketProduct: { productCode: 'PR-ING-007172' } }, { marketProduct: null }],
       country: 'PL',
       countryResolution: 'resolved',
@@ -126,7 +130,10 @@ describe('Pro official recipe URL lifecycle', () => {
 
   it('keeps the current draft and explains a blocked official recipe', async () => {
     mocks.openOfficial.mockRejectedValue(
-      new OfficialRecipeHandoffError('unresolved_identity', 'Tej receptury nie otworzymy jeszcze do pracy.'),
+      new OfficialRecipeHandoffError(
+        'unresolved_identity',
+        'Tej receptury nie otworzymy jeszcze do pracy.',
+      ),
     );
     await renderAt(officialUrl);
     await act(async () => {

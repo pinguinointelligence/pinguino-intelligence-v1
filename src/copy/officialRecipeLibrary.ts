@@ -61,6 +61,10 @@ export const officialRecipeCopy = {
     `Tej receptury nie otworzymy jeszcze do pracy: ${labels.join(', ')} ${
       labels.length === 1 ? 'czeka' : 'czekają'
     } na potwierdzenie składnika.`,
+  useBlockedUnavailable: (labels: readonly string[]) =>
+    `Tej receptury nie otworzymy teraz do pracy: ${labels.join(', ')} ${
+      labels.length === 1 ? 'jest' : 'są'
+    } chwilowo ${labels.length === 1 ? 'niedostępny' : 'niedostępne'} w katalogu Gellatti.`,
   useBlockedDynamicMain:
     'To szablon techniczny: najpierw wybierasz owoc (Main), a bazę przeliczamy do niego. Otwieranie szablonów do pracy przygotowujemy.',
   cardUnresolved: 'Czeka na potwierdzenie składnika',

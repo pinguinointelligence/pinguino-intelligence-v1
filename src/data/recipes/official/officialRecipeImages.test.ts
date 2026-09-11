@@ -10,9 +10,15 @@ import {
 
 const REPO = process.cwd();
 const manifest = JSON.parse(
-  readFileSync(resolve(REPO, 'src/data/recipes/official/officialRecipeLibrary.manifest.json'), 'utf8'),
+  readFileSync(
+    resolve(REPO, 'src/data/recipes/official/officialRecipeLibrary.manifest.json'),
+    'utf8',
+  ),
 );
-const sha256 = (path: string) => createHash('sha256').update(readFileSync(resolve(REPO, path))).digest('hex');
+const sha256 = (path: string) =>
+  createHash('sha256')
+    .update(readFileSync(resolve(REPO, path)))
+    .digest('hex');
 
 interface ImageEntry {
   number: number;
@@ -48,8 +54,8 @@ describe('recipe images: strict number mapping (§9, §29)', () => {
   });
 
   it.each([
-    1, 2, 3, 76, 77, 103, 104, 105, 149, 150, 151, 152, 153, 163, 164, 165, 166, 167, 168, 169,
-    170, 171, 172, 173, 174, 175, 176, 177,
+    1, 2, 3, 76, 77, 103, 104, 105, 149, 150, 151, 152, 153, 163, 164, 165, 166, 167, 168, 169, 170,
+    171, 172, 173, 174, 175, 176, 177,
   ])('image %i belongs to recipe #%i with no off-by-one shift', (number) => {
     const recipe = OFFICIAL_RECIPES.find((candidate) => candidate.number === number)!;
     const image = images.find((candidate) => candidate.number === number)!;
@@ -81,7 +87,8 @@ describe('recipe images: strict number mapping (§9, §29)', () => {
   });
 
   it('encodes from the original 1254 × 1254 owner photographs', () => {
-    for (const image of images) expect([image.source.width, image.source.height]).toEqual([1254, 1254]);
+    for (const image of images)
+      expect([image.source.width, image.source.height]).toEqual([1254, 1254]);
   });
 });
 

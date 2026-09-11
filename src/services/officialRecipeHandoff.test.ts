@@ -2,7 +2,10 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { IngredientRow } from '@/data/ingredients/ingredientRow';
-import { OFFICIAL_RECIPES, officialRecipeById } from '@/data/recipes/official/officialRecipeLibrary';
+import {
+  OFFICIAL_RECIPES,
+  officialRecipeById,
+} from '@/data/recipes/official/officialRecipeLibrary';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import type { CatalogProductSearchHit } from '@/features/global-catalog/contracts';
 import type { ServerResolvedProductBehavior } from '@/features/product-intelligence';
@@ -66,32 +69,68 @@ const eligible = (
   processBehavior: { decision: 'HEAT_PROCESS' },
   approvedLiquidDairyCarrier: true,
   context: {
-    accountId: 'user-a', productProfile: 'milk_gelato', temperatureC: -11,
-    mode: 'optimal', processScope: 'BASE_FORMULATION', requestedRole: 'STANDARD',
+    accountId: 'user-a',
+    productProfile: 'milk_gelato',
+    temperatureC: -11,
+    mode: 'optimal',
+    processScope: 'BASE_FORMULATION',
+    requestedRole: 'STANDARD',
     module: 'BASE_RECIPE',
   },
   module: 'BASE_RECIPE',
   state: 'eligible',
   moduleEligibility: {
-    BASE_RECIPE: 'eligible', TOPPING: 'eligible', SAVE: 'eligible', PRODUCTION: 'eligible',
-    NUTRITION: 'eligible', ALLERGENS: 'eligible', PROCESS: 'eligible',
-    MAIN: 'blocked', OPTIMAL: 'eligible', ECO: 'eligible',
+    BASE_RECIPE: 'eligible',
+    TOPPING: 'eligible',
+    SAVE: 'eligible',
+    PRODUCTION: 'eligible',
+    NUTRITION: 'eligible',
+    ALLERGENS: 'eligible',
+    PROCESS: 'eligible',
+    MAIN: 'blocked',
+    OPTIMAL: 'eligible',
+    ECO: 'eligible',
   },
   mainPolicy: null,
   sharedFacts: {
     schemaVersion: 1,
     technicalComposition: {
-      water: 0, totalSolids: 100, fat: 0, protein: 0, carbohydrate: 0, sugars: 0,
-      sucrose: 0, glucose: 0, dextrose: 0, fructose: 0, lactose: 0, polyols: 0,
-      fibre: 0, salt: 0, alcohol: 0, energyKcal: 0, podValue: 0, pacValue: 0,
+      water: 0,
+      totalSolids: 100,
+      fat: 0,
+      protein: 0,
+      carbohydrate: 0,
+      sugars: 0,
+      sucrose: 0,
+      glucose: 0,
+      dextrose: 0,
+      fructose: 0,
+      lactose: 0,
+      polyols: 0,
+      fibre: 0,
+      salt: 0,
+      alcohol: 0,
+      energyKcal: 0,
+      podValue: 0,
+      pacValue: 0,
     },
     nutritionPer100g: {
-      basis: 'per_100g', energyKcal: 100, fat: 1, saturatedFat: 0, carbohydrate: 20,
-      sugars: 10, protein: 2, salt: 0.1, fibre: 1,
+      basis: 'per_100g',
+      energyKcal: 100,
+      fat: 1,
+      saturatedFat: 0,
+      carbohydrate: 20,
+      sugars: 10,
+      protein: 2,
+      salt: 0.1,
+      fibre: 1,
     },
     allergens: {
-      ingredientsText: 'Test', allergensText: 'milk', declared: ['milk'],
-      mayContain: [], evidenceVersion: 'test-allergens-v1',
+      ingredientsText: 'Test',
+      allergensText: 'milk',
+      declared: ['milk'],
+      mayContain: [],
+      evidenceVersion: 'test-allergens-v1',
     },
     processEvidence: [],
     profileEligibility: ['milk_gelato'],
@@ -137,8 +176,14 @@ describe('official recipe → working recipe handoff', () => {
 
   it('builds #001 on its canonical PIs with the exact source grams', async () => {
     const recipe = officialRecipeById('classic-dark-chocolate')!;
-    const result = await materializeOfficialRecipe('classic-dark-chocolate', 'user-a', dependencies());
-    expect(result.input.items.map((item) => [item.id, item.planned_grams, item.ingredient.id])).toEqual(
+    const result = await materializeOfficialRecipe(
+      'classic-dark-chocolate',
+      'user-a',
+      dependencies(),
+    );
+    expect(
+      result.input.items.map((item) => [item.id, item.planned_grams, item.ingredient.id]),
+    ).toEqual(
       recipe.lines.map((line) => [
         `classic-dark-chocolate-line-${line.line}`,
         line.grams,
@@ -161,7 +206,11 @@ describe('official recipe → working recipe handoff', () => {
 
   it('never mutates the official source while building or editing the working copy', async () => {
     const before = structuredClone(officialRecipeById('classic-dark-chocolate'));
-    const result = await materializeOfficialRecipe('classic-dark-chocolate', 'user-a', dependencies());
+    const result = await materializeOfficialRecipe(
+      'classic-dark-chocolate',
+      'user-a',
+      dependencies(),
+    );
     result.input.items[0]!.planned_grams = 1;
     (result.recipe.lines[0] as { grams: number }).grams = 5;
     expect(officialRecipeById('classic-dark-chocolate')).toEqual(before);
@@ -176,8 +225,12 @@ describe('official recipe → working recipe handoff', () => {
         product: laciate,
       },
     ]);
-    const resolveBehavior = vi.fn(async ({ entity }: { entity: { entityKind: 'mapper' | 'catalog_product_version'; entityId: string } }) =>
-      eligible(entity.entityKind, entity.entityId),
+    const resolveBehavior = vi.fn(
+      async ({
+        entity,
+      }: {
+        entity: { entityKind: 'mapper' | 'catalog_product_version'; entityId: string };
+      }) => eligible(entity.entityKind, entity.entityId),
     );
     const result = await materializeOfficialRecipe(
       'classic-dark-chocolate',
@@ -227,7 +280,10 @@ describe('official recipe → working recipe handoff', () => {
         ]),
       }),
     );
-    expect(result.lines[0]).toMatchObject({ marketProduct: null, marketProductRejected: 'mapping_mismatch' });
+    expect(result.lines[0]).toMatchObject({
+      marketProduct: null,
+      marketProductRejected: 'mapping_mismatch',
+    });
     expect(result.input.items[0]!.ingredient.id).toBe('PI-ING-000236');
   });
 
@@ -235,7 +291,9 @@ describe('official recipe → working recipe handoff', () => {
     const result = await materializeOfficialRecipe(
       'classic-dark-chocolate',
       'user-a',
-      dependencies({ resolveCountryProducts: vi.fn(async () => Promise.reject(new Error('offline'))) }),
+      dependencies({
+        resolveCountryProducts: vi.fn(async () => Promise.reject(new Error('offline'))),
+      }),
     );
     expect(result.countryResolution).toBe('unavailable');
     expect(result.lines.every((line) => line.marketProduct === null)).toBe(true);
@@ -244,7 +302,9 @@ describe('official recipe → working recipe handoff', () => {
   it('blocks a BRAK recipe before resolving anything', async () => {
     const deps = dependencies();
     const recipe20 = OFFICIAL_RECIPES.find((recipe) => recipe.number === 20)!;
-    await expect(materializeOfficialRecipe(recipe20.recipeId, 'user-a', deps)).rejects.toMatchObject({
+    await expect(
+      materializeOfficialRecipe(recipe20.recipeId, 'user-a', deps),
+    ).rejects.toMatchObject({
       code: 'unresolved_identity',
       message: expect.stringContaining('Birthday cake pieces'),
     });
@@ -254,10 +314,12 @@ describe('official recipe → working recipe handoff', () => {
 
   it('keeps the Sorbet scaffold Main dynamic: the template cannot open without a Main', async () => {
     const deps = dependencies();
-    await expect(materializeOfficialRecipe('tech-sorbet-11', 'user-a', deps)).rejects.toMatchObject({
-      code: 'dynamic_main_required',
-      lineNumber: 1,
-    });
+    await expect(materializeOfficialRecipe('tech-sorbet-11', 'user-a', deps)).rejects.toMatchObject(
+      {
+        code: 'dynamic_main_required',
+        lineNumber: 1,
+      },
+    );
     expect(deps.getIngredient).not.toHaveBeenCalled();
   });
 
@@ -267,18 +329,21 @@ describe('official recipe → working recipe handoff', () => {
     ['tech-gelato-13-v2', 'milk_gelato', -13],
     ['tech-vegan-11-v2', 'vegan_gelato', -11],
     ['tech-vegan-13', 'vegan_gelato', -13],
-  ])('opens Technical Base %s on its stated profile and temperature', async (id, category, temperature) => {
-    const result = await materializeOfficialRecipe(id, 'user-a', dependencies());
-    expect(result.input.category).toBe(category);
-    expect(result.input.target_temperature_c).toBe(temperature);
-  });
+  ])(
+    'opens Technical Base %s on its stated profile and temperature',
+    async (id, category, temperature) => {
+      const result = await materializeOfficialRecipe(id, 'user-a', dependencies());
+      expect(result.input.category).toBe(category);
+      expect(result.input.target_temperature_c).toBe(temperature);
+    },
+  );
 
   it('classifies a Heritage Gelato / Sorbet record with the existing Gelato derivation', async () => {
     const mora = OFFICIAL_RECIPES.find((recipe) => recipe.number === 152)!;
     const sambayon = OFFICIAL_RECIPES.find((recipe) => recipe.number === 151)!;
-    expect((await materializeOfficialRecipe(mora.recipeId, 'user-a', dependencies())).input.category).toBe(
-      'sorbet',
-    );
+    expect(
+      (await materializeOfficialRecipe(mora.recipeId, 'user-a', dependencies())).input.category,
+    ).toBe('sorbet');
     expect(
       (await materializeOfficialRecipe(sambayon.recipeId, 'user-a', dependencies())).input.category,
     ).toBe('milk_gelato');
@@ -287,13 +352,25 @@ describe('official recipe → working recipe handoff', () => {
   it('loads the working copy as a new unsaved draft, and never touches a dirty draft', async () => {
     const before = structuredClone(useRecipeStore.getState().items);
     await expect(
-      openOfficialRecipe('classic-dark-chocolate', 'user-a', { hasUnsavedChanges: () => true }, dependencies()),
+      openOfficialRecipe(
+        'classic-dark-chocolate',
+        'user-a',
+        { hasUnsavedChanges: () => true },
+        dependencies(),
+      ),
     ).rejects.toMatchObject({ code: 'unsaved_changes' });
     expect(useRecipeStore.getState().items).toEqual(before);
 
-    await openOfficialRecipe('classic-dark-chocolate', 'user-a', { hasUnsavedChanges: () => false }, dependencies());
+    await openOfficialRecipe(
+      'classic-dark-chocolate',
+      'user-a',
+      { hasUnsavedChanges: () => false },
+      dependencies(),
+    );
     const state = useRecipeStore.getState();
-    expect(state.items.map((item) => item.planned_grams)).toEqual([490, 80, 25, 80, 65, 53, 150, 55, 2]);
+    expect(state.items.map((item) => item.planned_grams)).toEqual([
+      490, 80, 25, 80, 65, 53, 150, 55, 2,
+    ]);
     expect(state.items.map((item) => item.ingredient.id)).toContain('PI-ING-001579');
   });
 });

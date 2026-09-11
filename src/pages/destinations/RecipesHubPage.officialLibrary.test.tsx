@@ -3,6 +3,7 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { OFFICIAL_RECIPES } from '@/data/recipes/official/officialRecipeLibrary';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import { useRecipeStore } from '@/stores/recipeStore';
 
@@ -62,13 +63,17 @@ describe('Recipes hub — official Gellatti library', () => {
   let root: ReturnType<typeof createRoot>;
 
   beforeEach(() => {
-    (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT =
-      true;
+    (
+      globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
+    ).IS_REACT_ACT_ENVIRONMENT = true;
     runtime.persona = 'pro';
     useRecipeStore.getState().resetToDemo();
     useConstraintStudioStore.getState().resetDraftSession();
     services.listIngredientsByIds.mockReset().mockImplementation(async (ids: string[]) =>
-      ids.map((id) => ({ ingredient_id: id, ingredient_name_display: FINAL_NAMES[id] ?? `CURRENT ${id}` })),
+      ids.map((id) => ({
+        ingredient_id: id,
+        ingredient_name_display: FINAL_NAMES[id] ?? `CURRENT ${id}`,
+      })),
     );
     services.getCatalogMarketPreferences.mockReset().mockResolvedValue({
       primaryMarket: 'PL',
@@ -198,17 +203,33 @@ describe('Recipes hub — official Gellatti library', () => {
     const lines = all('[data-testid="official-recipe-line"]');
     expect(lines).toHaveLength(9);
     expect(all('[data-testid="official-line-grams"]').map((cell) => cell.textContent)).toEqual([
-      '490 g', '80 g', '25 g', '80 g', '65 g', '53 g', '150 g', '55 g', '2 g',
+      '490 g',
+      '80 g',
+      '25 g',
+      '80 g',
+      '65 g',
+      '53 g',
+      '150 g',
+      '55 g',
+      '2 g',
     ]);
-    const names = all('[data-testid="official-line-canonical-name"]').map((cell) => cell.textContent);
+    const names = all('[data-testid="official-line-canonical-name"]').map(
+      (cell) => cell.textContent,
+    );
     for (const current of Object.values(FINAL_NAMES)) expect(names).toContain(current);
     for (const historical of HISTORICAL_NAMES) expect(host.textContent).not.toContain(historical);
-    expect(all('[data-testid="official-line-pi"]').map((cell) => cell.textContent)).toContain('PI-ING-000236');
-    expect(host.querySelector('[data-testid="official-line-market-product"]')?.textContent).toContain(
-      'Łaciate · Mleko płynne Łaciate 3,5%',
+    expect(all('[data-testid="official-line-pi"]').map((cell) => cell.textContent)).toContain(
+      'PI-ING-000236',
     );
-    expect(host.querySelector('[data-testid="official-recipe-market-summary"]')?.textContent).toContain('PL');
-    expect(host.querySelector<HTMLButtonElement>('[data-testid="official-recipe-use"]')?.disabled).toBe(false);
+    expect(
+      host.querySelector('[data-testid="official-line-market-product"]')?.textContent,
+    ).toContain('Łaciate · Mleko płynne Łaciate 3,5%');
+    expect(
+      host.querySelector('[data-testid="official-recipe-market-summary"]')?.textContent,
+    ).toContain('PL');
+    expect(
+      host.querySelector<HTMLButtonElement>('[data-testid="official-recipe-use"]')?.disabled,
+    ).toBe(false);
   });
 
   it('shows recipe #177 with image 177', async () => {
@@ -220,14 +241,18 @@ describe('Recipes hub — official Gellatti library', () => {
 
   it('keeps a BRAK line visible, unresolved and blocking the use (#020)', async () => {
     await renderAt('/recipes?collection=classics');
-    const card20 = all('[data-testid^="official-recipe-card-"]').find((card) => card.dataset.recipeNumber === '20')!;
+    const card20 = all('[data-testid^="official-recipe-card-"]').find(
+      (card) => card.dataset.recipeNumber === '20',
+    )!;
     await act(async () => card20.click());
     const unresolved = all('[data-line-kind="unresolved"]');
     expect(unresolved).toHaveLength(1);
     expect(unresolved[0]!.textContent).toContain('Birthday cake pieces');
     expect(unresolved[0]!.textContent).toContain('75 g');
     expect(unresolved[0]!.querySelector('[data-testid="official-line-pi"]')).toBeNull();
-    expect(host.querySelector<HTMLButtonElement>('[data-testid="official-recipe-use"]')?.disabled).toBe(true);
+    expect(
+      host.querySelector<HTMLButtonElement>('[data-testid="official-recipe-use"]')?.disabled,
+    ).toBe(true);
     const state = host.querySelector<HTMLElement>('[data-testid="official-recipe-use-state"]')!;
     expect(state.dataset.useState).toBe('unresolved_identity');
     expect(state.textContent).toContain('Birthday cake pieces');
@@ -237,10 +262,55 @@ describe('Recipes hub — official Gellatti library', () => {
     await renderAt('/recipes?recipe=tech-sorbet-11');
     expect(all('[data-line-kind="dynamic_main"]')).toHaveLength(1);
     expect(host.querySelector('[data-testid="official-line-unresolved"]')).toBeNull();
-    expect(host.querySelector<HTMLElement>('[data-testid="official-recipe-use-state"]')?.dataset.useState).toBe(
-      'dynamic_main_required',
+    expect(
+      host.querySelector<HTMLElement>('[data-testid="official-recipe-use-state"]')?.dataset
+        .useState,
+    ).toBe('dynamic_main_required');
+    expect(
+      host.querySelector<HTMLButtonElement>('[data-testid="official-recipe-use"]')?.disabled,
+    ).toBe(true);
+  });
+
+  it('blocks the use up front when the Mapper runtime does not serve a PI (#015 vanilla paste)', async () => {
+    const recipe = OFFICIAL_RECIPES.find((candidate) => candidate.number === 15)!;
+    const vanilla = recipe.lines.find(
+      (line) =>
+        line.identity.kind === 'mapped' && line.identity.mapperIngredientId === 'PI-ING-001705',
+    )!;
+    services.listIngredientsByIds.mockImplementation(async (ids: string[]) =>
+      ids
+        .filter((id) => id !== 'PI-ING-001705')
+        .map((id) => ({
+          ingredient_id: id,
+          ingredient_name_display: FINAL_NAMES[id] ?? `CURRENT ${id}`,
+        })),
     );
-    expect(host.querySelector<HTMLButtonElement>('[data-testid="official-recipe-use"]')?.disabled).toBe(true);
+    await renderAt(`/recipes?recipe=${recipe.recipeId}`);
+    expect(
+      host.querySelector<HTMLButtonElement>('[data-testid="official-recipe-use"]')?.disabled,
+    ).toBe(true);
+    const state = host.querySelector<HTMLElement>('[data-testid="official-recipe-use-state"]')!;
+    expect(state.dataset.useState).toBe('ingredient_unavailable');
+    expect(state.textContent).toContain(vanilla.label);
+    expect(
+      host.querySelectorAll('[data-testid="official-line-canonical-unavailable"]'),
+    ).toHaveLength(1);
+  });
+
+  it('treats an empty Mapper answer as unverifiable, never as every ingredient unavailable', async () => {
+    services.listIngredientsByIds.mockResolvedValue([]);
+    await renderAt('/recipes?recipe=classic-dark-chocolate');
+    expect(
+      host.querySelector<HTMLButtonElement>('[data-testid="official-recipe-use"]')?.disabled,
+    ).toBe(false);
+    expect(
+      host.querySelector<HTMLElement>('[data-testid="official-recipe-use-state"]')?.dataset
+        .useState,
+    ).toBe('ready');
+    // Each line says its current data cannot be shown right now — honestly, not silently.
+    expect(
+      host.querySelectorAll('[data-testid="official-line-canonical-unavailable"]'),
+    ).toHaveLength(9);
   });
 
   it('hides every gram from Demo and does not query product data', async () => {
@@ -262,7 +332,9 @@ describe('Recipes hub — official Gellatti library', () => {
 
   it('opens a Pro working copy through the one-shot handoff URL', async () => {
     await renderAt('/recipes?recipe=classic-dark-chocolate');
-    await act(async () => host.querySelector<HTMLButtonElement>('[data-testid="official-recipe-use"]')!.click());
+    await act(async () =>
+      host.querySelector<HTMLButtonElement>('[data-testid="official-recipe-use"]')!.click(),
+    );
     const params = new URLSearchParams(location()!.split('?')[1]);
     expect(location()!.startsWith('/pro/recipe?')).toBe(true);
     expect(params.get('source')).toBe('official_recipe');

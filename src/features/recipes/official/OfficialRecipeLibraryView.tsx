@@ -179,7 +179,7 @@ export function OfficialCollectionView({ collectionId }: { collectionId: Officia
         <img
           src={collection.heroImage.large}
           srcSet={`${collection.heroImage.small} 960w, ${collection.heroImage.large} 1672w`}
-          sizes="(min-width: 1024px) 60vw, 100vw"
+          sizes="(min-width: 1280px) 1120px, 100vw"
           width={1672}
           height={941}
           alt={collection.name}
@@ -238,17 +238,22 @@ function IngredientIdentityLine({
   if (line.publicLabelOnly) {
     return <p className="mt-1 text-[12px] leading-[1.45] text-stone-500">{c.genericLabelOnly}</p>;
   }
+  // A PI the Mapper runtime does not serve (inactive or not approved for Base)
+  // reads as unavailable — never as a silent blank.
+  const lead = mapperName ? (
+    <span data-testid="official-line-canonical-name">{mapperName}</span>
+  ) : mapperState === 'loading' ? (
+    c.canonicalLoading
+  ) : mapperState === 'ready' || mapperState === 'unavailable' ? (
+    <span className="text-attention" data-testid="official-line-canonical-unavailable">
+      {c.canonicalUnavailable}
+    </span>
+  ) : null;
   return (
     <>
       <p className="mt-1 text-[12px] leading-[1.45] text-stone-500">
-        {mapperName ? (
-          <span data-testid="official-line-canonical-name">{mapperName}</span>
-        ) : mapperState === 'loading' ? (
-          c.canonicalLoading
-        ) : mapperState === 'unavailable' ? (
-          c.canonicalUnavailable
-        ) : null}
-        {mapperName || mapperState !== 'idle' ? ' · ' : null}
+        {lead}
+        {lead ? ' · ' : null}
         <span className="font-mono text-[11px]" data-testid="official-line-pi">
           {line.identity.mapperIngredientId}
         </span>
@@ -280,9 +285,7 @@ export function OfficialRecipeDetail({
   const useState = officialRecipeUseState(recipe);
   const showGrams = persona !== 'demo';
   const mappedIds = recipe.lines.flatMap((line) =>
-    line.identity.kind === 'mapped' && !line.publicLabelOnly
-      ? [line.identity.mapperIngredientId]
-      : [],
+    line.identity.kind === 'mapped' ? [line.identity.mapperIngredientId] : [],
   );
   const mapper = useCurrentMapperRows(mappedIds, persona !== 'demo');
   const market = useMarketProducts(mappedIds, persona !== 'demo');
@@ -294,6 +297,19 @@ export function OfficialRecipeDetail({
       : 0;
   const uniqueMapped = new Set(mappedIds).size;
   const pending = officialUnresolvedLines(recipe).length;
+  // The same runtime gate the working-copy handoff applies: a mapped line whose
+  // PI the Mapper runtime does not serve blocks the use up front.
+  const unavailableLines =
+    mapper.status === 'ready'
+      ? recipe.lines.filter(
+          (line) =>
+            line.identity.kind === 'mapped' && !mapper.value.has(line.identity.mapperIngredientId),
+        )
+      : [];
+  const useKind =
+    useState.kind === 'ready' && unavailableLines.length > 0
+      ? 'ingredient_unavailable'
+      : useState.kind;
 
   return (
     <article
@@ -392,7 +408,7 @@ export function OfficialRecipeDetail({
                 <button
                   type="button"
                   className={cn(buttonClasses('primary', 'md'), 'w-full sm:w-auto')}
-                  disabled={useState.kind !== 'ready'}
+                  disabled={useKind !== 'ready'}
                   onClick={() => onUse(recipe.recipeId)}
                   data-testid="official-recipe-use"
                 >
@@ -401,16 +417,18 @@ export function OfficialRecipeDetail({
                 <p
                   className={cn(
                     'mt-3 text-[12px] leading-relaxed',
-                    useState.kind === 'ready' ? 'text-stone-500' : 'text-attention',
+                    useKind === 'ready' ? 'text-stone-500' : 'text-attention',
                   )}
                   data-testid="official-recipe-use-state"
-                  data-use-state={useState.kind}
+                  data-use-state={useKind}
                 >
-                  {useState.kind === 'ready'
+                  {useKind === 'ready'
                     ? c.useHint
-                    : useState.kind === 'unresolved_identity'
-                      ? c.useBlockedUnresolved(useState.lines.map((line) => line.label))
-                      : c.useBlockedDynamicMain}
+                    : useKind === 'ingredient_unavailable'
+                      ? c.useBlockedUnavailable(unavailableLines.map((line) => line.label))
+                      : useState.kind === 'unresolved_identity'
+                        ? c.useBlockedUnresolved(useState.lines.map((line) => line.label))
+                        : c.useBlockedDynamicMain}
                 </p>
               </>
             ) : (
@@ -461,21 +479,23 @@ export function OfficialRecipeDetail({
                       <Chip>{officialStageLabelPl(line.stage)}</Chip>
                     </div>
                   ) : null}
-                  <IngredientIdentityLine
-                    line={line}
-                    mapperName={row?.ingredient_name_display ?? null}
-                    mapperState={mapper.status}
-                    marketProduct={
-                      route && !line.publicLabelOnly
-                        ? {
-                            name: route.product.brand
-                              ? `${route.product.brand} · ${route.product.displayName}`
-                              : route.product.displayName,
-                            country: route.country ?? marketCountry ?? '',
-                          }
-                        : null
-                    }
-                  />
+                  {persona === 'demo' && line.identity.kind === 'mapped' ? null : (
+                    <IngredientIdentityLine
+                      line={line}
+                      mapperName={row?.ingredient_name_display ?? null}
+                      mapperState={mapper.status}
+                      marketProduct={
+                        route && !line.publicLabelOnly
+                          ? {
+                              name: route.product.brand
+                                ? `${route.product.brand} · ${route.product.displayName}`
+                                : route.product.displayName,
+                              country: route.country ?? marketCountry ?? '',
+                            }
+                          : null
+                      }
+                    />
+                  )}
                 </div>
                 {showGrams ? (
                   <p

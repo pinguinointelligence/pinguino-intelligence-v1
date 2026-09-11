@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import type { IngredientRow } from '@/data/ingredients/ingredientRow';
-import { getCatalogMarketPreferences, resolveCountryProductsForSlots } from '@/services/globalCatalog';
+import {
+  getCatalogMarketPreferences,
+  resolveCountryProductsForSlots,
+} from '@/services/globalCatalog';
 import { listIngredientsByIds } from '@/services/ingredients';
 
 type ResolvedCountryProduct = Awaited<ReturnType<typeof resolveCountryProductsForSlots>>[number];
@@ -45,8 +48,15 @@ function useKeyedLookup<T>(
   return answer?.key === key ? answer.lookup : { status: 'loading' };
 }
 
-const loadMapperRows = async (ids: string[]): Promise<ReadonlyMap<string, IngredientRow>> =>
-  new Map((await listIngredientsByIds(ids)).map((row) => [row.ingredient_id, row]));
+const loadMapperRows = async (ids: string[]): Promise<ReadonlyMap<string, IngredientRow>> => {
+  const rows = await listIngredientsByIds(ids);
+  // An empty answer to a non-empty question proves nothing about the PIs (an
+  // unconfigured or not-yet-authorised read returns []): it is "cannot verify
+  // now", never "every ingredient is unavailable". Only a partial answer says
+  // the Mapper runtime does not serve the missing PIs.
+  if (ids.length > 0 && rows.length === 0) throw new Error('mapper_rows_unverifiable');
+  return new Map(rows.map((row) => [row.ingredient_id, row]));
+};
 
 /**
  * Current canonical Mapper rows for a recipe's PIs, from the one Mapper
