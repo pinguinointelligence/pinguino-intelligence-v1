@@ -37,6 +37,7 @@ import {
   knownField,
   WORKING_NUMERIC_FIELDS,
   type FieldTruth,
+  type ProductFieldTruthMap,
   type WorkingNumericField,
 } from './productFieldTruth.ts';
 import {
@@ -505,6 +506,9 @@ export interface MapperInferenceInput {
   /** Recognition V2 result. When present, every Mapper tier is narrowed before
    * it may contribute a value. */
   semantic?: ProductSemanticClassification | null;
+  /** Read-only diagnostic support for leave-one-row-out validation. Runtime
+   * product flows leave this empty. */
+  excludedMapperIngredientIds?: readonly string[];
 }
 
 export interface MapperInferenceResult {
@@ -537,6 +541,9 @@ export function inferMapperValues(
   const tiersUsed: MapperInferenceTier[] = [];
   const trace: string[] = [];
   let bestCohort: MapperInferenceResult['bestCohort'] = null;
+  const excluded = new Set(input.excludedMapperIngredientIds ?? []);
+  const withoutExcluded = (rows: readonly MapperKnowledgeRow[]): MapperKnowledgeRow[] =>
+    rows.filter((row) => !excluded.has(row.ingredient_id));
   const claim = (field: WorkingNumericField, truth: FieldTruth): boolean => {
     if (fields[field]) return false;
     fields[field] = truth;
@@ -545,7 +552,11 @@ export function inferMapperValues(
 
   /* 1. exact GTIN identity — verified, because it identifies the product */
   const code = canonicalCode(input.barcode);
-  const exactCandidate = code ? (knowledge.byCode.get(code) ?? null) : null;
+  const indexedExactCandidate = code ? (knowledge.byCode.get(code) ?? null) : null;
+  const exactCandidate =
+    indexedExactCandidate && !excluded.has(indexedExactCandidate.ingredient_id)
+      ? indexedExactCandidate
+      : null;
   const exactDecision = exactCandidate ? semanticDecisionFor(input.semantic, exactCandidate) : null;
   const exactRow = exactCandidate && exactDecision?.compatible !== false ? exactCandidate : null;
   if (exactCandidate && exactDecision?.compatible === false) {
@@ -580,7 +591,10 @@ export function inferMapperValues(
     normalized && tokens > 0 && tokens <= MAX_SIMPLE_PROFILE_TOKENS
       ? (knowledge.byName.get(normalized) ?? null)
       : null;
-  const nameFiltered = semanticFilterRows(input.semantic, nameCohortUnfiltered ?? []);
+  const nameFiltered = semanticFilterRows(
+    input.semantic,
+    withoutExcluded(nameCohortUnfiltered ?? []),
+  );
   const nameCohort = nameFiltered.rows;
   if (nameFiltered.rejected.length > 0) {
     trace.push(
@@ -603,7 +617,7 @@ export function inferMapperValues(
   /* 3. nearest neighbours by weighted identity-token overlap */
   const similar = similarCohort(input, knowledge);
   const similarConditionedUnfiltered = macroConditionedCohort(
-    similar.rows,
+    withoutExcluded(similar.rows),
     input.knownMacros,
     MIN_SIMILAR_COHORT,
   );
@@ -637,7 +651,9 @@ export function inferMapperValues(
   /* 4. same brand, same subcategory */
   const siblingCohortUnfiltered =
     normalizeName(input.brand) && normalizeName(input.subcategory)
-      ? (knowledge.byBrandSubcategory.get(brandKey(input.brand, input.subcategory)) ?? null)
+      ? withoutExcluded(
+          knowledge.byBrandSubcategory.get(brandKey(input.brand, input.subcategory)) ?? [],
+        )
       : null;
   const siblingFiltered = semanticFilterRows(input.semantic, siblingCohortUnfiltered ?? []);
   const siblingCohort = siblingFiltered.rows;
@@ -669,7 +685,7 @@ export function inferMapperValues(
   const family = familySupportsCohort(familyMatch) && familyMatch ? familyMatch.family : null;
   if (family) {
     const cohortUnfiltered = macroConditionedCohort(
-      knowledge.byFamily.get(family) ?? [],
+      withoutExcluded(knowledge.byFamily.get(family) ?? []),
       input.knownMacros,
       MIN_FAMILY_COHORT,
     );
@@ -709,7 +725,18 @@ export function inferMapperValues(
  * beyond what its own sugars already say. An exact GTIN identity still carries
  * them, because there the row IS the product.
  */
-const COHORT_FORBIDDEN_FIELDS = new Set<WorkingNumericField>(['pod_value', 'pac_value']);
+const COHORT_FORBIDDEN_FIELDS = new Set<WorkingNumericField>([
+  // Mass balance has stricter target-coverage, form, macro and residual guards
+  // in `rescueMassBalanceFromCohort`. The generic IQR gate is insufficient for
+  // these two fields (the global leave-one-out backtest found high-confidence
+  // outliers), so it may not pre-empt the dedicated Rescue path.
+  'water_percent',
+  'total_solids_percent',
+  // Engine powers are derived from this product's own accepted sugar/alcohol
+  // path, never copied field-by-field from neighbours.
+  'pod_value',
+  'pac_value',
+]);
 
 /**
  * How far a neighbour's macro may sit from this product's before it stops being
@@ -903,6 +930,386 @@ export interface MoistureCohortProfile {
   max: number;
   narrow: boolean;
   reason: string;
+}
+
+/**
+ * Field-specific acceptance contract for water/total-solids Rescue.
+ *
+ * Unlike `PROFILE_MATCH_FLOOR`, these limits answer one narrow physical
+ * question: whether a semantic/form-compatible cohort supports the product's
+ * one remaining mass-balance degree of freedom. They never authorize copying a
+ * whole profile or turning a similar row into product identity.
+ */
+export const MASS_BALANCE_RESCUE_POLICY = Object.freeze({
+  minCandidates: 3,
+  minEffectiveSampleSize: 2.5,
+  maxMad: 1.5,
+  maxIqr: 6,
+  maxRange: 8,
+  knownCompositionTolerance: 2,
+  maxUnnamedSolids: 25,
+  /** The exact label must leave at most this much of the 100 g mass unnamed.
+   * This directly bounds worst-case water/solids error before a cohort is read. */
+  maxTargetUnaccountedMass: 4,
+  readyConfidenceFloor: 0.86,
+});
+
+export const MAPPER_FIELD_RESCUE_ALGORITHM_VERSION = 'mapper-field-rescue-v1';
+
+export type MassBalanceRescueReasonCode =
+  | 'RESCUE_MASS_BALANCE_SUCCESS'
+  | 'RESCUE_TARGET_SEMANTICS_UNRESOLVED'
+  | 'RESCUE_NO_COMPATIBLE_COHORT'
+  | 'RESCUE_INSUFFICIENT_FIELD_CANDIDATES'
+  | 'RESCUE_CANDIDATE_NOT_VERIFIED'
+  | 'RESCUE_SEMANTIC_MISMATCH'
+  | 'RESCUE_PHYSICAL_FORM_MISMATCH'
+  | 'RESCUE_MACRO_MISMATCH'
+  | 'RESCUE_CANDIDATE_MASS_BALANCE_INVALID'
+  | 'RESCUE_KNOWN_COMPOSITION_CONTRADICTION'
+  | 'RESCUE_TARGET_COMPOSITION_COVERAGE_LOW'
+  | 'RESCUE_TARGET_ALCOHOL_UNRESOLVED'
+  | 'RESCUE_COHORT_DISPERSION_HIGH'
+  | 'RESCUE_EFFECTIVE_SAMPLE_SIZE_LOW'
+  | 'RESCUE_ESTIMATE_OUT_OF_RANGE';
+
+export interface MassBalanceRescueCandidate {
+  ingredientId: string;
+  totalSolids: number;
+  water: number;
+  unnamedSolids: number;
+  weight: number;
+}
+
+export interface MassBalanceRescueResult {
+  resolved: boolean;
+  totalSolids: number | null;
+  water: number | null;
+  confidence: number;
+  method: 'weighted_median_semantic_macro_cohort';
+  reasonCodes: MassBalanceRescueReasonCode[];
+  candidatesBeforeFilter: string[];
+  candidates: MassBalanceRescueCandidate[];
+  rejectedCandidates: { ingredientId: string; reasonCodes: MassBalanceRescueReasonCode[] }[];
+  dispersion: {
+    mad: number;
+    iqr: number;
+    range: number;
+    effectiveSampleSize: number;
+  } | null;
+}
+
+const TARGET_NAMED_SOLIDS_FIELDS = [
+  'fat_percent',
+  'protein_percent',
+  'carbohydrate_percent',
+  'fiber_percent',
+  'salt_percent',
+] as const satisfies readonly WorkingNumericField[];
+
+const TARGET_MAJOR_SOLIDS_FIELDS = [
+  'fat_percent',
+  'protein_percent',
+  'carbohydrate_percent',
+] as const satisfies readonly WorkingNumericField[];
+
+const fieldValue = (fields: ProductFieldTruthMap, field: WorkingNumericField): number | null => {
+  const truth = fields[field];
+  return truth.provenance.state === 'VERIFIED' ? truth.value : null;
+};
+
+const weightedMedian = (values: readonly { value: number; weight: number }[]): number => {
+  const ordered = [...values].sort((a, b) => a.value - b.value);
+  const total = ordered.reduce((sum, entry) => sum + entry.weight, 0);
+  let cumulative = 0;
+  for (const entry of ordered) {
+    cumulative += entry.weight;
+    if (cumulative >= total / 2) return entry.value;
+  }
+  return ordered.at(-1)?.value ?? 0;
+};
+
+const effectiveSampleSize = (weights: readonly number[]): number => {
+  const sum = weights.reduce((total, weight) => total + weight, 0);
+  const squareSum = weights.reduce((total, weight) => total + weight * weight, 0);
+  return squareSum === 0 ? 0 : (sum * sum) / squareSum;
+};
+
+const samePhysicalForm = (
+  product: ProductSemanticClassification | null | undefined,
+  candidate: ProductSemanticClassification,
+): boolean => {
+  if (!product || product.physicalForm === 'UNKNOWN') return true;
+  return candidate.physicalForm === product.physicalForm;
+};
+
+const candidateMacroWeight = (row: MapperKnowledgeRow, fields: ProductFieldTruthMap): number => {
+  const fits: number[] = [];
+  for (const field of TARGET_NAMED_SOLIDS_FIELDS) {
+    const target = fieldValue(fields, field);
+    const observed = numeric(row[field]);
+    if (target === null || observed === null) continue;
+    const band =
+      field === 'fiber_percent'
+        ? 8
+        : field === 'salt_percent'
+          ? 1.5
+          : (MACRO_COMPATIBILITY[field] ?? 10);
+    fits.push(Math.max(0, 1 - Math.abs(observed - target) / (2 * band)));
+  }
+  const fit = fits.length === 0 ? 0 : fits.reduce((sum, value) => sum + value, 0) / fits.length;
+  // Macro distance influences the median but can never manufacture or erase a
+  // cohort. The hard safety gates are semantics, form, known mass and spread.
+  return round4(0.5 + 0.5 * fit);
+};
+
+/**
+ * Resolve water/total solids from a coherent field-level cohort after exact and
+ * deterministic paths have been exhausted.
+ *
+ * The target's exact fat + protein + carbohydrate + fibre + salt is a lower
+ * bound only. Sugars are deliberately excluded because they already live inside
+ * carbohydrate; kcal and all sugar species are excluded for the same
+ * double-counting reason. Candidate values below that bound are vetoed rather
+ * than averaged upward.
+ */
+export function rescueMassBalanceFromCohort(input: {
+  cohort: readonly MapperKnowledgeRow[];
+  fields: ProductFieldTruthMap;
+  semantic?: ProductSemanticClassification | null;
+  excludedMapperIngredientIds?: readonly string[];
+}): MassBalanceRescueResult {
+  const empty = (
+    reasonCodes: MassBalanceRescueReasonCode[],
+    rejectedCandidates: MassBalanceRescueResult['rejectedCandidates'] = [],
+  ): MassBalanceRescueResult => ({
+    resolved: false,
+    totalSolids: null,
+    water: null,
+    confidence: 0,
+    method: 'weighted_median_semantic_macro_cohort',
+    reasonCodes,
+    candidatesBeforeFilter: input.cohort.map((row) => row.ingredient_id),
+    candidates: [],
+    rejectedCandidates,
+    dispersion: null,
+  });
+
+  if (input.cohort.length === 0) return empty(['RESCUE_NO_COMPATIBLE_COHORT']);
+  if (
+    !input.semantic ||
+    input.semantic.modelRequired ||
+    input.semantic.confidence < 0.85 ||
+    input.semantic.ingredientFamily === 'unknown' ||
+    input.semantic.physicalForm === 'UNKNOWN' ||
+    input.semantic.intendedUsageRole === 'NEITHER_REVIEW'
+  ) {
+    return empty(['RESCUE_TARGET_SEMANTICS_UNRESOLVED']);
+  }
+  if (!TARGET_MAJOR_SOLIDS_FIELDS.every((field) => fieldValue(input.fields, field) !== null)) {
+    return empty(['RESCUE_KNOWN_COMPOSITION_CONTRADICTION']);
+  }
+  const excluded = new Set(input.excludedMapperIngredientIds ?? []);
+  const targetAlcohol = fieldValue(input.fields, 'alcohol_percent');
+  const alcoholRelevant =
+    input.semantic?.ingredientFamily === 'alcohol' || input.semantic?.flavorDomain === 'ALCOHOL';
+  if (alcoholRelevant && targetAlcohol === null) {
+    return empty(['RESCUE_TARGET_ALCOHOL_UNRESOLVED']);
+  }
+  const targetAlcoholValue = targetAlcohol ?? 0;
+  const targetNamedSolids = TARGET_NAMED_SOLIDS_FIELDS.reduce(
+    (sum, field) => sum + (fieldValue(input.fields, field) ?? 0),
+    0,
+  );
+  const maxTargetSolids = 100 - targetAlcoholValue;
+  if (targetNamedSolids > maxTargetSolids + MASS_BALANCE_RESCUE_POLICY.knownCompositionTolerance) {
+    return empty(['RESCUE_KNOWN_COMPOSITION_CONTRADICTION']);
+  }
+  if (maxTargetSolids - targetNamedSolids > MASS_BALANCE_RESCUE_POLICY.maxTargetUnaccountedMass) {
+    return empty(['RESCUE_TARGET_COMPOSITION_COVERAGE_LOW']);
+  }
+
+  const rejectedCandidates: MassBalanceRescueResult['rejectedCandidates'] = [];
+  const candidates: MassBalanceRescueCandidate[] = [];
+  for (const row of input.cohort) {
+    if (excluded.has(row.ingredient_id)) continue;
+    const reasons: MassBalanceRescueReasonCode[] = [];
+    if (
+      row.is_active === false ||
+      row.approved_for_base !== true ||
+      row.approved_for_engines !== true ||
+      !row.verification_status?.trim().toLocaleLowerCase('en-US').startsWith('verified')
+    ) {
+      reasons.push('RESCUE_CANDIDATE_NOT_VERIFIED');
+    }
+    const semantic = semanticDecisionFor(input.semantic, row);
+    if (!semantic.compatible) reasons.push('RESCUE_SEMANTIC_MISMATCH');
+    if (
+      input.semantic &&
+      'candidate' in semantic &&
+      !samePhysicalForm(input.semantic, semantic.candidate)
+    ) {
+      reasons.push('RESCUE_PHYSICAL_FORM_MISMATCH');
+    }
+    if (
+      TARGET_MAJOR_SOLIDS_FIELDS.some((field) => {
+        const target = fieldValue(input.fields, field);
+        const observed = numeric(row[field]);
+        return (
+          target === null ||
+          observed === null ||
+          Math.abs(observed - target) > (MACRO_COMPATIBILITY[field] ?? 0)
+        );
+      })
+    ) {
+      reasons.push('RESCUE_MACRO_MISMATCH');
+    }
+
+    const rowAlcohol = numeric(row.alcohol_percent) ?? 0;
+    const statedSolids = numeric(row.total_solids_percent);
+    const statedWater = numeric(row.water_percent);
+    const candidateSolids =
+      statedSolids ?? (statedWater === null ? null : round4(100 - rowAlcohol - statedWater));
+    const candidateWater =
+      statedWater ?? (statedSolids === null ? null : round4(100 - rowAlcohol - statedSolids));
+    if (
+      candidateSolids === null ||
+      candidateWater === null ||
+      Math.abs(candidateSolids + candidateWater + rowAlcohol - 100) > 1
+    ) {
+      reasons.push('RESCUE_CANDIDATE_MASS_BALANCE_INVALID');
+    }
+
+    let candidateUnnamedSolids: number | null = null;
+    if (candidateSolids !== null) {
+      const candidateNamedSolids = TARGET_NAMED_SOLIDS_FIELDS.reduce(
+        (sum, field) => sum + (numeric(row[field]) ?? 0),
+        0,
+      );
+      candidateUnnamedSolids = round4(candidateSolids - candidateNamedSolids);
+      if (
+        candidateUnnamedSolids < -MASS_BALANCE_RESCUE_POLICY.knownCompositionTolerance ||
+        candidateUnnamedSolids > MASS_BALANCE_RESCUE_POLICY.maxUnnamedSolids ||
+        candidateSolids + MASS_BALANCE_RESCUE_POLICY.knownCompositionTolerance < targetNamedSolids
+      ) {
+        reasons.push('RESCUE_KNOWN_COMPOSITION_CONTRADICTION');
+      }
+    }
+    if (
+      reasons.length > 0 ||
+      candidateSolids === null ||
+      candidateWater === null ||
+      candidateUnnamedSolids === null
+    ) {
+      rejectedCandidates.push({
+        ingredientId: row.ingredient_id,
+        reasonCodes: [...new Set(reasons)],
+      });
+      continue;
+    }
+    candidates.push({
+      ingredientId: row.ingredient_id,
+      totalSolids: candidateSolids,
+      water: candidateWater,
+      unnamedSolids: Math.max(0, candidateUnnamedSolids),
+      weight: candidateMacroWeight(row, input.fields),
+    });
+  }
+
+  if (candidates.length < MASS_BALANCE_RESCUE_POLICY.minCandidates) {
+    return empty(['RESCUE_INSUFFICIENT_FIELD_CANDIDATES'], rejectedCandidates);
+  }
+
+  const rawResiduals = candidates.map((candidate) => candidate.unnamedSolids).sort((a, b) => a - b);
+  const rawMedian = median(rawResiduals);
+  const rawDeviations = rawResiduals
+    .map((value) => Math.abs(value - rawMedian))
+    .sort((a, b) => a - b);
+  const rawMad = median(rawDeviations);
+  const outlierLimit = Math.max(1, 3 * rawMad);
+  const withoutOutliers = candidates.filter(
+    (candidate) => Math.abs(candidate.unnamedSolids - rawMedian) <= outlierLimit,
+  );
+  if (withoutOutliers.length < MASS_BALANCE_RESCUE_POLICY.minCandidates) {
+    return empty(['RESCUE_INSUFFICIENT_FIELD_CANDIDATES'], rejectedCandidates);
+  }
+
+  const residuals = withoutOutliers
+    .map((candidate) => candidate.unnamedSolids)
+    .sort((a, b) => a - b);
+  const mid = median(residuals);
+  const deviations = residuals.map((value) => Math.abs(value - mid)).sort((a, b) => a - b);
+  const mad = median(deviations);
+  const iqr = quantile(residuals, 0.75) - quantile(residuals, 0.25);
+  const range = (residuals.at(-1) ?? 0) - (residuals[0] ?? 0);
+  const effectiveN = effectiveSampleSize(withoutOutliers.map((candidate) => candidate.weight));
+  const dispersion = {
+    mad: round4(mad),
+    iqr: round4(iqr),
+    range: round4(range),
+    effectiveSampleSize: round4(effectiveN),
+  };
+  if (
+    mad > MASS_BALANCE_RESCUE_POLICY.maxMad ||
+    iqr > MASS_BALANCE_RESCUE_POLICY.maxIqr ||
+    range > MASS_BALANCE_RESCUE_POLICY.maxRange
+  ) {
+    return {
+      ...empty(['RESCUE_COHORT_DISPERSION_HIGH'], rejectedCandidates),
+      candidates: withoutOutliers,
+      dispersion,
+    };
+  }
+  if (effectiveN < MASS_BALANCE_RESCUE_POLICY.minEffectiveSampleSize) {
+    return {
+      ...empty(['RESCUE_EFFECTIVE_SAMPLE_SIZE_LOW'], rejectedCandidates),
+      candidates: withoutOutliers,
+      dispersion,
+    };
+  }
+
+  const residualEstimate = round4(
+    weightedMedian(
+      withoutOutliers.map((candidate) => ({
+        value: candidate.unnamedSolids,
+        weight: candidate.weight,
+      })),
+    ),
+  );
+  const estimate = round4(targetNamedSolids + residualEstimate);
+  const water = round4(100 - targetAlcoholValue - estimate);
+  if (estimate < targetNamedSolids || estimate > maxTargetSolids || water < 0 || water > 100) {
+    return {
+      ...empty(['RESCUE_ESTIMATE_OUT_OF_RANGE'], rejectedCandidates),
+      candidates: withoutOutliers,
+      dispersion,
+    };
+  }
+
+  const dispersionLoad = Math.max(
+    mad / MASS_BALANCE_RESCUE_POLICY.maxMad,
+    iqr / MASS_BALANCE_RESCUE_POLICY.maxIqr,
+    range / MASS_BALANCE_RESCUE_POLICY.maxRange,
+  );
+  const support = Math.min(1, (withoutOutliers.length - 2) / 4);
+  const macroFit =
+    withoutOutliers.reduce((sum, candidate) => sum + (candidate.weight - 0.5) * 2, 0) /
+    withoutOutliers.length;
+  const confidence = round4(
+    Math.min(0.94, 0.86 + 0.05 * (1 - dispersionLoad) + 0.02 * support + 0.01 * macroFit),
+  );
+  return {
+    resolved: true,
+    totalSolids: estimate,
+    water,
+    confidence,
+    method: 'weighted_median_semantic_macro_cohort',
+    reasonCodes: ['RESCUE_MASS_BALANCE_SUCCESS'],
+    candidatesBeforeFilter: input.cohort.map((row) => row.ingredient_id),
+    candidates: withoutOutliers,
+    rejectedCandidates,
+    dispersion,
+  };
 }
 
 /** Profile a cohort's water. Pure statistics; decides nothing on its own. */
@@ -1169,9 +1576,7 @@ function donorSugarSpectrumCoversDeclaredTotal(
   return knownValues.reduce((total, value) => total + value, 0) + Number.EPSILON >= declaredTotal;
 }
 
-function mostCompleteProfileDonor(
-  rows: readonly MapperKnowledgeRow[],
-): MapperKnowledgeRow | null {
+function mostCompleteProfileDonor(rows: readonly MapperKnowledgeRow[]): MapperKnowledgeRow | null {
   let best: MapperKnowledgeRow | null = null;
   let bestCompleteness = -1;
   for (const row of rows) {
