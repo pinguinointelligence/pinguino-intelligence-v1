@@ -230,6 +230,8 @@ export function ScanFlow({
   const [family, setFamily] = useState<CustomerFamily | null>(null);
   const [values, setValues] = useState<Record<string, string | boolean>>({});
   const [recognized, setRecognized] = useState<ExactWebIdentity | null>(null);
+  /** Exact internet facts stay automatic through every later family/label/form round. */
+  const automaticEvidenceRef = useRef<ExactWebIdentity['automaticEvidence'] | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const codeRef = useRef<string | null>(null);
   /** the customer answered "Tak" for THIS scan: the question is asked once, never again mid-scan */
@@ -294,17 +296,10 @@ export function ScanFlow({
             const web = session ? null : identityFromEvidence(r.externalEvidence);
             if (web) {
               // the code already identifies the product: use it, and its family when the registry knows one
+              automaticEvidenceRef.current = web.automaticEvidence;
               setRecognized(web);
               setValues(prefillFromIdentity(web));
               setFamily(web.family);
-              if (!web.publicationEligibility.eligible) {
-                setPhase({
-                  kind: 'label',
-                  session: next,
-                  note: 'Brakuje dokładnej nazwy wariantu. Zrób zdjęcie przodu opakowania.',
-                });
-                return;
-              }
               if (web.family) {
                 await finalize(
                   next,
@@ -451,12 +446,17 @@ export function ScanFlow({
   ) {
     const port = ports?.discovery;
     if (!port) return fail('Backend nie jest skonfigurowany.');
+    const automaticEvidence = input.automaticEvidence ?? automaticEvidenceRef.current;
     const r = await continueDiscovery(
       session,
       {
         type: unverified ? 'finalize_unverified' : 'finalize',
         // binding only while the customer has typed nothing since the assessment was shown
-        input: { ...input, expectedAssessmentHash: bindingAssessmentHash() },
+        input: {
+          ...input,
+          ...(automaticEvidence ? { automaticEvidence } : {}),
+          expectedAssessmentHash: bindingAssessmentHash(),
+        },
       },
       ctx,
       port,
@@ -478,18 +478,11 @@ export function ScanFlow({
     code: string,
   ) => {
     if (web) {
-      // Registry data may prefill the flow, but a brand/family-only title is not an exact SKU.
+      // Exact-GTIN internet data fills the private product now; publication is gated independently.
+      automaticEvidenceRef.current = web.automaticEvidence;
       setRecognized(web);
       setValues(prefillFromIdentity(web));
       setFamily(web.family);
-      if (!web.publicationEligibility.eligible) {
-        setPhase({
-          kind: 'label',
-          session,
-          note: 'Brakuje dokładnej nazwy wariantu. Zrób zdjęcie przodu opakowania.',
-        });
-        return;
-      }
       await finalize(
         session,
         { customerFamily: web.family, automaticEvidence: web.automaticEvidence },
@@ -515,6 +508,7 @@ export function ScanFlow({
       // a new scan asks the question again; the previous answer belonged to the previous product
       addConfirmedRef.current = false;
       setBusy(true);
+      automaticEvidenceRef.current = null;
       setRecognized(null);
       setPhase({ kind: 'resolving', code: scan.value });
       try {
@@ -531,7 +525,10 @@ export function ScanFlow({
             .then((ev) => {
               if (codeRef.current !== scan.value) return;
               const web = identityFromEvidence(isExternalEvidence(ev) ? ev : null);
-              if (web) setRecognized((current) => current ?? web);
+              if (web) {
+                automaticEvidenceRef.current ??= web.automaticEvidence;
+                setRecognized((current) => current ?? web);
+              }
             })
             .catch(() => undefined);
         }
@@ -629,10 +626,14 @@ export function ScanFlow({
         setPhase((p) => (p.kind === 'camera' && status !== 'stopped' ? { ...p, status } : p)),
       onFrame: (f) => setFrame(f),
       onMirror: (m) => setMirrorPreview(m),
-      onError: () =>
+      onError: (message) =>
         setPhase((p) =>
           p.kind === 'camera'
-            ? { ...p, error: 'Odczyt kodu nie działa w tej przeglądarce. Wpisz kod z opakowania.' }
+            ? {
+                ...p,
+                error:
+                  message || 'Odczyt kodu nie działa w tej przeglądarce. Wpisz kod z opakowania.',
+              }
             : p,
         ),
     });
@@ -651,6 +652,7 @@ export function ScanFlow({
     setManual('');
     setValues({});
     setFamily(null);
+    automaticEvidenceRef.current = null;
     setRecognized(null);
     setFrame(null);
     setPhase({ kind: 'camera', status: 'starting', error: null });
@@ -717,7 +719,13 @@ export function ScanFlow({
       const ctx = contextFor(await getScanImportV2AccountId());
       await finalize(
         session,
-        { customerFamily: family, confirmations: confirmationsFromFields(values) },
+        {
+          customerFamily: family,
+          confirmations: confirmationsFromFields(
+            values,
+            fields.map((field) => field.key),
+          ),
+        },
         ctx,
         codeRef.current ?? '',
       );
@@ -729,12 +737,18 @@ export function ScanFlow({
    * it appears under Produkty → Niezweryfikowane where they can finish it later. This is the only
    * path that persists an unverified product: nothing does it automatically.
    */
-  const saveUnverified = (session: DiscoverySession) =>
+  const saveUnverified = (session: DiscoverySession, fields: readonly PlainField[]) =>
     withBusy(async () => {
       const ctx = contextFor(await getScanImportV2AccountId());
       await finalize(
         session,
-        { customerFamily: family, confirmations: confirmationsFromFields(values) },
+        {
+          customerFamily: family,
+          confirmations: confirmationsFromFields(
+            values,
+            fields.map((field) => field.key),
+          ),
+        },
         ctx,
         codeRef.current ?? '',
         true,
@@ -1268,7 +1282,7 @@ export function ScanFlow({
               type="button"
               className={btnSecondary}
               disabled={busy}
-              onClick={() => void saveUnverified(phase.session)}
+              onClick={() => void saveUnverified(phase.session, phase.fields)}
               data-testid="scan-flow-save-unverified"
             >
               Zapisz i uzupełnij później

@@ -158,7 +158,9 @@ describe('Crown is a direct action on canonical authority', () => {
   });
 
   it('mutates through the canonical lock authority', () => {
-    expect(row).toContain("setLockType(lineId, isMain ? 'unlocked' : 'main')");
+    // On the HOME surface (owner regression brief 2026-09-11): HOME's Crown
+    // rules are a HOME layer and must never change the PRO default.
+    expect(row).toContain("setLockType(lineId, isMain ? 'unlocked' : 'main', 'home')");
   });
 
   it('communicates state, not a different glyph', () => {

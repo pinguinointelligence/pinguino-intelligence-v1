@@ -208,6 +208,7 @@ export interface KnownFieldInit {
   confidence: number;
   basis: FieldBasis;
   mapperReferences?: readonly string[];
+  algorithmVersion?: string;
   mapperFingerprint?: string;
   note?: string | null;
   cohort?: CohortEvidence | null;
@@ -223,7 +224,7 @@ export function knownField(init: KnownFieldInit): FieldTruth {
       confidence: clamp01(init.confidence),
       basis: init.basis,
       mapperReferences: [...(init.mapperReferences ?? [])],
-      algorithmVersion: MAPPER_FIRST_ALGORITHM_VERSION,
+      algorithmVersion: init.algorithmVersion ?? MAPPER_FIRST_ALGORITHM_VERSION,
       mapperFingerprint: init.mapperFingerprint ?? '',
       note: init.note ?? null,
       cohort: init.cohort ?? null,
@@ -274,7 +275,9 @@ export function applyFieldTruth(
 }
 
 /** The plain numeric view the Engine consumes — estimates included, by design. */
-export function workingValues(map: ProductFieldTruthMap): Record<WorkingNumericField, number | null> {
+export function workingValues(
+  map: ProductFieldTruthMap,
+): Record<WorkingNumericField, number | null> {
   const out = {} as Record<WorkingNumericField, number | null>;
   for (const field of WORKING_NUMERIC_FIELDS) out[field] = map[field].value;
   return out;

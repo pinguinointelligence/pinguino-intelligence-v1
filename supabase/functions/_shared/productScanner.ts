@@ -1115,11 +1115,12 @@ export function productSemanticEvidenceFromScanResult(value: unknown): ProductSe
 
 /**
  * The exact-GTIN lookup, expressed as the fields the SCANNER can actually use.
- * `manufacturer` and `countryOfOrigin` are researched too because they cost nothing
- * extra once the call is made and they carry identity, but nothing here can invent a
- * product name: a new product's identity is read from its own front label.
+ * Identity and technical facts share the same exact-EAN research pass. They may fill the
+ * customer's private product automatically; the stricter shared-publication gate stays separate.
  */
 export const EAN_LOOKUP_FIELDS = [
+  'productName',
+  'brand',
   'productCategory',
   'productDescription',
   'ingredients',
@@ -1232,6 +1233,8 @@ export function scanResultFromLookupFacts(
   >();
   let ingredientsText: string | null = null;
   let allergensText: string | null = null;
+  let productName: string | null = null;
+  let brand: string | null = null;
   let manufacturer: string | null = null;
   let productDescription: string | null = null;
   let dosageText: string | null = null;
@@ -1271,7 +1274,16 @@ export function scanResultFromLookupFacts(
     const field = String(fact.field ?? '');
     const raw = typeof fact.value === 'string' ? fact.value.trim() : '';
     if (!raw) continue;
-    if (field === 'ingredients' && !ingredientsText) {
+    if (field === 'productName' && !productName) {
+      productName = raw;
+      identity.displayName = raw;
+      identity.originalName = raw;
+      remember(fact, 'identity.displayName');
+    } else if (field === 'brand' && !brand) {
+      brand = raw;
+      identity.brand = raw;
+      remember(fact, 'identity.brand');
+    } else if (field === 'ingredients' && !ingredientsText) {
       ingredientsText = raw;
       remember(fact, 'ingredientsText');
     } else if (field === 'allergens' && !allergensText) {

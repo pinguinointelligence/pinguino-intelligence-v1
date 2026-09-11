@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { RecipeInput } from '@/engine';
+import { findDemoIngredient } from '@/data/demoIngredients';
 import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
 import { productBehaviorRequiredLineIds } from '@/features/product-intelligence/productBehaviorAccess';
 import { starterMilkBase, withGrams } from '@/features/recipe-constraints/constraintFixtures';
@@ -12,6 +13,14 @@ const lineId = (input: RecipeInput) => input.items[0]!.id;
 const grams = (id: string) =>
   useRecipeStore.getState().items.find((item) => item.id === id)!.planned_grams;
 const seededIds = () => useRecipeStore.getState().crownAutoSeededLineIds;
+
+const STRAWBERRIES = {
+  ...findDemoIngredient('raspberry')!,
+  id: 'PI-ING-001553',
+  canonical_ingredient_id: 'PI-ING-001553',
+  name: 'STRAWBERRIES · Fresh Fruit',
+  category: 'fruit' as const,
+};
 
 const loadWith = (lineGrams: number): string => {
   const base = starterMilkBase();
@@ -309,6 +318,110 @@ describe('OWNER P0 — Crown toggle at 0 g', () => {
   });
 });
 
+/**
+ * HOME's Protein Crown is mass-neutral (6e9a99bc) — on the HOME SURFACE ONLY.
+ *
+ * Owner regression brief 2026-09-11: this rule was scoped by PROFILE inside the
+ * shared store, so it also took PRO's accepted `0 g + Crown -> 1 g` away for
+ * Protein and Przelicz then stopped at "Minimalna ilość to 1 g". It is a HOME
+ * layer, so every call below names the HOME surface explicitly. PRO's own
+ * Protein behaviour is asserted in the `Protein Crown lifecycle` below and in
+ * `src/stores/recipeStore.crownSurface.test.ts`.
+ */
+describe('HOME — Protein Crown is mass-neutral (HOME surface only)', () => {
+  it.each(['optimal', 'eco'] as const)(
+    'keeps the canonical 670 g batch unchanged through Crown ON/OFF/ON in %s',
+    (formulationStrategy) => {
+      const starter = buildCanonicalNewRecipeStarter({
+        visibleProductType: 'protein',
+        servingModeId: 'temp_minus_13',
+        formulationStrategy,
+        targetBatchGrams: 670,
+      });
+      useRecipeStore.getState().loadRecipeInput({
+        mode: 'classic',
+        category: 'protein_gelato',
+        target_temperature_c: -13,
+        target_batch_grams: 670,
+        machine_capacity_grams: 670,
+        machine_capacity_source: 'machine',
+        goals: { formulation_strategy: formulationStrategy },
+        items: starter.items,
+      });
+      const added = useRecipeStore.getState().addIngredient(STRAWBERRIES, 0);
+      expect(added.status).toBe('added');
+      if (added.status !== 'added') return;
+
+      const total = () =>
+        useRecipeStore.getState().items.reduce((sum, item) => sum + item.planned_grams, 0);
+      const strawberry = () =>
+        useRecipeStore.getState().items.find((item) => item.id === added.lineId)!;
+
+      expect(useRecipeStore.getState()).toMatchObject({
+        visibleProductType: 'protein',
+        category: 'protein_gelato',
+        target_batch_grams: 670,
+        machine_capacity_grams: 670,
+        machine_capacity_source: 'machine',
+      });
+      expect(total()).toBe(670);
+      expect(strawberry()).toMatchObject({ planned_grams: 0, lock_type: 'unlocked' });
+
+      useRecipeStore.getState().setMainIngredient(added.lineId, 'home');
+      expect(total()).toBe(670);
+      expect(strawberry()).toMatchObject({ planned_grams: 0, lock_type: 'main' });
+      expect(strawberry().user_intent_anchor_grams).toBeUndefined();
+      expect(seededIds()).not.toContain(added.lineId);
+
+      useRecipeStore.getState().setStandardIngredient(added.lineId);
+      expect(total()).toBe(670);
+      expect(strawberry()).toMatchObject({ planned_grams: 0, lock_type: 'unlocked' });
+
+      useRecipeStore.getState().setMainIngredient(added.lineId, 'home');
+      expect(total()).toBe(670);
+      expect(strawberry()).toMatchObject({ planned_grams: 0, lock_type: 'main' });
+      expect(strawberry().user_intent_anchor_grams).toBeUndefined();
+      expect(seededIds()).not.toContain(added.lineId);
+
+      useRecipeStore.getState().setStandardIngredient(added.lineId);
+      useRecipeStore.getState().setLockType(added.lineId, 'main', 'home');
+      expect(total()).toBe(670);
+      expect(strawberry()).toMatchObject({ planned_grams: 0, lock_type: 'main' });
+      expect(strawberry().user_intent_anchor_grams).toBeUndefined();
+      expect(seededIds()).not.toContain(added.lineId);
+
+      const snapshots = productBehaviorTestSnapshots(buildRecipeInput(useRecipeStore.getState()));
+      useRecipeStore.setState({
+        productBehaviorSnapshots: {
+          ...snapshots,
+          [added.lineId]: {
+            ...snapshots[added.lineId]!,
+            mainClassification: 'MAIN_ALLOWED',
+            mainCapability: 'MAIN_CAPABLE_UNCALIBRATED',
+          },
+        },
+      });
+      useRecipeStore.getState().setPlannedGrams(added.lineId, 42);
+      expect(strawberry()).toMatchObject({ planned_grams: 42, lock_type: 'main' });
+      expect(total()).toBe(712);
+
+      useRecipeStore.getState().setStandardIngredient(added.lineId);
+      useRecipeStore.getState().syncProductBehaviorSnapshots({
+        ...snapshots,
+        [added.lineId]: {
+          ...snapshots[added.lineId]!,
+          mainClassification: 'MAIN_ALLOWED',
+          mainCapability: 'MAIN_CAPABLE_UNCALIBRATED',
+        },
+      });
+      useRecipeStore.getState().setMainIngredient(added.lineId, 'home');
+      expect(strawberry()).toMatchObject({ planned_grams: 42, lock_type: 'main' });
+      expect(total()).toBe(712);
+      expect(seededIds()).not.toContain(added.lineId);
+    },
+  );
+});
+
 describe('the provenance flag is never business data', () => {
   it('is absent from the persisted draft slice', () => {
     const id = loadWith(0);
@@ -355,6 +468,8 @@ describe.each([
   ['Gelato', 'gelato'],
   ['Sorbet', 'sorbet'],
   ['Vegan', 'vegan'],
+  // RESTORED 2026-09-11 (owner regression brief). 6e9a99bc removed this row, and
+  // with it the only per-profile assertion of PRO's auto-1 g for Protein.
   ['Protein', 'protein'],
 ] as const)('%s Crown lifecycle', (_profileName, visibleProductType) => {
   it.each(['optimal', 'eco'] as const)(

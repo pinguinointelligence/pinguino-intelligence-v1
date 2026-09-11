@@ -27,8 +27,8 @@ export interface IntentChip {
   readonly label: string;
   readonly concept: string | null;
   readonly role: IntentRole | null;
-  /** How this chip entered the intent (§19: three inputs, one flow). */
-  readonly source: 'text' | 'voice' | 'scan';
+  /** How this chip entered the intent (§19 — now four doors, one flow: §30 adds AI fruit recognition). */
+  readonly source: 'text' | 'voice' | 'scan' | 'vision';
   /** Resolved Mapper/catalogue identity, once resolution has run. */
   readonly productId: string | null;
   /** Canonical display name of the resolved product, when resolved. */
