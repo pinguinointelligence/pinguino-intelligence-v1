@@ -6850,6 +6850,10 @@ export function buildOptimizePreview(
   if (Object.keys(snapshots).length === 0) return result;
   const proposedMains = captureMainIngredientIntent(result.preview.proposedInput);
   if (proposedMains.length > 0) {
+    // Exact Direction owns its own hard-safe projection. Its Main proof is
+    // rebuilt only to keep Apply trustless; it is not a request to enforce the
+    // Main floor as a separate optimization objective.
+    if (hasActiveExactDirectionObjective(input)) return result;
     // Exact Sorbet Direction owns its own already-verified projection and does
     // not carry a Main-objective proof. This backstop is intentionally scoped
     // to the Main search/fallback path that produced the invalid Owner result.
