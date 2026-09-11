@@ -10,6 +10,7 @@ import {
   executableRecipeCard,
   executableRecipeStartHref,
   executableRecipeTemplateById,
+  executableTemplateOpenState,
   recipeTemplateBaseTotal,
   recipeTemplateToppingTotal,
 } from './executableRecipeLibrary';
@@ -126,17 +127,39 @@ describe('executable Recipe Library Batch 1 registry', () => {
     ]);
   });
 
-  it('uses only current, Base+Engine-approved Mapper identities; provenance stays informational', () => {
+  it('keeps every line on its current FINAL Mapper identity and reads approval instead of assuming it', () => {
     for (const template of EXECUTABLE_RECIPE_TEMPLATES) {
       for (const line of [...template.base, ...template.toppings]) {
         if (line.mapperIngredientId === null) continue;
         const row = mapperRows.get(line.mapperIngredientId);
         expect(row, `${template.id}:${line.mapperIngredientId}`).toBeDefined();
-        expect(row?.approved_for_base).toBe(true);
-        expect(row?.approved_for_engines).toBe(true);
         expect(row?.verification_status.trim().length).toBeGreaterThan(0);
       }
+      if (template.currentEngineEvaluation === null) continue;
+      // FINAL authority wins: an unapproved Base PI stays in the source and is a named blocker.
+      const unapprovedBase = template.base.flatMap((line) => {
+        const row = line.mapperIngredientId ? mapperRows.get(line.mapperIngredientId) : undefined;
+        return row && (row.approved_for_base !== true || row.approved_for_engines !== true)
+          ? [line.mapperIngredientId!]
+          : [];
+      });
+      expect([...template.currentEngineEvaluation.unapprovedIngredientIds], template.id).toEqual(
+        unapprovedBase,
+      );
     }
+    const oreyo = executableRecipeTemplateById('fantasy-oreyo-v1')!;
+    expect(oreyo.base.find((line) => line.mapperIngredientId === 'PI-ING-001705')).toMatchObject({
+      grams: 5,
+      note: 'Pasta waniliowa',
+    });
+    expect(mapperRows.get('PI-ING-001705')).toMatchObject({
+      approved_for_base: false,
+      approved_for_engines: false,
+    });
+    expect(oreyo.currentEngineEvaluation).toMatchObject({
+      unapprovedIngredientIds: ['PI-ING-001705'],
+      executable: false,
+    });
   });
 
   it('keeps exact branded Owner-only research references out of the client registry and card projection', () => {
@@ -192,8 +215,19 @@ describe('executable Recipe Library Batch 1 registry', () => {
       const dairyCarrier = template.base
         .filter((line) => ['PI-ING-000236', 'PI-ING-000180', 'PI-ING-000270'].includes(line.mapperIngredientId ?? ''))
         .reduce((total, line) => total + (line.grams ?? 0), 0) / template.baseTargetGrams * 100;
-      expect(template.technicalScore).not.toBeNull();
-      expect(result.scores?.technical).toBeCloseTo(template.technicalScore!, 8);
+      const evaluation = template.currentEngineEvaluation!;
+      expect(evaluation, template.id).not.toBeNull();
+      // CURRENT truth: the deterministic Engine result against the FINAL 2541 projection.
+      expect(result.scores?.technical, template.id).toBeCloseTo(evaluation.technicalScore, 8);
+      expect(
+        detectViolations(result).map((violation) => `${violation.metric}:${violation.direction}`),
+        template.id,
+      ).toEqual([...evaluation.violations]);
+      expect(result.engine_version).toBe(evaluation.engineVersion);
+      expect(result.config_version).toBe(evaluation.configVersion);
+      expect(evaluation.executable, template.id).toBe(
+        evaluation.violations.length === 0 && evaluation.unapprovedIngredientIds.length === 0,
+      );
       return {
         id: template.id,
         engineVersion: result.engine_version,
@@ -219,5 +253,48 @@ describe('executable Recipe Library Batch 1 registry', () => {
     });
     expect(audit.every((entry) => entry.batch === 1000)).toBe(true);
     expect(audit).toMatchSnapshot();
+  });
+
+  it('keeps the historical technical score as provenance, separate from the current Engine score', () => {
+    expect(
+      Object.fromEntries(
+        EXECUTABLE_RECIPE_TEMPLATES.map((template) => [
+          template.id,
+          [
+            template.historicalTechnicalScore,
+            template.currentEngineEvaluation?.technicalScore ?? null,
+          ],
+        ]),
+      ),
+    ).toEqual({
+      'lost-pl-smietankowe-z-zoltkami-v1': [null, null],
+      'fantasy-rocero-v1': [89.16666666666667, 84.48125717948717],
+      'fantasy-raphaello-v1': [89.16666666666667, 74.00171900738295],
+      'fantasy-kidi-bueno-v1': [89.16666666666667, 69.44670312869557],
+      'fantasy-oreyo-v1': [97.5, 97.5],
+      'fantasy-knickers-v1': [88.33333333333333, 73.13846205680093],
+    });
+    const card = executableRecipeCard(executableRecipeTemplateById('fantasy-rocero-v1')!);
+    expect(card).not.toHaveProperty('technicalScore');
+    expect(card.historicalTechnicalScore).toBe(89.16666666666667);
+    expect(card.currentEngineEvaluation?.technicalScore).toBe(84.48125717948717);
+  });
+
+  it('offers no registered template as current-Engine-ready while the FINAL Mapper rejects it', () => {
+    expect(
+      Object.fromEntries(
+        EXECUTABLE_RECIPE_TEMPLATES.map((template) => [
+          template.id,
+          executableTemplateOpenState(template),
+        ]),
+      ),
+    ).toEqual({
+      'lost-pl-smietankowe-z-zoltkami-v1': 'blocked_product_data',
+      'fantasy-rocero-v1': 'blocked_current_engine',
+      'fantasy-raphaello-v1': 'blocked_current_engine',
+      'fantasy-kidi-bueno-v1': 'blocked_current_engine',
+      'fantasy-oreyo-v1': 'blocked_current_engine',
+      'fantasy-knickers-v1': 'blocked_current_engine',
+    });
   });
 });
