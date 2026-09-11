@@ -101,11 +101,7 @@ describe("the owner's replay, on the real sessions", () => {
 
   it(`Sport 002 (${SPORT_002_EAN}) reaches the replay's numbers`, () => {
     const { profile, recognition, proposal } = runPipeline(
-      withAuthority(
-        sport002ScanResult(),
-        SERVER_CLASSES,
-        statedEanFor(SPORT_002_EAN),
-      ) as never,
+      withAuthority(sport002ScanResult(), SERVER_CLASSES, statedEanFor(SPORT_002_EAN)) as never,
     );
     // Reported first so a mismatch shows the seam, not just a total.
     const report = {
@@ -145,11 +141,7 @@ describe("the owner's replay, on the real sessions", () => {
 
   it(`Sport 001 (${SPORT_001_EAN}) reaches the replay's numbers`, () => {
     const { profile, recognition, proposal } = runPipeline(
-      withAuthority(
-        sport001ScanResult(),
-        SERVER_CLASSES,
-        statedEanFor(SPORT_001_EAN),
-      ) as never,
+      withAuthority(sport001ScanResult(), SERVER_CLASSES, statedEanFor(SPORT_001_EAN)) as never,
     );
     const report = {
       components: vector(profile),
@@ -198,6 +190,45 @@ describe("the owner's replay, on the real sessions", () => {
     // Same product, but no page was matched to the scanned code: nothing is confirmed.
     const { proposal } = runPipeline(withAuthority(sport001ScanResult(), {}) as never);
     expect(proposal?.declared.sucrose_percent).toBeUndefined();
+  });
+
+  it('keeps a resolved sugar path when later evidence differs only in formatting', () => {
+    const formattingOnly = {
+      ...sport001ScanResult(),
+      conflicts: [
+        {
+          field: 'ingredientsText',
+          labelValue: 'Agua, azúcar, ácido cítrico, sal.',
+          externalValue: 'Agua, azúcar, ácido cítrico y sal.',
+          retainedSource: 'label' as const,
+        },
+      ],
+    };
+    const { proposal } = runPipeline(
+      withAuthority(formattingOnly, SERVER_CLASSES, statedEanFor(SPORT_001_EAN)) as never,
+    );
+    expect(proposal?.declared.sucrose_percent).toBeCloseTo(5.5, 4);
+    expect(proposal?.declaredBasis.sucrose_percent).toBe('derived');
+    expect(proposal?.evidence.materialConflicts).toEqual([]);
+  });
+
+  it('still blocks sugar closure for a genuinely unresolved material conflict', () => {
+    const unresolved = {
+      ...sport001ScanResult(),
+      conflicts: [
+        {
+          field: 'ingredientsText',
+          labelValue: 'Agua, azúcar.',
+          externalValue: 'Agua, jarabe de glucosa.',
+          retainedSource: null,
+        },
+      ],
+    };
+    const { proposal } = runPipeline(
+      withAuthority(unresolved, SERVER_CLASSES, statedEanFor(SPORT_001_EAN)) as never,
+    );
+    expect(proposal?.declared.sucrose_percent).toBeUndefined();
+    expect(proposal?.evidence.materialConflicts).toEqual(['ingredientsText']);
   });
 
   it('never marks automatically fetched data as entered by the customer', () => {
