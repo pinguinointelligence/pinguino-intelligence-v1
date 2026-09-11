@@ -33,7 +33,6 @@ import {
   familySupportsCohort,
   type ProductFamilyId,
 } from './mapperFamilyInference.ts';
-import { isMapperHomeVerifiedStatus } from '../../data/ingredients/mapperVerificationStatus.ts';
 import {
   knownField,
   WORKING_NUMERIC_FIELDS,
@@ -45,6 +44,39 @@ import {
   evaluateMapperSemanticCompatibility,
   type ProductSemanticClassification,
 } from './productRecognition.ts';
+
+/** Recognition and the Rescue matcher share these canonical family ids. Keep
+ * the handoff explicit so a resolved semantic family cannot be discarded just
+ * because the product's market-language name misses the Mapper text rules. */
+const RECOGNITION_TO_MATCHER_FAMILY: Readonly<
+  Partial<Record<ProductSemanticClassification['ingredientFamily'], ProductFamilyId>>
+> = Object.freeze({
+  plant_protein_isolate: 'plant_protein_isolate',
+  dairy_protein: 'dairy_protein',
+  coconut_fat: 'coconut_fat',
+  cocoa_butter: 'cocoa_butter',
+  liquid_vegetable_oil: 'liquid_vegetable_oil',
+  nut_paste: 'nut_paste',
+  sugar_sucrose: 'sugar_sucrose',
+  glucose_dextrose: 'glucose_dextrose',
+  other_sugar: 'other_sugar',
+  stabilizer_hydrocolloid: 'stabilizer_hydrocolloid',
+  emulsifier: 'emulsifier',
+  fibre_inulin: 'fibre_inulin',
+  starch: 'starch',
+  plant_beverage: 'plant_beverage',
+  dairy_liquid: 'dairy_liquid',
+  fruit: 'fruit',
+  chocolate: 'chocolate',
+  flavor_paste: 'flavor_paste',
+  base_mix: 'base_mix',
+  alcohol: 'alcohol',
+});
+
+const recognitionFamilyForMatcher = (
+  semantic: ProductSemanticClassification | null | undefined,
+): ProductFamilyId | null =>
+  semantic ? (RECOGNITION_TO_MATCHER_FAMILY[semantic.ingredientFamily] ?? null) : null;
 
 /** Structural subset of the Mapper `IngredientRow` this module reads. */
 export interface MapperKnowledgeRow {
@@ -81,6 +113,15 @@ export interface MapperKnowledgeRow {
   pac_value: number | null;
   sweetness_factor: number | null;
   freezing_factor: number | null;
+}
+
+/**
+ * Donor authority for field Rescue comes from canonical presence in the Mapper
+ * basement, not from the historical method used to produce a row's numbers.
+ * Status/provenance fields remain on the row for lineage and diagnostics only.
+ */
+export function isCanonicalMapperRescueDonor(row: MapperKnowledgeRow): boolean {
+  return row.is_active !== false && row.ingredient_id.trim().startsWith('PI-ING-');
 }
 
 /**
@@ -683,13 +724,15 @@ export function inferMapperValues(
     sourceCategory: input.category ?? null,
     sourceSubcategory: input.subcategory ?? null,
   });
-  const family = familySupportsCohort(familyMatch) && familyMatch ? familyMatch.family : null;
+  const recognizedFamily = recognitionFamilyForMatcher(input.semantic);
+  const family =
+    recognizedFamily ??
+    (familySupportsCohort(familyMatch) && familyMatch ? familyMatch.family : null);
   if (family) {
-    const cohortUnfiltered = macroConditionedCohort(
-      withoutExcluded(knowledge.byFamily.get(family) ?? []),
-      input.knownMacros,
-      MIN_FAMILY_COHORT,
-    );
+    const familyRows = withoutExcluded(knowledge.byFamily.get(family) ?? []);
+    const cohortUnfiltered = recognizedFamily
+      ? strictlyMacroCompatibleRows(familyRows, input.knownMacros)
+      : macroConditionedCohort(familyRows, input.knownMacros, MIN_FAMILY_COHORT);
     const familyFiltered = semanticFilterRows(input.semantic, cohortUnfiltered);
     const cohort = familyFiltered.rows;
     if (familyFiltered.rejected.length > 0) {
@@ -737,6 +780,18 @@ const COHORT_FORBIDDEN_FIELDS = new Set<WorkingNumericField>([
   // path, never copied field-by-field from neighbours.
   'pod_value',
   'pac_value',
+  // Knowing enough about the target to Rescue mass balance says nothing about
+  // which sugars it contains. Until a sugar field's own hard-evidence policy
+  // authorizes it, neighbouring products cannot supply the spectrum.
+  'sucrose_percent',
+  'dextrose_percent',
+  'glucose_percent',
+  'fructose_percent',
+  'lactose_percent',
+  'polyol_percent',
+  // These legacy scalar proxies cannot stand in for the Engine's typed path.
+  'sweetness_factor',
+  'freezing_factor',
 ]);
 
 /**
@@ -749,6 +804,23 @@ export const MACRO_COMPATIBILITY: Readonly<Record<string, number>> = Object.free
   protein_percent: 5,
   carbohydrate_percent: 12,
 });
+
+const strictlyMacroCompatibleRows = (
+  cohort: readonly MapperKnowledgeRow[],
+  knownMacros: MapperInferenceInput['knownMacros'] | ProfileMatchInput['knownMacros'],
+): MapperKnowledgeRow[] => {
+  const entries = Object.entries(knownMacros ?? {}).filter(
+    (entry): entry is [string, number] => typeof entry[1] === 'number',
+  );
+  if (entries.length === 0) return [...cohort];
+  return cohort.filter((row) =>
+    entries.every(([field, target]) => {
+      const observed = numeric(row[field as keyof MapperKnowledgeRow] as number | null);
+      if (observed === null) return true;
+      return Math.abs(observed - target) <= (MACRO_COMPATIBILITY[field] ?? Infinity);
+    }),
+  );
+};
 
 /**
  * Keep only the cohort rows whose own published macros are compatible with what
@@ -764,18 +836,7 @@ export function macroConditionedCohort(
   knownMacros: MapperInferenceInput['knownMacros'],
   minCohort: number,
 ): readonly MapperKnowledgeRow[] {
-  const entries = Object.entries(knownMacros ?? {}).filter(
-    (entry): entry is [string, number] => typeof entry[1] === 'number',
-  );
-  if (entries.length === 0) return cohort;
-
-  const compatible = cohort.filter((row) =>
-    entries.every(([field, target]) => {
-      const observed = numeric(row[field as keyof MapperKnowledgeRow] as number | null);
-      if (observed === null) return true;
-      return Math.abs(observed - target) <= (MACRO_COMPATIBILITY[field] ?? Infinity);
-    }),
-  );
+  const compatible = strictlyMacroCompatibleRows(cohort, knownMacros);
   return compatible.length >= minCohort ? compatible : cohort;
 }
 
@@ -941,38 +1002,406 @@ export interface MoistureCohortProfile {
  * one remaining mass-balance degree of freedom. They never authorize copying a
  * whole profile or turning a similar row into product identity.
  */
+const MASS_BALANCE_KNOWN_COMPOSITION_TOLERANCE = 2;
+
 export const MASS_BALANCE_RESCUE_POLICY = Object.freeze({
   minCandidates: 3,
   minEffectiveSampleSize: 2.5,
   maxMad: 1.5,
   maxIqr: 6,
   maxRange: 8,
-  knownCompositionTolerance: 2,
+  // Reuse the Mapper-profiled robust moisture limits as an independent check
+  // that a residual proposal is physically applicable to this same-form cohort.
+  minDirectWaterCandidates: MOISTURE_COHORT_RULES.minRows,
+  maxDirectWaterMad: MOISTURE_COHORT_RULES.maxMad,
+  maxDirectWaterIqr: MOISTURE_COHORT_RULES.maxIqr,
+  maxZeroResidualDirectWaterIqr: MOISTURE_COHORT_RULES.maxMad,
+  maxDirectProposalDistance: MOISTURE_COHORT_RULES.maxMad,
+  maxZeroResidualProposalDistance: MASS_BALANCE_KNOWN_COMPOSITION_TOLERANCE,
+  knownCompositionTolerance: MASS_BALANCE_KNOWN_COMPOSITION_TOLERANCE,
   maxUnnamedSolids: 25,
-  /** The exact label must leave at most this much of the 100 g mass unnamed.
-   * This directly bounds worst-case water/solids error before a cohort is read. */
-  maxTargetUnaccountedMass: 4,
   readyConfidenceFloor: 0.86,
+  confidenceCeiling: 0.94,
 });
 
 export const MAPPER_FIELD_RESCUE_ALGORITHM_VERSION = 'mapper-field-rescue-v1';
+
+export const SUGAR_SPECTRUM_RESCUE_ALGORITHM_VERSION =
+  'mapper-sugar-spectrum-share-rescue-v1';
+
+export const TARGET_AWARE_SUGAR_SPECTRUM_FIELDS = [
+  'sucrose_percent',
+  'dextrose_percent',
+  'glucose_percent',
+  'fructose_percent',
+  'lactose_percent',
+] as const satisfies readonly WorkingNumericField[];
+
+export type TargetAwareSugarSpectrumField =
+  (typeof TARGET_AWARE_SUGAR_SPECTRUM_FIELDS)[number];
+
+const TARGET_AWARE_SUGAR_SPECTRUM_FIELD_SET = new Set<WorkingNumericField>(
+  TARGET_AWARE_SUGAR_SPECTRUM_FIELDS,
+);
+
+/** Dedicated normalized-share policy. It reuses the existing family-consensus
+ * ceiling and disagreement penalty; only the comparison unit changes from
+ * absolute grams to a 0..1 share of the target's verified total sugars. */
+export const SUGAR_SPECTRUM_RESCUE_POLICY = Object.freeze({
+  minCandidates: MIN_FAMILY_COHORT,
+  donorShareClosureTolerance: 0.02,
+  targetClosureTolerance: 0.05,
+  maxShareHalfIqr: 0.1,
+  minimumOutlierDistance: 0.1,
+  readyConfidenceFloor: 0.85,
+  confidenceCeiling: TIER_CONFIDENCE.mapper_family_consensus,
+});
 
 export type MassBalanceRescueReasonCode =
   | 'RESCUE_MASS_BALANCE_SUCCESS'
   | 'RESCUE_TARGET_SEMANTICS_UNRESOLVED'
   | 'RESCUE_NO_COMPATIBLE_COHORT'
   | 'RESCUE_INSUFFICIENT_FIELD_CANDIDATES'
-  | 'RESCUE_CANDIDATE_NOT_VERIFIED'
+  | 'RESCUE_TARGET_EVIDENCE_INSUFFICIENT'
+  | 'RESCUE_TARGET_FIELD_NOT_MISSING'
+  | 'RESCUE_TARGET_FIELD_POLICY_UNHANDLED'
   | 'RESCUE_SEMANTIC_MISMATCH'
   | 'RESCUE_PHYSICAL_FORM_MISMATCH'
   | 'RESCUE_MACRO_MISMATCH'
+  | 'RESCUE_HARD_FIELD_MISMATCH'
+  | 'RESCUE_ALIGNED_BASIS_INCOMPLETE'
   | 'RESCUE_CANDIDATE_MASS_BALANCE_INVALID'
   | 'RESCUE_KNOWN_COMPOSITION_CONTRADICTION'
-  | 'RESCUE_TARGET_COMPOSITION_COVERAGE_LOW'
   | 'RESCUE_TARGET_ALCOHOL_UNRESOLVED'
   | 'RESCUE_COHORT_DISPERSION_HIGH'
+  | 'RESCUE_DIRECT_MASS_SUPPORT_LOW'
+  | 'RESCUE_DIRECT_MASS_DISPERSION_HIGH'
+  | 'RESCUE_DIRECT_MASS_PROPOSAL_INCONSISTENT'
   | 'RESCUE_EFFECTIVE_SAMPLE_SIZE_LOW'
-  | 'RESCUE_ESTIMATE_OUT_OF_RANGE';
+  | 'RESCUE_ESTIMATE_OUT_OF_RANGE'
+  | 'RESCUE_CONFIDENCE_BELOW_THRESHOLD'
+  | 'RESCUE_POST_MASS_BALANCE_INVALID'
+  | 'RESCUE_SUGAR_SPECTRUM_SUCCESS'
+  | 'RESCUE_TARGET_HARD_TOTAL_SUGARS_REQUIRED'
+  | 'RESCUE_SPECTRUM_DONOR_NOT_CANONICAL'
+  | 'RESCUE_SPECTRUM_DONOR_TOTAL_INVALID'
+  | 'RESCUE_SPECTRUM_DONOR_SPECIES_INVALID'
+  | 'RESCUE_SPECTRUM_DONOR_CLOSURE_INVALID'
+  | 'RESCUE_SPECTRUM_DONOR_PHYSICS_INVALID'
+  | 'RESCUE_SPECTRUM_SHARE_OUTLIER'
+  | 'RESCUE_SPECTRUM_SHARE_CLOSURE_INVALID'
+  | 'RESCUE_HARD_TARGET_SPECIES_CONFLICT'
+  | 'RESCUE_POST_SPECTRUM_CLOSURE_INVALID';
+
+export type RescueIndependentEvidenceGroup =
+  | 'fat'
+  | 'protein'
+  | 'carbohydrate'
+  | 'fiber'
+  | 'salt'
+  | 'alcohol'
+  | 'water_solids';
+
+/** Product-owned identity facts. Numeric anchors are read separately from
+ * VERIFIED field truth, so no Rescue/AI/donor estimate can bootstrap itself. */
+export interface RescueTargetIdentityEvidence {
+  exactProductIdentity: boolean;
+  ingredientOrCompositionIdentity: boolean;
+}
+
+export interface RescueTargetEvidenceSufficiency {
+  sufficient: boolean;
+  field: WorkingNumericField;
+  family: ProductSemanticClassification['ingredientFamily'] | null;
+  compositionModel: 'OPEN' | 'CONSTRAINED' | null;
+  independentGroups: RescueIndependentEvidenceGroup[];
+  relevantGroups: RescueIndependentEvidenceGroup[];
+  requiredIndependentGroups: number;
+  cohortFieldSupport: number;
+  reasonCodes: MassBalanceRescueReasonCode[];
+}
+
+interface OpenCompositionPolicy {
+  groups: readonly RescueIndependentEvidenceGroup[];
+  minimum: number;
+}
+
+/** Existing Recognition families only; this is a safety policy over the
+ * canonical taxonomy, not a second ingredient classifier. */
+const OPEN_COMPOSITION_POLICIES: Readonly<
+  Partial<Record<ProductSemanticClassification['ingredientFamily'], OpenCompositionPolicy>>
+> = Object.freeze({
+  dairy_liquid: { groups: ['fat', 'protein', 'carbohydrate'], minimum: 3 },
+  plant_beverage: { groups: ['fat', 'protein', 'carbohydrate'], minimum: 3 },
+  fruit: { groups: ['carbohydrate', 'fiber'], minimum: 2 },
+  cocoa: { groups: ['fat', 'protein', 'carbohydrate', 'fiber'], minimum: 3 },
+  chocolate: { groups: ['fat', 'protein', 'carbohydrate'], minimum: 3 },
+  nut: { groups: ['fat', 'protein', 'carbohydrate'], minimum: 3 },
+  nut_paste: { groups: ['fat', 'protein', 'carbohydrate'], minimum: 3 },
+  flavor_paste: { groups: ['fat', 'protein', 'carbohydrate'], minimum: 3 },
+  base_mix: { groups: ['fat', 'protein', 'carbohydrate'], minimum: 3 },
+  alcohol: { groups: ['alcohol', 'carbohydrate'], minimum: 2 },
+});
+
+const CONSTRAINED_COMPOSITION_FAMILIES = new Set<
+  ProductSemanticClassification['ingredientFamily']
+>([
+  'plant_protein_isolate',
+  'dairy_protein',
+  'coconut_fat',
+  'cocoa_butter',
+  'liquid_vegetable_oil',
+  'sugar_sucrose',
+  'glucose_dextrose',
+  'other_sugar',
+  'stabilizer_hydrocolloid',
+  'emulsifier',
+  'fibre_inulin',
+  'starch',
+]);
+
+type SugarShareVector = Readonly<Record<TargetAwareSugarSpectrumField, number>>;
+
+interface SugarSpectrumDonorObservation {
+  valid: boolean;
+  shares: SugarShareVector | null;
+  reasonCodes: MassBalanceRescueReasonCode[];
+}
+
+/** A sugar-spectrum donor must describe one complete, physically coherent
+ * vector. Missing species are not silently read as zero because doing so would
+ * turn absence into a sugar-identity claim. */
+function sugarSpectrumDonorObservation(
+  row: MapperKnowledgeRow,
+): SugarSpectrumDonorObservation {
+  const reasons: MassBalanceRescueReasonCode[] = [];
+  if (!isCanonicalMapperRescueDonor(row)) {
+    return {
+      valid: false,
+      shares: null,
+      reasonCodes: ['RESCUE_SPECTRUM_DONOR_NOT_CANONICAL'],
+    };
+  }
+  const totalSugars = numeric(row.total_sugars_percent);
+  if (totalSugars === null || totalSugars <= 0 || totalSugars > 100) {
+    return {
+      valid: false,
+      shares: null,
+      reasonCodes: ['RESCUE_SPECTRUM_DONOR_TOTAL_INVALID'],
+    };
+  }
+
+  const values = {} as Record<TargetAwareSugarSpectrumField, number>;
+  for (const field of TARGET_AWARE_SUGAR_SPECTRUM_FIELDS) {
+    const value = numeric(row[field]);
+    if (value === null || value < 0 || value > totalSugars) {
+      reasons.push('RESCUE_SPECTRUM_DONOR_SPECIES_INVALID');
+      continue;
+    }
+    values[field] = value;
+  }
+  if (reasons.length > 0) {
+    return { valid: false, shares: null, reasonCodes: [...new Set(reasons)] };
+  }
+
+  const namedSugar = TARGET_AWARE_SUGAR_SPECTRUM_FIELDS.reduce(
+    (sum, field) => sum + values[field],
+    0,
+  );
+  const shareClosure = namedSugar / totalSugars;
+  if (Math.abs(shareClosure - 1) > SUGAR_SPECTRUM_RESCUE_POLICY.donorShareClosureTolerance) {
+    reasons.push('RESCUE_SPECTRUM_DONOR_CLOSURE_INVALID');
+  }
+
+  const carbohydrate = numeric(row.carbohydrate_percent);
+  const water = numeric(row.water_percent);
+  const totalSolids = numeric(row.total_solids_percent);
+  const alcohol = numeric(row.alcohol_percent) ?? 0;
+  if (
+    (carbohydrate !== null && totalSugars > carbohydrate + 0.5) ||
+    (water !== null && totalSolids !== null && Math.abs(water + totalSolids + alcohol - 100) > 1)
+  ) {
+    reasons.push('RESCUE_SPECTRUM_DONOR_PHYSICS_INVALID');
+  }
+  if (reasons.length > 0) {
+    return { valid: false, shares: null, reasonCodes: [...new Set(reasons)] };
+  }
+
+  return {
+    valid: true,
+    shares: Object.fromEntries(
+      TARGET_AWARE_SUGAR_SPECTRUM_FIELDS.map((field) => [
+        field,
+        round4(values[field] / totalSugars),
+      ]),
+    ) as unknown as SugarShareVector,
+    reasonCodes: [],
+  };
+}
+
+const independentHardEvidenceGroups = (
+  fields: ProductFieldTruthMap,
+): RescueIndependentEvidenceGroup[] => {
+  const groups: RescueIndependentEvidenceGroup[] = [];
+  if (fieldValue(fields, 'fat_percent') !== null) groups.push('fat');
+  if (fieldValue(fields, 'protein_percent') !== null) groups.push('protein');
+  // Carbohydrate and sugars are one underlying composition axis. Energy is
+  // deliberately absent: kcal explained by macros is not an independent anchor.
+  if (
+    fieldValue(fields, 'carbohydrate_percent') !== null ||
+    fieldValue(fields, 'total_sugars_percent') !== null
+  ) {
+    groups.push('carbohydrate');
+  }
+  if (fieldValue(fields, 'fiber_percent') !== null) groups.push('fiber');
+  if (fieldValue(fields, 'salt_percent') !== null) groups.push('salt');
+  if (fieldValue(fields, 'alcohol_percent') !== null) groups.push('alcohol');
+  // Water and total solids are complementary views of one mass relationship.
+  if (
+    fieldValue(fields, 'water_percent') !== null ||
+    fieldValue(fields, 'total_solids_percent') !== null
+  ) {
+    groups.push('water_solids');
+  }
+  return groups;
+};
+
+/**
+ * Central, field-specific target evidence decision for Rescue.
+ *
+ * Open-composition families need exact semantic/form/role identity, an exact
+ * ingredient/formulation description and several discriminative hard axes.
+ * Chemically constrained families may instead rely on exact identity plus exact
+ * ingredient/composition identity. Unknown policy is intentionally fail-closed.
+ */
+export function assessRescueTargetEvidenceSufficiency(input: {
+  field: WorkingNumericField;
+  fields: ProductFieldTruthMap;
+  semantic?: ProductSemanticClassification | null;
+  identityEvidence?: RescueTargetIdentityEvidence | null;
+  cohort?: readonly MapperKnowledgeRow[];
+}): RescueTargetEvidenceSufficiency {
+  const groups = independentHardEvidenceGroups(input.fields);
+  const family = input.semantic?.ingredientFamily ?? null;
+  const sugarSpectrumField = TARGET_AWARE_SUGAR_SPECTRUM_FIELD_SET.has(input.field);
+  const cohortFieldSupport = (input.cohort ?? []).filter((row) => {
+    if (row.is_active === false) return false;
+    return sugarSpectrumField
+      ? sugarSpectrumDonorObservation(row).valid
+      : numeric(row.water_percent) !== null || numeric(row.total_solids_percent) !== null;
+  }).length;
+  const base = {
+    field: input.field,
+    family,
+    independentGroups: groups,
+    cohortFieldSupport,
+  };
+  if (input.fields[input.field].value !== null) {
+    return {
+      ...base,
+      sufficient: false,
+      compositionModel: null,
+      relevantGroups: [],
+      requiredIndependentGroups: 0,
+      reasonCodes: ['RESCUE_TARGET_FIELD_NOT_MISSING'],
+    };
+  }
+  if (
+    input.field !== 'water_percent' &&
+    input.field !== 'total_solids_percent' &&
+    !sugarSpectrumField
+  ) {
+    return {
+      ...base,
+      sufficient: false,
+      compositionModel: null,
+      relevantGroups: [],
+      requiredIndependentGroups: 0,
+      reasonCodes: ['RESCUE_TARGET_FIELD_POLICY_UNHANDLED'],
+    };
+  }
+  if (
+    sugarSpectrumField &&
+    (input.fields.total_sugars_percent.provenance.state !== 'VERIFIED' ||
+      numeric(input.fields.total_sugars_percent.value) === null ||
+      (input.fields.total_sugars_percent.value ?? 0) <= 0)
+  ) {
+    return {
+      ...base,
+      sufficient: false,
+      compositionModel: null,
+      relevantGroups: [],
+      requiredIndependentGroups: 0,
+      reasonCodes: ['RESCUE_TARGET_HARD_TOTAL_SUGARS_REQUIRED'],
+    };
+  }
+  if (
+    !input.semantic ||
+    input.semantic.modelRequired ||
+    input.semantic.productArchetype === 'UNKNOWN' ||
+    family === null ||
+    family === 'unknown' ||
+    input.semantic.physicalForm === 'UNKNOWN' ||
+    input.semantic.intendedUsageRole === 'NEITHER_REVIEW'
+  ) {
+    return {
+      ...base,
+      sufficient: false,
+      compositionModel: null,
+      relevantGroups: [],
+      requiredIndependentGroups: 0,
+      reasonCodes: ['RESCUE_TARGET_SEMANTICS_UNRESOLVED'],
+    };
+  }
+
+  const exactIdentity = input.identityEvidence?.exactProductIdentity === true;
+  const exactComposition = input.identityEvidence?.ingredientOrCompositionIdentity === true;
+  const cohortSupported = cohortFieldSupport >= MASS_BALANCE_RESCUE_POLICY.minCandidates;
+  const openPolicy = OPEN_COMPOSITION_POLICIES[family];
+  if (openPolicy) {
+    const relevant = openPolicy.groups.filter((group) => groups.includes(group));
+    const sufficient =
+      exactIdentity &&
+      exactComposition &&
+      relevant.length >= openPolicy.minimum &&
+      cohortSupported;
+    return {
+      ...base,
+      sufficient,
+      compositionModel: 'OPEN',
+      relevantGroups: relevant,
+      requiredIndependentGroups: openPolicy.minimum,
+      reasonCodes: sufficient
+        ? []
+        : exactIdentity && exactComposition && relevant.length >= openPolicy.minimum
+          ? ['RESCUE_INSUFFICIENT_FIELD_CANDIDATES']
+          : ['RESCUE_TARGET_EVIDENCE_INSUFFICIENT'],
+    };
+  }
+  if (CONSTRAINED_COMPOSITION_FAMILIES.has(family)) {
+    const sufficient = exactIdentity && exactComposition && cohortSupported;
+    return {
+      ...base,
+      sufficient,
+      compositionModel: 'CONSTRAINED',
+      relevantGroups: groups,
+      requiredIndependentGroups: 0,
+      reasonCodes: sufficient
+        ? []
+        : exactIdentity && exactComposition
+          ? ['RESCUE_INSUFFICIENT_FIELD_CANDIDATES']
+          : ['RESCUE_TARGET_EVIDENCE_INSUFFICIENT'],
+    };
+  }
+  return {
+    ...base,
+    sufficient: false,
+    compositionModel: null,
+    relevantGroups: [],
+    requiredIndependentGroups: 0,
+    reasonCodes: ['RESCUE_TARGET_FIELD_POLICY_UNHANDLED'],
+  };
+}
 
 export interface MassBalanceRescueCandidate {
   ingredientId: string;
@@ -998,6 +1427,18 @@ export interface MassBalanceRescueResult {
     range: number;
     effectiveSampleSize: number;
   } | null;
+  applicability: {
+    alignedCompositionBasis: WorkingNumericField[];
+    physicalForm: ProductSemanticClassification['physicalForm'];
+    directWaterMedian: number;
+    directWaterMad: number;
+    directWaterIqr: number;
+    directWaterIqrLimit: number;
+    proposalDistance: number;
+    proposalDistanceLimit: number;
+    score: number;
+    confidenceCap: number;
+  } | null;
 }
 
 const TARGET_NAMED_SOLIDS_FIELDS = [
@@ -1013,6 +1454,13 @@ const TARGET_MAJOR_SOLIDS_FIELDS = [
   'protein_percent',
   'carbohydrate_percent',
 ] as const satisfies readonly WorkingNumericField[];
+
+const hardFieldCompatibilityBand = (field: WorkingNumericField): number =>
+  field === 'fiber_percent'
+    ? 8
+    : field === 'salt_percent'
+      ? 1.5
+      : (MACRO_COMPATIBILITY[field] ?? MASS_BALANCE_RESCUE_POLICY.knownCompositionTolerance);
 
 const fieldValue = (fields: ProductFieldTruthMap, field: WorkingNumericField): number | null => {
   const truth = fields[field];
@@ -1050,12 +1498,7 @@ const candidateMacroWeight = (row: MapperKnowledgeRow, fields: ProductFieldTruth
     const target = fieldValue(fields, field);
     const observed = numeric(row[field]);
     if (target === null || observed === null) continue;
-    const band =
-      field === 'fiber_percent'
-        ? 8
-        : field === 'salt_percent'
-          ? 1.5
-          : (MACRO_COMPATIBILITY[field] ?? 10);
+    const band = hardFieldCompatibilityBand(field);
     fits.push(Math.max(0, 1 - Math.abs(observed - target) / (2 * band)));
   }
   const fit = fits.length === 0 ? 0 : fits.reduce((sum, value) => sum + value, 0) / fits.length;
@@ -1063,6 +1506,78 @@ const candidateMacroWeight = (row: MapperKnowledgeRow, fields: ProductFieldTruth
   // cohort. The hard safety gates are semantics, form, known mass and spread.
   return round4(0.5 + 0.5 * fit);
 };
+
+export interface MassBalanceRescuePostValidation {
+  valid: boolean;
+  residualMass: number | null;
+  reasonCodes: MassBalanceRescueReasonCode[];
+}
+
+/** Validate the proposed field values after Rescue has supplied the missing
+ * mass-balance degree of freedom. This is where target mass coverage belongs:
+ * the missing water is no longer mistaken for missing evidence. */
+export function validateMassBalanceRescueProposal(input: {
+  water: number;
+  totalSolids: number;
+  fields: ProductFieldTruthMap;
+  semantic?: ProductSemanticClassification | null;
+}): MassBalanceRescuePostValidation {
+  const reasons: MassBalanceRescueReasonCode[] = [];
+  const water = numeric(input.water);
+  const totalSolids = numeric(input.totalSolids);
+  const hardAlcohol = fieldValue(input.fields, 'alcohol_percent');
+  const alcoholRelevant =
+    input.semantic?.ingredientFamily === 'alcohol' || input.semantic?.flavorDomain === 'ALCOHOL';
+  const alcohol = hardAlcohol ?? 0;
+  if (alcoholRelevant && hardAlcohol === null) reasons.push('RESCUE_TARGET_ALCOHOL_UNRESOLVED');
+  if (
+    water === null ||
+    totalSolids === null ||
+    water < 0 ||
+    water > 100 ||
+    totalSolids < 0 ||
+    totalSolids > 100
+  ) {
+    reasons.push('RESCUE_ESTIMATE_OUT_OF_RANGE');
+  }
+  if (
+    water !== null &&
+    totalSolids !== null &&
+    Math.abs(water + totalSolids + alcohol - 100) >
+      MASS_BALANCE_RESCUE_POLICY.knownCompositionTolerance
+  ) {
+    reasons.push('RESCUE_POST_MASS_BALANCE_INVALID');
+  }
+
+  const hardWater = fieldValue(input.fields, 'water_percent');
+  const hardSolids = fieldValue(input.fields, 'total_solids_percent');
+  if (
+    (hardWater !== null &&
+      water !== null &&
+      Math.abs(hardWater - water) > MASS_BALANCE_RESCUE_POLICY.knownCompositionTolerance) ||
+    (hardSolids !== null &&
+      totalSolids !== null &&
+      Math.abs(hardSolids - totalSolids) > MASS_BALANCE_RESCUE_POLICY.knownCompositionTolerance)
+  ) {
+    reasons.push('RESCUE_KNOWN_COMPOSITION_CONTRADICTION');
+  }
+
+  // Sugars are already included in carbohydrate and therefore never counted a
+  // second time. Energy is not a mass component.
+  const hardNamedSolids = TARGET_NAMED_SOLIDS_FIELDS.reduce(
+    (sum, field) => sum + (fieldValue(input.fields, field) ?? 0),
+    0,
+  );
+  const residualMass = totalSolids === null ? null : round4(totalSolids - hardNamedSolids);
+  if (residualMass !== null && residualMass < 0) {
+    reasons.push('RESCUE_KNOWN_COMPOSITION_CONTRADICTION');
+  }
+  return {
+    valid: reasons.length === 0,
+    residualMass,
+    reasonCodes: [...new Set(reasons)],
+  };
+}
 
 /**
  * Resolve water/total solids from a coherent field-level cohort after exact and
@@ -1078,6 +1593,7 @@ export function rescueMassBalanceFromCohort(input: {
   cohort: readonly MapperKnowledgeRow[];
   fields: ProductFieldTruthMap;
   semantic?: ProductSemanticClassification | null;
+  targetEvidence?: RescueTargetIdentityEvidence | null;
   excludedMapperIngredientIds?: readonly string[];
 }): MassBalanceRescueResult {
   const empty = (
@@ -1094,6 +1610,7 @@ export function rescueMassBalanceFromCohort(input: {
     candidates: [],
     rejectedCandidates,
     dispersion: null,
+    applicability: null,
   });
 
   if (input.cohort.length === 0) return empty(['RESCUE_NO_COMPATIBLE_COHORT']);
@@ -1106,8 +1623,15 @@ export function rescueMassBalanceFromCohort(input: {
   ) {
     return empty(['RESCUE_TARGET_SEMANTICS_UNRESOLVED']);
   }
-  if (!TARGET_MAJOR_SOLIDS_FIELDS.every((field) => fieldValue(input.fields, field) !== null)) {
-    return empty(['RESCUE_KNOWN_COMPOSITION_CONTRADICTION']);
+  const targetSufficiency = assessRescueTargetEvidenceSufficiency({
+    field: 'total_solids_percent',
+    fields: input.fields,
+    semantic: input.semantic,
+    identityEvidence: input.targetEvidence,
+    cohort: input.cohort,
+  });
+  if (!targetSufficiency.sufficient) {
+    return empty(targetSufficiency.reasonCodes);
   }
   const excluded = new Set(input.excludedMapperIngredientIds ?? []);
   const targetAlcohol = fieldValue(input.fields, 'alcohol_percent');
@@ -1117,7 +1641,13 @@ export function rescueMassBalanceFromCohort(input: {
     return empty(['RESCUE_TARGET_ALCOHOL_UNRESOLVED']);
   }
   const targetAlcoholValue = targetAlcohol ?? 0;
-  const targetNamedSolids = TARGET_NAMED_SOLIDS_FIELDS.reduce(
+  // A donor residual only has meaning relative to the exact non-overlapping
+  // solid-component basis actually known for the target. Donor-only components
+  // remain in the residual instead of silently disappearing from it.
+  const targetCompositionBasis = TARGET_NAMED_SOLIDS_FIELDS.filter(
+    (field) => fieldValue(input.fields, field) !== null,
+  );
+  const targetNamedSolids = targetCompositionBasis.reduce(
     (sum, field) => sum + (fieldValue(input.fields, field) ?? 0),
     0,
   );
@@ -1125,23 +1655,12 @@ export function rescueMassBalanceFromCohort(input: {
   if (targetNamedSolids > maxTargetSolids + MASS_BALANCE_RESCUE_POLICY.knownCompositionTolerance) {
     return empty(['RESCUE_KNOWN_COMPOSITION_CONTRADICTION']);
   }
-  if (maxTargetSolids - targetNamedSolids > MASS_BALANCE_RESCUE_POLICY.maxTargetUnaccountedMass) {
-    return empty(['RESCUE_TARGET_COMPOSITION_COVERAGE_LOW']);
-  }
 
   const rejectedCandidates: MassBalanceRescueResult['rejectedCandidates'] = [];
   const candidates: MassBalanceRescueCandidate[] = [];
   for (const row of input.cohort) {
     if (excluded.has(row.ingredient_id)) continue;
     const reasons: MassBalanceRescueReasonCode[] = [];
-    if (
-      row.is_active === false ||
-      row.approved_for_base !== true ||
-      row.approved_for_engines !== true ||
-      !isMapperHomeVerifiedStatus(row.verification_status)
-    ) {
-      reasons.push('RESCUE_CANDIDATE_NOT_VERIFIED');
-    }
     const semantic = semanticDecisionFor(input.semantic, row);
     if (!semantic.compatible) reasons.push('RESCUE_SEMANTIC_MISMATCH');
     if (
@@ -1151,19 +1670,29 @@ export function rescueMassBalanceFromCohort(input: {
     ) {
       reasons.push('RESCUE_PHYSICAL_FORM_MISMATCH');
     }
-    if (
-      TARGET_MAJOR_SOLIDS_FIELDS.some((field) => {
-        const target = fieldValue(input.fields, field);
-        const observed = numeric(row[field]);
-        return (
-          target === null ||
-          observed === null ||
-          Math.abs(observed - target) > (MACRO_COMPATIBILITY[field] ?? 0)
-        );
-      })
-    ) {
+    let majorFieldMismatch = false;
+    let hardFieldMismatch = false;
+    let alignedBasisIncomplete = false;
+    for (const field of targetCompositionBasis) {
+      const target = fieldValue(input.fields, field);
+      const observed = numeric(row[field]);
+      if (target === null) continue;
+      if (observed === null) {
+        alignedBasisIncomplete = true;
+        continue;
+      }
+      if (Math.abs(observed - target) > hardFieldCompatibilityBand(field)) {
+        hardFieldMismatch = true;
+        if ((TARGET_MAJOR_SOLIDS_FIELDS as readonly WorkingNumericField[]).includes(field)) {
+          majorFieldMismatch = true;
+        }
+      }
+    }
+    if (majorFieldMismatch) {
       reasons.push('RESCUE_MACRO_MISMATCH');
     }
+    if (hardFieldMismatch) reasons.push('RESCUE_HARD_FIELD_MISMATCH');
+    if (alignedBasisIncomplete) reasons.push('RESCUE_ALIGNED_BASIS_INCOMPLETE');
 
     const rowAlcohol = numeric(row.alcohol_percent) ?? 0;
     const statedSolids = numeric(row.total_solids_percent);
@@ -1182,7 +1711,7 @@ export function rescueMassBalanceFromCohort(input: {
 
     let candidateUnnamedSolids: number | null = null;
     if (candidateSolids !== null) {
-      const candidateNamedSolids = TARGET_NAMED_SOLIDS_FIELDS.reduce(
+      const candidateNamedSolids = targetCompositionBasis.reduce(
         (sum, field) => sum + (numeric(row[field]) ?? 0),
         0,
       );
@@ -1286,6 +1815,80 @@ export function rescueMassBalanceFromCohort(input: {
     };
   }
 
+  // Residual agreement is not transferability. The same semantic/form-filtered
+  // donors must also describe a coherent direct moisture reality, and the
+  // residual-derived proposal must sit within that robust reality.
+  const directWaters = withoutOutliers.map((candidate) => candidate.water).sort((a, b) => a - b);
+  const directWaterMedian = median(directWaters);
+  const directWaterDeviations = directWaters
+    .map((value) => Math.abs(value - directWaterMedian))
+    .sort((a, b) => a - b);
+  const directWaterMad = median(directWaterDeviations);
+  const directWaterIqr = quantile(directWaters, 0.75) - quantile(directWaters, 0.25);
+  const proposalDistance = Math.abs(water - directWaterMedian);
+  const directProposalDistanceLimit =
+    residualEstimate === 0
+      ? MASS_BALANCE_RESCUE_POLICY.maxZeroResidualProposalDistance
+      : MASS_BALANCE_RESCUE_POLICY.maxDirectProposalDistance;
+  const directWaterIqrLimit =
+    residualEstimate === 0
+      ? MASS_BALANCE_RESCUE_POLICY.maxZeroResidualDirectWaterIqr
+      : MASS_BALANCE_RESCUE_POLICY.maxDirectWaterIqr;
+  const applicabilityLoad = Math.max(
+    directWaterMad / MASS_BALANCE_RESCUE_POLICY.maxDirectWaterMad,
+    directWaterIqr / directWaterIqrLimit,
+    proposalDistance / directProposalDistanceLimit,
+  );
+  const applicabilityScore = round4(1 - Math.min(1, applicabilityLoad));
+  const applicabilityConfidenceCap = round4(
+    MASS_BALANCE_RESCUE_POLICY.readyConfidenceFloor +
+      (MASS_BALANCE_RESCUE_POLICY.confidenceCeiling -
+        MASS_BALANCE_RESCUE_POLICY.readyConfidenceFloor) *
+        applicabilityScore,
+  );
+  const applicability: NonNullable<MassBalanceRescueResult['applicability']> = {
+    alignedCompositionBasis: [...targetCompositionBasis],
+    physicalForm: input.semantic.physicalForm,
+    directWaterMedian: round4(directWaterMedian),
+    directWaterMad: round4(directWaterMad),
+    directWaterIqr: round4(directWaterIqr),
+    directWaterIqrLimit,
+    proposalDistance: round4(proposalDistance),
+    proposalDistanceLimit: directProposalDistanceLimit,
+    score: applicabilityScore,
+    confidenceCap: applicabilityConfidenceCap,
+  };
+  if (
+    residualEstimate === 0 &&
+    directWaters.length < MASS_BALANCE_RESCUE_POLICY.minDirectWaterCandidates
+  ) {
+    return {
+      ...empty(['RESCUE_DIRECT_MASS_SUPPORT_LOW'], rejectedCandidates),
+      candidates: withoutOutliers,
+      dispersion,
+      applicability,
+    };
+  }
+  if (
+    directWaterMad > MASS_BALANCE_RESCUE_POLICY.maxDirectWaterMad ||
+    directWaterIqr > directWaterIqrLimit
+  ) {
+    return {
+      ...empty(['RESCUE_DIRECT_MASS_DISPERSION_HIGH'], rejectedCandidates),
+      candidates: withoutOutliers,
+      dispersion,
+      applicability,
+    };
+  }
+  if (proposalDistance > directProposalDistanceLimit) {
+    return {
+      ...empty(['RESCUE_DIRECT_MASS_PROPOSAL_INCONSISTENT'], rejectedCandidates),
+      candidates: withoutOutliers,
+      dispersion,
+      applicability,
+    };
+  }
+
   const dispersionLoad = Math.max(
     mad / MASS_BALANCE_RESCUE_POLICY.maxMad,
     iqr / MASS_BALANCE_RESCUE_POLICY.maxIqr,
@@ -1296,8 +1899,36 @@ export function rescueMassBalanceFromCohort(input: {
     withoutOutliers.reduce((sum, candidate) => sum + (candidate.weight - 0.5) * 2, 0) /
     withoutOutliers.length;
   const confidence = round4(
-    Math.min(0.94, 0.86 + 0.05 * (1 - dispersionLoad) + 0.02 * support + 0.01 * macroFit),
+    Math.min(
+      applicabilityConfidenceCap,
+      MASS_BALANCE_RESCUE_POLICY.confidenceCeiling,
+      0.86 + 0.05 * (1 - dispersionLoad) + 0.02 * support + 0.01 * macroFit,
+    ),
   );
+  if (confidence < MASS_BALANCE_RESCUE_POLICY.readyConfidenceFloor) {
+    return {
+      ...empty(['RESCUE_CONFIDENCE_BELOW_THRESHOLD'], rejectedCandidates),
+      confidence,
+      candidates: withoutOutliers,
+      dispersion,
+      applicability,
+    };
+  }
+  const postValidation = validateMassBalanceRescueProposal({
+    water,
+    totalSolids: estimate,
+    fields: input.fields,
+    semantic: input.semantic,
+  });
+  if (!postValidation.valid) {
+    return {
+      ...empty(postValidation.reasonCodes, rejectedCandidates),
+      confidence,
+      candidates: withoutOutliers,
+      dispersion,
+      applicability,
+    };
+  }
   return {
     resolved: true,
     totalSolids: estimate,
@@ -1309,6 +1940,7 @@ export function rescueMassBalanceFromCohort(input: {
     candidates: withoutOutliers,
     rejectedCandidates,
     dispersion,
+    applicability,
   };
 }
 
@@ -1634,6 +2266,260 @@ const semanticDecisionFor = (
       })
     : { compatible: true as const, reasonCodes: [] as string[] };
 
+export interface SugarSpectrumRescueResult {
+  resolved: boolean;
+  method: 'target_total_normalized_share_consensus';
+  confidence: number;
+  compatibleCandidateCount: number;
+  validSpectrumCandidateCount: number;
+  candidates: string[];
+  rejectedCandidates: { ingredientId: string; reasonCodes: MassBalanceRescueReasonCode[] }[];
+  consensusShares: Readonly<Record<TargetAwareSugarSpectrumField, number>> | null;
+  targetSpectrum: Readonly<Record<TargetAwareSugarSpectrumField, number>> | null;
+  dispersion: {
+    halfIqrByField: Readonly<Record<TargetAwareSugarSpectrumField, number>>;
+    maximumHalfIqr: number;
+    vectorMedianDistance: number;
+    vectorMad: number;
+  } | null;
+  reasonCodes: MassBalanceRescueReasonCode[];
+}
+
+/**
+ * Complete a missing target sugar spectrum from normalized species shares.
+ *
+ * The input cohort is already the product's semantic/form/role/macro-compatible
+ * Rescue cohort. This function adds only spectrum-specific donor validity,
+ * robust vector outlier rejection, target evidence authority and closure. It
+ * never estimates the target total sugars and never changes a verified species.
+ */
+export function rescueSugarSpectrumFromCohort(input: {
+  cohort: readonly MapperKnowledgeRow[];
+  fields: ProductFieldTruthMap;
+  semantic?: ProductSemanticClassification | null;
+  targetEvidence?: RescueTargetIdentityEvidence | null;
+}): SugarSpectrumRescueResult {
+  const empty = (
+    reasonCodes: MassBalanceRescueReasonCode[],
+    overrides: Partial<SugarSpectrumRescueResult> = {},
+  ): SugarSpectrumRescueResult => ({
+    resolved: false,
+    method: 'target_total_normalized_share_consensus',
+    confidence: 0,
+    compatibleCandidateCount: input.cohort.length,
+    validSpectrumCandidateCount: 0,
+    candidates: [],
+    rejectedCandidates: [],
+    consensusShares: null,
+    targetSpectrum: null,
+    dispersion: null,
+    reasonCodes,
+    ...overrides,
+  });
+
+  if (input.cohort.length === 0) return empty(['RESCUE_NO_COMPATIBLE_COHORT']);
+  const firstMissingField = TARGET_AWARE_SUGAR_SPECTRUM_FIELDS.find(
+    (field) => input.fields[field].value === null,
+  );
+  if (!firstMissingField) return empty(['RESCUE_TARGET_FIELD_NOT_MISSING']);
+  const targetSufficiency = assessRescueTargetEvidenceSufficiency({
+    field: firstMissingField,
+    fields: input.fields,
+    semantic: input.semantic,
+    identityEvidence: input.targetEvidence,
+    cohort: input.cohort,
+  });
+  if (!targetSufficiency.sufficient) return empty(targetSufficiency.reasonCodes);
+
+  const targetTotalSugars = fieldValue(input.fields, 'total_sugars_percent');
+  if (targetTotalSugars === null || targetTotalSugars <= 0) {
+    return empty(['RESCUE_TARGET_HARD_TOTAL_SUGARS_REQUIRED']);
+  }
+
+  const rejectedCandidates: SugarSpectrumRescueResult['rejectedCandidates'] = [];
+  const valid = input.cohort.flatMap((row) => {
+    const observation = sugarSpectrumDonorObservation(row);
+    if (!observation.valid || !observation.shares) {
+      rejectedCandidates.push({
+        ingredientId: row.ingredient_id,
+        reasonCodes: observation.reasonCodes,
+      });
+      return [];
+    }
+    return [{ ingredientId: row.ingredient_id, shares: observation.shares }];
+  });
+  if (valid.length < SUGAR_SPECTRUM_RESCUE_POLICY.minCandidates) {
+    return empty(['RESCUE_INSUFFICIENT_FIELD_CANDIDATES'], {
+      validSpectrumCandidateCount: valid.length,
+      rejectedCandidates,
+    });
+  }
+
+  const medianShares = Object.fromEntries(
+    TARGET_AWARE_SUGAR_SPECTRUM_FIELDS.map((field) => [
+      field,
+      median(valid.map((candidate) => candidate.shares[field]).sort((a, b) => a - b)),
+    ]),
+  ) as unknown as Record<TargetAwareSugarSpectrumField, number>;
+  const distances = valid.map((candidate) => ({
+    candidate,
+    distance: TARGET_AWARE_SUGAR_SPECTRUM_FIELDS.reduce(
+      (sum, field) => sum + Math.abs(candidate.shares[field] - medianShares[field]),
+      0,
+    ),
+  }));
+  const orderedDistances = distances.map(({ distance }) => distance).sort((a, b) => a - b);
+  const vectorMedianDistance = median(orderedDistances);
+  const vectorDeviations = orderedDistances
+    .map((distance) => Math.abs(distance - vectorMedianDistance))
+    .sort((a, b) => a - b);
+  const vectorMad = median(vectorDeviations);
+  const outlierLimit =
+    vectorMedianDistance +
+    Math.max(SUGAR_SPECTRUM_RESCUE_POLICY.minimumOutlierDistance, 3 * vectorMad);
+  const candidates = distances
+    .filter(({ candidate, distance }) => {
+      if (distance <= outlierLimit) return true;
+      rejectedCandidates.push({
+        ingredientId: candidate.ingredientId,
+        reasonCodes: ['RESCUE_SPECTRUM_SHARE_OUTLIER'],
+      });
+      return false;
+    })
+    .map(({ candidate }) => candidate);
+  if (candidates.length < SUGAR_SPECTRUM_RESCUE_POLICY.minCandidates) {
+    return empty(['RESCUE_INSUFFICIENT_FIELD_CANDIDATES'], {
+      validSpectrumCandidateCount: valid.length,
+      candidates: candidates.map((candidate) => candidate.ingredientId),
+      rejectedCandidates,
+    });
+  }
+
+  const halfIqrByField = Object.fromEntries(
+    TARGET_AWARE_SUGAR_SPECTRUM_FIELDS.map((field) => {
+      const values = candidates
+        .map((candidate) => candidate.shares[field])
+        .sort((a, b) => a - b);
+      return [field, round4((quantile(values, 0.75) - quantile(values, 0.25)) / 2)];
+    }),
+  ) as unknown as Record<TargetAwareSugarSpectrumField, number>;
+  const maximumHalfIqr = Math.max(...Object.values(halfIqrByField));
+  const dispersionLoad = Math.min(
+    1,
+    maximumHalfIqr / SUGAR_SPECTRUM_RESCUE_POLICY.maxShareHalfIqr,
+  );
+  const confidence = cohortConfidence(
+    SUGAR_SPECTRUM_RESCUE_POLICY.confidenceCeiling,
+    1 - dispersionLoad,
+  );
+  const rawConsensusShares = Object.fromEntries(
+    TARGET_AWARE_SUGAR_SPECTRUM_FIELDS.map((field) => [
+      field,
+      median(candidates.map((candidate) => candidate.shares[field]).sort((a, b) => a - b)),
+    ]),
+  ) as unknown as Record<TargetAwareSugarSpectrumField, number>;
+  const rawShareSum = TARGET_AWARE_SUGAR_SPECTRUM_FIELDS.reduce(
+    (sum, field) => sum + rawConsensusShares[field],
+    0,
+  );
+  const dispersion = {
+    halfIqrByField,
+    maximumHalfIqr: round4(maximumHalfIqr),
+    vectorMedianDistance: round4(vectorMedianDistance),
+    vectorMad: round4(vectorMad),
+  };
+  if (
+    rawShareSum <= 0 ||
+    Math.abs(rawShareSum - 1) > SUGAR_SPECTRUM_RESCUE_POLICY.donorShareClosureTolerance
+  ) {
+    return empty(['RESCUE_SPECTRUM_SHARE_CLOSURE_INVALID'], {
+      confidence,
+      validSpectrumCandidateCount: valid.length,
+      candidates: candidates.map((candidate) => candidate.ingredientId),
+      rejectedCandidates,
+      consensusShares: rawConsensusShares,
+      dispersion,
+    });
+  }
+  const consensusShares = Object.fromEntries(
+    TARGET_AWARE_SUGAR_SPECTRUM_FIELDS.map((field) => [
+      field,
+      round4(rawConsensusShares[field] / rawShareSum),
+    ]),
+  ) as unknown as Record<TargetAwareSugarSpectrumField, number>;
+  if (confidence < SUGAR_SPECTRUM_RESCUE_POLICY.readyConfidenceFloor) {
+    return empty(['RESCUE_CONFIDENCE_BELOW_THRESHOLD'], {
+      confidence,
+      validSpectrumCandidateCount: valid.length,
+      candidates: candidates.map((candidate) => candidate.ingredientId),
+      rejectedCandidates,
+      consensusShares,
+      dispersion,
+    });
+  }
+
+  const targetSpectrum = Object.fromEntries(
+    TARGET_AWARE_SUGAR_SPECTRUM_FIELDS.map((field) => [
+      field,
+      round4(targetTotalSugars * consensusShares[field]),
+    ]),
+  ) as unknown as Record<TargetAwareSugarSpectrumField, number>;
+  for (const field of TARGET_AWARE_SUGAR_SPECTRUM_FIELDS) {
+    const hardValue = fieldValue(input.fields, field);
+    if (
+      hardValue !== null &&
+      Math.abs(hardValue - targetSpectrum[field]) >
+        SUGAR_SPECTRUM_RESCUE_POLICY.targetClosureTolerance
+    ) {
+      return empty(['RESCUE_HARD_TARGET_SPECIES_CONFLICT'], {
+        confidence,
+        validSpectrumCandidateCount: valid.length,
+        candidates: candidates.map((candidate) => candidate.ingredientId),
+        rejectedCandidates,
+        consensusShares,
+        dispersion,
+      });
+    }
+    if (hardValue !== null) targetSpectrum[field] = hardValue;
+  }
+  const targetSpeciesSum = TARGET_AWARE_SUGAR_SPECTRUM_FIELDS.reduce(
+    (sum, field) => sum + targetSpectrum[field],
+    0,
+  );
+  const targetIsPhysical = TARGET_AWARE_SUGAR_SPECTRUM_FIELDS.every(
+    (field) => targetSpectrum[field] >= 0 && targetSpectrum[field] <= targetTotalSugars,
+  );
+  if (
+    !targetIsPhysical ||
+    Math.abs(targetSpeciesSum - targetTotalSugars) >
+      SUGAR_SPECTRUM_RESCUE_POLICY.targetClosureTolerance
+  ) {
+    return empty(['RESCUE_POST_SPECTRUM_CLOSURE_INVALID'], {
+      confidence,
+      validSpectrumCandidateCount: valid.length,
+      candidates: candidates.map((candidate) => candidate.ingredientId),
+      rejectedCandidates,
+      consensusShares,
+      targetSpectrum,
+      dispersion,
+    });
+  }
+
+  return {
+    resolved: true,
+    method: 'target_total_normalized_share_consensus',
+    confidence,
+    compatibleCandidateCount: input.cohort.length,
+    validSpectrumCandidateCount: valid.length,
+    candidates: candidates.map((candidate) => candidate.ingredientId),
+    rejectedCandidates,
+    consensusShares,
+    targetSpectrum,
+    dispersion,
+    reasonCodes: ['RESCUE_SUGAR_SPECTRUM_SUCCESS'],
+  };
+}
+
 function semanticFilterRows(
   semantic: ProductSemanticClassification | null | undefined,
   rows: readonly MapperKnowledgeRow[],
@@ -1694,10 +2580,12 @@ export function findProfileMatch(
     sourceCategory: input.category ?? null,
     sourceSubcategory: input.subcategory ?? null,
   });
+  const recognizedFamily = recognitionFamilyForMatcher(input.semantic);
   const productFamily =
-    familySupportsCohort(productFamilyMatch) && productFamilyMatch
+    recognizedFamily ??
+    (familySupportsCohort(productFamilyMatch) && productFamilyMatch
       ? productFamilyMatch.family
-      : null;
+      : null);
 
   /* 1. GTIN identity — the row IS the product */
   const code = (() => {
@@ -1818,6 +2706,12 @@ export function findProfileMatch(
           (row) => normalizeName(row.brand) === normalizeName(input.brand),
         )
       : [];
+  const recognizedFamilyRows = recognizedFamily
+    ? strictlyMacroCompatibleRows(
+        knowledge.byFamily.get(recognizedFamily) ?? [],
+        input.knownMacros,
+      )
+    : [];
   const pool =
     similar.rows.length > 0
       ? similar.rows
@@ -1825,11 +2719,13 @@ export function findProfileMatch(
         ? brandTaxonomyRows
         : brandSemanticRows.length > 0
           ? brandSemanticRows
-          : semanticCategoryRows.length > 0
-            ? semanticCategoryRows
-            : productFamily
-              ? (knowledge.byFamily.get(productFamily) ?? [])
-              : [];
+          : recognizedFamily
+            ? recognizedFamilyRows
+            : semanticCategoryRows.length > 0
+              ? semanticCategoryRows
+              : productFamily
+                ? (knowledge.byFamily.get(productFamily) ?? [])
+                : [];
   const candidatesBeforeFilter = pool.map((row) => row.ingredient_id);
 
   const scored = pool
@@ -1885,6 +2781,7 @@ export function findProfileMatch(
     return productFamily || pool.length > 0
       ? {
           ...none,
+          family: productFamily,
           rejected: 'wszyscy kandydaci niezgodni semantycznie/rodzinowo lub bez profilu',
           candidatesBeforeFilter,
           rejectedCandidates: rejectedCandidates(),
