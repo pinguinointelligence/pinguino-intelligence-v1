@@ -351,16 +351,31 @@ export function validateIntimportProductProfileProposal(
     toppingBehaviorMatch.basis !== 'none'
       ? toppingBehaviorMatch
       : null;
+  /*
+   * A behavior reference lends taxonomy/permissions, never numeric composition. Reusing
+   * `resolved.profileMatch` here accidentally limited that lookup to `wholeProfileKnowledge`
+   * (Verified + Engine-approved rows). A Rescue-first product can have a valid, hard-compatible
+   * semantic cohort in canonical knowledge while that narrower whole-profile cohort is empty.
+   * Re-run the existing matcher against the same full canonical knowledge Rescue received; the
+   * server-owned ProductBehavior binding still makes the final permission decision below.
+   */
+  const semanticBehaviorCandidate =
+    !acceptedMatch &&
+    !acceptedBehaviorMatch &&
+    resolved.engineReady &&
+    supportsSemanticBehaviorReference(recognition)
+      ? findProfileMatch({ ...input.matchInput, semantic: recognition }, knowledge)
+      : null;
   const semanticBehaviorMatch =
     !acceptedMatch &&
     !acceptedBehaviorMatch &&
     resolved.engineReady &&
     supportsSemanticBehaviorReference(recognition) &&
-    resolved.profileMatch &&
-    resolved.profileMatch.rejected === null &&
-    resolved.profileMatch.basis !== 'none' &&
-    resolved.profileMatch.rows.length > 0
-      ? resolved.profileMatch
+    semanticBehaviorCandidate &&
+    semanticBehaviorCandidate.rejected === null &&
+    semanticBehaviorCandidate.basis !== 'none' &&
+    semanticBehaviorCandidate.rows.length > 0
+      ? semanticBehaviorCandidate
       : null;
   const referenceMatch = acceptedMatch ?? acceptedBehaviorMatch ?? semanticBehaviorMatch;
   // Preserve the accepted TOPPING reference contract for existing products.
