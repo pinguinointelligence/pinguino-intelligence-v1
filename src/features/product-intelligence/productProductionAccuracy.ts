@@ -15,6 +15,7 @@ import type {
 } from './productEvidenceConfidence.ts';
 import {
   WORKING_NUMERIC_FIELDS,
+  type CohortEvidence,
   type FieldBasis,
   type FieldTruthState,
   type ProductFieldTruthMap,
@@ -25,7 +26,7 @@ import type {
   ProductIntendedUsageRole,
   ProductSemanticClassification,
 } from './productRecognition.ts';
-import type { SweetnessPath } from './productWorkingValues.ts';
+import { estimatedFieldIsEngineSafe, type SweetnessPath } from './productWorkingValues.ts';
 import { PROFILE_MATCH_FLOOR } from './mapperValueInference.ts';
 
 export const PRODUCT_PRODUCTION_ACCURACY_VERSION = 'PRODUCT_PRODUCTION_ACCURACY_V2' as const;
@@ -49,6 +50,9 @@ export interface ProductionAccuracyFieldTruth {
   value: number;
   state: FieldTruthState;
   basis: FieldBasis;
+  confidence?: number;
+  algorithmVersion?: string | null;
+  cohort?: CohortEvidence | null;
 }
 
 export interface ProductProductionAccuracyBehavior {
@@ -70,8 +74,8 @@ export interface ProductProductionAccuracyInput {
   evidence: ProductEvidenceInput;
   evidenceProvenance?: Partial<Record<ProductEvidenceField, ProductionAccuracyEvidenceProvenance>>;
   fieldTruth: Partial<Record<WorkingNumericField, ProductionAccuracyFieldTruth>>;
-  /** Server-selected compatible whole-profile donor confidence. Per-field
-   * cohort estimates do not earn the 80% credit without this >=0.85 gate. */
+  /** Server-selected compatible whole-profile donor confidence. Retained for
+   * legacy field-truth payloads; current estimates carry their own confidence. */
   mapperWholeProfileSimilarity: number | null;
   recognition: ProductSemanticClassification | null;
   engineUsable: boolean;
@@ -92,7 +96,11 @@ export interface ProductionAccuracyFieldResult extends ProductionAccuracyCompone
 }
 
 export type ProductProductionRoleReadiness =
-  'BASE_READY' | 'TOPPING_READY' | 'REVIEW' | 'BLOCKED' | 'CONFLICT';
+  | 'BASE_READY'
+  | 'TOPPING_READY'
+  | 'REVIEW'
+  | 'BLOCKED'
+  | 'CONFLICT';
 
 export interface ProductMetadataCompletenessAssessment {
   /** Internal catalogue/commercial completeness. It never affects Product
@@ -236,11 +244,21 @@ function truthCredit(input: ProductProductionAccuracyInput, field: WorkingNumeri
   if (fieldHasConflict(input, field)) return 0;
   const truth = input.fieldTruth[field];
   if (!truth || !Number.isFinite(truth.value) || truth.state === 'UNKNOWN') return 0;
-  return truth.state === 'ESTIMATED'
-    ? (input.mapperWholeProfileSimilarity ?? 0) >= PROFILE_MATCH_FLOOR
+  if (truth.state !== 'ESTIMATED') return 1;
+  if (typeof truth.confidence === 'number' && Number.isFinite(truth.confidence)) {
+    return estimatedFieldIsEngineSafe({
+      field,
+      confidence: truth.confidence,
+      algorithmVersion: truth.algorithmVersion,
+      cohort: truth.cohort,
+      mapperWholeProfileSimilarity: input.mapperWholeProfileSimilarity,
+    })
       ? 0.8
-      : 0
-    : 1;
+      : 0;
+  }
+  // Historical persisted snapshots predate field-level confidence. Preserve
+  // their existing whole-profile rule rather than silently reclassifying them.
+  return (input.mapperWholeProfileSimilarity ?? 0) >= PROFILE_MATCH_FLOOR ? 0.8 : 0;
 }
 
 const component = (earnedPoints: number, availablePoints: number): ProductionAccuracyComponent => ({
