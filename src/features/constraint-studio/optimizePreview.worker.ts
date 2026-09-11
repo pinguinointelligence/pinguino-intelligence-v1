@@ -1,4 +1,9 @@
 import {
+  diagnoseLockConflict,
+  type LockConflictDiagnosis,
+  type LockConflictRequest,
+} from './lockRelaxation';
+import {
   computeOptimizePreviewRescueAdvice,
   computeOptimizePreviewResult,
   optimizePreviewNeedsRescueAssessment,
@@ -11,7 +16,15 @@ interface WorkerRequest {
   request: OptimizePreviewComputationRequest;
 }
 
+/** Lock-conflict diagnostic: repeated canonical Previews off the UI thread. */
+interface LockConflictWorkerRequest {
+  id: string;
+  kind: 'lock_conflict';
+  request: LockConflictRequest;
+}
+
 type WorkerResponse =
+  | { id: string; ok: true; stage: 'lock_conflict'; diagnosis: LockConflictDiagnosis }
   | {
       id: string;
       ok: true;
@@ -23,14 +36,29 @@ type WorkerResponse =
   | { id: string; ok: false; message: string };
 
 interface OptimizeWorkerScope {
-  onmessage: ((event: MessageEvent<WorkerRequest>) => void) | null;
+  onmessage: ((event: MessageEvent<WorkerRequest | LockConflictWorkerRequest>) => void) | null;
   postMessage: (response: WorkerResponse) => void;
 }
 
 const scope = self as unknown as OptimizeWorkerScope;
 
 scope.onmessage = (event) => {
-  const { id, request } = event.data;
+  const data = event.data;
+  if ('kind' in data) {
+    try {
+      scope.postMessage({
+        id: data.id,
+        ok: true,
+        stage: 'lock_conflict',
+        diagnosis: diagnoseLockConflict(data.request),
+      });
+    } catch {
+      // Same sanitized boundary as the canonical result below.
+      scope.postMessage({ id: data.id, ok: false, message: 'Przeliczanie nie powiodło się.' });
+    }
+    return;
+  }
+  const { id, request } = data;
   let result: OptimizePreviewComputation['result'];
   try {
     result = computeOptimizePreviewResult(request);
