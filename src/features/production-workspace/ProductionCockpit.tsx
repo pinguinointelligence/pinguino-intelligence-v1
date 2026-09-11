@@ -449,14 +449,18 @@ export function ProductionCockpit({
             className="pro-focus-ring mt-3 min-h-11 w-full rounded-[9px] bg-[var(--g-graphite)] px-4 py-2 text-xs font-semibold text-white shadow-none disabled:cursor-wait disabled:opacity-45 lg:min-h-[42px] lg:text-[11px]"
             data-testid="start-production-session"
           >
+            {/* OWNER §21 (2026-09-11) — the FIRST start of production says ROBIMY,
+                and „Zaczynamy…" while it starts. Copy only: the two gates below
+                and the start logic are untouched. A finished run is a different
+                question and answers POWTÓRZ further down. */}
             {production.sessionStarting
-              ? 'Rozpoczynamy partię…'
+              ? 'Zaczynamy…'
               : production.degassingRequired && !production.degassingAcknowledged
                 ? 'Najpierw potwierdź odgazowanie'
                 : (production.heatInformation?.length ?? 0) > 0 &&
                     !production.heatInformationAcknowledged
                   ? 'Najpierw potwierdź informację'
-                  : 'Rozpocznij partię'}
+                  : 'ROBIMY'}
           </button>
           {production.sessionStartError ? (
             <p className="mt-2 text-xs leading-relaxed text-status-error" role="alert">

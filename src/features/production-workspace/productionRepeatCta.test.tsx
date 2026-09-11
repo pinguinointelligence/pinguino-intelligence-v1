@@ -142,8 +142,10 @@ describe('§21 — „Chcesz powtórzyć?" / POWTÓRZ', () => {
     expect(html).not.toContain('>POWTÓRZ<');
   });
 
-  it('leaves the FIRST run’s start control alone — that is not a repeat', () => {
-    const html = render({
+  /* OWNER §21 (2026-09-11) — the FIRST start is a start, not a repeat: it says
+     ROBIMY, and „Zaczynamy…" while it starts. Only the copy moved. */
+  const firstRun = (over: Record<string, unknown> = {}) =>
+    render({
       session: null,
       progress: null,
       prerequisite: null,
@@ -151,8 +153,47 @@ describe('§21 — „Chcesz powtórzyć?" / POWTÓRZ', () => {
       plannedInput: input,
       source: { recipeVersionId: 'version' },
       startNewSession: vi.fn(),
+      ...over,
     } as unknown as ProductionWorkspaceView);
-    expect(html).toContain('Rozpocznij partię');
+  const startButton = (html: string) => {
+    const at = html.indexOf('data-testid="start-production-session"');
+    const rest = html.slice(at);
+    return rest.slice(rest.indexOf('>') + 1, rest.indexOf('</button>'));
+  };
+
+  it('the FIRST run says ROBIMY — a start, never POWTÓRZ', () => {
+    const html = firstRun();
+    expect(startButton(html)).toBe('ROBIMY');
+    expect(html).not.toContain('Rozpocznij partię');
     expect(html).not.toContain('POWTÓRZ');
+    expect(html).not.toContain('Chcesz powtórzyć?');
+  });
+
+  it('while it starts it says „Zaczynamy…", without the word „partia"', () => {
+    const html = firstRun({ sessionStarting: true });
+    expect(startButton(html)).toBe('Zaczynamy…');
+    expect(html).not.toContain('Rozpoczynamy partię…');
+  });
+
+  it('the two gates are unchanged and still outrank ROBIMY', () => {
+    expect(
+      startButton(
+        firstRun({
+          degassingRequired: true,
+          degassingAcknowledged: false,
+          carbonatedProducts: [{ productId: 'PR-ING-000001', name: 'Cola Zero', grams: 350 }],
+          acknowledgeDegassing: vi.fn(),
+        }),
+      ),
+    ).toBe('Najpierw potwierdź odgazowanie');
+    expect(
+      startButton(
+        firstRun({
+          heatInformation: [{ code: 'HEAT_TREATMENT_INDICATED', productName: 'TARA GUM' }],
+          heatInformationAcknowledged: false,
+          acknowledgeHeatInformation: vi.fn(),
+        }),
+      ),
+    ).toBe('Najpierw potwierdź informację');
   });
 });
