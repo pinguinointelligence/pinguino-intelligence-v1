@@ -80,9 +80,15 @@ describe('C-APP-08 uses the existing email system, not a new one', () => {
     expect(areas.length).toBe(enqueueSites);
     for (const area of areas) {
       // email_jobs_metadata_area_event_check refuses anything else, silently.
-      expect(['PARTNER', 'MACHINE', 'MOBILE', 'TRAILER', 'FRANCHISE', 'REFERRAL', 'SHOP']).toContain(
-        area,
-      );
+      expect([
+        'PARTNER',
+        'MACHINE',
+        'MOBILE',
+        'TRAILER',
+        'FRANCHISE',
+        'REFERRAL',
+        'SHOP',
+      ]).toContain(area);
     }
     expect([...migration.matchAll(/'event',/g)].length).toBe(enqueueSites);
     // environment is NOT NULL; omitting it is the other silent-refusal trap.
@@ -99,7 +105,9 @@ describe('C-APP-08 behaves correctly on replay and on repeat transitions', () =>
 
   it('the key carries the status, so a second real request still sends', () => {
     // request info → resubmit → request info again is a DIFFERENT transition.
-    expect(migration).toMatch(/'partner-application:' \|\| new\.id::text \|\| ':' \|\| new\.status/);
+    expect(migration).toMatch(
+      /'partner-application:' \|\| new\.id::text \|\| ':' \|\| new\.status/,
+    );
   });
 
   it('does nothing when an update did not change the status', () => {
@@ -126,11 +134,13 @@ describe('C-APP-08 cannot damage the decision it reports', () => {
 describe('C-APP-08 is reversible', () => {
   it('the rollback drops both the trigger and its function', () => {
     expect(rollback).toContain('drop trigger if exists partner_application_lifecycle_email');
-    expect(rollback).toContain('drop function if exists public.gellatti_partner_application_email_v1');
+    expect(rollback).toContain(
+      'drop function if exists public.gellatti_partner_application_email_v1',
+    );
   });
 
   it('the rollback does NOT reintroduce the answer-dropping bug', () => {
-    // Reverting this migration must not silently undo 20260910160000.
+    // Reverting this migration must not silently undo 20260910044111.
     for (const key of ['audienceSize', 'termsAccepted', 'consent']) {
       expect(rollback, `${key} must survive the rollback`).toContain(key);
     }

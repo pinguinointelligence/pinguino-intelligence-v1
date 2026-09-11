@@ -179,7 +179,7 @@ create trigger partner_application_lifecycle_email
 
 -- The submit writer must record the origin, because the trigger has no other
 -- way to know which app produced the application. Same allow-list shape as
--- 20260910160000; only the one key is added.
+-- 20260910044111; only the one key is added.
 create or replace function public.gellatti_submit_partner_application_v1(p_application jsonb)
  returns jsonb
  language plpgsql

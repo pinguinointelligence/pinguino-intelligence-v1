@@ -12,12 +12,12 @@
 -- WHAT IT DOES
 --   1. drops the trigger, so no further application transition enqueues mail
 --   2. drops the trigger function
---   3. restores gellatti_submit_partner_application_v1 to its 20260910160000
+--   3. restores gellatti_submit_partner_application_v1 to its 20260910044111
 --      form — i.e. WITHOUT the `origin` key, and WITH the note/consent/
 --      audienceSize fixes retained
 --
 -- WHAT IT DOES NOT DO
---   It does not restore the answer-dropping behaviour that 20260910160000
+--   It does not restore the answer-dropping behaviour that 20260910044111
 --   fixed. Rolling back this migration must not silently reintroduce a
 --   different, older bug.
 
@@ -68,6 +68,9 @@ begin
     'audienceSize',  nullif(btrim(coalesce(p_application->>'audienceSize', '')), ''),
     'country',       nullif(btrim(coalesce(p_application->>'country', '')), ''),
     'languages',     nullif(btrim(coalesce(p_application->>'languages', '')), ''),
+    -- The form's one free-text answer arrives as `note`; `description` is this
+    -- writer's canonical name for it. Either spelling is accepted so the answer
+    -- cannot be lost by which client sent it.
     'description',   nullif(btrim(coalesce(p_application->>'description',
                                            p_application->>'note', '')), ''),
     'promotionPlan', nullif(btrim(coalesce(p_application->>'promotionPlan', '')), ''),
