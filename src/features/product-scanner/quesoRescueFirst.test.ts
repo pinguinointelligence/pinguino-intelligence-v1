@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { customerProductProfileProposal } from '../../../supabase/functions/_shared/customerProductProfile';
 import {
+  finalizeProductProductionAccuracy,
   isBindableIntimportMapperTarget,
   isIntimportMapperRescueDonor,
   validateIntimportProductProfileProposal,
@@ -8,7 +9,12 @@ import {
 } from '../../../supabase/functions/_shared/intimportWholeProfileAuthority';
 import { scanResultFromLookupFacts } from '../../../supabase/functions/_shared/productScanner';
 import { loadMapperKnowledgeRows } from '../product-intelligence/__dryrun__/mapperFixture';
-import { validateProductBehaviorAuthority } from '../product-intelligence/productBehaviorAuthority';
+import {
+  supportsSemanticBehaviorReference,
+  validateProductBehaviorAuthority,
+  type MapperProductBehaviorAuthorityRow,
+} from '../product-intelligence/productBehaviorAuthority';
+import { scanAssessmentSnapshot } from '../../../supabase/functions/_shared/scanAssessment';
 import { classifyProductSemantics } from '../product-intelligence/productRecognition';
 import {
   buildMapperKnowledge,
@@ -125,7 +131,7 @@ describe('Hacendado Queso 8480000510716 rescue-first regression', () => {
     expect(classifyRemainingGaps(blockers).photoCannotSolve).toEqual(blockers);
   });
 
-  it('SCN-QUESO-02 runs the exact persisted session through the corrected Rescue authority once', () => {
+  it('SCN-QUESO-02 runs the exact persisted session through the corrected Rescue authority once', async () => {
     const scan = scanResultFromLookupFacts([
       fact('productName', 'Queso fresco batido desnatado 0% MG Hacendado'),
       fact('brand', 'Hacendado'),
@@ -159,6 +165,7 @@ describe('Hacendado Queso 8480000510716 rescue-first regression', () => {
       compatibleMapperCategories: ['dairy'],
       isTechnicalProduct: false,
       isDosageDependent: false,
+      evidenceRefs: [...deterministic.evidenceRefs, 'customerFamily'],
       confidence: 0.8,
       modelRequired: false,
       modelReasonCodes: [],
@@ -354,7 +361,63 @@ describe('Hacendado Queso 8480000510716 rescue-first regression', () => {
     expect(trusted?.criticalPhysicsBlockers).not.toContain(
       'UNRESOLVED_SWEETENING_FREEZING_PATH',
     );
+    expect(supportsSemanticBehaviorReference(recognition)).toBe(true);
+    expect(trusted?.profileReferenceMapperIngredientId).not.toBeNull();
+    expect(trusted?.productAccuracyAssessment.criticalBlockers).not.toContain(
+      'family_and_form_evidence_missing',
+    );
     if (!trusted) throw new Error('exact Hacendado profile was not resolved');
+    const selectedReference = trusted.profileReferenceMapperIngredientId;
+    if (!selectedReference) throw new Error('exact Hacendado semantic reference was not selected');
+    const behaviorRow: MapperProductBehaviorAuthorityRow = {
+      id: '00000000-0000-4000-8000-000000000716',
+      mapper_ingredient_id: selectedReference,
+      mapper_dataset_version: 'v1.0',
+      taxonomy_version_id: 'pinguino-product-taxonomy-v1',
+      family_id: 'dairy',
+      subfamily_id: 'fresh_cheese',
+      form_id: 'liquid',
+      main_eligibility: 'STANDARD_ONLY',
+      vegan_eligibility: 'false',
+      protein_behavior: 'dairy_protein',
+      approved_liquid_dairy_carrier: true,
+      profile_permissions: { BASE_RECIPE: true, PRODUCTION: true, SAVE: true },
+      process_behavior: { decision: 'COLD_OR_HEAT' },
+      classifier_version: 'mapper-product-classifier-v2:test',
+      behavior_role: 'STANDARD_ONLY',
+      main_policy_status: 'NOT_APPLICABLE',
+      profile_applicability: { all_existing_profiles: 'standard_where_mapper_approved' },
+      classification_reason_codes: [],
+      is_current: true,
+    };
+    const behavior = validateProductBehaviorAuthority({
+      productProfile: trusted,
+      behaviorRows: [behaviorRow],
+    });
+    const finalized = finalizeProductProductionAccuracy(trusted, behavior);
+    const assessment = await scanAssessmentSnapshot({
+      sessionId: SESSION,
+      barcode: EAN,
+      result: scan as unknown as Record<string, unknown>,
+      confirmedFields: [],
+      recognition: recognition as unknown as Record<string, unknown>,
+      recognitionCarriedForward: supportsSemanticBehaviorReference(recognition),
+      behavior: behavior as unknown as Record<string, unknown>,
+      profile: finalized as unknown as Record<string, unknown>,
+    });
+    expect(behavior).toMatchObject({
+      classificationOutcome: 'classified',
+      baseRecipeEligible: true,
+      familyId: 'dairy',
+      formId: 'liquid',
+    });
+    expect(finalized.productAccuracyAssessment).toMatchObject({
+      roleReadiness: 'BASE_READY',
+      criticalBlockers: [],
+      gellattiReadiness: { ready: true },
+    });
+    expect(assessment.classificationCarriedForward).toBe(true);
+    expect(assessment.criticalGaps).not.toContain('family_and_form_evidence_missing');
     const engineItem: EffectiveRecipeItem = {
       id: 'ean-8480000510716',
       ingredient: {

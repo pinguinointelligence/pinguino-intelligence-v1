@@ -124,11 +124,24 @@ function semanticTaxonomyContext(recognition: ProductSemanticClassification | nu
 export function supportsSemanticBehaviorReference(
   recognition: ProductSemanticClassification | null | undefined,
 ): boolean {
+  /*
+   * Customer family confirmation is an evidence authority, not a similarity score. Scanner only
+   * creates this source through `applyCustomerProductFamily`, after a valid product identity has
+   * reached Finalize, and stamps the exact answered dimension in `evidenceRefs`. Requiring the
+   * separate 0.85 model-confidence route as well made the accepted 0.80 customer classification
+   * disappear at the ProductBehavior handoff even though family, form and role were all resolved.
+   *
+   * The numerical 0.85 route remains unchanged. This is the existing explicit-evidence route, and
+   * unresolved/ambiguous classifications still fail the structural gates below.
+   */
+  const explicitlyConfirmedFamily =
+    recognition?.classificationSource === 'CUSTOMER_CONFIRMED' &&
+    recognition.evidenceRefs.includes('customerFamily');
   return (
     recognition !== null &&
     recognition !== undefined &&
     recognition.modelRequired === false &&
-    recognition.confidence >= 0.85 &&
+    (recognition.confidence >= 0.85 || explicitlyConfirmedFamily) &&
     recognition.ingredientFamily !== 'unknown' &&
     recognition.physicalForm !== 'UNKNOWN' &&
     recognition.intendedUsageRole !== 'NEITHER_REVIEW'

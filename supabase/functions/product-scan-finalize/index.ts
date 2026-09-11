@@ -25,6 +25,7 @@ import {
   type IntimportMapperAuthorityRow,
 } from '../_shared/intimportWholeProfileAuthority.ts';
 import {
+  supportsSemanticBehaviorReference,
   validateProductBehaviorAuthority,
   type MapperProductBehaviorAuthorityRow,
 } from '../../../src/features/product-intelligence/productBehaviorAuthority.ts';
@@ -952,7 +953,11 @@ Deno.serve(async (request) => {
     result: corrections.result,
     confirmedFields: confirmedEvidenceFields,
     recognition: recognition as unknown as Record<string, unknown>,
-    recognitionCarriedForward: carriedRecognition.carriedForward,
+    // This public flag answers whether accepted semantic evidence reached the working authority,
+    // not only whether it had to be reused from an earlier HTTP request. Fresh, sufficiently
+    // supported Recognition is carried forward too; unresolved/ambiguous evidence remains false.
+    recognitionCarriedForward:
+      carriedRecognition.carriedForward || supportsSemanticBehaviorReference(recognition),
     behavior: behavior as unknown as Record<string, unknown>,
     profile: profile as unknown as Record<string, unknown>,
   });
