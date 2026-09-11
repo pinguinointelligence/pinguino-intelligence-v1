@@ -2,11 +2,20 @@
  * §19.1 Preview card — the old→new diff of a staged proposal. The section owns
  * store wiring; local state only reveals presentation details. Apply is explicit;
  * cancel restores nothing because the preview never touched the recipe (§19.2).
+ *
+ * INTERACTIVE RECALCULATION PREVIEW (owner 2026-09-11): with `interactive`, each
+ * proposed amount is the SAME grams control + padlock as the recipe row. Edits
+ * are provisional local state of this card — the recipe is not written — and
+ * the moment one exists the action becomes „Przelicz" (recalculate with the
+ * edits) instead of „Zastosuj zmiany". Setting a value back to the proposal
+ * withdraws the edit. An edited amount is never silently locked.
  */
 import { useState } from 'react';
 import { cn } from '@/lib/cn';
 import { NonProductionBadge } from '@/features/design-review/NonProductionMarker';
+import { DirectNumberControl } from '@/features/ingredient-builder/DirectNumberControl';
 import { ScoreRing } from '@/features/pro-workbench/ScoreRing';
+import { mergePreviewInstructions, type PreviewLineInstruction } from '../previewInstructions';
 import {
   constraintStudioCopy as copy,
   formatGramsDeltaPl,
@@ -57,10 +66,32 @@ function changesLabel(count: number): string {
   return `${count} zmian`;
 }
 
-function DiffRow({ line }: { line: PreviewLineDiff }) {
+/** Entitlement masking (Demo): every gram value renders as the mask. */
+export interface GramsMask {
+  /** Text in place of a formatted amount, e.g. „••• g". */
+  text: string;
+  /** Value segment of a grams control, without the unit. */
+  controlValue: string;
+  /** What assistive technology hears instead of a number. */
+  label: string;
+  onInteract: () => void;
+}
+
+/** Interactive-preview wiring. The recipe itself is never written from here. */
+export interface InteractivePreviewControls {
+  /** The provisional instructions this preview was solved with. */
+  instructions: readonly PreviewLineInstruction[];
+  /** Lines whose amount/padlock the customer may change inside the preview. */
+  editableLineIds: ReadonlySet<string>;
+  /** „Przelicz" inside the preview, with every instruction merged. */
+  onRecalculate: (instructions: PreviewLineInstruction[]) => void;
+}
+
+function DiffRow({ line, mask }: { line: PreviewLineDiff; mask?: GramsMask | undefined }) {
   const note = lineNote(line);
+  const grams = (value: number) => (mask ? mask.text : formatGramsPl(value));
   const delta =
-    line.kind === 'changed' && line.beforeGrams !== null && line.afterGrams !== null
+    !mask && line.kind === 'changed' && line.beforeGrams !== null && line.afterGrams !== null
       ? formatGramsDeltaPl(line.afterGrams - line.beforeGrams)
       : null;
 
@@ -69,17 +100,17 @@ function DiffRow({ line }: { line: PreviewLineDiff }) {
       <span className="min-w-0 truncate text-sm font-medium text-black">{line.name}</span>
       <span className="flex shrink-0 flex-wrap items-baseline justify-end gap-x-2 gap-y-0.5 font-mono text-sm tabular-nums">
         {line.kind === 'unchanged' ? (
-          <span className="text-black/65">{formatGramsPl(line.beforeGrams ?? 0)}</span>
+          <span className="text-black/65">{grams(line.beforeGrams ?? 0)}</span>
         ) : (
           <>
             <span className="text-black/65" data-testid="preview-from-grams">
-              {line.beforeGrams === null ? '—' : formatGramsPl(line.beforeGrams)}
+              {line.beforeGrams === null ? '—' : grams(line.beforeGrams)}
             </span>
             <span aria-hidden className="text-black/65">
               →
             </span>
             <span className="font-semibold text-black">
-              {line.afterGrams === null ? '—' : formatGramsPl(line.afterGrams)}
+              {line.afterGrams === null ? '—' : grams(line.afterGrams)}
             </span>
           </>
         )}
@@ -110,6 +141,91 @@ function DiffRow({ line }: { line: PreviewLineDiff }) {
   );
 }
 
+/**
+ * The before value, then the SAME grams control + padlock the recipe row uses.
+ * The value on the right is the proposal until the customer changes it.
+ */
+function EditableDiffRow({
+  line,
+  grams,
+  locked,
+  edited,
+  mask,
+  onChange,
+  onToggleLock,
+}: {
+  line: PreviewLineDiff;
+  grams: number;
+  locked: boolean;
+  edited: boolean;
+  mask?: GramsMask | undefined;
+  onChange: (grams: number) => void;
+  onToggleLock: () => void;
+}) {
+  const note = edited ? copy.interactive.editedNote : lineNote(line);
+  return (
+    <div
+      className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 py-2.5"
+      data-testid={`preview-row-${line.lineId}`}
+      data-edited={edited ? 'true' : 'false'}
+    >
+      <span className="min-w-0 flex-1 basis-40 truncate text-sm font-medium text-black">
+        {line.name}
+      </span>
+      <span className="flex shrink-0 flex-wrap items-center justify-end gap-x-2 gap-y-1">
+        <span
+          className="font-mono text-sm tabular-nums text-black/65"
+          data-testid="preview-from-grams"
+        >
+          {line.beforeGrams === null ? '—' : mask ? mask.text : formatGramsPl(line.beforeGrams)}
+        </span>
+        <span aria-hidden className="text-black/65">
+          →
+        </span>
+        <DirectNumberControl
+          value={grams}
+          step={1}
+          // A line the proposal removed starts at 0 g; any other amount is a dose.
+          min={line.afterGrams === null ? 0 : 1}
+          decimals={0}
+          suffix="g"
+          ariaLabel={copy.interactive.amountAria(line.name)}
+          testId={`preview-grams-control-${line.lineId}`}
+          widthPreset="grams"
+          density="responsive"
+          onChange={onChange}
+          lockSegment={{
+            pressed: locked,
+            disabled: grams < 1,
+            ariaLabel: copy.interactive.lockAria(line.name, locked),
+            title: copy.interactive.lockTitle(locked),
+            suffix: 'g',
+            onToggle: onToggleLock,
+            testId: `preview-lock-${line.lineId}`,
+          }}
+          {...(mask
+            ? {
+                maskedValue: mask.controlValue,
+                maskedLabel: mask.label,
+                onMaskedInteract: mask.onInteract,
+              }
+            : {})}
+        />
+        {note ? (
+          <span
+            className={cn(
+              'basis-full text-right font-sans text-[0.625rem] tracking-[0.04em] uppercase',
+              edited || locked ? 'text-status-risky' : 'text-black/65',
+            )}
+          >
+            {note}
+          </span>
+        ) : null}
+      </span>
+    </div>
+  );
+}
+
 export function ConstraintPreviewCard({
   preview,
   onApply,
@@ -117,6 +233,8 @@ export function ConstraintPreviewCard({
   showTechnicalDetails = false,
   showCloseControl = false,
   applyPending = false,
+  interactive,
+  gramsMask,
 }: {
   preview: ConstraintPreview;
   onApply: () => void;
@@ -127,8 +245,48 @@ export function ConstraintPreviewCard({
   showCloseControl?: boolean;
   /** Canonical Apply revalidation is running outside the UI event loop. */
   applyPending?: boolean;
+  /** Owner 2026-09-11: editable proposal amounts + recalculation in place. */
+  interactive?: InteractivePreviewControls | undefined;
+  /** Demo entitlement: grams stay hidden everywhere in the card. */
+  gramsMask?: GramsMask | undefined;
 }) {
   const [showUnchanged, setShowUnchanged] = useState(false);
+  // Provisional edits belong to the proposal they were made on. A new staged
+  // proposal (after „Przelicz") starts clean — React's documented pattern for
+  // resetting state when a prop changes, without an effect's stale frame.
+  const [edits, setEdits] = useState<PreviewLineInstruction[]>([]);
+  const [editsFor, setEditsFor] = useState(preview);
+  if (editsFor !== preview) {
+    setEditsFor(preview);
+    setEdits([]);
+  }
+  const editById = new Map(edits.map((edit) => [edit.lineId, edit]));
+  const editableLine = (line: PreviewLineDiff): boolean =>
+    interactive !== undefined &&
+    line.kind !== 'added' &&
+    interactive.editableLineIds.has(line.lineId);
+  const shownState = (line: PreviewLineDiff) => {
+    const edit = editById.get(line.lineId);
+    return {
+      grams: edit?.grams ?? line.afterGrams ?? 0,
+      locked: edit?.locked ?? line.locked,
+      edited: edit !== undefined,
+    };
+  };
+  const updateEdit = (line: PreviewLineDiff, next: { grams: number; locked: boolean }) => {
+    setEdits((current) => {
+      const rest = current.filter((edit) => edit.lineId !== line.lineId);
+      const grams = Math.round(next.grams);
+      const backToProposal = grams === (line.afterGrams ?? 0) && next.locked === line.locked;
+      // Back on the proposal, or 0 g on a line the proposal removed: no edit.
+      if (backToProposal || grams < 1) return rest;
+      return [...rest, { lineId: line.lineId, grams, locked: next.locked }];
+    });
+  };
+  const pendingInstructions =
+    interactive !== undefined && edits.length > 0
+      ? mergePreviewInstructions(interactive.instructions, edits)
+      : null;
   const beforeBatch = preview.lines.reduce((sum, line) => sum + (line.beforeGrams ?? 0), 0);
   // Applicability follows the proposal payload, not the presentation diff.
   // A stale/incomplete diff must never make an off-target payload look safe.
@@ -141,7 +299,31 @@ export function ConstraintPreviewCard({
   const mainLines = preview.lines.filter((line) => !isZeroUnchanged(line));
   const zeroLines = preview.lines.filter(isZeroUnchanged);
   const changedLines = mainLines.filter((line) => line.kind !== 'unchanged');
-  const unchangedLines = mainLines.filter((line) => line.kind === 'unchanged');
+  // A line the customer edited stays in view even when the proposal left it alone.
+  const visibleLines = mainLines.filter(
+    (line) => line.kind !== 'unchanged' || editById.has(line.lineId),
+  );
+  const unchangedLines = mainLines.filter(
+    (line) => line.kind === 'unchanged' && !editById.has(line.lineId),
+  );
+  const renderLine = (line: PreviewLineDiff) => {
+    if (!editableLine(line)) return <DiffRow key={line.lineId} line={line} mask={gramsMask} />;
+    const shown = shownState(line);
+    return (
+      <EditableDiffRow
+        key={line.lineId}
+        line={line}
+        grams={shown.grams}
+        locked={shown.locked}
+        edited={shown.edited}
+        mask={gramsMask}
+        onChange={(grams) => updateEdit(line, { grams, locked: shown.locked })}
+        onToggleLock={() =>
+          updateEdit(line, { grams: Math.max(1, shown.grams), locked: !shown.locked })
+        }
+      />
+    );
+  };
   const batchChanged = Math.abs(afterBatch - beforeBatch) > 0.05;
   const targetBatch = preview.proposedInput.target_batch_grams;
   // Poured actuals put the recipe in production reality — the planned-batch
@@ -186,15 +368,17 @@ export function ConstraintPreviewCard({
   ] as const;
   const score = preview.directionAssessment?.active ? preview.directionAssessment.score : null;
   const requiresSourceValidation = preview.formulation?.templateStatus === 'reference_derived';
-  const summaryMessage = diagnostic
-    ? 'Ta propozycja wymaga ponownej walidacji.'
-    : requiresSourceValidation
-      ? 'Dane profilu wymagają ponownej walidacji.'
-      : preview.directionAssessment?.reached
-        ? 'Receptura spełnia wybrany profil.'
-        : changedLines.length > 0
-          ? 'Sprawdź korektę i zastosuj ją, jeśli Ci odpowiada.'
-          : 'Receptura nie wymaga zmian.';
+  const summaryMessage = pendingInstructions
+    ? copy.interactive.pendingEdits
+    : diagnostic
+      ? 'Ta propozycja wymaga ponownej walidacji.'
+      : requiresSourceValidation
+        ? 'Dane profilu wymagają ponownej walidacji.'
+        : preview.directionAssessment?.reached
+          ? 'Receptura spełnia wybrany profil.'
+          : changedLines.length > 0
+            ? 'Sprawdź korektę i zastosuj ją, jeśli Ci odpowiada.'
+            : 'Receptura nie wymaga zmian.';
   const mainCount = preview.proposedInput.items.filter((item) => item.lock_type === 'main').length;
 
   return (
@@ -304,16 +488,12 @@ export function ConstraintPreviewCard({
           ) : null}
         </div>
         <div className="mt-2 divide-y divide-black/10 overflow-hidden rounded-[12px] border border-black/10 bg-white px-3">
-          {changedLines.length > 0 ? (
-            changedLines.map((line) => <DiffRow key={line.lineId} line={line} />)
+          {visibleLines.length > 0 ? (
+            visibleLines.map(renderLine)
           ) : (
             <p className="py-3 text-sm text-black/65">Brak zmian w gramaturach składników.</p>
           )}
-          {showUnchanged
-            ? [...unchangedLines, ...zeroLines].map((line) => (
-                <DiffRow key={line.lineId} line={line} />
-              ))
-            : null}
+          {showUnchanged ? [...unchangedLines, ...zeroLines].map(renderLine) : null}
         </div>
       </section>
 
@@ -772,7 +952,18 @@ export function ConstraintPreviewCard({
       ) : null}
 
       <div className="sticky bottom-0 -mx-3 mt-4 flex flex-col-reverse gap-2 border-t border-black/10 bg-white/95 px-3 pt-3 pb-1 backdrop-blur sm:-mx-4 sm:flex-row sm:px-4">
-        {diagnostic ? (
+        {pendingInstructions && interactive ? (
+          // The proposal on screen is no longer what would apply: recalculate
+          // with the customer's edits first. Nothing is written to the recipe.
+          <button
+            type="button"
+            onClick={() => interactive.onRecalculate(pendingInstructions)}
+            data-testid="preview-recalculate"
+            className="inline-flex min-h-11 flex-1 items-center justify-center rounded-[10px] bg-black px-4 py-2.5 text-sm font-semibold text-white shadow-pro-sm transition-transform hover:-translate-y-px hover:bg-charcoal focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-soft"
+          >
+            {copy.interactive.recalculate}
+          </button>
+        ) : diagnostic ? (
           <button
             type="button"
             disabled

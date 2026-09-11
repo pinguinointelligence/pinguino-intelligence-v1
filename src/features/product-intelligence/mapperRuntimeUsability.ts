@@ -1,4 +1,5 @@
 import type { IngredientRow, VerificationStatus } from '@/data/ingredients/ingredientRow';
+import { isMapperHomeVerifiedStatus } from '@/data/ingredients/mapperVerificationStatus';
 
 /** Provenance is deliberately presentation-only. It must never be used as an
  * eligibility predicate for search, Base selection or technical PI. */
@@ -24,7 +25,7 @@ export function mapperProvenancePresentation(
   status: VerificationStatus | string,
 ): MapperProvenancePresentation {
   const normalized = status.trim().toLocaleLowerCase('en');
-  if (normalized.startsWith('verified')) return 'verified';
+  if (isMapperHomeVerifiedStatus(status)) return 'verified';
   if (normalized.includes('label review')) return 'needs_label_review';
   if (normalized.startsWith('estimated') || normalized.startsWith('pi calculated')) {
     return 'estimated';

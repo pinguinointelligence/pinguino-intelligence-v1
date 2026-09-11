@@ -19,6 +19,7 @@ import { IngredientResolutionDevPage } from '@/pages/dev/IngredientResolutionDev
 import { ProCoreRecipesDevPage } from '@/pages/dev/ProCoreRecipesDevPage';
 import { ProCoreProductionDevPage } from '@/pages/dev/ProCoreProductionDevPage';
 import { ProCoreCostsDevPage } from '@/pages/dev/ProCoreCostsDevPage';
+import { MapperSearchAcceptancePage } from '@/pages/dev/MapperSearchAcceptancePage';
 import { buildRealIntakeWiring } from '@/features/ocr-intake/ui/intakeWiring';
 import { ReferenceProposalsPage } from '@/pages/dev/ReferenceProposalsPage';
 import { SpineStatusPage } from '@/pages/dev/SpineStatusPage';
@@ -309,6 +310,7 @@ export function AppRoutes() {
           In production import.meta.env.DEV is false, so the route is never created and
           MapperSmokePage is dead-code-eliminated from the bundle. */}
       {import.meta.env.DEV && <Route path="/dev/mapper-smoke" element={<MapperSmokePage />} />}
+      <Route path="/qa/mapper-search-acceptance" element={<MapperSearchAcceptancePage />} />
       {/* Scan Import 2.0 QA harness: dev, or staging with VITE_SCAN_IMPORT_LAB=1. Never HOME. */}
       {(import.meta.env.DEV || import.meta.env.VITE_SCAN_IMPORT_LAB === '1') && (
         <Route path="/dev/scan-import-v2" element={<ScanImportV2LabPage />} />

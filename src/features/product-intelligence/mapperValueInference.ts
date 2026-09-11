@@ -33,6 +33,7 @@ import {
   familySupportsCohort,
   type ProductFamilyId,
 } from './mapperFamilyInference.ts';
+import { isMapperHomeVerifiedStatus } from '@/data/ingredients/mapperVerificationStatus';
 import {
   knownField,
   WORKING_NUMERIC_FIELDS,
@@ -1138,7 +1139,7 @@ export function rescueMassBalanceFromCohort(input: {
       row.is_active === false ||
       row.approved_for_base !== true ||
       row.approved_for_engines !== true ||
-      !row.verification_status?.trim().toLocaleLowerCase('en-US').startsWith('verified')
+      !isMapperHomeVerifiedStatus(row.verification_status)
     ) {
       reasons.push('RESCUE_CANDIDATE_NOT_VERIFIED');
     }
