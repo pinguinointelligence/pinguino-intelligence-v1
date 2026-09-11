@@ -15,7 +15,16 @@ const fact = (
   value: string,
   authority = 'OFFICIAL_MANUFACTURER',
   sourceUrl = 'https://www.coca-cola.com/pl/pl/brands/coca-cola-zero',
-) => ({ field, value, sourceUrl, sourceAuthorityClass: authority, sourceTitle: 'Coca-Cola Zero' });
+) => ({
+  field,
+  value,
+  sourceUrl,
+  sourceAuthorityClass: authority,
+  sourceTitle: 'Coca-Cola Zero',
+  sourceStatedEan: '5449000131805',
+  sourceEanConfirmationMethod: 'page_text',
+  sourceEanConfirmedAt: '2026-09-11T00:00:00.000Z',
+});
 
 const labelResult = (overrides: Record<string, unknown> = {}) => ({
   schemaVersion: 'gellatti_product_scan_v1',
@@ -143,6 +152,25 @@ describe('the exact GTIN source fills gaps and never overwrites a label', () => 
     expect(sources[0]?.fieldsUsed).toContain('ingredientsText');
   });
 
+  it('SCN-AI-03 maps sourced water/solids facts without deriving either one', () => {
+    const result = scanResultFromLookupFacts([
+      fact('waterPercent', '87,6 %'),
+      fact('totalSolidsPercent', '12,4 %'),
+    ])!;
+    expect(result.productionDeclarations).toMatchObject({
+      waterPercent: 87.6,
+      totalSolidsPercent: 12.4,
+    });
+    expect(result.externalSources).toEqual([
+      expect.objectContaining({
+        fieldsUsed: expect.arrayContaining([
+          'productionDeclarations.waterPercent',
+          'productionDeclarations.totalSolidsPercent',
+        ]),
+      }),
+    ]);
+  });
+
   it('drops nutrition numbers that arrive without a declared basis', () => {
     const result = scanResultFromLookupFacts([
       fact('energyKcal', '42'),
@@ -178,26 +206,50 @@ describe('the exact GTIN source fills gaps and never overwrites a label', () => 
     expect(scanResultFromLookupFacts([fact('ingredients', '   ')])).toBeNull();
   });
 
-  it('lets the label win every disagreement with the source', () => {
+  it('does not let OCR overwrite exact-EAN hard evidence and opens a material conflict', () => {
     const lookup = scanResultFromLookupFacts([
       fact('nutritionBasis', 'per 100 ml'),
       fact('salt', '0,05 g'),
       fact('ingredients', 'Woda gazowana'),
     ])!;
     const merged = mergeProductScanResults(lookup, labelResult(), '5449000131805');
-    expect((merged.nutrition as Record<string, unknown>).salt).toBe(0.01);
-    // The disagreement is kept, retained on the label side.
+    expect((merged.nutrition as Record<string, unknown>).salt).toBe(0.05);
+    // Two hard sources disagree: exact product data stays intact and review remains explicit.
     expect(merged.conflicts).toContainEqual(
-      expect.objectContaining({ field: 'nutrition.salt', retainedSource: 'label' }),
+      expect.objectContaining({ field: 'nutrition.salt', retainedSource: null }),
     );
     // What the label did not carry is filled rather than asked for again.
     expect(merged.ingredientsText).toBe('Woda gazowana');
   });
 
+  it('treats punctuation-only ingredient differences as corroboration, not a conflict', () => {
+    const lookup = scanResultFromLookupFacts([
+      fact('ingredients', 'Leche desnatada, fermentos lacticos.'),
+    ])!;
+    const photo = labelResult({
+      ingredientsText: 'Leche desnatada; fermentos lácticos',
+      evidence: [
+        {
+          assetId: '11111111-1111-4111-8111-111111111111',
+          field: 'ingredientsText',
+          source: 'label',
+          confidence: 'high',
+          region: 'ingredients',
+          directVisibility: true,
+        },
+      ],
+    });
+    const merged = mergeProductScanResults(lookup, photo, '5449000131805');
+    expect(merged.ingredientsText).toBe('Leche desnatada, fermentos lacticos.');
+    expect(merged.conflicts).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ field: 'ingredientsText' })]),
+    );
+  });
+
   it('refuses to pick a winner when neither side carries evidence', () => {
     const lookup = scanResultFromLookupFacts([
-      fact('nutritionBasis', 'per 100 ml'),
-      fact('salt', '0,05 g'),
+      fact('nutritionBasis', 'per 100 ml', 'OTHER_WEB'),
+      fact('salt', '0,05 g', 'OTHER_WEB'),
     ])!;
     const unevidenced = labelResult({ evidence: [] });
     const merged = mergeProductScanResults(lookup, unevidenced, '5449000131805');

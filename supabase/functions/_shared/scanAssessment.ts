@@ -110,10 +110,10 @@ export type RecognitionCarryForward = {
  * Well. So a fresh UNRESOLVED classification never replaces a stored RESOLVED one.
  *
  * It is not a cache of a verdict. A fresh RESOLVED classification always wins, and so does a fresh
- * classification that has settled on a DIFFERENT ingredient family — if the scan's understanding of
- * what the product IS has moved (the customer corrected their family answer, the label turned out to
- * say something else), the old verdict is stale and must not be resurrected. The carried value is
- * stamped so the trace says plainly where it came from.
+ * classification that has settled on a DIFFERENT family, form, archetype or role — if the scan's
+ * understanding of what the product IS has moved, the old verdict is stale and must not be
+ * resurrected. Otherwise the semantics are rebound to the fresh evidence fingerprint: the profile
+ * authority can validate the current accumulated facts without needlessly reclassifying them.
  */
 export function carryForwardRecognition(input: {
   fresh: Record<string, unknown>;
@@ -123,15 +123,41 @@ export function carryForwardRecognition(input: {
   if (recognitionIsResolved(fresh)) return { recognition: fresh, carriedForward: false };
   if (!persisted || !recognitionIsResolved(persisted))
     return { recognition: fresh, carriedForward: false };
-  const freshFamily = fresh.ingredientFamily;
-  if (
-    typeof freshFamily === 'string' &&
-    freshFamily !== 'unknown' &&
-    freshFamily !== persisted.ingredientFamily
-  )
+  const unknownByDimension: Record<string, string> = {
+    ingredientFamily: 'unknown',
+    physicalForm: 'UNKNOWN',
+    productArchetype: 'UNKNOWN',
+    intendedUsageRole: 'NEITHER_REVIEW',
+  };
+  const contradicted = Object.entries(unknownByDimension).some(([key, unknown]) => {
+    const current = fresh[key];
+    return typeof current === 'string' && current !== unknown && current !== persisted[key];
+  });
+  const booleanContradicted = ['isTechnicalProduct', 'isDosageDependent'].some(
+    (key) => typeof fresh[key] === 'boolean' && fresh[key] !== persisted[key],
+  );
+  const freshCategories = Array.isArray(fresh.compatibleMapperCategories)
+    ? fresh.compatibleMapperCategories.filter((value): value is string => typeof value === 'string')
+    : [];
+  const persistedCategories = Array.isArray(persisted.compatibleMapperCategories)
+    ? persisted.compatibleMapperCategories.filter(
+        (value): value is string => typeof value === 'string',
+      )
+    : [];
+  const categoryContradicted =
+    freshCategories.length > 0 &&
+    persistedCategories.length > 0 &&
+    !freshCategories.some((value) => persistedCategories.includes(value));
+  if (contradicted || booleanContradicted || categoryContradicted)
     return { recognition: fresh, carriedForward: false };
   return {
-    recognition: { ...persisted, carriedForwardFromScan: true },
+    recognition: {
+      ...persisted,
+      ...(typeof fresh.evidenceFingerprint === 'string'
+        ? { evidenceFingerprint: fresh.evidenceFingerprint }
+        : {}),
+      carriedForwardFromScan: true,
+    },
     carriedForward: true,
   };
 }

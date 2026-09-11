@@ -76,13 +76,16 @@ export interface ScanResultLike {
   } | null;
   barcodes?: { kind?: string; value?: string }[] | null;
   nutrition?: Record<string, unknown> | null;
+  productionDeclarations?: Record<string, unknown> | null;
   ingredientsText?: string | null;
   allergensText?: string | null;
   package?: Record<string, unknown> | null;
   evidence?:
-    { field: string; source: string; confidence?: string | null; assetId?: string }[] | null;
+    | { field: string; source: string; confidence?: string | null; assetId?: string }[]
+    | null;
   externalSources?:
-    { sourceType: string; url: string | null; title: string | null; fieldsUsed: string[] }[] | null;
+    | { sourceType: string; url: string | null; title: string | null; fieldsUsed: string[] }[]
+    | null;
   conflicts?:
     | {
         field: string;

@@ -99,14 +99,32 @@ describe('a resolution the scan already reached is not thrown away', () => {
 
   it('Vitamin Well: a model that does not answer cannot un-resolve the scan', () => {
     const carried = carryForwardRecognition({
-      fresh: vitaminWellFallback,
-      persisted: resolved(),
+      fresh: { ...vitaminWellFallback, evidenceFingerprint: 'recognition-v2-new' },
+      persisted: resolved({ evidenceFingerprint: 'recognition-v2-old' }),
     });
     expect(carried.carriedForward).toBe(true);
     expect(carried.recognition.modelRequired).toBe(false);
     expect(carried.recognition.physicalForm).toBe('LIQUID');
+    // The facts changed, not their meaning. The carried semantics are rebound to the current
+    // evidence package so the profile authority can validate and use them.
+    expect(carried.recognition.evidenceFingerprint).toBe('recognition-v2-new');
     // and it says plainly where it came from
     expect(carried.recognition.carriedForwardFromScan).toBe(true);
+  });
+
+  it.each([
+    ['physicalForm', 'POWDER'],
+    ['productArchetype', 'DOSAGE_DEPENDENT_TECHNICAL'],
+    ['intendedUsageRole', 'TOPPING_ONLY'],
+  ])('does not carry old semantics across a material %s contradiction', (key, value) => {
+    const fresh = resolved({
+      [key]: value,
+      modelRequired: true,
+      classificationSource: 'REVIEW_REQUIRED',
+    });
+    const carried = carryForwardRecognition({ fresh, persisted: resolved() });
+    expect(carried.carriedForward).toBe(false);
+    expect(carried.recognition[key]).toBe(value);
   });
 
   it('a fresh RESOLVED classification always wins — this is not a cache of a verdict', () => {
@@ -284,12 +302,15 @@ describe('the deployed handler is wired to all of it', () => {
     );
   });
 
-  it('finalize still performs no second enrichment and no second internet lookup', () => {
-    // the ONLY outbound call the finalize handler may make is the semantic classification,
-    // and it is skipped entirely when the scan already holds a resolved one
+  it('performs one bounded accumulated-evidence research pass only after Rescue remains blocked', () => {
     const outbound = [...FINALIZE.matchAll(/fetch\(/g)];
-    expect(outbound).toHaveLength(1);
+    expect(outbound).toHaveLength(2);
     expect(FINALIZE).toContain('functions/v1/intimport-enrich');
+    expect(FINALIZE).toContain('buildAccumulatedScannerEvidence({');
+    expect(FINALIZE).toContain('researchFieldsForScannerGaps(');
+    expect(FINALIZE).toContain('accumulatedEvidence');
+    expect(FINALIZE).toContain('scanResultFromLookupFacts(');
+    expect(FINALIZE).toContain('mergeProductScanResults(');
     expect(FINALIZE).not.toContain('product-scan-analyze');
     // A local hostname/provenance check is allowed; a second registry API request is not.
     expect(FINALIZE).not.toContain('/api/v2/product/');

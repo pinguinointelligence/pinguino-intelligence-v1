@@ -105,6 +105,21 @@ const cocoaSemantic = classifyProductSemantics(
 );
 
 describe('field-specific mass-balance Rescue safety', () => {
+  it('uses resolved semantic context below 0.85 while keeping the Rescue result floor above 0.85', () => {
+    const result = rescueMassBalanceFromCohort({
+      cohort: [mapperRow('a', 96), mapperRow('b', 97), mapperRow('c', 98)],
+      fields: exactFields(),
+      semantic: { ...cocoaSemantic, confidence: 0.8 },
+    });
+    expect(result).toMatchObject({
+      resolved: true,
+      totalSolids: 97,
+      water: 3,
+      reasonCodes: ['RESCUE_MASS_BALANCE_SUCCESS'],
+    });
+    expect(result.confidence).toBeGreaterThanOrEqual(0.85);
+  });
+
   it('uses a coherent field cohort although no whole-profile donor was accepted', () => {
     const result = rescueMassBalanceFromCohort({
       cohort: [mapperRow('a', 96), mapperRow('b', 97), mapperRow('c', 98)],

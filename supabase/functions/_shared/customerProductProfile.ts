@@ -56,8 +56,16 @@ const SCAN_FIELD_PATHS: Readonly<Partial<Record<ProductEvidenceField, string[]>>
   barcode: ['barcodes'],
   countryOfOrigin: ['identity.countryOfOrigin'],
   dosage: ['productionDeclarations.dosageText'],
-  technicalParameters: ['productionDeclarations.technicalParametersText'],
-  technicalSource: ['productionDeclarations.technicalParametersText'],
+  technicalParameters: [
+    'productionDeclarations.technicalParametersText',
+    'productionDeclarations.waterPercent',
+    'productionDeclarations.totalSolidsPercent',
+  ],
+  technicalSource: [
+    'productionDeclarations.technicalParametersText',
+    'productionDeclarations.waterPercent',
+    'productionDeclarations.totalSolidsPercent',
+  ],
 };
 
 const sourceForExternalType = (value: unknown): EvidenceSource => {
@@ -369,6 +377,18 @@ export function customerProductProfileProposal(input: {
   if (abv !== null && abv <= 100) {
     declared.alcohol_percent = abv;
     declaredBasis.alcohol_percent = userConfirmed.has('technicalParameters')
+      ? 'user_confirmed'
+      : 'product_declared';
+  }
+
+  for (const [key, field] of [
+    ['waterPercent', 'water_percent'],
+    ['totalSolidsPercent', 'total_solids_percent'],
+  ] as const) {
+    const value = finiteNumber(declarations[key]);
+    if (value === null || value > 100) continue;
+    declared[field] = value;
+    declaredBasis[field] = userConfirmed.has('technicalParameters')
       ? 'user_confirmed'
       : 'product_declared';
   }

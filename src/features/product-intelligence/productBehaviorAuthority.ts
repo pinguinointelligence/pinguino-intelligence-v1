@@ -95,6 +95,25 @@ const REVIEW_REASON = 'family_and_form_evidence_missing';
 const MODULE_REASON = 'module_permission_missing';
 const TECHNICAL_REASON = 'technical_or_dosage_product';
 
+/** Recognition context is useful even when physics is not yet sufficient for permissions. */
+function semanticTaxonomyContext(recognition: ProductSemanticClassification | null | undefined): {
+  familyId: string | null;
+  formId: string | null;
+} {
+  if (
+    !recognition ||
+    recognition.modelRequired ||
+    recognition.ingredientFamily === 'unknown' ||
+    recognition.physicalForm === 'UNKNOWN' ||
+    recognition.intendedUsageRole === 'NEITHER_REVIEW'
+  )
+    return { familyId: null, formId: null };
+  return {
+    // Mapper-compatible category is the canonical broad ProductBehavior family when available.
+    familyId: recognition.compatibleMapperCategories[0] ?? recognition.ingredientFamily,
+    formId: recognition.physicalForm.toLocaleLowerCase('en-US'),
+  };
+}
 /**
  * A Mapper row may lend taxonomy/behavior without lending its numeric profile.
  * This is intentionally based on resolved Recognition semantics, not on a lower
@@ -284,6 +303,7 @@ function unresolvedAuthority(input: {
 }): TrustedProductBehaviorAuthority {
   const reference = input.reference ?? null;
   const intendedUsageRole = input.profile.recognition?.intendedUsageRole ?? 'BASE_ONLY';
+  const semanticContext = semanticTaxonomyContext(input.profile.recognition);
   const result = {
     authority: PRODUCT_BEHAVIOR_AUTHORITY,
     validationMode: 'server_recomputed_product_behavior' as const,
@@ -299,9 +319,9 @@ function unresolvedAuthority(input: {
     mapperBehaviorClassifierVersion: reference?.classifier_version ?? null,
     mapperDatasetVersion: reference?.mapper_dataset_version ?? null,
     taxonomyVersionId: reference?.taxonomy_version_id ?? 'pinguino-product-taxonomy-v1',
-    familyId: reference?.family_id ?? null,
+    familyId: reference?.family_id ?? semanticContext.familyId,
     subfamilyId: reference?.subfamily_id ?? null,
-    formId: reference?.form_id ?? null,
+    formId: reference?.form_id ?? semanticContext.formId,
     mainEligibility: reference?.main_eligibility ?? 'MAIN_BLOCKED_POLICY',
     veganEligibility: reference?.vegan_eligibility ?? 'unknown',
     proteinBehavior: reference?.protein_behavior ?? 'unknown',

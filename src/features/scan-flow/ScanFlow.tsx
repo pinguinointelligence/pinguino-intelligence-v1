@@ -8,11 +8,11 @@
  *   - unknown product → exact-GTIN registry evidence FIRST (name + brand are used as they are, the
  *     customer is not asked for a generic category when the code already identifies the product),
  *     then Scan Import 2.0 discovery (label photograph) for what is still missing;
- *   - still missing ice-cream data → only the minimal plain fields the customer can read off the
- *     label, prefilled from the registry where it knows them; the answer is saved as a LOCAL USER
+ *   - still missing data → a photo only for facts a label can show; otherwise the one exact
+ *     technical question the customer can answer. The result is saved as a LOCAL USER
  *     PRODUCT, private to this account, never added to the global catalogue by itself.
  * The customer always sees what the scanner is doing (state, guidance, progress, confirmation).
- * No technical parameter is ever shown. Mobile and web run the same code.
+ * Internal codes are never shown. Mobile and web run the same code.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ConfirmedScan } from '@/scan-contract/confirmedScan';
@@ -45,13 +45,14 @@ import {
 } from './scanCoreCapture';
 import {
   confirmationsFromFields,
+  classifyRemainingGaps,
   entryContextOf,
   isRecipeEntry,
   manualConfirmedScan,
   rememberGuestCode,
   takeGuestCode,
   labelPhotoRequest,
-  plainFieldsFor,
+  manualFieldsFor,
   savedProductNotice,
   positionHint,
   prefillFromIdentity,
@@ -371,15 +372,23 @@ export function ScanFlow({
             }
           }
           if (afterFinalize) {
-            // the authority answered: plain facts it still needs, the label it still needs, or only
-            // technical readiness the customer cannot supply — then the product is reported, not looped
-            const fields = plainFieldsFor(r.ledger.missingCritical, {
+            // Rescue has already run inside the final authority. A photo is now allowed only for a
+            // remaining fact a package can actually show; physics-only blockers go to one precise
+            // question/review and can never fall through to the generic label phase.
+            const gaps = classifyRemainingGaps(r.ledger.missingCritical);
+            const fieldOptions = {
               needIdentity: diagnostics.some((code) => /identity/i.test(code)),
-            });
-            if (fields.length > 0) setPhase({ kind: 'fields', session: next, fields, note: null });
-            else if (!labelTriedRef.current)
+            };
+            if (gaps.photoSolvable.length > 0 && !labelTriedRef.current) {
               setPhase({ kind: 'label', session: next, note: recognized ? null : noteText });
-            else setPhase({ kind: 'fields', session: next, fields: [], note: null });
+            } else {
+              setPhase({
+                kind: 'fields',
+                session: next,
+                fields: manualFieldsFor(r.ledger.missingCritical, fieldOptions),
+                note: null,
+              });
+            }
             return;
           }
           await continueUnknownRef.current(
@@ -683,6 +692,9 @@ export function ScanFlow({
       const image = await fileToLabelImage(await downscaled(file), source);
       const r = await continueDiscovery(session, { type: 'label', images: [image] }, ctx, port);
       labelTriedRef.current = true;
+      // The photo legitimately changed the evidence package. Its next assessment is new by design,
+      // so binding it to the pre-photo snapshot would turn a successful merge into stale 409.
+      assessmentHashRef.current = null;
       if (r.kind === 'discovered_pending') {
         // the label was read: let the authority decide what is still missing (plain fields, not another photo)
         const next = seedSession(r.sessionId, r.identity, r.ledger.missingCritical);
@@ -755,12 +767,26 @@ export function ScanFlow({
       );
     });
 
-  /** no usable photograph: ask the authority now and let the customer type what is missing */
-  const enterManually = (session: DiscoverySession) =>
-    withBusy(async () => {
-      const ctx = contextFor(await getScanImportV2AccountId());
-      await finalize(session, { customerFamily: family }, ctx, codeRef.current ?? '');
+  /**
+   * Before the first authority pass, "manual" still means "continue without a photo" so family
+   * resolution gets its one short question. After an assessment exists, Rescue has already run and
+   * the same action opens only the exact remaining fields without another finalize/photo loop.
+   */
+  const enterManually = (session: DiscoverySession) => {
+    if (assessmentHashRef.current === null) {
+      void withBusy(async () => {
+        const ctx = contextFor(await getScanImportV2AccountId());
+        await finalize(session, { customerFamily: family }, ctx, codeRef.current ?? '');
+      });
+      return;
+    }
+    setPhase({
+      kind: 'fields',
+      session,
+      fields: manualFieldsFor(session.missingCritical),
+      note: null,
     });
+  };
 
   const requestVerification = (session: DiscoverySession) =>
     withBusy(async () => {
@@ -1202,9 +1228,11 @@ export function ScanFlow({
         >
           {recognizedLine}
           <p className="text-sm text-stone-700">
-            {recognized
-              ? 'Sprawdź dane z etykiety i uzupełnij brakujące. Produkt zapiszemy prywatnie na Twoim koncie.'
-              : 'Uzupełnij brakujące dane z etykiety. Produkt zapiszemy prywatnie na Twoim koncie.'}
+            {classifyRemainingGaps(phase.session.missingCritical).photoSolvable.length === 0
+              ? 'Nie udało nam się potwierdzić tej wartości. Jeśli ją znasz, podaj ją poniżej.'
+              : recognized
+                ? 'Sprawdź dane z etykiety i uzupełnij brakujące. Produkt zapiszemy prywatnie na Twoim koncie.'
+                : 'Uzupełnij brakujące dane z etykiety. Produkt zapiszemy prywatnie na Twoim koncie.'}
           </p>
           {safeNote(phase.note) ? (
             <p className="text-xs text-red-700">{safeNote(phase.note)}</p>
@@ -1266,7 +1294,9 @@ export function ScanFlow({
                 : 'Z etykiety nie da się uzupełnić brakujących danych. Możesz zgłosić produkt do weryfikacji.'}
             </p>
           ) : null}
-          {photoPrivacyNote}
+          {classifyRemainingGaps(phase.session.missingCritical).photoSolvable.length > 0
+            ? photoPrivacyNote
+            : null}
           <div className="flex flex-wrap gap-2">
             {phase.fields.length > 0 ? (
               <button type="submit" className={btnPrimary} disabled={busy}>
@@ -1287,20 +1317,22 @@ export function ScanFlow({
             >
               Zapisz i uzupełnij później
             </button>
-            <label className={btnSecondary}>
-              Zrób zdjęcie etykiety
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                capture="environment"
-                className="sr-only"
-                disabled={busy}
-                onChange={(event) => {
-                  const f = event.target.files?.[0];
-                  if (f) void sendLabel(phase.session, f, 'camera_manual');
-                }}
-              />
-            </label>
+            {classifyRemainingGaps(phase.session.missingCritical).photoSolvable.length > 0 ? (
+              <label className={btnSecondary}>
+                Zrób zdjęcie etykiety
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  capture="environment"
+                  className="sr-only"
+                  disabled={busy}
+                  onChange={(event) => {
+                    const f = event.target.files?.[0];
+                    if (f) void sendLabel(phase.session, f, 'camera_manual');
+                  }}
+                />
+              </label>
+            ) : null}
             <button
               type="button"
               className={btnSecondary}
