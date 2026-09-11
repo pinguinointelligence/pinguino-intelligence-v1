@@ -155,6 +155,7 @@ const btn =
   'pro-focus-ring inline-flex min-h-11 items-center justify-center rounded-full px-4 text-xs font-semibold';
 const btnPrimary = `${btn} bg-ink text-white disabled:opacity-40`;
 const btnSecondary = `${btn} border border-ink/15 bg-white text-ink`;
+const btnSelected = `${btn} border border-ink bg-ink text-white`;
 const input =
   'pro-focus-ring min-h-11 w-full rounded-xl border border-ink/15 bg-white px-3 text-sm text-ink';
 
@@ -229,6 +230,7 @@ export function ScanFlow({
   const [manual, setManual] = useState('');
   const [busy, setBusy] = useState(false);
   const [family, setFamily] = useState<CustomerFamily | null>(null);
+  const familySubmittingRef = useRef(false);
   const [values, setValues] = useState<Record<string, string | boolean>>({});
   const [recognized, setRecognized] = useState<ExactWebIdentity | null>(null);
   /** Exact internet facts stay automatic through every later family/label/form round. */
@@ -704,12 +706,19 @@ export function ScanFlow({
       await handleResult(r, codeRef.current ?? '', ctx);
     });
 
-  const chooseFamily = (session: DiscoverySession, choice: CustomerFamily) =>
-    withBusy(async () => {
-      setFamily(choice);
-      const ctx = contextFor(await getScanImportV2AccountId());
-      await finalize(session, { customerFamily: choice }, ctx, codeRef.current ?? '');
-    });
+  const chooseFamily = async (session: DiscoverySession, choice: CustomerFamily) => {
+    if (familySubmittingRef.current) return;
+    familySubmittingRef.current = true;
+    setFamily(choice);
+    try {
+      await withBusy(async () => {
+        const ctx = contextFor(await getScanImportV2AccountId());
+        await finalize(session, { customerFamily: choice }, ctx, codeRef.current ?? '');
+      });
+    } finally {
+      familySubmittingRef.current = false;
+    }
+  };
 
   const submitFields = (session: DiscoverySession, fields: PlainField[]) =>
     withBusy(async () => {
@@ -1207,8 +1216,9 @@ export function ScanFlow({
               <button
                 key={option}
                 type="button"
-                className={btnSecondary}
+                className={family === option ? btnSelected : btnSecondary}
                 disabled={busy}
+                aria-pressed={family === option}
                 onClick={() => void chooseFamily(phase.session, option)}
               >
                 {FAMILY_LABEL[option] ?? option}

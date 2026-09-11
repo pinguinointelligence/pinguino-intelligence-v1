@@ -55,6 +55,26 @@ function setValue(el: HTMLInputElement | HTMLTextAreaElement, value: string) {
   el.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
+function touch(el: HTMLElement, type: 'touchstart' | 'touchmove' | 'touchend' | 'touchcancel') {
+  const event = new Event(type, { bubbles: true, cancelable: true });
+  const point = { clientX: 24, clientY: type === 'touchmove' ? 80 : 24, identifier: 1 };
+  Object.defineProperty(
+    event,
+    type === 'touchend' || type === 'touchcancel' ? 'changedTouches' : 'touches',
+    {
+      value: [point],
+    },
+  );
+  el.dispatchEvent(event);
+}
+
+function mobileTap(el: HTMLElement) {
+  touch(el, 'touchstart');
+  touch(el, 'touchend');
+  // A real browser synthesizes click only after a completed stationary touch gesture.
+  el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+}
+
 describe('ScanFlow (jsdom, fake ports)', () => {
   let host: HTMLDivElement;
   let root: Root;
@@ -502,5 +522,91 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     });
     await flush();
     expect(text()).toContain('Zapisano jako Twój produkt');
+  });
+
+  it('SCN-MOBILE-FAMILY-01: touch selects visibly, persists once and continues without scroll selection', async () => {
+    const { discovery, registry } = fakes();
+    const code = '8000500272480';
+    registry.set(code, {
+      provider: 'openfoodfacts',
+      queriedAt: 1,
+      query: code,
+      confidence: 0.9,
+      facts: [
+        {
+          field: 'identity.displayName',
+          value: 'Wafer test',
+          sourceUrl: 'u',
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'identity.brand',
+          value: 'Brand test',
+          sourceUrl: 'u',
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'identity.quantity',
+          value: '242 g',
+          sourceUrl: 'u',
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'nutrition.energyKcal',
+          value: '542',
+          sourceUrl: 'u',
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'ingredientsText',
+          value: 'hazelnuts, cocoa, wafer',
+          sourceUrl: 'u',
+          authority: 'barcode_registry',
+        },
+      ],
+    });
+    const originalFinalize = discovery.finalize.bind(discovery);
+    let releaseSelectedFinalize!: () => void;
+    const selectedFinalizeGate = new Promise<void>((resolve) => {
+      releaseSelectedFinalize = resolve;
+    });
+    const finalizeSpy = vi
+      .spyOn(discovery, 'finalize')
+      .mockImplementation(async (session, input, ctx, saveUnverified) => {
+        if (input.customerFamily === 'nut_paste') await selectedFinalizeGate;
+        return originalFinalize(session, input, ctx, saveUnverified);
+      });
+
+    await act(async () => root.render(<ScanFlow mode="catalog" />));
+    await typeCode(code);
+    await flush();
+
+    const option = button('Orzechy / pasty')!;
+    const callsBeforeGesture = finalizeSpy.mock.calls.length;
+    await act(async () => {
+      touch(option, 'touchstart');
+      touch(option, 'touchmove');
+      touch(option, 'touchcancel');
+    });
+    expect(option.getAttribute('aria-pressed')).toBe('false');
+    expect(finalizeSpy).toHaveBeenCalledTimes(callsBeforeGesture);
+
+    await act(async () => {
+      mobileTap(option);
+      mobileTap(option);
+      await Promise.resolve();
+    });
+
+    expect(option.getAttribute('aria-pressed')).toBe('true');
+    expect(option.className).toContain('bg-ink');
+    expect(
+      finalizeSpy.mock.calls.filter(([, input]) => input.customerFamily === 'nut_paste'),
+    ).toHaveLength(1);
+
+    releaseSelectedFinalize();
+    await flush();
+    expect(text()).toContain('Zapisano jako Twój produkt');
+    expect(text()).not.toContain('Co to za produkt?');
+    expect(discovery.finalizeInputs.at(-1)?.customerFamily).toBe('nut_paste');
   });
 });
