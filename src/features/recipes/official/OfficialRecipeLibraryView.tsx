@@ -290,12 +290,9 @@ export function OfficialRecipeDetail({
   const mapper = useCurrentMapperRows(mappedIds, persona !== 'demo');
   const market = useMarketProducts(mappedIds, persona !== 'demo');
   const marketCountry = market.status === 'ready' ? market.value.country : null;
+  // Counted per recipe line, exactly like the working-copy banner in PRO.
   const matched =
-    market.status === 'ready'
-      ? mappedIds.filter((pi, index, all) => all.indexOf(pi) === index && market.value.byPi.has(pi))
-          .length
-      : 0;
-  const uniqueMapped = new Set(mappedIds).size;
+    market.status === 'ready' ? mappedIds.filter((pi) => market.value.byPi.has(pi)).length : 0;
   const pending = officialUnresolvedLines(recipe).length;
   // The same runtime gate the working-copy handoff applies: a mapped line whose
   // PI the Mapper runtime does not serve blocks the use up front.
@@ -456,7 +453,7 @@ export function OfficialRecipeDetail({
             className="mt-2 text-[12px] leading-relaxed text-stone-600"
             data-testid="official-recipe-market-summary"
           >
-            {c.handoffMarket(matched, uniqueMapped, marketCountry)}
+            {c.handoffMarket(matched, mappedIds.length, marketCountry)}
           </p>
         ) : null}
         <ol className="mt-4 divide-y divide-ink/10 border-y border-ink/10">
