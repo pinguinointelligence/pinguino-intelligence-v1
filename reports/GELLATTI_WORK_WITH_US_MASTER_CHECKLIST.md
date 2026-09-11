@@ -244,13 +244,13 @@ the owner has since retired. Nothing is renamed or deleted.
 
 | ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | PR/SHA | Problem / Why | Next Action |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| G-WEL-01 | Welcome | Approved partner lands on a guided welcome, not the accounting dashboard | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Today approval drops straight into the workspace | Build 5-step flow |
-| G-WEL-02 | Welcome | Step 1 — set up to 3 public codes | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Depends on D-CODE-02 | After D |
-| G-WEL-03 | Welcome | Step 2 — create first campaign link | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Reuse `LinkGenerator` |
-| G-WEL-04 | Welcome | Step 3 — show the Partner's **actual exact** commission table | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Must read the resolved profile (Standard/Gold/Elite-custom), not a constant — depends on E-ELITE-02 | After E-ELITE |
-| G-WEL-05 | Welcome | Step 4 — complete Stripe Connect | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Reuse F-CON-01 |
-| G-WEL-06 | Welcome | Step 5 — enter Partner Dashboard | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | — |
-| G-WEL-07 | Welcome | Incomplete Connect → Partner mode still usable for non-payout functions, payout state clearly shown | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | — |
+| G-WEL-01 | Welcome | Approved partner lands on a guided welcome, not the accounting dashboard | 🟡 | ✅ | ⬜ | ⬜ | 🔓 | `claude/gwel-first-steps` | **Built as "Pierwsze kroki"** at the top of the Overview: every step is derived from what the partner has actually done (no new state, no DB change), open steps link to where they are done, and the guide steps aside once nothing is left (`firstStepsModel.ts`, render-tested). It is a guide on the dashboard, not a separate full-screen flow — the owner may still want one. Step 3 (G-WEL-04) is blocked | **READY FOR SERVED OWNER QA** (needs a newly approved partner account) · owner: full-screen flow or not |
+| G-WEL-02 | Welcome | Step 1 — set up to 3 public codes | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | `claude/gwel-first-steps` | Done when an active code exists (approval mints the first one); otherwise links to Moje kody. An alias is not a working code | **READY FOR SERVED OWNER QA** (needs a newly approved partner account) |
+| G-WEL-03 | Welcome | Step 2 — create first campaign link | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | `claude/gwel-first-steps` | Done when an ACTIVE campaign link exists; otherwise links to the existing Generator linków | **READY FOR SERVED OWNER QA** (needs a newly approved partner account) |
+| G-WEL-04 | Welcome | Step 3 — show the Partner's **actual exact** commission table | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | Must read the RESOLVED rate profile (Standard / Gold / Elite-custom); the workspace RPC does not return it, so it is a DB change. Deliberately absent from the guide rather than showing a constant | Owner: approve a workspace migration that returns the resolved rate profile |
+| G-WEL-05 | Welcome | Step 4 — complete Stripe Connect | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | `claude/gwel-first-steps` | Done when payouts are enabled; an unfinished account links to Wypłaty ('Dokończ konfigurację'); with no account yet the step says Gellatti is preparing it and offers nothing to click | **READY FOR SERVED OWNER QA** (needs a newly approved partner account) |
+| G-WEL-06 | Welcome | Step 5 — enter Partner Dashboard | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | `claude/gwel-first-steps` | The guide sits on the dashboard and disappears when every step is done, leaving the dashboard | **READY FOR SERVED OWNER QA** (needs a newly approved partner account) |
+| G-WEL-07 | Welcome | Incomplete Connect → Partner mode still usable for non-payout functions, payout state clearly shown | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | `claude/gwel-first-steps` | The payout step states its state and says 'Kody i linki działają już teraz'; nothing else is gated on Connect. Render-tested | **READY FOR SERVED OWNER QA** (needs a newly approved partner account) |
 
 ### H — Partner dashboard (§16) · CHECKPOINT D
 
