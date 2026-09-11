@@ -275,6 +275,23 @@ describe('§13 separated by SURFACE, never by profile', () => {
     expect(st().priority_mode).toBe('AUTO');
   });
 
+  it("the first HOME crown ends the Crown bootstrap on the lines it releases (#290's rule)", () => {
+    newHomeDraft('gelato');
+    const [banana, strawberry] = [homeAdd(BANANA, 100), homeAdd(STRAWBERRY, 100)];
+    // An AUTO draft cannot get a PRO bootstrap through the UI — a PRO crown ends AUTO —
+    // so the provenance is planted directly: the rule must hold by construction.
+    useRecipeStore.setState((state) => ({
+      items: state.items.map((item) =>
+        item.id === strawberry ? { ...item, amount_provenance: 'AUTO_CROWN_SEED' as const } : item,
+      ),
+    }));
+
+    homeCrown(banana);
+    expect(line(strawberry).lock_type).not.toBe('main');
+    expect(line(strawberry).amount_provenance).toBeUndefined();
+    expect(line(strawberry).planned_grams).toBe(100);
+  });
+
   it('the automatic door never changes the mode', () => {
     newHomeDraft('gelato');
     homeAdd(BANANA, 100);

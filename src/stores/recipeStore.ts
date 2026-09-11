@@ -710,7 +710,8 @@ const crownAutoSeedAllowed = (
  * the same mapping `setStandardIngredient` uses), and no amount is written as
  * user intent — the Crown is a priority, not a quantity and not a lock. The
  * automatic seed provenance ends here too: a gram the automatic priority gave is
- * an ordinary amount from now on, so a later HOME uncrown keeps it.
+ * an ordinary amount from now on, so a later HOME uncrown keeps it; a released
+ * line also ends any Crown-bootstrap provenance (#290: any other role ends it).
  *
  * Like HOME's own Crown door (`setLockType` with `'home'`) it never touches
  * ProductBehavior snapshots: a released line keeps its product and its grams,
@@ -724,6 +725,7 @@ const firstManualHomeCrown = (state: RecipeState, pressedLineId: string): Partia
     if (!automatic.has(item.id) || item.id === pressedLineId) return item;
     const next = { ...item };
     delete next.main_ratio_weight;
+    delete next.amount_provenance;
     return {
       ...next,
       lock_type:
