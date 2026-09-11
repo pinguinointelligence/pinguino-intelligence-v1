@@ -521,7 +521,7 @@ function ExecutableOwnerReviewView({
                     className="mt-4 text-xs text-stone-500"
                     data-testid={`${template.id}-current-engine`}
                   >
-                    Bieżący Engine (Mapper FINAL 2541):{' '}
+                    Wynik bieżący (aktualne dane składników):{' '}
                     <span className="font-mono">
                       {card.currentEngineEvaluation === null
                         ? 'oczekuje na dokładny produkt'
@@ -531,7 +531,7 @@ function ExecutableOwnerReviewView({
                     </span>
                     {card.historicalTechnicalScore === null ? null : (
                       <>
-                        {' · '}Wynik historyczny (Mapper 2089):{' '}
+                        {' · '}Wynik historyczny (poprzednie dane składników):{' '}
                         <span className="font-mono">
                           {card.historicalTechnicalScore.toFixed(2)}
                         </span>
@@ -573,12 +573,15 @@ function ExecutableOwnerReviewView({
                       className="mt-5 text-xs leading-relaxed text-nonprod"
                       data-testid={`${template.id}-current-engine-blocker`}
                     >
-                      Bieżący Engine blokuje otwarcie:{' '}
+                      Aktualne dane blokują otwarcie:{' '}
                       {[
                         ...card.currentEngineEvaluation.violations.map(currentEngineViolationLabel),
-                        ...card.currentEngineEvaluation.unapprovedIngredientIds.map(
-                          (id) => `składnik ${id} niezatwierdzony w Mapperze FINAL 2541`,
-                        ),
+                        ...card.currentEngineEvaluation.unapprovedIngredientIds.map((id) => {
+                          const note = template.base.find(
+                            (line) => line.mapperIngredientId === id,
+                          )?.note;
+                          return `składnik ${note ?? id} (${id}) nie jest zatwierdzony do bazy`;
+                        }),
                       ].join(', ')}
                       . Receptura źródłowa pozostaje bez zmian.
                     </p>
@@ -614,7 +617,7 @@ function ExecutableOwnerReviewView({
                       className={cn(buttonClasses('ghost', 'sm'), 'mt-5 w-full opacity-55')}
                       data-testid={`${template.id}-current-engine-blocked`}
                     >
-                      Niewykonalna w bieżącym Engine
+                      Niewykonalna przy aktualnych danych
                     </button>
                   ) : (
                     <button

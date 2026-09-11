@@ -76,8 +76,8 @@ describe('Recipes Hub executable Owner Review projection', () => {
     );
     expect(blocked).toHaveLength(5);
     expect(Array.from(blocked).every((button) => button.disabled)).toBe(true);
-    expect(host.textContent).toContain('Bieżący Engine (Mapper FINAL 2541)');
-    expect(host.textContent).toContain('Wynik historyczny (Mapper 2089)');
+    expect(host.textContent).toContain('Wynik bieżący (aktualne dane składników)');
+    expect(host.textContent).toContain('Wynik historyczny (poprzednie dane składników)');
     expect(
       host.querySelector('[data-testid="fantasy-rocero-v1-current-engine"]')?.textContent,
     ).toContain('84.48 · niewykonalna');
@@ -86,7 +86,13 @@ describe('Recipes Hub executable Owner Review projection', () => {
     ).toContain('woda poniżej zakresu');
     expect(
       host.querySelector('[data-testid="fantasy-oreyo-v1-current-engine-blocker"]')?.textContent,
-    ).toContain('PI-ING-001705');
+    ).toContain('Pasta waniliowa (PI-ING-001705) nie jest zatwierdzony do bazy');
+    // Customer language: the score and blocker copy never name internal systems.
+    const scoreCopy = Array.from(host.querySelectorAll('[data-testid*="-current-engine"]'));
+    expect(scoreCopy).toHaveLength(15);
+    for (const element of scoreCopy) {
+      expect(element.textContent).not.toMatch(/\bEngine\b|\bMapper\b/);
+    }
     expect(host.textContent).toContain('lista finalna niepełna');
     expect(host.textContent).toContain('Przegląd otwiera wyłącznie bazę');
     expect(host.textContent).not.toMatch(/Ferrero|Raffaello|Kinder|Oreo|Snickers/i);
