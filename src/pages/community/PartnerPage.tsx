@@ -1,14 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useSearchParams } from 'react-router';
+import { useSearchParams } from 'react-router';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
 import { ApplicationState } from '@/components/shared/ApplicationState';
 import { PartnerApplicationPanel } from '@/features/partner-application/PartnerApplicationPanel';
 import { Button } from '@/components/ui/Button';
-import {
-  applicationCompactClasses,
-  applicationSecondaryClasses,
-} from '@/components/ui/applicationControlStyles';
+import { applicationCompactClasses } from '@/components/ui/applicationControlStyles';
 import { customerErrorMessage } from '@/copy/customerError';
 import {
   commissionAmountLabel,
@@ -25,7 +22,6 @@ import {
   startConnectOnboarding,
   updatePartnerProfile,
   uploadPartnerLogo,
-  getMyPartnerApplication,
   type PartnerCodeAnalytics,
   type PartnerWorkspace,
 } from '@/services/partner';
@@ -650,14 +646,6 @@ export function PartnerPage() {
     : 'overview';
   const query = useQuery({ queryKey: ['partner-workspace'], queryFn: getPartnerWorkspace });
   const data = query.data;
-  // A blocked panel must explain itself, so the gate needs the applicant's own
-  // application status — not just the "no partner row" fact.
-  const application = useQuery({
-    queryKey: ['partner-application', 'gate'],
-    queryFn: getMyPartnerApplication,
-    enabled: data !== undefined && !data.ok,
-  });
-  const applicationStatus = application.data?.application?.status ?? null;
   const content = useMemo(() => {
     if (!data?.ok) return null;
     if (section === 'overview') return <Overview data={data} />;
@@ -709,56 +697,24 @@ export function PartnerPage() {
             />
           ) : null}
           {data && !data.ok ? (
-            <ApplicationState
-              kind="empty"
-              title={
-                applicationStatus === 'submitted' ||
-                applicationStatus === 'under_review' ||
-                applicationStatus === 'more_information_needed'
-                  ? 'Zgłoszenie partnerskie w toku'
-                  : 'Tryb Partner nie jest jeszcze aktywny'
-              }
-              /* A gate has to say WHY and WHAT NEXT. Before this, an account
-                 that had simply never applied was told it lacked an invitation
-                 it had no way to ask for. */
-              body={
-                data.reason === 'partner_not_active'
-                  ? 'Status Partnera nie jest aktywny. Historia finansowa pozostaje zachowana.'
-                  : applicationStatus === 'submitted'
-                    ? 'Twoje zgłoszenie czeka na decyzję. Odezwiemy się w powiadomieniach.'
-                    : applicationStatus === 'more_information_needed'
-                      ? 'Potrzebujemy jeszcze kilku informacji do Twojego zgłoszenia.'
-                      : applicationStatus === 'rejected'
-                        ? 'Poprzednie zgłoszenie zostało rozpatrzone odmownie. Możesz wysłać nowe.'
-                        : 'Panel Partner otwiera się po zatwierdzeniu zgłoszenia. Zajmuje to kilka pól.'
-              }
-              /* The application form now lives HERE rather than behind a link.
-                 It used to point at `/work-with-us#partner-application`, and the
-                 collaboration IA change (#142) turned that route into a redirect
-                 to Franchise — so "Wyślij zgłoszenie" sent an Affiliate
-                 applicant to the franchise page and the form became unreachable,
-                 because WorkWithUsPage was the only surface that rendered it.
-
-                 Putting it on this page is also the right shape: /partner is
-                 already the authenticated Affiliate workspace and already owns
-                 every application state, so the form and its status stop living
-                 on two different surfaces. */
-              action={
-                applicationStatus === 'submitted' ? (
-                  <Link to="/community" className={applicationSecondaryClasses()}>
-                    Zobacz Community
-                  </Link>
-                ) : null
-              }
-            />
+            data.reason === 'partner_not_active' ? (
+              <ApplicationState
+                kind="empty"
+                title="Tryb Partner nie jest jeszcze aktywny"
+                body="Status Partnera nie jest aktywny. Historia finansowa pozostaje zachowana."
+              />
+            ) : (
+              /* C-APP-07: the application's status and its form are ONE surface,
+                 decided in ONE place — applicationSurface over the canonical
+                 PARTNER_APPLICATION_STATUS_COPY. This gate used to hand-write its
+                 own title and body per status while the panel below hand-wrote
+                 different ones, and the two disagreed: `under_review` got an
+                 "in progress" heading above an empty application form. */
+              <PartnerApplicationPanel />
+            )
           ) : (
             content
           )}
-          {data && !data.ok && applicationStatus !== 'submitted' ? (
-            <div className="mt-6" id="partner-application">
-              <PartnerApplicationPanel />
-            </div>
-          ) : null}
         </main>
       </div>
     </DestinationSurface>

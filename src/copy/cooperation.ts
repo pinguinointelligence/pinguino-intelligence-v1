@@ -77,6 +77,16 @@ export interface CooperationCopy {
     readonly activeTitle: string;
     readonly activeBody: string;
     readonly activeCta: string;
+    /** C-APP-07 — the status card. */
+    readonly statusEyebrow: string;
+    readonly teamMessage: string;
+    readonly yourMove: string;
+    readonly actionNone: string;
+    readonly actionSubmit: string;
+    readonly actionUpdate: string;
+    readonly actionReapply: string;
+    readonly actionContact: string;
+    readonly contactCta: string;
   };
   readonly secondary: {
     readonly title: string;
@@ -191,6 +201,16 @@ export const cooperationCopyPl: CooperationCopy = {
     activeTitle: 'Tryb Partner jest aktywny',
     activeBody: 'Twój kod i link partnerski czekają w panelu Partner.',
     activeCta: 'Otwórz panel Partner',
+    statusEyebrow: 'Status zgłoszenia',
+    teamMessage: 'Wiadomość od zespołu Gellatti',
+    yourMove: 'Twój ruch',
+    actionNone: 'nic nie musisz robić — odezwiemy się.',
+    actionSubmit: 'wypełnij i wyślij zgłoszenie poniżej.',
+    actionUpdate: 'uzupełnij zgłoszenie poniżej i wyślij je ponownie.',
+    actionReapply:
+      'nic nie musisz robić. Jeśli chcesz, możesz wysłać nowe zgłoszenie poniżej.',
+    actionContact: 'napisz do nas — wyjaśnimy, co dalej.',
+    contactCta: 'Napisz na info@gellatti.com',
   },
   secondary: {
     title: 'Pozostałe kierunki',
@@ -305,6 +325,15 @@ export const cooperationCopyEn: CooperationCopy = {
     activeTitle: 'Partner mode is active',
     activeBody: 'Your code and partner link are waiting in the Partner panel.',
     activeCta: 'Open the Partner panel',
+    statusEyebrow: 'Application status',
+    teamMessage: 'Message from the Gellatti team',
+    yourMove: 'Your move',
+    actionNone: 'nothing to do — we will get back to you.',
+    actionSubmit: 'fill in and send the application below.',
+    actionUpdate: 'complete the application below and send it again.',
+    actionReapply: 'nothing required. If you like, you can send a new application below.',
+    actionContact: 'write to us and we will explain what happens next.',
+    contactCta: 'Write to info@gellatti.com',
   },
   secondary: {
     title: 'Other routes',
