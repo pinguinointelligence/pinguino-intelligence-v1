@@ -120,6 +120,7 @@ import {
   type HomeFormulationModuleId,
   type MachineTechnology,
 } from '@/features/machine-catalog';
+import { DEFAULT_PRIORITY_MODE, type PriorityMode } from '@/features/recipe-priority';
 
 type FlavorIntensity = NonNullable<RecipeGoals['flavor_intensity']>;
 
@@ -300,6 +301,14 @@ export interface RecipeState {
    * `recipePersistPartialize` and from every saved payload.
    */
   crownAutoSeededLineIds: string[];
+  /**
+   * PACKAGE 2A — HOME priority mode (draft material, persisted locally).
+   * `AUTO`: a HOME draft is born here; every BASE line the customer adds holds
+   * the Main role invisibly. `MANUAL`: PRO, every loaded recipe, and HOME from
+   * the customer's first crown — the priorities are exactly the crowns they set.
+   * One-way: nothing returns a draft to AUTO except starting a new HOME draft.
+   */
+  priority_mode: PriorityMode;
   /** Last loaded demo preset (drives the selector highlight); null after a manual reset to none. */
   activePresetId: PresetId | null;
   /** Approved neutral scaffold attached only to an untouched explicit new draft. */
@@ -533,6 +542,10 @@ export interface RecipeState {
   /** Removes only the Main crown. Independent gram/percent/range constraints
    * remain exact and become the line's visible lock type. */
   setStandardIngredient: (lineId: string) => void;
+  /** PACKAGE 2A — set by HOME when it starts a new draft; every load path resets to MANUAL. */
+  setPriorityMode: (mode: PriorityMode) => void;
+  /** PACKAGE 2A — HOME's AUTOMATIC door: a priority only while the draft is AUTO. */
+  grantAutomaticPriority: (lineId: string) => void;
   /** Persist an explicit positive Main-group ratio weight. `null` restores the
    * deterministic equal-share default and never derives a ratio from grams. */
   setMainRatioWeight: (lineId: string, weight: number | null) => void;
@@ -684,6 +697,51 @@ const crownAutoSeedAllowed = (
 ): boolean =>
   surface === 'pro' ||
   (state.visibleProductType !== 'protein' && state.category !== 'protein_gelato');
+
+/**
+ * PACKAGE 2A (closed 2026-09-11) — HOME's first conscious crown in AUTO.
+ *
+ * In AUTO every BASE line holds the Main role invisibly. The customer's first
+ * press means "THIS is my priority", so every OTHER automatic priority is
+ * released in the same write and the draft becomes MANUAL for good.
+ *
+ * Mass-neutral by construction: every line keeps exactly its grams, a released
+ * line gets back the lock its own constraints describe (grams/percent/unlocked,
+ * the same mapping `setStandardIngredient` uses), and no amount is written as
+ * user intent — the Crown is a priority, not a quantity and not a lock. The
+ * automatic seed provenance ends here too: a gram the automatic priority gave is
+ * an ordinary amount from now on, so a later HOME uncrown keeps it.
+ *
+ * Like HOME's own Crown door (`setLockType` with `'home'`) it never touches
+ * ProductBehavior snapshots: a released line keeps its product and its grams,
+ * and HOME's own amount edits must keep working right after the press.
+ */
+const firstManualHomeCrown = (state: RecipeState, pressedLineId: string): Partial<RecipeState> => {
+  const automatic = new Set(
+    state.items.filter((item) => item.lock_type === 'main').map((item) => item.id),
+  );
+  const items = state.items.map((item) => {
+    if (!automatic.has(item.id) || item.id === pressedLineId) return item;
+    const next = { ...item };
+    delete next.main_ratio_weight;
+    return {
+      ...next,
+      lock_type:
+        item.range_constraint || item.grams_constraint
+          ? ('grams' as const)
+          : item.percent_constraint
+            ? ('percent' as const)
+            : ('unlocked' as const),
+    };
+  });
+  return {
+    items: equalCrownSeedWeights(items),
+    priority_mode: 'MANUAL',
+    crownAutoSeededLineIds: state.crownAutoSeededLineIds.filter((id) => !automatic.has(id)),
+    dirty: true,
+    draftRevision: state.draftRevision + 1,
+  };
+};
 
 /**
  * Has the required Main role been RESOLVED?
@@ -1052,6 +1110,7 @@ const fromPreset = (preset: DemoPreset) => ({
   excludedIngredientIds: [] as string[],
   unavailableMainIngredientIds: [] as string[],
   crownAutoSeededLineIds: [] as string[],
+  priority_mode: DEFAULT_PRIORITY_MODE as PriorityMode,
   activePresetId: preset.id,
   newRecipeStarterTemplateId: null,
   newRecipeStarterKey: null,
@@ -1309,6 +1368,9 @@ export function recipePersistPartialize(state: RecipeState) {
     newRecipeStarterTemplateId: state.newRecipeStarterTemplateId,
     newRecipeStarterKey: state.newRecipeStarterKey,
     newRecipeStarterMaterialFingerprint: state.newRecipeStarterMaterialFingerprint,
+    // PACKAGE 2A: draft material — a HOME draft keeps AUTO/MANUAL across a
+    // refresh and a HOME↔PRO switch; every load path resets it to MANUAL.
+    priority_mode: state.priority_mode,
     // Draft material, not provenance: it is the part of the batch the unchosen
     // Main already owns. Dropping it on reload leaves an incomplete starter
     // looking merely off-batch, and the next batch change spends the
@@ -2386,7 +2448,15 @@ export const useRecipeStore = create<RecipeState>()(
           draftRevision: state.draftRevision + 1,
         })),
 
-      setLockType: (lineId, lockType, surface = 'pro') =>
+      setLockType: (lineId, lockType, surface = 'pro') => {
+        // PACKAGE 2A — only HOME's own Crown control passes `'home'`, so this branch
+        // is HOME's first conscious crown and nothing in PRO can reach it.
+        if (surface === 'home' && lockType === 'main' && get().priority_mode === 'AUTO') {
+          set((state) => firstManualHomeCrown(state, lineId));
+          // The pressed line normally already holds the automatic priority. If it
+          // does not, it is crowned below through the ordinary HOME path.
+          if (get().items.find((item) => item.id === lineId)?.lock_type === 'main') return;
+        }
         set((state) => {
           const current = state.items.find((item) => item.id === lineId);
           // OWNER P0 — the crown contract belongs to the role transition, not
@@ -2433,10 +2503,16 @@ export const useRecipeStore = create<RecipeState>()(
               : crownedNow || uncrownedNow
                 ? clearCrownAutoSeeded(state.crownAutoSeededLineIds, lineId)
                 : state.crownAutoSeededLineIds,
+            // PACKAGE 2A: a PRO role change on a draft still in HOME's AUTO is a
+            // conscious choice and ends AUTO; PRO's own semantics are unchanged.
+            ...(surface === 'pro' && (crownedNow || uncrownedNow) && state.priority_mode === 'AUTO'
+              ? { priority_mode: 'MANUAL' as const }
+              : {}),
             dirty: true,
             draftRevision: state.draftRevision + 1,
           };
-        }),
+        });
+      },
 
       setPercentLock: (lineId, percent) => {
         if (percent !== null && (!Number.isFinite(percent) || percent < 0 || percent > 100)) return;
@@ -2574,6 +2650,11 @@ export const useRecipeStore = create<RecipeState>()(
           const crowned = equalCrownSeedWeights(items);
           return {
             items: crowned,
+            // PACKAGE 2A: a crown pressed in PRO is a conscious choice. On a draft
+            // still in HOME's AUTO it ends AUTO — PRO's own crown semantics unchanged.
+            ...(surface === 'pro' && roleChanged && state.priority_mode === 'AUTO'
+              ? { priority_mode: 'MANUAL' as const }
+              : {}),
             starterReservedMainGrams: reservationAfterMainCheck({
               items: crowned,
               productBehaviorSnapshots: state.productBehaviorSnapshots,
@@ -2607,6 +2688,17 @@ export const useRecipeStore = create<RecipeState>()(
             draftRevision: state.draftRevision + 1,
           };
         }),
+
+      setPriorityMode: (mode) => set({ priority_mode: mode === 'AUTO' ? 'AUTO' : 'MANUAL' }),
+
+      grantAutomaticPriority: (lineId) => {
+        // PACKAGE 2A — the AUTOMATIC door, used only by HOME's add paths. It asks the
+        // same canonical Main authority with HOME's surface, so an ineligible product
+        // is still refused and HOME's own seed rule applies, and it never changes the
+        // mode. After the customer's first crown it does nothing at all.
+        if (get().priority_mode !== 'AUTO') return;
+        get().setMainIngredient(lineId, 'home');
+      },
 
       setStandardIngredient: (lineId) =>
         set((state) => {
@@ -2657,6 +2749,11 @@ export const useRecipeStore = create<RecipeState>()(
               };
             }),
             crownAutoSeededLineIds: clearCrownAutoSeeded(state.crownAutoSeededLineIds, lineId),
+            // PACKAGE 2A: an uncrown is a conscious choice — it ends AUTO and the
+            // remaining crowns become the customer's own set.
+            ...(roleChanged && state.priority_mode === 'AUTO'
+              ? { priority_mode: 'MANUAL' as const }
+              : {}),
             ...(roleChanged
               ? {
                   productBehaviorSnapshots,
@@ -2883,6 +2980,8 @@ export const useRecipeStore = create<RecipeState>()(
           // provenance is draft-transient and must never be reconstructed from
           // a saved payload.
           crownAutoSeededLineIds: [],
+          // PACKAGE 2A: a loaded recipe is MANUAL — its crowns are real, saved choices.
+          priority_mode: DEFAULT_PRIORITY_MODE,
           activePresetId: null,
           newRecipeStarterTemplateId: null,
           newRecipeStarterKey: null,

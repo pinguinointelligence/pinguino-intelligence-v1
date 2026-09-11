@@ -209,7 +209,7 @@ Statuses, per the owner's 2026-09-10 rule: **a green test is not Owner Verified.
 | 26 | ⬜ | HOME autosave + name at the end | Not started — conflict. The draft store already persists; the closing „Jak nazwiesz swoją recepturę?" lives in 2A's file. |
 | 27 | 🎨 | One central composer field | **Implemented + VISUAL QA** — gate A, B, C, D above. |
 | 28 | 🎨 | Main CTA appears only after a base idea | **Implemented + VISUAL QA** — gate A, C, E above. |
-| 29 | 🎨 | Interactive first-run tutorial | **Implemented + VISUAL QA** — auto-start, 3 live steps each spotlighting the measured anchor, „Gotowe", menu restart. Steps E–H appear as their sections render. §29G ingredient-settings anchor: **DEFERRED UNTIL PACKAGE 2A INTEGRATION.** |
+| 29 | 🎨 | Interactive first-run tutorial | **Implemented + VISUAL QA** — auto-start, 3 live steps each spotlighting the measured anchor, „Gotowe", menu restart. Steps E–H appear as their sections render. §29G ingredient-settings anchor: ~~DEFERRED UNTIL PACKAGE 2A INTEGRATION~~ → **CLOSED 2026-09-11** by the Package 2A closure (step targets `home-recipe-line`; `reports/PACKAGE_2A_CLOSURE_2026-09-11.md`). |
 | 30 | 🎨 | AI ✨ = fruit only | **Implemented + VISUAL QA** for the entry and copy; the recogniser is real (`product-identify-live`) but **not exercised** — see §31. |
 | 31 | 🎨 / ⏸ | Full-screen AI Vision | **UI + canonical `CameraSession` + integration boundary = IMPLEMENTED + VISUAL QA** (opens, reticle, thumb-zone controls, honest refusal when the camera is blocked). **Recognition round-trip = DEFERRED/BLOCKED on a real device** — no camera and no paid call exercised. No fake backend was written. |
 | 32 | ⏸ | ONE shared scanner | Deferred (D-12). Related: the fruit camera was corrected to drive the ONE canonical `CameraSession` after the repo's own boundary guard caught it. |
@@ -284,7 +284,7 @@ browser at 8×: the glyph is two opposite arrows. **Nothing was changed.** Statu
 **Recommendation: A.** **Impact:** §20 stays ⛔ until then.
 
 **4 — §29G ingredient-settings tutorial step has no anchor.** → **ANSWERED: do not touch PACKAGE 2A
-files.** Status `DEFERRED UNTIL PACKAGE 2A INTEGRATION`; the step drops itself cleanly until then.
+files.** Status `DEFERRED UNTIL PACKAGE 2A INTEGRATION`; the step drops itself cleanly until then. **Update 2026-09-11: CLOSED by the Package 2A closure — the step now targets `home-recipe-line`, and the crown copy it teaches is true on staging (`reports/PACKAGE_2A_CLOSURE_2026-09-11.md`).**
 Original framing: The step is authored and drops itself cleanly, but the panel it should spotlight carries no `data-testid`, and adding one means editing `HomeRecipeSection.tsx` — PACKAGE 2A's live file.
 · A: I add the anchor after 2A lands. · B: 2A adds it as part of its own work.
 **Recommendation: A.** **Impact:** the tutorial teaches the crown only when this lands.

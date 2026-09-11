@@ -40,8 +40,10 @@ describe('a scanned product enters through the typed-ingredient door', () => {
        which is where HOME's 0 g rows came from: a confirmed amount had nowhere to go. */
     expect(add).toContain('store.addIngredient(ingredient, grams)');
     // §49: the crown is ASKED of the existing authority, never decided here —
-    // on the HOME surface, so HOME's Crown rules never reach PRO.
-    expect(add).toContain("setMainIngredient(added.lineId, 'home')");
+    // on the HOME surface, so HOME's Crown rules never reach PRO. PACKAGE 2A: it is
+    // asked through the AUTOMATIC door, so a scanned BASE product is an invisible
+    // priority in AUTO and an ordinary line after the customer's first crown.
+    expect(add).toContain('grantAutomaticPriority(added.lineId)');
     /* And a topping goes to the topping collection instead — uncrowned, because the
        Crown is a Main concept and a topping is not a Main. Ignoring the role is what put
        a stated topping in the base wearing a Crown while its chip still read TOPPING. */
