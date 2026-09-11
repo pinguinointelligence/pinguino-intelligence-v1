@@ -121,4 +121,57 @@ describe('source provenance bridge', () => {
     // latiendaencasa carries an internal article number, not the EAN — same refusal as ECI.
     expect(proposal?.evidenceProvenance.ingredients).toBeUndefined();
   });
+
+  it('SCN-MONO-01 keeps a confirmed one-sugar declaration above Mapper estimates', () => {
+    const result = { ...sport001ScanResult(), externalSources: [] };
+    const proposal = customerProductProfileProposal({
+      scanResult: result,
+      recognition,
+      recognitionEvidence: { gtin: SPORT_001_EAN } as never,
+      userConfirmedFields: [
+        'identity',
+        'brand',
+        'ingredients',
+        'nutritionBasis',
+        'energyKcal',
+        'fat',
+        'carbohydrate',
+        'sugars',
+        'fiber',
+        'protein',
+        'salt',
+        'barcode',
+      ],
+    });
+
+    expect(proposal?.declared.total_sugars_percent).toBeCloseTo(5.5, 4);
+    expect(proposal?.declared.sucrose_percent).toBeCloseTo(5.5, 4);
+    expect(proposal?.declaredBasis.sucrose_percent).toBe('derived');
+    expect(proposal?.evidence.fields.sugars).toBe('user_confirmed');
+    expect(proposal?.evidence.fields.ingredients).toBe('user_confirmed');
+  });
+
+  it('SCN-MONO-02 still blocks closure on a genuine unresolved conflict', () => {
+    const result = {
+      ...sport001ScanResult(),
+      externalSources: [],
+      conflicts: [
+        {
+          field: 'ingredientsText',
+          labelValue: 'agua, azúcar',
+          externalValue: 'agua, jarabe de glucosa',
+          retainedSource: null,
+        },
+      ],
+    };
+    const proposal = customerProductProfileProposal({
+      scanResult: result,
+      recognition,
+      recognitionEvidence: { gtin: SPORT_001_EAN } as never,
+      userConfirmedFields: ['identity', 'brand', 'ingredients', 'nutritionBasis', 'sugars', 'barcode'],
+    });
+
+    expect(proposal?.declared.total_sugars_percent).toBeCloseTo(5.5, 4);
+    expect(proposal?.declared.sucrose_percent).toBeUndefined();
+  });
 });
