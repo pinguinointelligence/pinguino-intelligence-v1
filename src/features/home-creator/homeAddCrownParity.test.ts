@@ -75,7 +75,10 @@ describe('Dodaj składnik offers the crown', () => {
 
 describe('Dodaj topping never crowns', () => {
   it('creates the topping without touching Main', () => {
-    expect(addTopping).toContain('addTopping(ingredient, 0)');
+    // OWNER OD-3: a new topping starts at 5 % of the current BASE mass.
+    expect(addTopping).toContain(
+      '.addTopping(ingredient, defaultHomeToppingGrams(useRecipeStore.getState().items))',
+    );
     expect(addTopping).not.toContain('setMainIngredient');
     expect(addTopping).not.toContain('setLockType');
     // PACKAGE 2A: a topping is never a BASE priority and never ends AUTO.

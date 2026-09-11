@@ -22,6 +22,7 @@
 import { useCallback, useRef } from 'react';
 import type { EngineIngredient } from '@/engine';
 import { autoPriorityAppliesToNewLine } from '@/features/recipe-priority';
+import { defaultHomeToppingGrams } from './homeToppingDefault';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { useHomeDraftStore, type IntentChip } from './homeDraftStore';
 import type { IntentRole } from './homeIntentParsing';
@@ -122,8 +123,10 @@ export function useHomeIntentIngredients() {
         if (already) return { chipId: key, status: 'duplicate' };
         // A topping is never crowned: the Crown is a Main concept and a topping is not
         // a Main. `addTopping` is the collection's own authority.
-        store.addTopping(ingredient as never, grams);
-        return { chipId: key, status: grams > 0 ? 'added' : 'needs_amount' };
+        // OWNER OD-3: with no confirmed amount a topping starts at 5 % of the BASE.
+        const toppingGrams = grams > 0 ? grams : defaultHomeToppingGrams(store.items);
+        store.addTopping(ingredient as never, toppingGrams);
+        return { chipId: key, status: toppingGrams > 0 ? 'added' : 'needs_amount' };
       }
 
       // PACKAGE 2A: after the customer's first crown nothing sizes a new BASE line

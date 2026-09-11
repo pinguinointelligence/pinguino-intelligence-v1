@@ -1491,17 +1491,21 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
             proposalProductBehaviorAuthorization: null,
             // Interactive run with nothing left for the solver to change: the
             // customer's own amounts/padlocks are the whole remaining change.
+            // A HOME bootstrap (owner OD-1) is never the customer's amount: it is
+            // not committed as a row edit, and alone it leaves nothing to commit.
             pendingInstructionCommit:
-              interactive && result.code === 'already_clean'
+              interactive &&
+              result.code === 'already_clean' &&
+              interactive.instructions.some((instruction) => !instruction.bootstrap)
                 ? {
                     baseFingerprint: workingStateFingerprint(
                       interactive.untouched.input,
                       interactive.untouched.constraints,
                     ),
                     baseDraftRevision: interactive.untouched.revision,
-                    instructions: interactive.instructions.map((instruction) => ({
-                      ...instruction,
-                    })),
+                    instructions: interactive.instructions
+                      .filter((instruction) => !instruction.bootstrap)
+                      .map((instruction) => ({ ...instruction })),
                   }
                 : null,
             previewIssue: result,
@@ -1995,6 +1999,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
         // they are written by the SAME row actions the recipe rows use: the
         // typed amount first, then the padlock.
         for (const instruction of pending.instructions) {
+          if (instruction.bootstrap) continue; // never the customer's amount
           const line = useRecipeStore
             .getState()
             .items.find((candidate) => candidate.id === instruction.lineId);

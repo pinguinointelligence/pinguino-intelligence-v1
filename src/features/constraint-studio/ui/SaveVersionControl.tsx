@@ -18,6 +18,7 @@ import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
 import { resolveRecipesRepository } from '@/features/pro-core/proCoreRecipeRepo';
 import type { RecipeVersionSource } from '@/features/pro-core/recipeContracts';
 import { useAuthStore } from '@/stores/authStore';
+import { withSavedPriorityMode } from '@/features/recipe-priority';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { constraintStudioCopy as copy } from '../constraintStudioCopy';
 import { useConstraintStudioStore } from '../constraintStudioStore';
@@ -51,8 +52,12 @@ export function SaveVersionControl() {
     setBusy(true);
     setError(null);
     try {
-      const recipeInput = buildRecipeInput(useRecipeStore.getState());
-      const result = calculateRecipe(recipeInput);
+      const draft = useRecipeStore.getState();
+      const engineInput = buildRecipeInput(draft);
+      const result = calculateRecipe(engineInput);
+      // PACKAGE 2A: a draft still in HOME's AUTO is saved with that mode, so it
+      // reopens AUTO. The engine input itself is unchanged.
+      const recipeInput = withSavedPriorityMode(engineInput, draft.priority_mode);
       const trace = {
         engineVersion: result.engine_version,
         configVersion: result.config_version,

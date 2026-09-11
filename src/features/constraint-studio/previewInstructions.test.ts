@@ -182,3 +182,65 @@ describe('interactive preview instructions — the recipe row semantics, nothing
     expect(samePreviewInstructions(merged, [...merged])).toBe(true);
   });
 });
+
+describe('PACKAGE 2A (owner OD-1) — HOME’s solver bootstrap, never a customer edit', () => {
+  const zeroGramMain = () => {
+    const base = ownerFruitRecipe();
+    const main = base.items.find((item) => item.lock_type === 'main')!;
+    const input: RecipeInput = {
+      ...base,
+      items: base.items.map((item) => (item.id === main.id ? { ...item, planned_grams: 0 } : item)),
+    };
+    return { input, mainId: main.id };
+  };
+  const none: ConstraintSet = { byLineId: {} };
+
+  it('puts a 0 g priority line on the copy at 1 g, marked as the Crown bootstrap, with no intent', () => {
+    const { input, mainId } = zeroGramMain();
+    const result = applyPreviewInstructions(input, none, [
+      { lineId: mainId, grams: 1, locked: false, bootstrap: true },
+    ]);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const copy = result.input.items.find((item) => item.id === mainId)!;
+    expect(copy).toMatchObject({
+      planned_grams: 1,
+      lock_type: 'main',
+      amount_provenance: 'AUTO_CROWN_SEED',
+    });
+    expect(copy.user_intent_anchor_grams).toBeUndefined();
+    expect(copy.user_target_grams).toBeUndefined();
+    // Pure: the recipe it was given still holds 0 g.
+    expect(input.items.find((item) => item.id === mainId)!.planned_grams).toBe(0);
+  });
+
+  it('refuses anything but a 0 g priority line at the 1 g bootstrap', () => {
+    const { input, mainId } = zeroGramMain();
+    const ordinary = input.items.find(
+      (item) => item.lock_type !== 'main' && item.actual_grams === null,
+    )!;
+    const refused = (instruction: Parameters<typeof applyPreviewInstructions>[2][number]) =>
+      applyPreviewInstructions(input, none, [instruction]);
+    expect(
+      refused({ lineId: ordinary.id, grams: 1, locked: false, bootstrap: true }),
+    ).toMatchObject({
+      ok: false,
+      reason: 'invalid_bootstrap',
+    });
+    expect(refused({ lineId: mainId, grams: 5, locked: false, bootstrap: true })).toMatchObject({
+      ok: false,
+      reason: 'invalid_bootstrap',
+    });
+    expect(refused({ lineId: mainId, grams: 1, locked: true, bootstrap: true })).toMatchObject({
+      ok: false,
+      reason: 'invalid_bootstrap',
+    });
+    const sized = ownerFruitRecipe();
+    const positiveMain = sized.items.find((item) => item.lock_type === 'main')!;
+    expect(
+      applyPreviewInstructions(sized, none, [
+        { lineId: positiveMain.id, grams: 1, locked: false, bootstrap: true },
+      ]),
+    ).toMatchObject({ ok: false, reason: 'invalid_bootstrap' });
+  });
+});

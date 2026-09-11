@@ -155,83 +155,108 @@ const safeImprovingCandidateExists = (input: RecipeInput): boolean => {
 };
 
 describe('PC-03 — an off-batch Sorbet draft still reaches the exact projection', () => {
-  it('0. the reachable fixture is a complete, legal Sorbet that is off batch', () => {
-    // The customer-reachable route: a complete Sorbet, then one ordinary edit
-    // or added ingredient, which the store does NOT re-budget. Everything about
-    // it is legal except the batch sum.
-    const input = completeDraft(-2, -1, 1);
-    expect(plannedSum(input)).toBeCloseTo(TARGET + 1, 6);
-    expect(Math.abs(plannedSum(input) - TARGET)).toBeGreaterThan(0.1);
-    expect(input.items.filter((item) => item.lock_type === 'main')).toHaveLength(1);
-    expect(input.items.every((item) => item.actual_grams === null)).toBe(true);
-    // A safe, Direction-improving candidate demonstrably exists for it.
-    expect(safeImprovingCandidateExists(input)).toBe(true);
-  }, SOLVER_TIMEOUT_MS);
+  it(
+    '0. the reachable fixture is a complete, legal Sorbet that is off batch',
+    () => {
+      // The customer-reachable route: a complete Sorbet, then one ordinary edit
+      // or added ingredient, which the store does NOT re-budget. Everything about
+      // it is legal except the batch sum.
+      const input = completeDraft(-2, -1, 1);
+      expect(plannedSum(input)).toBeCloseTo(TARGET + 1, 6);
+      expect(Math.abs(plannedSum(input) - TARGET)).toBeGreaterThan(0.1);
+      expect(input.items.filter((item) => item.lock_type === 'main')).toHaveLength(1);
+      expect(input.items.every((item) => item.actual_grams === null)).toBe(true);
+      // A safe, Direction-improving candidate demonstrably exists for it.
+      expect(safeImprovingCandidateExists(input)).toBe(true);
+    },
+    SOLVER_TIMEOUT_MS,
+  );
 
-  it('1. an off-batch draft publishes a violation-free proposal on the target batch', () => {
-    const result = preview(completeDraft(-2, -1, 1));
-    expect(result.ok ? 'OK' : (result as { code: string }).code).not.toBe('unsafe_proposal');
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+  it(
+    '1. an off-batch draft publishes a violation-free proposal on the target batch',
+    () => {
+      const result = preview(completeDraft(-2, -1, 1));
+      expect(result.ok ? 'OK' : (result as { code: string }).code).not.toBe('unsafe_proposal');
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
 
-    const proposed = result.preview.proposedInput;
-    // The canonical batch invariant still decides: the proposal is ON batch.
-    expect(Math.abs(plannedSum(proposed) - TARGET)).toBeLessThanOrEqual(0.1);
-    // ...and the Engine, not the projection, clears it.
-    const proposedResult = calculateRecipe(proposed);
-    expect(detectViolations(proposedResult)).toEqual([]);
-    expect(proposedResult.warnings.filter((warning) => warning.severity === 'critical')).toEqual([]);
-  }, SOLVER_TIMEOUT_MS);
+      const proposed = result.preview.proposedInput;
+      // The canonical batch invariant still decides: the proposal is ON batch.
+      expect(Math.abs(plannedSum(proposed) - TARGET)).toBeLessThanOrEqual(0.1);
+      // ...and the Engine, not the projection, clears it.
+      const proposedResult = calculateRecipe(proposed);
+      expect(detectViolations(proposedResult)).toEqual([]);
+      expect(proposedResult.warnings.filter((warning) => warning.severity === 'critical')).toEqual(
+        [],
+      );
+    },
+    SOLVER_TIMEOUT_MS,
+  );
 
-  it('1b. the proposal comes from the exact projection, not the general search', () => {
-    /* The defect was eligibility: an off-batch draft never reached the
+  it(
+    '1b. the proposal comes from the exact projection, not the general search',
+    () => {
+      /* The defect was eligibility: an off-batch draft never reached the
        closed-form projection and fell through to the general search. This pins
        the route itself, so the repair cannot silently regress into "the slow
        path happened to succeed". */
-    const result = preview(completeDraft(-2, -1, 1));
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(result.preview.directionCandidateSource).toBe('sorbet_exact_projection');
-    // Reconciling an off-batch draft onto its target IS a batch rescale, and
-    // the provenance record says so.
-    expect(result.preview.autoBalance).toEqual({ batchRescaled: true, solverRounds: 0 });
-  }, SOLVER_TIMEOUT_MS);
+      const result = preview(completeDraft(-2, -1, 1));
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.preview.directionCandidateSource).toBe('sorbet_exact_projection');
+      // Reconciling an off-batch draft onto its target IS a batch rescale, and
+      // the provenance record says so.
+      expect(result.preview.autoBalance).toEqual({ batchRescaled: true, solverRounds: 0 });
+    },
+    SOLVER_TIMEOUT_MS,
+  );
 
-  it('2. the crowned Main survives the reconciliation, positive', () => {
-    const result = preview(completeDraft(-2, -1, 1));
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    const crowned = result.preview.proposedInput.items.filter((item) => item.lock_type === 'main');
-    expect(crowned).toHaveLength(1);
-    expect(crowned[0]!.planned_grams).toBeGreaterThan(0);
-    // The batch is never reconciled by erasing the Main the customer chose.
-    expect(crowned[0]!.ingredient.name).toBe(RASPBERRY.name);
-  }, SOLVER_TIMEOUT_MS);
+  it(
+    '2. the crowned Main survives the reconciliation, positive',
+    () => {
+      const result = preview(completeDraft(-2, -1, 1));
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      const crowned = result.preview.proposedInput.items.filter(
+        (item) => item.lock_type === 'main',
+      );
+      expect(crowned).toHaveLength(1);
+      expect(crowned[0]!.planned_grams).toBeGreaterThan(0);
+      // The batch is never reconciled by erasing the Main the customer chose.
+      expect(crowned[0]!.ingredient.name).toBe(RASPBERRY.name);
+    },
+    SOLVER_TIMEOUT_MS,
+  );
 
-  it('2b. the served Crown-debt draft is refused for its OWN reason, not the batch', () => {
-    /* The canonical HOME journey seeds the fruit Main at 1 g and scales the
+  it(
+    '2b. the served Crown-debt draft is refused for its OWN reason, not the batch',
+    () => {
+      /* The canonical journey hands the fruit Main to the solver at the 1 g Crown
+       bootstrap (PRO's seed; since owner OD-1 HOME's provisional copy) and scales the
        support lines to fill the batch, which pushes INULIN far past the 20–80 g
        (2–8 %) Gellatti range. That draft is therefore independently
        unpublishable, and PC-03 deliberately does not paper over it: this pins
        the reason so the inulin debt is never mistaken for the batch-eligibility
        defect. Asserted at the practicalization boundary, which is where the
        refusal is decided — no solver run needed. */
-    const input = crownDebtDraft(-1, 0);
-    expect(Math.abs(plannedSum(input) - TARGET)).toBeGreaterThan(0.1);
-    const inulin = input.items.find((item) =>
-      item.ingredient.name.toUpperCase().includes('INULIN'),
-    );
-    expect(inulin!.planned_grams).toBeGreaterThan(80);
+      const input = crownDebtDraft(-1, 0);
+      expect(Math.abs(plannedSum(input) - TARGET)).toBeGreaterThan(0.1);
+      const inulin = input.items.find((item) =>
+        item.ingredient.name.toUpperCase().includes('INULIN'),
+      );
+      expect(inulin!.planned_grams).toBeGreaterThan(80);
 
-    const candidate = projectSorbetExactDirectionCandidate(input);
-    expect(candidate).not.toBeNull();
-    const practical = practicalizeRecipeCandidate(candidate!, { byLineId: {} }) as {
-      ok: boolean;
-      code?: string;
-    };
-    expect(practical.ok).toBe(false);
-    expect(practical.code).toBe('inulin_outside_owner_policy');
-  }, SOLVER_TIMEOUT_MS);
+      const candidate = projectSorbetExactDirectionCandidate(input);
+      expect(candidate).not.toBeNull();
+      const practical = practicalizeRecipeCandidate(candidate!, { byLineId: {} }) as {
+        ok: boolean;
+        code?: string;
+      };
+      expect(practical.ok).toBe(false);
+      expect(practical.code).toBe('inulin_outside_owner_policy');
+    },
+    SOLVER_TIMEOUT_MS,
+  );
 
   it.each([0.1, 1, 30, -1, -30])(
     '3. a %s g batch delta alone never forces the unsafe terminal',
@@ -253,80 +278,102 @@ describe('PC-03 — an off-batch Sorbet draft still reaches the exact projection
     SOLVER_TIMEOUT_MS,
   );
 
-  it('4. the on-batch draft is unchanged', () => {
-    const input = completeDraft(-2, -1);
-    expect(plannedSum(input)).toBeCloseTo(TARGET, 6);
-    const result = preview(input);
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(Math.abs(plannedSum(result.preview.proposedInput) - TARGET)).toBeLessThanOrEqual(0.1);
-    expect(detectViolations(calculateRecipe(result.preview.proposedInput))).toEqual([]);
-  }, SOLVER_TIMEOUT_MS);
-
-  it('5. a physically weighed line still keeps the projection closed', () => {
-    // `actual_grams` remains an eligibility condition — untouched by this fix.
-    const base = completeDraft(-2, -1, 1);
-    const weighed: RecipeInput = {
-      ...base,
-      items: base.items.map((item, index) =>
-        index === 0 ? { ...item, actual_grams: item.planned_grams } : item,
-      ),
-    };
-    expect(projectSorbetExactDirectionCandidate(weighed)).toBeNull();
-  }, SOLVER_TIMEOUT_MS);
-
-  it('6. a genuinely unsafe off-batch draft is still refused or cleaned', () => {
-    // Almost the whole batch as sucrose: no projection can make this safe.
-    const unsafe = make(
-      [
-        ...support().map((item) =>
-          item.ingredient.name.toUpperCase().includes('SUCROSE')
-            ? { ...item, planned_grams: 900 }
-            : { ...item, planned_grams: 1 },
-        ),
-        main(1),
-      ] as RecipeInput['items'],
-      -2,
-      -1,
-    );
-    expect(Math.abs(plannedSum(unsafe) - TARGET)).toBeGreaterThan(0.1);
-    const result = preview(unsafe);
-    if (result.ok) {
-      // Anything published must be genuinely clean and on batch.
-      expect(detectViolations(calculateRecipe(result.preview.proposedInput))).toEqual([]);
+  it(
+    '4. the on-batch draft is unchanged',
+    () => {
+      const input = completeDraft(-2, -1);
+      expect(plannedSum(input)).toBeCloseTo(TARGET, 6);
+      const result = preview(input);
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
       expect(Math.abs(plannedSum(result.preview.proposedInput) - TARGET)).toBeLessThanOrEqual(0.1);
-    } else {
-      expect((result as { code: string }).code).not.toBe('OK');
-    }
-  }, SOLVER_TIMEOUT_MS);
+      expect(detectViolations(calculateRecipe(result.preview.proposedInput))).toEqual([]);
+    },
+    SOLVER_TIMEOUT_MS,
+  );
 
-  it('7. a canonical gram lock stays authoritative on an off-batch draft', () => {
-    // A lock reaches the pipeline through the ConstraintSet — that is the
-    // authority `verifyConstraintsPreserved` consults on every candidate.
-    const base = completeDraft(-2, -1, 1);
-    const sucrose = base.items.find((item) =>
-      item.ingredient.name.toUpperCase().includes('SUCROSE'),
-    )!;
-    const set: ConstraintSet = {
-      byLineId: { [sucrose.id]: { mode: 'locked', grams: sucrose.planned_grams } },
-    };
-    const result = preview(base, set);
-    if (result.ok) {
-      const proposed = result.preview.proposedInput.items.find((item) => item.id === sucrose.id);
-      expect(proposed!.planned_grams).toBeCloseTo(sucrose.planned_grams, 6);
-    }
-  }, SOLVER_TIMEOUT_MS);
+  it(
+    '5. a physically weighed line still keeps the projection closed',
+    () => {
+      // `actual_grams` remains an eligibility condition — untouched by this fix.
+      const base = completeDraft(-2, -1, 1);
+      const weighed: RecipeInput = {
+        ...base,
+        items: base.items.map((item, index) =>
+          index === 0 ? { ...item, actual_grams: item.planned_grams } : item,
+        ),
+      };
+      expect(projectSorbetExactDirectionCandidate(weighed)).toBeNull();
+    },
+    SOLVER_TIMEOUT_MS,
+  );
 
-  it('8. the projection still refuses a non-Sorbet and an inactive Direction', () => {
-    const offBatch = completeDraft(-2, -1, 1);
-    expect(
-      projectSorbetExactDirectionCandidate({ ...offBatch, category: 'milk_gelato' }),
-    ).toBeNull();
-    expect(
-      projectSorbetExactDirectionCandidate({
-        ...offBatch,
-        goals: { ...offBatch.goals, direction_targets_active: false },
-      }),
-    ).toBeNull();
-  }, SOLVER_TIMEOUT_MS);
+  it(
+    '6. a genuinely unsafe off-batch draft is still refused or cleaned',
+    () => {
+      // Almost the whole batch as sucrose: no projection can make this safe.
+      const unsafe = make(
+        [
+          ...support().map((item) =>
+            item.ingredient.name.toUpperCase().includes('SUCROSE')
+              ? { ...item, planned_grams: 900 }
+              : { ...item, planned_grams: 1 },
+          ),
+          main(1),
+        ] as RecipeInput['items'],
+        -2,
+        -1,
+      );
+      expect(Math.abs(plannedSum(unsafe) - TARGET)).toBeGreaterThan(0.1);
+      const result = preview(unsafe);
+      if (result.ok) {
+        // Anything published must be genuinely clean and on batch.
+        expect(detectViolations(calculateRecipe(result.preview.proposedInput))).toEqual([]);
+        expect(Math.abs(plannedSum(result.preview.proposedInput) - TARGET)).toBeLessThanOrEqual(
+          0.1,
+        );
+      } else {
+        expect((result as { code: string }).code).not.toBe('OK');
+      }
+    },
+    SOLVER_TIMEOUT_MS,
+  );
+
+  it(
+    '7. a canonical gram lock stays authoritative on an off-batch draft',
+    () => {
+      // A lock reaches the pipeline through the ConstraintSet — that is the
+      // authority `verifyConstraintsPreserved` consults on every candidate.
+      const base = completeDraft(-2, -1, 1);
+      const sucrose = base.items.find((item) =>
+        item.ingredient.name.toUpperCase().includes('SUCROSE'),
+      )!;
+      const set: ConstraintSet = {
+        byLineId: { [sucrose.id]: { mode: 'locked', grams: sucrose.planned_grams } },
+      };
+      const result = preview(base, set);
+      if (result.ok) {
+        const proposed = result.preview.proposedInput.items.find((item) => item.id === sucrose.id);
+        expect(proposed!.planned_grams).toBeCloseTo(sucrose.planned_grams, 6);
+      }
+    },
+    SOLVER_TIMEOUT_MS,
+  );
+
+  it(
+    '8. the projection still refuses a non-Sorbet and an inactive Direction',
+    () => {
+      const offBatch = completeDraft(-2, -1, 1);
+      expect(
+        projectSorbetExactDirectionCandidate({ ...offBatch, category: 'milk_gelato' }),
+      ).toBeNull();
+      expect(
+        projectSorbetExactDirectionCandidate({
+          ...offBatch,
+          goals: { ...offBatch.goals, direction_targets_active: false },
+        }),
+      ).toBeNull();
+    },
+    SOLVER_TIMEOUT_MS,
+  );
 });

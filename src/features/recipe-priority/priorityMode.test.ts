@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_PRIORITY_MODE,
+  SAVED_PRIORITY_MODE_KEY,
+  savedPriorityMode,
+  withSavedPriorityMode,
   autoPriorityAppliesToNewLine,
   effectivePriorityLineIds,
   visibleCrownLineIds,
@@ -39,5 +42,29 @@ describe('PACKAGE 2A — the product-layer priority questions', () => {
     const garbage = 'auto' as unknown as 'AUTO';
     expect(visibleCrownLineIds(items, garbage)).toEqual(['banana', 'chocolate']);
     expect(autoPriorityAppliesToNewLine(garbage)).toBe(false);
+  });
+});
+
+describe('PACKAGE 2A — save / reopen keeps the mode', () => {
+  it('a draft saved in AUTO carries one marker; a MANUAL draft carries none', () => {
+    const input = { items: [], category: 'milk_gelato' };
+    expect(withSavedPriorityMode(input, 'AUTO')).toEqual({
+      ...input,
+      [SAVED_PRIORITY_MODE_KEY]: 'AUTO',
+    });
+    expect(withSavedPriorityMode(input, 'MANUAL')).toEqual(input);
+    expect(SAVED_PRIORITY_MODE_KEY).toBe('pinguino_priority_mode_v1');
+  });
+
+  it('a MANUAL save drops a marker the input still carried from an AUTO reopen', () => {
+    const reopened = { items: [], [SAVED_PRIORITY_MODE_KEY]: 'AUTO' };
+    expect(withSavedPriorityMode(reopened, 'MANUAL')).toEqual({ items: [] });
+  });
+
+  it('reopens AUTO only from the marker — anything else is MANUAL', () => {
+    expect(savedPriorityMode({ [SAVED_PRIORITY_MODE_KEY]: 'AUTO' })).toBe('AUTO');
+    expect(savedPriorityMode({})).toBe('MANUAL');
+    expect(savedPriorityMode({ [SAVED_PRIORITY_MODE_KEY]: 'auto' })).toBe('MANUAL');
+    expect(savedPriorityMode({ priority_mode: 'AUTO' })).toBe('MANUAL');
   });
 });

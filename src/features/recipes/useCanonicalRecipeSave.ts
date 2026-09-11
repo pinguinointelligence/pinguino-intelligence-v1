@@ -17,6 +17,7 @@ import { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { CONFIG_VERSION, ENGINE_VERSION, type RecipeInput } from '@/engine';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
+import { withSavedPriorityMode } from '@/features/recipe-priority';
 import { recipeCapabilitiesFor } from '@/features/pro-core/proCoreCapabilities';
 import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
 import { resolveRecipesRepository } from '@/features/pro-core/proCoreRecipeRepo';
@@ -98,9 +99,12 @@ const buildRecipeInputFromStore = (): RecipeInput => {
     ),
   );
   const withLabelDraft = attachRecipeLabelDraft(withProfile, state.labelDraft);
-  return practicalRecipeAuditMatchesInput(input, state.practicalRecipeAudit)
+  const saved = practicalRecipeAuditMatchesInput(input, state.practicalRecipeAudit)
     ? attachSavedPracticalRecipeAudit(withLabelDraft, state.practicalRecipeAudit!)
     : withLabelDraft;
+  // PACKAGE 2A: a draft still in HOME's AUTO carries that mode into the saved
+  // recipe, so it reopens AUTO; a MANUAL draft carries no marker at all.
+  return withSavedPriorityMode(saved, state.priority_mode);
 };
 
 export type SaveBlockedReason = 'signin' | 'unavailable' | 'plan' | null;

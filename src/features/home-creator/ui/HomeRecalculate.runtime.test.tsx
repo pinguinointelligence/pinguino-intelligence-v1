@@ -224,3 +224,31 @@ describe('HOME interactive recalculation', () => {
     expect(onGramsBlocked).toHaveBeenCalled();
   });
 });
+
+describe('PACKAGE 2A — OWNER OD-1: a 0 g HOME priority line is the solver’s to size', () => {
+  it('„Przelicz i popraw" hands it over as the Crown bootstrap on the provisional copy', async () => {
+    const main = useRecipeStore.getState().items.find((item) => item.lock_type === 'main')!;
+    useRecipeStore.setState((state) => ({
+      items: state.items.map((item) =>
+        item.id === main.id ? { ...item, planned_grams: 0 } : item,
+      ),
+    }));
+    await render();
+    await open();
+    expect(runtime.run).not.toHaveBeenCalled();
+    expect(runtime.interactive).toHaveBeenCalledWith([
+      { lineId: main.id, grams: 1, locked: false, bootstrap: true },
+    ]);
+    // The recipe itself was not written.
+    expect(useRecipeStore.getState().items.find((item) => item.id === main.id)!.planned_grams).toBe(
+      0,
+    );
+  });
+
+  it('with no 0 g priority line the run is the ordinary one', async () => {
+    await render();
+    await open();
+    expect(runtime.run).toHaveBeenCalledOnce();
+    expect(runtime.interactive).not.toHaveBeenCalled();
+  });
+});

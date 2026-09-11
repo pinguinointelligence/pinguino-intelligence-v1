@@ -89,6 +89,34 @@ describe('PACKAGE 2A — HOME wiring', () => {
     expect(callers).toEqual([join('src', 'pages', 'home', 'HomeCreatorPage.tsx')]);
   });
 
+  it("OWNER OD-1: HOME's recalculation hands every 0 g priority line to the solver as the bootstrap", () => {
+    const recalc = read('src/features/home-creator/ui/HomeRecalculate.tsx');
+    expect(recalc).toContain(
+      'homeRecalculationInstructions(useRecipeStore.getState().items, instructions)',
+    );
+    expect(recalc).toContain('customerInstructions(preview.previewInstructions?.lines ?? [])');
+    expect(recalc).not.toContain('onClick={() => void runPiRecalculationWithTerminal()}');
+  });
+
+  it('OWNER OD-3: both HOME topping paths start at 5 % of the BASE', () => {
+    expect(page).toContain('defaultHomeToppingGrams(useRecipeStore.getState().items)');
+    expect(intent).toContain('defaultHomeToppingGrams(store.items)');
+  });
+
+  it('every product that needs an amount gets its own question', () => {
+    expect(page).toContain('queueAmountQuestion(queue, next)');
+    expect(page).toContain('key={pendingAdd.ingredient.id}');
+  });
+
+  it('save / reopen keeps the mode through one marker, at every save door', () => {
+    const canonical = read('src/features/recipes/useCanonicalRecipeSave.ts');
+    const studio = read('src/features/constraint-studio/ui/SaveVersionControl.tsx');
+    const store = read('src/stores/recipeStore.ts');
+    expect(canonical).toContain('withSavedPriorityMode(saved, state.priority_mode)');
+    expect(studio).toContain('withSavedPriorityMode(engineInput, draft.priority_mode)');
+    expect(store).toContain('priority_mode: savedPriorityMode(input),');
+  });
+
   it('no PRO file knows the HOME priority mode', () => {
     const pro = [
       ...walk('src/features/ingredient-builder'),
