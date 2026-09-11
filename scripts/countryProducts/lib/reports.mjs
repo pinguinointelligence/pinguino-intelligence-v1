@@ -276,7 +276,8 @@ export function renderCoverageReport(registry, plan) {
   );
   lines.push('', 'Consistency checks (all computed from the workbook):', '');
   lines.push(...table(['Check', 'Passed', 'Detail'], registry.consistencyChecks.map((entry) => [entry.id, entry.passed ? 'yes' : 'NO', entry.detail])));
-  return `${lines.join('\n')}\n`;
+  // Exactly one trailing newline: `git diff --check` rejects a blank line at EOF.
+  return `${lines.join('\n').replace(/\n+$/, '')}\n`;
 }
 
 export function renderOpenGapsReport(registry) {
@@ -303,7 +304,8 @@ export function renderOpenGapsReport(registry) {
       '',
     );
   }
-  return `${lines.join('\n')}\n`;
+  // Exactly one trailing newline: `git diff --check` rejects a blank line at EOF.
+  return `${lines.join('\n').replace(/\n+$/, '')}\n`;
 }
 
 export function renderDbPackageReport(registry, plan) {
@@ -452,5 +454,6 @@ export function renderDbPackageReport(registry, plan) {
     '- The QA Pro account (requester) receives a favourite and a notification per approved product, as in the milk seed.',
     '',
   );
-  return `${lines.join('\n')}\n`;
+  // Exactly one trailing newline: `git diff --check` rejects a blank line at EOF.
+  return `${lines.join('\n').replace(/\n+$/, '')}\n`;
 }

@@ -27,13 +27,13 @@
     },
     {
       "path": "reports/COUNTRY_PRODUCTS_V12_OPEN_GAPS.md",
-      "sha256": "da955153cf2316f98e07283e8e4f817f5a36b92f02f478d7e125c51d0a8b8cd8",
-      "bytes": 54361
+      "sha256": "a66044154534adc63f7fc1535c3883ca80e06d9194ed89a2f5eff389f4bedc80",
+      "bytes": 54360
     },
     {
       "path": "reports/COUNTRY_PRODUCTS_V12_DB_PACKAGE.md",
-      "sha256": "46ad6056ffb9605fe7d61153ba943e32a209125ccdcea4de3f80434295d3ed63",
-      "bytes": 48161
+      "sha256": "9f0b73aeef36fbfb3dd06afa168e8b09194fcfd994120cc46f7369bba956aa1d",
+      "bytes": 48160
     }
   ],
   "counts": {

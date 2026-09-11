@@ -449,4 +449,3 @@ Every step goes through an audited RPC or an RLS-guarded table; nothing is delet
 - Mapper (`mapper_basement`, frozen 2541 file): untouched. No PI-ING is created.
 - Existing routes PL/ES milk stay as they are; FR milk is already correct.
 - The QA Pro account (requester) receives a favourite and a notification per approved product, as in the milk seed.
-
