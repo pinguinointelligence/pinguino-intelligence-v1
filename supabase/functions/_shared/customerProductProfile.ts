@@ -202,11 +202,12 @@ const DECLARATION_SOURCES = new Set<EvidenceSource>([
   not a guess — it is arithmetic: that one sugar accounts for all of it.
 
   The rule refuses far more often than it fires. Two candidate sugars, an ambiguous word, a
-  negation ("sin azúcar"), a source conflict, or provenance that is not exact-EAN confirmed for
+  negation ("sin azúcar"), a source conflict, or provenance that is not declaration-grade for
   BOTH the table and the list — any of these and it declines, leaving the existing unresolved
-  path and the rescue that follows it untouched. It never invents a quantity: it only names the
-  sugar the label already declared, and its provenance is `derived`, never `user_confirmed` —
-  the customer typed nothing.
+  path and the rescue that follows it untouched. Declaration-grade means direct label evidence,
+  an explicit customer confirmation for this scan, or a server-proven exact-EAN source. It never
+  invents a quantity: it only names the sugar the product already declares, and the computed
+  spectrum stays `derived`, never `user_confirmed`.
 */
 const SUCROSE_TERMS =
   /\b(sugar|sucrose|saccharose|azucar|sacarosa|zucker|saccarosio|zucchero|cukier|sucre|sucr[eo]s)\b/;
@@ -328,13 +329,23 @@ export function customerProductProfileProposal(input: {
     }
   }
   /*
-    The spectrum closes only when BOTH the table and the ingredient list are backed by a page the
-    server matched to the scanned code, and the scan carries no conflict. Anything less and the
-    product keeps its unresolved path.
+    The spectrum closes only when BOTH the table and the ingredient list are declaration-grade
+    evidence for this scan. A direct label or explicit customer confirmation is product-owned
+    evidence just like a server-matched exact-EAN page; excluding those two paths let a weaker
+    Mapper cohort overwrite an already confirmed one-sugar declaration. Anything lower-authority,
+    or any genuine unresolved conflict, keeps the unresolved path.
   */
   const sugarsAreExact = declaredBasis.total_sugars_percent !== undefined;
-  const tableConfirmed = exactEanBackedAuthority(root, SCAN_FIELD_PATHS.sugars ?? []) !== null;
-  const listConfirmed = exactEanBackedAuthority(root, SCAN_FIELD_PATHS.ingredients ?? []) !== null;
+  const declarationGradeForClosure = (field: ProductEvidenceField): boolean => {
+    const source = evidenceSource(root, field, userConfirmed);
+    return (
+      source === 'label' ||
+      source === 'user_confirmed' ||
+      exactEanBackedAuthority(root, SCAN_FIELD_PATHS[field] ?? []) !== null
+    );
+  };
+  const tableConfirmed = declarationGradeForClosure('sugars');
+  const listConfirmed = declarationGradeForClosure('ingredients');
   const unresolvedConflicts = unresolvedConflictFields(root);
   const sugarClosureConflict = unresolvedConflicts.some(
     (field) =>

@@ -7,16 +7,21 @@
  * `EngineIngredient`, and added through `recipeStore.addIngredient` — the same store
  * action the Pro builder calls.
  *
- * §49 — CROWN IS NOT DECIDED HERE. After adding a flavour we simply ask
- * `setMainIngredient`, and the existing authority decides: it refuses outright when
- * `mainBehaviorBlockReason` says the product may not hold the crown, and it seeds the
- * crown's own gram when it may. So an ineligible product is never forced into Main,
- * and HOME introduces no second classification.
+ * §49 — CROWN IS NOT DECIDED HERE. After adding a flavour we ask the store's
+ * AUTOMATIC door, `grantAutomaticPriority` (PACKAGE 2A): while the draft is AUTO it
+ * asks `setMainIngredient` on HOME's surface, and the existing authority decides — it
+ * refuses outright when `mainBehaviorBlockReason` says the product may not hold the
+ * crown. So an ineligible product is never forced into Main, and HOME introduces no
+ * second classification. After the customer's first crown the door does nothing: a
+ * later BASE line is ordinary, and one with no confirmed amount is not created here at
+ * all — the caller asks the amount first (§B: never a 0 g line).
  *
  * §22 — a chip that resolves to nothing is left unresolved and visible. It is never
  * swapped for "something similar", and nothing is added on its behalf.
  */
 import { useCallback, useRef } from 'react';
+import type { EngineIngredient } from '@/engine';
+import { autoPriorityAppliesToNewLine } from '@/features/recipe-priority';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { useHomeDraftStore, type IntentChip } from './homeDraftStore';
 import type { IntentRole } from './homeIntentParsing';
@@ -32,6 +37,12 @@ export interface IntentIngredientOutcome {
     | 'unavailable'
     | 'duplicate'
     | 'needs_amount';
+  /**
+   * PACKAGE 2A — set only with `needs_amount` when NO line was created: in MANUAL
+   * nothing sizes a new BASE line automatically, so the caller asks the amount with
+   * HOME's own question and adds it through HOME's one Base-line door.
+   */
+  readonly ingredient?: EngineIngredient;
 }
 
 export function useHomeIntentIngredients() {
@@ -115,14 +126,23 @@ export function useHomeIntentIngredients() {
         return { chipId: key, status: grams > 0 ? 'added' : 'needs_amount' };
       }
 
+      // PACKAGE 2A: after the customer's first crown nothing sizes a new BASE line
+      // automatically, and §B never creates one at 0 g — so no line is made here.
+      // Releasing the key lets the confirmed amount come back through this door.
+      if (!(grams > 0) && !autoPriorityAppliesToNewLine(useRecipeStore.getState().priority_mode)) {
+        handled.current.delete(key);
+        return { chipId: key, status: 'needs_amount', ingredient };
+      }
+
       const store = useRecipeStore.getState();
       const added = store.addIngredient(ingredient, grams);
       if (added.status === 'duplicate') return { chipId: key, status: 'duplicate' };
 
       // §49: ASK the existing authority. It refuses an ineligible product on its own.
-      // HOME surface: HOME's own Crown rules (Protein stays mass-neutral) apply here
-      // and never reach PRO, whose default keeps 0 g + Crown -> 1 g for every profile.
-      useRecipeStore.getState().setMainIngredient(added.lineId, 'home');
+      // PACKAGE 2A: through the AUTOMATIC door, so the priority exists only while the
+      // draft is AUTO; it asks the same Main authority with HOME's own surface and
+      // never reaches PRO, whose default keeps 0 g + Crown -> 1 g for every profile.
+      useRecipeStore.getState().grantAutomaticPriority(added.lineId);
       const line = useRecipeStore.getState().items.find((item) => item.id === added.lineId);
       if (line?.lock_type === 'main') {
         return { chipId: key, status: line.planned_grams > 0 ? 'crowned' : 'needs_amount' };

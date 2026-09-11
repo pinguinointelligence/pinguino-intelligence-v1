@@ -252,7 +252,12 @@ export function IngredientBuilder({
   const editRefusalFor = (item: EffectiveRecipeItem): string | null => {
     const snapshots = useRecipeStore.getState().productBehaviorSnapshots;
     if (!productBehaviorIsManaged(snapshots)) return null;
-    const required = productBehaviorRequiredLineIds({ items: [item] });
+    // Judged at the amount the control would WRITE, exactly like the click
+    // path: a 0 g line is not "required", so judging it at its current mass
+    // showed an open stepper whose every press was then refused.
+    const required = productBehaviorRequiredLineIds({
+      items: [{ ...item, planned_grams: Math.max(item.planned_grams, 1) }],
+    });
     if (required.length === 0) return null;
     const gate = productBehaviorModuleGate(snapshots, 'BASE_RECIPE', required);
     if (gate.ready) return null;

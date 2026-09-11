@@ -44,4 +44,10 @@ describe('HOME identity resolution uses the canonical catalogue paths', () => {
     expect(SOURCE).toContain("from './homeIdentityResolution'");
     expect(SOURCE).toContain('resolveIdentity');
   });
+
+  it('hands the raw HOME label to the central search boundary without a local stem rewrite', () => {
+    expect(SOURCE).toContain('const term = chip.label.trim()');
+    expect(SOURCE).not.toContain('catalogueSearchTerms');
+    expect(SOURCE).not.toContain('stemLastWord');
+  });
 });

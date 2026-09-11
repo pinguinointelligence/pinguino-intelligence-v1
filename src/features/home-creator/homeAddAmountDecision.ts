@@ -42,9 +42,25 @@ export type HomeAddAmountDecision =
 export function decideAddAmount(
   snapshot: ProductBehaviorSnapshot | null | undefined,
   presentDose: (snapshot: ProductBehaviorSnapshot | null | undefined) => string,
+  /**
+   * PACKAGE 2A (2026-09-11). `crown_decides` relies on the new line becoming a
+   * priority automatically. That is only true while the draft is AUTO: after the
+   * customer's first crown a new line stays ordinary, so nothing would size it and
+   * it would sit at 0 g in front of the zero-gram Przelicz gate. In MANUAL the
+   * Crown-capable product is therefore asked for, exactly like a non-Crown one.
+   * Defaults to `true`, the behaviour every caller had before.
+   */
+  options: { readonly autoPriority?: boolean } = {},
 ): HomeAddAmountDecision {
   const capability = resolveMainCapability({ snapshot, snapshotRequired: true });
   if (capability.state === 'MAIN_CAPABLE' || capability.state === 'MAIN_CAPABLE_UNCALIBRATED') {
+    if (options.autoPriority === false) {
+      return {
+        kind: 'ask_amount',
+        recommendedDose:
+          productRecommendedDosageInfo(snapshot) !== null ? presentDose(snapshot) : null,
+      };
+    }
     return { kind: 'crown_decides' };
   }
   // Only a product whose authority is CURRENT and says Crown cannot carry it may be

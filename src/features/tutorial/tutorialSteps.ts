@@ -72,11 +72,16 @@ export const HOME_TUTORIAL_STEPS: readonly TutorialStep[] = [
     id: 'recipe',
     anchor: 'home-section-recipe',
     title: 'Receptura',
-    body: 'Liczy się sama. Po każdej zmianie widzisz gotowe gramy — nie musisz nic przeliczać.',
+    // Package 2A closure (2026-09-11): 2A's HOME auto-recalc never reached staging;
+    // the accepted HOME recalculation is the „Przelicz i popraw" preview (#287).
+    body: 'Tu jest Twoja receptura. „Przelicz i popraw” dopasuje gramy i pokaże każdą zmianę, zanim ją zastosujesz.',
   },
   {
     id: 'ingredient-settings',
-    anchor: 'home-ingredient-settings',
+    // Package 2A closed (2026-09-11): the crown now means exactly what this
+    // step says, so it points at the first real recipe line — its crown and its
+    // settings menu live on that row.
+    anchor: 'home-recipe-line',
     title: 'Ustawienia składnika',
     body: 'Korona = priorytet. Gdy sam wybierzesz koronę, priorytet mają tylko składniki oznaczone przez Ciebie. Możesz też zmienić produkt lub ilość.',
   },

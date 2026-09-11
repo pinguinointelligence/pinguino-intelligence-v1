@@ -16,11 +16,7 @@ import { ingredientRowToEngineIngredient } from '@/data/ingredients/ingredientMa
 import { searchCanonicalMapperIngredients } from '@/services/productPicker/mapperSearch';
 import type { EngineIngredient } from '@/engine';
 import type { SafeMapperSearchRow } from '@/services/productPicker/mapperSearch';
-import {
-  catalogueSearchTerms,
-  resolveIdentity,
-  type IdentityResolution,
-} from './homeIdentityResolution';
+import { resolveIdentity, type IdentityResolution } from './homeIdentityResolution';
 
 /** What one chip resolved to, ready for the UI to act on. */
 export type ChipResolution =
@@ -36,34 +32,30 @@ export type ChipResolution =
  * The search is the SAME RPC the recipe picker and the Products page use, so HOME can
  * never see a product Pro cannot.
  *
- * The chip's canonical CONCEPT is tried BEFORE the user's raw word. The catalogue is
- * named in English (`STRAWBERRIES`) while §25 invites `truskawka` / `fresa` /
- * `Erdbeere`, so searching the raw word alone resolved nothing for every non-English
- * user — the intent was understood perfectly and then thrown away at the catalogue
- * boundary. An `unavailable` outcome short-circuits immediately: retrying a catalogue
- * outage would let it masquerade as "no such product".
+ * The raw label is handed to the shared search boundary exactly once. That boundary
+ * owns multilingual alias/concept interpretation; HOME must not apply a second,
+ * competing stem or concept rewrite before the central resolver runs.
  */
 export async function resolveChipTerm(
   chip: { readonly label: string; readonly concept: string | null },
   signal?: AbortSignal,
 ): Promise<ChipResolution> {
-  for (const term of catalogueSearchTerms(chip)) {
-    // A wide fetch, then rank, then show at most MAX_AMBIGUITY_CANDIDATES. "strawberr"
-    // matches 26 rows; taking only the first 12 in catalogue order would drop the
-    // plain fruit before the plain-form preference ever got to lift it.
-    const outcome = await searchCanonicalMapperIngredients({ text: term, limit: 40, signal });
-    if (outcome.kind === 'unavailable') {
-      return { kind: 'unavailable', reason: outcome.reason };
-    }
-    if (outcome.kind === 'error') return { kind: 'unavailable', reason: outcome.message };
-    if (outcome.kind === 'aborted') return { kind: 'unavailable', reason: 'aborted' };
+  const term = chip.label.trim();
+  if (!term) return { kind: 'unresolved' };
 
-    const decision: IdentityResolution = resolveIdentity(outcome.rows, term);
-    if (decision.kind === 'resolved') return { kind: 'resolved', row: decision.row };
-    if (decision.kind === 'ambiguous') {
-      return { kind: 'ambiguous', candidates: decision.candidates };
-    }
-    // Nothing under this term — fall through and try the next one.
+  // A wide fetch, then rank, then show at most MAX_AMBIGUITY_CANDIDATES. The
+  // shared search boundary expands the central aliases before this ranking step.
+  const outcome = await searchCanonicalMapperIngredients({ text: term, limit: 40, signal });
+  if (outcome.kind === 'unavailable') {
+    return { kind: 'unavailable', reason: outcome.reason };
+  }
+  if (outcome.kind === 'error') return { kind: 'unavailable', reason: outcome.message };
+  if (outcome.kind === 'aborted') return { kind: 'unavailable', reason: 'aborted' };
+
+  const decision: IdentityResolution = resolveIdentity(outcome.rows, term);
+  if (decision.kind === 'resolved') return { kind: 'resolved', row: decision.row };
+  if (decision.kind === 'ambiguous') {
+    return { kind: 'ambiguous', candidates: decision.candidates };
   }
   return { kind: 'unresolved' };
 }
