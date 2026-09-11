@@ -147,6 +147,7 @@ export function MobileIngredientLine({
   mainUnavailableReason,
   onSetMain,
   onOpen,
+  editing = false,
 }: {
   item: EffectiveRecipeItem;
   percent: number | null;
@@ -158,13 +159,18 @@ export function MobileIngredientLine({
   mainUnavailableReason?: string | null;
   onSetMain: () => void;
   onOpen: () => void;
+  /** PRO MOBILE UX v2 · B11 — this line's product sheet is open: the list under
+   *  the translucent sheet shows WHICH ingredient the controls refer to. */
+  editing?: boolean;
 }) {
   return (
     <div
       data-testid={`row-mobile-line-${item.id}`}
       data-changed={changed ? 'true' : undefined}
+      data-editing={editing ? 'true' : undefined}
       className={cn(
-        'gellatti-touch-control relative grid min-h-14 w-full grid-cols-[minmax(0,1fr)_62px_62px_64px] items-center gap-x-2 text-left',
+        'gellatti-touch-control relative grid min-h-14 w-full scroll-mt-16 grid-cols-[minmax(0,1fr)_62px_62px_64px] items-center gap-x-2 rounded-lg text-left',
+        editing && 'bg-[var(--g-ivory)] outline outline-[1.5px] outline-[var(--g-graphite)]',
       )}
     >
       <button
@@ -282,6 +288,7 @@ export function MobileIngredientSheet({
       }
       testId={`ingredient-mobile-sheet-${item.id}`}
       placement="bottom"
+      tone="context"
       panelClassName="min-h-[min(560px,88dvh)]"
       onClose={onClose}
     >

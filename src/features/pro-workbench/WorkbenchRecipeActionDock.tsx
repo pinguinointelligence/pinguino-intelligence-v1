@@ -1,6 +1,6 @@
 import type { RecipeInput, RecipeResult } from '@/engine';
 import { WorkbenchActionBar } from './WorkbenchActionBar';
-import { WorkbenchIntelligenceHeader } from './WorkbenchIntelligenceHeader';
+import { WorkbenchIntelligenceHeader, type MobileFlowStep } from './WorkbenchIntelligenceHeader';
 
 export function WorkbenchRecipeActionDock({
   result,
@@ -8,12 +8,15 @@ export function WorkbenchRecipeActionDock({
   onRecalculate,
   onOpenPreview,
   onOpenLearning,
+  mobileFlow,
 }: {
   result: RecipeResult;
   input: RecipeInput;
   onRecalculate: () => void;
   onOpenPreview: () => void;
   onOpenLearning?: () => void;
+  /** PRO MOBILE UX v2 · B6 — passed by the phone's bottom stack only. */
+  mobileFlow?: MobileFlowStep;
 }) {
   return (
     <div
@@ -26,6 +29,7 @@ export function WorkbenchRecipeActionDock({
         variant="dock"
         onRecalculate={onRecalculate}
         onOpenLearning={onOpenLearning}
+        mobileFlow={mobileFlow}
       />
       <WorkbenchActionBar onOpenPreview={onOpenPreview} />
     </div>

@@ -124,6 +124,200 @@
   }
 }
 
+/* PRO MOBILE UX v2 · B2/B9 — the spatial model of the phone workbench.
+   The View Transitions API moves the EXISTING cockpit sheet; `html[data-pro-spatial]`
+   names the move for the lifetime of one transition (spatialTransition.ts). Only
+   the named surfaces move — the page itself never cross-fades — and nothing is
+   named from the workbench breakpoint up, where the dashboard is a column. */
+@media not all and (min-width: 60rem) {
+  #mobile-cockpit-dialog {
+    view-transition-name: pro-cockpit-sheet;
+  }
+
+  [data-testid='workbench-editor-pane'] {
+    view-transition-name: pro-recipe-workspace;
+  }
+
+  [data-testid='pro-recipe-context-bar'] {
+    view-transition-name: pro-recipe-bar;
+  }
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+}
+
+::view-transition-group(pro-cockpit-sheet),
+::view-transition-old(pro-cockpit-sheet),
+::view-transition-new(pro-cockpit-sheet),
+::view-transition-old(pro-recipe-workspace),
+::view-transition-new(pro-recipe-workspace) {
+  animation-duration: 260ms;
+  animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* The Receptura dashboard drops from the recipe bar … */
+html[data-pro-spatial='drop']::view-transition-new(pro-cockpit-sheet) {
+  animation-name: pro-sheet-from-above;
+}
+
+html[data-pro-spatial='drop']::view-transition-old(pro-cockpit-sheet) {
+  animation-name: pro-fade-out;
+}
+
+/* … and lifts back into it; a module it gives way to rises beneath it. */
+html[data-pro-spatial='lift']::view-transition-old(pro-cockpit-sheet),
+html[data-pro-spatial='reveal']::view-transition-old(pro-cockpit-sheet) {
+  animation-name: pro-sheet-to-above;
+}
+
+html[data-pro-spatial='lift']::view-transition-new(pro-cockpit-sheet) {
+  animation-name: pro-sheet-from-below-soft;
+}
+
+/* After the first-run settings the ingredient workspace enters from above. */
+html[data-pro-spatial='reveal']::view-transition-new(pro-recipe-workspace) {
+  animation-name: pro-workspace-from-above;
+}
+
+/* The process modules sit side by side, in the bottom bar's order. */
+html[data-pro-spatial='forward']::view-transition-old(pro-cockpit-sheet) {
+  animation-name: pro-panel-to-left;
+}
+
+html[data-pro-spatial='forward']::view-transition-new(pro-cockpit-sheet) {
+  animation-name: pro-panel-from-right;
+}
+
+html[data-pro-spatial='back']::view-transition-old(pro-cockpit-sheet) {
+  animation-name: pro-panel-to-right;
+}
+
+html[data-pro-spatial='back']::view-transition-new(pro-cockpit-sheet) {
+  animation-name: pro-panel-from-left;
+}
+
+/* A module chosen in the bottom bar rises out of it and sinks back into it. */
+html[data-pro-spatial='rise']::view-transition-new(pro-cockpit-sheet) {
+  animation-name: pro-sheet-from-below;
+}
+
+html[data-pro-spatial='close']::view-transition-old(pro-cockpit-sheet) {
+  animation-name: pro-sheet-to-below;
+}
+
+@keyframes pro-sheet-from-above {
+  from {
+    transform: translateY(-100%);
+  }
+}
+
+@keyframes pro-sheet-to-above {
+  to {
+    transform: translateY(-100%);
+  }
+}
+
+@keyframes pro-sheet-from-below {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes pro-sheet-to-below {
+  to {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes pro-sheet-from-below-soft {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+}
+
+@keyframes pro-workspace-from-above {
+  from {
+    opacity: 0.4;
+    transform: translateY(-32px);
+  }
+}
+
+@keyframes pro-panel-from-right {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes pro-panel-to-left {
+  to {
+    opacity: 0;
+    transform: translateX(-28%);
+  }
+}
+
+@keyframes pro-panel-from-left {
+  from {
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes pro-panel-to-right {
+  to {
+    opacity: 0;
+    transform: translateX(28%);
+  }
+}
+
+@keyframes pro-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
+/* PRO MOBILE UX v2 · B4 — the first-run settings sequence shows ONE step at a
+   time on a phone (back / forward / „Krok n z 3"). The desktop grid ignores the
+   pager, and a recipe whose settings are already confirmed never gets it. */
+@media not all and (min-width: 60rem) {
+  [data-settings-pager-scope='on'][data-settings-active-step='1']
+    [data-settings-step]:not([data-settings-step='1']),
+  [data-settings-pager-scope='on'][data-settings-active-step='2']
+    [data-settings-step]:not([data-settings-step='2']),
+  [data-settings-pager-scope='on'][data-settings-active-step='3']
+    [data-settings-step]:not([data-settings-step='3']) {
+    display: none;
+  }
+}
+
+/* PRO MOBILE UX v2 · B2 — the Receptura dashboard is a TOP sheet: it hangs from
+   the header and ends in a rounded edge, while the modules keep the bottom-sheet
+   form. The blanket corner normaliser uses !important, so this has to as well. */
+.pro-studio-radius-system #mobile-cockpit-dialog[data-sheet-anchor='top'] {
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+  border-bottom-left-radius: var(--radius-pro-studio) !important;
+  border-bottom-right-radius: var(--radius-pro-studio) !important;
+}
+
+/* PRO MOBILE UX v2 · B10 — „Moja cena" is secondary in the product sheet (the
+   collapsed line's panel, below `lg`): one row until asked for. The desktop
+   ••• dialog keeps its editor open. */
+@media not all and (min-width: 64rem) {
+  .gellatti-price-secondary[data-price-open='false'] .gellatti-price-secondary__body {
+    display: none;
+  }
+}
+
 .theme-pro-light [data-testid='workbench-editor-pane'] {
   background: var(--color-paper);
   min-inline-size: 0;

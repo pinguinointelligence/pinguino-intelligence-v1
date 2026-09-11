@@ -188,7 +188,10 @@ describe('compact ingredient article panel', () => {
     const remove = panel?.querySelector<HTMLButtonElement>('[aria-label="Usuń z receptury"]');
     expect(remove?.className).toContain('h-9');
     expect(remove?.className).toContain('text-status-error');
-    expect(remove?.closest('[data-testid="customer-price-editor"]')).not.toBeNull();
+    // PRO MOBILE UX v2 · B10 — removing the ingredient is its own row now, outside
+    // the price editor, so it stays in reach when „Moja cena" is folded away.
+    expect(remove?.closest('[data-testid="customer-price-editor"]')).toBeNull();
+    expect(remove?.closest('[data-testid^="article-price-secondary-"]')).toBeNull();
     await click(down ?? null);
     expect(rowActions.moveDown).toHaveBeenCalledWith(baseItem.id);
     expect(document.querySelector(`[data-testid="row-menu-${baseItem.id}"]`)).not.toBeNull();
@@ -337,7 +340,12 @@ describe('compact ingredient article panel', () => {
       [...(priceRow?.querySelectorAll<HTMLButtonElement>('button') ?? [])].map((button) =>
         button.getAttribute('aria-label'),
       ),
-    ).toEqual(['Zapisz', 'Usuń z receptury']);
+      // PRO MOBILE UX v2 · B10 — the price row carries only its own action now;
+      // removing the ingredient is a separate row below the price editor.
+    ).toEqual(['Zapisz']);
+    expect(
+      document.querySelectorAll(`${panelId} button[aria-label="Usuń z receptury"]`),
+    ).toHaveLength(1);
     expect(
       priceEditor?.querySelector('[data-testid="article-panel-base-price"]')?.textContent,
     ).toContain('Bazowa: 3,50 €/kg');

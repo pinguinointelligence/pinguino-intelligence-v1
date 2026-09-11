@@ -492,7 +492,11 @@ function ProfileContent({
           costMissingNames={costMissingNames}
         />
         <ProfileDirectionAxes result={frozenNutritionResult} className="min-w-0" />
-        <WorkbenchSettingsLine className="min-w-0" compact />
+        <WorkbenchSettingsLine
+          className="min-w-0"
+          compact
+          currentTotalGrams={result.total_batch_g}
+        />
       </div>
       {/* OWNER AUTHORITY 2026-09-03 (approved desktop reference): WIEDZA is the
           third BOX of the same make as DOSTOSUJ RECEPTURĘ and USTAWIENIA — a
