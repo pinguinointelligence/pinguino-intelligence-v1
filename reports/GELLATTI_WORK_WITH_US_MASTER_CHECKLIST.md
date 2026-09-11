@@ -555,14 +555,17 @@ Writing no GRANT does not produce a table with no grants.
 
 | Work status | Count |
 | --- | --- |
-| 🟢 DONE | 49 |
-| 🟡 DOING / partially built | 35 |
+| 🟢 DONE | 106 |
+| 🟡 DOING / partially built | 28 |
 | ⏳ WAITING FOR OWNER ASSET (not a blocker) | 9 |
-| 🔴 BLOCKED | 4 |
-| ⚪ TODO | 106 |
-| **Total rows** | **203** |
+| 🔴 BLOCKED | 5 |
+| ⚪ TODO | 94 |
+| ⊘ SUPERSEDED (owner decision recorded in the row) | 8 |
+| **Total rows** | **250** |
 
-Auto ✅ **24** · ⬜ 179. Served ✅ **6** · ⬜ 197 · Owner ⬜ 203 · Freeze 🔓 203.
+Auto ✅ **92** · ⬜ 158. Served ✅ **40** · ⬜ 210 · Owner ✅ 0 · ⬜ 250.
+
+**Row-based** — recomputed from the rows themselves at `origin/staging` `59ebdc97` on 2026-09-11. The block used to be maintained by hand and had drifted (it said 203 rows; see *Summary-block drift* below). Recount it from the rows, never from this block.
 
 The six Served ✅ are the asset rows, proven on the canonical alias at `b611ff71` — see
 **SERVED QA — #68 ON CANONICAL STAGING** below. Owner QA stays ⬜ on every row: it is not mine to mark.
