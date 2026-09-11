@@ -302,11 +302,12 @@ export function HomeRecipeSection({
               grams: item.planned_grams,
               locked: item.lock_type === 'grams',
               onToggleLock: () =>
+                // PACKAGE 2A: HOME's padlock names HOME's surface. A lock is not a
+                // crown choice, so it never ends AUTO or reveals a crown.
                 useRecipeStore
                   .getState()
-                  .setLockType(item.id, item.lock_type === 'grams' ? 'unlocked' : 'grams'),
-              commit: (next: number) =>
-                useRecipeStore.getState().setPlannedGrams(item.id, next),
+                  .setLockType(item.id, item.lock_type === 'grams' ? 'unlocked' : 'grams', 'home'),
+              commit: (next: number) => useRecipeStore.getState().setPlannedGrams(item.id, next),
             };
           }
           const topping = toppings.find((line) => line.id === editingLineId);
@@ -405,9 +406,11 @@ export function HomeRecipeSection({
               locked={item.lock_type === 'grams'}
               onChangeAmount={() => setEditingLineId(item.id)}
               onToggleLock={() =>
+                // PACKAGE 2A: HOME's padlock names HOME's surface. A lock is not a
+                // crown choice, so it never ends AUTO or reveals a crown.
                 useRecipeStore
                   .getState()
-                  .setLockType(item.id, item.lock_type === 'grams' ? 'unlocked' : 'grams')
+                  .setLockType(item.id, item.lock_type === 'grams' ? 'unlocked' : 'grams', 'home')
               }
               onRemove={() => onRemoveItem(item.id)}
             />
