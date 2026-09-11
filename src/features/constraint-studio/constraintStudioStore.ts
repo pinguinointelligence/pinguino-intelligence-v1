@@ -3461,8 +3461,22 @@ export async function createOptimizePreviewWithServerAuthority(
   // change to those locks that makes a legal recipe possible (off the UI
   // thread, before anything is staged, so the technical refusal never paints
   // first). It never weakens a system rule and never touches the recipe.
+  //
+  // The refusal the customer SEES is the BOUND verdict. Served staging showed
+  // the canonical solve returning a candidate that only the ProductBehavior
+  // binding in `createOptimizePreview` rejects („Grupa Main … wymagane minimum
+  // to 20%"), so judge exactly that verdict here — the identical binding, on a
+  // copy whose fingerprint writes cannot reach the result staged below.
+  const verdict = rawProposal.ok
+    ? bindProductBehaviorToPreview(
+        { ...rawProposal, preview: { ...rawProposal.preview } },
+        proposedSnapshots ?? validation.snapshots,
+        validation.snapshots,
+        technicalOnlyMainLineIds,
+      )
+    : rawProposal;
   let lockConflict: LockConflictState | null = null;
-  if (!rawProposal.ok && lockConflictDiagnosable(rawProposal, draft.input, draft.constraints)) {
+  if (!verdict.ok && lockConflictDiagnosable(verdict, draft.input, draft.constraints)) {
     try {
       const diagnosis = await runLockConflictDiagnosisOffMainThread(
         {
@@ -3471,7 +3485,7 @@ export async function createOptimizePreviewWithServerAuthority(
           sessionInstructions: instructions,
           createdAt: optimizeCreatedAt,
           options: optimizeOptions,
-          failure: rawProposal,
+          failure: verdict,
         },
         signal,
       );

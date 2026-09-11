@@ -150,3 +150,35 @@ lanes.
 7. Pre-existing, not touched: `npm run production-rescue:bundle-check` reports the committed
    Production Rescue Edge bundle stale on clean `origin/staging` `c65e52ef` too (the in-suite
    `productionRescueEdgeBundle.test.ts` passes). No file of this change is in that closure.
+
+## 8. Served QA on staging `a7478aa7` — finding and fix
+
+Served identity: Vercel `dpl_C3B2pMAP5g6fJt7QJJiZkh1iwm5v` READY with `meta.githubCommitSha`
+`a7478aa7`; bundle `index-CCyGb2L7.js` inlines `a7478aa7`. PRO `pro@pro.com`, milk gelato 670 g,
+−11 °C, starter base + WATERMELON (Crown) + STRAWBERRIES + CRANBERRY. The in-app browser storage
+is shared with other sessions, so the QA draft ran in an isolated in-memory copy of the draft
+keys; the other session's persisted draft was verified byte-identical throughout.
+
+| Check | Served result |
+|---|---|
+| PRO 0 g → Crown → 1 g | ✅ WATERMELON 0 g → 1 g Main |
+| Fixture 1 — strong secondary reduction (nothing locked) | ✅ Cranberry 130 → 1 g, Strawberries 100 → 2 g, Watermelon 1 → 242 g (36 %); every row is the grams control + padlock, original on the left |
+| Part A — edit + padlock → „Przelicz” → same modal | ✅ Cranberry 40 🔒 → CTA „Przelicz” + „Zmieniono ustawienia…” → re-solved: Cranberry exactly 40 🔒, Strawberries 1 g, Watermelon 209 g → CTA „Zastosuj zmiany”; recipe byte-identical before Apply |
+| Fixture 6 — X discards | ✅ recipe + constraints byte-identical; the re-opened Preview is the original proposal |
+| Fixture 7 — Zastosuj + Cofnij | ✅ one history entry; Cranberry 40 g with a real padlock (`grams` + constraint 40); Cofnij restores every line and constraint (only the key order of the all-zero `direction_targets` differs) |
+| Preview restored after Cofnij | ✅ „Otwórz podgląd” shows the instruction Preview intact and applicable; Wróć leaves the recipe unchanged |
+| Owner scenario B — Strawberries 100 🔒 + Cranberry 130 🔒 | ❌ → **fixed below**: the plain refusal „Propozycja Gellatti została odrzucona: … grupa Main ma 0.1%; wymagane minimum to 20.0%.” instead of the conflict view |
+
+**Root cause (served evidence).** A read-only observer on the page's Worker messages showed the
+canonical solve returning `ok` — a candidate that left the Crown line at the 1 g seed — and no
+lock-conflict request. The refusal is the ProductBehavior binding inside `createOptimizePreview`
+(main thread); the lock-conflict gate only diagnosed a failing raw Worker result. Offline the
+solver refuses first (`impossible_under_constraints`), so every test in §5 took the other path.
+
+**Fix.** The gate judges the bound verdict — the identical binding, on a shallow copy whose two
+fingerprint writes never reach the staged result. Regression: the served-shape case in
+`interactiveRecalculationFlow.test.ts` (red on the pre-fix store, green with the fix). An offline
+replay of the exact served input, with the served Main-capable berry snapshots
+(`main-berry-fresh-dairy`, floor 25 %), gives `relaxation_found`: Strawberries 100 → 51 g,
+Cranberry 130 → 66 g, 31 probes, blocker Main 0,1 % < 20 %. Scenario B/C and HOME are re-verified
+on the redeployed build.
