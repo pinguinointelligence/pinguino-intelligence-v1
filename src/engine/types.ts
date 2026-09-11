@@ -213,6 +213,12 @@ export interface RecipeItem {
    * complete recipe is feasible, otherwise it selects the nearest feasible
    * whole-gram amount. Base Engine formulas do not consume this field. */
   user_target_grams?: number;
+  /** Product-layer amount provenance. `'AUTO_CROWN_SEED'` marks the gram PRO's
+   * Crown seeded onto an empty line: a bootstrap the Main search sizes, never a
+   * user quantity or an exact Direction anchor. It persists with the line and
+   * is removed by any explicit amount, real lock, Crown OFF or recalculation
+   * that changes the amount. Base Engine formulas do not consume this field. */
+  amount_provenance?: 'AUTO_CROWN_SEED';
   production_step?: number;
   notes?: string;
 }
