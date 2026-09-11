@@ -1,5 +1,5 @@
-import type { IngredientRow, VerificationStatus } from '@/data/ingredients/ingredientRow';
-import { isMapperHomeVerifiedStatus } from '@/data/ingredients/mapperVerificationStatus';
+import type { IngredientRow, VerificationStatus } from '../../data/ingredients/ingredientRow.ts';
+import { isMapperHomeVerifiedStatus } from '../../data/ingredients/mapperVerificationStatus.ts';
 
 /** Provenance is deliberately presentation-only. It must never be used as an
  * eligibility predicate for search, Base selection or technical PI. */

@@ -1,5 +1,5 @@
 import { PROFILE_MATCH_FLOOR, profileDonor, type ProfileMatch } from './mapperValueInference.ts';
-import { isMapperHomeVerifiedStatus } from '@/data/ingredients/mapperVerificationStatus';
+import { isMapperHomeVerifiedStatus } from '../../data/ingredients/mapperVerificationStatus.ts';
 import type {
   ProductIntendedUsageRole,
   ProductSemanticClassification,
