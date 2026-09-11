@@ -162,23 +162,31 @@ function num(value: unknown): number | null {
 /** The customer's answers → finalize confirmations (only the keys that were actually answered). */
 export function confirmationsFromFields(
   values: Record<string, string | boolean | undefined>,
+  requestedKeys?: readonly string[],
 ): NonNullable<FinalizeInput['confirmations']> {
+  const allowed = requestedKeys ? new Set(requestedKeys) : null;
+  const include = (key: string) => allowed === null || allowed.has(key);
   const productFields: Record<string, unknown> = {};
   const identity: Record<string, unknown> = {};
-  const name = typeof values['displayName'] === 'string' ? values['displayName'].trim() : '';
+  const name =
+    include('displayName') && typeof values['displayName'] === 'string'
+      ? values['displayName'].trim()
+      : '';
   if (name) identity['displayName'] = name;
-  if (values['unbranded'] === true) {
+  if (include('unbranded') && values['unbranded'] === true) {
     identity['explicitlyUnbranded'] = true;
-  } else if (typeof values['brand'] === 'string' && values['brand'].trim()) {
+  } else if (include('brand') && typeof values['brand'] === 'string' && values['brand'].trim()) {
     identity['brand'] = values['brand'].trim();
   }
   if (Object.keys(identity).length > 0) productFields['identity'] = identity;
   for (const key of ['ingredientsText', 'allergensText']) {
+    if (!include(key)) continue;
     const v = values[key];
     if (typeof v === 'string' && v.trim()) productFields[key] = v.trim();
   }
   const nutrition: Record<string, unknown> = {};
   for (const { key } of Object.values(NUTRITION)) {
+    if (!include(key)) continue;
     const n = num(values[key]);
     if (n !== null) nutrition[key] = n;
   }
@@ -188,6 +196,7 @@ export function confirmationsFromFields(
   }
   const declarations: Record<string, unknown> = {};
   for (const { key } of DECLARATIONS) {
+    if (!include(key)) continue;
     const n = num(values[key]);
     if (n !== null) declarations[key] = n;
   }
@@ -332,7 +341,10 @@ export function prefillFromIdentity(web: ExactWebIdentity): Record<string, strin
  *                      worth paying for.
  */
 export type ScanEntryContext =
-  'add_product' | 'recipe_ingredient' | 'recipe_topping' | 'guest_demo';
+  | 'add_product'
+  | 'recipe_ingredient'
+  | 'recipe_topping'
+  | 'guest_demo';
 
 /** an entry that came from a recipe: the one place the add question belongs */
 export function isRecipeEntry(entry: ScanEntryContext): boolean {
