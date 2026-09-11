@@ -63,7 +63,7 @@ export function savedPriorityMode(input: object): PriorityMode {
 
 /** The saved recipe input for a draft in `mode`: the AUTO marker, or none at all. */
 export function withSavedPriorityMode<T extends object>(input: T, mode: PriorityMode): T {
-  const rest: Record<string, unknown> = { ...input };
+  const rest: Record<string, unknown> = { ...(input as Record<string, unknown>) };
   delete rest[SAVED_PRIORITY_MODE_KEY];
   return (mode === 'AUTO' ? { ...rest, [SAVED_PRIORITY_MODE_KEY]: 'AUTO' } : rest) as T;
 }
