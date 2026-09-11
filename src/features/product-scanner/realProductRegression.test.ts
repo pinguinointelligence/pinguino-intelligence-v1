@@ -519,6 +519,62 @@ describe('La Chocolatera two-photo rounding and semantic handoff regression', ()
     }
   });
 
+  it('SCN-PHOTO-STRONGER-01 replaces a Mapper water estimate with a hard photo declaration', () => {
+    const before = structuredClone(merged);
+    before.barcodes = [{ value: '8410109108392', format: 'EAN_13' }];
+    const hardPhoto = empty();
+    hardPhoto.productionDeclarations = {
+      alcoholAbv: null,
+      cocoaButterPercent: null,
+      cocoaSolidsPercent: null,
+      fruitContentPercent: null,
+      brix: null,
+      waterPercent: 4.2,
+      totalSolidsPercent: null,
+      concentrationText: null,
+      dosageText: null,
+      technicalParametersText: null,
+      formDeclaration: null,
+    };
+    hardPhoto.evidence = labelEvidence('photo-water-declaration', [
+      'productionDeclarations.waterPercent',
+    ]);
+    const after = mergeProductScanResults(before, hardPhoto, '8410109108392');
+    const recognitionEvidence = productSemanticEvidenceFromScanResult(after);
+    const recognition = classifyProductSemantics(recognitionEvidence);
+    const proposal = customerProductProfileProposal({
+      scanResult: after,
+      recognitionEvidence,
+      recognition,
+    });
+    const { rows } = loadMapperKnowledgeRows();
+    const authority = proposal
+      ? validateIntimportProductProfileProposal({
+          origin: 'CUSTOMER_ADDED',
+          proposedMapperIngredientId: null,
+          ...proposal,
+          rows: rows as unknown as IntimportMapperAuthorityRow[],
+        })
+      : null;
+
+    expect(proposal?.declared.water_percent).toBe(4.2);
+    expect(proposal?.declaredBasis.water_percent).toBe('product_declared');
+    expect(authority?.fieldTruth.water_percent).toMatchObject({
+      value: 4.2,
+      state: 'VERIFIED',
+      basis: 'product_declared',
+    });
+    expect(authority?.fieldTruth.total_solids_percent).toMatchObject({
+      value: 95.8,
+      state: 'VERIFIED',
+      basis: 'derived',
+    });
+    expect(authority?.recognition).toMatchObject({
+      ingredientFamily: 'cocoa',
+      physicalForm: 'POWDER',
+    });
+  });
+
   it('keeps a web-only macro as evidence without promoting it to a verified declaration', () => {
     const served = structuredClone(merged);
     served.barcodes = [{ value: '8410109108392', format: 'EAN_13' }];

@@ -61,6 +61,8 @@ export interface ProductScanProductionDeclarations {
   cocoaSolidsPercent: number | null;
   fruitContentPercent: number | null;
   brix: number | null;
+  waterPercent: number | null;
+  totalSolidsPercent: number | null;
   concentrationText: string | null;
   dosageText: string | null;
   technicalParametersText: string | null;
@@ -231,6 +233,8 @@ export const PRODUCT_SCAN_JSON_SCHEMA = {
         'cocoaSolidsPercent',
         'fruitContentPercent',
         'brix',
+        'waterPercent',
+        'totalSolidsPercent',
         'concentrationText',
         'dosageText',
         'technicalParametersText',
@@ -242,6 +246,8 @@ export const PRODUCT_SCAN_JSON_SCHEMA = {
         cocoaSolidsPercent: { type: ['number', 'null'] },
         fruitContentPercent: { type: ['number', 'null'] },
         brix: { type: ['number', 'null'] },
+        waterPercent: { type: ['number', 'null'] },
+        totalSolidsPercent: { type: ['number', 'null'] },
         concentrationText: { type: ['string', 'null'] },
         dosageText: { type: ['string', 'null'] },
         technicalParametersText: { type: ['string', 'null'] },

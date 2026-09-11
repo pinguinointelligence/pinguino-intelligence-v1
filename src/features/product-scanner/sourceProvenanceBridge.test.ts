@@ -84,8 +84,12 @@ describe('source provenance bridge', () => {
   });
 
   it('never lets the two products share a field', () => {
-    const one = propose(withAuthority(sport001ScanResult(), { [OFF]: 'STRUCTURED_PRODUCT_DATABASE' }));
-    const two = propose(withAuthority(sport002ScanResult(), { [OFF]: 'STRUCTURED_PRODUCT_DATABASE' }));
+    const one = propose(
+      withAuthority(sport001ScanResult(), { [OFF]: 'STRUCTURED_PRODUCT_DATABASE' }),
+    );
+    const two = propose(
+      withAuthority(sport002ScanResult(), { [OFF]: 'STRUCTURED_PRODUCT_DATABASE' }),
+    );
     // Sport 001 has sugar, Sport 002 does not. If a fixture or a cache ever crossed them, this is
     // where it shows.
     expect(one?.declared.total_sugars_percent).toBeCloseTo(5.5, 4);
@@ -108,13 +112,18 @@ describe('source provenance bridge', () => {
   it('leaves the manufacturer page a declaration source without needing the code in its URL', () => {
     // vitaminwell.com is the maker speaking about its own product; that was always admitted and
     // this change must not narrow it.
-    const proposal = propose(withAuthority(sport002ScanResult(), { [VW]: 'OFFICIAL_MANUFACTURER' }));
+    const proposal = propose(
+      withAuthority(sport002ScanResult(), { [VW]: 'OFFICIAL_MANUFACTURER' }),
+    );
     expect(proposal?.evidence.fields.technicalParameters).toBe('manufacturer');
   });
 
   it('carries the registry class for Sport 001 too, on its own EAN', () => {
     const proposal = propose(
-      withAuthority(sport001ScanResult(), { [OFF]: 'STRUCTURED_PRODUCT_DATABASE', [LTC]: 'AUTHORITATIVE_RETAILER' }),
+      withAuthority(sport001ScanResult(), {
+        [OFF]: 'STRUCTURED_PRODUCT_DATABASE',
+        [LTC]: 'AUTHORITATIVE_RETAILER',
+      }),
     );
     expect(proposal?.evidenceProvenance.sugars?.sourceUrl).toContain(SPORT_001_EAN);
     expect(proposal?.evidenceProvenance.sugars?.sourceUrl).not.toContain(SPORT_002_EAN);
@@ -168,10 +177,39 @@ describe('source provenance bridge', () => {
       scanResult: result,
       recognition,
       recognitionEvidence: { gtin: SPORT_001_EAN } as never,
-      userConfirmedFields: ['identity', 'brand', 'ingredients', 'nutritionBasis', 'sugars', 'barcode'],
+      userConfirmedFields: [
+        'identity',
+        'brand',
+        'ingredients',
+        'nutritionBasis',
+        'sugars',
+        'barcode',
+      ],
     });
 
     expect(proposal?.declared.total_sugars_percent).toBeCloseTo(5.5, 4);
     expect(proposal?.declared.sucrose_percent).toBeUndefined();
+  });
+
+  it('SCN-QUESTION-01 turns the one exact solids answer into a verified Engine declaration', () => {
+    const result = {
+      ...sport001ScanResult(),
+      productionDeclarations: {
+        ...sport001ScanResult().productionDeclarations,
+        totalSolidsPercent: 27.5,
+        waterPercent: null,
+      },
+    };
+    const proposal = customerProductProfileProposal({
+      scanResult: result,
+      recognition,
+      recognitionEvidence: { gtin: SPORT_001_EAN } as never,
+      userConfirmedFields: ['technicalParameters'],
+    });
+
+    expect(proposal?.declared.total_solids_percent).toBe(27.5);
+    expect(proposal?.declared.water_percent).toBeUndefined();
+    expect(proposal?.declaredBasis.total_solids_percent).toBe('user_confirmed');
+    expect(proposal?.evidence.fields.technicalParameters).toBe('user_confirmed');
   });
 });

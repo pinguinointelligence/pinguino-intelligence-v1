@@ -209,6 +209,7 @@ export class FakeDiscovery implements DiscoveryPort {
     const automaticNutrition = (automatic['nutrition'] ?? {}) as Record<string, unknown>;
     const pfIdentity = (pf['identity'] ?? {}) as Record<string, unknown>;
     const pfNutrition = (pf['nutrition'] ?? {}) as Record<string, unknown>;
+    const pfDeclarations = (pf['productionDeclarations'] ?? {}) as Record<string, unknown>;
     if (Object.keys(automatic).length > 0 || Object.keys(pf).length > 0) {
       const prior = s.result ?? {};
       const priorNutrition = prior.nutrition ?? {};
@@ -239,6 +240,12 @@ export class FakeDiscovery implements DiscoveryPort {
             ? { energyKcal: pfNutrition['energyKcal'] as number }
             : {}),
         },
+        productionDeclarations: {
+          ...((prior as Record<string, unknown>)['productionDeclarations'] as
+            | Record<string, unknown>
+            | undefined),
+          ...pfDeclarations,
+        },
         ingredientsText:
           typeof pf['ingredientsText'] === 'string'
             ? (pf['ingredientsText'] as string)
@@ -264,11 +271,22 @@ export class FakeDiscovery implements DiscoveryPort {
         ] satisfies CustomerFamily[],
       };
     const missing = missingOf(s.result);
+    const declarations = ((s.result as Record<string, unknown> | null)?.[
+      'productionDeclarations'
+    ] ?? {}) as Record<string, unknown>;
+    const answeredMassBalance =
+      typeof declarations['totalSolidsPercent'] === 'number' ||
+      typeof declarations['waterPercent'] === 'number';
+    const authorityMissing = (
+      this.notReadyMissing.get(session.identity.canonicalGtin13) ?? []
+    ).filter(
+      (field) => !(answeredMassBalance && /MISSING_(TOTAL_SOLIDS|WATER)_PERCENT/i.test(field)),
+    );
     // the completion form is offered first; only an explicit save_unverified persists an unready one
-    if (missing.length > 0 && saveUnverified !== true)
+    if ((missing.length > 0 || authorityMissing.length > 0) && saveUnverified !== true)
       return {
         kind: 'not_ready',
-        missingCritical: this.notReadyMissing.get(session.identity.canonicalGtin13) ?? missing,
+        missingCritical: authorityMissing.length > 0 ? authorityMissing : missing,
         reasons: this.notReadyReasons.get(session.identity.canonicalGtin13) ?? [
           'critical_fields_missing',
         ],
@@ -284,7 +302,10 @@ export class FakeDiscovery implements DiscoveryPort {
     */
     // productionReady keeps the pre-existing seam (`authorityEngineUsable`, default false) so the
     // legacy lifecycle tests are unchanged; a test opts in to a ready product exactly as before.
-    const productionReady = missing.length === 0 && (this.authorityEngineUsable.get(gtin) ?? false);
+    const productionReady =
+      missing.length === 0 &&
+      authorityMissing.length === 0 &&
+      (this.authorityEngineUsable.get(gtin) ?? false);
     const finalConfidence = this.confidence.get(gtin) ?? (productionReady ? 90 : 40);
     const route: FinalRoute =
       productionReady && finalConfidence > 85

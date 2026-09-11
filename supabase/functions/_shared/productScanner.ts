@@ -1,6 +1,8 @@
 import type { SourceAuthorityClass } from '../../../src/features/product-intelligence/sourceAuthority.ts';
 import {
   isEanConfirmationMethod,
+  isServerEanConfirmation,
+  gtinDigitsMatch,
   type EanConfirmationMethod,
 } from '../../../src/features/product-intelligence/pageEanConfirmation.ts';
 import type { ProductSemanticEvidence } from '../../../src/features/product-intelligence/productRecognition.ts';
@@ -117,6 +119,8 @@ export const PRODUCT_SCAN_RESPONSE_SCHEMA = {
         'cocoaSolidsPercent',
         'fruitContentPercent',
         'brix',
+        'waterPercent',
+        'totalSolidsPercent',
         'concentrationText',
         'dosageText',
         'technicalParametersText',
@@ -128,6 +132,8 @@ export const PRODUCT_SCAN_RESPONSE_SCHEMA = {
         cocoaSolidsPercent: nullableNumber,
         fruitContentPercent: nullableNumber,
         brix: nullableNumber,
+        waterPercent: nullableNumber,
+        totalSolidsPercent: nullableNumber,
         concentrationText: nullableString,
         dosageText: nullableString,
         technicalParametersText: nullableString,
@@ -212,13 +218,15 @@ Return only evidence observed in the assets supplied for THIS call, using the st
 	The user message names the requested missing fields. Extract only those fields from these new assets;
 	leave every unrequested schema fact null/empty so an already-found session fact is never re-read.
 	Missing/illegible values in this call are null and listed in missingFields;
-never convert UNKNOWN to zero. Copy ingredient and allergen wording faithfully. Label evidence wins
-over web or registry data. When web is available, use only manufacturer pages first, then an
+never convert UNKNOWN to zero. Copy ingredient and allergen wording faithfully. A photographed label
+may fill missing facts, but must not silently replace server-confirmed exact-GTIN facts. When web is
+available, use only manufacturer pages first, then an
 authoritative barcode registry, then an authoritative retailer; do not use forums, social posts,
 or user-generated product descriptions. Use external data only to fill missing fields. Return each
-used URL/title/field in externalSources. Keep every disagreement in conflicts with retainedSource=label.
+used URL/title/field in externalSources. Keep every material disagreement in conflicts for server review.
 Read explicit production declarations when visible: ABV, cocoa/cocoa-butter percentage, fruit content,
-Brix/concentration, dosage, technical parameters and the declared physical form. Never derive them.
+Brix/concentration, water/total-solids percentage, dosage, technical parameters and the declared
+physical form. Never derive them.
 Every non-null fact needs an evidence entry including its asset, visible region, and whether it was
 directly readable. Do not infer dosage, formulation behavior, readiness,
 Mapper identity, or Engine permission from marketing language.`;
@@ -480,7 +488,65 @@ function materiallyEqual(field: string, prior: unknown, incoming: unknown): bool
       : 0.000001;
     return Math.abs(prior - incoming) <= tolerance;
   }
+  if (typeof prior === 'string' && typeof incoming === 'string') {
+    // Case, accents and punctuation are presentation differences, not two product facts.
+    // Keeping the first spelling makes cumulative knowledge stable across OCR passes.
+    return normalizedWords(prior) === normalizedWords(incoming);
+  }
   return stableJson(normalizedComparable(prior)) === stableJson(normalizedComparable(incoming));
+}
+
+const EXACT_EAN_HARD_AUTHORITIES = new Set<SourceAuthorityClass>([
+  'OFFICIAL_MANUFACTURER',
+  'OFFICIAL_BRAND',
+  'OFFICIAL_PRIVATE_LABEL',
+  'OFFICIAL_TECHNICAL_PDF',
+  'STRUCTURED_PRODUCT_DATABASE',
+  'AUTHORITATIVE_RETAILER',
+]);
+
+const exactSourceFieldsFor = (field: string): readonly string[] => {
+  if (field === 'identity.originalName') return ['identity.originalName', 'identity.displayName'];
+  if (field === 'package.unit' || field === 'package.netQuantityText')
+    return [field, 'package.netQuantity'];
+  return [field];
+};
+
+/**
+ * External lookup rows are created by the server, not accepted from the vision model. A row is a
+ * hard exact-product fact only when the source authority is trusted, the server itself confirmed
+ * the GTIN, and the row explicitly says it supplied this field. Coarse `sourceType` alone is never
+ * enough to earn this protection.
+ */
+function exactEanHardSource(
+  value: unknown,
+  field: string,
+  authoritativeBarcode: string | null,
+): ProductScanSource | null {
+  const barcode = normalizeValidatedBarcode(authoritativeBarcode);
+  if (!barcode) return null;
+  const root = objectValue(value);
+  const sources = Array.isArray(root.externalSources) ? root.externalSources : [];
+  for (const sourceValue of sources) {
+    const source = objectValue(sourceValue);
+    const authority = source.sourceAuthorityClass as SourceAuthorityClass;
+    const stated =
+      typeof source.sourceStatedEan === 'string' ? source.sourceStatedEan.replace(/\D/g, '') : '';
+    const fields = Array.isArray(source.fieldsUsed) ? source.fieldsUsed.map(String) : [];
+    if (
+      !EXACT_EAN_HARD_AUTHORITIES.has(authority) ||
+      !isServerEanConfirmation(source.sourceEanConfirmationMethod) ||
+      !gtinDigitsMatch(stated, barcode) ||
+      !exactSourceFieldsFor(field).some((candidate) => fields.includes(candidate))
+    )
+      continue;
+    return ['manufacturer', 'barcode_registry', 'retailer'].includes(String(source.sourceType))
+      ? (source.sourceType as ProductScanSource)
+      : authority === 'AUTHORITATIVE_RETAILER' || authority === 'OFFICIAL_PRIVATE_LABEL'
+        ? 'retailer'
+        : 'manufacturer';
+  }
+  return null;
 }
 
 function getPath(root: Record<string, unknown>, path: string): unknown {
@@ -669,6 +735,8 @@ export function mergeProductScanResults(
     'productionDeclarations.cocoaSolidsPercent',
     'productionDeclarations.fruitContentPercent',
     'productionDeclarations.brix',
+    'productionDeclarations.waterPercent',
+    'productionDeclarations.totalSolidsPercent',
     'productionDeclarations.concentrationText',
     'productionDeclarations.dosageText',
     'productionDeclarations.technicalParametersText',
@@ -692,6 +760,16 @@ export function mergeProductScanResults(
     }
     if (materiallyEqual(field, priorFact, incomingFact)) {
       setPath(merged, field, priorFact);
+      continue;
+    }
+    const priorExactSource = exactEanHardSource(prior, field, authoritativeBarcode);
+    const incomingExactSource = exactEanHardSource(incoming, field, authoritativeBarcode);
+    if (priorExactSource || incomingExactSource) {
+      // A material hard-vs-hard disagreement is reviewable evidence, never permission for an OCR
+      // pass to erase a server-confirmed exact-product fact. If the exact fact arrived in this pass,
+      // take it; otherwise preserve the accumulated value.
+      setPath(merged, field, incomingExactSource && !priorExactSource ? incomingFact : priorFact);
+      appendConflict(conflicts, field, priorFact, incomingFact, null);
       continue;
     }
     const priorEvidence = bestEvidence(prior, field);
@@ -1106,6 +1184,12 @@ export function productSemanticEvidenceFromScanResult(value: unknown): ProductSe
         typeof productionDeclarations.alcoholAbv === 'number'
           ? `ABV: ${productionDeclarations.alcoholAbv}%`
           : null,
+        typeof productionDeclarations.waterPercent === 'number'
+          ? `water: ${productionDeclarations.waterPercent}%`
+          : null,
+        typeof productionDeclarations.totalSolidsPercent === 'number'
+          ? `total solids: ${productionDeclarations.totalSolidsPercent}%`
+          : null,
       ]
         .filter((entry): entry is string => Boolean(entry))
         .join(' | ') || null,
@@ -1141,6 +1225,8 @@ export const EAN_LOOKUP_FIELDS = [
   'dosage',
   'technicalParameters',
   'technicalSource',
+  'waterPercent',
+  'totalSolidsPercent',
 ] as const;
 
 /** „0,3 g" / „330 ml" → 0.3 / 330. A value that is not a plain number is refused. */
@@ -1188,11 +1274,9 @@ const SOURCE_TYPE_BY_AUTHORITY: Readonly<Record<SourceAuthorityClass, string>> =
 /**
  * Turn provider facts into a partial scan result.
  *
- * These facts carry NO `evidence` rows on purpose. Evidence rank decides who wins a
- * disagreement, and a label read from the package must always outrank a page found on
- * the internet — leaving external facts unranked is what guarantees it. Provenance is
- * not lost: every field is listed in `externalSources[].fieldsUsed`, which is what the
- * session's external-source rows and the „skąd to jest" detail are built from.
+ * These facts carry NO model/asset `evidence` rows on purpose. Their server-owned provenance lives
+ * in `externalSources[]`: exact-GTIN confirmation plus trusted authority protects a hard internet
+ * fact from silent OCR replacement, while an unconfirmed page remains ordinary fill-only evidence.
  */
 export function scanResultFromLookupFacts(
   facts: readonly Record<string, unknown>[],
@@ -1239,6 +1323,8 @@ export function scanResultFromLookupFacts(
   let productDescription: string | null = null;
   let dosageText: string | null = null;
   let technicalParametersText: string | null = null;
+  let waterPercent: number | null = null;
+  let totalSolidsPercent: number | null = null;
 
   const remember = (fact: Record<string, unknown>, field: string) => {
     const url = typeof fact.sourceUrl === 'string' ? fact.sourceUrl : null;
@@ -1310,6 +1396,18 @@ export function scanResultFromLookupFacts(
     ) {
       technicalParametersText = raw;
       remember(fact, 'productionDeclarations.technicalParametersText');
+    } else if (field === 'waterPercent' && waterPercent === null) {
+      const parsed = numericFact(raw);
+      if (parsed !== null && parsed <= 100) {
+        waterPercent = parsed;
+        remember(fact, 'productionDeclarations.waterPercent');
+      }
+    } else if (field === 'totalSolidsPercent' && totalSolidsPercent === null) {
+      const parsed = numericFact(raw);
+      if (parsed !== null && parsed <= 100) {
+        totalSolidsPercent = parsed;
+        remember(fact, 'productionDeclarations.totalSolidsPercent');
+      }
     } else if (field === 'nutritionBasis' && !nutrition.basis) {
       const basis = nutritionBasisFact(raw);
       if (basis) {
@@ -1398,6 +1496,8 @@ export function scanResultFromLookupFacts(
       cocoaSolidsPercent: null,
       fruitContentPercent: null,
       brix: null,
+      waterPercent,
+      totalSolidsPercent,
       concentrationText: null,
       dosageText,
       technicalParametersText,

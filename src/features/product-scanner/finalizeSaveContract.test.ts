@@ -31,8 +31,9 @@ describe('customer product finalization contract', () => {
   });
 
   it('runs family resolution before Mapper completion and ProductBehavior', () => {
+    const handlerStart = FINALIZE.indexOf('Deno.serve');
     expect(FINALIZE.indexOf('let familyResolution = resolveCustomerProductFamily')).toBeLessThan(
-      FINALIZE.indexOf('profile = validateIntimportProductProfileProposal'),
+      FINALIZE.indexOf('validateIntimportProductProfileProposal', handlerStart),
     );
     expect(FINALIZE).toContain('family_confirmation_required');
     expect(FINALIZE).toContain('validateProductBehaviorAuthority');

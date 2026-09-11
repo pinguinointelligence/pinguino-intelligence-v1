@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { ExactCandidate } from '@/scan-import-v2';
 import {
+  classifyRemainingGaps,
   confirmationsFromFields,
+  manualFieldsFor,
   manualConfirmedScan,
   plainFieldsFor,
   positionHint,
@@ -150,6 +152,46 @@ describe('scan flow — pure rules', () => {
       nutrition: { salt: 0.01, basis: 'per_100ml' },
     });
     expect(confirmationsFromFields(values, []).productFields).toEqual({});
+  });
+
+  it('classifies technical-only gaps as impossible to solve from a label photo', () => {
+    expect(
+      classifyRemainingGaps([
+        'MISSING_TOTAL_SOLIDS_PERCENT',
+        'MISSING_WATER_PERCENT',
+        'UNRESOLVED_SWEETENING_FREEZING_PATH',
+      ]),
+    ).toEqual({
+      photoSolvable: [],
+      photoCannotSolve: [
+        'MISSING_TOTAL_SOLIDS_PERCENT',
+        'MISSING_WATER_PERCENT',
+        'UNRESOLVED_SWEETENING_FREEZING_PATH',
+      ],
+    });
+  });
+
+  it('keeps a real ingredients gap photo-solvable beside an Engine gap', () => {
+    expect(classifyRemainingGaps(['evidence_ingredients', 'MISSING_WATER_PERCENT'])).toEqual({
+      photoSolvable: ['evidence_ingredients'],
+      photoCannotSolve: ['MISSING_WATER_PERCENT'],
+    });
+  });
+
+  it('turns the mass-balance pair into one exact customer question and confirmation', () => {
+    expect(
+      manualFieldsFor(['MISSING_TOTAL_SOLIDS_PERCENT', 'MISSING_WATER_PERCENT']).map((field) => ({
+        key: field.key,
+        label: field.label,
+        required: field.required,
+      })),
+    ).toEqual([{ key: 'totalSolidsPercent', label: 'Sucha masa produktu', required: true }]);
+    expect(confirmationsFromFields({ totalSolidsPercent: '12,1' }, ['totalSolidsPercent'])).toEqual(
+      {
+        evidenceOrigin: 'customer_action',
+        productFields: { productionDeclarations: { totalSolidsPercent: 12.1 } },
+      },
+    );
   });
 
   it('the customer always reads what the scanner is doing: guidance > position > state', () => {

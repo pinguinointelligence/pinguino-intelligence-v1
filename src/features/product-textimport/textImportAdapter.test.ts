@@ -203,6 +203,8 @@ describe('TEXTIMPORT adapter — exact Scanner input seam', () => {
         cocoaSolidsPercent: null,
         fruitContentPercent: null,
         brix: null,
+        waterPercent: null,
+        totalSolidsPercent: null,
         concentrationText: null,
         dosageText: null,
         technicalParametersText: null,

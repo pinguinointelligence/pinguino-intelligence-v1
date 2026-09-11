@@ -1100,7 +1100,6 @@ export function rescueMassBalanceFromCohort(input: {
   if (
     !input.semantic ||
     input.semantic.modelRequired ||
-    input.semantic.confidence < 0.85 ||
     input.semantic.ingredientFamily === 'unknown' ||
     input.semantic.physicalForm === 'UNKNOWN' ||
     input.semantic.intendedUsageRole === 'NEITHER_REVIEW'
