@@ -34,7 +34,11 @@ import { useHomeDraftStore } from '@/features/home-creator/homeDraftStore';
 import { useCanSeeExactGrams } from '@/features/home-creator/useHomeEntitlement';
 import { useHomeFlow } from '@/features/home-creator/useHomeFlow';
 import { useHomeRecipeResult } from '@/features/home-creator/useHomeRecipeResult';
-import { useHomeIntentIngredients } from '@/features/home-creator/useHomeIntentIngredients';
+import {
+  useHomeIntentIngredients,
+  type IntentIngredientOutcome,
+} from '@/features/home-creator/useHomeIntentIngredients';
+import { autoPriorityAppliesToNewLine, visibleCrownLineIds } from '@/features/recipe-priority';
 import { useLegacyRecipeBehaviorRevalidation } from '@/features/product-intelligence';
 import { ScanFlow } from '@/features/scan-flow/ScanFlow';
 import { HomeMatchGate } from '@/features/home-creator/matching/HomeMatchGate';
@@ -101,6 +105,22 @@ export function HomeCreatorPage() {
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scanNotice, setScanNotice] = useState<string | null>(null);
   const intentIngredients = useHomeIntentIngredients();
+  /** The picked product waiting for its confirmed amount. No line exists yet. */
+  const [pendingAdd, setPendingAdd] = useState<{
+    ingredient: EngineIngredient;
+    behavior: ProductBehaviorSnapshot | null;
+    recommendedDose: string | null;
+  } | null>(null);
+  /**
+   * PACKAGE 2A — a BASE product that reached the recipe through the intent or scanner
+   * door after the customer's first crown has no automatic amount, so the hook made no
+   * line. Ask it with the same HOME question the picker path uses; the answer goes
+   * through `addIngredientLine`, HOME's one Base-line door.
+   */
+  const askAmountFor = useCallback((outcome: IntentIngredientOutcome) => {
+    if (outcome.status !== 'needs_amount' || !outcome.ingredient) return;
+    setPendingAdd({ ingredient: outcome.ingredient, behavior: null, recommendedDose: null });
+  }, []);
   // §56: the SAME library the Pro builder feeds its picker. Demo/free get the local
   // preview catalogue, an authenticated paid session gets live Mapper search — HOME
   // does not widen or narrow what Pro can see.
@@ -274,6 +294,11 @@ export function HomeCreatorPage() {
       // otherwise the user's Ninja silently reverts to Professional, which is exactly
       // what happened before this line existed.
       if (machine) applyMachineSelection(machine);
+      // PACKAGE 2A (closed 2026-09-11) — a HOME draft is born in AUTO: every BASE
+      // ingredient the customer supplies is a priority, and none of it is shown as
+      // a crown. `rebuildNewRecipeStarter` starts a NEW draft and therefore resets
+      // the mode to MANUAL, so this must come after it and before the chips below.
+      useRecipeStore.getState().setPriorityMode('AUTO');
       useHomeDraftStore.getState().markRecipeReady(true);
 
       // §22/§49: the base is correct for the profile but is not yet what the user
@@ -282,7 +307,7 @@ export function HomeCreatorPage() {
       void (async () => {
         for (const chip of useHomeDraftStore.getState().chips) {
           if (chip.productId === null || chip.ambiguous) continue;
-          await intentIngredients.addResolvedChip(chip);
+          askAmountFor(await intentIngredients.addResolvedChip(chip));
         }
       })();
 
@@ -293,6 +318,7 @@ export function HomeCreatorPage() {
       amount,
       machine,
       applyMachineSelection,
+      askAmountFor,
       intentIngredients,
       recommendedBatchGrams,
       recipe.target_batch_grams,
@@ -309,13 +335,6 @@ export function HomeCreatorPage() {
   const [pendingUsage, setPendingUsage] = useState<{
     ingredient: EngineIngredient;
     behavior: ProductBehaviorSnapshot | null;
-  } | null>(null);
-
-  /** The picked product waiting for its confirmed amount. No line exists yet. */
-  const [pendingAdd, setPendingAdd] = useState<{
-    ingredient: EngineIngredient;
-    behavior: ProductBehaviorSnapshot | null;
-    recommendedDose: string | null;
   } | null>(null);
 
   /**
@@ -337,7 +356,10 @@ export function HomeCreatorPage() {
       // it was added. Ask the SAME canonical authority here; it refuses on its own for
       // a product Main cannot carry, so this offers the crown rather than forcing it.
       // HOME surface: HOME's own Crown rules apply here and never reach PRO.
-      useRecipeStore.getState().setMainIngredient(added.lineId, 'home');
+      // PACKAGE 2A: this is the AUTOMATIC door — a priority only while the draft is
+      // still AUTO. After the customer's first crown the set is theirs, and a line
+      // added later stays ordinary until they crown it.
+      useRecipeStore.getState().grantAutomaticPriority(added.lineId);
     },
     [],
   );
@@ -375,7 +397,11 @@ export function HomeCreatorPage() {
         handleAddTopping(ingredient as unknown as RecipeToppingIngredient, behavior);
         return;
       }
-      const decision = decideAddAmount(behavior ?? null, productRecommendedDosagePl);
+      // PACKAGE 2A: in MANUAL nothing will size a new line automatically, so the
+      // existing HOME amount question applies to a Crown-capable product too.
+      const decision = decideAddAmount(behavior ?? null, productRecommendedDosagePl, {
+        autoPriority: autoPriorityAppliesToNewLine(useRecipeStore.getState().priority_mode),
+      });
       if (decision.kind === 'unresolved_authority') {
         // Owner ruling §6: never guess. The picker already refuses a product it cannot
         // confirm, so reaching here means the authority went stale between resolution
@@ -507,7 +533,7 @@ export function HomeCreatorPage() {
               const state = useHomeDraftStore.getState();
               if (state.recipeReady) {
                 const resolved = state.chips.find((entry) => entry.id === chip.id);
-                if (resolved) void intentIngredients.addResolvedChip(resolved);
+                if (resolved) void intentIngredients.addResolvedChip(resolved).then(askAmountFor);
               } else if (state.intentSubmitted) {
                 // The answer completed the intent, so matching can finally run on a
                 // real identity. Without this the popup never appears for any
@@ -615,9 +641,10 @@ export function HomeCreatorPage() {
             machineLine={machineLine}
             items={recipe.items}
             toppings={recipe.toppings}
-            crownLineIds={recipe.items
-              .filter((item) => item.lock_type === 'main')
-              .map((item) => item.id)}
+            /* PACKAGE 2A — an AUTO priority is real for the Engine but was never
+               chosen, so it is not shown as a crown. Visible crowns are the ones
+               the customer set. */
+            crownLineIds={visibleCrownLineIds(recipe.items, recipe.priority_mode)}
             canSeeGrams={canSeeGrams}
             sweetnessStored={recipe.direction_targets.sweetness}
             onSweetness={onSweetness}
@@ -710,7 +737,9 @@ export function HomeCreatorPage() {
             }
             // The amount question still applies to an ingredient, exactly as it does
             // for a product that never needed the usage question at all.
-            const decision = decideAddAmount(behavior, productRecommendedDosagePl);
+            const decision = decideAddAmount(behavior, productRecommendedDosagePl, {
+              autoPriority: autoPriorityAppliesToNewLine(useRecipeStore.getState().priority_mode),
+            });
             if (decision.kind === 'ask_amount') {
               setPendingAdd({ ingredient, behavior, recommendedDose: decision.recommendedDose });
               return;
@@ -766,7 +795,7 @@ export function HomeCreatorPage() {
                 setScannerOpen(false);
                 // The SAME door a typed ingredient uses. The scanner supplies the identity;
                 // every rule about what it may do in a recipe stays where it lives.
-                void intentIngredients.addScannedProduct(product.id);
+                void intentIngredients.addScannedProduct(product.id).then(askAmountFor);
               }}
               onReturn={() => setScannerOpen(false)}
               onChoosePlan={(plan) => {
