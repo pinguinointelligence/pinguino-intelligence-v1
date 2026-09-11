@@ -298,6 +298,9 @@ function TargetBatchControl({
   );
 }
 
+/** How many Settings copies are mounted — see the publishing effect in the component. */
+let mountedSettingsCopies = 0;
+
 export function WorkbenchSettingsLine({
   className,
   compact = false,
@@ -457,7 +460,17 @@ export function WorkbenchSettingsLine({
   useEffect(() => {
     setSettingsConfirmed(activeDraftIdentity === null ? null : confirmed);
   }, [activeDraftIdentity, confirmed, setSettingsConfirmed]);
-  useEffect(() => () => setSettingsConfirmed(null), [setSettingsConfirmed]);
+  /* Below the workbench breakpoint Settings is mounted twice — the CSS-hidden desktop
+     aside and the phone sheet. Closing the sheet must not clear the fact while the other
+     copy is still here: its inputs are unchanged, so it would never publish again and the
+     phone would forget that settings wait. Only the LAST copy to leave clears it. */
+  useEffect(() => {
+    mountedSettingsCopies += 1;
+    return () => {
+      mountedSettingsCopies -= 1;
+      if (mountedSettingsCopies === 0) setSettingsConfirmed(null);
+    };
+  }, [setSettingsConfirmed]);
 
   /* No blocker-driven open/close effect. Initial attention is derived from the
      confirmed draft identity, and successful confirmation explicitly returns
