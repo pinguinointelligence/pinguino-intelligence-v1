@@ -41,6 +41,7 @@ import { LockConflictPanel } from '@/features/constraint-studio/ui/LockConflictP
 import { cn } from '@/lib/cn';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { homeCreatorCopy } from '../homeCreatorCopy';
+import { customerInstructions, homeRecalculationInstructions } from '../homePriorityBootstrap';
 import { homeCustomerNotice } from '../homeCustomerNotice';
 
 const interactiveCopy = constraintStudioCopy.interactive;
@@ -106,13 +107,22 @@ export function HomeRecalculate({
     setOpen(false);
   };
 
+  // OWNER OD-1 (Package 2A): a 0 g HOME priority line is the solver's to size, so
+  // every run hands it over as the Crown bootstrap on the provisional copy.
+  const runWith = (instructions: readonly PreviewLineInstruction[]) => {
+    const all = homeRecalculationInstructions(useRecipeStore.getState().items, instructions);
+    void (all.length > 0
+      ? runInteractiveRecalculationWithTerminal(all)
+      : runPiRecalculationWithTerminal());
+  };
+
   const run = () => {
     setOpen(true);
-    void runPiRecalculationWithTerminal();
+    runWith([]);
   };
 
   const recalculateInPreview = (instructions: PreviewLineInstruction[]) => {
-    void runInteractiveRecalculationWithTerminal(instructions);
+    runWith(instructions);
   };
 
   const apply = () => {
@@ -193,7 +203,7 @@ export function HomeRecalculate({
                   applyPending={applyPending}
                   gramsMask={gramsMask}
                   interactive={{
-                    instructions: preview.previewInstructions?.lines ?? [],
+                    instructions: customerInstructions(preview.previewInstructions?.lines ?? []),
                     editableLineIds,
                     onRecalculate: recalculateInPreview,
                   }}
@@ -296,7 +306,7 @@ export function HomeRecalculate({
                     className={primaryButton}
                     style={{ background: 'var(--g-ink)', color: '#ffffff' }}
                     data-testid="home-recalc-retry"
-                    onClick={() => void runPiRecalculationWithTerminal()}
+                    onClick={() => runWith([])}
                   >
                     {homeCreatorCopy.recipe.recalculate}
                   </button>

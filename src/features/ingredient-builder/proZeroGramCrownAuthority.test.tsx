@@ -304,7 +304,8 @@ describe('HOME — the same shared store, HOME rules unchanged', () => {
   it('the HOME Crown control OFF/ON keeps the line eligible and editable', () => {
     const [id] = openSorbetWith([STRAWBERRIES]);
     st().setLockType(id!, 'main', 'home');
-    expect(line(id!)).toMatchObject({ planned_grams: 1, lock_type: 'main' });
+    // Owner OD-1 (2026-09-11): HOME's Crown is mass-neutral — 0 g stays 0 g.
+    expect(line(id!)).toMatchObject({ planned_grams: 0, lock_type: 'main' });
     st().setLockType(id!, 'unlocked', 'home');
     expect(line(id!)).toMatchObject({ planned_grams: 0, lock_type: 'unlocked' });
     expect(snapshotOf(id!)?.resolutionState).toBe('RESOLVED');

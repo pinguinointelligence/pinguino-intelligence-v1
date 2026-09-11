@@ -25,7 +25,10 @@ import {
   type ConstraintSet,
   type IngredientConstraint,
 } from '@/features/recipe-constraints';
-import { withoutCrownBootstrap } from '@/features/formulation/crownBootstrapProvenance';
+import {
+  withCrownBootstrap,
+  withoutCrownBootstrap,
+} from '@/features/formulation/crownBootstrapProvenance';
 
 export interface PreviewLineInstruction {
   readonly lineId: string;
@@ -33,6 +36,14 @@ export interface PreviewLineInstruction {
   readonly grams: number;
   /** TRUE = exact padlock at `grams`; FALSE = no padlock. */
   readonly locked: boolean;
+  /**
+   * PACKAGE 2A (owner OD-1, 2026-09-11) — HOME's solver bootstrap, never the
+   * customer's amount. A HOME priority line at 0 g enters the provisional copy at
+   * 1 g carrying the Crown bootstrap provenance (#290), with no typed target and
+   * no intent anchor, so the Main search sizes it. The recipe keeps 0 g until
+   * „Zastosuj zmiany", and the instruction is never written as a row edit.
+   */
+  readonly bootstrap?: true;
 }
 
 /** Engine-native locks the padlock layer never overrides (§18.1). */
@@ -46,7 +57,8 @@ export type PreviewInstructionsRejection =
   | 'invalid_grams'
   | 'physical_actual'
   | 'duplicate_line'
-  | 'engine_held_line';
+  | 'engine_held_line'
+  | 'invalid_bootstrap';
 
 export type PreviewInstructionsResult =
   | { ok: true; input: RecipeInput; constraints: ConstraintSet }
@@ -103,6 +115,22 @@ export function applyPreviewInstructions(
     }
     if (NON_EDITABLE_LOCKS.has(current.lock_type)) {
       return { ok: false, reason: 'engine_held_line', lineId: instruction.lineId };
+    }
+    if (instruction.bootstrap) {
+      // Only a HOME priority line with no amount yet, and only at the 1 g bootstrap.
+      if (
+        current.lock_type !== 'main' ||
+        current.planned_grams !== 0 ||
+        instruction.grams !== 1 ||
+        instruction.locked
+      ) {
+        return { ok: false, reason: 'invalid_bootstrap', lineId: instruction.lineId };
+      }
+      const bootstrapped = withCrownBootstrap({ ...current, planned_grams: 1 });
+      delete bootstrapped.user_target_grams;
+      delete bootstrapped.user_intent_anchor_grams;
+      items = items.map((item, position) => (position === index ? bootstrapped : item));
+      continue;
     }
     if (!Number.isInteger(instruction.grams) || instruction.grams < 1) {
       return { ok: false, reason: 'invalid_grams', lineId: instruction.lineId };
