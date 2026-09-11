@@ -31,19 +31,9 @@ import {
   applicationViewportSize,
   currentApplicationScale,
 } from '@/features/shell/applicationScaleAuthority';
+import { recipeProfileContextLabel } from './recipeProfileContext';
 
 const w = copy.proWorkbar;
-const pm = copy.proMachine;
-
-const TIER = { optimal: 'OPTIMAL', eco: 'ECO' } as const;
-const SERVING_LABEL: Record<string, string> = {
-  fresh: pm.serving.fresh,
-  temp_minus_11: pm.serving.minus11,
-  temp_minus_12: pm.serving.minus12,
-  temp_minus_13: pm.serving.minus13,
-  ninja_gelato: 'Ninja Gelato',
-  ninja_swirl: 'Ninja Swirl',
-};
 
 export const WORKBAR_POPOVER_IDLE_MS = 4_500;
 export const WORKBAR_POPOVER_FADE_MS = 180;
@@ -318,14 +308,16 @@ export function ProWorkbar({
   const saveTransitionSequence = useRef(0);
   const name = nameDraft ?? savedRecipeName ?? '';
 
-  const product = copy.studio.goal.productTypes[visibleProductType];
-  const serving = servingModeId
-    ? (SERVING_LABEL[servingModeId] ?? `${temperatureC}°C`)
-    : `${temperatureC}°C`;
-  const context =
-    machineKind === 'home' && machineLabel
-      ? `${machineLabel} · ${batchGrams} g`
-      : `${product} · ${TIER[mode] ?? mode} · ${serving} · ${batchGrams} g`;
+  // One profile sentence, shared with the phone's recipe bar (PRO MOBILE UX v2).
+  const context = recipeProfileContextLabel({
+    visibleProductType,
+    formulation_strategy: mode,
+    target_temperature_c: temperatureC,
+    target_batch_grams: batchGrams,
+    machineKind,
+    servingModeId,
+    machineLabel,
+  });
 
   const statusKey: keyof typeof w.status = save.error
     ? 'error'
