@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { copy } from '@/copy/en';
 import { lockBodyScroll } from '@/components/ui/bodyScrollLock';
 import { usePublishedBottomStackHeight } from '@/features/studio/bottomStackHeight';
@@ -43,6 +43,14 @@ import {
   shouldRevealProductionWeighingOnNarrowViewport,
   type MobileCockpitState,
 } from '@/features/studio/mobileCockpitModal';
+import {
+  cockpitMove,
+  runSpatialTransition,
+  type SpatialMove,
+} from '@/features/studio/spatialTransition';
+import { RecipeContextBar } from '@/features/studio/RecipeContextBar';
+import { mobileNextStep, type MobileNextStep } from '@/features/pro-workbench/mobileNextStep';
+import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
 
 const { studio } = copy;
 
@@ -204,31 +212,72 @@ export function StudioEngineSurface({
     setMobileCockpitState(routeReconciled);
   }
   const mobileCockpitOpen = mobileCockpitState.open;
+  const [mobileViewport, setMobileViewport] = useState(false);
+  /* PRO MOBILE UX v2 · B2/B9 — what the phone's cockpit shows changes
+     SPATIALLY (spatialTransition.ts): the Receptura dashboard drops from the
+     recipe bar and lifts back into it, and the modules slide in the bottom
+     bar's order. A module change is also a route change, delivered by React
+     Router in a transition, so the movement waits for that route (at most
+     500 ms) before it takes its final picture. */
+  const routeWaitersRef = useRef<Array<{ tab: CockpitTab; resolve: () => void }>>([]);
+  const routeTabRef = useRef(activeTab);
+  useEffect(() => {
+    routeTabRef.current = activeTab;
+    const arrived = routeWaitersRef.current.filter((waiter) => waiter.tab === activeTab);
+    routeWaitersRef.current = routeWaitersRef.current.filter((waiter) => waiter.tab !== activeTab);
+    arrived.forEach((waiter) => waiter.resolve());
+  }, [activeTab]);
+  const untilRoute = useCallback(
+    (tab: CockpitTab) => () =>
+      new Promise<void>((resolve) => {
+        routeWaitersRef.current.push({ tab, resolve });
+        window.setTimeout(resolve, 500);
+      }),
+    [],
+  );
+  const withSpatialMove = (move: SpatialMove | null, apply: () => void, routeTab?: CockpitTab) =>
+    runSpatialTransition(
+      !mobileViewport ? null : move,
+      apply,
+      routeTab !== undefined && routeTab !== activeTab ? untilRoute(routeTab) : undefined,
+    );
   /** One selector for the bottom bar: open, collapse, or switch. */
   const selectMobileModule = (tab: CockpitTab) => {
     const next = nextMobileCockpitState(mobileCockpitState, tab);
     const navigates = next.open && tab !== activeTab;
-    setMobileCockpitState(navigates ? optimisticMobileCockpitState(next, activeTab) : next);
-    if (navigates) onTabChange(tab);
+    withSpatialMove(
+      cockpitMove(mobileCockpitState, next),
+      () => {
+        setMobileCockpitState(navigates ? optimisticMobileCockpitState(next, activeTab) : next);
+        if (navigates) onTabChange(tab);
+      },
+      navigates ? tab : undefined,
+    );
   };
   // Collapsing is also a ROUTE change for the non-default modules, so „what is
   // open" stays visible in the address bar and survives refresh/back.
-  const collapseMobileCockpit = () => {
-    setMobileCockpitState({ activeTab, open: false });
+  const collapseWithMove = (move?: SpatialMove) => {
     const routeAfterCollapse = collapsedMobileCockpitRoute(
       activeTab,
       'profile',
       activeTab === 'production' && production.session?.status === 'in_progress',
     );
-    if (routeAfterCollapse !== activeTab) onTabChange(routeAfterCollapse);
+    withSpatialMove(
+      move ?? cockpitMove(mobileCockpitState, { activeTab, open: false }),
+      () => {
+        setMobileCockpitState({ activeTab, open: false });
+        if (routeAfterCollapse !== activeTab) onTabChange(routeAfterCollapse);
+      },
+      routeAfterCollapse,
+    );
   };
+  const collapseMobileCockpit = () => collapseWithMove();
   // The Escape handler is installed once per open sheet; reading the collapse
   // through a ref keeps that effect's dependencies stable.
   const collapseRef = useRef(collapseMobileCockpit);
   useEffect(() => {
     collapseRef.current = collapseMobileCockpit;
   });
-  const [mobileViewport, setMobileViewport] = useState(false);
   const cockpitTriggerRef = useRef<HTMLButtonElement | null>(null);
   const cockpitPanelRef = useRef<HTMLElement | null>(null);
   /** The desktop column's copy of the cockpit (A3 reveals inside the copy you can see). */
@@ -239,6 +288,11 @@ export function StudioEngineSurface({
   /** A3 — every „Otwórz ustawienia" request is revealed exactly once. */
   const [settingsRevealRequest, setSettingsRevealRequest] = useState(0);
   const handledSettingsRevealRef = useRef(0);
+  /** B7 — every „Zapisz recepturę" request reveals the ONE existing name/save card once. */
+  const [saveRevealRequest, setSaveRevealRequest] = useState(0);
+  const handledSaveRevealRef = useRef(0);
+  /** Whether the sheet (not the column) hosts the cockpit, for listeners registered once. */
+  const phoneSheetRef = useRef(false);
   const previousProductionSessionIdRef = useRef(production.session?.sessionId ?? null);
   const focusProductionAfterCollapseRef = useRef(false);
 
@@ -253,11 +307,18 @@ export function StudioEngineSurface({
 
   useEffect(() => {
     const showProfileSettings = () => {
-      // The intent first, carrying the module it leaves, then the route.
-      setMobileCockpitState((current) =>
-        optimisticMobileCockpitState({ activeTab: 'profile', open: true }, current.activeTab),
+      // The intent first, carrying the module it leaves, then the route. On a
+      // phone the Receptura dashboard drops down from the recipe bar (B2).
+      runSpatialTransition(
+        phoneSheetRef.current ? 'drop' : null,
+        () => {
+          setMobileCockpitState((current) =>
+            optimisticMobileCockpitState({ activeTab: 'profile', open: true }, current.activeTab),
+          );
+          onTabChange('profile');
+        },
+        routeTabRef.current !== 'profile' ? untilRoute('profile') : undefined,
       );
-      onTabChange('profile');
       // A3 — the reveal runs once the sheet has mounted (effect below), inside
       // the copy the customer can SEE. A document-wide lookup one microtask
       // later found the hidden desktop column's copy first on a phone, so the
@@ -267,11 +328,14 @@ export function StudioEngineSurface({
     window.addEventListener('pinguino:profile-settings-required', showProfileSettings);
     return () =>
       window.removeEventListener('pinguino:profile-settings-required', showProfileSettings);
-  }, [onTabChange]);
+  }, [onTabChange, untilRoute]);
 
   useEffect(() => {
     const query = window.matchMedia(MOBILE_COCKPIT_QUERY);
-    const sync = () => setMobileViewport(query.matches);
+    const sync = () => {
+      phoneSheetRef.current = query.matches;
+      setMobileViewport(query.matches);
+    };
     sync();
     query.addEventListener('change', sync);
     return () => query.removeEventListener('change', sync);
@@ -409,6 +473,105 @@ export function StudioEngineSurface({
     });
   }, [settingsRevealRequest, sheetHostsCockpit]);
 
+  // B7 — „Zapisz recepturę" lands ON the one existing name/save card: the empty
+  // name field first, otherwise ZAPISZ itself. Saving stays the card's own act.
+  useEffect(() => {
+    if (saveRevealRequest === handledSaveRevealRef.current) return;
+    const container = sheetHostsCockpit ? cockpitPanelRef.current : desktopCockpitRef.current;
+    if (!container) return;
+    handledSaveRevealRef.current = saveRevealRequest;
+    return revealWithinScrollContainer({
+      container,
+      selector: '[data-testid="pro-workbar"]',
+      onSettled: (card) => {
+        const name = card.querySelector<HTMLTextAreaElement>(
+          '[data-testid="pro-workbar-name-wrap"]',
+        );
+        const save = card.querySelector<HTMLButtonElement>('[data-testid="pro-workbar-save"]');
+        const target =
+          name && name.value.trim() === '' ? name : save && !save.disabled ? save : name;
+        target?.focus({ preventScroll: true });
+      },
+    });
+  }, [saveRevealRequest, sheetHostsCockpit]);
+
+  /** B2 — brings the Receptura dashboard down (recipe bar, „Zapisz recepturę"). */
+  const openRecipeDashboard = (afterOpen?: () => void) => {
+    const next: MobileCockpitState<CockpitTab> = { activeTab: 'profile', open: true };
+    withSpatialMove(
+      cockpitMove(mobileCockpitState, next),
+      () => {
+        setMobileCockpitState(optimisticMobileCockpitState(next, activeTab));
+        if (activeTab !== 'profile') onTabChange('profile');
+        afterOpen?.();
+      },
+      'profile',
+    );
+  };
+
+  /* B6 — the ONE next step of the phone strip, from published facts only. */
+  const settingsConfirmed = useRecipeProfileStore((state) => state.settingsConfirmed);
+  const recipeDirty = useRecipeStore((state) => state.dirty);
+  const savedRecipeId = useRecipeStore((state) => state.savedRecipeId);
+  const mobileNext = mobileNextStep({
+    settingsConfirmed,
+    saveRequired: recipeSaveAttention,
+    savedAndClean: savedRecipeId !== null && !recipeDirty,
+    activeTab,
+  });
+  const onMobileNext = (step: MobileNextStep) => {
+    if (step === 'settings') {
+      window.dispatchEvent(new Event('pinguino:profile-settings-required'));
+    } else if (step === 'save') {
+      openRecipeDashboard(() => setSaveRevealRequest((request) => request + 1));
+    } else {
+      selectMobileModule(step);
+    }
+  };
+
+  /* B3 — a NEW recipe whose settings were never confirmed opens on its
+     settings, once per draft; confirming them lifts the dashboard away so the
+     ingredient workspace enters from above. A stored default profile confirms
+     the draft by itself (WorkbenchSettingsLine), so a returning customer is
+     never walked through this again. */
+  const activeDraftIdentity = useRecipeProfileStore((state) => state.activeDraftIdentity);
+  const confirmedDraftIdentity = useRecipeProfileStore((state) => state.confirmedDraftIdentity);
+  const profileFirstIdentityRef = useRef<string | null>(null);
+  const profileFirstOpenRef = useRef(false);
+  const firstRunSettings =
+    activeTab === 'profile' &&
+    settingsConfirmed === false &&
+    activeDraftIdentity !== null &&
+    activeDraftIdentity.startsWith('["unsaved-draft"') &&
+    confirmedDraftIdentity !== activeDraftIdentity;
+  useEffect(() => {
+    if (!mobileViewport || !firstRunSettings || activeDraftIdentity === null) return;
+    if (profileFirstIdentityRef.current === activeDraftIdentity) return;
+    const identity = activeDraftIdentity;
+    // Settle first: a stored default confirms a fresh draft a commit later.
+    const timer = window.setTimeout(() => {
+      const profile = useRecipeProfileStore.getState();
+      if (profile.activeDraftIdentity !== identity || profile.settingsConfirmed !== false) return;
+      profileFirstIdentityRef.current = identity;
+      profileFirstOpenRef.current = true;
+      window.dispatchEvent(new Event('pinguino:profile-settings-required'));
+    }, 160);
+    return () => window.clearTimeout(timer);
+  }, [activeDraftIdentity, firstRunSettings, mobileViewport]);
+  const revealWorkspaceRef = useRef<() => void>(() => undefined);
+  useEffect(() => {
+    revealWorkspaceRef.current = () => {
+      if (mobileCockpitState.open && mobileCockpitState.activeTab === 'profile') {
+        collapseWithMove('reveal');
+      }
+    };
+  });
+  useEffect(() => {
+    if (!profileFirstOpenRef.current || settingsConfirmed !== true) return;
+    profileFirstOpenRef.current = false;
+    revealWorkspaceRef.current();
+  }, [settingsConfirmed]);
+
   // ONE recipe action dock (score / „Przelicz" + the action bar). It is placed
   // in the editor toolbar on the workbench breakpoint and in the mobile bottom
   // stack below it — exactly one of the two is visible at any viewport width.
@@ -434,6 +597,7 @@ export function StudioEngineSurface({
         onRecalculate={onRecalculate}
         onOpenPreview={onOpenExistingPreview ?? (() => undefined)}
         onOpenLearning={openLearning}
+        mobileFlow={{ next: mobileNext, onNext: onMobileNext }}
       />
     ) : null;
   const productionNeedsAttention =
@@ -462,6 +626,11 @@ export function StudioEngineSurface({
         className="pro-workbench-surface flex min-h-0 flex-col pb-[var(--pro-mobile-bottom-stack-height,calc(var(--pro-bottom-nav-height)+4.75rem+env(safe-area-inset-bottom)))]"
         data-testid="pro-workbench"
       >
+        <RecipeContextBar
+          stage={MOBILE_PREVIEW_TITLES[activeTab]}
+          settingsPending={settingsConfirmed === false}
+          onOpen={() => openRecipeDashboard()}
+        />
         {activeTab === 'production' && production.session ? (
           <ProductionWorkspaceHeader production={production} />
         ) : null}
@@ -589,6 +758,7 @@ export function StudioEngineSurface({
             <section
               ref={cockpitPanelRef}
               id="mobile-cockpit-dialog"
+              data-sheet-anchor={activeTab === 'profile' ? 'top' : 'bottom'}
               role="dialog"
               aria-modal="true"
               aria-labelledby="mobile-cockpit-title"

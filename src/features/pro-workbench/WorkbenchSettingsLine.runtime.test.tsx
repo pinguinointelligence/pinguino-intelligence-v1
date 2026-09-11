@@ -656,7 +656,8 @@ describe('WorkbenchSettingsLine — one editable batch field', () => {
       expect(panel.querySelectorAll('[data-testid="profile-batch-combined"]')).toHaveLength(1);
       expect(panel.querySelectorAll('[data-testid="workbench-batch-decrement"]')).toHaveLength(1);
       expect(panel.querySelectorAll('[data-testid="workbench-batch-increment"]')).toHaveLength(1);
-      expect(panel.textContent).toContain('Partia docelowa');
+      // PRO MOBILE UX v2 · B5 — the owner's name for the whole-batch parameter.
+      expect(panel.textContent).toContain('Docelowa masa partii');
       expect(panel.textContent).not.toContain('Baza receptury');
     });
   }

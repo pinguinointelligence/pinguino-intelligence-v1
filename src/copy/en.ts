@@ -660,6 +660,39 @@ export const copy = {
       total: 'Masa partii',
       idleHint: 'Zmiany przeliczają się na bieżąco w Monitorze.',
     },
+    /** PRO MOBILE UX v2 · B2 — the recipe bar the phone dashboard lifts into. */
+    recipeBar: {
+      unnamed: 'Nowa receptura',
+      open: 'Pokaż panel receptury',
+      settingsPending: 'Ustawienia czekają na potwierdzenie',
+    },
+    /** PRO MOBILE UX v2 · B6 — the phone strip's ONE next step. Orange states the
+     * condition; the graphite button offers the action. */
+    mobileFlow: {
+      settings: { cue: 'Najpierw ustawienia receptury', action: 'Potwierdź ustawienia' },
+      save: { cue: 'Wynik jest aktualny', action: 'Zapisz recepturę' },
+      monitor: { cue: 'Receptura zapisana', action: 'Przejdź do Monitora' },
+      production: { cue: 'Monitor gotowy', action: 'Przejdź do Produkcji' },
+    },
+    /** PRO MOBILE UX v2 · B4 — the first-run settings sequence on a phone. */
+    settingsSteps: {
+      step: 'Krok',
+      of: 'z',
+      back: 'Wstecz',
+      next: 'Dalej',
+      titles: ['Jakie lody robisz?', 'Na czym i jak podajesz?', 'Ile przygotowujesz?'],
+    },
+    /** PRO MOBILE UX v2 · B5 — the target mass is a parameter of the WHOLE batch. */
+    batchTarget: {
+      label: 'Docelowa masa partii',
+      caption: 'Cała receptura bazy — nie pojedynczy składnik',
+      current: (grams: string) => `Receptura teraz: ${grams}`,
+      mismatch: 'Przelicz dopasuje recepturę do tej masy.',
+    },
+    /** PRO MOBILE UX v2 · B10 — „Moja cena" is secondary in the product panel. */
+    pricePanel: {
+      toggle: 'Moja cena i koszt',
+    },
     reviewZone: {
       title: 'Dodatkowe narzędzia',
       note: 'Znajdziesz tu narzędzia, których nie potrzebujesz przy każdej recepturze.',

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import { upsertUserRecipeDefault } from '@/services/userRecipeDefaults';
 import { commitRecipeDefaultsAfterRemoteSave } from './accountRecipeDefaultsSave';
@@ -50,6 +50,10 @@ import {
 } from '@/pages/destinations/startNewProRecipe';
 
 const g = copy.studio.goal;
+const batchCopy = copy.proWorkbench.batchTarget;
+const stepCopy = copy.proWorkbench.settingsSteps;
+/** PRO MOBILE UX v2 · B4 — the first-run settings sequence on a phone. */
+const PAGER_STEPS = 3;
 const servingCopy = copy.proMachine.serving;
 const professionalLabel = copy.proMachine.professionalLabel;
 
@@ -141,6 +145,7 @@ function LabeledSelect<T extends string>({
 
 function TargetBatchControl({
   grams,
+  currentTotalGrams,
   compact,
   homeMachine,
   recommendedBatchGrams,
@@ -149,6 +154,8 @@ function TargetBatchControl({
   onChange,
 }: {
   grams: number;
+  /** The recipe's current base total, from the Engine result (PRO MOBILE UX v2 · B5). */
+  currentTotalGrams: number | null;
   compact: boolean;
   homeMachine: boolean;
   recommendedBatchGrams: number | null;
@@ -175,30 +182,52 @@ function TargetBatchControl({
       data-testid="profile-batch-combined"
       data-settings-cell="batch"
       data-settings-final-card="batch"
+      data-settings-step="3"
     >
       <span
         className={cn(compactFinalSettingsLabel, !compact && 'text-xs font-medium text-stone-600')}
         data-settings-label="batch"
       >
-        Partia docelowa
+        {batchCopy.label}
       </span>
-      <div
-        className="mt-2 inline-grid h-11 min-w-[172px] grid-cols-[42px_minmax(86px,1fr)_42px] overflow-hidden rounded-full border border-[var(--g-line-strong)] bg-white lg:h-[46px]"
-        data-settings-control="batch"
+      <span
+        className="mt-0.5 block text-[10px] leading-snug text-[var(--g-text-secondary)]"
+        data-testid="workbench-batch-scope"
       >
-        <button
-          type="button"
-          aria-label={`Zmniejsz partię docelową o ${TARGET_BATCH_STEP_GRAMS} g`}
-          data-testid="workbench-batch-decrement"
-          disabled={grams <= 1}
-          onClick={() => onChange(Math.max(1, grams - TARGET_BATCH_STEP_GRAMS))}
-          className="pro-focus-ring grid place-items-center text-[17px] text-[var(--g-ink)] transition-colors hover:bg-[var(--g-ivory-deep)] disabled:cursor-not-allowed disabled:text-[var(--g-lock)]"
+        {batchCopy.caption}
+      </span>
+      {/* PRO MOBILE UX v2 · B5 — a parameter of the WHOLE batch, and it looks like
+          one: a dashed batch card with the mass in front and two quiet adjustment
+          chips, never the − value + stepper every ingredient row uses. */}
+      <div
+        className="mt-2 flex min-w-0 items-center gap-2 rounded-[10px] border border-dashed border-[var(--g-line-strong)] bg-[var(--g-ivory)]/55 px-2.5 py-2"
+        data-settings-control="batch"
+        data-batch-presentation="whole-batch"
+      >
+        <svg
+          aria-hidden
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          className="shrink-0 text-[var(--g-ink)]"
         >
-          −
-        </button>
-        <span className="flex min-w-0 items-center justify-center gap-1 border-x border-[var(--g-line-quiet)] px-1.5">
+          <path
+            d="M4 8h16l-1.6 10.4A2 2 0 0 1 16.42 20H7.58a2 2 0 0 1-1.98-1.6L4 8Z"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M3 8h18M8.5 8V6.5a3.5 3.5 0 0 1 7 0V8"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+          />
+        </svg>
+        <span className="flex min-w-0 items-baseline gap-1">
           <DeferredNumberInput
-            className="min-w-0 w-[5ch] bg-transparent text-right font-mono text-[14px] font-semibold text-[var(--g-ink)] tabular-nums outline-none"
+            className="min-w-0 w-[6ch] bg-transparent text-right font-mono text-[18px] font-semibold text-[var(--g-ink)] tabular-nums outline-none"
             value={Number.isFinite(grams) ? grams : 0}
             min={1}
             decimals={0}
@@ -206,18 +235,43 @@ function TargetBatchControl({
             data-testid="workbench-batch"
             onCommit={onChange}
           />
-          <span className="font-mono text-[11px] text-[var(--g-text-secondary)]">g</span>
+          <span className="font-mono text-[12px] text-[var(--g-text-secondary)]">g</span>
         </span>
-        <button
-          type="button"
-          aria-label={`Zwiększ partię docelową o ${TARGET_BATCH_STEP_GRAMS} g`}
-          data-testid="workbench-batch-increment"
-          onClick={() => onChange(grams + TARGET_BATCH_STEP_GRAMS)}
-          className="pro-focus-ring grid place-items-center text-[17px] text-[var(--g-ink)] transition-colors hover:bg-[var(--g-ivory-deep)]"
-        >
-          +
-        </button>
+        <span className="ml-auto flex shrink-0 items-center gap-1.5">
+          <button
+            type="button"
+            aria-label={`Zmniejsz partię docelową o ${TARGET_BATCH_STEP_GRAMS} g`}
+            data-testid="workbench-batch-decrement"
+            disabled={grams <= 1}
+            onClick={() => onChange(Math.max(1, grams - TARGET_BATCH_STEP_GRAMS))}
+            className="pro-focus-ring h-9 rounded-full border border-[var(--g-line)] bg-white px-2.5 font-mono text-[11px] font-semibold text-[var(--g-ink)] transition-colors hover:border-ink/35 disabled:cursor-not-allowed disabled:text-[var(--g-lock)]"
+          >
+            −{TARGET_BATCH_STEP_GRAMS}
+          </button>
+          <button
+            type="button"
+            aria-label={`Zwiększ partię docelową o ${TARGET_BATCH_STEP_GRAMS} g`}
+            data-testid="workbench-batch-increment"
+            onClick={() => onChange(grams + TARGET_BATCH_STEP_GRAMS)}
+            className="pro-focus-ring h-9 rounded-full border border-[var(--g-line)] bg-white px-2.5 font-mono text-[11px] font-semibold text-[var(--g-ink)] transition-colors hover:border-ink/35"
+          >
+            +{TARGET_BATCH_STEP_GRAMS}
+          </button>
+        </span>
       </div>
+      {currentTotalGrams !== null && Number.isFinite(currentTotalGrams) && currentTotalGrams > 0 ? (
+        <p
+          className="mt-1.5 text-[10px] leading-relaxed text-[var(--g-text-secondary)]"
+          data-testid="workbench-batch-current"
+        >
+          {batchCopy.current(`${Math.round(currentTotalGrams).toLocaleString('pl-PL')} g`)}
+          {Math.round(currentTotalGrams) !== Math.round(grams) ? (
+            <span className="text-[var(--g-attention-ink)]" data-testid="workbench-batch-mismatch">
+              {` · ${batchCopy.mismatch}`}
+            </span>
+          ) : null}
+        </p>
+      ) : null}
       <p
         className="mt-1.5 text-[10px] leading-relaxed text-[var(--g-text-secondary)]"
         data-testid={homeMachine ? 'home-machine-cycles' : undefined}
@@ -247,9 +301,12 @@ function TargetBatchControl({
 export function WorkbenchSettingsLine({
   className,
   compact = false,
+  currentTotalGrams = null,
 }: {
   className?: string;
   compact?: boolean;
+  /** PRO MOBILE UX v2 · B5 — the recipe's current base total (Engine result), shown beside the target. */
+  currentTotalGrams?: number | null;
 }) {
   const store = useRecipeStore();
   const resizeBatchGrams = useConstraintStudioStore((state) => state.resizeBatchGrams);
@@ -279,6 +336,30 @@ export function WorkbenchSettingsLine({
   const initialSettingsAttentionRequired =
     activeDraftIdentity === null || confirmedDraftIdentity !== activeDraftIdentity;
   const open = manualExpanded || initialSettingsAttentionRequired;
+  /* PRO MOBILE UX v2 · B4 — the FIRST settings a new recipe asks for come as a
+     short sequence on a phone: one step at a time, with back, forward and
+     „Krok n z 3". Only that first run gets it — a manually reopened or already
+     confirmed Settings shows the whole grid — and CSS ignores it on desktop. */
+  const pagerActive = compact && initialSettingsAttentionRequired && !manualExpanded;
+  const [pagerPosition, setPagerPosition] = useState<{ identity: string | null; step: number }>({
+    identity: null,
+    step: 1,
+  });
+  const pagerStep = pagerPosition.identity === activeDraftIdentity ? pagerPosition.step : 1;
+  const pagerTitleRef = useRef<HTMLParagraphElement | null>(null);
+  const pagerMovedRef = useRef(false);
+  const goToPagerStep = (step: number) => {
+    pagerMovedRef.current = true;
+    setPagerPosition({
+      identity: activeDraftIdentity,
+      step: Math.min(PAGER_STEPS, Math.max(1, step)),
+    });
+  };
+  useEffect(() => {
+    if (!pagerMovedRef.current) return;
+    pagerMovedRef.current = false;
+    pagerTitleRef.current?.focus({ preventScroll: true });
+  }, [pagerStep]);
 
   const toggleDisclosure = () => {
     setManualExpanded((wasOpen) => !wasOpen);
@@ -389,6 +470,30 @@ export function WorkbenchSettingsLine({
       selectedHome === null &&
       !store.machineId?.startsWith('custom-')) ||
     store.batchResizeConflict !== null;
+
+  /* PRO MOBILE UX v2 · B8 — a saved recipe reopened UNCHANGED carries the
+     settings it was saved with: saving needs a current calculation, and a
+     calculation needs confirmed settings, so asking again is a step with no
+     decision in it. Only the clean working copy of that exact saved version
+     qualifies; any edit, or a real conflict, keeps the normal confirmation. */
+  const savedConfirmationHandledRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (activeDraftIdentity === null || activeDraftIdentity !== exactSavedRecipeIdentity) return;
+    if (confirmedDraftIdentity === activeDraftIdentity) return;
+    if (savedConfirmationHandledRef.current === activeDraftIdentity) return;
+    if (store.dirty || hardConflict) return;
+    savedConfirmationHandledRef.current = activeDraftIdentity;
+    confirmSettings(signature, activeDraftIdentity, store.draftContextSeq);
+  }, [
+    activeDraftIdentity,
+    confirmSettings,
+    confirmedDraftIdentity,
+    exactSavedRecipeIdentity,
+    hardConflict,
+    signature,
+    store.dirty,
+    store.draftContextSeq,
+  ]);
 
   const activeServing = snapshot.servingModeId;
   const customSelected = store.machineKind === 'home' && store.machineId?.startsWith('custom-');
@@ -536,6 +641,10 @@ export function WorkbenchSettingsLine({
         })(),
     showsProfessionalServing(store.machineKind)
       ? (SERVING_OPTIONS.find((option) => option.id === activeServing)?.label ?? null)
+      : null,
+    // B5 — the target batch never disappears from a collapsed Settings row.
+    Number.isFinite(store.target_batch_grams) && store.target_batch_grams > 0
+      ? `${store.target_batch_grams.toLocaleString('pl-PL')} g`
       : null,
   ]
     .filter(Boolean)
@@ -726,13 +835,48 @@ export function WorkbenchSettingsLine({
           and `hidden` is the honest semantic — not relevant right now — so it
           leaves the accessibility tree and the tab order without pretending the
           settings do not exist. */}
-      <div hidden={!open} data-settings-surface={open ? 'expanded' : 'collapsed'}>
+      <div
+        hidden={!open}
+        data-settings-surface={open ? 'expanded' : 'collapsed'}
+        data-settings-pager-scope={pagerActive ? 'on' : undefined}
+        data-settings-active-step={pagerActive ? pagerStep : undefined}
+      >
+        {pagerActive ? (
+          <div className="mb-3 min-[60rem]:hidden" data-testid="profile-settings-pager">
+            <p className="text-[10px] leading-[14px] font-semibold tracking-[0.16em] text-[var(--g-text-muted)] uppercase">
+              {stepCopy.step} {pagerStep} {stepCopy.of} {PAGER_STEPS}
+            </p>
+            <p
+              ref={pagerTitleRef}
+              tabIndex={-1}
+              className="mt-1 text-[16px] leading-[21px] font-semibold tracking-[-0.02em] text-[var(--g-ink)] outline-none"
+              data-testid="profile-settings-pager-title"
+            >
+              {stepCopy.titles[pagerStep - 1]}
+            </p>
+            <span aria-hidden className="mt-2 flex gap-1.5">
+              {Array.from({ length: PAGER_STEPS }, (_, index) => (
+                <i
+                  key={index}
+                  className={cn(
+                    'h-1 flex-1 rounded-full',
+                    index < pagerStep ? 'bg-[var(--g-graphite)]' : 'bg-[var(--g-line)]',
+                  )}
+                />
+              ))}
+            </span>
+          </div>
+        ) : null}
         <div
           className={cn(
             compact ? 'profile-settings-grid grid grid-cols-2 items-stretch gap-2' : 'space-y-3',
           )}
         >
-          <div className={cn(compact && 'order-1')} data-settings-cell="product-type">
+          <div
+            className={cn(compact && 'order-1')}
+            data-settings-cell="product-type"
+            data-settings-step="1"
+          >
             <LabeledSelect
               label={g.productTypeLabel}
               value={store.visibleProductType}
@@ -744,7 +888,11 @@ export function WorkbenchSettingsLine({
             />
           </div>
 
-          <div className={cn(compact && 'order-4')} data-settings-cell="machine">
+          <div
+            className={cn(compact && 'order-4')}
+            data-settings-cell="machine"
+            data-settings-step="2"
+          >
             <LabeledSelect
               label="Maszyna"
               value={machineValue}
@@ -778,6 +926,7 @@ export function WorkbenchSettingsLine({
               className={cn(compact ? 'order-3' : 'ml-[7.3rem]')}
               data-testid="machine-conditional-settings"
               data-settings-cell="serving"
+              data-settings-step="2"
             >
               <LabeledSelect
                 label="Tryb serwowania"
@@ -793,6 +942,7 @@ export function WorkbenchSettingsLine({
 
           <TargetBatchControl
             grams={store.target_batch_grams}
+            currentTotalGrams={currentTotalGrams}
             compact={compact}
             homeMachine={!showsProfessionalServing(store.machineKind)}
             recommendedBatchGrams={recommendedBatchGrams}
@@ -807,6 +957,7 @@ export function WorkbenchSettingsLine({
                 className="profile-settings-final-card relative order-2 min-w-0"
                 data-settings-cell="strategy"
                 data-settings-final-card="strategy"
+                data-settings-step="3"
                 title={STRATEGY_COPY[store.formulation_strategy].description}
               >
                 <label
@@ -883,6 +1034,7 @@ export function WorkbenchSettingsLine({
           <div
             className="mt-2.5 rounded-[10px] border border-status-risky/40 bg-status-risky/10 px-3 py-2.5"
             data-testid="workbench-batch-above-recommendation"
+            data-settings-step="3"
           >
             <p role="status" className="text-xs leading-relaxed font-semibold text-ink">
               {machineOnboardingCopy.batch.aboveWarning}
@@ -920,6 +1072,7 @@ export function WorkbenchSettingsLine({
             role="status"
             className="mt-2.5 rounded-[10px] border border-ink/10 bg-white px-3 py-2.5 text-xs leading-relaxed text-stone-700"
             data-testid="workbench-batch-split-plan"
+            data-settings-step="3"
           >
             <p className="font-semibold text-ink">{batchSplit.message}</p>
             <p className="mt-0.5">{batchSplit.detail}</p>
@@ -927,7 +1080,11 @@ export function WorkbenchSettingsLine({
         ) : null}
         {batchGuidance.kind === 'custom' ||
         (batchGuidance.kind === 'custom_above' && batchGuidance.choice === 'keep_mine') ? (
-          <p className="mt-2 text-xs text-stone-600" data-testid="workbench-batch-custom-in-use">
+          <p
+            className="mt-2 text-xs text-stone-600"
+            data-testid="workbench-batch-custom-in-use"
+            data-settings-step="3"
+          >
             {machineOnboardingCopy.batch.customInUse}
           </p>
         ) : null}
@@ -959,7 +1116,39 @@ export function WorkbenchSettingsLine({
           actually unconfirmed. `flex-wrap` is what keeps a long translation
           („Mentés alapértelmezettként" beside „Változtatások megerősítése")
           dropping to a second line instead of widening the card. */}
-        <div className="mt-5 flex flex-wrap items-center gap-3" data-settings-cell="actions">
+        {pagerActive ? (
+          <div
+            className="mt-4 flex items-center justify-between gap-3 min-[60rem]:hidden"
+            data-testid="profile-settings-pager-nav"
+          >
+            <button
+              type="button"
+              onClick={() => goToPagerStep(pagerStep - 1)}
+              disabled={pagerStep === 1}
+              data-testid="profile-settings-pager-back"
+              className="pro-focus-ring inline-flex h-11 items-center gap-2 rounded-full border border-[var(--g-line)] bg-white px-4 text-[13px] font-semibold text-[var(--g-ink)] disabled:invisible"
+            >
+              <span aria-hidden>←</span>
+              {stepCopy.back}
+            </button>
+            {pagerStep < PAGER_STEPS ? (
+              <button
+                type="button"
+                onClick={() => goToPagerStep(pagerStep + 1)}
+                data-testid="profile-settings-pager-next"
+                className="pro-focus-ring inline-flex h-11 items-center gap-2 rounded-full bg-[var(--g-graphite)] px-5 text-[13px] font-semibold text-white"
+              >
+                {stepCopy.next}
+                <span aria-hidden>→</span>
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+        <div
+          className="mt-5 flex flex-wrap items-center gap-3"
+          data-settings-cell="actions"
+          data-settings-step="3"
+        >
           <button
             type="button"
             onClick={saveAsDefault}

@@ -94,7 +94,10 @@ describe('mobile dispatches through the desktop action object', () => {
     expect(row).toContain('view={priceView}');
     expect(row).toContain('lineId={item.id}');
     expect(row).toContain('variant="article"');
-    expect(row).toContain('footerAction={');
+    // PRO MOBILE UX v2 · B10 — the one remove action left the editor's footer for its
+    // own row, still in the shared panel both placements render.
+    expect(row).not.toContain('footerAction={');
+    expect(row.match(/onClick=\{requestRemove\}/g)).toHaveLength(1);
     expect(mobile).not.toContain('<CustomerPriceEditor');
   });
 

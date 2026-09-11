@@ -67,7 +67,10 @@ describe('recipe footer keeps the formal calculation state machine', () => {
     expect(presentedMatchDecl).not.toMatch(
       /recalculateNeeded|journeyState|awaitingRecalculation|verifiedCurrent|pending/,
     );
-    expect(dockBranch).toContain('{pending || recalculateNeeded ? (');
+    // PRO MOBILE UX v2 · B6 — on the phone ONE next step may lead the chain
+    // (unconfirmed settings first); the formal Recalculate branch is unchanged.
+    expect(dockBranch).toMatch(/[{:]\s*pending \|\| recalculateNeeded \? \(/);
+    expect(dockBranch).toContain("mobileFlow?.next === 'settings'");
     expect(dockBranch).toContain('data-testid="pro-workbar-recalc"');
     expect(dockBranch).toContain('<WorkbenchScoreDisplay');
     expect((dockBranch.match(/<WorkbenchScoreDisplay/g) ?? []).length).toBe(1);
