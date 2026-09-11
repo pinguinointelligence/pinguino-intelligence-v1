@@ -114,6 +114,67 @@ describe('§29 — first run', () => {
   });
 });
 
+describe('§29 — it starts itself only where it has something REAL to teach', () => {
+  const WITH_OPENER: readonly TutorialStep[] = [
+    {
+      id: 'opener',
+      anchor: 'home-pro-switch',
+      title: 'HOME i PRO',
+      body: 'Opener.',
+      anchorOptional: true,
+    },
+    ...STEPS,
+  ];
+
+  it('does not start on a page that only has the optional HOME|PRO opener — and consumes nothing', async () => {
+    // The header's HOME|PRO switch is on almost every page. Counting the
+    // opener made every page "have a tutorial", and one click there marked it
+    // seen before the customer ever reached HOME.
+    anchor('home-pro-switch', {});
+    act(() => {
+      root.render(<TutorialOverlay steps={WITH_OPENER} />);
+    });
+    await settle();
+    expect(q('tutorial-overlay')).toBeNull();
+    expect(window.localStorage.getItem('gellatti.tutorial.home.seen.v1')).toBeNull();
+  });
+
+  it('still starts on HOME, opener first, once a real step is on screen', async () => {
+    anchor('home-pro-switch', {});
+    anchor('anchor-one', {});
+    act(() => {
+      root.render(<TutorialOverlay steps={WITH_OPENER} />);
+    });
+    await settle();
+    expect(q('tutorial-overlay')?.getAttribute('data-tutorial-step')).toBe('opener');
+    expect(q('tutorial-counter')?.textContent).toBe('1 / 2');
+  });
+
+  it('„Uruchom samouczek ponownie" still works on any page — it shows what exists', async () => {
+    anchor('home-pro-switch', {});
+    act(() => {
+      root.render(<TutorialOverlay steps={WITH_OPENER} />);
+    });
+    await settle();
+    act(() => useTutorialStore.getState().start());
+    await settle();
+    expect(q('tutorial-overlay')?.getAttribute('data-tutorial-step')).toBe('opener');
+  });
+
+  it('never throws where the platform has no scrollIntoView (jsdom, some webviews)', async () => {
+    const el = document.createElement('div');
+    el.setAttribute('data-testid', 'anchor-one');
+    el.getBoundingClientRect = () => ({ top: 100, left: 40, width: 300, height: 60 }) as DOMRect;
+    // An own `undefined` shadows any prototype method: this IS the crash case
+    // the full suite hit in ProductionHistoryTruth / RecipesHubPage.
+    (el as unknown as { scrollIntoView?: unknown }).scrollIntoView = undefined;
+    document.body.appendChild(el);
+    render();
+    await settle();
+    expect(q('tutorial-overlay')?.getAttribute('data-tutorial-measured')).toBe('anchor-one');
+  });
+});
+
 describe('§29 — Dalej / Wstecz / Pomiń', () => {
   it('walks forward, back, and finishes without coming back', async () => {
     anchor('anchor-one', {});

@@ -232,9 +232,10 @@ export function AppShell({
       </main>
       {/* §29 — the first-run tutorial lives on the SHELL, not on a page.
           It finds its anchors in the live DOM and drops any step whose element
-          is not there, so it teaches whatever screen the customer is actually
-          on and stays completely inert everywhere its anchors do not exist. No
-          page has to know it is here, and no page can forget to mount it. */}
+          is not there. It STARTS ITSELF only where at least one real anchored
+          step is on screen — in practice, HOME — so every other page stays
+          inert unless the customer asks for it from the menu. No page has to
+          know it is here, and no page can forget to mount it. */}
       <TutorialOverlay />
     </div>
   );

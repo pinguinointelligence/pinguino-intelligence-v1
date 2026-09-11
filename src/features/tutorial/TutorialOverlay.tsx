@@ -85,7 +85,7 @@ export function TutorialOverlay({
       if (
         shouldAutoStart({
           seen: readSeen(),
-          stepCount: candidates.length,
+          anchoredStepCount: candidates.filter((candidate) => !candidate.anchorOptional).length,
           alreadyRunning: useTutorialStore.getState().run.status === 'running',
         })
       ) {
@@ -112,7 +112,11 @@ export function TutorialOverlay({
        clear, and clearing it here would be a synchronous render cascade. */
     if (!step) return;
     const el = document.querySelector<HTMLElement>(`[data-testid="${step.anchor}"]`);
-    el?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    // Every browser we ship to has it; jsdom and some embedded webviews do
+    // not. A tutorial must never be the thing that throws on a page.
+    if (typeof el?.scrollIntoView === 'function') {
+      el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
 
     /* A smooth scroll is not finished when it starts, so the box is followed
        until it stops moving and only then do we stop paying for frames.

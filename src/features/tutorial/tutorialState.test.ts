@@ -19,18 +19,26 @@ afterEach(reset);
 describe('§29 — the tutorial introduces itself once', () => {
   it('has not been seen on a fresh browser', () => {
     expect(readSeen()).toBe(false);
-    expect(shouldAutoStart({ seen: false, stepCount: 3, alreadyRunning: false })).toBe(true);
+    expect(shouldAutoStart({ seen: false, anchoredStepCount: 3, alreadyRunning: false })).toBe(
+      true,
+    );
   });
 
   it('does not offer itself again once it has been', () => {
     writeSeen();
     expect(window.localStorage.getItem(TUTORIAL_SEEN_KEY)).toBe('1');
-    expect(shouldAutoStart({ seen: true, stepCount: 3, alreadyRunning: false })).toBe(false);
+    expect(shouldAutoStart({ seen: true, anchoredStepCount: 3, alreadyRunning: false })).toBe(
+      false,
+    );
   });
 
   it('does not start over itself, and does not start with nothing to show', () => {
-    expect(shouldAutoStart({ seen: false, stepCount: 3, alreadyRunning: true })).toBe(false);
-    expect(shouldAutoStart({ seen: false, stepCount: 0, alreadyRunning: false })).toBe(false);
+    expect(shouldAutoStart({ seen: false, anchoredStepCount: 3, alreadyRunning: true })).toBe(
+      false,
+    );
+    expect(shouldAutoStart({ seen: false, anchoredStepCount: 0, alreadyRunning: false })).toBe(
+      false,
+    );
   });
 
   it('a storage that refuses to answer behaves like „not seen yet", never like a crash', () => {

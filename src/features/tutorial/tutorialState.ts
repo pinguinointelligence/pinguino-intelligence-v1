@@ -82,12 +82,21 @@ export const useTutorialStore = create<TutorialState>((set, get) => ({
 /**
  * The first-run decision, as a pure function so it can be reasoned about
  * without a browser: the tutorial offers itself once, only when there is
- * something to point at.
+ * something REAL to point at.
+ *
+ * `anchoredStepCount` counts only steps whose element is on screen. The
+ * HOME|PRO opener is `anchorOptional` — it can always be shown — so counting
+ * it would make every page in the application "have a tutorial": a first-time
+ * visitor landing on the Shop or on a shared recipe would get a one-step
+ * tutorial, and one click of „Dalej" or „Pomiń" there would mark it seen, so
+ * the real HOME tutorial would never appear. Found during integration
+ * (2026-09-11), where that same auto-start also fired inside unrelated page
+ * tests.
  */
 export function shouldAutoStart(input: {
   readonly seen: boolean;
-  readonly stepCount: number;
+  readonly anchoredStepCount: number;
   readonly alreadyRunning: boolean;
 }): boolean {
-  return !input.seen && !input.alreadyRunning && input.stepCount > 0;
+  return !input.seen && !input.alreadyRunning && input.anchoredStepCount > 0;
 }
