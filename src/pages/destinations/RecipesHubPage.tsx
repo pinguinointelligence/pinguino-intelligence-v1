@@ -443,6 +443,18 @@ function InspirationView({ persona }: { persona: RecipePersona }) {
   );
 }
 
+const CURRENT_ENGINE_VIOLATION_LABELS: Readonly<Record<string, string>> = {
+  'water:low': 'woda poniżej zakresu',
+  'water:high': 'woda powyżej zakresu',
+  'ice_fraction:low': 'udział lodu poniżej zakresu',
+  'ice_fraction:high': 'udział lodu powyżej zakresu',
+  'npac:low': 'NPAC poniżej zakresu',
+  'npac:high': 'NPAC powyżej zakresu',
+};
+const currentEngineViolationLabel = (code: string) =>
+  CURRENT_ENGINE_VIOLATION_LABELS[code] ??
+  `${code.split(':')[0]} ${code.endsWith(':low') ? 'poniżej' : 'powyżej'} zakresu`;
+
 function ExecutableOwnerReviewView({
   library,
   persona,
@@ -505,13 +517,26 @@ function ExecutableOwnerReviewView({
                       </dd>
                     </div>
                   </dl>
-                  <p className="mt-4 text-xs text-stone-500">
-                    Wynik techniczny:{' '}
+                  <p
+                    className="mt-4 text-xs text-stone-500"
+                    data-testid={`${template.id}-current-engine`}
+                  >
+                    Bieżący Engine (Mapper FINAL 2541):{' '}
                     <span className="font-mono">
-                      {card.technicalScore === null
+                      {card.currentEngineEvaluation === null
                         ? 'oczekuje na dokładny produkt'
-                        : card.technicalScore.toFixed(2)}
+                        : `${card.currentEngineEvaluation.technicalScore.toFixed(2)} · ${
+                            card.currentEngineEvaluation.executable ? 'wykonalna' : 'niewykonalna'
+                          }`}
                     </span>
+                    {card.historicalTechnicalScore === null ? null : (
+                      <>
+                        {' · '}Wynik historyczny (Mapper 2089):{' '}
+                        <span className="font-mono">
+                          {card.historicalTechnicalScore.toFixed(2)}
+                        </span>
+                      </>
+                    )}
                     {' · '}Proces: {card.processId ?? 'brak zatwierdzonej wersji'}
                     {' · '}Znane alergeny: {card.knownAllergens.join(', ')}
                     {card.finalAllergensComplete ? '' : ' · lista finalna niepełna'}
@@ -543,6 +568,21 @@ function ExecutableOwnerReviewView({
                       <dd className="font-mono text-right text-stone-600">{card.labelStatus}</dd>
                     </div>
                   </dl>
+                  {card.openState === 'blocked_current_engine' && card.currentEngineEvaluation ? (
+                    <p
+                      className="mt-5 text-xs leading-relaxed text-nonprod"
+                      data-testid={`${template.id}-current-engine-blocker`}
+                    >
+                      Bieżący Engine blokuje otwarcie:{' '}
+                      {[
+                        ...card.currentEngineEvaluation.violations.map(currentEngineViolationLabel),
+                        ...card.currentEngineEvaluation.unapprovedIngredientIds.map(
+                          (id) => `składnik ${id} niezatwierdzony w Mapperze FINAL 2541`,
+                        ),
+                      ].join(', ')}
+                      . Receptura źródłowa pozostaje bez zmian.
+                    </p>
+                  ) : null}
                   <p className="mt-5 text-xs leading-relaxed text-nonprod">
                     {card.blockers[0] ??
                       card.productionBlockers[0] ??
@@ -557,7 +597,7 @@ function ExecutableOwnerReviewView({
                       pominięte do czasu uzupełnienia danych produkcji i etykiety.
                     </p>
                   ) : null}
-                  {template.status === 'OWNER_REVIEW_EDITABLE' ? (
+                  {card.openState === 'open' ? (
                     <button
                       type="button"
                       className={cn(buttonClasses('primary', 'sm'), 'mt-5 w-full')}
@@ -566,6 +606,15 @@ function ExecutableOwnerReviewView({
                       }
                     >
                       Otwórz w Pro
+                    </button>
+                  ) : card.openState === 'blocked_current_engine' ? (
+                    <button
+                      type="button"
+                      disabled
+                      className={cn(buttonClasses('ghost', 'sm'), 'mt-5 w-full opacity-55')}
+                      data-testid={`${template.id}-current-engine-blocked`}
+                    >
+                      Niewykonalna w bieżącym Engine
                     </button>
                   ) : (
                     <button

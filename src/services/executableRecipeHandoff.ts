@@ -157,15 +157,21 @@ async function resolveLine(
       line.lineId,
     );
   }
-  const missingComposition = ownerReviewCompositionMissing(row);
-  if (!row.approved_for_base || !row.approved_for_engines || missingComposition.length > 0) {
+  if (!row.approved_for_base || !row.approved_for_engines) {
+    // Mapper authority is read, never overridden: the unapproved PI keeps its identity in the
+    // template and blocks the open with its own reason — no substitute is injected.
     throw new ExecutableRecipeHandoffError(
       'behavior_blocked',
-      `Niepełna kompozycja techniczna Base ${line.mapperIngredientId}: ` +
-        `${
-          missingComposition.join(', ') ||
-          (!row.approved_for_base ? 'approved_for_base=false' : 'approved_for_engines=false')
-        }.`,
+      `Składnik ${line.mapperIngredientId} (${line.note}) nie jest zatwierdzony w Mapperze do ` +
+        `${!row.approved_for_base ? 'Base' : 'Engine'} — szablon nie otworzy się w bieżącym Engine.`,
+      line.lineId,
+    );
+  }
+  const missingComposition = ownerReviewCompositionMissing(row);
+  if (missingComposition.length > 0) {
+    throw new ExecutableRecipeHandoffError(
+      'behavior_blocked',
+      `Niepełna kompozycja techniczna Base ${line.mapperIngredientId}: ${missingComposition.join(', ')}.`,
       line.lineId,
     );
   }
