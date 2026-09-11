@@ -512,7 +512,8 @@ export interface RecipeState {
   /** One atomic direct-manipulation write for a coherent full recipe vector. */
   setPlannedGramsVector: (gramsByLineId: Readonly<Record<string, number>>) => void;
   setActualGrams: (lineId: string, grams: number | null) => void;
-  setLockType: (lineId: string, lockType: LockType) => void;
+  /** `surface` defaults to `'pro'`; only HOME's own controls pass `'home'`. */
+  setLockType: (lineId: string, lockType: LockType, surface?: CrownSurface) => void;
   /** Persist/remove the product-layer percent sidecar while retaining a
    * stronger Main/Required/already-added Engine role when present. */
   setPercentLock: (lineId: string, percent: number | null) => void;
@@ -521,8 +522,10 @@ export interface RecipeState {
   setGramLock: (lineId: string, grams: number | null) => void;
   setRangeLock: (lineId: string, minGrams: number, maxGrams: number) => void;
   clearRangeLock: (lineId: string) => void;
-  /** Adds one line to the Main ingredient set; existing Main lines stay Main. */
-  setMainIngredient: (lineId: string) => void;
+  /** Adds one line to the Main ingredient set; existing Main lines stay Main.
+   * `surface` defaults to `'pro'` (0 g seeds 1 g for every profile); only HOME's
+   * own call sites pass `'home'`. */
+  setMainIngredient: (lineId: string, surface?: CrownSurface) => void;
   /** Removes only the Main crown. Independent gram/percent/range constraints
    * remain exact and become the line's visible lock type. */
   setStandardIngredient: (lineId: string) => void;
@@ -656,15 +659,27 @@ const moveWithin = <T extends { id: string }>(
 const ENGINE_KEPT_LOCKS: ReadonlySet<LockType> = new Set(['main', 'already_added', 'required']);
 
 /**
- * Protein's Main Crown is pure priority metadata. In particular, crowning a
- * zero-gram Protein line must not increase a complete machine-sized batch by
- * the generic 1 g role seed. The other profiles retain their accepted
- * auto-seed lifecycle; this exception is deliberately scoped to Protein.
+ * WHICH PRODUCT SURFACE IS CROWNING (owner regression brief 2026-09-11).
+ *
+ * `'pro'` is the default and the accepted PRO contract for EVERY profile:
+ * Crown ON at 0 g seeds exactly 1 g (GEL-P0-002, GEL-P0-037), so the crowned
+ * line becomes a ProductBehavior-required line and Przelicz can continue.
+ *
+ * `'home'` is HOME's own layer. HOME keeps the Protein mass-neutral Crown from
+ * 6e9a99bc: crowning a zero-gram Protein line must not grow a complete
+ * machine-sized batch by the 1 g role seed. That rule was scoped by PROFILE
+ * inside this shared store, which is how it reached PRO and turned
+ * `0 g + Crown -> 1 g` into `0 g + Crown -> 0 g` there. It is scoped by
+ * SURFACE now, and only HOME's own call sites pass `'home'`.
  */
-const crownAutoSeedAllowedForProfile = (state: {
-  visibleProductType: VisibleProductType;
-  category: ProductCategory;
-}): boolean => state.visibleProductType !== 'protein' && state.category !== 'protein_gelato';
+export type CrownSurface = 'pro' | 'home';
+
+const crownAutoSeedAllowed = (
+  state: { visibleProductType: VisibleProductType; category: ProductCategory },
+  surface: CrownSurface,
+): boolean =>
+  surface === 'pro' ||
+  (state.visibleProductType !== 'protein' && state.category !== 'protein_gelato');
 
 /**
  * Has the required Main role been RESOLVED?
@@ -2357,17 +2372,18 @@ export const useRecipeStore = create<RecipeState>()(
           draftRevision: state.draftRevision + 1,
         })),
 
-      setLockType: (lineId, lockType) =>
+      setLockType: (lineId, lockType, surface = 'pro') =>
         set((state) => {
           const current = state.items.find((item) => item.id === lineId);
           // OWNER P0 — the crown contract belongs to the role transition, not
           // to one button. This lower-level write reaches the same Main role,
-          // including Protein's mass-neutral exception.
+          // so it seeds and restores exactly like the Crown toggle — with
+          // HOME's Protein mass-neutral exception only when HOME is the caller.
           const wasAutoSeeded = state.crownAutoSeededLineIds.includes(lineId);
           const crownedNow = lockType === 'main' && current?.lock_type !== 'main';
           const uncrownedNow = lockType !== 'main' && current?.lock_type === 'main';
           const seed =
-            crownedNow && crownAutoSeedAllowedForProfile(state)
+            crownedNow && crownAutoSeedAllowed(state, surface)
               ? crownOnPlannedGrams(current?.planned_grams ?? 0)
               : null;
           const items = state.items.map((item) =>
@@ -2493,7 +2509,7 @@ export const useRecipeStore = create<RecipeState>()(
           draftRevision: state.draftRevision + 1,
         })),
 
-      setMainIngredient: (lineId) =>
+      setMainIngredient: (lineId, surface = 'pro') =>
         set((state) => {
           const current = state.items.find((item) => item.id === lineId);
           if (!current) return {};
@@ -2503,12 +2519,14 @@ export const useRecipeStore = create<RecipeState>()(
           if (mainBehaviorBlockReason(state.productBehaviorSnapshots[lineId], snapshotRequired))
             return {};
           const roleChanged = current.lock_type !== 'main';
-          // The accepted non-Protein lifecycle seeds a positive gram so its
-          // role transition enters the ProductBehavior revalidation pass.
-          // Protein is deliberately excluded: its Crown is mass-neutral
-          // priority metadata, including at 0 g.
+          // OWNER P0 — Crown at 0 g. The crown is a role, not an amount, but a
+          // crowned line must hold a real positive mass: a 0 g line is not a
+          // ProductBehavior required line, so nothing ever revalidates the
+          // role transition and every later grams edit is refused. PRO seeds
+          // one ordinary gram for EVERY profile and remembers that WE seeded
+          // it. HOME's Protein Crown stays mass-neutral (`crownAutoSeedAllowed`).
           const seed =
-            roleChanged && crownAutoSeedAllowedForProfile(state)
+            roleChanged && crownAutoSeedAllowed(state, surface)
               ? crownOnPlannedGrams(current.planned_grams)
               : null;
           const items = state.items.map((item) => {
@@ -2538,9 +2556,9 @@ export const useRecipeStore = create<RecipeState>()(
                 : clearCrownAutoSeeded(state.crownAutoSeededLineIds, lineId),
             ...(roleChanged
               ? {
-                  // A zero-gram Protein Crown changes priority only. Keeping
-                  // the current Base snapshot lets the professional enter the
-                  // first real amount; the normal current-recipe authority
+                  // A zero-gram HOME Protein Crown changes priority only.
+                  // Keeping the current Base snapshot lets the customer enter
+                  // the first real amount; the normal current-recipe authority
                   // then resolves that positive Main line in its Main context.
                   productBehaviorSnapshots:
                     current.planned_grams > 0 || seed !== null

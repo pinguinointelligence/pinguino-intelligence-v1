@@ -318,7 +318,17 @@ describe('OWNER P0 — Crown toggle at 0 g', () => {
   });
 });
 
-describe('Protein Crown is mass-neutral', () => {
+/**
+ * HOME's Protein Crown is mass-neutral (6e9a99bc) — on the HOME SURFACE ONLY.
+ *
+ * Owner regression brief 2026-09-11: this rule was scoped by PROFILE inside the
+ * shared store, so it also took PRO's accepted `0 g + Crown -> 1 g` away for
+ * Protein and Przelicz then stopped at "Minimalna ilość to 1 g". It is a HOME
+ * layer, so every call below names the HOME surface explicitly. PRO's own
+ * Protein behaviour is asserted in the `Protein Crown lifecycle` below and in
+ * `src/stores/recipeStore.crownSurface.test.ts`.
+ */
+describe('HOME — Protein Crown is mass-neutral (HOME surface only)', () => {
   it.each(['optimal', 'eco'] as const)(
     'keeps the canonical 670 g batch unchanged through Crown ON/OFF/ON in %s',
     (formulationStrategy) => {
@@ -357,7 +367,7 @@ describe('Protein Crown is mass-neutral', () => {
       expect(total()).toBe(670);
       expect(strawberry()).toMatchObject({ planned_grams: 0, lock_type: 'unlocked' });
 
-      useRecipeStore.getState().setMainIngredient(added.lineId);
+      useRecipeStore.getState().setMainIngredient(added.lineId, 'home');
       expect(total()).toBe(670);
       expect(strawberry()).toMatchObject({ planned_grams: 0, lock_type: 'main' });
       expect(strawberry().user_intent_anchor_grams).toBeUndefined();
@@ -367,14 +377,14 @@ describe('Protein Crown is mass-neutral', () => {
       expect(total()).toBe(670);
       expect(strawberry()).toMatchObject({ planned_grams: 0, lock_type: 'unlocked' });
 
-      useRecipeStore.getState().setMainIngredient(added.lineId);
+      useRecipeStore.getState().setMainIngredient(added.lineId, 'home');
       expect(total()).toBe(670);
       expect(strawberry()).toMatchObject({ planned_grams: 0, lock_type: 'main' });
       expect(strawberry().user_intent_anchor_grams).toBeUndefined();
       expect(seededIds()).not.toContain(added.lineId);
 
       useRecipeStore.getState().setStandardIngredient(added.lineId);
-      useRecipeStore.getState().setLockType(added.lineId, 'main');
+      useRecipeStore.getState().setLockType(added.lineId, 'main', 'home');
       expect(total()).toBe(670);
       expect(strawberry()).toMatchObject({ planned_grams: 0, lock_type: 'main' });
       expect(strawberry().user_intent_anchor_grams).toBeUndefined();
@@ -404,7 +414,7 @@ describe('Protein Crown is mass-neutral', () => {
           mainCapability: 'MAIN_CAPABLE_UNCALIBRATED',
         },
       });
-      useRecipeStore.getState().setMainIngredient(added.lineId);
+      useRecipeStore.getState().setMainIngredient(added.lineId, 'home');
       expect(strawberry()).toMatchObject({ planned_grams: 42, lock_type: 'main' });
       expect(total()).toBe(712);
       expect(seededIds()).not.toContain(added.lineId);
@@ -458,6 +468,9 @@ describe.each([
   ['Gelato', 'gelato'],
   ['Sorbet', 'sorbet'],
   ['Vegan', 'vegan'],
+  // RESTORED 2026-09-11 (owner regression brief). 6e9a99bc removed this row, and
+  // with it the only per-profile assertion of PRO's auto-1 g for Protein.
+  ['Protein', 'protein'],
 ] as const)('%s Crown lifecycle', (_profileName, visibleProductType) => {
   it.each(['optimal', 'eco'] as const)(
     'keeps auto-1 g, OFF→ON, gram edits and save/reopen canonical in %s',

@@ -26,6 +26,7 @@ import {
   profileModerationCopy,
 } from '@/features/affiliate/partnerAccountDisplay';
 import { cn } from '@/lib/cn';
+import { useCodeAvailability } from '@/features/affiliate/codeAvailability';
 import {
   createPartnerContentLink,
   getPartnerWorkspace,
@@ -135,6 +136,8 @@ function Codes({ data }: { data: PartnerWorkspace }) {
   const showActive = codes.some((item) => countOrNull(item.activeSubscriptions) !== null);
   const [code, setCode] = useState('');
   const [label, setLabel] = useState('');
+  // D-CODE-03: the server's own answer while the partner types, not only after submit.
+  const availability = useCodeAvailability(data.partner?.id, code);
   const mutation = useMutation({
     mutationFn: () => managePartnerCode({ action: 'CREATE', code, label }),
     onSuccess: async () => {
@@ -168,6 +171,22 @@ function Codes({ data }: { data: PartnerWorkspace }) {
             placeholder="Kasia1234"
             className="pro-focus-ring mt-2 min-h-11 w-full border border-ink/15 bg-white px-3 font-mono text-sm"
           />
+          {availability ? (
+            <span
+              aria-live="polite"
+              data-testid="code-availability"
+              className={cn(
+                'mt-1.5 block text-[11px] font-normal',
+                availability.tone === 'error'
+                  ? 'text-status-error'
+                  : availability.tone === 'ok'
+                    ? 'text-status-success'
+                    : 'text-stone-600',
+              )}
+            >
+              {availability.text}
+            </span>
+          ) : null}
         </label>
         <label className="text-xs font-semibold text-ink">
           Wewnętrzna etykieta
@@ -181,7 +200,7 @@ function Codes({ data }: { data: PartnerWorkspace }) {
         <Button
           type="submit"
           className="self-end"
-          disabled={active.length >= 3 || mutation.isPending}
+          disabled={active.length >= 3 || mutation.isPending || availability?.tone === 'error'}
         >
           Utwórz kod
         </Button>
