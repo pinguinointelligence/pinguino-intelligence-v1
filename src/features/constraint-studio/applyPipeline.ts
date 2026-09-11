@@ -96,6 +96,11 @@ import {
 import { sorbetStabilizerWholeGramBand } from '@/features/recipe-constraints/sorbetStabilizerSystemAuthority';
 import { constraintStudioCopy as copy } from './constraintStudioCopy';
 import {
+  applyPreviewInstructions,
+  samePreviewInstructions,
+  type PreviewLineInstruction,
+} from './previewInstructions';
+import {
   approvedFormulationToolboxIngredients,
   buildFormulationProposal,
   HARD_ROLES,
@@ -447,6 +452,15 @@ export interface SuggestedFixSessionAuthorization {
   type: 'set_max' | 'set_min';
   lineId: string;
   grams: number;
+}
+
+/** Session-only authorization for the amounts/padlocks the customer set
+ * inside an interactive preview and explicitly recalculated („Przelicz" /
+ * „Użyj propozycji"). Bound to the untouched recipe; Apply re-derives the
+ * adjusted draft from it and never from the Preview payload. */
+export interface PreviewInstructionSessionAuthorization {
+  baseFingerprint: string;
+  lines: PreviewLineInstruction[];
 }
 
 export function directionTargetFingerprint(input: RecipeInput): string {
@@ -855,6 +869,18 @@ export interface ConstraintPreview {
   /** Audit provenance only. Apply requires a matching session authorization
    * and re-derives the exact permitted constraint transition. */
   suggestedFix?: SuggestedBoundFix;
+  /**
+   * INTERACTIVE RECALCULATION PREVIEW (owner 2026-09-11): the customer changed
+   * amounts/padlocks INSIDE the preview and recalculated. The proposal was
+   * built for the adjusted draft = the untouched recipe (`baseFingerprint`
+   * here) + these instructions, so the preview's own `baseFingerprint` names
+   * that adjusted draft. Audit provenance only: Apply requires the matching
+   * session authorization and re-derives the adjusted draft itself.
+   */
+  previewInstructions?: {
+    baseFingerprint: string;
+    lines: PreviewLineInstruction[];
+  };
   /** The proposed working state — applied ONLY through `commitPreview`. */
   proposedInput: RecipeInput;
   /** The constraint set in force AFTER apply (suggested fixes update a lock —
@@ -1399,6 +1425,29 @@ export function buildLineDiffs(
   return lines;
 }
 
+/**
+ * Stamps an interactive-preview proposal (built for the adjusted draft) with
+ * its instruction provenance and re-bases the PRESENTATION diff onto the
+ * untouched recipe: the customer always compares the proposal with the recipe
+ * on screen, never with the provisional draft. Verification is unaffected —
+ * the Apply door re-derives the adjusted draft and never trusts `lines`.
+ */
+export function attachPreviewInstructionProof(
+  preview: ConstraintPreview,
+  untouchedInput: RecipeInput,
+  untouchedConstraints: ConstraintSet,
+  instructions: readonly PreviewLineInstruction[],
+): ConstraintPreview {
+  return {
+    ...preview,
+    previewInstructions: {
+      baseFingerprint: workingStateFingerprint(untouchedInput, untouchedConstraints),
+      lines: instructions.map((instruction) => ({ ...instruction })),
+    },
+    lines: buildLineDiffs(untouchedInput, preview.proposedInput, preview.nextConstraints),
+  };
+}
+
 export interface DirectionCandidateProgress {
   active: boolean;
   reached: boolean;
@@ -1566,6 +1615,9 @@ export type BuildPreviewResult =
       directionTargetUnreached?: boolean;
       /** Owner P0 NIGHTLY (FAILURE 2): full iteration trajectory + stop reason. */
       iteration?: IterationDiagnostics;
+      /** The Main quantity verdicts that rejected the candidate (presentation
+       * evidence only: the exact remaining gap for the conflict view). */
+      blockingViolations?: MainEnvelopeViolation[];
     }
   /** Owner P0 (definitive fail): the pipeline PRODUCED a candidate but REJECTED it —
    * it did not improve the recipe (e.g. a batch-only rescale of an out-of-band
@@ -1593,6 +1645,8 @@ export type BuildPreviewResult =
       lineIds: string[];
       ingredientNames: string[];
       messagePl: string;
+      /** Presentation evidence only (see `no_proposal.blockingViolations`). */
+      blockingViolations?: MainEnvelopeViolation[];
     }
   | {
       ok: false;
@@ -1714,6 +1768,8 @@ export type BuildPreviewResult =
       iteration: IterationDiagnostics;
       templateId: string;
       templateStatus: TemplateStatus;
+      /** Presentation evidence only (see `no_proposal.blockingViolations`). */
+      blockingViolations?: MainEnvelopeViolation[];
     };
 
 function mainSafePreview(
@@ -6899,6 +6955,7 @@ export function buildOptimizePreview(
           `Blokady lub zakresy składników Głównych ` +
           `(${constrainedMains.map((main) => main.ingredientName).join(', ')}) ` +
           `nie pozwalają osiągnąć zatwierdzonego minimum Main. Gellatti nie zmieniło receptury.`,
+        blockingViolations: quantityViolations,
       };
     }
 
@@ -6936,6 +6993,7 @@ export function buildOptimizePreview(
         iteration,
         templateId: result.preview.formulation?.templateId ?? 'none',
         templateStatus: result.preview.formulation?.templateStatus ?? 'approved',
+        blockingViolations: quantityViolations,
       };
     }
 
@@ -6951,6 +7009,7 @@ export function buildOptimizePreview(
       solverInvocations:
         result.preview.iteration?.solverInvocations ?? result.preview.mainObjective?.attempts ?? 0,
       iteration: result.preview.iteration,
+      blockingViolations: quantityViolations,
     };
   }
   // Crown OFF backstop.
@@ -7046,6 +7105,7 @@ export function buildOptimizePreview(
     },
     templateId: 'none',
     templateStatus: 'approved',
+    blockingViolations: unsafe,
   };
 }
 
@@ -9205,6 +9265,8 @@ export interface AppliedPresentationSnapshot {
   explicitStandardRemovalConsent: ExplicitStandardRemovalConsent | null;
   directionConsent: DirectionBestAchievableConsent | null;
   suggestedFixAuthorization: SuggestedFixSessionAuthorization | null;
+  /** Interactive-preview instructions the applied Preview was built with. */
+  previewInstructionAuthorization?: PreviewInstructionSessionAuthorization | null;
 }
 
 export interface AppliedChangeRecord {
@@ -9646,7 +9708,74 @@ export class VerifiedApply {
        * proof equality and then runs every independent hard guard below. */
       prebuiltOptimizeRebuild?: BuildPreviewResult;
     } = {},
+    /** Interactive-preview instructions the customer explicitly recalculated. */
+    previewInstructionAuthorization?: PreviewInstructionSessionAuthorization | null,
   ): CommitPreviewResult {
+    // INTERACTIVE RECALCULATION PREVIEW (owner 2026-09-11). The customer changed
+    // amounts/padlocks inside the preview and recalculated WITHOUT touching the
+    // recipe, so the proposal was built for the ADJUSTED draft = this untouched
+    // recipe + those explicit instructions. The door re-derives that adjusted
+    // draft itself from the session authorization (never from the payload),
+    // verifies the proposal with EVERY check an ordinary Przelicz preview of the
+    // adjusted draft must pass — this same function, recursively — and only then
+    // rebases the history record onto the untouched recipe, so Cofnij restores
+    // the exact pre-preview recipe and nothing provisional survives a refusal.
+    if (preview.previewInstructions !== undefined || previewInstructionAuthorization) {
+      const proof = preview.previewInstructions;
+      const authorized = previewInstructionAuthorization;
+      if (
+        proof === undefined ||
+        authorized == null ||
+        preview.kind !== 'optimize' ||
+        preview.substitution !== undefined ||
+        preview.suggestedFix !== undefined ||
+        preview.explicitStandardRemoval !== undefined ||
+        preview.directionFallback !== undefined ||
+        preview.starterPackRescue !== undefined ||
+        authorized.baseFingerprint !== proof.baseFingerprint ||
+        !samePreviewInstructions(authorized.lines, proof.lines) ||
+        workingStateFingerprint(current, currentConstraints) !== authorized.baseFingerprint ||
+        (preview.baseDraftRevision !== undefined &&
+          currentDraftRevision !== undefined &&
+          preview.baseDraftRevision !== currentDraftRevision)
+      ) {
+        return { ok: false, code: 'stale_preview', messagePl: copy.blocked.stale };
+      }
+      const adjusted = applyPreviewInstructions(current, currentConstraints, authorized.lines);
+      if (!adjusted.ok) {
+        return { ok: false, code: 'stale_preview', messagePl: copy.blocked.stale };
+      }
+      const adjustedPreview: ConstraintPreview = { ...preview };
+      delete adjustedPreview.previewInstructions;
+      const verifiedOnAdjustedDraft = VerifiedApply.commit(
+        adjusted.input,
+        adjusted.constraints,
+        adjustedPreview,
+        at,
+        id,
+        excludedIngredientIds,
+        currentDraftRevision,
+        null,
+        null,
+        directionConsent,
+        null,
+        currentProductBehaviorSnapshots,
+        technicalOnlyMainLineIds,
+        proposalAuthorization,
+        null,
+        rebuildOptions,
+        null,
+      );
+      if (!verifiedOnAdjustedDraft.ok) return verifiedOnAdjustedDraft;
+      return {
+        ok: true,
+        verified: VerifiedApply.rebasedOntoUntouchedRecipe(
+          verifiedOnAdjustedDraft.verified,
+          current,
+          currentConstraints,
+        ),
+      };
+    }
     const { prebuiltOptimizeRebuild, ...canonicalRebuildOptions } = rebuildOptions;
     let verifiedOptimizeRebuild = prebuiltOptimizeRebuild;
     // Phase 3 monotonic guard: a preview built for an earlier draft revision
@@ -11035,6 +11164,33 @@ export class VerifiedApply {
         structuredClone(appliedProductBehaviorSnapshots),
       ),
     };
+  }
+
+  /**
+   * An interactive-preview verification (built by `commit` for the adjusted
+   * draft) rebased onto the untouched recipe it was derived from: the verified
+   * working state, constraints and authority are unchanged; only the history
+   * record's BEFORE names the exact recipe Cofnij must restore. Private, and
+   * reachable only from `commit` after the full verification has passed.
+   */
+  private static rebasedOntoUntouchedRecipe(
+    verified: VerifiedApply,
+    untouched: RecipeInput,
+    untouchedConstraints: ConstraintSet,
+  ): VerifiedApply {
+    return new VerifiedApply(
+      verified.input,
+      verified.constraints,
+      {
+        ...verified.record,
+        before: {
+          ...verified.record.before,
+          input: structuredClone(untouched),
+          constraints: untouchedConstraints,
+        },
+      },
+      verified.productBehaviorSnapshots,
+    );
   }
 }
 

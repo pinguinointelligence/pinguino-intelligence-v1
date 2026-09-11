@@ -561,7 +561,7 @@ export function HomeRecipeSection({
       </div>
 
       {/* §60: the existing Recalculate → Preview → Apply workflow, plainly worded. */}
-      <HomeRecalculate />
+      <HomeRecalculate canSeeGrams={canSeeGrams} onGramsBlocked={onGramsBlocked} />
 
       <div className="mt-10 flex flex-col gap-2.5">
         <button

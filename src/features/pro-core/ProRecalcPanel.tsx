@@ -28,12 +28,18 @@ import {
   openDirectionFallbackPreviewWithServerAuthority,
   openStarterPackRescuePreviewWithServerAuthority,
   requestStarterPackRescueWithServerAuthority,
+  runInteractiveRecalculationWithTerminal,
   runPiRecalculationWithTerminal,
   unlockConstraintAndRecalculate,
   useConstraintStudioStore,
   type PreviewIssue,
   type RecalculationTerminalState,
 } from '@/features/constraint-studio/constraintStudioStore';
+import {
+  isPreviewEditableLine,
+  type PreviewLineInstruction,
+} from '@/features/constraint-studio/previewInstructions';
+import { LockConflictPanel } from '@/features/constraint-studio/ui/LockConflictPanel';
 import { cn } from '@/lib/cn';
 import { GellattiNotice } from '@/components/ui/GellattiNotice';
 import { DialogShell } from '@/components/ui/DialogShell';
@@ -909,6 +915,11 @@ export function ProRecalcPanel({
   const history = useConstraintStudioStore((s) => s.history);
   const recalculationTerminal = useConstraintStudioStore((s) => s.recalculationTerminal);
   const constraints = useConstraintStudioStore((s) => s.constraints);
+  const lockConflict = useConstraintStudioStore((s) => s.lockConflict);
+  const pendingInstructionCommit = useConstraintStudioStore((s) => s.pendingInstructionCommit);
+  const previewInstructionAuthorization = useConstraintStudioStore(
+    (s) => s.previewInstructionAuthorization,
+  );
   const canViewTechnicalDetails = useProCoreAccessStore(
     (s) => s.effectiveAccess?.canAdmin === true,
   );
@@ -957,6 +968,25 @@ export function ProRecalcPanel({
   );
 
   const undoAvailable = isUndoAvailable(history[history.length - 1], currentInput, constraints);
+
+  // INTERACTIVE PREVIEW (owner 2026-09-11): the customer's own recipe lines
+  // are editable inside the proposal; a line the solver added, poured material
+  // and engine-held lines keep their static value.
+  const editableLineIds = useMemo(
+    () => new Set(items.filter(isPreviewEditableLine).map((item) => item.id)),
+    [items],
+  );
+  const recalculateInPreview = (instructions: PreviewLineInstruction[]) => {
+    void runInteractiveRecalculationWithTerminal(instructions);
+  };
+  // Anything provisional in this session (edited instructions, a conflict
+  // correction, instructions waiting to be written) is discarded by X/Escape
+  // exactly like „Wróć": the recipe was never written, so nothing to restore.
+  const provisionalSession =
+    preview?.previewInstructions !== undefined ||
+    previewInstructionAuthorization !== null ||
+    lockConflict !== null ||
+    pendingInstructionCommit !== null;
 
   const returnToProductDose = (lineId: string | null) => {
     onClose();
@@ -1032,6 +1062,7 @@ export function ProRecalcPanel({
 
   const closeOrCancel = () => {
     if (recalculationTerminal?.state === 'WORKING') cancelPiRecalculation();
+    if (provisionalSession) store.cancelPreview();
     onClose();
   };
 
@@ -1107,12 +1138,29 @@ export function ProRecalcPanel({
   const suppressIntermediate = correctionInFlight;
   const customerPreviewOpen =
     !suppressIntermediate && preview !== null && recalculationTerminal?.state === 'PREVIEW_READY';
-  const dialogLabel = customerPreviewOpen ? 'Sprawdź proponowaną korektę.' : r.title;
+  // The lock-conflict correction is the same modal's content, never a new one.
+  const conflictOpen =
+    !suppressIntermediate &&
+    lockConflict !== null &&
+    preview === null &&
+    recalculationTerminal !== null &&
+    recalculationTerminal.state !== 'WORKING';
+  const fullContentOpen = customerPreviewOpen || conflictOpen;
+  const dialogLabel = customerPreviewOpen
+    ? 'Sprawdź proponowaną korektę.'
+    : conflictOpen
+      ? constraintStudioCopy.lockConflict.proTitle
+      : r.title;
   const previewCard = preview ? (
     <ConstraintPreviewCard
       preview={preview}
       applyPending={applyPending}
       showTechnicalDetails={canViewTechnicalDetails}
+      interactive={{
+        instructions: preview.previewInstructions?.lines ?? [],
+        editableLineIds,
+        onRecalculate: recalculateInPreview,
+      }}
       onApply={() => {
         void (async () => {
           await applyPreviewWithServerAuthority();
@@ -1152,7 +1200,7 @@ export function ProRecalcPanel({
       // one piece of content here with columns. In the automatic-correction
       // flow the change list never shows, so that flow now opens and closes at
       // one single width instead of stepping 680 -> 520.
-      size={customerPreviewOpen ? 'wide' : 'default'}
+      size={fullContentOpen ? 'wide' : 'default'}
       onClose={closeOrCancel}
       showCloseControl
       closeLabel={
@@ -1184,12 +1232,12 @@ export function ProRecalcPanel({
         // Only PADDING and height differ between the two states now; the width
         // is the canonical `size="wide"` in both, so the panel no longer
         // changes dimension as the recalculation moves between them.
-        customerPreviewOpen
+        fullContentOpen
           ? 'max-h-[92dvh] px-3 py-3 sm:max-h-[88vh] sm:px-4 sm:py-4'
           : 'max-h-[88vh] px-4 py-4 sm:px-5 sm:py-5',
       )}
     >
-      {!customerPreviewOpen ? (
+      {!fullContentOpen ? (
         <div className="flex min-h-10 items-center pr-12">
           <p className="text-xs font-medium tracking-label text-ivory/60 uppercase">
             {dialogLabel}
@@ -1197,7 +1245,7 @@ export function ProRecalcPanel({
         </div>
       ) : null}
 
-      <div className={customerPreviewOpen ? 'space-y-3' : 'mt-3 space-y-3'}>
+      <div className={fullContentOpen ? 'space-y-3' : 'mt-3 space-y-3'}>
         {recalculationTerminal?.state === 'WORKING' || suppressIntermediate ? (
           <FriendlyLabMessageMotion
             timing="progress"
@@ -1299,7 +1347,54 @@ export function ProRecalcPanel({
           />
         ) : null}
 
-        {!directionFallbackReport && previewIssue && recalculationTerminal ? (
+        {conflictOpen && lockConflict ? (
+          <LockConflictPanel
+            conflict={lockConflict}
+            surface="pro"
+            onRecalculate={recalculateInPreview}
+            onBack={() => {
+              store.cancelPreview();
+              onClose();
+            }}
+          />
+        ) : null}
+
+        {!suppressIntermediate && pendingInstructionCommit && !preview ? (
+          <div className="space-y-3" data-testid="pro-recalc-instructions-only">
+            <p className="text-sm leading-relaxed text-ivory/85">
+              {constraintStudioCopy.interactive.instructionsOnly}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  store.commitPendingInstructions();
+                  onClose();
+                }}
+                className="inline-flex min-h-11 items-center justify-center rounded-lg bg-ivory px-4 py-2 text-sm font-semibold text-shell"
+                data-testid="pro-recalc-commit-instructions"
+              >
+                {constraintStudioCopy.interactive.apply}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  store.cancelPreview();
+                  onClose();
+                }}
+                className="inline-flex min-h-11 items-center justify-center rounded-lg border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory"
+              >
+                {constraintStudioCopy.interactive.back}
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {!directionFallbackReport &&
+        !lockConflict &&
+        !pendingInstructionCommit &&
+        previewIssue &&
+        recalculationTerminal ? (
           <RecalcDiagnosisView
             issue={previewIssue}
             input={currentInput}
