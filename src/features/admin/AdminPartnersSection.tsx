@@ -19,6 +19,7 @@ import {
   setPartnerStatus,
   setAdminCommissionRule,
 } from '@/services/adminControl';
+import { filterAdminPartners, type AdminPartnerStatusFilter } from './adminPartnerFilter';
 
 const field = 'pro-focus-ring min-h-11 w-full border border-[var(--g-line)] bg-white px-3 text-sm';
 
@@ -42,6 +43,13 @@ export function AdminPartnersSection() {
   });
   const [reason, setReason] = useState('Admin Partner operation');
   const [note, setNote] = useState('');
+  // I-ADM-02: find a partner — by e-mail, name, slug, code or id — and narrow by status.
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<AdminPartnerStatusFilter>('all');
+  const visiblePartners = filterAdminPartners(partners.data ?? [], {
+    query: search,
+    status: statusFilter,
+  });
   const [commission, setCommission] = useState({
     product: 'home' as 'home' | 'pro',
     cadence: 'monthly' as 'monthly' | 'annual',
@@ -318,8 +326,37 @@ export function AdminPartnersSection() {
           onChange={(event) => setReason(event.currentTarget.value)}
         />
       </label>
+      <div className="mt-8 flex flex-wrap items-end gap-3">
+        <label className="block max-w-sm flex-1 text-xs font-semibold">
+          Szukaj partnera
+          <input
+            className={`${field} mt-2`}
+            value={search}
+            onChange={(event) => setSearch(event.currentTarget.value)}
+            placeholder="e-mail, nazwa, slug, kod lub ID"
+          />
+        </label>
+        <label className="block text-xs font-semibold">
+          Status
+          <select
+            className={`${field} mt-2`}
+            value={statusFilter}
+            onChange={(event) =>
+              setStatusFilter(event.currentTarget.value as AdminPartnerStatusFilter)
+            }
+          >
+            <option value="all">Wszyscy</option>
+            <option value="active">Aktywni</option>
+            <option value="suspended">Wstrzymani</option>
+            <option value="terminated">Zakończeni</option>
+          </select>
+        </label>
+        <p className="pb-3 text-xs text-[var(--g-text-secondary)]">
+          Wyniki: {visiblePartners.length} z {(partners.data ?? []).length}
+        </p>
+      </div>
       <div className="mt-6 space-y-5">
-        {(partners.data ?? []).map((partner) => {
+        {visiblePartners.map((partner) => {
           const profile = (partner.profile ?? {}) as Record<string, unknown>;
           const codes = Array.isArray(partner.codes)
             ? (partner.codes as Array<Record<string, unknown>>)
@@ -335,7 +372,8 @@ export function AdminPartnersSection() {
                     {String(profile.display_name ?? partner.email)}
                   </strong>
                   <p className="mt-1 font-mono text-[10px] text-[var(--g-text-secondary)]">
-                    {String(partner.id)} · {String(partner.status)} · profil{' '}
+                    {String(partner.id)} · {String(partner.status)} · tier{' '}
+                    {String(partner.tier ?? '—')} · profil{' '}
                     {String(profile.moderation_status ?? '—')} · Connect{' '}
                     {partner.connectAccountId ? 'GOTOWE' : 'BRAK'} · wypłaty{' '}
                     {String(partner.payoutsEnabled)}
