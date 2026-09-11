@@ -709,7 +709,9 @@ describe('Production workspace touch-first UI', () => {
     const confirmed = render(true);
     expect(confirmed).not.toContain('data-testid="production-heat-information"');
     expect(confirmed).not.toContain('Informacja potwierdzona');
-    expect(confirmed).toContain('Rozpocznij partię');
+    // OWNER §21 (2026-09-11): the first start says ROBIMY.
+    expect(confirmed).toContain('ROBIMY');
+    expect(confirmed).not.toContain('Rozpocznij partię');
     expect(confirmed).not.toMatch(
       /<button(?=[^>]*data-testid="start-production-session")(?=[^>]*\sdisabled="")/,
     );
