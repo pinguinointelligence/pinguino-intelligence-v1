@@ -1,5 +1,7 @@
 # GELLATTI v2.2 — overnight session, 2026-09-10
 
+> **2026-09-11 — integrated into staging.** See `reports/SAFE_V22_FINAL_INTEGRATION_2026-09-11.md`. **Correction:** PKG E's claim that the tutorial stays inert wherever its anchors are absent was false — the optional HOME|PRO opener made it start on every page. Fixed during integration (§3.4 of that report). §9 below records the PARKED state as it was on 2026-09-10; §25 (`WAITING_FOR_PHOTO`) was deliberately not integrated and still waits for owner DB approval.
+
 **Branch** `claude/gellatti-v22-safe` · **Worktree** `~/Developer/pinguino-v22-safe`
 **Base** `origin/staging` @ `b3baf256` · **HEAD** see §9 · local only. **PARKED.**
 **No push. No PR. No merge. No production deploy. No migration applied.**
