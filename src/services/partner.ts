@@ -78,6 +78,24 @@ export async function managePartnerCode(input: {
   if (error) throw new Error(error.message);
 }
 
+/**
+ * D-CODE-03 — live availability for a code the partner is typing. The server
+ * answers with the refusal the create guard would raise, or null when the code
+ * can be claimed.
+ */
+export async function checkPartnerCodeAvailability(
+  partnerId: string,
+  code: string,
+): Promise<string | null> {
+  if (!supabase) return unavailable();
+  const { data, error } = await supabase.rpc('gellatti_partner_code_claim_refusal_v1', {
+    p_partner_id: partnerId,
+    p_code: code,
+  });
+  if (error) throw new Error(error.message);
+  return typeof data === 'string' ? data : null;
+}
+
 export async function updatePartnerProfile(profile: {
   displayName: string;
   shortDescription: string;
