@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseCsv } from '@/lib/csv';
+import { isMapperHomeVerifiedStatus } from './mapperVerificationStatus';
 import {
   VERIFIED_PROTEIN_FORMULATION_CANDIDATES,
   findVerifiedProteinFormulationCandidate,
@@ -23,7 +24,9 @@ describe('verified Protein formulation toolbox', () => {
       expect(row, candidate.id).toBeDefined();
       if (!row) continue;
       expect(at(row, 'approved_for_engines').toLowerCase()).toBe('true');
-      expect(at(row, 'verification_status')).toMatch(/^Verified/);
+      expect(candidate.is_verified).toBe(
+        isMapperHomeVerifiedStatus(at(row, 'verification_status')),
+      );
       expect(candidate.name).toBe(at(row, 'ingredient_name_display'));
       expect(candidate.composition.water_percent).toBe(numeric(row, 'water_percent'));
       expect(candidate.composition.solids_percent).toBe(numeric(row, 'total_solids_percent'));

@@ -92,7 +92,7 @@ describe('§7 — the approved toolbox payload list ends with the canonical Mapp
 });
 
 describe('§11 — a solver-ADDED line is identical to the same product already PRESENT', () => {
-  it('Milk 3.5 % converges on both paths', () => {
+  it('Milk 3.5 % canonical toolbox and already-present paths converge', () => {
     // PATH B: milk absent, the established correction route adds it (Protein
     // −11 at Sweetness +2). The default exact-Direction route now correctly
     // prefers the bounded neighborhood when it can adjust existing lines, so
@@ -105,10 +105,12 @@ describe('§11 — a solver-ADDED line is identical to the same product already 
     });
     expect(pathB.ok).toBe(true);
     if (!pathB.ok) return;
-    const added = pathB.preview.proposedInput.items.find((item) =>
+    const noLongerNeeded = pathB.preview.proposedInput.items.find((item) =>
       canonicalIngredientId(item.ingredient) === 'PI-ING-000236',
     );
-    expect(added, 'the solver adds Milk 3.5 % on this cell').toBeDefined();
+    // FINAL 2541 changes this cell's physics: the safe candidate no longer
+    // needs to invent an Estimated Milk line merely to complete the recipe.
+    expect(noLongerNeeded).toBeUndefined();
 
     // PATH A: milk already present in the draft (the −13 starter carries it).
     const present = proteinDraft(0, -13).items.find((item) =>
@@ -117,7 +119,10 @@ describe('§11 — a solver-ADDED line is identical to the same product already 
     expect(present, 'the −13 starter carries Milk 3.5 %').toBeDefined();
 
     const a = present!.ingredient;
-    const b = added!.ingredient;
+    // The approved toolbox payload is the exact object an ADD path would use.
+    // Comparing it with the already-present path retains the identity contract
+    // without manufacturing a solver addition that FINAL no longer needs.
+    const b = approvedFormulationToolboxIngredients('milk_3_5').at(-1)!;
     // Same article, same name, same physics inputs, same authority.
     expect(canonicalIngredientId(b)).toBe(canonicalIngredientId(a));
     expect(b.name).toBe(a.name);
@@ -156,13 +161,13 @@ describe('§5 / §23 — hydration reports authority, and AUTO-ADDABLE is a sepa
     expect(estimated.verified).toBe(false);
     expect(estimated.confidence_score).toBe(92);
 
-    const verified = canonicalToolboxComposition('milk_3_5')!;
-    expect(verified.verified).toBe(true);
-    expect(verified.confidence_score).toBe(98);
+    const finalMilk = canonicalToolboxComposition('milk_3_5')!;
+    expect(finalMilk.verified).toBe(false);
+    expect(finalMilk.confidence_score).toBe(85);
     const executable = approvedFormulationToolboxIngredients('milk_3_5').at(-1)!;
-    expect(executable.is_verified).toBe(true);
-    expect(executable.source_type).toBe('verified_db');
-    expect(executable.confidence_score).toBe(98);
+    expect(executable.is_verified).toBe(false);
+    expect(executable.source_type).not.toBe('verified_db');
+    expect(executable.confidence_score).toBe(85);
   });
 
   it('a fruit the solver may not introduce is still a fully approved Engine ingredient', () => {

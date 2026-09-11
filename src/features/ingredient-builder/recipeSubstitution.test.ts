@@ -63,15 +63,17 @@ const inputFor = (
 
 describe('verified Mapper recipe substitute catalogue', () => {
   it('keeps Estimated Mapper provenance informational for a technically complete substitute', () => {
-    const watermelon = row('PI-ING-000405');
-    expect(watermelon.verification_status).toBe('Estimated');
+    const currentEstimatedSubstitute = row('PI-ING-000341');
+    expect(currentEstimatedSubstitute.verification_status).toBe('Estimated');
     const candidates = verifiedRecipeSubstituteCandidates(
       inputFor(row('PI-ING-001553')),
       'source-line',
       rows,
       200,
     );
-    const estimated = candidates.find((candidate) => candidate.id === watermelon.ingredient_id);
+    const estimated = candidates.find(
+      (candidate) => candidate.id === currentEstimatedSubstitute.ingredient_id,
+    );
     expect(estimated).toBeDefined();
     expect(estimated?.ingredient?.is_verified).toBe(false);
     expect(estimated?.ingredient?.source_type).toBe('ai_estimated');

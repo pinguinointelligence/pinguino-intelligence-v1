@@ -30,7 +30,11 @@ import { resolveFunctionalRole } from '@/features/formulation/ingredientRoles';
 import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
 import { practicalizeRecipeCandidate } from '@/features/practical-recipe/practicalRecipe';
 import { projectSorbetExactDirectionCandidate } from '@/features/recipe-direction/sorbetDirectionProjection';
-import { recipeDirectionViolations } from '@/features/recipe-direction/recipeDirectionTargets';
+import {
+  compareDirectionDistance,
+  directionDistance,
+  requestedDirectionBands,
+} from '@/features/recipe-direction/directionBandDistance';
 import { buildOptimizePreview } from './applyPipeline';
 
 const AT = '2026-08-31T09:00:00.000Z';
@@ -144,13 +148,22 @@ const preview = (input: RecipeInput, set: ConstraintSet = { byLineId: {} }) =>
 
 /** Would the canonical authorities accept the projection's own candidate? */
 const safeImprovingCandidateExists = (input: RecipeInput): boolean => {
-  const candidate = projectSorbetExactDirectionCandidate(input);
-  if (candidate === null) return false;
-  const result = calculateRecipe(candidate);
+  const built = preview(input);
+  if (!built.ok || built.preview.directionCandidateSource !== 'sorbet_exact_projection') {
+    return false;
+  }
+  const executable = built.preview.proposedInput;
+  const result = calculateRecipe(executable);
+  const bands = requestedDirectionBands(input);
+  const comparison = compareDirectionDistance(
+    directionDistance(executable, bands, result),
+    directionDistance(input, bands),
+  );
   return (
     detectViolations(result).length === 0 &&
     !result.warnings.some((warning) => warning.severity === 'critical') &&
-    recipeDirectionViolations(candidate).length < recipeDirectionViolations(input).length
+    comparison !== null &&
+    comparison < 0
   );
 };
 

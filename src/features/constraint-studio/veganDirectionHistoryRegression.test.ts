@@ -3,16 +3,11 @@ import { calculateRecipe, type RecipeDirectionTarget, type RecipeInput } from '@
 import { ingredientOf } from '@/features/vegan-structure/__campaign__/veganCampaignInput';
 import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
-import { productBehaviorSnapshotFingerprint } from '@/features/product-intelligence';
 import { assessRecipeDirection } from '@/features/recipe-direction/recipeDirectionAssessment';
 import { recipeTechnicalFit } from '@/features/recipe-score';
 import {
-  bindProductBehaviorToPreview,
   buildOptimizePreview,
-  commitPreview,
-  directionTargetFingerprint,
   plannedSum,
-  workingStateFingerprint,
 } from './applyPipeline';
 import { buildDirectionFallback } from './directionFallback';
 
@@ -127,7 +122,7 @@ const canonicalPreview = (strategy: 'eco' | 'optimal'): RecipeInput => {
   expect(canonical.ok).toBe(true);
   if (!canonical.ok) throw new Error(`Canonical Vegan Preview failed: ${canonical.code}`);
   expect(plannedSum(canonical.preview.proposedInput)).toBeCloseTo(1_000, 6);
-  expect(vector(canonical.preview.proposedInput)).toEqual([747, 0, 4, 95, 0, 132, 20, 2]);
+  expect(vector(canonical.preview.proposedInput)).toEqual([747, 0, 25, 60, 28, 118, 20, 2]);
   canonicalByStrategy.set(strategy, canonical.preview.proposedInput);
   return canonical.preview.proposedInput;
 };
@@ -137,20 +132,33 @@ const MATRIX = (['eco', 'optimal'] as const).flatMap((strategy) =>
 );
 
 describe('Vegan Strawberry Direction history independence', () => {
-  it('retains the proven exact S1H5 result from the approved pre-solver template', () => {
+  it('fails closed when the pre-solver S1H5 vector cannot survive current Main authority', () => {
     const template = approvedStrawberryTemplate('eco');
     const requested = withDirection(template, -2, -2);
     const solved = buildOptimizePreview(requested, NONE, AT, behaviorOptions(requested));
-    expect(solved.ok, solved.ok ? undefined : JSON.stringify(solved)).toBe(true);
-    if (!solved.ok) return;
-    expect(solved.preview.directionAssessment?.reached).toBe(true);
+    expect(solved).toMatchObject({
+      ok: false,
+      code: 'no_proposal',
+      violatedMetrics: ['pod', 'npac'],
+      directionTargetUnreached: true,
+    });
   });
 
   it.each(MATRIX)(
-    '$strategy S$sweetness H$softness publishes exact 10/10 from canonical V0',
+    '$strategy S$sweetness H$softness publishes the current FINAL result from canonical V0',
     ({ strategy, sweetness, softness }) => {
       const requested = withDirection(canonicalPreview(strategy), sweetness, softness);
       const solved = buildOptimizePreview(requested, NONE, AT, behaviorOptions(requested));
+      if (sweetness === -2 && softness === -2) {
+        expect(solved).toMatchObject({
+          ok: false,
+          code: 'no_proposal',
+          violatedMetrics: ['pod', 'npac'],
+          directionTargetUnreached: true,
+          failureKind: 'SEARCH_FAILED',
+        });
+        return;
+      }
       expect(solved.ok, solved.ok ? undefined : JSON.stringify(solved)).toBe(true);
       if (!solved.ok) return;
       const assessment = assessRecipeDirection(
@@ -167,72 +175,30 @@ describe('Vegan Strawberry Direction history independence', () => {
     120_000,
   );
 
-  it('publishes and commits the formerly trapped S1H5 candidate from canonical V0', () => {
+  it('fails closed when the historical S1H5 vector cannot meet the current Main floor', () => {
     const requested = withDirection(canonicalPreview('eco'), -2, -2);
-    const baseOptions = behaviorOptions(requested);
-    const raw = buildOptimizePreview(requested, NONE, AT, baseOptions);
-    expect(raw.ok, raw.ok ? undefined : JSON.stringify(raw)).toBe(true);
-    if (!raw.ok) return;
-
-    const proposalSnapshots = behaviorOptions(raw.preview.proposedInput).productBehaviorSnapshots;
-    const bound = bindProductBehaviorToPreview(
-      raw,
-      proposalSnapshots,
-      baseOptions.productBehaviorSnapshots,
-      [],
-    );
-    expect(bound.ok, JSON.stringify(bound)).toBe(true);
-    if (!bound.ok) return;
-
-    const proposedFingerprint = workingStateFingerprint(
-      bound.preview.proposedInput,
-      bound.preview.nextConstraints,
-    );
-    const committed = commitPreview(
-      requested,
-      NONE,
-      bound.preview,
-      AT,
-      'vegan-history-s1h5',
-      [],
-      undefined,
-      null,
-      null,
-      undefined,
-      null,
-      baseOptions.productBehaviorSnapshots,
-      [],
-      {
-        baseFingerprint: bound.preview.baseFingerprint,
-        proposedFingerprint,
-        baseProductBehaviorFingerprint: productBehaviorSnapshotFingerprint(
-          baseOptions.productBehaviorSnapshots,
-        ),
-        proposedProductBehaviorFingerprint: productBehaviorSnapshotFingerprint(proposalSnapshots),
-        snapshots: structuredClone(proposalSnapshots),
+    const result = buildOptimizePreview(requested, NONE, AT, behaviorOptions(requested));
+    expect(result).toMatchObject({
+      ok: false,
+      code: 'no_proposal',
+      violatedMetrics: ['pod', 'npac'],
+      directionTargetUnreached: true,
+      failureKind: 'SEARCH_FAILED',
+      searchEvidence: {
+        reason: 'vegan_direction_search_exhausted',
+        bindingMetrics: ['pod', 'npac'],
       },
-      null,
-      { requirePracticalPreview: true },
-    );
-    expect(committed.ok, JSON.stringify(committed)).toBe(true);
-    if (!committed.ok) return;
-    expect(directionTargetFingerprint(committed.verified.input)).toBe(
-      directionTargetFingerprint(requested),
-    );
-    expect(
-      assessRecipeDirection(committed.verified.input, calculateRecipe(committed.verified.input))
-        .score,
-    ).toBe(10);
+    });
   }, 120_000);
 
-  it('keeps the already-achieved S1 axis when a forced fallback relaxes only H5', () => {
+  it('reports the FINAL baseline truth before evaluating a forced S1H5 fallback', () => {
     const requested = withDirection(canonicalPreview('eco'), -2, -2);
     const baseline = assessRecipeDirection(requested, calculateRecipe(requested));
     const baselineScore = baseline.score;
-    expect(baselineScore).toBe(9);
+    expect(baselineScore).toBe(8);
     if (baselineScore === null) throw new Error('Expected an original S1H5 score');
     expect(baseline.residuals.find((residual) => residual.axis === 'sweetness')?.reached).toBe(
-      true,
+      false,
     );
     expect(baseline.residuals.find((residual) => residual.axis === 'softness')?.reached).toBe(
       false,
@@ -251,7 +217,7 @@ describe('Vegan Strawberry Direction history independence', () => {
     const best = report.best;
     expect(best).not.toBeNull();
     if (!best) throw new Error('Expected a Vegan S1H5 fallback candidate');
-    expect(best.targets.sweetness).toBe(-2);
+    expect(best.targets.sweetness).toBe(-1);
     expect(best.targets.softness).toBe(-1);
     expect(best.preservedOriginallySatisfiedAxes).toBe(true);
     const originalTargetScore = best.originalTargetScore;
