@@ -38,6 +38,7 @@ import {
   type PartnerWorkspace,
 } from '@/services/partner';
 import { earningsSummary } from '@/features/affiliate/earningsSummary';
+import { PartnerFirstSteps } from '@/features/affiliate/PartnerFirstSteps';
 
 const sections = [
   ['overview', 'Podsumowanie'],
@@ -89,6 +90,8 @@ function Overview({ data }: { data: PartnerWorkspace }) {
         title="Podsumowanie Partnera"
         detail="Ruch, konwersje i rozliczenia pochodzą z zapisanej historii poleceń, prowizji i wypłat. Twórca i Partner pozostają osobnymi rolami."
       />
+      {/* G-WEL: a new partner is guided first; the guide steps aside once done. */}
+      <PartnerFirstSteps data={data} />
       {/* H-DASH-02: money first — earned this month, still in the refund window,
           ready for the next settlement. Labels are the ledger's own copy. */}
       <dl
