@@ -35,11 +35,18 @@ vi.mock('@/services/globalCatalog', () => ({
     h.catalogSearch ? h.catalogSearch(query) : h.catalogHits),
 }));
 
+vi.mock('@/features/mapper-search-runtime', () => ({
+  planMapperCatalogSearch: vi.fn(async (query: string) => ({
+    blocked: false,
+    tokenGroups: [[query]],
+  })),
+}));
+
 vi.mock('@/lib/supabase/client', () => {
   const record = (method: string, args: unknown[]) => h.calls.push({ method, args });
   const makeBuilder = (): Record<string, unknown> => {
     const builder: Record<string, unknown> = {};
-    for (const method of ['select', 'or', 'eq', 'ilike', 'order', 'range', 'abortSignal']) {
+    for (const method of ['select', 'or', 'eq', 'in', 'ilike', 'order', 'range', 'abortSignal']) {
       builder[method] = (...args: unknown[]) => {
         record(method, args);
         return builder;
@@ -338,7 +345,10 @@ describe('fetchIngredientEngineValues (rich 0032 view)', () => {
     const outcome = await fetchIngredientEngineValues('PI-ING-000123');
     expect(calls('from')[0]?.args).toEqual([RICH_SEARCH_VIEW]);
     expect(calls('eq')[0]?.args).toEqual(['ingredient_id', 'PI-ING-000123']);
-    expect(calls('ilike')[0]?.args).toEqual(['verification_status', 'Verified%']);
+    expect(calls('in')[0]?.args[0]).toBe('verification_status');
+    expect(calls('in')[0]?.args[1]).toEqual(
+      expect.arrayContaining(['Verified', 'Verified / Public Label']),
+    );
     expect(outcome).toEqual({
       kind: 'values',
       reference: {

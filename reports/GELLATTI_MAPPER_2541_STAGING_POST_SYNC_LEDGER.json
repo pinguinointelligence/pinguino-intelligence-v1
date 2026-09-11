@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "asOf": "2026-09-11",
+  "environment": "staging",
+  "migration": "20260911120000_mapper_search_final_2541_sync.sql",
+  "evidenceBasis": "known_post_sync_census",
+  "databaseMutationPerformedByRollbackBuild": false,
+  "mapper": {
+    "activeRows": 2541,
+    "uniqueIngredientIds": 2541,
+    "canonicalRoots": 2541,
+    "rootsWithCurrentVersions": 2541,
+    "currentMapperBehaviorBindings": 2541,
+    "rootsWithCurrentCanonicalBindings": 2541,
+    "status": "PASS"
+  },
+  "processMetadata": {
+    "rows": 2089,
+    "finalMapperGap": 452,
+    "status": "DEFERRED_TO_PROCESSING_WORKSTREAM"
+  },
+  "rollback": {
+    "snapshotDirectory": "supabase/.temp/mapper-search-final-2541-rollback-20260911",
+    "mapperPreimages": 2147,
+    "rootPreimages": 2089,
+    "insertedMapperRowsTargeted": 394,
+    "newRootsSoftDeactivated": 452,
+    "immutableProductVersionsDeleted": 0,
+    "releaseClassifier": "mapper-final-2541-2026-09-11-v1",
+    "status": "PREPARED_NOT_EXECUTED"
+  }
+}

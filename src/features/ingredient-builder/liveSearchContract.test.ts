@@ -304,6 +304,16 @@ describe('source pins — the architecture cannot silently regress (tests 1/2 + 
     expect(hook).not.toContain('requestedLimit');
   });
 
+  it('routes the shared HOME/PRO picker through the central Mapper resolver without replacing exact product input', () => {
+    const hook = read('features', 'global-catalog', 'useGlobalCatalogPicker.ts');
+    expect(hook).toContain('const mapperPlan = await planMapperCatalogSearch(settledQuery');
+    expect(hook).not.toContain('input.mapperOnly\n        ? await planMapperCatalogSearch');
+    expect(hook).toContain('query: settledQuery');
+    expect(hook).toContain('mapperPlan.tokenGroups.length > 0');
+    expect(hook).toContain('queryTokenTerms(settledQuery)');
+    expect(hook).toContain('if (input.mapperOnly && mapperPlan.blocked)');
+  });
+
   it('pagination is an explicit server cursor, not a client-side catalogue snapshot', () => {
     const service = read('services', 'globalCatalog.ts');
     expect(service).toContain('cursor?: number');

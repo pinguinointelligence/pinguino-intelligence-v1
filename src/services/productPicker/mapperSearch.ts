@@ -20,6 +20,11 @@
  */
 import * as backend from '@/lib/supabase/client';
 import type { ReferenceEngineValues } from '@/data/products/productEngineResolver';
+import {
+  MAPPER_HOME_VERIFIED_STATUSES,
+  isMapperHomeVerifiedStatus,
+} from '@/data/ingredients/mapperVerificationStatus';
+import { planMapperCatalogSearch } from '@/features/mapper-search-runtime';
 import { searchProducts } from '@/services/globalCatalog';
 
 /** The demo-safe view (0033) — searchable by anon AND authenticated. */
@@ -85,6 +90,8 @@ export type MapperSearchOutcome =
 export interface MapperSearchQuery {
   text: string;
   category?: string | null;
+  localeVariant?: string;
+  marketScope?: string;
   limit?: number;
   offset?: number;
   signal?: AbortSignal;
@@ -99,6 +106,11 @@ async function searchCanonicalMapperIngredientsWithPolicy(
 ): Promise<MapperSearchOutcome> {
   if (query.signal?.aborted) return { kind: 'aborted' };
   try {
+    const plan = await planMapperCatalogSearch(query.text, {
+      localeVariant: query.localeVariant,
+      marketScope: query.marketScope ?? 'GLOBAL',
+    });
+    if (plan.blocked) return { kind: 'results', rows: [], hasMore: false };
     const limit = query.limit ?? MAPPER_SEARCH_DEFAULT_LIMIT;
     const requestedOffset = query.offset ?? 0;
     // Home retains its frozen Verified+Base+Engine projection. The RPC now
@@ -116,6 +128,7 @@ async function searchCanonicalMapperIngredientsWithPolicy(
         marketScope: 'global',
         selectedMarkets: [],
         entityKind: 'pi_base',
+        tokenGroups: plan.tokenGroups,
         limit: batchLimit,
         cursor,
       });
@@ -130,8 +143,9 @@ async function searchCanonicalMapperIngredientsWithPolicy(
             return (
               hit.usableInBase &&
               hit.publicData.approvedForEngines === true &&
-              typeof verificationStatus === 'string' &&
-              verificationStatus.toLocaleLowerCase('en').startsWith('verified')
+              isMapperHomeVerifiedStatus(
+                typeof verificationStatus === 'string' ? verificationStatus : null,
+              )
             );
           })
           .map((hit) => {
@@ -165,8 +179,8 @@ async function searchCanonicalMapperIngredientsWithPolicy(
   }
 }
 
-/** Frozen Home search retains its previously accepted Verified + Base + Engine
- * result set even though the shared RPC now exposes all 2,089 active rows. */
+/** Frozen Home search retains its previously accepted exact verified-status +
+ * Base + Engine result set over the current immutable Mapper release. */
 export async function searchCanonicalMapperIngredients(
   query: MapperSearchQuery,
 ): Promise<MapperSearchOutcome> {
@@ -319,7 +333,7 @@ export async function fetchIngredientEngineValues(
     .eq('approved_for_engines', true)
     // Frozen Home exact-id hydration keeps the previously accepted
     // Verified-only contract. Pro uses the canonical product resolver instead.
-    .ilike('verification_status', 'Verified%');
+    .in('verification_status', [...MAPPER_HOME_VERIFIED_STATUSES]);
   if (signal) builder = builder.abortSignal(signal);
 
   const { data, error } = await builder.maybeSingle();

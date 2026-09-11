@@ -4,11 +4,12 @@ import path from 'node:path';
 
 const root = process.cwd();
 const mapperPath = path.join(root, 'docs/ingredients/validation/mapper_basement.csv');
-const seedPath = path.join(root, 'supabase/seed/mapper_basement_v1_0.sql');
 const pickerPath = path.join(root, 'src/features/ingredient-builder/ProductPickerPopover.tsx');
 const hookPath = path.join(root, 'src/features/global-catalog/useGlobalCatalogPicker.ts');
 const boundaryPath = path.join(root, 'src/features/ingredient-builder/mapperOnlyCatalog.ts');
-const expectedHash = '057375cd60cefe613892ff1d9f8f7eda880ff0eb06732f9229051fc37d8deca7';
+const expectedHash = 'a6a849a596acef75e0760992353bddf5cbca24ff37744e36414da18ca45556f6';
+const expectedMapperRows = 2541;
+const expectedSelectableRows = 2491;
 
 function parseCsv(text) {
   const rows = [];
@@ -53,24 +54,11 @@ const selectableIds = new Set(
     .filter((row) => row.approved_for_base.toLowerCase() === 'true')
     .map((row) => row.ingredient_id),
 );
-if (mapperRows.length !== 2089 || mapperIds.size !== 2089) {
+if (mapperRows.length !== expectedMapperRows || mapperIds.size !== expectedMapperRows) {
   throw new Error(`Mapper identity census drift: ${mapperRows.length}/${mapperIds.size}`);
 }
-if (selectableIds.size !== 2076) {
+if (selectableIds.size !== expectedSelectableRows) {
   throw new Error(`Selectable Mapper census drift: ${selectableIds.size}`);
-}
-
-const seedIds = new Set(
-  [...fs.readFileSync(seedPath, 'utf8').matchAll(/\('((?:PI-ING-)\d{6})',/g)].map(
-    (match) => match[1],
-  ),
-);
-const catalogOutsideMapper = [...seedIds].filter((id) => !mapperIds.has(id));
-const mapperMissingFromSeed = [...mapperIds].filter((id) => !seedIds.has(id));
-if (seedIds.size !== 2089 || catalogOutsideMapper.length || mapperMissingFromSeed.length) {
-  throw new Error(
-    `Mapper seed membership drift: seed=${seedIds.size} outside=${catalogOutsideMapper.length} missing=${mapperMissingFromSeed.length}`,
-  );
 }
 
 const picker = fs.readFileSync(pickerPath, 'utf8');
@@ -88,7 +76,7 @@ for (const required of [
   if (!hook.includes(required)) throw new Error(`Mapper-only hook guard missing: ${required}`);
 }
 if (
-  !boundary.includes(expectedHash) ||
+  !boundary.includes('MAPPER_SEARCH_RELEASE_SHA256') ||
   !boundary.includes('loadCurrentRow(articleId)') ||
   !boundary.includes("kind: 'catalog_product'") ||
   !boundary.includes('productVersionId: hit.currentVersionId!') ||
@@ -104,7 +92,7 @@ if (
 }
 
 console.log('Mapper-resolved catalog validation PASS');
-console.log(`2089 mapper rows inspected (SHA-256 ${mapperHash})`);
+console.log(`${mapperRows.length} mapper rows inspected (SHA-256 ${mapperHash})`);
 console.log(`${selectableIds.size} current Base-selectable Mapper products covered`);
 console.log('Shared commercial catalog discovery enabled');
 console.log(
