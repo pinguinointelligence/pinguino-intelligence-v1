@@ -152,7 +152,12 @@ describe('customer copy guard', () => {
       path.join(SOURCE_ROOT, 'features/production-workspace/ProductionCockpit.tsx'),
       'utf8',
     );
-    expect(cockpit).toContain("'Rozpocznij partię'");
+    // OWNER §21 (2026-09-11): the first start is ROBIMY / „Zaczynamy…", and
+    // „partia" is not the customer's word for it any more.
+    expect(cockpit).toContain("'ROBIMY'");
+    expect(cockpit).toContain("'Zaczynamy…'");
+    expect(cockpit).not.toContain("'Rozpocznij partię'");
+    expect(cockpit).not.toContain("'Rozpoczynamy partię…'");
     expect(cockpit).not.toContain('Rozpocznij nową partię');
   });
 

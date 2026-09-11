@@ -24,6 +24,16 @@ export function customerPreviewIssueMessagePl(issue: PreviewIssue): string {
   if (issue.code === 'best_safe_result') {
     return `${constraintStudioCopy.previewIssue.bestSafeResult} ${customerStopReasonPl(issue.stopReason)}`;
   }
+  if (issue.code === 'no_proposal' && issue.failureKind === 'SEARCH_FAILED') {
+    const labels = (issue.searchEvidence?.bindingMetrics ?? issue.violatedMetrics ?? []).map(
+      (metric) => constraintStudioCopy.diagnosis.metricLabels[metric] ?? metric,
+    );
+    return (
+      'Wyszukiwanie nie znalazło propozycji dla wybranego kierunku w tym przebiegu. ' +
+      'To nie jest dowód niewykonalności; receptura pozostała bez zmian.' +
+      (labels.length > 0 ? ` Parametry wymagające dalszego wyszukania: ${labels.join(', ')}.` : '')
+    );
+  }
   if (issue.code === 'no_proposal' && issue.directionTargetUnreached === true) {
     const labels = (issue.violatedMetrics ?? []).map(
       (metric) => constraintStudioCopy.diagnosis.metricLabels[metric] ?? metric,

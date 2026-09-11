@@ -7,6 +7,7 @@ import { PartnerApplicationPanel } from '@/features/partner-application/PartnerA
 import { Button } from '@/components/ui/Button';
 import { applicationCompactClasses } from '@/components/ui/applicationControlStyles';
 import { customerErrorMessage } from '@/copy/customerError';
+import { CopyValueButton } from '@/features/affiliate/CopyValueButton';
 import {
   commissionAmountLabel,
   commissionCadenceLabel,
@@ -37,6 +38,8 @@ import {
   type PartnerCodeAnalytics,
   type PartnerWorkspace,
 } from '@/services/partner';
+import { earningsSummary } from '@/features/affiliate/earningsSummary';
+import { PartnerFirstSteps } from '@/features/affiliate/PartnerFirstSteps';
 
 const sections = [
   ['overview', 'Podsumowanie'],
@@ -68,6 +71,7 @@ function Heading({ title, detail }: { title: string; detail: string }) {
 function Overview({ data }: { data: PartnerWorkspace }) {
   const codes = data.codes ?? [];
   const activeCodes = codes.filter((code) => code.status === 'active');
+  const summary = earningsSummary(data.commissions ?? [], new Date());
   const totals = codes.reduce(
     (sum, code) => ({
       clicks: sum.clicks + Number(code.clickCount),
@@ -87,6 +91,39 @@ function Overview({ data }: { data: PartnerWorkspace }) {
         title="Podsumowanie Partnera"
         detail="Ruch, konwersje i rozliczenia pochodzą z zapisanej historii poleceń, prowizji i wypłat. Twórca i Partner pozostają osobnymi rolami."
       />
+      {/* G-WEL: a new partner is guided first; the guide steps aside once done. */}
+      <PartnerFirstSteps data={data} />
+      {/* H-DASH-02: money first — earned this month, still in the refund window,
+          ready for the next settlement. Labels are the ledger's own copy. */}
+      <dl
+        className="mt-7 grid gap-px border border-ink/10 bg-ink/10 sm:grid-cols-3"
+        data-testid="earnings-summary"
+      >
+        {[
+          [
+            'Prowizja w tym miesiącu',
+            money(summary.monthCents),
+            'Naliczona w bieżącym miesiącu, bez cofniętych.',
+          ],
+          [
+            commissionStatusCopy('held').label,
+            money(summary.heldCents),
+            commissionStatusCopy('held').help,
+          ],
+          [
+            commissionStatusCopy('eligible').label,
+            money(summary.eligibleCents),
+            commissionStatusCopy('eligible').help,
+          ],
+        ].map(([label, value, help]) => (
+          <div key={label} className="bg-white p-5" title={help}>
+            <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-stone-500">
+              {label}
+            </dt>
+            <dd className="mt-3 text-3xl font-medium tabular-nums text-ink">{value}</dd>
+          </div>
+        ))}
+      </dl>
       <dl className="mt-7 grid gap-px border border-ink/10 bg-ink/10 sm:grid-cols-2 xl:grid-cols-4">
         {[
           ['Aktywne kody', `${activeCodes.length} / 3`],
@@ -247,6 +284,7 @@ function Codes({ data }: { data: PartnerWorkspace }) {
                 item={item}
                 onArchive={() => archive.mutate(item.id)}
                 showActive={showActive}
+                publicPath={data.profile ? `/${data.profile.slug}/${item.slug}` : null}
               />
             ))}
           </tbody>
@@ -260,10 +298,13 @@ function CodeRow({
   item,
   onArchive,
   showActive,
+  publicPath,
 }: {
   item: PartnerCodeAnalytics;
   onArchive: () => void;
   showActive: boolean;
+  /** The code's own public URL path; null until the partner has a public profile. */
+  publicPath: string | null;
 }) {
   return (
     <tr className="border-b border-ink/10">
@@ -272,6 +313,21 @@ function CodeRow({
         <span className="mt-1 block text-[10px] text-stone-500">
           {item.label ?? 'Bez etykiety'}
         </span>
+        {/* H-DASH-06: a current code's public link, and one click to copy either. */}
+        {item.status === 'active' ? (
+          <span className="mt-1 flex flex-wrap items-center gap-x-3">
+            {publicPath ? (
+              <span className="font-mono text-[10px] text-stone-500">{publicPath}</span>
+            ) : null}
+            <CopyValueButton value={item.code} label="Kopiuj kod" />
+            {publicPath ? (
+              <CopyValueButton
+                value={() => `${window.location.origin}${publicPath}`}
+                label="Kopiuj link"
+              />
+            ) : null}
+          </span>
+        ) : null}
       </td>
       <td className="px-3 py-4" title={partnerCodeStatusCopy(item.status).help}>
         {partnerCodeStatusCopy(item.status).label}
@@ -399,6 +455,7 @@ function LinkGenerator({ data }: { data: PartnerWorkspace }) {
           <a href={created} className="mt-1 block break-all font-mono text-sm text-ink underline">
             {created}
           </a>
+          <CopyValueButton value={created} label="Kopiuj link" />
         </div>
       ) : null}
       {mutation.isError ? (
@@ -433,6 +490,12 @@ function ContentLinks({ data }: { data: PartnerWorkspace }) {
                 <p className="mt-1 font-mono text-[10px] text-stone-500">
                   {href} → {String(link.destinationPath)}
                 </p>
+                {href !== '#' ? (
+                  <CopyValueButton
+                    value={() => `${window.location.origin}${href}`}
+                    label="Kopiuj link"
+                  />
+                ) : null}
               </div>
               {/* D-LINK-03: per-campaign performance — every number the RPC
                   returned, in the codes table's own words; the status as copy. */}
@@ -472,11 +535,13 @@ function Earnings({ data }: { data: PartnerWorkspace }) {
         <table className="w-full min-w-[760px] text-left text-xs">
           <thead>
             <tr className="border-y border-ink/15 bg-stone-50">
-              {['Data', 'Plan', 'Cykl', 'Status', 'Kwota', 'Środowisko'].map((h) => (
-                <th key={h} className="px-3 py-3">
-                  {h}
-                </th>
-              ))}
+              {['Data', 'Do wypłaty od', 'Plan', 'Cykl', 'Status', 'Kwota', 'Środowisko'].map(
+                (h) => (
+                  <th key={h} className="px-3 py-3">
+                    {h}
+                  </th>
+                ),
+              )}
             </tr>
           </thead>
           <tbody>
@@ -484,6 +549,12 @@ function Earnings({ data }: { data: PartnerWorkspace }) {
               <tr key={String(row.id)} className="border-b border-ink/10">
                 <td className="px-3 py-4">
                   {new Date(String(row.earnedAt)).toLocaleDateString('pl-PL')}
+                </td>
+                {/* H-DASH-07: when the refund window closes and the amount can settle. */}
+                <td className="px-3 py-4">
+                  {row.eligibleAt
+                    ? new Date(String(row.eligibleAt)).toLocaleDateString('pl-PL')
+                    : '—'}
                 </td>
                 <td className="px-3 py-4">{commissionProductLabel(row.product)}</td>
                 <td className="px-3 py-4">{commissionCadenceLabel(row.cadence)}</td>
