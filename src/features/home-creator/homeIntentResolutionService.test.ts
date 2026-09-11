@@ -40,9 +40,10 @@ describe('HOME identity resolution uses the canonical catalogue paths', () => {
     expect(SOURCE).toContain("kind: 'unresolved'");
   });
 
-  it('delegates the choice between candidates to the pure ranking module', () => {
-    expect(SOURCE).toContain("from './homeIdentityResolution'");
-    expect(SOURCE).toContain('resolveIdentity');
+  it('auto-selects the central resolver first legal result without a second HOME ranker', () => {
+    expect(SOURCE).toContain('const first = outcome.rows[0]');
+    expect(SOURCE).not.toContain("from './homeIdentityResolution'");
+    expect(SOURCE).not.toContain('resolveIdentity(');
   });
 
   it('hands the raw HOME label to the central search boundary without a local stem rewrite', () => {
