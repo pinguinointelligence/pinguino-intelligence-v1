@@ -31,26 +31,26 @@ individually. Legend: ⬜ NOT_STARTED · 🟨 ACTIVE · ⏸ WAITING_OWNER · ⛔
 
 ### Workstream B — guided mobile flow
 
-| #   | Item                                       | State                 | Outcome                                                                                                                                      |
-| --- | ------------------------------------------ | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| B0  | Pre-start reconciliation                   | 🧪 IMPLEMENTED_TESTED | staging = A merge `ca3343d4`; #158 (lock glyph) and PACKAGE 2A share no B file; v2.2 SAFE is parked — its save card is the reused ProWorkbar |
-| B1  | Target mobile information architecture     | 🧪 IMPLEMENTED_TESTED | four-module bottom bar kept; the dashboard belongs to Receptura; one next step at a time                                                     |
-| B2  | Recipe dashboard as collapsible top sheet  | 🧪 IMPLEMENTED_TESTED | the dashboard hangs from the header and lifts into a sticky recipe bar (name · profile · stage) that brings it back                          |
-| B3  | Profile-first new recipe flow              | 🧪 IMPLEMENTED_TESTED | a new unconfirmed recipe opens on its settings once; confirming reveals the ingredients from above; a stored default skips it                |
-| B4  | Profile settings step navigation           | 🧪 IMPLEMENTED_TESTED | Krok n z 3 with back / forward and a progress rule, first run only; the desktop grid is unchanged                                            |
-| B5  | Target batch mass visual distinction       | 🧪 IMPLEMENTED_TESTED | whole-batch card beside the current total, mismatch explained; target kept in the collapsed row; no mass mathematics changed                 |
-| B6  | Stateful primary CTA                       | 🧪 IMPLEMENTED_TESTED | settings → Przelicz → Zapisz recepturę → Przejdź do Monitora → Przejdź do Produkcji, from published facts only; PRO stays manual             |
-| B7  | Recipe save integration                    | 🧪 IMPLEMENTED_TESTED | „Zapisz recepturę" reveals the one existing name/save card; no second save system                                                            |
-| B8  | Remove redundant generic re-confirmation   | 🧪 IMPLEMENTED_TESTED | a Przelicz refused only for settings resumes after confirmation; a clean reopened saved version is not asked again; safety gates untouched   |
-| B9  | Guided module transitions                  | 🧪 IMPLEMENTED_TESTED | View Transitions on the existing sheet: drop / lift / rise / sink / forward / back, ≤ 260 ms, off for reduced motion                         |
-| B10 | Product panel hierarchy                    | 🧪 IMPLEMENTED_TESTED | „Moja cena" folded until asked for in the product sheet; removing is its own row; every control kept                                         |
-| B11 | Product panel context / translucency       | 🧪 IMPLEMENTED_TESTED | the product sheet is the one translucent dialog tone; the edited line is marked and followed by its `recipe_line_id`                         |
-| B12 | Visual language consolidation              | 🧪 IMPLEMENTED_TESTED | every new surface uses the existing tokens (graphite pills, 9 px radius, legend boxes, ivory) — no third language                            |
-| B13 | Tutorial reconciliation — no second system | ➖ NOT_APPLICABLE     | no tutorial engine on staging (v2.2 SAFE's is HOME-scoped and parked); the flow guides itself; no hold-to-confirm                            |
-| B14 | Performance / mobile image loading         | 🧪 IMPLEMENTED_TESTED | the ≈1.7 MB tour PNGs ship as WebP (≈20–130 KB) at 960 / 1672 w, keyed per step, next step prefetched                                        |
+| #   | Item                                       | State                 | Outcome                                                                                                                                               |
+| --- | ------------------------------------------ | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| B0  | Pre-start reconciliation                   | 🧪 IMPLEMENTED_TESTED | staging = A merge `ca3343d4`; #158 (lock glyph) and PACKAGE 2A share no B file; v2.2 SAFE (since integrated, #271) uses the same ProWorkbar save card |
+| B1  | Target mobile information architecture     | 🧪 IMPLEMENTED_TESTED | four-module bottom bar kept; the dashboard belongs to Receptura; one next step at a time                                                              |
+| B2  | Recipe dashboard as collapsible top sheet  | 🧪 IMPLEMENTED_TESTED | the dashboard hangs from the header and lifts into a sticky recipe bar (name · profile · stage) that brings it back                                   |
+| B3  | Profile-first new recipe flow              | 🧪 IMPLEMENTED_TESTED | a new unconfirmed recipe opens on its settings once; confirming reveals the ingredients from above; a stored default skips it                         |
+| B4  | Profile settings step navigation           | 🧪 IMPLEMENTED_TESTED | Krok n z 3 with back / forward and a progress rule, first run only; the desktop grid is unchanged                                                     |
+| B5  | Target batch mass visual distinction       | 🧪 IMPLEMENTED_TESTED | whole-batch card beside the current total, mismatch explained; target kept in the collapsed row; no mass mathematics changed                          |
+| B6  | Stateful primary CTA                       | 🧪 IMPLEMENTED_TESTED | settings → Przelicz → Zapisz recepturę → Przejdź do Monitora → Przejdź do Produkcji, from published facts only; PRO stays manual                      |
+| B7  | Recipe save integration                    | 🧪 IMPLEMENTED_TESTED | „Zapisz recepturę" reveals the one existing name/save card; no second save system                                                                     |
+| B8  | Remove redundant generic re-confirmation   | 🧪 IMPLEMENTED_TESTED | a Przelicz refused only for settings resumes after confirmation; a clean reopened saved version is not asked again; safety gates untouched            |
+| B9  | Guided module transitions                  | 🧪 IMPLEMENTED_TESTED | View Transitions on the existing sheet: drop / lift / rise / sink / forward / back, ≤ 260 ms, off for reduced motion                                  |
+| B10 | Product panel hierarchy                    | 🧪 IMPLEMENTED_TESTED | „Moja cena" folded until asked for in the product sheet; removing is its own row; every control kept                                                  |
+| B11 | Product panel context / translucency       | 🧪 IMPLEMENTED_TESTED | the product sheet is the one translucent dialog tone; the edited line is marked and followed by its `recipe_line_id`                                  |
+| B12 | Visual language consolidation              | 🧪 IMPLEMENTED_TESTED | every new surface uses the existing tokens (graphite pills, 9 px radius, legend boxes, ivory) — no third language                                     |
+| B13 | Tutorial reconciliation — no second system | 🧪 IMPLEMENTED_TESTED | reconciled with the one tutorial (v2.2 §29, #271): B adds none and no hold-to-confirm; it anchors only HOME, so it never auto-starts over B3 on PRO   |
+| B14 | Performance / mobile image loading         | 🧪 IMPLEMENTED_TESTED | the ≈1.7 MB tour PNGs ship as WebP (≈20–130 KB) at 960 / 1672 w, keyed per step, next step prefetched                                                 |
 
-Completion: **A 11/11 accepted (100 %)** · **B 15/15 resolved (100 %)** — 14 implemented +
-tested, 1 not applicable; 0/15 owner-accepted · **total 26/26 resolved (100 %)**.
+Completion: **A 11/11 accepted (100 %)** · **B 15/15 resolved (100 %)** — all 15 implemented +
+tested; 0/15 owner-accepted · **total 26/26 resolved (100 %)**.
 
 Gates on `5f2a62b9` (local): owner-locked guard OK · protected-paths — 2 semantic changes
 (IngredientRow, IngredientLineControls) acknowledged by `Protected-Change:` trailers ·
@@ -61,6 +61,12 @@ vitest does not typecheck, so it had run green). Fixed with a standalone stub ty
 merged with current staging (`846f2886`; conflict-free, no shared file) B's 12 test files
 (7 new + 5 updated) pass 126/126. Merge gate: the PR's CI — contracts, typecheck, lint, full
 suite, build, solver-contracts, direction-rescue.
+
+Staging kept moving while the PR waited (strict up-to-date: nine merges by `a61446aa`); every
+merge was conflict-free and shared no file with B, and CI was green on four of those heads.
+Merging v2.2 SAFE (#271) tripped B13's contract, which had pinned „no tutorial exists" —
+stricter than the owner's rule. It now pins the rule itself: one tutorial, B adds none, and
+that tutorial (anchored only on HOME) never auto-starts on the PRO workbench.
 
 Owner test on staging (the acceptance scenarios): new recipe on a phone opens its settings
 from the top → Krok 1–3 → confirm lifts them into the recipe bar → Przelicz → Zapisz recepturę

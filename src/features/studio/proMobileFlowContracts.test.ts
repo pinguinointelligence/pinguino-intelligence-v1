@@ -5,9 +5,11 @@
  * these pin the wiring and the stylesheet; runtime behaviour is covered by the
  * *.runtime tests and by served QA on a phone.
  */
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { HOME_TUTORIAL_STEPS } from '@/features/tutorial/tutorialSteps';
+import { shouldAutoStart } from '@/features/tutorial/tutorialState';
 
 const SRC = resolve(import.meta.dirname, '..', '..');
 const read = (...parts: string[]) => readFileSync(join(SRC, ...parts), 'utf8');
@@ -120,9 +122,40 @@ describe('B11 — the translucent dialog tone is ONE complete treatment', () => 
   });
 });
 
-describe('B13 — no second tutorial system', () => {
-  it('adds no tutorial engine: guidance is the flow itself', () => {
-    expect(existsSync(join(SRC, 'features', 'tutorial'))).toBe(false);
-    expect(surface).not.toMatch(/Tutorial|Coachmark|hold-to-confirm/);
+describe('B13 — one tutorial, and the phone flow is not a second one', () => {
+  // v2.2 §29 (#271) brought THE tutorial. B reconciles with it instead of adding its own:
+  // the phone flow guides through the product's own next step, never through a tour.
+  const guidedFlow = [
+    surface,
+    read('features', 'studio', 'RecipeContextBar.tsx'),
+    read('features', 'pro-workbench', 'mobileNextStep.ts'),
+    read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx'),
+    read('features', 'pro-workbench', 'WorkbenchIntelligenceHeader.tsx'),
+  ].join('\n');
+  const proWorkbench = [
+    guidedFlow,
+    page,
+    read('features', 'pro-core', 'ProWorkbar.tsx'),
+    read('features', 'pro-workbench', 'RecipeProfilePanel.tsx'),
+    read('features', 'ingredient-builder', 'IngredientRow.tsx'),
+    read('features', 'ingredient-builder', 'IngredientLineControls.tsx'),
+  ].join('\n');
+
+  it('adds no tutorial engine, coach-mark or hold-to-confirm of its own', () => {
+    expect(guidedFlow).not.toMatch(/Tutorial|Coachmark|hold-to-confirm/);
+  });
+
+  it('never has the §29 tutorial start over the PRO workbench, where B3 opens the settings', () => {
+    const anchoredOnPro = HOME_TUTORIAL_STEPS.filter(
+      (step) => !step.anchorOptional && proWorkbench.includes(step.anchor),
+    );
+    expect(anchoredOnPro).toEqual([]);
+    expect(
+      shouldAutoStart({
+        seen: false,
+        anchoredStepCount: anchoredOnPro.length,
+        alreadyRunning: false,
+      }),
+    ).toBe(false);
   });
 });
