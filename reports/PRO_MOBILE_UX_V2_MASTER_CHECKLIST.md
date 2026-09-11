@@ -54,10 +54,13 @@ tested, 1 not applicable; 0/15 owner-accepted · **total 26/26 resolved (100 %)*
 
 Gates on `5f2a62b9` (local): owner-locked guard OK · protected-paths — 2 semantic changes
 (IngredientRow, IngredientLineControls) acknowledged by `Protected-Change:` trailers ·
-owner-locked contracts 22 files / 215 tests ✅ · B's 7 new + 4 updated test files 77/77 ✅ ·
-eslint `--max-warnings 0` on every changed file ✅. Merge gate: the PR's CI on the head merged
-with current staging (`846f2886`; conflict-free, no shared file) — contracts, typecheck, lint,
-full suite, build, solver-contracts, direction-rescue.
+owner-locked contracts 22 files / 215 tests ✅ · eslint `--max-warnings 0` on every changed file ✅.
+The PR's first CI run failed at typecheck: the new `spatialTransition.test.ts` typed its View
+Transitions stub against the DOM lib's required, overloaded `startViewTransition` (5 errors;
+vitest does not typecheck, so it had run green). Fixed with a standalone stub type. On the head
+merged with current staging (`846f2886`; conflict-free, no shared file) B's 12 test files
+(7 new + 5 updated) pass 126/126. Merge gate: the PR's CI — contracts, typecheck, lint, full
+suite, build, solver-contracts, direction-rescue.
 
 Owner test on staging (the acceptance scenarios): new recipe on a phone opens its settings
 from the top → Krok 1–3 → confirm lifts them into the recipe bar → Przelicz → Zapisz recepturę

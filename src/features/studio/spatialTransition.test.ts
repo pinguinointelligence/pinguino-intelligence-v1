@@ -10,16 +10,16 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cockpitMove, runSpatialTransition } from './spatialTransition';
 
-type TransitionDocument = Document & {
-  startViewTransition?: (update: () => void | Promise<void>) => {
-    finished: Promise<unknown>;
-    ready?: Promise<unknown>;
-    updateCallbackDone?: Promise<unknown>;
-  };
+/** jsdom has no View Transitions API: each test installs this stub and removes it. */
+type StartViewTransitionStub = (update: () => void | Promise<void>) => {
+  finished: Promise<unknown>;
+  ready?: Promise<unknown>;
+  updateCallbackDone?: Promise<unknown>;
 };
+const transitionHost = document as unknown as { startViewTransition?: StartViewTransitionStub };
 
 afterEach(() => {
-  delete (document as TransitionDocument).startViewTransition;
+  delete transitionHost.startViewTransition;
   delete document.documentElement.dataset.proSpatial;
 });
 
@@ -63,8 +63,8 @@ describe('runSpatialTransition — the change never depends on the animation', (
   });
 
   it('applies the update directly when there is no movement to show', () => {
-    const start = vi.fn();
-    (document as TransitionDocument).startViewTransition = start;
+    const start = vi.fn<StartViewTransitionStub>();
+    transitionHost.startViewTransition = start;
     const update = vi.fn();
     runSpatialTransition(null, update);
     expect(update).toHaveBeenCalledTimes(1);
@@ -76,16 +76,17 @@ describe('runSpatialTransition — the change never depends on the animation', (
     const finished = new Promise<void>((resolve) => {
       finish = resolve;
     });
-    let callback: (() => void | Promise<void>) | null = null;
-    (document as TransitionDocument).startViewTransition = (update) => {
-      callback = update;
-      return { finished, ready: Promise.resolve(), updateCallbackDone: Promise.resolve() };
-    };
+    const start = vi.fn<StartViewTransitionStub>(() => ({
+      finished,
+      ready: Promise.resolve(),
+      updateCallbackDone: Promise.resolve(),
+    }));
+    transitionHost.startViewTransition = start;
     const update = vi.fn();
     runSpatialTransition('forward', update);
     expect(document.documentElement.dataset.proSpatial).toBe('forward');
     expect(update).not.toHaveBeenCalled();
-    await callback!();
+    await start.mock.calls[0]![0]();
     expect(update).toHaveBeenCalledTimes(1);
     finish();
     await finished;
@@ -94,11 +95,10 @@ describe('runSpatialTransition — the change never depends on the animation', (
   });
 
   it('holds the transition open until the asked-for route has settled', async () => {
-    let callback: (() => void | Promise<void>) | null = null;
-    (document as TransitionDocument).startViewTransition = (update) => {
-      callback = update;
-      return { finished: new Promise(() => undefined) };
-    };
+    const start = vi.fn<StartViewTransitionStub>(() => ({
+      finished: new Promise(() => undefined),
+    }));
+    transitionHost.startViewTransition = start;
     let settle: () => void = () => undefined;
     const settled = vi.fn(
       () =>
@@ -109,7 +109,7 @@ describe('runSpatialTransition — the change never depends on the animation', (
     const update = vi.fn();
     runSpatialTransition('rise', update, settled);
     let done = false;
-    const running = Promise.resolve(callback!()).then(() => {
+    const running = Promise.resolve(start.mock.calls[0]![0]()).then(() => {
       done = true;
     });
     await Promise.resolve();
