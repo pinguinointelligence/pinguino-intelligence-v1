@@ -43,6 +43,7 @@ import { useRecipeStore } from '@/stores/recipeStore';
 import { homeCreatorCopy } from '../homeCreatorCopy';
 import { customerInstructions, homeRecalculationInstructions } from '../homePriorityBootstrap';
 import { homeCustomerNotice } from '../homeCustomerNotice';
+import { homeRecalcRefusal } from '../homeRecalcRefusal';
 
 const interactiveCopy = constraintStudioCopy.interactive;
 
@@ -69,6 +70,7 @@ export function HomeRecalculate({
   const terminal = useConstraintStudioStore((state) => state.recalculationTerminal);
   const blocked = useConstraintStudioStore((state) => state.blocked);
   const applyPending = useConstraintStudioStore((state) => state.applyPending);
+  const postApplyNotice = useConstraintStudioStore((state) => state.postApplyNotice);
   const items = useRecipeStore((state) => state.items);
   const [open, setOpen] = useState(false);
 
@@ -85,18 +87,15 @@ export function HomeRecalculate({
         onInteract: () => onGramsBlocked?.(),
       };
 
-  // Only some PreviewIssue variants carry a ready customer sentence. Narrowing on the
-  // field rather than switching on every code keeps HOME from drifting out of step
-  // when the pipeline gains a new refusal reason.
-  // OWNER SERVED QA 2026-09-02: the pipeline's own sentence is written for the PRO
-  // diagnosis view and can name ProductBehavior, the Mapper or a snapshot. HOME shows
-  // it only when it is customer language; otherwise the calm sentence. The verdict is
-  // untouched — a refusal is still a refusal.
-  const issueMessage = homeCustomerNotice(
-    previewIssue && 'messagePl' in previewIssue && typeof previewIssue.messagePl === 'string'
-      ? previewIssue.messagePl
-      : null,
-  );
+  // OWNER BUGFIX 2026-09-11 (#287) — a refusal always explains itself. Served staging showed
+  // a card with ONLY „Wróć": the solver's refusal (`no_proposal` on a safe recipe whose
+  // Direction target cannot be improved) reached this component intact, but HOME read nothing
+  // except `messagePl`, which that variant does not carry. `homeRecalcRefusal` reads the
+  // canonical message sources through HOME's customer-language filter (OWNER SERVED QA
+  // 2026-09-02: the pipeline's own sentence can name ProductBehavior, the Mapper or a
+  // snapshot) and always adds the next step. The verdict is untouched — a refusal is still a
+  // refusal.
+  const refusal = homeRecalcRefusal({ previewIssue, blocked, terminal });
 
   const close = () => {
     if (useConstraintStudioStore.getState().recalculationTerminal?.state === 'WORKING') {
@@ -149,7 +148,13 @@ export function HomeRecalculate({
     pendingInstructionCommit === null &&
     terminal?.state === 'NO_CHANGE_NEEDED';
   const recoverable = terminal?.state === 'TIMEOUT' || terminal?.state === 'ERROR';
-  const blockedMessage = blocked ? homeCustomerNotice(blocked.messagePl) : null;
+  // A committed Apply whose follow-up refresh did not finish keeps the dialog open. The
+  // recipe DID change, so that is not a refusal: its own sentence is shown, never the
+  // refusal wording.
+  const appliedNotice =
+    postApplyNotice !== null && previewIssue === null && blocked === null
+      ? homeCustomerNotice(postApplyNotice.messagePl)
+      : null;
   const refusalOpen =
     !working &&
     !previewOpen &&
@@ -322,22 +327,52 @@ export function HomeRecalculate({
               </div>
             ) : null}
 
-            {refusalOpen ? (
-              // An honest refusal from the existing pipeline is surfaced, not swallowed.
-              // HOME shows the issue's own Polish sentence where the pipeline provides one
-              // and otherwise stays calm about the DETAIL rather than inventing a reason —
-              // the full Pro diagnosis view is deliberately not reproduced here (§67:
-              // HOME users never see the technical dashboard).
+            {refusalOpen && appliedNotice !== null ? (
+              <div className="space-y-3" data-testid="home-recalc-applied">
+                <p className="text-[14px] leading-relaxed" data-testid="home-recalc-applied-notice">
+                  {appliedNotice}
+                </p>
+                <button
+                  type="button"
+                  className={secondaryButton}
+                  style={{ borderColor: 'var(--g-line)', color: 'var(--g-ink)' }}
+                  data-testid="home-recalc-back"
+                  onClick={close}
+                >
+                  {interactiveCopy.back}
+                </button>
+              </div>
+            ) : null}
+
+            {refusalOpen && appliedNotice === null ? (
+              // An honest refusal from the existing pipeline is surfaced, not swallowed: the
+              // reason, the rule it names when HOME can say it, and the next step — never a
+              // card with only „Wróć". The full Pro diagnosis view is deliberately not
+              // reproduced here (§67: HOME users never see the technical dashboard).
               <div className="space-y-3" data-testid="home-recalc-refusal">
-                {blockedMessage || issueMessage ? (
+                <p
+                  className="text-[14px] leading-relaxed"
+                  data-testid="home-recalc-issue"
+                  style={{ color: 'var(--g-attention-ink)' }}
+                >
+                  {refusal.reason}
+                </p>
+                {refusal.detail !== null ? (
                   <p
-                    className="text-[14px] leading-relaxed"
-                    data-testid="home-recalc-issue"
-                    style={{ color: 'var(--g-attention-ink)' }}
+                    className="text-[13px] leading-relaxed"
+                    data-testid="home-recalc-issue-detail"
+                    style={{ color: 'var(--g-text-secondary)' }}
                   >
-                    {blockedMessage ?? issueMessage}
+                    {refusal.detail}
                   </p>
                 ) : null}
+                <p
+                  className="text-[13px] leading-relaxed"
+                  data-testid="home-recalc-next"
+                  style={{ color: 'var(--g-text-secondary)' }}
+                >
+                  {refusal.next}
+                </p>
                 <button
                   type="button"
                   className={secondaryButton}
