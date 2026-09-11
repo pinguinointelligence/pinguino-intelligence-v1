@@ -53,6 +53,7 @@ import {
   barcodeLookupCandidates,
   validateBarcode,
 } from '../../../src/features/product-scanner/barcode.ts';
+import { AUTHORITY_PAGE_SIZE, readAuthorityPage } from '../_shared/authorityPagination.ts';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -206,16 +207,18 @@ async function loadMapperAuthorityRows(
   if (!mapperAuthorityRowsCache) {
     mapperAuthorityRowsCache = (async () => {
       const rows: IntimportMapperAuthorityRow[] = [];
-      for (let offset = 0; ; offset += 1000) {
-        const { data, error } = await service
-          .from('mapper_basement')
-          .select(MAPPER_AUTHORITY_COLUMNS)
-          .order('ingredient_id', { ascending: true })
-          .range(offset, offset + 999);
-        if (error) throw new Error('intimport_mapper_authority_read_failed');
-        const page = (data ?? []) as unknown as IntimportMapperAuthorityRow[];
+      for (let offset = 0; ; offset += AUTHORITY_PAGE_SIZE) {
+        const page = await readAuthorityPage<IntimportMapperAuthorityRow>(
+          () =>
+            service
+              .from('mapper_basement')
+              .select(MAPPER_AUTHORITY_COLUMNS)
+              .order('ingredient_id', { ascending: true })
+              .range(offset, offset + AUTHORITY_PAGE_SIZE - 1),
+          'intimport_mapper_authority_read_failed',
+        );
         rows.push(...page);
-        if (page.length < 1000) break;
+        if (page.length < AUTHORITY_PAGE_SIZE) break;
       }
       return rows;
     })().catch((error: unknown) => {
@@ -232,17 +235,19 @@ async function loadMapperBehaviorAuthorityRows(
   if (!mapperBehaviorAuthorityRowsCache) {
     mapperBehaviorAuthorityRowsCache = (async () => {
       const rows: MapperProductBehaviorAuthorityRow[] = [];
-      for (let offset = 0; ; offset += 1000) {
-        const { data, error } = await service
-          .from('mapper_product_behavior_bindings')
-          .select(MAPPER_BEHAVIOR_AUTHORITY_COLUMNS)
-          .eq('is_current', true)
-          .order('mapper_ingredient_id', { ascending: true })
-          .range(offset, offset + 999);
-        if (error) throw new Error('product_behavior_mapper_read_failed');
-        const page = (data ?? []) as unknown as MapperProductBehaviorAuthorityRow[];
+      for (let offset = 0; ; offset += AUTHORITY_PAGE_SIZE) {
+        const page = await readAuthorityPage<MapperProductBehaviorAuthorityRow>(
+          () =>
+            service
+              .from('mapper_product_behavior_bindings')
+              .select(MAPPER_BEHAVIOR_AUTHORITY_COLUMNS)
+              .eq('is_current', true)
+              .order('mapper_ingredient_id', { ascending: true })
+              .range(offset, offset + AUTHORITY_PAGE_SIZE - 1),
+          'product_behavior_mapper_read_failed',
+        );
         rows.push(...page);
-        if (page.length < 1000) break;
+        if (page.length < AUTHORITY_PAGE_SIZE) break;
       }
       return rows;
     })().catch((error: unknown) => {
