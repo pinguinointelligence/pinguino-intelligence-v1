@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/Button';
+import { GellattiNotice } from '@/components/ui/GellattiNotice';
 import { SectionLabel } from '@/components/shared/SectionLabel';
 import { AdminPartnerApplicationsPanel } from './AdminPartnerApplicationsPanel';
 import { customerErrorMessage } from '@/copy/customerError';
@@ -20,6 +21,11 @@ import {
   setAdminCommissionRule,
 } from '@/services/adminControl';
 import { filterAdminPartners, type AdminPartnerStatusFilter } from './adminPartnerFilter';
+import {
+  adminPartnerActionCopy,
+  reasonProblem,
+  type AdminPartnerPendingAction,
+} from './adminPartnerActionConfirm';
 
 const field = 'pro-focus-ring min-h-11 w-full border border-[var(--g-line)] bg-white px-3 text-sm';
 
@@ -35,13 +41,12 @@ export function AdminPartnersSection() {
     queryFn: getAdminCommissionRules,
   });
   const [invite, setInvite] = useState({ email: '', displayName: '', slug: '' });
-  const [existing, setExisting] = useState({
-    userId: '',
-    displayName: '',
-    slug: '',
-    reason: 'Admin activation',
-  });
-  const [reason, setReason] = useState('Admin Partner operation');
+  const [existing, setExisting] = useState({ userId: '', displayName: '', slug: '' });
+  // I-ADM-05: nothing is prefilled. A sensitive action opens a confirmation that
+  // asks for the reason, and that reason is what the audit log records.
+  const [reason, setReason] = useState('');
+  const [reasonError, setReasonError] = useState<string | null>(null);
+  const [pending, setPending] = useState<AdminPartnerPendingAction | null>(null);
   const [note, setNote] = useState('');
   // I-ADM-02: find a partner — by e-mail, name, slug, code or id — and narrow by status.
   const [search, setSearch] = useState('');
@@ -68,7 +73,10 @@ export function AdminPartnersSection() {
     mutationFn: () => invitePartnerByEmail(invite),
     onSuccess: refresh,
   });
-  const activate = useMutation({ mutationFn: () => activatePartner(existing), onSuccess: refresh });
+  const activate = useMutation({
+    mutationFn: () => activatePartner({ ...existing, reason }),
+    onSuccess: refresh,
+  });
   const operation = useMutation({
     mutationFn: async (input: {
       kind:
@@ -130,6 +138,24 @@ export function AdminPartnersSection() {
     mutationFn: () => setAdminCommissionRule({ ...commission, reason }),
     onSuccess: refresh,
   });
+  const ask = (action: AdminPartnerPendingAction) => {
+    setReason('');
+    setReasonError(null);
+    setPending(action);
+  };
+  const pendingCopy = pending ? adminPartnerActionCopy(pending) : null;
+  const confirmPending = () => {
+    if (!pending || !pendingCopy) return;
+    const problem = pendingCopy.needsReason ? reasonProblem(reason) : null;
+    if (problem) {
+      setReasonError(problem);
+      return;
+    }
+    if (pending.kind === 'commission') commissionMutation.mutate();
+    else if (pending.kind === 'activate') activate.mutate();
+    else operation.mutate(pending);
+    setPending(null);
+  };
   return (
     <>
       <header className="border-b border-[var(--g-line)] pb-6">
@@ -185,7 +211,7 @@ export function AdminPartnersSection() {
         <form
           onSubmit={(event) => {
             event.preventDefault();
-            activate.mutate();
+            ask({ kind: 'activate', partner: existing.displayName || existing.userId });
           }}
           className="border border-[var(--g-line)] p-5"
         >
@@ -239,7 +265,7 @@ export function AdminPartnersSection() {
           className="mt-4 grid gap-2 sm:grid-cols-5"
           onSubmit={(event) => {
             event.preventDefault();
-            commissionMutation.mutate();
+            ask({ kind: 'commission', ...commission });
           }}
         >
           <select
@@ -318,14 +344,6 @@ export function AdminPartnersSection() {
           </div>
         ))}
       </div>
-      <label className="mt-8 block max-w-xl text-xs font-semibold">
-        Powód / notatka operacyjna
-        <input
-          className={`${field} mt-2`}
-          value={reason}
-          onChange={(event) => setReason(event.currentTarget.value)}
-        />
-      </label>
       <div className="mt-8 flex flex-wrap items-end gap-3">
         <label className="block max-w-sm flex-1 text-xs font-semibold">
           Szukaj partnera
@@ -358,6 +376,7 @@ export function AdminPartnersSection() {
       <div className="mt-6 space-y-5">
         {visiblePartners.map((partner) => {
           const profile = (partner.profile ?? {}) as Record<string, unknown>;
+          const name = String(profile.display_name ?? partner.email);
           const codes = Array.isArray(partner.codes)
             ? (partner.codes as Array<Record<string, unknown>>)
             : [];
@@ -393,10 +412,12 @@ export function AdminPartnersSection() {
                           type="button"
                           className="ml-2 underline"
                           onClick={() =>
-                            operation.mutate({
+                            ask({
                               kind: code.status === 'blocked' ? 'code-enable' : 'code-disable',
                               partnerId: String(partner.id),
+                              partner: name,
                               codeId: String(code.id),
+                              item: String(code.code),
                             })
                           }
                         >
@@ -416,10 +437,12 @@ export function AdminPartnersSection() {
                           type="button"
                           className="ml-2 underline"
                           onClick={() =>
-                            operation.mutate({
+                            ask({
                               kind: link.status === 'BLOCKED' ? 'link-enable' : 'link-disable',
                               partnerId: String(partner.id),
+                              partner: name,
                               linkId: String(link.id),
+                              item: String(link.link_slug),
                             })
                           }
                         >
@@ -433,7 +456,7 @@ export function AdminPartnersSection() {
                   <Button
                     variant="ghost"
                     onClick={() =>
-                      operation.mutate({ kind: 'active', partnerId: String(partner.id) })
+                      ask({ kind: 'active', partnerId: String(partner.id), partner: name })
                     }
                   >
                     Przywróć
@@ -441,7 +464,7 @@ export function AdminPartnersSection() {
                   <Button
                     variant="ghost"
                     onClick={() =>
-                      operation.mutate({ kind: 'suspend', partnerId: String(partner.id) })
+                      ask({ kind: 'suspend', partnerId: String(partner.id), partner: name })
                     }
                   >
                     Zawieś
@@ -449,7 +472,7 @@ export function AdminPartnersSection() {
                   {!partner.connectAccountId ? (
                     <Button
                       onClick={() =>
-                        operation.mutate({ kind: 'connect', partnerId: String(partner.id) })
+                        ask({ kind: 'connect', partnerId: String(partner.id), partner: name })
                       }
                     >
                       Przygotuj konto Connect
@@ -458,7 +481,7 @@ export function AdminPartnersSection() {
                   <Button
                     variant="ghost"
                     onClick={() =>
-                      operation.mutate({ kind: 'profile-approve', partnerId: String(partner.id) })
+                      ask({ kind: 'profile-approve', partnerId: String(partner.id), partner: name })
                     }
                   >
                     Zatwierdź profil
@@ -466,7 +489,7 @@ export function AdminPartnersSection() {
                   <Button
                     variant="ghost"
                     onClick={() =>
-                      operation.mutate({ kind: 'profile-disable', partnerId: String(partner.id) })
+                      ask({ kind: 'profile-disable', partnerId: String(partner.id), partner: name })
                     }
                   >
                     Wyłącz profil
@@ -475,7 +498,7 @@ export function AdminPartnersSection() {
                     <Button
                       variant="ghost"
                       onClick={() =>
-                        operation.mutate({ kind: 'logo-remove', partnerId: String(partner.id) })
+                        ask({ kind: 'logo-remove', partnerId: String(partner.id), partner: name })
                       }
                     >
                       Usuń logo
@@ -508,6 +531,42 @@ export function AdminPartnersSection() {
         <p className="mt-4 border border-red-300 bg-red-50 p-3 text-xs text-red-800">
           {customerErrorMessage(operation.error, 'admin')}
         </p>
+      ) : null}
+      {pendingCopy ? (
+        <GellattiNotice
+          testId="admin-partner-action-confirm"
+          tone={pendingCopy.attention ? 'attention' : 'informational'}
+          align="start"
+          title={pendingCopy.title}
+          body={pendingCopy.body}
+          primaryLabel={pendingCopy.confirmLabel}
+          onPrimary={confirmPending}
+          secondaryLabel="Anuluj"
+          onSecondary={() => setPending(null)}
+          // Escape and the backdrop cancel. Left out, the notice would treat them
+          // as the primary action and confirm.
+          onClose={() => setPending(null)}
+        >
+          {pendingCopy.needsReason ? (
+            <label className="block text-xs font-semibold">
+              Powód — trafi do dziennika audytu
+              <input
+                className={`${field} mt-2`}
+                value={reason}
+                onChange={(event) => {
+                  setReason(event.currentTarget.value);
+                  setReasonError(null);
+                }}
+                data-testid="admin-partner-action-reason"
+              />
+              {reasonError ? (
+                <span role="alert" className="mt-2 block text-xs text-red-700">
+                  {reasonError}
+                </span>
+              ) : null}
+            </label>
+          ) : null}
+        </GellattiNotice>
       ) : null}
     </>
   );
