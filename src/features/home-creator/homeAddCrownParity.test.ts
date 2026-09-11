@@ -28,8 +28,11 @@ const addTopping = page.slice(
 );
 
 describe('Dodaj składnik offers the crown', () => {
+  // Owner regression brief 2026-09-11: HOME's Crown rules are a HOME layer. Both
+  // HOME add paths name the HOME surface, so nothing HOME decides can change the
+  // PRO default (0 g + Crown -> 1 g for every profile).
   it('asks the canonical Main authority on the picker path', () => {
-    expect(addLine).toContain('setMainIngredient(added.lineId)');
+    expect(addLine).toContain("setMainIngredient(added.lineId, 'home')");
   });
 
   it('never crowns a line it did not create', () => {
@@ -37,7 +40,7 @@ describe('Dodaj składnik offers the crown', () => {
     // onto a line the customer did not just add.
     expect(addLine).toContain("if (added.status === 'duplicate') return;");
     expect(addLine.indexOf("if (added.status === 'duplicate') return;")).toBeLessThan(
-      addLine.indexOf('setMainIngredient(added.lineId)'),
+      addLine.indexOf("setMainIngredient(added.lineId, 'home')"),
     );
   });
 
@@ -48,7 +51,7 @@ describe('Dodaj składnik offers the crown', () => {
   });
 
   it('uses the same authority the intent path uses — one crown rule, not two', () => {
-    expect(intent).toContain('setMainIngredient(added.lineId)');
+    expect(intent).toContain("setMainIngredient(added.lineId, 'home')");
   });
 });
 

@@ -330,7 +330,8 @@ export function HomeCreatorPage() {
       // path did — so the same product arrived crowned or bare depending only on how
       // it was added. Ask the SAME canonical authority here; it refuses on its own for
       // a product Main cannot carry, so this offers the crown rather than forcing it.
-      useRecipeStore.getState().setMainIngredient(added.lineId);
+      // HOME surface: HOME's own Crown rules apply here and never reach PRO.
+      useRecipeStore.getState().setMainIngredient(added.lineId, 'home');
     },
     [],
   );
