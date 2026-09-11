@@ -85,7 +85,7 @@ describe('the amount editor is the shared PRO control, summoned not resident', (
     // The defect the owner reported: editing changed the row's own layout.
     expect(defaultRow).not.toContain('DirectNumberControl');
     expect(defaultRow).not.toContain('editing');
-    expect(dialog).toContain("className=\"fixed inset-0 z-[95] grid place-items-center");
+    expect(dialog).toContain('className="fixed inset-0 z-[95] grid place-items-center');
   });
 
   it('holds the value as a draft, so Anuluj is a genuine no-op', () => {
@@ -174,15 +174,16 @@ describe('the overflow menu stays a HOME menu', () => {
     row.indexOf('export function HomeRecipeSection'),
   );
 
-  it('offers exactly the three owner actions', () => {
+  it('offers the compact owner actions plus explicit manual replacement', () => {
     expect(menu).toContain('homeCreatorCopy.recipe.changeAmount');
     expect(menu).toContain('homeCreatorCopy.recipe.unlockLabel');
     expect(menu).toContain('homeCreatorCopy.recipe.lockLabel');
+    expect(menu).toContain('homeCreatorCopy.recipe.findSubstitute');
     expect(menu).toContain('homeCreatorCopy.recipe.removeIngredient');
   });
 
   it('carries no PRO product-data action', () => {
-    for (const gone of ['findSubstitute', 'dontHaveThis', 'Dane składnika']) {
+    for (const gone of ['dontHaveThis', 'Dane składnika']) {
       expect(menu, gone).not.toContain(gone);
     }
   });

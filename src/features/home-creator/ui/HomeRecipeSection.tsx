@@ -20,15 +20,21 @@
  * HOME performs no arithmetic, and owns no Main rule: Crown reads the canonical
  * capability resolver and mutates through the canonical `setLockType`.
  */
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { cn } from '@/lib/cn';
 import type { EngineIngredient, RecipeItem } from '@/engine';
 import type {
   RecipeToppingIngredient,
   RecipeToppingItem,
 } from '@/features/recipe-composition/recipeCompositionPersistence';
-import { ProductPickerPopover } from '@/features/ingredient-builder/ProductPickerPopover';
+import { isCatalogLabelToppingIngredient } from '@/features/recipe-composition/labelTopping';
+import {
+  ProductPickerPopover,
+  type ProductPickerReplaceInvocation,
+} from '@/features/ingredient-builder/ProductPickerPopover';
 import type { IngredientLibrary } from '@/features/ingredient-builder/ingredientLibrary';
+import { canonicalReplaceContext } from '@/features/ingredient-builder/canonicalProductDiscovery';
+import { createReplacementSearchLineContext } from '@/features/ingredient-builder/replacementSearchContext';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence/contracts';
 import type { RecipeMatchScorePresentation } from '@/features/recipe-score';
 import { HomeChangeAmountDialog } from './HomeChangeAmountDialog';
@@ -140,22 +146,22 @@ function CrownControl({ lineId, isMain, name }: { lineId: string; isMain: boolea
 }
 
 /**
- * OWNER FROZEN 2026-09-02 — exactly three actions. `Znajdź zamiennik` was wired to a
- * no-op and is gone; `Nie mam tego składnika` moved out of HOME's menu (the store
- * function is untouched and PRO keeps it). No product data, no diagnostics: HOME is
- * not PRO.
+ * HOME keeps its compact row menu. Replacement is explicit and opens the same
+ * compatibility-first picker as PRO; it never silently swaps the current line.
  */
 function RowMenu({
   lineId,
   locked,
   onChangeAmount,
   onToggleLock,
+  onReplace,
   onRemove,
 }: {
   lineId: string;
   locked: boolean;
   onChangeAmount?: () => void;
   onToggleLock?: () => void;
+  onReplace: () => void;
   onRemove: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -208,6 +214,15 @@ function RowMenu({
               {locked ? homeCreatorCopy.recipe.unlockLabel : homeCreatorCopy.recipe.lockLabel}
             </button>
           ) : null}
+          <button
+            type="button"
+            onClick={act(onReplace)}
+            data-testid={`home-row-replace-${lineId}`}
+            className="block w-full px-4 py-3 text-left text-[14px] hover:bg-black/[0.04]"
+            style={{ color: 'var(--g-ink)' }}
+          >
+            {homeCreatorCopy.recipe.findSubstitute}
+          </button>
           <button
             type="button"
             onClick={act(onRemove)}
@@ -285,6 +300,12 @@ export function HomeRecipeSection({
   } = useHomeBehaviorContext();
   // Only one amount is ever being changed at a time; the rest of the recipe stays calm.
   const [editingLineId, setEditingLineId] = useState<string | null>(null);
+  const [replaceRequest, setReplaceRequest] = useState<{
+    scope: 'BASE_FORMULATION' | 'POST_PROCESS_ADDON';
+    lineId: string;
+    invocation: ProductPickerReplaceInvocation;
+  } | null>(null);
+  const replaceRequestKey = useRef(0);
 
   /**
    * Which row „Zmień ilość" opened, resolved to the authority that owns its grams.
@@ -331,6 +352,74 @@ export function HomeRecipeSection({
   const mainSelectable = (lineId: string): boolean =>
     resolveMainCapability({ snapshot: behaviorSnapshots[lineId], snapshotRequired: true })
       .selectable;
+
+  const requestBaseReplacement = (item: RecipeItem) => {
+    const filters = canonicalReplaceContext({
+      displayName: item.ingredient.name,
+      category: item.ingredient.category,
+      productForm: item.ingredient.source_subcategory,
+    });
+    replaceRequestKey.current += 1;
+    setReplaceRequest({
+      scope: 'BASE_FORMULATION',
+      lineId: item.id,
+      invocation: {
+        key: replaceRequestKey.current,
+        context: filters,
+        currentLine: createReplacementSearchLineContext({
+          usageMode: 'HOME_REPLACE',
+          lineId: item.id,
+          ingredient: item.ingredient,
+          snapshot: behaviorSnapshots[item.id],
+          recipeProfile: behaviorProfile,
+          currentRole: crownLineIds.includes(item.id) ? 'MAIN' : 'STANDARD',
+          processScope: 'BASE_FORMULATION',
+          temperatureC: behaviorTemperatureC,
+          formulationMode: behaviorMode,
+          userFilters: filters,
+          plannedGrams: item.planned_grams,
+          actualGrams: item.actual_grams,
+          lockType: item.lock_type,
+        }),
+      },
+    });
+  };
+
+  const requestToppingReplacement = (topping: RecipeToppingItem) => {
+    const filters = canonicalReplaceContext(
+      isCatalogLabelToppingIngredient(topping.ingredient)
+        ? { displayName: topping.ingredient.name, category: 'other', productForm: 'topping' }
+        : {
+            displayName: topping.ingredient.name,
+            category: topping.ingredient.category,
+            productForm: topping.ingredient.source_subcategory,
+          },
+    );
+    replaceRequestKey.current += 1;
+    setReplaceRequest({
+      scope: 'POST_PROCESS_ADDON',
+      lineId: topping.id,
+      invocation: {
+        key: replaceRequestKey.current,
+        context: filters,
+        currentLine: createReplacementSearchLineContext({
+          usageMode: 'HOME_REPLACE',
+          lineId: topping.id,
+          ingredient: topping.ingredient,
+          snapshot: behaviorSnapshots[topping.id],
+          recipeProfile: behaviorProfile,
+          currentRole: 'TOPPING',
+          processScope: 'POST_PROCESS_ADDON',
+          temperatureC: behaviorTemperatureC,
+          formulationMode: behaviorMode,
+          userFilters: filters,
+          plannedGrams: topping.planned_grams,
+          actualGrams: topping.actual_grams,
+          lockType: null,
+        }),
+      },
+    });
+  };
 
   return (
     <HomeSection
@@ -409,6 +498,7 @@ export function HomeRecipeSection({
                   .getState()
                   .setLockType(item.id, item.lock_type === 'grams' ? 'unlocked' : 'grams')
               }
+              onReplace={() => requestBaseReplacement(item)}
               onRemove={() => onRemoveItem(item.id)}
             />
           </li>
@@ -440,6 +530,7 @@ export function HomeRecipeSection({
               lineId={topping.id}
               locked={false}
               onChangeAmount={() => setEditingLineId(topping.id)}
+              onReplace={() => requestToppingReplacement(topping)}
               onRemove={() => onRemoveItem(topping.id)}
             />
           </li>
@@ -497,7 +588,20 @@ export function HomeRecipeSection({
             }}
             sanitizeNotice={homeCustomerNotice}
             triggerLabel={homeCreatorCopy.recipe.addIngredient}
-            onAdd={(ingredient, behavior) => onAddIngredient(ingredient, behavior)}
+            replaceInvocation={
+              replaceRequest?.scope === 'BASE_FORMULATION' ? replaceRequest.invocation : null
+            }
+            onClose={() => setReplaceRequest(null)}
+            onAdd={(ingredient, behavior) => {
+              if (replaceRequest?.scope !== 'BASE_FORMULATION') {
+                onAddIngredient(ingredient, behavior);
+                return;
+              }
+              const replaced = useRecipeStore
+                .getState()
+                .replaceIngredient(replaceRequest.lineId, ingredient, behavior);
+              return replaced ? { focusLineId: replaceRequest.lineId } : undefined;
+            }}
           />
         </span>
         {/* Toppings get the analogous affordance wherever toppings are offered. HOME has
@@ -517,7 +621,20 @@ export function HomeRecipeSection({
             }}
             sanitizeNotice={homeCustomerNotice}
             triggerLabel={homeCreatorCopy.recipe.addTopping}
-            onAdd={(ingredient, behavior) => onAddTopping(ingredient, behavior)}
+            replaceInvocation={
+              replaceRequest?.scope === 'POST_PROCESS_ADDON' ? replaceRequest.invocation : null
+            }
+            onClose={() => setReplaceRequest(null)}
+            onAdd={(ingredient, behavior) => {
+              if (replaceRequest?.scope !== 'POST_PROCESS_ADDON') {
+                onAddTopping(ingredient, behavior);
+                return;
+              }
+              useRecipeStore
+                .getState()
+                .replaceToppingIngredient(replaceRequest.lineId, ingredient, behavior);
+              return { focusLineId: replaceRequest.lineId };
+            }}
           />
         </span>
       </div>

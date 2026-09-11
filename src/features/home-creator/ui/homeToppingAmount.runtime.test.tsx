@@ -61,6 +61,15 @@ beforeEach(() => {
   host = document.createElement('div');
   document.body.append(host);
   root = createRoot(host);
+  Element.prototype.scrollIntoView = () => {};
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    value: () => ({
+      matches: false,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }),
+  });
 });
 
 afterEach(async () => {
@@ -181,5 +190,42 @@ describe('a customer edits a topping amount', () => {
     expect(topping().planned_grams).toBe(before);
     expect(lineGrams()).toEqual(baseBefore);
     expect(host.querySelector('[data-testid="home-change-amount"]')).toBeNull();
+  });
+
+  it('HOME-REPLACE-01 opens manual compatibility-first Replace for Base and Topping rows', async () => {
+    await renderSection();
+    const baseId = useRecipeStore.getState().items[0]!.id;
+    const toppingId = topping().id;
+
+    const menus = host.querySelectorAll<HTMLButtonElement>('[data-testid="home-row-menu"]');
+    await act(async () => menus[0]!.click());
+    const baseReplace = host.querySelector<HTMLButtonElement>(
+      `[data-testid="home-row-replace-${baseId}"]`,
+    );
+    expect(baseReplace?.textContent).toContain('Zamień produkt');
+    await act(async () => baseReplace?.click());
+    expect(
+      document.querySelector('[data-testid="product-picker-no-compatible-replacements"]')
+        ?.textContent,
+    ).toContain('Brak zgodnych zamienników');
+
+    await act(async () =>
+      document
+        .querySelector<HTMLButtonElement>('[aria-label="Zamknij wyszukiwarkę produktów"]')
+        ?.click(),
+    );
+    const refreshedMenus = host.querySelectorAll<HTMLButtonElement>(
+      '[data-testid="home-row-menu"]',
+    );
+    await act(async () => refreshedMenus[refreshedMenus.length - 1]!.click());
+    const toppingReplace = host.querySelector<HTMLButtonElement>(
+      `[data-testid="home-row-replace-${toppingId}"]`,
+    );
+    expect(toppingReplace?.textContent).toContain('Zamień produkt');
+    await act(async () => toppingReplace?.click());
+    expect(
+      document.querySelector('[data-testid="product-picker-no-compatible-replacements"]')
+        ?.textContent,
+    ).toContain('Brak zgodnych zamienników');
   });
 });

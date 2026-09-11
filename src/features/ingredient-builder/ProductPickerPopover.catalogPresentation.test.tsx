@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CatalogProductSearchHit } from '@/features/global-catalog/contracts';
 import type { EngineIngredient } from '@/engine';
+import type { ProductBehaviorContext } from '@/features/product-intelligence';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT =
   true;
@@ -21,10 +22,21 @@ const mocks = vi.hoisted(() => ({
   hasMore: true,
   searchIsSettled: true,
   isSettled: true,
+  lastPickerInput: null as {
+    query: string;
+    context: 'BASE' | 'TOPPING';
+    productProfile?: string | null;
+  } | null,
 }));
 
 vi.mock('@/features/global-catalog/useGlobalCatalogPicker', () => ({
-  useGlobalCatalogPicker: (input: { query: string; favoritesOnly: boolean }) => {
+  useGlobalCatalogPicker: (input: {
+    query: string;
+    favoritesOnly: boolean;
+    context: 'BASE' | 'TOPPING';
+    productProfile?: string | null;
+  }) => {
+    mocks.lastPickerInput = input;
     const query = input.query.trim().toLocaleLowerCase('pl');
     const hits = mocks.hits.filter(
       (hit) =>
@@ -95,6 +107,7 @@ vi.mock('@/data/ingredients/ingredientMapper', () => ({
 }));
 
 import { ProductPickerPopover, type ProductPickerReplaceInvocation } from './ProductPickerPopover';
+import type { ProductDiscoveryReplaceContext } from './canonicalProductDiscovery';
 import { serverSearchLibrary } from './ingredientLibrary';
 
 const catalogHit = (overrides: Partial<CatalogProductSearchHit> = {}): CatalogProductSearchHit => ({
@@ -127,6 +140,44 @@ const catalogHit = (overrides: Partial<CatalogProductSearchHit> = {}): CatalogPr
   verificationMethod: 'mapper_verified',
   publicData: {},
   ...overrides,
+});
+
+const commercialHit = (
+  overrides: Partial<CatalogProductSearchHit> & { id: string },
+): CatalogProductSearchHit =>
+  catalogHit({
+    entityKind: 'commercial_product',
+    productCode: `PR-${overrides.id}`,
+    currentVersionId: `version-${overrides.id}`,
+    status: 'verified',
+    verificationMethod: 'human',
+    ...overrides,
+  });
+
+const replacementLine = (userFilters: ProductDiscoveryReplaceContext) => ({
+  usageMode: 'PRO_REPLACE' as const,
+  lineId: 'current-line',
+  currentIdentity: {
+    canonicalIngredientId: 'PI-ING-CURRENT',
+    mapperIngredientId: 'PI-ING-CURRENT',
+    productId: null,
+    productVersionId: null,
+    privateProductId: null,
+  },
+  searchConceptSeed: 'Current product',
+  familyId: null,
+  subfamilyId: null,
+  formId: null,
+  gradeOrSubtype: null,
+  recipeProfile: 'sorbet' as const,
+  currentRole: 'STANDARD' as const,
+  processScope: 'BASE_FORMULATION' as const,
+  temperatureC: -12,
+  formulationMode: 'optimal' as const,
+  marketCountry: 'ES',
+  userFilters,
+  moduleEligibility: {},
+  recipeLine: { plannedGrams: 125, actualGrams: null, lockType: 'grams' as const },
 });
 
 const engineIngredient: EngineIngredient = {
@@ -216,6 +267,7 @@ describe('ProductPickerPopover catalog presentation', () => {
     mocks.hasMore = true;
     mocks.searchIsSettled = true;
     mocks.isSettled = true;
+    mocks.lastPickerInput = null;
     Object.defineProperty(window, 'matchMedia', {
       configurable: true,
       value: () => ({
@@ -237,6 +289,7 @@ describe('ProductPickerPopover catalog presentation', () => {
     onAdd = vi.fn(),
     intent: 'ADD' | 'REPLACE' = 'ADD',
     replaceInvocation?: ProductPickerReplaceInvocation,
+    behaviorContext?: Omit<ProductBehaviorContext, 'processScope' | 'requestedRole' | 'module'>,
   ) => {
     const tree = (
       <MemoryRouter>
@@ -245,6 +298,7 @@ describe('ProductPickerPopover catalog presentation', () => {
           scope="BASE_FORMULATION"
           intent={intent}
           replaceInvocation={replaceInvocation}
+          behaviorContext={behaviorContext}
           onAdd={onAdd}
         />
       </MemoryRouter>
@@ -259,7 +313,10 @@ describe('ProductPickerPopover catalog presentation', () => {
     return onAdd;
   };
 
-  const rerenderOpenPicker = async (onAdd = vi.fn()) => {
+  const rerenderOpenPicker = async (
+    onAdd = vi.fn(),
+    behaviorContext?: Omit<ProductBehaviorContext, 'processScope' | 'requestedRole' | 'module'>,
+  ) => {
     await act(async () => {
       root.render(
         <MemoryRouter>
@@ -267,6 +324,7 @@ describe('ProductPickerPopover catalog presentation', () => {
             library={serverSearchLibrary()}
             scope="BASE_FORMULATION"
             onAdd={onAdd}
+            behaviorContext={behaviorContext}
           />
         </MemoryRouter>,
       );
@@ -392,6 +450,271 @@ describe('ProductPickerPopover catalog presentation', () => {
     ).toBeNull();
   });
 
+  it('PRO-BANANA-01 keeps matching recent bananas above remaining central rank without auto-selection', async () => {
+    mocks.hits = [
+      commercialHit({
+        id: 'banana-fresh',
+        mappedIngredientId: 'PI-BANANA-FRESH',
+        displayName: 'Banana Fresh Fruit',
+        category: 'fruit',
+        productForm: 'fresh_fruit',
+        recentlyUsedAt: '2026-09-05T00:00:00.000Z',
+      }),
+      commercialHit({
+        id: 'banana-puree',
+        mappedIngredientId: 'PI-BANANA-PUREE',
+        displayName: 'Banana Puree',
+        category: 'fruit',
+        productForm: 'puree',
+        recentlyUsedAt: '2026-09-06T00:00:00.000Z',
+      }),
+      commercialHit({
+        id: 'banana-powder',
+        mappedIngredientId: 'PI-BANANA-POWDER',
+        displayName: 'Banana Powder',
+        category: 'other',
+        productForm: 'powder',
+      }),
+      commercialHit({
+        id: 'banana-paste',
+        mappedIngredientId: 'PI-BANANA-PASTE',
+        displayName: 'Banana Paste Compound',
+        category: 'paste',
+        productForm: 'paste',
+      }),
+      commercialHit({
+        id: 'recent-milk',
+        mappedIngredientId: 'PI-MILK',
+        displayName: 'Milk 3.5%',
+        category: 'dairy',
+        productForm: 'milk',
+        recentlyUsedAt: '2026-09-07T00:00:00.000Z',
+      }),
+    ];
+    const onAdd = await renderPicker();
+    await act(async () =>
+      document.querySelector<HTMLButtonElement>('[data-product-filter="all"]')?.click(),
+    );
+    const search = document.querySelector<HTMLInputElement>('input[role="combobox"]');
+    await act(async () => {
+      if (!search) return;
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+      setter?.call(search, 'banan');
+      search.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+
+    const recent = document.querySelector('[data-picker-section="recent"]');
+    const remaining = document.querySelector('[data-picker-section="remaining"]');
+    expect(recent?.textContent).toContain('Banana Puree');
+    expect(recent?.textContent).toContain('Banana Fresh Fruit');
+    expect(recent?.textContent).not.toContain('Milk 3.5%');
+    expect(remaining?.textContent).toContain('Banana Powder');
+    expect(remaining?.textContent).toContain('Banana Paste Compound');
+    expect(document.body.textContent).not.toContain('Milk 3.5%');
+    expect(onAdd).not.toHaveBeenCalled();
+  });
+
+  it('PROFILE-01 sends the same banana query with the active Sorbet or Gelato context', async () => {
+    const onAdd = vi.fn();
+    const sorbetContext = {
+      accountId: 'account-1',
+      productProfile: 'sorbet' as const,
+      temperatureC: -12,
+      mode: 'optimal' as const,
+    };
+    await renderPicker(onAdd, 'ADD', undefined, sorbetContext);
+    const search = document.querySelector<HTMLInputElement>('input[role="combobox"]');
+    await act(async () => {
+      if (!search) return;
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+      setter?.call(search, 'banan');
+      search.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    expect(mocks.lastPickerInput).toMatchObject({
+      query: 'banan',
+      context: 'BASE',
+      productProfile: 'sorbet',
+    });
+
+    await rerenderOpenPicker(onAdd, {
+      ...sorbetContext,
+      productProfile: 'milk_gelato',
+    });
+    expect(mocks.lastPickerInput).toMatchObject({
+      query: 'banan',
+      context: 'BASE',
+      productProfile: 'milk_gelato',
+    });
+    expect(onAdd).not.toHaveBeenCalled();
+  });
+
+  it('PRO-FILTER-01 applies Fresh Fruit before recent segmentation', async () => {
+    mocks.hits = [
+      commercialHit({
+        id: 'banana-fresh',
+        mappedIngredientId: 'PI-BANANA-FRESH',
+        displayName: 'Banana Fresh Fruit',
+        category: 'fruit',
+        productForm: 'fresh_fruit',
+        recentlyUsedAt: '2026-09-05T00:00:00.000Z',
+      }),
+      commercialHit({
+        id: 'banana-powder',
+        mappedIngredientId: 'PI-BANANA-POWDER',
+        displayName: 'Banana Powder',
+        category: 'other',
+        productForm: 'powder',
+        recentlyUsedAt: '2026-09-07T00:00:00.000Z',
+      }),
+      commercialHit({
+        id: 'banana-paste',
+        mappedIngredientId: 'PI-BANANA-PASTE',
+        displayName: 'Banana Paste',
+        category: 'paste',
+        productForm: 'paste',
+      }),
+    ];
+    await renderPicker();
+    await act(async () =>
+      document.querySelector<HTMLButtonElement>('[data-product-filter="fruit"]')?.click(),
+    );
+    await act(async () =>
+      document.querySelector<HTMLButtonElement>('[data-product-subfilter="fresh"]')?.click(),
+    );
+    const search = document.querySelector<HTMLInputElement>('input[role="combobox"]');
+    await act(async () => {
+      if (!search) return;
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+      setter?.call(search, 'banan');
+      search.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+
+    expect(document.body.textContent).toContain('Banana Fresh Fruit');
+    expect(document.body.textContent).not.toContain('Banana Powder');
+    expect(document.body.textContent).not.toContain('Banana Paste');
+    expect(document.querySelectorAll('[role="option"]')).toHaveLength(1);
+  });
+
+  it('REPLACE-COMPAT-01 filters current, blocked, and other-role rows before recency', async () => {
+    const filters = { filter: 'fruit', subfilter: 'all', family: null } as const;
+    mocks.hits = [
+      commercialHit({
+        id: 'current-banana',
+        mappedIngredientId: 'PI-CURRENT-BANANA',
+        displayName: 'Current Banana',
+        category: 'fruit',
+        productForm: 'fresh_fruit',
+      }),
+      commercialHit({
+        id: 'compatible-recent',
+        mappedIngredientId: 'PI-COMPATIBLE',
+        displayName: 'Compatible Banana Puree',
+        category: 'fruit',
+        productForm: 'puree',
+        recentlyUsedAt: '2026-09-06T00:00:00.000Z',
+      }),
+      commercialHit({
+        id: 'blocked-recent',
+        mappedIngredientId: 'PI-BLOCKED',
+        displayName: 'Blocked Banana Powder',
+        category: 'fruit',
+        productForm: 'powder',
+        usableInBase: false,
+        usableAsTopping: false,
+        recentlyUsedAt: '2026-09-07T00:00:00.000Z',
+      }),
+      commercialHit({
+        id: 'topping-only',
+        mappedIngredientId: 'PI-TOPPING',
+        displayName: 'Topping Banana Sauce',
+        category: 'fruit',
+        productForm: 'sauce',
+        usableInBase: false,
+        usableAsTopping: true,
+      }),
+    ];
+    await renderPicker(vi.fn(), 'ADD', {
+      key: 77,
+      context: filters,
+      currentLine: {
+        ...replacementLine(filters),
+        currentIdentity: {
+          canonicalIngredientId: 'PI-CURRENT-BANANA',
+          mapperIngredientId: 'PI-CURRENT-BANANA',
+          productId: 'current-banana',
+          productVersionId: null,
+          privateProductId: null,
+        },
+      },
+    });
+
+    expect(document.body.textContent).toContain('Compatible Banana Puree');
+    expect(document.body.textContent).not.toContain('Current Banana');
+    expect(document.body.textContent).not.toContain('Blocked Banana Powder');
+    expect(document.body.textContent).not.toContain('Topping Banana Sauce');
+    expect(document.querySelector('[data-picker-section="recent"]')).not.toBeNull();
+  });
+
+  it('REPLACE-ROLE-01 keeps a Main line inside server-projected Main eligibility', async () => {
+    const filters = { filter: 'dairy', subfilter: 'all', family: 'milk' } as const;
+    mocks.hits = [
+      commercialHit({
+        id: 'standard-milk',
+        mappedIngredientId: 'PI-STANDARD-MILK',
+        displayName: 'Standard-only Milk',
+        category: 'dairy',
+        canonicalFamily: 'milk',
+        productForm: 'milk',
+        mainAllowed: false,
+      }),
+      commercialHit({
+        id: 'main-milk',
+        mappedIngredientId: 'PI-MAIN-MILK',
+        displayName: 'Main-capable Milk',
+        category: 'dairy',
+        canonicalFamily: 'milk',
+        productForm: 'milk',
+        mainAllowed: true,
+      }),
+    ];
+    await renderPicker(vi.fn(), 'ADD', {
+      key: 79,
+      context: filters,
+      currentLine: {
+        ...replacementLine(filters),
+        currentRole: 'MAIN',
+      },
+    });
+
+    expect(document.body.textContent).toContain('Main-capable Milk');
+    expect(document.body.textContent).not.toContain('Standard-only Milk');
+  });
+
+  it('REPLACE-EMPTY-01 fails closed when no compatible replacement exists', async () => {
+    const filters = { filter: 'fruit', subfilter: 'all', family: null } as const;
+    mocks.hits = [
+      commercialHit({
+        id: 'blocked-banana',
+        mappedIngredientId: 'PI-BLOCKED',
+        displayName: 'Blocked Banana',
+        category: 'fruit',
+        usableInBase: false,
+        usableAsTopping: false,
+      }),
+    ];
+    await renderPicker(vi.fn(), 'ADD', {
+      key: 78,
+      context: filters,
+      currentLine: replacementLine(filters),
+    });
+
+    expect(
+      document.querySelector('[data-testid="product-picker-no-compatible-replacements"]')
+        ?.textContent,
+    ).toContain('Brak zgodnych zamienników');
+    expect(document.body.textContent).not.toContain('Dodaj ręcznie');
+  });
+
   it('selects the resolved country SKU behind one canonical row without turning it into a passive preference write', async () => {
     const exact = catalogHit({
       id: 'spanish-milk-product',
@@ -513,7 +836,9 @@ describe('ProductPickerPopover catalog presentation', () => {
       }
     });
 
-    const add = document.querySelector<HTMLButtonElement>('button[aria-label="Zamień na MILK 3.5%"]');
+    const add = document.querySelector<HTMLButtonElement>(
+      'button[aria-label="Zamień na MILK 3.5%"]',
+    );
     await act(async () => add?.click());
 
     expect(mocks.getRow).toHaveBeenCalledWith('PI-ING-000236');
@@ -678,6 +1003,7 @@ describe('ProductPickerPopover catalog presentation', () => {
     const onReplace = await renderPicker(vi.fn(), 'ADD', {
       key: 1,
       context: { filter: 'dairy', subfilter: 'all', family: 'milk' },
+      currentLine: replacementLine({ filter: 'dairy', subfilter: 'all', family: 'milk' }),
     });
 
     expect(
@@ -723,6 +1049,7 @@ describe('ProductPickerPopover catalog presentation', () => {
       await renderPicker(vi.fn(), 'ADD', {
         key: 1,
         context: { filter: 'technical', subfilter, family: null },
+        currentLine: replacementLine({ filter: 'technical', subfilter, family: null }),
       });
 
       expect(
@@ -759,6 +1086,7 @@ describe('ProductPickerPopover catalog presentation', () => {
     await renderPicker(vi.fn(), 'ADD', {
       key: 1,
       context: { filter: 'dairy', subfilter: 'all', family: 'cream' },
+      currentLine: replacementLine({ filter: 'dairy', subfilter: 'all', family: 'cream' }),
     });
 
     expect(document.querySelector('button[aria-label="Zamień na CREAM 20%"]')).not.toBeNull();
@@ -858,8 +1186,8 @@ describe('ProductPickerPopover catalog presentation', () => {
       }
     });
     expect(document.body.textContent).toContain('Znaleziono 1 składnik');
-    // Query active: favorite state is only the star, never a ranking section.
-    expect(document.querySelectorAll('[data-picker-segment="ingredients"]')).toHaveLength(1);
+    // Query active: only matching recent rows may lead the central result set.
+    expect(document.querySelectorAll('[data-picker-segment="recent"]')).toHaveLength(1);
     expect(document.querySelectorAll('[data-picker-segment="favorites"]')).toHaveLength(0);
 
     await act(async () => {

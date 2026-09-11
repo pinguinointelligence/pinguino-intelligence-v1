@@ -87,6 +87,7 @@ import {
   canonicalReplaceContext,
   type ProductDiscoveryReplaceContext,
 } from './canonicalProductDiscovery';
+import { createReplacementSearchLineContext } from './replacementSearchContext';
 
 const b = copy.studio.builder;
 /**
@@ -426,10 +427,30 @@ export function IngredientBuilder({
       setPickerNotice(null);
     },
     requestReplace: (lineId, context: ProductDiscoveryReplaceContext) => {
+      const current = items.find((item) => item.id === lineId);
+      if (!current) return;
       replaceRequestKey.current += 1;
       setReplaceRequest({
         lineId,
-        invocation: { key: replaceRequestKey.current, context },
+        invocation: {
+          key: replaceRequestKey.current,
+          context,
+          currentLine: createReplacementSearchLineContext({
+            usageMode: 'PRO_REPLACE',
+            lineId,
+            ingredient: current.ingredient,
+            snapshot: productBehaviorSnapshots[lineId],
+            recipeProfile: behaviorProfile,
+            currentRole: current.lock_type === 'main' ? 'MAIN' : 'STANDARD',
+            processScope: 'BASE_FORMULATION',
+            temperatureC: behaviorTemperatureC,
+            formulationMode: behaviorMode,
+            userFilters: context,
+            plannedGrams: current.planned_grams,
+            actualGrams: current.actual_grams,
+            lockType: current.lock_type,
+          }),
+        },
       });
     },
     moveUp: (lineId) => {
@@ -944,14 +965,14 @@ export function IngredientBuilder({
           temperatureC: behaviorTemperatureC,
           mode: behaviorMode,
         }}
+        behaviorSnapshot={productBehaviorSnapshots[item.id]}
         canMoveUp={index > 0}
         canMoveDown={index < toppings.length - 1}
         compact={layout === 'workbench'}
         onChange={(grams) => setToppingGrams(item.id, grams)}
         onRemove={() => removeTopping(item.id)}
         onReplace={(ingredient, behavior) => {
-          replaceToppingIngredient(item.id, ingredient);
-          if (behavior) setProductBehaviorSnapshot(item.id, { ...behavior, lineId: item.id });
+          replaceToppingIngredient(item.id, ingredient, behavior);
         }}
         onMove={(direction) => {
           moveTopping(item.id, direction);

@@ -137,13 +137,24 @@ describe('stable catalog segments', () => {
     expect(segments[1]?.items.map((item) => item.canonicalId)).toEqual(['PI-ING-000180']);
   });
 
-  it('F preserves deterministic server relevance during a query without a favorite section', () => {
+  it('F lifts only matching recent rows during a query and keeps remaining server relevance', () => {
     const labels = buildProductPickerSegments(
-      [product('favorite', { favorite: true }), product('ordinary')],
+      [
+        product('best-match'),
+        product('matching-recent', {
+          recent: true,
+          recentlyUsedAt: '2026-09-05T12:00:00.000Z',
+        }),
+        product('ordinary'),
+      ],
       { activeQuery: true },
-    ).map((segment) => segment.label);
-    expect(labels).toEqual(['SKŁADNIKI']);
-    expect(labels).not.toContain('PINGÜINO Base');
+    );
+    expect(labels.map((segment) => segment.label)).toEqual([
+      'OSTATNIO UŻYWANE',
+      'POZOSTAŁE SKŁADNIKI',
+    ]);
+    expect(labels[0]?.items.map((item) => item.canonicalId)).toEqual(['matching-recent']);
+    expect(labels[1]?.items.map((item) => item.canonicalId)).toEqual(['best-match', 'ordinary']);
   });
 
   it('G uses one SKŁADNIKI segment when featured products are absent', () => {
