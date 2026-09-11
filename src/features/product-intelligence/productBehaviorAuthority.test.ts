@@ -62,6 +62,24 @@ const normalizedDosageRecognition = classifyProductSemantics({
   sourceUrls: [],
 });
 
+const cocoaPowderRecognition = classifyProductSemantics({
+  name: 'Cacao soluble en polvo',
+  brand: 'Marca',
+  manufacturer: null,
+  manufacturerCode: null,
+  gtin: '8480000804693',
+  productType: 'cocoa powder',
+  category: 'cocoa',
+  subcategory: 'cocoa powder',
+  variant: null,
+  ingredients: 'Azucar, cacao desgrasado en polvo.',
+  nutrition: null,
+  description: 'Cacao soluble en polvo para bebida',
+  dosage: null,
+  technicalParameters: null,
+  sourceUrls: [],
+});
+
 const behaviorRow = (
   overrides: Partial<MapperProductBehaviorAuthorityRow> = {},
 ): MapperProductBehaviorAuthorityRow => ({
@@ -118,6 +136,7 @@ const productProfile = (
   criticalReadiness: true,
   missingCritical: [],
   missingEngineFields: [],
+  unresolvedEngineFieldReasons: {},
   criticalPhysicsBlockers: [],
   sweetnessPath: { kind: 'trivially_zero', resolved: true, reason: 'test fixture' },
   allergenEvidenceStatus: 'CONFIRMED',
@@ -289,6 +308,41 @@ describe('prospective ProductBehavior authority', () => {
       baseRecipeEligible: true,
       referenceMapperIngredientId: 'PI-ING-000123',
       classificationReasonCodes: [],
+    });
+  });
+
+  it('uses a hard-compatible Mapper row as semantic behavior evidence after safe field Rescue', () => {
+    expect(cocoaPowderRecognition).toMatchObject({
+      modelRequired: false,
+      ingredientFamily: 'cocoa',
+      physicalForm: 'POWDER',
+      intendedUsageRole: 'BASE_ONLY',
+    });
+    expect(
+      classifyProspectiveProductBehavior({
+        kind: 'normal_food',
+        engineUsable: true,
+        profileMatch: profileMatch({ confidence: 0.7785 }),
+        recognition: cocoaPowderRecognition,
+      }),
+    ).toMatchObject({
+      classificationOutcome: 'classified',
+      baseRecipeEligible: true,
+      referenceMapperIngredientId: 'PI-ING-000123',
+    });
+  });
+
+  it('does not use a sub-threshold profile as behavior evidence when Recognition is unresolved', () => {
+    expect(
+      classifyProspectiveProductBehavior({
+        kind: 'normal_food',
+        engineUsable: true,
+        profileMatch: profileMatch({ confidence: 0.7785 }),
+        recognition: unresolvedFormRecognition,
+      }),
+    ).toMatchObject({
+      classificationOutcome: 'unknown_requires_review',
+      baseRecipeEligible: false,
     });
   });
 
