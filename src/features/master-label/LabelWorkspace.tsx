@@ -1477,34 +1477,20 @@ function BasicSizeFields({
     sizes.current.round = { diameterMm };
     onChange({ format: 'round', widthMm: diameterMm, heightMm: diameterMm });
   };
+  /* OWNER §36 — Gellatti prints RECTANGULAR labels. The round option is gone
+     from every place a customer can reach.
+   *
+   * What is deliberately NOT removed: `format: 'round'` in the data model and
+   * in the renderers (`masterLabelPdf`, `masterLabelPrint`, `labelGeometry`).
+   * Labels already saved as round are immutable historical records, and a
+   * renderer that no longer knows how to draw one would not remove the option —
+   * it would corrupt the archive. So the choice disappears; the ability to
+   * render what was already chosen does not. */
   return (
     <div data-testid="label-basic-size">
-      <div className="grid grid-cols-2 gap-2">
-        <button
-          type="button"
-          className={cn(
-            'pro-focus-ring min-h-11 rounded-[10px] border px-3 text-xs font-semibold',
-            format === 'rectangle'
-              ? 'border-ink bg-ink text-white'
-              : 'border-ink/15 bg-white text-ink',
-          )}
-          onClick={() => onChange({ format: 'rectangle', ...sizes.current.rectangle })}
-        >
-          Prostokątna
-        </button>
-        <button
-          type="button"
-          className={cn(
-            'pro-focus-ring min-h-11 rounded-[10px] border px-3 text-xs font-semibold',
-            format === 'round' ? 'border-ink bg-ink text-white' : 'border-ink/15 bg-white text-ink',
-          )}
-          onClick={() => changeRound(sizes.current.round.diameterMm)}
-        >
-          Okrągła
-        </button>
-      </div>
       {format === 'round' ? (
-        <label className="mt-3 block text-xs font-medium text-stone-600">
+        /* Only reachable from an archived label saved before §36. */
+        <label className="block text-xs font-medium text-stone-600">
           Średnica (mm)
           <input
             type="number"
@@ -4985,6 +4971,8 @@ function PresentationFields({
   return (
     <fieldset className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
       <legend className="sr-only">Prezentacja etykiety</legend>
+      {/* OWNER §36 — rectangular only. An archived round label keeps its own
+          option so its format is not silently rewritten when someone opens it. */}
       <label className="text-xs text-stone-600">
         Format
         <select
@@ -4993,9 +4981,10 @@ function PresentationFields({
             onChange({ ...current, format: event.currentTarget.value as 'rectangle' | 'round' })
           }
           className={SETTINGS_INPUT_CLASS}
+          data-testid="label-presentation-format"
         >
           <option value="rectangle">Prostokąt</option>
-          <option value="round">Okrągła</option>
+          {format === 'round' ? <option value="round">Okrągła (archiwalna)</option> : null}
         </select>
       </label>
       <label className="text-xs text-stone-600">

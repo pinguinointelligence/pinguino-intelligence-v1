@@ -1,0 +1,76 @@
+/* HOME composer — ONE component, ONE focus indicator.
+ *
+ * OWNER BUG 2026-09-10 (§41): a large dark RECTANGLE appeared inside the rounded
+ * composer whenever the field was focused after any keyboard interaction.
+ *
+ * Root cause — not the composer's own CSS. `theme-pro-light.css` owns a single
+ * focus authority for the entire application shell (HOME included, because
+ * `AppShell` carries `.theme-pro-light`):
+ *
+ *   html[data-gellatti-input-modality='keyboard'] .theme-pro-light
+ *     :where(button, a, input, select, textarea, summary, [tabindex]):focus {
+ *       outline: 2px solid #4b4d52 !important;
+ *       outline-offset: 2px !important;
+ *     }
+ *
+ * The composer's <textarea> is a bare, square, transparent field sitting inside
+ * a rounded card, so that graphite outline painted a hard rectangle INSIDE the
+ * card. `installInputModalityAuthority` flips the modality to 'keyboard' on any
+ * non-modifier keydown, which is exactly why typing, Tab and Shift+Tab all
+ * reproduced it while a pure mouse click did not. Tailwind's `outline-none` on
+ * the field never had a chance against `!important`.
+ *
+ * The fix is deliberately NOT a blind `outline: none`. The indicator MOVES from
+ * the inner field to the whole rounded composer: a border + halo on the
+ * wrapper, which follows `border-radius`, so keyboard focus stays plainly
+ * visible and the composer keeps reading as one component.
+ */
+
+/* The field never draws its own box.
+ *
+ * Specificity: html (0,0,1) + [data-…] (0,1,0) + .theme-pro-light (0,1,0)
+ * + .home-composer-field (0,1,0) + :focus (0,1,0) = (0,4,1), which beats the
+ * shell authority's (0,3,1) — and only for this one field, on this one screen. */
+html[data-gellatti-input-modality] .theme-pro-light .home-composer-field:focus,
+html[data-gellatti-input-modality] .theme-pro-light .home-composer-field:focus-visible,
+.home-composer-field:focus,
+.home-composer-field:focus-visible {
+  outline: none !important;
+  outline-offset: 0 !important;
+  box-shadow: none !important;
+}
+
+/* The wrapper is the focus surface. Only colours change — the border stays 1px
+ * in every state, so focusing the composer moves nothing.
+ *
+ * The resting colours live here rather than as an inline `style` on the element:
+ * an inline declaration beats every rule below without `!important`, which is
+ * exactly how a focus treatment gets written, shipped, and never painted. */
+.home-composer {
+  background: #ffffff;
+  border-color: var(--g-line);
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease;
+}
+
+/* Pointer focus: a warm, quiet acknowledgement. Decorative only — the keyboard
+ * indicator below is the one that has to carry contrast. */
+.home-composer:focus-within {
+  border-color: #e0bc8a;
+}
+
+/* Keyboard focus: the shell's own graphite (#4b4d52, 7.6:1 on the composer's
+ * white ground) as a 1px border plus a soft halo — the same focus TONE the rest
+ * of the application uses, drawn along the composer's radius instead of as a
+ * rectangle around the field inside it. */
+html[data-gellatti-input-modality='keyboard'] .home-composer:focus-within {
+  border-color: #4b4d52;
+  box-shadow: 0 0 0 3px rgb(75 77 82 / 0.22);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-composer {
+    transition: none;
+  }
+}
