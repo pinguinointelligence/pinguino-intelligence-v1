@@ -258,7 +258,7 @@ the owner has since retired. Nothing is renamed or deleted.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | H-DASH-01 | Dashboard | Reads as an earnings/growth workspace, not an admin database | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | 741-line page exists with all 8 sections; design intent not yet judged against §34 | Design pass |
 | H-DASH-02 | Dashboard | Top overview: current-month estimated commission · held · eligible · next payout batch | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | `Overview` exists; the 4 exact tiles unverified | Verify + build |
-| H-DASH-03 | Dashboard | Tier display STANDARD / GOLD / ELITE | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | `partner.tier` returned by RPC | Verify |
+| H-DASH-03 | Dashboard | Tier display STANDARD / GOLD / ELITE | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | `claude/hdash06-copy-buttons` | **Render-tested for all three tiers:** Settings reads 'Tier Standard' / 'Tier Gold' / 'Tier Elite' through `PARTNER_TIER_COPY` (E-REV-04), and the raw value never prints (`partnerPageCopy.render.test.tsx`). Shown in Settings only — the Overview has no tier tile; H-DASH-04's progress to Gold (needs the active-count source, DB) is where it would lead | **READY FOR SERVED OWNER QA** |
 | H-DASH-04 | Dashboard | If Standard: progress to Gold, e.g. 76 / 100 | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Needs the active-count source — depends on E-GOLD-02 | After E-GOLD-02 |
 | H-DASH-05 | Dashboard | Counts: HOME active · PRO active · TOTAL | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Same dependency | After E-GOLD-02 |
 | H-DASH-06 | Dashboard | Referral tools: 3 codes · copy · public URLs · campaign builder · copy links · per-campaign performance | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | `Codes` + `LinkGenerator` + `ContentLinks` exist | Add 3-slot UI |
@@ -443,7 +443,7 @@ neutral placeholders are development-only.
 | ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | PR/SHA | Problem / Why | Next Action |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | R-DES-01 | Design | Premium · minimal · calm · precise; ivory/charcoal/warm accent; strong type; no SaaS feel; no random blue | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Follow the V2.1 authority and the existing design-pass method | Per-route design pass |
-| R-DES-02 | Design | No internal codes / SQL / engine terms / Stripe IDs / enum labels outside authorized admin developer context | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | `customerCopyGuard.test.ts` already exists — extend it | Extend guard |
+| R-DES-02 | Design | No internal codes / SQL / engine terms / Stripe IDs / enum labels outside authorized admin developer context | 🟡 | ✅ | ⬜ | ⬜ | 🔓 | `claude/hdash06-copy-buttons` | **Partner area guarded by rendering it:** every section rendered with every value the database allows, plus a raw Stripe invoice id and a provider failure code — none of them reaches the text a partner reads, and each section must show the copy for them, so an empty render cannot pass (`partnerPageCopy.render.test.tsx`; the scan also proves it catches a raw value). App-wide literals stay under `customerCopyGuard.test.ts`. **For the owner:** Settings prints the partner's internal UUID as 'ID Partnera' — handy for support, but an internal id. Keep or hide? | Extend the render scan to the other signed-in areas · owner: 'ID Partnera' |
 | R-DES-03 | Design | All new visible copy through the canonical localization authority; language parity; no hardcoded Polish in business logic | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | `cooperation.ts` has PL+EN and `locale.ts` is the registry | Add keys in both |
 
 ### S — Security / privacy (§35)
