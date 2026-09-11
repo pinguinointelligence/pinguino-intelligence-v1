@@ -29,6 +29,12 @@ export function previewIssueMessagePl(issue: PreviewIssue): string {
        * draft is native-safe. So the distinction is read from the result, never
        * re-derived here, and the canonical Gellatti sentence for „no further
        * safe improvement" is reused rather than duplicated. */
+      if (issue.failureKind === 'SEARCH_FAILED') {
+        return (
+          'Wyszukiwanie nie znalazło propozycji dla wybranego kierunku w tym przebiegu. ' +
+          'To nie jest dowód niewykonalności. Receptura pozostała bez zmian.'
+        );
+      }
       return issue.directionTargetUnreached === true
         ? copy.previewIssue.bestSafeResult
         : copy.previewIssue.noProposal;
