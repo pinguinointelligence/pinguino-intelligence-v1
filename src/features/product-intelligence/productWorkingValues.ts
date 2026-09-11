@@ -26,13 +26,18 @@ import {
   inferMapperValues,
   profileFieldValue,
   rescueMassBalanceFromCohort,
+  rescueSugarSpectrumFromCohort,
   MASS_BALANCE_RESCUE_POLICY,
   MAPPER_FIELD_RESCUE_ALGORITHM_VERSION,
   PROFILE_MATCH_FLOOR,
+  SUGAR_SPECTRUM_RESCUE_ALGORITHM_VERSION,
+  SUGAR_SPECTRUM_RESCUE_POLICY,
+  TARGET_AWARE_SUGAR_SPECTRUM_FIELDS,
   type ProfileMatch,
   type MapperInferenceInput,
   type MapperInferenceTier,
   type MapperKnowledge,
+  type RescueTargetIdentityEvidence,
 } from './mapperValueInference.ts';
 import {
   applyFieldTruth,
@@ -215,6 +220,16 @@ export interface ProductWorkingValuesInput {
    * product's dosage is unproven, and it never withholds anything.
    */
   technicalAuthority?: boolean;
+  /** Exact product-owned facts used only to authorize a missing field's Rescue.
+   * Numeric anchors still come from VERIFIED field truth. */
+  rescueTargetEvidence?: RescueTargetIdentityEvidence | null;
+}
+
+export interface ProductWorkingValuesResolutionOptions {
+  /** Whole-profile publication/runtime authority may use a narrower universe
+   * than field Rescue. Keeping it separate prevents donor provenance from
+   * becoming a field-Rescue gate. */
+  wholeProfileKnowledge?: MapperKnowledge;
 }
 
 export interface ProductWorkingValues {
@@ -340,6 +355,37 @@ export function sweetnessPathOf(
       };
     }
   }
+  const acceptedRescueSpectrum = TARGET_AWARE_SUGAR_SPECTRUM_FIELDS.map(
+    (field) => fields[field],
+  );
+  const rescueSpectrumAccepted = acceptedRescueSpectrum.every(
+    (truth) =>
+      truth.value !== null &&
+      (truth.provenance.state === 'VERIFIED' ||
+        (truth.provenance.state === 'ESTIMATED' &&
+          truth.provenance.algorithmVersion === SUGAR_SPECTRUM_RESCUE_ALGORITHM_VERSION &&
+          truth.provenance.confidence >= SUGAR_SPECTRUM_RESCUE_POLICY.readyConfidenceFloor)),
+  );
+  if (
+    sugars !== null &&
+    fields.total_sugars_percent.provenance.state === 'VERIFIED' &&
+    rescueSpectrumAccepted &&
+    (polyol ?? 0) === 0
+  ) {
+    const named = acceptedRescueSpectrum.reduce(
+      (total, truth) => total + (truth.value ?? 0),
+      0,
+    );
+    if (Math.abs(named - sugars) <= SUGAR_SPECTRUM_RESCUE_POLICY.targetClosureTolerance) {
+      return {
+        kind: 'sugar_spectrum',
+        resolved: true,
+        reason:
+          `bezpieczny Rescue widma pokrywa ${named.toFixed(1)} z ${sugars.toFixed(1)} g; ` +
+          `Engine wylicza POD/PAC z typow cukru`,
+      };
+    }
+  }
   if (sugars === 0 && alcohol !== null && alcohol > 0 && (polyol ?? 0) === 0) {
     return {
       kind: 'sugar_spectrum',
@@ -445,6 +491,7 @@ const round4 = (value: number): number => Math.round(value * 1e4) / 1e4;
 export function resolveProductWorkingValues(
   input: ProductWorkingValuesInput,
   knowledge: MapperKnowledge,
+  options: ProductWorkingValuesResolutionOptions = {},
 ): ProductWorkingValues {
   let fields = emptyFieldTruthMap();
   const trace: string[] = [];
@@ -517,6 +564,7 @@ export function resolveProductWorkingValues(
   // represented by a physical profile, not whether each number is independently
   // provable. A profile clearing the floor fills what is still missing at once,
   // as ESTIMATED. Nothing the product already states is touched.
+  const wholeProfileKnowledge = options.wholeProfileKnowledge ?? knowledge;
   const profileMatch = findProfileMatch(
     {
       name: input.identity.name,
@@ -529,7 +577,7 @@ export function resolveProductWorkingValues(
       technical: input.technical,
       semantic: input.identity.semantic,
     },
-    knowledge,
+    wholeProfileKnowledge,
   );
   if (profileMatch.confidence >= PROFILE_MATCH_FLOOR) {
     let filled = 0;
@@ -562,7 +610,7 @@ export function resolveProductWorkingValues(
           basis: 'mapper_similar_profile',
           mapperReferences: supplied.contributors,
           algorithmVersion: MAPPER_WHOLE_PROFILE_ALGORITHM_VERSION,
-          mapperFingerprint: knowledge.fingerprint,
+          mapperFingerprint: wholeProfileKnowledge.fingerprint,
           note: `profil zgodny (${profileMatch.basis}, ${Math.round(profileMatch.confidence * 100)}%)`,
         }),
       };
@@ -600,13 +648,23 @@ export function resolveProductWorkingValues(
    * have been withdrawn. A rejected whole profile is intentionally irrelevant:
    * this asks only whether water/solids have their own coherent evidence. */
   let massBalanceRescueReasons: string[] = [];
+  let sugarSpectrumCohort = inference.bestCohort?.rows ?? [];
   if (fields.total_solids_percent.value === null && fields.water_percent.value === null) {
     const rescue = rescueMassBalanceFromCohort({
       cohort: inference.bestCohort?.rows ?? [],
       fields,
       semantic: input.identity.semantic,
+      targetEvidence: input.rescueTargetEvidence,
     });
     massBalanceRescueReasons = rescue.reasonCodes;
+    if (rescue.candidates.length > 0) {
+      const acceptedCandidateIds = new Set(
+        rescue.candidates.map((candidate) => candidate.ingredientId),
+      );
+      sugarSpectrumCohort = sugarSpectrumCohort.filter((row) =>
+        acceptedCandidateIds.has(row.ingredient_id),
+      );
+    }
     if (rescue.resolved && rescue.totalSolids !== null && rescue.dispersion) {
       fields = applyFieldTruth(
         fields,
@@ -672,6 +730,71 @@ export function resolveProductWorkingValues(
       };
       trace.push(`field_rescue: unresolved ${reason}`);
     }
+  }
+
+  /* 5c. Target-aware sugar-spectrum Rescue. The target's VERIFIED total sugar
+   * is immutable; compatible donors contribute only normalized species shares.
+   * POD/PAC stay absent and remain the Engine's deterministic responsibility. */
+  const spectrumRescue = rescueSugarSpectrumFromCohort({
+    cohort: sugarSpectrumCohort,
+    fields,
+    semantic: input.identity.semantic,
+    targetEvidence: input.rescueTargetEvidence,
+  });
+  if (spectrumRescue.resolved && spectrumRescue.targetSpectrum && spectrumRescue.dispersion) {
+    for (const field of TARGET_AWARE_SUGAR_SPECTRUM_FIELDS) {
+      if (fields[field].provenance.state === 'VERIFIED') continue;
+      fields = applyFieldTruth(
+        fields,
+        field,
+        knownField({
+          value: spectrumRescue.targetSpectrum[field],
+          state: 'ESTIMATED',
+          confidence: spectrumRescue.confidence,
+          basis: 'mapper_similar_profile',
+          mapperReferences: spectrumRescue.candidates,
+          algorithmVersion: SUGAR_SPECTRUM_RESCUE_ALGORITHM_VERSION,
+          mapperFingerprint: knowledge.fingerprint,
+          note:
+            `RESCUE_SUGAR_SPECTRUM_SUCCESS; target-total normalized shares; ` +
+            `${spectrumRescue.validSpectrumCandidateCount} valid, ` +
+            `${spectrumRescue.candidates.length} after outliers; ` +
+            `max half-IQR ${spectrumRescue.dispersion.maximumHalfIqr}`,
+          cohort: {
+            size: spectrumRescue.candidates.length,
+            spread: spectrumRescue.dispersion.maximumHalfIqr,
+            band: SUGAR_SPECTRUM_RESCUE_POLICY.maxShareHalfIqr,
+            tightness: round4(
+              1 -
+                Math.min(
+                  1,
+                  spectrumRescue.dispersion.maximumHalfIqr /
+                    SUGAR_SPECTRUM_RESCUE_POLICY.maxShareHalfIqr,
+                ),
+            ),
+            ceiling: SUGAR_SPECTRUM_RESCUE_POLICY.confidenceCeiling,
+          },
+        }),
+      );
+    }
+    trace.push(
+      `sugar_spectrum_rescue: confidence=${spectrumRescue.confidence}; ` +
+        `compatible=${spectrumRescue.compatibleCandidateCount}; ` +
+        `valid=${spectrumRescue.validSpectrumCandidateCount}; ` +
+        `used=${spectrumRescue.candidates.length}`,
+    );
+    plausibility = validatePlausibility(fields);
+    fields = plausibility.fields;
+    plausibilityViolations.push(...plausibility.violations);
+    contradictedByDeclaration ||= plausibility.contradictedByDeclaration;
+    for (const violation of plausibility.violations) {
+      trace.push(
+        `plausibility_after_spectrum_rescue[${violation.rule}]: ${violation.detail}` +
+          (violation.withdrawn.length > 0 ? ` → wycofano ${violation.withdrawn.join(', ')}` : ''),
+      );
+    }
+  } else {
+    trace.push(`sugar_spectrum_rescue: unresolved ${spectrumRescue.reasonCodes.join(',')}`);
   }
 
   /* 6. record where the Mapper disagrees with the declaration, without acting on it */
