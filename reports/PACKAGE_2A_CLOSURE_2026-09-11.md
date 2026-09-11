@@ -7,7 +7,7 @@ Owner brief: **„CLOSE PACKAGE 2A ON CURRENT STAGING — CURRENT-STATE RECONCIL
 | Staging | start `0b42b206` (#284) → re-fetched `a7478aa7` (#285, #287 landed mid-task) → `0b52fde1` (#288, #289 — no shared file) → final base `162bebf4`: #290 landed first; the two predicted textual conflicts (the HOME import, ledger H-50-1) resolved, `recipeStore.ts` auto-merged |
 | Worktree / branch | `~/Developer/pinguino-2a-closure` · `claude/package-2a-closure` |
 | Historical branch | `claude/package-2a-priority-crowns` (`032dac4a`, `0c0c79b9`, never pushed) — **reference only, nothing merged** |
-| PR / merge / served SHA | recorded in the follow-up after merge (§6) |
+| PR / merge / served SHA | #292 · merge `a743aa06` (2026-09-11 12:58:03Z) · served bundle `index-CLlBeXrI.js` inlines `a743aa06` |
 | Production | untouched (`main` not written, no production deploy) |
 
 ## 1. Current state, audited before any change
@@ -156,8 +156,124 @@ Crown flow is verified on served staging (§6).
 
 ## 6. Merge, deploy, served QA
 
-Recorded after merge, in a follow-up to this record: merge SHA, staging push-CI, served bundle SHA, and the owner's served checks A–L.
+- **Merge.** PR #292 merged at 2026-09-11 12:58:03Z into staging `a743aa06` (parents `162bebf4` + `50c60073`).
+  All 5 checks were green on the exact head `50c60073`: required contracts, full typecheck/lint/tests/build,
+  solver contracts, Direction rescue and Vercel. Staging was still the PR base at merge time
+  (`--match-head-commit`).
+- **Staging push-CI** on `a743aa06`: 5/5 green — required contracts, full typecheck/lint/tests/build, solver contracts, Direction rescue, Vercel.
+- **Deploy identity.** Served bundle `index-CLlBeXrI.js` inlines `a743aa06`. Code markers in it: `priority_mode` ×32,
+  `grantAutomaticPriority` ×4, `setPriorityMode` ×3, `home-recipe-line` ×3, the new recipe-step copy ×1, the old
+  „Liczy się sama" / „nie musisz nic przeliczać" ×0, and #290's `AUTO_CROWN_SEED` ×4.
+- **Production** `main` = `7fa36890` (2026-09-07): untouched, no production deploy.
+
+**Served QA (owner §23).** After the deploy the in-app Browser pane had no signed-in session. Passwords are never
+typed, and anonymous ProductBehavior is blocked by design, so every check that needs Crown authority or PRO waits
+for the owner's sign-in. The draft keys were shimmed to memory, so no other session's draft was touched.
+
+| Check | Served status | Where it is already proven |
+| --- | --- | --- |
+| A — HOME add 4 BASE → no visible auto Crowns | WAITING OWNER SIGN-IN | §14 store test, wiring test |
+| B — Crown one → only that one is manual priority | WAITING OWNER SIGN-IN | §14 |
+| C — grams do not change from Crown | WAITING OWNER SIGN-IN | §14 (typed and 0 g variants) |
+| D — Crown second → both priority | WAITING OWNER SIGN-IN | §14 |
+| E — remove first → only second remains | WAITING OWNER SIGN-IN | §14 |
+| F — TOPPING unaffected | WAITING OWNER SIGN-IN | §11 |
+| G — HOME 0 g Crown → stays 0 g | WAITING OWNER SIGN-IN; Gelato/Sorbet/Vegan = OD-1 | §15 (Protein) |
+| H — PRO 0 g Crown → 1 g Main | WAITING OWNER SIGN-IN | §16 ×4, GEL-P0-037 in CI |
+| I — PRO Protein 0 g Crown → 1 g Main | WAITING OWNER SIGN-IN | §16 Protein, GEL-P0-037 |
+| J — PRO Main search respects #276 | WAITING OWNER SIGN-IN | `proMainSecondaryFlavourBound` in CI |
+| K — HOME auto-recalc as accepted | OD-2 — no auto-recalc exists; served HOME shows the accepted „Przelicz i popraw" control, enabled | #287 suites |
+| L — tutorial carries no stale 2A dependency | **PASS (served)** | restart → 7 steps; 5/7 `recipe` measured `home-section-recipe` with the new copy; 6/7 `ingredient-settings` measured `home-recipe-line` („Korona = priorytet…"); the chip step dropped itself (no chips) |
+
+Also observed on served staging: a guest draft persisted before Package 2A (no `priority_mode` key) hydrated as
+MANUAL. To unblock A–J, sign in on staging in the Claude Browser pane (PRO QA account). The checks then take about
+15 minutes.
 
 ## 7. Final checklist
 
-Recorded after served QA, in the same follow-up — every item 01–84 with its evidence.
+| # | Item | Status | Evidence |
+| --- | --- | --- | --- |
+| 01 | Current origin/staging fetched | PASS | re-fetched at every step; final base `162bebf4` |
+| 02 | Exact staging SHA recorded | PASS | `0b42b206` → `a7478aa7` → `0b52fde1` → `162bebf4`; merge `a743aa06` |
+| 03 | Clean isolated worktree used | PASS | `~/Developer/pinguino-2a-closure` from origin/staging; clean probe worktree for the A/B |
+| 04 | Historical Package 2A treated as reference only | PASS | §2 |
+| 05 | Old branch NOT blindly merged | PASS | nothing merged or cherry-picked; class C re-authored |
+| 06 | Current HOME Crown behavior audited first | PASS | §1 |
+| 07 | Current PRO Crown behavior audited first | PASS | §1 |
+| 08 | HOME AUTO mode present | PASS | `priority_mode`; served bundle ×32; served UI check waits for sign-in |
+| 09 | All user-added BASE internally priority in AUTO | PASS | §14 |
+| 10 | AUTO priority invisible | PASS | §14, wiring (`visibleCrownLineIds`) |
+| 11 | No automatic visible active Crown | PASS | §14, wiring; served A waits for sign-in |
+| 12 | First manual Crown switches AUTO→MANUAL | PASS | §14 |
+| 13 | Only manually crowned BASE priority after MANUAL | PASS | §14 |
+| 14 | Previous hidden AUTO priorities removed | PASS | §14 |
+| 15 | Multiple manual Crowns supported | PASS | §14 |
+| 16 | Removing one Crown preserves other manual Crowns | PASS | §14 |
+| 17 | TOPPING excluded from BASE priority | PASS | §11, source pins |
+| 18 | TOPPING does not trigger AUTO→MANUAL | PASS | §11 |
+| 19 | HOME Crown mass-neutral | PARTIAL — OD-1 | every Crown press after AUTO moves no gram; the add-time 1 g for Gelato/Sorbet/Vegan remains |
+| 20 | HOME Crown does not change grams | PARTIAL — OD-1 | same |
+| 21 | HOME 0 g + Crown remains 0 g | PARTIAL — OD-1 | Protein PASS; Gelato/Sorbet/Vegan still seed 1 g |
+| 22 | HOME does NOT receive PRO 1 g seed | NOT DELIVERED — OD-1 | the shared seed still reaches HOME Gelato/Sorbet/Vegan through the automatic door |
+| 23 | HOME manual grams remain functional | PASS | §15; #290 `homeAddAuthority.runtime`; MANUAL adds ask the amount |
+| 24 | HOME auto-recalc preserved | N/A — OD-2 | none on staging; the accepted #287 recalculation is untouched; 2A's version not restored (§9) |
+| 25 | PRO remains manual-recalc where designed | PASS | untouched |
+| 26 | PRO 0 g + Crown → 1 g | PASS | §16, crownSurface, GEL-P0-037 (CI); served H waits for sign-in |
+| 27 | PRO Gelato seed PASS | PASS | §16 |
+| 28 | PRO Sorbet seed PASS | PASS | §16 |
+| 29 | PRO Vegan seed PASS | PASS | §16 |
+| 30 | PRO Protein seed PASS | PASS | §16 |
+| 31 | PRO Crown OFF keeps grams editable | PASS | §16: OFF → 0 g, snapshot kept, + from 0 g → 1 g (#285) |
+| 32 | PRO positive grams unchanged by Crown | PASS | crownSurface PRO TEST 3 |
+| 33 | PR #268 behavior preserved | PASS | crownSurface + GEL-P0-037 green (CI) |
+| 34 | PR #276 behavior preserved | PASS | `proMainSecondaryFlavourBound` green; solver untouched |
+| 35 | Secondary flavour may decrease | PASS | #276 suite |
+| 36 | Secondary flavour cannot increase | PASS | #276 suite |
+| 37 | Real grams lock preserved | PASS | #276 suite; untouched |
+| 38 | Real percent lock preserved | PASS | #276 suite; untouched |
+| 39 | Real range lock preserved | PASS | #276 suite; untouched |
+| 40 | Main envelope preserved | PASS | untouched; suites green |
+| 41 | Carrier floor preserved | PASS | untouched; suites green |
+| 42 | Multi-Main preserved | PASS | several crowns (§14); #276 multi-Main |
+| 43 | Invalid fallback remains fail-closed | PASS | untouched; #276 suite |
+| 44 | HOME/PRO behavior separated by surface | PASS | surface parameter; HOME padlock fix; no PRO file knows the mode |
+| 45 | No profile-based HOME/PRO leakage | PASS | §13 ×4 profiles; PRO seeds all four |
+| 46 | Shared store actions audited | PASS | setMainIngredient, setStandardIngredient, setLockType, padlock, priority state, recalculation write |
+| 47 | Mapper/Search not modified | PASS | 17 files; none in Mapper or Search |
+| 48 | No local HOME resolver reintroduced | PASS | none in `src/` |
+| 49 | compoundStem not restored as final architecture | PASS | none in `src/` |
+| 50 | homeDefaultProducts not restored as final architecture | PASS | none in `src/` |
+| 51 | AUTO→MANUAL persistence checked | PASS | §17 refresh, partialize, merge |
+| 52 | New BASE after MANUAL does not silently regain AUTO priority | PASS | §17, wiring, MANUAL amount question |
+| 53 | Recipe state/reopen behavior checked where applicable | PASS | §17 load paths; served: pre-2A draft hydrated MANUAL; limit: a recipe saved in AUTO reopens MANUAL |
+| 54 | Stale Package 2A executable assumptions removed | PASS | source pins, hook doc, tutorial copy, ledger H-49-1 |
+| 55 | SAFE tutorial dependency reviewed | PASS | §3 |
+| 56 | Ingredient/settings tutorial step completed or proven unnecessary | PASS | completed; served 6/7 measured `home-recipe-line` |
+| 57 | No stale “waiting for Package 2A” marker remains | PASS | v2.2 markers annotated closed; none in `src/` |
+| 58 | Focused HOME tests PASS | PASS | §5 |
+| 59 | Focused PRO tests PASS | PASS | §5 |
+| 60 | PR #268 regression tests PASS | PASS | §5 |
+| 61 | PR #276 regression tests PASS | PASS | §5 |
+| 62 | Tutorial regression tests PASS where applicable | PASS | §5 |
+| 63 | Typecheck PASS | PASS | `tsc -b` on the final head |
+| 64 | Changed-file lint PASS | PASS | `--max-warnings 0` |
+| 65 | Build PASS | PASS | verify:staging; CI verify job |
+| 66 | verify:staging PASS | PASS | on `5354665d`; final head re-verified by CI |
+| 67 | Full suite PASS | PASS | CI full suite green on the exact PR head; local 3 load-only timeouts classified by A/B; staging push-CI 5/5 green on `a743aa06` |
+| 68 | Current staging re-fetched before merge | PASS | merge only if staging == PR base |
+| 69 | Final reconciliation clean | PASS | #290 conflicts resolved and verified; CI green |
+| 70 | Only genuine missing closure changes merged | PASS | class C + the #290 reconcile |
+| 71 | Canonical staging deployed | PASS | staging serves `a743aa06` |
+| 72 | Served SHA verified | PASS | `index-CLlBeXrI.js` inlines `a743aa06` |
+| 73 | Production untouched | PASS | `main` `7fa36890` |
+| 74 | Served HOME 4-ingredient AUTO test PASS | WAITING OWNER SIGN-IN | pane signed out; anonymous ProductBehavior blocked |
+| 75 | Served AUTO→MANUAL test PASS | WAITING OWNER SIGN-IN |  |
+| 76 | Served HOME mass-neutral Crown test PASS | WAITING OWNER SIGN-IN |  |
+| 77 | Served HOME 0 g no-seed test PASS | OD-1 + WAITING OWNER SIGN-IN | Gelato/Sorbet/Vegan not delivered; Protein testable after sign-in |
+| 78 | Served PRO 0→1 test PASS | WAITING OWNER SIGN-IN |  |
+| 79 | Served PRO Protein 0→1 test PASS | WAITING OWNER SIGN-IN |  |
+| 80 | Served PR #276 Main-search regression PASS | WAITING OWNER SIGN-IN |  |
+| 81 | Served TOPPING exclusion PASS | WAITING OWNER SIGN-IN |  |
+| 82 | Served HOME auto-recalc PASS | N/A — OD-2 | the accepted „Przelicz i popraw” control is served and enabled |
+| 83 | Historical Package 2A branch marked SUPERSEDED / DO NOT MERGE | PASS | local tag `package-2a-historical-SUPERSEDED-DO-NOT-MERGE`, branch renamed |
+| 84 | PACKAGE 2A = CLOSED / RECONCILED TO CURRENT STAGING | RECONCILED — not CLOSED | closure waits for OD-1…OD-4 and the served checks A–J |
