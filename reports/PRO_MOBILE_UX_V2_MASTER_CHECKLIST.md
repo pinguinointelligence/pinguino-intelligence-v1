@@ -68,6 +68,18 @@ Merging v2.2 SAFE (#271) tripped B13's contract, which had pinned „no tutorial
 stricter than the owner's rule. It now pins the rule itself: one tutorial, B adds none, and
 that tutorial (anchored only on HOME) never auto-starts on the PRO workbench.
 
+Landed: PR #269 → staging `8684fb30` (squash tree == the CI-tested head `3126679c`, all four
+jobs green, CLEAN), deploy `dpl_DC1W5iK8R4BjYbq1VqZCoZ7o72MU`, served `index-B5fNRi7H.js` /
+`index-BwivwrM8.css` == its build log. Served QA (375 px, signed in, read-only): recipe bar,
+first-run settings Krok 1–3 with the whole-batch card, „Potwierdź ustawienia" as the one next
+step, the top-sheet dashboard with the one save card, the product sheet tone / fold / mark,
+WebP tour images (`image/webp` 42–116 KB) and desktop 1280 unchanged. It also found one
+defect: closing the first-run settings sheet dropped „Ustawienia czekają na potwierdzenie" and
+the „settings first" step. Below 960 px Settings is mounted twice (the CSS-hidden desktop aside
+and the sheet); the sheet copy cleared the published fact on unmount while its twin stayed
+mounted with unchanged inputs, so nothing published it again. Fixed on
+`claude/pro-mobile-ux-v2-b-settings-twin`: the fact is cleared only when the LAST copy unmounts.
+
 Owner test on staging (the acceptance scenarios): new recipe on a phone opens its settings
 from the top → Krok 1–3 → confirm lifts them into the recipe bar → Przelicz → Zapisz recepturę
 → Przejdź do Monitora → Przejdź do Produkcji; reopen a saved recipe (no second confirmation);

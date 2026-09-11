@@ -182,3 +182,25 @@ describe('B8 — a saved recipe reopened unchanged is not asked to re-confirm', 
     expect(useRecipeProfileStore.getState().settingsConfirmed).toBe(false);
   });
 });
+
+describe('B3/B6 — closing the phone settings sheet keeps „settings first"', () => {
+  it('clears the published fact only when the LAST Settings copy unmounts', async () => {
+    // Below the workbench breakpoint Settings is mounted twice: the CSS-hidden desktop
+    // aside (the shared root) and the phone sheet (its own root here).
+    await render();
+    const sheetHost = document.createElement('div');
+    document.body.append(sheetHost);
+    const sheetRoot = createRoot(sheetHost);
+    await act(async () => sheetRoot.render(<WorkbenchSettingsLine compact />));
+    expect(useRecipeProfileStore.getState().settingsConfirmed).toBe(false);
+
+    // The sheet closes; the aside copy stays, so the phone still knows settings wait.
+    await act(async () => sheetRoot.unmount());
+    sheetHost.remove();
+    expect(useRecipeProfileStore.getState().settingsConfirmed).toBe(false);
+
+    // Only when no Settings is left is the fact unknown again.
+    await act(async () => root.render(null));
+    expect(useRecipeProfileStore.getState().settingsConfirmed).toBeNull();
+  });
+});
