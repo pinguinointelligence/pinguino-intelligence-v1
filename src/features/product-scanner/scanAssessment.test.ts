@@ -288,6 +288,11 @@ describe('the deployed handler is wired to all of it', () => {
     expect(FINALIZE).toContain('recognitionIsResolved(recognition)');
     // the family question is still resolved from the classification, once
     expect(FINALIZE).toContain('resolveCustomerProductFamily(recognition)');
+    // A fresh, accepted classification also reached the profile authority; the public snapshot
+    // must not report it as lost merely because no previous request had to be reused.
+    expect(FINALIZE).toContain(
+      'carriedRecognition.carriedForward || supportsSemanticBehaviorReference(recognition)',
+    );
   });
 
   it('builds ONE snapshot and hands the same one to preview, to the save and to the response', () => {

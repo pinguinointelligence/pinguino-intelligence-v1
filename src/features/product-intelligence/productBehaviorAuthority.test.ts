@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ProfileMatch } from './mapperValueInference';
 import {
   classifyProspectiveProductBehavior,
+  supportsSemanticBehaviorReference,
   validateProductBehaviorAuthority,
   type MapperProductBehaviorAuthorityRow,
 } from './productBehaviorAuthority';
@@ -347,6 +348,65 @@ describe('prospective ProductBehavior authority', () => {
       classificationOutcome: 'classified',
       baseRecipeEligible: true,
       referenceMapperIngredientId: 'PI-ING-000123',
+    });
+  });
+
+  it('carries an explicitly confirmed, fully resolved classification into behavior after safe field Rescue', () => {
+    const acceptedRecognition = {
+      ...quesoRecognition,
+      classificationSource: 'CUSTOMER_CONFIRMED' as const,
+      productArchetype: 'NORMAL_INGREDIENT' as const,
+      ingredientFamily: 'dairy_liquid' as const,
+      physicalForm: 'LIQUID' as const,
+      intendedUsageRole: 'BASE_ONLY' as const,
+      compatibleMapperCategories: ['dairy'],
+      confidence: 0.8,
+      modelRequired: false,
+      modelReasonCodes: [],
+      evidenceRefs: [...quesoRecognition.evidenceRefs, 'customerFamily'],
+    };
+
+    expect(supportsSemanticBehaviorReference(acceptedRecognition)).toBe(true);
+    expect(
+      classifyProspectiveProductBehavior({
+        kind: 'normal_food',
+        engineUsable: true,
+        profileMatch: profileMatch({ confidence: 0.8384 }),
+        recognition: acceptedRecognition,
+      }),
+    ).toMatchObject({
+      classificationOutcome: 'classified',
+      baseRecipeEligible: true,
+      referenceMapperIngredientId: 'PI-ING-000123',
+      classificationReasonCodes: [],
+    });
+  });
+
+  it('keeps the family/form blocker when resolved-looking semantics lack sufficient authority', () => {
+    const insufficientRecognition = {
+      ...quesoRecognition,
+      classificationSource: 'SERVER_MODEL' as const,
+      ingredientFamily: 'dairy_liquid' as const,
+      physicalForm: 'LIQUID' as const,
+      intendedUsageRole: 'BASE_ONLY' as const,
+      confidence: 0.8,
+      modelRequired: false,
+      modelReasonCodes: [],
+      evidenceRefs: quesoRecognition.evidenceRefs.filter((ref) => ref !== 'customerFamily'),
+    };
+
+    expect(supportsSemanticBehaviorReference(insufficientRecognition)).toBe(false);
+    expect(
+      classifyProspectiveProductBehavior({
+        kind: 'normal_food',
+        engineUsable: true,
+        profileMatch: profileMatch({ confidence: 0.8384 }),
+        recognition: insufficientRecognition,
+      }),
+    ).toMatchObject({
+      classificationOutcome: 'unknown_requires_review',
+      baseRecipeEligible: false,
+      classificationReasonCodes: ['family_and_form_evidence_missing'],
     });
   });
 
