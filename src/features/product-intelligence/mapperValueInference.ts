@@ -33,7 +33,7 @@ import {
   familySupportsCohort,
   type ProductFamilyId,
 } from './mapperFamilyInference.ts';
-import { isMapperHomeVerifiedStatus } from '@/data/ingredients/mapperVerificationStatus';
+import { isMapperHomeVerifiedStatus } from '../../data/ingredients/mapperVerificationStatus.ts';
 import {
   knownField,
   WORKING_NUMERIC_FIELDS,
