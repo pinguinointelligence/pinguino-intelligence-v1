@@ -24,6 +24,13 @@ export const formatGramsDeltaPl = (delta: number): string => {
   return delta > 0 ? `+${magnitude}` : `−${magnitude}`;
 };
 
+/** Share of the batch with a comma decimal; whole values carry no decimal. */
+export const formatPercentPl = (percent: number): string => {
+  const rounded = Math.round(percent * 10) / 10;
+  const text = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1).replace('.', ',');
+  return `${text}%`;
+};
+
 /** Temperature with U+2212 for negatives (task hard rule). */
 export const formatTemperaturePl = (celsius: number): string =>
   `${celsius < 0 ? '−' : ''}${Math.abs(celsius)}°C`;
@@ -216,6 +223,62 @@ export const constraintStudioCopy = {
       `${names.length > 0 ? ` (${listPl(names)})` : ''}. ` +
       'Podgląd jest wyłącznie diagnostyczny i nie może zostać zastosowany.',
     applyDisabledDiagnostic: 'Zastosowanie wyłączone (podgląd diagnostyczny)',
+  },
+
+  /* ------ INTERACTIVE RECALCULATION PREVIEW (owner 2026-09-11) ------------
+     The proposal's amounts are the same familiar grams control as the recipe
+     row. Changing one (or its padlock) changes the ACTION from applying to
+     recalculating — nothing reaches the recipe before „Zastosuj zmiany". */
+  interactive: {
+    working: 'Liczymy balans receptury…',
+    apply: 'Zastosuj zmiany',
+    recalculate: 'Przelicz',
+    back: 'Wróć',
+    editedNote: 'Twoja zmiana',
+    pendingEdits: 'Zmieniono ustawienia. Przelicz, aby zobaczyć nową propozycję.',
+    amountAria: (name: string) => `${name} — ilość w g`,
+    lockAria: (name: string, locked: boolean) =>
+      locked ? `${name} — Gramatura zablokowana. Odblokuj` : `${name} — Zablokuj gramy`,
+    lockTitle: (locked: boolean) => (locked ? 'Gramatura zablokowana' : 'Zablokuj gramaturę'),
+    /** An interactive run whose settings need no further correction. */
+    instructionsOnly: 'Te ustawienia nie wymagają dodatkowej korekty receptury.',
+  },
+
+  /* ------ LOCK CONFLICT (owner 2026-09-11) --------------------------------
+     The customer's own locks cannot all be kept. Customer language first; the
+     measured gap is a secondary PRO detail. Gellatti speaks in one
+     gender-neutral voice (present tense). */
+  lockConflict: {
+    proTitle: 'Nie da się zachować wszystkich blokad w obecnych ilościach.',
+    homeTitle: 'Tych ustawień nie da się teraz połączyć.',
+    proProposal:
+      'Gellatti proponuje najmniejszą korektę, która pozwala zachować prawidłowy profil.',
+    homeProposal:
+      'Gellatti proponuje najmniejszą zmianę, która pozwala prawidłowo przeliczyć recepturę.',
+    noSafeCorrection: 'Nie znaleziono bezpiecznej korekty przy obecnych ograniczeniach.',
+    genericGap: 'Przy obecnych ustawieniach receptura nie mieści się w zatwierdzonych zakresach.',
+    gap: {
+      liquid_dairy_carrier_below_floor: (actual: string, limit: string) =>
+        `Przy obecnych ustawieniach płynna baza ma ${actual}, a wymagane minimum to ${limit}.`,
+      main_below_floor: (actual: string, limit: string) =>
+        `Przy obecnych ustawieniach składnik główny ma ${actual} partii, a wymagane minimum to ${limit}.`,
+    },
+    gapAboveLimit: (limit: string) =>
+      `Przy obecnych ustawieniach składnik główny przekracza dopuszczalne maksimum ${limit} partii.`,
+    measureLabel: {
+      liquid_dairy_carrier_below_floor: 'Płynna baza',
+      main_below_floor: 'Składnik główny',
+      main_above_hard_limit: 'Składnik główny',
+    },
+    minimumLabel: 'Minimum technologiczne',
+    maximumLabel: 'Maksimum technologiczne',
+    locksHeading: 'Zablokowane ilości',
+    changeNote: 'Najmniejsza korekta',
+    unchangedNote: 'Bez zmian',
+    editedNote: 'Twoja wartość',
+    useProposal: 'Użyj propozycji',
+    recalculate: 'Przelicz',
+    back: 'Wróć',
   },
 
   /* ----------------------- the ONE owner-mandated blocked-apply notice ---- */
