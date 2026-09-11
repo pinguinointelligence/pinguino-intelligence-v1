@@ -302,6 +302,9 @@ export interface OptimizePreviewOptions extends FormulationOptions {
    * launch sibling-level generation or the preference-stripped nearest retry.
    * The caller owns the one-step-toward-zero sequence. */
   directionFallbackPass?: boolean;
+  /** INTERNAL. Prevents the Vegan approved-template history seed from
+   * recursively seeding itself while that independent basin is evaluated. */
+  veganDirectionSeedPass?: boolean;
   /** Owner UX: ingredient alternatives are user-triggered only. Normal exact
    * and adjacent fallback runs therefore publish no automatic rescue advice. */
   skipRescueAssessment?: boolean;
@@ -1544,6 +1547,20 @@ export type BuildPreviewResult =
       code: 'no_proposal';
       violatedMetrics?: string[];
       solverInvocations?: number;
+      /** A bounded search stop is not a proof that the requested recipe is
+       * physically impossible. Vegan Direction publishes this classification
+       * whenever its legal candidate search exhausts without a proposal. */
+      failureKind?: 'SEARCH_FAILED';
+      /** Reproducible owner evidence for a Vegan search failure. This survives
+       * publication so diagnostics can distinguish the search basin from a
+       * genuinely infeasible hard-constraint verdict. */
+      searchEvidence?: {
+        reason: 'vegan_direction_search_exhausted';
+        requestedTargets: RecipeDirectionTargets;
+        bindingMetrics: string[];
+        solverInvocations: number;
+        stopReason: IterationDiagnostics['stopReason'] | 'no_iteration_evidence';
+      };
       /** True only when the unchanged native-safe recipe is the verified
        * fixed point for the exact selected five-step Direction target. */
       directionTargetUnreached?: boolean;
@@ -4890,8 +4907,13 @@ export function maximizeMainFlavourObjective(
     // their exact current vector is the authority. Pure Engine/demo drafts do
     // not; for those, use the already-built technical toolbox rather than the
     // sparse/off-batch seed.
+    const veganDirectionHistorySeed =
+      identityInput.category === 'vegan_gelato' &&
+      hasActiveExactDirectionObjective(identityInput) &&
+      options.veganDirectionSeedPass === true;
     const technicalStart =
       identityInput.category === 'protein_gelato' ||
+      veganDirectionHistorySeed ||
       Object.keys(options.productBehaviorSnapshots ?? {}).length === 0
         ? start
         : identityInput;
@@ -6800,7 +6822,29 @@ export function buildOptimizePreview(
   createdAt: string,
   options: OptimizePreviewOptions = {},
 ): BuildPreviewResult {
-  const result = buildOptimizePreviewInternal(input, set, createdAt, options);
+  const internalResult = buildOptimizePreviewInternal(input, set, createdAt, options);
+  const result: BuildPreviewResult =
+    !internalResult.ok &&
+    internalResult.code === 'no_proposal' &&
+    input.category === 'vegan_gelato' &&
+    hasActiveExactDirectionObjective(input)
+      ? {
+          ...internalResult,
+          failureKind: 'SEARCH_FAILED',
+          violatedMetrics: internalResult.violatedMetrics ?? [
+            ...new Set(recipeDirectionViolations(input).map((violation) => violation.metric)),
+          ],
+          searchEvidence: {
+            reason: 'vegan_direction_search_exhausted',
+            requestedTargets: normalizeRecipeDirectionTargets(input.goals?.direction_targets),
+            bindingMetrics: internalResult.violatedMetrics ?? [
+              ...new Set(recipeDirectionViolations(input).map((violation) => violation.metric)),
+            ],
+            solverInvocations: internalResult.solverInvocations ?? 0,
+            stopReason: internalResult.iteration?.stopReason ?? 'no_iteration_evidence',
+          },
+        }
+      : internalResult;
   if (!result.ok) return result;
   const snapshots = options.productBehaviorSnapshots ?? {};
   if (Object.keys(snapshots).length === 0) return result;
@@ -7594,6 +7638,185 @@ function buildOptimizePreviewWithDirection(
           ],
         }
       : routedDecision;
+
+  // VEGAN DIRECTION HISTORY INDEPENDENCE (owner 2026-09-10).
+  //
+  // A newly selected Strawberry enters through the approved Vegan formulation
+  // template, while the byte-equivalent recipe produced by a no-Direction
+  // Preview is classified as a complete local-correction draft. The latter
+  // therefore started the bounded greedy solver from V0 and could get trapped
+  // even though the former route had already demonstrated a legal exact vector.
+  // For an unpoured Vegan recipe with the same ingredient authority, restore
+  // that approved pre-solver vector as the LOCAL solver's starting basin. This
+  // is intentionally only a seed: the proposal still uses the real input as
+  // its baseline and crosses the unchanged Main, constraint, batch, native-band,
+  // stabilizer, practicalization and publication gates. Other profiles never
+  // enter this branch. A successful candidate is rebound onto the actual V0
+  // draft before publication, then receives a fresh Main proof whose starting
+  // grams are V0 (never the template seed).
+  if (
+    input.category === 'vegan_gelato' &&
+    decision.mode !== 'unsupported' &&
+    hasActiveExactDirectionObjective(input) &&
+    !input.items.some((item) => item.actual_grams !== null) &&
+    (options.rescueSimulationLineIds?.length ?? 0) === 0 &&
+    options.veganDirectionSeedPass !== true
+  ) {
+    const lookup = selectFormulationTemplateForRecipe(input);
+    if (lookup.template) {
+      const seeded = buildFormulationProposal(
+        input,
+        set,
+        lookup.template,
+        'full_formulation',
+        options,
+      );
+      if (seeded.ok && seeded.proposal.missingHardRoles.length === 0) {
+        // `proposedInput` is the normalized formulation result. It is useful as
+        // a customer proposal, but it is not always the approved PRE-solver
+        // state: an already-valid owner Inulin amount is intentionally retained
+        // by formulation and normalization can then squeeze every other role
+        // around that historical amount. Reconstruct the seed from the
+        // approved template's own role targets. Exact/range/percent constraints
+        // and established non-adjustable roles still win, so this grants no new
+        // ingredient or dosage authority; it only removes Preview history from
+        // the starting basin.
+        const templateRoleTarget = new Map(
+          lookup.template.roles.map((target) => [target.role, target] as const),
+        );
+        const templateScale = input.target_batch_grams / lookup.template.baseBatchG;
+        const currentLineIds = new Set(input.items.map((item) => item.id));
+        const approvedSeedInput: RecipeInput = {
+          ...seeded.proposal.proposedInput,
+          items: seeded.proposal.proposedInput.items.map((item) => {
+            const role = resolveFunctionalRole(item.ingredient);
+            const canonicalId = canonicalIngredientId(item.ingredient);
+            return {
+              ...item,
+              // Canonical Preview omits zero-use Water/Sucrose rows. When the
+              // formulation seed reintroduces them, its approved toolbox
+              // payload deliberately keeps the legacy toolbox `id` and broad
+              // category. The correction engine's current-draft vector uses
+              // those fields as routing keys, so that harmless representation
+              // difference selected a different basin. The INTERNAL seed uses
+              // the already-bound canonical Mapper identity/category; before
+              // publication the exact approved toolbox payload is restored.
+              ...(currentLineIds.has(item.id)
+                ? {}
+                : {
+                    id: item.ingredient.id,
+                    ingredient: {
+                      ...item.ingredient,
+                      id: canonicalId,
+                      identity_provenance: 'mapper' as const,
+                      category: role === 'water' ? ('other' as const) : item.ingredient.category,
+                    },
+                  }),
+              planned_grams: (() => {
+                const target = templateRoleTarget.get(resolveFunctionalRole(item.ingredient));
+                if (!target) return item.planned_grams;
+                const roleCarriers = seeded.proposal.proposedInput.items.filter(
+                  (candidate) => resolveFunctionalRole(candidate.ingredient) === target.role,
+                );
+                if (roleCarriers.length !== 1) return item.planned_grams;
+                const constraint = set.byLineId[item.id];
+                if (constraint?.mode === 'locked') return constraint.grams;
+                if (constraint?.mode === 'percent') {
+                  return (constraint.percent / 100) * input.target_batch_grams;
+                }
+                const roleGrams = target.grams * templateScale;
+                if (constraint?.mode === 'range') {
+                  return Math.min(Math.max(roleGrams, constraint.minGrams), constraint.maxGrams);
+                }
+                if (item.lock_type === 'grams' || !target.adjustable) {
+                  return item.planned_grams;
+                }
+                return roleGrams;
+              })(),
+            };
+          }),
+        };
+        const seedOnBatch =
+          Math.abs(plannedSum(approvedSeedInput) - input.target_batch_grams) <=
+          BATCH_SUM_TOLERANCE_G;
+        const seededResult = seedOnBatch
+          ? buildOptimizePreviewWithDirection(approvedSeedInput, set, createdAt, {
+              ...options,
+              veganDirectionSeedPass: true,
+              // The zero-use rows removed by canonical Preview no longer have
+              // line-keyed ProductBehavior snapshots. Their ingredient truth
+              // still comes from the closed approved toolbox, and publication
+              // later requires freshly bound proposal snapshots. Do not let
+              // the absence of not-yet-created line snapshots masquerade as a
+              // food-science infeasibility inside this pure candidate search.
+              productBehaviorSnapshots: {},
+            })
+          : null;
+        if (
+          seededResult?.ok &&
+          seededResult.preview.diagnosticOnly !== true &&
+          recipeDirectionViolations(seededResult.preview.proposedInput).length === 0
+        ) {
+          const approvedAddedByCanonicalId = new Map(
+            seeded.proposal.proposedInput.items
+              .filter((item) => !currentLineIds.has(item.id))
+              .map((item) => [canonicalIngredientId(item.ingredient), item] as const),
+          );
+          const authorizedCandidate: RecipeInput = {
+            ...seededResult.preview.proposedInput,
+            items: seededResult.preview.proposedInput.items.map((item) => {
+              if (currentLineIds.has(item.id)) return item;
+              const approved = approvedAddedByCanonicalId.get(
+                canonicalIngredientId(item.ingredient),
+              );
+              return approved
+                ? { ...item, id: approved.id, ingredient: approved.ingredient }
+                : item;
+            }),
+          };
+          const reboundMain = maximizeMainFlavourObjective(input, authorizedCandidate, set, {
+            ...options,
+            veganDirectionSeedPass: true,
+            productBehaviorSnapshots: {},
+          });
+          let preview = finishPreview(
+            'optimize',
+            copy.preview.kindLabels.optimize,
+            input,
+            set,
+            reboundMain.input,
+            set,
+            violationCount(currentResult),
+            seededResult.preview.explanation,
+            createdAt,
+          );
+          preview = polishPracticalDirectionPreview(input, set, preview, createdAt, options);
+          attachMainObjective(preview, input, reboundMain.proof);
+          preview.autoBalance = seededResult.preview.autoBalance;
+          preview.iteration = seededResult.preview.iteration;
+          preview.hardResidualMetrics = classifyViolationBands(preview.proposedInput).hardMetrics;
+          preview.diagnosticOnly =
+            preview.practicalization?.status === 'blocked' ||
+            preview.hardResidualMetrics.length > 0 ||
+            preview.iteration?.capped === true;
+          preview.diagnosticReason =
+            preview.practicalization?.status === 'blocked'
+              ? 'practicalization_blocked'
+              : preview.hardResidualMetrics.length > 0
+                ? 'hard_residual'
+                : preview.iteration?.capped === true
+                  ? 'iteration_cap'
+                  : undefined;
+          if (
+            preview.diagnosticOnly !== true &&
+            recipeDirectionViolations(preview.proposedInput).length === 0
+          ) {
+            return mainSafePreview(input, preview, options.productBehaviorSnapshots);
+          }
+        }
+      }
+    }
+  }
 
   // A/B promotion (2026-08-25): for a complete on-batch recipe WITHOUT Main,
   // retain several nearby paths and rank them by the product hierarchy before

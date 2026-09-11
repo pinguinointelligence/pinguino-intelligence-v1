@@ -592,6 +592,25 @@ export function DirectionFallbackDecision({
   const requested = fallbackReport.requestedTargets;
   const fallback = fallbackReport.best?.targets ?? null;
   const axes = ['sweetness', 'softness', 'creaminess', 'flavor'] as const;
+  const axisLabels = {
+    sweetness: 'Słodycz',
+    softness: 'Twardość',
+    creaminess: 'Kremowość',
+    flavor: 'Smak',
+  } as const;
+  const changedAxes = axes.filter(
+    (axis) => fallback?.[axis] !== undefined && fallback[axis] !== requested[axis],
+  );
+  const changedAxesDisclosure = fallback
+    ? changedAxes
+        .map(
+          (axis) =>
+            `${axisLabels[axis]} ${formatDirectionLevel(requested[axis])} → ${formatDirectionLevel(fallback[axis])}`,
+        )
+        .join('; ')
+    : null;
+  const veganSearchFailed =
+    fallbackReport.profile === 'vegan_gelato' && fallbackReport.failureKind === 'SEARCH_FAILED';
   const changedAxis =
     axes.find((axis) => fallback?.[axis] !== undefined && fallback[axis] !== requested[axis]) ??
     axes.find((axis) => requested[axis] !== 0);
@@ -613,7 +632,7 @@ export function DirectionFallbackDecision({
         <div className="flex flex-wrap gap-2">
           {fallbackLevel ? (
             <button type="button" className={secondary} onClick={onUseFallback}>
-              Zostań przy {fallbackLevel}
+              {veganSearchFailed ? 'Użyj proponowanego profilu' : `Zostań przy ${fallbackLevel}`}
             </button>
           ) : null}
           <button type="button" className={secondary} onClick={onBack}>
@@ -631,18 +650,22 @@ export function DirectionFallbackDecision({
         <div className={surface} data-testid="direction-fallback-final">
           <div>
             <p className="text-sm font-medium text-ivory">
-              Poziomu {requestedLevel} nie da się osiągnąć dla tej receptury
+              {veganSearchFailed
+                ? 'Wyszukiwanie nie znalazło dokładnego profilu'
+                : `Poziomu ${requestedLevel} nie da się osiągnąć dla tej receptury`}
             </p>
             <p className="mt-1 text-xs text-ivory/70">
-              {fallbackLevel
-                ? `Najbliższy bezpieczny poziom to ${fallbackLevel}.`
-                : 'Z obecną recepturą nie ma bezpiecznego wariantu.'}
+              {veganSearchFailed && changedAxesDisclosure
+                ? `Proponowana korekta zmienia: ${changedAxesDisclosure}.`
+                : fallbackLevel
+                  ? `Najbliższy bezpieczny poziom to ${fallbackLevel}.`
+                  : 'Z obecną recepturą nie ma bezpiecznego wariantu.'}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
             {fallbackLevel ? (
               <button type="button" className={primary} onClick={onUseFallback}>
-                Ustaw {fallbackLevel}
+                {veganSearchFailed ? 'Ustaw proponowany profil' : `Ustaw ${fallbackLevel}`}
               </button>
             ) : null}
             <button type="button" className={secondary} onClick={onBack}>
@@ -656,9 +679,13 @@ export function DirectionFallbackDecision({
       <div className={surface} data-testid="direction-fallback-alternative">
         <div>
           <p className="text-sm font-medium text-ivory">
-            {alternative.targetReached
-              ? `Można osiągnąć poziom ${requestedLevel}`
-              : `Można zbliżyć się bardziej do poziomu ${requestedLevel}`}
+            {veganSearchFailed && alternative.targetReached
+              ? 'Można osiągnąć wybrany profil'
+              : veganSearchFailed
+                ? 'Można zbliżyć się do wybranego profilu'
+                : alternative.targetReached
+                  ? `Można osiągnąć poziom ${requestedLevel}`
+                  : `Można zbliżyć się bardziej do poziomu ${requestedLevel}`}
           </p>
           <p className="mt-1 text-xs text-ivory/70">Wymaga to zmiany receptury.</p>
         </div>
@@ -668,7 +695,7 @@ export function DirectionFallbackDecision({
           </button>
           {fallbackLevel ? (
             <button type="button" className={secondary} onClick={onUseFallback}>
-              Zostań przy {fallbackLevel}
+              {veganSearchFailed ? 'Użyj proponowanego profilu' : `Zostań przy ${fallbackLevel}`}
             </button>
           ) : null}
           <button type="button" className={secondary} onClick={onBack}>
@@ -683,14 +710,18 @@ export function DirectionFallbackDecision({
     <div className={surface} data-testid="direction-fallback-decision">
       <div>
         <p className="text-sm font-medium text-ivory">
-          {fallbackLevel
-            ? `Nie da się osiągnąć poziomu ${requestedLevel}`
-            : 'Nie udało się osiągnąć wybranego poziomu'}
+          {veganSearchFailed
+            ? 'Nie udało się osiągnąć wybranego profilu w tym przebiegu wyszukiwania'
+            : fallbackLevel
+              ? `Nie da się osiągnąć poziomu ${requestedLevel}`
+              : 'Nie udało się osiągnąć wybranego poziomu'}
         </p>
         <p className="mt-1 text-xs text-ivory/70">
-          {fallbackLevel
-            ? `Najbliższy możliwy poziom to ${fallbackLevel}.`
-            : 'Z obecną recepturą nie ma bezpiecznego wariantu.'}
+          {veganSearchFailed && changedAxesDisclosure
+            ? `Proponowana korekta zmienia: ${changedAxesDisclosure}.`
+            : fallbackLevel
+              ? `Najbliższy możliwy poziom to ${fallbackLevel}.`
+              : 'Z obecną recepturą nie ma bezpiecznego wariantu.'}
         </p>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -701,7 +732,7 @@ export function DirectionFallbackDecision({
             data-testid="direction-fallback-use"
             onClick={onUseFallback}
           >
-            Ustaw {fallbackLevel}
+            {veganSearchFailed ? 'Ustaw proponowany profil' : `Ustaw ${fallbackLevel}`}
           </button>
         ) : null}
         <button
