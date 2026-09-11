@@ -22,6 +22,7 @@ import {
 import type { CardContribution } from '../../../src/features/product-intelligence/productSourceCard.ts';
 import {
   WORKING_NUMERIC_FIELDS,
+  type CohortEvidence,
   type FieldBasis,
   type FieldTruthState,
   type WorkingNumericField,
@@ -41,7 +42,10 @@ import {
   type ProductProductionAccuracyBehavior,
   type ProductProductionAccuracyAssessment,
 } from '../../../src/features/product-intelligence/productProductionAccuracy.ts';
-import { classifyProspectiveProductBehavior } from '../../../src/features/product-intelligence/productBehaviorAuthority.ts';
+import {
+  classifyProspectiveProductBehavior,
+  supportsSemanticBehaviorReference,
+} from '../../../src/features/product-intelligence/productBehaviorAuthority.ts';
 
 export const INTIMPORT_WHOLE_PROFILE_AUTHORITY = 'INTIMPORT_WHOLE_PROFILE_MATCH' as const;
 
@@ -81,6 +85,8 @@ export interface IntimportTrustedFieldTruth {
   mapperReferences: string[];
   algorithmVersion: string | null;
   mapperFingerprint: string | null;
+  note: string | null;
+  cohort: CohortEvidence | null;
 }
 
 export interface IntimportTrustedProductProfile {
@@ -102,6 +108,7 @@ export interface IntimportTrustedProductProfile {
   criticalReadiness: boolean;
   missingCritical: string[];
   missingEngineFields: WorkingNumericField[];
+  unresolvedEngineFieldReasons: Partial<Record<WorkingNumericField, string[]>>;
   /** Exact reason a numerically complete profile can still be withheld. */
   criticalPhysicsBlockers: string[];
   sweetnessPath: SweetnessPath;
@@ -113,6 +120,7 @@ export interface IntimportTrustedProductProfile {
   /** Exact server-selected profile used only as ProductBehavior evidence.
    * It is never written to product mapper identity or used as runtime physics. */
   profileReferenceMapperIngredientId: string | null;
+  profileReferenceAuthority?: 'WHOLE_PROFILE' | 'SEMANTIC_BEHAVIOR_REFERENCE' | null;
   mapperSimilarity: number | null;
   mapperProfileBasis: Exclude<ProfileMatchBasis, 'none'> | null;
   mapperCandidatesBeforeFilter: string[];
@@ -140,7 +148,9 @@ export interface IntimportProductProfileProposalInput {
   proposedMapperIngredientId: string | null;
   matchInput: ProfileMatchInput;
   declared: Partial<Record<WorkingNumericField, number | null>>;
-  declaredBasis?: Partial<Record<WorkingNumericField, 'product_declared' | 'user_confirmed' | 'derived'>>;
+  declaredBasis?: Partial<
+    Record<WorkingNumericField, 'product_declared' | 'user_confirmed' | 'derived'>
+  >;
   /** Exact source-card facts rebuilt by the server from validated enrichment
    * ledger receipts. Never accepted directly from a browser proposal. */
   sourceCard?: CardContribution | null;
@@ -318,7 +328,22 @@ export function validateIntimportProductProfileProposal(
     toppingBehaviorMatch.basis !== 'none'
       ? toppingBehaviorMatch
       : null;
-  const referenceMatch = acceptedMatch ?? acceptedBehaviorMatch;
+  const semanticBehaviorMatch =
+    !acceptedMatch &&
+    !acceptedBehaviorMatch &&
+    resolved.engineReady &&
+    supportsSemanticBehaviorReference(recognition) &&
+    resolved.profileMatch &&
+    resolved.profileMatch.rejected === null &&
+    resolved.profileMatch.basis !== 'none' &&
+    resolved.profileMatch.rows.length > 0
+      ? resolved.profileMatch
+      : null;
+  const referenceMatch = acceptedMatch ?? acceptedBehaviorMatch ?? semanticBehaviorMatch;
+  // Preserve the accepted TOPPING reference contract for existing products.
+  // Only the new sub-threshold semantic reference is prevented from presenting
+  // itself as accepted Mapper similarity; it lends no numeric profile.
+  const acceptedReferenceMatch = acceptedMatch ?? acceptedBehaviorMatch;
   const acceptedProfileReference = referenceMatch ? profileDonor(referenceMatch) : null;
 
   const technicalComposition: Record<string, number> = {};
@@ -335,6 +360,8 @@ export function validateIntimportProductProfileProposal(
       mapperReferences: [...truth.provenance.mapperReferences],
       algorithmVersion: truth.provenance.algorithmVersion,
       mapperFingerprint: truth.provenance.mapperFingerprint,
+      note: truth.provenance.note,
+      cohort: truth.provenance.cohort ? { ...truth.provenance.cohort } : null,
     };
   }
   const criticalPhysicsBlockers = [...resolved.criticalPhysicsBlockers];
@@ -349,7 +376,7 @@ export function validateIntimportProductProfileProposal(
     evidence: input.evidence,
     evidenceProvenance: input.evidenceProvenance,
     fieldTruth,
-    mapperWholeProfileSimilarity: referenceMatch?.confidence ?? null,
+    mapperWholeProfileSimilarity: acceptedMatch?.confidence ?? null,
     recognition,
     engineUsable: resolved.engineReady,
     criticalPhysicsBlockers,
@@ -380,6 +407,7 @@ export function validateIntimportProductProfileProposal(
     criticalReadiness: evidenceAssessment.criticalReadiness,
     missingCritical: [...evidenceAssessment.missingCritical],
     missingEngineFields: [...resolved.missingEngineFields],
+    unresolvedEngineFieldReasons: structuredClone(resolved.unresolvedEngineFieldReasons),
     criticalPhysicsBlockers,
     sweetnessPath: { ...resolved.sweetnessPath },
     allergenEvidenceStatus:
@@ -398,9 +426,16 @@ export function validateIntimportProductProfileProposal(
     fieldTruth,
     estimatedFromMapperIds: [...resolved.mapperReferences],
     profileReferenceMapperIngredientId: acceptedProfileReference?.ingredient_id ?? null,
-    mapperSimilarity: referenceMatch?.confidence ?? null,
+    profileReferenceAuthority: acceptedMatch
+      ? 'WHOLE_PROFILE'
+      : referenceMatch
+        ? 'SEMANTIC_BEHAVIOR_REFERENCE'
+        : null,
+    mapperSimilarity: acceptedReferenceMatch?.confidence ?? null,
     mapperProfileBasis:
-      referenceMatch && referenceMatch.basis !== 'none' ? referenceMatch.basis : null,
+      acceptedReferenceMatch && acceptedReferenceMatch.basis !== 'none'
+        ? acceptedReferenceMatch.basis
+        : null,
     mapperCandidatesBeforeFilter: [
       ...(referenceMatch?.candidatesBeforeFilter ??
         resolved.profileMatch?.candidatesBeforeFilter ??

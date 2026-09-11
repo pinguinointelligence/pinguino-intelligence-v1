@@ -18,6 +18,7 @@ import {
 } from './appNav';
 import { AccountModeSwitcher } from './AccountModeSwitcher';
 import { labelSettingsReturn } from '@/features/master-label/labelSettingsNavigation';
+import { useTutorialStore } from '@/features/tutorial/tutorialState';
 
 const s = copy.shell;
 const FOCUSABLE =
@@ -265,6 +266,23 @@ export function AppNavDrawer() {
                 );
               })}
               <MobileDesignReviewEntry />
+              {/* §29 — „Uruchom samouczek ponownie" lives beside „Jak to
+                  działa?", because they answer the same need from two
+                  directions: one explains, the other shows. It is a plain menu
+                  row, not a settings toggle: it starts the tutorial and closes
+                  the drawer so the first spotlight lands on the real screen
+                  underneath. */}
+              <button
+                type="button"
+                onClick={() => {
+                  close();
+                  useTutorialStore.getState().start();
+                }}
+                className="block min-h-12 w-full rounded-sm px-4 text-left text-[15px] text-ink hover:bg-ink/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
+                data-testid="app-nav-restart-tutorial"
+              >
+                Uruchom samouczek ponownie
+              </button>
             </nav>
 
             <div

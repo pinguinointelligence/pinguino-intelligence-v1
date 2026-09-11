@@ -15,6 +15,7 @@ import { HomeProSwitch } from '@/features/home-creator/ui/HomeProSwitch';
 import { useHomeEntitlement } from '@/features/home-creator/useHomeEntitlement';
 import { useApplicationScaleAuthority } from './applicationScaleAuthority';
 import { AppHeaderAccountSlot } from './AppHeaderAccountSlot';
+import { TutorialOverlay } from '@/features/tutorial/TutorialOverlay';
 
 /**
  * THE ONE canonical application shell.
@@ -229,6 +230,13 @@ export function AppShell({
       <main className={cn(contentClassName, viewportLock && 'pro-workbench-main-lock')}>
         {children}
       </main>
+      {/* §29 — the first-run tutorial lives on the SHELL, not on a page.
+          It finds its anchors in the live DOM and drops any step whose element
+          is not there. It STARTS ITSELF only where at least one real anchored
+          step is on screen — in practice, HOME — so every other page stays
+          inert unless the customer asks for it from the menu. No page has to
+          know it is here, and no page can forget to mount it. */}
+      <TutorialOverlay />
     </div>
   );
 }
