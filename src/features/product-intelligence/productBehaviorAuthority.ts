@@ -1,4 +1,5 @@
 import { PROFILE_MATCH_FLOOR, profileDonor, type ProfileMatch } from './mapperValueInference.ts';
+import { isMapperHomeVerifiedStatus } from '@/data/ingredients/mapperVerificationStatus';
 import type {
   ProductIntendedUsageRole,
   ProductSemanticClassification,
@@ -93,9 +94,6 @@ export interface ProductBehaviorProductProfile {
 const REVIEW_REASON = 'family_and_form_evidence_missing';
 const MODULE_REASON = 'module_permission_missing';
 const TECHNICAL_REASON = 'technical_or_dosage_product';
-
-const verifiedPrefix = (value: string | null | undefined): boolean =>
-  value?.trim().toLocaleLowerCase('en-US').startsWith('verified') === true;
 
 /**
  * A Mapper row may lend taxonomy/behavior without lending its numeric profile.
@@ -220,7 +218,7 @@ export function classifyProspectiveProductBehavior(input: {
     // A post-process-only product borrows the Mapper row's governed role, not
     // its composition. Estimated/label-review rows may therefore prove the
     // TOPPING contract, while BASE remains restricted to Verified physics.
-    (baseRequested && !verifiedPrefix(reference.verification_status))
+    (baseRequested && !isMapperHomeVerifiedStatus(reference.verification_status))
   ) {
     return {
       classificationOutcome: 'unknown_requires_review',

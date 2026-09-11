@@ -19,13 +19,14 @@ import type { EngineIngredient, EngineIngredientFlags, IngredientComponentProfil
 import { mapDatasetCategory } from './categoryMapping';
 import type { IngredientRow } from './ingredientRow';
 import { assessMapperVeganEligibility } from './veganEligibility';
+import { isMapperHomeVerifiedStatus } from './mapperVerificationStatus';
 
 /** Required-number coercion at the engine seam (unknown component → 0). */
 const num = (value: number | null | undefined): number => value ?? 0;
 
 export function ingredientRowToEngineIngredient(row: IngredientRow): EngineIngredient {
   const { category } = mapDatasetCategory(row.ingredient_category);
-  const isVerified = row.verification_status.startsWith('Verified');
+  const isVerified = isMapperHomeVerifiedStatus(row.verification_status);
 
   const composition: IngredientComponentProfile = {
     water_percent: num(row.water_percent),
@@ -80,9 +81,7 @@ export function ingredientRowToEngineIngredient(row: IngredientRow): EngineIngre
     cost_currency: row.currency || null,
     confidence_score: row.data_confidence_percent ?? 0,
     source_type: isVerified ? 'verified_db' : 'ai_estimated',
-    // v1.0 vocabulary: every 'Verified*' status family counts as verified
-    // ('Verified', 'Verified / Basis Check Needed', 'Verified / PI Calculated',
-    // 'Verified / Public Label').
+    // Frozen v1.0 exact-status allowlist; unreviewed future labels fail closed.
     is_verified: isVerified,
     ...(Object.keys(flags).length > 0 ? { flags } : {}),
   };
