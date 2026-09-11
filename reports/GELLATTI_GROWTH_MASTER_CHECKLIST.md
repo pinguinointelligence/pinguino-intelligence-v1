@@ -5,6 +5,9 @@ Earlier prints said `TOTAL 172`. That denominator was wrong; the row text was al
 
 **Branch** merged to `staging` @ `22ce861c` (PR #135, squash). Deployed + served-verified.
 **Legend** 🟢 proven with evidence · 🟡 built, proof partial · 🔴 blocked · ⚪ not started
+**Counts are row-based.** A section header states how many of its rows are 🟢. The recount of
+2026-09-10 corrected two headers that had drifted from their rows: K said 16/22 (rows: 14 🟢) and
+M said 2/9 (rows: 1 🟢). No row's status changed.
 
 ```
 ARCHITECTURE / AUTHORITY                                                    12/12
@@ -60,7 +63,7 @@ COMMISSION ENGINE                H01-H22 ⚪  backend exists; no Stripe TEST eve
 AFFILIATE DASHBOARD              I01-I14 ⚪
 PAYOUT / SETTLEMENT              J01-J08 ⚪  kill switch stays OFF (checkpoint §4)
 
-REFER-A-FRIEND — REGULAR USER                                               16/22
+REFER-A-FRIEND — REGULAR USER                                               14/22
 K01 🟢 "Poleć Gellatti" in /account — BUILT (#248) and SERVED-PROVEN 2026-09-10 on
        staging 305d086c: /account?section=referral renders a real minted code GVLN474V and
        link https://staging.pinguinoai.com/?ref=GVLN474V. Desktop + 390 (overflow 0).
@@ -82,6 +85,7 @@ K15 🟢 Self-referral refused (live)
 K16 🟡 Status visible (reversed shown struck) — the RewardRow renders earned/reversed and
        strikes a reversal through; unit-tested. NOT served-proven: the QA account has no
        reversed reward, so no live row exists to show. Needs a real reversal to close.
+       → READY FOR SERVED OWNER QA (owner 2026-09-10). Not a served pass.
 K17 🟢 Earned days visible    — SERVED 305d086c: "ZDOBYTE DNI PRO" renders from the RPC
 K18 🟢 Remaining bank visible — SERVED 305d086c: "BANK DNI PRO" + the banked-while-PRO help
        Rules render the canonical 7/30 from REFERRAL_BONUS_DAYS, and the separation line
@@ -104,7 +108,7 @@ L10 🟡 Anonymous limited — anon blocked on referral tables; BUT anon still h
        table-level INSERT/UPDATE/DELETE/TRUNCATE grants on commission_entries.
        RLS is currently the only barrier. Recorded as a defence-in-depth gap.
 
-REGRESSION / EXISTING PRODUCT                                                 2/9
+REGRESSION / EXISTING PRODUCT                                                 1/9
 M01 ⚪ HOME  M02 ⚪ PRO  M03 ⚪ Shop  M04 🟡 Work With Us route (test, needs served)
 M05 ⚪ Franchise  M06 ⚪ Global header  M07 ⚪ Partner data  M08 ⚪ Commission history
 M09 🟢 No Production/main change — every DB op and the deploy targeted staging only
