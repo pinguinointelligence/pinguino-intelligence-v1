@@ -1,41 +1,3 @@
--- ============================================================================
--- P-LEAD-06 — a Franchise enquiry notifies Admin by email, not only in-app
--- ============================================================================
--- The enquiry already wrote a `user_notifications` row (admin_permission
--- SUPPORT, deep-linked to /admin/franchise), so an operator who opens the app
--- sees it. Nobody was told when the app is closed. This adds the mail.
---
--- EVERYTHING IT USES ALREADY EXISTED — nothing new is invented:
---   * `gellatti_enqueue_email_v1` is the canonical enqueue. It owns idempotency
---     (`on conflict (idempotency_key) do nothing`), normalises the recipient and
---     sets next_attempt_at, so this does not become a second, slightly
---     different way to create a Gellatti email.
---   * `FRANCHISE` is already in the closed `metadata.area` vocabulary that
---     email_jobs enforces.
---   * `franchiseInquiryNew` is already in the TS subject taxonomy
---     (src/notifications/domain/emailSubject.ts) and already renders
---     `[GELLATTI][FRANCHISE][INQUIRY][NEW]`; the subject below is that exact
---     shape rather than a new phrasing.
---
--- TWO TRAPS THE SHOP ENQUEUE DOCUMENTS, BOTH AVOIDED HERE: `environment` is NOT
--- NULL and `metadata.area` is closed. Omit either and the row is silently
--- refused, leaving a real enquiry with no mail.
---
--- WHY environment IS DERIVED FROM AN ORIGIN, NOT ASSUMED:
---   Staging and production share ONE Supabase project (A-DEF-02), so the
---   database genuinely cannot tell which app is calling it. The caller passes
---   its own origin and the CLASSIFICATION RULE lives here rather than in the
---   client, so a client cannot simply declare itself production. The label is
---   cosmetic — it only prefixes the subject for non-production — and an unknown
---   or missing origin falls back to 'staging', which is the safe direction: a
---   production mail mislabelled as staging is noise, a staging mail
---   mislabelled as production hides a test in a real inbox.
---
--- THE MAIL MUST NOT BE ABLE TO LOSE THE ENQUIRY. The enqueue is wrapped so that
--- a failure to queue can never roll back the inquiry row: the customer's
--- submission is the product event, the email is a notification about it. A gap
--- is visible to Admin in email_jobs; a lost lead is not recoverable.
-
 create or replace function public.gellatti_submit_franchise_inquiry_v1(p_inquiry jsonb)
  returns jsonb
  language plpgsql
@@ -75,8 +37,6 @@ begin
     v_source
   ) returning id into v_id;
 
-  -- The lead queue lives at /admin/franchise; sending the operator to
-  -- /admin/operations made them hunt for it.
   insert into public.user_notifications(
     admin_permission, notification_type, entity_type, entity_id, title, body, deep_link, dedupe_key
   ) values (
@@ -86,7 +46,6 @@ begin
     '/admin/franchise', 'franchise-inquiry:' || v_id::text
   ) on conflict (dedupe_key) do nothing;
 
-  -- P-LEAD-06: tell Admin by mail as well, through the canonical enqueue.
   v_environment := case
     when v_origin ilike '%gellatti.com%' then 'production'
     else 'staging'
@@ -126,9 +85,6 @@ begin
       p_max_attempts := 5
     );
   exception when others then
-    -- A queue failure must never destroy a real lead. The inquiry row and the
-    -- in-app notification both stand; the missing mail is visible as an absent
-    -- email_jobs row for this inquiry id.
     raise warning 'franchise_inquiry_email_enqueue_failed for %: %', v_id, sqlerrm;
   end;
 

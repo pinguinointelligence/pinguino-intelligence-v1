@@ -166,6 +166,8 @@ describe('final simple Direction fallback UX', () => {
       },
     };
     return {
+      profile: 'milk_gelato',
+      failureKind: null,
       requestedTargets: { sweetness: 0, softness: -2, creaminess: 0, flavor: 0 },
       attempts: [],
       best: {
@@ -173,6 +175,8 @@ describe('final simple Direction fallback UX', () => {
         targets: { sweetness: 0, softness: level, creaminess: 0, flavor: 0 },
         targetReached: true,
         runtimeMs: 5,
+        originalTargetScore: 9,
+        preservedOriginallySatisfiedAxes: true,
         preview: {
           ...candidate(),
           proposedInput,
@@ -262,6 +266,22 @@ describe('final simple Direction fallback UX', () => {
     expect(html).toContain('Najbliższy możliwy poziom to 0.');
     expect(html).toContain('Ustaw 0');
     expect(html).toContain('Spróbuj inaczej');
+  });
+
+  it('discloses every changed Vegan axis without claiming impossible or nearest', () => {
+    const report = fallback(-1);
+    report.profile = 'vegan_gelato';
+    report.failureKind = 'SEARCH_FAILED';
+    report.requestedTargets = { sweetness: 1, softness: -2, creaminess: 0, flavor: 0 };
+    report.best!.targets = { sweetness: 0, softness: -1, creaminess: 0, flavor: 0 };
+
+    const html = renderDecision(report);
+
+    expect(html).toContain('Słodycz +1 → 0');
+    expect(html).toContain('Twardość -2 → -1');
+    expect(html).toContain('Ustaw proponowany profil');
+    expect(html).not.toContain('Nie da się osiągnąć');
+    expect(html).not.toContain('Najbliższy');
   });
 
   it('shows an achieved alternative as a proposal without naming internal search or ingredients', () => {

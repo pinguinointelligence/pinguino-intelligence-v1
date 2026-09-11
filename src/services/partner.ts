@@ -19,6 +19,8 @@ export interface PartnerCodeAnalytics {
   uniqueVisitors: number;
   signups: number;
   paidCustomers: number;
+  /** D-LINK-03 — returned once migration 20260910200000 is applied. */
+  activeSubscriptions?: number;
   grossAttributedRevenueCents: number;
   refundCommissionCents: number;
   pendingCommissionCents: number;
@@ -76,6 +78,24 @@ export async function managePartnerCode(input: {
     p_code_id: input.codeId ?? null,
   });
   if (error) throw new Error(error.message);
+}
+
+/**
+ * D-CODE-03 — live availability for a code the partner is typing. The server
+ * answers with the refusal the create guard would raise, or null when the code
+ * can be claimed.
+ */
+export async function checkPartnerCodeAvailability(
+  partnerId: string,
+  code: string,
+): Promise<string | null> {
+  if (!supabase) return unavailable();
+  const { data, error } = await supabase.rpc('gellatti_partner_code_claim_refusal_v1', {
+    p_partner_id: partnerId,
+    p_code: code,
+  });
+  if (error) throw new Error(error.message);
+  return typeof data === 'string' ? data : null;
 }
 
 export async function updatePartnerProfile(profile: {
