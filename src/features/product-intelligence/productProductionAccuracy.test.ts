@@ -7,6 +7,8 @@ import {
 } from './productProductionAccuracy';
 import { classifyProductSemantics } from './productRecognition';
 import type { WorkingNumericField } from './productFieldTruth';
+import { MAPPER_FIELD_RESCUE_ALGORITHM_VERSION } from './mapperValueInference';
+import { MAPPER_WHOLE_PROFILE_ALGORITHM_VERSION } from './productWorkingValues';
 
 const recognition = {
   ...classifyProductSemantics({
@@ -225,6 +227,59 @@ describe('one production-oriented Product Accuracy authority', () => {
       baseInput({ fieldTruth: fields, mapperWholeProfileSimilarity: 0.8499 }),
     );
     expect(result.fields.fat_percent).toMatchObject({ creditFactor: 0 });
+  });
+
+  it('credits a backtest-calibrated field Rescue without borrowing whole-profile confidence', () => {
+    const fields = completeFieldTruth();
+    fields.water_percent = {
+      value: 3,
+      state: 'ESTIMATED',
+      basis: 'mapper_similar_profile',
+      confidence: 0.9,
+      algorithmVersion: MAPPER_FIELD_RESCUE_ALGORITHM_VERSION,
+    };
+    fields.total_solids_percent = {
+      value: 97,
+      state: 'ESTIMATED',
+      basis: 'derived',
+      confidence: 0.9,
+      algorithmVersion: MAPPER_FIELD_RESCUE_ALGORITHM_VERSION,
+    };
+    const result = assessProductProductionAccuracy(
+      baseInput({ fieldTruth: fields, mapperWholeProfileSimilarity: 0.7785 }),
+    );
+    expect(result.fields.water_percent).toMatchObject({ creditFactor: 0.8 });
+  });
+
+  it('withholds Engine credit from an uncalibrated core cohort even at its maximum tier', () => {
+    const fields = completeFieldTruth();
+    fields.fat_percent = {
+      value: 3.5,
+      state: 'ESTIMATED',
+      basis: 'mapper_simple_profile',
+      confidence: 0.95,
+      algorithmVersion: 'mapper-first-v1',
+      cohort: { size: 3, spread: 0, band: 4, tightness: 1, ceiling: 0.95 },
+    };
+    const result = assessProductProductionAccuracy(
+      baseInput({ fieldTruth: fields, mapperWholeProfileSimilarity: 0.95 }),
+    );
+    expect(result.fields.fat_percent).toMatchObject({ creditFactor: 0 });
+  });
+
+  it('retains 80% credit for an accepted whole-profile authority', () => {
+    const fields = completeFieldTruth();
+    fields.fat_percent = {
+      value: 3.5,
+      state: 'ESTIMATED',
+      basis: 'mapper_similar_profile',
+      confidence: 0.85,
+      algorithmVersion: MAPPER_WHOLE_PROFILE_ALGORITHM_VERSION,
+    };
+    const result = assessProductProductionAccuracy(
+      baseInput({ fieldTruth: fields, mapperWholeProfileSimilarity: 0.85 }),
+    );
+    expect(result.fields.fat_percent).toMatchObject({ creditFactor: 0.8 });
   });
 
   it('also gates Mapper-family evidence credit on the same whole-profile floor', () => {

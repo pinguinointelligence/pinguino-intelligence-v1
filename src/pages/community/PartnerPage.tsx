@@ -1,14 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useSearchParams } from 'react-router';
+import { useSearchParams } from 'react-router';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
 import { ApplicationState } from '@/components/shared/ApplicationState';
 import { PartnerApplicationPanel } from '@/features/partner-application/PartnerApplicationPanel';
 import { Button } from '@/components/ui/Button';
-import {
-  applicationCompactClasses,
-  applicationSecondaryClasses,
-} from '@/components/ui/applicationControlStyles';
+import { applicationCompactClasses } from '@/components/ui/applicationControlStyles';
 import { customerErrorMessage } from '@/copy/customerError';
 import {
   commissionAmountLabel,
@@ -17,7 +14,19 @@ import {
   commissionStatusCopy,
   payoutStatusCopy,
 } from '@/features/affiliate/commissionDisplay';
+import {
+  contentLinkStatusCopy,
+  countOrNull,
+  linkMetrics,
+  partnerCodeStatusCopy,
+} from '@/features/affiliate/codeLinkDisplay';
+import {
+  partnerStatusCopy,
+  partnerTierCopy,
+  profileModerationCopy,
+} from '@/features/affiliate/partnerAccountDisplay';
 import { cn } from '@/lib/cn';
+import { useCodeAvailability } from '@/features/affiliate/codeAvailability';
 import {
   createPartnerContentLink,
   getPartnerWorkspace,
@@ -25,10 +34,11 @@ import {
   startConnectOnboarding,
   updatePartnerProfile,
   uploadPartnerLogo,
-  getMyPartnerApplication,
   type PartnerCodeAnalytics,
   type PartnerWorkspace,
 } from '@/services/partner';
+import { earningsSummary } from '@/features/affiliate/earningsSummary';
+import { PartnerFirstSteps } from '@/features/affiliate/PartnerFirstSteps';
 
 const sections = [
   ['overview', 'Podsumowanie'],
@@ -60,6 +70,7 @@ function Heading({ title, detail }: { title: string; detail: string }) {
 function Overview({ data }: { data: PartnerWorkspace }) {
   const codes = data.codes ?? [];
   const activeCodes = codes.filter((code) => code.status === 'active');
+  const summary = earningsSummary(data.commissions ?? [], new Date());
   const totals = codes.reduce(
     (sum, code) => ({
       clicks: sum.clicks + Number(code.clickCount),
@@ -79,6 +90,39 @@ function Overview({ data }: { data: PartnerWorkspace }) {
         title="Podsumowanie Partnera"
         detail="Ruch, konwersje i rozliczenia pochodzą z zapisanej historii poleceń, prowizji i wypłat. Twórca i Partner pozostają osobnymi rolami."
       />
+      {/* G-WEL: a new partner is guided first; the guide steps aside once done. */}
+      <PartnerFirstSteps data={data} />
+      {/* H-DASH-02: money first — earned this month, still in the refund window,
+          ready for the next settlement. Labels are the ledger's own copy. */}
+      <dl
+        className="mt-7 grid gap-px border border-ink/10 bg-ink/10 sm:grid-cols-3"
+        data-testid="earnings-summary"
+      >
+        {[
+          [
+            'Prowizja w tym miesiącu',
+            money(summary.monthCents),
+            'Naliczona w bieżącym miesiącu, bez cofniętych.',
+          ],
+          [
+            commissionStatusCopy('held').label,
+            money(summary.heldCents),
+            commissionStatusCopy('held').help,
+          ],
+          [
+            commissionStatusCopy('eligible').label,
+            money(summary.eligibleCents),
+            commissionStatusCopy('eligible').help,
+          ],
+        ].map(([label, value, help]) => (
+          <div key={label} className="bg-white p-5" title={help}>
+            <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-stone-500">
+              {label}
+            </dt>
+            <dd className="mt-3 text-3xl font-medium tabular-nums text-ink">{value}</dd>
+          </div>
+        ))}
+      </dl>
       <dl className="mt-7 grid gap-px border border-ink/10 bg-ink/10 sm:grid-cols-2 xl:grid-cols-4">
         {[
           ['Aktywne kody', `${activeCodes.length} / 3`],
@@ -124,8 +168,12 @@ function Codes({ data }: { data: PartnerWorkspace }) {
   const queryClient = useQueryClient();
   const codes = data.codes ?? [];
   const active = codes.filter((code) => code.status === 'active');
+  // D-LINK-03: a column only once the RPC returns it (migration 20260910200000 — READY, not applied).
+  const showActive = codes.some((item) => countOrNull(item.activeSubscriptions) !== null);
   const [code, setCode] = useState('');
   const [label, setLabel] = useState('');
+  // D-CODE-03: the server's own answer while the partner types, not only after submit.
+  const availability = useCodeAvailability(data.partner?.id, code);
   const mutation = useMutation({
     mutationFn: () => managePartnerCode({ action: 'CREATE', code, label }),
     onSuccess: async () => {
@@ -159,6 +207,22 @@ function Codes({ data }: { data: PartnerWorkspace }) {
             placeholder="Kasia1234"
             className="pro-focus-ring mt-2 min-h-11 w-full border border-ink/15 bg-white px-3 font-mono text-sm"
           />
+          {availability ? (
+            <span
+              aria-live="polite"
+              data-testid="code-availability"
+              className={cn(
+                'mt-1.5 block text-[11px] font-normal',
+                availability.tone === 'error'
+                  ? 'text-status-error'
+                  : availability.tone === 'ok'
+                    ? 'text-status-success'
+                    : 'text-stone-600',
+              )}
+            >
+              {availability.text}
+            </span>
+          ) : null}
         </label>
         <label className="text-xs font-semibold text-ink">
           Wewnętrzna etykieta
@@ -172,7 +236,7 @@ function Codes({ data }: { data: PartnerWorkspace }) {
         <Button
           type="submit"
           className="self-end"
-          disabled={active.length >= 3 || mutation.isPending}
+          disabled={active.length >= 3 || mutation.isPending || availability?.tone === 'error'}
         >
           Utwórz kod
         </Button>
@@ -198,6 +262,7 @@ function Codes({ data }: { data: PartnerWorkspace }) {
                 'Unikalni',
                 'Rejestracje',
                 'Klienci',
+                ...(showActive ? ['Aktywne subskrypcje'] : []),
                 'Przychód brutto',
                 'Zwroty',
                 'Prowizja oczekująca',
@@ -213,7 +278,12 @@ function Codes({ data }: { data: PartnerWorkspace }) {
           </thead>
           <tbody>
             {codes.map((item) => (
-              <CodeRow key={item.id} item={item} onArchive={() => archive.mutate(item.id)} />
+              <CodeRow
+                key={item.id}
+                item={item}
+                onArchive={() => archive.mutate(item.id)}
+                showActive={showActive}
+              />
             ))}
           </tbody>
         </table>
@@ -222,7 +292,15 @@ function Codes({ data }: { data: PartnerWorkspace }) {
   );
 }
 
-function CodeRow({ item, onArchive }: { item: PartnerCodeAnalytics; onArchive: () => void }) {
+function CodeRow({
+  item,
+  onArchive,
+  showActive,
+}: {
+  item: PartnerCodeAnalytics;
+  onArchive: () => void;
+  showActive: boolean;
+}) {
   return (
     <tr className="border-b border-ink/10">
       <td className="px-3 py-4">
@@ -231,11 +309,16 @@ function CodeRow({ item, onArchive }: { item: PartnerCodeAnalytics; onArchive: (
           {item.label ?? 'Bez etykiety'}
         </span>
       </td>
-      <td className="px-3 py-4">{item.status}</td>
+      <td className="px-3 py-4" title={partnerCodeStatusCopy(item.status).help}>
+        {partnerCodeStatusCopy(item.status).label}
+      </td>
       <td className="px-3 py-4 tabular-nums">{item.clickCount}</td>
       <td className="px-3 py-4 tabular-nums">{item.uniqueVisitors}</td>
       <td className="px-3 py-4 tabular-nums">{item.signups}</td>
       <td className="px-3 py-4 tabular-nums">{item.paidCustomers}</td>
+      {showActive ? (
+        <td className="px-3 py-4 tabular-nums">{countOrNull(item.activeSubscriptions) ?? '—'}</td>
+      ) : null}
       <td className="px-3 py-4 tabular-nums">{money(item.grossAttributedRevenueCents)}</td>
       <td className="px-3 py-4 tabular-nums">{money(item.refundCommissionCents)}</td>
       <td className="px-3 py-4 tabular-nums">{money(item.pendingCommissionCents)}</td>
@@ -387,9 +470,22 @@ function ContentLinks({ data }: { data: PartnerWorkspace }) {
                   {href} → {String(link.destinationPath)}
                 </p>
               </div>
-              <div className="text-right text-xs text-stone-600">
-                {String(link.status)} · {String(link.clickCount)} kliknięć
-              </div>
+              {/* D-LINK-03: per-campaign performance — every number the RPC
+                  returned, in the codes table's own words; the status as copy. */}
+              <dl className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-stone-600 md:justify-end">
+                <div title={contentLinkStatusCopy(link.status).help}>
+                  <dt className="sr-only">Status</dt>
+                  <dd className="font-semibold text-ink">
+                    {contentLinkStatusCopy(link.status).label}
+                  </dd>
+                </div>
+                {linkMetrics(link).map((metric) => (
+                  <div key={metric.label} className="flex gap-1">
+                    <dt>{metric.label}:</dt>
+                    <dd className="tabular-nums">{metric.value}</dd>
+                  </div>
+                ))}
+              </dl>
             </article>
           );
         })}
@@ -412,11 +508,13 @@ function Earnings({ data }: { data: PartnerWorkspace }) {
         <table className="w-full min-w-[760px] text-left text-xs">
           <thead>
             <tr className="border-y border-ink/15 bg-stone-50">
-              {['Data', 'Plan', 'Cykl', 'Status', 'Kwota', 'Środowisko'].map((h) => (
-                <th key={h} className="px-3 py-3">
-                  {h}
-                </th>
-              ))}
+              {['Data', 'Do wypłaty od', 'Plan', 'Cykl', 'Status', 'Kwota', 'Środowisko'].map(
+                (h) => (
+                  <th key={h} className="px-3 py-3">
+                    {h}
+                  </th>
+                ),
+              )}
             </tr>
           </thead>
           <tbody>
@@ -424,6 +522,12 @@ function Earnings({ data }: { data: PartnerWorkspace }) {
               <tr key={String(row.id)} className="border-b border-ink/10">
                 <td className="px-3 py-4">
                   {new Date(String(row.earnedAt)).toLocaleDateString('pl-PL')}
+                </td>
+                {/* H-DASH-07: when the refund window closes and the amount can settle. */}
+                <td className="px-3 py-4">
+                  {row.eligibleAt
+                    ? new Date(String(row.eligibleAt)).toLocaleDateString('pl-PL')
+                    : '—'}
                 </td>
                 <td className="px-3 py-4">{commissionProductLabel(row.product)}</td>
                 <td className="px-3 py-4">{commissionCadenceLabel(row.cadence)}</td>
@@ -605,7 +709,10 @@ function Profile({ data }: { data: PartnerWorkspace }) {
           />
         </label>
         <p className="mt-2 text-xs text-stone-500">
-          Status profilu: {profile?.moderationStatus ?? '—'}
+          Status profilu:{' '}
+          <span title={profileModerationCopy(profile?.moderationStatus).help}>
+            {profileModerationCopy(profile?.moderationStatus).label}
+          </span>
         </p>
       </div>
       {save.isError || logo.isError ? (
@@ -627,8 +734,8 @@ function Settings({ data }: { data: PartnerWorkspace }) {
       <dl className="mt-6 divide-y divide-ink/10 border-y border-ink/10">
         {[
           ['ID Partnera', data.partner?.id],
-          ['Status', data.partner?.status],
-          ['Tier', data.partner?.tier],
+          ['Status', partnerStatusCopy(data.partner?.status).label],
+          ['Tier', partnerTierCopy(data.partner?.tier).label],
           ['Publiczny identyfikator', data.profile?.slug],
           ['Home + Pro', 'Bez opłat podczas aktywnego statusu Partner'],
         ].map(([label, value]) => (
@@ -650,14 +757,6 @@ export function PartnerPage() {
     : 'overview';
   const query = useQuery({ queryKey: ['partner-workspace'], queryFn: getPartnerWorkspace });
   const data = query.data;
-  // A blocked panel must explain itself, so the gate needs the applicant's own
-  // application status — not just the "no partner row" fact.
-  const application = useQuery({
-    queryKey: ['partner-application', 'gate'],
-    queryFn: getMyPartnerApplication,
-    enabled: data !== undefined && !data.ok,
-  });
-  const applicationStatus = application.data?.application?.status ?? null;
   const content = useMemo(() => {
     if (!data?.ok) return null;
     if (section === 'overview') return <Overview data={data} />;
@@ -709,56 +808,24 @@ export function PartnerPage() {
             />
           ) : null}
           {data && !data.ok ? (
-            <ApplicationState
-              kind="empty"
-              title={
-                applicationStatus === 'submitted' ||
-                applicationStatus === 'under_review' ||
-                applicationStatus === 'more_information_needed'
-                  ? 'Zgłoszenie partnerskie w toku'
-                  : 'Tryb Partner nie jest jeszcze aktywny'
-              }
-              /* A gate has to say WHY and WHAT NEXT. Before this, an account
-                 that had simply never applied was told it lacked an invitation
-                 it had no way to ask for. */
-              body={
-                data.reason === 'partner_not_active'
-                  ? 'Status Partnera nie jest aktywny. Historia finansowa pozostaje zachowana.'
-                  : applicationStatus === 'submitted'
-                    ? 'Twoje zgłoszenie czeka na decyzję. Odezwiemy się w powiadomieniach.'
-                    : applicationStatus === 'more_information_needed'
-                      ? 'Potrzebujemy jeszcze kilku informacji do Twojego zgłoszenia.'
-                      : applicationStatus === 'rejected'
-                        ? 'Poprzednie zgłoszenie zostało rozpatrzone odmownie. Możesz wysłać nowe.'
-                        : 'Panel Partner otwiera się po zatwierdzeniu zgłoszenia. Zajmuje to kilka pól.'
-              }
-              /* The application form now lives HERE rather than behind a link.
-                 It used to point at `/work-with-us#partner-application`, and the
-                 collaboration IA change (#142) turned that route into a redirect
-                 to Franchise — so "Wyślij zgłoszenie" sent an Affiliate
-                 applicant to the franchise page and the form became unreachable,
-                 because WorkWithUsPage was the only surface that rendered it.
-
-                 Putting it on this page is also the right shape: /partner is
-                 already the authenticated Affiliate workspace and already owns
-                 every application state, so the form and its status stop living
-                 on two different surfaces. */
-              action={
-                applicationStatus === 'submitted' ? (
-                  <Link to="/community" className={applicationSecondaryClasses()}>
-                    Zobacz Community
-                  </Link>
-                ) : null
-              }
-            />
+            data.reason === 'partner_not_active' ? (
+              <ApplicationState
+                kind="empty"
+                title="Tryb Partner nie jest jeszcze aktywny"
+                body="Status Partnera nie jest aktywny. Historia finansowa pozostaje zachowana."
+              />
+            ) : (
+              /* C-APP-07: the application's status and its form are ONE surface,
+                 decided in ONE place — applicationSurface over the canonical
+                 PARTNER_APPLICATION_STATUS_COPY. This gate used to hand-write its
+                 own title and body per status while the panel below hand-wrote
+                 different ones, and the two disagreed: `under_review` got an
+                 "in progress" heading above an empty application form. */
+              <PartnerApplicationPanel />
+            )
           ) : (
             content
           )}
-          {data && !data.ok && applicationStatus !== 'submitted' ? (
-            <div className="mt-6" id="partner-application">
-              <PartnerApplicationPanel />
-            </div>
-          ) : null}
         </main>
       </div>
     </DestinationSurface>

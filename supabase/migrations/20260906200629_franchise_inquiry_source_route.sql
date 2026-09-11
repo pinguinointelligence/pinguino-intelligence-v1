@@ -1,35 +1,9 @@
--- ============================================================================
--- FRANCHISE ENQUIRY CONSOLIDATION — route attribution on the canonical table
--- ============================================================================
--- Owner decision 2026-09-03: FranchiseInquiryForm → franchise_inquiries →
--- AdminFranchiseLeadsSection is the ONE Franchise enquiry authority. The legacy
--- LeadEnquirySection wrote to `business_leads`, whose one genuinely useful extra
--- capability was `source_route` — which page the question started on, so Admin
--- can tell a trailer enquiry from a machines one when the chosen concept does
--- not say it.
---
--- That capability moves here rather than being rebuilt: one column, nullable,
--- because leads created before this migration legitimately have no route and a
--- visitor may reach the form directly.
---
--- business_leads is NOT dropped. It holds real historical rows (3 on staging:
--- franchise, machine, trailer) and deleting customer enquiries to tidy an
--- architecture is not a trade worth making. It simply stops receiving writes.
-
 alter table public.franchise_inquiries
   add column if not exists source_route text;
 
 comment on column public.franchise_inquiries.source_route is
-  'Route the enquiry started on (/franchise, /trailer, /mobile, /machines). '
-  'Absorbed from the retired business_leads flow. Nullable: pre-existing rows '
-  'have none, and a direct visit legitimately has none.';
+  'Route the enquiry started on (/franchise, /trailer, /mobile, /machines). Absorbed from the retired business_leads flow. Nullable: pre-existing rows have none, and a direct visit legitimately has none.';
 
--- The writer takes the route from the SAME jsonb draft, but does not trust it.
--- source_route is rendered to an operator in the Admin lead queue, so an
--- arbitrary client string here would be both a junk-data and an injection-shaped
--- risk. Only the four routes that can legitimately originate a Franchise
--- enquiry are stored; anything else is recorded as no route rather than
--- rejected, because a bad route is not a reason to lose a real customer lead.
 create or replace function public.gellatti_submit_franchise_inquiry_v1(p_inquiry jsonb)
  returns jsonb
  language plpgsql
@@ -65,8 +39,6 @@ begin
     v_source
   ) returning id into v_id;
 
-  -- The lead queue lives at /admin/franchise; sending the operator to
-  -- /admin/operations made them hunt for it.
   insert into public.user_notifications(
     admin_permission, notification_type, entity_type, entity_id, title, body, deep_link, dedupe_key
   ) values (

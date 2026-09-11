@@ -120,7 +120,9 @@ export function useHomeIntentIngredients() {
       if (added.status === 'duplicate') return { chipId: key, status: 'duplicate' };
 
       // §49: ASK the existing authority. It refuses an ineligible product on its own.
-      useRecipeStore.getState().setMainIngredient(added.lineId);
+      // HOME surface: HOME's own Crown rules (Protein stays mass-neutral) apply here
+      // and never reach PRO, whose default keeps 0 g + Crown -> 1 g for every profile.
+      useRecipeStore.getState().setMainIngredient(added.lineId, 'home');
       const line = useRecipeStore.getState().items.find((item) => item.id === added.lineId);
       if (line?.lock_type === 'main') {
         return { chipId: key, status: line.planned_grams > 0 ? 'crowned' : 'needs_amount' };
