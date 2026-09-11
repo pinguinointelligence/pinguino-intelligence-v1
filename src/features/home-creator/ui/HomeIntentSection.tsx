@@ -9,18 +9,78 @@
  * No preset flavour tiles (§17): the field is open, because the owner rule is that any
  * idea may be described, and a tile grid quietly teaches the opposite.
  */
-import { useCallback, useId, useState } from 'react';
+import { useCallback, useId, useState, type ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 import { homeCreatorCopy } from '../homeCreatorCopy';
+import { shouldOfferRecipeCta } from '../homeComposerGate';
 import { parseIntent } from '../homeIntentParsing';
 import { useHomeDraftStore, type IntentChip } from '../homeDraftStore';
 import { useVoiceIntent } from '../useVoiceIntent';
 import { HomeChip } from './HomeChip';
 import { HomeIdentityChoice } from './HomeIdentityChoice';
 import { HomeSection } from './HomeSection';
+import { HomeVisionCapture } from './HomeVisionCapture';
 
 const chipId = (): string =>
   `chip_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`;
+
+/**
+ * §27 — one control shape for the four ways into the composer.
+ *
+ * They live INSIDE the field, so they are icon-sized and quiet; the label is
+ * carried by `aria-label` for assistive technology and by `title` as the
+ * desktop tooltip the owner asked for. A 44 px hit area is kept even though the
+ * glyph is 17 px, because these are thumb targets on the phone.
+ */
+function ComposerIconButton({
+  testId,
+  label,
+  tooltip,
+  onClick,
+  children,
+  disabled = false,
+  pressed,
+  dataState,
+  variant = 'quiet',
+}: {
+  testId: string;
+  label: string;
+  tooltip: string;
+  onClick: () => void;
+  children: ReactNode;
+  disabled?: boolean;
+  pressed?: boolean;
+  dataState?: string;
+  variant?: 'quiet' | 'send';
+}) {
+  const active = pressed === true;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      aria-pressed={pressed}
+      title={tooltip}
+      data-testid={testId}
+      data-state={dataState}
+      className={cn(
+        'inline-flex size-11 items-center justify-center rounded-full transition-colors',
+        disabled && 'cursor-not-allowed opacity-35',
+        !disabled && !active && 'hover:bg-[var(--g-ivory-deep)]',
+      )}
+      style={
+        active
+          ? { background: 'var(--g-ink)', color: '#ffffff' }
+          : variant === 'send' && !disabled
+            ? { background: 'var(--g-ink)', color: '#ffffff' }
+            : { color: 'var(--g-text-secondary)' }
+      }
+    >
+      {children}
+    </button>
+  );
+}
 
 export function HomeIntentSection({
   onSubmit,
@@ -38,6 +98,10 @@ export function HomeIntentSection({
   resolving?: boolean;
 }) {
   const [value, setValue] = useState('');
+  /* §31: the fruit camera is the composer's own, so HOME's page does not have to
+     learn a fourth entry point — the recognised fruit lands through exactly the
+     ingestion path voice already uses. */
+  const [visionOpen, setVisionOpen] = useState(false);
   const fieldId = useId();
   const chips = useHomeDraftStore((state) => state.chips);
   const addChip = useHomeDraftStore((state) => state.addChip);
@@ -46,6 +110,9 @@ export function HomeIntentSection({
   const storedProfile = useHomeDraftStore((state) => state.profile);
   /** OWNER FROZEN §4: one idea is enough to turn the prompt into „Jeszcze coś?". */
   const hasIdea = chips.length > 0;
+  /* §28: the CTA does not exist before the first BASE idea — not greyed out,
+     not present. A topping alone is a decoration, not a recipe. */
+  const offerCta = shouldOfferRecipeCta(chips);
 
   /** One ingestion path for all three inputs (§19). */
   const ingest = useCallback(
@@ -94,11 +161,22 @@ export function HomeIntentSection({
         {homeCreatorCopy.intent.question}
       </p>
 
-      {/* One input area — typing, speaking and scanning all land in the same intent. */}
-      <div
-        className="mt-7 rounded-[14px] border p-2"
-        style={{ borderColor: 'var(--g-line)', background: '#ffffff' }}
-      >
+      {/* ── §27 THE COMPOSER ────────────────────────────────────────────────
+          ONE central field, in the shape a modern chat composer has: the four
+          ways in live INSIDE it — voice, barcode, AI fruit recognition and the
+          send arrow — instead of standing beside it as separate buttons. The
+          large `Powiedz` / `Zeskanuj` pills are gone (§27, §V): they competed
+          with the field for the first decision, and the whole point of this
+          screen is that there is only one place to start.
+
+          §41: the wrapper is the focus surface. The field inside must never
+          draw a second box — see `src/styles/home-composer.css` for the shell
+          focus authority that used to paint one. */}
+      {/* The resting border and the focus border BOTH live in the stylesheet.
+          They used to be split — resting colour inline, focus colour in CSS —
+          and an inline style beats any rule without `!important`, so the focus
+          treatment was written, shipped and never painted. */}
+      <div className="home-composer mt-7 rounded-[18px] border p-2" data-testid="home-composer">
         <label htmlFor={fieldId} className="sr-only">
           {homeCreatorCopy.intent.inputLabel}
         </label>
@@ -144,30 +222,31 @@ export function HomeIntentSection({
             placeholder={
               hasIdea ? homeCreatorCopy.intent.anythingElse : homeCreatorCopy.intent.placeholder
             }
-            className="flex-1 resize-none bg-transparent py-2.5 pr-3 pl-1.5 text-[16px] leading-snug outline-none placeholder:opacity-60"
+            /* `home-composer-field` is load-bearing, not decoration: it is the
+               hook the §41 stylesheet uses to keep the shell's graphite focus
+               outline off this field. */
+            className="home-composer-field flex-1 resize-none border-0 bg-transparent py-2.5 pr-3 pl-1.5 text-[16px] leading-snug outline-none placeholder:opacity-60"
             style={{ color: 'var(--g-ink)' }}
           />
         </div>
-        <div className="flex items-center gap-2 px-1 pb-1">
-          <button
-            type="button"
+
+        {/* The controls belong to the field, so they sit on its own baseline row
+            — small, quiet, and always in the same place. */}
+        <div className="flex items-center gap-1 px-1 pb-0.5">
+          <ComposerIconButton
+            testId="home-intent-voice"
+            label={
+              voice.state === 'listening'
+                ? homeCreatorCopy.intent.listening
+                : homeCreatorCopy.intent.addByVoice
+            }
+            tooltip={homeCreatorCopy.intent.voiceTooltip}
             onClick={voice.toggle}
             disabled={voice.state === 'unavailable'}
-            aria-pressed={voice.state === 'listening'}
-            data-testid="home-intent-voice"
-            data-state={voice.state}
-            className={cn(
-              'inline-flex min-h-[44px] items-center gap-2 rounded-full border px-4 text-[13px] transition-colors',
-              'focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40',
-              voice.state === 'unavailable' && 'cursor-not-allowed opacity-45',
-            )}
-            style={
-              voice.state === 'listening'
-                ? { background: 'var(--g-ink)', color: '#fff', borderColor: 'var(--g-ink)' }
-                : { borderColor: 'var(--g-line)', color: 'var(--g-ink)' }
-            }
+            pressed={voice.state === 'listening'}
+            dataState={voice.state}
           >
-            <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" fill="none">
+            <svg width="17" height="17" viewBox="0 0 16 16" aria-hidden="true" fill="none">
               <rect
                 x="5.5"
                 y="1.5"
@@ -184,19 +263,15 @@ export function HomeIntentSection({
                 strokeLinecap="round"
               />
             </svg>
-            {voice.state === 'listening'
-              ? homeCreatorCopy.intent.listening
-              : homeCreatorCopy.intent.addByVoice}
-          </button>
+          </ComposerIconButton>
 
-          <button
-            type="button"
+          <ComposerIconButton
+            testId="home-intent-scan"
+            label={homeCreatorCopy.intent.addByScan}
+            tooltip={homeCreatorCopy.intent.scanTooltip}
             onClick={onScan}
-            data-testid="home-intent-scan"
-            className="inline-flex min-h-[44px] items-center gap-2 rounded-full border px-4 text-[13px] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
-            style={{ borderColor: 'var(--g-line)', color: 'var(--g-ink)' }}
           >
-            <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" fill="none">
+            <svg width="17" height="17" viewBox="0 0 16 16" aria-hidden="true" fill="none">
               <path
                 d="M1.5 5V2.5A1 1 0 0 1 2.5 1.5H5M11 1.5h2.5a1 1 0 0 1 1 1V5M14.5 11v2.5a1 1 0 0 1-1 1H11M5 14.5H2.5a1 1 0 0 1-1-1V11"
                 stroke="currentColor"
@@ -205,8 +280,58 @@ export function HomeIntentSection({
               />
               <path d="M1.5 8h13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
             </svg>
-            {homeCreatorCopy.intent.addByScan}
-          </button>
+          </ComposerIconButton>
+
+          {/* §30: AI Vision v1 recognises FRUIT. The tooltip says exactly that,
+              because a sparkle that promises "anything" is a promise the
+              recogniser cannot keep. */}
+          <ComposerIconButton
+            testId="home-intent-vision"
+            label={homeCreatorCopy.intent.addByVision}
+            tooltip={homeCreatorCopy.intent.visionTooltip}
+            onClick={() => setVisionOpen(true)}
+          >
+            <svg width="17" height="17" viewBox="0 0 16 16" aria-hidden="true" fill="none">
+              <path
+                d="M8 1.5 9.3 5 12.8 6.3 9.3 7.6 8 11.1 6.7 7.6 3.2 6.3 6.7 5 8 1.5Z"
+                stroke="currentColor"
+                strokeWidth="1.4"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M12.6 11.1 13.1 12.6 14.6 13.1 13.1 13.6 12.6 15.1 12.1 13.6 10.6 13.1 12.1 12.6 12.6 11.1Z"
+                stroke="currentColor"
+                strokeWidth="1.2"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </ComposerIconButton>
+
+          <span aria-hidden className="flex-1" />
+
+          {/* §27: ENTER and this arrow are the SAME action. It is disabled while
+              the field is empty so the affordance is honest, and it commits on
+              pointerdown-free click — the field's own blur has already run by
+              then and `commitTyped` is a no-op on an empty value, so a single
+              idea can never be added twice. */}
+          <ComposerIconButton
+            testId="home-intent-send"
+            label={homeCreatorCopy.intent.sendIdea}
+            tooltip={homeCreatorCopy.intent.sendTooltip}
+            onClick={commitTyped}
+            disabled={value.trim() === ''}
+            variant="send"
+          >
+            <svg width="17" height="17" viewBox="0 0 16 16" aria-hidden="true" fill="none">
+              <path
+                d="M8 13V3m0 0L4 7m4-4 4 4"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </ComposerIconButton>
         </div>
       </div>
 
@@ -249,26 +374,31 @@ export function HomeIntentSection({
         </div>
       ) : null}
 
-      <button
-        type="button"
-        onClick={() => {
-          commitTyped();
-          onSubmit();
-        }}
-        disabled={chips.length === 0 && value.trim() === ''}
-        data-testid="home-intent-cta"
-        className={cn(
-          // OWNER 2026-09-02: full width on mobile is an easy thumb target; on desktop
-          // the same bar dominated the whole screen, so it settles to a restrained
-          // centred button. A max-width, not a hardcoded viewport position.
-          'mt-8 flex min-h-[52px] w-full items-center justify-center rounded-full px-6 text-[15px] font-semibold transition-opacity',
-          'sm:mx-auto sm:max-w-[360px]',
-          'focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40 disabled:cursor-not-allowed disabled:opacity-35',
-        )}
-        style={{ background: 'var(--g-ink)', color: '#ffffff' }}
-      >
-        {homeCreatorCopy.intent.cta}
-      </button>
+      {offerCta ? (
+        <button
+          type="button"
+          onClick={() => {
+            commitTyped();
+            onSubmit();
+          }}
+          data-testid="home-intent-cta"
+          className={cn(
+            // OWNER 2026-09-02: full width on mobile is an easy thumb target; on desktop
+            // the same bar dominated the whole screen, so it settles to a restrained
+            // centred button. A max-width, not a hardcoded viewport position.
+            'mt-8 flex min-h-[52px] w-full items-center justify-center rounded-full px-6 text-[15px] font-semibold transition-opacity',
+            'sm:mx-auto sm:max-w-[360px]',
+            'focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40',
+          )}
+          style={{ background: 'var(--g-ink)', color: '#ffffff' }}
+        >
+          {homeCreatorCopy.intent.cta}
+        </button>
+      ) : null}
+      {/* §28: the empty-screen hint is gone with the greyed-out CTA it explained.
+          Before the first idea the customer looks at the composer and nothing
+          else; its placeholder already says what to type. The resolving line
+          stays, because it reports work that is actually happening. */}
       {resolving ? (
         <p
           className="mt-3 text-center text-[12px]"
@@ -277,18 +407,20 @@ export function HomeIntentSection({
         >
           {homeCreatorCopy.intent.resolving}
         </p>
-      ) : hasIdea || value.trim() !== '' ? null : (
-        /* OWNER SERVED QA: the hint used to depend on chips alone, so someone who had
-           just typed „bananowy sorbet" was still told to add an ingredient. It answers
-           the question the screen is actually in — nothing described yet. */
-        <p
-          className="mt-3 text-center text-[12px]"
-          data-testid="home-intent-empty-hint"
-          style={{ color: 'var(--g-text-muted)' }}
-        >
-          {homeCreatorCopy.intent.emptyHint}
-        </p>
-      )}
+      ) : null}
+
+      {/* §31: full-screen fruit camera. Mounted from the composer so the
+          recognised fruit re-enters through the SAME `ingest` every other input
+          uses — one intent, four doors (§19). */}
+      {visionOpen ? (
+        <HomeVisionCapture
+          onClose={() => setVisionOpen(false)}
+          onRecognised={(names) => {
+            for (const name of names) ingest(name, 'vision');
+            setVisionOpen(false);
+          }}
+        />
+      ) : null}
     </HomeSection>
   );
 }
