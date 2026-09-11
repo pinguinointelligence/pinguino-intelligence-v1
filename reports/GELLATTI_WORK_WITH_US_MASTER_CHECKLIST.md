@@ -565,6 +565,8 @@ Writing no GRANT does not produce a table with no grants.
 
 Auto ✅ **92** · ⬜ 158. Served ✅ **40** · ⬜ 210 · Owner ✅ 0 · ⬜ 250.
 
+**Row-based** — recomputed from the rows themselves at `origin/staging` `8684fb30` on 2026-09-11. The block used to be maintained by hand and had drifted (it said 203 rows; see *Summary-block drift* below). Recount it from the rows, never from this block.
+
 **Row-based** — recomputed from the rows themselves at `origin/staging` `59ebdc97` on 2026-09-11. The block used to be maintained by hand and had drifted (it said 203 rows; see *Summary-block drift* below). Recount it from the rows, never from this block.
 
 The six Served ✅ are the asset rows, proven on the canonical alias at `b611ff71` — see
