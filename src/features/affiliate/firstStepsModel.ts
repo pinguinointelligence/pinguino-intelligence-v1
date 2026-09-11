@@ -3,7 +3,7 @@
  *
  * Approval used to drop a new partner straight into the accounting dashboard.
  * The welcome the checklist asks for is five steps: codes, a first campaign
- * link, the commission table, Stripe Connect, then the dashboard. All but the
+ * link, the commission table, the Connect payout account, then the dashboard. All but the
  * commission table can be read from data the workspace RPC already returns, so
  * the guide needs no new state and no database change: a step is done when the
  * partner has actually done it, and the guide disappears when nothing is left.
