@@ -19,6 +19,8 @@ export interface PartnerCodeAnalytics {
   uniqueVisitors: number;
   signups: number;
   paidCustomers: number;
+  /** D-LINK-03 — returned once migration 20260910200000 is applied. */
+  activeSubscriptions?: number;
   grossAttributedRevenueCents: number;
   refundCommissionCents: number;
   pendingCommissionCents: number;
