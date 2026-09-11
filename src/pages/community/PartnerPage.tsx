@@ -14,7 +14,19 @@ import {
   commissionStatusCopy,
   payoutStatusCopy,
 } from '@/features/affiliate/commissionDisplay';
+import {
+  contentLinkStatusCopy,
+  countOrNull,
+  linkMetrics,
+  partnerCodeStatusCopy,
+} from '@/features/affiliate/codeLinkDisplay';
+import {
+  partnerStatusCopy,
+  partnerTierCopy,
+  profileModerationCopy,
+} from '@/features/affiliate/partnerAccountDisplay';
 import { cn } from '@/lib/cn';
+import { useCodeAvailability } from '@/features/affiliate/codeAvailability';
 import {
   createPartnerContentLink,
   getPartnerWorkspace,
@@ -153,8 +165,12 @@ function Codes({ data }: { data: PartnerWorkspace }) {
   const queryClient = useQueryClient();
   const codes = data.codes ?? [];
   const active = codes.filter((code) => code.status === 'active');
+  // D-LINK-03: a column only once the RPC returns it (migration 20260910200000 — READY, not applied).
+  const showActive = codes.some((item) => countOrNull(item.activeSubscriptions) !== null);
   const [code, setCode] = useState('');
   const [label, setLabel] = useState('');
+  // D-CODE-03: the server's own answer while the partner types, not only after submit.
+  const availability = useCodeAvailability(data.partner?.id, code);
   const mutation = useMutation({
     mutationFn: () => managePartnerCode({ action: 'CREATE', code, label }),
     onSuccess: async () => {
@@ -188,6 +204,22 @@ function Codes({ data }: { data: PartnerWorkspace }) {
             placeholder="Kasia1234"
             className="pro-focus-ring mt-2 min-h-11 w-full border border-ink/15 bg-white px-3 font-mono text-sm"
           />
+          {availability ? (
+            <span
+              aria-live="polite"
+              data-testid="code-availability"
+              className={cn(
+                'mt-1.5 block text-[11px] font-normal',
+                availability.tone === 'error'
+                  ? 'text-status-error'
+                  : availability.tone === 'ok'
+                    ? 'text-status-success'
+                    : 'text-stone-600',
+              )}
+            >
+              {availability.text}
+            </span>
+          ) : null}
         </label>
         <label className="text-xs font-semibold text-ink">
           Wewnętrzna etykieta
@@ -201,7 +233,7 @@ function Codes({ data }: { data: PartnerWorkspace }) {
         <Button
           type="submit"
           className="self-end"
-          disabled={active.length >= 3 || mutation.isPending}
+          disabled={active.length >= 3 || mutation.isPending || availability?.tone === 'error'}
         >
           Utwórz kod
         </Button>
@@ -227,6 +259,7 @@ function Codes({ data }: { data: PartnerWorkspace }) {
                 'Unikalni',
                 'Rejestracje',
                 'Klienci',
+                ...(showActive ? ['Aktywne subskrypcje'] : []),
                 'Przychód brutto',
                 'Zwroty',
                 'Prowizja oczekująca',
@@ -242,7 +275,12 @@ function Codes({ data }: { data: PartnerWorkspace }) {
           </thead>
           <tbody>
             {codes.map((item) => (
-              <CodeRow key={item.id} item={item} onArchive={() => archive.mutate(item.id)} />
+              <CodeRow
+                key={item.id}
+                item={item}
+                onArchive={() => archive.mutate(item.id)}
+                showActive={showActive}
+              />
             ))}
           </tbody>
         </table>
@@ -251,7 +289,15 @@ function Codes({ data }: { data: PartnerWorkspace }) {
   );
 }
 
-function CodeRow({ item, onArchive }: { item: PartnerCodeAnalytics; onArchive: () => void }) {
+function CodeRow({
+  item,
+  onArchive,
+  showActive,
+}: {
+  item: PartnerCodeAnalytics;
+  onArchive: () => void;
+  showActive: boolean;
+}) {
   return (
     <tr className="border-b border-ink/10">
       <td className="px-3 py-4">
@@ -260,11 +306,16 @@ function CodeRow({ item, onArchive }: { item: PartnerCodeAnalytics; onArchive: (
           {item.label ?? 'Bez etykiety'}
         </span>
       </td>
-      <td className="px-3 py-4">{item.status}</td>
+      <td className="px-3 py-4" title={partnerCodeStatusCopy(item.status).help}>
+        {partnerCodeStatusCopy(item.status).label}
+      </td>
       <td className="px-3 py-4 tabular-nums">{item.clickCount}</td>
       <td className="px-3 py-4 tabular-nums">{item.uniqueVisitors}</td>
       <td className="px-3 py-4 tabular-nums">{item.signups}</td>
       <td className="px-3 py-4 tabular-nums">{item.paidCustomers}</td>
+      {showActive ? (
+        <td className="px-3 py-4 tabular-nums">{countOrNull(item.activeSubscriptions) ?? '—'}</td>
+      ) : null}
       <td className="px-3 py-4 tabular-nums">{money(item.grossAttributedRevenueCents)}</td>
       <td className="px-3 py-4 tabular-nums">{money(item.refundCommissionCents)}</td>
       <td className="px-3 py-4 tabular-nums">{money(item.pendingCommissionCents)}</td>
@@ -416,9 +467,22 @@ function ContentLinks({ data }: { data: PartnerWorkspace }) {
                   {href} → {String(link.destinationPath)}
                 </p>
               </div>
-              <div className="text-right text-xs text-stone-600">
-                {String(link.status)} · {String(link.clickCount)} kliknięć
-              </div>
+              {/* D-LINK-03: per-campaign performance — every number the RPC
+                  returned, in the codes table's own words; the status as copy. */}
+              <dl className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-stone-600 md:justify-end">
+                <div title={contentLinkStatusCopy(link.status).help}>
+                  <dt className="sr-only">Status</dt>
+                  <dd className="font-semibold text-ink">
+                    {contentLinkStatusCopy(link.status).label}
+                  </dd>
+                </div>
+                {linkMetrics(link).map((metric) => (
+                  <div key={metric.label} className="flex gap-1">
+                    <dt>{metric.label}:</dt>
+                    <dd className="tabular-nums">{metric.value}</dd>
+                  </div>
+                ))}
+              </dl>
             </article>
           );
         })}
@@ -642,7 +706,10 @@ function Profile({ data }: { data: PartnerWorkspace }) {
           />
         </label>
         <p className="mt-2 text-xs text-stone-500">
-          Status profilu: {profile?.moderationStatus ?? '—'}
+          Status profilu:{' '}
+          <span title={profileModerationCopy(profile?.moderationStatus).help}>
+            {profileModerationCopy(profile?.moderationStatus).label}
+          </span>
         </p>
       </div>
       {save.isError || logo.isError ? (
@@ -664,8 +731,8 @@ function Settings({ data }: { data: PartnerWorkspace }) {
       <dl className="mt-6 divide-y divide-ink/10 border-y border-ink/10">
         {[
           ['ID Partnera', data.partner?.id],
-          ['Status', data.partner?.status],
-          ['Tier', data.partner?.tier],
+          ['Status', partnerStatusCopy(data.partner?.status).label],
+          ['Tier', partnerTierCopy(data.partner?.tier).label],
           ['Publiczny identyfikator', data.profile?.slug],
           ['Home + Pro', 'Bez opłat podczas aktywnego statusu Partner'],
         ].map(([label, value]) => (

@@ -3,6 +3,7 @@
 @import './theme-pro-dark.css';
 @import './theme-pro-light.css';
 @import './gellatti-v2-1.css';
+@import './home-composer.css';
 
 @layer base {
   html {

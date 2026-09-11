@@ -708,7 +708,9 @@ describe('INTIMPORT wiring', () => {
       'Product Status': 'complete',
       'Checked At': '2026-08-25',
     };
-    return CSV_HEADER.split(',').map((header) => values[header] ?? '').join(',');
+    return CSV_HEADER.split(',')
+      .map((header) => values[header] ?? '')
+      .join(',');
   };
 
   it('attaches real working values to each product when a Mapper is supplied', () => {
@@ -818,6 +820,26 @@ describe('engine readiness contract', () => {
     // One unknown, one confidence: the complement inherits rather than discounts.
     expect(fromWater.fields.total_solids_percent.provenance.confidence).toBe(
       fromWater.fields.water_percent.provenance.confidence,
+    );
+  });
+
+  it('keeps alcohol as a separate mass share when deriving either complement', () => {
+    const fromWater = resolveProductWorkingValues(
+      { ...base, declared: { water_percent: 55, alcohol_percent: 40 } },
+      knowledge,
+    );
+    expect(fromWater.values.total_solids_percent).toBe(5);
+    expect(fromWater.fields.total_solids_percent.provenance.note).toBe(
+      '100 − water_percent − alcohol_percent',
+    );
+
+    const fromSolids = resolveProductWorkingValues(
+      { ...base, declared: { total_solids_percent: 5, alcohol_percent: 40 } },
+      knowledge,
+    );
+    expect(fromSolids.values.water_percent).toBe(55);
+    expect(fromSolids.fields.water_percent.provenance.note).toBe(
+      '100 − total_solids_percent − alcohol_percent',
     );
   });
 
@@ -1281,7 +1303,10 @@ describe('INTIMPORT import handoff', () => {
       },
       evidence: {
         kind: 'normal_food',
-        fields: productAccuracy >= 85 ? { identity: 'source_file', ingredients: 'source_file' } : { identity: 'web_search' },
+        fields:
+          productAccuracy >= 85
+            ? { identity: 'source_file', ingredients: 'source_file' }
+            : { identity: 'web_search' },
         validatedBarcode: false,
         exactCanonicalMatch: false,
         mapperFamilyMatch: true,
@@ -1417,10 +1442,11 @@ describe('INTIMPORT import handoff', () => {
   });
 
   it('hands the server declarations and evidence, never a client-authorized final profile', () => {
-    const intelligence = intelligenceOf(planIntimportImport([row('ESTIMATED_READY')]).rows[0]!) as
-      ReturnType<typeof intelligenceOf> & {
-        intimportProductProfileProposal: Record<string, unknown>;
-      };
+    const intelligence = intelligenceOf(
+      planIntimportImport([row('ESTIMATED_READY')]).rows[0]!,
+    ) as ReturnType<typeof intelligenceOf> & {
+      intimportProductProfileProposal: Record<string, unknown>;
+    };
     expect(intelligence.intimportProductProfileProposal).toMatchObject({
       proposedMapperIngredientId: null,
       declared: {},
@@ -1448,9 +1474,7 @@ describe('INTIMPORT import handoff', () => {
   });
 
   it('never flattens the two axes into one ready flag', () => {
-    const technical = intelligenceOf(
-      planIntimportImport([row('ESTIMATED_READY', true)]).rows[0]!,
-    );
+    const technical = intelligenceOf(planIntimportImport([row('ESTIMATED_READY', true)]).rows[0]!);
     // Composition is fine; only the technical authority is missing — and that
     // is recorded alongside it rather than folded into one verdict.
     expect(technical.compositionReadiness ?? 'ESTIMATED_READY').not.toBe('REVIEW');

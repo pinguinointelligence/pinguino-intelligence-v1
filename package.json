@@ -27,6 +27,7 @@
     "toolbox:compositions:check": "node scripts/buildCanonicalToolboxCompositions.mjs --check",
     "products:audit": "node scripts/auditUnifiedProductIntelligence.mjs",
     "mapper:runtime-audit": "node scripts/auditMapperRuntimeUsability.mjs",
+    "mapper:rescue-backtest": "vitest run src/features/product-intelligence/__dryrun__/globalMapperRescueBacktest.dryrun.test.ts --reporter=verbose",
     "catalog:mapper-only:validate": "node scripts/validateMapperOnlyCatalog.mjs",
     "staging:seed-qa-accounts": "node scripts/seed-staging-admin.mjs --project-ref=tunabqqrwabacxjcxxkz",
     "staging:seed-admin": "npm run staging:seed-qa-accounts",

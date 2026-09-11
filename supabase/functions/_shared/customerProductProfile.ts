@@ -27,6 +27,16 @@ const evidenceRows = (root: JsonObject): JsonObject[] =>
 const externalRows = (root: JsonObject): JsonObject[] =>
   Array.isArray(root.externalSources) ? root.externalSources.map(objectValue) : [];
 
+const unresolvedConflictFields = (root: JsonObject): string[] =>
+  Array.isArray(root.conflicts)
+    ? root.conflicts.flatMap((value) => {
+        const conflict = objectValue(value);
+        return conflict.retainedSource === null && typeof conflict.field === 'string'
+          ? [conflict.field]
+          : [];
+      })
+    : [];
+
 const SCAN_FIELD_PATHS: Readonly<Partial<Record<ProductEvidenceField, string[]>>> = {
   identity: ['identity.displayName', 'identity.originalName'],
   brand: ['identity.brand'],
@@ -183,7 +193,6 @@ const DECLARATION_SOURCES = new Set<EvidenceSource>([
   'mapper_exact',
 ]);
 
-
 /*
   SINGLE CALORIC SUGAR SOURCE CLOSURE.
 
@@ -239,7 +248,9 @@ export interface CustomerEvidenceProvenance {
 export interface CustomerProductProfileProposal {
   matchInput: ProfileMatchInput;
   declared: Partial<Record<WorkingNumericField, number>>;
-  declaredBasis: Partial<Record<WorkingNumericField, 'product_declared' | 'user_confirmed' | 'derived'>>;
+  declaredBasis: Partial<
+    Record<WorkingNumericField, 'product_declared' | 'user_confirmed' | 'derived'>
+  >;
   /** The manufacturer's own basis, preserved beside the normalised values. */
   declaredNutritionBasis: 'per_100g' | 'per_100ml' | null;
   /** How `declared` was produced from it. */
@@ -324,8 +335,14 @@ export function customerProductProfileProposal(input: {
   const sugarsAreExact = declaredBasis.total_sugars_percent !== undefined;
   const tableConfirmed = exactEanBackedAuthority(root, SCAN_FIELD_PATHS.sugars ?? []) !== null;
   const listConfirmed = exactEanBackedAuthority(root, SCAN_FIELD_PATHS.ingredients ?? []) !== null;
-  const noConflicts = (Array.isArray(root.conflicts) ? root.conflicts : []).length === 0;
-  if (sugarsAreExact && tableConfirmed && listConfirmed && noConflicts) {
+  const unresolvedConflicts = unresolvedConflictFields(root);
+  const sugarClosureConflict = unresolvedConflicts.some(
+    (field) =>
+      field === 'ingredientsText' ||
+      field === 'nutrition.sugars' ||
+      field === 'nutrition.carbohydrate',
+  );
+  if (sugarsAreExact && tableConfirmed && listConfirmed && !sugarClosureConflict) {
     const sucrose = singleCaloricSugarClosure(
       text(root.ingredientsText),
       declared.total_sugars_percent ?? null,
@@ -373,14 +390,6 @@ export function customerProductProfileProposal(input: {
   // barcode decoder did not emit a Vision evidence rectangle.
   fields.barcode = fields.barcode ?? 'label';
 
-  const unresolvedConflicts = Array.isArray(root.conflicts)
-    ? root.conflicts.flatMap((value) => {
-        const conflict = objectValue(value);
-        return conflict.retainedSource === null && typeof conflict.field === 'string'
-          ? [conflict.field]
-          : [];
-      })
-    : [];
   const knownMacros: ProfileMatchInput['knownMacros'] = {};
   for (const field of [
     'fat_percent',

@@ -16,6 +16,15 @@
  * customer's idea into a recipe. The dot also gained a real text line so it centres ON
  * the prompt instead of 8 px above it.
  * ─────────────────────────────────────────────────────────────────────────────────
+ *
+ * ── RE-FROZEN BY OWNER — 2026-09-10 (v2.2 §27/§28/§V) ────────────────────────────
+ *   placeholder „Napisz, co chcesz zrobić…" → „Wpisz składnik lub smak…"
+ *   Powiedz / Zeskanuj stop being buttons and become ICONS INSIDE the field, joined
+ *   by AI fruit recognition and a send arrow. Their words survive as the controls'
+ *   accessible names, which is why the copy keys stay.
+ *   The CTA and the „Dodaj przynajmniej jeden składnik albo smak." hint no longer
+ *   exist before the first BASE idea — neither greyed out nor as an explanation.
+ * ─────────────────────────────────────────────────────────────────────────────────
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
@@ -31,14 +40,30 @@ describe('frozen copy', () => {
   it('keeps the exact approved strings', () => {
     expect(homeCreatorCopy.intent.headline).toBe('Stwórz własne lody. Jak profesjonalista.');
     expect(homeCreatorCopy.intent.question).toBe('Jakie lody robimy dzisiaj?');
-    expect(homeCreatorCopy.intent.placeholder).toBe('Napisz, co chcesz zrobić…');
+    expect(homeCreatorCopy.intent.placeholder).toBe('Wpisz składnik lub smak…');
     expect(homeCreatorCopy.intent.cta).toBe('Zamień pomysł w recepturę');
     expect(homeCreatorCopy.intent.anythingElse).toBe('Coś jeszcze dodajemy?');
   });
 
-  it('keeps Powiedz and Zeskanuj as the other two composer inputs', () => {
+  it('keeps Powiedz and Zeskanuj as the composer inputs — now as icon names', () => {
     expect(homeCreatorCopy.intent.addByVoice).toBe('Powiedz');
     expect(homeCreatorCopy.intent.addByScan).toBe('Zeskanuj');
+  });
+
+  it('§27: every control inside the field carries its desktop tooltip', () => {
+    expect(homeCreatorCopy.intent.voiceTooltip).toBe('Powiedz, co chcesz zrobić');
+    expect(homeCreatorCopy.intent.scanTooltip).toBe('Zeskanuj produkt');
+    expect(homeCreatorCopy.intent.visionTooltip).toBe('Rozpoznaj owoc ze zdjęcia');
+    expect(homeCreatorCopy.intent.sendTooltip).toBe('Dodaj');
+  });
+
+  it('§30: the AI control promises FRUIT and nothing wider', () => {
+    const promise = `${homeCreatorCopy.intent.addByVision} ${homeCreatorCopy.intent.visionTooltip}`;
+    expect(promise.toLowerCase()).toContain('owoc');
+    expect(homeCreatorCopy.vision.prompt).toBe('Zrób zdjęcie owocu, który chcesz dodać');
+    expect(homeCreatorCopy.vision.unsure).toBe(
+      'Nie udało się pewnie rozpoznać owocu. Spróbuj ponownie.',
+    );
   });
 
   it('says Topping, never Posypka, in customer-facing HOME copy', () => {
