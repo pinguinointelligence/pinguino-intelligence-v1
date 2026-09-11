@@ -56,8 +56,10 @@ describe('PR/PM ProductBehavior authority restore', () => {
     expect(catalogSubmit).toContain('validateProductBehaviorAuthority');
     expect(scannerFinalize).toContain('validateProductBehaviorAuthority');
     expect(scannerFinalize).toContain("'gellatti_upsert_customer_added_product_v1'");
-    expect(catalogSubmit).toContain('.range(offset, offset + 999)');
-    expect(scannerFinalize).toContain('.range(offset, offset + 999)');
+    expect(catalogSubmit).toContain('.range(offset, offset + AUTHORITY_PAGE_SIZE - 1)');
+    expect(scannerFinalize).toContain('.range(offset, offset + AUTHORITY_PAGE_SIZE - 1)');
+    expect(catalogSubmit).toContain('readAuthorityPage<IntimportMapperAuthorityRow>');
+    expect(scannerFinalize).toContain('readAuthorityPage<IntimportMapperAuthorityRow>');
   });
 
   it('keeps the product-owned PR/PM article code searchable in the normal picker', () => {
