@@ -164,7 +164,7 @@ describe('rescan of a known code', () => {
       expect(analyze()).toContain('stored_facts: facts');
     });
 
-    it('re-evaluates through the finalize authority, never a second rule', () => {
+    it('PRING-RESCAN-01 re-evaluates through the finalize authority, never a second rule', () => {
       expect(analyze()).toContain('product-scan-finalize');
       // No routing rule may be restated here — the RPC owns it. Asserted on the CODE, because the
       // comment above the call deliberately quotes the rule to say where it lives.
@@ -175,6 +175,7 @@ describe('rescan of a known code', () => {
       // reading the route the RPC decided is fine; assigning one here is not
       expect(code).not.toMatch(/\broute\s*=[^=]/);
       expect(code).toContain("typeof body.route === 'string'");
+      expect(code).toContain('body.semanticRevalidated === true');
     });
 
     it('reports the bounded finalizer outcome instead of calling an attempted refusal reevaluated', () => {
