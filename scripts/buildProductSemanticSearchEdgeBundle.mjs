@@ -59,6 +59,21 @@ async function hydrate() {
   return hydrated;
 }
 
+const semanticConceptSignature = (resolution) => [
+  ...new Set(resolution.searchMentions.flatMap((mention) => {
+    if (mention.targetType !== 'INGREDIENT_CONCEPT' && mention.targetType !== 'NAMED_COMPOSITE') {
+      return [];
+    }
+    return [\`${'${mention.targetType}'}:${'${mention.specializationId ?? mention.targetId}'}\`];
+  })),
+].sort().join('|');
+
+const carriesAmbiguityGate = (resolution) =>
+  resolution.technicalMentions.some((mention) => mention.action === 'AMBIGUITY_GATE') ||
+  resolution.searchGaps.some((gap) =>
+    gap.reason === 'AMBIGUOUS_FALLBACK' || gap.reason === 'AMBIGUOUS_TECHNICAL_CODE'
+  );
+
 export async function resolveFinalProductSemanticSearch(query, marketCountries = []) {
   const { runtime, localeByMarket, localeHints } = await hydrate();
   const market = marketCountries
@@ -80,11 +95,43 @@ export async function resolveFinalProductSemanticSearch(query, marketCountries =
     }
   }
   const locale = localeByMarket.get(market) ?? (conflict ? null : detected) ?? 'en';
-  return runtime.resolve(query, {
+  const primary = runtime.resolve(query, {
     localeVariant: locale,
     marketScope: market,
     telemetry: NO_TELEMETRY,
   });
+  if (market !== 'GLOBAL' || semanticConceptSignature(primary) || carriesAmbiguityGate(primary)) {
+    return primary;
+  }
+
+  /*
+   * A canonical PR may carry an exact mixed-language label while its historical variant still
+   * says GLOBAL. In that case the locale detector can be dominated by generic English role words
+   * (for example "inclusion") and miss both "arbuz" and "sandía". Consult only the locale
+   * dictionaries already frozen in FINAL Search and accept the fallback only when every resolving
+   * locale agrees on the exact same Search Concept signature. Conflicts and ambiguity gates keep
+   * the original unresolved result, so this never manufactures a mapping or a PI identity.
+   */
+  const consensus = new Map();
+  for (const candidateLocale of [...new Set(localeByMarket.values())].sort()) {
+    if (localeKey(candidateLocale) === localeKey(locale)) continue;
+    const candidate = runtime.resolve(query, {
+      localeVariant: candidateLocale,
+      marketScope: 'GLOBAL',
+      telemetry: NO_TELEMETRY,
+    });
+    const signature = semanticConceptSignature(candidate);
+    if (!signature || carriesAmbiguityGate(candidate)) continue;
+    const existing = consensus.get(signature);
+    const candidateCoverage = candidate.searchMentions.reduce(
+      (total, mention) => total + Math.max(0, mention.span.end - mention.span.start),
+      0,
+    );
+    if (!existing || candidateCoverage > existing.coverage) {
+      consensus.set(signature, { resolution: candidate, coverage: candidateCoverage });
+    }
+  }
+  return consensus.size === 1 ? [...consensus.values()][0].resolution : primary;
 }
 `;
 

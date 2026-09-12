@@ -35,4 +35,39 @@ describe('product semantic FINAL Search Edge bundle', () => {
     expect(declaration).toContain("'GELLATTI-SA10-2026-09-10-FINAL'");
     expect(declaration).toContain(EXPECTED_SHA);
   });
+
+  it('PRING-BUNDLE-03 resolves an exact mixed-language PR by cross-locale consensus', async () => {
+    const { resolveFinalProductSemanticSearch } = await import(
+      '../../../supabase/functions/_shared/generated/productSemanticSearch.bundle.mjs'
+    );
+    const resolution = await resolveFinalProductSemanticSearch(
+      [
+        'HARIBO Żelki owocowe arbuz',
+        'CARAMELOS DE GOMA SABOR SANDÍA',
+        'confectionery SOLID FRUIT inclusion bakery_inclusion confectionery_inclusion',
+      ].join(' '),
+      [],
+    );
+
+    expect(resolution.searchMentions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          targetId: 'SC-ING-000184',
+          targetKey: 'watermelon',
+        }),
+      ]),
+    );
+  });
+
+  it('PRING-BUNDLE-04 preserves a FINAL Search ambiguity gate', async () => {
+    const { resolveFinalProductSemanticSearch } = await import(
+      '../../../supabase/functions/_shared/generated/productSemanticSearch.bundle.mjs'
+    );
+    const resolution = await resolveFinalProductSemanticSearch('MCC', []);
+
+    expect(resolution.searchMentions).toEqual([]);
+    expect(resolution.technicalMentions).toEqual(
+      expect.arrayContaining([expect.objectContaining({ action: 'AMBIGUITY_GATE' })]),
+    );
+  });
 });
