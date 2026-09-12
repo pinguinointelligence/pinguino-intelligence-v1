@@ -91,6 +91,7 @@ describe('Supabase discovery adapter (stub) — mirrors the legacy scan-session 
           entityKind: 'commercial_product',
           status: 'verified',
           engineReady: true,
+          currentVersionId: 'V2',
         },
         usage: { visionCalls: 0, webCalls: 0, estimatedCostUsd: 0 },
       },
@@ -102,6 +103,7 @@ describe('Supabase discovery adapter (stub) — mirrors the legacy scan-session 
         productId: 'P1',
         productCode: 'PR-1',
         engineReady: true,
+        currentVersionId: 'V2',
         strength: 'canonical_shared',
       },
     });

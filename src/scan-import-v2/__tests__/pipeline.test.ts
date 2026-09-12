@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { scan } from './codeIdentity.test';
-import { HACENDADO, ctx, ports, product } from './fakes';
+import { FakeDiscovery } from './fakeDiscovery';
+import { HACENDADO, LACIATE, ctx, ports, product } from './fakes';
 import { idempotencyKey, runScanImportV2 } from '../pipeline';
 import type { ExternalEvidence } from '../contracts';
 
@@ -17,6 +18,43 @@ describe('Scan Import 2.0 pipeline — owner test matrix', () => {
     });
     if (r.kind === 'resolved_exact')
       expect(r.import).toMatchObject({ kind: 'customer_added_product', created: true });
+  });
+  it('1b. authenticated exact PR reuses discovery to persist and return current role readiness', async () => {
+    const discovery = new FakeDiscovery();
+    discovery.serverCatalogue.set(
+      '5900820012434',
+      product({
+        productId: 'PR-LACIATE',
+        productCode: 'PR-ING-007205',
+        ean: '5900820012434',
+        engineReady: true,
+        currentVersionId: 'semantic-version-2',
+      }),
+    );
+    const p = ports({ discovery });
+    p.behaviour.outcomes.set('PR-LACIATE', 'unknown_requires_review');
+
+    const r = await runScanImportV2(scan('5900820012434'), ctx(), p);
+
+    expect(discovery.calls).toEqual(['research:5900820012434']);
+    expect(r).toMatchObject({
+      kind: 'resolved_exact',
+      product: {
+        productId: 'PR-LACIATE',
+        engineReady: true,
+        currentVersionId: 'semantic-version-2',
+      },
+      behaviour: { outcome: 'classified', bindingId: 'semantic-version-2' },
+    });
+  });
+  it('1c. guest exact resolution never starts semantic revalidation', async () => {
+    const discovery = new FakeDiscovery();
+    discovery.serverCatalogue.set('5900820012434', LACIATE);
+    const p = ports({ discovery });
+
+    await runScanImportV2(scan('5900820012434'), ctx({ accountId: null }), p);
+
+    expect(discovery.calls).toEqual([]);
   });
   it('2. known exact UPC-A resolves through its zero-padded key and keeps UPC-A identity', async () => {
     const p = ports({
