@@ -439,6 +439,29 @@ describe('product handoffs never invent Engine science', () => {
     expect(topping).not.toHaveProperty('pod_value');
   });
 
+  it('PRING-IDENTITY-01 preserves exact PR identity for private Topping with public label gaps', () => {
+    const topping = labelOnlyCatalogToppingIngredient({
+      ...hit,
+      productCode: 'PR-ING-007205',
+      currentVersionId: 'haribo-version-id',
+      mappedIngredientId: null,
+      usableInBase: false,
+      publicData: {
+        ...hit.publicData,
+        ingredientsText: null,
+        allergensText: null,
+      },
+    });
+    expect(topping).toMatchObject({
+      id: 'PR-ING-007205',
+      canonical_ingredient_id: 'PR-ING-007205',
+      private_product_id: 'catalog:catalog-1:version:haribo-version-id',
+      ingredients_text: '',
+      allergens_text: '',
+    });
+    expect(topping).not.toHaveProperty('composition');
+  });
+
   it('accepts missing optional label facts and preserves them as unknown', () => {
     const optionalMissing = {
       ...hit,

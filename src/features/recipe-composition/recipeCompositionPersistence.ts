@@ -83,6 +83,7 @@ const LABEL_NUTRITION_REQUIRED_FIELDS = [
   'energyKcal', 'fat', 'carbohydrate', 'protein', 'salt',
 ] as const;
 const LABEL_NUTRITION_OPTIONAL_FIELDS = ['saturatedFat', 'sugars', 'fibre'] as const;
+const LABEL_TOPPING_ID = /^(?:catalog:.+|(?:PR|PM|CA)-ING-\d{6})$/;
 
 const validLabelToppingIngredient = (value: unknown): value is CatalogLabelToppingIngredient => {
   if (!value || typeof value !== 'object') return false;
@@ -92,7 +93,7 @@ const validLabelToppingIngredient = (value: unknown): value is CatalogLabelToppi
   const values = LABEL_NUTRITION_REQUIRED_FIELDS.map((field) => nutrition[field]);
   const optionalValues = LABEL_NUTRITION_OPTIONAL_FIELDS.map((field) => nutrition[field]);
   return ingredient.kind === 'catalog_label_topping'
-    && typeof ingredient.id === 'string' && ingredient.id.startsWith('catalog:')
+    && typeof ingredient.id === 'string' && LABEL_TOPPING_ID.test(ingredient.id)
     && typeof ingredient.canonical_ingredient_id === 'string'
     && ingredient.canonical_ingredient_id === ingredient.id
     && typeof ingredient.private_product_id === 'string' && ingredient.private_product_id.length > 0
@@ -108,8 +109,10 @@ const validLabelToppingIngredient = (value: unknown): value is CatalogLabelToppi
       nutrition.protein, nutrition.salt, nutrition.fibre].every((entry) => entry === null || entry <= 100)
     && (nutrition.saturatedFat === null || nutrition.saturatedFat <= nutrition.fat + 0.01)
     && (nutrition.sugars === null || nutrition.sugars <= nutrition.carbohydrate + 0.01)
-    && typeof ingredient.ingredients_text === 'string' && ingredient.ingredients_text.trim().length > 0
-    && typeof ingredient.allergens_text === 'string' && ingredient.allergens_text.trim().length > 0
+    // Private recipe use and save are role-specific. Missing public label text
+    // stays explicit (empty string) and is handled by publication preflight.
+    && typeof ingredient.ingredients_text === 'string'
+    && typeof ingredient.allergens_text === 'string'
     && (ingredient.cost_per_kg === null || (typeof ingredient.cost_per_kg === 'number' && Number.isFinite(ingredient.cost_per_kg) && ingredient.cost_per_kg >= 0))
     && (ingredient.cost_currency === null || typeof ingredient.cost_currency === 'string');
 };

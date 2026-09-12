@@ -1,4 +1,4 @@
-import type { SourceSpan } from './types';
+import type { SourceSpan } from './types.ts';
 
 const safeLocale = (locale: string): string | undefined => {
   const candidate = locale === '*' ? undefined : locale;

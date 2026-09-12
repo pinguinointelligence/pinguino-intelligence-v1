@@ -20,6 +20,7 @@ import {
   filterCurrentMapperCatalogRelations,
 } from '@/features/ingredient-builder/mapperOnlyCatalog';
 import type { CatalogMarketPreferences, CatalogProductSearchHit } from './contracts';
+import { attachCatalogProductSemanticBindingFromFinalSearch } from './catalogSemanticBinding';
 
 export function resolveCatalogMarketScope(input: {
   forceGlobal: boolean;
@@ -166,8 +167,15 @@ export function useGlobalCatalogPicker(input: {
         limit: pageSize,
         cursor: pageParam,
       });
+      const contextBoundBatch = await Promise.all(
+        batch.map((hit) =>
+          attachCatalogProductSemanticBindingFromFinalSearch(hit).catch(() => hit),
+        ),
+      );
       return {
-        hits: input.mapperOnly ? filterCurrentMapperCatalogHits(batch, input.context) : batch,
+        hits: input.mapperOnly
+          ? filterCurrentMapperCatalogHits(contextBoundBatch, input.context)
+          : contextBoundBatch,
         nextCursor: batch.length === pageSize ? pageParam + batch.length : null,
       } satisfies CatalogSearchPage;
     },

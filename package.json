@@ -32,6 +32,7 @@
     "staging:seed-qa-accounts": "node scripts/seed-staging-admin.mjs --project-ref=tunabqqrwabacxjcxxkz",
     "staging:seed-admin": "npm run staging:seed-qa-accounts",
     "production-rescue:bundle": "node scripts/buildProductionRescueEdgeBundle.mjs",
+    "product-semantic-search:bundle": "node scripts/buildProductSemanticSearchEdgeBundle.mjs",
     "production-rescue:bundle-check": "node scripts/buildProductionRescueEdgeBundle.mjs --check",
     "protein:corpus": "node scripts/buildInternetProteinRecipeCorpus.mjs",
     "protein:corpus:check": "node scripts/buildInternetProteinRecipeCorpus.mjs --check",

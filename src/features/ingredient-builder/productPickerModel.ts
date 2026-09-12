@@ -192,6 +192,13 @@ export function productPickerVerificationView(
         ? { status: 'DOPASOWANY', reason: null }
         : { status: 'DODANY PRZEZ UŻYTKOWNIKA', reason: null };
   }
+  if (!hit.usableInBase && hit.usableAsTopping) {
+    return {
+      status: 'DOPASOWANY',
+      reason:
+        'Produkt jest sklasyfikowany jako dodatek po procesie. Jest dostępny w katalogu Toppingów, ale nie w bazie receptury.',
+    };
+  }
   if (!hit.mappedIngredientId && !hasProductOwnedEngineProfile(hit)) {
     return {
       status: 'WYMAGA POWIĄZANIA',

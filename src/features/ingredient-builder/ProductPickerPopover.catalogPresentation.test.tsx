@@ -1203,6 +1203,49 @@ describe('ProductPickerPopover catalog presentation', () => {
         mappedIngredientId: 'PI-ING-000091',
         status: 'manual_unverified',
         verificationMethod: 'mapper_estimated',
+        semanticBinding: {
+          authority: 'PR_ING_SEMANTIC_BINDING_V1',
+          source: 'revalidation',
+          state: 'RESOLVED',
+          exactIdentity: {
+            productId: '0cfa39a9-e683-4dea-b4b9-7f732a7c9c08',
+            articleCode: 'PR-ING-006308',
+            productVersionId: 'version-1',
+            ean: null,
+            brand: null,
+            productName: 'Baitz Baton choco cocos',
+            variant: null,
+            pack: null,
+          },
+          searchAuthority: {
+            releaseId: 'GELLATTI-SA10-2026-09-10-FINAL',
+            concepts: [{ id: 'SC-ING-000081', key: 'coconut', targetType: 'INGREDIENT_CONCEPT' }],
+            roleKeys: [],
+          },
+          classification: {
+            family: 'confectionery',
+            form: 'SOLID',
+            role: 'TOPPING_ONLY',
+            archetype: 'CONFECTIONERY',
+            flavorDomain: 'COCONUT',
+            compatibleMapperCategories: ['confectionery_inclusion'],
+          },
+          behavior: {
+            familyId: 'inclusion',
+            subfamilyId: null,
+            formId: 'solid',
+            behaviorRole: 'TOPPING_ONLY',
+            behaviorFingerprint: 'fixture',
+            referenceMapperIngredientId: null,
+            runtimeMapperIngredientId: null,
+          },
+          readiness: {
+            privateRecipe: { base: false, topping: true },
+            publicCatalogue: false,
+          },
+          marketCountries: [],
+          reasonCodes: [],
+        },
       }),
     ];
     await renderPicker();
@@ -1226,6 +1269,10 @@ describe('ProductPickerPopover catalog presentation', () => {
     expect(dialog?.textContent).toContain('PR-ING-006308');
     expect(dialog?.textContent).not.toContain('Profil Gellatti / Mapper');
     expect(dialog?.textContent).not.toContain('PI-ING-000091');
+    expect(dialog?.textContent).toContain('confectionery · SOLID · TOPPING_ONLY');
+    expect(dialog?.textContent).toContain('Search Concept');
+    expect(dialog?.textContent).toContain('coconut');
+    expect(dialog?.textContent).toContain('Kontekst potwierdzony');
   });
 
   it('G/H/I keeps one or two segments through filtering, searching, and long scroll', async () => {

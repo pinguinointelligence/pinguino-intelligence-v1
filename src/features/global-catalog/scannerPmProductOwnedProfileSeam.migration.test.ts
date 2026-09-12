@@ -15,6 +15,10 @@ const catalogSubmit = readFileSync(
   resolve(root, 'supabase/functions/catalog-submit/index.ts'),
   'utf8',
 );
+const sharedOnboarding = readFileSync(
+  resolve(root, 'supabase/functions/_shared/sharedProductOnboarding.ts'),
+  'utf8',
+);
 
 describe('Scanner PM canonical product-owned profile seam', () => {
   it('persists the complete server-recomputed profile snapshot for both PM and PR', () => {
@@ -41,10 +45,11 @@ describe('Scanner PM canonical product-owned profile seam', () => {
     expect(scannerFinalize).toContain("origin: 'CUSTOMER_ADDED'");
     expect(scannerFinalize).toContain("'gellatti_upsert_customer_added_product_v1'");
     expect(scannerFinalize).not.toContain("service.rpc('ingest_product_v1'");
-    expect(scannerFinalize).toContain('validateIntimportProductProfileProposal');
-    expect(scannerFinalize).toContain('validateProductBehaviorAuthority');
-    expect(catalogSubmit).toContain('validateIntimportProductProfileProposal');
-    expect(catalogSubmit).toContain('validateProductBehaviorAuthority');
+    expect(scannerFinalize).toContain('validateSharedProductOnboarding');
+    expect(catalogSubmit).toContain('validateSharedProductOnboarding');
+    expect(sharedOnboarding).toContain('validateIntimportProductProfileProposal');
+    expect(sharedOnboarding).toContain('validateProductBehaviorAuthority');
+    expect(sharedOnboarding).toContain('finalizeProductProductionAccuracy');
     expect(catalogSubmit).toContain("service.rpc('ingest_product_v1'");
     expect(catalogSubmit).toContain('productProfileAuthority');
     expect(catalogSubmit).toContain('productBehaviorAuthority');

@@ -16,6 +16,7 @@ describe('Product Scanner server/client/security boundary', () => {
   const service = read('src/services/productScanner.ts');
   const analyze = read('supabase/functions/product-scan-analyze/index.ts');
   const finalize = read('supabase/functions/product-scan-finalize/index.ts');
+  const sharedOnboarding = read('supabase/functions/_shared/sharedProductOnboarding.ts');
   const migration = read('supabase/migrations/20260821120000_product_scanner_v1.sql');
 
   it('keeps the OpenAI key and model choice server-only', () => {
@@ -172,8 +173,10 @@ describe('Product Scanner server/client/security boundary', () => {
     expect(finalize).toContain('normalizeValidatedBarcode');
     expect(finalize).toContain("usableProductCreated: savedRow.route !== 'PM_UNVERIFIED'");
     expect(finalize).not.toContain("service.rpc('ingest_product_v1'");
-    expect(finalize).toContain('validateIntimportProductProfileProposal');
-    expect(finalize).toContain('validateProductBehaviorAuthority');
+    expect(finalize).toContain('validateSharedProductOnboarding');
+    expect(sharedOnboarding).toContain('validateIntimportProductProfileProposal');
+    expect(sharedOnboarding).toContain('validateProductBehaviorAuthority');
+    expect(sharedOnboarding).toContain('finalizeProductProductionAccuracy');
     expect(service).not.toContain('validateIntimportProductProfileProposal');
   });
 
