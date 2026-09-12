@@ -76,7 +76,8 @@ describe('the guard is NOT weakened', () => {
   it('fabricates no composition anywhere in the client', () => {
     // The fix must PASS THROUGH the source's snapshots, never synthesise them.
     expect(HOOK).not.toMatch(/behaviorSnapshots\s*:/);
-    expect(HOOK).toContain('productComposition: full.productComposition');
+    // The working copy takes the source composition through the one tolerant reader.
+    expect(HOOK).toMatch(/readRecipeCompositionMetadata\(\s*full\.productComposition,/);
   });
 });
 
@@ -93,7 +94,12 @@ describe('the derivation carries it through', () => {
   });
 
   it('no longer hard-codes null on the publication path', () => {
-    const derive = HOOK.slice(HOOK.indexOf('const { recipe } = await'), HOOK.indexOf('// 3. Attribution'));
+    const derive = HOOK.slice(
+      HOOK.indexOf('const full = await readSource(target)'),
+      HOOK.indexOf('// 3. Show it where this customer works.'),
+    );
+    expect(derive.length).toBeGreaterThan(0);
     expect(derive).not.toMatch(/productComposition: null/);
+    expect(derive).not.toMatch(/composition: null/);
   });
 });

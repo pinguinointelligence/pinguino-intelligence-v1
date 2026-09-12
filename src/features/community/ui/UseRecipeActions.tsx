@@ -7,7 +7,11 @@ import {
 } from '@/features/community/useRecipeDerivation';
 
 /**
- * „Użyj tej receptury" + „Stwórz moją wersję" (§20, §21, §22).
+ * „Zrób te lody" + „Stwórz moją wersję" (§20, §21, §22).
+ *
+ * Both open the recipe as the customer's working copy — the author's version is only read.
+ * The customer's own recipe (and its lineage) is created at the first save.
+ *
  *
  * One component for both surfaces — the public Community page and a direct
  * share — because the two actions must behave identically wherever they are
@@ -64,7 +68,7 @@ export function UseRecipeActions({
             ? copy.demo.gramsHidden
             : state.reason === 'source_unavailable'
               ? copy.share.notFound
-              : (state.message ?? 'Nie udało się zapisać kopii.')}
+              : (state.message ?? 'Nie udało się otworzyć tej receptury.')}
         </p>
       ) : null}
     </>
@@ -75,8 +79,8 @@ export function UseRecipeActions({
   return (
     <div className={cn('rounded-md border border-ink/10 bg-paper p-6', className)}>
       <p className="text-sm text-stone-500">
-        Masz aktywny plan — możesz zapisać własną, niezależną kopię. Oryginał autora pozostaje bez
-        zmian.
+        Otworzymy tę recepturę jako Twoją kopię roboczą — zapiszesz ją jako własną. Oryginał autora
+        pozostaje bez zmian.
       </p>
       <div className="mt-4 flex flex-col gap-3">{body}</div>
     </div>

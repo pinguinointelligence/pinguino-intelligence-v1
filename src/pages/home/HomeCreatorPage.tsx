@@ -18,7 +18,7 @@ import { decideAddAmount } from '@/features/home-creator/homeAddAmountDecision';
 import { HomeAmountPrompt } from '@/features/home-creator/ui/HomeAmountPrompt';
 import { HomeUsagePrompt } from '@/features/home-creator/ui/HomeUsagePrompt';
 import { decideUsageRole } from '@/features/home-creator/homeUsageRoleDecision';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { AppShell } from '@/features/shell/AppShell';
 import { deriveMachineSetup, type HomeMachineProfile } from '@/features/machine-catalog';
 import { machineDisplayName } from '@/features/machine-onboarding/machineViews';
@@ -49,7 +49,6 @@ import {
   searchExistingRecipes,
   type HomeMatchResult,
 } from '@/features/home-creator/matching/homeMatchSearch';
-import { currentUserHasOwnerReviewAccess } from '@/services/ownerReviewAccess';
 import { useIngredientLibrary } from '@/features/ingredient-builder/useIngredientLibrary';
 import { useCanonicalRecipeSave } from '@/features/recipes/useCanonicalRecipeSave';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
@@ -57,6 +56,20 @@ import { useAuthStore } from '@/stores/authStore';
 import { visibleProductTypeFor } from '@/features/home-creator/homeProfileMapping';
 import { proposeRecipeName } from '@/features/home-creator/homeRecipeName';
 import { buildHomeMachineView } from '@/features/home-creator/homeMachinePresentation';
+import { presentLoadedRecipeInHome } from '@/features/home-creator/homeLoadedRecipe';
+import {
+  HomeRecipeOriginNotice,
+  HomeRecipeProvenanceLine,
+  HomeRecipeSources,
+  type HomeOfficialAdoption,
+} from '@/features/home-creator/ui/HomeRecipeOrigin';
+import { officialRecipeCopy } from '@/copy/officialRecipeLibrary';
+import { startNewProRecipe } from '@/pages/destinations/startNewProRecipe';
+import {
+  OfficialRecipeHandoffError,
+  officialRecipeHandoffNotices,
+  openOfficialRecipe,
+} from '@/services/officialRecipeHandoff';
 import {
   capacityGuidance,
   defaultHomeAmount,
@@ -147,6 +160,79 @@ export function HomeCreatorPage() {
   const openAuthModal = useAuthModalStore((state) => state.open);
   const navigate = useNavigate();
   const userId = useAuthStore((state) => state.user?.id ?? null);
+  const authStatus = useAuthStore((state) => state.status);
+  const [searchParams] = useSearchParams();
+
+  /**
+   * An official Gellatti recipe opened in HOME — the library's „Zrób te lody", a match the
+   * customer chose, or the §35 single match. One path: `openOfficialRecipe` materialises it and
+   * adopts it as the customer's working copy (the original never changes); HOME then shows it
+   * as its recipe. A refusal keeps the current draft and says why.
+   */
+  const [officialAdoption, setOfficialAdoption] = useState<HomeOfficialAdoption | null>(null);
+  const adoptOfficialRecipe = useCallback(
+    async (
+      recipeId: string,
+      options: { readonly keepIdea: boolean; readonly automatic: boolean },
+    ) => {
+      if (!userId) {
+        openAuthModal();
+        return;
+      }
+      setOfficialAdoption({ state: 'loading' });
+      try {
+        const materialized = await openOfficialRecipe(
+          recipeId,
+          userId,
+          // Chosen from the customer's own idea: that choice IS their new recipe, exactly as a
+          // generated one would be. A library handoff was confirmed on the library page.
+          options.keepIdea ? { hasUnsavedChanges: () => false } : undefined,
+        );
+        presentLoadedRecipeInHome({
+          label: materialized.recipe.name,
+          officialRecipeId: recipeId,
+          keepIdea: options.keepIdea,
+        });
+        setOfficialAdoption({
+          state: 'ready',
+          message: officialRecipeCopy.handoffReady(materialized.recipe.name),
+          notices: officialRecipeHandoffNotices(materialized),
+          automatic: options.automatic,
+        });
+        window.setTimeout(() => scrollToStage('recipe'), 60);
+      } catch (error) {
+        setOfficialAdoption({
+          state: 'blocked',
+          message:
+            error instanceof OfficialRecipeHandoffError
+              ? error.message
+              : officialRecipeCopy.errors.generic,
+        });
+      }
+    },
+    [openAuthModal, scrollToStage, userId],
+  );
+
+  // The library's one-shot address: /home?source=official_recipe&officialRecipe=<id>.
+  const officialHandoffId =
+    searchParams.get('source') === 'official_recipe'
+      ? searchParams.get('officialRecipe')?.trim() || null
+      : null;
+  const officialHandoffClaimed = useRef<string | null>(null);
+  useEffect(() => {
+    if (!officialHandoffId || authStatus === 'loading') return;
+    if (!userId) {
+      openAuthModal();
+      return;
+    }
+    const key = `${userId}:${officialHandoffId}`;
+    if (officialHandoffClaimed.current === key) return;
+    officialHandoffClaimed.current = key;
+    // Consume the address first: a reload must never rematerialise the pristine official
+    // recipe over the customer's working copy.
+    navigate('/home', { replace: true });
+    void adoptOfficialRecipe(officialHandoffId, { keepIdea: false, automatic: false });
+  }, [adoptOfficialRecipe, authStatus, navigate, officialHandoffId, openAuthModal, userId]);
 
   const derivation = useMemo(() => (machine ? deriveMachineSetup(machine) : null), [machine]);
   const recommendedBatchGrams = derivation?.recommendedBatchGrams ?? null;
@@ -246,15 +332,21 @@ export function HomeCreatorPage() {
       setMatchResult(NO_MATCH);
       return;
     }
-    const canOpenOwnerReview = userId ? await currentUserHasOwnerReviewAccess(userId) : false;
-    setMatchResult(
-      await searchExistingRecipes({
-        requested,
-        profile: useHomeDraftStore.getState().profile,
-        canOpenOwnerReview,
-      }),
-    );
-  }, [userId]);
+    const result = await searchExistingRecipes({
+      requested,
+      profile: useHomeDraftStore.getState().profile,
+    });
+    // §35: exactly one Gellatti recipe and nothing from Community — adopt it, with a way back.
+    if (result.decision.kind === 'auto_adopt_official' && userId) {
+      setMatchResult(NO_MATCH);
+      await adoptOfficialRecipe(result.decision.match.candidate.id, {
+        keepIdea: true,
+        automatic: true,
+      });
+      return;
+    }
+    setMatchResult(result);
+  }, [adoptOfficialRecipe, userId]);
 
   /**
    * Write the machine through the canonical `setMachineSelection` authority — the SAME
@@ -460,6 +552,8 @@ export function HomeCreatorPage() {
       !machineView.needsMachineChoice &&
       !draft.recipeReady &&
       !matchPopupOpen &&
+      // Never behind an official recipe that is still opening: it is about to BE the recipe.
+      officialAdoption?.state !== 'loading' &&
       lastGeneratedFor.current !== key
     ) {
       lastGeneratedFor.current = key;
@@ -470,11 +564,23 @@ export function HomeCreatorPage() {
     draft.profile,
     draft.recipeReady,
     matchPopupOpen,
+    officialAdoption?.state,
     machine?.id,
     amount?.totalGrams,
     machineView.needsMachineChoice,
     generateRecipe,
   ]);
+
+  /** §35's automatic choice undone: the customer's own recipe, generated from their idea. */
+  const createOwnInstead = () => {
+    setOfficialAdoption(null);
+    startNewProRecipe(visibleProductTypeFor(useHomeDraftStore.getState().profile ?? 'gelato'));
+    useHomeDraftStore
+      .getState()
+      .setDerivation({ officialRecipeId: null, publicationId: null, label: null });
+    lastGeneratedFor.current = null;
+    useHomeDraftStore.getState().markRecipeReady(false);
+  };
 
   const onSweetness = (choice: HomeSweetness) => {
     const stored = recipe.direction_targets.sweetness;
@@ -500,6 +606,13 @@ export function HomeCreatorPage() {
   return (
     <AppShell navigationPosition="trailing" stickyHeader contentClassName="pb-24">
       <div data-testid="home-creator">
+        {officialAdoption ? (
+          <HomeRecipeOriginNotice adoption={officialAdoption} onCreateOwn={createOwnInstead} />
+        ) : draft.recipeReady && recipe.provenance ? (
+          <HomeRecipeProvenanceLine provenance={recipe.provenance} />
+        ) : !draft.recipeReady ? (
+          <HomeRecipeSources />
+        ) : null}
         {flow.stages.includes('intent') ? (
           <HomeIntentSection
             onSubmit={() => {
@@ -717,10 +830,10 @@ export function HomeCreatorPage() {
           official={matchPopup.official}
           community={matchPopup.community}
           communityMatch={matchPopup.communityMatch}
-          onChooseOfficial={() => {
-            // Opening an official template is the existing owner-review handoff; the
-            // popup closes and the user continues in the recipe it loaded.
+          onChooseOfficial={(match) => {
+            // The customer chose a Gellatti recipe: it opens here as their working copy.
             setMatchDismissed(true);
+            void adoptOfficialRecipe(match.candidate.id, { keepIdea: true, automatic: false });
           }}
           onCreateMyOwn={() => setMatchDismissed(true)}
           onDerived={() => {

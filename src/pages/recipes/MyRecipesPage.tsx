@@ -28,6 +28,7 @@ import { useCreatorProfile } from '@/features/community/useCreatorProfile';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { useAuthStore } from '@/stores/authStore';
 import { useRecipeStore } from '@/stores/recipeStore';
+import { presentLoadedRecipeInHome } from '@/features/home-creator/homeLoadedRecipe';
 import { resolveRecipesRepository } from '@/features/pro-core/proCoreRecipeRepo';
 import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
 import { readRecipeCompositionMetadata } from '@/features/recipe-composition/recipeCompositionPersistence';
@@ -152,6 +153,8 @@ export function MyRecipesContent() {
               ),
             },
       );
+      // HOME shows the reopened recipe as its recipe, never the empty intent screen.
+      if (persona !== 'pro') presentLoadedRecipeInHome({});
       navigate(persona === 'pro' ? '/pro/recipe' : '/home');
     } catch {
       setOpenError(r.versionSelector.openFailedGeneric);

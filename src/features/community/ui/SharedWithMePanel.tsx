@@ -22,7 +22,7 @@ import {
 type ShareView = 'received' | 'sent';
 
 /**
- * „Udostępnione mi" (§12, §13) — one primary tab with two views.
+ * „Udostępnione" (§12, §13) — one primary tab with two views.
  *
  * §3 is explicit that outgoing shares do NOT get their own top-level nav item,
  * so „Wysłane przeze mnie" lives here as a secondary view.

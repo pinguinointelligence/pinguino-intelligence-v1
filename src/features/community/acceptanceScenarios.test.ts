@@ -121,7 +121,7 @@ describe('D (§67) — a non-customer opens a direct share', () => {
     expect(findDemoLeaks(toDemoSafeRecipe({ items: [{ planned_grams: 512 }] }))).toEqual([]);
   });
 
-  it('D.6 — opening files the recipe under „Udostępnione mi"', () => {
+  it('D.6 — opening files the recipe under „Udostępnione"', () => {
     expect(fn('gellatti_open_share_v1')).toContain(
       'insert into public.recipe_share_recipients',
     );

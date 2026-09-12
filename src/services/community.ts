@@ -327,7 +327,7 @@ export async function resolveShare(token: string) {
 }
 
 /**
- * Signed-in open: files the recipe under „Udostępnione mi", records Partner
+ * Signed-in open: files the recipe under „Udostępnione", records Partner
  * acquisition evidence when the link credits an ACTIVE partner, and returns
  * the full formulation only to an entitled recipient (§14, §20, §29).
  */
@@ -336,7 +336,7 @@ export async function openShare(token: string) {
 }
 
 /**
- * Reopen a share already filed under „Udostępnione mi", without the token.
+ * Reopen a share already filed under „Udostępnione", without the token.
  * Access is proven by the recipient row the first open created — a stranger
  * guessing a share id has no such row and is refused (§12).
  */

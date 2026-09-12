@@ -33,7 +33,7 @@ import {
  *
  *   logged out → resolve the share safely, say WHAT was sent and BY WHOM,
  *                offer sign in / sign up, carrying the token forward;
- *   signed in  → `openShare` files it under „Udostępnione mi", records
+ *   signed in  → `openShare` files it under „Udostępnione", records
  *                Partner acquisition evidence server-side, and returns either
  *                the Demo projection or the full recipe;
  *   not paid   → the recipe IS the demo: real ingredients, real structure,
@@ -57,7 +57,7 @@ export function SharedRecipePage() {
   // Signed in → OPEN (records the recipient + Partner attribution evidence).
   // Logged out → RESOLVE (records nothing about the visitor at all).
   // The key includes the auth state so signing in re-runs the open, which is
-  // what files the recipe under „Udostępnione mi".
+  // what files the recipe under „Udostępnione".
   const resource = useAsyncResource<ShareResolution>(
     `${shareLinkId || token}:${access.isSignedIn ? 'in' : 'out'}`,
     () =>
@@ -144,8 +144,8 @@ export function SharedRecipePage() {
             <Card className="flex flex-col gap-4">
               <SectionLabel>Pełna receptura</SectionLabel>
               <p className="text-sm text-stone-500">
-                Masz aktywny plan — możesz zapisać własną, niezależną kopię. Oryginał autora
-                pozostaje bez zmian.
+                Otworzymy tę recepturę jako Twoją kopię roboczą — zapiszesz ją jako własną. Oryginał
+                autora pozostaje bez zmian.
               </p>
               <UseRecipeActions
                 bare

@@ -113,6 +113,7 @@ import {
   readRecipeLabelDraft,
   type RecipeLabelDraft,
 } from '@/features/master-label/labelDraftPersistence';
+import { readRecipeProvenance, type RecipeProvenance } from '@/features/recipes/recipeProvenance';
 import {
   MACHINE_CATALOG,
   HOME_ENGINE_TEMPERATURE_C,
@@ -382,6 +383,8 @@ export interface RecipeState {
   currentVersionDate: string | null;
   /** Current recipe's label working copy: stable LOT/date plus editable label data. */
   labelDraft: RecipeLabelDraft | null;
+  /** Where this working copy came from (official Gellatti / Community); null for an own recipe. */
+  provenance: RecipeProvenance | null;
   /**
    * Pro machine/serving selection context (S4). Drives the workbar context line + which visible
    * serving mode routes the recipe. It NEVER changes Engine math — the temperature it carries is
@@ -1160,6 +1163,7 @@ const fromPreset = (preset: DemoPreset) => ({
   currentVersionId: null,
   currentVersionDate: null,
   labelDraft: null,
+  provenance: null,
   machineKind: null,
   servingModeId: null,
   machineId: null,
@@ -1422,6 +1426,7 @@ export function recipePersistPartialize(state: RecipeState) {
     currentVersionId: state.currentVersionId,
     currentVersionDate: state.currentVersionDate,
     labelDraft: state.labelDraft,
+    provenance: state.provenance,
     machineKind: state.machineKind,
     servingModeId: state.servingModeId,
     machineId: state.machineId,
@@ -3070,6 +3075,7 @@ export const useRecipeStore = create<RecipeState>()(
           currentVersionId: link.versionId ?? null,
           currentVersionDate: link.versionDate ?? null,
           labelDraft: readRecipeLabelDraft(input),
+          provenance: readRecipeProvenance(input),
           dirty: false,
           practicalRecipeAudit,
           savedProductionFingerprint: null,

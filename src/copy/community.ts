@@ -139,7 +139,7 @@ export interface CommunityCopy {
 export const communityCopyPl: CommunityCopy = {
   nav: {
     myRecipes: 'Moje receptury',
-    sharedWithMe: 'Udostępnione mi',
+    sharedWithMe: 'Udostępnione',
     community: 'Community',
     top100: 'TOP 100',
     received: 'Otrzymane',
@@ -156,7 +156,7 @@ export const communityCopyPl: CommunityCopy = {
     shareRecipe: 'Udostępnij recepturę',
     publishToCommunity: 'Opublikuj w Community',
     unpublish: 'Wycofaj publikację',
-    useThisRecipe: 'Użyj tej receptury',
+    useThisRecipe: 'Zrób te lody',
     createMyVersion: 'Stwórz moją wersję',
     unlockThisRecipe: 'Odblokuj tę recepturę',
     revokeLink: 'Unieważnij link',
@@ -271,7 +271,7 @@ export const communityCopyPl: CommunityCopy = {
 export const communityCopyEn: CommunityCopy = {
   nav: {
     myRecipes: 'Moje receptury',
-    sharedWithMe: 'Udostępnione mi',
+    sharedWithMe: 'Udostępnione',
     community: 'Community',
     top100: 'TOP 100',
     received: 'Received',
@@ -288,7 +288,7 @@ export const communityCopyEn: CommunityCopy = {
     shareRecipe: 'Udostępnij recepturę',
     publishToCommunity: 'Opublikuj w Community',
     unpublish: 'Unpublish',
-    useThisRecipe: 'Użyj tej receptury',
+    useThisRecipe: 'Make this gelato',
     createMyVersion: 'Utwórz własną wersję',
     unlockThisRecipe: 'Odblokuj tę recepturę',
     revokeLink: 'Revoke link',
