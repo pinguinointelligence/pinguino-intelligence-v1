@@ -58,7 +58,7 @@ export function RecipeContextBar({
             />
           </svg>
           {settingsPending ? (
-            <i className="absolute -top-0.5 -right-0.5 size-2 rounded-full border border-white bg-[#f58a07]" />
+            <i className="absolute -top-0.5 -right-0.5 size-2 rounded-full border border-white bg-[var(--g-orange)]" />
           ) : null}
         </span>
         <span className="min-w-0 flex-1">

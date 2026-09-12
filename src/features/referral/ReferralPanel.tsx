@@ -63,7 +63,7 @@ function RewardRow({ row }: { row: ReferralRewardRow }) {
         <span
           className={cn(
             'text-[11px] font-semibold tracking-[0.04em] uppercase',
-            reversed ? 'text-[var(--g-text-muted)]' : 'text-[var(--g-orange)]',
+            reversed ? 'text-[var(--g-text-muted)]' : 'text-[var(--g-orange-ink)]',
           )}
         >
           {reversed ? c.rewardStatus.reversed : c.rewardStatus.earned}

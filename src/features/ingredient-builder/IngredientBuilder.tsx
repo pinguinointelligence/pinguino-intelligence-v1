@@ -1129,7 +1129,7 @@ export function IngredientBuilder({
                          other rule down this column is a neutral hairline, so
                          the one orange line is what separates "the recipe you
                          are reading" from "the things you can do to it". */
-                      className="flex min-w-0 flex-wrap items-center gap-2 border-t border-[#f58a07] bg-white px-[var(--pro-mobile-gutter)] py-2 lg:px-3"
+                      className="flex min-w-0 flex-wrap items-center gap-2 border-t border-[var(--g-orange)] bg-white px-[var(--pro-mobile-gutter)] py-2 lg:px-3"
                       data-testid="ingredient-action-toolbar"
                     >
                       <div

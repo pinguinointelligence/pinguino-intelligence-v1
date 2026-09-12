@@ -76,8 +76,8 @@ describe('Recipe profile visual density contract', () => {
        reader sees is a single orange stroke from neutral to the choice. Both
        uses are paired with the blocked-axis tint, which is how the assertion
        below proves neither of them is decoration somewhere else. */
-    const accent = axes.match(/bg-\[#f58a07\]/g) ?? [];
-    const blocked = axes.match(/bg-\[#fcd6a8\]/g) ?? [];
+    const accent = axes.match(/bg-\[var\(--g-orange\)\]/g) ?? [];
+    const blocked = axes.match(/bg-\[var\(--g-orange-soft\)\]/g) ?? [];
     expect(accent.length).toBe(2);
     expect(blocked.length).toBe(accent.length);
     /* Every accent use is REACHED THROUGH the disabled ternary, so neither can
@@ -85,10 +85,10 @@ describe('Recipe profile visual density contract', () => {
        rather than as one literal string: the thumb branch also carries the
        blocked outline, and asserting the exact characters would fail the next
        time that branch gains a class it should be allowed to gain. */
-    for (const m of axes.matchAll(/bg-\[#f58a07\]/g)) {
+    for (const m of axes.matchAll(/bg-\[var\(--g-orange\)\]/g)) {
       const before = axes.slice(Math.max(0, m.index - 220), m.index);
       expect(before, 'accent not guarded by the disabled ternary').toMatch(/disabled\s*\?/);
-      expect(before).toContain('#fcd6a8');
+      expect(before).toContain('var(--g-orange-soft)');
     }
     /* The section is a BOX with a notched legend (owner reference 2026-09-03),
        not an eyebrow closed by a hairline running to the column edge. */
@@ -133,7 +133,9 @@ describe('Recipe profile visual density contract', () => {
     // never the accent.
     expect(settings).toContain('bg-[var(--g-graphite)] px-5');
     expect(settings).toContain('data-testid="profile-settings-save-default"');
-    expect(settings.includes('bg-[#f58a07] px-3 text-xs font-semibold text-white')).toBe(false);
+    expect(settings).not.toMatch(
+      /bg-\[(?:#f58a07|var\(--g-orange\))\] px-3 text-xs font-semibold text-white/,
+    );
     expect(visualSystem).toContain("[data-testid='profile-settings-confirm']");
     expect(visualSystem).toContain('border-radius: 9999px !important;');
     expect(visualSystem).not.toContain('border-radius: 8px !important;');

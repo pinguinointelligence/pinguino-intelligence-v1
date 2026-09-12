@@ -46,7 +46,7 @@
   --color-pro-sage: #e8ece5;
   --color-pro-amber: #f2eadc;
   --color-pro-terracotta: #efe2dd;
-  --color-gellatti-orange: #f58a07;
+  --color-gellatti-orange: #f0c44c;
 
   /* Status — desaturated, laboratory-grade (never bright) */
   --color-status-ideal: #6f7d63;
@@ -185,7 +185,21 @@
   --g-ivory: #fbfaf7;
   --g-ivory-deep: #f6f4ef;
   --g-stepper-face: #f7f5f0;
-  --g-orange: #f58a07;
+  /* OWNER 2026-09-12 — GLOBAL ACCENT #F0C44C. `--g-orange` keeps its name (it
+     predates the colour) and IS the Gellatti accent: every fill, mark, dot,
+     thumb, edge, underline, border, chip and rule that carried the retired
+     orange, and the accent on graphite or ink. #F0C44C is 1.65:1 on white, so
+     what it must never carry alone on a light ground takes a same-hue
+     companion, none of them weaker there than the retired orange (2.46:1). */
+  --g-orange: #f0c44c;
+  /* Hover / pressed on an accent fill — ink on it 10.2:1. */
+  --g-orange-hover: #edb92b;
+  /* Focus indicators and hover / pressed marks on light grounds — 3.1:1 on white. */
+  --g-orange-line: #b88a0f;
+  /* Accent-coloured text on light grounds — 6.2:1 on white. */
+  --g-orange-ink: #7a5c0a;
+  /* The accent at 35 % on white: the blocked Direction fill and thumb. */
+  --g-orange-soft: #faeac0;
   --g-score-green: #3f9b58;
   --g-rail-track: #d9d5ce;
   --g-progress-track: #e5e1da;

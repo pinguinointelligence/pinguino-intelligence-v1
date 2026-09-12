@@ -131,7 +131,7 @@ describe('Crown-OFF correction notice', () => {
       `two border-colour utilities collide: ${borderColours.join(' ')}`,
     ).toHaveLength(1);
     // And the one shadow that survives must be the one carrying the warm ring.
-    expect(shadows[0]).toContain('rgba(245,138,7');
+    expect(shadows[0]).toContain('color-mix(in_srgb,var(--g-orange)_18%,transparent)');
     expect(borderColours[0]).toBe('border-[var(--g-orange)]');
     // A ring/outline utility layered on top would reintroduce the collision.
     expect(classes.some((c) => /^ring-/.test(c))).toBe(false);

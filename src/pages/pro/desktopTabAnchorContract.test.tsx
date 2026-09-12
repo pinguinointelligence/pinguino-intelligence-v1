@@ -68,15 +68,16 @@ describe('P0 desktop Workbench tab anchor', () => {
     // Underline only: a filled or boxed active tab changes its own metrics and
     // is exactly what made the strip read as shifted (owner §7/§8).
     /* The orange is now scoped to the ONE edge that carries width. The old
-       `border-[#f58a07]` set all four border COLOURS while only one edge had a
+       bare accent `border-[…]` set all four border COLOURS while only one edge had a
        width — three orange lines waiting for any engine or zoom level that
        rounds a hairline into existence, which is the orange FRAME the owner
        saw around the active module. Naming the edge makes that frame
        impossible. The quiet fill still belongs to the bottom variant alone. */
-    expect(tabs).toContain(
-      "bottom ? 'border-t-[#f58a07] bg-[var(--g-ivory)]/70' : 'border-b-[#f58a07]'",
+    // Whitespace-tolerant: the formatter may wrap the ternary across lines.
+    expect(tabs).toMatch(
+      /bottom\s*\?\s*'border-t-\[var\(--g-orange\)\] bg-\[var\(--g-ivory\)\]\/70'\s*:\s*'border-b-\[var\(--g-orange\)\]'/,
     );
-    expect(tabs).not.toMatch(/'border-\[#f58a07\][^-]/);
+    expect(tabs).not.toMatch(/'border-\[(?:#f58a07|var\(--g-orange\))\][^-]/);
   });
 
   it('keeps the accepted mobile bottom navigation contract separate and unchanged', () => {

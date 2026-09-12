@@ -44,7 +44,7 @@ function MobileNextStepAction({
         data-testid="pro-mobile-next-step-cue"
       >
         {condition ? (
-          <i aria-hidden className="size-1.5 shrink-0 rounded-full bg-[#f58a07]" />
+          <i aria-hidden className="size-1.5 shrink-0 rounded-full bg-[var(--g-orange)]" />
         ) : (
           <svg
             aria-hidden
@@ -304,7 +304,7 @@ export function WorkbenchIntelligenceHeader({
               className="flex min-w-0 shrink items-center gap-2 text-[11px] leading-tight text-[var(--g-attention-ink)]"
               data-testid="pro-workbar-recalc-cue"
             >
-              <i aria-hidden className="size-1.5 shrink-0 rounded-full bg-[#f58a07]" />
+              <i aria-hidden className="size-1.5 shrink-0 rounded-full bg-[var(--g-orange)]" />
               <span className="truncate">
                 {working
                   ? 'Gellatti przygotowuje wynik'
@@ -364,7 +364,7 @@ export function WorkbenchIntelligenceHeader({
           <span className="flex items-center justify-end gap-2">
             <span
               aria-hidden
-              className={`size-2 shrink-0 rounded-full ${verifiedCurrent || previewMatch ? 'bg-[#18a83a]' : 'bg-[#f58a07]'}`}
+              className={`size-2 shrink-0 rounded-full ${verifiedCurrent || previewMatch ? 'bg-[#18a83a]' : 'bg-[var(--g-orange)]'}`}
             />
             <strong className="block truncate text-xs font-semibold text-ink">
               {previewMatch

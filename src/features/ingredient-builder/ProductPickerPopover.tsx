@@ -1288,7 +1288,7 @@ export function ProductPickerPopover({
                             setUnavailableNotice(null);
                             setInformationOption(null);
                           }}
-                          className="h-11 w-full rounded-xl border border-ink/15 bg-white px-4 pr-11 text-sm text-ink outline-none focus:border-[#f58a07] focus:ring-2 focus:ring-[#f58a07]/15"
+                          className="h-11 w-full rounded-xl border border-ink/15 bg-white px-4 pr-11 text-sm text-ink outline-none focus:border-[var(--g-orange-line)] focus:ring-2 focus:ring-[var(--g-orange)]/15"
                         />
                         {query ? (
                           <button
@@ -1387,7 +1387,7 @@ export function ProductPickerPopover({
                             className={cn(
                               'pro-focus-ring min-h-9 shrink-0 rounded-sm border px-2.5 text-[10px] font-semibold',
                               activeSubfilter === subfilter
-                                ? 'border-[#f58a07]/55 bg-[#fff7ed] text-ink'
+                                ? 'border-[var(--g-orange)]/55 bg-[var(--g-orange)]/12 text-ink'
                                 : 'border-ink/10 bg-white text-stone-500 hover:border-ink/25 hover:text-ink',
                             )}
                           >
@@ -1620,7 +1620,7 @@ export function ProductPickerPopover({
                                                   'GELLATTI — SPRAWDZONY'
                                                 ? 'bg-[#e8f7eb] text-[#1a9b3d]'
                                                 : option.entityKind === 'pi_base'
-                                                  ? 'bg-[#fff4e2] text-[#f58a07]'
+                                                  ? 'bg-[var(--g-orange)]/15 text-[var(--g-orange-ink)]'
                                                   : 'bg-slate-200 text-slate-700',
                                           )}
                                         >
@@ -1671,7 +1671,9 @@ export function ProductPickerPopover({
                                         aria-pressed={option.favorite}
                                         className={cn(
                                           'pro-focus-ring grid size-10 shrink-0 place-items-center rounded-lg text-base max-sm:size-9',
-                                          option.favorite ? 'text-[#f58a07]' : 'text-stone-500',
+                                          option.favorite
+                                            ? 'text-[var(--g-orange-line)]'
+                                            : 'text-stone-500',
                                         )}
                                         onClick={(event) => {
                                           event.preventDefault();
@@ -1696,7 +1698,7 @@ export function ProductPickerPopover({
                                         } ${option.name}`}
                                         disabled={!option.selectable || adding}
                                         className={cn(
-                                          'pro-focus-ring mr-2 grid min-h-9 shrink-0 place-items-center rounded-lg border border-ink/10 bg-white leading-none text-ink shadow-sm hover:border-[#f58a07]/60 hover:text-[#f58a07] disabled:cursor-not-allowed disabled:opacity-40',
+                                          'pro-focus-ring mr-2 grid min-h-9 shrink-0 place-items-center rounded-lg border border-ink/10 bg-white leading-none text-ink shadow-sm hover:border-[var(--g-orange-line)]/60 hover:text-[var(--g-orange-ink)] disabled:cursor-not-allowed disabled:opacity-40',
                                           activeIntent === 'REPLACE'
                                             ? 'px-3 text-[11px] font-semibold'
                                             : 'size-9 text-xl',

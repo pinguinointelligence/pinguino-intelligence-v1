@@ -1,5 +1,7 @@
 .knowledge-tour {
-  --tour-accent: #e88419;
+  --tour-accent: var(--g-orange);
+  --tour-accent-ink: var(--g-orange-ink);
+  --tour-accent-focus: var(--g-orange-line);
   --tour-title-size: clamp(2.25rem, 4.2vw, 4.65rem);
   --tour-title-slot-size: calc(var(--tour-title-size) * 3.92);
   --tour-subtitle-slot-size: 12rem;
@@ -55,7 +57,7 @@
 }
 
 .knowledge-tour__eyebrow {
-  color: var(--tour-accent);
+  color: var(--tour-accent-ink);
   font-size: 0.68rem;
   font-weight: 750;
   letter-spacing: 0.17em;
@@ -192,7 +194,7 @@
 
 .knowledge-tour__annotation-index {
   display: none;
-  color: var(--tour-accent);
+  color: var(--tour-accent-ink);
   font-family: 'IBM Plex Mono', monospace;
   font-size: 0.64rem;
 }
@@ -263,7 +265,7 @@
 
 .knowledge-tour__nav-button:focus-visible,
 .knowledge-tour__dot:focus-visible {
-  outline: 2px solid var(--tour-accent);
+  outline: 2px solid var(--tour-accent-focus);
   outline-offset: 3px;
 }
 
@@ -435,7 +437,7 @@
   }
 
   .knowledge-tour__mobile-note-index {
-    color: var(--tour-accent);
+    color: var(--tour-accent-ink);
     font-family: 'IBM Plex Mono', monospace;
     font-weight: 700;
   }

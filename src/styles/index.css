@@ -219,5 +219,5 @@
 }
 
 .gellatti-destination [role='tab'][aria-selected='true'] {
-  border-bottom-color: #ef8708 !important;
+  border-bottom-color: var(--g-orange) !important;
 }
