@@ -1,5 +1,7 @@
 # GELLATTI Recipe Library — final Claude handoff to Codex (2026-09-12)
 
+> **Codex execution update, 2026-09-12:** the historical “NOTHING WRITTEN” checkpoint below has been superseded by the fail-closed execution record in `reports/GELLATTI_RL05_RL20_PHASE1_CLOSEOUT_2026-09-12.md`. The three guarded migrations are applied, 75/75 markets are active, and 85 v23 requests are approved with 117 usable physical routes including the three pre-existing milk routes. RL-05 and RL-20 remain **NOT DONE** because 87 products were rejected before creation as `approval_not_ready`, one product is `blocked`, and the required SMP/DEXTROSE/TARA representative routing cannot pass without new exact scientific/product authority. RL-36 was not started because the Owner explicitly gated it on both RL-05 and RL-20 being DONE.
+
 ## 1. Code state
 - **PR #319** merged — `34950c7f341f32957dfe082da49a994cef6099b2`. It carries:
   - the official library (177 recipes / 1510 lines / 5 collections / 354 images);

@@ -16,6 +16,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { APPLY_PROJECT_REF, applyProfileFor } from './applyPlan.mjs';
+import { reconcileExistingApplyProduct } from './applyReconciliation.mjs';
 
 /**
  * @param {object} input
@@ -116,12 +117,46 @@ export async function executeApplyPlan({ repoRoot, registry, registryBytes, regi
   if (marketError) throw new Error(`Market lookup failed: ${marketError.message}`);
   const liveMarkets = new Set((marketRows ?? []).filter((row) => row.is_active).map((row) => row.code));
   const preflight = [];
+  const preflightRequests = new Map();
+  const preflightIngestEvents = new Map();
   for (const product of plan.productsToCreate) {
-    if (product.gtin && (await exactProductByEan(product.gtin))) preflight.push(`${product.productKey}: GTIN ${product.gtin} now exists in the catalog`);
+    const { data: existingRequest, error: requestLookupError } = await pro
+      .from('product_add_requests')
+      .select('id,status,approved_product_id')
+      .eq('idempotency_key', product.requestIdempotencyKey)
+      .maybeSingle();
+    if (requestLookupError) throw new Error(`Request lookup failed: ${requestLookupError.message}`);
+    preflightRequests.set(product.productKey, existingRequest);
+    let ingestEvent = null;
+    if (existingRequest) {
+      const { data, error } = await admin
+        .from('product_ingest_events')
+        .select('product_id,status,source,idempotency_key')
+        .eq('idempotency_key', `product-request:${existingRequest.id}:${profile.catalogSubmitRevision}`)
+        .maybeSingle();
+      if (error) throw new Error(`Ingest event lookup failed: ${error.message}`);
+      ingestEvent = data;
+    }
+    preflightIngestEvents.set(product.productKey, ingestEvent);
+    const exactProduct = product.gtin ? await exactProductByEan(product.gtin) : null;
+    const routePrimaries = [];
     for (const route of product.routes) {
       if (!liveMarkets.has(route.country)) preflight.push(`${route.proposalKey}: market ${route.country} not in catalog_market_countries`);
-      if (await activePrimary(route.country, route.mapperIngredientId)) preflight.push(`${route.proposalKey}: an active primary exists`);
+      routePrimaries.push({
+        proposalKey: route.proposalKey,
+        primary: await activePrimary(route.country, route.mapperIngredientId),
+      });
     }
+    preflight.push(
+      ...reconcileExistingApplyProduct({
+        productKey: product.productKey,
+        gtin: product.gtin,
+        request: existingRequest,
+        exactProduct,
+        ingestEvent,
+        routePrimaries,
+      }).issues,
+    );
   }
   if (preflight.length > 0) {
     process.stderr.write(`Refusing: live state differs from the reviewed plan:\n${preflight.map((line) => `  ${line}`).join('\n')}\n`);
@@ -133,13 +168,7 @@ export async function executeApplyPlan({ repoRoot, registry, registryBytes, regi
     const entry = { productKey: product.productKey, requestId: null, productId: null, productCode: null, slotReviewId: null, addedMarkets: [], assignmentIds: [], outcome: null };
     ledger.push(entry);
 
-    const { data: existingRequest, error: requestLookupError } = await pro
-      .from('product_add_requests')
-      .select('id,status,approved_product_id')
-      .eq('idempotency_key', product.requestIdempotencyKey)
-      .maybeSingle();
-    if (requestLookupError) throw new Error(`Request lookup failed: ${requestLookupError.message}`);
-    let request = existingRequest;
+    let request = preflightRequests.get(product.productKey) ?? null;
     if (!request) {
       const { data, error } = await pro.rpc('gellatti_submit_product_request_v1', {
         p_scan_session_id: null,
@@ -157,6 +186,13 @@ export async function executeApplyPlan({ repoRoot, registry, registryBytes, regi
     entry.requestId = request.id;
 
     let productId = request.approved_product_id ?? null;
+    const priorIngestEvent = preflightIngestEvents.get(product.productKey) ?? null;
+    if (request.status !== 'APPROVED' && priorIngestEvent?.status === 'blocked') {
+      entry.productId = priorIngestEvent.product_id;
+      entry.outcome = 'CATALOG_PRODUCT_BLOCKED_REQUEST_NOT_LINKED';
+      entry.detail = { ingestStatus: priorIngestEvent.status, source: priorIngestEvent.source };
+      continue;
+    }
     if (request.status !== 'APPROVED') {
       if (request.status === 'SUBMITTED' || request.status === 'RESUBMITTED') await adminAction(request.id, 'START_REVIEW');
       await adminAction(request.id, 'ADMIN_EVIDENCE_PATCH', {
@@ -212,8 +248,33 @@ export async function executeApplyPlan({ repoRoot, registry, registryBytes, regi
         entry.detail = { readiness: approved.readiness, missingEngineFields: approved.missingEngineFields, productAccuracy: approved.productAccuracy };
         continue;
       }
-      if (typeof approved?.productId !== 'string') throw new Error(`catalog-submit returned no product for ${product.productKey}.`);
-      await adminAction(request.id, 'APPROVE_LINK', { productId: approved.productId });
+      if (approved?.kind === 'rate_limited') {
+        entry.outcome = 'RATE_LIMITED_NO_PRODUCT_WRITTEN';
+        entry.detail = { retryAt: approved.retryAt, rateReason: approved.rateReason };
+        continue;
+      }
+      if (typeof approved?.productId !== 'string') {
+        entry.outcome = 'CATALOG_SUBMIT_NO_PRODUCT_WRITTEN';
+        entry.detail = approved ?? null;
+        continue;
+      }
+      if (approved.status === 'blocked') {
+        entry.productId = approved.productId;
+        entry.outcome = 'CATALOG_PRODUCT_BLOCKED_REQUEST_NOT_LINKED';
+        entry.detail = { ingestStatus: approved.status, kind: approved.kind ?? null };
+        continue;
+      }
+      try {
+        await adminAction(request.id, 'APPROVE_LINK', { productId: approved.productId });
+      } catch (error) {
+        if (/canonical_admin_pr_ingest_required|publishable_product_authority_required/.test(String(error))) {
+          entry.productId = approved.productId;
+          entry.outcome = 'CATALOG_PRODUCT_BLOCKED_REQUEST_NOT_LINKED';
+          entry.detail = { approvalError: String(error) };
+          continue;
+        }
+        throw error;
+      }
       productId = approved.productId;
     }
 
