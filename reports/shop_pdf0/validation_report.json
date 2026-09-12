@@ -1,0 +1,150 @@
+{
+ "pdf": "GELLATTI_GELATO_BASE_GUIDE_75_COUNTRIES_v1.pdf",
+ "pdf_sha256": "e84ebd582bd4539c8e67eb097cfc83e42279c4f199e594564aac3c9f862c6537",
+ "v23_sha256": "37afaf6f98bad68d2768c02562f130f0502ba875d3ae4a08f51f420b82de16b4",
+ "v23_is_frozen_authority": true,
+ "pages": 82,
+ "all_pass": true,
+ "checks": {
+  "1_all_75_countries": true,
+  "6_no_missing_country": true,
+  "2_six_roles_each_country": true,
+  "3_mapping_matches_v23": true,
+  "5_no_substitution": true,
+  "4_no_invented_product": true,
+  "7_no_duplicate_or_misassigned_country": true,
+  "8_no_broken_page_or_table_layout": true,
+  "9_no_text_overflow": true,
+  "10_navigation_links_work": true,
+  "11_renders_desktop_and_phone": true,
+  "12_no_old_orange_accent": true,
+  "13_claims_within_v23_scope": true
+ },
+ "detail": {
+  "countries": {
+   "v23": 75,
+   "in_pdf": 75,
+   "missing": [],
+   "duplicate_titles": [],
+   "duplicate_pages": [],
+   "name_not_on_its_page": [],
+   "pages": "6–80"
+  },
+  "roles": {
+   "pages_checked": 75,
+   "mismatches": {}
+  },
+  "mapping": {
+   "fields_checked_per_country": "name, brand, barcode (where v23 has one), fat % (milk/cream/SMP), sugar rule",
+   "mismatches": {}
+  },
+  "no_invention": {
+   "numbers_not_in_v23_for_that_country": {},
+   "other_country_products_found": {}
+  },
+  "index": {
+   "links_checked": 150,
+   "wrong_targets": [],
+   "countries_missing_from_index": []
+  },
+  "layout": {
+   "pages": 82,
+   "dom_overflow_pages": [],
+   "pdf_box_problems": [],
+   "fit_levels_used": {
+    "how-to-use": 1
+   },
+   "fonts_loaded": [
+    "Manrope G 200 800",
+    "Plex G 500",
+    "Plex G 600"
+   ]
+  },
+  "navigation": {
+   "index_links": 150,
+   "back_link_missing": [],
+   "external_links_on_country_pages": 638,
+   "external_not_in_v23": [],
+   "internal_links_on_country_pages": 151,
+   "us_notes_link": [
+    "GELLATTI_GELATO_BASE_GUIDE_75_COUNTRIES_v1.html#81"
+   ],
+   "front_back_external": [
+    "https://gellatti.com/",
+    "https://gellatti.com/shop"
+   ],
+   "front_back_bad": [],
+   "bookmarks": 80,
+   "bookmark_sections_missing": [],
+   "unexpected_bookmarks": []
+  },
+  "readability": {
+   "renders": [
+    "chk_p18-18.png",
+    "chk_p2-02.png",
+    "chk_p3-03.png",
+    "chk_p49-49.png",
+    "chk_p5-05.png",
+    "desk_p01-01.png",
+    "desk_p02-02.png",
+    "desk_p03-03.png",
+    "desk_p04-04.png",
+    "desk_p05-05.png",
+    "desk_p38-38.png",
+    "desk_p40-40.png",
+    "desk_p42-42.png",
+    "desk_p68-68.png",
+    "desk_p72-72.png",
+    "desk_p78-78.png",
+    "desk_p81-81.png",
+    "desk_p82-82.png",
+    "phone_p01-01.png",
+    "phone_p02-02.png",
+    "phone_p03-03.png",
+    "phone_p04-04.png",
+    "phone_p05-05.png",
+    "phone_p38-38.png",
+    "phone_p40-40.png",
+    "phone_p42-42.png",
+    "phone_p68-68.png",
+    "phone_p72-72.png",
+    "phone_p78-78.png",
+    "phone_p81-81.png",
+    "phone_p82-82.png"
+   ],
+   "page_width_pt": 340.07999,
+   "smallest_word_box_pt": 8.82,
+   "p5_word_box_pt": 10.12,
+   "median_word_box_pt": 16.16,
+   "phone_390px_smallest_px": 10.1,
+   "phone_390px_p5_px": 11.6,
+   "phone_390px_median_px": 18.5
+  },
+  "colour": {
+   "old_orange_uses": {},
+   "accent_f0c44c_uses": 156,
+   "distinct_colours": 19,
+   "top_colours": [
+    "#64625e×4134",
+    "#cfc9c1×3200",
+    "#181a1d×2578",
+    "#77736b×1686",
+    "#b8890f×1426",
+    "#ffffff×482",
+    "#e8e3dd×310",
+    "#f6f4ee×274",
+    "#000000×166",
+    "#17181c×162",
+    "#efc44b×156",
+    "#795c09×70"
+   ]
+  },
+  "claims": {
+   "forbidden_hits": [],
+   "fda_mentions": [
+    "plier's own statement, not an FDA approval. Fat content Where a"
+   ],
+   "required_missing": []
+  }
+ }
+}
