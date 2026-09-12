@@ -275,7 +275,7 @@ function RegulatorRow({
             a large ball reads as "softer" or "harder" equally easily, and that
             misreading is not hypothetical. */}
         <div
-          className="mt-[7px] flex justify-between gap-3 text-[10.5px] leading-[14px] text-[var(--g-text-muted)]"
+          className="mt-[7px] flex justify-between gap-3 text-[10.5px] leading-[14px] text-[var(--g-text-muted)] min-[68.5rem]:mt-1"
           data-testid={`profile-regulator-${id}-ends`}
         >
           <span className="min-w-0 truncate">{endLabels[0]}</span>
@@ -318,7 +318,16 @@ export function ProfileDirectionAxes({
 
   return (
     <section
-      className={cn('pro-legend-box bg-transparent px-5 pt-8 pb-6', className)}
+      /* OWNER 2026-09-12 — desktop density. These paddings and the row gap
+         below were measured on 2026-09-03 while the workbench was zoomed to
+         0.8889; that zoom is gone, so on the desktop they painted 12.5 % taller
+         than the reference they were matched to. The box now keeps the same
+         instrument — rail, marks, end labels — in 140 px instead of 164.
+         Touch widths keep their current spacing (`min-[68.5rem]` only). */
+      className={cn(
+        'pro-legend-box bg-transparent px-5 pt-8 pb-6 min-[68.5rem]:pt-7 min-[68.5rem]:pb-4',
+        className,
+      )}
       data-testid="profile-direction-axes"
     >
       <h3
@@ -331,7 +340,7 @@ export function ProfileDirectionAxes({
           width: German and Hungarian run 45-80% longer than Polish, and a
           fixed column would clip them. The track keeps `min-w-0` so it yields
           instead of overflowing the column. */}
-      <div className="grid grid-cols-[minmax(104px,max-content)_1fr] items-center gap-x-5 gap-y-3">
+      <div className="grid grid-cols-[minmax(104px,max-content)_1fr] items-center gap-x-5 gap-y-3 min-[68.5rem]:gap-y-1.5">
         {(
           [
             ['sweetness', 'Słodycz'],

@@ -16,7 +16,9 @@
 
    Mobile is deliberately NOT reshaped here (owner §19/§20). Desktop uses one
    accepted 1440 px composition and one continuous scale; the existing mobile
-   interaction architecture begins only at the shared 60 rem boundary.
+   interaction architecture begins only at the shared 68.5 rem boundary (owner
+   2026-09-12: the account yields down to its 112 px compact width first; below
+   68.5 rem even that would need the desktop painted under 2/3 of its size).
    ────────────────────────────────────────────────────────────────────────── */
 
 /* ── Workbench shell geometry ───────────────────────────────────────────── */
@@ -50,11 +52,30 @@ body[data-gellatti-scale-mode='desktop'] .gellatti-application {
   display: none;
 }
 
-@media (min-width: 60rem) {
+@media (min-width: 68.5rem) {
+  /* OWNER 2026-09-12 — ONE rigid width system, top and bottom.
+
+     The row used to be min(1776 px, viewport − 57.6 px) while the body frame
+     under it is min(1280 px, viewport − 57.6 px). Measured at the owner's own
+     1602 × 1022 window: the hamburger stood 132 px left of the recipe card, the
+     account pill 132 px right of the display column, and from 1440 up the row
+     kept widening with the window while the body frame did not — two layouts
+     stacked on one page. The row now resolves through the SAME tokens as
+     `.pro-workbench-frame`, so its edges ARE the frame's edges at every width.
+     The one application scale (`applicationScaleAuthority`) shrinks header and
+     body together, because they are now one box: below the 1440 reference, and
+     whenever the account lane (`.app-header-account-lane`) would not fit beside
+     the frame. Supersedes the 2026-09-02 full-width row (option A). */
   .app-shell-header-row {
-    width: min(1776px, calc(var(--gellatti-layout-viewport-width, 100vw) - 57.6px));
+    width: min(
+      var(--pro-frame-max-width),
+      calc(var(--gellatti-layout-viewport-width, 100vw) - (2 * var(--pro-frame-inline-gutter)))
+    );
     max-width: none;
-    margin-inline: max(28.8px, calc((var(--gellatti-layout-viewport-width, 100vw) - 1776px) / 2));
+    margin-inline: max(
+      var(--pro-frame-inline-gutter),
+      calc((var(--gellatti-layout-viewport-width, 100vw) - var(--pro-frame-max-width)) / 2)
+    );
     height: var(--pro-header-height);
     padding: 0;
   }
@@ -67,9 +88,8 @@ body[data-gellatti-scale-mode='desktop'] .gellatti-application {
   .pro-workbench-header-canvas {
     position: absolute;
     inset-inline: 0;
-    /* The header row already owns the canonical page gutter. Applying the
-       frame gutter a second time made the tab track drift 24 px left of the
-       body at 1200. Within this containing block, 100% is the body frame. */
+    /* The header row IS the body frame (see above), so 100% of this
+       containing block is the frame and both tracks land on the body's own. */
     width: min(var(--pro-frame-max-width), 100%);
     pointer-events: none;
   }
@@ -99,6 +119,26 @@ body[data-gellatti-scale-mode='desktop'] .gellatti-application {
     grid-row: 1;
     width: 100%;
     min-width: 0;
+  }
+
+  /* OWNER 2026-09-12 — RESPONSIVE TRIGGER, LOCKED. The account stands in its
+     own lane just past the end of the PRO navigation — the display column,
+     whose right edge is the frame's — at the hard minimum clearance. The lane
+     itself never moves toward the navigation: the account's width is its
+     budget (208 → 112 px as the window narrows, ellipsis beyond), and
+     `applicationScaleAuthority` MEASURES the lane and, whenever it would not
+     fit beside the centred frame (frame gutter included), reduces the one
+     application scale by exactly as much as it needs — header, both columns,
+     navigation and account together. Inside the display column's track the
+     clearance could never be restored by scaling: both sides of it would
+     shrink together. */
+  .app-header-account-lane {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: calc(100% + var(--pro-header-account-gap));
+    display: flex;
+    align-items: center;
   }
 
   .pro-workbench-desktop-only {
@@ -231,7 +271,7 @@ body[data-gellatti-scale-mode='desktop'] .gellatti-application {
   }
 }
 
-@media (min-width: 60rem) {
+@media (min-width: 68.5rem) {
   .app-header-account-slot {
     display: inline-flex;
   }
@@ -253,7 +293,7 @@ body[data-gellatti-scale-mode='desktop'] .gellatti-application {
   --radius-pro-studio: 9px;
 }
 
-@media (min-width: 60rem) {
+@media (min-width: 68.5rem) {
   /* The one editor/display split. Both cards carry the preview's 10 px corner
      and its single hairline; the display column is an explicit length so the
      tab strip above it cannot drift (see `desktopTabAnchorContract`). */
@@ -434,7 +474,7 @@ body[data-app-drawer='open'] [data-testid='mobile-cockpit-trigger'] {
 }
 
 /* ── Ingredient row (Recipe + Production editor) ────────────────────────── */
-@media (min-width: 60rem) {
+@media (min-width: 68.5rem) {
   .gellatti-pro-workbench [data-gellatti-row='ingredient'] {
     /* drag | identity | percent | grams | price | menu — the preview's own
        tracks. The row is a fixed 54 px; the process-attention variant is the
@@ -456,7 +496,7 @@ body[data-app-drawer='open'] [data-testid='mobile-cockpit-trigger'] {
 }
 
 /* ── Monitor metric row ─────────────────────────────────────────────────── */
-@media (min-width: 60rem) {
+@media (min-width: 68.5rem) {
   .gellatti-pro-workbench [data-gellatti-monitor='row'] {
     /* icon | metric | code badge | rail | fixed value | chevron.
        The value and chevron tracks are FIXED, which is what puts every value

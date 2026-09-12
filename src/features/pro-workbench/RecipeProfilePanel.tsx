@@ -476,8 +476,11 @@ function ProfileContent({
           behind it. RECEPTURA used to sit fourth of five — the user read the
           numbers before knowing whose numbers they were. The cards are gone, so
           the rhythm between bands, not a border, is what separates them. */}
+      {/* OWNER 2026-09-12 — desktop density: the 26 px step was set under the
+          0.8889 workbench zoom (it painted 23 px); at 1:1 it spread the column.
+          22 px restores the painted rhythm the owner approved. */}
       <div
-        className="grid min-w-0 items-start gap-[26px]"
+        className="grid min-w-0 items-start gap-[26px] min-[68.5rem]:gap-[22px]"
         data-testid="profile-desktop-grid"
         data-profile-layout="stacked"
         data-profile-band-order="recipe,result,direction,settings"
@@ -506,7 +509,9 @@ function ProfileContent({
 
           The explanatory second line is gone. The reference carries one line,
           and the row's own words already say what is behind it. */}
-      <section className="pro-legend-box mt-[26px] px-5 py-7">
+      {/* Same make as USTAWIENIA, so the same desktop insets (see
+          WorkbenchSettingsLine): 36 px above the ring row, 20 px below it. */}
+      <section className="pro-legend-box mt-[26px] px-5 py-7 min-[68.5rem]:mt-[22px] min-[68.5rem]:pt-9 min-[68.5rem]:pb-5">
         <h3
           data-band-legend
           className="text-[10px] leading-[14px] font-semibold tracking-[0.16em] text-[var(--g-text-muted)] uppercase"

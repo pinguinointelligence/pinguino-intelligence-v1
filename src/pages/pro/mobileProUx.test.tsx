@@ -55,8 +55,11 @@ describe('one application shell', () => {
   it('measures every page from the Production master, not from per-page numbers', () => {
     expect(APP_SHELL_MAX_WIDTH_CLASS).toBe('max-w-[1776px]');
     expect(APP_HEADER_ROW).toContain('xl:w-[calc(100%-var(--pro-page-gutter))]');
-    expect(APP_PAGE_WORKSPACE).toContain('xl:w-[calc(100%-var(--pro-page-gutter))]');
-    expect(APP_PAGE_WORKSPACE).toContain('max-w-[1776px]');
+    // SUPERSEDED, owner 2026-09-12: from the workbench breakpoint up the page
+    // workspace IS the workbench frame (1280 px, 28.8 px minimum gutters), the
+    // same box as the header row — no longer the 1776 px page-gutter canvas.
+    expect(APP_PAGE_WORKSPACE).toContain('pro-workbench-frame');
+    expect(APP_PAGE_WORKSPACE).not.toContain('max-w-[1776px]');
     // The geometry tokens are global, so a non-workbench screen can use them.
     const tokens = read('styles', 'tokens.css');
     for (const token of [

@@ -21,13 +21,13 @@ describe('A1 — one scroll owner per PRO layout', () => {
     expect(shared?.[1]).not.toContain('overscroll-behavior');
 
     expect(css).toMatch(
-      /@media \(min-width: 60rem\) \{\s*\.theme-pro-light \[data-testid='ingredient-rows-scroll'\],\s*\.theme-pro-light \[data-testid='pro-monitor-panel'\] \{\s*overscroll-behavior: contain;/,
+      /@media \(min-width: 68\.5rem\) \{\s*\.theme-pro-light \[data-testid='ingredient-rows-scroll'\],\s*\.theme-pro-light \[data-testid='pro-monitor-panel'\] \{\s*overscroll-behavior: contain;/,
     );
   });
 
   it('makes the DOCUMENT the scroll owner below the workbench breakpoint', () => {
     expect(css).toMatch(
-      /@media not all and \(min-width: 60rem\) \{\s*\.theme-pro-light \[data-testid='ingredient-rows-scroll'\] \{\s*overflow-y: visible;/,
+      /@media not all and \(min-width: 68\.5rem\) \{\s*\.theme-pro-light \[data-testid='ingredient-rows-scroll'\] \{\s*overflow-y: visible;/,
     );
   });
 

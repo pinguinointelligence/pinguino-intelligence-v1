@@ -84,6 +84,19 @@ const compactSettingsHelper = 'sr-only';
 const aboveActionClass =
   'pro-focus-ring min-h-9 rounded-[8px] border border-[var(--g-line)] bg-white px-3 text-xs font-semibold whitespace-nowrap text-ink shadow-none transition-colors hover:border-ink/35';
 const TARGET_BATCH_STEP_GRAMS = 10;
+/* OWNER 2026-09-12 — the batch control is a member of the DASHBOARD control
+   family (`DirectNumberControl`): the same 1 px ink/12 housing, ink/18
+   separators, full pill, mono semibold tabular numerals and the orange focus
+   accent with its 3 px halo. `targetBatchControlFamily.test.ts` compares these
+   literals with DirectNumberControl's own, so the two cannot drift apart. */
+const BATCH_CONTROL_HOUSING =
+  'mt-2 grid h-11 w-full min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-stretch overflow-hidden rounded-full border border-ink/12 bg-white transition-[border-color,box-shadow] focus-within:border-[#f58a07] focus-within:shadow-[0_0_0_3px_rgb(245_138_7_/_0.15)] min-[68.5rem]:h-8';
+/* The side segments are QUIETER than the value, as the dashboard's light − / +
+   glyphs are: the mass is the decision, the ±10 g steps are shortcuts. */
+const BATCH_CONTROL_STEP =
+  'gellatti-touch-control grid place-items-center px-3 font-mono text-[12px] font-medium whitespace-nowrap text-[var(--g-text-secondary)] tabular-nums transition-colors hover:bg-stone-100 hover:text-ink focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#f58a07] disabled:cursor-not-allowed disabled:text-stone-400';
+const BATCH_CONTROL_VALUE =
+  'flex h-full min-w-0 items-center justify-center border-x border-ink/18 px-2';
 
 function LabeledSelect<T extends string>({
   label,
@@ -196,38 +209,36 @@ function TargetBatchControl({
       >
         {batchCopy.caption}
       </span>
-      {/* PRO MOBILE UX v2 · B5 — a parameter of the WHOLE batch, and it looks like
-          one: a dashed batch card with the mass in front and two quiet adjustment
-          chips, never the − value + stepper every ingredient row uses. */}
+      {/* OWNER 2026-09-12 — ONE control family, desktop and mobile. The batch
+          speaks the dashboard's own control language: a single segmented
+          housing [ −10 g | value | +10 g ] with the ingredient steppers'
+          hairline, separators, mono numerals and orange focus accent
+          (`DirectNumberControl`; the `BATCH_CONTROL_*` literals). It supersedes
+          B5's dashed whole-batch card and its two loose round chips. The side
+          segments carry their unit, so the step reads without the label.
+          Behaviour is unchanged: the same two ±10 g actions through the same
+          handler, the same 1 g floor, and the centre is still the typed value,
+          committed exactly as before. 44 px on touch widths, 32 px — the
+          dashboard density — on the desktop. */}
       <div
-        className="mt-2 flex min-w-0 items-center gap-2 rounded-[10px] border border-dashed border-[var(--g-line-strong)] bg-[var(--g-ivory)]/55 px-2.5 py-2"
+        className={BATCH_CONTROL_HOUSING}
         data-settings-control="batch"
         data-batch-presentation="whole-batch"
+        data-control-family="dashboard"
       >
-        <svg
-          aria-hidden
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          className="shrink-0 text-[var(--g-ink)]"
+        <button
+          type="button"
+          aria-label={`Zmniejsz partię docelową o ${TARGET_BATCH_STEP_GRAMS} g`}
+          data-testid="workbench-batch-decrement"
+          disabled={grams <= 1}
+          onClick={() => onChange(Math.max(1, grams - TARGET_BATCH_STEP_GRAMS))}
+          className={BATCH_CONTROL_STEP}
         >
-          <path
-            d="M4 8h16l-1.6 10.4A2 2 0 0 1 16.42 20H7.58a2 2 0 0 1-1.98-1.6L4 8Z"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinejoin="round"
-          />
-          <path
-            d="M3 8h18M8.5 8V6.5a3.5 3.5 0 0 1 7 0V8"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-          />
-        </svg>
-        <span className="flex min-w-0 items-baseline gap-1">
+          −{TARGET_BATCH_STEP_GRAMS} g
+        </button>
+        <label className={BATCH_CONTROL_VALUE}>
           <DeferredNumberInput
-            className="min-w-0 w-[6ch] bg-transparent text-right font-mono text-[18px] font-semibold text-[var(--g-ink)] tabular-nums outline-none"
+            className="w-[5ch] min-w-0 bg-transparent text-right font-mono text-sm leading-none font-semibold text-ink tabular-nums outline-none min-[68.5rem]:text-[13px]"
             value={Number.isFinite(grams) ? grams : 0}
             min={1}
             decimals={0}
@@ -235,29 +246,22 @@ function TargetBatchControl({
             data-testid="workbench-batch"
             onCommit={onChange}
           />
-          <span className="font-mono text-[12px] text-[var(--g-text-secondary)]">g</span>
-        </span>
-        <span className="ml-auto flex shrink-0 items-center gap-1.5">
-          <button
-            type="button"
-            aria-label={`Zmniejsz partię docelową o ${TARGET_BATCH_STEP_GRAMS} g`}
-            data-testid="workbench-batch-decrement"
-            disabled={grams <= 1}
-            onClick={() => onChange(Math.max(1, grams - TARGET_BATCH_STEP_GRAMS))}
-            className="pro-focus-ring h-9 rounded-full border border-[var(--g-line)] bg-white px-2.5 font-mono text-[11px] font-semibold text-[var(--g-ink)] transition-colors hover:border-ink/35 disabled:cursor-not-allowed disabled:text-[var(--g-lock)]"
+          <span
+            aria-hidden
+            className="ml-1 shrink-0 text-xs font-semibold text-stone-600 min-[68.5rem]:ml-0.5 min-[68.5rem]:text-[10px]"
           >
-            −{TARGET_BATCH_STEP_GRAMS}
-          </button>
-          <button
-            type="button"
-            aria-label={`Zwiększ partię docelową o ${TARGET_BATCH_STEP_GRAMS} g`}
-            data-testid="workbench-batch-increment"
-            onClick={() => onChange(grams + TARGET_BATCH_STEP_GRAMS)}
-            className="pro-focus-ring h-9 rounded-full border border-[var(--g-line)] bg-white px-2.5 font-mono text-[11px] font-semibold text-[var(--g-ink)] transition-colors hover:border-ink/35"
-          >
-            +{TARGET_BATCH_STEP_GRAMS}
-          </button>
-        </span>
+            g
+          </span>
+        </label>
+        <button
+          type="button"
+          aria-label={`Zwiększ partię docelową o ${TARGET_BATCH_STEP_GRAMS} g`}
+          data-testid="workbench-batch-increment"
+          onClick={() => onChange(grams + TARGET_BATCH_STEP_GRAMS)}
+          className={BATCH_CONTROL_STEP}
+        >
+          +{TARGET_BATCH_STEP_GRAMS} g
+        </button>
       </div>
       {currentTotalGrams !== null && Number.isFinite(currentTotalGrams) && currentTotalGrams > 0 ? (
         <p
@@ -723,7 +727,11 @@ export function WorkbenchSettingsLine({
          the exception a surface should be spent on. Unconfirmed stays carried
          by the control's own status text. */
       className={cn(
-        'pro-legend-box px-5 py-7 transition-colors',
+        /* OWNER 2026-09-12 — the first row gets real air under the notched
+           legend: 36 px from the border to the ring row on the desktop (was
+           28), paid for at the bottom (20, was 28), so the collapsed box keeps
+           its exact height. Touch widths keep `py-7`. */
+        'pro-legend-box px-5 py-7 transition-colors min-[68.5rem]:pt-9 min-[68.5rem]:pb-5',
         hardConflict
           ? 'border-status-error/45 bg-status-error/[0.035]'
           : preflightBlocked
@@ -850,12 +858,15 @@ export function WorkbenchSettingsLine({
           settings do not exist. */}
       <div
         hidden={!open}
+        /* OWNER 2026-09-12 — the fields used to start 0 px under the ring row,
+           so the gear touched „Typ produktu". 16 px of air on the desktop. */
+        className="min-[68.5rem]:mt-4"
         data-settings-surface={open ? 'expanded' : 'collapsed'}
         data-settings-pager-scope={pagerActive ? 'on' : undefined}
         data-settings-active-step={pagerActive ? pagerStep : undefined}
       >
         {pagerActive ? (
-          <div className="mb-3 min-[60rem]:hidden" data-testid="profile-settings-pager">
+          <div className="mb-3 min-[68.5rem]:hidden" data-testid="profile-settings-pager">
             <p className="text-[10px] leading-[14px] font-semibold tracking-[0.16em] text-[var(--g-text-muted)] uppercase">
               {stepCopy.step} {pagerStep} {stepCopy.of} {PAGER_STEPS}
             </p>
@@ -1131,7 +1142,7 @@ export function WorkbenchSettingsLine({
           dropping to a second line instead of widening the card. */}
         {pagerActive ? (
           <div
-            className="mt-4 flex items-center justify-between gap-3 min-[60rem]:hidden"
+            className="mt-4 flex items-center justify-between gap-3 min-[68.5rem]:hidden"
             data-testid="profile-settings-pager-nav"
           >
             <button
@@ -1158,7 +1169,7 @@ export function WorkbenchSettingsLine({
           </div>
         ) : null}
         <div
-          className="mt-5 flex flex-wrap items-center gap-3"
+          className="mt-5 flex flex-wrap items-center gap-3 min-[68.5rem]:mt-4"
           data-settings-cell="actions"
           data-settings-step="3"
         >

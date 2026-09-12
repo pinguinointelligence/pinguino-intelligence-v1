@@ -7,7 +7,7 @@ import './KnowledgeTour.css';
 const STEP_COUNT = 9;
 const SWIPE_DISTANCE_PX = 56;
 /** B14 — the artwork spans a phone's width, and about the stage's right half beside the copy. */
-const TOUR_IMAGE_SIZES = '(max-width: 60rem) 100vw, 56vw';
+const TOUR_IMAGE_SIZES = '(max-width: 68.5rem) 100vw, 56vw';
 const TOUR_IMAGE_WIDTHS = [960, 1672] as const;
 
 /** `/guide/01.png` → its WebP renditions, `/guide/01-960.webp 960w, /guide/01-1672.webp 1672w`. */
