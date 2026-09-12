@@ -187,6 +187,13 @@ describe('rescan of a known code', () => {
       expect(exactBranch).not.toContain('reevaluated: storedResult !== null');
     });
 
+    it('does not load Mapper or behavior tables for exact standalone TOPPING_ONLY authority', () => {
+      const finalize = read('supabase/functions/product-scan-finalize/index.ts');
+      expect(finalize).toContain('usesStandaloneToppingOnboardingAuthority(sharedProposal)');
+      expect(finalize).toContain('standaloneTopping ? [] : await loadMapperRows(service)');
+      expect(finalize).toContain('standaloneTopping ? [] : await loadBehaviorRows(service)');
+    });
+
     it('keeps the rescan free: the re-evaluation books no cost and reads no photograph', () => {
       const branch = analyze().slice(analyze().indexOf("if (mode === 'ean_lookup')"));
       const exactBranch = branch.slice(0, branch.indexOf('reserve_product_scan_ean_lookup_v1'));

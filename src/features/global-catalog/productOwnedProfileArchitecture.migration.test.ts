@@ -28,9 +28,21 @@ describe('product-owned PR profile authority', () => {
     expect(edge).toContain('productProfileAuthority: serverProductProfileAuthority');
     expect(edge).toContain('browser_intimport_product_profile_authority_forbidden');
     expect(migration).toContain("p_risk#>'{productProfileAuthority,technicalComposition}'");
-    expect(migration).toContain("'technicalComposition',p_risk#>'{productProfileAuthority,technicalComposition}'");
+    expect(migration).toContain(
+      "'technicalComposition',p_risk#>'{productProfileAuthority,technicalComposition}'",
+    );
     expect(migration).toContain("'productAccuracy'");
     expect(migration).toContain("'fieldTruth'");
+  });
+
+  it('keeps exact standalone toppings off the full Mapper load on every catalog ingress', () => {
+    expect(edge).toContain('usesStandaloneToppingOnboardingAuthority(sharedProposal)');
+    expect(
+      edge.match(/standaloneTopping \? \[\] : await loadMapperAuthorityRows\(service\)/g),
+    ).toHaveLength(2);
+    expect(
+      edge.match(/standaloneTopping \? \[\] : await loadMapperBehaviorAuthorityRows\(service\)/g),
+    ).toHaveLength(2);
   });
 
   it('uses product readiness and own composition without requiring a Mapper binding', () => {
@@ -53,13 +65,17 @@ describe('product-owned PR profile authority', () => {
   });
 
   it('allocates PM at the canonical insert seam and accepts PM-owned profiles', () => {
-    expect(migration).toContain("case when p_source in ('ocr','barcode','manual') then 'PM' else 'PR' end");
+    expect(migration).toContain(
+      "case when p_source in ('ocr','barcode','manual') then 'PM' else 'PR' end",
+    );
     expect(migration).toContain("p_risk#>>'{productProfileAuthority,origin}'='PM'");
     expect(migration).toContain("return v_origin||'-ING-'");
   });
 
   it('never writes the immutable Mapper dataset', () => {
-    expect(migration).not.toMatch(/(insert\s+into|update|delete\s+from)\s+public\.mapper_basement/i);
+    expect(migration).not.toMatch(
+      /(insert\s+into|update|delete\s+from)\s+public\.mapper_basement/i,
+    );
     expect(identityMigration).not.toMatch(
       /(insert\s+into|update|delete\s+from)\s+public\.mapper_basement/i,
     );
