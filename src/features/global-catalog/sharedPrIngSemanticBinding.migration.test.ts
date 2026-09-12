@@ -85,6 +85,7 @@ describe('shared PR-ING semantic binding migration', () => {
     );
     expect(sql.trimEnd().endsWith('commit;')).toBe(true);
     expect(sql).not.toMatch(/\brollback\b/i);
+    expect(sql).not.toMatch(/strpos\([^\n]*"/);
   });
 
   it('PRING-MIG-09 version-bumps only a newly resolved exact existing PR', () => {
