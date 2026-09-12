@@ -5,6 +5,7 @@ export declare const APPLY_APPROVAL_TOKEN: 'GELLATTI-V12-PR-ING';
 export declare const IDEMPOTENCY_NAMESPACE: 'gellatti-v12-pr-ing';
 export declare const CATALOG_SUBMIT_REVISION: 'approve-v12';
 export declare const SOURCE_AUTHORITY: 'OWNER_WORKBOOK_GELATO_BASE_V12';
+export declare const V23_APPLY_APPROVAL_TOKEN: 'GELLATTI-V23-PR-ING';
 
 export type ApplyMode = 'DRY_RUN' | 'APPLY' | 'REFUSED';
 
@@ -14,10 +15,27 @@ export interface ApplyGuardResult {
   args: Map<string, string | true>;
 }
 
+/** DB-package constants of one registry version. */
+export interface ApplyProfile {
+  label: string;
+  approvalToken: string;
+  idempotencyNamespace: string;
+  catalogSubmitRevision: string;
+  sourceAuthority: string;
+  researchedFor: string;
+  scope: string;
+}
+
+export declare const APPLY_PROFILES: Readonly<Record<'GELATO_BASE_V12' | 'GELATO_BASE_V23', ApplyProfile>>;
+export declare function applyProfileFor(registry: unknown): ApplyProfile;
+
 export declare function parseArguments(argv: readonly string[]): Map<string, string | true>;
 export declare function sourceUrlsFor(registry: unknown, ids: readonly string[] | null | undefined): string[];
 export declare function registryText<T>(registry: unknown, value: T): T | string;
-export declare function evaluateApplyGuard(argv: readonly string[]): ApplyGuardResult;
+export declare function evaluateApplyGuard(
+  argv: readonly string[],
+  options?: { approvalToken?: string },
+): ApplyGuardResult;
 
 export interface PlannedRoute {
   country: string;
@@ -56,7 +74,8 @@ export interface ApplyPlan {
   catalogSnapshotCapturedAt: string;
   projectRef: typeof APPLY_PROJECT_REF;
   sharedWithProduction: true;
-  approvalToken: typeof APPLY_APPROVAL_TOKEN;
+  /** The owner approval token of this registry version. */
+  approvalToken: string;
   scope: string;
   productsToCreate: PlannedProduct[];
   reuse: Array<{
@@ -74,12 +93,15 @@ export interface ApplyPlan {
     engineProfileExpectation: string;
     reasons: string[];
   }>;
+  /** The product-key / local-name fields are named after the registry version (v12ProductKey, v23ProductKey, …). */
   routeConflicts: Array<{
     selectionKey: string;
     piIngId: string;
     existingPrimary: { productCode: string; productEan: string | null } | null;
-    v12ProductKey: string;
-    v12LocalName: string | null;
+    v12ProductKey?: string;
+    v12LocalName?: string | null;
+    v23ProductKey?: string;
+    v23LocalName?: string | null;
     workbookInstruction: string | null;
     decision: 'NOT_CHANGED_REQUIRES_SEPARATE_OWNER_DECISION';
   }>;

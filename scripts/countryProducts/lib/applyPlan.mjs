@@ -1,14 +1,52 @@
-// Pure planning and guard logic for the GELATO base v12 DB package.
-// Nothing in this module performs I/O; applyGelatoBaseV12.mjs owns the
-// (owner-approved, never default) network path.
+// Pure planning and guard logic for the GELATO base DB packages — one package
+// per owner-workbook registry (v12, v23), each with its own owner approval
+// token. Nothing in this module performs I/O; the apply entry points
+// (applyGelatoBaseV12.mjs, applyGelatoBaseV23.mjs) own the owner-approved,
+// never-default network path (lib/applyCli.mjs → lib/applyExecutor.mjs).
 
 export const PLAN_SCHEMA = 'gellatti.country-products.gelato-base.db-plan/v1';
 export const REGISTRY_SCHEMA = 'gellatti.country-products.gelato-base.registry/v1';
 export const APPLY_PROJECT_REF = 'tunabqqrwabacxjcxxkz';
+// v12 package constants (named exports kept for the v12 entry point and tests).
 export const APPLY_APPROVAL_TOKEN = 'GELLATTI-V12-PR-ING';
 export const IDEMPOTENCY_NAMESPACE = 'gellatti-v12-pr-ing';
 export const CATALOG_SUBMIT_REVISION = 'approve-v12';
 export const SOURCE_AUTHORITY = 'OWNER_WORKBOOK_GELATO_BASE_V12';
+// v23 has its own token: approving the v12 package never approves the v23 one.
+export const V23_APPLY_APPROVAL_TOKEN = 'GELLATTI-V23-PR-ING';
+
+/** DB-package constants per registry (keyed by registry.registryId). */
+export const APPLY_PROFILES = Object.freeze({
+  GELATO_BASE_V12: Object.freeze({
+    label: 'v12',
+    approvalToken: APPLY_APPROVAL_TOKEN,
+    idempotencyNamespace: IDEMPOTENCY_NAMESPACE,
+    catalogSubmitRevision: CATALOG_SUBMIT_REVISION,
+    sourceAuthority: SOURCE_AUTHORITY,
+    researchedFor: 'GELATO_BASE_V12_COUNTRY_PRODUCTS',
+    scope:
+      'NEW PR-ING products that have at least one route creatable now (market row present, selection closed, declared 7-field profile, stated metric pack, no conflicting primary). Everything else is deferred and not written.',
+  }),
+  GELATO_BASE_V23: Object.freeze({
+    label: 'v23',
+    approvalToken: V23_APPLY_APPROVAL_TOKEN,
+    idempotencyNamespace: 'gellatti-v23-pr-ing',
+    catalogSubmitRevision: 'approve-v23',
+    sourceAuthority: 'OWNER_WORKBOOK_GELATO_BASE_V23',
+    researchedFor: 'GELATO_BASE_V23_COUNTRY_PRODUCTS',
+    scope:
+      'NEW PR-ING products that have at least one route creatable now (market row present, selection closed, v23 workbook status KANDYDAT_PR, declared 7-field profile in the available-carbohydrate convention, stated metric pack, no conflicting primary). Everything else is deferred and not written. The catalog snapshot must be re-captured read-only immediately before any apply.',
+  }),
+});
+
+/** The DB-package profile of a registry; an unknown registry id fails. */
+export function applyProfileFor(registry) {
+  const registryId = String(registry?.registryId);
+  if (!Object.hasOwn(APPLY_PROFILES, registryId)) {
+    throw new Error(`buildApplyPlan: no DB-package profile for registry ${registryId}`);
+  }
+  return APPLY_PROFILES[registryId];
+}
 
 const ALLOWED_ARGUMENTS = new Set([
   '--apply',
@@ -58,9 +96,11 @@ export function parseArguments(argv) {
 
 /**
  * Decides whether the apply script may touch the database. The default is a
- * dry run; mutation needs all three explicit arguments with exact values.
+ * dry run; mutation needs all three explicit arguments with exact values. The
+ * approval token is the one of the registry version being applied (v12 by
+ * default; the v23 entry point passes GELLATTI-V23-PR-ING).
  */
-export function evaluateApplyGuard(argv) {
+export function evaluateApplyGuard(argv, { approvalToken = APPLY_APPROVAL_TOKEN } = {}) {
   const args = parseArguments(argv);
   const unknown = [...args.keys()].filter((key) => !ALLOWED_ARGUMENTS.has(key));
   if (unknown.length > 0) {
@@ -74,10 +114,10 @@ export function evaluateApplyGuard(argv) {
       args,
     };
   }
-  if (args.get('--owner-db-approval') !== APPLY_APPROVAL_TOKEN) {
+  if (args.get('--owner-db-approval') !== approvalToken) {
     return {
       mode: 'REFUSED',
-      refusal: `Refusing: --apply requires --owner-db-approval=${APPLY_APPROVAL_TOKEN} (explicit owner approval of this DB package).`,
+      refusal: `Refusing: --apply requires --owner-db-approval=${approvalToken} (explicit owner approval of this DB package).`,
       args,
     };
   }
@@ -127,7 +167,7 @@ function barcodeKind(product) {
 
 function sourceEvidence(registry, product, proposalKey) {
   return {
-    authority: SOURCE_AUTHORITY,
+    authority: applyProfileFor(registry).sourceAuthority,
     workbook: registry.source.workbook,
     workbookSha256: registry.source.sha256,
     proposalKey,
@@ -139,6 +179,7 @@ function sourceEvidence(registry, product, proposalKey) {
 
 /** Payloads the apply path would send; `<requestId>` is filled at run time. */
 export function buildProductPayloads(registry, product, anchorProposalKey) {
+  const profile = applyProfileFor(registry);
   const nutrition = declaredNutrition(product);
   const evidence = sourceEvidence(registry, product, anchorProposalKey);
   const requestPayload = {
@@ -159,7 +200,7 @@ export function buildProductPayloads(registry, product, anchorProposalKey) {
     },
     provenance: {
       ...evidence,
-      researchedFor: 'GELATO_BASE_V12_COUNTRY_PRODUCTS',
+      researchedFor: profile.researchedFor,
       identityBasis: product.identity.basis,
       articleCode: product.identity.articleCode,
     },
@@ -180,7 +221,7 @@ export function buildProductPayloads(registry, product, anchorProposalKey) {
     nutritionNormalization: product.nutrition.normalization,
     rawNutritionBasis: product.nutrition.rawBasisText ?? product.nutrition.declaredBasis,
     sourceUrls: sourceUrlsFor(registry, product.sourceIds),
-    sourceAuthority: SOURCE_AUTHORITY,
+    sourceAuthority: profile.sourceAuthority,
     proposalKey: anchorProposalKey,
     productKey: product.productKey,
   };
@@ -214,9 +255,9 @@ export function buildProductPayloads(registry, product, anchorProposalKey) {
   };
   const slotReview = {
     mapper_ingredient_id: product.piIngId,
-    approval_reason: `${IDEMPOTENCY_NAMESPACE}: owner workbook v12 exact-product review for canonical ${product.slot} slot ${product.piIngId}`,
+    approval_reason: `${profile.idempotencyNamespace}: owner workbook ${profile.label} exact-product review for canonical ${product.slot} slot ${product.piIngId}`,
     review_evidence: {
-      authority: SOURCE_AUTHORITY,
+      authority: profile.sourceAuthority,
       slotMatchBasis: `Owner workbook ${registry.source.workbook} selects ${product.exactName} for ${product.slot} (${product.piIngId}); ${product.workbook.piMatch.join(' / ') || 'technical match recorded in workbook'}.`,
       proposalKey: anchorProposalKey,
       productKey: product.productKey,
@@ -229,12 +270,13 @@ export function buildProductPayloads(registry, product, anchorProposalKey) {
 }
 
 function routeReason(registry, selection) {
-  return `${IDEMPOTENCY_NAMESPACE}: ${selection.proposalKey}; owner workbook ${registry.source.workbook} sha256 ${registry.source.sha256.slice(0, 12)}`;
+  return `${applyProfileFor(registry).idempotencyNamespace}: ${selection.proposalKey}; owner workbook ${registry.source.workbook} sha256 ${registry.source.sha256.slice(0, 12)}`;
 }
 
 /** Builds the complete, deterministic DB plan from a registry. */
 export function buildApplyPlan(registry) {
   if (registry?.schema !== REGISTRY_SCHEMA) throw new Error('buildApplyPlan: registry schema mismatch');
+  const profile = applyProfileFor(registry);
   const selectionByKey = new Map(
     registry.selections.map((selection) => [`${selection.country}|${selection.slot}`, selection]),
   );
@@ -277,7 +319,7 @@ export function buildApplyPlan(registry) {
     }
     const countries = creatable.map((selection) => selection.country).sort(compare);
     const anchor = creatable.find((selection) => selection.country === countries[0]);
-    const requestIdempotencyKey = `${IDEMPOTENCY_NAMESPACE}:${product.productKey}`;
+    const requestIdempotencyKey = `${profile.idempotencyNamespace}:${product.productKey}`;
     if (requestIdempotencyKey.length < 8 || requestIdempotencyKey.length > 160) {
       throw new Error(`buildApplyPlan: idempotency key length out of range for ${product.productKey}`);
     }
@@ -292,7 +334,7 @@ export function buildApplyPlan(registry) {
       requestMarket: countries[0],
       additionalMarkets: countries.slice(1),
       requestIdempotencyKey,
-      catalogSubmitIdempotencyKey: `product-request:<requestId>:${CATALOG_SUBMIT_REVISION}`,
+      catalogSubmitIdempotencyKey: `product-request:<requestId>:${profile.catalogSubmitRevision}`,
       routes: creatable
         .map((selection) => ({
           country: selection.country,
@@ -316,8 +358,8 @@ export function buildApplyPlan(registry) {
       selectionKey: selection.selectionKey,
       piIngId: selection.piIngId,
       existingPrimary: selection.route.existingPrimary,
-      v12ProductKey: selection.productKey,
-      v12LocalName: selection.localName,
+      [`${profile.label}ProductKey`]: selection.productKey,
+      [`${profile.label}LocalName`]: selection.localName,
       workbookInstruction: registryText(registry, selection.notes.processMessage),
       decision: 'NOT_CHANGED_REQUIRES_SEPARATE_OWNER_DECISION',
     }));
@@ -341,9 +383,8 @@ export function buildApplyPlan(registry) {
     catalogSnapshotCapturedAt: registry.catalogSnapshot.capturedAt,
     projectRef: APPLY_PROJECT_REF,
     sharedWithProduction: true,
-    approvalToken: APPLY_APPROVAL_TOKEN,
-    scope:
-      'NEW PR-ING products that have at least one route creatable now (market row present, selection closed, declared 7-field profile, stated metric pack, no conflicting primary). Everything else is deferred and not written.',
+    approvalToken: profile.approvalToken,
+    scope: profile.scope,
     productsToCreate,
     reuse,
     deferredProducts,

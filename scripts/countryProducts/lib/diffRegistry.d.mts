@@ -16,6 +16,13 @@ export interface RegistryDiff {
   schema: typeof DIFF_SCHEMA;
   from: { registryId: string | null; workbook: string | null; sha256: string | null };
   to: { registryId: string | null; workbook: string | null; sha256: string | null };
+  /** How keys were matched: namespace-free when the proposal namespaces differ (V12 → V23). */
+  keyMatching: {
+    fromNamespace: string | null;
+    toNamespace: string | null;
+    namespaceFree: boolean;
+    rule: string;
+  };
   newlyCompletedProducts: RegistryDiffEntry[];
   newlyCompletedEvidence: RegistryDiffEntry[];
   changedVerification: RegistryDiffEntry[];
@@ -26,11 +33,13 @@ export interface RegistryDiff {
   openGapsClosed: RegistryDiffEntry[];
   openGapsOpened: RegistryDiffEntry[];
   counts: Record<string, number>;
+  entriesByKind: Record<string, number>;
 }
 
 /** Structural subset of a registry that the diff reads. */
 export interface DiffableRegistry {
   registryId?: string;
+  proposalNamespace?: string;
   source?: { workbook?: string; sha256?: string };
   sources?: Readonly<Record<string, { url: string }>>;
   texts?: Readonly<Record<string, string>>;
@@ -44,4 +53,4 @@ export declare function diffRegistries(
   newRegistry: DiffableRegistry,
 ): RegistryDiff;
 
-export declare function renderDiffMarkdown(diff: RegistryDiff): string;
+export declare function renderDiffMarkdown(diff: RegistryDiff, options?: { regenerate?: string }): string;
