@@ -431,6 +431,42 @@ describe('Haribo Sandía exact-EAN topping semantic authority', () => {
     );
   });
 
+  it('PRING-BIND-10 does not let broad marketing copy erase the exact identity concept', async () => {
+    const { profile } = trustedHariboProfile();
+    const behavior = validateProductBehaviorAuthority({
+      productProfile: profile,
+      behaviorRows: [],
+    });
+    const proposal = await buildSharedProductSemanticBindingProposal({
+      source: 'scanner',
+      identity: {
+        ean: EAN,
+        brand: 'Haribo',
+        productName: 'HARIBO Żelki owocowe arbuz',
+        variant: null,
+        pack: '90 g',
+        category: 'CARAMELOS DE GOMA SABOR SANDÍA',
+        description:
+          'Cada tajada combina colores vibrantes en tonos verdes y rojos, recreando el aspecto de la fruta, mientras que su textura suave y su recubrimiento de azúcar realzan su sabor.',
+      },
+      recognition: profile.recognition!,
+      behavior,
+      profileEngineUsable: false,
+      profileRoleReady: true,
+      publicationReady: true,
+      marketCountries: [],
+    });
+
+    expect(proposal).toMatchObject({
+      state: 'RESOLVED',
+      exactIdentity: { ean: EAN, productName: 'HARIBO Żelki owocowe arbuz', pack: '90 g' },
+      readiness: { privateRecipe: { base: false, topping: true } },
+    });
+    expect(proposal.searchAuthority.concepts).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: 'SC-ING-000184', key: 'watermelon' })]),
+    );
+  });
+
   it('PRING-BIND-02 fails closed on a ProductBehavior role conflict', () => {
     const { profile } = trustedHariboProfile();
     const behavior = validateProductBehaviorAuthority({

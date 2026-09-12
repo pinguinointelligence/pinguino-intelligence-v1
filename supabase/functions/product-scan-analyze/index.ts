@@ -325,11 +325,12 @@ async function reevaluateOwnPrivateProduct(input: {
         reasonCode: finalizerReasonCode(payload),
       };
     const body = objectValue(payload);
-    // Only a real save reports a route. `customer_product_not_ready`, a stale assessment and a
-    // family question all arrive without one and mean "nothing to promote yet".
+    // A newly routed product reports `route`; request-driven revalidation of an existing shared
+    // PR keeps its exact article identity and reports `semanticRevalidated`. Refusals, stale
+    // assessments and family questions report neither and must remain unsaved.
     return {
       attempted: true,
-      saved: typeof body.route === 'string',
+      saved: typeof body.route === 'string' || body.semanticRevalidated === true,
       httpStatus: response.status,
       errorCode: finalizerErrorCode(body),
       reasonCode: finalizerReasonCode(body),
