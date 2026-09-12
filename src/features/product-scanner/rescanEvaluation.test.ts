@@ -174,7 +174,16 @@ describe('rescan of a known code', () => {
       expect(code).not.toMatch(/>\s*85/);
       // reading the route the RPC decided is fine; assigning one here is not
       expect(code).not.toMatch(/\broute\s*=[^=]/);
-      expect(code).toContain("payload.route === 'string'");
+      expect(code).toContain("typeof body.route === 'string'");
+    });
+
+    it('reports the bounded finalizer outcome instead of calling an attempted refusal reevaluated', () => {
+      const branch = analyze().slice(analyze().indexOf("if (mode === 'ean_lookup')"));
+      const exactBranch = branch.slice(0, branch.indexOf('reserve_product_scan_ean_lookup_v1'));
+      expect(exactBranch).toContain('exactProductReevaluation: reevaluation');
+      expect(exactBranch).toContain('reevaluated: reevaluation?.saved === true');
+      expect(analyze()).toContain('httpStatus: response.status');
+      expect(exactBranch).not.toContain('reevaluated: storedResult !== null');
     });
 
     it('keeps the rescan free: the re-evaluation books no cost and reads no photograph', () => {
@@ -189,7 +198,7 @@ describe('rescan of a known code', () => {
     it('reads the row back after a promotion so the answer carries the new article and version', () => {
       const branch = analyze().slice(analyze().indexOf("if (mode === 'ean_lookup')"));
       const exactBranch = branch.slice(0, branch.indexOf('reserve_product_scan_ean_lookup_v1'));
-      expect(exactBranch).toContain('if (promoted)');
+      expect(exactBranch).toContain('if (reevaluation.saved)');
       expect(exactBranch).toContain('exactProductForBarcode');
       expect(exactBranch).toContain('current.product_code');
       expect(exactBranch).toContain('currentVersionId: current.current_version_id');
