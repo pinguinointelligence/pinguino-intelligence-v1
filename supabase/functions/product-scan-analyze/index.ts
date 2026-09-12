@@ -24,6 +24,10 @@ import {
   eanLookupVerdict,
   lookupSkippedNoticePl,
 } from '../../../src/features/product-scanner/eanLookupOutcome.ts';
+import {
+  openFoodFactsApiUrl,
+  openFoodFactsFactsForExactEan,
+} from '../../../src/features/product-scanner/openFoodFactsDirectLookup.ts';
 import { publicationIdentityEligibilityFromStoredProductFacts } from '../../../src/features/product-scanner/productPublicationEligibility.ts';
 
 const cors = {
@@ -603,54 +607,121 @@ Deno.serve(async (request) => {
     }
     const priorResult = objectValue(existingSession?.result_json);
     const identity = objectValue(priorResult.identity);
-    let facts: Record<string, unknown>[] = [];
-    let providerError: string | null;
+    /*
+      DIRECT GTIN LOOKUP (owner approval 2026-09-12).
+
+      `GTIN_LOOKUP` used to be only a sentence in an OpenAI web-search prompt. Search ranking
+      could miss a real OpenFoodFacts record even though OFF is already an approved structured
+      database. Ask its exact keyless product endpoint first and accept its fields only when the
+      response's own `code` is byte-for-byte the normalized scanned EAN. Existing research remains
+      available, but only for fields the direct record did not supply.
+    */
+    let directFacts: Record<string, unknown>[] = [];
+    try {
+      const endpoint = new URL(openFoodFactsApiUrl(barcode));
+      endpoint.searchParams.set(
+        'fields',
+        [
+          'code',
+          'product_name',
+          'generic_name',
+          'brands',
+          'quantity',
+          'categories',
+          'categories_tags',
+          'ingredients_text',
+          'allergens',
+          'allergens_tags',
+          'origins',
+          'origins_tags',
+          'nutrition_data_per',
+          'nutriments',
+        ].join(','),
+      );
+      const response = await fetch(endpoint, {
+        method: 'GET',
+        signal: AbortSignal.timeout(8_000),
+        headers: {
+          Accept: 'application/json',
+          'User-Agent': 'GellattiProductScanner/1.0 (https://pinguinoai.com)',
+        },
+      });
+      if (response.status === 404) {
+        directFacts = [];
+      } else if (response.ok) {
+        directFacts = openFoodFactsFactsForExactEan(
+          await response.json(),
+          barcode,
+          new Date().toISOString(),
+        ).facts;
+      }
+    } catch {
+      // The existing research provider below is the bounded fallback for every missing field.
+    }
+
+    const directFields = new Set(directFacts.map((fact) => String(fact.field ?? '')));
+    const unresolvedLookupFields = EAN_LOOKUP_FIELDS.filter((field) => !directFields.has(field));
+    let fallbackFacts: Record<string, unknown>[] = [];
+    let fallbackProviderError: string | null = null;
     /** What the provider ACTUALLY did — a cache hit costs nothing and must say so. */
     let providerWebCalls = 0;
-    try {
-      // The narrowest dedicated server-side source path this repository has, called
-      // with its OWN flag, its OWN caps and its OWN source-authority classification.
-      // The Scanner's general web search is NOT switched on to reach it (§6).
-      const response = await fetch(`${url}/functions/v1/intimport-enrich`, {
-        method: 'POST',
-        headers: {
-          Authorization: authorization,
-          apikey: anonKey,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          importId: `product-scan-${sessionId}`,
-          product: {
-            brand: typeof identity.brand === 'string' ? identity.brand : null,
-            manufacturer: null,
-            name:
-              typeof identity.displayName === 'string'
-                ? identity.displayName
-                : typeof identity.originalName === 'string'
-                  ? identity.originalName
-                  : null,
-            variant: null,
-            barcode,
-            netQuantity: null,
-            knownSourceUrl: null,
-            technicalPdfUrl: null,
+    if (unresolvedLookupFields.length > 0) {
+      try {
+        // The narrowest dedicated server-side source path this repository has, called
+        // with its OWN flag, its OWN caps and its OWN source-authority classification.
+        // The Scanner's general web search is NOT switched on to reach it (§6).
+        const response = await fetch(`${url}/functions/v1/intimport-enrich`, {
+          method: 'POST',
+          headers: {
+            Authorization: authorization,
+            apikey: anonKey,
+            'Content-Type': 'application/json',
           },
-          researchStep: { kind: 'GTIN_LOOKUP', url: null, allowedDomains: [] },
-          fields: [...EAN_LOOKUP_FIELDS],
-        }),
-      });
-      const payload = objectValue(await response.json());
-      if (!response.ok) throw new Error('lookup_provider_failed');
-      facts = Array.isArray(payload.facts) ? payload.facts.map(objectValue) : [];
-      providerError = typeof payload.error === 'string' ? payload.error : null;
-      providerWebCalls =
-        payload.cacheHit === true ? 0 : Math.max(0, Math.min(3, Number(payload.webCalls ?? 1)));
-    } catch {
-      providerError = 'lookup_provider_unavailable';
+          body: JSON.stringify({
+            importId: `product-scan-${sessionId}`,
+            product: {
+              brand:
+                typeof directFacts.find((fact) => fact.field === 'brand')?.value === 'string'
+                  ? directFacts.find((fact) => fact.field === 'brand')?.value
+                  : typeof identity.brand === 'string'
+                    ? identity.brand
+                    : null,
+              manufacturer: null,
+              name:
+                typeof directFacts.find((fact) => fact.field === 'productName')?.value === 'string'
+                  ? directFacts.find((fact) => fact.field === 'productName')?.value
+                  : typeof identity.displayName === 'string'
+                    ? identity.displayName
+                    : typeof identity.originalName === 'string'
+                      ? identity.originalName
+                      : null,
+              variant: null,
+              barcode,
+              netQuantity: null,
+              knownSourceUrl: null,
+              technicalPdfUrl: null,
+            },
+            researchStep: { kind: 'GTIN_LOOKUP', url: null, allowedDomains: [] },
+            fields: unresolvedLookupFields,
+          }),
+        });
+        const payload = objectValue(await response.json());
+        if (!response.ok) throw new Error('lookup_provider_failed');
+        fallbackFacts = Array.isArray(payload.facts) ? payload.facts.map(objectValue) : [];
+        fallbackProviderError = typeof payload.error === 'string' ? payload.error : null;
+        providerWebCalls =
+          payload.cacheHit === true ? 0 : Math.max(0, Math.min(3, Number(payload.webCalls ?? 1)));
+      } catch {
+        fallbackProviderError = 'lookup_provider_unavailable';
+      }
     }
-    const lookupResult = providerError ? null : scanResultFromLookupFacts(facts);
+    const facts = [...directFacts, ...(fallbackProviderError ? [] : fallbackFacts)];
+    const lookupResult = scanResultFromLookupFacts(facts);
+    // A usable direct OFF record is already an answer even if research for its remaining fields
+    // was temporarily unavailable. With no direct facts, preserve the prior retryable semantics.
+    const providerAnswered = directFacts.length > 0 || fallbackProviderError === null;
     const verdict = eanLookupVerdict({
-      providerAnswered: providerError === null,
+      providerAnswered,
       resultSurvived: lookupResult !== null,
       providerWebCalls,
     });
