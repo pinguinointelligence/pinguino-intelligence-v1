@@ -174,6 +174,7 @@ export function GlobalCatalogSearchPanel() {
       ? catalog.favorites.has(`pi_base:${selectedHit.mappedIngredientId ?? selectedHit.id}`)
       : selectedHit.favorite
     : false;
+  const selectedExactIdentity = selectedHit?.semanticBinding?.exactIdentity ?? null;
   const toggleSelectedFavorite = () => {
     if (!selectedHit) return;
     if (selectedHit.entityKind === 'pi_base') {
@@ -417,6 +418,12 @@ export function GlobalCatalogSearchPanel() {
                 {(
                   [
                     ['EAN', selectedHit.eans[0] ?? selectedHit.productCode ?? '—', true],
+                    ...(selectedExactIdentity?.pack
+                      ? ([['Opakowanie', selectedExactIdentity.pack, true]] as const)
+                      : []),
+                    ...(selectedExactIdentity?.variant
+                      ? ([['Wariant', selectedExactIdentity.variant, false]] as const)
+                      : []),
                     ['Rynek', selectedHit.markets.join(', ') || 'Globalny', false],
                     [
                       'Moja cena',
