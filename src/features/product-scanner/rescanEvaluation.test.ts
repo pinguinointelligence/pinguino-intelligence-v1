@@ -186,12 +186,13 @@ describe('rescan of a known code', () => {
       expect(exactBranch).not.toContain('intimport-enrich');
     });
 
-    it('reads the row back after a promotion so the answer carries the new article code', () => {
+    it('reads the row back after a promotion so the answer carries the new article and version', () => {
       const branch = analyze().slice(analyze().indexOf("if (mode === 'ean_lookup')"));
       const exactBranch = branch.slice(0, branch.indexOf('reserve_product_scan_ean_lookup_v1'));
       expect(exactBranch).toContain('if (promoted)');
       expect(exactBranch).toContain('exactProductForBarcode');
       expect(exactBranch).toContain('current.product_code');
+      expect(exactBranch).toContain('currentVersionId: current.current_version_id');
     });
 
     it('imports the shared modules with the .ts extension Deno requires', () => {

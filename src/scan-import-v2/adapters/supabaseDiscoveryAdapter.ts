@@ -69,7 +69,8 @@ function exactFromServer(p: Record<string, unknown>, identity: CodeIdentity): Ex
     engineReady: p['engineReady'] === true,
     mapperSlotId: null,
     country: null,
-    currentVersionId: null,
+    currentVersionId:
+      typeof p['currentVersionId'] === 'string' ? (p['currentVersionId'] as string) : null,
     evidence: { status: p['status'] ?? null, source: 'scan_session_exact' },
   };
 }

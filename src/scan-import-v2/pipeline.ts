@@ -88,8 +88,20 @@ async function finish(
   provenance: Extract<ScanImportV2Result, { kind: 'resolved_exact' }>['provenance'],
   ctx: RequestContext,
   ports: ScanImportV2Ports,
+  revalidated = false,
 ): Promise<ScanImportV2Result> {
-  const behaviour = await ports.behaviour.classify(product.productId);
+  /*
+   * The discovery exact response is the result read back AFTER product-scan-finalize has had the
+   * opportunity to persist a current semantic version. Its engineReady flag therefore already is
+   * the server's role-specific readiness verdict. The catalogue behaviour adapter was hydrated
+   * before that version bump and must not overwrite the fresh verdict with its stale row.
+   */
+  const behaviour = revalidated
+    ? {
+        outcome: product.engineReady ? ('classified' as const) : ('unknown_requires_review' as const),
+        bindingId: product.engineReady ? (product.currentVersionId ?? null) : null,
+      }
+    : await ports.behaviour.classify(product.productId);
   if (behaviour.outcome !== 'classified')
     return {
       kind: 'needs_confirmation',
@@ -140,6 +152,29 @@ async function finish(
     importSkipped,
     needsConfirmation: false,
   };
+}
+
+async function revalidateExactProduct(
+  identity: CodeIdentity,
+  product: ExactCandidate,
+  ctx: RequestContext,
+  ports: ScanImportV2Ports,
+): Promise<{ product: ExactCandidate; revalidated: boolean }> {
+  if (ctx.accountId === null || !ports.discovery) return { product, revalidated: false };
+  try {
+    /*
+     * Known and unknown products share this one server path. `research` performs the free exact-EAN
+     * rescan: it reuses stored evidence, lets product-scan-finalize re-derive the current semantic
+     * binding, and reads the exact product back. A refusal never erases the identity already proven
+     * by the catalogue; it merely leaves its old fail-closed readiness in place.
+     */
+    const refreshed = await ports.discovery.research(identity, ctx);
+    return refreshed.kind === 'existing_product'
+      ? { product: refreshed.product, revalidated: true }
+      : { product, revalidated: false };
+  } catch {
+    return { product, revalidated: false };
+  }
 }
 
 export async function runScanImportV2(
@@ -197,7 +232,8 @@ export async function runScanImportV2(
           startDiscovery(identity, ctx, ports.discovery),
           research(identity, ctx, ports),
         ]);
-        if (d.kind === 'resolved_exact') return finish(identity, d.product, 'catalog', ctx, ports);
+        if (d.kind === 'resolved_exact')
+          return finish(identity, d.product, 'catalog', ctx, ports, true);
         if (d.kind === 'discovered_pending' || d.kind === 'needs_confirmation')
           return { ...d, externalEvidence: ev.externalEvidence };
         return d;
@@ -220,5 +256,13 @@ export async function runScanImportV2(
     identity.canonicalGtin13,
     resolution.product.currentVersionId ?? null,
   );
-  return finish(identity, resolution.product, resolution.provenance, ctx, ports);
+  const refreshed = await revalidateExactProduct(identity, resolution.product, ctx, ports);
+  return finish(
+    identity,
+    refreshed.product,
+    resolution.provenance,
+    ctx,
+    ports,
+    refreshed.revalidated,
+  );
 }

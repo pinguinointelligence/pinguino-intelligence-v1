@@ -266,7 +266,9 @@ describe('Unknown product flow — discovery lifecycle (owner acceptance matrix)
       import: { productId, created: false },
     });
     expect(d.created.size).toBe(1);
-    expect(d.calls.filter((c) => c.startsWith('research')).length).toBe(1);
+    // The initial unknown scan researches once, and every later authenticated exact rescan now
+    // reaches the same server authority for a free semantic revalidation. No product is duplicated.
+    expect(d.calls.filter((c) => c.startsWith('research')).length).toBe(3);
   });
   it('DURABLE DISCOVERY CANDIDATE: a product request keeps the identity across sessions/browsers; canonical = false, engine usable = false', async () => {
     const { d, p } = setup({ provider: true });

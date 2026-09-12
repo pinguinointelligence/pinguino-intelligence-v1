@@ -481,6 +481,7 @@ Deno.serve(async (request) => {
               ? 'pi_base'
               : current.canonical_verification_status,
           productCode: current.product_code ?? null,
+          currentVersionId: current.current_version_id ?? null,
           productAccuracy: current.product_accuracy,
           engineReady: current.engine_ready,
         },
@@ -735,6 +736,7 @@ Deno.serve(async (request) => {
             ? 'pi_base'
             : exact.canonical_verification_status,
         productCode: exact.product_code ?? null,
+        currentVersionId: exact.current_version_id ?? null,
         productAccuracy: exact.product_accuracy,
         engineReady: exact.engine_ready,
       },
