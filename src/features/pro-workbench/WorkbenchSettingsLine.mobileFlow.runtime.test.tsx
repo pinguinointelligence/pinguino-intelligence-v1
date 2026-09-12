@@ -122,8 +122,9 @@ describe('B5 — the target mass reads as a parameter of the whole batch', () =>
         .querySelector('[data-settings-control="batch"]')
         ?.getAttribute('data-batch-presentation'),
     ).toBe('whole-batch');
-    expect(q('workbench-batch-decrement')?.textContent).toBe('−10');
-    expect(q('workbench-batch-increment')?.textContent).toBe('+10');
+    // OWNER 2026-09-12 — the side segments carry their unit: [ −10 g | value | +10 g ].
+    expect(q('workbench-batch-decrement')?.textContent).toBe('−10 g');
+    expect(q('workbench-batch-increment')?.textContent).toBe('+10 g');
   });
 
   it('shows the recipe current total beside the target, and says Przelicz will match them when they differ', async () => {

@@ -182,9 +182,14 @@ describe('ONE page gutter — a page may not re-scope the global header', () => 
     expect(shell).not.toContain('{!viewportLock ? actions : null}');
   });
 
-  it('still resolves the header and the workspace through that one token', () => {
+  it('still resolves the header and the workspace through one width authority', () => {
     expect(APP_HEADER_ROW).toContain('xl:w-[calc(100%-var(--pro-page-gutter))]');
-    expect(APP_PAGE_WORKSPACE).toContain('xl:w-[calc(100%-var(--pro-page-gutter))]');
+    // SUPERSEDED, owner 2026-09-12: from the workbench breakpoint up the page
+    // workspace IS the workbench frame — the same box the header row now resolves
+    // to (`headerFrameAuthority.test.ts`). It used to follow the page gutter to a
+    // 1776 px ceiling, so /pro/versions opened at x = 32 under a header at 161.
+    expect(APP_PAGE_WORKSPACE).toContain('pro-workbench-frame');
+    expect(APP_PAGE_WORKSPACE).toContain('min-[68.5rem]:px-0');
     // mx-auto is what turns the token into the page origin: margin = gutter / 2.
     expect(APP_HEADER_ROW).toContain('mx-auto');
   });

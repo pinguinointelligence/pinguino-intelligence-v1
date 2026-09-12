@@ -3,7 +3,7 @@
  * PRO MOBILE UX v2 · A6 — a long recipe name wraps on a phone, and nothing else moves.
  *
  * The switch between the approved single-line input (desktop) and the wrapping
- * field (below the 60rem workbench breakpoint) is CSS only: the responsive guard
+ * field (below the 68.5rem workbench breakpoint) is CSS only: the responsive guard
  * forbids a viewport read feeding anything. Both presentations are the SAME field
  * — same value, same handler — and exactly one is displayed at any width.
  */
@@ -94,17 +94,17 @@ function elementFor(html: string, testId: string): string {
 }
 
 describe('A6 — the recipe name wraps on the phone layout', () => {
-  it('keeps the approved single-line input for desktop and adds a wrapping field below 60rem', () => {
+  it('keeps the approved single-line input for desktop and adds a wrapping field below 68.5rem', () => {
     const html = renderToStaticMarkup(workbar());
 
     const input = elementFor(html, 'pro-workbar-name');
     expect(input.startsWith('<input')).toBe(true);
     expect(input).toContain('truncate'); // desktop: exactly as approved
-    expect(input).toContain('max-[60rem]:hidden');
+    expect(input).toContain('max-[68.5rem]:hidden');
 
     const area = elementFor(html, 'pro-workbar-name-wrap');
     expect(area.startsWith('<textarea')).toBe(true);
-    expect(area).toContain('min-[60rem]:hidden');
+    expect(area).toContain('min-[68.5rem]:hidden');
     expect(area).toContain('resize-none');
     expect(area).toContain('break-words');
     expect(area).not.toContain('truncate');

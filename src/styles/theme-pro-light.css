@@ -41,22 +41,22 @@
 }
 
 /* PRO MOBILE UX v2 · A1 — ONE scroll owner per layout.
-   From 60rem the workbench is locked to the viewport and these two panes are
+   From 68.5rem the workbench is locked to the viewport and these two panes are
    its inner scroll surfaces, so reaching the end of one must not drag the page.
-   Below 60rem the DOCUMENT scrolls and the ingredient pane simply grows with its
+   Below 68.5rem the DOCUMENT scrolls and the ingredient pane simply grows with its
    rows. Left there as an `overflow-y: auto` box with `overscroll-behavior:
    contain`, it still stopped every one-finger swipe that started on a row from
    reaching the page: containment belongs to the scroll CONTAINER, whether or
    not it has anything to scroll, and on a phone that pane holds everything
    between the header and the bottom bar. */
-@media (min-width: 60rem) {
+@media (min-width: 68.5rem) {
   .theme-pro-light [data-testid='ingredient-rows-scroll'],
   .theme-pro-light [data-testid='pro-monitor-panel'] {
     overscroll-behavior: contain;
   }
 }
 
-@media not all and (min-width: 60rem) {
+@media not all and (min-width: 68.5rem) {
   .theme-pro-light [data-testid='ingredient-rows-scroll'] {
     overflow-y: visible;
   }
@@ -129,7 +129,7 @@
    names the move for the lifetime of one transition (spatialTransition.ts). Only
    the named surfaces move — the page itself never cross-fades — and nothing is
    named from the workbench breakpoint up, where the dashboard is a column. */
-@media not all and (min-width: 60rem) {
+@media not all and (min-width: 68.5rem) {
   #mobile-cockpit-dialog {
     view-transition-name: pro-cockpit-sheet;
   }
@@ -288,7 +288,7 @@ html[data-pro-spatial='close']::view-transition-old(pro-cockpit-sheet) {
 /* PRO MOBILE UX v2 · B4 — the first-run settings sequence shows ONE step at a
    time on a phone (back / forward / „Krok n z 3"). The desktop grid ignores the
    pager, and a recipe whose settings are already confirmed never gets it. */
-@media not all and (min-width: 60rem) {
+@media not all and (min-width: 68.5rem) {
   [data-settings-pager-scope='on'][data-settings-active-step='1']
     [data-settings-step]:not([data-settings-step='1']),
   [data-settings-pager-scope='on'][data-settings-active-step='2']

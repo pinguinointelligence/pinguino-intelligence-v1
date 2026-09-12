@@ -73,7 +73,7 @@ export function AppShell({
    */
   stickyHeader?: boolean;
 }) {
-  useApplicationScaleAuthority();
+  const accountLaneRef = useApplicationScaleAuthority();
   const persona = useProCorePersona();
   const location = useLocation();
   const entitlement = useHomeEntitlement();
@@ -218,14 +218,25 @@ export function AppShell({
           ) : null}
         </div>
 
-        {/* OWNER 2026-09-02: the account closes the row at the same inset the
-            hamburger opens it, so the header reads as one symmetrical band on
-            every route. It sits OUTSIDE the centred band on purpose — the band is
-            absolutely positioned from `xl` up and would otherwise carry the login
-            inward with it. It reads the exact same auth identity as the drawer:
-            a live account links to Konto, anonymous opens the canonical auth
-            modal. */}
-        <AppHeaderAccountSlot />
+        {/* OWNER 2026-09-12 — RESPONSIVE TRIGGER, LOCKED. The account stands in
+            its own lane just past the end of the PRO navigation (the frame's
+            right edge), at the hard minimum clearance of 40 px. As a window
+            narrows, a long name first yields — its width budget falls from
+            208 px to 112 px, ellipsis beyond, full value in the tooltip — and
+            the one scale authority, which measures this lane's rendered width,
+            reduces the WHOLE application by exactly as much as the lane still
+            needs: header, both columns, navigation and account together.
+            Nothing wraps or overlaps, and no account moves the 1096 px handoff.
+            It reads the exact same auth identity as the drawer: a live account
+            links to Konto, anonymous opens the canonical auth modal. `contents`
+            below the workbench breakpoint, where the slot itself is hidden. */}
+        <div
+          ref={accountLaneRef}
+          className="app-header-account-lane contents"
+          data-testid="app-header-account-lane"
+        >
+          <AppHeaderAccountSlot />
+        </div>
       </header>
       <main className={cn(contentClassName, viewportLock && 'pro-workbench-main-lock')}>
         {children}

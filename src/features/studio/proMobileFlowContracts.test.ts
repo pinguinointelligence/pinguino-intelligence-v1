@@ -18,12 +18,12 @@ const css = read('styles', 'theme-pro-light.css');
 const page = read('pages', 'pro', 'ProWorkspacePage.tsx');
 const dialog = read('components', 'ui', 'DialogShell.tsx');
 
-/** The body of every `@media not all and (min-width: 60rem) { … }` block. */
+/** The body of every `@media not all and (min-width: 68.5rem) { … }` block. */
 const phoneBlocks = () => {
   const blocks: string[] = [];
   let from = 0;
   for (;;) {
-    const start = css.indexOf('@media not all and (min-width: 60rem)', from);
+    const start = css.indexOf('@media not all and (min-width: 68.5rem)', from);
     if (start < 0) return blocks;
     let depth = 0;
     for (let index = css.indexOf('{', start); index < css.length; index += 1) {

@@ -472,7 +472,7 @@ export function ProWorkbar({
       className={cn(
         'min-w-0 truncate text-xs',
         variant === 'panel'
-          ? 'mt-2.5 flex items-center gap-2 text-[13.5px] leading-[18px] font-semibold'
+          ? 'mt-2.5 flex items-center gap-2 text-[13.5px] leading-[18px] font-semibold min-[68.5rem]:mt-1.5'
           : 'ml-auto min-w-[7rem] flex-1 text-right xl:max-w-48',
         variant === 'panel'
           ? /* Two grounds, two palettes. On the GRAPHITE card (#191a1d) the
@@ -561,14 +561,18 @@ export function ProWorkbar({
             at the bottom (z-0), the tongue slides out over them (z-[1]) so the
             rule passes behind it, and the card occludes the tongue's top
             (z-[2]) so it still reads as sliding out from behind the card. */}
-        <div className="relative pb-[34px]">
+        <div className="relative pb-[34px] min-[68.5rem]:pb-8">
           {/* ONE surface in every state, so it always occludes the tongue's
               top. The first attempt left the status line outside the painted
               area and the tongue showed through a transparent 24 px band —
               caught by measurement, not by reading the code. */}
           <div
             className={cn(
-              'relative z-[2] min-w-0 rounded-2xl px-7 py-6',
+              /* OWNER 2026-09-12 — desktop density: 16 / 24 px instead of 24 / 28.
+                 The name, the status and the reason keep their sizes, weights and
+                 order; only the empty band around them goes. Touch widths keep the
+                 current spacing (`min-[68.5rem]` only). */
+              'relative z-[2] min-w-0 rounded-2xl px-7 py-6 min-[68.5rem]:px-6 min-[68.5rem]:py-4',
               identityState === 'unnamed'
                 ? 'border-[1.5px] border-[#f58a07]/55 bg-white'
                 : 'border-l-[6px] border-[#f58a07] bg-[var(--g-graphite)]',
@@ -599,7 +603,7 @@ export function ProWorkbar({
                   identityState === 'unnamed'
                     ? 'text-[22px] text-[var(--g-ink)] placeholder:font-semibold placeholder:text-[var(--g-text-muted)]'
                     : 'text-[28px] text-white placeholder:text-white/40',
-                  'max-[60rem]:hidden',
+                  'max-[68.5rem]:hidden',
                 )}
               />
               <textarea
@@ -621,7 +625,7 @@ export function ProWorkbar({
                 }}
                 data-testid="pro-workbar-name-wrap"
                 className={cn(
-                  'block w-full min-w-0 resize-none overflow-hidden border-0 bg-transparent p-0 leading-[1.05] font-extrabold tracking-[-0.04em] break-words focus:outline-none min-[60rem]:hidden',
+                  'block w-full min-w-0 resize-none overflow-hidden border-0 bg-transparent p-0 leading-[1.05] font-extrabold tracking-[-0.04em] break-words focus:outline-none min-[68.5rem]:hidden',
                   identityState === 'unnamed'
                     ? 'text-[22px] text-[var(--g-ink)] placeholder:font-semibold placeholder:text-[var(--g-text-muted)]'
                     : 'text-[28px] text-white placeholder:text-white/40',
@@ -642,7 +646,7 @@ export function ProWorkbar({
               <p
                 role="alert"
                 className={cn(
-                  'mt-1.5 text-xs',
+                  'mt-1.5 text-xs min-[68.5rem]:mt-1',
                   onGraphite ? 'text-[#ffb3a7]' : 'text-status-error',
                 )}
                 data-testid="pro-workbar-name-error"
@@ -654,7 +658,7 @@ export function ProWorkbar({
               <p
                 role="alert"
                 className={cn(
-                  'mt-1.5 text-xs',
+                  'mt-1.5 text-xs min-[68.5rem]:mt-1',
                   onGraphite ? 'text-[#ffb3a7]' : 'text-status-error',
                 )}
                 data-testid="pro-workbar-error"
@@ -663,13 +667,21 @@ export function ProWorkbar({
               </p>
             ) : blocker ? (
               <p
-                className={cn('mt-1.5 text-xs', onGraphite ? 'text-[#f8c98a]' : 'text-attention')}
+                className={cn(
+                  'mt-1.5 text-xs min-[68.5rem]:mt-1',
+                  onGraphite ? 'text-[#f8c98a]' : 'text-attention',
+                )}
                 data-testid="pro-workbar-practical-block"
               >
                 {blocker.message}
               </p>
             ) : blockedMsg ? (
-              <p className={cn('mt-1.5 text-xs', onGraphite ? 'text-white/70' : 'text-stone-600')}>
+              <p
+                className={cn(
+                  'mt-1.5 text-xs min-[68.5rem]:mt-1',
+                  onGraphite ? 'text-white/70' : 'text-stone-600',
+                )}
+              >
                 {blockedMsg}
               </p>
             ) : null}
@@ -679,14 +691,18 @@ export function ProWorkbar({
               and the tongue paints over it, so a short segment stays visible to
               the right of ZAPISZ — the band reads as one line, not as a control
               parked beside a gap. */}
-          <div className="absolute inset-x-0 bottom-0 z-0 flex h-[34px] items-center gap-2.5">
+          {/* OWNER 2026-09-12 — one axis on the desktop: the band is 32 px, and
+              „+ Nowa receptura" is 28 px tall like the ••• circle beside it
+              (`iconButtonClasses('xs')` = size-7), so both sit centred on the rule
+              and on ZAPISZ's label instead of two heights side by side. */}
+          <div className="absolute inset-x-0 bottom-0 z-0 flex h-[34px] items-center gap-2.5 min-[68.5rem]:h-8 min-[68.5rem]:gap-2">
             <button
               type="button"
               onClick={requestNewDraft}
               data-testid="pro-workbar-new-recipe"
               data-workbar-action-size="primary"
               data-workbar-action-width="content"
-              className="pro-focus-ring shrink-0 rounded-full border border-[var(--g-line)] bg-white px-3 py-1 text-[11px] font-semibold whitespace-nowrap text-[var(--g-text-secondary)] transition-colors hover:border-ink/35 hover:text-ink"
+              className="pro-focus-ring shrink-0 rounded-full border border-[var(--g-line)] bg-white px-3 py-1 text-[11px] font-semibold whitespace-nowrap text-[var(--g-text-secondary)] transition-colors hover:border-ink/35 hover:text-ink min-[68.5rem]:inline-flex min-[68.5rem]:h-7 min-[68.5rem]:items-center min-[68.5rem]:py-0"
             >
               + Nowa receptura
             </button>
@@ -716,6 +732,14 @@ export function ProWorkbar({
             data-workbar-save-shape="tongue"
             className={cn(
               'pro-focus-ring absolute right-[26px] bottom-0 z-[1] inline-flex h-[58px] max-w-[calc(100%-52px)] items-end gap-2 rounded-b-[15px] px-[22px] pb-[9px] text-[15px] leading-4 font-bold tracking-[-0.02em] whitespace-nowrap',
+              /* OWNER 2026-09-12 — desktop proportions, taken from the owner-approved
+                 phone header of this same card (ZAPISZ tab: 13.5 px, 0.06 em, at
+                 least 104 px): 13 px bold, 0.06 em tracking, 18 px sides. It shows
+                 32 px under the card — the band's own height — and hides 14, with
+                 its label on the band's centre line (8 + 16 / 2 = 16 = 32 / 2), so
+                 „+ Nowa receptura", ••• and ZAPISZ share one axis. Right edge on
+                 the card's 24 px content inset. */
+              'min-[68.5rem]:right-6 min-[68.5rem]:h-[46px] min-[68.5rem]:max-w-[calc(100%-48px)] min-[68.5rem]:min-w-[104px] min-[68.5rem]:justify-center min-[68.5rem]:px-[18px] min-[68.5rem]:pb-2 min-[68.5rem]:text-[13px] min-[68.5rem]:tracking-[0.06em]',
               /* Graphite ink on the accent is 7.5:1. White on the accent would
                  be 2.5:1 — the same mistake that was removed from Direction. */
               'bg-[#f58a07] text-[var(--g-graphite)] transition-[background-color,opacity] hover:bg-[#e07f06]',

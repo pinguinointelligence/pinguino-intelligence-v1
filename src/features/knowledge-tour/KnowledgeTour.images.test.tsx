@@ -48,7 +48,7 @@ describe('B14 — tour imagery', () => {
     expect(source?.getAttribute('srcset')).toBe(
       '/guide/01-960.webp 960w, /guide/01-1672.webp 1672w',
     );
-    expect(source?.getAttribute('sizes')).toBe('(max-width: 60rem) 100vw, 56vw');
+    expect(source?.getAttribute('sizes')).toBe('(max-width: 68.5rem) 100vw, 56vw');
     const image = tour.querySelector<HTMLImageElement>('.knowledge-tour__artwork img');
     expect(image?.getAttribute('src')).toBe('/guide/01.png');
     expect(image?.getAttribute('decoding')).toBe('async');
