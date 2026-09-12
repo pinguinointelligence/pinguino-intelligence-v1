@@ -1,0 +1,5020 @@
+{
+  "libraryVersion": "official-177-v1",
+  "source": {
+    "workbook": {
+      "file": "GELLATTI_RECEPTURY.xlsx",
+      "sha256": "a85e32a42a8a2e18a375647f8606c3d20c77f7f37a178273f557445579c76dfb",
+      "sheets": [
+        "01_RECEPTURY",
+        "03_SKLAD_RECEPTUR"
+      ]
+    },
+    "mapper": {
+      "file": "mapper_basement.csv",
+      "sha256": "a6a849a596acef75e0760992353bddf5cbca24ff37744e36414da18ca45556f6",
+      "rows": 2541,
+      "columns": 62
+    },
+    "images": {
+      "folder": "images-src",
+      "rule": "NNN.png -> recipe #NNN / GEL-NNN (number is the only authority)"
+    }
+  },
+  "counts": {
+    "recipes": 177,
+    "lines": 1510,
+    "mappedLines": 1458,
+    "brakLines": 52,
+    "unresolvedLines": 49,
+    "dynamicMainLines": 3,
+    "recipesWithBrak": 41,
+    "uniqueReferencedPi": 113,
+    "referencedPiMissingFromMapper": 0,
+    "collections": {
+      "classics": 77,
+      "icons": 25,
+      "cocktails_spirits": 48,
+      "lost_legendary": 15,
+      "technical_bases": 12
+    },
+    "images": 177,
+    "imagesMissing": 0,
+    "collectionHeroes": 5
+  },
+  "referencedPi": [
+    "PI-ING-000002",
+    "PI-ING-000007",
+    "PI-ING-000019",
+    "PI-ING-000022",
+    "PI-ING-000023",
+    "PI-ING-000024",
+    "PI-ING-000027",
+    "PI-ING-000033",
+    "PI-ING-000035",
+    "PI-ING-000037",
+    "PI-ING-000038",
+    "PI-ING-000042",
+    "PI-ING-000087",
+    "PI-ING-000118",
+    "PI-ING-000142",
+    "PI-ING-000146",
+    "PI-ING-000149",
+    "PI-ING-000151",
+    "PI-ING-000163",
+    "PI-ING-000169",
+    "PI-ING-000172",
+    "PI-ING-000176",
+    "PI-ING-000180",
+    "PI-ING-000204",
+    "PI-ING-000231",
+    "PI-ING-000233",
+    "PI-ING-000236",
+    "PI-ING-000238",
+    "PI-ING-000264",
+    "PI-ING-000270",
+    "PI-ING-000274",
+    "PI-ING-000308",
+    "PI-ING-000309",
+    "PI-ING-000340",
+    "PI-ING-000351",
+    "PI-ING-000354",
+    "PI-ING-000358",
+    "PI-ING-000360",
+    "PI-ING-000362",
+    "PI-ING-000364",
+    "PI-ING-000368",
+    "PI-ING-000379",
+    "PI-ING-000383",
+    "PI-ING-000384",
+    "PI-ING-000389",
+    "PI-ING-000419",
+    "PI-ING-000437",
+    "PI-ING-000448",
+    "PI-ING-000456",
+    "PI-ING-000458",
+    "PI-ING-000492",
+    "PI-ING-000494",
+    "PI-ING-000514",
+    "PI-ING-000563",
+    "PI-ING-000576",
+    "PI-ING-000618",
+    "PI-ING-000620",
+    "PI-ING-000624",
+    "PI-ING-000725",
+    "PI-ING-000758",
+    "PI-ING-000829",
+    "PI-ING-000836",
+    "PI-ING-000911",
+    "PI-ING-000921",
+    "PI-ING-000994",
+    "PI-ING-001091",
+    "PI-ING-001133",
+    "PI-ING-001398",
+    "PI-ING-001400",
+    "PI-ING-001403",
+    "PI-ING-001409",
+    "PI-ING-001435",
+    "PI-ING-001437",
+    "PI-ING-001450",
+    "PI-ING-001454",
+    "PI-ING-001496",
+    "PI-ING-001498",
+    "PI-ING-001512",
+    "PI-ING-001521",
+    "PI-ING-001524",
+    "PI-ING-001525",
+    "PI-ING-001542",
+    "PI-ING-001543",
+    "PI-ING-001544",
+    "PI-ING-001545",
+    "PI-ING-001561",
+    "PI-ING-001565",
+    "PI-ING-001566",
+    "PI-ING-001567",
+    "PI-ING-001570",
+    "PI-ING-001579",
+    "PI-ING-001589",
+    "PI-ING-001590",
+    "PI-ING-001591",
+    "PI-ING-001608",
+    "PI-ING-001620",
+    "PI-ING-001642",
+    "PI-ING-001645",
+    "PI-ING-001658",
+    "PI-ING-001661",
+    "PI-ING-001671",
+    "PI-ING-001705",
+    "PI-ING-001737",
+    "PI-ING-001761",
+    "PI-ING-001766",
+    "PI-ING-001768",
+    "PI-ING-001770",
+    "PI-ING-001831",
+    "PI-ING-001834",
+    "PI-ING-001863",
+    "PI-ING-001864",
+    "PI-ING-001900",
+    "PI-ING-002076"
+  ],
+  "nameDrift": {
+    "lines": 634,
+    "pi": 16,
+    "entries": [
+      {
+        "pi": "PI-ING-000149",
+        "historicalNames": [
+          "COCONUT MILK · Coconut · Dry"
+        ],
+        "currentName": "COCONUT MILK · 19% FAT · Legacy profile",
+        "lines": 1
+      },
+      {
+        "pi": "PI-ING-000163",
+        "historicalNames": [
+          "REFINED COCONUT OIL · Elstar Fats Coconut · Dry"
+        ],
+        "currentName": "REFINED COCONUT OIL · Elstar Fats",
+        "lines": 4
+      },
+      {
+        "pi": "PI-ING-000169",
+        "historicalNames": [
+          "MATCHA TEA · Tea · Dry"
+        ],
+        "currentName": "MATCHA · Pure Green Tea Powder · Dry",
+        "lines": 2
+      },
+      {
+        "pi": "PI-ING-000204",
+        "historicalNames": [
+          "GREEK YOGURT · Yogurt · Chilled"
+        ],
+        "currentName": "GREEK-STYLE YOGURT · 7.5% FAT · 3.5% PROTEIN · Chilled",
+        "lines": 1
+      },
+      {
+        "pi": "PI-ING-000236",
+        "historicalNames": [
+          "MILK 3.5% · Milk · Chilled"
+        ],
+        "currentName": "MILK · 3.5% FAT · Chilled",
+        "lines": 124
+      },
+      {
+        "pi": "PI-ING-000264",
+        "historicalNames": [
+          "PROTEIN GEL WPC · Sempre Dairy · SEMPRE230"
+        ],
+        "currentName": "PROTEIN GEL · WPC 80 CLASS · Sempre · SEMPRE230",
+        "lines": 3
+      },
+      {
+        "pi": "PI-ING-000270",
+        "historicalNames": [
+          "SKIMMED MILK · Milk"
+        ],
+        "currentName": "SKIMMED MILK POWDER · 0.8% FAT · Dairy · Dry",
+        "lines": 123
+      },
+      {
+        "pi": "PI-ING-000274",
+        "historicalNames": [
+          "SWEETENED CONDENSED MILK · Milk · Chilled"
+        ],
+        "currentName": "SWEETENED CONDENSED MILK · 8% FAT",
+        "lines": 1
+      },
+      {
+        "pi": "PI-ING-000351",
+        "historicalNames": [
+          "DATE DRIED · Fresh Fruit"
+        ],
+        "currentName": "DATES · DRIED FRUIT",
+        "lines": 1
+      },
+      {
+        "pi": "PI-ING-000456",
+        "historicalNames": [
+          "INULIN · Specialty"
+        ],
+        "currentName": "INULIN · Fibre · Powder",
+        "lines": 172
+      },
+      {
+        "pi": "PI-ING-000494",
+        "historicalNames": [
+          "DEXTROSE · Sweetener · Dry"
+        ],
+        "currentName": "DEXTROSE MONOHYDRATE · Sweetener · Dry",
+        "lines": 177
+      },
+      {
+        "pi": "PI-ING-000624",
+        "historicalNames": [
+          "PISTACHIOS · Paste · 100% Nut"
+        ],
+        "currentName": "PISTACHIO · Paste · 100% Dry-Roasted Kernels",
+        "lines": 5
+      },
+      {
+        "pi": "PI-ING-001498",
+        "historicalNames": [
+          "RAISIN · Fresh Fruit"
+        ],
+        "currentName": "RAISINS · DRIED FRUIT",
+        "lines": 1
+      },
+      {
+        "pi": "PI-ING-001570",
+        "historicalNames": [
+          "PECANS DRY ROASTED · Nut"
+        ],
+        "currentName": "PECANS · Dry Roasted · Unsalted",
+        "lines": 2
+      },
+      {
+        "pi": "PI-ING-001579",
+        "historicalNames": [
+          "DEFATTED COCOA 12% · Cocoa Powder"
+        ],
+        "currentName": "ALKALIZED COCOA POWDER · 11% FAT · Unsweetened",
+        "lines": 15
+      },
+      {
+        "pi": "PI-ING-001671",
+        "historicalNames": [
+          "CARDAMOM · Spice"
+        ],
+        "currentName": "CARDAMOM · Dried Spice · Reference",
+        "lines": 2
+      }
+    ]
+  },
+  "encoder": {
+    "tool": "cwebp",
+    "version": "1.6.0",
+    "quality": 80,
+    "method": 6
+  },
+  "images": [
+    {
+      "number": 1,
+      "photoId": "GEL-001",
+      "recipeId": "classic-dark-chocolate",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/001.png",
+        "sha256": "ebc00f3a059559d07a08213e90d4dba094328768f22b8a6dab709cd668f673c6",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-001-480.webp",
+          "sha256": "d735d7777e01a53afe5d349992df2b0d458592694212e4b09e414db196ef2911",
+          "bytes": 40942
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-001-960.webp",
+          "sha256": "21ef060c3c9af2d7b802b54ef0e6d895a4ed09639420647e877a1ef5a063f7d1",
+          "bytes": 113004
+        }
+      ]
+    },
+    {
+      "number": 2,
+      "photoId": "GEL-002",
+      "recipeId": "classic-salted-caramel",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/002.png",
+        "sha256": "2d9a53b4d23375e646fa608fe40365f4769b6ff9284185be9625c82d898bac9c",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-002-480.webp",
+          "sha256": "aeb99f43a39ec17dd6839e93984147961c528ac92ff12846050c757c29ff15a0",
+          "bytes": 44516
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-002-960.webp",
+          "sha256": "c8f0644c0bca602a647b51ada0042a050ee990d97b831c4513cab3f9ebaeefb6",
+          "bytes": 119612
+        }
+      ]
+    },
+    {
+      "number": 3,
+      "photoId": "GEL-003",
+      "recipeId": "classic-yogurt",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/003.png",
+        "sha256": "3c15fa12af37457352dd14188f112357ff66d75730f184c84c7457c9e2908f7c",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-003-480.webp",
+          "sha256": "aac8d7273d65398f07456567549f157ae5641a34021efd63aeb30a1fa46fc676",
+          "bytes": 34416
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-003-960.webp",
+          "sha256": "e17b3d3f0de90457405549c61642a3ecc8d7d0d01bd8d19aebca1158f9734007",
+          "bytes": 91102
+        }
+      ]
+    },
+    {
+      "number": 4,
+      "photoId": "GEL-004",
+      "recipeId": "classic-cream",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/004.png",
+        "sha256": "4b52f39749f620d6aeebeb6554f865e02d4dcfea4f77c26de06cf2c4e5963646",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-004-480.webp",
+          "sha256": "a67619e8ef475d232aaeeeb5565ad8cc18454f9b0732f624a25013387c954cbb",
+          "bytes": 30066
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-004-960.webp",
+          "sha256": "bc0a1767d08b69c4f04bee19394c1c89b7af3dddc0546e4902b01622eff3125a",
+          "bytes": 74796
+        }
+      ]
+    },
+    {
+      "number": 5,
+      "photoId": "GEL-005",
+      "recipeId": "classic-amarena",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/005.png",
+        "sha256": "e06766e2f101b71bd5d2e3112d26f0e154b1c17b072d7269e7f6b5f08944fa05",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-005-480.webp",
+          "sha256": "267345e5d35af9f7e7fa63f90170aa8fb67953b673fecd38d922e7f61e0402a4",
+          "bytes": 35510
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-005-960.webp",
+          "sha256": "0b8d5481dffd55bae9482bc369d4d4d276933aecf5cbf74246fedb092eaa0c70",
+          "bytes": 90538
+        }
+      ]
+    },
+    {
+      "number": 6,
+      "photoId": "GEL-006",
+      "recipeId": "classic-crema",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/006.png",
+        "sha256": "1d42d6b59acc3556563253973c6aff3d110725adcbcdfae42223ecb15f44178e",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-006-480.webp",
+          "sha256": "8489157ec668f34b102f3bb178a342ca7b32dc69d5ec6279d7331238f2bcc9b1",
+          "bytes": 27172
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-006-960.webp",
+          "sha256": "021de84a9a6e61cca4a97cc0c18439cdf5bd83e896534987e467d179797357b3",
+          "bytes": 71900
+        }
+      ]
+    },
+    {
+      "number": 7,
+      "photoId": "GEL-007",
+      "recipeId": "classic-gianduja",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/007.png",
+        "sha256": "803115f9a6b822d7e183438f55c2e14dab0302505690a7735ce9ae3c9410db55",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-007-480.webp",
+          "sha256": "4d379ad3ed38829e3e74215382ff094730c008ad49afe688be17bfd671b22499",
+          "bytes": 43378
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-007-960.webp",
+          "sha256": "3debe0828dc2fd8257bf7ea3884e0d55c3af92f378b0536d2c5611c7ade67f5e",
+          "bytes": 119474
+        }
+      ]
+    },
+    {
+      "number": 8,
+      "photoId": "GEL-008",
+      "recipeId": "classic-fior",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/008.png",
+        "sha256": "fe9310b92d22670a91d61e09fe943b842856c22b1f9ec0901e633f842c6bd5c9",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-008-480.webp",
+          "sha256": "cbdc649dacd9a05a74c1f341700847023f38977a88d8a5b66583749e96455507",
+          "bytes": 28186
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-008-960.webp",
+          "sha256": "33bcf39b067362df0b7bab9e6431e055d83060e32bdb3b9fab7b9228c837d6a4",
+          "bytes": 71994
+        }
+      ]
+    },
+    {
+      "number": 9,
+      "photoId": "GEL-009",
+      "recipeId": "classic-coffee",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/009.png",
+        "sha256": "b2c0de1ab9fba3f80746679464677f2ab41a38bccf0fed42fb60c956ed1df08d",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-009-480.webp",
+          "sha256": "0cda381de28b4b74a752e55015131b445c359ba3a339066259d1bb2d38cb42d2",
+          "bytes": 31626
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-009-960.webp",
+          "sha256": "3eeaea26189036cdc7fabaa823a96cbcf56418aa26269700366c99d0201b05cb",
+          "bytes": 82040
+        }
+      ]
+    },
+    {
+      "number": 10,
+      "photoId": "GEL-010",
+      "recipeId": "classic-hazelnut",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/010.png",
+        "sha256": "4c434d580512b6ad2c7b1127efbf5da39c9cf552c5b2d4e37c48f5dc71e90ea2",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-010-480.webp",
+          "sha256": "d7f2e2bc88262b7e8dcc63b0869d059aab792e024cccaad4050315cff785f679",
+          "bytes": 39536
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-010-960.webp",
+          "sha256": "0a5fa40361256e04e978a1e40f00b0c91a1ac275f9fd81b166e609c1ac718a41",
+          "bytes": 97582
+        }
+      ]
+    },
+    {
+      "number": 11,
+      "photoId": "GEL-011",
+      "recipeId": "classic-pistachio",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/011.png",
+        "sha256": "f5e7243e3eb3659c1c91e73ffefcf813e283cbb9f9d2a90e393183f80ea2c002",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-011-480.webp",
+          "sha256": "fa0e9272c626e40f527d239c4e2c386a7e3385ba166216db7eb5d967a86bb737",
+          "bytes": 40724
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-011-960.webp",
+          "sha256": "27c5d47f72dd095f99f1253268857533a2474b4d36c23489a3519c8e9b829649",
+          "bytes": 110318
+        }
+      ]
+    },
+    {
+      "number": 12,
+      "photoId": "GEL-012",
+      "recipeId": "classic-stracciatella",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/012.png",
+        "sha256": "326615de49e7ad4ac98d2a0bde70f345078f0bebb6cb6ea9ff4b24a50cf3062c",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-012-480.webp",
+          "sha256": "1d62e80fc062c5f8440042a6d670a7f139a2fb08d6d10ae82d8362ef0df2c3f0",
+          "bytes": 36704
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-012-960.webp",
+          "sha256": "67ad991a06eff2356153b4bd9074096e37ae36e122d558f0c0477dfec698fa1d",
+          "bytes": 96084
+        }
+      ]
+    },
+    {
+      "number": 13,
+      "photoId": "GEL-013",
+      "recipeId": "classic-banana",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/013.png",
+        "sha256": "b43a7e299ce0c46da71e3ee87fdc79c8bddbb09fcbf3a52b05d3121749c255ea",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-013-480.webp",
+          "sha256": "e213235c31f306da5e5b8647dcf0da77b97e4e30ce836e52faec40b99a21d2d6",
+          "bytes": 33540
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-013-960.webp",
+          "sha256": "79747f86ccf4a84c1e062413bcab30eb052707bc9e40ea9a7fe68b48242892d1",
+          "bytes": 84826
+        }
+      ]
+    },
+    {
+      "number": 14,
+      "photoId": "GEL-014",
+      "recipeId": "classic-chocolate",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/014.png",
+        "sha256": "fd05edfd34b050def64435d57844dbd650737f7863594c7a600d276520b200e9",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-014-480.webp",
+          "sha256": "f76a5fc64d685ebe1cbc8d8ed80f3037f7d2a3b668e26e6cd34ffea4fa5ca7fb",
+          "bytes": 35654
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-014-960.webp",
+          "sha256": "d739451a439136f93be4728658e2bf975bb0211a5827f09db27f82ee0196ee50",
+          "bytes": 97684
+        }
+      ]
+    },
+    {
+      "number": 15,
+      "photoId": "GEL-015",
+      "recipeId": "classic-vanilla",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/015.png",
+        "sha256": "00ee54c283b1a843b19ee3b787eb529ace2b40eb62f8b6c80f913eab89a56f94",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-015-480.webp",
+          "sha256": "b9bdf2f8059924a439e7c54a040ce7f441d09ab1f16b74bdcb4b003ddb21d437",
+          "bytes": 37740
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-015-960.webp",
+          "sha256": "0083a5c3050f2e818a9462de7809dd956175de11e118992348db466ed87e61ac",
+          "bytes": 97574
+        }
+      ]
+    },
+    {
+      "number": 16,
+      "photoId": "GEL-016",
+      "recipeId": "classic-coconut",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/016.png",
+        "sha256": "db969dd3259cb35e2178c2a1d12a5e0514110d1b3429621f5ec1eb27dd6ce12e",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-016-480.webp",
+          "sha256": "9f17a0faa43da7cbc7e5489c1bd482a8eef3f3f1437f186da4f75372ec9ee35a",
+          "bytes": 37158
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-016-960.webp",
+          "sha256": "77ec2c84d94940f48b1c9bea9c09a9305bb5d0a1e0633cf9e3ff55116c5ce5c6",
+          "bytes": 98442
+        }
+      ]
+    },
+    {
+      "number": 17,
+      "photoId": "GEL-017",
+      "recipeId": "classic-maple-walnut",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/017.png",
+        "sha256": "6ae6c86a6183a6992e646704c7201b6496bedaa249b1273b3bf64808f2798025",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-017-480.webp",
+          "sha256": "2df2d0723221b201a2317f446099820f7277b656b984f30eca64f038501f62e6",
+          "bytes": 44708
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-017-960.webp",
+          "sha256": "428915af5dc1c4057dda5e89eec6f29d5faf855c00ad284839db95a165d6fd99",
+          "bytes": 118850
+        }
+      ]
+    },
+    {
+      "number": 18,
+      "photoId": "GEL-018",
+      "recipeId": "classic-maple-pecan",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/018.png",
+        "sha256": "26b572a82c27b585b168460f4c6f236559c9c389e406f2aa9aeac474d27f24ce",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-018-480.webp",
+          "sha256": "b4dec047f12d35b56a8f61a62b6832f18ea6ba512c820d1edb3de9a754dfb82c",
+          "bytes": 40688
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-018-960.webp",
+          "sha256": "217c4edc24a89ff5e6c5e621375a02d6abe7946a731445d367781d11829530b3",
+          "bytes": 102244
+        }
+      ]
+    },
+    {
+      "number": 19,
+      "photoId": "GEL-019",
+      "recipeId": "classic-banana-pudding",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/019.png",
+        "sha256": "edf068213b77fa2bb22f3cf096e2c44961dd4015ad47922593ca606defc84157",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-019-480.webp",
+          "sha256": "60cc5b2ec2eebf208c86e0194875ce824ac8776187c7efa8dcf3f6647393a38c",
+          "bytes": 38114
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-019-960.webp",
+          "sha256": "1cb3e2d2578cdb5b9daa732298d37202ba9961dc9316a06541c088929badda49",
+          "bytes": 98116
+        }
+      ]
+    },
+    {
+      "number": 20,
+      "photoId": "GEL-020",
+      "recipeId": "classic-birthday-cake",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/020.png",
+        "sha256": "306f8a945700e5b83c4c1b7b073d99cc8869945d7684131a614e1c5cf1e5c64a",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-020-480.webp",
+          "sha256": "26796c307193f3e9edb3b07e0bbda0fa55968f4919ace7b6dd5bcbc162995e55",
+          "bytes": 31066
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-020-960.webp",
+          "sha256": "f3b3b066f8f4d668ac4ef93cb05b2042a67dac97c4b203917256b7b015b84140",
+          "bytes": 80714
+        }
+      ]
+    },
+    {
+      "number": 21,
+      "photoId": "GEL-021",
+      "recipeId": "classic-butter-pecan",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/021.png",
+        "sha256": "c896e6eb4d1ac8b08ebfead12784390b25fa7a2e9096035eaf7cf3980b44af50",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-021-480.webp",
+          "sha256": "c6fba9750aa4b311b93a11c8f2d484f647c3a53c690a2dd005b3063a7c6a9c58",
+          "bytes": 40720
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-021-960.webp",
+          "sha256": "40749b1e7f4a28e806c641109d6fc07b9650a22c1225c8b9410f2059176e43b5",
+          "bytes": 104570
+        }
+      ]
+    },
+    {
+      "number": 22,
+      "photoId": "GEL-022",
+      "recipeId": "classic-cookie-dough",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/022.png",
+        "sha256": "7c05a0a1d1f35aab5d073d9a3e870a03ee39b6a952ad739094cc8988729945a4",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-022-480.webp",
+          "sha256": "fd2fa4a3a8468d6d7fc6f1444ad8b1187e4d8dafd2f0f313cfa366faabf99888",
+          "bytes": 33950
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-022-960.webp",
+          "sha256": "771d025309bd09aadb83da4460f14da29e678f00c94156e260ab09f77a1b83ff",
+          "bytes": 91820
+        }
+      ]
+    },
+    {
+      "number": 23,
+      "photoId": "GEL-023",
+      "recipeId": "classic-pb-cup",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/023.png",
+        "sha256": "4fc0964922f8fa930b27604aff75572c323911e0f16765e98f5309f830dd0681",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-023-480.webp",
+          "sha256": "be2db7d3d7d44df5c541be6e9515f6b9948dcf1bbc906ef38b9553371fb474a0",
+          "bytes": 37406
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-023-960.webp",
+          "sha256": "12677f435c5fb40d83af0675488f17a65224c3c5522b49071970ee3355b32c07",
+          "bytes": 103602
+        }
+      ]
+    },
+    {
+      "number": 24,
+      "photoId": "GEL-024",
+      "recipeId": "classic-rocky-road",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/024.png",
+        "sha256": "68bef4ab99294626ef5e562f69efe3dc0ebae2c01620598256dc4d9665dc42d8",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-024-480.webp",
+          "sha256": "57f1c97a0f231e9c43e973971eac400b8e43f050807245f627cc835e67f48dca",
+          "bytes": 45180
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-024-960.webp",
+          "sha256": "78246437e766db0b6ee87a11f040af6f5a59b751a3735ff007f1b9697ad83ccb",
+          "bytes": 123446
+        }
+      ]
+    },
+    {
+      "number": 25,
+      "photoId": "GEL-025",
+      "recipeId": "classic-mint-chip",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/025.png",
+        "sha256": "c41091ba2702f543131a50dfe92a9f9dd66b4287f860c34da4837dc0099f9486",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-025-480.webp",
+          "sha256": "3b54a7302f1c8c4330a4ec0610bc88a5aaf66bd556e35fc9aac7b5b762a6a10f",
+          "bytes": 40764
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-025-960.webp",
+          "sha256": "354b80f86c525b6c9481e077e46331ac2330c9ac54d35dbf1fc063971e71cfe2",
+          "bytes": 106264
+        }
+      ]
+    },
+    {
+      "number": 26,
+      "photoId": "GEL-026",
+      "recipeId": "classic-blueberry-cheesecake",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/026.png",
+        "sha256": "0f1038fad95a85466d0e96744a99f88e8e26d8e170bd82de0659742eaa8b2700",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-026-480.webp",
+          "sha256": "6d8bda7986e1a65f8604be9b449799632194eb738bfad7b761e4efad63f9575e",
+          "bytes": 42414
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-026-960.webp",
+          "sha256": "fa7872920b0e573c6db3ef1799b3d42ba04f6671da6b51d4ded7a27dab73048d",
+          "bytes": 113588
+        }
+      ]
+    },
+    {
+      "number": 27,
+      "photoId": "GEL-027",
+      "recipeId": "classic-brownie-fudge",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/027.png",
+        "sha256": "b3e6c59e7c16e7b3ce8f882332e1fbe069894f0fe6355b659623678d3f0183b2",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-027-480.webp",
+          "sha256": "9ef786b839b15430355e2514a7edaba49f0319d2c9b53a0811e13231fb650237",
+          "bytes": 40084
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-027-960.webp",
+          "sha256": "81f39bfe0996f58e4a9ed3652f184e3a9aa3cd17f39b59440b114b6a5dc6c3b6",
+          "bytes": 110412
+        }
+      ]
+    },
+    {
+      "number": 28,
+      "photoId": "GEL-028",
+      "recipeId": "classic-cheesecake",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/028.png",
+        "sha256": "8725b819f5e5c11b7b16535c8cd0e2beca48be5c6039ecd1462bb39626d4c7c3",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-028-480.webp",
+          "sha256": "63f34d411fdf68e2f3129ef325b464277dfb93fd9cb3b2dacbfafcfda365fdfb",
+          "bytes": 22854
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-028-960.webp",
+          "sha256": "7be79f28f246d05bee9107311574620575493ab0e83c52c218dc4e564797575c",
+          "bytes": 58048
+        }
+      ]
+    },
+    {
+      "number": 29,
+      "photoId": "GEL-029",
+      "recipeId": "classic-chocolate-chip",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/029.png",
+        "sha256": "f0ce542e9d07efbb53ca77ed73fe048ed6d962416761056d9c83c44059948521",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-029-480.webp",
+          "sha256": "005c8f866899d67be22927a9bcc20bb4cb19cc3403b7609999c0bd3a56f7378e",
+          "bytes": 32700
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-029-960.webp",
+          "sha256": "8ea469faaff06b396950f70f06d8a3d7fcdcfacafd6a2cb519bbc17bce846678",
+          "bytes": 84798
+        }
+      ]
+    },
+    {
+      "number": 30,
+      "photoId": "GEL-030",
+      "recipeId": "classic-cookies-cream",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/030.png",
+        "sha256": "84ae55310ea00bc9ff283b6b04792ee8e910e858edf08e484df975d4c922c342",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-030-480.webp",
+          "sha256": "34050174799b74385eadbb75b353ad40dc8fcb8af1e78c46d94875d5e65870c9",
+          "bytes": 35420
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-030-960.webp",
+          "sha256": "fdb68fb17ff599786309c8774f3a60f8b79ea6775467b8784caa1dc1cb00cb1d",
+          "bytes": 90658
+        }
+      ]
+    },
+    {
+      "number": 31,
+      "photoId": "GEL-031",
+      "recipeId": "classic-fudge-swirl",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/031.png",
+        "sha256": "7fed93731eee39af66b1dc74873ad38f67419d17d950fc10c3319a36f4756691",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-031-480.webp",
+          "sha256": "f486cb5ae4f693c644520cc259d4bd623770317ea79b88b68558d603b7f87996",
+          "bytes": 42008
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-031-960.webp",
+          "sha256": "68e67016d708b918a87357f757af707ccf2084dac7dcc63de894c5e992b01001",
+          "bytes": 112392
+        }
+      ]
+    },
+    {
+      "number": 32,
+      "photoId": "GEL-032",
+      "recipeId": "classic-speculoos",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/032.png",
+        "sha256": "3e814964ac8d71b195beaee3abc01f6a3de5e9394d071469f07c64a624b2edbb",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-032-480.webp",
+          "sha256": "8eda4c42b1dcff9e30e50540ef825dc5c9585b79e2caf3ecdbe6927580efb5d1",
+          "bytes": 41230
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-032-960.webp",
+          "sha256": "25be4118a8958180d8e1f111fc7b7da23b9ea6cc53f40ed2083fccbc4b1e4ebd",
+          "bytes": 110868
+        }
+      ]
+    },
+    {
+      "number": 33,
+      "photoId": "GEL-033",
+      "recipeId": "classic-creme-brulee",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/033.png",
+        "sha256": "df476da08d86996c51fe72333ed9c5dffdefe22c8f17c3cebb0803a88ea16081",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-033-480.webp",
+          "sha256": "699e8e5ee6311212ea11cb6f76539430043f101735a3be726e6824d90875d0ac",
+          "bytes": 35796
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-033-960.webp",
+          "sha256": "d05129c1483ee0c1451526bea657c16ef9371b069302f7aa03cdc635c1191269",
+          "bytes": 93012
+        }
+      ]
+    },
+    {
+      "number": 34,
+      "photoId": "GEL-034",
+      "recipeId": "classic-panna-cotta",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/034.png",
+        "sha256": "71ed6f7fe51256a8b980f566c589cfd4d8c2f476ecc0763ade87e5424f61c8d6",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-034-480.webp",
+          "sha256": "a78a6c6435486fa3faba4365ac9409f1bcdba6b8e11fdb40d51640cf06739e9b",
+          "bytes": 34758
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-034-960.webp",
+          "sha256": "5ac67eb6290221a20989f60b6b6181ca16c6f4e773272c1d25a16097661029c4",
+          "bytes": 94652
+        }
+      ]
+    },
+    {
+      "number": 35,
+      "photoId": "GEL-035",
+      "recipeId": "classic-chocolate-orange",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/035.png",
+        "sha256": "be8a3d28c0c0dbc39c37024ea5e0c3da517e2138f1ec40c9b438d13ff2d77c10",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-035-480.webp",
+          "sha256": "ec442aabf78a08abce38643d85bf413a75130dda8719994a0bb5f2281bfaa372",
+          "bytes": 40438
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-035-960.webp",
+          "sha256": "e9ad093082e731d275c3d6f54c5d3034c4863be7df94ee37438839953f2cb058",
+          "bytes": 113760
+        }
+      ]
+    },
+    {
+      "number": 36,
+      "photoId": "GEL-036",
+      "recipeId": "classic-tiramisu",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/036.png",
+        "sha256": "211575a304c0f21a62d0e1eff8b410e9e129140220a71377cfca081d7e1515d4",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-036-480.webp",
+          "sha256": "8f9cba627fa040118ea6e6289852aee91a48cd6a31c5e6ce7a4bd7fb8a3c616a",
+          "bytes": 46730
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-036-960.webp",
+          "sha256": "12cab380894c785172bb75cc6e2b1dc35305d78aee2c61caf0f0040473e384bf",
+          "bytes": 125714
+        }
+      ]
+    },
+    {
+      "number": 37,
+      "photoId": "GEL-037",
+      "recipeId": "classic-apple-pie",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/037.png",
+        "sha256": "e838545839eeff7186377032e7678892f16abaf520bf44c8aa49a6dae1a2bc3c",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-037-480.webp",
+          "sha256": "84867af4e7b5ae93a629ee1007c7fc232c8b6e7e972dd6ce0dd7095a91a14fba",
+          "bytes": 44438
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-037-960.webp",
+          "sha256": "7924f50a8f854a3a128c2ea4d59261147efa24968803eac068511f48ea890f94",
+          "bytes": 124674
+        }
+      ]
+    },
+    {
+      "number": 38,
+      "photoId": "GEL-038",
+      "recipeId": "classic-white-choc-raspberry",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/038.png",
+        "sha256": "21fb4996a80a91a3119253695d354f5c4029eb493ea0782d032f859b132596c5",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-038-480.webp",
+          "sha256": "86178991865e8eea579bf62aac893a92e51e557fc41ad2f303b55f701fd52fd2",
+          "bytes": 40920
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-038-960.webp",
+          "sha256": "76a62d4acf5da2bd5aa549a24dd8f42eefeaeb36d4e0bb826be5881abf46ca20",
+          "bytes": 104130
+        }
+      ]
+    },
+    {
+      "number": 39,
+      "photoId": "GEL-039",
+      "recipeId": "classic-neapolitan",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/039.png",
+        "sha256": "ac89127d2442963c269d6fcb11d0716df225b398385ef9f9d27586a37a55ff4f",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-039-480.webp",
+          "sha256": "e5413787bd9d591f8915ec51ab561b9f6a0657bdbc6127ae3a0a764980aef123",
+          "bytes": 34604
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-039-960.webp",
+          "sha256": "ef7e5c07a99c0f0d6f40d9bc2d70af3829149717c671779fe61f365742df60ed",
+          "bytes": 92518
+        }
+      ]
+    },
+    {
+      "number": 40,
+      "photoId": "GEL-040",
+      "recipeId": "classic-lemon-meringue",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/040.png",
+        "sha256": "ee0b7d8bbd6e79d70d5faa253727b5994c38930fc3a8c0719dae1c25553415a3",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-040-480.webp",
+          "sha256": "7f0f8310090b3ccad110d3fce5aa9e6105ba15e9da1ec9baa8149b31bd62b14a",
+          "bytes": 44622
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-040-960.webp",
+          "sha256": "a24de62faa219d1b444353d4ddd7297daea88907c40cbcb44582dba4aa5f7764",
+          "bytes": 126768
+        }
+      ]
+    },
+    {
+      "number": 41,
+      "photoId": "GEL-041",
+      "recipeId": "classic-guava-sorbet",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/041.png",
+        "sha256": "26bb56d4458796b77c38d074e1dd625b96b282d633c24b63515ab886d247f065",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-041-480.webp",
+          "sha256": "a6310f1ee2885096ff1ff2822ef09a6cf7784bd494470f5140e505fa7199265a",
+          "bytes": 33600
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-041-960.webp",
+          "sha256": "e2ab5391891068912f605ea3734a44744bc90db8631ec391d99f0c456b93c23d",
+          "bytes": 89798
+        }
+      ]
+    },
+    {
+      "number": 42,
+      "photoId": "GEL-042",
+      "recipeId": "classic-tamarind-chili",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/042.png",
+        "sha256": "876a79d3256a94078c5acbe5ee22fac6c777c1123e37b152a3b02852f622e79e",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-042-480.webp",
+          "sha256": "ce15e8f55ac91853f9d132d6ec02e3daf9b82f4b602be1002ba31acb753d6617",
+          "bytes": 45954
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-042-960.webp",
+          "sha256": "16fe09c951d65ae098dbb79b577a3d6a1350245839e62b831b0e5b1bd3881185",
+          "bytes": 133262
+        }
+      ]
+    },
+    {
+      "number": 43,
+      "photoId": "GEL-043",
+      "recipeId": "classic-lychee-sorbet",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/043.png",
+        "sha256": "89426216118a8fc100df349ea2bdd7cf3512bfd0d8159328e157f567841d79ac",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-043-480.webp",
+          "sha256": "d4d1ab8e4adcb9e06f5b961f6b3d3073e5c8a1b1ac6dc3ef6969aed618f76a68",
+          "bytes": 32358
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-043-960.webp",
+          "sha256": "0edf185d2a664f93e3e0d3df9443a17199b425ac5a65f84a32af73eea1cb6250",
+          "bytes": 80136
+        }
+      ]
+    },
+    {
+      "number": 44,
+      "photoId": "GEL-044",
+      "recipeId": "classic-yuzu-sorbet",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/044.png",
+        "sha256": "525807753a171dc78076afbb97069cb52da94886d77e38de9fa552fdf5d5e21a",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-044-480.webp",
+          "sha256": "c83591245e43e17ec14898bc087e59e8d8da6531a8125c89a5d354ef39ca1fa0",
+          "bytes": 36338
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-044-960.webp",
+          "sha256": "3bb2d488c0562d839bef2b13337024f1a209ea3fe21c410bc1ae8c808ddca000",
+          "bytes": 95342
+        }
+      ]
+    },
+    {
+      "number": 45,
+      "photoId": "GEL-045",
+      "recipeId": "classic-raspberry",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/045.png",
+        "sha256": "6e895bdd9cb2403541cea343665104da3df0354678c61290be6ffb8a887d9857",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-045-480.webp",
+          "sha256": "d5b90a0a86ae667e4ecbb72fc7c64a47e9d5d19101e26135aa7c0a239071b329",
+          "bytes": 44262
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-045-960.webp",
+          "sha256": "e1aaefa2ff6bfce4f9a6168117fb3b14c82f7beb4a353560239dfe626db152b4",
+          "bytes": 124900
+        }
+      ]
+    },
+    {
+      "number": 46,
+      "photoId": "GEL-046",
+      "recipeId": "classic-blood-orange-sorbet",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/046.png",
+        "sha256": "153b5aff2422e4720ccd4c848c4cf7e67ccb50620f28b444968fd6107352c344",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-046-480.webp",
+          "sha256": "7b300acfec75faa661471ad850bbac3ccbce6677c96d657568bb0713e7bcaabb",
+          "bytes": 49270
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-046-960.webp",
+          "sha256": "b0df769346dc69f732b4e1f51b626d18a73da1eeea44b27f6b37fe1420e3bd66",
+          "bytes": 142628
+        }
+      ]
+    },
+    {
+      "number": 47,
+      "photoId": "GEL-047",
+      "recipeId": "classic-blackcurrant-sorbet",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/047.png",
+        "sha256": "ba32a5ed44aeb438a41d45e0e701bf0e7be3295f385fc5103fe5e719b9abf10e",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-047-480.webp",
+          "sha256": "96b65f5da4d1d93dfb35ec136d0ef90604cccd1b7c7da4735fbb493ba1b733d9",
+          "bytes": 46724
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-047-960.webp",
+          "sha256": "4f34fdedd2ffd8b242eba5f42827f1eb8f840722540f430bbf728868dcfe014f",
+          "bytes": 130260
+        }
+      ]
+    },
+    {
+      "number": 48,
+      "photoId": "GEL-048",
+      "recipeId": "classic-lemon",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/048.png",
+        "sha256": "b250f9aa186cdefe92190ba40b3413e00d7640b771675fdabb5ba55c33fd097e",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-048-480.webp",
+          "sha256": "e16bbd36d6af456749558fe2ef2f24e9d12dfe883d44dc097cc548565b553f74",
+          "bytes": 29476
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-048-960.webp",
+          "sha256": "7cb6a757659b7178eba6954792e7f5c92e9174f57e03b64844288d37597d4ea3",
+          "bytes": 77992
+        }
+      ]
+    },
+    {
+      "number": 49,
+      "photoId": "GEL-049",
+      "recipeId": "classic-mango",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/049.png",
+        "sha256": "3efb7f1e4bbf3ba90b16abdb3e3f481cb835430889b093c21a804f2c13db8959",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-049-480.webp",
+          "sha256": "15c44d35daf8cf6288ff7899da3acba478ab9d944d2528f493a76be12dbb99a5",
+          "bytes": 30786
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-049-960.webp",
+          "sha256": "4cce10a33d76c8136227873cdbc7dddc65b294afb5dd8b1c37c048584433c9ad",
+          "bytes": 83416
+        }
+      ]
+    },
+    {
+      "number": 50,
+      "photoId": "GEL-050",
+      "recipeId": "classic-peach-sorbet",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/050.png",
+        "sha256": "390eac6e2e03964290057a96e3dfd9f1515c0a684058451bbda7ec1828637c44",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-050-480.webp",
+          "sha256": "1491504a60502f6d3721b90830eb0ee529d0756b971881c8265bd3e4ac0d0256",
+          "bytes": 36116
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-050-960.webp",
+          "sha256": "a90445073ba4c577a3879f1d88e38040f32ce23d8e75d0e62104491e016a92a2",
+          "bytes": 98266
+        }
+      ]
+    },
+    {
+      "number": 51,
+      "photoId": "GEL-051",
+      "recipeId": "classic-strawberry",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/051.png",
+        "sha256": "4abc0da3aff1484ea414efade21917351dd58027e211f9e0022045034d22618d",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-051-480.webp",
+          "sha256": "0b677210d61e5feef7dfba1f765c5f300f7e24e06310866e9705c36fcc2051ab",
+          "bytes": 39552
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-051-960.webp",
+          "sha256": "c62276b926e269d348d19d60cb769c632fbf8bc932182bc8e9b5db03e04fce42",
+          "bytes": 108618
+        }
+      ]
+    },
+    {
+      "number": 52,
+      "photoId": "GEL-052",
+      "recipeId": "classic-watermelon-sorbet",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/052.png",
+        "sha256": "0c2d9f91e327dd4f664f2e975a4a53fc6cc92480337ac86ebbdbcd3c1d859c80",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-052-480.webp",
+          "sha256": "2f496ff554c81270de4ba9dcaf5a443c4e8392b3b3de58187ddd1b7767f5d578",
+          "bytes": 38602
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-052-960.webp",
+          "sha256": "401064ff7bd426f1a2b390858cd71105dcf292e2c11b3bdc49e0d7a8ff627629",
+          "bytes": 116058
+        }
+      ]
+    },
+    {
+      "number": 53,
+      "photoId": "GEL-053",
+      "recipeId": "classic-pineapple-sorbet",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/053.png",
+        "sha256": "79c4d6af12eb60902dce784e5543fe711c8324fe4423e7699095c612aab2a7f1",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-053-480.webp",
+          "sha256": "ba7654d92ddf5be3341583a7c0d752b6c79dc90cc35b243099f0bbba45d1cab4",
+          "bytes": 35160
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-053-960.webp",
+          "sha256": "ddb395605c5ac55f0c350df429ca2a737e44dd69e21d453ce28f2c3055ebe1c1",
+          "bytes": 100012
+        }
+      ]
+    },
+    {
+      "number": 54,
+      "photoId": "GEL-054",
+      "recipeId": "classic-passion",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/054.png",
+        "sha256": "5becf4a15945d01c8469693d1119a2b98a05b181006a85f3c50ab88b7b5f1a99",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-054-480.webp",
+          "sha256": "bd40896926d29dea1ffd0c7de763d33bdc4fc7ecb0dd0fc15334a3214e8b38a6",
+          "bytes": 39166
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-054-960.webp",
+          "sha256": "a3ed84b0de4b4818e5436f4e5f411cc56f6ae476308fa4a97a0d97419af375b9",
+          "bytes": 111930
+        }
+      ]
+    },
+    {
+      "number": 55,
+      "photoId": "GEL-055",
+      "recipeId": "classic-rooibos-granadilla",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/055.png",
+        "sha256": "25d073d7329e72ec34d575a877b5e9cfe4cd54d0c06d534b5e2a4da09fff53ba",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-055-480.webp",
+          "sha256": "732d44b974aec3645b19a23a2033e12ead964427655e421daf6262efeacf11d7",
+          "bytes": 47298
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-055-960.webp",
+          "sha256": "d426cad63f3dcb696c19896a951476da3ba2dd73bf760244f8f6d8e53adc8ba6",
+          "bytes": 130854
+        }
+      ]
+    },
+    {
+      "number": 56,
+      "photoId": "GEL-056",
+      "recipeId": "classic-dulce-granizado",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/056.png",
+        "sha256": "e25aec4cc4f274f899c45c552b25f9c82ea9d32207fdee84830b788e7e47fa5a",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-056-480.webp",
+          "sha256": "a5f311c290e075b039b5e071e80ebcd85efcc0a14ff3ddb3e873d0804025999e",
+          "bytes": 40898
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-056-960.webp",
+          "sha256": "31690204d0b3b56c753f62a46024d18d12e5a11e86fd2a4ed18c6735e16d5038",
+          "bytes": 109496
+        }
+      ]
+    },
+    {
+      "number": 57,
+      "photoId": "GEL-057",
+      "recipeId": "classic-frutilla-crema",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/057.png",
+        "sha256": "8a5fb65eb6fd5a58b28cdecb62082a2c4a6b8f53ab0de475795331948b413180",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-057-480.webp",
+          "sha256": "d775b0ec03469c6cabff8b1b0734b8bf53fe967769c81fd84991de30843acae2",
+          "bytes": 38430
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-057-960.webp",
+          "sha256": "7b20279275d8a8f8f4275995a72fe1c33ec99b01b09871a1215f306929d154bf",
+          "bytes": 102772
+        }
+      ]
+    },
+    {
+      "number": 58,
+      "photoId": "GEL-058",
+      "recipeId": "classic-sambayon",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/058.png",
+        "sha256": "0927cf2e2f27832d631babc870ecb2e196ffb3e5634dd770c80c74500c269345",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-058-480.webp",
+          "sha256": "fa957640be357fa1ed0bb7b6fe0e3afd7a0459fd75b6e789be70a7ad8ee2f83a",
+          "bytes": 27578
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-058-960.webp",
+          "sha256": "1c03c5b3e88c2d7c0d5f94f90afd87bcc66e99b74881f90ed9fe4196e785325e",
+          "bytes": 72422
+        }
+      ]
+    },
+    {
+      "number": 59,
+      "photoId": "GEL-059",
+      "recipeId": "classic-dulce",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/059.png",
+        "sha256": "afd2054b7ac375f0f5e37874846c6b4f405b109c3049eff871614050a6b7ba37",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-059-480.webp",
+          "sha256": "17646405c95717e0812313e94a30ed99980f947200d5d64ef3f1a3c24a599513",
+          "bytes": 36476
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-059-960.webp",
+          "sha256": "c66fe0753de048c0fbbf3f4d20b22454f20ea7adbed08e94677dba127b2f0ffa",
+          "bytes": 95348
+        }
+      ]
+    },
+    {
+      "number": 60,
+      "photoId": "GEL-060",
+      "recipeId": "classic-choc-almond",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/060.png",
+        "sha256": "04be267dab6733d2e085dc3d1a007dcf5b162df7cf4849c8c0af2ad1ae5c7df1",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-060-480.webp",
+          "sha256": "bdc43f391595f1c318f4e18d4b784671453922b22a72cee60e97171d5cb517ef",
+          "bytes": 46660
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-060-960.webp",
+          "sha256": "bb262f3d68d973b5a466d4bdc3054d5761cf5d0703dcdf1609a898616468ad65",
+          "bytes": 135142
+        }
+      ]
+    },
+    {
+      "number": 61,
+      "photoId": "GEL-061",
+      "recipeId": "classic-brigadeiro",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/061.png",
+        "sha256": "c9b55fcd55f249fd2edb0ca61e6bcaaca2179e2dc8b35dd5d83efed235a177dd",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-061-480.webp",
+          "sha256": "c468f55e1d0bb38076246cc72e9f1ea1ff7de1844b024a7b103ef79e1149df4d",
+          "bytes": 43686
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-061-960.webp",
+          "sha256": "8dc1ec1fe976d35a23e366b70e97ad22dc873c8b98c71225de6f4866d44f5889",
+          "bytes": 129252
+        }
+      ]
+    },
+    {
+      "number": 62,
+      "photoId": "GEL-062",
+      "recipeId": "classic-cajeta",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/062.png",
+        "sha256": "03196474ca3f1bd5808e98032b1be83f368d9fcf4202bdc7359393a9a4697298",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-062-480.webp",
+          "sha256": "31d41b87e98e492b8c07e9644f7f3433edab33e72241aef5da18c7e086c44d68",
+          "bytes": 36064
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-062-960.webp",
+          "sha256": "bda5f25901f359b7c182f55c65c1c4555ae8bf6ca2aba3b651f89fdb3f45b61a",
+          "bytes": 101832
+        }
+      ]
+    },
+    {
+      "number": 63,
+      "photoId": "GEL-063",
+      "recipeId": "classic-mexican-chocolate",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/063.png",
+        "sha256": "ca3102076429b875071f9a8529ac0e08b83bd2e660bed05eeba0f5eed8a8107f",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-063-480.webp",
+          "sha256": "2deb17530d1ceed385db290456f8115c85a211e1852bbd13d1bc69fe78e668eb",
+          "bytes": 43292
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-063-960.webp",
+          "sha256": "bef9722e27a4bc2c2064409c71062bda8dbe7b88f1759ed212234d839e0a5610",
+          "bytes": 125522
+        }
+      ]
+    },
+    {
+      "number": 64,
+      "photoId": "GEL-064",
+      "recipeId": "classic-horchata",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/064.png",
+        "sha256": "c381d91c0abb05168a49529eab9e11a08e74244bfa4b191de8c768f2543065d7",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-064-480.webp",
+          "sha256": "958eca1f00a15efbac8096982736ea8530d3c18ac37a587784c65c6cea91142d",
+          "bytes": 33394
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-064-960.webp",
+          "sha256": "be4c11f117dc1c7153315d2852720b9701284c18d86db095bd2ab504e447a31e",
+          "bytes": 86786
+        }
+      ]
+    },
+    {
+      "number": 65,
+      "photoId": "GEL-065",
+      "recipeId": "classic-dates-cardamom",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/065.png",
+        "sha256": "1d9b0251cfe64c6312ec3859a101e84c4f029d4260be37859e61d6b05c570afc",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-065-480.webp",
+          "sha256": "5658ca4fd7319d27f9df1d3ec297d9fba114d0726335f69444d8c203facd27ab",
+          "bytes": 30922
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-065-960.webp",
+          "sha256": "e80499f0cfea0e3203cde8b00c20f25ef696a41e94df639cc394ec181db0d1d1",
+          "bytes": 81712
+        }
+      ]
+    },
+    {
+      "number": 66,
+      "photoId": "GEL-066",
+      "recipeId": "classic-dubai",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/066.png",
+        "sha256": "c62b3911bd740714e61eeb57ae76df549641fa00a461773951e4ad5da1ff1ddb",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-066-480.webp",
+          "sha256": "50bfc7ecf1012f0ca32e07edc3a0e270587d09c0af9c1d965d47a93a52a30dd6",
+          "bytes": 39712
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-066-960.webp",
+          "sha256": "9023b19f29bb42e5ed586d2e16f4d53c3632d60566660ae6ef969dcf78c8c26c",
+          "bytes": 109566
+        }
+      ]
+    },
+    {
+      "number": 67,
+      "photoId": "GEL-067",
+      "recipeId": "classic-hojicha",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/067.png",
+        "sha256": "7534aaeb1ade29dfbe518c6716a0626f75f2a20a438815a0d7d78603c5449c47",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-067-480.webp",
+          "sha256": "c745a7a5b602854340b79115be9996ffed86ee9c9a3e7c73f6dfce4c69831b9d",
+          "bytes": 33846
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-067-960.webp",
+          "sha256": "dc3d8831cf9e98eb9a943dbee96c9d2253c0dc0e5de64661bc189bf4658e1aa5",
+          "bytes": 96804
+        }
+      ]
+    },
+    {
+      "number": 68,
+      "photoId": "GEL-068",
+      "recipeId": "classic-black-sesame",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/068.png",
+        "sha256": "78acbea37c03785f81628a02d5f569f7270838b613981bec0c3448a69eac9c65",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-068-480.webp",
+          "sha256": "8d47593975efb8ab66ccd202fe00215660cc37bd4881ff20047a2b6ae38da421",
+          "bytes": 39348
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-068-960.webp",
+          "sha256": "da80587d62a1513009449cf28d28fe611aaaa76819656becfbd9071d4580f76d",
+          "bytes": 112496
+        }
+      ]
+    },
+    {
+      "number": 69,
+      "photoId": "GEL-069",
+      "recipeId": "classic-matcha",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/069.png",
+        "sha256": "c27eae4a6dd4b87c6d058d0c42bcbd95a5024db14084e4c07f2c95034a817167",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-069-480.webp",
+          "sha256": "b16c6a3879d32f079c7aa0748e1662af868f5136d9826b5398268944401e5979",
+          "bytes": 36050
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-069-960.webp",
+          "sha256": "2fde8af544f6ff7958f4a3f1ff4ac6383ce09ed068f77d999b313c3337bfe311",
+          "bytes": 99942
+        }
+      ]
+    },
+    {
+      "number": 70,
+      "photoId": "GEL-070",
+      "recipeId": "classic-date-tahini",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/070.png",
+        "sha256": "d0043f2dbd81843b307ea8114b35edee0f9559653ac64b138b7c8fb919b69a2b",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-070-480.webp",
+          "sha256": "73d1b55bc4aa01b0225ecda9d0eefcb66e7f9220e9af58e40e97a8a7ee810c1a",
+          "bytes": 34498
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-070-960.webp",
+          "sha256": "ee8f2815907419f033be41258182601363110ecd672b3c41d2ed6b47f5d46a47",
+          "bytes": 93928
+        }
+      ]
+    },
+    {
+      "number": 71,
+      "photoId": "GEL-071",
+      "recipeId": "classic-halva-sesame",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/071.png",
+        "sha256": "988717d2073f74bc59a1ffa033645ff4f81470a4f2a467e01d50e1b5aac2bc25",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-071-480.webp",
+          "sha256": "a50d3226b35fcd1411eedd87846835dd5e4046f1b58ddce6f5e07c3a2cb675a3",
+          "bytes": 36036
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-071-960.webp",
+          "sha256": "4525bc08056a88c4ec77fb8d890f9e89f1d6b7c2b68980fd51027349dcec993c",
+          "bytes": 94850
+        }
+      ]
+    },
+    {
+      "number": 72,
+      "photoId": "GEL-072",
+      "recipeId": "classic-rose-pistachio",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/072.png",
+        "sha256": "586fd9db1568ce272e29e449106e51de1479940803f55cc8e075c4b716f3560a",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-072-480.webp",
+          "sha256": "43e6f82c67f000c65c4d4e375a1a228fe206ab468a622882b9e04bea0e43f6cb",
+          "bytes": 31828
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-072-960.webp",
+          "sha256": "d01c4bbd8f748f82760765f1cad1b6c6b2a71ca38829e82960c31283edf5b2b1",
+          "bytes": 83460
+        }
+      ]
+    },
+    {
+      "number": 73,
+      "photoId": "GEL-073",
+      "recipeId": "classic-saffron-pistachio",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/073.png",
+        "sha256": "ca787d23a7e351c063f2e335677d70d9f2816374b25df0fcc44ca3dd9b42c862",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-073-480.webp",
+          "sha256": "d91aa2e5371b5b9858d55c02f46381a2912e4a23b1e1f09a4831fe5675ef57a4",
+          "bytes": 42472
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-073-960.webp",
+          "sha256": "bcd35b5c69ddbac74b5a64eeb55f1d08e79e78182e471772c5edf15f18c94f71",
+          "bytes": 116576
+        }
+      ]
+    },
+    {
+      "number": 74,
+      "photoId": "GEL-074",
+      "recipeId": "classic-ube",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/074.png",
+        "sha256": "d64040f984e20b66c7a4d73aa112297a2ab8d7f8821c6e2edf40400b64746c7f",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-074-480.webp",
+          "sha256": "e93b5c782b29dd9d31502a9a7db93c717f9d7477ce4e74fd51a8866b25275ac3",
+          "bytes": 39496
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-074-960.webp",
+          "sha256": "98fe1e9129e6e5fb6703c311c650f4ed7ff224648660e3c4ed9c148663a24ca3",
+          "bytes": 114060
+        }
+      ]
+    },
+    {
+      "number": 75,
+      "photoId": "GEL-075",
+      "recipeId": "classic-thai-tea",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/075.png",
+        "sha256": "a8d0d3f302c29c84eca92fd7506a02c7cf5a332f55d4927bbd720263b4ce5903",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-075-480.webp",
+          "sha256": "e7f9e7dcd7be6b08b188cc7cdeef336fb87a021bc3d24f0e8d39430aa9247336",
+          "bytes": 35684
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-075-960.webp",
+          "sha256": "0ecbcae220242e295a78694f70ed34294e81238ef2fabc9baf6e6d9ee8c3ae41",
+          "bytes": 98702
+        }
+      ]
+    },
+    {
+      "number": 76,
+      "photoId": "GEL-076",
+      "recipeId": "classic-black-cherry",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/076.png",
+        "sha256": "7449e1151a65402d4370e28026fccd9a5911ea1567b2f7923b43c666985aa6c0",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-076-480.webp",
+          "sha256": "8c7b60a4692e1934069cd140ba136e4af0952dd9d016451c7cea4c1b8a318595",
+          "bytes": 45932
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-076-960.webp",
+          "sha256": "bed7b2c5aae890ad74434b18593a0fdc037e0ba88d7465cdedb32e8d919b2263",
+          "bytes": 122870
+        }
+      ]
+    },
+    {
+      "number": 77,
+      "photoId": "GEL-077",
+      "recipeId": "classic-hokey",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/077.png",
+        "sha256": "246f7c9884688dc367221b4f6c628b11f74907b5606ee0313ec5c31b24476dbd",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-077-480.webp",
+          "sha256": "09e3cb462e2696f8f79217a87dd82af83b2c59da3f149f1137ae6c95964bb625",
+          "bytes": 40632
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-077-960.webp",
+          "sha256": "371edc41b0437c7ecfbbfd57312619acbdb3b13da92e1914b3b9da34daae9604",
+          "bytes": 111622
+        }
+      ]
+    },
+    {
+      "number": 78,
+      "photoId": "GEL-078",
+      "recipeId": "icon-oreyo",
+      "collection": "icons",
+      "source": {
+        "file": "Icons/078.png",
+        "sha256": "070af81f0c72bb530a6d1fd0c852fe6c1d8390097f6dc9a23b430ed82d8d021f",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-078-480.webp",
+          "sha256": "5170145764e0938cdb1677d1dd2f482cdee11b7d1c6ceb6475bb3f87e88ac870",
+          "bytes": 44764
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-078-960.webp",
+          "sha256": "7c58b6562ae9b9364a72c0eefaa88e808c21ec8b4cad78f8370a52a0c96d8f45",
+          "bytes": 124698
+        }
+      ]
+    },
+    {
+      "number": 79,
+      "photoId": "GEL-079",
+      "recipeId": "icon-knickers",
+      "collection": "icons",
+      "source": {
+        "file": "Icons/079.png",
+        "sha256": "db6686fdc8706053379a12bd6663881b049218e4f11f9fca0d659a98d2d7b453",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-079-480.webp",
+          "sha256": "d1af74d16ab27d93c5388e8c3a8b780207ecafea714bde101e58a51fcec9dca3",
+          "bytes": 45704
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-079-960.webp",
+          "sha256": "305c85d57d00d7f940b508732e8e46158ba27fa35fbb649ac1dd6c66d7636697",
+          "bytes": 112648
+        }
+      ]
+    },
+    {
+      "number": 80,
+      "photoId": "GEL-080",
+      "recipeId": "icon-raphaello",
+      "collection": "icons",
+      "source": {
+        "file": "Icons/080.png",
+        "sha256": "5117af89dd5d7fc72343ea281e7de0244ec2a95fdb2bcd462dcc4a885339a567",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-080-480.webp",
+          "sha256": "04b3bbe58b9e32cbfdc2b07e43dfe35c7099ccb57e292ec32fc02520229f5c6a",
+          "bytes": 40714
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-080-960.webp",
+          "sha256": "bdf8f19acf3083cc7f926750ff2b6aa08d421cf97976d5b9e3f12e905cb11477",
+          "bytes": 103302
+        }
+      ]
+    },
+    {
+      "number": 81,
+      "photoId": "GEL-081",
+      "recipeId": "icon-kidi-bueno",
+      "collection": "icons",
+      "source": {
+        "file": "Icons/081.png",
+        "sha256": "d0b5e78e7755a84e564025a214a27485a1418d986fc5784b0cac8230daffa80f",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-081-480.webp",
+          "sha256": "981ace6d44e0d2c9526153eb359ec88448392abcb48fd4829dc97a4649e74235",
+          "bytes": 42946
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-081-960.webp",
+          "sha256": "1d5fd4d943503e40f0a8de656a3c879836a532cf0cef82a58d035651d01ba76f",
+          "bytes": 109986
+        }
+      ]
+    },
+    {
+      "number": 82,
+      "photoId": "GEL-082",
+      "recipeId": "icon-rocero",
+      "collection": "icons",
+      "source": {
+        "file": "Icons/082.png",
+        "sha256": "d4ccd1330408345dc210a3ba91c93fa7f10c39a5a8f922090752687384b61f91",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-082-480.webp",
+          "sha256": "e47c2ba822dd99b2db26c4dca308dc73b7ed2805bb38adbd5c2235708636617a",
+          "bytes": 47976
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-082-960.webp",
+          "sha256": "f2bcb7fba0a75aa0f8e988dc9157a21076cb62eae379dd576dd053404f5a4238",
+          "bytes": 121740
+        }
+      ]
+    },
+    {
+      "number": 83,
+      "photoId": "GEL-083",
+      "recipeId": "icon-almond-nougat-chocolate",
+      "collection": "icons",
+      "source": {
+        "file": "Icons/083.png",
+        "sha256": "b12b9c8e6b8211e931b02da2b7effa5df7af5b7c17e7c73debb3dd2768c3f07a",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-083-480.webp",
+          "sha256": "336bea8d607f5da9dbd6925037dc8782b683744f810d8247e832014b333c07cb",
+          "bytes": 44498
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-083-960.webp",
+          "sha256": "6b4df299f4e3ed1d11c4f53e3b801fbb434d7e3b3042d6bcf2ff84cddf0325b2",
+          "bytes": 122066
+        }
+      ]
+    },
+    {
+      "number": 84,
+      "photoId": "GEL-084",
+      "recipeId": "icon-almond-toffee-crunch",
+      "collection": "icons",
+      "source": {
+        "file": "Icons/084.png",
+        "sha256": "764d1ffedfe6fea5d8526b9f782d29ab00dbb5bd20bfb60d38d37643c45afa2e",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-084-480.webp",
+          "sha256": "607644eb63089002715a4d3a3627206171cd360901ff76ca468d18480c09b07a",
+          "bytes": 39620
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-084-960.webp",
+          "sha256": "d35ce7c1cc9f60d5b6a6cf94fc89ccd250ce21924adb005a23b1e8acd829f2e7",
+          "bytes": 101456
+        }
+      ]
+    },
+    {
+      "number": 85,
+      "photoId": "GEL-085",
+      "recipeId": "icon-brownie-caramel-chocolate",
+      "collection": "icons",
+      "source": {
+        "file": "Icons/085.png",
+        "sha256": "a8c725d235e70ddab0d84fd271d674c936b214635d347d6f9a1ca8a469521d65",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-085-480.webp",
+          "sha256": "17963737f7d71f34b8a2120529ffcf1ae8ed9e5f1c8490caaf3f73cb0e9cf7ec",
+          "bytes": 48076
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-085-960.webp",
+          "sha256": "a50cf16e3a5827b61f3553022be9f33d12099eabf8f0a2711ee492f14debf6d8",
+          "bytes": 129274
+        }
+      ]
+    },
+    {
+      "number": 86,
+      "photoId": "GEL-086",
+      "recipeId": "icon-caramel-biscuit-cream",
+      "collection": "icons",
+      "source": {
+        "file": "Icons/086.png",
+        "sha256": "6905caeaa5de6844eccd60a560e972e7b4170a0ae0a67db691a4f110099bd963",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-086-480.webp",
+          "sha256": "7639de2ff59baf19a2ffc55433beb7fbaa39a7b07396050943e5b3abd0d55f2e",
+          "bytes": 43366
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-086-960.webp",
+          "sha256": "af37a7a15182d262838e16bf9cc57ace5adb37b6d7272c45484867d813dd41f2",
+          "bytes": 116998
+        }
+      ]
+    },
+    {
+      "number": 87,
+      "photoId": "GEL-087",
+      "recipeId": "icon-caramel-nougat-chocolate",
+      "collection": "icons",
+      "source": {
+        "file": "Icons/087.png",
+        "sha256": "58f053c55a0d8d984201eaf48df4ca8db276330a64a4a7ee0eb7215c4515310e",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-087-480.webp",
+          "sha256": "04f30a5d3480efe13add4ec5afd5cb290d55e0069297ac7a49d3516e39495a69",
+          "bytes": 44592
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-087-960.webp",
+          "sha256": "eada62c5b3acd995df2d1d1a21368ee64b5d8546b05e073b910f212a50350a81",
+          "bytes": 117212
+        }
+      ]
+    },
+    {
+      "number": 88,
+      "photoId": "GEL-088",
+      "recipeId": "icon-choc-caramel-biscuit",
+      "collection": "icons",
+      "source": {
+        "file": "Icons/088.png",
+        "sha256": "48bdc99c54a745e4bcf13e766319e86240c530411df229eb15b87a4817601b50",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-088-480.webp",
+          "sha256": "b368affe96eacfe6bcef69d6c38364706b0901cdcac917a42ea5ee9b236d45ee",
+          "bytes": 40688
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-088-960.webp",
+          "sha256": "509a0c2f6f19ff05fbf8f3233cd3aedb3a458180e7a522f04b991857ccbab1ad",
+          "bytes": 109688
+        }
+      ]
+    },
+    {
+      "number": 89,
+      "photoId": "GEL-089",
+      "recipeId": "icon-coconut-dark-chocolate",
+      "collection": "icons",
+      "source": {
+        "file": "Icons/089.png",
+        "sha256": "4db8b9f082be597009fa60f5b9b57c505ea87262764a629807c40a3cce95182a",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-089-480.webp",
+          "sha256": "0d77b0ae561438711b87d5c270cf566e6d99ce8d835a92dda3dcc30eb3acf994",
+          "bytes": 39038
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-089-960.webp",
+          "sha256": "12f2655c70074685942753d0ae40b7269e7d071748f8620302ad4ef4deda3624",
+          "bytes": 104340
+        }
+      ]
+    },
+    {
+      "number": 90,
+      "photoId": "GEL-090",
+      "recipeId": "icon-color-candy-chocolate",
+      "collection": "icons",
+      "source": {
+        "file": "Icons/090.png",
+        "sha256": "0f9ceab143440298b05dec4aa70a48722e1d05a2343a1759bbdf9a5f5b272e6d",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-090-480.webp",
+          "sha256": "fb2953da292c81235f90d0e5722cc900bcd9ac4bb6795535b659a752c311db63",
+          "bytes": 39964
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-090-960.webp",
+          "sha256": "f393f5c565a996b31cf6fce8f2f05f7bd708fad2985882126c28316178116120",
+          "bytes": 104014
+        }
+      ]
+    },
+    {
+      "number": 91,
+      "photoId": "GEL-091",
+      "recipeId": "icon-cookie-milk-choc",
+      "collection": "icons",
+      "source": {
+        "file": "Icons/091.png",
+        "sha256": "04ac33098e1efaab1b11cad34668ae77ab73c2fe2bf55b570caa45d1befb7abd",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-091-480.webp",
+          "sha256": "ca8e0fb649947da56a73f7c390a32c1b0e5fe8697ffa09633b778433dba25c76",
+          "bytes": 40670
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-091-960.webp",
+          "sha256": "6d5e88fd746d9c56d14722d77bba7a41a9e8e32c81591db1a84a2bf4b7cf68dd",
+          "bytes": 108714
+        }
+      ]
+    },
+    {
+      "number": 92,
+      "photoId": "GEL-092",
+      "recipeId": "icon-hazelnut-cocoa-spread",
+      "collection": "icons",
+      "source": {
+        "file": "Icons/092.png",
+        "sha256": "1f16e9b2e21eb821b4ea791c04a104ed6271bd4baf498aacf24bf6c4200c73db",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-092-480.webp",
+          "sha256": "2cca053cd40e9b3bf549265236772d210c8db94aebb41c288cae9e44c3fd9e15",
+          "bytes": 37612
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-092-960.webp",
+          "sha256": "ea40e26176f24505356bfa6efb75573348d917f0b45ee23c0f037df14403b204",
+          "bytes": 100162
+        }
+      ]
+    },
+    {
+      "number": 93,
+      "photoId": "GEL-093",
+      "recipeId": "icon-milk-wafer-crunch",
+      "collection": "icons",
+      "source": {
+        "file": "Icons/093.png",
+        "sha256": "4b2b65c35eef154db3725689faaa0df3ae53fc56bfb81a8e3ae86aeb15e18e46",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-093-480.webp",
+          "sha256": "2aad7916b601e156753fd85070d939ed1a6899017c6fa8034fa4f661f0a7425a",
+          "bytes": 41598
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-093-960.webp",
+          "sha256": "c48e882530e2eccfdf32ce0098568872a5ec11a457346ef6656e7ddc7142a1d2",
+          "bytes": 109982
+        }
+      ]
+    },
+    {
+      "number": 94,
+      "photoId": "GEL-094",
+      "recipeId": "icon-mint-chocolate-thin",
+      "collection": "icons",
+      "source": {
+        "file": "Icons/094.png",
+        "sha256": "9afff5b6dde7d984f4307f31935ab4b86cc2680a639ca6f52e507bf8f77ecd24",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-094-480.webp",
+          "sha256": "c908109c5ebca39024790debd47486d23da31c442281afd238277cbaeab8eda1",
+          "bytes": 32926
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-094-960.webp",
+          "sha256": "75164c6e0974173c4c7cb427452144de3991a80337d8500b3d95c5586c355577",
+          "bytes": 79804
+        }
+      ]
+    },
+    {
+      "number": 95,
+      "photoId": "GEL-095",
+      "recipeId": "icon-orange-dark-chocolate",
+      "collection": "icons",
+      "source": {
+        "file": "Icons/095.png",
+        "sha256": "946f1b195566aecfbe44753836899a669e60d6e56002dd18c215bfeb623888d2",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-095-480.webp",
+          "sha256": "b5f8080fe8da1d38aa2450eff2de2521d870de2619d1e69f75b1a40ab91a1a1e",
+          "bytes": 40124
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-095-960.webp",
+          "sha256": "9431ba6c9036c2b0934fccd47d4a2ad62612b657468fe1226d97e3efd38733b2",
+          "bytes": 110102
+        }
+      ]
+    },
+    {
+      "number": 96,
+      "photoId": "GEL-096",
+      "recipeId": "icon-peanut-butter-chocolate",
+      "collection": "icons",
+      "source": {
+        "file": "Icons/096.png",
+        "sha256": "3f45685966b13e7f96f941d9d8f5ed80db0347f5ce4793ad22feb7c43c4b96ea",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-096-480.webp",
+          "sha256": "21a6aad5fcd95016db873a83f21828802a3ab08a7720109d143994274a6d95ce",
+          "bytes": 41004
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-096-960.webp",
+          "sha256": "19ccdbbb50175c1995e0659458c627f799b6c187d9a2d1b4adf947be29b225cd",
+          "bytes": 105868
+        }
+      ]
+    },
+    {
+      "number": 97,
+      "photoId": "GEL-097",
+      "recipeId": "icon-peanut-nougat-chocolate",
+      "collection": "icons",
+      "source": {
+        "file": "Icons/097.png",
+        "sha256": "6af1140f0f5b97507ed0b7a20b673ffc290ba9ee9904e272c25253eff5b42031",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-097-480.webp",
+          "sha256": "6ba57a44c85d25bfb84a1c0e69d6c970f412b526498608df3ff62315b1d1ffd6",
+          "bytes": 40348
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-097-960.webp",
+          "sha256": "5f1c7b67cddc153c17f6bf234d71f1bff99b33e731e12ba0347900587dba6e8b",
+          "bytes": 108638
+        }
+      ]
+    },
+    {
+      "number": 98,
+      "photoId": "GEL-098",
+      "recipeId": "icon-praline-wafer-crunch",
+      "collection": "icons",
+      "source": {
+        "file": "Icons/098.png",
+        "sha256": "197ee9f0cf35f4352ad25885ef08c8aa540858c542ffddac2505be5944a3d10f",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-098-480.webp",
+          "sha256": "4fea28a946a956386e02841d9d0b50004a567cea827c3d1bf39f6b4471ae4c69",
+          "bytes": 42082
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-098-960.webp",
+          "sha256": "79393538b1afb7b313e0b0b2e74f12b66ab302e3d199962e0296b4d61ce7d3bc",
+          "bytes": 112590
+        }
+      ]
+    },
+    {
+      "number": 99,
+      "photoId": "GEL-099",
+      "recipeId": "icon-puffed-rice-caramel",
+      "collection": "icons",
+      "source": {
+        "file": "Icons/099.png",
+        "sha256": "e8177c5d102d7076e9dba8cb70a340ddebeb6b531b440704234a89f724834e2b",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-099-480.webp",
+          "sha256": "714dc29acd51691dabbfaa0c6d8e325658c52ab1a97d8228e0f8ec7cdfea61c1",
+          "bytes": 37650
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-099-960.webp",
+          "sha256": "f1e5e2b3d3abb7da2489b9b18d3429c56cf62cc65a2c52f5e1550cd2309b2b69",
+          "bytes": 97534
+        }
+      ]
+    },
+    {
+      "number": 100,
+      "photoId": "GEL-100",
+      "recipeId": "icon-salted-pretzel-chocolate",
+      "collection": "icons",
+      "source": {
+        "file": "Icons/100.png",
+        "sha256": "51c819f972b0afad4275f010900a962936d04f0fe485b229eb8eeaf7506ba1cc",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-100-480.webp",
+          "sha256": "c9b75bea08ffb0487ad11740430735ce8bf585ba980aae8bcf3db9356e3c6b1b",
+          "bytes": 42940
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-100-960.webp",
+          "sha256": "15d6d8850f4a302866385c4d8b96a39bca5e53891fba149456101d42f02eadd0",
+          "bytes": 114804
+        }
+      ]
+    },
+    {
+      "number": 101,
+      "photoId": "GEL-101",
+      "recipeId": "icon-soft-nougat-caramel",
+      "collection": "icons",
+      "source": {
+        "file": "Icons/101.png",
+        "sha256": "437001c8832634d43f9de89cb6c33cb7b7ecac050fc1aea8994b22a57a871211",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-101-480.webp",
+          "sha256": "431efe24a2eebc10b7f6cac7fd04107cfa59275ef73e73fb6f9d888db8475d2c",
+          "bytes": 37906
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-101-960.webp",
+          "sha256": "72bc3019783c15c2226dd1570b50c9c8d324f86ef0f1ff8dce73cfb8a10033da",
+          "bytes": 101778
+        }
+      ]
+    },
+    {
+      "number": 102,
+      "photoId": "GEL-102",
+      "recipeId": "icon-white-hazelnut-wafer",
+      "collection": "icons",
+      "source": {
+        "file": "Icons/102.png",
+        "sha256": "aabf54dba4523a84e57d9a81a224ad779263cf45cbcb9484500f9c09bb6dccf4",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-102-480.webp",
+          "sha256": "de365c8b737c25a1e7adbc05664b41a9f023990becf33c65412c710a4c24cdfd",
+          "bytes": 35886
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-102-960.webp",
+          "sha256": "1e0b09b528023175b051c80bbbb3fb1f54570786520be5c5d02b86b81d2c106a",
+          "bytes": 90098
+        }
+      ]
+    },
+    {
+      "number": 103,
+      "photoId": "GEL-103",
+      "recipeId": "cocktail-mojito",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/103.png",
+        "sha256": "8c1a130ab1ce034d2f85c7b7c0e02d9b15a1ee13d342ffef4ad1cd558d110597",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-103-480.webp",
+          "sha256": "4e71445c5d5a0123916765d1dea2d9ad2f7d26041f115e7b7deda6f32304f717",
+          "bytes": 44114
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-103-960.webp",
+          "sha256": "2add26e66c671a01dc89d670afda55d843618034580b8561e44781f2fe383660",
+          "bytes": 123558
+        }
+      ]
+    },
+    {
+      "number": 104,
+      "photoId": "GEL-104",
+      "recipeId": "cocktail-strawberry-daiquiri",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/104.png",
+        "sha256": "6c3f22d4364fdb4d0108c7d144062e4328d2fad87f6e6a2514058c3fdcdff3b0",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-104-480.webp",
+          "sha256": "4531880e9256b1c7a55d1f04e1266523f35b4dfdc206a6b8c05519138bf6e832",
+          "bytes": 46782
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-104-960.webp",
+          "sha256": "16055d0987e83e793d50da72495747b7d0396d36ac401f7f3246d951480f0724",
+          "bytes": 129430
+        }
+      ]
+    },
+    {
+      "number": 105,
+      "photoId": "GEL-105",
+      "recipeId": "cocktail-margarita",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/105.png",
+        "sha256": "a6b72796f73021ba5cf572d304137e77fc0142bc1d0712bf9432657f36a4cff6",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-105-480.webp",
+          "sha256": "c1beb5c6182717c86a1a81de9447e7c91acd4786fcbe957cbb88429d654a8877",
+          "bytes": 41714
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-105-960.webp",
+          "sha256": "e7bcd500e9f6e8608d84ea462783fb4ca191addea582ff261fa84be5109630c5",
+          "bytes": 117928
+        }
+      ]
+    },
+    {
+      "number": 106,
+      "photoId": "GEL-106",
+      "recipeId": "cocktail-pina-colada",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/106.png",
+        "sha256": "27e27c971c3aaf717c849d03eb59fe9896b16b823cc17e7ef975582b1c78f245",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-106-480.webp",
+          "sha256": "12f1ff9e3277c866a33a1ae5025e7cf8264623494848940a25f1119b16d6a8f6",
+          "bytes": 40462
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-106-960.webp",
+          "sha256": "c6e52aaf21813c205e6f9e9055995d09dc279c5b375b29e1e3f0ea528486f289",
+          "bytes": 104494
+        }
+      ]
+    },
+    {
+      "number": 107,
+      "photoId": "GEL-107",
+      "recipeId": "cocktail-champagne-strawberry",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/107.png",
+        "sha256": "1fbb9629aae716c86ad09e18efcf8e6f5055ababdc2c89646e0a985324a80bda",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-107-480.webp",
+          "sha256": "4c2444fa30454128ef7a2857ff29d19027ff2be9a4c0ec7d6b92d3b3f4f5c72e",
+          "bytes": 40756
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-107-960.webp",
+          "sha256": "7a9e71627431f6d138efa32885774ea02d761e9a115d424b97098b0ed8695081",
+          "bytes": 118108
+        }
+      ]
+    },
+    {
+      "number": 108,
+      "photoId": "GEL-108",
+      "recipeId": "cocktail-sangria",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/108.png",
+        "sha256": "2411848041b3a45a07a524956703ae7e70f9ef2ef462c6370379e55ce1d06bde",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-108-480.webp",
+          "sha256": "6b1cfbc1f4fb158847ebe1057845dda5d51583663a049f1a33152b0da9e7f491",
+          "bytes": 48178
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-108-960.webp",
+          "sha256": "12596bd56fc4fb99d8aeabbc4883a48367785c8f07b7ca3b989c0de3826d50a7",
+          "bytes": 144654
+        }
+      ]
+    },
+    {
+      "number": 109,
+      "photoId": "GEL-109",
+      "recipeId": "cocktail-gin-tonic",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/109.png",
+        "sha256": "b00e67fa8a4faaf2813f649363d40f3203c01b817d8a2c1c437d82df269a5c69",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-109-480.webp",
+          "sha256": "7ea2f97a055dfc1c402f78ebcb9ba479f65d9afcca927b9945f33bf969d04ebd",
+          "bytes": 46240
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-109-960.webp",
+          "sha256": "ff850fa77dfc0e02fff3cfcefba2f84ce4c4d2379c4c75b0a555864001a430a1",
+          "bytes": 124068
+        }
+      ]
+    },
+    {
+      "number": 110,
+      "photoId": "GEL-110",
+      "recipeId": "cocktail-aperol-spritz",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/110.png",
+        "sha256": "7845ea33593902e31c7543db77d58925cde037fd331e9da7e21ce713b0436f38",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-110-480.webp",
+          "sha256": "11f1813125a87c8a245b4531805e614e7bc12a7346c65fabc9fd650901d1158b",
+          "bytes": 45286
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-110-960.webp",
+          "sha256": "828780719b65dbd48548f257fd2728befb1865ea180d789927afa901cbabb3ff",
+          "bytes": 129848
+        }
+      ]
+    },
+    {
+      "number": 111,
+      "photoId": "GEL-111",
+      "recipeId": "cocktail-bellini",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/111.png",
+        "sha256": "9e31553df0b6fa40af96fc0e2d98d727405d3ee0ede9866f0f1c56ab3d3c3476",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-111-480.webp",
+          "sha256": "def2d51d3a8ad1c7033b509b06c97a01447bfc31414912073dd914296ae95b75",
+          "bytes": 34944
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-111-960.webp",
+          "sha256": "246db49294d7d6ddeb7a48c4e385e2acc63888046b7b6cfd65904db640f66551",
+          "bytes": 91360
+        }
+      ]
+    },
+    {
+      "number": 112,
+      "photoId": "GEL-112",
+      "recipeId": "cocktail-caipirinha",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/112.png",
+        "sha256": "baa7928e4da3bbffa8fd841c6590ec19421214dbf4f6bae91be19ccda63b60e8",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-112-480.webp",
+          "sha256": "88ede102df92c1e3b8d772bfa1707f4b66f0c1982c721a367e28accea0d2e77f",
+          "bytes": 37760
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-112-960.webp",
+          "sha256": "8dc2b576fda4c58d2ad6d1906f9a548e52d714af480728944fde966355db1845",
+          "bytes": 102664
+        }
+      ]
+    },
+    {
+      "number": 113,
+      "photoId": "GEL-113",
+      "recipeId": "cocktail-classic-daiquiri",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/113.png",
+        "sha256": "6f0c23c7df9d1ca106ecc632036c22ed677fcdc675363c07f932a040e8585552",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-113-480.webp",
+          "sha256": "96b3aaea3d19fe5a5706f3c96ba9ad73f10edda7a98e14ae85cc1fdc35dff124",
+          "bytes": 38260
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-113-960.webp",
+          "sha256": "5910961f51b9b742b37aed23ad30b4fa115e39d238b3b0ae2ec3561a76b82536",
+          "bytes": 102290
+        }
+      ]
+    },
+    {
+      "number": 114,
+      "photoId": "GEL-114",
+      "recipeId": "cocktail-cosmopolitan",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/114.png",
+        "sha256": "fc19c12e0fb94cdff0a9204c7d546b1da8e8d0eba701cb69f2405f775dcc38f0",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-114-480.webp",
+          "sha256": "d554871ec73a5ba85d1ccb2415de0ae785fa9e168b6d2be546efc4bcb7784e19",
+          "bytes": 47894
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-114-960.webp",
+          "sha256": "72ce034302a49ed4370edbe30417f789f3c0fe9ad627e9fcaf9761b17f3ed468",
+          "bytes": 133570
+        }
+      ]
+    },
+    {
+      "number": 115,
+      "photoId": "GEL-115",
+      "recipeId": "cocktail-dark-rum-ginger",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/115.png",
+        "sha256": "0a0fb4f9a6796a544e7b381185cadc06a246c283136b20ed51817d0ba1f23712",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-115-480.webp",
+          "sha256": "dfc01554311e1a29acc33031b8ebd89bca910ac20f577bcba964f831a2d00656",
+          "bytes": 41516
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-115-960.webp",
+          "sha256": "2ebef6e2b7f8d43aae2f4bd0d4d9392bbfcb76c8aeebdfe412a2aee020c158ed",
+          "bytes": 116284
+        }
+      ]
+    },
+    {
+      "number": 116,
+      "photoId": "GEL-116",
+      "recipeId": "cocktail-hugo",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/116.png",
+        "sha256": "b4257da6556651f4f8dcc11453bf6eaa22a6b1d5e42ba87673e2bd42e670d95f",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-116-480.webp",
+          "sha256": "53015b39c450f106ed1f70f52aa8b4fe4f91ab593d17ecec70ad0736c364d6f4",
+          "bytes": 34168
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-116-960.webp",
+          "sha256": "62b82a21280f3ed0393455e6bec1602f35cc2ec9e989839c1e5d4969563b48d7",
+          "bytes": 88256
+        }
+      ]
+    },
+    {
+      "number": 117,
+      "photoId": "GEL-117",
+      "recipeId": "cocktail-limoncello-lemon",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/117.png",
+        "sha256": "41aa333606a536d7bacd8f707e2f0f0e3b87f6174c0e55c10039ed1b54453c1d",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-117-480.webp",
+          "sha256": "27f8471354d5e25451204c9af4caf691e5d612804b486ae16dbe630ae4e2481b",
+          "bytes": 35722
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-117-960.webp",
+          "sha256": "8bbcfe618efa15fd1daeb758996df398b18e7dd4db991c3e8ead8c92c6f26158",
+          "bytes": 89150
+        }
+      ]
+    },
+    {
+      "number": 118,
+      "photoId": "GEL-118",
+      "recipeId": "cocktail-mai-tai",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/118.png",
+        "sha256": "818233495e0a55d9c2d62ceae44f106dde9be8faa7d606f484f090317007caeb",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-118-480.webp",
+          "sha256": "1996e3a94765d8097693fa89b66f147fe6f77e12fb7a89470717876d4cdaacaf",
+          "bytes": 40562
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-118-960.webp",
+          "sha256": "593e0e8ecd144bba44b3814f5aca548ef185eba953ac58f4e62389c71cfac988",
+          "bytes": 110854
+        }
+      ]
+    },
+    {
+      "number": 119,
+      "photoId": "GEL-119",
+      "recipeId": "cocktail-mimosa",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/119.png",
+        "sha256": "c12bc16ca6fda7a041c82dcba0eece50d6679e0f0369b196bf03fb6986b2d1af",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-119-480.webp",
+          "sha256": "93ec16d847027fe4ae60b339a237b18a9c87f2222d9359cb5a639e587058ad22",
+          "bytes": 31232
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-119-960.webp",
+          "sha256": "319f30da2b463a0359c6e5b14baca54c6ec211692b038a2e1f9ffbc0d12624a1",
+          "bytes": 84660
+        }
+      ]
+    },
+    {
+      "number": 120,
+      "photoId": "GEL-120",
+      "recipeId": "cocktail-moscow-mule",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/120.png",
+        "sha256": "361fd33f81792fa79661972fbb202e0a6f9aaa8fe8e92d121dd10cab0ebc7021",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-120-480.webp",
+          "sha256": "55d005fec36cda97b625a73d774bad2397575b9f07c48a72d0f8e79db706f3ca",
+          "bytes": 38846
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-120-960.webp",
+          "sha256": "7fc74a2bfe9ad093f35efed26afbecf0b8a3c94f18d32ba9ad28be0b2502a646",
+          "bytes": 110850
+        }
+      ]
+    },
+    {
+      "number": 121,
+      "photoId": "GEL-121",
+      "recipeId": "cocktail-negroni-orange",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/121.png",
+        "sha256": "707023667b535dcb90bf6a41956da7d28ee7c9517d599b999d1deb3aa3759775",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-121-480.webp",
+          "sha256": "32390aaf45a9e28e20294cbbbc6ea16212f81ec8cb347b776141ef4050b91fb3",
+          "bytes": 39552
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-121-960.webp",
+          "sha256": "946d3874cada588199d6b7ce9091c02f23447cca63e2c9e316ef728ec9bd5c17",
+          "bytes": 106522
+        }
+      ]
+    },
+    {
+      "number": 122,
+      "photoId": "GEL-122",
+      "recipeId": "cocktail-paloma",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/122.png",
+        "sha256": "1cb7fb7575e27b8b130272227a7e921d315b48c8e83793a840bc0dccfc467762",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-122-480.webp",
+          "sha256": "90bbb1bb4291c7d272b280d63b0ff0892690619fc1e00ad46c418ca49091854b",
+          "bytes": 42312
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-122-960.webp",
+          "sha256": "89ec5524f7c4367e69925377311f368f8ad181e12e7f99718e29d6af54d0250f",
+          "bytes": 111390
+        }
+      ]
+    },
+    {
+      "number": 123,
+      "photoId": "GEL-123",
+      "recipeId": "cocktail-passion-martini",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/123.png",
+        "sha256": "19524f14e6cac560c643fbe051678b4d77c4ac4169dafc60c271c72f2cfc9e51",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-123-480.webp",
+          "sha256": "00118fe03f136ea0dc650cc68a6708bde39db1b96d06792a3053d2b1aea9ea04",
+          "bytes": 33958
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-123-960.webp",
+          "sha256": "22d44f3c951a8a8af5a685f0ba8d8df7c5710b25aec91282a05ca5f18c91ddec",
+          "bytes": 86860
+        }
+      ]
+    },
+    {
+      "number": 124,
+      "photoId": "GEL-124",
+      "recipeId": "cocktail-pisco-sour",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/124.png",
+        "sha256": "0313860765f1116f6909875b5982e17e1cd67d70a345a0c949ee68b391e71e70",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-124-480.webp",
+          "sha256": "f36a57da604ca201e3cc18385b9d949efe2f6c22f7ea14e23f38728cf181546e",
+          "bytes": 36290
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-124-960.webp",
+          "sha256": "026f5db611b7f1fc3c9eb94d890f5550f8f9866fb597eefbe1a7a7f71e57463c",
+          "bytes": 92604
+        }
+      ]
+    },
+    {
+      "number": 125,
+      "photoId": "GEL-125",
+      "recipeId": "cocktail-rose-berry",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/125.png",
+        "sha256": "b9f01bfde79a54544ba7660a9516144050e9bdb4318ea555d773750e5963b1d2",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-125-480.webp",
+          "sha256": "53a012d1d42e400f56094980d490e8f26cf6f39fbc2f09ace2de056e71b42cdd",
+          "bytes": 36990
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-125-960.webp",
+          "sha256": "b9c9d5871ef8222d4f326f5eb14d8e95effe941e1a85a6938c7fac957d5a4fdf",
+          "bytes": 97422
+        }
+      ]
+    },
+    {
+      "number": 126,
+      "photoId": "GEL-126",
+      "recipeId": "cocktail-rum-cola",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/126.png",
+        "sha256": "14ae44960f77009de4fe23c8c9753a3284f196f25d83cdbb5c9c7af1b8f34142",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-126-480.webp",
+          "sha256": "10530cf2c3d0dec2a0e1a2bd0d33446c5d974a844ebeb7af48c9d348b387b210",
+          "bytes": 32756
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-126-960.webp",
+          "sha256": "ebf4b65e3c6800f7113076fa1277834f29d5a0f16ecbb638d1418a67a81b88f5",
+          "bytes": 88922
+        }
+      ]
+    },
+    {
+      "number": 127,
+      "photoId": "GEL-127",
+      "recipeId": "cocktail-tequila-sunrise",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/127.png",
+        "sha256": "539203d6e8e98eeaa3f73f24772d767d2cc58d706b6b4bb22d0e76640c558a5f",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-127-480.webp",
+          "sha256": "f0727d135ae7ffba74b25bcbc116f4cf94fc73419b5bdea626fc1f330dacd1ee",
+          "bytes": 40728
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-127-960.webp",
+          "sha256": "7eadb632be56f834e94271ac9117eaa179d59381f5949abfb37d46e1c7925ede",
+          "bytes": 110988
+        }
+      ]
+    },
+    {
+      "number": 128,
+      "photoId": "GEL-128",
+      "recipeId": "cocktail-tom-collins",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/128.png",
+        "sha256": "fd257e5370b4693555d1a30a4851f5845f03267268189aa57c5caf2c0ed58657",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-128-480.webp",
+          "sha256": "ef5a8baf0a2909c7190aa09e5e110907036f39f2a4f6ffafd660f875aee743bd",
+          "bytes": 35234
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-128-960.webp",
+          "sha256": "054a6baa34eb67e75378cffbc870dc799f80af8a20b5a89e9b6abfed98964d05",
+          "bytes": 85260
+        }
+      ]
+    },
+    {
+      "number": 129,
+      "photoId": "GEL-129",
+      "recipeId": "cocktail-whisky-cola",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/129.png",
+        "sha256": "76b6dae6921dad5f34ab1f477ce53f80ecbbcd497af3e860253e7c739de2d78a",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-129-480.webp",
+          "sha256": "64230cff44bb9081284ba67b4bd1ff04add70dd7347d3542c60b442bb50903c6",
+          "bytes": 45502
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-129-960.webp",
+          "sha256": "7d561d94daa16821ce4a58f63da8a3b272664029517c6bc512be60f4dacb2f18",
+          "bytes": 127266
+        }
+      ]
+    },
+    {
+      "number": 130,
+      "photoId": "GEL-130",
+      "recipeId": "cocktail-whisky-sour",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/130.png",
+        "sha256": "b9276343adf3fa146d2198cbbfea2a6a5b74f30ee21283a95759eca699242bb2",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-130-480.webp",
+          "sha256": "0554f8778a377139e414b9dac213ac0a2b86b733f766e4a529bc774e43abb4f2",
+          "bytes": 32162
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-130-960.webp",
+          "sha256": "3980756d0686f7ab63dfabcf8f31432cb72cc722c0cd835cb3db1ad04f288301",
+          "bytes": 81108
+        }
+      ]
+    },
+    {
+      "number": 131,
+      "photoId": "GEL-131",
+      "recipeId": "cocktail-brandy-cherry",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/131.png",
+        "sha256": "00ab2e2be989aa218c37ec790b244542eaf5f45b1180bfd994d75e7561464f43",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-131-480.webp",
+          "sha256": "2373a3d66d2972c6d6cb7a70587477a75ea5946ffcfc1bcbf12ea89e60359747",
+          "bytes": 38962
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-131-960.webp",
+          "sha256": "3f9fe52f8aac3024c8ec8e63aec1235d1b79e43d063ec79c6ab8f67e7615c04b",
+          "bytes": 103936
+        }
+      ]
+    },
+    {
+      "number": 132,
+      "photoId": "GEL-132",
+      "recipeId": "cocktail-irish-coffee",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/132.png",
+        "sha256": "8b555bdfacbf0ad83d8813fe67c8785da08a0dd6aaf2051bb802a9eef8ef9aac",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-132-480.webp",
+          "sha256": "9b4f27d876382abc4e8118c9be53cbd07f677e909d2fa2cea96cde1ca8678946",
+          "bytes": 35504
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-132-960.webp",
+          "sha256": "0e2b38ee29e103986ad174fe1b5c8b15009a4218caba0cd5c0d2022313c2460e",
+          "bytes": 94050
+        }
+      ]
+    },
+    {
+      "number": 133,
+      "photoId": "GEL-133",
+      "recipeId": "cocktail-port-fig",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/133.png",
+        "sha256": "fcef1371a84bea4b57c71f561bf700c58741011f0714cb5d01375ba5c347b8ba",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-133-480.webp",
+          "sha256": "7c1196b7ac60fc71a1416c1f56c661699f5f76c10c0b4fda884358e7063259b8",
+          "bytes": 40988
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-133-960.webp",
+          "sha256": "cbbdf6bcfb45a88b3bdb3451915ea61d4bcdace55a3356d887d0c4d8d885e7d9",
+          "bytes": 106618
+        }
+      ]
+    },
+    {
+      "number": 134,
+      "photoId": "GEL-134",
+      "recipeId": "cocktail-espresso-martini",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/134.png",
+        "sha256": "44f606496c4a18b4587f509ba79176ec28c466335995a1ec74b4812d53de152c",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-134-480.webp",
+          "sha256": "60ae1ad8bd2cc6c9bba98db9549cde626f423849da127c92fba6fcf48c48c962",
+          "bytes": 36510
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-134-960.webp",
+          "sha256": "3ea7570f2f13e020670e7b12290db3e623ea7e527bbbb8f5d103fe1e910c7f51",
+          "bytes": 92256
+        }
+      ]
+    },
+    {
+      "number": 135,
+      "photoId": "GEL-135",
+      "recipeId": "spirit-amaretto-almond",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/135.png",
+        "sha256": "10b458962d2a6167f852554bcf8f52c4646e73bfc2c55eb39f26cc8dfec4a38c",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-135-480.webp",
+          "sha256": "ccbaf7a57b44b342cf07f5a7ed8f00c122aa9a1bad45e5f7995931179a2abd9b",
+          "bytes": 28174
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-135-960.webp",
+          "sha256": "3a25ae90f6593da4bfca67d4111b489ea5f0f9ccb9b5e02de1bb6471852256ff",
+          "bytes": 68620
+        }
+      ]
+    },
+    {
+      "number": 136,
+      "photoId": "GEL-136",
+      "recipeId": "spirit-amaretto-coffee",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/136.png",
+        "sha256": "05500b2ff77e50c77bf5cc18522711d4120774f9dd9de23bcfe84b9cd7b083e2",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-136-480.webp",
+          "sha256": "798ed56c8f84b34f897b950305b35865841cb4caf26d5fb8de9f6ad80956b210",
+          "bytes": 44644
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-136-960.webp",
+          "sha256": "f29f65f64781eb5e7fde97ecdbe6f9439a59bde36373b9a396e34184107c8557",
+          "bytes": 115662
+        }
+      ]
+    },
+    {
+      "number": 137,
+      "photoId": "GEL-137",
+      "recipeId": "spirit-bourbon-caramel",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/137.png",
+        "sha256": "974c7c365e702a857dd48bfbff02c62752f40af230b90c5875cc8ccb544c2753",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-137-480.webp",
+          "sha256": "59738d257ea5c3626940533598ebc41e812a54419d40b0f8339ec7a1e7ab35e3",
+          "bytes": 39474
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-137-960.webp",
+          "sha256": "57bdcb2b136a568bf4ce7691c6ae45a7f458941fa2ecc06eca95aa12be4b0d1d",
+          "bytes": 105310
+        }
+      ]
+    },
+    {
+      "number": 138,
+      "photoId": "GEL-138",
+      "recipeId": "spirit-bourbon-vanilla",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/138.png",
+        "sha256": "227f8f529da28da8e7fb1cbfe837e56d9c19e0dd8015e84e5d48c069ed238536",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-138-480.webp",
+          "sha256": "a7d66e311635156963314516bf0be454d77765c3b4be0bdfbef0aacc33b84acf",
+          "bytes": 42224
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-138-960.webp",
+          "sha256": "6cfc0f53023318a2f8f66821d1caaeb00c10c1182fab5cab25f01316305797a1",
+          "bytes": 104652
+        }
+      ]
+    },
+    {
+      "number": 139,
+      "photoId": "GEL-139",
+      "recipeId": "spirit-coffee-cream-liqueur",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/139.png",
+        "sha256": "3ac1f662d3112ada16a28a215a25230212428a446ee7d82b3d463726a621d2e9",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-139-480.webp",
+          "sha256": "7000b17d60b499ea459b85ed812f4388474591c87d5522c262627dc50404ad30",
+          "bytes": 33196
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-139-960.webp",
+          "sha256": "a3f6f477a544eaea2b11a3e66a873d3d4a62a74804682aef107a106c4034177d",
+          "bytes": 86812
+        }
+      ]
+    },
+    {
+      "number": 140,
+      "photoId": "GEL-140",
+      "recipeId": "spirit-cognac-chocolate",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/140.png",
+        "sha256": "5cd00415bb2ec938f9c81b4ec484857779df07b9dfa1d38a7a0734f083fba8b8",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-140-480.webp",
+          "sha256": "6031b1518415236a9e4e9cc50e8591785fb9095152b9a18d1a6d54c5c02c6f25",
+          "bytes": 42110
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-140-960.webp",
+          "sha256": "c616b91a0d9db34d2006d57e566511d3e4376c93bebf53c2164c82021f1aac7d",
+          "bytes": 114052
+        }
+      ]
+    },
+    {
+      "number": 141,
+      "photoId": "GEL-141",
+      "recipeId": "spirit-limoncello-cream",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/141.png",
+        "sha256": "dc85d6330ca5128fd1133abbe20da7e9f40ce80a283a48f98e5d84619cbe131a",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-141-480.webp",
+          "sha256": "d1d5bd47838175c5fb9f94b048497b0496c72539bab250b6409f998e82886b39",
+          "bytes": 33948
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-141-960.webp",
+          "sha256": "30d77eb653f3819c17455ecd5173a90bc6f1ccf14d20f3890ca590d406eb92fe",
+          "bytes": 81708
+        }
+      ]
+    },
+    {
+      "number": 142,
+      "photoId": "GEL-142",
+      "recipeId": "spirit-orange-dark-choc",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/142.png",
+        "sha256": "d971aa4827c2e8cd73f8bb7df0fa4e40dbf5bca19f07c65ede23d4904dbe55bd",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-142-480.webp",
+          "sha256": "46f6461819e6489c6d3300268f912ecc2179104941ab2e4df7bb2df780a8545b",
+          "bytes": 34942
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-142-960.webp",
+          "sha256": "523c2a153b466487d1220e65418638693f3a9aec1de3f4804b4c0d356cf7d6f8",
+          "bytes": 93022
+        }
+      ]
+    },
+    {
+      "number": 143,
+      "photoId": "GEL-143",
+      "recipeId": "spirit-rum-raisin",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/143.png",
+        "sha256": "61f018b4f8da8eec89639bc230cce16e9e00bea01721c725e41b02362ae86f08",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-143-480.webp",
+          "sha256": "8c664abd60c2da4da0f82db71491c1946ccbcf1ef18a160a5acdd42f35086bb6",
+          "bytes": 42532
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-143-960.webp",
+          "sha256": "7f76a5088d7f62f40a322f25d3d7fa390898c0981ec1b387de2e83b6b4623ccc",
+          "bytes": 112964
+        }
+      ]
+    },
+    {
+      "number": 144,
+      "photoId": "GEL-144",
+      "recipeId": "spirit-rum-chocolate",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/144.png",
+        "sha256": "ecde0587b085420e058479c2033bd809ef3d1dc31bf0398961593ca1c740d16c",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-144-480.webp",
+          "sha256": "15bc97bd9bf86dd36372ef02bf0573f2cb1ff981918fae1938e155e595710f9b",
+          "bytes": 44118
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-144-960.webp",
+          "sha256": "18a35dfd9ccf20735f8b56b8b350a52cee2a091c1d66ed30e18faed6dd7ce3fc",
+          "bytes": 120166
+        }
+      ]
+    },
+    {
+      "number": 145,
+      "photoId": "GEL-145",
+      "recipeId": "spirit-rum-coconut",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/145.png",
+        "sha256": "1b5e12fcf8af10963a79b8754a9ea261c4506e57cdbe8a0f3d2a3c5f1e7c159e",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-145-480.webp",
+          "sha256": "f0aaa006ac43af380302dac5f5c104044e47b63f9cc84ddfc0422b654c64334a",
+          "bytes": 37266
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-145-960.webp",
+          "sha256": "be8f9a898ea1bcdae139512bcf14ea692614453e475ce1c763b1122b9ac211be",
+          "bytes": 100336
+        }
+      ]
+    },
+    {
+      "number": 146,
+      "photoId": "GEL-146",
+      "recipeId": "spirit-rum-coffee",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/146.png",
+        "sha256": "94e57de1eb442051a010e01ab709c3d117895b4746a9b417dc80d60882d46c21",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-146-480.webp",
+          "sha256": "e12e38490d98f896021a2e7ac3ff351a05004abb5fc6e658da64de8a4c06198b",
+          "bytes": 44276
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-146-960.webp",
+          "sha256": "5fe8c77eed1bb7f53e7690d2fb2d13269d7395414e74aa8dcc5487f3b425c9c4",
+          "bytes": 118802
+        }
+      ]
+    },
+    {
+      "number": 147,
+      "photoId": "GEL-147",
+      "recipeId": "spirit-whisky-caramel",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/147.png",
+        "sha256": "2a50dfd8cd535ad958d2aa47dc4da931e41de87c9c7126c9cd576f3a51d46de5",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-147-480.webp",
+          "sha256": "83f21839fdac8d8e22b06aa9c329d4c1efb5df26f7a95d469dd65197eed3599a",
+          "bytes": 31070
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-147-960.webp",
+          "sha256": "e40fc1977042b3c6d6282ce5d53155bc26a4b524eea7ca60dcbd6b1e371d6412",
+          "bytes": 80720
+        }
+      ]
+    },
+    {
+      "number": 148,
+      "photoId": "GEL-148",
+      "recipeId": "spirit-whisky-chocolate",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/148.png",
+        "sha256": "88c732c05ffff8c045d1342ed938322d92d2a792f1611241d3f377223c1b5203",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-148-480.webp",
+          "sha256": "4a6ab9708f50652f20876c267905d7c13cd5c4c683ea80656fcec2db3a216dc9",
+          "bytes": 43338
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-148-960.webp",
+          "sha256": "d0b817ebcc1f933a2361f46ebaed622a476d5fcf21fd3aaa342ddc770650fa7f",
+          "bytes": 118498
+        }
+      ]
+    },
+    {
+      "number": 149,
+      "photoId": "GEL-149",
+      "recipeId": "spirit-whisky-coffee",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/149.png",
+        "sha256": "8de693b8269adbed45767c25e97c5bf4ecf1920fa6aa721113cdaa559c0803fc",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-149-480.webp",
+          "sha256": "cfd5e9f396399c6a018c41d519fe123537c0d8421612ae599e78d1caffa181b2",
+          "bytes": 41362
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-149-960.webp",
+          "sha256": "bde29a0fa3f3353933e9b407aab575ec0733fe6a42137290e41d0bc07c9c8095",
+          "bytes": 103216
+        }
+      ]
+    },
+    {
+      "number": 150,
+      "photoId": "GEL-150",
+      "recipeId": "spirit-whisky-vanilla",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/150.png",
+        "sha256": "f850c0799c3f09b53e0e8b7d73960f73dc93f6129e546dffc187fa2c46fcc981",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-150-480.webp",
+          "sha256": "341c8c34091099b7c8cf43857dbd511877d3f7a4ca435c7b83530aa531044509",
+          "bytes": 35652
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-150-960.webp",
+          "sha256": "8e4e5a5913a965ba4ed6fa93075b2dcf1243239dd10bd57786a2e0831bdd287d",
+          "bytes": 92780
+        }
+      ]
+    },
+    {
+      "number": 151,
+      "photoId": "GEL-151",
+      "recipeId": "lost-ar-sambayon",
+      "collection": "lost_legendary",
+      "source": {
+        "file": "Lost & Legendary/151.png",
+        "sha256": "80392a82d6a794a35847d50fd57045bee1b3239634f4af96839b12154d27c72b",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-151-480.webp",
+          "sha256": "78d78793d92f3adf8835cea9ca288927139833c664e4d0ce1e8824d8878e2437",
+          "bytes": 40314
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-151-960.webp",
+          "sha256": "6293d295f4f5bcd8af02778453117423b00b8550cf350908feb668a1c7ac6525",
+          "bytes": 105558
+        }
+      ]
+    },
+    {
+      "number": 152,
+      "photoId": "GEL-152",
+      "recipeId": "lost-ec-paila-mora",
+      "collection": "lost_legendary",
+      "source": {
+        "file": "Lost & Legendary/152.png",
+        "sha256": "a6b5916c2dab664830f88bd5b926095cd7acbe43adbca452a578c5bb3d26d6a4",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-152-480.webp",
+          "sha256": "c8390c030ddcb02ba6b2ef16dbc3396a948d332dfae32af474a6b03bb460da18",
+          "bytes": 55664
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-152-960.webp",
+          "sha256": "3f9b34cb6b65833208a0fd17b02a5a067a9d7684eb3f7d5d704f5cd96c08f1eb",
+          "bytes": 164216
+        }
+      ]
+    },
+    {
+      "number": 153,
+      "photoId": "GEL-153",
+      "recipeId": "lost-pe-queso-helado",
+      "collection": "lost_legendary",
+      "source": {
+        "file": "Lost & Legendary/153.png",
+        "sha256": "55e1a695c47b0b1db4ddd06a235691fb790b2e31ab9d249f00f45265b43c7639",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-153-480.webp",
+          "sha256": "ab516bffb92423bca845ae18348dba42d95bad6ad88891fe0aa275b8eb933adb",
+          "bytes": 54674
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-153-960.webp",
+          "sha256": "9388f45da838810eb288aa6ee5e21b33a5efa21227b3d7c6fb53551f74b5b4b0",
+          "bytes": 150678
+        }
+      ]
+    },
+    {
+      "number": 154,
+      "photoId": "GEL-154",
+      "recipeId": "lost-mx-nieve-mango",
+      "collection": "lost_legendary",
+      "source": {
+        "file": "Lost & Legendary/154.png",
+        "sha256": "fbc5697ebae7cd43ca233cd2eff849bf0ccca15dbe6d520fb5db3530470fe39e",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-154-480.webp",
+          "sha256": "fb747c899f036bb169c692dd5ee97b28e591cb4dc5b0a5bad161751a88593257",
+          "bytes": 47440
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-154-960.webp",
+          "sha256": "d95cc577cd8cbe5b52c3994d53a22a9f9b121623db418533bd13ed41342316e9",
+          "bytes": 130868
+        }
+      ]
+    },
+    {
+      "number": 155,
+      "photoId": "GEL-155",
+      "recipeId": "lost-us-rocky-road",
+      "collection": "lost_legendary",
+      "source": {
+        "file": "Lost & Legendary/155.png",
+        "sha256": "ae0fbea924d6c642574714e187cbf169c028165d74152bedecb956ff1f474053",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-155-480.webp",
+          "sha256": "16b9d917365a3ef9c4029a58a0f0bcb395f97844b88dc5f0be94f116de1f8bbb",
+          "bytes": 44860
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-155-960.webp",
+          "sha256": "8179790a5bea1ab239683f04a6cd82a871c70e1f40eb1da98d0c83c1c6a9b114",
+          "bytes": 116762
+        }
+      ]
+    },
+    {
+      "number": 156,
+      "photoId": "GEL-156",
+      "recipeId": "lost-in-kulfi",
+      "collection": "lost_legendary",
+      "source": {
+        "file": "Lost & Legendary/156.png",
+        "sha256": "e2b374e8a0722edec35b1e6dbbe259b850aa82fb8a42caa98fe03d78564fee55",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-156-480.webp",
+          "sha256": "0e25207e4f939c5c3f25806a255f25afdff9606498a045486bda2f3a1439c1f5",
+          "bytes": 39252
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-156-960.webp",
+          "sha256": "619671a590b36c78bf9cda32983c06dc079f7ca8550466014ccbbaee52274634",
+          "bytes": 108590
+        }
+      ]
+    },
+    {
+      "number": 157,
+      "photoId": "GEL-157",
+      "recipeId": "lost-jp-matcha-azuki",
+      "collection": "lost_legendary",
+      "source": {
+        "file": "Lost & Legendary/157.png",
+        "sha256": "8a1f1bcdd2147e37a6843d3bec055d9867fae0f2763aa47ce3b307b1e51ad540",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-157-480.webp",
+          "sha256": "af4fceecd0a4cc603f2bc67654f282ed63311961d468eecf97de5fe2d16c5b86",
+          "bytes": 45778
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-157-960.webp",
+          "sha256": "ad2d1fe807dd72a90a52525be4c687c8f40df60f9c2b337117c497f011657596",
+          "bytes": 123338
+        }
+      ]
+    },
+    {
+      "number": 158,
+      "photoId": "GEL-158",
+      "recipeId": "lost-tr-maras",
+      "collection": "lost_legendary",
+      "source": {
+        "file": "Lost & Legendary/158.png",
+        "sha256": "35cc4d0c99c93003992ad5ec76c4665307953443ad8ba6f3df51f53a97bce520",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-158-480.webp",
+          "sha256": "1f522814267e757a8c6d676c934e3485b7bd0c6659a10a9ce9932fad1e76dfa0",
+          "bytes": 54844
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-158-960.webp",
+          "sha256": "d6b1762ed0e00b924ca48589b50ab3902570daf0c77c1dc9bc8d4cecf30c02fa",
+          "bytes": 146206
+        }
+      ]
+    },
+    {
+      "number": 159,
+      "photoId": "GEL-159",
+      "recipeId": "lost-fr-plombieres",
+      "collection": "lost_legendary",
+      "source": {
+        "file": "Lost & Legendary/159.png",
+        "sha256": "5f331af3b3c4f83fb915476eaf09b242a283688c3ae3af1e04f87518abba19ce",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-159-480.webp",
+          "sha256": "c0c59ceedae3a256523431a6c600f5150cbb25e66cde198da1b0a62323af5be3",
+          "bytes": 46128
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-159-960.webp",
+          "sha256": "ea3062bd05b061bf1a8b10050e0e77fcc71cf0c64550032b508be56cf356ca9b",
+          "bytes": 125162
+        }
+      ]
+    },
+    {
+      "number": 160,
+      "photoId": "GEL-160",
+      "recipeId": "lost-gr-kaimaki",
+      "collection": "lost_legendary",
+      "source": {
+        "file": "Lost & Legendary/160.png",
+        "sha256": "a92ff934ee8b80847044df8a4f5050c89dd54b44121b676a97b1aeb8ed71d027",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-160-480.webp",
+          "sha256": "bb2df3c309722098d3307675085bc06392642ad1a040f5f4f7a5953cc51173a1",
+          "bytes": 40102
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-160-960.webp",
+          "sha256": "d05d564487a05933845021b5d70132055923810d4696c065b969f5796234b947",
+          "bytes": 102306
+        }
+      ]
+    },
+    {
+      "number": 161,
+      "photoId": "GEL-161",
+      "recipeId": "lost-es-turron",
+      "collection": "lost_legendary",
+      "source": {
+        "file": "Lost & Legendary/161.png",
+        "sha256": "ef6be48b5cd8a4cddf693b5e7d4fdbe6ce86122296fbce1aab3f6ff1a2a980bb",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-161-480.webp",
+          "sha256": "e81f68134ed80d47e89d4c47cb1ae3746dfe11ceeb5178bb9376a7fb7ef5f040",
+          "bytes": 50498
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-161-960.webp",
+          "sha256": "7cfad2729a1a9991f83554ea50324acb0a21a6d1b73e3e8420ffa12f7b377b88",
+          "bytes": 134830
+        }
+      ]
+    },
+    {
+      "number": 162,
+      "photoId": "GEL-162",
+      "recipeId": "lost-pl-yolk-v2",
+      "collection": "lost_legendary",
+      "source": {
+        "file": "Lost & Legendary/162.png",
+        "sha256": "70ed890724b910a6a22e1937bf0afc5c8a2e787c2f8ea194da87458c05ef41b7",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-162-480.webp",
+          "sha256": "9c3e3d90e88b207f8492277637fc0a53adcb38f85b0c1acbf25a29aaa100cf92",
+          "bytes": 39410
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-162-960.webp",
+          "sha256": "e0f22cf12f25dd062d0e2b94156e4537972d999407b68128e986b5167d65df23",
+          "bytes": 106806
+        }
+      ]
+    },
+    {
+      "number": 163,
+      "photoId": "GEL-163",
+      "recipeId": "lost-gb-rum-raisin",
+      "collection": "lost_legendary",
+      "source": {
+        "file": "Lost & Legendary/163.png",
+        "sha256": "e1514511fcb711a4c5cc4ea086d37d4780d7757d21338a13adced3d37a3f1a15",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-163-480.webp",
+          "sha256": "01c172b04e9b28cdee809428ef7f8cde0f6780c9ac76f974ca740125b151b639",
+          "bytes": 41698
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-163-960.webp",
+          "sha256": "37cd05f30ea8adeb75d191e97d09d28374a8b5b3e6a7fbaf78c9b7e9fe527e55",
+          "bytes": 113436
+        }
+      ]
+    },
+    {
+      "number": 164,
+      "photoId": "GEL-164",
+      "recipeId": "lost-it-zabaione",
+      "collection": "lost_legendary",
+      "source": {
+        "file": "Lost & Legendary/164.png",
+        "sha256": "9f97a7c2e670566da3b387ad2cdd2daabd9ba9b31cdf51f1b3f97863a1349986",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-164-480.webp",
+          "sha256": "c788523a58edd07140057ee8fc763139c08ec731d49c620017e5f6889eb2f414",
+          "bytes": 45190
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-164-960.webp",
+          "sha256": "00f760e144ece5503c45fe519e483f569d0996397721fd96a93067aebda580b2",
+          "bytes": 127604
+        }
+      ]
+    },
+    {
+      "number": 165,
+      "photoId": "GEL-165",
+      "recipeId": "lost-nz-hokey-pokey",
+      "collection": "lost_legendary",
+      "source": {
+        "file": "Lost & Legendary/165.png",
+        "sha256": "ae2f9408e8ffe99f87ceae6d1c3c7410a263af6311917be3d9de890cd8ba30ce",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-165-480.webp",
+          "sha256": "1b8fac7686fbfe93dec5b37ddc2883eedb05874c7ee0b32fff457856e85cc3a3",
+          "bytes": 50230
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-165-960.webp",
+          "sha256": "103953ccddb0ecedda4a7092876d22b47632be35df3e6c96ab945501d83149c6",
+          "bytes": 144244
+        }
+      ]
+    },
+    {
+      "number": 166,
+      "photoId": "GEL-166",
+      "recipeId": "tech-protein-11",
+      "collection": "technical_bases",
+      "source": {
+        "file": "Technical Bases/166.png",
+        "sha256": "dcd06df6e0a2cb5c46461d8846c18b34c2ca7459c5ca4afa0a9636c4fc8e326c",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-166-480.webp",
+          "sha256": "420ed62beb867ca62a3d218563e583346c5b112fca112c046d4920da681f9286",
+          "bytes": 28162
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-166-960.webp",
+          "sha256": "7ef16ae08a854b5ee824e5eee0fe0a37c66bc53235ff47aebf3558c65fa5bb97",
+          "bytes": 68810
+        }
+      ]
+    },
+    {
+      "number": 167,
+      "photoId": "GEL-167",
+      "recipeId": "tech-protein-12-v2",
+      "collection": "technical_bases",
+      "source": {
+        "file": "Technical Bases/167.png",
+        "sha256": "5362d485047b2b77088d81e83695bad71079194325bc0598ea5997c1cdbc1950",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-167-480.webp",
+          "sha256": "32d4ef947fe0c633b6878a696e965b5e16c83dfcd7287c073501641f1e533c32",
+          "bytes": 22944
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-167-960.webp",
+          "sha256": "071121e1ab6d101e79f5e2bd9aeb901572fb8db4e8c793ea839e64fe28557858",
+          "bytes": 59782
+        }
+      ]
+    },
+    {
+      "number": 168,
+      "photoId": "GEL-168",
+      "recipeId": "tech-protein-13-v2",
+      "collection": "technical_bases",
+      "source": {
+        "file": "Technical Bases/168.png",
+        "sha256": "9e3d6dd299badb1d8bb59546badca4de7deb5ea93650dceda8633f73d30dbf99",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-168-480.webp",
+          "sha256": "25ce813c2ff27a4ee40d3a05b1ffe60d999adaa0aaeb20252d7705cf9e8d910c",
+          "bytes": 24598
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-168-960.webp",
+          "sha256": "51316254358a4dce8985d7d0afd420216d73dd630d13f1118f3fb5cb6737be7c",
+          "bytes": 62708
+        }
+      ]
+    },
+    {
+      "number": 169,
+      "photoId": "GEL-169",
+      "recipeId": "tech-sorbet-11",
+      "collection": "technical_bases",
+      "source": {
+        "file": "Technical Bases/169.png",
+        "sha256": "ae864481681eb3611fc3c575b781e3439ac50c1bd87bfbf55009ce7095879c19",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-169-480.webp",
+          "sha256": "79c439fd9dc1c4f1b4ceaa9eff67bc51fc664a967fa179d326ac38aa13e56dee",
+          "bytes": 37140
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-169-960.webp",
+          "sha256": "c12b88ab491e49e2a3ed5404dde557dcaa6fa0f5d27e297bd15c46d7d8b5d25a",
+          "bytes": 98264
+        }
+      ]
+    },
+    {
+      "number": 170,
+      "photoId": "GEL-170",
+      "recipeId": "tech-sorbet-12",
+      "collection": "technical_bases",
+      "source": {
+        "file": "Technical Bases/170.png",
+        "sha256": "a4ee5edf7a480000c026ed63d7364dd63009eeb96f5316df7ee3adec4307ee35",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-170-480.webp",
+          "sha256": "08a29ad8cb43b97727e427f387a91bb540a38b206cefa42bd7f2f3b840ecfe92",
+          "bytes": 26404
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-170-960.webp",
+          "sha256": "81cd308c87c479e770671c5d3544863d6bfef0117591a1a4dbd29f354f5ce860",
+          "bytes": 67268
+        }
+      ]
+    },
+    {
+      "number": 171,
+      "photoId": "GEL-171",
+      "recipeId": "tech-sorbet-13",
+      "collection": "technical_bases",
+      "source": {
+        "file": "Technical Bases/171.png",
+        "sha256": "c949ffc03e17aec6b5cfe9e1a41e74e8798a3e6b6f29adabd0ce63b66e812e5d",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-171-480.webp",
+          "sha256": "54d5f36a71290ec8ede5bf13832c46a2f17797a01d9ef13e5873fddd1828ff5f",
+          "bytes": 25726
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-171-960.webp",
+          "sha256": "178b4935f3ace41e7ad88ecaaca2a248488e42a697b61e885e532e247c78f10e",
+          "bytes": 73406
+        }
+      ]
+    },
+    {
+      "number": 172,
+      "photoId": "GEL-172",
+      "recipeId": "tech-gelato-11",
+      "collection": "technical_bases",
+      "source": {
+        "file": "Technical Bases/172.png",
+        "sha256": "13809c8a1d6b90af08dc1e7c632284e39169db6e8390e027b7c2750c9b7f456b",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-172-480.webp",
+          "sha256": "ec110fca9a4c95fd6d8db0bb40c9694a7a993815945eea60e161352a4c87c20c",
+          "bytes": 22754
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-172-960.webp",
+          "sha256": "5f820d3c64092aaa3a4162362c6df7b15a15378a8e41d11c64bccfbe0f32eeeb",
+          "bytes": 61136
+        }
+      ]
+    },
+    {
+      "number": 173,
+      "photoId": "GEL-173",
+      "recipeId": "tech-gelato-12",
+      "collection": "technical_bases",
+      "source": {
+        "file": "Technical Bases/173.png",
+        "sha256": "0910f453a20b720652f9e86862b4c13ac15c900e5ed2c47e360fb4bd045a0e88",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-173-480.webp",
+          "sha256": "9621a428395a4bf4df68a15c0279fc9f66ce9a001b8beb3770f225acfa65f78b",
+          "bytes": 24604
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-173-960.webp",
+          "sha256": "d7f7516cf1581386ef42e2a9f169bba73ad5753b9c7da1e4d5bbda5307ec3f47",
+          "bytes": 62132
+        }
+      ]
+    },
+    {
+      "number": 174,
+      "photoId": "GEL-174",
+      "recipeId": "tech-gelato-13-v2",
+      "collection": "technical_bases",
+      "source": {
+        "file": "Technical Bases/174.png",
+        "sha256": "8a4e502ce5ed411e8527a9c1b3d8bc6037c6646900d3811de982c3687ef01416",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-174-480.webp",
+          "sha256": "169f57dbf3b610883938c68a8d039dc2f96b26ea14ecabca38e8976eb4fa7214",
+          "bytes": 24842
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-174-960.webp",
+          "sha256": "a56cf8374f77359fa8875d6b673da788378b59e3b31dc20da2243d56b2bd3d92",
+          "bytes": 69276
+        }
+      ]
+    },
+    {
+      "number": 175,
+      "photoId": "GEL-175",
+      "recipeId": "tech-vegan-11-v2",
+      "collection": "technical_bases",
+      "source": {
+        "file": "Technical Bases/175.png",
+        "sha256": "cd3ef731cdae911e36c3da9a8f5112616f2a8f71f43bba8e09faa08a4bff57f9",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-175-480.webp",
+          "sha256": "8ab9fa893d20a3179913cd6cd3f89c6c3757f504a043f7973dba1e281afafb75",
+          "bytes": 27278
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-175-960.webp",
+          "sha256": "0a5a7c32f08746f466cbe78d8bb15b4b7c9a748f852f589e23e6d0a478ef34ad",
+          "bytes": 75070
+        }
+      ]
+    },
+    {
+      "number": 176,
+      "photoId": "GEL-176",
+      "recipeId": "tech-vegan-12",
+      "collection": "technical_bases",
+      "source": {
+        "file": "Technical Bases/176.png",
+        "sha256": "7973de78961c7f528e7e4cd3a98566f4146f52a288329a9f2026a854c54fbe19",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-176-480.webp",
+          "sha256": "8018fa75be2c571b5db06eed45ed255244ac1134ab3f6ee88f251aa3b551bcb0",
+          "bytes": 27144
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-176-960.webp",
+          "sha256": "2630c73a46235337151aa3b15000103c1cda68e02c8eddb307c290631382431a",
+          "bytes": 76076
+        }
+      ]
+    },
+    {
+      "number": 177,
+      "photoId": "GEL-177",
+      "recipeId": "tech-vegan-13",
+      "collection": "technical_bases",
+      "source": {
+        "file": "Technical Bases/177.png",
+        "sha256": "655f8892581a1aff10c54ebf9f6d6426ccab9e824f55ddb1035fe44588f035fa",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-177-480.webp",
+          "sha256": "eb518ec6f1ac3ffdfd008201e2c25d80f22af696ee5758401b3178c7886f9e9c",
+          "bytes": 30210
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-177-960.webp",
+          "sha256": "7ddf77ffc99ef3023ca48f2ea44d9e32dbdb19e6546c4fa32548579439b0cc2e",
+          "bytes": 86322
+        }
+      ]
+    }
+  ],
+  "heroes": [
+    {
+      "collection": "classics",
+      "source": {
+        "file": "Classics/Classics.png",
+        "sha256": "9382e08d66831787c2ab51361466665de39ca2254b062fa327877e628f29b5d6",
+        "width": 1672,
+        "height": 941
+      },
+      "outputs": [
+        {
+          "width": 960,
+          "path": "public/recipes/official/collections/classics-960.webp",
+          "sha256": "890a26a453e5de1d79de8123eae5b303ec3c4fda7f8af4c5789c264d892af76b",
+          "bytes": 113720
+        },
+        {
+          "width": 1672,
+          "path": "public/recipes/official/collections/classics-1672.webp",
+          "sha256": "82e64f3fcccb164ccca36b3ede120588ba3fb76ed014d91b98619858e2b27773",
+          "bytes": 258422
+        }
+      ]
+    },
+    {
+      "collection": "icons",
+      "source": {
+        "file": "Icons/Icons.png",
+        "sha256": "f874b99e27384a8ee2cdd625cf9678118be30aa03d689000252650e23a04e568",
+        "width": 1672,
+        "height": 941
+      },
+      "outputs": [
+        {
+          "width": 960,
+          "path": "public/recipes/official/collections/icons-960.webp",
+          "sha256": "5b85e110afc3c30b7b71047e651700e552ee247c44ccf474ece5237447127c6f",
+          "bytes": 75128
+        },
+        {
+          "width": 1672,
+          "path": "public/recipes/official/collections/icons-1672.webp",
+          "sha256": "14ecb1e35591eeed0779291e643c61163059f22bc3128ddbaa548c30e7835183",
+          "bytes": 173692
+        }
+      ]
+    },
+    {
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/Cocktails_Spirits.png",
+        "sha256": "aaa65ba7d89874ab6aeb5723fe0b1fdb105bb4b91e39ff64753bbda79c28ac7c",
+        "width": 1672,
+        "height": 941
+      },
+      "outputs": [
+        {
+          "width": 960,
+          "path": "public/recipes/official/collections/cocktails_spirits-960.webp",
+          "sha256": "4ba3ef5380d8d9438a227c0ac5535495deefac689eeaa54d92b93590f35ad52d",
+          "bytes": 85352
+        },
+        {
+          "width": 1672,
+          "path": "public/recipes/official/collections/cocktails_spirits-1672.webp",
+          "sha256": "a7d35b06bfe28a63e3d105cf19c6e5b4bf1753572ad8060ae9d13acef9842503",
+          "bytes": 182570
+        }
+      ]
+    },
+    {
+      "collection": "lost_legendary",
+      "source": {
+        "file": "Lost & Legendary/Lost_Legendary.png",
+        "sha256": "90c7298421895560e6b7dad9d273cd0ac342412ca4f385e5501f9f497c44eb3a",
+        "width": 1672,
+        "height": 941
+      },
+      "outputs": [
+        {
+          "width": 960,
+          "path": "public/recipes/official/collections/lost_legendary-960.webp",
+          "sha256": "2ededc652514ec32d7a91f2251df64296786a5f9805b5ab24328b44c0b5f0c6a",
+          "bytes": 109002
+        },
+        {
+          "width": 1672,
+          "path": "public/recipes/official/collections/lost_legendary-1672.webp",
+          "sha256": "7150a1e50e8e9ec89c06f187d696ffd0bd6c528c7e0439cc16d524bbcf22e243",
+          "bytes": 246072
+        }
+      ]
+    },
+    {
+      "collection": "technical_bases",
+      "source": {
+        "file": "Technical Bases/Technical_Bases.png",
+        "sha256": "60970cc32ef6bd1389a51ca5d79f51f06493f88f29754926af8cefd19d5cba9b",
+        "width": 1672,
+        "height": 941
+      },
+      "outputs": [
+        {
+          "width": 960,
+          "path": "public/recipes/official/collections/technical_bases-960.webp",
+          "sha256": "c27a921c4f4c8fc28b4d867c9f2b2abf9ac85d22b6d254d7d5b4a0560c4e9507",
+          "bytes": 75230
+        },
+        {
+          "width": 1672,
+          "path": "public/recipes/official/collections/technical_bases-1672.webp",
+          "sha256": "f137efd9c2ace54e214c34061ee39386fae6c927d09bce87cff26787d939202a",
+          "bytes": 170190
+        }
+      ]
+    }
+  ]
+}

@@ -37,7 +37,7 @@ interface LinksModeProps {
  * `/community` and `/top100` are part of the Recipes experience, not separate
  * destinations the customer is thrown into: they keep this strip, so the way
  * back to the library is always where the way out was. Inside `/recipes` the
- * four library panels stay a real tablist; on the two public routes every
+ * three library panels stay a real tablist; on the two public routes every
  * entry is a link, which is what a route change actually is.
  */
 export function RecipeLibraryNav(props: TabsModeProps | LinksModeProps) {

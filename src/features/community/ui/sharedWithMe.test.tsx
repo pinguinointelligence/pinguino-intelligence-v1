@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * „Udostępnione mi" — the whole surface, rendered (§12, §13).
+ * „Udostępnione" — the whole surface, rendered (§12, §13).
  *
  * The live database tests proved the RULES. This proves the SCREEN: that both
  * views exist, that every state the spec names is actually shown to a user,

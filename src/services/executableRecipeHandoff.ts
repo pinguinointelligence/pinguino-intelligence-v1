@@ -102,7 +102,7 @@ const ownerReviewCompositionMissing = (row: IngredientRow): string[] =>
     return typeof value !== 'number' || !Number.isFinite(value);
   });
 
-const effectiveIngredientCost = (
+export const effectiveIngredientCost = (
   ingredient: EngineIngredient,
   resolved: ServerResolvedProductBehavior,
 ): EngineIngredient => {
