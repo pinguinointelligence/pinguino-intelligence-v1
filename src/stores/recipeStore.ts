@@ -216,6 +216,12 @@ export type AddIngredientResult =
   | { status: 'added'; lineId: string; canonicalId: string }
   | { status: 'duplicate'; lineId: string; canonicalId: string };
 
+export interface AddIngredientOptions {
+  /** The customer supplied this exact amount in the Add flow. Source/system
+   * amounts deliberately omit this marker and remain solver-mutable. */
+  amountIntent?: 'user_exact';
+}
+
 export type ReplaceIngredientResult =
   | { status: 'replaced'; lineId: string; canonicalId: string }
   | { status: 'duplicate'; lineId: string; canonicalId: string }
@@ -502,7 +508,11 @@ export interface RecipeState {
    * the same canonical identity. A duplicate is a strict no-op: it must not
    * dirty the draft, refresh product data or invalidate Preview/Undo state.
    */
-  addIngredient: (ingredient: EngineIngredient, grams?: number) => AddIngredientResult;
+  addIngredient: (
+    ingredient: EngineIngredient,
+    grams?: number,
+    options?: AddIngredientOptions,
+  ) => AddIngredientResult;
   /** Replace one Base row in place. The line id, amount and explicit locks are
    * retained; selecting a canonical identity already present elsewhere is a
    * strict no-op rather than a duplicate-producing add. */
@@ -559,6 +569,12 @@ export interface RecipeState {
   setIngredientUnavailable: (lineId: string, unavailable: boolean) => void;
   /** Owner P0 repair: fold plannable duplicate-ingredient lines into one (explicit action). */
   mergeDuplicateIngredientLines: () => void;
+  /** One atomic USER_SET_EXACT_GRAMS transaction: validates and commits a real
+   * manual amount change together with its exact-grams constraint. Crown/Main
+   * remains an independent Engine role and may coexist with the sidecar. */
+  setExactGrams: (lineId: string, grams: number) => void;
+  /** Lower-level amount write for non-interactive/internal callers. User-facing
+   * HOME and PRO grams controls must use `setExactGrams`. */
   setPlannedGrams: (lineId: string, grams: number) => void;
   /** One atomic direct-manipulation write for a coherent full recipe vector. */
   setPlannedGramsVector: (gramsByLineId: Readonly<Record<string, number>>) => void;
@@ -1883,7 +1899,7 @@ export const useRecipeStore = create<RecipeState>()(
         return { ok: true };
       },
 
-      addIngredient: (ingredient, grams = 100) => {
+      addIngredient: (ingredient, grams = 100, options) => {
         const canonicalId = canonicalIngredientId(ingredient);
         const current = get();
         const existing = firstCanonicalBaseItem(current.items, current.baseOrder, ingredient);
@@ -1898,14 +1914,20 @@ export const useRecipeStore = create<RecipeState>()(
           candidate.id,
           grams,
         );
+        const engineRole = current.unavailableMainIngredientIds.some(
+          (id) => canonicalIngredientIdFromSourceId(id) === canonicalId,
+        )
+          ? ('main' as const)
+          : ('unlocked' as const);
+        const userExactAmount =
+          options?.amountIntent === 'user_exact' && Number.isFinite(grams) && grams >= 0;
         const added = {
           ...candidate,
           planned_grams: aggregate.grams,
-          lock_type: current.unavailableMainIngredientIds.some(
-            (id) => canonicalIngredientIdFromSourceId(id) === canonicalId,
-          )
-            ? ('main' as const)
-            : ('unlocked' as const),
+          lock_type:
+            userExactAmount && !ENGINE_KEPT_LOCKS.has(engineRole) ? ('grams' as const) : engineRole,
+          ...(userExactAmount ? { grams_constraint: { grams: aggregate.grams } } : {}),
+          ...(userExactAmount ? { user_target_grams: aggregate.grams } : {}),
           ...(aggregate.grams > 0 ? { user_intent_anchor_grams: aggregate.grams } : {}),
         };
         set((state) => {
@@ -2396,6 +2418,55 @@ export const useRecipeStore = create<RecipeState>()(
               }
             : {};
         }),
+
+      setExactGrams: (lineId, grams) => {
+        if (!Number.isFinite(grams)) return;
+        set((state) => {
+          const line = state.items.find((item) => item.id === lineId);
+          if (!line) return {};
+          const requestedGrams = Math.max(0, grams);
+          const required = productBehaviorRequiredLineIds({
+            items: [{ ...line, planned_grams: requestedGrams }],
+          });
+          if (
+            productBehaviorIsManaged(state.productBehaviorSnapshots) &&
+            required.length > 0 &&
+            !productBehaviorModuleGate(state.productBehaviorSnapshots, 'BASE_RECIPE', required)
+              .ready
+          )
+            return {};
+          const aggregate = clampOwnerStabilizerComponentGrams(
+            buildRecipeInput(state),
+            lineId,
+            requestedGrams,
+          );
+          const targetGrams = aggregate.grams;
+          // A boundary click, unchanged typed value or clamped request is not a
+          // new exact decision. It must not manufacture a lock or revision.
+          if (Object.is(line.planned_grams, targetGrams)) return {};
+          const items = state.items.map((item) => {
+            const next = { ...item };
+            delete next.user_target_grams;
+            if (item.id !== lineId) return next;
+            next.planned_grams = targetGrams;
+            next.user_target_grams = targetGrams;
+            delete next.range_constraint;
+            delete next.percent_constraint;
+            delete next.amount_provenance;
+            next.grams_constraint = { grams: targetGrams };
+            next.lock_type = ENGINE_KEPT_LOCKS.has(item.lock_type) ? item.lock_type : 'grams';
+            if (targetGrams > 0) next.user_intent_anchor_grams = targetGrams;
+            else delete next.user_intent_anchor_grams;
+            return next;
+          });
+          return {
+            items: line.lock_type === 'main' ? equalCrownSeedWeights(items) : items,
+            crownAutoSeededLineIds: clearCrownAutoSeeded(state.crownAutoSeededLineIds, lineId),
+            dirty: true,
+            draftRevision: state.draftRevision + 1,
+          };
+        });
+      },
 
       setPlannedGrams: (lineId, grams) =>
         set((state) => {

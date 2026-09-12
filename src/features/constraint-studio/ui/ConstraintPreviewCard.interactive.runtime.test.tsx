@@ -72,7 +72,7 @@ afterEach(async () => {
 });
 
 describe('interactive recalculation preview card', () => {
-  it('shows the strong reduction with the row’s own control; an edit turns Zastosuj into Przelicz and back', async () => {
+  it('MGAL-PREVIEW-UI-01 a grams edit auto-locks and a separate unlock remains available', async () => {
     const preview = ownerPreview();
     const cranberry = preview.lines.find((line) => line.lineId === 'cranberry')!;
     expect(cranberry.beforeGrams).toBe(130);
@@ -104,16 +104,18 @@ describe('interactive recalculation preview card', () => {
     expect(host.textContent).toContain(
       'Zmieniono ustawienia. Przelicz, aby zobaczyć nową propozycję.',
     );
+    expect(q('[data-testid="preview-lock-cranberry"]')?.getAttribute('aria-pressed')).toBe('true');
 
-    // Back to the proposal: the edit is withdrawn, nothing to recalculate.
+    // Returning to the original grams is itself another exact decision, so the
+    // automatic lock stays on until the customer explicitly unlocks it.
     await act(async () => stepper('cranberry', 'zmniejsz').click());
-    expect(q('[data-testid="preview-row-cranberry"]')?.dataset.edited).toBe('false');
-    expect(q('[data-testid="preview-apply"]')).not.toBeNull();
-    expect(q('[data-testid="preview-recalculate"]')).toBeNull();
-
-    // +1 g and the padlock → an exact instruction, recalculated in place.
-    await act(async () => stepper('cranberry', 'zwiększ').click());
+    expect(q('[data-testid="preview-row-cranberry"]')?.dataset.edited).toBe('true');
+    expect(q('[data-testid="preview-lock-cranberry"]')?.getAttribute('aria-pressed')).toBe('true');
     await act(async () => q<HTMLButtonElement>('[data-testid="preview-lock-cranberry"]')!.click());
+    expect(q('[data-testid="preview-row-cranberry"]')?.dataset.edited).toBe('false');
+
+    // The next amount change turns it on again without a second click.
+    await act(async () => stepper('cranberry', 'zwiększ').click());
     expect(q('[data-testid="preview-lock-cranberry"]')?.getAttribute('aria-pressed')).toBe('true');
     await act(async () => q<HTMLButtonElement>('[data-testid="preview-recalculate"]')!.click());
     expect(onRecalculate).toHaveBeenCalledWith([
@@ -122,7 +124,7 @@ describe('interactive recalculation preview card', () => {
     expect(onApply).not.toHaveBeenCalled();
   });
 
-  it('an edit without the padlock stays unlocked — no hidden lock', async () => {
+  it('MGAL-PREVIEW-UI-02 manual unlock does not immediately relock, but the next grams edit does', async () => {
     const preview = ownerPreview();
     const cranberry = preview.lines.find((line) => line.lineId === 'cranberry')!;
     const onRecalculate = vi.fn();
@@ -137,10 +139,13 @@ describe('interactive recalculation preview card', () => {
       );
     });
     await act(async () => stepper('cranberry', 'zwiększ').click());
+    await act(async () => q<HTMLButtonElement>('[data-testid="preview-lock-cranberry"]')!.click());
+    expect(q('[data-testid="preview-lock-cranberry"]')?.getAttribute('aria-pressed')).toBe('false');
     await act(async () => stepper('cranberry', 'zwiększ').click());
+    expect(q('[data-testid="preview-lock-cranberry"]')?.getAttribute('aria-pressed')).toBe('true');
     await act(async () => q<HTMLButtonElement>('[data-testid="preview-recalculate"]')!.click());
     expect(onRecalculate).toHaveBeenCalledWith([
-      { lineId: 'cranberry', grams: cranberry.afterGrams! + 2, locked: false },
+      { lineId: 'cranberry', grams: cranberry.afterGrams! + 2, locked: true },
     ]);
   });
 

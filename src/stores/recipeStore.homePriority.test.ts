@@ -394,7 +394,7 @@ describe('§17 AUTO→MANUAL persistence', () => {
       store.indexOf(
         '      applyVerifiedRecipeInput: (input, productBehaviorSnapshots, options) => {',
       ),
-      store.indexOf('      addIngredient: (ingredient, grams = 100) => {'),
+      store.indexOf('      addIngredient: (ingredient, grams = 100, options) => {'),
     );
     expect(applyDoor.length).toBeGreaterThan(1000);
     expect(applyDoor).not.toContain('priority_mode');

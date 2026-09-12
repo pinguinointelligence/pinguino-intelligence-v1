@@ -234,7 +234,9 @@ export function IngredientBuilder({
   const removeItem = useRecipeStore((state) => state.removeItem);
   const setCanonicalUnavailable = useRecipeStore((state) => state.setIngredientUnavailable);
   const lockAwareCoreActions: IngredientRowActions = wrapActions({
-    setPlannedGrams: useRecipeStore((state) => state.setPlannedGrams),
+    // Shared HOME + PRO rule: a direct row grams edit is one exact-quantity
+    // transaction. System vectors, Apply and resize keep their own doors.
+    setPlannedGrams: useRecipeStore((state) => state.setExactGrams),
     setActualGrams: useRecipeStore((state) => state.setActualGrams),
     setLockType: useRecipeStore((state) => state.setLockType),
     setMainIngredient: useRecipeStore((state) => state.setMainIngredient),
@@ -274,7 +276,7 @@ export function IngredientBuilder({
       const requiredLineIds = productBehaviorRequiredLineIds({
         items: [{ ...line, planned_grams: requestedGrams }],
       });
-      // The managed check is the same authority `setPlannedGrams` and
+      // The managed check is the same authority `setExactGrams` and
       // `setPlannedGramsVector` apply in the store. Without it this wrapper was
       // strictly stricter than the action it wraps: an unresolved workspace
       // (signed-out, or the demo preset cold-open) has no snapshot for any

@@ -111,10 +111,10 @@ describe('the amount editor is the shared PRO control, summoned not resident', (
   it('routes every mutation through canonical store authority', () => {
     /* The amount control no longer GUESSES which collection owns a row. A recipe line
        and a topping live in different store collections with different actions, and the
-       control called `setPlannedGrams` for both — which looks the line up in
+       control called the Base grams action for both — which looks the line up in
        `state.items` and returns early when it is not there, so every topping edit was
        silently dropped. The row now names its own authority. */
-    expect(row).toContain('setPlannedGrams(item.id, next)');
+    expect(row).toContain('setExactGrams(item.id, next)');
     expect(row).toContain('setToppingGrams(topping.id, next)');
     expect(row).toContain('setLockType(item.id,');
   });

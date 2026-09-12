@@ -328,7 +328,7 @@ export function HomeRecipeSection({
                 useRecipeStore
                   .getState()
                   .setLockType(item.id, item.lock_type === 'grams' ? 'unlocked' : 'grams', 'home'),
-              commit: (next: number) => useRecipeStore.getState().setPlannedGrams(item.id, next),
+              commit: (next: number) => useRecipeStore.getState().setExactGrams(item.id, next),
             };
           }
           const topping = toppings.find((line) => line.id === editingLineId);
@@ -543,7 +543,7 @@ export function HomeRecipeSection({
       {/* ONE dialog for the whole list, summoned by „Zmień ilość". It overlays the
           page instead of expanding a row, so the list and the buttons never move.
           Each collection commits through ITS OWN store action — a topping is not in
-          `state.items`, so `setPlannedGrams` would silently drop the edit (#207). */}
+          `state.items`, so a Base grams action would silently drop the edit (#207). */}
       {editingItem ? (
         <HomeChangeAmountDialog
           name={editingItem.name}
