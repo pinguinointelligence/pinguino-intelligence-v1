@@ -13,6 +13,9 @@
  */
 import { getEngineApprovedIngredientById } from '@/services/ingredients';
 import { ingredientRowToEngineIngredient } from '@/data/ingredients/ingredientMapper';
+import { materializeCanonicalToolboxIngredient } from '@/data/ingredients/canonicalToolboxIngredient';
+import { prepareProductEngineIngredient } from '@/data/products/productEngineHandoff';
+import { getProduct } from '@/services/products';
 import { searchCanonicalMapperIngredients } from '@/services/productPicker/mapperSearch';
 import type { EngineIngredient } from '@/engine';
 import type { SafeMapperSearchRow } from '@/services/productPicker/mapperSearch';
@@ -64,6 +67,47 @@ export async function resolveChipTerm(
  * would be an ingredient with invented science.
  */
 export async function hydrateIngredient(ingredientId: string): Promise<EngineIngredient | null> {
-  const row = await getEngineApprovedIngredientById(ingredientId);
-  return row ? ingredientRowToEngineIngredient(row) : null;
+  const row = await getEngineApprovedIngredientById(ingredientId).catch(() => null);
+  if (row) return ingredientRowToEngineIngredient(row);
+
+  // HOME is available before sign-in, while the rich Mapper selection view is
+  // authenticated-only. The central resolver still returns the exact legal PI id,
+  // so materialise only identities covered by the existing immutable toolbox bridge.
+  // This is an exact-id fallback, never a name match or a second ranking pass.
+  return materializeCanonicalToolboxIngredient(ingredientId);
+}
+
+export interface ExactScannedProductIdentity {
+  readonly id: string;
+  readonly productCode?: string | null;
+  readonly displayName: string;
+  readonly entityKind: 'pi_base' | 'commercial_product';
+}
+
+/**
+ * Hydrate a scanner-confirmed product by its exact canonical product id.
+ *
+ * Once Scanner has established identity, HOME must not feed its display name back
+ * into search or collapse a PR/PM article to its generic Mapper slot. The existing
+ * product handoff borrows the confirmed reference composition while retaining the
+ * product code, UUID and display identity on the recipe line.
+ */
+export async function hydrateExactScannedProduct(
+  scanned: ExactScannedProductIdentity,
+): Promise<EngineIngredient | null> {
+  const product = await getProduct(scanned.id).catch(() => null);
+  if (!product || product.id !== scanned.id || !product.matched_basement_id) return null;
+
+  const reference = await getEngineApprovedIngredientById(product.matched_basement_id).catch(
+    () => null,
+  );
+  const handoff = prepareProductEngineIngredient(product, reference);
+  if (!handoff.ready || !handoff.ingredient || handoff.blocked_by_red_flags) return null;
+
+  return {
+    ...handoff.ingredient,
+    // The scanner's confirmed customer-facing identity wins over a stale display
+    // projection, while stable recipe identity still comes from the exact product.
+    name: scanned.displayName.trim() || handoff.ingredient.name,
+  };
 }

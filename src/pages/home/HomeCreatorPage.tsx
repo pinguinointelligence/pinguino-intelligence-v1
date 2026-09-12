@@ -814,7 +814,7 @@ export function HomeCreatorPage() {
                 setScannerOpen(false);
                 // The SAME door a typed ingredient uses. The scanner supplies the identity;
                 // every rule about what it may do in a recipe stays where it lives.
-                void intentIngredients.addScannedProduct(product.id).then(askAmountFor);
+                void intentIngredients.addScannedProduct(product).then(askAmountFor);
               }}
               onReturn={() => setScannerOpen(false)}
               onChoosePlan={(plan) => {

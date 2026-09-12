@@ -97,6 +97,7 @@ import {
   type ProductPickerScope,
 } from './productPickerCompatibility';
 import {
+  isHardCompatibleReplacementCandidate,
   isCurrentReplacementIdentity,
   type ReplacementSearchLineContext,
 } from './replacementSearchContext';
@@ -643,6 +644,22 @@ export function ProductPickerPopover({
           return false;
         }
         if (!activeReplacementContext) return true;
+        if (
+          !isHardCompatibleReplacementCandidate(
+            activeReplacementContext,
+            option.catalog ?? {
+              displayName: option.name,
+              category: option.category,
+              productForm: option.detail,
+              favorite: option.favorite,
+              usableInBase: scope === 'BASE_FORMULATION',
+              usableAsTopping: scope === 'POST_PROCESS_ADDON',
+              mainAllowed: true,
+            },
+          )
+        ) {
+          return false;
+        }
         return !isCurrentReplacementIdentity(
           activeReplacementContext,
           option.catalog ?? {
