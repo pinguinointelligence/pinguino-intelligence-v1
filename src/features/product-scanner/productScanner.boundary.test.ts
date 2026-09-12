@@ -147,6 +147,22 @@ describe('Product Scanner server/client/security boundary', () => {
     expect(analyze).not.toMatch(/api\.openai\.com[\s\S]{0,400}ean_lookup/);
   });
 
+  it('SCN-GTIN-DIRECT-006 asks OpenFoodFacts directly after the known-product short circuit', () => {
+    const lookupBranch = analyze.slice(
+      analyze.indexOf("if (mode === 'ean_lookup')"),
+      analyze.indexOf('// Pre-existing implicit any[]'),
+    );
+    expect(lookupBranch.indexOf('if (exact)')).toBeLessThan(
+      lookupBranch.indexOf('openFoodFactsApiUrl(barcode)'),
+    );
+    expect(lookupBranch.indexOf('openFoodFactsApiUrl(barcode)')).toBeLessThan(
+      lookupBranch.indexOf('/functions/v1/intimport-enrich'),
+    );
+    expect(lookupBranch).toContain('openFoodFactsFactsForExactEan');
+    expect(lookupBranch).toContain('unresolvedLookupFields');
+    expect(lookupBranch).toContain('fields: unresolvedLookupFields');
+  });
+
   it('keeps Scanner general web search opt-in and off the client path', () => {
     // `allowWeb: true` used to be sent on EVERY ordinary scan, held back only by a flag
     // whose default was ON. The client no longer sends it and the server no longer reads it.
