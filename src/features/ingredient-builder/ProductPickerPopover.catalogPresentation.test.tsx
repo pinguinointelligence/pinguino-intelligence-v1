@@ -670,26 +670,28 @@ describe('ProductPickerPopover catalog presentation', () => {
       commercialHit({
         id: 'whipping-cream',
         mappedIngredientId: 'PI-WHIPPING-CREAM',
-        displayName: 'WHIPPING CREAM',
-        canonicalFamily: 'cream',
+        displayName: 'WHIPPING CREAM · Tesco Cream · Chilled',
+        canonicalFamily: null,
         category: 'dairy',
-        productForm: 'cream',
+        productForm: 'fresh',
       }),
       commercialHit({
         id: 'banana-cream',
-        mappedIngredientId: 'PI-BANANA-PASTE',
-        displayName: 'BANANA · Fabbri Cream',
-        canonicalFamily: 'banana',
-        category: 'fruit',
-        productForm: 'paste',
+        mappedIngredientId: 'PI-ING-000188',
+        displayName: 'BANANA · Fabbri Cream · Chilled · 0004282',
+        originalName: 'delipaste_banana_fabbri_0004282',
+        canonicalFamily: null,
+        category: 'dairy',
+        productForm: 'liquid',
       }),
       commercialHit({
         id: 'amaretto-cream',
-        mappedIngredientId: 'PI-AMARETTO',
-        displayName: 'AMARETTO CREAM',
-        canonicalFamily: 'amaretto',
-        category: 'alcohol',
-        productForm: 'liqueur',
+        mappedIngredientId: 'PI-ING-000184',
+        displayName: 'AMARETTO · Fabbri Cream · Chilled · 0004306',
+        originalName: 'delipasta_amaretto_fabbri_0004306',
+        canonicalFamily: null,
+        category: 'dairy',
+        productForm: 'liquid',
       }),
     ];
     await renderPicker(vi.fn(), 'ADD', {
@@ -711,7 +713,7 @@ describe('ProductPickerPopover catalog presentation', () => {
     expect(document.body.textContent).toContain('CREAM 36%');
     expect(document.body.textContent).toContain('WHIPPING CREAM');
     expect(document.body.textContent).not.toContain('BANANA · Fabbri Cream');
-    expect(document.body.textContent).not.toContain('AMARETTO CREAM');
+    expect(document.body.textContent).not.toContain('AMARETTO · Fabbri Cream');
     expect(document.querySelectorAll('[role="option"]')).toHaveLength(2);
     expect(document.querySelector('[data-picker-section="recent"]')?.textContent).toContain(
       'CREAM 36%',

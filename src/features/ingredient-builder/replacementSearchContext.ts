@@ -15,6 +15,7 @@ import {
   matchesProductDiscoverySubfilter,
   type ProductDiscoveryMetadata,
 } from './canonicalProductDiscovery';
+import { normalizeSearchText } from './ingredientSearch';
 
 export type CentralSearchUsageMode = 'HOME_ADD' | 'PRO_SEARCH' | 'HOME_REPLACE' | 'PRO_REPLACE';
 
@@ -58,6 +59,40 @@ export interface ReplacementCandidateFacts extends ProductDiscoveryMetadata {
   usableInBase: boolean;
   usableAsTopping: boolean;
   mainAllowed?: boolean;
+}
+
+/**
+ * Mapper contains flavour preparations whose supplier/product label ends in
+ * "Cream" even though their technological form is a generic liquid (for example
+ * BANANA · Fabbri Cream). That suffix is search evidence, not proof that the row
+ * can replace dairy cream. Keep the hard replacement gate on the candidate's
+ * primary concept + governed form; presentation labels and recency cannot widen it.
+ */
+function isTechnologicalCreamReplacement(candidate: ReplacementCandidateFacts): boolean {
+  if (normalizeSearchText(candidate.canonicalFamily ?? '') === 'cream') return true;
+
+  const category = normalizeSearchText(candidate.category ?? '').replaceAll(' ', '_');
+  if (category !== 'dairy') return false;
+
+  const form = normalizeSearchText(candidate.productForm ?? '').replaceAll(' ', '_');
+  if (
+    form === 'cream' ||
+    /^cream_\d/.test(form) ||
+    /^(?:clotted|sour)_cream$/.test(form) ||
+    form === 'milk_cream_blend'
+  ) {
+    return true;
+  }
+
+  const primaryConcept = normalizeSearchText(candidate.displayName.split(/\s+(?:·|—)\s+/u)[0] ?? '');
+  const percentageCream =
+    /^cream(?: pl)? \d+(?: \d+)?$/.test(primaryConcept) ||
+    /^(?:smietana|crema|panna|sahne|creme) \d+(?: \d+)?$/.test(primaryConcept);
+  const namedDairyCream =
+    /^(?:whipping|double|single|sweet|sour|clotted|heavy|light|polish) cream(?: \d+(?: \d+)?)?$/.test(
+      primaryConcept,
+    );
+  return (form === 'fresh' || form === 'liquid') && (percentageCream || namedDairyCream);
 }
 
 export function createReplacementSearchLineContext(input: {
@@ -156,6 +191,7 @@ export function isHardCompatibleReplacementCandidate(
 
   const required = context.userFilters;
   if (required.family && !matchesProductDiscoveryFamily(candidate, required.family)) return false;
+  if (required.family === 'cream' && !isTechnologicalCreamReplacement(candidate)) return false;
   if (
     required.filter !== 'all' &&
     required.filter !== 'favorites' &&
