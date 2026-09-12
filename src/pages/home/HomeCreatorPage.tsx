@@ -450,7 +450,9 @@ export function HomeCreatorPage() {
    */
   const addIngredientLine = useCallback(
     (ingredient: EngineIngredient, behavior: ProductBehaviorSnapshot | null, grams: number) => {
-      const added = useRecipeStore.getState().addIngredient(ingredient, grams);
+      const added = useRecipeStore
+        .getState()
+        .addIngredient(ingredient, grams, grams > 0 ? { amountIntent: 'user_exact' } : undefined);
       if (added.status === 'duplicate') return;
       if (behavior) {
         useRecipeStore

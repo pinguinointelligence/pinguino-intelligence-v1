@@ -217,7 +217,12 @@ export function LockConflictPanel({
                     testId={`lock-conflict-control-${lock.lineId}`}
                     widthPreset="grams"
                     density="responsive"
-                    onChange={(grams) => update(lock, { grams, locked: shown.locked })}
+                    onChange={(grams) =>
+                      update(lock, {
+                        grams,
+                        locked: Math.round(grams) === shown.grams ? shown.locked : true,
+                      })
+                    }
                     lockSegment={{
                       pressed: shown.locked,
                       ariaLabel: copy.interactive.lockAria(lock.ingredientName, shown.locked),

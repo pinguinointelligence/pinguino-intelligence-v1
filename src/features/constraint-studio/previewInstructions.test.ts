@@ -24,7 +24,7 @@ const applied = (
 };
 
 describe('interactive preview instructions — the recipe row semantics, nothing new', () => {
-  it('an edited unlocked amount is the customer amount: planned, typed target and anchor, no lock', () => {
+  it('MGAL-PREVIEW-01 an edited amount is exact intent even when the earlier padlock snapshot was off', () => {
     const input = ownerFruitRecipe();
     const result = applied(input, { byLineId: {} }, [
       { lineId: 'cranberry', grams: 20, locked: false },
@@ -34,11 +34,10 @@ describe('interactive preview instructions — the recipe row semantics, nothing
       planned_grams: 20,
       user_target_grams: 20,
       user_intent_anchor_grams: 20,
-      lock_type: 'unlocked',
+      lock_type: 'grams',
+      grams_constraint: { grams: 20 },
     });
-    expect(cranberry.grams_constraint).toBeUndefined();
-    // No hidden lock: an edit never creates a constraint.
-    expect(result.constraints.byLineId).toEqual({});
+    expect(result.constraints.byLineId).toEqual({ cranberry: { mode: 'locked', grams: 20 } });
   });
 
   it('only the latest typed amount keeps the soft target, exactly like the row', () => {

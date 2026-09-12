@@ -87,7 +87,7 @@ describe('the page never creates an invalid line', () => {
   });
 
   it('has exactly one place that creates a Base line', () => {
-    expect(page.match(/getState\(\)\.addIngredient\(/g) ?? []).toHaveLength(1);
+    expect(page.match(/getState\(\)\s*\.addIngredient\(/g) ?? []).toHaveLength(1);
   });
 
   it('never persists a fake minimum', () => {

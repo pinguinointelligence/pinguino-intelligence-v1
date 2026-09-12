@@ -10,14 +10,12 @@
  * the three can never disagree about what the customer asked for.
  *
  * The semantics are the recipe row's own, nothing new:
- *  - a CHANGED amount is the customer's amount, exactly as if it were typed
- *    into the row (`recipeStore.setPlannedGrams`): planned grams, the typed
- *    soft target and the user-intent anchor;
- *  - `locked: true` is the exact padlock at that amount (`toggleLock` →
- *    `setGramLock`): the solver must keep it;
- *  - `locked: false` is no padlock. An edit never creates a hidden lock, and
- *    an unchanged amount with the padlock released is a plain unlock — the
- *    same as pressing the padlock in the row.
+ *  - a CHANGED amount is the customer's exact amount, exactly as if it were
+ *    typed into the row (`recipeStore.setExactGrams`): planned grams, target,
+ *    intent anchor and exact lock in one result;
+ *  - an unchanged amount may still carry a separate padlock choice;
+ *  - `locked: false` at an unchanged amount is a plain unlock. If grams also
+ *    changed, the newer exact-amount decision wins and the result is locked.
  */
 import type { LockType, RecipeInput, RecipeItem } from '@/engine';
 import {
@@ -139,6 +137,7 @@ export function applyPreviewInstructions(
     // 1. The amount. Only a CHANGED amount is a typed amount; the row writes
     //    nothing when the value is left as it was.
     let edited: RecipeItem = { ...current };
+    let amountChanged = false;
     if (!Object.is(instruction.grams, current.planned_grams)) {
       // PINGÜINO's own stabilizer system still bounds a component, exactly as
       // the row's grams write does. Everything else gets the amount asked for.
@@ -147,25 +146,28 @@ export function applyPreviewInstructions(
         instruction.lineId,
         instruction.grams,
       ).grams;
-      // One typed soft target at a time — the row clears every other line's.
-      items = items.map((item) => {
-        if (item.user_target_grams === undefined) return item;
-        const next = { ...item };
-        delete next.user_target_grams;
-        return next;
-      });
-      // A typed amount is never the PRO Crown bootstrap, whatever its value.
-      edited = withoutCrownBootstrap({
-        ...items[index]!,
-        planned_grams: grams,
-        user_target_grams: grams,
-      });
-      if (grams > 0) edited.user_intent_anchor_grams = grams;
-      else delete edited.user_intent_anchor_grams;
+      amountChanged = !Object.is(grams, current.planned_grams);
+      if (amountChanged) {
+        // One typed soft target at a time — the row clears every other line's.
+        items = items.map((item) => {
+          if (item.user_target_grams === undefined) return item;
+          const next = { ...item };
+          delete next.user_target_grams;
+          return next;
+        });
+        // A typed amount is never the PRO Crown bootstrap, whatever its value.
+        edited = withoutCrownBootstrap({
+          ...items[index]!,
+          planned_grams: grams,
+          user_target_grams: grams,
+        });
+        if (grams > 0) edited.user_intent_anchor_grams = grams;
+        else delete edited.user_intent_anchor_grams;
+      }
     }
 
-    // 2. The padlock.
-    if (instruction.locked) {
+    // 2. The padlock. A real changed amount is itself the newer exact intent.
+    if (amountChanged || instruction.locked) {
       edited = {
         ...withoutCrownBootstrap(withoutQuantitySidecars(edited)),
         lock_type: ENGINE_KEPT_LOCKS.has(edited.lock_type) ? edited.lock_type : 'grams',
