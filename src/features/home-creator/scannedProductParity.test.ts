@@ -38,7 +38,7 @@ describe('a scanned product enters through the typed-ingredient door', () => {
     expect(add).toContain('hydrateIngredient(productId)');
     /* The amount is CARRIED, not hard-coded. It used to be `addIngredient(ingredient, 0)`,
        which is where HOME's 0 g rows came from: a confirmed amount had nowhere to go. */
-    expect(add).toContain('store.addIngredient(ingredient, grams)');
+    expect(add).toContain("grams > 0 ? { amountIntent: 'user_exact' } : undefined");
     // §49: the crown is ASKED of the existing authority, never decided here —
     // on the HOME surface, so HOME's Crown rules never reach PRO. PACKAGE 2A: it is
     // asked through the AUTOMATIC door, so a scanned BASE product is an invisible

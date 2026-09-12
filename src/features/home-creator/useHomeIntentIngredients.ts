@@ -145,7 +145,11 @@ export function useHomeIntentIngredients() {
       }
 
       const store = useRecipeStore.getState();
-      const added = store.addIngredient(ingredient, grams);
+      const added = store.addIngredient(
+        ingredient,
+        grams,
+        grams > 0 ? { amountIntent: 'user_exact' } : undefined,
+      );
       if (added.status === 'duplicate') return { chipId: key, status: 'duplicate' };
 
       // §49: ASK the existing authority. It refuses an ineligible product on its own.

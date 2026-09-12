@@ -317,7 +317,12 @@ export function ConstraintPreviewCard({
         locked={shown.locked}
         edited={shown.edited}
         mask={gramsMask}
-        onChange={(grams) => updateEdit(line, { grams, locked: shown.locked })}
+        onChange={(grams) =>
+          updateEdit(line, {
+            grams,
+            locked: Math.round(grams) === shown.grams ? shown.locked : true,
+          })
+        }
         onToggleLock={() =>
           updateEdit(line, { grams: Math.max(1, shown.grams), locked: !shown.locked })
         }

@@ -512,6 +512,17 @@ export function reconcileConstraints(
       changed = true;
       continue;
     }
+    const savedGrams = item.grams_constraint?.grams;
+    if (
+      savedGrams !== undefined &&
+      Number.isFinite(savedGrams) &&
+      savedGrams >= 0 &&
+      Object.is(item.planned_grams, savedGrams)
+    ) {
+      if (constraint.mode !== 'locked' || !Object.is(constraint.grams, savedGrams)) changed = true;
+      byLineId[lineId] = { mode: 'locked', grams: savedGrams };
+      continue;
+    }
     byLineId[lineId] = constraint;
   }
   for (const item of items) {
@@ -1996,22 +2007,28 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           return;
         }
         // No solver proposal remains, only the customer's own instructions, so
-        // they are written by the SAME row actions the recipe rows use: the
-        // typed amount first, then the padlock.
+        // they are written by the SAME exact-grams action the recipe rows use.
+        // A changed amount becomes locked atomically; an unchanged instruction
+        // may still carry a separate explicit padlock/unlock decision.
         for (const instruction of pending.instructions) {
           if (instruction.bootstrap) continue; // never the customer's amount
           const line = useRecipeStore
             .getState()
             .items.find((candidate) => candidate.id === instruction.lineId);
           if (!line) continue;
-          if (!Object.is(line.planned_grams, instruction.grams)) {
-            useRecipeStore.getState().setPlannedGrams(instruction.lineId, instruction.grams);
-          }
+          if (!Object.is(line.planned_grams, instruction.grams))
+            useRecipeStore.getState().setExactGrams(instruction.lineId, instruction.grams);
           const written = useRecipeStore
             .getState()
             .items.find((candidate) => candidate.id === instruction.lineId);
           if (!written) continue;
+          const amountChanged = !Object.is(line.planned_grams, written.planned_grams);
           const constraint = get().constraints.byLineId[instruction.lineId];
+          if (amountChanged) {
+            // Most-recent manual exact amount wins. Do not let the preview's
+            // earlier unlocked snapshot immediately undo the new invariant.
+            continue;
+          }
           if (instruction.locked) {
             if (
               constraint?.mode === 'locked' &&
