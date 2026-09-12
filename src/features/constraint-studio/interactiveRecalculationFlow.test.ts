@@ -204,7 +204,7 @@ describe('interactive recalculation preview — PRO', () => {
     expect(useConstraintStudioStore.getState().history).toHaveLength(0);
   });
 
-  it('fixture 1b: an edited amount WITHOUT the padlock stays a solver input (decrease-only), never a hidden lock', async () => {
+  it('MGAL-PREVIEW-E2E-01: a real manual amount edit auto-locks even when the stale UI instruction says unlocked', async () => {
     loadOwner(ownerFruitRecipe({ batch: 1000 }));
     await runPiRecalculationWithTerminal();
     await runInteractiveRecalculationWithTerminal([
@@ -213,10 +213,10 @@ describe('interactive recalculation preview — PRO', () => {
     const preview = useConstraintStudioStore.getState().preview;
     expect(preview).not.toBeNull();
     if (!preview) return;
-    expect(preview.nextConstraints.byLineId.cranberry).toBeUndefined();
-    expect(grams(preview.proposedInput, 'cranberry')!).toBeLessThanOrEqual(20);
+    expect(preview.nextConstraints.byLineId.cranberry).toEqual({ mode: 'locked', grams: 20 });
+    expect(grams(preview.proposedInput, 'cranberry')).toBe(20);
     expect(preview.proposedInput.items.find((item) => item.id === 'cranberry')?.lock_type).toBe(
-      'unlocked',
+      'grams',
     );
   });
 
