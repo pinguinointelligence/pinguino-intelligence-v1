@@ -5,6 +5,7 @@ import type { IngredientRow } from '@/data/ingredients/ingredientRow';
 const mocks = vi.hoisted(() => ({
   getProduct: vi.fn(),
   getRichRow: vi.fn(),
+  searchProducts: vi.fn(),
 }));
 
 vi.mock('@/services/products', () => ({ getProduct: mocks.getProduct }));
@@ -14,6 +15,7 @@ vi.mock('@/services/ingredients', () => ({
 vi.mock('@/services/productPicker/mapperSearch', () => ({
   searchCanonicalMapperIngredients: vi.fn(),
 }));
+vi.mock('@/services/globalCatalog', () => ({ searchProducts: mocks.searchProducts }));
 
 import { useHomeIntentIngredients } from './useHomeIntentIngredients';
 import { useRecipeStore } from '@/stores/recipeStore';
@@ -22,6 +24,10 @@ const PRODUCT_UUID = '84800005-1071-6000-8000-000000000001';
 const PRODUCT_CODE = 'PR-ING-000725';
 const MAPPER_ID = 'PI-ING-000236';
 const DISPLAY_NAME = 'Leche líquida entera Hacendado';
+const CURRENT_PRODUCT_UUID = '50c3d0e1-ca37-4891-a744-a3438d6b226a';
+const CURRENT_PRODUCT_CODE = 'PR-ING-007173';
+const CURRENT_VERSION_ID = '44d44d53-dea8-4daa-af69-bd1583ab7e9a';
+const BARCODE = '8402001047251';
 
 const reference = {
   ingredient_id: MAPPER_ID,
@@ -72,6 +78,7 @@ function hook() {
 beforeEach(() => {
   mocks.getProduct.mockReset();
   mocks.getRichRow.mockReset();
+  mocks.searchProducts.mockReset();
   useRecipeStore.setState({ items: [], toppings: [], baseOrder: [], priority_mode: 'AUTO' });
 });
 
@@ -114,6 +121,98 @@ describe('served H — exact scanned identity reaches HOME', () => {
       canonical_ingredient_id: MAPPER_ID,
       private_product_id: PRODUCT_UUID,
       identity_provenance: 'private_product',
+      name: DISPLAY_NAME,
+    });
+  });
+
+  it('HOME-H-02 keeps an exact scanned PR product that owns its technical profile', async () => {
+    mocks.getProduct.mockResolvedValue({
+      id: CURRENT_PRODUCT_UUID,
+      product_code: CURRENT_PRODUCT_CODE,
+      product_name_display: DISPLAY_NAME,
+      mapper_status: 'unmatched',
+      matched_basement_id: null,
+    });
+    mocks.searchProducts.mockResolvedValue([
+      {
+        id: CURRENT_PRODUCT_UUID,
+        productCode: CURRENT_PRODUCT_CODE,
+        currentVersionId: CURRENT_VERSION_ID,
+        entityKind: 'commercial_product',
+        status: 'verified',
+        displayName: DISPLAY_NAME,
+        originalName: DISPLAY_NAME,
+        originalLanguage: 'es',
+        brand: 'Hacendado',
+        canonicalFamily: 'milk',
+        category: 'dairy',
+        productForm: 'liquid',
+        mappedIngredientId: null,
+        markets: ['ES'],
+        retailers: ['Mercadona'],
+        eans: [BARCODE],
+        aliases: [],
+        favorite: false,
+        recentlyUsedAt: null,
+        usableInBase: true,
+        usableAsTopping: false,
+        missingFields: [],
+        invalidFields: [],
+        verificationMethod: 'automatic',
+        publicData: {
+          productAccuracy: 96.8,
+          productIntelligence: { engineUsable: true },
+          technicalComposition: {
+            water: 87.8,
+            totalSolids: 12.2,
+            fat: 3.6,
+            protein: 3.1,
+            carbohydrate: 4.7,
+            sugars: 4.7,
+            salt: 0.13,
+            lactose: 4.7,
+            energyKcal: 63,
+            podValue: 0.74,
+            pacValue: 4.7,
+          },
+        },
+      },
+    ]);
+
+    const result = await hook().addScannedProduct({
+      id: CURRENT_PRODUCT_UUID,
+      productCode: CURRENT_PRODUCT_CODE,
+      displayName: DISPLAY_NAME,
+      entityKind: 'commercial_product',
+      barcode: BARCODE,
+    });
+
+    expect(mocks.searchProducts).toHaveBeenCalledWith({
+      query: BARCODE,
+      context: 'BASE',
+      marketScope: 'global',
+      entityKind: 'commercial_product',
+      limit: 20,
+    });
+    expect(mocks.searchProducts).toHaveBeenCalledTimes(1);
+    expect(mocks.getRichRow).not.toHaveBeenCalled();
+    expect(result.status).toBe('needs_amount');
+    expect(result.ingredient).toMatchObject({
+      id: CURRENT_PRODUCT_CODE,
+      canonical_ingredient_id: CURRENT_PRODUCT_CODE,
+      private_product_id: `catalog:${CURRENT_PRODUCT_UUID}:version:${CURRENT_VERSION_ID}`,
+      identity_provenance: 'private_product',
+      name: DISPLAY_NAME,
+    });
+    expect(useRecipeStore.getState().items).toHaveLength(0);
+
+    useRecipeStore.getState().addIngredient(result.ingredient!, 80);
+
+    const inserted = useRecipeStore.getState().items[0]?.ingredient;
+    expect(inserted).toMatchObject({
+      id: CURRENT_PRODUCT_CODE,
+      canonical_ingredient_id: CURRENT_PRODUCT_CODE,
+      private_product_id: `catalog:${CURRENT_PRODUCT_UUID}:version:${CURRENT_VERSION_ID}`,
       name: DISPLAY_NAME,
     });
   });

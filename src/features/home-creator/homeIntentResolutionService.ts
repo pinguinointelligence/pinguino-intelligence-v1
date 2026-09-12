@@ -16,7 +16,13 @@ import { ingredientRowToEngineIngredient } from '@/data/ingredients/ingredientMa
 import { materializeCanonicalToolboxIngredient } from '@/data/ingredients/canonicalToolboxIngredient';
 import { prepareProductEngineIngredient } from '@/data/products/productEngineHandoff';
 import { getProduct } from '@/services/products';
+import { searchProducts } from '@/services/globalCatalog';
 import { searchCanonicalMapperIngredients } from '@/services/productPicker/mapperSearch';
+import {
+  engineIngredientForCatalogSelection,
+  resolveCurrentMapperCatalogSelection,
+  scannedProductRecipeTarget,
+} from '@/features/ingredient-builder/mapperOnlyCatalog';
 import type { EngineIngredient } from '@/engine';
 import type { SafeMapperSearchRow } from '@/services/productPicker/mapperSearch';
 
@@ -82,6 +88,7 @@ export interface ExactScannedProductIdentity {
   readonly productCode?: string | null;
   readonly displayName: string;
   readonly entityKind: 'pi_base' | 'commercial_product';
+  readonly barcode?: string | null;
 }
 
 /**
@@ -96,7 +103,53 @@ export async function hydrateExactScannedProduct(
   scanned: ExactScannedProductIdentity,
 ): Promise<EngineIngredient | null> {
   const product = await getProduct(scanned.id).catch(() => null);
-  if (!product || product.id !== scanned.id || !product.matched_basement_id) return null;
+  if (!product || product.id !== scanned.id) return null;
+
+  if (!product.matched_basement_id) {
+    const barcode = scanned.barcode?.trim() ?? '';
+    const productCode = product.product_code?.trim() ?? '';
+    const scannedCode = scanned.productCode?.trim() ?? '';
+    if (
+      scanned.entityKind !== 'commercial_product' ||
+      !barcode ||
+      !productCode ||
+      (scannedCode && scannedCode !== productCode)
+    )
+      return null;
+
+    // This is an exact-GTIN projection reload, not a name search or a ranking pass:
+    // the scanner's UUID, PR code and barcode must all identify the same row.
+    const hits = await searchProducts({
+      query: barcode,
+      context: 'BASE',
+      marketScope: 'global',
+      entityKind: 'commercial_product',
+      limit: 20,
+    }).catch(() => []);
+    const exactHits = hits.filter(
+      (hit) =>
+        hit.id === scanned.id && hit.productCode === productCode && hit.eans.includes(barcode),
+    );
+    const hit = scannedProductRecipeTarget(
+      exactHits,
+      { id: scanned.id, displayName: scanned.displayName, barcode },
+      'BASE',
+    );
+    if (!hit) return null;
+
+    const selection = await resolveCurrentMapperCatalogSelection(
+      hit,
+      'BASE',
+      getEngineApprovedIngredientById,
+    );
+    if (!selection.ok || selection.kind !== 'catalog_product') return null;
+    const ingredient = engineIngredientForCatalogSelection(hit, selection);
+    if (!ingredient || 'kind' in ingredient || ingredient.id !== productCode) return null;
+    return {
+      ...ingredient,
+      name: scanned.displayName.trim() || ingredient.name,
+    };
+  }
 
   const reference = await getEngineApprovedIngredientById(product.matched_basement_id).catch(
     () => null,
