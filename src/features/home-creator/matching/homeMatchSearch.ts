@@ -8,8 +8,8 @@
  * only SOURCES candidates and hands them to those rules.
  *
  * Two sources, two very different shapes, one reason:
- *   • OFFICIAL  — client-side templates, so the strict rule runs client-side through
- *                 the existing `matchRecipes`.
+ *   • OFFICIAL  — the Gellatti Recipe Library ships with the app, so the strict rule runs
+ *                 client-side through the existing `matchRecipes`.
  *   • COMMUNITY — the public card carries no ingredients, so the strict rule runs
  *                 inside the match oracle and arrives already satisfied.
  *
@@ -24,13 +24,11 @@ import {
 } from '../homeRecipeMatching';
 import type { IntentProfile } from '../homeIntentParsing';
 import { matchCommunityTop100, type CommunityMatch } from './communityMatchService';
-import { officialCandidatesFor } from './officialLibraryCandidates';
+import { officialCandidates } from './officialLibraryCandidates';
 
 export interface HomeMatchQuery {
   readonly requested: readonly RequestedIngredient[];
   readonly profile: IntentProfile | null;
-  /** From the SAME authority that guards opening an owner-review template. */
-  readonly canOpenOwnerReview: boolean;
 }
 
 export interface HomeMatchResult {
@@ -45,6 +43,18 @@ export const NO_MATCH: HomeMatchResult = Object.freeze({
   communityMatches: [],
 });
 
+/**
+ * A popup is a choice, not a catalogue: at most this many official recipes, the closest
+ * first — the ones that add the fewest ingredients the customer did not ask for.
+ */
+export const OFFICIAL_MATCH_LIMIT = 4;
+
+export function closestOfficialMatches(matches: readonly RecipeMatch[]): readonly RecipeMatch[] {
+  return [...matches]
+    .sort((left, right) => left.alsoIncludes.length - right.alsoIncludes.length)
+    .slice(0, OFFICIAL_MATCH_LIMIT);
+}
+
 export async function searchExistingRecipes(query: HomeMatchQuery): Promise<HomeMatchResult> {
   // §22: only RESOLVED identities may drive matching. An unresolved chip is not a
   // weaker constraint — it is not a constraint, and matching on it would be matching
@@ -52,9 +62,8 @@ export async function searchExistingRecipes(query: HomeMatchQuery): Promise<Home
   const resolved = query.requested.filter((item) => item.productId.trim() !== '');
   if (resolved.length === 0) return NO_MATCH;
 
-  const official: readonly RecipeMatch[] = matchRecipes(
-    officialCandidatesFor(query.canOpenOwnerReview),
-    { requested: resolved, profile: query.profile },
+  const official = closestOfficialMatches(
+    matchRecipes(officialCandidates(), { requested: resolved, profile: query.profile }),
   );
 
   const communityMatches = await matchCommunityTop100({

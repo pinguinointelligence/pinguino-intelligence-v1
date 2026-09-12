@@ -8,6 +8,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const source = readFileSync('src/features/community/useRecipeDerivation.ts', 'utf8');
+const save = readFileSync('src/features/recipes/useCanonicalRecipeSave.ts', 'utf8');
 
 describe('derive() reports its outcome by RETURN VALUE', () => {
   it('returns the terminal DerivationState rather than void', () => {
@@ -29,28 +30,34 @@ describe('derive() reports its outcome by RETURN VALUE', () => {
 });
 
 describe('the source is still never written to', () => {
-  it('keeps the read → create → stamp order and the entitlement-gated read', () => {
+  it('reads through the entitlement-gated RPC and opens a working copy — nothing is saved at open', () => {
     expect(source).toContain('const full = await readSource(target)');
-    expect(source).toContain('createRecipe({');
-    expect(source).toContain('recordDerivation(');
+    expect(source).toContain('adoptWorkingCopy({');
+    expect(source).not.toContain('createRecipe(');
+    expect(source).not.toContain('recordDerivation(');
   });
 
-  it('carries the source ProductBehavior authority into the derived recipe', () => {
+  it('carries the source ProductBehavior authority into the working copy', () => {
     // Nulling or inventing this is what made every ingredient-bearing recipe
     // undecidable to `assert_recipe_behavior_authority_all_lines_v1`.
-    expect(source).toContain('productComposition: full.productComposition');
+    expect(source).toContain('full.productComposition');
+  });
+
+  it('stamps lineage when the working copy first becomes the customer recipe', () => {
+    expect(save).toContain("source: provenance ? 'imported' : 'manual'");
+    expect(save).toContain('await recordDerivation({');
+    expect(save.match(/await recordDerivation\(/g) ?? []).toHaveLength(1);
   });
 });
 
 describe('opening the result is a seam, not a second derivation', () => {
   it('lets a caller supply the opener and does not navigate when it does', () => {
-    expect(source).toContain('readonly openDerived?: (recipeId: string) => void | Promise<void>');
-    expect(source).toContain('if (openDerived) await openDerived(recipe.recipeId);');
-    expect(source).toContain("else navigate('/pro/recipe');");
+    expect(source).toContain('readonly openWorkingCopy?: () => void | Promise<void>');
+    expect(source).toContain('if (openWorkingCopy) await openWorkingCopy();');
+    expect(source).toContain("else if (persona === 'pro') navigate('/pro/recipe');");
   });
 
-  it('exposes exactly one derivation path for every caller', () => {
-    expect(source.match(/createRecipe\(\{/g) ?? []).toHaveLength(1);
-    expect(source.match(/await recordDerivation\(/g) ?? []).toHaveLength(1);
+  it('exposes exactly one adoption path for every caller', () => {
+    expect(source.match(/adoptWorkingCopy\(\{/g) ?? []).toHaveLength(1);
   });
 });

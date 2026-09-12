@@ -386,5 +386,12 @@ describe('official recipe → working recipe handoff', () => {
       490, 80, 25, 80, 65, 53, 150, 55, 2,
     ]);
     expect(state.items.map((item) => item.ingredient.id)).toContain('PI-ING-001579');
+    // A new unsaved working copy that knows its source (RL-13).
+    expect(state.savedRecipeId).toBeNull();
+    expect(state.provenance).toMatchObject({
+      kind: 'official',
+      officialRecipeId: 'classic-dark-chocolate',
+      officialRecipeNumber: 1,
+    });
   });
 });

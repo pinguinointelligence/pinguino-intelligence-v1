@@ -1,15 +1,15 @@
 /**
- * §32 official side. These assert against the REAL `EXECUTABLE_RECIPE_TEMPLATES`,
- * because the point of several of them is the honest state of that library.
+ * §32 official side. These assert against the REAL Gellatti Recipe Library, because the point
+ * of several of them is the honest state of that library.
  */
 import { describe, expect, it } from 'vitest';
-import { EXECUTABLE_RECIPE_TEMPLATES } from '@/data/recipes/executableRecipeLibrary';
+import { OFFICIAL_RECIPES } from '@/data/recipes/official/officialRecipeLibrary';
+import { officialRecipeReadiness } from '@/data/recipes/official/officialRecipeReadiness';
 import { matchRecipes, type RequestedIngredient } from '../homeRecipeMatching';
 import {
-  isOfferableTemplate,
-  officialCandidatesFor,
-  templateIngredients,
-  templateToCandidate,
+  officialCandidates,
+  officialRecipeIngredients,
+  officialRecipeToCandidate,
 } from './officialLibraryCandidates';
 
 const want = (productId: string): RequestedIngredient => ({
@@ -18,56 +18,66 @@ const want = (productId: string): RequestedIngredient => ({
   displayName: productId,
 });
 
-// Real ids from the library: cocoa and the BRANDED vanilla paste.
+// Real ids from the library: cocoa, milk and the FINAL-blocked branded vanilla paste.
 const COCOA = 'PI-ING-001579';
-const VANILLE_LEAGEL_PASTE = 'PI-ING-001705';
 const MILK = 'PI-ING-000236';
+const VANILLE_LEAGEL_PASTE = 'PI-ING-001705';
 
-describe('the official library is admin-gated — a customer is offered nothing', () => {
-  it('offers nothing without owner-review access', () => {
-    expect(officialCandidatesFor(false)).toEqual([]);
+describe('the Gellatti library is offered to every customer — READY recipes only', () => {
+  const offered = new Set(officialCandidates().map((candidate) => candidate.id));
+
+  it('offers real candidates without any admin gate', () => {
+    expect(offered.size).toBeGreaterThan(50);
   });
 
-  it('offers real candidates WITH owner-review access', () => {
-    expect(officialCandidatesFor(true).length).toBeGreaterThan(0);
+  it('never offers a recipe that is not READY', () => {
+    for (const recipe of OFFICIAL_RECIPES) {
+      if (officialRecipeReadiness(recipe).state !== 'READY') {
+        expect(offered.has(recipe.recipeId), recipe.recipeId).toBe(false);
+      }
+    }
   });
 
-  it('never offers a template that cannot be produced', () => {
-    const blocked = EXECUTABLE_RECIPE_TEMPLATES.filter((t) => !isOfferableTemplate(t));
-    expect(blocked.length).toBeGreaterThan(0); // Śmietankowe is BLOCKED_EXACT_PRODUCT_DATA
-    const offeredIds = officialCandidatesFor(true).map((c) => c.id);
-    for (const template of blocked) expect(offeredIds).not.toContain(template.id);
+  it('offers no Technical Base and no Heritage record without a stated profile', () => {
+    for (const recipe of OFFICIAL_RECIPES) {
+      if (
+        recipe.productType === 'Technical Base' ||
+        recipe.productType === 'Heritage Gelato / Sorbet'
+      ) {
+        expect(officialRecipeToCandidate(recipe), recipe.recipeId).toBeNull();
+      }
+    }
+  });
+
+  it('never offers the FINAL-blocked vanilla paste', () => {
+    for (const candidate of officialCandidates()) {
+      expect(candidate.ingredients.some((i) => i.productId === VANILLE_LEAGEL_PASTE)).toBe(false);
+    }
   });
 });
 
-describe('templates map to candidates by CANONICAL identity, not by name', () => {
-  it('carries only lines with a resolved Mapper identity', () => {
-    for (const template of EXECUTABLE_RECIPE_TEMPLATES) {
-      const ingredients = templateIngredients(template);
-      expect(ingredients.every((i) => i.productId.startsWith('PI-ING-'))).toBe(true);
+describe('recipes map to candidates by CANONICAL identity, not by name', () => {
+  it('carries only Mapper identities, each identity once', () => {
+    for (const recipe of OFFICIAL_RECIPES) {
+      const ids = officialRecipeIngredients(recipe).map((ingredient) => ingredient.productId);
+      expect(ids.every((id) => id.startsWith('PI-ING-'))).toBe(true);
+      expect(new Set(ids).size).toBe(ids.length);
     }
   });
 
-  it('maps a post-process line to the topping role (§33)', () => {
-    const withTopping = EXECUTABLE_RECIPE_TEMPLATES.find((t) =>
-      t.toppings.some((line) => line.mapperIngredientId !== null),
-    );
-    if (withTopping) {
-      expect(templateIngredients(withTopping).some((i) => i.role === 'topping')).toBe(true);
-    }
-  });
-
-  it('maps milk_gelato onto the customer-visible gelato profile', () => {
-    const candidate = templateToCandidate(EXECUTABLE_RECIPE_TEMPLATES[1]!);
-    expect(candidate?.profile).toBe('gelato');
-    expect(candidate?.source).toBe('official');
+  it('carries the profile, the owner image and Gellatti attribution', () => {
+    const sorbet = officialCandidates().find((candidate) => candidate.profile === 'sorbet');
+    expect(sorbet).toBeDefined();
+    expect(sorbet!.source).toBe('official');
+    expect(sorbet!.imageUrl).toMatch(/^\/recipes\/official\/GEL-\d{3}-480\.webp$/);
+    expect(sorbet!.originalCreatorName).toBeNull();
   });
 });
 
 describe('§32 strict matching against the real library', () => {
-  const candidates = officialCandidatesFor(true);
+  const candidates = officialCandidates();
 
-  it('finds the cocoa templates for a cocoa request', () => {
+  it('finds the cocoa recipes for a cocoa request', () => {
     const matches = matchRecipes(candidates, { requested: [want(COCOA)], profile: null });
     expect(matches.length).toBeGreaterThan(0);
     for (const match of matches) {
@@ -76,7 +86,6 @@ describe('§32 strict matching against the real library', () => {
   });
 
   it('rejects a recipe missing one requested identity', () => {
-    // Cocoa AND an identity no template carries.
     const matches = matchRecipes(candidates, {
       requested: [want(COCOA), want('PI-ING-000000')],
       profile: null,
@@ -84,39 +93,33 @@ describe('§32 strict matching against the real library', () => {
     expect(matches).toEqual([]);
   });
 
-  it('§40 — a Sorbet request matches nothing, because the library is gelato-only', () => {
+  it('§40 — a profile filter keeps a Sorbet request to Sorbets', () => {
     const matches = matchRecipes(candidates, { requested: [want(MILK)], profile: 'sorbet' });
-    expect(matches).toEqual([]);
+    for (const match of matches) expect(match.candidate.profile).toBe('sorbet');
   });
 });
 
 describe('WRONG COMMERCIAL FORM — the flavour word must not be enough', () => {
-  it('does not match a branded vanilla paste for a different vanilla identity', () => {
-    const candidates = officialCandidatesFor(true);
-    // The library's vanilla is `VANILLE · Leagel Paste` (PI-ING-001705). A user whose
-    // §23 choice resolved to ANY other vanilla identity must not match it — and this
-    // falls out of canonical ids alone, with no brand list anywhere in the code.
-    const someOtherVanilla = 'PI-ING-000999';
+  it('matches a recipe through its own identity and never through a different one', () => {
+    const candidates = officialCandidates();
+    const own = candidates[0]!.ingredients[0]!.productId;
     expect(
-      matchRecipes(candidates, { requested: [want(someOtherVanilla)], profile: null }),
-    ).toEqual([]);
-    // …while the paste's OWN identity does match, proving the rejection was about
-    // identity and not about the word "vanilla".
-    expect(
-      matchRecipes(candidates, { requested: [want(VANILLE_LEAGEL_PASTE)], profile: null }).length,
+      matchRecipes(candidates, { requested: [want(own)], profile: null }).length,
     ).toBeGreaterThan(0);
+    expect(matchRecipes(candidates, { requested: [want('PI-ING-999999')], profile: null })).toEqual(
+      [],
+    );
   });
 
   it('contains no brand-name special-casing', async () => {
     const source = await import('node:fs').then((fs) =>
       fs.readFileSync('src/features/home-creator/matching/officialLibraryCandidates.ts', 'utf8'),
     );
+    const codeOnly = source
+      .split('\n')
+      .filter((line) => !line.trimStart().startsWith('*') && !line.trimStart().startsWith('//'))
+      .join('\n');
     for (const brand of ['Leagel', 'Backaldrin', 'Ravifruit', 'Master Martini', 'PreGel']) {
-      // Brands may be named in the explanatory comment, but never in a code branch.
-      const codeOnly = source
-        .split('\n')
-        .filter((line) => !line.trimStart().startsWith('*') && !line.trimStart().startsWith('//'))
-        .join('\n');
       expect(codeOnly).not.toContain(brand);
     }
   });

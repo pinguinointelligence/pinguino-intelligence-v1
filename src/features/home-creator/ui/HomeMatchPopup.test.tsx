@@ -181,20 +181,20 @@ describe('a SUCCESSFUL derivation must actually open the recipe', () => {
       fs.readFileSync('src/features/home-creator/matching/HomeMatchGate.tsx', 'utf8'),
     );
 
-  it('reads the derived recipe through the canonical repository and loads the shared store', async () => {
-    // Served QA 2026-08-31: the derivation succeeded server-side (recipe + lineage
-    // written) but the hook opens by navigating to /pro/recipe, which §13 bounces for
-    // a HOME subscriber — leaving the customer on an empty intent screen holding a
-    // recipe they could not see.
+  it('presents the working copy the canonical derivation loaded, right here in HOME', async () => {
+    // Served QA 2026-08-31: a derivation that opened by navigating to /pro/recipe was
+    // bounced by §13 for a HOME subscriber — leaving the customer on an empty intent
+    // screen holding a recipe they could not see. The hook now loads the working copy
+    // into the shared store; HOME only presents it.
     const source = await gate();
-    expect(source).toContain('repository.getRecipe');
-    expect(source).toContain('repository.getVersions');
-    expect(source).toContain('loadRecipeInput');
+    expect(source).toContain('openWorkingCopy: () =>');
+    expect(source).toContain('presentLoadedRecipeInHome({');
+    expect(source).toContain('keepIdea: true');
   });
 
   it('opens through the hook, so the hook never navigates HOME to the PRO editor', async () => {
     const source = await gate();
-    expect(source).toContain('openDerived: openDerivedRecipe');
+    expect(source).not.toMatch(/navigate\(/);
   });
 
   it('never branches on `state` after awaiting the derivation', async () => {
@@ -206,10 +206,10 @@ describe('a SUCCESSFUL derivation must actually open the recipe', () => {
     expect(source).not.toMatch(/derivation\.state\.status === 'done'/);
   });
 
-  it('picks the latest version by number, not by array position', async () => {
+  it("never reads or loads a saved recipe of its own — the working copy is the hook's", async () => {
     const source = await gate();
-    expect(source).toContain('v.versionNumber > best.versionNumber');
-    expect(source).not.toContain('versions.at(-1)');
+    expect(source).not.toContain('repository.getVersions');
+    expect(source).not.toContain('loadRecipeInput');
   });
 
   it('adds no HOME-specific derive or copy logic — it only READS the result', async () => {

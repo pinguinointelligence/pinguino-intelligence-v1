@@ -144,8 +144,8 @@ export function SharedRecipePage() {
             <Card className="flex flex-col gap-4">
               <SectionLabel>Pełna receptura</SectionLabel>
               <p className="text-sm text-stone-500">
-                Masz aktywny plan — możesz zapisać własną, niezależną kopię. Oryginał autora
-                pozostaje bez zmian.
+                Otworzymy tę recepturę jako Twoją kopię roboczą — zapiszesz ją jako własną. Oryginał
+                autora pozostaje bez zmian.
               </p>
               <UseRecipeActions
                 bare

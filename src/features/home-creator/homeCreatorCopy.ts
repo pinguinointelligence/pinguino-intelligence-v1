@@ -60,6 +60,13 @@ export interface HomeCreatorCopy {
     readonly whatIsThis: string;
     readonly notFound: string;
   };
+  /** RL-17: where a HOME recipe starts — the customer's idea, Gellatti or Community. */
+  readonly sources: {
+    readonly label: string;
+    readonly own: string;
+    readonly gellatti: string;
+    readonly community: string;
+  };
   readonly match: {
     readonly title: string;
     readonly subtitle: string;
@@ -242,6 +249,12 @@ const homeCreatorCopyPl: HomeCreatorCopy = {
     whatIsThis: 'Co to jest?',
     notFound: 'Nie rozpoznaję tego jeszcze.',
   },
+  sources: {
+    label: 'Od czego zaczynasz',
+    own: 'Własny pomysł',
+    gellatti: 'Receptury Gellatti',
+    community: 'Community',
+  },
   match: {
     title: 'Znaleźliśmy podobne receptury',
     subtitle: 'Możesz zacząć od jednej z nich albo tworzyć dalej po swojemu.',
@@ -408,6 +421,12 @@ const homeCreatorCopyEn: HomeCreatorCopy = {
     searchIngredient: 'Search ingredient',
     whatIsThis: 'What is this?',
     notFound: "I don't recognise this yet.",
+  },
+  sources: {
+    label: 'Where you start',
+    own: 'My own idea',
+    gellatti: 'Gellatti recipes',
+    community: 'Community',
   },
   match: {
     title: 'We found similar recipes',

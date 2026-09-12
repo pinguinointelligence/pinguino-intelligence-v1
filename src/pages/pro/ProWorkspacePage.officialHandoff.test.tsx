@@ -20,7 +20,7 @@ vi.mock('@/services/executableRecipeHandoff', () => ({
   ExecutableRecipeHandoffError: class ExecutableRecipeHandoffError extends Error {},
   openExecutableRecipeTemplate: mocks.openExecutable,
 }));
-vi.mock('@/services/officialRecipeHandoff', () => ({
+vi.mock('@/services/officialRecipeHandoff', async (importOriginal) => ({
   OfficialRecipeHandoffError: class OfficialRecipeHandoffError extends Error {
     constructor(
       readonly code: string,
@@ -29,6 +29,10 @@ vi.mock('@/services/officialRecipeHandoff', () => ({
       super(message);
     }
   },
+  // The notice wording is the real one — only the materialisation is stubbed.
+  officialRecipeHandoffNotices: (
+    await importOriginal<typeof import('@/services/officialRecipeHandoff')>()
+  ).officialRecipeHandoffNotices,
   openOfficialRecipe: mocks.openOfficial,
 }));
 

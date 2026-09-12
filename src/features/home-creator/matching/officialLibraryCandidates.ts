@@ -1,103 +1,73 @@
 /**
  * §32 — the OFFICIAL recipe side of matching. PURE.
  *
- * ── THE HONEST STATE OF THE OFFICIAL LIBRARY (verified 2026-08-30) ──────────
+ * The customer-facing official library is the Gellatti Recipe Library (`OFFICIAL_RECIPES`,
+ * 177 frozen recipes). It replaces the six owner-review executable templates this module
+ * used to read — those were admin-gated, so an ordinary customer was offered nothing.
  *
- * There are two things in the repo that look like an official recipe library, and
- * only one of them is a recipe authority at all:
+ * Only a recipe the customer can actually make is offered: READY by the library's own
+ * readiness model, the same one that enables „Zrób te lody". A match that would then be
+ * refused at open time is worse than no match (§32). Every other recipe stays browsable in
+ * the library with its explicit state; nothing here hides it.
  *
- *   `flavorCatalogue*`            INSPIRATION metadata. Its own header: "no grams, no
- *                                 product ids, no verified doses, no Engine-ready
- *                                 recipe". It must never be promoted into a recipe
- *                                 authority, so it is not read here.
+ * Not offered, deliberately:
+ *   • a Technical Base — HOME asks "does this flavour already exist?", and a base is not one;
+ *   • a Heritage record — its profile is decided by the working copy's derivation, so it
+ *     cannot pass the §40 profile filter honestly beforehand.
  *
- *   `EXECUTABLE_RECIPE_TEMPLATES` The real executable authority — 6 templates, all
- *                                 `profile: 'milk_gelato'`, and every one of them
- *                                 `publicationStage: 'owner_review'`. Opening one goes
- *                                 through `openExecutableRecipeTemplate`, which
- *                                 refuses anybody without `admin_users` access
- *                                 ("Owner Review wymaga aktywnego uprawnienia
- *                                 administratora" — an administrative staging surface,
- *                                 explicitly NOT a Pro entitlement).
- *
- * So for an ordinary customer the official corpus is EMPTY BY DESIGN. This module is
- * built and tested against the real templates so it works the moment a
- * customer-facing official library exists — but `officialCandidatesFor` takes the
- * viewer's owner-review access and returns nothing without it.
- *
- * That gate is not squeamishness: offering a customer a match they would then be
- * refused at open time is a worse experience than no match at all, and §32 is about
- * showing recipes the user can actually have.
+ * Identity is canonical: a line matches only through its Mapper ingredient id (§22), never
+ * by its name, so a wrong commercial form of the same flavour can never satisfy a request.
  */
 import {
-  EXECUTABLE_RECIPE_TEMPLATES,
-  type ExecutableRecipeTemplate,
-} from '@/data/recipes/executableRecipeLibrary';
-import type { IntentProfile } from '../homeIntentParsing';
+  OFFICIAL_RECIPES,
+  officialRecipeImage,
+  officialRecipeWorkingProfile,
+  type OfficialRecipe,
+} from '@/data/recipes/official/officialRecipeLibrary';
+import {
+  officialRecipeCanStart,
+  officialRecipeReadiness,
+} from '@/data/recipes/official/officialRecipeReadiness';
+import { intentProfileFor } from '../homeProfileMapping';
 import type { CandidateIngredient, RecipeCandidate } from '../homeRecipeMatching';
 
-/** The template profiles that map onto a customer-visible HOME profile. */
-const PROFILE_BY_TEMPLATE_PROFILE: Readonly<Record<string, IntentProfile>> = {
-  milk_gelato: 'gelato',
-};
-
-/**
- * A template may be OFFERED only when it could actually be produced.
- * `BLOCKED_EXACT_PRODUCT_DATA` means a required product has no approved dose, so the
- * recipe cannot be materialised — offering it would be a false promise.
- */
-export const isOfferableTemplate = (template: ExecutableRecipeTemplate): boolean =>
-  template.status === 'OWNER_REVIEW_EDITABLE';
-
-/** Template lines → candidate ingredients, by CANONICAL identity (§32, §22). */
-export function templateIngredients(
-  template: ExecutableRecipeTemplate,
-): readonly CandidateIngredient[] {
-  const lines: CandidateIngredient[] = [];
-  for (const line of template.base) {
-    // A line with no resolved Mapper identity cannot satisfy an identity request.
-    if (line.mapperIngredientId === null) continue;
-    lines.push({
-      productId: line.mapperIngredientId,
-      role: 'ingredient',
-      displayName: line.note,
-    });
+/** Recipe lines → candidate ingredients, by CANONICAL identity, each identity once. */
+export function officialRecipeIngredients(recipe: OfficialRecipe): readonly CandidateIngredient[] {
+  const seen = new Set<string>();
+  const ingredients: CandidateIngredient[] = [];
+  for (const line of recipe.lines) {
+    if (line.identity.kind !== 'mapped') continue;
+    const productId = line.identity.mapperIngredientId;
+    if (seen.has(productId)) continue;
+    seen.add(productId);
+    // The working copy places every official line in the Base, so every line is an ingredient.
+    ingredients.push({ productId, role: 'ingredient', displayName: line.label });
   }
-  for (const line of template.toppings) {
-    if (line.mapperIngredientId === null) continue;
-    lines.push({ productId: line.mapperIngredientId, role: 'topping', displayName: line.note });
-  }
-  return lines;
+  return ingredients;
 }
 
-export function templateToCandidate(template: ExecutableRecipeTemplate): RecipeCandidate | null {
-  const profile = PROFILE_BY_TEMPLATE_PROFILE[template.profile];
-  if (profile === undefined) return null;
+export function officialRecipeToCandidate(recipe: OfficialRecipe): RecipeCandidate | null {
+  if (recipe.productType === 'Technical Base') return null;
+  if (!officialRecipeCanStart(officialRecipeReadiness(recipe))) return null;
+  const { visibleProductType } = officialRecipeWorkingProfile(recipe);
+  if (visibleProductType === null) return null;
   return {
-    id: template.id,
-    title: template.displayName,
+    id: recipe.recipeId,
+    title: recipe.name,
     source: 'official',
-    profile,
-    ingredients: templateIngredients(template),
-    imageUrl: null,
+    profile: intentProfileFor(visibleProductType),
+    ingredients: officialRecipeIngredients(recipe),
+    imageUrl: officialRecipeImage(recipe).card,
     // §38: an official recipe's public attribution is Gellatti itself.
     originalCreatorName: null,
   };
 }
 
-/**
- * The official candidates this viewer may be offered.
- *
- * `canOpenOwnerReview` must come from the SAME authority that guards opening
- * (`currentUserHasOwnerReviewAccess`), so the offer and the open can never disagree.
- */
-export function officialCandidatesFor(
-  canOpenOwnerReview: boolean,
-  templates: readonly ExecutableRecipeTemplate[] = EXECUTABLE_RECIPE_TEMPLATES,
+/** The official candidates every signed-in customer may be offered. */
+export function officialCandidates(
+  recipes: readonly OfficialRecipe[] = OFFICIAL_RECIPES,
 ): readonly RecipeCandidate[] {
-  if (!canOpenOwnerReview) return [];
-  return templates
-    .filter(isOfferableTemplate)
-    .map(templateToCandidate)
+  return recipes
+    .map(officialRecipeToCandidate)
     .filter((candidate): candidate is RecipeCandidate => candidate !== null);
 }

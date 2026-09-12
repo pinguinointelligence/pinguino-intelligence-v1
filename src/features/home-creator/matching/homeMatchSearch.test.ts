@@ -10,7 +10,8 @@ vi.mock('./communityMatchService', () => ({
   matchCommunityTop100: (...args: unknown[]) => matchCommunityTop100(...args),
 }));
 
-const { searchExistingRecipes } = await import('./homeMatchSearch');
+const { OFFICIAL_MATCH_LIMIT, searchExistingRecipes } = await import('./homeMatchSearch');
+const { officialCandidates } = await import('./officialLibraryCandidates');
 
 const want = (productId: string): RequestedIngredient => ({
   productId,
@@ -20,6 +21,8 @@ const want = (productId: string): RequestedIngredient => ({
 
 const COCOA = 'PI-ING-001579';
 const MILK = 'PI-ING-000236';
+/** An identity no Gellatti recipe carries — only the (stubbed) Community oracle answers it. */
+const COMMUNITY_ONLY = 'PI-ING-000000';
 
 const communityMatch = (id: string, rank: number, alsoIncludes: string[] = []) => ({
   publicationId: id,
@@ -48,7 +51,6 @@ describe('no trustworthy match → no popup, creation continues (§35)', () => {
     const result = await searchExistingRecipes({
       requested: [want('PI-ING-000000')],
       profile: null,
-      canOpenOwnerReview: true,
     });
     expect(result.decision.kind).toBe('create_my_own');
   });
@@ -57,45 +59,63 @@ describe('no trustworthy match → no popup, creation continues (§35)', () => {
     const result = await searchExistingRecipes({
       requested: [{ productId: '', statedRole: null, displayName: 'kombucha' }],
       profile: null,
-      canOpenOwnerReview: true,
     });
     expect(result.decision.kind).toBe('create_my_own');
     // §22: an unresolved chip must not even reach the oracle.
     expect(matchCommunityTop100).not.toHaveBeenCalled();
   });
-
-  it('returns create_my_own for a customer, because the official library is admin-only', async () => {
-    const result = await searchExistingRecipes({
-      requested: [want(COCOA)],
-      profile: null,
-      canOpenOwnerReview: false,
-    });
-    expect(result.decision.kind).toBe('create_my_own');
-  });
 });
 
 describe('official matches (§35)', () => {
-  it('auto-adopts a SINGLE official match when Community has nothing', async () => {
-    const result = await searchExistingRecipes({
-      requested: [want(COCOA), want('PI-ING-001705')],
-      profile: 'gelato',
-      canOpenOwnerReview: true,
-    });
-    // Only Oreyo carries both cocoa and the vanilla paste.
-    expect(result.decision.kind).toBe('auto_adopt_official');
+  it('offers the Gellatti library to every customer — there is no admin gate', async () => {
+    const result = await searchExistingRecipes({ requested: [want(COCOA)], profile: null });
+    expect(result.decision.kind).not.toBe('create_my_own');
   });
 
-  it('shows the popup for SEVERAL official matches', async () => {
+  it('auto-adopts a SINGLE official match when Community has nothing', async () => {
+    // An identity exactly one offered Gellatti recipe carries.
+    const carriers = new Map<string, string[]>();
+    for (const candidate of officialCandidates()) {
+      for (const ingredient of candidate.ingredients) {
+        carriers.set(ingredient.productId, [
+          ...(carriers.get(ingredient.productId) ?? []),
+          candidate.id,
+        ]);
+      }
+    }
+    const [unique, [ownerId]] = [...carriers].find(([, ids]) => ids.length === 1)!;
+    const owner = officialCandidates().find((candidate) => candidate.id === ownerId)!;
+    const result = await searchExistingRecipes({
+      requested: [want(unique)],
+      profile: owner.profile,
+    });
+    expect(result.decision.kind).toBe('auto_adopt_official');
+    if (result.decision.kind === 'auto_adopt_official') {
+      expect(result.decision.match.candidate.id).toBe(owner.id);
+    }
+  });
+
+  it('shows the popup for SEVERAL official matches — the closest few, never a catalogue', async () => {
     const result = await searchExistingRecipes({
       requested: [want(COCOA)],
       profile: 'gelato',
-      canOpenOwnerReview: true,
     });
     expect(result.decision.kind).toBe('show_popup');
     if (result.decision.kind === 'show_popup') {
       expect(result.decision.official.length).toBeGreaterThan(1);
+      expect(result.decision.official.length).toBeLessThanOrEqual(OFFICIAL_MATCH_LIMIT);
+      const extras = result.decision.official.map((match) => match.alsoIncludes.length);
+      expect(extras).toEqual([...extras].sort((left, right) => left - right));
       expect(result.decision.community).toBeNull();
     }
+  });
+
+  it('never offers a recipe on the FINAL-blocked vanilla paste', async () => {
+    const result = await searchExistingRecipes({
+      requested: [want('PI-ING-001705')],
+      profile: null,
+    });
+    expect(result.decision.kind).toBe('create_my_own');
   });
 });
 
@@ -103,9 +123,8 @@ describe('Community matches (§34, §35)', () => {
   it('shows the popup for a Community-only match and NEVER auto-adopts it', async () => {
     matchCommunityTop100.mockResolvedValue([communityMatch('c1', 3)]);
     const result = await searchExistingRecipes({
-      requested: [want(COCOA)],
+      requested: [want(COMMUNITY_ONLY)],
       profile: null,
-      canOpenOwnerReview: false,
     });
     expect(result.decision.kind).toBe('show_popup');
     if (result.decision.kind === 'show_popup') {
@@ -123,7 +142,6 @@ describe('Community matches (§34, §35)', () => {
     const result = await searchExistingRecipes({
       requested: [want(COCOA)],
       profile: null,
-      canOpenOwnerReview: false,
     });
     if (result.decision.kind === 'show_popup') {
       expect(result.decision.community?.candidate.id).toBe('c2');
@@ -135,9 +153,8 @@ describe('Community matches (§34, §35)', () => {
   it('shows the popup when BOTH official and Community match', async () => {
     matchCommunityTop100.mockResolvedValue([communityMatch('c1', 1)]);
     const result = await searchExistingRecipes({
-      requested: [want(COCOA), want('PI-ING-001705')],
+      requested: [want(COCOA)],
       profile: 'gelato',
-      canOpenOwnerReview: true,
     });
     expect(result.decision.kind).toBe('show_popup');
     if (result.decision.kind === 'show_popup') {
@@ -151,7 +168,6 @@ describe('Community matches (§34, §35)', () => {
     const result = await searchExistingRecipes({
       requested: [want(COCOA)],
       profile: null,
-      canOpenOwnerReview: false,
     });
     if (result.decision.kind === 'show_popup') {
       expect(result.decision.community?.alsoIncludes).toEqual(['Karmel', 'Wanilia']);
@@ -165,7 +181,6 @@ describe('Community matches (§34, §35)', () => {
     const result = await searchExistingRecipes({
       requested: [want(COCOA)],
       profile: null,
-      canOpenOwnerReview: false,
     });
     if (result.decision.kind === 'show_popup') {
       expect(result.decision.community?.candidate.originalCreatorName).toBe('Maria QA');
@@ -178,7 +193,6 @@ describe('Community matches (§34, §35)', () => {
     await searchExistingRecipes({
       requested: [want(MILK)],
       profile: 'sorbet',
-      canOpenOwnerReview: false,
     });
     expect(matchCommunityTop100).toHaveBeenCalledWith(
       expect.objectContaining({ profile: 'sorbet', ingredientIds: [MILK] }),
@@ -193,7 +207,6 @@ describe('a matching outage must never block creation', () => {
       searchExistingRecipes({
         requested: [want('PI-ING-000000')],
         profile: null,
-        canOpenOwnerReview: false,
       }),
     ).rejects.toThrow();
     // The SERVICE swallows failures (returns []); this test documents that the

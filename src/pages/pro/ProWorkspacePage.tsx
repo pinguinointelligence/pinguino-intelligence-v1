@@ -77,7 +77,11 @@ import {
   openExecutableRecipeTemplate,
 } from '@/services/executableRecipeHandoff';
 import { officialRecipeCopy } from '@/copy/officialRecipeLibrary';
-import { OfficialRecipeHandoffError, openOfficialRecipe } from '@/services/officialRecipeHandoff';
+import {
+  OfficialRecipeHandoffError,
+  officialRecipeHandoffNotices,
+  openOfficialRecipe,
+} from '@/services/officialRecipeHandoff';
 
 const w = copy.proWorkspace;
 
@@ -470,24 +474,11 @@ export function ProWorkspacePage() {
     void openOfficialRecipe(officialRecipeId, userId)
       .then((materialized) => {
         if (cancelled) return;
-        const matched = materialized.lines.filter((line) => line.marketProduct !== null).length;
-        const marketNotice =
-          materialized.countryResolution === 'unavailable'
-            ? officialRecipeCopy.handoffMarketUnavailable
-            : materialized.country
-              ? officialRecipeCopy.handoffMarket(
-                  matched,
-                  materialized.lines.length,
-                  materialized.country,
-                )
-              : null;
         setOfficialHandoff({
           state: 'ready',
           recipeId: officialRecipeId,
           message: officialRecipeCopy.handoffReady(materialized.recipe.name),
-          notices: [marketNotice, materialized.recipe.processNotice].filter(
-            (notice): notice is string => Boolean(notice),
-          ),
+          notices: officialRecipeHandoffNotices(materialized),
         });
         // Consume the one-shot URL: a reload must never rematerialize the
         // pristine official recipe over the user's working copy.

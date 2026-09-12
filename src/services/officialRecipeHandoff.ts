@@ -29,6 +29,8 @@ import { officialRecipeCopy } from '@/copy/officialRecipeLibrary';
 import { ingredientRowToEngineIngredient } from '@/data/ingredients/ingredientMapper';
 import type { IngredientRow } from '@/data/ingredients/ingredientRow';
 import {
+  OFFICIAL_RECIPE_LIBRARY_VERSION,
+  OFFICIAL_RECIPE_SOURCE_SHA256,
   officialRecipeLineId,
   officialRecipeWorkingCopy,
   officialRecipeWorkingProfile,
@@ -63,8 +65,8 @@ import {
   internalCategoryFor,
   visibleTypeOf,
 } from '@/features/studio/productType';
-import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
-import { useProductionSessionStore } from '@/features/production-workspace/productionSessionStore';
+import type { RecipeProvenance } from '@/features/recipes/recipeProvenance';
+import { adoptWorkingCopy } from '@/features/recipes/workingCopy';
 import { hasUnsavedProRecipeChanges } from '@/pages/destinations/startNewProRecipe';
 import { effectiveIngredientCost } from '@/services/executableRecipeHandoff';
 import {
@@ -496,15 +498,40 @@ export async function openOfficialRecipe(
     );
   }
   const materialized = await materializeOfficialRecipe(recipeId, accountId, dependencies);
-  useRecipeStore.getState().loadRecipeInput(materialized.input, {
-    savedId: null,
-    savedName: materialized.recipe.name,
-    versionNumber: null,
-    versionDate: null,
+  adoptWorkingCopy({
+    input: materialized.input,
+    name: materialized.recipe.name,
     composition: materialized.composition,
+    provenance: officialRecipeProvenance(materialized.recipe),
   });
-  useConstraintStudioStore.getState().resetDraftSession();
-  useConstraintStudioStore.setState({ proCoreRecipeId: null, lastSavedVersion: null });
-  useProductionSessionStore.getState().clear();
   return materialized;
+}
+
+/** The provenance a working copy of this official recipe carries into every save. */
+export function officialRecipeProvenance(recipe: OfficialRecipe): RecipeProvenance {
+  return {
+    schemaVersion: 1,
+    kind: 'official',
+    officialRecipeId: recipe.recipeId,
+    officialRecipeNumber: recipe.number,
+    sourceName: recipe.name,
+    libraryVersion: String(OFFICIAL_RECIPE_LIBRARY_VERSION),
+    librarySha256: OFFICIAL_RECIPE_SOURCE_SHA256,
+  };
+}
+
+/** The customer notices after a successful handoff — the same wording on PRO and HOME. */
+export function officialRecipeHandoffNotices(
+  materialized: MaterializedOfficialRecipe,
+): readonly string[] {
+  const matched = materialized.lines.filter((line) => line.marketProduct !== null).length;
+  const marketNotice =
+    materialized.countryResolution === 'unavailable'
+      ? officialRecipeCopy.handoffMarketUnavailable
+      : materialized.country
+        ? officialRecipeCopy.handoffMarket(matched, materialized.lines.length, materialized.country)
+        : null;
+  return [marketNotice, materialized.recipe.processNotice].filter((notice): notice is string =>
+    Boolean(notice),
+  );
 }

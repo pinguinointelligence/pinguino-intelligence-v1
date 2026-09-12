@@ -8,12 +8,11 @@
  * the canonical flow is used without HOME inventing a second one.
  *
  * §37/§38: derivation, lineage and root attribution are entirely
- * `useRecipeDerivation` + `recordDerivation`. There is no HOME lineage code.
+ * `useRecipeDerivation` + the canonical save's `recordDerivation`. There is no HOME lineage code.
  */
 import { useRecipeDerivation } from '@/features/community/useRecipeDerivation';
-import { resolveRecipesRepository } from '@/features/pro-core/proCoreRecipeRepo';
-import { useRecipeStore } from '@/stores/recipeStore';
 import { homeCreatorCopy } from '../homeCreatorCopy';
+import { presentLoadedRecipeInHome } from '../homeLoadedRecipe';
 import type { RecipeMatch } from '../homeRecipeMatching';
 import { HomeMatchPopup } from '../ui/HomeMatchPopup';
 import type { CommunityMatch } from './communityMatchService';
@@ -29,46 +28,6 @@ const derivationRefusalMessage = (derivation: Derivation): string | null =>
   derivation.state.status === 'failed'
     ? (derivation.state.message ?? homeCreatorCopy.match.couldNotOpen)
     : null;
-
-/**
- * Open the freshly derived recipe in HOME.
- *
- * By default `useRecipeDerivation` opens the result by navigating to `/pro/recipe`,
- * where the Pro workspace loads the recipe by id. A HOME subscriber never lands there
- * — §13 correctly redirects them back — so the derivation SUCCEEDED server-side
- * (recipe + lineage written) while the customer was returned to an empty intent
- * screen. Observed on staging 2026-08-31.
- *
- * HOME therefore passes this as the hook's `openDerived`, so the hook does not
- * navigate at all and the recipe is opened where the customer actually is.
- *
- * This adds no HOME-specific derive or copy logic: the recipe was created entirely by
- * the canonical flow. It only READS the result through the same repository the Pro
- * workspace reads, and loads it into the one shared store with `loadRecipeInput` —
- * exactly the pattern `RecipeVersionsSection` uses.
- */
-async function openDerivedRecipe(recipeId: string): Promise<void> {
-  const { repository } = resolveRecipesRepository();
-  if (!repository) return;
-  const recipe = await repository.getRecipe(recipeId);
-  if (!recipe) return;
-  const versions = await repository.getVersions(recipeId);
-  // Pick by version NUMBER, not array position: ordering is a property of the backend
-  // query, not of the port contract, and opening the wrong version would be silent.
-  const latest = versions.reduce<(typeof versions)[number] | null>(
-    (best, v) => (best === null || v.versionNumber > best.versionNumber ? v : best),
-    null,
-  );
-  if (!latest) return;
-  useRecipeStore.getState().loadRecipeInput(latest.recipeInput, {
-    savedId: recipeId,
-    savedName: recipe.title,
-    versionNumber: latest.versionNumber,
-    versionId: latest.versionId,
-    versionDate: latest.createdAt,
-    composition: latest.productComposition,
-  });
-}
 
 export function HomeMatchGate({
   official,
@@ -98,7 +57,16 @@ export function HomeMatchGate({
       sourceTitle: communityMatch?.title ?? '',
       sourceCreatorDisplayName: communityMatch?.creatorDisplayName ?? '',
     },
-    { openDerived: openDerivedRecipe },
+    {
+      // The canonical derivation loads the working copy into the shared store; HOME is
+      // already the page that shows it, so it only presents it — no navigation.
+      openWorkingCopy: () =>
+        presentLoadedRecipeInHome({
+          label: communityMatch?.title ?? null,
+          publicationId: communityMatch?.publicationId ?? null,
+          keepIdea: true,
+        }),
+    },
   );
 
   return (

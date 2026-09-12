@@ -66,7 +66,6 @@ describe('the two runs produce different verdicts — which is why the re-run ex
     const first = await searchExistingRecipes({
       requested: requestedFrom([chip({ ambiguous: true })]),
       profile: 'gelato',
-      canOpenOwnerReview: false,
     });
     expect(first.decision.kind).toBe('create_my_own');
     // §22: an unresolved identity must not even reach the oracle.
@@ -98,7 +97,6 @@ describe('the two runs produce different verdicts — which is why the re-run ex
     const second = await searchExistingRecipes({
       requested: requestedFrom([chip({ productId: COCOA })]),
       profile: 'gelato',
-      canOpenOwnerReview: false,
     });
     expect(second.decision.kind).toBe('show_popup');
     expect(matchCommunityTop100).toHaveBeenCalledTimes(1);
