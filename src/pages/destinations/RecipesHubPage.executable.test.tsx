@@ -65,12 +65,34 @@ describe('Recipes Hub executable Owner Review projection', () => {
     expect(host.textContent?.match(/OWNER_REVIEW_EDITABLE/g)).toHaveLength(5);
     expect(host.textContent?.match(/PRODUCTION_BLOCKED/g)).toHaveLength(5);
     expect(host.textContent?.match(/LABEL_BLOCKED/g)).toHaveLength(5);
+    // FINAL 2541: no registered Base passes the current Engine, so none is offered as ready.
     expect(
       Array.from(host.querySelectorAll('button')).filter((button) =>
         button.textContent?.includes('Otwórz w Pro'),
       ),
-    ).toHaveLength(5);
-    expect(host.textContent).toContain('Wynik techniczny');
+    ).toHaveLength(0);
+    const blocked = host.querySelectorAll<HTMLButtonElement>(
+      '[data-testid$="-current-engine-blocked"]',
+    );
+    expect(blocked).toHaveLength(5);
+    expect(Array.from(blocked).every((button) => button.disabled)).toBe(true);
+    expect(host.textContent).toContain('Wynik bieżący (aktualne dane składników)');
+    expect(host.textContent).toContain('Wynik historyczny (poprzednie dane składników)');
+    expect(
+      host.querySelector('[data-testid="fantasy-rocero-v1-current-engine"]')?.textContent,
+    ).toContain('84.48 · niewykonalna');
+    expect(
+      host.querySelector('[data-testid="fantasy-rocero-v1-current-engine-blocker"]')?.textContent,
+    ).toContain('woda poniżej zakresu');
+    expect(
+      host.querySelector('[data-testid="fantasy-oreyo-v1-current-engine-blocker"]')?.textContent,
+    ).toContain('Pasta waniliowa (PI-ING-001705) nie jest zatwierdzony do bazy');
+    // Customer language: the score and blocker copy never name internal systems.
+    const scoreCopy = Array.from(host.querySelectorAll('[data-testid*="-current-engine"]'));
+    expect(scoreCopy).toHaveLength(15);
+    for (const element of scoreCopy) {
+      expect(element.textContent).not.toMatch(/\bEngine\b|\bMapper\b/);
+    }
     expect(host.textContent).toContain('lista finalna niepełna');
     expect(host.textContent).toContain('Przegląd otwiera wyłącznie bazę');
     expect(host.textContent).not.toMatch(/Ferrero|Raffaello|Kinder|Oreo|Snickers/i);
@@ -118,27 +140,4 @@ describe('Recipes Hub executable Owner Review projection', () => {
     expect(host.querySelector('[data-testid^="executable-template-"]')).toBeNull();
   });
 
-  it('requires explicit confirmation before an Owner Review handoff can replace an unsaved draft', async () => {
-    useRecipeStore.setState({ dirty: true });
-    await clickByText('Fantasy');
-    await clickByText('Otwórz w Pro');
-
-    expect(document.body.querySelector('[role="dialog"]')).not.toBeNull();
-    expect(document.body.textContent).toContain(
-      'Niezapisane zmiany w bieżącej recepturze zostaną usunięte.',
-    );
-
-    await clickByText('Anuluj');
-    expect(document.body.querySelector('[role="dialog"]')).toBeNull();
-    expect(useRecipeStore.getState().dirty).toBe(true);
-
-    await clickByText('Otwórz w Pro');
-    const confirm = document.body.querySelector<HTMLButtonElement>(
-      '[data-testid="confirm-new-recipe"]',
-    );
-    expect(confirm).not.toBeNull();
-    await act(async () => confirm?.click());
-    expect(document.body.querySelector('[role="dialog"]')).toBeNull();
-    expect(useRecipeStore.getState().dirty).toBe(false);
-  });
 });

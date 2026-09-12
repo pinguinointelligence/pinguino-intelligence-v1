@@ -1805,6 +1805,27 @@ function mainSafePreview(
   );
   if (direction.active && direction.supportedAxisCount > 0 && !direction.reached) {
     preview.directionTargetUnreached = true;
+    if (
+      input.category === 'vegan_gelato' &&
+      preview.mainObjective?.crownRefusal?.blockingRule ===
+        'no_technically_valid_main_candidate'
+    ) {
+      return {
+        ok: false,
+        code: 'no_proposal',
+        violatedMetrics: [
+          ...new Set(
+            direction.residuals
+              .filter((residual) => !residual.reached)
+              .map((residual) => residual.metric),
+          ),
+        ],
+        solverInvocations: preview.iteration?.solverInvocations ?? 0,
+        failureKind: 'SEARCH_FAILED',
+        directionTargetUnreached: true,
+        iteration: preview.iteration,
+      };
+    }
   }
   if (preview.proposedInput.category === 'vegan_gelato') {
     const issues = veganRecipeEligibilityIssues(preview.proposedInput.items);
@@ -2990,8 +3011,10 @@ const requiredLineContractViolations = (before: RecipeInput, after: RecipeInput)
  * is re-evaluated alongside x_user by the same hard/target/proximity hierarchy,
  * and every explored vector passes the normal constraint, required-line,
  * ProductBehavior and ECO-flavour gates. A reached recipe cannot trade away
- * its target; a NEAREST recipe may only move to the same violation count and a
- * better/equivalent severity tier before proximity is allowed to decide.
+ * its target. If every candidate remains in the same unreachable target tier,
+ * a soft-anchor probe may restore the exact user line when it also makes the
+ * complete vector closer; movement that did not buy the target is not allowed
+ * to outrank that explicit intent merely on residual severity.
  */
 const polishDirectionVector = (
   input: RecipeInput,
@@ -3081,7 +3104,7 @@ const polishDirectionVector = (
     polishSet,
     searchOptions,
   );
-  const softAnchorCandidates: RecipeInput[] = [];
+  const softAnchorCandidates: Array<{ input: RecipeInput; heldLineId: string }> = [];
   if (options.softAnchorPass !== true) {
     for (const item of input.items) {
       const proposed = practicalByLineId.get(item.id);
@@ -3118,7 +3141,7 @@ const polishDirectionVector = (
         measure.normalizedDistanceFromUser <
         practicalSeedMeasure.normalizedDistanceFromUser - SEVERITY_EPS
       ) {
-        softAnchorCandidates.push(candidate);
+        softAnchorCandidates.push({ input: candidate, heldLineId: item.id });
       }
     }
   }
@@ -3145,9 +3168,32 @@ const polishDirectionVector = (
   ) {
     best = { input: polished.input, measure: polished.measure };
   }
-  for (const candidate of softAnchorCandidates) {
+  for (const { input: candidate, heldLineId } of softAnchorCandidates) {
     const measure = evaluateExperimentalCandidate(input, candidate, polishSet, searchOptions);
-    if (compareExperimentalCandidateMeasures(measure, best.measure, strategy) < 0) {
+    const heldBaseline = input.items.find((item) => item.id === heldLineId);
+    const heldCandidate = candidate.items.find((item) => item.id === heldLineId);
+    const heldBest = best.input.items.find((item) => item.id === heldLineId);
+    const restoresMaterialAnchorInSameUnreachedTier =
+      heldBaseline !== undefined &&
+      heldCandidate !== undefined &&
+      heldBest !== undefined &&
+      Math.abs(heldCandidate.planned_grams - heldBaseline.planned_grams) <= BATCH_SUM_TOLERANCE_G &&
+      normalizedLineDrift(
+        heldBaseline.planned_grams,
+        heldBest.planned_grams,
+        input.target_batch_grams,
+      ) > MATERIAL_USER_INTENT_DRIFT &&
+      measure.structurallyAdmissible &&
+      best.measure.structurallyAdmissible &&
+      measure.hardViolationCount === best.measure.hardViolationCount &&
+      Math.abs(measure.hardSeverityPoints - best.measure.hardSeverityPoints) <= SEVERITY_EPS &&
+      measure.explicitTargetViolationCount > 0 &&
+      measure.explicitTargetViolationCount === best.measure.explicitTargetViolationCount &&
+      measure.normalizedDistanceFromUser < best.measure.normalizedDistanceFromUser - SEVERITY_EPS;
+    if (
+      restoresMaterialAnchorInSameUnreachedTier ||
+      compareExperimentalCandidateMeasures(measure, best.measure, strategy) < 0
+    ) {
       best = { input: candidate, measure };
     }
   }
@@ -4905,14 +4951,25 @@ function maximizeMainTechnicalObjective(
   // failed sweep relabelled its input as the accepted maximum.
   const requestedCeilingIsLimiting =
     requestedCeiling < Math.min(batchUpperBound, linearUpperBound, behaviorUpperBound);
+  const independentUpperBoundCertified =
+    behaviorCeilingIsLimiting ||
+    (linearBound.status === 'certified' && linearBound.wholeGramUpperBound !== null);
+  // The independent bound can land on a whole gram that still fails the full
+  // integer/Engine acceptance authority. When that exact bound was probed and
+  // rejected, an accepted value one gram below it is also a proven maximum:
+  // no untested integer exists between the witness and the independent cap.
+  const rejectedIndependentUpperBound =
+    maximum + 1 === upperBound && nextFailure !== null;
   const mathematicallyCertified =
-    maximum === upperBound &&
     !requestedCeilingIsLimiting &&
-    (behaviorCeilingIsLimiting ||
-      (linearBound.status === 'certified' && linearBound.wholeGramUpperBound !== null));
-  const limitingCertifiedRules = behaviorCeilingIsLimiting
+    independentUpperBoundCertified &&
+    (maximum === upperBound || rejectedIndependentUpperBound);
+  const independentCertifiedRules = behaviorCeilingIsLimiting
     ? ['main_policy_ceiling']
     : linearBound.certificate;
+  const limitingCertifiedRules = rejectedIndependentUpperBound
+    ? [...new Set([...independentCertifiedRules, ...nextFailure.rules])]
+    : independentCertifiedRules;
   return {
     input: {
       ...accepted.input,
@@ -4934,7 +4991,9 @@ function maximizeMainTechnicalObjective(
           ? maximum + 1
           : null,
       firstHigherRejectedReason: mathematicallyCertified
-        ? 'certified_upper_bound'
+        ? rejectedIndependentUpperBound
+          ? nextFailure.reason
+          : 'certified_upper_bound'
         : nextFailure !== null
           ? nextFailure.reason
           : null,
@@ -7138,6 +7197,9 @@ function buildOptimizePreviewInternal(
   }
   if (
     direct.ok ||
+    (direct.ok === false &&
+      direct.code === 'no_proposal' &&
+      direct.failureKind === 'SEARCH_FAILED') ||
     // An unreachable preference dead-ends in two distinct ways, and BOTH must
     // degrade to a truthful NEAREST rather than leave the user with no recipe:
     // the search can end on an illegal candidate (`unsafe_proposal`) or find no
@@ -7860,7 +7922,12 @@ function buildOptimizePreviewWithDirection(
           const reboundMain = maximizeMainFlavourObjective(input, authorizedCandidate, set, {
             ...options,
             veganDirectionSeedPass: true,
-            productBehaviorSnapshots: {},
+            // The internal template seed may search without not-yet-created
+            // line snapshots, but publication is rebound against the actual
+            // recipe. Current ProductBehavior authority must therefore be
+            // active here: in particular, a historical Direction vector may
+            // never bypass the current Main floor.
+            productBehaviorSnapshots: options.productBehaviorSnapshots,
           });
           let preview = finishPreview(
             'optimize',
@@ -7941,10 +8008,15 @@ function buildOptimizePreviewWithDirection(
     Math.abs(plannedSum(input) - input.target_batch_grams) <= BATCH_SUM_TOLERANCE_G;
   if (neighborhoodEligible) {
     // The promoted search is an alternative candidate generator, not an
-    // authority bypass. It must see the same internal Tara/Inulin/user-Main
-    // holds as the established solver; otherwise it can stage a Preview the
-    // trustless Apply door must reject (served Sorbet regression: Tara 1→2).
-    const neighborhoodSolverSet = solverHolds(input, set);
+    // authority bypass. Sorbet keeps the established stabilizer dose exact
+    // (served regression: Tara 1→2). Protein has only the existing positive
+    // stabilizer-presence gate, so imposing the template exact-hold there
+    // removes otherwise legal exchange paths and can make the beam return a
+    // farther vector even when Tara itself ends unchanged. User-visible locks
+    // remain in `set` and therefore continue to win.
+    const neighborhoodSolverSet = input.category === 'protein_gelato'
+      ? withVeganInulinEnvelopeHold(input, withOwnerInulinPolicyHold(input, set))
+      : solverHolds(input, set);
     const neighborhood = experimentalNeighborhoodSearch(input, neighborhoodSolverSet, {
       beamWidth: 3,
       evaluationBudget: 2_500,

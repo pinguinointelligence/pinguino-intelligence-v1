@@ -22,8 +22,8 @@
     "productionSessionSchema": 2
   },
   "bundle": {
-    "bytes": 401650,
-    "sha256": "5d55dd99cf79a0e556610de75922626d6f3dd0bce49d59201b19655f0f1ef6a7",
+    "bytes": 441563,
+    "sha256": "014f070e18033b3987f1d21ec9cbf25eab29dbe3ecbbff2fc7035437c8745966",
     "externalImports": 0,
     "dynamicImports": 0
   },
@@ -33,12 +33,16 @@
       "sha256": "94836fb6be7422a25568bb2f50ce3f3a02179edc3b448e1dc22e44b74bd16618"
     },
     {
+      "path": "src/data/ingredients/canonicalToolboxCompositions.ts",
+      "sha256": "7fd003735c62dd8ac669e46972c7b48185a50494d6d5795816db3be514bc3dc8"
+    },
+    {
       "path": "src/data/ingredients/veganEligibility.ts",
       "sha256": "1926d508c2191516c7d6dc95ae4bbde4da38c5463b7fe114990c7866ff4d6645"
     },
     {
       "path": "src/data/ingredients/verifiedVeganToolbox.ts",
-      "sha256": "c11ffada3b870598ddb99241363f37a1582d1cba34612c8fe080697683ed434d"
+      "sha256": "15ba03e2391370b9112809ed85b3e207eca1eeab582f6c56b04fbfaa4bfa1b50"
     },
     {
       "path": "src/engine/calculateRecipe.ts",
@@ -206,7 +210,7 @@
     },
     {
       "path": "src/features/production-workspace/productionRescue.ts",
-      "sha256": "d06144657233929177c7c485cd657b565a447f2f30d117b1f3fe87a05d388e2b"
+      "sha256": "f5df53aed17a28fd4f0031a02945414bbf43b54280452f60ea6a58cec0b63576"
     },
     {
       "path": "src/features/production-workspace/productionRescueAuthority.ts",
@@ -289,5 +293,5 @@
       "sha256": "a2207c9c4e9431daa728d6b03fe1b9c4a4a3ba3403a0c056f2808c0759a455c8"
     }
   ],
-  "sourceClosureSha256": "c4a6bb92435aabd60b0bfa4b20dcfc93d2ada493e2cc71659c50eaac8d95caee"
+  "sourceClosureSha256": "8c4cacba1e5735080cd94605b40649136ed449b79729333608a47d16e5a17f0f"
 }

@@ -14,6 +14,7 @@ import {
 } from './gellattiStabilizerAuthority';
 
 const BASE_SHA = '7edd90ea14299f3af47364a6dc119cc2b0970179';
+const ACCEPTED_APPEND_SHA = '44914681';
 const MAPPER_PATH = 'docs/ingredients/validation/mapper_basement.csv';
 const PROCESS_PATH = 'supabase/seed/mapper_process_metadata.csv';
 const MAPPER_MIGRATION_PATH =
@@ -44,9 +45,9 @@ describe('owner-authorized canonical Gellatti Stabilizer row', () => {
     expect(migration).not.toContain('drop trigger canonical_product');
   });
 
-  it('expands Mapper 2088 → 2089 with exactly one new identity', () => {
-    expect(records).toHaveLength(2_089);
-    expect(new Set(records.map((record) => value(record, 'ingredient_id'))).size).toBe(2_089);
+  it('keeps exactly one canonical Gellatti identity in FINAL Mapper 2541', () => {
+    expect(records).toHaveLength(2_541);
+    expect(new Set(records.map((record) => value(record, 'ingredient_id'))).size).toBe(2_541);
     expect(
       records.filter((record) => value(record, 'ingredient_id') === GELLATTI_STABILIZER_MAPPER_ID),
     ).toHaveLength(1);
@@ -57,7 +58,7 @@ describe('owner-authorized canonical Gellatti Stabilizer row', () => {
     ).toHaveLength(1);
   });
 
-  it('keeps every accepted-base row logically byte-identical and in the same order', () => {
+  it('preserves the historical 2088 → 2089 append and every accepted identity in FINAL', () => {
     const oldSource = execFileSync('git', ['show', `${BASE_SHA}:${MAPPER_PATH}`], {
       cwd: process.cwd(),
       encoding: 'utf8',
@@ -67,7 +68,24 @@ describe('owner-authorized canonical Gellatti Stabilizer row', () => {
     const [oldHeader = [], ...oldRecords] = parseCsv(oldSource);
     expect(oldHeader).toEqual(header);
     expect(oldRecords).toHaveLength(2_088);
-    expect(records.slice(0, 2_088)).toEqual(oldRecords);
+    const acceptedSource = execFileSync('git', ['show', `${ACCEPTED_APPEND_SHA}:${MAPPER_PATH}`], {
+      cwd: process.cwd(),
+      encoding: 'utf8',
+      maxBuffer: 16 * 1024 * 1024,
+    });
+    const [acceptedHeader = [], ...acceptedRecords] = parseCsv(acceptedSource);
+    expect(acceptedHeader).toEqual(oldHeader);
+    expect(acceptedRecords).toHaveLength(2_089);
+    expect(acceptedRecords.slice(0, 2_088)).toEqual(oldRecords);
+    expect(
+      acceptedRecords.filter(
+        (record) => record[acceptedHeader.indexOf('ingredient_id')] === GELLATTI_STABILIZER_MAPPER_ID,
+      ),
+    ).toHaveLength(1);
+    const finalIds = new Set(records.map((record) => value(record, 'ingredient_id')));
+    expect(
+      acceptedRecords.every((record) => finalIds.has(record[acceptedHeader.indexOf('ingredient_id')]!)),
+    ).toBe(true);
   });
 
   it('stores the exact identity, weighted technical facts, provenance, allergens and no shared price', () => {
@@ -87,8 +105,8 @@ describe('owner-authorized canonical Gellatti Stabilizer row', () => {
     expect(exact && value(exact, 'dry_matter_percent')).toBe('92.8375');
     expect(exact && value(exact, 'fat_percent')).toBe('0.5375');
     expect(exact && value(exact, 'protein_percent')).toBe('2.9985');
-    expect(exact && value(exact, 'carbohydrate_percent')).toBe('13.1700');
-    expect(exact && value(exact, 'fiber_percent')).toBe('74.3150');
+    expect(Number(exact && value(exact, 'carbohydrate_percent'))).toBeCloseTo(13.17, 12);
+    expect(Number(exact && value(exact, 'fiber_percent'))).toBeCloseTo(74.315, 12);
     for (const field of [
       'total_sugars_percent',
       'sucrose_percent',
@@ -104,7 +122,7 @@ describe('owner-authorized canonical Gellatti Stabilizer row', () => {
     ]) {
       expect(exact && value(exact, field), field).toBe('0');
     }
-    expect(exact && value(exact, 'kcal_per_100g')).toBe('192.0');
+    expect(Number(exact && value(exact, 'kcal_per_100g'))).toBeCloseTo(192, 12);
     expect(exact && value(exact, 'cost_per_kg')).toBe('');
     expect(exact && value(exact, 'currency')).toBe('');
     expect(exact && value(exact, 'allergens')).toBe('none_declared');

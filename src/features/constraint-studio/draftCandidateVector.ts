@@ -206,6 +206,14 @@ export function buildDraftCandidateVector(
     // preserving pass has failed, and Preview must then say so out loud.
     if (materialFloorGrams !== null && materialFloorGrams > MIN_MOVE_GRAMS) {
       tested.add(Math.round(materialFloorGrams * 100) / 100);
+      // Keep one material-but-still-present rung between the ordinary floor
+      // and the 1 g emergency floor. Without it a changed composition can
+      // make `1 g` the only legal deviating candidate even though a much
+      // closer substantial reduction is equally legal.
+      const substantialReductionGrams = 1 + (materialFloorGrams - 1) / 2;
+      if (substantialReductionGrams > 1 + MIN_MOVE_GRAMS) {
+        tested.add(Math.round(substantialReductionGrams * 100) / 100);
+      }
     }
     if (anchorGrams !== null && Math.abs(current - 1) >= MIN_MOVE_GRAMS) tested.add(1);
 
@@ -359,6 +367,11 @@ export interface DraftSweepResult {
 
 const SEVERITY_EPS = 1e-9;
 
+const batchDistanceFromTarget = (input: RecipeInput): number =>
+  Math.abs(
+    input.items.reduce((sum, item) => sum + item.planned_grams, 0) - input.target_batch_grams,
+  );
+
 /**
  * MATERIAL-GAIN FLOOR — the deterministic CONVERGENCE guard of this tier
  * (orchestration only; the sibling of `MAX_SOLVER_ROUNDS`, not a scientific
@@ -482,6 +495,76 @@ export function sweepDraftCandidateVector(args: DraftSweepArgs): DraftSweepResul
   const isDeviating = (candidate: DraftAdjustmentCandidate, toGrams: number): boolean =>
     candidate.anchorGrams !== null &&
     isMaterialUserIntentDeviation(candidate.anchorGrams, toGrams, batch);
+
+  // A composition can already be technically clean while its selected grams
+  // still miss the requested batch. That structural mismatch is not an Engine
+  // metric, so a severity-only sweep would call the draft a fixed point. Try
+  // the one exact mass reconciliation first, keeping every existing lock and
+  // stabilizer gate, and prefer a non-material user-intent move whenever one
+  // exists. This is a batch repair only: it may not worsen the clean technical
+  // state and it reports any unavoidable material deviation normally.
+  const initialBatchDistance = batchDistanceFromTarget(start);
+  if (
+    args.startMeasure.violations === 0 &&
+    args.startMeasure.severityPoints <= SEVERITY_EPS &&
+    initialBatchDistance >= MIN_MOVE_GRAMS
+  ) {
+    const signedOverflow =
+      start.items.reduce((sum, item) => sum + item.planned_grams, 0) - batch;
+    let reconciliation: DraftSweepResult | null = null;
+    for (const candidate of buildDraftCandidateVector(start, set, excludedIngredientIds)) {
+      const toGrams = candidate.currentGrams - signedOverflow;
+      if (
+        toGrams <= MIN_MOVE_GRAMS ||
+        (signedOverflow < 0 && !candidate.increasable) ||
+        Math.abs(toGrams - candidate.currentGrams) < MIN_MOVE_GRAMS
+      ) {
+        continue;
+      }
+      const actions = draftAdjustmentActions(candidate, toGrams);
+      if (actions.length === 0 || violatesInternalStabilizerProfileAuthority(start, actions[0]!)) {
+        continue;
+      }
+      const move: DraftAdjustmentMove = {
+        lineId: candidate.lineId,
+        ingredientId: candidate.ingredientId,
+        ingredientName: candidate.ingredientName,
+        fromGrams: candidate.currentGrams,
+        toGrams,
+        direction: toGrams > candidate.currentGrams ? 'increase' : 'decrease',
+        actions,
+      };
+      const applied = applyDraftAdjustment(start, move, constraints);
+      if (applied === null) continue;
+      const normalized = normalize(applied);
+      const next = measure(normalized);
+      if (
+        next.violations !== 0 ||
+        next.severityPoints > SEVERITY_EPS ||
+        batchDistanceFromTarget(normalized) >= initialBatchDistance - SEVERITY_EPS
+      ) {
+        continue;
+      }
+      const material = isDeviating(candidate, toGrams);
+      const nextResult: DraftSweepResult = {
+        input: normalized,
+        measure: next,
+        moves: [move],
+        materialUserIntentDeviation: material,
+      };
+      if (
+        reconciliation === null ||
+        (reconciliation.materialUserIntentDeviation === true && !material) ||
+        (reconciliation.materialUserIntentDeviation === material &&
+          (next.userIntentDrift ?? Number.POSITIVE_INFINITY) <
+            (reconciliation.measure.userIntentDrift ?? Number.POSITIVE_INFINITY) -
+              USER_INTENT_DRIFT_EPS)
+      ) {
+        reconciliation = nextResult;
+      }
+    }
+    if (reconciliation !== null) return reconciliation;
+  }
 
   for (const lineId of buildDraftCandidateVector(start, set, excludedIngredientIds).map(
     (candidate) => candidate.lineId,

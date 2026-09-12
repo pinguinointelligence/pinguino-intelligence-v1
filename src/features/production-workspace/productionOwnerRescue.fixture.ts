@@ -1,10 +1,9 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import type { RecipeInput } from '@/engine';
-import { ingredientRowToEngineIngredient } from '@/data/ingredients/ingredientMapper';
-import type { IngredientRow } from '@/data/ingredients/ingredientRow';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence/contracts';
-import { parseCsv } from '@/lib/csv';
+import {
+  mapperIngredientForHistoricalVersion,
+  PRE_FINAL_2089_COMPOSITION_VERSION,
+} from '@/features/recipe-constraints/__fixtures__/sorbetAuthorityFixture';
 import {
   confirmProductionLine,
   createProductionSession,
@@ -13,45 +12,8 @@ import {
 } from './productionSession';
 import { productionTestComposition } from './productionTestComposition.fixture';
 
-const [mapperHeader = [], ...mapperRecords] = parseCsv(
-  readFileSync(resolve(process.cwd(), 'docs/ingredients/validation/mapper_basement.csv'), 'utf8'),
-);
-const mapperIndex = new Map(mapperHeader.map((name, position) => [name, position]));
-const mapperRecordsById = new Map(
-  mapperRecords.map((record) => [record[mapperIndex.get('ingredient_id')!]!, record]),
-);
-const mapperTriStateFields = new Set(['vegan', 'dairy_free', 'gluten_free', 'contains_alcohol']);
-const mapperNumericFields = new Set(
-  mapperHeader.filter((field) =>
-    /_percent$|_value$|_factor$|brix|kcal|cost_per_kg|shelf_life_days|stabilizer_activity/.test(
-      field,
-    ),
-  ),
-);
-
-const mapperIngredient = (ingredientId: string) => {
-  const record = mapperRecordsById.get(ingredientId);
-  if (!record) throw new Error(`Missing immutable Mapper row ${ingredientId}`);
-  const row = Object.fromEntries(
-    mapperHeader.map((field, position) => {
-      const raw = record[position]?.trim() ?? '';
-      if (mapperTriStateFields.has(field)) return [field, raw.toLocaleLowerCase('en')];
-      if (mapperNumericFields.has(field)) return [field, raw === '' ? null : Number(raw)];
-      if (
-        field === 'approved_for_base' ||
-        field === 'approved_for_engines' ||
-        field === 'is_active'
-      ) {
-        return [field, raw.toLocaleLowerCase('en') === 'true'];
-      }
-      if (field === 'verification_date' || field === 'last_reviewed_at') {
-        return [field, raw || null];
-      }
-      return [field, raw];
-    }),
-  ) as unknown as IngredientRow;
-  return ingredientRowToEngineIngredient(row);
-};
+const mapperIngredient = (ingredientId: string) =>
+  mapperIngredientForHistoricalVersion(PRE_FINAL_2089_COMPOSITION_VERSION, ingredientId);
 
 export const OWNER_RESCUE_RECIPE: RecipeInput = {
   items: [

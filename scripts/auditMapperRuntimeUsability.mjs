@@ -8,7 +8,7 @@ const processPath = path.join(root, 'supabase/seed/mapper_process_metadata.csv')
 const behaviorPath = path.join(root, 'reports/MAPPER_2089_PRODUCT_BEHAVIOR_AUDIT.csv');
 const outputCsv = path.join(root, 'reports/MAPPER_2089_RUNTIME_USABILITY_AUDIT.csv');
 const outputMd = path.join(root, 'reports/MAPPER_2089_RUNTIME_USABILITY_AUDIT.md');
-const EXPECTED_SHA = '057375cd60cefe613892ff1d9f8f7eda880ff0eb06732f9229051fc37d8deca7';
+const EXPECTED_SHA = 'a6a849a596acef75e0760992353bddf5cbca24ff37744e36414da18ca45556f6';
 const EXPECTED_PROCESS_SHA = '44fd5302c7a2372bb69ba5abc592edd27f41e96c5de00ac2ca45ade1903ad6d6';
 // Re-pinned 2026-08-23 after the process/dosage informational-only cleanup:
 // `process_evidence_missing` is no longer emitted as a classification reason,
@@ -90,10 +90,10 @@ if (authorityPath && !Array.isArray(parsedAuthority)) {
 const authorityRows = Array.isArray(parsedAuthority) ? parsedAuthority : [];
 const authorityById = new Map(authorityRows.map((row) => [row.ingredient_id, row]));
 if (
-  mapperRows.length !== 2089 ||
-  new Set(mapperRows.map((row) => row.ingredient_id)).size !== 2089
+  mapperRows.length !== 2541 ||
+  new Set(mapperRows.map((row) => row.ingredient_id)).size !== 2541
 ) {
-  throw new Error('Mapper row/id baseline is not 2089/2089');
+  throw new Error('Mapper row/id baseline is not 2541/2541');
 }
 const mapperIdSet = new Set(mapperRows.map((row) => row.ingredient_id));
 for (const [label, companionRows, companionById] of [
@@ -110,21 +110,21 @@ for (const [label, companionRows, companionById] of [
     companionRows.length !== 2089 ||
     companionById.size !== 2089 ||
     extraIds.length ||
-    missingIds.length
+    missingIds.length !== 452
   ) {
     throw new Error(
       `${label} identity set drifted; rows=${companionRows.length} unique=${companionById.size} extra=${extraIds.join('|') || 'NONE'} missing=${missingIds.join('|') || 'NONE'}`,
     );
   }
 }
-if (authorityPath && authorityRows.length !== 2089) {
+if (authorityPath && authorityRows.length !== 2541) {
   throw new Error(
-    `Authenticated authority export must contain 2089 rows, received ${authorityRows.length}`,
+    `Authenticated authority export must contain 2541 rows, received ${authorityRows.length}`,
   );
 }
-if (authorityPath && authorityById.size !== 2089) {
+if (authorityPath && authorityById.size !== 2541) {
   throw new Error(
-    `Authenticated authority export must contain 2089 unique ingredient IDs, received ${authorityById.size}`,
+    `Authenticated authority export must contain 2541 unique ingredient IDs, received ${authorityById.size}`,
   );
 }
 if (authorityPath) {
@@ -188,9 +188,9 @@ if (authorityPath) {
   }
   for (const field of ['product_id', 'product_version_id', 'binding_id']) {
     const unique = new Set(authorityRows.map((row) => row[field]));
-    if (unique.size !== 2089) {
+    if (unique.size !== 2541) {
       throw new Error(
-        `Authenticated runtime authority drift: ${field} must contain 2089 unique values, received ${unique.size}`,
+        `Authenticated runtime authority drift: ${field} must contain 2541 unique values, received ${unique.size}`,
       );
     }
   }
@@ -441,12 +441,12 @@ const counts = {
   missingBinding: count((row) => row.current_binding_id.startsWith('PENDING_')),
 };
 if (
-  counts.active !== 2089 ||
-  counts.base !== 2076 ||
-  counts.engine !== 2075 ||
-  counts.selectableBefore !== 1713 ||
-  counts.selectableAfter !== 2076 ||
-  counts.piAfter !== 2075
+  counts.active !== 2541 ||
+  counts.base !== 2491 ||
+  counts.engine !== 2491 ||
+  counts.selectableBefore !== 1578 ||
+  counts.selectableAfter !== 2491 ||
+  counts.piAfter !== 2491
 ) {
   throw new Error(`Runtime census drifted: ${JSON.stringify(counts)}`);
 }
@@ -476,6 +476,6 @@ const countTable =
   `| Verified status | ${counts.verified} | ${counts.verified} | Informational |\n` +
   `| Estimated status | ${counts.estimated} | ${counts.estimated} | Informational |\n` +
   `| Needs Label Review | ${counts.needsLabel} | ${counts.needsLabel} | Informational for technical use |`;
-const md = `# Mapper 2089 runtime usability audit\n\nGenerated deterministically by \`scripts/auditMapperRuntimeUsability.mjs\`. The source Mapper CSV is read-only and its SHA is pinned.\n\n${countTable}\n\n## Additional exact census\n\n- Approved for Base: **${counts.base}**.\n- Approved for Engine: **${counts.engine}**.\n- Technical composition incomplete under the 9-field contract: **${counts.technicalIncomplete}** (PI-ING-002113: POD/PAC).\n- ProductBehavior UNKNOWN_REQUIRES_EVIDENCE: **${counts.unknownBehavior}**.\n- Process UNKNOWN: **${counts.processUnknown}**.\n- Dosage UNKNOWN: **${counts.dosageUnknown}**.\n- Price missing: **${counts.priceMissing}**.\n- Customer-added Mapper references: **0**.\n- System-matched Mapper references: **0**.\n- Product version IDs pending authenticated served capture: **${counts.missingVersion}**.\n- Binding IDs pending authenticated served capture: **${counts.missingBinding}**.\n\n## Real remaining gates\n\n1. \`approved_for_base=false\` blocks Base only.\n2. \`approved_for_engines=false\` or one of the nine missing numerical fields blocks technical PI.\n3. Zero grams blocks the PI click until the user enters at least 1 g; unknown dosage itself does not block anything.\n4. Process UNKNOWN is preserved as product information and blocks nothing — not selection, not the Engine, not Production.\n5. Missing price leaves cost incomplete and prevents an honest cheapest-result claim; technical calculation remains available.\n\nThe exhaustive CSV preserves every simultaneous module-scoped reason instead of collapsing it into a single status.\n`;
+const md = `# Mapper FINAL 2541 runtime usability audit\n\nGenerated deterministically by \`scripts/auditMapperRuntimeUsability.mjs\`. The source Mapper CSV is read-only and its SHA is pinned. The legacy report filename is retained for downstream compatibility.\n\n${countTable}\n\n## Additional exact census\n\n- Approved for Base: **${counts.base}**.\n- Approved for Engine: **${counts.engine}**.\n- Technical composition incomplete under the 9-field contract: **${counts.technicalIncomplete}**.\n- ProductBehavior UNKNOWN_REQUIRES_EVIDENCE: **${counts.unknownBehavior}**.\n- Process UNKNOWN: **${counts.processUnknown}**.\n- Dosage UNKNOWN: **${counts.dosageUnknown}**.\n- Price missing: **${counts.priceMissing}**.\n- Customer-added Mapper references: **0**.\n- System-matched Mapper references: **0**.\n- Product version IDs pending authenticated served capture: **${counts.missingVersion}**.\n- Binding IDs pending authenticated served capture: **${counts.missingBinding}**.\n\n## Real remaining gates\n\n1. \`approved_for_base=false\` blocks Base only.\n2. \`approved_for_engines=false\` or one of the nine missing numerical fields blocks technical PI.\n3. Zero grams blocks the PI click until the user enters at least 1 g; unknown dosage itself does not block anything.\n4. Process UNKNOWN is preserved as product information and blocks nothing — not selection, not the Engine, not Production.\n5. Missing price leaves cost incomplete and prevents an honest cheapest-result claim; technical calculation remains available.\n\nThe exhaustive CSV preserves every simultaneous module-scoped reason instead of collapsing it into a single status.\n`;
 fs.writeFileSync(outputMd, md);
 console.log(JSON.stringify(counts));

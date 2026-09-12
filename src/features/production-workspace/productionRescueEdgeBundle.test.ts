@@ -5,8 +5,11 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_PRESET } from '@/data/demoPresets';
 import type { RecipeInput } from '@/engine';
-import { sorbetMapperIngredient } from '@/features/recipe-constraints/__fixtures__/sorbetAuthorityFixture';
 import { assessProductionRescue as assessCanonical } from './productionRescue';
+import {
+  P0_RESCUE_SCORE_VERSION,
+  p0RescueScoreVersionInput,
+} from './productionHistoricalRecipeVersions.fixture';
 import { productionTestComposition } from './productionTestComposition.fixture';
 import {
   confirmProductionLine,
@@ -68,44 +71,11 @@ const deviation = (query: string, delta: number) => {
 };
 
 const exactP0DextroseDeviation = () => {
-  const rows = [
-    ['milk', 'PI-ING-000236', 613],
-    ['cream', 'PI-ING-000180', 176],
-    ['smp', 'PI-ING-000270', 48],
-    ['sucrose', 'PI-ING-000514', 95],
-    ['dextrose', 'PI-ING-000494', 64],
-    ['tara', 'PI-ING-000492', 4],
-  ] as const;
-  const plannedInput: RecipeInput = {
-    mode: 'classic',
-    category: 'milk_gelato',
-    target_temperature_c: -11,
-    target_batch_grams: 1_000,
-    machine_capacity_grams: null,
-    goals: {
-      formulation_strategy: 'optimal',
-      cost_priority: 'balanced',
-      flavor_intensity: 'balanced',
-      direction_targets_active: true,
-      direction_targets: { sweetness: 0, softness: 0, creaminess: 0, flavor: 0 },
-    },
-    items: rows.map(([id, mapperId, plannedGrams]) => ({
-      id,
-      ingredient: sorbetMapperIngredient(mapperId),
-      planned_grams: plannedGrams,
-      actual_grams: null,
-      lock_type: 'unlocked' as const,
-    })),
-  };
+  const plannedInput = p0RescueScoreVersionInput();
   let session = createProductionSession({
     sessionId: 'edge-bundle-exact-p0',
     ownerUserId: 'owner',
-    source: {
-      recipeId: 'recipe-p0',
-      recipeVersionId: 'version-p0',
-      recipeVersionNumber: 1,
-      recipeName: 'P0 score authority',
-    },
+    source: P0_RESCUE_SCORE_VERSION,
     plannedInput,
     plannedComposition: productionTestComposition(plannedInput),
     startedAt: '2026-08-27T21:00:00.000Z',

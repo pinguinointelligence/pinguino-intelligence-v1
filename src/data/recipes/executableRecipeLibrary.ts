@@ -24,6 +24,30 @@ export interface ExecutableRecipeLineSeed {
   note: string;
 }
 
+/** The Mapper projection the current evaluations in this registry were computed against. */
+export const EXECUTABLE_EVALUATION_MAPPER = {
+  authority: 'FINAL_2541',
+  sha256: 'a6a849a596acef75e0760992353bddf5cbca24ff37744e36414da18ca45556f6',
+} as const;
+
+/** CURRENT execution truth of a registered Base: the deterministic Engine result against the
+ * FINAL 2541 Mapper projection. The registry test recomputes it, so a Mapper or Engine change
+ * cannot leave it silently stale. It never rewrites the source formula. */
+export interface ExecutableCurrentEngineEvaluation {
+  mapperAuthority: typeof EXECUTABLE_EVALUATION_MAPPER.authority;
+  engineVersion: string;
+  configVersion: string;
+  technicalScore: number;
+  /** `${metric}:${direction}` from `detectViolations`, in Engine order. */
+  violations: readonly string[];
+  /** Base PIs the FINAL Mapper does not approve for Base or Engines. */
+  unapprovedIngredientIds: readonly string[];
+  /** True only without violations and without unapproved PIs. */
+  executable: boolean;
+}
+
+export type ExecutableTemplateOpenState = 'open' | 'blocked_current_engine' | 'blocked_product_data';
+
 export interface ExecutableRecipeTemplate {
   id: string;
   version: 1;
@@ -46,7 +70,12 @@ export interface ExecutableRecipeTemplate {
   baseTargetGrams: 1000;
   /** Null until the current process authority publishes an exact versioned process. */
   processId: string | null;
-  technicalScore: number | null;
+  /** HISTORICAL provenance: the technical score recorded when this Owner vector was
+   * Engine-corrected against the retired 2089-row Mapper. Never the current Engine truth. */
+  historicalTechnicalScore: number | null;
+  /** CURRENT execution truth against the FINAL 2541 Mapper projection; null while the Base has
+   * an unresolved line. The live handoff gates (approval + Engine) stay authoritative. */
+  currentEngineEvaluation: ExecutableCurrentEngineEvaluation | null;
   baseCostPerKg: number | null;
   knownAllergens: readonly string[];
   finalAllergensComplete: boolean;
@@ -164,7 +193,8 @@ export const EXECUTABLE_RECIPE_TEMPLATES: readonly ExecutableRecipeTemplate[] = 
     formulationStrategy: 'optimal',
     baseTargetGrams: 1000,
     processId: null,
-    technicalScore: null,
+    historicalTechnicalScore: null,
+    currentEngineEvaluation: null,
     baseCostPerKg: null,
     knownAllergens: ['milk', 'egg'],
     finalAllergensComplete: false,
@@ -212,7 +242,16 @@ export const EXECUTABLE_RECIPE_TEMPLATES: readonly ExecutableRecipeTemplate[] = 
     formulationStrategy: 'optimal',
     baseTargetGrams: 1000,
     processId: null,
-    technicalScore: 89.16666666666667,
+    historicalTechnicalScore: 89.16666666666667,
+    currentEngineEvaluation: {
+      mapperAuthority: 'FINAL_2541',
+      engineVersion: '0.4.0',
+      configVersion: '0.7.0',
+      technicalScore: 84.48125717948717,
+      violations: ['water:low'],
+      unapprovedIngredientIds: [],
+      executable: false,
+    },
     baseCostPerKg: null,
     knownAllergens: ['milk', 'soy', 'hazelnut'],
     finalAllergensComplete: false,
@@ -261,7 +300,16 @@ export const EXECUTABLE_RECIPE_TEMPLATES: readonly ExecutableRecipeTemplate[] = 
     formulationStrategy: 'optimal',
     baseTargetGrams: 1000,
     processId: null,
-    technicalScore: 89.16666666666667,
+    historicalTechnicalScore: 89.16666666666667,
+    currentEngineEvaluation: {
+      mapperAuthority: 'FINAL_2541',
+      engineVersion: '0.4.0',
+      configVersion: '0.7.0',
+      technicalScore: 74.00171900738295,
+      violations: ['ice_fraction:low', 'npac:high'],
+      unapprovedIngredientIds: [],
+      executable: false,
+    },
     baseCostPerKg: null,
     knownAllergens: ['milk', 'soy', 'almond'],
     finalAllergensComplete: false,
@@ -310,7 +358,16 @@ export const EXECUTABLE_RECIPE_TEMPLATES: readonly ExecutableRecipeTemplate[] = 
     formulationStrategy: 'optimal',
     baseTargetGrams: 1000,
     processId: null,
-    technicalScore: 89.16666666666667,
+    historicalTechnicalScore: 89.16666666666667,
+    currentEngineEvaluation: {
+      mapperAuthority: 'FINAL_2541',
+      engineVersion: '0.4.0',
+      configVersion: '0.7.0',
+      technicalScore: 69.44670312869557,
+      violations: ['ice_fraction:low', 'npac:high', 'water:low'],
+      unapprovedIngredientIds: [],
+      executable: false,
+    },
     baseCostPerKg: 3.6696,
     knownAllergens: ['milk', 'soy', 'hazelnut'],
     finalAllergensComplete: false,
@@ -359,7 +416,16 @@ export const EXECUTABLE_RECIPE_TEMPLATES: readonly ExecutableRecipeTemplate[] = 
     formulationStrategy: 'optimal',
     baseTargetGrams: 1000,
     processId: null,
-    technicalScore: 97.5,
+    historicalTechnicalScore: 97.5,
+    currentEngineEvaluation: {
+      mapperAuthority: 'FINAL_2541',
+      engineVersion: '0.4.0',
+      configVersion: '0.7.0',
+      technicalScore: 97.5,
+      violations: [],
+      unapprovedIngredientIds: ['PI-ING-001705'],
+      executable: false,
+    },
     baseCostPerKg: null,
     knownAllergens: ['milk'],
     finalAllergensComplete: false,
@@ -407,7 +473,16 @@ export const EXECUTABLE_RECIPE_TEMPLATES: readonly ExecutableRecipeTemplate[] = 
     formulationStrategy: 'optimal',
     baseTargetGrams: 1000,
     processId: null,
-    technicalScore: 88.33333333333333,
+    historicalTechnicalScore: 88.33333333333333,
+    currentEngineEvaluation: {
+      mapperAuthority: 'FINAL_2541',
+      engineVersion: '0.4.0',
+      configVersion: '0.7.0',
+      technicalScore: 73.13846205680093,
+      violations: ['ice_fraction:low', 'npac:high'],
+      unapprovedIngredientIds: [],
+      executable: false,
+    },
     baseCostPerKg: 3.5903,
     knownAllergens: ['milk', 'soy', 'peanut', 'gluten_wheat', 'egg'],
     finalAllergensComplete: false,
@@ -446,6 +521,15 @@ export const EXECUTABLE_INSPIRATION_TEMPLATE_BY_FLAVOR: Readonly<Record<string, 
 export function executableRecipeTemplateById(idToFind: string): ExecutableRecipeTemplate | null {
   const template = BY_ID.get(idToFind);
   return template ? structuredClone(template) : null;
+}
+
+/** Whether a registered template may be opened in Pro now. An editable Owner Review template
+ * the current Engine rejects stays visible, but it is never offered as ready. */
+export function executableTemplateOpenState(
+  template: Pick<ExecutableRecipeTemplate, 'status' | 'currentEngineEvaluation'>,
+): ExecutableTemplateOpenState {
+  if (template.status !== 'OWNER_REVIEW_EDITABLE') return 'blocked_product_data';
+  return template.currentEngineEvaluation?.executable === true ? 'open' : 'blocked_current_engine';
 }
 
 export function executableTemplateIdForInspiration(flavorCode: string): string | null {
@@ -493,7 +577,15 @@ export function executableRecipeCard(template: ExecutableRecipeTemplate) {
       : recipeTemplateBaseTotal(template)! + recipeTemplateToppingTotal(template),
     publicationStage: template.publicationStage,
     trademarkReviewRequired: template.trademarkReviewRequired,
-    technicalScore: template.technicalScore,
+    historicalTechnicalScore: template.historicalTechnicalScore,
+    currentEngineEvaluation: template.currentEngineEvaluation
+      ? {
+          ...template.currentEngineEvaluation,
+          violations: [...template.currentEngineEvaluation.violations],
+          unapprovedIngredientIds: [...template.currentEngineEvaluation.unapprovedIngredientIds],
+        }
+      : null,
+    openState: executableTemplateOpenState(template),
     baseCostPerKg: template.baseCostPerKg,
     processId: template.processId,
     ownerReviewStatus: template.status,

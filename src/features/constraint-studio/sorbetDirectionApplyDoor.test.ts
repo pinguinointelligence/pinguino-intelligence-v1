@@ -287,9 +287,9 @@ describe('Apply door — Sorbet exact Direction keeps the Main group byte-exact 
       lock_type: 'main',
     });
     expect(candidate!.proposedInput.items.map((item) => [item.id, item.planned_grams])).toEqual([
-      ['new-recipe-1-water', 156],
-      ['new-recipe-2-sucrose', 80],
-      ['new-recipe-3-dextrose', 105],
+      ['new-recipe-1-water', 157],
+      ['new-recipe-2-sucrose', 74],
+      ['new-recipe-3-dextrose', 110],
       ['new-recipe-4-inulin', 55],
       ['new-recipe-5-tara_gum', 4],
       ['line-strawberry', 600],
@@ -302,9 +302,9 @@ describe('Apply door — Sorbet exact Direction keeps the Main group byte-exact 
     expect(after.blocked, after.blocked?.messagePl).toBeNull();
     expect(after.history).toHaveLength(1);
     expect(grams()).toEqual([
-      ['new-recipe-1-water', 156],
-      ['new-recipe-2-sucrose', 80],
-      ['new-recipe-3-dextrose', 105],
+      ['new-recipe-1-water', 157],
+      ['new-recipe-2-sucrose', 74],
+      ['new-recipe-3-dextrose', 110],
       ['new-recipe-4-inulin', 55],
       ['new-recipe-5-tara_gum', 4],
       ['line-strawberry', 600],

@@ -14,7 +14,7 @@
  * and Score 6 served.
  *
  * Source of truth: docs/ingredients/validation/mapper_basement.csv
- * Mapper SHA-256 at generation: 057375cd60cefe613892ff1d9f8f7eda880ff0eb06732f9229051fc37d8deca7
+ * Mapper SHA-256 at generation: a6a849a596acef75e0760992353bddf5cbca24ff37744e36414da18ca45556f6
  *
  * The Mapper base is never written by this file or its generator.
  */
@@ -31,12 +31,13 @@ export interface CanonicalToolboxComposition {
   cost_per_kg: number | null;
   cost_currency: string | null;
   confidence_score: number;
+  verification_status: string;
   verified: boolean;
 }
 
 /** Mapper SHA-256 this file was generated from. */
 export const CANONICAL_TOOLBOX_MAPPER_SHA256 =
-  '057375cd60cefe613892ff1d9f8f7eda880ff0eb06732f9229051fc37d8deca7';
+  'a6a849a596acef75e0760992353bddf5cbca24ff37744e36414da18ca45556f6';
 
 export const CANONICAL_TOOLBOX_COMPOSITIONS: readonly CanonicalToolboxComposition[] = [
   {
@@ -68,37 +69,39 @@ export const CANONICAL_TOOLBOX_COMPOSITIONS: readonly CanonicalToolboxCompositio
     "cost_per_kg": 1.2,
     "cost_currency": "EUR",
     "confidence_score": 98,
+    "verification_status": "Verified",
     "verified": true
   },
   {
     "toolboxId": "dextrose",
     "mapperId": "PI-ING-000494",
-    "displayName": "DEXTROSE · Sweetener · Dry",
+    "displayName": "DEXTROSE MONOHYDRATE · Sweetener · Dry",
     "composition": {
-      "water_percent": 8,
-      "solids_percent": 92,
+      "water_percent": 9.1,
+      "solids_percent": 90.9,
       "fat_percent": 0,
       "protein_percent": 0,
-      "carbohydrate_percent": 92,
-      "sugar_percent": 92,
+      "carbohydrate_percent": 90.9,
+      "sugar_percent": 90.9,
       "sucrose_percent": 0,
       "glucose_percent": 0,
-      "dextrose_percent": 92,
+      "dextrose_percent": 90.9,
       "fructose_percent": 0,
       "lactose_percent": 0,
       "polyol_percent": 0,
       "fiber_percent": 0,
       "salt_percent": 0,
       "alcohol_percent": 0,
-      "kcal_per_100g": 368,
+      "kcal_per_100g": 364,
       "saturated_fat_percent": 0
     },
-    "pod_value": 70.84,
-    "pac_value": 174.8,
+    "pod_value": 72.7,
+    "pac_value": 172.7,
     "de_value": null,
     "cost_per_kg": 2.8,
     "cost_currency": "EUR",
     "confidence_score": 98,
+    "verification_status": "Verified / Global Reference",
     "verified": true
   },
   {
@@ -130,6 +133,7 @@ export const CANONICAL_TOOLBOX_COMPOSITIONS: readonly CanonicalToolboxCompositio
     "cost_per_kg": 20,
     "cost_currency": "EUR",
     "confidence_score": 98,
+    "verification_status": "Verified",
     "verified": true
   },
   {
@@ -137,8 +141,8 @@ export const CANONICAL_TOOLBOX_COMPOSITIONS: readonly CanonicalToolboxCompositio
     "mapperId": "PI-ING-000180",
     "displayName": "CREAM 30% · Mlekovita Cream · Chilled",
     "composition": {
-      "water_percent": 64.42,
-      "solids_percent": 35.58,
+      "water_percent": 63.9173,
+      "solids_percent": 36.0827,
       "fat_percent": 30,
       "protein_percent": 2.3,
       "carbohydrate_percent": 3.2,
@@ -153,23 +157,24 @@ export const CANONICAL_TOOLBOX_COMPOSITIONS: readonly CanonicalToolboxCompositio
       "salt_percent": 0.08,
       "alcohol_percent": 0,
       "kcal_per_100g": 292,
-      "saturated_fat_percent": 0
+      "saturated_fat_percent": 19.2
     },
     "pod_value": 0.512,
     "pac_value": 3.668,
     "de_value": null,
     "cost_per_kg": 3.2,
     "cost_currency": "EUR",
-    "confidence_score": 98,
-    "verified": true
+    "confidence_score": 85,
+    "verification_status": "Estimated / PI Calculated",
+    "verified": false
   },
   {
     "toolboxId": "milk_3_5",
     "mapperId": "PI-ING-000236",
-    "displayName": "MILK 3.5% · Milk · Chilled",
+    "displayName": "MILK · 3.5% FAT · Chilled",
     "composition": {
-      "water_percent": 88.7,
-      "solids_percent": 11.3,
+      "water_percent": 88.1,
+      "solids_percent": 11.9,
       "fat_percent": 3.5,
       "protein_percent": 3,
       "carbohydrate_percent": 4.7,
@@ -184,23 +189,24 @@ export const CANONICAL_TOOLBOX_COMPOSITIONS: readonly CanonicalToolboxCompositio
       "salt_percent": 0.1,
       "alcohol_percent": 0,
       "kcal_per_100g": 60,
-      "saturated_fat_percent": 0
+      "saturated_fat_percent": 2.24
     },
     "pod_value": 0.752,
     "pac_value": 5.285,
     "de_value": null,
     "cost_per_kg": 1.2,
     "cost_currency": "EUR",
-    "confidence_score": 98,
-    "verified": true
+    "confidence_score": 85,
+    "verification_status": "Estimated / PI Calculated",
+    "verified": false
   },
   {
     "toolboxId": "smp",
     "mapperId": "PI-ING-000270",
-    "displayName": "SKIMMED MILK · Milk",
+    "displayName": "SKIMMED MILK POWDER · 0.8% FAT · Dairy · Dry",
     "composition": {
-      "water_percent": 10.32,
-      "solids_percent": 89.68,
+      "water_percent": 3.12,
+      "solids_percent": 96.88,
       "fat_percent": 0.8,
       "protein_percent": 35.7,
       "carbohydrate_percent": 51.98,
@@ -215,20 +221,21 @@ export const CANONICAL_TOOLBOX_COMPOSITIONS: readonly CanonicalToolboxCompositio
       "salt_percent": 1.2,
       "alcohol_percent": 0,
       "kcal_per_100g": 362,
-      "saturated_fat_percent": 0
+      "saturated_fat_percent": 0.512
     },
     "pod_value": 8.16,
     "pac_value": 58.02,
     "de_value": null,
     "cost_per_kg": 6.5,
     "cost_currency": "EUR",
-    "confidence_score": 98,
-    "verified": true
+    "confidence_score": 85,
+    "verification_status": "Estimated / PI Calculated",
+    "verified": false
   },
   {
     "toolboxId": "inulin",
     "mapperId": "PI-ING-000456",
-    "displayName": "INULIN · Specialty",
+    "displayName": "INULIN · Fibre · Powder",
     "composition": {
       "water_percent": 3,
       "solids_percent": 97,
@@ -254,6 +261,7 @@ export const CANONICAL_TOOLBOX_COMPOSITIONS: readonly CanonicalToolboxCompositio
     "cost_per_kg": 8,
     "cost_currency": "EUR",
     "confidence_score": 98,
+    "verification_status": "Verified",
     "verified": true
   },
   {
@@ -284,6 +292,7 @@ export const CANONICAL_TOOLBOX_COMPOSITIONS: readonly CanonicalToolboxCompositio
     "cost_per_kg": null,
     "cost_currency": "EUR",
     "confidence_score": 95,
+    "verification_status": "Verified",
     "verified": true
   },
   {
@@ -315,6 +324,7 @@ export const CANONICAL_TOOLBOX_COMPOSITIONS: readonly CanonicalToolboxCompositio
     "cost_per_kg": 8,
     "cost_currency": "EUR",
     "confidence_score": 98,
+    "verification_status": "Verified",
     "verified": true
   },
   {
@@ -346,6 +356,7 @@ export const CANONICAL_TOOLBOX_COMPOSITIONS: readonly CanonicalToolboxCompositio
     "cost_per_kg": 3.5,
     "cost_currency": "EUR",
     "confidence_score": 92,
+    "verification_status": "Estimated",
     "verified": false
   },
   {
@@ -377,6 +388,7 @@ export const CANONICAL_TOOLBOX_COMPOSITIONS: readonly CanonicalToolboxCompositio
     "cost_per_kg": 3.5,
     "cost_currency": "EUR",
     "confidence_score": 92,
+    "verification_status": "Estimated",
     "verified": false
   },
   {
@@ -407,6 +419,7 @@ export const CANONICAL_TOOLBOX_COMPOSITIONS: readonly CanonicalToolboxCompositio
     "cost_per_kg": null,
     "cost_currency": "EUR",
     "confidence_score": 95,
+    "verification_status": "Verified",
     "verified": true
   },
   {
@@ -438,6 +451,7 @@ export const CANONICAL_TOOLBOX_COMPOSITIONS: readonly CanonicalToolboxCompositio
     "cost_per_kg": 9.5,
     "cost_currency": "EUR",
     "confidence_score": 98,
+    "verification_status": "Verified",
     "verified": true
   },
   {
@@ -469,6 +483,7 @@ export const CANONICAL_TOOLBOX_COMPOSITIONS: readonly CanonicalToolboxCompositio
     "cost_per_kg": null,
     "cost_currency": "EUR",
     "confidence_score": 95,
+    "verification_status": "Verified",
     "verified": true
   },
   {
@@ -500,43 +515,45 @@ export const CANONICAL_TOOLBOX_COMPOSITIONS: readonly CanonicalToolboxCompositio
     "cost_per_kg": 12,
     "cost_currency": "EUR",
     "confidence_score": 98,
+    "verification_status": "Verified",
     "verified": true
   },
   {
     "toolboxId": "wpc_60",
     "mapperId": "PI-ING-000294",
-    "displayName": "WPC 60% · Dairy",
+    "displayName": "WHEY PROTEIN CONCENTRATE · WPC 60 · 60% PROTEIN",
     "composition": {
-      "water_percent": 4.7,
-      "solids_percent": 95.3,
-      "fat_percent": 7,
+      "water_percent": 4,
+      "solids_percent": 96,
+      "fat_percent": 6,
       "protein_percent": 60,
-      "carbohydrate_percent": 28,
-      "sugar_percent": 28,
+      "carbohydrate_percent": 24,
+      "sugar_percent": 24,
       "sucrose_percent": 0,
       "glucose_percent": 0,
       "dextrose_percent": 0,
       "fructose_percent": 0,
-      "lactose_percent": 28,
+      "lactose_percent": 24,
       "polyol_percent": 0,
       "fiber_percent": 0,
       "salt_percent": 0.3,
       "alcohol_percent": 0,
-      "kcal_per_100g": 395,
-      "saturated_fat_percent": 0
+      "kcal_per_100g": 390,
+      "saturated_fat_percent": 3.84
     },
-    "pod_value": 15.4,
-    "pac_value": 29.755,
+    "pod_value": 3.84,
+    "pac_value": 25.755,
     "de_value": null,
     "cost_per_kg": 12,
     "cost_currency": "EUR",
-    "confidence_score": 98,
-    "verified": true
+    "confidence_score": 84,
+    "verification_status": "Estimated / PI Calculated",
+    "verified": false
   },
   {
     "toolboxId": "mpc_75",
     "mapperId": "PI-ING-000237",
-    "displayName": "MILK PROTEIN CONCENTRATE WPC 75% · Milk",
+    "displayName": "MILK PROTEIN POWDER · 75% PROTEIN · Legacy MPC/WPC identity",
     "composition": {
       "water_percent": 14.1,
       "solids_percent": 85.9,
@@ -562,12 +579,13 @@ export const CANONICAL_TOOLBOX_COMPOSITIONS: readonly CanonicalToolboxCompositio
     "cost_per_kg": 12,
     "cost_currency": "EUR",
     "confidence_score": 98,
-    "verified": true
+    "verification_status": "Legacy reference / Exact identity or TDS review",
+    "verified": false
   },
   {
     "toolboxId": "protein_gel_wpc",
     "mapperId": "PI-ING-000264",
-    "displayName": "PROTEIN GEL WPC · Sempre Dairy · SEMPRE230",
+    "displayName": "PROTEIN GEL · WPC 80 CLASS · Sempre · SEMPRE230",
     "composition": {
       "water_percent": 3.7,
       "solids_percent": 96.3,
@@ -593,46 +611,48 @@ export const CANONICAL_TOOLBOX_COMPOSITIONS: readonly CanonicalToolboxCompositio
     "cost_per_kg": 12,
     "cost_currency": "EUR",
     "confidence_score": 98,
-    "verified": true
+    "verification_status": "Legacy reference / Exact identity or TDS review",
+    "verified": false
   },
   {
     "toolboxId": "wpc_80",
     "mapperId": "PI-ING-000295",
-    "displayName": "WPC 80% · Dairy",
+    "displayName": "WHEY PROTEIN CONCENTRATE · WPC 80 · 80% PROTEIN",
     "composition": {
-      "water_percent": 3,
-      "solids_percent": 97,
-      "fat_percent": 1.7,
+      "water_percent": 4,
+      "solids_percent": 96,
+      "fat_percent": 6,
       "protein_percent": 80,
-      "carbohydrate_percent": 15,
-      "sugar_percent": 15,
+      "carbohydrate_percent": 6.5,
+      "sugar_percent": 6.5,
       "sucrose_percent": 0,
       "glucose_percent": 0,
       "dextrose_percent": 0,
       "fructose_percent": 0,
-      "lactose_percent": 15,
+      "lactose_percent": 6.5,
       "polyol_percent": 0,
       "fiber_percent": 0,
       "salt_percent": 0.3,
       "alcohol_percent": 0,
-      "kcal_per_100g": 395,
-      "saturated_fat_percent": 0
+      "kcal_per_100g": 400,
+      "saturated_fat_percent": 3.84
     },
-    "pod_value": 2.4,
-    "pac_value": 16.755,
+    "pod_value": 1.04,
+    "pac_value": 8.255,
     "de_value": null,
     "cost_per_kg": 12,
     "cost_currency": "EUR",
-    "confidence_score": 98,
-    "verified": true
+    "confidence_score": 90,
+    "verification_status": "Estimated / PI Calculated",
+    "verified": false
   },
   {
     "toolboxId": "skyr_12",
     "mapperId": "PI-ING-001395",
     "displayName": "SKYR ICELANDIC YOGHURT · Piątnica Yogurt · Chilled",
     "composition": {
-      "water_percent": 83.8,
-      "solids_percent": 16.2,
+      "water_percent": 83.1,
+      "solids_percent": 16.9,
       "fat_percent": 0,
       "protein_percent": 12,
       "carbohydrate_percent": 4.1,
@@ -646,23 +666,25 @@ export const CANONICAL_TOOLBOX_COMPOSITIONS: readonly CanonicalToolboxCompositio
       "fiber_percent": 0,
       "salt_percent": 0.1,
       "alcohol_percent": 0,
-      "kcal_per_100g": 64
+      "kcal_per_100g": 64,
+      "saturated_fat_percent": 0
     },
     "pod_value": 0.656,
     "pac_value": 4.685,
     "de_value": null,
     "cost_per_kg": null,
     "cost_currency": "EUR",
-    "confidence_score": 95,
-    "verified": true
+    "confidence_score": 85,
+    "verification_status": "Estimated / PI Calculated",
+    "verified": false
   },
   {
     "toolboxId": "skyr_11",
     "mapperId": "PI-ING-001451",
-    "displayName": "SKYR FAT 0.2% · Dairy · Chilled",
+    "displayName": "SKYR · 0.2% FAT · 11% PROTEIN · Chilled",
     "composition": {
-      "water_percent": 82.7,
-      "solids_percent": 17.3,
+      "water_percent": 82,
+      "solids_percent": 18,
       "fat_percent": 0.2,
       "protein_percent": 11,
       "carbohydrate_percent": 6,
@@ -676,7 +698,8 @@ export const CANONICAL_TOOLBOX_COMPOSITIONS: readonly CanonicalToolboxCompositio
       "fiber_percent": 0,
       "salt_percent": 0.1,
       "alcohol_percent": 0,
-      "kcal_per_100g": 70
+      "kcal_per_100g": 70,
+      "saturated_fat_percent": 0.128
     },
     "pod_value": 4,
     "pac_value": 4.585,
@@ -684,12 +707,13 @@ export const CANONICAL_TOOLBOX_COMPOSITIONS: readonly CanonicalToolboxCompositio
     "cost_per_kg": null,
     "cost_currency": "EUR",
     "confidence_score": 85,
-    "verified": true
+    "verification_status": "Estimated / PI Calculated",
+    "verified": false
   },
   {
     "toolboxId": "pea_protein",
     "mapperId": "PI-ING-000451",
-    "displayName": "PEA PROTEIN · Protein · Dry",
+    "displayName": "PEA PROTEIN · 81.7% PROTEIN · High-salt legacy profile",
     "composition": {
       "water_percent": 2.2,
       "solids_percent": 97.8,
@@ -715,12 +739,13 @@ export const CANONICAL_TOOLBOX_COMPOSITIONS: readonly CanonicalToolboxCompositio
     "cost_per_kg": 12,
     "cost_currency": "EUR",
     "confidence_score": 98,
-    "verified": true
+    "verification_status": "Legacy reference / Exact identity or TDS review",
+    "verified": false
   },
   {
     "toolboxId": "rice_protein",
     "mapperId": "PI-ING-000452",
-    "displayName": "RICE PROTEIN · Protein · Dry",
+    "displayName": "RICE PROTEIN · 84% PROTEIN · Legacy profile",
     "composition": {
       "water_percent": 1,
       "solids_percent": 99,
@@ -746,7 +771,8 @@ export const CANONICAL_TOOLBOX_COMPOSITIONS: readonly CanonicalToolboxCompositio
     "cost_per_kg": 12,
     "cost_currency": "EUR",
     "confidence_score": 98,
-    "verified": true
+    "verification_status": "Legacy reference / Exact identity or TDS review",
+    "verified": false
   },
   {
     "toolboxId": "fructose",
@@ -777,6 +803,7 @@ export const CANONICAL_TOOLBOX_COMPOSITIONS: readonly CanonicalToolboxCompositio
     "cost_per_kg": 3.5,
     "cost_currency": "EUR",
     "confidence_score": 98,
+    "verification_status": "Verified",
     "verified": true
   },
   {
@@ -807,15 +834,16 @@ export const CANONICAL_TOOLBOX_COMPOSITIONS: readonly CanonicalToolboxCompositio
     "cost_per_kg": null,
     "cost_currency": "EUR",
     "confidence_score": 95,
+    "verification_status": "Verified",
     "verified": true
   },
   {
     "toolboxId": "cream_powder_42",
     "mapperId": "PI-ING-000260",
-    "displayName": "CREAM · Mlekovita Cream",
+    "displayName": "CREAM POWDER · 42% FAT · Mlekovita · Dry",
     "composition": {
-      "water_percent": 0,
-      "solids_percent": 100,
+      "water_percent": 3,
+      "solids_percent": 97,
       "fat_percent": 42,
       "protein_percent": 20,
       "carbohydrate_percent": 30,
@@ -830,15 +858,16 @@ export const CANONICAL_TOOLBOX_COMPOSITIONS: readonly CanonicalToolboxCompositio
       "salt_percent": 0.1,
       "alcohol_percent": 0,
       "kcal_per_100g": 578,
-      "saturated_fat_percent": 0
+      "saturated_fat_percent": 27
     },
     "pod_value": 4.8,
     "pac_value": 30.585,
     "de_value": null,
     "cost_per_kg": 8.5,
     "cost_currency": "EUR",
-    "confidence_score": 98,
-    "verified": true
+    "confidence_score": 85,
+    "verification_status": "Estimated / PI Calculated",
+    "verified": false
   },
   {
     "toolboxId": "gellatti_stabilizer",
@@ -869,12 +898,719 @@ export const CANONICAL_TOOLBOX_COMPOSITIONS: readonly CanonicalToolboxCompositio
     "cost_per_kg": null,
     "cost_currency": null,
     "confidence_score": 100,
+    "verification_status": "Verified / PI Calculated",
     "verified": true
+  },
+  {
+    "toolboxId": "mapper:PI-ING-001565",
+    "mapperId": "PI-ING-001565",
+    "displayName": "OAT DRINK · Beverage · Chilled · BIO",
+    "composition": {
+      "water_percent": 91.9,
+      "solids_percent": 8.1,
+      "fat_percent": 1.3,
+      "protein_percent": 0.4,
+      "carbohydrate_percent": 6,
+      "sugar_percent": 4.1,
+      "sucrose_percent": 4.1,
+      "glucose_percent": 0,
+      "dextrose_percent": 0,
+      "fructose_percent": 0,
+      "lactose_percent": 0,
+      "polyol_percent": 0,
+      "fiber_percent": 0,
+      "salt_percent": 0.12,
+      "alcohol_percent": 0,
+      "kcal_per_100g": 37,
+      "saturated_fat_percent": 0.195
+    },
+    "pod_value": 4.1,
+    "pac_value": 4.802,
+    "de_value": null,
+    "cost_per_kg": null,
+    "cost_currency": "EUR",
+    "confidence_score": 85,
+    "verification_status": "Estimated / PI Calculated",
+    "verified": false
+  },
+  {
+    "toolboxId": "mapper:PI-ING-001566",
+    "mapperId": "PI-ING-001566",
+    "displayName": "RICE DRINK · Beverage · Chilled",
+    "composition": {
+      "water_percent": 88.3,
+      "solids_percent": 11.7,
+      "fat_percent": 0.9,
+      "protein_percent": 0.1,
+      "carbohydrate_percent": 10.3,
+      "sugar_percent": 4.47,
+      "sucrose_percent": 0.03,
+      "glucose_percent": 0,
+      "dextrose_percent": 0,
+      "fructose_percent": 0,
+      "lactose_percent": 0,
+      "polyol_percent": 0,
+      "fiber_percent": 0,
+      "salt_percent": 0.1,
+      "alcohol_percent": 0,
+      "kcal_per_100g": 50,
+      "saturated_fat_percent": 0.135
+    },
+    "pod_value": 4.47,
+    "pac_value": 5.055,
+    "de_value": null,
+    "cost_per_kg": null,
+    "cost_currency": "EUR",
+    "confidence_score": 85,
+    "verification_status": "Estimated / PI Calculated",
+    "verified": false
+  },
+  {
+    "toolboxId": "mapper:PI-ING-002109",
+    "mapperId": "PI-ING-002109",
+    "displayName": "SOY DRINK 0% ADDED SUGAR · Carrefour · UHT",
+    "composition": {
+      "water_percent": 93.6,
+      "solids_percent": 6.4,
+      "fat_percent": 1.8,
+      "protein_percent": 3.2,
+      "carbohydrate_percent": 1,
+      "sugar_percent": 0.7,
+      "sucrose_percent": 0.7,
+      "glucose_percent": 0,
+      "dextrose_percent": 0,
+      "fructose_percent": 0,
+      "lactose_percent": 0,
+      "polyol_percent": 0,
+      "fiber_percent": 0,
+      "salt_percent": 0.06,
+      "alcohol_percent": 0,
+      "kcal_per_100g": 33,
+      "saturated_fat_percent": 0.3
+    },
+    "pod_value": 0.7,
+    "pac_value": 0.7,
+    "de_value": null,
+    "cost_per_kg": 1.71,
+    "cost_currency": "EUR",
+    "confidence_score": 85,
+    "verification_status": "Estimated / PI Calculated",
+    "verified": false
+  },
+  {
+    "toolboxId": "mapper:PI-ING-002110",
+    "mapperId": "PI-ING-002110",
+    "displayName": "HIGH-PROTEIN SOY DRINK · EcoCesta · BIO",
+    "composition": {
+      "water_percent": 87.8,
+      "solids_percent": 12.2,
+      "fat_percent": 2.6,
+      "protein_percent": 5.2,
+      "carbohydrate_percent": 2.7,
+      "sugar_percent": 2.4,
+      "sucrose_percent": 2.4,
+      "glucose_percent": 0,
+      "dextrose_percent": 0,
+      "fructose_percent": 0,
+      "lactose_percent": 0,
+      "polyol_percent": 0,
+      "fiber_percent": 1.3,
+      "salt_percent": 0.1,
+      "alcohol_percent": 0,
+      "kcal_per_100g": 58,
+      "saturated_fat_percent": 0.5
+    },
+    "pod_value": 2.4,
+    "pac_value": 2.4,
+    "de_value": null,
+    "cost_per_kg": 3.25,
+    "cost_currency": "EUR",
+    "confidence_score": 85,
+    "verification_status": "Estimated / PI Calculated",
+    "verified": false
+  },
+  {
+    "toolboxId": "mapper:PI-ING-002111",
+    "mapperId": "PI-ING-002111",
+    "displayName": "SOY SKYR HIGH PROTEIN NATURAL · Alpro · Chilled",
+    "composition": {
+      "water_percent": 86.4,
+      "solids_percent": 13.6,
+      "fat_percent": 3.3,
+      "protein_percent": 6,
+      "carbohydrate_percent": 2.6,
+      "sugar_percent": 2.5,
+      "sucrose_percent": 2.5,
+      "glucose_percent": 0,
+      "dextrose_percent": 0,
+      "fructose_percent": 0,
+      "lactose_percent": 0,
+      "polyol_percent": 0,
+      "fiber_percent": 1.3,
+      "salt_percent": 0.33,
+      "alcohol_percent": 0,
+      "kcal_per_100g": 68,
+      "saturated_fat_percent": 0.6
+    },
+    "pod_value": 2.5,
+    "pac_value": 2.5,
+    "de_value": null,
+    "cost_per_kg": 6.97,
+    "cost_currency": "EUR",
+    "confidence_score": 85,
+    "verification_status": "Estimated / PI Calculated",
+    "verified": false
+  },
+  {
+    "toolboxId": "mapper:PI-ING-002112",
+    "mapperId": "PI-ING-002112",
+    "displayName": "SOY PLUS LIGHT 0% SUGAR · Vivesoy · UHT",
+    "composition": {
+      "water_percent": 94.2,
+      "solids_percent": 5.8,
+      "fat_percent": 1.4,
+      "protein_percent": 2.7,
+      "carbohydrate_percent": 0.5,
+      "sugar_percent": 0,
+      "sucrose_percent": 0,
+      "glucose_percent": 0,
+      "dextrose_percent": 0,
+      "fructose_percent": 0,
+      "lactose_percent": 0,
+      "polyol_percent": 0,
+      "fiber_percent": 0.8,
+      "salt_percent": 0.12,
+      "alcohol_percent": 0,
+      "kcal_per_100g": 27,
+      "saturated_fat_percent": 0.2
+    },
+    "pod_value": 0,
+    "pac_value": 0,
+    "de_value": null,
+    "cost_per_kg": null,
+    "cost_currency": "EUR",
+    "confidence_score": 85,
+    "verification_status": "Estimated / PI Calculated",
+    "verified": false
+  },
+  {
+    "toolboxId": "mapper:PI-ING-001587",
+    "mapperId": "PI-ING-001587",
+    "displayName": "ALMOND DRINK · Beverage · Chilled",
+    "composition": {
+      "water_percent": 90.5,
+      "solids_percent": 9.5,
+      "fat_percent": 2.2,
+      "protein_percent": 0.7,
+      "carbohydrate_percent": 5.9,
+      "sugar_percent": 3.28,
+      "sucrose_percent": 0.56,
+      "glucose_percent": 0.05,
+      "dextrose_percent": 0,
+      "fructose_percent": 2.6,
+      "lactose_percent": 0,
+      "polyol_percent": 0,
+      "fiber_percent": 0.3,
+      "salt_percent": 0.2,
+      "alcohol_percent": 0,
+      "kcal_per_100g": 47,
+      "saturated_fat_percent": 0.33
+    },
+    "pod_value": 5.089,
+    "pac_value": 6.835,
+    "de_value": null,
+    "cost_per_kg": null,
+    "cost_currency": "EUR",
+    "confidence_score": 85,
+    "verification_status": "Estimated / PI Calculated",
+    "verified": false
+  },
+  {
+    "toolboxId": "mapper:PI-ING-000163",
+    "mapperId": "PI-ING-000163",
+    "displayName": "REFINED COCONUT OIL · Elstar Fats",
+    "composition": {
+      "water_percent": 0,
+      "solids_percent": 100,
+      "fat_percent": 100,
+      "protein_percent": 0,
+      "carbohydrate_percent": 0,
+      "sugar_percent": 0,
+      "sucrose_percent": 0,
+      "glucose_percent": 0,
+      "dextrose_percent": 0,
+      "fructose_percent": 0,
+      "lactose_percent": 0,
+      "polyol_percent": 0,
+      "fiber_percent": 0,
+      "salt_percent": 0,
+      "alcohol_percent": 0,
+      "kcal_per_100g": 900,
+      "saturated_fat_percent": 0
+    },
+    "pod_value": 0,
+    "pac_value": 0,
+    "de_value": null,
+    "cost_per_kg": 5,
+    "cost_currency": "EUR",
+    "confidence_score": 98,
+    "verification_status": "Verified",
+    "verified": true
+  },
+  {
+    "toolboxId": "mapper:PI-ING-000305",
+    "mapperId": "PI-ING-000305",
+    "displayName": "SUNFLOWER OIL · Fat",
+    "composition": {
+      "water_percent": 0,
+      "solids_percent": 100,
+      "fat_percent": 100,
+      "protein_percent": 0,
+      "carbohydrate_percent": 0,
+      "sugar_percent": 0,
+      "sucrose_percent": 0,
+      "glucose_percent": 0,
+      "dextrose_percent": 0,
+      "fructose_percent": 0,
+      "lactose_percent": 0,
+      "polyol_percent": 0,
+      "fiber_percent": 0,
+      "salt_percent": 0,
+      "alcohol_percent": 0,
+      "kcal_per_100g": 900,
+      "saturated_fat_percent": 0
+    },
+    "pod_value": 0,
+    "pac_value": 0,
+    "de_value": null,
+    "cost_per_kg": 4,
+    "cost_currency": "EUR",
+    "confidence_score": 98,
+    "verification_status": "Verified",
+    "verified": true
+  },
+  {
+    "toolboxId": "mapper:PI-ING-000451",
+    "mapperId": "PI-ING-000451",
+    "displayName": "PEA PROTEIN · 81.7% PROTEIN · High-salt legacy profile",
+    "composition": {
+      "water_percent": 2.2,
+      "solids_percent": 97.8,
+      "fat_percent": 9,
+      "protein_percent": 81.7,
+      "carbohydrate_percent": 0.7,
+      "sugar_percent": 0,
+      "sucrose_percent": 0,
+      "glucose_percent": 0,
+      "dextrose_percent": 0,
+      "fructose_percent": 0,
+      "lactose_percent": 0,
+      "polyol_percent": 0,
+      "fiber_percent": 1.4,
+      "salt_percent": 5,
+      "alcohol_percent": 0,
+      "kcal_per_100g": 413,
+      "saturated_fat_percent": 0
+    },
+    "pod_value": 0,
+    "pac_value": 29.25,
+    "de_value": null,
+    "cost_per_kg": 12,
+    "cost_currency": "EUR",
+    "confidence_score": 98,
+    "verification_status": "Legacy reference / Exact identity or TDS review",
+    "verified": false
+  },
+  {
+    "toolboxId": "mapper:PI-ING-000452",
+    "mapperId": "PI-ING-000452",
+    "displayName": "RICE PROTEIN · 84% PROTEIN · Legacy profile",
+    "composition": {
+      "water_percent": 1,
+      "solids_percent": 99,
+      "fat_percent": 5,
+      "protein_percent": 84,
+      "carbohydrate_percent": 5,
+      "sugar_percent": 0,
+      "sucrose_percent": 0,
+      "glucose_percent": 0,
+      "dextrose_percent": 0,
+      "fructose_percent": 0,
+      "lactose_percent": 0,
+      "polyol_percent": 0,
+      "fiber_percent": 5,
+      "salt_percent": 0,
+      "alcohol_percent": 0,
+      "kcal_per_100g": 429,
+      "saturated_fat_percent": 0
+    },
+    "pod_value": 0,
+    "pac_value": 0,
+    "de_value": null,
+    "cost_per_kg": 12,
+    "cost_currency": "EUR",
+    "confidence_score": 98,
+    "verification_status": "Legacy reference / Exact identity or TDS review",
+    "verified": false
+  },
+  {
+    "toolboxId": "mapper:PI-ING-000514",
+    "mapperId": "PI-ING-000514",
+    "displayName": "SUCROSE SUGAR · Sweetener · Dry",
+    "composition": {
+      "water_percent": 0,
+      "solids_percent": 100,
+      "fat_percent": 0,
+      "protein_percent": 0,
+      "carbohydrate_percent": 100,
+      "sugar_percent": 100,
+      "sucrose_percent": 100,
+      "glucose_percent": 0,
+      "dextrose_percent": 0,
+      "fructose_percent": 0,
+      "lactose_percent": 0,
+      "polyol_percent": 0,
+      "fiber_percent": 0,
+      "salt_percent": 0,
+      "alcohol_percent": 0,
+      "kcal_per_100g": 400,
+      "saturated_fat_percent": 0
+    },
+    "pod_value": 100,
+    "pac_value": 100,
+    "de_value": null,
+    "cost_per_kg": 1.2,
+    "cost_currency": "EUR",
+    "confidence_score": 98,
+    "verification_status": "Verified",
+    "verified": true
+  },
+  {
+    "toolboxId": "mapper:PI-ING-000494",
+    "mapperId": "PI-ING-000494",
+    "displayName": "DEXTROSE MONOHYDRATE · Sweetener · Dry",
+    "composition": {
+      "water_percent": 9.1,
+      "solids_percent": 90.9,
+      "fat_percent": 0,
+      "protein_percent": 0,
+      "carbohydrate_percent": 90.9,
+      "sugar_percent": 90.9,
+      "sucrose_percent": 0,
+      "glucose_percent": 0,
+      "dextrose_percent": 90.9,
+      "fructose_percent": 0,
+      "lactose_percent": 0,
+      "polyol_percent": 0,
+      "fiber_percent": 0,
+      "salt_percent": 0,
+      "alcohol_percent": 0,
+      "kcal_per_100g": 364,
+      "saturated_fat_percent": 0
+    },
+    "pod_value": 72.7,
+    "pac_value": 172.7,
+    "de_value": null,
+    "cost_per_kg": 2.8,
+    "cost_currency": "EUR",
+    "confidence_score": 98,
+    "verification_status": "Verified / Global Reference",
+    "verified": true
+  },
+  {
+    "toolboxId": "mapper:PI-ING-000492",
+    "mapperId": "PI-ING-000492",
+    "displayName": "TARA GUM · Stabilizer",
+    "composition": {
+      "water_percent": 9.5,
+      "solids_percent": 90.5,
+      "fat_percent": 0.5,
+      "protein_percent": 2,
+      "carbohydrate_percent": 1.5,
+      "sugar_percent": 0,
+      "sucrose_percent": 0,
+      "glucose_percent": 0,
+      "dextrose_percent": 0,
+      "fructose_percent": 0,
+      "lactose_percent": 0,
+      "polyol_percent": 0,
+      "fiber_percent": 86.5,
+      "salt_percent": 0,
+      "alcohol_percent": 0,
+      "kcal_per_100g": 180,
+      "saturated_fat_percent": 0
+    },
+    "pod_value": 0,
+    "pac_value": 0,
+    "de_value": null,
+    "cost_per_kg": 20,
+    "cost_currency": "EUR",
+    "confidence_score": 98,
+    "verification_status": "Verified",
+    "verified": true
+  },
+  {
+    "toolboxId": "mapper:PI-ING-000456",
+    "mapperId": "PI-ING-000456",
+    "displayName": "INULIN · Fibre · Powder",
+    "composition": {
+      "water_percent": 3,
+      "solids_percent": 97,
+      "fat_percent": 0,
+      "protein_percent": 0,
+      "carbohydrate_percent": 8,
+      "sugar_percent": 8,
+      "sucrose_percent": 8,
+      "glucose_percent": 0,
+      "dextrose_percent": 0,
+      "fructose_percent": 0,
+      "lactose_percent": 0,
+      "polyol_percent": 0,
+      "fiber_percent": 89,
+      "salt_percent": 0,
+      "alcohol_percent": 0,
+      "kcal_per_100g": 210,
+      "saturated_fat_percent": 0
+    },
+    "pod_value": 8,
+    "pac_value": 8,
+    "de_value": null,
+    "cost_per_kg": 8,
+    "cost_currency": "EUR",
+    "confidence_score": 98,
+    "verification_status": "Verified",
+    "verified": true
+  },
+  {
+    "toolboxId": "mapper:PI-ING-001409",
+    "mapperId": "PI-ING-001409",
+    "displayName": "WATER · Liquid",
+    "composition": {
+      "water_percent": 100,
+      "solids_percent": 0,
+      "fat_percent": 0,
+      "protein_percent": 0,
+      "carbohydrate_percent": 0,
+      "sugar_percent": 0,
+      "sucrose_percent": 0,
+      "glucose_percent": 0,
+      "dextrose_percent": 0,
+      "fructose_percent": 0,
+      "lactose_percent": 0,
+      "polyol_percent": 0,
+      "fiber_percent": 0,
+      "salt_percent": 0,
+      "alcohol_percent": 0,
+      "kcal_per_100g": 0
+    },
+    "pod_value": 0,
+    "pac_value": 0,
+    "de_value": null,
+    "cost_per_kg": null,
+    "cost_currency": "EUR",
+    "confidence_score": 95,
+    "verification_status": "Verified",
+    "verified": true
+  },
+  {
+    "toolboxId": "mapper:PI-ING-000237",
+    "mapperId": "PI-ING-000237",
+    "displayName": "MILK PROTEIN POWDER · 75% PROTEIN · Legacy MPC/WPC identity",
+    "composition": {
+      "water_percent": 14.1,
+      "solids_percent": 85.9,
+      "fat_percent": 0.6,
+      "protein_percent": 75,
+      "carbohydrate_percent": 10,
+      "sugar_percent": 10,
+      "sucrose_percent": 0,
+      "glucose_percent": 0,
+      "dextrose_percent": 0,
+      "fructose_percent": 0,
+      "lactose_percent": 10,
+      "polyol_percent": 0,
+      "fiber_percent": 0,
+      "salt_percent": 0.3,
+      "alcohol_percent": 0,
+      "kcal_per_100g": 304,
+      "saturated_fat_percent": 0
+    },
+    "pod_value": 1.6,
+    "pac_value": 11.755,
+    "de_value": null,
+    "cost_per_kg": 12,
+    "cost_currency": "EUR",
+    "confidence_score": 98,
+    "verification_status": "Legacy reference / Exact identity or TDS review",
+    "verified": false
+  },
+  {
+    "toolboxId": "mapper:PI-ING-000264",
+    "mapperId": "PI-ING-000264",
+    "displayName": "PROTEIN GEL · WPC 80 CLASS · Sempre · SEMPRE230",
+    "composition": {
+      "water_percent": 3.7,
+      "solids_percent": 96.3,
+      "fat_percent": 7,
+      "protein_percent": 80,
+      "carbohydrate_percent": 9,
+      "sugar_percent": 3.3,
+      "sucrose_percent": 0,
+      "glucose_percent": 0,
+      "dextrose_percent": 0,
+      "fructose_percent": 0,
+      "lactose_percent": 3.3,
+      "polyol_percent": 0,
+      "fiber_percent": 0,
+      "salt_percent": 0.3,
+      "alcohol_percent": 0,
+      "kcal_per_100g": 400,
+      "saturated_fat_percent": 0
+    },
+    "pod_value": 0.528,
+    "pac_value": 5.055,
+    "de_value": null,
+    "cost_per_kg": 12,
+    "cost_currency": "EUR",
+    "confidence_score": 98,
+    "verification_status": "Legacy reference / Exact identity or TDS review",
+    "verified": false
+  },
+  {
+    "toolboxId": "mapper:PI-ING-000294",
+    "mapperId": "PI-ING-000294",
+    "displayName": "WHEY PROTEIN CONCENTRATE · WPC 60 · 60% PROTEIN",
+    "composition": {
+      "water_percent": 4,
+      "solids_percent": 96,
+      "fat_percent": 6,
+      "protein_percent": 60,
+      "carbohydrate_percent": 24,
+      "sugar_percent": 24,
+      "sucrose_percent": 0,
+      "glucose_percent": 0,
+      "dextrose_percent": 0,
+      "fructose_percent": 0,
+      "lactose_percent": 24,
+      "polyol_percent": 0,
+      "fiber_percent": 0,
+      "salt_percent": 0.3,
+      "alcohol_percent": 0,
+      "kcal_per_100g": 390,
+      "saturated_fat_percent": 3.84
+    },
+    "pod_value": 3.84,
+    "pac_value": 25.755,
+    "de_value": null,
+    "cost_per_kg": 12,
+    "cost_currency": "EUR",
+    "confidence_score": 84,
+    "verification_status": "Estimated / PI Calculated",
+    "verified": false
+  },
+  {
+    "toolboxId": "mapper:PI-ING-000295",
+    "mapperId": "PI-ING-000295",
+    "displayName": "WHEY PROTEIN CONCENTRATE · WPC 80 · 80% PROTEIN",
+    "composition": {
+      "water_percent": 4,
+      "solids_percent": 96,
+      "fat_percent": 6,
+      "protein_percent": 80,
+      "carbohydrate_percent": 6.5,
+      "sugar_percent": 6.5,
+      "sucrose_percent": 0,
+      "glucose_percent": 0,
+      "dextrose_percent": 0,
+      "fructose_percent": 0,
+      "lactose_percent": 6.5,
+      "polyol_percent": 0,
+      "fiber_percent": 0,
+      "salt_percent": 0.3,
+      "alcohol_percent": 0,
+      "kcal_per_100g": 400,
+      "saturated_fat_percent": 3.84
+    },
+    "pod_value": 1.04,
+    "pac_value": 8.255,
+    "de_value": null,
+    "cost_per_kg": 12,
+    "cost_currency": "EUR",
+    "confidence_score": 90,
+    "verification_status": "Estimated / PI Calculated",
+    "verified": false
+  },
+  {
+    "toolboxId": "mapper:PI-ING-001395",
+    "mapperId": "PI-ING-001395",
+    "displayName": "SKYR ICELANDIC YOGHURT · Piątnica Yogurt · Chilled",
+    "composition": {
+      "water_percent": 83.1,
+      "solids_percent": 16.9,
+      "fat_percent": 0,
+      "protein_percent": 12,
+      "carbohydrate_percent": 4.1,
+      "sugar_percent": 4.1,
+      "sucrose_percent": 0,
+      "glucose_percent": 0,
+      "dextrose_percent": 0,
+      "fructose_percent": 0,
+      "lactose_percent": 4.1,
+      "polyol_percent": 0,
+      "fiber_percent": 0,
+      "salt_percent": 0.1,
+      "alcohol_percent": 0,
+      "kcal_per_100g": 64,
+      "saturated_fat_percent": 0
+    },
+    "pod_value": 0.656,
+    "pac_value": 4.685,
+    "de_value": null,
+    "cost_per_kg": null,
+    "cost_currency": "EUR",
+    "confidence_score": 85,
+    "verification_status": "Estimated / PI Calculated",
+    "verified": false
+  },
+  {
+    "toolboxId": "mapper:PI-ING-001451",
+    "mapperId": "PI-ING-001451",
+    "displayName": "SKYR · 0.2% FAT · 11% PROTEIN · Chilled",
+    "composition": {
+      "water_percent": 82,
+      "solids_percent": 18,
+      "fat_percent": 0.2,
+      "protein_percent": 11,
+      "carbohydrate_percent": 6,
+      "sugar_percent": 4,
+      "sucrose_percent": 0,
+      "glucose_percent": 0,
+      "dextrose_percent": 0,
+      "fructose_percent": 0,
+      "lactose_percent": 0,
+      "polyol_percent": 0,
+      "fiber_percent": 0,
+      "salt_percent": 0.1,
+      "alcohol_percent": 0,
+      "kcal_per_100g": 70,
+      "saturated_fat_percent": 0.128
+    },
+    "pod_value": 4,
+    "pac_value": 4.585,
+    "de_value": null,
+    "cost_per_kg": null,
+    "cost_currency": "EUR",
+    "confidence_score": 85,
+    "verification_status": "Estimated / PI Calculated",
+    "verified": false
   }
 ];
 
 const BY_TOOLBOX_ID = new Map(
   CANONICAL_TOOLBOX_COMPOSITIONS.map((entry) => [entry.toolboxId, entry] as const),
+);
+const BY_MAPPER_ID = new Map(
+  CANONICAL_TOOLBOX_COMPOSITIONS.map((entry) => [entry.mapperId, entry] as const),
 );
 
 /** Canonical Mapper-backed composition for a toolbox id, or null when unbound. */
@@ -882,4 +1618,11 @@ export function canonicalToolboxComposition(
   toolboxId: string,
 ): CanonicalToolboxComposition | null {
   return BY_TOOLBOX_ID.get(toolboxId) ?? null;
+}
+
+/** Canonical Mapper-backed composition for an exact PI identity. */
+export function canonicalMapperComposition(
+  mapperId: string,
+): CanonicalToolboxComposition | null {
+  return BY_MAPPER_ID.get(mapperId) ?? null;
 }

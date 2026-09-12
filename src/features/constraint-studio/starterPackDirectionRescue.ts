@@ -194,7 +194,12 @@ export function buildStarterPackDirectionRescue(
         mapperId,
         namePl: ingredient?.name ?? mapperId,
         eligible: false,
-        reason: ingredient === null ? 'authority_unavailable' : eligibility.reason,
+        // Eligibility owns reasons that can be decided from the recipe itself.
+        // In particular, an already-present FINAL row remains `already_present`
+        // even when its Estimated authority correctly prevents materializing a
+        // new rescue payload. Only an otherwise-eligible null payload is an
+        // authority failure.
+        reason: !eligibility.eligible ? eligibility.reason : 'authority_unavailable',
         bestGramsTested: null,
         targetReached: false,
         npac: null,
