@@ -403,7 +403,7 @@ begin
   end if;
 
   insert into public.product_behavior_bindings($new$;
-  if strpos(v_patched,"v_role_readiness:=jsonb_build_object(")=0 then
+  if strpos(v_patched,'v_role_readiness:=jsonb_build_object(')=0 then
     if strpos(v_patched,v_old)=0 then raise exception 'semantic snapshot construction anchor drifted'; end if;
     v_patched:=replace(v_patched,v_old,v_new);
   end if;
@@ -687,12 +687,12 @@ declare
   );
 begin
   if strpos(v_ingest,'PR_ING_SEMANTIC_BINDING_V1')=0
-    or strpos(v_ingest,"profile_permissions->>'BASE_RECIPE'")=0
+    or strpos(v_ingest,$marker$profile_permissions->>'BASE_RECIPE'$marker$)=0
     or strpos(v_classifier,'v_product_behavior_standalone_topping')=0
-    or strpos(v_classifier,"'SUBSTITUTION',v_product_behavior_accepted and v_base")=0
-    or strpos(v_classifier,"'BASE_RECIPE',v_product_behavior_accepted and v_base")=0
-    or strpos(v_classifier,"'productSemanticBinding',v_product_semantic_binding")=0
-    or strpos(v_classifier,"'roleReadiness',v_role_readiness")=0
+    or strpos(v_classifier,$marker$'SUBSTITUTION',v_product_behavior_accepted and v_base$marker$)=0
+    or strpos(v_classifier,$marker$'BASE_RECIPE',v_product_behavior_accepted and v_base$marker$)=0
+    or strpos(v_classifier,$marker$'productSemanticBinding',v_product_semantic_binding$marker$)=0
+    or strpos(v_classifier,$marker$'roleReadiness',v_role_readiness$marker$)=0
   then raise exception 'shared PR-ING semantic binding contract incomplete'; end if;
 end;
 $verify_contract$;
