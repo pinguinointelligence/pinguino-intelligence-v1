@@ -183,6 +183,7 @@ describe('rescan of a known code', () => {
       expect(exactBranch).toContain('exactProductReevaluation: reevaluation');
       expect(exactBranch).toContain('reevaluated: reevaluation?.saved === true');
       expect(analyze()).toContain('httpStatus: response.status');
+      expect(analyze()).toContain('reasonCode: finalizerReasonCode(payload)');
       expect(exactBranch).not.toContain('reevaluated: storedResult !== null');
     });
 

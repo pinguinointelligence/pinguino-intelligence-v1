@@ -268,11 +268,24 @@ type OwnPrivateProductReevaluation = {
   saved: boolean;
   httpStatus: number | null;
   errorCode: string | null;
+  reasonCode: string | null;
 };
 
 const finalizerErrorCode = (value: unknown): string | null => {
   const candidate = objectValue(value).error;
   return typeof candidate === 'string' && /^[a-z0-9_]{1,120}$/.test(candidate) ? candidate : null;
+};
+
+const finalizerReasonCode = (value: unknown): string | null => {
+  const candidate = objectValue(value).reasonCode;
+  return typeof candidate === 'string' &&
+    [
+      'scanner_mapper_authority_read_failed',
+      'scanner_behavior_authority_read_failed',
+      'customer_product_profile_computation_failed',
+    ].includes(candidate)
+    ? candidate
+    : null;
 };
 
 async function reevaluateOwnPrivateProduct(input: {
@@ -309,6 +322,7 @@ async function reevaluateOwnPrivateProduct(input: {
         saved: false,
         httpStatus: response.status,
         errorCode: finalizerErrorCode(payload),
+        reasonCode: finalizerReasonCode(payload),
       };
     const body = objectValue(payload);
     // Only a real save reports a route. `customer_product_not_ready`, a stale assessment and a
@@ -318,6 +332,7 @@ async function reevaluateOwnPrivateProduct(input: {
       saved: typeof body.route === 'string',
       httpStatus: response.status,
       errorCode: finalizerErrorCode(body),
+      reasonCode: finalizerReasonCode(body),
     };
   } catch {
     return {
@@ -325,6 +340,7 @@ async function reevaluateOwnPrivateProduct(input: {
       saved: false,
       httpStatus: null,
       errorCode: 'product_scan_finalize_transport_failed',
+      reasonCode: null,
     };
   }
 }
@@ -494,6 +510,7 @@ Deno.serve(async (request) => {
             saved: false,
             httpStatus: null,
             errorCode: 'scan_session_reseed_failed',
+            reasonCode: null,
           };
         } else {
           reevaluation = await reevaluateOwnPrivateProduct({
