@@ -222,7 +222,7 @@
     },
     {
       "path": "src/features/protein-gelato/proteinAuthority.ts",
-      "sha256": "7dc86c844e30b0912c71271ff4c64ed115757d16054755fc62bda4cccad65b79"
+      "sha256": "5a92311b7b3062bb12fbb6ed4f91f543c9892c48b28ecc82cdac1c3f4e627445"
     },
     {
       "path": "src/features/protein-gelato/proteinBehavior.ts",
@@ -293,5 +293,5 @@
       "sha256": "a2207c9c4e9431daa728d6b03fe1b9c4a4a3ba3403a0c056f2808c0759a455c8"
     }
   ],
-  "sourceClosureSha256": "8c4cacba1e5735080cd94605b40649136ed449b79729333608a47d16e5a17f0f"
+  "sourceClosureSha256": "48dde866ea6fe1e9adbc39db44a1db844ea3cd8813ee894a913a8fcd8a197950"
 }

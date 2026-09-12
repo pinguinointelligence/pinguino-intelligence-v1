@@ -495,6 +495,14 @@ const PROTEIN_LADDER_STEP_PP = 0.5;
  * inside the controlled-evidence window.
  */
 const PROTEIN_QUALIFICATION_MARGIN_PP = PROTEIN_LADDER_STEP_PP / 2;
+/**
+ * Every ladder candidate keeps the starting total mass. Exchanges move grams
+ * between existing lines, and the coordinated search solves water as the rest
+ * of the same total, clamping at most 1e-9 g. So a start that exceeds its
+ * machine capacity by more than this margin puts every candidate over the
+ * capacity too. A start within it keeps the full search.
+ */
+const LADDER_MASS_DRIFT_MARGIN_G = 1e-6;
 
 export type ProteinFitReason =
   | 'not_protein_profile'
@@ -568,6 +576,15 @@ export function fitProteinFormulation(
     balancingLineId: null,
     probedPercents: [],
   });
+  // The verdict when no rung produced a hard-safe candidate.
+  const noHardSafeCandidate = (): ProteinFormulationFit => {
+    const candidates = adjustable(
+      input,
+      set,
+      new Set(excludedIngredientIds.map(canonicalIngredientIdFromSourceId)),
+    );
+    return unchanged(candidates.length < 2 ? 'no_adjustable_pair' : 'best_achievable');
+  };
 
   if (!before.applicable) return unchanged('not_protein_profile');
   if (input.items.some((item) => item.actual_grams !== null)) return unchanged('actual_batch');
@@ -584,6 +601,25 @@ export function fitProteinFormulation(
 
   const required = before.qualification.requiredPercent;
   if (required === null || !Number.isFinite(required)) return unchanged('best_achievable');
+
+  // A start that the Engine already flags `machine_capacity_exceeded` (a
+  // critical warning) cannot reach a hard-safe candidate here. The Engine
+  // derives that warning from the total mass and the machine alone, and every
+  // ladder candidate keeps both. `hardSafeResult` would reject all of them, and
+  // the full grid (≈610 k Engine evaluations) would end in the same verdict
+  // returned below. This skips an impossible search. It adds no rule: the
+  // warning, the capacity authority and the result are unchanged.
+  const capacityExceeded = beforeResult.warnings.find(
+    (warning) => warning.code === 'machine_capacity_exceeded',
+  );
+  if (
+    capacityExceeded !== undefined &&
+    Number(capacityExceeded.context?.total_batch_g) -
+      Number(capacityExceeded.context?.machine_capacity_grams) >
+      LADDER_MASS_DRIFT_MARGIN_G
+  ) {
+    return noHardSafeCandidate();
+  }
 
   // Ladder: from the claim requirement upward. Snapped to the step grid so the
   // same recipe always probes the same levels, then lifted by one further step
@@ -626,14 +662,7 @@ export function fitProteinFormulation(
     if (betterThan(candidate, best)) best = candidate;
   }
 
-  if (best === null) {
-    const candidates = adjustable(
-      input,
-      set,
-      new Set(excludedIngredientIds.map(canonicalIngredientIdFromSourceId)),
-    );
-    return unchanged(candidates.length < 2 ? 'no_adjustable_pair' : 'best_achievable');
-  }
+  if (best === null) return noHardSafeCandidate();
 
   // The draft the user already has is a legitimate candidate ONLY when it is
   // itself hard-safe: never move grams to reach an equal-or-worse formulation,
