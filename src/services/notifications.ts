@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/client';
+import { notificationLink } from '@/features/notifications/notificationLink';
 
 const unavailable = (): never => {
   throw new Error('Notification backend is unavailable in this build.');
@@ -28,7 +29,11 @@ export async function listNotifications(admin: boolean): Promise<DurableNotifica
     p_limit: 200,
   });
   if (error) throw new Error(error.message);
-  return (data ?? []) as unknown as DurableNotification[];
+  // C-APP-09: rows written before /work-with-us was retired still carry it.
+  return ((data ?? []) as unknown as DurableNotification[]).map((notification) => ({
+    ...notification,
+    deepLink: notificationLink(notification.type, notification.deepLink),
+  }));
 }
 
 export async function notificationAction(
@@ -57,4 +62,3 @@ export async function setAdminSalesSound(enabled: boolean): Promise<void> {
   });
   if (error) throw new Error(error.message);
 }
-
