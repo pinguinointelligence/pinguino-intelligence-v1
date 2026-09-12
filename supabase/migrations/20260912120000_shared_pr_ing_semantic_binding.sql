@@ -313,7 +313,7 @@ begin
   v_topping := v_product.canonical_verification_status<>'blocked'
     and nullif(trim(coalesce(v_public_data->>'ingredientsText','')),'') is not null
     and jsonb_typeof(v_public_data->'nutrition')='object';$old$;
-  v_new:=$new$  -- the allergen line is NEVER a gate (owner, 2026-09-06): absence is UNKNOWN, not a refusal
+  v_new := $new$  -- the allergen line is NEVER a gate (owner, 2026-09-06): absence is UNKNOWN, not a refusal
   v_topping := v_product.canonical_verification_status<>'blocked'
     and (
       v_product_behavior_standalone_topping

@@ -230,9 +230,7 @@ export type MapperResultField =
  * fields are excluded (write them via D3), and the DB-computed identity columns
  * (product_code + normalized EAN/barcode) are excluded — the DB owns them. A client
  * MAY set product_url / source_url / package_size / product_identity_hash. */
-export type ProductInsert = Partial<
-  Omit<ProductRow, ServerManaged | MapperResultField | DatabaseComputed>
->;
+export type ProductInsert = Partial<Omit<ProductRow, ServerManaged | MapperResultField | DatabaseComputed>>;
 
 /** Fields a client may change. Ownership/identity, the DB timestamps, and the
  * DB-computed identity columns (product_code + normalized EAN/barcode) are never
