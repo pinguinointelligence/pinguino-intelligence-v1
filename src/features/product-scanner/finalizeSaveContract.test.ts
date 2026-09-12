@@ -88,6 +88,11 @@ describe('customer product finalization contract', () => {
     expect(SHARED_SEMANTIC_BINDING).toContain("productVersionId: 'SERVER_ASSIGNED_VERSION'");
   });
 
+  it('PRING-EDGE-02 uses the nullable semantic description without assuming raw claims', () => {
+    expect(FINALIZE).toContain('description: recognitionEvidence.description');
+    expect(FINALIZE).not.toContain('recognitionEvidence.claims.join');
+  });
+
   it('keeps private commerce in the account relation and raw image bytes out of persistence', () => {
     expect(FINALIZE).toContain('p_private_overlay: privateOverlay');
     expect(FINALIZE).not.toContain('base64');
