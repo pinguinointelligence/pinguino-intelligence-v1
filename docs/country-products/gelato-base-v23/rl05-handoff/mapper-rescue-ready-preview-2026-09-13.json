@@ -1,0 +1,375 @@
+[
+  {
+    "productKey": "V23:SMP:GTIN-06426309006538",
+    "requestId": "ac735494-ce44-45fb-82fc-55b3696c1438",
+    "sessionId": "128a088b-a973-496e-a9c5-ac12bc84efc3",
+    "slot": "SMP",
+    "requestMarket": "RO",
+    "routeMarkets": [
+      "RO"
+    ],
+    "rescuedGtin": "6426309006538",
+    "preview": {
+      "kind": "profile_preview",
+      "ready": true,
+      "productAccuracy": 90,
+      "roleReadiness": "BASE_READY",
+      "criticalGaps": [],
+      "missingEngineFields": [],
+      "criticalPhysicsBlockers": [],
+      "publicationEligible": true,
+      "publicationReasonCodes": [],
+      "recognition": {
+        "family": "dairy_liquid",
+        "form": "LIQUID",
+        "role": "BASE_ONLY",
+        "modelRequired": false,
+        "reasonCodes": [
+          "ARCHETYPE_UNKNOWN",
+          "ROLE_NEITHER_REVIEW",
+          "CONSUMER_OR_GENERAL_CONTEXT",
+          "NORMAL_PRODUCT",
+          "DOSAGE_NOT_STATED",
+          "CUSTOMER_FAMILY_DAIRY"
+        ]
+      },
+      "mapper": {
+        "selectedDonorId": "PI-ING-001394",
+        "similarity": null,
+        "basis": null,
+        "estimatedFromMapperIds": [],
+        "candidatesBeforeFilter": [
+          "PI-ING-000135",
+          "PI-ING-000179",
+          "PI-ING-000357",
+          "PI-ING-000358",
+          "PI-ING-000455",
+          "PI-ING-001367",
+          "PI-ING-001394",
+          "PI-ING-001565",
+          "PI-ING-001568",
+          "PI-ING-002110"
+        ],
+        "candidatesAfterFilter": [
+          "PI-ING-001394",
+          "PI-ING-000179",
+          "PI-ING-001568"
+        ],
+        "rejectedCandidates": [
+          {
+            "ingredientId": "PI-ING-000135",
+            "reasonCodes": [
+              "SEMANTIC_FAMILY_CONTRADICTION"
+            ]
+          },
+          {
+            "ingredientId": "PI-ING-000357",
+            "reasonCodes": [
+              "SEMANTIC_FAMILY_CONTRADICTION"
+            ]
+          },
+          {
+            "ingredientId": "PI-ING-000358",
+            "reasonCodes": [
+              "SEMANTIC_FAMILY_CONTRADICTION"
+            ]
+          },
+          {
+            "ingredientId": "PI-ING-000455",
+            "reasonCodes": [
+              "SEMANTIC_FAMILY_CONTRADICTION"
+            ]
+          },
+          {
+            "ingredientId": "PI-ING-001367",
+            "reasonCodes": [
+              "SEMANTIC_FAMILY_CONTRADICTION"
+            ]
+          },
+          {
+            "ingredientId": "PI-ING-001565",
+            "reasonCodes": [
+              "SEMANTIC_FAMILY_CONTRADICTION"
+            ]
+          },
+          {
+            "ingredientId": "PI-ING-002110",
+            "reasonCodes": [
+              "SEMANTIC_FAMILY_CONTRADICTION"
+            ]
+          }
+        ]
+      },
+      "technicalComposition": {
+        "water": 1.1,
+        "totalSolids": 98.9,
+        "fat": 0.5,
+        "protein": 35,
+        "carbohydrate": 52,
+        "sugars": 52,
+        "sucrose": 0,
+        "dextrose": 0,
+        "glucose": 0,
+        "fructose": 0,
+        "lactose": 52,
+        "fibre": 0,
+        "salt": 1.1,
+        "alcohol": 0,
+        "energyKcal": 353
+      },
+      "assessmentHash": "2dd7b665a341b7a0693819a06d88ed69532168dae5c13c2139eee56c981fab98"
+    }
+  },
+  {
+    "productKey": "V23:CREAM:GTIN-07038010041914",
+    "requestId": "ce4eb611-06a6-4255-ae50-f977ae59cf8f",
+    "sessionId": "7bdb3437-3d20-4eaf-aa0d-25a78fb10eff",
+    "slot": "CREAM",
+    "requestMarket": "NO",
+    "routeMarkets": [
+      "NO"
+    ],
+    "rescuedGtin": "7038010041914",
+    "preview": {
+      "kind": "profile_preview",
+      "ready": true,
+      "productAccuracy": 86,
+      "roleReadiness": "BASE_READY",
+      "criticalGaps": [],
+      "missingEngineFields": [],
+      "criticalPhysicsBlockers": [],
+      "publicationEligible": true,
+      "publicationReasonCodes": [],
+      "recognition": {
+        "family": "dairy_liquid",
+        "form": "PASTE",
+        "role": "BASE_ONLY",
+        "modelRequired": false,
+        "reasonCodes": [
+          "ARCHETYPE_UNKNOWN",
+          "ROLE_NEITHER_REVIEW",
+          "CONSUMER_OR_GENERAL_CONTEXT",
+          "NORMAL_PRODUCT",
+          "DOSAGE_NOT_STATED",
+          "CUSTOMER_FAMILY_DAIRY"
+        ]
+      },
+      "mapper": {
+        "selectedDonorId": "PI-ING-001390",
+        "similarity": null,
+        "basis": null,
+        "estimatedFromMapperIds": [],
+        "candidatesBeforeFilter": [
+          "PI-ING-000180",
+          "PI-ING-000231",
+          "PI-ING-000232",
+          "PI-ING-000257",
+          "PI-ING-001387",
+          "PI-ING-001388",
+          "PI-ING-001390",
+          "PI-ING-001392",
+          "PI-ING-002195",
+          "PI-ING-002196",
+          "PI-ING-002197",
+          "PI-ING-002198",
+          "PI-ING-002205",
+          "PI-ING-002206"
+        ],
+        "candidatesAfterFilter": [
+          "PI-ING-001390",
+          "PI-ING-002197",
+          "PI-ING-002196",
+          "PI-ING-001392",
+          "PI-ING-002198",
+          "PI-ING-002206",
+          "PI-ING-000231",
+          "PI-ING-001387",
+          "PI-ING-001388",
+          "PI-ING-002205",
+          "PI-ING-002195",
+          "PI-ING-000180",
+          "PI-ING-000232",
+          "PI-ING-000257"
+        ],
+        "rejectedCandidates": []
+      },
+      "technicalComposition": {
+        "water": 57,
+        "totalSolids": 43,
+        "fat": 37,
+        "protein": 2.1,
+        "carbohydrate": 2.9,
+        "sugars": 2.9,
+        "sucrose": 0,
+        "dextrose": 0,
+        "glucose": 0,
+        "fructose": 0,
+        "lactose": 2.9,
+        "fibre": 0,
+        "salt": 0.1,
+        "alcohol": 0,
+        "energyKcal": 353
+      },
+      "assessmentHash": "7245feada55b431f94c5ef4ee115a3c086e14c3495db07d8117c710de0babcd9"
+    }
+  },
+  {
+    "productKey": "V23:CREAM:GTIN-07613269880585",
+    "requestId": "7e1c463c-a1cc-4c73-85a6-33158c9d38e5",
+    "sessionId": "75b0c0d4-f423-4cc1-af27-2241b4d70b80",
+    "slot": "CREAM",
+    "requestMarket": "CH",
+    "routeMarkets": [
+      "CH"
+    ],
+    "rescuedGtin": "7613269880585",
+    "preview": {
+      "kind": "profile_preview",
+      "ready": true,
+      "productAccuracy": 90,
+      "roleReadiness": "BASE_READY",
+      "criticalGaps": [],
+      "missingEngineFields": [],
+      "criticalPhysicsBlockers": [],
+      "publicationEligible": true,
+      "publicationReasonCodes": [],
+      "recognition": {
+        "family": "dairy_liquid",
+        "form": "LIQUID",
+        "role": "BASE_ONLY",
+        "modelRequired": false,
+        "reasonCodes": [
+          "ARCHETYPE_UNKNOWN",
+          "ROLE_NEITHER_REVIEW",
+          "CONSUMER_OR_GENERAL_CONTEXT",
+          "NORMAL_PRODUCT",
+          "DOSAGE_NOT_STATED",
+          "CUSTOMER_FAMILY_DAIRY"
+        ]
+      },
+      "mapper": {
+        "selectedDonorId": "PI-ING-001388",
+        "similarity": null,
+        "basis": null,
+        "estimatedFromMapperIds": [],
+        "candidatesBeforeFilter": [
+          "PI-ING-000171",
+          "PI-ING-000180",
+          "PI-ING-000546",
+          "PI-ING-000547",
+          "PI-ING-000548",
+          "PI-ING-001388",
+          "PI-ING-001390",
+          "PI-ING-002109",
+          "PI-ING-002112",
+          "PI-ING-002173",
+          "PI-ING-002174",
+          "PI-ING-002175",
+          "PI-ING-002176",
+          "PI-ING-002177",
+          "PI-ING-002178",
+          "PI-ING-002179",
+          "PI-ING-002180",
+          "PI-ING-002181",
+          "PI-ING-002182",
+          "PI-ING-002183",
+          "PI-ING-002184",
+          "PI-ING-002185",
+          "PI-ING-002186",
+          "PI-ING-002187",
+          "PI-ING-002261",
+          "PI-ING-002262",
+          "PI-ING-002263",
+          "PI-ING-002264",
+          "PI-ING-002265"
+        ],
+        "candidatesAfterFilter": [
+          "PI-ING-001390",
+          "PI-ING-001388",
+          "PI-ING-000180",
+          "PI-ING-000546",
+          "PI-ING-000547",
+          "PI-ING-000548",
+          "PI-ING-002180",
+          "PI-ING-002187",
+          "PI-ING-002179",
+          "PI-ING-002186",
+          "PI-ING-002178",
+          "PI-ING-002185",
+          "PI-ING-002184",
+          "PI-ING-002177",
+          "PI-ING-002183",
+          "PI-ING-002176",
+          "PI-ING-002175",
+          "PI-ING-002182",
+          "PI-ING-002174",
+          "PI-ING-002173",
+          "PI-ING-002181",
+          "PI-ING-000171"
+        ],
+        "rejectedCandidates": [
+          {
+            "ingredientId": "PI-ING-002109",
+            "reasonCodes": [
+              "SEMANTIC_FAMILY_CONTRADICTION"
+            ]
+          },
+          {
+            "ingredientId": "PI-ING-002112",
+            "reasonCodes": [
+              "SEMANTIC_FAMILY_CONTRADICTION"
+            ]
+          },
+          {
+            "ingredientId": "PI-ING-002261",
+            "reasonCodes": [
+              "SEMANTIC_FAMILY_CONTRADICTION"
+            ]
+          },
+          {
+            "ingredientId": "PI-ING-002262",
+            "reasonCodes": [
+              "SEMANTIC_FAMILY_CONTRADICTION"
+            ]
+          },
+          {
+            "ingredientId": "PI-ING-002263",
+            "reasonCodes": [
+              "SEMANTIC_FAMILY_CONTRADICTION"
+            ]
+          },
+          {
+            "ingredientId": "PI-ING-002264",
+            "reasonCodes": [
+              "SEMANTIC_CATEGORY_CONTRADICTION"
+            ]
+          },
+          {
+            "ingredientId": "PI-ING-002265",
+            "reasonCodes": [
+              "SEMANTIC_CATEGORY_CONTRADICTION"
+            ]
+          }
+        ]
+      },
+      "technicalComposition": {
+        "water": 59.5,
+        "totalSolids": 40.5,
+        "fat": 35,
+        "protein": 2.4,
+        "carbohydrate": 3.3,
+        "sugars": 3.1,
+        "sucrose": 0,
+        "dextrose": 0,
+        "glucose": 0,
+        "fructose": 0,
+        "lactose": 3.1,
+        "fibre": 0,
+        "salt": 0.09,
+        "alcohol": 0,
+        "energyKcal": 338
+      },
+      "assessmentHash": "b8c4690f80342066cadda682c69fdc756f22f187f6bb219b54a6fbc0cb35aad2"
+    }
+  }
+]
