@@ -6,6 +6,7 @@ import {
   OFFICIAL_RECIPES,
   officialRecipeById,
 } from '@/data/recipes/official/officialRecipeLibrary';
+import { officialRecipeReadiness } from '@/data/recipes/official/officialRecipeReadiness';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import type { CatalogProductSearchHit } from '@/features/global-catalog/contracts';
 import type { ServerResolvedProductBehavior } from '@/features/product-intelligence';
@@ -299,15 +300,28 @@ describe('official recipe → working recipe handoff', () => {
     expect(result.lines.every((line) => line.marketProduct === null)).toBe(true);
   });
 
-  it('blocks a BRAK recipe before resolving anything', async () => {
+  it('blocks a recipe waiting for an exact product before resolving anything', async () => {
+    const deps = dependencies();
+    const recipe = OFFICIAL_RECIPES.find(
+      (candidate) => officialRecipeReadiness(candidate).state === 'PRODUCT_BLOCKED',
+    )!;
+    const waitingFor = officialRecipeReadiness(recipe).blockingLines.find(
+      (entry) => entry.state === 'PRODUCT_BLOCKED',
+    )!.line.label;
+    await expect(materializeOfficialRecipe(recipe.recipeId, 'user-a', deps)).rejects.toMatchObject({
+      code: 'unresolved_identity',
+      message: expect.stringContaining(waitingFor),
+    });
+    expect(deps.getIngredient).not.toHaveBeenCalled();
+    expect(deps.resolveCountryProducts).not.toHaveBeenCalled();
+  });
+
+  it('blocks a recipe on a PI the FINAL Mapper does not approve, whatever else it waits for (#020)', async () => {
     const deps = dependencies();
     const recipe20 = OFFICIAL_RECIPES.find((recipe) => recipe.number === 20)!;
     await expect(
       materializeOfficialRecipe(recipe20.recipeId, 'user-a', deps),
-    ).rejects.toMatchObject({
-      code: 'unresolved_identity',
-      message: expect.stringContaining('Birthday cake pieces'),
-    });
+    ).rejects.toMatchObject({ code: 'ingredient_unavailable' });
     expect(deps.getIngredient).not.toHaveBeenCalled();
     expect(deps.resolveCountryProducts).not.toHaveBeenCalled();
   });

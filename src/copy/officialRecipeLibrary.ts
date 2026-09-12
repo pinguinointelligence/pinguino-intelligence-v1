@@ -11,6 +11,7 @@ import type {
   OfficialRecipeSourceStatus,
   OfficialRecipeStage,
 } from '@/data/recipes/official/officialRecipeTypes';
+import type { OfficialRecipeReadinessState } from '@/data/recipes/official/officialRecipeReadiness';
 
 export const officialRecipeCopy = {
   eyebrow: 'Receptury Gellatti',
@@ -52,24 +53,47 @@ export const officialRecipeCopy = {
     count === 1
       ? '1 składnik czeka na potwierdzenie'
       : `${count} składniki czekają na potwierdzenie`,
+  readinessRow: 'Gotowość',
+  readinessLabel: {
+    READY: 'Gotowa — możesz zrobić te lody',
+    DYNAMIC_MAIN: 'Szablon — najpierw wybierasz owoc',
+    REVIEW_REQUIRED: 'Składnik do potwierdzenia',
+    PRODUCT_BLOCKED: 'Czeka na dokładny produkt',
+    INTERNAL_SUBRECIPE: 'Składnik Gellatti w przygotowaniu',
+    OTHER_EXPLICIT_BLOCKER: 'Składnik niedostępny',
+  } satisfies Record<OfficialRecipeReadinessState, string>,
+  cardReadiness: {
+    READY: null,
+    DYNAMIC_MAIN: 'Szablon — wybierasz owoc',
+    REVIEW_REQUIRED: 'Składnik do potwierdzenia',
+    PRODUCT_BLOCKED: 'Czeka na produkt',
+    INTERNAL_SUBRECIPE: 'Składnik Gellatti w przygotowaniu',
+    OTHER_EXPLICIT_BLOCKER: 'Składnik niedostępny',
+  } satisfies Record<OfficialRecipeReadinessState, string | null>,
+  /** Why the main action is disabled; `labels` are the lines behind the recipe's state. */
+  readinessReason: (state: OfficialRecipeReadinessState, labels: readonly string[]) => {
+    const list = labels.join(', ');
+    switch (state) {
+      case 'DYNAMIC_MAIN':
+        return 'To szablon: najpierw wybierasz owoc, a bazę przeliczamy do niego. Otwieranie szablonów przygotowujemy.';
+      case 'REVIEW_REQUIRED':
+        return `Czekamy na potwierdzenie składnika: ${list}. Nie zastępujemy go podobnym produktem.`;
+      case 'PRODUCT_BLOCKED':
+        return `Czekamy na dokładny produkt: ${list}. Nie zastępujemy go podobnym produktem.`;
+      case 'INTERNAL_SUBRECIPE':
+        return `Część receptury (${list}) przygotowujemy jako składnik własny Gellatti.`;
+      case 'OTHER_EXPLICIT_BLOCKER':
+        return `Składnik ${list} jest teraz niedostępny w katalogu Gellatti — receptury nie otworzymy do pracy.`;
+      case 'READY':
+        return '';
+    }
+  },
   processNoticeTitle: 'Uwagi procesowe',
   degassingTitle: 'Napój gazowany',
-  use: 'Użyj receptury',
-  useHint: 'Otworzymy ją w PRO jako Twoją kopię roboczą. Oryginał Gellatti się nie zmieni.',
-  useHome: 'Pracę na recepturach Gellatti otworzysz w Gellatti PRO.',
-  useBlockedUnresolved: (labels: readonly string[]) =>
-    `Tej receptury nie otworzymy jeszcze do pracy: ${labels.join(', ')} ${
-      labels.length === 1 ? 'czeka' : 'czekają'
-    } na potwierdzenie składnika.`,
-  useBlockedUnavailable: (labels: readonly string[]) =>
-    `Tej receptury nie otworzymy teraz do pracy: ${labels.join(', ')} ${
-      labels.length === 1 ? 'jest' : 'są'
-    } chwilowo ${labels.length === 1 ? 'niedostępny' : 'niedostępne'} w katalogu Gellatti.`,
-  useBlockedDynamicMain:
-    'To szablon techniczny: najpierw wybierasz owoc (Main), a bazę przeliczamy do niego. Otwieranie szablonów do pracy przygotowujemy.',
-  cardUnresolved: 'Czeka na potwierdzenie składnika',
+  use: 'Zrób te lody',
+  useHint: 'Otworzymy tę recepturę jako Twoją kopię roboczą — oryginał Gellatti się nie zmieni.',
+  useDemo: 'Zaloguj się, aby zrobić te lody — receptura otworzy się jako Twoja kopia robocza.',
   cardDegassing: 'Wymaga odgazowania',
-  cardTemplate: 'Szablon z Main',
   handoffReady: (name: string) =>
     `Otwarto oficjalną recepturę „${name}” jako Twoją kopię roboczą — oryginał Gellatti pozostaje bez zmian.`,
   handoffMarket: (matched: number, total: number, country: string) =>

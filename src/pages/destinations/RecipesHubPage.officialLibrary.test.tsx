@@ -4,6 +4,8 @@ import { createRoot } from 'react-dom/client';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { OFFICIAL_RECIPES } from '@/data/recipes/official/officialRecipeLibrary';
+import { officialRecipeReadiness } from '@/data/recipes/official/officialRecipeReadiness';
+import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import { useRecipeStore } from '@/stores/recipeStore';
 
@@ -253,9 +255,33 @@ describe('Recipes hub — official Gellatti library', () => {
     expect(
       host.querySelector<HTMLButtonElement>('[data-testid="official-recipe-use"]')?.disabled,
     ).toBe(true);
+    // #020 also carries a PI the FINAL Mapper does not approve — the worst line decides.
     const state = host.querySelector<HTMLElement>('[data-testid="official-recipe-use-state"]')!;
-    expect(state.dataset.useState).toBe('unresolved_identity');
-    expect(state.textContent).toContain('Birthday cake pieces');
+    expect(state.dataset.useState).toBe('OTHER_EXPLICIT_BLOCKER');
+    const recipe20 = OFFICIAL_RECIPES.find((recipe) => recipe.number === 20)!;
+    const worst = officialRecipeReadiness(recipe20).blockingLines.filter(
+      (entry) => entry.state === 'OTHER_EXPLICIT_BLOCKER',
+    );
+    expect(worst.length).toBeGreaterThan(0);
+    for (const entry of worst) expect(state.textContent).toContain(entry.line.label);
+  });
+
+  it('names the exact product a PRODUCT_BLOCKED recipe waits for, and never substitutes it', async () => {
+    const recipe = OFFICIAL_RECIPES.find(
+      (candidate) => officialRecipeReadiness(candidate).state === 'PRODUCT_BLOCKED',
+    )!;
+    await renderAt(`/recipes?recipe=${recipe.recipeId}`);
+    expect(
+      host.querySelector<HTMLButtonElement>('[data-testid="official-recipe-use"]')?.disabled,
+    ).toBe(true);
+    const state = host.querySelector<HTMLElement>('[data-testid="official-recipe-use-state"]')!;
+    expect(state.dataset.useState).toBe('PRODUCT_BLOCKED');
+    for (const entry of officialRecipeReadiness(recipe).blockingLines.filter(
+      (line) => line.state === 'PRODUCT_BLOCKED',
+    )) {
+      expect(state.textContent).toContain(entry.line.label);
+    }
+    expect(state.textContent).toContain('Nie zastępujemy go podobnym produktem');
   });
 
   it('keeps the Sorbet scaffold Main dynamic (#169)', async () => {
@@ -265,7 +291,7 @@ describe('Recipes hub — official Gellatti library', () => {
     expect(
       host.querySelector<HTMLElement>('[data-testid="official-recipe-use-state"]')?.dataset
         .useState,
-    ).toBe('dynamic_main_required');
+    ).toBe('DYNAMIC_MAIN');
     expect(
       host.querySelector<HTMLButtonElement>('[data-testid="official-recipe-use"]')?.disabled,
     ).toBe(true);
@@ -290,7 +316,7 @@ describe('Recipes hub — official Gellatti library', () => {
       host.querySelector<HTMLButtonElement>('[data-testid="official-recipe-use"]')?.disabled,
     ).toBe(true);
     const state = host.querySelector<HTMLElement>('[data-testid="official-recipe-use-state"]')!;
-    expect(state.dataset.useState).toBe('ingredient_unavailable');
+    expect(state.dataset.useState).toBe('OTHER_EXPLICIT_BLOCKER');
     expect(state.textContent).toContain(vanilla.label);
     expect(
       host.querySelectorAll('[data-testid="official-line-canonical-unavailable"]'),
@@ -306,28 +332,36 @@ describe('Recipes hub — official Gellatti library', () => {
     expect(
       host.querySelector<HTMLElement>('[data-testid="official-recipe-use-state"]')?.dataset
         .useState,
-    ).toBe('ready');
+    ).toBe('READY');
     // Each line says its current data cannot be shown right now — honestly, not silently.
     expect(
       host.querySelectorAll('[data-testid="official-line-canonical-unavailable"]'),
     ).toHaveLength(9);
   });
 
-  it('hides every gram from Demo and does not query product data', async () => {
+  it('hides every gram from Demo, asks Demo to sign in and does not query product data', async () => {
     runtime.persona = 'demo';
+    useAuthModalStore.setState({ isOpen: false });
     await renderAt('/recipes?recipe=classic-dark-chocolate');
     expect(host.querySelector('[data-testid="official-line-grams"]')).toBeNull();
     expect(host.textContent).not.toContain('490 g');
-    expect(host.querySelector('[data-testid="official-recipe-use"]')).toBeNull();
     expect(services.listIngredientsByIds).not.toHaveBeenCalled();
     expect(services.resolveCountryProductsForSlots).not.toHaveBeenCalled();
+    const use = host.querySelector<HTMLButtonElement>('[data-testid="official-recipe-use"]')!;
+    expect(use.textContent).toBe('Zrób te lody');
+    await act(async () => use.click());
+    expect(useAuthModalStore.getState().isOpen).toBe(true);
+    expect(location()).toBe('/recipes?recipe=classic-dark-chocolate');
   });
 
-  it('shows Home the exact grams without the Pro working-copy action', async () => {
+  it('opens a Home working copy in the HOME creator through the one-shot handoff URL', async () => {
     runtime.persona = 'home';
     await renderAt('/recipes?recipe=classic-dark-chocolate');
     expect(all('[data-testid="official-line-grams"]')).toHaveLength(9);
-    expect(host.querySelector('[data-testid="official-recipe-use"]')).toBeNull();
+    await act(async () =>
+      host.querySelector<HTMLButtonElement>('[data-testid="official-recipe-use"]')!.click(),
+    );
+    expect(location()).toBe('/home?source=official_recipe&officialRecipe=classic-dark-chocolate');
   });
 
   it('opens a Pro working copy through the one-shot handoff URL', async () => {

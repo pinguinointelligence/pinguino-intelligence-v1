@@ -13,12 +13,15 @@ import {
   officialLibraryHref,
   officialRecipeImage,
   officialRecipesInCollection,
-  officialRecipeUseState,
   officialUnresolvedLines,
   type OfficialCollectionId,
   type OfficialRecipe,
   type OfficialRecipeLine,
 } from '@/data/recipes/official/officialRecipeLibrary';
+import {
+  officialRecipeCanStart,
+  officialRecipeReadiness,
+} from '@/data/recipes/official/officialRecipeReadiness';
 import { cn } from '@/lib/cn';
 import { useCurrentMapperRows, useMarketProducts } from './useOfficialRecipeRuntime';
 
@@ -126,13 +129,15 @@ export function OfficialCollectionsGrid() {
 
 function RecipeCard({ recipe }: { recipe: OfficialRecipe }) {
   const image = officialRecipeImage(recipe);
-  const useState = officialRecipeUseState(recipe);
+  const readiness = officialRecipeReadiness(recipe);
+  const readinessChip = c.cardReadiness[readiness.state];
   return (
     <Link
       to={officialLibraryHref({ recipeId: recipe.recipeId })}
       className={cardClasses}
       data-testid={`official-recipe-card-${recipe.recipeId}`}
       data-recipe-number={recipe.number}
+      data-readiness={readiness.state}
     >
       <img
         src={image.card}
@@ -154,10 +159,11 @@ function RecipeCard({ recipe }: { recipe: OfficialRecipe }) {
           {officialProductTypeLabelPl(recipe.productType)} · {recipe.subcategory}
         </p>
         <div className="mt-auto flex flex-wrap gap-1.5 pt-1">
-          {useState.kind === 'unresolved_identity' ? (
-            <Chip tone="attention">{c.cardUnresolved}</Chip>
+          {readinessChip ? (
+            <Chip tone={readiness.state === 'DYNAMIC_MAIN' ? 'neutral' : 'attention'}>
+              {readinessChip}
+            </Chip>
           ) : null}
-          {useState.kind === 'dynamic_main_required' ? <Chip>{c.cardTemplate}</Chip> : null}
           {recipe.degassingRequired ? <Chip>{c.cardDegassing}</Chip> : null}
         </div>
       </div>
@@ -270,7 +276,7 @@ function IngredientIdentityLine({
   );
 }
 
-/** One official recipe: the immutable source formula and its honest state. */
+/** One official recipe: the immutable source formula, its explicit readiness and the main action. */
 export function OfficialRecipeDetail({
   recipe,
   persona,
@@ -282,7 +288,6 @@ export function OfficialRecipeDetail({
 }) {
   const collection = officialCollectionById(recipe.collection);
   const image = officialRecipeImage(recipe);
-  const useState = officialRecipeUseState(recipe);
   const showGrams = persona !== 'demo';
   const mappedIds = recipe.lines.flatMap((line) =>
     line.identity.kind === 'mapped' ? [line.identity.mapperIngredientId] : [],
@@ -294,25 +299,27 @@ export function OfficialRecipeDetail({
   const matched =
     market.status === 'ready' ? mappedIds.filter((pi) => market.value.byPi.has(pi)).length : 0;
   const pending = officialUnresolvedLines(recipe).length;
-  // The same runtime gate the working-copy handoff applies: a mapped line whose
-  // PI the Mapper runtime does not serve blocks the use up front.
-  const unavailableLines =
-    mapper.status === 'ready'
-      ? recipe.lines.filter(
-          (line) =>
-            line.identity.kind === 'mapped' && !mapper.value.has(line.identity.mapperIngredientId),
-        )
-      : [];
-  const useKind =
-    useState.kind === 'ready' && unavailableLines.length > 0
-      ? 'ingredient_unavailable'
-      : useState.kind;
+  // The same runtime gate the working-copy handoff applies: a mapped PI the Mapper runtime
+  // does not serve can only make the recipe worse — it never makes one ready.
+  const unavailablePis = new Set(
+    mapper.status === 'ready' ? mappedIds.filter((pi) => !mapper.value.has(pi)) : [],
+  );
+  const readiness = officialRecipeReadiness(recipe, { unavailablePis });
+  const canStart = officialRecipeCanStart(readiness);
+  const reasonLabels = [
+    ...new Set(
+      readiness.blockingLines
+        .filter((entry) => entry.state === readiness.state)
+        .map((entry) => entry.line.label),
+    ),
+  ];
 
   return (
     <article
       aria-labelledby="official-recipe-heading"
       data-testid="official-recipe-detail"
       data-recipe-number={recipe.number}
+      data-readiness={readiness.state}
     >
       <BackLink
         to={officialLibraryHref({ collection: recipe.collection })}
@@ -349,6 +356,33 @@ export function OfficialRecipeDetail({
               .join(' · ')}
           </p>
 
+          <div className="mt-6">
+            <button
+              type="button"
+              className={cn(buttonClasses('primary', 'md'), 'w-full sm:w-auto')}
+              disabled={!canStart}
+              onClick={() => onUse(recipe.recipeId)}
+              data-testid="official-recipe-use"
+              data-readiness={readiness.state}
+            >
+              {c.use}
+            </button>
+            <p
+              className={cn(
+                'mt-3 text-[12px] leading-relaxed',
+                canStart ? 'text-stone-500' : 'text-attention',
+              )}
+              data-testid="official-recipe-use-state"
+              data-use-state={readiness.state}
+            >
+              {canStart
+                ? persona === 'demo'
+                  ? c.useDemo
+                  : c.useHint
+                : c.readinessReason(readiness.state, reasonLabels)}
+            </p>
+          </div>
+
           <section className="mt-6" aria-labelledby="official-recipe-status">
             <h3 id="official-recipe-status" className={eyebrowClasses}>
               {c.statusTitle}
@@ -356,6 +390,7 @@ export function OfficialRecipeDetail({
             <dl className="mt-3 divide-y divide-ink/10 border-y border-ink/10 text-[13px]">
               {(
                 [
+                  [c.readinessRow, c.readinessLabel[readiness.state], 'readiness'],
                   [c.sourceRecipe, c.sourceRecipeValue, 'source'],
                   [c.engineRow, officialSourceStatusLabelPl(recipe.sourceStatus), 'engine'],
                   [
@@ -376,7 +411,8 @@ export function OfficialRecipeDetail({
                   <dd
                     className={cn(
                       'text-ink',
-                      id === 'ingredients' && pending > 0 && 'text-attention',
+                      ((id === 'ingredients' && pending > 0) || (id === 'readiness' && !canStart)) &&
+                        'text-attention',
                     )}
                   >
                     {value}
@@ -398,46 +434,6 @@ export function OfficialRecipeDetail({
               ) : null}
             </section>
           ) : null}
-
-          <div className="mt-8">
-            {persona === 'pro' ? (
-              <>
-                <button
-                  type="button"
-                  className={cn(buttonClasses('primary', 'md'), 'w-full sm:w-auto')}
-                  disabled={useKind !== 'ready'}
-                  onClick={() => onUse(recipe.recipeId)}
-                  data-testid="official-recipe-use"
-                >
-                  {c.use}
-                </button>
-                <p
-                  className={cn(
-                    'mt-3 text-[12px] leading-relaxed',
-                    useKind === 'ready' ? 'text-stone-500' : 'text-attention',
-                  )}
-                  data-testid="official-recipe-use-state"
-                  data-use-state={useKind}
-                >
-                  {useKind === 'ready'
-                    ? c.useHint
-                    : useKind === 'ingredient_unavailable'
-                      ? c.useBlockedUnavailable(unavailableLines.map((line) => line.label))
-                      : useState.kind === 'unresolved_identity'
-                        ? c.useBlockedUnresolved(useState.lines.map((line) => line.label))
-                        : c.useBlockedDynamicMain}
-                </p>
-              </>
-            ) : (
-              <p
-                className="text-[12px] leading-relaxed text-stone-500"
-                data-testid="official-recipe-use-state"
-                data-use-state={useState.kind}
-              >
-                {persona === 'home' ? c.useHome : c.gramsHidden}
-              </p>
-            )}
-          </div>
         </div>
       </div>
 

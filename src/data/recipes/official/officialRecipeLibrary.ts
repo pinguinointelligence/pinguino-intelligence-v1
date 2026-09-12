@@ -198,6 +198,12 @@ export function officialRecipeUseHref(recipeId: string, returnTo = '/recipes'): 
   return `/pro/recipe?${params.toString()}`;
 }
 
+/** The same one-shot handoff for HOME: the HOME creator opens the working copy. */
+export function officialRecipeHomeHref(recipeId: string): string {
+  const params = new URLSearchParams({ source: 'official_recipe', officialRecipe: recipeId });
+  return `/home?${params.toString()}`;
+}
+
 /** Library deep link for a collection or a recipe inside the Gellatti tab. */
 export function officialLibraryHref(
   target: { collection: OfficialCollectionId } | { recipeId: string } | null = null,

@@ -30,13 +30,17 @@ import { ingredientRowToEngineIngredient } from '@/data/ingredients/ingredientMa
 import type { IngredientRow } from '@/data/ingredients/ingredientRow';
 import {
   officialRecipeLineId,
-  officialRecipeUseState,
   officialRecipeWorkingCopy,
   officialRecipeWorkingProfile,
   type OfficialRecipe,
   type OfficialRecipeLine,
   type OfficialServingModeId,
 } from '@/data/recipes/official/officialRecipeLibrary';
+import {
+  officialRecipeCanStart,
+  officialRecipeReadiness,
+  type OfficialRecipeReadiness,
+} from '@/data/recipes/official/officialRecipeReadiness';
 import { temperatureForMode } from '@/features/customer-flow/servingMode';
 import { mappedCatalogIngredient } from '@/features/global-catalog/catalogIngredient';
 import type { CatalogProductSearchHit } from '@/features/global-catalog/contracts';
@@ -261,6 +265,24 @@ async function resolveExactLine(
   };
 }
 
+/** A recipe that is not READY, refused with the lines behind its state. */
+function readinessRefusal(readiness: OfficialRecipeReadiness): OfficialRecipeHandoffError {
+  const lines = readiness.blockingLines.filter((entry) => entry.state === readiness.state);
+  const code: OfficialRecipeHandoffFailureCode =
+    readiness.state === 'DYNAMIC_MAIN'
+      ? 'dynamic_main_required'
+      : lines.some((entry) => entry.reason === 'final_mapper_blocked')
+        ? 'ingredient_unavailable'
+        : 'unresolved_identity';
+  return new OfficialRecipeHandoffError(
+    code,
+    officialRecipeCopy.readinessReason(readiness.state, [
+      ...new Set(lines.map((entry) => entry.line.label)),
+    ]),
+    lines[0]?.line.line ?? null,
+  );
+}
+
 /** Pure materialization: resolves everything first, mutates nothing. */
 export async function materializeOfficialRecipe(
   recipeId: string,
@@ -274,21 +296,9 @@ export async function materializeOfficialRecipe(
       officialRecipeCopy.errors.recipeNotFound,
     );
   }
-  const useState = officialRecipeUseState(recipe);
-  if (useState.kind === 'unresolved_identity') {
-    throw new OfficialRecipeHandoffError(
-      'unresolved_identity',
-      officialRecipeCopy.useBlockedUnresolved(useState.lines.map((line) => line.label)),
-      useState.lines[0]!.line,
-    );
-  }
-  if (useState.kind === 'dynamic_main_required') {
-    throw new OfficialRecipeHandoffError(
-      'dynamic_main_required',
-      officialRecipeCopy.useBlockedDynamicMain,
-      useState.line.line,
-    );
-  }
+  // The same readiness the library shows: only a READY recipe becomes a working copy.
+  const readiness = officialRecipeReadiness(recipe);
+  if (!officialRecipeCanStart(readiness)) throw readinessRefusal(readiness);
   const mappedLines = recipe.lines.map((line) => {
     if (line.identity.kind !== 'mapped') throw new Error('unreachable: gated above');
     return { line, pi: line.identity.mapperIngredientId };

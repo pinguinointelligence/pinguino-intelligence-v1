@@ -24,8 +24,10 @@ import {
   isOfficialCollectionId,
   officialLibraryHref,
   officialRecipeById,
+  officialRecipeHomeHref,
   officialRecipeUseHref,
 } from '@/data/recipes/official/officialRecipeLibrary';
+import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { NonProductionMarker } from '@/features/design-review/NonProductionMarker';
 import { useReviewMode } from '@/features/design-review/useReviewMode';
 import { useOwnerReviewAccess } from '@/features/design-review/useOwnerReviewAccess';
@@ -619,6 +621,7 @@ export function RecipesHubPage() {
   const reviewModeEnabled = useReviewMode();
   const ownerReviewAccess = useOwnerReviewAccess();
   const persona = useProCorePersona();
+  const openAuthModal = useAuthModalStore((state) => state.open);
   const currentVisibleProductType = useRecipeStore((state) => state.visibleProductType);
   // Defence in depth: the review hook already requires Pro, but the page also
   // refuses to mount executable Owner Review cards for Demo/Home personas.
@@ -650,7 +653,10 @@ export function RecipesHubPage() {
   }, [params, setParams, staleCollection, staleRecipe, staleTab]);
   const newRecipeHref = persona === 'pro' ? '/pro/recipe' : persona === 'home' ? '/home' : '/start';
   const openNewRecipe = () => {
-    if (persona === 'pro') startNewProRecipe(currentVisibleProductType);
+    // A confirmed discard before a working copy opens resets the shared draft for HOME too.
+    if (persona === 'pro' || pendingExecutableHref !== null) {
+      startNewProRecipe(currentVisibleProductType);
+    }
     const destination = pendingExecutableHref ?? newRecipeHref;
     setPendingExecutableHref(null);
     setNewRecipeConfirmOpen(false);
@@ -666,6 +672,23 @@ export function RecipesHubPage() {
   };
   const requestExecutableOpen = (href: string) => {
     if (persona === 'pro' && hasUnsavedProRecipeChanges()) {
+      setPendingExecutableHref(href);
+      setNewRecipeConfirmOpen(true);
+      return;
+    }
+    navigate(href);
+  };
+  /** „Zrób te lody": the official recipe opens as a working copy where this customer works. */
+  const requestOfficialUse = (recipeId: string) => {
+    if (persona === 'demo') {
+      openAuthModal();
+      return;
+    }
+    const href =
+      persona === 'home'
+        ? officialRecipeHomeHref(recipeId)
+        : officialRecipeUseHref(recipeId, officialLibraryHref({ recipeId }));
+    if (hasUnsavedProRecipeChanges()) {
       setPendingExecutableHref(href);
       setNewRecipeConfirmOpen(true);
       return;
@@ -744,11 +767,7 @@ export function RecipesHubPage() {
             <OfficialRecipeDetail
               recipe={officialRecipe}
               persona={persona}
-              onUse={(recipeId) =>
-                requestExecutableOpen(
-                  officialRecipeUseHref(recipeId, officialLibraryHref({ recipeId })),
-                )
-              }
+              onUse={requestOfficialUse}
             />
           ) : officialCollection ? (
             <OfficialCollectionView collectionId={officialCollection} />
