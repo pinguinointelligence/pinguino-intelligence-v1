@@ -80,6 +80,70 @@ describe('canonical product-discovery filters', () => {
     ).toBe(true);
   });
 
+  it('PRING-CONTEXT-01 lets resolved central binding override conflicting local product text', () => {
+    const centrallyBound = hit({
+      entityKind: 'commercial_product',
+      displayName: 'Misleading milk words',
+      category: 'dairy',
+      canonicalFamily: 'milk',
+      semanticBinding: {
+        authority: 'PR_ING_SEMANTIC_BINDING_V1',
+        source: 'scanner',
+        state: 'RESOLVED',
+        exactIdentity: {
+          productId: 'exact-product',
+          articleCode: 'PR-ING-007205',
+          productVersionId: 'exact-version',
+          ean: '8426617014254',
+          brand: 'Haribo',
+          productName: 'Sandía',
+          variant: null,
+          pack: '90 g',
+        },
+        searchAuthority: {
+          releaseId: 'GELLATTI-SA10-2026-09-10-FINAL',
+          concepts: [{ id: 'SC-ING-000184', key: 'watermelon', targetType: 'INGREDIENT_CONCEPT' }],
+          roleKeys: [],
+        },
+        classification: {
+          family: 'confectionery',
+          form: 'SOLID',
+          role: 'TOPPING_ONLY',
+          archetype: 'CONFECTIONERY',
+          flavorDomain: 'FRUIT',
+          compatibleMapperCategories: ['confectionery_inclusion'],
+        },
+        behavior: {
+          familyId: 'inclusion',
+          subfamilyId: null,
+          formId: 'solid',
+          behaviorRole: 'TOPPING_ONLY',
+          behaviorFingerprint: 'fixture',
+          referenceMapperIngredientId: null,
+          runtimeMapperIngredientId: null,
+        },
+        readiness: {
+          privateRecipe: { base: false, topping: true },
+          publicCatalogue: false,
+        },
+        marketCountries: ['ES'],
+        reasonCodes: [],
+      },
+    });
+
+    expect(matchesProductDiscoveryFilter(centrallyBound, 'dairy')).toBe(false);
+    expect(matchesProductDiscoveryFilter(centrallyBound, 'fruit')).toBe(true);
+    expect(
+      matchesProductDiscoveryFilter(
+        {
+          ...centrallyBound,
+          semanticBinding: { ...centrallyBound.semanticBinding!, state: 'CONFLICT' },
+        },
+        'fruit',
+      ),
+    ).toBe(false);
+  });
+
   it('derives only useful contextual Fruit and Technical subfilters from real hits', () => {
     const fruit = [
       hit({ id: 'fresh', category: 'fruit', productForm: 'fresh_fruit' }),

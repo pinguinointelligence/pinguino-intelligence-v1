@@ -524,7 +524,7 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     expect(text()).toContain('Zapisano jako Twój produkt');
   });
 
-  it('SCN-MOBILE-FAMILY-01: touch selects visibly, persists once and continues without scroll selection', async () => {
+  it('SCN-MOBILE-FAMILY-01: Hanuta exact product category touch persists once without scroll selection', async () => {
     const { discovery, registry } = fakes();
     const code = '8000500272480';
     registry.set(code, {
@@ -535,13 +535,13 @@ describe('ScanFlow (jsdom, fake ports)', () => {
       facts: [
         {
           field: 'identity.displayName',
-          value: 'Wafer test',
+          value: 'Hanuta Minis',
           sourceUrl: 'u',
           authority: 'barcode_registry',
         },
         {
           field: 'identity.brand',
-          value: 'Brand test',
+          value: 'Ferrero Hanuta',
           sourceUrl: 'u',
           authority: 'barcode_registry',
         },

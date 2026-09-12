@@ -265,13 +265,13 @@ export function ToppingRow({
                   <div className="flex items-start justify-between gap-3">
                     <dt className="text-stone-600">Skład z etykiety</dt>
                     <dd className="text-right font-medium text-ink">
-                      {catalogLabel.ingredients_text}
+                      {catalogLabel.ingredients_text || 'Brak danych — wymagane przed publikacją'}
                     </dd>
                   </div>
                   <div className="flex items-start justify-between gap-3">
                     <dt className="text-stone-600">Alergeny z etykiety</dt>
                     <dd className="text-right font-medium text-ink">
-                      {catalogLabel.allergens_text}
+                      {catalogLabel.allergens_text || 'Brak danych — wymagane przed publikacją'}
                     </dd>
                   </div>
                 </>

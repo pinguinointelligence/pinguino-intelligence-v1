@@ -20,6 +20,10 @@ const READINESS_MIGRATION = readFileSync(
   ),
   'utf8',
 );
+const SHARED_ONBOARDING = readFileSync(
+  join(REPO, 'supabase', 'functions', '_shared', 'sharedProductOnboarding.ts'),
+  'utf8',
+);
 
 describe('customer product finalization contract', () => {
   it('requires a checksum-valid EAN and persists the corrected server session before authority work', () => {
@@ -33,11 +37,13 @@ describe('customer product finalization contract', () => {
   it('runs family resolution before Mapper completion and ProductBehavior', () => {
     const handlerStart = FINALIZE.indexOf('Deno.serve');
     expect(FINALIZE.indexOf('let familyResolution = resolveCustomerProductFamily')).toBeLessThan(
-      FINALIZE.indexOf('validateIntimportProductProfileProposal', handlerStart),
+      FINALIZE.indexOf('validateSharedProductOnboarding', handlerStart),
     );
     expect(FINALIZE).toContain('family_confirmation_required');
-    expect(FINALIZE).toContain('validateProductBehaviorAuthority');
-    expect(FINALIZE).toContain('finalizeProductProductionAccuracy');
+    expect(FINALIZE).toContain('validateSharedProductOnboarding');
+    expect(SHARED_ONBOARDING).toContain('validateIntimportProductProfileProposal');
+    expect(SHARED_ONBOARDING).toContain('validateProductBehaviorAuthority');
+    expect(SHARED_ONBOARDING).toContain('finalizeProductProductionAccuracy');
   });
 
   it('fails closed on shared capability readiness without a score-threshold proxy', () => {

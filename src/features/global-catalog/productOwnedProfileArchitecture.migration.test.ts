@@ -12,6 +12,10 @@ const identityMigration = readFileSync(
   'utf8',
 );
 const edge = readFileSync(resolve(root, 'supabase/functions/catalog-submit/index.ts'), 'utf8');
+const sharedOnboarding = readFileSync(
+  resolve(root, 'supabase/functions/_shared/sharedProductOnboarding.ts'),
+  'utf8',
+);
 const picker = readFileSync(
   resolve(root, 'src/features/ingredient-builder/mapperOnlyCatalog.ts'),
   'utf8',
@@ -19,7 +23,8 @@ const picker = readFileSync(
 
 describe('product-owned PR profile authority', () => {
   it('persists only the server-private recomputed profile and accuracy', () => {
-    expect(edge).toContain('validateIntimportProductProfileProposal');
+    expect(edge).toContain('validateSharedProductOnboarding');
+    expect(sharedOnboarding).toContain('validateIntimportProductProfileProposal');
     expect(edge).toContain('productProfileAuthority: serverProductProfileAuthority');
     expect(edge).toContain('browser_intimport_product_profile_authority_forbidden');
     expect(migration).toContain("p_risk#>'{productProfileAuthority,technicalComposition}'");

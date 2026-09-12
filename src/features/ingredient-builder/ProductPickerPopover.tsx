@@ -34,6 +34,7 @@ import { lockBodyScroll } from '@/components/ui/bodyScrollLock';
 import { preserveServerProductRank } from '@/features/global-catalog/ranking';
 import { useGlobalCatalogPicker } from '@/features/global-catalog/useGlobalCatalogPicker';
 import type { CatalogProductSearchHit } from '@/features/global-catalog/contracts';
+import { attachCatalogProductSemanticBindingFromFinalSearch } from '@/features/global-catalog/catalogSemanticBinding';
 import { mappedCatalogIngredient } from '@/features/global-catalog/catalogIngredient';
 import type { RecipeToppingIngredient } from '@/features/recipe-composition/labelTopping';
 import {
@@ -1019,8 +1020,8 @@ export function ProductPickerPopover({
           ),
         )
       ).flat();
-      const hit = scannedProductRecipeTarget(hits, resolved, context);
-      if (!hit) {
+      const selectedHit = scannedProductRecipeTarget(hits, resolved, context);
+      if (!selectedHit) {
         // Never invent a recipe line for a product whose own profile is incomplete.
         setScanning(false);
         setUnavailableNotice(
@@ -1028,6 +1029,10 @@ export function ProductPickerPopover({
         );
         return;
       }
+      const hit = await attachCatalogProductSemanticBindingFromFinalSearch(
+        selectedHit,
+        'scanner',
+      ).catch(() => selectedHit);
       const selection = await resolveCurrentMapperCatalogSelection(
         hit,
         context,
@@ -1754,6 +1759,52 @@ export function ProductPickerPopover({
                                   {formatDataConfidencePercent(informationOption.confidencePercent)}
                                 </dd>
                               </div>
+                              {informationOption.catalog?.semanticBinding ? (
+                                <>
+                                  <div>
+                                    <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-stone-500">
+                                      Klasyfikacja
+                                    </dt>
+                                    <dd className="mt-1 text-sm font-semibold">
+                                      {
+                                        informationOption.catalog.semanticBinding.classification
+                                          .family
+                                      }
+                                      {' · '}
+                                      {
+                                        informationOption.catalog.semanticBinding.classification
+                                          .form
+                                      }
+                                      {' · '}
+                                      {
+                                        informationOption.catalog.semanticBinding.classification
+                                          .role
+                                      }
+                                    </dd>
+                                  </div>
+                                  <div>
+                                    <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-stone-500">
+                                      Search Concept
+                                    </dt>
+                                    <dd className="mt-1 font-mono text-sm font-semibold">
+                                      {informationOption.catalog.semanticBinding.searchAuthority.concepts
+                                        .map((concept) => concept.key)
+                                        .join(', ') || 'Nierozstrzygnięte'}
+                                    </dd>
+                                  </div>
+                                  <div>
+                                    <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-stone-500">
+                                      Gotowość
+                                    </dt>
+                                    <dd className="mt-1 text-sm font-semibold">
+                                      {informationOption.catalog.semanticBinding.state ===
+                                      'RESOLVED'
+                                        ? 'Kontekst potwierdzony'
+                                        : 'Wymaga weryfikacji'}
+                                    </dd>
+                                  </div>
+                                </>
+                              ) : null}
                             </dl>
                             <button
                               ref={informationCloseRef}

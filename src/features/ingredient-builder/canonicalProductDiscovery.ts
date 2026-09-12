@@ -5,6 +5,7 @@ import {
   type CanonicalSearchConcept,
 } from './ingredientSearch';
 import { ingredientCategorySymbolFor } from './ingredientCategorySymbols';
+import type { ProductSemanticBinding } from '@/features/product-intelligence/productSemanticBinding';
 
 export const PRODUCT_DISCOVERY_TOP_FILTERS = [
   'favorites',
@@ -37,6 +38,7 @@ export interface ProductDiscoveryMetadata {
   productForm?: string | null;
   aliases?: readonly string[];
   favorite?: boolean;
+  semanticBinding?: ProductSemanticBinding;
 }
 
 const normalizedProductText = (hit: ProductDiscoveryMetadata): string =>
@@ -57,6 +59,32 @@ const categoryKey = (hit: ProductDiscoveryMetadata): string =>
   normalizeSearchText(hit.category ?? '').replaceAll(' ', '_');
 
 function technologicalFamilyFor(hit: ProductDiscoveryMetadata): TechnologicalFamily {
+  if (hit.semanticBinding) {
+    if (hit.semanticBinding.state !== 'RESOLVED') return null;
+    const semanticKeys = [
+      hit.semanticBinding.classification.family,
+      hit.semanticBinding.classification.flavorDomain,
+      hit.semanticBinding.behavior.familyId,
+      hit.semanticBinding.behavior.subfamilyId,
+      hit.semanticBinding.behavior.formId,
+      ...hit.semanticBinding.classification.compatibleMapperCategories,
+      ...hit.semanticBinding.searchAuthority.concepts.map((concept) => concept.key),
+    ]
+      .filter((value): value is string => Boolean(value))
+      .map((value) => normalizeSearchText(value).replaceAll(' ', '_'));
+    const has = (...values: string[]) =>
+      semanticKeys.some((key) => values.some((value) => key === value || key.includes(value)));
+    if (has('inulin')) return 'inulin';
+    if (has('stabilizer')) return 'stabilizer';
+    if (has('sweetener', 'sugar', 'sucrose', 'dextrose', 'fructose', 'glucose')) return 'sugar';
+    if (has('cream')) return 'cream';
+    if (has('milk')) return 'milk';
+    if (has('dairy')) return 'dairy';
+    if (has('fruit')) return 'fruit';
+    if (has('nut', 'hazelnut', 'pistachio', 'almond')) return 'nuts';
+    if (has('chocolate', 'cocoa')) return 'chocolate';
+    return null;
+  }
   const category = categoryKey(hit);
   const form = normalizeSearchText(hit.productForm ?? '');
   const family = normalizeSearchText(hit.canonicalFamily ?? '');

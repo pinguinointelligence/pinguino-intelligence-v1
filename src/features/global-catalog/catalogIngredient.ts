@@ -49,6 +49,8 @@ const REQUIRED_LABEL_TOPPING_FACTS = [
   'energyKcal',
 ] as const;
 
+const canonicalCommercialArticle = /^(?:PR|PM|CA)-ING-\d{6}$/;
+
 export function catalogHasCompleteToppingFacts(hit: CatalogProductSearchHit): boolean {
   const nutrition = hit.publicData.nutrition;
   return hit.usableAsTopping
@@ -60,11 +62,7 @@ export function catalogHasCompleteToppingFacts(hit: CatalogProductSearchHit): bo
     && ['per_100g', 'per_100ml'].includes(
       String((nutrition as Record<string, unknown>).basis),
     )
-    && REQUIRED_LABEL_TOPPING_FACTS.every((key) => numberAt(hit.publicData, key) !== null)
-    && typeof hit.publicData.ingredientsText === 'string'
-    && hit.publicData.ingredientsText.trim().length > 0
-    && typeof hit.publicData.allergensText === 'string'
-    && hit.publicData.allergensText.trim().length > 0;
+    && REQUIRED_LABEL_TOPPING_FACTS.every((key) => numberAt(hit.publicData, key) !== null);
 }
 
 /** Product-layer Topping handoff. No composition, PAC, POD, water, solids,
@@ -84,7 +82,12 @@ export function labelOnlyCatalogToppingIngredient(
   if ([fat, carbohydrate, protein, salt, energy].some(
     (value) => value === null,
   )) return null;
-  const catalogIdentity = `catalog:${hit.id}`;
+  // Exact customer-facing product identity wins. The private UUID remains in
+  // catalog_product_id/private_product_id for persistence and server reloads.
+  const productCode = hit.productCode?.trim() ?? '';
+  const catalogIdentity = canonicalCommercialArticle.test(productCode)
+    ? productCode
+    : `catalog:${hit.id}`;
   return {
     kind: 'catalog_label_topping',
     id: catalogIdentity,
@@ -109,8 +112,16 @@ export function labelOnlyCatalogToppingIngredient(
       salt: salt!,
       fibre,
     },
-    ingredients_text: hit.publicData.ingredientsText as string,
-    allergens_text: hit.publicData.allergensText as string,
+    // These fields govern public label completion, not private recipe role
+    // readiness. Empty values stay visible as unresolved publication facts.
+    ingredients_text:
+      typeof hit.publicData.ingredientsText === 'string'
+        ? hit.publicData.ingredientsText.trim()
+        : '',
+    allergens_text:
+      typeof hit.publicData.allergensText === 'string'
+        ? hit.publicData.allergensText.trim()
+        : '',
     cost_per_kg: hit.privatePricePerKg ?? null,
     cost_currency: hit.privatePricePerKg === null || hit.privatePricePerKg === undefined
       ? null

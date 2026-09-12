@@ -155,6 +155,45 @@ describe('Base/Topping composition sidecar', () => {
     );
   });
 
+  it('PRING-SAVE-01 reloads an exact PR Topping with unresolved public label text', () => {
+    const exactProduct = {
+      ...labelIngredient,
+      id: 'PR-ING-007205',
+      canonical_ingredient_id: 'PR-ING-007205',
+      private_product_id: 'catalog:haribo:version:haribo-v1',
+      catalog_product_id: 'haribo',
+      catalog_version_id: 'haribo-v1',
+      ingredients_text: '',
+      allergens_text: '',
+    };
+    const parsed = readRecipeCompositionMetadata({
+      schemaVersion: 1,
+      baseScope: 'BASE_FORMULATION',
+      baseOrder: [],
+      toppings: [
+        {
+          id: 'haribo-line',
+          ingredient: exactProduct,
+          planned_grams: 35,
+          actual_grams: null,
+          process_scope: 'POST_PROCESS_ADDON',
+          addon_sort_order: 0,
+        },
+      ],
+      migrationAmbiguities: [],
+    });
+
+    expect(parsed?.toppings[0]).toMatchObject({
+      ingredient: {
+        id: 'PR-ING-007205',
+        canonical_ingredient_id: 'PR-ING-007205',
+        ingredients_text: '',
+        allergens_text: '',
+      },
+      planned_grams: 35,
+    });
+  });
+
   it('rejects a persisted Base/Topping line-id collision instead of deadlocking Production', () => {
     const collision = topping('base-milk', 70, 'PI-ING-TOPPING');
     const parsed = readRecipeCompositionMetadata(

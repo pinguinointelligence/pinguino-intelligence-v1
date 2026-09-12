@@ -101,27 +101,7 @@ interface DuplicatePreviewRow {
   ean: string | null;
 }
 
-const REQUIRED_TOPPING_FACTS = ['fat', 'protein', 'carbohydrate', 'salt', 'energyKcal'] as const;
-
-function hasCompleteLabelOnlyToppingFacts(publicData: Record<string, unknown> | null): boolean {
-  const nutrition = publicData?.nutrition;
-  if (!nutrition || typeof nutrition !== 'object') return false;
-  const facts = nutrition as Record<string, unknown>;
-  return (
-    // OWNER RULE, frozen 2026-08-25: Gellatti normalizes 1 ml = 1 g.
-    ['per_100g', 'per_100ml'].includes(String(facts.basis)) &&
-    typeof publicData?.ingredientsText === 'string' &&
-    publicData.ingredientsText.trim().length > 0 &&
-    typeof publicData?.allergensText === 'string' &&
-    publicData.allergensText.trim().length > 0 &&
-    REQUIRED_TOPPING_FACTS.every((key) => {
-      const value = facts[key];
-      return typeof value === 'number' && Number.isFinite(value);
-    })
-  );
-}
-
-function mapSearchRow(row: SearchRow): CatalogProductSearchHit {
+export function mapSearchRow(row: SearchRow): CatalogProductSearchHit {
   const nutrition = row.public_data?.nutrition;
   const nutritionBasis =
     nutrition && typeof nutrition === 'object'
@@ -156,12 +136,10 @@ function mapSearchRow(row: SearchRow): CatalogProductSearchHit {
     recentlyUsedAt: row.recently_used_at,
     usableInBase: row.usable_in_base,
     mainAllowed: row.main_allowed,
-    // Label-only additions stay outside Base/Engine. Declared nutrition can
-    // still feed product mass, cost and final-label preflight.
-    usableAsTopping:
-      row.entity_kind === 'pi_base' || row.mapped_ingredient_id
-        ? row.usable_as_topping
-        : row.usable_as_topping && hasCompleteLabelOnlyToppingFacts(row.public_data),
+    // Role readiness is classified once by the server-owned ProductBehavior
+    // authority. Ingredients/allergens remain a separate publication concern
+    // and must not silently revoke private TOPPING use in this projection.
+    usableAsTopping: row.usable_as_topping,
     blockedReason: row.blocked_reason,
     relevance: Number(row.relevance),
     missingFields: row.missing_fields ?? [],

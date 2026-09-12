@@ -19,16 +19,12 @@ import {
   recognitionIsResolved,
   scanAssessmentSnapshot,
 } from '../_shared/scanAssessment.ts';
-import {
-  finalizeProductProductionAccuracy,
-  validateIntimportProductProfileProposal,
-  type IntimportMapperAuthorityRow,
-} from '../_shared/intimportWholeProfileAuthority.ts';
+import { type IntimportMapperAuthorityRow } from '../_shared/intimportWholeProfileAuthority.ts';
 import {
   supportsSemanticBehaviorReference,
-  validateProductBehaviorAuthority,
   type MapperProductBehaviorAuthorityRow,
 } from '../../../src/features/product-intelligence/productBehaviorAuthority.ts';
+import { validateSharedProductOnboarding } from '../_shared/sharedProductOnboarding.ts';
 import {
   classifyProductSemantics,
   type ProductSemanticClassification,
@@ -798,34 +794,34 @@ Deno.serve(async (request) => {
       userConfirmedFields: confirmedEvidenceFields,
     });
     if (!proposal) return { kind: 'identity_required' as const };
-    const mapperProfile = validateIntimportProductProfileProposal({
-      origin: 'CUSTOMER_ADDED',
-      proposedMapperIngredientId: null,
-      matchInput: proposal.matchInput,
-      declared: proposal.declared,
-      declaredBasis: proposal.declaredBasis,
-      evidence: proposal.evidence,
-      /*
-        The scan path never filled this, so productProductionAccuracy's web-source test —
-        `trustedWebAuthority(input.evidenceProvenance?.[field]?.sourceAuthorityClass)` — always
-        read undefined and scored 0. The finalizer now builds it only through
-        `applyAutomaticEvidence`, after matching the session GTIN and the exact-source URL. This
-        provenance still cannot bypass the independent name-quality gate below or the SQL gate.
-      */
-      evidenceProvenance: proposal.evidenceProvenance,
-      recognitionEvidence: proposal.recognitionEvidence,
-      trustedRecognition: proposal.trustedRecognition,
-      rows: await loadMapperRows(service),
-    });
-    if (!mapperProfile) return { kind: 'profile_rejected' as const };
-    const productBehavior = validateProductBehaviorAuthority({
-      productProfile: mapperProfile,
+    const authority = validateSharedProductOnboarding({
+      source: 'SCANNER',
+      proposal: {
+        origin: 'CUSTOMER_ADDED',
+        proposedMapperIngredientId: null,
+        matchInput: proposal.matchInput,
+        declared: proposal.declared,
+        declaredBasis: proposal.declaredBasis,
+        evidence: proposal.evidence,
+        /*
+          The scan path never filled this, so productProductionAccuracy's web-source test —
+          `trustedWebAuthority(input.evidenceProvenance?.[field]?.sourceAuthorityClass)` — always
+          read undefined and scored 0. The finalizer now builds it only through
+          `applyAutomaticEvidence`, after matching the session GTIN and the exact-source URL. This
+          provenance still cannot bypass the independent name-quality gate below or the SQL gate.
+        */
+        evidenceProvenance: proposal.evidenceProvenance,
+        recognitionEvidence: proposal.recognitionEvidence,
+        trustedRecognition: proposal.trustedRecognition,
+      },
+      mapperRows: await loadMapperRows(service),
       behaviorRows: await loadBehaviorRows(service),
     });
+    if (!authority) return { kind: 'profile_rejected' as const };
     return {
       kind: 'complete' as const,
-      profile: finalizeProductProductionAccuracy(mapperProfile, productBehavior),
-      behavior: productBehavior,
+      profile: authority.profile,
+      behavior: authority.behavior,
     };
   };
 

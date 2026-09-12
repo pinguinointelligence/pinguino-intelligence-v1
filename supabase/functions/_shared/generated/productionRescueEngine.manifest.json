@@ -254,7 +254,7 @@
     },
     {
       "path": "src/features/recipe-composition/recipeCompositionPersistence.ts",
-      "sha256": "e9496461f128be5f7f54c9ef3bf8a756c496862e2608bee52b3c1ff6c1ebcfe3"
+      "sha256": "de69f333298ce9eb4fbcdbab573a9fa7d2da8fe2cbf7a3ec959f1d5a0be6b08b"
     },
     {
       "path": "src/features/recipe-constraints/constraintSet.ts",
@@ -293,5 +293,5 @@
       "sha256": "a2207c9c4e9431daa728d6b03fe1b9c4a4a3ba3403a0c056f2808c0759a455c8"
     }
   ],
-  "sourceClosureSha256": "48dde866ea6fe1e9adbc39db44a1db844ea3cd8813ee894a913a8fcd8a197950"
+  "sourceClosureSha256": "902c2c29290e61e9648d4e00bd9cfaf2744fc61899c3db946e10fb4a736ddfec"
 }

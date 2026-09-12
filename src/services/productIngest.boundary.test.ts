@@ -52,6 +52,7 @@ describe('canonical product ingest boundary', () => {
 
   it('declares every current and future intake source at the single client seam', () => {
     const service = read('src/services/productIngest.ts');
+    const edge = read('supabase/functions/catalog-submit/index.ts');
     for (const source of [
       'ocr',
       'barcode',
@@ -67,6 +68,22 @@ describe('canonical product ingest boundary', () => {
       'internal_subproduct',
     ])
       expect(service).toContain(`| '${source}'`);
+    expect(edge).toContain("? 'RECIPE_LIBRARY_IMPORT'");
+    expect(edge).toContain("? 'ADMIN_IMPORT'");
+    expect(edge).toContain("? 'MANUAL_IMPORT'");
+    expect(edge).toContain(": 'FUTURE_IMPORT'");
+    expect(edge).not.toContain('manual_product_profile_requires_interactive_source');
+    expect(edge).toContain('if (!serverProductProfileAuthority)');
+  });
+
+  it('PRING-PROVENANCE-01 keeps each shared adapter at its real evidence authority', () => {
+    const edge = read('supabase/functions/catalog-submit/index.ts');
+    expect(edge).toContain("{ evidenceSource: 'user_confirmed', declaredBasis: 'user_confirmed' }");
+    expect(edge).toContain("{ evidenceSource: 'label', declaredBasis: 'product_declared' }");
+    expect(edge).toContain("{ evidenceSource: 'retailer', declaredBasis: 'product_declared' }");
+    expect(edge).toContain("{ evidenceSource: 'manufacturer', declaredBasis: 'product_declared' }");
+    expect(edge).toContain("{ evidenceSource: 'source_file', declaredBasis: 'product_declared' }");
+    expect(edge).toContain('validateBarcode(suppliedBarcode)?.lookupValue');
   });
 
   it('preserves reviewed OCR text/languages and never invents a nutrition basis', () => {

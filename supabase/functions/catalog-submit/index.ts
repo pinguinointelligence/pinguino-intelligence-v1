@@ -4,8 +4,6 @@ import { evidenceImageDimensionsAllowed } from '../_shared/evidenceImageDimensio
 import {
   INTIMPORT_PRODUCT_PROFILE_AUTHORITY,
   INTIMPORT_WHOLE_PROFILE_AUTHORITY,
-  finalizeProductProductionAccuracy,
-  validateIntimportProductProfileProposal,
   type IntimportMapperAuthorityRow,
   type IntimportTrustedEvidenceProvenance,
   type IntimportTrustedProductProfile,
@@ -32,10 +30,10 @@ import { classifySourceAuthority } from '../_shared/sourceAuthority.ts';
 import { storedServerEanConfirmationHolds } from '../_shared/pageEanConfirmation.ts';
 import type { CarbonationEvidence } from '../../../src/data/products/carbonation.ts';
 import {
-  validateProductBehaviorAuthority,
   type MapperProductBehaviorAuthorityRow,
   type TrustedProductBehaviorAuthority,
 } from '../../../src/features/product-intelligence/productBehaviorAuthority.ts';
+import { validateSharedProductOnboarding } from '../_shared/sharedProductOnboarding.ts';
 import {
   PRODUCT_RECOGNITION_VERSION,
   canonicalizeProductSemanticEvidence,
@@ -1108,10 +1106,16 @@ async function trustedIntimportEvidence(input: {
   return { evidence, provenance, carbonationEvidence, recognitionEvidence, sourceCard };
 }
 
-function serverManualProductProfileProposal(canonicalInput: Record<string, unknown>): {
+function serverCanonicalProductProfileProposal(
+  canonicalInput: Record<string, unknown>,
+  policy: {
+    evidenceSource: EvidenceSource;
+    declaredBasis: 'product_declared' | 'user_confirmed';
+  },
+): {
   matchInput: ProfileMatchInput;
   declared: Partial<Record<WorkingNumericField, number>>;
-  declaredBasis: Partial<Record<WorkingNumericField, 'user_confirmed'>>;
+  declaredBasis: Partial<Record<WorkingNumericField, 'product_declared' | 'user_confirmed'>>;
   evidence: ProductEvidenceInput;
   recognitionEvidence: ProductSemanticEvidence;
 } | null {
@@ -1128,7 +1132,8 @@ function serverManualProductProfileProposal(canonicalInput: Record<string, unkno
   if (!name || (!brand && canonicalInput.explicitlyUnbranded !== true)) return null;
 
   const declared: Partial<Record<WorkingNumericField, number>> = {};
-  const declaredBasis: Partial<Record<WorkingNumericField, 'user_confirmed'>> = {};
+  const declaredBasis: Partial<Record<WorkingNumericField, 'product_declared' | 'user_confirmed'>> =
+    {};
   const macroMap: Readonly<Record<string, WorkingNumericField>> = {
     energyKcal: 'kcal_per_100g',
     fat: 'fat_percent',
@@ -1160,35 +1165,30 @@ function serverManualProductProfileProposal(canonicalInput: Record<string, unkno
       if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) return null;
       if (key !== 'energyKcal' && value > 100) return null;
       declared[field] = value;
-      declaredBasis[field] = 'user_confirmed';
+      declaredBasis[field] = policy.declaredBasis;
     }
   }
-  const ean =
-    String(canonicalInput.ean ?? canonicalInput.barcode ?? '').replace(/\D+/g, '') || null;
+  const suppliedBarcode = String(canonicalInput.ean ?? canonicalInput.barcode ?? '').trim();
+  const ean = suppliedBarcode ? (validateBarcode(suppliedBarcode)?.lookupValue ?? null) : null;
+  const source = policy.evidenceSource;
   const fields: Partial<Record<ProductEvidenceField, EvidenceSource>> = {
-    identity: 'user_confirmed',
-    ...(brand || canonicalInput.explicitlyUnbranded === true
-      ? { brand: 'user_confirmed' as const }
-      : {}),
+    identity: source,
+    ...(brand || canonicalInput.explicitlyUnbranded === true ? { brand: source } : {}),
     ...(typeof facts.packageSize === 'string' && facts.packageSize.trim()
-      ? { netQuantity: 'user_confirmed' as const }
+      ? { netQuantity: source }
       : {}),
     ...(typeof facts.ingredientsText === 'string' && facts.ingredientsText.trim()
-      ? { ingredients: 'user_confirmed' as const }
+      ? { ingredients: source }
       : {}),
     ...(typeof facts.allergensText === 'string' && facts.allergensText.trim()
-      ? { allergens: 'user_confirmed' as const }
+      ? { allergens: source }
       : {}),
-    ...(typeof declared.kcal_per_100g === 'number'
-      ? { energyKcal: 'user_confirmed' as const }
-      : {}),
-    ...(typeof declared.fat_percent === 'number' ? { fat: 'user_confirmed' as const } : {}),
-    ...(typeof declared.carbohydrate_percent === 'number'
-      ? { carbohydrate: 'user_confirmed' as const }
-      : {}),
-    ...(typeof declared.protein_percent === 'number' ? { protein: 'user_confirmed' as const } : {}),
-    ...(typeof declared.salt_percent === 'number' ? { salt: 'user_confirmed' as const } : {}),
-    ...(ean ? { barcode: 'user_confirmed' as const } : {}),
+    ...(typeof declared.kcal_per_100g === 'number' ? { energyKcal: source } : {}),
+    ...(typeof declared.fat_percent === 'number' ? { fat: source } : {}),
+    ...(typeof declared.carbohydrate_percent === 'number' ? { carbohydrate: source } : {}),
+    ...(typeof declared.protein_percent === 'number' ? { protein: source } : {}),
+    ...(typeof declared.salt_percent === 'number' ? { salt: source } : {}),
+    ...(ean ? { barcode: source } : {}),
   };
   const semanticNutrition = [
     ['basis', nutrition.basis],
@@ -1922,7 +1922,8 @@ Deno.serve(async (request) => {
   let serverProductBehaviorAuthority: TrustedProductBehaviorAuthority | null = null;
   const productProfileProposal = objectValue(canonicalInput.intimportProductProfileProposal);
   delete canonicalInput.intimportProductProfileProposal;
-  const manualProductProfileProposal = objectValue(canonicalInput.manualProductProfileProposal);
+  // Legacy clients may still send this marker. Authority is rebuilt from the
+  // canonical facts below and never trusts marker contents.
   delete canonicalInput.manualProductProfileProposal;
   if (Object.keys(productProfileProposal).length > 0) {
     if (source !== 'catalog_import') {
@@ -1949,75 +1950,94 @@ Deno.serve(async (request) => {
       if (!trustedRecognition) {
         return json({ error: 'intimport_semantic_evidence_untrusted' }, 409);
       }
-      const authority = validateIntimportProductProfileProposal({
-        origin: 'PR',
-        proposedMapperIngredientId: proposal.proposedMapperIngredientId,
-        matchInput: proposal.matchInput,
-        declared: proposal.declared,
-        sourceCard: trustedEvidence.sourceCard,
-        evidence: trustedEvidence.evidence,
-        recognitionEvidence: trustedEvidence.recognitionEvidence,
-        trustedRecognition,
-        evidenceProvenance: trustedEvidence.provenance,
-        carbonationEvidence: trustedEvidence.carbonationEvidence,
-        proposedTechnicalComposition: objectValue(
-          objectValue(canonicalInput.facts).technicalComposition,
-        ),
-        rows: await loadMapperAuthorityRows(service),
+      const authority = validateSharedProductOnboarding({
+        source: 'RECIPE_LIBRARY_IMPORT',
+        proposal: {
+          origin: 'PR',
+          proposedMapperIngredientId: proposal.proposedMapperIngredientId,
+          matchInput: proposal.matchInput,
+          declared: proposal.declared,
+          sourceCard: trustedEvidence.sourceCard,
+          evidence: trustedEvidence.evidence,
+          recognitionEvidence: trustedEvidence.recognitionEvidence,
+          trustedRecognition,
+          evidenceProvenance: trustedEvidence.provenance,
+          carbonationEvidence: trustedEvidence.carbonationEvidence,
+          proposedTechnicalComposition: objectValue(
+            objectValue(canonicalInput.facts).technicalComposition,
+          ),
+        },
+        mapperRows: await loadMapperAuthorityRows(service),
+        behaviorRows: await loadMapperBehaviorAuthorityRows(service),
       });
       if (!authority) return json({ error: 'intimport_product_profile_rejected' }, 409);
       serverProductProfileAuthority = {
-        ...authority,
+        ...authority.profile,
         sourceProductId: proposal.sourceProductId,
       };
+      serverProductBehaviorAuthority = authority.behavior;
     } catch {
       return json({ error: 'intimport_product_profile_unavailable' }, 503);
     }
   }
-  if (Object.keys(manualProductProfileProposal).length > 0) {
-    if (source !== 'manual' && source !== 'barcode' && source !== 'admin') {
-      return json({ error: 'manual_product_profile_requires_interactive_source' }, 403);
-    }
-    const proposal = serverManualProductProfileProposal(canonicalInput);
-    if (!proposal) return json({ error: 'manual_product_profile_input_invalid' }, 409);
+  // Every non-INTIMPORT ingress (including future adapters) enters the same
+  // product-owned profile/behavior boundary. The legacy marker is consumed for
+  // backwards compatibility but no longer decides whether classification runs.
+  if (!serverProductProfileAuthority) {
+    const sourcePolicy: {
+      evidenceSource: EvidenceSource;
+      declaredBasis: 'product_declared' | 'user_confirmed';
+    } =
+      source === 'manual' || source === 'barcode' || source === 'admin'
+        ? { evidenceSource: 'user_confirmed', declaredBasis: 'user_confirmed' }
+        : source === 'ocr'
+          ? { evidenceSource: 'label', declaredBasis: 'product_declared' }
+          : source === 'retailer_feed' || source === 'shop' || source === 'franchise'
+            ? { evidenceSource: 'retailer', declaredBasis: 'product_declared' }
+            : source === 'supplier_specification'
+              ? { evidenceSource: 'manufacturer', declaredBasis: 'product_declared' }
+              : { evidenceSource: 'source_file', declaredBasis: 'product_declared' };
+    const proposal = serverCanonicalProductProfileProposal(canonicalInput, sourcePolicy);
+    if (!proposal) return json({ error: 'shared_product_profile_input_invalid' }, 409);
     try {
-      const authority = validateIntimportProductProfileProposal({
-        // Controlled Catalog: all callers of catalog-submit are now Admin.
-        // The Admin approval route creates the official PR product-owned
-        // profile; legacy interactive source values remain accepted only for
-        // compatibility with existing back-office evidence payloads.
-        origin: 'PR',
-        proposedMapperIngredientId: null,
-        matchInput: proposal.matchInput,
-        declared: proposal.declared,
-        declaredBasis: proposal.declaredBasis,
-        evidence: proposal.evidence,
-        recognitionEvidence: proposal.recognitionEvidence,
-        proposedTechnicalComposition: objectValue(
-          objectValue(canonicalInput.facts).technicalComposition,
-        ),
-        rows: await loadMapperAuthorityRows(service),
+      const authority = validateSharedProductOnboarding({
+        source:
+          source === 'catalog_import'
+            ? 'RECIPE_LIBRARY_IMPORT'
+            : source === 'admin'
+              ? 'ADMIN_IMPORT'
+              : source === 'manual' || source === 'barcode' || source === 'ocr'
+                ? 'MANUAL_IMPORT'
+                : 'FUTURE_IMPORT',
+        proposal: {
+          // Controlled Catalog: all callers of catalog-submit are now Admin.
+          // The Admin approval route creates the official PR product-owned
+          // profile; legacy interactive source values remain accepted only for
+          // compatibility with existing back-office evidence payloads.
+          origin: 'PR',
+          proposedMapperIngredientId: null,
+          matchInput: proposal.matchInput,
+          declared: proposal.declared,
+          declaredBasis: proposal.declaredBasis,
+          evidence: proposal.evidence,
+          recognitionEvidence: proposal.recognitionEvidence,
+          proposedTechnicalComposition: objectValue(
+            objectValue(canonicalInput.facts).technicalComposition,
+          ),
+        },
+        mapperRows: await loadMapperAuthorityRows(service),
+        behaviorRows: await loadMapperBehaviorAuthorityRows(service),
       });
-      if (!authority) return json({ error: 'manual_product_profile_rejected' }, 409);
-      serverProductProfileAuthority = { ...authority, sourceProductId: null };
+      if (!authority) return json({ error: 'shared_product_profile_rejected' }, 409);
+      serverProductProfileAuthority = { ...authority.profile, sourceProductId: null };
+      serverProductBehaviorAuthority = authority.behavior;
     } catch {
-      return json({ error: 'manual_product_profile_unavailable' }, 503);
+      return json({ error: 'shared_product_profile_unavailable' }, 503);
     }
   }
 
-  if (serverProductProfileAuthority) {
-    try {
-      serverProductBehaviorAuthority = validateProductBehaviorAuthority({
-        productProfile: serverProductProfileAuthority,
-        behaviorRows: await loadMapperBehaviorAuthorityRows(service),
-      });
-      serverProductProfileAuthority = finalizeProductProductionAccuracy(
-        serverProductProfileAuthority,
-        serverProductBehaviorAuthority,
-      );
-    } catch {
-      return json({ error: 'product_behavior_authority_unavailable' }, 503);
-    }
+  if (serverProductProfileAuthority && !serverProductBehaviorAuthority) {
+    return json({ error: 'product_behavior_authority_unavailable' }, 503);
   }
 
   // Product Request approval is fail-closed BEFORE any product/version row is
@@ -2057,10 +2077,10 @@ Deno.serve(async (request) => {
               mapperProfileBasis: serverProductProfileAuthority.mapperProfileBasis,
               mapperCandidatesBeforeFilter:
                 serverProductProfileAuthority.mapperCandidatesBeforeFilter,
-              mapperCandidatesAfterFilter: serverProductProfileAuthority.mapperCandidatesAfterFilter,
+              mapperCandidatesAfterFilter:
+                serverProductProfileAuthority.mapperCandidatesAfterFilter,
               mapperRejectedCandidates: serverProductProfileAuthority.mapperRejectedCandidates,
-              productAccuracyAssessment:
-                serverProductProfileAuthority.productAccuracyAssessment,
+              productAccuracyAssessment: serverProductProfileAuthority.productAccuracyAssessment,
             }
           : null,
         productBehaviorAuthority: serverProductBehaviorAuthority,

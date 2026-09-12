@@ -23,6 +23,10 @@ const scannerFinalize = readFileSync(
   resolve(root, 'supabase/functions/product-scan-finalize/index.ts'),
   'utf8',
 );
+const sharedOnboarding = readFileSync(
+  resolve(root, 'supabase/functions/_shared/sharedProductOnboarding.ts'),
+  'utf8',
+);
 
 describe('PR/PM ProductBehavior authority restore', () => {
   it('persists ProductBehavior on the immutable product/version binding without PI identity', () => {
@@ -53,8 +57,11 @@ describe('PR/PM ProductBehavior authority restore', () => {
     expect(migration).not.toMatch(/(insert\s+into|update)\s+public\.mapper_basement/i);
     expect(migration).not.toContain("'technicalComposition',v_mapper");
     expect(migration).not.toMatch(/0\.8[0-49]/);
-    expect(catalogSubmit).toContain('validateProductBehaviorAuthority');
-    expect(scannerFinalize).toContain('validateProductBehaviorAuthority');
+    expect(catalogSubmit).toContain('validateSharedProductOnboarding');
+    expect(scannerFinalize).toContain('validateSharedProductOnboarding');
+    expect(sharedOnboarding).toContain('validateIntimportProductProfileProposal');
+    expect(sharedOnboarding).toContain('validateProductBehaviorAuthority');
+    expect(sharedOnboarding).toContain('finalizeProductProductionAccuracy');
     expect(scannerFinalize).toContain("'gellatti_upsert_customer_added_product_v1'");
     expect(catalogSubmit).toContain('.range(offset, offset + AUTHORITY_PAGE_SIZE - 1)');
     expect(scannerFinalize).toContain('.range(offset, offset + AUTHORITY_PAGE_SIZE - 1)');
