@@ -1,0 +1,33 @@
+// Spike C: per-frame cost model — decoder time vs frame size / ROI, and cheap quality metrics. Node on Apple Silicon (phone ≈ 3–6× slower).
+import { renderFrame, randomEan13, mulberry32 } from './ean13.mjs';
+import { zxingDecode, zbarDecode, repoDecode } from './decoders.mjs';
+const rng = mulberry32(99); const camera = { focalPx: 1100 };
+const sizes = [[1920, 1080], [1280, 720], [960, 540], [640, 360]];
+const rows = [];
+for (const [W, H] of sizes) {
+  const f = renderFrame({ ean: randomEan13(rng), width: W, height: H, camera: { focalPx: 1100 * W / 1280 }, supersample: 2, pose: { distanceMm: 180, cx: W / 2, cy: H / 2 }, blurSigma: 0.5 });
+  const stat = { zx: [], zxf: [], zb: [], rp: [] };
+  for (let i = 0; i < 8; i++) {
+    stat.zx.push((await zxingDecode(f.gray, W, H)).ms); stat.zxf.push((await zxingDecode(f.gray, W, H, { tryHarder: false, tryDownscale: false, tryRotate: false })).ms);
+    stat.zb.push((await zbarDecode(f.gray, W, H)).ms); stat.rp.push((await repoDecode(f.gray, W, H)).ms);
+  }
+  const med = (a) => a.sort((x, y) => x - y)[Math.floor(a.length / 2)].toFixed(1);
+  // cheap quality metric: Laplacian variance on a 4x-downsampled luminance
+  const t0 = performance.now(); let lap = 0, n = 0; const step = 4;
+  for (let y = step; y < H - step; y += step) for (let x = step; x < W - step; x += step) { const c = f.gray[y * W + x]; lap += Math.abs(4 * c - f.gray[y * W + x - step] - f.gray[y * W + x + step] - f.gray[(y - step) * W + x] - f.gray[(y + step) * W + x]); n++; }
+  const qms = (performance.now() - t0).toFixed(2);
+  rows.push(`| ${W}×${H} | ${med(stat.zx)} | ${med(stat.zxf)} | ${med(stat.zb)} | ${med(stat.rp)} | ${qms} |`);
+}
+// ROI: 1280x720 frame, decode only the central 50% x 40% crop
+{
+  const W = 1280, H = 720; const f = renderFrame({ ean: randomEan13(rng), width: W, height: H, camera, supersample: 2, pose: { distanceMm: 180, cx: 640, cy: 360 }, blurSigma: 0.5 });
+  const cw = 640, ch = 288, x0 = 320, y0 = 216; const crop = new Uint8Array(cw * ch);
+  for (let y = 0; y < ch; y++) crop.set(f.gray.subarray((y0 + y) * W + x0, (y0 + y) * W + x0 + cw), y * cw);
+  const a = [], b = [];
+  for (let i = 0; i < 8; i++) { a.push((await zxingDecode(crop, cw, ch)).ms); b.push((await zbarDecode(crop, cw, ch)).ms); }
+  const med = (x) => x.sort((p, q) => p - q)[Math.floor(x.length / 2)].toFixed(1);
+  rows.push(`| ROI 640×288 crop of 1280×720 | ${med(a)} | – | ${med(b)} | – | – |`);
+}
+const md = `## Spike C — per-frame cost (median of 8, ms, Node ${process.version} single thread on Apple Silicon; expect ×3–6 on a mid-range phone in WASM)\n\n| frame | zxing-wasm tryHarder | zxing-wasm fast | zbar-wasm | repo scanline | Laplacian quality (4× subsampled) |\n|---|---|---|---|---|---|\n${rows.join('\n')}\n`;
+console.log(md);
+import fs from 'node:fs'; fs.writeFileSync('out/spike_c_results.md', md);

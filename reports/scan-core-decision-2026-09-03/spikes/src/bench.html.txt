@@ -1,0 +1,37 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WASM decoder bench</title>
+<style>body{font:14px -apple-system,system-ui,sans-serif;margin:16px;background:#111;color:#eee}pre{white-space:pre-wrap;background:#1c1c1c;padding:12px;border-radius:8px}</style></head>
+<body><h1>WASM decoder bench (zxing-wasm reader + zbar-wasm)</h1><div id="s">loading…</div><pre id="out"></pre>
+<script type="module">
+const out = (t) => { document.getElementById('out').textContent += t + '\n'; };
+const r = { tag: 'bench', ua: navigator.userAgent, time: new Date().toISOString(), frames: [] };
+try {
+  const t0 = performance.now();
+  const zx = await import('/zx/es/reader/index.js');
+  await zx.prepareZXingModule({ overrides: { locateFile: (p, prefix) => (p.endsWith('.wasm') ? '/zx/reader/zxing_reader.wasm' : prefix + p) }, fireImmediately: true });
+  r.zxingWarmupMs = +(performance.now() - t0).toFixed(1);
+  const t1 = performance.now();
+  const zb = await import('/zbar/main.mjs');
+  const scanner = await zb.getDefaultScanner();
+  r.zbarWarmupMs = +(performance.now() - t1).toFixed(1);
+  const frames = await (await fetch('/frames.json')).json();
+  const med = (a) => a.slice().sort((x, y) => x - y)[Math.floor(a.length / 2)];
+  for (const name of frames) {
+    const img = new Image(); img.src = '/frames/' + name; await img.decode();
+    const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight;
+    const ctx = c.getContext('2d', { willReadFrequently: true }); ctx.drawImage(img, 0, 0);
+    const id = ctx.getImageData(0, 0, c.width, c.height);
+    const gid = []; for (let i = 0; i < 6; i++) { const t = performance.now(); ctx.getImageData(0, 0, c.width, c.height); gid.push(performance.now() - t); }
+    const zxT = [], zxF = [], zbT = []; let zxText = '', zbText = '';
+    for (let i = 0; i < 6; i++) {
+      let t = performance.now(); const res = await zx.readBarcodes(id, { formats: ['EAN-13'], tryHarder: true, tryRotate: true, tryDownscale: true, returnErrors: false }); zxT.push(performance.now() - t); zxText = res.map((x) => x.text).join(',') || '-';
+      t = performance.now(); await zx.readBarcodes(id, { formats: ['EAN-13'], tryHarder: false, tryRotate: false, tryDownscale: false }); zxF.push(performance.now() - t);
+      t = performance.now(); const syms = await zb.scanImageData(id, scanner); zbT.push(performance.now() - t); zbText = syms.map((s) => s.decode()).join(',') || '-';
+    }
+    const row = { frame: name, w: c.width, h: c.height, getImageDataMs: +med(gid).toFixed(2), zxingHarderMs: +med(zxT).toFixed(1), zxingFastMs: +med(zxF).toFixed(1), zbarMs: +med(zbT).toFixed(1), zxing: zxText, zbar: zbText };
+    r.frames.push(row); out(JSON.stringify(row));
+  }
+  document.getElementById('s').textContent = 'done — posting';
+  await fetch('/report', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(r) });
+  document.getElementById('s').textContent = 'done — posted';
+} catch (e) { r.error = String(e && e.stack || e); out('ERROR ' + r.error); await fetch('/report', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(r) }); }
+</script></body></html>

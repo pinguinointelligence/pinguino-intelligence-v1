@@ -1,0 +1,134 @@
+// Spike B: temporal, guard-anchored evidence accumulation vs per-frame decoders.
+import fs from 'node:fs';
+import { renderFrame, randomEan13, mulberry32, toPng } from './ean13.mjs';
+import { zxingDecode, zbarDecode, repoDecode } from './decoders.mjs';
+import { EanEvidence } from './evidence.mjs';
+import { observeFrame as observeFrameLib } from './lib_frames.mjs';
+
+const W = 1280, H = 720, camera = { focalPx: 1100 };
+const barPx = (d) => (95 * 0.33) * camera.focalPx / d;
+const cutRight = (d, v) => W + barPx(d) / 2 - barPx(d) * v;
+const cutLeft = (d, v) => barPx(d) * v - barPx(d) / 2;
+const KAPPA = 'n/(2σ²), σ=0.35·(1+0.6·blur)';
+const TAU = Number(process.env.TAU || 3.0);
+const NS = 7; // scanlines per frame
+
+const observeFrame = (f) => observeFrameLib(f, { ns: NS });
+async function perFrameDecoders(gray) {
+  const r = { zxing: await zxingDecode(gray, W, H), zbar: await zbarDecode(gray, W, H), repo: await repoDecode(gray, W, H) };
+  const out = {};
+  for (const [k, v] of Object.entries(r)) out[k] = v.results.filter((x) => x.isValid !== false && x.text && /^\d{13}$/.test(x.text)).map((x) => x.text);
+  return out;
+}
+const rng = mulberry32(777);
+const lines = [];
+const log = (s) => { console.log(s); lines.push(s); };
+
+// ---------- E0: single clean-ish frame sanity + calibration ----------
+{
+  let acc = 0, correct = 0, wrongAccept = 0, n = 40, slotConf = 0, slotConfCorrect = 0;
+  for (let i = 0; i < n; i++) {
+    const ean = randomEan13(rng);
+    const f = renderFrame({ ean, width: W, height: H, camera, supersample: 2, pose: { distanceMm: 200, cx: 640 + (rng() - 0.5) * 300, cy: 360 + (rng() - 0.5) * 100, rollDeg: (rng() - 0.5) * 20 }, blurSigma: 0.8, noiseSigma: 5 });
+    const ev = new EanEvidence(); ev.addFrame(observeFrame(f));
+    const d = ev.decode({ marginThreshold: TAU });
+    if (d.accepted) { acc++; if (d.best.ean === ean) correct++; else wrongAccept++; }
+    // calibration: resolved digits vs truth
+    for (let k = 0; k < 13; k++) if (d.shown[k] !== '•') { slotConf++; if (d.shown[k] === ean[k]) slotConfCorrect++; }
+  }
+  log(`E0 single frame (m≈1.8 px, blur 0.8, noise 5, roll ±10°, N=${n}): accepted ${acc}/${n}, correct ${correct}, WRONG-accepted ${wrongAccept}; displayed digits ${slotConf} of which correct ${slotConfCorrect}`);
+}
+
+// ---------- E1: panning — code enters from the right, crosses, exits left ----------
+async function panExperiment({ distance, blur, noise, maxVisible, trials, label }) {
+  let accepted = 0, correct = 0, wrong = 0, frameAt = [], perFrameAny = { zxing: 0, zbar: 0, repo: 0 }, perFrameWrong = 0;
+  let exampleProgress = null;
+  for (let t = 0; t < trials; t++) {
+    const ean = randomEan13(rng);
+    const vis = [0.45, 0.6, 0.75, 0.9, 1.0, 1.0, 0.9, 0.75, 0.6, 0.45].map((v) => Math.min(v, maxVisible));
+    const ev = new EanEvidence();
+    const seen = { zxing: false, zbar: false, repo: false };
+    let acceptedAt = -1; const progress = [];
+    for (let i = 0; i < vis.length; i++) {
+      const v = vis[i];
+      const cx = i < 5 ? cutRight(distance, v) : cutLeft(distance, v);
+      const f = renderFrame({ ean, width: W, height: H, camera, supersample: 2, pose: { distanceMm: distance, cx, cy: 360 + (rng() - 0.5) * 20, rollDeg: (rng() - 0.5) * 8 }, blurSigma: blur, noiseSigma: noise });
+      if (t === 0) fs.writeFileSync(`out/b_pan_${label.replace(/[^a-z0-9]+/gi, '_')}_${i}.png`, toPng(f.gray, W, H));
+      const pf = await perFrameDecoders(f.gray);
+      for (const k of Object.keys(seen)) { if (pf[k].includes(ean)) seen[k] = true; if (pf[k].some((x) => x !== ean)) perFrameWrong++; }
+      ev.addFrame(observeFrame(f));
+      const d = ev.decode({ marginThreshold: TAU });
+      progress.push(`${i}:${d.shown || '-'}${d.accepted ? '✓' : ''}`);
+      if (d.accepted && acceptedAt < 0) { acceptedAt = i; if (d.best.ean === ean) correct++; else wrong++; accepted++; }
+    }
+    if (acceptedAt >= 0) frameAt.push(acceptedAt);
+    for (const k of Object.keys(seen)) if (seen[k]) perFrameAny[k]++;
+    if (t === 0) exampleProgress = progress.join('  ');
+  }
+  const med = frameAt.length ? frameAt.sort((a, b) => a - b)[Math.floor(frameAt.length / 2)] : '-';
+  log(`E1 ${label} (trials=${trials}, 10 frames, m≈${(barPx(distance) / 95).toFixed(2)} px, blur ${blur}, noise ${noise}, max visible ${maxVisible}): accumulator accepted ${accepted}/${trials} (correct ${correct}, WRONG ${wrong}), median accept frame ${med}; any-frame full decode: zxing ${perFrameAny.zxing}/${trials}, zbar ${perFrameAny.zbar}/${trials}, repo ${perFrameAny.repo}/${trials}; per-frame wrong values ${perFrameWrong}`);
+  log(`   example progress: ${exampleProgress}`);
+}
+await panExperiment({ distance: 225, blur: 0.9, noise: 6, maxVisible: 1.0, trials: 30, label: 'pan through full view' });
+await panExperiment({ distance: 225, blur: 0.9, noise: 6, maxVisible: 0.85, trials: 30, label: 'pan never fully visible (max 85%)' });
+await panExperiment({ distance: 300, blur: 0.9, noise: 6, maxVisible: 1.0, trials: 30, label: 'pan far (m≈1.2)' });
+
+// ---------- E2: blur accumulation with hand jitter ----------
+{
+  const trials = 30, frames = 10; let accepted = 0, correct = 0, wrong = 0, at = [], pf = { zxing: 0, zbar: 0, repo: 0 };
+  for (let t = 0; t < trials; t++) {
+    const ean = randomEan13(rng); const ev = new EanEvidence(); let acc = -1; const seen = { zxing: false, zbar: false, repo: false };
+    for (let i = 0; i < frames; i++) {
+      const f = renderFrame({ ean, width: W, height: H, camera, supersample: 2, pose: { distanceMm: 240, cx: 640 + (rng() - 0.5) * 8, cy: 360 + (rng() - 0.5) * 6, rollDeg: (rng() - 0.5) * 6, yawDeg: (rng() - 0.5) * 10 }, blurSigma: 1.3, noiseSigma: 7 });
+      const r = await perFrameDecoders(f.gray); for (const k of Object.keys(seen)) if (r[k].includes(ean)) seen[k] = true;
+      ev.addFrame(observeFrame(f)); const d = ev.decode({ marginThreshold: TAU });
+      if (d.accepted && acc < 0) { acc = i; accepted++; if (d.best.ean === ean) correct++; else wrong++; }
+    }
+    if (acc >= 0) at.push(acc); for (const k of Object.keys(seen)) if (seen[k]) pf[k]++;
+  }
+  const med = at.length ? at.sort((a, b) => a - b)[Math.floor(at.length / 2)] : '-';
+  log(`E2 blur accumulation (m≈1.5 px, blur σ1.3, noise 7, jitter, ${frames} frames, trials=${trials}): accumulator accepted ${accepted}/${trials} (correct ${correct}, WRONG ${wrong}), median accept frame ${med}; any-frame full decode: zxing ${pf.zxing}, zbar ${pf.zbar}, repo ${pf.repo}`);
+}
+
+// ---------- E3: chimera guard — A left-half frames + B right-half frames ----------
+for (const consistency of [true, false]) {
+  const trials = 40; let accepted = 0, chimera = 0, aOrB = 0;
+  for (let t = 0; t < trials; t++) {
+    const A = randomEan13(rng), B = randomEan13(rng); const ev = new EanEvidence();
+    for (let i = 0; i < 4; i++) ev.addFrame(observeFrame(renderFrame({ ean: A, width: W, height: H, camera, supersample: 2, pose: { distanceMm: 200, cx: cutRight(200, 0.62), cy: 360 }, blurSigma: 0.8, noiseSigma: 5 })));
+    for (let i = 0; i < 4; i++) ev.addFrame(observeFrame(renderFrame({ ean: B, width: W, height: H, camera, supersample: 2, pose: { distanceMm: 200, cx: cutLeft(200, 0.62), cy: 360 }, blurSigma: 0.8, noiseSigma: 5 })));
+    const d = ev.decode({ marginThreshold: TAU, consistency });
+    if (d.accepted) { accepted++; if (d.best.ean === A || d.best.ean === B) aOrB++; else chimera++; }
+  }
+  log(`E3 chimera test (A left 62% ×4 + B right 62% ×4, consistency=${consistency}, trials=${trials}): accepted ${accepted}/${trials}, of which A-or-B ${aOrB}, CHIMERA (checksum-valid but neither) ${chimera}`);
+}
+
+// ---------- E4: no barcode at all (noise + blank) ----------
+{
+  const trials = 40; let accepted = 0;
+  for (let t = 0; t < trials; t++) {
+    const ev = new EanEvidence();
+    for (let i = 0; i < 6; i++) {
+      const f = renderFrame({ ean: randomEan13(rng), width: W, height: H, camera, supersample: 1, pose: { distanceMm: 200, cx: 640, cy: 360 }, contrast: 0, noiseSigma: 25 });
+      ev.addFrame(observeFrame(f));
+    }
+    if (ev.decode({ marginThreshold: TAU }).accepted) accepted++;
+  }
+  log(`E4 no-barcode frames (blank + noise σ25, 6 frames, trials=${trials}): accepted ${accepted}/${trials}`);
+}
+
+// ---------- E5: two different full codes alternating (tracker mis-association) ----------
+{
+  const trials = 30; let accepted = 0, aOrB = 0, chimera = 0, groups2 = 0;
+  for (let t = 0; t < trials; t++) {
+    const A = randomEan13(rng), B = randomEan13(rng); const ev = new EanEvidence();
+    for (let i = 0; i < 8; i++) ev.addFrame(observeFrame(renderFrame({ ean: i % 2 ? B : A, width: W, height: H, camera, supersample: 2, pose: { distanceMm: 200, cx: 640, cy: 360 }, blurSigma: 0.9, noiseSigma: 6 })));
+    const d = ev.decode({ marginThreshold: TAU });
+    if (d.groups > 1) groups2++;
+    if (d.accepted) { accepted++; if (d.best.ean === A || d.best.ean === B) aOrB++; else chimera++; }
+  }
+  log(`E5 alternating A/B full codes (8 frames, trials=${trials}): accepted ${accepted}/${trials} (A-or-B ${aOrB}, chimera ${chimera}); decode saw >1 consistency group in ${groups2}/${trials}`);
+}
+
+fs.writeFileSync('out/spike_b_results.md', `## Spike B — temporal guard-anchored evidence accumulation (KAPPA=${KAPPA}, TAU=${TAU}, ${NS} scanlines/frame, oracle localization)\n\n` + lines.map((l) => '- ' + l).join('\n') + '\n');
+console.log('\nwritten out/spike_b_results.md');
