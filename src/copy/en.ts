@@ -892,7 +892,6 @@ export const copy = {
       templateId: 'Wzorzec formulacji',
       missingRoles: 'Brakujące role',
       addedByPi: 'Dodane przez Gellatti',
-      excluded: 'Wykluczone składniki',
       rejectionCode: 'Kod odrzucenia',
       notRun: 'Nie uruchomiono',
       optimizer: { hasProposals: 'Są propozycje', noProposal: 'Brak propozycji' },
@@ -1139,12 +1138,6 @@ export const copy = {
       mark_main: 'Ustaw jako główny',
       main_short: 'Główny',
       remove: 'Usuń',
-      /** Owner FINAL CLOSURE C2 (ADD-only keys) — the EXPLICIT „unavailable"
-       * action: the ONLY way an ingredient becomes excluded. „Usuń" merely
-       * removes the row from the current recipe. */
-      markUnavailable: 'Niedostępny',
-      markUnavailableTitle:
-        'Oznacz jako niedostępny — Gellatti usunie składnik z receptury i nie doda go ponownie bez Twojej decyzji.',
       unit: 'g',
       batchTotal: 'Suma partii',
       target: 'Cel',
@@ -1192,9 +1185,6 @@ export const copy = {
           requiredOn: 'Składnik wymagany ✓',
           requiredOff: 'Oznacz jako wymagany',
           requiredHint: 'Składnik wymagany dla tej receptury.',
-          unavailable: 'Oznacz jako niedostępny',
-          available: 'Oznacz jako dostępny',
-          unavailableStatus: 'NIEDOSTĘPNY',
           findSubstitute: 'Znajdź zamiennik',
         },
         data: {
