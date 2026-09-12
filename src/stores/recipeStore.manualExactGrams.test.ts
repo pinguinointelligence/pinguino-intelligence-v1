@@ -324,4 +324,27 @@ describe('Owner manual grams = exact quantity intent', () => {
       grams_constraint: { grams: recipeInput.items.find((item) => item.id === id)!.planned_grams },
     });
   });
+
+  it('MGAL-STORE-23 HOME Crown OFF and ON preserve an exact amount lock', () => {
+    const id = line().id;
+    const snapshots = productBehaviorTestSnapshots(buildRecipeInput(useRecipeStore.getState()));
+    snapshots[id] = { ...snapshots[id]!, mainClassification: 'MAIN_ALLOWED' };
+    useRecipeStore.setState({ productBehaviorSnapshots: snapshots });
+    useRecipeStore.getState().setExactGrams(id, line().planned_grams + 5);
+    const exact = line().planned_grams;
+
+    useRecipeStore.getState().setLockType(id, 'main', 'home');
+    expect(line()).toMatchObject({
+      planned_grams: exact,
+      lock_type: 'main',
+      grams_constraint: { grams: exact },
+    });
+
+    useRecipeStore.getState().setLockType(id, 'unlocked', 'home');
+    expect(line()).toMatchObject({
+      planned_grams: exact,
+      lock_type: 'grams',
+      grams_constraint: { grams: exact },
+    });
+  });
 });
