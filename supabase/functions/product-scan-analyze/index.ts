@@ -263,12 +263,37 @@ async function exactProductForBarcode(
  * Any refusal is a legitimate answer — a product that is not production-ready simply stays a PM —
  * so a failure here leaves the stored row untouched and the rescan answers exactly as before.
  */
+type OwnPrivateProductReevaluation = {
+  attempted: boolean;
+  saved: boolean;
+  httpStatus: number | null;
+  errorCode: string | null;
+  reasonCode: string | null;
+};
+
+const finalizerErrorCode = (value: unknown): string | null => {
+  const candidate = objectValue(value).error;
+  return typeof candidate === 'string' && /^[a-z0-9_]{1,120}$/.test(candidate) ? candidate : null;
+};
+
+const finalizerReasonCode = (value: unknown): string | null => {
+  const candidate = objectValue(value).reasonCode;
+  return typeof candidate === 'string' &&
+    [
+      'scanner_mapper_authority_read_failed',
+      'scanner_behavior_authority_read_failed',
+      'customer_product_profile_computation_failed',
+    ].includes(candidate)
+    ? candidate
+    : null;
+};
+
 async function reevaluateOwnPrivateProduct(input: {
   url: string;
   anonKey: string;
   authorization: string;
   sessionId: string;
-}): Promise<boolean> {
+}): Promise<OwnPrivateProductReevaluation> {
   try {
     const response = await fetch(`${input.url}/functions/v1/product-scan-finalize`, {
       method: 'POST',
@@ -285,13 +310,38 @@ async function reevaluateOwnPrivateProduct(input: {
         privateOverlay: {},
       }),
     });
-    if (!response.ok) return false;
-    const payload = objectValue(await response.json());
+    let payload: unknown = null;
+    try {
+      payload = await response.json();
+    } catch {
+      // HTTP status remains authoritative when an upstream gateway returns no JSON.
+    }
+    if (!response.ok)
+      return {
+        attempted: true,
+        saved: false,
+        httpStatus: response.status,
+        errorCode: finalizerErrorCode(payload),
+        reasonCode: finalizerReasonCode(payload),
+      };
+    const body = objectValue(payload);
     // Only a real save reports a route. `customer_product_not_ready`, a stale assessment and a
     // family question all arrive without one and mean "nothing to promote yet".
-    return typeof payload.route === 'string';
+    return {
+      attempted: true,
+      saved: typeof body.route === 'string',
+      httpStatus: response.status,
+      errorCode: finalizerErrorCode(body),
+      reasonCode: finalizerReasonCode(body),
+    };
   } catch {
-    return false;
+    return {
+      attempted: true,
+      saved: false,
+      httpStatus: null,
+      errorCode: 'product_scan_finalize_transport_failed',
+      reasonCode: null,
+    };
   }
 }
 
@@ -438,6 +488,7 @@ Deno.serve(async (request) => {
       const plan = rescanReevaluationPlan({ productKind: exact.product_kind as string });
       const storedResult = plan.reevaluate ? scanResultFromStoredFacts(exact.stored_facts) : null;
       let current = exact;
+      let reevaluation: OwnPrivateProductReevaluation | null = null;
       if (storedResult) {
         const seeded = mergeProductScanResults(storedResult, {}, barcode);
         const seededValidation = validateServerResult(seeded, []);
@@ -453,8 +504,16 @@ Deno.serve(async (request) => {
           // The evidence is REUSED, not bought again. A rescan still costs nothing.
           p_cost_usd: 0,
         });
-        if (!seedError) {
-          const promoted = await reevaluateOwnPrivateProduct({
+        if (seedError) {
+          reevaluation = {
+            attempted: false,
+            saved: false,
+            httpStatus: null,
+            errorCode: 'scan_session_reseed_failed',
+            reasonCode: null,
+          };
+        } else {
+          reevaluation = await reevaluateOwnPrivateProduct({
             url,
             anonKey,
             authorization,
@@ -462,14 +521,39 @@ Deno.serve(async (request) => {
           });
           // Read the row back only when something was actually saved, so the answer carries the
           // PR article code and the readiness the promotion has just granted.
-          if (promoted)
+          if (reevaluation.saved)
             current = (await exactProductForBarcode(service, barcode, auth.user.id)) ?? exact;
         }
+        /*
+          Keep the bounded, non-secret result beside the disposable scan session. Exact-product
+          revalidation used to collapse every refusal and transport failure into the same boolean,
+          which made a live acceptance failure impossible to distinguish from a legitimate
+          fail-closed verdict. This field contains no token, response body or customer data.
+        */
+        const { data: latestSession } = await service
+          .from('product_scan_sessions')
+          .select('validation_json')
+          .eq('id', sessionId)
+          .eq('user_id', auth.user.id)
+          .maybeSingle();
+        if (latestSession)
+          await service
+            .from('product_scan_sessions')
+            .update({
+              validation_json: {
+                ...objectValue(latestSession.validation_json),
+                exactProductReevaluation: reevaluation,
+              },
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', sessionId)
+            .eq('user_id', auth.user.id);
       }
       return json({
         sessionId,
         kind: 'existing_product',
-        reevaluated: storedResult !== null,
+        reevaluated: reevaluation?.saved === true,
+        reevaluation,
         product: {
           id: current.id,
           displayName: current.product_name_display,

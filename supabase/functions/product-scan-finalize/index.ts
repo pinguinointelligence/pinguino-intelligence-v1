@@ -50,6 +50,16 @@ const json = (body: unknown, status = 200) =>
     status,
     headers: { ...cors, 'Content-Type': 'application/json' },
   });
+const productProfileUnavailable = (error: unknown) => {
+  const internalCode = error instanceof Error ? error.message : '';
+  const reasonCode = [
+    'scanner_mapper_authority_read_failed',
+    'scanner_behavior_authority_read_failed',
+  ].includes(internalCode)
+    ? internalCode
+    : 'customer_product_profile_computation_failed';
+  return json({ error: 'customer_product_profile_unavailable', reasonCode }, 503);
+};
 const objectValue = (value: unknown): Record<string, unknown> =>
   value && typeof value === 'object' && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -829,8 +839,8 @@ Deno.serve(async (request) => {
   let authorityPass;
   try {
     authorityPass = await recomputeProductAuthorities();
-  } catch {
-    return json({ error: 'customer_product_profile_unavailable' }, 503);
+  } catch (error) {
+    return productProfileUnavailable(error);
   }
   if (authorityPass.kind === 'identity_required')
     return json({ error: 'customer_product_identity_required' }, 409);
@@ -925,8 +935,8 @@ Deno.serve(async (request) => {
       }
       try {
         authorityPass = await recomputeProductAuthorities();
-      } catch {
-        return json({ error: 'customer_product_profile_unavailable' }, 503);
+      } catch (error) {
+        return productProfileUnavailable(error);
       }
       if (authorityPass.kind === 'identity_required')
         return json({ error: 'customer_product_identity_required' }, 409);
