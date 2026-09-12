@@ -11,6 +11,13 @@ import { resolve } from 'node:path';
 import { createClient } from '@supabase/supabase-js';
 import { buildApplyPlan } from './lib/applyPlan.mjs';
 import {
+  manualEvidenceBlockFor,
+  resumableDuplicateProductId,
+  rescueInputCounts,
+  routeMarketsFor,
+  shouldSelectRescueRequest,
+} from './lib/mapperRescueRun.mjs';
+import {
   mergeProductScanResults,
   normalizeValidatedBarcode,
   scanResultFromLookupFacts,
@@ -93,7 +100,7 @@ const service = createClient(projectUrl, serviceKey, {
 
 const { data: requests, error: requestsError } = await service
   .from('product_add_requests')
-  .select('id,status,approved_product_id,idempotency_key,market_country_code')
+  .select('id,status,approved_product_id,duplicate_product_id,idempotency_key,market_country_code')
   .like('idempotency_key', 'gellatti-v23-pr-ing:%');
 if (requestsError) throw new Error(`Request snapshot failed: ${requestsError.message}`);
 const requestByKey = new Map((requests ?? []).map((row) => [row.idempotency_key, row]));
@@ -110,7 +117,7 @@ const ingestByRequestId = new Map(
 let selected = plan.productsToCreate
   .flatMap((product) => {
     const request = requestByKey.get(product.requestIdempotencyKey);
-    if (!request || request.status === 'APPROVED') return [];
+    if (!shouldSelectRescueRequest(request, { applyReady, only })) return [];
     const ingest = ingestByRequestId.get(request.id) ?? null;
     return [{ product, request, ingest }];
   })
@@ -301,6 +308,19 @@ const addRouting = async (product, productId) => {
   if (!productRow.product_code?.startsWith('PR-ING-') || productRow.visibility !== 'shared') {
     throw new Error('Rescued product is not a shared PR article.');
   }
+  const addedMarkets = [];
+  for (const market of routeMarketsFor(product.routes)) {
+    const { error } = await admin.rpc('gellatti_admin_catalog_action_v1', {
+      p_product_id: productId,
+      p_action: 'ADD_MARKET',
+      p_payload: {
+        market,
+        reason: `${product.productKey}: ${RESCUE_VERSION} route ${market}`,
+      },
+    });
+    if (error) throw new Error(`ADD_MARKET ${market} failed: ${error.message}`);
+    addedMarkets.push(market);
+  }
   const { data: review, error: reviewError } = await service
     .from('product_canonical_slot_reviews')
     .select('id,product_version_id,mapper_ingredient_id')
@@ -365,7 +385,7 @@ const addRouting = async (product, productId) => {
     if (inserted.error) throw new Error(inserted.error.message);
     assignmentIds.push(inserted.data.id);
   }
-  return { productCode: productRow.product_code, slotReviewId, assignmentIds };
+  return { productCode: productRow.product_code, slotReviewId, assignmentIds, addedMarkets };
 };
 
 const processOne = async ({ product, request, ingest }) => {
@@ -408,11 +428,27 @@ const processOne = async ({ product, request, ingest }) => {
     .is('merged_into_product_id', null);
   if (exactError) throw new Error(exactError.message);
   const unrelated = (exactProducts ?? []).filter((row) => row.id !== ingest?.product_id);
-  if (unrelated.length > 0) {
+  const resumableProductId = resumableDuplicateProductId(request, exactProducts);
+  if (resumableProductId) {
+    const routing = await addRouting(product, resumableProductId);
+    return {
+      ...base,
+      outcome: 'RESCUED_SHARED_PR_ROUTED',
+      resumedAfterPartialWrite: true,
+      productId: resumableProductId,
+      productCode: routing.productCode,
+      slotReviewId: routing.slotReviewId,
+      assignmentIds: routing.assignmentIds,
+      addedMarkets: routing.addedMarkets,
+      durationMs: Date.now() - startedAt,
+    };
+  }
+  const unrelatedToRequest = unrelated.filter((row) => row.id !== request.duplicate_product_id);
+  if (unrelatedToRequest.length > 0) {
     return {
       ...base,
       outcome: 'BLOCKED_EXACT_GTIN_ALREADY_EXISTS',
-      exactProducts: unrelated,
+      exactProducts: unrelatedToRequest,
       durationMs: Date.now() - startedAt,
     };
   }
@@ -422,10 +458,12 @@ const processOne = async ({ product, request, ingest }) => {
     return { ...base, outcome: 'PREVIEW_ERROR', error: preview.error, durationMs: Date.now() - startedAt };
   }
   const value = preview.data ?? {};
+  const manualEvidenceBlock = manualEvidenceBlockFor(product.productKey, value.assessmentHash);
   const authorityReady =
     value.ready === true &&
     Number(value.productAccuracy) > 85 &&
-    value.publicationEligibility?.eligible === true;
+    value.publicationEligibility?.eligible === true &&
+    manualEvidenceBlock === null;
   const summary = {
     kind: value.kind ?? null,
     ready: value.ready === true,
@@ -448,6 +486,7 @@ const processOne = async ({ product, request, ingest }) => {
     mapper: value.mapper ?? null,
     technicalComposition: value.technicalComposition ?? null,
     assessmentHash: value.assessmentHash ?? null,
+    manualEvidenceBlock,
   };
   if (!applyReady || !authorityReady) {
     return {
@@ -501,6 +540,7 @@ const processOne = async ({ product, request, ingest }) => {
     productCode: routing.productCode,
     slotReviewId: routing.slotReviewId,
     assignmentIds: routing.assignmentIds,
+    addedMarkets: routing.addedMarkets,
     durationMs: Date.now() - startedAt,
   };
 };
@@ -547,11 +587,7 @@ const report = {
   generatedAt: new Date().toISOString(),
   projectRef: PROJECT_REF,
   mode: applyReady ? 'APPLY_READY' : 'PREVIEW_ONLY',
-  input: {
-    selected: ledger.length,
-    approvalNotReady: ledger.filter((entry) => entry.priorIngestStatus === null).length,
-    priorBlocked: ledger.filter((entry) => entry.priorIngestStatus === 'blocked').length,
-  },
+  input: rescueInputCounts(ledger),
   outcomes: {
     rescued: count('RESCUED_SHARED_PR_ROUTED'),
     readyPreviewNotApplied: count('READY_PREVIEW_NOT_APPLIED'),

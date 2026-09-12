@@ -1,5 +1,7 @@
 # RL-05 / RL-20 Mapper Rescue — shutdown checkpoint
 
+> **Resumed and superseded:** execution continued on 2026-09-13. Two CREAM identities were rescued and all remaining cases were rerun fail-closed. The authoritative result is `reports/GELLATTI_RL05_RL20_MAPPER_RESCUE_CLOSEOUT_2026-09-13.md`.
+
 Saved: 2026-09-13 (Europe/Madrid)
 
 ## Repository position

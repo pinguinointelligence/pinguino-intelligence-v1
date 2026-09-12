@@ -1,5 +1,7 @@
 # GELLATTI Recipe Library — RL-05 / RL-20 Phase 1 execution record
 
+> **Mapper Rescue update, 2026-09-13:** two of the 87 `approval_not_ready` identities are now exact, routed and runtime-usable CREAM products (NO and CH). CREAM coverage is 53/75 and total logical coverage is 194/450. The remaining 85 not-ready identities and one earlier blocked MILK identity remain fail-closed, so RL-05 and RL-20 are still NOT DONE and RL-36 was not started. See `reports/GELLATTI_RL05_RL20_MAPPER_RESCUE_CLOSEOUT_2026-09-13.md`.
+
 Date: 2026-09-12
 
 Canonical Supabase staging project: `tunabqqrwabacxjcxxkz`

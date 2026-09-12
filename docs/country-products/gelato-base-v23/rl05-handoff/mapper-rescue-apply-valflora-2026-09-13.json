@@ -1,0 +1,229 @@
+{
+  "schema": "gellatti.rl05-rl20.mapper-rescue-run/v1",
+  "rescueVersion": "rl05-rl20-mapper-rescue-v1",
+  "generatedAt": "2026-09-12T22:35:02.022Z",
+  "projectRef": "tunabqqrwabacxjcxxkz",
+  "mode": "APPLY_READY",
+  "input": {
+    "selected": 1,
+    "approvalNotReady": 1,
+    "priorBlocked": 0
+  },
+  "outcomes": {
+    "rescued": 1,
+    "readyPreviewNotApplied": 0,
+    "stillBlockedAfterRescue": 0,
+    "noValidGtin": 0,
+    "exactGtinExists": 0,
+    "previewErrors": 0,
+    "unexpectedErrors": 0
+  },
+  "byRole": {
+    "SMP": {
+      "total": 0,
+      "ready": 0,
+      "rescued": 0,
+      "blocked": 0
+    },
+    "DEXTROSE": {
+      "total": 0,
+      "ready": 0,
+      "rescued": 0,
+      "blocked": 0
+    },
+    "STABILIZER": {
+      "total": 0,
+      "ready": 0,
+      "rescued": 0,
+      "blocked": 0
+    },
+    "MILK": {
+      "total": 0,
+      "ready": 0,
+      "rescued": 0,
+      "blocked": 0
+    },
+    "CREAM": {
+      "total": 1,
+      "ready": 1,
+      "rescued": 1,
+      "blocked": 0
+    }
+  },
+  "ledger": [
+    {
+      "productKey": "V23:CREAM:GTIN-07613269880585",
+      "requestId": "7e1c463c-a1cc-4c73-85a6-33158c9d38e5",
+      "requestStatusBefore": "ADMIN_REVIEW",
+      "priorIngestStatus": null,
+      "slot": "CREAM",
+      "requestMarket": "CH",
+      "routeMarkets": [
+        "CH"
+      ],
+      "originalGtin": "7613269880585",
+      "rescuedGtin": "7613269880585",
+      "identityResearch": null,
+      "sessionId": "75b0c0d4-f423-4cc1-af27-2241b4d70b80",
+      "outcome": "RESCUED_SHARED_PR_ROUTED",
+      "preview": {
+        "kind": "profile_preview",
+        "ready": true,
+        "productAccuracy": 90,
+        "roleReadiness": "BASE_READY",
+        "criticalGaps": [],
+        "missingEngineFields": [],
+        "criticalPhysicsBlockers": [],
+        "publicationEligible": true,
+        "publicationReasonCodes": [],
+        "recognition": {
+          "family": "dairy_liquid",
+          "form": "LIQUID",
+          "role": "BASE_ONLY",
+          "modelRequired": false,
+          "reasonCodes": [
+            "ARCHETYPE_UNKNOWN",
+            "ROLE_NEITHER_REVIEW",
+            "CONSUMER_OR_GENERAL_CONTEXT",
+            "NORMAL_PRODUCT",
+            "DOSAGE_NOT_STATED",
+            "CUSTOMER_FAMILY_DAIRY"
+          ]
+        },
+        "mapper": {
+          "selectedDonorId": "PI-ING-001388",
+          "similarity": null,
+          "basis": null,
+          "estimatedFromMapperIds": [],
+          "candidatesBeforeFilter": [
+            "PI-ING-000171",
+            "PI-ING-000180",
+            "PI-ING-000546",
+            "PI-ING-000547",
+            "PI-ING-000548",
+            "PI-ING-001388",
+            "PI-ING-001390",
+            "PI-ING-002109",
+            "PI-ING-002112",
+            "PI-ING-002173",
+            "PI-ING-002174",
+            "PI-ING-002175",
+            "PI-ING-002176",
+            "PI-ING-002177",
+            "PI-ING-002178",
+            "PI-ING-002179",
+            "PI-ING-002180",
+            "PI-ING-002181",
+            "PI-ING-002182",
+            "PI-ING-002183",
+            "PI-ING-002184",
+            "PI-ING-002185",
+            "PI-ING-002186",
+            "PI-ING-002187",
+            "PI-ING-002261",
+            "PI-ING-002262",
+            "PI-ING-002263",
+            "PI-ING-002264",
+            "PI-ING-002265"
+          ],
+          "candidatesAfterFilter": [
+            "PI-ING-001390",
+            "PI-ING-001388",
+            "PI-ING-000180",
+            "PI-ING-000546",
+            "PI-ING-000547",
+            "PI-ING-000548",
+            "PI-ING-002180",
+            "PI-ING-002187",
+            "PI-ING-002179",
+            "PI-ING-002186",
+            "PI-ING-002178",
+            "PI-ING-002185",
+            "PI-ING-002184",
+            "PI-ING-002177",
+            "PI-ING-002183",
+            "PI-ING-002176",
+            "PI-ING-002175",
+            "PI-ING-002182",
+            "PI-ING-002174",
+            "PI-ING-002173",
+            "PI-ING-002181",
+            "PI-ING-000171"
+          ],
+          "rejectedCandidates": [
+            {
+              "ingredientId": "PI-ING-002109",
+              "reasonCodes": [
+                "SEMANTIC_FAMILY_CONTRADICTION"
+              ]
+            },
+            {
+              "ingredientId": "PI-ING-002112",
+              "reasonCodes": [
+                "SEMANTIC_FAMILY_CONTRADICTION"
+              ]
+            },
+            {
+              "ingredientId": "PI-ING-002261",
+              "reasonCodes": [
+                "SEMANTIC_FAMILY_CONTRADICTION"
+              ]
+            },
+            {
+              "ingredientId": "PI-ING-002262",
+              "reasonCodes": [
+                "SEMANTIC_FAMILY_CONTRADICTION"
+              ]
+            },
+            {
+              "ingredientId": "PI-ING-002263",
+              "reasonCodes": [
+                "SEMANTIC_FAMILY_CONTRADICTION"
+              ]
+            },
+            {
+              "ingredientId": "PI-ING-002264",
+              "reasonCodes": [
+                "SEMANTIC_CATEGORY_CONTRADICTION"
+              ]
+            },
+            {
+              "ingredientId": "PI-ING-002265",
+              "reasonCodes": [
+                "SEMANTIC_CATEGORY_CONTRADICTION"
+              ]
+            }
+          ]
+        },
+        "technicalComposition": {
+          "water": 59.5,
+          "totalSolids": 40.5,
+          "fat": 35,
+          "protein": 2.4,
+          "carbohydrate": 3.3,
+          "sugars": 3.1,
+          "sucrose": 0,
+          "dextrose": 0,
+          "glucose": 0,
+          "fructose": 0,
+          "lactose": 3.1,
+          "fibre": 0,
+          "salt": 0.09,
+          "alcohol": 0,
+          "energyKcal": 338
+        },
+        "assessmentHash": "b8c4690f80342066cadda682c69fdc756f22f187f6bb219b54a6fbc0cb35aad2"
+      },
+      "productId": "e940e32b-f4aa-4e0f-bc1d-6025d32968f4",
+      "productCode": "PR-ING-007297",
+      "slotReviewId": "be239d7f-028a-4135-8041-34dfb4c7a63b",
+      "assignmentIds": [
+        "bd641279-65e4-4ee6-af0c-58a1445021d8"
+      ],
+      "addedMarkets": [
+        "CH"
+      ],
+      "durationMs": 7209
+    }
+  ]
+}
