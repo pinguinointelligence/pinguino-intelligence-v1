@@ -195,7 +195,15 @@ async function searchCanonicalMapperIngredientsWithPolicy(
 export async function searchCanonicalMapperIngredients(
   query: MapperSearchQuery,
 ): Promise<MapperSearchOutcome> {
-  return searchCanonicalMapperIngredientsWithPolicy(query, true);
+  // HOME explicitly accepts equivalent locale aliases, but it has no locale
+  // selector of its own. Using the browser UI locale here made an English term
+  // such as `banana` fail closed on a German browser before the catalogue RPC
+  // could run. `*` is the central runtime's governed all-locale mode (including
+  // its collision/ambiguity gates); it does not add a HOME-side alias or ranker.
+  return searchCanonicalMapperIngredientsWithPolicy(
+    { ...query, localeVariant: query.localeVariant ?? '*' },
+    true,
+  );
 }
 
 /** Pro search shows all active Mapper rows and preserves exact approval flags. */
