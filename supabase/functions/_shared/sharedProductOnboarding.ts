@@ -8,10 +8,12 @@ import {
   validateIntimportProductProfileProposal,
 } from './intimportWholeProfileAuthority.ts';
 import {
+  supportsStandaloneToppingSemanticAuthority,
   validateProductBehaviorAuthority,
   type MapperProductBehaviorAuthorityRow,
   type TrustedProductBehaviorAuthority,
 } from '../../../src/features/product-intelligence/productBehaviorAuthority.ts';
+import { classifyProductSemantics } from '../../../src/features/product-intelligence/productRecognition.ts';
 
 export const SHARED_PRODUCT_ONBOARDING_AUTHORITY = 'SHARED_PR_ING_ONBOARDING_V1' as const;
 
@@ -30,6 +32,31 @@ export interface SharedProductOnboardingResult {
   behavior: TrustedProductBehaviorAuthority;
 }
 
+type SharedProductOnboardingProposal = Omit<IntimportProductProfileProposalInput, 'rows'>;
+
+/**
+ * A strong exact TOPPING_ONLY product owns its role semantics and has no Mapper
+ * donor by design. Recompute the deterministic verdict before taking this fast
+ * path: a submitted recognition object can only be reused when its fingerprint
+ * matches that server recomputation. A false result merely keeps the ordinary
+ * full Mapper path; it can never relax BASE, SUBSTITUTE or ambiguity gates.
+ */
+export function usesStandaloneToppingOnboardingAuthority(
+  proposal: SharedProductOnboardingProposal,
+): boolean {
+  if (!proposal.recognitionEvidence) return false;
+  const deterministic = classifyProductSemantics(proposal.recognitionEvidence);
+  const recognition =
+    proposal.trustedRecognition?.authority === 'PRODUCT_RECOGNITION_V2' &&
+    proposal.trustedRecognition.evidenceFingerprint === deterministic.evidenceFingerprint
+      ? proposal.trustedRecognition
+      : deterministic;
+  return supportsStandaloneToppingSemanticAuthority({
+    recognition,
+    evidence: proposal.evidence,
+  });
+}
+
 /**
  * The one server-owned PR/PM onboarding boundary.
  *
@@ -40,19 +67,23 @@ export interface SharedProductOnboardingResult {
  */
 export function validateSharedProductOnboarding(input: {
   source: SharedProductOnboardingSource;
-  proposal: Omit<IntimportProductProfileProposalInput, 'rows'>;
+  proposal: SharedProductOnboardingProposal;
   mapperRows: readonly IntimportMapperAuthorityRow[];
   behaviorRows: readonly MapperProductBehaviorAuthorityRow[];
 }): SharedProductOnboardingResult | null {
+  const standaloneTopping = usesStandaloneToppingOnboardingAuthority(input.proposal);
   const profile = validateIntimportProductProfileProposal({
     ...input.proposal,
-    rows: input.mapperRows,
+    // No Mapper row is consulted or lent to an exact standalone topping. This
+    // also keeps the edge worker from building three 2.5k-row inference indexes
+    // for an authority whose persisted referenceMapperIngredientId is null.
+    rows: standaloneTopping ? [] : input.mapperRows,
   });
   if (!profile) return null;
 
   const behavior = validateProductBehaviorAuthority({
     productProfile: profile,
-    behaviorRows: input.behaviorRows,
+    behaviorRows: standaloneTopping ? [] : input.behaviorRows,
   });
   return {
     authority: SHARED_PRODUCT_ONBOARDING_AUTHORITY,

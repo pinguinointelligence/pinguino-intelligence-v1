@@ -18,7 +18,10 @@ import {
 } from '../product-intelligence/productBehaviorAuthority';
 import { classifyProductSemantics } from '../product-intelligence/productRecognition';
 import { classifyRemainingGaps, manualFieldsFor } from '../scan-flow/scanFlowLogic';
-import { validateSharedProductOnboarding } from '../../../supabase/functions/_shared/sharedProductOnboarding';
+import {
+  usesStandaloneToppingOnboardingAuthority,
+  validateSharedProductOnboarding,
+} from '../../../supabase/functions/_shared/sharedProductOnboarding';
 import { buildSharedProductSemanticBindingProposal } from '../../../supabase/functions/_shared/sharedProductSemanticBinding';
 import { bindExactProductSemanticContext } from '../product-intelligence/productSemanticBinding';
 import { createMapperCatalogSearchPlan } from '../mapper-search-runtime';
@@ -700,6 +703,19 @@ describe('Haribo Sandía exact-EAN topping semantic authority', () => {
     });
     if (!proposal) throw new Error('exact Haribo evidence did not build a shared proposal');
     const { rows } = loadMapperKnowledgeRows();
+    const sharedProposal = {
+      origin: 'CUSTOMER_ADDED' as const,
+      proposedMapperIngredientId: null,
+      ...proposal,
+    };
+    expect(usesStandaloneToppingOnboardingAuthority(sharedProposal)).toBe(true);
+    expect(
+      usesStandaloneToppingOnboardingAuthority({
+        ...sharedProposal,
+        evidence: { ...sharedProposal.evidence, materialConflicts: ['identity'] },
+      }),
+    ).toBe(false);
+
     const results = [
       'SCANNER',
       'RECIPE_LIBRARY_IMPORT',
@@ -710,13 +726,16 @@ describe('Haribo Sandía exact-EAN topping semantic authority', () => {
     ].map((source) =>
       validateSharedProductOnboarding({
         source: source as Parameters<typeof validateSharedProductOnboarding>[0]['source'],
-        proposal: { origin: 'CUSTOMER_ADDED', proposedMapperIngredientId: null, ...proposal },
+        proposal: sharedProposal,
         mapperRows: rows as unknown as IntimportMapperAuthorityRow[],
         behaviorRows: [],
       }),
     );
 
     expect(results.every(Boolean)).toBe(true);
+    expect(results[0]?.profile.mapperFingerprint).toBe('runtime-0-811c9dc5');
+    expect(results[0]?.profile.estimatedFromMapperIds).toEqual([]);
+    expect(results[0]?.profile.profileReferenceMapperIngredientId).toBeNull();
     expect(new Set(results.map((result) => result?.profile.mapperFingerprint)).size).toBe(1);
     expect(new Set(results.map((result) => result?.behavior.behaviorFingerprint)).size).toBe(1);
     expect(results.map((result) => result?.source)).toEqual([
