@@ -1,4 +1,6 @@
-// Reader for GELLATTI_BAZA_GELATO_75_KRAJOW_v12_SYNC.xlsx.
+// Reader for GELLATTI_BAZA_GELATO_75_KRAJOW_v12_SYNC.xlsx, and the shared
+// layout-driven reader that later owner workbooks reuse (workbookV23.mjs
+// derives its layout from the v12 specs below instead of copying them).
 //
 // Every column is addressed by letter AND its exact header text. A later
 // workbook with a moved or renamed column fails loudly here instead of being
@@ -12,7 +14,9 @@ export const V12_WORKBOOK = Object.freeze({
   sha256: '09864e8602a6a7d3a89838091ce83dec7659bd2143517b5831d86f8d2f356172',
 });
 
-const c = (col, header) => Object.freeze({ col, header });
+/** Column descriptor: letter + exact header text. */
+export const column = (col, header) => Object.freeze({ col, header });
+const c = column;
 
 const SELECTION_SHEETS = Object.freeze({
   MILK: {
@@ -589,7 +593,7 @@ export const SLOT_BY_WORKBOOK_ROLE = Object.freeze(
   Object.fromEntries(Object.entries(WORKBOOK_ROLE_BY_SLOT).map(([slot, role]) => [role, slot])),
 );
 
-const normalizeHeader = (value) =>
+export const normalizeHeader = (value) =>
   value === null || value === undefined ? '' : String(value).replace(/\s+/g, ' ').trim();
 
 function cleanCell(value) {
@@ -598,7 +602,7 @@ function cleanCell(value) {
   return cleanText(value);
 }
 
-function sheetGrid(workbook, sheetName) {
+export function sheetGrid(workbook, sheetName) {
   const sheet = workbook.Sheets[sheetName];
   if (!sheet || !sheet['!ref']) throw new Error(`Workbook sheet missing or empty: ${sheetName}`);
   const range = XLSX.utils.decode_range(sheet['!ref']);
@@ -619,11 +623,11 @@ function sheetGrid(workbook, sheetName) {
   };
 }
 
-function cellAt(grid, rowNumber, columnLetter) {
+export function cellAt(grid, rowNumber, columnLetter) {
   return cleanCell(grid.row(rowNumber)[XLSX.utils.decode_col(columnLetter)]);
 }
 
-function readTable(workbook, spec) {
+export function readTable(workbook, spec) {
   const grid = sheetGrid(workbook, spec.sheet);
   const headerRow = spec.headerRow ?? 5;
   for (const [field, column] of Object.entries(spec.columns)) {
@@ -654,7 +658,7 @@ function readTable(workbook, spec) {
   return rows;
 }
 
-function expectCell(grid, sheetName, address, expected) {
+export function expectCell(grid, sheetName, address, expected) {
   const [, column, row] = /^([A-Z]+)(\d+)$/.exec(address);
   const actual = cellAt(grid, Number(row), column);
   if (normalizeHeader(actual) !== normalizeHeader(expected)) {
@@ -716,47 +720,102 @@ function readRemainingMeta(workbook) {
   };
 }
 
-function readDashboardState(workbook) {
+export function readDashboardState(workbook) {
   const sheet = '00_DASHBOARD';
   const grid = sheetGrid(workbook, sheet);
   return { ref: `${sheet}!A1:A2`, title: cellAt(grid, 1, 'A'), state: cellAt(grid, 2, 'A') };
 }
 
-/** Parses every sheet the v12 country-product layer depends on. */
-export function parseWorkbookV12(buffer) {
+/**
+ * Copy of a sheet spec whose columns keep their letters and field names but
+ * carry new header texts — for a later workbook that renamed a header without
+ * moving the column. An unknown field fails instead of being ignored.
+ */
+export function retitleColumns(spec, headers) {
+  const columns = { ...spec.columns };
+  for (const [field, header] of Object.entries(headers)) {
+    if (!columns[field]) throw new Error(`retitleColumns: ${spec.sheet} has no field ${field}`);
+    columns[field] = column(columns[field].col, header);
+  }
+  return { ...spec, columns };
+}
+
+/** Copy of a sheet spec with appended columns; an existing field or letter fails. */
+export function extendColumns(spec, extra) {
+  const letters = new Set(Object.values(spec.columns).map((entry) => entry.col));
+  const columns = { ...spec.columns };
+  for (const [field, entry] of Object.entries(extra)) {
+    if (columns[field] || letters.has(entry.col)) {
+      throw new Error(`extendColumns: ${spec.sheet} already reads ${field} / ${entry.col}`);
+    }
+    columns[field] = entry;
+    letters.add(entry.col);
+  }
+  return { ...spec, columns };
+}
+
+/** Everything parseWorkbookV12 reads; later layouts are derived from it. */
+export const V12_LAYOUT = Object.freeze({
+  selectionSheets: SELECTION_SHEETS,
+  calculationSheets: CALCULATION_SHEETS,
+  tables: TABLES,
+  readers: { syncMeta: readSyncMeta, remainingMeta: readRemainingMeta },
+  dashboard: readDashboardState,
+  extraSheets: ['00_DASHBOARD'],
+});
+
+/**
+ * Parses a workbook with a layout: per-slot selection and calculation sheets,
+ * header-checked tables, and custom readers for trail sheets. Custom readers
+ * name the sheets they read in `layout.extraSheets`.
+ */
+export function parseWorkbookLayout(buffer, layout) {
   const workbook = XLSX.read(buffer, { type: 'buffer', cellFormula: false, cellHTML: false });
   const selections = {};
   const calculations = {};
-  for (const [slot, spec] of Object.entries(SELECTION_SHEETS)) {
+  for (const [slot, spec] of Object.entries(layout.selectionSheets)) {
     selections[slot] = readTable(workbook, { ...spec, headerRow: 5 });
   }
-  for (const [slot, spec] of Object.entries(CALCULATION_SHEETS)) {
+  for (const [slot, spec] of Object.entries(layout.calculationSheets)) {
     calculations[slot] = readTable(workbook, { ...spec, headerRow: 5 });
   }
   const tables = {};
-  for (const [name, spec] of Object.entries(TABLES)) {
+  for (const [name, spec] of Object.entries(layout.tables)) {
     tables[name] = readTable(workbook, spec);
+  }
+  const extras = {};
+  for (const [name, reader] of Object.entries(layout.readers ?? {})) {
+    extras[name] = reader(workbook);
   }
   return {
     sheetNames: [...workbook.SheetNames],
-    dashboard: readDashboardState(workbook),
+    dashboard: layout.dashboard(workbook),
     selections,
     calculations,
     ...tables,
-    syncMeta: readSyncMeta(workbook),
-    remainingMeta: readRemainingMeta(workbook),
+    ...extras,
   };
+}
+
+/** Parses every sheet the v12 country-product layer depends on. */
+export function parseWorkbookV12(buffer) {
+  return parseWorkbookLayout(buffer, V12_LAYOUT);
+}
+
+/** Sheets read with a layout, in workbook order. */
+export function sheetsUsedByLayout(layout, sheetNames) {
+  const used = new Set([
+    ...layout.extraSheets,
+    ...Object.values(layout.selectionSheets).map((spec) => spec.sheet),
+    ...Object.values(layout.calculationSheets).map((spec) => spec.sheet),
+    ...Object.values(layout.tables).map((spec) => spec.sheet),
+  ]);
+  return sheetNames.filter((name) => used.has(name));
 }
 
 /** Sheets read by parseWorkbookV12, in workbook order. */
 export function sheetsUsedByParser(sheetNames) {
-  const used = new Set([
-    '00_DASHBOARD',
-    ...Object.values(SELECTION_SHEETS).map((spec) => spec.sheet),
-    ...Object.values(CALCULATION_SHEETS).map((spec) => spec.sheet),
-    ...Object.values(TABLES).map((spec) => spec.sheet),
-  ]);
-  return sheetNames.filter((name) => used.has(name));
+  return sheetsUsedByLayout(V12_LAYOUT, sheetNames);
 }
 
 export const SELECTION_SHEET_BY_SLOT = Object.freeze(

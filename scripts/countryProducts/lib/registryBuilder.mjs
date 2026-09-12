@@ -1,7 +1,12 @@
-// Builds the GELATO base v12 country-product registry from the parsed owner
-// workbook plus the committed read-only catalog snapshot.
+// Builds the GELATO base country-product registry from a parsed owner workbook
+// plus the committed read-only catalog snapshot. One builder serves every
+// workbook version: a registry profile (V12_REGISTRY_PROFILE and
+// V23_REGISTRY_PROFILE at the end of this file) names the registry, the key
+// namespace and the workbook trail (current sync + open-case ledger); identity,
+// dedupe, readiness and route logic are shared.
 //
-// Owner rules enforced here (see reports/COUNTRY_PRODUCTS_V12_*.md):
+// Owner rules enforced here (see reports/COUNTRY_PRODUCTS_V12_*.md and
+// reports/COUNTRY_PRODUCTS_V23_*.md):
 // - exact country products are PR-ING proposals, never new PI-ING; the six base
 //   slots map only to existing PIs and the Mapper is not touched;
 // - identities are deduplicated before anything is proposed: same GTIN = one
@@ -9,6 +14,9 @@
 //   merged; name similarity alone never merges;
 // - v12 is partial: open research stays open, nothing is forced to 75/75 and no
 //   missing product is replaced by a guessed one;
+// - v23 is FINAL for the six base roles: no selection is reopened or changed,
+//   and the v23 workbook status and activation condition stay visible per
+//   selection; a status that is not a PR candidate never gets a DB route;
 // - TARA is one functional STABILIZER option, not a mandatory ingredient;
 // - unknown values stay null and are listed as REVIEW_REQUIRED.
 
@@ -41,6 +49,7 @@ import {
   WORKBOOK_ROLE_BY_SLOT,
   sheetsUsedByParser,
 } from './workbookV12.mjs';
+import { CHECKLIST_DECISION_GROUPS, V23_WORKBOOK, sheetsUsedByV23 } from './workbookV23.mjs';
 
 export const REGISTRY_SCHEMA = 'gellatti.country-products.gelato-base.registry/v1';
 export const REGISTRY_ID = 'GELATO_BASE_V12';
@@ -453,15 +462,26 @@ function alternativesFromDeAt(rows, selectionKeyFor) {
 
 /**
  * @param {object} input
- * @param {ReturnType<import('./workbookV12.mjs').parseWorkbookV12>} input.workbook
+ * @param {object} input.workbook parseWorkbookV12() or parseWorkbookV23() result
  * @param {string} input.workbookSha256
  * @param {object} input.snapshot parsed catalog-dedupe-snapshot.json
  * @param {string} input.snapshotSha256
  * @param {string} input.snapshotPath repository-relative path
+ * @param {object | null} [input.snapshotNotes] extra catalogSnapshot fields (seed copy, refresh requirement)
+ * @param {object} [input.profile] registry profile — V12_REGISTRY_PROFILE by default
  */
-export function buildRegistry({ workbook, workbookSha256, snapshot, snapshotSha256, snapshotPath }) {
-  if (workbookSha256 !== V12_WORKBOOK.sha256) {
-    fail(`workbook sha256 ${workbookSha256} is not the pinned v12 ${V12_WORKBOOK.sha256}`);
+export function buildRegistry({
+  workbook,
+  workbookSha256,
+  snapshot,
+  snapshotSha256,
+  snapshotPath,
+  snapshotNotes = null,
+  profile = V12_REGISTRY_PROFILE,
+}) {
+  const namespace = profile.namespace;
+  if (workbookSha256 !== profile.workbook.sha256) {
+    fail(`workbook sha256 ${workbookSha256} is not the pinned ${profile.label} ${profile.workbook.sha256}`);
   }
   if (snapshot?.schema !== 'gellatti.country-products.catalog-dedupe-snapshot/v1') {
     fail('catalog snapshot schema mismatch');
@@ -569,8 +589,24 @@ export function buildRegistry({ workbook, workbookSha256, snapshot, snapshotSha2
 
   // ------------------------------------------- workbook cross-references
   const coverageByKey = indexBy(workbook.coverage, (row) => `${row.values.iso}|${row.values.role}`);
-  const articleByKey = indexBy(workbook.articles, (row) => row.values.proposalKey);
-  const gapRows = workbook.remainingV12;
+  // One 05_PR_ING_ARTYKULY row per proposal key — or, where the workbook lists
+  // a key once per market (v23: SMP-GTIN-039978115201 for JP and for UY), the
+  // row whose "Kraje użycia" names the selection's country. Anything else fails.
+  const articlesByKey = groupBy(workbook.articles, (row) => row.values.proposalKey);
+  const articleFor = (key, country, ref) => {
+    const candidates = articlesByKey.get(key) ?? [];
+    if (candidates.length <= 1) return candidates[0] ?? null;
+    const matching = candidates.filter((row) =>
+      String(row.values.countriesOfUse ?? '')
+        .split(/[\s,;]+/)
+        .includes(country),
+    );
+    if (matching.length !== 1) {
+      fail(`05_PR_ING_ARTYKULY lists ${key} ${candidates.length} times and ${matching.length} of those rows name ${country} (${ref})`);
+    }
+    return matching[0];
+  };
+  const gapRows = profile.trail.gapRows(workbook);
   const gapByKey = indexBy(gapRows, (row) => {
     const iso = iso2FromCountryCell(row.values.country);
     if (!iso) fail(`cannot parse country in ${row.ref}`);
@@ -581,18 +617,8 @@ export function buildRegistry({ workbook, workbookSha256, snapshot, snapshotSha2
     const slot = SLOT_BY_WORKBOOK_ROLE[row.values.role];
     return iso && slot ? `${iso}|${slot}` : null;
   });
-  const syncByKey = indexBy(workbook.syncV12, (row) => {
-    const target = parseCountryRole(row.values.countryRole);
-    return target ? `${target.country}|${SLOT_BY_WORKBOOK_ROLE[target.role]}` : null;
-  });
-  const changeByKey = indexBy(
-    workbook.changesV11,
-    (row) => `${row.values.country}|${SLOT_BY_WORKBOOK_ROLE[row.values.role]}`,
-  );
-  const evidenceByKey = groupBy(
-    workbook.evidenceV11,
-    (row) => `${row.values.country}|${SLOT_BY_WORKBOOK_ROLE[row.values.role]}`,
-  );
+  // Per-selection trail records (v12: 36/37/39; v23: 83_SYNC_V23).
+  const trail = profile.trail.prepare(workbook);
   const sourcesByUrl = groupBy(
     workbook.sources.filter((row) => /^https?:\/\//.test(String(row.values.url ?? ''))),
     (row) => String(row.values.url).trim(),
@@ -620,7 +646,7 @@ export function buildRegistry({ workbook, workbookSha256, snapshot, snapshotSha2
       const coverage = coverageByKey.get(`${iso}|${role}`);
       if (!coverage) fail(`no 04_POKRYCIE_PR row for ${iso}/${role}`);
       const workbookKey = selection.values.proposalKey;
-      const article = articleByKey.get(workbookKey);
+      const article = articleFor(workbookKey, iso, selection.ref);
       if (!article) fail(`05_PR_ING_ARTYKULY has no row for ${workbookKey} (${selection.ref})`);
       const eanText = selection.values.ean === null ? null : String(selection.values.ean);
       const eanDigits = digitsOnly(eanText);
@@ -798,7 +824,7 @@ export function buildRegistry({ workbook, workbookSha256, snapshot, snapshotSha2
     if (gtin14) {
       basis = 'GTIN';
       ident = `GTIN-${gtin14}`;
-      productKey = `${PROPOSAL_NAMESPACE}:${slot}:${ident}`;
+      productKey = `${namespace}:${slot}:${ident}`;
     } else {
       const shared = group
         .map((row) => new Set(row.tokens))
@@ -811,12 +837,12 @@ export function buildRegistry({ workbook, workbookSha256, snapshot, snapshotSha2
         basis = 'BRAND_ARTICLE_CODE';
         articleCode = group.length > 1 ? sharedTokens[0] : anchor.tokens[0];
         ident = `SKU-${keySlug(anchor.fields.brand)}-${keySlug(articleCode)}-${anchor.pack.slug}`;
-        productKey = `${PROPOSAL_NAMESPACE}:${slot}:${ident}`;
+        productKey = `${namespace}:${slot}:${ident}`;
       } else if (sharedTokens.length > 0 && group.length === 1) {
         basis = 'LISTING_CODE';
         articleCode = anchor.tokens[0];
         ident = `SKU-${keySlug(articleCode)}`;
-        productKey = `${PROPOSAL_NAMESPACE}:${anchor.country}:${slot}:${ident}`;
+        productKey = `${namespace}:${anchor.country}:${slot}:${ident}`;
       } else {
         basis = 'NAME_HASH';
         const material = [
@@ -829,8 +855,8 @@ export function buildRegistry({ workbook, workbookSha256, snapshot, snapshotSha2
         ident = `NAME-${shortHash(material)}`;
         productKey =
           group.length === 1
-            ? `${PROPOSAL_NAMESPACE}:${anchor.country}:${slot}:${ident}`
-            : `${PROPOSAL_NAMESPACE}:${slot}:${ident}`;
+            ? `${namespace}:${anchor.country}:${slot}:${ident}`
+            : `${namespace}:${slot}:${ident}`;
       }
     }
 
@@ -1100,7 +1126,7 @@ export function buildRegistry({ workbook, workbookSha256, snapshot, snapshotSha2
         missing: row.values.missing,
         checklistRef: row.values.checklistRef,
         notesV12: row.values.notesV12,
-        selectionKey: `${PROPOSAL_NAMESPACE}:${country}:${slot}`,
+        selectionKey: `${namespace}:${country}:${slot}`,
         productKey: linked ? linked.product.productKey : null,
         sourceRef: row.ref,
       };
@@ -1145,10 +1171,14 @@ export function buildRegistry({ workbook, workbookSha256, snapshot, snapshotSha2
     for (const gap of productLevelGaps) blockers.push(`OPEN_CASE:${gap.id}:${gap.conditions.join('+')}`);
     if (!product.package.stated) blockers.push('PACKAGE_NOT_STATED');
     else if (!product.package.normalizedUnit) blockers.push('PACKAGE_NOT_METRIC');
+    // Version-specific readiness holds (v23: a carbohydrate value that is not
+    // in the available-carbohydrate convention); none in v12.
+    const profileBlockers = profile.readinessBlockers(product);
+    blockers.push(...profileBlockers);
     product.readiness = {
       engineProfileExpectation: expectation,
       expectedPickerRoutability:
-        expectation === 'DECLARED_PROFILE_COMPLETE' && product.package.normalizedUnit
+        expectation === 'DECLARED_PROFILE_COMPLETE' && product.package.normalizedUnit && profileBlockers.length === 0
           ? 'EXPECTED_AFTER_SANCTIONED_INGEST_SUBJECT_TO_SERVER_VERDICT'
           : 'NOT_ROUTABLE_UNTIL_PROFILE_AND_IDENTITY_COMPLETE',
       blockers,
@@ -1175,11 +1205,21 @@ export function buildRegistry({ workbook, workbookSha256, snapshot, snapshotSha2
     if (product.catalog.decision === 'BLOCKED_EAN_HELD_BY_OTHER_CATALOG_ROW') {
       review.push('EAN_HELD_BY_OTHER_CATALOG_ROW');
     }
+    review.push(...profileBlockers);
     product.reviewRequired = review;
   }
 
   // ------------------------------------------------------- selections
-  const selectionKeyFor = (country, slot) => `${PROPOSAL_NAMESPACE}:${country}:${slot}`;
+  const selectionKeyFor = (country, slot) => `${namespace}:${country}:${slot}`;
+  // Offer channel → STABILIZER slot option. v23 adds "LOCAL — USA B2B": the US
+  // exact grade is offered by domestic B2B distributors on request
+  // (86_DOWODY_V23 V23-S04/S05), i.e. a quote, not a retail offer.
+  const stabilizerSlotOptions = new Map([
+    ['LOCAL', 'LOCAL_TARA'],
+    ['IMPORT', 'CROSS_BORDER_TARA'],
+    ['B2B', 'B2B_TARA_QUOTE_REQUIRED'],
+    ['LOCAL — USA B2B', 'B2B_TARA_QUOTE_REQUIRED'],
+  ]);
   const selections = [];
   for (const country of countries.map((entry) => entry.iso2)) {
     for (const slot of SLOT_ORDER) {
@@ -1227,25 +1267,13 @@ export function buildRegistry({ workbook, workbookSha256, snapshot, snapshotSha2
       const gap = gapBySelection.get(`${country}|${slot}`) ?? null;
       const closedCases = (checklistByKey.get(`${country}|${slot}`) ?? [])
         .filter((entry) => /ZAMKNI/.test(String(entry.values.state)))
-        .map((entry) => ({
-          caseId: entry.values.id,
-          state: entry.values.state,
-          decisionV11: entry.values.decisionV11,
-          decisionV12: entry.values.decisionV12,
-          syncV12: entry.values.syncV12,
-          remainingOutsideSelection: entry.values.remainingOutsideSelection,
-          sourceDate: entry.values.sourceDate,
-          sourceRef: entry.ref,
-        }));
-      const sync = syncByKey.get(`${country}|${slot}`) ?? null;
-      const change = changeByKey.get(`${country}|${slot}`) ?? null;
-      const evidence = evidenceByKey.get(`${country}|${slot}`) ?? [];
+        .map((entry) => profile.trail.closedCase(entry));
       const selectionState = gap ? (gap.state === 'BLOCKED' ? 'BLOCKED' : 'RESEARCH_OPEN') : 'SELECTION_CLOSED';
       const v = row.selection.values;
       selections.push({
         ...base,
         selectionKind: 'EXACT_PRODUCT',
-        proposalKey: `${PROPOSAL_NAMESPACE}:${country}:${slot}:${product._ident}`,
+        proposalKey: `${namespace}:${country}:${slot}:${product._ident}`,
         productKey: product.productKey,
         dedupeDecision: null,
         mergedIntoProposalKey: null,
@@ -1271,34 +1299,7 @@ export function buildRegistry({ workbook, workbookSha256, snapshot, snapshotSha2
         sourceIds: uniqueSorted(
           [...extractUrls(v.sources), ...extractUrls(row.calculation.values.sources)].map(sourceIdFor),
         ),
-        evidenceV11: evidence.map((entry) => ({
-          id: entry.values.id,
-          date: entry.values.date,
-          resolution: entry.values.resolution,
-          scope: entry.values.scope,
-          sourceRef: entry.ref,
-        })),
-        changeV11: change
-          ? {
-              caseId: change.values.caseId,
-              productBefore: change.values.productBefore,
-              productAfter: change.values.productAfter,
-              decision: change.values.decision,
-              evidenceId: change.values.evidence,
-              sourceRef: change.ref,
-            }
-          : null,
-        syncV12: sync
-          ? {
-              caseId: sync.values.id,
-              v11: sync.values.v11,
-              v12: sync.values.v12,
-              decision: sync.values.decision,
-              basis: sync.values.basis,
-              date: workbook.syncMeta.date,
-              sourceRef: sync.ref,
-            }
-          : null,
+        ...profile.trail.selectionFields(trail, { key: `${country}|${slot}`, workbook, sourceIdFor }),
         closedCases,
         workbook: {
           proposalKey: row.workbookKey,
@@ -1315,14 +1316,7 @@ export function buildRegistry({ workbook, workbookSha256, snapshot, snapshotSha2
                 stabilizerType: 'TARA',
                 taraMandatory: false,
                 offerChannel: v.offerChannel,
-                slotOption:
-                  v.offerChannel === 'LOCAL'
-                    ? 'LOCAL_TARA'
-                    : v.offerChannel === 'IMPORT'
-                      ? 'CROSS_BORDER_TARA'
-                      : v.offerChannel === 'B2B'
-                        ? 'B2B_TARA_QUOTE_REQUIRED'
-                        : 'TARA_DELIVERY_UNCONFIRMED',
+                slotOption: stabilizerSlotOptions.get(v.offerChannel) ?? 'TARA_DELIVERY_UNCONFIRMED',
                 alternativesConsidered: [],
               }
             : null,
@@ -1355,7 +1349,7 @@ export function buildRegistry({ workbook, workbookSha256, snapshot, snapshotSha2
       if (row.country === anchorCountry) {
         selection.dedupeDecision = product.catalog.decision;
       } else {
-        selection.dedupeDecision = 'DUPLICATE_WITHIN_V12';
+        selection.dedupeDecision = `DUPLICATE_WITHIN_${namespace}`;
         selection.mergedIntoProposalKey = anchorSelection.proposalKey;
         selection.duplicateBasis =
           row.gtin14 && row.gtin14 === product.identity.gtin14
@@ -1384,6 +1378,9 @@ export function buildRegistry({ workbook, workbookSha256, snapshot, snapshotSha2
       if (product.catalog.decision === 'BLOCKED_EAN_HELD_BY_OTHER_CATALOG_ROW') {
         blockers.push('EAN_HELD_BY_OTHER_CATALOG_ROW');
       }
+      // Version-specific route holds (v23: a workbook status that is not a PR
+      // candidate, a non-available carbohydrate convention); none in v12.
+      blockers.push(...profile.routeBlockers({ product, row, selection }));
       if (!decision) decision = blockers.length > 0 ? 'ROUTE_BLOCKED' : 'ROUTE_CREATABLE_NOW';
       selection.route = {
         decision,
@@ -1405,14 +1402,9 @@ export function buildRegistry({ workbook, workbookSha256, snapshot, snapshotSha2
     product.evidence.latestEvidenceDate =
       uniqueSorted([
         ...product.evidence.auditDates,
-        ...product.marketRoutes.flatMap((route) => {
-          const selection = proposalRecords.get(route.proposalKey);
-          return [
-            ...selection.evidenceV11.map((entry) => entry.date),
-            ...(selection.syncV12 ? [selection.syncV12.date] : []),
-            ...selection.closedCases.map((entry) => entry.sourceDate),
-          ];
-        }),
+        ...product.marketRoutes.flatMap((route) =>
+          profile.trail.evidenceDates(proposalRecords.get(route.proposalKey)),
+        ),
       ]).at(-1) ?? null;
   }
 
@@ -1457,43 +1449,41 @@ export function buildRegistry({ workbook, workbookSha256, snapshot, snapshotSha2
   ];
 
   // ----------------------------------------------- workbook checks
-  const open27 = new Set(
-    workbook.checklist
-      .filter((row) => /OTWARTE|ZABLOKOWANE/.test(String(row.values.state)))
-      .map((row) => row.values.id),
-  );
-  const open40 = new Set(openGaps.map((gap) => gap.id));
-  check(
-    'CHECKLIST_27_OPEN_EQUALS_40',
-    open27.size === open40.size && [...open27].every((id) => open40.has(id)),
-    `27_CHECKLIST_AKTYWNA open/blocked ids (${open27.size}) equal 40_POZOSTALE_V12 ids (${open40.size})`,
-  );
-  const headerCounts = workbook.remainingMeta.byRole;
   const countedByRole = Object.fromEntries(
     GAP_ROLE_ORDER.map((role) => [role, openGaps.filter((gap) => gap.workbookRole === role).length]),
   );
-  check(
-    'REMAINING_40_HEADER_EQUALS_ROWS',
-    workbook.remainingMeta.total === openGaps.length &&
-      GAP_ROLE_ORDER.every((role) => headerCounts[role] === countedByRole[role]),
-    `40_POZOSTALE_V12 header ${JSON.stringify({ total: workbook.remainingMeta.total, ...headerCounts })} vs rows ${JSON.stringify({ total: openGaps.length, ...countedByRole })}`,
-  );
-  check(
-    'SYNC_39_OPEN_COUNT_EQUALS_40',
-    workbook.syncMeta.openV12 === openGaps.length,
-    `39_SYNC_V12 "Stan v12" ${workbook.syncMeta.openV12} vs 40_POZOSTALE_V12 rows ${openGaps.length}`,
-  );
+  const remainingHeader = profile.trail.remainingHeader(workbook);
+  const headerCounts = remainingHeader.byRole;
+  // Trail checks first (v12: 27 ↔ 40 ↔ 39; v23: 27 ↔ 84 ↔ 83, the 83 cases,
+  // 88 controls, 86 sources, 85 US values, alternative leads, 04 statuses).
+  profile.trail.checks({
+    workbook,
+    openGaps,
+    countedByRole,
+    remainingHeader,
+    check,
+    rows,
+    selections,
+    products,
+    alternatives,
+    globalGates,
+  });
   const currentArticleKeys = new Set(
     workbook.articles
       .filter((row) => !/HISTORIA|ZASTĄPION/.test(String(row.values.status)))
       .map((row) => row.values.proposalKey),
   );
   const selectionWorkbookKeys = new Set(rows.map((row) => row.workbookKey));
+  const unusedArticleKeys = [...currentArticleKeys]
+    .filter((key) => !selectionWorkbookKeys.has(key) && key !== 'GENERIC-SUCROSE')
+    .sort(compareText);
+  const missingArticleKeys = [...selectionWorkbookKeys].filter((key) => !currentArticleKeys.has(key)).sort(compareText);
   check(
     'ARTICLES_05_CURRENT_EQUALS_SELECTION_KEYS',
-    [...selectionWorkbookKeys].every((key) => currentArticleKeys.has(key)) &&
-      [...currentArticleKeys].every((key) => selectionWorkbookKeys.has(key) || key === 'GENERIC-SUCROSE'),
-    `05_PR_ING_ARTYKULY current rows (${currentArticleKeys.size}, incl. GENERIC-SUCROSE) vs distinct selection keys (${selectionWorkbookKeys.size})`,
+    unusedArticleKeys.length === 0 && missingArticleKeys.length === 0,
+    `05_PR_ING_ARTYKULY current rows (${currentArticleKeys.size}, incl. GENERIC-SUCROSE) vs distinct selection keys (${selectionWorkbookKeys.size})` +
+      (unusedArticleKeys.length > 0 ? `; current but used by no selection: ${unusedArticleKeys.join(', ')}` : '') +
+      (missingArticleKeys.length > 0 ? `; used by a selection but not current: ${missingArticleKeys.join(', ')}` : ''),
   );
   for (const product of products) {
     const completenessFlags = uniqueSorted(product._rows.map((row) => row.nutrition.workbookCompleteness));
@@ -1538,10 +1528,13 @@ export function buildRegistry({ workbook, workbookSha256, snapshot, snapshotSha2
     product.crossRowDifferences = internDeep(product.crossRowDifferences);
   }
   for (const selection of selections) {
-    for (const key of ['notes', 'availabilityEvidence', 'evidenceV11', 'changeV11', 'syncV12', 'closedCases']) {
+    for (const key of ['notes', 'availabilityEvidence', 'evidenceV11', 'changeV11', 'syncV12', 'syncV23', 'closedCases']) {
       if (selection[key] !== undefined) selection[key] = internDeep(selection[key]);
     }
   }
+  // Version trail facts for registry.source — computed before the source table
+  // is frozen, because v23 records the 86_DOWODY_V23 URLs as sourceIds.
+  const sourceFields = profile.trail.sourceFields(workbook, { sourceIdFor });
   const sources = Object.fromEntries([...sourceTable.entries()].sort((a, b) => compareText(a[0], b[0])));
   const texts = Object.fromEntries([...textTable.entries()].sort((a, b) => compareText(a[0], b[0])));
   products.sort((a, b) => slotRank(a.slot) - slotRank(b.slot) || compareText(a.productKey, b.productKey));
@@ -1558,7 +1551,9 @@ export function buildRegistry({ workbook, workbookSha256, snapshot, snapshotSha2
   };
   const bySlot = (list) =>
     Object.fromEntries(EXACT_PRODUCT_SLOTS.map((slot) => [slot, list.filter((item) => item.slot === slot).length]));
-  const duplicateSelections = exactSelections.filter((selection) => selection.dedupeDecision === 'DUPLICATE_WITHIN_V12');
+  const duplicateSelections = exactSelections.filter(
+    (selection) => selection.dedupeDecision === `DUPLICATE_WITHIN_${namespace}`,
+  );
   const routeBlockers = (selection, prefix) => selection.route.blockers.some((blocker) => blocker.startsWith(prefix));
   const counts = {
     countries: countries.length,
@@ -1596,9 +1591,9 @@ export function buildRegistry({ workbook, workbookSha256, snapshot, snapshotSha2
     openGaps: {
       total: openGaps.length,
       byWorkbookRole: countedByRole,
-      workbookHeader: { total: workbook.remainingMeta.total, ...headerCounts },
+      workbookHeader: { total: remainingHeader.total, ...headerCounts },
       matchesWorkbookHeader:
-        workbook.remainingMeta.total === openGaps.length &&
+        remainingHeader.total === openGaps.length &&
         GAP_ROLE_ORDER.every((role) => headerCounts[role] === countedByRole[role]),
       stabilizerResearchEntries: countedByRole.TARA,
       stabilizerResearchIsNotMissingMandatoryTara: true,
@@ -1621,38 +1616,23 @@ export function buildRegistry({ workbook, workbookSha256, snapshot, snapshotSha2
     consistencyChecksFailed: consistencyChecks.filter((entry) => !entry.passed).length,
     sources: sourceTable.size,
     texts: textTable.size,
+    // Version-specific counts (v23: workbook status by slot, routes held); none in v12.
+    ...profile.extraCounts({ selections, exactSelections, countBy }),
   };
 
   return {
     schema: REGISTRY_SCHEMA,
-    registryId: REGISTRY_ID,
-    proposalNamespace: PROPOSAL_NAMESPACE,
-    keyFormats: {
-      proposalKey: 'V12:<ISO2>:<SLOT>:<GTIN-gtin14 | SKU-… | NAME-hash10> — one per country × slot selection',
-      productKeyGtin: 'V12:<SLOT>:GTIN-<gtin14> — market-independent',
-      productKeyBrandArticle: 'V12:<SLOT>:SKU-<BRAND>-<ARTICLE>-<PACK> — market-independent',
-      productKeyListingCode: 'V12:<ISO2>:<SLOT>:SKU-<CODE> — single market, brand not disclosed',
-      productKeyNameHash: 'V12:<ISO2>:<SLOT>:NAME-<hash10> — single market, no code',
-      prIng: 'Never assigned here. PR-ING codes are issued by the database at ingest; existing codes are reused.',
-    },
+    registryId: profile.registryId,
+    proposalNamespace: namespace,
+    keyFormats: keyFormatsFor(namespace),
     source: {
-      workbook: V12_WORKBOOK.basename,
+      workbook: profile.workbook.basename,
       sha256: workbookSha256,
       workbookState: workbook.dashboard.state,
       workbookStateRef: workbook.dashboard.ref,
-      v12SyncDate: workbook.syncMeta.date,
-      openCasesV11: workbook.syncMeta.openV11,
-      openCasesV12: workbook.syncMeta.openV12,
-      gtinRule: workbook.syncMeta.rule,
-      identityRule: workbook.syncMeta.identityRule,
-      remainingNote: workbook.remainingMeta.note,
-      authority: [
-        '39_SYNC_V12 and 40_POZOSTALE_V12 applied on top of 11_MLEKO_75, 14_SMIETANKA_75, 17_PROSZEK_75, 20_DEKSTROZA_75, 23_TARA_75',
-        '13/15/18/21/24 *_PRZELICZENIA: label basis, portions, estimated-field lists',
-        '04_POKRYCIE_PR, 05_PR_ING_ARTYKULY: coverage matrix and article records (cross-checked)',
-        '27/36/37: case ledger and v11 evidence; 34: DE/AT audit candidates; 06: source audit dates',
-      ],
-      sheetsUsed: sheetsUsedByParser(workbook.sheetNames),
+      ...sourceFields,
+      authority: [...profile.authority],
+      sheetsUsed: profile.sheetsUsed(workbook.sheetNames),
       sheetsInWorkbook: workbook.sheetNames.length,
     },
     catalogSnapshot: {
@@ -1664,6 +1644,7 @@ export function buildRegistry({ workbook, workbookSha256, snapshot, snapshotSha2
       catalogMarketCountries: [...catalogMarkets].sort(compareText),
       marketCountryForeignKeys: results.marketCountryForeignKeys,
       activePrimaryAssignments: activeAssignments,
+      ...(snapshotNotes ?? {}),
     },
     invariants: {
       newPiCreated: 0,
@@ -1673,29 +1654,8 @@ export function buildRegistry({ workbook, workbookSha256, snapshot, snapshotSha2
       silentSubstitutes: 0,
       stabilizerTaraMandatory: false,
     },
-    notes: {
-      sourceTable: '`sources` holds every source URL once, keyed SRC-<first 10 hex of sha256(url)>; products and selections list sourceIds.',
-      textTable: `\`texts\` holds workbook notes longer than ${TEXT_INLINE_LIMIT} characters once, keyed TXT-<first 10 hex of sha256(text)>; such values appear as the id in selections.notes / availabilityEvidence / evidenceV11 / changeV11 / syncV12 / closedCases and in products.technicalSpec / crossRowDifferences.`,
-      coverageMatrixStatus:
-        'selections[].workbook.coverageMatrixStatus is the 04_POKRYCIE_PR label, which predates the v12 sync; the v12 state is selectionState (40_POZOSTALE_V12 + 39_SYNC_V12).',
-      engineRoutability:
-        'resolve_country_product_slots_v1 only returns a product whose current version passes private.exact_product_has_picker_profile_v1 (numeric water, totalSolids, fat, protein, carbohydrate, sugars, salt; engineUsable; BASE_RECIPE; active slot review). Identity-only or ESTIMATED products do not route.',
-      globalGatesOpenForEverySelection: ['R8-G01', 'R8-G02', 'R9-G03'],
-    },
-    universalReviewRequired: [
-      {
-        field: 'labelLanguage',
-        reason: 'The v12 workbook records no label language / locale for any product; left null.',
-      },
-      {
-        field: 'manufacturerOrSupplier',
-        reason: 'The workbook keeps manufacturer and supplier/retailer in one column; it is preserved verbatim, not split.',
-      },
-      {
-        field: 'lot / CoA',
-        reason: 'Global gate R8-G02: product and lot documentation remain open for every product.',
-      },
-    ],
+    notes: profile.notes({ workbook }),
+    universalReviewRequired: profile.universalReviewRequired(),
     base,
     countries,
     regions,
@@ -1714,4 +1674,577 @@ export function buildRegistry({ workbook, workbookSha256, snapshot, snapshotSha2
     sources,
     texts,
   };
+}
+
+// ------------------------------------------------------------- profiles
+// A registry profile names one owner-workbook version: registry id, key
+// namespace, pinned workbook, the sheets its parser reads, and its trail — the
+// sheets that carry the current sync and the open-case ledger, what each
+// selection records from them, and the workbook checks that prove them
+// consistent. Identity, dedupe, readiness and routes are shared; a version
+// changes them only through the explicit readiness/route hooks.
+
+const keyFormatsFor = (ns) => ({
+  proposalKey: `${ns}:<ISO2>:<SLOT>:<GTIN-gtin14 | SKU-… | NAME-hash10> — one per country × slot selection`,
+  productKeyGtin: `${ns}:<SLOT>:GTIN-<gtin14> — market-independent`,
+  productKeyBrandArticle: `${ns}:<SLOT>:SKU-<BRAND>-<ARTICLE>-<PACK> — market-independent`,
+  productKeyListingCode: `${ns}:<ISO2>:<SLOT>:SKU-<CODE> — single market, brand not disclosed`,
+  productKeyNameHash: `${ns}:<ISO2>:<SLOT>:NAME-<hash10> — single market, no code`,
+  prIng: 'Never assigned here. PR-ING codes are issued by the database at ingest; existing codes are reused.',
+});
+
+const ENGINE_ROUTABILITY_NOTE =
+  'resolve_country_product_slots_v1 only returns a product whose current version passes private.exact_product_has_picker_profile_v1 (numeric water, totalSolids, fat, protein, carbohydrate, sugars, salt; engineUsable; BASE_RECIPE; active slot review). Identity-only or ESTIMATED products do not route.';
+const MANUFACTURER_REVIEW_REASON =
+  'The workbook keeps manufacturer and supplier/retailer in one column; it is preserved verbatim, not split.';
+const SOURCE_TABLE_NOTE =
+  '`sources` holds every source URL once, keyed SRC-<first 10 hex of sha256(url)>; products and selections list sourceIds.';
+
+const countryRoleKey = (country, role) => `${country}|${SLOT_BY_WORKBOOK_ROLE[role]}`;
+
+export const V12_REGISTRY_PROFILE = Object.freeze({
+  label: 'v12',
+  registryId: REGISTRY_ID,
+  namespace: PROPOSAL_NAMESPACE,
+  workbook: V12_WORKBOOK,
+  sheetsUsed: sheetsUsedByParser,
+  authority: Object.freeze([
+    '39_SYNC_V12 and 40_POZOSTALE_V12 applied on top of 11_MLEKO_75, 14_SMIETANKA_75, 17_PROSZEK_75, 20_DEKSTROZA_75, 23_TARA_75',
+    '13/15/18/21/24 *_PRZELICZENIA: label basis, portions, estimated-field lists',
+    '04_POKRYCIE_PR, 05_PR_ING_ARTYKULY: coverage matrix and article records (cross-checked)',
+    '27/36/37: case ledger and v11 evidence; 34: DE/AT audit candidates; 06: source audit dates',
+  ]),
+  trail: Object.freeze({
+    gapRows: (workbook) => workbook.remainingV12,
+    prepare: (workbook) => ({
+      syncByKey: indexBy(workbook.syncV12, (row) => {
+        const target = parseCountryRole(row.values.countryRole);
+        return target ? countryRoleKey(target.country, target.role) : null;
+      }),
+      changeByKey: indexBy(workbook.changesV11, (row) => countryRoleKey(row.values.country, row.values.role)),
+      evidenceByKey: groupBy(workbook.evidenceV11, (row) => countryRoleKey(row.values.country, row.values.role)),
+    }),
+    closedCase: (entry) => ({
+      caseId: entry.values.id,
+      state: entry.values.state,
+      decisionV11: entry.values.decisionV11,
+      decisionV12: entry.values.decisionV12,
+      syncV12: entry.values.syncV12,
+      remainingOutsideSelection: entry.values.remainingOutsideSelection,
+      sourceDate: entry.values.sourceDate,
+      sourceRef: entry.ref,
+    }),
+    selectionFields: (prepared, { key, workbook }) => {
+      const sync = prepared.syncByKey.get(key) ?? null;
+      const change = prepared.changeByKey.get(key) ?? null;
+      const evidence = prepared.evidenceByKey.get(key) ?? [];
+      return {
+        evidenceV11: evidence.map((entry) => ({
+          id: entry.values.id,
+          date: entry.values.date,
+          resolution: entry.values.resolution,
+          scope: entry.values.scope,
+          sourceRef: entry.ref,
+        })),
+        changeV11: change
+          ? {
+              caseId: change.values.caseId,
+              productBefore: change.values.productBefore,
+              productAfter: change.values.productAfter,
+              decision: change.values.decision,
+              evidenceId: change.values.evidence,
+              sourceRef: change.ref,
+            }
+          : null,
+        syncV12: sync
+          ? {
+              caseId: sync.values.id,
+              v11: sync.values.v11,
+              v12: sync.values.v12,
+              decision: sync.values.decision,
+              basis: sync.values.basis,
+              date: workbook.syncMeta.date,
+              sourceRef: sync.ref,
+            }
+          : null,
+      };
+    },
+    evidenceDates: (selection) => [
+      ...selection.evidenceV11.map((entry) => entry.date),
+      ...(selection.syncV12 ? [selection.syncV12.date] : []),
+      ...selection.closedCases.map((entry) => entry.sourceDate),
+    ],
+    remainingHeader: (workbook) => ({ total: workbook.remainingMeta.total, byRole: workbook.remainingMeta.byRole }),
+    checks: ({ workbook, openGaps, countedByRole, check }) => {
+      const open27 = new Set(
+        workbook.checklist
+          .filter((row) => /OTWARTE|ZABLOKOWANE/.test(String(row.values.state)))
+          .map((row) => row.values.id),
+      );
+      const open40 = new Set(openGaps.map((gap) => gap.id));
+      check(
+        'CHECKLIST_27_OPEN_EQUALS_40',
+        open27.size === open40.size && [...open27].every((id) => open40.has(id)),
+        `27_CHECKLIST_AKTYWNA open/blocked ids (${open27.size}) equal 40_POZOSTALE_V12 ids (${open40.size})`,
+      );
+      const headerCounts = workbook.remainingMeta.byRole;
+      check(
+        'REMAINING_40_HEADER_EQUALS_ROWS',
+        workbook.remainingMeta.total === openGaps.length &&
+          GAP_ROLE_ORDER.every((role) => headerCounts[role] === countedByRole[role]),
+        `40_POZOSTALE_V12 header ${JSON.stringify({ total: workbook.remainingMeta.total, ...headerCounts })} vs rows ${JSON.stringify({ total: openGaps.length, ...countedByRole })}`,
+      );
+      check(
+        'SYNC_39_OPEN_COUNT_EQUALS_40',
+        workbook.syncMeta.openV12 === openGaps.length,
+        `39_SYNC_V12 "Stan v12" ${workbook.syncMeta.openV12} vs 40_POZOSTALE_V12 rows ${openGaps.length}`,
+      );
+    },
+    sourceFields: (workbook) => ({
+      v12SyncDate: workbook.syncMeta.date,
+      openCasesV11: workbook.syncMeta.openV11,
+      openCasesV12: workbook.syncMeta.openV12,
+      gtinRule: workbook.syncMeta.rule,
+      identityRule: workbook.syncMeta.identityRule,
+      remainingNote: workbook.remainingMeta.note,
+    }),
+  }),
+  notes: () => ({
+    sourceTable: SOURCE_TABLE_NOTE,
+    textTable: `\`texts\` holds workbook notes longer than ${TEXT_INLINE_LIMIT} characters once, keyed TXT-<first 10 hex of sha256(text)>; such values appear as the id in selections.notes / availabilityEvidence / evidenceV11 / changeV11 / syncV12 / closedCases and in products.technicalSpec / crossRowDifferences.`,
+    coverageMatrixStatus:
+      'selections[].workbook.coverageMatrixStatus is the 04_POKRYCIE_PR label, which predates the v12 sync; the v12 state is selectionState (40_POZOSTALE_V12 + 39_SYNC_V12).',
+    engineRoutability: ENGINE_ROUTABILITY_NOTE,
+    globalGatesOpenForEverySelection: ['R8-G01', 'R8-G02', 'R9-G03'],
+  }),
+  universalReviewRequired: () => [
+    {
+      field: 'labelLanguage',
+      reason: 'The v12 workbook records no label language / locale for any product; left null.',
+    },
+    { field: 'manufacturerOrSupplier', reason: MANUFACTURER_REVIEW_REASON },
+    {
+      field: 'lot / CoA',
+      reason: 'Global gate R8-G02: product and lot documentation remain open for every product.',
+    },
+  ],
+  readinessBlockers: () => [],
+  routeBlockers: () => [],
+  extraCounts: () => ({}),
+});
+
+// v23 (FINAL for the six base roles): the current trail is 83_SYNC_V23 (the
+// cases v23 closed) and 84_POZOSTALE_V23 (open/blocked count + the global
+// dependencies). Every selection stays as the workbook selects it; the v23
+// 04_POKRYCIE_PR status decides whether a DB route may be created.
+
+/** 04_POKRYCIE_PR statuses v23 uses; READY_PI is the global sucrose PI. */
+const V23_KNOWN_STATUSES = Object.freeze(['KANDYDAT_PR', 'READY_PR', 'READY_PI', 'WYMAGA_GTIN', 'KANDYDAT_WARUNKOWY']);
+/** Statuses under which the owner-approved DB package may create or reuse a PR route. */
+const V23_ACTIVATABLE_STATUSES = new Set(['KANDYDAT_PR', 'READY_PR']);
+const AVAILABLE_CARBOHYDRATE = 'AVAILABLE_EXCLUDING_FIBER';
+
+/** "2026-09-12" or "12.09.2026" → "2026-09-12"; anything else → null. */
+function isoDate(value) {
+  const text = cleanText(value === null || value === undefined ? null : String(value));
+  if (!text) return null;
+  const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(text);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+  const dotted = /^(\d{2})\.(\d{2})\.(\d{4})/.exec(text);
+  return dotted ? `${dotted[3]}-${dotted[2]}-${dotted[1]}` : null;
+}
+
+/** Newest per-version decision of a 27_CHECKLIST_AKTYWNA case (v11 … v23). */
+function latestChecklistDecision(entry) {
+  const group = [...CHECKLIST_DECISION_GROUPS]
+    .reverse()
+    .find((candidate) => entry.values[candidate.decision] !== null && entry.values[candidate.decision] !== undefined);
+  if (!group) return null;
+  const [first, last] = group.columns.split(':');
+  return {
+    version: group.version,
+    date: group.date ? entry.values[group.date] : null,
+    decision: entry.values[group.decision],
+    sources: entry.values[group.sources],
+    remaining: entry.values[group.remaining],
+    sourceRef: `${entry.sheet}!${first}${entry.rowNumber}:${last}${entry.rowNumber}`,
+  };
+}
+
+/** A STABILIZER carbohydrate value outside the available-carbohydrate convention is never sent as label data. */
+const carbohydrateConventionBlockers = (product) =>
+  product.slot === 'STABILIZER' && product.nutrition.carbohydrateConvention !== AVAILABLE_CARBOHYDRATE
+    ? [`CARBOHYDRATE_CONVENTION:${product.nutrition.carbohydrateConvention ?? 'UNSTATED'}`]
+    : [];
+
+const v23CasesRow = (workbook) => workbook.syncV23.summary.find((row) => row.values.scope === 'Przypadki');
+
+function v23TrailChecks({ workbook, openGaps, countedByRole, remainingHeader, check, rows, selections, products, alternatives, globalGates }) {
+  const sync = workbook.syncV23;
+  const casesRow = v23CasesRow(workbook);
+
+  const open27 = workbook.checklist
+    .filter((row) => /OTWARTE|ZABLOKOWANE/.test(String(row.values.state)))
+    .map((row) => row.values.id);
+  const openIds = new Set(openGaps.map((gap) => gap.id));
+  check(
+    'CHECKLIST_27_OPEN_EQUALS_84',
+    open27.length === openIds.size && open27.every((id) => openIds.has(id)),
+    `27_CHECKLIST_AKTYWNA open/blocked ids (${open27.length}) equal 84_POZOSTALE_V23 open cases (${openIds.size})`,
+  );
+  check(
+    'REMAINING_84_EQUALS_ROWS',
+    remainingHeader.total === openGaps.length,
+    `84_POZOSTALE_V23 “Otwarte / zablokowane” ${remainingHeader.total} vs open-gap rows ${openGaps.length}`,
+  );
+  check(
+    'SYNC_83_REMAINING_EQUALS_84',
+    casesRow.values.remaining === remainingHeader.total &&
+      GAP_ROLE_ORDER.every((role) => remainingHeader.byRole[role] === countedByRole[role]),
+    `83_SYNC_V23 “Pozostało” ${JSON.stringify({ total: casesRow.values.remaining, ...remainingHeader.byRole })} vs 84_POZOSTALE_V23 ${remainingHeader.total} and rows ${JSON.stringify({ total: openGaps.length, ...countedByRole })}`,
+  );
+
+  const casesByRole = {};
+  for (const row of sync.cases) casesByRole[row.values.role] = (casesByRole[row.values.role] ?? 0) + 1;
+  const roleRows = sync.summary.filter((row) => row !== casesRow);
+  const arithmetic = sync.summary.every((row) => row.values.before - row.values.closed === row.values.remaining);
+  const rolesMatch =
+    roleRows.every((row) => row.values.closed === (casesByRole[row.values.scope] ?? 0)) &&
+    Object.keys(casesByRole).every((role) => roleRows.some((row) => row.values.scope === role));
+  check(
+    'SYNC_83_SUMMARY_EQUALS_CASES',
+    casesRow.values.closed === sync.cases.length && arithmetic && rolesMatch,
+    `83_SYNC_V23 Przypadki ${casesRow.values.before} − ${casesRow.values.closed} = ${casesRow.values.remaining}; ${sync.cases.length} case rows by role ${JSON.stringify(casesByRole)} vs summary ${JSON.stringify(Object.fromEntries(roleRows.map((row) => [row.values.scope, row.values.closed])))}`,
+  );
+
+  const rowByKey = new Map(rows.map((row) => [`${row.country}|${row.slot}`, row]));
+  const checklistById = new Map(workbook.checklist.map((row) => [row.values.id, row]));
+  const caseProblems = [];
+  for (const entry of sync.cases) {
+    const row = rowByKey.get(countryRoleKey(entry.values.country, entry.values.role));
+    if (
+      !row ||
+      cleanText(row.selection.values.product) !== cleanText(entry.values.selectedProduct) ||
+      row.workbookKey !== entry.values.productKey
+    ) {
+      caseProblems.push(`${entry.values.id}: the active sheet names ${row ? `"${row.selection.values.product}" / ${row.workbookKey}` : 'no row'}`);
+    }
+    const ledger = checklistById.get(entry.values.id);
+    if (
+      !ledger ||
+      !/ZAMKNI/.test(String(ledger.values.state)) ||
+      iso2FromCountryCell(ledger.values.country) !== entry.values.country ||
+      ledger.values.role !== entry.values.role ||
+      cleanText(ledger.values.product) !== cleanText(entry.values.selectedProduct)
+    ) {
+      caseProblems.push(`${entry.values.id}: 27_CHECKLIST_AKTYWNA ${ledger ? `${ledger.values.state} / ${ledger.values.country} / ${ledger.values.product}` : 'has no row'}`);
+    }
+  }
+  check(
+    'SYNC_83_CASES_MATCH_ACTIVE_SHEETS',
+    caseProblems.length === 0,
+    caseProblems.length === 0
+      ? `${sync.cases.length} cases: selected product and workbook key equal the per-ingredient sheet; the 27_CHECKLIST_AKTYWNA row is closed for the same country, role and product`
+      : caseProblems.join('; '),
+  );
+
+  const gateIds = new Set(globalGates.map((gate) => gate.id));
+  const dependencies = workbook.remainingV23.dependencies.map((row) => row.values.id);
+  check(
+    'REMAINING_84_DEPENDENCIES_ARE_GLOBAL_GATES',
+    dependencies.length > 0 && dependencies.every((id) => gateIds.has(id)),
+    `84_POZOSTALE_V23 dependencies ${dependencies.join(', ')} ⊆ global gates ${[...gateIds].join(', ')}`,
+  );
+
+  const controls = workbook.controlsV23.rows;
+  const notPass = controls.filter((row) => row.values.result !== 'PASS');
+  const numbered = controls.every((row, index) => row.values.number === index + 1);
+  check(
+    'CONTROLS_88_ALL_PASS',
+    controls.length > 0 && notPass.length === 0 && numbered,
+    `88_KONTROLA_V23: ${controls.length} controls, ${controls.length - notPass.length} PASS${notPass.length > 0 ? `; not PASS: ${notPass.map((row) => row.values.number).join(', ')}` : ''}${numbered ? '' : '; numbering is not 1…n'}`,
+  );
+
+  const sourceById = new Map(workbook.sources.map((row) => [row.values.id, row]));
+  const evidenceProblems = workbook.evidenceV23.rows
+    .filter((row) => cleanText(sourceById.get(row.values.id)?.values.url) !== cleanText(row.values.url))
+    .map((row) => row.values.id);
+  check(
+    'EVIDENCE_86_IN_06_ZRODLA',
+    evidenceProblems.length === 0,
+    `${workbook.evidenceV23.rows.length} rows of 86_DOWODY_V23 appear in 06_ZRODLA with the same reference${evidenceProblems.length > 0 ? `; missing or different: ${evidenceProblems.join(', ')}` : ''}`,
+  );
+
+  const us = rowByKey.get('US|STABILIZER');
+  const usField = (name) => workbook.usTaraV23.fields.find((row) => row.values.field === name)?.values.value ?? null;
+  const expected = {
+    energyKcal: usField('Energia'),
+    fat: usField('Tłuszcz'),
+    saturatedFat: usField('Nasycone'),
+    carbohydrate: usField('Total carbohydrate'),
+    sugars: usField('Total sugars'),
+    protein: usField('Białko'),
+    salt: usField('Sól'),
+    fibre: usField('Dietary Fiber (2016)'),
+  };
+  const pin = String(usField('PIN / SKU') ?? '');
+  const usProblems = [];
+  if (!us) usProblems.push('no US STABILIZER row');
+  else {
+    for (const [field, value] of Object.entries(expected)) {
+      if (us.selection.values[field] !== value) usProblems.push(`${field}: 85=${value} 23=${us.selection.values[field]}`);
+    }
+    if (us.nutrition.carbohydrateConvention !== 'US_TOTAL_CARBOHYDRATE_NDC') usProblems.push(`convention ${us.nutrition.carbohydrateConvention}`);
+    if (!pin || !String(us.fields.skuText ?? '').includes(pin)) usProblems.push(`PIN ${pin || '—'} not in the SKU cell`);
+  }
+  check(
+    'USA_TARA_85_EQUALS_23',
+    usProblems.length === 0,
+    usProblems.length === 0
+      ? `85_USA_TARA_V23 ${JSON.stringify(expected)} equal 23_TARA_75 US; convention US_TOTAL_CARBOHYDRATE_NDC; PIN ${pin}`
+      : usProblems.join('; '),
+  );
+
+  const selectionByKey = new Map(selections.map((selection) => [selection.selectionKey, selection]));
+  const productByKey = new Map(products.map((product) => [product.productKey, product]));
+  const leadHits = alternatives.filter((alternative) => {
+    const selection = selectionByKey.get(alternative.selectedSelectionKey);
+    const product = productByKey.get(selection?.productKey);
+    const codeKey = /^\d{8,14}$/.test(String(alternative.code ?? '')) ? gtinComparisonKey(alternative.code) : null;
+    const sameCode = Boolean(codeKey && product?.identity.gtin && gtinComparisonKey(product.identity.gtin) === codeKey);
+    const name = foldForComparison(alternative.name);
+    const sameName = name !== '' && (name === foldForComparison(selection?.localName) || name === foldForComparison(product?.exactName));
+    return sameCode || sameName;
+  });
+  check(
+    'ALTERNATIVES_ARE_NOT_V23_SELECTIONS',
+    leadHits.length === 0,
+    `${alternatives.length} alternative leads (39_SYNC_V12, 34_PRODUKTY_DE_AT) vs the v23 selections they point at: ${leadHits.length === 0 ? 'none has the selected GTIN or name' : leadHits.map((entry) => `${entry.country}/${entry.slot} ${entry.name}`).join('; ')}`,
+  );
+
+  const statusCounts = {};
+  const statusProblems = [];
+  for (const row of workbook.coverage) {
+    const status = row.values.status;
+    statusCounts[status] = (statusCounts[status] ?? 0) + 1;
+    if (!V23_KNOWN_STATUSES.includes(status)) statusProblems.push(`${row.ref}: unknown status ${status}`);
+    if ((status === 'READY_PI') !== (row.values.role === 'SUCROSE')) statusProblems.push(`${row.ref}: ${status} for ${row.values.role}`);
+  }
+  for (const row of rows.filter((entry) => entry.coverage.values.status === 'READY_PR')) {
+    const product = products.find((entry) => entry._rows.includes(row));
+    if (product?.catalog.decision !== 'REUSE_EXISTING_PR' || product.catalog.existingPrIng !== row.coverage.values.finalPrIng) {
+      statusProblems.push(`${row.coverage.ref}: READY_PR ${row.coverage.values.finalPrIng} but catalog ${product?.catalog.decision} ${product?.catalog.existingPrIng}`);
+    }
+  }
+  check(
+    'COVERAGE_04_V23_STATUSES',
+    statusProblems.length === 0,
+    statusProblems.length === 0
+      ? `04_POKRYCIE_PR statuses ${JSON.stringify(Object.fromEntries(Object.entries(statusCounts).sort((a, b) => compareText(a[0], b[0]))))}; READY_PI only for SUCROSE; READY_PR only on the reused existing PR-ING`
+      : statusProblems.join('; '),
+  );
+}
+
+export const V23_REGISTRY_PROFILE = Object.freeze({
+  label: 'v23',
+  registryId: 'GELATO_BASE_V23',
+  namespace: 'V23',
+  workbook: V23_WORKBOOK,
+  sheetsUsed: sheetsUsedByV23,
+  authority: Object.freeze([
+    '83_SYNC_V23 (cases closed in v23) and 84_POZOSTALE_V23 (open/blocked count, global dependencies) — the current trail — applied on top of 11_MLEKO_75, 14_SMIETANKA_75, 17_PROSZEK_75, 20_DEKSTROZA_75, 23_TARA_75',
+    '13/15/18/21/24 *_PRZELICZENIA: label basis, portions, estimated-field lists; TARA carbohydrate per the convention in 23_TARA_75!AD, fibre as declared per market',
+    '04_POKRYCIE_PR (v23 status and activation condition per selection), 05_PR_ING_ARTYKULY: coverage matrix and article records (cross-checked)',
+    '27: case ledger with the latest per-version decision (v11…v23); 85: US TARA exact values (cross-checked); 86 → 06: sources and audit dates; 88: owner controls (all PASS required)',
+    '34_PRODUKTY_DE_AT and 39_SYNC_V12 (history): alternative leads only; 36/37/40 and the v13–v22 trail sheets are history, not re-applied',
+  ]),
+  trail: Object.freeze({
+    gapRows: (workbook) => workbook.remainingV23.rows,
+    prepare: (workbook) => ({
+      syncDate: v23CasesRow(workbook)?.values.date ?? null,
+      caseByKey: indexBy(workbook.syncV23.cases, (row) => {
+        if (!SLOT_BY_WORKBOOK_ROLE[row.values.role]) fail(`unknown role ${row.values.role} in ${row.ref}`);
+        return countryRoleKey(row.values.country, row.values.role);
+      }),
+    }),
+    closedCase: (entry) => ({
+      caseId: entry.values.id,
+      state: entry.values.state,
+      latestDecision: latestChecklistDecision(entry),
+      sourceDate: entry.values.sourceDate,
+      sourceRef: entry.ref,
+    }),
+    selectionFields: (prepared, { key, sourceIdFor }) => {
+      const row = prepared.caseByKey.get(key) ?? null;
+      return {
+        syncV23: row
+          ? {
+              caseId: row.values.id,
+              previousProduct: row.values.previousProduct,
+              selectedProduct: row.values.selectedProduct,
+              workbookProductKey: row.values.productKey,
+              result: row.values.result,
+              sourceIds: uniqueSorted(extractUrls(row.values.sources).map(sourceIdFor)),
+              date: prepared.syncDate,
+              sourceRef: row.ref,
+            }
+          : null,
+      };
+    },
+    evidenceDates: (selection) =>
+      [
+        selection.syncV23?.date,
+        ...selection.closedCases.flatMap((entry) => [entry.sourceDate, entry.latestDecision?.date]),
+      ]
+        .map(isoDate)
+        .filter(Boolean),
+    remainingHeader: (workbook) => {
+      const byScope = new Map(workbook.syncV23.summary.map((row) => [row.values.scope, row]));
+      const byRole = Object.fromEntries(
+        GAP_ROLE_ORDER.map((role) => {
+          const row = byScope.get(role);
+          if (!row) fail(`83_SYNC_V23 has no summary row for ${role}`);
+          return [role, row.values.remaining];
+        }),
+      );
+      return { total: workbook.remainingV23.total, byRole };
+    },
+    checks: v23TrailChecks,
+    sourceFields: (workbook, { sourceIdFor }) => {
+      const sync = workbook.syncV23;
+      const casesRow = v23CasesRow(workbook);
+      const remaining = workbook.remainingV23;
+      const controls = workbook.controlsV23.rows;
+      return {
+        v23SyncDate: casesRow.values.date,
+        casesBeforeV23: casesRow.values.before,
+        casesClosedInV23: casesRow.values.closed,
+        openCasesV23: remaining.total,
+        syncPurpose: sync.purpose,
+        syncSummary: sync.summary.map((row) => ({ ...row.values, sourceRef: row.ref })),
+        syncNotes: sync.notes,
+        syncCasesRef: sync.casesRef,
+        remainingNote: remaining.note,
+        remainingSummary: remaining.summary.map((row) => ({ ...row.values, sourceRef: row.ref })),
+        globalDependencies: remaining.dependencies.map((row) => ({ ...row.values, sourceRef: row.ref })),
+        ownerControls: {
+          ref: workbook.controlsV23.ref,
+          total: controls.length,
+          pass: controls.filter((row) => row.values.result === 'PASS').length,
+          note: workbook.controlsV23.note,
+        },
+        evidenceV23: workbook.evidenceV23.rows.map((row) => {
+          const urls = extractUrls(row.values.url);
+          return {
+            id: row.values.id,
+            area: row.values.area,
+            name: row.values.name,
+            scope: row.values.scope,
+            evidenceType: row.values.evidenceType,
+            sourceIds: uniqueSorted(urls.map(sourceIdFor)),
+            reference: urls.length === 0 ? row.values.url : null,
+            auditDate: row.values.auditDate,
+            limitation: row.values.limitation,
+            sourceRef: row.ref,
+          };
+        }),
+        usTaraExactValues: {
+          ref: workbook.usTaraV23.ref,
+          title: workbook.usTaraV23.title,
+          note: workbook.usTaraV23.note,
+        },
+        scopeRules: workbook.rules.map((row) => ({
+          number: row.values.number,
+          rule: row.values.rule,
+          meaning: row.values.meaning,
+          status: row.values.status,
+          sourceRef: row.ref,
+        })),
+      };
+    },
+  }),
+  notes: ({ workbook }) => ({
+    sourceTable: SOURCE_TABLE_NOTE,
+    textTable: `\`texts\` holds workbook notes longer than ${TEXT_INLINE_LIMIT} characters once, keyed TXT-<first 10 hex of sha256(text)>; such values appear as the id in selections.notes / availabilityEvidence / syncV23 / closedCases and in products.technicalSpec / crossRowDifferences.`,
+    coverageMatrixStatus: `selections[].workbook.coverageMatrixStatus is the current v23 04_POKRYCIE_PR status (${V23_KNOWN_STATUSES.join(', ')}) and selections[].notes.activationCondition its activation condition (workbook.activationCondition for SUCROSE). A status other than ${[...V23_ACTIVATABLE_STATUSES].join(' / ')} adds the route blocker WORKBOOK_STATUS:<status>; the selection itself stays closed (84_POZOSTALE_V23 lists no open case).`,
+    selectionTrail:
+      'selections[].syncV23 is the 83_SYNC_V23 case that changed the selection in v23 (null where v23 did not change it); selections[].closedCases[].latestDecision is the newest per-version decision of that 27_CHECKLIST_AKTYWNA case (v11…v23).',
+    historicalTrail:
+      'The v11/v12 trail sheets (36_DOWODY_V11, 37_ZMIANY_V11, 39_SYNC_V12, 40_POZOSTALE_V12) and the v13–v22 sync sheets stay in the workbook as history and are not re-applied to v23 selections (the v12 registry keeps those records). 39_SYNC_V12 and 34_PRODUKTY_DE_AT are read only for alternative leads, each checked not to be the v23 selection.',
+    carbohydrateConvention: `products[].nutrition.carbohydrateConvention (STABILIZER) is 23_TARA_75!AD; v23 declares carbohydrate per that convention and fibre as declared per market. A convention other than ${AVAILABLE_CARBOHYDRATE} (US exact TDS: US_TOTAL_CARBOHYDRATE_NDC — total carbohydrate including non-digestible carbohydrate, dietary fibre 0 under the US definition) adds CARBOHYDRATE_CONVENTION:<convention> to readiness and route blockers, so those values are never sent as available carbohydrate.`,
+    crossMarketConflict:
+      'Where one GTIN is listed in several workbook rows (v23 lists some products once per market) and those rows disagree on identity-relevant facts (nutrient values beyond 1e-6, estimated fields, pack, brand text), every route of that identity carries CROSS_MARKET_CONFLICT:<fields>: the product would otherwise carry one market’s label data on another market’s route. products[].crossRowDifferences shows the values per market.',
+    engineRoutability: ENGINE_ROUTABILITY_NOTE,
+    globalGatesOpenForEverySelection: workbook.remainingV23.dependencies.map((row) => row.values.id),
+  }),
+  universalReviewRequired: () => [
+    {
+      field: 'labelLanguage',
+      reason: 'The v23 workbook records no label language / locale for any product; left null.',
+    },
+    { field: 'manufacturerOrSupplier', reason: MANUFACTURER_REVIEW_REASON },
+    {
+      field: 'lot / CoA',
+      reason: 'Global dependency R8-G02 (84_POZOSTALE_V23): product and lot documentation remain open for every product; a TDS is not a lot CoA.',
+    },
+    {
+      field: 'delivery',
+      reason: 'Transport was excluded as a closing condition by the user on 2026-09-12 (08_ZASADY rule 14, 86_DOWODY_V23 V23-S06); delivery is confirmed for no market.',
+    },
+  ],
+  readinessBlockers: (product) => carbohydrateConventionBlockers(product),
+  routeBlockers: ({ product, row }) => {
+    const status = row.coverage.values.status;
+    return [
+      ...(V23_ACTIVATABLE_STATUSES.has(status) ? [] : [`WORKBOOK_STATUS:${status}`]),
+      ...carbohydrateConventionBlockers(product),
+      ...crossMarketConflictBlockers(product),
+    ];
+  },
+  extraCounts: ({ selections, exactSelections, countBy }) => ({
+    workbookStatusBySlot: Object.fromEntries(
+      SLOT_ORDER.map((slot) => [
+        slot,
+        countBy(
+          selections.filter((selection) => selection.slot === slot),
+          (selection) => selection.workbook.coverageMatrixStatus,
+        ),
+      ]),
+    ),
+    routesHeldByWorkbookStatus: exactSelections.filter((selection) =>
+      selection.route.blockers.some((blocker) => blocker.startsWith('WORKBOOK_STATUS:')),
+    ).length,
+    routesHeldByCarbohydrateConvention: exactSelections.filter((selection) =>
+      selection.route.blockers.some((blocker) => blocker.startsWith('CARBOHYDRATE_CONVENTION:')),
+    ).length,
+    routesHeldByCrossMarketConflict: exactSelections.filter((selection) =>
+      selection.route.blockers.some((blocker) => blocker.startsWith('CROSS_MARKET_CONFLICT:')),
+    ).length,
+  }),
+});
+
+/**
+ * One GTIN, several workbook rows (v23 lists some products once per market)
+ * that disagree on identity-relevant facts — nutrient values beyond 1e-6,
+ * estimated fields, pack or brand text. Writing that product would put one
+ * market's label data on another market's route, so the identity gets no DB
+ * route until the workbook rows agree. (v12 has no such identity.)
+ */
+function crossMarketConflictBlockers(product) {
+  const fields = [];
+  for (const difference of product.crossRowDifferences) {
+    if (!IDENTITY_RELEVANT_DIFFERENCES.has(difference.field)) continue;
+    if (difference.field !== 'nutrition.workingProfile') {
+      fields.push(difference.field);
+      continue;
+    }
+    const keys = uniqueSorted(difference.values.flatMap((entry) => Object.keys(entry.value ?? {})));
+    const differing = keys.filter((key) => {
+      const values = difference.values.map((entry) => entry.value?.[key] ?? null);
+      if (values.every((value) => typeof value === 'number')) return Math.max(...values) - Math.min(...values) > 1e-6;
+      return new Set(values.map((value) => JSON.stringify(value))).size > 1;
+    });
+    fields.push(...differing.map((key) => `nutrition.${key}`));
+  }
+  return fields.length > 0 ? [`CROSS_MARKET_CONFLICT:${fields.join(',')}`] : [];
 }

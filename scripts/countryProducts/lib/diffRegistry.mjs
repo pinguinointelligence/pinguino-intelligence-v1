@@ -2,7 +2,13 @@
 // the next owner workbook is imported as a delta instead of a redesign.
 //
 // Matching keys: products by productKey, selections by selectionKey
-// (V12:<ISO2>:<SLOT>), open gaps by workbook case id.
+// (<NS>:<ISO2>:<SLOT>), open gaps by workbook case id. Registries of different
+// workbook versions use different proposal namespaces (V12 → V23); then
+// products and selections are matched on the namespace-free part of the key —
+// "V12:AT:MILK" ↔ "V23:AT:MILK", "V12:MILK:GTIN-0…" ↔ "V23:MILK:GTIN-0…" —
+// and entries name that part. Product switches (from/to) and the added /
+// removed product lists keep the full keys of their own registry. With one
+// namespace on both sides nothing is stripped.
 
 export const DIFF_SCHEMA = 'gellatti.country-products.gelato-base.registry-diff/v1';
 
@@ -59,15 +65,31 @@ function sameListing(oldProduct, newProduct) {
   );
 }
 
+/** Key normaliser: strips "<namespace>:" only when the two registries use different namespaces. */
+function namespaceFree(namespace, crossNamespace) {
+  return (key) =>
+    crossNamespace && namespace && typeof key === 'string' && key.startsWith(`${namespace}:`)
+      ? key.slice(namespace.length + 1)
+      : key;
+}
+
+const KEY_MATCHING_RULE =
+  'Products and selections are matched on the key without its proposal namespace (V12:AT:MILK ↔ V23:AT:MILK; V12:MILK:GTIN-… ↔ V23:MILK:GTIN-…); open gaps by workbook case id. Entries name the namespace-free key; product switches and added/removed products show the full keys of their own registry.';
+
 /**
  * @param {object} oldRegistry
  * @param {object} newRegistry
  */
 export function diffRegistries(oldRegistry, newRegistry) {
-  const oldProducts = byKey(oldRegistry.products, (product) => product.productKey);
-  const newProducts = byKey(newRegistry.products, (product) => product.productKey);
-  const oldSelections = byKey(oldRegistry.selections, (selection) => selection.selectionKey);
-  const newSelections = byKey(newRegistry.selections, (selection) => selection.selectionKey);
+  const fromNamespace = oldRegistry.proposalNamespace ?? null;
+  const toNamespace = newRegistry.proposalNamespace ?? null;
+  const crossNamespace = fromNamespace !== toNamespace;
+  const oldKey = namespaceFree(fromNamespace, crossNamespace);
+  const newKey = namespaceFree(toNamespace, crossNamespace);
+  const oldProducts = byKey(oldRegistry.products, (product) => oldKey(product.productKey));
+  const newProducts = byKey(newRegistry.products, (product) => newKey(product.productKey));
+  const oldSelections = byKey(oldRegistry.selections, (selection) => oldKey(selection.selectionKey));
+  const newSelections = byKey(newRegistry.selections, (selection) => newKey(selection.selectionKey));
   const oldGaps = byKey(oldRegistry.openGaps, (gap) => gap.id);
   const newGaps = byKey(newRegistry.openGaps, (gap) => gap.id);
 
@@ -80,11 +102,12 @@ export function diffRegistries(oldRegistry, newRegistry) {
   // Selections: completion, verification, availability and identity switches.
   for (const [selectionKey, next] of newSelections) {
     const previous = oldSelections.get(selectionKey);
+    const nextProductKey = newKey(next.productKey);
     if (!previous) {
       if (next.selectionState === CLOSED) {
         newlyCompletedProducts.push({
           selectionKey,
-          productKey: next.productKey,
+          productKey: nextProductKey,
           kind: 'NEW_SELECTION_CLOSED',
           from: null,
           to: next.selectionState,
@@ -92,9 +115,10 @@ export function diffRegistries(oldRegistry, newRegistry) {
       }
       continue;
     }
-    if (previous.productKey !== next.productKey) {
-      const oldProduct = oldProducts.get(previous.productKey) ?? null;
-      const newProduct = newProducts.get(next.productKey) ?? null;
+    const previousProductKey = oldKey(previous.productKey);
+    if (previousProductKey !== nextProductKey) {
+      const oldProduct = oldProducts.get(previousProductKey) ?? null;
+      const newProduct = newProducts.get(nextProductKey) ?? null;
       if (
         sameListing(oldProduct, newProduct) &&
         !oldProduct?.identity?.gtin &&
@@ -102,7 +126,7 @@ export function diffRegistries(oldRegistry, newRegistry) {
       ) {
         newlyCompletedEvidence.push({
           selectionKey,
-          productKey: next.productKey,
+          productKey: nextProductKey,
           kind: 'IDENTIFIER_COMPLETED',
           field: 'identity.gtin',
           from: previous.productKey,
@@ -120,7 +144,7 @@ export function diffRegistries(oldRegistry, newRegistry) {
     if (previous.selectionState !== next.selectionState) {
       const entry = {
         selectionKey,
-        productKey: next.productKey,
+        productKey: nextProductKey,
         kind: 'SELECTION_STATE_CHANGED',
         from: previous.selectionState,
         to: next.selectionState,
@@ -134,7 +158,7 @@ export function diffRegistries(oldRegistry, newRegistry) {
     if (!same(previousEvidence, nextEvidence)) {
       changedAvailability.push({
         selectionKey,
-        productKey: next.productKey,
+        productKey: nextProductKey,
         kind: 'AVAILABILITY_EVIDENCE_CHANGED',
         from: previousEvidence,
         to: nextEvidence,
@@ -143,7 +167,7 @@ export function diffRegistries(oldRegistry, newRegistry) {
     if ((previous.offerChannel ?? null) !== (next.offerChannel ?? null)) {
       changedAvailability.push({
         selectionKey,
-        productKey: next.productKey,
+        productKey: nextProductKey,
         kind: 'OFFER_CHANNEL_CHANGED',
         from: previous.offerChannel ?? null,
         to: next.offerChannel ?? null,
@@ -152,7 +176,7 @@ export function diffRegistries(oldRegistry, newRegistry) {
     if ((previous.route?.decision ?? null) !== (next.route?.decision ?? null)) {
       changedAvailability.push({
         selectionKey,
-        productKey: next.productKey,
+        productKey: nextProductKey,
         kind: 'ROUTE_DECISION_CHANGED',
         from: previous.route?.decision ?? null,
         to: next.route?.decision ?? null,
@@ -268,23 +292,29 @@ export function diffRegistries(oldRegistry, newRegistry) {
   for (const [gapId, previous] of oldGaps) {
     const next = newGaps.get(gapId);
     if (!next) {
-      openGapsClosed.push({ gapId, kind: 'GAP_CLOSED', selectionKey: previous.selectionKey, from: previous.state, to: null });
+      openGapsClosed.push({ gapId, kind: 'GAP_CLOSED', selectionKey: oldKey(previous.selectionKey), from: previous.state, to: null });
       continue;
     }
     for (const field of ['state', 'conditions', 'missing', 'product']) {
       if (!same(previous[field], next[field])) {
-        changedVerification.push({ gapId, selectionKey: next.selectionKey, kind: 'GAP_FIELD_CHANGED', field, from: previous[field] ?? null, to: next[field] ?? null });
+        changedVerification.push({ gapId, selectionKey: newKey(next.selectionKey), kind: 'GAP_FIELD_CHANGED', field, from: previous[field] ?? null, to: next[field] ?? null });
       }
     }
   }
   for (const [gapId, next] of newGaps) {
     if (!oldGaps.has(gapId)) {
-      openGapsOpened.push({ gapId, kind: 'GAP_OPENED', selectionKey: next.selectionKey, from: null, to: next.state });
+      openGapsOpened.push({ gapId, kind: 'GAP_OPENED', selectionKey: newKey(next.selectionKey), from: null, to: next.state });
     }
   }
 
-  const addedProducts = [...newProducts.keys()].filter((key) => !oldProducts.has(key)).sort(compare);
-  const removedProducts = [...oldProducts.keys()].filter((key) => !newProducts.has(key)).sort(compare);
+  const addedProducts = [...newProducts.entries()]
+    .filter(([key]) => !oldProducts.has(key))
+    .map(([, product]) => product.productKey)
+    .sort(compare);
+  const removedProducts = [...oldProducts.entries()]
+    .filter(([key]) => !newProducts.has(key))
+    .map(([, product]) => product.productKey)
+    .sort(compare);
 
   const sections = {
     newlyCompletedProducts: sortEntries(newlyCompletedProducts),
@@ -293,6 +323,10 @@ export function diffRegistries(oldRegistry, newRegistry) {
     changedAvailability: sortEntries(changedAvailability),
     changedExactIdentity: sortEntries(changedExactIdentity),
   };
+  const entriesByKind = {};
+  for (const entry of [...Object.values(sections).flat(), ...openGapsClosed, ...openGapsOpened]) {
+    entriesByKind[entry.kind] = (entriesByKind[entry.kind] ?? 0) + 1;
+  }
   return {
     schema: DIFF_SCHEMA,
     from: {
@@ -304,6 +338,12 @@ export function diffRegistries(oldRegistry, newRegistry) {
       registryId: newRegistry.registryId ?? null,
       workbook: newRegistry.source?.workbook ?? null,
       sha256: newRegistry.source?.sha256 ?? null,
+    },
+    keyMatching: {
+      fromNamespace,
+      toNamespace,
+      namespaceFree: crossNamespace,
+      rule: crossNamespace ? KEY_MATCHING_RULE : 'Same proposal namespace on both sides: products and selections are matched on their full keys; open gaps by workbook case id.',
     },
     ...sections,
     addedProducts,
@@ -321,6 +361,7 @@ export function diffRegistries(oldRegistry, newRegistry) {
       openGapsClosed: openGapsClosed.length,
       openGapsOpened: openGapsOpened.length,
     },
+    entriesByKind: Object.fromEntries(Object.entries(entriesByKind).sort((a, b) => compare(a[0], b[0]))),
   };
 }
 
@@ -330,18 +371,30 @@ const cell = (value) => {
   return text.replace(/\|/g, '\\|').replace(/\n/g, ' ');
 };
 
-/** Markdown rendering of diffRegistries(); deterministic for identical input. */
-export function renderDiffMarkdown(diff) {
+/**
+ * Markdown rendering of diffRegistries(); deterministic for identical input.
+ * `options.regenerate` names the command that regenerates a committed report.
+ */
+export function renderDiffMarkdown(diff, options = {}) {
   const lines = [
     '# GELATO base country-product registry — delta',
     '',
     `From: ${cell(diff.from.workbook)} (${cell(diff.from.sha256)})`,
     `To: ${cell(diff.to.workbook)} (${cell(diff.to.sha256)})`,
+  ];
+  if (options.regenerate) lines.push('', `Regenerate: \`${options.regenerate}\` (\`--check\` fails on drift).`);
+  if (diff.keyMatching?.namespaceFree) {
+    lines.push('', `Key matching (${cell(diff.keyMatching.fromNamespace)} → ${cell(diff.keyMatching.toNamespace)}): ${diff.keyMatching.rule}`);
+  }
+  lines.push(
     '',
     '| Section | Entries |',
     '| --- | ---: |',
     ...Object.entries(diff.counts).map(([key, value]) => `| ${key} | ${value} |`),
-  ];
+  );
+  if (diff.entriesByKind && Object.keys(diff.entriesByKind).length > 0) {
+    lines.push('', '| Entry kind | Entries |', '| --- | ---: |', ...Object.entries(diff.entriesByKind).map(([key, value]) => `| ${key} | ${value} |`));
+  }
   const section = (title, entries) => {
     lines.push('', `## ${title}`, '');
     if (entries.length === 0) {
