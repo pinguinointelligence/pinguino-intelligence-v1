@@ -156,4 +156,41 @@ describe('HOME manual grams auto-lock', () => {
 
     expectExact(before - 1);
   });
+
+  it('MGAL-HOME-04 Crown and exact Lock stay independently visible and mutable', async () => {
+    const before = currentLine();
+    act(() => useRecipeStore.getState().setLockType(before.id, 'main', 'home'));
+    await renderSection();
+
+    const control = await openEditor();
+    const plus = control.querySelector<HTMLButtonElement>('button[aria-label$="zwiększ"]')!;
+    await act(async () => plus.click());
+    await confirm();
+
+    expect(currentLine()).toMatchObject({
+      planned_grams: before.planned_grams + 1,
+      lock_type: 'main',
+      grams_constraint: { grams: before.planned_grams + 1 },
+    });
+
+    await renderSection();
+    const crown = host.querySelector<HTMLButtonElement>(`[data-testid="home-crown-${before.id}"]`);
+    const amount = host.querySelector<HTMLElement>(`[data-testid="home-amount-${before.id}"]`);
+    expect(crown?.getAttribute('aria-pressed')).toBe('true');
+    expect(amount?.dataset.locked).toBe('true');
+
+    const menu = host.querySelector<HTMLButtonElement>('[data-testid="home-row-menu"]')!;
+    await act(async () => menu.click());
+    const unlock = host.querySelector<HTMLButtonElement>(
+      `[data-testid="home-row-toggle-lock-${before.id}"]`,
+    )!;
+    expect(unlock.textContent).toContain('Odblokuj ilość');
+    await act(async () => unlock.click());
+
+    expect(currentLine()).toMatchObject({
+      planned_grams: before.planned_grams + 1,
+      lock_type: 'main',
+    });
+    expect(currentLine().grams_constraint).toBeUndefined();
+  });
 });

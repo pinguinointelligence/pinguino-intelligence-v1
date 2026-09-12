@@ -62,11 +62,9 @@ describe('PACKAGE 2A — HOME wiring', () => {
 
   it("HOME's padlock names HOME's surface, so a lock never ends AUTO", () => {
     const homeSurface =
-      /setLockType\(\s*item\.id,\s*item\.lock_type === 'grams' \? 'unlocked' : 'grams',\s*'home',?\s*\)/g;
+      /setGramLock\(\s*item\.id,\s*(?:gramsLocked|hasExactGramLock\(item\)) \? null : item\.planned_grams,?\s*\)/g;
     expect(section.match(homeSurface)?.length).toBe(2);
-    expect(section).not.toMatch(
-      /setLockType\(\s*item\.id,\s*item\.lock_type === 'grams' \? 'unlocked' : 'grams'\s*\)/,
-    );
+    expect(section).not.toMatch(/setLockType\(\s*item\.id,[^)]*'grams'/);
   });
 
   it('in MANUAL the intent/scanner door makes no 0 g BASE line — the page asks the amount', () => {

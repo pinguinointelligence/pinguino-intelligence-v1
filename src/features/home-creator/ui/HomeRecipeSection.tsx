@@ -57,6 +57,10 @@ const SWEETNESS_LABEL: Readonly<Record<HomeSweetness, string>> = {
   sweeter: homeCreatorCopy.sweetness.sweeter,
 };
 
+/** Crown/Main is a role, while an exact-gram constraint is an independent padlock. */
+const hasExactGramLock = (item: RecipeItem): boolean =>
+  item.grams_constraint !== undefined || item.lock_type === 'grams';
+
 /**
  * OWNER OVERRIDE 2026-09-02 — the amount.
  *
@@ -318,16 +322,17 @@ export function HomeRecipeSection({
       : (() => {
           const item = items.find((line) => line.id === editingLineId);
           if (item) {
+            const gramsLocked = hasExactGramLock(item);
             return {
               name: item.ingredient.name,
               grams: item.planned_grams,
-              locked: item.lock_type === 'grams',
+              locked: gramsLocked,
               onToggleLock: () =>
-                // PACKAGE 2A: HOME's padlock names HOME's surface. A lock is not a
-                // crown choice, so it never ends AUTO or reveals a crown.
+                // The padlock owns only the exact constraint. `setGramLock` keeps a
+                // simultaneous Crown/Main role intact in both directions.
                 useRecipeStore
                   .getState()
-                  .setLockType(item.id, item.lock_type === 'grams' ? 'unlocked' : 'grams', 'home'),
+                  .setGramLock(item.id, gramsLocked ? null : item.planned_grams),
               commit: (next: number) => useRecipeStore.getState().setExactGrams(item.id, next),
             };
           }
@@ -487,19 +492,19 @@ export function HomeRecipeSection({
             <HomeRowAmount
               lineId={item.id}
               grams={item.planned_grams}
-              locked={item.lock_type === 'grams'}
+              locked={hasExactGramLock(item)}
               canSeeGrams={canSeeGrams}
             />
             <RowMenu
               lineId={item.id}
-              locked={item.lock_type === 'grams'}
+              locked={hasExactGramLock(item)}
               onChangeAmount={() => setEditingLineId(item.id)}
               onToggleLock={() =>
-                // PACKAGE 2A: HOME's padlock names HOME's surface. A lock is not a
-                // crown choice, so it never ends AUTO or reveals a crown.
+                // HOME's padlock mutates only the exact constraint; Crown is an
+                // independent role and remains untouched.
                 useRecipeStore
                   .getState()
-                  .setLockType(item.id, item.lock_type === 'grams' ? 'unlocked' : 'grams', 'home')
+                  .setGramLock(item.id, hasExactGramLock(item) ? null : item.planned_grams)
               }
               onReplace={() => requestBaseReplacement(item)}
               onRemove={() => onRemoveItem(item.id)}
