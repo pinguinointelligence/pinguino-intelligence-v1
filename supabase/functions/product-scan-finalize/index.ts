@@ -983,7 +983,10 @@ Deno.serve(async (request) => {
           ? `${finalPackage.netQuantity} ${finalPackage.unit}`
           : null),
       category: text(finalIdentity.category, 300),
-      description: recognitionEvidence.claims.join(' '),
+      // ProductSemanticEvidence already owns the scanner's optional claims and storage text as
+      // one nullable description. Reading a non-existent `claims` field here crashed every
+      // finalize request before the shared PR-ING binding could be persisted.
+      description: recognitionEvidence.description,
     },
     recognition,
     behavior,
