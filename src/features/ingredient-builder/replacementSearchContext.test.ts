@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { EngineIngredient } from '@/engine';
 import {
   createReplacementSearchLineContext,
+  isHardCompatibleReplacementCandidate,
   isCurrentReplacementIdentity,
 } from './replacementSearchContext';
 
@@ -132,5 +133,45 @@ describe('replacement search line context', () => {
     const pro = createReplacementSearchLineContext({ usageMode: 'PRO_REPLACE', ...common });
 
     expect({ ...home, usageMode: undefined }).toEqual({ ...pro, usageMode: undefined });
+  });
+
+  it('RSX-04 applies cream compatibility before recency or presentation filters', () => {
+    const context = createReplacementSearchLineContext({
+      usageMode: 'HOME_REPLACE',
+      lineId: 'line-cream',
+      ingredient: { ...banana, name: 'CREAM 30%', category: 'dairy' },
+      recipeProfile: 'sorbet',
+      currentRole: 'STANDARD',
+      processScope: 'BASE_FORMULATION',
+      temperatureC: -12,
+      formulationMode: 'optimal',
+      userFilters: { filter: 'dairy', subfilter: 'all', family: 'cream' },
+      plannedGrams: 130,
+      actualGrams: null,
+      lockType: 'grams',
+    });
+    const candidate = (overrides: Partial<Parameters<typeof isHardCompatibleReplacementCandidate>[1]>) => ({
+      displayName: 'CREAM 36%',
+      category: 'dairy',
+      productForm: 'cream',
+      usableInBase: true,
+      usableAsTopping: true,
+      mainAllowed: true,
+      ...overrides,
+    });
+
+    expect(isHardCompatibleReplacementCandidate(context, candidate({}))).toBe(true);
+    expect(
+      isHardCompatibleReplacementCandidate(
+        context,
+        candidate({ displayName: 'BANANA · Fabbri Cream', category: 'fruit', productForm: 'paste' }),
+      ),
+    ).toBe(false);
+    expect(
+      isHardCompatibleReplacementCandidate(
+        context,
+        candidate({ displayName: 'AMARETTO CREAM', category: 'alcohol', productForm: 'liqueur' }),
+      ),
+    ).toBe(false);
   });
 });

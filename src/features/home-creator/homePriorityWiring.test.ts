@@ -76,7 +76,7 @@ describe('PACKAGE 2A — HOME wiring', () => {
     expect(intent).toContain("return { chipId: key, status: 'needs_amount', ingredient };");
     expect(page).toContain('askAmountFor(await intentIngredients.addResolvedChip(chip))');
     expect(page).toContain('intentIngredients.addResolvedChip(resolved).then(askAmountFor)');
-    expect(page).toContain('intentIngredients.addScannedProduct(product.id).then(askAmountFor)');
+    expect(page).toContain('intentIngredients.addScannedProduct(product).then(askAmountFor)');
     expect(page).toContain(
       'setPendingAdd({ ingredient: outcome.ingredient, behavior: null, recommendedDose: null })',
     );

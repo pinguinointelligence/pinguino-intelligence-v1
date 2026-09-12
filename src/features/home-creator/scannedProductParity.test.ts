@@ -51,15 +51,22 @@ describe('a scanned product enters through the typed-ingredient door', () => {
     expect(add).toContain('store.addTopping(');
   });
 
-  it('HOME hands the scanner nothing but catalogue ids', () => {
+  it('HOME hands the complete confirmed identity to the exact-product hydrator', () => {
     // ONE Canonical Scanner: HOME mounts the same component every other entry mounts.
     const handler = HOME_PAGE.slice(
       HOME_PAGE.indexOf('onResolved={'),
       HOME_PAGE.indexOf('onReturn={'),
     );
-    expect(handler).toContain('addScannedProduct(product.id)');
+    expect(handler).toContain('addScannedProduct(product)');
+    expect(handler).not.toContain('addScannedProduct(product.id)');
     // No grams, no roles, no engine call: the scanner does no formulation.
     expect(handler).not.toMatch(/planned_grams|setLockType|rebuild|engine/i);
+  });
+
+  it('does not feed an exact scanned product back through generic search', () => {
+    const scanned = HOOK.slice(HOOK.indexOf('const addScannedProduct'));
+    expect(scanned).toContain('hydrateExactScannedProduct(product)');
+    expect(scanned).not.toMatch(/search|resolveChipTerm/);
   });
 
   it('the scanner itself never touches the recipe store', () => {

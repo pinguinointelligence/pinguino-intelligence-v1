@@ -26,7 +26,12 @@ import { defaultHomeToppingGrams } from './homeToppingDefault';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { useHomeDraftStore, type IntentChip } from './homeDraftStore';
 import type { IntentRole } from './homeIntentParsing';
-import { hydrateIngredient, resolveChipTerm } from './homeIntentResolutionService';
+import {
+  hydrateExactScannedProduct,
+  hydrateIngredient,
+  resolveChipTerm,
+  type ExactScannedProductIdentity,
+} from './homeIntentResolutionService';
 
 export interface IntentIngredientOutcome {
   readonly chipId: string;
@@ -110,11 +115,13 @@ export function useHomeIntentIngredients() {
       role: IntentRole = 'ingredient',
       /** Confirmed amount. A line is never created at 0 g; see below. */
       grams = 0,
+      /** Already materialised exact identity, used by Scanner without re-resolution. */
+      exactIngredient?: EngineIngredient,
     ): Promise<IntentIngredientOutcome> => {
       if (handled.current.has(key)) return { chipId: key, status: 'duplicate' };
       handled.current.add(key);
 
-      const ingredient = await hydrateIngredient(productId);
+      const ingredient = exactIngredient ?? (await hydrateIngredient(productId));
       if (ingredient === null) return { chipId: key, status: 'unresolved' };
 
       if (role === 'topping') {
@@ -147,13 +154,21 @@ export function useHomeIntentIngredients() {
       // never reaches PRO, whose default keeps 0 g + Crown -> 1 g for every profile.
       useRecipeStore.getState().grantAutomaticPriority(added.lineId);
       const line = useRecipeStore.getState().items.find((item) => item.id === added.lineId);
-      if (line?.lock_type === 'main') {
-        return { chipId: key, status: line.planned_grams > 0 ? 'crowned' : 'needs_amount' };
+      if (line && line.planned_grams > 0) {
+        return { chipId: key, status: line.lock_type === 'main' ? 'crowned' : 'added' };
       }
-      return {
-        chipId: key,
-        status: line && line.planned_grams > 0 ? 'added' : 'needs_amount',
-      };
+      if (line) {
+        // The existing Main authority may correctly refuse this product (for
+        // example ordinary milk), and HOME's automatic Main is mass-neutral.
+        // Do not strand a hidden 0 g line: return the exact materialised identity
+        // to HOME's amount prompt, which will add it through the one confirmed-
+        // amount door.
+        useRecipeStore.getState().removeItem(line.id);
+        handled.current.delete(key);
+        return { chipId: key, status: 'needs_amount', ingredient };
+      }
+      handled.current.delete(key);
+      return { chipId: key, status: 'needs_amount', ingredient };
     },
     [],
   );
@@ -171,14 +186,16 @@ export function useHomeIntentIngredients() {
   /**
    * A product collected by the LIVE SCANNER.
    *
-   * It goes in through exactly the same door as a typed intent chip — same hydration,
-   * same `addIngredient`, same crown question — because a scanned product is not a
-   * different kind of ingredient. The scanner only supplies the identity; every rule
-   * about what that identity may do in a recipe stays where it already lives.
+   * It goes in through exactly the same add/crown door as a typed intent chip. Its
+   * hydration is exact-product hydration, because Scanner has already established a
+   * PR/PM identity and that identity must never be collapsed back to a generic PI.
    */
   const addScannedProduct = useCallback(
-    async (productId: string): Promise<IntentIngredientOutcome> =>
-      await addByProductId(`scan:${productId}`, productId),
+    async (product: ExactScannedProductIdentity): Promise<IntentIngredientOutcome> => {
+      const ingredient = await hydrateExactScannedProduct(product);
+      if (!ingredient) return { chipId: `scan:${product.id}`, status: 'unresolved' };
+      return await addByProductId(`scan:${product.id}`, product.id, 'ingredient', 0, ingredient);
+    },
     [addByProductId],
   );
 

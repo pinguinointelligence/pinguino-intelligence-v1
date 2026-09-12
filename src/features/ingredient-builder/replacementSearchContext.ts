@@ -9,6 +9,12 @@ import {
   type RecipeToppingIngredient,
 } from '@/features/recipe-composition/labelTopping';
 import type { ProductDiscoveryReplaceContext } from './canonicalProductDiscovery';
+import {
+  matchesProductDiscoveryFamily,
+  matchesProductDiscoveryFilter,
+  matchesProductDiscoverySubfilter,
+  type ProductDiscoveryMetadata,
+} from './canonicalProductDiscovery';
 
 export type CentralSearchUsageMode = 'HOME_ADD' | 'PRO_SEARCH' | 'HOME_REPLACE' | 'PRO_REPLACE';
 
@@ -47,6 +53,12 @@ export interface ReplacementSearchLineContext {
 }
 
 type ReplacementIngredient = EngineIngredient | RecipeToppingIngredient;
+
+export interface ReplacementCandidateFacts extends ProductDiscoveryMetadata {
+  usableInBase: boolean;
+  usableAsTopping: boolean;
+  mainAllowed?: boolean;
+}
 
 export function createReplacementSearchLineContext(input: {
   usageMode: ReplacementSearchLineContext['usageMode'];
@@ -125,4 +137,37 @@ export function isCurrentReplacementIdentity(
     current.canonicalIngredientId === candidate.mappedIngredientId ||
     current.canonicalIngredientId === candidate.id
   );
+}
+
+/**
+ * Hard compatibility gate for the complete replacement candidate set.
+ *
+ * The picker may change presentation filters, but those controls must never widen
+ * the line-derived family/form/scope contract. Ranking and recency run only after
+ * this predicate has accepted a candidate.
+ */
+export function isHardCompatibleReplacementCandidate(
+  context: ReplacementSearchLineContext,
+  candidate: ReplacementCandidateFacts,
+): boolean {
+  if (context.processScope === 'BASE_FORMULATION' && !candidate.usableInBase) return false;
+  if (context.processScope === 'POST_PROCESS_ADDON' && !candidate.usableAsTopping) return false;
+  if (context.currentRole === 'MAIN' && candidate.mainAllowed !== true) return false;
+
+  const required = context.userFilters;
+  if (required.family && !matchesProductDiscoveryFamily(candidate, required.family)) return false;
+  if (
+    required.filter !== 'all' &&
+    required.filter !== 'favorites' &&
+    !matchesProductDiscoveryFilter(candidate, required.filter)
+  ) {
+    return false;
+  }
+  if (
+    required.subfilter !== 'all' &&
+    !matchesProductDiscoverySubfilter(candidate, required.filter, required.subfilter)
+  ) {
+    return false;
+  }
+  return true;
 }

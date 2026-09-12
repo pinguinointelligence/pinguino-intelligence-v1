@@ -655,6 +655,69 @@ describe('ProductPickerPopover catalog presentation', () => {
     expect(document.querySelector('[data-picker-section="recent"]')).not.toBeNull();
   });
 
+  it('REPLACE-COMPAT-02 keeps the cream hard gate across the complete HOME/PRO list', async () => {
+    const filters = { filter: 'dairy', subfilter: 'all', family: 'cream' } as const;
+    mocks.hits = [
+      commercialHit({
+        id: 'cream-36',
+        mappedIngredientId: 'PI-CREAM-36',
+        displayName: 'CREAM 36%',
+        canonicalFamily: 'cream',
+        category: 'dairy',
+        productForm: 'cream',
+        recentlyUsedAt: '2026-09-07T00:00:00.000Z',
+      }),
+      commercialHit({
+        id: 'whipping-cream',
+        mappedIngredientId: 'PI-WHIPPING-CREAM',
+        displayName: 'WHIPPING CREAM',
+        canonicalFamily: 'cream',
+        category: 'dairy',
+        productForm: 'cream',
+      }),
+      commercialHit({
+        id: 'banana-cream',
+        mappedIngredientId: 'PI-BANANA-PASTE',
+        displayName: 'BANANA · Fabbri Cream',
+        canonicalFamily: 'banana',
+        category: 'fruit',
+        productForm: 'paste',
+      }),
+      commercialHit({
+        id: 'amaretto-cream',
+        mappedIngredientId: 'PI-AMARETTO',
+        displayName: 'AMARETTO CREAM',
+        canonicalFamily: 'amaretto',
+        category: 'alcohol',
+        productForm: 'liqueur',
+      }),
+    ];
+    await renderPicker(vi.fn(), 'ADD', {
+      key: 80,
+      context: filters,
+      currentLine: {
+        ...replacementLine(filters),
+        usageMode: 'HOME_REPLACE',
+        searchConceptSeed: 'CREAM 30%',
+      },
+    });
+
+    // Presentation controls may broaden the visible catalogue query, but never
+    // the line-derived replacement compatibility gate.
+    await act(async () =>
+      document.querySelector<HTMLButtonElement>('[data-product-filter="all"]')?.click(),
+    );
+
+    expect(document.body.textContent).toContain('CREAM 36%');
+    expect(document.body.textContent).toContain('WHIPPING CREAM');
+    expect(document.body.textContent).not.toContain('BANANA · Fabbri Cream');
+    expect(document.body.textContent).not.toContain('AMARETTO CREAM');
+    expect(document.querySelectorAll('[role="option"]')).toHaveLength(2);
+    expect(document.querySelector('[data-picker-section="recent"]')?.textContent).toContain(
+      'CREAM 36%',
+    );
+  });
+
   it('REPLACE-ROLE-01 keeps a Main line inside server-projected Main eligibility', async () => {
     const filters = { filter: 'dairy', subfilter: 'all', family: 'milk' } as const;
     mocks.hits = [
