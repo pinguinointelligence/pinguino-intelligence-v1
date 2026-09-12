@@ -147,10 +147,10 @@ describe('compact ingredient article panel', () => {
     const topIconActions = [
       ...(quickActions?.querySelectorAll<HTMLButtonElement>('[data-article-action="true"]') ?? []),
     ];
-    expect(topIconActions).toHaveLength(5);
+    expect(topIconActions).toHaveLength(4);
     expect(topIconActions.every((action) => action.className.includes('size-11'))).toBe(true);
     expect(panel?.querySelector('[data-testid="article-panel-order-actions"]')).toBeNull();
-    expect(panel?.querySelectorAll('[data-icon-family="gellatti-line"]')).toHaveLength(5);
+    expect(panel?.querySelectorAll('[data-icon-family="gellatti-line"]')).toHaveLength(4);
     expect(panel?.querySelector('[data-testid="article-panel-header"]')).not.toBeNull();
     expect(panel?.textContent).not.toContain('Standardowy');
     expect(panel?.textContent).not.toContain('Kolejność');
@@ -171,7 +171,7 @@ describe('compact ingredient article panel', () => {
     expect(swap).not.toBeNull();
     expect(data).not.toBeNull();
     expect(panel?.querySelector('[aria-label="Oznacz jako wymagany"]')).toBeNull();
-    expect(unavailable).not.toBeNull();
+    expect(unavailable).toBeNull();
     expect(
       [...(quickActions?.querySelectorAll<HTMLButtonElement>('button') ?? [])].map((button) =>
         button.getAttribute('aria-label'),
@@ -181,7 +181,6 @@ describe('compact ingredient article panel', () => {
       'Przesuń niżej',
       'Ustaw jako główny',
       'Informacja o roli składnika',
-      'Oznacz jako niedostępny',
       'Znajdź zamiennik',
       'Dane składnika',
     ]);
@@ -208,6 +207,9 @@ describe('compact ingredient article panel', () => {
 
     const sheet = document.querySelector(`[data-testid="ingredient-mobile-sheet-${baseItem.id}"]`);
     expect(sheet?.querySelector('[data-testid="article-panel-quick-actions"]')).not.toBeNull();
+    expect(sheet?.querySelector('[aria-label="Oznacz jako niedostępny"]')).toBeNull();
+    expect(sheet?.querySelector('[aria-label="Oznacz jako dostępny"]')).toBeNull();
+    expect(sheet?.textContent).not.toContain('NIEDOSTĘPNY');
     expect(sheet?.textContent).not.toContain('Więcej opcji składnika');
     expect(sheet?.textContent?.match(/Moja cena wymaga/g)).toHaveLength(1);
     const main = sheet?.querySelector<HTMLButtonElement>('[aria-label="Ustaw jako główny"]');

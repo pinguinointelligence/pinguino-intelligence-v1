@@ -98,7 +98,7 @@ export interface IngredientRowActions {
   moveDown?: (lineId: string) => void;
 }
 
-type ArticleActionIconName = 'up' | 'down' | 'swap' | 'info' | 'availability' | 'standard';
+type ArticleActionIconName = 'up' | 'down' | 'swap' | 'info' | 'standard';
 
 function ArticleActionIcon({ name }: { name: ArticleActionIconName }) {
   const paths: Record<ArticleActionIconName, React.ReactNode> = {
@@ -111,12 +111,6 @@ function ArticleActionIcon({ name }: { name: ArticleActionIconName }) {
       <>
         <circle cx="8" cy="8" r="5.5" />
         <path d="M8 7.25v3.25M8 5.1h.01" />
-      </>
-    ),
-    availability: (
-      <>
-        <path d="M3 8s1.8-3 5-3 5 3 5 3-1.8 3-5 3-5-3-5-3Z" />
-        <circle cx="8" cy="8" r="1.25" />
       </>
     ),
     standard: <path d="m3.5 8.25 3 3 6-6.5" />,
@@ -677,12 +671,6 @@ function RecipeRow({
           </div>
         </span>
         <span className="flex min-w-0 items-center gap-2.5">
-          <ArticleActionButton
-            label={meta.unavailable ? 'Oznacz jako dostępny' : 'Oznacz jako niedostępny'}
-            icon="availability"
-            selected={meta.unavailable}
-            onClick={() => actions.setIngredientUnavailable?.(item.id, !meta.unavailable)}
-          />
           <ArticleActionButton label="Znajdź zamiennik" icon="swap" onClick={openSubstitute} />
           <ArticleActionButton
             label="Dane składnika"
@@ -942,18 +930,6 @@ function RecipeRow({
                 data-testid={`row-edit-refusal-${item.id}`}
               >
                 {editRefusal}
-              </span>
-            ) : null}
-            {meta.unavailable ? (
-              <span className="mt-1 flex items-center gap-2 text-xs font-semibold text-status-error">
-                {t.recipe.unavailableStatus}
-                <button
-                  type="button"
-                  onClick={openSubstitute}
-                  className="inline-flex min-h-11 items-center rounded-lg px-2 text-ink underline decoration-ink/25 underline-offset-2"
-                >
-                  {t.recipe.findSubstitute}
-                </button>
               </span>
             ) : null}
             {lock && lock.state !== 'ai' ? (
@@ -1524,9 +1500,6 @@ export function IngredientRow({
         mode === 'recipe' &&
           customerRoleFor(item.lock_type, meta) === 'addition' &&
           'bg-pro-sage/35 hover:bg-pro-sage/55',
-        mode === 'recipe' &&
-          meta.unavailable &&
-          'border-status-error/20 bg-status-error/[0.045] hover:bg-status-error/[0.06]',
         mode === 'recipe' && changed && 'ingredient-line-changed',
         mode === 'production' && productionActive && 'production-line-active',
         productionProcessReminder &&
@@ -1536,7 +1509,6 @@ export function IngredientRow({
       data-production-row-family={mode === 'production' ? 'recipe-table' : undefined}
       data-production-active={mode === 'production' && productionActive ? 'true' : undefined}
       data-changed={mode === 'recipe' && changed ? 'true' : undefined}
-      data-unavailable={mode === 'recipe' && meta.unavailable ? 'true' : undefined}
       data-edit-refused={mode === 'recipe' && meta.editRefusal ? 'true' : undefined}
       data-line-id={item.id}
       data-customer-role={mode === 'recipe' ? customerRoleFor(item.lock_type, meta) : undefined}

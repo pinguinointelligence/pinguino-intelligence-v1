@@ -141,7 +141,6 @@ export function MobileIngredientLine({
   percent,
   isMain,
   required,
-  unavailable,
   changed,
   missingAmount,
   mainUnavailableReason,
@@ -153,6 +152,7 @@ export function MobileIngredientLine({
   percent: number | null;
   isMain: boolean;
   required: boolean;
+  /** Dormant availability metadata is preserved for compatibility but never rendered. */
   unavailable: boolean;
   changed: boolean;
   missingAmount: boolean;
@@ -200,11 +200,6 @@ export function MobileIngredientLine({
             className="grid size-4 shrink-0 place-items-center rounded-full border border-ink/30 text-[10px] font-bold text-ink"
           >
             !
-          </span>
-        ) : null}
-        {unavailable ? (
-          <span className="shrink-0 text-xs font-semibold text-status-error">
-            {t.recipe.unavailableStatus}
           </span>
         ) : null}
       </span>

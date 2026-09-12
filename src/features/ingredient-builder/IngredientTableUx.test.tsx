@@ -362,7 +362,7 @@ describe('Recipe ingredient table — quiet primary surface', () => {
   });
 });
 
-describe('Recipe ingredient table — locks, units and availability', () => {
+describe('Recipe ingredient table — locks, units and dormant availability metadata', () => {
   it('rehydrates the visible Required state from the persisted Engine lock', () => {
     const html = renderRow({ ...baseItem, lock_type: 'required' });
     expect(html).toContain('aria-label="Składnik wymagany"');
@@ -416,14 +416,14 @@ describe('Recipe ingredient table — locks, units and availability', () => {
     expect(html).not.toContain('<option value="kg">');
   });
 
-  it('keeps an unavailable ingredient in the same row and offers restoration', () => {
+  it('keeps legacy availability metadata visually dormant without changing the row', () => {
     const html = renderRow(baseItem, { ...DEFAULT_INGREDIENT_ROW_META, unavailable: true });
     expect(html).toContain(`data-line-id="${baseItem.id}"`);
-    expect(html).toContain('data-unavailable="true"');
-    expect(text(html)).toContain('NIEDOSTĘPNY');
-    expect(text(html)).toContain('Znajdź zamiennik');
+    expect(html).not.toContain('data-unavailable');
+    expect(text(html)).not.toContain('NIEDOSTĘPNY');
+    expect(text(html)).not.toContain('Oznacz jako niedostępny');
+    expect(text(html)).not.toContain('Oznacz jako dostępny');
     expect(html).toContain('aria-haspopup="dialog"');
-    expect(text(html)).not.toContain('Znajdź zamiennik · W PRZYGOTOWANIU');
   });
 
   it('opens the operational substitute picker and fails closed without a safe candidate', () => {
