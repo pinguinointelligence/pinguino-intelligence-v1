@@ -1,26 +1,8 @@
 {
-  "schema": "gellatti.country-products.catalog-dedupe-snapshot/v1",
-  "purpose": "Fresh read-only PR-ING deduplication evidence for GELATO base v23 after RL-20, 75-market activation, and before resumed canonical ingestion.",
-  "projectRef": "tunabqqrwabacxjcxxkz",
-  "sharedWithProduction": true,
-  "readOnly": true,
+  "purpose": "Fresh pre-classifier-migration rollback snapshot for Owner-authorized RL-05/RL-20 closeout.",
   "capturedAt": "2026-09-12T19:25:52Z",
-  "capturedWith": "Supabase CLI db query --linked --project-ref tunabqqrwabacxjcxxkz — one SELECT statement, no writes",
-  "query": [
-    "select jsonb_build_object(",
-    "  'capturedAt', to_char(statement_timestamp() at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'),",
-    "  'catalogMarketCountries', (select jsonb_agg(jsonb_build_object('code', c.code, 'isActive', c.is_active) order by c.code) from public.catalog_market_countries c),",
-    "  'marketCountryForeignKeys', (select jsonb_agg(jsonb_build_object('table', k.conrelid::regclass::text, 'constraint', k.conname, 'definition', pg_get_constraintdef(k.oid)) order by k.conrelid::regclass::text, k.conname) from pg_constraint k where k.confrelid = 'public.catalog_market_countries'::regclass),",
-    "  'catalogProducts', (select jsonb_agg(jsonb_build_object('productCode', p.product_code, 'productKind', p.product_kind, 'name', p.product_name_display, 'brand', p.brand, 'eanNormalized', nullif(btrim(coalesce(p.ean_code_normalized, '')), ''), 'country', p.country, 'isActive', p.is_active, 'merged', p.merged_into_product_id is not null, 'visibility', p.visibility, 'provenance', p.canonical_provenance, 'verificationStatus', p.canonical_verification_status, 'engineUsable', coalesce(v.facts->'public_data', v.facts) #>> '{productIntelligence,engineUsable}', 'bindingStatus', b.binding_status, 'baseRecipePermission', b.profile_permissions->>'BASE_RECIPE') order by p.product_code) from public.products p left join public.product_versions v on v.id = p.current_version_id left join public.product_behavior_bindings b on b.id = p.current_behavior_binding_id where p.product_kind in ('commercial_product', 'customer_provisional')),",
-    "  'mapperReferenceProductsWithEan', (select count(*) from public.products m where m.product_kind = 'mapper_reference' and coalesce(btrim(m.ean_code_normalized), '') <> ''),",
-    "  'catalogVariants', (select jsonb_agg(jsonb_build_object('productCode', p.product_code, 'ean', pv.ean, 'market', pv.market, 'netQuantity', pv.net_quantity, 'netUnit', pv.net_unit, 'isCurrent', pv.is_current, 'variantMarkets', (select jsonb_agg(vm.market order by vm.market) from public.product_variant_markets vm where vm.variant_id = pv.id)) order by p.product_code, pv.ean nulls last, pv.market) from public.product_variants pv join public.products p on p.id = pv.product_id where p.product_kind in ('commercial_product', 'customer_provisional')),",
-    "  'productAddRequests', (select jsonb_agg(jsonb_build_object('requestNumber', r.request_number, 'idempotencyKey', r.idempotency_key, 'status', r.status, 'marketCountryCode', r.market_country_code, 'detectedEan', r.detected_ean, 'productName', r.product_name, 'brand', r.brand, 'approvedProductCode', ap.product_code) order by r.request_number) from public.product_add_requests r left join public.products ap on ap.id = r.approved_product_id),",
-    "  'countryProductSlotAssignments', (select jsonb_agg(jsonb_build_object('countryCode', a.country_code, 'mapperIngredientId', a.mapper_ingredient_id, 'assignmentKind', a.assignment_kind, 'fallbackPriority', a.fallback_priority, 'active', a.active, 'productCode', p.product_code, 'productEan', p.ean_code_normalized) order by a.country_code, a.mapper_ingredient_id, a.assignment_kind) from public.country_product_slot_assignments a join public.products p on p.id = a.product_id),",
-    "  'productCanonicalSlotReviews', (select jsonb_agg(jsonb_build_object('productCode', p.product_code, 'mapperIngredientId', s.mapper_ingredient_id, 'active', s.active) order by p.product_code, s.mapper_ingredient_id) from public.product_canonical_slot_reviews s join public.products p on p.id = s.product_id),",
-    "  'mapperSlotRows', (select jsonb_agg(jsonb_build_object('ingredientId', mb.ingredient_id, 'nameDisplay', mb.ingredient_name_display, 'isActive', mb.is_active, 'approvedForBase', mb.approved_for_base, 'approvedForEngines', mb.approved_for_engines, 'verificationStatus', mb.verification_status) order by mb.ingredient_id) from public.mapper_basement mb where mb.ingredient_id in ('PI-ING-000236','PI-ING-000180','PI-ING-000270','PI-ING-000514','PI-ING-000494','PI-ING-000492','PI-ING-000472','PI-ING-000475','PI-ING-001384','PI-ING-002114'))",
-    ") as snapshot;"
-  ],
-  "results": {
+  "projectRef": "tunabqqrwabacxjcxxkz",
+  "snapshot": {
     "capturedAt": "2026-09-12T19:25:52Z",
     "catalogMarketCountries": [
       {

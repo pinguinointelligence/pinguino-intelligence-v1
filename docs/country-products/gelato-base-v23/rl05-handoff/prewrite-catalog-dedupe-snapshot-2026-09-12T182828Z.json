@@ -1,328 +1,32 @@
 {
   "schema": "gellatti.country-products.catalog-dedupe-snapshot/v1",
-  "purpose": "Fresh read-only PR-ING deduplication evidence for GELATO base v23 after RL-20, 75-market activation, and before resumed canonical ingestion.",
+  "purpose": "Fresh read-only PR-ING deduplication and RL-05 pre-write evidence for the GELATO base v23 country products.",
   "projectRef": "tunabqqrwabacxjcxxkz",
   "sharedWithProduction": true,
   "readOnly": true,
-  "capturedAt": "2026-09-12T19:25:52Z",
+  "capturedAt": "2026-09-12T18:28:28Z",
   "capturedWith": "Supabase CLI db query --linked --project-ref tunabqqrwabacxjcxxkz — one SELECT statement, no writes",
-  "query": [
-    "select jsonb_build_object(",
-    "  'capturedAt', to_char(statement_timestamp() at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'),",
-    "  'catalogMarketCountries', (select jsonb_agg(jsonb_build_object('code', c.code, 'isActive', c.is_active) order by c.code) from public.catalog_market_countries c),",
-    "  'marketCountryForeignKeys', (select jsonb_agg(jsonb_build_object('table', k.conrelid::regclass::text, 'constraint', k.conname, 'definition', pg_get_constraintdef(k.oid)) order by k.conrelid::regclass::text, k.conname) from pg_constraint k where k.confrelid = 'public.catalog_market_countries'::regclass),",
-    "  'catalogProducts', (select jsonb_agg(jsonb_build_object('productCode', p.product_code, 'productKind', p.product_kind, 'name', p.product_name_display, 'brand', p.brand, 'eanNormalized', nullif(btrim(coalesce(p.ean_code_normalized, '')), ''), 'country', p.country, 'isActive', p.is_active, 'merged', p.merged_into_product_id is not null, 'visibility', p.visibility, 'provenance', p.canonical_provenance, 'verificationStatus', p.canonical_verification_status, 'engineUsable', coalesce(v.facts->'public_data', v.facts) #>> '{productIntelligence,engineUsable}', 'bindingStatus', b.binding_status, 'baseRecipePermission', b.profile_permissions->>'BASE_RECIPE') order by p.product_code) from public.products p left join public.product_versions v on v.id = p.current_version_id left join public.product_behavior_bindings b on b.id = p.current_behavior_binding_id where p.product_kind in ('commercial_product', 'customer_provisional')),",
-    "  'mapperReferenceProductsWithEan', (select count(*) from public.products m where m.product_kind = 'mapper_reference' and coalesce(btrim(m.ean_code_normalized), '') <> ''),",
-    "  'catalogVariants', (select jsonb_agg(jsonb_build_object('productCode', p.product_code, 'ean', pv.ean, 'market', pv.market, 'netQuantity', pv.net_quantity, 'netUnit', pv.net_unit, 'isCurrent', pv.is_current, 'variantMarkets', (select jsonb_agg(vm.market order by vm.market) from public.product_variant_markets vm where vm.variant_id = pv.id)) order by p.product_code, pv.ean nulls last, pv.market) from public.product_variants pv join public.products p on p.id = pv.product_id where p.product_kind in ('commercial_product', 'customer_provisional')),",
-    "  'productAddRequests', (select jsonb_agg(jsonb_build_object('requestNumber', r.request_number, 'idempotencyKey', r.idempotency_key, 'status', r.status, 'marketCountryCode', r.market_country_code, 'detectedEan', r.detected_ean, 'productName', r.product_name, 'brand', r.brand, 'approvedProductCode', ap.product_code) order by r.request_number) from public.product_add_requests r left join public.products ap on ap.id = r.approved_product_id),",
-    "  'countryProductSlotAssignments', (select jsonb_agg(jsonb_build_object('countryCode', a.country_code, 'mapperIngredientId', a.mapper_ingredient_id, 'assignmentKind', a.assignment_kind, 'fallbackPriority', a.fallback_priority, 'active', a.active, 'productCode', p.product_code, 'productEan', p.ean_code_normalized) order by a.country_code, a.mapper_ingredient_id, a.assignment_kind) from public.country_product_slot_assignments a join public.products p on p.id = a.product_id),",
-    "  'productCanonicalSlotReviews', (select jsonb_agg(jsonb_build_object('productCode', p.product_code, 'mapperIngredientId', s.mapper_ingredient_id, 'active', s.active) order by p.product_code, s.mapper_ingredient_id) from public.product_canonical_slot_reviews s join public.products p on p.id = s.product_id),",
-    "  'mapperSlotRows', (select jsonb_agg(jsonb_build_object('ingredientId', mb.ingredient_id, 'nameDisplay', mb.ingredient_name_display, 'isActive', mb.is_active, 'approvedForBase', mb.approved_for_base, 'approvedForEngines', mb.approved_for_engines, 'verificationStatus', mb.verification_status) order by mb.ingredient_id) from public.mapper_basement mb where mb.ingredient_id in ('PI-ING-000236','PI-ING-000180','PI-ING-000270','PI-ING-000514','PI-ING-000494','PI-ING-000492','PI-ING-000472','PI-ING-000475','PI-ING-001384','PI-ING-002114'))",
-    ") as snapshot;"
-  ],
+  "query": ["select jsonb_build_object(", "  'capturedAt', to_char(statement_timestamp() at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'),", "  'catalogMarketCountries', (select jsonb_agg(jsonb_build_object('code', c.code, 'isActive', c.is_active) order by c.code) from public.catalog_market_countries c),", "  'marketCountryForeignKeys', (select jsonb_agg(jsonb_build_object('table', k.conrelid::regclass::text, 'constraint', k.conname, 'definition', pg_get_constraintdef(k.oid)) order by k.conrelid::regclass::text, k.conname) from pg_constraint k where k.confrelid = 'public.catalog_market_countries'::regclass),", "  'catalogProducts', (select jsonb_agg(jsonb_build_object('productCode', p.product_code, 'productKind', p.product_kind, 'name', p.product_name_display, 'brand', p.brand, 'eanNormalized', nullif(btrim(coalesce(p.ean_code_normalized, '')), ''), 'country', p.country, 'isActive', p.is_active, 'merged', p.merged_into_product_id is not null, 'visibility', p.visibility, 'provenance', p.canonical_provenance, 'verificationStatus', p.canonical_verification_status, 'engineUsable', coalesce(v.facts->'public_data', v.facts) #>> '{productIntelligence,engineUsable}', 'bindingStatus', b.binding_status, 'baseRecipePermission', b.profile_permissions->>'BASE_RECIPE') order by p.product_code) from public.products p left join public.product_versions v on v.id = p.current_version_id left join public.product_behavior_bindings b on b.id = p.current_behavior_binding_id where p.product_kind in ('commercial_product', 'customer_provisional')),", "  'mapperReferenceProductsWithEan', (select count(*) from public.products m where m.product_kind = 'mapper_reference' and coalesce(btrim(m.ean_code_normalized), '') <> ''),", "  'catalogVariants', (select jsonb_agg(jsonb_build_object('productCode', p.product_code, 'ean', pv.ean, 'market', pv.market, 'netQuantity', pv.net_quantity, 'netUnit', pv.net_unit, 'isCurrent', pv.is_current, 'variantMarkets', (select jsonb_agg(vm.market order by vm.market) from public.product_variant_markets vm where vm.variant_id = pv.id)) order by p.product_code, pv.ean nulls last, pv.market) from public.product_variants pv join public.products p on p.id = pv.product_id where p.product_kind in ('commercial_product', 'customer_provisional')),", "  'productAddRequests', (select jsonb_agg(jsonb_build_object('requestNumber', r.request_number, 'idempotencyKey', r.idempotency_key, 'status', r.status, 'marketCountryCode', r.market_country_code, 'detectedEan', r.detected_ean, 'productName', r.product_name, 'brand', r.brand, 'approvedProductCode', ap.product_code) order by r.request_number) from public.product_add_requests r left join public.products ap on ap.id = r.approved_product_id),", "  'countryProductSlotAssignments', (select jsonb_agg(jsonb_build_object('countryCode', a.country_code, 'mapperIngredientId', a.mapper_ingredient_id, 'assignmentKind', a.assignment_kind, 'fallbackPriority', a.fallback_priority, 'active', a.active, 'productCode', p.product_code, 'productEan', p.ean_code_normalized) order by a.country_code, a.mapper_ingredient_id, a.assignment_kind) from public.country_product_slot_assignments a join public.products p on p.id = a.product_id),", "  'productCanonicalSlotReviews', (select jsonb_agg(jsonb_build_object('productCode', p.product_code, 'mapperIngredientId', s.mapper_ingredient_id, 'active', s.active) order by p.product_code, s.mapper_ingredient_id) from public.product_canonical_slot_reviews s join public.products p on p.id = s.product_id),", "  'mapperSlotRows', (select jsonb_agg(jsonb_build_object('ingredientId', mb.ingredient_id, 'nameDisplay', mb.ingredient_name_display, 'isActive', mb.is_active, 'approvedForBase', mb.approved_for_base, 'approvedForEngines', mb.approved_for_engines, 'verificationStatus', mb.verification_status) order by mb.ingredient_id) from public.mapper_basement mb where mb.ingredient_id in ('PI-ING-000236','PI-ING-000180','PI-ING-000270','PI-ING-000514','PI-ING-000494','PI-ING-000492','PI-ING-000472','PI-ING-000475','PI-ING-001384','PI-ING-002114'))", ") as snapshot;"],
   "results": {
-    "capturedAt": "2026-09-12T19:25:52Z",
     "catalogMarketCountries": [
-      {
-        "code": "AE",
-        "isActive": true
-      },
-      {
-        "code": "AR",
-        "isActive": true
-      },
-      {
-        "code": "AT",
-        "isActive": true
-      },
-      {
-        "code": "AU",
-        "isActive": true
-      },
-      {
-        "code": "BD",
-        "isActive": true
-      },
-      {
-        "code": "BE",
-        "isActive": true
-      },
-      {
-        "code": "BG",
-        "isActive": true
-      },
-      {
-        "code": "BH",
-        "isActive": true
-      },
-      {
-        "code": "BR",
-        "isActive": true
-      },
-      {
-        "code": "CA",
-        "isActive": true
-      },
-      {
-        "code": "CH",
-        "isActive": true
-      },
-      {
-        "code": "CL",
-        "isActive": true
-      },
-      {
-        "code": "CN",
-        "isActive": true
-      },
-      {
-        "code": "CO",
-        "isActive": true
-      },
-      {
-        "code": "CR",
-        "isActive": true
-      },
-      {
-        "code": "CY",
-        "isActive": true
-      },
-      {
-        "code": "CZ",
-        "isActive": true
-      },
-      {
-        "code": "DE",
-        "isActive": true
-      },
-      {
-        "code": "DK",
-        "isActive": true
-      },
-      {
-        "code": "DO",
-        "isActive": true
-      },
-      {
-        "code": "DZ",
-        "isActive": true
-      },
-      {
-        "code": "EE",
-        "isActive": true
-      },
-      {
-        "code": "EG",
-        "isActive": true
-      },
-      {
-        "code": "ES",
-        "isActive": true
-      },
-      {
-        "code": "FI",
-        "isActive": true
-      },
-      {
-        "code": "FR",
-        "isActive": true
-      },
-      {
-        "code": "GB",
-        "isActive": true
-      },
-      {
-        "code": "GH",
-        "isActive": true
-      },
-      {
-        "code": "GR",
-        "isActive": true
-      },
-      {
-        "code": "HK",
-        "isActive": true
-      },
-      {
-        "code": "HR",
-        "isActive": true
-      },
-      {
-        "code": "HU",
-        "isActive": true
-      },
-      {
-        "code": "ID",
-        "isActive": true
-      },
-      {
-        "code": "IE",
-        "isActive": true
-      },
-      {
-        "code": "IL",
-        "isActive": true
-      },
-      {
-        "code": "IN",
-        "isActive": true
-      },
-      {
-        "code": "IS",
-        "isActive": true
-      },
-      {
-        "code": "IT",
-        "isActive": true
-      },
-      {
-        "code": "JP",
-        "isActive": true
-      },
-      {
-        "code": "KE",
-        "isActive": true
-      },
-      {
-        "code": "KR",
-        "isActive": true
-      },
-      {
-        "code": "KW",
-        "isActive": true
-      },
-      {
-        "code": "LK",
-        "isActive": true
-      },
-      {
-        "code": "LT",
-        "isActive": true
-      },
-      {
-        "code": "LU",
-        "isActive": true
-      },
-      {
-        "code": "LV",
-        "isActive": true
-      },
-      {
-        "code": "MA",
-        "isActive": true
-      },
-      {
-        "code": "MT",
-        "isActive": true
-      },
-      {
-        "code": "MX",
-        "isActive": true
-      },
-      {
-        "code": "MY",
-        "isActive": true
-      },
-      {
-        "code": "NG",
-        "isActive": true
-      },
-      {
-        "code": "NL",
-        "isActive": true
-      },
-      {
-        "code": "NO",
-        "isActive": true
-      },
-      {
-        "code": "NZ",
-        "isActive": true
-      },
-      {
-        "code": "OM",
-        "isActive": true
-      },
-      {
-        "code": "PA",
-        "isActive": true
-      },
-      {
-        "code": "PH",
-        "isActive": true
-      },
-      {
-        "code": "PK",
-        "isActive": true
-      },
-      {
-        "code": "PL",
-        "isActive": true
-      },
-      {
-        "code": "PT",
-        "isActive": true
-      },
-      {
-        "code": "QA",
-        "isActive": true
-      },
-      {
-        "code": "RO",
-        "isActive": true
-      },
-      {
-        "code": "SA",
-        "isActive": true
-      },
-      {
-        "code": "SE",
-        "isActive": true
-      },
-      {
-        "code": "SG",
-        "isActive": true
-      },
-      {
-        "code": "SI",
-        "isActive": true
-      },
-      {
-        "code": "SK",
-        "isActive": true
-      },
-      {
-        "code": "TH",
-        "isActive": true
-      },
-      {
-        "code": "TN",
-        "isActive": true
-      },
-      {
-        "code": "TR",
-        "isActive": true
-      },
-      {
-        "code": "TW",
-        "isActive": true
-      },
-      {
-        "code": "US",
-        "isActive": true
-      },
-      {
-        "code": "UY",
-        "isActive": true
-      },
-      {
-        "code": "VN",
-        "isActive": true
-      },
-      {
-        "code": "ZA",
-        "isActive": true
-      }
+      { "code": "AT", "isActive": true },
+      { "code": "BE", "isActive": true },
+      { "code": "CZ", "isActive": true },
+      { "code": "DE", "isActive": true },
+      { "code": "DK", "isActive": true },
+      { "code": "ES", "isActive": true },
+      { "code": "FI", "isActive": true },
+      { "code": "FR", "isActive": true },
+      { "code": "GB", "isActive": true },
+      { "code": "IE", "isActive": true },
+      { "code": "IT", "isActive": true },
+      { "code": "NL", "isActive": true },
+      { "code": "PH", "isActive": true },
+      { "code": "PL", "isActive": true },
+      { "code": "PT", "isActive": true },
+      { "code": "SE", "isActive": true },
+      { "code": "SK", "isActive": true },
+      { "code": "US", "isActive": true }
     ],
     "catalogProducts": [
       {
@@ -1230,9 +934,7 @@
         "netQuantity": 500,
         "netUnit": "g",
         "productCode": "PM-ING-006272",
-        "variantMarkets": [
-          "QA-1786680354924-ecef5a0f"
-        ]
+        "variantMarkets": ["QA-1786680354924-ecef5a0f"]
       },
       {
         "ean": null,
@@ -1241,9 +943,7 @@
         "netQuantity": 500,
         "netUnit": "g",
         "productCode": "PM-ING-006273",
-        "variantMarkets": [
-          "QA-1786681328814-102fa96e"
-        ]
+        "variantMarkets": ["QA-1786681328814-102fa96e"]
       },
       {
         "ean": null,
@@ -1252,9 +952,7 @@
         "netQuantity": 500,
         "netUnit": "g",
         "productCode": "PM-ING-006274",
-        "variantMarkets": [
-          "QA-1786681359227-802e6013"
-        ]
+        "variantMarkets": ["QA-1786681359227-802e6013"]
       },
       {
         "ean": null,
@@ -1263,9 +961,7 @@
         "netQuantity": 500,
         "netUnit": "g",
         "productCode": "PM-ING-006275",
-        "variantMarkets": [
-          "QA-1786681397332-e2aad61b"
-        ]
+        "variantMarkets": ["QA-1786681397332-e2aad61b"]
       },
       {
         "ean": null,
@@ -1274,9 +970,7 @@
         "netQuantity": 500,
         "netUnit": "g",
         "productCode": "PM-ING-006276",
-        "variantMarkets": [
-          "QA-1786681423141-4c40a917"
-        ]
+        "variantMarkets": ["QA-1786681423141-4c40a917"]
       },
       {
         "ean": null,
@@ -1285,9 +979,7 @@
         "netQuantity": 500,
         "netUnit": "g",
         "productCode": "PM-ING-006278",
-        "variantMarkets": [
-          "QA-1786681519594-ad287aff"
-        ]
+        "variantMarkets": ["QA-1786681519594-ad287aff"]
       },
       {
         "ean": null,
@@ -1296,9 +988,7 @@
         "netQuantity": 500,
         "netUnit": "g",
         "productCode": "PM-ING-006280",
-        "variantMarkets": [
-          "QA-1786681879544-223569a6"
-        ]
+        "variantMarkets": ["QA-1786681879544-223569a6"]
       },
       {
         "ean": null,
@@ -1307,9 +997,7 @@
         "netQuantity": 500,
         "netUnit": "g",
         "productCode": "PM-ING-006282",
-        "variantMarkets": [
-          "QA-1786682034346-d2e6c212"
-        ]
+        "variantMarkets": ["QA-1786682034346-d2e6c212"]
       },
       {
         "ean": null,
@@ -1318,9 +1006,7 @@
         "netQuantity": 220,
         "netUnit": "g",
         "productCode": "PM-ING-006284",
-        "variantMarkets": [
-          "GLOBAL"
-        ]
+        "variantMarkets": ["GLOBAL"]
       },
       {
         "ean": "5901234123457",
@@ -1329,9 +1015,7 @@
         "netQuantity": 220,
         "netUnit": "g",
         "productCode": "PM-ING-006285",
-        "variantMarkets": [
-          "GLOBAL"
-        ]
+        "variantMarkets": ["GLOBAL"]
       },
       {
         "ean": null,
@@ -1340,9 +1024,7 @@
         "netQuantity": 220,
         "netUnit": "g",
         "productCode": "PM-ING-006286",
-        "variantMarkets": [
-          "GLOBAL"
-        ]
+        "variantMarkets": ["GLOBAL"]
       },
       {
         "ean": null,
@@ -1351,9 +1033,7 @@
         "netQuantity": 220,
         "netUnit": "g",
         "productCode": "PM-ING-006287",
-        "variantMarkets": [
-          "GLOBAL"
-        ]
+        "variantMarkets": ["GLOBAL"]
       },
       {
         "ean": null,
@@ -1362,9 +1042,7 @@
         "netQuantity": null,
         "netUnit": null,
         "productCode": "PM-ING-006288",
-        "variantMarkets": [
-          "GLOBAL"
-        ]
+        "variantMarkets": ["GLOBAL"]
       },
       {
         "ean": null,
@@ -1373,9 +1051,7 @@
         "netQuantity": 250,
         "netUnit": "g",
         "productCode": "PM-ING-006306",
-        "variantMarkets": [
-          "GLOBAL"
-        ]
+        "variantMarkets": ["GLOBAL"]
       },
       {
         "ean": null,
@@ -1384,9 +1060,7 @@
         "netQuantity": 250,
         "netUnit": "g",
         "productCode": "PM-ING-007139",
-        "variantMarkets": [
-          "GLOBAL"
-        ]
+        "variantMarkets": ["GLOBAL"]
       },
       {
         "ean": "7622210669315",
@@ -1431,9 +1105,7 @@
         "netQuantity": 250,
         "netUnit": "g",
         "productCode": "PR-ING-007140",
-        "variantMarkets": [
-          "ES"
-        ]
+        "variantMarkets": ["ES"]
       },
       {
         "ean": "8410109121551",
@@ -1460,9 +1132,7 @@
         "netQuantity": 1.25,
         "netUnit": "kg",
         "productCode": "PR-ING-007145",
-        "variantMarkets": [
-          "GLOBAL"
-        ]
+        "variantMarkets": ["GLOBAL"]
       },
       {
         "ean": "5900194000273",
@@ -1471,9 +1141,7 @@
         "netQuantity": 500,
         "netUnit": "g",
         "productCode": "PR-ING-007146",
-        "variantMarkets": [
-          "GLOBAL"
-        ]
+        "variantMarkets": ["GLOBAL"]
       },
       {
         "ean": null,
@@ -1482,9 +1150,7 @@
         "netQuantity": 180,
         "netUnit": "g",
         "productCode": "PR-ING-007147",
-        "variantMarkets": [
-          "GLOBAL"
-        ]
+        "variantMarkets": ["GLOBAL"]
       },
       {
         "ean": null,
@@ -1493,9 +1159,7 @@
         "netQuantity": 400,
         "netUnit": "g",
         "productCode": "PR-ING-007148",
-        "variantMarkets": [
-          "GLOBAL"
-        ]
+        "variantMarkets": ["GLOBAL"]
       },
       {
         "ean": null,
@@ -1504,9 +1168,7 @@
         "netQuantity": 23.5,
         "netUnit": "g",
         "productCode": "PR-ING-007149",
-        "variantMarkets": [
-          "GLOBAL"
-        ]
+        "variantMarkets": ["GLOBAL"]
       },
       {
         "ean": null,
@@ -1515,9 +1177,7 @@
         "netQuantity": 1.25,
         "netUnit": "kg",
         "productCode": "PR-ING-007150",
-        "variantMarkets": [
-          "GLOBAL"
-        ]
+        "variantMarkets": ["GLOBAL"]
       },
       {
         "ean": null,
@@ -1526,9 +1186,7 @@
         "netQuantity": 1.25,
         "netUnit": "kg",
         "productCode": "PR-ING-007151",
-        "variantMarkets": [
-          "GLOBAL"
-        ]
+        "variantMarkets": ["GLOBAL"]
       },
       {
         "ean": null,
@@ -1537,9 +1195,7 @@
         "netQuantity": 335,
         "netUnit": "g",
         "productCode": "PR-ING-007152",
-        "variantMarkets": [
-          "GLOBAL"
-        ]
+        "variantMarkets": ["GLOBAL"]
       },
       {
         "ean": null,
@@ -1548,9 +1204,7 @@
         "netQuantity": 3,
         "netUnit": "kg",
         "productCode": "PR-ING-007153",
-        "variantMarkets": [
-          "GLOBAL"
-        ]
+        "variantMarkets": ["GLOBAL"]
       },
       {
         "ean": null,
@@ -1559,9 +1213,7 @@
         "netQuantity": 330,
         "netUnit": "ml",
         "productCode": "PR-ING-007154",
-        "variantMarkets": [
-          "GLOBAL"
-        ]
+        "variantMarkets": ["GLOBAL"]
       },
       {
         "ean": null,
@@ -1570,9 +1222,7 @@
         "netQuantity": 0.6,
         "netUnit": "kg",
         "productCode": "PR-ING-007155",
-        "variantMarkets": [
-          "GLOBAL"
-        ]
+        "variantMarkets": ["GLOBAL"]
       },
       {
         "ean": null,
@@ -1581,9 +1231,7 @@
         "netQuantity": 1.3,
         "netUnit": "kg",
         "productCode": "PR-ING-007156",
-        "variantMarkets": [
-          "GLOBAL"
-        ]
+        "variantMarkets": ["GLOBAL"]
       },
       {
         "ean": null,
@@ -1592,9 +1240,7 @@
         "netQuantity": 2.5,
         "netUnit": "kg",
         "productCode": "PR-ING-007157",
-        "variantMarkets": [
-          "GLOBAL"
-        ]
+        "variantMarkets": ["GLOBAL"]
       },
       {
         "ean": "5900120025578",
@@ -1603,9 +1249,7 @@
         "netQuantity": 200,
         "netUnit": "g",
         "productCode": "PR-ING-007158",
-        "variantMarkets": [
-          "GLOBAL"
-        ]
+        "variantMarkets": ["GLOBAL"]
       },
       {
         "ean": null,
@@ -1614,9 +1258,7 @@
         "netQuantity": 3,
         "netUnit": "kg",
         "productCode": "PR-ING-007159",
-        "variantMarkets": [
-          "GLOBAL"
-        ]
+        "variantMarkets": ["GLOBAL"]
       },
       {
         "ean": null,
@@ -1625,9 +1267,7 @@
         "netQuantity": 1,
         "netUnit": "kg",
         "productCode": "PR-ING-007160",
-        "variantMarkets": [
-          "GLOBAL"
-        ]
+        "variantMarkets": ["GLOBAL"]
       },
       {
         "ean": null,
@@ -1636,9 +1276,7 @@
         "netQuantity": 72,
         "netUnit": "g",
         "productCode": "PR-ING-007161",
-        "variantMarkets": [
-          "GLOBAL"
-        ]
+        "variantMarkets": ["GLOBAL"]
       },
       {
         "ean": null,
@@ -1647,9 +1285,7 @@
         "netQuantity": 2.5,
         "netUnit": "kg",
         "productCode": "PR-ING-007162",
-        "variantMarkets": [
-          "GLOBAL"
-        ]
+        "variantMarkets": ["GLOBAL"]
       },
       {
         "ean": null,
@@ -1658,9 +1294,7 @@
         "netQuantity": 1.25,
         "netUnit": "kg",
         "productCode": "PR-ING-007163",
-        "variantMarkets": [
-          "GLOBAL"
-        ]
+        "variantMarkets": ["GLOBAL"]
       },
       {
         "ean": null,
@@ -1669,9 +1303,7 @@
         "netQuantity": 42,
         "netUnit": "g",
         "productCode": "PR-ING-007164",
-        "variantMarkets": [
-          "GLOBAL"
-        ]
+        "variantMarkets": ["GLOBAL"]
       },
       {
         "ean": "5902751322798",
@@ -1680,9 +1312,7 @@
         "netQuantity": 500,
         "netUnit": "g",
         "productCode": "PR-ING-007169",
-        "variantMarkets": [
-          "GLOBAL"
-        ]
+        "variantMarkets": ["GLOBAL"]
       },
       {
         "ean": "5900512850016",
@@ -1691,9 +1321,7 @@
         "netQuantity": 1,
         "netUnit": "l",
         "productCode": "PR-ING-007170",
-        "variantMarkets": [
-          "GLOBAL"
-        ]
+        "variantMarkets": ["GLOBAL"]
       },
       {
         "ean": "5900512904443",
@@ -1702,9 +1330,7 @@
         "netQuantity": 330,
         "netUnit": "ml",
         "productCode": "PR-ING-007171",
-        "variantMarkets": [
-          "GLOBAL"
-        ]
+        "variantMarkets": ["GLOBAL"]
       },
       {
         "ean": "5900820012434",
@@ -1713,9 +1339,7 @@
         "netQuantity": 1,
         "netUnit": null,
         "productCode": "PR-ING-007172",
-        "variantMarkets": [
-          "PL"
-        ]
+        "variantMarkets": ["PL"]
       },
       {
         "ean": "8402001047251",
@@ -1724,9 +1348,7 @@
         "netQuantity": 1,
         "netUnit": null,
         "productCode": "PR-ING-007173",
-        "variantMarkets": [
-          "ES"
-        ]
+        "variantMarkets": ["ES"]
       },
       {
         "ean": "3262970109108",
@@ -1735,9 +1357,7 @@
         "netQuantity": 1,
         "netUnit": null,
         "productCode": "PR-ING-007174",
-        "variantMarkets": [
-          "FR"
-        ]
+        "variantMarkets": ["FR"]
       },
       {
         "ean": "7340222800464",
@@ -2047,44 +1667,12 @@
         "productName": null,
         "requestNumber": 36,
         "status": "SUBMITTED"
-      },
-      {
-        "approvedProductCode": null,
-        "brand": "Inex",
-        "detectedEan": "54025059",
-        "idempotencyKey": "gellatti-v23-pr-ing:V23:MILK:GTIN-00000054025059",
-        "marketCountryCode": "BE",
-        "productName": "Inex Lait entier UHT 1 L PET (art. 6013)",
-        "requestNumber": 37,
-        "status": "ADMIN_REVIEW"
-      },
-      {
-        "approvedProductCode": null,
-        "brand": "Anchor",
-        "detectedEan": "94152210",
-        "idempotencyKey": "gellatti-v23-pr-ing:V23:MILK:GTIN-00000094152210",
-        "marketCountryCode": "NZ",
-        "productName": "Anchor Blue Milk 2 L",
-        "requestNumber": 38,
-        "status": "ADMIN_REVIEW"
       }
     ],
     "productCanonicalSlotReviews": [
-      {
-        "active": true,
-        "mapperIngredientId": "PI-ING-000236",
-        "productCode": "PR-ING-007172"
-      },
-      {
-        "active": true,
-        "mapperIngredientId": "PI-ING-000236",
-        "productCode": "PR-ING-007173"
-      },
-      {
-        "active": true,
-        "mapperIngredientId": "PI-ING-000236",
-        "productCode": "PR-ING-007174"
-      }
+      { "active": true, "mapperIngredientId": "PI-ING-000236", "productCode": "PR-ING-007172" },
+      { "active": true, "mapperIngredientId": "PI-ING-000236", "productCode": "PR-ING-007173" },
+      { "active": true, "mapperIngredientId": "PI-ING-000236", "productCode": "PR-ING-007174" }
     ]
   }
 }
