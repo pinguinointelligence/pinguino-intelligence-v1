@@ -145,6 +145,13 @@ export interface ProductRow {
   carbonation_evidence?: CarbonationEvidence[];
   shelf_life_days: number | null;
   usage_notes: string | null;
+  /** Exact immutable current-version pack/variant projected by the canonical
+   * product RPC. Historical rows may omit both until they are revalidated. */
+  package_size: string | null;
+  product_variant?: string | null;
+  /** Version-bound PR/PM semantic/readiness snapshots; never a PI identity. */
+  product_semantic_binding?: unknown;
+  role_readiness?: unknown;
   engine_notes: string | null;
   // intake placeholders (no logic this slice)
   product_image_url: string | null;
@@ -191,7 +198,6 @@ export interface ProductRow {
   barcode_normalized: string | null;
   product_url: string | null;
   source_url: string | null;
-  package_size: string | null;
   product_identity_hash: string | null;
 }
 
@@ -224,7 +230,9 @@ export type MapperResultField =
  * fields are excluded (write them via D3), and the DB-computed identity columns
  * (product_code + normalized EAN/barcode) are excluded — the DB owns them. A client
  * MAY set product_url / source_url / package_size / product_identity_hash. */
-export type ProductInsert = Partial<Omit<ProductRow, ServerManaged | MapperResultField | DatabaseComputed>>;
+export type ProductInsert = Partial<
+  Omit<ProductRow, ServerManaged | MapperResultField | DatabaseComputed>
+>;
 
 /** Fields a client may change. Ownership/identity, the DB timestamps, and the
  * DB-computed identity columns (product_code + normalized EAN/barcode) are never

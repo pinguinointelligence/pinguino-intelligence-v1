@@ -34,6 +34,8 @@ import {
   type TrustedProductBehaviorAuthority,
 } from '../../../src/features/product-intelligence/productBehaviorAuthority.ts';
 import { validateSharedProductOnboarding } from '../_shared/sharedProductOnboarding.ts';
+import { buildSharedProductSemanticBindingProposal } from '../_shared/sharedProductSemanticBinding.ts';
+import type { ProductSemanticBinding } from '../../../src/features/product-intelligence/productSemanticBinding.ts';
 import {
   PRODUCT_RECOGNITION_VERSION,
   canonicalizeProductSemanticEvidence,
@@ -1917,6 +1919,7 @@ Deno.serve(async (request) => {
   let serverProductProfileAuthority:
     | (IntimportTrustedProductProfile & {
         sourceProductId: string | null;
+        semanticBindingProposal?: ProductSemanticBinding;
       })
     | null = null;
   let serverProductBehaviorAuthority: TrustedProductBehaviorAuthority | null = null;
@@ -2038,6 +2041,54 @@ Deno.serve(async (request) => {
 
   if (serverProductProfileAuthority && !serverProductBehaviorAuthority) {
     return json({ error: 'product_behavior_authority_unavailable' }, 503);
+  }
+  if (
+    serverProductProfileAuthority &&
+    serverProductBehaviorAuthority &&
+    serverProductProfileAuthority.recognition
+  ) {
+    const facts = objectValue(canonicalInput.facts);
+    const sourceEvidence = objectValue(facts.catalogImportSourceEvidence);
+    const semanticBindingProposal = await buildSharedProductSemanticBindingProposal({
+      source:
+        source === 'catalog_import'
+          ? 'recipe_library_import'
+          : source === 'admin'
+            ? 'admin_import'
+            : source === 'manual' || source === 'barcode' || source === 'ocr'
+              ? 'manual_import'
+              : 'future_import',
+      identity: {
+        ean: clippedText(canonicalInput.ean ?? canonicalInput.barcode, 20),
+        brand: clippedText(canonicalInput.brand, 200),
+        productName:
+          clippedText(canonicalInput.displayName ?? canonicalInput.originalName, 300) ?? '',
+        variant: clippedText(canonicalInput.variant ?? sourceEvidence.variant, 300),
+        pack: clippedText(
+          canonicalInput.netQuantity ?? facts.packageSize ?? sourceEvidence.netQuantity,
+          500,
+        ),
+        category: clippedText(canonicalInput.category ?? sourceEvidence.category, 300),
+        description: clippedText(
+          canonicalInput.description ?? sourceEvidence.productDescription,
+          2_000,
+        ),
+      },
+      recognition: serverProductProfileAuthority.recognition,
+      behavior: serverProductBehaviorAuthority,
+      profileEngineUsable: serverProductProfileAuthority.engineUsable,
+      profileRoleReady:
+        serverProductProfileAuthority.productAccuracyAssessment.gellattiReadiness.ready,
+      publicationReady:
+        serverProductProfileAuthority.productAccuracyAssessment.gellattiReadiness.ready,
+      marketCountries: [market, clippedText(canonicalInput.countryOfOrigin, 8)].filter(
+        (value): value is string => Boolean(value),
+      ),
+    });
+    serverProductProfileAuthority = {
+      ...serverProductProfileAuthority,
+      semanticBindingProposal,
+    };
   }
 
   // Product Request approval is fail-closed BEFORE any product/version row is

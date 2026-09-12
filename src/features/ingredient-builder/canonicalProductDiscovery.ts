@@ -260,6 +260,60 @@ export interface CanonicalProductDiscoveryItem {
   variantPercent: number | null;
 }
 
+function exactIdentityDetails(hit: CatalogProductSearchHit): {
+  variant: string | null;
+  pack: string | null;
+} {
+  const persisted = hit.semanticBinding?.exactIdentity;
+  const identity =
+    hit.publicData.identity &&
+    typeof hit.publicData.identity === 'object' &&
+    !Array.isArray(hit.publicData.identity)
+      ? (hit.publicData.identity as Record<string, unknown>)
+      : {};
+  const packageValue =
+    hit.publicData.package &&
+    typeof hit.publicData.package === 'object' &&
+    !Array.isArray(hit.publicData.package)
+      ? (hit.publicData.package as Record<string, unknown>)
+      : {};
+  const numericPack =
+    typeof packageValue.netQuantity === 'number' && typeof packageValue.unit === 'string'
+      ? `${packageValue.netQuantity} ${packageValue.unit}`
+      : null;
+  return {
+    variant: persisted?.variant ?? (typeof identity.variant === 'string' ? identity.variant : null),
+    pack:
+      persisted?.pack ??
+      (typeof packageValue.netQuantityText === 'string'
+        ? packageValue.netQuantityText
+        : numericPack),
+  };
+}
+
+function exactProductSecondaryText(
+  hit: CatalogProductSearchHit,
+  productFact: string | null = null,
+): string | null {
+  const details = exactIdentityDetails(hit);
+  const normalizedName = normalizeSearchText(hit.displayName);
+  const variant =
+    details.variant && !normalizedName.includes(normalizeSearchText(details.variant))
+      ? details.variant
+      : null;
+  return [hit.brand, variant, details.pack, productFact].filter(Boolean).join(' · ') || null;
+}
+
+function resolvedExactProductSecondaryText(hit: CatalogProductSearchHit): string {
+  const details = exactIdentityDetails(hit);
+  const normalizedName = normalizeSearchText(hit.displayName);
+  const variant =
+    details.variant && !normalizedName.includes(normalizeSearchText(details.variant))
+      ? details.variant
+      : null;
+  return [hit.brand, hit.displayName, variant, details.pack].filter(Boolean).join(' · ');
+}
+
 const exactProductProjection = (hit: CatalogProductSearchHit): CanonicalProductDiscoveryItem => {
   const family = technologicalFamilyFor(hit);
   const productOwnedFat =
@@ -274,7 +328,7 @@ const exactProductProjection = (hit: CatalogProductSearchHit): CanonicalProductD
     hit,
     slotKey: `${hit.entityKind}:${hit.id}`,
     primaryName: hit.displayName,
-    secondaryText: [hit.brand, productFact].filter(Boolean).join(' · ') || null,
+    secondaryText: exactProductSecondaryText(hit, productFact),
     family,
     variantPercent: technologicalPercent(hit),
   };
@@ -323,11 +377,9 @@ export function projectCatalogHitsForDiscovery(input: {
           slotKey,
           primaryName: canonicalPrimaryName(chosen.hit, chosen.family, percent),
           secondaryText: resolvedExact
-            ? resolvedExact.brand
-              ? `${resolvedExact.brand} · ${resolvedExact.displayName}`
-              : resolvedExact.displayName
+            ? resolvedExactProductSecondaryText(resolvedExact)
             : chosen.hit.entityKind === 'commercial_product'
-              ? chosen.hit.brand
+              ? exactProductSecondaryText(chosen.hit)
               : null,
           family: chosen.family,
           variantPercent: percent,

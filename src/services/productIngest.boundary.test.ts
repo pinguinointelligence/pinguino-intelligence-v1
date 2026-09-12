@@ -86,6 +86,19 @@ describe('canonical product ingest boundary', () => {
     expect(edge).toContain('validateBarcode(suppliedBarcode)?.lookupValue');
   });
 
+  it('PRING-EDGE-02 binds every catalog/import source before canonical ingest', () => {
+    const edge = read('supabase/functions/catalog-submit/index.ts');
+    expect(edge).toContain('await buildSharedProductSemanticBindingProposal({');
+    expect(edge).toContain('semanticBindingProposal');
+    expect(edge.indexOf('await buildSharedProductSemanticBindingProposal({')).toBeLessThan(
+      edge.indexOf("service.rpc('ingest_product_v1'"),
+    );
+    expect(edge).toContain("? 'recipe_library_import'");
+    expect(edge).toContain("? 'admin_import'");
+    expect(edge).toContain("? 'manual_import'");
+    expect(edge).toContain(": 'future_import'");
+  });
+
   it('preserves reviewed OCR text/languages and never invents a nutrition basis', () => {
     const request = canonicalIngestFromLegacyProduct({
       source_type: 'label_scan',

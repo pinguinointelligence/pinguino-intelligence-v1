@@ -19,10 +19,12 @@ import {
 import { classifyProductSemantics } from '../product-intelligence/productRecognition';
 import { classifyRemainingGaps, manualFieldsFor } from '../scan-flow/scanFlowLogic';
 import { validateSharedProductOnboarding } from '../../../supabase/functions/_shared/sharedProductOnboarding';
+import { buildSharedProductSemanticBindingProposal } from '../../../supabase/functions/_shared/sharedProductSemanticBinding';
 import { bindExactProductSemanticContext } from '../product-intelligence/productSemanticBinding';
 import { createMapperCatalogSearchPlan } from '../mapper-search-runtime';
 import { createTestMapperSearchRuntime } from '../mapper-search-runtime/testRelease';
 import {
+  attachCatalogProductSemanticBindingFromFinalSearch,
   catalogProductSemanticSearchText,
   catalogProductSemanticBinding,
 } from '../global-catalog/catalogSemanticBinding';
@@ -344,6 +346,53 @@ describe('Haribo Sandía exact-EAN topping semantic authority', () => {
     );
   });
 
+  it('PRING-BIND-06 builds the server proposal from exact Haribo evidence before SQL binds ids', async () => {
+    const { profile } = trustedHariboProfile();
+    const behavior = validateProductBehaviorAuthority({
+      productProfile: profile,
+      behaviorRows: [],
+    });
+    const proposal = await buildSharedProductSemanticBindingProposal({
+      source: 'scanner',
+      identity: {
+        ean: EAN,
+        brand: 'Haribo',
+        productName: 'Sandía',
+        variant: 'Watermelon',
+        pack: '90 g',
+        category: 'Candies, Fruit gums',
+        description: 'Watermelon fruit gummy candy.',
+      },
+      recognition: profile.recognition!,
+      behavior,
+      profileEngineUsable: profile.engineUsable,
+      profileRoleReady: profile.productAccuracyAssessment.gellattiReadiness.ready,
+      publicationReady: true,
+      marketCountries: ['ES'],
+    });
+
+    expect(proposal).toMatchObject({
+      authority: 'PR_ING_SEMANTIC_BINDING_V1',
+      state: 'RESOLVED',
+      exactIdentity: {
+        productId: 'SERVER_ASSIGNED_PRODUCT',
+        articleCode: 'PR-ING-000000',
+        productVersionId: 'SERVER_ASSIGNED_VERSION',
+        ean: EAN,
+        pack: '90 g',
+      },
+      classification: {
+        family: 'confectionery',
+        form: 'SOLID',
+        role: 'TOPPING_ONLY',
+      },
+      readiness: { privateRecipe: { base: false, topping: true } },
+    });
+    expect(proposal.searchAuthority.concepts).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: 'SC-ING-000184', key: 'watermelon' })]),
+    );
+  });
+
   it('PRING-BIND-02 fails closed on a ProductBehavior role conflict', () => {
     const { profile } = trustedHariboProfile();
     const behavior = validateProductBehaviorAuthority({
@@ -450,6 +499,42 @@ describe('Haribo Sandía exact-EAN topping semantic authority', () => {
     expect(binding.readiness.privateRecipe).toEqual({ base: false, topping: false });
   });
 
+  it('PRING-BIND-08 fails closed when FINAL Search preserves an ambiguity gate', () => {
+    const { profile } = trustedHariboProfile();
+    const behavior = validateProductBehaviorAuthority({
+      productProfile: profile,
+      behaviorRows: [],
+    });
+    const ambiguousPlan = createMapperCatalogSearchPlan(createTestMapperSearchRuntime(), 'MCC', {
+      localeVariant: 'en',
+      marketScope: 'GLOBAL',
+    });
+    const binding = bindExactProductSemanticContext({
+      source: 'revalidation',
+      exactIdentity: {
+        productId: 'haribo-product-id',
+        articleCode: 'PR-ING-007205',
+        productVersionId: 'haribo-version-id',
+        ean: EAN,
+        brand: 'Haribo',
+        productName: 'Sandía',
+        variant: null,
+        pack: '90 g',
+      },
+      recognition: profile.recognition!,
+      behavior,
+      searchResolution: ambiguousPlan.resolution,
+      profileEngineUsable: false,
+      profileRoleReady: true,
+      publicationReady: true,
+    });
+
+    expect(binding.state).toBe('CONFLICT');
+    expect(binding.reasonCodes).toContain('search_semantics_ambiguous');
+    expect(binding.readiness.privateRecipe).toEqual({ base: false, topping: false });
+    expect(binding.readiness.publicCatalogue).toBe(false);
+  });
+
   it('PRING-BIND-03 rebuilds the same context from a catalog search result', () => {
     const { profile } = trustedHariboProfile();
     const behavior = validateProductBehaviorAuthority({
@@ -487,7 +572,8 @@ describe('Haribo Sandía exact-EAN topping semantic authority', () => {
       invalidFields: [],
       verificationMethod: 'automatic',
       publicData: {
-        identity: { variant: 'Watermelon', netQuantity: '90 g' },
+        identity: { variant: 'Watermelon' },
+        package: { netQuantity: 90, unit: 'g' },
         productIntelligence: {
           engineUsable: false,
           productProfileAuthority: profile,
@@ -499,7 +585,7 @@ describe('Haribo Sandía exact-EAN topping semantic authority', () => {
     expect(catalogProductSemanticBinding(hit, searchPlan.resolution)).toMatchObject({
       source: 'scanner',
       state: 'RESOLVED',
-      exactIdentity: { articleCode: 'PR-ING-007205', ean: EAN },
+      exactIdentity: { articleCode: 'PR-ING-007205', ean: EAN, pack: '90 g' },
       readiness: {
         privateRecipe: { base: false, topping: true },
         publicCatalogue: false,
@@ -515,6 +601,57 @@ describe('Haribo Sandía exact-EAN topping semantic authority', () => {
         expect.objectContaining({ targetId: 'SC-ING-000184', targetKey: 'watermelon' }),
       ]),
     );
+  });
+
+  it('PRING-BIND-07 prefers the version-bound persisted semantic snapshot', async () => {
+    const { profile } = trustedHariboProfile();
+    const behavior = validateProductBehaviorAuthority({
+      productProfile: profile,
+      behaviorRows: [],
+    });
+    const searchPlan = createMapperCatalogSearchPlan(createTestMapperSearchRuntime(), 'Sandía', {
+      localeVariant: 'es',
+      marketScope: 'ES',
+    });
+    const semanticBinding = bindExactProductSemanticContext({
+      source: 'scanner',
+      exactIdentity: {
+        productId: 'haribo-product-id',
+        articleCode: 'PR-ING-007205',
+        productVersionId: 'haribo-version-id',
+        ean: EAN,
+        brand: 'Haribo',
+        productName: 'Sandía',
+        variant: 'Watermelon',
+        pack: '90 g',
+      },
+      recognition: profile.recognition!,
+      behavior,
+      searchResolution: searchPlan.resolution,
+      profileEngineUsable: false,
+      profileRoleReady: true,
+      publicationReady: true,
+      marketCountries: ['ES'],
+    });
+    const persistedOnlyHit = {
+      id: 'haribo-product-id',
+      productCode: 'PR-ING-007205',
+      currentVersionId: 'haribo-version-id',
+      entityKind: 'commercial_product',
+      publicData: { productSemanticBinding: semanticBinding },
+    } as unknown as CatalogProductSearchHit;
+    const unrelatedPlan = createMapperCatalogSearchPlan(
+      createTestMapperSearchRuntime(),
+      'sucrose',
+      { localeVariant: 'en', marketScope: 'GLOBAL' },
+    );
+
+    expect(catalogProductSemanticBinding(persistedOnlyHit, unrelatedPlan.resolution)).toEqual(
+      semanticBinding,
+    );
+    await expect(
+      attachCatalogProductSemanticBindingFromFinalSearch(persistedOnlyHit),
+    ).resolves.toMatchObject({ semanticBinding });
   });
 
   it('PRING-PIPE-01 gives every ingest source the same profile and behavior authority', () => {

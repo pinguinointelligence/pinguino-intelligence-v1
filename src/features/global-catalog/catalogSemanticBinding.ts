@@ -22,6 +22,49 @@ const stringOrNull = (value: unknown): value is string | null =>
 const stringArray = (value: unknown): value is string[] =>
   Array.isArray(value) && value.every((item) => typeof item === 'string');
 
+function trustedPersistedSemanticBindingAt(
+  hit: CatalogProductSearchHit,
+): ProductSemanticBinding | null {
+  const binding = objectAt(hit.publicData.productSemanticBinding);
+  const identity = objectAt(binding?.exactIdentity);
+  const search = objectAt(binding?.searchAuthority);
+  const classification = objectAt(binding?.classification);
+  const behavior = objectAt(binding?.behavior);
+  const readiness = objectAt(binding?.readiness);
+  const privateRecipe = objectAt(readiness?.privateRecipe);
+  const concepts = Array.isArray(search?.concepts) ? search.concepts.map(objectAt) : [];
+  if (
+    binding?.authority !== 'PR_ING_SEMANTIC_BINDING_V1' ||
+    !['RESOLVED', 'UNRESOLVED', 'CONFLICT'].includes(String(binding.state)) ||
+    identity?.productId !== hit.id ||
+    identity.productVersionId !== hit.currentVersionId ||
+    (hit.productCode && identity.articleCode !== hit.productCode) ||
+    search?.releaseId !== 'GELLATTI-SA10-2026-09-10-FINAL' ||
+    (binding.state === 'RESOLVED' &&
+      (concepts.length === 0 ||
+        concepts.some(
+          (concept) =>
+            !concept ||
+            typeof concept.id !== 'string' ||
+            concept.id.startsWith('PI-') ||
+            typeof concept.key !== 'string' ||
+            !['INGREDIENT_CONCEPT', 'NAMED_COMPOSITE'].includes(String(concept.targetType)),
+        ))) ||
+    typeof classification?.family !== 'string' ||
+    typeof classification.form !== 'string' ||
+    typeof classification.role !== 'string' ||
+    behavior?.runtimeMapperIngredientId !== null ||
+    typeof behavior.behaviorFingerprint !== 'string' ||
+    typeof privateRecipe?.base !== 'boolean' ||
+    typeof privateRecipe.topping !== 'boolean' ||
+    typeof readiness?.publicCatalogue !== 'boolean' ||
+    !stringArray(binding.reasonCodes)
+  ) {
+    return null;
+  }
+  return binding as unknown as ProductSemanticBinding;
+}
+
 function trustedRecognitionAt(
   publicData: Record<string, unknown>,
 ): ProductSemanticClassification | null {
@@ -96,6 +139,8 @@ export function catalogProductSemanticBinding(
   source: ProductOnboardingSource = onboardingSourceFor(hit),
 ): ProductSemanticBinding | null {
   if (hit.entityKind !== 'commercial_product' || !hit.currentVersionId) return null;
+  const persisted = trustedPersistedSemanticBindingAt(hit);
+  if (persisted) return persisted;
   const recognition = trustedRecognitionAt(hit.publicData);
   const behavior = trustedBehaviorAt(hit.publicData);
   if (!recognition || !behavior) return null;
@@ -104,6 +149,18 @@ export function catalogProductSemanticBinding(
   const accuracy = objectAt(profile?.productAccuracyAssessment);
   const gellattiReadiness = objectAt(accuracy?.gellattiReadiness);
   const exactIdentity = objectAt(hit.publicData.identity);
+  const packageValue = objectAt(hit.publicData.package);
+  const numericPackage =
+    typeof packageValue?.netQuantity === 'number' && typeof packageValue.unit === 'string'
+      ? `${packageValue.netQuantity} ${packageValue.unit}`
+      : null;
+  const pack =
+    typeof exactIdentity?.netQuantity === 'string'
+      ? exactIdentity.netQuantity
+      : typeof packageValue?.netQuantityText === 'string'
+        ? packageValue.netQuantityText
+        : (numericPackage ??
+          (typeof hit.publicData.netQuantity === 'string' ? hit.publicData.netQuantity : null));
 
   return bindExactProductSemanticContext({
     source,
@@ -115,12 +172,7 @@ export function catalogProductSemanticBinding(
       brand: hit.brand,
       productName: hit.displayName,
       variant: typeof exactIdentity?.variant === 'string' ? exactIdentity.variant : null,
-      pack:
-        typeof exactIdentity?.netQuantity === 'string'
-          ? exactIdentity.netQuantity
-          : typeof hit.publicData.netQuantity === 'string'
-            ? hit.publicData.netQuantity
-            : null,
+      pack,
     },
     recognition,
     behavior,
@@ -169,6 +221,8 @@ export async function attachCatalogProductSemanticBindingFromFinalSearch(
   source?: ProductOnboardingSource,
 ): Promise<CatalogProductSearchHit> {
   if (hit.entityKind !== 'commercial_product') return hit;
+  const persisted = trustedPersistedSemanticBindingAt(hit);
+  if (persisted) return { ...hit, semanticBinding: persisted };
   const recognition = trustedRecognitionAt(hit.publicData);
   if (!recognition) return hit;
   const semanticQuery = catalogProductSemanticSearchText(hit, recognition);

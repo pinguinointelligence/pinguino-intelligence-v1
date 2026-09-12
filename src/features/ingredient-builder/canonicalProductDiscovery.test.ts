@@ -325,6 +325,43 @@ describe('canonical technological slot projection', () => {
     }
   });
 
+  it('PRING-IDENTITY-PRESENTATION-01 keeps exact Haribo variant and 90 g pack visible', () => {
+    const haribo = hit({
+      id: 'haribo-product-id',
+      currentVersionId: 'haribo-version-id',
+      entityKind: 'commercial_product',
+      productCode: 'PR-ING-007205',
+      status: 'verified',
+      verificationMethod: 'automatic',
+      displayName: 'Sandía',
+      originalName: 'Sandía',
+      brand: 'Haribo',
+      canonicalFamily: 'confectionery',
+      category: 'Candies',
+      productForm: 'solid',
+      mappedIngredientId: null,
+      eans: ['8426617014254'],
+      usableInBase: false,
+      usableAsTopping: true,
+      publicData: {
+        identity: { variant: 'Watermelon' },
+        package: { netQuantity: 90, unit: 'g' },
+      },
+    });
+
+    expect(
+      projectCatalogHitsForDiscovery({ hits: [haribo], query: '8426617014254' })[0],
+    ).toMatchObject({
+      primaryName: 'Sandía',
+      secondaryText: 'Haribo · Watermelon · 90 g',
+      hit: {
+        id: 'haribo-product-id',
+        productCode: 'PR-ING-007205',
+        mappedIngredientId: null,
+      },
+    });
+  });
+
   it('presents an exact commercial milk percentage only from its own current nutrition fact', () => {
     const hacendado = hit({
       ...localMilk36A,

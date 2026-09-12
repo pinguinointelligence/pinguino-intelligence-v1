@@ -1,10 +1,10 @@
-import { MAPPER_SEARCH_RELEASE_ID } from '@/features/mapper-search-runtime/generated/releaseManifest';
-import type { MapperSearchResolution } from '@/features/mapper-search-runtime';
-import type { ProductSemanticClassification } from './productRecognition';
+import { MAPPER_SEARCH_RELEASE_ID } from '../mapper-search-runtime/generated/releaseManifest.ts';
+import type { MapperSearchResolution } from '../mapper-search-runtime/types.ts';
+import type { ProductSemanticClassification } from './productRecognition.ts';
 import {
   supportsSemanticBehaviorReference,
   type TrustedProductBehaviorAuthority,
-} from './productBehaviorAuthority';
+} from './productBehaviorAuthority.ts';
 
 export const PRODUCT_SEMANTIC_BINDING_AUTHORITY = 'PR_ING_SEMANTIC_BINDING_V1' as const;
 
@@ -143,13 +143,22 @@ export function bindExactProductSemanticContext(input: {
   } else if (concepts.length === 0) {
     reasons.add('search_concept_unresolved');
   }
+  const searchAmbiguous =
+    input.searchResolution.technicalMentions.some(
+      (mention) => mention.action === 'AMBIGUITY_GATE',
+    ) ||
+    input.searchResolution.searchGaps.some((gap) =>
+      ['AMBIGUOUS_FALLBACK', 'AMBIGUOUS_TECHNICAL_CODE'].includes(gap.reason),
+    );
+  if (searchAmbiguous) reasons.add('search_semantics_ambiguous');
   if (input.recognition.intendedUsageRole === 'NEITHER_REVIEW') {
     reasons.add('product_role_unresolved');
   }
 
   const conflict =
     input.behavior.intendedUsageRole !== input.recognition.intendedUsageRole ||
-    input.behavior.classificationOutcome === 'blocked';
+    input.behavior.classificationOutcome === 'blocked' ||
+    searchAmbiguous;
   const state: ProductSemanticBindingState =
     reasons.size === 0 ? 'RESOLVED' : conflict ? 'CONFLICT' : 'UNRESOLVED';
   const authorityReady = state === 'RESOLVED';

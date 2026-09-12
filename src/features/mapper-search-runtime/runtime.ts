@@ -5,7 +5,7 @@ import {
   normalizeMapperSearchText,
   normalizeWithSpans,
   type NormalizedWithSpans,
-} from './normalize';
+} from './normalize.ts';
 import type {
   LocaleContract,
   MapperReleaseData,
@@ -19,7 +19,7 @@ import type {
   SearchMention,
   SourceSpan,
   TechnicalMention,
-} from './types';
+} from './types.ts';
 
 interface Match<T> {
   row: T;

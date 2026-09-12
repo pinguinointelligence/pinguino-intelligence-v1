@@ -25,6 +25,7 @@ import {
   type MapperProductBehaviorAuthorityRow,
 } from '../../../src/features/product-intelligence/productBehaviorAuthority.ts';
 import { validateSharedProductOnboarding } from '../_shared/sharedProductOnboarding.ts';
+import { buildSharedProductSemanticBindingProposal } from '../_shared/sharedProductSemanticBinding.ts';
 import {
   classifyProductSemantics,
   type ProductSemanticClassification,
@@ -939,6 +940,45 @@ Deno.serve(async (request) => {
   }
   const roleReadiness = profile.productAccuracyAssessment.roleReadiness;
   const roleReady = roleReadiness === 'BASE_READY' || roleReadiness === 'TOPPING_READY';
+  const finalIdentity = objectValue(corrections.result.identity);
+  const finalPackage = objectValue(corrections.result.package);
+  const { data: exactCanonicalProduct } = session.exact_product_id
+    ? await service
+        .from('products')
+        .select('id,product_name_display,brand')
+        .eq('id', session.exact_product_id)
+        .eq('is_active', true)
+        .is('merged_into_product_id', null)
+        .maybeSingle()
+    : { data: null };
+  const semanticBindingProposal = await buildSharedProductSemanticBindingProposal({
+    source: 'scanner',
+    identity: {
+      ean: corrections.barcode,
+      brand:
+        text(exactCanonicalProduct?.brand, 200) ?? text(finalIdentity.brand, 200),
+      productName:
+        text(exactCanonicalProduct?.product_name_display, 300) ??
+        text(finalIdentity.displayName, 300) ??
+        text(finalIdentity.originalName, 300) ??
+        '',
+      variant: text(finalIdentity.variant, 300),
+      pack:
+        text(finalPackage.netQuantityText, 500) ??
+        (typeof finalPackage.netQuantity === 'number' && typeof finalPackage.unit === 'string'
+          ? `${finalPackage.netQuantity} ${finalPackage.unit}`
+          : null),
+      category: text(finalIdentity.category, 300),
+      description: recognitionEvidence.claims.join(' '),
+    },
+    recognition,
+    behavior,
+    profileEngineUsable: profile.engineUsable,
+    profileRoleReady: roleReady && ready,
+    publicationReady: ready && publicationEligibility.eligible,
+    marketCountries: [],
+  });
+  const profileWithSemanticBinding = { ...profile, semanticBindingProposal };
   /*
     THE FINAL ASSESSMENT SNAPSHOT — one scan, one versioned verdict. Preview shows it, Finalize
     saves it and routing classifies it, and its hash is what proves the three were the same thing.
@@ -979,6 +1019,7 @@ Deno.serve(async (request) => {
     productAccuracy: profile.productAccuracy,
     productAccuracyAssessment: profile.productAccuracyAssessment,
     productBehavior: behavior,
+    semanticBinding: semanticBindingProposal,
     engineUsable: profile.engineUsable,
     ready,
     criticalGaps,
@@ -1074,7 +1115,7 @@ Deno.serve(async (request) => {
       p_session_id: sessionId,
       p_idempotency_key: idempotencyKey,
       p_scan_result: corrections.result,
-      p_product_profile: profile,
+      p_product_profile: profileWithSemanticBinding,
       p_product_behavior: behavior,
       p_private_overlay: privateOverlay,
     },
