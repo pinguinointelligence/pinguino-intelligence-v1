@@ -31,6 +31,8 @@ import {
 import { homeCreatorCopy } from '@/features/home-creator/homeCreatorCopy';
 import { homeCustomerNotice } from '@/features/home-creator/homeCustomerNotice';
 import { useHomeDraftStore } from '@/features/home-creator/homeDraftStore';
+import { queueAmountQuestion } from '@/features/home-creator/homeAmountQueue';
+import { defaultHomeToppingGrams } from '@/features/home-creator/homeToppingDefault';
 import { useCanSeeExactGrams } from '@/features/home-creator/useHomeEntitlement';
 import { useHomeFlow } from '@/features/home-creator/useHomeFlow';
 import { useHomeRecipeResult } from '@/features/home-creator/useHomeRecipeResult';
@@ -81,6 +83,13 @@ function useScrollToStage() {
   }, []);
 }
 
+/** A product waiting for HOME's amount question. */
+type PendingAdd = {
+  ingredient: EngineIngredient;
+  behavior: ProductBehaviorSnapshot | null;
+  recommendedDose: string | null;
+};
+
 export function HomeCreatorPage() {
   // HOME authority closure (owner 2026-09-11): the same managed ProductBehavior
   // pass PRO runs. A product added here, the starter lines and chip lines get
@@ -105,22 +114,28 @@ export function HomeCreatorPage() {
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scanNotice, setScanNotice] = useState<string | null>(null);
   const intentIngredients = useHomeIntentIngredients();
-  /** The picked product waiting for its confirmed amount. No line exists yet. */
-  const [pendingAdd, setPendingAdd] = useState<{
-    ingredient: EngineIngredient;
-    behavior: ProductBehaviorSnapshot | null;
-    recommendedDose: string | null;
-  } | null>(null);
+  /** The products waiting for their confirmed amounts, asked one at a time
+   * (Package 2A): each gets its own question. No line exists until it is answered. */
+  const [pendingAdds, setPendingAdds] = useState<PendingAdd[]>([]);
+  const pendingAdd = pendingAdds[0] ?? null;
+  /** Queue a product for the amount question; `null` closes the current one. */
+  const setPendingAdd = useCallback(
+    (next: PendingAdd | null) => setPendingAdds((queue) => queueAmountQuestion(queue, next)),
+    [],
+  );
   /**
    * PACKAGE 2A — a BASE product that reached the recipe through the intent or scanner
    * door after the customer's first crown has no automatic amount, so the hook made no
    * line. Ask it with the same HOME question the picker path uses; the answer goes
    * through `addIngredientLine`, HOME's one Base-line door.
    */
-  const askAmountFor = useCallback((outcome: IntentIngredientOutcome) => {
-    if (outcome.status !== 'needs_amount' || !outcome.ingredient) return;
-    setPendingAdd({ ingredient: outcome.ingredient, behavior: null, recommendedDose: null });
-  }, []);
+  const askAmountFor = useCallback(
+    (outcome: IntentIngredientOutcome) => {
+      if (outcome.status !== 'needs_amount' || !outcome.ingredient) return;
+      setPendingAdd({ ingredient: outcome.ingredient, behavior: null, recommendedDose: null });
+    },
+    [setPendingAdd],
+  );
   // §56: the SAME library the Pro builder feeds its picker. Demo/free get the local
   // preview catalogue, an authenticated paid session gets live Mapper search — HOME
   // does not widen or narrow what Pro can see.
@@ -371,7 +386,10 @@ export function HomeCreatorPage() {
    */
   const handleAddTopping = useCallback(
     (ingredient: RecipeToppingIngredient, behavior?: ProductBehaviorSnapshot) => {
-      useRecipeStore.getState().addTopping(ingredient, 0);
+      // OWNER OD-3: a new topping starts at 5 % of the current BASE mass.
+      useRecipeStore
+        .getState()
+        .addTopping(ingredient, defaultHomeToppingGrams(useRecipeStore.getState().items));
       const topping = useRecipeStore
         .getState()
         .toppings.find((line) => line.ingredient.id === ingredient.id);
@@ -418,7 +436,7 @@ export function HomeCreatorPage() {
       }
       addIngredientLine(ingredient, behavior ?? null, 0);
     },
-    [addIngredientLine, handleAddTopping],
+    [addIngredientLine, handleAddTopping, setPendingAdd],
   );
 
   /** §57: the existing Topping behaviour — no Crown, editable grams. Shared identically. */
@@ -753,6 +771,7 @@ export function HomeCreatorPage() {
 
       {pendingAdd ? (
         <HomeAmountPrompt
+          key={pendingAdd.ingredient.id}
           productName={pendingAdd.ingredient.name}
           recommendedDose={pendingAdd.recommendedDose}
           onCancel={() => setPendingAdd(null)}

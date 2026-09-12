@@ -20,7 +20,7 @@ const readonlyAssertion = resolve(
 const expectedSha = '44fd5302c7a2372bb69ba5abc592edd27f41e96c5de00ac2ca45ade1903ad6d6';
 
 describe('Owner-approved Mapper process companion', () => {
-  it('matches the exact source hash, 22-column shape, counts and Mapper 2089 identities', () => {
+  it('keeps the certified 2089 process rows as a subset of FINAL 2541 Mapper identities', () => {
     const output = execFileSync(process.execPath, [script, '--check'], {
       cwd: root,
       encoding: 'utf8',
@@ -38,9 +38,11 @@ describe('Owner-approved Mapper process companion', () => {
         HEAT_REQUIRED_FOR_BOTH: 0,
         UNKNOWN: 1389,
       },
-      mapperRowCount: 2089,
-      mapperUniqueIngredientIds: 2089,
-      alignmentDifferences: 0,
+      mapperRowCount: 2541,
+      mapperUniqueIngredientIds: 2541,
+      alignmentDifferences: 452,
+      processIdsMissingFromMapper: 0,
+      mapperIdsWithoutProcessMetadata: 452,
       outputPath: null,
     });
   });

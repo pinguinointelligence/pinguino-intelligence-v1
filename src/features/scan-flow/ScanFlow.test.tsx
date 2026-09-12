@@ -55,6 +55,26 @@ function setValue(el: HTMLInputElement | HTMLTextAreaElement, value: string) {
   el.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
+function touch(el: HTMLElement, type: 'touchstart' | 'touchmove' | 'touchend' | 'touchcancel') {
+  const event = new Event(type, { bubbles: true, cancelable: true });
+  const point = { clientX: 24, clientY: type === 'touchmove' ? 80 : 24, identifier: 1 };
+  Object.defineProperty(
+    event,
+    type === 'touchend' || type === 'touchcancel' ? 'changedTouches' : 'touches',
+    {
+      value: [point],
+    },
+  );
+  el.dispatchEvent(event);
+}
+
+function mobileTap(el: HTMLElement) {
+  touch(el, 'touchstart');
+  touch(el, 'touchend');
+  // A real browser synthesizes click only after a completed stationary touch gesture.
+  el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+}
+
 describe('ScanFlow (jsdom, fake ports)', () => {
   let host: HTMLDivElement;
   let root: Root;
@@ -192,7 +212,7 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     });
   });
 
-  it('owner case: an unknown code the registry identifies is saved without a label or a category question', async () => {
+  it('SCN-REAL-A: complete internet facts + accepted Rescue finish without photo', async () => {
     const { discovery, registry } = fakes();
     const MILKA = '7622210669315';
     registry.set(MILKA, {
@@ -316,7 +336,7 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     expect(text()).toContain('Zapisano jako Twój produkt');
   });
 
-  it('SOL-052: publication-ineligible internet facts are still applied and only real gaps are shown', async () => {
+  it('SCN-REAL-B / SOL-052: a real missing label fact requests only that photo evidence', async () => {
     const { discovery, registry } = fakes();
     const code = '7350042718481';
     const finalizeCount = discovery.finalizeInputs.length;
@@ -357,10 +377,11 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     });
     await typeCode(code);
     await flush();
-    expect(text()).toContain('Skład (z etykiety)');
+    expect(text()).toContain('Brakuje składu. Zrób zdjęcie tej części etykiety.');
     expect(text()).not.toContain('Brakuje dokładnej nazwy wariantu');
     expect(text()).not.toContain('Nazwa produktu (z etykiety)');
     expect(text()).not.toContain('Energia (kcal)');
+    expect(text()).not.toContain('Wartości podane na');
     expect(discovery.finalizeInputs).toHaveLength(finalizeCount + 1);
     expect(discovery.finalizeInputs.at(-1)).toMatchObject({
       customerFamily: 'beverage',
@@ -375,6 +396,89 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     });
     expect(discovery.finalizeInputs.at(-1)?.confirmations).toBeUndefined();
     expect(discovery.created.has(code)).toBe(false);
+  });
+
+  it('SCN-REAL-C/G: technical-only gaps skip photo, accept one exact answer, and resume', async () => {
+    const { discovery, registry } = fakes();
+    const code = '8480000510716';
+    registry.set(code, {
+      provider: 'openfoodfacts',
+      queriedAt: 1,
+      query: code,
+      confidence: 0.9,
+      facts: [
+        {
+          field: 'identity.displayName',
+          value: 'Queso fresco batido desnatado',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'identity.brand',
+          value: 'Hacendado',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'identity.quantity',
+          value: '500 g',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'category.tags',
+          value: 'en:dairy;en:cheeses',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'nutrition.basis',
+          value: 'per_100g',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'nutrition.energyKcal',
+          value: '46',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'ingredientsText',
+          value: 'Leche desnatada pasteurizada y fermentos lácticos',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+      ],
+    });
+    discovery.notReadyMissing.set(code, ['MISSING_TOTAL_SOLIDS_PERCENT', 'MISSING_WATER_PERCENT']);
+    discovery.notReadyReasons.set(code, ['UNRESOLVED_SWEETENING_FREEZING_PATH']);
+    discovery.authorityEngineUsable.set(code, true);
+    discovery.confidence.set(code, 90);
+
+    await act(async () => root.render(<ScanFlow mode="catalog" />));
+    await typeCode(code);
+    await flush();
+
+    expect(text()).toContain('Queso fresco batido desnatado');
+    expect(text()).toContain('Nie udało nam się potwierdzić tej wartości');
+    expect(text()).toContain('Sucha masa produktu');
+    expect(text()).not.toContain('Zrób zdjęcie etykiety');
+    expect(host.querySelectorAll('input[type="file"]')).toHaveLength(0);
+
+    const answer = host.querySelector<HTMLInputElement>('input[inputmode="decimal"]')!;
+    await act(async () => setValue(answer, '12,4'));
+    await act(async () => button('Zapisz jako mój produkt')!.click());
+    await flush();
+
+    const last = discovery.finalizeInputs.at(-1);
+    expect(last?.confirmations).toMatchObject({
+      evidenceOrigin: 'customer_action',
+      productFields: { productionDeclarations: { totalSolidsPercent: 12.4 } },
+    });
+    expect(text()).toContain('Zapisano');
+    expect(discovery.created.get(code)?.productionReady).toBe(true);
+    expect(discovery.calls.filter((call) => call.startsWith(`analyze:${code}`))).toHaveLength(0);
   });
 
   it('a registry identity whose family nobody can tell asks it once, with the product name shown', async () => {
@@ -418,5 +522,91 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     });
     await flush();
     expect(text()).toContain('Zapisano jako Twój produkt');
+  });
+
+  it('SCN-MOBILE-FAMILY-01: touch selects visibly, persists once and continues without scroll selection', async () => {
+    const { discovery, registry } = fakes();
+    const code = '8000500272480';
+    registry.set(code, {
+      provider: 'openfoodfacts',
+      queriedAt: 1,
+      query: code,
+      confidence: 0.9,
+      facts: [
+        {
+          field: 'identity.displayName',
+          value: 'Wafer test',
+          sourceUrl: 'u',
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'identity.brand',
+          value: 'Brand test',
+          sourceUrl: 'u',
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'identity.quantity',
+          value: '242 g',
+          sourceUrl: 'u',
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'nutrition.energyKcal',
+          value: '542',
+          sourceUrl: 'u',
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'ingredientsText',
+          value: 'hazelnuts, cocoa, wafer',
+          sourceUrl: 'u',
+          authority: 'barcode_registry',
+        },
+      ],
+    });
+    const originalFinalize = discovery.finalize.bind(discovery);
+    let releaseSelectedFinalize!: () => void;
+    const selectedFinalizeGate = new Promise<void>((resolve) => {
+      releaseSelectedFinalize = resolve;
+    });
+    const finalizeSpy = vi
+      .spyOn(discovery, 'finalize')
+      .mockImplementation(async (session, input, ctx, saveUnverified) => {
+        if (input.customerFamily === 'nut_paste') await selectedFinalizeGate;
+        return originalFinalize(session, input, ctx, saveUnverified);
+      });
+
+    await act(async () => root.render(<ScanFlow mode="catalog" />));
+    await typeCode(code);
+    await flush();
+
+    const option = button('Orzechy / pasty')!;
+    const callsBeforeGesture = finalizeSpy.mock.calls.length;
+    await act(async () => {
+      touch(option, 'touchstart');
+      touch(option, 'touchmove');
+      touch(option, 'touchcancel');
+    });
+    expect(option.getAttribute('aria-pressed')).toBe('false');
+    expect(finalizeSpy).toHaveBeenCalledTimes(callsBeforeGesture);
+
+    await act(async () => {
+      mobileTap(option);
+      mobileTap(option);
+      await Promise.resolve();
+    });
+
+    expect(option.getAttribute('aria-pressed')).toBe('true');
+    expect(option.className).toContain('bg-ink');
+    expect(
+      finalizeSpy.mock.calls.filter(([, input]) => input.customerFamily === 'nut_paste'),
+    ).toHaveLength(1);
+
+    releaseSelectedFinalize();
+    await flush();
+    expect(text()).toContain('Zapisano jako Twój produkt');
+    expect(text()).not.toContain('Co to za produkt?');
+    expect(discovery.finalizeInputs.at(-1)?.customerFamily).toBe('nut_paste');
   });
 });

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ProfileMatch } from './mapperValueInference';
 import {
   classifyProspectiveProductBehavior,
+  supportsSemanticBehaviorReference,
   validateProductBehaviorAuthority,
   type MapperProductBehaviorAuthorityRow,
 } from './productBehaviorAuthority';
@@ -78,6 +79,24 @@ const cocoaPowderRecognition = classifyProductSemantics({
   dosage: null,
   technicalParameters: null,
   sourceUrls: [],
+});
+
+const quesoRecognition = classifyProductSemantics({
+  name: 'Queso fresco batido desnatado',
+  brand: 'Hacendado',
+  manufacturer: 'SENAGRAL-S-A-S',
+  manufacturerCode: null,
+  gtin: '8480000510716',
+  productType: 'fresh cheese',
+  category: 'dairy',
+  subcategory: 'fresh cheese',
+  variant: '0% MG',
+  ingredients: 'Leche de vaca desnatada pasterizada, fermentos lacticos.',
+  nutrition: '46 kcal; fat 0.5 g; carbohydrate 3.5 g; protein 8 g; salt 0.1 g',
+  description: 'Queso fresco batido desnatado',
+  dosage: null,
+  technicalParameters: null,
+  sourceUrls: ['https://world.openfoodfacts.org/product/8480000510716'],
 });
 
 const behaviorRow = (
@@ -332,6 +351,65 @@ describe('prospective ProductBehavior authority', () => {
     });
   });
 
+  it('carries an explicitly confirmed, fully resolved classification into behavior after safe field Rescue', () => {
+    const acceptedRecognition = {
+      ...quesoRecognition,
+      classificationSource: 'CUSTOMER_CONFIRMED' as const,
+      productArchetype: 'NORMAL_INGREDIENT' as const,
+      ingredientFamily: 'dairy_liquid' as const,
+      physicalForm: 'LIQUID' as const,
+      intendedUsageRole: 'BASE_ONLY' as const,
+      compatibleMapperCategories: ['dairy'],
+      confidence: 0.8,
+      modelRequired: false,
+      modelReasonCodes: [],
+      evidenceRefs: [...quesoRecognition.evidenceRefs, 'customerFamily'],
+    };
+
+    expect(supportsSemanticBehaviorReference(acceptedRecognition)).toBe(true);
+    expect(
+      classifyProspectiveProductBehavior({
+        kind: 'normal_food',
+        engineUsable: true,
+        profileMatch: profileMatch({ confidence: 0.8384 }),
+        recognition: acceptedRecognition,
+      }),
+    ).toMatchObject({
+      classificationOutcome: 'classified',
+      baseRecipeEligible: true,
+      referenceMapperIngredientId: 'PI-ING-000123',
+      classificationReasonCodes: [],
+    });
+  });
+
+  it('keeps the family/form blocker when resolved-looking semantics lack sufficient authority', () => {
+    const insufficientRecognition = {
+      ...quesoRecognition,
+      classificationSource: 'SERVER_MODEL' as const,
+      ingredientFamily: 'dairy_liquid' as const,
+      physicalForm: 'LIQUID' as const,
+      intendedUsageRole: 'BASE_ONLY' as const,
+      confidence: 0.8,
+      modelRequired: false,
+      modelReasonCodes: [],
+      evidenceRefs: quesoRecognition.evidenceRefs.filter((ref) => ref !== 'customerFamily'),
+    };
+
+    expect(supportsSemanticBehaviorReference(insufficientRecognition)).toBe(false);
+    expect(
+      classifyProspectiveProductBehavior({
+        kind: 'normal_food',
+        engineUsable: true,
+        profileMatch: profileMatch({ confidence: 0.8384 }),
+        recognition: insufficientRecognition,
+      }),
+    ).toMatchObject({
+      classificationOutcome: 'unknown_requires_review',
+      baseRecipeEligible: false,
+      classificationReasonCodes: ['family_and_form_evidence_missing'],
+    });
+  });
+
   it('does not use a sub-threshold profile as behavior evidence when Recognition is unresolved', () => {
     expect(
       classifyProspectiveProductBehavior({
@@ -398,6 +476,38 @@ describe('prospective ProductBehavior authority', () => {
 });
 
 describe('server-owned immutable ProductBehavior authority', () => {
+  it('preserves resolved Recognition family/form as restricted context while physics is incomplete', () => {
+    expect(quesoRecognition).toMatchObject({
+      ingredientFamily: 'dairy_liquid',
+      physicalForm: 'LIQUID',
+      intendedUsageRole: 'BASE_ONLY',
+      modelRequired: false,
+    });
+    const authority = validateProductBehaviorAuthority({
+      productProfile: productProfile({
+        engineUsable: false,
+        profileReferenceMapperIngredientId: null,
+        recognition: { ...quesoRecognition, confidence: 0.8 },
+        criticalPhysicsBlockers: [
+          'MISSING_TOTAL_SOLIDS_PERCENT',
+          'MISSING_WATER_PERCENT',
+          'UNRESOLVED_SWEETENING_FREEZING_PATH',
+        ],
+      }),
+      behaviorRows: [behaviorRow()],
+    });
+
+    expect(authority).toMatchObject({
+      classificationOutcome: 'unknown_requires_review',
+      familyId: 'dairy',
+      formId: 'liquid',
+      intendedUsageRole: 'BASE_ONLY',
+      baseRecipeEligible: false,
+      toppingEligible: false,
+    });
+    expect(authority.profilePermissions).toMatchObject({ BASE_RECIPE: false, PRODUCTION: false });
+  });
+
   it('reports the persisted PM profile blocker instead of claiming the profile is missing', () => {
     const authority = validateProductBehaviorAuthority({
       productProfile: productProfile({

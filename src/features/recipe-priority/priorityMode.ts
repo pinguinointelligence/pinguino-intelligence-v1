@@ -46,3 +46,24 @@ export function visibleCrownLineIds(items: readonly PriorityLine[], mode: Priori
 export function autoPriorityAppliesToNewLine(mode: PriorityMode): boolean {
   return mode === 'AUTO';
 }
+
+/**
+ * SAVE / REOPEN (Package 2A closure, 2026-09-11). A saved recipe keeps only real
+ * amounts and roles, so the mode travels as one extension marker on the saved
+ * recipe input — `pinguino_priority_mode_v1: 'AUTO'`, present only when the draft
+ * was still AUTO, in the same family as `pinguino_profile_v1`. The saved-recipe
+ * loader keeps unknown fields (`recipeInputSchema` is loose): no schema change.
+ */
+export const SAVED_PRIORITY_MODE_KEY = 'pinguino_priority_mode_v1' as const;
+
+/** The mode a saved recipe reopens in: AUTO only when it was saved in AUTO. */
+export function savedPriorityMode(input: object): PriorityMode {
+  return (input as Record<string, unknown>)[SAVED_PRIORITY_MODE_KEY] === 'AUTO' ? 'AUTO' : 'MANUAL';
+}
+
+/** The saved recipe input for a draft in `mode`: the AUTO marker, or none at all. */
+export function withSavedPriorityMode<T extends object>(input: T, mode: PriorityMode): T {
+  const rest: Record<string, unknown> = { ...(input as Record<string, unknown>) };
+  delete rest[SAVED_PRIORITY_MODE_KEY];
+  return (mode === 'AUTO' ? { ...rest, [SAVED_PRIORITY_MODE_KEY]: 'AUTO' } : rest) as T;
+}

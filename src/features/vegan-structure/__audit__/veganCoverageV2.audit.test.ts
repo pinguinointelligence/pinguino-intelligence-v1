@@ -85,14 +85,14 @@ describe('Vegan v2 Mapper coverage audit (read-only)', () => {
   const all = rows();
 
   it('recomputes current Vegan eligibility counts from the real Mapper base', () => {
-    expect(all).toHaveLength(2089);
+    expect(all).toHaveLength(2541);
     const counts: Record<string, number> = {};
     for (const row of all) {
       const { status } = eligibility(row);
       counts[status] = (counts[status] ?? 0) + 1;
     }
     console.log('VEGAN_ELIGIBILITY_COUNTS ' + JSON.stringify(counts));
-    expect(Object.values(counts).reduce((a, b) => a + b, 0)).toBe(2089);
+    expect(Object.values(counts).reduce((a, b) => a + b, 0)).toBe(2541);
     // The 18 fail-closed conflicts stay fail-closed — never guessed VERIFIED.
     expect(counts.VEGAN_CONFLICT).toBeGreaterThan(0);
   });

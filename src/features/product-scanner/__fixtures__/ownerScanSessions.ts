@@ -64,6 +64,8 @@ export const sport001ScanResult = () => ({
     cocoaButterPercent: null,
     cocoaSolidsPercent: null,
     fruitContentPercent: null,
+    waterPercent: null,
+    totalSolidsPercent: null,
     technicalParametersText: null,
   },
   externalSources: [
@@ -155,6 +157,8 @@ export const sport002ScanResult = () => ({
     cocoaButterPercent: null,
     cocoaSolidsPercent: null,
     fruitContentPercent: null,
+    waterPercent: null,
+    totalSolidsPercent: null,
     technicalParametersText:
       'Sugar-free; lemon/lime; vitamin D, niacin, vitamin B6, vitamin B12, pantothenic acid and magnesium; non-carbonated sports drink.',
   },
@@ -182,11 +186,7 @@ export const sport002ScanResult = () => ({
       url: 'https://www.vitaminwell.com/product/electrolytes-sugar-free/',
       title: 'Isotonic Sugar Free – Vitamin Well',
       sourceType: 'manufacturer',
-      fieldsUsed: [
-        'identity.category',
-        'claims',
-        'productionDeclarations.technicalParametersText',
-      ],
+      fieldsUsed: ['identity.category', 'claims', 'productionDeclarations.technicalParametersText'],
     },
     {
       url: 'https://www.elcorteingles.es/supermercado/B001018623902212-vitamin-well-bebida-refrescante-con-vitaminas-y-minerales-sport-002-sabor-limon-lima-sin-azucar-botella-500-ml/',

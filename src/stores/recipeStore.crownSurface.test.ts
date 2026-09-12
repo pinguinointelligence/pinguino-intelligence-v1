@@ -169,11 +169,29 @@ describe('HOME TEST — HOME keeps its own Crown rule, on the HOME surface only'
   });
 
   it.each(['gelato', 'sorbet', 'vegan'] as const)(
-    'HOME %s keeps the behaviour it has on staging today (seed 1 g)',
+    'HOME %s is mass-neutral too (owner OD-1): 0 g + Crown stays 0 g, through either door',
     (profile) => {
       const id = openWithWatermelon(profile);
       st().setMainIngredient(id, 'home');
-      expect(line(id)).toMatchObject({ planned_grams: 1, lock_type: 'main' });
+      expect(line(id)).toMatchObject({ planned_grams: 0, lock_type: 'main' });
+      expect(st().crownAutoSeededLineIds).not.toContain(id);
+
+      st().setStandardIngredient(id);
+      st().setLockType(id, 'main', 'home');
+      expect(line(id)).toMatchObject({ planned_grams: 0, lock_type: 'main' });
+    },
+  );
+
+  it.each(PROFILES)(
+    '%s — the same line behaves per SURFACE: HOME 0 g, PRO 1 g, no leak between them',
+    (profile) => {
+      const home = openWithWatermelon(profile);
+      st().setMainIngredient(home, 'home');
+      expect(line(home).planned_grams).toBe(0);
+
+      const pro = openWithWatermelon(profile);
+      st().setMainIngredient(pro);
+      expect(line(pro).planned_grams).toBe(1);
     },
   );
 

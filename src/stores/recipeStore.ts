@@ -120,7 +120,11 @@ import {
   type HomeFormulationModuleId,
   type MachineTechnology,
 } from '@/features/machine-catalog';
-import { DEFAULT_PRIORITY_MODE, type PriorityMode } from '@/features/recipe-priority';
+import {
+  DEFAULT_PRIORITY_MODE,
+  savedPriorityMode,
+  type PriorityMode,
+} from '@/features/recipe-priority';
 
 type FlavorIntensity = NonNullable<RecipeGoals['flavor_intensity']>;
 
@@ -719,15 +723,15 @@ const ENGINE_KEPT_LOCKS: ReadonlySet<LockType> = new Set(['main', 'already_added
  * inside this shared store, which is how it reached PRO and turned
  * `0 g + Crown -> 1 g` into `0 g + Crown -> 0 g` there. It is scoped by
  * SURFACE now, and only HOME's own call sites pass `'home'`.
+ *
+ * OWNER OD-1 (2026-09-11, Package 2A closure): HOME's Crown and priority are
+ * mass-neutral for EVERY profile — 0 g stays 0 g. HOME's „Przelicz i popraw"
+ * hands a 0 g HOME priority line to the solver as the Crown bootstrap on its
+ * provisional copy instead. PRO keeps `0 g + Crown -> 1 g` for every profile.
  */
 export type CrownSurface = 'pro' | 'home';
 
-const crownAutoSeedAllowed = (
-  state: { visibleProductType: VisibleProductType; category: ProductCategory },
-  surface: CrownSurface,
-): boolean =>
-  surface === 'pro' ||
-  (state.visibleProductType !== 'protein' && state.category !== 'protein_gelato');
+const crownAutoSeedAllowed = (surface: CrownSurface): boolean => surface === 'pro';
 
 /**
  * PACKAGE 2A (closed 2026-09-11) — HOME's first conscious crown in AUTO.
@@ -740,9 +744,9 @@ const crownAutoSeedAllowed = (
  * line gets back the lock its own constraints describe (grams/percent/unlocked,
  * the same mapping `setStandardIngredient` uses), and no amount is written as
  * user intent — the Crown is a priority, not a quantity and not a lock. The
- * automatic seed provenance ends here too: a gram the automatic priority gave is
- * an ordinary amount from now on, so a later HOME uncrown keeps it; a released
- * line also ends any Crown-bootstrap provenance (#290: any other role ends it).
+ * seed provenance ends here too, so a later HOME uncrown keeps every gram (HOME's
+ * own Crown never seeds since owner OD-1), and a released line also ends any
+ * Crown-bootstrap provenance (#290: any other role ends it).
  *
  * Like HOME's own Crown door (`setLockType` with `'home'`) it never touches
  * ProductBehavior snapshots: a released line keeps its product and its grams,
@@ -2533,12 +2537,12 @@ export const useRecipeStore = create<RecipeState>()(
           // OWNER P0 — the crown contract belongs to the role transition, not
           // to one button. This lower-level write reaches the same Main role,
           // so it seeds and restores exactly like the Crown toggle — with
-          // HOME's Protein mass-neutral exception only when HOME is the caller.
+          // HOME's mass-neutral Crown (owner OD-1) only when HOME is the caller.
           const wasAutoSeeded = state.crownAutoSeededLineIds.includes(lineId);
           const crownedNow = lockType === 'main' && current?.lock_type !== 'main';
           const uncrownedNow = lockType !== 'main' && current?.lock_type === 'main';
           const seed =
-            crownedNow && crownAutoSeedAllowed(state, surface)
+            crownedNow && crownAutoSeedAllowed(surface)
               ? crownOnPlannedGrams(current?.planned_grams ?? 0)
               : null;
           const items = state.items.map((item) =>
@@ -2696,9 +2700,9 @@ export const useRecipeStore = create<RecipeState>()(
           // ProductBehavior required line, so nothing ever revalidates the
           // role transition and every later grams edit is refused. PRO seeds
           // one ordinary gram for EVERY profile and remembers that WE seeded
-          // it. HOME's Protein Crown stays mass-neutral (`crownAutoSeedAllowed`).
+          // it. HOME's Crown is mass-neutral for every profile (`crownAutoSeedAllowed`).
           const seed =
-            roleChanged && crownAutoSeedAllowed(state, surface)
+            roleChanged && crownAutoSeedAllowed(surface)
               ? crownOnPlannedGrams(current.planned_grams)
               : null;
           const items = state.items.map((item) => {
@@ -3051,8 +3055,9 @@ export const useRecipeStore = create<RecipeState>()(
           // provenance is draft-transient and must never be reconstructed from
           // a saved payload.
           crownAutoSeededLineIds: [],
-          // PACKAGE 2A: a loaded recipe is MANUAL — its crowns are real, saved choices.
-          priority_mode: DEFAULT_PRIORITY_MODE,
+          // PACKAGE 2A: a recipe saved while still AUTO reopens AUTO; every other
+          // load (every PRO save, every MANUAL save) is MANUAL — its crowns are real.
+          priority_mode: savedPriorityMode(input),
           activePresetId: null,
           newRecipeStarterTemplateId: null,
           newRecipeStarterKey: null,

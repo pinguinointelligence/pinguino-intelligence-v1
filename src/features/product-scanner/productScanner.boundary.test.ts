@@ -185,10 +185,10 @@ describe('Product Scanner server/client/security boundary', () => {
     // JSX wraps the sentence, so assert the two halves it is actually split into
     expect(flow).toContain('ceny, dostawcy, notatki i stan');
     expect(flow).toContain('magazynowy pozostają prywatne');
-    // every surface that can upload a photo renders the disclosure first
+    // the one photo surface renders the disclosure before either camera/gallery upload action
     const uploads = [...flow.matchAll(/void sendLabel\(/g)].length;
     expect(uploads).toBeGreaterThan(0);
-    expect([...flow.matchAll(/\{photoPrivacyNote\}/g)].length).toBe(2);
+    expect([...flow.matchAll(/\{photoPrivacyNote\}/g)].length).toBe(1);
     for (const m of flow.matchAll(/\{photoPrivacyNote\}/g))
       expect(flow.indexOf('void sendLabel(', m.index)).toBeGreaterThan(m.index);
     expect(flow).not.toContain('privacyAccepted');

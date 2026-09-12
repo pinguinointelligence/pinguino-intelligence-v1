@@ -89,6 +89,40 @@ const DECLARATIONS: readonly { test: RegExp; key: string; label: string }[] = [
   { test: /brix/i, key: 'brix', label: 'Brix' },
 ];
 
+const MANUAL_TECHNICAL: readonly { test: RegExp; key: string; label: string }[] = [
+  {
+    test: /missing_total_solids_percent/i,
+    key: 'totalSolidsPercent',
+    label: 'Sucha masa produktu',
+  },
+  { test: /missing_water_percent/i, key: 'waterPercent', label: 'Zawartość wody' },
+];
+
+/**
+ * A photo is evidence acquisition, never a generic retry button. These are the only gap families
+ * a retail label can realistically answer. Product-physics and Mapper/Behavior codes remain in
+ * `photoCannotSolve` so the caller can continue to Rescue, review or a precise question.
+ */
+export function classifyRemainingGaps(missingCritical: readonly string[]): {
+  photoSolvable: string[];
+  photoCannotSolve: string[];
+} {
+  const photoSolvable: string[] = [];
+  const photoCannotSolve: string[] = [];
+  for (const original of missingCritical) {
+    const code = original.toLowerCase();
+    const canReadFromLabel =
+      /ingredients|allergen|nutrition|product_identity|display_?name|(^|[._-])name$|brand/.test(
+        code,
+      ) ||
+      /net_?quantity|package[._-](netquantity|unit)|alcohol|abv|cocoa|fruit|brix|dosage|form_?declaration/.test(
+        code,
+      );
+    (canReadFromLabel ? photoSolvable : photoCannotSolve).push(original);
+  }
+  return { photoSolvable, photoCannotSolve };
+}
+
 /**
  * Only what the authority still misses, expressed as plain label fields. Codes it does not know how
  * to ask the customer for are dropped (the "request verification" path stays available for those).
@@ -153,6 +187,25 @@ export function plainFieldsFor(
   return [...out.values()];
 }
 
+/** Exact questions for facts the customer may know even though a generic label photo cannot. */
+export function manualFieldsFor(
+  missingCritical: readonly string[],
+  options: { needIdentity?: boolean } = {},
+): PlainField[] {
+  const out = new Map(plainFieldsFor(missingCritical, options).map((field) => [field.key, field]));
+  const codes = missingCritical.map((code) => code.toLowerCase());
+  // Water and total solids are complements. Asking for both would ask the customer for the same
+  // physical fact twice, so the server derives water from a supplied solids declaration.
+  if (codes.some((code) => /missing_total_solids_percent/.test(code))) {
+    const field = MANUAL_TECHNICAL[0]!;
+    out.set(field.key, { ...field, kind: 'number', required: true, unit: '%' });
+  } else if (codes.some((code) => /missing_water_percent/.test(code))) {
+    const field = MANUAL_TECHNICAL[1]!;
+    out.set(field.key, { ...field, kind: 'number', required: true, unit: '%' });
+  }
+  return [...out.values()];
+}
+
 function num(value: unknown): number | null {
   if (typeof value !== 'string' || value.trim() === '') return null;
   const n = Number(value.replace(',', '.'));
@@ -196,6 +249,11 @@ export function confirmationsFromFields(
   }
   const declarations: Record<string, unknown> = {};
   for (const { key } of DECLARATIONS) {
+    if (!include(key)) continue;
+    const n = num(values[key]);
+    if (n !== null) declarations[key] = n;
+  }
+  for (const { key } of MANUAL_TECHNICAL) {
     if (!include(key)) continue;
     const n = num(values[key]);
     if (n !== null) declarations[key] = n;
@@ -399,7 +457,7 @@ export function takeGuestCode(): string | null {
   matches the gap. It never invents a field: with nothing named it falls back to the general ask.
 */
 export function labelPhotoRequest(missingCritical: readonly string[]): string {
-  const codes = missingCritical.map((c) => c.toLowerCase());
+  const codes = classifyRemainingGaps(missingCritical).photoSolvable.map((c) => c.toLowerCase());
   const wants = {
     ingredients: codes.some((c) => /ingredients/.test(c)),
     nutrition: codes.some((c) => /^nutrition[._-]/.test(c)),
@@ -421,8 +479,7 @@ export function labelPhotoRequest(missingCritical: readonly string[]): string {
         ? 'Brakuje nazwy produktu. Zrób zdjęcie przodu opakowania.'
         : 'Brakuje marki. Zrób zdjęcie przodu opakowania.';
   }
-  if (parts.length === 0)
-    return 'Brakuje jeszcze danych z etykiety. Zrób zdjęcie składu i tabeli wartości odżywczych.';
+  if (parts.length === 0) return 'Tego braku nie da się potwierdzić zdjęciem etykiety.';
   const list =
     parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(', ')} i ${parts[parts.length - 1]}`;
   return `Brakuje ${list}. Zrób zdjęcie tej części etykiety.`;

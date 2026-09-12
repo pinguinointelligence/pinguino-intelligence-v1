@@ -15,6 +15,10 @@ const virtualEntry = '\0production-rescue-edge-entry';
 // Security-reviewed positive closure. A newly reachable module must be added
 // deliberately here; regenerating the artifact cannot silently bless it.
 const EXPECTED_SOURCE_CLOSURE = [
+  // REVIEWED 2026-09-11 (FINAL Mapper authority). Verified Vegan/Protein
+  // toolbox rows now resolve their technical composition from this generated,
+  // deterministic FINAL-2541 projection. It has no IO or mutable runtime state.
+  'src/data/ingredients/canonicalToolboxCompositions.ts',
   'src/data/ingredients/canonicalIngredientIdentity.ts',
   'src/data/ingredients/veganEligibility.ts',
   'src/data/ingredients/verifiedVeganToolbox.ts',

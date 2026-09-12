@@ -19,6 +19,19 @@ const AUDITED = [
   'PI-ING-000456',
 ] as const satisfies readonly StarterPackRescueMapperId[];
 
+// FINAL 2541 authority: these two remain Verified and can therefore enter the
+// executable rescue palette. PI-ING-000260 / PI-ING-000270 are now
+// Estimated/85; their process rows remain audited above, but ProductBehavior
+// correctly keeps them out of executable candidates.
+const EXECUTABLE_AUDITED = [
+  'PI-ING-001645',
+  'PI-ING-000456',
+] as const satisfies readonly StarterPackRescueMapperId[];
+const ESTIMATED_FAIL_CLOSED = [
+  'PI-ING-000260',
+  'PI-ING-000270',
+] as const satisfies readonly StarterPackRescueMapperId[];
+
 const [PROCESS_HEADER = [], ...PROCESS_VALUES] = parseCsv(
   readFileSync(resolve('supabase/seed/mapper_process_metadata.csv'), 'utf8'),
 );
@@ -34,7 +47,7 @@ const processRow = (mapperId: (typeof AUDITED)[number]) => {
 
 const auditRecipe = (): RecipeInput => {
   const base = starterMilkBase();
-  const items = AUDITED.map((mapperId, index) => ({
+  const items = EXECUTABLE_AUDITED.map((mapperId, index) => ({
     id: starterPackRescueLineId(mapperId),
     ingredient: starterPackRescueIngredient(mapperId)!,
     planned_grams: index === 0 ? 10 : 20,
@@ -61,6 +74,7 @@ const withoutProcessEvidence = (recipe: RecipeInput) =>
 
 describe('Direction alternative process-authority audit', () => {
   it('pins the current canonical process authority for all four exact Mapper identities', () => {
+    expect(AUDITED).toHaveLength(4);
     expect(processRow('PI-ING-001645')).toMatchObject({
       process_status: 'UNKNOWN',
       cold_process_eligibility: 'UNKNOWN',
@@ -91,30 +105,33 @@ describe('Direction alternative process-authority audit', () => {
     });
   });
 
-  it('finds missing process evidence for the exact four owner-audited products', () => {
+  it('finds missing process evidence for executable audited products and fails Estimated rows closed', () => {
+    for (const mapperId of ESTIMATED_FAIL_CLOSED) {
+      expect(starterPackRescueIngredient(mapperId)).toBeNull();
+    }
     const recipe = auditRecipe();
     const snapshots = withoutProcessEvidence(recipe);
     expect(
       missingDirectionAlternativeProcessLines(recipe, snapshots).map(
         (item) => item.ingredient.canonical_ingredient_id,
       ),
-    ).toEqual(AUDITED);
+    ).toEqual(EXECUTABLE_AUDITED);
   });
 
   it('allows Preview/Apply product math but holds Production until exact process evidence exists', () => {
     const recipe = auditRecipe();
     const snapshots = withoutProcessEvidence(recipe);
-    const creamLineId = starterPackRescueLineId('PI-ING-000260');
-    const cream = snapshots[creamLineId]!;
-    snapshots[creamLineId] = {
-      ...cream,
+    const yolkLineId = starterPackRescueLineId('PI-ING-001645');
+    const yolk = snapshots[yolkLineId]!;
+    snapshots[yolkLineId] = {
+      ...yolk,
       sharedFacts: {
-        ...cream.sharedFacts!,
+        ...yolk.sharedFacts!,
         processEvidence: [
           {
             decision: 'heat_required_for_function',
             reasonType: 'process_requirement',
-            affectedIngredientIds: ['PI-ING-000260'],
+            affectedIngredientIds: ['PI-ING-001645'],
             explanation: 'verified manufacturer process',
             source: {
               id: 'owner-process-proof',
@@ -128,7 +145,7 @@ describe('Direction alternative process-authority audit', () => {
     };
     expect(
       missingDirectionAlternativeProcessLines(recipe, snapshots).map((item) => item.id),
-    ).not.toContain(creamLineId);
+    ).not.toContain(yolkLineId);
   });
 
   it('does not change the accepted informational policy for ordinary recipe lines', () => {

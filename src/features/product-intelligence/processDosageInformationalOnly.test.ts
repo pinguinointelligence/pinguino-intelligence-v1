@@ -349,7 +349,7 @@ describe('process and dosage are informational only', () => {
     expect(productRecommendedDosagePl(snapshots[lineId])).toBe('100–250 g/L');
   });
 
-  it('13. the original Mapper dosage data survives the owner-approved append', () => {
+  it('13. Mapper dosage data survives the certified FINAL projection', () => {
     const csv = readFileSync(
       resolve(process.cwd(), 'docs/ingredients/validation/mapper_basement.csv'),
       'utf8',
@@ -363,7 +363,7 @@ describe('process and dosage are informational only', () => {
     const maxIndex = columns.indexOf('recommended_dosage_percent_max');
     const tara = rows.find((entry) => entry.startsWith('PI-ING-000492,'))!.split(',');
     expect([tara[minIndex], tara[maxIndex]]).toEqual(['0.2', '1']);
-    expect(rows.filter((entry) => entry.startsWith('PI-ING-')).length).toBe(2_089);
+    expect(rows.filter((entry) => entry.startsWith('PI-ING-')).length).toBe(2_541);
   });
 
   it('14. Engine mathematics unrelated to process and dosage is unchanged', () => {

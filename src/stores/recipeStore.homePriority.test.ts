@@ -18,14 +18,25 @@
 import { readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { DEFAULT_PRESET } from '@/data/demoPresets';
-import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
+import { workingStateFingerprint } from '@/features/constraint-studio/applyPipeline';
+import {
+  selectCanonicalDraft,
+  useConstraintStudioStore,
+} from '@/features/constraint-studio/constraintStudioStore';
+import { applyPreviewInstructions } from '@/features/constraint-studio/previewInstructions';
+import { homeRecalculationInstructions } from '@/features/home-creator/homePriorityBootstrap';
 import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
 import { sorbetMapperIngredient } from '@/features/recipe-constraints/__fixtures__/sorbetAuthorityFixture';
-import { effectivePriorityLineIds, visibleCrownLineIds } from '@/features/recipe-priority';
+import {
+  effectivePriorityLineIds,
+  visibleCrownLineIds,
+  withSavedPriorityMode,
+} from '@/features/recipe-priority';
 import {
   DEFAULT_NEW_RECIPE_SERVING_MODE,
   DEFAULT_NEW_RECIPE_STRATEGY,
 } from '@/features/recipes/newRecipeStarter';
+import { savedToRecipeInput } from '@/features/recipes/recipePayload';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { mergePersistedRecipeState, recipePersistPartialize, useRecipeStore } from './recipeStore';
 
@@ -139,17 +150,16 @@ describe('§14 HOME multi-ingredient — Banana, Chocolate, Strawberry, Cranberr
     expect(st().priority_mode).toBe('MANUAL');
   });
 
-  it('from 0 g every Crown press is mass-neutral — the automatic gram becomes an ordinary amount', () => {
-    // HOME adds a flavour at 0 g and the automatic door sizes it exactly as the
-    // crown did on staging before this closure. Whether HOME may keep 0 g there is
-    // the open owner decision recorded in reports/PACKAGE_2A_CLOSURE_2026-09-11.md;
-    // what is asserted here is the part the owner fixed: a Crown PRESS moves no gram.
+  it('from 0 g every Crown press is mass-neutral — HOME never seeds (owner OD-1)', () => {
+    // OWNER OD-1: HOME adds a flavour at 0 g and its automatic priority keeps it
+    // there — no seed for any profile — and no Crown press moves a gram.
     newHomeDraft('gelato');
     const banana = homeAdd(BANANA);
     homeAdd(CHOCOLATE);
     const strawberry = homeAdd(STRAWBERRY);
     homeAdd(CRANBERRY);
     const before = grams();
+    expect([line(banana).planned_grams, line(strawberry).planned_grams]).toEqual([0, 0]);
 
     homeCrown(banana);
     expect(grams()).toEqual(before);
@@ -200,25 +210,71 @@ describe('§11 TOPPING', () => {
   });
 });
 
-describe('§15 HOME 0 g', () => {
-  it('Protein: Crown ON and OFF keep 0 g, and the grams stay editable', () => {
-    newHomeDraft('protein');
+describe('§15 HOME 0 g — every profile (owner OD-1)', () => {
+  it.each(PROFILES)('%s: Crown ON and OFF keep 0 g, and the grams stay editable', (profile) => {
+    newHomeDraft(profile);
     const melon = homeAdd(WATERMELON);
     expect(line(melon)).toMatchObject({ planned_grams: 0, lock_type: 'main' });
     expect(visible()).toEqual([]);
 
-    homeCrown(melon);
+    homeCrown(melon); // the first manual crown
     expect(st().priority_mode).toBe('MANUAL');
     expect(line(melon)).toMatchObject({ planned_grams: 0, lock_type: 'main' });
     expect(visible()).toEqual([melon]);
 
-    homeCrown(melon);
+    homeCrown(melon); // Crown OFF
     expect(line(melon).planned_grams).toBe(0);
     expect(priority().has(melon)).toBe(false);
+
+    homeCrown(melon); // Crown ON again — still no gram
+    expect(line(melon)).toMatchObject({ planned_grams: 0, lock_type: 'main' });
 
     st().setPlannedGrams(melon, 50);
     expect(line(melon).planned_grams).toBe(50);
   });
+});
+
+describe('G — „Przelicz i popraw" can size a 0 g HOME priority line (owner OD-1)', () => {
+  const sizedGrams = (ids: readonly string[]) => {
+    const state = useConstraintStudioStore.getState();
+    const proposal = state.preview ?? state.directionBestCandidate;
+    return ids.map(
+      (id) => proposal?.proposedInput.items.find((item) => item.id === id)?.planned_grams ?? 0,
+    );
+  };
+
+  it.each(PROFILES)(
+    '%s: HOME’s bootstrap copy is sized by the solver; the recipe keeps 0 g',
+    (profile) => {
+      newHomeDraft(profile);
+      const flavours = [homeAdd(BANANA), homeAdd(STRAWBERRY)];
+      const instructions = homeRecalculationInstructions(st().items, []);
+      expect(instructions.map((instruction) => instruction.lineId).sort()).toEqual(
+        [...flavours].sort(),
+      );
+
+      const adjusted = applyPreviewInstructions(
+        buildRecipeInput(st()),
+        { byLineId: {} },
+        instructions,
+      );
+      expect(adjusted.ok).toBe(true);
+      if (!adjusted.ok) return;
+      for (const id of flavours) {
+        expect(line(id).planned_grams).toBe(0); // the recipe itself is untouched
+        expect(adjusted.input.items.find((item) => item.id === id)).toMatchObject({
+          planned_grams: 1,
+          amount_provenance: 'AUTO_CROWN_SEED',
+        });
+      }
+
+      // The same solver HOME's run reaches, fed the provisional copy.
+      useRecipeStore.setState({ items: adjusted.input.items });
+      resolveProductBehavior();
+      useConstraintStudioStore.getState().createOptimizePreview();
+      expect(sizedGrams(flavours).every((grams) => grams > 1)).toBe(true);
+    },
+  );
 });
 
 describe('§16 PRO, on a draft HOME started in AUTO', () => {
@@ -290,6 +346,21 @@ describe('§13 separated by SURFACE, never by profile', () => {
     expect(line(strawberry).lock_type).not.toBe('main');
     expect(line(strawberry).amount_provenance).toBeUndefined();
     expect(line(strawberry).planned_grams).toBe(100);
+  });
+
+  it('in AUTO a HOME padlock makes the exact amount the authority: grams kept, priority released, unlock leaves it ordinary', () => {
+    newHomeDraft('gelato');
+    const [banana, strawberry] = [homeAdd(BANANA, 100), homeAdd(STRAWBERRY, 100)];
+    homePadlock(strawberry);
+    expect(line(strawberry)).toMatchObject({ planned_grams: 100, lock_type: 'grams' });
+    expect(priority()).toEqual(new Set([banana]));
+    expect(st().priority_mode).toBe('AUTO');
+
+    homePadlock(strawberry);
+    expect(line(strawberry)).toMatchObject({ planned_grams: 100, lock_type: 'unlocked' });
+    expect(priority()).toEqual(new Set([banana]));
+    expect(st().priority_mode).toBe('AUTO');
+    expect(visible()).toEqual([]);
   });
 
   it('the automatic door never changes the mode', () => {
@@ -391,5 +462,55 @@ describe('§17 AUTO→MANUAL persistence', () => {
     autoDraft();
     st().resetToDemo();
     expect(st().priority_mode).toBe('MANUAL');
+  });
+});
+
+describe('§17 save / reopen keeps the mode', () => {
+  it('a recipe saved in AUTO reopens AUTO; one saved after a crown reopens MANUAL', () => {
+    newHomeDraft('gelato');
+    const banana = homeAdd(BANANA, 100);
+    homeAdd(STRAWBERRY, 100);
+    const save = () =>
+      JSON.parse(
+        JSON.stringify(withSavedPriorityMode(buildRecipeInput(st()), st().priority_mode)),
+      ) as unknown;
+    const savedAuto = save();
+    homeCrown(banana);
+    const savedManual = save();
+
+    st().loadRecipeInput(savedToRecipeInput(savedAuto));
+    expect(st().priority_mode).toBe('AUTO');
+    expect(visible()).toEqual([]);
+    expect(priority().size).toBe(2);
+
+    st().loadRecipeInput(savedToRecipeInput(savedManual));
+    expect(st().priority_mode).toBe('MANUAL');
+    expect(priority()).toEqual(new Set([banana]));
+    expect(new Set(visible())).toEqual(priority());
+  });
+});
+
+describe('a bootstrap never becomes the customer’s amount', () => {
+  it('committing pending instructions writes the customer’s edit and skips the bootstrap', () => {
+    newHomeDraft('gelato');
+    const banana = homeAdd(BANANA);
+    const strawberry = homeAdd(STRAWBERRY, 100);
+    resolveProductBehavior(); // the pass HOME mounts, after the crown on a line with mass
+    const draft = selectCanonicalDraft();
+    useConstraintStudioStore.setState({
+      pendingInstructionCommit: {
+        baseFingerprint: workingStateFingerprint(draft.input, draft.constraints),
+        baseDraftRevision: draft.revision,
+        instructions: [
+          { lineId: banana, grams: 1, locked: false, bootstrap: true },
+          { lineId: strawberry, grams: 80, locked: false },
+        ],
+      },
+    });
+
+    useConstraintStudioStore.getState().commitPendingInstructions();
+    expect(line(strawberry).planned_grams).toBe(80);
+    expect(line(banana)).toMatchObject({ planned_grams: 0, lock_type: 'main' });
+    expect(line(banana).user_intent_anchor_grams).toBeUndefined();
   });
 });

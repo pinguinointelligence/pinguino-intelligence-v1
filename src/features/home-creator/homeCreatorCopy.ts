@@ -144,6 +144,19 @@ export interface HomeCreatorCopy {
     readonly lockLabel: string;
     readonly grams: string;
   };
+  /**
+   * OWNER BUGFIX 2026-09-11 (#287): „Przelicz i popraw" that changes nothing still explains
+   * itself — never a card with only „Wróć". The reason itself comes from the canonical
+   * message sources (`homeRecalcRefusal`); these are the HOME-only parts.
+   */
+  readonly recalcRefusal: {
+    /** Only when the result carries no reason at all. */
+    readonly fallback: string;
+    /** The next step every refusal offers (fail-closed: the recipe was not written). */
+    readonly next: string;
+    /** Leads the HOME trait words a safe recipe could not be moved closer to. */
+    readonly notImproved: string;
+  };
   readonly sweetness: {
     readonly label: string;
     readonly less: string;
@@ -310,6 +323,11 @@ const homeCreatorCopyPl: HomeCreatorCopy = {
     lockLabel: 'Zablokuj ilość',
     grams: 'g',
   },
+  recalcRefusal: {
+    fallback: 'Nie udało się teraz przygotować propozycji.',
+    next: 'Twoja receptura się nie zmieniła. Możesz zmienić składniki lub ich ilości i przeliczyć ponownie.',
+    notImproved: 'Nie udało się bezpiecznie poprawić:',
+  },
   sweetness: {
     label: 'Słodycz',
     less: 'Mniej słodkie',
@@ -471,6 +489,11 @@ const homeCreatorCopyEn: HomeCreatorCopy = {
     gramsFieldLabel: 'amount in g',
     lockLabel: 'Lock the amount',
     grams: 'g',
+  },
+  recalcRefusal: {
+    fallback: "We couldn't prepare a proposal right now.",
+    next: "Your recipe hasn't changed. You can change the ingredients or their amounts and recalculate.",
+    notImproved: 'Could not be improved safely:',
   },
   sweetness: {
     label: 'Sweetness',

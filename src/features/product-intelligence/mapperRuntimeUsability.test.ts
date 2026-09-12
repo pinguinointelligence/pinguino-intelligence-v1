@@ -64,13 +64,13 @@ const auditValue = (row: string[], key: string): string =>
   row[runtimeAuditIndex.get(key)!]?.trim() ?? '';
 
 describe('Mapper runtime usability contract', () => {
-  it('keeps the owner-approved 2089 baseline and classifies every row deterministically', () => {
+  it('keeps the certified FINAL 2541 baseline and classifies every row deterministically', () => {
     expect(createHash('sha256').update(source).digest('hex').toUpperCase()).toBe(
-      '057375CD60CEFE613892FF1D9F8F7EDA880FF0EB06732F9229051FC37D8DECA7',
+      'A6A849A596ACEF75E0760992353BDDF5CBCA24FF37744E36414DA18CA45556F6',
     );
-    expect(rows).toHaveLength(2089);
-    expect(rows.filter(mapperBaseSelectable)).toHaveLength(2076);
-    expect(rows.filter(mapperTechnicallyCalculable)).toHaveLength(2075);
+    expect(rows).toHaveLength(2541);
+    expect(rows.filter(mapperBaseSelectable)).toHaveLength(2491);
+    expect(rows.filter(mapperTechnicallyCalculable)).toHaveLength(2491);
   });
 
   it('treats Estimated and Needs Label Review as presentation, never eligibility', () => {
@@ -111,17 +111,19 @@ describe('Mapper runtime usability contract', () => {
     expect(result.items[0]?.ingredient.is_verified).toBe(false);
   });
 
-  it('keeps the one engine-ineligible Base row blocked for its real numerical reason', () => {
-    const exception = rows.find((row) => row.ingredient_id === 'PI-ING-002113')!;
-    expect(mapperBaseSelectable(exception)).toBe(true);
-    expect(mapperTechnicallyCalculable(exception)).toBe(false);
-    expect(mapperEngineMissingFields(exception)).toEqual(['pod_value', 'pac_value']);
+  it('keeps FINAL technical coverage aligned with Base eligibility', () => {
+    const repaired = rows.find((row) => row.ingredient_id === 'PI-ING-002113')!;
+    expect(mapperBaseSelectable(repaired)).toBe(true);
+    expect(mapperTechnicallyCalculable(repaired)).toBe(true);
+    expect(mapperEngineMissingFields(repaired)).toEqual([]);
+    expect(rows.filter((row) => !mapperBaseSelectable(row))).toHaveLength(50);
+    expect(rows.filter((row) => !mapperTechnicallyCalculable(row))).toHaveLength(50);
   });
 
-  it('publishes exactly one complete runtime classification for all 2089 rows', () => {
-    expect(runtimeAuditRecords).toHaveLength(2089);
+  it('publishes exactly one complete runtime classification for all 2541 rows', () => {
+    expect(runtimeAuditRecords).toHaveLength(2541);
     expect(new Set(runtimeAuditRecords.map((row) => auditValue(row, 'ingredient_id'))).size).toBe(
-      2089,
+      2541,
     );
     expect(runtimeAuditHeader).toEqual(
       expect.arrayContaining([
@@ -146,13 +148,13 @@ describe('Mapper runtime usability contract', () => {
     }
     expect(
       runtimeAuditRecords.filter((row) => auditValue(row, 'selectable_after') === 'TRUE'),
-    ).toHaveLength(2076);
+    ).toHaveLength(2491);
     expect(
       runtimeAuditRecords.filter((row) => auditValue(row, 'pi_calculable_after') === 'TRUE'),
-    ).toHaveLength(2075);
+    ).toHaveLength(2491);
   });
 
-  it('rejects a 2089-row authenticated export when runtime authority fields drift', () => {
+  it('rejects a 2541-row authenticated export when runtime authority fields drift', () => {
     const directory = mkdtempSync(join(tmpdir(), 'mapper-authority-drift-'));
     const authorityPath = join(directory, 'authority.json');
     try {
@@ -182,7 +184,7 @@ describe('Mapper runtime usability contract', () => {
     }
   });
 
-  it('pins both 2089-row companion authorities and compares every served field', () => {
+  it('pins both deferred 2089-row companion subsets and compares every served field', () => {
     const generator = readFileSync(
       resolve(process.cwd(), 'scripts/auditMapperRuntimeUsability.mjs'),
       'utf8',

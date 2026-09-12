@@ -244,10 +244,10 @@ describe('F — the distinction survives reload and reopen', () => {
 });
 
 describe('G — HOME never writes the PRO bootstrap', () => {
-  it('HOME Sorbet keeps its own served seed, unmarked', () => {
+  it('HOME Sorbet is mass-neutral (owner OD-1, 2026-09-11) and unmarked', () => {
     const [id] = open('sorbet', [STRAWBERRIES]);
     st().setMainIngredient(id!, 'home');
-    expect(line(id!)).toMatchObject({ planned_grams: 1, lock_type: 'main' });
+    expect(line(id!)).toMatchObject({ planned_grams: 0, lock_type: 'main' });
     expect(provenance(id!)).toBeNull();
   });
 

@@ -284,7 +284,7 @@ const compactSummary = (observations: readonly Observation[]): CompactMetricSumm
 };
 
 describe.runIf(existsSync(MAPPER_FILE))('global Mapper Rescue leave-one-out backtest', () => {
-  it('measures every working field and every runtime family/form without mutating Mapper', () => {
+  it('WSA-BT-1578 measures every working field and every runtime family/form without mutating Mapper', () => {
     const beforeHash = createHash('sha256').update(readFileSync(MAPPER_FILE)).digest('hex');
     const loaded = loadMapperKnowledgeRows();
     const rows = authorityRows(loaded.rows);
@@ -311,6 +311,10 @@ describe.runIf(existsSync(MAPPER_FILE))('global Mapper Rescue leave-one-out back
         cohort: base.bestCohort?.rows ?? [],
         fields: exactMassFields(row),
         semantic: recognition,
+        targetEvidence: {
+          exactProductIdentity: true,
+          ingredientOrCompositionIdentity: true,
+        },
         excludedMapperIngredientIds: [row.ingredient_id],
       });
 
@@ -464,7 +468,7 @@ describe.runIf(existsSync(MAPPER_FILE))('global Mapper Rescue leave-one-out back
     });
     expect(fieldMetrics.water_percent.nResolved).toBeGreaterThan(0);
     expect(fieldMetrics.water_percent.maxAbsoluteError).toBeLessThanOrEqual(
-      MASS_BALANCE_RESCUE_POLICY.maxTargetUnaccountedMass,
+      MASS_BALANCE_RESCUE_POLICY.maxRange,
     );
     for (const field of [
       'fat_percent',

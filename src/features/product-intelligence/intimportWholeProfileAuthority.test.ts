@@ -416,7 +416,7 @@ describe('INTIMPORT trusted product-owned profile', () => {
     expect(authority?.articleIdentity).toBe('PRODUCT_OWNED');
   });
 
-  it('never estimates from a Mapper row that is not eligible for Engine use', () => {
+  it('RSC-AUTH-03 keeps hard facts immutable while legacy approval metadata does not exclude a Rescue donor', () => {
     const authority = validateIntimportProductProfileProposal({
       proposedMapperIngredientId: 'PI-ING-TEST-001',
       matchInput: input(),
@@ -427,7 +427,8 @@ describe('INTIMPORT trusted product-owned profile', () => {
 
     expect(authority).not.toBeNull();
     expect(authority?.technicalComposition.fat).toBe(11);
-    expect(authority?.estimatedFromMapperIds).toEqual([]);
+    expect(authority?.estimatedFromMapperIds).toEqual(['PI-ING-TEST-001']);
+    expect(authority?.profileReferenceMapperIngredientId).toBeNull();
   });
 
   it('persists PM user values with USER_CONFIRMED provenance and recalculates accuracy', () => {

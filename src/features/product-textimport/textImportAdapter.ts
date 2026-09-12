@@ -278,6 +278,8 @@ export function adaptTextImportRow(row: TextImportRow): TextImportAdapterOutput 
       cocoaSolidsPercent: null,
       fruitContentPercent: null,
       brix: null,
+      waterPercent: null,
+      totalSolidsPercent: null,
       concentrationText: null,
       dosageText: text(row.cells['Professional Dosage']),
       technicalParametersText: text(row.cells['Technical Parameters']),

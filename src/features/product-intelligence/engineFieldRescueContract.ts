@@ -4,7 +4,12 @@
  * data: runtime resolution stays in `productWorkingValues` and
  * `mapperValueInference`.
  */
-import { CONSENSUS_BANDS, MASS_BALANCE_RESCUE_POLICY } from './mapperValueInference.ts';
+import {
+  CONSENSUS_BANDS,
+  MASS_BALANCE_RESCUE_POLICY,
+  SUGAR_SPECTRUM_RESCUE_POLICY,
+  TARGET_AWARE_SUGAR_SPECTRUM_FIELDS,
+} from './mapperValueInference.ts';
 import { WORKING_NUMERIC_FIELDS, type WorkingNumericField } from './productFieldTruth.ts';
 import { ENGINE_ESTIMATE_READY_FLOORS } from './productWorkingValues.ts';
 
@@ -75,31 +80,49 @@ const deterministicDerivation = (field: EngineRescueField): string | null => {
 const entryFor = (field: WorkingNumericField): EngineFieldRescueContractEntry => {
   const massField = field === 'water_percent' || field === 'total_solids_percent';
   const powerField = field === 'pod_value' || field === 'pac_value';
+  const sugarSpectrumField = (TARGET_AWARE_SUGAR_SPECTRUM_FIELDS as readonly string[]).includes(
+    field,
+  );
+  const unsupportedSpectrumOrLegacyPowerField = [
+    'polyol_percent',
+    'sweetness_factor',
+    'freezing_factor',
+  ].includes(field);
   return {
     field,
     directProductFactAllowed: true,
     deterministicDerivation: deterministicDerivation(field),
     wholeProfileDonorAllowed: true,
-    perFieldRescueAllowed: !powerField,
-    minimumConfidenceForEngineUse: ENGINE_ESTIMATE_READY_FLOORS[field] ?? null,
+    perFieldRescueAllowed: !powerField && !unsupportedSpectrumOrLegacyPowerField,
+    minimumConfidenceForEngineUse: sugarSpectrumField
+      ? SUGAR_SPECTRUM_RESCUE_POLICY.readyConfidenceFloor
+      : (ENGINE_ESTIMATE_READY_FLOORS[field] ?? null),
     cohortRule: massField
-      ? `semantic/form/role/macro compatible; verified+Engine-approved; n>=${MASS_BALANCE_RESCUE_POLICY.minCandidates}; n_eff>=${MASS_BALANCE_RESCUE_POLICY.minEffectiveSampleSize}`
+      ? `canonical PI-ING; semantic/form/role/macro compatible; family/field target evidence sufficient; n>=${MASS_BALANCE_RESCUE_POLICY.minCandidates}; n_eff>=${MASS_BALANCE_RESCUE_POLICY.minEffectiveSampleSize}`
+      : sugarSpectrumField
+        ? `canonical compatible PI-ING; verified target total sugars; internally closed donor spectra; normalized species-share consensus; n>=${SUGAR_SPECTRUM_RESCUE_POLICY.minCandidates}`
       : powerField
         ? 'cohort forbidden; exact technical fact or Engine derivation only'
         : GENERAL_COHORT_RULE,
     dispersionRule: massField
       ? `MAD<=${MASS_BALANCE_RESCUE_POLICY.maxMad}; IQR<=${MASS_BALANCE_RESCUE_POLICY.maxIqr}; range<=${MASS_BALANCE_RESCUE_POLICY.maxRange}; 3*MAD outlier rejection`
+      : sugarSpectrumField
+        ? `maximum normalized-share IQR half-spread<=${SUGAR_SPECTRUM_RESCUE_POLICY.maxShareHalfIqr}; robust vector outlier rejection`
       : powerField
         ? 'not applicable to per-field Rescue'
         : `IQR half-spread<=${CONSENSUS_BANDS[field]}`,
     crossFieldGuards: GUARDS[field] ?? ['finite value', 'stronger exact evidence wins'],
     failClosedCondition: massField
-      ? `unresolved semantics, >${MASS_BALANCE_RESCUE_POLICY.maxTargetUnaccountedMass}% target mass unnamed, too few/low-quality candidates, macro mismatch, high dispersion, invalid mass balance or known-fact contradiction`
+      ? 'unresolved semantics, insufficient independent hard target evidence, too few/low-quality candidates, macro mismatch, high dispersion, invalid post-Rescue mass balance or known-fact contradiction'
+      : sugarSpectrumField
+        ? 'target total sugars not verified, weak semantic identity, invalid donor closure, dispersed normalized shares, confidence below 0.85, hard-species conflict or failed target closure'
       : powerField
         ? 'typed sugar/alcohol path is materially unresolved'
         : 'no eligible cohort consensus or cross-field plausibility withdraws the estimate',
     unresolvedReasonCode: massField
       ? 'RESCUE_* field-specific reason'
+      : sugarSpectrumField
+        ? 'UNRESOLVED_SWEETENING_FREEZING_PATH'
       : powerField
         ? 'UNRESOLVED_SWEETENING_FREEZING_PATH'
         : 'RESCUE_FIELD_DISPERSION_OR_SUPPORT_FAILED',

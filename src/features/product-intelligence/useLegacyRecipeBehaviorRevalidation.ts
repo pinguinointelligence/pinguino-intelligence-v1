@@ -69,11 +69,25 @@ export function useLegacyRecipeBehaviorRevalidation(enabled = true): void {
           state.productBehaviorSnapshots[item.id]?.resolutionState !== 'RESOLVED',
       )
       .map((item) => item.id);
+    // OWNER OD-1 (Package 2A): a 0 g priority line is legitimate — „Przelicz i
+    // popraw" sizes it — so it needs product authority before it has mass, exactly
+    // as it would with mass (the canonical required rule, asked for one gram).
+    // Authority only: nothing here writes an amount.
+    const zeroGramPriority = state.items
+      .filter(
+        (item) =>
+          item.lock_type === 'main' &&
+          item.planned_grams === 0 &&
+          state.productBehaviorSnapshots[item.id] === undefined &&
+          productBehaviorRequiredLineIds({ items: [{ ...item, planned_grams: 1 }] }).length > 0,
+      )
+      .map((item) => item.id);
     const required = [
       ...persistenceRequired.filter(
         (lineId) => state.productBehaviorSnapshots[lineId]?.resolutionState !== 'RESOLVED',
       ),
       ...staleZeroGramBase,
+      ...zeroGramPriority,
     ].sort();
     if (required.length === 0) return;
     const key = `${draftContextSeq}:${draftRevision}:${required.join(',')}`;

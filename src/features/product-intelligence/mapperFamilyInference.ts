@@ -287,6 +287,7 @@ export function inferMapperFamily(input: FamilyInferenceInput): ProductFamilyMat
   const category = normalize(input.sourceCategory);
   const subcategory = normalize(input.sourceSubcategory);
 
+  let strongestNameMatch: ProductFamilyMatch | null = null;
   for (const rule of FAMILY_RULES) {
     if (!rule.pattern.test(identity)) continue;
     const evidence = [`nazwa pasuje do rodziny ${rule.family}`];
@@ -299,13 +300,22 @@ export function inferMapperFamily(input: FamilyInferenceInput): ProductFamilyMat
       strength += 0.2;
       evidence.push('kategoria źródłowa zgodna z rodziną');
     }
-    return {
+    const match: ProductFamilyMatch = {
       family: rule.family,
       strength: Math.min(1, Math.round(strength * 100) / 100),
       evidence,
       technical: rule.technical,
     };
+    // Several legitimate product names contain more than one family word
+    // (for example milk chocolate). The source taxonomy is the deterministic
+    // discriminator; a later category-corroborated match must beat an earlier
+    // uncorroborated token match. Equal evidence keeps the established rule
+    // order and therefore preserves existing ambiguous-name behaviour.
+    if (!strongestNameMatch || match.strength > strongestNameMatch.strength) {
+      strongestNameMatch = match;
+    }
   }
+  if (strongestNameMatch) return strongestNameMatch;
 
   // No name signal: fall back to the source category/subcategory. Weaker by
   // design — a category alone (0.6) stays below the inference threshold; it

@@ -94,8 +94,9 @@ describe('Scanner customer-added product authority', () => {
   });
 
   it('runs family resolution before shared profile/Mapper completion', () => {
+    const handlerStart = finalize.indexOf('Deno.serve');
     expect(finalize.indexOf('let familyResolution = resolveCustomerProductFamily')).toBeLessThan(
-      finalize.indexOf('profile = validateIntimportProductProfileProposal'),
+      finalize.indexOf('validateIntimportProductProfileProposal', handlerStart),
     );
     expect(finalize).toContain('family_confirmation_required');
     expect(finalize).toContain('validateProductBehaviorAuthority');

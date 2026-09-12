@@ -21,7 +21,10 @@ import {
 import {
   useConstraintStudioStore,
   type LockConflictState,
+  type PreviewIssue,
 } from '@/features/constraint-studio/constraintStudioStore';
+import { constraintStudioCopy } from '@/features/constraint-studio/constraintStudioCopy';
+import { customerStopReasonPl } from '@/features/constraint-studio/customerConstraintStudioPresentation';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { HomeRecalculate } from './HomeRecalculate';
 
@@ -222,5 +225,211 @@ describe('HOME interactive recalculation', () => {
       )!.click(),
     );
     expect(onGramsBlocked).toHaveBeenCalled();
+  });
+});
+
+describe('PACKAGE 2A — OWNER OD-1: a 0 g HOME priority line is the solver’s to size', () => {
+  it('„Przelicz i popraw" hands it over as the Crown bootstrap on the provisional copy', async () => {
+    const main = useRecipeStore.getState().items.find((item) => item.lock_type === 'main')!;
+    useRecipeStore.setState((state) => ({
+      items: state.items.map((item) =>
+        item.id === main.id ? { ...item, planned_grams: 0 } : item,
+      ),
+    }));
+    await render();
+    await open();
+    expect(runtime.run).not.toHaveBeenCalled();
+    expect(runtime.interactive).toHaveBeenCalledWith([
+      { lineId: main.id, grams: 1, locked: false, bootstrap: true },
+    ]);
+    // The recipe itself was not written.
+    expect(useRecipeStore.getState().items.find((item) => item.id === main.id)!.planned_grams).toBe(
+      0,
+    );
+  });
+
+  it('with no 0 g priority line the run is the ordinary one', async () => {
+    await render();
+    await open();
+    expect(runtime.run).toHaveBeenCalledOnce();
+    expect(runtime.interactive).not.toHaveBeenCalled();
+  });
+});
+
+/*
+ * OWNER BUGFIX — HOME EMPTY REFUSAL (#287), 2026-09-11.
+ *
+ * Served staging `aaece589`: a HOME Sorbet, Gellatti's Direction proposal applied, the padlock
+ * on one fruit, „Przelicz i popraw" again → the dialog rendered ONLY „Wróć". This is the refusal
+ * HomeRecalculate held at that moment (read from the served component): the solver's own verdict,
+ * untouched by the binding. The HOME adapter read nothing but `messagePl`, which this variant does
+ * not carry, and the block had no fallback.
+ */
+const SERVED_REFUSAL: PreviewIssue = {
+  ok: false,
+  code: 'no_proposal',
+  violatedMetrics: ['npac', 'pod'],
+  solverInvocations: 8,
+  directionTargetUnreached: true,
+};
+const SERVED_TERMINAL = { state: 'BLOCKED_WITH_EXACT_ACTION', code: 'no_proposal' } as const;
+const REFUSAL_NEXT =
+  'Twoja receptura się nie zmieniła. Możesz zmienić składniki lub ich ilości i przeliczyć ponownie.';
+/** Internal vocabulary that must never reach the customer. */
+const RAW = [
+  'no_proposal',
+  'best_safe_result',
+  'directionTargetUnreached',
+  'solverInvocations',
+  'violatedMetrics',
+  'BLOCKED_WITH_EXACT_ACTION',
+  'NPAC',
+  'POD',
+  'PI-ING-',
+];
+
+const textOf = (testId: string) => inDocument(`[data-testid="${testId}"]`)?.textContent ?? null;
+
+const showState = async (
+  state: Partial<ReturnType<typeof useConstraintStudioStore.getState>>,
+): Promise<HTMLElement | null> => {
+  await render();
+  await open();
+  await act(async () => {
+    useConstraintStudioStore.setState({ preview: null, ...state });
+  });
+  return inDocument('[data-testid="home-recalc-refusal"]');
+};
+
+describe('OWNER BUGFIX — HOME never shows an empty refusal (#287)', () => {
+  it('the exact served refusal explains itself: reason, what could not be improved, the next step, Wróć', async () => {
+    const refusal = await showState({
+      previewIssue: structuredClone(SERVED_REFUSAL),
+      recalculationTerminal: SERVED_TERMINAL,
+    });
+    expect(refusal).not.toBeNull();
+    expect(textOf('home-recalc-issue')).toBe(constraintStudioCopy.previewIssue.bestSafeResult);
+    expect(textOf('home-recalc-issue-detail')).toBe(
+      'Nie udało się bezpiecznie poprawić: słodycz, miękkość.',
+    );
+    expect(textOf('home-recalc-next')).toBe(REFUSAL_NEXT);
+    expect(textOf('home-recalc-back')).toBe('Wróć');
+    expect(refusal!.textContent!.trim()).not.toBe('Wróć');
+    for (const raw of RAW) expect(refusal!.textContent).not.toContain(raw);
+    // Presentation only: the verdict is exactly what the pipeline published.
+    expect(useConstraintStudioStore.getState().previewIssue).toEqual(SERVED_REFUSAL);
+    expect(useConstraintStudioStore.getState().recalculationTerminal).toEqual(SERVED_TERMINAL);
+  });
+
+  it('Wróć closes the refusal and leaves the recipe untouched', async () => {
+    const before = structuredClone(useRecipeStore.getState().items);
+    await showState({
+      previewIssue: structuredClone(SERVED_REFUSAL),
+      recalculationTerminal: SERVED_TERMINAL,
+    });
+    await act(async () =>
+      inDocument<HTMLButtonElement>('[data-testid="home-recalc-back"]')!.click(),
+    );
+    expect(inDocument('[data-testid="home-recalc-dialog"]')).toBeNull();
+    expect(useConstraintStudioStore.getState().previewIssue).toBeNull();
+    expect(useRecipeStore.getState().items).toEqual(before);
+  });
+
+  it('a refusal that carries no reason at all still says what happened and what to do', async () => {
+    const refusal = await showState({ previewIssue: null, recalculationTerminal: SERVED_TERMINAL });
+    expect(textOf('home-recalc-issue')).toBe('Nie udało się teraz przygotować propozycji.');
+    expect(textOf('home-recalc-issue-detail')).toBeNull();
+    expect(textOf('home-recalc-next')).toBe(REFUSAL_NEXT);
+    expect(textOf('home-recalc-back')).toBe('Wróć');
+    for (const raw of RAW) expect(refusal!.textContent).not.toContain(raw);
+  });
+
+  it('„best achievable" is explained with its stop reason, never blank and never a search count', async () => {
+    const refusal = await showState({
+      previewIssue: {
+        ok: false,
+        code: 'best_safe_result',
+        solverInvocations: 12,
+        softViolatedMetrics: ['npac'],
+        stopReason: 'local_no_proposal',
+      } as unknown as PreviewIssue,
+      recalculationTerminal: { state: 'BEST_ACHIEVABLE' },
+    });
+    expect(textOf('home-recalc-issue')).toBe(
+      `${constraintStudioCopy.previewIssue.bestSafeResult} ${customerStopReasonPl('local_no_proposal')}`,
+    );
+    expect(textOf('home-recalc-next')).toBe(REFUSAL_NEXT);
+    for (const raw of RAW) expect(refusal!.textContent).not.toContain(raw);
+    expect(refusal!.textContent).not.toContain('12');
+  });
+
+  it('an ordinary no-proposal names what stayed out of range and never a PRO-only lock control', async () => {
+    const refusal = await showState({
+      previewIssue: {
+        ok: false,
+        code: 'no_proposal',
+        violatedMetrics: ['npac'],
+        solverInvocations: 8,
+      },
+      recalculationTerminal: SERVED_TERMINAL,
+    });
+    expect(textOf('home-recalc-issue')).toBe(
+      'Przeliczyliśmy recepturę, ale nie znaleźliśmy bezpiecznej korekty w zatwierdzonych ' +
+        'zakresach. Parametry poza zakresem: miękkość.',
+    );
+    expect(refusal!.textContent).not.toContain('Sprawdź wykonalność blokad');
+    expect(textOf('home-recalc-next')).toBe(REFUSAL_NEXT);
+    for (const raw of RAW) expect(refusal!.textContent).not.toContain(raw);
+  });
+
+  it('an applied change whose refresh did not finish is not dressed as a refusal', async () => {
+    const notice =
+      'Receptura została zmieniona, ale jej bieżące wyniki nie zostały w pełni odświeżone. ' +
+      'Uruchom Przelicz ponownie.';
+    const refusal = await showState({
+      previewIssue: null,
+      recalculationTerminal: null,
+      postApplyNotice: { state: 'APPLIED_WITH_INCOMPLETE_CONSUMERS', messagePl: notice },
+    });
+    expect(refusal).toBeNull();
+    expect(textOf('home-recalc-applied-notice')).toBe(notice);
+    expect(textOf('home-recalc-back')).toBe('Wróć');
+    expect(inDocument('[data-testid="home-recalc-dialog"]')!.textContent).not.toContain(
+      'Twoja receptura się nie zmieniła',
+    );
+  });
+
+  it('the Direction choice, the lock conflict and a staged preview are unchanged — no refusal card', async () => {
+    await showState({
+      directionBestCandidate: ownerPreview(),
+      recalculationTerminal: { state: 'PREVIEW_READY' },
+    });
+    const choice = inDocument('[data-testid="home-recalc-direction-best"]');
+    expect(choice?.textContent).toContain(constraintStudioCopy.previewIssue.bestSafeResult);
+    expect(choice?.textContent).toContain(constraintStudioCopy.preview.title);
+    expect(inDocument('[data-testid="home-recalc-refusal"]')).toBeNull();
+
+    await act(async () => {
+      useConstraintStudioStore.setState({
+        directionBestCandidate: null,
+        lockConflict: conflict,
+        previewIssue: { ok: false, code: 'no_proposal' },
+        recalculationTerminal: { state: 'BLOCKED_WITH_EXACT_ACTION', code: 'no_proposal' },
+      });
+    });
+    expect(inDocument('[data-testid="lock-conflict-panel"]')).not.toBeNull();
+    expect(inDocument('[data-testid="home-recalc-refusal"]')).toBeNull();
+
+    await act(async () => {
+      useConstraintStudioStore.setState({
+        lockConflict: null,
+        previewIssue: null,
+        preview: ownerPreview(),
+        recalculationTerminal: { state: 'PREVIEW_READY' },
+      });
+    });
+    expect(inDocument('[data-testid="home-recalc-preview"]')).not.toBeNull();
+    expect(inDocument('[data-testid="home-recalc-refusal"]')).toBeNull();
+    expect(inDocument('[data-testid="home-recalc-next"]')).toBeNull();
   });
 });

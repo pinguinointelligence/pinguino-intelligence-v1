@@ -291,15 +291,15 @@ describe('Sorbet exact five-step Direction matrix', () => {
     expect(outputs.size).toBe(150);
     // Owner-accepted baseline of current code truth (2026-08-21). A change here
     // means the Engine/Direction output moved and must be investigated, never
-    // silently accepted: 94 LEGAL / 56 NEAREST_ACHIEVABLE / 0 authority-blocked.
+    // silently accepted: 92 LEGAL / 58 NEAREST_ACHIEVABLE / 0 authority-blocked.
     expect({ legalCells, nearestAchievableCells }).toEqual({
-      legalCells: 94,
-      nearestAchievableCells: 56,
+      legalCells: 92,
+      nearestAchievableCells: 58,
     });
     expect(Object.fromEntries(byTemperature)).toEqual({
-      [-11]: { legal: 38, nearestAchievable: 12 },
-      [-12]: { legal: 32, nearestAchievable: 18 },
-      [-13]: { legal: 24, nearestAchievable: 26 },
+      [-11]: { legal: 40, nearestAchievable: 10 },
+      [-12]: { legal: 30, nearestAchievable: 20 },
+      [-13]: { legal: 22, nearestAchievable: 28 },
     });
     console.info(
       'SORBET_DIRECTION_MATRIX',

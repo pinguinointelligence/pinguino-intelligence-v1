@@ -72,6 +72,48 @@ const mapperRow = (
 });
 
 describe('Product Recognition V2 — deterministic semantic authority', () => {
+  it('REC-PI-000119 keeps canonical dry couverture in the chocolate family and dry form', () => {
+    const result = classifyProductSemantics(
+      evidence({
+        name: 'MILK CHOCOLATE 33.6% · Callebaut Couverture · Dry',
+        brand: 'Callebaut',
+        manufacturer: 'Callebaut',
+        manufacturerCode: 'PI-ING-000119',
+        productType: 'mapper_reference',
+        category: 'chocolate',
+        subcategory: 'milk_chocolate_couverture',
+      }),
+    );
+
+    expect(result).toMatchObject({
+      classificationSource: 'DETERMINISTIC',
+      productArchetype: 'CHOCOLATE',
+      ingredientFamily: 'chocolate',
+      physicalForm: 'DRY',
+      intendedUsageRole: 'BASE_ONLY',
+      modelRequired: false,
+    });
+  });
+
+  it('REC-DAIRY-LIQUID-01 keeps ordinary liquid dairy in dairy_liquid', () => {
+    const result = classifyProductSemantics(
+      evidence({
+        name: 'Whole milk 3.5%',
+        category: 'dairy',
+        subcategory: 'fresh_milk',
+      }),
+    );
+
+    expect(result).toMatchObject({
+      classificationSource: 'DETERMINISTIC',
+      productArchetype: 'NORMAL_INGREDIENT',
+      ingredientFamily: 'dairy_liquid',
+      physicalForm: 'LIQUID',
+      intendedUsageRole: 'BASE_ONLY',
+      modelRequired: false,
+    });
+  });
+
   it.each(['Cacao puro desgrasado en polvo', 'Cacau magro em pó', 'Cacao poudre'])(
     'recognizes multilingual explicit powder form without a model: %s',
     (name) => {

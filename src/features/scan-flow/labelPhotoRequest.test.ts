@@ -32,7 +32,9 @@ describe('the label screen asks for the part of the label it is actually missing
     expect(labelPhotoRequest(['nutrition.sugars_g'])).toBe(
       'Brakuje tabeli wartości odżywczych. Zrób zdjęcie tej części etykiety.',
     );
-    expect(labelPhotoRequest(['evidence_ingredients', 'nutrition.fat_g', 'allergen_statement'])).toBe(
+    expect(
+      labelPhotoRequest(['evidence_ingredients', 'nutrition.fat_g', 'allergen_statement']),
+    ).toBe(
       'Brakuje składu, tabeli wartości odżywczych i oznaczenia alergenów. Zrób zdjęcie tej części etykiety.',
     );
   });
@@ -44,10 +46,11 @@ describe('the label screen asks for the part of the label it is actually missing
     );
   });
 
-  it('falls back to the general request rather than inventing a field', () => {
-    const general = 'Brakuje jeszcze danych z etykiety. Zrób zdjęcie składu i tabeli wartości odżywczych.';
-    expect(labelPhotoRequest([])).toBe(general);
-    expect(labelPhotoRequest(['something_nobody_has_seen_before'])).toBe(general);
+  it('never turns an unknown or technical gap into a generic photo request', () => {
+    const notSolvable = 'Tego braku nie da się potwierdzić zdjęciem etykiety.';
+    expect(labelPhotoRequest([])).toBe(notSolvable);
+    expect(labelPhotoRequest(['something_nobody_has_seen_before'])).toBe(notSolvable);
+    expect(labelPhotoRequest(['MISSING_WATER_PERCENT'])).toBe(notSolvable);
   });
 
   it('is the sentence the screen actually renders', () => {

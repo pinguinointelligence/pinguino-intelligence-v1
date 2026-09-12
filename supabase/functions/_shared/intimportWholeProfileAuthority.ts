@@ -2,6 +2,7 @@ import {
   buildMapperKnowledge,
   findProfileMatch,
   fingerprintMapperRows,
+  isCanonicalMapperRescueDonor,
   profileDonor,
   PROFILE_MATCH_FLOOR,
   type MapperKnowledgeRow,
@@ -203,6 +204,12 @@ export function isBindableIntimportMapperTarget(row: IntimportMapperAuthorityRow
   );
 }
 
+/** Field Rescue reads the canonical Mapper basement. Historical row status and
+ * approval provenance remain auditable metadata, never donor admission gates. */
+export function isIntimportMapperRescueDonor(row: IntimportMapperAuthorityRow): boolean {
+  return isCanonicalMapperRescueDonor(row);
+}
+
 /**
  * Recompute the frozen whole-profile decision from public import facts.
  *
@@ -269,15 +276,26 @@ export function validateIntimportProductProfileProposal(
     input.trustedRecognition.evidenceFingerprint === deterministicRecognition.evidenceFingerprint
       ? input.trustedRecognition
       : deterministicRecognition;
-  // Only verified, Engine-approved Mapper rows may contribute estimates. The
-  // browser's proposed ID is deliberately ignored: the server recomputes the
-  // donor from canonical facts, and a stale/wrong hint must degrade to the
-  // server result (or REVIEW), never discard the commercial product itself.
+  // Field Rescue gets every active canonical PI-ING row. Whole-profile authority
+  // remains a separate, narrower decision so changing Rescue provenance policy
+  // cannot weaken publication/runtime profile binding.
   const knowledge = buildMapperKnowledge(
+    input.rows.filter(isIntimportMapperRescueDonor),
+    mapperFingerprint,
+  );
+  const wholeProfileKnowledge = buildMapperKnowledge(
     input.rows.filter(isBindableIntimportMapperTarget),
     mapperFingerprint,
   );
   const evidenceAssessment = assessProductConfidence(input.evidence);
+  const exactProductIdentity =
+    (input.evidence.exactCanonicalMatch || input.evidence.validatedBarcode) &&
+    input.evidence.fields.identity !== undefined &&
+    input.evidence.fields.barcode !== undefined;
+  const ingredientOrCompositionIdentity =
+    input.evidence.fields.ingredients !== undefined &&
+    input.evidence.fields.ingredients !== 'mapper_family' &&
+    Boolean(input.recognitionEvidence?.ingredients?.trim());
   const resolved = resolveProductWorkingValues(
     {
       declared: input.declared,
@@ -295,8 +313,13 @@ export function validateIntimportProductProfileProposal(
       },
       technical: recognition?.isTechnicalProduct ?? input.matchInput.technical === true,
       technicalAuthority: false,
+      rescueTargetEvidence: {
+        exactProductIdentity,
+        ingredientOrCompositionIdentity,
+      },
     },
     knowledge,
+    { wholeProfileKnowledge },
   );
 
   const acceptedMatch =
@@ -328,16 +351,31 @@ export function validateIntimportProductProfileProposal(
     toppingBehaviorMatch.basis !== 'none'
       ? toppingBehaviorMatch
       : null;
+  /*
+   * A behavior reference lends taxonomy/permissions, never numeric composition. Reusing
+   * `resolved.profileMatch` here accidentally limited that lookup to `wholeProfileKnowledge`
+   * (Verified + Engine-approved rows). A Rescue-first product can have a valid, hard-compatible
+   * semantic cohort in canonical knowledge while that narrower whole-profile cohort is empty.
+   * Re-run the existing matcher against the same full canonical knowledge Rescue received; the
+   * server-owned ProductBehavior binding still makes the final permission decision below.
+   */
+  const semanticBehaviorCandidate =
+    !acceptedMatch &&
+    !acceptedBehaviorMatch &&
+    resolved.engineReady &&
+    supportsSemanticBehaviorReference(recognition)
+      ? findProfileMatch({ ...input.matchInput, semantic: recognition }, knowledge)
+      : null;
   const semanticBehaviorMatch =
     !acceptedMatch &&
     !acceptedBehaviorMatch &&
     resolved.engineReady &&
     supportsSemanticBehaviorReference(recognition) &&
-    resolved.profileMatch &&
-    resolved.profileMatch.rejected === null &&
-    resolved.profileMatch.basis !== 'none' &&
-    resolved.profileMatch.rows.length > 0
-      ? resolved.profileMatch
+    semanticBehaviorCandidate &&
+    semanticBehaviorCandidate.rejected === null &&
+    semanticBehaviorCandidate.basis !== 'none' &&
+    semanticBehaviorCandidate.rows.length > 0
+      ? semanticBehaviorCandidate
       : null;
   const referenceMatch = acceptedMatch ?? acceptedBehaviorMatch ?? semanticBehaviorMatch;
   // Preserve the accepted TOPPING reference contract for existing products.

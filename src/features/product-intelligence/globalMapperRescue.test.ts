@@ -1,13 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
+  assessRescueTargetEvidenceSufficiency,
   buildMapperKnowledge,
+  inferMapperValues,
   rescueMassBalanceFromCohort,
+  validateMassBalanceRescueProposal,
   type MapperKnowledgeRow,
 } from './mapperValueInference';
 import { resolveProductWorkingValues } from './productWorkingValues';
 import { classifyProductSemantics, type ProductSemanticEvidence } from './productRecognition';
 import { classifyProspectiveProductBehavior } from './productBehaviorAuthority';
 import {
+  isIntimportMapperRescueDonor,
   validateIntimportProductProfileProposal,
   type IntimportMapperAuthorityRow,
 } from '../../../supabase/functions/_shared/intimportWholeProfileAuthority';
@@ -74,18 +78,10 @@ const mapperRow = (
   ...overrides,
 });
 
-const exactFields = (overrides: Partial<Record<string, number>> = {}): ProductFieldTruthMap => {
+const hardFields = (values: Partial<Record<string, number>>): ProductFieldTruthMap => {
   let fields = emptyFieldTruthMap();
-  const values = {
-    fat_percent: 10,
-    protein_percent: 10,
-    carbohydrate_percent: 70,
-    fiber_percent: 6,
-    salt_percent: 0,
-    alcohol_percent: 0,
-    ...overrides,
-  };
   for (const [field, value] of Object.entries(values)) {
+    if (typeof value !== 'number') continue;
     fields = applyFieldTruth(
       fields,
       field as keyof ProductFieldTruthMap,
@@ -93,6 +89,87 @@ const exactFields = (overrides: Partial<Record<string, number>> = {}): ProductFi
     );
   }
   return fields;
+};
+
+const exactFields = (overrides: Partial<Record<string, number>> = {}): ProductFieldTruthMap =>
+  hardFields({
+    fat_percent: 10,
+    protein_percent: 10,
+    carbohydrate_percent: 70,
+    fiber_percent: 6,
+    salt_percent: 0,
+    alcohol_percent: 0,
+    ...overrides,
+  });
+
+const targetEvidence = {
+  exactProductIdentity: true,
+  ingredientOrCompositionIdentity: true,
+} as const;
+
+const replayVerifiedMapperMassBalance = (ingredientId: string) => {
+  const mapper = loadMapperKnowledgeRows();
+  const rows = mapper.rows.filter(
+    (row) =>
+      row.is_active !== false &&
+      row.approved_for_base === true &&
+      row.approved_for_engines === true &&
+      row.verification_status?.trim().toLowerCase().startsWith('verified') === true,
+  );
+  const target = rows.find((row) => row.ingredient_id === ingredientId);
+  if (!target) throw new Error(`Missing Mapper regression target ${ingredientId}`);
+  const semantic = classifyProductSemantics(
+    evidence({
+      name: target.ingredient_name_display ?? target.ingredient_name_internal,
+      brand: target.brand ?? null,
+      manufacturer: target.brand ?? null,
+      manufacturerCode: target.ingredient_id,
+      productType: 'mapper_reference',
+      category: target.ingredient_category ?? null,
+      subcategory: target.ingredient_subcategory ?? null,
+    }),
+  );
+  const fields = hardFields(
+    Object.fromEntries(
+      [
+        'fat_percent',
+        'protein_percent',
+        'carbohydrate_percent',
+        'fiber_percent',
+        'salt_percent',
+        'alcohol_percent',
+      ].flatMap((field) =>
+        typeof target[field as keyof MapperKnowledgeRow] === 'number'
+          ? [[field, target[field as keyof MapperKnowledgeRow] as number]]
+          : [],
+      ),
+    ),
+  );
+  const inference = inferMapperValues(
+    {
+      name: target.ingredient_name_display ?? target.ingredient_name_internal,
+      brand: target.brand ?? null,
+      category: target.ingredient_category ?? null,
+      subcategory: target.ingredient_subcategory ?? null,
+      barcode: null,
+      knownMacros: {
+        fat_percent: target.fat_percent ?? undefined,
+        protein_percent: target.protein_percent ?? undefined,
+        carbohydrate_percent: target.carbohydrate_percent ?? undefined,
+      },
+      semantic,
+      excludedMapperIngredientIds: [ingredientId],
+    },
+    buildMapperKnowledge(rows, mapper.fingerprint),
+  );
+  const rescue = rescueMassBalanceFromCohort({
+    cohort: inference.bestCohort?.rows ?? [],
+    fields,
+    semantic,
+    targetEvidence,
+    excludedMapperIngredientIds: [ingredientId],
+  });
+  return { target, semantic, fields, inference, rescue };
 };
 
 const cocoaSemantic = classifyProductSemantics(
@@ -104,12 +181,41 @@ const cocoaSemantic = classifyProductSemantics(
   }),
 );
 
+const dairySemantic = {
+  ...cocoaSemantic,
+  productArchetype: 'NORMAL_INGREDIENT' as const,
+  ingredientFamily: 'dairy_liquid' as const,
+  physicalForm: 'LIQUID' as const,
+  intendedUsageRole: 'BASE_ONLY' as const,
+  flavorDomain: 'MILK_CREAM' as const,
+  compatibleMapperCategories: ['dairy'],
+  forbiddenMapperCategories: [],
+  modelRequired: false,
+};
+
 describe('field-specific mass-balance Rescue safety', () => {
+  it('uses resolved semantic context below 0.85 while keeping the Rescue result floor above 0.85', () => {
+    const result = rescueMassBalanceFromCohort({
+      cohort: [mapperRow('a', 96), mapperRow('b', 97), mapperRow('c', 98)],
+      fields: exactFields(),
+      semantic: { ...cocoaSemantic, confidence: 0.8 },
+      targetEvidence,
+    });
+    expect(result).toMatchObject({
+      resolved: true,
+      totalSolids: 97,
+      water: 3,
+      reasonCodes: ['RESCUE_MASS_BALANCE_SUCCESS'],
+    });
+    expect(result.confidence).toBeGreaterThanOrEqual(0.85);
+  });
+
   it('uses a coherent field cohort although no whole-profile donor was accepted', () => {
     const result = rescueMassBalanceFromCohort({
       cohort: [mapperRow('a', 96), mapperRow('b', 97), mapperRow('c', 98)],
       fields: exactFields(),
       semantic: cocoaSemantic,
+      targetEvidence,
     });
     expect(result).toMatchObject({
       resolved: true,
@@ -126,6 +232,7 @@ describe('field-specific mass-balance Rescue safety', () => {
       cohort: [mapperRow('a', 97), mapperRow('b', 97)],
       fields: exactFields(),
       semantic: cocoaSemantic,
+      targetEvidence,
     });
     expect(result).toMatchObject({
       resolved: false,
@@ -138,6 +245,7 @@ describe('field-specific mass-balance Rescue safety', () => {
       cohort: [mapperRow('a', 96), mapperRow('b', 96), mapperRow('c', 100), mapperRow('d', 100)],
       fields: exactFields(),
       semantic: cocoaSemantic,
+      targetEvidence,
     });
     expect(result.resolved).toBe(false);
     expect(result.reasonCodes).toContain('RESCUE_COHORT_DISPERSION_HIGH');
@@ -148,6 +256,7 @@ describe('field-specific mass-balance Rescue safety', () => {
       cohort: [mapperRow('a', 70), mapperRow('b', 71), mapperRow('c', 72)],
       fields: exactFields(),
       semantic: cocoaSemantic,
+      targetEvidence,
     });
     expect(result).toMatchObject({
       resolved: false,
@@ -185,6 +294,7 @@ describe('field-specific mass-balance Rescue safety', () => {
       cohort: liquids,
       fields: exactFields(),
       semantic: cocoaSemantic,
+      targetEvidence,
     });
     expect(result.resolved).toBe(false);
     expect(
@@ -194,20 +304,23 @@ describe('field-specific mass-balance Rescue safety', () => {
     ).toBe(true);
   });
 
-  it('rejects a macro-incompatible or non-verified candidate set', () => {
+  it('RSC-AUTH-01 keeps non-Verified canonical PI provenance for audit without using it as eligibility', () => {
     const result = rescueMassBalanceFromCohort({
       cohort: [
         mapperRow('a', 97, { fat_percent: 40 }),
         mapperRow('b', 97, { verification_status: 'Estimated' }),
         mapperRow('c', 97, { approved_for_engines: false }),
+        mapperRow('d', 97, { verification_status: 'PI Calculated' }),
       ],
       fields: exactFields(),
       semantic: cocoaSemantic,
+      targetEvidence,
     });
-    expect(result.resolved).toBe(false);
-    expect(result.rejectedCandidates.flatMap((candidate) => candidate.reasonCodes)).toEqual(
-      expect.arrayContaining(['RESCUE_MACRO_MISMATCH', 'RESCUE_CANDIDATE_NOT_VERIFIED']),
-    );
+    expect(result.resolved).toBe(true);
+    expect(result.candidates.map((candidate) => candidate.ingredientId)).toEqual(['b', 'c', 'd']);
+    expect(result.rejectedCandidates[0]?.ingredientId).toBe('a');
+    expect(result.rejectedCandidates[0]?.reasonCodes).toContain('RESCUE_MACRO_MISMATCH');
+    expect(result.candidates.some((candidate) => candidate.ingredientId === 'b')).toBe(true);
   });
 
   it('rejects ambiguous blend/premix semantics before reading a cohort', () => {
@@ -218,11 +331,222 @@ describe('field-specific mass-balance Rescue safety', () => {
       cohort: [mapperRow('a', 97), mapperRow('b', 97), mapperRow('c', 97)],
       fields: exactFields(),
       semantic: ambiguous,
+      targetEvidence,
     });
     expect(result).toMatchObject({
       resolved: false,
       reasonCodes: ['RESCUE_TARGET_SEMANTICS_UNRESOLVED'],
     });
+  });
+
+  it('RSC-SAFE-01 fails target sufficiency for an open-composition family with one numeric anchor', () => {
+    const assessment = assessRescueTargetEvidenceSufficiency({
+      field: 'total_solids_percent',
+      fields: hardFields({ fat_percent: 0.5 }),
+      semantic: dairySemantic,
+      identityEvidence: targetEvidence,
+      cohort: [mapperRow('a', 12), mapperRow('b', 13), mapperRow('c', 14)],
+    });
+    expect(assessment).toMatchObject({
+      sufficient: false,
+      compositionModel: 'OPEN',
+      independentGroups: ['fat'],
+      relevantGroups: ['fat'],
+      requiredIndependentGroups: 3,
+      reasonCodes: ['RESCUE_TARGET_EVIDENCE_INSUFFICIENT'],
+    });
+  });
+
+  it('RSC-SAFE-02 counts carbohydrate, sugars and kcal as one independent composition group', () => {
+    const assessment = assessRescueTargetEvidenceSufficiency({
+      field: 'water_percent',
+      fields: hardFields({
+        carbohydrate_percent: 3.5,
+        total_sugars_percent: 3.5,
+        kcal_per_100g: 46,
+      }),
+      semantic: dairySemantic,
+      identityEvidence: targetEvidence,
+      cohort: [mapperRow('a', 12), mapperRow('b', 13), mapperRow('c', 14)],
+    });
+    expect(assessment.independentGroups).toEqual(['carbohydrate']);
+    expect(assessment.sufficient).toBe(false);
+  });
+
+  it('RSC-SAFE-03 allows sparse nutrition for an exact constrained canonical oil identity', () => {
+    const mapper = loadMapperKnowledgeRows();
+    const cohort = mapper.rows.filter((row) =>
+      ['PI-ING-000299', 'PI-ING-000300', 'PI-ING-000302', 'PI-ING-000303'].includes(
+        row.ingredient_id,
+      ),
+    );
+    const oilSemantic = {
+      ...dairySemantic,
+      ingredientFamily: 'liquid_vegetable_oil' as const,
+      flavorDomain: 'NEUTRAL' as const,
+      compatibleMapperCategories: ['fat'],
+    };
+    const assessment = assessRescueTargetEvidenceSufficiency({
+      field: 'total_solids_percent',
+      fields: hardFields({ fat_percent: 100 }),
+      semantic: oilSemantic,
+      identityEvidence: targetEvidence,
+      cohort,
+    });
+    expect(cohort).toHaveLength(4);
+    expect(assessment).toMatchObject({
+      sufficient: true,
+      compositionModel: 'CONSTRAINED',
+      independentGroups: ['fat'],
+      requiredIndependentGroups: 0,
+    });
+  });
+
+  it('RSC-SAFE-04 rejects a physically inconsistent proposal in the post-Rescue closure guard', () => {
+    const validation = validateMassBalanceRescueProposal({
+      water: 80,
+      totalSolids: 30,
+      fields: hardFields({ fat_percent: 0.5, protein_percent: 8, carbohydrate_percent: 3.5 }),
+      semantic: dairySemantic,
+    });
+    expect(validation.valid).toBe(false);
+    expect(validation.reasonCodes).toContain('RESCUE_POST_MASS_BALANCE_INVALID');
+  });
+
+  it('RSC-AUTH-02 admits active canonical PI donors regardless of historical provenance status', () => {
+    const donor = mapperRow('PI-ING-999999', 14, {
+      verification_status: 'Estimated / PI Calculated',
+      approved_for_base: false,
+      approved_for_engines: false,
+    }) as IntimportMapperAuthorityRow;
+    expect(isIntimportMapperRescueDonor(donor)).toBe(true);
+    expect(donor.verification_status).toBe('Estimated / PI Calculated');
+  });
+
+  it('WSA-NEG-01 refuses the sparse named-solid basis that previously gave a powder 68.63% water', () => {
+    const replay = replayVerifiedMapperMassBalance('PI-ING-000777');
+
+    expect(replay.semantic).toMatchObject({
+      ingredientFamily: 'base_mix',
+      physicalForm: 'POWDER',
+      intendedUsageRole: 'BASE_ONLY',
+    });
+    expect(replay.rescue.resolved).toBe(false);
+    expect(replay.rescue.water).toBeNull();
+    expect(replay.rescue.confidence).toBeLessThan(0.85);
+    expect(replay.rescue.reasonCodes).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(
+          /RESCUE_(INSUFFICIENT_FIELD_CANDIDATES|DIRECT_MASS_DISPERSION_HIGH|DIRECT_MASS_PROPOSAL_INCONSISTENT)/,
+        ),
+      ]),
+    );
+  });
+
+  it('WSA-NEG-02 rejects high-fibre/low-salt stabilizer donors against hard target fibre and salt', () => {
+    const replay = replayVerifiedMapperMassBalance('PI-ING-000470');
+
+    expect(replay.rescue.resolved).toBe(false);
+    expect(replay.rescue.water).toBeNull();
+    expect(replay.rescue.confidence).toBeLessThan(0.85);
+    expect(replay.rescue.rejectedCandidates).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          ingredientId: 'PI-ING-000466',
+          reasonCodes: expect.arrayContaining(['RESCUE_HARD_FIELD_MISMATCH']),
+        }),
+        expect.objectContaining({
+          ingredientId: 'PI-ING-000492',
+          reasonCodes: expect.arrayContaining(['RESCUE_HARD_FIELD_MISMATCH']),
+        }),
+      ]),
+    );
+  });
+
+  it('WSA-NEG-03 does not turn zero donor-residual dispersion into applicability confidence', () => {
+    const result = rescueMassBalanceFromCohort({
+      cohort: [
+        mapperRow('a', 20, { fat_percent: 0, protein_percent: 0, carbohydrate_percent: 20 }),
+        mapperRow('b', 20, { fat_percent: 0, protein_percent: 0, carbohydrate_percent: 20 }),
+        mapperRow('c', 32, { fat_percent: 0, protein_percent: 0, carbohydrate_percent: 32 }),
+        mapperRow('d', 32, { fat_percent: 0, protein_percent: 0, carbohydrate_percent: 32 }),
+        mapperRow('e', 20, { fat_percent: 0, protein_percent: 0, carbohydrate_percent: 20 }),
+        mapperRow('f', 20, { fat_percent: 0, protein_percent: 0, carbohydrate_percent: 20 }),
+        mapperRow('g', 32, { fat_percent: 0, protein_percent: 0, carbohydrate_percent: 32 }),
+        mapperRow('h', 32, { fat_percent: 0, protein_percent: 0, carbohydrate_percent: 32 }),
+      ],
+      fields: hardFields({
+        fat_percent: 0,
+        protein_percent: 0,
+        carbohydrate_percent: 20,
+      }),
+      semantic: cocoaSemantic,
+      targetEvidence,
+    });
+
+    expect(result.resolved).toBe(false);
+    expect(result.confidence).toBeLessThan(0.85);
+    expect(result.reasonCodes).toContain('RESCUE_DIRECT_MASS_DISPERSION_HIGH');
+  });
+
+  it('WSA-NEG-04 rejects a residual proposal outside coherent direct donor water support', () => {
+    const result = rescueMassBalanceFromCohort({
+      cohort: [
+        mapperRow('a', 88, { fat_percent: 8, protein_percent: 5, carbohydrate_percent: 52 }),
+        mapperRow('b', 89, { fat_percent: 8, protein_percent: 5, carbohydrate_percent: 52 }),
+        mapperRow('c', 90, { fat_percent: 8, protein_percent: 5, carbohydrate_percent: 52 }),
+        mapperRow('d', 88, { fat_percent: 8, protein_percent: 5, carbohydrate_percent: 52 }),
+        mapperRow('e', 89, { fat_percent: 8, protein_percent: 5, carbohydrate_percent: 52 }),
+        mapperRow('f', 90, { fat_percent: 8, protein_percent: 5, carbohydrate_percent: 52 }),
+        mapperRow('g', 88, { fat_percent: 8, protein_percent: 5, carbohydrate_percent: 52 }),
+        mapperRow('h', 90, { fat_percent: 8, protein_percent: 5, carbohydrate_percent: 52 }),
+      ],
+      fields: hardFields({
+        fat_percent: 0,
+        protein_percent: 0,
+        carbohydrate_percent: 40,
+      }),
+      semantic: cocoaSemantic,
+      targetEvidence,
+    });
+
+    expect(result.resolved).toBe(false);
+    expect(result.confidence).toBeLessThan(0.85);
+    expect(result.reasonCodes).toContain('RESCUE_DIRECT_MASS_PROPOSAL_INCONSISTENT');
+  });
+
+  it('WSA-POS-01 preserves the safe PI-ING-000057 dry aligned-basis result', () => {
+    const safe57 = replayVerifiedMapperMassBalance('PI-ING-000057');
+
+    expect(safe57.rescue).toMatchObject({ resolved: true, water: 6.25, totalSolids: 93.75 });
+  });
+
+  it('WSA-POS-02 preserves the safe PI-ING-000078 dry aligned-basis result', () => {
+    const safe78 = replayVerifiedMapperMassBalance('PI-ING-000078');
+
+    expect(safe78.rescue).toMatchObject({ resolved: true, water: 3.2, totalSolids: 96.8 });
+  });
+
+  it('WSA-POS-03 preserves the PI-ING-000050 dispersion refusal', () => {
+    const refused50 = replayVerifiedMapperMassBalance('PI-ING-000050');
+
+    expect(refused50.rescue).toMatchObject({
+      resolved: false,
+      reasonCodes: ['RESCUE_COHORT_DISPERSION_HIGH'],
+    });
+  });
+
+  it('WSA-HARD-01 never changes verified target facts during an applicability refusal', () => {
+    const replay = replayVerifiedMapperMassBalance('PI-ING-000470');
+
+    expect(replay.fields.fat_percent).toMatchObject({
+      value: 0.1,
+      provenance: { state: 'VERIFIED' },
+    });
+    expect(replay.fields.protein_percent.value).toBe(1.7);
+    expect(replay.fields.carbohydrate_percent.value).toBe(0);
+    expect(replay.fields.fiber_percent.value).toBe(0);
+    expect(replay.fields.salt_percent.value).toBe(13.7);
   });
 });
 
@@ -254,6 +578,7 @@ describe('global Mapper Rescue regression fixtures', () => {
         },
         declaredBasis: { sucrose_percent: 'derived' },
         declaredConfidence: 0.95,
+        rescueTargetEvidence: targetEvidence,
         identity: {
           name: 'Cocoa powder target',
           category: 'cocoa',
@@ -334,6 +659,7 @@ describe('global Mapper Rescue regression fixtures', () => {
       },
       declaredBasis: { sucrose_percent: 'derived' as const },
       declaredConfidence: 0.88,
+      rescueTargetEvidence: targetEvidence,
       identity: {
         name: 'Cacao soluble',
         brand: 'Hacendado',
@@ -365,15 +691,15 @@ describe('global Mapper Rescue regression fixtures', () => {
     expect(resolved.fields.fiber_percent.value).toBe(10);
     expect(resolved.fields.salt_percent.value).toBe(0.1);
     expect(resolved.fields.kcal_per_100g.value).toBe(373);
-    // The generic backtest-derived safety ceiling is stricter than this
-    // product's 5.8% unaccounted mass, so the honest result is unresolved.
+    // The removed pre-Rescue mass-coverage gate no longer decides this case;
+    // this intentionally narrowed legacy fixture lacks a viable field cohort.
     expect(resolved.fields.water_percent).toMatchObject({
       value: null,
-      provenance: { note: 'RESCUE_TARGET_COMPOSITION_COVERAGE_LOW' },
+      provenance: { note: 'RESCUE_INSUFFICIENT_FIELD_CANDIDATES' },
     });
     expect(resolved.fields.total_solids_percent.value).toBeNull();
     expect(resolved.unresolvedEngineFieldReasons.water_percent).toContain(
-      'RESCUE_TARGET_COMPOSITION_COVERAGE_LOW',
+      'RESCUE_INSUFFICIENT_FIELD_CANDIDATES',
     );
     expect(resolved.engineReady).toBe(false);
 
@@ -418,7 +744,7 @@ describe('global Mapper Rescue regression fixtures', () => {
       profileReferenceAuthority: null,
     });
     expect(trusted?.unresolvedEngineFieldReasons.water_percent).toContain(
-      'RESCUE_TARGET_COMPOSITION_COVERAGE_LOW',
+      'RESCUE_INSUFFICIENT_FIELD_CANDIDATES',
     );
     expect(trusted?.fieldTruth.sucrose_percent).toMatchObject({ value: 70, state: 'VERIFIED' });
   });

@@ -3,7 +3,13 @@ import {
   mergeProductScanResults,
   normalizeValidatedBarcode,
   productSemanticEvidenceFromScanResult,
+  scanResultFromLookupFacts,
+  stableJson,
 } from '../_shared/productScanner.ts';
+import {
+  buildAccumulatedScannerEvidence,
+  researchFieldsForScannerGaps,
+} from '../_shared/scannerRescuePipeline.ts';
 import { customerProductProfileProposal } from '../_shared/customerProductProfile.ts';
 import {
   SCAN_ASSESSMENT_VERSION,
@@ -19,6 +25,7 @@ import {
   type IntimportMapperAuthorityRow,
 } from '../_shared/intimportWholeProfileAuthority.ts';
 import {
+  supportsSemanticBehaviorReference,
   validateProductBehaviorAuthority,
   type MapperProductBehaviorAuthorityRow,
 } from '../../../src/features/product-intelligence/productBehaviorAuthority.ts';
@@ -293,6 +300,8 @@ function applyCustomerCorrections(
     'cocoaSolidsPercent',
     'fruitContentPercent',
     'brix',
+    'waterPercent',
+    'totalSolidsPercent',
   ]) {
     if (declarationCorrection[key] === undefined || declarationCorrection[key] === '') continue;
     const parsed = finite(declarationCorrection[key], 100);
@@ -476,6 +485,77 @@ async function serverSemanticClassification(input: {
   return deterministic;
 }
 
+async function serverTargetedScannerResearch(input: {
+  url: string;
+  anonKey: string;
+  authorization: string;
+  sessionId: string;
+  barcode: string;
+  scanResult: Record<string, unknown>;
+  recognition: ProductSemanticClassification;
+  fieldTruth: unknown;
+  unresolvedFields: readonly string[];
+  readinessContext: unknown;
+}): Promise<{ result: Record<string, unknown>; applied: boolean; requestedFields: string[] }> {
+  const requestedFields = researchFieldsForScannerGaps(input.unresolvedFields);
+  if (requestedFields.length === 0)
+    return { result: input.scanResult, applied: false, requestedFields };
+  const accumulatedEvidence = buildAccumulatedScannerEvidence({
+    scanResult: input.scanResult,
+    recognition: input.recognition,
+    fieldTruth: input.fieldTruth,
+    unresolvedFields: input.unresolvedFields,
+    readinessContext: input.readinessContext,
+  });
+  const semanticEvidence = productSemanticEvidenceFromScanResult(input.scanResult);
+  const packageValue = objectValue(input.scanResult.package);
+  const netQuantity =
+    typeof packageValue.netQuantity === 'number' && typeof packageValue.unit === 'string'
+      ? `${packageValue.netQuantity} ${packageValue.unit}`
+      : null;
+  try {
+    const response = await fetch(`${input.url}/functions/v1/intimport-enrich`, {
+      method: 'POST',
+      signal: AbortSignal.timeout(45_000),
+      headers: {
+        Authorization: input.authorization,
+        apikey: input.anonKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        importId: `scanner-${input.sessionId}`,
+        product: {
+          brand: semanticEvidence.brand,
+          manufacturer: semanticEvidence.manufacturer,
+          name: semanticEvidence.name,
+          variant: semanticEvidence.variant,
+          barcode: input.barcode,
+          netQuantity,
+          knownSourceUrl: semanticEvidence.sourceUrls[0] ?? null,
+        },
+        fields: requestedFields,
+        researchStep: { kind: 'OPEN_WEB_SEARCH', allowedDomains: [] },
+        accumulatedEvidence,
+      }),
+    });
+    if (!response.ok) return { result: input.scanResult, applied: false, requestedFields };
+    const payload = objectValue(await response.json());
+    const facts = Array.isArray(payload.facts) ? payload.facts.map(objectValue) : [];
+    const partial = scanResultFromLookupFacts(facts);
+    if (!partial) return { result: input.scanResult, applied: false, requestedFields };
+    const merged = mergeProductScanResults(input.scanResult, partial, input.barcode);
+    return {
+      result: merged,
+      applied: stableJson(merged) !== stableJson(input.scanResult),
+      requestedFields,
+    };
+  } catch {
+    // Provider or network failure cannot erase evidence or reduce readiness. The unchanged
+    // accumulated scan continues to the exact-question/private-review route.
+    return { result: input.scanResult, applied: false, requestedFields };
+  }
+}
+
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: cors });
   if (request.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
@@ -624,20 +704,29 @@ Deno.serve(async (request) => {
   ).filter((field): field is ProductEvidenceField =>
     PRODUCT_EVIDENCE_FIELDS.has(field as ProductEvidenceField),
   );
-  const publicationEligibility = publicationIdentityEligibilityFromScanResult(
+  let publicationEligibility = publicationIdentityEligibilityFromScanResult(
     corrections.result,
     confirmedEvidenceFields,
   );
   corrections.result.publicationEligibility = publicationEligibility;
 
-  const recognitionEvidence = productSemanticEvidenceFromScanResult(corrections.result);
-  let recognition = await serverSemanticClassification({
-    url,
-    anonKey,
-    authorization,
-    sessionId,
-    evidence: recognitionEvidence,
+  let recognitionEvidence = productSemanticEvidenceFromScanResult(corrections.result);
+  const deterministicRecognition = classifyProductSemantics(recognitionEvidence);
+  const reusableRecognition = carryForwardRecognition({
+    fresh: deterministicRecognition as unknown as Record<string, unknown>,
+    persisted: persistedScan.recognition,
   });
+  // A later photo/answer that adds facts without contradicting resolved family/form/role must not
+  // buy or rerun semantic AI. Only a genuine semantic contradiction reopens classification.
+  let recognition = reusableRecognition.carriedForward
+    ? (reusableRecognition.recognition as unknown as ProductSemanticClassification)
+    : await serverSemanticClassification({
+        url,
+        anonKey,
+        authorization,
+        sessionId,
+        evidence: recognitionEvidence,
+      });
   const familyChoice = FAMILY_CHOICES.has(body.customerFamily as CustomerProductFamilyChoice)
     ? (body.customerFamily as CustomerProductFamilyChoice)
     : null;
@@ -652,14 +741,16 @@ Deno.serve(async (request) => {
     is Vitamin Well's 87.8/ready → 71.9/not ready. A fresh RESOLVED classification still wins; only
     an unresolved one is refused the right to erase what the scan already knows.
   */
-  const carriedRecognition = carryForwardRecognition({
-    fresh: recognition as unknown as Record<string, unknown>,
-    persisted: persistedScan.recognition,
-  });
+  let carriedRecognition = reusableRecognition.carriedForward
+    ? reusableRecognition
+    : carryForwardRecognition({
+        fresh: recognition as unknown as Record<string, unknown>,
+        persisted: persistedScan.recognition,
+      });
   recognition = carriedRecognition.recognition as unknown as ProductSemanticClassification;
-  const familyResolution = resolveCustomerProductFamily(recognition);
+  let familyResolution = resolveCustomerProductFamily(recognition);
 
-  const validation = {
+  let validation = {
     ...objectValue(session.validation_json),
     customerProductFlow: 'CUSTOMER_ADDED_PRODUCT_V1',
     packageEvidenceExhausted: confirmationEnvelope.packageEvidenceExhausted === true,
@@ -699,18 +790,15 @@ Deno.serve(async (request) => {
     });
   }
 
-  const proposal = customerProductProfileProposal({
-    scanResult: corrections.result,
-    recognitionEvidence,
-    recognition,
-    userConfirmedFields: confirmedEvidenceFields,
-  });
-  if (!proposal) return json({ error: 'customer_product_identity_required' }, 409);
-
-  let profile;
-  let behavior;
-  try {
-    profile = validateIntimportProductProfileProposal({
+  const recomputeProductAuthorities = async () => {
+    const proposal = customerProductProfileProposal({
+      scanResult: corrections.result,
+      recognitionEvidence,
+      recognition,
+      userConfirmedFields: confirmedEvidenceFields,
+    });
+    if (!proposal) return { kind: 'identity_required' as const };
+    const mapperProfile = validateIntimportProductProfileProposal({
       origin: 'CUSTOMER_ADDED',
       proposedMapperIngredientId: null,
       matchInput: proposal.matchInput,
@@ -729,24 +817,132 @@ Deno.serve(async (request) => {
       trustedRecognition: proposal.trustedRecognition,
       rows: await loadMapperRows(service),
     });
-    if (!profile) return json({ error: 'customer_product_profile_rejected' }, 409);
-    behavior = validateProductBehaviorAuthority({
-      productProfile: profile,
+    if (!mapperProfile) return { kind: 'profile_rejected' as const };
+    const productBehavior = validateProductBehaviorAuthority({
+      productProfile: mapperProfile,
       behaviorRows: await loadBehaviorRows(service),
     });
-    profile = finalizeProductProductionAccuracy(profile, behavior);
+    return {
+      kind: 'complete' as const,
+      profile: finalizeProductProductionAccuracy(mapperProfile, productBehavior),
+      behavior: productBehavior,
+    };
+  };
+
+  let authorityPass;
+  try {
+    authorityPass = await recomputeProductAuthorities();
   } catch {
     return json({ error: 'customer_product_profile_unavailable' }, 503);
   }
+  if (authorityPass.kind === 'identity_required')
+    return json({ error: 'customer_product_identity_required' }, 409);
+  if (authorityPass.kind === 'profile_rejected')
+    return json({ error: 'customer_product_profile_rejected' }, 409);
+  let profile = authorityPass.profile;
+  let behavior = authorityPass.behavior;
 
-  // One readiness authority for every surface. Product Accuracy already
-  // evaluates the accepted role, ProductBehavior and role-sensitive physics;
-  // reassembling raw missing fields here made a TOPPING_READY article look
-  // simultaneously blocked by BASE-only water/freezing requirements.
+  // One readiness authority for every surface. Product Accuracy already evaluates the accepted
+  // role, ProductBehavior and role-sensitive physics. Only if that complete deterministic + Mapper
+  // Rescue pass remains blocked do we buy one targeted research pass on the accumulated evidence.
+  let ready = profile.productAccuracyAssessment.gellattiReadiness.ready;
+  let criticalGaps = [...profile.productAccuracyAssessment.criticalBlockers];
+  let researchOutcome: Awaited<ReturnType<typeof serverTargetedScannerResearch>> = {
+    result: corrections.result,
+    applied: false,
+    requestedFields: [],
+  };
+  if (!ready) {
+    researchOutcome = await serverTargetedScannerResearch({
+      url,
+      anonKey,
+      authorization,
+      sessionId,
+      barcode: corrections.barcode,
+      scanResult: corrections.result,
+      recognition,
+      fieldTruth: profile.fieldTruth,
+      unresolvedFields: criticalGaps,
+      readinessContext: profile.productAccuracyAssessment,
+    });
+    if (researchOutcome.applied) {
+      corrections.result = researchOutcome.result;
+      publicationEligibility = publicationIdentityEligibilityFromScanResult(
+        corrections.result,
+        confirmedEvidenceFields,
+      );
+      corrections.result.publicationEligibility = publicationEligibility;
+      recognitionEvidence = productSemanticEvidenceFromScanResult(corrections.result);
+      const recognitionBeforeResearch = recognition;
+      const deterministicAfterResearch = classifyProductSemantics(recognitionEvidence);
+      const reusableAfterResearch = carryForwardRecognition({
+        fresh: deterministicAfterResearch as unknown as Record<string, unknown>,
+        persisted: recognitionBeforeResearch as unknown as Record<string, unknown>,
+      });
+      recognition = reusableAfterResearch.carriedForward
+        ? (reusableAfterResearch.recognition as unknown as ProductSemanticClassification)
+        : await serverSemanticClassification({
+            url,
+            anonKey,
+            authorization,
+            sessionId,
+            evidence: recognitionEvidence,
+          });
+      if (resolveCustomerProductFamily(recognition).status !== 'RESOLVED' && familyChoice)
+        recognition = applyCustomerProductFamily(recognition, familyChoice);
+      carriedRecognition = reusableAfterResearch.carriedForward
+        ? reusableAfterResearch
+        : carryForwardRecognition({
+            fresh: recognition as unknown as Record<string, unknown>,
+            persisted: recognitionBeforeResearch as unknown as Record<string, unknown>,
+          });
+      recognition = carriedRecognition.recognition as unknown as ProductSemanticClassification;
+      familyResolution = resolveCustomerProductFamily(recognition);
+      validation = {
+        ...validation,
+        recognition,
+        scanEvidence: {
+          confirmedFields: confirmedEvidenceFields,
+          recognition: recognitionIsResolved(recognition)
+            ? recognition
+            : (persistedScan.recognition ?? null),
+        },
+      };
+      if (familyResolution.status !== 'RESOLVED') {
+        await service
+          .from('product_scan_sessions')
+          .update({
+            result_json: corrections.result,
+            validation_json: validation,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', sessionId)
+          .eq('user_id', auth.user.id)
+          .eq('state', 'analyzed');
+        return json({
+          kind: 'family_confirmation_required',
+          recognition,
+          familyResolution,
+          barcode: corrections.barcode,
+        });
+      }
+      try {
+        authorityPass = await recomputeProductAuthorities();
+      } catch {
+        return json({ error: 'customer_product_profile_unavailable' }, 503);
+      }
+      if (authorityPass.kind === 'identity_required')
+        return json({ error: 'customer_product_identity_required' }, 409);
+      if (authorityPass.kind === 'profile_rejected')
+        return json({ error: 'customer_product_profile_rejected' }, 409);
+      profile = authorityPass.profile;
+      behavior = authorityPass.behavior;
+      ready = profile.productAccuracyAssessment.gellattiReadiness.ready;
+      criticalGaps = [...profile.productAccuracyAssessment.criticalBlockers];
+    }
+  }
   const roleReadiness = profile.productAccuracyAssessment.roleReadiness;
   const roleReady = roleReadiness === 'BASE_READY' || roleReadiness === 'TOPPING_READY';
-  const ready = profile.productAccuracyAssessment.gellattiReadiness.ready;
-  const criticalGaps = [...profile.productAccuracyAssessment.criticalBlockers];
   /*
     THE FINAL ASSESSMENT SNAPSHOT — one scan, one versioned verdict. Preview shows it, Finalize
     saves it and routing classifies it, and its hash is what proves the three were the same thing.
@@ -757,7 +953,11 @@ Deno.serve(async (request) => {
     result: corrections.result,
     confirmedFields: confirmedEvidenceFields,
     recognition: recognition as unknown as Record<string, unknown>,
-    recognitionCarriedForward: carriedRecognition.carriedForward,
+    // This public flag answers whether accepted semantic evidence reached the working authority,
+    // not only whether it had to be reused from an earlier HTTP request. Fresh, sufficiently
+    // supported Recognition is carried forward too; unresolved/ambiguous evidence remains false.
+    recognitionCarriedForward:
+      carriedRecognition.carriedForward || supportsSemanticBehaviorReference(recognition),
     behavior: behavior as unknown as Record<string, unknown>,
     profile: profile as unknown as Record<string, unknown>,
   });
@@ -807,6 +1007,10 @@ Deno.serve(async (request) => {
     },
     classification: recognition,
     completion: {
+      accumulatedEvidenceResearch: {
+        requestedFields: researchOutcome.requestedFields,
+        strongerEvidenceApplied: researchOutcome.applied,
+      },
       mapperDonorId: profile.profileReferenceMapperIngredientId,
       mapperSimilarity: profile.mapperSimilarity,
       estimatedFromMapperIds: profile.estimatedFromMapperIds,
@@ -829,6 +1033,7 @@ Deno.serve(async (request) => {
   const { error: traceError } = await service
     .from('product_scan_sessions')
     .update({
+      result_json: corrections.result,
       validation_json: {
         ...validation,
         missingCriticalFields: criticalGaps,
