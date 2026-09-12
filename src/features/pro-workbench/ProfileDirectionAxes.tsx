@@ -214,7 +214,7 @@ function RegulatorRow({
             style={{ left: fillLeft, width: fillWidth }}
             className={cn(
               'absolute top-[11.5px] h-[3px] rounded-full transition-[left,width,background-color]',
-              disabled ? 'bg-[#fcd6a8]' : 'bg-[#f58a07]',
+              disabled ? 'bg-[var(--g-orange-soft)]' : 'bg-[var(--g-orange)]',
             )}
           />
           {/* The neutral centre stays visible as a hollow detent whenever it is
@@ -229,12 +229,14 @@ function RegulatorRow({
           ) : null}
           {/* The blocked thumb carries an OUTLINE, not just a muted fill. With
               the numerals gone, the mark is the only thing reporting the
-              position, and #fcd6a8 sits at 1.07:1 against the dot colour —
-              invisible. The attention ink reaches 4.33:1 against those dots
+              position, and the soft accent all but vanishes against the dot
+              colour. The attention ink reaches 4.33:1 against those dots
               and 6.33:1 against the ground, so a blocked axis still SHOWS
               where it stands while the pale fill keeps saying "not available".
-              The interactive thumb is untouched: its 2.46:1 accent is the
-              owner-approved V2.1 exception and is not reopened here. */}
+              The interactive thumb is the Gellatti accent (#F0C44C, owner
+              decision 2026-09-12); its position is also carried by its size,
+              the fill's extent and the accessible name — never by colour
+              alone. */}
           <span
             aria-hidden
             style={{
@@ -247,8 +249,8 @@ function RegulatorRow({
             className={cn(
               'absolute rounded-full shadow-[0_0_0_3px_#fff] transition-[left,width,height,margin,top,background-color]',
               disabled
-                ? 'border-[1.5px] border-[var(--g-attention-ink)] bg-[#fcd6a8]'
-                : 'bg-[#f58a07]',
+                ? 'border-[1.5px] border-[var(--g-attention-ink)] bg-[var(--g-orange-soft)]'
+                : 'bg-[var(--g-orange)]',
             )}
           />
           {visual.map((detent, index) => (

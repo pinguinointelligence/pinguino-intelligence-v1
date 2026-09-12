@@ -72,7 +72,7 @@ const SERVING_OPTIONS: readonly { id: string; label: string }[] = [
    hairline, a 9 px quiet label and an 11 px bold value, its disclosure mark on
    the right edge. Mobile keeps a 44 px touch target. */
 const compactSelect =
-  'h-11 min-w-0 appearance-none rounded-[9px] border border-[var(--g-line)] bg-white px-[11px] text-[13px] text-[var(--g-ink)] shadow-none transition-colors hover:border-ink/35 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#f58a07] lg:h-[46px] lg:text-[11px] lg:font-bold';
+  'h-11 min-w-0 appearance-none rounded-[9px] border border-[var(--g-line)] bg-white px-[11px] text-[13px] text-[var(--g-ink)] shadow-none transition-colors hover:border-ink/35 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--g-orange-line)] lg:h-[46px] lg:text-[11px] lg:font-bold';
 const compactFinalSettingsLabel =
   'block text-[9px] leading-[10px] font-normal text-[var(--g-text-field-label)]';
 /* The two Settings helper lines are not part of the approved 46 px field, so
@@ -90,11 +90,11 @@ const TARGET_BATCH_STEP_GRAMS = 10;
    accent with its 3 px halo. `targetBatchControlFamily.test.ts` compares these
    literals with DirectNumberControl's own, so the two cannot drift apart. */
 const BATCH_CONTROL_HOUSING =
-  'mt-2 grid h-11 w-full min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-stretch overflow-hidden rounded-full border border-ink/12 bg-white transition-[border-color,box-shadow] focus-within:border-[#f58a07] focus-within:shadow-[0_0_0_3px_rgb(245_138_7_/_0.15)] min-[68.5rem]:h-8';
+  'mt-2 grid h-11 w-full min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-stretch overflow-hidden rounded-full border border-ink/12 bg-white transition-[border-color,box-shadow] focus-within:border-[var(--g-orange-line)] focus-within:shadow-[0_0_0_3px_color-mix(in_srgb,var(--g-orange)_15%,transparent)] min-[68.5rem]:h-8';
 /* The side segments are QUIETER than the value, as the dashboard's light − / +
    glyphs are: the mass is the decision, the ±10 g steps are shortcuts. */
 const BATCH_CONTROL_STEP =
-  'gellatti-touch-control grid place-items-center px-3 font-mono text-[12px] font-medium whitespace-nowrap text-[var(--g-text-secondary)] tabular-nums transition-colors hover:bg-stone-100 hover:text-ink focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#f58a07] disabled:cursor-not-allowed disabled:text-stone-400';
+  'gellatti-touch-control grid place-items-center px-3 font-mono text-[12px] font-medium whitespace-nowrap text-[var(--g-text-secondary)] tabular-nums transition-colors hover:bg-stone-100 hover:text-ink focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--g-orange-line)] disabled:cursor-not-allowed disabled:text-stone-400';
 const BATCH_CONTROL_VALUE =
   'flex h-full min-w-0 items-center justify-center border-x border-ink/18 px-2';
 
@@ -809,7 +809,7 @@ export function WorkbenchSettingsLine({
             </>
           ) : (
             <>
-              <i aria-hidden className="size-2 shrink-0 rounded-full bg-[#f58a07]" />
+              <i aria-hidden className="size-2 shrink-0 rounded-full bg-[var(--g-orange)]" />
               Wymaga potwierdzenia
             </>
           )}

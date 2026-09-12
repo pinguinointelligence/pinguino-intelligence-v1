@@ -208,7 +208,7 @@ export function DirectNumberControl({
   return (
     <div
       className={cn(
-        'grid box-border min-w-0 max-w-full items-center overflow-hidden border border-ink/12 bg-white shadow-pro-sm transition-[border-color,background-color,box-shadow] focus-within:border-[#f58a07] focus-within:shadow-[0_0_0_3px_rgb(245_138_7_/_0.15)]',
+        'grid box-border min-w-0 max-w-full items-center overflow-hidden border border-ink/12 bg-white shadow-pro-sm transition-[border-color,background-color,box-shadow] focus-within:border-[var(--g-orange-line)] focus-within:shadow-[0_0_0_3px_color-mix(in_srgb,var(--g-orange)_15%,transparent)]',
         widthPreset !== 'fluid' && 'shrink-0',
         // The radius is chosen HERE, not in the base literal, because
         // `.pro-studio-radius-system` normalises every rectangular Tailwind
@@ -317,7 +317,7 @@ export function DirectNumberControl({
           }}
           className={cn(
             // A9: holding − / + repeats; the press must not select the glyph.
-            'gellatti-touch-control row-start-1 grid place-items-center font-light text-ink transition-colors hover:bg-stone-100 focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#f58a07] disabled:cursor-not-allowed disabled:text-stone-400',
+            'gellatti-touch-control row-start-1 grid place-items-center font-light text-ink transition-colors hover:bg-stone-100 focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--g-orange-line)] disabled:cursor-not-allowed disabled:text-stone-400',
             segment,
             compact ? 'text-base' : responsive ? 'text-xl lg:text-base' : 'text-xl',
             direction > 0 && 'col-start-3',
@@ -349,7 +349,7 @@ export function DirectNumberControl({
             aria-label={`${ariaLabel} — ${maskedAnnouncement}`}
             data-testid={`${testId}-masked`}
             onClick={() => onMaskedInteract?.()}
-            className="flex h-full w-full items-center justify-center font-mono text-[14px] text-stone-500 transition-colors hover:text-ink focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#f58a07]"
+            className="flex h-full w-full items-center justify-center font-mono text-[14px] text-stone-500 transition-colors hover:text-ink focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--g-orange-line)]"
           >
             {/* The unit is NOT repeated here: the control renders its own suffix span
                 after the input, so appending it produced "••• g g" on staging. */}
@@ -474,7 +474,7 @@ export function DirectNumberControl({
             lockSegment.onToggle();
           }}
           className={cn(
-            'col-start-4 row-start-1 inline-flex shrink-0 items-center justify-center border-l border-ink/18 transition-colors focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#f58a07]',
+            'col-start-4 row-start-1 inline-flex shrink-0 items-center justify-center border-l border-ink/18 transition-colors focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--g-orange-line)]',
             lockSegmentSize,
             lockSegment.pressed
               ? 'bg-stone-200 text-ink'

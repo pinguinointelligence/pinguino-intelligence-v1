@@ -332,7 +332,7 @@ export function DialogShell({
           // ring as part of the SAME shadow value, so it cannot be replaced by
           // the elevation shadow the way a separate `ring-*` utility was.
           tone === 'attention'
-            ? 'border-[var(--g-orange)] shadow-[0_0_0_4px_rgba(245,138,7,0.18),0_8px_18px_rgba(16,17,19,0.12),0_28px_72px_rgba(16,17,19,0.24)]'
+            ? 'border-[var(--g-orange)] shadow-[0_0_0_4px_color-mix(in_srgb,var(--g-orange)_18%,transparent),0_8px_18px_rgba(16,17,19,0.12),0_28px_72px_rgba(16,17,19,0.24)]'
             : 'border-ink/15 shadow-pro-e3',
           placement === 'bottom'
             ? 'max-h-[min(88dvh,calc(100dvh-env(safe-area-inset-top)-0.5rem))] w-full rounded-t-[22px] border-x-0 border-b-0 pb-[env(safe-area-inset-bottom)]'

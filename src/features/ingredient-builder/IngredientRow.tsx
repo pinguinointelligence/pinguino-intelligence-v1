@@ -829,7 +829,7 @@ function RecipeRow({
                   key={dot}
                   className={cn(
                     'size-[3px] rounded-full bg-[var(--g-text-muted)] transition-colors',
-                    (dot === 2 || dot === 3) && 'group-hover/row:bg-[#f58a07]',
+                    (dot === 2 || dot === 3) && 'group-hover/row:bg-[var(--g-orange-line)]',
                   )}
                 />
               ))}
@@ -1080,7 +1080,7 @@ function RecipeRow({
                     key={dot}
                     className={cn(
                       'size-[3px] rounded-full bg-current transition-colors',
-                      dot === 1 && 'group-hover/row:bg-[#f58a07]',
+                      dot === 1 && 'group-hover/row:bg-[var(--g-orange-line)]',
                     )}
                   />
                 ))}
@@ -1530,7 +1530,7 @@ export function IngredientRow({
         mode === 'recipe' && changed && 'ingredient-line-changed',
         mode === 'production' && productionActive && 'production-line-active',
         productionProcessReminder &&
-          'xl:min-h-[64px] xl:border-l-[3px] xl:border-l-[#f58a07] xl:bg-[var(--g-attention-surface)]',
+          'xl:min-h-[64px] xl:border-l-[3px] xl:border-l-[var(--g-orange)] xl:bg-[var(--g-attention-surface)]',
       )}
       data-ingredient-mode={mode}
       data-production-row-family={mode === 'production' ? 'recipe-table' : undefined}

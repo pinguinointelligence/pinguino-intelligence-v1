@@ -57,7 +57,7 @@ html[data-gellatti-input-modality] .theme-pro-light .home-composer-field:focus-v
 /* Pointer focus: a warm, quiet acknowledgement. Decorative only — the keyboard
  * indicator below is the one that has to carry contrast. */
 .home-composer:focus-within {
-  border-color: #e0bc8a;
+  border-color: var(--g-orange);
 }
 
 /* Keyboard focus: the shell's own graphite (#4b4d52, 7.6:1 on the composer's

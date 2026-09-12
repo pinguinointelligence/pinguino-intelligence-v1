@@ -60,7 +60,7 @@ export function HomeAmountPrompt({
             onKeyDown={(event) => {
               if (event.key === 'Enter' && valid) onConfirm(confirmedGrams(raw));
             }}
-            className="h-11 w-[110px] rounded-[10px] border px-3 text-center font-mono text-[15px] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#f58a07]"
+            className="h-11 w-[110px] rounded-[10px] border px-3 text-center font-mono text-[15px] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--g-orange-line)]"
             style={{ borderColor: 'var(--g-line)', color: 'var(--g-ink)' }}
           />
           <span className="text-[15px]" style={{ color: 'var(--g-text-secondary)' }}>

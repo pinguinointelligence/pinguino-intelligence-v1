@@ -69,7 +69,7 @@ describe('final Pro visual system', () => {
     // the action. Asserted as a pair so the cue cannot be dropped silently.
     expect(scoreDock).toMatch(/bg-\[var\(--g-graphite\)\][^"']*text-white/);
     expect(scoreDock).toContain('data-testid="pro-workbar-recalc-cue"');
-    expect(scoreDock).toMatch(/rounded-full bg-\[#f58a07\]/);
+    expect(scoreDock).toMatch(/rounded-full bg-\[var\(--g-orange\)\]/);
     expect(workbar).toMatch(/bg-ink[^"']*text-white/);
     const tokens = read('styles', 'tokens.css');
     expect(tokens).toContain('--color-nonproduction-pink');

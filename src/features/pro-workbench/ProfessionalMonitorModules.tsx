@@ -140,7 +140,7 @@ export function MonitorRangeScale({
       ) : null}
       {previewGeometry?.markerPercent !== null && previewGeometry?.markerPercent !== undefined ? (
         <span
-          className="absolute top-[7px] size-3.5 -translate-x-1/2 rounded-full border-2 border-[#f58a07] bg-white"
+          className="absolute top-[7px] size-3.5 -translate-x-1/2 rounded-full border-2 border-[var(--g-orange)] bg-white"
           style={{ left: `${previewGeometry.markerPercent}%` }}
           data-testid={`${testId}-preview`}
           data-position={previewGeometry.markerPercent}

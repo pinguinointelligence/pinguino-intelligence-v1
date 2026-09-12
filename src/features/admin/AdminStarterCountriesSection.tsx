@@ -109,7 +109,7 @@ function ComponentEditor({ iso2 }: { iso2: string }) {
                   <span className="mt-0.5 block">{row.componentTitle}</span>
                   {!complete ? (
                     <span
-                      className="mt-1 inline-block rounded-[5px] bg-[var(--g-orange)] px-1.5 py-0.5 text-[10px] font-bold text-white"
+                      className="mt-1 inline-block rounded-[5px] bg-[var(--g-orange)] px-1.5 py-0.5 text-[10px] font-bold text-[var(--g-ink)]"
                       data-testid="component-missing"
                     >
                       BRAKUJE

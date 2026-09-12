@@ -187,7 +187,7 @@ export function PublishToCommunityDialog({
                       onClick={() => setImageUrl(image.url)}
                       className={
                         image.url === imageUrl
-                          ? 'overflow-hidden rounded-sm border-2 border-[#ef8708]'
+                          ? 'overflow-hidden rounded-sm border-2 border-[var(--g-orange)]'
                           : 'overflow-hidden rounded-sm border border-ink/12 opacity-80 hover:opacity-100'
                       }
                     >

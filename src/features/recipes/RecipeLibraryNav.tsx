@@ -13,7 +13,9 @@ const stripClasses =
 const entryClasses = (active: boolean) =>
   cn(
     'min-h-12 shrink-0 border-b-2 px-4 text-[13px] font-semibold tracking-normal',
-    active ? 'border-[#ef8708] text-ink' : 'border-transparent text-stone-600 hover:text-ink',
+    active
+      ? 'border-[var(--g-orange)] text-ink'
+      : 'border-transparent text-stone-600 hover:text-ink',
   );
 
 interface TabsModeProps {

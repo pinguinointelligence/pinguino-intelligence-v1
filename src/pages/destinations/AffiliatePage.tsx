@@ -141,7 +141,7 @@ function RecurringFlow() {
                   className={cn(
                     'block h-[11px] w-[11px] rounded-full border',
                     last
-                      ? 'border-[var(--g-orange)] bg-[var(--g-orange)] shadow-[0_0_0_5px_rgba(245,138,7,0.14)]'
+                      ? 'border-[var(--g-orange)] bg-[var(--g-orange)] shadow-[0_0_0_5px_color-mix(in_srgb,var(--g-orange)_14%,transparent)]'
                       : 'border-[var(--g-line)] bg-[var(--g-line-strong,#cfcac1)]',
                   )}
                 />
@@ -223,7 +223,7 @@ function TierCard({ tier }: { tier: PublicAffiliateTier }) {
     <article
       className={cn(
         'flex flex-col rounded-[16px] border bg-white px-6 py-7 sm:px-7',
-        gold ? 'border-[rgba(245,138,7,0.4)]' : 'border-[var(--g-line-quiet,#e6e2db)]',
+        gold ? 'border-[var(--g-orange)]/40' : 'border-[var(--g-line-quiet,#e6e2db)]',
       )}
     >
       <span className={EYEBROW}>{gold ? c.rates.goldName : c.rates.standardName}</span>
@@ -236,7 +236,7 @@ function TierCard({ tier }: { tier: PublicAffiliateTier }) {
           : c.rates.standardBlurb}
       </p>
       {gold ? (
-        <span className="mt-3 self-start rounded-full border border-[rgba(245,138,7,0.34)] bg-[rgba(245,138,7,0.1)] px-3 py-1.5 text-[11.5px] font-semibold text-[#8a5300]">
+        <span className="mt-3 self-start rounded-full border border-[var(--g-orange)]/34 bg-[var(--g-orange)]/10 px-3 py-1.5 text-[11.5px] font-semibold text-[var(--g-orange-ink)]">
           {fillTemplate(c.rates.goldBadgeTemplate, { threshold: PUBLIC_GOLD_THRESHOLD })}
         </span>
       ) : null}
@@ -362,7 +362,7 @@ function CountField({
       <span className="block text-[11.5px] font-semibold tracking-[0.05em] text-[var(--g-text-muted)] uppercase">
         {label}
       </span>
-      <div className="mt-2 flex h-[46px] items-center justify-between gap-1 rounded-full border border-[var(--g-line)] bg-white pr-1.5 pl-2 focus-within:border-[var(--g-orange)]">
+      <div className="mt-2 flex h-[46px] items-center justify-between gap-1 rounded-full border border-[var(--g-line)] bg-white pr-1.5 pl-2 focus-within:border-[var(--g-orange-line)]">
         <button
           type="button"
           onClick={() => step(-1)}

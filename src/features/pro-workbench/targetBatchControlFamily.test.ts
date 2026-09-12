@@ -30,8 +30,8 @@ describe('the batch control is a dashboard control', () => {
     for (const token of [
       'border border-ink/12',
       'bg-white',
-      'focus-within:border-[#f58a07]',
-      'focus-within:shadow-[0_0_0_3px_rgb(245_138_7_/_0.15)]',
+      'focus-within:border-[var(--g-orange-line)]',
+      'focus-within:shadow-[0_0_0_3px_color-mix(in_srgb,var(--g-orange)_15%,transparent)]',
     ]) {
       expect(dashboard, token).toContain(token);
       expect(housing, token).toContain(token);
@@ -46,7 +46,7 @@ describe('the batch control is a dashboard control', () => {
     for (const token of [
       'gellatti-touch-control',
       'hover:bg-stone-100',
-      'focus-visible:outline-[#f58a07]',
+      'focus-visible:outline-[var(--g-orange-line)]',
       'disabled:text-stone-400',
     ]) {
       expect(dashboard, token).toContain(token);

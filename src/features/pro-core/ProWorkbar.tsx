@@ -574,8 +574,8 @@ export function ProWorkbar({
                  current spacing (`min-[68.5rem]` only). */
               'relative z-[2] min-w-0 rounded-2xl px-7 py-6 min-[68.5rem]:px-6 min-[68.5rem]:py-4',
               identityState === 'unnamed'
-                ? 'border-[1.5px] border-[#f58a07]/55 bg-white'
-                : 'border-l-[6px] border-[#f58a07] bg-[var(--g-graphite)]',
+                ? 'border-[1.5px] border-[var(--g-orange)]/55 bg-white'
+                : 'border-l-[6px] border-[var(--g-orange)] bg-[var(--g-graphite)]',
             )}
             data-testid="pro-recipe-identity-card"
           >
@@ -742,7 +742,7 @@ export function ProWorkbar({
               'min-[68.5rem]:right-6 min-[68.5rem]:h-[46px] min-[68.5rem]:max-w-[calc(100%-48px)] min-[68.5rem]:min-w-[104px] min-[68.5rem]:justify-center min-[68.5rem]:px-[18px] min-[68.5rem]:pb-2 min-[68.5rem]:text-[13px] min-[68.5rem]:tracking-[0.06em]',
               /* Graphite ink on the accent is 7.5:1. White on the accent would
                  be 2.5:1 — the same mistake that was removed from Direction. */
-              'bg-[#f58a07] text-[var(--g-graphite)] transition-[background-color,opacity] hover:bg-[#e07f06]',
+              'bg-[var(--g-orange)] text-[var(--g-graphite)] transition-[background-color,opacity] hover:bg-[var(--g-orange-hover)]',
               'disabled:cursor-not-allowed disabled:bg-[var(--g-line-quiet)] disabled:text-[var(--g-lock)]',
               tongueVisible ? null : 'pointer-events-none opacity-0',
             )}
