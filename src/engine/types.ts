@@ -208,10 +208,10 @@ export interface RecipeItem {
    * Standard line must remain present (>= 1 g) unless the user explicitly
    * zeroes/removes/excludes it. Engine formulas do not consume this field. */
   user_intent_anchor_grams?: number;
-  /** Product-layer soft target from the latest direct gram edit. Unlike a
-   * grams constraint this is not a lock: orchestration preserves it when the
-   * complete recipe is feasible, otherwise it selects the nearest feasible
-   * whole-gram amount. Base Engine formulas do not consume this field. */
+  /** Product-layer target from the latest direct gram edit. The field itself
+   * is not a lock; the canonical user-exact action pairs it with
+   * `grams_constraint`, while internal/source writes may retain it only as a
+   * soft target. Base Engine formulas do not consume this field. */
   user_target_grams?: number;
   /** Product-layer amount provenance. `'AUTO_CROWN_SEED'` marks the gram PRO's
    * Crown seeded onto an empty line: a bootstrap the Main search sizes, never a

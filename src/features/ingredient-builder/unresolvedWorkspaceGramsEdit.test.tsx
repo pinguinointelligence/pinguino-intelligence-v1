@@ -3,7 +3,7 @@
 /**
  * The default local Pro workspace must stay editable.
  *
- * `IngredientBuilder` wraps `recipeStore.setPlannedGrams` with the BASE_RECIPE
+ * `IngredientBuilder` wraps `recipeStore.setExactGrams` with the BASE_RECIPE
  * product-behavior gate. It used to run that gate unconditionally, so a
  * workspace holding no snapshots at all — signed out, or the demo preset
  * cold-open — had every grams edit refused with
@@ -68,11 +68,37 @@ const mount = () => {
 
 /** The `+` half of the grams stepper for one row. */
 const incrementGrams = (container: HTMLElement, lineId: string) => {
-  const control = container.querySelector<HTMLElement>(`[data-testid="row-grams-control-${lineId}"]`);
+  const control = container.querySelector<HTMLElement>(
+    `[data-testid="row-grams-control-${lineId}"]`,
+  );
   expect(control).not.toBeNull();
   const step = control!.querySelector<HTMLButtonElement>('button[aria-label$="zwiększ"]');
   expect(step).not.toBeNull();
   act(() => step!.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+};
+
+const decrementGrams = (container: HTMLElement, lineId: string) => {
+  const control = container.querySelector<HTMLElement>(
+    `[data-testid="row-grams-control-${lineId}"]`,
+  );
+  expect(control).not.toBeNull();
+  const step = control!.querySelector<HTMLButtonElement>('button[aria-label$="zmniejsz"]');
+  expect(step).not.toBeNull();
+  act(() => step!.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+};
+
+const typeGrams = (container: HTMLElement, lineId: string, grams: number) => {
+  const input = container.querySelector<HTMLInputElement>(
+    `[data-testid="row-grams-control-${lineId}"] [role="spinbutton"]`,
+  );
+  expect(input).not.toBeNull();
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+  act(() => input!.focus());
+  act(() => {
+    setter?.call(input, String(grams));
+    input!.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  act(() => input!.blur());
 };
 
 const notice = (container: HTMLElement): string | null =>
@@ -88,7 +114,7 @@ describe('grams editing on an unresolved product-behavior workspace', () => {
     useIngredientTableUxStore.getState().reset();
   });
 
-  it('accepts a grams edit on the demo preset when no snapshot has been resolved', () => {
+  it('MGAL-PRO-02 accepts plus and turns the canonical exact Lock on', () => {
     expect(useRecipeStore.getState().productBehaviorSnapshots).toEqual({});
     const before = plannedGrams(MILK);
     const { container, root } = mount();
@@ -96,6 +122,10 @@ describe('grams editing on an unresolved product-behavior workspace', () => {
     incrementGrams(container, MILK);
 
     expect(plannedGrams(MILK)).toBe(before + 1);
+    expect(useRecipeStore.getState().items.find((item) => item.id === MILK)).toMatchObject({
+      lock_type: 'grams',
+      grams_constraint: { grams: before + 1 },
+    });
     expect(notice(container)).toBeNull();
     act(() => root.unmount());
     container.remove();
@@ -163,6 +193,36 @@ describe('grams editing on an unresolved product-behavior workspace', () => {
 
     expect(plannedGrams(MILK)).toBe(before + 1);
     expect(notice(container)).toBeNull();
+    act(() => root.unmount());
+    container.remove();
+  });
+
+  it('MGAL-PRO-01 direct numeric commit turns the canonical exact Lock on', () => {
+    const next = plannedGrams(MILK) + 20;
+    const { container, root } = mount();
+
+    typeGrams(container, MILK, next);
+
+    expect(useRecipeStore.getState().items.find((item) => item.id === MILK)).toMatchObject({
+      planned_grams: next,
+      lock_type: 'grams',
+      grams_constraint: { grams: next },
+    });
+    act(() => root.unmount());
+    container.remove();
+  });
+
+  it('MGAL-PRO-03 minus turns the canonical exact Lock on', () => {
+    const before = plannedGrams(MILK);
+    const { container, root } = mount();
+
+    decrementGrams(container, MILK);
+
+    expect(useRecipeStore.getState().items.find((item) => item.id === MILK)).toMatchObject({
+      planned_grams: before - 1,
+      lock_type: 'grams',
+      grams_constraint: { grams: before - 1 },
+    });
     act(() => root.unmount());
     container.remove();
   });
