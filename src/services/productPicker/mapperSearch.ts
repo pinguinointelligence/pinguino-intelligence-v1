@@ -25,6 +25,7 @@ import {
   isMapperHomeVerifiedStatus,
 } from '@/data/ingredients/mapperVerificationStatus';
 import { planMapperCatalogSearch } from '@/features/mapper-search-runtime';
+import { normalizeSearchText, rankSearchHits } from '@/features/ingredient-builder/ingredientSearch';
 import { searchProducts } from '@/services/globalCatalog';
 
 /** The demo-safe view (0033) — searchable by anon AND authenticated. */
@@ -105,12 +106,14 @@ async function searchCanonicalMapperIngredientsWithPolicy(
   preserveHomeBaseline: boolean,
 ): Promise<MapperSearchOutcome> {
   if (query.signal?.aborted) return { kind: 'aborted' };
+  let tokenGroups: readonly (readonly string[])[] = [];
   try {
     const plan = await planMapperCatalogSearch(query.text, {
       localeVariant: query.localeVariant,
       marketScope: query.marketScope ?? 'GLOBAL',
     });
     if (plan.blocked) return { kind: 'results', rows: [], hasMore: false };
+    tokenGroups = plan.tokenGroups;
     const limit = query.limit ?? MAPPER_SEARCH_DEFAULT_LIMIT;
     const requestedOffset = query.offset ?? 0;
     // Home retains its frozen Verified+Base+Engine projection. The RPC now
@@ -175,6 +178,14 @@ async function searchCanonicalMapperIngredientsWithPolicy(
       hasMore: rows.length > sliceOffset + limit,
     };
   } catch (error) {
+    // search_products_v1 deliberately remains authenticated because its payload is
+    // richer than HOME may expose. Anonymous HOME still has the public, closed
+    // Mapper projection, so only this exact capability failure falls back to it.
+    // The central concept plan and the already-accepted natural-form ranking are
+    // reused unchanged; this does not create a second alias or ranking authority.
+    if (preserveHomeBaseline && isCanonicalSearchPermissionDenied(error)) {
+      return searchPublicCanonicalHomeIngredients(query, tokenGroups);
+    }
     return { kind: 'error', message: error instanceof Error ? error.message : String(error) };
   }
 }
@@ -243,6 +254,14 @@ function isUnauthorized(error: QueryError): boolean {
   return error.code === '42501' || error.code === 'PGRST301';
 }
 
+/** searchProducts intentionally throws a plain Error, so its PostgreSQL code is
+ * no longer available here. Keep the fallback narrower than a generic 401: only
+ * the named canonical RPC permission denial is eligible. */
+function isCanonicalSearchPermissionDenied(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /permission denied/i.test(message) && /search_products_v1/i.test(message);
+}
+
 /** True when the failure is the caller's own cancellation. */
 function isAborted(error: QueryError, signal?: AbortSignal): boolean {
   return signal?.aborted === true || /abort/i.test(error.message ?? '');
@@ -296,6 +315,79 @@ export async function searchMapperIngredients(
     kind: 'results',
     rows: raw.slice(0, limit).map(toSafeMapperSearchRow),
     hasMore,
+  };
+}
+
+/**
+ * Anonymous HOME equivalent of the canonical PI-only search.
+ *
+ * `tokenGroups` comes from `planMapperCatalogSearch`: every group is ANDed and
+ * the aliases inside a group are ORed. The response can only contain the closed
+ * demo-safe columns, is limited to Base+Engine-approved rows, and is ordered with
+ * the existing accepted ranker so HOME's automatic #1 remains deterministic.
+ */
+async function searchPublicCanonicalHomeIngredients(
+  query: MapperSearchQuery,
+  tokenGroups: readonly (readonly string[])[],
+): Promise<MapperSearchOutcome> {
+  const client = backend.supabase;
+  if (!client) return { kind: 'unavailable', reason: 'not_configured' };
+  if (query.signal?.aborted) return { kind: 'aborted' };
+
+  const limit = query.limit ?? MAPPER_SEARCH_DEFAULT_LIMIT;
+  const offset = query.offset ?? 0;
+  let builder = client
+    .from(DEMO_SEARCH_VIEW)
+    .select(MAPPER_SEARCH_COLUMNS.join(','))
+    .eq('approved_for_base', true)
+    .eq('approved_for_engines', true);
+
+  for (const group of tokenGroups) {
+    const terms = [...new Set(group.map((term) => term.trim()).filter(Boolean))];
+    if (terms.length === 0) continue;
+    builder = builder.or(
+      terms
+        .flatMap((term) =>
+          ['ingredient_name_display', 'ingredient_name_internal'].map((column) =>
+            ilikeOrFilter([column], term),
+          ),
+        )
+        .join(','),
+    );
+  }
+  if (query.category) builder = builder.eq('ingredient_category', query.category);
+
+  // Ranking must see the whole current concept family; otherwise alphabetical
+  // database order could discard the natural #1 before the accepted ranker runs.
+  builder = builder.order('ingredient_name_display', { ascending: true }).range(0, 499);
+  if (query.signal) builder = builder.abortSignal(query.signal);
+
+  const { data, error } = await builder;
+  if (error) {
+    if (isAborted(error, query.signal)) return { kind: 'aborted' };
+    if (isViewMissing(error)) return { kind: 'unavailable', reason: 'view_missing' };
+    return { kind: 'error', message: error.message ?? 'Wyszukiwanie nie powiodło się' };
+  }
+
+  const rows = ((data ?? []) as unknown as Record<string, unknown>[]).map(toSafeMapperSearchRow);
+  const ranked = rankSearchHits(
+    rows.map((row) => ({
+      row,
+      id: row.ingredient_id,
+      name: row.ingredient_name_display,
+      nameNorm: normalizeSearchText(
+        `${row.ingredient_name_display} ${row.ingredient_name_internal ?? ''}`,
+      ),
+      category: row.ingredient_category ?? '',
+      form: row.ingredient_subcategory ?? '',
+    })),
+    query.text,
+  ).map(({ row }) => row);
+
+  return {
+    kind: 'results',
+    rows: ranked.slice(offset, offset + limit),
+    hasMore: ranked.length > offset + limit,
   };
 }
 

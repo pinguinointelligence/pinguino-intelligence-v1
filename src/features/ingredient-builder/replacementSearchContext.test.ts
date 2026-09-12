@@ -164,14 +164,37 @@ describe('replacement search line context', () => {
     expect(
       isHardCompatibleReplacementCandidate(
         context,
-        candidate({ displayName: 'BANANA · Fabbri Cream', category: 'fruit', productForm: 'paste' }),
+        candidate({
+          displayName: 'BANANA · Fabbri Cream · Chilled · 0004282',
+          originalName: 'delipaste_banana_fabbri_0004282',
+          canonicalFamily: null,
+          category: 'dairy',
+          productForm: 'liquid',
+        }),
       ),
     ).toBe(false);
     expect(
       isHardCompatibleReplacementCandidate(
         context,
-        candidate({ displayName: 'AMARETTO CREAM', category: 'alcohol', productForm: 'liqueur' }),
+        candidate({
+          displayName: 'AMARETTO · Fabbri Cream · Chilled · 0004306',
+          originalName: 'delipasta_amaretto_fabbri_0004306',
+          canonicalFamily: null,
+          category: 'dairy',
+          productForm: 'liquid',
+        }),
       ),
     ).toBe(false);
+    expect(
+      isHardCompatibleReplacementCandidate(
+        context,
+        candidate({
+          displayName: 'WHIPPING CREAM · Tesco Cream · Chilled',
+          canonicalFamily: null,
+          category: 'dairy',
+          productForm: 'fresh',
+        }),
+      ),
+    ).toBe(true);
   });
 });
