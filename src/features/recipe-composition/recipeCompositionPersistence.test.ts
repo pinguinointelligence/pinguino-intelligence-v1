@@ -273,7 +273,8 @@ describe('Base/Topping composition sidecar', () => {
     expect(toppingIngredientIdentity(parsed!.toppings[0]!.ingredient)).toBe('catalog:label-sauce');
   });
 
-  it('keeps topping substitution inside topping scope and merges a duplicate canonical target', () => {
+  it('RPL-TOP-01 keeps topping scope, merges a duplicate, and requires recalculation', () => {
+    useRecipeProfileStore.getState().acknowledgeRecalculation();
     const [milk, sugar] = useRecipeStore.getState().items.map((item) => item.ingredient);
     useRecipeStore.getState().addTopping(milk!, 70);
     useRecipeStore.getState().addTopping(sugar!, 60);
@@ -291,6 +292,22 @@ describe('Base/Topping composition sidecar', () => {
       canonicalIngredientId(sugar!),
     );
     expect(state.items).toHaveLength(DEFAULT_PRESET.items.length);
+    expect(useRecipeProfileStore.getState().awaitingRecalculation).toBe(true);
+  });
+
+  it('RPL-TOP-02 does not require recalculation for a price-only topping refresh', () => {
+    useRecipeProfileStore.getState().acknowledgeRecalculation();
+    const milk = useRecipeStore.getState().items[0]!.ingredient;
+    useRecipeStore.getState().addTopping(milk, 70);
+    const current = useRecipeStore.getState().toppings[0]!;
+
+    useRecipeStore.getState().replaceToppingIngredient(current.id, {
+      ...current.ingredient,
+      cost_per_kg: 12.5,
+    });
+
+    expect(useRecipeStore.getState().toppings[0]?.ingredient.cost_per_kg).toBe(12.5);
+    expect(useRecipeProfileStore.getState().awaitingRecalculation).toBe(false);
   });
 
   it('removes only the selected topping and round-trips the remaining topping scope through reload', () => {

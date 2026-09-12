@@ -8,15 +8,14 @@
  * the user typed. If the catalogue cannot produce one, the chip stays unresolved and
  * HOME says so — it never falls back to "something similar".
  *
- * IO lives here; the RANKING that picks between candidates is pure and lives in
- * `homeIdentityResolution.ts`, so the decision is testable without a database.
+ * Candidate ordering is owned by the central Mapper/Search boundary. HOME consumes
+ * its first legal row directly; it must not apply a second local ranker afterward.
  */
 import { getEngineApprovedIngredientById } from '@/services/ingredients';
 import { ingredientRowToEngineIngredient } from '@/data/ingredients/ingredientMapper';
 import { searchCanonicalMapperIngredients } from '@/services/productPicker/mapperSearch';
 import type { EngineIngredient } from '@/engine';
 import type { SafeMapperSearchRow } from '@/services/productPicker/mapperSearch';
-import { resolveIdentity, type IdentityResolution } from './homeIdentityResolution';
 
 /** What one chip resolved to, ready for the UI to act on. */
 export type ChipResolution =
@@ -43,8 +42,8 @@ export async function resolveChipTerm(
   const term = chip.label.trim();
   if (!term) return { kind: 'unresolved' };
 
-  // A wide fetch, then rank, then show at most MAX_AMBIGUITY_CANDIDATES. The
-  // shared search boundary expands the central aliases before this ranking step.
+  // The shared boundary expands central aliases and returns the legal candidates in
+  // authoritative order. HOME's contract is to auto-select #1; PRO remains manual.
   const outcome = await searchCanonicalMapperIngredients({ text: term, limit: 40, signal });
   if (outcome.kind === 'unavailable') {
     return { kind: 'unavailable', reason: outcome.reason };
@@ -52,12 +51,8 @@ export async function resolveChipTerm(
   if (outcome.kind === 'error') return { kind: 'unavailable', reason: outcome.message };
   if (outcome.kind === 'aborted') return { kind: 'unavailable', reason: 'aborted' };
 
-  const decision: IdentityResolution = resolveIdentity(outcome.rows, term);
-  if (decision.kind === 'resolved') return { kind: 'resolved', row: decision.row };
-  if (decision.kind === 'ambiguous') {
-    return { kind: 'ambiguous', candidates: decision.candidates };
-  }
-  return { kind: 'unresolved' };
+  const first = outcome.rows[0];
+  return first ? { kind: 'resolved', row: first } : { kind: 'unresolved' };
 }
 
 /**

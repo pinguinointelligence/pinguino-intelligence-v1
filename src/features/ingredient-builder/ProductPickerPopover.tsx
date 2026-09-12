@@ -96,6 +96,10 @@ import {
   getProductPickerCompatibility,
   type ProductPickerScope,
 } from './productPickerCompatibility';
+import {
+  isCurrentReplacementIdentity,
+  type ReplacementSearchLineContext,
+} from './replacementSearchContext';
 
 export interface ProductPickerRouteRequest {
   targetScope: ProductPickerScope;
@@ -116,6 +120,7 @@ export interface ProductPickerSelectionResult {
 export interface ProductPickerReplaceInvocation {
   key: number;
   context: ProductDiscoveryReplaceContext;
+  currentLine: ReplacementSearchLineContext;
 }
 
 interface PickerOption {
@@ -234,6 +239,8 @@ type ProductPickerPopoverProps = {
   /** Explicit row-owned invocation. The normal visible trigger always keeps
    * its declared intent; this request only opens the same picker for Replace. */
   replaceInvocation?: ProductPickerReplaceInvocation | null;
+  /** Full current-line facts for a row-owned Replace trigger. */
+  replacementContext?: ReplacementSearchLineContext | null;
   onClose?: () => void;
   /** Parent-owned transfer between the two recipe picker contexts. */
   handoff?: ProductPickerHandoff | null;
@@ -270,6 +277,7 @@ export function ProductPickerPopover({
   onRouteToScope,
   intent = 'ADD',
   replaceInvocation,
+  replacementContext,
   onClose,
 }: ProductPickerPopoverProps) {
   const [open, setOpen] = useState(false);
@@ -317,6 +325,7 @@ export function ProductPickerPopover({
   const lastReplaceInvocationKeyRef = useRef<number | null>(null);
   const defaultFilterAppliedRef = useRef(false);
   const pickerInstanceId = useId().replace(/:/g, '');
+  const activeReplacementContext = replaceInvocation?.currentLine ?? replacementContext ?? null;
   const globalCatalog = useGlobalCatalogPicker({
     enabled: open && library.serverSearch,
     query: query.trim() === '' ? contextQuery : query,
@@ -368,11 +377,7 @@ export function ProductPickerPopover({
   }, [handoff, intent, scope]);
 
   useEffect(() => {
-    if (
-      scope !== 'BASE_FORMULATION' ||
-      !replaceInvocation ||
-      lastReplaceInvocationKeyRef.current === replaceInvocation.key
-    ) {
+    if (!replaceInvocation || lastReplaceInvocationKeyRef.current === replaceInvocation.key) {
       return;
     }
     lastReplaceInvocationKeyRef.current = replaceInvocation.key;
@@ -625,10 +630,29 @@ export function ProductPickerPopover({
   );
   const segments = useMemo(() => {
     const primary = options.filter((option) => {
-      if (!option.catalog) return true;
-      return (
-        getProductPickerCompatibility(option.catalog, scope).state !== 'AVAILABLE_IN_OTHER_CONTEXT'
-      );
+      const compatibility = option.catalog
+        ? getProductPickerCompatibility(option.catalog, scope)
+        : { state: 'ALLOWED' as const };
+      if (activeIntent === 'REPLACE') {
+        if (compatibility.state !== 'ALLOWED') return false;
+        if (
+          activeReplacementContext?.currentRole === 'MAIN' &&
+          option.catalog &&
+          !option.catalog.mainAllowed
+        ) {
+          return false;
+        }
+        if (!activeReplacementContext) return true;
+        return !isCurrentReplacementIdentity(
+          activeReplacementContext,
+          option.catalog ?? {
+            id: option.id,
+            entityKind: option.entityKind,
+            mappedIngredientId: option.canonicalId,
+          },
+        );
+      }
+      return compatibility.state !== 'AVAILABLE_IN_OTHER_CONTEXT';
     });
     const contextual = (activeIntent === 'ADD' ? options : [])
       .filter((option) => {
@@ -653,7 +677,7 @@ export function ProductPickerPopover({
           ]
         : []),
     ];
-  }, [activeIntent, options, query, scope]);
+  }, [activeIntent, activeReplacementContext, options, query, scope]);
   const visibleOptions = useMemo(() => segments.flatMap((segment) => segment.items), [segments]);
   const uniqueOptionCount = uniqueCatalogProductCount(segments);
   const handoffTargetIndex = handoffTargetProductId
@@ -722,10 +746,17 @@ export function ProductPickerPopover({
       return;
     }
     setActiveIntent(intent);
-    setActiveFamily(null);
-    setContextQuery('');
+    const declaredReplacement = intent === 'REPLACE' ? replacementContext : null;
+    setActiveFamily(declaredReplacement?.userFilters.family ?? null);
+    setContextQuery(
+      declaredReplacement ? replaceContextQuery(declaredReplacement.userFilters) : '',
+    );
     defaultFilterAppliedRef.current = false;
-    if (globalCatalog.favoritesSettled) {
+    if (declaredReplacement) {
+      setActiveFilter(declaredReplacement.userFilters.filter);
+      setActiveSubfilter(declaredReplacement.userFilters.subfilter);
+      defaultFilterAppliedRef.current = true;
+    } else if (globalCatalog.favoritesSettled) {
       setActiveFilter(resolveInitialProductDiscoveryFilter(globalCatalog.favorites.size));
       setActiveSubfilter('all');
       defaultFilterAppliedRef.current = true;
@@ -865,7 +896,10 @@ export function ProductPickerPopover({
           context: {
             ...behaviorContext,
             processScope: scope,
-            requestedRole: 'STANDARD',
+            requestedRole:
+              activeIntent === 'REPLACE' && activeReplacementContext?.currentRole === 'MAIN'
+                ? 'MAIN'
+                : 'STANDARD',
             module: scope === 'BASE_FORMULATION' ? 'BASE_RECIPE' : 'TOPPING',
           },
         }).catch(() => null);
@@ -1023,7 +1057,10 @@ export function ProductPickerPopover({
           context: {
             ...behaviorContext,
             processScope: scope,
-            requestedRole: 'STANDARD',
+            requestedRole:
+              activeIntent === 'REPLACE' && activeReplacementContext?.currentRole === 'MAIN'
+                ? 'MAIN'
+                : 'STANDARD',
             module: scope === 'BASE_FORMULATION' ? 'BASE_RECIPE' : 'TOPPING',
           },
         }).catch(() => null);
@@ -1404,7 +1441,15 @@ export function ProductPickerPopover({
                         }}
                       >
                         {visibleOptions.length === 0 ? (
-                          query.trim() && (!library.serverSearch || globalCatalog.isSettled) ? (
+                          activeIntent === 'REPLACE' &&
+                          (!library.serverSearch || globalCatalog.isSettled) ? (
+                            <p
+                              className="px-3 py-5 text-sm text-stone-600"
+                              data-testid="product-picker-no-compatible-replacements"
+                            >
+                              Brak zgodnych zamienników
+                            </p>
+                          ) : query.trim() && (!library.serverSearch || globalCatalog.isSettled) ? (
                             <div className="px-3 py-5 text-sm text-stone-600">
                               <p>Nie znaleziono produktu.</p>
                               <div className="mt-3 flex flex-wrap gap-2">
@@ -1460,7 +1505,7 @@ export function ProductPickerPopover({
                                 data-picker-section={segment.id}
                                 className={cn(
                                   segment.id === 'recent' && 'bg-[#fffaf5] pb-1',
-                                  segment.id === 'all' &&
+                                  (segment.id === 'all' || segment.id === 'remaining') &&
                                     'mt-3 border-t border-ink/10 bg-white pt-2',
                                 )}
                               >

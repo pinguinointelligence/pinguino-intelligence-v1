@@ -131,6 +131,33 @@ type FlavorIntensity = NonNullable<RecipeGoals['flavor_intensity']>;
 const OWNER_REVIEW_GATE_REASON = 'owner_review_production_label_gate';
 const OWNER_REVIEW_GATE_WARNING = 'owner_review_only';
 
+/** Product facts only. Identity may change without invalidating a calculation
+ * when both exact products prove the same immutable behavior facts. */
+const replacementFactsFingerprint = (
+  ingredient: RecipeToppingIngredient,
+  behavior?: ProductBehaviorSnapshot,
+): string => {
+  if (isCatalogLabelToppingIngredient(ingredient)) {
+    return JSON.stringify({
+      factsFingerprint: behavior?.factsFingerprint ?? null,
+      nutrition: ingredient.label_nutrition_per_100g,
+      ingredientsText: ingredient.ingredients_text,
+      allergensText: ingredient.allergens_text,
+      carbonationStatus: ingredient.carbonation_status ?? null,
+    });
+  }
+  return JSON.stringify({
+    factsFingerprint: behavior?.factsFingerprint ?? null,
+    composition: ingredient.composition,
+    pod: ingredient.pod_value,
+    pac: ingredient.pac_value,
+    de: ingredient.de_value,
+    flags: ingredient.flags ?? null,
+    subtype: ingredient.source_subcategory ?? null,
+    carbonationStatus: ingredient.carbonation_status ?? null,
+  });
+};
+
 /** Server re-resolution may refresh product truth, but it must never erase a
  * recipe-level Owner Review boundary. That boundary belongs to the opened
  * template (omitted Toppings/final legal process), not to the product
@@ -485,7 +512,11 @@ export interface RecipeState {
   removeTopping: (lineId: string) => void;
   setToppingGrams: (lineId: string, grams: number) => void;
   setToppingActualGrams: (lineId: string, grams: number | null) => void;
-  replaceToppingIngredient: (lineId: string, ingredient: RecipeToppingIngredient) => void;
+  replaceToppingIngredient: (
+    lineId: string,
+    ingredient: RecipeToppingIngredient,
+    behavior?: ProductBehaviorSnapshot,
+  ) => void;
   setIngredientPrivateCost: (
     lineId: string,
     pricePerKg: number | null,
@@ -1924,6 +1955,11 @@ export const useRecipeStore = create<RecipeState>()(
         }
 
         const normalized = normalizeIngredientIdentity(ingredient);
+        const factsChanged =
+          replacementFactsFingerprint(
+            target.ingredient,
+            current.productBehaviorSnapshots[lineId],
+          ) !== replacementFactsFingerprint(normalized, behavior);
         set((state) => {
           const items = state.items.map((item) =>
             item.id === lineId ? { ...item, ingredient: normalized } : item,
@@ -1963,6 +1999,9 @@ export const useRecipeStore = create<RecipeState>()(
             draftRevision: state.draftRevision + 1,
           };
         });
+        if (factsChanged) {
+          useRecipeProfileStore.getState().markRecalculationRequired();
+        }
         return { status: 'replaced', lineId, canonicalId };
       },
 
@@ -2028,20 +2067,34 @@ export const useRecipeStore = create<RecipeState>()(
           dirty: true,
           draftRevision: state.draftRevision + 1,
         })),
-      replaceToppingIngredient: (lineId, ingredient) =>
-        set((state) => {
-          const current = state.toppings.find((item) => item.id === lineId);
-          if (!current) return {};
+      replaceToppingIngredient: (lineId, ingredient, behavior) => {
+        const state = get();
+        const current = state.toppings.find((item) => item.id === lineId);
+        if (!current) return;
+        if (behavior && behavior.processScope !== 'POST_PROCESS_ADDON') return;
+        const sameExactIdentity =
+          toppingIngredientIdentity(current.ingredient) === toppingIngredientIdentity(ingredient) &&
+          current.ingredient.id === ingredient.id &&
+          (current.ingredient.private_product_id ?? null) ===
+            (ingredient.private_product_id ?? null);
+        const preservedBehavior =
+          !behavior && sameExactIdentity ? state.productBehaviorSnapshots[lineId] : undefined;
+        const factsChanged =
+          replacementFactsFingerprint(
+            current.ingredient,
+            state.productBehaviorSnapshots[lineId],
+          ) !== replacementFactsFingerprint(ingredient, behavior ?? preservedBehavior);
+        set((currentState) => {
           const canonicalId = toppingIngredientIdentity(ingredient);
           const normalized = isCatalogLabelToppingIngredient(ingredient)
             ? cloneToppingIngredient(ingredient)
             : normalizeIngredientIdentity(ingredient);
-          const duplicate = state.toppings.find(
+          const duplicate = currentState.toppings.find(
             (item) =>
               item.id !== lineId && toppingIngredientIdentity(item.ingredient) === canonicalId,
           );
           const toppings = duplicate
-            ? state.toppings
+            ? currentState.toppings
                 .filter((item) => item.id !== duplicate.id)
                 .map((item) =>
                   item.id === lineId
@@ -2057,20 +2110,36 @@ export const useRecipeStore = create<RecipeState>()(
                       }
                     : item,
                 )
-            : state.toppings.map((item) =>
+            : currentState.toppings.map((item) =>
                 item.id === lineId ? { ...item, ingredient: normalized } : item,
               );
+          const productBehaviorSnapshots = Object.fromEntries(
+            Object.entries(currentState.productBehaviorSnapshots).filter(
+              ([snapshotLineId]) =>
+                (snapshotLineId !== lineId || Boolean(preservedBehavior)) &&
+                snapshotLineId !== duplicate?.id,
+            ),
+          );
+          if (behavior) {
+            productBehaviorSnapshots[lineId] = preserveOwnerReviewGate(
+              currentState.ownerReviewGate,
+              {
+                ...behavior,
+                lineId,
+              },
+            );
+          }
           return {
             toppings: sortedToppings(toppings),
-            productBehaviorSnapshots: Object.fromEntries(
-              Object.entries(state.productBehaviorSnapshots).filter(
-                ([snapshotLineId]) => snapshotLineId !== lineId && snapshotLineId !== duplicate?.id,
-              ),
-            ),
+            productBehaviorSnapshots,
             dirty: true,
-            draftRevision: state.draftRevision + 1,
+            draftRevision: currentState.draftRevision + 1,
           };
-        }),
+        });
+        if (factsChanged) {
+          useRecipeProfileStore.getState().markRecalculationRequired();
+        }
+      },
       setIngredientPrivateCost: (lineId, pricePerKg, currency, source) =>
         set((state) => ({
           items: state.items.map((item) =>

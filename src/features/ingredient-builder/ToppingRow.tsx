@@ -22,6 +22,8 @@ import type {
   ProductBehaviorContext,
   ProductBehaviorSnapshot,
 } from '@/features/product-intelligence';
+import { canonicalReplaceContext } from './canonicalProductDiscovery';
+import { createReplacementSearchLineContext } from './replacementSearchContext';
 
 export function ToppingRow({
   item,
@@ -36,6 +38,7 @@ export function ToppingRow({
   onDragStart,
   onDrop,
   behaviorContext,
+  behaviorSnapshot,
   compact = false,
 }: {
   item: RecipeToppingItem;
@@ -47,6 +50,7 @@ export function ToppingRow({
   onReplace: (ingredient: RecipeToppingIngredient, behavior?: ProductBehaviorSnapshot) => void;
   library: IngredientLibrary;
   behaviorContext: Omit<ProductBehaviorContext, 'processScope' | 'requestedRole' | 'module'>;
+  behaviorSnapshot?: ProductBehaviorSnapshot;
   onMove: (direction: -1 | 1) => void;
   onDragStart: () => void;
   onDrop: () => void;
@@ -58,6 +62,30 @@ export function ToppingRow({
   /** ONE way into the topping options: the ••• and, on a touch device, the whole row (A8). */
   const openToppingMenu = () => setMenuOpen(true);
   const catalogLabel = isCatalogLabelToppingIngredient(item.ingredient) ? item.ingredient : null;
+  const replaceFilters = canonicalReplaceContext(
+    isCatalogLabelToppingIngredient(item.ingredient)
+      ? { displayName: item.ingredient.name, category: 'other', productForm: 'topping' }
+      : {
+          displayName: item.ingredient.name,
+          category: item.ingredient.category,
+          productForm: item.ingredient.source_subcategory,
+        },
+  );
+  const replacementContext = createReplacementSearchLineContext({
+    usageMode: 'PRO_REPLACE',
+    lineId: item.id,
+    ingredient: item.ingredient,
+    snapshot: behaviorSnapshot,
+    recipeProfile: behaviorContext.productProfile,
+    currentRole: 'TOPPING',
+    processScope: 'POST_PROCESS_ADDON',
+    temperatureC: behaviorContext.temperatureC,
+    formulationMode: behaviorContext.mode,
+    userFilters: replaceFilters,
+    plannedGrams: item.planned_grams,
+    actualGrams: item.actual_grams,
+    lockType: null,
+  });
   return (
     <div
       className="border-b border-ink/[0.075] px-[var(--pro-mobile-gutter)] py-1 transition-colors hover:bg-[var(--g-ivory)] lg:px-3 lg:py-1.5"
@@ -266,6 +294,7 @@ export function ToppingRow({
               library={library}
               scope="POST_PROCESS_ADDON"
               intent="REPLACE"
+              replacementContext={replacementContext}
               behaviorContext={behaviorContext}
               triggerLabel="Zamień topping"
               onAdd={(ingredient, behavior) => {

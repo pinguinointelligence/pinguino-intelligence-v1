@@ -114,7 +114,7 @@ export interface HomeCreatorCopy {
     readonly anythingElse: string;
     readonly rowMenu: string;
     readonly remove: string;
-    /** The three HOME row actions (OWNER FROZEN 2026-09-02). */
+    /** HOME row actions. Replacement is an explicit manual-selection workflow. */
     readonly changeAmount: string;
     readonly unlockLabel: string;
     readonly removeIngredient: string;
@@ -300,7 +300,7 @@ const homeCreatorCopyPl: HomeCreatorCopy = {
     unlockLabel: 'Odblokuj ilość',
     removeIngredient: 'Usuń składnik',
     doneAmount: 'Gotowe',
-    findSubstitute: 'Znajdź zamiennik',
+    findSubstitute: 'Zamień produkt',
     dontHaveThis: 'Nie mam tego składnika',
     howToUse: 'Jak chcesz tego użyć?',
     asIngredient: 'Jako składnik',
@@ -467,7 +467,7 @@ const homeCreatorCopyEn: HomeCreatorCopy = {
     unlockLabel: 'Unlock the amount',
     removeIngredient: 'Remove ingredient',
     doneAmount: 'Done',
-    findSubstitute: 'Find substitute',
+    findSubstitute: 'Replace product',
     dontHaveThis: "I don't have this ingredient",
     howToUse: 'How do you want to use it?',
     asIngredient: 'Ingredient',

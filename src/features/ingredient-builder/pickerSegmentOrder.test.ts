@@ -1,7 +1,4 @@
-/**
- * A query is ordered only by canonical search relevance. Favorite and recent
- * state remain visible metadata; recency may still lead the empty view.
- */
+/** A query can lift only matching recent rows; all remaining rows retain central rank. */
 import { describe, expect, it } from 'vitest';
 import { buildProductPickerSegments } from './productPickerCatalogPresentation';
 
@@ -32,13 +29,17 @@ describe('picker section order', () => {
     expect(segments[0]!.label).toBe('SKŁADNIKI');
   });
 
-  it('does not lift a merely-recent row above a better match during a search', () => {
+  it('lifts a matching recent row and preserves central rank for the remainder', () => {
     const segments = buildProductPickerSegments(
-      [product('inulin'), product('banana', { recent: true })],
+      [product('inulin'), product('banana', { recent: true }), product('banana-puree')],
       { activeQuery: true },
     );
-    expect(segments).toHaveLength(1);
-    expect(segments[0]!.items.map((i) => i.canonicalId)).toEqual(['inulin', 'banana']);
+    expect(segments.map((segment) => segment.label)).toEqual([
+      'OSTATNIO UŻYWANE',
+      'POZOSTAŁE SKŁADNIKI',
+    ]);
+    expect(segments[0]!.items.map((i) => i.canonicalId)).toEqual(['banana']);
+    expect(segments[1]!.items.map((i) => i.canonicalId)).toEqual(['inulin', 'banana-puree']);
   });
 
   it('leads with recently used when the box is empty', () => {
