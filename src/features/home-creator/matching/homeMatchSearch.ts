@@ -44,15 +44,11 @@ export const NO_MATCH: HomeMatchResult = Object.freeze({
 });
 
 /**
- * A popup is a choice, not a catalogue: at most this many official recipes, the closest
- * first — the ones that add the fewest ingredients the customer did not ask for.
+ * §36: the popup lists EVERY official exact match. They come closest first — the recipes
+ * that add the fewest ingredients the customer did not ask for — and ties keep library order.
  */
-export const OFFICIAL_MATCH_LIMIT = 4;
-
 export function closestOfficialMatches(matches: readonly RecipeMatch[]): readonly RecipeMatch[] {
-  return [...matches]
-    .sort((left, right) => left.alsoIncludes.length - right.alsoIncludes.length)
-    .slice(0, OFFICIAL_MATCH_LIMIT);
+  return [...matches].sort((left, right) => left.alsoIncludes.length - right.alsoIncludes.length);
 }
 
 export async function searchExistingRecipes(query: HomeMatchQuery): Promise<HomeMatchResult> {

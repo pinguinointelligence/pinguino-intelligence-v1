@@ -10,7 +10,7 @@ vi.mock('./communityMatchService', () => ({
   matchCommunityTop100: (...args: unknown[]) => matchCommunityTop100(...args),
 }));
 
-const { OFFICIAL_MATCH_LIMIT, searchExistingRecipes } = await import('./homeMatchSearch');
+const { searchExistingRecipes } = await import('./homeMatchSearch');
 const { officialCandidates } = await import('./officialLibraryCandidates');
 
 const want = (productId: string): RequestedIngredient => ({
@@ -95,7 +95,7 @@ describe('official matches (§35)', () => {
     }
   });
 
-  it('shows the popup for SEVERAL official matches — the closest few, never a catalogue', async () => {
+  it('shows the popup for SEVERAL official matches — every exact match, closest first', async () => {
     const result = await searchExistingRecipes({
       requested: [want(COCOA)],
       profile: 'gelato',
@@ -103,7 +103,14 @@ describe('official matches (§35)', () => {
     expect(result.decision.kind).toBe('show_popup');
     if (result.decision.kind === 'show_popup') {
       expect(result.decision.official.length).toBeGreaterThan(1);
-      expect(result.decision.official.length).toBeLessThanOrEqual(OFFICIAL_MATCH_LIMIT);
+      const every = officialCandidates().filter(
+        (candidate) =>
+          candidate.profile === 'gelato' &&
+          candidate.ingredients.some((ingredient) => ingredient.productId === COCOA),
+      );
+      expect(result.decision.official.map((match) => match.candidate.id).sort()).toEqual(
+        every.map((candidate) => candidate.id).sort(),
+      );
       const extras = result.decision.official.map((match) => match.alsoIncludes.length);
       expect(extras).toEqual([...extras].sort((left, right) => left - right));
       expect(result.decision.community).toBeNull();
