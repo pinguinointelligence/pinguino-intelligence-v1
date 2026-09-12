@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { gzipSync } from 'node:zlib';
+import { normalizeMapperSearchText } from '../src/features/mapper-search-runtime/normalize.ts';
 
 const root = process.cwd();
 const releasePath = resolve(root, 'public/mapper-search-runtime/sa10-final-frozen.json');
@@ -50,16 +51,19 @@ const commonProjection = {
   roleGrammar: release.roleGrammar,
 };
 const aliasHintRows = (alias, detectorEligible) => {
+  const aliasLocale = localeKey(alias.locale);
   const concept =
     alias.targetType === 'INGREDIENT_CONCEPT' || alias.targetType === 'NAMED_COMPOSITE';
   const surfaces = new Map();
   if (alias.normalized) surfaces.set(alias.normalized, detectorEligible ? 1 : 0);
   if (alias.fallback && !surfaces.has(alias.fallback)) surfaces.set(alias.fallback, 0);
   return [...surfaces].map(([surface, detectLocale]) => [
-    localeKey(alias.locale),
-    surface,
+    aliasLocale,
+    normalizeMapperSearchText(surface, 'en'),
+    normalizeMapperSearchText(surface, aliasLocale),
     concept ? 1 : 0,
     detectLocale,
+    surface.length,
   ]);
 };
 const runtimeLexiconSearch = Array.isArray(release.runtimeLexicon?.search)
@@ -183,23 +187,21 @@ export async function resolveFinalProductSemanticSearch(query, marketCountries =
   let conflict = false;
   const conceptCandidateLocales = new Set();
   const normalizedQueriesByLocale = new Map([['en', normalized]]);
-  for (const [hintLocale, surface, isConcept, detectLocale] of localeHints) {
+  for (const [hintLocale, detectorSurface, candidateSurface, isConcept, detectLocale, surfaceLength] of localeHints) {
     const candidateLocale = localeKey(hintLocale);
-    const normalizedSurface = normalizeMapperSearchText(surface, candidateLocale);
     const localeQuery = normalizedQueriesByLocale.get(candidateLocale) ??
       normalizeMapperSearchText(query, candidateLocale);
     normalizedQueriesByLocale.set(candidateLocale, localeQuery);
-    if (isConcept && normalizedSurface && localeQuery.includes(normalizedSurface)) {
+    if (isConcept && candidateSurface && localeQuery.includes(candidateSurface)) {
       conceptCandidateLocales.add(candidateLocale);
     }
-    if (!detectLocale || surface.length < 4) continue;
-    const detectorSurface = normalizeMapperSearchText(surface, 'en');
+    if (!detectLocale || surfaceLength < 4) continue;
     if (!detectorSurface || !normalized.includes(detectorSurface)) continue;
-    if (surface.length > longest) {
-      longest = surface.length;
+    if (surfaceLength > longest) {
+      longest = surfaceLength;
       detected = hintLocale;
       conflict = false;
-    } else if (surface.length === longest && detected !== hintLocale) {
+    } else if (surfaceLength === longest && detected !== hintLocale) {
       conflict = true;
     }
   }

@@ -123,8 +123,9 @@ describe('product semantic FINAL Search Edge bundle', () => {
     );
 
     expect(bundle).not.toContain('COMPRESSED_RELEASE_BASE64');
+    expect(bundle).not.toContain('normalizeMapperSearchText(surface');
     expect(gunzipSync(Buffer.from(commonEncoded!, 'base64')).byteLength).toBeLessThan(300_000);
-    expect(gunzipSync(Buffer.from(hintsEncoded!, 'base64')).byteLength).toBeLessThan(1_500_000);
+    expect(gunzipSync(Buffer.from(hintsEncoded!, 'base64')).byteLength).toBeLessThan(2_000_000);
     expect(largestHydratedSegment).toBeLessThan(1_000_000);
   });
 });
