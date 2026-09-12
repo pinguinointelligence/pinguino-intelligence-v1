@@ -33,7 +33,10 @@ import {
   type MapperProductBehaviorAuthorityRow,
   type TrustedProductBehaviorAuthority,
 } from '../../../src/features/product-intelligence/productBehaviorAuthority.ts';
-import { validateSharedProductOnboarding } from '../_shared/sharedProductOnboarding.ts';
+import {
+  usesStandaloneToppingOnboardingAuthority,
+  validateSharedProductOnboarding,
+} from '../_shared/sharedProductOnboarding.ts';
 import { buildSharedProductSemanticBindingProposal } from '../_shared/sharedProductSemanticBinding.ts';
 import type { ProductSemanticBinding } from '../../../src/features/product-intelligence/productSemanticBinding.ts';
 import {
@@ -1953,25 +1956,27 @@ Deno.serve(async (request) => {
       if (!trustedRecognition) {
         return json({ error: 'intimport_semantic_evidence_untrusted' }, 409);
       }
+      const sharedProposal = {
+        origin: 'PR',
+        proposedMapperIngredientId: proposal.proposedMapperIngredientId,
+        matchInput: proposal.matchInput,
+        declared: proposal.declared,
+        sourceCard: trustedEvidence.sourceCard,
+        evidence: trustedEvidence.evidence,
+        recognitionEvidence: trustedEvidence.recognitionEvidence,
+        trustedRecognition,
+        evidenceProvenance: trustedEvidence.provenance,
+        carbonationEvidence: trustedEvidence.carbonationEvidence,
+        proposedTechnicalComposition: objectValue(
+          objectValue(canonicalInput.facts).technicalComposition,
+        ),
+      } as const;
+      const standaloneTopping = usesStandaloneToppingOnboardingAuthority(sharedProposal);
       const authority = validateSharedProductOnboarding({
         source: 'RECIPE_LIBRARY_IMPORT',
-        proposal: {
-          origin: 'PR',
-          proposedMapperIngredientId: proposal.proposedMapperIngredientId,
-          matchInput: proposal.matchInput,
-          declared: proposal.declared,
-          sourceCard: trustedEvidence.sourceCard,
-          evidence: trustedEvidence.evidence,
-          recognitionEvidence: trustedEvidence.recognitionEvidence,
-          trustedRecognition,
-          evidenceProvenance: trustedEvidence.provenance,
-          carbonationEvidence: trustedEvidence.carbonationEvidence,
-          proposedTechnicalComposition: objectValue(
-            objectValue(canonicalInput.facts).technicalComposition,
-          ),
-        },
-        mapperRows: await loadMapperAuthorityRows(service),
-        behaviorRows: await loadMapperBehaviorAuthorityRows(service),
+        proposal: sharedProposal,
+        mapperRows: standaloneTopping ? [] : await loadMapperAuthorityRows(service),
+        behaviorRows: standaloneTopping ? [] : await loadMapperBehaviorAuthorityRows(service),
       });
       if (!authority) return json({ error: 'intimport_product_profile_rejected' }, 409);
       serverProductProfileAuthority = {
@@ -2003,6 +2008,23 @@ Deno.serve(async (request) => {
     const proposal = serverCanonicalProductProfileProposal(canonicalInput, sourcePolicy);
     if (!proposal) return json({ error: 'shared_product_profile_input_invalid' }, 409);
     try {
+      const sharedProposal = {
+        // Controlled Catalog: all callers of catalog-submit are now Admin.
+        // The Admin approval route creates the official PR product-owned
+        // profile; legacy interactive source values remain accepted only for
+        // compatibility with existing back-office evidence payloads.
+        origin: 'PR',
+        proposedMapperIngredientId: null,
+        matchInput: proposal.matchInput,
+        declared: proposal.declared,
+        declaredBasis: proposal.declaredBasis,
+        evidence: proposal.evidence,
+        recognitionEvidence: proposal.recognitionEvidence,
+        proposedTechnicalComposition: objectValue(
+          objectValue(canonicalInput.facts).technicalComposition,
+        ),
+      } as const;
+      const standaloneTopping = usesStandaloneToppingOnboardingAuthority(sharedProposal);
       const authority = validateSharedProductOnboarding({
         source:
           source === 'catalog_import'
@@ -2012,24 +2034,9 @@ Deno.serve(async (request) => {
               : source === 'manual' || source === 'barcode' || source === 'ocr'
                 ? 'MANUAL_IMPORT'
                 : 'FUTURE_IMPORT',
-        proposal: {
-          // Controlled Catalog: all callers of catalog-submit are now Admin.
-          // The Admin approval route creates the official PR product-owned
-          // profile; legacy interactive source values remain accepted only for
-          // compatibility with existing back-office evidence payloads.
-          origin: 'PR',
-          proposedMapperIngredientId: null,
-          matchInput: proposal.matchInput,
-          declared: proposal.declared,
-          declaredBasis: proposal.declaredBasis,
-          evidence: proposal.evidence,
-          recognitionEvidence: proposal.recognitionEvidence,
-          proposedTechnicalComposition: objectValue(
-            objectValue(canonicalInput.facts).technicalComposition,
-          ),
-        },
-        mapperRows: await loadMapperAuthorityRows(service),
-        behaviorRows: await loadMapperBehaviorAuthorityRows(service),
+        proposal: sharedProposal,
+        mapperRows: standaloneTopping ? [] : await loadMapperAuthorityRows(service),
+        behaviorRows: standaloneTopping ? [] : await loadMapperBehaviorAuthorityRows(service),
       });
       if (!authority) return json({ error: 'shared_product_profile_rejected' }, 409);
       serverProductProfileAuthority = { ...authority.profile, sourceProductId: null };

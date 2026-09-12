@@ -24,7 +24,10 @@ import {
   supportsSemanticBehaviorReference,
   type MapperProductBehaviorAuthorityRow,
 } from '../../../src/features/product-intelligence/productBehaviorAuthority.ts';
-import { validateSharedProductOnboarding } from '../_shared/sharedProductOnboarding.ts';
+import {
+  usesStandaloneToppingOnboardingAuthority,
+  validateSharedProductOnboarding,
+} from '../_shared/sharedProductOnboarding.ts';
 import { buildSharedProductSemanticBindingProposal } from '../_shared/sharedProductSemanticBinding.ts';
 import {
   classifyProductSemantics,
@@ -805,28 +808,30 @@ Deno.serve(async (request) => {
       userConfirmedFields: confirmedEvidenceFields,
     });
     if (!proposal) return { kind: 'identity_required' as const };
-    const authority = validateSharedProductOnboarding({
-      source: 'SCANNER',
-      proposal: {
-        origin: 'CUSTOMER_ADDED',
-        proposedMapperIngredientId: null,
-        matchInput: proposal.matchInput,
-        declared: proposal.declared,
-        declaredBasis: proposal.declaredBasis,
-        evidence: proposal.evidence,
-        /*
+    const sharedProposal = {
+      origin: 'CUSTOMER_ADDED',
+      proposedMapperIngredientId: null,
+      matchInput: proposal.matchInput,
+      declared: proposal.declared,
+      declaredBasis: proposal.declaredBasis,
+      evidence: proposal.evidence,
+      /*
           The scan path never filled this, so productProductionAccuracy's web-source test —
           `trustedWebAuthority(input.evidenceProvenance?.[field]?.sourceAuthorityClass)` — always
           read undefined and scored 0. The finalizer now builds it only through
           `applyAutomaticEvidence`, after matching the session GTIN and the exact-source URL. This
           provenance still cannot bypass the independent name-quality gate below or the SQL gate.
         */
-        evidenceProvenance: proposal.evidenceProvenance,
-        recognitionEvidence: proposal.recognitionEvidence,
-        trustedRecognition: proposal.trustedRecognition,
-      },
-      mapperRows: await loadMapperRows(service),
-      behaviorRows: await loadBehaviorRows(service),
+      evidenceProvenance: proposal.evidenceProvenance,
+      recognitionEvidence: proposal.recognitionEvidence,
+      trustedRecognition: proposal.trustedRecognition,
+    } as const;
+    const standaloneTopping = usesStandaloneToppingOnboardingAuthority(sharedProposal);
+    const authority = validateSharedProductOnboarding({
+      source: 'SCANNER',
+      proposal: sharedProposal,
+      mapperRows: standaloneTopping ? [] : await loadMapperRows(service),
+      behaviorRows: standaloneTopping ? [] : await loadBehaviorRows(service),
     });
     if (!authority) return { kind: 'profile_rejected' as const };
     return {
@@ -965,8 +970,7 @@ Deno.serve(async (request) => {
     source: 'scanner',
     identity: {
       ean: corrections.barcode,
-      brand:
-        text(exactCanonicalProduct?.brand, 200) ?? text(finalIdentity.brand, 200),
+      brand: text(exactCanonicalProduct?.brand, 200) ?? text(finalIdentity.brand, 200),
       productName:
         text(exactCanonicalProduct?.product_name_display, 300) ??
         text(finalIdentity.displayName, 300) ??
