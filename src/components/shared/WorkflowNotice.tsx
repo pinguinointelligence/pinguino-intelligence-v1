@@ -6,7 +6,7 @@ export type WorkflowNoticeVariant = 'neutral' | 'attention' | 'blocking';
 /* GELLATTI V2.1: the approved warm notice surface, measured from the preview. */
 const TONES: Record<WorkflowNoticeVariant, string> = {
   neutral: 'border-ink/10 bg-stone-50/75',
-  attention: 'border-[#dfccb0] bg-[var(--g-attention-surface)]',
+  attention: 'border-[var(--g-attention-line)]/40 bg-[var(--g-attention-surface)]',
   blocking: 'border-status-error/25 bg-status-error/[0.045]',
 };
 

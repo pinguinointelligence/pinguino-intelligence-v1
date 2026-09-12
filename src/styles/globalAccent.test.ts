@@ -113,9 +113,10 @@ describe('global accent #F0C44C — the source of truth', () => {
 
   it('leaves no production surface painting the retired orange', () => {
     /* The retired accent and its hand-made derivatives: hover, tints, the
-       near-miss tab orange, the tour's own copy, and the rgb halo forms. */
+       near-miss tab orange, the tour's own copy, the rgb halo forms, and the
+       attention family's old orange-browns (gold since the micro-correction). */
     const retired =
-      /#f58a07|#ef8708|#e07f06|#e88419|#fcd6a8|#e0bc8a|#fff4e2|(?<![0-9])245[,_\s]+138[,_\s]+7(?![0-9])/i;
+      /#f58a07|#ef8708|#e07f06|#e88419|#fcd6a8|#e0bc8a|#fff4e2|#8a5300|#8a5a2a|#cf9a5c|#fffaf3|#ffb45c|#f8c98a|#dfccb0|#f0d7ac|(?<![0-9])245[,_\s]+138[,_\s]+7(?![0-9])/i;
     /* Palettes whose orange carries its OWN meaning (owner brief B/D). */
     const ownMeaning = new Set([
       'components/icons/pinguinoIconTokens.ts', // category icons: Fat & creaminess, Nuts
@@ -128,10 +129,25 @@ describe('global accent #F0C44C — the source of truth', () => {
     ).toEqual([]);
   });
 
+  it('speaks ATTENTION in the gold family, under its own semantic names', () => {
+    /* OWNER 2026-09-12 (gold micro-correction): components still say
+       "attention", but each attention role takes the matching gold shade —
+       text the ink, lines the line, grounds the soft tint, dark grounds the
+       gold itself. */
+    expect(token('g-attention-ink')).toBe(token('g-orange-ink'));
+    expect(token('color-attention')).toBe(token('g-orange-ink'));
+    expect(token('g-attention-line')).toBe(token('g-orange-line'));
+    expect(token('g-attention-surface')).toBe(token('g-orange-soft'));
+    expect(token('color-attention-soft')).toBe(token('g-orange'));
+    for (const ground of [...LIGHT_GROUNDS, token('g-attention-surface')]) {
+      expect(contrast(token('g-attention-ink'), ground), ground).toBeGreaterThanOrEqual(4.5);
+    }
+    expect(contrast(token('color-attention-soft'), token('g-graphite'))).toBeGreaterThanOrEqual(7);
+    expect(contrast(token('g-attention-surface'), token('g-graphite'))).toBeGreaterThanOrEqual(7);
+  });
+
   it('keeps the colours that carry their own meaning', () => {
-    expect(token('g-attention-ink')).toBe('#8a5300');
-    expect(token('g-attention-surface')).toBe('#fffaf3');
-    expect(token('color-attention')).toBe('#8a5a2a');
+    expect(token('color-status-risky')).toBe('#9c8a55');
     expect(token('color-gold')).toBe('#8a6c2e');
     expect(token('g-score-green')).toBe('#3f9b58');
     expect(token('color-status-error')).toBe('#a06352');

@@ -76,7 +76,7 @@ describe('Recipe profile visual density contract', () => {
        reader sees is a single orange stroke from neutral to the choice. Both
        uses are paired with the blocked-axis tint, which is how the assertion
        below proves neither of them is decoration somewhere else. */
-    const accent = axes.match(/bg-\[var\(--g-orange\)\]/g) ?? [];
+    const accent = axes.match(/bg-\[var\(--g-orange(?:-line)?\)\]/g) ?? [];
     const blocked = axes.match(/bg-\[var\(--g-orange-soft\)\]/g) ?? [];
     expect(accent.length).toBe(2);
     expect(blocked.length).toBe(accent.length);
@@ -85,7 +85,7 @@ describe('Recipe profile visual density contract', () => {
        rather than as one literal string: the thumb branch also carries the
        blocked outline, and asserting the exact characters would fail the next
        time that branch gains a class it should be allowed to gain. */
-    for (const m of axes.matchAll(/bg-\[var\(--g-orange\)\]/g)) {
+    for (const m of axes.matchAll(/bg-\[var\(--g-orange(?:-line)?\)\]/g)) {
       const before = axes.slice(Math.max(0, m.index - 220), m.index);
       expect(before, 'accent not guarded by the disabled ternary').toMatch(/disabled\s*\?/);
       expect(before).toContain('var(--g-orange-soft)');

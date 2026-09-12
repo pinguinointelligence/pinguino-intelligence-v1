@@ -42,8 +42,8 @@ export function CatalogVerificationBadge({
             ? 'border-status-ideal/45 bg-status-ideal/12 text-[#d8e2d2]'
             : 'border-status-ideal/30 bg-status-ideal/10 text-[#46513f]'
           : tone === 'dark'
-            ? 'border-[var(--g-attention-ink)]/40 bg-[var(--g-attention-ink)]/15 text-[var(--g-attention-surface)]'
-            : 'border-[var(--g-attention-ink)]/25 bg-[var(--g-attention-surface)] text-[var(--g-attention-ink)]',
+            ? 'border-[var(--g-attention-line)]/40 bg-[var(--g-attention-line)]/15 text-[var(--g-attention-surface)]'
+            : 'border-[var(--g-attention-line)]/25 bg-[var(--g-attention-surface)] text-[var(--g-attention-ink)]',
       )}
       data-catalog-verification={status}
       title={label}

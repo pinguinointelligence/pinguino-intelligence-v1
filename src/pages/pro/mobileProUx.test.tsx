@@ -146,7 +146,7 @@ describe('collapsed mobile recipe line', () => {
     expect(css).toContain('.ingredient-line-changed');
     expect(css).toContain('var(--color-attention)');
     // An inset rail cannot shift the row, so numeric alignment survives.
-    expect(css).toContain('box-shadow: inset 2px 0 0 0 var(--color-attention)');
+    expect(css).toContain('box-shadow: inset 2px 0 0 0 var(--g-attention-line)');
   });
 });
 

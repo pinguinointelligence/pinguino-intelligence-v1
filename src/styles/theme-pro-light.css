@@ -398,12 +398,12 @@ body:has(details[open] [data-testid^='row-menu-']) [data-testid='design-review-o
    a loud warning. An inset rail cannot shift the row by a pixel, so a changed
    line keeps perfect numeric alignment with the untouched ones. */
 .ingredient-line-changed {
-  box-shadow: inset 2px 0 0 0 var(--color-attention);
-  background-color: color-mix(in srgb, var(--color-attention) 4%, transparent);
+  box-shadow: inset 2px 0 0 0 var(--g-attention-line);
+  background-color: color-mix(in srgb, var(--g-attention-line) 4%, transparent);
 }
 
 .ingredient-line-changed:hover {
-  background-color: color-mix(in srgb, var(--color-attention) 7%, transparent);
+  background-color: color-mix(in srgb, var(--g-attention-line) 7%, transparent);
 }
 
 /* The changed line's own numerals adopt the same quiet accent on mobile, where
@@ -435,10 +435,10 @@ body:has(details[open] [data-testid^='row-menu-']) [data-testid='design-review-o
      marker rides over whatever ground a row happens to have; this box only
      ever sits on the white display column, and an opaque mix resolves to the
      exact colour the legend has to paint behind itself to cut the border. */
-  border-color: var(--color-attention);
-  box-shadow: inset 0 0 0 1px var(--color-attention);
-  background-color: color-mix(in srgb, var(--color-attention) 4%, #fff);
-  --pro-legend-ground: color-mix(in srgb, var(--color-attention) 4%, #fff);
+  border-color: var(--g-attention-line);
+  box-shadow: inset 0 0 0 1px var(--g-attention-line);
+  background-color: color-mix(in srgb, var(--g-attention-line) 4%, #fff);
+  --pro-legend-ground: color-mix(in srgb, var(--g-attention-line) 4%, #fff);
 }
 
 .pro-legend-box.settings-preflight-blocked > [data-band-legend] {
@@ -446,14 +446,14 @@ body:has(details[open] [data-testid^='row-menu-']) [data-testid='design-review-o
 }
 
 /* The SAME attention language as the Settings box, worn by a button instead of a module.
-   Orange, never red: red is how this app says something is WRONG, and nothing here is
+   Gold, never red: red is how this app says something is WRONG, and nothing here is
    wrong — the customer simply has one thing left to press. The inner ring is drawn inset
    so it cannot shift the control's geometry, and the halo outside it is the same hue at
    low opacity, so the mark reads at a glance without competing with the label. */
 .pro-action-attention {
   box-shadow:
-    inset 0 0 0 1px var(--color-attention),
-    0 0 0 3px color-mix(in srgb, var(--color-attention) 22%, transparent);
+    inset 0 0 0 1px var(--g-attention-line),
+    0 0 0 3px color-mix(in srgb, var(--g-attention-line) 22%, transparent);
 }
 
 .pro-module {
