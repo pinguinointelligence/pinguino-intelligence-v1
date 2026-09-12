@@ -46,6 +46,7 @@ import {
 import {
   classifyProspectiveProductBehavior,
   supportsSemanticBehaviorReference,
+  supportsStandaloneToppingSemanticAuthority,
 } from '../../../src/features/product-intelligence/productBehaviorAuthority.ts';
 
 export const INTIMPORT_WHOLE_PROFILE_AUTHORITY = 'INTIMPORT_WHOLE_PROFILE_MATCH' as const;
@@ -121,7 +122,11 @@ export interface IntimportTrustedProductProfile {
   /** Exact server-selected profile used only as ProductBehavior evidence.
    * It is never written to product mapper identity or used as runtime physics. */
   profileReferenceMapperIngredientId: string | null;
-  profileReferenceAuthority?: 'WHOLE_PROFILE' | 'SEMANTIC_BEHAVIOR_REFERENCE' | null;
+  profileReferenceAuthority?:
+    | 'WHOLE_PROFILE'
+    | 'SEMANTIC_BEHAVIOR_REFERENCE'
+    | 'RECOGNITION_SEMANTIC_AUTHORITY'
+    | null;
   mapperSimilarity: number | null;
   mapperProfileBasis: Exclude<ProfileMatchBasis, 'none'> | null;
   mapperCandidatesBeforeFilter: string[];
@@ -408,8 +413,19 @@ export function validateIntimportProductProfileProposal(
     engineUsable: resolved.engineReady,
     profileMatch: referenceMatch ?? resolved.profileMatch,
     recognition,
+    evidence: input.evidence,
     criticalPhysicsBlockers,
   });
+  const recognitionSemanticAuthorityAccepted =
+    acceptedProfileReference === null &&
+    prospectiveBehavior.classificationOutcome === 'classified' &&
+    prospectiveBehavior.baseRecipeEligible === false &&
+    prospectiveBehavior.toppingEligible === true &&
+    prospectiveBehavior.referenceMapperIngredientId === null &&
+    supportsStandaloneToppingSemanticAuthority({
+      recognition,
+      evidence: input.evidence,
+    });
   const productAccuracyAssessment = assessProductProductionAccuracy({
     evidence: input.evidence,
     evidenceProvenance: input.evidenceProvenance,
@@ -468,7 +484,9 @@ export function validateIntimportProductProfileProposal(
       ? 'WHOLE_PROFILE'
       : referenceMatch
         ? 'SEMANTIC_BEHAVIOR_REFERENCE'
-        : null,
+        : recognitionSemanticAuthorityAccepted
+          ? 'RECOGNITION_SEMANTIC_AUTHORITY'
+          : null,
     mapperSimilarity: acceptedReferenceMatch?.confidence ?? null,
     mapperProfileBasis:
       acceptedReferenceMatch && acceptedReferenceMatch.basis !== 'none'
