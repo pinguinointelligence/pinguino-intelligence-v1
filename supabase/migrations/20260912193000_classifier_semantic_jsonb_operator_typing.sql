@@ -69,4 +69,31 @@ begin
 end;
 $verify_classifier$;
 
+-- Keep the already-accepted TOPPING predicate explicit in the latest
+-- classifier migration. Source contracts treat the last migration that
+-- touches the classifier as the published definition; this assertion proves
+-- the operator-only repair neither restored the removed allergen gate nor
+-- changed the remaining ingredient/nutrition requirements.
+do $verify_preserved_topping_predicate$
+declare
+  v_definition text := pg_get_functiondef(
+    'public.classify_catalog_product_behavior_v2(uuid,text)'::regprocedure
+  );
+  v_new text;
+begin
+  v_new := $new$  -- the allergen line is NEVER a gate (owner, 2026-09-06): absence is UNKNOWN, not a refusal
+  v_topping := v_product.canonical_verification_status<>'blocked'
+    and (
+      v_product_behavior_standalone_topping
+      or (
+        nullif(trim(coalesce(v_public_data->>'ingredientsText','')),'') is not null
+        and jsonb_typeof(v_public_data->'nutrition')='object'
+      )
+    );$new$;
+  if position(v_new in v_definition) = 0 then
+    raise exception 'classifier TOPPING predicate changed during operator-typing repair';
+  end if;
+end;
+$verify_preserved_topping_predicate$;
+
 commit;
