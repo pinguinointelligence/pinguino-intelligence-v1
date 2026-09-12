@@ -60,6 +60,216 @@ export function toResolvedScanProduct(
   };
 }
 
+/**
+ * Customer-facing identity for the short Recognition line only.
+ *
+ * This is deliberately separate from `ExactWebIdentity`: the verbatim registry value still flows
+ * through `automaticEvidence` and the server remains the only persistence authority. Recognition
+ * first uses the name the server has already reconciled for this exact EAN, then a clean structured
+ * registry name, then the brand, and only then a conservatively trimmed seller title. When none of
+ * those is safe, a neutral label is better than displaying model noise or an internal identifier.
+ */
+export interface RecognitionNamePresentationInput {
+  reconciledName?: string | null;
+  reconciledBrand?: string | null;
+  registryName?: string | null;
+  registryBrand?: string | null;
+  registryQuantity?: string | null;
+  registryConfidence?: number | null;
+}
+
+export interface RecognitionNamePresentation {
+  displayName: string;
+  brand: string | null;
+  quantity: string | null;
+}
+
+export const RECOGNITION_NAME_FALLBACK = 'Rozpoznany produkt';
+
+const SELLER_NAME_NOISE =
+  /(?:https?:\/\/|www\.|[€$£]|\b(?:best\s+price|buy\s+now|kup\s+online|najlepsza\s+cena|pfand|deposit|versand|shipping|delivery|angebot|oferta)\b)/i;
+const INTERNAL_NAME_TOKEN = /\b(?:pr|pm|pi)[-_ ]?ing[-_ ]?\d+\b/i;
+const LABELED_CODE_TOKEN =
+  /\b(?:ean|gtin|sku|id|kod|code)\b(?:\s*[:#-]\s*|\s+)[a-z0-9-]{4,}\b/i;
+const UUID_NAME_TOKEN = /\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/i;
+const LONG_NUMERIC_TOKEN = /(?:^|\D)\d{8,14}(?:\D|$)/;
+const PLACEHOLDER_NAMES = new Set([
+  'n a',
+  'na',
+  'none',
+  'null',
+  'placeholder',
+  'product',
+  'produkt',
+  'test',
+  'undefined',
+  'unknown',
+  'unbekannt',
+  'desconocido',
+  'nieznany',
+]);
+
+const compactRecognitionText = (value: string | null | undefined): string | null => {
+  if (typeof value !== 'string') return null;
+  const compact = value
+    .normalize('NFKC')
+    .replace(/\p{Cc}/gu, ' ')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return compact || null;
+};
+
+const normalizedRecognitionText = (value: string): string =>
+  value
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('en-US')
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim()
+    .replace(/\s+/g, ' ');
+
+const unsafeRecognitionIdentity = (value: string): boolean => {
+  const normalized = normalizedRecognitionText(value);
+  if (!normalized || PLACEHOLDER_NAMES.has(normalized)) return true;
+  if (
+    UUID_NAME_TOKEN.test(value) ||
+    INTERNAL_NAME_TOKEN.test(value) ||
+    LABELED_CODE_TOKEN.test(value) ||
+    LONG_NUMERIC_TOKEN.test(value)
+  )
+    return true;
+  return false;
+};
+
+const looksLikeRegistryJunk = (value: string): boolean => {
+  const compact = normalizedRecognitionText(value).replace(/\s+/g, '');
+  // The observed `ghgh` is a repeated consonant pair. Keep the narrow rule so short real brands
+  // such as BBQ or M&M's, and names written in non-Latin scripts, remain valid.
+  return /^([bcdfghjklmnpqrstvwxz]{2})\1$/i.test(compact) || /^([a-z0-9])\1{3,}$/i.test(compact);
+};
+
+const reconciledRecognitionName = (value: string | null | undefined): string | null => {
+  const compact = compactRecognitionText(value);
+  if (
+    !compact ||
+    compact.length > 96 ||
+    SELLER_NAME_NOISE.test(compact) ||
+    unsafeRecognitionIdentity(compact)
+  )
+    return null;
+  return compact;
+};
+
+const structuredRegistryName = (value: string | null | undefined): string | null => {
+  const compact = reconciledRecognitionName(value);
+  return compact && !looksLikeRegistryJunk(compact) ? compact : null;
+};
+
+/** Conservative last-resort cleanup for a title whose marketplace tail is visibly separable. */
+export function sanitizeRecognitionSellerTitle(
+  value: string | null | undefined,
+): string | null {
+  const compact = compactRecognitionText(value);
+  if (!compact) return null;
+  const withoutTail = compact
+    .replace(/\s+(?:https?:\/\/|www\.)\S.*$/i, '')
+    .split(/\s+[|•]\s+|\s+·\s+(?=(?:buy|kup|best|najlepsza|oferta|angebot)\b)/i)[0]!
+    .replace(/\s+\d+(?:[.,]\d{1,2})?\s*(?:€|eur\b|usd\b|gbp\b|\$|£)[\s\S]*$/i, '')
+    .replace(/\s+(?:plus|zzgl\.?|inkl\.?)\s+(?:pfand|deposit|versand|shipping)[\s\S]*$/i, '')
+    .replace(/[\s|·,:;\-–—]+$/g, '')
+    .trim();
+  if (
+    !withoutTail ||
+    withoutTail.length > 96 ||
+    unsafeRecognitionIdentity(withoutTail) ||
+    looksLikeRegistryJunk(withoutTail)
+  )
+    return null;
+  if (SELLER_NAME_NOISE.test(withoutTail)) return null;
+  return withoutTail;
+}
+
+const safeRecognitionQuantity = (value: string | null | undefined): string | null => {
+  const compact = compactRecognitionText(value);
+  if (!compact || compact.length > 48 || SELLER_NAME_NOISE.test(compact)) return null;
+  return /\d\s*(?:kg|g|ml|cl|l|oz|lb)\b/i.test(compact) ? compact : null;
+};
+
+const includesRecognitionQuantity = (value: string): boolean =>
+  /\d(?:[.,]\d+)?\s*(?:kg|g|ml|cl|l|oz|lb)\b/i.test(value);
+
+const alreadyNamed = (displayName: string, detail: string | null): boolean => {
+  if (!detail) return false;
+  const name = normalizedRecognitionText(displayName).replace(/\s+/g, '');
+  const candidate = normalizedRecognitionText(detail).replace(/\s+/g, '');
+  return candidate.length > 0 && name.includes(candidate);
+};
+
+/** Keep trusted pack detail across later server/label name reconciliation without duplicating it. */
+export function carryRecognitionPresentationDetails(
+  current: RecognitionNamePresentation,
+  proposed: RecognitionNamePresentation,
+  options: { reconciledBrandProvided: boolean },
+): RecognitionNamePresentation {
+  return {
+    ...proposed,
+    brand:
+      proposed.brand ??
+      (!options.reconciledBrandProvided && !alreadyNamed(proposed.displayName, current.brand)
+        ? current.brand
+        : null),
+    quantity:
+      proposed.quantity ??
+      (!includesRecognitionQuantity(proposed.displayName) &&
+      !alreadyNamed(proposed.displayName, current.quantity)
+        ? current.quantity
+        : null),
+  };
+}
+
+export function recognitionNamePresentation(
+  input: RecognitionNamePresentationInput,
+): RecognitionNamePresentation | null {
+  const hasAnyIdentity = [
+    input.reconciledName,
+    input.reconciledBrand,
+    input.registryName,
+    input.registryBrand,
+  ].some((value) => compactRecognitionText(value) !== null);
+  if (!hasAnyIdentity) return null;
+
+  const reconciledCandidate = reconciledRecognitionName(input.reconciledName);
+  const reconciled =
+    reconciledCandidate && !looksLikeRegistryJunk(reconciledCandidate)
+      ? reconciledCandidate
+      : null;
+  const registryConfidenceSufficient =
+    typeof input.registryConfidence === 'number' && input.registryConfidence >= 0.6;
+  const registry = registryConfidenceSufficient
+    ? structuredRegistryName(input.registryName)
+    : null;
+  const brand =
+    reconciledRecognitionName(input.reconciledBrand) ??
+    (registryConfidenceSufficient ? structuredRegistryName(input.registryBrand) : null);
+  const displayName =
+    reconciled ??
+    registry ??
+    brand ??
+    sanitizeRecognitionSellerTitle(input.reconciledName) ??
+    (registryConfidenceSufficient ? sanitizeRecognitionSellerTitle(input.registryName) : null) ??
+    RECOGNITION_NAME_FALLBACK;
+  const quantity = registryConfidenceSufficient
+    ? safeRecognitionQuantity(input.registryQuantity)
+    : null;
+
+  return {
+    displayName,
+    brand: brand && !alreadyNamed(displayName, brand) ? brand : null,
+    quantity: quantity && !alreadyNamed(displayName, quantity) ? quantity : null,
+  };
+}
+
 export interface PlainField {
   key: string;
   label: string;

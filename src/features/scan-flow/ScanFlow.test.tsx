@@ -115,7 +115,7 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     host.remove();
   });
 
-  it('recipe mode: a known code hands the exact product to the recipe', async () => {
+  it('PRING-EAN-PRES-09: a known code hands the exact product to the recipe', async () => {
     const onResolved = vi.fn();
     await act(async () => {
       root.render(
@@ -138,13 +138,287 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     expect(text()).not.toMatch(/\b(PAC|POD|NPAC|Mapper|ProductBehavior)\b/);
   });
 
-  it('catalogue mode: a known code is shown as already existing, never duplicated', async () => {
+  it('PRING-EAN-PRES-10: catalogue known code is shown as existing, never duplicated', async () => {
     await act(async () => {
       root.render(<ScanFlow mode="catalog" />);
     });
     await typeCode('8402001047251');
     expect(text()).toContain('nie tworzymy duplikatu');
     expect(button('Dodaj do receptury')).toBeNull();
+  });
+
+  it('PRING-EAN-PRES-05: Haribo Recognition shows the reconciled exact identity, never OFF junk', async () => {
+    const { discovery, registry } = fakes();
+    const code = '4001686322840';
+    discovery.provider.set(code, {
+      displayName: 'Haribo Goldbären 175g',
+      brand: 'Haribo',
+      sourceType: 'manufacturer',
+    });
+    discovery.authorityEngineUsable.set(code, true);
+    discovery.confidence.set(code, 90);
+    registry.set(code, {
+      provider: 'openfoodfacts',
+      queriedAt: 1,
+      query: code,
+      confidence: 0.9,
+      facts: [
+        {
+          field: 'identity.displayName',
+          value: 'ghgh',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'identity.brand',
+          value: 'Haribo',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'identity.quantity',
+          value: '175g',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'category.tags',
+          value: 'en:candies',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'nutrition.energyKcal',
+          value: '343',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'ingredientsText',
+          value: 'glucose syrup, sugar, gelatine',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+      ],
+    });
+
+    await act(async () => {
+      root.render(<ScanFlow mode="recipe" onResolved={vi.fn()} />);
+    });
+    await typeCode(code);
+
+    expect(text()).toContain('Nie mamy jeszcze tego produktu. Czy chcesz go dodać?');
+    expect(text()).toContain('Haribo Goldbären 175g');
+    expect(text()).not.toContain('ghgh');
+
+    await answerAddYes();
+    expect(text()).toContain('Haribo Goldbären 175g');
+    expect(text()).not.toContain('ghgh');
+    expect(discovery.sessions.get(code)?.result?.identity?.displayName).toBe(
+      'Haribo Goldbären 175g',
+    );
+    expect(discovery.created.get(code)).toMatchObject({ route: 'PR', engineUsable: true });
+    expect(discovery.finalizeInputs.at(-1)?.automaticEvidence).toMatchObject({
+      exactGtin: code,
+      productFields: { identity: { displayName: 'ghgh', brand: 'Haribo' } },
+    });
+  });
+
+  it('PRING-EAN-PRES-06: Dr Pepper Recognition suppresses the seller SEO title', async () => {
+    const { discovery, registry } = fakes();
+    const code = '4000140702501';
+    const sellerTitle = 'Dr. Pepper CLASSI 330ml 0.75€ plus Pfand 0.25€ 1l 2.27€';
+    discovery.provider.set(code, {
+      displayName: 'DR PEPPER - CLASSIC',
+      brand: 'Dr Pepper',
+      sourceType: 'manufacturer',
+    });
+    discovery.authorityEngineUsable.set(code, true);
+    discovery.confidence.set(code, 90);
+    registry.set(code, {
+      provider: 'openfoodfacts',
+      queriedAt: 1,
+      query: code,
+      confidence: 0.9,
+      facts: [
+        {
+          field: 'identity.displayName',
+          value: sellerTitle,
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'identity.brand',
+          value: 'Dr Pepper',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'identity.quantity',
+          value: '330ml',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'category.tags',
+          value: 'en:beverages',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'nutrition.energyKcal',
+          value: '42',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'ingredientsText',
+          value: 'carbonated water, sugar, flavourings',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+      ],
+    });
+
+    await act(async () => {
+      root.render(<ScanFlow mode="recipe" onResolved={vi.fn()} />);
+    });
+    await typeCode(code);
+
+    expect(text()).toContain('DR PEPPER - CLASSIC');
+    expect(text()).not.toContain('0.75€');
+    expect(text()).not.toContain('Pfand');
+
+    await answerAddYes();
+    expect(text()).toContain('DR PEPPER - CLASSIC');
+    expect(text()).toContain('330ml');
+    expect(text()).not.toContain('0.75€');
+    expect(discovery.sessions.get(code)?.result?.identity?.displayName).toBe('DR PEPPER - CLASSIC');
+    expect(discovery.created.get(code)).toMatchObject({ route: 'PR', engineUsable: true });
+    expect(discovery.finalizeInputs.at(-1)?.automaticEvidence).toMatchObject({
+      exactGtin: code,
+      productFields: { identity: { displayName: sellerTitle, brand: 'Dr Pepper' } },
+    });
+  });
+
+  it('PRING-EAN-PRES-07: a plausible but low-confidence name uses the neutral fallback', async () => {
+    const { discovery, registry } = fakes();
+    const code = '8480000804884';
+    registry.set(code, {
+      provider: 'openfoodfacts',
+      queriedAt: 1,
+      query: code,
+      confidence: 0.3,
+      facts: [
+        {
+          field: 'identity.displayName',
+          value: 'Premium Vanilla Paste',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+      ],
+    });
+
+    await act(async () => {
+      root.render(<ScanFlow mode="recipe" onResolved={vi.fn()} />);
+    });
+    await typeCode(code);
+
+    expect(text()).toContain('Rozpoznano po kodzie: Rozpoznany produkt');
+    expect(text()).not.toContain('Premium Vanilla Paste');
+    expect(discovery.created.has(code)).toBe(false);
+
+    await answerAddYes();
+    expect(text()).toContain('Co to za produkt? (Rozpoznany produkt)');
+    expect(text()).not.toContain('Premium Vanilla Paste');
+    expect(discovery.created.has(code)).toBe(false);
+  });
+
+  it('PRING-EAN-PRES-08: a no-product EAN keeps the existing honest unknown-product prompt', async () => {
+    const { discovery } = fakes();
+    const code = '8480000213587';
+
+    await act(async () => {
+      root.render(<ScanFlow mode="catalog" />);
+    });
+    await typeCode(code);
+
+    expect(text()).toContain('Nie znam jeszcze tego produktu. Zrób zdjęcie etykiety');
+    expect(host.querySelector('[data-testid="scan-flow-recognized"]')).toBeNull();
+    expect(discovery.created.has(code)).toBe(false);
+  });
+
+  it('PRING-EAN-PRES-11: stronger label identity replaces only the temporary presentation', async () => {
+    const { discovery, registry } = fakes();
+    const code = '5901234123457';
+    discovery.provider.set(code, {
+      displayName: 'Vanilla paste',
+      brand: 'Acme',
+      sourceType: 'retailer',
+    });
+    discovery.label.set(code, {
+      displayName: 'Acme Vanilla Bean Paste',
+      brand: 'Acme',
+      ingredientsText: 'vanilla extract, sugar',
+    });
+    discovery.authorityEngineUsable.set(code, true);
+    discovery.confidence.set(code, 90);
+    registry.set(code, {
+      provider: 'openfoodfacts',
+      queriedAt: 1,
+      query: code,
+      confidence: 0.9,
+      facts: [
+        {
+          field: 'identity.displayName',
+          value: 'Vanilla paste',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'identity.brand',
+          value: 'Acme',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'category.tags',
+          value: 'en:additives',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'nutrition.energyKcal',
+          value: '250',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+      ],
+    });
+
+    await act(async () => root.render(<ScanFlow mode="catalog" />));
+    await typeCode(code);
+    expect(text()).toContain('Vanilla paste');
+    expect(text()).toContain('Zrób zdjęcie');
+
+    const capture = host.querySelector<HTMLInputElement>('input[type="file"][capture]')!;
+    const file = new File([new Uint8Array([1, 2, 3])], 'label.jpg', { type: 'image/jpeg' });
+    Object.defineProperty(capture, 'files', { value: [file] });
+    await act(async () => {
+      capture.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await flush();
+    await flush();
+
+    expect(text()).toContain('Acme Vanilla Bean Paste');
+    expect(text()).not.toContain('Rozpoznano po kodzie: Vanilla paste');
+    expect(discovery.sessions.get(code)?.result?.identity?.displayName).toBe(
+      'Acme Vanilla Bean Paste',
+    );
+    expect(discovery.finalizeInputs.at(-1)?.automaticEvidence).toMatchObject({
+      exactGtin: code,
+      productFields: { identity: { displayName: 'Vanilla paste', brand: 'Acme' } },
+    });
   });
 
   it('recipe mode: unknown → internet → label → plain fields → private product → recipe', async () => {

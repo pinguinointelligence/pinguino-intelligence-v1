@@ -5,8 +5,8 @@
  * („Skanuj produkt”, mode `catalog`). Rules (owner, 2026-09-05):
  *   - known product → recipe: that exact product goes into the open recipe; catalog: "already
  *     exists", no duplicate;
- *   - unknown product → exact-GTIN registry evidence FIRST (name + brand are used as they are, the
- *     customer is not asked for a generic category when the code already identifies the product),
+ *   - unknown product → exact-GTIN registry evidence FIRST (name + brand remain verbatim automatic
+ *     evidence; Recognition presents the server-reconciled safe identity),
  *     then Scan Import 2.0 discovery (label photograph) for what is still missing;
  *   - still missing data → a photo only for facts a label can show; otherwise the one exact
  *     technical question the customer can answer. The result is saved as a LOCAL USER
@@ -44,6 +44,7 @@ import {
   type CaptureStatus,
 } from './scanCoreCapture';
 import {
+  carryRecognitionPresentationDetails,
   confirmationsFromFields,
   classifyRemainingGaps,
   entryContextOf,
@@ -56,9 +57,12 @@ import {
   savedProductNotice,
   positionHint,
   prefillFromIdentity,
+  RECOGNITION_NAME_FALLBACK,
+  recognitionNamePresentation,
   scanFeedbackText,
   toResolvedScanProduct,
   type PlainField,
+  type RecognitionNamePresentation,
   type ResolvedScanProductLike,
   type ScanEntryContext,
 } from './scanFlowLogic';
@@ -233,6 +237,9 @@ export function ScanFlow({
   const familySubmittingRef = useRef(false);
   const [values, setValues] = useState<Record<string, string | boolean>>({});
   const [recognized, setRecognized] = useState<ExactWebIdentity | null>(null);
+  // Presentation is intentionally separate from the verbatim evidence used by finalize/persistence.
+  const [recognitionPresentation, setRecognitionPresentation] =
+    useState<RecognitionNamePresentation | null>(null);
   /** Exact internet facts stay automatic through every later family/label/form round. */
   const automaticEvidenceRef = useRef<ExactWebIdentity['automaticEvidence'] | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -276,6 +283,45 @@ export function ScanFlow({
 
   const fail = (message: string) => setPhase({ kind: 'error', message });
 
+  const updateRecognitionPresentation = useCallback(
+    (
+      web: ExactWebIdentity | null,
+      reconciledName: string | null = null,
+      reconciledBrand: string | null = null,
+      registryConfidence: number | null = null,
+    ) => {
+      setRecognitionPresentation((current) => {
+        const proposed = recognitionNamePresentation({
+          reconciledName,
+          reconciledBrand,
+          registryName: web?.displayName ?? null,
+          registryBrand: web?.brand ?? null,
+          registryQuantity: web?.quantity ?? null,
+          registryConfidence,
+        });
+        if (!current) return proposed;
+        const safeReconciled = recognitionNamePresentation({ reconciledName });
+        if (safeReconciled && safeReconciled.displayName !== RECOGNITION_NAME_FALLBACK) {
+          return proposed
+            ? carryRecognitionPresentationDetails(current, proposed, {
+                reconciledBrandProvided: reconciledBrand !== null,
+              })
+            : current;
+        }
+        // A late registry result or an invalid final placeholder may never downgrade a stronger
+        // presentation already selected from the server ledger.
+        if (
+          current.displayName === RECOGNITION_NAME_FALLBACK &&
+          proposed &&
+          proposed.displayName !== RECOGNITION_NAME_FALLBACK
+        )
+          return proposed;
+        return current;
+      });
+    },
+    [],
+  );
+
   const handleResult = useCallback(
     async (
       r: ScanImportV2Result,
@@ -297,6 +343,12 @@ export function ScanFlow({
           if (r.reason === 'family_confirmation' && r.sessionId) {
             const next = session ?? seedSession(r.sessionId, r.identity, []);
             const web = session ? null : identityFromEvidence(r.externalEvidence);
+            updateRecognitionPresentation(
+              web,
+              next.result?.identity?.displayName ?? next.result?.identity?.originalName ?? null,
+              next.result?.identity?.brand ?? null,
+              r.externalEvidence?.confidence ?? null,
+            );
             if (web) {
               // the code already identifies the product: use it, and its family when the registry knows one
               automaticEvidenceRef.current = web.automaticEvidence;
@@ -338,6 +390,16 @@ export function ScanFlow({
         }
         case 'discovered_pending': {
           const next = seedSession(r.sessionId, r.identity, r.ledger.missingCritical);
+          const web = identityFromEvidence(r.externalEvidence);
+          // The server and the registry have both answered before this screen is shown. The
+          // already-reconciled ledger identity is the presentation authority; the raw registry
+          // identity remains untouched for automatic evidence and persistence.
+          updateRecognitionPresentation(
+            web,
+            r.ledger.identity.name,
+            r.ledger.identity.brand,
+            r.externalEvidence?.confidence ?? null,
+          );
           const noteText = r.note ?? null;
           /*
             The authority's own codes arrive in `diagnostics` and are never rendered. What the flow
@@ -366,7 +428,7 @@ export function ScanFlow({
                 kind: 'ask_add',
                 session: next,
                 code,
-                web: identityFromEvidence(r.externalEvidence),
+                web,
                 next: r.next === 'finalize' ? 'finalize' : 'analyze_label',
                 note: noteText,
               });
@@ -395,7 +457,7 @@ export function ScanFlow({
           }
           await continueUnknownRef.current(
             next,
-            identityFromEvidence(r.externalEvidence),
+            web,
             r.next === 'finalize' ? 'finalize' : 'analyze_label',
             noteText,
             ctx,
@@ -404,6 +466,11 @@ export function ScanFlow({
           return;
         }
         case 'discovered_exact':
+          updateRecognitionPresentation(
+            null,
+            r.ledger.identity.name ?? r.product.displayName,
+            r.ledger.identity.brand ?? r.product.brand,
+          );
           setPhase({
             kind: 'saved',
             product: r.product,
@@ -441,7 +508,7 @@ export function ScanFlow({
     },
     // finalize is a per-render closure over the same ports/ctx; listing it would only re-create this callback
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [family],
+    [family, updateRecognitionPresentation],
   );
 
   async function finalize(
@@ -492,6 +559,7 @@ export function ScanFlow({
       // Exact-GTIN internet data fills the private product now; publication is gated independently.
       automaticEvidenceRef.current = web.automaticEvidence;
       setRecognized(web);
+      updateRecognitionPresentation(web);
       setValues(prefillFromIdentity(web));
       setFamily(web.family);
       await finalize(
@@ -521,6 +589,7 @@ export function ScanFlow({
       setBusy(true);
       automaticEvidenceRef.current = null;
       setRecognized(null);
+      setRecognitionPresentation(null);
       setPhase({ kind: 'resolving', code: scan.value });
       try {
         const accountId = await getScanImportV2AccountId();
@@ -535,10 +604,12 @@ export function ScanFlow({
             .research(identity.identity, ctx)
             .then((ev) => {
               if (codeRef.current !== scan.value) return;
-              const web = identityFromEvidence(isExternalEvidence(ev) ? ev : null);
+              const evidence = isExternalEvidence(ev) ? ev : null;
+              const web = identityFromEvidence(evidence);
               if (web) {
                 automaticEvidenceRef.current ??= web.automaticEvidence;
                 setRecognized((current) => current ?? web);
+                updateRecognitionPresentation(web, null, null, evidence?.confidence ?? null);
               }
             })
             .catch(() => undefined);
@@ -557,7 +628,7 @@ export function ScanFlow({
         setBusy(false);
       }
     },
-    [ports, handleResult, entry],
+    [ports, handleResult, entry, updateRecognitionPresentation],
   );
   const resolveRef = useRef(resolve);
   resolveRef.current = resolve;
@@ -665,6 +736,7 @@ export function ScanFlow({
     setFamily(null);
     automaticEvidenceRef.current = null;
     setRecognized(null);
+    setRecognitionPresentation(null);
     setFrame(null);
     setPhase({ kind: 'camera', status: 'starting', error: null });
   };
@@ -698,6 +770,7 @@ export function ScanFlow({
       // so binding it to the pre-photo snapshot would turn a successful merge into stale 409.
       assessmentHashRef.current = null;
       if (r.kind === 'discovered_pending') {
+        updateRecognitionPresentation(null, r.ledger.identity.name, r.ledger.identity.brand);
         // the label was read: let the authority decide what is still missing (plain fields, not another photo)
         const next = seedSession(r.sessionId, r.identity, r.ledger.missingCritical);
         await finalize(next, { customerFamily: family }, ctx, codeRef.current ?? '');
@@ -813,11 +886,12 @@ export function ScanFlow({
     </div>
   );
 
-  const recognizedLine = recognized ? (
+  const recognizedLine = recognitionPresentation ? (
     <p className="text-xs text-stone-600" data-testid="scan-flow-recognized">
-      Rozpoznano po kodzie: <span className="font-semibold text-ink">{recognized.displayName}</span>
-      {recognized.brand ? ` · ${recognized.brand}` : ''}
-      {recognized.quantity ? ` · ${recognized.quantity}` : ''}
+      Rozpoznano po kodzie:{' '}
+      <span className="font-semibold text-ink">{recognitionPresentation.displayName}</span>
+      {recognitionPresentation.brand ? ` · ${recognitionPresentation.brand}` : ''}
+      {recognitionPresentation.quantity ? ` · ${recognitionPresentation.quantity}` : ''}
     </p>
   ) : null;
 
@@ -1209,7 +1283,9 @@ export function ScanFlow({
         <div className="space-y-3">
           {recognizedLine}
           <p className="text-sm text-stone-700">
-            {recognized ? `Co to za produkt? (${recognized.displayName})` : 'Co to za produkt?'}
+            {recognitionPresentation
+              ? `Co to za produkt? (${recognitionPresentation.displayName})`
+              : 'Co to za produkt?'}
           </p>
           <div className="flex flex-wrap gap-2">
             {phase.options.map((option) => (
