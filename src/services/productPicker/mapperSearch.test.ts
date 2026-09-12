@@ -36,10 +36,13 @@ vi.mock('@/services/globalCatalog', () => ({
 }));
 
 vi.mock('@/features/mapper-search-runtime', () => ({
-  planMapperCatalogSearch: vi.fn(async (query: string) => ({
-    blocked: false,
-    tokenGroups: [[query]],
-  })),
+  planMapperCatalogSearch: vi.fn(async (query: string, options: unknown) => {
+    h.calls.push({ method: 'planMapperCatalogSearch', args: [query, options] });
+    return {
+      blocked: false,
+      tokenGroups: [[query]],
+    };
+  }),
 }));
 
 vi.mock('@/lib/supabase/client', () => {
@@ -116,6 +119,16 @@ beforeEach(() => {
 });
 
 describe('canonical authenticated Mapper visibility', () => {
+  it('HOME-G-03: asks the central runtime to resolve equivalent aliases across locales', async () => {
+    await searchCanonicalMapperIngredients({ text: 'banana', limit: 20 });
+    expect(calls('planMapperCatalogSearch')).toEqual([
+      {
+        method: 'planMapperCatalogSearch',
+        args: ['banana', { localeVariant: '*', marketScope: 'GLOBAL' }],
+      },
+    ]);
+  });
+
   it('keeps an active Engine-ineligible row visible while preserving both approval flags', async () => {
     h.catalogHits = [{
       entityKind: 'pi_base', mappedIngredientId: 'PI-ING-002113',
