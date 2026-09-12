@@ -2,17 +2,147 @@ import { describe, expect, it } from 'vitest';
 import type { ExactCandidate } from '@/scan-import-v2';
 import {
   classifyRemainingGaps,
+  carryRecognitionPresentationDetails,
   confirmationsFromFields,
   manualFieldsFor,
   manualConfirmedScan,
   plainFieldsFor,
   positionHint,
   prefillFromIdentity,
+  recognitionNamePresentation,
   scanFeedbackText,
+  sanitizeRecognitionSellerTitle,
   toResolvedScanProduct,
 } from './scanFlowLogic';
 
 describe('scan flow — pure rules', () => {
+  it('PRING-EAN-PRES-01: the reconciled Recognition name outranks lower-quality registry text', () => {
+    expect(
+      recognitionNamePresentation({
+        reconciledName: 'Haribo Goldbären 175g',
+        reconciledBrand: 'Haribo',
+        registryName: 'ghgh',
+        registryBrand: 'Haribo',
+        registryQuantity: '175g',
+        registryConfidence: 0.9,
+      }),
+    ).toEqual({
+      displayName: 'Haribo Goldbären 175g',
+      brand: null,
+      quantity: null,
+    });
+
+    expect(
+      recognitionNamePresentation({
+        reconciledName: 'DR PEPPER - CLASSIC',
+        reconciledBrand: 'Dr Pepper',
+        registryName: 'Dr. Pepper CLASSI 330ml 0.75€ plus Pfand 0.25€ 1l 2.27€',
+        registryBrand: 'Dr Pepper',
+        registryQuantity: '330ml',
+        registryConfidence: 0.9,
+      }),
+    ).toEqual({
+      displayName: 'DR PEPPER - CLASSIC',
+      brand: null,
+      quantity: '330ml',
+    });
+  });
+
+  it('PRING-EAN-PRES-02: a seller title is sanitized only when no stronger identity exists', () => {
+    expect(
+      sanitizeRecognitionSellerTitle(
+        'Pasta waniliowa 100 g | kup online · najlepsza cena 8,99 €',
+      ),
+    ).toBe('Pasta waniliowa 100 g');
+    expect(
+      recognitionNamePresentation({
+        registryName: 'Dr. Pepper CLASSI 330ml 0.75€ plus Pfand 0.25€ 1l 2.27€',
+        registryBrand: 'Dr Pepper',
+        registryQuantity: '330ml',
+        registryConfidence: 0.9,
+      }),
+    ).toEqual({ displayName: 'Dr Pepper', brand: null, quantity: '330ml' });
+  });
+
+  it('PRING-EAN-PRES-03: junk, placeholders and internal identities use the neutral fallback', () => {
+    for (const registryName of [
+      'ghgh',
+      'unknown',
+      'PR-ING-007205',
+      'Haribo PR-ING-007205',
+      'd9428888-122b-11e1-b85c-61cd3cbb3210',
+      'Product d9428888-122b-11e1-b85c-61cd3cbb3210',
+      '4001686322840',
+      'EAN: 4001686322840 Haribo',
+    ]) {
+      expect(recognitionNamePresentation({ registryName, registryConfidence: 0.9 })).toEqual({
+        displayName: 'Rozpoznany produkt',
+        brand: null,
+        quantity: null,
+      });
+    }
+    expect(
+      recognitionNamePresentation({
+        registryName: 'Premium Vanilla Paste',
+        registryBrand: 'Premium Foods',
+        registryQuantity: '100 g',
+        registryConfidence: 0.3,
+      }),
+    ).toEqual({ displayName: 'Rozpoznany produkt', brand: null, quantity: null });
+    expect(recognitionNamePresentation({})).toBeNull();
+  });
+
+  it('PRING-EAN-PRES-04: a safe exact-registry name remains unchanged', () => {
+    expect(
+      recognitionNamePresentation({
+        registryName: 'Choco brownie',
+        registryBrand: 'Milka',
+        registryQuantity: '150 g',
+        registryConfidence: 0.9,
+      }),
+    ).toEqual({ displayName: 'Choco brownie', brand: 'Milka', quantity: '150 g' });
+  });
+
+  it('PRING-EAN-PRES-04A: trusted global and short brand names remain customer-visible', () => {
+    for (const reconciledName of [
+      "M&M's",
+      'BBQ',
+      'Молоко',
+      '牛乳',
+      'Idahoan Mashed Potatoes',
+    ]) {
+      expect(recognitionNamePresentation({ reconciledName })).toEqual({
+        displayName: reconciledName,
+        brand: null,
+        quantity: null,
+      });
+    }
+  });
+
+  it('PRING-EAN-PRES-04B: later reconciliation keeps non-conflicting exact-pack detail', () => {
+    expect(
+      carryRecognitionPresentationDetails(
+        { displayName: 'DR PEPPER - CLASSIC', brand: null, quantity: '330ml' },
+        { displayName: 'DR PEPPER - CLASSIC', brand: null, quantity: null },
+        { reconciledBrandProvided: true },
+      ),
+    ).toEqual({ displayName: 'DR PEPPER - CLASSIC', brand: null, quantity: '330ml' });
+    expect(
+      carryRecognitionPresentationDetails(
+        { displayName: 'Vanilla Paste', brand: 'Acme', quantity: '100 g' },
+        { displayName: 'Acme Vanilla Paste 100 g', brand: null, quantity: null },
+        { reconciledBrandProvided: true },
+      ),
+    ).toEqual({ displayName: 'Acme Vanilla Paste 100 g', brand: null, quantity: null });
+    expect(
+      carryRecognitionPresentationDetails(
+        { displayName: 'Haribo Goldbären', brand: null, quantity: '175g' },
+        { displayName: 'Haribo Goldbären 90 g', brand: null, quantity: null },
+        { reconciledBrandProvided: true },
+      ),
+    ).toEqual({ displayName: 'Haribo Goldbären 90 g', brand: null, quantity: null });
+  });
+
   it('a typed code becomes the same confirmed-scan contract, with manual provenance', () => {
     const scan = manualConfirmedScan(' 8402 0010 47251 ', 1000);
     expect(scan?.symbology).toBe('EAN-13');
