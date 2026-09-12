@@ -71,7 +71,7 @@ function JobRow({ job }: { job: AdminEmailJob }) {
       className={cn(
         'rounded-[12px] border p-[18px]',
         attention
-          ? 'border-[#f0d7ac] bg-[var(--g-attention-surface)]'
+          ? 'border-[var(--g-attention-line)]/40 bg-[var(--g-attention-surface)]'
           : 'border-[var(--g-line)] bg-white',
       )}
     >

@@ -280,7 +280,7 @@ describe('ProWorkbar (sticky top workbar)', () => {
     const dirty = render({ savedRecipeId: 'r1', savedRecipeName: 'X', dirty: true });
     expect(w.status.dirty).toBe('Niezapisane');
     expect(dirty).toContain('Niezapisane');
-    expect(dirty).toContain('text-status-risky');
+    expect(dirty).toContain('text-[var(--g-attention-ink)]');
     expect(dirty).toContain('data-testid="pro-workbar-applied-unsaved"');
     expect(dirty).toContain('data-attention="required"');
     expect(dirty).toContain('gellatti-next-action-attention');
@@ -369,7 +369,7 @@ describe('ProWorkbar (sticky top workbar)', () => {
     );
     expect(source).toContain('w.status[statusKey]');
     expect(source.match(/data-testid="pro-workbar-status"/g)).toHaveLength(1);
-    expect(source).toContain("? 'text-status-risky'");
+    expect(source).toContain("? 'text-[var(--g-attention-ink)]'");
     // PRO MOBILE UX v2 · A10 (owner decision): the row icon carries no
     // estimated-data dot any more; the data view states it in words.
     expect(ingredientRow).not.toContain('row-estimated-');

@@ -68,10 +68,14 @@
   --color-nonprod-soft: #f082b4;
 
   /* Attention accent (Masterpiece Phase 4) — replaces ad-hoc amber-* leaks for
-     "pending / unsaved / requires attention" copy. Desaturated, AA on paper. */
-  --color-attention: #8a5a2a;
-  /* The same attention accent for dark surfaces (AA on shell). */
-  --color-attention-soft: #cf9a5c;
+     "pending / unsaved / requires attention" copy. OWNER 2026-09-12: ATTENTION
+     stays its own semantic family but speaks the gold of the global accent: its
+     text is the gold ink (6.2:1 on white); its lines use --g-attention-line and
+     its soft grounds --g-attention-surface. */
+  --color-attention: #7a5c0a;
+  /* The same attention accent for dark surfaces: the gold itself, 10.5:1 on
+     graphite. */
+  --color-attention-soft: #f0c44c;
 
   /* Golden Range — the brand's signature OPTIMUM accent (UIUX spec §15.3, §21.1).
      Owner decision (Slice A): gold marks the golden range / optimum ONLY — never
@@ -204,8 +208,12 @@
   --g-rail-track: #d9d5ce;
   --g-progress-track: #e5e1da;
   --g-progress-fill: #5d735f;
-  --g-attention-surface: #fffaf3;
-  --g-attention-ink: #8a5300;
+  /* ATTENTION in the gold family (owner 2026-09-12): the accent companions'
+     values under attention's own names — soft ground, readable text, and the
+     line for its rails, rings, borders and halos. */
+  --g-attention-surface: #faeac0;
+  --g-attention-ink: #7a5c0a;
+  --g-attention-line: #b88a0f;
   --g-preflight-surface: #fff9ed;
   --g-drag: #aaa59d;
   --g-menu-dots: #6f6b64;

@@ -230,13 +230,13 @@ function RegulatorRow({
           {/* The blocked thumb carries an OUTLINE, not just a muted fill. With
               the numerals gone, the mark is the only thing reporting the
               position, and the soft accent all but vanishes against the dot
-              colour. The attention ink reaches 4.33:1 against those dots
-              and 6.33:1 against the ground, so a blocked axis still SHOWS
+              colour. The attention ink reaches 4.27:1 against those dots
+              and 6.24:1 against the ground, so a blocked axis still SHOWS
               where it stands while the pale fill keeps saying "not available".
-              The interactive thumb is the Gellatti accent (#F0C44C, owner
-              decision 2026-09-12); its position is also carried by its size,
-              the fill's extent and the accessible name — never by colour
-              alone. */}
+              The interactive thumb is the accent's mid gold (--g-orange-line,
+              owner 2026-09-12: the accent itself was too faint on a light
+              ground); its position is also carried by its size, the fill's
+              extent and the accessible name — never by colour alone. */}
           <span
             aria-hidden
             style={{
@@ -250,7 +250,7 @@ function RegulatorRow({
               'absolute rounded-full shadow-[0_0_0_3px_#fff] transition-[left,width,height,margin,top,background-color]',
               disabled
                 ? 'border-[1.5px] border-[var(--g-attention-ink)] bg-[var(--g-orange-soft)]'
-                : 'bg-[var(--g-orange)]',
+                : 'bg-[var(--g-orange-line)]',
             )}
           />
           {visual.map((detent, index) => (

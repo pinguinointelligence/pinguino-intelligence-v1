@@ -1060,12 +1060,12 @@ describe('Settings onboarding attention stays separate from save refusal', () =>
     // Same colour and same 4% tint as `.ingredient-line-changed`; the only
     // difference is that it goes all the way round, because here the whole
     // module is what needs attention rather than one cell in a row.
-    expect(theme).toMatch(/\.ingredient-line-changed \{[^}]*var\(--color-attention\)/);
+    expect(theme).toMatch(/\.ingredient-line-changed \{[^}]*var\(--g-attention-line\)/);
     expect(theme).toMatch(
-      /\.pro-legend-box\.settings-preflight-blocked \{[\s\S]*?border-color: var\(--color-attention\)/,
+      /\.pro-legend-box\.settings-preflight-blocked \{[\s\S]*?border-color: var\(--g-attention-line\)/,
     );
     expect(theme).toMatch(
-      /\.pro-legend-box\.settings-preflight-blocked \{[\s\S]*?color-mix\(in srgb, var\(--color-attention\) 4%/,
+      /\.pro-legend-box\.settings-preflight-blocked \{[\s\S]*?color-mix\(in srgb, var\(--g-attention-line\) 4%/,
     );
     // Two classes, or the border shorthand on .pro-legend-box wins on order.
     expect(theme).not.toMatch(/^\.settings-preflight-blocked \{/m);
@@ -1106,10 +1106,10 @@ describe('OWNER CORRECTION · one blocker, one next action', () => {
     expect(header).toContain("recalcAttention && 'pro-action-attention'");
   });
 
-  it('the attention marker is orange, never red', () => {
+  it('the attention marker is gold, never red', () => {
     // Red is how this app says something is WRONG. Nothing here is wrong — the customer
     // simply has one thing left to press.
-    expect(theme).toMatch(/\.pro-action-attention \{[\s\S]*?var\(--color-attention\)/);
+    expect(theme).toMatch(/\.pro-action-attention \{[\s\S]*?var\(--g-attention-line\)/);
     expect(theme).not.toMatch(/\.pro-action-attention \{[\s\S]*?status-error/);
   });
 

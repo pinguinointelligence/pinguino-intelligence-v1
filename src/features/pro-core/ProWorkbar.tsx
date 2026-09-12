@@ -476,7 +476,7 @@ export function ProWorkbar({
           : 'ml-auto min-w-[7rem] flex-1 text-right xl:max-w-48',
         variant === 'panel'
           ? /* Two grounds, two palettes. On the GRAPHITE card (#191a1d) the
-               saved/dirty tones measure 8.2:1 and 10.2:1, where the light-ground
+               saved/dirty tones measure 8.2:1 and 10.5:1, where the light-ground
                tokens would be ~2.4:1 and unreadable. The unnamed state is a
                WHITE surface, so it keeps the light-ground tokens. Picking one
                palette for both would make one of the two states fail. */
@@ -487,12 +487,12 @@ export function ProWorkbar({
             : statusKey === 'error'
               ? 'text-[#ff9a8a]'
               : statusKey === 'dirty' || statusKey === 'newUnsaved'
-                ? 'text-[#ffb45c]'
+                ? 'text-attention-soft'
                 : 'text-[#5cc47a]'
           : statusKey === 'error'
             ? 'text-status-error'
             : statusKey === 'dirty' || statusKey === 'newUnsaved'
-              ? 'text-status-risky'
+              ? 'text-[var(--g-attention-ink)]'
               : 'text-stone-500',
       )}
       data-testid="pro-workbar-status"
@@ -574,7 +574,7 @@ export function ProWorkbar({
                  current spacing (`min-[68.5rem]` only). */
               'relative z-[2] min-w-0 rounded-2xl px-7 py-6 min-[68.5rem]:px-6 min-[68.5rem]:py-4',
               identityState === 'unnamed'
-                ? 'border-[1.5px] border-[var(--g-orange)]/55 bg-white'
+                ? 'border-[1.5px] border-[var(--g-orange-line)] bg-white'
                 : 'border-l-[6px] border-[var(--g-orange)] bg-[var(--g-graphite)]',
             )}
             data-testid="pro-recipe-identity-card"
@@ -638,7 +638,7 @@ export function ProWorkbar({
                 the save control, which put the reason for the refusal further
                 from the name it refuses to save than from the next section.
 
-                The tones branch on the card's own ground: #8a5a2a and
+                The tones branch on the card's own ground: the attention ink and
                 status-error are legible on the white unnamed card and would be
                 near-invisible on graphite, where the light warm tones read at
                 11:1 and above. */}
@@ -669,7 +669,7 @@ export function ProWorkbar({
               <p
                 className={cn(
                   'mt-1.5 text-xs min-[68.5rem]:mt-1',
-                  onGraphite ? 'text-[#f8c98a]' : 'text-attention',
+                  onGraphite ? 'text-[var(--g-attention-surface)]' : 'text-attention',
                 )}
                 data-testid="pro-workbar-practical-block"
               >
