@@ -576,8 +576,15 @@ export interface RecipeState {
   /** Lower-level amount write for non-interactive/internal callers. User-facing
    * HOME and PRO grams controls must use `setExactGrams`. */
   setPlannedGrams: (lineId: string, grams: number) => void;
-  /** One atomic direct-manipulation write for a coherent full recipe vector. */
-  setPlannedGramsVector: (gramsByLineId: Readonly<Record<string, number>>) => void;
+  /** One atomic direct-manipulation write for a coherent full recipe vector.
+   * `exactPercent` is supplied only by the manual percentage control: it makes
+   * the selected user's new share authoritative while the same transaction
+   * rebalances the remaining mutable grams. System callers omit it and never
+   * manufacture a Lock. */
+  setPlannedGramsVector: (
+    gramsByLineId: Readonly<Record<string, number>>,
+    exactPercent?: Readonly<{ lineId: string; percent: number }>,
+  ) => void;
   setActualGrams: (lineId: string, grams: number | null) => void;
   /** `surface` defaults to `'pro'`; only HOME's own controls pass `'home'`. */
   setLockType: (lineId: string, lockType: LockType, surface?: CrownSurface) => void;
@@ -2531,8 +2538,16 @@ export const useRecipeStore = create<RecipeState>()(
           };
         }),
 
-      setPlannedGramsVector: (gramsByLineId) =>
+      setPlannedGramsVector: (gramsByLineId, exactPercent) =>
         set((state) => {
+          if (
+            exactPercent !== undefined &&
+            (!Number.isFinite(exactPercent.percent) ||
+              exactPercent.percent < 0 ||
+              exactPercent.percent > 100 ||
+              gramsByLineId[exactPercent.lineId] === undefined)
+          )
+            return {};
           const touched = state.items.some(
             (item) =>
               gramsByLineId[item.id] !== undefined &&
@@ -2553,7 +2568,17 @@ export const useRecipeStore = create<RecipeState>()(
                 ? clampOwnerStabilizerComponentGrams(buildRecipeInput(state), item.id, requested)
                     .grams
                 : requested;
-            return withoutCrownBootstrap({ ...item, planned_grams: planned });
+            const written = withoutCrownBootstrap({ ...item, planned_grams: planned });
+            if (exactPercent?.lineId !== item.id) return written;
+            const exact = { ...written };
+            delete exact.range_constraint;
+            delete exact.grams_constraint;
+            delete exact.amount_provenance;
+            exact.percent_constraint = { percent: exactPercent.percent };
+            exact.lock_type = ENGINE_KEPT_LOCKS.has(item.lock_type)
+              ? item.lock_type
+              : ('percent' as const);
+            return exact;
           });
           const proposed = buildRecipeInput({ ...state, items: proposedItems });
           const required = productBehaviorRequiredLineIds({ items: proposed.items });

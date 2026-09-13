@@ -363,13 +363,7 @@ export function MobileIngredientSheet({
                   decimals={1}
                   suffix="%"
                   ariaLabel={`${item.ingredient.name} — udział w partii`}
-                  disabled={
-                    percent === null ||
-                    !actions.setPlannedPercent ||
-                    Boolean(lock?.plannedDisabled) ||
-                    gramsLocked ||
-                    Boolean(lock?.percentLocked)
-                  }
+                  disabled={percent === null || !actions.setPlannedPercent}
                   onChange={(next) => actions.setPlannedPercent?.(item.id, next)}
                   testId={`row-mobile-percent-control-${item.id}`}
                   widthPreset="fluid"
@@ -397,9 +391,6 @@ export function MobileIngredientSheet({
                   decimals={Number.isInteger(item.planned_grams) ? 0 : 1}
                   suffix="g"
                   ariaLabel={`${item.ingredient.name} — ilość w g`}
-                  disabled={
-                    Boolean(lock?.plannedDisabled) || gramsLocked || Boolean(lock?.percentLocked)
-                  }
                   onChange={(next) => actions.setPlannedGrams(item.id, Math.max(0, next))}
                   testId={`row-mobile-grams-control-${item.id}`}
                   widthPreset="fluid"

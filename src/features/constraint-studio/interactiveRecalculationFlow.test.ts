@@ -20,6 +20,7 @@ import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileSto
 import { useRecipeStore } from '@/stores/recipeStore';
 import { ownerFruitRecipe, ownerFruitSnapshots } from './__fixtures__/ownerFruitMainFixture';
 import { commitPreview, workingStateFingerprint } from './applyPipeline';
+import { buildDraftCandidateVector } from './draftCandidateVector';
 import {
   applyPreviewWithServerAuthority,
   runInteractiveRecalculationWithTerminal,
@@ -135,6 +136,46 @@ beforeEach(() => {
 });
 
 describe('interactive recalculation preview — PRO', () => {
+  it('MGLU-09 Recalculate cannot overwrite a newly edited locked value', async () => {
+    loadOwner(ownerFruitRecipe({ batch: 1000 }));
+    useRecipeStore.getState().setExactGrams('cranberry', 42);
+    expect(recipeLine('cranberry')).toMatchObject({
+      planned_grams: 42,
+      grams_constraint: { grams: 42 },
+    });
+
+    await runPiRecalculationWithTerminal();
+
+    const preview = useConstraintStudioStore.getState().preview;
+    expect(
+      preview,
+      JSON.stringify(useConstraintStudioStore.getState().previewIssue),
+    ).not.toBeNull();
+    expect(grams(preview!.proposedInput, 'cranberry')).toBe(42);
+    expect(preview!.nextConstraints.byLineId.cranberry).toEqual({ mode: 'locked', grams: 42 });
+  });
+
+  it('MGLU-10 explicit Unlock makes the value solver-adjustable again', async () => {
+    loadOwner(ownerFruitRecipe({ batch: 1000 }));
+    useRecipeStore.getState().setExactGrams('cranberry', 42);
+    useConstraintStudioStore.getState().toggleLock('cranberry');
+    const draft = selectCanonicalDraft();
+
+    expect(draft.constraints.byLineId.cranberry).toBeUndefined();
+    expect(
+      buildDraftCandidateVector(draft.input, draft.constraints).map((line) => line.lineId),
+    ).toContain('cranberry');
+
+    await runPiRecalculationWithTerminal();
+
+    const preview = useConstraintStudioStore.getState().preview;
+    expect(
+      preview,
+      JSON.stringify(useConstraintStudioStore.getState().previewIssue),
+    ).not.toBeNull();
+    expect(grams(preview!.proposedInput, 'cranberry')).not.toBe(42);
+  });
+
   it('fixture 1: strong secondary reduction → edit + lock in the preview → recalculated in place → applied once → Cofnij exact', async () => {
     loadOwner(ownerFruitRecipe({ batch: 1000 }));
     const originalFingerprint = draftFingerprint();

@@ -964,14 +964,7 @@ function RecipeRow({
                 decimals={1}
                 suffix="%"
                 ariaLabel={`${item.ingredient.name} — udział w partii`}
-                disabled={
-                  share === null ||
-                  !actions.setPlannedPercent ||
-                  Boolean(lock?.plannedDisabled) ||
-                  gramsLocked ||
-                  Boolean(lock?.percentLocked) ||
-                  editRefusal !== null
-                }
+                disabled={share === null || !actions.setPlannedPercent || editRefusal !== null}
                 onChange={(percent) => actions.setPlannedPercent?.(item.id, percent)}
                 testId={`row-percent-control-${item.id}`}
                 widthPreset="percent"
@@ -1003,12 +996,7 @@ function RecipeRow({
                 decimals={Number.isInteger(displayQuantity) ? 0 : 1}
                 suffix={unit}
                 ariaLabel={`${item.ingredient.name} — ilość w ${unit}`}
-                disabled={
-                  Boolean(lock?.plannedDisabled) ||
-                  gramsLocked ||
-                  Boolean(lock?.percentLocked) ||
-                  editRefusal !== null
-                }
+                disabled={editRefusal !== null}
                 onChange={(next) => actions.setPlannedGrams(item.id, Math.max(0, next))}
                 testId={`row-grams-control-${item.id}`}
                 widthPreset="grams"
