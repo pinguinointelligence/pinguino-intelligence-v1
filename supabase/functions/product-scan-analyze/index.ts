@@ -339,11 +339,15 @@ async function reevaluateOwnPrivateProduct(input: {
       };
     const body = objectValue(payload);
     // A newly routed product reports `route`; request-driven revalidation of an existing shared
-    // PR keeps its exact article identity and reports `semanticRevalidated`. Refusals, stale
-    // assessments and family questions report neither and must remain unsaved.
+    // PR reports either its semantic-binding revalidation or a material immutable-version
+    // supersession. Refusals, stale assessments and family questions report none of those and
+    // must remain unsaved.
     return {
       attempted: true,
-      saved: typeof body.route === 'string' || body.semanticRevalidated === true,
+      saved:
+        typeof body.route === 'string' ||
+        body.semanticRevalidated === true ||
+        body.versionSuperseded === true,
       httpStatus: response.status,
       errorCode: finalizerErrorCode(body),
       reasonCode: finalizerReasonCode(body),
