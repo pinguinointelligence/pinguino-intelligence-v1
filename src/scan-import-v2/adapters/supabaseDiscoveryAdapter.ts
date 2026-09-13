@@ -303,10 +303,10 @@ export function createSupabaseDiscoveryPort(
           ];
           return {
             kind: 'not_ready',
-            missingCritical: Array.isArray(d['missingCriticalFields'])
-              ? (d['missingCriticalFields'] as string[])
-              : Array.isArray(assessment['missingCritical'])
-                ? (assessment['missingCritical'] as string[])
+            missingCritical: Array.isArray(d['criticalGaps'])
+              ? (d['criticalGaps'] as string[])
+              : Array.isArray(obj(d['productAccuracyAssessment'])['criticalBlockers'])
+                ? (obj(d['productAccuracyAssessment'])['criticalBlockers'] as string[])
                 : [],
             // DIAGNOSTIC ONLY — never rendered to a customer (see FinalizeOutcome)
             reasons: reasons.length > 0 ? reasons : ['customer_product_not_ready'],
