@@ -44,6 +44,8 @@ export interface IntentChip {
 }
 
 export interface HomeDraftState {
+  /** Stable identity for the single local draft and its resumable Production run. */
+  draftId: string;
   chips: readonly IntentChip[];
   profile: IntentProfile | null;
   /** True once `Create my recipe` closed intent collection (§18). */
@@ -54,8 +56,13 @@ export interface HomeDraftState {
   lastStage: HomeStage;
   /** Set once the first recipe has been generated into `recipeStore` (§51). */
   recipeReady: boolean;
+  /** Customer-edited proposed name, persisted before the first explicit Save. */
+  recipeNameOverride: string | null;
   /** `Let's make it` was pressed (§66). */
   preparationStarted: boolean;
+  /** Answers collected before the first visible recipe; keyed by stable chip id. */
+  amountAnswersByChipId: Readonly<Record<string, number>>;
+  usageAnswersByChipId: Readonly<Record<string, IntentRole>>;
   /** The publication this draft was derived from, for lineage (§37). */
   derivedFromPublicationId: string | null;
   /** The official Gellatti recipe this draft was derived from (§38). */
@@ -73,7 +80,10 @@ export interface HomeDraftState {
   presentStage: (stage: HomeStage) => void;
   setLastStage: (stage: HomeStage) => void;
   markRecipeReady: (ready: boolean) => void;
+  setRecipeNameOverride: (name: string | null) => void;
   startPreparation: () => void;
+  answerAmount: (chipId: string, grams: number) => void;
+  answerUsage: (chipId: string, role: IntentRole) => void;
   setDerivation: (input: {
     publicationId?: string | null;
     officialRecipeId?: string | null;
@@ -87,14 +97,23 @@ export interface HomeDraftState {
 
 export const HOME_DRAFT_STORAGE_KEY = 'gellatti.home.draft.v1';
 
+const nextDraftId = (): string =>
+  typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? `home-draft:${crypto.randomUUID()}`
+    : `home-draft:${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
 const EMPTY = {
+  draftId: nextDraftId(),
   chips: [] as readonly IntentChip[],
   profile: null as IntentProfile | null,
   intentSubmitted: false,
   presentedStages: ['intent'] as readonly HomeStage[],
   lastStage: 'intent' as HomeStage,
   recipeReady: false,
+  recipeNameOverride: null as string | null,
   preparationStarted: false,
+  amountAnswersByChipId: {} as Readonly<Record<string, number>>,
+  usageAnswersByChipId: {} as Readonly<Record<string, IntentRole>>,
   derivedFromPublicationId: null as string | null,
   derivedFromOfficialRecipeId: null as string | null,
   derivedFromLabel: null as string | null,
@@ -138,7 +157,16 @@ export const useHomeDraftStore = create<HomeDraftState>()(
 
       setLastStage: (lastStage) => set({ lastStage }),
       markRecipeReady: (recipeReady) => set({ recipeReady }),
+      setRecipeNameOverride: (recipeNameOverride) => set({ recipeNameOverride }),
       startPreparation: () => set({ preparationStarted: true }),
+      answerAmount: (chipId, grams) =>
+        set((state) => ({
+          amountAnswersByChipId: { ...state.amountAnswersByChipId, [chipId]: grams },
+        })),
+      answerUsage: (chipId, role) =>
+        set((state) => ({
+          usageAnswersByChipId: { ...state.usageAnswersByChipId, [chipId]: role },
+        })),
 
       setDerivation: (input) =>
         set({
@@ -154,7 +182,7 @@ export const useHomeDraftStore = create<HomeDraftState>()(
         }),
 
       markAdopted: (adoptedForUserId) => set({ adoptedForUserId }),
-      startNew: () => set({ ...EMPTY }),
+      startNew: () => set({ ...EMPTY, draftId: nextDraftId() }),
       hasDraft: () => {
         const state = get();
         return state.chips.length > 0 || state.recipeReady;

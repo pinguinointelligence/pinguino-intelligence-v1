@@ -88,13 +88,33 @@ const inDocument = <T extends HTMLElement = HTMLElement>(selector: string) =>
   document.querySelector<T>(selector);
 
 const render = async (canSeeGrams = true, onGramsBlocked = vi.fn()) => {
+  const close = () =>
+    root.render(
+      <HomeRecalculate
+        open={false}
+        context="make"
+        onClose={close}
+        onApplied={close}
+        canSeeGrams={canSeeGrams}
+        onGramsBlocked={onGramsBlocked}
+      />,
+    );
   await act(async () => {
-    root.render(<HomeRecalculate canSeeGrams={canSeeGrams} onGramsBlocked={onGramsBlocked} />);
+    root.render(
+      <HomeRecalculate
+        open
+        context="make"
+        onClose={close}
+        onApplied={close}
+        canSeeGrams={canSeeGrams}
+        onGramsBlocked={onGramsBlocked}
+      />,
+    );
   });
 };
 
 const open = async () => {
-  await act(async () => inDocument<HTMLButtonElement>('[data-testid="home-recalc-run"]')!.click());
+  await act(async () => Promise.resolve());
 };
 
 beforeEach(() => {

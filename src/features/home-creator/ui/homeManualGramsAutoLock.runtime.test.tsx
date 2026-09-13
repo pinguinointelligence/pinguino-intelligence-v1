@@ -80,7 +80,7 @@ const renderSection = async () => {
           onSave={() => {}}
           onLetsMakeIt={() => {}}
           onShare={() => {}}
-          canShare={false}
+          onCommunity={() => {}}
           onBack={null}
           saveNotice={null}
         />
@@ -194,7 +194,9 @@ describe('HOME manual grams auto-lock', () => {
       grams_constraint: { grams: before.planned_grams + 1 },
     });
     await renderSection();
-    const recrown = host.querySelector<HTMLButtonElement>(`[data-testid="home-crown-${before.id}"]`);
+    const recrown = host.querySelector<HTMLButtonElement>(
+      `[data-testid="home-crown-${before.id}"]`,
+    );
     await act(async () => recrown!.click());
     expect(currentLine()).toMatchObject({
       planned_grams: before.planned_grams + 1,

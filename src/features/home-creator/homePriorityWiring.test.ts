@@ -27,12 +27,12 @@ describe('PACKAGE 2A — HOME wiring', () => {
   it('a new HOME draft is started in AUTO after the starter rebuild and before the chips', () => {
     const rebuild = page.indexOf('rebuildNewRecipeStarter({');
     const auto = page.indexOf("setPriorityMode('AUTO')");
-    const ready = page.indexOf('markRecipeReady(true)', rebuild);
-    const chips = page.indexOf('addResolvedChip(chip)', rebuild);
+    const prepare = page.indexOf('intentIngredients.prepareResolvedChip(chip)', rebuild);
+    const ready = page.indexOf('markRecipeReady(true)', prepare);
     expect(rebuild).toBeGreaterThan(-1);
     expect(auto).toBeGreaterThan(rebuild);
-    expect(auto).toBeLessThan(ready);
-    expect(auto).toBeLessThan(chips);
+    expect(auto).toBeLessThan(prepare);
+    expect(prepare).toBeLessThan(ready);
   });
 
   it('both HOME add paths use the AUTOMATIC door, never the conscious crown', () => {
@@ -72,12 +72,10 @@ describe('PACKAGE 2A — HOME wiring', () => {
       /!\(grams > 0\)\s*&&\s*!autoPriorityAppliesToNewLine\(useRecipeStore\.getState\(\)\.priority_mode\)/,
     );
     expect(intent).toContain("return { chipId: key, status: 'needs_amount', ingredient };");
-    expect(page).toContain('askAmountFor(await intentIngredients.addResolvedChip(chip))');
+    expect(page).toContain('intentIngredients.prepareResolvedChip(chip)');
     expect(page).toContain('intentIngredients.addResolvedChip(resolved).then(askAmountFor)');
     expect(page).toContain('intentIngredients.addScannedProduct(product).then(askAmountFor)');
-    expect(page).toContain(
-      'setPendingAdd({ ingredient: outcome.ingredient, behavior: null, recommendedDose: null })',
-    );
+    expect(page).toContain("kind: 'ingredient'");
   });
 
   it('only the HOME page starts a draft in AUTO', () => {
@@ -98,7 +96,7 @@ describe('PACKAGE 2A — HOME wiring', () => {
 
   it('OWNER OD-3: both HOME topping paths start at 5 % of the BASE', () => {
     expect(page).toContain('defaultHomeToppingGrams(useRecipeStore.getState().items)');
-    expect(intent).toContain('defaultHomeToppingGrams(store.items)');
+    expect(page).toContain("kind: 'topping'");
   });
 
   it('every product that needs an amount gets its own question', () => {

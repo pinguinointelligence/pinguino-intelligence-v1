@@ -21,6 +21,10 @@
  */
 import { useCallback, useRef } from 'react';
 import type { EngineIngredient } from '@/engine';
+import type { ProductBehaviorSnapshot } from '@/features/product-intelligence/contracts';
+import { snapshotServerResolvedProductBehavior } from '@/features/product-intelligence';
+import { resolveProductBehaviorForSelection } from '@/services/productIntelligence';
+import { useAuthStore } from '@/stores/authStore';
 import { autoPriorityAppliesToNewLine } from '@/features/recipe-priority';
 import { defaultHomeToppingGrams } from './homeToppingDefault';
 import { useRecipeStore } from '@/stores/recipeStore';
@@ -49,6 +53,12 @@ export interface IntentIngredientOutcome {
    * HOME's own question and adds it through HOME's one Base-line door.
    */
   readonly ingredient?: EngineIngredient;
+}
+
+export interface PreparedIntentIngredient {
+  readonly chipId: string;
+  readonly ingredient: EngineIngredient;
+  readonly behavior: ProductBehaviorSnapshot;
 }
 
 export function useHomeIntentIngredients() {
@@ -90,6 +100,41 @@ export function useHomeIntentIngredients() {
       }
     },
     [resolveChip],
+  );
+
+  /** Materialise and classify one exact identity before any visible recipe is built. */
+  const prepareResolvedChip = useCallback(
+    async (chip: IntentChip): Promise<PreparedIntentIngredient | null> => {
+      if (chip.productId === null || chip.ambiguous) return null;
+      const ingredient = await hydrateIngredient(chip.productId);
+      if (!ingredient) return null;
+      const recipe = useRecipeStore.getState();
+      const processScope = chip.role === 'topping' ? 'POST_PROCESS_ADDON' : 'BASE_FORMULATION';
+      const module = chip.role === 'topping' ? 'TOPPING' : 'BASE_RECIPE';
+      const resolved = await resolveProductBehaviorForSelection({
+        entity: { entityKind: 'mapper', entityId: chip.productId },
+        context: {
+          accountId: useAuthStore.getState().user?.id ?? null,
+          productProfile: recipe.category,
+          temperatureC: recipe.target_temperature_c,
+          mode: recipe.formulation_strategy,
+          processScope,
+          requestedRole: 'STANDARD',
+          module,
+        },
+      }).catch(() => null);
+      if (!resolved || resolved.state === 'blocked') return null;
+      return {
+        chipId: chip.id,
+        ingredient,
+        behavior: snapshotServerResolvedProductBehavior({
+          lineId: '',
+          processScope,
+          resolved,
+        }),
+      };
+    },
+    [],
   );
 
   /**
@@ -207,5 +252,5 @@ export function useHomeIntentIngredients() {
     handled.current = new Set();
   }, []);
 
-  return { resolveOne, addResolvedChip, addScannedProduct, reset };
+  return { resolveOne, prepareResolvedChip, addResolvedChip, addScannedProduct, reset };
 }

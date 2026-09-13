@@ -35,7 +35,7 @@ const row = (id: string, name: string): SafeMapperSearchRow => ({
 describe('HOME central result consumption', () => {
   beforeEach(() => mocks.search.mockReset());
 
-  it('HOME-ADD-01: passes the raw intent once and automatically selects central #1', async () => {
+  it('HOME-ADD-01: passes the raw intent once and asks when central results are ambiguous', async () => {
     const first = row('PI-BANANA-FRESH', 'Banana · Fresh Fruit');
     const second = row('PI-BANANA-POWDER', 'Banana Powder');
     mocks.search.mockResolvedValue({
@@ -45,12 +45,17 @@ describe('HOME central result consumption', () => {
     });
 
     await expect(resolveChipTerm({ label: '  banan  ', concept: 'banana' })).resolves.toEqual({
-      kind: 'resolved',
-      row: first,
+      kind: 'ambiguous',
+      candidates: [first, second],
     });
-    expect(mocks.search).toHaveBeenCalledTimes(1);
-    expect(mocks.search).toHaveBeenCalledWith({
+    expect(mocks.search).toHaveBeenCalledTimes(2);
+    expect(mocks.search).toHaveBeenNthCalledWith(1, {
       text: 'banan',
+      limit: 40,
+      signal: undefined,
+    });
+    expect(mocks.search).toHaveBeenNthCalledWith(2, {
+      text: 'banana',
       limit: 40,
       signal: undefined,
     });

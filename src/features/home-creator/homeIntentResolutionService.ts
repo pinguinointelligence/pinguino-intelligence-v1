@@ -8,8 +8,9 @@
  * the user typed. If the catalogue cannot produce one, the chip stays unresolved and
  * HOME says so — it never falls back to "something similar".
  *
- * Candidate ordering is owned by the central Mapper/Search boundary. HOME consumes
- * its first legal row directly; it must not apply a second local ranker afterward.
+ * Candidate ordering is owned by the central Mapper/Search boundary. HOME preserves
+ * a literal exact label when one exists and otherwise asks on ambiguity; it never
+ * substitutes the first broad hit for the product the customer named.
  */
 import { getEngineApprovedIngredientById } from '@/services/ingredients';
 import { ingredientRowToEngineIngredient } from '@/data/ingredients/ingredientMapper';
@@ -25,6 +26,7 @@ import {
 } from '@/features/ingredient-builder/mapperOnlyCatalog';
 import type { EngineIngredient } from '@/engine';
 import type { SafeMapperSearchRow } from '@/services/productPicker/mapperSearch';
+import { catalogueSearchTerms, resolveIdentity } from './homeIdentityResolution';
 
 /** What one chip resolved to, ready for the UI to act on. */
 export type ChipResolution =
@@ -40,28 +42,46 @@ export type ChipResolution =
  * The search is the SAME RPC the recipe picker and the Products page use, so HOME can
  * never see a product Pro cannot.
  *
- * The raw label is handed to the shared search boundary exactly once. That boundary
- * owns multilingual alias/concept interpretation; HOME must not apply a second,
- * competing stem or concept rewrite before the central resolver runs.
+ * The literal label is tried first so an exact chosen product survives. Existing
+ * multilingual concept terms are fallbacks into the same shared search boundary;
+ * HOME adds no competing catalogue or fuzzy ranker.
  */
 export async function resolveChipTerm(
   chip: { readonly label: string; readonly concept: string | null },
   signal?: AbortSignal,
 ): Promise<ChipResolution> {
-  const term = chip.label.trim();
-  if (!term) return { kind: 'unresolved' };
+  const terms = catalogueSearchTerms(chip);
+  if (terms.length === 0) return { kind: 'unresolved' };
 
-  // The shared boundary expands central aliases and returns the legal candidates in
-  // authoritative order. HOME's contract is to auto-select #1; PRO remains manual.
-  const outcome = await searchCanonicalMapperIngredients({ text: term, limit: 40, signal });
-  if (outcome.kind === 'unavailable') {
-    return { kind: 'unavailable', reason: outcome.reason };
+  // An exact label is the strongest identity evidence and must survive the handoff
+  // unchanged. Broader concept/stem searches are used only when the literal search
+  // cannot establish one exact product.
+  let firstAmbiguity: readonly SafeMapperSearchRow[] | null = null;
+  for (const term of [chip.label.trim(), ...terms].filter(
+    (value, index, values) => value && values.indexOf(value) === index,
+  )) {
+    const outcome = await searchCanonicalMapperIngredients({ text: term, limit: 40, signal });
+    if (outcome.kind === 'unavailable') {
+      return { kind: 'unavailable', reason: outcome.reason };
+    }
+    if (outcome.kind === 'error') return { kind: 'unavailable', reason: outcome.message };
+    if (outcome.kind === 'aborted') return { kind: 'unavailable', reason: 'aborted' };
+
+    const resolution = resolveIdentity(outcome.rows, term);
+    if (resolution.kind === 'resolved' && resolution.exact) {
+      return { kind: 'resolved', row: resolution.row };
+    }
+    if (resolution.kind === 'ambiguous' && firstAmbiguity === null) {
+      firstAmbiguity = resolution.candidates;
+    }
+    if (resolution.kind === 'resolved' && outcome.rows.length === 1) {
+      return { kind: 'resolved', row: resolution.row };
+    }
   }
-  if (outcome.kind === 'error') return { kind: 'unavailable', reason: outcome.message };
-  if (outcome.kind === 'aborted') return { kind: 'unavailable', reason: 'aborted' };
 
-  const first = outcome.rows[0];
-  return first ? { kind: 'resolved', row: first } : { kind: 'unresolved' };
+  return firstAmbiguity
+    ? { kind: 'ambiguous', candidates: firstAmbiguity }
+    : { kind: 'unresolved' };
 }
 
 /**

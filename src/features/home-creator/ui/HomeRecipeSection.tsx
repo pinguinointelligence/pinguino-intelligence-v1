@@ -48,7 +48,6 @@ import {
   projectSweetnessForDisplay,
   type HomeSweetness,
 } from '../homeSweetness';
-import { HomeRecalculate } from './HomeRecalculate';
 import { HomeSection } from './HomeSection';
 
 const SWEETNESS_LABEL: Readonly<Record<HomeSweetness, string>> = {
@@ -262,7 +261,7 @@ export function HomeRecipeSection({
   saveNotice,
   onLetsMakeIt,
   onShare,
-  canShare,
+  onCommunity,
   onBack,
 }: {
   name: string;
@@ -291,7 +290,7 @@ export function HomeRecipeSection({
   saveNotice?: string | null;
   onLetsMakeIt: () => void;
   onShare: () => void;
-  canShare: boolean;
+  onCommunity: () => void;
   onBack?: (() => void) | null;
 }) {
   const activeSweetness = projectSweetnessForDisplay(sweetnessStored as -2 | -1 | 0 | 1 | 2);
@@ -345,8 +344,7 @@ export function HomeRecipeSection({
               grams: topping.planned_grams,
               locked: false,
               onToggleLock: undefined,
-              commit: (next: number) =>
-                useRecipeStore.getState().setToppingGrams(topping.id, next),
+              commit: (next: number) => useRecipeStore.getState().setToppingGrams(topping.id, next),
             };
           }
           return null;
@@ -685,9 +683,6 @@ export function HomeRecipeSection({
         </div>
       </div>
 
-      {/* §60: the existing Recalculate → Preview → Apply workflow, plainly worded. */}
-      <HomeRecalculate canSeeGrams={canSeeGrams} onGramsBlocked={onGramsBlocked} />
-
       <div className="mt-10 flex flex-col gap-2.5">
         <button
           type="button"
@@ -698,7 +693,7 @@ export function HomeRecipeSection({
         >
           {homeCreatorCopy.recipe.letsMakeIt}
         </button>
-        <div className="flex gap-2.5">
+        <div className="flex flex-wrap gap-2.5">
           <button
             type="button"
             onClick={onSave}
@@ -711,18 +706,24 @@ export function HomeRecipeSection({
           >
             {homeCreatorCopy.recipe.save}
           </button>
-          {/* §52: Share appears only when the recipe is actually eligible. */}
-          {canShare ? (
-            <button
-              type="button"
-              onClick={onShare}
-              data-testid="home-share-community"
-              className="inline-flex min-h-[48px] flex-1 items-center justify-center rounded-full border px-5 text-[14px] focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
-              style={{ borderColor: 'var(--g-line)', color: 'var(--g-ink)' }}
-            >
-              {homeCreatorCopy.recipe.shareWithCommunity}
-            </button>
-          ) : null}
+          <button
+            type="button"
+            onClick={onShare}
+            data-testid="home-share-recipe"
+            className="inline-flex min-h-[48px] flex-1 items-center justify-center rounded-full border px-5 text-[14px] focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
+            style={{ borderColor: 'var(--g-line)', color: 'var(--g-ink)' }}
+          >
+            Udostępnij
+          </button>
+          <button
+            type="button"
+            onClick={onCommunity}
+            data-testid="home-publish-community"
+            className="inline-flex min-h-[48px] flex-1 items-center justify-center rounded-full border px-5 text-[14px] focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
+            style={{ borderColor: 'var(--g-line)', color: 'var(--g-ink)' }}
+          >
+            Community
+          </button>
         </div>
         {/* Served: „Zapisz recepturę" could refuse and say nothing at all — the canonical
             handler already produced a customer sentence and HOME dropped it, so the

@@ -39,6 +39,7 @@ import { useHomeRecipeResult } from '@/features/home-creator/useHomeRecipeResult
 import {
   useHomeIntentIngredients,
   type IntentIngredientOutcome,
+  type PreparedIntentIngredient,
 } from '@/features/home-creator/useHomeIntentIngredients';
 import { autoPriorityAppliesToNewLine, visibleCrownLineIds } from '@/features/recipe-priority';
 import { useLegacyRecipeBehaviorRevalidation } from '@/features/product-intelligence';
@@ -86,6 +87,18 @@ import { HomeIntentSection } from '@/features/home-creator/ui/HomeIntentSection'
 import { HomeProfileSection } from '@/features/home-creator/ui/HomeProfileSection';
 import { HomeMachineSection } from '@/features/home-creator/ui/HomeMachineSection';
 import { HomeRecipeSection } from '@/features/home-creator/ui/HomeRecipeSection';
+import { HomeRecalculate } from '@/features/home-creator/ui/HomeRecalculate';
+import { HomePreparation } from '@/features/home-creator/ui/HomePreparation';
+import { ShareRecipeDialog } from '@/features/community/ui/ShareRecipeDialog';
+import { PublishToCommunityDialog } from '@/features/community/ui/PublishToCommunityDialog';
+import { useCreatorProfile } from '@/features/community/useCreatorProfile';
+import {
+  applyPreviewWithServerAuthority,
+  runInteractiveRecalculationWithTerminal,
+  runPiRecalculationWithTerminal,
+  useConstraintStudioStore,
+} from '@/features/constraint-studio/constraintStudioStore';
+import { homeRecalculationInstructions } from '@/features/home-creator/homePriorityBootstrap';
 
 /** Smooth movement to the next section — the only "navigation" HOME has (§83). */
 function useScrollToStage() {
@@ -98,10 +111,16 @@ function useScrollToStage() {
 
 /** A product waiting for HOME's amount question. */
 type PendingAdd = {
+  chipId: string | null;
   ingredient: EngineIngredient;
   behavior: ProductBehaviorSnapshot | null;
   recommendedDose: string | null;
+  kind: 'ingredient' | 'topping';
+  initialGrams: number | null;
+  source: 'initial' | 'live';
 };
+
+type HomeFinalAction = 'make' | 'save' | 'share' | 'community';
 
 export function HomeCreatorPage() {
   // HOME authority closure (owner 2026-09-11): the same managed ProductBehavior
@@ -126,7 +145,12 @@ export function HomeCreatorPage() {
   const [matchDismissed, setMatchDismissed] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scanNotice, setScanNotice] = useState<string | null>(null);
+  const [recipeNotice, setRecipeNotice] = useState<string | null>(null);
   const intentIngredients = useHomeIntentIngredients();
+  const [initialPrepared, setInitialPrepared] = useState<PreparedIntentIngredient[]>([]);
+  const [initialBuilding, setInitialBuilding] = useState(false);
+  const initialFinalizing = useRef(false);
+  const lastGeneratedFor = useRef<string | null>(null);
   /** The products waiting for their confirmed amounts, asked one at a time
    * (Package 2A): each gets its own question. No line exists until it is answered. */
   const [pendingAdds, setPendingAdds] = useState<PendingAdd[]>([]);
@@ -145,7 +169,15 @@ export function HomeCreatorPage() {
   const askAmountFor = useCallback(
     (outcome: IntentIngredientOutcome) => {
       if (outcome.status !== 'needs_amount' || !outcome.ingredient) return;
-      setPendingAdd({ ingredient: outcome.ingredient, behavior: null, recommendedDose: null });
+      setPendingAdd({
+        ingredient: outcome.ingredient,
+        chipId: null,
+        behavior: null,
+        recommendedDose: null,
+        kind: 'ingredient',
+        initialGrams: null,
+        source: 'live',
+      });
     },
     [setPendingAdd],
   );
@@ -161,7 +193,12 @@ export function HomeCreatorPage() {
   const navigate = useNavigate();
   const userId = useAuthStore((state) => state.user?.id ?? null);
   const authStatus = useAuthStore((state) => state.status);
+  const hasCreatorProfile = useCreatorProfile(userId !== null);
   const [searchParams] = useSearchParams();
+  const [reviewAction, setReviewAction] = useState<HomeFinalAction | null>(null);
+  const [confirmSaveAction, setConfirmSaveAction] = useState<'share' | 'community' | null>(null);
+  const [completionDialog, setCompletionDialog] = useState<'share' | 'community' | null>(null);
+  const [actionNotice, setActionNotice] = useState<string | null>(null);
 
   /**
    * An official Gellatti recipe opened in HOME — the library's „Zrób te lody", a match the
@@ -297,8 +334,7 @@ export function HomeCreatorPage() {
       }),
     [draft.chips, draft.profile],
   );
-  const [nameOverride, setNameOverride] = useState<string | null>(null);
-  const name = nameOverride ?? recipe.savedRecipeName ?? proposedName;
+  const name = draft.recipeNameOverride ?? recipe.savedRecipeName ?? proposedName;
 
   // Keep the flow's record of which sections were actually shown in step with the
   // page, so a stage that was never asked never reappears as a Back target (§84).
@@ -386,6 +422,18 @@ export function HomeCreatorPage() {
         amount?.totalGrams ??
         defaultHomeAmount(recommendedBatchGrams)?.totalGrams ??
         recipe.target_batch_grams;
+      const currentMachine = {
+        kind: recipe.machineKind,
+        servingModeId: recipe.servingModeId,
+        machineId: recipe.machineId,
+        label: recipe.machineLabel,
+        machineTechnology: recipe.machineTechnology,
+        homeFormulationModuleId: recipe.homeFormulationModuleId,
+        temperatureC: recipe.target_temperature_c,
+        batchGrams: total,
+        hardCapacityGrams: recipe.machine_capacity_grams,
+        batchSource: recipe.batch_source,
+      } as const;
 
       useRecipeStore.getState().rebuildNewRecipeStarter({
         visibleProductType: visibleProductTypeFor(profile),
@@ -401,36 +449,65 @@ export function HomeCreatorPage() {
       // otherwise the user's Ninja silently reverts to Professional, which is exactly
       // what happened before this line existed.
       if (machine) applyMachineSelection(machine);
+      else if (
+        currentMachine.kind === 'home' &&
+        currentMachine.servingModeId &&
+        currentMachine.label
+      ) {
+        useRecipeStore.getState().setMachineSelection({
+          ...currentMachine,
+          kind: 'home',
+          servingModeId: currentMachine.servingModeId,
+          label: currentMachine.label,
+        });
+      }
       // PACKAGE 2A (closed 2026-09-11) — a HOME draft is born in AUTO: every BASE
       // ingredient the customer supplies is a priority, and none of it is shown as
       // a crown. `rebuildNewRecipeStarter` starts a NEW draft and therefore resets
       // the mode to MANUAL, so this must come after it and before the chips below.
       useRecipeStore.getState().setPriorityMode('AUTO');
-      useHomeDraftStore.getState().markRecipeReady(true);
+      setRecipeNotice(null);
+      setInitialBuilding(true);
+      setInitialPrepared([]);
 
-      // §22/§49: the base is correct for the profile but is not yet what the user
-      // ASKED for. Add each resolved flavour through the same store action the Pro
-      // builder uses, and let the Main authority decide the crown.
+      // Resolve exact identity + ProductBehavior before showing any recipe. Every
+      // role/amount question is completed from this queue; only then does the first
+      // canonical solve run and expose the verified formulation.
       void (async () => {
+        const prepared: PreparedIntentIngredient[] = [];
         for (const chip of useHomeDraftStore.getState().chips) {
           if (chip.productId === null || chip.ambiguous) continue;
-          askAmountFor(await intentIngredients.addResolvedChip(chip));
+          const resolved = await intentIngredients.prepareResolvedChip(chip);
+          if (!resolved) {
+            setRecipeNotice(
+              `Nie udało się potwierdzić aktualnych danych produktu ${chip.productName ?? chip.label}. Wybierz produkt ponownie.`,
+            );
+            setInitialBuilding(false);
+            lastGeneratedFor.current = null;
+            return;
+          }
+          prepared.push(resolved);
         }
+        setInitialPrepared(prepared);
       })();
-
-      window.setTimeout(() => scrollToStage('recipe'), 60);
     },
     [
       draft.profile,
       amount,
       machine,
       applyMachineSelection,
-      askAmountFor,
       intentIngredients,
       recommendedBatchGrams,
       recipe.target_batch_grams,
       recipe.target_temperature_c,
-      scrollToStage,
+      recipe.batch_source,
+      recipe.homeFormulationModuleId,
+      recipe.machineId,
+      recipe.machineKind,
+      recipe.machineLabel,
+      recipe.machineTechnology,
+      recipe.machine_capacity_grams,
+      recipe.servingModeId,
     ],
   );
 
@@ -440,8 +517,10 @@ export function HomeCreatorPage() {
    * settle is settled silently by `decideUsageRole`.
    */
   const [pendingUsage, setPendingUsage] = useState<{
+    chipId: string | null;
     ingredient: EngineIngredient;
     behavior: ProductBehaviorSnapshot | null;
+    source: 'initial' | 'live';
   } | null>(null);
 
   /**
@@ -478,12 +557,13 @@ export function HomeCreatorPage() {
    * the add controls beside the recipe list both land here, so the §B decision cannot
    * apply on one surface and not the other.
    */
-  const handleAddTopping = useCallback(
-    (ingredient: RecipeToppingIngredient, behavior?: ProductBehaviorSnapshot) => {
-      // OWNER OD-3: a new topping starts at 5 % of the current BASE mass.
-      useRecipeStore
-        .getState()
-        .addTopping(ingredient, defaultHomeToppingGrams(useRecipeStore.getState().items));
+  const addConfirmedTopping = useCallback(
+    (
+      ingredient: RecipeToppingIngredient,
+      behavior?: ProductBehaviorSnapshot,
+      grams = defaultHomeToppingGrams(useRecipeStore.getState().items),
+    ) => {
+      useRecipeStore.getState().addTopping(ingredient, grams);
       const topping = useRecipeStore
         .getState()
         .toppings.find((line) => line.ingredient.id === ingredient.id);
@@ -496,13 +576,28 @@ export function HomeCreatorPage() {
     [],
   );
 
+  const handleAddTopping = useCallback(
+    (ingredient: RecipeToppingIngredient, behavior?: ProductBehaviorSnapshot) => {
+      setPendingAdd({
+        chipId: null,
+        ingredient: ingredient as unknown as EngineIngredient,
+        behavior: behavior ?? null,
+        recommendedDose: null,
+        kind: 'topping',
+        initialGrams: defaultHomeToppingGrams(useRecipeStore.getState().items),
+        source: 'live',
+      });
+    },
+    [setPendingAdd],
+  );
+
   const handleAddIngredient = useCallback(
     (ingredient: EngineIngredient, behavior?: ProductBehaviorSnapshot) => {
       // §58 FIRST: a product that is genuinely both has to be placed before it can be
       // measured — the amount question means something different for a topping.
       const usage = decideUsageRole(behavior ?? null);
       if (usage.kind === 'ask') {
-        setPendingUsage({ ingredient, behavior: behavior ?? null });
+        setPendingUsage({ chipId: null, ingredient, behavior: behavior ?? null, source: 'live' });
         return;
       }
       if (usage.role === 'topping') {
@@ -522,9 +617,13 @@ export function HomeCreatorPage() {
       }
       if (decision.kind === 'ask_amount') {
         setPendingAdd({
+          chipId: null,
           ingredient,
           behavior: behavior ?? null,
           recommendedDose: decision.recommendedDose,
+          kind: 'ingredient',
+          initialGrams: null,
+          source: 'live',
         });
         return;
       }
@@ -533,9 +632,133 @@ export function HomeCreatorPage() {
     [addIngredientLine, handleAddTopping, setPendingAdd],
   );
 
+  const finishInitialRecipe = useCallback(async () => {
+    if (initialFinalizing.current) return;
+    initialFinalizing.current = true;
+    const instructions = homeRecalculationInstructions(useRecipeStore.getState().items, []);
+    if (instructions.length > 0) {
+      await runInteractiveRecalculationWithTerminal(instructions);
+    } else {
+      await runPiRecalculationWithTerminal();
+    }
+    if (
+      useConstraintStudioStore.getState().recalculationTerminal?.state === 'PREVIEW_READY' &&
+      useConstraintStudioStore.getState().preview
+    ) {
+      await applyPreviewWithServerAuthority();
+    }
+    const terminal = useConstraintStudioStore.getState().recalculationTerminal;
+    const ready =
+      useConstraintStudioStore.getState().preview === null &&
+      useConstraintStudioStore.getState().blocked === null &&
+      useRecipeStore.getState().practicalRecipeAudit !== null &&
+      terminal?.state !== 'ERROR' &&
+      terminal?.state !== 'TIMEOUT';
+    if (ready) {
+      useHomeDraftStore.getState().markRecipeReady(true);
+      setInitialBuilding(false);
+      window.setTimeout(() => scrollToStage('recipe'), 60);
+    } else {
+      setRecipeNotice(
+        'Nie udało się jeszcze bezpiecznie przygotować receptury. Sprawdź wybór produktu i spróbuj ponownie.',
+      );
+      setInitialBuilding(false);
+      lastGeneratedFor.current = null;
+    }
+    initialFinalizing.current = false;
+  }, [scrollToStage]);
+
+  useEffect(() => {
+    if (!initialBuilding || pendingAdd || pendingUsage || initialFinalizing.current) return;
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      const next = initialPrepared[0];
+      if (!next) {
+        void finishInitialRecipe();
+        return;
+      }
+      setInitialPrepared((queue) => queue.slice(1));
+      const chip = useHomeDraftStore.getState().chips.find((item) => item.id === next.chipId);
+      const savedRole = useHomeDraftStore.getState().usageAnswersByChipId[next.chipId];
+      const usage =
+        savedRole || chip?.role
+          ? { kind: 'settled' as const, role: savedRole ?? chip!.role! }
+          : decideUsageRole(next.behavior);
+      if (usage.kind === 'ask') {
+        setPendingUsage({
+          chipId: next.chipId,
+          ingredient: next.ingredient,
+          behavior: next.behavior,
+          source: 'initial',
+        });
+        return;
+      }
+      if (usage.role === 'topping') {
+        const answered = useHomeDraftStore.getState().amountAnswersByChipId[next.chipId];
+        if (answered && answered > 0) {
+          addConfirmedTopping(
+            next.ingredient as unknown as RecipeToppingIngredient,
+            next.behavior,
+            answered,
+          );
+          return;
+        }
+        setPendingAdd({
+          chipId: next.chipId,
+          ingredient: next.ingredient,
+          behavior: next.behavior,
+          recommendedDose: null,
+          kind: 'topping',
+          initialGrams: defaultHomeToppingGrams(useRecipeStore.getState().items),
+          source: 'initial',
+        });
+        return;
+      }
+      const decision = decideAddAmount(next.behavior, productRecommendedDosagePl, {
+        autoPriority: true,
+      });
+      if (decision.kind === 'crown_decides') {
+        addIngredientLine(next.ingredient, next.behavior, 0);
+        return;
+      }
+      if (decision.kind === 'ask_amount') {
+        const answered = useHomeDraftStore.getState().amountAnswersByChipId[next.chipId];
+        if (answered && answered > 0) {
+          addIngredientLine(next.ingredient, next.behavior, answered);
+          return;
+        }
+        setPendingAdd({
+          chipId: next.chipId,
+          ingredient: next.ingredient,
+          behavior: next.behavior,
+          recommendedDose: decision.recommendedDose,
+          kind: 'ingredient',
+          initialGrams: null,
+          source: 'initial',
+        });
+        return;
+      }
+      setRecipeNotice(`Nie udało się potwierdzić roli produktu ${next.ingredient.name}.`);
+      setInitialBuilding(false);
+      lastGeneratedFor.current = null;
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    addConfirmedTopping,
+    addIngredientLine,
+    finishInitialRecipe,
+    initialBuilding,
+    initialPrepared,
+    pendingAdd,
+    pendingUsage,
+    setPendingAdd,
+  ]);
+
   /** §57: the existing Topping behaviour — no Crown, editable grams. Shared identically. */
 
-  const lastGeneratedFor = useRef<string | null>(null);
   useEffect(() => {
     // Generate once, when every required answer is in — never on every render.
     //
@@ -590,6 +813,73 @@ export function HomeCreatorPage() {
     // intact when its already-active segment is tapped.
     if (!tapChangesStoredValue(stored, choice)) return;
     useRecipeStore.getState().setDirectionTarget('sweetness', sweetnessValueForTap(choice));
+  };
+
+  const routePaidAction = (): boolean => {
+    if (recipeSave.blocked === 'signin') {
+      openAuthModal();
+      return false;
+    }
+    if (recipeSave.blocked === 'plan') {
+      navigate('/subscription');
+      return false;
+    }
+    return recipeSave.blocked !== 'unavailable';
+  };
+
+  const persistForAction = async (action: Exclude<HomeFinalAction, 'make'>): Promise<void> => {
+    if (!routePaidAction()) return;
+    setActionNotice(null);
+    const before = useRecipeStore.getState();
+    if (action === 'save' && before.savedRecipeId && !before.dirty) {
+      setActionNotice('Ta wersja jest już zapisana.');
+      return;
+    }
+    const ok = before.savedRecipeId
+      ? await recipeSave.saveVersion()
+      : await recipeSave.createNew(name.trim() || proposedName);
+    if (!ok) return;
+    const saved = useRecipeStore.getState();
+    if (saved.savedRecipeId && name.trim() && name.trim() !== saved.savedRecipeName) {
+      await recipeSave.rename(name.trim());
+    }
+    if (action === 'share' || action === 'community') setCompletionDialog(action);
+    else setActionNotice(`Zapisano wersję ${saved.currentVersionNumber ?? 1}.`);
+  };
+
+  const requestFinalAction = (action: HomeFinalAction): void => {
+    if (action === 'make') {
+      if (!routePaidAction()) return;
+      setReviewAction('make');
+      return;
+    }
+    if (!routePaidAction()) return;
+    const current = useRecipeStore.getState();
+    if ((action === 'share' || action === 'community') && !current.savedRecipeId) {
+      setConfirmSaveAction(action);
+      return;
+    }
+    if (current.dirty || current.practicalRecipeAudit === null) {
+      setReviewAction(action);
+      return;
+    }
+    if (action === 'share' || action === 'community') {
+      setCompletionDialog(action);
+      return;
+    }
+    void persistForAction(action);
+  };
+
+  const continueAfterReview = async (): Promise<void> => {
+    const action = reviewAction;
+    setReviewAction(null);
+    if (!action) return;
+    if (action === 'make') {
+      useHomeDraftStore.getState().startPreparation();
+      window.setTimeout(() => scrollToStage('preparation'), 60);
+      return;
+    }
+    await persistForAction(action);
   };
 
   const machineLine = [
@@ -686,6 +976,17 @@ export function HomeCreatorPage() {
           </p>
         ) : null}
 
+        {recipeNotice ? (
+          <p
+            role="alert"
+            className="mx-auto my-4 max-w-2xl rounded-xl border px-4 py-3 text-sm"
+            style={{ borderColor: 'var(--g-line)', color: 'var(--g-attention-ink)' }}
+            data-testid="home-recipe-notice"
+          >
+            {recipeNotice}
+          </p>
+        ) : null}
+
         {flow.stages.includes('profile') ? (
           <HomeProfileSection
             selected={draft.profile}
@@ -769,7 +1070,7 @@ export function HomeCreatorPage() {
         {flow.stages.includes('recipe') ? (
           <HomeRecipeSection
             name={name}
-            onNameChange={setNameOverride}
+            onNameChange={(next) => useHomeDraftStore.getState().setRecipeNameOverride(next)}
             score={score}
             machineLine={machineLine}
             items={recipe.items}
@@ -796,34 +1097,112 @@ export function HomeCreatorPage() {
             onAddIngredient={handleAddIngredient}
             onAddTopping={handleAddTopping}
             onSave={() => {
-              // §65: an explicit action, never an autosave. The canonical handler
-              // already knows WHY a save cannot proceed, so HOME routes on its answer
-              // instead of re-deciding entitlement (§72: Save is a paid action).
-              if (recipeSave.blocked === 'signin') {
-                openAuthModal();
-                return;
-              }
-              if (recipeSave.blocked === 'plan') {
-                // The dedicated HOME/PRO plan-choice paywall is not built yet, so the
-                // existing subscription page is used rather than a dead button.
-                navigate('/subscription');
-                return;
-              }
-              if (recipeSave.blocked === 'unavailable') return;
-              void (recipe.savedRecipeId
-                ? recipeSave.saveVersion()
-                : recipeSave.createNew(name.trim()));
+              requestFinalAction('save');
             }}
             // The canonical handler owns the reason; HOME only has to show it, filtered
             // into customer language the same way every other HOME notice is.
             saveNotice={homeCustomerNotice(recipeSave.error)}
-            onLetsMakeIt={() => useHomeDraftStore.getState().startPreparation()}
-            onShare={() => undefined}
-            canShare={false}
+            onLetsMakeIt={() => requestFinalAction('make')}
+            onShare={() => requestFinalAction('share')}
+            onCommunity={() => requestFinalAction('community')}
             onBack={flow.backFrom('recipe') ? () => scrollToStage(flow.backFrom('recipe')!) : null}
           />
         ) : null}
+
+        {draft.recipeReady && actionNotice ? (
+          <p
+            className="mt-3 text-center text-[13px] leading-snug"
+            data-testid="home-action-notice"
+            role="status"
+            aria-live="polite"
+            style={{ color: 'var(--g-attention-ink)' }}
+          >
+            {actionNotice}
+          </p>
+        ) : null}
+
+        {draft.preparationStarted ? (
+          <HomePreparation
+            name={name}
+            onSave={() => requestFinalAction('save')}
+            onShare={() => requestFinalAction('share')}
+            onCommunity={() => requestFinalAction('community')}
+          />
+        ) : null}
       </div>
+
+      <HomeRecalculate
+        open={reviewAction !== null}
+        context={reviewAction ?? 'make'}
+        onClose={() => setReviewAction(null)}
+        onApplied={continueAfterReview}
+        canSeeGrams={canSeeGrams}
+        onGramsBlocked={() => {
+          if (recipeSave.blocked === 'signin') openAuthModal();
+          else navigate('/subscription');
+        }}
+      />
+
+      {confirmSaveAction ? (
+        <div
+          className="fixed inset-0 z-[96] grid place-items-center bg-black/30 p-4"
+          role="dialog"
+          aria-modal="true"
+          data-testid="home-save-before-share"
+        >
+          <div className="w-full max-w-md rounded-2xl bg-white p-6">
+            <h2 className="text-xl font-semibold">
+              {confirmSaveAction === 'share' ? 'Zapisz i udostępnij' : 'Zapisz i opublikuj'}
+            </h2>
+            <p className="mt-3 text-sm text-stone-600">
+              Link i publikacja zawsze wskazują jedną dokładną, niezmienną wersję receptury.
+            </p>
+            <div className="mt-6 flex gap-2">
+              <button
+                type="button"
+                className="min-h-11 flex-1 rounded-full bg-ink px-4 text-sm font-semibold text-white"
+                onClick={() => {
+                  const action = confirmSaveAction;
+                  setConfirmSaveAction(null);
+                  if (
+                    useRecipeStore.getState().dirty ||
+                    useRecipeStore.getState().practicalRecipeAudit === null
+                  )
+                    setReviewAction(action);
+                  else void persistForAction(action);
+                }}
+              >
+                {confirmSaveAction === 'share' ? 'Zapisz i udostępnij' : 'Zapisz i opublikuj'}
+              </button>
+              <button
+                type="button"
+                className="min-h-11 rounded-full border px-4 text-sm"
+                onClick={() => setConfirmSaveAction(null)}
+              >
+                Wróć
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {completionDialog === 'share' && recipe.savedRecipeId && recipe.currentVersionNumber ? (
+        <ShareRecipeDialog
+          recipeId={recipe.savedRecipeId}
+          versionNumber={recipe.currentVersionNumber}
+          onClose={() => setCompletionDialog(null)}
+        />
+      ) : null}
+      {completionDialog === 'community' && recipe.savedRecipeId && recipe.currentVersionNumber ? (
+        <PublishToCommunityDialog
+          recipeId={recipe.savedRecipeId}
+          versionNumber={recipe.currentVersionNumber}
+          defaultTitle={name}
+          hasCreatorProfile={hasCreatorProfile}
+          completionContext={draft.preparationStarted}
+          onClose={() => setCompletionDialog(null)}
+        />
+      ) : null}
       {/* §36 — shown ONLY when a trustworthy match survived the strict matcher.
           No match means no modal at all: creation simply continues (§35), which is
           why there is no "nothing found" state here. */}
@@ -857,9 +1236,17 @@ export function HomeCreatorPage() {
       {pendingUsage ? (
         <HomeUsagePrompt
           productName={pendingUsage.ingredient.name}
-          onCancel={() => setPendingUsage(null)}
+          onCancel={() => {
+            if (pendingUsage.source === 'initial' && pendingUsage.chipId) {
+              useHomeDraftStore.getState().removeChip(pendingUsage.chipId);
+            }
+            setPendingUsage(null);
+          }}
           onChoose={(role) => {
-            const { ingredient, behavior } = pendingUsage;
+            const { ingredient, behavior, chipId, source } = pendingUsage;
+            if (source === 'initial' && chipId) {
+              useHomeDraftStore.getState().answerUsage(chipId, role);
+            }
             setPendingUsage(null);
             if (role === 'topping') {
               handleAddTopping(
@@ -874,7 +1261,15 @@ export function HomeCreatorPage() {
               autoPriority: autoPriorityAppliesToNewLine(useRecipeStore.getState().priority_mode),
             });
             if (decision.kind === 'ask_amount') {
-              setPendingAdd({ ingredient, behavior, recommendedDose: decision.recommendedDose });
+              setPendingAdd({
+                ingredient,
+                behavior,
+                recommendedDose: decision.recommendedDose,
+                chipId,
+                kind: 'ingredient',
+                initialGrams: null,
+                source,
+              });
               return;
             }
             if (decision.kind === 'unresolved_authority') return;
@@ -889,9 +1284,26 @@ export function HomeCreatorPage() {
           key={pendingAdd.ingredient.id}
           productName={pendingAdd.ingredient.name}
           recommendedDose={pendingAdd.recommendedDose}
-          onCancel={() => setPendingAdd(null)}
+          initialGrams={pendingAdd.initialGrams}
+          onCancel={() => {
+            if (pendingAdd.source === 'initial' && pendingAdd.chipId) {
+              useHomeDraftStore.getState().removeChip(pendingAdd.chipId);
+            }
+            setPendingAdd(null);
+          }}
           onConfirm={(grams) => {
-            addIngredientLine(pendingAdd.ingredient, pendingAdd.behavior, grams);
+            if (pendingAdd.source === 'initial' && pendingAdd.chipId) {
+              useHomeDraftStore.getState().answerAmount(pendingAdd.chipId, grams);
+            }
+            if (pendingAdd.kind === 'topping') {
+              addConfirmedTopping(
+                pendingAdd.ingredient as unknown as RecipeToppingIngredient,
+                pendingAdd.behavior ?? undefined,
+                grams,
+              );
+            } else {
+              addIngredientLine(pendingAdd.ingredient, pendingAdd.behavior, grams);
+            }
             setPendingAdd(null);
           }}
         />

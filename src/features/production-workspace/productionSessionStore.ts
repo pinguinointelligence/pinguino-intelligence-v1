@@ -11,6 +11,7 @@ import {
   type ProductionSession,
   type ProductionSource,
 } from './productionSession';
+import type { ProductProcessReadinessDetail } from '@/features/product-intelligence';
 import {
   recipeCompositionFromState,
   type RecipeCompositionMetadata,
@@ -32,6 +33,10 @@ export interface ProductionSessionStoreState {
     source: ProductionSource;
     plannedInput: RecipeInput;
     plannedComposition?: RecipeCompositionMetadata;
+    processReadiness?: 'READY' | 'READY_WITH_INFO' | null;
+    processAdvisories?: ProductProcessReadinessDetail[];
+    degassingRequired?: boolean;
+    carbonatedProductIds?: string[];
     now: string;
     sessionId: string;
   }) => void;
@@ -103,6 +108,10 @@ const buildSession = (input: {
   source: ProductionSource;
   plannedInput: RecipeInput;
   plannedComposition?: RecipeCompositionMetadata;
+  processReadiness?: 'READY' | 'READY_WITH_INFO' | null;
+  processAdvisories?: ProductProcessReadinessDetail[];
+  degassingRequired?: boolean;
+  carbonatedProductIds?: string[];
   now: string;
   sessionId: string;
 }) =>
@@ -112,6 +121,10 @@ const buildSession = (input: {
     source: input.source,
     plannedInput: input.plannedInput,
     plannedComposition: input.plannedComposition,
+    processReadiness: input.processReadiness,
+    processAdvisories: input.processAdvisories,
+    degassingRequired: input.degassingRequired,
+    carbonatedProductIds: input.carbonatedProductIds,
     startedAt: input.now,
   });
 

@@ -40,15 +40,15 @@ describe('HOME identity resolution uses the canonical catalogue paths', () => {
     expect(SOURCE).toContain("kind: 'unresolved'");
   });
 
-  it('auto-selects the central resolver first legal result without a second HOME ranker', () => {
-    expect(SOURCE).toContain('const first = outcome.rows[0]');
-    expect(SOURCE).not.toContain("from './homeIdentityResolution'");
-    expect(SOURCE).not.toContain('resolveIdentity(');
+  it('auto-selects only an exact identity and otherwise preserves a real ambiguity', () => {
+    expect(SOURCE).toContain("from './homeIdentityResolution'");
+    expect(SOURCE).toContain('resolveIdentity(outcome.rows, term)');
+    expect(SOURCE).toContain("resolution.kind === 'resolved' && resolution.exact");
+    expect(SOURCE).toContain("kind: 'ambiguous', candidates: firstAmbiguity");
   });
 
-  it('hands the raw HOME label to the central search boundary without a local stem rewrite', () => {
-    expect(SOURCE).toContain('const term = chip.label.trim()');
-    expect(SOURCE).not.toContain('catalogueSearchTerms');
-    expect(SOURCE).not.toContain('stemLastWord');
+  it('tries the literal HOME label before broader canonical concept terms', () => {
+    expect(SOURCE).toContain('const terms = catalogueSearchTerms(chip)');
+    expect(SOURCE).toContain('[chip.label.trim(), ...terms]');
   });
 });

@@ -19,7 +19,7 @@
  * discards everything provisional. HOME's own Crown rules are untouched: nothing here
  * crowns, uncrowns or seeds a line.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { DialogShell } from '@/components/ui/DialogShell';
 import { constraintStudioCopy } from '@/features/constraint-studio/constraintStudioCopy';
 import {
@@ -38,7 +38,6 @@ import {
   type GramsMask,
 } from '@/features/constraint-studio/ui/ConstraintPreviewCard';
 import { LockConflictPanel } from '@/features/constraint-studio/ui/LockConflictPanel';
-import { cn } from '@/lib/cn';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { homeCreatorCopy } from '../homeCreatorCopy';
 import { customerInstructions, homeRecalculationInstructions } from '../homePriorityBootstrap';
@@ -53,9 +52,17 @@ const primaryButton =
   'inline-flex min-h-[44px] flex-1 items-center justify-center rounded-full px-4 text-[14px] font-semibold disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40';
 
 export function HomeRecalculate({
+  open,
+  context,
+  onClose,
+  onApplied,
   canSeeGrams = true,
   onGramsBlocked,
 }: {
+  open: boolean;
+  context: 'make' | 'save' | 'share' | 'community';
+  onClose: () => void;
+  onApplied: () => void | Promise<void>;
   /** Demo entitlement: HOME never reveals grams the customer may not see. */
   canSeeGrams?: boolean;
   onGramsBlocked?: () => void;
@@ -72,7 +79,7 @@ export function HomeRecalculate({
   const applyPending = useConstraintStudioStore((state) => state.applyPending);
   const postApplyNotice = useConstraintStudioStore((state) => state.postApplyNotice);
   const items = useRecipeStore((state) => state.items);
-  const [open, setOpen] = useState(false);
+  const openedFor = useRef<string | null>(null);
 
   const editableLineIds = useMemo(
     () => new Set(items.filter(isPreviewEditableLine).map((item) => item.id)),
@@ -103,7 +110,8 @@ export function HomeRecalculate({
     }
     // Nothing provisional survives: the recipe was never written.
     useConstraintStudioStore.getState().cancelPreview();
-    setOpen(false);
+    openedFor.current = null;
+    onClose();
   };
 
   // OWNER OD-1 (Package 2A): a 0 g HOME priority line is the solver's to size, so
@@ -115,10 +123,16 @@ export function HomeRecalculate({
       : runPiRecalculationWithTerminal());
   };
 
-  const run = () => {
-    setOpen(true);
+  useEffect(() => {
+    if (!open) {
+      openedFor.current = null;
+      return;
+    }
+    const key = `${context}:${useRecipeStore.getState().draftRevision}`;
+    if (openedFor.current === key) return;
+    openedFor.current = key;
     runWith([]);
-  };
+  }, [context, open]);
 
   const recalculateInPreview = (instructions: PreviewLineInstruction[]) => {
     runWith(instructions);
@@ -129,7 +143,7 @@ export function HomeRecalculate({
       await applyPreviewWithServerAuthority();
       const after = useConstraintStudioStore.getState();
       if (after.preview === null && after.blocked === null && after.postApplyNotice === null) {
-        setOpen(false);
+        await onApplied();
       }
     })();
   };
@@ -164,23 +178,8 @@ export function HomeRecalculate({
     pendingInstructionCommit === null &&
     !recoverable;
 
-  return (
-    <div className="mt-6" data-testid="home-recalc">
-      <button
-        type="button"
-        onClick={run}
-        disabled={open && working}
-        data-testid="home-recalc-run"
-        className={cn(
-          'min-h-[44px] w-full rounded-full border px-4 text-[14px]',
-          'disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40',
-        )}
-        style={{ borderColor: 'var(--g-line)', color: 'var(--g-ink)' }}
-      >
-        {homeCreatorCopy.recipe.recalculate}
-      </button>
-
-      {open ? (
+  return open ? (
+    <div data-testid="home-final-review" data-context={context}>
         <DialogShell
           label={homeCreatorCopy.recipe.recalculate}
           testId="home-recalc-dialog"
@@ -267,7 +266,7 @@ export function HomeRecalculate({
                     data-testid="home-recalc-commit-instructions"
                     onClick={() => {
                       useConstraintStudioStore.getState().commitPendingInstructions();
-                      setOpen(false);
+                      void onApplied();
                     }}
                   >
                     {interactiveCopy.apply}
@@ -287,16 +286,35 @@ export function HomeRecalculate({
             {noChange ? (
               <div className="space-y-3" data-testid="home-recalc-no-change">
                 <p className="text-[14px] leading-relaxed">
-                  {constraintStudioCopy.previewIssue.alreadyClean}
+                  Receptura jest gotowa. Nie trzeba zmieniać ilości.
                 </p>
-                <button
-                  type="button"
-                  className={secondaryButton}
-                  style={{ borderColor: 'var(--g-line)', color: 'var(--g-ink)' }}
-                  onClick={close}
-                >
-                  {interactiveCopy.back}
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className={secondaryButton}
+                    style={{ borderColor: 'var(--g-line)', color: 'var(--g-ink)' }}
+                    onClick={close}
+                  >
+                    {interactiveCopy.back}
+                  </button>
+                  <button
+                    type="button"
+                    className={secondaryButton}
+                    style={{ borderColor: 'var(--g-line)', color: 'var(--g-ink)' }}
+                    onClick={() => runWith([])}
+                  >
+                    Przelicz
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="home-recalc-apply-no-change"
+                    className={primaryButton}
+                    style={{ background: 'var(--g-ink)', color: '#ffffff' }}
+                    onClick={() => void onApplied()}
+                  >
+                    Zastosuj zmiany
+                  </button>
+                </div>
               </div>
             ) : null}
 
@@ -386,7 +404,6 @@ export function HomeRecalculate({
             ) : null}
           </div>
         </DialogShell>
-      ) : null}
     </div>
-  );
+  ) : null;
 }
