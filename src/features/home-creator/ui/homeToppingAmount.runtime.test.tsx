@@ -109,7 +109,7 @@ const renderSection = async () => {
           onSave={() => {}}
           onLetsMakeIt={() => {}}
           onShare={() => {}}
-          canShare={false}
+          onCommunity={() => {}}
           onBack={null}
           saveNotice={null}
         />

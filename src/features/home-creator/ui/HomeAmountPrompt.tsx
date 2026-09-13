@@ -13,16 +13,21 @@ import { confirmedGrams, isConfirmableAmount } from '../homeAddAmountDecision';
 export function HomeAmountPrompt({
   productName,
   recommendedDose,
+  initialGrams,
   onConfirm,
   onCancel,
 }: {
   productName: string;
   /** Canonical dosage authority, or null when the product genuinely carries none. */
   recommendedDose: string | null;
+  /** Toppings begin at the exact canonical 5% projection; BASE questions stay blank. */
+  initialGrams?: number | null;
   onConfirm: (grams: number) => void;
   onCancel: () => void;
 }) {
-  const [raw, setRaw] = useState('');
+  const [raw, setRaw] = useState(
+    initialGrams != null && initialGrams > 0 ? String(initialGrams) : '',
+  );
   const [touched, setTouched] = useState(false);
   const valid = isConfirmableAmount(raw);
 
@@ -46,6 +51,19 @@ export function HomeAmountPrompt({
         </p>
 
         <div className="mt-4 flex items-center gap-2">
+          <button
+            type="button"
+            aria-label={`Zmniejsz ilość ${productName}`}
+            data-testid="home-amount-prompt-minus"
+            className="grid size-11 place-items-center rounded-[10px] border text-lg"
+            style={{ borderColor: 'var(--g-line)', color: 'var(--g-ink)' }}
+            onClick={() => {
+              setRaw(String(Math.max(1, (valid ? confirmedGrams(raw) : 1) - 1)));
+              setTouched(true);
+            }}
+          >
+            −
+          </button>
           <input
             autoFocus
             type="text"
@@ -66,6 +84,19 @@ export function HomeAmountPrompt({
           <span className="text-[15px]" style={{ color: 'var(--g-text-secondary)' }}>
             {homeCreatorCopy.recipe.grams}
           </span>
+          <button
+            type="button"
+            aria-label={`Zwiększ ilość ${productName}`}
+            data-testid="home-amount-prompt-plus"
+            className="grid size-11 place-items-center rounded-[10px] border text-lg"
+            style={{ borderColor: 'var(--g-line)', color: 'var(--g-ink)' }}
+            onClick={() => {
+              setRaw(String((valid ? confirmedGrams(raw) : 0) + 1));
+              setTouched(true);
+            }}
+          >
+            +
+          </button>
         </div>
 
         {/* Shown ONLY when the canonical dosage authority carries a value. HOME never

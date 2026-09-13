@@ -28,7 +28,7 @@ describe('HOME persists through the one canonical handler', () => {
   it('appends a version once an aggregate exists, and creates one only before that', () => {
     const branch = HOME_PAGE.replace(/\s+/g, ' ');
     expect(branch).toContain(
-      'recipe.savedRecipeId ? recipeSave.saveVersion() : recipeSave.createNew(name.trim())',
+      'before.savedRecipeId ? await recipeSave.saveVersion() : await recipeSave.createNew(name.trim() || proposedName)',
     );
   });
 

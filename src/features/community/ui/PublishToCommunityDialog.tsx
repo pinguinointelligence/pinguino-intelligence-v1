@@ -4,12 +4,9 @@ import { DialogShell } from '@/components/ui/DialogShell';
 import { SectionLabel } from '@/components/shared/SectionLabel';
 import { communityCopy } from '@/copy/community';
 import { slugifyTitle } from '@/features/community/domain/creatorHandle';
-import {
-  PUBLICATION_IMAGES,
-  suggestPublicationImage,
-} from '@/features/community/domain/publicationImages';
 import { publicationPath } from '@/features/community/domain/shareUrls';
-import { publishRecipe } from '@/services/community';
+import { communityPhotoAccepted } from '@/features/community/domain/recipeImageAuthority';
+import { publishRecipe, uploadCommunityPhoto } from '@/services/community';
 import { CreatorProfileForm } from './CreatorProfileForm';
 import { customerErrorMessage } from '@/copy/customerError';
 
@@ -46,11 +43,8 @@ export function PublishToCommunityDialog({
   const [title, setTitle] = useState(defaultTitle);
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
-  /* A publication always carries an image — a Community card with an empty
-     frame reads as an unfinished product, and the ranking surfaces are built
-     around a picture. The picker opens on a sensible suggestion instead of a
-     blank grid, and publishing without one is not possible. */
-  const [imageUrl, setImageUrl] = useState(() => suggestPublicationImage(defaultTitle).url);
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [creatorReady, setCreatorReady] = useState(hasCreatorProfile);
@@ -63,13 +57,15 @@ export function PublishToCommunityDialog({
       setError(copy.creator.handleInvalid);
       return;
     }
-    if (!imageUrl) {
+    if (!photo) {
       setError(copy.publish.imageRequired);
       return;
     }
     setPending(true);
     setError(null);
     try {
+      const imageUrl = await uploadCommunityPhoto(photo);
+      if (!communityPhotoAccepted(imageUrl)) throw new Error(copy.publish.imageRequired);
       const result = await publishRecipe({
         recipeId,
         versionNumber,
@@ -163,37 +159,48 @@ export function PublishToCommunityDialog({
               />
             </Field>
             <Field label={copy.publish.imageLabel}>
-              <div className="flex flex-col gap-3">
-                <img
-                  src={imageUrl}
-                  alt={
-                    PUBLICATION_IMAGES.find((image) => image.url === imageUrl)?.label ?? title
-                  }
-                  className="h-36 w-full rounded-sm border border-ink/12 object-cover"
-                />
-                <div
-                  role="radiogroup"
-                  aria-label={copy.publish.imageLabel}
-                  className="grid max-h-40 grid-cols-5 gap-2 overflow-y-auto pr-1"
-                  data-testid="publication-image-picker"
-                >
-                  {PUBLICATION_IMAGES.map((image) => (
-                    <button
-                      key={image.url}
-                      type="button"
-                      role="radio"
-                      aria-checked={image.url === imageUrl}
-                      aria-label={image.label}
-                      onClick={() => setImageUrl(image.url)}
-                      className={
-                        image.url === imageUrl
-                          ? 'overflow-hidden rounded-sm border-2 border-[var(--g-orange)]'
-                          : 'overflow-hidden rounded-sm border border-ink/12 opacity-80 hover:opacity-100'
-                      }
-                    >
-                      <img src={image.url} alt="" className="h-12 w-full object-cover" />
-                    </button>
-                  ))}
+              <div className="flex flex-col gap-3" data-testid="publication-photo-picker">
+                {photoPreview ? (
+                  <img
+                    src={photoPreview}
+                    alt={title}
+                    className="h-48 w-full rounded-xl border border-ink/12 object-cover"
+                  />
+                ) : (
+                  <div className="grid h-36 place-items-center rounded-xl border border-dashed border-ink/20 text-sm text-stone-500">
+                    Dodaj własne zdjęcie gotowych lodów
+                  </div>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  <label className={buttonClasses('primary')}>
+                    Zrób zdjęcie
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      capture="environment"
+                      className="sr-only"
+                      data-testid="publication-photo-camera"
+                      onChange={(event) => {
+                        const next = event.currentTarget.files?.[0] ?? null;
+                        setPhoto(next);
+                        setPhotoPreview(next ? URL.createObjectURL(next) : null);
+                      }}
+                    />
+                  </label>
+                  <label className={buttonClasses('ghost')}>
+                    Wybierz z galerii
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="sr-only"
+                      data-testid="publication-photo-gallery"
+                      onChange={(event) => {
+                        const next = event.currentTarget.files?.[0] ?? null;
+                        setPhoto(next);
+                        setPhotoPreview(next ? URL.createObjectURL(next) : null);
+                      }}
+                    />
+                  </label>
                 </div>
               </div>
             </Field>
@@ -225,7 +232,7 @@ export function PublishToCommunityDialog({
                 type="button"
                 className={buttonClasses('primary')}
                 onClick={submit}
-                disabled={pending || !slug || !imageUrl}
+                disabled={pending || !slug || !photo}
               >
                 {pending ? '…' : copy.actions.publishToCommunity}
               </button>

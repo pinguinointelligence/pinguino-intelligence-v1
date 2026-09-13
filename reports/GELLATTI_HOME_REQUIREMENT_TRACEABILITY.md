@@ -52,6 +52,25 @@ Status vocabulary is the checklist's. `SERVED VERIFIED` is reserved for evidence
 | H-103-*, H-104-*, H-105-*, H-106-1 | **50 QA publications and 10 QA accounts not created.** Staging currently holds 1 publication, 0 lineage rows, 1 creator. |
 | H-121-1, H-122-1, H-123-1, H-124-1 | Served QA on staging not run — the branch is not merged. |
 
+## 2026-09-13 end-to-end closure trace
+
+| IDs | Source | Automated evidence | Served evidence |
+| --- | --- | --- | --- |
+| H-48-1, H-49-1, H-50-1, H-51-1 | `HomeCreatorPage.tsx`, `useHomeIntentIngredients.ts`, `homeIntentResolutionService.ts` | `HOME-E2E-01..06` | Served A-C required after deploy |
+| H-52-1, H-53-1, H-54-1, H-57-1/2, H-58-1, H-59-1 | `HomeRecipeSection.tsx`, `HomeAmountPrompt.tsx` | `HOME-E2E-02..09,21` | Served B-D required after deploy |
+| H-60-1/2, H-61/62/63 | `HomeRecalculate.tsx` and canonical Constraint Studio | `HOME-E2E-10..15` plus retained interactive-preview suites | Served D required after deploy |
+| H-65-1, H-66-1, H-67-1/2, H-68-1, H-69-1 | `HomePreparation.tsx`, canonical recipe save and Production session/Rescue | `HOME-E2E-14..23` | Served E-F required after deploy |
+| H-76-1, H-77-1, H-79-1, H-80-1, H-81-1, H-83-1/2, H-84-1, H-85-1, H-86-1 | `homeDraftStore.ts`, `HomeCreatorPage.tsx`, `productionSessionStore.ts` | `HOME-E2E-35..40` plus retained routing/draft suites | Refresh/login/payment checks required after deploy |
+| H-87-1/2, H-88-1, H-97-2 | `ShareRecipeDialog.tsx`, `PublishToCommunityDialog.tsx`, `community.ts`, `20260913233000_home_community_recipe_images.sql` | `HOME-E2E-24..34` plus canonical Community contracts | Served G-H required after deploy |
+
+H-60 supersession is explicit: the standalone live-recipe CTA is removed. The
+customer enters the same interactive preview by pressing `Zróbmy to`, and only
+an explicit Apply moves to Preparation. Historical H-60 evidence remains in the
+master checklist.
+
+The earlier “explicitly not done” inventory above is historical base evidence;
+this section supersedes its statements for H-49..69 and H-87..88 only.
+
 ## Infrastructure finding (owner action may be wanted)
 
 `Solver time contracts (isolated)` fails on this PR with

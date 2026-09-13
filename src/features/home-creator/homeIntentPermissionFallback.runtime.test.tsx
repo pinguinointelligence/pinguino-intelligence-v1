@@ -128,11 +128,20 @@ beforeEach(() => {
 });
 
 describe('served G anonymous capability fallback', () => {
-  it('HOME-G-02 preserves public-safe canonical #1 through exact recipe insertion', async () => {
+  it('HOME-G-02 asks on ambiguity and preserves the exact public-safe selection', async () => {
     useHomeDraftStore.getState().addChip(chip);
     const api = renderHook();
 
-    await expect(api.resolveOne(chip)).resolves.toMatchObject({ status: 'added' });
+    await expect(api.resolveOne(chip)).resolves.toMatchObject({ status: 'ambiguous' });
+    expect(useHomeDraftStore.getState().chips[0]?.candidates).toEqual(
+      expect.arrayContaining([{ id: BANANA_ID, name: 'BANANA · Fresh Fruit' }]),
+    );
+    useHomeDraftStore.getState().resolveChip(chip.id, {
+      productId: BANANA_ID,
+      productName: 'BANANA · Fresh Fruit',
+      ambiguous: false,
+      candidates: undefined,
+    });
     const resolved = useHomeDraftStore.getState().chips[0]!;
     expect(resolved).toMatchObject({
       productId: BANANA_ID,

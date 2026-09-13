@@ -74,11 +74,13 @@ describe('Dodaj składnik offers the crown', () => {
 });
 
 describe('Dodaj topping never crowns', () => {
-  it('creates the topping without touching Main', () => {
-    // OWNER OD-3: a new topping starts at 5 % of the current BASE mass.
+  it('asks from the 5% starting amount without touching Main', () => {
+    // OWNER OD-3: the amount prompt starts at 5 % of the current BASE mass;
+    // the topping is created only after the customer confirms that amount.
     expect(addTopping).toContain(
-      '.addTopping(ingredient, defaultHomeToppingGrams(useRecipeStore.getState().items))',
+      'initialGrams: defaultHomeToppingGrams(useRecipeStore.getState().items)',
     );
+    expect(addTopping).toContain("kind: 'topping'");
     expect(addTopping).not.toContain('setMainIngredient');
     expect(addTopping).not.toContain('setLockType');
     // PACKAGE 2A: a topping is never a BASE priority and never ends AUTO.

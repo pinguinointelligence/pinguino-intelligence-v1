@@ -47,7 +47,10 @@ describe('a refused save is explained, not silent', () => {
   });
 
   it('invents no reason of its own — HOME re-decides no entitlement', () => {
-    const handler = page.slice(page.indexOf('onSave={() => {'), page.indexOf('onLetsMakeIt='));
+    const handler = page.slice(
+      page.indexOf('const routePaidAction'),
+      page.indexOf('const persistForAction'),
+    );
     // The routed refusals stay exactly as they were.
     expect(handler).toContain("recipeSave.blocked === 'signin'");
     expect(handler).toContain("recipeSave.blocked === 'plan'");

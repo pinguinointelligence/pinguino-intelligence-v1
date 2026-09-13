@@ -15,10 +15,18 @@
  */
 import { supabase } from '@/lib/supabase/client';
 import { emptyUnconfiguredRead } from '@/services/backendGuard';
+import { getCurrentUser } from '@/services/auth';
 import type { DemoSafeRecipe } from '@/features/community/domain/demoSafeRecipe';
 import type { RankingWindow } from '@/features/community/domain/ranking';
 
 const UNAVAILABLE = 'Gellatti Community is not available in this build.';
+const COMMUNITY_IMAGE_BUCKET = 'community-recipe-images';
+const COMMUNITY_IMAGE_LIMIT = 10 * 1024 * 1024;
+const COMMUNITY_IMAGE_EXT: Readonly<Record<string, string>> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+};
 
 /** How much of a recipe the caller actually received. */
 export type ShareEntitlement = 'shared_recipe_demo' | 'community_public' | 'full';
@@ -209,6 +217,29 @@ export interface PublishInput {
   imageUrl?: string | null;
   category?: string | null;
   tags?: string[];
+}
+
+export async function uploadCommunityPhoto(file: File): Promise<string> {
+  if (!supabase) throw new Error(UNAVAILABLE);
+  const user = await getCurrentUser();
+  if (!user) throw new Error('authentication required');
+  const ext = COMMUNITY_IMAGE_EXT[file.type];
+  if (!ext) throw new Error('Zdjęcie musi być plikiem JPEG, PNG lub WebP.');
+  if (file.size <= 0 || file.size > COMMUNITY_IMAGE_LIMIT) {
+    throw new Error('Zdjęcie musi mieć nie więcej niż 10 MB.');
+  }
+  const id =
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const path = `${user.id}/${id}.${ext}`;
+  const { error } = await supabase.storage
+    .from(COMMUNITY_IMAGE_BUCKET)
+    .upload(path, file, { contentType: file.type, upsert: false });
+  if (error) throw new Error(error.message);
+  const { data } = supabase.storage.from(COMMUNITY_IMAGE_BUCKET).getPublicUrl(path);
+  if (!data.publicUrl) throw new Error('Nie udało się przygotować adresu zdjęcia.');
+  return data.publicUrl;
 }
 
 export async function publishRecipe(input: PublishInput) {

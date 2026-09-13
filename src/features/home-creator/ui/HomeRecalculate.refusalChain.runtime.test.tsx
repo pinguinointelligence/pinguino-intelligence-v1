@@ -128,9 +128,12 @@ describe('OWNER BUGFIX — the served blank refusal, end to end (#287)', () => {
   it("the solver's refusal reaches HOME unchanged, and HOME explains it and offers Wróć", async () => {
     const before = recipeValues();
     await act(async () => {
-      root.render(<HomeRecalculate />);
+      const close = () =>
+        root.render(
+          <HomeRecalculate open={false} context="make" onClose={close} onApplied={close} />,
+        );
+      root.render(<HomeRecalculate open context="make" onClose={close} onApplied={close} />);
     });
-    await act(async () => inDocument('[data-testid="home-recalc-run"]')!.click());
     await vi.waitFor(() => {
       expect(useConstraintStudioStore.getState().recalculationTerminal?.state).toBe(
         'BLOCKED_WITH_EXACT_ACTION',

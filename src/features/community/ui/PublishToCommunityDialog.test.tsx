@@ -10,6 +10,7 @@ import { PublishToCommunityDialog } from './PublishToCommunityDialog';
 
 const service = vi.hoisted(() => ({
   publishRecipe: vi.fn(),
+  uploadCommunityPhoto: vi.fn(),
   claimCreatorProfile: vi.fn(),
 }));
 
@@ -24,12 +25,18 @@ describe('post-production Community invitation', () => {
     document.body.append(host);
     root = createRoot(host);
     service.publishRecipe.mockReset();
+    service.uploadCommunityPhoto.mockReset();
     service.claimCreatorProfile.mockReset();
+    vi.stubGlobal('URL', {
+      ...URL,
+      createObjectURL: vi.fn(() => 'blob:community-photo'),
+    });
   });
 
   afterEach(async () => {
     await act(async () => root.unmount());
     host.remove();
+    vi.unstubAllGlobals();
   });
 
   const render = async (hasCreatorProfile: boolean) => {
@@ -89,5 +96,43 @@ describe('post-production Community invitation', () => {
     expect(service.claimCreatorProfile).toHaveBeenCalledOnce();
     expect(dialog.textContent).toContain('Pokaż swój wynik w Community');
     expect(dialog.querySelector('input')?.getAttribute('value')).toBe('Gelato pistacjowe');
+  });
+
+  it('uploads the maker photo before publishing the exact immutable version', async () => {
+    const imageUrl =
+      'https://staging.example/storage/v1/object/public/community-recipe-images/owner-1/photo.jpg';
+    service.uploadCommunityPhoto.mockResolvedValue(imageUrl);
+    service.publishRecipe.mockResolvedValue({
+      publication_id: 'publication-1',
+      handle: 'marysia',
+      slug: 'gelato-pistacjowe',
+      version_number: 2,
+    });
+    await render(true);
+    const dialog = document.querySelector('[data-testid="publish-community-dialog"]')!;
+    const input = dialog.querySelector<HTMLInputElement>(
+      '[data-testid="publication-photo-gallery"]',
+    )!;
+    const file = new File(['gelato'], 'gelato.jpg', { type: 'image/jpeg' });
+    Object.defineProperty(input, 'files', { configurable: true, value: [file] });
+    await act(async () => input.dispatchEvent(new Event('change', { bubbles: true })));
+
+    const publish = [...dialog.querySelectorAll('button')].find(
+      (button) => button.textContent === 'Opublikuj w Community',
+    )!;
+    await act(async () => {
+      publish.click();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(service.uploadCommunityPhoto).toHaveBeenCalledWith(file);
+    expect(service.publishRecipe).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recipeId: 'recipe-1',
+        versionNumber: 2,
+        imageUrl,
+      }),
+    );
   });
 });
