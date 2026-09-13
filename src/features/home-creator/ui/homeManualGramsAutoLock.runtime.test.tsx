@@ -4,6 +4,8 @@ import { createRoot, type Root } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ownerSameInputRecipe } from '@/features/formulation/__fixtures__/ownerSameInputFixture';
+import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
+import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { HomeRecipeSection } from './HomeRecipeSection';
 
@@ -155,5 +157,64 @@ describe('HOME manual grams auto-lock', () => {
     await confirm();
 
     expectExact(before - 1);
+  });
+
+  it('MGAL-HOME-04 Crown and exact Lock stay independently visible and mutable', async () => {
+    const before = currentLine();
+    const snapshots = productBehaviorTestSnapshots(buildRecipeInput(useRecipeStore.getState()));
+    snapshots[before.id] = {
+      ...snapshots[before.id]!,
+      mainClassification: 'MAIN_ALLOWED',
+    };
+    act(() => useRecipeStore.setState({ productBehaviorSnapshots: snapshots }));
+    act(() => useRecipeStore.getState().setLockType(before.id, 'main', 'home'));
+    await renderSection();
+
+    const control = await openEditor();
+    const plus = control.querySelector<HTMLButtonElement>('button[aria-label$="zwiększ"]')!;
+    await act(async () => plus.click());
+    await confirm();
+
+    expect(currentLine()).toMatchObject({
+      planned_grams: before.planned_grams + 1,
+      lock_type: 'main',
+      grams_constraint: { grams: before.planned_grams + 1 },
+    });
+
+    await renderSection();
+    const crown = host.querySelector<HTMLButtonElement>(`[data-testid="home-crown-${before.id}"]`);
+    const amount = host.querySelector<HTMLElement>(`[data-testid="home-amount-${before.id}"]`);
+    expect(crown?.getAttribute('aria-pressed')).toBe('true');
+    expect(amount?.dataset.locked).toBe('true');
+
+    await act(async () => crown!.click());
+    expect(currentLine()).toMatchObject({
+      planned_grams: before.planned_grams + 1,
+      lock_type: 'grams',
+      grams_constraint: { grams: before.planned_grams + 1 },
+    });
+    await renderSection();
+    const recrown = host.querySelector<HTMLButtonElement>(`[data-testid="home-crown-${before.id}"]`);
+    await act(async () => recrown!.click());
+    expect(currentLine()).toMatchObject({
+      planned_grams: before.planned_grams + 1,
+      lock_type: 'main',
+      grams_constraint: { grams: before.planned_grams + 1 },
+    });
+
+    await renderSection();
+    const menu = host.querySelector<HTMLButtonElement>('[data-testid="home-row-menu"]')!;
+    await act(async () => menu.click());
+    const unlock = host.querySelector<HTMLButtonElement>(
+      `[data-testid="home-row-toggle-lock-${before.id}"]`,
+    )!;
+    expect(unlock.textContent).toContain('Odblokuj ilość');
+    await act(async () => unlock.click());
+
+    expect(currentLine()).toMatchObject({
+      planned_grams: before.planned_grams + 1,
+      lock_type: 'main',
+    });
+    expect(currentLine().grams_constraint).toBeUndefined();
   });
 });

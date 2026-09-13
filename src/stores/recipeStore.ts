@@ -2617,6 +2617,13 @@ export const useRecipeStore = create<RecipeState>()(
           const wasAutoSeeded = state.crownAutoSeededLineIds.includes(lineId);
           const crownedNow = lockType === 'main' && current?.lock_type !== 'main';
           const uncrownedNow = lockType !== 'main' && current?.lock_type === 'main';
+          // HOME's Crown is an independent role control. An exact amount may live
+          // beside Main as a sidecar, so crowning or uncrowning must preserve the
+          // amount constraint and merely expose its own lock type again on uncrown.
+          // Other setLockType callers retain the established mutually-exclusive
+          // lock transition below.
+          const preserveAmountConstraint =
+            surface === 'home' && (lockType === 'main' || current?.lock_type === 'main');
           const seed =
             crownedNow && crownAutoSeedAllowed(surface)
               ? crownOnPlannedGrams(current?.planned_grams ?? 0)
@@ -2625,9 +2632,11 @@ export const useRecipeStore = create<RecipeState>()(
             item.id === lineId
               ? (() => {
                   const withoutRange = { ...item };
-                  delete withoutRange.range_constraint;
-                  delete withoutRange.percent_constraint;
-                  delete withoutRange.grams_constraint;
+                  if (!preserveAmountConstraint) {
+                    delete withoutRange.range_constraint;
+                    delete withoutRange.percent_constraint;
+                    delete withoutRange.grams_constraint;
+                  }
                   if (lockType !== 'main') delete withoutRange.main_ratio_weight;
                   const planned_grams = seed
                     ? seed.plannedGrams
@@ -2643,7 +2652,15 @@ export const useRecipeStore = create<RecipeState>()(
                       : lockType === 'main' && !crownedNow
                         ? withoutRange
                         : withoutCrownBootstrap(withoutRange);
-                  return { ...provenanced, lock_type: lockType, planned_grams };
+                  const nextLockType =
+                    preserveAmountConstraint && lockType !== 'main'
+                      ? provenanced.range_constraint || provenanced.grams_constraint
+                        ? ('grams' as const)
+                        : provenanced.percent_constraint
+                          ? ('percent' as const)
+                          : lockType
+                      : lockType;
+                  return { ...provenanced, lock_type: nextLockType, planned_grams };
                 })()
               : item,
           );

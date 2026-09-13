@@ -116,7 +116,7 @@ describe('the amount editor is the shared PRO control, summoned not resident', (
        silently dropped. The row now names its own authority. */
     expect(row).toContain('setExactGrams(item.id, next)');
     expect(row).toContain('setToppingGrams(topping.id, next)');
-    expect(row).toContain('setLockType(item.id,');
+    expect(row).toContain('setGramLock(item.id,');
   });
 
   it('keeps the padlock and the masking props on the summoned control', () => {
