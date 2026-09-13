@@ -144,6 +144,30 @@ Rules:
   7. potwierdzić, że poprawka nie tworzy drugiego produktu ani nie rozłącza istniejących receptur;
   8. dodać test zabraniający kanonicznego napisu `VANILIA`.
 
+  Rozszerzenie — cukier waniliowy:
+
+  Evidence: Owner QA 2026-09-13. Rekord `PI-ING-000516` ma wewnętrzną nazwę
+  `vanillin_sugar`, a system nie rozpoznaje go jako klientowskiego składnika
+  „cukier waniliowy”. Ten przypadek należy naprawić w kanonicznym źródle
+  nazwy, aliasu lub klasyfikacji po ustaleniu dokładnego miejsca utraty
+  semantyki. Nie wolno maskować problemu wyłącznie tekstem w UI, przepinać
+  rekordu do laski lub mielonej wanilii ani zgadywać jego składu. Naprawa nie
+  może utworzyć drugiego produktu ani zmienić jego `PI-ING`, parametrów
+  technologicznych, kompozycji lub zachowania Engine.
+
+  Do przetestowania — wykonanie wymaga osobnej dyspozycji Ownera:
+
+  1. `SOL-051-QA-001 · NOT_TESTED` — wyszukanie lub rozpoznanie nazwy
+     `vanillin sugar`, klucza `vanillin_sugar` albo polskiej nazwy „cukier
+     waniliowy” prowadzi do istniejącego rekordu `PI-ING-000516`.
+  2. `SOL-051-QA-002 · NOT_TESTED` — na powierzchniach klienta HOME i PRO
+     rekord jest przedstawiany jako „cukier waniliowy”; surowy klucz
+     `vanillin_sugar` ani błędna kanoniczna pisownia `VANILIA` nie są
+     wyświetlane klientowi.
+  3. `SOL-051-QA-003 · NOT_TESTED` — zapis i ponowne otwarcie receptury
+     zachowują ten sam rekord `PI-ING-000516`, nie tworzą duplikatu i nie
+     rozłączają istniejących receptur.
+
   `SOL-051 STATUS: TODO`; `OWNER ACCEPTED: NO`.
 
 ## SOL-014 migration dependency checkpoint — 2026-09-06
@@ -268,6 +292,9 @@ This checkpoint extends the existing SOL-031; it does not allocate another SOL I
   products and voluntary verification.
 - SOL-051: appended from the Owner finding of 2026-09-07 for the canonical
   Polish and English vanilla names.
+- SOL-051: extended by Owner QA 2026-09-13 with the existing
+  `PI-ING-000516` / `vanillin_sugar` recognition failure and three explicitly
+  unexecuted QA cases; no new SOL ID was allocated.
 - Search of repository files, all Git refs, retained attachments, and retained task
   checkpoints found no assigned main SOL ID above SOL-051. SOL-052 is therefore the
   next free ID at this checkpoint.
