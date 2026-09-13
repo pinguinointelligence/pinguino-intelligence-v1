@@ -120,11 +120,6 @@ const expectExact = (grams: number) => {
   });
 };
 
-const lockCurrentAmount = () => {
-  const item = currentLine();
-  useRecipeStore.getState().setGramLock(item.id, item.planned_grams);
-};
-
 describe('HOME manual grams auto-lock', () => {
   it('MGAL-HOME-01 direct numeric commit turns Lock on', async () => {
     await renderSection();
@@ -221,49 +216,5 @@ describe('HOME manual grams auto-lock', () => {
       lock_type: 'main',
     });
     expect(currentLine().grams_constraint).toBeUndefined();
-  });
-
-  it('MGLU-HOME-01 Lock ON keeps grams + active and updates the exact Lock', async () => {
-    lockCurrentAmount();
-    const before = currentLine().planned_grams;
-    await renderSection();
-    const control = await openEditor();
-    const plus = control.querySelector<HTMLButtonElement>('button[aria-label$="zwiększ"]')!;
-
-    expect(plus.disabled).toBe(false);
-    await act(async () => plus.click());
-    await confirm();
-
-    expectExact(before + 1);
-  });
-
-  it('MGLU-HOME-02 Lock ON keeps grams − active and updates the exact Lock', async () => {
-    lockCurrentAmount();
-    const before = currentLine().planned_grams;
-    await renderSection();
-    const control = await openEditor();
-    const minus = control.querySelector<HTMLButtonElement>('button[aria-label$="zmniejsz"]')!;
-
-    expect(minus.disabled).toBe(false);
-    await act(async () => minus.click());
-    await confirm();
-
-    expectExact(before - 1);
-  });
-
-  it('MGLU-HOME-03 Lock ON keeps direct grams input active and updates the exact Lock', async () => {
-    lockCurrentAmount();
-    const next = currentLine().planned_grams + 13;
-    await renderSection();
-    const control = await openEditor();
-    const input = control.querySelector<HTMLInputElement>('[role="spinbutton"]')!;
-
-    expect(input.disabled).toBe(false);
-    await act(async () => input.focus());
-    await act(async () => type(input, String(next)));
-    await act(async () => input.blur());
-    await confirm();
-
-    expectExact(next);
   });
 });

@@ -70,18 +70,18 @@ describe('direct percentage editing', () => {
     expect(cream.planned_grams).toBe(150);
   });
 
-  it('lets the user replace the selected exact lock but still fails closed for physical lines', () => {
+  it('fails closed for exact locks and physical lines', () => {
     const input = ownerSameInputRecipe();
-    const edit = buildDirectPercentEdit(
-      input,
-      {
-        byLineId: { 'owner:milk_3_5': { mode: 'locked', grams: 600 } },
-      },
-      'owner:milk_3_5',
-      59,
-    );
-    expect(edit.ok).toBe(true);
-    if (edit.ok) expect(edit.gramsByLineId['owner:milk_3_5']).toBe(590);
+    expect(
+      buildDirectPercentEdit(
+        input,
+        {
+          byLineId: { 'owner:milk_3_5': { mode: 'locked', grams: 600 } },
+        },
+        'owner:milk_3_5',
+        59,
+      ),
+    ).toMatchObject({ ok: false, code: 'protected_line' });
     input.items.find((item) => item.id === 'owner:milk_3_5')!.actual_grams = 10;
     expect(buildDirectPercentEdit(input, NONE, 'owner:milk_3_5', 59)).toMatchObject({
       ok: false,

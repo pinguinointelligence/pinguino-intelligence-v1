@@ -31,9 +31,6 @@ import { useRecipeStore } from '@/stores/recipeStore';
 import { IngredientBuilder } from './IngredientBuilder';
 import { useIngredientTableUxStore } from './ingredientTableUxStore';
 
-(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT =
-  true;
-
 const MILK = starterLine('milk_3_5');
 
 const mount = () => {
@@ -104,83 +101,11 @@ const typeGrams = (container: HTMLElement, lineId: string, grams: number) => {
   act(() => input!.blur());
 };
 
-const quantityControl = (container: HTMLElement, lineId: string, kind: 'grams' | 'percent') => {
-  const control = container.querySelector<HTMLElement>(
-    `[data-testid="row-${kind}-control-${lineId}"]`,
-  );
-  expect(control).not.toBeNull();
-  return control!;
-};
-
-const nudgePercent = (
-  container: HTMLElement,
-  lineId: string,
-  direction: 'zwiększ' | 'zmniejsz',
-) => {
-  const button = quantityControl(container, lineId, 'percent').querySelector<HTMLButtonElement>(
-    `button[aria-label$="${direction}"]`,
-  );
-  expect(button).not.toBeNull();
-  act(() => button!.dispatchEvent(new MouseEvent('click', { bubbles: true })));
-};
-
-const typePercent = (container: HTMLElement, lineId: string, percent: number) => {
-  const input = quantityControl(container, lineId, 'percent').querySelector<HTMLInputElement>(
-    '[role="spinbutton"]',
-  );
-  expect(input).not.toBeNull();
-  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
-  act(() => input!.focus());
-  act(() => {
-    setter?.call(input, String(percent));
-    input!.dispatchEvent(new Event('input', { bubbles: true }));
-  });
-  act(() => input!.blur());
-};
-
 const notice = (container: HTMLElement): string | null =>
   container.querySelector('[data-testid="product-picker-notice"]')?.textContent ?? null;
 
 const plannedGrams = (lineId: string): number =>
   useRecipeStore.getState().items.find((item) => item.id === lineId)!.planned_grams;
-
-const recipeLine = (lineId: string) =>
-  useRecipeStore.getState().items.find((item) => item.id === lineId)!;
-
-const lockCurrentGrams = (lineId: string) => {
-  useRecipeStore.getState().setGramLock(lineId, plannedGrams(lineId));
-};
-
-const lockCurrentPercent = (lineId: string) => {
-  const state = useRecipeStore.getState();
-  useRecipeStore
-    .getState()
-    .setPercentLock(lineId, (plannedGrams(lineId) / state.target_batch_grams) * 100);
-};
-
-const expectGramLock = (lineId: string, grams: number) => {
-  expect(recipeLine(lineId)).toMatchObject({
-    planned_grams: grams,
-    lock_type: 'grams',
-    grams_constraint: { grams },
-  });
-  expect(useConstraintStudioStore.getState().constraints.byLineId[lineId]).toEqual({
-    mode: 'locked',
-    grams,
-  });
-};
-
-const expectPercentLock = (lineId: string, percent: number) => {
-  expect(recipeLine(lineId)).toMatchObject({
-    lock_type: 'percent',
-    percent_constraint: { percent },
-  });
-  expect(recipeLine(lineId).grams_constraint).toBeUndefined();
-  expect(useConstraintStudioStore.getState().constraints.byLineId[lineId]).toEqual({
-    mode: 'percent',
-    percent,
-  });
-};
 
 describe('grams editing on an unresolved product-behavior workspace', () => {
   beforeEach(() => {
@@ -298,156 +223,6 @@ describe('grams editing on an unresolved product-behavior workspace', () => {
       lock_type: 'grams',
       grams_constraint: { grams: before - 1 },
     });
-    act(() => root.unmount());
-    container.remove();
-  });
-
-  it('MGLU-01 Lock ON + grams + applies the user value and keeps Lock ON', () => {
-    lockCurrentGrams(MILK);
-    const before = plannedGrams(MILK);
-    const { container, root } = mount();
-    const plus = quantityControl(container, MILK, 'grams').querySelector<HTMLButtonElement>(
-      'button[aria-label$="zwiększ"]',
-    )!;
-
-    expect(plus.disabled).toBe(false);
-    incrementGrams(container, MILK);
-
-    expectGramLock(MILK, before + 1);
-    act(() => root.unmount());
-    container.remove();
-  });
-
-  it('MGLU-02 Lock ON + grams − applies the user value and keeps Lock ON', () => {
-    lockCurrentGrams(MILK);
-    const before = plannedGrams(MILK);
-    const { container, root } = mount();
-    const minus = quantityControl(container, MILK, 'grams').querySelector<HTMLButtonElement>(
-      'button[aria-label$="zmniejsz"]',
-    )!;
-
-    expect(minus.disabled).toBe(false);
-    decrementGrams(container, MILK);
-
-    expectGramLock(MILK, before - 1);
-    act(() => root.unmount());
-    container.remove();
-  });
-
-  it('MGLU-03 Lock ON + direct grams input applies the user value and keeps Lock ON', () => {
-    lockCurrentGrams(MILK);
-    const next = plannedGrams(MILK) + 17;
-    const { container, root } = mount();
-    const input = quantityControl(container, MILK, 'grams').querySelector<HTMLInputElement>(
-      '[role="spinbutton"]',
-    )!;
-
-    expect(input.disabled).toBe(false);
-    typeGrams(container, MILK, next);
-
-    expectGramLock(MILK, next);
-    act(() => root.unmount());
-    container.remove();
-  });
-
-  it('MGLU-04 Lock ON + percent + applies the user share and keeps Lock ON', () => {
-    lockCurrentPercent(MILK);
-    const before = recipeLine(MILK).percent_constraint!.percent;
-    const next = Number((before + 0.1).toFixed(1));
-    const { container, root } = mount();
-    const plus = quantityControl(container, MILK, 'percent').querySelector<HTMLButtonElement>(
-      'button[aria-label$="zwiększ"]',
-    )!;
-
-    expect(plus.disabled).toBe(false);
-    nudgePercent(container, MILK, 'zwiększ');
-
-    expectPercentLock(MILK, next);
-    expect(plannedGrams(MILK)).toBeCloseTo((next / 100) * 1000, 10);
-    act(() => root.unmount());
-    container.remove();
-  });
-
-  it('MGLU-05 Lock ON + percent − applies the user share and keeps Lock ON', () => {
-    lockCurrentPercent(MILK);
-    const before = recipeLine(MILK).percent_constraint!.percent;
-    const next = Number((before - 0.1).toFixed(1));
-    const { container, root } = mount();
-    const minus = quantityControl(container, MILK, 'percent').querySelector<HTMLButtonElement>(
-      'button[aria-label$="zmniejsz"]',
-    )!;
-
-    expect(minus.disabled).toBe(false);
-    nudgePercent(container, MILK, 'zmniejsz');
-
-    expectPercentLock(MILK, next);
-    expect(plannedGrams(MILK)).toBeCloseTo((next / 100) * 1000, 10);
-    act(() => root.unmount());
-    container.remove();
-  });
-
-  it('MGLU-06 Lock ON + direct percent input applies the user share and keeps Lock ON', () => {
-    lockCurrentPercent(MILK);
-    const next = recipeLine(MILK).percent_constraint!.percent - 2;
-    const { container, root } = mount();
-    const input = quantityControl(container, MILK, 'percent').querySelector<HTMLInputElement>(
-      '[role="spinbutton"]',
-    )!;
-
-    expect(input.disabled).toBe(false);
-    typePercent(container, MILK, next);
-
-    expectPercentLock(MILK, next);
-    expect(plannedGrams(MILK)).toBeCloseTo((next / 100) * 1000, 10);
-    act(() => root.unmount());
-    container.remove();
-  });
-
-  it('MGLU-07 switching between manual grams and percent edits never drops Lock', () => {
-    lockCurrentGrams(MILK);
-    let mounted = mount();
-
-    incrementGrams(mounted.container, MILK);
-    expect(recipeLine(MILK).grams_constraint).toEqual({ grams: plannedGrams(MILK) });
-    act(() => mounted.root.unmount());
-    mounted.container.remove();
-
-    mounted = mount();
-    const percentBefore = Number(
-      quantityControl(mounted.container, MILK, 'percent').querySelector<HTMLInputElement>(
-        '[role="spinbutton"]',
-      )!.value,
-    );
-    nudgePercent(mounted.container, MILK, 'zwiększ');
-    const writtenPercent = recipeLine(MILK).percent_constraint?.percent;
-    expect(writtenPercent).toBeDefined();
-    expect(writtenPercent).toBeGreaterThanOrEqual(percentBefore);
-    expectPercentLock(MILK, writtenPercent!);
-    act(() => mounted.root.unmount());
-    mounted.container.remove();
-
-    mounted = mount();
-    decrementGrams(mounted.container, MILK);
-    expectGramLock(MILK, plannedGrams(MILK));
-
-    act(() => mounted.root.unmount());
-    mounted.container.remove();
-  });
-
-  it('MGLU-08 grams and percent edits leave the Crown state unchanged', () => {
-    useRecipeStore.getState().setLockType(MILK, 'main');
-    lockCurrentGrams(MILK);
-    const { container, root } = mount();
-
-    incrementGrams(container, MILK);
-    expect(recipeLine(MILK).lock_type).toBe('main');
-    expect(recipeLine(MILK).grams_constraint).toEqual({ grams: plannedGrams(MILK) });
-
-    nudgePercent(container, MILK, 'zmniejsz');
-    expect(recipeLine(MILK).lock_type).toBe('main');
-    expect(recipeLine(MILK).percent_constraint).toBeDefined();
-    expect(recipeLine(MILK).grams_constraint).toBeUndefined();
-
     act(() => root.unmount());
     container.remove();
   });

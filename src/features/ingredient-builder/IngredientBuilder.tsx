@@ -329,11 +329,7 @@ export function IngredientBuilder({
         draft.excludedIngredientIds,
       );
       if (next.ok) {
-        // Lock protects the value FROM automatic changes, never from the
-        // customer. A manual percentage edit atomically replaces the selected
-        // line's previous exact mode with this new exact percentage while the
-        // already-computed mutable companions absorb the mass difference.
-        setPlannedGramsVector(next.gramsByLineId, { lineId, percent });
+        setPlannedGramsVector(next.gramsByLineId);
         markDoseUserSet(lineId);
       }
     },

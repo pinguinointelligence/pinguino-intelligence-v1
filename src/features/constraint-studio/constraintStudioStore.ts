@@ -523,18 +523,6 @@ export function reconcileConstraints(
       byLineId[lineId] = { mode: 'locked', grams: savedGrams };
       continue;
     }
-    const savedPercent = item.percent_constraint?.percent;
-    if (
-      savedPercent !== undefined &&
-      Number.isFinite(savedPercent) &&
-      savedPercent >= 0 &&
-      savedPercent <= 100
-    ) {
-      if (constraint.mode !== 'percent' || !Object.is(constraint.percent, savedPercent))
-        changed = true;
-      byLineId[lineId] = { mode: 'percent', percent: savedPercent };
-      continue;
-    }
     byLineId[lineId] = constraint;
   }
   for (const item of items) {

@@ -55,9 +55,7 @@ export function useLineLockControls(): LineLockControls {
         ariaLabel: `${name} — odblokuj udział procentowy`,
         title: `Stały udział finalnej partii: ${percent.toFixed(1)}%`,
         badge: 'UDZIAŁ',
-        // The lock protects this value from Solver/system writes. It never
-        // disables the customer's manual % or grams controls.
-        plannedDisabled: false,
+        plannedDisabled: true,
         toggleDisabled: false,
         onToggle: () => toggleLock(item.id),
         ...percentView,
@@ -72,9 +70,7 @@ export function useLineLockControls(): LineLockControls {
         ariaLabel: copy.lock.unlockAria(name),
         title: copy.lock.lockedTitle(gramsLabel),
         badge: copy.lock.lockedBadge,
-        // The lock protects this value from Solver/system writes. It never
-        // disables the customer's manual % or grams controls.
-        plannedDisabled: false,
+        plannedDisabled: true,
         toggleDisabled: false,
         onToggle: () => toggleLock(item.id),
         ...percentView,

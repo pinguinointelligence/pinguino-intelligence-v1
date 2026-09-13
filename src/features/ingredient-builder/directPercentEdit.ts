@@ -43,14 +43,13 @@ export function buildDirectPercentEdit(
   }
   const selected = input.items.find((item) => item.id === lineId);
   if (!selected) return { ok: false, code: 'line_missing' };
-  const selectedConstraint = set.byLineId[selected.id];
-  const selectedHasEditableExactLock =
-    selectedConstraint?.mode === 'locked' || selectedConstraint?.mode === 'percent';
   if (
     selected.actual_grams !== null ||
     selected.lock_type === 'already_added' ||
     selected.lock_type === 'required' ||
-    (protectedConstraint(set, selected.id) && !selectedHasEditableExactLock)
+    selected.lock_type === 'grams' ||
+    selected.lock_type === 'percent' ||
+    protectedConstraint(set, selected.id)
   ) {
     return { ok: false, code: 'protected_line' };
   }
@@ -65,7 +64,7 @@ export function buildDirectPercentEdit(
     changed.some(
       (item) =>
         item.actual_grams !== null ||
-        (item.id !== selected.id && protectedConstraint(set, item.id)) ||
+        protectedConstraint(set, item.id) ||
         resolveFunctionalRole(item.ingredient) === 'stabilizer' ||
         excluded.has(canonicalIngredientId(item.ingredient)),
     )

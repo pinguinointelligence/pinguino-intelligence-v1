@@ -571,31 +571,3 @@ ledger, and two different wrong numbers (97% and 36%) were quoted to the owner o
 day. Confirmed by `git log -1 -- reports/GELLATTI_HOME_MASTER_CHECKLIST.md` against the
 merge history of `origin/staging`. NOT fixed here beyond this reconciliation — the row
 stays `IN PROGRESS` until a phase closes with the ledger updated in the same PR.
-
----
-
-## OWNER CORRECTION 2026-09-13 — Lock protects from system changes, not user edits
-
-Lock remains ON while the customer directly changes grams or percent. The new manual
-value replaces the selected line's exact constraint; system/Solver/Recalculate/machine/
-batch paths retain their existing protected-value behavior. Crown/Main stays independent.
-HOME intentionally has no percent controls, so its parity cases cover all three HOME gram
-interactions; the six grams/percent cases run on the shared PRO desktop authority, with a
-separate mobile presentation guard.
-
-| Test ID | Regression contract | Automated evidence | Status |
-| --- | --- | --- | --- |
-| MGLU-01 | Lock ON + grams + | `unresolvedWorkspaceGramsEdit.test.tsx` | TESTED |
-| MGLU-02 | Lock ON + grams − | `unresolvedWorkspaceGramsEdit.test.tsx` | TESTED |
-| MGLU-03 | Lock ON + direct grams input | `unresolvedWorkspaceGramsEdit.test.tsx` | TESTED |
-| MGLU-04 | Lock ON + percent + | `unresolvedWorkspaceGramsEdit.test.tsx` | TESTED |
-| MGLU-05 | Lock ON + percent − | `unresolvedWorkspaceGramsEdit.test.tsx` | TESTED |
-| MGLU-06 | Lock ON + direct percent input | `unresolvedWorkspaceGramsEdit.test.tsx` | TESTED |
-| MGLU-07 | Every manual unit transition keeps Lock ON | `unresolvedWorkspaceGramsEdit.test.tsx` | TESTED |
-| MGLU-08 | Grams/percent edits leave Crown unchanged | `unresolvedWorkspaceGramsEdit.test.tsx` | TESTED |
-| MGLU-09 | Recalculate cannot overwrite the newly edited locked value | `interactiveRecalculationFlow.test.ts` | TESTED |
-| MGLU-10 | Explicit Unlock returns the line to solver adjustment | `interactiveRecalculationFlow.test.ts` | TESTED |
-| MGLU-HOME-01 | HOME Lock ON + grams + | `homeManualGramsAutoLock.runtime.test.tsx` | TESTED |
-| MGLU-HOME-02 | HOME Lock ON + grams − | `homeManualGramsAutoLock.runtime.test.tsx` | TESTED |
-| MGLU-HOME-03 | HOME Lock ON + direct grams input | `homeManualGramsAutoLock.runtime.test.tsx` | TESTED |
-| MGLU-PRO-MOBILE-01 | PRO mobile keeps locked grams and percent controls active | `IngredientTableUx.test.tsx` | TESTED |

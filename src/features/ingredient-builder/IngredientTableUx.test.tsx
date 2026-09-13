@@ -289,32 +289,6 @@ describe('Recipe ingredient table — quiet primary surface', () => {
     expect(sheet).toContain('data-placement="bottom"');
   });
 
-  it('MGLU-PRO-MOBILE-01 keeps locked percent and grams controls user-editable', () => {
-    const sheet = renderToStaticMarkup(
-      <MobileIngredientSheet
-        item={{ ...baseItem, lock_type: 'grams' }}
-        percent={67}
-        actions={{ ...actions(), setPlannedPercent: vi.fn() }}
-        lock={{ ...lock(true), percentLocked: false }}
-        meta={DEFAULT_INGREDIENT_ROW_META}
-        gramsLocked
-        view="actions"
-        onClose={vi.fn()}
-        panelContent={null}
-        dataContent={null}
-      />,
-    );
-    const percentInput =
-      sheet.match(/<input[^>]*aria-label="Milk 3\.5 % — udział w partii"[^>]*>/)?.[0] ?? '';
-    const gramsInput =
-      sheet.match(/<input[^>]*aria-label="Milk 3\.5 % — ilość w g"[^>]*>/)?.[0] ?? '';
-
-    expect(percentInput).not.toBe('');
-    expect(gramsInput).not.toBe('');
-    expect(percentInput).not.toContain(' disabled=""');
-    expect(gramsInput).not.toContain(' disabled=""');
-  });
-
   it('keeps a legacy Add-on line visible as an ambiguity, never as a new Base role', () => {
     const html = renderRow(baseItem, { ...DEFAULT_INGREDIENT_ROW_META, role: 'addition' });
     expect(html).toContain('aria-label="Dawny Dodatek — wymaga decyzji"');
@@ -417,10 +391,7 @@ describe('Recipe ingredient table — locks, units and dormant availability meta
     expect(gramButton).toContain('<svg aria-hidden="true"');
     expect(gramButton).not.toContain('<span aria-hidden="true">g</span>');
     expect(gramButton).not.toContain('status-error');
-    const gramsInput =
-      html.match(/<input[^>]*aria-label="Milk 3\.5 % — ilość w g"[^>]*>/)?.[0] ?? '';
-    expect(gramsInput).not.toBe('');
-    expect(gramsInput).not.toContain(' disabled=""');
+    expect(html).toMatch(/<input[^>]*disabled/);
     expect(html).toContain('data-control-locked="true"');
     expect(html).toContain('data-control-capacity="10000g"');
   });

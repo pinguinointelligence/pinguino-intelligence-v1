@@ -126,7 +126,7 @@ describe('IngredientRow padlock', () => {
     removeItem: noop,
   };
 
-  it('locked state: Polish aria, integrated lock segment and user-editable input', () => {
+  it('locked state: Polish aria, integrated lock segment and disabled input', () => {
     const html = render(
       <IngredientRow
         item={item}
@@ -138,7 +138,7 @@ describe('IngredientRow padlock', () => {
           ariaLabel: copy.lock.unlockAria('Sucrose'),
           title: copy.lock.lockedTitle('130 g'),
           badge: copy.lock.lockedBadge,
-          plannedDisabled: false,
+          plannedDisabled: true,
           toggleDisabled: false,
           onToggle: noop,
         }}
@@ -147,9 +147,7 @@ describe('IngredientRow padlock', () => {
     expect(html).toContain('Sucrose — Gramatura zablokowana. Odblokuj');
     expect(html).toContain('Gramatura zablokowana: 130 g');
     expect(html).toContain('data-control-locked="true"');
-    const gramsInput = html.match(/<input[^>]*aria-label="Sucrose — ilość w g"[^>]*>/)?.[0] ?? '';
-    expect(gramsInput).not.toBe('');
-    expect(gramsInput).not.toContain(' disabled=""');
+    expect(html).toContain('disabled');
     expect(html).toContain('aria-pressed="true"');
   });
 
