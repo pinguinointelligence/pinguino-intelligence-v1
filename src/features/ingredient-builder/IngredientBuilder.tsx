@@ -14,6 +14,7 @@ import { useLineLockControls } from '@/features/constraint-studio/useLineLockCon
 import {
   createSubstitutionPreviewWithServerAuthority,
   selectCanonicalDraft,
+  useConstraintStudioStore,
 } from '@/features/constraint-studio/constraintStudioStore';
 import { NonProductionBadge } from '@/features/design-review/NonProductionMarker';
 import { firstCanonicalBaseItem, useRecipeStore } from '@/stores/recipeStore';
@@ -321,15 +322,51 @@ export function IngredientBuilder({
     ...coreActions,
     setPlannedPercent: (lineId, percent) => {
       const draft = selectCanonicalDraft();
+      const selected = draft.input.items.find((item) => item.id === lineId);
+      const selectedConstraint = draft.constraints.byLineId[lineId];
+      const selectedConstraintIsExact =
+        selectedConstraint?.mode === 'locked' || selectedConstraint?.mode === 'percent';
+      const preserveExactLock =
+        selected?.lock_type === 'grams' ||
+        selected?.lock_type === 'percent' ||
+        selectedConstraintIsExact;
+      const editableInput =
+        preserveExactLock &&
+        (selected?.lock_type === 'grams' || selected?.lock_type === 'percent')
+          ? {
+              ...draft.input,
+              items: draft.input.items.map((item) =>
+                item.id === lineId ? { ...item, lock_type: 'unlocked' as const } : item,
+              ),
+            }
+          : draft.input;
+      const editableConstraints = selectedConstraintIsExact
+        ? {
+            byLineId: { ...draft.constraints.byLineId, [lineId]: { mode: 'ai' as const } },
+          }
+        : draft.constraints;
       const next = buildDirectPercentEdit(
-        draft.input,
-        draft.constraints,
+        editableInput,
+        editableConstraints,
         lineId,
         percent,
         draft.excludedIngredientIds,
       );
       if (next.ok) {
+        const constraintStudio = preserveExactLock
+          ? useConstraintStudioStore.getState()
+          : null;
+        if (constraintStudio) {
+          if (selectedConstraint !== undefined && selectedConstraint.mode !== 'ai') {
+            constraintStudio.clearConstraint(lineId);
+          } else if (selected?.lock_type === 'percent') {
+            useRecipeStore.getState().setPercentLock(lineId, null);
+          } else {
+            useRecipeStore.getState().setGramLock(lineId, null);
+          }
+        }
         setPlannedGramsVector(next.gramsByLineId);
+        constraintStudio?.togglePercentLock(lineId);
         markDoseUserSet(lineId);
       }
     },
