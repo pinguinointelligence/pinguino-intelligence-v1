@@ -57,12 +57,38 @@ describe('the Gellatti library is offered to every customer — READY recipes on
 });
 
 describe('recipes map to candidates by CANONICAL identity, not by name', () => {
-  it('carries only Mapper identities, each identity once', () => {
+  it('carries only Mapper identities, each identity-and-role once', () => {
     for (const recipe of OFFICIAL_RECIPES) {
-      const ids = officialRecipeIngredients(recipe).map((ingredient) => ingredient.productId);
+      const ingredients = officialRecipeIngredients(recipe);
+      const ids = ingredients.map((ingredient) => ingredient.productId);
       expect(ids.every((id) => id.startsWith('PI-ING-'))).toBe(true);
-      expect(new Set(ids).size).toBe(ids.length);
+      expect(
+        new Set(ingredients.map((ingredient) => `${ingredient.productId}:${ingredient.role}`)).size,
+      ).toBe(ingredients.length);
     }
+  });
+
+  it('[GRP-HOME-01] keeps package add-ons as topping roles and pending art as null', () => {
+    const recipe = OFFICIAL_RECIPES.find(
+      (entry) => entry.recipeId === 'icon-pistachio-white-chocolate-praline',
+    )!;
+    const ingredients = officialRecipeIngredients(recipe);
+    expect(ingredients).toContainEqual({
+      productId: 'PI-ING-000220',
+      role: 'topping',
+      displayName: 'IRCA Joycream White, kod 01011063',
+    });
+    expect(ingredients).toContainEqual({
+      productId: 'PI-ING-000458',
+      role: 'ingredient',
+      displayName: 'Sól',
+    });
+    expect(ingredients).toContainEqual({
+      productId: 'PI-ING-000458',
+      role: 'topping',
+      displayName: 'Sól do pistacjowego dodatku',
+    });
+    expect(officialRecipeToCandidate(recipe)?.imageUrl).toBeNull();
   });
 
   it('carries the profile, the owner image and Gellatti attribution', () => {

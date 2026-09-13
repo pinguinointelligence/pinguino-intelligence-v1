@@ -4,8 +4,8 @@ import { describe, expect, it } from 'vitest';
 import { parseCsv } from '@/lib/csv';
 import {
   OFFICIAL_COLLECTIONS,
-  OFFICIAL_RECIPES,
-  OFFICIAL_RECIPE_SOURCE_SHA256,
+  OFFICIAL_BASELINE_RECIPES,
+  OFFICIAL_BASELINE_RECIPE_SOURCE_SHA256,
   officialRecipeById,
   officialRecipeImage,
   officialRecipeUseState,
@@ -18,8 +18,9 @@ import {
 const here = (file: string) => resolve(process.cwd(), 'src/data/recipes/official', file);
 const manifest = JSON.parse(readFileSync(here('officialRecipeLibrary.manifest.json'), 'utf8'));
 const generatedSource = readFileSync(here('officialRecipeLibrary.generated.ts'), 'utf8');
-const lines = OFFICIAL_RECIPES.flatMap((recipe) => recipe.lines);
-const byNumber = (number: number) => OFFICIAL_RECIPES.find((recipe) => recipe.number === number)!;
+const AUDIT_RECIPES = OFFICIAL_BASELINE_RECIPES;
+const lines = AUDIT_RECIPES.flatMap((recipe) => recipe.lines);
+const byNumber = (number: number) => AUDIT_RECIPES.find((recipe) => recipe.number === number)!;
 const countBy = <T>(values: readonly T[]) =>
   values.reduce<Record<string, number>>((acc, value) => {
     acc[String(value)] = (acc[String(value)] ?? 0) + 1;
@@ -28,22 +29,22 @@ const countBy = <T>(values: readonly T[]) =>
 
 describe('official recipe import audit (§25)', () => {
   it('imports exactly 177 recipes and 1510 lines from the owner workbook', () => {
-    expect(OFFICIAL_RECIPE_SOURCE_SHA256).toBe(
+    expect(OFFICIAL_BASELINE_RECIPE_SOURCE_SHA256).toBe(
       'a85e32a42a8a2e18a375647f8606c3d20c77f7f37a178273f557445579c76dfb',
     );
-    expect(OFFICIAL_RECIPES).toHaveLength(177);
+    expect(AUDIT_RECIPES).toHaveLength(177);
     expect(lines).toHaveLength(1510);
-    expect(OFFICIAL_RECIPES.map((recipe) => recipe.number)).toEqual(
+    expect(AUDIT_RECIPES.map((recipe) => recipe.number)).toEqual(
       Array.from({ length: 177 }, (_, index) => index + 1),
     );
-    expect(new Set(OFFICIAL_RECIPES.map((recipe) => recipe.recipeId)).size).toBe(177);
-    for (const recipe of OFFICIAL_RECIPES) {
+    expect(new Set(AUDIT_RECIPES.map((recipe) => recipe.recipeId)).size).toBe(177);
+    for (const recipe of AUDIT_RECIPES) {
       expect(recipe.photoId).toBe(`GEL-${String(recipe.number).padStart(3, '0')}`);
     }
   });
 
   it('keeps every source formula at exactly 1000 g, lines in source order', () => {
-    for (const recipe of OFFICIAL_RECIPES) {
+    for (const recipe of AUDIT_RECIPES) {
       expect(recipe.sourceTotalGrams).toBe(1000);
       expect(recipe.lines.reduce((sum, line) => sum + line.grams, 0)).toBe(1000);
       expect(recipe.lines.map((line) => line.line)).toEqual(
@@ -71,7 +72,7 @@ describe('official recipe import audit (§25)', () => {
       technical_bases: [12, 166, 177],
     } as const;
     for (const collection of OFFICIAL_COLLECTIONS) {
-      const recipes = officialRecipesInCollection(collection.id);
+      const recipes = AUDIT_RECIPES.filter((recipe) => recipe.collection === collection.id);
       const [count, first, last] = expected[collection.id];
       expect(recipes).toHaveLength(count);
       expect(recipes[0]!.number).toBe(first);
@@ -87,7 +88,7 @@ describe('official recipe import audit (§25)', () => {
     expect(brak).toHaveLength(52);
     expect(brak.filter((line) => line.identity.kind === 'dynamic_main')).toHaveLength(3);
     expect(
-      OFFICIAL_RECIPES.filter((recipe) => recipe.lines.some((l) => l.identity.kind !== 'mapped')),
+      AUDIT_RECIPES.filter((recipe) => recipe.lines.some((l) => l.identity.kind !== 'mapped')),
     ).toHaveLength(41);
     const pis = new Set(
       mapped.map((line) =>
@@ -135,7 +136,7 @@ describe('official recipe import audit (§25)', () => {
   });
 
   it('preserves every source status instead of promoting recipes', () => {
-    expect(countBy(OFFICIAL_RECIPES.map((recipe) => recipe.sourceStatus))).toEqual({
+    expect(countBy(AUDIT_RECIPES.map((recipe) => recipe.sourceStatus))).toEqual({
       NEW_TO_ENGINE: 159,
       ENGINE_BASE_VALID_BLOCKED: 5,
       CORRECTION_TO_ENGINE: 5,
@@ -157,7 +158,7 @@ describe('official recipe import audit (§25)', () => {
   });
 
   it('keeps the degassing flag and the source process notices verbatim (§19)', () => {
-    const degassing = OFFICIAL_RECIPES.filter((recipe) => recipe.degassingRequired);
+    const degassing = AUDIT_RECIPES.filter((recipe) => recipe.degassingRequired);
     expect(degassing.map((recipe) => recipe.number)).toEqual([
       107, 109, 110, 111, 115, 116, 119, 120, 126, 129,
     ]);
@@ -165,10 +166,10 @@ describe('official recipe import audit (§25)', () => {
       expect(recipe.processNotice).toContain('Odgazuj napój przed użyciem.');
     }
     expect(
-      OFFICIAL_RECIPES.filter((recipe) => recipe.processNotice === null).map((r) => r.number),
+      AUDIT_RECIPES.filter((recipe) => recipe.processNotice === null).map((r) => r.number),
     ).toEqual([156, 158, 160]);
     expect(
-      OFFICIAL_RECIPES.filter((recipe) =>
+      AUDIT_RECIPES.filter((recipe) =>
         recipe.processNotice?.startsWith('Tara — składnik podlega obróbce cieplnej.'),
       ),
     ).toHaveLength(174);
@@ -255,7 +256,7 @@ describe('BRAK stays unresolved (§27)', () => {
 
   it('lets the 136 recipes without BRAK or a scaffold Main be used', () => {
     expect(
-      OFFICIAL_RECIPES.filter((recipe) => officialRecipeUseState(recipe).kind === 'ready'),
+      AUDIT_RECIPES.filter((recipe) => officialRecipeUseState(recipe).kind === 'ready'),
     ).toHaveLength(177 - 41);
   });
 });
@@ -310,7 +311,7 @@ describe('Technical Bases (§28)', () => {
 describe('immutable official source (§12)', () => {
   it('deep-freezes the registry', () => {
     const recipe = byNumber(1);
-    expect(Object.isFrozen(OFFICIAL_RECIPES)).toBe(true);
+    expect(Object.isFrozen(AUDIT_RECIPES)).toBe(true);
     expect(Object.isFrozen(recipe)).toBe(true);
     expect(Object.isFrozen(recipe.lines[0])).toBe(true);
     expect(() => {

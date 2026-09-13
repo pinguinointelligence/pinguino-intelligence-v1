@@ -31,6 +31,7 @@ import type { IngredientRow } from '@/data/ingredients/ingredientRow';
 import {
   OFFICIAL_RECIPE_LIBRARY_VERSION,
   OFFICIAL_RECIPE_SOURCE_SHA256,
+  officialRecipeLineScope,
   officialRecipeLineId,
   officialRecipeWorkingCopy,
   officialRecipeWorkingProfile,
@@ -59,7 +60,14 @@ import {
 } from '@/features/product-intelligence';
 import { attachRecipeProfileMetadata } from '@/features/pro-workbench/recipeProfilePersistence';
 import { DEFAULT_DIRECTION_TARGETS } from '@/features/pro-workbench/recipeProfileStore';
-import type { RecipeCompositionMetadata } from '@/features/recipe-composition/recipeCompositionPersistence';
+import {
+  isCatalogLabelToppingIngredient,
+  type RecipeToppingIngredient,
+} from '@/features/recipe-composition/labelTopping';
+import type {
+  RecipeCompositionMetadata,
+  RecipeToppingItem,
+} from '@/features/recipe-composition/recipeCompositionPersistence';
 import {
   gelatoInternalCategory,
   internalCategoryFor,
@@ -133,6 +141,7 @@ export interface OfficialLineResolution {
   readonly lineNumber: number;
   readonly lineId: string;
   readonly mapperIngredientId: string;
+  readonly scope: 'MAIN' | 'TOPPING';
   /** The exact market product used for this line, or null (canonical PI). */
   readonly marketProduct: {
     readonly productId: string;
@@ -176,6 +185,7 @@ async function resolveCanonicalLine(
   row: IngredientRow,
   lineId: string,
   context: Parameters<typeof resolveProductBehaviorForSelection>[0]['context'],
+  processScope: 'BASE_FORMULATION' | 'POST_PROCESS_ADDON',
   dependencies: OfficialMaterializeDependencies,
 ): Promise<{ ingredient: EngineIngredient; snapshot: ProductBehaviorSnapshot }> {
   const resolved = await dependencies.resolveBehavior({
@@ -189,7 +199,8 @@ async function resolveCanonicalLine(
       line.line,
     );
   }
-  if (resolved.state === 'blocked' || resolved.moduleEligibility.BASE_RECIPE === 'blocked') {
+  const requiredModule = processScope === 'BASE_FORMULATION' ? 'BASE_RECIPE' : 'TOPPING';
+  if (resolved.state === 'blocked' || resolved.moduleEligibility[requiredModule] === 'blocked') {
     throw new OfficialRecipeHandoffError(
       'behavior_blocked',
       officialRecipeCopy.errors.ingredientUnavailable(line.label),
@@ -200,7 +211,7 @@ async function resolveCanonicalLine(
     ingredient: effectiveIngredientCost(ingredientRowToEngineIngredient(row), resolved),
     snapshot: snapshotServerResolvedProductBehavior({
       lineId,
-      processScope: 'BASE_FORMULATION',
+      processScope,
       resolved,
     }),
   };
@@ -212,29 +223,35 @@ async function resolveExactLine(
   row: IngredientRow,
   lineId: string,
   context: Parameters<typeof resolveProductBehaviorForSelection>[0]['context'],
+  processScope: 'BASE_FORMULATION' | 'POST_PROCESS_ADDON',
   dependencies: OfficialMaterializeDependencies,
 ): Promise<
   | {
       ok: true;
-      ingredient: EngineIngredient;
+      ingredient: RecipeToppingIngredient;
       snapshot: ProductBehaviorSnapshot;
       ownProfile: boolean;
     }
   | { ok: false; reason: 'not_selectable' | 'behavior_blocked' }
 > {
+  const catalogScope = processScope === 'BASE_FORMULATION' ? 'BASE' : 'TOPPING';
   const ownProfile =
-    catalogProductHasOwnEngineProfile(exact) && currentCatalogArticleId(exact, 'BASE') !== null;
-  let ingredient: EngineIngredient;
+    catalogProductHasOwnEngineProfile(exact) &&
+    currentCatalogArticleId(exact, catalogScope) !== null;
+  let ingredient: RecipeToppingIngredient;
   if (ownProfile) {
     const selection = await resolveCurrentMapperCatalogSelection(
       exact,
-      'BASE',
+      catalogScope,
       dependencies.getIngredient,
     );
     if (!selection.ok) return { ok: false, reason: 'not_selectable' };
     const candidate = engineIngredientForCatalogSelection(exact, selection);
-    // A label-only topping identity can never enter Base formulation.
-    if (candidate === null || 'kind' in candidate) return { ok: false, reason: 'not_selectable' };
+    if (candidate === null) return { ok: false, reason: 'not_selectable' };
+    // A label-only identity can be an add-on, never Base formulation.
+    if (processScope === 'BASE_FORMULATION' && isCatalogLabelToppingIngredient(candidate)) {
+      return { ok: false, reason: 'not_selectable' };
+    }
     ingredient = candidate;
   } else {
     ingredient = mappedCatalogIngredient(exact, row);
@@ -251,7 +268,8 @@ async function resolveExactLine(
   if (
     !resolved ||
     resolved.state === 'blocked' ||
-    resolved.moduleEligibility.BASE_RECIPE === 'blocked'
+    resolved.moduleEligibility[processScope === 'BASE_FORMULATION' ? 'BASE_RECIPE' : 'TOPPING'] ===
+      'blocked'
   ) {
     return { ok: false, reason: 'behavior_blocked' };
   }
@@ -261,7 +279,7 @@ async function resolveExactLine(
     ownProfile,
     snapshot: snapshotServerResolvedProductBehavior({
       lineId,
-      processScope: 'BASE_FORMULATION',
+      processScope,
       resolved,
     }),
   };
@@ -303,8 +321,13 @@ export async function materializeOfficialRecipe(
   if (!officialRecipeCanStart(readiness)) throw readinessRefusal(readiness);
   const mappedLines = recipe.lines.map((line) => {
     if (line.identity.kind !== 'mapped') throw new Error('unreachable: gated above');
-    return { line, pi: line.identity.mapperIngredientId };
+    return {
+      line,
+      pi: line.identity.mapperIngredientId,
+      scope: officialRecipeLineScope(line),
+    };
   });
+  const baseMappedLines = mappedLines.filter((entry) => entry.scope === 'MAIN');
 
   const profile = officialRecipeWorkingProfile(recipe);
   const servingModeId = servingModeFor(profile.servingModeId, dependencies.currentServingModeId());
@@ -327,7 +350,7 @@ export async function materializeOfficialRecipe(
   // The Engine category comes from the existing product-type authority. A
   // Heritage „Gelato / Sorbet" record is classified by the same Gelato
   // derivation the workbench uses (fruit without dairy is a Sorbet).
-  const probeItems: RecipeItem[] = mappedLines.map(({ line, pi }) => ({
+  const probeItems: RecipeItem[] = baseMappedLines.map(({ line, pi }) => ({
     id: officialRecipeLineId(recipe, line),
     ingredient: ingredientRowToEngineIngredient(rows.get(pi)!),
     planned_grams: line.grams,
@@ -354,24 +377,29 @@ export async function materializeOfficialRecipe(
   }
   const routeByPi = new Map(routed.map((entry) => [entry.mapperIngredientId, entry]));
 
-  const context = (lineScope: 'BASE_FORMULATION') => ({
+  const context = (lineScope: 'BASE_FORMULATION' | 'POST_PROCESS_ADDON') => ({
     accountId,
     productProfile: category,
     temperatureC,
     mode: 'optimal' as const,
     processScope: lineScope,
     requestedRole: 'STANDARD' as const,
-    module: 'BASE_RECIPE' as const,
+    module: lineScope === 'BASE_FORMULATION' ? ('BASE_RECIPE' as const) : ('TOPPING' as const),
   });
 
   const items: RecipeItem[] = [];
+  const toppings: RecipeToppingItem[] = [];
   const snapshots: Record<string, ProductBehaviorSnapshot> = {};
   const resolutions: OfficialLineResolution[] = [];
-  for (const { line, pi } of mappedLines) {
+  for (const { line, pi, scope } of mappedLines) {
     const lineId = officialRecipeLineId(recipe, line);
     const row = rows.get(pi)!;
     const route = routeByPi.get(pi) ?? null;
-    let bound: { ingredient: EngineIngredient; snapshot: ProductBehaviorSnapshot } | null = null;
+    const processScope = scope === 'MAIN' ? 'BASE_FORMULATION' : 'POST_PROCESS_ADDON';
+    let bound: {
+      ingredient: RecipeToppingIngredient;
+      snapshot: ProductBehaviorSnapshot;
+    } | null = null;
     let marketProduct: OfficialLineResolution['marketProduct'] = null;
     let rejected: OfficialLineResolution['marketProductRejected'] = null;
     if (route) {
@@ -382,7 +410,8 @@ export async function materializeOfficialRecipe(
           route.product,
           row,
           lineId,
-          context('BASE_FORMULATION'),
+          context(processScope),
+          processScope,
           dependencies,
         );
         if (exact.ok) {
@@ -406,7 +435,8 @@ export async function materializeOfficialRecipe(
       pi,
       row,
       lineId,
-      context('BASE_FORMULATION'),
+      context(processScope),
+      processScope,
       dependencies,
     );
     snapshots[lineId] = bound.snapshot;
@@ -414,20 +444,40 @@ export async function materializeOfficialRecipe(
       lineNumber: line.line,
       lineId,
       mapperIngredientId: pi,
+      scope,
       marketProduct,
       marketProductRejected: rejected,
     });
-    items.push({
-      id: lineId,
-      ingredient: bound.ingredient,
-      planned_grams: line.grams,
-      actual_grams: null,
-      lock_type: 'unlocked',
-      // Adopting a library recipe is the user's intent at these amounts (the
-      // same user-intent baseline the executable library handoff records).
-      user_intent_anchor_grams: line.grams,
-      notes: line.label,
-    });
+    if (scope === 'MAIN') {
+      if (isCatalogLabelToppingIngredient(bound.ingredient)) {
+        throw new OfficialRecipeHandoffError(
+          'ingredient_unavailable',
+          officialRecipeCopy.errors.ingredientUnavailable(line.label),
+          line.line,
+        );
+      }
+      items.push({
+        id: lineId,
+        ingredient: bound.ingredient,
+        planned_grams: line.grams,
+        actual_grams: null,
+        lock_type: 'unlocked',
+        // Adopting a library recipe is the user's intent at these amounts (the
+        // same user-intent baseline the executable library handoff records).
+        user_intent_anchor_grams: line.grams,
+        notes: line.label,
+      });
+    } else {
+      toppings.push({
+        id: lineId,
+        ingredient: bound.ingredient,
+        planned_grams: line.grams,
+        actual_grams: null,
+        process_scope: 'POST_PROCESS_ADDON',
+        addon_sort_order: toppings.length,
+        notes: line.label,
+      });
+    }
   }
 
   const rawInput: RecipeInput = {
@@ -468,7 +518,7 @@ export async function materializeOfficialRecipe(
       schemaVersion: 1,
       baseScope: 'BASE_FORMULATION',
       baseOrder: items.map((item) => item.id),
-      toppings: [],
+      toppings,
       behaviorSnapshots: snapshots,
       migrationAmbiguities: [],
     },

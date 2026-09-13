@@ -177,24 +177,96 @@ describe('Recipes hub — official Gellatti library', () => {
   });
 
   it.each([
-    ['classics', 77, 'GEL-001', 'GEL-077'],
-    ['icons', 25, 'GEL-078', 'GEL-102'],
+    ['classics', 81, 'GEL-001', 'GEL-077'],
+    ['icons', 28, 'GEL-078', 'GEL-102'],
     ['cocktails_spirits', 48, 'GEL-103', 'GEL-150'],
-    ['lost_legendary', 15, 'GEL-151', 'GEL-165'],
+    ['lost_legendary', 16, 'GEL-151', 'GEL-165'],
     ['technical_bases', 12, 'GEL-166', 'GEL-177'],
-  ])('opens %s with %i recipes, each on its own numbered image', async (id, count, first, last) => {
-    await renderAt(`/recipes?collection=${id}`);
-    const cards = all('[data-testid^="official-recipe-card-"]');
-    expect(cards).toHaveLength(count);
-    const images = cards.map((card) => card.querySelector('img')?.getAttribute('src'));
-    expect(images[0]).toBe(`/recipes/official/${first}-480.webp`);
-    expect(images.at(-1)).toBe(`/recipes/official/${last}-480.webp`);
-    for (const card of cards) {
-      const number = String(card.dataset.recipeNumber).padStart(3, '0');
-      expect(card.querySelector('img')?.getAttribute('src')).toBe(
-        `/recipes/official/GEL-${number}-480.webp`,
+  ])(
+    'opens %s with %i recipes and preserves delivered numbered images',
+    async (id, count, first, last) => {
+      await renderAt(`/recipes?collection=${id}`);
+      const cards = all('[data-testid^="official-recipe-card-"]');
+      expect(cards).toHaveLength(count);
+      const images = cards.flatMap((card) => {
+        const src = card.querySelector('img')?.getAttribute('src');
+        return src ? [src] : [];
+      });
+      expect(images[0]).toBe(`/recipes/official/${first}-480.webp`);
+      expect(images).toContain(`/recipes/official/${last}-480.webp`);
+      for (const card of cards) {
+        const number = String(card.dataset.recipeNumber).padStart(3, '0');
+        const image = card.querySelector('img');
+        if (image)
+          expect(image.getAttribute('src')).toBe(`/recipes/official/GEL-${number}-480.webp`);
+        else
+          expect(card.querySelector('[data-testid="official-recipe-placeholder"]')).not.toBeNull();
+      }
+    },
+  );
+
+  it.each([
+    [39, 'classics', 'classic-crema-di-buontalenti', 'Crema di Buontalenti'],
+    [178, 'classics', 'classic-plombir', 'Plombir'],
+    [179, 'classics', 'classic-porter-ice-cream', 'Porter Ice Cream'],
+    [180, 'classics', 'classic-eiskaffee', 'Eiskaffee'],
+    [181, 'classics', 'classic-spaghettieis', 'Spaghettieis'],
+    [182, 'icons', 'icon-pistachio-white-chocolate-praline', 'Pistachio White Chocolate Praline'],
+    [183, 'icons', 'icon-red-velvet-cheesecake-chunk', 'Red Velvet Cheesecake Chunk'],
+    [184, 'icons', 'icon-milky-hazelnut-chocolate-crunch', 'Milky Hazelnut Chocolate Crunch'],
+    [185, 'lost_legendary', 'heritage-parmesan-ice-cream', 'Parmesan Ice Cream'],
+  ] as const)(
+    '[GRP-CARD-%i] opens the package card through its standard library link',
+    async (number, collection, recipeId, name) => {
+      await renderAt(`/recipes?collection=${collection}`);
+      const card = all('[data-testid^="official-recipe-card-"]').find(
+        (entry) => entry.dataset.recipeNumber === String(number),
       );
-    }
+      expect(card?.dataset.testid).toBe(`official-recipe-card-${recipeId}`);
+      await act(async () => card!.click());
+      expect(location()).toBe(`/recipes?recipe=${recipeId}`);
+      expect(host.querySelector('#official-recipe-heading')?.textContent).toBe(name);
+      expect(host.querySelector('[data-testid="official-recipe-placeholder"]')).not.toBeNull();
+    },
+  );
+
+  it('[GRP-UI-01] replaces #039 completely and shows a neutral no-photo placeholder', async () => {
+    await renderAt('/recipes?recipe=classic-crema-di-buontalenti');
+    expect(host.textContent).toContain('Crema di Buontalenti');
+    expect(host.textContent).not.toContain('Neapolitan');
+    expect(host.querySelector('[data-testid="official-recipe-image"]')).toBeNull();
+    expect(host.querySelector('[data-testid="official-recipe-placeholder"]')?.textContent).toBe(
+      'Zdjęcie wkrótce',
+    );
+    expect(all('[data-line-scope="MAIN"]')).toHaveLength(6);
+    expect(all('[data-line-scope="TOPPING"]')).toHaveLength(0);
+  });
+
+  it('[GRP-UI-02] shows exact missing product in the photo area and keeps its topping line', async () => {
+    await renderAt('/recipes?recipe=icon-red-velvet-cheesecake-chunk');
+    const placeholder = host.querySelector('[data-testid="official-recipe-placeholder"]');
+    expect(placeholder?.textContent).toContain('Brak składnika: Ciasto Red Velvet');
+    expect(host.querySelector('[data-testid="official-recipe-image"]')).toBeNull();
+    const missing = all('[data-line-scope="TOPPING"][data-line-kind="unresolved"]');
+    expect(missing).toHaveLength(1);
+    expect(missing[0]?.textContent).toContain('150 g');
+    expect(
+      host.querySelector<HTMLButtonElement>('[data-testid="official-recipe-use"]')?.disabled,
+    ).toBe(true);
+  });
+
+  it('[GRP-UI-03] shows dessert phases, vanilla reference and mandatory Spaghettieis tool notice', async () => {
+    await renderAt('/recipes?recipe=classic-spaghettieis');
+    expect(all('[data-line-scope="MAIN"]')).toHaveLength(8);
+    expect(all('[data-line-scope="TOPPING"]')).toHaveLength(4);
+    expect(host.querySelector('[data-testid="official-base-reference"]')?.textContent).toContain(
+      'classic-vanilla, wersja 1',
+    );
+    expect(
+      host.querySelector('[data-testid="official-recipe-tool-notice"]')?.textContent,
+    ).toContain('Spätzlepresse');
+    expect(host.textContent).toContain('Łączna masa zadana');
+    expect(host.textContent).toContain('246 g');
   });
 
   it('shows recipe #001 with its image, grams, current Mapper names and the market product', async () => {

@@ -1,6 +1,6 @@
 /**
- * Official Gellatti Recipe Library — the one runtime authority over the 177
- * imported source recipes (GELLATTI_RECEPTURY.xlsx, see the generated module).
+ * Official Gellatti Recipe Library — the runtime authority over the immutable
+ * workbook baseline plus explicit, versioned package overlays.
  *
  * The registry is deep-frozen: the canonical 1000 g formula can be read but
  * never changed. Anything that becomes a working recipe starts from
@@ -11,11 +11,15 @@
  */
 import type { VisibleProductType } from '@/features/studio/productType';
 import {
-  OFFICIAL_RECIPE_LIBRARY_VERSION,
+  OFFICIAL_RECIPE_LIBRARY_VERSION as OFFICIAL_BASELINE_LIBRARY_VERSION,
   OFFICIAL_RECIPE_SOURCE,
-  OFFICIAL_RECIPE_SOURCE_SHA256,
+  OFFICIAL_RECIPE_SOURCE_SHA256 as OFFICIAL_BASELINE_SOURCE_SHA256,
   OFFICIAL_RECIPE_SOURCE_WORKBOOK,
 } from './officialRecipeLibrary.generated';
+import {
+  GELLATTI_PACK_01_02_ADDITIONS,
+  GELLATTI_PACK_01_02_REPLACEMENT_039,
+} from './officialRecipePack0102';
 import type {
   OfficialCollectionId,
   OfficialRecipe,
@@ -23,11 +27,19 @@ import type {
 } from './officialRecipeTypes';
 
 export * from './officialRecipeTypes';
-export {
-  OFFICIAL_RECIPE_LIBRARY_VERSION,
-  OFFICIAL_RECIPE_SOURCE_SHA256,
-  OFFICIAL_RECIPE_SOURCE_WORKBOOK,
-};
+export { OFFICIAL_RECIPE_SOURCE_WORKBOOK };
+
+/** The generated workbook baseline remains separately addressable and unchanged. */
+export const OFFICIAL_BASELINE_RECIPES: readonly OfficialRecipe[] =
+  Object.freeze(OFFICIAL_RECIPE_SOURCE);
+export const OFFICIAL_BASELINE_RECIPE_LIBRARY_VERSION = OFFICIAL_BASELINE_LIBRARY_VERSION;
+export const OFFICIAL_BASELINE_RECIPE_SOURCE_SHA256 = OFFICIAL_BASELINE_SOURCE_SHA256;
+
+/** Current runtime registry/provenance authority after packages 01 + 02. */
+export const OFFICIAL_RECIPE_LIBRARY_VERSION = 'official-185-v2';
+/** SHA-256 of `baseline source SHA + LF + package overlay SHA`. */
+export const OFFICIAL_RECIPE_SOURCE_SHA256 =
+  '5aeb4248cfc49dfab7082e67dff8ad30bf097b3fb5d74812c3b2d1cd16113d91';
 
 function deepFreeze<T>(value: T): T {
   if (value !== null && typeof value === 'object' && !Object.isFrozen(value)) {
@@ -37,8 +49,22 @@ function deepFreeze<T>(value: T): T {
   return value;
 }
 
-/** Every official recipe in source order (#001 → #177). Frozen. */
-export const OFFICIAL_RECIPES: readonly OfficialRecipe[] = deepFreeze(OFFICIAL_RECIPE_SOURCE);
+const currentRecipes = [
+  ...OFFICIAL_RECIPE_SOURCE.map((entry) =>
+    entry.number === 39 ? GELLATTI_PACK_01_02_REPLACEMENT_039 : entry,
+  ),
+  ...GELLATTI_PACK_01_02_ADDITIONS,
+];
+if (
+  currentRecipes.length !== 185 ||
+  new Set(currentRecipes.map((entry) => entry.number)).size !== currentRecipes.length ||
+  new Set(currentRecipes.map((entry) => entry.recipeId)).size !== currentRecipes.length
+) {
+  throw new Error('Invalid GELLATTI runtime registry: package 01/02 identity collision.');
+}
+
+/** Every current official recipe, frozen. The generated 177-row baseline is untouched. */
+export const OFFICIAL_RECIPES: readonly OfficialRecipe[] = deepFreeze(currentRecipes);
 
 export interface OfficialCollection {
   readonly id: OfficialCollectionId;
@@ -122,6 +148,42 @@ export function officialRecipeImage(recipe: Pick<OfficialRecipe, 'number'>): {
     card: `/recipes/official/${photoId}-${OFFICIAL_RECIPE_IMAGE_WIDTHS.card}.webp`,
     detail: `/recipes/official/${photoId}-${OFFICIAL_RECIPE_IMAGE_WIDTHS.detail}.webp`,
   };
+}
+
+/** A package card never emits a guessed image URL while its artwork is pending. */
+export function officialRecipeHasImage(recipe: OfficialRecipe): boolean {
+  return recipe.photoStatus !== 'pending';
+}
+
+export function officialRecipeVersion(recipe: OfficialRecipe): number {
+  return recipe.recipeVersion ?? 1;
+}
+
+export function officialRecipeLineScope(line: OfficialRecipeLine): 'MAIN' | 'TOPPING' {
+  return line.scope ?? 'MAIN';
+}
+
+export function officialRecipeBaseLines(recipe: OfficialRecipe): readonly OfficialRecipeLine[] {
+  return recipe.lines.filter((line) => officialRecipeLineScope(line) === 'MAIN');
+}
+
+export function officialRecipeAddonLines(recipe: OfficialRecipe): readonly OfficialRecipeLine[] {
+  return recipe.lines.filter((line) => officialRecipeLineScope(line) === 'TOPPING');
+}
+
+const lineTotal = (lines: readonly OfficialRecipeLine[]) =>
+  Number(lines.reduce((total, line) => total + line.grams, 0).toFixed(6));
+
+export function officialRecipeBaseTotal(recipe: OfficialRecipe): number {
+  return lineTotal(officialRecipeBaseLines(recipe));
+}
+
+export function officialRecipeAddonTotal(recipe: OfficialRecipe): number {
+  return lineTotal(officialRecipeAddonLines(recipe));
+}
+
+export function officialRecipeFinalTotal(recipe: OfficialRecipe): number {
+  return officialRecipeBaseTotal(recipe) + officialRecipeAddonTotal(recipe);
 }
 
 /** Lines that have no confirmed canonical identity (source BRAK, not a Main slot). */

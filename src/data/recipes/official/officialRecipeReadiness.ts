@@ -61,7 +61,9 @@ export interface OfficialRecipeReadiness {
 const RESOLUTION_BY_LABEL: ReadonlyMap<string, OfficialBrakResolution> = new Map(
   OFFICIAL_BRAK_RESOLUTIONS.map((resolution) => [resolution.label, resolution]),
 );
-const FINAL_BLOCKED_PIS: ReadonlySet<string> = new Set(OFFICIAL_FINAL_BLOCKED_PIS.map((entry) => entry.pi));
+const FINAL_BLOCKED_PIS: ReadonlySet<string> = new Set(
+  OFFICIAL_FINAL_BLOCKED_PIS.map((entry) => entry.pi),
+);
 
 /** The owner crosswalk row for a BRAK label (exact label match; never fuzzy). */
 export function officialBrakResolutionFor(label: string): OfficialBrakResolution | null {
@@ -72,6 +74,9 @@ function brakLineReadiness(line: OfficialRecipeLine): OfficialLineReadiness {
   const resolution = officialBrakResolutionFor(line.label);
   if (line.identity.kind === 'dynamic_main') {
     return { line, state: 'DYNAMIC_MAIN', reason: 'dynamic_main', resolution };
+  }
+  if (line.unresolvedRequirement === 'physical_product') {
+    return { line, state: 'PRODUCT_BLOCKED', reason: 'physical_product', resolution };
   }
   if (!resolution) {
     return { line, state: 'OTHER_EXPLICIT_BLOCKER', reason: 'missing_crosswalk', resolution: null };
@@ -106,9 +111,19 @@ export function officialRecipeReadiness(
     }
     const pi = line.identity.mapperIngredientId;
     if (FINAL_BLOCKED_PIS.has(pi)) {
-      blockingLines.push({ line, state: 'OTHER_EXPLICIT_BLOCKER', reason: 'final_mapper_blocked', resolution: null });
+      blockingLines.push({
+        line,
+        state: 'OTHER_EXPLICIT_BLOCKER',
+        reason: 'final_mapper_blocked',
+        resolution: null,
+      });
     } else if (options.unavailablePis?.has(pi)) {
-      blockingLines.push({ line, state: 'OTHER_EXPLICIT_BLOCKER', reason: 'runtime_unavailable', resolution: null });
+      blockingLines.push({
+        line,
+        state: 'OTHER_EXPLICIT_BLOCKER',
+        reason: 'runtime_unavailable',
+        resolution: null,
+      });
     }
   }
   const state = blockingLines.reduce<OfficialRecipeReadinessState>(
@@ -127,10 +142,9 @@ export function officialRecipeCanStart(readiness: OfficialRecipeReadiness): bool
 export function officialLibraryReadinessCounts(
   recipes: readonly OfficialRecipe[],
 ): Readonly<Record<OfficialRecipeReadinessState, number>> {
-  const counts = Object.fromEntries(OFFICIAL_RECIPE_READINESS_STATES.map((state) => [state, 0])) as Record<
-    OfficialRecipeReadinessState,
-    number
-  >;
+  const counts = Object.fromEntries(
+    OFFICIAL_RECIPE_READINESS_STATES.map((state) => [state, 0]),
+  ) as Record<OfficialRecipeReadinessState, number>;
   for (const recipe of recipes) counts[officialRecipeReadiness(recipe).state] += 1;
   return counts;
 }

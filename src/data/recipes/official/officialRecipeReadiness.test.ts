@@ -8,7 +8,7 @@ import {
   OFFICIAL_BRAK_RESOLUTIONS,
   OFFICIAL_FINAL_BLOCKED_PIS,
 } from './officialBrakResolution.generated';
-import { OFFICIAL_RECIPES } from './officialRecipeLibrary';
+import { OFFICIAL_BASELINE_RECIPES, OFFICIAL_RECIPES } from './officialRecipeLibrary';
 import {
   officialBrakResolutionFor,
   officialLibraryReadinessCounts,
@@ -26,12 +26,14 @@ const byNumber = (number: number) => {
   return recipe;
 };
 const numbersIn = (state: OfficialRecipeReadinessState) =>
-  OFFICIAL_RECIPES.filter((recipe) => officialRecipeReadiness(recipe).state === state).map((recipe) => recipe.number);
+  OFFICIAL_RECIPES.filter((recipe) => officialRecipeReadiness(recipe).state === state).map(
+    (recipe) => recipe.number,
+  );
 
 describe('official Recipe Library readiness', () => {
   it('has one owner crosswalk row for every BRAK label, and a line for every row', () => {
     const brakLabels = new Set(
-      OFFICIAL_RECIPES.flatMap((recipe) => recipe.lines)
+      OFFICIAL_BASELINE_RECIPES.flatMap((recipe) => recipe.lines)
         .filter((line) => line.identity.kind !== 'mapped')
         .map((line) => line.label),
     );
@@ -46,19 +48,28 @@ describe('official Recipe Library readiness', () => {
 
   it('records exactly the referenced PIs that the FINAL 2541 projection does not approve', () => {
     const grid = parseCsv(
-      readFileSync(resolve(process.cwd(), 'docs/ingredients/validation/mapper_basement.csv'), 'utf8'),
+      readFileSync(
+        resolve(process.cwd(), 'docs/ingredients/validation/mapper_basement.csv'),
+        'utf8',
+      ),
     );
     const header = grid[0]!;
     const column = (name: string) => header.indexOf(name);
     const approved = new Map(
       grid
         .slice(1)
-        .map((cells) => [
-          cells[column('ingredient_id')],
-          cells[column('approved_for_base')] === 'TRUE' && cells[column('approved_for_engines')] === 'TRUE',
-        ] as const),
+        .map(
+          (cells) =>
+            [
+              cells[column('ingredient_id')],
+              cells[column('approved_for_base')] === 'TRUE' &&
+                cells[column('approved_for_engines')] === 'TRUE',
+            ] as const,
+        ),
     );
-    const blocked = (manifest.referencedPi as string[]).filter((pi) => approved.get(pi) !== true).sort();
+    const blocked = (manifest.referencedPi as string[])
+      .filter((pi) => approved.get(pi) !== true)
+      .sort();
     expect(OFFICIAL_FINAL_BLOCKED_PIS.map((entry) => entry.pi)).toEqual(blocked);
     expect(blocked).toEqual(['PI-ING-000618', 'PI-ING-001705']);
     for (const row of OFFICIAL_BRAK_RESOLUTIONS.filter((entry) => entry.targetPi)) {
@@ -68,18 +79,18 @@ describe('official Recipe Library readiness', () => {
 
   it('gives every recipe exactly one explicit state', () => {
     expect(officialLibraryReadinessCounts(OFFICIAL_RECIPES)).toEqual({
-      READY: 127,
+      READY: 132,
       DYNAMIC_MAIN: 3,
       REVIEW_REQUIRED: 4,
-      PRODUCT_BLOCKED: 27,
+      PRODUCT_BLOCKED: 29,
       INTERNAL_SUBRECIPE: 2,
-      OTHER_EXPLICIT_BLOCKER: 14,
+      OTHER_EXPLICIT_BLOCKER: 15,
     });
     expect(numbersIn('DYNAMIC_MAIN')).toEqual([169, 170, 171]);
     expect(numbersIn('INTERNAL_SUBRECIPE')).toEqual([22, 62]);
     expect(numbersIn('REVIEW_REQUIRED')).toEqual([25, 29, 31, 163]);
     expect(numbersIn('OTHER_EXPLICIT_BLOCKER')).toEqual([
-      15, 19, 20, 34, 39, 72, 77, 78, 123, 138, 150, 153, 159, 165,
+      15, 19, 20, 34, 72, 77, 78, 123, 138, 150, 153, 159, 165, 180, 181,
     ]);
   });
 
@@ -116,14 +127,17 @@ describe('official Recipe Library readiness', () => {
     expect(officialRecipeCanStart(unavailable)).toBe(false);
     for (const recipe of OFFICIAL_RECIPES) {
       const state = officialRecipeReadiness(recipe).state;
-      expect(officialRecipeCanStart(officialRecipeReadiness(recipe)), recipe.recipeId).toBe(state === 'READY');
+      expect(officialRecipeCanStart(officialRecipeReadiness(recipe)), recipe.recipeId).toBe(
+        state === 'READY',
+      );
     }
   });
 
   it('never changes a source recipe', () => {
     const before = JSON.stringify(OFFICIAL_RECIPES);
     officialLibraryReadinessCounts(OFFICIAL_RECIPES);
-    for (const recipe of OFFICIAL_RECIPES) officialRecipeReadiness(recipe, { unavailablePis: new Set(['PI-ING-000236']) });
+    for (const recipe of OFFICIAL_RECIPES)
+      officialRecipeReadiness(recipe, { unavailablePis: new Set(['PI-ING-000236']) });
     expect(JSON.stringify(OFFICIAL_RECIPES)).toBe(before);
     expect(Object.isFrozen(OFFICIAL_RECIPES[0])).toBe(true);
   });

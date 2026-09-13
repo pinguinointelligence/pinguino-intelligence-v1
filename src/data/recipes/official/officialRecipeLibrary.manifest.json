@@ -4316,14 +4316,14 @@
         {
           "width": 480,
           "path": "public/recipes/official/GEL-155-480.webp",
-          "sha256": "16b9d917365a3ef9c4029a58a0f0bcb395f97844b88dc5f0be94f116de1f8bbb",
-          "bytes": 44860
+          "sha256": "a390a7ec249f77419f538ba847fe7d9e76af185dfa4a33e445e1bf79de10bbd9",
+          "bytes": 51124
         },
         {
           "width": 960,
           "path": "public/recipes/official/GEL-155-960.webp",
-          "sha256": "8179790a5bea1ab239683f04a6cd82a871c70e1f40eb1da98d0c83c1c6a9b114",
-          "bytes": 116762
+          "sha256": "7f77bf09d63afd9876ac213eb98385dfccd37aaeafde45a49a8c5a1d726628ef",
+          "bytes": 137866
         }
       ]
     },
