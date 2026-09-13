@@ -135,7 +135,7 @@ describe('one global menu and four local contexts', () => {
     expect(page).toContain('<WorkbenchModuleTabs');
     // V2.1 §8: the strip is anchored to the display column by the shared contract.
     expect(page).toContain('DESKTOP_TAB_STRIP');
-    expect(page).toContain('className="w-full border-b-0"');
+    expect(page).toContain('className="border-b-0"');
     expect(page).toContain('AppShell');
   });
 
