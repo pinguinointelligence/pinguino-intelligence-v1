@@ -376,9 +376,6 @@ body[data-gellatti-scale-mode='desktop'] .gellatti-application {
   .gellatti-pro-workbench [data-testid='pro-context-tabs'] {
     border-bottom: 0;
     height: var(--pro-header-height);
-    grid-template-columns: repeat(4, max-content);
-    justify-content: start;
-    column-gap: 4px;
   }
 
   .gellatti-pro-workbench [data-testid='pro-context-tabs'] > button {
