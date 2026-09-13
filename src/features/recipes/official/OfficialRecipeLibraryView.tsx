@@ -121,7 +121,7 @@ function RecipeArtwork({ recipe, size }: { recipe: OfficialRecipe; size: 'card' 
   );
 }
 
-/** The five official collections, in the owner's order. */
+/** The official collection cards, followed by the existing Community destination. */
 export function OfficialCollectionsGrid() {
   return (
     <section aria-labelledby="official-collections-heading" data-testid="official-collections">
@@ -169,6 +169,26 @@ export function OfficialCollectionsGrid() {
             </Link>
           );
         })}
+        <Link
+          to="/community"
+          className={cardClasses}
+          data-testid="official-collection-card-community"
+        >
+          <img
+            src="/recipes/official/collections/community.png"
+            width={1672}
+            height={941}
+            alt="Community"
+            loading="lazy"
+            decoding="async"
+            className="aspect-[1672/941] w-full bg-[var(--g-ivory)] object-cover"
+          />
+          <div className="flex min-h-[113px] flex-1 flex-col p-[18px]">
+            <h3 className="text-[21px] leading-[1.2] font-bold tracking-[-0.02em] text-[var(--g-ink)]">
+              Community
+            </h3>
+          </div>
+        </Link>
       </div>
     </section>
   );

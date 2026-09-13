@@ -138,13 +138,13 @@ describe('Recipes hub — official Gellatti library', () => {
   const location = () => host.querySelector('[data-testid="location"]')?.textContent;
   const all = (selector: string) => Array.from(host.querySelectorAll<HTMLElement>(selector));
 
-  it('orders the strip Gellatti · Moje · Udostępnione · Community · Top 100, with no Inspiracje', async () => {
+  it('orders the strip Gellatti · Moje · Udostępnione · Community, with no Top 100 or Inspiracje', async () => {
     await renderAt('/recipes');
     expect(
       all('[data-testid^="recipes-tab-"], [data-testid^="recipes-link-"]').map((entry) =>
         entry.textContent?.trim(),
       ),
-    ).toEqual(['Gellatti', 'Moje', 'Udostępnione', 'Community', 'Top 100']);
+    ).toEqual(['Gellatti', 'Moje', 'Udostępnione', 'Community']);
     expect(host.textContent).not.toContain('Inspiracje');
     expect(host.textContent).not.toContain('Udostępnione mi');
     expect(host.querySelector('#recipes-tab-pinguino')?.getAttribute('aria-selected')).toBe('true');
@@ -157,7 +157,7 @@ describe('Recipes hub — official Gellatti library', () => {
     expect(location()).toBe('/recipes');
   });
 
-  it('presents the five official collections in order with the owner hero images', async () => {
+  it('presents the five official collections and Community in the sixth grid slot', async () => {
     await renderAt('/recipes');
     const cards = all('[data-testid^="official-collection-card-"]');
     expect(cards.map((card) => card.dataset.testid)).toEqual([
@@ -166,6 +166,7 @@ describe('Recipes hub — official Gellatti library', () => {
       'official-collection-card-cocktails_spirits',
       'official-collection-card-lost_legendary',
       'official-collection-card-technical_bases',
+      'official-collection-card-community',
     ]);
     expect(cards.map((card) => card.querySelector('img')?.getAttribute('src'))).toEqual([
       '/recipes/official/collections/classics-960.webp',
@@ -173,7 +174,9 @@ describe('Recipes hub — official Gellatti library', () => {
       '/recipes/official/collections/cocktails_spirits-960.webp',
       '/recipes/official/collections/lost_legendary-960.webp',
       '/recipes/official/collections/technical_bases-960.webp',
+      '/recipes/official/collections/community.png',
     ]);
+    expect(cards.at(-1)?.getAttribute('href')).toBe('/community');
   });
 
   it.each([
