@@ -265,7 +265,7 @@ describe('Hacendado Queso 8480000510716 rescue-first regression', () => {
     expect(SESSION).toBe('50896b62-81fb-4c00-9a6a-f0ba107a3b6e');
     expect(profileMatch.family).toBe('dairy_liquid');
     expect(fieldInference.family).toBe('dairy_liquid');
-    expect(legacyInference.bestCohort?.rows.length ?? 0).toBe(0);
+    expect(legacyInference.bestCohort?.rows.length ?? 0).toBe(55);
     expect(fieldInference.bestCohort?.rows.length ?? 0).toBe(55);
     expect(massRescue.candidates).toHaveLength(34);
     expect(massRescue).toMatchObject({

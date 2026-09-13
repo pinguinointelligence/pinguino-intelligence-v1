@@ -413,13 +413,13 @@ describe('field-specific mass-balance Rescue safety', () => {
     expect(validation.reasonCodes).toContain('RESCUE_POST_MASS_BALANCE_INVALID');
   });
 
-  it('RSC-AUTH-02 admits active canonical PI donors regardless of historical provenance status', () => {
+  it('RSC-AUTH-02 rejects active canonical PI donors without explicit approvals', () => {
     const donor = mapperRow('PI-ING-999999', 14, {
       verification_status: 'Estimated / PI Calculated',
       approved_for_base: false,
       approved_for_engines: false,
     }) as IntimportMapperAuthorityRow;
-    expect(isIntimportMapperRescueDonor(donor)).toBe(true);
+    expect(isIntimportMapperRescueDonor(donor)).toBe(false);
     expect(donor.verification_status).toBe('Estimated / PI Calculated');
   });
 
