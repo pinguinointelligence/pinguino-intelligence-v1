@@ -3,7 +3,6 @@ import { buttonClasses } from '@/components/ui/buttonStyles';
 import {
   officialProductTypeLabelPl,
   officialRecipeCopy as c,
-  officialSourceStatusLabelPl,
   officialStageLabelPl,
 } from '@/copy/officialRecipeLibrary';
 import {
@@ -19,7 +18,6 @@ import {
   officialRecipeHasImage,
   officialRecipeImage,
   officialRecipeLineScope,
-  officialRecipeVersion,
   officialRecipesInCollection,
   officialUnresolvedLines,
   type OfficialCollectionId,
@@ -189,9 +187,6 @@ function RecipeCard({ recipe }: { recipe: OfficialRecipe }) {
     >
       <RecipeArtwork recipe={recipe} size="card" />
       <div className="flex flex-1 flex-col gap-2 p-4">
-        <p className="font-mono text-[11px] text-stone-500">
-          {c.number(recipe.photoId, recipe.number)}
-        </p>
         <h3 className="text-[16px] leading-[1.25] font-semibold tracking-[-0.015em] text-ink">
           {recipe.name}
         </h3>
@@ -230,7 +225,7 @@ export function OfficialCollectionView({ collectionId }: { collectionId: Officia
           height={941}
           alt={collection.name}
           decoding="async"
-          className="aspect-[1672/941] max-h-[320px] w-full bg-[var(--g-ivory)] object-cover"
+          className="aspect-[1672/941] w-full bg-[var(--g-ivory)] object-cover"
         />
       </div>
       <p className={cn(eyebrowClasses, 'mt-8')}>{c.eyebrow}</p>
@@ -339,7 +334,6 @@ export function OfficialRecipeDetail({
   // Counted per recipe line, exactly like the working-copy banner in PRO.
   const matched =
     market.status === 'ready' ? mappedIds.filter((pi) => market.value.byPi.has(pi)).length : 0;
-  const pending = officialUnresolvedLines(recipe).length;
   // The same runtime gate the working-copy handoff applies: a mapped PI the Mapper runtime
   // does not serve can only make the recipe worse — it never makes one ready.
   const unavailablePis = new Set(
@@ -419,9 +413,7 @@ export function OfficialRecipeDetail({
       <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
         <RecipeArtwork recipe={recipe} size="detail" />
         <div className="min-w-0">
-          <p className={eyebrowClasses}>
-            {collection.name} · {c.number(recipe.photoId, recipe.number)}
-          </p>
+          <p className={eyebrowClasses}>{collection.name}</p>
           <h2
             id="official-recipe-heading"
             className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-ink"
@@ -471,66 +463,6 @@ export function OfficialRecipeDetail({
             </p>
           </div>
 
-          <section className="mt-6" aria-labelledby="official-recipe-status">
-            <h3 id="official-recipe-status" className={eyebrowClasses}>
-              {c.statusTitle}
-            </h3>
-            <dl className="mt-3 divide-y divide-ink/10 border-y border-ink/10 text-[13px]">
-              {(
-                [
-                  [c.readinessRow, c.readinessLabel[readiness.state], 'readiness'],
-                  [
-                    c.sourceRecipe,
-                    c.sourceRecipeValue(
-                      officialRecipeBaseTotal(recipe),
-                      officialRecipeVersion(recipe),
-                    ),
-                    'source',
-                  ],
-                  [c.engineRow, officialSourceStatusLabelPl(recipe.sourceStatus), 'engine'],
-                  [
-                    c.ingredientsRow,
-                    pending === 0 ? c.ingredientsComplete : c.ingredientsPending(pending),
-                    'ingredients',
-                  ],
-                  [c.productionRow, c.productionValue, 'production'],
-                ] as const
-              ).map(([term, value, id]) => (
-                <div
-                  key={id}
-                  className="grid gap-1 py-2.5 sm:grid-cols-[minmax(0,180px)_minmax(0,1fr)] sm:gap-4"
-                  data-testid={`official-recipe-status-${id}`}
-                  data-source-status={id === 'engine' ? recipe.sourceStatus : undefined}
-                >
-                  <dt className="text-stone-500">{term}</dt>
-                  <dd
-                    className={cn(
-                      'text-ink',
-                      ((id === 'ingredients' && pending > 0) ||
-                        (id === 'readiness' && !canStart)) &&
-                        'text-attention',
-                    )}
-                  >
-                    {value}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          </section>
-
-          {recipe.processNotice || recipe.degassingRequired ? (
-            <section className="mt-6" data-testid="official-recipe-process-notice">
-              <h3 className={eyebrowClasses}>
-                {recipe.degassingRequired ? c.degassingTitle : c.processNoticeTitle}
-              </h3>
-              {recipe.processNotice ? (
-                <p className="mt-2 text-[13px] leading-relaxed text-stone-700">
-                  {recipe.processNotice}
-                </p>
-              ) : null}
-            </section>
-          ) : null}
-
           {recipe.instructions?.length ? (
             <section className="mt-6" data-testid="official-recipe-instructions">
               <h3 className={eyebrowClasses}>{c.instructionsTitle}</h3>
@@ -579,10 +511,7 @@ export function OfficialRecipeDetail({
             )}
           </p>
         ) : null}
-        <h4 className="mt-5 text-[12px] font-semibold tracking-[0.08em] text-stone-600 uppercase">
-          {c.mainPhase}
-        </h4>
-        <ol className="mt-2 divide-y divide-ink/10 border-y border-ink/10">
+        <ol className="mt-5 divide-y divide-ink/10 border-y border-ink/10">
           {baseLines.map(renderLine)}
         </ol>
         {showGrams ? (
