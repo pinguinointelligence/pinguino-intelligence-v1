@@ -20,10 +20,6 @@
  */
 import * as backend from '@/lib/supabase/client';
 import type { ReferenceEngineValues } from '@/data/products/productEngineResolver';
-import {
-  MAPPER_HOME_VERIFIED_STATUSES,
-  isMapperHomeVerifiedStatus,
-} from '@/data/ingredients/mapperVerificationStatus';
 import { planMapperCatalogSearch } from '@/features/mapper-search-runtime';
 import { normalizeSearchText, rankSearchHits } from '@/features/ingredient-builder/ingredientSearch';
 import { searchProducts } from '@/services/globalCatalog';
@@ -116,7 +112,7 @@ async function searchCanonicalMapperIngredientsWithPolicy(
     tokenGroups = plan.tokenGroups;
     const limit = query.limit ?? MAPPER_SEARCH_DEFAULT_LIMIT;
     const requestedOffset = query.offset ?? 0;
-    // Home retains its frozen Verified+Base+Engine projection. The RPC now
+    // Home retains its frozen Base+Engine-approved projection. The RPC now
     // returns a broader raw set, so Home offsets must be applied after that
     // projection; applying them to raw rows would omit/duplicate page results.
     const wanted = (preserveHomeBaseline ? requestedOffset : 0) + limit + 1;
@@ -142,14 +138,7 @@ async function searchCanonicalMapperIngredientsWithPolicy(
           .filter((hit) => {
             if (hit.entityKind !== 'pi_base' || !hit.mappedIngredientId) return false;
             if (!preserveHomeBaseline) return true;
-            const verificationStatus = hit.publicData.verificationStatus;
-            return (
-              hit.usableInBase &&
-              hit.publicData.approvedForEngines === true &&
-              isMapperHomeVerifiedStatus(
-                typeof verificationStatus === 'string' ? verificationStatus : null,
-              )
-            );
+            return hit.usableInBase && hit.publicData.approvedForEngines === true;
           })
           .map((hit) => {
             const approvedForEngines = hit.publicData.approvedForEngines;
@@ -190,8 +179,8 @@ async function searchCanonicalMapperIngredientsWithPolicy(
   }
 }
 
-/** Frozen Home search retains its previously accepted exact verified-status +
- * Base + Engine result set over the current immutable Mapper release. */
+/** Home search uses the explicit Base + Engine approval authority over the
+ * current immutable Mapper release. */
 export async function searchCanonicalMapperIngredients(
   query: MapperSearchQuery,
 ): Promise<MapperSearchOutcome> {
@@ -430,10 +419,7 @@ export async function fetchIngredientEngineValues(
     .select('ingredient_id,ingredient_name_display,pac_value,pod_value')
     .eq('ingredient_id', ingredientId)
     .eq('approved_for_base', true)
-    .eq('approved_for_engines', true)
-    // Frozen Home exact-id hydration keeps the previously accepted
-    // Verified-only contract. Pro uses the canonical product resolver instead.
-    .in('verification_status', [...MAPPER_HOME_VERIFIED_STATUSES]);
+    .eq('approved_for_engines', true);
   if (signal) builder = builder.abortSignal(signal);
 
   const { data, error } = await builder.maybeSingle();

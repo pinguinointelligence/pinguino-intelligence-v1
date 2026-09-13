@@ -116,12 +116,17 @@ export interface MapperKnowledgeRow {
 }
 
 /**
- * Donor authority for field Rescue comes from canonical presence in the Mapper
- * basement, not from the historical method used to produce a row's numbers.
- * Status/provenance fields remain on the row for lineage and diagnostics only.
+ * Donor authority for field Rescue comes from explicit Mapper approvals, not
+ * from the historical method used to produce a row's numbers. Status/provenance
+ * fields remain on the row for lineage and diagnostics only.
  */
 export function isCanonicalMapperRescueDonor(row: MapperKnowledgeRow): boolean {
-  return row.is_active !== false && row.ingredient_id.trim().startsWith('PI-ING-');
+  return (
+    row.is_active !== false &&
+    row.ingredient_id.trim().startsWith('PI-ING-') &&
+    row.approved_for_base === true &&
+    row.approved_for_engines === true
+  );
 }
 
 /**
