@@ -73,6 +73,7 @@ function pending(
     next,
     evidenceError,
     note,
+    canonicalResult: session.result,
     engineReady: false,
     canonical: false,
   };

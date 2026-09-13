@@ -9,13 +9,12 @@ vi.mock('@/services/scanImportV2', async () => {
   const fakes = await import('@/scan-import-v2/__tests__/fakes');
   const { FakeDiscovery } = await import('@/scan-import-v2/__tests__/fakeDiscovery');
   const discovery = new FakeDiscovery();
-  const registry = new Map<string, unknown>();
   const ports = fakes.ports({
     discovery,
-    external: { research: async (identity) => registry.get(identity.canonicalGtin13) ?? null },
+    external: null,
     externalTimeoutMs: 200,
   });
-  (globalThis as Record<string, unknown>)['__realScannerRouteFakes'] = { discovery, registry };
+  (globalThis as Record<string, unknown>)['__realScannerRouteFakes'] = { discovery };
   return {
     createScanImportV2AppPorts: () => ports,
     getScanImportV2AccountId: async () => 'route-owner',
@@ -38,7 +37,6 @@ import { ProductScannerV1Page } from '@/pages/products/ProductScannerV1Page';
 const fakes = () =>
   (globalThis as Record<string, unknown>)['__realScannerRouteFakes'] as {
     discovery: FakeDiscovery;
-    registry: Map<string, unknown>;
   };
 
 const setValue = (input: HTMLInputElement, value: string) => {
@@ -63,6 +61,8 @@ describe('real Hamburger → Produkty → Skanuj route', () => {
     });
     useProCoreAccessStore.setState({ devPersona: 'home' });
     fakes().discovery.sessions.clear();
+    fakes().discovery.serverResult.clear();
+    fakes().discovery.automaticFamily.clear();
     fakes().discovery.calls.length = 0;
     host = document.createElement('div');
     document.body.append(host);
@@ -76,26 +76,41 @@ describe('real Hamburger → Produkty → Skanuj route', () => {
 
   it('SCN-REAL-ROUTE-01 reaches the real catalog ScanFlow and blocks technical-only photo fallback', async () => {
     const code = '8480000510716';
-    fakes().registry.set(code, {
-      provider: 'openfoodfacts',
-      queriedAt: 1,
-      query: code,
-      confidence: 0.9,
-      facts: [
-        ['identity.displayName', 'Queso fresco batido desnatado'],
-        ['identity.brand', 'Hacendado'],
-        ['identity.quantity', '500 g'],
-        ['category.tags', 'en:dairy;en:cheeses'],
-        ['nutrition.basis', 'per_100g'],
-        ['nutrition.energyKcal', '46'],
-        ['ingredientsText', 'Leche desnatada pasteurizada y fermentos lácticos'],
-      ].map(([field, value]) => ({
-        field,
-        value,
-        sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
-        authority: 'barcode_registry',
-      })),
+    fakes().discovery.serverResult.set(code, {
+      identity: {
+        displayName: 'Queso fresco batido desnatado',
+        originalName: 'Queso fresco batido desnatado',
+        brand: 'Hacendado',
+        category: 'en:dairy;en:cheeses',
+      },
+      package: { netQuantity: 500, unit: 'g', netQuantityText: '500 g' },
+      nutrition: { basis: 'per_100g', energyKcal: 46 },
+      ingredientsText: 'Leche desnatada pasteurizada y fermentos lácticos',
+      externalSources: [
+        {
+          sourceType: 'barcode_registry',
+          url: `https://world.openfoodfacts.org/api/v2/product/${code}.json`,
+          title: 'Queso fresco batido desnatado · Hacendado',
+          fieldsUsed: [
+            'identity.displayName',
+            'identity.brand',
+            'identity.category',
+            'package.netQuantity',
+            'nutrition.basis',
+            'nutrition.energyKcal',
+            'ingredientsText',
+          ],
+          sourceAuthorityClass: 'STRUCTURED_PRODUCT_DATABASE',
+          sourceStatedEan: code,
+          sourceEanConfirmationMethod: 'url',
+          sourceEanConfirmedAt: '2026-09-13T08:00:00.000Z',
+          receiptId: `off:${code}:2026-09-13T08:00:00.000Z`,
+          evidenceAuthority: 'AUTOMATIC_REGISTRY',
+          confidence: 0.9,
+        },
+      ],
     });
+    fakes().discovery.automaticFamily.set(code, 'dairy');
     fakes().discovery.notReadyMissing.set(code, [
       'MISSING_TOTAL_SOLIDS_PERCENT',
       'MISSING_WATER_PERCENT',

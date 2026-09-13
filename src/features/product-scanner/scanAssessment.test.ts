@@ -317,8 +317,10 @@ describe('the deployed handler is wired to all of it', () => {
     expect(FINALIZE).toContain('scanResultFromLookupFacts(');
     expect(FINALIZE).toContain('mergeProductScanResults(');
     expect(FINALIZE).not.toContain('product-scan-analyze');
-    // A local hostname/provenance check is allowed; a second registry API request is not.
-    expect(FINALIZE).not.toContain('/api/v2/product/');
+    // A local hostname/path check may validate the canonical session receipt. The two fetch calls
+    // above remain semantic classification and bounded enrichment; finalize does not acquire OFF.
+    expect(FINALIZE).toContain("source.hostname === 'world.openfoodfacts.org'");
+    expect(FINALIZE).toContain('source.pathname === `/api/v2/product/${barcode}.json`');
   });
 
   it('a repeated finalize reports what was SAVED, not a hard-coded success', () => {

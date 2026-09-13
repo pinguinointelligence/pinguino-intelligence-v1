@@ -143,7 +143,11 @@ export interface ScanImportV2Ports {
 }
 
 export type ResolutionProvenance =
-  'catalog' | 'local_cache' | 'user_preferred' | 'country_default' | 'country_fallback';
+  | 'catalog'
+  | 'local_cache'
+  | 'user_preferred'
+  | 'country_default'
+  | 'country_fallback';
 
 export type ScanImportV2Result =
   | {
@@ -194,6 +198,11 @@ export type ScanImportV2Result =
       diagnostics?: readonly string[];
       /** the assessment this pending verdict belongs to, so a later save cannot persist a different one */
       assessmentHash?: string | null;
+      /**
+       * Canonical server session result behind this ledger. Recognition/prefill may read it, but
+       * the client never sends it back as a second evidence authority.
+       */
+      canonicalResult?: import('./discovery/contracts').ScanResultLike | null;
       engineReady: false;
       canonical: false;
       /** exact-GTIN registry evidence gathered alongside discovery (null = none / provider unavailable) */

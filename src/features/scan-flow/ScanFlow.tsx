@@ -23,13 +23,10 @@ import {
   createOfflineCache,
   fileToLabelImage,
   identifyCode,
-  identityFromEvidence,
   runScanImportV2,
   type CustomerFamily,
   type DiscoverySession,
   type ExactCandidate,
-  type ExactWebIdentity,
-  type ExternalEvidence,
   type FinalizeInput,
   type LabelImage,
   type RequestContext,
@@ -44,6 +41,7 @@ import {
   type CaptureStatus,
 } from './scanCoreCapture';
 import {
+  canonicalRegistryIdentityFromScanResult,
   carryRecognitionPresentationDetails,
   confirmationsFromFields,
   classifyRemainingGaps,
@@ -61,6 +59,7 @@ import {
   recognitionNamePresentation,
   scanFeedbackText,
   toResolvedScanProduct,
+  type CanonicalRegistryIdentity,
   type PlainField,
   type RecognitionNamePresentation,
   type ResolvedScanProductLike,
@@ -129,7 +128,7 @@ type Phase =
       session: DiscoverySession;
       code: string;
       /** everything the continuation needs, so "Tak" resumes THIS scan — no second camera run */
-      web: ExactWebIdentity | null;
+      web: CanonicalRegistryIdentity | null;
       next: 'finalize' | 'analyze_label' | null;
       note: string | null;
     }
@@ -191,10 +190,6 @@ const CALM_SCAN_NOTICE =
 const safeNote = (note: string | null | undefined): string | null =>
   customerSafeNotice(note, CALM_SCAN_NOTICE);
 
-function isExternalEvidence(v: unknown): v is ExternalEvidence {
-  return Boolean(v) && typeof v === 'object' && Array.isArray((v as { facts?: unknown }).facts);
-}
-
 function seedSession(
   sessionId: string,
   identity: DiscoverySession['identity'],
@@ -250,12 +245,10 @@ export function ScanFlow({
   const [family, setFamily] = useState<CustomerFamily | null>(null);
   const familySubmittingRef = useRef(false);
   const [values, setValues] = useState<Record<string, string | boolean>>({});
-  const [recognized, setRecognized] = useState<ExactWebIdentity | null>(null);
+  const [recognized, setRecognized] = useState<CanonicalRegistryIdentity | null>(null);
   // Presentation is intentionally separate from the verbatim evidence used by finalize/persistence.
   const [recognitionPresentation, setRecognitionPresentation] =
     useState<RecognitionNamePresentation | null>(null);
-  /** Exact internet facts stay automatic through every later family/label/form round. */
-  const automaticEvidenceRef = useRef<ExactWebIdentity['automaticEvidence'] | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const codeRef = useRef<string | null>(null);
   /** the customer answered "Tak" for THIS scan: the question is asked once, never again mid-scan */
@@ -270,6 +263,8 @@ export function ScanFlow({
   const assessmentHashRef = useRef<string | null>(null);
   const assessmentValuesRef = useRef<Record<string, string | boolean>>({});
   const valuesRef = useRef<Record<string, string | boolean>>({});
+  // Intentional latest-render mirror read only by event/async handlers below.
+  // eslint-disable-next-line react-hooks/refs
   valuesRef.current = values;
   const bindingAssessmentHash = () =>
     assessmentHashRef.current !== null && assessmentValuesRef.current === valuesRef.current
@@ -299,7 +294,7 @@ export function ScanFlow({
 
   const updateRecognitionPresentation = useCallback(
     (
-      web: ExactWebIdentity | null,
+      web: CanonicalRegistryIdentity | null,
       reconciledName: string | null = null,
       reconciledBrand: string | null = null,
       registryConfidence: number | null = null,
@@ -343,6 +338,9 @@ export function ScanFlow({
       ctx: RequestContext,
       session?: DiscoverySession,
     ) => {
+      // Every async completion carries the code it started with. Once another scan is current,
+      // the prior run has no authority to update any React/runtime state.
+      if (codeRef.current !== code) return;
       switch (r.kind) {
         case 'resolved_exact':
           setPhase({
@@ -356,31 +354,25 @@ export function ScanFlow({
         case 'needs_confirmation': {
           if (r.reason === 'family_confirmation' && r.sessionId) {
             const next = session ?? seedSession(r.sessionId, r.identity, []);
-            const web = session ? null : identityFromEvidence(r.externalEvidence);
+            const web = canonicalRegistryIdentityFromScanResult(next.result, code);
+            const registryIsLedgerIdentity =
+              web !== null &&
+              next.result?.identity?.displayName === web.displayName &&
+              (next.result?.identity?.brand ?? null) === web.brand;
             updateRecognitionPresentation(
               web,
-              next.result?.identity?.displayName ?? next.result?.identity?.originalName ?? null,
-              next.result?.identity?.brand ?? null,
-              r.externalEvidence?.confidence ?? null,
+              registryIsLedgerIdentity
+                ? null
+                : (next.result?.identity?.displayName ??
+                    next.result?.identity?.originalName ??
+                    null),
+              registryIsLedgerIdentity ? null : (next.result?.identity?.brand ?? null),
+              web?.confidence ?? null,
             );
             if (web) {
-              // the code already identifies the product: use it, and its family when the registry knows one
-              automaticEvidenceRef.current = web.automaticEvidence;
+              // Server-owned exact evidence may prefill the form, but it is not a customer answer.
               setRecognized(web);
               setValues(prefillFromIdentity(web));
-              setFamily(web.family);
-              if (web.family) {
-                await finalize(
-                  next,
-                  {
-                    customerFamily: web.family,
-                    automaticEvidence: web.automaticEvidence,
-                  },
-                  ctx,
-                  code,
-                );
-                return;
-              }
             }
             setPhase({
               kind: 'family',
@@ -404,15 +396,20 @@ export function ScanFlow({
         }
         case 'discovered_pending': {
           const next = seedSession(r.sessionId, r.identity, r.ledger.missingCritical);
-          const web = identityFromEvidence(r.externalEvidence);
+          next.result = r.canonicalResult ?? session?.result ?? next.result;
+          const web = canonicalRegistryIdentityFromScanResult(next.result, code);
+          const registryIsLedgerIdentity =
+            web !== null &&
+            r.ledger.identity.name === web.displayName &&
+            r.ledger.identity.brand === web.brand;
           // The server and the registry have both answered before this screen is shown. The
           // already-reconciled ledger identity is the presentation authority; the raw registry
           // identity remains untouched for automatic evidence and persistence.
           updateRecognitionPresentation(
             web,
-            r.ledger.identity.name,
-            r.ledger.identity.brand,
-            r.externalEvidence?.confidence ?? null,
+            registryIsLedgerIdentity ? null : r.ledger.identity.name,
+            registryIsLedgerIdentity ? null : r.ledger.identity.brand,
+            web?.confidence ?? null,
           );
           const noteText = r.note ?? null;
           /*
@@ -522,7 +519,7 @@ export function ScanFlow({
     },
     // finalize is a per-render closure over the same ports/ctx; listing it would only re-create this callback
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [family, updateRecognitionPresentation],
+    [updateRecognitionPresentation],
   );
 
   async function finalize(
@@ -536,9 +533,9 @@ export function ScanFlow({
      */
     unverified = false,
   ) {
+    if (codeRef.current !== code) return;
     const port = ports?.discovery;
     if (!port) return fail('Backend nie jest skonfigurowany.');
-    const automaticEvidence = input.automaticEvidence ?? automaticEvidenceRef.current;
     const r = await continueDiscovery(
       session,
       {
@@ -546,13 +543,13 @@ export function ScanFlow({
         // binding only while the customer has typed nothing since the assessment was shown
         input: {
           ...input,
-          ...(automaticEvidence ? { automaticEvidence } : {}),
           expectedAssessmentHash: bindingAssessmentHash(),
         },
       },
       ctx,
       port,
     );
+    if (codeRef.current !== code) return;
     await handleResult(r, code, ctx, session);
   }
 
@@ -563,34 +560,29 @@ export function ScanFlow({
    */
   const continueUnknown = async (
     session: DiscoverySession,
-    web: ExactWebIdentity | null,
+    web: CanonicalRegistryIdentity | null,
     nextStep: 'finalize' | 'analyze_label' | null,
     note: string | null,
     ctx: RequestContext,
     code: string,
   ) => {
     if (web) {
-      // Exact-GTIN internet data fills the private product now; publication is gated independently.
-      automaticEvidenceRef.current = web.automaticEvidence;
+      // Exact-GTIN data is already in the server session. This is presentation/prefill only.
       setRecognized(web);
       updateRecognitionPresentation(web);
       setValues(prefillFromIdentity(web));
-      setFamily(web.family);
-      await finalize(
-        session,
-        { customerFamily: web.family, automaticEvidence: web.automaticEvidence },
-        ctx,
-        code,
-      );
+      await finalize(session, {}, ctx, code);
       return;
     }
     if (nextStep === 'finalize') {
-      await finalize(session, { customerFamily: family }, ctx, code);
+      await finalize(session, {}, ctx, code);
       return;
     }
     setPhase({ kind: 'label', session, note });
   };
   const continueUnknownRef = useRef(continueUnknown);
+  // Intentional latest-render callback mirror breaks the handleResult/finalize recursion.
+  // eslint-disable-next-line react-hooks/immutability, react-hooks/refs
   continueUnknownRef.current = continueUnknown;
 
   const resolve = useCallback(
@@ -600,30 +592,36 @@ export function ScanFlow({
       labelTriedRef.current = false;
       // a new scan asks the question again; the previous answer belonged to the previous product
       addConfirmedRef.current = false;
+      familySubmittingRef.current = false;
       setBusy(true);
-      automaticEvidenceRef.current = null;
+      setFamily(null);
+      setValues({});
+      assessmentHashRef.current = null;
+      assessmentValuesRef.current = {};
       setRecognized(null);
       setRecognitionPresentation(null);
       setPhase({ kind: 'resolving', code: scan.value });
       try {
         const accountId = await getScanImportV2AccountId();
+        if (codeRef.current !== scan.value) return;
         const ctx = contextFor(accountId);
-        // the exact-GTIN registry answers in about a second; the server research can take much longer —
-        // show the identity as soon as it is known (the memoised port makes this a single request)
+        // Start the SAME server exact-EAN lookup the pipeline will consume, so Recognition keeps
+        // its latency advantage without creating a browser-owned OFF truth beside the session.
         const identity = identifyCode(scan);
         // a guest is never researched: they may FIND a product, and nothing is spent on one they
         // cannot create (owner, 2026-09-06)
-        if (identity.ok && ports.external && ctx.online && entry !== 'guest_demo') {
-          void ports.external
+        if (identity.ok && ports.discovery && ctx.online && entry !== 'guest_demo') {
+          void ports.discovery
             .research(identity.identity, ctx)
-            .then((ev) => {
+            .then((outcome) => {
               if (codeRef.current !== scan.value) return;
-              const evidence = isExternalEvidence(ev) ? ev : null;
-              const web = identityFromEvidence(evidence);
+              const web =
+                outcome.kind === 'researched' || outcome.kind === 'skipped'
+                  ? canonicalRegistryIdentityFromScanResult(outcome.session.result, scan.value)
+                  : null;
               if (web) {
-                automaticEvidenceRef.current ??= web.automaticEvidence;
                 setRecognized((current) => current ?? web);
-                updateRecognitionPresentation(web, null, null, evidence?.confidence ?? null);
+                updateRecognitionPresentation(web, null, null, web.confidence);
               }
             })
             .catch(() => undefined);
@@ -635,16 +633,20 @@ export function ScanFlow({
           ctx,
           entry === 'guest_demo' ? { ...ports, external: null } : ports,
         );
+        if (codeRef.current !== scan.value) return;
         await handleResult(r, scan.value, ctx);
       } catch {
-        fail('Nie udało się sprawdzić produktu. Spróbuj ponownie.');
+        if (codeRef.current === scan.value)
+          fail('Nie udało się sprawdzić produktu. Spróbuj ponownie.');
       } finally {
-        setBusy(false);
+        if (codeRef.current === scan.value) setBusy(false);
       }
     },
     [ports, handleResult, entry, updateRecognitionPresentation],
   );
   const resolveRef = useRef(resolve);
+  // Intentional latest-render callback mirror read only by effects and UI handlers.
+  // eslint-disable-next-line react-hooks/refs
   resolveRef.current = resolve;
 
   /*
@@ -744,11 +746,11 @@ export function ScanFlow({
   }, [phase.kind]);
 
   const restart = () => {
+    codeRef.current = null;
     labelTriedRef.current = false;
     setManual('');
     setValues({});
     setFamily(null);
-    automaticEvidenceRef.current = null;
     setRecognized(null);
     setRecognitionPresentation(null);
     setFrame(null);
@@ -761,24 +763,26 @@ export function ScanFlow({
     void resolve(scan);
   };
 
-  const withBusy = async (work: () => Promise<void>) => {
+  const withBusy = async (work: () => Promise<void>, operationCode = codeRef.current) => {
     setBusy(true);
     try {
       await work();
     } catch {
-      fail('Coś poszło nie tak. Spróbuj ponownie.');
+      if (codeRef.current === operationCode) fail('Coś poszło nie tak. Spróbuj ponownie.');
     } finally {
-      setBusy(false);
+      if (codeRef.current === operationCode) setBusy(false);
     }
   };
 
-  const sendLabel = (session: DiscoverySession, file: File, source: LabelImage['source']) =>
-    withBusy(async () => {
+  const sendLabel = (session: DiscoverySession, file: File, source: LabelImage['source']) => {
+    const operationCode = codeRef.current;
+    return withBusy(async () => {
       const port = ports?.discovery;
       if (!port) return fail('Backend nie jest skonfigurowany.');
       const ctx = contextFor(await getScanImportV2AccountId());
       const image = await fileToLabelImage(await downscaled(file), source);
       const r = await continueDiscovery(session, { type: 'label', images: [image] }, ctx, port);
+      if (codeRef.current !== operationCode) return;
       labelTriedRef.current = true;
       // The photo legitimately changed the evidence package. Its next assessment is new by design,
       // so binding it to the pre-photo snapshot would turn a successful merge into stale 409.
@@ -787,28 +791,37 @@ export function ScanFlow({
         updateRecognitionPresentation(null, r.ledger.identity.name, r.ledger.identity.brand);
         // the label was read: let the authority decide what is still missing (plain fields, not another photo)
         const next = seedSession(r.sessionId, r.identity, r.ledger.missingCritical);
-        await finalize(next, { customerFamily: family }, ctx, codeRef.current ?? '');
+        next.result = r.canonicalResult ?? next.result;
+        await finalize(next, { customerFamily: family }, ctx, operationCode ?? '');
         return;
       }
-      await handleResult(r, codeRef.current ?? '', ctx);
-    });
+      await handleResult(r, operationCode ?? '', ctx);
+    }, operationCode);
+  };
 
   const chooseFamily = async (session: DiscoverySession, choice: CustomerFamily) => {
     if (familySubmittingRef.current) return;
+    const operationCode = codeRef.current;
     familySubmittingRef.current = true;
     setFamily(choice);
     try {
       await withBusy(async () => {
         const ctx = contextFor(await getScanImportV2AccountId());
-        await finalize(session, { customerFamily: choice }, ctx, codeRef.current ?? '');
-      });
+        await finalize(
+          session,
+          { customerFamily: choice, confirmations: { evidenceOrigin: 'customer_action' } },
+          ctx,
+          operationCode ?? '',
+        );
+      }, operationCode);
     } finally {
       familySubmittingRef.current = false;
     }
   };
 
-  const submitFields = (session: DiscoverySession, fields: PlainField[]) =>
-    withBusy(async () => {
+  const submitFields = (session: DiscoverySession, fields: PlainField[]) => {
+    const operationCode = codeRef.current;
+    return withBusy(async () => {
       const missing = fields.filter((f) => {
         if (!f.required) return false;
         if (f.key === 'displayName' || f.key === 'brand') return false;
@@ -835,9 +848,10 @@ export function ScanFlow({
           ),
         },
         ctx,
-        codeRef.current ?? '',
+        operationCode ?? '',
       );
-    });
+    }, operationCode);
+  };
 
   /**
    * OWNER CONTRACT 2026-09-07 — the customer saw what is missing and chose to save anyway. Whatever
@@ -845,8 +859,9 @@ export function ScanFlow({
    * it appears under Produkty → Niezweryfikowane where they can finish it later. This is the only
    * path that persists an unverified product: nothing does it automatically.
    */
-  const saveUnverified = (session: DiscoverySession, fields: readonly PlainField[]) =>
-    withBusy(async () => {
+  const saveUnverified = (session: DiscoverySession, fields: readonly PlainField[]) => {
+    const operationCode = codeRef.current;
+    return withBusy(async () => {
       const ctx = contextFor(await getScanImportV2AccountId());
       await finalize(
         session,
@@ -858,10 +873,11 @@ export function ScanFlow({
           ),
         },
         ctx,
-        codeRef.current ?? '',
+        operationCode ?? '',
         true,
       );
-    });
+    }, operationCode);
+  };
 
   /**
    * Before the first authority pass, "manual" still means "continue without a photo" so family
@@ -870,10 +886,11 @@ export function ScanFlow({
    */
   const enterManually = (session: DiscoverySession) => {
     if (assessmentHashRef.current === null) {
+      const operationCode = codeRef.current;
       void withBusy(async () => {
         const ctx = contextFor(await getScanImportV2AccountId());
-        await finalize(session, { customerFamily: family }, ctx, codeRef.current ?? '');
-      });
+        await finalize(session, { customerFamily: family }, ctx, operationCode ?? '');
+      }, operationCode);
       return;
     }
     setPhase({
@@ -884,14 +901,16 @@ export function ScanFlow({
     });
   };
 
-  const requestVerification = (session: DiscoverySession) =>
-    withBusy(async () => {
+  const requestVerification = (session: DiscoverySession) => {
+    const operationCode = codeRef.current;
+    return withBusy(async () => {
       const port = ports?.discovery;
       if (!port) return fail('Backend nie jest skonfigurowany.');
       const ctx = contextFor(await getScanImportV2AccountId());
       const r = await continueDiscovery(session, { type: 'request' }, ctx, port);
-      await handleResult(r, codeRef.current ?? '', ctx);
-    });
+      await handleResult(r, operationCode ?? '', ctx);
+    }, operationCode);
+  };
 
   const productCard = (p: ExactCandidate) => (
     <div className="rounded-2xl border border-ink/10 bg-white p-4">
@@ -934,7 +953,9 @@ export function ScanFlow({
     </button>
   );
 
-  // live feedback over the camera image
+  // Live feedback deliberately reads current DOM metrics during the frame-driven render. Moving
+  // these into state would add another render loop to the camera path and is outside Step 1.7.
+  /* eslint-disable react-hooks/refs */
   const video = videoRef.current;
   const position = frame ? positionHint(frame.roi, frame.sourceW, frame.sourceH) : null;
   const feedback =
@@ -969,6 +990,7 @@ export function ScanFlow({
       height: frame.roi.h * scale,
     };
   }
+  /* eslint-enable react-hooks/refs */
   const success = phase.kind === 'camera' && phase.status === 'confirmed';
   /*
     The customer is told BEFORE any photo action that the picture leaves their phone, and what does

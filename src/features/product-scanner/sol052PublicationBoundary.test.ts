@@ -28,7 +28,8 @@ const rollback = readFileSync(
 describe('SOL-052 publication boundary across client, Edge and SQL', () => {
   it('sends an explicit V2 contract with a V1 compatibility projection', () => {
     expect(scanFlow).not.toContain('confirmations: { productFields: web.productFields }');
-    expect(scanFlow).toContain('automaticEvidence: web.automaticEvidence');
+    expect(scanFlow).not.toContain('automaticEvidence: web.automaticEvidence');
+    expect(scanFlow).toContain('canonicalRegistryIdentityFromScanResult');
     expect(discoveryAdapter).toContain('withProductScanFinalizeV2Contract');
   });
 
@@ -36,7 +37,8 @@ describe('SOL-052 publication boundary across client, Edge and SQL', () => {
     expect(finalizer).toContain('resolveProductScanFinalizeContract(body)');
     expect(finalizer).toContain("contract.mode === 'unsupported'");
     expect(finalizer).toContain('publicationIdentityEligibilityFromScanResult');
-    expect(finalizer).toContain('setPathIfMissing(result, path, supplied)');
+    expect(finalizer).toContain('const canonicalReceipt');
+    expect(finalizer).not.toContain('setPathIfMissing(result, path, supplied)');
     expect(finalizer).toContain("source.hostname === 'world.openfoodfacts.org'");
   });
 

@@ -103,6 +103,12 @@ export function createSupabaseDiscoveryPort(
 ): DiscoveryPort {
   const newId = options.newSessionId ?? (() => globalThis.crypto.randomUUID());
   const sessions = new Map<string, DiscoverySession>();
+  /*
+    Recognition prefetch and startDiscovery intentionally race the same logical lookup. `ctx.now`
+    identifies one scanner run, so both readers share one promise while a later rescan (including
+    a retry after provider failure) gets a fresh request and receipt.
+  */
+  const researchByRun = new Map<string, Promise<ResearchOutcome>>();
   const adopt = (session: DiscoverySession): DiscoverySession => {
     const s = sessions.get(session.identity.canonicalGtin13);
     if (s) return s;
@@ -181,29 +187,41 @@ export function createSupabaseDiscoveryPort(
   };
 
   return {
-    async research(identity): Promise<ResearchOutcome> {
-      const s = sessionFor(identity);
-      const d = await invoke('product-scan-analyze', {
-        sessionId: s.sessionId,
-        mode: 'ean_lookup',
-        images: [],
-        barcode: legacyBarcode(identity),
-      });
-      if (d['kind'] === 'existing_product')
-        return { kind: 'existing_product', product: exactFromServer(obj(d['product']), identity) };
-      applySession(s, d);
-      // The server composes the sentence, because only the server knows whether the sources were
-      // asked and answered nothing or were never reached at all.
-      const notice =
-        typeof d['notice'] === 'string' && d['notice'] ? (d['notice'] as string) : null;
-      if (typeof d['skipped'] === 'string')
-        return { kind: 'skipped', session: s, reason: d['skipped'] as string, notice };
-      return {
-        kind: 'researched',
-        session: s,
-        evidenceError: d['providerUnavailable'] === true ? 'provider_unavailable' : null,
-        notice,
-      };
+    research(identity, ctx): Promise<ResearchOutcome> {
+      const runKey = `${ctx.accountId ?? 'guest'}:${identity.canonicalGtin13}:${ctx.now}`;
+      const current = researchByRun.get(runKey);
+      if (current) return current;
+      const request = (async (): Promise<ResearchOutcome> => {
+        const s = sessionFor(identity);
+        const d = await invoke('product-scan-analyze', {
+          sessionId: s.sessionId,
+          mode: 'ean_lookup',
+          images: [],
+          barcode: legacyBarcode(identity),
+        });
+        if (d['kind'] === 'existing_product')
+          return {
+            kind: 'existing_product',
+            product: exactFromServer(obj(d['product']), identity),
+          };
+        applySession(s, d);
+        // The server composes the sentence, because only the server knows whether the sources were
+        // asked and answered nothing or were never reached at all.
+        const notice =
+          typeof d['notice'] === 'string' && d['notice'] ? (d['notice'] as string) : null;
+        if (typeof d['skipped'] === 'string')
+          return { kind: 'skipped', session: s, reason: d['skipped'] as string, notice };
+        return {
+          kind: 'researched',
+          session: s,
+          evidenceError: d['providerUnavailable'] === true ? 'provider_unavailable' : null,
+          notice,
+        };
+      })();
+      researchByRun.set(runKey, request);
+      // Bound the mount-lifetime cache without invalidating the active run's shared promise.
+      if (researchByRun.size > 32) researchByRun.delete(researchByRun.keys().next().value!);
+      return request;
     },
     async analyzeLabel(session, images): Promise<AnalyzeOutcome> {
       const s = adopt(session);

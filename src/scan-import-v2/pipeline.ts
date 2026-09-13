@@ -98,7 +98,9 @@ async function finish(
    */
   const behaviour = revalidated
     ? {
-        outcome: product.engineReady ? ('classified' as const) : ('unknown_requires_review' as const),
+        outcome: product.engineReady
+          ? ('classified' as const)
+          : ('unknown_requires_review' as const),
         bindingId: product.engineReady ? (product.currentVersionId ?? null) : null,
       }
     : await ports.behaviour.classify(product.productId);
@@ -226,16 +228,17 @@ export async function runScanImportV2(
     // authenticated + discovery available: the unknown half of the product flow starts here
     if (ctx.accountId !== null && ports.discovery) {
       try {
-        // exact-GTIN registry evidence runs alongside the server research: the strongest identity
-        // source for a code nobody in the catalogue knows, gathered before anyone is asked anything
-        const [d, ev] = await Promise.all([
-          startDiscovery(identity, ctx, ports.discovery),
-          research(identity, ctx, ports),
-        ]);
+        /*
+         * The discovery authority owns exact-GTIN external evidence for an authenticated scan.
+         * ScanFlow may already have started this call for early Recognition; the production
+         * discovery adapter shares that per-run promise. Calling `ports.external` here would make
+         * the browser and server acquire two unrelated OFF representations for one MISS.
+         */
+        const d = await startDiscovery(identity, ctx, ports.discovery);
         if (d.kind === 'resolved_exact')
           return finish(identity, d.product, 'catalog', ctx, ports, true);
         if (d.kind === 'discovered_pending' || d.kind === 'needs_confirmation')
-          return { ...d, externalEvidence: ev.externalEvidence };
+          return { ...d, externalEvidence: null };
         return d;
       } catch (error) {
         if (error instanceof Error && (error as { kind?: string }).kind === 'network')

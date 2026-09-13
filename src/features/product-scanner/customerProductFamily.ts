@@ -40,6 +40,18 @@ export interface CustomerFamilyResolution {
 }
 
 /**
+ * V2 family authority gate. A new choice is accepted only with a real customer-action marker;
+ * automatic evidence may reuse an already persisted choice but can never create one.
+ */
+export function customerFamilyChoiceForFinalize(input: {
+  requested: CustomerProductFamilyChoice | null;
+  persisted: CustomerProductFamilyChoice | null;
+  customerAction: boolean;
+}): CustomerProductFamilyChoice | null {
+  return input.customerAction ? input.requested : input.persisted;
+}
+
+/**
  * Family is the gate in front of Mapper completion. A known family may proceed
  * even when another semantic dimension still needs review; an unknown family
  * never silently opens a family-specific Mapper cohort.
