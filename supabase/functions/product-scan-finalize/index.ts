@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
 import {
+  mergeProductScanExternalSources,
   mergeProductScanResults,
   normalizeValidatedBarcode,
   productSemanticEvidenceFromScanResult,
@@ -35,6 +36,7 @@ import {
 } from '../../../src/features/product-intelligence/productRecognition.ts';
 import {
   applyCustomerProductFamily,
+  customerFamilyChoiceForFinalize,
   resolveCustomerProductFamily,
   type CustomerProductFamilyChoice,
 } from '../../../src/features/product-scanner/customerProductFamily.ts';
@@ -75,6 +77,40 @@ const finite = (value: unknown, max = 1000): number | null =>
 // Supabase client must retain its library-provided untyped database generics.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ServiceClient = ReturnType<typeof createClient<any, 'public', any>>;
+
+const SCAN_OVERLAY_STATES = new Set([
+  'SCAN_DRAFT',
+  'USABLE_FOR_OWNER',
+  'PENDING_PUBLICATION',
+  'BLOCKED',
+]);
+
+/**
+ * Persist the canonical result through the transaction that also replaces normalized external
+ * sources. Direct updates to `result_json` used to leave `product_scan_external_sources` stale.
+ */
+async function persistCanonicalScanEvidence(input: {
+  service: ServiceClient;
+  actorUserId: string;
+  sessionId: string;
+  result: Record<string, unknown>;
+  validation: Record<string, unknown>;
+  overlayState: unknown;
+}): Promise<boolean> {
+  const overlayState = SCAN_OVERLAY_STATES.has(String(input.overlayState))
+    ? String(input.overlayState)
+    : 'SCAN_DRAFT';
+  const { error } = await input.service.rpc('complete_product_scan_ean_lookup_v1', {
+    p_actor_user_id: input.actorUserId,
+    p_session_id: input.sessionId,
+    p_result: input.result,
+    p_validation: input.validation,
+    p_overlay_state: overlayState,
+    // Finalize reuses accumulated evidence; it does not buy another EAN lookup.
+    p_cost_usd: 0,
+  });
+  return !error;
+}
 
 const MAPPER_AUTHORITY_COLUMNS = [
   'ingredient_id',
@@ -346,42 +382,34 @@ function applyCustomerCorrections(
   return { result, confirmedEvidenceFields: [...confirmed], barcode };
 }
 
-function setPathIfMissing(root: Record<string, unknown>, path: string, value: unknown): boolean {
-  if (value === null || value === undefined || value === '') return false;
-  const parts = path.split('.');
-  let cursor = root;
-  for (const part of parts.slice(0, -1)) {
-    const next = objectValue(cursor[part]);
-    cursor[part] = next;
-    cursor = next;
-  }
-  const key = parts.at(-1)!;
-  if (cursor[key] !== null && cursor[key] !== undefined && cursor[key] !== '') return false;
-  cursor[key] = value;
-  return true;
-}
-
 function isTrustedExactRegistryUrl(value: string, barcode: string): boolean {
   try {
     const source = new URL(value);
     return (
       source.protocol === 'https:' &&
       source.hostname === 'world.openfoodfacts.org' &&
-      source.pathname === `/product/${barcode}`
+      (source.pathname === `/product/${barcode}` ||
+        source.pathname === `/api/v2/product/${barcode}.json`)
     );
   } catch {
     return false;
   }
 }
 
-/** Automatic OFF/registry facts are exact-source evidence, never customer confirmations. */
+/**
+ * A V2 client may point back to the server receipt it saw, but it may not manufacture or augment
+ * automatic facts. The canonical fields already live in `session.result_json`; accepting client
+ * `productFields` as fill-ins was an authority escalation and produced a second OFF source row.
+ */
 function applyAutomaticEvidence(
   original: unknown,
   value: unknown,
   sessionBarcode: unknown,
 ): Record<string, unknown> | null {
+  const result = structuredClone(objectValue(original));
+  result.externalSources = mergeProductScanExternalSources([], result.externalSources);
   const bundle = objectValue(value);
-  if (Object.keys(bundle).length === 0) return structuredClone(objectValue(original));
+  if (Object.keys(bundle).length === 0) return result;
   if (bundle.source !== 'barcode_registry') return null;
   const barcode = normalizeValidatedBarcode(sessionBarcode);
   const exactGtin = normalizeValidatedBarcode(bundle.exactGtin);
@@ -394,62 +422,18 @@ function applyAutomaticEvidence(
   )
     return null;
 
-  const fields = objectValue(bundle.productFields);
-  const identity = objectValue(fields.identity);
-  const nutrition = objectValue(fields.nutrition);
-  const packageValue = objectValue(fields.package);
-  const result = mergeProductScanResults(original, {}, barcode);
-  const fieldsUsed: string[] = [];
-  const fill = (path: string, supplied: unknown) => {
-    if (setPathIfMissing(result, path, supplied)) fieldsUsed.push(path);
-  };
-  fill('identity.displayName', text(identity.displayName, 300));
-  fill('identity.brand', text(identity.brand, 200));
-  fill('identity.variant', text(identity.variant, 300));
-  fill('identity.category', text(identity.category, 300));
-  const netQuantity = finite(packageValue.netQuantity, 1_000_000);
-  const quantityUnit = text(packageValue.unit, 10)?.toLowerCase() ?? null;
-  const quantityText = text(packageValue.netQuantityText, 500);
-  if (netQuantity !== null && ['kg', 'g', 'ml', 'l'].includes(quantityUnit ?? '')) {
-    fill('package.netQuantity', netQuantity);
-    fill('package.unit', quantityUnit);
-    fill('package.netQuantityText', quantityText);
-  }
-  for (const key of [
-    'energyKj',
-    'energyKcal',
-    'fat',
-    'saturatedFat',
-    'carbohydrate',
-    'sugars',
-    'protein',
-    'salt',
-    'fibre',
-  ]) {
-    const parsed = finite(nutrition[key], key.startsWith('energy') ? 10_000 : 100);
-    if (parsed !== null) fill(`nutrition.${key}`, parsed);
-  }
-  if (nutrition.basis === 'per_100g' || nutrition.basis === 'per_100ml')
-    fill('nutrition.basis', nutrition.basis);
-  fill('ingredientsText', text(fields.ingredientsText, 20_000));
-  fill('allergensText', text(fields.allergensText, 20_000));
-
-  const existingSources = Array.isArray(result.externalSources) ? result.externalSources : [];
-  result.externalSources = [
-    ...existingSources,
-    {
-      sourceType: 'barcode_registry',
-      url: sourceUrl,
-      title: null,
-      fieldsUsed,
-      sourceAuthorityClass: 'STRUCTURED_PRODUCT_DATABASE',
-      sourceStatedEan: barcode,
-      sourceEanConfirmationMethod: 'url',
-      sourceEanConfirmedAt: new Date(
-        typeof bundle.queriedAt === 'number' ? bundle.queriedAt : Date.now(),
-      ).toISOString(),
-    },
-  ];
+  const canonicalReceipt = (Array.isArray(result.externalSources) ? result.externalSources : [])
+    .map(objectValue)
+    .find(
+      (source) =>
+        source.sourceType === 'barcode_registry' &&
+        source.sourceAuthorityClass === 'STRUCTURED_PRODUCT_DATABASE' &&
+        normalizeValidatedBarcode(source.sourceStatedEan) === barcode &&
+        source.sourceEanConfirmationMethod === 'url' &&
+        typeof source.url === 'string' &&
+        isTrustedExactRegistryUrl(source.url, barcode),
+    );
+  if (!canonicalReceipt) return null;
   return result;
 }
 
@@ -737,9 +721,23 @@ Deno.serve(async (request) => {
         sessionId,
         evidence: recognitionEvidence,
       });
-  const familyChoice = FAMILY_CHOICES.has(body.customerFamily as CustomerProductFamilyChoice)
+  const requestedFamilyChoice = FAMILY_CHOICES.has(
+    body.customerFamily as CustomerProductFamilyChoice,
+  )
     ? (body.customerFamily as CustomerProductFamilyChoice)
     : null;
+  const persistedFamilyChoice = FAMILY_CHOICES.has(
+    objectValue(session.validation_json).customerFamily as CustomerProductFamilyChoice,
+  )
+    ? (objectValue(session.validation_json).customerFamily as CustomerProductFamilyChoice)
+    : null;
+  // V2 may create CUSTOMER_CONFIRMED authority only with the explicit customer-action marker.
+  // Later rounds reuse the choice already stored by that action; an automatic/client hint is ignored.
+  const familyChoice = customerFamilyChoiceForFinalize({
+    requested: requestedFamilyChoice,
+    persisted: persistedFamilyChoice,
+    customerAction: contract.customerAction,
+  });
   if (resolveCustomerProductFamily(recognition).status !== 'RESOLVED' && familyChoice)
     recognition = applyCustomerProductFamily(recognition, familyChoice);
   /*
@@ -774,22 +772,15 @@ Deno.serve(async (request) => {
         : (persistedScan.recognition ?? null),
     },
   };
-  const persistedAt = new Date().toISOString();
-  const { data: persisted, error: persistError } = await service
-    .from('product_scan_sessions')
-    .update({
-      result_json: corrections.result,
-      validation_json: validation,
-      barcode: corrections.barcode,
-      updated_at: persistedAt,
-    })
-    .eq('id', sessionId)
-    .eq('user_id', auth.user.id)
-    .eq('state', 'analyzed')
-    .select('id')
-    .maybeSingle();
-  if (persistError || !persisted)
-    return json({ error: 'scanner_corrections_persistence_failed' }, 503);
+  const persisted = await persistCanonicalScanEvidence({
+    service,
+    actorUserId: auth.user.id,
+    sessionId,
+    result: corrections.result,
+    validation,
+    overlayState: session.overlay_state,
+  });
+  if (!persisted) return json({ error: 'scanner_corrections_persistence_failed' }, 503);
 
   if (familyResolution.status !== 'RESOLVED') {
     return json({
@@ -818,9 +809,9 @@ Deno.serve(async (request) => {
       /*
           The scan path never filled this, so productProductionAccuracy's web-source test —
           `trustedWebAuthority(input.evidenceProvenance?.[field]?.sourceAuthorityClass)` — always
-          read undefined and scored 0. The finalizer now builds it only through
-          `applyAutomaticEvidence`, after matching the session GTIN and the exact-source URL. This
-          provenance still cannot bypass the independent name-quality gate below or the SQL gate.
+          read undefined and scored 0. It is now built from the canonical server session receipt;
+          `applyAutomaticEvidence` may only validate a client reference to that receipt and cannot
+          add facts. This provenance still cannot bypass the independent name-quality or SQL gate.
         */
       evidenceProvenance: proposal.evidenceProvenance,
       recognitionEvidence: proposal.recognitionEvidence,
@@ -921,16 +912,14 @@ Deno.serve(async (request) => {
         },
       };
       if (familyResolution.status !== 'RESOLVED') {
-        await service
-          .from('product_scan_sessions')
-          .update({
-            result_json: corrections.result,
-            validation_json: validation,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', sessionId)
-          .eq('user_id', auth.user.id)
-          .eq('state', 'analyzed');
+        await persistCanonicalScanEvidence({
+          service,
+          actorUserId: auth.user.id,
+          sessionId,
+          result: corrections.result,
+          validation,
+          overlayState: session.overlay_state,
+        });
         return json({
           kind: 'family_confirmation_required',
           recognition,
@@ -1084,23 +1073,20 @@ Deno.serve(async (request) => {
       publicationEligibility,
     },
   };
-  const { error: traceError } = await service
-    .from('product_scan_sessions')
-    .update({
-      result_json: corrections.result,
-      validation_json: {
-        ...validation,
-        missingCriticalFields: criticalGaps,
-        autonomousTrace: trace,
-        finalAssessment: assessment,
-      },
-      overlay_state: ready ? 'PENDING_PUBLICATION' : 'SCAN_DRAFT',
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', sessionId)
-    .eq('user_id', auth.user.id)
-    .eq('state', 'analyzed');
-  if (traceError) return json({ error: 'scanner_trace_persistence_failed' }, 503);
+  const tracePersisted = await persistCanonicalScanEvidence({
+    service,
+    actorUserId: auth.user.id,
+    sessionId,
+    result: corrections.result,
+    validation: {
+      ...validation,
+      missingCriticalFields: criticalGaps,
+      autonomousTrace: trace,
+      finalAssessment: assessment,
+    },
+    overlayState: ready ? 'PENDING_PUBLICATION' : 'SCAN_DRAFT',
+  });
+  if (!tracePersisted) return json({ error: 'scanner_trace_persistence_failed' }, 503);
   if (action === 'preview') return json(preview);
   /*
     A SAVE MAY ONLY SAVE THE VERDICT THE CUSTOMER WAS SHOWN. The client sends back the hash of the

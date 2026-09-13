@@ -51,6 +51,10 @@ export class FakeDiscovery implements DiscoveryPort {
   serverCatalogue = new Map<string, ExactCandidate>();
   provider = new Map<string, ProviderFacts>();
   secondProvider = new Map<string, SecondProviderFacts>();
+  /** Canonical server-session payload returned by the exact-EAN lookup. */
+  serverResult = new Map<string, ScanResultLike>();
+  /** Deterministic family derived by the fake server from that automatic payload. */
+  automaticFamily = new Map<string, CustomerFamily>();
   clock = 1_000;
   providerError: 'provider_timeout' | 'provider_failed' | 'provider_unavailable' | null = null;
   label = new Map<string, LabelFacts>();
@@ -95,8 +99,16 @@ export class FakeDiscovery implements DiscoveryPort {
     const s = this.session(identity);
     if (this.providerError)
       return { kind: 'researched', session: s, evidenceError: this.providerError };
+    const canonical = this.serverResult.get(identity.canonicalGtin13);
+    if (canonical) {
+      s.result = structuredClone(canonical);
+      s.usage = {
+        ...s.usage,
+        webCalls: Math.max(1, canonical.externalSources?.length ?? 0),
+      };
+    }
     const p = this.provider.get(identity.canonicalGtin13);
-    if (p) {
+    if (p && !canonical) {
       const src = p.sourceType ?? 'manufacturer';
       const fields = ['identity.displayName', 'identity.brand', 'identity.countryOfOrigin'].filter(
         (f) =>
@@ -257,7 +269,7 @@ export class FakeDiscovery implements DiscoveryPort {
       s.missingCritical = missingOf(s.result);
     }
     if (!s.result?.identity?.displayName) return { kind: 'identity_required' };
-    if (!input.customerFamily)
+    if (!input.customerFamily && !this.automaticFamily.has(session.identity.canonicalGtin13))
       return {
         kind: 'family_confirmation_required',
         options: [

@@ -650,6 +650,85 @@ const mergeUnique = (left: unknown, right: unknown): unknown[] => [
   ).values(),
 ];
 
+const externalSourceUrl = (value: unknown): string | null =>
+  typeof value === 'string' && /^https:\/\//i.test(value) ? value : null;
+
+const externalSourceEan = (source: Record<string, unknown>): string | null => {
+  const stated = normalizeValidatedBarcode(source.sourceStatedEan);
+  if (stated) return stated;
+  const url = externalSourceUrl(source.url);
+  if (!url) return null;
+  try {
+    const match = /^\/(?:api\/v2\/)?product\/(\d{8,14})(?:\.json)?$/.exec(new URL(url).pathname);
+    return match ? normalizeValidatedBarcode(match[1]) : null;
+  } catch {
+    return null;
+  }
+};
+
+const externalSourceKey = (source: Record<string, unknown>): string => {
+  const sourceType = String(source.sourceType ?? '');
+  const url = externalSourceUrl(source.url) ?? '';
+  const ean = externalSourceEan(source);
+  try {
+    if (ean && new URL(url).hostname === 'world.openfoodfacts.org')
+      return `barcode_registry:world.openfoodfacts.org:${ean}`;
+  } catch {
+    // Non-URL sources retain the ordinary sourceType + URL identity below.
+  }
+  if (url) return `${sourceType}:${url}`;
+  const receipt = typeof source.receiptId === 'string' ? source.receiptId : '';
+  return receipt
+    ? `${sourceType}:receipt:${receipt}`
+    : `${sourceType}:opaque:${stableJson(source)}`;
+};
+
+const externalSourceStrength = (source: Record<string, unknown>): number => {
+  const url = externalSourceUrl(source.url) ?? '';
+  return (
+    (/world\.openfoodfacts\.org\/api\/v2\/product\//.test(url) ? 4 : 0) +
+    (source.sourceAuthorityClass === 'STRUCTURED_PRODUCT_DATABASE' ? 2 : 0) +
+    (externalSourceEan(source) ? 1 : 0)
+  );
+};
+
+/**
+ * One logical source row per provider receipt. Repeated finalize/research may add newly used fields
+ * but may not append another client/server OFF copy for the same exact GTIN.
+ */
+export function mergeProductScanExternalSources(left: unknown, right: unknown): unknown[] {
+  const merged = new Map<string, Record<string, unknown>>();
+  for (const candidate of [
+    ...(Array.isArray(left) ? left : []),
+    ...(Array.isArray(right) ? right : []),
+  ]) {
+    const incoming = objectValue(candidate);
+    if (!incoming.sourceType) continue;
+    const key = externalSourceKey(incoming);
+    const prior = merged.get(key);
+    if (!prior) {
+      merged.set(key, structuredClone(incoming));
+      continue;
+    }
+    const preferred =
+      externalSourceStrength(incoming) > externalSourceStrength(prior) ? incoming : prior;
+    const alternate = preferred === prior ? incoming : prior;
+    merged.set(key, {
+      ...alternate,
+      ...preferred,
+      fieldsUsed: [
+        ...new Set(
+          [
+            ...(Array.isArray(prior.fieldsUsed) ? prior.fieldsUsed : []),
+            ...(Array.isArray(incoming.fieldsUsed) ? incoming.fieldsUsed : []),
+          ].filter((field): field is string => typeof field === 'string' && field.length > 0),
+        ),
+      ],
+    });
+  }
+  return [...merged.values()];
+}
+
 /**
  * Reconcile the structured package quantity with the same directly visible label
  * text. This catches the real mobile regression where `330 ml` lost its trailing zero
@@ -801,7 +880,10 @@ export function mergeProductScanResults(
   for (const field of ['mayContainAllergens', 'claims'])
     setPath(merged, field, mergeUnique(getPath(prior, field), getPath(incoming, field)));
   merged.evidence = mergeUnique(prior.evidence, incoming.evidence);
-  merged.externalSources = mergeUnique(prior.externalSources, incoming.externalSources);
+  merged.externalSources = mergeProductScanExternalSources(
+    prior.externalSources,
+    incoming.externalSources,
+  );
   merged.warnings = mergeUnique(prior.warnings, incoming.warnings);
   normalizeVisiblePackageQuantity(merged);
 
@@ -1313,6 +1395,12 @@ export function scanResultFromLookupFacts(
       sourceEanConfirmationMethod: EanConfirmationMethod | null;
       /** When that confirmation was established. */
       sourceEanConfirmedAt: string | null;
+      /** Stable identity of the canonical acquisition used by later persistence/readback. */
+      receiptId: string | null;
+      /** External-source facts are automatic evidence, never customer-confirmed input. */
+      evidenceAuthority: 'AUTOMATIC_REGISTRY' | 'AUTOMATIC_EXTERNAL';
+      /** Presentation confidence produced by the source adapter; never customer authority. */
+      confidence: number | null;
     }
   >();
   let ingredientsText: string | null = null;
@@ -1352,6 +1440,19 @@ export function scanResultFromLookupFacts(
         sourceEanConfirmedAt:
           typeof fact.sourceEanConfirmedAt === 'string' && fact.sourceEanConfirmedAt.trim() !== ''
             ? fact.sourceEanConfirmedAt
+            : null,
+        receiptId:
+          typeof fact.sourceReceiptId === 'string' && fact.sourceReceiptId.trim() !== ''
+            ? fact.sourceReceiptId
+            : null,
+        evidenceAuthority:
+          authority === 'STRUCTURED_PRODUCT_DATABASE' ? 'AUTOMATIC_REGISTRY' : 'AUTOMATIC_EXTERNAL',
+        confidence:
+          typeof fact.sourceConfidence === 'number' &&
+          Number.isFinite(fact.sourceConfidence) &&
+          fact.sourceConfidence >= 0 &&
+          fact.sourceConfidence <= 1
+            ? fact.sourceConfidence
             : null,
       });
   };

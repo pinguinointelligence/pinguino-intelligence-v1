@@ -117,6 +117,7 @@ export function openFoodFactsFactsForExactEan(
   const productName =
     firstLocalizedText(product, 'product_name') ?? firstLocalizedText(product, 'generic_name');
   const brand = firstText(product.brands);
+  const sourceConfidence = productName && brand ? 0.9 : productName ? 0.6 : 0.3;
   const sourceUrl = openFoodFactsApiUrl(expectedBarcode);
   const sourceTitle = [productName, brand].filter(Boolean).join(' · ') || `GTIN ${expectedBarcode}`;
   const facts: Record<string, unknown>[] = [];
@@ -134,6 +135,8 @@ export function openFoodFactsFactsForExactEan(
       sourceStatedEan: returnedBarcode,
       sourceEanConfirmationMethod: 'url',
       sourceEanConfirmedAt: retrievedAt,
+      sourceReceiptId: `off:${expectedBarcode}:${retrievedAt}`,
+      sourceConfidence,
       retrievedAt,
     });
   };

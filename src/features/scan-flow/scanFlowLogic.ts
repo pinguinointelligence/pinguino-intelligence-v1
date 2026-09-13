@@ -7,10 +7,145 @@
  *     technical parameter — and the customer's answers become the finalize confirmations.
  */
 import type { ConfirmedScan } from '@/scan-contract/confirmedScan';
-import type { ExactCandidate, ExactWebIdentity, FinalizeInput } from '@/scan-import-v2';
+import type {
+  ExactCandidate,
+  ExactWebIdentity,
+  FinalizeInput,
+  ScanResultLike,
+} from '@/scan-import-v2';
 import type { ScanExactProduct } from '@/services/productScanner';
 
 export type ResolvedScanProductLike = ScanExactProduct & { barcode: string | null };
+
+/**
+ * Presentation/prefill view of the server-owned exact-registry receipt. It intentionally has no
+ * `automaticEvidence` or family answer: the scan session already owns those facts, and only a real
+ * customer action may populate the `customerFamily` channel.
+ */
+export type CanonicalRegistryIdentity = Pick<
+  ExactWebIdentity,
+  'displayName' | 'brand' | 'quantity' | 'productFields' | 'hasNutrition' | 'hasIngredients'
+> & { confidence: number | null };
+
+const scanObject = (value: unknown): Record<string, unknown> =>
+  value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+
+const scanDigits = (value: unknown): string =>
+  typeof value === 'string' || typeof value === 'number' ? String(value).replace(/\D/g, '') : '';
+
+const exactOffUrl = (value: unknown, ean: string): boolean => {
+  if (typeof value !== 'string') return false;
+  try {
+    const url = new URL(value);
+    return (
+      url.protocol === 'https:' &&
+      url.hostname === 'world.openfoodfacts.org' &&
+      (url.pathname === `/product/${ean}` || url.pathname === `/api/v2/product/${ean}.json`)
+    );
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Read Recognition/prefill only from the canonical OFF row already verified and persisted by the
+ * server. `fieldsUsed` is the allowlist: a neighboring retailer value or an unreferenced default
+ * can never silently become part of this registry view.
+ */
+export function canonicalRegistryIdentityFromScanResult(
+  result: ScanResultLike | null | undefined,
+  expectedEan: string,
+): CanonicalRegistryIdentity | null {
+  const ean = scanDigits(expectedEan);
+  const root = scanObject(result);
+  const sources = Array.isArray(result?.externalSources) ? result.externalSources : [];
+  const receipt = sources.find(
+    (source) =>
+      source.sourceType === 'barcode_registry' &&
+      source.sourceAuthorityClass === 'STRUCTURED_PRODUCT_DATABASE' &&
+      scanDigits(source.sourceStatedEan) === ean &&
+      source.sourceEanConfirmationMethod === 'url' &&
+      exactOffUrl(source.url, ean),
+  );
+  if (!receipt) return null;
+  const used = new Set(receipt.fieldsUsed);
+  const identity = scanObject(root['identity']);
+  const displayName = used.has('identity.displayName')
+    ? typeof identity['displayName'] === 'string'
+      ? identity['displayName']
+      : typeof identity['originalName'] === 'string'
+        ? identity['originalName']
+        : null
+    : null;
+  if (!displayName) return null;
+  const brand =
+    used.has('identity.brand') && typeof identity['brand'] === 'string' ? identity['brand'] : null;
+  const productFields: Record<string, unknown> = {
+    identity: { displayName, ...(brand ? { brand } : {}) },
+  };
+  const packageValue = scanObject(root['package']);
+  const quantity =
+    used.has('package.netQuantity') && typeof packageValue['netQuantityText'] === 'string'
+      ? packageValue['netQuantityText']
+      : null;
+  if (
+    used.has('package.netQuantity') &&
+    typeof packageValue['netQuantity'] === 'number' &&
+    typeof packageValue['unit'] === 'string'
+  ) {
+    productFields['package'] = {
+      netQuantity: packageValue['netQuantity'],
+      unit: packageValue['unit'],
+      netQuantityText: quantity,
+    };
+  }
+  const sourceNutrition = scanObject(root['nutrition']);
+  const nutrition: Record<string, unknown> = {};
+  for (const key of [
+    'basis',
+    'energyKj',
+    'energyKcal',
+    'fat',
+    'saturatedFat',
+    'carbohydrate',
+    'sugars',
+    'protein',
+    'salt',
+    'fibre',
+  ]) {
+    if (used.has(`nutrition.${key}`) && sourceNutrition[key] !== null)
+      nutrition[key] = sourceNutrition[key];
+  }
+  if (Object.keys(nutrition).length > 0) productFields['nutrition'] = nutrition;
+  const ingredientsText =
+    used.has('ingredientsText') && typeof root['ingredientsText'] === 'string'
+      ? root['ingredientsText']
+      : null;
+  const allergensText =
+    used.has('allergensText') && typeof root['allergensText'] === 'string'
+      ? root['allergensText']
+      : null;
+  if (ingredientsText) productFields['ingredientsText'] = ingredientsText;
+  if (allergensText) productFields['allergensText'] = allergensText;
+  return {
+    displayName,
+    brand,
+    quantity,
+    productFields,
+    hasNutrition:
+      typeof nutrition['energyKcal'] === 'number' || typeof nutrition['fat'] === 'number',
+    hasIngredients: Boolean(ingredientsText),
+    confidence:
+      typeof receipt.confidence === 'number' &&
+      Number.isFinite(receipt.confidence) &&
+      receipt.confidence >= 0 &&
+      receipt.confidence <= 1
+        ? receipt.confidence
+        : null,
+  };
+}
 
 export function manualConfirmedScan(input: string, now = Date.now()): ConfirmedScan | null {
   const digits = input.replace(/\D/g, '');
@@ -63,9 +198,8 @@ export function toResolvedScanProduct(
 /**
  * Customer-facing identity for the short Recognition line only.
  *
- * This is deliberately separate from `ExactWebIdentity`: the verbatim registry value still flows
- * through `automaticEvidence` and the server remains the only persistence authority. Recognition
- * first uses the name the server has already reconciled for this exact EAN, then a clean structured
+ * This is deliberately separate from the server's canonical registry receipt. Recognition first
+ * uses the name the server has already reconciled for this exact EAN, then a clean structured
  * registry name, then the brand, and only then a conservatively trimmed seller title. When none of
  * those is safe, a neutral label is better than displaying model noise or an internal identifier.
  */
@@ -89,9 +223,9 @@ export const RECOGNITION_NAME_FALLBACK = 'Rozpoznany produkt';
 const SELLER_NAME_NOISE =
   /(?:https?:\/\/|www\.|[€$£]|\b(?:best\s+price|buy\s+now|kup\s+online|najlepsza\s+cena|pfand|deposit|versand|shipping|delivery|angebot|oferta)\b)/i;
 const INTERNAL_NAME_TOKEN = /\b(?:pr|pm|pi)[-_ ]?ing[-_ ]?\d+\b/i;
-const LABELED_CODE_TOKEN =
-  /\b(?:ean|gtin|sku|id|kod|code)\b(?:\s*[:#-]\s*|\s+)[a-z0-9-]{4,}\b/i;
-const UUID_NAME_TOKEN = /\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/i;
+const LABELED_CODE_TOKEN = /\b(?:ean|gtin|sku|id|kod|code)\b(?:\s*[:#-]\s*|\s+)[a-z0-9-]{4,}\b/i;
+const UUID_NAME_TOKEN =
+  /\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/i;
 const LONG_NUMERIC_TOKEN = /(?:^|\D)\d{8,14}(?:\D|$)/;
 const PLACEHOLDER_NAMES = new Set([
   'n a',
@@ -167,9 +301,7 @@ const structuredRegistryName = (value: string | null | undefined): string | null
 };
 
 /** Conservative last-resort cleanup for a title whose marketplace tail is visibly separable. */
-export function sanitizeRecognitionSellerTitle(
-  value: string | null | undefined,
-): string | null {
+export function sanitizeRecognitionSellerTitle(value: string | null | undefined): string | null {
   const compact = compactRecognitionText(value);
   if (!compact) return null;
   const withoutTail = compact
@@ -241,14 +373,10 @@ export function recognitionNamePresentation(
 
   const reconciledCandidate = reconciledRecognitionName(input.reconciledName);
   const reconciled =
-    reconciledCandidate && !looksLikeRegistryJunk(reconciledCandidate)
-      ? reconciledCandidate
-      : null;
+    reconciledCandidate && !looksLikeRegistryJunk(reconciledCandidate) ? reconciledCandidate : null;
   const registryConfidenceSufficient =
     typeof input.registryConfidence === 'number' && input.registryConfidence >= 0.6;
-  const registry = registryConfidenceSufficient
-    ? structuredRegistryName(input.registryName)
-    : null;
+  const registry = registryConfidenceSufficient ? structuredRegistryName(input.registryName) : null;
   const brand =
     reconciledRecognitionName(input.reconciledBrand) ??
     (registryConfidenceSufficient ? structuredRegistryName(input.registryBrand) : null);
@@ -573,7 +701,9 @@ export function scanFeedbackText(frame: {
 }
 
 /** the registry's facts as the prefilled answers of the plain fields */
-export function prefillFromIdentity(web: ExactWebIdentity): Record<string, string | boolean> {
+export function prefillFromIdentity(
+  web: CanonicalRegistryIdentity | ExactWebIdentity,
+): Record<string, string | boolean> {
   const out: Record<string, string | boolean> = { displayName: web.displayName };
   if (web.brand) out['brand'] = web.brand;
   const pf = web.productFields;

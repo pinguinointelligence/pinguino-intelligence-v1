@@ -71,6 +71,8 @@ export interface ScanResultLike {
     displayName?: string | null;
     originalName?: string | null;
     brand?: string | null;
+    category?: string | null;
+    variant?: string | null;
     countryOfOrigin?: string | null;
     labelLanguages?: string[];
   } | null;
@@ -84,7 +86,19 @@ export interface ScanResultLike {
     | { field: string; source: string; confidence?: string | null; assetId?: string }[]
     | null;
   externalSources?:
-    | { sourceType: string; url: string | null; title: string | null; fieldsUsed: string[] }[]
+    | {
+        sourceType: string;
+        url: string | null;
+        title: string | null;
+        fieldsUsed: string[];
+        sourceAuthorityClass?: string | null;
+        sourceStatedEan?: string | null;
+        sourceEanConfirmationMethod?: string | null;
+        sourceEanConfirmedAt?: string | null;
+        receiptId?: string | null;
+        evidenceAuthority?: string | null;
+        confidence?: number | null;
+      }[]
     | null;
   conflicts?:
     | {

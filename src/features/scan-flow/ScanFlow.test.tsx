@@ -14,8 +14,66 @@ import type { FakeDiscovery } from '@/scan-import-v2/__tests__/fakeDiscovery';
 vi.mock('@/services/scanImportV2', async () => {
   const fakes = await import('@/scan-import-v2/__tests__/fakes');
   const { FakeDiscovery } = await import('@/scan-import-v2/__tests__/fakeDiscovery');
+  const { identityFromEvidence } = await import('@/scan-import-v2/adapters/openFoodFactsEvidence');
   const discovery = new FakeDiscovery();
-  const registry = new Map<string, unknown>();
+  const registry = new (class extends Map<string, unknown> {
+    override set(code: string, evidence: unknown) {
+      super.set(code, evidence);
+      const web = identityFromEvidence(evidence as never);
+      if (!web) return this;
+      const provider = discovery.provider.get(code);
+      const root = web.productFields as Record<string, unknown>;
+      const sourceIdentity = (root['identity'] ?? {}) as Record<string, unknown>;
+      const sourcePackage = (root['package'] ?? {}) as Record<string, unknown>;
+      const sourceNutrition = (root['nutrition'] ?? {}) as Record<string, unknown>;
+      const facts = (evidence as { facts?: { field?: string; value?: string }[] }).facts ?? [];
+      const category = facts.find((fact) => fact.field === 'category.tags')?.value ?? null;
+      const fieldsUsed = [
+        'identity.displayName',
+        ...(sourceIdentity['brand'] ? ['identity.brand'] : []),
+        ...(category ? ['identity.category'] : []),
+        ...(sourcePackage['netQuantity'] ? ['package.netQuantity'] : []),
+        ...Object.keys(sourceNutrition).map((key) => `nutrition.${key}`),
+        ...(typeof root['ingredientsText'] === 'string' ? ['ingredientsText'] : []),
+        ...(typeof root['allergensText'] === 'string' ? ['allergensText'] : []),
+      ];
+      discovery.serverResult.set(code, {
+        identity: {
+          displayName: provider?.displayName ?? web.displayName,
+          originalName: provider?.displayName ?? web.displayName,
+          brand: provider?.brand ?? web.brand,
+          category,
+        },
+        package: sourcePackage,
+        nutrition: sourceNutrition,
+        ingredientsText:
+          typeof root['ingredientsText'] === 'string' ? root['ingredientsText'] : null,
+        allergensText: typeof root['allergensText'] === 'string' ? root['allergensText'] : null,
+        externalSources: [
+          {
+            sourceType: 'barcode_registry',
+            url: `https://world.openfoodfacts.org/api/v2/product/${code}.json`,
+            title: null,
+            fieldsUsed,
+            sourceAuthorityClass: 'STRUCTURED_PRODUCT_DATABASE',
+            sourceStatedEan: code,
+            sourceEanConfirmationMethod: 'url',
+            sourceEanConfirmedAt: '2026-09-13T08:00:00.000Z',
+            receiptId: `off:${code}:2026-09-13T08:00:00.000Z`,
+            evidenceAuthority: 'AUTOMATIC_REGISTRY',
+            confidence:
+              typeof (evidence as { confidence?: unknown }).confidence === 'number'
+                ? (evidence as { confidence: number }).confidence
+                : null,
+          },
+        ],
+        evidence: [],
+        conflicts: [],
+      });
+      if (web.family) discovery.automaticFamily.set(code, web.family);
+      return this;
+    }
+  })();
   const p = fakes.ports({
     discovery,
     external: { research: async (identity) => registry.get(identity.canonicalGtin13) ?? null },
@@ -218,10 +276,8 @@ describe('ScanFlow (jsdom, fake ports)', () => {
       'Haribo Goldbären 175g',
     );
     expect(discovery.created.get(code)).toMatchObject({ route: 'PR', engineUsable: true });
-    expect(discovery.finalizeInputs.at(-1)?.automaticEvidence).toMatchObject({
-      exactGtin: code,
-      productFields: { identity: { displayName: 'ghgh', brand: 'Haribo' } },
-    });
+    expect(discovery.finalizeInputs.at(-1)?.automaticEvidence).toBeUndefined();
+    expect(discovery.finalizeInputs.at(-1)?.customerFamily).toBeUndefined();
   });
 
   it('PRING-EAN-PRES-06: Dr Pepper Recognition suppresses the seller SEO title', async () => {
@@ -295,10 +351,8 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     expect(text()).not.toContain('0.75€');
     expect(discovery.sessions.get(code)?.result?.identity?.displayName).toBe('DR PEPPER - CLASSIC');
     expect(discovery.created.get(code)).toMatchObject({ route: 'PR', engineUsable: true });
-    expect(discovery.finalizeInputs.at(-1)?.automaticEvidence).toMatchObject({
-      exactGtin: code,
-      productFields: { identity: { displayName: sellerTitle, brand: 'Dr Pepper' } },
-    });
+    expect(discovery.finalizeInputs.at(-1)?.automaticEvidence).toBeUndefined();
+    expect(discovery.finalizeInputs.at(-1)?.customerFamily).toBeUndefined();
   });
 
   it('PRING-EAN-PRES-07: a plausible but low-confidence name uses the neutral fallback', async () => {
@@ -415,10 +469,7 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     expect(discovery.sessions.get(code)?.result?.identity?.displayName).toBe(
       'Acme Vanilla Bean Paste',
     );
-    expect(discovery.finalizeInputs.at(-1)?.automaticEvidence).toMatchObject({
-      exactGtin: code,
-      productFields: { identity: { displayName: 'Vanilla paste', brand: 'Acme' } },
-    });
+    expect(discovery.finalizeInputs.at(-1)?.automaticEvidence).toBeUndefined();
   });
 
   it('recipe mode: unknown → internet → label → plain fields → private product → recipe', async () => {
@@ -657,17 +708,8 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     expect(text()).not.toContain('Energia (kcal)');
     expect(text()).not.toContain('Wartości podane na');
     expect(discovery.finalizeInputs).toHaveLength(finalizeCount + 1);
-    expect(discovery.finalizeInputs.at(-1)).toMatchObject({
-      customerFamily: 'beverage',
-      automaticEvidence: {
-        source: 'barcode_registry',
-        exactGtin: code,
-        productFields: {
-          identity: { displayName: 'Vitamin well', brand: 'Vitamin Well AB' },
-          nutrition: { energyKcal: 17 },
-        },
-      },
-    });
+    expect(discovery.finalizeInputs.at(-1)?.customerFamily).toBeUndefined();
+    expect(discovery.finalizeInputs.at(-1)?.automaticEvidence).toBeUndefined();
     expect(discovery.finalizeInputs.at(-1)?.confirmations).toBeUndefined();
     expect(discovery.created.has(code)).toBe(false);
   });

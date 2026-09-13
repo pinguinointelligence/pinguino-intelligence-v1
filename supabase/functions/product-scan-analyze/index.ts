@@ -80,6 +80,15 @@ const objectValue = (value: unknown): Record<string, unknown> =>
   value && typeof value === 'object' && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : {};
+const isOpenFoodFactsSource = (fact: Record<string, unknown>): boolean => {
+  if (fact.sourceDomain === 'world.openfoodfacts.org') return true;
+  if (typeof fact.sourceUrl !== 'string') return false;
+  try {
+    return new URL(fact.sourceUrl).hostname === 'world.openfoodfacts.org';
+  } catch {
+    return false;
+  }
+};
 const mimeMatchesBytes = (mime: string, bytes: Uint8Array) => {
   if (mime === 'image/jpeg')
     return bytes[0] === 0xff && bytes[1] === 0xd8 && bytes.at(-2) === 0xff && bytes.at(-1) === 0xd9;
@@ -707,7 +716,14 @@ Deno.serve(async (request) => {
         });
         const payload = objectValue(await response.json());
         if (!response.ok) throw new Error('lookup_provider_failed');
-        fallbackFacts = Array.isArray(payload.facts) ? payload.facts.map(objectValue) : [];
+        /*
+          OFF was already acquired and exact-EAN verified above. The fallback may supply missing
+          manufacturer/retailer facts, but any OFF copy it reports is discarded so it cannot
+          become a second registry receipt or independently populate competing OFF fields.
+        */
+        fallbackFacts = Array.isArray(payload.facts)
+          ? payload.facts.map(objectValue).filter((fact) => !isOpenFoodFactsSource(fact))
+          : [];
         fallbackProviderError = typeof payload.error === 'string' ? payload.error : null;
         providerWebCalls =
           payload.cacheHit === true ? 0 : Math.max(0, Math.min(3, Number(payload.webCalls ?? 1)));
