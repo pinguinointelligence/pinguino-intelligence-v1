@@ -184,6 +184,10 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     await typeCode('8402001047251');
     expect(text()).toContain('Znaleziono produkt');
     expect(text()).toContain('Hacendado');
+    expect(text()).toContain('Gelatissimo. Gotowe.');
+    expect(
+      host.querySelector('[data-testid="scanner-status-story"]')?.getAttribute('data-gelato-level'),
+    ).toBe('100');
     await act(async () => {
       button('Dodaj do receptury')!.click();
     });
@@ -388,7 +392,7 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     expect(discovery.created.has(code)).toBe(false);
   });
 
-  it('PRING-EAN-PRES-08: a no-product EAN keeps the existing honest unknown-product prompt', async () => {
+  it('PRING-EAN-PRES-08: a no-product EAN asks for the exact missing package view', async () => {
     const { discovery } = fakes();
     const code = '8480000213587';
 
@@ -397,7 +401,9 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     });
     await typeCode(code);
 
-    expect(text()).toContain('Nie znam jeszcze tego produktu. Zrób zdjęcie etykiety');
+    expect(text()).toContain('Pokaż nam jeszcze przód opakowania z nazwą produktu');
+    expect(host.querySelector('[data-testid="scanner-missing-data"]')).not.toBeNull();
+    expect(host.querySelector('[data-testid="scanner-status-story"]')).toBeNull();
     expect(host.querySelector('[data-testid="scan-flow-recognized"]')).toBeNull();
     expect(discovery.created.has(code)).toBe(false);
   });
@@ -491,7 +497,9 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     await typeCode(UNKNOWN);
     await answerAddYes();
     // internet evidence collected, the label is still needed
-    expect(text()).toContain('Zrób zdjęcie etykiety');
+    expect(text()).toContain('Pokaż nam jeszcze skład i alergeny');
+    expect(host.querySelector('[data-testid="scanner-missing-data"]')).not.toBeNull();
+    expect(host.querySelector('[data-testid="scanner-status-story"]')).toBeNull();
     expect(discovery.calls).toContain(`research:${UNKNOWN}`);
     // label photograph
     const capture = host.querySelector<HTMLInputElement>('input[type="file"][capture]')!;
@@ -510,7 +518,7 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     });
     await flush();
     // still missing: only the plain field the label did not give (ingredients)
-    expect(text()).toContain('Uzupełnij brakujące dane z etykiety');
+    expect(text()).toContain('Podaj nam jeszcze Skład (z etykiety)');
     expect(text()).toContain('Skład (z etykiety)');
     expect(text()).not.toContain('Energia'); // the label already gave it
     expect(text()).not.toMatch(/\b(PAC|POD|NPAC|Mapper|ProductBehavior)\b/);
@@ -522,6 +530,7 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     await flush();
     // saved as the customer's private product, then handed to the recipe
     expect(text()).toContain('Zapisano jako Twój produkt');
+    expect(text()).toContain('Gelatissimo. Gotowe.');
     expect(discovery.created.get(UNKNOWN)).toMatchObject({
       productId: `PM-${UNKNOWN}`,
       route: 'PM_READY',
@@ -702,7 +711,7 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     });
     await typeCode(code);
     await flush();
-    expect(text()).toContain('Brakuje składu. Zrób zdjęcie tej części etykiety.');
+    expect(text()).toContain('Pokaż nam jeszcze skład i alergeny');
     expect(text()).not.toContain('Brakuje dokładnej nazwy wariantu');
     expect(text()).not.toContain('Nazwa produktu (z etykiety)');
     expect(text()).not.toContain('Energia (kcal)');
@@ -777,9 +786,9 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     await flush();
 
     expect(text()).toContain('Queso fresco batido desnatado');
-    expect(text()).toContain(
-      'Nie udało nam się potwierdzić wartości „Sucha masa produktu (%)”. Jeśli ją znasz, podaj ją poniżej.',
-    );
+    expect(text()).toContain('Podaj nam jeszcze Sucha masa produktu (%) i lecimy dalej.');
+    expect(host.querySelector('[data-testid="scanner-missing-data"]')).not.toBeNull();
+    expect(host.querySelector('[data-testid="scanner-status-story"]')).toBeNull();
     expect(text()).toContain('Sucha masa produktu');
     expect(text()).not.toContain('Zrób zdjęcie etykiety');
     expect(host.querySelectorAll('input[type="file"]')).toHaveLength(0);
@@ -900,6 +909,7 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     await flush();
 
     const option = button('Orzechy / pasty')!;
+    expect(host.querySelector('[data-testid="scanner-status-story"]')).toBeNull();
     const callsBeforeGesture = finalizeSpy.mock.calls.length;
     await act(async () => {
       touch(option, 'touchstart');

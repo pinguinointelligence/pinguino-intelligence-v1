@@ -50,7 +50,6 @@ import {
   manualConfirmedScan,
   rememberGuestCode,
   takeGuestCode,
-  labelPhotoRequest,
   manualFieldsFor,
   savedProductNotice,
   positionHint,
@@ -65,6 +64,12 @@ import {
   type ResolvedScanProductLike,
   type ScanEntryContext,
 } from './scanFlowLogic';
+import { ScannerMissingDataNotice, ScannerStatusStory } from './ScannerStatusStory';
+import {
+  humanVerificationMessage,
+  missingDataPromptForFields,
+  missingDataPromptForGaps,
+} from './scannerStatusCopy';
 
 /** the dedicated exact-identity authority once its migration is deployed (staging: yes); otherwise the interim path */
 const EXACT_AUTHORITY =
@@ -161,20 +166,6 @@ const btnSecondary = `${btn} border border-ink/15 bg-white text-ink`;
 const btnSelected = `${btn} border border-ink bg-ink text-white`;
 const input =
   'pro-focus-ring min-h-11 w-full rounded-xl border border-ink/15 bg-white px-3 text-sm text-ink';
-
-function missingValueMessage(fields: readonly PlainField[], productRecognized: boolean): string {
-  if (fields.length === 0) {
-    return productRecognized
-      ? 'Produkt rozpoznany, ale nie udało się potwierdzić części wymaganych danych. Produkt wymaga weryfikacji lub uzupełnienia.'
-      : 'Nie udało się potwierdzić części wymaganych danych. Produkt wymaga weryfikacji lub uzupełnienia.';
-  }
-  const labels = fields.map((field) =>
-    field.unit ? `${field.label} (${field.unit})` : field.label,
-  );
-  return labels.length === 1
-    ? `Nie udało nam się potwierdzić wartości „${labels[0]}”. Jeśli ją znasz, podaj ją poniżej.`
-    : `Nie udało nam się potwierdzić wartości: ${labels.map((label) => `„${label}”`).join(', ')}. Jeśli je znasz, podaj je poniżej.`;
-}
 
 /**
  * MANDATORY at every customer-facing render of a pipeline sentence — not an opt-in prop.
@@ -1125,16 +1116,17 @@ export function ScanFlow({
       ) : null}
 
       {phase.kind === 'resolving' ? (
-        <div className="space-y-2" aria-live="polite">
+        <div className="space-y-3">
           <p className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-3 py-1 text-xs font-semibold text-white">
             Odczytano ✓ <span className="font-mono font-normal">{phase.code}</span>
           </p>
-          <p className="text-sm text-stone-700">Sprawdzam produkt…</p>
+          <ScannerStatusStory stage={recognitionPresentation ? 'recognized' : 'captured'} />
         </div>
       ) : null}
 
       {phase.kind === 'known' ? (
         <div className="space-y-3">
+          <ScannerStatusStory stage="success" />
           <p className="text-sm font-semibold text-ink">
             {mode === 'catalog'
               ? 'Ten produkt już jest w katalogu — nie tworzymy duplikatu.'
@@ -1205,6 +1197,7 @@ export function ScanFlow({
       {phase.kind === 'ask_add' ? (
         <div className="space-y-3" data-testid="scan-flow-ask-add">
           {recognizedLine}
+          {busy ? <ScannerStatusStory stage="organizing" /> : null}
           <p className="text-sm text-stone-700">
             Nie mamy jeszcze tego produktu. Czy chcesz go dodać?
           </p>
@@ -1257,11 +1250,14 @@ export function ScanFlow({
       {phase.kind === 'label' ? (
         <div className="space-y-3">
           {recognizedLine}
-          <p className="text-sm text-stone-700">
-            {recognized
-              ? labelPhotoRequest(phase.session.missingCritical)
-              : 'Nie znam jeszcze tego produktu. Zrób zdjęcie etykiety ze składem i tabelą wartości odżywczych.'}
-          </p>
+          {busy ? (
+            <ScannerStatusStory stage="organizing" />
+          ) : (
+            <ScannerMissingDataNotice
+              stage="organizing"
+              message={missingDataPromptForGaps(phase.session.missingCritical)}
+            />
+          )}
           {safeNote(phase.note) ? (
             <p className="text-xs text-stone-600">{safeNote(phase.note)}</p>
           ) : null}
@@ -1311,13 +1307,13 @@ export function ScanFlow({
               Zgłoś do weryfikacji
             </button>
           </div>
-          {busy ? <p className="text-xs text-stone-600">Odczytuję etykietę…</p> : null}
         </div>
       ) : null}
 
       {phase.kind === 'family' ? (
         <div className="space-y-3">
           {recognizedLine}
+          {busy ? <ScannerStatusStory stage="verifying" /> : null}
           <p className="text-sm text-stone-700">
             {recognitionPresentation
               ? `Co to za produkt? (${recognitionPresentation.displayName})`
@@ -1349,14 +1345,14 @@ export function ScanFlow({
           }}
         >
           {recognizedLine}
-          <p className="text-sm text-stone-700">
-            {phase.fields.length === 0 ||
-            classifyRemainingGaps(phase.session.missingCritical).photoSolvable.length === 0
-              ? missingValueMessage(phase.fields, Boolean(recognitionPresentation))
-              : recognized
-                ? 'Sprawdź dane z etykiety i uzupełnij brakujące. Produkt zapiszemy prywatnie na Twoim koncie.'
-                : 'Uzupełnij brakujące dane z etykiety. Produkt zapiszemy prywatnie na Twoim koncie.'}
-          </p>
+          {busy ? (
+            <ScannerStatusStory stage="assembling" />
+          ) : (
+            <ScannerMissingDataNotice
+              stage="assembling"
+              message={missingDataPromptForFields(phase.fields)}
+            />
+          )}
           {safeNote(phase.note) ? (
             <p className="text-xs text-red-700">{safeNote(phase.note)}</p>
           ) : null}
@@ -1463,6 +1459,7 @@ export function ScanFlow({
 
       {phase.kind === 'saved' ? (
         <div className="space-y-3">
+          <ScannerStatusStory stage="success" />
           <p className="text-sm font-semibold text-ink">{savedProductNotice(phase.product)}</p>
           {recognizedLine}
           {productCard(phase.product)}
@@ -1473,9 +1470,7 @@ export function ScanFlow({
 
       {phase.kind === 'requested' ? (
         <div className="space-y-3">
-          <p className="text-sm text-stone-700">
-            Zgłoszono do weryfikacji. Damy znać, gdy produkt będzie gotowy.
-          </p>
+          <p className="text-sm text-stone-700">{humanVerificationMessage}</p>
           {againButton}
         </div>
       ) : null}

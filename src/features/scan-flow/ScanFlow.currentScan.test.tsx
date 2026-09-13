@@ -96,8 +96,13 @@ describe('Scanner Runtime Step 1.7 current-scan authority', () => {
     await act(async () => {
       handlers.onConfirmed(scan(state.first));
       await Promise.resolve();
-      handlers.onConfirmed(scan(state.second));
     });
+    expect(host.textContent).toContain('Mamy to. Sprawdzam, co to za jeden.');
+    expect(
+      host.querySelector('[data-testid="scanner-status-story"]')?.getAttribute('data-gelato-level'),
+    ).toBe('0');
+
+    await act(async () => handlers.onConfirmed(scan(state.second)));
     await flush();
     expect(host.textContent).toContain('Łaciate');
     expect(host.textContent).not.toContain('Hacendado');

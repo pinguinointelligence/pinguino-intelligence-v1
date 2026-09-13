@@ -157,7 +157,7 @@ describe('a customer never reads the pipeline', () => {
     const screen = text();
     expect(screen.length).toBeGreaterThan(0);
     expect(screen).toContain(
-      'Produkt rozpoznany, ale nie udało się potwierdzić części wymaganych danych. Produkt wymaga weryfikacji lub uzupełnienia.',
+      'Tym zajmie się człowiek z naszej ekipy. Damy znać, gdy produkt będzie gotowy.',
     );
     expect(screen).not.toContain('Jeśli ją znasz, podaj ją poniżej');
     expect(host.querySelectorAll('input[inputmode="decimal"]')).toHaveLength(0);
@@ -167,7 +167,7 @@ describe('a customer never reads the pipeline', () => {
     // a bare uuid is never customer copy either
     expect(screen).not.toMatch(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/i);
     // the customer is still told what to do — silence would be its own defect
-    expect(screen).toMatch(/weryfikacji lub uzupełnienia/i);
+    expect(screen).toMatch(/człowiek z naszej ekipy/i);
   });
 
   it('the codes are still carried, for logs and the admin panels', async () => {
