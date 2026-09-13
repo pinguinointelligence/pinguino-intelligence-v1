@@ -170,14 +170,14 @@ function ProWorkbenchHeaderChrome({
       /* OWNER OVERRIDE §8 — the strip belongs to the RIGHT display column, not
          to the viewport. `DESKTOP_TAB_STRIP` pins its box to that column, so
          switching Receptura → Monitor → Produkcja → Etykieta moves it 0 px. */
-      className={`pro-workbench-header-section-nav min-w-0 ${DESKTOP_TAB_STRIP}`}
+      className={`pro-workbench-header-section-nav ${DESKTOP_TAB_STRIP}`}
       data-testid="pro-global-workbench-chrome"
     >
       <WorkbenchModuleTabs
         activeTab={activeTab}
         onTabChange={onTabChange}
         idPrefix="pro-context"
-        className="w-full border-b-0"
+        className="border-b-0"
       />
     </div>
   );

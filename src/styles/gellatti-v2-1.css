@@ -117,8 +117,7 @@ body[data-gellatti-scale-mode='desktop'] .gellatti-application {
   .pro-workbench-section-nav {
     grid-column: 2;
     grid-row: 1;
-    width: 100%;
-    min-width: 0;
+    justify-self: stretch;
   }
 
   /* OWNER 2026-09-12 — RESPONSIVE TRIGGER, LOCKED. The account stands in its
