@@ -36,7 +36,9 @@ describe('P0 desktop Workbench tab anchor', () => {
     expect(contract).not.toContain('+10px');
     const css = read('styles', 'gellatti-v2-1.css');
     expect(css).toMatch(/\.pro-workbench-section-nav\s*\{[\s\S]*grid-column:\s*2/);
-    expect(css).toMatch(/\.pro-workbench-section-nav\s*\{[\s\S]*width:\s*100%/);
+    const stripRule = css.match(/\.pro-workbench-section-nav\s*\{([^}]*)\}/)?.[1] ?? '';
+    expect(stripRule).toContain('justify-self: stretch');
+    expect(stripRule).not.toMatch(/(?:^|\s)(?:min-|max-)?width\s*:/);
 
     // Both surfaces REUSE the one recipe; neither re-types its own columns.
     expect(shell).toContain('DESKTOP_WORKBENCH_COLUMNS');
@@ -44,7 +46,8 @@ describe('P0 desktop Workbench tab anchor', () => {
     expect(page).toContain('DESKTOP_TAB_STRIP');
     expect(shell.includes('xl:grid-cols-[minmax(0,1.62fr)_minmax(400px,1fr)]')).toBe(false);
     expect(surface.includes('xl:grid-cols-[minmax(0,1.62fr)_minmax(400px,1fr)]')).toBe(false);
-    expect(page).toContain('className="w-full border-b-0"');
+    expect(page).toContain('className="border-b-0"');
+    expect(page).not.toContain('className="w-full border-b-0"');
   });
 
   it('distributes four tabs only inside the anchored display column', () => {
