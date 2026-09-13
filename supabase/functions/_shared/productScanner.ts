@@ -445,29 +445,130 @@ interface SemanticNetQuantity {
   unit: 'g' | 'ml';
 }
 
-function semanticNetQuantity(value: unknown, pairedUnit?: unknown): SemanticNetQuantity | null {
-  let amount: number | null = null;
-  let unit: string | null = null;
-  if (typeof value === 'string') {
-    const matches = [...value.matchAll(/((?:\d+(?:[.,]\d+)?)|(?:[.,]\d+))\s*(kg|g|ml|l)\b/gi)];
-    const match = matches.at(-1);
-    if (match?.[1] && match[2]) {
-      amount = Number(match[1].replace(',', '.'));
-      unit = match[2].toLowerCase();
-    }
-  } else if (
-    typeof value === 'number' &&
-    Number.isFinite(value) &&
-    typeof pairedUnit === 'string'
-  ) {
-    amount = value;
-    unit = pairedUnit.trim().toLowerCase();
+interface ParsedVisiblePackageQuantity {
+  explicitTotal: SemanticNetQuantity | null;
+  multipack: {
+    count: number;
+    perUnit: SemanticNetQuantity;
+    derivedTotal: SemanticNetQuantity;
+  } | null;
+  canonical: SemanticNetQuantity | null;
+  conflict: { explicitTotal: SemanticNetQuantity; derivedTotal: SemanticNetQuantity } | null;
+  dimensionNotComparable: boolean;
+  provenance: 'DIRECT' | 'DERIVED' | 'UNKNOWN';
+}
+
+const semanticQuantity = (amount: number, unit: string): SemanticNetQuantity | null => {
+  if (!Number.isFinite(amount) || amount <= 0 || amount > 100_000) return null;
+  const normalizedUnit = unit.trim().toLowerCase();
+  if (normalizedUnit === 'kg') return { value: amount * 1000, unit: 'g' };
+  if (normalizedUnit === 'g') return { value: amount, unit: 'g' };
+  if (normalizedUnit === 'l') return { value: amount * 1000, unit: 'ml' };
+  if (normalizedUnit === 'ml') return { value: amount, unit: 'ml' };
+  return null;
+};
+
+const sameSemanticQuantity = (left: SemanticNetQuantity, right: SemanticNetQuantity): boolean =>
+  left.unit === right.unit && Math.abs(left.value - right.value) <= 0.001;
+
+/**
+ * Parse roles before choosing a package total. A multiplier's quantity is a per-unit value,
+ * never a competing candidate in a positional "first/last number wins" rule.
+ */
+function parseVisiblePackageQuantity(value: string): ParsedVisiblePackageQuantity {
+  const text = value.replace(/\s+/g, ' ').trim();
+  const quantityPattern = /((?:\d+(?:[.,]\d+)?)|(?:[.,]\d+))\s*(kg|g|ml|l)\b/gi;
+  const multipackPattern =
+    /(\d+)\s*(?:x|×|\*)\s*((?:\d+(?:[.,]\d+)?)|(?:[.,]\d+))\s*(kg|g|ml|l)\b/gi;
+  const multipacks = [...text.matchAll(multipackPattern)].flatMap((match) => {
+    const count = Number(match[1]);
+    const perUnit = semanticQuantity(Number(match[2]?.replace(',', '.')), match[3] ?? '');
+    if (!Number.isInteger(count) || count <= 0 || count > 10_000 || !perUnit) return [];
+    const derivedTotal = semanticQuantity(perUnit.value * count, perUnit.unit);
+    if (!derivedTotal || match.index === undefined) return [];
+    return [
+      { count, perUnit, derivedTotal, start: match.index, end: match.index + match[0].length },
+    ];
+  });
+  const explicitQuantities = [...text.matchAll(quantityPattern)].flatMap((match) => {
+    if (match.index === undefined) return [];
+    const insideMultipack = multipacks.some(
+      (multipack) => match.index! >= multipack.start && match.index! < multipack.end,
+    );
+    if (insideMultipack) return [];
+    const quantity = semanticQuantity(Number(match[1]?.replace(',', '.')), match[2] ?? '');
+    return quantity ? [quantity] : [];
+  });
+  const explicitTotal = explicitQuantities[0] ?? null;
+  const multipack = multipacks.length === 1 ? multipacks[0]! : null;
+
+  if (explicitQuantities.length > 1 || multipacks.length > 1) {
+    return {
+      explicitTotal,
+      multipack,
+      canonical: null,
+      conflict: null,
+      dimensionNotComparable: false,
+      provenance: 'UNKNOWN',
+    };
   }
-  if (amount === null || !Number.isFinite(amount) || amount <= 0 || amount > 100_000) return null;
-  if (unit === 'kg') return { value: amount * 1000, unit: 'g' };
-  if (unit === 'g') return { value: amount, unit: 'g' };
-  if (unit === 'l') return { value: amount * 1000, unit: 'ml' };
-  if (unit === 'ml') return { value: amount, unit: 'ml' };
+  if (!multipack) {
+    return {
+      explicitTotal,
+      multipack: null,
+      canonical: explicitTotal,
+      conflict: null,
+      dimensionNotComparable: false,
+      provenance: explicitTotal ? 'DIRECT' : 'UNKNOWN',
+    };
+  }
+  if (!explicitTotal) {
+    return {
+      explicitTotal: null,
+      multipack,
+      canonical: multipack.derivedTotal,
+      conflict: null,
+      dimensionNotComparable: false,
+      provenance: 'DERIVED',
+    };
+  }
+  if (explicitTotal.unit !== multipack.derivedTotal.unit) {
+    return {
+      explicitTotal,
+      multipack,
+      canonical: explicitTotal,
+      conflict: null,
+      dimensionNotComparable: true,
+      provenance: 'DIRECT',
+    };
+  }
+  if (!sameSemanticQuantity(explicitTotal, multipack.derivedTotal)) {
+    return {
+      explicitTotal,
+      multipack,
+      canonical: null,
+      conflict: { explicitTotal, derivedTotal: multipack.derivedTotal },
+      dimensionNotComparable: false,
+      provenance: 'UNKNOWN',
+    };
+  }
+  return {
+    explicitTotal,
+    multipack,
+    canonical: explicitTotal,
+    conflict: null,
+    dimensionNotComparable: false,
+    provenance: 'DIRECT',
+  };
+}
+
+function semanticNetQuantity(value: unknown, pairedUnit?: unknown): SemanticNetQuantity | null {
+  if (typeof value === 'string') {
+    return parseVisiblePackageQuantity(value).canonical;
+  }
+  if (typeof value === 'number' && Number.isFinite(value) && typeof pairedUnit === 'string') {
+    return semanticQuantity(value, pairedUnit);
+  }
   return null;
 }
 
@@ -735,21 +836,75 @@ export function mergeProductScanExternalSources(left: unknown, right: unknown): 
  * and became `33 ml`. The label text is never extrapolated: only an explicit number +
  * unit already returned in `netQuantityText` may repair the paired structured value.
  */
-function normalizeVisiblePackageQuantity(root: Record<string, unknown>): void {
+function normalizeVisiblePackageQuantity(
+  root: Record<string, unknown>,
+  accumulatedConflicts?: ProductScanConflict[],
+): void {
   const packageValue = objectValue(root.package);
   const raw = typeof packageValue.netQuantityText === 'string' ? packageValue.netQuantityText : '';
+  const parsed = raw ? parseVisiblePackageQuantity(raw) : null;
+  const conflicts =
+    accumulatedConflicts ??
+    (Array.isArray(root.conflicts)
+      ? root.conflicts.map((item) => ({ ...(item as ProductScanConflict) }))
+      : []);
+  if (parsed?.conflict) {
+    packageValue.netQuantity = null;
+    packageValue.unit = null;
+    root.package = packageValue;
+    appendConflict(
+      conflicts,
+      'package.netQuantity',
+      parsed.conflict.explicitTotal.value,
+      parsed.conflict.derivedTotal.value,
+      null,
+    );
+    root.conflicts = conflicts;
+    root.warnings = mergeUnique(root.warnings, ['package_quantity_conflict_unresolved']);
+    return;
+  }
+  if (parsed && !parsed.canonical && (parsed.explicitTotal || parsed.multipack)) {
+    packageValue.netQuantity = null;
+    packageValue.unit = null;
+    root.package = packageValue;
+    root.warnings = mergeUnique(root.warnings, ['package_quantity_ambiguous_unresolved']);
+    return;
+  }
   const quantity =
-    semanticNetQuantity(raw) ?? semanticNetQuantity(packageValue.netQuantity, packageValue.unit);
+    parsed?.canonical ?? semanticNetQuantity(packageValue.netQuantity, packageValue.unit);
   if (!quantity) return;
+  if (parsed?.provenance === 'DERIVED') {
+    root.warnings = mergeUnique(root.warnings, ['package_quantity_derived_from_multipack']);
+  }
+  if (parsed?.dimensionNotComparable) {
+    root.warnings = mergeUnique(root.warnings, [
+      'package_quantity_multipack_dimension_not_comparable',
+    ]);
+  }
   const structuredUnit =
     typeof packageValue.unit === 'string' ? packageValue.unit.toLowerCase() : null;
-  if (packageValue.netQuantity === quantity.value && structuredUnit === quantity.unit) return;
+  if (packageValue.netQuantity === quantity.value && structuredUnit === quantity.unit) {
+    if (!accumulatedConflicts) root.conflicts = conflicts;
+    return;
+  }
   packageValue.netQuantity = quantity.value;
   packageValue.unit = quantity.unit;
   root.package = packageValue;
+  if (!accumulatedConflicts) root.conflicts = conflicts;
   root.warnings = mergeUnique(root.warnings, [
     'package_quantity_normalized_from_visible_label_text',
   ]);
+}
+
+/** One idempotent package-safety boundary shared by analyze and finalize. */
+export function normalizeProductScanResult(value: unknown): Record<string, unknown> {
+  const result = structuredClone(objectValue(value));
+  const conflicts = Array.isArray(result.conflicts)
+    ? result.conflicts.map((item) => ({ ...(item as ProductScanConflict) }))
+    : [];
+  normalizeVisiblePackageQuantity(result, conflicts);
+  result.conflicts = conflicts;
+  return result;
 }
 
 const satisfiedMissingField = (root: Record<string, unknown>, missing: string): boolean => {
@@ -885,7 +1040,7 @@ export function mergeProductScanResults(
     incoming.externalSources,
   );
   merged.warnings = mergeUnique(prior.warnings, incoming.warnings);
-  normalizeVisiblePackageQuantity(merged);
+  normalizeVisiblePackageQuantity(merged, conflicts);
 
   const priorBarcodes = validatedResultBarcodes(prior);
   const incomingBarcodes = validatedResultBarcodes(incoming);
@@ -1319,13 +1474,13 @@ const numericFact = (value: string): number | null => {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 };
 
-const netQuantityFact = (value: string): { netQuantity: number; unit: string } | null => {
-  const match = /(-?\d+(?:[.,]\d+)?)\s*(kg|g|ml|l)\b/i.exec(value.replace(/\s+/g, ' '));
-  if (!match) return null;
-  const amount = Number(match[1]!.replace(',', '.'));
-  return Number.isFinite(amount) && amount > 0
-    ? { netQuantity: amount, unit: match[2]!.toLowerCase() }
-    : null;
+const netQuantityFact = (
+  value: string,
+): { netQuantity: number | null; unit: string | null } | null => {
+  const parsed = parseVisiblePackageQuantity(value);
+  const quantity = parsed.canonical;
+  if (parsed.conflict) return { netQuantity: null, unit: null };
+  return quantity ? { netQuantity: quantity.value, unit: quantity.unit } : null;
 };
 
 const nutritionBasisFact = (value: string): 'per_100g' | 'per_100ml' | null => {
@@ -1564,7 +1719,7 @@ export function scanResultFromLookupFacts(
     ])
       delete nutrition[field];
   }
-  return {
+  return normalizeProductScanResult({
     schemaVersion: PRODUCT_SCAN_SCHEMA_VERSION,
     identity: {
       displayName: null,
@@ -1616,5 +1771,5 @@ export function scanResultFromLookupFacts(
     conflicts: [],
     warnings: [],
     missingFields: [],
-  };
+  });
 }

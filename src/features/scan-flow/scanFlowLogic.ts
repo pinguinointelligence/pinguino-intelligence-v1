@@ -86,11 +86,17 @@ export function canonicalRegistryIdentityFromScanResult(
     identity: { displayName, ...(brand ? { brand } : {}) },
   };
   const packageValue = scanObject(root['package']);
+  const unresolvedPackageConflict = (result?.conflicts ?? []).some(
+    (conflict) => conflict.retainedSource === null && String(conflict.field).startsWith('package.'),
+  );
   const quantity =
-    used.has('package.netQuantity') && typeof packageValue['netQuantityText'] === 'string'
+    !unresolvedPackageConflict &&
+    used.has('package.netQuantity') &&
+    typeof packageValue['netQuantityText'] === 'string'
       ? packageValue['netQuantityText']
       : null;
   if (
+    !unresolvedPackageConflict &&
     used.has('package.netQuantity') &&
     typeof packageValue['netQuantity'] === 'number' &&
     typeof packageValue['unit'] === 'string'
