@@ -147,7 +147,7 @@ export function HomeCreatorPage() {
   const [scanNotice, setScanNotice] = useState<string | null>(null);
   const [recipeNotice, setRecipeNotice] = useState<string | null>(null);
   const intentIngredients = useHomeIntentIngredients();
-  const [initialPrepared, setInitialPrepared] = useState<PreparedIntentIngredient[]>([]);
+  const [initialPrepared, setInitialPrepared] = useState<PreparedIntentIngredient[] | null>(null);
   const [initialBuilding, setInitialBuilding] = useState(false);
   const initialFinalizing = useRef(false);
   const lastGeneratedFor = useRef<string | null>(null);
@@ -468,7 +468,10 @@ export function HomeCreatorPage() {
       useRecipeStore.getState().setPriorityMode('AUTO');
       setRecipeNotice(null);
       setInitialBuilding(true);
-      setInitialPrepared([]);
+      // `null` means ProductBehavior materialisation is still in flight. An empty
+      // array is reserved for the later, authoritative state where every resolved
+      // chip has been consumed and the first solve may start.
+      setInitialPrepared(null);
 
       // Resolve exact identity + ProductBehavior before showing any recipe. Every
       // role/amount question is completed from this queue; only then does the first
@@ -670,6 +673,7 @@ export function HomeCreatorPage() {
 
   useEffect(() => {
     if (!initialBuilding || pendingAdd || pendingUsage || initialFinalizing.current) return;
+    if (initialPrepared === null) return;
     let cancelled = false;
     queueMicrotask(() => {
       if (cancelled) return;
@@ -678,7 +682,7 @@ export function HomeCreatorPage() {
         void finishInitialRecipe();
         return;
       }
-      setInitialPrepared((queue) => queue.slice(1));
+      setInitialPrepared((queue) => queue?.slice(1) ?? null);
       const chip = useHomeDraftStore.getState().chips.find((item) => item.id === next.chipId);
       const savedRole = useHomeDraftStore.getState().usageAnswersByChipId[next.chipId];
       const usage =

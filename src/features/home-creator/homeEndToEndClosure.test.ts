@@ -33,6 +33,7 @@ describe('GELLATTI HOME end-to-end closure — Owner matrix', () => {
   it('HOME-E2E-01 exact Main-capable Arabesque intent survives and is sized', () => {
     expect(resolver).toContain('resolution.exact');
     expect(intent).toContain('snapshotServerResolvedProductBehavior');
+    expect(page).toContain('if (initialPrepared === null) return;');
     expect(page).toContain('homeRecalculationInstructions');
   });
 
