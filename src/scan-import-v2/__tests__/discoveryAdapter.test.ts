@@ -197,7 +197,7 @@ describe('Supabase discovery adapter (stub) — mirrors the legacy scan-session 
     expect(
       await mk({
         kind: 'customer_product_not_ready',
-        missingCriticalFields: ['nutrition.energyKcal'],
+        criticalGaps: ['nutrition.energyKcal'],
       }).finalize(session, { customerFamily: 'other' }, ctx()),
     ).toMatchObject({ kind: 'not_ready', missingCritical: ['nutrition.energyKcal'] });
     expect(
