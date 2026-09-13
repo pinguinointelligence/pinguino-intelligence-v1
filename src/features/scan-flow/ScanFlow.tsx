@@ -163,6 +163,20 @@ const btnSelected = `${btn} border border-ink bg-ink text-white`;
 const input =
   'pro-focus-ring min-h-11 w-full rounded-xl border border-ink/15 bg-white px-3 text-sm text-ink';
 
+function missingValueMessage(fields: readonly PlainField[], productRecognized: boolean): string {
+  if (fields.length === 0) {
+    return productRecognized
+      ? 'Produkt rozpoznany, ale nie udało się potwierdzić części wymaganych danych. Produkt wymaga weryfikacji lub uzupełnienia.'
+      : 'Nie udało się potwierdzić części wymaganych danych. Produkt wymaga weryfikacji lub uzupełnienia.';
+  }
+  const labels = fields.map((field) =>
+    field.unit ? `${field.label} (${field.unit})` : field.label,
+  );
+  return labels.length === 1
+    ? `Nie udało nam się potwierdzić wartości „${labels[0]}”. Jeśli ją znasz, podaj ją poniżej.`
+    : `Nie udało nam się potwierdzić wartości: ${labels.map((label) => `„${label}”`).join(', ')}. Jeśli je znasz, podaj je poniżej.`;
+}
+
 /**
  * MANDATORY at every customer-facing render of a pipeline sentence — not an opt-in prop.
  *
@@ -1314,8 +1328,9 @@ export function ScanFlow({
         >
           {recognizedLine}
           <p className="text-sm text-stone-700">
-            {classifyRemainingGaps(phase.session.missingCritical).photoSolvable.length === 0
-              ? 'Nie udało nam się potwierdzić tej wartości. Jeśli ją znasz, podaj ją poniżej.'
+            {phase.fields.length === 0 ||
+            classifyRemainingGaps(phase.session.missingCritical).photoSolvable.length === 0
+              ? missingValueMessage(phase.fields, Boolean(recognitionPresentation))
               : recognized
                 ? 'Sprawdź dane z etykiety i uzupełnij brakujące. Produkt zapiszemy prywatnie na Twoim koncie.'
                 : 'Uzupełnij brakujące dane z etykiety. Produkt zapiszemy prywatnie na Twoim koncie.'}
@@ -1373,13 +1388,6 @@ export function ScanFlow({
               )}
             </label>
           ))}
-          {phase.fields.length === 0 ? (
-            <p className="text-xs text-stone-600">
-              {recognized
-                ? 'Produkt rozpoznany, ale nie jest jeszcze gotowy do receptury — brakuje danych, których nie da się odczytać z etykiety. Zgłoś go do weryfikacji.'
-                : 'Z etykiety nie da się uzupełnić brakujących danych. Możesz zgłosić produkt do weryfikacji.'}
-            </p>
-          ) : null}
           {classifyRemainingGaps(phase.session.missingCritical).photoSolvable.length > 0
             ? photoPrivacyNote
             : null}
