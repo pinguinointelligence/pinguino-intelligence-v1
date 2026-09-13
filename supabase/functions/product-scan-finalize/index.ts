@@ -2,6 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
 import {
   mergeProductScanExternalSources,
   mergeProductScanResults,
+  normalizeProductScanResult,
   normalizeValidatedBarcode,
   productSemanticEvidenceFromScanResult,
   scanResultFromLookupFacts,
@@ -406,7 +407,7 @@ function applyAutomaticEvidence(
   value: unknown,
   sessionBarcode: unknown,
 ): Record<string, unknown> | null {
-  const result = structuredClone(objectValue(original));
+  const result = normalizeProductScanResult(original);
   result.externalSources = mergeProductScanExternalSources([], result.externalSources);
   const bundle = objectValue(value);
   if (Object.keys(bundle).length === 0) return result;
