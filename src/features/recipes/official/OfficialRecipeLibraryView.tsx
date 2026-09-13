@@ -11,7 +11,15 @@ import {
   OFFICIAL_RECIPE_IMAGE_WIDTHS,
   officialCollectionById,
   officialLibraryHref,
+  officialRecipeAddonLines,
+  officialRecipeAddonTotal,
+  officialRecipeBaseLines,
+  officialRecipeBaseTotal,
+  officialRecipeFinalTotal,
+  officialRecipeHasImage,
   officialRecipeImage,
+  officialRecipeLineScope,
+  officialRecipeVersion,
   officialRecipesInCollection,
   officialUnresolvedLines,
   type OfficialCollectionId,
@@ -74,6 +82,47 @@ function BackLink({ to, label }: { to: string; label: string }) {
   );
 }
 
+function RecipeArtwork({ recipe, size }: { recipe: OfficialRecipe; size: 'card' | 'detail' }) {
+  if (officialRecipeHasImage(recipe)) {
+    const image = officialRecipeImage(recipe);
+    return (
+      <img
+        src={image[size]}
+        width={OFFICIAL_RECIPE_IMAGE_WIDTHS[size]}
+        height={OFFICIAL_RECIPE_IMAGE_WIDTHS[size]}
+        alt={recipe.name}
+        loading={size === 'card' ? 'lazy' : undefined}
+        decoding="async"
+        className={cn(
+          'aspect-square w-full bg-[var(--g-ivory)] object-cover',
+          size === 'detail' && 'rounded-[12px] border border-[var(--g-line)]',
+        )}
+        data-testid={size === 'detail' ? 'official-recipe-image' : undefined}
+      />
+    );
+  }
+  const missing = officialUnresolvedLines(recipe).map((line) => line.label);
+  const message =
+    missing.length === 0
+      ? c.photoPending
+      : missing.length === 1
+        ? c.photoMissingIngredient(missing[0]!)
+        : c.photoMissingIngredients(missing);
+  return (
+    <div
+      role="img"
+      aria-label={`${recipe.name}: ${message}`}
+      className={cn(
+        'flex aspect-square w-full items-center justify-center bg-[var(--g-ivory)] p-6 text-center font-mono text-[11px] leading-relaxed text-stone-500',
+        size === 'detail' && 'rounded-[12px] border border-[var(--g-line)]',
+      )}
+      data-testid="official-recipe-placeholder"
+    >
+      {message}
+    </div>
+  );
+}
+
 /** The five official collections, in the owner's order. */
 export function OfficialCollectionsGrid() {
   return (
@@ -128,7 +177,6 @@ export function OfficialCollectionsGrid() {
 }
 
 function RecipeCard({ recipe }: { recipe: OfficialRecipe }) {
-  const image = officialRecipeImage(recipe);
   const readiness = officialRecipeReadiness(recipe);
   const readinessChip = c.cardReadiness[readiness.state];
   return (
@@ -139,15 +187,7 @@ function RecipeCard({ recipe }: { recipe: OfficialRecipe }) {
       data-recipe-number={recipe.number}
       data-readiness={readiness.state}
     >
-      <img
-        src={image.card}
-        width={OFFICIAL_RECIPE_IMAGE_WIDTHS.card}
-        height={OFFICIAL_RECIPE_IMAGE_WIDTHS.card}
-        alt={recipe.name}
-        loading="lazy"
-        decoding="async"
-        className="aspect-square w-full bg-[var(--g-ivory)] object-cover"
-      />
+      <RecipeArtwork recipe={recipe} size="card" />
       <div className="flex flex-1 flex-col gap-2 p-4">
         <p className="font-mono text-[11px] text-stone-500">
           {c.number(recipe.photoId, recipe.number)}
@@ -287,8 +327,9 @@ export function OfficialRecipeDetail({
   onUse: (recipeId: string) => void;
 }) {
   const collection = officialCollectionById(recipe.collection);
-  const image = officialRecipeImage(recipe);
   const showGrams = persona !== 'demo';
+  const baseLines = officialRecipeBaseLines(recipe);
+  const addonLines = officialRecipeAddonLines(recipe);
   const mappedIds = recipe.lines.flatMap((line) =>
     line.identity.kind === 'mapped' ? [line.identity.mapperIngredientId] : [],
   );
@@ -314,6 +355,56 @@ export function OfficialRecipeDetail({
     ),
   ];
 
+  const renderLine = (line: OfficialRecipeLine) => {
+    const pi = line.identity.kind === 'mapped' ? line.identity.mapperIngredientId : null;
+    const row = pi && mapper.status === 'ready' ? (mapper.value.get(pi) ?? null) : null;
+    const route = pi && market.status === 'ready' ? market.value.byPi.get(pi) : undefined;
+    return (
+      <li
+        key={line.line}
+        className="grid grid-cols-[minmax(0,1fr)_auto] gap-4 py-3"
+        data-testid="official-recipe-line"
+        data-line-kind={line.identity.kind}
+        data-line-scope={officialRecipeLineScope(line)}
+        data-stage={line.stage}
+      >
+        <div className="min-w-0">
+          <p className="text-[14px] leading-[1.35] font-medium text-ink">{line.label}</p>
+          {line.stage !== 'MIX' ? (
+            <div className="mt-1">
+              <Chip>{officialStageLabelPl(line.stage)}</Chip>
+            </div>
+          ) : null}
+          {persona === 'demo' && line.identity.kind === 'mapped' ? null : (
+            <IngredientIdentityLine
+              line={line}
+              mapperName={row?.ingredient_name_display ?? null}
+              mapperState={mapper.status}
+              marketProduct={
+                route && !line.publicLabelOnly
+                  ? {
+                      name: route.product.brand
+                        ? `${route.product.brand} · ${route.product.displayName}`
+                        : route.product.displayName,
+                      country: route.country ?? marketCountry ?? '',
+                    }
+                  : null
+              }
+            />
+          )}
+        </div>
+        {showGrams ? (
+          <p
+            className="w-20 text-right font-mono text-[13px] text-ink"
+            data-testid="official-line-grams"
+          >
+            {line.grams} g
+          </p>
+        ) : null}
+      </li>
+    );
+  };
+
   return (
     <article
       aria-labelledby="official-recipe-heading"
@@ -326,15 +417,7 @@ export function OfficialRecipeDetail({
         label={c.backToCollection(collection.name)}
       />
       <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
-        <img
-          src={image.detail}
-          width={OFFICIAL_RECIPE_IMAGE_WIDTHS.detail}
-          height={OFFICIAL_RECIPE_IMAGE_WIDTHS.detail}
-          alt={recipe.name}
-          decoding="async"
-          className="aspect-square w-full rounded-[12px] border border-[var(--g-line)] bg-[var(--g-ivory)] object-cover"
-          data-testid="official-recipe-image"
-        />
+        <RecipeArtwork recipe={recipe} size="detail" />
         <div className="min-w-0">
           <p className={eyebrowClasses}>
             {collection.name} · {c.number(recipe.photoId, recipe.number)}
@@ -355,6 +438,11 @@ export function OfficialRecipeDetail({
               .filter(Boolean)
               .join(' · ')}
           </p>
+          {recipe.description ? (
+            <p className="mt-4 max-w-2xl text-[14px] leading-relaxed text-stone-700">
+              {recipe.description}
+            </p>
+          ) : null}
 
           <div className="mt-6">
             <button
@@ -391,7 +479,14 @@ export function OfficialRecipeDetail({
               {(
                 [
                   [c.readinessRow, c.readinessLabel[readiness.state], 'readiness'],
-                  [c.sourceRecipe, c.sourceRecipeValue, 'source'],
+                  [
+                    c.sourceRecipe,
+                    c.sourceRecipeValue(
+                      officialRecipeBaseTotal(recipe),
+                      officialRecipeVersion(recipe),
+                    ),
+                    'source',
+                  ],
                   [c.engineRow, officialSourceStatusLabelPl(recipe.sourceStatus), 'engine'],
                   [
                     c.ingredientsRow,
@@ -411,7 +506,8 @@ export function OfficialRecipeDetail({
                   <dd
                     className={cn(
                       'text-ink',
-                      ((id === 'ingredients' && pending > 0) || (id === 'readiness' && !canStart)) &&
+                      ((id === 'ingredients' && pending > 0) ||
+                        (id === 'readiness' && !canStart)) &&
                         'text-attention',
                     )}
                   >
@@ -434,6 +530,25 @@ export function OfficialRecipeDetail({
               ) : null}
             </section>
           ) : null}
+
+          {recipe.instructions?.length ? (
+            <section className="mt-6" data-testid="official-recipe-instructions">
+              <h3 className={eyebrowClasses}>{c.instructionsTitle}</h3>
+              {recipe.toolNotice ? (
+                <p
+                  className="mt-3 border-l-2 border-ink/30 pl-3 text-[13px] leading-relaxed text-ink"
+                  data-testid="official-recipe-tool-notice"
+                >
+                  {recipe.toolNotice}
+                </p>
+              ) : null}
+              <ol className="mt-3 list-decimal space-y-2 pl-5 text-[13px] leading-relaxed text-stone-700">
+                {recipe.instructions.map((instruction) => (
+                  <li key={instruction}>{instruction}</li>
+                ))}
+              </ol>
+            </section>
+          ) : null}
         </div>
       </div>
 
@@ -452,64 +567,53 @@ export function OfficialRecipeDetail({
             {c.handoffMarket(matched, mappedIds.length, marketCountry)}
           </p>
         ) : null}
-        <ol className="mt-4 divide-y divide-ink/10 border-y border-ink/10">
-          {recipe.lines.map((line) => {
-            const pi = line.identity.kind === 'mapped' ? line.identity.mapperIngredientId : null;
-            const row = pi && mapper.status === 'ready' ? (mapper.value.get(pi) ?? null) : null;
-            const route = pi && market.status === 'ready' ? market.value.byPi.get(pi) : undefined;
-            return (
-              <li
-                key={line.line}
-                className="grid grid-cols-[minmax(0,1fr)_auto] gap-4 py-3"
-                data-testid="official-recipe-line"
-                data-line-kind={line.identity.kind}
-                data-stage={line.stage}
-              >
-                <div className="min-w-0">
-                  <p className="text-[14px] leading-[1.35] font-medium text-ink">{line.label}</p>
-                  {line.stage !== 'MIX' ? (
-                    <div className="mt-1">
-                      <Chip>{officialStageLabelPl(line.stage)}</Chip>
-                    </div>
-                  ) : null}
-                  {persona === 'demo' && line.identity.kind === 'mapped' ? null : (
-                    <IngredientIdentityLine
-                      line={line}
-                      mapperName={row?.ingredient_name_display ?? null}
-                      mapperState={mapper.status}
-                      marketProduct={
-                        route && !line.publicLabelOnly
-                          ? {
-                              name: route.product.brand
-                                ? `${route.product.brand} · ${route.product.displayName}`
-                                : route.product.displayName,
-                              country: route.country ?? marketCountry ?? '',
-                            }
-                          : null
-                      }
-                    />
-                  )}
-                </div>
-                {showGrams ? (
-                  <p
-                    className="w-20 text-right font-mono text-[13px] text-ink"
-                    data-testid="official-line-grams"
-                  >
-                    {line.grams} g
-                  </p>
-                ) : null}
-              </li>
-            );
-          })}
+        {recipe.baseRecipeReference ? (
+          <p
+            className="mt-3 text-[12px] leading-relaxed text-stone-600"
+            data-testid="official-base-reference"
+          >
+            {c.baseReference(
+              recipe.baseRecipeReference.recipeId,
+              recipe.baseRecipeReference.recipeVersion,
+              recipe.baseRecipeReference.servingGrams,
+            )}
+          </p>
+        ) : null}
+        <h4 className="mt-5 text-[12px] font-semibold tracking-[0.08em] text-stone-600 uppercase">
+          {c.mainPhase}
+        </h4>
+        <ol className="mt-2 divide-y divide-ink/10 border-y border-ink/10">
+          {baseLines.map(renderLine)}
         </ol>
         {showGrams ? (
           <p className="mt-3 flex justify-between text-[13px] font-semibold text-ink">
-            <span>{c.total}</span>
-            <span className="font-mono">{recipe.sourceTotalGrams} g</span>
+            <span>{c.mainTotal}</span>
+            <span className="font-mono">{officialRecipeBaseTotal(recipe)} g</span>
           </p>
-        ) : (
-          <p className="mt-3 text-[12px] text-stone-500">{c.gramsHidden}</p>
-        )}
+        ) : null}
+        {addonLines.length > 0 ? (
+          <>
+            <h4 className="mt-8 text-[12px] font-semibold tracking-[0.08em] text-stone-600 uppercase">
+              {c.addonPhase}
+            </h4>
+            <ol className="mt-2 divide-y divide-ink/10 border-y border-ink/10">
+              {addonLines.map(renderLine)}
+            </ol>
+            {showGrams ? (
+              <div className="mt-3 space-y-2 text-[13px] font-semibold text-ink">
+                <p className="flex justify-between">
+                  <span>{c.addonTotal}</span>
+                  <span className="font-mono">{officialRecipeAddonTotal(recipe)} g</span>
+                </p>
+                <p className="flex justify-between border-t border-ink/10 pt-2">
+                  <span>{c.finalTotal}</span>
+                  <span className="font-mono">{officialRecipeFinalTotal(recipe)} g</span>
+                </p>
+              </div>
+            ) : null}
+          </>
+        ) : null}
+        {!showGrams ? <p className="mt-3 text-[12px] text-stone-500">{c.gramsHidden}</p> : null}
       </section>
     </article>
   );

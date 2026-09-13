@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   OFFICIAL_COLLECTIONS,
-  OFFICIAL_RECIPES,
+  OFFICIAL_BASELINE_RECIPES,
   officialRecipeImage,
 } from './officialRecipeLibrary';
 
@@ -40,10 +40,12 @@ const folderOf = {
 describe('recipe images: strict number mapping (§9, §29)', () => {
   it('maps exactly 177 numbered images, one per recipe, none missing or duplicated', () => {
     expect(images).toHaveLength(177);
-    expect(images.map((image) => image.number)).toEqual(OFFICIAL_RECIPES.map((r) => r.number));
+    expect(images.map((image) => image.number)).toEqual(
+      OFFICIAL_BASELINE_RECIPES.map((recipe) => recipe.number),
+    );
     expect(new Set(images.map((image) => image.source.file)).size).toBe(177);
     for (const image of images) {
-      const recipe = OFFICIAL_RECIPES[image.number - 1]!;
+      const recipe = OFFICIAL_BASELINE_RECIPES[image.number - 1]!;
       expect(image.recipeId).toBe(recipe.recipeId);
       expect(image.photoId).toBe(recipe.photoId);
       // The source file NUMBER is the recipe number, inside that recipe's collection folder.
@@ -57,7 +59,7 @@ describe('recipe images: strict number mapping (§9, §29)', () => {
     1, 2, 3, 76, 77, 103, 104, 105, 149, 150, 151, 152, 153, 163, 164, 165, 166, 167, 168, 169, 170,
     171, 172, 173, 174, 175, 176, 177,
   ])('image %i belongs to recipe #%i with no off-by-one shift', (number) => {
-    const recipe = OFFICIAL_RECIPES.find((candidate) => candidate.number === number)!;
+    const recipe = OFFICIAL_BASELINE_RECIPES.find((candidate) => candidate.number === number)!;
     const image = images.find((candidate) => candidate.number === number)!;
     const padded = String(number).padStart(3, '0');
     expect(image.source.file.endsWith(`/${padded}.png`)).toBe(true);

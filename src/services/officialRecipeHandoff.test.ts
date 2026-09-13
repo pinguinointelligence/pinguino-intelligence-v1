@@ -205,6 +205,48 @@ describe('official recipe → working recipe handoff', () => {
     expect(result.composition.ownerReviewGate).toBeUndefined();
   });
 
+  it('[GRP-HANDOFF-01] materializes pack-02 additions as POST_PROCESS_ADDON, never as Engine Base', async () => {
+    const deps = dependencies();
+    const result = await materializeOfficialRecipe(
+      'icon-pistachio-white-chocolate-praline',
+      'user-a',
+      deps,
+    );
+    expect(result.input.items).toHaveLength(11);
+    expect(result.input.items.reduce((sum, item) => sum + item.planned_grams, 0)).toBe(1000);
+    expect(result.input.target_batch_grams).toBe(1000);
+    expect(result.composition.toppings).toHaveLength(4);
+    expect(result.composition.toppings.reduce((sum, item) => sum + item.planned_grams, 0)).toBe(
+      115.5,
+    );
+    expect(
+      result.composition.toppings.every((item) => item.process_scope === 'POST_PROCESS_ADDON'),
+    ).toBe(true);
+    expect(result.lines.filter((line) => line.scope === 'MAIN')).toHaveLength(11);
+    expect(result.lines.filter((line) => line.scope === 'TOPPING')).toHaveLength(4);
+    expect(Object.keys(result.composition.behaviorSnapshots ?? {})).toHaveLength(15);
+    expect(deps.resolveBehavior).toHaveBeenCalledWith(
+      expect.objectContaining({
+        context: expect.objectContaining({
+          processScope: 'POST_PROCESS_ADDON',
+          module: 'TOPPING',
+        }),
+      }),
+    );
+  });
+
+  it('[GRP-HANDOFF-02] blocks the exact unresolved Red Velvet add-on before resolving a partial formula', async () => {
+    const deps = dependencies();
+    await expect(
+      materializeOfficialRecipe('icon-red-velvet-cheesecake-chunk', 'user-a', deps),
+    ).rejects.toMatchObject({
+      code: 'unresolved_identity',
+      message: expect.stringContaining('Ciasto Red Velvet'),
+    });
+    expect(deps.getIngredient).not.toHaveBeenCalled();
+    expect(deps.resolveBehavior).not.toHaveBeenCalled();
+  });
+
   it('never mutates the official source while building or editing the working copy', async () => {
     const before = structuredClone(officialRecipeById('classic-dark-chocolate'));
     const result = await materializeOfficialRecipe(

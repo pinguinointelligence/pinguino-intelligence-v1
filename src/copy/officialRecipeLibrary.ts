@@ -17,7 +17,7 @@ export const officialRecipeCopy = {
   eyebrow: 'Receptury Gellatti',
   collectionsTitle: 'Oficjalne kolekcje',
   collectionsBody:
-    'Receptury Gellatti w pięciu kolekcjach. Każda jest bazą 1000 g — Twoja wersja powstaje jako kopia robocza.',
+    'Receptury Gellatti w pięciu kolekcjach. Każda otwiera się jako osobna kopia robocza.',
   recipeCount: (count: number) =>
     count === 1
       ? '1 receptura'
@@ -32,6 +32,17 @@ export const officialRecipeCopy = {
   stageHeader: 'Etap',
   gramsHeader: 'g / 1000 g',
   total: 'Razem',
+  mainPhase: 'MAIN · mieszanka do mrożenia',
+  addonPhase: 'Dodatki · po zmrożeniu lub przy podaniu',
+  mainTotal: 'Razem MAIN',
+  addonTotal: 'Razem dodatki',
+  finalTotal: 'Łączna masa zadana',
+  instructionsTitle: 'Instrukcja',
+  photoPending: 'Zdjęcie wkrótce',
+  photoMissingIngredient: (name: string) => `Brak składnika: ${name}`,
+  photoMissingIngredients: (names: readonly string[]) => `Brak składników: ${names.join(', ')}`,
+  baseReference: (recipeId: string, version: number, grams: number) =>
+    `Baza: ${grams} g z receptury ${recipeId}, wersja ${version}.`,
   gramsHidden: 'Gramatury zobaczysz po zalogowaniu w Gellatti HOME lub PRO.',
   canonicalLoading: 'Wczytujemy aktualne dane składnika…',
   canonicalUnavailable: 'Aktualne dane składnika są chwilowo niedostępne.',
@@ -43,7 +54,8 @@ export const officialRecipeCopy = {
     `Brak potwierdzonego produktu w Twoim kraju (${country}) — składnik Gellatti bez zmian.`,
   statusTitle: 'Stan receptury',
   sourceRecipe: 'Receptura źródłowa',
-  sourceRecipeValue: '1000 g · oryginał pozostaje bez zmian',
+  sourceRecipeValue: (grams: number, version: number) =>
+    `${grams} g MAIN · wersja ${version} · oryginał pozostaje bez zmian`,
   engineRow: 'Silnik Gellatti',
   productionRow: 'Produkcja',
   productionValue: 'Instrukcja procesu w przygotowaniu',
@@ -109,7 +121,7 @@ export const officialRecipeCopy = {
       `Składnik „${label}” jest chwilowo niedostępny. Receptura nie została otwarta.`,
     behaviorUnavailable: (label: string) =>
       `Nie udało się potwierdzić aktualnych danych składnika „${label}”. Spróbuj ponownie.`,
-    massMismatch: 'Receptura nie zgadza się z masą źródłową 1000 g i nie została otwarta.',
+    massMismatch: 'Receptura nie zgadza się z masą MAIN i nie została otwarta.',
     generic: 'Nie udało się otworzyć receptury Gellatti.',
   },
 } as const;

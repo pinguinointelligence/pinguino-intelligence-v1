@@ -20,7 +20,9 @@
  */
 import {
   OFFICIAL_RECIPES,
+  officialRecipeHasImage,
   officialRecipeImage,
+  officialRecipeLineScope,
   officialRecipeWorkingProfile,
   type OfficialRecipe,
 } from '@/data/recipes/official/officialRecipeLibrary';
@@ -31,17 +33,22 @@ import {
 import { intentProfileFor } from '../homeProfileMapping';
 import type { CandidateIngredient, RecipeCandidate } from '../homeRecipeMatching';
 
-/** Recipe lines → candidate ingredients, by CANONICAL identity, each identity once. */
+/** Recipe lines → candidate ingredients, by CANONICAL identity and composition role. */
 export function officialRecipeIngredients(recipe: OfficialRecipe): readonly CandidateIngredient[] {
   const seen = new Set<string>();
   const ingredients: CandidateIngredient[] = [];
   for (const line of recipe.lines) {
     if (line.identity.kind !== 'mapped') continue;
     const productId = line.identity.mapperIngredientId;
-    if (seen.has(productId)) continue;
-    seen.add(productId);
-    // The working copy places every official line in the Base, so every line is an ingredient.
-    ingredients.push({ productId, role: 'ingredient', displayName: line.label });
+    const role = officialRecipeLineScope(line) === 'TOPPING' ? 'topping' : 'ingredient';
+    const identity = `${productId}:${role}`;
+    if (seen.has(identity)) continue;
+    seen.add(identity);
+    ingredients.push({
+      productId,
+      role,
+      displayName: line.label,
+    });
   }
   return ingredients;
 }
@@ -57,7 +64,7 @@ export function officialRecipeToCandidate(recipe: OfficialRecipe): RecipeCandida
     source: 'official',
     profile: intentProfileFor(visibleProductType),
     ingredients: officialRecipeIngredients(recipe),
-    imageUrl: officialRecipeImage(recipe).card,
+    imageUrl: officialRecipeHasImage(recipe) ? officialRecipeImage(recipe).card : null,
     // §38: an official recipe's public attribution is Gellatti itself.
     originalCreatorName: null,
   };

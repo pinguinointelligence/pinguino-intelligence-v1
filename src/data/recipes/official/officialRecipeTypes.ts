@@ -46,6 +46,10 @@ export const OFFICIAL_RECIPE_STAGES = [
 ] as const;
 export type OfficialRecipeStage = (typeof OFFICIAL_RECIPE_STAGES)[number];
 
+/** Product composition scope. MAIN enters the frozen mix; TOPPING is accounted
+ * for separately and is added after freezing/at service. */
+export type OfficialRecipeLineScope = 'MAIN' | 'TOPPING';
+
 /** Verbatim `Typ produktu` values. */
 export const OFFICIAL_PRODUCT_TYPES = [
   'Standard Gelato',
@@ -71,13 +75,17 @@ export interface OfficialRecipeLine {
   /** 1-based order inside the recipe (source `Linia`). */
   readonly line: number;
   /** Source row number in 03_SKLAD_RECEPTUR (`Nr wiersza`, 1…1510). */
-  readonly sourceRow: number;
+  readonly sourceRow: number | null;
   /** Source ingredient label (`Składnik`), shown to the customer. */
   readonly label: string;
   readonly stage: OfficialRecipeStage;
   /** Grams in the 1000 g source formula (`g / 1000g`). */
   readonly grams: number;
   readonly identity: OfficialRecipeLineIdentity;
+  /** Imported v1 rows omit this and are MAIN by definition. */
+  readonly scope?: OfficialRecipeLineScope;
+  /** Explicit owner requirement for a product that has no exact PI/PR binding. */
+  readonly unresolvedRequirement?: 'physical_product';
   /** `Audyt rynku?`: `NIE — SUROWIEC LOKALNY` marks a local raw material. */
   readonly marketAudit: 'required' | 'local_raw_material';
   /** Line-level `Ostrzeżenie procesowe`, verbatim. */
@@ -92,11 +100,28 @@ export interface OfficialRecipeLine {
 export interface OfficialRecipe {
   /** Stable source identity (`Recipe ID`). */
   readonly recipeId: string;
+  /** Immutable recipe binding version. Imported v1 rows omit it and mean 1. */
+  readonly recipeVersion?: number;
   /** Source number 1…177 (`Nr`); the image number is this number. */
   readonly number: number;
   /** `Foto ID`, GEL-001…GEL-177. */
   readonly photoId: string;
+  /** Imported v1 rows have delivered artwork; package rows remain neutral. */
+  readonly photoStatus?: 'available' | 'pending';
   readonly name: string;
+  readonly description?: string;
+  readonly instructions?: readonly string[];
+  readonly toolNotice?: string;
+  readonly searchAliases?: readonly string[];
+  readonly baseRecipeReference?: {
+    readonly recipeId: string;
+    readonly recipeVersion: number;
+    readonly servingGrams: number;
+  };
+  readonly sourcePackage?: {
+    readonly id: 'GELLATTI_RECIPE_PACK_01_02';
+    readonly sha256: string;
+  };
   readonly collection: OfficialCollectionId;
   readonly subcategory: string;
   /** `Pochodzenie`; the source placeholder `—` becomes null. */
@@ -112,6 +137,6 @@ export interface OfficialRecipe {
   /** `Komunikat procesowy`, verbatim. Not a production instruction. */
   readonly processNotice: string | null;
   /** Source row in 01_RECEPTURY (1-based sheet row). */
-  readonly sourceRow: number;
+  readonly sourceRow: number | null;
   readonly lines: readonly OfficialRecipeLine[];
 }
