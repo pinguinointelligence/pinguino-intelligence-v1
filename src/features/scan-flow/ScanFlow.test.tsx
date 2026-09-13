@@ -672,7 +672,7 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     expect(discovery.created.has(code)).toBe(false);
   });
 
-  it('SCN-REAL-C/G: technical-only gaps skip photo, accept one exact answer, and resume', async () => {
+  it('SCN-REAL-C/G / SCN-MVP-01: technical-only gaps name and render the exact editable value, then save it', async () => {
     const { discovery, registry } = fakes();
     const code = '8480000510716';
     registry.set(code, {
@@ -735,7 +735,9 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     await flush();
 
     expect(text()).toContain('Queso fresco batido desnatado');
-    expect(text()).toContain('Nie udało nam się potwierdzić tej wartości');
+    expect(text()).toContain(
+      'Nie udało nam się potwierdzić wartości „Sucha masa produktu (%)”. Jeśli ją znasz, podaj ją poniżej.',
+    );
     expect(text()).toContain('Sucha masa produktu');
     expect(text()).not.toContain('Zrób zdjęcie etykiety');
     expect(host.querySelectorAll('input[type="file"]')).toHaveLength(0);
