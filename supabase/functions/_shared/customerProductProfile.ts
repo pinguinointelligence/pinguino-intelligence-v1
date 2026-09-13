@@ -37,6 +37,12 @@ const unresolvedConflictFields = (root: JsonObject): string[] =>
       })
     : [];
 
+const TECHNICAL_PARAMETER_PATHS = [
+  'productionDeclarations.technicalParametersText',
+  'productionDeclarations.waterPercent',
+  'productionDeclarations.totalSolidsPercent',
+];
+
 const SCAN_FIELD_PATHS: Readonly<Partial<Record<ProductEvidenceField, string[]>>> = {
   identity: ['identity.displayName', 'identity.originalName'],
   brand: ['identity.brand'],
@@ -56,16 +62,7 @@ const SCAN_FIELD_PATHS: Readonly<Partial<Record<ProductEvidenceField, string[]>>
   barcode: ['barcodes'],
   countryOfOrigin: ['identity.countryOfOrigin'],
   dosage: ['productionDeclarations.dosageText'],
-  technicalParameters: [
-    'productionDeclarations.technicalParametersText',
-    'productionDeclarations.waterPercent',
-    'productionDeclarations.totalSolidsPercent',
-  ],
-  technicalSource: [
-    'productionDeclarations.technicalParametersText',
-    'productionDeclarations.waterPercent',
-    'productionDeclarations.totalSolidsPercent',
-  ],
+  technicalParameters: TECHNICAL_PARAMETER_PATHS,
 };
 
 const sourceForExternalType = (value: unknown): EvidenceSource => {
@@ -154,6 +151,28 @@ function exactEanBackedAuthority(
   );
   if (!namesTheScannedArticle) return null;
   return { authority, row };
+}
+
+/**
+ * A technical value is not proof that a technical document exists. Scanner may expose
+ * `technicalSource` only for the one existing authority class that explicitly means a product
+ * specification, tied to the scanned article by the same server-owned exact-EAN evidence used by
+ * the rest of this bridge.
+ */
+function exactEanBackedTechnicalSource(
+  root: JsonObject,
+): { authority: 'OFFICIAL_TECHNICAL_PDF'; row: JsonObject } | null {
+  const gtins = scannedGtins(root);
+  if (gtins.length === 0) return null;
+  for (const row of externalRows(root)) {
+    if (row.sourceAuthorityClass !== 'OFFICIAL_TECHNICAL_PDF') continue;
+    const url = typeof row.url === 'string' ? row.url.replace(/\D/g, '') : '';
+    const statedEan =
+      typeof row.sourceStatedEan === 'string' ? row.sourceStatedEan.replace(/\D/g, '') : '';
+    if (gtins.some((gtin) => url.includes(gtin) || (statedEan.length >= 8 && statedEan === gtin)))
+      return { authority: 'OFFICIAL_TECHNICAL_PDF', row };
+  }
+  return null;
 }
 
 const pathValue = (root: JsonObject, path: string): unknown =>
@@ -416,6 +435,19 @@ export function customerProductProfileProposal(input: {
         retrievedAt: null,
         evidenceReceipt: null,
       };
+  }
+  const technicalSource = exactEanBackedTechnicalSource(root);
+  if (technicalSource) {
+    fields.technicalSource = 'manufacturer';
+    evidenceProvenance.technicalSource = {
+      source: 'manufacturer',
+      sourceUrl: typeof technicalSource.row.url === 'string' ? technicalSource.row.url : null,
+      sourceDomain: null,
+      sourceTitle: typeof technicalSource.row.title === 'string' ? technicalSource.row.title : null,
+      sourceAuthorityClass: technicalSource.authority,
+      retrievedAt: null,
+      evidenceReceipt: null,
+    };
   }
   // A locally checksum-validated GTIN is exact package evidence even when the
   // barcode decoder did not emit a Vision evidence rectangle.
