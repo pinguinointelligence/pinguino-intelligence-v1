@@ -56,7 +56,7 @@ All nine current package cards have `photoStatus: pending`; the runtime does not
 - `npm run guard:owner-locked` after commit — PASS; no accepted owner contract modified.
 - `npm run recipes:validate` — PASS for the repository flavour-catalogue generated manifest.
 - `git diff --check` — PASS.
-- `node ./node_modules/vitest/vitest.mjs run src/data/recipes/official/officialRecipeImages.test.ts` — 31 PASS / 1 FAIL. Existing `GEL-155-480.webp` SHA is `a390a7ec…`, while the baseline manifest expects `16b9d917…`; neither file nor manifest is changed by these packs.
+- `node ./node_modules/vitest/vitest.mjs run src/data/recipes/official/officialRecipeImages.test.ts` — PASS after reconciling the stale GEL-155 manifest metadata with the accepted replacement assets from commit `b5f4b931` (asset bytes unchanged in this work).
 - `npm ci` completed with 4 dependency audit findings (3 moderate, 1 high) and two pending install-script approvals; dependency files were not changed.
 
 ## Stable verification IDs
@@ -74,6 +74,6 @@ All nine current package cards have `photoStatus: pending`; the runtime does not
 - `GRP-HANDOFF-01` — complete Icons recipe materializes MAIN to Engine and add-ons to `POST_PROCESS_ADDON`.
 - `GRP-HANDOFF-02` — unresolved exact add-on blocks before a partial recipe can materialize.
 - `GRP-HOME-01` — HOME candidate keeps add-on roles and null pending image.
-- `GRP-BASELINE-IMG-01` — immutable 177-image byte/hash audit (pre-existing failure on `GEL-155-480.webp`).
+- `GRP-BASELINE-IMG-01` — immutable 177-image byte/hash audit, including reconciled GEL-155 integrity metadata.
 
 No tasting, production yield, safety, shelf-life, complete-label or production-readiness claim is part of this baseline.
