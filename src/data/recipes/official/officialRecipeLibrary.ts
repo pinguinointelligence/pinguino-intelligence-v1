@@ -40,7 +40,7 @@ export const OFFICIAL_BASELINE_RECIPE_LIBRARY_VERSION = OFFICIAL_BASELINE_LIBRAR
 export const OFFICIAL_BASELINE_RECIPE_SOURCE_SHA256 = OFFICIAL_BASELINE_SOURCE_SHA256;
 
 /** Current runtime registry/provenance authority after packages 01 + 02 + 03. */
-export const OFFICIAL_RECIPE_LIBRARY_VERSION = 'official-190-v3';
+export const OFFICIAL_RECIPE_LIBRARY_VERSION = 'official-188-v4';
 /** SHA-256 of the baseline and package SHA values, joined by LF in application order. */
 export const OFFICIAL_RECIPE_SOURCE_SHA256 =
   'd5066c2bd94404b880866c11207c494bb3f6cfc561c219baa546f0f643e4efb1';
@@ -54,16 +54,20 @@ function deepFreeze<T>(value: T): T {
 }
 
 const currentRecipes = [
-  ...OFFICIAL_RECIPE_SOURCE.map((entry) => {
+  ...OFFICIAL_RECIPE_SOURCE.filter((entry) => entry.number !== 77).map((entry) => {
     if (entry.number === 39) return GELLATTI_PACK_01_02_REPLACEMENT_039;
     if (entry.number === 164) return GELLATTI_PACK_03_REPLACEMENT_164;
     return entry;
   }),
-  ...GELLATTI_PACK_01_02_ADDITIONS,
+  ...GELLATTI_PACK_01_02_ADDITIONS.filter((entry) => entry.number !== 180).map((entry) =>
+    entry.number === 178 || entry.number === 181
+      ? { ...entry, collection: 'lost_legendary' as const }
+      : entry,
+  ),
   ...GELLATTI_PACK_03_ADDITIONS,
 ];
 if (
-  currentRecipes.length !== 190 ||
+  currentRecipes.length !== 188 ||
   new Set(currentRecipes.map((entry) => entry.number)).size !== currentRecipes.length ||
   new Set(currentRecipes.map((entry) => entry.recipeId)).size !== currentRecipes.length
 ) {
@@ -118,9 +122,8 @@ export const OFFICIAL_COLLECTIONS: readonly OfficialCollection[] = deepFreeze([
 const RECIPE_BY_ID = new Map(OFFICIAL_RECIPES.map((recipe) => [recipe.recipeId, recipe]));
 const COLLECTION_BY_ID = new Map(OFFICIAL_COLLECTIONS.map((entry) => [entry.id, entry]));
 const OWNER_COLLECTION_TAILS: Partial<Readonly<Record<OfficialCollectionId, readonly number[]>>> = {
-  classics: [178, 180, 181],
   cocktails_spirits: [179, 164, 189, 190],
-  lost_legendary: [185, 186, 187, 188],
+  lost_legendary: [165, 178, 185, 181, 186, 187, 188],
 };
 
 export function isOfficialCollectionId(
