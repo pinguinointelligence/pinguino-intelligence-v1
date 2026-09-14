@@ -128,26 +128,20 @@ beforeEach(() => {
 });
 
 describe('served G anonymous capability fallback', () => {
-  it('HOME-G-02 asks on ambiguity and preserves the exact public-safe selection', async () => {
-    useHomeDraftStore.getState().addChip(chip);
+  it('HOME-BANANA-04: bananowe continues with Fresh Banana without manual disambiguation', async () => {
+    const naturalBananaChip = { ...chip, label: 'bananowe' };
+    useHomeDraftStore.getState().addChip(naturalBananaChip);
     const api = renderHook();
 
-    await expect(api.resolveOne(chip)).resolves.toMatchObject({ status: 'ambiguous' });
-    expect(useHomeDraftStore.getState().chips[0]?.candidates).toEqual(
-      expect.arrayContaining([{ id: BANANA_ID, name: 'BANANA · Fresh Fruit' }]),
-    );
-    useHomeDraftStore.getState().resolveChip(chip.id, {
-      productId: BANANA_ID,
-      productName: 'BANANA · Fresh Fruit',
-      ambiguous: false,
-      candidates: undefined,
-    });
+    await expect(api.resolveOne(naturalBananaChip)).resolves.toMatchObject({ status: 'added' });
     const resolved = useHomeDraftStore.getState().chips[0]!;
     expect(resolved).toMatchObject({
       productId: BANANA_ID,
       productName: 'BANANA · Fresh Fruit',
+      ambiguous: false,
     });
-    expect(mocks.searchProducts).toHaveBeenCalledOnce();
+    expect(resolved.candidates).toBeUndefined();
+    expect(mocks.searchProducts).toHaveBeenCalledTimes(2);
     expect(mocks.calls.find((call) => call.method === 'from')?.args).toEqual([
       DEMO_SEARCH_VIEW,
     ]);

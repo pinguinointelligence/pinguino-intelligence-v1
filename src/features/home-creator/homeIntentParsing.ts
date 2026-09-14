@@ -124,7 +124,7 @@ const CONCEPT_LEXICON: Readonly<Record<string, readonly string[]>> = Object.free
   ],
   blueberry: ['blueberry', 'blueberries', 'borowka', 'jagoda', 'jagody', 'arandano', 'heidelbeere'],
   cherry: ['cherry', 'cherries', 'wisnia', 'wisnie', 'czeresnia', 'cereza', 'kirsche'],
-  banana: ['banana', 'bananas', 'banan', 'banany', 'platano', 'banane'],
+  banana: ['banana', 'bananas', 'banan', 'banany', 'bananowe', 'platano', 'banane'],
   mango: ['mango', 'mangos'],
   peach: ['peach', 'peaches', 'brzoskwinia', 'melocoton', 'pfirsich'],
   pear: ['pear', 'pears', 'gruszka', 'gruszki', 'pera', 'birne'],
