@@ -145,6 +145,34 @@ describe('field truth state', () => {
     expect(preferStronger(verified, estimated).value).toBe(9);
   });
 
+  it('keeps direct VERIFIED product truth above exact Mapper evidence', () => {
+    const mapperExact = knownField({
+      value: 42,
+      state: 'VERIFIED',
+      confidence: 0.97,
+      basis: 'mapper_exact',
+    });
+    const directBases = [
+      'retailer_card',
+      'product_declared',
+      'user_confirmed',
+      'private_label_card',
+      'official_manufacturer',
+    ] as const;
+
+    for (const [index, basis] of directBases.entries()) {
+      const direct = knownField({
+        value: 10 + index,
+        state: 'VERIFIED',
+        confidence: 0.5,
+        basis,
+      });
+      expect(preferStronger(direct, mapperExact)).toBe(direct);
+      expect(preferStronger(mapperExact, direct)).toBe(direct);
+    }
+    expect(preferStronger(unknownField(), mapperExact)).toBe(mapperExact);
+  });
+
   it('treats UNKNOWN as replaceable by anything, and never carries a number', () => {
     const unknown = unknownField('no evidence');
     expect(unknown.value).toBeNull();
