@@ -9,6 +9,7 @@ import {
   officialRecipeHasImage,
   officialRecipeImage,
 } from './officialRecipeLibrary';
+import { GELLATTI_PACK_01_02_ADDITIONS } from './officialRecipePack0102';
 
 const REPO = process.cwd();
 const manifest = JSON.parse(
@@ -160,11 +161,14 @@ describe('recipe package 03 image overlay', () => {
     expect(package03Images[0]!.outputs[1]!.sha256).not.toBe(package03Images[1]!.outputs[1]!.sha256);
   });
 
-  it('[GRP03-IMG-03] keeps #180 and #186-188 pending without guessed image files', () => {
-    for (const number of [180, 186, 187, 188]) {
+  it('[GRP03-IMG-03] keeps #186-188 pending and ships no guessed #180 or #186-188 files', () => {
+    for (const number of [186, 187, 188]) {
       const recipe = OFFICIAL_RECIPES.find((candidate) => candidate.number === number)!;
       expect(recipe.photoStatus).toBe('pending');
       expect(officialRecipeHasImage(recipe)).toBe(false);
+    }
+    expect(OFFICIAL_RECIPES.some((candidate) => candidate.number === 180)).toBe(false);
+    for (const number of [180, 186, 187, 188]) {
       expect(currentPackageImages.some((image) => image.number === number)).toBe(false);
       const padded = String(number).padStart(3, '0');
       expect(existsSync(resolve(REPO, `public/recipes/official/GEL-${padded}-480.webp`))).toBe(
@@ -188,6 +192,16 @@ describe('recipe pack 01/02 image overlay', () => {
     [184, 'e238452b9c77a97da0f54410defd8296974026abec9e9f3742d8e03ad9c00206'],
     [185, 'df08176d1e31e42f525620eb3af085117738aa659f154e7de312c147c1d3abc2'],
   ]);
+  const expectedSourceCollections = new Map<number, keyof typeof folderOf>([
+    [39, 'classics'],
+    [178, 'classics'],
+    [179, 'cocktails_spirits'],
+    [181, 'classics'],
+    [182, 'icons'],
+    [183, 'icons'],
+    [184, 'icons'],
+    [185, 'lost_legendary'],
+  ]);
 
   it('[GRP-IMG-PACK-01] maps each delivered owner photograph by its canonical number', () => {
     expect(packageImages.map((image) => image.number)).toEqual([...expectedSources.keys()]);
@@ -197,12 +211,13 @@ describe('recipe pack 01/02 image overlay', () => {
     );
     for (const image of packageImages) {
       const recipe = OFFICIAL_RECIPES.find((candidate) => candidate.number === image.number)!;
+      const sourceCollection = expectedSourceCollections.get(image.number)!;
       const padded = String(image.number).padStart(3, '0');
       expect(image.recipeId).toBe(recipe.recipeId);
       expect(image.photoId).toBe(`GEL-${padded}`);
-      expect(image.collection).toBe(recipe.collection);
+      expect(image.collection).toBe(sourceCollection);
       expect(image.source).toMatchObject({
-        file: `${folderOf[recipe.collection]}/${padded}.png`,
+        file: `${folderOf[sourceCollection]}/${padded}.png`,
         sha256: expectedSources.get(image.number),
         width: 1254,
         height: 1254,
@@ -213,12 +228,21 @@ describe('recipe pack 01/02 image overlay', () => {
       ]);
       expect(officialRecipeHasImage(recipe)).toBe(true);
     }
+    expect(OFFICIAL_RECIPES.find((recipe) => recipe.number === 178)?.collection).toBe(
+      'lost_legendary',
+    );
+    expect(OFFICIAL_RECIPES.find((recipe) => recipe.number === 181)?.collection).toBe(
+      'lost_legendary',
+    );
   });
 
-  it('[GRP-IMG-PACK-02] keeps Eiskaffee pending when no canonical #180 asset exists', () => {
-    const eiskaffee = OFFICIAL_RECIPES.find((recipe) => recipe.number === 180)!;
+  it('[GRP-IMG-PACK-02] keeps the excluded Eiskaffee source pending without a canonical asset', () => {
+    const eiskaffee = GELLATTI_PACK_01_02_ADDITIONS.find((recipe) => recipe.number === 180)!;
     expect(packageImages.some((image) => image.number === 180)).toBe(false);
     expect(officialRecipeHasImage(eiskaffee)).toBe(false);
+    expect(OFFICIAL_RECIPES.some((recipe) => recipe.number === 180)).toBe(false);
+    expect(existsSync(resolve(REPO, 'public/recipes/official/GEL-180-480.webp'))).toBe(false);
+    expect(existsSync(resolve(REPO, 'public/recipes/official/GEL-180-960.webp'))).toBe(false);
   });
 });
 
