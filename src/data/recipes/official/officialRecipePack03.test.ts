@@ -26,12 +26,12 @@ const sha256 = (value: string) => createHash('sha256').update(value).digest('hex
 const byNumber = (number: number) => OFFICIAL_RECIPES.find((recipe) => recipe.number === number)!;
 
 describe('GELLATTI recipe package 03', () => {
-  it('[GRP03-DATA-01] exposes exactly 190 unique canonical identities and real provenance hashes', () => {
+  it('[GRP03-DATA-01] exposes exactly 188 unique canonical identities and real provenance hashes', () => {
     expect(OFFICIAL_RECIPE_PACK_03_SHA256).toBe(sha256(officialRecipePack03HashInput()));
-    expect(OFFICIAL_RECIPES).toHaveLength(190);
-    expect(new Set(OFFICIAL_RECIPES.map((recipe) => recipe.number)).size).toBe(190);
-    expect(new Set(OFFICIAL_RECIPES.map((recipe) => recipe.recipeId)).size).toBe(190);
-    expect(OFFICIAL_RECIPE_LIBRARY_VERSION).toBe('official-190-v3');
+    expect(OFFICIAL_RECIPES).toHaveLength(188);
+    expect(new Set(OFFICIAL_RECIPES.map((recipe) => recipe.number)).size).toBe(188);
+    expect(new Set(OFFICIAL_RECIPES.map((recipe) => recipe.recipeId)).size).toBe(188);
+    expect(OFFICIAL_RECIPE_LIBRARY_VERSION).toBe('official-188-v4');
     expect(OFFICIAL_RECIPE_SOURCE_SHA256).toBe(
       sha256(
         [
@@ -160,26 +160,44 @@ describe('GELLATTI recipe package 03', () => {
 
   it('[GRP03-DATA-06] applies exact owner collection counts and stable tails', () => {
     const expected = {
-      classics: { count: 80, tail: [178, 180, 181] },
-      icons: { count: 28, tail: null },
+      classics: { count: 76, tail: [74, 75, 76] },
+      icons: { count: 28, tail: [182, 183, 184] },
       cocktails_spirits: { count: 52, tail: [179, 164, 189, 190] },
-      lost_legendary: { count: 18, tail: [185, 186, 187, 188] },
-      technical_bases: { count: 12, tail: null },
+      lost_legendary: { count: 16, tail: [165, 178, 185, 181] },
+      technical_bases: { count: 12, tail: [175, 176, 177] },
     } as const;
+    const memberships = Object.keys(expected).flatMap((collection) =>
+      officialRecipesInCollection(collection as keyof typeof expected),
+    );
     for (const [collection, contract] of Object.entries(expected)) {
       const recipes = officialRecipesInCollection(collection as keyof typeof expected);
       expect(recipes, collection).toHaveLength(contract.count);
-      if (contract.tail) {
-        expect(recipes.slice(-contract.tail.length).map((recipe) => recipe.number)).toEqual(
-          contract.tail,
-        );
-      }
+      expect(recipes.slice(-contract.tail.length).map((recipe) => recipe.number)).toEqual(
+        contract.tail,
+      );
     }
+    expect(memberships).toHaveLength(184);
+    expect(new Set(memberships.map((recipe) => recipe.recipeId)).size).toBe(memberships.length);
+    expect(
+      OFFICIAL_RECIPES.filter(
+        (recipe) => !memberships.some((member) => member.recipeId === recipe.recipeId),
+      ).map((recipe) => recipe.recipeId),
+    ).toEqual([
+      'lost-gb-rum-raisin',
+      'heritage-irish-stout-brown-bread',
+      'heritage-cafayate-cabernet-sauvignon',
+      'heritage-vin-santo-cantucci',
+    ]);
     expect(
       officialRecipesInCollection('lost_legendary')
-        .filter((recipe) => [164, 178, 181].includes(recipe.number))
+        .filter((recipe) => [164, 186, 187, 188].includes(recipe.number))
         .map((recipe) => recipe.number),
     ).toEqual([]);
+    expect(
+      officialRecipesInCollection('lost_legendary')
+        .filter((recipe) => [178, 181].includes(recipe.number))
+        .map((recipe) => recipe.number),
+    ).toEqual([178, 181]);
   });
 
   it('[GRP03-DATA-07] keeps canonical records frozen and working copies detached', () => {

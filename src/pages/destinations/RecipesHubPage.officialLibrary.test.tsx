@@ -180,10 +180,10 @@ describe('Recipes hub — official Gellatti library', () => {
   });
 
   it.each([
-    ['classics', 80, 'GEL-001', 'GEL-077'],
-    ['icons', 28, 'GEL-078', 'GEL-102'],
+    ['classics', 76, 'GEL-001', 'GEL-076'],
+    ['icons', 28, 'GEL-078', 'GEL-184'],
     ['cocktails_spirits', 52, 'GEL-103', 'GEL-190'],
-    ['lost_legendary', 18, 'GEL-151', 'GEL-185'],
+    ['lost_legendary', 16, 'GEL-151', 'GEL-181'],
     ['technical_bases', 12, 'GEL-166', 'GEL-177'],
   ])(
     '[GRP03-UI-COUNT-%s] opens with %i recipes and preserves delivered numbered images',
@@ -210,10 +210,9 @@ describe('Recipes hub — official Gellatti library', () => {
 
   it.each([
     [39, 'classics', 'classic-crema-di-buontalenti', 'Crema di Buontalenti', true],
-    [178, 'classics', 'classic-plombir', 'Plombir', true],
+    [178, 'lost_legendary', 'classic-plombir', 'Plombir', true],
     [179, 'cocktails_spirits', 'classic-porter-ice-cream', 'Porter Ice Cream', true],
-    [180, 'classics', 'classic-eiskaffee', 'Eiskaffee', false],
-    [181, 'classics', 'classic-spaghettieis', 'Spaghettieis', true],
+    [181, 'lost_legendary', 'classic-spaghettieis', 'Spaghettieis', true],
     [
       182,
       'icons',
@@ -225,15 +224,6 @@ describe('Recipes hub — official Gellatti library', () => {
     [184, 'icons', 'icon-milky-hazelnut-chocolate-crunch', 'Milky Hazelnut Chocolate Crunch', true],
     [185, 'lost_legendary', 'heritage-parmesan-ice-cream', 'Parmesan Ice Cream', true],
     [164, 'cocktails_spirits', 'lost-it-zabaione', 'Zabaione al Marsala', true],
-    [186, 'lost_legendary', 'heritage-irish-stout-brown-bread', 'Irish Stout & Brown Bread', false],
-    [
-      187,
-      'lost_legendary',
-      'heritage-cafayate-cabernet-sauvignon',
-      'Cafayate Cabernet Sauvignon',
-      false,
-    ],
-    [188, 'lost_legendary', 'heritage-vin-santo-cantucci', 'Vin Santo & Cantucci', false],
     [189, 'cocktails_spirits', 'spirit-baileys-eiskaffee', 'Baileys Eiskaffee', true],
     [190, 'cocktails_spirits', 'spirit-amaretto-eiskaffee', 'Amaretto Eiskaffee', true],
   ] as const)(
@@ -256,6 +246,40 @@ describe('Recipes hub — official Gellatti library', () => {
         expect(host.querySelector('[data-testid="official-recipe-image"]')).toBeNull();
         expect(host.querySelector('[data-testid="official-recipe-placeholder"]')).not.toBeNull();
       }
+    },
+  );
+
+  it('[GRP-CARD-180] keeps unavailable Eiskaffee out of the runtime library', async () => {
+    expect(OFFICIAL_RECIPES.some((recipe) => recipe.number === 180)).toBe(false);
+    await renderAt('/recipes?collection=classics');
+    expect(
+      all('[data-testid^="official-recipe-card-"]').some(
+        (entry) => entry.dataset.recipeNumber === '180',
+      ),
+    ).toBe(false);
+  });
+
+  it.each([
+    [186, 'heritage-irish-stout-brown-bread', 'Irish Stout & Brown Bread'],
+    [187, 'heritage-cafayate-cabernet-sauvignon', 'Cafayate Cabernet Sauvignon'],
+    [188, 'heritage-vin-santo-cantucci', 'Vin Santo & Cantucci'],
+  ] as const)(
+    '[GRP-CARD-%i] keeps the canonical pending recipe out of collection membership',
+    async (number, recipeId, name) => {
+      const recipe = OFFICIAL_RECIPES.find((candidate) => candidate.number === number)!;
+      expect(recipe).toMatchObject({
+        recipeId,
+        name,
+        collection: 'lost_legendary',
+        photoStatus: 'pending',
+      });
+      expect(officialRecipeReadiness(recipe).state).toBe('PRODUCT_BLOCKED');
+      await renderAt('/recipes?collection=lost_legendary');
+      expect(
+        all('[data-testid^="official-recipe-card-"]').some(
+          (entry) => entry.dataset.recipeNumber === String(number),
+        ),
+      ).toBe(false);
     },
   );
 
@@ -286,12 +310,16 @@ describe('Recipes hub — official Gellatti library', () => {
   });
 
   it.each([
-    ['classics', ['178', '180', '181'], ['164', '179', '185', '186', '187', '188', '189', '190']],
+    [
+      'classics',
+      ['74', '75', '76'],
+      ['77', '164', '178', '179', '180', '181', '185', '186', '187', '188', '189', '190'],
+    ],
     ['cocktails_spirits', ['179', '164', '189', '190'], ['178', '181', '185', '186', '187', '188']],
     [
       'lost_legendary',
-      ['185', '186', '187', '188'],
-      ['164', '178', '179', '180', '181', '189', '190'],
+      ['165', '178', '185', '181'],
+      ['163', '164', '179', '180', '186', '187', '188', '189', '190'],
     ],
   ] as const)(
     '[GRP03-COLLECTION-%s] renders the exact owner tail without cross-collection duplicates',
