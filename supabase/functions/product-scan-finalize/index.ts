@@ -807,6 +807,7 @@ Deno.serve(async (request) => {
       declared: proposal.declared,
       declaredBasis: proposal.declaredBasis,
       evidence: proposal.evidence,
+      materialConflictDetails: proposal.materialConflictDetails,
       /*
           The scan path never filled this, so productProductionAccuracy's web-source test —
           `trustedWebAuthority(input.evidenceProvenance?.[field]?.sourceAuthorityClass)` — always

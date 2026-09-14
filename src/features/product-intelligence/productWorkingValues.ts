@@ -136,10 +136,7 @@ export function estimatedFieldIsEngineSafe(input: {
   cohort?: FieldTruth['provenance']['cohort'];
   mapperWholeProfileSimilarity: number | null;
 }): boolean {
-  if (
-    input.algorithmVersion === MAPPER_WHOLE_PROFILE_ALGORITHM_VERSION &&
-    input.cohort == null
-  ) {
+  if (input.algorithmVersion === MAPPER_WHOLE_PROFILE_ALGORITHM_VERSION && input.cohort == null) {
     return (
       input.mapperWholeProfileSimilarity !== null &&
       input.mapperWholeProfileSimilarity >= PROFILE_MATCH_FLOOR &&
@@ -187,6 +184,18 @@ export interface EstimateConflict {
   delta: number;
 }
 
+/** Canonical Scanner conflict carried intact to the working-value authority.
+ * `state` is derived from the Scanner's retained source; unresolved conflicts
+ * never lend either observation to Mapper inference. */
+export interface ProductMaterialConflictContext {
+  field: string;
+  labelValue: string | number | null;
+  externalValue: string | number | null;
+  retainedSource: string | null;
+  state: 'UNRESOLVED' | 'RESOLVED';
+  canonicalValue: string | number | null;
+}
+
 export interface ProductWorkingValuesInput {
   /** Values the product itself declares. Absent/null means not declared. */
   declared: Partial<Record<WorkingNumericField, number | null>>;
@@ -223,6 +232,9 @@ export interface ProductWorkingValuesInput {
   /** Exact product-owned facts used only to authorize a missing field's Rescue.
    * Numeric anchors still come from VERIFIED field truth. */
   rescueTargetEvidence?: RescueTargetIdentityEvidence | null;
+  /** Structured canonical Scanner conflicts. The string summary used by
+   * Product Accuracy is intentionally not used as a substitute here. */
+  materialConflictDetails?: readonly ProductMaterialConflictContext[];
 }
 
 export interface ProductWorkingValuesResolutionOptions {
@@ -264,6 +276,8 @@ export interface ProductWorkingValues {
   mapperReferences: string[];
   /** Declared values the Mapper strongly disagrees with. Declaration still wins. */
   conflicts: EstimateConflict[];
+  /** Exact Scanner conflicts received by this resolver. */
+  materialConflictDetails: ProductMaterialConflictContext[];
   /** Joint impossibilities found in the assembled product. */
   plausibilityViolations: PlausibilityViolation[];
   /**
@@ -355,9 +369,7 @@ export function sweetnessPathOf(
       };
     }
   }
-  const acceptedRescueSpectrum = TARGET_AWARE_SUGAR_SPECTRUM_FIELDS.map(
-    (field) => fields[field],
-  );
+  const acceptedRescueSpectrum = TARGET_AWARE_SUGAR_SPECTRUM_FIELDS.map((field) => fields[field]);
   const rescueSpectrumAccepted = acceptedRescueSpectrum.every(
     (truth) =>
       truth.value !== null &&
@@ -372,10 +384,7 @@ export function sweetnessPathOf(
     rescueSpectrumAccepted &&
     (polyol ?? 0) === 0
   ) {
-    const named = acceptedRescueSpectrum.reduce(
-      (total, truth) => total + (truth.value ?? 0),
-      0,
-    );
+    const named = acceptedRescueSpectrum.reduce((total, truth) => total + (truth.value ?? 0), 0);
     if (Math.abs(named - sugars) <= SUGAR_SPECTRUM_RESCUE_POLICY.targetClosureTolerance) {
       return {
         kind: 'sugar_spectrum',
@@ -480,6 +489,35 @@ const numeric = (value: number | null | undefined): number | null =>
 
 const round4 = (value: number): number => Math.round(value * 1e4) / 1e4;
 
+const WORKING_FIELD_BY_CONFLICT_PATH: Readonly<Partial<Record<string, WorkingNumericField>>> =
+  Object.freeze({
+    'nutrition.energyKj': 'kcal_per_100g',
+    'nutrition.energyKcal': 'kcal_per_100g',
+    'nutrition.fat': 'fat_percent',
+    'nutrition.protein': 'protein_percent',
+    'nutrition.carbohydrate': 'carbohydrate_percent',
+    'nutrition.sugars': 'total_sugars_percent',
+    'nutrition.fibre': 'fiber_percent',
+    'nutrition.salt': 'salt_percent',
+    'productionDeclarations.alcoholAbv': 'alcohol_percent',
+    'productionDeclarations.waterPercent': 'water_percent',
+    'productionDeclarations.totalSolidsPercent': 'total_solids_percent',
+  });
+
+const RESCUE_IDENTITY_CONFLICT_PATHS = new Set([
+  'identity.displayName',
+  'identity.originalName',
+  'identity.brand',
+  'identity.category',
+  'identity.subcategory',
+  'identity.variant',
+]);
+
+const materialConflictReason = (conflicts: readonly ProductMaterialConflictContext[]): string =>
+  [...new Set(conflicts.map((conflict) => `RESCUE_INPUT_MATERIAL_CONFLICT:${conflict.field}`))]
+    .sort()
+    .join(',');
+
 /**
  * Resolve one product's working values.
  *
@@ -495,10 +533,72 @@ export function resolveProductWorkingValues(
 ): ProductWorkingValues {
   let fields = emptyFieldTruthMap();
   const trace: string[] = [];
+  const materialConflictDetails = (input.materialConflictDetails ?? []).map((conflict) => ({
+    ...conflict,
+  }));
+  const unresolvedMaterialConflicts = materialConflictDetails.filter(
+    (conflict) => conflict.state === 'UNRESOLVED',
+  );
+  const materialConflictsByWorkingField = new Map<
+    WorkingNumericField,
+    ProductMaterialConflictContext[]
+  >();
+  for (const conflict of unresolvedMaterialConflicts) {
+    const field = WORKING_FIELD_BY_CONFLICT_PATH[conflict.field];
+    if (!field) continue;
+    const conflicts = materialConflictsByWorkingField.get(field) ?? [];
+    conflicts.push(conflict);
+    materialConflictsByWorkingField.set(field, conflicts);
+  }
+  const conflictedWorkingFields = new Set(materialConflictsByWorkingField.keys());
+  const mapperIdentityConflicted = unresolvedMaterialConflicts.some(
+    (conflict) =>
+      RESCUE_IDENTITY_CONFLICT_PATHS.has(conflict.field) ||
+      conflict.field === 'barcodes' ||
+      conflict.field.startsWith('barcodes.'),
+  );
+  const ingredientIdentityConflicted = unresolvedMaterialConflicts.some(
+    (conflict) => conflict.field === 'ingredientsText',
+  );
+  const rescueEvidenceConflicts = unresolvedMaterialConflicts.filter(
+    (conflict) =>
+      RESCUE_IDENTITY_CONFLICT_PATHS.has(conflict.field) ||
+      conflict.field === 'barcodes' ||
+      conflict.field.startsWith('barcodes.') ||
+      conflict.field === 'ingredientsText',
+  );
+  const rescueTargetEvidence = input.rescueTargetEvidence
+    ? {
+        ...input.rescueTargetEvidence,
+        exactProductIdentity:
+          input.rescueTargetEvidence.exactProductIdentity && !mapperIdentityConflicted,
+        ingredientOrCompositionIdentity:
+          input.rescueTargetEvidence.ingredientOrCompositionIdentity &&
+          !ingredientIdentityConflicted,
+      }
+    : input.rescueTargetEvidence;
+  const enforceUnresolvedMaterialConflicts = (
+    candidateFields: ProductFieldTruthMap,
+  ): ProductFieldTruthMap => {
+    let sanitized = candidateFields;
+    for (const [field, conflicts] of materialConflictsByWorkingField) {
+      sanitized = {
+        ...sanitized,
+        [field]: unknownField(materialConflictReason(conflicts)),
+      };
+    }
+    return sanitized;
+  };
+  if (materialConflictDetails.length > 0) {
+    trace.push(
+      `material_conflicts: ${unresolvedMaterialConflicts.length} unresolved / ${materialConflictDetails.length} total`,
+    );
+  }
 
   /* 1. what the product declares about itself — verified */
   let declaredCount = 0;
   for (const field of WORKING_NUMERIC_FIELDS) {
+    if (conflictedWorkingFields.has(field)) continue;
     const value = numeric(input.declared[field]);
     if (value === null) continue;
     fields = applyFieldTruth(
@@ -519,6 +619,7 @@ export function resolveProductWorkingValues(
   /* 2. an identity-confirmed source card — stronger than any estimate */
   let cardFields = 0;
   for (const [field, truth] of Object.entries(input.sourceCard?.fields ?? {})) {
+    if (conflictedWorkingFields.has(field as WorkingNumericField)) continue;
     fields = applyFieldTruth(fields, field as WorkingNumericField, truth);
     cardFields++;
   }
@@ -531,6 +632,7 @@ export function resolveProductWorkingValues(
   // establishes either side, derive its complement now so no Mapper donor can
   // independently supply a second, potentially inconsistent estimate.
   fields = closeArithmetic(fields, trace, input.identity.semantic);
+  fields = enforceUnresolvedMaterialConflicts(fields);
 
   /* 3. Mapper knowledge fills the gaps — conditioned on what is already known */
   // Macros established by the label or an exact source card are the strongest
@@ -546,6 +648,7 @@ export function resolveProductWorkingValues(
   }
   const inference = inferMapperValues({ ...input.identity, knownMacros }, knowledge);
   for (const field of WORKING_NUMERIC_FIELDS) {
+    if (mapperIdentityConflicted || conflictedWorkingFields.has(field)) continue;
     const candidate = inference.fields[field];
     if (!candidate) continue;
     if (
@@ -582,6 +685,7 @@ export function resolveProductWorkingValues(
   if (profileMatch.confidence >= PROFILE_MATCH_FLOOR) {
     let filled = 0;
     for (const field of WORKING_NUMERIC_FIELDS) {
+      if (mapperIdentityConflicted || conflictedWorkingFields.has(field)) continue;
       // The accepted profile is the AUTHORITY for the formulation vector, so it
       // replaces per-field cohort estimates rather than merely filling their
       // gaps. Those medians are drawn field by field from different subsets, so
@@ -626,6 +730,7 @@ export function resolveProductWorkingValues(
 
   /* 4. arithmetic closure over what is now known */
   fields = closeArithmetic(fields, trace, input.identity.semantic);
+  fields = enforceUnresolvedMaterialConflicts(fields);
 
   /* 5. reject whatever the assembled product cannot jointly be */
   let plausibility = validatePlausibility(fields);
@@ -642,6 +747,7 @@ export function resolveProductWorkingValues(
   // the values that survived, so closure runs once more over the cleaned set.
   if (plausibility.violations.some((violation) => violation.withdrawn.length > 0)) {
     fields = closeArithmetic(fields, trace, input.identity.semantic);
+    fields = enforceUnresolvedMaterialConflicts(fields);
   }
 
   /* 5b. field-specific mass-balance Rescue after unsafe aggregate estimates
@@ -649,14 +755,37 @@ export function resolveProductWorkingValues(
    * this asks only whether water/solids have their own coherent evidence. */
   let massBalanceRescueReasons: string[] = [];
   let sugarSpectrumCohort = inference.bestCohort?.rows ?? [];
-  if (fields.total_solids_percent.value === null && fields.water_percent.value === null) {
+  const massBalanceConflict =
+    conflictedWorkingFields.has('water_percent') ||
+    conflictedWorkingFields.has('total_solids_percent');
+  if (massBalanceConflict) {
+    massBalanceRescueReasons = [
+      ...new Set(
+        ['water_percent', 'total_solids_percent'].flatMap((field) =>
+          materialConflictsByWorkingField.has(field as WorkingNumericField)
+            ? materialConflictReason(
+                materialConflictsByWorkingField.get(field as WorkingNumericField) ?? [],
+              ).split(',')
+            : [],
+        ),
+      ),
+    ];
+    trace.push(`field_rescue: blocked ${massBalanceRescueReasons.join(',')}`);
+  } else if (fields.total_solids_percent.value === null && fields.water_percent.value === null) {
     const rescue = rescueMassBalanceFromCohort({
       cohort: inference.bestCohort?.rows ?? [],
       fields,
       semantic: input.identity.semantic,
-      targetEvidence: input.rescueTargetEvidence,
+      targetEvidence: rescueTargetEvidence,
     });
-    massBalanceRescueReasons = rescue.reasonCodes;
+    massBalanceRescueReasons = [
+      ...new Set([
+        ...rescue.reasonCodes,
+        ...(rescue.resolved || rescueEvidenceConflicts.length === 0
+          ? []
+          : materialConflictReason(rescueEvidenceConflicts).split(',')),
+      ]),
+    ];
     if (rescue.candidates.length > 0) {
       const acceptedCandidateIds = new Set(
         rescue.candidates.map((candidate) => candidate.ingredientId),
@@ -697,6 +826,7 @@ export function resolveProductWorkingValues(
           `water_percent=${rescue.water}; ${rescue.reasonCodes.join(',')}`,
       );
       fields = closeArithmetic(fields, trace, input.identity.semantic);
+      fields = enforceUnresolvedMaterialConflicts(fields);
 
       // The rescue is admitted only if the resulting product is still coherent
       // with every exact fact. Any estimated member is withdrawn fail-closed.
@@ -712,6 +842,7 @@ export function resolveProductWorkingValues(
       }
       if (plausibility.violations.some((violation) => violation.withdrawn.length > 0)) {
         fields = closeArithmetic(fields, trace, input.identity.semantic);
+        fields = enforceUnresolvedMaterialConflicts(fields);
         massBalanceRescueReasons = [
           ...new Set([
             ...massBalanceRescueReasons,
@@ -739,10 +870,11 @@ export function resolveProductWorkingValues(
     cohort: sugarSpectrumCohort,
     fields,
     semantic: input.identity.semantic,
-    targetEvidence: input.rescueTargetEvidence,
+    targetEvidence: rescueTargetEvidence,
   });
   if (spectrumRescue.resolved && spectrumRescue.targetSpectrum && spectrumRescue.dispersion) {
     for (const field of TARGET_AWARE_SUGAR_SPECTRUM_FIELDS) {
+      if (conflictedWorkingFields.has(field)) continue;
       if (fields[field].provenance.state === 'VERIFIED') continue;
       fields = applyFieldTruth(
         fields,
@@ -785,6 +917,7 @@ export function resolveProductWorkingValues(
     );
     plausibility = validatePlausibility(fields);
     fields = plausibility.fields;
+    fields = enforceUnresolvedMaterialConflicts(fields);
     plausibilityViolations.push(...plausibility.violations);
     contradictedByDeclaration ||= plausibility.contradictedByDeclaration;
     for (const violation of plausibility.violations) {
@@ -813,12 +946,22 @@ export function resolveProductWorkingValues(
     const consistencyRules = plausibilityViolations
       .filter((violation) => violation.fields.includes(field))
       .map((violation) => `RESCUE_CROSS_FIELD_CONSISTENCY_REJECTED:${violation.rule}`);
-    const reasons =
-      field === 'water_percent' || field === 'total_solids_percent'
-        ? massBalanceRescueReasons
-        : inference.bestCohort
-          ? ['RESCUE_FIELD_DISPERSION_OR_SUPPORT_FAILED']
-          : ['RESCUE_NO_COMPATIBLE_COHORT'];
+    const reasons = materialConflictsByWorkingField.has(field)
+      ? materialConflictReason(materialConflictsByWorkingField.get(field) ?? []).split(',')
+      : mapperIdentityConflicted
+        ? materialConflictReason(
+            unresolvedMaterialConflicts.filter(
+              (conflict) =>
+                RESCUE_IDENTITY_CONFLICT_PATHS.has(conflict.field) ||
+                conflict.field === 'barcodes' ||
+                conflict.field.startsWith('barcodes.'),
+            ),
+          ).split(',')
+        : field === 'water_percent' || field === 'total_solids_percent'
+          ? massBalanceRescueReasons
+          : inference.bestCohort
+            ? ['RESCUE_FIELD_DISPERSION_OR_SUPPORT_FAILED']
+            : ['RESCUE_NO_COMPATIBLE_COHORT'];
     unresolvedEngineFieldReasons[field] = [...new Set([...reasons, ...consistencyRules])];
   }
   const missingRequired = [
@@ -924,6 +1067,7 @@ export function resolveProductWorkingValues(
     mapperTiersUsed: inference.tiersUsed,
     mapperReferences,
     conflicts,
+    materialConflictDetails,
     plausibilityViolations,
     contradictedByDeclaration,
     trace,
