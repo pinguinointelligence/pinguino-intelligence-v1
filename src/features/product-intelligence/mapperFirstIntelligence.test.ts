@@ -317,19 +317,48 @@ describe('mapper inference', () => {
 
 describe('working values and readiness', () => {
   const knowledge = buildMapperKnowledge(COCOA_BUTTER, FINGERPRINT);
+  const cocoaButterSemantic = {
+    ...classifyProductSemantics({
+      name: 'Masło kakaowe',
+      brand: null,
+      manufacturer: null,
+      manufacturerCode: null,
+      gtin: null,
+      productType: 'food ingredient',
+      category: 'cocoa',
+      subcategory: 'cocoa butter',
+      variant: null,
+      ingredients: 'Masło kakaowe',
+      nutrition: 'fat:100',
+      description: 'Tłuszcz kakaowy do produkcji lodów.',
+      dosage: null,
+      technicalParameters: null,
+      sourceUrls: [],
+    }),
+    productArchetype: 'NORMAL_INGREDIENT' as const,
+    ingredientFamily: 'cocoa' as const,
+    physicalForm: 'SOLID' as const,
+    intendedUsageRole: 'BASE_ONLY' as const,
+    modelRequired: false,
+  };
 
   const cocoaButterProduct = {
     declared: {},
     declaredConfidence: 0.95,
-    identity: { name: 'Masło kakaowe', category: 'chocolate', subcategory: 'cocoa butter' },
+    identity: {
+      name: 'Masło kakaowe',
+      category: 'chocolate',
+      subcategory: 'cocoa butter',
+      semantic: cocoaButterSemantic,
+    },
     technical: false,
   };
 
-  it('does not admit an unmeasured product with unresolved semantics to the Engine', () => {
+  it('gives an unmeasured product with resolved semantics real working numbers the Engine can use', () => {
     const resolved = resolveProductWorkingValues(cocoaButterProduct, knowledge);
     // The value lands in the canonical field, not in a side-channel.
     expect(resolved.values.fat_percent).toBeGreaterThan(99);
-    expect(resolved.engineReady).toBe(false);
+    expect(resolved.engineReady).toBe(true);
     expect(resolved.readiness).toBe('ESTIMATED_READY');
     expect(resolved.engineConfidence).toBeGreaterThanOrEqual(ESTIMATED_READY_FLOOR);
   });
