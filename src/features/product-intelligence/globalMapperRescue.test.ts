@@ -443,24 +443,16 @@ describe('field-specific mass-balance Rescue safety', () => {
     );
   });
 
-  it('WSA-NEG-02 rejects high-fibre/low-salt stabilizer donors against hard target fibre and salt', () => {
+  it('WSA-NEG-02 rejects known cross-subfamily stabilizer donors before mass-balance transfer', () => {
     const replay = replayVerifiedMapperMassBalance('PI-ING-000470');
 
+    expect(replay.semantic.manufacturerSubcategory).toBe('stabilizer_blend');
+    expect(replay.inference.bestCohort).toBeNull();
     expect(replay.rescue.resolved).toBe(false);
     expect(replay.rescue.water).toBeNull();
     expect(replay.rescue.confidence).toBeLessThan(0.85);
-    expect(replay.rescue.rejectedCandidates).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          ingredientId: 'PI-ING-000466',
-          reasonCodes: expect.arrayContaining(['RESCUE_HARD_FIELD_MISMATCH']),
-        }),
-        expect.objectContaining({
-          ingredientId: 'PI-ING-000492',
-          reasonCodes: expect.arrayContaining(['RESCUE_HARD_FIELD_MISMATCH']),
-        }),
-      ]),
-    );
+    expect(replay.rescue.reasonCodes).toEqual(['RESCUE_NO_COMPATIBLE_COHORT']);
+    expect(replay.rescue.rejectedCandidates).toEqual([]);
   });
 
   it('WSA-NEG-03 does not turn zero donor-residual dispersion into applicability confidence', () => {
@@ -515,24 +507,42 @@ describe('field-specific mass-balance Rescue safety', () => {
     expect(result.reasonCodes).toContain('RESCUE_DIRECT_MASS_PROPOSAL_INCONSISTENT');
   });
 
-  it('WSA-POS-01 preserves the safe PI-ING-000057 dry aligned-basis result', () => {
+  it('WSA-POS-01 refuses PI-ING-000057 when its known base-mix subfamily lacks a cohort', () => {
     const safe57 = replayVerifiedMapperMassBalance('PI-ING-000057');
 
-    expect(safe57.rescue).toMatchObject({ resolved: true, water: 6.25, totalSolids: 93.75 });
+    expect(safe57.semantic.manufacturerSubcategory).toBe('mascarpone_powdered_ice_cream_mix');
+    expect(safe57.inference.bestCohort).toBeNull();
+    expect(safe57.rescue).toMatchObject({
+      resolved: false,
+      water: null,
+      totalSolids: null,
+      reasonCodes: ['RESCUE_NO_COMPATIBLE_COHORT'],
+    });
   });
 
-  it('WSA-POS-02 preserves the safe PI-ING-000078 dry aligned-basis result', () => {
+  it('WSA-POS-02 refuses PI-ING-000078 when its known base-mix subfamily lacks a cohort', () => {
     const safe78 = replayVerifiedMapperMassBalance('PI-ING-000078');
 
-    expect(safe78.rescue).toMatchObject({ resolved: true, water: 3.2, totalSolids: 96.8 });
+    expect(safe78.semantic.manufacturerSubcategory).toBe(
+      'salted_butter_caramel_powdered_ice_cream_mix',
+    );
+    expect(safe78.inference.bestCohort).toBeNull();
+    expect(safe78.rescue).toMatchObject({
+      resolved: false,
+      water: null,
+      totalSolids: null,
+      reasonCodes: ['RESCUE_NO_COMPATIBLE_COHORT'],
+    });
   });
 
-  it('WSA-POS-03 preserves the PI-ING-000050 dispersion refusal', () => {
+  it('WSA-POS-03 refuses PI-ING-000050 at the earlier known-subfamily boundary', () => {
     const refused50 = replayVerifiedMapperMassBalance('PI-ING-000050');
 
+    expect(refused50.semantic.manufacturerSubcategory).toBe('mascarpone_powdered_ice_cream_mix');
+    expect(refused50.inference.bestCohort).toBeNull();
     expect(refused50.rescue).toMatchObject({
       resolved: false,
-      reasonCodes: ['RESCUE_COHORT_DISPERSION_HIGH'],
+      reasonCodes: ['RESCUE_NO_COMPATIBLE_COHORT'],
     });
   });
 
