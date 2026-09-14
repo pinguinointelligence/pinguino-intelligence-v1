@@ -1074,6 +1074,110 @@ export const resizeRecipeBatch = (
 };
 
 /**
+ * Final HOME-machine presentation allocation. The batch resize above remains
+ * the authority for proportions and every Lock contract; this pass only puts
+ * the mass it was allowed to move onto the customer's whole-gram grid.
+ *
+ * Fixed grams / actual amounts and exact percentage shares are never rounded.
+ * If one of those authorities is fractional, whole-gram output is not
+ * representable without changing the Lock, so the accepted decimal result is
+ * retained. Positive scalable lines have a 1 g lower bound, while an explicit
+ * 0 g line remains 0 g. Range bounds are applied on the same integer grid.
+ *
+ * Allocation is deterministic bounded largest-remainder: start at each exact
+ * share's floor (clamped to its semantic bounds), then assign or remove the
+ * residual gram by the smallest rounding error, with source order as the tie
+ * breaker. The returned sum is the exact integer line target.
+ */
+const wholeGramHomeMachineResize = (resized: RecipeItem[]): RecipeItem[] => {
+  const exactLineTarget = resized.reduce((total, item) => total + item.planned_grams, 0);
+  const wholeLineTarget = Math.round(exactLineTarget);
+  if (
+    !Number.isFinite(exactLineTarget) ||
+    Math.abs(exactLineTarget - wholeLineTarget) > BATCH_RESIZE_TOLERANCE_GRAMS
+  ) {
+    return resized;
+  }
+
+  const isExactAuthority = (item: RecipeItem): boolean =>
+    isBatchFixedLine(item) || item.percent_constraint !== undefined || item.lock_type === 'percent';
+  const exactAuthorityIndexes = resized
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => isExactAuthority(item));
+
+  // A fractional exact authority and an all-integer recipe cannot both be
+  // true. Preserve Lock authority rather than silently weakening it.
+  if (exactAuthorityIndexes.some(({ item }) => !Number.isInteger(item.planned_grams))) {
+    return resized;
+  }
+
+  const exactAuthorityTotal = exactAuthorityIndexes.reduce(
+    (total, { item }) => total + item.planned_grams,
+    0,
+  );
+  const scalableTarget = wholeLineTarget - exactAuthorityTotal;
+  const scalable = resized
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => !isExactAuthority(item))
+    .map(({ item, index }) => {
+      const explicitlyZero = item.planned_grams === 0;
+      const lower = explicitlyZero
+        ? 0
+        : Math.max(1, item.range_constraint ? Math.ceil(item.range_constraint.min_grams) : 1);
+      const upper = explicitlyZero
+        ? 0
+        : item.range_constraint
+          ? Math.floor(item.range_constraint.max_grams)
+          : scalableTarget;
+      return {
+        index,
+        raw: item.planned_grams,
+        lower,
+        upper,
+        units: Math.min(upper, Math.max(lower, Math.floor(item.planned_grams))),
+      };
+    });
+
+  if (
+    !Number.isInteger(scalableTarget) ||
+    scalableTarget < 0 ||
+    scalable.some(({ raw, lower, upper }) => !Number.isFinite(raw) || raw < 0 || lower > upper)
+  ) {
+    return resized;
+  }
+
+  const lowerTotal = scalable.reduce((total, line) => total + line.lower, 0);
+  const upperTotal = scalable.reduce((total, line) => total + line.upper, 0);
+  if (scalableTarget < lowerTotal || scalableTarget > upperTotal) return resized;
+
+  let assigned = scalable.reduce((total, line) => total + line.units, 0);
+  while (assigned < scalableTarget) {
+    const recipient = scalable
+      .filter((line) => line.units < line.upper)
+      .sort((a, b) => b.raw - b.units - (a.raw - a.units) || a.index - b.index)[0];
+    if (!recipient) return resized;
+    recipient.units += 1;
+    assigned += 1;
+  }
+  while (assigned > scalableTarget) {
+    const donor = scalable
+      .filter((line) => line.units > line.lower)
+      .sort((a, b) => b.units - b.raw - (a.units - a.raw) || a.index - b.index)[0];
+    if (!donor) return resized;
+    donor.units -= 1;
+    assigned -= 1;
+  }
+
+  const wholeByIndex = new Map(scalable.map((line) => [line.index, line.units]));
+  const allocated = resized.map((item, index) => {
+    const planned_grams = wholeByIndex.get(index);
+    return planned_grams === undefined ? item : { ...item, planned_grams };
+  });
+  const allocatedTotal = allocated.reduce((total, item) => total + item.planned_grams, 0);
+  return allocatedTotal === wholeLineTarget ? allocated : resized;
+};
+
+/**
  * PC-02 / SOL-041 — project the existing stabilizer system through the
  * authority of the selected formulation family, then let this same resize
  * authority reconcile everything else around it. Gelato and Sorbet keep their
@@ -3485,6 +3589,10 @@ export const useRecipeStore = create<RecipeState>()(
                 targetBatchGrams,
                 undefined,
               );
+        const allocatedItems =
+          sel.kind === 'home' && sel.batchGrams != null
+            ? wholeGramHomeMachineResize(projectedItems)
+            : projectedItems;
         const batchSource =
           sel.batchGrams == null
             ? sel.kind === 'professional'
@@ -3519,10 +3627,10 @@ export const useRecipeStore = create<RecipeState>()(
           // Route to the existing supported cell — no Engine change, just the temperature input.
           target_temperature_c: sel.kind === 'home' ? HOME_ENGINE_TEMPERATURE_C : sel.temperatureC,
           target_batch_grams: targetBatchGrams,
-          items: projectedItems,
+          items: allocatedItems,
           starterReservedMainGrams: nextStarterReservation(
             reservedMainGrams,
-            projectedItems.reduce((total, item) => total + item.planned_grams, 0),
+            allocatedItems.reduce((total, item) => total + item.planned_grams, 0),
             targetBatchGrams,
           ),
           batch_source: batchSource,
