@@ -5,6 +5,8 @@ import {
   evaluateMapperSemanticCompatibility,
   parseProductDosage,
   validateProductSemanticModelOutput,
+  type MapperSemanticCandidate,
+  type ProductSemanticClassification,
   type ProductSemanticEvidence,
 } from './productRecognition';
 import {
@@ -70,6 +72,24 @@ const mapperRow = (
   sweetness_factor: null,
   freezing_factor: null,
 });
+
+const semanticDairyCandidate: MapperSemanticCandidate = {
+  ingredientId: 'PI-TEST-SEMANTIC-DAIRY',
+  name: 'Whole milk 3.5%',
+  category: 'dairy',
+  subcategory: 'fresh_milk',
+  brand: 'Test',
+};
+
+const semanticDairyTarget = (): ProductSemanticClassification =>
+  classifyProductSemantics(
+    evidence({
+      name: semanticDairyCandidate.name,
+      category: semanticDairyCandidate.category,
+      subcategory: semanticDairyCandidate.subcategory,
+      brand: semanticDairyCandidate.brand,
+    }),
+  );
 
 describe('Product Recognition V2 — deterministic semantic authority', () => {
   it('REC-PI-000119 keeps canonical dry couverture in the chocolate family and dry form', () => {
@@ -507,6 +527,92 @@ describe('Product Recognition V2 — deterministic semantic authority', () => {
 });
 
 describe('Product Recognition V2 — Mapper semantic hard contradictions', () => {
+  it('SCN-4.5-FIX-01 rejects a known product-archetype mismatch', () => {
+    const product = {
+      ...semanticDairyTarget(),
+      productArchetype: 'BASE_MIX' as const,
+    };
+
+    expect(evaluateMapperSemanticCompatibility(product, semanticDairyCandidate)).toMatchObject({
+      compatible: false,
+      reasonCodes: ['SEMANTIC_PRODUCT_ARCHETYPE_CONTRADICTION'],
+    });
+  });
+
+  it('SCN-4.5-FIX-02 rejects a known technical-status mismatch', () => {
+    const product = {
+      ...semanticDairyTarget(),
+      isTechnicalProduct: true,
+    };
+
+    expect(evaluateMapperSemanticCompatibility(product, semanticDairyCandidate)).toMatchObject({
+      compatible: false,
+      reasonCodes: ['SEMANTIC_TECHNICAL_STATUS_CONTRADICTION'],
+    });
+  });
+
+  it('SCN-4.5-FIX-03 rejects a known dosage-dependence mismatch', () => {
+    const product = {
+      ...semanticDairyTarget(),
+      isDosageDependent: true,
+    };
+
+    expect(evaluateMapperSemanticCompatibility(product, semanticDairyCandidate)).toMatchObject({
+      compatible: false,
+      reasonCodes: ['SEMANTIC_DOSAGE_DEPENDENCE_CONTRADICTION'],
+    });
+  });
+
+  it('SCN-4.5-FIX-04 rejects a known normalized subfamily mismatch', () => {
+    const product = {
+      ...semanticDairyTarget(),
+      manufacturerSubcategory: 'cultured_dairy',
+    };
+
+    expect(evaluateMapperSemanticCompatibility(product, semanticDairyCandidate)).toMatchObject({
+      compatible: false,
+      reasonCodes: ['SEMANTIC_SUBFAMILY_CONTRADICTION'],
+    });
+  });
+
+  it('SCN-4.5-FIX-05 preserves deterministic multi-reason output', () => {
+    const product = {
+      ...semanticDairyTarget(),
+      productArchetype: 'BASE_MIX' as const,
+      isTechnicalProduct: true,
+      isDosageDependent: true,
+      manufacturerSubcategory: 'cultured_dairy',
+    };
+
+    expect(
+      evaluateMapperSemanticCompatibility(product, semanticDairyCandidate).reasonCodes,
+    ).toEqual([
+      'SEMANTIC_PRODUCT_ARCHETYPE_CONTRADICTION',
+      'SEMANTIC_TECHNICAL_STATUS_CONTRADICTION',
+      'SEMANTIC_DOSAGE_DEPENDENCE_CONTRADICTION',
+      'SEMANTIC_SUBFAMILY_CONTRADICTION',
+    ]);
+  });
+
+  it('SCN-4.5-FIX-06 does not convert unknown archetype or subfamily into a mismatch', () => {
+    const product = {
+      ...semanticDairyTarget(),
+      productArchetype: 'UNKNOWN' as const,
+      manufacturerSubcategory: null,
+    };
+
+    expect(evaluateMapperSemanticCompatibility(product, semanticDairyCandidate)).toMatchObject({
+      compatible: true,
+      reasonCodes: [],
+    });
+
+    const candidateWithoutSubfamily = { ...semanticDairyCandidate, subcategory: null };
+    expect(
+      evaluateMapperSemanticCompatibility(semanticDairyTarget(), candidateWithoutSubfamily)
+        .reasonCodes,
+    ).not.toContain('SEMANTIC_SUBFAMILY_CONTRADICTION');
+  });
+
   it('enforces server-validated forbidden Mapper categories', () => {
     const product = {
       ...classifyProductSemantics(evidence({ name: 'Niejasny produkt' })),
