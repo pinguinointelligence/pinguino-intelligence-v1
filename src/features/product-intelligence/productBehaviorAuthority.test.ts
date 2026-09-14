@@ -156,6 +156,13 @@ const productProfile = (
   missingCritical: [],
   missingEngineFields: [],
   unresolvedEngineFieldReasons: {},
+  rescueOutcome: {
+    status: 'SUCCESS',
+    attempted: true,
+    resolvedFields: [],
+    unresolvedFields: [],
+    reasonCodes: [],
+  },
   criticalPhysicsBlockers: [],
   sweetnessPath: { kind: 'trivially_zero', resolved: true, reason: 'test fixture' },
   allergenEvidenceStatus: 'CONFIRMED',

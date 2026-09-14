@@ -18,6 +18,7 @@ import {
 import {
   resolveProductWorkingValues,
   type ProductMaterialConflictContext,
+  type MapperRescueOutcome,
   type ProductReadiness,
   type SweetnessPath,
 } from '../../../src/features/product-intelligence/productWorkingValues.ts';
@@ -113,6 +114,8 @@ export interface IntimportTrustedProductProfile {
   missingCritical: string[];
   missingEngineFields: WorkingNumericField[];
   unresolvedEngineFieldReasons: Partial<Record<WorkingNumericField, string[]>>;
+  /** Explicit whole-run Mapper Rescue result carried with PRODUCT_PROFILE_V1. */
+  rescueOutcome: MapperRescueOutcome;
   /** Exact reason a numerically complete profile can still be withheld. */
   criticalPhysicsBlockers: string[];
   sweetnessPath: SweetnessPath;
@@ -469,6 +472,7 @@ export function validateIntimportProductProfileProposal(
     missingCritical: [...evidenceAssessment.missingCritical],
     missingEngineFields: [...resolved.missingEngineFields],
     unresolvedEngineFieldReasons: structuredClone(resolved.unresolvedEngineFieldReasons),
+    rescueOutcome: structuredClone(resolved.rescueOutcome),
     criticalPhysicsBlockers,
     sweetnessPath: { ...resolved.sweetnessPath },
     allergenEvidenceStatus:
