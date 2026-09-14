@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "sourcePackage": "GELLATTI_RECIPE_PACK_03",
+  "mappingRule": "NNN.png -> recipe #NNN / GEL-NNN (number is the only authority)",
+  "encoder": {
+    "tool": "cwebp",
+    "version": "1.6.0",
+    "quality": 80,
+    "method": 6,
+    "metadata": "none"
+  },
+  "images": [
+    {
+      "number": 189,
+      "photoId": "GEL-189",
+      "recipeId": "spirit-baileys-eiskaffee",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/189.png",
+        "sha256": "a74ec46370bd24a84c3220159e519d2165e2adc736623bb03911e1a855841e59",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-189-480.webp",
+          "sha256": "5982475c5f4d4e0a6cd25588d80169dc62130ad2de8cbeb64ae666c3d5f28223",
+          "bytes": 54150
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-189-960.webp",
+          "sha256": "2cf56dd300ca5a679af70d8f24cfe0c0288e45c5b34da4ef60468f35cd20b005",
+          "bytes": 145700
+        }
+      ]
+    },
+    {
+      "number": 190,
+      "photoId": "GEL-190",
+      "recipeId": "spirit-amaretto-eiskaffee",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/190.png",
+        "sha256": "fe7e802f10185ce0a29914c9fd65b54f464d674509fe5d0ba9106dce309e6311",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-190-480.webp",
+          "sha256": "b88d55068b721487cb7b672958ef91520a802e8f543482cf06974d9c5e83bb9c",
+          "bytes": 53282
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-190-960.webp",
+          "sha256": "1cc572712382fa04c0f4cc2f48812c5f0850dce0c85ae3d9def14e8ea00321a4",
+          "bytes": 144640
+        }
+      ]
+    }
+  ]
+}

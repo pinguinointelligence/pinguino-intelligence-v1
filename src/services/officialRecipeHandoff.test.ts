@@ -247,6 +247,25 @@ describe('official recipe → working recipe handoff', () => {
     expect(deps.resolveBehavior).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ['spirit-baileys-eiskaffee', 189],
+    ['spirit-amaretto-eiskaffee', 190],
+  ] as const)(
+    '[GRP03-HANDOFF-BLOCKED-%i] refuses HOME/PRO materialization at PI-ING-001705',
+    async (recipeId, number) => {
+      const deps = dependencies();
+      expect(officialRecipeById(recipeId)?.number).toBe(number);
+      await expect(materializeOfficialRecipe(recipeId, 'user-a', deps)).rejects.toMatchObject({
+        code: 'ingredient_unavailable',
+        lineNumber: 9,
+        message: expect.stringContaining('Pasta waniliowa'),
+      });
+      expect(deps.getIngredient).not.toHaveBeenCalled();
+      expect(deps.resolveBehavior).not.toHaveBeenCalled();
+      expect(deps.resolveCountryProducts).not.toHaveBeenCalled();
+    },
+  );
+
   it('never mutates the official source while building or editing the working copy', async () => {
     const before = structuredClone(officialRecipeById('classic-dark-chocolate'));
     const result = await materializeOfficialRecipe(

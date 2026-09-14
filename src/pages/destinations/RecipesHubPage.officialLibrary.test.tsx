@@ -182,11 +182,11 @@ describe('Recipes hub — official Gellatti library', () => {
   it.each([
     ['classics', 80, 'GEL-001', 'GEL-077'],
     ['icons', 28, 'GEL-078', 'GEL-102'],
-    ['cocktails_spirits', 49, 'GEL-103', 'GEL-150'],
-    ['lost_legendary', 16, 'GEL-151', 'GEL-165'],
+    ['cocktails_spirits', 52, 'GEL-103', 'GEL-190'],
+    ['lost_legendary', 18, 'GEL-151', 'GEL-185'],
     ['technical_bases', 12, 'GEL-166', 'GEL-177'],
   ])(
-    'opens %s with %i recipes and preserves delivered numbered images',
+    '[GRP03-UI-COUNT-%s] opens with %i recipes and preserves delivered numbered images',
     async (id, count, first, last) => {
       await renderAt(`/recipes?collection=${id}`);
       const cards = all('[data-testid^="official-recipe-card-"]');
@@ -224,6 +224,18 @@ describe('Recipes hub — official Gellatti library', () => {
     [183, 'icons', 'icon-red-velvet-cheesecake-chunk', 'Red Velvet Cheesecake Chunk', true],
     [184, 'icons', 'icon-milky-hazelnut-chocolate-crunch', 'Milky Hazelnut Chocolate Crunch', true],
     [185, 'lost_legendary', 'heritage-parmesan-ice-cream', 'Parmesan Ice Cream', true],
+    [164, 'cocktails_spirits', 'lost-it-zabaione', 'Zabaione al Marsala', true],
+    [186, 'lost_legendary', 'heritage-irish-stout-brown-bread', 'Irish Stout & Brown Bread', false],
+    [
+      187,
+      'lost_legendary',
+      'heritage-cafayate-cabernet-sauvignon',
+      'Cafayate Cabernet Sauvignon',
+      false,
+    ],
+    [188, 'lost_legendary', 'heritage-vin-santo-cantucci', 'Vin Santo & Cantucci', false],
+    [189, 'cocktails_spirits', 'spirit-baileys-eiskaffee', 'Baileys Eiskaffee', true],
+    [190, 'cocktails_spirits', 'spirit-amaretto-eiskaffee', 'Amaretto Eiskaffee', true],
   ] as const)(
     '[GRP-CARD-%i] opens the package card through its standard library link',
     async (number, collection, recipeId, name, hasImage) => {
@@ -274,19 +286,68 @@ describe('Recipes hub — official Gellatti library', () => {
   });
 
   it.each([
-    ['classics', ['39', '178', '180', '181'], ['179']],
-    ['cocktails_spirits', ['179'], []],
-    ['icons', ['182', '183', '184'], []],
-    ['lost_legendary', ['185'], []],
+    ['classics', ['178', '180', '181'], ['164', '179', '185', '186', '187', '188', '189', '190']],
+    ['cocktails_spirits', ['179', '164', '189', '190'], ['178', '181', '185', '186', '187', '188']],
+    [
+      'lost_legendary',
+      ['185', '186', '187', '188'],
+      ['164', '178', '179', '180', '181', '189', '190'],
+    ],
   ] as const)(
-    '[GRP-COLLECTION-%s] moves only Porter Ice Cream and preserves accepted assignments',
-    async (collection, present, absent) => {
+    '[GRP03-COLLECTION-%s] renders the exact owner tail without cross-collection duplicates',
+    async (collection, tail, absent) => {
       await renderAt(`/recipes?collection=${collection}`);
       const numbers = all('[data-testid^="official-recipe-card-"]').map(
         (card) => card.dataset.recipeNumber,
       );
-      expect(numbers).toEqual(expect.arrayContaining([...present]));
+      expect(numbers.slice(-tail.length)).toEqual([...tail]);
       for (const number of absent) expect(numbers).not.toContain(number);
+    },
+  );
+
+  it.each([
+    ['heritage-irish-stout-brown-bread', 2],
+    ['heritage-cafayate-cabernet-sauvignon', 1],
+    ['heritage-vin-santo-cantucci', 2],
+  ] as const)(
+    '[GRP03-UI-PENDING-%s] stays browsable, pending and blocked on exact products',
+    async (recipeId, missingCount) => {
+      await renderAt(`/recipes?recipe=${recipeId}`);
+      expect(host.querySelector('[data-testid="official-recipe-placeholder"]')).not.toBeNull();
+      expect(host.querySelector('[data-testid="official-recipe-image"]')).toBeNull();
+      expect(all('[data-line-kind="unresolved"]')).toHaveLength(missingCount);
+      expect(
+        host.querySelector<HTMLButtonElement>('[data-testid="official-recipe-use"]')?.disabled,
+      ).toBe(true);
+      expect(
+        host.querySelector<HTMLElement>('[data-testid="official-recipe-use-state"]')?.dataset
+          .useState,
+      ).toBe('PRODUCT_BLOCKED');
+    },
+  );
+
+  it.each([
+    ['spirit-baileys-eiskaffee', 189, 'Irish cream / coffee cream liqueur'],
+    ['spirit-amaretto-eiskaffee', 190, 'Disaronno Originale / Amaretto liqueur'],
+  ] as const)(
+    '[GRP03-UI-BLOCKED-%s] serves its exact artwork and full blocked detail',
+    async (recipeId, number, expectedLabel) => {
+      await renderAt(`/recipes?recipe=${recipeId}`);
+      expect(host.querySelector('[data-testid="official-recipe-image"]')?.getAttribute('src')).toBe(
+        `/recipes/official/GEL-${number}-960.webp`,
+      );
+      expect(all('[data-testid="official-recipe-line"]')).toHaveLength(10);
+      expect(host.textContent).toContain(expectedLabel);
+      expect(
+        host.querySelector<HTMLButtonElement>('[data-testid="official-recipe-use"]')?.disabled,
+      ).toBe(true);
+      expect(
+        host.querySelector<HTMLElement>('[data-testid="official-recipe-use-state"]')?.dataset
+          .useState,
+      ).toBe('OTHER_EXPLICIT_BLOCKER');
+      expect(
+        host.querySelector('[data-testid="official-recipe-use-state"]')?.textContent,
+      ).toContain('Pasta waniliowa');
     },
   );
 
