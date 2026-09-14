@@ -9,6 +9,7 @@ import type {
   ProductSemanticEvidence,
 } from '../../../src/features/product-intelligence/productRecognition.ts';
 import type { ProfileMatchInput } from '../../../src/features/product-intelligence/mapperValueInference.ts';
+import type { ProductMaterialConflictContext } from '../../../src/features/product-intelligence/productWorkingValues.ts';
 
 type JsonObject = Record<string, unknown>;
 
@@ -26,16 +27,6 @@ const evidenceRows = (root: JsonObject): JsonObject[] =>
 
 const externalRows = (root: JsonObject): JsonObject[] =>
   Array.isArray(root.externalSources) ? root.externalSources.map(objectValue) : [];
-
-const unresolvedConflictFields = (root: JsonObject): string[] =>
-  Array.isArray(root.conflicts)
-    ? root.conflicts.flatMap((value) => {
-        const conflict = objectValue(value);
-        return conflict.retainedSource === null && typeof conflict.field === 'string'
-          ? [conflict.field]
-          : [];
-      })
-    : [];
 
 const TECHNICAL_PARAMETER_PATHS = [
   'productionDeclarations.technicalParametersText',
@@ -178,6 +169,32 @@ function exactEanBackedTechnicalSource(
 const pathValue = (root: JsonObject, path: string): unknown =>
   path.split('.').reduce<unknown>((value, key) => objectValue(value)[key], root);
 
+const canonicalConflictValue = (value: unknown): string | number | null =>
+  typeof value === 'string' || (typeof value === 'number' && Number.isFinite(value)) ? value : null;
+
+const materialConflictDetailsFrom = (root: JsonObject): ProductMaterialConflictContext[] =>
+  Array.isArray(root.conflicts)
+    ? root.conflicts.flatMap((value) => {
+        const conflict = objectValue(value);
+        if (typeof conflict.field !== 'string') return [];
+        const retainedSource =
+          typeof conflict.retainedSource === 'string' ? conflict.retainedSource : null;
+        return [
+          {
+            field: conflict.field,
+            labelValue: canonicalConflictValue(conflict.labelValue),
+            externalValue: canonicalConflictValue(conflict.externalValue),
+            retainedSource,
+            state: retainedSource === null ? ('UNRESOLVED' as const) : ('RESOLVED' as const),
+            canonicalValue:
+              retainedSource === null
+                ? null
+                : canonicalConflictValue(pathValue(root, conflict.field)),
+          },
+        ];
+      })
+    : [];
+
 function presentForField(root: JsonObject, field: ProductEvidenceField): boolean {
   const paths = SCAN_FIELD_PATHS[field] ?? [];
   return paths.some((path) => {
@@ -284,6 +301,7 @@ export interface CustomerProductProfileProposal {
   /** How `declared` was produced from it. */
   normalizationBasis: 'SOURCE_PER_100G' | 'GELLATTI_1ML_1G_NORMALIZATION' | null;
   evidence: ProductEvidenceInput;
+  materialConflictDetails: ProductMaterialConflictContext[];
   /** Server-assigned source authority per field, for pages that name the scanned GTIN. */
   evidenceProvenance: Partial<Record<ProductEvidenceField, CustomerEvidenceProvenance>>;
   recognitionEvidence: ProductSemanticEvidence;
@@ -373,7 +391,10 @@ export function customerProductProfileProposal(input: {
   };
   const tableConfirmed = declarationGradeForClosure('sugars');
   const listConfirmed = declarationGradeForClosure('ingredients');
-  const unresolvedConflicts = unresolvedConflictFields(root);
+  const materialConflictDetails = materialConflictDetailsFrom(root);
+  const unresolvedConflicts = materialConflictDetails
+    .filter((conflict) => conflict.state === 'UNRESOLVED')
+    .map((conflict) => conflict.field);
   const sugarClosureConflict = unresolvedConflicts.some(
     (field) =>
       field === 'ingredientsText' ||
@@ -494,6 +515,7 @@ export function customerProductProfileProposal(input: {
       mapperFamilyMatch: input.recognition.ingredientFamily !== 'unknown',
       materialConflicts: unresolvedConflicts,
     },
+    materialConflictDetails,
     evidenceProvenance,
     recognitionEvidence: input.recognitionEvidence,
     trustedRecognition: input.recognition,
