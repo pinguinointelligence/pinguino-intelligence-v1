@@ -64,6 +64,7 @@ type RecipeSeed = Readonly<{
   origin: string | null;
   continent: string | null;
   productType: OfficialProductType;
+  photoStatus?: OfficialRecipe['photoStatus'];
   sourceTotalGrams?: number;
   degassingRequired?: boolean;
   processNotice?: string | null;
@@ -80,7 +81,7 @@ const recipe = (seed: RecipeSeed): OfficialRecipe => ({
   recipeVersion: seed.recipeVersion ?? 1,
   number: seed.number,
   photoId: `GEL-${String(seed.number).padStart(3, '0')}`,
-  photoStatus: 'pending',
+  photoStatus: seed.photoStatus ?? 'pending',
   name: seed.name,
   description: seed.description,
   instructions: seed.instructions,
@@ -127,6 +128,7 @@ export const GELLATTI_PACK_01_02_REPLACEMENT_039: OfficialRecipe = recipe({
   origin: 'Florence, Italy',
   continent: 'Europe',
   productType: 'Standard Gelato',
+  photoStatus: 'available',
   description:
     'Bogaty krem mleczno-śmietankowy z żółtkami, inspirowany florenckim Buontalenti. Wyraźnie kremowy, bez dodatkowych sosów i posypek.',
   instructions: [
@@ -154,6 +156,7 @@ export const GELLATTI_PACK_01_02_ADDITIONS: readonly OfficialRecipe[] = [
     origin: 'Eastern Europe',
     continent: 'Europe',
     productType: 'Standard Gelato',
+    photoStatus: 'available',
     description:
       'Bogate lody mleczno-śmietankowe o gładkiej konsystencji i delikatnym aromacie waniliowym.',
     processNotice: 'Skrobia natywna wymaga właściwego procesu na gorąco.',
@@ -179,11 +182,12 @@ export const GELLATTI_PACK_01_02_ADDITIONS: readonly OfficialRecipe[] = [
     number: 179,
     name: 'Porter Ice Cream',
     searchAliases: ['Lody porterowe'],
-    collection: 'classics',
+    collection: 'cocktails_spirits',
     subcategory: 'Dessert & Parlour',
     origin: null,
     continent: null,
     productType: 'Spirit Gelato',
+    photoStatus: 'available',
     degassingRequired: true,
     description: 'Kremowe lody z porterem, ciemnosłodową nutą i dodatkiem brązowego cukru.',
     processNotice:
@@ -256,6 +260,7 @@ export const GELLATTI_PACK_01_02_ADDITIONS: readonly OfficialRecipe[] = [
     origin: 'Germany',
     continent: 'Europe',
     productType: 'Standard Gelato',
+    photoStatus: 'available',
     sourceTotalGrams: 120,
     baseRecipeReference: { recipeId: vanilla.recipeId, recipeVersion: 1, servingGrams: 120 },
     description:
@@ -291,6 +296,7 @@ export const GELLATTI_PACK_01_02_ADDITIONS: readonly OfficialRecipe[] = [
     origin: null,
     continent: null,
     productType: 'Standard Gelato',
+    photoStatus: 'available',
     description:
       'Kremowe lody pistacjowe z białą czekoladą, jasnym kremem, pastą pralinową i lekko solonymi, chrupiącymi pistacjami.',
     processNotice: 'Stabilizatory wymagają właściwej hydratacji w istniejącym procesie na gorąco.',
@@ -342,6 +348,7 @@ export const GELLATTI_PACK_01_02_ADDITIONS: readonly OfficialRecipe[] = [
     origin: null,
     continent: null,
     productType: 'Standard Gelato',
+    photoStatus: 'available',
     description:
       'Delikatnie kwaskowe lody z serkiem śmietankowym, kawałkami ciasta Red Velvet i malinowym variegato.',
     processNotice: 'Stabilizatory wymagają właściwej hydratacji w istniejącym procesie na gorąco.',
@@ -389,6 +396,7 @@ export const GELLATTI_PACK_01_02_ADDITIONS: readonly OfficialRecipe[] = [
     origin: null,
     continent: null,
     productType: 'Standard Gelato',
+    photoStatus: 'available',
     description:
       'Wyraźnie mleczne lody z kawałkami Kinder Schoko-Bons, cienkimi płatkami mlecznej czekolady i chrupiącymi orzechami laskowymi.',
     processNotice: 'Stabilizatory wymagają właściwej hydratacji w istniejącym procesie na gorąco.',
@@ -439,6 +447,7 @@ export const GELLATTI_PACK_01_02_ADDITIONS: readonly OfficialRecipe[] = [
     origin: 'Great Britain',
     continent: 'Europe',
     productType: 'Heritage Gelato / Sorbet',
+    photoStatus: 'available',
     description:
       'Kremowe lody z dojrzewającym parmezanem, łączące mleczną słodycz z wytrawną, serową nutą. Współczesna interpretacja dawnych lodów parmezanowych.',
     instructions: [

@@ -68,7 +68,7 @@ describe('recipes map to candidates by CANONICAL identity, not by name', () => {
     }
   });
 
-  it('[GRP-HOME-01] keeps package add-ons as topping roles and pending art as null', () => {
+  it('[GRP-HOME-01] keeps package add-ons as topping roles and exposes delivered art', () => {
     const recipe = OFFICIAL_RECIPES.find(
       (entry) => entry.recipeId === 'icon-pistachio-white-chocolate-praline',
     )!;
@@ -88,7 +88,7 @@ describe('recipes map to candidates by CANONICAL identity, not by name', () => {
       role: 'topping',
       displayName: 'Sól do pistacjowego dodatku',
     });
-    expect(officialRecipeToCandidate(recipe)?.imageUrl).toBeNull();
+    expect(officialRecipeToCandidate(recipe)?.imageUrl).toBe('/recipes/official/GEL-182-480.webp');
   });
 
   it('carries the profile, the owner image and Gellatti attribution', () => {
