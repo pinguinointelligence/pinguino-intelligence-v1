@@ -123,7 +123,17 @@ const RECIPE_BY_ID = new Map(OFFICIAL_RECIPES.map((recipe) => [recipe.recipeId, 
 const COLLECTION_BY_ID = new Map(OFFICIAL_COLLECTIONS.map((entry) => [entry.id, entry]));
 const OWNER_COLLECTION_TAILS: Partial<Readonly<Record<OfficialCollectionId, readonly number[]>>> = {
   cocktails_spirits: [179, 164, 189, 190],
-  lost_legendary: [165, 178, 185, 181, 186, 187, 188],
+  lost_legendary: [165, 178, 185, 181],
+};
+const COLLECTION_MEMBERSHIP_EXCLUSIONS: Partial<
+  Readonly<Record<OfficialCollectionId, ReadonlySet<string>>>
+> = {
+  lost_legendary: new Set([
+    'lost-gb-rum-raisin',
+    'heritage-irish-stout-brown-bread',
+    'heritage-cafayate-cabernet-sauvignon',
+    'heritage-vin-santo-cantucci',
+  ]),
 };
 
 export function isOfficialCollectionId(
@@ -137,7 +147,10 @@ export function officialCollectionById(id: OfficialCollectionId): OfficialCollec
 }
 
 export function officialRecipesInCollection(id: OfficialCollectionId): readonly OfficialRecipe[] {
-  const recipes = OFFICIAL_RECIPES.filter((recipe) => recipe.collection === id);
+  const excludedRecipeIds = COLLECTION_MEMBERSHIP_EXCLUSIONS[id];
+  const recipes = OFFICIAL_RECIPES.filter(
+    (recipe) => recipe.collection === id && !excludedRecipeIds?.has(recipe.recipeId),
+  );
   const ownerTail = OWNER_COLLECTION_TAILS[id];
   if (!ownerTail) return recipes;
   const tailNumbers = new Set<number>(ownerTail);
