@@ -780,6 +780,10 @@ export function HomeCreatorPage() {
       draft.profile !== null &&
       !machineView.needsMachineChoice &&
       !draft.recipeReady &&
+      // A machine stage the customer actually saw ends at its explicit „Gotowe".
+      // Saved/inherited defaults never present that stage and retain the accepted
+      // automatic start below.
+      !draft.presentedStages.includes('machine') &&
       !matchPopupOpen &&
       // Never behind an official recipe that is still opening: it is about to BE the recipe.
       officialAdoption?.state !== 'loading' &&
@@ -790,6 +794,7 @@ export function HomeCreatorPage() {
     }
   }, [
     draft.intentSubmitted,
+    draft.presentedStages,
     draft.profile,
     draft.recipeReady,
     matchPopupOpen,
@@ -1057,13 +1062,21 @@ export function HomeCreatorPage() {
               // the summary even when the customer picked nothing. Selecting already
               // clears it; this covers the cancel path.
               setForceMachineStage(false);
+              if (!draft.recipeReady) {
+                const key = `${draft.profile}|${machine?.id ?? 'none'}|${amount?.totalGrams ?? 0}`;
+                if (lastGeneratedFor.current !== key) {
+                  lastGeneratedFor.current = key;
+                  generateRecipe(amount);
+                }
+                return;
+              }
               // §85: Done updates the SAME recipe and returns to the live position.
-              if (draft.recipeReady && amount) {
+              if (amount) {
                 useRecipeStore
                   .getState()
                   .setBatchGrams(amount.totalGrams, undefined, 'USER_OVERRIDE');
               }
-              scrollToStage(draft.recipeReady ? 'recipe' : 'machine');
+              scrollToStage('recipe');
             }}
             onBack={
               flow.backFrom('machine') ? () => scrollToStage(flow.backFrom('machine')!) : null
