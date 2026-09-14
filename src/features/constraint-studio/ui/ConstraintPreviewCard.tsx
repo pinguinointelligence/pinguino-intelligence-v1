@@ -193,6 +193,7 @@ function EditableDiffRow({
           testId={`preview-grams-control-${line.lineId}`}
           widthPreset="grams"
           density="responsive"
+          publishValidDraft
           onChange={onChange}
           lockSegment={{
             pressed: locked,
