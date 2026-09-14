@@ -29,8 +29,17 @@ import type { SafeMapperSearchRow } from '@/services/productPicker/mapperSearch'
 import { catalogueSearchTerms, resolveIdentity } from './homeIdentityResolution';
 import { normalizeIntentText } from './homeIntentParsing';
 
-const CANONICAL_FRESH_BANANA_ID = 'PI-ING-000345';
-const SIMPLE_FRESH_BANANA_INTENTS: ReadonlySet<string> = new Set(['banana', 'banan', 'bananowe']);
+const CANONICAL_FRESH_BANANA = Object.freeze({
+  ingredient_id: 'PI-ING-000345',
+  ingredient_name_display: 'BANANA · Fresh Fruit',
+});
+const SIMPLE_FRESH_BANANA_INTENTS: ReadonlySet<string> = new Set([
+  'banana',
+  'banan',
+  'bananowe',
+  'bananowy',
+  'bananowa',
+]);
 
 const isSimpleFreshBananaIntent = (chip: {
   readonly label: string;
@@ -38,19 +47,14 @@ const isSimpleFreshBananaIntent = (chip: {
 }): boolean =>
   chip.concept === 'banana' && SIMPLE_FRESH_BANANA_INTENTS.has(normalizeIntentText(chip.label));
 
-const eligibleCanonicalFreshBanana = (
-  rows: readonly SafeMapperSearchRow[],
-): SafeMapperSearchRow | null =>
-  rows.find(
-    (row) =>
-      row.ingredient_id === CANONICAL_FRESH_BANANA_ID &&
-      row.approved_for_base === true &&
-      row.approved_for_engines === true,
-  ) ?? null;
-
 /** What one chip resolved to, ready for the UI to act on. */
+export interface ResolvedChipIdentity {
+  readonly ingredient_id: string;
+  readonly ingredient_name_display: string;
+}
+
 export type ChipResolution =
-  | { readonly kind: 'resolved'; readonly row: SafeMapperSearchRow }
+  | { readonly kind: 'resolved'; readonly row: ResolvedChipIdentity }
   | { readonly kind: 'ambiguous'; readonly candidates: readonly SafeMapperSearchRow[] }
   | { readonly kind: 'unresolved' }
   /** The catalogue could not answer at all — honestly distinct from "no such product". */
@@ -70,13 +74,21 @@ export async function resolveChipTerm(
   chip: { readonly label: string; readonly concept: string | null },
   signal?: AbortSignal,
 ): Promise<ChipResolution> {
+  // Owner-locked natural banana intent is already an exact product decision, not a
+  // broad catalogue query. Resolve it before search pagination so commercial banana
+  // candidates cannot reintroduce ambiguity when the Fresh Fruit row is off-page.
+  // The caller still records this through the same `resolveChip` mutation used by a
+  // manual candidate click, and hydration still re-reads/materialises this stable id.
+  if (isSimpleFreshBananaIntent(chip)) {
+    return { kind: 'resolved', row: CANONICAL_FRESH_BANANA };
+  }
+
   const terms = catalogueSearchTerms(chip);
   if (terms.length === 0) return { kind: 'unresolved' };
 
   // An exact label is the strongest identity evidence and must survive the handoff
   // unchanged. Broader concept/stem searches are used only when the literal search
   // cannot establish one exact product.
-  const preferFreshBanana = isSimpleFreshBananaIntent(chip);
   let firstAmbiguity: readonly SafeMapperSearchRow[] | null = null;
   for (const term of [chip.label.trim(), ...terms].filter(
     (value, index, values) => value && values.indexOf(value) === index,
@@ -87,15 +99,6 @@ export async function resolveChipTerm(
     }
     if (outcome.kind === 'error') return { kind: 'unavailable', reason: outcome.message };
     if (outcome.kind === 'aborted') return { kind: 'unavailable', reason: 'aborted' };
-
-    // For the explicit natural-flavour intents, the canonical banana concept
-    // resolves to its verified fresh-fruit identity. Commercial forms never replace
-    // it; if the eligible row is absent, normal ambiguity handling remains in force.
-    const freshBanana =
-      preferFreshBanana && normalizeIntentText(term) === 'banana'
-        ? eligibleCanonicalFreshBanana(outcome.rows)
-        : null;
-    if (freshBanana) return { kind: 'resolved', row: freshBanana };
 
     const resolution = resolveIdentity(outcome.rows, term);
     if (resolution.kind === 'resolved' && resolution.exact) {

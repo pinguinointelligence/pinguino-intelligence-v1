@@ -65,26 +65,26 @@ describe('HOME central result consumption', () => {
   beforeEach(() => mocks.search.mockReset());
 
   it('HOME-ADD-01: passes the raw intent once and asks when central results are ambiguous', async () => {
-    const first = row('PI-BANANA-FRESH', 'Banana · Fresh Fruit');
-    const second = row('PI-BANANA-POWDER', 'Banana Powder');
+    const first = row('PI-ALMOND-RAW', 'Almond · Raw');
+    const second = row('PI-ALMOND-PASTE', 'Almond Paste');
     mocks.search.mockResolvedValue({
       kind: 'results',
       rows: [first, second],
       hasMore: false,
     });
 
-    await expect(resolveChipTerm({ label: '  banan  ', concept: 'banana' })).resolves.toEqual({
+    await expect(resolveChipTerm({ label: '  migdal  ', concept: 'almond' })).resolves.toEqual({
       kind: 'ambiguous',
       candidates: [first, second],
     });
     expect(mocks.search).toHaveBeenCalledTimes(2);
     expect(mocks.search).toHaveBeenNthCalledWith(1, {
-      text: 'banan',
+      text: 'migdal',
       limit: 40,
       signal: undefined,
     });
     expect(mocks.search).toHaveBeenNthCalledWith(2, {
-      text: 'banana',
+      text: 'almond',
       limit: 40,
       signal: undefined,
     });
@@ -93,7 +93,7 @@ describe('HOME central result consumption', () => {
   it('HOME-ADD-02: fails closed when the central resolver has no legal result', async () => {
     mocks.search.mockResolvedValue({ kind: 'results', rows: [], hasMore: false });
 
-    await expect(resolveChipTerm({ label: 'banan', concept: 'banana' })).resolves.toEqual({
+    await expect(resolveChipTerm({ label: 'unlisted', concept: null })).resolves.toEqual({
       kind: 'unresolved',
     });
   });
@@ -117,9 +117,12 @@ describe('HOME central result consumption', () => {
       hasMore: false,
     });
 
-    await expect(resolveChipTerm(parsedBananoweChip())).resolves.toEqual({
+    await expect(resolveChipTerm(parsedBananoweChip())).resolves.toMatchObject({
       kind: 'resolved',
-      row: freshBanana,
+      row: {
+        ingredient_id: freshBanana.ingredient_id,
+        ingredient_name_display: freshBanana.ingredient_name_display,
+      },
     });
   });
 
@@ -131,7 +134,13 @@ describe('HOME central result consumption', () => {
     });
 
     const result = await resolveChipTerm(parsedBananoweChip());
-    expect(result).toEqual({ kind: 'resolved', row: freshBanana });
+    expect(result).toMatchObject({
+      kind: 'resolved',
+      row: {
+        ingredient_id: freshBanana.ingredient_id,
+        ingredient_name_display: freshBanana.ingredient_name_display,
+      },
+    });
     expect(result.kind === 'resolved' && result.row.ingredient_id).not.toBe(
       bananaPuree.ingredient_id,
     );
@@ -148,7 +157,13 @@ describe('HOME central result consumption', () => {
     });
 
     const result = await resolveChipTerm(parsedBananChip());
-    expect(result).toEqual({ kind: 'resolved', row: freshBanana });
+    expect(result).toMatchObject({
+      kind: 'resolved',
+      row: {
+        ingredient_id: freshBanana.ingredient_id,
+        ingredient_name_display: freshBanana.ingredient_name_display,
+      },
+    });
     expect(result.kind).not.toBe('ambiguous');
   });
 });
