@@ -5,6 +5,8 @@ import { describe, expect, it } from 'vitest';
 import {
   OFFICIAL_COLLECTIONS,
   OFFICIAL_BASELINE_RECIPES,
+  OFFICIAL_RECIPES,
+  officialRecipeHasImage,
   officialRecipeImage,
 } from './officialRecipeLibrary';
 
@@ -29,6 +31,13 @@ interface ImageEntry {
   outputs: { width: number; path: string; sha256: string; bytes: number }[];
 }
 const images = manifest.images as ImageEntry[];
+const packageManifest = JSON.parse(
+  readFileSync(
+    resolve(REPO, 'src/data/recipes/official/officialRecipePack0102.images.json'),
+    'utf8',
+  ),
+);
+const packageImages = packageManifest.images as ImageEntry[];
 const folderOf = {
   classics: 'Classics',
   icons: 'Icons',
@@ -74,7 +83,12 @@ describe('recipe images: strict number mapping (§9, §29)', () => {
   });
 
   it('ships exactly the encoded files the manifest records, byte for byte', () => {
-    for (const image of images) {
+    const overriddenNumbers = new Set(packageImages.map((image) => image.number));
+    const effectiveImages = [
+      ...images.filter((image) => !overriddenNumbers.has(image.number)),
+      ...packageImages,
+    ];
+    for (const image of effectiveImages) {
       for (const output of image.outputs) {
         expect(existsSync(resolve(REPO, output.path)), output.path).toBe(true);
         expect(sha256(output.path), output.path).toBe(output.sha256);
@@ -84,13 +98,60 @@ describe('recipe images: strict number mapping (§9, §29)', () => {
       (name) => name !== 'collections',
     );
     expect(shipped.sort()).toEqual(
-      images.flatMap((image) => image.outputs.map((o) => o.path.split('/').at(-1)!)).sort(),
+      effectiveImages
+        .flatMap((image) => image.outputs.map((o) => o.path.split('/').at(-1)!))
+        .sort(),
     );
   });
 
   it('encodes from the original 1254 × 1254 owner photographs', () => {
     for (const image of images)
       expect([image.source.width, image.source.height]).toEqual([1254, 1254]);
+  });
+});
+
+describe('recipe pack 01/02 image overlay', () => {
+  const expectedSources = new Map([
+    [39, '370ab034b44fa175f4ca4ba4972e3f27a0ae152f5eded29a84bea9724fd8538f'],
+    [178, 'eddbb7ae95562df5aab52a2069920697d89cc3799f9db3d75580bd42bf25f699'],
+    [179, '370d0367786292924071ebd879cf9a3bd92b3d7e6622326fb35d3765a846d2e8'],
+    [181, 'e75bc26b843035f344bf3579bed0dbe8e1858dfd753b79cd967a2aaaaf3e212f'],
+    [182, 'f11eaa89d1c628c0c13836272d8bf5c3d382fac070cbed5ef0ad7d3e81b2232e'],
+    [183, '48d4dfab4cd7eabcf0c3c1755325da56721963b6ce268433a38d9aa5ad6bd44e'],
+    [184, 'e238452b9c77a97da0f54410defd8296974026abec9e9f3742d8e03ad9c00206'],
+    [185, 'df08176d1e31e42f525620eb3af085117738aa659f154e7de312c147c1d3abc2'],
+  ]);
+
+  it('[GRP-IMG-PACK-01] maps each delivered owner photograph by its canonical number', () => {
+    expect(packageImages.map((image) => image.number)).toEqual([...expectedSources.keys()]);
+    expect(new Set(packageImages.map((image) => image.recipeId)).size).toBe(packageImages.length);
+    expect(new Set(packageImages.map((image) => image.source.sha256)).size).toBe(
+      packageImages.length,
+    );
+    for (const image of packageImages) {
+      const recipe = OFFICIAL_RECIPES.find((candidate) => candidate.number === image.number)!;
+      const padded = String(image.number).padStart(3, '0');
+      expect(image.recipeId).toBe(recipe.recipeId);
+      expect(image.photoId).toBe(`GEL-${padded}`);
+      expect(image.collection).toBe(recipe.collection);
+      expect(image.source).toMatchObject({
+        file: `${folderOf[recipe.collection]}/${padded}.png`,
+        sha256: expectedSources.get(image.number),
+        width: 1254,
+        height: 1254,
+      });
+      expect(image.outputs.map((output) => output.path)).toEqual([
+        `public/recipes/official/GEL-${padded}-480.webp`,
+        `public/recipes/official/GEL-${padded}-960.webp`,
+      ]);
+      expect(officialRecipeHasImage(recipe)).toBe(true);
+    }
+  });
+
+  it('[GRP-IMG-PACK-02] keeps Eiskaffee pending when no canonical #180 asset exists', () => {
+    const eiskaffee = OFFICIAL_RECIPES.find((recipe) => recipe.number === 180)!;
+    expect(packageImages.some((image) => image.number === 180)).toBe(false);
+    expect(officialRecipeHasImage(eiskaffee)).toBe(false);
   });
 });
 

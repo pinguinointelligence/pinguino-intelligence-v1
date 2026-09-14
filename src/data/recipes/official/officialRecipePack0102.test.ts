@@ -56,8 +56,19 @@ describe('GELLATTI recipe packs 01 + 02', () => {
       recipeVersion: 2,
       collection: 'classics',
       subcategory: 'Dessert & Parlour',
-      photoStatus: 'pending',
+      photoStatus: 'available',
     });
+    expect(scopedIds.map((id) => [byId(id).number, byId(id).collection])).toEqual([
+      [39, 'classics'],
+      [178, 'classics'],
+      [179, 'cocktails_spirits'],
+      [180, 'classics'],
+      [181, 'classics'],
+      [182, 'icons'],
+      [183, 'icons'],
+      [184, 'icons'],
+      [185, 'lost_legendary'],
+    ]);
     expect(OFFICIAL_BASELINE_RECIPES.find((recipe) => recipe.number === 39)?.recipeId).toBe(
       'classic-neapolitan',
     );
@@ -177,7 +188,10 @@ describe('GELLATTI recipe packs 01 + 02', () => {
     expect(officialRecipeReadiness(schoko).state).toBe('PRODUCT_BLOCKED');
   });
 
-  it('[GRP-DATA-06] never assigns an image URL to any current pack card', () => {
-    for (const id of scopedIds) expect(officialRecipeHasImage(byId(id))).toBe(false);
+  it('[GRP-DATA-06] exposes only the delivered package photographs', () => {
+    const delivered = scopedIds.filter((id) => id !== 'classic-eiskaffee');
+    for (const id of delivered) expect(officialRecipeHasImage(byId(id))).toBe(true);
+    expect(officialRecipeHasImage(byId('classic-eiskaffee'))).toBe(false);
+    expect(byId('classic-eiskaffee').photoStatus).toBe('pending');
   });
 });

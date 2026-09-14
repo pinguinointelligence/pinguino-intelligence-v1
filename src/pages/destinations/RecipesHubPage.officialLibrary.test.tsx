@@ -180,9 +180,9 @@ describe('Recipes hub — official Gellatti library', () => {
   });
 
   it.each([
-    ['classics', 81, 'GEL-001', 'GEL-077'],
+    ['classics', 80, 'GEL-001', 'GEL-077'],
     ['icons', 28, 'GEL-078', 'GEL-102'],
-    ['cocktails_spirits', 48, 'GEL-103', 'GEL-150'],
+    ['cocktails_spirits', 49, 'GEL-103', 'GEL-150'],
     ['lost_legendary', 16, 'GEL-151', 'GEL-165'],
     ['technical_bases', 12, 'GEL-166', 'GEL-177'],
   ])(
@@ -209,18 +209,24 @@ describe('Recipes hub — official Gellatti library', () => {
   );
 
   it.each([
-    [39, 'classics', 'classic-crema-di-buontalenti', 'Crema di Buontalenti'],
-    [178, 'classics', 'classic-plombir', 'Plombir'],
-    [179, 'classics', 'classic-porter-ice-cream', 'Porter Ice Cream'],
-    [180, 'classics', 'classic-eiskaffee', 'Eiskaffee'],
-    [181, 'classics', 'classic-spaghettieis', 'Spaghettieis'],
-    [182, 'icons', 'icon-pistachio-white-chocolate-praline', 'Pistachio White Chocolate Praline'],
-    [183, 'icons', 'icon-red-velvet-cheesecake-chunk', 'Red Velvet Cheesecake Chunk'],
-    [184, 'icons', 'icon-milky-hazelnut-chocolate-crunch', 'Milky Hazelnut Chocolate Crunch'],
-    [185, 'lost_legendary', 'heritage-parmesan-ice-cream', 'Parmesan Ice Cream'],
+    [39, 'classics', 'classic-crema-di-buontalenti', 'Crema di Buontalenti', true],
+    [178, 'classics', 'classic-plombir', 'Plombir', true],
+    [179, 'cocktails_spirits', 'classic-porter-ice-cream', 'Porter Ice Cream', true],
+    [180, 'classics', 'classic-eiskaffee', 'Eiskaffee', false],
+    [181, 'classics', 'classic-spaghettieis', 'Spaghettieis', true],
+    [
+      182,
+      'icons',
+      'icon-pistachio-white-chocolate-praline',
+      'Pistachio White Chocolate Praline',
+      true,
+    ],
+    [183, 'icons', 'icon-red-velvet-cheesecake-chunk', 'Red Velvet Cheesecake Chunk', true],
+    [184, 'icons', 'icon-milky-hazelnut-chocolate-crunch', 'Milky Hazelnut Chocolate Crunch', true],
+    [185, 'lost_legendary', 'heritage-parmesan-ice-cream', 'Parmesan Ice Cream', true],
   ] as const)(
     '[GRP-CARD-%i] opens the package card through its standard library link',
-    async (number, collection, recipeId, name) => {
+    async (number, collection, recipeId, name, hasImage) => {
       await renderAt(`/recipes?collection=${collection}`);
       const card = all('[data-testid^="official-recipe-card-"]').find(
         (entry) => entry.dataset.recipeNumber === String(number),
@@ -229,27 +235,36 @@ describe('Recipes hub — official Gellatti library', () => {
       await act(async () => card!.click());
       expect(location()).toBe(`/recipes?recipe=${recipeId}`);
       expect(host.querySelector('#official-recipe-heading')?.textContent).toBe(name);
-      expect(host.querySelector('[data-testid="official-recipe-placeholder"]')).not.toBeNull();
+      if (hasImage) {
+        expect(
+          host.querySelector('[data-testid="official-recipe-image"]')?.getAttribute('src'),
+        ).toBe(`/recipes/official/GEL-${String(number).padStart(3, '0')}-960.webp`);
+        expect(host.querySelector('[data-testid="official-recipe-placeholder"]')).toBeNull();
+      } else {
+        expect(host.querySelector('[data-testid="official-recipe-image"]')).toBeNull();
+        expect(host.querySelector('[data-testid="official-recipe-placeholder"]')).not.toBeNull();
+      }
     },
   );
 
-  it('[GRP-UI-01] replaces #039 completely and shows a neutral no-photo placeholder', async () => {
+  it('[GRP-UI-01] replaces #039 completely and uses its delivered photograph', async () => {
     await renderAt('/recipes?recipe=classic-crema-di-buontalenti');
     expect(host.textContent).toContain('Crema di Buontalenti');
     expect(host.textContent).not.toContain('Neapolitan');
-    expect(host.querySelector('[data-testid="official-recipe-image"]')).toBeNull();
-    expect(host.querySelector('[data-testid="official-recipe-placeholder"]')?.textContent).toBe(
-      'Zdjęcie wkrótce',
+    expect(host.querySelector('[data-testid="official-recipe-image"]')?.getAttribute('src')).toBe(
+      '/recipes/official/GEL-039-960.webp',
     );
+    expect(host.querySelector('[data-testid="official-recipe-placeholder"]')).toBeNull();
     expect(all('[data-line-scope="MAIN"]')).toHaveLength(6);
     expect(all('[data-line-scope="TOPPING"]')).toHaveLength(0);
   });
 
-  it('[GRP-UI-02] shows exact missing product in the photo area and keeps its topping line', async () => {
+  it('[GRP-UI-02] keeps the exact product blocker while showing delivered artwork', async () => {
     await renderAt('/recipes?recipe=icon-red-velvet-cheesecake-chunk');
-    const placeholder = host.querySelector('[data-testid="official-recipe-placeholder"]');
-    expect(placeholder?.textContent).toContain('Brak składnika: Ciasto Red Velvet');
-    expect(host.querySelector('[data-testid="official-recipe-image"]')).toBeNull();
+    expect(host.querySelector('[data-testid="official-recipe-placeholder"]')).toBeNull();
+    expect(host.querySelector('[data-testid="official-recipe-image"]')?.getAttribute('src')).toBe(
+      '/recipes/official/GEL-183-960.webp',
+    );
     const missing = all('[data-line-scope="TOPPING"][data-line-kind="unresolved"]');
     expect(missing).toHaveLength(1);
     expect(missing[0]?.textContent).toContain('150 g');
@@ -257,6 +272,23 @@ describe('Recipes hub — official Gellatti library', () => {
       host.querySelector<HTMLButtonElement>('[data-testid="official-recipe-use"]')?.disabled,
     ).toBe(true);
   });
+
+  it.each([
+    ['classics', ['39', '178', '180', '181'], ['179']],
+    ['cocktails_spirits', ['179'], []],
+    ['icons', ['182', '183', '184'], []],
+    ['lost_legendary', ['185'], []],
+  ] as const)(
+    '[GRP-COLLECTION-%s] moves only Porter Ice Cream and preserves accepted assignments',
+    async (collection, present, absent) => {
+      await renderAt(`/recipes?collection=${collection}`);
+      const numbers = all('[data-testid^="official-recipe-card-"]').map(
+        (card) => card.dataset.recipeNumber,
+      );
+      expect(numbers).toEqual(expect.arrayContaining([...present]));
+      for (const number of absent) expect(numbers).not.toContain(number);
+    },
+  );
 
   it('[GRP-UI-03] shows dessert phases, vanilla reference and mandatory Spaghettieis tool notice', async () => {
     await renderAt('/recipes?recipe=classic-spaghettieis');
