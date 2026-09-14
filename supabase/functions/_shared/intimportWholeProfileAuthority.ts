@@ -17,6 +17,7 @@ import {
 } from '../../../src/features/product-intelligence/productEvidenceConfidence.ts';
 import {
   resolveProductWorkingValues,
+  type ProductMaterialConflictContext,
   type ProductReadiness,
   type SweetnessPath,
 } from '../../../src/features/product-intelligence/productWorkingValues.ts';
@@ -103,6 +104,7 @@ export interface IntimportTrustedProductProfile {
   productAccuracyAssessment: ProductProductionAccuracyAssessment;
   /** Exact, server-validated evidence used for the deterministic score. */
   evidence: ProductEvidenceInput;
+  materialConflictDetails?: ProductMaterialConflictContext[];
   evidenceProvenance: Partial<Record<ProductEvidenceField, IntimportTrustedEvidenceProvenance>>;
   carbonation: CarbonationProfile;
   readiness: ProductReadiness;
@@ -161,6 +163,9 @@ export interface IntimportProductProfileProposalInput {
    * ledger receipts. Never accepted directly from a browser proposal. */
   sourceCard?: CardContribution | null;
   evidence: ProductEvidenceInput;
+  /** Canonical server-normalized conflicts. Browser proposals cannot create
+   * these on the Scanner path. */
+  materialConflictDetails?: readonly ProductMaterialConflictContext[];
   /** Exact public evidence. When present the server recomputes Recognition V2;
    * no submitted semantic verdict is trusted. */
   recognitionEvidence?: ProductSemanticEvidence | null;
@@ -322,6 +327,7 @@ export function validateIntimportProductProfileProposal(
         exactProductIdentity,
         ingredientOrCompositionIdentity,
       },
+      materialConflictDetails: input.materialConflictDetails,
     },
     knowledge,
     { wholeProfileKnowledge },
@@ -451,6 +457,7 @@ export function validateIntimportProductProfileProposal(
       fields: { ...input.evidence.fields },
       materialConflicts: [...input.evidence.materialConflicts],
     },
+    materialConflictDetails: resolved.materialConflictDetails.map((conflict) => ({ ...conflict })),
     evidenceProvenance: structuredClone(input.evidenceProvenance ?? {}),
     carbonation: classifyCarbonation(input.carbonationEvidence ?? []),
     readiness: resolved.readiness,
