@@ -39,11 +39,7 @@ import {
   runIntimportLocalIntelligence,
   summarizeIntimportReadiness,
 } from './intimportIntelligence';
-import {
-  ENGINE_REQUIRED_WORKING_FIELDS,
-  ESTIMATED_READY_FLOOR,
-  resolveProductWorkingValues,
-} from './productWorkingValues';
+import { ESTIMATED_READY_FLOOR, resolveProductWorkingValues } from './productWorkingValues';
 import { classifyProductSemantics } from './productRecognition';
 
 const FINGERPRINT = 'b13f5db4affd9c3be5ccbe59b40920053197a3697a3fa1bd4a859406e8baed38';
@@ -329,11 +325,11 @@ describe('working values and readiness', () => {
     technical: false,
   };
 
-  it('gives an unmeasured product real working numbers the Engine can use', () => {
+  it('does not admit an unmeasured product with unresolved semantics to the Engine', () => {
     const resolved = resolveProductWorkingValues(cocoaButterProduct, knowledge);
     // The value lands in the canonical field, not in a side-channel.
     expect(resolved.values.fat_percent).toBeGreaterThan(99);
-    expect(resolved.engineReady).toBe(true);
+    expect(resolved.engineReady).toBe(false);
     expect(resolved.readiness).toBe('ESTIMATED_READY');
     expect(resolved.engineConfidence).toBeGreaterThanOrEqual(ESTIMATED_READY_FLOOR);
   });
@@ -386,7 +382,8 @@ describe('working values and readiness', () => {
       knowledge,
     );
     expect(resolved.readiness).toBe('REVIEW');
-    expect(resolved.missingEngineFields.length).toBe(ENGINE_REQUIRED_WORKING_FIELDS.length);
+    expect(resolved.missingEngineFields).toEqual([]);
+    expect(resolved.criticalPhysicsBlockers).toEqual([]);
   });
 
   it('closes water and total solids against each other, and marks the result derived', () => {

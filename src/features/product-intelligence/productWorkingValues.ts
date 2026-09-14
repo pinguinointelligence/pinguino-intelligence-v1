@@ -74,7 +74,6 @@ export const ENGINE_COMPOSITION_FIELDS = [
   'protein_percent',
   'carbohydrate_percent',
   'total_sugars_percent',
-  'salt_percent',
 ] as const satisfies readonly WorkingNumericField[];
 
 /**
@@ -308,6 +307,17 @@ export interface ProductWorkingValues {
   contradictedByDeclaration: boolean;
   trace: string[];
 }
+
+const semanticRequirementsResolved = (
+  semantic: ProductWorkingValuesInput['identity']['semantic'],
+): semantic is NonNullable<ProductWorkingValuesInput['identity']['semantic']> =>
+  semantic !== null &&
+  semantic !== undefined &&
+  semantic.modelRequired === false &&
+  semantic.productArchetype !== 'UNKNOWN' &&
+  semantic.ingredientFamily !== 'unknown' &&
+  semantic.physicalForm !== 'UNKNOWN' &&
+  semantic.intendedUsageRole !== 'NEITHER_REVIEW';
 
 export type SweetnessPathKind =
   | 'stored'
@@ -966,9 +976,12 @@ export function resolveProductWorkingValues(
   // single gap rather than two.
   const massBalanceKnown =
     fields.water_percent.value !== null || fields.total_solids_percent.value !== null;
-  const missingEngineFields = ENGINE_REQUIRED_WORKING_FIELDS.filter(
-    (field) => fields[field].value === null,
-  );
+  const requirementsApplicable =
+    semanticRequirementsResolved(input.identity.semantic) &&
+    input.identity.semantic.intendedUsageRole !== 'TOPPING_ONLY';
+  const missingEngineFields = requirementsApplicable
+    ? ENGINE_REQUIRED_WORKING_FIELDS.filter((field) => fields[field].value === null)
+    : [];
   const unresolvedEngineFieldReasons: ProductWorkingValues['unresolvedEngineFieldReasons'] = {};
   for (const field of missingEngineFields) {
     const consistencyRules = plausibilityViolations
@@ -1003,9 +1016,11 @@ export function resolveProductWorkingValues(
       ...power.materiality.reasonCodes,
     );
   }
-  const estimatedEngineFields = ENGINE_REQUIRED_WORKING_FIELDS.filter(
-    (field) => fields[field].provenance.state === 'ESTIMATED',
-  );
+  const estimatedEngineFields = requirementsApplicable
+    ? ENGINE_REQUIRED_WORKING_FIELDS.filter(
+        (field) => fields[field].provenance.state === 'ESTIMATED',
+      )
+    : [];
   // Confidence over the fields the verdict actually depends on. Water and solids
   // contribute once — penalising both would charge twice for one unknown.
   const confidenceFields: WorkingNumericField[] = [
@@ -1110,16 +1125,18 @@ export function resolveProductWorkingValues(
   const technicalAuthorityRequired =
     input.technical && !input.technicalAuthority && valueReadiness !== 'REVIEW';
   const readiness: ProductReadiness = valueReadiness;
-  const criticalPhysicsBlockers = [
-    ...missingEngineFields.map((field) => `MISSING_${field.toUpperCase()}`),
-    ...(power.resolved ? [] : ['UNRESOLVED_SWEETENING_FREEZING_PATH']),
-    ...(contradictedByDeclaration ? ['SELF_CONTRADICTORY_DECLARATION'] : []),
-    ...unsafeEstimatedFields.map(
-      (field) =>
-        `FIELD_CONFIDENCE_BELOW_READY_FLOOR:${field}:` +
-        `${fields[field].provenance.confidence.toFixed(4)}<${(ENGINE_ESTIMATE_READY_FLOORS[field] ?? 0.96).toFixed(4)}`,
-    ),
-  ];
+  const criticalPhysicsBlockers = requirementsApplicable
+    ? [
+        ...missingEngineFields.map((field) => `MISSING_${field.toUpperCase()}`),
+        ...(power.resolved ? [] : ['UNRESOLVED_SWEETENING_FREEZING_PATH']),
+        ...(contradictedByDeclaration ? ['SELF_CONTRADICTORY_DECLARATION'] : []),
+        ...unsafeEstimatedFields.map(
+          (field) =>
+            `FIELD_CONFIDENCE_BELOW_READY_FLOOR:${field}:` +
+            `${fields[field].provenance.confidence.toFixed(4)}<${(ENGINE_ESTIMATE_READY_FLOORS[field] ?? 0.96).toFixed(4)}`,
+        ),
+      ]
+    : [];
 
   const mapperReferences = [
     ...new Set(
@@ -1135,7 +1152,9 @@ export function resolveProductWorkingValues(
     technicalAuthorityRequired,
     engineConfidence,
     // The Engine can compute with these numbers.
-    engineReady: valueReadiness === 'READY' || valueReadiness === 'ESTIMATED_READY',
+    engineReady:
+      requirementsApplicable &&
+      (valueReadiness === 'READY' || valueReadiness === 'ESTIMATED_READY'),
     missingEngineFields,
     unresolvedEngineFieldReasons,
     rescueOutcome,
