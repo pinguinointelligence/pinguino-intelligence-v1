@@ -126,11 +126,14 @@ describe('all predefined Home machines × four accepted recipe controls', () => 
           .map((item) => ({ id: item.id, grams: item.planned_grams }));
         expect(nextMain.map((item) => item.id)).toEqual(originalMain.map((item) => item.id));
         if (originalMain.length > 1) {
-          expect(nextMain[0]!.grams / nextMain[1]!.grams).toBeCloseTo(
-            originalMain[0]!.grams / originalMain[1]!.grams,
-            10,
-          );
+          const originalMainTotal = originalMain.reduce((total, item) => total + item.grams, 0);
+          const nextMainTotal = nextMain.reduce((total, item) => total + item.grams, 0);
+          nextMain.forEach((item, index) => {
+            const exactShare = originalMain[index]!.grams / originalMainTotal;
+            expect(Math.abs(item.grams - nextMainTotal * exactShare)).toBeLessThanOrEqual(1);
+          });
         }
+        expect(state.items.every((item) => Number.isInteger(item.planned_grams))).toBe(true);
         expect(calculateRecipe(actual).total_batch_g).toBeCloseTo(batchGrams, 8);
         expect(machineEducationById(profile.id)?.sourceMachineId).toBe(profile.id);
       });
