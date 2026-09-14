@@ -27,6 +27,26 @@ import {
 import type { EngineIngredient } from '@/engine';
 import type { SafeMapperSearchRow } from '@/services/productPicker/mapperSearch';
 import { catalogueSearchTerms, resolveIdentity } from './homeIdentityResolution';
+import { normalizeIntentText } from './homeIntentParsing';
+
+const CANONICAL_FRESH_BANANA_ID = 'PI-ING-000345';
+const SIMPLE_FRESH_BANANA_INTENTS: ReadonlySet<string> = new Set(['banana', 'bananowe']);
+
+const isSimpleFreshBananaIntent = (chip: {
+  readonly label: string;
+  readonly concept: string | null;
+}): boolean =>
+  chip.concept === 'banana' && SIMPLE_FRESH_BANANA_INTENTS.has(normalizeIntentText(chip.label));
+
+const eligibleCanonicalFreshBanana = (
+  rows: readonly SafeMapperSearchRow[],
+): SafeMapperSearchRow | null =>
+  rows.find(
+    (row) =>
+      row.ingredient_id === CANONICAL_FRESH_BANANA_ID &&
+      row.approved_for_base === true &&
+      row.approved_for_engines === true,
+  ) ?? null;
 
 /** What one chip resolved to, ready for the UI to act on. */
 export type ChipResolution =
@@ -56,6 +76,7 @@ export async function resolveChipTerm(
   // An exact label is the strongest identity evidence and must survive the handoff
   // unchanged. Broader concept/stem searches are used only when the literal search
   // cannot establish one exact product.
+  const preferFreshBanana = isSimpleFreshBananaIntent(chip);
   let firstAmbiguity: readonly SafeMapperSearchRow[] | null = null;
   for (const term of [chip.label.trim(), ...terms].filter(
     (value, index, values) => value && values.indexOf(value) === index,
@@ -66,6 +87,15 @@ export async function resolveChipTerm(
     }
     if (outcome.kind === 'error') return { kind: 'unavailable', reason: outcome.message };
     if (outcome.kind === 'aborted') return { kind: 'unavailable', reason: 'aborted' };
+
+    // For the two explicit natural-flavour intents, the canonical banana concept
+    // resolves to its verified fresh-fruit identity. Commercial forms never replace
+    // it; if the eligible row is absent, normal ambiguity handling remains in force.
+    const freshBanana =
+      preferFreshBanana && normalizeIntentText(term) === 'banana'
+        ? eligibleCanonicalFreshBanana(outcome.rows)
+        : null;
+    if (freshBanana) return { kind: 'resolved', row: freshBanana };
 
     const resolution = resolveIdentity(outcome.rows, term);
     if (resolution.kind === 'resolved' && resolution.exact) {
