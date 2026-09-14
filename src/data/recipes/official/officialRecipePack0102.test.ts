@@ -28,8 +28,14 @@ const scopedIds = [
 ] as const;
 
 const byId = (id: (typeof scopedIds)[number]) => officialRecipeById(id)!;
+const packageById = (id: (typeof scopedIds)[number]) => {
+  const recipe =
+    officialRecipeById(id) ?? GELLATTI_PACK_01_02_ADDITIONS.find((entry) => entry.recipeId === id);
+  if (!recipe) throw new Error(`package recipe ${id} missing`);
+  return recipe;
+};
 const vector = (id: (typeof scopedIds)[number], scope: 'base' | 'addon') => {
-  const recipe = byId(id);
+  const recipe = packageById(id);
   const lines =
     scope === 'base' ? officialRecipeBaseLines(recipe) : officialRecipeAddonLines(recipe);
   return lines.map((line) => [
@@ -39,19 +45,29 @@ const vector = (id: (typeof scopedIds)[number], scope: 'base' | 'addon') => {
 };
 
 describe('GELLATTI recipe packs 01 + 02', () => {
-  it('[GRP-DATA-01] adds eight unique records and replaces only current #039', () => {
+  it('[GRP-DATA-01] keeps eight source additions and 188 unique current identities', () => {
     expect(OFFICIAL_BASELINE_RECIPES).toHaveLength(177);
     expect(GELLATTI_PACK_01_02_ADDITIONS).toHaveLength(8);
-    expect(OFFICIAL_RECIPES).toHaveLength(190);
-    expect(OFFICIAL_RECIPE_LIBRARY_VERSION).toBe('official-190-v3');
+    expect(OFFICIAL_RECIPES).toHaveLength(188);
+    expect(OFFICIAL_RECIPE_LIBRARY_VERSION).toBe('official-188-v4');
     expect(OFFICIAL_RECIPE_SOURCE_SHA256).toBe(
       'd5066c2bd94404b880866c11207c494bb3f6cfc561c219baa546f0f643e4efb1',
     );
-    expect(new Set(OFFICIAL_RECIPES.map((recipe) => recipe.recipeId)).size).toBe(190);
-    expect(new Set(OFFICIAL_RECIPES.map((recipe) => recipe.number)).size).toBe(190);
-    expect(scopedIds.every((id) => officialRecipeById(id) !== null)).toBe(true);
+    expect(new Set(OFFICIAL_RECIPES.map((recipe) => recipe.recipeId)).size).toBe(188);
+    expect(new Set(OFFICIAL_RECIPES.map((recipe) => recipe.number)).size).toBe(188);
+    expect(
+      scopedIds
+        .filter((id) => id !== 'classic-eiskaffee')
+        .every((id) => officialRecipeById(id) !== null),
+    ).toBe(true);
 
     expect(officialRecipeById('classic-neapolitan')).toBeNull();
+    expect(officialRecipeById('classic-hokey')).toBeNull();
+    expect(officialRecipeById('classic-eiskaffee')).toBeNull();
+    expect(packageById('classic-eiskaffee')).toMatchObject({
+      number: 180,
+      photoStatus: 'pending',
+    });
     expect(byId('classic-crema-di-buontalenti')).toMatchObject({
       number: 39,
       photoId: 'GEL-039',
@@ -60,12 +76,15 @@ describe('GELLATTI recipe packs 01 + 02', () => {
       subcategory: 'Dessert & Parlour',
       photoStatus: 'available',
     });
-    expect(scopedIds.map((id) => [byId(id).number, byId(id).collection])).toEqual([
+    expect(
+      scopedIds
+        .filter((id) => id !== 'classic-eiskaffee')
+        .map((id) => [byId(id).number, byId(id).collection]),
+    ).toEqual([
       [39, 'classics'],
-      [178, 'classics'],
+      [178, 'lost_legendary'],
       [179, 'cocktails_spirits'],
-      [180, 'classics'],
-      [181, 'classics'],
+      [181, 'lost_legendary'],
       [182, 'icons'],
       [183, 'icons'],
       [184, 'icons'],
@@ -134,13 +153,13 @@ describe('GELLATTI recipe packs 01 + 02', () => {
       Number((line.grams * 0.12).toFixed(6)),
     ]);
     for (const id of ['classic-eiskaffee', 'classic-spaghettieis'] as const) {
-      expect(byId(id).baseRecipeReference).toEqual({
+      expect(packageById(id).baseRecipeReference).toEqual({
         recipeId: vanilla.recipeId,
         recipeVersion: 1,
         servingGrams: 120,
       });
       expect(vector(id, 'base')).toEqual(expected);
-      expect(officialRecipeBaseTotal(byId(id))).toBe(120);
+      expect(officialRecipeBaseTotal(packageById(id))).toBe(120);
     }
     expect(vector('classic-eiskaffee', 'addon')).toEqual([
       ['PI-ING-002479', 200],
@@ -155,6 +174,7 @@ describe('GELLATTI recipe packs 01 + 02', () => {
     ]);
     expect(byId('classic-spaghettieis').toolNotice).toContain('Spätzlepresse');
     expect(byId('classic-spaghettieis').searchAliases).toContain('Spagettieis');
+    expect(officialRecipeById('classic-eiskaffee')).toBeNull();
   });
 
   it('[GRP-DATA-04] keeps every Icons MAIN at 1000 g and additions outside the Engine Base', () => {
@@ -168,10 +188,12 @@ describe('GELLATTI recipe packs 01 + 02', () => {
     expect(officialRecipeAddonTotal(byId('icon-milky-hazelnut-chocolate-crunch'))).toBe(175);
     expect(officialRecipeFinalTotal(byId('icon-milky-hazelnut-chocolate-crunch'))).toBe(1175);
     for (const id of scopedIds) {
-      expect(officialRecipeBaseLines(byId(id)).every((line) => line.scope === 'MAIN')).toBe(true);
-      expect(officialRecipeAddonLines(byId(id)).every((line) => line.scope === 'TOPPING')).toBe(
+      expect(officialRecipeBaseLines(packageById(id)).every((line) => line.scope === 'MAIN')).toBe(
         true,
       );
+      expect(
+        officialRecipeAddonLines(packageById(id)).every((line) => line.scope === 'TOPPING'),
+      ).toBe(true);
     }
   });
 
@@ -193,7 +215,8 @@ describe('GELLATTI recipe packs 01 + 02', () => {
   it('[GRP-DATA-06] exposes only the delivered package photographs', () => {
     const delivered = scopedIds.filter((id) => id !== 'classic-eiskaffee');
     for (const id of delivered) expect(officialRecipeHasImage(byId(id))).toBe(true);
-    expect(officialRecipeHasImage(byId('classic-eiskaffee'))).toBe(false);
-    expect(byId('classic-eiskaffee').photoStatus).toBe('pending');
+    expect(officialRecipeHasImage(packageById('classic-eiskaffee'))).toBe(false);
+    expect(packageById('classic-eiskaffee').photoStatus).toBe('pending');
+    expect(officialRecipeById('classic-eiskaffee')).toBeNull();
   });
 });

@@ -51,7 +51,7 @@ vi.mock('@/lib/supabase/client', () => {
   };
 });
 
-import { DEMO_SEARCH_VIEW } from '@/services/productPicker/mapperSearch';
+import { parseIntent } from './homeIntentParsing';
 import { useHomeDraftStore, type IntentChip } from './homeDraftStore';
 import { useHomeIntentIngredients } from './useHomeIntentIngredients';
 import { useRecipeStore } from '@/stores/recipeStore';
@@ -128,42 +128,54 @@ beforeEach(() => {
 });
 
 describe('served G anonymous capability fallback', () => {
-  it('HOME-BANANA-04: bananowe continues with Fresh Banana without manual disambiguation', async () => {
-    const naturalBananaChip = { ...chip, label: 'bananowe' };
-    useHomeDraftStore.getState().addChip(naturalBananaChip);
-    const api = renderHook();
+  it.each([
+    ['HOME-BANANA-P1-01', 'banan'],
+    ['HOME-BANANA-P1-02', 'bananowe'],
+    ['HOME-BANANA-P1-03', 'bananowy'],
+    ['HOME-BANANA-P1-04', 'bananowa'],
+  ] as const)(
+    '%s: %s selects Fresh Banana through the normal chip state without disambiguation',
+    async (_testId, form) => {
+      const parsed = parseIntent(form).terms[0];
+      expect(parsed).toMatchObject({ concept: 'banana', fuzzy: false });
+      const naturalBananaChip = { ...chip, label: form, concept: parsed!.concept };
+      useHomeDraftStore.getState().addChip(naturalBananaChip);
+      const api = renderHook();
 
-    await expect(api.resolveOne(naturalBananaChip)).resolves.toMatchObject({ status: 'added' });
-    const resolved = useHomeDraftStore.getState().chips[0]!;
-    expect(resolved).toMatchObject({
-      productId: BANANA_ID,
-      productName: 'BANANA · Fresh Fruit',
-      ambiguous: false,
-    });
-    expect(resolved.candidates).toBeUndefined();
-    expect(mocks.searchProducts).toHaveBeenCalledTimes(2);
-    expect(mocks.calls.find((call) => call.method === 'from')?.args).toEqual([
-      DEMO_SEARCH_VIEW,
-    ]);
+      // Reproduce the staging failure mode: broad catalogue candidates are present,
+      // but the canonical Fresh Fruit row did not make this search page.
+      mocks.publicRows = mocks.publicRows.filter((row) => row.ingredient_id !== BANANA_ID);
 
-    const materialized = await api.addResolvedChip(resolved);
-    expect(materialized).toMatchObject({
-      status: 'needs_amount',
-      ingredient: { id: BANANA_ID, name: 'BANANA · Fresh Fruit' },
-    });
+      await expect(api.resolveOne(naturalBananaChip)).resolves.toMatchObject({ status: 'added' });
+      const resolved = useHomeDraftStore.getState().chips[0]!;
+      expect(resolved).toMatchObject({
+        productId: BANANA_ID,
+        productName: 'BANANA · Fresh Fruit',
+        ambiguous: false,
+      });
+      expect(resolved.candidates).toBeUndefined();
+      expect(mocks.searchProducts).not.toHaveBeenCalled();
+      expect(mocks.calls.find((call) => call.method === 'from')).toBeUndefined();
 
-    useRecipeStore.getState().addIngredient(materialized.ingredient!, 120);
-    const inserted = useRecipeStore
-      .getState()
-      .items.find((item) => canonicalIngredientId(item.ingredient) === BANANA_ID);
-    expect(inserted).toMatchObject({
-      planned_grams: 120,
-      ingredient: {
-        id: BANANA_ID,
-        canonical_ingredient_id: BANANA_ID,
-        name: 'BANANA · Fresh Fruit',
-        identity_provenance: 'mapper',
-      },
-    });
-  });
+      const materialized = await api.addResolvedChip(resolved);
+      expect(materialized).toMatchObject({
+        status: 'needs_amount',
+        ingredient: { id: BANANA_ID, name: 'BANANA · Fresh Fruit' },
+      });
+
+      useRecipeStore.getState().addIngredient(materialized.ingredient!, 120);
+      const inserted = useRecipeStore
+        .getState()
+        .items.find((item) => canonicalIngredientId(item.ingredient) === BANANA_ID);
+      expect(inserted).toMatchObject({
+        planned_grams: 120,
+        ingredient: {
+          id: BANANA_ID,
+          canonical_ingredient_id: BANANA_ID,
+          name: 'BANANA · Fresh Fruit',
+          identity_provenance: 'mapper',
+        },
+      });
+    },
+  );
 });

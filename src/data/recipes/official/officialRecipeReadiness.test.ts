@@ -84,13 +84,13 @@ describe('official Recipe Library readiness', () => {
       REVIEW_REQUIRED: 4,
       PRODUCT_BLOCKED: 32,
       INTERNAL_SUBRECIPE: 2,
-      OTHER_EXPLICIT_BLOCKER: 17,
+      OTHER_EXPLICIT_BLOCKER: 15,
     });
     expect(numbersIn('DYNAMIC_MAIN')).toEqual([169, 170, 171]);
     expect(numbersIn('INTERNAL_SUBRECIPE')).toEqual([22, 62]);
     expect(numbersIn('REVIEW_REQUIRED')).toEqual([25, 29, 31, 163]);
     expect(numbersIn('OTHER_EXPLICIT_BLOCKER')).toEqual([
-      15, 19, 20, 34, 72, 77, 78, 123, 138, 150, 153, 159, 165, 180, 181, 189, 190,
+      15, 19, 20, 34, 72, 78, 123, 138, 150, 153, 159, 165, 181, 189, 190,
     ]);
   });
 
@@ -121,8 +121,8 @@ describe('official Recipe Library readiness', () => {
     expect(officialRecipeReadiness(byNumber(15)).state).toBe('OTHER_EXPLICIT_BLOCKER');
   });
 
-  it('ranks the worst line: a FINAL-blocked PI outranks an internal subrecipe', () => {
-    const hokeyPokey = officialRecipeReadiness(byNumber(77));
+  it('[CI-OFFICIAL-READY-WORST-LINE] ranks a FINAL-blocked PI above an internal subrecipe', () => {
+    const hokeyPokey = officialRecipeReadiness(byNumber(165));
     expect(hokeyPokey.state).toBe('OTHER_EXPLICIT_BLOCKER');
     expect(hokeyPokey.blockingLines.map((entry) => entry.reason).sort()).toEqual([
       'final_mapper_blocked',
