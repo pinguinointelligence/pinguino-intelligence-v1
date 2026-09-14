@@ -53,14 +53,14 @@ describe('the label screen asks for the part of the label it is actually missing
     expect(labelPhotoRequest(['MISSING_WATER_PERCENT'])).toBe(notSolvable);
   });
 
-  it('is the sentence the screen actually renders', () => {
+  it('binds the approved missing-view presenter at the screen call site', () => {
     // Without this the helper can be correct and unreachable — which is how the hardcoded string
     // survived. Pin the call site, not just the function.
     const screen = readFileSync(
       resolve(process.cwd(), 'src/features/scan-flow/ScanFlow.tsx'),
       'utf8',
     );
-    expect(screen).toContain('labelPhotoRequest(phase.session.missingCritical)');
+    expect(screen).toContain('missingDataPromptForGaps(phase.session.missingCritical)');
     expect(screen).not.toContain(
       "? 'Brakuje jeszcze danych z etykiety. Zrób zdjęcie składu i tabeli wartości odżywczych.'",
     );

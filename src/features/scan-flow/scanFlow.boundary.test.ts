@@ -18,6 +18,8 @@ const read = (rel: string) => readFileSync(join(here, rel), 'utf8');
 const FLOW = read('ScanFlow.tsx');
 const CAPTURE = read('scanCoreCapture.ts');
 const LOGIC = read('scanFlowLogic.ts');
+const STATUS_STORY = read('ScannerStatusStory.tsx');
+const STATUS_COPY = read('scannerStatusCopy.ts');
 const POPOVER = read('../ingredient-builder/ProductPickerPopover.tsx');
 const CATALOG_PAGE = read('../../pages/products/ProductScannerV1Page.tsx');
 const HOME_CREATOR = read('../../pages/home/HomeCreatorPage.tsx');
@@ -28,7 +30,7 @@ const imports = (src: string) => [...src.matchAll(/from '([^']+)'/g)].map((m) =>
 
 describe('scan flow boundary', () => {
   it('reaches the backend only through the services layer and the Scan Import 2.0 entry points', () => {
-    for (const src of [FLOW, CAPTURE, LOGIC]) {
+    for (const src of [FLOW, CAPTURE, LOGIC, STATUS_STORY, STATUS_COPY]) {
       expect(/\bsupabase\b/i.test(src), 'backend client named').toBe(false);
       expect(src).not.toMatch(/\.from\(|\.rpc\(|functions\.invoke|service_role/);
     }
@@ -37,7 +39,7 @@ describe('scan flow boundary', () => {
         // `@/copy/customerSafeNotice` is a pure denylist over strings — no backend, no state. It is
         // listed deliberately: after SOL-043 the sanitiser must be applied BY DEFAULT at every
         // customer-facing render, and this flow is one of them.
-        /^(react|@\/scan-contract\/confirmedScan|@\/scan-import-v2|@\/services\/scanImportV2|@\/copy\/customerSafeNotice|\.\/scanCoreCapture|\.\/scanFlowLogic)$/,
+        /^(react|@\/scan-contract\/confirmedScan|@\/scan-import-v2|@\/services\/scanImportV2|@\/copy\/customerSafeNotice|\.\/scanCoreCapture|\.\/scanFlowLogic|\.\/ScannerStatusStory|\.\/scannerStatusCopy)$/,
       );
     expect(FLOW).toMatch(/runScanImportV2\(/);
     expect(FLOW).toMatch(/continueDiscovery\(/);
