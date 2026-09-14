@@ -15,14 +15,19 @@ vi.mock('@/data/ingredients/ingredientMapper', () => ({
 }));
 
 import type { SafeMapperSearchRow } from '@/services/productPicker/mapperSearch';
+import { parseIntent } from './homeIntentParsing';
 import { resolveChipTerm } from './homeIntentResolutionService';
 
-const row = (id: string, name: string): SafeMapperSearchRow => ({
+const row = (
+  id: string,
+  name: string,
+  subcategory = 'fresh_fruit_profile',
+): SafeMapperSearchRow => ({
   ingredient_id: id,
   ingredient_name_display: name,
   ingredient_name_internal: name,
   ingredient_category: 'Fruit',
-  ingredient_subcategory: 'fresh_fruit_profile',
+  ingredient_subcategory: subcategory,
   vegan: null,
   dairy_free: null,
   gluten_free: null,
@@ -31,6 +36,22 @@ const row = (id: string, name: string): SafeMapperSearchRow => ({
   approved_for_engines: true,
   dataset_version: 'test',
 });
+
+const freshBanana = row('PI-ING-000345', 'BANANA · Fresh Fruit');
+const bananaPuree = row('PI-ING-001589', 'BANANA · Puree', 'fruit_puree');
+const bananaPaste = row(
+  'PI-ING-000188',
+  'BANANA · Fabbri Cream · Chilled · 0004282',
+  'liquid',
+);
+
+const parsedBananoweChip = () => {
+  const term = parseIntent('bananowe').terms[0];
+  expect(term).toBeDefined();
+  expect(term!.concept).toBe('banana');
+  expect(term!.fuzzy).toBe(false);
+  return { label: term!.normalized, concept: term!.concept };
+};
 
 describe('HOME central result consumption', () => {
   beforeEach(() => mocks.search.mockReset());
@@ -67,5 +88,47 @@ describe('HOME central result consumption', () => {
     await expect(resolveChipTerm({ label: 'banan', concept: 'banana' })).resolves.toEqual({
       kind: 'unresolved',
     });
+  });
+
+  it('HOME-BANANA-01: bananowe resolves without a product-choice result', async () => {
+    mocks.search.mockResolvedValue({
+      kind: 'results',
+      rows: [bananaPuree, bananaPaste, freshBanana],
+      hasMore: false,
+    });
+
+    await expect(resolveChipTerm(parsedBananoweChip())).resolves.toMatchObject({
+      kind: 'resolved',
+    });
+  });
+
+  it('HOME-BANANA-02: bananowe resolves the canonical Fresh Banana automatically', async () => {
+    mocks.search.mockResolvedValue({
+      kind: 'results',
+      rows: [bananaPuree, freshBanana],
+      hasMore: false,
+    });
+
+    await expect(resolveChipTerm(parsedBananoweChip())).resolves.toEqual({
+      kind: 'resolved',
+      row: freshBanana,
+    });
+  });
+
+  it('HOME-BANANA-03: commercial banana forms cannot outrank canonical Fresh Banana', async () => {
+    mocks.search.mockResolvedValue({
+      kind: 'results',
+      rows: [bananaPaste, bananaPuree, freshBanana],
+      hasMore: false,
+    });
+
+    const result = await resolveChipTerm(parsedBananoweChip());
+    expect(result).toEqual({ kind: 'resolved', row: freshBanana });
+    expect(result.kind === 'resolved' && result.row.ingredient_id).not.toBe(
+      bananaPuree.ingredient_id,
+    );
+    expect(result.kind === 'resolved' && result.row.ingredient_id).not.toBe(
+      bananaPaste.ingredient_id,
+    );
   });
 });
