@@ -20,6 +20,10 @@ import {
   GELLATTI_PACK_01_02_ADDITIONS,
   GELLATTI_PACK_01_02_REPLACEMENT_039,
 } from './officialRecipePack0102';
+import {
+  GELLATTI_PACK_03_ADDITIONS,
+  GELLATTI_PACK_03_REPLACEMENT_164,
+} from './officialRecipePack03';
 import type {
   OfficialCollectionId,
   OfficialRecipe,
@@ -35,11 +39,11 @@ export const OFFICIAL_BASELINE_RECIPES: readonly OfficialRecipe[] =
 export const OFFICIAL_BASELINE_RECIPE_LIBRARY_VERSION = OFFICIAL_BASELINE_LIBRARY_VERSION;
 export const OFFICIAL_BASELINE_RECIPE_SOURCE_SHA256 = OFFICIAL_BASELINE_SOURCE_SHA256;
 
-/** Current runtime registry/provenance authority after packages 01 + 02. */
-export const OFFICIAL_RECIPE_LIBRARY_VERSION = 'official-185-v2';
-/** SHA-256 of `baseline source SHA + LF + package overlay SHA`. */
+/** Current runtime registry/provenance authority after packages 01 + 02 + 03. */
+export const OFFICIAL_RECIPE_LIBRARY_VERSION = 'official-190-v3';
+/** SHA-256 of the baseline and package SHA values, joined by LF in application order. */
 export const OFFICIAL_RECIPE_SOURCE_SHA256 =
-  '5aeb4248cfc49dfab7082e67dff8ad30bf097b3fb5d74812c3b2d1cd16113d91';
+  'd5066c2bd94404b880866c11207c494bb3f6cfc561c219baa546f0f643e4efb1';
 
 function deepFreeze<T>(value: T): T {
   if (value !== null && typeof value === 'object' && !Object.isFrozen(value)) {
@@ -50,17 +54,20 @@ function deepFreeze<T>(value: T): T {
 }
 
 const currentRecipes = [
-  ...OFFICIAL_RECIPE_SOURCE.map((entry) =>
-    entry.number === 39 ? GELLATTI_PACK_01_02_REPLACEMENT_039 : entry,
-  ),
+  ...OFFICIAL_RECIPE_SOURCE.map((entry) => {
+    if (entry.number === 39) return GELLATTI_PACK_01_02_REPLACEMENT_039;
+    if (entry.number === 164) return GELLATTI_PACK_03_REPLACEMENT_164;
+    return entry;
+  }),
   ...GELLATTI_PACK_01_02_ADDITIONS,
+  ...GELLATTI_PACK_03_ADDITIONS,
 ];
 if (
-  currentRecipes.length !== 185 ||
+  currentRecipes.length !== 190 ||
   new Set(currentRecipes.map((entry) => entry.number)).size !== currentRecipes.length ||
   new Set(currentRecipes.map((entry) => entry.recipeId)).size !== currentRecipes.length
 ) {
-  throw new Error('Invalid GELLATTI runtime registry: package 01/02 identity collision.');
+  throw new Error('Invalid GELLATTI runtime registry: package identity collision.');
 }
 
 /** Every current official recipe, frozen. The generated 177-row baseline is untouched. */
@@ -110,6 +117,11 @@ export const OFFICIAL_COLLECTIONS: readonly OfficialCollection[] = deepFreeze([
 
 const RECIPE_BY_ID = new Map(OFFICIAL_RECIPES.map((recipe) => [recipe.recipeId, recipe]));
 const COLLECTION_BY_ID = new Map(OFFICIAL_COLLECTIONS.map((entry) => [entry.id, entry]));
+const OWNER_COLLECTION_TAILS: Partial<Readonly<Record<OfficialCollectionId, readonly number[]>>> = {
+  classics: [178, 180, 181],
+  cocktails_spirits: [179, 164, 189, 190],
+  lost_legendary: [185, 186, 187, 188],
+};
 
 export function isOfficialCollectionId(
   value: string | null | undefined,
@@ -122,7 +134,18 @@ export function officialCollectionById(id: OfficialCollectionId): OfficialCollec
 }
 
 export function officialRecipesInCollection(id: OfficialCollectionId): readonly OfficialRecipe[] {
-  return OFFICIAL_RECIPES.filter((recipe) => recipe.collection === id);
+  const recipes = OFFICIAL_RECIPES.filter((recipe) => recipe.collection === id);
+  const ownerTail = OWNER_COLLECTION_TAILS[id];
+  if (!ownerTail) return recipes;
+  const tailNumbers = new Set<number>(ownerTail);
+  const tail = ownerTail.map((number) => recipes.find((recipe) => recipe.number === number));
+  if (tail.some((recipe) => !recipe)) {
+    throw new Error(`Invalid owner collection tail for ${id}.`);
+  }
+  return [
+    ...recipes.filter((recipe) => !tailNumbers.has(recipe.number)),
+    ...(tail as OfficialRecipe[]),
+  ];
 }
 
 /** The frozen canonical record, for reading and display. */

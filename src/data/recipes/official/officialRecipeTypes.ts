@@ -1,11 +1,11 @@
 /**
  * Official Gellatti Recipe Library — source record types.
  *
- * One record per recipe of the owner workbook GELLATTI_RECEPTURY.xlsx
- * (sheets 01_RECEPTURY + 03_SKLAD_RECEPTUR). A record is the IMMUTABLE
+ * One record per recipe of the owner workbook baseline or an explicit owner
+ * package overlay. A record is the IMMUTABLE
  * canonical formula:
  *  - recipe identity is the source `recipeId` (e.g. `classic-dark-chocolate`)
- *    together with the source number 1…177 and its Foto ID GEL-001…GEL-177;
+ *    together with the source number and its matching Foto ID GEL-NNN;
  *  - ingredient identity is the canonical Mapper PI (`PI-ING-######`), never a
  *    name. The workbook's historical "Exact Mapper name" is deliberately not
  *    carried: the current name always comes from the Mapper runtime by PI;
@@ -74,7 +74,7 @@ export type OfficialRecipeLineIdentity =
 export interface OfficialRecipeLine {
   /** 1-based order inside the recipe (source `Linia`). */
   readonly line: number;
-  /** Source row number in 03_SKLAD_RECEPTUR (`Nr wiersza`, 1…1510). */
+  /** Source row number in 03_SKLAD_RECEPTUR (`Nr wiersza`), or null for prompt-authored rows. */
   readonly sourceRow: number | null;
   /** Source ingredient label (`Składnik`), shown to the customer. */
   readonly label: string;
@@ -102,9 +102,9 @@ export interface OfficialRecipe {
   readonly recipeId: string;
   /** Immutable recipe binding version. Imported v1 rows omit it and mean 1. */
   readonly recipeVersion?: number;
-  /** Source number 1…177 (`Nr`); the image number is this number. */
+  /** Source number (`Nr`); the image number is this number. */
   readonly number: number;
-  /** `Foto ID`, GEL-001…GEL-177. */
+  /** `Foto ID`, GEL-NNN. */
   readonly photoId: string;
   /** Available only when the exact numbered artwork is shipped; otherwise neutral/pending. */
   readonly photoStatus?: 'available' | 'pending';
@@ -119,7 +119,7 @@ export interface OfficialRecipe {
     readonly servingGrams: number;
   };
   readonly sourcePackage?: {
-    readonly id: 'GELLATTI_RECIPE_PACK_01_02';
+    readonly id: 'GELLATTI_RECIPE_PACK_01_02' | 'GELLATTI_RECIPE_PACK_03';
     readonly sha256: string;
   };
   readonly collection: OfficialCollectionId;
