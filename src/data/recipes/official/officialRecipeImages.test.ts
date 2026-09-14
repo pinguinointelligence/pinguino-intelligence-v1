@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
@@ -38,6 +38,11 @@ const packageManifest = JSON.parse(
   ),
 );
 const packageImages = packageManifest.images as ImageEntry[];
+const package03Manifest = JSON.parse(
+  readFileSync(resolve(REPO, 'src/data/recipes/official/officialRecipePack03.images.json'), 'utf8'),
+);
+const package03Images = package03Manifest.images as ImageEntry[];
+const currentPackageImages = [...packageImages, ...package03Images];
 const folderOf = {
   classics: 'Classics',
   icons: 'Icons',
@@ -83,10 +88,10 @@ describe('recipe images: strict number mapping (§9, §29)', () => {
   });
 
   it('ships exactly the encoded files the manifest records, byte for byte', () => {
-    const overriddenNumbers = new Set(packageImages.map((image) => image.number));
+    const overriddenNumbers = new Set(currentPackageImages.map((image) => image.number));
     const effectiveImages = [
       ...images.filter((image) => !overriddenNumbers.has(image.number)),
-      ...packageImages,
+      ...currentPackageImages,
     ];
     for (const image of effectiveImages) {
       for (const output of image.outputs) {
@@ -107,6 +112,68 @@ describe('recipe images: strict number mapping (§9, §29)', () => {
   it('encodes from the original 1254 × 1254 owner photographs', () => {
     for (const image of images)
       expect([image.source.width, image.source.height]).toEqual([1254, 1254]);
+  });
+});
+
+describe('recipe package 03 image overlay', () => {
+  it('[GRP03-IMG-01] maps exact, distinct owner sources to #189 and #190 only', () => {
+    expect(package03Images.map((image) => image.number)).toEqual([189, 190]);
+    expect(package03Images.map((image) => image.source.file)).toEqual([
+      'Cocktails & Spirits/189.png',
+      'Cocktails & Spirits/190.png',
+    ]);
+    expect(package03Images.map((image) => image.source.sha256)).toEqual([
+      'a74ec46370bd24a84c3220159e519d2165e2adc736623bb03911e1a855841e59',
+      'fe7e802f10185ce0a29914c9fd65b54f464d674509fe5d0ba9106dce309e6311',
+    ]);
+    expect(new Set(package03Images.map((image) => image.source.sha256)).size).toBe(2);
+    expect(package03Images.every((image) => image.collection === 'cocktails_spirits')).toBe(true);
+    expect(package03Images.every((image) => image.source.width === 1254)).toBe(true);
+    expect(package03Images.every((image) => image.source.height === 1254)).toBe(true);
+    expect(package03Manifest.encoder).toEqual({
+      tool: 'cwebp',
+      version: '1.6.0',
+      quality: 80,
+      method: 6,
+      metadata: 'none',
+    });
+  });
+
+  it('[GRP03-IMG-02] ships the exact 480/960 WebP files recorded in the manifest', () => {
+    for (const image of package03Images) {
+      const recipe = OFFICIAL_RECIPES.find((candidate) => candidate.number === image.number)!;
+      expect(image.recipeId).toBe(recipe.recipeId);
+      expect(image.photoId).toBe(recipe.photoId);
+      expect(image.collection).toBe(recipe.collection);
+      expect(image.outputs.map((output) => output.width)).toEqual([480, 960]);
+      expect(officialRecipeImage(recipe)).toEqual({
+        card: `/recipes/official/GEL-${image.number}-480.webp`,
+        detail: `/recipes/official/GEL-${image.number}-960.webp`,
+      });
+      for (const output of image.outputs) {
+        expect(existsSync(resolve(REPO, output.path)), output.path).toBe(true);
+        expect(sha256(output.path), output.path).toBe(output.sha256);
+        expect(statSync(resolve(REPO, output.path)).size, output.path).toBe(output.bytes);
+      }
+    }
+    expect(package03Images[0]!.outputs[0]!.sha256).not.toBe(package03Images[1]!.outputs[0]!.sha256);
+    expect(package03Images[0]!.outputs[1]!.sha256).not.toBe(package03Images[1]!.outputs[1]!.sha256);
+  });
+
+  it('[GRP03-IMG-03] keeps #180 and #186-188 pending without guessed image files', () => {
+    for (const number of [180, 186, 187, 188]) {
+      const recipe = OFFICIAL_RECIPES.find((candidate) => candidate.number === number)!;
+      expect(recipe.photoStatus).toBe('pending');
+      expect(officialRecipeHasImage(recipe)).toBe(false);
+      expect(currentPackageImages.some((image) => image.number === number)).toBe(false);
+      const padded = String(number).padStart(3, '0');
+      expect(existsSync(resolve(REPO, `public/recipes/official/GEL-${padded}-480.webp`))).toBe(
+        false,
+      );
+      expect(existsSync(resolve(REPO, `public/recipes/official/GEL-${padded}-960.webp`))).toBe(
+        false,
+      );
+    }
   });
 });
 

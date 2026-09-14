@@ -13,6 +13,7 @@ import {
   officialRecipeHasImage,
 } from './officialRecipeLibrary';
 import { officialRecipeReadiness } from './officialRecipeReadiness';
+import { GELLATTI_PACK_01_02_ADDITIONS } from './officialRecipePack0102';
 
 const scopedIds = [
   'classic-crema-di-buontalenti',
@@ -40,13 +41,14 @@ const vector = (id: (typeof scopedIds)[number], scope: 'base' | 'addon') => {
 describe('GELLATTI recipe packs 01 + 02', () => {
   it('[GRP-DATA-01] adds eight unique records and replaces only current #039', () => {
     expect(OFFICIAL_BASELINE_RECIPES).toHaveLength(177);
-    expect(OFFICIAL_RECIPES).toHaveLength(185);
-    expect(OFFICIAL_RECIPE_LIBRARY_VERSION).toBe('official-185-v2');
+    expect(GELLATTI_PACK_01_02_ADDITIONS).toHaveLength(8);
+    expect(OFFICIAL_RECIPES).toHaveLength(190);
+    expect(OFFICIAL_RECIPE_LIBRARY_VERSION).toBe('official-190-v3');
     expect(OFFICIAL_RECIPE_SOURCE_SHA256).toBe(
-      '5aeb4248cfc49dfab7082e67dff8ad30bf097b3fb5d74812c3b2d1cd16113d91',
+      'd5066c2bd94404b880866c11207c494bb3f6cfc561c219baa546f0f643e4efb1',
     );
-    expect(new Set(OFFICIAL_RECIPES.map((recipe) => recipe.recipeId)).size).toBe(185);
-    expect(new Set(OFFICIAL_RECIPES.map((recipe) => recipe.number)).size).toBe(185);
+    expect(new Set(OFFICIAL_RECIPES.map((recipe) => recipe.recipeId)).size).toBe(190);
+    expect(new Set(OFFICIAL_RECIPES.map((recipe) => recipe.number)).size).toBe(190);
     expect(scopedIds.every((id) => officialRecipeById(id) !== null)).toBe(true);
 
     expect(officialRecipeById('classic-neapolitan')).toBeNull();

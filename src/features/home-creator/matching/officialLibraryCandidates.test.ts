@@ -54,6 +54,20 @@ describe('the Gellatti library is offered to every customer — READY recipes on
       expect(candidate.ingredients.some((i) => i.productId === VANILLE_LEAGEL_PASTE)).toBe(false);
     }
   });
+
+  it.each([
+    ['spirit-baileys-eiskaffee', 189],
+    ['spirit-amaretto-eiskaffee', 190],
+  ] as const)(
+    '[GRP03-HOME-BLOCKED-%i] excludes the blocked package recipe from HOME candidates',
+    (recipeId, number) => {
+      const recipe = OFFICIAL_RECIPES.find((candidate) => candidate.recipeId === recipeId)!;
+      expect(recipe.number).toBe(number);
+      expect(officialRecipeReadiness(recipe).state).toBe('OTHER_EXPLICIT_BLOCKER');
+      expect(officialRecipeToCandidate(recipe)).toBeNull();
+      expect(offered.has(recipeId)).toBe(false);
+    },
+  );
 });
 
 describe('recipes map to candidates by CANONICAL identity, not by name', () => {

@@ -77,21 +77,48 @@ describe('official Recipe Library readiness', () => {
     }
   });
 
-  it('gives every recipe exactly one explicit state', () => {
+  it('[GRP03-READY-COUNT-01] gives every recipe exactly one explicit state', () => {
     expect(officialLibraryReadinessCounts(OFFICIAL_RECIPES)).toEqual({
       READY: 132,
       DYNAMIC_MAIN: 3,
       REVIEW_REQUIRED: 4,
-      PRODUCT_BLOCKED: 29,
+      PRODUCT_BLOCKED: 32,
       INTERNAL_SUBRECIPE: 2,
-      OTHER_EXPLICIT_BLOCKER: 15,
+      OTHER_EXPLICIT_BLOCKER: 17,
     });
     expect(numbersIn('DYNAMIC_MAIN')).toEqual([169, 170, 171]);
     expect(numbersIn('INTERNAL_SUBRECIPE')).toEqual([22, 62]);
     expect(numbersIn('REVIEW_REQUIRED')).toEqual([25, 29, 31, 163]);
     expect(numbersIn('OTHER_EXPLICIT_BLOCKER')).toEqual([
-      15, 19, 20, 34, 72, 77, 78, 123, 138, 150, 153, 159, 165, 180, 181,
+      15, 19, 20, 34, 72, 77, 78, 123, 138, 150, 153, 159, 165, 180, 181, 189, 190,
     ]);
+  });
+
+  it('[GRP03-READY-01] keeps #186-188 pending and #189-190 blocked by vanilla paste', () => {
+    for (const number of [186, 187, 188]) {
+      const readiness = officialRecipeReadiness(byNumber(number));
+      expect(readiness.state).toBe('PRODUCT_BLOCKED');
+      expect(readiness.blockingLines.every((line) => line.reason === 'physical_product')).toBe(
+        true,
+      );
+    }
+    for (const number of [189, 190]) {
+      expect(officialRecipeReadiness(byNumber(number))).toMatchObject({
+        state: 'OTHER_EXPLICIT_BLOCKER',
+        blockingLines: [
+          {
+            state: 'OTHER_EXPLICIT_BLOCKER',
+            reason: 'final_mapper_blocked',
+            line: {
+              line: 9,
+              label: 'Pasta waniliowa',
+              identity: { kind: 'mapped', mapperIngredientId: 'PI-ING-001705' },
+            },
+          },
+        ],
+      });
+    }
+    expect(officialRecipeReadiness(byNumber(15)).state).toBe('OTHER_EXPLICIT_BLOCKER');
   });
 
   it('ranks the worst line: a FINAL-blocked PI outranks an internal subrecipe', () => {
