@@ -106,7 +106,7 @@ export interface OfficialRecipe {
   readonly number: number;
   /** `Foto ID`, GEL-001…GEL-177. */
   readonly photoId: string;
-  /** Imported v1 rows have delivered artwork; package rows remain neutral. */
+  /** Available only when the exact numbered artwork is shipped; otherwise neutral/pending. */
   readonly photoStatus?: 'available' | 'pending';
   readonly name: string;
   readonly description?: string;
