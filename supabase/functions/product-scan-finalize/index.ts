@@ -847,6 +847,57 @@ Deno.serve(async (request) => {
   let profile = authorityPass.profile;
   let behavior = authorityPass.behavior;
 
+  const persistRescueAuthorityBeforeReadiness = async (
+    candidate: typeof profile,
+  ): Promise<
+    | { kind: 'complete'; profile: typeof profile }
+    | { kind: 'persistence_failed' | 'readback_failed' }
+  > => {
+    const validationWithAuthority = {
+      ...validation,
+      // This is the canonical pre-readiness authority. Readiness must consume the read-back
+      // profile, not the object that validateSharedProductOnboarding returned in memory.
+      productProfileAuthority: candidate,
+    };
+    const persisted = await persistCanonicalScanEvidence({
+      service,
+      actorUserId: auth.user.id,
+      sessionId,
+      result: corrections.result,
+      validation: validationWithAuthority,
+      overlayState: 'SCAN_DRAFT',
+    });
+    if (!persisted) return { kind: 'persistence_failed' };
+
+    const { data: persistedSession, error: readbackError } = await service
+      .from('product_scan_sessions')
+      .select('validation_json')
+      .eq('id', sessionId)
+      .eq('user_id', auth.user.id)
+      .maybeSingle();
+    if (readbackError || !persistedSession) return { kind: 'readback_failed' };
+
+    const persistedValidation = objectValue(persistedSession.validation_json);
+    const persistedProfile = objectValue(persistedValidation.productProfileAuthority);
+    if (
+      persistedProfile.authority !== 'PRODUCT_PROFILE_V1' ||
+      !Object.prototype.hasOwnProperty.call(persistedProfile, 'fieldTruth') ||
+      !Object.prototype.hasOwnProperty.call(persistedProfile, 'rescueOutcome')
+    )
+      return { kind: 'readback_failed' };
+
+    return { kind: 'complete', profile: persistedProfile as typeof profile };
+  };
+
+  const persistedRescueAuthority = await persistRescueAuthorityBeforeReadiness(profile);
+  if (persistedRescueAuthority.kind !== 'complete')
+    return json({ error: 'scanner_rescue_authority_persistence_failed' }, 503);
+  profile = persistedRescueAuthority.profile;
+  validation = {
+    ...validation,
+    productProfileAuthority: profile,
+  };
+
   // One readiness authority for every surface. Product Accuracy already evaluates the accepted
   // role, ProductBehavior and role-sensitive physics. Only if that complete deterministic + Mapper
   // Rescue pass remains blocked do we buy one targeted research pass on the accumulated evidence.
@@ -940,6 +991,14 @@ Deno.serve(async (request) => {
         return json({ error: 'customer_product_profile_rejected' }, 409);
       profile = authorityPass.profile;
       behavior = authorityPass.behavior;
+      const persistedRescueAuthority = await persistRescueAuthorityBeforeReadiness(profile);
+      if (persistedRescueAuthority.kind !== 'complete')
+        return json({ error: 'scanner_rescue_authority_persistence_failed' }, 503);
+      profile = persistedRescueAuthority.profile;
+      validation = {
+        ...validation,
+        productProfileAuthority: profile,
+      };
       ready = profile.productAccuracyAssessment.gellattiReadiness.ready;
       criticalGaps = [...profile.productAccuracyAssessment.criticalBlockers];
     }
