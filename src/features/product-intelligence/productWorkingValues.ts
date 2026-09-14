@@ -237,6 +237,25 @@ export interface ProductWorkingValuesInput {
   materialConflictDetails?: readonly ProductMaterialConflictContext[];
 }
 
+/** Whole-run result for the Mapper Rescue authority. Field-level provenance
+ * remains the source of numeric detail; this status answers whether Rescue
+ * ran and what it accomplished without making downstream infer that from gaps.
+ */
+export type MapperRescueOutcomeStatus =
+  | 'NOT_RUN'
+  | 'NO_SAFE_RESULT'
+  | 'PARTIAL'
+  | 'SUCCESS'
+  | 'BLOCKED';
+
+export interface MapperRescueOutcome {
+  status: MapperRescueOutcomeStatus;
+  attempted: boolean;
+  resolvedFields: WorkingNumericField[];
+  unresolvedFields: WorkingNumericField[];
+  reasonCodes: string[];
+}
+
 export interface ProductWorkingValuesResolutionOptions {
   /** Whole-profile publication/runtime authority may use a narrower universe
    * than field Rescue. Keeping it separate prevents donor provenance from
@@ -262,6 +281,8 @@ export interface ProductWorkingValues {
   missingEngineFields: WorkingNumericField[];
   /** Exact field-level reasons after every automatic path was exhausted. */
   unresolvedEngineFieldReasons: Partial<Record<WorkingNumericField, string[]>>;
+  /** Explicit whole-run Mapper Rescue result; never inferred downstream. */
+  rescueOutcome: MapperRescueOutcome;
   /** How POD/PAC can be resolved for this product — Engine-derived, not stored. */
   sweetnessPath: SweetnessPath;
   /** Canonical blockers derived from the same Engine requirements and
@@ -633,6 +654,13 @@ export function resolveProductWorkingValues(
   // independently supply a second, potentially inconsistent estimate.
   fields = closeArithmetic(fields, trace, input.identity.semantic);
   fields = enforceUnresolvedMaterialConflicts(fields);
+
+  // Rescue eligibility is the set of canonical working-field gaps that existed
+  // before any Mapper path ran. Product-owned declarations/cards and their
+  // deterministic closure are therefore never misclassified as Rescue output.
+  const rescueEligibleFields = WORKING_NUMERIC_FIELDS.filter(
+    (field) => fields[field].value === null,
+  );
 
   /* 3. Mapper knowledge fills the gaps — conditioned on what is already known */
   // Macros established by the label or an exact source card are the strongest
@@ -1013,6 +1041,56 @@ export function resolveProductWorkingValues(
     ];
   }
 
+  const rescueResolvedFields = rescueEligibleFields
+    .filter((field) => {
+      const truth = fields[field];
+      return (
+        truth.value !== null &&
+        (truth.provenance.state === 'ESTIMATED' ||
+          truth.provenance.basis.startsWith('mapper_') ||
+          truth.provenance.mapperReferences.length > 0)
+      );
+    })
+    .sort();
+  const rescueUnresolvedFields = rescueEligibleFields
+    .filter((field) => !rescueResolvedFields.includes(field))
+    .sort();
+  const rescueReasonCodes = [
+    ...massBalanceRescueReasons,
+    ...spectrumRescue.reasonCodes,
+    ...Object.values(unresolvedEngineFieldReasons).flatMap((reasons) => reasons ?? []),
+    ...(profileMatch.rejected ? [profileMatch.rejected] : []),
+  ]
+    .filter((reason): reason is string => Boolean(reason))
+    .filter((reason, index, reasons) => reasons.indexOf(reason) === index)
+    .sort();
+  const rescueBlocked =
+    mapperIdentityConflicted ||
+    ingredientIdentityConflicted ||
+    rescueReasonCodes.some(
+      (reason) =>
+        reason.startsWith('RESCUE_INPUT_MATERIAL_CONFLICT:') ||
+        reason === 'RESCUE_TARGET_SEMANTICS_UNRESOLVED' ||
+        reason === 'RESCUE_TARGET_EVIDENCE_INSUFFICIENT' ||
+        reason === 'RESCUE_TARGET_ALCOHOL_UNRESOLVED',
+    );
+  const rescueOutcome: MapperRescueOutcome = {
+    status:
+      rescueEligibleFields.length === 0
+        ? 'NOT_RUN'
+        : rescueBlocked
+          ? 'BLOCKED'
+          : rescueResolvedFields.length === 0
+            ? 'NO_SAFE_RESULT'
+            : rescueUnresolvedFields.length === 0
+              ? 'SUCCESS'
+              : 'PARTIAL',
+    attempted: rescueEligibleFields.length > 0,
+    resolvedFields: rescueResolvedFields,
+    unresolvedFields: rescueUnresolvedFields,
+    reasonCodes: rescueReasonCodes,
+  };
+
   const valueReadiness = decideValueReadiness({
     missing: missingRequired.length,
     powerResolved: power.resolved,
@@ -1060,6 +1138,7 @@ export function resolveProductWorkingValues(
     engineReady: valueReadiness === 'READY' || valueReadiness === 'ESTIMATED_READY',
     missingEngineFields,
     unresolvedEngineFieldReasons,
+    rescueOutcome,
     sweetnessPath: power,
     criticalPhysicsBlockers,
     profileMatch,
