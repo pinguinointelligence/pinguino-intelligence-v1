@@ -53,6 +53,14 @@ const parsedBananoweChip = () => {
   return { label: term!.normalized, concept: term!.concept };
 };
 
+const parsedBananChip = () => {
+  const term = parseIntent('banan').terms[0];
+  expect(term).toBeDefined();
+  expect(term!.concept).toBe('banana');
+  expect(term!.fuzzy).toBe(false);
+  return { label: term!.normalized, concept: term!.concept };
+};
+
 describe('HOME central result consumption', () => {
   beforeEach(() => mocks.search.mockReset());
 
@@ -130,5 +138,17 @@ describe('HOME central result consumption', () => {
     expect(result.kind === 'resolved' && result.row.ingredient_id).not.toBe(
       bananaPaste.ingredient_id,
     );
+  });
+
+  it('HOME-BANANA-FLOW-01: banan resolves exact Fresh Banana without product disambiguation', async () => {
+    mocks.search.mockResolvedValue({
+      kind: 'results',
+      rows: [bananaPaste, bananaPuree, freshBanana],
+      hasMore: false,
+    });
+
+    const result = await resolveChipTerm(parsedBananChip());
+    expect(result).toEqual({ kind: 'resolved', row: freshBanana });
+    expect(result.kind).not.toBe('ambiguous');
   });
 });
