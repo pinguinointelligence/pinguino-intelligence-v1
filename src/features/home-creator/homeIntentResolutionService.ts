@@ -30,7 +30,7 @@ import { catalogueSearchTerms, resolveIdentity } from './homeIdentityResolution'
 import { normalizeIntentText } from './homeIntentParsing';
 
 const CANONICAL_FRESH_BANANA_ID = 'PI-ING-000345';
-const SIMPLE_FRESH_BANANA_INTENTS: ReadonlySet<string> = new Set(['banana', 'bananowe']);
+const SIMPLE_FRESH_BANANA_INTENTS: ReadonlySet<string> = new Set(['banana', 'banan', 'bananowe']);
 
 const isSimpleFreshBananaIntent = (chip: {
   readonly label: string;
@@ -88,7 +88,7 @@ export async function resolveChipTerm(
     if (outcome.kind === 'error') return { kind: 'unavailable', reason: outcome.message };
     if (outcome.kind === 'aborted') return { kind: 'unavailable', reason: 'aborted' };
 
-    // For the two explicit natural-flavour intents, the canonical banana concept
+    // For the explicit natural-flavour intents, the canonical banana concept
     // resolves to its verified fresh-fruit identity. Commercial forms never replace
     // it; if the eligible row is absent, normal ambiguity handling remains in force.
     const freshBanana =
