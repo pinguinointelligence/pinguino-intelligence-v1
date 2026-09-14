@@ -31,6 +31,7 @@ import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { NonProductionMarker } from '@/features/design-review/NonProductionMarker';
 import { useReviewMode } from '@/features/design-review/useReviewMode';
 import { useOwnerReviewAccess } from '@/features/design-review/useOwnerReviewAccess';
+import { useHomeDraftStore } from '@/features/home-creator/homeDraftStore';
 import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
 import { cn } from '@/lib/cn';
 import { MyRecipesContent } from '@/pages/recipes/MyRecipesPage';
@@ -653,8 +654,13 @@ export function RecipesHubPage() {
   }, [params, setParams, staleCollection, staleRecipe, staleTab]);
   const newRecipeHref = persona === 'pro' ? '/pro/recipe' : persona === 'home' ? '/home' : '/start';
   const openNewRecipe = () => {
-    // A confirmed discard before a working copy opens resets the shared draft for HOME too.
-    if (persona === 'pro' || pendingExecutableHref !== null) {
+    // HOME owns a persisted orchestration draft in addition to the shared recipe working copy.
+    // A confirmed new-recipe action must clear both, otherwise the old `recipeReady` state turns
+    // the next exact intent into a live edit instead of a clean first generation.
+    if (persona === 'home') {
+      startNewProRecipe(currentVisibleProductType);
+      useHomeDraftStore.getState().startNew();
+    } else if (persona === 'pro' || pendingExecutableHref !== null) {
       startNewProRecipe(currentVisibleProductType);
     }
     const destination = pendingExecutableHref ?? newRecipeHref;
@@ -664,7 +670,10 @@ export function RecipesHubPage() {
   };
   const requestNewRecipe = () => {
     setPendingExecutableHref(null);
-    if (persona === 'pro' && hasUnsavedProRecipeChanges()) {
+    if (
+      (persona === 'pro' && hasUnsavedProRecipeChanges()) ||
+      (persona === 'home' && useHomeDraftStore.getState().hasDraft())
+    ) {
       setNewRecipeConfirmOpen(true);
       return;
     }
