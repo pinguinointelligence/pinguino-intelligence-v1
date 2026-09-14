@@ -95,7 +95,7 @@ describe('recipe images: strict number mapping (§9, §29)', () => {
 });
 
 describe('collection heroes (§10)', () => {
-  it('uses the five owner hero files, one per collection, in order', () => {
+  it('uses the five owner collection heroes plus the supplied Community card image', () => {
     const heroes = manifest.heroes as {
       collection: string;
       source: { file: string };
@@ -117,6 +117,14 @@ describe('collection heroes (§10)', () => {
       ]);
       for (const output of hero.outputs) expect(sha256(output.path)).toBe(output.sha256);
     }
-    expect(readdirSync(resolve(REPO, 'public/recipes/official/collections'))).toHaveLength(10);
+    expect(readdirSync(resolve(REPO, 'public/recipes/official/collections')).sort()).toEqual(
+      [
+        ...heroes.flatMap((hero) => hero.outputs.map((output) => output.path.split('/').at(-1)!)),
+        'community.png',
+      ].sort(),
+    );
+    expect(sha256('public/recipes/official/collections/community.png')).toBe(
+      '1fe6a25ca3148707a291d73728c0ef2738b2ba146d4797d56dc14410012e45f5',
+    );
   });
 });

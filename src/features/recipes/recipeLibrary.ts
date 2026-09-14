@@ -5,21 +5,18 @@
  *  importing the view. */
 export type RecipeLibraryTab = 'pinguino' | 'mine' | 'shared';
 
-/* OWNER 2026-09-11 (official Recipe Library): the strip reads, in this exact
-   order, `Gellatti · Moje · Udostępnione · Community · Top 100`. Gellatti is the
-   official library, „Udostępnione mi" became „Udostępnione", and the retired
-   Inspiracje destination has no entry, panel or route any more. */
+/* OWNER 2026-09-13 (official Recipe Library): the main strip reads, in this
+   exact order, `Gellatti · Moje · Udostępnione · Community`. Top 100 remains an
+   existing route reached from Community, while the retired Inspiracje
+   destination has no entry, panel or route any more. */
 export const RECIPE_LIBRARY_TABS = [
   ['pinguino', 'Gellatti'],
   ['mine', 'Moje'],
   ['shared', 'Udostępnione'],
 ] as const satisfies readonly (readonly [RecipeLibraryTab, string])[];
 
-/** Community and TOP 100 are real ROUTES with public URLs, not panels. */
-export const RECIPE_LIBRARY_LINKS = [
-  ['/community', 'Community'],
-  ['/top100', 'Top 100'],
-] as const;
+/** Community is a real ROUTE with a public URL, not a library panel. */
+export const RECIPE_LIBRARY_LINKS = [['/community', 'Community']] as const;
 
 export const isRecipeLibraryTab = (value: string | null | undefined): value is RecipeLibraryTab =>
   RECIPE_LIBRARY_TABS.some(([id]) => id === value);

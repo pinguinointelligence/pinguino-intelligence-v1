@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useSearchParams } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
 import { ApplicationState } from '@/components/shared/ApplicationState';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -73,19 +73,42 @@ export function CommunityPage() {
             ))}
           </nav>
 
-          <label className="flex items-center gap-2">
-            <span className="sr-only">Szukaj w Community</span>
-            <input
-              type="search"
-              defaultValue={query}
-              placeholder="Szukaj receptury lub twórcy"
-              onChange={(event) => {
-                const value = event.target.value;
-                setParams(value.trim() ? { q: value } : { window: window_ });
-              }}
-              className={applicationFieldClasses('w-56 bg-paper')}
-            />
-          </label>
+          <div className="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2">
+            <nav aria-label="Widok Community" className="flex max-w-full flex-wrap gap-1">
+              <Link
+                to="/community"
+                aria-current="page"
+                className={applicationCompactClasses(
+                  '!border-ink !bg-ink !text-white hover:!border-ink',
+                )}
+              >
+                Receptury
+              </Link>
+              <Link
+                to="/top100?board=creators"
+                className={applicationCompactClasses('text-stone-600')}
+              >
+                Twórcy
+              </Link>
+              <Link to="/top100" className={applicationCompactClasses('text-stone-600')}>
+                Top 100
+              </Link>
+            </nav>
+
+            <label className="flex max-w-full items-center gap-2">
+              <span className="sr-only">Szukaj w Community</span>
+              <input
+                type="search"
+                defaultValue={query}
+                placeholder="Szukaj receptury lub twórcy"
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setParams(value.trim() ? { q: value } : { window: window_ });
+                }}
+                className={applicationFieldClasses('w-56 max-w-full bg-paper')}
+              />
+            </label>
+          </div>
         </div>
 
         {resource.status === 'failed' ? (
