@@ -22,6 +22,7 @@ const communityMigration = read(
   'supabase/migrations/20260913233000_home_community_recipe_images.sql',
 );
 const routes = read('src/app/router.tsx');
+const recipesHub = read('src/pages/destinations/RecipesHubPage.tsx');
 
 const behavior = (patch: Partial<ProductBehaviorSnapshot>): ProductBehaviorSnapshot =>
   ({
@@ -262,6 +263,8 @@ describe('GELLATTI HOME end-to-end closure — Owner matrix', () => {
   it('HOME-E2E-39 changing the core idea keeps the New Recipe confirmation contract', () => {
     expect(draft).toContain('startNew: () =>');
     expect(draft).toContain('hasDraft: () =>');
+    expect(recipesHub).toContain("persona === 'home' && useHomeDraftStore.getState().hasDraft()");
+    expect(recipesHub).toContain('useHomeDraftStore.getState().startNew();');
   });
 
   it('HOME-E2E-40 Demo masks grams while keeping Score visible', () => {
