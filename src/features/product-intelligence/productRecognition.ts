@@ -1259,6 +1259,25 @@ const flavorContradiction = (a: ProductFlavorDomain, b: ProductFlavorDomain): bo
 const roleContradiction = (a: ProductIntendedUsageRole, b: ProductIntendedUsageRole): boolean =>
   (a === 'BASE_ONLY' && b === 'TOPPING_ONLY') || (a === 'TOPPING_ONLY' && b === 'BASE_ONLY');
 
+const archetypeContradiction = (a: ProductArchetype, b: ProductArchetype): boolean =>
+  a !== 'UNKNOWN' && b !== 'UNKNOWN' && a !== b;
+
+/** Manufacturer/Mapper subcategories are the only current subfamily facts.
+ * Compare their existing canonical spelling only when both sides state one;
+ * absence remains unknown rather than becoming an incompatibility. */
+const subfamilyContradiction = (
+  a: string | null | undefined,
+  b: string | null | undefined,
+): boolean => {
+  const productSubfamily = meaningful(a);
+  const candidateSubfamily = meaningful(b);
+  return (
+    productSubfamily !== null &&
+    candidateSubfamily !== null &&
+    normalized(productSubfamily) !== normalized(candidateSubfamily)
+  );
+};
+
 /** Generic semantic gate used by all Mapper tiers. No product-ID exceptions exist. */
 export function evaluateMapperSemanticCompatibility(
   product: ProductSemanticClassification,
@@ -1285,14 +1304,33 @@ export function evaluateMapperSemanticCompatibility(
   if (!familyCompatible(product.ingredientFamily, candidateSemantic.ingredientFamily)) {
     reasonCodes.push('SEMANTIC_FAMILY_CONTRADICTION');
   }
+  if (archetypeContradiction(product.productArchetype, candidateSemantic.productArchetype)) {
+    reasonCodes.push('SEMANTIC_PRODUCT_ARCHETYPE_CONTRADICTION');
+  }
   if (formContradiction(product.physicalForm, candidateSemantic.physicalForm)) {
     reasonCodes.push('SEMANTIC_FORM_CONTRADICTION');
   }
   if (roleContradiction(product.intendedUsageRole, candidateSemantic.intendedUsageRole)) {
     reasonCodes.push('SEMANTIC_ROLE_CONTRADICTION');
   }
+  // These are total canonical Recognition booleans, not inferred tri-state
+  // flags. Opposite values therefore describe a known incompatibility.
+  if (product.isTechnicalProduct !== candidateSemantic.isTechnicalProduct) {
+    reasonCodes.push('SEMANTIC_TECHNICAL_STATUS_CONTRADICTION');
+  }
+  if (product.isDosageDependent !== candidateSemantic.isDosageDependent) {
+    reasonCodes.push('SEMANTIC_DOSAGE_DEPENDENCE_CONTRADICTION');
+  }
   if (flavorContradiction(product.flavorDomain, candidateSemantic.flavorDomain)) {
     reasonCodes.push('SEMANTIC_FLAVOR_DOMAIN_CONTRADICTION');
+  }
+  if (
+    subfamilyContradiction(
+      product.manufacturerSubcategory,
+      candidateSemantic.manufacturerSubcategory,
+    )
+  ) {
+    reasonCodes.push('SEMANTIC_SUBFAMILY_CONTRADICTION');
   }
   const category = normalized(candidate.category).replace(/\s+/g, '_');
   if (
