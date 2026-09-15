@@ -155,14 +155,11 @@ export function canonicalRegistryIdentityFromScanResult(
 
 export function manualConfirmedScan(input: string, now = Date.now()): ConfirmedScan | null {
   const digits = input.replace(/\D/g, '');
-  const symbology =
-    digits.length === 13
-      ? 'EAN-13'
-      : digits.length === 12
-        ? 'UPC-A'
-        : digits.length === 8
-          ? 'EAN-8'
-          : null;
+  // Eight digits are ambiguous between EAN-8 and UPC-E without decoder evidence. Do not invent a
+  // symbology for manual input; the input remains in the field so the customer can use the camera
+  // or provide a format-bearing code instead.
+  if (digits.length === 8) return null;
+  const symbology = digits.length === 13 ? 'EAN-13' : digits.length === 12 ? 'UPC-A' : null;
   if (!symbology) return null;
   return {
     symbology,

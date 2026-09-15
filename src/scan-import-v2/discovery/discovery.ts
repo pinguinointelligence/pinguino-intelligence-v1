@@ -25,6 +25,7 @@ import type {
   LabelImage,
 } from './contracts';
 import { buildLedger, stageFromLedger } from './ledger';
+import { assertScanRunCurrent } from '../runAuthority';
 
 export type DiscoveryResult = Extract<
   ScanImportV2Result,
@@ -163,7 +164,9 @@ export async function startDiscovery(
   ctx: RequestContext,
   port: DiscoveryPort,
 ): Promise<DiscoveryResult> {
+  assertScanRunCurrent(ctx);
   const own = await port.findOwnRequest(identity, ctx);
+  assertScanRunCurrent(ctx);
   if (own && !own.approvedProductId) {
     return {
       kind: 'discovery_requested',
@@ -176,7 +179,9 @@ export async function startDiscovery(
       engineReady: false,
     };
   }
+  assertScanRunCurrent(ctx);
   const r = await port.research(identity, ctx);
+  assertScanRunCurrent(ctx);
   if (r.kind === 'existing_product')
     return {
       kind: 'resolved_exact',
@@ -211,8 +216,10 @@ export async function continueDiscovery(
   ctx: RequestContext,
   port: DiscoveryPort,
 ): Promise<DiscoveryResult> {
+  assertScanRunCurrent(ctx);
   if (action.type === 'label') {
     const a = await port.analyzeLabel(session, action.images, ctx);
+    assertScanRunCurrent(ctx);
     if (a.kind === 'existing_product')
       return {
         kind: 'resolved_exact',
@@ -238,6 +245,7 @@ export async function continueDiscovery(
   });
   if (action.type === 'request') {
     const q = await port.submitRequest(session.identity, ledger, session, ctx);
+    assertScanRunCurrent(ctx);
     if (q.kind === 'existing_product')
       return {
         kind: 'resolved_exact',
@@ -264,6 +272,7 @@ export async function continueDiscovery(
     };
   }
   const f = await port.finalize(session, action.input, ctx, action.type === 'finalize_unverified');
+  assertScanRunCurrent(ctx);
   switch (f.kind) {
     case 'created':
       return discoveredExact(session.identity, ledger, f, session.sessionId);

@@ -30,6 +30,7 @@ import {
   type FinalizeInput,
   type LabelImage,
   type RequestContext,
+  type ScanRunAuthority,
   type ScanImportV2Result,
 } from '@/scan-import-v2';
 import { createScanImportV2AppPorts, getScanImportV2AccountId } from '@/services/scanImportV2';
@@ -241,7 +242,8 @@ export function ScanFlow({
   const [recognitionPresentation, setRecognitionPresentation] =
     useState<RecognitionNamePresentation | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const codeRef = useRef<string | null>(null);
+  const currentRunRef = useRef<ScanRunAuthority | null>(null);
+  const runSequenceRef = useRef(0);
   /** the customer answered "Tak" for THIS scan: the question is asked once, never again mid-scan */
   const addConfirmedRef = useRef(false);
   const labelTriedRef = useRef(false);
@@ -273,12 +275,29 @@ export function ScanFlow({
     [cache],
   );
 
-  const contextFor = (accountId: string | null): RequestContext => ({
+  const beginScanRun = useCallback((barcode: string): ScanRunAuthority => {
+    const id =
+      globalThis.crypto?.randomUUID?.() ?? `scan-${Date.now()}-${(runSequenceRef.current += 1)}`;
+    const run: ScanRunAuthority = {
+      id,
+      barcode,
+      isCurrent: () => currentRunRef.current?.id === id,
+    };
+    currentRunRef.current = run;
+    return run;
+  }, []);
+
+  useEffect(() => () => {
+    currentRunRef.current = null;
+  }, []);
+
+  const contextFor = (accountId: string | null, scanRun: ScanRunAuthority): RequestContext => ({
     accountId,
     productCountry: null,
     online: typeof navigator === 'undefined' ? true : navigator.onLine,
     surface: 'PRO',
     now: Date.now(),
+    scanRun,
   });
 
   const fail = (message: string) => setPhase({ kind: 'error', message });
@@ -325,13 +344,14 @@ export function ScanFlow({
   const handleResult = useCallback(
     async (
       r: ScanImportV2Result,
-      code: string,
+      run: ScanRunAuthority,
       ctx: RequestContext,
       session?: DiscoverySession,
     ) => {
-      // Every async completion carries the code it started with. Once another scan is current,
-      // the prior run has no authority to update any React/runtime state.
-      if (codeRef.current !== code) return;
+      // Every async completion carries the same run authority. Barcode equality alone is not
+      // sufficient: two consecutive user scans may intentionally contain the same barcode.
+      if (!run.isCurrent()) return;
+      const code = run.barcode;
       switch (r.kind) {
         case 'resolved_exact':
           setPhase({
@@ -463,7 +483,7 @@ export function ScanFlow({
             r.next === 'finalize' ? 'finalize' : 'analyze_label',
             noteText,
             ctx,
-            code,
+            run,
           );
           return;
         }
@@ -517,14 +537,14 @@ export function ScanFlow({
     session: DiscoverySession,
     input: FinalizeInput,
     ctx: RequestContext,
-    code: string,
+    run: ScanRunAuthority,
     /**
      * The customer has seen what is missing and chose to save anyway / finish later. The product is
      * then kept as PM UNVERIFIED instead of being discarded. Never set on its own path.
      */
     unverified = false,
   ) {
-    if (codeRef.current !== code) return;
+    if (!run.isCurrent()) return;
     const port = ports?.discovery;
     if (!port) return fail('Backend nie jest skonfigurowany.');
     const r = await continueDiscovery(
@@ -540,8 +560,8 @@ export function ScanFlow({
       ctx,
       port,
     );
-    if (codeRef.current !== code) return;
-    await handleResult(r, code, ctx, session);
+    if (!run.isCurrent()) return;
+    await handleResult(r, run, ctx, session);
   }
 
   /**
@@ -555,18 +575,18 @@ export function ScanFlow({
     nextStep: 'finalize' | 'analyze_label' | null,
     note: string | null,
     ctx: RequestContext,
-    code: string,
+    run: ScanRunAuthority,
   ) => {
     if (web) {
       // Exact-GTIN data is already in the server session. This is presentation/prefill only.
       setRecognized(web);
       updateRecognitionPresentation(web);
       setValues(prefillFromIdentity(web));
-      await finalize(session, {}, ctx, code);
+      await finalize(session, {}, ctx, run);
       return;
     }
     if (nextStep === 'finalize') {
-      await finalize(session, {}, ctx, code);
+      await finalize(session, {}, ctx, run);
       return;
     }
     setPhase({ kind: 'label', session, note });
@@ -579,7 +599,7 @@ export function ScanFlow({
   const resolve = useCallback(
     async (scan: ConfirmedScan) => {
       if (!ports) return fail('Backend nie jest skonfigurowany.');
-      codeRef.current = scan.value;
+      const run = beginScanRun(scan.value);
       labelTriedRef.current = false;
       // a new scan asks the question again; the previous answer belonged to the previous product
       addConfirmedRef.current = false;
@@ -594,8 +614,8 @@ export function ScanFlow({
       setPhase({ kind: 'resolving', code: scan.value });
       try {
         const accountId = await getScanImportV2AccountId();
-        if (codeRef.current !== scan.value) return;
-        const ctx = contextFor(accountId);
+        if (!run.isCurrent()) return;
+        const ctx = contextFor(accountId, run);
         // Start the SAME server exact-EAN lookup the pipeline will consume, so Recognition keeps
         // its latency advantage without creating a browser-owned OFF truth beside the session.
         const identity = identifyCode(scan);
@@ -605,7 +625,7 @@ export function ScanFlow({
           void ports.discovery
             .research(identity.identity, ctx)
             .then((outcome) => {
-              if (codeRef.current !== scan.value) return;
+              if (!run.isCurrent()) return;
               const web =
                 outcome.kind === 'researched' || outcome.kind === 'skipped'
                   ? canonicalRegistryIdentityFromScanResult(outcome.session.result, scan.value)
@@ -624,16 +644,15 @@ export function ScanFlow({
           ctx,
           entry === 'guest_demo' ? { ...ports, external: null } : ports,
         );
-        if (codeRef.current !== scan.value) return;
-        await handleResult(r, scan.value, ctx);
+        if (!run.isCurrent()) return;
+        await handleResult(r, run, ctx);
       } catch {
-        if (codeRef.current === scan.value)
-          fail('Nie udało się sprawdzić produktu. Spróbuj ponownie.');
+        if (run.isCurrent()) fail('Nie udało się sprawdzić produktu. Spróbuj ponownie.');
       } finally {
-        if (codeRef.current === scan.value) setBusy(false);
+        if (run.isCurrent()) setBusy(false);
       }
     },
-    [ports, handleResult, entry, updateRecognitionPresentation],
+    [beginScanRun, ports, handleResult, entry, updateRecognitionPresentation],
   );
   const resolveRef = useRef(resolve);
   // Intentional latest-render callback mirror read only by effects and UI handlers.
@@ -737,7 +756,7 @@ export function ScanFlow({
   }, [phase.kind]);
 
   const restart = () => {
-    codeRef.current = null;
+    currentRunRef.current = null;
     labelTriedRef.current = false;
     setManual('');
     setValues({});
@@ -750,30 +769,36 @@ export function ScanFlow({
 
   const submitManual = () => {
     const scan = manualConfirmedScan(manual);
-    if (!scan) return fail('Kod powinien mieć 8, 12 lub 13 cyfr.');
+    if (manual.replace(/\D/g, '').length === 8)
+      return fail('Dla 8 cyfr użyj aparatu, aby zachować rzeczywisty format kodu.');
+    if (!scan) return fail('Kod powinien mieć 12 lub 13 cyfr.');
     void resolve(scan);
   };
 
-  const withBusy = async (work: () => Promise<void>, operationCode = codeRef.current) => {
+  const withBusy = async (
+    work: () => Promise<void>,
+    operationRun: ScanRunAuthority | null = currentRunRef.current,
+  ) => {
     setBusy(true);
     try {
       await work();
     } catch {
-      if (codeRef.current === operationCode) fail('Coś poszło nie tak. Spróbuj ponownie.');
+      if (operationRun?.isCurrent()) fail('Coś poszło nie tak. Spróbuj ponownie.');
     } finally {
-      if (codeRef.current === operationCode) setBusy(false);
+      if (operationRun?.isCurrent()) setBusy(false);
     }
   };
 
   const sendLabel = (session: DiscoverySession, file: File, source: LabelImage['source']) => {
-    const operationCode = codeRef.current;
+    const operationRun = currentRunRef.current;
+    if (!operationRun?.isCurrent()) return;
     return withBusy(async () => {
       const port = ports?.discovery;
       if (!port) return fail('Backend nie jest skonfigurowany.');
-      const ctx = contextFor(await getScanImportV2AccountId());
+      const ctx = contextFor(await getScanImportV2AccountId(), operationRun);
       const image = await fileToLabelImage(await downscaled(file), source);
       const r = await continueDiscovery(session, { type: 'label', images: [image] }, ctx, port);
-      if (codeRef.current !== operationCode) return;
+      if (!operationRun.isCurrent()) return;
       labelTriedRef.current = true;
       // The photo legitimately changed the evidence package. Its next assessment is new by design,
       // so binding it to the pre-photo snapshot would turn a successful merge into stale 409.
@@ -783,35 +808,37 @@ export function ScanFlow({
         // the label was read: let the authority decide what is still missing (plain fields, not another photo)
         const next = seedSession(r.sessionId, r.identity, r.ledger.missingCritical);
         next.result = r.canonicalResult ?? next.result;
-        await finalize(next, { customerFamily: family }, ctx, operationCode ?? '');
+        await finalize(next, { customerFamily: family }, ctx, operationRun);
         return;
       }
-      await handleResult(r, operationCode ?? '', ctx);
-    }, operationCode);
+      await handleResult(r, operationRun, ctx);
+    }, operationRun);
   };
 
   const chooseFamily = async (session: DiscoverySession, choice: CustomerFamily) => {
     if (familySubmittingRef.current) return;
-    const operationCode = codeRef.current;
+    const operationRun = currentRunRef.current;
+    if (!operationRun?.isCurrent()) return;
     familySubmittingRef.current = true;
     setFamily(choice);
     try {
       await withBusy(async () => {
-        const ctx = contextFor(await getScanImportV2AccountId());
+        const ctx = contextFor(await getScanImportV2AccountId(), operationRun);
         await finalize(
           session,
           { customerFamily: choice, confirmations: { evidenceOrigin: 'customer_action' } },
           ctx,
-          operationCode ?? '',
+          operationRun,
         );
-      }, operationCode);
+      }, operationRun);
     } finally {
       familySubmittingRef.current = false;
     }
   };
 
   const submitFields = (session: DiscoverySession, fields: PlainField[]) => {
-    const operationCode = codeRef.current;
+    const operationRun = currentRunRef.current;
+    if (!operationRun?.isCurrent()) return;
     return withBusy(async () => {
       const missing = fields.filter((f) => {
         if (!f.required) return false;
@@ -828,7 +855,7 @@ export function ScanFlow({
         });
         return;
       }
-      const ctx = contextFor(await getScanImportV2AccountId());
+      const ctx = contextFor(await getScanImportV2AccountId(), operationRun);
       await finalize(
         session,
         {
@@ -839,9 +866,9 @@ export function ScanFlow({
           ),
         },
         ctx,
-        operationCode ?? '',
+        operationRun,
       );
-    }, operationCode);
+    }, operationRun);
   };
 
   /**
@@ -851,9 +878,10 @@ export function ScanFlow({
    * path that persists an unverified product: nothing does it automatically.
    */
   const saveUnverified = (session: DiscoverySession, fields: readonly PlainField[]) => {
-    const operationCode = codeRef.current;
+    const operationRun = currentRunRef.current;
+    if (!operationRun?.isCurrent()) return;
     return withBusy(async () => {
-      const ctx = contextFor(await getScanImportV2AccountId());
+      const ctx = contextFor(await getScanImportV2AccountId(), operationRun);
       await finalize(
         session,
         {
@@ -864,10 +892,10 @@ export function ScanFlow({
           ),
         },
         ctx,
-        operationCode ?? '',
+        operationRun,
         true,
       );
-    }, operationCode);
+    }, operationRun);
   };
 
   /**
@@ -877,11 +905,12 @@ export function ScanFlow({
    */
   const enterManually = (session: DiscoverySession) => {
     if (assessmentHashRef.current === null) {
-      const operationCode = codeRef.current;
+      const operationRun = currentRunRef.current;
+      if (!operationRun?.isCurrent()) return;
       void withBusy(async () => {
-        const ctx = contextFor(await getScanImportV2AccountId());
-        await finalize(session, { customerFamily: family }, ctx, operationCode ?? '');
-      }, operationCode);
+        const ctx = contextFor(await getScanImportV2AccountId(), operationRun);
+        await finalize(session, { customerFamily: family }, ctx, operationRun);
+      }, operationRun);
       return;
     }
     setPhase({
@@ -893,14 +922,15 @@ export function ScanFlow({
   };
 
   const requestVerification = (session: DiscoverySession) => {
-    const operationCode = codeRef.current;
+    const operationRun = currentRunRef.current;
+    if (!operationRun?.isCurrent()) return;
     return withBusy(async () => {
       const port = ports?.discovery;
       if (!port) return fail('Backend nie jest skonfigurowany.');
-      const ctx = contextFor(await getScanImportV2AccountId());
+      const ctx = contextFor(await getScanImportV2AccountId(), operationRun);
       const r = await continueDiscovery(session, { type: 'request' }, ctx, port);
-      await handleResult(r, operationCode ?? '', ctx);
-    }, operationCode);
+      await handleResult(r, operationRun, ctx);
+    }, operationRun);
   };
 
   const productCard = (p: ExactCandidate) => (
@@ -1207,20 +1237,22 @@ export function ScanFlow({
               className={btnPrimary}
               disabled={busy}
               data-testid="scan-flow-ask-add-yes"
-              onClick={() =>
+              onClick={() => {
+                const operationRun = currentRunRef.current;
+                if (!operationRun?.isCurrent()) return;
                 void withBusy(async () => {
                   addConfirmedRef.current = true;
-                  const ctx = contextFor(await getScanImportV2AccountId());
+                  const ctx = contextFor(await getScanImportV2AccountId(), operationRun);
                   await continueUnknownRef.current(
                     phase.session,
                     phase.web,
                     phase.next,
                     phase.note,
                     ctx,
-                    phase.code,
+                    operationRun,
                   );
-                })
-              }
+                }, operationRun);
+              }}
             >
               Tak
             </button>

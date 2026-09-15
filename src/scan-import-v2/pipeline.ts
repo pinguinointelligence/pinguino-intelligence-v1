@@ -14,6 +14,7 @@ import type {
 } from './contracts';
 import { resolveIdentity } from './resolver';
 import { startDiscovery } from './discovery/discovery';
+import { assertScanRunCurrent, isStaleScanRunError } from './runAuthority';
 
 /** audit §6: an exact canonical match scores ≥ 97; slot-derived disambiguation is PROVISIONAL 90 */
 export const CONFIDENCE = { exactCatalog: 97, localCache: 97, slotDerived: 90 } as const;
@@ -68,12 +69,14 @@ async function research(
   if (!ports.external || !ctx.online) return { externalEvidence: null, evidenceError: null };
   try {
     const raw = await withTimeout(ports.external.research(identity, ctx), ports.externalTimeoutMs);
+    assertScanRunCurrent(ctx);
     if (raw === null) return { externalEvidence: null, evidenceError: null };
     if (!isExternalEvidence(raw))
       return { externalEvidence: null, evidenceError: 'provider_malformed' };
     // evidence is retained verbatim (conflicts included); it never becomes a product here
     return { externalEvidence: raw, evidenceError: null };
   } catch (error) {
+    if (isStaleScanRunError(error)) throw error;
     const timeout = error instanceof Error && error.message === 'provider_timeout';
     return {
       externalEvidence: null,
@@ -90,6 +93,7 @@ async function finish(
   ports: ScanImportV2Ports,
   revalidated = false,
 ): Promise<ScanImportV2Result> {
+  assertScanRunCurrent(ctx);
   /*
    * The discovery exact response is the result read back AFTER product-scan-finalize has had the
    * opportunity to persist a current semantic version. Its engineReady flag therefore already is
@@ -104,6 +108,7 @@ async function finish(
         bindingId: product.engineReady ? (product.currentVersionId ?? null) : null,
       }
     : await ports.behaviour.classify(product.productId);
+  assertScanRunCurrent(ctx);
   if (behaviour.outcome !== 'classified')
     return {
       kind: 'needs_confirmation',
@@ -114,17 +119,21 @@ async function finish(
       behaviour: { outcome: behaviour.outcome, bindingId: behaviour.bindingId },
     };
   const price = await ports.price.priceState(product.productId, ctx);
+  assertScanRunCurrent(ctx);
   let imported: Extract<ScanImportV2Result, { kind: 'resolved_exact' }>['import'] = null;
   const importSkipped: 'guest' | 'offline' | null = ctx.accountId === null ? 'guest' : null;
   if (ctx.accountId !== null) {
     try {
+      assertScanRunCurrent(ctx);
       imported = await ports.importer.importOrLink({
         identity,
         product,
         idempotencyKey: idempotencyKey(identity, ctx),
         ctx,
       });
+      assertScanRunCurrent(ctx);
     } catch (error) {
+      if (isStaleScanRunError(error)) throw error;
       return {
         kind: 'failed',
         code: 'import_failed',
@@ -133,6 +142,7 @@ async function finish(
       };
     }
   }
+  assertScanRunCurrent(ctx);
   await ports.offlineCache.put(ctx.accountId, {
     candidate: product,
     behaviour: { outcome: 'classified', bindingId: behaviour.bindingId },
@@ -174,7 +184,8 @@ async function revalidateExactProduct(
     return refreshed.kind === 'existing_product'
       ? { product: refreshed.product, revalidated: true }
       : { product, revalidated: false };
-  } catch {
+  } catch (error) {
+    if (isStaleScanRunError(error)) throw error;
     return { product, revalidated: false };
   }
 }
@@ -184,12 +195,14 @@ export async function runScanImportV2(
   ctx: RequestContext,
   ports: ScanImportV2Ports,
 ): Promise<ScanImportV2Result> {
+  assertScanRunCurrent(ctx);
   const id = identifyCode(scan);
   if (!id.ok) return { kind: 'invalid_code', reason: id.reason, input: scan };
   const identity = id.identity;
 
   if (!ctx.online) {
     const cached = await ports.offlineCache.get(ctx.accountId, identity.canonicalGtin13);
+    assertScanRunCurrent(ctx);
     if (!cached) return { kind: 'offline', identity, knownLocally: false };
     return {
       kind: 'resolved_exact',
@@ -209,7 +222,9 @@ export async function runScanImportV2(
   let resolution;
   try {
     resolution = await resolveIdentity(identity, ctx, ports);
+    assertScanRunCurrent(ctx);
   } catch (error) {
+    if (isStaleScanRunError(error)) throw error;
     return {
       kind: 'failed',
       code: 'lookup_failed',
@@ -224,7 +239,9 @@ export async function runScanImportV2(
   if (resolution.kind === 'none') {
     // Online exact authority says this identity is no longer usable (including quarantine). A
     // prior offline answer must not survive that verdict and reappear on the next disconnected scan.
+    assertScanRunCurrent(ctx);
     await ports.offlineCache.invalidate(ctx.accountId, identity.canonicalGtin13);
+    assertScanRunCurrent(ctx);
     // authenticated + discovery available: the unknown half of the product flow starts here
     if (ctx.accountId !== null && ports.discovery) {
       try {
@@ -235,12 +252,14 @@ export async function runScanImportV2(
          * the browser and server acquire two unrelated OFF representations for one MISS.
          */
         const d = await startDiscovery(identity, ctx, ports.discovery);
+        assertScanRunCurrent(ctx);
         if (d.kind === 'resolved_exact')
           return finish(identity, d.product, 'catalog', ctx, ports, true);
         if (d.kind === 'discovered_pending' || d.kind === 'needs_confirmation')
           return { ...d, externalEvidence: null };
         return d;
       } catch (error) {
+        if (isStaleScanRunError(error)) throw error;
         if (error instanceof Error && (error as { kind?: string }).kind === 'network')
           return { kind: 'failed', code: 'connection', identity, detail: null };
         return {
@@ -252,13 +271,16 @@ export async function runScanImportV2(
       }
     }
     const ev = await research(identity, ctx, ports);
+    assertScanRunCurrent(ctx);
     return { kind: 'unknown', identity, next: 'analyze_label', ...ev };
   }
+  assertScanRunCurrent(ctx);
   await ports.offlineCache.invalidateIfStale(
     ctx.accountId,
     identity.canonicalGtin13,
     resolution.product.currentVersionId ?? null,
   );
+  assertScanRunCurrent(ctx);
   const refreshed = await revalidateExactProduct(identity, resolution.product, ctx, ports);
   return finish(
     identity,
