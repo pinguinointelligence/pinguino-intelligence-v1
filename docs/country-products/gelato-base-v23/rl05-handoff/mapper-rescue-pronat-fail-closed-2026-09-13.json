@@ -1,0 +1,184 @@
+{
+  "schema": "gellatti.rl05-rl20.mapper-rescue-run/v1",
+  "rescueVersion": "rl05-rl20-mapper-rescue-v1",
+  "generatedAt": "2026-09-12T22:45:31.055Z",
+  "projectRef": "tunabqqrwabacxjcxxkz",
+  "mode": "PREVIEW_ONLY",
+  "input": {
+    "selected": 1,
+    "approvalNotReady": 1,
+    "priorBlocked": 0,
+    "alreadyResolved": 0
+  },
+  "outcomes": {
+    "rescued": 0,
+    "readyPreviewNotApplied": 0,
+    "stillBlockedAfterRescue": 1,
+    "noValidGtin": 0,
+    "exactGtinExists": 0,
+    "previewErrors": 0,
+    "unexpectedErrors": 0
+  },
+  "byRole": {
+    "SMP": {
+      "total": 1,
+      "ready": 1,
+      "rescued": 0,
+      "blocked": 1
+    },
+    "DEXTROSE": {
+      "total": 0,
+      "ready": 0,
+      "rescued": 0,
+      "blocked": 0
+    },
+    "STABILIZER": {
+      "total": 0,
+      "ready": 0,
+      "rescued": 0,
+      "blocked": 0
+    },
+    "MILK": {
+      "total": 0,
+      "ready": 0,
+      "rescued": 0,
+      "blocked": 0
+    },
+    "CREAM": {
+      "total": 0,
+      "ready": 0,
+      "rescued": 0,
+      "blocked": 0
+    }
+  },
+  "ledger": [
+    {
+      "productKey": "V23:SMP:GTIN-06426309006538",
+      "requestId": "ac735494-ce44-45fb-82fc-55b3696c1438",
+      "requestStatusBefore": "ADMIN_REVIEW",
+      "priorIngestStatus": null,
+      "slot": "SMP",
+      "requestMarket": "RO",
+      "routeMarkets": [
+        "RO"
+      ],
+      "originalGtin": "6426309006538",
+      "rescuedGtin": "6426309006538",
+      "identityResearch": null,
+      "sessionId": "128a088b-a973-496e-a9c5-ac12bc84efc3",
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "preview": {
+        "kind": "profile_preview",
+        "ready": true,
+        "productAccuracy": 90,
+        "roleReadiness": "BASE_READY",
+        "criticalGaps": [],
+        "missingEngineFields": [],
+        "criticalPhysicsBlockers": [],
+        "publicationEligible": true,
+        "publicationReasonCodes": [],
+        "recognition": {
+          "family": "dairy_liquid",
+          "form": "LIQUID",
+          "role": "BASE_ONLY",
+          "modelRequired": false,
+          "reasonCodes": [
+            "ARCHETYPE_UNKNOWN",
+            "ROLE_NEITHER_REVIEW",
+            "CONSUMER_OR_GENERAL_CONTEXT",
+            "NORMAL_PRODUCT",
+            "DOSAGE_NOT_STATED",
+            "CUSTOMER_FAMILY_DAIRY"
+          ]
+        },
+        "mapper": {
+          "selectedDonorId": "PI-ING-001394",
+          "similarity": null,
+          "basis": null,
+          "estimatedFromMapperIds": [],
+          "candidatesBeforeFilter": [
+            "PI-ING-000135",
+            "PI-ING-000179",
+            "PI-ING-000357",
+            "PI-ING-000358",
+            "PI-ING-000455",
+            "PI-ING-001367",
+            "PI-ING-001394",
+            "PI-ING-001565",
+            "PI-ING-001568",
+            "PI-ING-002110"
+          ],
+          "candidatesAfterFilter": [
+            "PI-ING-001394",
+            "PI-ING-000179",
+            "PI-ING-001568"
+          ],
+          "rejectedCandidates": [
+            {
+              "ingredientId": "PI-ING-000135",
+              "reasonCodes": [
+                "SEMANTIC_FAMILY_CONTRADICTION"
+              ]
+            },
+            {
+              "ingredientId": "PI-ING-000357",
+              "reasonCodes": [
+                "SEMANTIC_FAMILY_CONTRADICTION"
+              ]
+            },
+            {
+              "ingredientId": "PI-ING-000358",
+              "reasonCodes": [
+                "SEMANTIC_FAMILY_CONTRADICTION"
+              ]
+            },
+            {
+              "ingredientId": "PI-ING-000455",
+              "reasonCodes": [
+                "SEMANTIC_FAMILY_CONTRADICTION"
+              ]
+            },
+            {
+              "ingredientId": "PI-ING-001367",
+              "reasonCodes": [
+                "SEMANTIC_FAMILY_CONTRADICTION"
+              ]
+            },
+            {
+              "ingredientId": "PI-ING-001565",
+              "reasonCodes": [
+                "SEMANTIC_FAMILY_CONTRADICTION"
+              ]
+            },
+            {
+              "ingredientId": "PI-ING-002110",
+              "reasonCodes": [
+                "SEMANTIC_FAMILY_CONTRADICTION"
+              ]
+            }
+          ]
+        },
+        "technicalComposition": {
+          "water": 1.1,
+          "totalSolids": 98.9,
+          "fat": 0.5,
+          "protein": 35,
+          "carbohydrate": 52,
+          "sugars": 52,
+          "sucrose": 0,
+          "dextrose": 0,
+          "glucose": 0,
+          "fructose": 0,
+          "lactose": 52,
+          "fibre": 0,
+          "salt": 1.1,
+          "alcohol": 0,
+          "energyKcal": 353
+        },
+        "assessmentHash": "2dd7b665a341b7a0693819a06d88ed69532168dae5c13c2139eee56c981fab98",
+        "manualEvidenceBlock": "SOURCE_DOES_NOT_STATE_WATER_1_1"
+      },
+      "durationMs": 2589
+    }
+  ]
+}

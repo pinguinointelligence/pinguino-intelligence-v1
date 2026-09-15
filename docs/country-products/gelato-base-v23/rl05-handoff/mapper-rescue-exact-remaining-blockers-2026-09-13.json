@@ -1,0 +1,1508 @@
+{
+  "schema": "gellatti.rl05-rl20.mapper-rescue-exact-blockers/v1",
+  "generatedAt": "2026-09-12T22:39:37.263Z",
+  "counts": {
+    "approvalNotReady": 85,
+    "priorBlocked": 1,
+    "totalOpen": 86
+  },
+  "blockers": [
+    {
+      "role": "SMP",
+      "productKey": "V23:SA:SMP:NAME-5353F96258",
+      "requestId": "11770a83-dc53-4831-92e6-9adebf786d37",
+      "requestMarket": "SA",
+      "routeMarkets": [
+        "SA"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 83,
+      "roleReadiness": "CONFLICT",
+      "reasons": [
+        "MATERIAL_CONFLICT:productionDeclarations.technicalParametersText",
+        "SELF_CONTRADICTORY_DECLARATION",
+        "UNRESOLVED_SWEETENING_FREEZING_PATH"
+      ]
+    },
+    {
+      "role": "SMP",
+      "productKey": "V23:SMP:GTIN-00059000111322",
+      "requestId": "2fc9e49f-3b37-4c25-b050-922914d87dd3",
+      "requestMarket": "CA",
+      "routeMarkets": [
+        "CA"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 82,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "MISSING_TOTAL_SOLIDS_PERCENT",
+        "MISSING_WATER_PERCENT"
+      ]
+    },
+    {
+      "role": "SMP",
+      "productKey": "V23:SMP:GTIN-03043931691418",
+      "requestId": "ef89544b-b317-40c7-ab91-e6dc46b85d35",
+      "requestMarket": "QA",
+      "routeMarkets": [
+        "QA"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 82.8,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "UNRESOLVED_SWEETENING_FREEZING_PATH"
+      ]
+    },
+    {
+      "role": "SMP",
+      "productKey": "V23:SMP:GTIN-03043931692415",
+      "requestId": "9e764079-32dc-4d22-b80a-8ba33c6ea46b",
+      "requestMarket": "AE",
+      "routeMarkets": [
+        "AE"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 82.8,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "UNRESOLVED_SWEETENING_FREEZING_PATH"
+      ]
+    },
+    {
+      "role": "SMP",
+      "productKey": "V23:SMP:GTIN-03043932643706",
+      "requestId": "b7334a30-a6a7-4272-adf2-7fdeca7a3a1e",
+      "requestMarket": "GR",
+      "routeMarkets": [
+        "GR"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 78,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "DISPLAY_NAME_REQUIRED",
+        "MISSING_TOTAL_SOLIDS_PERCENT",
+        "MISSING_WATER_PERCENT",
+        "UNRESOLVED_SWEETENING_FREEZING_PATH"
+      ]
+    },
+    {
+      "role": "SMP",
+      "productKey": "V23:SMP:GTIN-03043932663704",
+      "requestId": "8f6479e6-c55d-4d57-89e5-4f79ccaf9529",
+      "requestMarket": "PT",
+      "routeMarkets": [
+        "PT"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 80.8,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "family_and_form_evidence_missing"
+      ]
+    },
+    {
+      "role": "SMP",
+      "productKey": "V23:SMP:GTIN-03043939531112",
+      "requestId": "895f14d8-09cf-47fe-bc9c-b49f475190ee",
+      "requestMarket": "CY",
+      "routeMarkets": [
+        "CY",
+        "MT"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 82.8,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "UNRESOLVED_SWEETENING_FREEZING_PATH"
+      ]
+    },
+    {
+      "role": "SMP",
+      "productKey": "V23:SMP:GTIN-03254560079519",
+      "requestId": "75d00ce2-2d8c-4883-b09b-ef976e511ce0",
+      "requestMarket": "LU",
+      "routeMarkets": [
+        "LU"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 80.8,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "family_and_form_evidence_missing"
+      ]
+    },
+    {
+      "role": "SMP",
+      "productKey": "V23:SMP:GTIN-03800081460239",
+      "requestId": "17a1aad2-0839-4a56-bb74-7c8d2f127c91",
+      "requestMarket": "BG",
+      "routeMarkets": [
+        "BG"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 78,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "MISSING_TOTAL_SOLIDS_PERCENT",
+        "MISSING_WATER_PERCENT",
+        "UNRESOLVED_SWEETENING_FREEZING_PATH"
+      ]
+    },
+    {
+      "role": "SMP",
+      "productKey": "V23:SMP:GTIN-03831040010028",
+      "requestId": "56b71ed9-a492-41e0-a7e2-5d284e74b48b",
+      "requestMarket": "SI",
+      "routeMarkets": [
+        "SI"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 84.8,
+      "roleReadiness": "BASE_READY",
+      "reasons": [
+        "PRODUCT_ACCURACY_NOT_ABOVE_85"
+      ]
+    },
+    {
+      "role": "SMP",
+      "productKey": "V23:SMP:GTIN-03850355001132",
+      "requestId": "26a2b10c-1a6d-4be0-b7cc-bac2c864eba0",
+      "requestMarket": "HR",
+      "routeMarkets": [
+        "HR"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 78,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "MISSING_TOTAL_SOLIDS_PERCENT",
+        "MISSING_WATER_PERCENT",
+        "UNRESOLVED_SWEETENING_FREEZING_PATH"
+      ]
+    },
+    {
+      "role": "SMP",
+      "productKey": "V23:SMP:GTIN-04008230010901",
+      "requestId": "e9f96aa4-940b-4852-99c8-79dce483b004",
+      "requestMarket": "DE",
+      "routeMarkets": [
+        "DE"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 84.8,
+      "roleReadiness": "BASE_READY",
+      "reasons": [
+        "PRODUCT_ACCURACY_NOT_ABOVE_85"
+      ]
+    },
+    {
+      "role": "SMP",
+      "productKey": "V23:SMP:GTIN-04260175411278",
+      "requestId": "7ef11c94-e5ca-47a2-9ee4-b7927d62ddf9",
+      "requestMarket": "IL",
+      "routeMarkets": [
+        "IL",
+        "LV"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 78,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "MISSING_TOTAL_SOLIDS_PERCENT",
+        "MISSING_WATER_PERCENT",
+        "UNRESOLVED_SWEETENING_FREEZING_PATH"
+      ]
+    },
+    {
+      "role": "SMP",
+      "productKey": "V23:SMP:GTIN-04711257007419",
+      "requestId": "7d93af8a-ac90-4ceb-be1d-552c838f933b",
+      "requestMarket": "TW",
+      "routeMarkets": [
+        "TW"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 82.8,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "UNRESOLVED_SWEETENING_FREEZING_PATH"
+      ]
+    },
+    {
+      "role": "SMP",
+      "productKey": "V23:SMP:GTIN-05060113910714",
+      "requestId": "790c2e6c-8658-4466-989b-b01e39ba644b",
+      "requestMarket": "GB",
+      "routeMarkets": [
+        "GB",
+        "IE"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 73,
+      "roleReadiness": "CONFLICT",
+      "reasons": [
+        "MATERIAL_CONFLICT:productionDeclarations.technicalParametersText",
+        "MISSING_TOTAL_SOLIDS_PERCENT",
+        "MISSING_WATER_PERCENT",
+        "UNRESOLVED_SWEETENING_FREEZING_PATH"
+      ]
+    },
+    {
+      "role": "SMP",
+      "productKey": "V23:SMP:GTIN-05690516075156",
+      "requestId": "0d403c1b-57f4-4581-be80-d6162b647bad",
+      "requestMarket": "IS",
+      "routeMarkets": [
+        "IS"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 78,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "MISSING_TOTAL_SOLIDS_PERCENT",
+        "MISSING_WATER_PERCENT",
+        "UNRESOLVED_SWEETENING_FREEZING_PATH"
+      ]
+    },
+    {
+      "role": "SMP",
+      "productKey": "V23:SMP:GTIN-05703161691012",
+      "requestId": "a1595873-56c1-4821-925f-79a9b06f6c5f",
+      "requestMarket": "DK",
+      "routeMarkets": [
+        "DK"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 77,
+      "roleReadiness": "CONFLICT",
+      "reasons": [
+        "MATERIAL_CONFLICT:productionDeclarations.technicalParametersText",
+        "MISSING_TOTAL_SOLIDS_PERCENT",
+        "MISSING_WATER_PERCENT",
+        "UNRESOLVED_SWEETENING_FREEZING_PATH"
+      ]
+    },
+    {
+      "role": "SMP",
+      "productKey": "V23:SMP:GTIN-05900512500546",
+      "requestId": "53123533-0c3e-4398-b74a-136a2384deef",
+      "requestMarket": "PL",
+      "routeMarkets": [
+        "PL"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 78,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "MISSING_TOTAL_SOLIDS_PERCENT",
+        "MISSING_WATER_PERCENT",
+        "UNRESOLVED_SWEETENING_FREEZING_PATH"
+      ]
+    },
+    {
+      "role": "SMP",
+      "productKey": "V23:SMP:GTIN-05997176735995",
+      "requestId": "28506301-44a3-49fc-badb-adb25a4478ca",
+      "requestMarket": "HU",
+      "routeMarkets": [
+        "HU"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 73,
+      "roleReadiness": "CONFLICT",
+      "reasons": [
+        "MATERIAL_CONFLICT:productionDeclarations.technicalParametersText",
+        "MISSING_TOTAL_SOLIDS_PERCENT",
+        "MISSING_WATER_PERCENT",
+        "UNRESOLVED_SWEETENING_FREEZING_PATH"
+      ]
+    },
+    {
+      "role": "SMP",
+      "productKey": "V23:SMP:GTIN-06408430840625",
+      "requestId": "43f697b2-ddb9-494b-b76f-7b38a2531d4f",
+      "requestMarket": "EE",
+      "routeMarkets": [
+        "EE",
+        "FI"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 73,
+      "roleReadiness": "CONFLICT",
+      "reasons": [
+        "MATERIAL_CONFLICT:productionDeclarations.technicalParametersText",
+        "MISSING_TOTAL_SOLIDS_PERCENT",
+        "MISSING_WATER_PERCENT",
+        "UNRESOLVED_SWEETENING_FREEZING_PATH"
+      ]
+    },
+    {
+      "role": "SMP",
+      "productKey": "V23:SMP:GTIN-06426309006538",
+      "requestId": "ac735494-ce44-45fb-82fc-55b3696c1438",
+      "requestMarket": "RO",
+      "routeMarkets": [
+        "RO"
+      ],
+      "outcome": "READY_PREVIEW_NOT_APPLIED",
+      "productAccuracy": 90,
+      "roleReadiness": "BASE_READY",
+      "reasons": [
+        "SOURCE_DOES_NOT_STATE_WATER_1_1",
+        "MANUAL_FAIL_CLOSED"
+      ]
+    },
+    {
+      "role": "SMP",
+      "productKey": "V23:SMP:GTIN-07310100318985",
+      "requestId": "52f89e06-a638-4764-be57-3fcd776a6ccf",
+      "requestMarket": "SE",
+      "routeMarkets": [
+        "SE"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 78,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "MISSING_TOTAL_SOLIDS_PERCENT",
+        "MISSING_WATER_PERCENT",
+        "UNRESOLVED_SWEETENING_FREEZING_PATH"
+      ]
+    },
+    {
+      "role": "SMP",
+      "productKey": "V23:SMP:GTIN-07613034074218",
+      "requestId": "7732273f-89df-46f2-88ab-74d862fdc325",
+      "requestMarket": "DO",
+      "routeMarkets": [
+        "DO"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 84.8,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "family_and_form_evidence_missing"
+      ]
+    },
+    {
+      "role": "SMP",
+      "productKey": "V23:SMP:GTIN-07702129004572",
+      "requestId": "4d7bb362-124b-425f-bf6d-6997538e0c08",
+      "requestMarket": "CO",
+      "routeMarkets": [
+        "CO"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 80.8,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "family_and_form_evidence_missing"
+      ]
+    },
+    {
+      "role": "SMP",
+      "productKey": "V23:SMP:GTIN-07790742436405",
+      "requestId": "4576eeaa-48f5-4d4b-a10b-ccec937c525b",
+      "requestMarket": "AR",
+      "routeMarkets": [
+        "AR"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 80.8,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "family_and_form_evidence_missing"
+      ]
+    },
+    {
+      "role": "SMP",
+      "productKey": "V23:SMP:GTIN-07802920009865",
+      "requestId": "06b024ad-8def-4e90-8fc2-8822c65c45a8",
+      "requestMarket": "CL",
+      "routeMarkets": [
+        "CL"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 80.8,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "family_and_form_evidence_missing"
+      ]
+    },
+    {
+      "role": "SMP",
+      "productKey": "V23:SMP:GTIN-07891000101506",
+      "requestId": "9197aadd-2bf9-4705-ba2a-309d027410d2",
+      "requestMarket": "BR",
+      "routeMarkets": [
+        "BR"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 82,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "MISSING_TOTAL_SOLIDS_PERCENT",
+        "MISSING_WATER_PERCENT"
+      ]
+    },
+    {
+      "role": "SMP",
+      "productKey": "V23:SMP:GTIN-08004990133030",
+      "requestId": "199cb39c-f085-4b24-b029-e81cf81730da",
+      "requestMarket": "IT",
+      "routeMarkets": [
+        "IT"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 80.8,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "family_and_form_evidence_missing"
+      ]
+    },
+    {
+      "role": "SMP",
+      "productKey": "V23:SMP:GTIN-08369921447533",
+      "requestId": "5c23ca3d-399b-466e-bb5d-31dfc3800daf",
+      "requestMarket": "CZ",
+      "routeMarkets": [
+        "CZ"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 78,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "MISSING_TOTAL_SOLIDS_PERCENT",
+        "MISSING_WATER_PERCENT",
+        "UNRESOLVED_SWEETENING_FREEZING_PATH"
+      ]
+    },
+    {
+      "role": "SMP",
+      "productKey": "V23:SMP:GTIN-08410100002330",
+      "requestId": "3d0041fc-ae96-40bc-acc7-34bc32df873b",
+      "requestMarket": "ES",
+      "routeMarkets": [
+        "ES"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 73,
+      "roleReadiness": "CONFLICT",
+      "reasons": [
+        "MATERIAL_CONFLICT:productionDeclarations.technicalParametersText",
+        "MISSING_TOTAL_SOLIDS_PERCENT",
+        "MISSING_WATER_PERCENT",
+        "UNRESOLVED_SWEETENING_FREEZING_PATH"
+      ]
+    },
+    {
+      "role": "SMP",
+      "productKey": "V23:SMP:GTIN-08445291393738",
+      "requestId": "b454230e-c595-4ecb-a628-ad073040189d",
+      "requestMarket": "NO",
+      "routeMarkets": [
+        "NO"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 81.8,
+      "roleReadiness": "CONFLICT",
+      "reasons": [
+        "MATERIAL_CONFLICT:productionDeclarations.technicalParametersText",
+        "UNRESOLVED_SWEETENING_FREEZING_PATH"
+      ]
+    },
+    {
+      "role": "SMP",
+      "productKey": "V23:SMP:GTIN-08717677967827",
+      "requestId": "46550dad-b285-40ce-b5df-a3e30f0ccbf4",
+      "requestMarket": "NL",
+      "routeMarkets": [
+        "NL"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 82,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "MISSING_TOTAL_SOLIDS_PERCENT",
+        "MISSING_WATER_PERCENT",
+        "UNRESOLVED_SWEETENING_FREEZING_PATH"
+      ]
+    },
+    {
+      "role": "SMP",
+      "productKey": "V23:SMP:GTIN-08801115421078",
+      "requestId": "064e3e6b-fd4e-4dbb-9675-7507fa1474c8",
+      "requestMarket": "KR",
+      "routeMarkets": [
+        "KR"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 80.8,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "family_and_form_evidence_missing"
+      ]
+    },
+    {
+      "role": "SMP",
+      "productKey": "V23:SMP:GTIN-08888030307090",
+      "requestId": "d4dc850e-d7b6-46ce-b4c6-eedd04bceaa7",
+      "requestMarket": "SG",
+      "routeMarkets": [
+        "SG"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 84.8,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "family_and_form_evidence_missing"
+      ]
+    },
+    {
+      "role": "SMP",
+      "productKey": "V23:SMP:GTIN-08901262110068",
+      "requestId": "d5ac714f-038b-41c5-80eb-e1ce69dfc945",
+      "requestMarket": "IN",
+      "routeMarkets": [
+        "IN"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 82.8,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "UNRESOLVED_SWEETENING_FREEZING_PATH"
+      ]
+    },
+    {
+      "role": "SMP",
+      "productKey": "V23:SMP:GTIN-09300633765712",
+      "requestId": "5436dafe-1296-4450-bcd6-36761f32aaf1",
+      "requestMarket": "NZ",
+      "routeMarkets": [
+        "NZ"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 80.8,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "family_and_form_evidence_missing"
+      ]
+    },
+    {
+      "role": "SMP",
+      "productKey": "V23:SMP:GTIN-09300639999005",
+      "requestId": "17f0e802-de4c-4cb8-8660-a6e130e4829a",
+      "requestMarket": "AU",
+      "routeMarkets": [
+        "AU",
+        "CN",
+        "HK",
+        "PH"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 80.8,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "family_and_form_evidence_missing"
+      ]
+    },
+    {
+      "role": "SMP",
+      "productKey": "V23:SMP:GTIN-09421902960246",
+      "requestId": "bad7e7dc-933a-4812-854b-9da9f3e100c2",
+      "requestMarket": "VN",
+      "routeMarkets": [
+        "VN"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 84.8,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "family_and_form_evidence_missing"
+      ]
+    },
+    {
+      "role": "SMP",
+      "productKey": "V23:SMP:SKU-ANGLOMAC-LOTUS-S-MALAYSIA-74780093-1KG",
+      "requestId": "0b7cc80a-ce9e-4806-869a-c8999ea1a0cf",
+      "requestMarket": "MY",
+      "routeMarkets": [
+        "MY"
+      ],
+      "outcome": "BLOCKED_NO_VALID_GTIN_AFTER_EVIDENCE_RESCUE",
+      "productAccuracy": null,
+      "roleReadiness": null,
+      "reasons": [
+        "NO_VALID_GTIN_AFTER_EVIDENCE_RESCUE"
+      ]
+    },
+    {
+      "role": "SMP",
+      "productKey": "V23:SMP:SKU-ENKA-Z065-2X500G",
+      "requestId": "0c6c5683-4790-4841-9785-c44b228c7e3c",
+      "requestMarket": "TR",
+      "routeMarkets": [
+        "TR"
+      ],
+      "outcome": "BLOCKED_NO_VALID_GTIN_AFTER_EVIDENCE_RESCUE",
+      "productAccuracy": null,
+      "roleReadiness": null,
+      "reasons": [
+        "NO_VALID_GTIN_AFTER_EVIDENCE_RESCUE"
+      ]
+    },
+    {
+      "role": "SMP",
+      "productKey": "V23:SMP:SKU-FONTERRA-NZMP-PT-CULINA-GEMILANG-INDONESIA-PSB-1758-25KG",
+      "requestId": "e2979822-f043-49e0-9d48-f100513a86ab",
+      "requestMarket": "ID",
+      "routeMarkets": [
+        "ID"
+      ],
+      "outcome": "BLOCKED_NO_VALID_GTIN_AFTER_EVIDENCE_RESCUE",
+      "productAccuracy": null,
+      "roleReadiness": null,
+      "reasons": [
+        "NO_VALID_GTIN_AFTER_EVIDENCE_RESCUE"
+      ]
+    },
+    {
+      "role": "SMP",
+      "productKey": "V23:SMP:SKU-MILFRESH-BOLO-BAHRAIN-MIL-FRE-SKIM-MILK-500-500G",
+      "requestId": "44fb1662-09df-425b-bcad-f13f6a1c627a",
+      "requestMarket": "BH",
+      "routeMarkets": [
+        "BH"
+      ],
+      "outcome": "BLOCKED_NO_VALID_GTIN_AFTER_EVIDENCE_RESCUE",
+      "productAccuracy": null,
+      "roleReadiness": null,
+      "reasons": [
+        "NO_VALID_GTIN_AFTER_EVIDENCE_RESCUE"
+      ]
+    },
+    {
+      "role": "SMP",
+      "productKey": "V23:SMP:SKU-REGILAIT-LULU-HYPERMARKET-KUWAIT-405103-300G",
+      "requestId": "a7601460-1cd5-43cb-873b-f3eac560e80e",
+      "requestMarket": "KW",
+      "routeMarkets": [
+        "KW"
+      ],
+      "outcome": "BLOCKED_NO_VALID_GTIN_AFTER_EVIDENCE_RESCUE",
+      "productAccuracy": null,
+      "roleReadiness": null,
+      "reasons": [
+        "NO_VALID_GTIN_AFTER_EVIDENCE_RESCUE"
+      ]
+    },
+    {
+      "role": "DEXTROSE",
+      "productKey": "V23:DEXTROSE:GTIN-00733739069252",
+      "requestId": "680bb4fb-217f-4387-aef7-5ed7d6287c8d",
+      "requestMarket": "AE",
+      "routeMarkets": [
+        "AE"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 86.9,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "PRODUCT_SEMANTICS_UNRESOLVED",
+        "UNRESOLVED_SWEETENING_FREEZING_PATH"
+      ]
+    },
+    {
+      "role": "DEXTROSE",
+      "productKey": "V23:DEXTROSE:GTIN-00733739869258",
+      "requestId": "9007b387-f092-4c06-a124-be96ce745d41",
+      "requestMarket": "CA",
+      "routeMarkets": [
+        "CA"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 88.4,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "UNRESOLVED_SWEETENING_FREEZING_PATH"
+      ]
+    },
+    {
+      "role": "DEXTROSE",
+      "productKey": "V23:DEXTROSE:GTIN-04260486775762",
+      "requestId": "c8706573-771e-4ee4-abc7-2ad3dd129515",
+      "requestMarket": "AT",
+      "routeMarkets": [
+        "AT",
+        "CY",
+        "DE",
+        "DK",
+        "EE",
+        "ES",
+        "FI",
+        "GB",
+        "IE",
+        "LT",
+        "LU",
+        "LV",
+        "NO",
+        "SE"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 86.9,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "PRODUCT_SEMANTICS_UNRESOLVED",
+        "UNRESOLVED_SWEETENING_FREEZING_PATH"
+      ]
+    },
+    {
+      "role": "DEXTROSE",
+      "productKey": "V23:DEXTROSE:GTIN-05060326271725",
+      "requestId": "cc9daba4-b0e5-4f99-a478-037acfe1fd46",
+      "requestMarket": "IS",
+      "routeMarkets": [
+        "IS"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 87.6,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "UNRESOLVED_SWEETENING_FREEZING_PATH"
+      ]
+    },
+    {
+      "role": "DEXTROSE",
+      "productKey": "V23:DEXTROSE:GTIN-05060471050312",
+      "requestId": "4103f445-8333-4fbe-afcf-262c3be5b1ae",
+      "requestMarket": "BH",
+      "routeMarkets": [
+        "BH"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 88.4,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "UNRESOLVED_SWEETENING_FREEZING_PATH"
+      ]
+    },
+    {
+      "role": "DEXTROSE",
+      "productKey": "V23:DEXTROSE:GTIN-05600985800333",
+      "requestId": "88bb0ff2-9fda-4cff-97a2-05160b916fe1",
+      "requestMarket": "PT",
+      "routeMarkets": [
+        "PT"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 86.9,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "PRODUCT_SEMANTICS_UNRESOLVED",
+        "UNRESOLVED_SWEETENING_FREEZING_PATH"
+      ]
+    },
+    {
+      "role": "DEXTROSE",
+      "productKey": "V23:DEXTROSE:GTIN-07640153565938",
+      "requestId": "de69a1c6-987e-482d-ad90-a57b7e55841e",
+      "requestMarket": "CH",
+      "routeMarkets": [
+        "CH"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 78,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "MISSING_TOTAL_SOLIDS_PERCENT",
+        "MISSING_WATER_PERCENT",
+        "UNRESOLVED_SWEETENING_FREEZING_PATH"
+      ]
+    },
+    {
+      "role": "DEXTROSE",
+      "productKey": "V23:DEXTROSE:GTIN-08050246530061",
+      "requestId": "22d67266-77d0-4f13-8e42-09f47b7af21b",
+      "requestMarket": "IT",
+      "routeMarkets": [
+        "IT",
+        "MT"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 88.4,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "UNRESOLVED_SWEETENING_FREEZING_PATH"
+      ]
+    },
+    {
+      "role": "DEXTROSE",
+      "productKey": "V23:DEXTROSE:GTIN-08588006139983",
+      "requestId": "779f04bc-184a-4ee1-96db-a379a994257c",
+      "requestMarket": "BG",
+      "routeMarkets": [
+        "BG",
+        "CZ",
+        "HR",
+        "HU",
+        "RO",
+        "SI",
+        "SK"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 82.6,
+      "roleReadiness": "CONFLICT",
+      "reasons": [
+        "MATERIAL_CONFLICT:productionDeclarations.technicalParametersText",
+        "UNRESOLVED_SWEETENING_FREEZING_PATH"
+      ]
+    },
+    {
+      "role": "DEXTROSE",
+      "productKey": "V23:DEXTROSE:SKU-ADICEL-1100-500G",
+      "requestId": "2fec6158-7a7d-4506-a5db-802f900c2a46",
+      "requestMarket": "BR",
+      "routeMarkets": [
+        "BR"
+      ],
+      "outcome": "BLOCKED_NO_VALID_GTIN_AFTER_EVIDENCE_RESCUE",
+      "productAccuracy": null,
+      "roleReadiness": null,
+      "reasons": [
+        "NO_VALID_GTIN_AFTER_EVIDENCE_RESCUE"
+      ]
+    },
+    {
+      "role": "DEXTROSE",
+      "productKey": "V23:DEXTROSE:SKU-BULKSUPPLEMENTS-COM-005-1KG",
+      "requestId": "d2901926-8eda-4637-8a7a-a3b5490e8585",
+      "requestMarket": "BD",
+      "routeMarkets": [
+        "BD",
+        "CL",
+        "CN",
+        "CO",
+        "CR",
+        "DO",
+        "DZ",
+        "EG",
+        "GH",
+        "HK",
+        "ID",
+        "IL",
+        "IN",
+        "JP",
+        "KE",
+        "KR",
+        "KW",
+        "LK",
+        "MA",
+        "MX",
+        "MY",
+        "NG",
+        "NZ",
+        "PA",
+        "PH",
+        "PK",
+        "SA",
+        "SG",
+        "TH",
+        "TN",
+        "TR",
+        "TW",
+        "US",
+        "UY",
+        "VN",
+        "ZA"
+      ],
+      "outcome": "BLOCKED_NO_VALID_GTIN_AFTER_EVIDENCE_RESCUE",
+      "productAccuracy": null,
+      "roleReadiness": null,
+      "reasons": [
+        "NO_VALID_GTIN_AFTER_EVIDENCE_RESCUE"
+      ]
+    },
+    {
+      "role": "DEXTROSE",
+      "productKey": "V23:DEXTROSE:SKU-CERELOSE-INGREDION-742523-1KG",
+      "requestId": "2c6c1354-3b7f-4a1e-b7ad-14d6f82bf8b3",
+      "requestMarket": "AR",
+      "routeMarkets": [
+        "AR"
+      ],
+      "outcome": "BLOCKED_NO_VALID_GTIN_AFTER_EVIDENCE_RESCUE",
+      "productAccuracy": null,
+      "roleReadiness": null,
+      "reasons": [
+        "NO_VALID_GTIN_AFTER_EVIDENCE_RESCUE"
+      ]
+    },
+    {
+      "role": "DEXTROSE",
+      "productKey": "V23:DEXTROSE:SKU-LOUIS-FRANCOIS-450A-1KG",
+      "requestId": "23fda3e0-d24b-4a6a-b1bc-5b50cfe29219",
+      "requestMarket": "GR",
+      "routeMarkets": [
+        "GR"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 91,
+      "roleReadiness": "CONFLICT",
+      "reasons": [
+        "MATERIAL_CONFLICT:productionDeclarations.technicalParametersText",
+        "family_and_form_evidence_missing"
+      ]
+    },
+    {
+      "role": "DEXTROSE",
+      "productKey": "V23:DEXTROSE:SKU-VPA-VPA-DEX-1KG-1KG",
+      "requestId": "1b48d0b9-87ca-4445-8ea8-5b7c40e01270",
+      "requestMarket": "AU",
+      "routeMarkets": [
+        "AU"
+      ],
+      "outcome": "BLOCKED_NO_VALID_GTIN_AFTER_EVIDENCE_RESCUE",
+      "productAccuracy": null,
+      "roleReadiness": null,
+      "reasons": [
+        "NO_VALID_GTIN_AFTER_EVIDENCE_RESCUE"
+      ]
+    },
+    {
+      "role": "TARA",
+      "productKey": "V23:STABILIZER:GTIN-08055728540170",
+      "requestId": "a9c643e3-6db3-4e90-b8ed-85e4dd08eeef",
+      "requestMarket": "AE",
+      "routeMarkets": [
+        "AE",
+        "AR",
+        "AT",
+        "AU",
+        "BD",
+        "BE",
+        "BG",
+        "BH",
+        "BR",
+        "CA",
+        "CH",
+        "CL",
+        "CN",
+        "CO",
+        "CR",
+        "CY",
+        "CZ",
+        "DE",
+        "DK",
+        "DO",
+        "DZ",
+        "EE",
+        "EG",
+        "ES",
+        "FI",
+        "FR",
+        "GB",
+        "GH",
+        "GR",
+        "HK",
+        "HR",
+        "HU",
+        "ID",
+        "IE",
+        "IL",
+        "IN",
+        "IS",
+        "IT",
+        "JP",
+        "KE",
+        "KR",
+        "KW",
+        "LK",
+        "LT",
+        "LU",
+        "LV",
+        "MA",
+        "MT",
+        "MX",
+        "MY",
+        "NG",
+        "NL",
+        "NO",
+        "NZ",
+        "OM",
+        "PA",
+        "PH",
+        "PK",
+        "PL",
+        "PT",
+        "QA",
+        "RO",
+        "SA",
+        "SE",
+        "SG",
+        "SI",
+        "SK",
+        "TH",
+        "TN",
+        "TR",
+        "TW",
+        "UY",
+        "VN",
+        "ZA"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 90.8,
+      "roleReadiness": "BLOCKED",
+      "reasons": [
+        "TECHNICAL_DOSAGE_AUTHORITY_REQUIRED",
+        "technical_or_dosage_product"
+      ]
+    },
+    {
+      "role": "MILK",
+      "productKey": "V23:MILK:GTIN-00000054025059",
+      "requestId": "c6ca2cc5-8eae-48a4-a5c8-bf984234ae19",
+      "requestMarket": "BE",
+      "routeMarkets": [
+        "BE"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 80.8,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "family_and_form_evidence_missing"
+      ]
+    },
+    {
+      "role": "MILK",
+      "productKey": "V23:MILK:GTIN-04955447100416",
+      "requestId": "70c5494c-2f1d-4472-b270-45745c00763f",
+      "requestMarket": "JP",
+      "routeMarkets": [
+        "JP",
+        "TW"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 80.8,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "family_and_form_evidence_missing"
+      ]
+    },
+    {
+      "role": "MILK",
+      "productKey": "V23:MILK:GTIN-05000181024050",
+      "requestId": "60f7cedd-7a74-4893-b5fb-eb130ad4eed1",
+      "requestMarket": "GB",
+      "routeMarkets": [
+        "GB"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 80.8,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "family_and_form_evidence_missing"
+      ]
+    },
+    {
+      "role": "MILK",
+      "productKey": "V23:MILK:GTIN-06001299016158",
+      "requestId": "3460a42f-e455-4e8f-a006-46da93836d2a",
+      "requestMarket": "ZA",
+      "routeMarkets": [
+        "ZA"
+      ],
+      "outcome": "PREVIEW_ERROR",
+      "productAccuracy": null,
+      "roleReadiness": null,
+      "reasons": [
+        "400 invalid_user_confirmed_product_fields"
+      ]
+    },
+    {
+      "role": "MILK",
+      "productKey": "V23:MILK:GTIN-06130760003592",
+      "requestId": "8f30928b-b5eb-4e08-b77a-bca8dcac9c64",
+      "requestMarket": "DZ",
+      "routeMarkets": [
+        "DZ"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 80.8,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "family_and_form_evidence_missing"
+      ]
+    },
+    {
+      "role": "MILK",
+      "productKey": "V23:MILK:GTIN-08002670165395",
+      "requestId": "025dad4f-db13-4787-b99e-cfe29e744580",
+      "requestMarket": "TN",
+      "routeMarkets": [
+        "TN"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 80.8,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "family_and_form_evidence_missing"
+      ]
+    },
+    {
+      "role": "MILK",
+      "productKey": "V23:MILK:GTIN-08410285127347",
+      "requestId": "5247dc85-4cc0-4049-b16d-5d1d1d8821cd",
+      "requestMarket": "MA",
+      "routeMarkets": [
+        "MA",
+        "VN"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 80.8,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "family_and_form_evidence_missing"
+      ]
+    },
+    {
+      "role": "CREAM",
+      "productKey": "V23:CREAM:GTIN-00000030028777",
+      "requestId": "562edcac-4bf5-4f5f-ac02-5d0a3475f150",
+      "requestMarket": "DO",
+      "routeMarkets": [
+        "DO"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 77,
+      "roleReadiness": "CONFLICT",
+      "reasons": [
+        "MATERIAL_CONFLICT:productionDeclarations.technicalParametersText",
+        "MISSING_TOTAL_SOLIDS_PERCENT",
+        "MISSING_WATER_PERCENT",
+        "UNRESOLVED_SWEETENING_FREEZING_PATH"
+      ]
+    },
+    {
+      "role": "CREAM",
+      "productKey": "V23:CREAM:GTIN-00000094150803",
+      "requestId": "c26654f6-2668-4439-b671-4e108fc73b71",
+      "requestMarket": "NZ",
+      "routeMarkets": [
+        "NZ"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 80.8,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "family_and_form_evidence_missing"
+      ]
+    },
+    {
+      "role": "CREAM",
+      "productKey": "V23:CREAM:GTIN-00068700100451",
+      "requestId": "078508b7-66fc-4625-b84b-4873264ac3a7",
+      "requestMarket": "CA",
+      "routeMarkets": [
+        "CA"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 82,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "MISSING_TOTAL_SOLIDS_PERCENT",
+        "MISSING_WATER_PERCENT"
+      ]
+    },
+    {
+      "role": "CREAM",
+      "productKey": "V23:CREAM:GTIN-00092825922230",
+      "requestId": "f18119ce-0bcf-46fa-aef2-6552f0e03225",
+      "requestMarket": "US",
+      "routeMarkets": [
+        "US"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 82,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "MISSING_TOTAL_SOLIDS_PERCENT",
+        "MISSING_WATER_PERCENT"
+      ]
+    },
+    {
+      "role": "CREAM",
+      "productKey": "V23:CREAM:GTIN-03252920035502",
+      "requestId": "1e2568d6-2c60-4dbe-9e4a-8832824f4f12",
+      "requestMarket": "JP",
+      "routeMarkets": [
+        "JP"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 78,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "MISSING_TOTAL_SOLIDS_PERCENT",
+        "MISSING_WATER_PERCENT"
+      ]
+    },
+    {
+      "role": "CREAM",
+      "productKey": "V23:CREAM:GTIN-03838800033754",
+      "requestId": "354ea9db-6f17-4da4-bd8a-0722e711d92d",
+      "requestMarket": "SI",
+      "routeMarkets": [
+        "SI"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 78,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "MISSING_TOTAL_SOLIDS_PERCENT",
+        "MISSING_WATER_PERCENT"
+      ]
+    },
+    {
+      "role": "CREAM",
+      "productKey": "V23:CREAM:GTIN-03850354001348",
+      "requestId": "27ffd66d-e483-48fa-8328-7747d50313e5",
+      "requestMarket": "HR",
+      "routeMarkets": [
+        "HR"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 78,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "MISSING_TOTAL_SOLIDS_PERCENT",
+        "MISSING_WATER_PERCENT"
+      ]
+    },
+    {
+      "role": "CREAM",
+      "productKey": "V23:CREAM:GTIN-04036300003249",
+      "requestId": "95331a30-7842-458b-80fd-ff169f8177a1",
+      "requestMarket": "TW",
+      "routeMarkets": [
+        "TW"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 78,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "MISSING_TOTAL_SOLIDS_PERCENT",
+        "MISSING_WATER_PERCENT"
+      ]
+    },
+    {
+      "role": "CREAM",
+      "productKey": "V23:CREAM:GTIN-04036300066749",
+      "requestId": "9f5830eb-e1d5-46b3-b3bb-63e63f35cca4",
+      "requestMarket": "CN",
+      "routeMarkets": [
+        "CN"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 78,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "MISSING_TOTAL_SOLIDS_PERCENT",
+        "MISSING_WATER_PERCENT"
+      ]
+    },
+    {
+      "role": "CREAM",
+      "productKey": "V23:CREAM:GTIN-05290036002436",
+      "requestId": "36781d3a-bbb5-4652-96d5-6bb4d2f95d19",
+      "requestMarket": "CY",
+      "routeMarkets": [
+        "CY"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 73,
+      "roleReadiness": "CONFLICT",
+      "reasons": [
+        "MATERIAL_CONFLICT:productionDeclarations.technicalParametersText",
+        "MISSING_TOTAL_SOLIDS_PERCENT",
+        "MISSING_WATER_PERCENT",
+        "UNRESOLVED_SWEETENING_FREEZING_PATH"
+      ]
+    },
+    {
+      "role": "CREAM",
+      "productKey": "V23:CREAM:GTIN-05603089007370",
+      "requestId": "aa76bb6f-00ed-482b-83dd-6d2c49821f63",
+      "requestMarket": "PT",
+      "routeMarkets": [
+        "PT"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 84.8,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "family_and_form_evidence_missing"
+      ]
+    },
+    {
+      "role": "CREAM",
+      "productKey": "V23:CREAM:GTIN-05711953069291",
+      "requestId": "9394f0f2-a4e0-49d5-8480-5869d4f5b82f",
+      "requestMarket": "DK",
+      "routeMarkets": [
+        "DK"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 78,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "MISSING_TOTAL_SOLIDS_PERCENT",
+        "MISSING_WATER_PERCENT"
+      ]
+    },
+    {
+      "role": "CREAM",
+      "productKey": "V23:CREAM:GTIN-05711953155949",
+      "requestId": "04451b9e-5481-4b17-b194-6261e61d1ae5",
+      "requestMarket": "GR",
+      "routeMarkets": [
+        "GR"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 78,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "MISSING_TOTAL_SOLIDS_PERCENT",
+        "MISSING_WATER_PERCENT"
+      ]
+    },
+    {
+      "role": "CREAM",
+      "productKey": "V23:CREAM:GTIN-05900512300634",
+      "requestId": "f4dbde23-7898-480f-89d0-c1a29768cddc",
+      "requestMarket": "PL",
+      "routeMarkets": [
+        "PL"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 80.8,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "family_and_form_evidence_missing"
+      ]
+    },
+    {
+      "role": "CREAM",
+      "productKey": "V23:CREAM:GTIN-06001299012082",
+      "requestId": "986f0775-3446-42ea-8f3d-d5d0410c55f0",
+      "requestMarket": "ZA",
+      "routeMarkets": [
+        "ZA"
+      ],
+      "outcome": "PREVIEW_ERROR",
+      "productAccuracy": null,
+      "roleReadiness": null,
+      "reasons": [
+        "400 invalid_user_confirmed_product_fields"
+      ]
+    },
+    {
+      "role": "CREAM",
+      "productKey": "V23:CREAM:GTIN-07702177022344",
+      "requestId": "1f263be4-510b-43f9-80bf-67562c6beaf3",
+      "requestMarket": "CO",
+      "routeMarkets": [
+        "CO"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 82,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "MISSING_TOTAL_SOLIDS_PERCENT",
+        "MISSING_WATER_PERCENT"
+      ]
+    },
+    {
+      "role": "CREAM",
+      "productKey": "V23:CREAM:GTIN-07730105011276",
+      "requestId": "d4856acf-3d30-4c0d-8573-b70a5e6965e0",
+      "requestMarket": "UY",
+      "routeMarkets": [
+        "UY"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 78,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "MISSING_TOTAL_SOLIDS_PERCENT",
+        "MISSING_WATER_PERCENT"
+      ]
+    },
+    {
+      "role": "CREAM",
+      "productKey": "V23:CREAM:GTIN-07794820901670",
+      "requestId": "36ec2942-dbbc-447a-a699-d2a6e636b332",
+      "requestMarket": "AR",
+      "routeMarkets": [
+        "AR"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 74.5,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "MISSING_TOTAL_SOLIDS_PERCENT",
+        "MISSING_WATER_PERCENT",
+        "PRODUCT_SEMANTICS_UNRESOLVED",
+        "product_semantics_unresolved"
+      ]
+    },
+    {
+      "role": "CREAM",
+      "productKey": "V23:CREAM:GTIN-07898215151975",
+      "requestId": "71664105-77c6-47f9-bd14-1920e49f2e0d",
+      "requestMarket": "BR",
+      "routeMarkets": [
+        "BR"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 82,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "MISSING_TOTAL_SOLIDS_PERCENT",
+        "MISSING_WATER_PERCENT"
+      ]
+    },
+    {
+      "role": "CREAM",
+      "productKey": "V23:CREAM:GTIN-08410379941019",
+      "requestId": "12747880-102a-4cd7-9538-ba3d628e1214",
+      "requestMarket": "ES",
+      "routeMarkets": [
+        "ES"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 80.8,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "family_and_form_evidence_missing"
+      ]
+    },
+    {
+      "role": "CREAM",
+      "productKey": "V23:CREAM:GTIN-08690767670060",
+      "requestId": "0a6cc3ee-1a75-40d1-b5d2-c53a774d18c8",
+      "requestMarket": "TR",
+      "routeMarkets": [
+        "TR"
+      ],
+      "outcome": "STILL_BLOCKED_AFTER_RESCUE",
+      "productAccuracy": 78,
+      "roleReadiness": "REVIEW",
+      "reasons": [
+        "MISSING_TOTAL_SOLIDS_PERCENT",
+        "MISSING_WATER_PERCENT"
+      ]
+    }
+  ]
+}

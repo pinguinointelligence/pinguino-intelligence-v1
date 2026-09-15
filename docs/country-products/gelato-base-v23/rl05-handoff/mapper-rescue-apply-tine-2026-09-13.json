@@ -1,0 +1,82 @@
+{
+  "schema": "gellatti.rl05-rl20.mapper-rescue-run/v1",
+  "rescueVersion": "rl05-rl20-mapper-rescue-v1",
+  "generatedAt": "2026-09-12T22:34:14.112Z",
+  "projectRef": "tunabqqrwabacxjcxxkz",
+  "mode": "APPLY_READY",
+  "input": {
+    "selected": 1,
+    "approvalNotReady": 1,
+    "priorBlocked": 0
+  },
+  "outcomes": {
+    "rescued": 1,
+    "readyPreviewNotApplied": 0,
+    "stillBlockedAfterRescue": 0,
+    "noValidGtin": 0,
+    "exactGtinExists": 0,
+    "previewErrors": 0,
+    "unexpectedErrors": 0
+  },
+  "byRole": {
+    "SMP": {
+      "total": 0,
+      "ready": 0,
+      "rescued": 0,
+      "blocked": 0
+    },
+    "DEXTROSE": {
+      "total": 0,
+      "ready": 0,
+      "rescued": 0,
+      "blocked": 0
+    },
+    "STABILIZER": {
+      "total": 0,
+      "ready": 0,
+      "rescued": 0,
+      "blocked": 0
+    },
+    "MILK": {
+      "total": 0,
+      "ready": 0,
+      "rescued": 0,
+      "blocked": 0
+    },
+    "CREAM": {
+      "total": 1,
+      "ready": 0,
+      "rescued": 1,
+      "blocked": 0
+    }
+  },
+  "ledger": [
+    {
+      "productKey": "V23:CREAM:GTIN-07038010041914",
+      "requestId": "ce4eb611-06a6-4255-ae50-f977ae59cf8f",
+      "requestStatusBefore": "DUPLICATE",
+      "priorIngestStatus": null,
+      "slot": "CREAM",
+      "requestMarket": "NO",
+      "routeMarkets": [
+        "NO"
+      ],
+      "originalGtin": "7038010041914",
+      "rescuedGtin": "7038010041914",
+      "identityResearch": null,
+      "sessionId": "7bdb3437-3d20-4eaf-aa0d-25a78fb10eff",
+      "outcome": "RESCUED_SHARED_PR_ROUTED",
+      "resumedAfterPartialWrite": true,
+      "productId": "f54bb4d9-d2d2-41cd-9469-5d866882542a",
+      "productCode": "PR-ING-007296",
+      "slotReviewId": "cb123886-e813-4aee-b7f6-f79261c568b6",
+      "assignmentIds": [
+        "5d9aa9ea-d421-4be4-b280-f359c5bd43e1"
+      ],
+      "addedMarkets": [
+        "NO"
+      ],
+      "durationMs": 1230
+    }
+  ]
+}
