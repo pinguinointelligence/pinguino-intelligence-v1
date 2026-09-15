@@ -380,7 +380,11 @@ describe('working values and readiness', () => {
 
   it('flags a declaration the Mapper strongly disagrees with, without acting on it', () => {
     const resolved = resolveProductWorkingValues(
-      { ...cocoaButterProduct, declared: { fat_percent: 3 } },
+      {
+        ...cocoaButterProduct,
+        identity: { ...cocoaButterProduct.identity, semantic: undefined },
+        declared: { fat_percent: 3 },
+      },
       knowledge,
     );
     expect(resolved.values.fat_percent).toBe(3);
@@ -775,7 +779,7 @@ describe('INTIMPORT wiring', () => {
     expect(first?.workingValues).not.toBeNull();
     expect(first?.workingValues?.values.fat_percent).toBeGreaterThan(99);
     // Composition readiness is reported on its own axis.
-    expect(summary.valueReadiness).toEqual({ READY: 0, ESTIMATED_READY: 1, REVIEW: 0 });
+    expect(summary.valueReadiness).toEqual({ READY: 1, ESTIMATED_READY: 0, REVIEW: 0 });
     expect(summary.mapperContributed).toBe(1);
   });
 
