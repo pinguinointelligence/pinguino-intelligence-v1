@@ -108,16 +108,15 @@ describe('Scan Import 2.0 pipeline — owner test matrix', () => {
     expect(r).toMatchObject({ kind: 'unknown', next: 'analyze_label', externalEvidence: null });
     expect(p.importer.calls).toBe(0);
   });
-  it('6/7. offline: a product resolved once is known locally; an unknown one is an honest offline state', async () => {
+  it('6/7. offline: a cached product is only a local hint; an unknown one is an honest offline state', async () => {
     const p = ports();
     await runScanImportV2(scan('8402001047251'), ctx(), p);
     p.catalog.offline = true;
     const known = await runScanImportV2(scan('8402001047251'), ctx({ online: false }), p);
     expect(known).toMatchObject({
-      kind: 'resolved_exact',
-      provenance: 'local_cache',
-      importSkipped: 'offline',
-      product: { productId: 'PR-HACENDADO' },
+      kind: 'offline',
+      knownLocally: true,
+      cachedProduct: { productId: 'PR-HACENDADO' },
     });
     const unknown = await runScanImportV2(scan('3262970109108'), ctx({ online: false }), p);
     expect(unknown).toMatchObject({ kind: 'offline', knownLocally: false });

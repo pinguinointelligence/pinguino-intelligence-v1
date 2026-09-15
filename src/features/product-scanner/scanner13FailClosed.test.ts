@@ -36,7 +36,7 @@ describe('Scanner 1.3 fail-closed authority boundary', () => {
       'const incomingBarcode = barcodeIdentity?.ok ? barcodeIdentity.identity.canonicalGtin13 : null;',
     );
     expect(analyze).toContain(
-      'exactLookup = await exactProductForBarcode(service, authClient, exactIdentity);',
+      'const exactLookup = await exactProductForBarcode(authClient, exactIdentity);',
     );
     expect(finalize).toContain('verifyScannerBarcodePayload');
     expect(finalize).toContain('invalid_scan_barcode_identity');

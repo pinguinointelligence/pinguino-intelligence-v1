@@ -292,9 +292,9 @@ describe('Supabase adapters (stub client) — one RPC row feeds catalogue, behav
         externalTimeoutMs: 50,
       }),
     ).toMatchObject({
-      kind: 'resolved_exact',
-      provenance: 'local_cache',
-      product: { currentVersionId: 'v1' },
+      kind: 'offline',
+      knownLocally: true,
+      cachedProduct: { currentVersionId: 'v1' },
     });
     t = 500;
     expect(
@@ -326,6 +326,9 @@ const gtinRow = (over: Record<string, unknown> = {}) => ({
   mapper_ingredient_id: null,
   engine_usable: true,
   lifecycle_rejected: false,
+  is_active: true,
+  merged_into_product_id: null,
+  current_version_facts: { productIntelligence: { engineUsable: true } },
   ...over,
 });
 
@@ -509,7 +512,7 @@ describe('D8 — guest-safe exact resolver adapter (resolve_exact_products_by_gt
         offlineCache: cache,
         externalTimeoutMs: 50,
       }),
-    ).toMatchObject({ kind: 'resolved_exact', provenance: 'local_cache' });
+    ).toMatchObject({ kind: 'offline', knownLocally: true, cachedProduct: { productId: '50c3d0e1-ca37-4891-a744-a3438d6b226a' } });
     expect(
       await runScanImportV2(scan('5900820012434'), ctx({ accountId: null, online: false }), {
         ...createSupabaseV2Ports(gtinStub(rows, 'anon')),

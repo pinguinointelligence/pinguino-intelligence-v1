@@ -34,6 +34,161 @@ export interface GtinExactRow {
   mapper_ingredient_id: string | null;
   engine_usable: boolean;
   lifecycle_rejected: boolean;
+  /** State and version facts are returned by the same SQL snapshot as the identity. */
+  is_active: boolean;
+  merged_into_product_id: string | null;
+  current_version_facts: Record<string, unknown>;
+}
+
+export interface ExactRpcClient {
+  rpc(
+    fn: string,
+    args?: Record<string, unknown>,
+  ): PromiseLike<{ data: unknown; error: { message: string } | null }>;
+}
+
+export type ExactResolverErrorCode = 'UNAVAILABLE' | 'MALFORMED_RESPONSE';
+
+export class ExactResolverError extends Error {
+  readonly code: ExactResolverErrorCode;
+  readonly retryable: boolean;
+
+  constructor(code: ExactResolverErrorCode, message: string, retryable: boolean) {
+    super(message);
+    this.name = 'ExactResolverError';
+    this.code = code;
+    this.retryable = retryable;
+  }
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+
+const isNullableString = (value: unknown): value is string | null =>
+  value === null || typeof value === 'string';
+
+/**
+ * The RPC response is an authority boundary. A non-array or partially shaped response is an
+ * unavailable authority, not an empty catalogue. This prevents catch/default branches from
+ * manufacturing NO_EXACT_PRODUCT out of transport, permission or schema failures.
+ */
+export function isGtinExactRow(value: unknown): value is GtinExactRow {
+  if (!isRecord(value)) return false;
+  return (
+    typeof value.product_id === 'string' &&
+    isNullableString(value.product_code) &&
+    typeof value.display_name === 'string' &&
+    isNullableString(value.brand) &&
+    typeof value.matched_gtin === 'string' &&
+    /^\d{8,13}$/.test(value.matched_gtin) &&
+    typeof value.matched_from === 'string' &&
+    typeof value.product_kind === 'string' &&
+    typeof value.entity_kind === 'string' &&
+    typeof value.visibility === 'string' &&
+    (value.ownership === 'own' || value.ownership === 'linked' || value.ownership === 'public') &&
+    typeof value.current_version_id === 'string' &&
+    isNullableString(value.verification_status) &&
+    isNullableString(value.product_country) &&
+    (value.markets === null ||
+      (Array.isArray(value.markets) && value.markets.every((market) => typeof market === 'string'))) &&
+    isNullableString(value.mapper_ingredient_id) &&
+    typeof value.engine_usable === 'boolean' &&
+    typeof value.lifecycle_rejected === 'boolean' &&
+    typeof value.is_active === 'boolean' &&
+    isNullableString(value.merged_into_product_id) &&
+    isRecord(value.current_version_facts)
+  );
+}
+
+export function parseGtinExactRows(data: unknown): GtinExactRow[] {
+  if (!Array.isArray(data))
+    throw new ExactResolverError(
+      'MALFORMED_RESPONSE',
+      'MALFORMED_RESPONSE: exact resolver did not return an array',
+      false,
+    );
+  const rows: GtinExactRow[] = [];
+  for (const [index, value] of data.entries()) {
+    if (!isGtinExactRow(value))
+      throw new ExactResolverError(
+        'MALFORMED_RESPONSE',
+        `MALFORMED_RESPONSE: exact resolver row ${index} failed the response contract`,
+        false,
+      );
+    rows.push(value);
+  }
+  return rows;
+}
+
+const TRANSIENT_EXACT_ERROR =
+  /timeout|timed out|fetch failed|failed to fetch|network|econn|enotfound|reset|temporar|\b429\b|\b503\b/i;
+const AUTHORIZATION_ERROR = /permission|forbidden|unauthori[sz]ed|rls|jwt|auth/i;
+
+export function isRetryableExactResolverError(error: unknown): boolean {
+  if (error instanceof ExactResolverError) return error.retryable;
+  const message = error instanceof Error ? error.message : String(error);
+  return !AUTHORIZATION_ERROR.test(message) && TRANSIENT_EXACT_ERROR.test(message);
+}
+
+function withTimeout<T>(promise: PromiseLike<T>, timeoutMs: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new ExactResolverError('UNAVAILABLE', 'exact resolver timeout', true)),
+      timeoutMs,
+    );
+    Promise.resolve(promise).then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
+/** One bounded retry for a transient exact lookup; errors never become an empty row set. */
+export async function exactRowsWithRetry(
+  client: ExactRpcClient,
+  query: ExactLookupQuery,
+  options: { timeoutMs?: number } = {},
+): Promise<GtinExactRow[]> {
+  const timeoutMs = options.timeoutMs ?? 3_000;
+  let lastError: unknown = new ExactResolverError('UNAVAILABLE', 'exact resolver unavailable', true);
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const response = await withTimeout(
+        client.rpc('resolve_exact_products_by_gtin_v1', {
+          p_gtin: query.gtin,
+          p_symbology: query.symbology,
+        }),
+        timeoutMs,
+      );
+      if (response.error) {
+        const retryable = isRetryableExactResolverError(new Error(response.error.message));
+        throw new ExactResolverError(
+          'UNAVAILABLE',
+          `exact resolver failed: ${response.error.message}`,
+          retryable,
+        );
+      }
+      return parseGtinExactRows(response.data);
+    } catch (error) {
+      const normalizedError =
+        error instanceof ExactResolverError
+          ? error
+          : new ExactResolverError(
+              'UNAVAILABLE',
+              `exact resolver request failed: ${error instanceof Error ? error.message : String(error)}`,
+              isRetryableExactResolverError(error),
+            );
+      lastError = normalizedError;
+      if (attempt === 1 || !normalizedError.retryable) throw normalizedError;
+    }
+  }
+  throw lastError;
 }
 
 export interface ExactCandidateLike {
@@ -87,6 +242,8 @@ export function candidateFromGtinRow(row: GtinExactRow): ExactCandidateLike | nu
     row.entity_kind === 'pi_base' ||
     row.verification_status === 'blocked' ||
     row.lifecycle_rejected ||
+    !row.is_active ||
+    row.merged_into_product_id !== null ||
     (row.ownership === 'public' && row.visibility !== 'shared')
   )
     return null;

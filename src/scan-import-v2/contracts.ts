@@ -255,7 +255,13 @@ export type ScanImportV2Result =
       evidenceError: 'provider_timeout' | 'provider_malformed' | 'provider_failed' | null;
     }
   | { kind: 'invalid_code'; reason: InvalidCodeReason; input: ConfirmedScan }
-  | { kind: 'offline'; identity: CodeIdentity; knownLocally: false }
+  | {
+      /** Offline has no live product authority. A cache hit is an explicitly non-authoritative hint. */
+      kind: 'offline';
+      identity: CodeIdentity;
+      knownLocally: boolean;
+      cachedProduct?: ExactCandidate;
+    }
   | {
       kind: 'failed';
       code: 'connection' | 'lookup_failed' | 'import_failed';

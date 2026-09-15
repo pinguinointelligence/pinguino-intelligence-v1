@@ -20,8 +20,12 @@ import {
   candidateFromGtinRow,
   exactLookupQueries,
   exactResolverVerdict,
+  exactRowsWithRetry,
+  isRetryableExactResolverError,
+  ExactResolverError,
   type ExactCandidateLike,
   type ExactLookupIdentity,
+  type ExactRpcClient,
   type GtinExactRow,
 } from '../../../src/features/product-scanner/gtinExactResolver.ts';
 // Deno loads these by relative path: the `.ts` extension is REQUIRED on a value import or the
@@ -120,14 +124,9 @@ const mimeMatchesBytes = (mime: string, bytes: Uint8Array) => {
 type ExactProductLookup =
   | { kind: 'EXACT_PRODUCT'; product: Record<string, unknown> }
   | { kind: 'NO_EXACT_PRODUCT' }
-  | { kind: 'EXACT_CONFLICT'; productIds: readonly string[] };
-
-type ExactRpcClient = {
-  rpc(
-    fn: string,
-    args?: Record<string, unknown>,
-  ): PromiseLike<{ data: unknown; error: { message: string } | null }>;
-};
+  | { kind: 'EXACT_CONFLICT'; productIds: readonly string[] }
+  | { kind: 'NOT_APPLICABLE' }
+  | { kind: 'ERROR'; code: 'UNAVAILABLE' | 'MALFORMED_RESPONSE' };
 
 /** The browser adapter and this Edge function both ask the same caller-scoped exact RPC. */
 async function exactRowsForIdentity(
@@ -135,12 +134,7 @@ async function exactRowsForIdentity(
   identity: ExactLookupIdentity,
 ): Promise<{ rows: GtinExactRow[]; candidates: ExactCandidateLike[] }> {
   for (const query of exactLookupQueries(identity)) {
-    const { data, error } = await resolverClient.rpc('resolve_exact_products_by_gtin_v1', {
-      p_gtin: query.gtin,
-      p_symbology: query.symbology,
-    });
-    if (error) throw new Error(`exact_resolver_failed: ${error.message}`);
-    const rows = Array.isArray(data) ? (data as GtinExactRow[]) : [];
+    const rows = await exactRowsWithRetry(resolverClient, query);
     const candidates = rows
       .map((row) => candidateFromGtinRow(row))
       .filter((candidate): candidate is ExactCandidateLike => candidate !== null);
@@ -150,71 +144,74 @@ async function exactRowsForIdentity(
 }
 
 async function exactProductForBarcode(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  service: ReturnType<typeof createClient<any>>,
   resolverClient: ExactRpcClient,
   identity: ExactLookupIdentity | null,
 ): Promise<ExactProductLookup> {
-  if (!identity) return { kind: 'NO_EXACT_PRODUCT' };
-  const { rows, candidates } = await exactRowsForIdentity(resolverClient, identity);
-  const verdict = exactResolverVerdict(candidates);
-  if (verdict.kind === 'NO_EXACT_PRODUCT') return verdict;
-  if (verdict.kind === 'EXACT_CONFLICT')
+  if (!identity) return { kind: 'NOT_APPLICABLE' };
+  try {
+    const { rows, candidates } = await exactRowsForIdentity(resolverClient, identity);
+    const verdict = exactResolverVerdict(candidates);
+    if (verdict.kind === 'NO_EXACT_PRODUCT') return verdict;
+    if (verdict.kind === 'EXACT_CONFLICT')
+      return {
+        kind: verdict.kind,
+        productIds: verdict.candidates.map((candidate) => candidate.productId),
+      };
+
+    const candidate = verdict.product;
+    const row = rows.find((item) => item.product_id === candidate.productId);
+    if (!row) throw new Error('exact_resolver_row_missing');
+
+    // Identity, lifecycle, visibility and current-version facts come from one RPC row/snapshot.
+    // A second table read here could assemble an impossible productId/version/visibility tuple.
+    const facts = row.current_version_facts;
+    const intelligence = objectValue(facts.productIntelligence);
+    const behavior = objectValue(intelligence.productBehaviorAuthority);
+    const accuracy = Number(facts.productAccuracy);
+    const roleReady =
+      behavior.classificationOutcome === 'classified' &&
+      (behavior.baseRecipeEligible === true || behavior.toppingEligible === true);
+    const privateOverlay = candidates.find(
+      (item) =>
+        item.productId !== candidate.productId &&
+        item.evidence.ownership === 'own' &&
+        item.strength !== 'canonical_shared',
+    );
+
     return {
-      kind: verdict.kind,
-      productIds: verdict.candidates.map((candidate) => candidate.productId),
+      kind: 'EXACT_PRODUCT',
+      product: {
+        id: row.product_id,
+        canonical_gtin: row.matched_gtin,
+        product_code: row.product_code,
+        product_name_display: row.display_name,
+        brand: row.brand,
+        product_kind: row.product_kind,
+        visibility: row.visibility,
+        ownership: row.ownership,
+        canonical_verification_status: row.verification_status,
+        current_version_id: row.current_version_id,
+        current_version_facts: facts,
+        is_active: row.is_active,
+        merged_into_product_id: row.merged_into_product_id,
+        stored_facts: facts,
+        private_overlay_product_id: privateOverlay?.productId ?? null,
+        private_overlay_product_code: privateOverlay?.productCode ?? null,
+        product_accuracy: Number.isFinite(accuracy) ? accuracy : null,
+        engine_ready: row.engine_usable === true || intelligence.engineUsable === true || roleReady,
+      },
     };
-
-  const candidate = verdict.product;
-  const row = rows.find((item) => item.product_id === candidate.productId);
-  if (!row) throw new Error('exact_resolver_row_missing');
-
-  const factsByVersion = new Map<string, Record<string, unknown>>();
-  if (row.current_version_id) {
-    const { data: currentVersion } = await service
-      .from('product_versions')
-      .select('id,facts')
-      .eq('id', row.current_version_id)
-      .maybeSingle();
-    if (currentVersion) {
-      const version = objectValue(currentVersion);
-      factsByVersion.set(String(row.current_version_id), objectValue(version.facts));
-    }
+  } catch (error) {
+    return {
+      kind: 'ERROR',
+      code:
+        error instanceof ExactResolverError
+          ? error.code
+          : isRetryableExactResolverError(error)
+            ? 'UNAVAILABLE'
+            : 'MALFORMED_RESPONSE',
+    };
   }
-  const facts = factsByVersion.get(String(row.current_version_id)) ?? {};
-  const intelligence = objectValue(facts.productIntelligence);
-  const behavior = objectValue(intelligence.productBehaviorAuthority);
-  const accuracy = Number(facts.productAccuracy);
-  const roleReady =
-    behavior.classificationOutcome === 'classified' &&
-    (behavior.baseRecipeEligible === true || behavior.toppingEligible === true);
-  const privateOverlay = candidates.find(
-    (item) =>
-      item.productId !== candidate.productId &&
-      item.evidence.ownership === 'own' &&
-      item.strength !== 'canonical_shared',
-  );
-
-  return {
-    kind: 'EXACT_PRODUCT',
-    product: {
-      id: row.product_id,
-      product_code: row.product_code,
-      product_name_display: row.display_name,
-      brand: row.brand,
-      product_kind: row.product_kind,
-      visibility: row.visibility,
-      canonical_verification_status: row.verification_status,
-      current_version_id: row.current_version_id,
-      is_active: true,
-      merged_into_product_id: null,
-      stored_facts: facts,
-      private_overlay_product_id: privateOverlay?.productId ?? null,
-      private_overlay_product_code: privateOverlay?.productCode ?? null,
-      product_accuracy: Number.isFinite(accuracy) ? accuracy : null,
-      engine_ready: row.engine_usable === true || intelligence.engineUsable === true || roleReady,
-    },
-  };
 }
 
 /**
@@ -426,11 +423,12 @@ Deno.serve(async (request) => {
         rawValue: barcodeIdentity.identity.rawValue,
       }
     : null;
-  const { data: existingSession } = await service
+  const { data: existingSession, error: existingSessionError } = await service
     .from('product_scan_sessions')
     .select('user_id,result_json,validation_json,overlay_state,barcode,vision_calls')
     .eq('id', sessionId)
     .maybeSingle();
+  if (existingSessionError) return json({ error: 'scan_session_read_failed' }, 503);
   if (existingSession && existingSession.user_id !== auth.user.id) {
     return json({ error: 'scan_session_ownership_mismatch' }, 403);
   }
@@ -453,13 +451,11 @@ Deno.serve(async (request) => {
       : null;
   const effectiveBarcodeAuthority = barcodeAuthority ?? barcode;
   if (mode === 'ean_lookup' && !barcode) return json({ error: 'lookup_requires_barcode' }, 400);
-  let exactLookup: ExactProductLookup;
-  try {
-    exactLookup = await exactProductForBarcode(service, authClient, exactIdentity);
-  } catch {
-    // An unavailable exact authority is not a no-match. Stop before session persistence, OFF,
-    // Recognition or any other later Scanner stage can observe a false negative.
-    return json({ error: 'exact_resolver_unavailable' }, 503);
+  const exactLookup = await exactProductForBarcode(authClient, exactIdentity);
+  if (exactLookup.kind === 'ERROR') {
+    // ERROR/UNAVAILABLE is not a no-match. Stop before session persistence, OFF, Recognition or
+    // any other later Scanner stage can observe a false negative.
+    return json({ error: 'exact_resolver_unavailable', code: exactLookup.code }, 503);
   }
   if (exactLookup.kind === 'EXACT_CONFLICT')
     return json(
@@ -470,7 +466,12 @@ Deno.serve(async (request) => {
       },
       409,
     );
+  const exactNoMatch = exactLookup.kind === 'NO_EXACT_PRODUCT';
   const exact = exactLookup.kind === 'EXACT_PRODUCT' ? exactLookup.product : null;
+  // Only the authoritative NO_EXACT_PRODUCT verdict may open the barcode fallback. Image-only
+  // analysis is NOT_APPLICABLE and follows its primary Recognition path; ERROR is handled above.
+  if (mode === 'ean_lookup' && !exact && !exactNoMatch)
+    return json({ error: 'exact_resolver_unavailable' }, 503);
   if (!existingSession) {
     const { error: insertSessionError } = await service.from('product_scan_sessions').insert({
       id: sessionId,
@@ -482,7 +483,7 @@ Deno.serve(async (request) => {
     });
     if (insertSessionError) return json({ error: 'scan_session_create_failed' }, 503);
   } else if (exact) {
-    await service
+    const { error: sessionUpdateError } = await service
       .from('product_scan_sessions')
       .update({
         state: 'matched',
@@ -492,13 +493,15 @@ Deno.serve(async (request) => {
       })
       .eq('id', sessionId)
       .eq('user_id', auth.user.id);
+    if (sessionUpdateError) return json({ error: 'scan_session_update_failed' }, 503);
   } else if (!establishedBarcode && barcode) {
-    await service
+    const { error: barcodeUpdateError } = await service
       .from('product_scan_sessions')
       .update({ barcode, updated_at: new Date().toISOString() })
       .eq('id', sessionId)
       .eq('user_id', auth.user.id)
       .is('barcode', null);
+    if (barcodeUpdateError) return json({ error: 'scan_session_update_failed' }, 503);
   }
   if (mode === 'ean_lookup') {
     // An exact canonical product answers the scan outright: no model, no source call,
@@ -552,7 +555,9 @@ Deno.serve(async (request) => {
           // Read the row back only when something was actually saved, so the answer carries the
           // PR article code and the readiness the promotion has just granted.
           if (reevaluation.saved) {
-            const refreshed = await exactProductForBarcode(service, authClient, exactIdentity);
+            const refreshed = await exactProductForBarcode(authClient, exactIdentity);
+            if (refreshed.kind === 'ERROR')
+              return json({ error: 'exact_resolver_unavailable', code: refreshed.code }, 503);
             if (refreshed.kind === 'EXACT_PRODUCT') current = refreshed.product;
           }
         }
@@ -562,14 +567,15 @@ Deno.serve(async (request) => {
           which made a live acceptance failure impossible to distinguish from a legitimate
           fail-closed verdict. This field contains no token, response body or customer data.
         */
-        const { data: latestSession } = await service
+        const { data: latestSession, error: latestSessionError } = await service
           .from('product_scan_sessions')
           .select('validation_json')
           .eq('id', sessionId)
           .eq('user_id', auth.user.id)
           .maybeSingle();
-        if (latestSession)
-          await service
+        if (latestSessionError) return json({ error: 'scan_session_read_failed' }, 503);
+        if (latestSession) {
+          const { error: latestSessionUpdateError } = await service
             .from('product_scan_sessions')
             .update({
               validation_json: {
@@ -580,6 +586,9 @@ Deno.serve(async (request) => {
             })
             .eq('id', sessionId)
             .eq('user_id', auth.user.id);
+          if (latestSessionUpdateError)
+            return json({ error: 'scan_session_update_failed' }, 503);
+        }
       }
       return json({
         sessionId,
@@ -588,8 +597,11 @@ Deno.serve(async (request) => {
         reevaluation,
         product: {
           id: current.id,
+          canonicalGtin: current.canonical_gtin,
           displayName: current.product_name_display,
           brand: current.brand ?? null,
+          ownership: current.ownership,
+          visibility: current.visibility,
           entityKind:
             current.product_kind === 'mapper_reference' ? 'pi_base' : 'commercial_product',
           status:
@@ -598,6 +610,8 @@ Deno.serve(async (request) => {
               : current.canonical_verification_status,
           productCode: current.product_code ?? null,
           currentVersionId: current.current_version_id ?? null,
+          isActive: current.is_active === true,
+          mergedIntoProductId: current.merged_into_product_id ?? null,
           productAccuracy: current.product_accuracy,
           engineReady: current.engine_ready,
         },
@@ -780,11 +794,12 @@ Deno.serve(async (request) => {
             lookupResult ?? {},
             effectiveBarcodeAuthority,
           );
-    const { data: priorAssets } = await service
+    const { data: priorAssets, error: priorAssetsError } = await service
       .from('product_scan_assets')
       .select('id')
       .eq('session_id', sessionId)
       .eq('user_id', auth.user.id);
+    if (priorAssetsError) return json({ error: 'scan_asset_metadata_failed' }, 503);
     const lookupValidation = merged
       ? validateServerResult(
           merged,
@@ -817,10 +832,11 @@ Deno.serve(async (request) => {
       against the session, its external sources and the provider's own usage ledger.
     */
     if (verdict.releaseReservation) {
-      await service.rpc('release_product_scan_ean_lookup_v1', {
+      const { error: releaseError } = await service.rpc('release_product_scan_ean_lookup_v1', {
         p_actor_user_id: auth.user.id,
         p_session_id: sessionId,
       });
+      if (releaseError) return json({ error: 'scanner_lookup_release_failed' }, 503);
     }
     return json({
       sessionId,
@@ -917,8 +933,11 @@ Deno.serve(async (request) => {
       kind: 'existing_product',
       product: {
         id: exact.id,
+        canonicalGtin: exact.canonical_gtin,
         displayName: exact.product_name_display,
         brand: exact.brand ?? null,
+        ownership: exact.ownership,
+        visibility: exact.visibility,
         entityKind: exact.product_kind === 'mapper_reference' ? 'pi_base' : 'commercial_product',
         status:
           exact.product_kind === 'mapper_reference'
@@ -926,6 +945,8 @@ Deno.serve(async (request) => {
             : exact.canonical_verification_status,
         productCode: exact.product_code ?? null,
         currentVersionId: exact.current_version_id ?? null,
+        isActive: exact.is_active === true,
+        mergedIntoProductId: exact.merged_into_product_id ?? null,
         productAccuracy: exact.product_accuracy,
         engineReady: exact.engine_ready,
       },
