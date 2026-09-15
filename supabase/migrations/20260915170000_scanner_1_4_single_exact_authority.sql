@@ -58,8 +58,11 @@ begin
 
   v_keys := array[p_gtin];
   if v_len = 12 then v_keys := v_keys || ('0' || p_gtin); end if;
-  if v_len = 13 and left(p_gtin, 1) = '0' then v_keys := v_keys || substr(p_gtin, 2); end if;
+  if v_len = 13 and left(p_gtin, 1) = '0' and left(p_gtin, 5) <> '00000' then
+    v_keys := v_keys || substr(p_gtin, 2);
+  end if;
   if v_len = 8 then v_keys := v_keys || ('00000' || p_gtin); end if;
+  if v_len = 13 and left(p_gtin, 5) = '00000' then v_keys := v_keys || substr(p_gtin, 6); end if;
 
   return query
   with hits as (

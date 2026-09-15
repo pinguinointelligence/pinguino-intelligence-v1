@@ -110,6 +110,7 @@ describe('Scanner 1.4 — one exact GELLATTI authority', () => {
       { gtin: '0000094152210', symbology: null },
       { gtin: '94152210', symbology: 'EAN-8' },
     ]);
+    expect(SQL).toMatch(/left\(p_gtin, 5\) = '00000'[\s\S]*substr\(p_gtin, 6\)/);
   });
 
   it('SCN-1.4-07 UPC-A canonical alias contract is explicit', () => {
