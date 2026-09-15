@@ -207,18 +207,17 @@ const TECHNICAL_KEYS: Readonly<Record<WorkingNumericField, string>> = Object.fre
   freezing_factor: 'freezingFactor',
 });
 
-/** The immutable Mapper vocabulary is prefix-governed, not case-exact. */
+/** Whole-profile binding requires active Base and Engine approval. */
 export function isBindableIntimportMapperTarget(row: IntimportMapperAuthorityRow): boolean {
   return (
     row.is_active !== false &&
     row.approved_for_base === true &&
-    row.approved_for_engines === true &&
-    row.verification_status.trim().toLowerCase().startsWith('verified')
+    row.approved_for_engines === true
   );
 }
 
-/** Field Rescue reads the canonical Mapper basement. Historical row status and
- * approval provenance remain auditable metadata, never donor admission gates. */
+/** Field Rescue reads explicitly approved canonical Mapper rows. Historical
+ * verification status remains auditable metadata, never a donor admission gate. */
 export function isIntimportMapperRescueDonor(row: IntimportMapperAuthorityRow): boolean {
   return isCanonicalMapperRescueDonor(row);
 }
@@ -289,8 +288,8 @@ export function validateIntimportProductProfileProposal(
     input.trustedRecognition.evidenceFingerprint === deterministicRecognition.evidenceFingerprint
       ? input.trustedRecognition
       : deterministicRecognition;
-  // Field Rescue gets every active canonical PI-ING row. Whole-profile authority
-  // remains a separate, narrower decision so changing Rescue provenance policy
+  // Field Rescue gets every explicitly approved canonical PI-ING row. Whole-profile
+  // authority remains a separate decision so changing Rescue provenance policy
   // cannot weaken publication/runtime profile binding.
   const knowledge = buildMapperKnowledge(
     input.rows.filter(isIntimportMapperRescueDonor),
@@ -344,10 +343,10 @@ export function validateIntimportProductProfileProposal(
       ? resolved.profileMatch
       : null;
   // TOPPING_ONLY consumes governed ProductBehavior, not the donor's physical
-  // composition. If the verified completion set has no match, an active Mapper
+  // composition. If the approved completion set has no match, an active Mapper
   // row may still serve as semantic/role evidence; its numeric values never
   // enter `fieldTruth` or `technicalComposition`. BASE products deliberately
-  // retain the Verified-only completion rule above.
+  // retain the approval-based completion rule above.
   const toppingBehaviorMatch =
     !acceptedMatch && recognition?.intendedUsageRole === 'TOPPING_ONLY'
       ? findProfileMatch(
@@ -368,7 +367,7 @@ export function validateIntimportProductProfileProposal(
   /*
    * A behavior reference lends taxonomy/permissions, never numeric composition. Reusing
    * `resolved.profileMatch` here accidentally limited that lookup to `wholeProfileKnowledge`
-   * (Verified + Engine-approved rows). A Rescue-first product can have a valid, hard-compatible
+   * (Base + Engine-approved rows). A Rescue-first product can have a valid, hard-compatible
    * semantic cohort in canonical knowledge while that narrower whole-profile cohort is empty.
    * Re-run the existing matcher against the same full canonical knowledge Rescue received; the
    * server-owned ProductBehavior binding still makes the final permission decision below.

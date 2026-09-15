@@ -148,7 +148,7 @@ describe('canonical authenticated Mapper visibility', () => {
     });
   });
 
-  it('preserves the frozen Home Verified + Base + Engine result set', async () => {
+  it('preserves the frozen Home Base + Engine-approved result set', async () => {
     h.catalogHits = [{
       entityKind: 'pi_base', mappedIngredientId: 'PI-ING-000405',
       usableInBase: true, displayName: 'Fresh Watermelon', originalName: null,
@@ -169,11 +169,14 @@ describe('canonical authenticated Mapper visibility', () => {
     const outcome = await searchCanonicalMapperIngredients({ text: 'fruit', limit: 20 });
     expect(outcome).toMatchObject({
       kind: 'results',
-      rows: [{ ingredient_id: 'PI-ING-001553' }],
+      rows: [
+        { ingredient_id: 'PI-ING-000405' },
+        { ingredient_id: 'PI-ING-001553' },
+      ],
     });
   });
 
-  it('applies frozen Home pagination after filtering the broader canonical RPC set', async () => {
+  it('applies frozen Home pagination after approval filtering the canonical RPC set', async () => {
     const raw = Array.from({ length: 12 }, (_, index) => ({
       entityKind: 'pi_base',
       mappedIngredientId: `PI-ING-${String(index + 1).padStart(6, '0')}`,
@@ -195,11 +198,11 @@ describe('canonical authenticated Mapper visibility', () => {
 
     expect(first).toMatchObject({
       kind: 'results', hasMore: true,
-      rows: [{ ingredient_id: 'PI-ING-000002' }, { ingredient_id: 'PI-ING-000004' }],
+      rows: [{ ingredient_id: 'PI-ING-000001' }, { ingredient_id: 'PI-ING-000002' }],
     });
     expect(second).toMatchObject({
       kind: 'results', hasMore: true,
-      rows: [{ ingredient_id: 'PI-ING-000006' }, { ingredient_id: 'PI-ING-000008' }],
+      rows: [{ ingredient_id: 'PI-ING-000003' }, { ingredient_id: 'PI-ING-000004' }],
     });
   });
 });
@@ -358,10 +361,11 @@ describe('fetchIngredientEngineValues (rich 0032 view)', () => {
     const outcome = await fetchIngredientEngineValues('PI-ING-000123');
     expect(calls('from')[0]?.args).toEqual([RICH_SEARCH_VIEW]);
     expect(calls('eq')[0]?.args).toEqual(['ingredient_id', 'PI-ING-000123']);
-    expect(calls('in')[0]?.args[0]).toBe('verification_status');
-    expect(calls('in')[0]?.args[1]).toEqual(
-      expect.arrayContaining(['Verified', 'Verified / Public Label']),
-    );
+    expect(calls('eq').slice(1).map((call) => call.args)).toEqual([
+      ['approved_for_base', true],
+      ['approved_for_engines', true],
+    ]);
+    expect(calls('in')).toEqual([]);
     expect(outcome).toEqual({
       kind: 'values',
       reference: {

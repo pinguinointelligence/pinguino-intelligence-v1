@@ -790,8 +790,8 @@ describe('HARIBO Quaxi cumulative-evidence regression', () => {
     });
     expect(donor).toMatch(/^PI-ING-/);
     expect(authority?.mapperSimilarity).toBeGreaterThanOrEqual(0.85);
-    expect(authority?.engineUsable).toBe(false);
-    expect(authority?.estimatedFromMapperIds).toEqual([]);
+    expect(authority?.engineUsable).toBe(true);
+    expect(authority?.estimatedFromMapperIds).toContain(donor);
     expect(behavior).toMatchObject({
       classificationOutcome: 'classified',
       baseRecipeEligible: false,
