@@ -335,7 +335,7 @@ describe('working values and readiness', () => {
       technicalParameters: null,
       sourceUrls: [],
     }),
-    productArchetype: 'NORMAL_INGREDIENT' as const,
+    productArchetype: 'CHOCOLATE' as const,
     ingredientFamily: 'cocoa_butter' as const,
     physicalForm: 'SOLID' as const,
     intendedUsageRole: 'BASE_ONLY' as const,
