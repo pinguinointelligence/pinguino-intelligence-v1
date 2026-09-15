@@ -44,15 +44,22 @@ const LEGACY_FORMAT: Record<CodeIdentity['symbology'], 'EAN_13' | 'EAN_8' | 'UPC
   'UPC-E': 'UPC_E',
 };
 
-/** legacy ValidBarcode for the scan-session functions (value + format + lookupValue) */
+/** Scan-session barcode payload: canonical identity is authoritative; raw/format are evidence only. */
 export function legacyBarcode(identity: CodeIdentity): {
   value: string;
   format: string;
   lookupValue: string;
+  canonicalValue: string;
+  rawValue: string;
 } {
-  const lookupValue =
-    identity.symbology === 'UPC-E' ? (identity.lookupKeys[1] ?? identity.value) : identity.value;
-  return { value: identity.value, format: LEGACY_FORMAT[identity.symbology], lookupValue };
+  const canonicalValue = identity.canonicalGtin13;
+  return {
+    value: canonicalValue,
+    format: LEGACY_FORMAT[identity.symbology],
+    lookupValue: canonicalValue,
+    canonicalValue,
+    rawValue: identity.rawValue ?? identity.value,
+  };
 }
 
 function obj(v: unknown): Record<string, unknown> {
@@ -87,14 +94,10 @@ function readinessFromServer(
   );
   const directCriticalGaps = stringList(d['criticalGaps']);
   const assessmentCriticalGaps = stringList(assessment['criticalGaps']);
-  const productAccuracyCriticalBlockers = stringList(
-    productAccuracyAssessment['criticalBlockers'],
-  );
-  const criticalGaps =
-    directCriticalGaps ??
+  const productAccuracyCriticalBlockers = stringList(productAccuracyAssessment['criticalBlockers']);
+  const criticalGaps = directCriticalGaps ??
     assessmentCriticalGaps ??
-    productAccuracyCriticalBlockers ??
-    [...fallbackMissing];
+    productAccuracyCriticalBlockers ?? [...fallbackMissing];
   const productionReady =
     boolOrNull(d['productionReady']) ?? boolOrNull(assessment['productionReady']);
   return {
@@ -111,10 +114,8 @@ function readinessFromServer(
       stringOrNull(assessment['roleReadiness']),
     assessmentVersion:
       stringOrNull(d['assessmentVersion']) ?? stringOrNull(assessment['assessmentVersion']),
-    assessmentHash:
-      stringOrNull(d['assessmentHash']) ?? stringOrNull(assessment['assessmentHash']),
-    assessmentSessionId:
-      stringOrNull(d['sessionId']) ?? stringOrNull(assessment['sessionId']),
+    assessmentHash: stringOrNull(d['assessmentHash']) ?? stringOrNull(assessment['assessmentHash']),
+    assessmentSessionId: stringOrNull(d['sessionId']) ?? stringOrNull(assessment['sessionId']),
   };
 }
 
@@ -151,7 +152,15 @@ export function ledgerToLegacyResult(
       brand: ledger.identity.brand,
       countryOfOrigin: value('identity.countryOfOrigin'),
     },
-    barcodes: [{ kind: LEGACY_FORMAT[identity.symbology], value: identity.value }],
+    barcodes: [
+      {
+        kind: LEGACY_FORMAT[identity.symbology],
+        value: identity.canonicalGtin13,
+        format: 'EAN_13',
+        capturedFormat: LEGACY_FORMAT[identity.symbology],
+        rawValue: identity.rawValue ?? identity.value,
+      },
+    ],
     ingredientsText: value('ingredientsText'),
     allergensText: value('allergensText'),
     nutrition,

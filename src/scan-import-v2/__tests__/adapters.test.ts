@@ -6,6 +6,7 @@ import {
   type SupabaseLike,
 } from '../adapters/supabaseAdapters';
 import { runScanImportV2 } from '../pipeline';
+import { identifyCode } from '../codeIdentity';
 import { scan } from './codeIdentity.test';
 import { ctx } from './fakes';
 
@@ -117,8 +118,8 @@ describe('Supabase adapters (stub client) — one RPC row feeds catalogue, behav
       identity: { symbology: 'UPC-A' },
     });
     expect(client.calls.filter((c) => c.startsWith('search'))).toEqual([
-      'search_products_v1:"036000291452"',
       'search_products_v1:"0036000291452"',
+      'search_products_v1:"036000291452"',
     ]);
   });
   it('guest has no exact path — explicit, never a silent empty resolution', async () => {
@@ -382,6 +383,31 @@ describe('D8 — guest-safe exact resolver adapter (resolve_exact_products_by_gt
       expect(Object.keys(r.product.evidence ?? {})).not.toEqual(
         expect.arrayContaining(['privatePrice', 'favorite', 'ownerId']),
       );
+  });
+  it('uses canonical GTIN-13 for exact RPC and does not re-infer capture symbology from its length', async () => {
+    const calls: Array<{ fn: string; args: Record<string, unknown> | undefined }> = [];
+    const client: SupabaseLike = {
+      async rpc(fn, args) {
+        calls.push({ fn, args });
+        return { data: [gtinRow({ matched_gtin: '0000096385074' })], error: null };
+      },
+      from() {
+        return {
+          async upsert() {
+            return { error: null };
+          },
+        };
+      },
+    };
+    const identityResult = identifyCode(scan('96385074', 'EAN-8'));
+    expect(identityResult.ok).toBe(true);
+    if (!identityResult.ok) return;
+    const port = createSupabaseV2Ports(client);
+    await port.catalog.exactByIdentity?.(identityResult.identity, ctx());
+    expect(calls[0]).toEqual({
+      fn: 'resolve_exact_products_by_gtin_v1',
+      args: { p_gtin: '0000096385074', p_symbology: null },
+    });
   });
   it('guest unknown → unknown; guest invalid checksum → invalid_code before any RPC', async () => {
     const client = gtinStub({ anon: [], user: [] }, 'anon');

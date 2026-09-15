@@ -107,7 +107,7 @@ const sanitizeScanResult = (value: unknown): JsonObject => {
   const barcodes = Array.isArray(source.barcodes)
     ? source.barcodes
         .slice(0, 4)
-        .map((entry) => pickScalars(entry, ['value', 'format'], 40))
+        .map((entry) => pickScalars(entry, ['value', 'format', 'capturedFormat', 'rawValue'], 64))
         .filter((entry) => Object.keys(entry).length > 0)
     : [];
   const externalSources = Array.isArray(source.externalSources)

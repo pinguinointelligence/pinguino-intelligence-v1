@@ -76,7 +76,15 @@ export interface ScanResultLike {
     countryOfOrigin?: string | null;
     labelLanguages?: string[];
   } | null;
-  barcodes?: { kind?: string; value?: string }[] | null;
+  barcodes?:
+    | {
+        kind?: string;
+        value?: string;
+        format?: string;
+        capturedFormat?: string;
+        rawValue?: string | null;
+      }[]
+    | null;
   nutrition?: Record<string, unknown> | null;
   productionDeclarations?: Record<string, unknown> | null;
   ingredientsText?: string | null;

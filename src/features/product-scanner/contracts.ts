@@ -2,6 +2,7 @@ export const PRODUCT_SCAN_SCHEMA_VERSION = 'gellatti_product_scan_v1' as const;
 
 export type ProductScanSource = 'label' | 'barcode_registry' | 'manufacturer' | 'retailer';
 export type ProductScanConfidence = 'high' | 'medium' | 'low';
+export type ProductScanBarcodeFormat = 'EAN_8' | 'EAN_13' | 'UPC_A' | 'UPC_E';
 export type ProductScanOverlayState =
   | 'SCAN_DRAFT'
   | 'USABLE_FOR_OWNER'
@@ -86,7 +87,16 @@ export interface ProductScanResult {
     unit: 'g' | 'kg' | 'ml' | 'l' | null;
     netQuantityText: string | null;
   };
-  barcodes: Array<{ value: string; format: 'EAN_8' | 'EAN_13' | 'UPC_A' | 'UPC_E' }>;
+  barcodes: Array<{
+    /** canonical barcode identity used for all downstream lookups */
+    value: string;
+    /** format of the canonical value; canonical GTINs are EAN_13-shaped */
+    format: ProductScanBarcodeFormat;
+    /** original decoder format, retained as evidence and never used as identity */
+    capturedFormat?: ProductScanBarcodeFormat;
+    /** original captured/entered text, retained as evidence only */
+    rawValue?: string | null;
+  }>;
   nutrition: ProductScanNutrition;
   /** Added by the final customer flow. Optional only for historical/test
    * snapshots created before the strict Scanner response schema included it. */
@@ -192,6 +202,8 @@ export const PRODUCT_SCAN_JSON_SCHEMA = {
         properties: {
           value: { type: 'string' },
           format: { enum: ['EAN_8', 'EAN_13', 'UPC_A', 'UPC_E'] },
+          capturedFormat: { enum: ['EAN_8', 'EAN_13', 'UPC_A', 'UPC_E'] },
+          rawValue: { type: ['string', 'null'] },
         },
       },
     },
