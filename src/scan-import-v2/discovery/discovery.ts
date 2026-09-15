@@ -91,6 +91,7 @@ export function discoveredExact(
     engineUsable: boolean;
     existing: boolean;
     route: FinalRoute;
+    productionReady: boolean;
     readiness?: ClientReadinessState;
   },
   sessionId: string,
