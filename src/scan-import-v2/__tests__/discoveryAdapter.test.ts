@@ -71,7 +71,13 @@ describe('Supabase discovery adapter (stub) — mirrors the legacy scan-session 
         sessionId: 'fixed-session',
         mode: 'ean_lookup',
         images: [],
-        barcode: { value: '4305615614434', format: 'EAN_13', lookupValue: '4305615614434' },
+        barcode: {
+          value: '4305615614434',
+          format: 'EAN_13',
+          lookupValue: '4305615614434',
+          canonicalValue: '4305615614434',
+          rawValue: '4305615614434',
+        },
       },
     });
     expect(r.kind).toBe('researched');
@@ -353,19 +359,47 @@ describe('Supabase discovery adapter (stub) — mirrors the legacy scan-session 
       approvedProductId: null,
     });
   });
-  it('legacy barcode mapping keeps the actual symbology; UPC-E lookups use the expanded UPC-A', () => {
+  it('canonical barcode mapping keeps raw evidence and capture format separate', () => {
     expect(legacyBarcode(id('8402001047251'))).toEqual({
       value: '8402001047251',
       format: 'EAN_13',
       lookupValue: '8402001047251',
+      canonicalValue: '8402001047251',
+      rawValue: '8402001047251',
     });
-    expect(legacyBarcode(id('01234565', 'UPC-E'))).toMatchObject({
-      value: '01234565',
+    expect(legacyBarcode(id('96385074', 'EAN-8'))).toEqual({
+      value: '0000096385074',
+      format: 'EAN_8',
+      lookupValue: '0000096385074',
+      canonicalValue: '0000096385074',
+      rawValue: '96385074',
+    });
+    expect(legacyBarcode(id('036000291452', 'UPC-A'))).toEqual({
+      value: '0036000291452',
+      format: 'UPC_A',
+      lookupValue: '0036000291452',
+      canonicalValue: '0036000291452',
+      rawValue: '036000291452',
+    });
+    const upce = id('01234565', 'UPC-E');
+    expect(legacyBarcode(upce)).toMatchObject({
+      value: upce.canonicalGtin13,
       format: 'UPC_E',
+      lookupValue: upce.canonicalGtin13,
+      canonicalValue: upce.canonicalGtin13,
+      rawValue: '01234565',
     });
     expect(
       ledgerToLegacyResult(id('96385074', 'EAN-8'), buildLedger(id('96385074', 'EAN-8'), null, []))
         .barcodes,
-    ).toEqual([{ kind: 'EAN_8', value: '96385074' }]);
+    ).toEqual([
+      {
+        kind: 'EAN_8',
+        value: '0000096385074',
+        format: 'EAN_13',
+        capturedFormat: 'EAN_8',
+        rawValue: '96385074',
+      },
+    ]);
   });
 });

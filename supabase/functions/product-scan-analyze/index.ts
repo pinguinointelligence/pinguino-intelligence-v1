@@ -5,10 +5,12 @@ import {
   scanResultFromLookupFacts,
   SYSTEM_PROMPT,
   extractResponseText,
+  isProductScanBarcodeFormat,
   mergeProductScanResults,
   normalizeValidatedBarcode,
   sha256Text,
   stableJson,
+  type AuthoritativeBarcodeIdentity,
   validateServerResult,
   webCallsInResponse,
 } from '../_shared/productScanner.ts';
@@ -438,13 +440,31 @@ Deno.serve(async (request) => {
   if (totalEncodedBytes > 42_000_000) return json({ error: 'scan_payload_too_large' }, 413);
 
   const suppliedBarcode = objectValue(body.barcode);
-  const incomingBarcode = normalizeValidatedBarcode(
-    typeof suppliedBarcode.lookupValue === 'string'
+  const hasCanonicalBarcode = typeof suppliedBarcode.canonicalValue === 'string';
+  const suppliedCanonicalValue = hasCanonicalBarcode
+    ? suppliedBarcode.canonicalValue
+    : typeof suppliedBarcode.lookupValue === 'string'
       ? suppliedBarcode.lookupValue
       : typeof suppliedBarcode.value === 'string'
         ? suppliedBarcode.value
-        : null,
-  );
+        : null;
+  const incomingBarcode = normalizeValidatedBarcode(suppliedCanonicalValue);
+  const barcodeAuthority: AuthoritativeBarcodeIdentity | string | null = hasCanonicalBarcode
+    ? incomingBarcode
+      ? {
+          canonicalValue: incomingBarcode,
+          capturedFormat: isProductScanBarcodeFormat(
+            suppliedBarcode.capturedFormat ?? suppliedBarcode.format,
+          )
+            ? (suppliedBarcode.capturedFormat ?? suppliedBarcode.format)
+            : null,
+          rawValue:
+            typeof suppliedBarcode.rawValue === 'string'
+              ? suppliedBarcode.rawValue.slice(0, 64)
+              : null,
+        }
+      : null
+    : incomingBarcode;
   const { data: existingSession } = await service
     .from('product_scan_sessions')
     .select('user_id,result_json,validation_json,overlay_state,barcode,vision_calls')
@@ -458,6 +478,7 @@ Deno.serve(async (request) => {
     return json({ error: 'scan_session_barcode_conflict' }, 409);
   }
   const barcode = establishedBarcode ?? incomingBarcode;
+  const effectiveBarcodeAuthority = barcodeAuthority ?? barcode;
   const exact = await exactProductForBarcode(service, barcode, auth.user.id);
   if (!existingSession) {
     const { error: insertSessionError } = await service.from('product_scan_sessions').insert({
@@ -508,7 +529,7 @@ Deno.serve(async (request) => {
       let current = exact;
       let reevaluation: OwnPrivateProductReevaluation | null = null;
       if (storedResult) {
-        const seeded = mergeProductScanResults(storedResult, {}, barcode);
+        const seeded = mergeProductScanResults(storedResult, {}, effectiveBarcodeAuthority);
         const seededValidation = validateServerResult(seeded, []);
         const { error: seedError } = await service.rpc('complete_product_scan_ean_lookup_v1', {
           p_actor_user_id: auth.user.id,
@@ -765,7 +786,7 @@ Deno.serve(async (request) => {
         : mergeProductScanResults(
             existingSession?.result_json ?? null,
             lookupResult ?? {},
-            barcode,
+            effectiveBarcodeAuthority,
           );
     const { data: priorAssets } = await service
       .from('product_scan_assets')
@@ -1140,7 +1161,7 @@ Deno.serve(async (request) => {
     (inputTokens / 1_000_000) * pricing.input +
     (outputTokens / 1_000_000) * pricing.output +
     webCalls * 0.01;
-  const currentCallResult = mergeProductScanResults(null, result, barcode);
+  const currentCallResult = mergeProductScanResults(null, result, effectiveBarcodeAuthority);
   const currentCallValidation = validateServerResult(
     currentCallResult,
     images.map((image) => String(image.assetId)),
@@ -1171,7 +1192,7 @@ Deno.serve(async (request) => {
   const cumulativeResult = mergeProductScanResults(
     existingSession?.result_json,
     currentCallResult,
-    barcode,
+    effectiveBarcodeAuthority,
   );
   const validation = validateServerResult(cumulativeResult, sessionAssetIds);
   if (!validation.ok) {

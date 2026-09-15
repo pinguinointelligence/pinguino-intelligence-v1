@@ -144,6 +144,10 @@ describe('customer copy guard', () => {
         file: 'src/features/pro-workbench/friendlyLabRecipeCopy.ts',
         text: 'Perfetto. Receptura jest gotowa.',
       },
+      {
+        file: 'src/features/scan-flow/scannerStatusCopy.ts',
+        text: 'Gellattissimo! Gotowe.',
+      },
     ]);
   });
 

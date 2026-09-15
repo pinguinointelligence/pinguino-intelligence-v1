@@ -184,7 +184,7 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     await typeCode('8402001047251');
     expect(text()).toContain('Znaleziono produkt');
     expect(text()).toContain('Hacendado');
-    expect(text()).toContain('Gelatissimo. Gotowe.');
+    expect(text()).toContain('Gellattissimo! Gotowe.');
     expect(
       host.querySelector('[data-testid="scanner-status-story"]')?.getAttribute('data-gelato-level'),
     ).toBe('100');
@@ -530,7 +530,7 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     await flush();
     // saved as the customer's private product, then handed to the recipe
     expect(text()).toContain('Zapisano jako Twój produkt');
-    expect(text()).toContain('Gelatissimo. Gotowe.');
+    expect(text()).toContain('Gellattissimo! Gotowe.');
     expect(discovery.created.get(UNKNOWN)).toMatchObject({
       productId: `PM-${UNKNOWN}`,
       route: 'PM_READY',

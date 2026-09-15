@@ -4,6 +4,7 @@ import {
   mergeProductScanResults,
   normalizeProductScanResult,
   normalizeValidatedBarcode,
+  isProductScanBarcodeFormat,
   productSemanticEvidenceFromScanResult,
   scanResultFromLookupFacts,
   stableJson,
@@ -371,13 +372,32 @@ function applyCustomerCorrections(
   result.productionDeclarations = declarations;
 
   const firstBarcode = Array.isArray(result.barcodes) ? result.barcodes[0] : null;
+  const firstBarcodeObject = objectValue(firstBarcode);
+  const usesEstablishedSessionBarcode =
+    correction.barcode === undefined && typeof sessionBarcode === 'string';
   const barcode = normalizeValidatedBarcode(
-    correction.barcode ?? sessionBarcode ?? objectValue(firstBarcode).value,
+    correction.barcode ?? sessionBarcode ?? firstBarcodeObject.value,
   );
   if (barcode) {
     const format = barcode.length === 8 ? 'EAN_8' : barcode.length === 12 ? 'UPC_A' : 'EAN_13';
     const previous = Array.isArray(result.barcodes) ? result.barcodes.slice(1) : [];
-    result.barcodes = [{ value: barcode, format }, ...previous];
+    const capturedFormat =
+      usesEstablishedSessionBarcode && isProductScanBarcodeFormat(firstBarcodeObject.capturedFormat)
+        ? firstBarcodeObject.capturedFormat
+        : null;
+    const rawValue =
+      usesEstablishedSessionBarcode && typeof firstBarcodeObject.rawValue === 'string'
+        ? firstBarcodeObject.rawValue
+        : null;
+    result.barcodes = [
+      {
+        value: barcode,
+        format,
+        ...(capturedFormat ? { capturedFormat } : {}),
+        ...(rawValue !== null ? { rawValue } : {}),
+      },
+      ...previous,
+    ];
     if (customerAction && correction.barcode !== undefined) confirmed.add('barcode');
   }
   return { result, confirmedEvidenceFields: [...confirmed], barcode };

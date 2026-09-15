@@ -188,7 +188,7 @@ export function createSupabaseV2Ports(
   const gtinRowsById = new Map<string, GtinRow>();
   const authority: ExactAuthority = options.exactAuthority ?? 'gtin_rpc';
 
-  const resolveExact = async (gtin: string, symbology: string): Promise<GtinRow[]> => {
+  const resolveExact = async (gtin: string, symbology: string | null): Promise<GtinRow[]> => {
     const { data, error } = await client.rpc('resolve_exact_products_by_gtin_v1', {
       p_gtin: gtin,
       p_symbology: symbology,
@@ -221,20 +221,61 @@ export function createSupabaseV2Ports(
   };
 
   const catalog: CatalogPort = {
+    async exactByIdentity(identity, ctx: RequestContext) {
+      if (authority === 'gtin_rpc') {
+        // Canonical GTIN-13 is the sole identity input. Legacy aliases are explicit fallback
+        // queries only; they never decide the persisted identity or the capture symbology.
+        const aliases =
+          identity.symbology === 'EAN-8'
+            ? [identity.canonicalGtin13.slice(5)]
+            : identity.symbology === 'UPC-A'
+              ? [identity.canonicalGtin13.slice(1)]
+              : identity.symbology === 'UPC-E'
+                ? [identity.lookupKeys.find((key) => key.length === 12) ?? '']
+                : [];
+        const queries = [
+          { gtin: identity.canonicalGtin13, symbology: null as string | null },
+          ...aliases
+            .filter((alias) => alias && alias !== identity.canonicalGtin13)
+            .map((gtin) => ({ gtin, symbology: identity.symbology })),
+        ];
+        const out = new Map<string, ExactCandidate>();
+        for (const query of queries) {
+          for (const row of await resolveExact(query.gtin, query.symbology)) {
+            // SQL is authoritative, but a stale resolver deployment must not leak quarantine either.
+            if (row.verification_status === 'blocked') continue;
+            gtinRowsById.set(row.product_id, row);
+            if (!out.has(row.product_id)) out.set(row.product_id, candidateFromGtinRow(row));
+          }
+          // The canonical identity is primary. Legacy aliases are consulted only when the
+          // canonical row is absent, so alias ordering can never choose the product identity.
+          if (out.size > 0) break;
+        }
+        return [...out.values()];
+      }
+      // Interim search authority: canonical first, then explicit aliases derived by identifyCode.
+      if (ctx.accountId === null) return [];
+      const keys = [
+        identity.canonicalGtin13,
+        ...identity.lookupKeys.filter((key) => key !== identity.canonicalGtin13),
+      ];
+      const out = new Map<string, ExactCandidate>();
+      for (const key of keys) {
+        for (const row of await searchExact(key)) {
+          rowsById.set(row.id, row);
+          const c = candidateFromRow(row, keys);
+          if (c && !out.has(c.productId)) out.set(c.productId, c);
+        }
+      }
+      return [...out.values()];
+    },
     async exactByKeys(keys, ctx: RequestContext) {
       if (authority === 'gtin_rpc') {
-        // the resolver derives every leading-zero key itself from the canonical GTIN; one call per identity
-        const gtin = keys.reduce((a, b) => (b.length > a.length ? b : a), keys[0] ?? '');
-        const symbology =
-          gtin.length === 13
-            ? 'EAN-13'
-            : gtin.length === 12
-              ? 'UPC-A'
-              : gtin.length === 8
-                ? 'EAN-8'
-                : null;
+        // Compatibility-only path. Active V2 resolution supplies CodeIdentity through
+        // exactByIdentity, so this path never infers an identity from key length.
+        const gtin = keys[0] ?? '';
         const out = new Map<string, ExactCandidate>();
-        for (const row of await resolveExact(gtin, symbology ?? 'EAN-13')) {
+        for (const row of await resolveExact(gtin, null)) {
           // SQL is authoritative, but a stale resolver deployment must not leak quarantine either.
           if (row.verification_status === 'blocked') continue;
           gtinRowsById.set(row.product_id, row);

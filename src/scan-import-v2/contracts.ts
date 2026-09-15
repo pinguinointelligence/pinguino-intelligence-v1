@@ -67,7 +67,12 @@ export class NetworkError extends Error {
 }
 
 export interface CatalogPort {
-  /** exact-by-EAN candidates for any of the keys; provisional rows not linked to the account must not be returned */
+  /** Exact resolution from the already-authoritative identity. */
+  exactByIdentity?: (
+    identity: CodeIdentity,
+    ctx: RequestContext,
+  ) => Promise<readonly ExactCandidate[]>;
+  /** Compatibility seam for in-memory/legacy ports; active V2 adapters use exactByIdentity. */
   exactByKeys(keys: readonly string[], ctx: RequestContext): Promise<readonly ExactCandidate[]>;
 }
 export interface PreferencePort {

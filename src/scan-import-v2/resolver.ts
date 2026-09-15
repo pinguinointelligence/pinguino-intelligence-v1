@@ -56,7 +56,9 @@ export async function resolveIdentity(
 ): Promise<Resolution> {
   let cands: readonly ExactCandidate[];
   try {
-    cands = await ports.catalog.exactByKeys(identity.lookupKeys, ctx);
+    cands = ports.catalog.exactByIdentity
+      ? await ports.catalog.exactByIdentity(identity, ctx)
+      : await ports.catalog.exactByKeys(identity.lookupKeys, ctx);
   } catch (error) {
     if (error instanceof Error && (error as { kind?: string }).kind === 'network')
       return { kind: 'network_error', error };

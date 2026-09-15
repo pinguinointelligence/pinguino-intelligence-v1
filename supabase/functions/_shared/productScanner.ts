@@ -9,6 +9,21 @@ import type { ProductSemanticEvidence } from '../../../src/features/product-inte
 
 export const PRODUCT_SCAN_SCHEMA_VERSION = 'gellatti_product_scan_v1';
 
+export type ProductScanBarcodeFormat = 'EAN_8' | 'EAN_13' | 'UPC_A' | 'UPC_E';
+
+export interface AuthoritativeBarcodeIdentity {
+  /** canonical GTIN-13 identity; the only value allowed to reach session/result authority */
+  canonicalValue: string;
+  /** original decoder-declared format, retained as evidence only */
+  capturedFormat: ProductScanBarcodeFormat | null;
+  /** original captured/entered text, retained as evidence only */
+  rawValue: string | null;
+}
+
+export function isProductScanBarcodeFormat(value: unknown): value is ProductScanBarcodeFormat {
+  return value === 'EAN_8' || value === 'EAN_13' || value === 'UPC_A' || value === 'UPC_E';
+}
+
 const nullableNumber = { type: ['number', 'null'] };
 const nullableString = { type: ['string', 'null'] };
 
@@ -79,6 +94,8 @@ export const PRODUCT_SCAN_RESPONSE_SCHEMA = {
         properties: {
           value: { type: 'string' },
           format: { enum: ['EAN_8', 'EAN_13', 'UPC_A', 'UPC_E'] },
+          capturedFormat: { enum: ['EAN_8', 'EAN_13', 'UPC_A', 'UPC_E'] },
+          rawValue: { type: ['string', 'null'] },
         },
       },
     },
@@ -720,6 +737,20 @@ function appendConflict(
 const barcodeFormat = (digits: string): 'EAN_8' | 'EAN_13' | 'UPC_A' =>
   digits.length === 8 ? 'EAN_8' : digits.length === 12 ? 'UPC_A' : 'EAN_13';
 
+type BarcodeMetadata = {
+  capturedFormat: ProductScanBarcodeFormat | null;
+  rawValue: string | null;
+};
+
+function barcodeMetadata(value: unknown): BarcodeMetadata {
+  const root = objectValue(value);
+  const first = Array.isArray(root.barcodes) ? objectValue(root.barcodes[0]) : {};
+  return {
+    capturedFormat: isProductScanBarcodeFormat(first.capturedFormat) ? first.capturedFormat : null,
+    rawValue: typeof first.rawValue === 'string' ? first.rawValue : null,
+  };
+}
+
 function validatedResultBarcodes(value: unknown): { accepted: string[]; rejected: boolean } {
   const root = objectValue(value);
   let rejected = false;
@@ -733,6 +764,21 @@ function validatedResultBarcodes(value: unknown): { accepted: string[]; rejected
         }
         const expected = barcodeFormat(normalized);
         if (candidate.format !== expected) {
+          rejected = true;
+          return [];
+        }
+        if (
+          candidate.capturedFormat !== undefined &&
+          !isProductScanBarcodeFormat(candidate.capturedFormat)
+        ) {
+          rejected = true;
+          return [];
+        }
+        if (
+          candidate.rawValue !== undefined &&
+          candidate.rawValue !== null &&
+          (typeof candidate.rawValue !== 'string' || candidate.rawValue.length > 64)
+        ) {
           rejected = true;
           return [];
         }
@@ -931,7 +977,7 @@ const satisfiedMissingField = (root: Record<string, unknown>, missing: string): 
 export function mergeProductScanResults(
   priorValue: unknown,
   incomingValue: unknown,
-  authoritativeBarcode: string | null = null,
+  authoritativeBarcode: string | AuthoritativeBarcodeIdentity | null = null,
 ): Record<string, unknown> {
   const prior = structuredClone(objectValue(priorValue));
   const incoming = structuredClone(objectValue(incomingValue));
@@ -996,8 +1042,12 @@ export function mergeProductScanResults(
       setPath(merged, field, priorFact);
       continue;
     }
-    const priorExactSource = exactEanHardSource(prior, field, authoritativeBarcode);
-    const incomingExactSource = exactEanHardSource(incoming, field, authoritativeBarcode);
+    const authoritativeValue =
+      typeof authoritativeBarcode === 'string'
+        ? authoritativeBarcode
+        : (authoritativeBarcode?.canonicalValue ?? null);
+    const priorExactSource = exactEanHardSource(prior, field, authoritativeValue);
+    const incomingExactSource = exactEanHardSource(incoming, field, authoritativeValue);
     if (priorExactSource || incomingExactSource) {
       // A material hard-vs-hard disagreement is reviewable evidence, never permission for an OCR
       // pass to erase a server-confirmed exact-product fact. If the exact fact arrived in this pass,
@@ -1044,7 +1094,11 @@ export function mergeProductScanResults(
 
   const priorBarcodes = validatedResultBarcodes(prior);
   const incomingBarcodes = validatedResultBarcodes(incoming);
-  const authoritative = normalizeValidatedBarcode(authoritativeBarcode);
+  const authoritativeValue =
+    typeof authoritativeBarcode === 'string'
+      ? authoritativeBarcode
+      : (authoritativeBarcode?.canonicalValue ?? null);
+  const authoritative = normalizeValidatedBarcode(authoritativeValue);
   const established = authoritative ?? priorBarcodes.accepted[0] ?? null;
   const incomingBarcode = incomingBarcodes.accepted[0] ?? null;
   if (incomingBarcodes.rejected) {
@@ -1060,9 +1114,29 @@ export function mergeProductScanResults(
     }
   }
   const selectedBarcode = established ?? incomingBarcode;
-  merged.barcodes = selectedBarcode
-    ? [{ value: selectedBarcode, format: barcodeFormat(selectedBarcode) }]
-    : [];
+  const priorMetadata = barcodeMetadata(prior);
+  const incomingMetadata = barcodeMetadata(incoming);
+  const authorityMetadata =
+    authoritative && typeof authoritativeBarcode === 'object' ? authoritativeBarcode : null;
+  const selectedMetadata = authorityMetadata
+    ? {
+        capturedFormat: authorityMetadata.capturedFormat,
+        rawValue: authorityMetadata.rawValue,
+      }
+    : established === priorBarcodes.accepted[0]
+      ? priorMetadata
+      : incomingMetadata;
+  const selectedEntry = selectedBarcode
+    ? {
+        value: selectedBarcode,
+        format: barcodeFormat(selectedBarcode),
+        ...(selectedMetadata.capturedFormat
+          ? { capturedFormat: selectedMetadata.capturedFormat }
+          : {}),
+        ...(selectedMetadata.rawValue !== null ? { rawValue: selectedMetadata.rawValue } : {}),
+      }
+    : null;
+  merged.barcodes = selectedEntry ? [selectedEntry] : [];
 
   const directMayContainEvidence = bestEvidence(merged, 'mayContainAllergens');
   const mayContain = Array.isArray(merged.mayContainAllergens)
