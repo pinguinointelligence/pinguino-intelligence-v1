@@ -23,7 +23,7 @@ export const SCANNER_STORY: Readonly<Record<ScannerStoryStage, ScannerStoryStep>
     level: 75,
   },
   assembling: { message: 'Dobra, mam wszystko. Kończę układać wynik.', level: 90 },
-  success: { message: 'Gelatissimo. Gotowe.', level: 100 },
+  success: { message: 'Gellattissimo! Gotowe.', level: 100 },
 });
 
 export const humanVerificationMessage =

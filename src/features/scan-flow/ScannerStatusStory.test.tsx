@@ -28,7 +28,7 @@ describe('Scanner status story — owner-approved GELLATTI UIX', () => {
       'Teraz porządkuję skład, żeby wszystko miało ręce i nogi.',
       'Chwileczkę — wysyłam brygadę do magazynu po więcej informacji.',
       'Dobra, mam wszystko. Kończę układać wynik.',
-      'Gelatissimo. Gotowe.',
+      'Gellattissimo! Gotowe.',
     ]);
   });
 
@@ -59,7 +59,7 @@ describe('Scanner status story — owner-approved GELLATTI UIX', () => {
     const html = renderToStaticMarkup(<ScannerStatusStory stage="success" />);
 
     expect(html).toContain('data-gelato-level="100"');
-    expect(html).toContain('Gelatissimo. Gotowe.');
+    expect(html).toContain('Gellattissimo! Gotowe.');
   });
 });
 
