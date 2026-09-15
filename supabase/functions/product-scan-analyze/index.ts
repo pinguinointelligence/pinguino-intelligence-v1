@@ -5,12 +5,13 @@ import {
   scanResultFromLookupFacts,
   SYSTEM_PROMPT,
   extractResponseText,
-  isProductScanBarcodeFormat,
   mergeProductScanResults,
   normalizeValidatedBarcode,
+  scannerCaptureFormatForSymbology,
   sha256Text,
   stableJson,
   type AuthoritativeBarcodeIdentity,
+  verifyScannerBarcodePayload,
   validateServerResult,
   webCallsInResponse,
 } from '../_shared/productScanner.ts';
@@ -440,31 +441,37 @@ Deno.serve(async (request) => {
   if (totalEncodedBytes > 42_000_000) return json({ error: 'scan_payload_too_large' }, 413);
 
   const suppliedBarcode = objectValue(body.barcode);
-  const hasCanonicalBarcode = typeof suppliedBarcode.canonicalValue === 'string';
-  const suppliedCanonicalValue = hasCanonicalBarcode
-    ? suppliedBarcode.canonicalValue
-    : typeof suppliedBarcode.lookupValue === 'string'
-      ? suppliedBarcode.lookupValue
-      : typeof suppliedBarcode.value === 'string'
-        ? suppliedBarcode.value
-        : null;
-  const incomingBarcode = normalizeValidatedBarcode(suppliedCanonicalValue);
-  const barcodeAuthority: AuthoritativeBarcodeIdentity | string | null = hasCanonicalBarcode
-    ? incomingBarcode
-      ? {
-          canonicalValue: incomingBarcode,
-          capturedFormat: isProductScanBarcodeFormat(
-            suppliedBarcode.capturedFormat ?? suppliedBarcode.format,
-          )
-            ? (suppliedBarcode.capturedFormat ?? suppliedBarcode.format)
-            : null,
-          rawValue:
-            typeof suppliedBarcode.rawValue === 'string'
-              ? suppliedBarcode.rawValue.slice(0, 64)
-              : null,
-        }
-      : null
-    : incomingBarcode;
+  const hasBarcodePayload = Object.keys(suppliedBarcode).length > 0;
+  const hasCanonicalValue = suppliedBarcode.canonicalValue !== undefined;
+  const suppliedRawValue = hasCanonicalValue
+    ? suppliedBarcode.rawValue
+    : suppliedBarcode.rawValue !== undefined
+      ? suppliedBarcode.rawValue
+      : suppliedBarcode.value;
+  const suppliedCapturedFormat =
+    suppliedBarcode.capturedFormat !== undefined
+      ? suppliedBarcode.capturedFormat
+      : suppliedBarcode.format;
+  const barcodeIdentity = hasBarcodePayload
+    ? verifyScannerBarcodePayload({
+        rawValue: suppliedRawValue,
+        capturedFormat: suppliedCapturedFormat,
+        ...(suppliedBarcode.canonicalValue !== undefined
+          ? { canonicalValue: suppliedBarcode.canonicalValue }
+          : {}),
+      })
+    : null;
+  if (barcodeIdentity && !barcodeIdentity.ok) {
+    return json({ error: 'invalid_barcode_identity', reason: barcodeIdentity.reason }, 400);
+  }
+  const incomingBarcode = barcodeIdentity?.ok ? barcodeIdentity.identity.canonicalGtin13 : null;
+  const barcodeAuthority: AuthoritativeBarcodeIdentity | string | null = barcodeIdentity?.ok
+    ? {
+        canonicalValue: barcodeIdentity.identity.canonicalGtin13,
+        capturedFormat: scannerCaptureFormatForSymbology(barcodeIdentity.identity.symbology),
+        rawValue: barcodeIdentity.identity.rawValue,
+      }
+    : null;
   const { data: existingSession } = await service
     .from('product_scan_sessions')
     .select('user_id,result_json,validation_json,overlay_state,barcode,vision_calls')
@@ -479,6 +486,7 @@ Deno.serve(async (request) => {
   }
   const barcode = establishedBarcode ?? incomingBarcode;
   const effectiveBarcodeAuthority = barcodeAuthority ?? barcode;
+  if (mode === 'ean_lookup' && !barcode) return json({ error: 'lookup_requires_barcode' }, 400);
   const exact = await exactProductForBarcode(service, barcode, auth.user.id);
   if (!existingSession) {
     const { error: insertSessionError } = await service.from('product_scan_sessions').insert({
@@ -611,7 +619,6 @@ Deno.serve(async (request) => {
         usage: { visionCalls: 0, webCalls: 0, estimatedCostUsd: 0 },
       });
     }
-    if (!barcode) return json({ error: 'lookup_requires_barcode' }, 400);
     const { data: lookupReservation, error: lookupReserveError } = await service.rpc(
       'reserve_product_scan_ean_lookup_v1',
       { p_actor_user_id: auth.user.id, p_session_id: sessionId },

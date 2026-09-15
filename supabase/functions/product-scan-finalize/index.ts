@@ -4,10 +4,11 @@ import {
   mergeProductScanResults,
   normalizeProductScanResult,
   normalizeValidatedBarcode,
-  isProductScanBarcodeFormat,
+  scannerCaptureFormatForSymbology,
   productSemanticEvidenceFromScanResult,
   scanResultFromLookupFacts,
   stableJson,
+  verifyScannerBarcodePayload,
 } from '../_shared/productScanner.ts';
 import {
   buildAccumulatedScannerEvidence,
@@ -46,6 +47,7 @@ import type { ProductEvidenceField } from '../../../src/features/product-intelli
 import { publicationIdentityEligibilityFromScanResult } from '../../../src/features/product-scanner/productPublicationEligibility.ts';
 import { resolveProductScanFinalizeContract } from '../../../src/features/product-scanner/productScanFinalizeContract.ts';
 import { AUTHORITY_PAGE_SIZE, readAuthorityPage } from '../_shared/authorityPagination.ts';
+import type { CodeIdentity } from '../../../src/scan-import-v2/contracts.ts';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -271,7 +273,7 @@ type AppliedCorrections = {
 function applyCustomerCorrections(
   original: unknown,
   value: unknown,
-  sessionBarcode: unknown,
+  sessionIdentity: CodeIdentity,
   customerAction: boolean,
 ): AppliedCorrections | null {
   const result = structuredClone(objectValue(original));
@@ -371,30 +373,26 @@ function applyCustomerCorrections(
   }
   result.productionDeclarations = declarations;
 
-  const firstBarcode = Array.isArray(result.barcodes) ? result.barcodes[0] : null;
-  const firstBarcodeObject = objectValue(firstBarcode);
-  const usesEstablishedSessionBarcode =
-    correction.barcode === undefined && typeof sessionBarcode === 'string';
-  const barcode = normalizeValidatedBarcode(
-    correction.barcode ?? sessionBarcode ?? firstBarcodeObject.value,
-  );
+  let barcodeIdentity: CodeIdentity = sessionIdentity;
+  if (typeof correction.barcode === 'string') {
+    const corrected = verifyScannerBarcodePayload({
+      rawValue: correction.barcode,
+      capturedFormat: scannerCaptureFormatForSymbology(sessionIdentity.symbology),
+    });
+    if (!corrected.ok) return null;
+    barcodeIdentity = corrected.identity;
+  } else if (correction.barcode !== undefined && correction.barcode !== null) {
+    return null;
+  }
+  const barcode = barcodeIdentity.canonicalGtin13;
   if (barcode) {
-    const format = barcode.length === 8 ? 'EAN_8' : barcode.length === 12 ? 'UPC_A' : 'EAN_13';
     const previous = Array.isArray(result.barcodes) ? result.barcodes.slice(1) : [];
-    const capturedFormat =
-      usesEstablishedSessionBarcode && isProductScanBarcodeFormat(firstBarcodeObject.capturedFormat)
-        ? firstBarcodeObject.capturedFormat
-        : null;
-    const rawValue =
-      usesEstablishedSessionBarcode && typeof firstBarcodeObject.rawValue === 'string'
-        ? firstBarcodeObject.rawValue
-        : null;
     result.barcodes = [
       {
         value: barcode,
-        format,
-        ...(capturedFormat ? { capturedFormat } : {}),
-        ...(rawValue !== null ? { rawValue } : {}),
+        format: 'EAN_13',
+        capturedFormat: scannerCaptureFormatForSymbology(barcodeIdentity.symbology),
+        rawValue: barcodeIdentity.rawValue,
       },
       ...previous,
     ];
@@ -640,6 +638,25 @@ Deno.serve(async (request) => {
   if (sessionError || !session) return json({ error: 'owned_scan_session_not_found' }, 404);
   if (new Date(session.expires_at).getTime() <= Date.now())
     return json({ error: 'scan_session_expired' }, 409);
+  let sessionIdentity: CodeIdentity | null = null;
+  if (session.state === 'analyzed') {
+    const firstBarcode = objectValue(
+      Array.isArray(objectValue(session.result_json).barcodes)
+        ? objectValue(session.result_json).barcodes[0]
+        : null,
+    );
+    const persistedIdentity = verifyScannerBarcodePayload({
+      rawValue: firstBarcode.rawValue,
+      capturedFormat: firstBarcode.capturedFormat,
+      canonicalValue: session.barcode,
+    });
+    if (!persistedIdentity.ok)
+      return json(
+        { error: 'invalid_scan_barcode_identity', reason: persistedIdentity.reason },
+        409,
+      );
+    sessionIdentity = persistedIdentity.identity;
+  }
   if (session.state === 'finalized' && session.exact_product_id) {
     const { data: product } = await service
       .from('products')
@@ -680,6 +697,8 @@ Deno.serve(async (request) => {
     });
   }
   if (session.state !== 'analyzed') return json({ error: 'scan_not_ready_for_creation' }, 409);
+  if (!sessionIdentity)
+    return json({ error: 'invalid_scan_barcode_identity', reason: 'charset' }, 409);
 
   const contract = resolveProductScanFinalizeContract(body);
   if (contract.mode === 'unsupported')
@@ -687,14 +706,14 @@ Deno.serve(async (request) => {
   const automaticResult = applyAutomaticEvidence(
     session.result_json,
     contract.automaticEvidence,
-    session.barcode,
+    sessionIdentity?.canonicalGtin13 ?? session.barcode,
   );
   if (!automaticResult) return json({ error: 'invalid_automatic_product_evidence' }, 400);
   const confirmationEnvelope = objectValue(body.confirmations);
   const corrections = applyCustomerCorrections(
     automaticResult,
     contract.customerProductFields,
-    session.barcode,
+    sessionIdentity,
     contract.customerAction,
   );
   if (!corrections) return json({ error: 'invalid_user_confirmed_product_fields' }, 400);
