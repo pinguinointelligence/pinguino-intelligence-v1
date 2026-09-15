@@ -175,6 +175,16 @@ describe('Supabase discovery adapter (stub) — mirrors the legacy scan-session 
       route: 'PM_UNVERIFIED',
       finalConfidence: null,
       productionReady: false,
+      readiness: {
+        ready: false,
+        productionReady: false,
+        missingCritical: [],
+        criticalGapsKnown: false,
+        roleReadiness: null,
+        assessmentVersion: null,
+        assessmentHash: null,
+        assessmentSessionId: null,
+      },
     });
   });
   it('finalize: family_confirmation_required / not_ready / idempotent are mapped; no engine readiness is invented', async () => {
@@ -197,7 +207,7 @@ describe('Supabase discovery adapter (stub) — mirrors the legacy scan-session 
     expect(
       await mk({
         kind: 'customer_product_not_ready',
-        missingCriticalFields: ['nutrition.energyKcal'],
+        criticalGaps: ['nutrition.energyKcal'],
       }).finalize(session, { customerFamily: 'other' }, ctx()),
     ).toMatchObject({ kind: 'not_ready', missingCritical: ['nutrition.energyKcal'] });
     expect(
