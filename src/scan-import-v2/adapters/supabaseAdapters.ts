@@ -31,6 +31,7 @@ import {
   exactLookupQueries,
   exactRowsWithRetry,
   isRetryableExactResolverError,
+  type ExactSymbology,
   type GtinExactRow,
 } from '@/features/product-scanner/gtinExactResolver';
 
@@ -138,7 +139,7 @@ export function createSupabaseV2Ports(
   const gtinRowsById = new Map<string, GtinExactRow>();
   const authority: ExactAuthority = options.exactAuthority ?? 'gtin_rpc';
 
-  const resolveExact = async (gtin: string, symbology: string | null): Promise<GtinExactRow[]> => {
+  const resolveExact = async (gtin: string, symbology: ExactSymbology | null): Promise<GtinExactRow[]> => {
     try {
       return await exactRowsWithRetry(client, { gtin, symbology });
     } catch (error) {
