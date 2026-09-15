@@ -35,11 +35,12 @@ describe('scanner paid-call contract', () => {
     expect(zeroCostReturn).not.toContain('api.openai.com');
   });
 
-  it("lets a customer rescan their own private product on the same free path", () => {
+  it('lets a customer rescan their own private product on the same free path', () => {
     // A customer_provisional row is account-private, so only a linked owner may take it — but a
     // linked owner MUST take it, or every rescan of their own product would pay again.
-    expect(analyze).toContain("product.product_kind === 'customer_provisional'");
-    expect(analyze).toContain('customer_added_product_accounts');
+    expect(analyze).toContain(
+      'rescanReevaluationPlan({ productKind: exact.product_kind as string })',
+    );
   });
 
   it('spends the EAN lookup at most once per session', () => {
@@ -75,7 +76,9 @@ describe('scanner paid-call contract', () => {
     // the same evidence reads the row instead of calling. Observed live: fingerprint
     // recognition-v2-fe0cf025 was reused across three sessions on 2026-09-07.
     expect(finalize).toContain('evidenceFingerprint');
-    expect(finalize).toContain('classification.evidenceFingerprint === deterministic.evidenceFingerprint');
+    expect(finalize).toContain(
+      'classification.evidenceFingerprint === deterministic.evidenceFingerprint',
+    );
   });
 
   it('does not let a model outage manufacture a verdict', () => {

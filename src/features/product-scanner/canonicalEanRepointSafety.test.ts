@@ -7,9 +7,9 @@ import { resolveCanonicalEanIdentity, type EanProductRow } from './canonicalEanI
 /*
   A READ PATH THAT CAN WRITE IS A READ PATH THAT CAN CORRUPT.
 
-  `exactProductForBarcode` repairs a wrong EAN address while answering an ordinary scan. That is
-  worth having — it is what stops this defect from silently coming back — but every condition on it
-  has to be a refusal rather than a preference. These tests hold the refusals.
+  Scanner 1.4 resolves identity through the read-only exact RPC. Address repair remains a separate
+  maintenance/finalize concern and is not part of an ordinary scan lookup. These tests hold the
+  refusal boundary.
 
   The migration is the thing that actually enforces them in the database, so most of this file
   reads the migration: the rules live in SQL, and a TypeScript double of them would prove nothing
@@ -110,11 +110,10 @@ describe('the self-healing re-point can only ever move private -> shared', () =>
     expect(migration).not.toMatch(/create policy .* on public\.canonical_ean_repoint_audit/i);
   });
 
-  it('never lets a failed repair break the read', () => {
-    // The rpc result is discarded on both paths: the product was already resolved without it.
-    expect(analyze).toMatch(
-      /canonicalize_ean_identity_v1[\s\S]{0,260}\(\)\s*=>\s*undefined,\s*\(\)\s*=>\s*undefined,/,
-    );
+  it('never repairs a catalog address from the exact read path', () => {
+    expect(analyze).not.toContain('canonicalize_ean_identity_v1');
+    expect(analyze).not.toContain("from('product_variants')");
+    expect(analyze).not.toContain("in('barcode_normalized'");
   });
 
   it('drops the earlier signature so nothing can call the version without the gate', () => {
