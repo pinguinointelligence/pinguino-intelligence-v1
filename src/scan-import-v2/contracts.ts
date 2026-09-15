@@ -198,6 +198,8 @@ export type ScanImportV2Result =
       diagnostics?: readonly string[];
       /** the assessment this pending verdict belongs to, so a later save cannot persist a different one */
       assessmentHash?: string | null;
+      /** normalized readiness from the final authority; diagnostics are not its source */
+      readiness?: import('./discovery/contracts').ClientReadinessState;
       /**
        * Canonical server session result behind this ledger. Recognition/prefill may read it, but
        * the client never sends it back as a second evidence authority.
@@ -219,7 +221,10 @@ export type ScanImportV2Result =
       engineReady: boolean;
       behaviour: { outcome: BehaviourOutcome; bindingId: string | null };
       canonical: boolean;
-      readiness: { engineReady: boolean; missingCritical: readonly string[]; note: string | null };
+      readiness: import('./discovery/contracts').ClientReadinessState & {
+        engineReady: boolean;
+        note: string | null;
+      };
     }
   | {
       /** durable discovery candidate (product request) awaiting verification; canonical = false, engine usable = false */

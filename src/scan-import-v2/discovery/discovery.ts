@@ -19,6 +19,7 @@ import type {
   DiscoverySession,
   DiscoveryStage,
   FactLedger,
+  ClientReadinessState,
   FinalRoute,
   FinalizeInput,
   LabelImage,
@@ -56,6 +57,7 @@ function pending(
     { kind: 'discovered_pending' }
   >['evidenceError'] = null,
   note: string | null = null,
+  readiness?: ClientReadinessState,
 ): Extract<ScanImportV2Result, { kind: 'discovered_pending' }> {
   const ledger = buildLedger(session.identity, session.result, session.missingCritical, {
     sessionId: session.sessionId,
@@ -76,6 +78,7 @@ function pending(
     canonicalResult: session.result,
     engineReady: false,
     canonical: false,
+    readiness,
   };
 }
 
@@ -88,9 +91,25 @@ export function discoveredExact(
     engineUsable: boolean;
     existing: boolean;
     route: FinalRoute;
+    readiness?: ClientReadinessState;
   },
   sessionId: string,
 ): Extract<ScanImportV2Result, { kind: 'discovered_exact' }> {
+  const readiness: ClientReadinessState =
+    created.readiness ??
+    {
+      ready: created.productionReady,
+      productionReady: created.productionReady,
+      missingCritical: ledger.missingCritical,
+      criticalGapsKnown: true,
+      roleReadiness: null,
+      assessmentVersion: null,
+      assessmentHash: null,
+      assessmentSessionId: null,
+    };
+  const finalLedger = created.readiness?.criticalGapsKnown
+    ? { ...ledger, missingCritical: [...created.readiness.missingCritical] }
+    : ledger;
   const canonical = created.route === 'PR';
   const product: ExactCandidate = {
     productId: created.productId,
@@ -112,7 +131,7 @@ export function discoveredExact(
   };
   const stage: DiscoveryStage = created.engineUsable
     ? 'engine_ready'
-    : ledger.missingCritical.length === 0
+    : finalLedger.missingCritical.length === 0
       ? 'behaviour_bound'
       : 'exact_sku_created';
   return {
@@ -121,15 +140,16 @@ export function discoveredExact(
     sessionId,
     product,
     stage,
-    ledger,
+    ledger: finalLedger,
     engineReady: created.engineUsable,
     behaviour: created.engineUsable
       ? { outcome: 'classified', bindingId: null }
       : { outcome: 'unknown_requires_review', bindingId: null },
     canonical,
     readiness: {
+      ...readiness,
       engineReady: created.engineUsable,
-      missingCritical: ledger.missingCritical,
+      missingCritical: finalLedger.missingCritical,
       note: created.engineUsable
         ? null
         : 'technical profile incomplete or ProductBehaviour unresolved — exact identity preserved, not usable by the Engine yet',
@@ -267,14 +287,14 @@ export async function continueDiscovery(
         plain Polish from `missingCritical`, by the screen that asks for it.
       */
       return {
-        ...pending({ ...session, missingCritical: f.missingCritical }),
+        ...pending({ ...session, missingCritical: f.missingCritical }, null, null, f.readiness),
         note: null,
         diagnostics: f.reasons,
-        assessmentHash: f.assessmentHash ?? null,
+        assessmentHash: f.assessmentHash ?? f.readiness?.assessmentHash ?? null,
       };
     case 'assessment_stale':
       return {
-        ...pending(session),
+        ...pending(session, null, null, f.readiness),
         note: 'Dane produktu zmieniły się w trakcie zapisu. Spróbuj jeszcze raz.',
         diagnostics: ['scan_assessment_stale'],
       };

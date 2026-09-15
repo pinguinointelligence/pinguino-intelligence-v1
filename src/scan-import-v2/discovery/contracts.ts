@@ -205,6 +205,22 @@ export type AnalyzeOutcome =
  */
 export type FinalRoute = 'PR' | 'PM_READY' | 'PM_UNVERIFIED';
 
+/**
+ * One normalized readiness snapshot carried across the adapter boundary. `null` means the current
+ * response shape did not expose that optional field; it is never reconstructed from diagnostics.
+ */
+export interface ClientReadinessState {
+  ready: boolean | null;
+  productionReady: boolean | null;
+  missingCritical: readonly string[];
+  /** distinguishes an authoritative empty array from an absent legacy field */
+  criticalGapsKnown: boolean;
+  roleReadiness: string | null;
+  assessmentVersion: string | null;
+  assessmentHash: string | null;
+  assessmentSessionId: string | null;
+}
+
 export type FinalizeOutcome =
   | {
       kind: 'created';
@@ -215,6 +231,8 @@ export type FinalizeOutcome =
       route: FinalRoute;
       finalConfidence: number | null;
       productionReady: boolean;
+      /** canonical server readiness, retained alongside the legacy fields above */
+      readiness?: ClientReadinessState;
     }
   | { kind: 'family_confirmation_required'; options: readonly CustomerFamily[] }
   /**
@@ -229,11 +247,13 @@ export type FinalizeOutcome =
       reasons: readonly string[];
       /** hash of the assessment this verdict belongs to; sent back on save so the two cannot differ */
       assessmentHash?: string | null;
+      /** canonical server readiness, retained separately from diagnostic `reasons` */
+      readiness?: ClientReadinessState;
     }
   | { kind: 'profile_rejected'; reason: string }
   | { kind: 'identity_required' }
   /** the save was asked to persist a verdict the customer had not been shown; ask them to repeat it */
-  | { kind: 'assessment_stale' };
+  | { kind: 'assessment_stale'; readiness?: ClientReadinessState };
 
 export type RequestOutcome =
   | { kind: 'product_request'; requestId: string; status: string }

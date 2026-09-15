@@ -9,6 +9,7 @@ import { NetworkError } from '../contracts';
 import { withProductScanFinalizeV2Contract } from '../../features/product-scanner/productScanFinalizeContract';
 import type {
   AnalyzeOutcome,
+  ClientReadinessState,
   DiscoveryPort,
   DiscoverySession,
   FactLedger,
@@ -55,6 +56,65 @@ export function legacyBarcode(identity: CodeIdentity): {
 
 function obj(v: unknown): Record<string, unknown> {
   return v && typeof v === 'object' ? (v as Record<string, unknown>) : {};
+}
+
+function stringOrNull(v: unknown): string | null {
+  return typeof v === 'string' && v.trim() ? v : null;
+}
+
+function boolOrNull(v: unknown): boolean | null {
+  return typeof v === 'boolean' ? v : null;
+}
+
+function stringList(v: unknown): string[] | null {
+  return Array.isArray(v)
+    ? (v.filter((entry): entry is string => typeof entry === 'string') as string[])
+    : null;
+}
+
+/**
+ * Normalize the current finalize assessment once. The server remains the only readiness authority;
+ * the fallbacks cover the preview/saved response shapes and do not rebuild gaps from local fields.
+ */
+function readinessFromServer(
+  d: Record<string, unknown>,
+  fallbackMissing: readonly string[] = [],
+): ClientReadinessState {
+  const assessment = obj(d['assessment']);
+  const productAccuracyAssessment = obj(
+    obj(d['profile'])['productAccuracyAssessment'] ?? d['productAccuracyAssessment'],
+  );
+  const directCriticalGaps = stringList(d['criticalGaps']);
+  const assessmentCriticalGaps = stringList(assessment['criticalGaps']);
+  const productAccuracyCriticalBlockers = stringList(
+    productAccuracyAssessment['criticalBlockers'],
+  );
+  const criticalGaps =
+    directCriticalGaps ??
+    assessmentCriticalGaps ??
+    productAccuracyCriticalBlockers ??
+    [...fallbackMissing];
+  const productionReady =
+    boolOrNull(d['productionReady']) ?? boolOrNull(assessment['productionReady']);
+  return {
+    ready: boolOrNull(d['ready']) ?? productionReady,
+    productionReady,
+    missingCritical: criticalGaps,
+    criticalGapsKnown:
+      directCriticalGaps !== null ||
+      assessmentCriticalGaps !== null ||
+      productAccuracyCriticalBlockers !== null ||
+      fallbackMissing.length > 0,
+    roleReadiness:
+      stringOrNull(productAccuracyAssessment['roleReadiness']) ??
+      stringOrNull(assessment['roleReadiness']),
+    assessmentVersion:
+      stringOrNull(d['assessmentVersion']) ?? stringOrNull(assessment['assessmentVersion']),
+    assessmentHash:
+      stringOrNull(d['assessmentHash']) ?? stringOrNull(assessment['assessmentHash']),
+    assessmentSessionId:
+      stringOrNull(d['sessionId']) ?? stringOrNull(assessment['sessionId']),
+  };
 }
 
 function exactFromServer(p: Record<string, unknown>, identity: CodeIdentity): ExactCandidate {
@@ -280,7 +340,7 @@ export function createSupabaseDiscoveryPort(
           };
         case 'scan_assessment_stale':
           // the verdict moved between the screen and the save; the customer repeats, nothing is written
-          return { kind: 'assessment_stale' };
+          return { kind: 'assessment_stale', readiness: readinessFromServer(d) };
         case 'customer_product_not_ready': {
           // the profile/ProductBehaviour authorities refused an Engine product; carry WHY (never invent readiness)
           const assessment = obj(
@@ -301,29 +361,26 @@ export function createSupabaseDiscoveryPort(
                 ]
               : []),
           ];
+          const readiness = readinessFromServer(d);
           return {
             kind: 'not_ready',
-            missingCritical: Array.isArray(d['criticalGaps'])
-              ? (d['criticalGaps'] as string[])
-              : Array.isArray(obj(d['productAccuracyAssessment'])['criticalBlockers'])
-                ? (obj(d['productAccuracyAssessment'])['criticalBlockers'] as string[])
-                : [],
+            missingCritical: readiness.missingCritical,
             // DIAGNOSTIC ONLY — never rendered to a customer (see FinalizeOutcome)
             reasons: reasons.length > 0 ? reasons : ['customer_product_not_ready'],
-            assessmentHash:
-              typeof d['assessmentHash'] === 'string' ? (d['assessmentHash'] as string) : null,
+            assessmentHash: readiness.assessmentHash,
+            readiness,
           };
         }
-        case 'profile_preview':
+        case 'profile_preview': {
+          const readiness = readinessFromServer(d);
           return {
             kind: 'not_ready',
-            missingCritical: Array.isArray(d['criticalGaps'])
-              ? (d['criticalGaps'] as string[])
-              : [],
+            missingCritical: readiness.missingCritical,
             reasons: ['profile_preview'],
-            assessmentHash:
-              typeof d['assessmentHash'] === 'string' ? (d['assessmentHash'] as string) : null,
+            assessmentHash: readiness.assessmentHash,
+            readiness,
           };
+        }
         default: {
           // the RPC decided the route from the canonical profile; never re-derive it here
           const code = typeof d['productCode'] === 'string' ? (d['productCode'] as string) : null;
@@ -336,6 +393,16 @@ export function createSupabaseDiscoveryPort(
                 : d['engineUsable'] === true
                   ? 'PM_READY'
                   : 'PM_UNVERIFIED';
+          const rawReadiness = readinessFromServer(d);
+          const productionReady =
+            typeof d['productionReady'] === 'boolean'
+              ? (d['productionReady'] as boolean)
+              : (rawReadiness.productionReady ?? false);
+          const readiness: ClientReadinessState = {
+            ...rawReadiness,
+            ready: rawReadiness.ready ?? productionReady,
+            productionReady,
+          };
           return {
             kind: 'created',
             productId: String(d['productId'] ?? ''),
@@ -345,7 +412,8 @@ export function createSupabaseDiscoveryPort(
             route,
             finalConfidence:
               typeof d['finalConfidence'] === 'number' ? (d['finalConfidence'] as number) : null,
-            productionReady: d['productionReady'] === true,
+            productionReady,
+            readiness,
           };
         }
       }
