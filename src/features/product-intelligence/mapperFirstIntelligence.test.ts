@@ -39,11 +39,7 @@ import {
   runIntimportLocalIntelligence,
   summarizeIntimportReadiness,
 } from './intimportIntelligence';
-import {
-  ENGINE_REQUIRED_WORKING_FIELDS,
-  ESTIMATED_READY_FLOOR,
-  resolveProductWorkingValues,
-} from './productWorkingValues';
+import { ESTIMATED_READY_FLOOR, resolveProductWorkingValues } from './productWorkingValues';
 import { classifyProductSemantics } from './productRecognition';
 
 const FINGERPRINT = 'b13f5db4affd9c3be5ccbe59b40920053197a3697a3fa1bd4a859406e8baed38';
@@ -321,15 +317,44 @@ describe('mapper inference', () => {
 
 describe('working values and readiness', () => {
   const knowledge = buildMapperKnowledge(COCOA_BUTTER, FINGERPRINT);
+  const cocoaButterSemantic = {
+    ...classifyProductSemantics({
+      name: 'Masło kakaowe',
+      brand: null,
+      manufacturer: null,
+      manufacturerCode: null,
+      gtin: null,
+      productType: 'food ingredient',
+      category: 'cocoa',
+      subcategory: 'cocoa butter',
+      variant: null,
+      ingredients: 'Masło kakaowe',
+      nutrition: 'fat:100',
+      description: 'Tłuszcz kakaowy do produkcji lodów.',
+      dosage: null,
+      technicalParameters: null,
+      sourceUrls: [],
+    }),
+    productArchetype: 'CHOCOLATE' as const,
+    ingredientFamily: 'cocoa_butter' as const,
+    physicalForm: 'SOLID' as const,
+    intendedUsageRole: 'BASE_ONLY' as const,
+    modelRequired: false,
+  };
 
   const cocoaButterProduct = {
     declared: {},
     declaredConfidence: 0.95,
-    identity: { name: 'Masło kakaowe', category: 'chocolate', subcategory: 'cocoa butter' },
+    identity: {
+      name: 'Masło kakaowe',
+      category: 'chocolate',
+      subcategory: 'cocoa butter',
+      semantic: cocoaButterSemantic,
+    },
     technical: false,
   };
 
-  it('gives an unmeasured product real working numbers the Engine can use', () => {
+  it('gives an unmeasured product with resolved semantics real working numbers the Engine can use', () => {
     const resolved = resolveProductWorkingValues(cocoaButterProduct, knowledge);
     // The value lands in the canonical field, not in a side-channel.
     expect(resolved.values.fat_percent).toBeGreaterThan(99);
@@ -355,7 +380,11 @@ describe('working values and readiness', () => {
 
   it('flags a declaration the Mapper strongly disagrees with, without acting on it', () => {
     const resolved = resolveProductWorkingValues(
-      { ...cocoaButterProduct, declared: { fat_percent: 3 } },
+      {
+        ...cocoaButterProduct,
+        identity: { ...cocoaButterProduct.identity, semantic: undefined },
+        declared: { fat_percent: 3 },
+      },
       knowledge,
     );
     expect(resolved.values.fat_percent).toBe(3);
@@ -386,7 +415,8 @@ describe('working values and readiness', () => {
       knowledge,
     );
     expect(resolved.readiness).toBe('REVIEW');
-    expect(resolved.missingEngineFields.length).toBe(ENGINE_REQUIRED_WORKING_FIELDS.length);
+    expect(resolved.missingEngineFields).toEqual([]);
+    expect(resolved.criticalPhysicsBlockers).toEqual([]);
   });
 
   it('closes water and total solids against each other, and marks the result derived', () => {
@@ -749,7 +779,7 @@ describe('INTIMPORT wiring', () => {
     expect(first?.workingValues).not.toBeNull();
     expect(first?.workingValues?.values.fat_percent).toBeGreaterThan(99);
     // Composition readiness is reported on its own axis.
-    expect(summary.valueReadiness).toEqual({ READY: 0, ESTIMATED_READY: 1, REVIEW: 0 });
+    expect(summary.valueReadiness).toEqual({ READY: 1, ESTIMATED_READY: 0, REVIEW: 0 });
     expect(summary.mapperContributed).toBe(1);
   });
 
@@ -893,7 +923,7 @@ describe('engine readiness contract', () => {
     expect(resolved.valueReadiness).toBe('READY');
   });
 
-  it('keeps genuinely unresolved water/solids as a critical composition blocker', () => {
+  it('defers water/solids requirement gaps while semantics are unresolved', () => {
     const resolved = resolveProductWorkingValues(
       {
         ...base,
@@ -913,7 +943,7 @@ describe('engine readiness contract', () => {
 
     expect(resolved.values.water_percent).toBeNull();
     expect(resolved.values.total_solids_percent).toBeNull();
-    expect(resolved.criticalPhysicsBlockers).toContain('MISSING_WATER_PERCENT');
+    expect(resolved.criticalPhysicsBlockers).not.toContain('MISSING_WATER_PERCENT');
     expect(resolved.engineReady).toBe(false);
   });
 

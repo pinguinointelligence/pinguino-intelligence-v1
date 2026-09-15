@@ -346,7 +346,15 @@ export function assessProductProductionAccuracy(
   for (const [field, weight] of nutritionWeights) addTruth('nutrition', field, weight);
 
   const role = recognition?.intendedUsageRole ?? input.behavior.intendedUsageRole;
-  const toppingOnly = role === 'TOPPING_ONLY';
+  const semanticsResolved =
+    recognition != null &&
+    recognition.modelRequired === false &&
+    recognition.productArchetype !== 'UNKNOWN' &&
+    recognition.ingredientFamily !== 'unknown' &&
+    recognition.physicalForm !== 'UNKNOWN' &&
+    role !== 'NEITHER_REVIEW';
+  const toppingOnly = semanticsResolved && role === 'TOPPING_ONLY';
+  const baseRequirementsApplicable = semanticsResolved && !toppingOnly;
 
   // Engine physics — 25. For a true topping, base-freezing physics is outside
   // the accepted role and therefore not a missing requirement.
@@ -513,17 +521,19 @@ export function assessProductProductionAccuracy(
     'protein_percent',
     'carbohydrate_percent',
     'total_sugars_percent',
-    'salt_percent',
-    'kcal_per_100g',
   ] as const satisfies readonly WorkingNumericField[]) {
     if (truthCredit(input, field) === 0) {
       criticalBlockers.add(`NUTRITION_FACT_REQUIRED:${field}`);
     }
   }
-  if (dosageRequired && !dosageResolved) {
+  if (semanticsResolved && dosageRequired && !dosageResolved) {
     criticalBlockers.add('TECHNICAL_DOSAGE_AUTHORITY_REQUIRED');
   }
-  if (recognition?.isTechnicalProduct && input.behavior.classificationOutcome !== 'classified') {
+  if (
+    semanticsResolved &&
+    recognition?.isTechnicalProduct &&
+    input.behavior.classificationOutcome !== 'classified'
+  ) {
     criticalBlockers.add('TECHNICAL_DOSAGE_AUTHORITY_REQUIRED');
   }
   if (toppingOnly) {
@@ -534,9 +544,11 @@ export function assessProductProductionAccuracy(
       }
     }
   } else {
-    for (const blocker of input.criticalPhysicsBlockers) criticalBlockers.add(blocker);
-    if (!input.engineUsable && input.criticalPhysicsBlockers.length === 0) {
-      criticalBlockers.add('PRODUCT_ENGINE_NOT_READY');
+    if (baseRequirementsApplicable) {
+      for (const blocker of input.criticalPhysicsBlockers) criticalBlockers.add(blocker);
+      if (!input.engineUsable && input.criticalPhysicsBlockers.length === 0) {
+        criticalBlockers.add('PRODUCT_ENGINE_NOT_READY');
+      }
     }
     if (!acceptedForRole) {
       for (const reason of input.behavior.classificationReasonCodes) criticalBlockers.add(reason);
@@ -576,7 +588,7 @@ export function assessProductProductionAccuracy(
   const criticalCapApplied = false;
   const productAccuracy = rawProductAccuracy;
   const baseEngineReady =
-    !toppingOnly &&
+    baseRequirementsApplicable &&
     input.engineUsable &&
     input.behavior.baseRecipeEligible &&
     blockerList.length === 0;

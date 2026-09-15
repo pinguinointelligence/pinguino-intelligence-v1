@@ -238,9 +238,9 @@ describe('Scanner Section 4.3 material-conflict Rescue input contract', () => {
 
     expect(proposal?.declared.salt_percent).toBe(0.1);
     expect(profile?.fieldTruth.salt_percent).toBeUndefined();
-    expect(profile?.unresolvedEngineFieldReasons.salt_percent).toEqual([
-      'RESCUE_INPUT_MATERIAL_CONFLICT:nutrition.salt',
-    ]);
+    // Salt is optional in the Engine contract, so an unresolved salt conflict
+    // is retained in the session but never becomes a required-field Rescue gap.
+    expect(profile?.unresolvedEngineFieldReasons.salt_percent).toBeUndefined();
   });
 
   it('SCN-4.3-FIX-03 allows safe Rescue when the conflict is unrelated', () => {

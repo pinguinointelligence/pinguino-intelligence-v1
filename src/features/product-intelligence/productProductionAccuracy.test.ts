@@ -174,19 +174,23 @@ describe('one production-oriented Product Accuracy authority', () => {
     expect(result.metadataCompleteness.score).toBeCloseTo(33.33, 2);
   });
 
-  it('keeps a high-accuracy product NOT READY when a genuinely critical fact is missing', () => {
+  it('does not make optional or Engine-derived nutrition values source-required blockers', () => {
     const fields = completeFieldTruth();
     delete fields.salt_percent;
+    delete fields.kcal_per_100g;
     const result = assessProductProductionAccuracy(
       baseInput({
         fieldTruth: fields,
-        engineUsable: false,
-        criticalPhysicsBlockers: ['MISSING_SALT_PERCENT'],
+        engineUsable: true,
       }),
     );
 
-    expect(result.gellattiReadiness.ready).toBe(false);
-    expect(result.gellattiReadiness.blockers).toContain('MISSING_SALT_PERCENT');
+    expect(result.gellattiReadiness.ready).toBe(true);
+    expect(result.gellattiReadiness.blockers).not.toContain('MISSING_SALT_PERCENT');
+    expect(result.gellattiReadiness.blockers).not.toContain('NUTRITION_FACT_REQUIRED:salt_percent');
+    expect(result.gellattiReadiness.blockers).not.toContain(
+      'NUTRITION_FACT_REQUIRED:kcal_per_100g',
+    );
     expect(result.productAccuracy).toBe(result.rawProductAccuracy);
     expect(result.criticalCapApplied).toBe(false);
   });
