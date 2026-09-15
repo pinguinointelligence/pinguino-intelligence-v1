@@ -4,6 +4,7 @@
  * missing (`ambiguous`, `invalid_code`, `offline`) are first-class here.
  */
 import type { ConfirmedScan, ConfirmedSymbology } from '@/scan-contract/confirmedScan';
+import type { ScanRunAuthority } from './runAuthority';
 
 export type InvalidCodeReason =
   | 'not_confirmed'
@@ -55,6 +56,8 @@ export interface RequestContext {
   online: boolean;
   surface: 'HOME' | 'PRO' | 'TEST';
   now: number;
+  /** The unique user scan invocation; barcode identity alone is not a run authority. */
+  scanRun?: ScanRunAuthority;
   /** Mapper slot hint from label recognition, used only when the code itself is unknown */
   slotHint?: string | null;
 }

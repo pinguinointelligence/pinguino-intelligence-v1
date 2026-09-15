@@ -2,6 +2,12 @@ export * from './contracts';
 export { identifyCode, gtinValid, gtinCheckDigit, expandUpce } from './codeIdentity';
 export { resolveIdentity, topCandidates, strengthScore } from './resolver';
 export { runScanImportV2, idempotencyKey, CONFIDENCE } from './pipeline';
+export {
+  assertScanRunCurrent,
+  isStaleScanRunError,
+  StaleScanRunError,
+  type ScanRunAuthority,
+} from './runAuthority';
 export { compareWithLegacy } from './legacyComparison';
 export * from './discovery/contracts';
 export { buildLedger, stageFromLedger } from './discovery/ledger';

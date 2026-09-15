@@ -4,9 +4,10 @@
  * product-request lifecycle (`gellatti_submit_product_request_v1`, `gellatti_my_product_requests_v1`).
  * Request/response shapes mirror `src/services/productScanner.ts` exactly; nothing legacy is modified.
  */
-import type { CodeIdentity, ExactCandidate } from '../contracts';
+import type { CodeIdentity, ExactCandidate, RequestContext } from '../contracts';
 import { NetworkError } from '../contracts';
 import { withProductScanFinalizeV2Contract } from '../../features/product-scanner/productScanFinalizeContract';
+import { assertScanRunCurrent } from '../runAuthority';
 import type {
   AnalyzeOutcome,
   ClientReadinessState,
@@ -162,21 +163,23 @@ export function createSupabaseDiscoveryPort(
   options: { newSessionId?: () => string } = {},
 ): DiscoveryPort {
   const newId = options.newSessionId ?? (() => globalThis.crypto.randomUUID());
-  const sessions = new Map<string, DiscoverySession>();
+  const sessionsByRun = new Map<string, DiscoverySession>();
+  const sessionsById = new Map<string, DiscoverySession>();
   /*
-    Recognition prefetch and startDiscovery intentionally race the same logical lookup. `ctx.now`
-    identifies one scanner run, so both readers share one promise while a later rescan (including
-    a retry after provider failure) gets a fresh request and receipt.
+    Recognition prefetch and startDiscovery intentionally race the same logical lookup. The
+    explicit scan-run id identifies one scanner run, so both readers share one promise while a
+    later rescan (including a retry after provider failure) gets a fresh request and receipt.
   */
   const researchByRun = new Map<string, Promise<ResearchOutcome>>();
-  const adopt = (session: DiscoverySession): DiscoverySession => {
-    const s = sessions.get(session.identity.canonicalGtin13);
-    if (s) return s;
-    sessions.set(session.identity.canonicalGtin13, session);
+  const remember = (session: DiscoverySession): DiscoverySession => {
+    sessionsById.set(session.sessionId, session);
     return session;
   };
-  const sessionFor = (identity: CodeIdentity): DiscoverySession => {
-    let s = sessions.get(identity.canonicalGtin13);
+  const adopt = (session: DiscoverySession): DiscoverySession =>
+    sessionsById.get(session.sessionId) ?? remember(session);
+  const sessionFor = (identity: CodeIdentity, ctx: RequestContext): DiscoverySession => {
+    const runKey = `${ctx.accountId ?? 'guest'}:${ctx.scanRun?.id ?? ctx.now}:${identity.canonicalGtin13}`;
+    let s = sessionsByRun.get(runKey);
     if (!s) {
       s = {
         sessionId: newId(),
@@ -186,7 +189,8 @@ export function createSupabaseDiscoveryPort(
         missingCritical: [],
         usage: { visionCalls: 0, webCalls: 0 },
       };
-      sessions.set(identity.canonicalGtin13, s);
+      sessionsByRun.set(runKey, s);
+      remember(s);
     }
     return s;
   };
@@ -248,17 +252,20 @@ export function createSupabaseDiscoveryPort(
 
   return {
     research(identity, ctx): Promise<ResearchOutcome> {
-      const runKey = `${ctx.accountId ?? 'guest'}:${identity.canonicalGtin13}:${ctx.now}`;
+      assertScanRunCurrent(ctx);
+      const runKey = `${ctx.accountId ?? 'guest'}:${ctx.scanRun?.id ?? ctx.now}:${identity.canonicalGtin13}`;
       const current = researchByRun.get(runKey);
       if (current) return current;
       const request = (async (): Promise<ResearchOutcome> => {
-        const s = sessionFor(identity);
+        assertScanRunCurrent(ctx);
+        const s = sessionFor(identity, ctx);
         const d = await invoke('product-scan-analyze', {
           sessionId: s.sessionId,
           mode: 'ean_lookup',
           images: [],
           barcode: legacyBarcode(identity),
         });
+        assertScanRunCurrent(ctx);
         if (d['kind'] === 'existing_product')
           return {
             kind: 'existing_product',
@@ -283,30 +290,34 @@ export function createSupabaseDiscoveryPort(
       if (researchByRun.size > 32) researchByRun.delete(researchByRun.keys().next().value!);
       return request;
     },
-    async analyzeLabel(session, images): Promise<AnalyzeOutcome> {
+    async analyzeLabel(session, images, ctx): Promise<AnalyzeOutcome> {
+      // The session itself is adopted by id, never by canonical barcode.
+      assertScanRunCurrent(ctx);
       const s = adopt(session);
       const d = await invoke('product-scan-analyze', {
         sessionId: s.sessionId,
         images: [...images],
-        barcode: legacyBarcode(session.identity),
+        barcode: legacyBarcode(s.identity),
         accurateRetry: false,
         missingFields: [...s.missingCritical],
       });
-      if (d['kind'] === 'existing_product')
-        return {
-          kind: 'existing_product',
-          product: exactFromServer(obj(d['product']), session.identity),
-        };
-      return { kind: 'analyzed', session: applySession(s, d) };
+      assertScanRunCurrent(ctx);
+      return d['kind'] === 'existing_product'
+        ? {
+            kind: 'existing_product',
+            product: exactFromServer(obj(d['product']), s.identity),
+          }
+        : { kind: 'analyzed', session: applySession(s, d) };
     },
     async finalize(session, input, ctx, saveUnverified): Promise<FinalizeOutcome> {
+      assertScanRunCurrent(ctx);
       const s = adopt(session);
       let d: Record<string, unknown>;
       try {
         const finalizeBody = withProductScanFinalizeV2Contract({
           action: saveUnverified === true ? 'save_unverified' : 'finalize',
           sessionId: s.sessionId,
-          idempotencyKey: `scan-import-v2:${ctx.accountId}:${session.identity.canonicalGtin13}:finalize`,
+          idempotencyKey: `scan-import-v2:${ctx.accountId}:${s.sessionId}:finalize`,
           customerFamily: input.customerFamily ?? null,
           automaticEvidence: input.automaticEvidence ?? null,
           confirmations: input.confirmations ?? {},
@@ -322,6 +333,7 @@ export function createSupabaseDiscoveryPort(
         if (/customer_product_identity_required/.test(m)) return { kind: 'identity_required' };
         throw error;
       }
+      assertScanRunCurrent(ctx);
       switch (d['kind']) {
         case 'family_confirmation_required':
           return {
@@ -419,10 +431,11 @@ export function createSupabaseDiscoveryPort(
       }
     },
     async submitRequest(identity, ledger, session, ctx): Promise<RequestOutcome> {
+      assertScanRunCurrent(ctx);
       const { data, error } = await client.rpc('gellatti_submit_product_request_v1', {
         p_scan_session_id: session?.sessionId ?? null,
         p_market_country_code: ctx.productCountry,
-        p_idempotency_key: `scan-import-v2:${ctx.accountId}:${identity.canonicalGtin13}:request`,
+        p_idempotency_key: `scan-import-v2:${ctx.accountId}:${session?.sessionId ?? ctx.scanRun?.id ?? identity.canonicalGtin13}:request`,
         p_payload: {
           result: ledgerToLegacyResult(identity, ledger),
           provenance: {
@@ -433,6 +446,7 @@ export function createSupabaseDiscoveryPort(
           },
         },
       });
+      assertScanRunCurrent(ctx);
       if (error) {
         if (NETWORK.test(error.message)) throw new NetworkError(error.message);
         throw new Error(`submit_product_request: ${error.message}`);

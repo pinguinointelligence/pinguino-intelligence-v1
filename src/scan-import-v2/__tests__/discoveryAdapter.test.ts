@@ -7,6 +7,7 @@ import {
 } from '../adapters/supabaseDiscoveryAdapter';
 import { identifyCode } from '../codeIdentity';
 import { buildLedger } from '../discovery/ledger';
+import type { ScanRunAuthority } from '../runAuthority';
 import { scan } from './codeIdentity.test';
 import { ctx } from './fakes';
 
@@ -15,6 +16,12 @@ const id = (v: string, s: Parameters<typeof scan>[1] = 'EAN-13') => {
   if (!r.ok) throw new Error(r.reason);
   return r.identity;
 };
+
+const run = (id: string, barcode: string, current: () => boolean): ScanRunAuthority => ({
+  id,
+  barcode,
+  isCurrent: current,
+});
 
 function client(responses: Record<string, unknown>, rpcs: Record<string, unknown> = {}) {
   const calls: { name: string; body: unknown }[] = [];
@@ -108,6 +115,40 @@ describe('Supabase discovery adapter (stub) — mirrors the legacy scan-session 
       },
     });
   });
+  it('allocates a distinct server session for each scan run, even when the EAN is identical', async () => {
+    const c = client({
+      'product-scan-analyze': {
+        sessionId: 'server-session-is-not-authoritative',
+        result: { identity: { displayName: 'Same code' } },
+        overlayState: 'SCAN_DRAFT',
+        missingCriticalFields: [],
+        usage: { visionCalls: 0, webCalls: 1 },
+      },
+    });
+    let active = 'A';
+    const barcode = '4305615614434';
+    const first = run('A', barcode, () => active === 'A');
+    const second = run('B', barcode, () => active === 'B');
+    const port = createSupabaseDiscoveryPort(c, {
+      newSessionId: (() => {
+        let n = 0;
+        return () => `session-${++n}`;
+      })(),
+    });
+
+    const a = await port.research(id(barcode), ctx({ scanRun: first }));
+    active = 'B';
+    const b = await port.research(id(barcode), ctx({ scanRun: second }));
+
+    expect(a.kind).toBe('researched');
+    expect(b.kind).toBe('researched');
+    if (a.kind === 'researched' && b.kind === 'researched') {
+      expect(a.session.sessionId).toBe('session-1');
+      expect(b.session.sessionId).toBe('session-2');
+      expect(a.session).not.toBe(b.session);
+    }
+    expect(c.calls).toHaveLength(2);
+  });
   it('label analysis sends images + barcode + missingFields on the same session; finalize maps every server kind', async () => {
     const c = client({
       'product-scan-analyze': {
@@ -161,7 +202,7 @@ describe('Supabase discovery adapter (stub) — mirrors the legacy scan-session 
       action: 'finalize',
       contractVersion: 'PRODUCT_SCAN_FINALIZE_V2',
       sessionId: 'S1',
-      idempotencyKey: 'scan-import-v2:user-1:4305615614434:finalize',
+      idempotencyKey: 'scan-import-v2:user-1:S1:finalize',
       customerFamily: 'other',
     });
     // OWNER CONTRACT 2026-09-07: the server names the route; the adapter never re-derives it.

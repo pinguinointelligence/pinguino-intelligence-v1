@@ -4,8 +4,29 @@ import { FakeDiscovery } from './fakeDiscovery';
 import { HACENDADO, LACIATE, ctx, ports, product } from './fakes';
 import { idempotencyKey, runScanImportV2 } from '../pipeline';
 import type { ExternalEvidence } from '../contracts';
+import type { ScanRunAuthority } from '../runAuthority';
 
 describe('Scan Import 2.0 pipeline — owner test matrix', () => {
+  it('stops a superseded run before import or offline-cache side effects', async () => {
+    let active = 'A';
+    const runA: ScanRunAuthority = {
+      id: 'A',
+      barcode: '8402001047251',
+      isCurrent: () => active === 'A',
+    };
+    const p = ports();
+    p.price.priceState = async () => {
+      active = 'B';
+      return { state: 'missing', pricePerKg: null, currency: null, source: 'missing' };
+    };
+
+    await expect(
+      runScanImportV2(scan(runA.barcode), ctx({ scanRun: runA }), p),
+    ).rejects.toMatchObject({ code: 'stale_scan_run' });
+    expect(p.importer.calls).toBe(0);
+    expect(p.offlineCache.entries.size).toBe(0);
+  });
+
   it('1/22. known exact EAN (authenticated): resolved_exact from the catalogue, imported/linked, confidence 97', async () => {
     const p = ports();
     const r = await runScanImportV2(scan('5900820012434'), ctx(), p);

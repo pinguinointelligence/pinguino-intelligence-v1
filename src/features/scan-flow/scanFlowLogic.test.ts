@@ -150,7 +150,7 @@ describe('scan flow — pure rules', () => {
     expect(scan?.confirmation.sources).toEqual(['manual']);
     expect(scan?.provenance.trackId).toBe('manual');
     expect(manualConfirmedScan('036000291452')?.symbology).toBe('UPC-A');
-    expect(manualConfirmedScan('96385074')?.symbology).toBe('EAN-8');
+    expect(manualConfirmedScan('96385074')).toBeNull();
     expect(manualConfirmedScan('123')).toBeNull();
     expect(manualConfirmedScan('12345678901234')).toBeNull();
   });
