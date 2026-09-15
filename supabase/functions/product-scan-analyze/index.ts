@@ -15,8 +15,15 @@ import {
   validateServerResult,
   webCallsInResponse,
 } from '../_shared/productScanner.ts';
-import { resolveCanonicalEanIdentity } from '../../../src/features/product-scanner/canonicalEanIdentity.ts';
 import { requestedLabelFields } from '../../../src/features/product-scanner/labelAnalysisRequest.ts';
+import {
+  candidateFromGtinRow,
+  exactLookupQueries,
+  exactResolverVerdict,
+  type ExactCandidateLike,
+  type ExactLookupIdentity,
+  type GtinExactRow,
+} from '../../../src/features/product-scanner/gtinExactResolver.ts';
 // Deno loads these by relative path: the `.ts` extension is REQUIRED on a value import or the
 // deploy fails, and nothing in CI can see it.
 import {
@@ -31,7 +38,6 @@ import {
   openFoodFactsApiUrl,
   openFoodFactsFactsForExactEan,
 } from '../../../src/features/product-scanner/openFoodFactsDirectLookup.ts';
-import { publicationIdentityEligibilityFromStoredProductFacts } from '../../../src/features/product-scanner/productPublicationEligibility.ts';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -111,156 +117,104 @@ const mimeMatchesBytes = (mime: string, bytes: Uint8Array) => {
   return false;
 };
 
+type ExactProductLookup =
+  | { kind: 'EXACT_PRODUCT'; product: Record<string, unknown> }
+  | { kind: 'NO_EXACT_PRODUCT' }
+  | { kind: 'EXACT_CONFLICT'; productIds: readonly string[] };
+
+type ExactRpcClient = {
+  rpc(
+    fn: string,
+    args?: Record<string, unknown>,
+  ): PromiseLike<{ data: unknown; error: { message: string } | null }>;
+};
+
+/** The browser adapter and this Edge function both ask the same caller-scoped exact RPC. */
+async function exactRowsForIdentity(
+  resolverClient: ExactRpcClient,
+  identity: ExactLookupIdentity,
+): Promise<{ rows: GtinExactRow[]; candidates: ExactCandidateLike[] }> {
+  for (const query of exactLookupQueries(identity)) {
+    const { data, error } = await resolverClient.rpc('resolve_exact_products_by_gtin_v1', {
+      p_gtin: query.gtin,
+      p_symbology: query.symbology,
+    });
+    if (error) throw new Error(`exact_resolver_failed: ${error.message}`);
+    const rows = Array.isArray(data) ? (data as GtinExactRow[]) : [];
+    const candidates = rows
+      .map((row) => candidateFromGtinRow(row))
+      .filter((candidate): candidate is ExactCandidateLike => candidate !== null);
+    if (candidates.length > 0) return { rows, candidates };
+  }
+  return { rows: [], candidates: [] };
+}
+
 async function exactProductForBarcode(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   service: ReturnType<typeof createClient<any>>,
-  barcode: string | null,
-  actorUserId: string,
-) {
-  if (!barcode) return null;
-  const digits = barcode.replace(/\D/g, '');
-  if (![8, 12, 13].includes(digits.length)) return null;
-  const candidates = new Set([digits]);
-  if (digits.length === 12) candidates.add(`0${digits}`);
-  if (digits.length === 13 && digits.startsWith('0')) candidates.add(digits.slice(1));
-  const { data } = await service
-    .from('product_variants')
-    .select(
-      'product_id,ean,products!inner(id,is_active,merged_into_product_id,product_name_display,brand,product_kind,visibility,owner_user_id,canonical_verification_status,product_code,current_version_id)',
-    )
-    .in('ean', [...candidates])
-    .eq('is_current', true)
-    .limit(1)
-    .maybeSingle();
-  const related = data?.products as unknown;
-  const variantProduct = Array.isArray(related) ? objectValue(related[0]) : objectValue(related);
+  resolverClient: ExactRpcClient,
+  identity: ExactLookupIdentity | null,
+): Promise<ExactProductLookup> {
+  if (!identity) return { kind: 'NO_EXACT_PRODUCT' };
+  const { rows, candidates } = await exactRowsForIdentity(resolverClient, identity);
+  const verdict = exactResolverVerdict(candidates);
+  if (verdict.kind === 'NO_EXACT_PRODUCT') return verdict;
+  if (verdict.kind === 'EXACT_CONFLICT')
+    return {
+      kind: verdict.kind,
+      productIds: verdict.candidates.map((candidate) => candidate.productId),
+    };
 
-  /*
-    THE VARIANT ROW IS THE ADDRESS, NOT THE ANSWER.
+  const candidate = verdict.product;
+  const row = rows.find((item) => item.product_id === candidate.productId);
+  if (!row) throw new Error('exact_resolver_row_missing');
 
-    `product_variants_ean_uniq` is unique on `ean` regardless of `is_current`, so an EAN has
-    exactly one variant row and it can only ever address ONE product. On 2026-09-07 that row
-    still addressed home@home.com's private PM-ING-007193 (73.4, REVIEW) while the shared
-    PR-ING-007197 (94.12, BASE_READY) existed with no address at all — so its owner kept being
-    handed the worse record and every other account fell through to the full path.
-
-    So the row is read, and then the CANONICAL identity for the code is resolved from the products
-    themselves. This is a defensive fallback, not a second authority: once the variant has been
-    re-pointed (`canonicalize_ean_identity_v1`, called just below and by the finalize RPC) both
-    agree, and this lookup costs one extra indexed read on a code that has a shared product.
-  */
-  const { data: sameEan } = await service
-    .from('products')
-    .select(
-      'id,is_active,merged_into_product_id,product_name_display,brand,product_kind,visibility,owner_user_id,canonical_verification_status,product_code,current_version_id',
-    )
-    .in('barcode_normalized', [...candidates])
-    .eq('is_active', true);
-  const rows = (Array.isArray(sameEan) ? sameEan : []).map(objectValue);
-  const candidateRows = rows.length > 0 ? rows : variantProduct?.id ? [variantProduct] : [];
-  const versionIds = [
-    ...new Set(
-      candidateRows
-        .map((row) => (typeof row.current_version_id === 'string' ? row.current_version_id : null))
-        .filter((id): id is string => Boolean(id)),
-    ),
-  ];
   const factsByVersion = new Map<string, Record<string, unknown>>();
-  if (versionIds.length > 0) {
-    const { data: currentVersions } = await service
+  if (row.current_version_id) {
+    const { data: currentVersion } = await service
       .from('product_versions')
       .select('id,facts')
-      .in('id', versionIds);
-    for (const version of Array.isArray(currentVersions) ? currentVersions.map(objectValue) : []) {
-      if (typeof version.id === 'string')
-        factsByVersion.set(version.id, objectValue(version.facts));
+      .eq('id', row.current_version_id)
+      .maybeSingle();
+    if (currentVersion) {
+      const version = objectValue(currentVersion);
+      factsByVersion.set(String(row.current_version_id), objectValue(version.facts));
     }
   }
-  const eligibleCandidateRows = candidateRows.map((row) => {
-    if (row.product_kind !== 'commercial_product' || row.visibility !== 'shared') return row;
-    const facts = factsByVersion.get(String(row.current_version_id)) ?? {};
-    return {
-      ...row,
-      publication_identity_eligible:
-        publicationIdentityEligibilityFromStoredProductFacts(facts).eligible,
-    };
-  });
-  const resolution = resolveCanonicalEanIdentity(
-    eligibleCandidateRows as never,
-    actorUserId,
-    typeof variantProduct?.id === 'string' ? variantProduct.id : null,
-  );
-  if (!resolution.canonical) return null;
-  const product: Record<string, unknown> = objectValue(
-    eligibleCandidateRows.find((row) => row.id === resolution.canonical?.id) ??
-      (resolution.canonical as unknown as Record<string, unknown>),
-  );
-  if (product?.is_active !== true || (product.merged_into_product_id ?? null) !== null) return null;
-
-  // A private row that is nobody's overlay yet: only its own account may take the zero-cost path.
-  // Another customer must finish the normal flow, whose one-EAN transaction adds their relation.
-  if (product.product_kind === 'customer_provisional') {
-    const { data: linked } = await service
-      .from('customer_added_product_accounts')
-      .select('product_id')
-      .eq('product_id', String(product.id))
-      .eq('user_id', actorUserId)
-      .maybeSingle();
-    if (!linked) return null;
-  }
-
-  const facts = factsByVersion.get(String(product.current_version_id)) ?? {};
-  if (product.canonical_verification_status === 'blocked') return null;
-  if (
-    product.product_kind === 'commercial_product' &&
-    product.visibility === 'shared' &&
-    product.publication_identity_eligible !== true
-  )
-    return null;
-
-  /*
-    Self-healing runs only after the candidate passed the publication boundary. A blocked or
-    generic shared record must never become the canonical address merely because its EAN row is
-    stale. The SQL RPC repeats this eligibility check under the EAN lock.
-  */
-  if (resolution.variantNeedsRepoint) {
-    await service.rpc('canonicalize_ean_identity_v1', { p_ean: digits }).then(
-      () => undefined,
-      () => undefined,
-    );
-  }
+  const facts = factsByVersion.get(String(row.current_version_id)) ?? {};
   const intelligence = objectValue(facts.productIntelligence);
   const behavior = objectValue(intelligence.productBehaviorAuthority);
   const accuracy = Number(facts.productAccuracy);
   const roleReady =
     behavior.classificationOutcome === 'classified' &&
     (behavior.baseRecipeEligible === true || behavior.toppingEligible === true);
-  const answer: Record<string, unknown> = {
-    ...product,
-    /*
-      The evidence this product was built from, kept so a rescan can RE-EVALUATE it without
-      re-acquiring anything. The label was already read and the source already asked; both are
-      frozen here, so the derivation can be re-run for free (§ rescanEvaluation.ts).
-    */
-    stored_facts: facts,
-    /*
-      The caller's OWN private row for this code, carried separately so their prices, suppliers,
-      notes and stock stay theirs and stay reachable — while the product identity everyone sees is
-      the shared one. Null for every other account, by construction: it is only ever populated
-      from a row whose `owner_user_id` is the caller.
-    */
-    private_overlay_product_id: resolution.privateOverlay?.id ?? null,
-    private_overlay_product_code: resolution.privateOverlay?.product_code ?? null,
-    product_accuracy: Number.isFinite(accuracy) ? accuracy : null,
-    // Historical response name: this is canonical role usability, not only
-    // BASE physics. A TOPPING_ONLY article is ready when ProductBehavior grants
-    // that role, even though its composition need not enter the base Engine.
-    engine_ready:
-      product.product_kind === 'mapper_reference' ||
-      intelligence.engineUsable === true ||
-      roleReady,
+  const privateOverlay = candidates.find(
+    (item) =>
+      item.productId !== candidate.productId &&
+      item.evidence.ownership === 'own' &&
+      item.strength !== 'canonical_shared',
+  );
+
+  return {
+    kind: 'EXACT_PRODUCT',
+    product: {
+      id: row.product_id,
+      product_code: row.product_code,
+      product_name_display: row.display_name,
+      brand: row.brand,
+      product_kind: row.product_kind,
+      visibility: row.visibility,
+      canonical_verification_status: row.verification_status,
+      current_version_id: row.current_version_id,
+      is_active: true,
+      merged_into_product_id: null,
+      stored_facts: facts,
+      private_overlay_product_id: privateOverlay?.productId ?? null,
+      private_overlay_product_code: privateOverlay?.productCode ?? null,
+      product_accuracy: Number.isFinite(accuracy) ? accuracy : null,
+      engine_ready: row.engine_usable === true || intelligence.engineUsable === true || roleReady,
+    },
   };
-  return answer;
 }
 
 /**
@@ -485,9 +439,38 @@ Deno.serve(async (request) => {
     return json({ error: 'scan_session_barcode_conflict' }, 409);
   }
   const barcode = establishedBarcode ?? incomingBarcode;
+  // A stored session barcode is already a validated canonical GTIN-13. It carries no new capture
+  // alias, so the stored-session fallback deliberately uses the canonical-only RPC query.
+  const exactIdentity: ExactLookupIdentity | null = barcodeIdentity?.ok
+    ? barcodeIdentity.identity
+    : barcode && /^\d{13}$/.test(barcode)
+      ? {
+          symbology: 'EAN-13',
+          canonicalGtin13: barcode,
+          lookupKeys: [barcode],
+          rawValue: null,
+        }
+      : null;
   const effectiveBarcodeAuthority = barcodeAuthority ?? barcode;
   if (mode === 'ean_lookup' && !barcode) return json({ error: 'lookup_requires_barcode' }, 400);
-  const exact = await exactProductForBarcode(service, barcode, auth.user.id);
+  let exactLookup: ExactProductLookup;
+  try {
+    exactLookup = await exactProductForBarcode(service, authClient, exactIdentity);
+  } catch {
+    // An unavailable exact authority is not a no-match. Stop before session persistence, OFF,
+    // Recognition or any other later Scanner stage can observe a false negative.
+    return json({ error: 'exact_resolver_unavailable' }, 503);
+  }
+  if (exactLookup.kind === 'EXACT_CONFLICT')
+    return json(
+      {
+        error: 'exact_product_conflict',
+        kind: 'EXACT_CONFLICT',
+        productIds: exactLookup.productIds,
+      },
+      409,
+    );
+  const exact = exactLookup.kind === 'EXACT_PRODUCT' ? exactLookup.product : null;
   if (!existingSession) {
     const { error: insertSessionError } = await service.from('product_scan_sessions').insert({
       id: sessionId,
@@ -568,8 +551,10 @@ Deno.serve(async (request) => {
           });
           // Read the row back only when something was actually saved, so the answer carries the
           // PR article code and the readiness the promotion has just granted.
-          if (reevaluation.saved)
-            current = (await exactProductForBarcode(service, barcode, auth.user.id)) ?? exact;
+          if (reevaluation.saved) {
+            const refreshed = await exactProductForBarcode(service, authClient, exactIdentity);
+            if (refreshed.kind === 'EXACT_PRODUCT') current = refreshed.product;
+          }
         }
         /*
           Keep the bounded, non-secret result beside the disposable scan session. Exact-product

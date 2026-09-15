@@ -13,7 +13,7 @@ describe('Scanner 1.3 fail-closed authority boundary', () => {
     const body = analyze.indexOf('const suppliedBarcode = objectValue(body.barcode)');
     const validation = analyze.indexOf('verifyScannerBarcodePayload', body);
     const sessionRead = analyze.indexOf(".from('product_scan_sessions')", body);
-    const exactLookup = analyze.indexOf('const exact = await exactProductForBarcode', body);
+    const exactLookup = analyze.indexOf('await exactProductForBarcode', body);
     const sessionInsert = analyze.indexOf(".from('product_scan_sessions').insert", body);
     expect(validation).toBeGreaterThan(body);
     expect(validation).toBeLessThan(sessionRead);
@@ -24,7 +24,7 @@ describe('Scanner 1.3 fail-closed authority boundary', () => {
 
   it('S13-26 rejects an empty ean_lookup before exact lookup and authoritative session creation', () => {
     const lookupGuard = analyze.indexOf("if (mode === 'ean_lookup' && !barcode)");
-    const exactLookup = analyze.indexOf('const exact = await exactProductForBarcode');
+    const exactLookup = analyze.indexOf('await exactProductForBarcode');
     const sessionInsert = analyze.indexOf(".from('product_scan_sessions').insert");
     expect(lookupGuard).toBeGreaterThan(-1);
     expect(lookupGuard).toBeLessThan(exactLookup);
@@ -36,7 +36,7 @@ describe('Scanner 1.3 fail-closed authority boundary', () => {
       'const incomingBarcode = barcodeIdentity?.ok ? barcodeIdentity.identity.canonicalGtin13 : null;',
     );
     expect(analyze).toContain(
-      'const exact = await exactProductForBarcode(service, barcode, auth.user.id);',
+      'exactLookup = await exactProductForBarcode(service, authClient, exactIdentity);',
     );
     expect(finalize).toContain('verifyScannerBarcodePayload');
     expect(finalize).toContain('invalid_scan_barcode_identity');

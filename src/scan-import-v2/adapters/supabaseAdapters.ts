@@ -1,17 +1,15 @@
 /**
- * SCAN IMPORT 2.0 — Supabase adapters (staging development only; not wired to any UI).
+ * SCAN IMPORT 2.0 — Supabase adapters.
  *
  * ONE exact-by-code authority for guests AND authenticated users (owner decision D8):
- * `resolve_exact_products_by_gtin_v1(p_gtin, p_symbology)` (migration 20260905090000) — exact only,
+ * `resolve_exact_products_by_gtin_v1(p_gtin, p_symbology)` — exact only,
  * read-only, bounded, validated server-side, public facts for guests, `ownership` fact for authenticated
  * callers. It runs as the caller's own JWT from the browser and from any server path, so client and
  * server can only differ by account visibility, and that difference is explicit in `ownership`.
  * Direct table reads are NOT used (RLS on `products` exposes own rows only — verified on staging).
  *
- * `exactAuthority: 'search_rpc'` keeps the interim path (`search_products_v1` numeric exact match,
- * authenticated only) available until the migration is applied on staging; both map to the same
- * `ExactCandidate` shape. Authenticated enrichment facts (private price, product intelligence) are read
- * from the search row of the SAME product id — facts, never identity.
+ * `search_rpc` remains a compatibility-only authority for old harness fixtures. The active Scanner
+ * path uses `gtin_rpc`; product-scan-analyze uses the same RPC and the same shared query contract.
  */
 import type {
   BehaviourPort,
@@ -28,6 +26,13 @@ import type {
 } from '../contracts';
 import { NetworkError } from '../contracts';
 import { createMemoryStore, type KeyValueStore } from '../offline/persistentStore';
+import {
+  candidateFromGtinRow,
+  exactLookupQueries,
+  type GtinExactRow,
+} from '@/features/product-scanner/gtinExactResolver';
+
+export { candidateFromGtinRow };
 
 export interface SupabaseLike {
   rpc(
@@ -115,63 +120,6 @@ export function candidateFromRow(row: SearchRow, keys: readonly string[]): Exact
 
 export type ExactAuthority = 'gtin_rpc' | 'search_rpc';
 
-interface GtinRow {
-  product_id: string;
-  product_code: string | null;
-  display_name: string;
-  brand: string | null;
-  matched_gtin: string;
-  matched_from: string;
-  product_kind: string;
-  entity_kind: string;
-  visibility: string;
-  ownership: 'own' | 'linked' | 'public';
-  current_version_id: string | null;
-  verification_status: string | null;
-  product_country: string | null;
-  markets: string[] | null;
-  mapper_ingredient_id: string | null;
-  engine_usable: boolean;
-  lifecycle_rejected: boolean;
-}
-
-/** Identity strength from the resolver's explicit facts (audit F4.1: never search ranking). */
-export function candidateFromGtinRow(row: GtinRow): ExactCandidate {
-  const strength: ExactCandidate['strength'] =
-    row.entity_kind === 'customer_provisional' || row.ownership === 'linked'
-      ? 'provisional_linked'
-      : row.ownership === 'own' && row.visibility !== 'shared'
-        ? 'private_own'
-        : 'canonical_shared';
-  const markets = Array.isArray(row.markets)
-    ? row.markets.filter((m) => typeof m === 'string')
-    : [];
-  return {
-    productId: row.product_id,
-    productCode: row.product_code,
-    displayName: row.display_name,
-    brand: row.brand,
-    ean: row.matched_gtin,
-    strength,
-    entityKind:
-      row.entity_kind === 'pi_base' || row.entity_kind === 'customer_provisional'
-        ? row.entity_kind
-        : 'commercial_product',
-    engineReady: row.engine_usable === true,
-    mapperSlotId: row.mapper_ingredient_id ?? null,
-    country: row.product_country ?? (markets.length === 1 ? markets[0]! : null),
-    currentVersionId: row.current_version_id,
-    evidence: {
-      matchedFrom: row.matched_from,
-      visibility: row.visibility,
-      ownership: row.ownership,
-      verificationStatus: row.verification_status,
-      lifecycleRejected: row.lifecycle_rejected === true,
-      markets,
-    },
-  };
-}
-
 /** One adapter session shares the memoised rows between the catalogue, behaviour and price ports. */
 export function createSupabaseV2Ports(
   client: SupabaseLike,
@@ -185,10 +133,10 @@ export function createSupabaseV2Ports(
   rowsById: ReadonlyMap<string, SearchRow>;
 } {
   const rowsById = new Map<string, SearchRow>();
-  const gtinRowsById = new Map<string, GtinRow>();
+  const gtinRowsById = new Map<string, GtinExactRow>();
   const authority: ExactAuthority = options.exactAuthority ?? 'gtin_rpc';
 
-  const resolveExact = async (gtin: string, symbology: string | null): Promise<GtinRow[]> => {
+  const resolveExact = async (gtin: string, symbology: string | null): Promise<GtinExactRow[]> => {
     const { data, error } = await client.rpc('resolve_exact_products_by_gtin_v1', {
       p_gtin: gtin,
       p_symbology: symbology,
@@ -197,7 +145,7 @@ export function createSupabaseV2Ports(
       if (NETWORK.test(error.message)) throw new NetworkError(error.message);
       throw new Error(`lookup_failed: ${error.message}`);
     }
-    return Array.isArray(data) ? (data as GtinRow[]) : [];
+    return Array.isArray(data) ? (data as GtinExactRow[]) : [];
   };
 
   const searchExact = async (key: string): Promise<SearchRow[]> => {
@@ -223,32 +171,18 @@ export function createSupabaseV2Ports(
   const catalog: CatalogPort = {
     async exactByIdentity(identity, ctx: RequestContext) {
       if (authority === 'gtin_rpc') {
-        // Canonical GTIN-13 is the sole identity input. Legacy aliases are explicit fallback
-        // queries only; they never decide the persisted identity or the capture symbology.
-        const aliases =
-          identity.symbology === 'EAN-8'
-            ? [identity.canonicalGtin13.slice(5)]
-            : identity.symbology === 'UPC-A'
-              ? [identity.canonicalGtin13.slice(1)]
-              : identity.symbology === 'UPC-E'
-                ? [identity.lookupKeys.find((key) => key.length === 12) ?? '']
-                : [];
-        const queries = [
-          { gtin: identity.canonicalGtin13, symbology: null as string | null },
-          ...aliases
-            .filter((alias) => alias && alias !== identity.canonicalGtin13)
-            .map((gtin) => ({ gtin, symbology: identity.symbology })),
-        ];
+        const queries = exactLookupQueries(identity);
         const out = new Map<string, ExactCandidate>();
         for (const query of queries) {
           for (const row of await resolveExact(query.gtin, query.symbology)) {
-            // SQL is authoritative, but a stale resolver deployment must not leak quarantine either.
-            if (row.verification_status === 'blocked') continue;
             gtinRowsById.set(row.product_id, row);
-            if (!out.has(row.product_id)) out.set(row.product_id, candidateFromGtinRow(row));
+            const candidate = candidateFromGtinRow(row);
+            if (candidate && !out.has(row.product_id))
+              out.set(row.product_id, candidate as ExactCandidate);
           }
           // The canonical identity is primary. Legacy aliases are consulted only when the
-          // canonical row is absent, so alias ordering can never choose the product identity.
+          // canonical query produced no user-facing product, so alias ordering can never choose
+          // the product identity.
           if (out.size > 0) break;
         }
         return [...out.values()];
@@ -276,10 +210,10 @@ export function createSupabaseV2Ports(
         const gtin = keys[0] ?? '';
         const out = new Map<string, ExactCandidate>();
         for (const row of await resolveExact(gtin, null)) {
-          // SQL is authoritative, but a stale resolver deployment must not leak quarantine either.
-          if (row.verification_status === 'blocked') continue;
           gtinRowsById.set(row.product_id, row);
-          if (!out.has(row.product_id)) out.set(row.product_id, candidateFromGtinRow(row));
+          const candidate = candidateFromGtinRow(row);
+          if (candidate && !out.has(row.product_id))
+            out.set(row.product_id, candidate as ExactCandidate);
         }
         return [...out.values()];
       }
