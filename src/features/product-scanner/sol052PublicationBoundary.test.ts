@@ -16,6 +16,10 @@ const analyze = readFileSync(
   resolve(root, 'supabase/functions/product-scan-analyze/index.ts'),
   'utf8',
 );
+const exactResolver = readFileSync(
+  resolve(root, 'src/features/product-scanner/gtinExactResolver.ts'),
+  'utf8',
+);
 const migration = readFileSync(
   resolve(root, 'supabase/migrations/20260908101050_sol_052_publication_eligibility.sql'),
   'utf8',
@@ -55,16 +59,15 @@ describe('SOL-052 publication boundary across client, Edge and SQL', () => {
   });
 
   it('excludes quarantine in both exact Edge lookup and every SQL catalogue route', () => {
-    expect(analyze).toContain("canonical_verification_status === 'blocked'");
+    expect(exactResolver).toContain("row.verification_status === 'blocked'");
+    expect(analyze).toContain('exactRowsWithRetry');
     expect(migration).toContain('resolve_exact_products_by_gtin_v1');
     expect(migration).toContain('search_products_v1');
     expect(migration).toContain("canonical_verification_status, '''') <> ''blocked''");
     expect(migration).toContain('existing PR');
     expect(migration).toContain("v_uid is not null and p.visibility <> ''shared''");
     expect(rollback).toContain('sol052_rollback_exact_private_scope_anchor_missing');
-    expect(analyze.indexOf('const eligibleCandidateRows')).toBeLessThan(
-      analyze.indexOf("service.rpc('canonicalize_ean_identity_v1'"),
-    );
+    expect(analyze).not.toContain('canonicalize_ean_identity_v1');
   });
 
   it('keeps session state while excluding correction-in-place from this rollout', () => {

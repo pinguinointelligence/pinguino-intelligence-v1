@@ -1,10 +1,13 @@
--- Scanner 1.4 — one user-facing exact GELLATTI product authority.
+-- Scanner 1.4 — return the complete exact authority from one database snapshot.
 --
--- The RPC is observational: it only returns exact, eligible product identities visible to the
--- caller. Mapper rows remain in mapper_basement and remain available to internal Mapper flows,
--- but a Mapper-owned EAN is not a customer product exact match.
+-- The previous function returned product identity and forced callers to read product_versions
+-- separately. That allowed an impossible mixed productId/currentVersion/visibility result when a
+-- product changed between reads. The replacement returns the current immutable version facts in
+-- the same statement and refuses products without a current version.
 
-create or replace function public.resolve_exact_products_by_gtin_v1(p_gtin text, p_symbology text default null)
+drop function if exists public.resolve_exact_products_by_gtin_v1(text, text);
+
+create function public.resolve_exact_products_by_gtin_v1(p_gtin text, p_symbology text default null)
 returns table (
   product_id uuid,
   product_code text,
@@ -22,7 +25,10 @@ returns table (
   markets text[],
   mapper_ingredient_id text,
   engine_usable boolean,
-  lifecycle_rejected boolean
+  lifecycle_rejected boolean,
+  is_active boolean,
+  merged_into_product_id uuid,
+  current_version_facts jsonb
 )
 language plpgsql
 stable
@@ -39,18 +45,15 @@ begin
   if p_gtin is null or p_gtin !~ '^[0-9]{8,13}$' then return; end if;
   v_len := length(p_gtin);
   if p_symbology is null then
-    -- Null format is reserved for the already-canonical GTIN-13 path.
     if v_len <> 13 then return; end if;
   elsif p_symbology not in ('EAN-13', 'EAN-8', 'UPC-A', 'UPC-E') then
     return;
   elsif (p_symbology = 'EAN-13' and v_len <> 13)
      or (p_symbology = 'EAN-8' and v_len <> 8)
-     -- UPC-E callers pass the expanded 12-digit UPC-A form; the format is retained for evidence.
      or (p_symbology in ('UPC-A', 'UPC-E') and v_len <> 12) then
     return;
   end if;
 
-  -- GTIN check digit (mod 10, weights 3/1 from the right).
   for v_i in 1..(v_len - 1) loop
     v_sum := v_sum + substr(p_gtin, v_len - v_i, 1)::int * (case when v_i % 2 = 1 then 3 else 1 end);
   end loop;
@@ -101,10 +104,13 @@ begin
               where v.product_id = p.id and v.is_current and v.market is not null), '{}'::text[]),
     (select b.mapper_ingredient_id from public.product_behavior_bindings b where b.id = p.current_behavior_binding_id),
     coalesce((pv.facts -> 'productIntelligence' ->> 'engineUsable')::boolean, false),
-    coalesce(p.status, '') = 'rejected'
+    coalesce(p.status, '') = 'rejected',
+    p.is_active,
+    p.merged_into_product_id,
+    pv.facts
   from ranked r
   join public.products p on p.id = r.pid
-  left join public.product_versions pv on pv.id = p.current_version_id
+  join public.product_versions pv on pv.id=p.current_version_id and pv.product_id=p.id
   where p.is_active
     and p.merged_into_product_id is null
     and (
@@ -128,8 +134,6 @@ begin
         )
       )
     )
-  -- Do not LIMIT or choose one row here. The shared TS contract resolves precedence and exposes
-  -- an exact conflict when equally authoritative products collide on one GTIN.
   order by p.id;
 end
 $fn$;
@@ -138,4 +142,4 @@ revoke all on function public.resolve_exact_products_by_gtin_v1(text, text) from
 grant execute on function public.resolve_exact_products_by_gtin_v1(text, text) to anon, authenticated, service_role;
 
 comment on function public.resolve_exact_products_by_gtin_v1(text, text) is
-  'Scanner 1.4 exact product authority: exact eligible shared commercial products or caller-visible customer products only; Mapper references are internal and excluded; no writes or fuzzy matching.';
+  'Scanner 1.4 exact product authority: identity, lifecycle, visibility and current immutable version facts are one read-only caller-scoped snapshot; Mapper references are excluded.';

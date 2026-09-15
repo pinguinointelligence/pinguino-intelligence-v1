@@ -12,6 +12,7 @@ const relationRlsMigration = read(
 );
 const finalize = read('supabase/functions/product-scan-finalize/index.ts');
 const analyze = read('supabase/functions/product-scan-analyze/index.ts');
+const exactResolver = read('src/features/product-scanner/gtinExactResolver.ts');
 const service = read('src/services/productScanner.ts');
 
 describe('Scanner customer-added product authority', () => {
@@ -63,11 +64,10 @@ describe('Scanner customer-added product authority', () => {
   });
 
   it('does not expose another account customer-added pending product as an exact match', () => {
-    expect(analyze).toContain('actorUserId: string');
-    expect(analyze).toContain(".from('customer_added_product_accounts')");
-    expect(analyze).toContain(".eq('user_id', actorUserId)");
-    expect(analyze).toContain('if (!linked) return null');
-    expect(analyze).toContain('exactProductForBarcode(service, barcode, auth.user.id)');
+    expect(analyze).toContain('exactRowsWithRetry');
+    expect(analyze).toContain('exactProductForBarcode(authClient, exactIdentity)');
+    expect(exactResolver).toContain("row.ownership === 'own' || row.ownership === 'linked'");
+    expect(exactResolver).toContain("row.visibility !== 'shared'");
   });
 
   it('keeps autonomous evidence server-owned instead of relabelling it as customer-confirmed', () => {

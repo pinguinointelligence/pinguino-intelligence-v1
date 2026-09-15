@@ -204,18 +204,14 @@ export async function runScanImportV2(
     const cached = await ports.offlineCache.get(ctx.accountId, identity.canonicalGtin13);
     assertScanRunCurrent(ctx);
     if (!cached) return { kind: 'offline', identity, knownLocally: false };
+    // A cache has no way to observe a concurrent deactivate, visibility change or supersession.
+    // It may help the UI explain that the code was seen locally, but it must never be returned as
+    // resolved_exact or be consumed by import/finalize as if it were the current authority.
     return {
-      kind: 'resolved_exact',
+      kind: 'offline',
       identity,
-      product: cached.candidate,
-      exactness: 'exact_gtin',
-      provenance: 'local_cache',
-      confidence: CONFIDENCE.localCache,
-      behaviour: cached.behaviour,
-      price: cached.price,
-      import: null,
-      importSkipped: 'offline',
-      needsConfirmation: false,
+      knownLocally: true,
+      cachedProduct: cached.candidate,
     };
   }
 

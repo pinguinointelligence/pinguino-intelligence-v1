@@ -29,6 +29,9 @@ import { createMemoryStore, type KeyValueStore } from '../offline/persistentStor
 import {
   candidateFromGtinRow,
   exactLookupQueries,
+  exactRowsWithRetry,
+  isRetryableExactResolverError,
+  type ExactSymbology,
   type GtinExactRow,
 } from '@/features/product-scanner/gtinExactResolver';
 
@@ -136,16 +139,14 @@ export function createSupabaseV2Ports(
   const gtinRowsById = new Map<string, GtinExactRow>();
   const authority: ExactAuthority = options.exactAuthority ?? 'gtin_rpc';
 
-  const resolveExact = async (gtin: string, symbology: string | null): Promise<GtinExactRow[]> => {
-    const { data, error } = await client.rpc('resolve_exact_products_by_gtin_v1', {
-      p_gtin: gtin,
-      p_symbology: symbology,
-    });
-    if (error) {
-      if (NETWORK.test(error.message)) throw new NetworkError(error.message);
-      throw new Error(`lookup_failed: ${error.message}`);
+  const resolveExact = async (gtin: string, symbology: ExactSymbology | null): Promise<GtinExactRow[]> => {
+    try {
+      return await exactRowsWithRetry(client, { gtin, symbology });
+    } catch (error) {
+      if (isRetryableExactResolverError(error))
+        throw new NetworkError(error instanceof Error ? error.message : String(error));
+      throw error instanceof Error ? error : new Error(`lookup_failed: ${String(error)}`);
     }
-    return Array.isArray(data) ? (data as GtinExactRow[]) : [];
   };
 
   const searchExact = async (key: string): Promise<SearchRow[]> => {
@@ -360,10 +361,10 @@ export function createSupabaseV2Ports(
  * Offline cache over a persistent store (memory / Web Storage / IndexedDB — see offline/persistentStore.ts).
  *
  * Entries are namespaced per account (guests under 'guest'), carry the schema version, the resolution
- * time and the product's current version pointer. An entry is trusted offline only while ALL hold:
- * same schema version, not older than the TTL, and — when the caller knows a newer version pointer — the
- * pointer matches. Online resolutions always overwrite the entry (the authority wins; the cache is a
- * convenience, never a second product authority).
+ * time and the product's current version pointer. The entry is never an offline authority: the
+ * pipeline exposes it only as a local hint because offline code cannot observe a concurrent
+ * deactivate, visibility change or supersession. Online resolutions always overwrite the entry;
+ * the cache is a convenience, never a second product authority.
  */
 export const OFFLINE_CACHE_TTL_MS = 30 * 24 * 3600 * 1000; // PROVISIONAL — owner may shorten
 export const OFFLINE_CACHE_SCHEMA = 2;

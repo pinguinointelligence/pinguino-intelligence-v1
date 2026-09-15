@@ -1,10 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   candidateFromGtinRow,
   exactLookupQueries,
   exactResolverVerdict,
+  exactRowsWithRetry,
+  parseGtinExactRows,
   type ExactLookupIdentity,
   type GtinExactRow,
 } from './gtinExactResolver';
@@ -12,8 +14,12 @@ import {
 const read = (path: string) => readFileSync(resolve(process.cwd(), path), 'utf8');
 const ANALYZE = read('supabase/functions/product-scan-analyze/index.ts');
 const ADAPTER = read('src/scan-import-v2/adapters/supabaseAdapters.ts');
+const EXACT_RESOLVER = read('src/features/product-scanner/gtinExactResolver.ts');
 const DISCOVERY_ADAPTER = read('src/scan-import-v2/adapters/supabaseDiscoveryAdapter.ts');
 const SQL = read('supabase/migrations/20260915170000_scanner_1_4_single_exact_authority.sql');
+const ATOMIC_SQL = read(
+  'supabase/migrations/20260915173000_scanner_1_4_atomic_exact_snapshot.sql',
+);
 
 const row = (over: Partial<GtinExactRow> = {}): GtinExactRow => ({
   product_id: 'pr-1',
@@ -33,6 +39,9 @@ const row = (over: Partial<GtinExactRow> = {}): GtinExactRow => ({
   mapper_ingredient_id: null,
   engine_usable: true,
   lifecycle_rejected: false,
+  is_active: true,
+  merged_into_product_id: null,
+  current_version_facts: { productIntelligence: { engineUsable: true } },
   ...over,
 });
 
@@ -110,6 +119,7 @@ describe('Scanner 1.4 — one exact GELLATTI authority', () => {
       { gtin: '0000094152210', symbology: null },
       { gtin: '94152210', symbology: 'EAN-8' },
     ]);
+    expect(SQL).toMatch(/left\(p_gtin, 5\) = '00000'[\s\S]*substr\(p_gtin, 6\)/);
   });
 
   it('SCN-1.4-07 UPC-A canonical alias contract is explicit', () => {
@@ -199,7 +209,7 @@ describe('Scanner 1.4 — one exact GELLATTI authority', () => {
     expect(exactFunction).not.toContain("from('product_variants')");
     expect(exactFunction).not.toContain('.insert(');
     expect(exactFunction).not.toContain('.update(');
-    expect(ANALYZE).toContain("resolverClient.rpc('resolve_exact_products_by_gtin_v1'");
+    expect(ANALYZE).toContain('exactRowsWithRetry');
   });
 
   it('SCN-1.4-13 exact verdict precedes persistence and every later paid/research seam', () => {
@@ -231,7 +241,8 @@ describe('Scanner 1.4 — one exact GELLATTI authority', () => {
   it('SCN-1.4-16 browser adapter and analyze consume the same query helper and RPC', () => {
     expect(ADAPTER).toContain('exactLookupQueries(identity)');
     expect(ANALYZE).toContain('exactLookupQueries(identity)');
-    expect(ANALYZE).toContain("resolverClient.rpc('resolve_exact_products_by_gtin_v1'");
+    expect(ANALYZE).toContain('exactRowsWithRetry');
+    expect(EXACT_RESOLVER).toContain("client.rpc('resolve_exact_products_by_gtin_v1'");
   });
 
   it('SCN-1.4-17 SQL excludes inactive, merged, superseded and non-published products', () => {
@@ -258,5 +269,99 @@ describe('Scanner 1.4 — one exact GELLATTI authority', () => {
     const first = candidateFromGtinRow(row({ current_version_id: 'version-at-scan' }));
     expect(first).toMatchObject({ currentVersionId: 'version-at-scan' });
     expect(exactResolverVerdict(first ? [first] : [])).toMatchObject({ kind: 'EXACT_PRODUCT' });
+  });
+
+  it('SCN-1.4-21 malformed or null RPC data is ERROR, never NO_EXACT_PRODUCT', () => {
+    expect(() => parseGtinExactRows(null)).toThrow(/MALFORMED_RESPONSE/);
+    expect(() => parseGtinExactRows([{ product_id: 'missing-contract-fields' }])).toThrow(
+      /MALFORMED_RESPONSE/,
+    );
+    expect(exactResolverVerdict([])).toEqual({ kind: 'NO_EXACT_PRODUCT' });
+  });
+
+  it('SCN-1.4-22 retries one transient exact lookup and never retries authorization failure', async () => {
+    const rowResult = row();
+    let attempts = 0;
+    const transient = {
+      rpc: vi.fn(async () => {
+        attempts += 1;
+        return attempts === 1
+          ? { data: null, error: { message: 'timeout' } }
+          : { data: [rowResult], error: null };
+      }),
+    };
+    await expect(
+      exactRowsWithRetry(transient, { gtin: rowResult.matched_gtin, symbology: null }),
+    ).resolves.toHaveLength(1);
+    expect(transient.rpc).toHaveBeenCalledTimes(2);
+
+    const forbidden = { rpc: vi.fn(async () => ({ data: null, error: { message: 'permission denied' } })) };
+    await expect(
+      exactRowsWithRetry(forbidden, { gtin: rowResult.matched_gtin, symbology: null }),
+    ).rejects.toThrow(/permission denied/);
+    expect(forbidden.rpc).toHaveBeenCalledTimes(1);
+
+    const thrownForbidden = {
+      rpc: vi.fn(async () => {
+        throw new Error('RLS permission denied');
+      }),
+    };
+    await expect(
+      exactRowsWithRetry(thrownForbidden, { gtin: rowResult.matched_gtin, symbology: null }),
+    ).rejects.toMatchObject({ code: 'UNAVAILABLE', retryable: false });
+    expect(thrownForbidden.rpc).toHaveBeenCalledTimes(1);
+  });
+
+  it('SCN-1.4-23 exact state is explicit: unavailable and not-applicable cannot unlock fallback', () => {
+    expect(ANALYZE).toContain("kind: 'ERROR'");
+    expect(ANALYZE).toContain("kind: 'NOT_APPLICABLE'");
+    expect(ANALYZE).toContain("if (exactLookup.kind === 'ERROR')");
+    expect(ANALYZE).toContain("exactLookup.kind === 'NO_EXACT_PRODUCT'");
+    expect(EXACT_RESOLVER).toContain('parseGtinExactRows');
+    expect(ANALYZE).toContain('exactRowsWithRetry');
+  });
+
+  it('SCN-1.4-24 exact product facts and identity come from the same RPC snapshot', () => {
+    expect(ANALYZE).toContain('current_version_facts');
+    expect(ANALYZE).not.toContain("from('product_versions')");
+    expect(ATOMIC_SQL).toContain('current_version_facts jsonb');
+    expect(ATOMIC_SQL).toContain(
+      'join public.product_versions pv on pv.id=p.current_version_id and pv.product_id=p.id',
+    );
+    expect(ATOMIC_SQL).toContain('pv.facts');
+    expect(ATOMIC_SQL).toContain('p.is_active');
+    expect(ATOMIC_SQL).toContain('p.merged_into_product_id is null');
+  });
+
+  it('SCN-1.4-25 session read/write errors remain errors and cannot create a false no-match path', () => {
+    expect(ANALYZE).toContain("error: 'scan_session_read_failed'");
+    expect(ANALYZE).toContain("error: 'scan_session_update_failed'");
+    expect(ANALYZE).toContain("error: 'scan_asset_metadata_failed'");
+  });
+
+  it('SCN-1.4-26 offline positive cache is a local hint, never an authoritative exact verdict', () => {
+    const pipeline = read('src/scan-import-v2/pipeline.ts');
+    expect(pipeline).toContain("kind: 'offline'");
+    expect(pipeline).toContain('knownLocally: true');
+    expect(pipeline).not.toContain("provenance: 'local_cache'");
+  });
+
+  it('SCN-1.4-27 no negative exact verdict is persisted in the offline cache', () => {
+    const pipeline = read('src/scan-import-v2/pipeline.ts');
+    expect(pipeline).toContain('await ports.offlineCache.invalidate');
+    expect(pipeline).not.toMatch(/resolution\.kind === 'none'[\s\S]{0,500}offlineCache\.put/);
+  });
+
+  it('SCN-1.4-28 exact response exposes the same canonical identity and lifecycle facts', () => {
+    for (const field of [
+      'canonicalGtin',
+      'productCode',
+      'currentVersionId',
+      'ownership',
+      'visibility',
+      'isActive',
+      'mergedIntoProductId',
+    ])
+      expect(ANALYZE).toContain(field);
   });
 });
